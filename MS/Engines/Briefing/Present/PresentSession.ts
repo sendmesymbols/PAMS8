@@ -1116,6 +1116,9 @@ export default class PresentSession {
         total: slides.length,
         title: slide?.title ?? '',
         notes: slide?.notes ?? '',
+        current: slide
+          ? { title: slide.title || `Slide ${index + 1}`, thumb: slide.thumbnailDataUrl }
+          : null,
         next: next
           ? { title: next.title || `Slide ${index + 2}`, thumb: next.thumbnailDataUrl }
           : null,

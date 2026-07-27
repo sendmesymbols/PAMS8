@@ -18,6 +18,10 @@
  * strand itself in a window nobody can see.
  */
 
+import EngineLogger from '../../../Support/EngineLogger';
+
+const ENGINE_NAME = 'BriefingEngine';
+
 export interface PresenterSlideRef {
   title: string;
   thumb?: string;
@@ -29,6 +33,11 @@ export interface PresenterData {
   total: number;
   title: string;
   notes: string;
+  /**
+   * The slide on the audience screen right now. Only painted when the panel is
+   * popped out — see the .ms-presenter-now CSS for why.
+   */
+  current: PresenterSlideRef | null;
   next: PresenterSlideRef | null;
   /** Click-mode build progress; both 0 when the slide isn't step-driven. */
   buildRevealed: number;
@@ -83,6 +92,20 @@ const PANEL_CSS = `
   background: rgba(0,0,0,.3); border: 1px solid rgba(80,100,150,.2);
 }
 .ms-presenter-notes.ms-empty { color: rgba(155,180,215,.42); font-style: italic; }
+/* The current slide, big. Only worth showing in the POPPED-OUT window: docked
+   in-page the live map is right behind the panel, so a preview of it would be
+   redundant and would eat the notes' vertical space. */
+.ms-presenter-now { flex-shrink: 0; }
+.ms-presenter:not(.ms-windowed) .ms-presenter-now { display: none; }
+.ms-presenter-nowbox {
+  width: 100%; aspect-ratio: 16/9; border-radius: 7px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg,#26313a,#17202a) center/contain no-repeat;
+  border: 1px solid rgba(80,100,150,.28);
+  color: rgba(155,180,215,.45); font-size: 11px; text-align: center; padding: 6px;
+  box-sizing: border-box;
+}
+.ms-presenter-nowbox img { width: 100%; height: 100%; object-fit: contain; }
 .ms-presenter-nextwrap { flex-shrink: 0; }
 .ms-presenter-label {
   font: 700 10px/1 'Segoe UI', system-ui, sans-serif; letter-spacing: .1em;
@@ -191,6 +214,10 @@ export default class PresenterPanel {
           <button class="ms-presenter-btn" data-act="reset" title="Reset the elapsed timer (T)">↺</button>
         </span>
       </div>
+      <div class="ms-presenter-now">
+        <div class="ms-presenter-label">On screen now</div>
+        <div class="ms-presenter-nowbox"></div>
+      </div>
       <div class="ms-presenter-builds" hidden></div>
       <div class="ms-presenter-label">Speaker notes</div>
       <div class="ms-presenter-notes"></div>
@@ -229,7 +256,8 @@ export default class PresenterPanel {
           this._host.toggleBlackout();
           break;
         case 'pop':
-          this._win ? this.dock() : this.popOut();
+          if (this._win) this.dock();
+          else if (!this.popOut()) this._reportPopBlocked();
           break;
         case 'exit':
           this._host.exit();
@@ -336,6 +364,29 @@ export default class PresenterPanel {
     win.addEventListener('beforeunload', this._onWinClose);
     window.addEventListener('beforeunload', this._closeWindow);
     return true;
+  }
+
+  /**
+   * A refused window.open is otherwise indistinguishable from a dead button —
+   * say so on the button itself (the briefer is looking right at it) and in the
+   * Engine Log, then restore the label.
+   */
+  private _reportPopBlocked(): void {
+    EngineLogger.error(
+      ENGINE_NAME,
+      'Presenter view could not open its own window — allow pop-ups for this site, then try again.',
+    );
+    const btn = this._root?.querySelector('[data-act="pop"]') as HTMLElement | null;
+    if (!btn) return;
+    btn.textContent = '⧉ Pop-up blocked';
+    btn.setAttribute('title', 'Your browser blocked the window. Allow pop-ups for this site, then try again.');
+    window.setTimeout(() => {
+      if (this._win) return; // it opened in the meantime — leave the Dock label alone
+      const still = this._root?.querySelector('[data-act="pop"]') as HTMLElement | null;
+      if (!still) return;
+      still.textContent = '⧉ Pop out';
+      still.setAttribute('title', 'Move this panel to its own window for a second screen');
+    }, 4000);
   }
 
   /** Bring the panel back into the main document, closing the child window. */
@@ -485,6 +536,15 @@ export default class PresenterPanel {
             ? `Builds ${data.buildTotal} / ${data.buildTotal} — next advance changes slide`
             : `Build ${data.buildRevealed} / ${data.buildTotal} — advance to reveal`;
       }
+    }
+
+    const now = root.querySelector('.ms-presenter-nowbox') as HTMLElement | null;
+    if (now) {
+      // A slide captured in 3D-headless has no thumbnail — say so rather than
+      // showing an empty box the briefer reads as "the screen is blank".
+      now.innerHTML = data.current?.thumb
+        ? `<img src="${data.current.thumb}" alt="">`
+        : 'No preview for this slide — check the projected screen.';
     }
 
     const next = root.querySelector('.ms-presenter-next') as HTMLElement | null;
