@@ -2591,12 +2591,16 @@ function updateStylusPerSymbolUI(cls: string | null): void {
           be ? be.toggleSorter() : warnNotReady();
           break;
         case 'edit':
-          if (be && be.getSlides().length) {
-            void be.openSlideEditor(Math.max(0, be.currentIndex));
-          } else if (be) {
-            console.warn('No briefing slides yet — capture one first.');
-          } else {
+          // Bootstraps rather than refusing: someone opening the slide editor
+          // on a fresh map means "let me annotate this", not "tell me to
+          // capture first". captureSlide() sets currentIndex to the new slide,
+          // so the open below lands on it.
+          if (!be) {
             warnNotReady();
+          } else if (be.getSlides().length || be.captureSlide()) {
+            void be.openSlideEditor(Math.max(0, be.currentIndex));
+          } else {
+            console.warn('Could not capture a slide to edit — is a view active?');
           }
           break;
         case 'save':
@@ -2630,6 +2634,7 @@ function updateStylusPerSymbolUI(cls: string | null): void {
         }
       }
     });
+
   }
 
   // ── Analysis Hub ──────────────────────────────────────────────────────────

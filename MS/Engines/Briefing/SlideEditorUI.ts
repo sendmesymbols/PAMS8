@@ -506,6 +506,10 @@ const ICONS: Record<string, string> = {
   save: svg('<path d="M4.8 4h10.4L20 8.8V20H4.8z"/><path d="M8.6 4v5.2h6.8V4"/><rect x="8" y="13.4" width="8" height="6.6"/>'),
   /** X — Cancel. */
   close: svg('<path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6"/>'),
+  /** Arrow up out of a tray — export the deck to PowerPoint. */
+  exportDeck: svg('<path d="M12 3.6v9.8"/><path d="M8.5 7.1L12 3.6l3.5 3.5"/><path d="M4.8 14.6v3.2c0 1.2 1 2.2 2.2 2.2h10c1.2 0 2.2-1 2.2-2.2v-3.2"/>'),
+  /** Arrow down into a tray — the mirror of exportDeck, so the pair reads as one. */
+  importDeck: svg('<path d="M12 13.4V3.6"/><path d="M8.5 9.9L12 13.4l3.5-3.5"/><path d="M4.8 14.6v3.2c0 1.2 1 2.2 2.2 2.2h10c1.2 0 2.2-1 2.2-2.2v-3.2"/>'),
   /** Column chart — the insert-chart action. */
   chart: svg('<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8.5" width="3" height="8.5"/><rect x="17" y="14" width="3" height="3"/>'),
   /** A slide with a banner strip top and bottom — deck setup. */
@@ -860,7 +864,14 @@ export default class SlideEditorUI {
           <button data-act="redo" class="ms-sledit-iconbtn" title="Redo (Ctrl+Y)">${ICONS.redo}</button>
         </span>
         <span class="ms-sledit-tools">${toolButtons}<span class="ms-sledit-sep"></span><button data-act="toolLock" title="Keep the active shape tool armed after each draw — Q">${ICONS.toolLock}<kbd>Q</kbd></button></span>
+        <!-- Order: things that act on THIS SLIDE (insert, comment, notes,
+             transition) → commit it (Save) → things that act on the WHOLE DECK
+             (Import / Export, with Deck setup alongside since it configures
+             what Export produces) → leave (Close) → help, pinned last. -->
         <span class="ms-sledit-group ms-sledit-topright">
+          <button data-act="insertChart" class="ms-sledit-iconbtn" title="Insert a chart — type the data in, or build it from the last Position Defensibility / OP Ranker result. Exports as a real, editable PowerPoint chart." aria-label="Insert chart">${ICONS.chart}</button>
+          <button data-act="comment" class="ms-sledit-iconbtn" title="Comment (N or Ctrl+Alt+M) — click an annotation, a spot on the slide, or off the slide for the whole slide" aria-label="Comment">${ICONS.comment}</button>
+          <button data-act="notes" class="ms-sledit-iconbtn" title="Toggle speaker notes — opens a drawer under the slide" aria-label="Speaker notes">${ICONS.notes}</button>
           <select class="ms-sledit-transition" title="Transition played entering this slide from another slide-view slide.">
             <option value="">Cut</option>
             <option value="fade">Fade</option>
@@ -868,13 +879,14 @@ export default class SlideEditorUI {
             <option value="pushRight">Push Right</option>
             <option value="wipe">Wipe</option>
           </select>
-          <button data-act="insertChart" class="ms-sledit-iconbtn" title="Insert a chart — type the data in, or build it from the last Position Defensibility / OP Ranker result. Exports as a real, editable PowerPoint chart.">${ICONS.chart}</button>
-          <button data-act="deckSetup" class="ms-sledit-iconbtn" title="Deck setup — slide size, page numbers, classification banner and footer, theme fonts, document properties, and this slide's section.">${ICONS.deck}</button>
-          <button data-act="comment" class="ms-sledit-iconbtn" title="Comment (N or Ctrl+Alt+M) — click an annotation, a spot on the slide, or off the slide for the whole slide">${ICONS.comment}</button>
-          <button data-act="notes" class="ms-sledit-iconbtn" title="Toggle speaker notes — opens a drawer under the slide">${ICONS.notes}</button>
-          <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard shortcuts (?)">${ICONS.help}</button>
           <button data-act="save" class="ms-sledit-iconbtn primary" title="Save &amp; close — writes annotations, title and notes to the slide" aria-label="Save and close">${ICONS.save}</button>
+          <span class="ms-sledit-sep"></span>
+          <button data-act="deckSetup" class="ms-sledit-iconbtn" title="Deck setup — slide size, page numbers, classification banner and footer, theme fonts, document properties, and this slide's section." aria-label="Deck setup">${ICONS.deck}</button>
+          <button data-act="importDeck" class="ms-sledit-iconbtn" title="Import a PowerPoint (.pptx) — its slides are appended to this briefing as editable slides. Saves this slide first." aria-label="Import PowerPoint">${ICONS.importDeck}</button>
+          <button data-act="exportDeck" class="ms-sledit-iconbtn" title="Export the whole briefing as a PowerPoint (.pptx) — saves this slide first. Uses the current Deck setup." aria-label="Export to PowerPoint">${ICONS.exportDeck}</button>
+          <span class="ms-sledit-sep"></span>
           <button data-act="cancel" class="ms-sledit-iconbtn" title="Cancel — discard changes and close" aria-label="Cancel">${ICONS.close}</button>
+          <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">${ICONS.help}</button>
         </span>
       </div>
       <div class="ms-sledit-main">

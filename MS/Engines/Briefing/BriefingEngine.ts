@@ -1284,7 +1284,11 @@ class BriefingEngine {
         this._slides.push(...result.slides);
         this._current = firstNew;
         this._refreshStrip();
-        this.openPanel();
+        // Imported from inside the slide editor: its rail is a view onto this
+        // same list, so it has to be told the list grew. The panel is not opened
+        // in that case — it would sit behind the full-screen editor.
+        if (this._slideEditor?.isOpen()) this._slideEditor.refreshRail();
+        else this.openPanel();
         EngineLogger.success(
           ENGINE_NAME,
           `Imported ${result.slides.length} slide(s) from "${file.name}"` +
@@ -1946,11 +1950,30 @@ class BriefingEngine {
         const run = (window as any).exportPptxDeck;
         if (typeof run !== 'function') {
           EngineLogger.error(ENGINE_NAME, 'PPTX exporter not registered');
-          return;
+          return false;
+        }
+        // Checked here rather than left to the exporter's own throw, so the
+        // editor can report "disabled" instead of "exporting…" and then
+        // nothing happening.
+        if ((settingsData as any).features?.exportTools !== true) {
+          EngineLogger.error(
+            ENGINE_NAME,
+            'Export Tools disabled — enable features.exportTools in Settings',
+          );
+          return false;
         }
         void Promise.resolve(run()).catch((err: unknown) =>
           EngineLogger.error(ENGINE_NAME, `Export failed: ${err}`),
         );
+        return true;
+      },
+      importDeck: () => {
+        if (!this._enabled) {
+          EngineLogger.error(ENGINE_NAME, 'Briefing disabled — enable features.briefing first');
+          return false;
+        }
+        this.importPptxFromFile();
+        return true;
       },
       openExportSettings: () => {
         // Global published by ExportToolsSettingsWidget, which is side-effect

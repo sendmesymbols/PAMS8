@@ -178,8 +178,20 @@ export interface SlideEditorHost {
   setSlideSection?(index: number, section: string): void;
   /** Section titles already in use — offered as suggestions in the dialog. */
   listSections?(): string[];
-  /** Export the deck now, using whatever the dialog has just set. */
-  exportDeck?(): void;
+  /**
+   * Export the deck now, using whatever the dialog has just set. Returns false
+   * when the export could not even be started (exporter disabled), so the
+   * caller can say so instead of claiming an export is running.
+   */
+  exportDeck?(): boolean;
+  /**
+   * Open a .pptx picker and append its slides to the briefing. Returns false
+   * when the picker could not be opened at all.
+   *
+   * The host is expected to refresh the editor's rail once the import lands —
+   * it is a file-picker flow, so completion happens long after this returns.
+   */
+  importDeck?(): boolean;
   /** Open the exhaustive PPTX Export settings widget. */
   openExportSettings?(): void;
 }
@@ -912,6 +924,12 @@ export default class SlideEditor {
         break;
       case 'deckSetup':
         this._openDeckSetup();
+        break;
+      case 'exportDeck':
+        this._exportDeck();
+        break;
+      case 'importDeck':
+        this._importDeck();
         break;
       case 'del':
         this._deleteSelection();
@@ -3366,6 +3384,54 @@ export default class SlideEditor {
     if (!this.insertOverlays([overlay])) return;
     const obj = this._overlayObjects().find((o) => o.data?.id === overlay.id);
     if (obj) this._openChartDialog(obj);
+  }
+
+  /**
+   * Export the briefing without leaving the editor.
+   *
+   * Saves first, always: the exporter re-applies each slide's map state and
+   * screenshots it from the MODEL, so unsaved canvas work would be missing
+   * from the deck. The editor stays open — the export moves the map underneath
+   * it, but this editor is working on a frozen background, so it does not care.
+   */
+  private _exportDeck(): void {
+    const host = this._host;
+    if (!host?.exportDeck) {
+      this._showToast('Export is unavailable — enable Export tools in Settings.');
+      return;
+    }
+    this._saveCurrent();
+    if (host.exportDeck()) {
+      this._showToast('Exporting PowerPoint deck… see the engine log for progress.');
+    } else {
+      this._showToast('Export tools are disabled — enable them in Settings.');
+    }
+  }
+
+  /**
+   * Append a PowerPoint's slides to the briefing without leaving the editor.
+   *
+   * Saves first for the same reason export does: the imported slides land in
+   * the same list this editor is holding an unsaved member of, so committing
+   * before the list grows is what keeps the two consistent.
+   */
+  private _importDeck(): void {
+    const host = this._host;
+    if (!host?.importDeck) {
+      this._showToast('Import is unavailable here.');
+      return;
+    }
+    this._saveCurrent();
+    if (host.importDeck()) {
+      this._showToast('Choose a .pptx — its slides are appended to this briefing.');
+    } else {
+      this._showToast('Import is unavailable — enable Briefing in Settings.');
+    }
+  }
+
+  /** Re-read the slide list into the rail — for a host that changed it behind us. */
+  public refreshRail(): void {
+    this._ui?.refreshRail();
   }
 
   /**
