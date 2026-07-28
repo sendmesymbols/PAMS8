@@ -135,6 +135,7 @@ import './BriefingSettingsWidget';
 import './ScreenAnchorSettingsWidget';
 import './PptxExportCommands';
 import './ExportToolsSettingsWidget';
+import './Briefing/ChartCommands';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };

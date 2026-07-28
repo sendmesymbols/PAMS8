@@ -14,7 +14,7 @@
  */
 
 import type { OverlayLink, Slide } from './BriefingTypes';
-import { LINK_JUMPS, linkLabel } from './SlideLinks';
+import { LINK_JUMPS, linkLabel, normalizeLinkUrl } from './SlideLinks';
 
 export interface SlideLinkDialogOptions {
   /** Every slide in the briefing, in order — the fixed-target list. */
@@ -89,6 +89,13 @@ export default class SlideLinkDialog {
           <div class="ms-slink-slides">${this._slideRows()}</div>
           <div class="ms-slink-sect">Jump to</div>
           <div class="ms-slink-jumps">${this._jumpRows()}</div>
+          <div class="ms-slink-sect">External link</div>
+          <label class="ms-slink-tip">
+            <span>URL</span>
+            <input type="text" class="ms-slink-urlin" maxlength="2000"
+                   placeholder="https://… (or mailto:) — overrides the choice above"
+                   value="${esc(opts.link?.url ?? '')}">
+          </label>
           <label class="ms-slink-tip">
             <span>Tooltip</span>
             <input type="text" class="ms-slink-tipin" maxlength="120"
@@ -235,16 +242,41 @@ export default class SlideLinkDialog {
   private _commit(): void {
     const opts = this._opts;
     if (!opts) return;
+    const tip = (
+      this._el?.querySelector('.ms-slink-tipin') as HTMLInputElement | null
+    )?.value.trim();
+
+    // A typed URL wins over an armed row: it is the more explicit act, and the
+    // rows start pre-armed from the existing link, so requiring the user to
+    // un-arm one before typing a URL would be a trap.
+    const rawUrl = (
+      this._el?.querySelector('.ms-slink-urlin') as HTMLInputElement | null
+    )?.value.trim();
+    if (rawUrl) {
+      const url = normalizeLinkUrl(rawUrl);
+      if (!url) {
+        const input = this._el?.querySelector('.ms-slink-urlin') as HTMLInputElement | null;
+        if (input) {
+          input.style.borderColor = '#ff8b80';
+          input.focus();
+        }
+        return;
+      }
+      const link: OverlayLink = tip ? { url, tooltip: tip } : { url };
+      opts.onApply(link);
+      this.hide();
+      return;
+    }
+
     if (!this._pick) {
       // Apply with nothing armed and nothing to clear — treat as cancel rather
       // than silently wiping a link the user never touched.
       this.hide();
       return;
     }
-    const tip = (
-      this._el?.querySelector('.ms-slink-tipin') as HTMLInputElement | null
-    )?.value.trim();
+    // A row was chosen, so any URL the link previously carried is replaced.
     const link: OverlayLink = { ...this._pick };
+    delete link.url;
     if (tip) link.tooltip = tip;
     else delete link.tooltip;
     opts.onApply(link);

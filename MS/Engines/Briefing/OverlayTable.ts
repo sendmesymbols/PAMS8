@@ -24,7 +24,13 @@
  */
 
 import { dashProps, overlayUuid, withAlpha } from './OverlayStyle';
+import { coveredCells, mergeAt, normalizeMerges } from './TableMerges';
 import type { SlideOverlay } from './BriefingTypes';
+
+// Re-exported so table consumers keep one import site — the functions live in
+// their own dependency-free module (see TableMerges) because the exporter and
+// importer need them without pulling fabric-facing code in behind them.
+export { coveredCells, mergeAt, normalizeMerges };
 
 export const DEFAULT_TABLE_ROWS = 3;
 export const DEFAULT_TABLE_COLS = 3;
@@ -252,16 +258,33 @@ export function buildTableGroup(o: SlideOverlay, W: number, H: number): any | nu
   const rowOff = offsets(t.rowHeights);
   const children: any[] = [];
 
+  const merges = normalizeMerges(o.merges, t.rows.length, t.colWidths.length);
+  const covered = coveredCells(merges);
+  /** Width/height of the cell at (r, c), grown across whatever it spans. */
+  const spanSize = (r: number, c: number): { cw: number; ch: number } => {
+    const m = mergeAt(merges, r, c);
+    if (!m) return { cw: t.colWidths[c] * tw, ch: t.rowHeights[r] * th };
+    let wf = 0;
+    for (let i = c; i < c + (m.colspan ?? 1); i++) wf += t.colWidths[i] ?? 0;
+    let hf = 0;
+    for (let i = r; i < r + (m.rowspan ?? 1); i++) hf += t.rowHeights[i] ?? 0;
+    return { cw: wf * tw, ch: hf * th };
+  };
+
   // Every cell rect first, then every label, so text always paints above the
   // fills regardless of row order.
   for (let r = 0; r < t.rows.length; r++) {
     for (let c = 0; c < t.rows[r].length; c++) {
+      // A covered cell draws nothing at all — no fill and, crucially, no
+      // border, which is what makes a merge look merged.
+      if (covered.has(`${r},${c}`)) continue;
+      const { cw, ch } = spanSize(r, c);
       children.push(
         new fabric.Rect({
           left: x0 + colOff[c] * tw,
           top: y0 + rowOff[r] * th,
-          width: t.colWidths[c] * tw,
-          height: t.rowHeights[r] * th,
+          width: cw,
+          height: ch,
           fill: r === 0 && headerFill ? headerFill : bodyFill,
           stroke: strokeHex,
           strokeWidth: strokePx,
@@ -275,10 +298,10 @@ export function buildTableGroup(o: SlideOverlay, W: number, H: number): any | nu
   for (let r = 0; r < t.rows.length; r++) {
     const isHeader = r === 0 && !!o.headerRow;
     for (let c = 0; c < t.rows[r].length; c++) {
+      if (covered.has(`${r},${c}`)) continue;
       const text = t.rows[r][c];
       if (!text) continue; // nothing to draw, and fewer objects to hit-test
-      const cw = t.colWidths[c] * tw;
-      const ch = t.rowHeights[r] * th;
+      const { cw, ch } = spanSize(r, c);
       const pad = cellPadPx(cw, ch);
       const tb = new fabric.Textbox(text, {
         left: x0 + colOff[c] * tw + pad,
@@ -312,6 +335,10 @@ export function buildTableGroup(o: SlideOverlay, W: number, H: number): any | nu
       kind: 'table',
       strokeDash: o.strokeDash,
       table: t,
+      // Regenerated geometry reads merges back off the group, the same way it
+      // reads the cell model — see tableFromFabric.
+      merges,
+      autoPage: !!o.autoPage,
       headerRow: !!o.headerRow,
       headerFill: o.headerFill ?? DEFAULT_TABLE_HEADER_FILL,
       // Style is mirrored onto data because the Group's own fill/stroke mean
@@ -363,6 +390,11 @@ export function tableFromFabric(obj: any): Partial<SlideOverlay> {
     out.strokeWidth = st.strokeWidth ?? DEFAULT_TABLE_STROKE_WIDTH;
   }
   if (obj?.data?.strokeDash) out.strokeDash = obj.data.strokeDash;
+  // Re-validated against the CURRENT grid: a row or column deleted since the
+  // merge was made would otherwise leave a span pointing off the table.
+  const merges = normalizeMerges(obj?.data?.merges, t.rows.length, t.colWidths.length);
+  if (merges.length) out.merges = merges;
+  if (obj?.data?.autoPage) out.autoPage = true;
   if (obj?.data?.headerRow) {
     out.headerRow = true;
     out.headerFill = obj.data.headerFill ?? DEFAULT_TABLE_HEADER_FILL;

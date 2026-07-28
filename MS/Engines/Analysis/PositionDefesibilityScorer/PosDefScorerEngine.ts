@@ -226,6 +226,12 @@ export class PosDefScorerEngine {
   static readonly HISTORY_LAYER_ID = 'pos-def-position-history';
 
   private _view: MapView | SceneView | null = null;
+  /**
+   * The most recent scored position, for consumers that want the numbers
+   * after the fact rather than at call time — the briefing's chart insert
+   * (see AnalysisCharts.posDefRadarSpec) is the first of them.
+   */
+  private _lastSummary: DefensibilitySummary | null = null;
   private _overlayLayer!: GraphicsLayer;
   private _spokesLayer!: GraphicsLayer;
   private _posLayer!: GraphicsLayer;
@@ -278,6 +284,11 @@ export class PosDefScorerEngine {
     this._ensurePanels();
     this._showPanels();
     this._bindMapClick();
+  }
+
+  /** The most recently scored position, or null if nothing has been scored yet. */
+  public get lastSummary(): DefensibilitySummary | null {
+    return this._lastSummary;
   }
 
   public async scorePoint(point: Point, options: DefensibilityScoreOptions = {}): Promise<DefensibilitySummary> {
@@ -874,7 +885,19 @@ export class PosDefScorerEngine {
     const dgScore = Math.round(Math.min(20, (dgCount / Math.max(1, dgTotal)) * 20));
 
     const scores: ScoreMap = { obs: obsScore, fof: fofScore, cff: cffScore, cfv: cfvScore, egr: egrScore, dg: dgScore };
-    return { scores, composite: this._computeComposite(scores, params.weights), horizons, egrResults, sampler, extent, numRays, egrAutoAnalyzed };
+    const composite = this._computeComposite(scores, params.weights);
+    // Cached here rather than in scorePoint() because this is the one place
+    // BOTH paths — the interactive map-click and the headless scorePoint() —
+    // pass through, so `lastSummary` is whatever was actually scored last.
+    const grade = getGrade(composite);
+    this._lastSummary = {
+      point: positionPt,
+      scores,
+      composite,
+      grade: grade.grade,
+      label: grade.label,
+    };
+    return { scores, composite, horizons, egrResults, sampler, extent, numRays, egrAutoAnalyzed };
   }
 
   private async _drawRasterOverlay(result: ScoreResult, positionPt: Point, obsZ: number, params: ScoreParams): Promise<void> {

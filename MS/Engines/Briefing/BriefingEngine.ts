@@ -57,6 +57,7 @@ import type {
   BriefingDocument,
   BuildStep,
   CapturedViewState,
+  ChartSpec,
   Slide,
   SlideBuildMode,
   SlideCommentEntry,
@@ -471,6 +472,76 @@ class BriefingEngine {
   public setSlideNotes(ref: number | string, notes: string): void {
     const idx = this._slideIndex(ref);
     if (idx >= 0) this._slides[idx].notes = notes;
+  }
+
+  /**
+   * Put a slide in a PowerPoint section (empty/undefined removes it).
+   * Consecutive slides sharing a title form one section on export — see
+   * Slide.section.
+   */
+  public setSlideSection(ref: number | string, section?: string): void {
+    const idx = this._slideIndex(ref);
+    if (idx < 0) return;
+    const title = String(section ?? '').trim();
+    if (title) this._slides[idx].section = title;
+    else delete this._slides[idx].section;
+    this._refreshStrip();
+  }
+
+  /** Distinct section titles in slide order — what the exporter declares. */
+  public getSections(): string[] {
+    const seen: string[] = [];
+    for (const s of this._slides) {
+      const t = String(s.section ?? '').trim();
+      if (t && !seen.includes(t)) seen.push(t);
+    }
+    return seen;
+  }
+
+  /**
+   * Add a chart overlay to a slide (default: the current one).
+   *
+   * The chart persists as a ChartSpec, so the editor re-renders it at any size
+   * and PptxExporter emits a NATIVE PowerPoint chart from the same model —
+   * see ChartFactory. `box` is normalized [0..1] like every other overlay.
+   *
+   * When the slide editor happens to be open on the target slide the overlay
+   * is handed to it instead of written to the model, because the editor would
+   * otherwise save its own (older) overlay list straight over the top.
+   */
+  public async addChartOverlay(
+    spec: ChartSpec,
+    ref?: number | string,
+    box: { x: number; y: number; w: number; h: number } = { x: 0.08, y: 0.16, w: 0.42, h: 0.4 },
+  ): Promise<SlideOverlay | null> {
+    if (!this._enabled) return null;
+    const idx = ref == null ? this._current : this._slideIndex(ref);
+    const slide = this._slides[idx];
+    if (!slide) {
+      EngineLogger.error(ENGINE_NAME, 'No slide to add a chart to — capture or add one first');
+      return null;
+    }
+    const overlay: SlideOverlay = { id: this._uuid(), kind: 'chart', ...box, chart: spec };
+
+    // Dynamic, exactly as openSlideEditor does — the editor is a large module
+    // and must not be pulled in just because a chart was added. When it IS
+    // open the module is already resolved, so this costs nothing.
+    const { default: SlideEditor } = await import('./SlideEditor');
+    const editor = SlideEditor.getInstance();
+    if (editor.isOpen() && editor.editingIndex === idx) {
+      if (editor.insertOverlays([overlay])) {
+        EngineLogger.success(ENGINE_NAME, `Chart inserted into the open editor (${spec.type})`);
+        return overlay;
+      }
+    }
+
+    slide.overlays = [...(slide.overlays ?? []), overlay];
+    this._refreshStrip();
+    EngineLogger.success(
+      ENGINE_NAME,
+      `Chart added to "${slide.title}" (${spec.type}, ${spec.series.length} series)`,
+    );
+    return overlay;
   }
 
   public setSlideTransition(ref: number | string, type?: SlideTransitionType): void {
@@ -1862,6 +1933,31 @@ class BriefingEngine {
         this._refreshStrip();
         this._refreshSorter();
         return this._slides.indexOf(slide);
+      },
+
+      // ── Deck setup ───────────────────────────────────────────────────────
+      // Backs the editor's Deck button. Sections are per-slide state, so they
+      // go straight into the model; the other two hand off to surfaces that
+      // already exist rather than duplicating them inside the editor.
+
+      setSlideSection: (i: number, section: string) => this.setSlideSection(i, section),
+      listSections: () => this.getSections(),
+      exportDeck: () => {
+        const run = (window as any).exportPptxDeck;
+        if (typeof run !== 'function') {
+          EngineLogger.error(ENGINE_NAME, 'PPTX exporter not registered');
+          return;
+        }
+        void Promise.resolve(run()).catch((err: unknown) =>
+          EngineLogger.error(ENGINE_NAME, `Export failed: ${err}`),
+        );
+      },
+      openExportSettings: () => {
+        // Global published by ExportToolsSettingsWidget, which is side-effect
+        // imported from SymbolEngine — so it exists whenever the app is up.
+        const open = (window as any).openExportToolsSettings;
+        if (typeof open === 'function') open();
+        else EngineLogger.nextStep(ENGINE_NAME, 'Open PPTX Export from Ctrl+K');
       },
     };
   }

@@ -114,6 +114,12 @@ export class OpRankerEngine {
   static readonly MUTUAL_VIZ_LAYER_ID = 'op-ranker-mutual-viz';
 
   private _view: MapView | SceneView | null = null;
+  /**
+   * The most recent ranking, from either the interactive panel or the headless
+   * rankCandidates(). Kept so consumers can read the numbers after the fact —
+   * the briefing's chart insert is the first of them.
+   */
+  private _lastSummary: OpRankSummary | null = null;
   private _opLayer!: GraphicsLayer;
   private _rangeLayer!: GraphicsLayer;
   private _aoLayer!: GraphicsLayer;
@@ -269,12 +275,18 @@ export class OpRankerEngine {
     }).sort((a, b) => b.compositeScore - a.compositeScore);
     ranked.forEach((item, i) => { item.rank = i + 1; });
 
-    return {
+    this._lastSummary = {
       candidates: ranked,
       combinedCoveragePct: result.aoTotal > 0 ? Math.round((100 * result.combinedSeen) / result.aoTotal) : 0,
       gapPct: result.aoTotal > 0 ? Math.round((100 * result.gapCount) / result.aoTotal) : 0,
       optimalIndices,
     };
+    return this._lastSummary;
+  }
+
+  /** The most recent ranking from either path, or null if none has run. */
+  public get lastSummary(): OpRankSummary | null {
+    return this._lastSummary;
   }
 
   close(): void {
@@ -913,6 +925,27 @@ export class OpRankerEngine {
 
       this._renderRankedList(finalRanked, result.aoTotal, cellM);
       this._renderOptimalResult(optimalIndices, kCount, result.aoTotal, result.combinedSeen);
+
+      // Same summary shape rankCandidates() returns, so a consumer does not
+      // have to care which path produced the ranking. Feeds the briefing's
+      // chart insert (see AnalysisCharts.opRankerBarSpec).
+      this._lastSummary = {
+        candidates: finalRanked.map((op) => ({
+          point: op.pt,
+          rank: op.rank ?? 0,
+          // Coverage percentages live on the per-OP stats, which are null
+          // until that OP's raster has been computed.
+          uniquePct: op.stats?.uniquePct ?? 0,
+          totalPct: op.stats?.totalPct ?? 0,
+          compositeScore: op.compositeScore ?? 0,
+          elevAdvM: Math.round(op.elevAdv ?? 0),
+          mutualCount: op.mutualWith?.length ?? 0,
+          optimal: !!op.isOptimal,
+        })),
+        combinedCoveragePct: covPct,
+        gapPct: result.aoTotal > 0 ? Math.round((100 * result.gapCount) / result.aoTotal) : 0,
+        optimalIndices,
+      };
 
       const exportBtn = this._button('oprank-btn-export');
       if (exportBtn) exportBtn.disabled = false;

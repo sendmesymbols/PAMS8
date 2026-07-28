@@ -7,6 +7,10 @@
  * briefing survives save/load of the underlying plan.
  */
 
+import type { ChartSpec } from './ChartFactory';
+
+export type { ChartSpec };
+
 export type ViewKind = '2d' | '3d';
 
 export interface CapturedViewState {
@@ -76,7 +80,8 @@ export type OverlayKind =
   | 'tacArrow'
   | 'freehand'
   | 'highlight'
-  | 'milsym';
+  | 'milsym'
+  | 'chart';
 
 /**
  * An arrow terminator. Filled variants paint solid in the stroke colour;
@@ -116,15 +121,36 @@ export type LinkJump = 'next' | 'prev' | 'first' | 'last' | 'lastViewed' | 'endS
  * rule `SlideOverlay.labelOf` and `SlideComment.overlayId` follow.
  */
 export interface OverlayLink {
-  /** → Slide.id. Mutually exclusive with `jump`. */
+  /** → Slide.id. Mutually exclusive with `jump` and `url`. */
   slideId?: string;
-  /** Relative navigation. Mutually exclusive with `slideId`. */
+  /** Relative navigation. Mutually exclusive with `slideId` and `url`. */
   jump?: LinkJump;
+  /**
+   * External target — an http(s) or mailto URL. Mutually exclusive with the
+   * two above; `normalizeLink` enforces that and fixes the precedence.
+   *
+   * Round-trips as PowerPoint's own external hyperlink (an `a:hlinkClick` with
+   * an `r:id` to a `Relationship` of type `.../hyperlink` and
+   * `TargetMode="External"`), so a link to a plan file, an intel record or a
+   * map service survives the trip in both directions.
+   */
+  url?: string;
   /**
    * Hover text. Round-trips to and from the PPTX `a:hlinkClick/@tooltip`;
    * absent = the editor shows the resolved target name instead.
    */
   tooltip?: string;
+}
+
+/**
+ * One merged region of a table: the anchor cell at (r, c) covers a
+ * `rowspan` × `colspan` block. Absent span = 1, so `{r, c}` alone is a no-op.
+ */
+export interface TableMerge {
+  r: number;
+  c: number;
+  rowspan?: number;
+  colspan?: number;
 }
 
 /**
@@ -254,6 +280,54 @@ export interface SlideOverlay {
    * values are dropped on save, so an unamplified symbol persists nothing here.
    */
   symOptions?: Record<string, string>;
+  /**
+   * chart only — the whole chart model (type, series, axis titles, colours).
+   * Persisted instead of a bitmap for the same reason `sidc` is: the editor
+   * re-renders it to a canvas at any size, and PptxExporter hands this exact
+   * model to `addChart()` so PowerPoint receives a real, editable chart rather
+   * than a picture of one. See ChartFactory.
+   */
+  chart?: ChartSpec;
+  /**
+   * table only — merged cell regions. Each entry says the cell at (r, c) spans
+   * `rowspan` × `colspan`; the cells it covers are not drawn and carry no text.
+   * Overlapping or out-of-range entries are discarded by `normalizeMerges`,
+   * so a hand-edited document cannot produce an unrenderable grid.
+   *
+   * Maps to OOXML `gridSpan` / `rowSpan` (+ the `hMerge` / `vMerge` flags on
+   * the covered cells), so a merged ORBAT or synch-matrix table survives the
+   * PPTX round-trip in both directions.
+   */
+  merges?: TableMerge[];
+  /**
+   * table only — let a table that overflows its slide continue onto new ones
+   * (PowerPoint's own table auto-paging). Off by default: an overlay table is
+   * a box the author sized, so flowing is opt-in per table.
+   */
+  autoPage?: boolean;
+  /**
+   * Accessible description, emitted as the PPTX shape/picture `descr`. Only
+   * meaningful on things a screen reader cannot read otherwise — pictures and
+   * shapes; text carries its own. milsym overlays generate one from their SIDC
+   * when this is absent (see PptxExporter._milSymAltText).
+   */
+  altText?: string;
+  /**
+   * Corner radius for `rect`, as a fraction of the box's SHORTER side (0..0.5).
+   * Renders as fabric's rx/ry and exports as the `roundRect` shape's
+   * `rectRadius`. Absent = square corners.
+   */
+  cornerRadius?: number;
+  /**
+   * text only — line height as a multiple of the font size (e.g. 1.5). Maps to
+   * fabric's `lineHeight` and to PPTX `lineSpacingMultiple`. Absent = 1.
+   */
+  lineSpacing?: number;
+  /**
+   * text only — extra letter spacing in points. Maps to fabric's `charSpacing`
+   * (which is in 1/1000 em) and to PPTX `charSpacing`. Absent = 0.
+   */
+  charSpacing?: number;
   /** Whole-object opacity 0..1, default 1. */
   opacity?: number;
   /**
@@ -325,7 +399,7 @@ export interface SlideOverlay {
    * Exports as a real PowerPoint list (`bullet: true` / `{ type: 'number' }`),
    * not as literal '•' characters. Absent = not a list.
    */
-  listStyle?: 'bullet' | 'number';
+  listStyle?: 'bullet' | 'number' | 'alpha';
   // table only:
   /**
    * Row-major cell text. Always rectangular once normalized — the loader pads
@@ -426,6 +500,17 @@ export interface Slide {
    * back from one. Absent = visible.
    */
   hidden?: boolean;
+  /**
+   * PowerPoint slide section this slide belongs to. Consecutive slides sharing
+   * a title form one section; the exporter declares each in first-appearance
+   * order via `addSection()` and tags slides with `addSlide({ sectionTitle })`,
+   * giving the recipient PowerPoint's section navigator on a long deck.
+   *
+   * Maps naturally onto the five-paragraph OPORD (Situation / Mission /
+   * Execution / Sustainment / Command & Signal) or onto briefing phases.
+   * Absent = the slide is not in any section.
+   */
+  section?: string;
   /** Ordered staged-reveal steps. */
   builds?: BuildStep[];
   /**

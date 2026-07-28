@@ -25,6 +25,11 @@
  * still leave small offsets; graphics behind the camera or beyond the
  * horizon stay in the raster.
  *
+ * Deck-level: slide size is a preset or a custom `defineLayout()` size, the
+ * package carries document properties (title/author/company/subject/revision),
+ * and slide numbers, zip compression and a classification/footer slide master
+ * are all opt-in from `exportTools` settings.
+ *
  * Gated behind `features.exportTools` (checked at call time against the live
  * settings tree). PptxGenJS ships as the offline browser bundle in
  * `MS/ThirdParty/PptxGenJS/pptxgen.bundle.js` (not the npm ES module — this
@@ -49,8 +54,11 @@ import type {
   SlideOverlay,
 } from '../Briefing/BriefingTypes';
 import {
+  coveredCells,
   DEFAULT_TABLE_HEADER_FILL,
   DEFAULT_TABLE_STROKE_WIDTH,
+  mergeAt,
+  normalizeMerges,
   normalizeTable,
 } from '../Briefing/OverlayTable';
 import {
@@ -58,10 +66,13 @@ import {
   DEFAULT_TAC_WIDTH,
   DEFAULT_TEXT_COLOR,
   blockArrowPoints,
+  listIndentLevel,
   parseColor,
 } from '../Briefing/OverlayFabric';
 import { renderMilSym } from '../Briefing/MilSymFactory';
+import { chartSpecToPptx } from '../Briefing/ChartFactory';
 import {
+  isSafeLinkUrl,
   isUsableLink,
   resolveJumpForExport,
   UNEXPORTABLE_JUMPS,
@@ -83,9 +94,25 @@ const ENGINE_NAME = 'PptxExporter';
  */
 const SCREENSHOT_TIMEOUT_MS = 15000;
 
-/** 16:9 pptx layout is 10 × 5.625 inches. */
-const SLIDE_W_IN = 10;
-const SLIDE_H_IN = 5.625;
+/**
+ * Default slide size — pptxgenjs' LAYOUT_16x9 is 10 × 5.625 inches. The live
+ * size is `_slideW`/`_slideH` on the instance (see `_applyLayout`), because a
+ * deck can also be 16:10, 4:3, WIDE or a custom `defineLayout()` size; these
+ * two are only the fallback before any export has run.
+ */
+const DEFAULT_SLIDE_W_IN = 10;
+const DEFAULT_SLIDE_H_IN = 5.625;
+
+/**
+ * The preset layouts pptxgenjs ships, in inches. 'custom' is not here — it
+ * comes from `exportTools.deckWidth`/`deckHeight` through `defineLayout()`.
+ */
+const LAYOUT_PRESETS: Record<string, { name: string; w: number; h: number }> = {
+  '16x9': { name: 'LAYOUT_16x9', w: 10, h: 5.625 },
+  '16x10': { name: 'LAYOUT_16x10', w: 10, h: 6.25 },
+  '4x3': { name: 'LAYOUT_4x3', w: 10, h: 7.5 },
+  wide: { name: 'LAYOUT_WIDE', w: 13.3, h: 7.5 },
+};
 
 /** Offline browser bundle — see the file banner above. */
 const PPTXGENJS_SCRIPT_SRC = 'MS/ThirdParty/PptxGenJS/pptxgen.bundle.js';
@@ -103,6 +130,28 @@ const BLOCK_ARROW_KINDS: ReadonlySet<string> = new Set([
   'blockArrowDouble',
   'chevron',
 ]);
+
+/** Name of the generated slide master. Referenced by `addSlide({ masterName })`. */
+const MASTER_NAME = 'PAMS8_MASTER';
+/** Height of one classification banner strip, in inches. */
+const BANNER_H_IN = 0.26;
+/** Height of the footer strip (unit / DTG / slide number), in inches. */
+const FOOTER_H_IN = 0.22;
+
+/**
+ * Banner colour by classification. US markings have conventional colours and a
+ * briefer reads the strip by colour before they read the words, so getting
+ * these right matters more than it looks. Matched longest-prefix-first so
+ * 'TOP SECRET//SCI' beats 'SECRET'.
+ */
+const CLASSIFICATION_COLORS: ReadonlyArray<[string, string]> = [
+  ['TOP SECRET', 'FF8C00'],
+  ['SECRET', 'C8102E'],
+  ['CONFIDENTIAL', '0033A0'],
+  ['RESTRICTED', '0033A0'],
+  ['UNCLASSIFIED', '007A33'],
+  ['CUI', '502B85'],
+];
 
 /** Box-persisted overlay kinds → native pptx preset shapes. */
 const OVERLAY_SHAPE_TYPES: Partial<Record<SlideOverlay['kind'], string>> = {
@@ -181,6 +230,65 @@ export interface PptxExportOptions {
   /** Attach slide.notes as pptx speaker notes (default true). */
   includeNotes?: boolean;
   fileName?: string;
+  /**
+   * Slide size. A preset key ('16x9' | '16x10' | '4x3' | 'wide') or 'custom',
+   * which takes its size from `exportTools.deckWidth`/`deckHeight` (pixels at
+   * 96 DPI) via `defineLayout()`. Default '16x9' — unchanged from before this
+   * option existed.
+   */
+  layout?: '16x9' | '16x10' | '4x3' | 'wide' | 'custom';
+  /**
+   * Zip-deflate the package. Images are already compressed so a flat
+   * screenshot deck barely shrinks, but Mode B's shape XML compresses several
+   * times over. Costs CPU on the way out.
+   */
+  compress?: boolean;
+  /** Stamp a slide number on every slide. */
+  slideNumbers?: boolean;
+  /**
+   * Build the deck on a generated slide master — classification banners,
+   * footer strip, and a real `title` placeholder (which is what puts titles in
+   * PowerPoint's outline view). Banner text comes from
+   * `exportTools.classification`, footer from `exportTools.footerText`.
+   */
+  useMaster?: boolean;
+  /** Document properties written into the pptx core part. */
+  meta?: PptxDeckMeta;
+  /**
+   * What to do with the finished package. Default 'download' triggers the
+   * browser save and returns nothing, which is every existing caller.
+   *
+   * The others RETURN the deck instead — for storing it into a plan, POSTing
+   * it to a service, or handing it to another tool — without a save dialog.
+   */
+  output?: 'download' | 'blob' | 'base64' | 'arraybuffer';
+}
+
+/** What a non-'download' export hands back. */
+export interface PptxExportResult {
+  fileName: string;
+  /** Slides actually written (build frames counted individually). */
+  slides: number;
+  /** Bytes of the finished package. */
+  bytes: number;
+  blob?: Blob;
+  /** Base64 WITHOUT a data: prefix — ready for an API body. */
+  base64?: string;
+  arrayBuffer?: ArrayBuffer;
+}
+
+/**
+ * PowerPoint document properties. Nothing in the app owns these today (a Plan
+ * has no author/title), so they come from `exportTools` settings or the
+ * caller — but an exported operational plan carrying no provenance at all is
+ * worse than one carrying configured defaults.
+ */
+export interface PptxDeckMeta {
+  title?: string;
+  author?: string;
+  company?: string;
+  subject?: string;
+  revision?: string;
 }
 
 /** A graphic that can be re-emitted as a native pptx object. */
@@ -198,10 +306,15 @@ interface ContainFit {
   h: number;
 }
 
-/** An internal-slide hyperlink, in pptxgenjs' option shape. */
+/**
+ * A hyperlink in pptxgenjs' option shape — either an internal slide jump or an
+ * external URL. pptxgenjs takes exactly one of `slide` / `url`.
+ */
 interface PptxHyperlink {
   /** 1-based pptx slide number — pptxgenjs names parts in add order. */
-  slide: number;
+  slide?: number;
+  /** Absolute external URL (already scheme-checked by SlideLinks). */
+  url?: string;
   tooltip?: string;
 }
 
@@ -275,10 +388,317 @@ class PptxExporter {
   }
 
   /**
+   * Deck-level choices resolved once per export, then read by the per-slide
+   * emitters. Instance state rather than threaded parameters because every one
+   * of them is constant for the whole deck and `_addSlide` already carries a
+   * long per-slide meta object.
+   */
+  private _slideW = DEFAULT_SLIDE_W_IN;
+  private _slideH = DEFAULT_SLIDE_H_IN;
+  private _slideNumbers = false;
+  /** Master name to pass to `addSlide`, or null when the deck uses no master. */
+  private _masterName: string | null = null;
+  /**
+   * The live PptxGenJS instance for the export in flight. Chart emit needs it
+   * because `ChartType` is an instance property on the presentation object,
+   * not a module export.
+   */
+  private _pptx: any = null;
+  /**
+   * Whether a table marked `autoPage` may actually flow onto extra slides.
+   *
+   * Auto-paging INSERTS slides mid-deck, and the link pre-pass in
+   * `exportDeck` has to number every slide before the first shape is emitted —
+   * so a deck that contains overlay links cannot also let tables page without
+   * some links silently pointing at the wrong slide. Comments are corrected
+   * exactly (see `_pagedExtra`); links cannot be, so paging stands down
+   * instead, and says so.
+   */
+  private _allowAutoPage = true;
+  /** Extra slides the last `_addSlide` created by auto-paging a table. */
+  private _pagedExtra = 0;
+  /**
+   * Vertical space reserved for master furniture (banners, footer). A master
+   * paints BEHIND slide content in PowerPoint, so a full-bleed screenshot would
+   * simply cover a classification banner — the map has to be fitted into what
+   * is left instead. `_containFitAspect` reads these.
+   */
+  private _insetTop = 0;
+  private _insetBottom = 0;
+
+  /**
+   * Resolve the deck's slide size and tell pptxgenjs about it. A preset maps
+   * straight onto pptxgenjs' own layout names; 'custom' reads
+   * `exportTools.deckWidth`/`deckHeight`, which are PIXELS (the settings have
+   * always been named and defaulted that way — 1280×720), converted at
+   * PPTX_EXPORT_DPI. 1280×720 therefore lands on 13.33×7.5in, i.e. exactly
+   * LAYOUT_WIDE, which is what those defaults always meant.
+   */
+  private _applyLayout(pptx: any, choice: string): void {
+    if (choice === 'custom') {
+      const cfg = this._cfg;
+      const wPx = Number(cfg.deckWidth) || 1280;
+      const hPx = Number(cfg.deckHeight) || 720;
+      // PowerPoint rejects degenerate slide sizes; clamp to something sane
+      // rather than emitting a deck that will not open.
+      const w = Math.min(56, Math.max(1, wPx / PPTX_EXPORT_DPI));
+      const h = Math.min(56, Math.max(1, hPx / PPTX_EXPORT_DPI));
+      pptx.defineLayout({ name: 'PAMS8_CUSTOM', width: w, height: h });
+      pptx.layout = 'PAMS8_CUSTOM';
+      this._slideW = w;
+      this._slideH = h;
+      EngineLogger.nextStep(
+        ENGINE_NAME,
+        `Custom slide size ${wPx}×${hPx}px → ${w.toFixed(2)}×${h.toFixed(2)}in`,
+      );
+      return;
+    }
+    const preset = LAYOUT_PRESETS[choice] ?? LAYOUT_PRESETS['16x9'];
+    pptx.layout = preset.name;
+    this._slideW = preset.w;
+    this._slideH = preset.h;
+  }
+
+  /** Banner colour for a classification string, or a neutral grey if unrecognised. */
+  private _classificationColor(text: string): string {
+    const t = text.toUpperCase();
+    for (const [prefix, hex] of CLASSIFICATION_COLORS) {
+      if (t.startsWith(prefix)) return hex;
+    }
+    return '3A4450';
+  }
+
+  /**
+   * Military date-time group, e.g. `281430ZJUL26` — DDHHMM, zone, MON, YY.
+   * Built from UTC because the 'Z' says so.
+   */
+  private _dtg(d: Date): string {
+    const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const p2 = (n: number) => String(n).padStart(2, '0');
+    return (
+      `${p2(d.getUTCDate())}${p2(d.getUTCHours())}${p2(d.getUTCMinutes())}Z` +
+      `${MON[d.getUTCMonth()]}${p2(d.getUTCFullYear() % 100)}`
+    );
+  }
+
+  /** Substitute the footer tokens a user can write in `exportTools.footerText`. */
+  private _expandFooter(tpl: string): string {
+    const now = new Date();
+    const cfg = this._cfg;
+    return tpl
+      .replace(/\{DTG\}/gi, this._dtg(now))
+      .replace(/\{DATE\}/gi, now.toISOString().slice(0, 10))
+      .replace(/\{TITLE\}/gi, String(cfg.deckTitle ?? ''))
+      .replace(/\{COMPANY\}/gi, String(cfg.company ?? ''))
+      .replace(/\{AUTHOR\}/gi, String(cfg.author ?? ''))
+      .replace(/\{SUBJECT\}/gi, String(cfg.subject ?? ''));
+  }
+
+  /**
+   * Define the deck's slide master — classification banners top and bottom, a
+   * footer strip, the slide-number stamp, and a real `title` placeholder so
+   * slide titles land in PowerPoint's outline view and inherit master styling
+   * instead of being orphan text boxes.
+   *
+   * Sets `_insetTop` / `_insetBottom` so the map is fitted between the
+   * furniture rather than over it (see the field comment).
+   *
+   * Returns the master name, or null when the deck is being built without one.
+   */
+  private _defineMaster(pptx: any, enabled: boolean): string | null {
+    this._insetTop = 0;
+    this._insetBottom = 0;
+    if (!enabled) return null;
+
+    const cfg = this._cfg;
+    const classification = String(cfg.classification ?? '').trim();
+    const footerTpl = String(cfg.footerText ?? '').trim();
+    const footer = footerTpl ? this._expandFooter(footerTpl) : '';
+    const objects: any[] = [];
+
+    if (classification) {
+      const fill = { color: this._classificationColor(classification) };
+      const bannerText = {
+        w: '100%',
+        h: BANNER_H_IN,
+        fontSize: 11,
+        bold: true,
+        color: 'FFFFFF',
+        align: 'center',
+        valign: 'middle',
+        margin: 0,
+      };
+      objects.push(
+        { rect: { x: 0, y: 0, w: '100%', h: BANNER_H_IN, fill } },
+        { text: { text: classification, options: { ...bannerText, x: 0, y: 0 } } },
+        {
+          rect: {
+            x: 0,
+            y: this._slideH - BANNER_H_IN,
+            w: '100%',
+            h: BANNER_H_IN,
+            fill,
+          },
+        },
+        {
+          text: {
+            text: classification,
+            options: { ...bannerText, x: 0, y: this._slideH - BANNER_H_IN },
+          },
+        },
+      );
+      this._insetTop += BANNER_H_IN;
+      this._insetBottom += BANNER_H_IN;
+    }
+
+    if (footer || this._slideNumbers) {
+      const footerY = this._slideH - this._insetBottom - FOOTER_H_IN;
+      objects.push({
+        rect: {
+          x: 0,
+          y: footerY,
+          w: '100%',
+          h: FOOTER_H_IN,
+          fill: { color: '11161C' },
+        },
+      });
+      if (footer) {
+        objects.push({
+          text: {
+            text: footer,
+            options: {
+              x: 0.2,
+              y: footerY,
+              // Right end is left free for the slide-number stamp.
+              w: this._slideW - 1.2,
+              h: FOOTER_H_IN,
+              fontSize: 9,
+              color: this._chromeColor('dim'),
+              align: 'left',
+              valign: 'middle',
+              margin: 0,
+            },
+          },
+        });
+      }
+      this._insetBottom += FOOTER_H_IN;
+    }
+
+    // The title sits over the map (a map briefing wants the imagery full
+    // height), so the placeholder overlaps the content rect by design — it is
+    // the outline-view hook and the style carrier, not a layout reservation.
+    objects.push({
+      placeholder: {
+        options: {
+          name: 'title',
+          type: 'title',
+          x: 0.3,
+          y: this._insetTop + 0.1,
+          w: this._slideW - 0.6,
+          h: 0.6,
+          fontSize: 24,
+          bold: true,
+          color: 'FFFFFF',
+          align: 'left',
+          valign: 'top',
+          margin: 0,
+        },
+        text: '',
+      },
+    });
+
+    const master: any = {
+      title: MASTER_NAME,
+      background: { color: '101418' },
+      objects,
+    };
+    if (this._slideNumbers) {
+      // On the master rather than per-slide, so every slide gets it from one
+      // definition. `_slideH - _insetBottom` is the top of the footer strip
+      // reserved just above — the increment already happened.
+      master.slideNumber = {
+        x: this._slideW - 0.9,
+        y: this._slideH - this._insetBottom,
+        w: 0.7,
+        h: FOOTER_H_IN,
+        align: 'right',
+        valign: 'middle',
+        fontSize: 9,
+        color: this._chromeColor('dim'),
+      };
+    }
+    pptx.defineSlideMaster(master);
+    EngineLogger.nextStep(
+      ENGINE_NAME,
+      `Slide master applied${classification ? ` — "${classification}"` : ''}${
+        footer ? `, footer "${footer}"` : ''
+      }`,
+    );
+    return MASTER_NAME;
+  }
+
+  /**
+   * Document properties. pptxgenjs writes these into docProps/core.xml, so a
+   * recipient can see where the deck came from in PowerPoint's File → Info.
+   */
+  private _applyMeta(pptx: any, override?: PptxDeckMeta): void {
+    const cfg = this._cfg;
+    const meta: PptxDeckMeta = {
+      title: override?.title ?? cfg.deckTitle ?? 'PAMS8 Briefing',
+      author: override?.author ?? cfg.author ?? '',
+      company: override?.company ?? cfg.company ?? '',
+      subject: override?.subject ?? cfg.subject ?? '',
+      revision: override?.revision ?? cfg.revision ?? '',
+    };
+    // Assigned only when non-empty — pptxgenjs has its own defaults and an
+    // empty string would overwrite them with blanks.
+    if (meta.title) pptx.title = meta.title;
+    if (meta.author) pptx.author = meta.author;
+    if (meta.company) pptx.company = meta.company;
+    if (meta.subject) pptx.subject = meta.subject;
+    if (meta.revision) pptx.revision = String(meta.revision);
+
+    // Deck default fonts. Set on the theme rather than per-object so a
+    // recipient can restyle the whole deck from PowerPoint's font pane.
+    const head = String(cfg.headFont ?? '').trim();
+    const body = String(cfg.bodyFont ?? '').trim();
+    if (head || body) {
+      pptx.theme = {
+        ...(head ? { headFontFace: head } : {}),
+        ...(body ? { bodyFontFace: body } : {}),
+      };
+    }
+    // Right-to-left decks (Arabic, Hebrew, Farsi briefings).
+    if (cfg.rtl === true) pptx.rtlMode = true;
+  }
+
+  /**
+   * Ink for generated chrome — the title, footer and slide-number text the
+   * exporter draws itself.
+   *
+   * With `useSchemeColors` these become theme references (`pptx.SchemeColor.*`)
+   * instead of literal hexes, so the deck re-skins when the recipient picks a
+   * different PowerPoint theme. Author-chosen overlay colours are NEVER routed
+   * through here: those are decisions the briefer made, and a classification
+   * banner in particular has to keep the colour its marking demands.
+   */
+  private _chromeColor(role: 'text' | 'dim' | 'background'): string {
+    const pptx = this._pptx;
+    if (this._cfg.useSchemeColors === true && pptx?.SchemeColor) {
+      if (role === 'text') return pptx.SchemeColor.text1;
+      if (role === 'dim') return pptx.SchemeColor.text2;
+      return pptx.SchemeColor.background1;
+    }
+    return role === 'text' ? 'FFFFFF' : role === 'dim' ? 'A9B4C0' : '101418';
+  }
+
+  /**
    * Export the deck: every Briefing slide when the Briefing engine has
    * slides, otherwise a single slide of the current view.
    */
-  public async exportDeck(options: PptxExportOptions = {}): Promise<void> {
+  public async exportDeck(
+    options: PptxExportOptions = {},
+  ): Promise<PptxExportResult | undefined> {
     if ((settingsData as any).features?.exportTools !== true) {
       const msg = 'Export Tools disabled — enable features.exportTools in Settings';
       EngineLogger.error(ENGINE_NAME, msg);
@@ -298,6 +718,11 @@ class PptxExporter {
     const explodeBuilds = options.explodeBuilds ?? cfg.explodeBuilds === true;
     const includeNotes = options.includeNotes ?? cfg.includeNotes !== false;
     const fileName = options.fileName ?? `pams8_briefing_${Date.now()}.pptx`;
+    const layoutChoice = options.layout ?? cfg.layout ?? '16x9';
+    const compress = options.compress ?? cfg.compress === true;
+    const slideNumbers = options.slideNumbers ?? cfg.slideNumbers === true;
+    const useMaster = options.useMaster ?? cfg.useMaster === true;
+    const output = options.output ?? 'download';
 
     // Editable export from the 3D scene: offer the exact 2D path first
     // (terrain elevation makes 3D shape placement approximate). In 2D there
@@ -328,10 +753,45 @@ class PptxExporter {
     // Script-injected on first use — keeps the bundle out of the main app until needed.
     const PptxGenJS = await loadPptxGenJS();
     const pptx = new PptxGenJS();
-    pptx.layout = 'LAYOUT_16x9';
+    this._pptx = pptx;
+    // Layout FIRST — every inch-space computation below (contain-fit, overlay
+    // placement, the master) reads _slideW/_slideH.
+    this._applyLayout(pptx, layoutChoice);
+    this._applyMeta(pptx, options.meta);
+    this._slideNumbers = slideNumbers;
+    // After the layout (the master is sized in slide inches) and after
+    // `_slideNumbers` (the master hosts the stamp when there is one).
+    this._masterName = this._defineMaster(pptx, useMaster);
 
     const briefing: any = (window as any).briefingEngine;
     const slides: readonly BriefingSlide[] = briefing?.getSlides?.() ?? [];
+
+    // Sections must all exist before the first addSlide that names one —
+    // pptxgenjs matches by title and silently ignores an unknown one.
+    const sections: string[] = [];
+    for (const s of slides) {
+      const t = String(s.section ?? '').trim();
+      if (t && !sections.includes(t)) sections.push(t);
+    }
+    // See `_allowAutoPage`. Decided once, over the whole briefing, because a
+    // link on any slide can target any other.
+    const anyLinks = slides.some((s) => (s.overlays ?? []).some((o) => isUsableLink(o.link)));
+    const anyAutoPage = slides.some((s) => (s.overlays ?? []).some((o) => o.autoPage));
+    this._allowAutoPage = !anyLinks;
+    if (anyAutoPage && anyLinks) {
+      EngineLogger.nextStep(
+        ENGINE_NAME,
+        'Table auto-paging is off for this deck: it inserts slides, which would repoint the slide links this briefing uses. Remove the links or the auto-page flag to use it.',
+      );
+    }
+
+    for (const title of sections) pptx.addSection({ title });
+    if (sections.length) {
+      EngineLogger.nextStep(
+        ENGINE_NAME,
+        `${sections.length} slide section(s): ${sections.join(', ')}`,
+      );
+    }
 
     // Run diagnostics — so an all-raster editable export can explain itself.
     const stats = { shapes: 0 };
@@ -379,12 +839,17 @@ class PptxExporter {
             links: linkCtx,
             background: slide.backgroundDataUrl,
             hidden: slide.hidden,
+            section: slide.section,
           }, stats);
           emitted++;
           pptxSlideNo++;
           this._collectComments(commentRecords, slide, pptxSlideNo, view, (n) => {
             skippedResolved += n;
           });
+          // An auto-paged table appended slides AFTER this one; the running
+          // number must clear them or the next slide's comments land on a
+          // continuation page.
+          pptxSlideNo += this._pagedExtra;
           continue;
         }
         const builds = slide.builds ?? [];
@@ -402,6 +867,7 @@ class PptxExporter {
               // Every frame of an exploded build inherits the flag — a hidden
               // slide must not leak back in as a run of visible build frames.
               hidden: slide.hidden,
+              section: slide.section,
             }, stats);
             emitted++;
             pptxSlideNo++;
@@ -412,6 +878,7 @@ class PptxExporter {
                 skippedResolved += n;
               });
             }
+            pptxSlideNo += this._pagedExtra;
           }
         } else {
           await briefing.applySlideForExport(i);
@@ -422,12 +889,14 @@ class PptxExporter {
             overlays: slide.overlays,
             links: linkCtx,
             hidden: slide.hidden,
+            section: slide.section,
           }, stats);
           emitted++;
           pptxSlideNo++;
           this._collectComments(commentRecords, slide, pptxSlideNo, view, (n) => {
             skippedResolved += n;
           });
+          pptxSlideNo += this._pagedExtra;
         }
       }
     } else {
@@ -439,11 +908,11 @@ class PptxExporter {
 
     // pptxgenjs cannot write comments, so the package is built in memory and
     // reopened to inject them — which also means the download becomes ours.
-    const pkg: ArrayBuffer = await pptx.write({ outputType: 'arraybuffer' });
+    const pkg: ArrayBuffer = await pptx.write({ outputType: 'arraybuffer', compression: compress });
     let blob: Blob;
     if (commentRecords.length) {
       try {
-        blob = await injectPptxComments(pkg, commentRecords);
+        blob = await injectPptxComments(pkg, commentRecords, compress);
       } catch (err) {
         // Comments are a best-effort addition on top of a deck that already
         // succeeded (e.g. a slide with a failed screenshot can plausibly be
@@ -458,7 +927,10 @@ class PptxExporter {
     } else {
       blob = new Blob([pkg], { type: PPTX_MIME });
     }
-    this._downloadBlob(blob, fileName);
+    // 'download' is the default and every pre-existing caller; the other modes
+    // deliberately do NOT save, so a programmatic export cannot surprise the
+    // user with a file dialog.
+    if (output === 'download') this._downloadBlob(blob, fileName);
 
     if (mode === 'editable' && stats.shapes === 0) {
       EngineLogger.error(
@@ -473,7 +945,9 @@ class PptxExporter {
         mode === 'editable' ? `, ${stats.shapes} editable shapes` : ''
       }${commentRecords.length ? `, ${commentRecords.length} comment entries` : ''}${
         hiddenOut ? `, ${hiddenOut} hidden (PowerPoint skips them too)` : ''
-      } → ${fileName}`,
+      }, ${this._slideW.toFixed(2)}×${this._slideH.toFixed(2)}in${
+        compress ? ', compressed' : ''
+      } → ${fileName} (${Math.round(blob.size / 1024)} KB)`,
     );
     if (skippedResolved) {
       EngineLogger.nextStep(
@@ -482,6 +956,27 @@ class PptxExporter {
       );
     }
     this._warnDroppedLinks(linkCtx);
+
+    if (output === 'download') return;
+    const result: PptxExportResult = { fileName, slides: emitted, bytes: blob.size };
+    if (output === 'blob') result.blob = blob;
+    else if (output === 'arraybuffer') result.arrayBuffer = await blob.arrayBuffer();
+    else if (output === 'base64') result.base64 = await this._blobToBase64(blob);
+    return result;
+  }
+
+  /** Blob → bare base64 (no `data:` prefix), via FileReader's data URL. */
+  private _blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onerror = () => reject(fr.error ?? new Error('FileReader failed'));
+      fr.onload = () => {
+        const s = String(fr.result ?? '');
+        const comma = s.indexOf(',');
+        resolve(comma >= 0 ? s.slice(comma + 1) : s);
+      };
+      fr.readAsDataURL(blob);
+    });
   }
 
   /**
@@ -502,7 +997,7 @@ class PptxExporter {
     const { unexportable, missing, table } = ctx.dropped;
     if (unexportable.size) parts.push(`${unexportable.size} × 'last viewed' / 'end show'`);
     if (missing.size) parts.push(`${missing.size} jump(s) with no target slide`);
-    if (table.size) parts.push(`${table.size} link(s) on tables`);
+    if (table.size) parts.push(`${table.size} link(s) on tables / charts`);
     if (!parts.length) return;
     EngineLogger.nextStep(
       ENGINE_NAME,
@@ -532,12 +1027,34 @@ class PptxExporter {
        * as present mode does.
        */
       hidden?: boolean;
+      /** PowerPoint section title — must already have been declared. */
+      section?: string;
     },
     stats?: { shapes: number },
   ): Promise<void> {
-    const slide = pptx.addSlide();
+    // Per-slide, so the caller can read off what THIS slide paged into.
+    this._pagedExtra = 0;
+    const addOpts: any = {};
+    if (this._masterName) addOpts.masterName = this._masterName;
+    if (meta.section) addOpts.sectionTitle = meta.section;
+    const slide = Object.keys(addOpts).length ? pptx.addSlide(addOpts) : pptx.addSlide();
     slide.background = { color: '101418' };
     if (meta.hidden) slide.hidden = true;
+    // Without a master there is nowhere else to put the stamp; with one, the
+    // master already carries it and a second would double up.
+    if (this._slideNumbers && !this._masterName) {
+      // Bottom-right, inset from the edge. Percentages rather than inches so
+      // the stamp lands in the same visual spot on any layout.
+      slide.slideNumber = {
+        x: '92%',
+        y: '92%',
+        w: '6%',
+        h: '6%',
+        align: 'right',
+        fontSize: 10,
+        color: 'FFFFFF',
+      };
+    }
 
     // Mode B: find graphics that can become native shapes and hide them so
     // the raster underneath holds everything else. 2D is exact; 3D projects
@@ -589,12 +1106,23 @@ class PptxExporter {
       // Screenshot keeps the view's native aspect; contain-fit it on the
       // 16:9 slide so nothing distorts (letterbox bars only when the view
       // itself is not 16:9).
-      slide.addImage({ data: dataUrl, x: fit.x, y: fit.y, w: fit.w, h: fit.h });
+      slide.addImage({
+        data: dataUrl,
+        x: fit.x,
+        y: fit.y,
+        w: fit.w,
+        h: fit.h,
+        // The raster IS the slide's content in flat mode, so describing it is
+        // the difference between an accessible deck and an empty one.
+        altText: meta.title
+          ? `Map view — ${meta.title}`
+          : 'Map view captured from the operational picture',
+      });
     } else {
       slide.addText('Screenshot unavailable (3D view requires a real browser)', {
         x: 0.5,
-        y: 2.5,
-        w: 9,
+        y: this._slideH / 2 - 0.3,
+        w: this._slideW - 1,
         h: 0.6,
         fontSize: 16,
         color: 'CCCCCC',
@@ -621,17 +1149,29 @@ class PptxExporter {
       // The slide beneath can be anything from dark imagery to a solid-white
       // blank, so the glyphs carry their own contrast: white fill, thin dark
       // outline, soft shadow. That reads on both, which a flat fill cannot.
-      slide.addText(meta.title, {
-        x: 0.3,
-        y: 0.2,
-        w: 9.4,
-        h: 0.6,
+      //
+      // With a master, this goes into its `title` placeholder — which is what
+      // puts the text in PowerPoint's outline view and lets a recipient
+      // restyle every title from the master. Position/size then come from the
+      // placeholder, so they are omitted here.
+      const titleStyle = {
         fontSize: 24,
         bold: true,
-        color: 'FFFFFF',
+        color: this._chromeColor('text'),
         outline: { size: 0.75, color: '11161C' },
         shadow: { type: 'outer', color: '000000', blur: 3, offset: 1, angle: 45, opacity: 0.8 },
-      });
+        // Generated chrome in a box the exporter chose, not the author — a long
+        // title must shrink to fit rather than run off the slide. Author text
+        // boxes deliberately do NOT get this: they should look in PowerPoint
+        // exactly as they looked in the editor, overflow included.
+        fit: 'shrink' as const,
+      };
+      slide.addText(
+        meta.title,
+        this._masterName
+          ? { placeholder: 'title', ...titleStyle }
+          : { x: 0.3, y: 0.2, w: this._slideW - 0.6, h: 0.6, ...titleStyle },
+      );
     }
     if (meta.notes) slide.addNotes(meta.notes);
   }
@@ -646,15 +1186,20 @@ class PptxExporter {
   }
 
   private _containFitAspect(imgAspect: number): ContainFit {
-    const slideAspect = SLIDE_W_IN / SLIDE_H_IN;
-    let w = SLIDE_W_IN;
-    let h = SLIDE_H_IN;
+    // The content rect, not the whole slide — master furniture (classification
+    // banners, footer) is painted BEHIND slide content, so anything laid over
+    // the full slide would hide it.
+    const slideW = this._slideW;
+    const slideH = this._slideH - this._insetTop - this._insetBottom;
+    const slideAspect = slideW / slideH;
+    let w = slideW;
+    let h = slideH;
     if (imgAspect > slideAspect) {
-      h = SLIDE_W_IN / imgAspect;
+      h = slideW / imgAspect;
     } else if (imgAspect < slideAspect) {
-      w = SLIDE_H_IN * imgAspect;
+      w = slideH * imgAspect;
     }
-    return { x: (SLIDE_W_IN - w) / 2, y: (SLIDE_H_IN - h) / 2, w, h };
+    return { x: (slideW - w) / 2, y: this._insetTop + (slideH - h) / 2, w, h };
   }
 
   /**
@@ -1057,6 +1602,7 @@ class PptxExporter {
         else if (o.kind === 'image') this._emitOverlayImage(slide, o, fit, link);
         else if (o.kind === 'milsym') this._emitOverlayMilSym(slide, o, fit, link);
         else if (o.kind === 'table') this._emitOverlayTable(slide, o, fit);
+        else if (o.kind === 'chart') this._emitOverlayChart(slide, o, fit);
         else if (o.kind === 'tacArrow') this._emitOverlayTacArrow(slide, o, fit, link);
         else if (OVERLAY_SHAPE_TYPES[o.kind]) this._emitOverlayBox(slide, o, fit, link);
         else this._emitOverlayPath(slide, o, fit, link); // line | arrow | freehand | highlight
@@ -1088,12 +1634,24 @@ class PptxExporter {
     ctx: LinkExportCtx | undefined,
   ): PptxHyperlink | undefined {
     if (!ctx || !isUsableLink(o.link)) return undefined;
-    // A table is a graphicFrame in OOXML and has no a:hlinkClick to hang this on.
-    if (o.kind === 'table') {
+    // Tables and charts are both graphicFrames in OOXML, and a graphicFrame
+    // has no a:hlinkClick to hang this on.
+    if (o.kind === 'table' || o.kind === 'chart') {
       ctx.dropped.table.add(o.id);
       return undefined;
     }
     const tooltip = String(o.link.tooltip ?? '').trim() || undefined;
+
+    // External URL — the one link kind that needs no slide arithmetic at all.
+    // Re-checked here rather than trusted: an imported briefing's links went
+    // through normalizeLink, but a hand-edited document's may not have.
+    if (o.link.url) {
+      if (!isSafeLinkUrl(o.link.url)) {
+        ctx.dropped.unexportable.add(o.id);
+        return undefined;
+      }
+      return tooltip ? { url: o.link.url, tooltip } : { url: o.link.url };
+    }
 
     if (o.link.slideId) {
       const slide = ctx.numberById.get(o.link.slideId);
@@ -1150,6 +1708,9 @@ class PptxExporter {
   private _ovShadow(o: SlideOverlay, fit: ContainFit): any | undefined {
     const sh = o.shadow;
     if (!sh) return undefined;
+    // Offset-free blur is a glow, not a shadow — `_ovGlow` takes it, and the
+    // two must never both be set on one object.
+    if (sh.x === 0 && sh.y === 0 && sh.blur) return undefined;
     const parsed = parseColor(sh.color);
     const dx = sh.x ?? 0;
     const dy = sh.y ?? 0;
@@ -1177,15 +1738,35 @@ class PptxExporter {
     const blends = n((o) => !!o.blend);
     const blurs = n((o) => !!o.blur);
     const tableShadows = n((o) => o.kind === 'table' && !!o.shadow);
+    // addChart, like addTable, takes neither `rotate` nor object transparency.
+    const chartRots = n((o) => o.kind === 'chart' && !!o.rotation);
     if (blends) dropped.push(`${blends} blend mode${blends > 1 ? 's' : ''}`);
     if (blurs) dropped.push(`${blurs} image blur${blurs > 1 ? 's' : ''}`);
     if (tableShadows) dropped.push(`${tableShadows} table shadow${tableShadows > 1 ? 's' : ''}`);
+    if (chartRots) dropped.push(`${chartRots} chart rotation${chartRots > 1 ? 's' : ''}`);
     if (dropped.length) {
       EngineLogger.nextStep(
         ENGINE_NAME,
         `PowerPoint has no equivalent for ${dropped.join(', ')} — dropped from the native shapes`,
       );
     }
+  }
+
+  /**
+   * A zero-offset shadow is a GLOW, and PowerPoint has a first-class effect
+   * for it. Emitting one as `shadow` with offset 0 renders as a dull smear;
+   * `glow` renders the halo the author drew on canvas. `_ovShadow` skips the
+   * same case, so exactly one of the two is ever set.
+   */
+  private _ovGlow(o: SlideOverlay, fit: ContainFit): any | undefined {
+    const sh = o.shadow;
+    if (!sh || sh.x !== 0 || sh.y !== 0 || !sh.blur) return undefined;
+    const parsed = parseColor(sh.color);
+    return {
+      size: Math.round(Math.max(0, sh.blur) * fit.h * 72 * 10) / 10,
+      color: this._ovHex(parsed ? parsed.hex : undefined, 'FFFFFF'),
+      opacity: parsed?.alpha ?? 0.6,
+    };
   }
 
   private _ovRotate(o: SlideOverlay): number | undefined {
@@ -1205,16 +1786,36 @@ class PptxExporter {
     // renumbering it after the deck is edited. `text` is stored clean (markers
     // are display-only, see OverlayFabric.applyListMarkers), so nothing needs
     // stripping here.
+    // Leading whitespace is the nesting: it becomes a real PowerPoint
+    // `indentLevel`, so an OPORD's sub-paragraphs indent, renumber and
+    // re-bullet natively instead of being flat lines with typed-in markers.
+    // Numbered levels use PowerPoint's own styles — 1. / a. / i. down the
+    // ladder — which is the convention a five-paragraph order is written in.
+    const NUMBER_STYLES = ['arabicPeriod', 'alphaLcPeriod', 'romanLcPeriod'];
     const body = o.listStyle
       ? String(o.text ?? '')
           .split('\n')
-          .map((line) => ({
-            text: line,
-            options: {
-              bullet: o.listStyle === 'number' ? { type: 'number' } : true,
-              breakLine: true,
-            },
-          }))
+          .map((line) => {
+            const level = listIndentLevel(line);
+            const bullet: any =
+              o.listStyle === 'bullet'
+                ? true
+                : {
+                    type: 'number',
+                    style:
+                      o.listStyle === 'alpha'
+                        ? 'alphaLcPeriod'
+                        : NUMBER_STYLES[level % NUMBER_STYLES.length],
+                  };
+            return {
+              text: line.trimStart(),
+              options: {
+                bullet,
+                ...(level > 0 ? { indentLevel: Math.min(8, level) } : {}),
+                breakLine: true,
+              },
+            };
+          })
       : (o.text ?? '');
     slide.addText(body, {
       x: fit.x + o.x * fit.w,
@@ -1233,8 +1834,14 @@ class PptxExporter {
       valign: 'top',
       // A bulleted paragraph needs room for its marker; 0 would clip it.
       margin: o.listStyle ? 2 : 0,
+      // Multiples rather than absolute points, so the spacing keeps its
+      // proportion when the font size changes — the same reasoning the model
+      // uses for strokeWidth and fontSize.
+      lineSpacingMultiple: o.lineSpacing && o.lineSpacing !== 1 ? o.lineSpacing : undefined,
+      charSpacing: o.charSpacing || undefined,
       rotate: this._ovRotate(o),
       shadow: this._ovShadow(o, fit),
+      glow: this._ovGlow(o, fit),
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
       // Shape-level, so the whole text box is the click target — the object
@@ -1270,20 +1877,34 @@ class PptxExporter {
         }
       : undefined;
 
+    // Merges: the anchor cell carries colspan/rowspan and the cells it covers
+    // are OMITTED from the row — that is how pptxgenjs expects a span, and
+    // leaving them in would push the rest of the row sideways.
+    const merges = normalizeMerges(o.merges, rows.length, colWidths.length);
+    const covered = coveredCells(merges);
+
     const cells = rows.map((row, r) => {
       const isHeader = r === 0 && !!o.headerRow;
-      return row.map((text) => ({
-        text: text ?? '',
-        options: {
-          fill: isHeader ? headerFill : bodyFill,
-          bold: isHeader || !!o.bold,
-          italic: !!o.italic,
-          underline: o.underline ? { style: 'sng' } : undefined,
-          color: this._ovHex(o.textColor, 'FFFFFF'),
-          align: o.align ?? 'left',
-          valign: 'middle',
-        },
-      }));
+      const out: any[] = [];
+      for (let c = 0; c < row.length; c++) {
+        if (covered.has(`${r},${c}`)) continue;
+        const m = mergeAt(merges, r, c);
+        out.push({
+          text: row[c] ?? '',
+          options: {
+            fill: isHeader ? headerFill : bodyFill,
+            bold: isHeader || !!o.bold,
+            italic: !!o.italic,
+            underline: o.underline ? { style: 'sng' } : undefined,
+            color: this._ovHex(o.textColor, 'FFFFFF'),
+            align: o.align ?? 'left',
+            valign: 'middle',
+            ...(m?.colspan && m.colspan > 1 ? { colspan: m.colspan } : {}),
+            ...(m?.rowspan && m.rowspan > 1 ? { rowspan: m.rowspan } : {}),
+          },
+        });
+      }
+      return out;
     });
 
     slide.addTable(cells, {
@@ -1305,7 +1926,43 @@ class PptxExporter {
       },
       margin: 2,
       valign: 'middle',
+      ...(o.autoPage && this._allowAutoPage
+        ? {
+            autoPage: true,
+            // A continuation table with no header is unreadable, so the header
+            // row repeats whenever the table declares one.
+            autoPageRepeatHeader: !!o.headerRow,
+            autoPageHeaderRows: o.headerRow ? 1 : 0,
+            // Continuations start below the title band rather than at the very
+            // top of the slide, where the title would sit on top of them.
+            autoPageSlideStartY: Math.max(0.9, this._insetTop + 0.9),
+          }
+        : {}),
     });
+    // pptxgenjs records what it created; the caller needs the count to keep
+    // comment slide numbers aligned.
+    this._pagedExtra += slide.newAutoPagedSlides?.length ?? 0;
+  }
+
+  /**
+   * A chart overlay goes out as a NATIVE PowerPoint chart — the recipient can
+   * restyle it, retype the numbers, or repoint the series, none of which is
+   * possible with a picture of a chart. This is the whole reason a chart
+   * overlay persists a ChartSpec rather than a bitmap (see ChartFactory).
+   *
+   * `addChart` takes no `rotate` and no object-level transparency, so both are
+   * dropped — the same two limits `addTable` has, and reported the same way.
+   */
+  private _emitOverlayChart(slide: any, o: SlideOverlay, fit: ContainFit): void {
+    if (!o.chart) return;
+    const spec = chartSpecToPptx(this._pptx, o.chart, {
+      x: fit.x + o.x * fit.w,
+      y: fit.y + o.y * fit.h,
+      w: Math.max(0.5, o.w * fit.w),
+      h: Math.max(0.4, o.h * fit.h),
+    });
+    if (!spec) return;
+    slide.addChart(spec.type, spec.data, spec.options);
   }
 
   /** Picture overlays go out as real pptx pictures — the src is already a data URL. */
@@ -1329,6 +1986,7 @@ class PptxExporter {
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
       hyperlink,
+      altText: o.altText || 'Briefing image',
     });
   }
 
@@ -1368,7 +2026,20 @@ class PptxExporter {
       transparency:
         o.opacity != null && o.opacity < 1 ? Math.round((1 - o.opacity) * 100) : undefined,
       hyperlink,
+      // A screen reader gets the symbol's designation and SIDC rather than
+      // "image". Nothing else in the deck can say what a 2525D marker means.
+      altText: this._milSymAltText(o),
     });
+  }
+
+  /** Accessible description of a military symbol — designation first, then SIDC. */
+  private _milSymAltText(o: SlideOverlay): string {
+    const desig = String(o.symOptions?.uniqueDesignation ?? '').trim();
+    const higher = String(o.symOptions?.higherFormation ?? '').trim();
+    const name = [desig, higher && `/${higher}`].filter(Boolean).join('');
+    return name
+      ? `Military symbol ${name} (SIDC ${o.sidc})`
+      : `Military symbol, SIDC ${o.sidc}`;
   }
 
   /**
@@ -1445,7 +2116,10 @@ class PptxExporter {
       return;
     }
     const alpha = (o.fillOpacity ?? 1) * (o.opacity ?? 1);
-    slide.addShape(OVERLAY_SHAPE_TYPES[o.kind] ?? 'rect', {
+    // A rect with a corner radius is a different OOXML preset, not a property
+    // of `rect` — so the shape type itself changes.
+    const rounded = o.kind === 'rect' && !!o.cornerRadius;
+    slide.addShape(rounded ? 'roundRect' : (OVERLAY_SHAPE_TYPES[o.kind] ?? 'rect'), {
       x: fit.x + o.x * fit.w,
       y: fit.y + o.y * fit.h,
       w: Math.max(0.02, o.w * fit.w),
@@ -1463,10 +2137,14 @@ class PptxExporter {
         : { color: 'FFFFFF', width: 0.5, transparency: 100 },
       rotate: this._ovRotate(o),
       shadow: this._ovShadow(o, fit),
+      glow: this._ovGlow(o, fit),
+      // 0..1 of the shorter side, which is exactly how the model stores it.
+      rectRadius: rounded ? Math.min(0.5, Math.max(0, o.cornerRadius as number)) : undefined,
       // Mirrored box overlays — pptxgenjs writes these straight into the xfrm.
       flipH: o.flipX || undefined,
       flipV: o.flipY || undefined,
       hyperlink,
+      altText: o.altText || undefined,
     });
   }
 

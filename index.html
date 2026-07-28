@@ -2164,6 +2164,57 @@
                 <span class="briefing-toggle-track"></span>
               </span>
             </label>
+            <div class="drawstyle-row">
+              <span>Slide size</span>
+              <select class="ms-select" id="briefingMenuExportLayout" title="Slide dimensions of the exported deck. Custom uses exportTools.deckWidth / deckHeight, read as pixels at 96 DPI (exportTools.layout).">
+                <option value="16x9">16:9 — 10 × 5.63in</option>
+                <option value="16x10">16:10 — 10 × 6.25in</option>
+                <option value="4x3">4:3 — 10 × 7.5in</option>
+                <option value="wide">Widescreen — 13.3 × 7.5in</option>
+                <option value="custom">Custom (deck width / height)</option>
+              </select>
+            </div>
+            <label class="drawstyle-row">
+              <span>Slide numbers</span>
+              <span class="briefing-toggle" title="Stamp a page number on every slide (exportTools.slideNumbers).">
+                <input type="checkbox" id="briefingMenuSlideNumbers" />
+                <span class="briefing-toggle-track"></span>
+              </span>
+            </label>
+            <label class="drawstyle-row">
+              <span>Compress package</span>
+              <span class="briefing-toggle" title="Zip-deflate the .pptx. Screenshots barely shrink (already compressed), but editable-shape decks compress several times over. Costs extra time (exportTools.compress).">
+                <input type="checkbox" id="briefingMenuCompress" />
+                <span class="briefing-toggle-track"></span>
+              </span>
+            </label>
+            <label class="drawstyle-row">
+              <span>Use slide master</span>
+              <span class="briefing-toggle" title="Build the deck on a generated master: classification banners top and bottom, a footer strip, and a real title placeholder that shows in PowerPoint's outline view. The map is fitted BETWEEN the banners, so it becomes slightly smaller (exportTools.useMaster).">
+                <input type="checkbox" id="briefingMenuUseMaster" />
+                <span class="briefing-toggle-track"></span>
+              </span>
+            </label>
+            <div class="drawstyle-row">
+              <span>Classification</span>
+              <input class="ms-input" type="text" id="briefingMenuClassification" list="briefingClassPresets" maxlength="120" placeholder="Blank = no banner" title="Banner text, e.g. UNCLASSIFIED//FOUO. The strip colour follows the marking — UNCLASSIFIED green, CONFIDENTIAL/RESTRICTED blue, SECRET red, TOP SECRET orange, CUI purple. Requires Use slide master (exportTools.classification)." />
+            </div>
+            <datalist id="briefingClassPresets">
+              <option value="UNCLASSIFIED"></option>
+              <option value="UNCLASSIFIED//FOUO"></option>
+              <option value="CUI"></option>
+              <option value="CONFIDENTIAL"></option>
+              <option value="RESTRICTED"></option>
+              <option value="SECRET"></option>
+              <option value="SECRET//NOFORN"></option>
+              <option value="TOP SECRET"></option>
+              <option value="TOP SECRET//SCI"></option>
+            </datalist>
+            <div class="drawstyle-row">
+              <span>Footer</span>
+              <input class="ms-input" type="text" id="briefingMenuFooterText" maxlength="200" placeholder="e.g. 1 Bde · {DTG}" title="Footer strip text. Tokens: {DTG} (military date-time group), {DATE}, {TITLE}, {COMPANY}, {AUTHOR}, {SUBJECT}. Requires Use slide master (exportTools.footerText)." />
+            </div>
+            <button class="ms-btn infobar-btn" id="briefingMenuDeckSetupBtn" title="Open the full PPTX Export settings — document properties (title / author / unit / subject / revision), theme fonts, theme-aware chrome and right-to-left. Slide sections and these same options are also available from the Deck button inside the slide editor.">⚙ Deck properties &amp; theme…</button>
             <button class="ms-btn primary infobar-btn" id="briefingMenuExportBtn" data-briefing-act="export" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist, using the settings above. Annotation links become real PowerPoint hyperlinks; relative jumps are resolved to a fixed slide, and 'last viewed' / 'end show' are dropped (see the engine log).">⬒ Export PPTX</button>
           </div>
         </div>

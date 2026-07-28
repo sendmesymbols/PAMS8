@@ -16,6 +16,7 @@
 import { BOX_OVERLAY_KINDS } from './BriefingTypes';
 import type { ArrowHead, OverlayBlend, OverlayKind, SlideOverlay } from './BriefingTypes';
 import { cleanAmplifiers, renderMilSym } from './MilSymFactory';
+import { renderChart } from './ChartFactory';
 import { buildTacArrowOutline } from './TacArrowGeometry';
 import { buildTableGroup, tableFromFabric } from './OverlayTable';
 import { isUsableLink, normalizeLink } from './SlideLinks';
@@ -94,33 +95,73 @@ export function preloadOverlayImages(
  * '<n>.' / '<n>)' prefixes regardless of which style is active, so switching
  * bullet → number (or pasting a hand-typed list) can't leave a doubled marker.
  */
-const LIST_MARKER_RE = /^[ \t]*(?:[•▪◦*-]|\d+[.)])[ \t]+/;
+/**
+ * Indentation is CAPTURED, not consumed: leading whitespace is how a list
+ * nests, and PPTX export turns it into a real `indentLevel` (see
+ * PptxExporter._emitOverlayText), which is what makes OPORD sub-paragraphs
+ * possible. Only the marker itself is stripped.
+ */
+const LIST_MARKER_RE = /^([ \t]*)(?:[•▪◦*-]|\d+[.)]|[a-z][.)])[ \t]+/i;
 
 export function stripListMarkers(text: string): string {
   return String(text ?? '')
     .split('\n')
-    .map((line) => line.replace(LIST_MARKER_RE, ''))
+    .map((line) => line.replace(LIST_MARKER_RE, '$1'))
     .join('\n');
+}
+
+/** Nesting depth of a line: one level per two spaces, or per tab. */
+export function listIndentLevel(line: string): number {
+  const m = /^[ \t]*/.exec(line);
+  if (!m) return 0;
+  let level = 0;
+  for (const ch of m[0]) level += ch === '\t' ? 1 : 0.5;
+  return Math.min(8, Math.floor(level));
+}
+
+/** Lowercase-alpha marker for an ordinal: 1 → a, 26 → z, 27 → aa. */
+function alphaMarker(n: number): string {
+  let s = '';
+  let i = n;
+  while (i > 0) {
+    const rem = (i - 1) % 26;
+    s = String.fromCharCode(97 + rem) + s;
+    i = Math.floor((i - 1) / 26);
+  }
+  return s;
 }
 
 /**
  * Prefix each line for display. Blank lines stay blank — a spacer line in the
  * middle of a list shouldn't get an orphan bullet, and numbering skips it so
  * the visible sequence stays 1, 2, 3.
+ *
+ * Ordered styles number PER INDENT LEVEL, so a nested run restarts at 1/a and
+ * the parent sequence resumes where it left off — the way an OPORD reads.
  */
 export function applyListMarkers(
   text: string,
-  style: 'bullet' | 'number' | undefined,
+  style: 'bullet' | 'number' | 'alpha' | undefined,
 ): string {
   const clean = stripListMarkers(text);
   if (!style) return clean;
-  let n = 0;
+  const counters: number[] = [];
   return clean
     .split('\n')
     .map((line) => {
       if (!line.trim()) return line;
-      n++;
-      return style === 'number' ? `${n}. ${line}` : `• ${line}`;
+      const level = listIndentLevel(line);
+      const indent = /^[ \t]*/.exec(line)?.[0] ?? '';
+      const body = line.slice(indent.length);
+      if (style === 'bullet') {
+        // Depth reads at a glance, matching PowerPoint's own bullet ladder.
+        const glyph = ['•', '◦', '▪'][level % 3];
+        return `${indent}${glyph} ${body}`;
+      }
+      counters[level] = (counters[level] ?? 0) + 1;
+      counters.length = level + 1; // deeper counters restart on the way back down
+      const n = counters[level];
+      return `${indent}${style === 'alpha' ? alphaMarker(n) : n}. ${body}`;
     })
     .join('\n');
 }
@@ -815,7 +856,14 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
   if (!fabric || !o || !o.kind || !W || !H) return null;
   const common: Record<string, any> = {
     opacity: o.opacity ?? 1,
-    data: { id: o.id || overlayUuid(), kind: o.kind, strokeDash: o.strokeDash },
+    data: {
+      id: o.id || overlayUuid(),
+      kind: o.kind,
+      strokeDash: o.strokeDash,
+      // Carried on every kind so read-back never has to know which ones can
+      // have one; only the emitters that can use it actually do.
+      ...(o.altText ? { altText: o.altText } : {}),
+    },
   };
   const strokePx = Math.max(1, (o.strokeWidth ?? 0.004) * H);
   const dash = dashProps(o.strokeDash, strokePx);
@@ -833,6 +881,7 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
         angle: o.rotation ?? 0,
       });
       img.data.src = o.src;
+      if (o.altText) img.data.altText = o.altText;
       img.set({
         scaleX: (o.w * W) / (img.width || 1),
         scaleY: (o.h * H) / (img.height || 1),
@@ -855,23 +904,42 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
         textAlign: o.align ?? 'left',
         fill: o.textColor ?? DEFAULT_TEXT_COLOR,
         angle: o.rotation ?? 0,
+        // fabric's lineHeight is the same "multiple of font size" the model
+        // stores; charSpacing is in 1/1000 em, so points convert through the
+        // font size.
+        ...(o.lineSpacing ? { lineHeight: o.lineSpacing } : {}),
+        ...(o.charSpacing
+          ? { charSpacing: Math.round((o.charSpacing / Math.max(1, (o.fontSize ?? 0.03) * H)) * 1000) }
+          : {}),
       });
       if (o.listStyle) tb.data.listStyle = o.listStyle;
+      if (o.lineSpacing) tb.data.lineSpacing = o.lineSpacing;
+      if (o.charSpacing) tb.data.charSpacing = o.charSpacing;
       return tb;
     }
-    case 'rect':
-      return new fabric.Rect({
+    case 'rect': {
+      const rw = Math.max(2, o.w * W);
+      const rh = Math.max(2, o.h * H);
+      // Model stores the radius as a fraction of the SHORTER side, which is
+      // what PPTX's rectRadius means too — so the two renderers agree.
+      const rad = o.cornerRadius ? Math.min(0.5, Math.max(0, o.cornerRadius)) * Math.min(rw, rh) : 0;
+      const rect = new fabric.Rect({
         ...common,
         ...dash,
         left: o.x * W,
         top: o.y * H,
-        width: Math.max(2, o.w * W),
-        height: Math.max(2, o.h * H),
+        width: rw,
+        height: rh,
+        rx: rad,
+        ry: rad,
         fill: o.fill ? withAlpha(o.fill, o.fillOpacity ?? 1) : '',
         stroke: o.stroke ?? '',
         strokeWidth: o.stroke ? strokePx : 0,
         angle: o.rotation ?? 0,
       });
+      if (o.cornerRadius) rect.data.cornerRadius = o.cornerRadius;
+      return rect;
+    }
     case 'ellipse':
       return new fabric.Ellipse({
         ...common,
@@ -978,6 +1046,26 @@ function buildOverlayObject(o: SlideOverlay, W: number, H: number): any | null {
       });
       return img;
     }
+    case 'chart': {
+      // Re-rendered from the ChartSpec, never from a stored bitmap — the same
+      // contract the milsym case above keeps with its SIDC.
+      const wPx = Math.max(40, o.w * W);
+      const hPx = Math.max(30, o.h * H);
+      const render = renderChart(o.chart, wPx, hPx);
+      if (!render) return null;
+      const img = new fabric.Image(render.canvas, {
+        ...common,
+        left: o.x * W,
+        top: o.y * H,
+        angle: o.rotation ?? 0,
+      });
+      img.data.chart = o.chart;
+      img.set({
+        scaleX: wPx / (render.canvas.width || 1),
+        scaleY: hPx / (render.canvas.height || 1),
+      });
+      return img;
+    }
     case 'freehand':
     case 'highlight': {
       const pts = (o.points ?? []).map((p) => ({ x: p.x * W, y: p.y * H }));
@@ -1061,6 +1149,7 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
     if (!obj.data.src) return null;
     if (rotation) base.rotation = rotation;
     base.src = obj.data.src;
+    if (obj.data.altText) base.altText = obj.data.altText;
     return base;
   }
 
@@ -1073,6 +1162,15 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
     if (obj.data.symKey) base.symKey = obj.data.symKey;
     const amps = cleanAmplifiers(obj.data.symOptions);
     if (Object.keys(amps).length) base.symOptions = amps;
+    return base;
+  }
+
+  if (kind === 'chart') {
+    // No spec means nothing can be re-rendered — the same call the image and
+    // milsym kinds make about a missing src / SIDC.
+    if (!obj.data.chart) return null;
+    if (rotation) base.rotation = rotation;
+    base.chart = obj.data.chart;
     return base;
   }
 
@@ -1107,11 +1205,18 @@ export function fabricToOverlay(obj: any, W: number, H: number): SlideOverlay | 
       base.align = obj.textAlign;
     }
     base.textColor = parseColor(obj.fill)?.hex ?? DEFAULT_TEXT_COLOR;
+    // Read from data rather than the fabric props: lineHeight/charSpacing are
+    // stored in fabric's own units (and charSpacing depends on the font size),
+    // so the model's values are the lossless source.
+    if (obj.data.lineSpacing) base.lineSpacing = obj.data.lineSpacing;
+    if (obj.data.charSpacing) base.charSpacing = obj.data.charSpacing;
     return base;
   }
 
   if (isBoxKind(kind)) {
     if (rotation) base.rotation = rotation;
+    if (obj.data.cornerRadius) base.cornerRadius = obj.data.cornerRadius;
+    if (obj.data.altText) base.altText = obj.data.altText;
     const fill = parseColor(obj.fill);
     if (fill) {
       base.fill = fill.hex;

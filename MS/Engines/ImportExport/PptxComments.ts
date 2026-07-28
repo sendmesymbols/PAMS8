@@ -208,12 +208,19 @@ export function commentAnchorEighths(
 export async function injectPptxComments(
   pkg: ArrayBuffer,
   records: readonly PptxCommentRecord[],
+  compress = false,
 ): Promise<Blob> {
   const JSZip = (globalThis as any).JSZip;
   if (!JSZip) throw new Error('window.JSZip unavailable — cannot inject comments');
   const zip = await JSZip.loadAsync(pkg);
   const parts = buildCommentParts(records);
-  if (!parts.slideParts.length) return zip.generateAsync({ type: 'blob', mimeType: PPTX_MIME });
+  // Re-zipping here REPLACES pptxgenjs' own compression choice, so the flag has
+  // to be threaded through — otherwise asking for a compressed deck and also
+  // having comments would silently hand back a stored (uncompressed) package.
+  const zipOpts = compress
+    ? { type: 'blob', mimeType: PPTX_MIME, compression: 'DEFLATE', compressionOptions: { level: 6 } }
+    : { type: 'blob', mimeType: PPTX_MIME };
+  if (!parts.slideParts.length) return zip.generateAsync(zipOpts);
 
   zip.file('ppt/commentAuthors.xml', parts.authorsXml);
   for (const p of parts.slideParts) zip.file(p.path, p.xml);

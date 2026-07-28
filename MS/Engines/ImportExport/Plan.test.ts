@@ -1,4 +1,4 @@
-import Plan from './Plan';
+import Plan from './Plan.ts';
 
 // Test data representing different geometry types
 const testCases = [

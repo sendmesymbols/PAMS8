@@ -17,6 +17,7 @@
  */
 
 import type { SlideOverlay } from './BriefingTypes';
+import { defaultChartSpec } from './ChartFactory';
 import { DEFAULT_TEXT_COLOR } from './OverlayStyle';
 
 /** Matches the editor's accent, so a layout looks native to the app's theme. */
@@ -164,6 +165,176 @@ export const BUILTIN_LAYOUTS: SlideLayout[] = [
         'Section title',
         { x: 0.1, y: 0.467, w: 0.8, h: 0.133 },
         { fontSize: 0.071, bold: true, textColor: INK_ON_SCRIM },
+      ),
+    ],
+  },
+  {
+    id: 'title-only',
+    name: 'Title only',
+    preview: pv(
+      '<rect class="pv-ink" x="8" y="8" width="46" height="6"/>' +
+        '<rect class="pv-accent" x="8" y="17" width="84" height="1.4"/>',
+    ),
+    overlays: () => [
+      text('Click to add title', { x: 0.075, y: 0.08, w: 0.85, h: 0.093 }, { fontSize: 0.049, bold: true }),
+      bar({ x: 0.075, y: 0.187, w: 0.85, h: 0.0033 }),
+    ],
+  },
+  {
+    id: 'comparison',
+    name: 'Comparison',
+    preview: pv(
+      '<rect class="pv-ink" x="8" y="8" width="46" height="6"/>' +
+        '<rect class="pv-accent" x="8" y="17" width="84" height="1.4"/>' +
+        '<rect class="pv-ink" x="8" y="22" width="24" height="4"/>' +
+        '<rect class="pv-ink" x="54" y="22" width="24" height="4"/>' +
+        '<rect class="pv-dim" x="8" y="30" width="38" height="3"/>' +
+        '<rect class="pv-dim" x="54" y="30" width="38" height="3"/>' +
+        '<rect class="pv-dim" x="8" y="36" width="30" height="3"/>' +
+        '<rect class="pv-dim" x="54" y="36" width="30" height="3"/>',
+    ),
+    // Two columns that each carry their OWN heading — the shape a
+    // COA-vs-COA or friendly-vs-enemy comparison actually needs, which the
+    // plain two-column layout has to be hand-edited into.
+    overlays: () => [
+      text('Click to add title', { x: 0.075, y: 0.08, w: 0.85, h: 0.093 }, { fontSize: 0.049, bold: true }),
+      bar({ x: 0.075, y: 0.187, w: 0.85, h: 0.0033 }),
+      text('Option A', { x: 0.075, y: 0.231, w: 0.4125, h: 0.062 }, { fontSize: 0.033, bold: true }),
+      text('Option B', { x: 0.5125, y: 0.231, w: 0.4125, h: 0.062 }, { fontSize: 0.033, bold: true }),
+      text('Click to add content', { x: 0.075, y: 0.31, w: 0.4125, h: 0.588 }, { fontSize: 0.027, textColor: INK_DIM }),
+      text('Click to add content', { x: 0.5125, y: 0.31, w: 0.4125, h: 0.588 }, { fontSize: 0.027, textColor: INK_DIM }),
+    ],
+  },
+  {
+    id: 'quad',
+    name: 'Four quadrants',
+    preview: pv(
+      '<rect class="pv-ink" x="8" y="7" width="40" height="5"/>' +
+        '<rect class="pv-dim" x="8" y="16" width="40" height="17"/>' +
+        '<rect class="pv-dim" x="52" y="16" width="40" height="17"/>' +
+        '<rect class="pv-dim" x="8" y="36" width="40" height="14"/>' +
+        '<rect class="pv-dim" x="52" y="36" width="40" height="14"/>',
+    ),
+    // OCOKA, METT-TC, SWOT — the recurring four-box analysis frame.
+    overlays: () => {
+      const cell = (label: string, x: number, y: number): SlideOverlay[] => [
+        {
+          id: uid(),
+          kind: 'rect',
+          x,
+          y,
+          w: 0.4125,
+          h: 0.311,
+          fill: '#F2F5F8',
+          fillOpacity: 1,
+          stroke: '#C9D3DD',
+          strokeWidth: 0.0015,
+          cornerRadius: 0.04,
+        },
+        text(label, { x: x + 0.018, y: y + 0.022, w: 0.377, h: 0.056 }, { fontSize: 0.028, bold: true }),
+        text('…', { x: x + 0.018, y: y + 0.089, w: 0.377, h: 0.2 }, { fontSize: 0.024, textColor: INK_DIM }),
+      ];
+      return [
+        text('Click to add title', { x: 0.075, y: 0.07, w: 0.85, h: 0.084 }, { fontSize: 0.044, bold: true }),
+        ...cell('Quadrant 1', 0.075, 0.187),
+        ...cell('Quadrant 2', 0.5125, 0.187),
+        ...cell('Quadrant 3', 0.075, 0.53),
+        ...cell('Quadrant 4', 0.5125, 0.53),
+      ];
+    },
+  },
+  {
+    id: 'chart',
+    name: 'Chart + notes',
+    preview: pv(
+      '<rect class="pv-ink" x="8" y="8" width="46" height="6"/>' +
+        '<rect class="pv-accent" x="8" y="17" width="84" height="1.4"/>' +
+        '<rect class="pv-dim" x="8" y="23" width="52" height="27"/>' +
+        '<rect class="pv-dim" x="66" y="23" width="26" height="3"/>' +
+        '<rect class="pv-dim" x="66" y="29" width="26" height="3"/>' +
+        '<rect class="pv-dim" x="66" y="35" width="18" height="3"/>',
+    ),
+    // Starts with a real chart overlay, so the author double-clicks it and
+    // types (or pulls in an analysis result) instead of hunting for the tool.
+    overlays: () => [
+      text('Click to add title', { x: 0.075, y: 0.08, w: 0.85, h: 0.093 }, { fontSize: 0.049, bold: true }),
+      bar({ x: 0.075, y: 0.187, w: 0.85, h: 0.0033 }),
+      {
+        id: uid(),
+        kind: 'chart',
+        x: 0.075,
+        y: 0.231,
+        w: 0.54,
+        h: 0.62,
+        chart: defaultChartSpec(),
+      },
+      text('Key points', { x: 0.65, y: 0.231, w: 0.275, h: 0.056 }, { fontSize: 0.03, bold: true }),
+      text('…', { x: 0.65, y: 0.3, w: 0.275, h: 0.55 }, { fontSize: 0.026, textColor: INK_DIM }),
+    ],
+  },
+  {
+    id: 'table',
+    name: 'Table',
+    preview: pv(
+      '<rect class="pv-ink" x="8" y="8" width="46" height="6"/>' +
+        '<rect class="pv-accent" x="8" y="17" width="84" height="1.4"/>' +
+        '<rect class="pv-accent" x="8" y="23" width="84" height="5"/>' +
+        '<rect class="pv-dim" x="8" y="29" width="84" height="5"/>' +
+        '<rect class="pv-dim" x="8" y="35" width="84" height="5"/>' +
+        '<rect class="pv-dim" x="8" y="41" width="84" height="5"/>',
+    ),
+    overlays: () => [
+      text('Click to add title', { x: 0.075, y: 0.08, w: 0.85, h: 0.093 }, { fontSize: 0.049, bold: true }),
+      bar({ x: 0.075, y: 0.187, w: 0.85, h: 0.0033 }),
+      {
+        id: uid(),
+        kind: 'table',
+        x: 0.075,
+        y: 0.231,
+        w: 0.85,
+        h: 0.5,
+        rows: [
+          ['Unit', 'Task', 'Purpose'],
+          ['', '', ''],
+          ['', '', ''],
+          ['', '', ''],
+        ],
+        headerRow: true,
+      },
+    ],
+  },
+  {
+    id: 'opord',
+    name: 'OPORD skeleton',
+    preview: pv(
+      '<rect class="pv-ink" x="8" y="8" width="46" height="6"/>' +
+        '<rect class="pv-accent" x="8" y="17" width="84" height="1.4"/>' +
+        '<rect class="pv-ink" x="8" y="22" width="30" height="3"/>' +
+        '<rect class="pv-dim" x="13" y="27" width="40" height="2.4"/>' +
+        '<rect class="pv-ink" x="8" y="32" width="26" height="3"/>' +
+        '<rect class="pv-dim" x="13" y="37" width="40" height="2.4"/>' +
+        '<rect class="pv-ink" x="8" y="42" width="32" height="3"/>',
+    ),
+    // Indentation is meaningful, not decoration: the exporter turns leading
+    // whitespace into real PowerPoint indentLevel with the 1. / a. / i.
+    // ladder, so this skeleton exports as a properly nested numbered list.
+    overlays: () => [
+      text('Operation — OPORD', { x: 0.075, y: 0.08, w: 0.85, h: 0.093 }, { fontSize: 0.049, bold: true }),
+      bar({ x: 0.075, y: 0.187, w: 0.85, h: 0.0033 }),
+      text(
+        [
+          'Situation',
+          '  Enemy forces',
+          '  Friendly forces',
+          'Mission',
+          'Execution',
+          '  Concept of operations',
+          '  Tasks to subordinate units',
+          'Sustainment',
+          'Command and signal',
+        ].join('\n'),
+        { x: 0.075, y: 0.231, w: 0.85, h: 0.667 },
+        { fontSize: 0.029, listStyle: 'number' },
       ),
     ],
   },

@@ -23,6 +23,28 @@
  */
 export const DEFAULT_TEXT_COLOR = '#64748B';
 
+/**
+ * Fonts offered anywhere a typeface is chosen — text overlays and the deck's
+ * theme fonts.
+ *
+ * A short curated list, not the system font list, and shared rather than
+ * duplicated per picker: a briefing is normally handed on as a .pptx, so a font
+ * is only useful if the RECIPIENT also has it. These ship with both Windows and
+ * macOS Office, so an exported deck renders as authored on either. Anything
+ * outside this list silently substitutes on the recipient's machine, which is
+ * exactly the surprise a curated list avoids.
+ */
+export const SAFE_FONTS: readonly string[] = [
+  'Arial',
+  'Calibri',
+  'Courier New',
+  'Georgia',
+  'Impact',
+  'Tahoma',
+  'Times New Roman',
+  'Verdana',
+];
+
 /** '#RGB' / '#RRGGBB' / 'rgb()' / 'rgba()' → hex + alpha. Null when unusable. */
 export function parseColor(c: any): { hex: string; alpha: number } | null {
   if (!c || typeof c !== 'string') return null;

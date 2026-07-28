@@ -14,16 +14,21 @@
  *   - connectors (line/arrow)       → 'line'/'arrow' overlays
  *   - custGeom freeforms            → 'freehand' overlays (one per subpath;
  *                                      2-point subpaths become line/arrow)
- *   - tables                        → flattened 'text' overlays (rows as
- *                                      lines, cells " | "-separated)
+ *   - tables                        → 'table' overlays, merges included
+ *   - charts                        → 'chart' overlays (series read from the
+ *                                      chart part's cached values)
  *   - pictures                      → composited in document order into ONE
  *                                      background raster (backgroundDataUrl)
  *   - notes slides                  → slide.notes
- *   - a:hlinkClick on a shape/pic   → SlideOverlay.link (slide jumps and
- *                                      relative jumps only; a linked picture
- *                                      gets an invisible rect hotspot, since
- *                                      the picture itself is flattened away.
- *                                      External URLs are dropped.)
+ *   - p:sectionLst                  → Slide.section
+ *   - theme part                    → real scheme colours and +mj-lt/+mn-lt
+ *                                      font references
+ *   - a:hlinkClick on a shape/pic   → SlideOverlay.link — slide jumps,
+ *                                      relative jumps and external URLs (the
+ *                                      last scheme-checked by normalizeLink).
+ *                                      A linked picture gets an invisible rect
+ *                                      hotspot, since the picture itself is
+ *                                      flattened away.
  *
  * Imported slides are "screen-only": `view` has neither extent nor camera,
  * so playback leaves the map untouched and the editor / present mode / PPTX
@@ -34,7 +39,16 @@
  */
 
 import { composeOverlayThumbnail, overlayUuid } from '../Briefing/OverlayFabric';
-import type { ArrowHead, LinkJump, Slide, SlideOverlay, ViewKind } from '../Briefing/BriefingTypes';
+import type {
+  ArrowHead,
+  LinkJump,
+  Slide,
+  SlideOverlay,
+  TableMerge,
+  ViewKind,
+} from '../Briefing/BriefingTypes';
+import type { ChartKind, ChartSpec } from '../Briefing/ChartFactory';
+import { normalizeMerges } from '../Briefing/OverlayTable';
 import { jumpFromPptAction, normalizeLink } from '../Briefing/SlideLinks';
 import { loadPptxGenJS } from './PptxExporter';
 
@@ -93,9 +107,27 @@ const PIC_MIME: Record<string, string> = {
 };
 
 /**
- * Theme colors can't be resolved without walking the theme part — map the
- * scheme slots to the standard Office defaults instead (dark text on light
- * background), which is right for the vast majority of decks.
+ * The deck's resolved theme, or null when it has none / could not be read.
+ *
+ * Module-scoped rather than threaded because `parseSolidFill` and
+ * `extractText` are leaf helpers called from a dozen places, and the importer
+ * is a single-shot function. `parsePptx` clears it BEFORE loading the theme
+ * and again on the way out, so a parse that throws part-way cannot carry a
+ * stale palette into the next import.
+ */
+interface DeckTheme {
+  /** Scheme slot ('accent1', 'tx1', 'lt2', …) → '#RRGGBB'. */
+  colors: Record<string, string>;
+  /** '+mj-lt' / '+mn-lt' → real typeface name. */
+  majorFont?: string;
+  minorFont?: string;
+}
+let THEME: DeckTheme | null = null;
+
+/**
+ * Standard Office defaults (dark text on light background), used for any slot
+ * the deck's own theme does not define — and for the whole map when the theme
+ * part is missing or unreadable.
  */
 const SCHEME_COLOR_FALLBACKS: Record<string, string> = {
   tx1: '#000000',
@@ -192,6 +224,8 @@ interface RawLink {
   /** Zip path of the target slide part, e.g. 'ppt/slides/slide3.xml'. */
   targetPath?: string;
   jump?: LinkJump;
+  /** External hyperlink target — the rel's Target with TargetMode="External". */
+  url?: string;
   tooltip?: string;
 }
 
@@ -203,8 +237,10 @@ interface RawLink {
  *   Target is that slide's part).
  * - `action="ppaction://hlinkshowjump?jump=…"` → a relative jump; `r:id` is
  *   empty because no relationship is needed.
- * - an external `r:id` with no action → a URL, which the briefing model does
- *   not carry; the caller counts it as skipped.
+ * - an external `r:id` with no action → a URL. Kept as-is; `normalizeLink`
+ *   later refuses any scheme outside the http/https/mailto allowlist, so a
+ *   hostile `javascript:` target in a third-party deck is dropped rather than
+ *   imported into something present mode would open.
  *
  * `noaction`, `hlinkfile`, `program`, media and OLE actions are all "not a
  * navigation" and return null.
@@ -227,12 +263,17 @@ function readHlink(
   if (!rel) return null;
   if (rel.external) {
     onExternal();
-    return null;
+    return { url: rel.target, tooltip };
   }
   // Only a slide relationship is navigation; a hlinkfile/program action
   // pointing at some other part is not.
   if (!rel.type.endsWith('/slide')) return null;
   return { targetPath: rel.target, tooltip };
+}
+
+/** A scheme slot name → hex, preferring the deck's own theme over the defaults. */
+function schemeHex(slot: string): string | null {
+  return THEME?.colors[slot] ?? SCHEME_COLOR_FALLBACKS[slot] ?? null;
 }
 
 /** First a:solidFill under `parent` → hex + alpha (a:alpha is thousandths of a percent). */
@@ -243,12 +284,184 @@ function parseSolidFill(parent: Element | null): { hex: string; alpha: number } 
   const srgb = childByLocal(fill, 'srgbClr');
   const scheme = childByLocal(fill, 'schemeClr');
   if (srgb?.getAttribute('val')) hex = `#${srgb.getAttribute('val')!.slice(0, 6).toUpperCase()}`;
-  else if (scheme?.getAttribute('val')) hex = SCHEME_COLOR_FALLBACKS[scheme.getAttribute('val')!] ?? null;
+  else if (scheme?.getAttribute('val')) hex = schemeHex(scheme.getAttribute('val')!);
   if (!hex) return null;
   const alphaEl = firstByLocal(srgb ?? scheme, 'alpha');
   const alphaVal = Number(alphaEl?.getAttribute('val'));
   const alpha = Number.isFinite(alphaVal) ? Math.max(0, Math.min(1, alphaVal / 100000)) : 1;
   return { hex, alpha };
+}
+
+/**
+ * An `a:latin/@typeface` → a real font name. '+mj-lt' and '+mn-lt' are
+ * references into the theme's major/minor font; anything else is already a
+ * literal. Undefined when the reference cannot be resolved, so the caller
+ * falls back rather than writing '+mn-lt' into the model as a font name.
+ */
+function resolveTypeface(latin: string | null | undefined): string | undefined {
+  if (!latin) return undefined;
+  if (!latin.startsWith('+')) return latin;
+  if (latin.startsWith('+mj')) return THEME?.majorFont;
+  if (latin.startsWith('+mn')) return THEME?.minorFont;
+  return undefined;
+}
+
+/**
+ * Read a theme part into the colour and font maps the leaf helpers consult.
+ *
+ * `a:clrScheme` names its slots dk1/lt1/dk2/lt2; the *slide* refers to them as
+ * tx1/bg1/tx2/bg2 through the master's `p:clrMap`. Both spellings are stored
+ * so a lookup never has to know which side it came from — the default mapping
+ * (tx1→dk1, bg1→lt1, …) is applied unless the master overrides it.
+ *
+ * `a:sysClr` carries the resolved value in `lastClr`, which is the only value
+ * available offline.
+ */
+function readTheme(themeDoc: Document | null, clrMap: Element | null): DeckTheme | null {
+  if (!themeDoc) return null;
+  const scheme = firstByLocal(themeDoc, 'clrScheme');
+  const colors: Record<string, string> = {};
+  if (scheme) {
+    for (const slot of Array.from(scheme.children)) {
+      const srgb = childByLocal(slot, 'srgbClr')?.getAttribute('val');
+      const sys = childByLocal(slot, 'sysClr')?.getAttribute('lastClr');
+      const hex = srgb || sys;
+      if (hex) colors[slot.localName] = `#${hex.slice(0, 6).toUpperCase()}`;
+    }
+  }
+  // tx/bg aliases, honouring the master's clrMap when there is one.
+  const alias: Record<string, string> = {
+    tx1: clrMap?.getAttribute('tx1') || 'dk1',
+    tx2: clrMap?.getAttribute('tx2') || 'dk2',
+    bg1: clrMap?.getAttribute('bg1') || 'lt1',
+    bg2: clrMap?.getAttribute('bg2') || 'lt2',
+  };
+  for (const [from, to] of Object.entries(alias)) {
+    if (colors[to]) colors[from] = colors[to];
+  }
+
+  const fontScheme = firstByLocal(themeDoc, 'fontScheme');
+  const major = childByLocal(childByLocal(fontScheme, 'majorFont'), 'latin')?.getAttribute(
+    'typeface',
+  );
+  const minor = childByLocal(childByLocal(fontScheme, 'minorFont'), 'latin')?.getAttribute(
+    'typeface',
+  );
+  if (!Object.keys(colors).length && !major && !minor) return null;
+  return {
+    colors,
+    majorFont: major || undefined,
+    minorFont: minor || undefined,
+  };
+}
+
+// ── Charts ─────────────────────────────────────────────────────────────────────
+
+/** OOXML chart-group element name → our ChartKind. */
+const CHART_KINDS: Record<string, ChartKind> = {
+  barChart: 'bar',
+  bar3DChart: 'bar',
+  lineChart: 'line',
+  line3DChart: 'line',
+  areaChart: 'area',
+  area3DChart: 'area',
+  pieChart: 'pie',
+  pie3DChart: 'pie',
+  doughnutChart: 'doughnut',
+  scatterChart: 'scatter',
+  radarChart: 'radar',
+};
+
+/**
+ * A chart part → ChartSpec, read entirely from the CACHED values
+ * (`c:numCache` / `c:strCache`) that every writer embeds alongside the
+ * spreadsheet formula. That cache is what PowerPoint itself renders when the
+ * embedded workbook is unavailable, so it is both the correct source and the
+ * only one obtainable offline.
+ *
+ * Returns null when the part has no plottable series.
+ */
+function chartSpecFromPart(doc: Document | null): ChartSpec | null {
+  if (!doc) return null;
+  const plotArea = firstByLocal(doc, 'plotArea');
+  if (!plotArea) return null;
+
+  let kind: ChartKind | null = null;
+  let group: Element | null = null;
+  for (const child of Array.from(plotArea.children)) {
+    const k = CHART_KINDS[child.localName];
+    if (k) {
+      kind = k;
+      group = child;
+      break;
+    }
+  }
+  if (!kind || !group) return null;
+
+  // Stacked and horizontal bars are the same element with different children.
+  if (kind === 'bar') {
+    const grouping = childByLocal(group, 'grouping')?.getAttribute('val');
+    const dir = childByLocal(group, 'barDir')?.getAttribute('val');
+    if (grouping === 'stacked' || grouping === 'percentStacked') kind = 'barStacked';
+    else if (dir === 'bar') kind = 'barHorizontal';
+  }
+
+  /** Cached point values of a c:cat / c:val / c:xVal wrapper, in c:idx order. */
+  const cachedPoints = (wrapper: Element | null): string[] => {
+    if (!wrapper) return [];
+    const out: string[] = [];
+    for (const pt of allByLocal(wrapper, 'pt')) {
+      const idx = Number(pt.getAttribute('idx'));
+      const v = firstByLocal(pt, 'v')?.textContent ?? '';
+      if (Number.isFinite(idx)) out[idx] = v;
+    }
+    // A sparse cache leaves holes; '' plots as 0 rather than shifting the rest.
+    for (let i = 0; i < out.length; i++) if (out[i] === undefined) out[i] = '';
+    return out;
+  };
+
+  let labels: string[] = [];
+  const series: ChartSpec['series'] = [];
+  for (const ser of childrenByLocal(group, 'ser')) {
+    const name =
+      firstByLocal(childByLocal(ser, 'tx'), 'v')?.textContent?.trim() ||
+      `Series ${series.length + 1}`;
+    const values = cachedPoints(childByLocal(ser, 'val') ?? childByLocal(ser, 'yVal')).map((v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    });
+    if (!values.length) continue;
+    if (!labels.length) {
+      labels = cachedPoints(childByLocal(ser, 'cat') ?? childByLocal(ser, 'xVal'));
+    }
+    const entry: ChartSpec['series'][number] = { name, values };
+    if (kind === 'scatter') {
+      const xs = cachedPoints(childByLocal(ser, 'xVal')).map((v) => Number(v) || 0);
+      if (xs.length) entry.xValues = xs;
+    }
+    series.push(entry);
+  }
+  if (!series.length) return null;
+
+  // A cache can be shorter than the series it labels; pad so every point has a
+  // category and neither renderer indexes past the end.
+  const maxLen = Math.max(...series.map((s) => s.values.length));
+  while (labels.length < maxLen) labels.push(String(labels.length + 1));
+
+  const title = firstByLocal(firstByLocal(doc, 'title'), 't')?.textContent?.trim();
+  const legendPos = firstByLocal(doc, 'legendPos')?.getAttribute('val');
+  return {
+    type: kind,
+    labels,
+    series,
+    title: title || undefined,
+    showLegend: !!firstByLocal(doc, 'legend'),
+    legendPos:
+      legendPos === 't' || legendPos === 'l' || legendPos === 'r' || legendPos === 'b'
+        ? legendPos
+        : 'b',
+    textColor: '#20262E',
+  };
 }
 
 // ── Text extraction ────────────────────────────────────────────────────────────
@@ -320,8 +533,9 @@ function extractText(txBody: Element | null): TextInfo | null {
             italic: rPr.getAttribute('i') === '1' || undefined,
             underline: u && u !== 'none' ? true : undefined,
             color: parseSolidFill(rPr)?.hex,
-            // '+mj-lt' / '+mn-lt' are theme font references — unresolvable here.
-            fontFamily: latin && !latin.startsWith('+') ? latin : undefined,
+            // '+mj-lt' / '+mn-lt' are theme font references; resolved against
+            // the deck's own fontScheme, and dropped only if it had none.
+            fontFamily: resolveTypeface(latin),
           };
         }
       }
@@ -538,6 +752,31 @@ export async function parsePptx(
 
   // Slide order: p:sldIdLst r:ids → presentation rels → part paths.
   const presRels = relTargets(await readXml('ppt/_rels/presentation.xml.rels'), 'ppt');
+
+  // Theme, via the FIRST slide master (which also owns the clrMap that says
+  // what tx1/bg1 point at). Decks with several masters can theme differently
+  // per master; the first one is what the overwhelming majority use throughout,
+  // and getting its palette right beats getting none of them right.
+  THEME = null;
+  try {
+    const masterPath = [...presRels.values()].find((r) => r.type.endsWith('/slideMaster'))?.target;
+    if (masterPath) {
+      const masterDoc = await readXml(masterPath);
+      const masterDir = masterPath.slice(0, masterPath.lastIndexOf('/'));
+      const masterName = masterPath.slice(masterPath.lastIndexOf('/') + 1);
+      const masterRels = relTargets(
+        await readXml(`${masterDir}/_rels/${masterName}.rels`),
+        masterDir,
+      );
+      const themePath = [...masterRels.values()].find((r) => r.type.endsWith('/theme'))?.target;
+      if (themePath) {
+        THEME = readTheme(await readXml(themePath), firstByLocal(masterDoc, 'clrMap'));
+      }
+    }
+  } catch {
+    // A malformed theme must not fail the import — the defaults still work.
+    THEME = null;
+  }
   let slidePaths = allByLocal(presDoc, 'sldId')
     .map((el) => ridOf(el, 'id'))
     .map((id) => (id ? presRels.get(id)?.target : undefined))
@@ -579,6 +818,28 @@ export async function parsePptx(
     return cached;
   };
 
+  /**
+   * The parts a slide inherits static furniture from, in PAINT order:
+   * [master, layout]. Cached — a 60-slide deck usually has two or three
+   * layouts between them, and re-reading each layout's rels 60 times is pure
+   * waste.
+   */
+  const inheritedCache = new Map<string, string[]>();
+  const inheritedParts = async (layoutPath?: string): Promise<string[]> => {
+    if (!layoutPath) return [];
+    const cached = inheritedCache.get(layoutPath);
+    if (cached) return cached;
+    const dir = layoutPath.slice(0, layoutPath.lastIndexOf('/'));
+    const name = layoutPath.slice(layoutPath.lastIndexOf('/') + 1);
+    const layoutRels = relTargets(await readXml(`${dir}/_rels/${name}.rels`), dir);
+    const masterPath = [...layoutRels.values()].find((r) =>
+      r.type.endsWith('/slideMaster'),
+    )?.target;
+    const parts = masterPath ? [masterPath, layoutPath] : [layoutPath];
+    inheritedCache.set(layoutPath, parts);
+    return parts;
+  };
+
   const parseSlide = async (
     slidePath: string,
     index: number,
@@ -590,9 +851,13 @@ export async function parsePptx(
     }
     const slideDir = slidePath.slice(0, slidePath.lastIndexOf('/'));
     const slideName = slidePath.slice(slidePath.lastIndexOf('/') + 1);
-    const rels = relTargets(await readXml(`${slideDir}/_rels/${slideName}.rels`), slideDir);
+    // `let`, not `const`: the inherited (layout/master) pass below re-points it
+    // at that part's own rels, because a logo on the layout resolves its r:id
+    // against the LAYOUT's relationships, not the slide's.
+    const slideRels = relTargets(await readXml(`${slideDir}/_rels/${slideName}.rels`), slideDir);
+    let rels = slideRels;
     const layoutPh = await getLayoutPlaceholders(
-      [...rels.values()].find((r) => r.type.endsWith('/slideLayout'))?.target,
+      [...slideRels.values()].find((r) => r.type.endsWith('/slideLayout'))?.target,
     );
 
     const overlays: SlideOverlay[] = [];
@@ -824,7 +1089,7 @@ export async function parsePptx(
       if (overlays.length <= firstIndex) return;
       const cNvPr = childByLocal(childByLocal(el, ownerTag), 'cNvPr');
       const raw = readHlink(cNvPr, rels, () =>
-        bump('external URL link dropped (briefings link between slides only)'),
+        bump('external URL link imported'),
       );
       if (!raw) return;
       for (let i = firstIndex; i < overlays.length; i++) rawLinks.set(overlays[i].id, raw);
@@ -834,6 +1099,11 @@ export async function parsePptx(
       const firstOverlay = overlays.length;
       const spPr = childByLocal(sp, 'spPr');
       const phEl = firstByLocal(sp, 'ph');
+      // Walking the layout/master brings in their STATIC furniture only — a
+      // placeholder there is a slot the slide fills, and importing it would
+      // duplicate the slide's own content (or paste in prompt text like
+      // "Click to edit Master title style").
+      if (inheritedPass && phEl) return;
       const phType = phEl?.getAttribute('type') ?? (phEl ? 'body' : null);
       let box = readXfrm(childByLocal(spPr, 'xfrm'), currentCtx);
       if (!box && phEl) box = layoutBox(phEl);
@@ -907,6 +1177,14 @@ export async function parsePptx(
         bump('unpositioned picture skipped');
         return;
       }
+      // A p:pic is also how PowerPoint carries audio and video: the media is a
+      // separate part and the blip is only its poster frame. The briefing model
+      // has no media object, so the poster imports as an ordinary picture and
+      // the playback is reported as lost rather than dropped in silence.
+      const nvPr = childByLocal(childByLocal(pic, 'nvPicPr'), 'nvPr');
+      if (nvPr && (childByLocal(nvPr, 'videoFile') || childByLocal(nvPr, 'audioFile'))) {
+        bump('embedded audio/video kept as its poster image only — playback is not imported');
+      }
       const blip = firstByLocal(pic, 'blip');
       const rid = blip ? ridOf(blip, 'embed') : null;
       const target = rid ? rels.get(rid)?.target : undefined;
@@ -937,7 +1215,7 @@ export async function parsePptx(
       const raw = readHlink(
         childByLocal(childByLocal(pic, 'nvPicPr'), 'cNvPr'),
         rels,
-        () => bump('external URL link dropped (briefings link between slides only)'),
+        () => bump('external URL link imported'),
       );
       if (raw) {
         const hotspot: SlideOverlay = {
@@ -962,10 +1240,11 @@ export async function parsePptx(
      * editable table rather than as prose. (It used to flatten to one text box
      * with " | "-joined cells.)
      *
-     * Merged cells are not in the overlay model: a gridSpan / hMerge / vMerge
-     * continuation cell imports EMPTY, with the row and column count of the
-     * underlying grid preserved. That keeps every other cell in its correct
-     * position, which matters more than reproducing the merge.
+     * Merges round-trip: `gridSpan` / `rowSpan` on an anchor cell become a
+     * TableMerge, and the `hMerge` / `vMerge` continuation cells it covers
+     * import empty. The underlying grid keeps its full row and column count
+     * either way, so every other cell stays in its correct position even if a
+     * merge is later dropped by `normalizeMerges`.
      */
     const tableOverlay = (tbl: Element, box: BoxEMU): SlideOverlay | null => {
       const gridCols = childrenByLocal(firstByLocal(tbl, 'tblGrid'), 'gridCol');
@@ -979,20 +1258,23 @@ export async function parsePptx(
         gridCols.length || Math.max(...trs.map((tr) => childrenByLocal(tr, 'tc').length), 1),
       );
 
-      let merged = false;
       let cellStyle: TextInfo | null = null;
       const rows: string[][] = [];
+      const merges: TableMerge[] = [];
 
-      for (const tr of trs) {
+      for (let r = 0; r < trs.length; r++) {
         const out = new Array<string>(nCols).fill('');
         let col = 0;
-        for (const tc of childrenByLocal(tr, 'tc')) {
+        for (const tc of childrenByLocal(trs[r], 'tc')) {
           if (col >= nCols) break;
           const span = Math.max(1, Number(tc.getAttribute('gridSpan')) || 1);
+          const rowSpan = Math.max(1, Number(tc.getAttribute('rowSpan')) || 1);
           const isContinuation =
             tc.getAttribute('hMerge') === '1' || tc.getAttribute('vMerge') === '1';
-          if (span > 1 || isContinuation || tc.getAttribute('rowSpan')) merged = true;
           if (!isContinuation) {
+            // Only the ANCHOR carries the spans; continuations are the cells it
+            // covers, which normalizeMerges will hide.
+            if (span > 1 || rowSpan > 1) merges.push({ r, c: col, rowspan: rowSpan, colspan: span });
             const info = extractText(firstByLocal(tc, 'txBody'));
             if (info) {
               out[col] = info.text;
@@ -1003,7 +1285,6 @@ export async function parsePptx(
         }
         rows.push(out);
       }
-      if (merged) bump('table merged cells flattened — continuation cells are empty');
 
       const totalGrid = gridCols.reduce((a, g) => a + (Number(g.getAttribute('w')) || 0), 0);
       const colWidths =
@@ -1032,6 +1313,9 @@ export async function parsePptx(
         rows,
         colWidths,
         rowHeights,
+        // Re-validated against the grid the rows actually produced, so a
+        // malformed span can never make the table unrenderable.
+        merges: merges.length ? normalizeMerges(merges, rows.length, nCols) : undefined,
         headerRow: headerRow || undefined,
         fill: cellFill?.hex,
         fillOpacity:
@@ -1048,12 +1332,33 @@ export async function parsePptx(
       };
     };
 
-    const handleFrame = (frame: Element): void => {
+    const handleFrame = async (frame: Element): Promise<void> => {
       const box = readXfrm(childByLocal(frame, 'xfrm'), currentCtx);
       const tbl = firstByLocal(frame, 'tbl');
       if (tbl && box) {
         if (box.rot) bump('table rotation ignored');
         pushOverlay(tableOverlay(tbl, box));
+        return;
+      }
+      // A chart lives in its OWN part; the frame only holds an r:id to it.
+      const chartRef = firstByLocal(frame, 'chart');
+      if (chartRef && box) {
+        const rid = ridOf(chartRef, 'id');
+        const rel = rid ? rels.get(rid) : undefined;
+        const spec = rel ? chartSpecFromPart(await readXml(rel.target)) : null;
+        if (spec) {
+          pushOverlay({
+            id: overlayUuid(),
+            kind: 'chart',
+            x: nx(box.x),
+            y: ny(box.y),
+            w: Math.max(0.02, nx(box.w)),
+            h: Math.max(0.02, ny(box.h)),
+            chart: spec,
+          });
+          return;
+        }
+        bump('chart had no cached data — skipped');
         return;
       }
       const uri = firstByLocal(frame, 'graphicData')?.getAttribute('uri') ?? '';
@@ -1062,6 +1367,8 @@ export async function parsePptx(
 
     // Depth-first walk in document order; currentCtx tracks the group transform.
     let currentCtx: Ctx = IDENTITY;
+    /** True while walking a slideLayout / slideMaster rather than the slide. */
+    let inheritedPass = false;
     const walk = async (container: Element, ctx: Ctx): Promise<void> => {
       const saved = currentCtx;
       currentCtx = ctx;
@@ -1079,7 +1386,7 @@ export async function parsePptx(
                 await handlePic(child);
                 break;
               case 'graphicFrame':
-                handleFrame(child);
+                await handleFrame(child);
                 break;
               case 'grpSp': {
                 const xfrm = childByLocal(childByLocal(child, 'grpSpPr'), 'xfrm');
@@ -1100,6 +1407,31 @@ export async function parsePptx(
         currentCtx = saved;
       }
     };
+
+    // Master first, then layout, then the slide — PowerPoint's own paint order,
+    // so inherited furniture (classification banners, unit crests, footers)
+    // ends up BENEATH the slide's own content instead of on top of it. Without
+    // this pass that furniture was simply lost on import.
+    const layoutPath = [...slideRels.values()].find((r) =>
+      r.type.endsWith('/slideLayout'),
+    )?.target;
+    inheritedPass = true;
+    try {
+      for (const path of await inheritedParts(layoutPath)) {
+        const doc = await readXml(path);
+        const tree = firstByLocal(doc, 'spTree');
+        if (!tree) continue;
+        const dir = path.slice(0, path.lastIndexOf('/'));
+        const name = path.slice(path.lastIndexOf('/') + 1);
+        rels = relTargets(await readXml(`${dir}/_rels/${name}.rels`), dir);
+        await walk(tree, IDENTITY);
+      }
+    } catch {
+      bump('slide layout/master furniture could not be read');
+    } finally {
+      inheritedPass = false;
+      rels = slideRels;
+    }
 
     const spTree = firstByLocal(slideDoc, 'spTree');
     if (spTree) await walk(spTree, IDENTITY);
@@ -1206,13 +1538,15 @@ export async function parsePptx(
     for (const o of slide.overlays ?? []) {
       const raw = rawLinks.get(o.id);
       if (!raw) continue;
-      const link = raw.jump
-        ? { jump: raw.jump, tooltip: raw.tooltip }
-        : (() => {
-            const target = raw.targetPath ? slideByPath.get(raw.targetPath) : undefined;
-            // Points at a slide the import dropped, or one past MAX_SLIDES.
-            return target ? { slideId: target.id, tooltip: raw.tooltip } : null;
-          })();
+      const link = raw.url
+        ? { url: raw.url, tooltip: raw.tooltip }
+        : raw.jump
+          ? { jump: raw.jump, tooltip: raw.tooltip }
+          : (() => {
+              const target = raw.targetPath ? slideByPath.get(raw.targetPath) : undefined;
+              // Points at a slide the import dropped, or one past MAX_SLIDES.
+              return target ? { slideId: target.id, tooltip: raw.tooltip } : null;
+            })();
       const normalized = normalizeLink(link);
       if (normalized) {
         o.link = normalized;
@@ -1222,6 +1556,34 @@ export async function parsePptx(
       }
     }
   }
+  // Sections live in a PowerPoint 2010 extension on p:sldIdLst's parent:
+  // p14:sectionLst → p14:section[@name] → p14:sldIdLst → p14:sldId[@id], where
+  // the id is the same numeric p:sldId/@id the slide order uses. Matched by
+  // that id rather than by position, because a deck can list them in any order.
+  const pathByNumericId = new Map<string, string>();
+  for (const el of allByLocal(presDoc, 'sldId')) {
+    const numId = el.getAttribute('id');
+    const rid = ridOf(el, 'id');
+    const target = rid ? presRels.get(rid)?.target : undefined;
+    if (numId && target) pathByNumericId.set(numId, target);
+  }
+  let sectioned = 0;
+  for (const sect of allByLocal(presDoc, 'section')) {
+    const name = (sect.getAttribute('name') || '').trim();
+    if (!name) continue;
+    for (const sid of allByLocal(sect, 'sldId')) {
+      const path = pathByNumericId.get(sid.getAttribute('id') ?? '');
+      const slide = path ? slideByPath.get(path) : undefined;
+      if (slide && !slide.section) {
+        slide.section = name;
+        sectioned++;
+      }
+    }
+  }
+  if (sectioned) {
+    warnings.push(`Imported ${sectioned} slide${sectioned > 1 ? 's' : ''} into named sections`);
+  }
+
   if (linked) warnings.push(`Imported ${linked} slide link${linked > 1 ? 's' : ''}`);
   if (unresolved) {
     warnings.push(
@@ -1232,6 +1594,8 @@ export async function parsePptx(
   for (const [what, n] of skipped) {
     warnings.push(`Import note — ${what}${n > 1 ? ` (×${n})` : ''}`);
   }
+  // Scoped to this parse — see DeckTheme.
+  THEME = null;
   return { slides, warnings };
 }
 

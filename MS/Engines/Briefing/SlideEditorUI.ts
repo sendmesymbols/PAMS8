@@ -33,6 +33,7 @@ import type {
   SlideTransitionType,
 } from './BriefingTypes';
 import { DEFAULT_TEXT_COLOR, type ArrowType } from './OverlayFabric';
+import { SAFE_FONTS } from './OverlayStyle';
 import { BUILTIN_LAYOUTS, LAYOUT_INK_DIM } from './SlideLayouts';
 import { openCount } from './SlideCommentUtils';
 import { LinkBadgeLayer } from './SlideLinkBadges';
@@ -498,6 +499,17 @@ const ICONS: Record<string, string> = {
   polygon: svg('<path d="M12 3.5l8.2 6-3.1 9.6H6.9L3.8 9.5z"/>'),
   toolLock: svg('<rect x="5" y="10.5" width="14" height="9.5" rx="1.8"/><path d="M8.2 10.5V8a3.8 3.8 0 017.6 0v2.5"/>'),
   comment: svg('<path d="M4 5h16v10.5H11l-4.5 3.5v-3.5H4z"/><path d="M8 8.6h8M8 11.6h5"/>'),
+  /**
+   * Floppy disk — Save & close. A disk rather than a checkmark: a tick reads as
+   * "confirm this dialog", and this button WRITES the slide.
+   */
+  save: svg('<path d="M4.8 4h10.4L20 8.8V20H4.8z"/><path d="M8.6 4v5.2h6.8V4"/><rect x="8" y="13.4" width="8" height="6.6"/>'),
+  /** X — Cancel. */
+  close: svg('<path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6"/>'),
+  /** Column chart — the insert-chart action. */
+  chart: svg('<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8.5" width="3" height="8.5"/><rect x="17" y="14" width="3" height="3"/>'),
+  /** A slide with a banner strip top and bottom — deck setup. */
+  deck: svg('<rect x="3" y="4.5" width="18" height="15" rx="1.6"/><path d="M3 8.2h18M3 15.8h18"/>'),
   help: svg('<circle cx="12" cy="12" r="8.8"/><path d="M9.6 9.4a2.5 2.5 0 114.3 1.8c-.9.8-1.9 1.3-1.9 2.6"/><circle cx="12" cy="17.2" r="0.9" fill="currentColor" stroke="none"/>'),
   undo: svg('<path d="M4 9.5h9.5a5.5 5.5 0 010 11H7"/><path d="M8 5L3.5 9.5 8 14"/>'),
   redo: svg('<path d="M20 9.5h-9.5a5.5 5.5 0 000 11H17"/><path d="M16 5l4.5 4.5L16 14"/>'),
@@ -535,18 +547,6 @@ const TRANSITION_BADGES: Record<SlideTransitionType, { icon: string; label: stri
     ),
   },
 };
-
-/**
- * The editor's own mark, echoing bento's stacked-tiles lockup but in our
- * palette — one wide tile over two stacked ones, i.e. "a slide and its parts".
- */
-const BRAND_MARK =
-  `<svg class="ms-sledit-mark" viewBox="0 0 32 32" width="17" height="17" aria-hidden="true">` +
-  `<rect width="32" height="32" rx="7" fill="var(--ms-accent, #64b4ff)" opacity="0.16"/>` +
-  `<rect x="5" y="5" width="7" height="22" rx="2.5" fill="var(--ms-accent, #64b4ff)" opacity="0.75"/>` +
-  `<rect x="14" y="5" width="13" height="10" rx="2.5" fill="var(--ms-accent, #64b4ff)"/>` +
-  `<rect x="14" y="17" width="13" height="10" rx="2.5" fill="currentColor" opacity="0.45"/>` +
-  `</svg>`;
 
 /** Right-click menu layout — `sep` rows render a divider. */
 interface CtxItem {
@@ -854,7 +854,6 @@ export default class SlideEditorUI {
 
     stage.innerHTML = `
       <div class="ms-sledit-topbar">
-        <span class="ms-sledit-brand">${BRAND_MARK}<b><i>Editor</i></b></span>
         <input type="text" class="ms-sledit-title" placeholder="Slide title" title="Slide title (saved with the slide)">
         <span class="ms-sledit-group">
           <button data-act="undo" class="ms-sledit-iconbtn" title="Undo (Ctrl+Z)">${ICONS.undo}</button>
@@ -869,11 +868,13 @@ export default class SlideEditorUI {
             <option value="pushRight">Push Right</option>
             <option value="wipe">Wipe</option>
           </select>
+          <button data-act="insertChart" class="ms-sledit-iconbtn" title="Insert a chart — type the data in, or build it from the last Position Defensibility / OP Ranker result. Exports as a real, editable PowerPoint chart.">${ICONS.chart}</button>
+          <button data-act="deckSetup" class="ms-sledit-iconbtn" title="Deck setup — slide size, page numbers, classification banner and footer, theme fonts, document properties, and this slide's section.">${ICONS.deck}</button>
           <button data-act="comment" class="ms-sledit-iconbtn" title="Comment (N or Ctrl+Alt+M) — click an annotation, a spot on the slide, or off the slide for the whole slide">${ICONS.comment}</button>
           <button data-act="notes" class="ms-sledit-iconbtn" title="Toggle speaker notes — opens a drawer under the slide">${ICONS.notes}</button>
           <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard shortcuts (?)">${ICONS.help}</button>
-          <button data-act="save" class="primary" title="Save annotations, title and notes to the slide">Save &amp; Close</button>
-          <button data-act="cancel" title="Discard changes">Cancel</button>
+          <button data-act="save" class="ms-sledit-iconbtn primary" title="Save &amp; close — writes annotations, title and notes to the slide" aria-label="Save and close">${ICONS.save}</button>
+          <button data-act="cancel" class="ms-sledit-iconbtn" title="Cancel — discard changes and close" aria-label="Cancel">${ICONS.close}</button>
         </span>
       </div>
       <div class="ms-sledit-main">
@@ -989,10 +990,10 @@ export default class SlideEditorUI {
               ${prow(
                 'text',
                 'Font',
-                `<select class="ms-sledit-font" title="Font family">
-                  <option>Arial</option><option>Calibri</option><option>Courier New</option>
-                  <option>Georgia</option><option>Impact</option><option>Tahoma</option>
-                  <option>Times New Roman</option><option>Verdana</option>
+                // Shared with the deck's theme fonts — one curated,
+                // PowerPoint-safe list rather than two that can drift.
+                `<select class="ms-sledit-font" title="Font family — these ship with Office on Windows and macOS, so an exported deck renders as authored">
+                  ${SAFE_FONTS.map((f) => `<option>${f}</option>`).join('')}
                 </select>`,
               )}
               ${prow(
@@ -1109,6 +1110,18 @@ export default class SlideEditorUI {
                 'Header row',
                 `<button data-style="headerRow" title="Style the first row as a header">H</button>
                  <input type="color" class="ms-sledit-headerfill" title="Header row fill">`,
+              )}
+              ${irow(
+                'table',
+                'Merge',
+                `<button data-act="tableMergeRow" title="Merge the whole first row into one cell — a spanning title bar">Row</button>
+                 <button data-act="tableMergeCol" title="Merge the whole first column into one cell">Col</button>
+                 <button data-act="tableUnmerge" title="Split every merged cell back into single cells">Split</button>`,
+              )}
+              ${irow(
+                'table',
+                'Auto-page',
+                `<button data-act="tableAutoPage" title="Let this table continue onto new slides when it overflows (PowerPoint auto-paging). Ignored on decks that use slide links, because paging would repoint them.">Flow</button>`,
               )}
             </div>
             <!-- Geometry is the one section that reads the OBJECT, not the style
@@ -2560,14 +2573,6 @@ export default class SlideEditorUI {
         border-bottom: 1px solid var(--sl-line);
         z-index: 20;
       }
-      .ms-sledit-brand {
-        display: inline-flex; align-items: center; gap: 7px; flex: none;
-        font-size: 13px; white-space: nowrap; letter-spacing: 0.01em;
-        color: var(--sl-text);
-      }
-      .ms-sledit-brand b { font-weight: 650; }
-      .ms-sledit-brand i { font-style: normal; font-weight: 400; color: var(--sl-dim); }
-      .ms-sledit-mark { display: block; }
       .ms-sledit-group { display: inline-flex; align-items: center; gap: 5px; flex: none; }
       /* Insert tools take the middle; save/cancel are pinned to the corner. */
       .ms-sledit-tools {
@@ -2808,9 +2813,11 @@ export default class SlideEditorUI {
       }
       .ms-sledit-thumb.ms-hidden-slide:hover .ms-sledit-thumbtools button { display: inline-flex; }
       /* Drop markers, drawn as an edge rather than a moving placeholder — the
-         same read as the slide sorter's insertion line. */
-      .ms-sledit-thumb.drop-before { box-shadow: 0 -3px 0 0 var(--sl-accent); }
-      .ms-sledit-thumb.drop-after { box-shadow: 0 3px 0 0 var(--sl-accent); }
+         same read as the slide sorter's insertion line. Red rather than
+         --sl-accent so the landing spot never gets lost among the (blue)
+         active-tile border and hover states already on screen. */
+      .ms-sledit-thumb.drop-before { box-shadow: 0 -3px 0 0 #ff3b30, 0 -3px 10px 0 rgba(255,59,48,0.6); }
+      .ms-sledit-thumb.drop-after { box-shadow: 0 3px 0 0 #ff3b30, 0 3px 10px 0 rgba(255,59,48,0.6); }
 
       .ms-sledit-addslide {
         display: flex; align-items: center; justify-content: center; gap: 6px;

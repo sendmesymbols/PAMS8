@@ -59,9 +59,47 @@ const PPT_JUMP_BY_TOKEN: Record<string, LinkJump> = Object.fromEntries(
  */
 export const UNEXPORTABLE_JUMPS: readonly LinkJump[] = ['lastViewed', 'endShow'] as const;
 
-/** A link with neither target set carries no meaning — see OverlayLink. */
+/** A link with no target set carries no meaning — see OverlayLink. */
 export function isUsableLink(link: OverlayLink | undefined): link is OverlayLink {
-  return !!link && (!!link.slideId || !!link.jump);
+  return !!link && (!!link.slideId || !!link.jump || !!link.url);
+}
+
+/**
+ * Schemes an overlay link may point at.
+ *
+ * An allowlist, not a blocklist: a briefing can be imported from a .pptx a
+ * third party authored, and present mode opens these on a click. `javascript:`
+ * and `data:` in particular must never reach `window.open` from a document,
+ * so anything not named here is refused at normalize time and the link is
+ * dropped rather than sanitised into something that still fires.
+ */
+const ALLOWED_URL_SCHEMES: readonly string[] = ['http:', 'https:', 'mailto:'];
+
+/**
+ * True when `url` is ABSOLUTE and one of the schemes present mode will open.
+ * Parsed with no base on purpose: a relative string has no scheme to check, so
+ * it must be rejected rather than silently resolved against the app's origin.
+ */
+export function isSafeLinkUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    return ALLOWED_URL_SCHEMES.includes(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What the link dialog accepts, made absolute. A user typing 'example.com/ops'
+ * means https — but only when the string has no scheme at all, so this can
+ * never upgrade a rejected scheme into an accepted one. Null when the result
+ * still is not a URL we will open.
+ */
+export function normalizeLinkUrl(raw: string | undefined): string | null {
+  const s = String(raw ?? '').trim();
+  if (!s) return null;
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(s) ? s : `https://${s}`;
+  return isSafeLinkUrl(candidate) ? candidate : null;
 }
 
 /** Parse `ppaction://hlinkshowjump?jump=nextslide` → 'next'. Null if unknown. */
@@ -89,8 +127,12 @@ export function resolveLink(
   slides: readonly Slide[],
   currentIndex: number,
   lastViewedIndex: number | null = null,
-): { index: number } | 'endShow' | null {
-  if (!isUsableLink(link) || !slides.length) return null;
+): { index: number } | { url: string } | 'endShow' | null {
+  if (!isUsableLink(link)) return null;
+  // Checked before the slide-count guard: an external link is meaningful even
+  // in a deck of one slide.
+  if (link.url) return isSafeLinkUrl(link.url) ? { url: link.url } : null;
+  if (!slides.length) return null;
 
   if (link.slideId) {
     const index = slides.findIndex((s) => s.id === link.slideId);
@@ -176,6 +218,7 @@ export function resolveJumpForExport(
  */
 export function linkLabel(link: OverlayLink | undefined, slides: readonly Slide[]): string {
   if (!isUsableLink(link)) return 'No link';
+  if (link!.url) return link!.url!;
   if (link.jump) return JUMP_LABELS[link.jump] ?? 'Jump';
   const index = slides.findIndex((s) => s.id === link.slideId);
   if (index < 0) return 'Missing slide';
@@ -224,6 +267,15 @@ export function normalizeLink(
   if (!raw || typeof raw !== 'object') return null;
   const src = raw as Partial<OverlayLink>;
   const tooltip = typeof src.tooltip === 'string' ? src.tooltip.trim() : '';
+
+  // An external URL is checked FIRST and independently of the deck: it is the
+  // only target whose validity does not depend on what slides exist, and a
+  // rejected scheme must not fall through to some other interpretation.
+  if (typeof src.url === 'string' && src.url) {
+    const url = normalizeLinkUrl(src.url);
+    if (!url) return null;
+    return tooltip ? { url, tooltip } : { url };
+  }
 
   // slideId wins when a hand-edited document somehow carries both, because a
   // fixed target is the more specific statement of intent.

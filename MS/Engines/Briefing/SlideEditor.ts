@@ -24,6 +24,7 @@ import type {
   SlideComment,
   SlideOverlay,
   SlideTransitionType,
+  TableMerge,
 } from './BriefingTypes';
 import LaserTrail from './LaserTrail';
 import {
@@ -82,6 +83,9 @@ import { CommentsLayer, type CommentsHost } from './SlideComments';
 import { isUsableLink, linkLabel, linkTooltip, normalizeLink, resolveLink } from './SlideLinks';
 import { LinkBadgeLayer } from './SlideLinkBadges';
 import SlideLinkDialog from './SlideLinkDialog';
+import ChartDialog from './ChartDialog';
+import DeckSetupDialog from './DeckSetupDialog';
+import { defaultChartSpec, renderChart } from './ChartFactory';
 import SlideEditorUI, { SHADOW_PRESETS, TOOL_DEFS } from './SlideEditorUI';
 import type {
   ObjectGeometry,
@@ -161,6 +165,23 @@ export interface SlideEditorHost {
   addSlideFromLayout?(layoutId: string): number | null;
   /** Every thread in the briefing — powers the Comments section's All-slides scope. */
   listComments?(): Array<{ slideIndex: number; comment: SlideComment }>;
+
+  // ── Deck setup ─────────────────────────────────────────────────────────────
+  // Also optional as a group: without them the Deck button still opens, minus
+  // its Section field.
+
+  /**
+   * Put a slide in a PowerPoint section, or remove it with ''. Applied
+   * immediately rather than through `onSaved`, because the deck dialog is a
+   * settings surface with no Apply step.
+   */
+  setSlideSection?(index: number, section: string): void;
+  /** Section titles already in use — offered as suggestions in the dialog. */
+  listSections?(): string[];
+  /** Export the deck now, using whatever the dialog has just set. */
+  exportDeck?(): void;
+  /** Open the exhaustive PPTX Export settings widget. */
+  openExportSettings?(): void;
 }
 
 const BOX_TOOLS: ReadonlySet<Tool> = new Set([
@@ -349,6 +370,8 @@ export default class SlideEditor {
   /** 🔗 pips over linked objects — DOM, never fabric. See SlideLinkBadges. */
   private _linkBadges: LinkBadgeLayer | null = null;
   private _linkDialog: SlideLinkDialog | null = null;
+  private _chartDialog: ChartDialog | null = null;
+  private _deckDialog: DeckSetupDialog | null = null;
   /**
    * Slide index last navigated away from, for a followed 'last slide viewed'
    * link. Null until the editor has changed slides at least once.
@@ -431,6 +454,25 @@ export default class SlideEditor {
 
   public isOpen(): boolean {
     return !!this._stage || this._opening;
+  }
+
+  /** Index of the slide currently being edited, or -1 when closed. */
+  public get editingIndex(): number {
+    return this._index;
+  }
+
+  /**
+   * Drop overlays onto the open canvas as a live, selected edit.
+   *
+   * The public door to `_addOverlays`, for callers outside the editor that
+   * generate an overlay rather than draw one (charts from analysis results).
+   * Writing straight to `slide.overlays` instead would be lost the moment the
+   * editor saved its own copy over the top.
+   */
+  public insertOverlays(overlays: readonly SlideOverlay[]): boolean {
+    if (!this._fc || !overlays.length) return false;
+    this._addOverlays(overlays, 0);
+    return true;
   }
 
   // ── Open / close ───────────────────────────────────────────────────────────
@@ -632,6 +674,11 @@ export default class SlideEditor {
     // Owns a capture-phase document keydown listener, so it has to go with its DOM.
     this._linkDialog?.dispose();
     this._linkDialog = null;
+    // Both live inside the stage, so they go when the stage does.
+    this._chartDialog?.hide();
+    this._chartDialog = null;
+    this._deckDialog?.hide();
+    this._deckDialog = null;
     // Slide history is per-session: reopening the editor must not let a
     // 'last slide viewed' link jump to where the PREVIOUS session had been.
     this._lastViewedIndex = null;
@@ -860,6 +907,12 @@ export default class SlideEditor {
       case 'comment':
         this._toggleCommentMode();
         break;
+      case 'insertChart':
+        this._insertChart();
+        break;
+      case 'deckSetup':
+        this._openDeckSetup();
+        break;
       case 'del':
         this._deleteSelection();
         break;
@@ -936,6 +989,12 @@ export default class SlideEditor {
       case 'tableColAdd':
       case 'tableColDel':
         this._tableAction(act);
+        break;
+      case 'tableMergeRow':
+      case 'tableMergeCol':
+      case 'tableUnmerge':
+      case 'tableAutoPage':
+        this._tableMergeAction(act);
         break;
       case 'distributeH':
         this._distributeSelection('h');
@@ -2930,6 +2989,42 @@ export default class SlideEditor {
   }
 
   /**
+   * Cell merging and the auto-page flag.
+   *
+   * Merging is offered as whole-first-row / whole-first-column rather than
+   * "merge the selected cells": the editor has no multi-cell selection (a
+   * click picks exactly one cell for text entry), and a spanning title bar
+   * across the top or down the side is what briefing tables actually want.
+   * Anything more specific can be authored in PowerPoint and imported back —
+   * arbitrary spans survive the round-trip either way.
+   */
+  private _tableMergeAction(act: string): void {
+    const table = this._selectedTable();
+    if (!table) return;
+    const current = fabricToOverlay(table, this._W, this._H);
+    if (!current) return;
+    const model = normalizeTable(current);
+    const nRows = model.rows.length;
+    const nCols = model.colWidths.length;
+
+    if (act === 'tableAutoPage') {
+      if (this._replaceTable(table, { autoPage: !current.autoPage })) this._commit();
+      return;
+    }
+
+    let merges: TableMerge[] = [];
+    if (act === 'tableMergeRow' && nCols > 1) merges = [{ r: 0, c: 0, rowspan: 1, colspan: nCols }];
+    else if (act === 'tableMergeCol' && nRows > 1) {
+      merges = [{ r: 0, c: 0, rowspan: nRows, colspan: 1 }];
+    }
+    // 'tableUnmerge' falls through with an empty list, which is the split.
+    if (act !== 'tableUnmerge' && !merges.length) return;
+    if (!merges.length && !current.merges?.length) return; // nothing to split
+
+    if (this._replaceTable(table, { merges })) this._commit();
+  }
+
+  /**
    * Open a transient Textbox over one cell. The editor object carries no
    * `data.kind`, so it is invisible to `_overlayObjects()` and can never be
    * persisted, copied, erased or nudged.
@@ -3079,6 +3174,12 @@ export default class SlideEditor {
       fc.requestRenderAll();
       return;
     }
+    if (target.data.kind === 'chart') {
+      fc.discardActiveObject();
+      fc.setActiveObject(target);
+      this._openChartDialog(target);
+      return;
+    }
     this._editLabel(target);
   }
 
@@ -3191,6 +3292,13 @@ export default class SlideEditor {
       this._showToast(`Nothing to open — ${linkLabel(link, slides).toLowerCase()} has no target.`);
       return true;
     }
+    if ('url' in resolved) {
+      // The editor navigates slides; an external target is not one, so it is
+      // reported rather than opened — following it would yank the author out
+      // of the deck mid-edit.
+      this._showToast(`External link — opens ${resolved.url} in present mode.`);
+      return true;
+    }
     if (resolved.index === this._index) {
       this._showToast('This link points at the slide you are already editing.');
       return true;
@@ -3199,6 +3307,91 @@ export default class SlideEditor {
     this._saveCurrent();
     void this._loadSlide(resolved.index);
     return true;
+  }
+
+  /**
+   * Edit a chart object's model. Applying re-renders the fabric image from the
+   * new spec in place — the object keeps its id, position and size, so the
+   * change lands in undo/redo as an ordinary property edit rather than a
+   * delete-and-reinsert.
+   */
+  private _openChartDialog(obj: any): void {
+    const stage = this._stage;
+    const spec = obj?.data?.chart;
+    if (!stage || !spec) return;
+    if (!this._chartDialog) this._chartDialog = new ChartDialog();
+    this._chartDialog.show(stage, {
+      spec,
+      onApply: (next) => {
+        const fc = this._fc;
+        if (!fc) return;
+        // Re-render at the object's CURRENT on-canvas size, then rescale the
+        // fresh bitmap back onto exactly that box.
+        const wPx = Math.max(40, (obj.width ?? 0) * (obj.scaleX ?? 1));
+        const hPx = Math.max(30, (obj.height ?? 0) * (obj.scaleY ?? 1));
+        const render = renderChart(next, wPx, hPx);
+        if (!render) return;
+        obj.setElement(render.canvas);
+        obj.set({
+          scaleX: wPx / (render.canvas.width || 1),
+          scaleY: hPx / (render.canvas.height || 1),
+        });
+        obj.data.chart = next;
+        obj.setCoords();
+        fc.requestRenderAll();
+        this._commit();
+      },
+    });
+  }
+
+  /**
+   * Insert a chart in the middle of the canvas and open its data dialog at
+   * once — a chart with placeholder numbers is never what the author wants, so
+   * the insert and the first edit are one gesture.
+   */
+  private _insertChart(): void {
+    const fc = this._fc;
+    if (!fc) return;
+    const overlay: SlideOverlay = {
+      id: overlayUuid(),
+      kind: 'chart',
+      // Centred at a readable default size, in normalized units like every
+      // other overlay.
+      x: 0.28,
+      y: 0.28,
+      w: 0.44,
+      h: 0.42,
+      chart: defaultChartSpec(),
+    };
+    if (!this.insertOverlays([overlay])) return;
+    const obj = this._overlayObjects().find((o) => o.data?.id === overlay.id);
+    if (obj) this._openChartDialog(obj);
+  }
+
+  /**
+   * Deck-level setup. Lives behind a button here rather than only in the ⚙
+   * widget because each of these decisions is visible on the slide being
+   * edited — see DeckSetupDialog.
+   */
+  private _openDeckSetup(): void {
+    const stage = this._stage;
+    const host = this._host;
+    if (!stage || !host) return;
+    const slide = host.getSlide(this._index);
+    if (!this._deckDialog) this._deckDialog = new DeckSetupDialog();
+    this._deckDialog.show(stage, {
+      slideNumber: this._index + 1,
+      section: slide?.section ?? '',
+      knownSections: host.listSections?.() ?? [],
+      onSection: (section) => host.setSlideSection?.(this._index, section),
+      onOpenSettings: () => host.openExportSettings?.(),
+      // Save first: the export screenshots the slide from the model, so unsaved
+      // canvas work would not be in the deck.
+      onExport: () => {
+        this._saveCurrent();
+        host.exportDeck?.();
+      },
+    });
   }
 
   /** Select one object by overlay id, then open the dialog on it (badge click). */
@@ -4410,7 +4603,7 @@ export default class SlideEditor {
       // capture-phase on document), so the dialog cannot stop it — the editor
       // has to stand down, the way the Esc ladder below already defers to the
       // help sheet, context menu and symbol picker.
-      if (this._linkDialog?.isOpen) return;
+      if (this._linkDialog?.isOpen || this._chartDialog?.isOpen || this._deckDialog?.isOpen) return;
       const target = e.target as HTMLElement | null;
       const inInput =
         !!target &&

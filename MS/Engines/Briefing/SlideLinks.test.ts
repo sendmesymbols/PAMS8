@@ -4,8 +4,10 @@
  * non-zero exit on failure. No test framework in this repo.
  */
 import {
+  isSafeLinkUrl,
   isUsableLink,
   jumpFromPptAction,
+  normalizeLinkUrl,
   linkAtPoint,
   linkLabel,
   linkTooltip,
@@ -192,6 +194,53 @@ const flipped: SlideOverlay[] = [
   { id: 'neg', kind: 'rect', x: 0.5, y: 0.5, w: -0.2, h: -0.2, link: { jump: 'first' } } as SlideOverlay,
 ];
 check('negative extents normalize', linkAtPoint(flipped, 0.4, 0.4)?.id, 'neg');
+
+console.log('external URL links');
+check('http is usable', isUsableLink({ url: 'https://example.com' }), true);
+check('resolves to a url', resolveLink({ url: 'https://example.com/a' }, deck, 0), {
+  url: 'https://example.com/a',
+});
+// An external link means the same thing in a deck of none — it needs no slide.
+check('resolves with an empty deck', resolveLink({ url: 'https://example.com' }, [], 0), {
+  url: 'https://example.com',
+});
+check('labelled by its url', linkLabel({ url: 'https://example.com' }, deck), 'https://example.com');
+check('tooltip prefers author text over the url',
+  linkTooltip({ url: 'https://example.com', tooltip: 'Ops order' }, deck), 'Ops order');
+
+console.log('URL scheme allowlist');
+check('https allowed', isSafeLinkUrl('https://example.com'), true);
+check('http allowed', isSafeLinkUrl('http://example.com'), true);
+check('mailto allowed', isSafeLinkUrl('mailto:ops@example.com'), true);
+check('javascript refused', isSafeLinkUrl('javascript:alert(1)'), false);
+check('data refused', isSafeLinkUrl('data:text/html,<script>'), false);
+check('file refused', isSafeLinkUrl('file:///etc/passwd'), false);
+// Relative strings have no scheme to check, so they are not absolute URLs.
+check('relative refused', isSafeLinkUrl('/ops/plan'), false);
+check('empty refused', isSafeLinkUrl(''), false);
+
+console.log('normalizeLinkUrl');
+check('bare host gains https', normalizeLinkUrl('example.com/ops'), 'https://example.com/ops');
+check('scheme is left alone', normalizeLinkUrl('http://example.com'), 'http://example.com');
+// The https:// prefix is only added when there is NO scheme, so a refused
+// scheme can never be upgraded into an accepted one.
+check('javascript is not upgraded', normalizeLinkUrl('javascript:alert(1)'), null);
+check('whitespace trimmed', normalizeLinkUrl('  https://example.com  '), 'https://example.com');
+check('empty → null', normalizeLinkUrl('   '), null);
+
+console.log('normalizeLink — urls');
+check('keeps a good url', normalizeLink({ url: 'https://example.com' }), {
+  url: 'https://example.com',
+});
+check('drops a bad scheme entirely', normalizeLink({ url: 'javascript:alert(1)' }), null);
+// url is checked first and wins, so a document carrying both is unambiguous.
+check('url beats slideId', normalizeLink({ url: 'https://example.com', slideId: 's1' }), {
+  url: 'https://example.com',
+});
+check('url keeps its tooltip', normalizeLink({ url: 'example.com', tooltip: ' Ops ' }), {
+  url: 'https://example.com',
+  tooltip: 'Ops',
+});
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

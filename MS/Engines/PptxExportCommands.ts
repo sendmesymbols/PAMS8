@@ -10,9 +10,15 @@
  */
 
 import { CommandPalette } from '../Support/CommandPalette';
-import type { PptxExportOptions } from './ImportExport/PptxExporter';
+import type { PptxExportOptions, PptxExportResult } from './ImportExport/PptxExporter';
 
-export async function exportPptxDeck(options?: PptxExportOptions): Promise<void> {
+/**
+ * Returns undefined for the default 'download' output and the finished package
+ * for the others — see PptxExportOptions.output.
+ */
+export async function exportPptxDeck(
+  options?: PptxExportOptions,
+): Promise<PptxExportResult | undefined> {
   const { default: PptxExporter } = await import('./ImportExport/PptxExporter');
   return PptxExporter.getInstance().exportDeck(options);
 }
@@ -49,6 +55,26 @@ CommandPalette.registerActions([
     keywords: ['pptx', 'powerpoint', 'export', 'editable', 'shapes', 'native', 'vector', 'mode b'],
     run: () => {
       void exportPptxDeck({ mode: 'editable' }).catch((err) =>
+        console.error('[PptxExporter]', err),
+      );
+    },
+  },
+  {
+    id: 'export.pptx.master',
+    label: 'Export PowerPoint deck — with slide master',
+    hint: 'Classification banners, footer strip and a title placeholder (outline view) — set the text in Export tools settings',
+    keywords: [
+      'pptx',
+      'powerpoint',
+      'export',
+      'master',
+      'classification',
+      'banner',
+      'footer',
+      'template',
+    ],
+    run: () => {
+      void exportPptxDeck({ useMaster: true }).catch((err) =>
         console.error('[PptxExporter]', err),
       );
     },

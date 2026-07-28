@@ -592,6 +592,15 @@ export default class PresentSession {
       this.exit();
       return true;
     }
+    if (resolved && 'url' in resolved) {
+      // New tab, and severed from this one: `noopener` stops the opened page
+      // reaching back through window.opener, which matters because the URL can
+      // have come from an imported third-party deck. resolveLink has already
+      // refused any scheme outside the http/https/mailto allowlist.
+      window.open(resolved.url, '_blank', 'noopener,noreferrer');
+      EngineLogger.nextStep(ENGINE_NAME, `Opened external link — ${resolved.url}`);
+      return true;
+    }
     if (resolved) void this._jumpTo(resolved.index);
     return true;
   }

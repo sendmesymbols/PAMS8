@@ -2413,6 +2413,13 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     const exportFormatSelect = document.getElementById('briefingMenuExportFormat') as HTMLSelectElement | null;
     const explodeBuildsChk = document.getElementById('briefingMenuExplodeBuilds') as HTMLInputElement | null;
     const includeNotesChk = document.getElementById('briefingMenuIncludeNotes') as HTMLInputElement | null;
+    const exportLayoutSelect = document.getElementById('briefingMenuExportLayout') as HTMLSelectElement | null;
+    const slideNumbersChk = document.getElementById('briefingMenuSlideNumbers') as HTMLInputElement | null;
+    const compressChk = document.getElementById('briefingMenuCompress') as HTMLInputElement | null;
+    const useMasterChk = document.getElementById('briefingMenuUseMaster') as HTMLInputElement | null;
+    const classificationInput = document.getElementById('briefingMenuClassification') as HTMLInputElement | null;
+    const footerTextInput = document.getElementById('briefingMenuFooterText') as HTMLInputElement | null;
+    const deckSetupBtn = document.getElementById('briefingMenuDeckSetupBtn') as HTMLButtonElement | null;
     const exportBtn = document.getElementById('briefingMenuExportBtn') as HTMLButtonElement | null;
 
     const publishSetting = (path: string[], value: any) => {
@@ -2443,6 +2450,12 @@ function updateStylusPerSymbolUI(cls: string | null): void {
       if (exportFormatSelect) exportFormatSelect.value = exportTools.format === 'jpeg' ? 'jpeg' : 'png';
       if (explodeBuildsChk) explodeBuildsChk.checked = exportTools.explodeBuilds === true;
       if (includeNotesChk) includeNotesChk.checked = exportTools.includeNotes !== false;
+      if (exportLayoutSelect) exportLayoutSelect.value = exportTools.layout ?? '16x9';
+      if (slideNumbersChk) slideNumbersChk.checked = exportTools.slideNumbers === true;
+      if (compressChk) compressChk.checked = exportTools.compress === true;
+      if (useMasterChk) useMasterChk.checked = exportTools.useMaster === true;
+      if (classificationInput) classificationInput.value = exportTools.classification ?? '';
+      if (footerTextInput) footerTextInput.value = exportTools.footerText ?? '';
     };
     briefingMenuBtn?.addEventListener('click', refreshBriefingMenu);
 
@@ -2492,6 +2505,31 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     includeNotesChk?.addEventListener('change', () =>
       publishSetting(['exportTools', 'includeNotes'], includeNotesChk.checked),
     );
+    exportLayoutSelect?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'layout'], exportLayoutSelect.value),
+    );
+    slideNumbersChk?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'slideNumbers'], slideNumbersChk.checked),
+    );
+    compressChk?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'compress'], compressChk.checked),
+    );
+    useMasterChk?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'useMaster'], useMasterChk.checked),
+    );
+    // Text fields commit on change (blur / Enter), not per keystroke — a
+    // settings write per character would spam every listener on the bus.
+    classificationInput?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'classification'], classificationInput.value.trim()),
+    );
+    footerTextInput?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'footerText'], footerTextInput.value.trim()),
+    );
+    // The long tail (document properties, theme fonts, RTL) lives in the
+    // widget rather than being duplicated a third time in this menu.
+    deckSetupBtn?.addEventListener('click', () => {
+      (window as any).openExportToolsSettings?.();
+    });
 
     // Action buttons (Capture / Capture-into / Prev / Next / Present / Sorter /
     // Edit / Save / Load / Import PPTX / Export) are delegated off
