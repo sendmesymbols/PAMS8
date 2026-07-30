@@ -93,7 +93,9 @@ export default defineConfig(({ mode }) => {
     server: {
         host: "0.0.0.0",
         // Different port per mode so source (:6547) and dist (:6548) can run together.
-        port: useDist ? 6548 : 6547,
+        // PORT env override lets multiple concurrent dev-tool sessions each get an
+        // auto-assigned free port instead of colliding on the fixed default.
+        port: Number(process.env.PORT) || (useDist ? 6548 : 6547),
         proxy: {
             '/roadnet': {
                 target: 'http://localhost:9191',
