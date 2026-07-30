@@ -24,6 +24,7 @@
 
 import { getSetting, setSetting } from '../../Support/SettingsBus';
 import { SAFE_FONTS } from './OverlayStyle';
+import { CHROME_TOKENS, type DeckChrome } from './SlideChrome';
 
 export interface DeckSetupDialogOptions {
   /** 1-based number of the slide being edited, for the Section field's label. */
@@ -34,6 +35,22 @@ export interface DeckSetupDialogOptions {
   knownSections: readonly string[];
   /** Commit a section change ('' removes the slide from any section). */
   onSection(section: string): void;
+  /**
+   * The deck's own chrome fields — only what an author has set. Absent fields
+   * fall back to the `exportTools.*` settings, which is what the Header & footer
+   * pane shows in that case. See SlideChrome.resolveChrome.
+   */
+  chrome?: DeckChrome;
+  /**
+   * Commit a chrome change. '' clears a field back to the settings default.
+   * Absent = the host has no deck to write to, and the pane writes to the
+   * settings instead (the pre-document behaviour).
+   */
+  onChrome?(patch: Partial<DeckChrome>): void;
+  /** This slide opts out of the deck's chrome — Slide.noChrome. */
+  noChrome?: boolean;
+  /** Flip that opt-out. Absent = the checkbox is not offered. */
+  onNoChrome?(value: boolean): void;
   /** Open the exhaustive PPTX Export settings widget instead. */
   onOpenSettings(): void;
   /** Run the export now, with whatever is set here. */
@@ -71,7 +88,9 @@ type TabKey = 'deck' | 'master' | 'theme' | 'props';
 
 const TABS: ReadonlyArray<[TabKey, string]> = [
   ['deck', 'Deck'],
-  ['master', 'Master'],
+  // Was 'Master' — the pane stopped being about the PPTX slide master when the
+  // strips started being drawn on the canvas and in present mode too.
+  ['master', 'Header / footer'],
   ['theme', 'Theme'],
   ['props', 'Properties'],
 ];
@@ -110,6 +129,21 @@ export default class DeckSetupDialog {
     this._injectStyles();
     this._opts = opts;
 
+    // Chrome fields read the DECK first and the `exportTools.*` settings only as
+    // a fallback — the same precedence SlideChrome.resolveChrome applies, so the
+    // pane always shows what will actually be drawn. `tx` for text and select
+    // values, `ch` for checkboxes (which need a real boolean, not a truthy string).
+    const deck = opts.chrome ?? {};
+    const tx = <T extends string>(field: keyof DeckChrome, key: string, fallback: T): T => {
+      const own = deck[field];
+      return own === undefined || own === null || own === '' ? cfg<T>(key, fallback) : (own as T);
+    };
+    const ch = (field: keyof DeckChrome, key: string, fallback: boolean): boolean => {
+      const own = deck[field];
+      return own === undefined || own === null ? cfg<boolean>(key, fallback) === true : own === true;
+    };
+    const ofM = tx<string>('numberFormat', 'numberFormat', 'n') === 'n-of-m';
+
     const fontOptions = (selected: string): string =>
       [
         `<option value=""${selected ? '' : ' selected'}>(PowerPoint default)</option>`,
@@ -138,10 +172,10 @@ export default class DeckSetupDialog {
         <div class="ms-deck-body">
           <section data-pane="deck">
             <p class="ms-deck-export-only">
-              Everything on this tab and on Master affects the exported .pptx
-              only. The editor canvas shows your slide content, not deck
-              furniture — turn a setting on here and you will see it in
-              PowerPoint, not on the slide behind this dialog.
+              This tab affects the exported .pptx only — slide size, export mode
+              and packaging are not things the editor canvas can show. The
+              Header / footer tab is different: what you set there is drawn on
+              the slide behind this dialog and in the slideshow as well.
             </p>
             <label class="ms-deck-row">
               <span>Slide size</span>
@@ -190,12 +224,6 @@ export default class DeckSetupDialog {
               </select>
             </label>
             <label class="ms-deck-check">
-              <input type="checkbox" class="ms-deck-numbers"${
-                cfg('slideNumbers', false) ? ' checked' : ''
-              }>
-              <span>Slide numbers<em>Page number on every slide of the exported deck</em></span>
-            </label>
-            <label class="ms-deck-check">
               <input type="checkbox" class="ms-deck-compress"${
                 cfg('compress', false) ? ' checked' : ''
               }>
@@ -216,20 +244,18 @@ export default class DeckSetupDialog {
           </section>
 
           <section data-pane="master">
-            <p class="ms-deck-export-only">
-              Export-only, like the Deck tab — the banners and footer are drawn
-              into the .pptx and do not appear on the editor canvas.
-            </p>
             <label class="ms-deck-check">
               <input type="checkbox" class="ms-deck-usemaster"${
-                cfg('useMaster', false) ? ' checked' : ''
+                ch('enabled', 'useMaster', false) ? ' checked' : ''
               }>
-              <span>Use slide master<em>Banners, footer and a title placeholder that shows in PowerPoint's outline view</em></span>
+              <span>Header &amp; footer<em>Draws the strips on the slide behind this dialog, in the slideshow, and in the exported .pptx</em></span>
             </label>
             <label class="ms-deck-row">
               <span>Classification</span>
               <input type="text" class="ms-deck-class" list="ms-deck-classlist" maxlength="120"
-                     placeholder="Blank = no banner" value="${esc(cfg('classification', ''))}">
+                     placeholder="Blank = no banner" value="${esc(
+                       tx('classification', 'classification', ''),
+                     )}">
             </label>
             <datalist id="ms-deck-classlist">
               ${CLASSIFICATION_PRESETS.map((c) => `<option value="${esc(c)}"></option>`).join('')}
@@ -240,18 +266,44 @@ export default class DeckSetupDialog {
               TOP SECRET orange, CUI purple.
             </p>
             <label class="ms-deck-row">
+              <span>Header</span>
+              <input type="text" class="ms-deck-header" maxlength="200"
+                     placeholder="e.g. {SECTION}" value="${esc(
+                       tx('headerText', 'headerText', ''),
+                     )}">
+            </label>
+            <label class="ms-deck-row">
               <span>Footer</span>
               <input type="text" class="ms-deck-footer" maxlength="200"
-                     placeholder="e.g. 1 Bde · {DTG}" value="${esc(cfg('footerText', ''))}">
+                     placeholder="e.g. 1 Bde · {DTG}" value="${esc(
+                       tx('footerText', 'footerText', ''),
+                     )}">
             </label>
             <p class="ms-deck-hint">
-              Tokens: <code>{DTG}</code> <code>{DATE}</code> <code>{TITLE}</code>
-              <code>{COMPANY}</code> <code>{AUTHOR}</code> <code>{SUBJECT}</code>
+              Tokens: ${CHROME_TOKENS.map((t) => `<code>${esc(t)}</code>`).join(' ')}
             </p>
+            <label class="ms-deck-check">
+              <input type="checkbox" class="ms-deck-numbers"${
+                ch('slideNumbers', 'slideNumbers', false) ? ' checked' : ''
+              }>
+              <span>Slide numbers<em>Stamped at the right end of the footer strip</em></span>
+            </label>
+            <label class="ms-deck-row">
+              <span>Number style</span>
+              <select class="ms-deck-numfmt">
+                <option value="n"${ofM ? '' : ' selected'}>7</option>
+                <option value="n-of-m"${ofM ? ' selected' : ''}>7 / 24</option>
+              </select>
+            </label>
+            <label class="ms-deck-check">
+              <input type="checkbox" class="ms-deck-skipfirst"${
+                ch('skipFirst', 'skipFirst', false) ? ' checked' : ''
+              }>
+              <span>Not on the title slide<em>Leaves slide 1 bare, PowerPoint's own default</em></span>
+            </label>
             <p class="ms-deck-note">
-              The master paints behind slide content, so the map is fitted
-              between the banners — turning this on makes the map slightly
-              smaller.
+              The strips take height off the slide, so the map is fitted between
+              them — the editor canvas shrinks to match what gets exported.
             </p>
           </section>
 
@@ -328,6 +380,16 @@ export default class DeckSetupDialog {
             Consecutive slides sharing a name form one section — e.g. the
             five-paragraph OPORD.
           </p>
+          ${
+            opts.onNoChrome
+              ? `<label class="ms-deck-check">
+                   <input type="checkbox" class="ms-deck-nochrome"${
+                     opts.noChrome ? ' checked' : ''
+                   }>
+                   <span>No header or footer on this slide<em>Slide ${opts.slideNumber} fills the whole page. It keeps its number.</em></span>
+                 </label>`
+              : ''
+          }
         </div>
 
         <div class="ms-deck-foot">
@@ -430,13 +492,45 @@ export default class DeckSetupDialog {
       const c = q<HTMLInputElement>(sel);
       c.onchange = () => put(key, c.checked);
     };
-    check('.ms-deck-numbers', 'slideNumbers');
     check('.ms-deck-compress', 'compress');
     check('.ms-deck-builds', 'explodeBuilds');
     check('.ms-deck-notes', 'includeNotes');
-    check('.ms-deck-usemaster', 'useMaster');
     check('.ms-deck-scheme', 'useSchemeColors');
     check('.ms-deck-rtl', 'rtl');
+
+    // ── Chrome fields ────────────────────────────────────────────────────────
+    // These write to the DECK when the host offers somewhere to put them — a
+    // briefing's classification belongs to the briefing, not to the app's global
+    // export settings. Without a host they fall back to writing the settings,
+    // which is what they always did.
+    const chromeCheck = (sel: string, field: keyof DeckChrome, key: string) => {
+      const c = q<HTMLInputElement>(sel);
+      c.onchange = () => {
+        if (opts.onChrome) opts.onChrome({ [field]: c.checked } as Partial<DeckChrome>);
+        else put(key, c.checked);
+      };
+    };
+    chromeCheck('.ms-deck-usemaster', 'enabled', 'useMaster');
+    chromeCheck('.ms-deck-numbers', 'slideNumbers', 'slideNumbers');
+    chromeCheck('.ms-deck-skipfirst', 'skipFirst', 'skipFirst');
+
+    const chromeText = (sel: string, field: keyof DeckChrome, key: string) => {
+      const input = q<HTMLInputElement>(sel);
+      input.onchange = () => {
+        const value = input.value.trim();
+        if (opts.onChrome) opts.onChrome({ [field]: value } as Partial<DeckChrome>);
+        else put(key, value);
+      };
+    };
+    chromeText('.ms-deck-class', 'classification', 'classification');
+    chromeText('.ms-deck-header', 'headerText', 'headerText');
+    chromeText('.ms-deck-footer', 'footerText', 'footerText');
+
+    const numfmt = q<HTMLSelectElement>('.ms-deck-numfmt');
+    numfmt.onchange = () => {
+      if (opts.onChrome) opts.onChrome({ numberFormat: numfmt.value as 'n' | 'n-of-m' });
+      else put('numberFormat', numfmt.value);
+    };
 
     // Text fields commit on blur/Enter rather than per keystroke — a settings
     // write per character would spam every listener on the bus.
@@ -444,8 +538,6 @@ export default class DeckSetupDialog {
       const input = q<HTMLInputElement>(sel);
       input.onchange = () => put(key, input.value.trim());
     };
-    text('.ms-deck-class', 'classification');
-    text('.ms-deck-footer', 'footerText');
     text('.ms-deck-doctitle', 'deckTitle');
     text('.ms-deck-author', 'author');
     text('.ms-deck-company', 'company');
@@ -455,6 +547,10 @@ export default class DeckSetupDialog {
     // Section is per-slide, not a setting — it goes back through the host.
     const section = q<HTMLInputElement>('.ms-deck-section');
     section.onchange = () => opts.onSection(section.value.trim());
+
+    // Per-slide, and only rendered when the host can accept it.
+    const noChrome = el.querySelector('.ms-deck-nochrome') as HTMLInputElement | null;
+    if (noChrome) noChrome.onchange = () => opts.onNoChrome?.(noChrome.checked);
   }
 
   private _injectStyles(): void {

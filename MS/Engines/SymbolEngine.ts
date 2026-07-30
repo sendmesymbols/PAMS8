@@ -64,6 +64,7 @@ import type DeploymentBuilderEngine from './DeploymentBuilder/DeploymentBuilderE
 import type BriefingEngine from './Briefing/BriefingEngine.ts';
 // ScreenAnchorEngine is loaded dynamically based on Settings.json features.screenAnchor
 import type ScreenAnchorEngine from './ScreenAnchorEngine.ts';
+import type CollabEngine from './Collab/CollabEngine.ts';
 import ProximityEngine from './ProximityEngine.ts';
 import DrawingCueEngine from './DrawingCueEngine.ts';
 import MGRSEngine from './MGRSEngine.ts';
@@ -136,6 +137,7 @@ import './ScreenAnchorSettingsWidget';
 import './PptxExportCommands';
 import './ExportToolsSettingsWidget';
 import './Briefing/ChartCommands';
+import './Collab/CollabSettingsWidget';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -198,6 +200,7 @@ class SymbolEngine implements Evented {
   private _deploymentBuilderEngine: DeploymentBuilderEngine | null = null;
   private _briefingEngine: BriefingEngine | null = null;
   private _screenAnchorEngine: ScreenAnchorEngine | null = null;
+  private _collabEngine?: CollabEngine;
   private _declutterEngine: DeclutterEngine | null = null;
   private _clusterEngine: ClusterEngine | null = null;
   private _labelPlacer: LabelPlacer | null = null;
@@ -440,6 +443,11 @@ class SymbolEngine implements Evented {
 
     // Conditionally load ScreenAnchorEngine based on Settings.json feature flag
     this._initScreenAnchorEngine();
+
+    // Conditionally load CollabEngine based on Settings.json feature flag.
+    // Runtime toggles lazy-load it via onSettingChanged, so the gate only
+    // controls boot — same arrangement as MeasurementEngine.
+    this._initCollabEngine();
 
     // Initialise the 14 analysis engines (each respects its own analysis.* flag)
     this._analysisRegistry = new AnalysisEngineRegistry({
@@ -685,6 +693,8 @@ class SymbolEngine implements Evented {
     this._briefingEngine?.onViewChanged(newView);
     // Re-attach ScreenAnchorEngine (re-binds its extent watch to the new view)
     this._screenAnchorEngine?.onViewChanged(newView);
+    // Re-attach CollabEngine (moves the presence overlay + observers to the new view)
+    this._collabEngine?.onViewChanged(newView);
     // Re-attach declutter engines to the new view. Each must also adopt the
     // new GraphicsLayerManager — 2D and 3D resolve to different manager
     // instances, so without this they keep querying the old view's layers.
@@ -953,6 +963,44 @@ class SymbolEngine implements Evented {
     } catch (err) {
       console.error('[SymbolEngine] Failed to load ScreenAnchorEngine:', err);
     }
+  }
+
+  /**
+   * Multi-user collaboration. Fully self-contained in MS/Engines/Collab — this
+   * dynamic import is the only reference to it anywhere outside that folder, so
+   * deleting the folder and the flag removes the feature without a trace.
+   *
+   * `force` is set by the runtime toggle: the engine may need loading even
+   * though Settings.json booted with the flag off.
+   */
+  private async _initCollabEngine(force = false): Promise<CollabEngine | undefined> {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.collab !== true) {
+      console.info('[SymbolEngine] CollabEngine disabled via Settings.json (lazy-load available)');
+      return undefined;
+    }
+    if (this._collabEngine) {
+      // Already loaded — a runtime re-toggle must still rejoin the room.
+      if (force || features.collab === true) this._collabEngine.enable();
+      return this._collabEngine;
+    }
+    try {
+      const { default: CE } = await import('./Collab/CollabEngine');
+      this._collabEngine = CE.getInstance();
+      this._collabEngine.start(this);
+      if (features.collab === true || force) this._collabEngine.enable();
+      (window as any).collabEngine = this._collabEngine;
+      this.emitEvent('collabEngineReady', { engine: this._collabEngine });
+      console.info('[SymbolEngine] CollabEngine loaded');
+      return this._collabEngine;
+    } catch (err) {
+      console.error('[SymbolEngine] Failed to load CollabEngine:', err);
+      return undefined;
+    }
+  }
+
+  public get collabEngine(): CollabEngine | undefined {
+    return this._collabEngine;
   }
 
   /**
@@ -1952,6 +2000,14 @@ class SymbolEngine implements Evented {
           })();
         } else {
           this._measurementEngine?.disable();
+        }
+      } else if (feature === 'collab') {
+        // CollabEngine owns its own `collab.*` settings via SettingsBus; only
+        // the master switch needs routing, and only to lazy-load on first use.
+        if (value) {
+          void this._initCollabEngine(true);
+        } else {
+          this._collabEngine?.disable();
         }
       } else if (feature === 'proximityEngine' && this._proximityEngine) {
         value

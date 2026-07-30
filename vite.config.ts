@@ -3,6 +3,12 @@ import { dirname, resolve } from 'path';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import terser from '@rollup/plugin-terser';
+// Collaboration fan-out relay. Build-time tooling, so it lives in tools/ rather
+// than in MS/ — MS/ stays purely client-side library code and no server file
+// leaks into dist/. Mounting it here is what keeps collaboration free of a second
+// process; the alternative is `npm run relay` plus a `collab.relayUrl` setting.
+// Delete this import and the plugin entry below to unplug the server side.
+import { collabRelayPlugin } from './tools/collabRelay.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -107,6 +113,7 @@ export default defineConfig(({ mode }) => {
         },
     },
     plugins: [
+        collabRelayPlugin(),
         dts({
             entryRoot: 'MS',
             outDir: 'dist/MS',

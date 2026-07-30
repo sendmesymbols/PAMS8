@@ -37,6 +37,7 @@ import { SAFE_FONTS } from './OverlayStyle';
 import { BUILTIN_LAYOUTS, LAYOUT_INK_DIM } from './SlideLayouts';
 import { openCount } from './SlideCommentUtils';
 import { LinkBadgeLayer } from './SlideLinkBadges';
+import SlideChromeLayer from './SlideChromeLayer';
 import {
   AFFILIATIONS,
   AMPLIFIER_GROUPS,
@@ -514,6 +515,15 @@ const ICONS: Record<string, string> = {
   chart: svg('<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8.5" width="3" height="8.5"/><rect x="17" y="14" width="3" height="3"/>'),
   /** A slide with a banner strip top and bottom — deck setup. */
   deck: svg('<rect x="3" y="4.5" width="18" height="15" rx="1.6"/><path d="M3 8.2h18M3 15.8h18"/>'),
+  /**
+   * The same page, with the two strips FILLED — the header/footer visibility
+   * toggle. Reads as "the bands are what this button is about", where the deck
+   * icon reads as "the page's settings".
+   */
+  chrome: svg(
+    '<rect x="3" y="4.5" width="18" height="15" rx="1.6"/>' +
+      '<path d="M3 6.6h18M3 17.4h18" stroke-width="3.4"/>',
+  ),
   help: svg('<circle cx="12" cy="12" r="8.8"/><path d="M9.6 9.4a2.5 2.5 0 114.3 1.8c-.9.8-1.9 1.3-1.9 2.6"/><circle cx="12" cy="17.2" r="0.9" fill="currentColor" stroke="none"/>'),
   undo: svg('<path d="M4 9.5h9.5a5.5 5.5 0 010 11H7"/><path d="M8 5L3.5 9.5 8 14"/>'),
   redo: svg('<path d="M20 9.5h-9.5a5.5 5.5 0 000 11H17"/><path d="M16 5l4.5 4.5L16 14"/>'),
@@ -881,7 +891,8 @@ export default class SlideEditorUI {
           </select>
           <button data-act="save" class="ms-sledit-iconbtn primary" title="Save &amp; close — writes annotations, title and notes to the slide" aria-label="Save and close">${ICONS.save}</button>
           <span class="ms-sledit-sep"></span>
-          <button data-act="deckSetup" class="ms-sledit-iconbtn" title="Deck setup — slide size, page numbers, classification banner and footer, theme fonts, document properties, and this slide's section." aria-label="Deck setup">${ICONS.deck}</button>
+          <button data-act="deckSetup" class="ms-sledit-iconbtn" title="Deck setup — slide size, header &amp; footer, classification banner, page numbers, theme fonts, document properties, and this slide's section." aria-label="Deck setup">${ICONS.deck}</button>
+          <button data-act="chromeToggle" class="ms-sledit-iconbtn active" title="Show the deck's header, footer and classification strips (view only — hiding them changes nothing about the export)" aria-label="Toggle header and footer strips" aria-pressed="true">${ICONS.chrome}</button>
           <button data-act="importDeck" class="ms-sledit-iconbtn" title="Import a PowerPoint (.pptx) — its slides are appended to this briefing as editable slides. Saves this slide first." aria-label="Import PowerPoint">${ICONS.importDeck}</button>
           <button data-act="exportDeck" class="ms-sledit-iconbtn" title="Export the whole briefing as a PowerPoint (.pptx) — saves this slide first. Uses the current Deck setup." aria-label="Export to PowerPoint">${ICONS.exportDeck}</button>
           <span class="ms-sledit-sep"></span>
@@ -2417,6 +2428,17 @@ export default class SlideEditorUI {
     btn?.classList.toggle('active', on);
   }
 
+  /**
+   * Reflect the header/footer strip visibility toggle. `aria-pressed` as well as
+   * a class: it is a two-state control, and the class alone says nothing to a
+   * screen reader.
+   */
+  public setChromeVisible(on: boolean): void {
+    const btn = this._bar?.querySelector('[data-act="chromeToggle"]') as HTMLElement | null;
+    btn?.classList.toggle('active', on);
+    btn?.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+
   /** Reflect the 💬 comment tool's armed state in the topbar. */
   public setCommentMode(on: boolean): void {
     const btn = this._bar?.querySelector('[data-act="comment"]') as HTMLElement | null;
@@ -2885,6 +2907,10 @@ export default class SlideEditorUI {
         pointer-events: none;
       }
       ${LinkBadgeLayer.styles()}
+      ${SlideChromeLayer.styles()}
+      /* The strips are chrome, not content — dim them slightly while authoring
+         so the eye stays on the slide, and let the toggle turn them off. */
+      .ms-sledit-stagewrap .ms-chrome-layer { opacity: 0.94; }
       .ms-sledit-cmtlayer { position: absolute; overflow: hidden; pointer-events: none; z-index: 12; }
       .ms-sledit-cmtmarker {
         position: absolute;

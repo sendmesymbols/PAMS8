@@ -77,6 +77,14 @@ import {
   resolveJumpForExport,
   UNEXPORTABLE_JUMPS,
 } from '../Briefing/SlideLinks';
+import {
+  chromeBands,
+  chromeForSlide,
+  hasChrome,
+  resolveChrome,
+  type ChromeTokenContext,
+  type DeckChrome,
+} from '../Briefing/SlideChrome';
 import { buildTacArrowOutline, outlineBounds } from '../Briefing/TacArrowGeometry';
 import {
   commentAnchorEighths,
@@ -133,25 +141,6 @@ const BLOCK_ARROW_KINDS: ReadonlySet<string> = new Set([
 
 /** Name of the generated slide master. Referenced by `addSlide({ masterName })`. */
 const MASTER_NAME = 'PAMS8_MASTER';
-/** Height of one classification banner strip, in inches. */
-const BANNER_H_IN = 0.26;
-/** Height of the footer strip (unit / DTG / slide number), in inches. */
-const FOOTER_H_IN = 0.22;
-
-/**
- * Banner colour by classification. US markings have conventional colours and a
- * briefer reads the strip by colour before they read the words, so getting
- * these right matters more than it looks. Matched longest-prefix-first so
- * 'TOP SECRET//SCI' beats 'SECRET'.
- */
-const CLASSIFICATION_COLORS: ReadonlyArray<[string, string]> = [
-  ['TOP SECRET', 'FF8C00'],
-  ['SECRET', 'C8102E'],
-  ['CONFIDENTIAL', '0033A0'],
-  ['RESTRICTED', '0033A0'],
-  ['UNCLASSIFIED', '007A33'],
-  ['CUI', '502B85'],
-];
 
 /** Box-persisted overlay kinds → native pptx preset shapes. */
 const OVERLAY_SHAPE_TYPES: Partial<Record<SlideOverlay['kind'], string>> = {
@@ -425,6 +414,23 @@ class PptxExporter {
    */
   private _insetTop = 0;
   private _insetBottom = 0;
+  /**
+   * The deck's resolved chrome (see SlideChrome), or null when the deck has
+   * none. Read per slide by `_addSlide` so a slide that opts out can suppress
+   * both the furniture and the insets it would otherwise reserve.
+   */
+  private _chrome: DeckChrome | null = null;
+  /** Deck length for a `{PAGES}` / "of N" stamp; 0 when it cannot be trusted. */
+  private _chromeTotal = 0;
+  /**
+   * The insets in force for the slide being emitted — `_insetTop`/`_insetBottom`
+   * for a normal slide, both 0 for one that opts out of the chrome. Set fresh at
+   * the top of every `_addSlide`, which is why the deck-level pair above can
+   * stay immutable for the whole export instead of being saved and restored
+   * around each slide. `_containFitAspect` reads THESE.
+   */
+  private _slideInsetTop = 0;
+  private _slideInsetBottom = 0;
 
   /**
    * Resolve the deck's slide size and tell pptxgenjs about it. A preset maps
@@ -459,129 +465,82 @@ class PptxExporter {
     this._slideH = preset.h;
   }
 
-  /** Banner colour for a classification string, or a neutral grey if unrecognised. */
-  private _classificationColor(text: string): string {
-    const t = text.toUpperCase();
-    for (const [prefix, hex] of CLASSIFICATION_COLORS) {
-      if (t.startsWith(prefix)) return hex;
-    }
-    return '3A4450';
-  }
-
   /**
-   * Military date-time group, e.g. `281430ZJUL26` — DDHHMM, zone, MON, YY.
-   * Built from UTC because the 'Z' says so.
+   * Deck-level half of a header/footer token context — the document properties
+   * every slide shares. Per-slide fields (`{SLIDE}`, `{SECTION}`, `{PAGE}`) are
+   * merged on top of this by `_slideTokens`.
    */
-  private _dtg(d: Date): string {
-    const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const p2 = (n: number) => String(n).padStart(2, '0');
-    return (
-      `${p2(d.getUTCDate())}${p2(d.getUTCHours())}${p2(d.getUTCMinutes())}Z` +
-      `${MON[d.getUTCMonth()]}${p2(d.getUTCFullYear() % 100)}`
-    );
-  }
-
-  /** Substitute the footer tokens a user can write in `exportTools.footerText`. */
-  private _expandFooter(tpl: string): string {
-    const now = new Date();
+  private _deckTokens(): ChromeTokenContext {
     const cfg = this._cfg;
-    return tpl
-      .replace(/\{DTG\}/gi, this._dtg(now))
-      .replace(/\{DATE\}/gi, now.toISOString().slice(0, 10))
-      .replace(/\{TITLE\}/gi, String(cfg.deckTitle ?? ''))
-      .replace(/\{COMPANY\}/gi, String(cfg.company ?? ''))
-      .replace(/\{AUTHOR\}/gi, String(cfg.author ?? ''))
-      .replace(/\{SUBJECT\}/gi, String(cfg.subject ?? ''));
+    return {
+      deckTitle: String(cfg.deckTitle ?? ''),
+      author: String(cfg.author ?? ''),
+      company: String(cfg.company ?? ''),
+      subject: String(cfg.subject ?? ''),
+    };
   }
 
   /**
-   * Define the deck's slide master — classification banners top and bottom, a
-   * footer strip, the slide-number stamp, and a real `title` placeholder so
-   * slide titles land in PowerPoint's outline view and inherit master styling
-   * instead of being orphan text boxes.
+   * Define the deck's slide master from the resolved `DeckChrome` — the
+   * classification banners, the header and footer strips, the slide-number
+   * stamp, and a real `title` placeholder so slide titles land in PowerPoint's
+   * outline view and inherit master styling instead of being orphan text boxes.
+   *
+   * Geometry comes from `SlideChrome.chromeBands`, which the slide editor and
+   * present mode draw from too — so what an author sees on the canvas and what
+   * the recipient opens in PowerPoint cannot drift apart.
+   *
+   * The master paints the STRIPS but not their text: a master is deck-wide, so
+   * a header of `{SECTION} · {PAGE}` could never resolve there. Strip text is
+   * emitted per slide instead by `_emitChromeText`, over the rect the master
+   * already laid down.
    *
    * Sets `_insetTop` / `_insetBottom` so the map is fitted between the
    * furniture rather than over it (see the field comment).
    *
    * Returns the master name, or null when the deck is being built without one.
    */
-  private _defineMaster(pptx: any, enabled: boolean): string | null {
+  private _defineMaster(pptx: any, chrome: DeckChrome | null, total: number): string | null {
     this._insetTop = 0;
     this._insetBottom = 0;
-    if (!enabled) return null;
+    if (!hasChrome(chrome)) return null;
 
-    const cfg = this._cfg;
-    const classification = String(cfg.classification ?? '').trim();
-    const footerTpl = String(cfg.footerText ?? '').trim();
-    const footer = footerTpl ? this._expandFooter(footerTpl) : '';
+    const bands = chromeBands(chrome, this._deckTokens());
     const objects: any[] = [];
+    // Band heights are fractions of slide height (see SlideChrome's header), so
+    // they scale with a custom slide size instead of staying a fixed number of
+    // inches. On both standard layouts (7.5in tall) they land on the 0.26 /
+    // 0.22in strips this exporter has always drawn.
+    const inches = (frac: number): number => frac * this._slideH;
 
-    if (classification) {
-      const fill = { color: this._classificationColor(classification) };
-      const bannerText = {
-        w: '100%',
-        h: BANNER_H_IN,
-        fontSize: 11,
-        bold: true,
-        color: 'FFFFFF',
-        align: 'center',
-        valign: 'middle',
-        margin: 0,
-      };
-      objects.push(
-        { rect: { x: 0, y: 0, w: '100%', h: BANNER_H_IN, fill } },
-        { text: { text: classification, options: { ...bannerText, x: 0, y: 0 } } },
-        {
-          rect: {
-            x: 0,
-            y: this._slideH - BANNER_H_IN,
-            w: '100%',
-            h: BANNER_H_IN,
-            fill,
-          },
-        },
-        {
-          text: {
-            text: classification,
-            options: { ...bannerText, x: 0, y: this._slideH - BANNER_H_IN },
-          },
-        },
-      );
-      this._insetTop += BANNER_H_IN;
-      this._insetBottom += BANNER_H_IN;
-    }
-
-    if (footer || this._slideNumbers) {
-      const footerY = this._slideH - this._insetBottom - FOOTER_H_IN;
-      objects.push({
-        rect: {
-          x: 0,
-          y: footerY,
-          w: '100%',
-          h: FOOTER_H_IN,
-          fill: { color: '11161C' },
-        },
-      });
-      if (footer) {
+    for (const band of bands) {
+      const h = inches(band.h);
+      const y = band.edge === 'top' ? this._insetTop : this._slideH - this._insetBottom - h;
+      objects.push({ rect: { x: 0, y, w: '100%', h, fill: { color: band.fill } } });
+      // Only the classification banner's text is deck-wide, so only it can live
+      // on the master. It also must NOT follow the recipient's theme — a marking
+      // that recolours is a marking you cannot trust.
+      if (band.role === 'classification') {
         objects.push({
           text: {
-            text: footer,
+            text: band.text,
             options: {
-              x: 0.2,
-              y: footerY,
-              // Right end is left free for the slide-number stamp.
-              w: this._slideW - 1.2,
-              h: FOOTER_H_IN,
-              fontSize: 9,
-              color: this._chromeColor('dim'),
-              align: 'left',
+              x: 0,
+              y,
+              w: '100%',
+              h,
+              fontSize: Math.round(inches(band.fontSize) * 72),
+              bold: !!band.bold,
+              color: band.color,
+              align: band.align,
               valign: 'middle',
               margin: 0,
             },
           },
         });
       }
-      this._insetBottom += FOOTER_H_IN;
+      if (band.edge === 'top') this._insetTop += h;
+      else this._insetBottom += h;
     }
 
     // The title sits over the map (a map briefing wants the imagery full
@@ -607,34 +566,120 @@ class PptxExporter {
       },
     });
 
+    // Built before the master literal, because the "of N" label it may add goes
+    // into `objects` and reading that as a mutation-after-assignment is exactly
+    // the kind of thing that breaks on a later edit.
+    let slideNumber: any = null;
+    const footerBand = bands.find((b) => b.role === 'footer');
+    if (footerBand && chrome!.slideNumbers) {
+      const h = inches(footerBand.h);
+      const fontSize = Math.round(inches(footerBand.fontSize) * 72);
+      // The strip's y — `_insetBottom` has finished accumulating, so this is the
+      // top of the bottom-most band that is not a banner.
+      const y = this._slideH - this._insetBottom;
+      const total_ = this._numberTotal(chrome!, total);
+      const stampW = 0.7;
+      const totalW = total_ ? 0.5 : 0;
+      // PowerPoint's own slide-number FIELD, not static text, so the stamp
+      // renumbers itself if the recipient reorders the deck. It lives on the
+      // master so one definition covers every slide.
+      slideNumber = {
+        x: this._slideW - 0.2 - stampW - totalW,
+        y,
+        w: stampW,
+        h,
+        align: 'right',
+        valign: 'middle',
+        fontSize,
+        color: this._chromeColor('dim'),
+      };
+      // "of N" has no PowerPoint field — OOXML has no total-slides placeholder
+      // at all — so the total is static text beside the live number.
+      if (total_) {
+        objects.push({
+          text: {
+            text: `/ ${total_}`,
+            options: {
+              x: this._slideW - 0.2 - totalW,
+              y,
+              w: totalW,
+              h,
+              fontSize,
+              color: this._chromeColor('dim'),
+              align: 'left',
+              valign: 'middle',
+              margin: 0,
+            },
+          },
+        });
+      }
+    }
+
     const master: any = {
       title: MASTER_NAME,
       background: { color: '101418' },
       objects,
     };
-    if (this._slideNumbers) {
-      // On the master rather than per-slide, so every slide gets it from one
-      // definition. `_slideH - _insetBottom` is the top of the footer strip
-      // reserved just above — the increment already happened.
-      master.slideNumber = {
-        x: this._slideW - 0.9,
-        y: this._slideH - this._insetBottom,
-        w: 0.7,
-        h: FOOTER_H_IN,
-        align: 'right',
-        valign: 'middle',
-        fontSize: 9,
-        color: this._chromeColor('dim'),
-      };
-    }
+    if (slideNumber) master.slideNumber = slideNumber;
     pptx.defineSlideMaster(master);
-    EngineLogger.nextStep(
-      ENGINE_NAME,
-      `Slide master applied${classification ? ` — "${classification}"` : ''}${
-        footer ? `, footer "${footer}"` : ''
-      }`,
-    );
+    const summary = bands
+      .filter((b) => b.edge === 'top' || b.role !== 'classification')
+      .map((b) => (b.role === 'classification' ? `"${b.text}"` : b.role))
+      .join(', ');
+    EngineLogger.nextStep(ENGINE_NAME, `Slide master applied — ${summary}`);
     return MASTER_NAME;
+  }
+
+  /**
+   * The static total to print beside the live slide-number field, or 0 for none.
+   * `total` reaches here as 0 whenever the emitted slide count cannot be known
+   * up front (see `exportDeck`), so an untrustworthy "of N" is simply omitted
+   * rather than printed wrong.
+   */
+  private _numberTotal(chrome: DeckChrome, total: number): number {
+    return chrome.numberFormat === 'n-of-m' && total > 0 ? total : 0;
+  }
+
+  /**
+   * Emit this slide's header / footer strip TEXT over the rects the master
+   * painted. Per slide rather than on the master because the templates may use
+   * per-slide tokens (`{SLIDE}`, `{SECTION}`, `{PAGE}`) — see `_defineMaster`.
+   *
+   * Does nothing when the deck has no chrome, or when this slide opts out
+   * (`Slide.noChrome`, or the deck's `skipFirst` on slide 1) — in which case the
+   * caller has already zeroed the insets so the content fills the page.
+   */
+  private _emitChromeText(slide: any, chrome: DeckChrome | null, ctx: ChromeTokenContext): void {
+    if (!hasChrome(chrome)) return;
+    const inches = (frac: number): number => frac * this._slideH;
+    let top = 0;
+    let bottom = 0;
+    for (const band of chromeBands(chrome, ctx)) {
+      const h = inches(band.h);
+      const y = band.edge === 'top' ? top : this._slideH - bottom - h;
+      if (band.edge === 'top') top += h;
+      else bottom += h;
+      // Banner text is already on the master (it is deck-wide), and a band with
+      // nothing to say needs no text box at all.
+      if (band.role === 'classification') continue;
+      const fontSize = Math.round(inches(band.fontSize) * 72);
+      // The stamp's own width is reserved at the right end so a long footer
+      // cannot run underneath it.
+      const stampGap = band.rightText ? 1.2 : 0.4;
+      if (band.text) {
+        slide.addText(band.text, {
+          x: 0.2,
+          y,
+          w: Math.max(0.5, this._slideW - 0.2 - stampGap),
+          h,
+          fontSize,
+          color: this._chromeColor('dim'),
+          align: band.align,
+          valign: 'middle',
+          margin: 0,
+        });
+      }
+    }
   }
 
   /**
@@ -759,12 +804,28 @@ class PptxExporter {
     this._applyLayout(pptx, layoutChoice);
     this._applyMeta(pptx, options.meta);
     this._slideNumbers = slideNumbers;
-    // After the layout (the master is sized in slide inches) and after
-    // `_slideNumbers` (the master hosts the stamp when there is one).
-    this._masterName = this._defineMaster(pptx, useMaster);
 
     const briefing: any = (window as any).briefingEngine;
     const slides: readonly BriefingSlide[] = briefing?.getSlides?.() ?? [];
+
+    // Read BEFORE the master is defined — the master is built from this. The
+    // deck's own chrome wins over the `exportTools.*` defaults field by field;
+    // a briefing saved before chrome was part of the document has none, and so
+    // exports exactly the chrome its settings always gave it.
+    const resolvedChrome = resolveChrome(briefing?.getChrome?.(), { ...cfg, useMaster });
+    this._chrome = hasChrome(resolvedChrome) ? resolvedChrome : null;
+    // An "of N" total is only honest when the emitted slide count matches the
+    // briefing's: exploding builds inserts slides, so the stamp drops to a bare
+    // number rather than printing a total that is wrong on every slide.
+    this._chromeTotal = explodeBuilds ? 0 : slides.length;
+    if (explodeBuilds && this._chrome?.numberFormat === 'n-of-m') {
+      EngineLogger.nextStep(
+        ENGINE_NAME,
+        'Slide numbers: "n of m" needs a fixed deck length — exploding builds adds slides, so the total is omitted',
+      );
+    }
+    // After the layout: the master is sized in slide inches.
+    this._masterName = this._defineMaster(pptx, this._chrome, this._chromeTotal);
 
     // Sections must all exist before the first addSlide that names one —
     // pptxgenjs matches by title and silently ignores an unknown one.
@@ -840,6 +901,9 @@ class PptxExporter {
             background: slide.backgroundDataUrl,
             hidden: slide.hidden,
             section: slide.section,
+            slideIndex: i,
+            noChrome: slide.noChrome,
+            pageNumber: pptxSlideNo + 1,
           }, stats);
           emitted++;
           pptxSlideNo++;
@@ -868,6 +932,9 @@ class PptxExporter {
               // slide must not leak back in as a run of visible build frames.
               hidden: slide.hidden,
               section: slide.section,
+              slideIndex: i,
+              noChrome: slide.noChrome,
+              pageNumber: pptxSlideNo + 1,
             }, stats);
             emitted++;
             pptxSlideNo++;
@@ -890,6 +957,9 @@ class PptxExporter {
             links: linkCtx,
             hidden: slide.hidden,
             section: slide.section,
+            slideIndex: i,
+            noChrome: slide.noChrome,
+            pageNumber: pptxSlideNo + 1,
           }, stats);
           emitted++;
           pptxSlideNo++;
@@ -901,7 +971,14 @@ class PptxExporter {
       }
     } else {
       // No briefing — export the current view as a one-slide deck.
-      await this._addSlide(pptx, view, format, mode, { title: 'Current view' }, stats);
+      await this._addSlide(
+        pptx,
+        view,
+        format,
+        mode,
+        { title: 'Current view', slideIndex: 0, pageNumber: 1 },
+        stats,
+      );
       emitted++;
       pptxSlideNo++;
     }
@@ -1029,13 +1106,33 @@ class PptxExporter {
       hidden?: boolean;
       /** PowerPoint section title — must already have been declared. */
       section?: string;
+      /**
+       * 0-based briefing slide index. Decides whether the deck's `skipFirst`
+       * applies; absent (the single-view path) reads as slide 0.
+       */
+      slideIndex?: number;
+      /** This slide opts out of the deck's chrome — see Slide.noChrome. */
+      noChrome?: boolean;
+      /** 1-based number this slide will carry in the .pptx, for `{PAGE}`. */
+      pageNumber?: number;
     },
     stats?: { shapes: number },
   ): Promise<void> {
     // Per-slide, so the caller can read off what THIS slide paged into.
     this._pagedExtra = 0;
+    // Resolve the chrome for THIS slide before anything is measured: a slide
+    // that opts out reserves nothing, so its map fills the whole page.
+    const slideChrome = chromeForSlide(this._chrome, meta.slideIndex ?? 0, {
+      noChrome: meta.noChrome,
+    });
+    this._slideInsetTop = slideChrome ? this._insetTop : 0;
+    this._slideInsetBottom = slideChrome ? this._insetBottom : 0;
     const addOpts: any = {};
-    if (this._masterName) addOpts.masterName = this._masterName;
+    // No master on a slide that opts out — the master IS the furniture, so
+    // naming it would paint the banners the slide just declined.
+    if (this._masterName && (slideChrome || !hasChrome(this._chrome))) {
+      addOpts.masterName = this._masterName;
+    }
     if (meta.section) addOpts.sectionTitle = meta.section;
     const slide = Object.keys(addOpts).length ? pptx.addSlide(addOpts) : pptx.addSlide();
     slide.background = { color: '101418' };
@@ -1173,6 +1270,15 @@ class PptxExporter {
           : { x: 0.3, y: 0.2, w: this._slideW - 0.6, h: 0.6, ...titleStyle },
       );
     }
+    // Last, so the strip text sits over the master's rects and over any content
+    // that happens to reach the slide's edges.
+    this._emitChromeText(slide, slideChrome, {
+      ...this._deckTokens(),
+      slideTitle: meta.title ?? '',
+      section: meta.section ?? '',
+      page: meta.pageNumber,
+      pages: this._chromeTotal || undefined,
+    });
     if (meta.notes) slide.addNotes(meta.notes);
   }
 
@@ -1190,7 +1296,7 @@ class PptxExporter {
     // banners, footer) is painted BEHIND slide content, so anything laid over
     // the full slide would hide it.
     const slideW = this._slideW;
-    const slideH = this._slideH - this._insetTop - this._insetBottom;
+    const slideH = this._slideH - this._slideInsetTop - this._slideInsetBottom;
     const slideAspect = slideW / slideH;
     let w = slideW;
     let h = slideH;
@@ -1199,7 +1305,7 @@ class PptxExporter {
     } else if (imgAspect < slideAspect) {
       w = slideH * imgAspect;
     }
-    return { x: (slideW - w) / 2, y: this._insetTop + (slideH - h) / 2, w, h };
+    return { x: (slideW - w) / 2, y: this._slideInsetTop + (slideH - h) / 2, w, h };
   }
 
   /**
@@ -1935,7 +2041,7 @@ class PptxExporter {
             autoPageHeaderRows: o.headerRow ? 1 : 0,
             // Continuations start below the title band rather than at the very
             // top of the slide, where the title would sit on top of them.
-            autoPageSlideStartY: Math.max(0.9, this._insetTop + 0.9),
+            autoPageSlideStartY: Math.max(0.9, this._slideInsetTop + 0.9),
           }
         : {}),
     });

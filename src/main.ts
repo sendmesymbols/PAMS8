@@ -2418,7 +2418,10 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     const compressChk = document.getElementById('briefingMenuCompress') as HTMLInputElement | null;
     const useMasterChk = document.getElementById('briefingMenuUseMaster') as HTMLInputElement | null;
     const classificationInput = document.getElementById('briefingMenuClassification') as HTMLInputElement | null;
+    const headerTextInput = document.getElementById('briefingMenuHeaderText') as HTMLInputElement | null;
     const footerTextInput = document.getElementById('briefingMenuFooterText') as HTMLInputElement | null;
+    const numberFormatSelect = document.getElementById('briefingMenuNumberFormat') as HTMLSelectElement | null;
+    const skipFirstChk = document.getElementById('briefingMenuSkipFirst') as HTMLInputElement | null;
     const deckSetupBtn = document.getElementById('briefingMenuDeckSetupBtn') as HTMLButtonElement | null;
     const exportBtn = document.getElementById('briefingMenuExportBtn') as HTMLButtonElement | null;
 
@@ -2455,7 +2458,11 @@ function updateStylusPerSymbolUI(cls: string | null): void {
       if (compressChk) compressChk.checked = exportTools.compress === true;
       if (useMasterChk) useMasterChk.checked = exportTools.useMaster === true;
       if (classificationInput) classificationInput.value = exportTools.classification ?? '';
+      if (headerTextInput) headerTextInput.value = exportTools.headerText ?? '';
       if (footerTextInput) footerTextInput.value = exportTools.footerText ?? '';
+      if (numberFormatSelect)
+        numberFormatSelect.value = exportTools.numberFormat === 'n-of-m' ? 'n-of-m' : 'n';
+      if (skipFirstChk) skipFirstChk.checked = exportTools.skipFirst === true;
     };
     briefingMenuBtn?.addEventListener('click', refreshBriefingMenu);
 
@@ -2522,8 +2529,17 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     classificationInput?.addEventListener('change', () =>
       publishSetting(['exportTools', 'classification'], classificationInput.value.trim()),
     );
+    headerTextInput?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'headerText'], headerTextInput.value.trim()),
+    );
     footerTextInput?.addEventListener('change', () =>
       publishSetting(['exportTools', 'footerText'], footerTextInput.value.trim()),
+    );
+    numberFormatSelect?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'numberFormat'], numberFormatSelect.value),
+    );
+    skipFirstChk?.addEventListener('change', () =>
+      publishSetting(['exportTools', 'skipFirst'], skipFirstChk.checked),
     );
     // The long tail (document properties, theme fonts, RTL) lives in the
     // widget rather than being duplicated a third time in this menu.

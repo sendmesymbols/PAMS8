@@ -31,6 +31,8 @@ import PresenterPanel, { type PresenterSlideRef } from './PresenterPanel';
 import { type BuildGroup, buildModeOf, groupSteps, type ScheduledStep } from './BuildSequencer';
 import type { Slide, SlideOverlay, SlideTransitionType } from '../BriefingTypes';
 import { composeOverlayThumbnail, overlayToFabric, preloadOverlayImages } from '../OverlayFabric';
+import { chromeForSlide, contentRect, hasChrome, type DeckChrome } from '../SlideChrome';
+import SlideChromeLayer from '../SlideChromeLayer';
 import { linkAtPoint, resolveLink } from '../SlideLinks';
 
 const ENGINE_NAME = 'BriefingEngine';
@@ -74,6 +76,19 @@ export interface PresentHost {
   runBuildSteps(steps: ScheduledStep[]): void;
   /** Instantly match graphic visibility to `revealed` groups having played. */
   snapBuildGroups(slide: Slide, groups: BuildGroup[], revealed: number): void;
+  /**
+   * The deck's resolved header/footer/classification/slide-number definition —
+   * see BriefingEngine.getResolvedChrome. Optional: a host that does not supply
+   * it presents with no strips, exactly as before they existed.
+   */
+  getResolvedChrome?(): DeckChrome;
+  /** Deck-level token values for the strips' text. */
+  getChromeTokens?(): {
+    deckTitle?: string;
+    author?: string;
+    company?: string;
+    subject?: string;
+  };
 }
 
 /** Debounce for view-resize driven overlay rebuilds. */
@@ -99,6 +114,12 @@ export default class PresentSession {
 
   // Chrome
   private _counterEl: HTMLElement | null = null;
+  /**
+   * The deck's header/footer/classification strips. Unlike the control bar and
+   * the counter, this NEVER auto-hides on idle — a classification marking that
+   * disappears while the deck is on a projector is not a marking.
+   */
+  private _chromeLayer: SlideChromeLayer | null = null;
   private _barEl: HTMLElement | null = null;
   private _progressEl: HTMLElement | null = null;
   private _maskEl: HTMLElement | null = null;
@@ -721,7 +742,18 @@ export default class PresentSession {
     el.className = 'ms-briefing-overlay-canvas';
     v.container.appendChild(el);
     const sc = new fabric.StaticCanvas(el, { width: W, height: H });
-    const handle: OverlayHandle = { el, canvas: sc, fit: { x: 0, y: 0, w: W, h: H } };
+    // The slide's content rect — the whole view, less whatever the deck's
+    // header/footer strips reserve. Annotations normalize to THIS, not to the
+    // view, so an object near the top edge sits in the same place here as it
+    // does on the editor canvas and in the exported .pptx. The map itself stays
+    // full-bleed behind the strips: insetting a live ArcGIS view is not worth
+    // the sliver of imagery a band covers.
+    const box = contentRect(
+      { left: 0, top: 0, width: W, height: H },
+      this._chromeFor(slide),
+    );
+    const content = { x: box.left, y: box.top, w: box.width, h: box.height };
+    const handle: OverlayHandle = { el, canvas: sc, fit: { ...content } };
 
     // Map slides: overlays span the live view rect. Screen-only slides:
     // everything is normalized to the imported slide box — contain-fit it
@@ -744,7 +776,7 @@ export default class PresentSession {
     // warm before draw() runs — see OverlayFabric.preloadOverlayImages.
     if (!screenBg) {
       return preloadOverlayImages(slide.overlays).then(() => {
-        draw({ x: 0, y: 0, w: W, h: H });
+        draw({ ...content });
         return handle;
       });
     }
@@ -753,10 +785,12 @@ export default class PresentSession {
       img.onload = () => {
         const iw = img.naturalWidth || 1;
         const ih = img.naturalHeight || 1;
-        const scale = Math.min(W / iw, H / ih);
+        // Contain-fit inside the CONTENT rect, so an imported slide is letterboxed
+        // between the strips rather than underneath them.
+        const scale = Math.min(content.w / iw, content.h / ih);
         const fit = {
-          x: (W - iw * scale) / 2,
-          y: (H - ih * scale) / 2,
+          x: content.x + (content.w - iw * scale) / 2,
+          y: content.y + (content.h - ih * scale) / 2,
           w: iw * scale,
           h: ih * scale,
         };
@@ -773,7 +807,7 @@ export default class PresentSession {
       };
       img.onerror = () => {
         void preloadOverlayImages(slide.overlays).then(() => {
-          draw({ x: 0, y: 0, w: W, h: H });
+          draw({ ...content });
           resolve(handle);
         });
       };
@@ -966,6 +1000,10 @@ export default class PresentSession {
       this._resizeTimer = null;
       if (!this._active) return;
       this.cancelTransition();
+      // Before the overlays: they are normalized to the content rect, which the
+      // strips define, so the bands must be re-measured for the new view size
+      // first.
+      this._renderChrome();
       const slide = this._currentSlide();
       if (slide) this._renderOverlays(slide);
     }, RESIZE_DEBOUNCE_MS);
@@ -1216,6 +1254,16 @@ export default class PresentSession {
     document.body.appendChild(counter);
     this._counterEl = counter;
 
+    // Mounted on the VIEW container, not on body: the strips have to sit on the
+    // slide's own edges, and in a windowed (non-fullscreen) session the view is
+    // not the whole screen.
+    const v: any = this._host.getView();
+    if (v?.container) {
+      this._chromeLayer = new SlideChromeLayer('present');
+      this._chromeLayer.mount(v.container);
+      this._renderChrome();
+    }
+
     const bar = document.createElement('div');
     bar.className = 'ms-present-bar';
     bar.innerHTML = `
@@ -1291,10 +1339,48 @@ export default class PresentSession {
     this._barEl?.remove();
     this._progressEl?.remove();
     this._maskEl?.remove();
+    this._chromeLayer?.unmount();
     this._counterEl = null;
     this._barEl = null;
     this._progressEl = null;
     this._maskEl = null;
+    this._chromeLayer = null;
+  }
+
+  /** The chrome that applies to a slide, or null — see SlideChrome. */
+  private _chromeFor(slide: Slide | null | undefined): DeckChrome | null {
+    const resolved = this._host.getResolvedChrome?.();
+    if (!hasChrome(resolved) || !slide) return null;
+    const index = this._host.getSlides().indexOf(slide);
+    // A slide we cannot place is treated as NOT the title slide, so the deck's
+    // `skipFirst` cannot strip a classification banner off it. Failing towards
+    // showing a marking is the only safe direction to fail in.
+    return chromeForSlide(resolved, index < 0 ? 1 : index, slide);
+  }
+
+  /**
+   * Repaint the strips for the current slide. Called on entry, on every slide
+   * change and on view resize — the bands are sized from the view, and their
+   * text carries this slide's number, title and section.
+   */
+  private _renderChrome(): void {
+    const layer = this._chromeLayer;
+    if (!layer?.mounted) return;
+    const v: any = this._host.getView();
+    const W = v?.width || v?.container?.clientWidth || 1;
+    const H = v?.height || v?.container?.clientHeight || 1;
+    const slides = this._host.getSlides();
+    const index = this._host.getIndex();
+    const slide = slides[index] ?? null;
+    const chrome = this._chromeFor(slide);
+    const box = contentRect({ left: 0, top: 0, width: W, height: H }, chrome);
+    layer.render(chrome, box, {
+      slideTitle: slide?.title ?? '',
+      section: slide?.section ?? '',
+      page: index + 1,
+      pages: slides.length,
+      ...(this._host.getChromeTokens?.() ?? {}),
+    });
   }
 
   /** Show the chrome and restart the idle countdown that hides it again. */
@@ -1329,6 +1415,9 @@ export default class PresentSession {
   private _syncChrome(): void {
     if (!this._active) return;
     this._syncCounter();
+    // Slide-scoped text (number, title, section) and per-slide suppression, so
+    // it has to be redrawn on every navigation, not just on resize.
+    this._renderChrome();
 
     if (this._progressEl) {
       const total = Math.max(1, this._host.getSlides().length);
@@ -1400,6 +1489,8 @@ export default class PresentSession {
       .ms-present-mode .esri-ui { display: none !important; }
 
       .ms-present-annotator { position: absolute; inset: 0; }
+
+      ${SlideChromeLayer.styles()}
 
       /* Blacks/whites the audience screen: above the control bar, counter and
          progress (which would otherwise leak through a "black" screen), but

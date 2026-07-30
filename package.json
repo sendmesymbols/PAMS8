@@ -15,6 +15,7 @@
     "prebuild": "npm run copy-assets",
     "preview": "vite preview",
     "dev": "vite",
+    "relay": "node tools/collabRelay.js --port 6600",
     "dev:dist": "vite build && npm run copy-data && npm run copy-thirdparty && npm run copy-styles && vite --mode dist",
     "build": "vite build && npm run copy-data && npm run copy-thirdparty && npm run copy-styles && tsc -p tsconfig.build.json"
   },

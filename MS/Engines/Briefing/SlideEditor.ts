@@ -28,6 +28,13 @@ import type {
 } from './BriefingTypes';
 import LaserTrail from './LaserTrail';
 import {
+  chromeForSlide,
+  contentHeightFraction,
+  hasChrome,
+  type DeckChrome,
+} from './SlideChrome';
+import SlideChromeLayer from './SlideChromeLayer';
+import {
   applyLockState,
   applyListMarkers,
   buildArrowPath,
@@ -165,6 +172,29 @@ export interface SlideEditorHost {
   addSlideFromLayout?(layoutId: string): number | null;
   /** Every thread in the briefing — powers the Comments section's All-slides scope. */
   listComments?(): Array<{ slideIndex: number; comment: SlideComment }>;
+
+  // ── Deck chrome ────────────────────────────────────────────────────────────
+  // Optional as a group: an embedder that supplies none of these gets an editor
+  // with no header/footer strips, exactly as before they existed.
+
+  /** The deck's chrome as it will be drawn — see BriefingEngine.getResolvedChrome. */
+  getResolvedChrome?(): DeckChrome;
+  /** Only the fields the author has set — what Deck setup edits. */
+  getChrome?(): DeckChrome;
+  /** Patch the deck's chrome; '' clears a field back to the settings default. */
+  setChrome?(patch: Partial<DeckChrome>): void;
+  /** Flip `Slide.noChrome` — this slide opts out of the deck's furniture. */
+  toggleSlideNoChrome?(index: number): void;
+  /**
+   * Deck-level token values (`{TITLE}`, `{AUTHOR}`, `{COMPANY}`, `{SUBJECT}`)
+   * for the strips' text. Per-slide tokens are filled in by the editor itself.
+   */
+  getChromeTokens?(): {
+    deckTitle?: string;
+    author?: string;
+    company?: string;
+    subject?: string;
+  };
 
   // ── Deck setup ─────────────────────────────────────────────────────────────
   // Also optional as a group: without them the Deck button still opens, minus
@@ -384,6 +414,18 @@ export default class SlideEditor {
   private _linkDialog: SlideLinkDialog | null = null;
   private _chartDialog: ChartDialog | null = null;
   private _deckDialog: DeckSetupDialog | null = null;
+  /**
+   * The deck's header/footer/classification strips, drawn around the canvas —
+   * DOM, never fabric, for the same reason the link badges are. See
+   * SlideChromeLayer.
+   */
+  private _chromeLayer: SlideChromeLayer | null = null;
+  /**
+   * View-only: hides the strips so an author can work against the full page.
+   * Deliberately NOT persisted and deliberately not part of DeckChrome — it
+   * changes nothing about what present mode shows or what the .pptx contains.
+   */
+  private _chromeVisible = true;
   /**
    * Slide index last navigated away from, for a followed 'last slide viewed'
    * link. Null until the editor has changed slides at least once.
@@ -626,6 +668,9 @@ export default class SlideEditor {
       // this, a freshly opened slide shows no 🔗 until the first pan or drag.
       this._cmt?.load();
       this._linkBadges?.refresh();
+      // Slide-scoped: the strips carry this slide's number, title and section,
+      // and slide 1 may be bare (the deck's skipFirst).
+      this._refreshChromeLayer();
       this._ui?.refreshComments();
       if (bg.usedFallback) {
         this._showToast(
@@ -925,6 +970,9 @@ export default class SlideEditor {
       case 'deckSetup':
         this._openDeckSetup();
         break;
+      case 'chromeToggle':
+        this.toggleChromeVisible();
+        break;
       case 'exportDeck':
         this._exportDeck();
         break;
@@ -1108,6 +1156,10 @@ export default class SlideEditor {
     // Same reason as remountPanel above: the innerHTML reset detached the layer.
     this._cmt?.mount(ui.stageWrap, canvasEl);
     this._linkBadges?.mount(ui.stageWrap, canvasEl);
+    // Mounted before the canvas is populated but rendered after — it is sized
+    // from the canvas's measured rect, which fabric has not established yet.
+    if (!this._chromeLayer) this._chromeLayer = new SlideChromeLayer('editor');
+    this._chromeLayer.mount(ui.stageWrap);
 
     this._fc = new fabric.Canvas(canvasEl, {
       preserveObjectStacking: true,
@@ -1220,12 +1272,84 @@ export default class SlideEditor {
     const boxW = wrap?.clientWidth ?? Math.max(320, window.innerWidth - 32);
     const boxH = wrap?.clientHeight ?? Math.max(180, window.innerHeight - 104);
     const maxW = Math.max(320, boxW - 24); // stagewrap's own 12px padding, both sides
-    const maxH = Math.max(180, boxH - 24);
+    // The deck's chrome takes its bands off the top and bottom of the PAGE, and
+    // the canvas is the content rect inside it (overlay coordinates normalize to
+    // the canvas — see OverlayFabric). So the canvas has to be fitted into what
+    // the furniture leaves, which is also what makes room for the strips to be
+    // drawn around it. Exactly the reservation PptxExporter's contain-fit makes.
+    const maxH = Math.max(180, (boxH - 24) * contentHeightFraction(this._chromeForCanvas()));
     const scale = Math.min(maxW / this._srcW, maxH / this._srcH, 1.5);
     return {
       w: Math.max(320, Math.round(this._srcW * scale)),
       h: Math.max(180, Math.round(this._srcH * scale)),
     };
+  }
+
+  // ── Deck chrome (headers / footers / classification / slide numbers) ────────
+
+  /**
+   * The chrome that applies to the slide being edited, or null. Reserves the
+   * canvas's insets even when the strips are toggled out of sight — hiding them
+   * is a viewing preference, and letting it resize the page would make the
+   * toggle change where annotations land.
+   */
+  private _chromeForCanvas(): DeckChrome | null {
+    const resolved = this._host?.getResolvedChrome?.();
+    if (!hasChrome(resolved)) return null;
+    return chromeForSlide(resolved, this._index, this._host?.getSlide(this._index) ?? null);
+  }
+
+  /** Repaint the strips at the canvas's current position. Cheap; call freely. */
+  private _refreshChromeLayer(): void {
+    const layer = this._chromeLayer;
+    const wrap = this._ui?.stageWrap;
+    const canvasEl: HTMLCanvasElement | null = this._fc?.lowerCanvasEl ?? null;
+    if (!layer?.mounted || !canvasEl || !wrap) return;
+    // Measured against the stage rather than read off `offsetLeft`: fabric wraps
+    // the canvas in its own positioned `.canvas-container`, so the canvas's
+    // offsetParent is that wrapper and its offsets are relative to it, not to
+    // the stage the band layer lives in.
+    const cr = canvasEl.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    const slide = this._host?.getSlide(this._index) ?? null;
+    layer.render(
+      this._chromeForCanvas(),
+      {
+        left: cr.left - wr.left + wrap.scrollLeft,
+        top: cr.top - wr.top + wrap.scrollTop,
+        width: cr.width,
+        height: cr.height,
+      },
+      {
+        slideTitle: this._ui?.titleInput?.value ?? slide?.title ?? '',
+        section: slide?.section ?? '',
+        page: this._index + 1,
+        pages: this._host?.getSlideCount() ?? undefined,
+        ...(this._host?.getChromeTokens?.() ?? {}),
+      },
+      this._chromeVisible,
+    );
+  }
+
+  /**
+   * Deck chrome changed (Deck setup wrote a new classification, footer, …).
+   * The bands change height, so the canvas has to be refitted before they are
+   * redrawn — otherwise the content rect and the strips disagree.
+   *
+   * Called by BriefingEngine.setChrome; safe when the editor is closed.
+   */
+  public refreshChrome(): void {
+    if (!this._fc) return;
+    this._resizeStageToFit();
+    this._refreshChromeLayer();
+  }
+
+  /** Show/hide the strips while authoring — see `_chromeVisible`. */
+  public toggleChromeVisible(): boolean {
+    this._chromeVisible = !this._chromeVisible;
+    this._refreshChromeLayer();
+    this._ui?.setChromeVisible?.(this._chromeVisible);
+    return this._chromeVisible;
   }
 
   /**
@@ -1258,6 +1382,8 @@ export default class SlideEditor {
     this._H = newH;
     this._fc.requestRenderAll();
     this._refreshMarkers();
+    // The bands are positioned off the canvas rect, which just moved.
+    this._refreshChromeLayer();
   }
 
   /** Transient bottom-center notice — CSS-driven fade so it needs no rAF. */
@@ -3450,6 +3576,14 @@ export default class SlideEditor {
       section: slide?.section ?? '',
       knownSections: host.listSections?.() ?? [],
       onSection: (section) => host.setSlideSection?.(this._index, section),
+      chrome: host.getChrome?.(),
+      // The host repaints the strips itself (BriefingEngine.setChrome calls back
+      // into refreshChrome), so there is nothing to do here but forward.
+      onChrome: host.setChrome ? (patch) => host.setChrome!(patch) : undefined,
+      noChrome: !!slide?.noChrome,
+      onNoChrome: host.toggleSlideNoChrome
+        ? () => host.toggleSlideNoChrome!(this._index)
+        : undefined,
       onOpenSettings: () => host.openExportSettings?.(),
       // Save first: the export screenshots the slide from the model, so unsaved
       // canvas work would not be in the deck.

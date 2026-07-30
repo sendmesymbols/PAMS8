@@ -8,8 +8,10 @@
  */
 
 import type { ChartSpec } from './ChartFactory';
+import type { DeckChrome } from './SlideChrome';
 
 export type { ChartSpec };
+export type { DeckChrome, SlideNumberFormat } from './SlideChrome';
 
 export type ViewKind = '2d' | '3d';
 
@@ -501,6 +503,17 @@ export interface Slide {
    */
   hidden?: boolean;
   /**
+   * Leave this slide's headers, footers, classification banner and slide number
+   * off — the per-slide escape hatch from the deck's chrome (see DeckChrome).
+   * A full-bleed map or an imported title slide wants the whole page.
+   *
+   * The slide keeps its NUMBER either way; only the furniture is suppressed. It
+   * suppresses the reserved insets too, so the slide's content fills the page
+   * in the editor, in present mode and in the exported .pptx alike. Absent =
+   * the deck's chrome applies.
+   */
+  noChrome?: boolean;
+  /**
    * PowerPoint slide section this slide belongs to. Consecutive slides sharing
    * a title form one section; the exporter declares each in first-appearance
    * order via `addSection()` and tags slides with `addSlide({ sectionTitle })`,
@@ -543,14 +556,23 @@ export interface Slide {
 
 export interface BriefingDocument {
   /**
-   * 10 = hidden slides; 9 = overlay links (slide-to-slide hyperlinks);
+   * 11 = deck chrome (headers/footers/classification/slide numbers) + per-slide
+   * noChrome; 10 = hidden slides; 9 = overlay links (slide-to-slide hyperlinks);
    * 8 = per-slide buildMode + per-step build triggers; 7 = review comments;
    * 6 = milsym overlays + block/tactical arrows; 5 = table overlays + text
    * listStyle; 4 = slides may be screen-only (imported PPTX: no extent/camera);
-   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–10 accepted on
+   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–11 accepted on
    * import. Every added field is optional, so newer documents degrade in older
    * code rather than failing to load.
    */
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
   slides: Slide[];
+  /**
+   * Deck-level headers, footers, classification banners and slide numbering.
+   * Absent = the chrome falls back to the `exportTools.*` settings, which is
+   * where it lived before it was part of the document — so a briefing saved by
+   * an older build keeps exporting exactly the chrome it always did. See
+   * SlideChrome.resolveChrome.
+   */
+  chrome?: DeckChrome;
 }

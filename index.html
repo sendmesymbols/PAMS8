@@ -2175,13 +2175,6 @@
               </select>
             </div>
             <label class="drawstyle-row">
-              <span>Slide numbers</span>
-              <span class="briefing-toggle" title="Stamp a page number on every slide (exportTools.slideNumbers).">
-                <input type="checkbox" id="briefingMenuSlideNumbers" />
-                <span class="briefing-toggle-track"></span>
-              </span>
-            </label>
-            <label class="drawstyle-row">
               <span>Compress package</span>
               <span class="briefing-toggle" title="Zip-deflate the .pptx. Screenshots barely shrink (already compressed), but editable-shape decks compress several times over. Costs extra time (exportTools.compress).">
                 <input type="checkbox" id="briefingMenuCompress" />
@@ -2189,8 +2182,8 @@
               </span>
             </label>
             <label class="drawstyle-row">
-              <span>Use slide master</span>
-              <span class="briefing-toggle" title="Build the deck on a generated master: classification banners top and bottom, a footer strip, and a real title placeholder that shows in PowerPoint's outline view. The map is fitted BETWEEN the banners, so it becomes slightly smaller (exportTools.useMaster).">
+              <span>Header &amp; footer</span>
+              <span class="briefing-toggle" title="Draw the deck's furniture: classification banners top and bottom, a header and footer strip, and the slide-number stamp. These now show on the slide editor canvas and in the slideshow as well as in the .pptx. The map is fitted BETWEEN them, so it becomes slightly smaller. Everything below is a DEFAULT — a briefing that sets its own keeps it (exportTools.useMaster).">
                 <input type="checkbox" id="briefingMenuUseMaster" />
                 <span class="briefing-toggle-track"></span>
               </span>
@@ -2211,9 +2204,34 @@
               <option value="TOP SECRET//SCI"></option>
             </datalist>
             <div class="drawstyle-row">
-              <span>Footer</span>
-              <input class="ms-input" type="text" id="briefingMenuFooterText" maxlength="200" placeholder="e.g. 1 Bde · {DTG}" title="Footer strip text. Tokens: {DTG} (military date-time group), {DATE}, {TITLE}, {COMPANY}, {AUTHOR}, {SUBJECT}. Requires Use slide master (exportTools.footerText)." />
+              <span>Header</span>
+              <input class="ms-input" type="text" id="briefingMenuHeaderText" maxlength="200" placeholder="e.g. {SECTION}" title="Header strip text, drawn just below the top banner. Tokens: {DTG}, {DATE}, {TITLE} (deck), {SLIDE} (this slide's title), {SECTION}, {PAGE}, {PAGES}, {COMPANY}, {AUTHOR}, {SUBJECT}. Requires Header &amp; footer (exportTools.headerText)." />
             </div>
+            <div class="drawstyle-row">
+              <span>Footer</span>
+              <input class="ms-input" type="text" id="briefingMenuFooterText" maxlength="200" placeholder="e.g. 1 Bde · {DTG}" title="Footer strip text. Tokens: {DTG} (military date-time group), {DATE}, {TITLE} (deck), {SLIDE} (this slide's title), {SECTION}, {PAGE}, {PAGES}, {COMPANY}, {AUTHOR}, {SUBJECT}. Requires Header &amp; footer (exportTools.footerText)." />
+            </div>
+            <label class="drawstyle-row">
+              <span>Slide numbers</span>
+              <span class="briefing-toggle" title="Stamp the slide number at the right end of the footer strip. In the .pptx this is PowerPoint's own slide-number field, so it renumbers itself if the recipient reorders the deck (exportTools.slideNumbers).">
+                <input type="checkbox" id="briefingMenuSlideNumbers" />
+                <span class="briefing-toggle-track"></span>
+              </span>
+            </label>
+            <div class="drawstyle-row">
+              <span>Number style</span>
+              <select class="ms-select" id="briefingMenuNumberFormat" title="Whether the stamp shows the deck length too. OOXML has no total-slides field, so '7 / 24' writes the total as static text beside PowerPoint's live number — and is omitted when Explode builds changes the emitted slide count (exportTools.numberFormat).">
+                <option value="n">7</option>
+                <option value="n-of-m">7 / 24</option>
+              </select>
+            </div>
+            <label class="drawstyle-row">
+              <span>Not on title slide</span>
+              <span class="briefing-toggle" title="Leave slide 1 bare — PowerPoint's own 'Don't show on title slide'. It fills the whole page and keeps its number. Individual slides can opt out too, from Deck setup in the slide editor (exportTools.skipFirst).">
+                <input type="checkbox" id="briefingMenuSkipFirst" />
+                <span class="briefing-toggle-track"></span>
+              </span>
+            </label>
             <button class="ms-btn infobar-btn" id="briefingMenuDeckSetupBtn" title="Open the full PPTX Export settings — document properties (title / author / unit / subject / revision), theme fonts, theme-aware chrome and right-to-left. Slide sections and these same options are also available from the Deck button inside the slide editor.">⚙ Deck properties &amp; theme…</button>
             <button class="ms-btn primary infobar-btn" id="briefingMenuExportBtn" data-briefing-act="export" title="Export a PowerPoint (.pptx) deck — one slide per captured briefing slide, or the current view if no slides exist, using the settings above. Annotation links become real PowerPoint hyperlinks; relative jumps are resolved to a fixed slide, and 'last viewed' / 'end show' are dropped (see the engine log).">⬒ Export PPTX</button>
           </div>

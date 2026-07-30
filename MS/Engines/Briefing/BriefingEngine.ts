@@ -50,6 +50,7 @@ import { composeOverlayThumbnail } from './OverlayFabric';
 import { layoutById } from './SlideLayouts';
 import { openCount } from './SlideCommentUtils';
 import { pruneLinks } from './SlideLinks';
+import { hasChrome, resolveChrome, type DeckChrome } from './SlideChrome';
 import PresentSession from './Present/PresentSession';
 import { type BuildGroup, revealedIds, type ScheduledStep } from './Present/BuildSequencer';
 import type { SlideEditorHost } from './SlideEditor';
@@ -93,6 +94,13 @@ class BriefingEngine {
   private _slides: Slide[] = [];
   private _current = -1;
   private _transitioning = false;
+  /**
+   * The deck's own headers/footers/classification/slide numbering. Empty until
+   * an author sets something in Deck setup, at which point the `exportTools.*`
+   * settings stop being the source of truth for whatever field they set — see
+   * SlideChrome.resolveChrome. Travels with the briefing document.
+   */
+  private _chrome: DeckChrome = {};
 
   // Builds
   private _activeBuilds: ActiveBuild[] = [];
@@ -143,6 +151,8 @@ class BriefingEngine {
         runBuildSteps: (steps: ScheduledStep[]) => this._runBuildSteps(steps),
         snapBuildGroups: (s: Slide, groups: BuildGroup[], revealed: number) =>
           this._snapBuildGroups(s, groups, revealed),
+        getResolvedChrome: () => this.getResolvedChrome(),
+        getChromeTokens: () => this._chromeTokens(),
       });
     }
     return this._presentSession;
@@ -452,6 +462,98 @@ class BriefingEngine {
 
   public get currentIndex(): number {
     return this._current;
+  }
+
+  // ── Deck chrome ────────────────────────────────────────────────────────────
+
+  /**
+   * The deck's own chrome fields, unresolved — only what an author has actually
+   * set. PptxExporter reads this and merges the `exportTools.*` defaults
+   * underneath it, so an unset field still exports the way it always did.
+   */
+  public getChrome(): DeckChrome {
+    return { ...this._chrome };
+  }
+
+  /**
+   * The chrome as it will actually be drawn — the deck's fields over the
+   * `exportTools.*` defaults. This is what the slide editor and present mode
+   * render from, so all three surfaces resolve it identically.
+   */
+  public getResolvedChrome(): DeckChrome {
+    return resolveChrome(this._chrome, (settingsData as any).exportTools ?? {});
+  }
+
+  /**
+   * The deck-level token values a header/footer template can use. Read from the
+   * export document properties, which is where an author already sets the deck
+   * title, unit and author.
+   */
+  private _chromeTokens(): {
+    deckTitle?: string;
+    author?: string;
+    company?: string;
+    subject?: string;
+  } {
+    const cfg: any = (settingsData as any).exportTools ?? {};
+    return {
+      deckTitle: String(cfg.deckTitle ?? ''),
+      author: String(cfg.author ?? ''),
+      company: String(cfg.company ?? ''),
+      subject: String(cfg.subject ?? ''),
+    };
+  }
+
+  /**
+   * Flip one slide's opt-out from the deck's chrome — see Slide.noChrome. The
+   * slide keeps its number either way; only the furniture is suppressed.
+   */
+  public toggleSlideNoChrome(ref: number | string): void {
+    const idx = this._slideIndex(ref);
+    const slide = this._slides[idx];
+    if (!slide) return;
+    if (slide.noChrome) delete slide.noChrome;
+    else slide.noChrome = true;
+    EngineLogger.nextStep(
+      ENGINE_NAME,
+      `"${slide.title}" — deck chrome ${slide.noChrome ? 'off' : 'on'}`,
+    );
+    // Suppressing the chrome changes the slide's content rect, so the open
+    // editor has to refit its canvas, not just repaint the strips.
+    this._slideEditor?.refreshChrome?.();
+  }
+
+  /**
+   * Patch the deck's chrome. Undefined values are ignored (so a caller can set
+   * one field), and an explicitly empty string CLEARS a field back to the
+   * settings default rather than storing '' — which is what makes Deck setup's
+   * "leave blank" behave the way its placeholder promises.
+   */
+  public setChrome(patch: Partial<DeckChrome>): void {
+    const next: DeckChrome = { ...this._chrome };
+    for (const [key, value] of Object.entries(patch) as Array<[keyof DeckChrome, unknown]>) {
+      if (value === undefined) continue;
+      if (value === '' || value === null) delete next[key];
+      else (next as any)[key] = value;
+    }
+    this._chrome = next;
+    const resolved = this.getResolvedChrome();
+    EngineLogger.nextStep(
+      ENGINE_NAME,
+      hasChrome(resolved)
+        ? `Deck chrome — ${[
+            resolved.classification && `"${resolved.classification}"`,
+            resolved.headerText && 'header',
+            resolved.footerText && 'footer',
+            resolved.slideNumbers && 'slide numbers',
+          ]
+            .filter(Boolean)
+            .join(', ')}`
+        : 'Deck chrome off',
+    );
+    // The editor draws its banner strips from this, and the rail thumbnails do
+    // not — so only the open editor needs telling.
+    this._slideEditor?.refreshChrome?.();
   }
 
   public removeSlide(ref: number | string): void {
@@ -1150,14 +1252,19 @@ class BriefingEngine {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   public exportBriefing(): BriefingDocument {
-    // version 10 = hidden slides; 9 = overlay links; 8 = per-slide buildMode +
-    // build triggers; 7 = review comments; 6 = milsym overlays + block/tactical
-    // arrows; 5 = table overlays + text listStyle; 4 = slides may be screen-only
-    // (imported PPTX: no extent/camera, backgroundDataUrl is the slide);
-    // 3 = full-res background fallback; 2 = editor overlays. Import accepts
-    // 1–10 (every added field is optional, so it reads older documents
+    // version 11 = deck chrome (headers/footers/classification/slide numbers) +
+    // per-slide noChrome; 10 = hidden slides; 9 = overlay links; 8 = per-slide
+    // buildMode + build triggers; 7 = review comments; 6 = milsym overlays +
+    // block/tactical arrows; 5 = table overlays + text listStyle; 4 = slides may
+    // be screen-only (imported PPTX: no extent/camera, backgroundDataUrl is the
+    // slide); 3 = full-res background fallback; 2 = editor overlays. Import
+    // accepts 1–11 (every added field is optional, so it reads older documents
     // unchanged).
-    return { version: 10, slides: this._slides.map((s) => ({ ...s })) };
+    const doc: BriefingDocument = { version: 11, slides: this._slides.map((s) => ({ ...s })) };
+    // Omitted entirely when the author never set anything, so a briefing with no
+    // chrome of its own stays byte-identical to what version 10 wrote.
+    if (Object.keys(this._chrome).length) doc.chrome = { ...this._chrome };
+    return doc;
   }
 
   /**
@@ -1204,6 +1311,10 @@ class BriefingEngine {
     }
     this._cancelBuilds();
     this._slides = doc.slides.map((s) => ({ ...s }));
+    // Normalized on the way in, so a hand-edited document cannot put a
+    // half-typed field or a bogus number format into the renderer. A document
+    // written before version 11 has none, and falls back to the settings.
+    this._chrome = doc.chrome ? resolveChrome(doc.chrome, {}) : {};
     this._current = -1;
     // A link whose target slide was deleted in another session would look
     // clickable in the editor and do nothing in present mode — same dangling
@@ -1922,6 +2033,11 @@ class BriefingEngine {
         this._slides.flatMap((s, slideIndex) =>
           (s.comments ?? []).map((comment) => ({ slideIndex, comment })),
         ),
+      getResolvedChrome: () => this.getResolvedChrome(),
+      getChrome: () => this.getChrome(),
+      setChrome: (patch) => this.setChrome(patch),
+      toggleSlideNoChrome: (i: number) => this.toggleSlideNoChrome(i),
+      getChromeTokens: () => this._chromeTokens(),
       moveSlide: (from: number, to: number) => this.moveSlide(from, to),
       toggleSlideHidden: (i: number) => this.toggleSlideHidden(i),
       duplicateSlide: (i: number) => {
