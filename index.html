@@ -6304,6 +6304,18 @@
         };
         handle.addEventListener('pointerup', endDrag);
         handle.addEventListener('pointercancel', endDrag);
+
+        // A dragged panel's inline left/top were clamped against the window size
+        // at drag time, so shrinking the window (or rotating a tablet) can strand
+        // it off-screen — it then "opens" somewhere the user can't see it. Re-clamp
+        // on resize. Untouched panels have no inline position and are skipped.
+        window.addEventListener('resize', () => {
+          if (!panel.style.left && !panel.style.top) return;
+          const maxLeft = Math.max(0, window.innerWidth  - panel.offsetWidth  - 4);
+          const maxTop  = Math.max(0, window.innerHeight - panel.offsetHeight - 4);
+          panel.style.left = Math.max(0, Math.min(parseFloat(panel.style.left) || 0, maxLeft)) + 'px';
+          panel.style.top  = Math.max(0, Math.min(parseFloat(panel.style.top)  || 0, maxTop))  + 'px';
+        });
       }
 
       // Wire Analysis Hub panel drag

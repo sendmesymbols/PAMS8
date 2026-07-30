@@ -200,9 +200,14 @@ export class ObjArea {
             let cLenLimit = baseLineLen / 10;
             if (cLenLimit > baseLineLen / 3.6) cLenLimit = baseLineLen / 3.6;
 
-            const objPaths = Shapes.createOBJ(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-            for (const path of objPaths) {
-                result.addRing(path.map(pt => [pt.x, pt.y]));
+            // Close each 2-point stroke as [p1, p2, p1] so the polygon outline shows it
+            // in both 2D and 3D. Adding the O and B letter paths as rings instead gave
+            // them a real area, which the 3D tessellator cuts out of the polygon.
+            const segments = Shapes.createOBJRings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+            for (const seg of segments) {
+                if (seg && seg.length >= 2) {
+                    result.addRing([seg[0], seg[1], seg[0]]);
+                }
             }
         } catch (e) {
             console.log("Cannot create Inner Text");

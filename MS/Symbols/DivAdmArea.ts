@@ -312,14 +312,19 @@ export class DivAdmArea {
                 cLenLimit = baseLineLen / 3.6;
             }
 
-            // Try to use Shapes.createBAA if available
-            if (Shapes && (Shapes as any).createDAA) {
+            // Try to use Shapes.createDAARings if available
+            if (Shapes && (Shapes as any).createDAARings) {
                 try {
-                    const baaRings = (Shapes as any).createDAA(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-                    if (baaRings && Array.isArray(baaRings)) {
-                        for (let j = 0; j <= baaRings.length - 1; j++) {
-                            if (baaRings[j]) {
-                                result.addRing(baaRings[j]);
+                    const daaRings = (Shapes as any).createDAARings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+                    if (daaRings && Array.isArray(daaRings)) {
+                        for (let j = 0; j <= daaRings.length - 1; j++) {
+                            const seg = daaRings[j];
+                            if (seg && seg.length >= 2) {
+                                // Close each 2-point stroke as [p1, p2, p1] so the polygon
+                                // outline shows it in both 2D and 3D. The letter paths used to
+                                // be added as rings, giving them a real area that the 3D
+                                // tessellator cuts out of the polygon.
+                                result.addRing([seg[0], seg[1], seg[0]]);
                             }
                         }
                     }

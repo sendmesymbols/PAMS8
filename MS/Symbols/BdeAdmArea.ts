@@ -312,14 +312,19 @@ export class BdeAdmArea {
                 cLenLimit = baseLineLen / 3.6;
             }
 
-            // Try to use Shapes.createBAA if available
-            if (Shapes && (Shapes as any).createBAA) {
+            // Try to use Shapes.createBAARings if available
+            if (Shapes && (Shapes as any).createBAARings) {
                 try {
-                    const baaRings = (Shapes as any).createBAA(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+                    const baaRings = (Shapes as any).createBAARings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
                     if (baaRings && Array.isArray(baaRings)) {
                         for (let j = 0; j <= baaRings.length - 1; j++) {
-                            if (baaRings[j]) {
-                                result.addRing(baaRings[j]);
+                            const seg = baaRings[j];
+                            if (seg && seg.length >= 2) {
+                                // Close each 2-point stroke as [p1, p2, p1] so the polygon
+                                // outline shows it in both 2D and 3D. The letter paths used to
+                                // be added as rings, giving them a real area that the 3D
+                                // tessellator cuts out of the polygon.
+                                result.addRing([seg[0], seg[1], seg[0]]);
                             }
                         }
                     }

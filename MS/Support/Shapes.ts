@@ -212,6 +212,22 @@ class Shapes {
     }
 
     /**
+     * Letter B as clean 2-point strokes. Same point sequence as createB — including
+     * the segment that bridges the two bowls, which is the B's left stem — just
+     * emitted pairwise so strokes->rings consumers keep the glyph instead of closing
+     * each bowl into a real-area ring (a hole the 3D tessellator cuts).
+     * Takes (dx, dy, dr, sp) to match the other letter builders.
+     */
+    static createBStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const pts = this.createB(new Point({ x: dx, y: dy, spatialReference: sp }), dr, 60);
+        const strokes: Point[][] = [];
+        for (let i = 0; i < pts.length - 1; i++) {
+            strokes.push([pts[i], pts[i + 1]]);
+        }
+        return strokes;
+    }
+
+    /**
      * Create P shape (letter P: stem going up + upper half circle)
      */
     static createP(pt: Point, radius: number, steps: number): Point[] {
@@ -759,61 +775,77 @@ class Shapes {
         return pts;
     }
 
+    /** Half-width of the U glyph — matches the A / N / M glyph width so U sits
+     *  in the same cell as its neighbours instead of being twice as wide. */
+    private static readonly U_HALF_WIDTH = 0.55;
+
+    /** Bowl arc of the U: left side -> bottom -> right side, bottom resting on
+     *  the baseline (dy - dr) and cap height at dy + dr, like every other letter.
+     *  The stems read their x/y off arc[0] / arc[last] so they always meet the
+     *  bowl exactly. */
+    private static _uBowlArc(dx: number, dy: number, dr: number, sp: SpatialReference, steps: number): Point[] {
+        const r = dr * this.U_HALF_WIDTH;   // bowl radius == half-width: bowl spans the full glyph
+        const cy = dy - dr + r;             // bowl centre; bowl bottom sits on the baseline
+        const arc: Point[] = [];
+        for (let i = 0; i <= steps; i++) {
+            const theta = Math.PI + (Math.PI * i) / steps;   // 180deg -> 360deg
+            arc.push(new Point({
+                x: dx + r * Math.cos(theta),
+                y: cy + r * Math.sin(theta),
+                spatialReference: sp
+            }));
+        }
+        return arc;
+    }
+
     /**
      * Create letter U
      */
     static createU(dx: number, dy: number, dr: number, sp: SpatialReference): Point[] {
-        const pts: Point[] = [];
-        pts.push(new Point({ x: dx + dr / 0.97, y: dy + dr, spatialReference: sp }));
+        // One continuous, symmetric path: left stem down -> bowl -> right stem up.
+        // The old version was 2dr wide (twice every other letter), had its two
+        // stems at different x offsets and different heights, left a gap between
+        // the bowl and the right stem, and ended on a duplicated point — a
+        // zero-length segment the 3D tessellator collapses.
+        const arc = this._uBowlArc(dx, dy, dr, sp, 24);
+        const left = arc[0];
+        const right = arc[arc.length - 1];
 
-        // Note: You'll need to implement toRad in your GeoTools or use Math functions
-        const halfCirclePts = this.createHalfCircle(
-            new Point({ x: dx, y: dy, spatialReference: sp }),
-            dr,
-            2 * Math.PI, // 360 degrees in radians
-            Math.PI,     // 180 degrees in radians
-            40
-        );
-        pts.push(...halfCirclePts);
-
-        pts.push(new Point({ x: dx - dr, y: dy + dr / 0.97, spatialReference: sp }));
-        pts.push(pts[pts.length - 1]);
-
-        return pts;
+        return [
+            new Point({ x: left.x, y: dy + dr, spatialReference: sp }),   // left stem, cap height
+            ...arc,                                                       // down the left stem, round the bowl
+            new Point({ x: right.x, y: dy + dr, spatialReference: sp })   // right stem, cap height
+        ];
     }
 
     /**
-     * Create letter U as separate strokes to avoid auto-closing
+     * Create letter U as separate strokes to avoid auto-closing.
+     * Every stroke is a clean 2-point segment (the convention for *Strokes in
+     * this file) so strokes->rings consumers keep the whole glyph.
      */
     static createUStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const arc = this._uBowlArc(dx, dy, dr, sp, 18);
+        const left = arc[0];
+        const right = arc[arc.length - 1];
         const strokes: Point[][] = [];
-        
-        // Left vertical line
+
+        // Left stem: cap height down to the start of the bowl
         strokes.push([
-            new Point({ x: dx - dr, y: dy + dr / 0.97, spatialReference: sp }),
-            new Point({ x: dx - dr, y: dy, spatialReference: sp })
+            new Point({ x: left.x, y: dy + dr, spatialReference: sp }),
+            left
         ]);
-        
-        // Bottom curve (broken into segments to avoid auto-closing)
-        const halfCirclePts = this.createHalfCircle(
-            new Point({ x: dx, y: dy, spatialReference: sp }),
-            dr,
-            2 * Math.PI, // 360 degrees in radians
-            Math.PI,     // 180 degrees in radians
-            20 // fewer points for stroke segments
-        );
-        
-        // Break the half circle into small stroke segments
-        for (let i = 0; i < halfCirclePts.length - 1; i++) {
-            strokes.push([halfCirclePts[i], halfCirclePts[i + 1]]);
+
+        // Bowl, one 2-point segment per arc step
+        for (let i = 0; i < arc.length - 1; i++) {
+            strokes.push([arc[i], arc[i + 1]]);
         }
-        
-        // Right vertical line
+
+        // Right stem: end of the bowl back up to cap height
         strokes.push([
-            new Point({ x: dx + dr / 0.97, y: dy, spatialReference: sp }),
-            new Point({ x: dx + dr / 0.97, y: dy + dr, spatialReference: sp })
+            right,
+            new Point({ x: right.x, y: dy + dr, spatialReference: sp })
         ]);
-        
+
         return strokes;
     }
 
@@ -903,9 +935,21 @@ class Shapes {
         return [pts1, pts2];
     }
 
+    static createAOStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createAStrokes(dx - (dr * 1.3), dy, dr, sp),
+            ...this.createOStrokes(dx + (dr * 1.3), dy, dr, sp)
+        ];
+    }
+    static createAORings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToSegments(this.createAOStrokes(dx, dy, dr, sp));
+    }
+
     static createUA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createU(dx - (dr * 1.3), dy, dr, sp);
-        const pts2 = this.createA(dx + (dr * 0.85), dy, dr, sp);
+        // Offsets tightened for the narrower U (it used to be 2dr wide, which left
+        // a ~1dr hole between the two letters once U matched the A glyph width).
+        const pts1 = this.createU(dx - (dr * 0.75), dy, dr, sp);
+        const pts2 = this.createA(dx + (dr * 0.75), dy, dr, sp);
         return [pts1, pts2];
     }
 
@@ -958,33 +1002,25 @@ class Shapes {
     }
 
     static createOStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        // Create O as separate arc segments to avoid auto-closing
-        const step = 2 * Math.PI / 36; // Smaller steps for smoother curve
-        const strokes: Point[][] = [];
-        
-        // Break O into small line segments to avoid auto-closing issues
-        let prevPoint: Point | null = null;
-        for (let dtheta = 0; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            const x = dx + 0.5 * dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            const currentPoint = new Point({ x, y, spatialReference: sp });
+        // Create O as separate arc segments to avoid auto-closing.
+        // Stepped by integer index rather than accumulating a float angle: the old
+        // `dtheta < 2*PI` loop overshot and emitted a final point on top of the first,
+        // so the explicit closing segment came out zero-length.
+        const steps = 36;
+        const at = (i: number) => new Point({
+            x: dx + 0.5 * dr * Math.cos((2 * Math.PI * i) / steps),
+            y: dy - dr * Math.sin((2 * Math.PI * i) / steps),
+            spatialReference: sp
+        });
 
-            if (prevPoint) {
-                strokes.push([prevPoint, currentPoint]);
-            }
+        const strokes: Point[][] = [];
+        let prevPoint = at(0);
+        for (let i = 1; i <= steps; i++) {
+            const currentPoint = i === steps ? at(0) : at(i);   // last segment closes exactly on the first point
+            strokes.push([prevPoint, currentPoint]);
             prevPoint = currentPoint;
         }
-        
-        // Close the circle
-        if (prevPoint && strokes.length > 0) {
-            const firstPoint = new Point({ 
-                x: dx + 0.5 * dr * Math.cos(0), 
-                y: dy - dr * Math.sin(0), 
-                spatialReference: sp 
-            });
-            strokes.push([prevPoint, firstPoint]);
-        }
-        
+
         return strokes;
     }
 
@@ -1007,27 +1043,19 @@ class Shapes {
     }
 
     static createDStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        // Create D as separate arc segments to avoid auto-closing
-        const step = 2 * Math.PI / 36;
+        // Create D as separate arc segments to avoid auto-closing.
+        // One index-driven sweep 270deg -> 450deg in 10deg steps, replacing the two
+        // float-accumulating loops that met at 360/0 and duplicated a point there
+        // (which produced a zero-length segment).
         const strokes: Point[][] = [];
-        
-        // Create the curved part of D
         let prevPoint: Point | null = null;
-        for (let dtheta = 270 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            const x = dx + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            const currentPoint = new Point({ x, y, spatialReference: sp });
-
-            if (prevPoint) {
-                strokes.push([prevPoint, currentPoint]);
-            }
-            prevPoint = currentPoint;
-        }
-
-        for (let dtheta = 0 * Math.PI / 180; dtheta < 91 * Math.PI / 180; dtheta += step) {
-            const x = dx + dr * Math.cos(dtheta);
-            const y = dy - dr * Math.sin(dtheta);
-            const currentPoint = new Point({ x, y, spatialReference: sp });
+        for (let i = 0; i <= 18; i++) {
+            const dtheta = ((270 + i * 10) * Math.PI) / 180;
+            const currentPoint = new Point({
+                x: dx + dr * Math.cos(dtheta),
+                y: dy - dr * Math.sin(dtheta),
+                spatialReference: sp
+            });
 
             if (prevPoint) {
                 strokes.push([prevPoint, currentPoint]);
@@ -1326,10 +1354,17 @@ class Shapes {
     }
 
 
+    // FUP letter offsets. F is left-anchored (spans dx..dx+dr), U is centred on
+    // its dx (+/-0.55dr) and P spans dx-dr/6..dx+dr/2 — so these three offsets
+    // give an even ~0.3dr gap between glyphs and centre the label on dx.
+    private static readonly FUP_F_X = -1.7;
+    private static readonly FUP_U_X = 0.15;
+    private static readonly FUP_P_X = 1.2;
+
     static createFUP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const pts1 = this.createF(dx - (dr * 2.5), dy, dr, sp);
-        const pts2 = this.createU(dx, dy, dr, sp);
-        const pts3 = this.createPP(dx + (dr * 1.7), dy, dr, sp);
+        const pts1 = this.createF(dx + (dr * this.FUP_F_X), dy, dr, sp);
+        const pts2 = this.createU(dx + (dr * this.FUP_U_X), dy, dr, sp);
+        const pts3 = this.createPP(dx + (dr * this.FUP_P_X), dy, dr, sp);
         return [pts1, pts2, pts3];
     }
 
@@ -1337,12 +1372,20 @@ class Shapes {
      * Create FUP text using stroke-based approach to avoid auto-closing in ArcGIS API 4.33+
      */
     static createFUPStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
-        const fStrokes = this.createFStrokes(dx - (dr * 2.5), dy, dr, sp);
-        const uStrokes = this.createUStrokes(dx, dy, dr, sp);
-        const pStrokes = this.createPStrokes(dx + (dr * 1.7), dy, dr, sp);
-        
+        const fStrokes = this.createFStrokes(dx + (dr * this.FUP_F_X), dy, dr, sp);
+        const uStrokes = this.createUStrokes(dx + (dr * this.FUP_U_X), dy, dr, sp);
+        const pStrokes = this.createPStrokes(dx + (dr * this.FUP_P_X), dy, dr, sp);
+
         // Combine all strokes
         return [...fStrokes, ...uStrokes, ...pStrokes];
+    }
+
+    /**
+     * Create FUP text as closed polygon rings (one degenerate [p1,p2,p1] ring per
+     * 2-point segment), for symbols that carry inner text inside the polygon.
+     */
+    static createFUPRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToSegments(this.createFUPStrokes(dx, dy, dr, sp));
     }
 
     static createDAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
@@ -1352,12 +1395,36 @@ class Shapes {
         return [pts1, pts2, pts3];
     }
 
+    /** DAA as clean 2-point strokes (createDStrokes matches the createDD metrics). */
+    static createDAAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createDStrokes(dx - (dr * 1.8), dy, dr, sp),
+            ...this.createAStrokes(dx, dy, dr, sp),
+            ...this.createAStrokes(dx + (dr * 1.2), dy, dr, sp)
+        ];
+    }
+    static createDAARings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToSegments(this.createDAAStrokes(dx, dy, dr, sp));
+    }
+
     static createOBJ(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createO(dx - (dr * 1.5), dy, dr, sp);
         const pts2 = this.createB(new Point({ x: dx, y: dy, spatialReference: sp }), dr, 60);
         // J uses strokes (2-point segments) so polygon ring closure retraces each segment — no spurious closing line
         const jStrokes = this.createJStrokes(dx + (dr * 1.5), dy, dr, sp);
         return [pts1, pts2, ...jStrokes];
+    }
+
+    /** OBJ as clean 2-point strokes — same offsets as createOBJ. */
+    static createOBJStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createOStrokes(dx - (dr * 1.5), dy, dr, sp),
+            ...this.createBStrokes(dx, dy, dr, sp),
+            ...this.createJStrokes(dx + (dr * 1.5), dy, dr, sp)
+        ];
+    }
+    static createOBJRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToSegments(this.createOBJStrokes(dx, dy, dr, sp));
     }
 
     static createSAA(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
@@ -1434,6 +1501,18 @@ class Shapes {
         const pts2 = this.createA(dx, dy, dr, sp);
         const pts3 = this.createA(dx + (dr * 1.2), dy, dr, sp);
         return [pts1, pts2, pts3];
+    }
+
+    /** BAA as clean 2-point strokes — same offsets as createBAA. */
+    static createBAAStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        return [
+            ...this.createBStrokes(dx - dr, dy, dr, sp),
+            ...this.createAStrokes(dx, dy, dr, sp),
+            ...this.createAStrokes(dx + (dr * 1.2), dy, dr, sp)
+        ];
+    }
+    static createBAARings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        return this.strokesToSegments(this.createBAAStrokes(dx, dy, dr, sp));
     }
 
     static createACP(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
@@ -1801,28 +1880,36 @@ class Shapes {
         const rr = dr / 2;
         const cy = dy + rr;          // bowl centre y
         const stemX = dx - rr / 3;   // left stem x (matches createDD)
-        const step = 2 * Math.PI / 180;
+        const steps = 18;            // bowl arc segments
+
+        const strokes: Point[][] = [];
 
         // Vertical stem: top → bottom (single clean segment)
-        const stem: Point[] = [
+        strokes.push([
             new Point({ x: stemX, y: dy + dr, spatialReference: sp }),
             new Point({ x: stemX, y: dy - dr, spatialReference: sp }),
-        ];
+        ]);
 
-        // Upper-right bowl: top of stem → top centre → arc → middle of stem
+        // Upper-right bowl: top of stem → top centre → arc → middle of stem.
+        // Emitted as consecutive 2-point segments, like every other *Strokes
+        // builder here: the bowl used to be one ~90-point path, which every
+        // strokes->rings consumer reduced to its first segment (or closed into a
+        // real-area ring the 3D tessellator cuts), losing the bowl entirely.
         const bowl: Point[] = [
             new Point({ x: stemX, y: dy + dr, spatialReference: sp }),
             new Point({ x: dx, y: dy + dr, spatialReference: sp }),
         ];
-        for (let dtheta = 270 * Math.PI / 180; dtheta < 360 * Math.PI / 180; dtheta += step) {
-            bowl.push(new Point({ x: dx + rr * Math.cos(dtheta), y: cy - rr * Math.sin(dtheta), spatialReference: sp }));
-        }
-        for (let dtheta = 0; dtheta < 91 * Math.PI / 180; dtheta += step) {
+        for (let i = 1; i <= steps; i++) {
+            const dtheta = (270 + (180 * i) / steps) * Math.PI / 180;   // 270deg -> 450deg (=90deg)
             bowl.push(new Point({ x: dx + rr * Math.cos(dtheta), y: cy - rr * Math.sin(dtheta), spatialReference: sp }));
         }
         bowl.push(new Point({ x: stemX, y: dy, spatialReference: sp }));
 
-        return [stem, bowl];
+        for (let i = 0; i < bowl.length - 1; i++) {
+            strokes.push([bowl[i], bowl[i + 1]]);
+        }
+
+        return strokes;
     }
 
     static createKG(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {

@@ -1093,6 +1093,49 @@ function initializeAutocomplete() {
       | HTMLTextAreaElement
       | null;
 
+  const paramsDockEl = () => document.getElementById('symbolParamsDock');
+
+  /**
+   * Reveal the params dock. Two bits of sticky state have to be undone first,
+   * or the dock "opens" in a state the user can't see — which reads as it never
+   * opening at all:
+   *   • `minimized` (the − button) survives every hide/show cycle, so once
+   *     minimized the dock would reappear as a bare title strip forever;
+   *   • a dragged dock keeps its inline left/top, which a later window resize
+   *     can leave outside the viewport.
+   * Both are only reset on a hidden → shown transition, so minimizing or
+   * repositioning an open dock still sticks for as long as it stays open.
+   */
+  function showParamsDock(): void {
+    const dock = paramsDockEl();
+    if (!dock) return;
+    const wasHidden = !dock.classList.contains('show');
+    dock.classList.add('show');
+    if (!wasHidden) return;
+
+    if (dock.classList.contains('minimized')) {
+      dock.classList.remove('minimized');
+      const minBtn = document.getElementById('symbolParamsDockMin');
+      if (minBtn) {
+        minBtn.textContent = '–';
+        minBtn.title = 'Minimize this panel';
+      }
+    }
+
+    // Only a dragged dock carries inline left/top; the default position is
+    // CSS-centred on the right edge and always on-screen.
+    if (!dock.style.left && !dock.style.top) return;
+    const rect = dock.getBoundingClientRect();
+    const maxLeft = Math.max(0, window.innerWidth - rect.width - 4);
+    const maxTop = Math.max(0, window.innerHeight - rect.height - 4);
+    dock.style.left = Math.max(0, Math.min(rect.left, maxLeft)) + 'px';
+    dock.style.top = Math.max(0, Math.min(rect.top, maxTop)) + 'px';
+  }
+
+  function hideParamsDock(): void {
+    paramsDockEl()?.classList.remove('show');
+  }
+
   function dockSelectedCode(containerId: string, fallback: string): string {
     const sel = document.querySelector<HTMLButtonElement>(
       `#${containerId} .dock-seg-btn.selected`,
@@ -1167,7 +1210,7 @@ function initializeAutocomplete() {
         const graphic = dockEditGraphic;
         if (!graphic) return;
         exitDockEditMode();
-        document.getElementById('symbolParamsDock')?.classList.remove('show');
+        hideParamsDock();
         symbolEngine.openSymbolEditor(graphic);
       });
 
@@ -1226,7 +1269,7 @@ function initializeAutocomplete() {
       if (el) el.style.display = 'none';
     }
 
-    dock.classList.add('show');
+    showParamsDock();
   }
 
   function exitDockEditMode(): void {
@@ -1409,7 +1452,7 @@ function initializeAutocomplete() {
     }
     if (dock) {
       if (dockTitle) dockTitle.textContent = symbolData?.Name || 'Draw Parameters';
-      dock.classList.add('show');
+      showParamsDock();
     }
   }
 
@@ -1465,18 +1508,28 @@ function initializeAutocomplete() {
       .getElementById('symbolParamsDockClose')
       ?.addEventListener('click', () => {
         exitDockEditMode();
-        document.getElementById('symbolParamsDock')?.classList.remove('show');
+        hideParamsDock();
       });
 
     // Drawing finished → the dock has served its purpose; close it. In
     // continuous creation mode the next draw arms immediately with the same
     // symbol, so keep it open there.
-    document.addEventListener('onDrawEnd', () => {
+    //
+    // This listens for `symbolCreated`, NOT the raw `onDrawEnd`: onDrawEnd also
+    // fires for every *passive* re-render that goes through initialize() — the
+    // dock's own Identity/Echelon/Name edit (applyDockEditPatch → updateSymbol),
+    // plan load, and collab remote symbols. Closing on those meant the dock
+    // vanished the instant the user touched it in Details mode, and a plan load
+    // or an incoming peer symbol closed it mid-draw. The engine emits
+    // symbolCreated only for genuine placements, so it's the right signal.
+    // The edit-mode guard covers placements that *are* genuine but unrelated to
+    // the dock (paste / duplicate while Details is open).
+    document.addEventListener('symbolCreated', () => {
+      if (dockEditGraphic) return;
       const mode = (
         document.getElementById('setting-creationMode') as HTMLSelectElement | null
       )?.value;
-      if (mode !== 'continuous')
-        document.getElementById('symbolParamsDock')?.classList.remove('show');
+      if (mode !== 'continuous') hideParamsDock();
     });
 
     const btn = document.getElementById('symbolParamsBtn');

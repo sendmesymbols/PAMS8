@@ -311,43 +311,22 @@ export class FormingUpPoint {
       if (Shapes && (Shapes as any).createFUPStrokes) {
         try {
           const fupStrokes = (Shapes as any).createFUPStrokes(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
-          if (fupStrokes && Array.isArray(fupStrokes)) {
-            for (let j = 0; j < fupStrokes.length; j++) {
-              if (fupStrokes[j] && Array.isArray(fupStrokes[j]) && fupStrokes[j].length >= 2) {
-                // Convert stroke (2-point line) to a small rectangular shape for polygon ring visibility
-                const strokePoints = fupStrokes[j];
-                if (strokePoints.length >= 2) {
-                  const p1 = strokePoints[0];
-                  const p2 = strokePoints[strokePoints.length - 1];
-                  
-                  // Create a small rectangular shape for the stroke (visible as a thin line)
-                  const strokeThickness = cLenLimit * 0.02; // Very thin stroke
-                  const dx = p2.x - p1.x;
-                  const dy = p2.y - p1.y;
-                  const length = Math.sqrt(dx * dx + dy * dy);
-                  
-                  if (length > 0) {
-                    // Normalize direction vector
-                    const nx = dx / length;
-                    const ny = dy / length;
-                    
-                    // Perpendicular vector for thickness
-                    const px = -ny * strokeThickness / 2;
-                    const py = nx * strokeThickness / 2;
-                    
-                    // Create rectangle points (closed ring)
-                    const strokeRing: number[][] = [
-                      [p1.x + px, p1.y + py],
-                      [p1.x - px, p1.y - py],
-                      [p2.x - px, p2.y - py],
-                      [p2.x + px, p2.y + py],
-                      [p1.x + px, p1.y + py] // Close the ring
-                    ];
-                    
-                    result.addRing(strokeRing);
-                  }
-                }
-              }
+          // strokesToSegments keeps every consecutive point pair, so multi-point
+          // strokes (the P bowl, the U bowl) survive instead of being flattened to
+          // their first/last point.
+          const segments = (Shapes as any).strokesToSegments
+            ? (Shapes as any).strokesToSegments(fupStrokes)
+            : null;
+
+          if (segments && Array.isArray(segments)) {
+            for (let j = 0; j < segments.length; j++) {
+              const seg = segments[j];
+              if (!seg || seg.length < 2) continue;
+              // Close each segment as [p1, p2, p1] so the polygon outline shows it
+              // in both 2D and 3D. The previous thin-rectangle rings had a real
+              // (near-zero) area, so the 3D tessellator cut/culled them while 2D
+              // still drew their outline.
+              result.addRing([seg[0], seg[1], seg[0]]);
             }
           }
         } catch (e) {

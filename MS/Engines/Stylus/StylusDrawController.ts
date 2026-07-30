@@ -151,11 +151,352 @@ function isBaselineClass(cls: string | undefined): boolean {
   return !!cls && BASELINE_CLASSES.has(cls);
 }
 
+// Line/area symbols whose immediate-placement createSymbol() reads CTRL_PTS as
+// [chordStart, chordEnd, curvatureCandidate, ...] — a three-point circle fit
+// through the first two points (the flanks of a curved boundary) and a third
+// "bulge" point — rather than as ordered vertices along a path (verified by
+// reading each createSymbol()'s CTRL_PTS[0]/[1]/[2] usage). This is the OTHER
+// shape of "two points first, then the real symbol": with the classic mouse
+// click handler, click 1 + click 2 render a straight line (the temp graphic)
+// that "vanishes" the instant click 3 supplies the curvature and the arc
+// appears — same interaction the user described for BASE_LN_PTS symbols, just
+// implemented inline instead of via the separate BaseLine helper class.
+// A freehand stroke or a sequence of taps instead captures points in TRACE
+// order (first tap = one flank, interior taps = along the bulge, last tap =
+// the other flank) — see _reorderArcPoints, which remaps trace order into the
+// [start, end, bulge] triple these classes expect.
+const ARC_CANDIDATE_CLASSES = new Set<string>([
+  'Ambush',
+  'Contain',
+  'Delay',
+  'Withdraw',
+  'WithdrawUnderPressure',
+  'Retire',
+  'ArcOfFireSD',
+  'FreehandSemiCircle',
+  'FreehandSemiCircleFilled',
+]);
+
+function isArcCandidateClass(cls: string | undefined): boolean {
+  return !!cls && ARC_CANDIDATE_CLASSES.has(cls);
+}
+
 // A pen contact within this window means the user is actively drawing with the
 // pen — touch drags then PAN the map in scrub mode (Procreate convention)
 // instead of starting a stroke. Composes with premium palm rejection, which
 // separately drops quick-after-pen touch contacts entirely.
 const PEN_ACTIVE_MS = 2500;
+
+// ── Toolbar presentation ──────────────────────────────────────────────────────
+// The toolbar's job is to be reachable, not to be seen. It is a compact
+// icon-only pill that rests at partial opacity, comes to full strength only when
+// the user reaches for it, and all but vanishes mid-stroke — so a planning
+// session is never framed by chrome.
+//
+// Styled from an injected stylesheet rather than inline cssText for what inline
+// styles can't express: pseudo-class states (hover / focus-visible / active /
+// disabled), density switching from a single data-touch attribute instead of a
+// ternary at every property, and the reduced-motion + coarse-pointer queries.
+// Only the live x/y position stays inline.
+//
+// Every colour reads from the ThemeManager custom properties on :root, so the
+// pill follows Ops Dark / Night Vision / Sandstorm / Arctic / SIPR instead of
+// hardcoding one dark palette (the previous fixed #1f6feb-on-#141e1e chrome
+// inverted illegibly under the light Arctic theme and broke Night Vision's
+// dark-adaptation intent). Fallbacks match Ops Dark for the case where
+// ThemeManager never ran.
+const TOOLBAR_STYLE_ID = 'ms-stylus-toolbar-styles';
+
+// Exponential ease-out: state changes land immediately and settle. No bounce.
+const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+// How close a hovering pointer must come before the pill wakes to full opacity.
+// Generous on touch, where there is no hover to rely on.
+const TB_NEAR_PX = 90;
+const TB_NEAR_PX_TOUCH = 130;
+
+// Contact travel that turns a tap into a stroke. Below this the pill holds
+// steady, so tapping vertices doesn't make it flicker.
+const TB_STROKE_PX = 5;
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+// Drawn as stroked SVG on a 24×24 grid rather than the Unicode glyphs (✓ ⤺ ✕ ✏ ⊙)
+// this toolbar used to print. Those resolve through the platform's symbol
+// fallback font, which ships a single light weight — font-weight has no effect on
+// them, so they render thin and inconsistent across Windows / iPadOS / Android.
+// A stroke width is real geometry: it stays firm at every density, scales
+// crisply, and inherits `currentColor`, so every existing button state (accent
+// primary, danger hover, aria-pressed, disabled) applies unchanged.
+//
+// `dots` are zero-length round-capped paths — round dots at a heavier stroke,
+// no <circle> special-casing needed.
+const TB_ICONS: Record<string, { d?: string[]; dots?: [number, number][] }> = {
+  finish: { d: ['M4.5 12.5 L9.5 17.5 L19.5 6.5'] },
+  undo: { d: ['M9 14 L4 9 L9 4', 'M4 9 H14.5 A5.5 5.5 0 0 1 14.5 20 H11'] },
+  // Drawn to a wider box than the check: crossed diagonals carry less visual
+  // mass than orthogonal strokes, so an equal-sized X reads smaller.
+  cancel: { d: ['M6 6 L18 18', 'M18 6 L6 18'] },
+  draw: {
+    d: ['M16.4 3.6 a2.12 2.12 0 0 1 3 3 L7.5 18.5 L3 20 L4.5 15.5 Z', 'M14.3 5.7 L17.3 8.7'],
+  },
+  points: { d: ['M5.5 12 a6.5 6.5 0 1 0 13 0 a6.5 6.5 0 1 0 -13 0'], dots: [[12, 12]] },
+};
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function mkIcon(name: keyof typeof TB_ICONS | string): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('aria-hidden', 'true'); // the button's aria-label is the name
+  svg.setAttribute('focusable', 'false'); // legacy IE/Edge tab-stop guard
+  const spec = TB_ICONS[name];
+  for (const d of spec?.d ?? []) {
+    const p = document.createElementNS(SVG_NS, 'path');
+    p.setAttribute('d', d);
+    svg.appendChild(p);
+  }
+  for (const [x, y] of spec?.dots ?? []) {
+    const p = document.createElementNS(SVG_NS, 'path');
+    p.setAttribute('d', `M${x} ${y} L${x} ${y}`);
+    p.setAttribute('class', 'ms-stylus-dot');
+    svg.appendChild(p);
+  }
+  return svg;
+}
+
+function injectToolbarStyles(): void {
+  if (typeof document === 'undefined' || document.getElementById(TOOLBAR_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = TOOLBAR_STYLE_ID;
+  style.textContent = `
+.ms-stylus-toolbar {
+  --_tb-accent: var(--ms-accent, #64b4ff);
+  --_tb-border: var(--ms-border, rgba(64, 140, 220, 0.35));
+  --_tb-text: var(--ms-text, #b8c5d8);
+  --_tb-danger: var(--ms-danger, #e24b4a);
+  --_tb-fill: var(--ms-bg-input, rgba(255, 255, 255, 0.05));
+  /* Density tokens — data-touch="1" retunes the whole pill from one place. */
+  --_tb-size: 26px;
+  --_tb-glyph: 15px;
+  --_tb-stroke: 2.6;
+  --_tb-pad: 3px;
+  --_tb-gap: 2px;
+  --_tb-radius: 6px;
+  --_tb-rest: 0.5;
+
+  position: absolute;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--_tb-gap);
+  padding: var(--_tb-pad);
+  border: 1px solid var(--_tb-border);
+  border-radius: calc(var(--_tb-radius) + var(--_tb-pad));
+  background: var(--ms-bg, rgba(14, 17, 26, 0.97));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  font-family: var(--ms-menu-font, 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif);
+  line-height: 1;
+  color: var(--_tb-text);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Entry state; .is-in is added a tick after append. */
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
+  transition: opacity 160ms ${EASE_OUT}, transform 160ms ${EASE_OUT};
+}
+
+/* Resting: present but recessive. */
+.ms-stylus-toolbar.is-in {
+  opacity: var(--_tb-rest);
+  transform: none;
+}
+/* Reached for: hover, keyboard focus, or a pointer within TB_NEAR_PX. */
+.ms-stylus-toolbar.is-in:hover,
+.ms-stylus-toolbar.is-in:focus-within,
+.ms-stylus-toolbar.is-in.is-near {
+  opacity: 1;
+}
+/* Mid-stroke: out of sight AND out of the input path, so the pill can neither
+   distract from the line being drawn nor swallow a vertex under the hand. */
+.ms-stylus-toolbar.is-in.is-drawing {
+  opacity: 0.07;
+  pointer-events: none;
+  transition: opacity 90ms linear;
+}
+
+/* Finger-sized targets whenever the last physical input wasn't a mouse. */
+.ms-stylus-toolbar[data-touch='1'] {
+  --_tb-size: 42px;
+  --_tb-glyph: 20px;
+  /* Slightly lighter in absolute terms at the larger size, so the icons read
+     with the same visual weight rather than turning blobby. */
+  --_tb-stroke: 2.35;
+  --_tb-pad: 4px;
+  --_tb-gap: 3px;
+  --_tb-radius: 9px;
+  --_tb-rest: 0.62;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+/* Icon-only, one shape for every control. Hierarchy comes from an accent seat
+   on the primary and a danger tint that only appears on intent — no
+   full-saturation fills sitting on an idle control. */
+.ms-stylus-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--_tb-size);
+  height: var(--_tb-size);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--_tb-radius);
+  background: transparent;
+  color: var(--_tb-text);
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: none;
+  transition: background-color 140ms ${EASE_OUT}, color 140ms ${EASE_OUT},
+    transform 100ms ${EASE_OUT};
+}
+
+/* Firm stroke geometry, inheriting the button's colour state. */
+.ms-stylus-btn > svg {
+  display: block;
+  width: var(--_tb-glyph);
+  height: var(--_tb-glyph);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--_tb-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* Taps land on the button, never on a path — keeps event.target predictable
+     for the toolbar-leak guards that test closest('.ms-stylus-toolbar'). */
+  pointer-events: none;
+}
+.ms-stylus-btn > svg .ms-stylus-dot {
+  stroke-width: calc(var(--_tb-stroke) * 1.9);
+}
+.ms-stylus-btn:hover {
+  background: var(--_tb-fill);
+}
+.ms-stylus-btn:active {
+  transform: scale(0.9);
+}
+.ms-stylus-btn:focus-visible {
+  outline: 2px solid var(--_tb-accent);
+  outline-offset: 1px;
+}
+.ms-stylus-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
+}
+
+.ms-stylus-btn.is-primary {
+  color: var(--_tb-accent);
+  background: rgba(100, 180, 255, 0.14);
+  background: color-mix(in oklab, var(--_tb-accent) 14%, transparent);
+}
+.ms-stylus-btn.is-primary:hover {
+  background: rgba(100, 180, 255, 0.26);
+  background: color-mix(in oklab, var(--_tb-accent) 26%, transparent);
+}
+.ms-stylus-btn.is-danger:hover {
+  color: var(--_tb-danger);
+  background: rgba(226, 75, 74, 0.14);
+  background: color-mix(in oklab, var(--_tb-danger) 15%, transparent);
+}
+
+/* ── Segmented Draw / Points control ─────────────────────────────────────── */
+/* aria-pressed is the styling hook, so the visual and the announced state
+   cannot drift apart. */
+.ms-stylus-seg {
+  display: flex;
+  gap: 1px;
+  padding: 1px;
+  border-radius: calc(var(--_tb-radius) + 1px);
+  background: var(--_tb-fill);
+}
+.ms-stylus-btn[aria-pressed='true'] {
+  color: var(--_tb-accent);
+  background: rgba(100, 180, 255, 0.18);
+  background: color-mix(in oklab, var(--_tb-accent) 18%, transparent);
+}
+
+.ms-stylus-sep {
+  align-self: stretch;
+  width: 1px;
+  margin: 4px 2px;
+  background: var(--ms-divider, rgba(255, 255, 255, 0.07));
+}
+
+/* ── One-shot coach line ─────────────────────────────────────────────────── */
+/* Everything teachable lives here, on a line that leaves after 5 s, rather than
+   in permanent chrome. */
+.ms-stylus-hint {
+  position: absolute;
+  z-index: 49;
+  padding: 6px 12px;
+  border: 1px solid var(--ms-border, rgba(64, 140, 220, 0.35));
+  border-radius: 999px;
+  background: var(--ms-bg, rgba(14, 17, 26, 0.97));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  color: var(--ms-text, #b8c5d8);
+  font-family: var(--ms-menu-font, 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0.94;
+  transition: opacity 600ms ease;
+}
+.ms-stylus-toolbar[data-touch='1'] ~ .ms-stylus-hint {
+  font-size: 13px;
+  padding: 7px 14px;
+}
+.ms-stylus-hint b {
+  color: var(--ms-accent, #64b4ff);
+  font-weight: 600;
+}
+.ms-stylus-hint.is-out {
+  opacity: 0;
+}
+
+/* A tapped button on a touch screen keeps :hover until the next tap elsewhere —
+   drop hover styling where there is no real pointer. */
+@media (hover: none) {
+  .ms-stylus-btn:hover {
+    background: transparent;
+    color: var(--_tb-text);
+  }
+  .ms-stylus-btn.is-primary:hover,
+  .ms-stylus-btn[aria-pressed='true']:hover {
+    color: var(--_tb-accent);
+    background: color-mix(in oklab, var(--_tb-accent) 16%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-stylus-toolbar,
+  .ms-stylus-btn,
+  .ms-stylus-hint {
+    transition-duration: 1ms;
+  }
+  .ms-stylus-toolbar {
+    transform: none;
+  }
+  .ms-stylus-btn:active {
+    transform: none;
+  }
+}
+`;
+  document.head.appendChild(style);
+}
 
 export default class StylusDrawController {
   private _deps: StylusDrawDeps;
@@ -163,8 +504,14 @@ export default class StylusDrawController {
   private _lastPenTs = -Infinity;
   private _session: Session | null = null;
   private _toolbarEl: HTMLDivElement | null = null;
+  private _finishBtn: HTMLButtonElement | null = null;
+  private _undoBtn: HTMLButtonElement | null = null;
   private _hintEl: HTMLDivElement | null = null;
   private _hintShown = false;
+  // Cached client rect of the pill, invalidated whenever it moves — the
+  // proximity handler runs on pointermove and must not force layout.
+  private _tbRect: DOMRect | null = null;
+  private _tbAwarenessOff: (() => void) | null = null;
   private _winPointerDown: ((e: PointerEvent) => void) | null = null;
   private _premium: PremiumStylus | null = null;
 
@@ -454,6 +801,10 @@ export default class StylusDrawController {
           return;
         }
         session.lastScreen = { x: evt.x, y: evt.y };
+        // Keep the pill next to the work. Native draws own their vertices, so
+        // this is the only place the controller learns where the user just
+        // tapped — without it the toolbar sat wherever it first appeared.
+        this._positionToolbar();
         if (stylusDebug(this._deps)) {
           EngineLogger.nextStep(
             'Stylus Native',
@@ -992,6 +1343,8 @@ export default class StylusDrawController {
       // baseline-then-control-points interaction these symbols expect.
       de.BASE_LN_PTS = this._synthBaseLine(pts[0], pts[1]);
       de.CTRL_PTS = pts.slice(2);
+    } else if (isArcCandidateClass(s.currentSymbol?.Class)) {
+      de.CTRL_PTS = this._reorderArcPoints(pts);
     } else {
       de.CTRL_PTS = pts;
     }
@@ -1030,6 +1383,41 @@ export default class StylusDrawController {
       spatialReference: sr,
     });
     return { startPt: p0, midPt: p1, endPt };
+  }
+
+  /**
+   * Remap trace-order gesture points into the [chordStart, chordEnd,
+   * bulgeCandidate] triple ARC_CANDIDATE_CLASSES read CTRL_PTS as. A freehand
+   * stroke or tap sequence naturally goes [flank, ...along the bulge..., other
+   * flank] — so the first and last captured points become the chord ends, and
+   * whichever interior point deviates furthest from the chord (the apex of the
+   * traced curve) becomes the curvature candidate. Any other interior points
+   * are dropped: these classes only ever read three. 2-point gestures (a
+   * straight boundary, no curvature) pass through unchanged.
+   */
+  private _reorderArcPoints(pts: Point[]): Point[] {
+    if (pts.length <= 2) return pts;
+    const start = pts[0];
+    const end = pts[pts.length - 1];
+    let bulge = pts[1];
+    let maxDev = -1;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const d = this._perpendicularDist(start, end, pts[i]);
+      if (d > maxDev) {
+        maxDev = d;
+        bulge = pts[i];
+      }
+    }
+    return [start, end, bulge];
+  }
+
+  /** Perpendicular distance from point p to the line through a→b (map units). */
+  private _perpendicularDist(a: Point, b: Point, p: Point): number {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-9) return Math.hypot(p.x - a.x, p.y - a.y);
+    return Math.abs(dy * p.x - dx * p.y + b.x * a.y - b.y * a.x) / len;
   }
 
   // ── Geometry helpers ────────────────────────────────────────────────────────
@@ -1127,29 +1515,38 @@ export default class StylusDrawController {
     const view = this._deps.getView();
     const container = view.container as HTMLElement | null;
     if (!container) return;
+    injectToolbarStyles();
     // Finger-sized targets whenever the last physical input wasn't a mouse.
     const touchUI = this._lastPointerType !== 'mouse';
     const el = document.createElement('div');
     el.className = 'ms-stylus-toolbar';
-    el.style.cssText =
-      'position:absolute;z-index:50;display:flex;gap:6px;padding:6px;border-radius:8px;' +
-      'background:rgba(20,24,30,0.92);box-shadow:0 2px 8px rgba(0,0,0,0.45);' +
-      `font:600 ${touchUI ? 15 : 13}px/1 system-ui,sans-serif;color:#e6edf3;top:12px;left:50%;transform:translateX(-50%);` +
-      'touch-action:none;user-select:none;align-items:center;';
+    el.setAttribute('role', 'toolbar');
+    el.setAttribute('aria-orientation', 'horizontal');
+    el.setAttribute('aria-label', 'Stylus drawing controls');
+    if (touchUI) el.dataset.touch = '1';
     // ✏ Draw / ⊙ Points chip — native-mode sessions only. Novices switch modes
     // right where they draw instead of hunting through settings; the choice
     // sticks as the new default.
-    if (this._session?.mode === 'native') this._appendModeChip(el, touchUI);
-    // Baseline-first symbols take their first two taps as the baseline — cue it.
-    if (isBaselineClass(this._session?.currentSymbol?.Class)) {
-      const hint = document.createElement('span');
-      hint.textContent = '① end  ② centre  ③+ effect';
-      hint.style.cssText = 'margin-right:4px;opacity:0.85;font-weight:500;';
-      el.appendChild(hint);
+    const hasChip = this._session?.mode === 'native';
+    if (hasChip) this._appendModeChip(el);
+    // Hairline between the mode chip and the actions — the two groups do
+    // different jobs, so whitespace alone under-separates them at this size.
+    if (hasChip) {
+      const sep = document.createElement('div');
+      sep.className = 'ms-stylus-sep';
+      el.appendChild(sep);
     }
-    el.appendChild(this._mkBtn('✓ Finish', '#1f6feb', () => this.finish()));
-    if (includeUndo) el.appendChild(this._mkBtn('⤺ Undo', '#30363d', () => this.undoLast()));
-    el.appendChild(this._mkBtn('✕ Cancel', '#30363d', () => this.cancel()));
+    // Icon-only: at this scale a glyph reads faster than a word, and the labels
+    // were most of the pill's width. Names live on title + aria-label.
+    this._finishBtn = this._mkBtn('finish', 'Finish drawing', 'is-primary', () => this.finish(), 'Enter');
+    el.appendChild(this._finishBtn);
+    if (includeUndo) {
+      this._undoBtn = this._mkBtn('undo', 'Undo last point', '', () => this.undoLast());
+      el.appendChild(this._undoBtn);
+    }
+    el.appendChild(
+      this._mkBtn('cancel', 'Cancel drawing', 'is-danger', () => this.cancel(), 'Escape'),
+    );
     // Keep toolbar taps from reaching the map (a leaked tap becomes a stray
     // vertex). Block the WHOLE event family: on touch browsers a tap also
     // produces touchstart/touchend and compatibility mouse events, and blocking
@@ -1170,22 +1567,138 @@ export default class StylusDrawController {
     }
     container.appendChild(el);
     this._toolbarEl = el;
-    this._maybeShowHint(container, touchUI);
+    // Opening position only — the first click moves it next to the work. Centred
+    // near the top, clear of the app's top bar. Measured width, not
+    // left:50% + translateX(-50%), so _positionToolbar can clamp against real
+    // pixel edges and the entry animation owns transform.
+    const cw = container.clientWidth || 0;
+    this._placeToolbar(Math.round((cw - el.offsetWidth) / 2), 58);
+    // A tick later, so the browser has the pre-transition state to animate from.
+    // setTimeout, not rAF: rAF never fires when the document is backgrounded.
+    setTimeout(() => el.classList.add('is-in'), 0);
+    this._syncToolbarState();
+    this._installToolbarAwareness(container);
+    this._maybeShowHint(container);
+  }
+
+  /** Clamp to the container and write the position, invalidating the cache. */
+  private _placeToolbar(left: number, top: number): void {
+    const el = this._toolbarEl;
+    if (!el) return;
+    const container = this._deps.getView().container as HTMLElement | null;
+    const cw = container?.clientWidth ?? 0;
+    const ch = container?.clientHeight ?? 0;
+    const maxL = Math.max(8, cw - el.offsetWidth - 8);
+    const maxT = Math.max(8, ch - el.offsetHeight - 8);
+    el.style.left = `${Math.round(Math.min(Math.max(8, left), maxL))}px`;
+    el.style.top = `${Math.round(Math.min(Math.max(8, top), maxT))}px`;
+    this._tbRect = null;
+    this._layoutHint();
+  }
+
+  /**
+   * Two behaviours that keep the pill out of the way without the user managing
+   * it:
+   *
+   * · **Recede while stroking.** Once a contact travels past TB_STROKE_PX the
+   *   pill drops to 7% and stops taking input, so it can't distract from the
+   *   line or eat a vertex under the drawing hand. A stationary tap is below the
+   *   threshold, so tapping vertices never makes it flicker.
+   * · **Wake on approach.** A hovering pointer within TB_NEAR_PX brings it to
+   *   full opacity before it is reached, which is a much larger target than
+   *   :hover and works for pens that report hover.
+   *
+   * Listeners are passive + capture: purely observational, never interfering
+   * with ArcGIS's own pointer pipeline, and still seen when a symbol handler
+   * stops propagation.
+   */
+  private _installToolbarAwareness(container: HTMLElement): void {
+    let downAt: { x: number; y: number } | null = null;
+    let stroking = false;
+    let restore: ReturnType<typeof setTimeout> | null = null;
+
+    const bar = () => this._toolbarEl;
+    const nearPx = this._lastPointerType === 'mouse' ? TB_NEAR_PX : TB_NEAR_PX_TOUCH;
+
+    const rect = (): DOMRect | null => {
+      const el = bar();
+      if (!el) return null;
+      if (!this._tbRect) this._tbRect = el.getBoundingClientRect();
+      return this._tbRect;
+    };
+
+    const onDown = (e: PointerEvent) => {
+      const el = bar();
+      if (!el) return;
+      // Pressing our own buttons is not drawing.
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && typeof tgt.closest === 'function' && tgt.closest('.ms-stylus-toolbar')) return;
+      downAt = { x: e.clientX, y: e.clientY };
+    };
+
+    const onMove = (e: PointerEvent) => {
+      const el = bar();
+      if (!el) return;
+      if (downAt) {
+        if (!stroking && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > TB_STROKE_PX) {
+          stroking = true;
+          if (restore) {
+            clearTimeout(restore);
+            restore = null;
+          }
+          el.classList.add('is-drawing');
+          el.classList.remove('is-near');
+        }
+        return;
+      }
+      const r = rect();
+      if (!r) return;
+      const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right);
+      const dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom);
+      const near = Math.hypot(dx, dy) <= nearPx;
+      // Only touch the DOM when the state actually flips.
+      if (near !== el.classList.contains('is-near')) el.classList.toggle('is-near', near);
+    };
+
+    const onUp = () => {
+      downAt = null;
+      if (!stroking) return;
+      stroking = false;
+      // Short delay so a stroke that ends in a flurry of taps doesn't strobe.
+      restore = setTimeout(() => {
+        bar()?.classList.remove('is-drawing');
+        restore = null;
+      }, 130);
+    };
+
+    const opts = { passive: true, capture: true } as AddEventListenerOptions;
+    container.addEventListener('pointerdown', onDown, opts);
+    container.addEventListener('pointermove', onMove, opts);
+    container.addEventListener('pointerup', onUp, opts);
+    container.addEventListener('pointercancel', onUp, opts);
+    this._tbAwarenessOff = () => {
+      if (restore) clearTimeout(restore);
+      container.removeEventListener('pointerdown', onDown, opts);
+      container.removeEventListener('pointermove', onMove, opts);
+      container.removeEventListener('pointerup', onUp, opts);
+      container.removeEventListener('pointercancel', onUp, opts);
+    };
   }
 
   /** Segmented ✏ Draw / ⊙ Points control that flips session.paradigm live. */
-  private _appendModeChip(toolbar: HTMLDivElement, touchUI: boolean): void {
+  private _appendModeChip(toolbar: HTMLDivElement): void {
     const wrap = document.createElement('div');
-    wrap.style.cssText =
-      'display:flex;border:1px solid #30363d;border-radius:6px;overflow:hidden;margin-right:4px;';
-    const mk = (label: string, mode: 'scrub' | 'native') => {
+    wrap.className = 'ms-stylus-seg';
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-label', 'Drawing mode');
+    const mk = (icon: string, label: string, mode: 'scrub' | 'native') => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = label;
+      b.className = 'ms-stylus-btn';
+      b.appendChild(mkIcon(icon));
       b.dataset.mode = mode;
-      b.style.cssText =
-        `border:0;padding:${touchUI ? '12px 16px' : '6px 10px'};cursor:pointer;` +
-        'font:inherit;touch-action:none;background:transparent;color:#9da7b3;';
+      b.setAttribute('aria-label', label);
+      b.title = mode === 'scrub' ? 'Draw — drag to sketch a stroke' : 'Points — tap to place vertices';
       // pointerup (not click) for the same tablet-responsiveness reason as _mkBtn.
       b.addEventListener('pointerup', (e) => {
         e.preventDefault();
@@ -1199,14 +1712,13 @@ export default class StylusDrawController {
       });
       return b;
     };
-    const scrubBtn = mk('✏ Draw', 'scrub');
-    const tapBtn = mk('⊙ Points', 'native');
+    const scrubBtn = mk('draw', 'Draw mode', 'scrub');
+    const tapBtn = mk('points', 'Points mode', 'native');
+    // aria-pressed is both the announced state and the CSS hook — one write.
     const paint = () => {
       const cur = this._session?.paradigm === 'scrub' ? 'scrub' : 'native';
       for (const b of [scrubBtn, tapBtn]) {
-        const active = b.dataset.mode === cur;
-        b.style.background = active ? '#1f6feb' : 'transparent';
-        b.style.color = active ? '#fff' : '#9da7b3';
+        b.setAttribute('aria-pressed', String(b.dataset.mode === cur));
       }
     };
     paint();
@@ -1228,40 +1740,119 @@ export default class StylusDrawController {
     }
   }
 
-  /** One-time transient coach line under the toolbar — then never again. */
-  private _maybeShowHint(container: HTMLElement, touchUI: boolean): void {
-    if (this._hintShown || this._session?.mode !== 'native') return;
+  /**
+   * One-time transient coach line beside the toolbar — then never again.
+   *
+   * The baseline-first tap order also lands here rather than in a permanent chip
+   * on the pill: it is something you need once, at the start, and it was the
+   * single widest thing in the chrome.
+   */
+  // Touch sizing comes from the toolbar's data-touch sibling selector in CSS.
+  private _maybeShowHint(container: HTMLElement): void {
+    const baseline = isBaselineClass(this._session?.currentSymbol?.Class);
+    const arcCandidate = isArcCandidateClass(this._session?.currentSymbol?.Class);
+    if (this._hintShown || (this._session?.mode !== 'native' && !baseline && !arcCandidate)) return;
     this._hintShown = true;
     const scrub = this._session?.paradigm === 'scrub';
     const hint = document.createElement('div');
     hint.className = 'ms-stylus-hint';
-    hint.textContent = scrub
-      ? 'Drag to sketch — lift to finish. Tap to place single points.'
-      : 'Tap to place points — ✓ Finish when done.';
-    hint.style.cssText =
-      `position:absolute;z-index:49;top:${touchUI ? 74 : 58}px;left:50%;transform:translateX(-50%);` +
-      'padding:7px 14px;border-radius:14px;background:rgba(20,24,30,0.85);color:#c9d4df;' +
-      'font:500 13px/1.3 system-ui,sans-serif;pointer-events:none;white-space:nowrap;' +
-      'opacity:1;transition:opacity 0.6s ease;';
+    // Live region: the coach line appears without any user action, so a screen
+    // reader would otherwise never announce it.
+    hint.setAttribute('role', 'status');
+    hint.setAttribute('aria-live', 'polite');
+    if (baseline) {
+      // Numerals carry the accent so the sequence reads at a glance.
+      for (const [n, word] of [
+        ['①', 'end'],
+        ['②', 'centre'],
+        ['③+', 'effect'],
+      ]) {
+        const num = document.createElement('b');
+        num.textContent = n;
+        hint.appendChild(num);
+        hint.appendChild(document.createTextNode(` ${word} `));
+      }
+    } else if (arcCandidate) {
+      const lead = document.createElement('b');
+      lead.textContent = 'First & last taps set the flanks';
+      hint.appendChild(lead);
+      hint.appendChild(document.createTextNode(' — points between bow the curve. '));
+    }
+    hint.appendChild(
+      document.createTextNode(
+        // No ✓ glyph here: the button is stroked SVG now, and the font's
+        // checkmark is a visibly different, thinner shape.
+        scrub ? 'Drag to sketch — lift to finish.' : 'Tap to place points, then Finish.',
+      ),
+    );
     container.appendChild(hint);
     this._hintEl = hint;
-    setTimeout(() => {
-      hint.style.opacity = '0';
-    }, 5500);
+    this._layoutHint();
+    setTimeout(() => hint.classList.add('is-out'), 5500);
     setTimeout(() => {
       if (hint.parentElement) hint.parentElement.removeChild(hint);
       if (this._hintEl === hint) this._hintEl = null;
     }, 6200);
   }
 
-  private _mkBtn(label: string, bg: string, onClick: () => void): HTMLButtonElement {
-    const touchUI = this._lastPointerType !== 'mouse';
+  /**
+   * Park the coach line against the toolbar's real rect, on whichever side has
+   * room. The old fixed top offset assumed the toolbar stayed at the top of the
+   * view, so the two drifted apart as soon as it moved.
+   */
+  private _layoutHint(): void {
+    const hint = this._hintEl;
+    const bar = this._toolbarEl;
+    if (!hint || !bar) return;
+    const container = this._deps.getView().container as HTMLElement | null;
+    if (!container) return;
+    const cw = container.clientWidth || 0;
+    const ch = container.clientHeight || 0;
+    const bTop = parseFloat(bar.style.top) || 0;
+    const bh = bar.offsetHeight;
+    const hh = hint.offsetHeight;
+    // Default below the pill; above it when the pill is parked near the bottom.
+    const below = bTop + bh + 8;
+    const top = below + hh > ch - 8 ? Math.max(8, bTop - hh - 8) : below;
+    const left = (parseFloat(bar.style.left) || 0) + bar.offsetWidth / 2 - hint.offsetWidth / 2;
+    hint.style.top = `${Math.round(top)}px`;
+    hint.style.left = `${Math.round(Math.min(Math.max(8, left), Math.max(8, cw - hint.offsetWidth - 8)))}px`;
+  }
+
+  /**
+   * Show what is actually possible right now: Finish stays disabled until the
+   * gesture holds enough points for the symbol to build (baseline-first classes
+   * need the two baseline taps plus one control point), and Undo until there is
+   * a point to remove. Both used to sit enabled and silently no-op, which reads
+   * as a broken button.
+   */
+  private _syncToolbarState(): void {
+    const s = this._session;
+    // Native draws keep their points inside the symbol, so we can't count them —
+    // leave both live rather than guess wrong.
+    const counted = !!s && s.mode !== 'native';
+    if (this._undoBtn) this._undoBtn.disabled = counted && s!.points.length === 0;
+    if (this._finishBtn) {
+      const need = isBaselineClass(s?.currentSymbol?.Class) ? 3 : 2;
+      this._finishBtn.disabled = counted && s!.points.length < need;
+    }
+  }
+
+  private _mkBtn(
+    icon: string,
+    label: string,
+    variant: string,
+    onClick: () => void,
+    shortcut?: string,
+  ): HTMLButtonElement {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = label;
-    b.style.cssText =
-      `border:0;border-radius:6px;padding:${touchUI ? '12px 18px' : '7px 11px'};cursor:pointer;color:#fff;background:${bg};` +
-      'font:inherit;touch-action:none;';
+    b.className = variant ? `ms-stylus-btn ${variant}` : 'ms-stylus-btn';
+    b.appendChild(mkIcon(icon));
+    // Icon-only, so the accessible name and the tooltip carry the label.
+    b.setAttribute('aria-label', label);
+    b.title = shortcut ? `${label} (${shortcut === 'Escape' ? 'Esc' : shortcut})` : label;
+    if (shortcut) b.setAttribute('aria-keyshortcuts', shortcut);
     // Act on pointerup, not click: on tablets the browser may never synthesize a
     // click for the button (slop / preventDefault upstream), and ArcGIS's own
     // ~250 ms click delay makes click-based UI feel dead. pointerup is instant
@@ -1284,24 +1875,56 @@ export default class StylusDrawController {
     return b;
   }
 
+  /**
+   * Follow the point just placed, on every click, offset clear of it.
+   *
+   * The pill sits up-and-to-the-right of the tap: near enough that Finish is a
+   * short reach from where the user is already working, far enough that it never
+   * lands under the pen tip, the wrist, or the vertex itself. It flips to the
+   * left when the right edge is close, and below when there is no room above,
+   * so the offset survives taps in any corner.
+   */
   private _positionToolbar(): void {
     const s = this._session;
     if (!s || !this._toolbarEl) return;
-    const last = s.points[s.points.length - 1];
-    if (!last) return;
+    // Called on every point add/remove, so it is also the right beat to refresh
+    // the buttons' enabled state.
+    this._syncToolbarState();
     const view = this._deps.getView();
-    const sp = view.toScreen(last as any);
+    // Anchor on the last tap. Native draws keep their vertices inside the
+    // symbol, so they report the tap in screen space instead of s.points.
+    let sp: { x: number; y: number } | null = null;
+    if (s.mode === 'native') {
+      sp = s.lastScreen ?? null;
+    } else {
+      const last = s.points[s.points.length - 1];
+      const p = last ? view.toScreen(last as any) : null;
+      if (p) sp = { x: p.x, y: p.y };
+    }
     if (!sp) return;
-    // Float just above the most-recent vertex; clamp inside the container.
     const el = this._toolbarEl;
-    el.style.left = `${Math.max(8, sp.x)}px`;
-    el.style.top = `${Math.max(8, sp.y - 56)}px`;
-    el.style.transform = 'translateX(-50%)';
+    const container = view.container as HTMLElement | null;
+    const cw = container?.clientWidth ?? 0;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    // Clearance from the tap to the pill's nearest edge — enough that the pen
+    // and hand never overlap it, close enough to still read as attached.
+    const gap = 22;
+    let left = sp.x + gap;
+    if (left + w > cw - 8) left = sp.x - gap - w; // no room right → mirror left
+    let top = sp.y - gap - h;
+    if (top < 8) top = sp.y + gap; // no room above → drop below
+    this._placeToolbar(left, top);
   }
 
   private _removeToolbar(): void {
+    this._tbAwarenessOff?.();
+    this._tbAwarenessOff = null;
     if (this._toolbarEl?.parentElement) this._toolbarEl.parentElement.removeChild(this._toolbarEl);
     this._toolbarEl = null;
+    this._finishBtn = null;
+    this._undoBtn = null;
+    this._tbRect = null;
     if (this._hintEl?.parentElement) this._hintEl.parentElement.removeChild(this._hintEl);
     this._hintEl = null;
   }

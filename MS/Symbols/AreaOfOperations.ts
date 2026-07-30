@@ -311,14 +311,19 @@ export class AreaOfOperations {
                 cLenLimit = baseLineLen / 3.6;
             }
 
-            // Try to use Shapes.createAO if available
-            if (Shapes && (Shapes as any).createAO) {
+            // Try to use Shapes.createAORings if available
+            if (Shapes && (Shapes as any).createAORings) {
                 try {
-                    const aoRings = (Shapes as any).createAO(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
+                    const aoRings = (Shapes as any).createAORings(midPt.x, midPt.y, cLenLimit, midPt.spatialReference);
                     if (aoRings && Array.isArray(aoRings)) {
                         for (let j = 0; j <= aoRings.length - 1; j++) {
-                            if (aoRings[j]) {
-                                result.addRing(aoRings[j]);
+                            const seg = aoRings[j];
+                            if (seg && seg.length >= 2) {
+                                // Close each 2-point stroke as [p1, p2, p1] so the polygon
+                                // outline shows it in both 2D and 3D. The letter paths used to
+                                // be added as rings, giving them a real area that the 3D
+                                // tessellator cuts out of the polygon.
+                                result.addRing([seg[0], seg[1], seg[0]]);
                             }
                         }
                     }
