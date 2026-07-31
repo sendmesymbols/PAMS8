@@ -922,27 +922,34 @@ export class LandingZoneEngine {
     this._draggableBound.add(panel);
     handle.style.cursor = 'grab';
     handle.style.userSelect = 'none';
-    let dragging = false; let ox = 0; let oy = 0;
+    let ox = 0; let oy = 0;
+
+    // The document-level handlers live only for the duration of a drag — the
+    // same pattern the other analysis engines use. Registering them once and
+    // leaving them there ran a handler on every mousemove for the life of the
+    // page, and pinned `panel` in their closures so it could never be collected.
+    const onMove = (e: MouseEvent) => {
+      const maxLeft = window.innerWidth - panel.offsetWidth - 4;
+      const maxTop = window.innerHeight - panel.offsetHeight - 4;
+      panel.style.left = Math.max(0, Math.min(e.clientX - ox, maxLeft)) + 'px';
+      panel.style.top = Math.max(0, Math.min(e.clientY - oy, maxTop)) + 'px';
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      handle.style.cursor = 'grab'; document.body.style.userSelect = '';
+    };
+
     handle.addEventListener('mousedown', (e: MouseEvent) => {
       if ((e.target as HTMLElement).closest('button, input, select')) return;
-      dragging = true;
       const rect = panel.getBoundingClientRect();
       panel.style.left = rect.left + 'px'; panel.style.top = rect.top + 'px';
       panel.style.right = 'auto'; panel.style.bottom = 'auto';
       ox = e.clientX - rect.left; oy = e.clientY - rect.top;
       handle.style.cursor = 'grabbing'; document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
       e.preventDefault();
-    });
-    document.addEventListener('mousemove', (e: MouseEvent) => {
-      if (!dragging) return;
-      const maxLeft = window.innerWidth - panel.offsetWidth - 4;
-      const maxTop = window.innerHeight - panel.offsetHeight - 4;
-      panel.style.left = Math.max(0, Math.min(e.clientX - ox, maxLeft)) + 'px';
-      panel.style.top = Math.max(0, Math.min(e.clientY - oy, maxTop)) + 'px';
-    });
-    document.addEventListener('mouseup', () => {
-      if (!dragging) return;
-      dragging = false; handle.style.cursor = 'grab'; document.body.style.userSelect = '';
     });
   }
 

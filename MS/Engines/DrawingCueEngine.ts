@@ -210,6 +210,8 @@ class DrawingCueEngine {
 
   // ── Magnetic compass child engine ──────────────────────────────────────────
   private _compass: MagneticCompass | null = null;
+  /** Compass state at the moment the cues were switched off, so enable() restores it. */
+  private _compassWasEnabled: boolean = false;
 
   private constructor() {}
 
@@ -261,12 +263,23 @@ class DrawingCueEngine {
 
   public enable(): void {
     this._isEnabled = true;
+    // Restore the compass only if disable() was the thing that switched it off.
+    if (this._compassWasEnabled) {
+      this._compassWasEnabled = false;
+      this._compass?.enable();
+    }
     EngineLogger.success('Drawing Cue Engine', 'Enabled — visual guides will appear while drawing');
   }
 
   public disable(): void {
     this._isEnabled = false;
     if (this._isActive) this.deactivate();
+    // The compass is a child engine holding its own view handlers (pointer-move,
+    // drag, click). Without this it keeps a hot handler on the view after the
+    // cues that own it are off. Its state is remembered rather than discarded,
+    // so toggling cues off and on again doesn't silently lose the user's compass.
+    this._compassWasEnabled = this._compass?.isEnabled ?? false;
+    if (this._compassWasEnabled) this._compass?.disable();
     EngineLogger.nextStep('Drawing Cue Engine', 'Disabled — drawing guides off');
   }
 

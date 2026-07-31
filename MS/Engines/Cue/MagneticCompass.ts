@@ -141,6 +141,11 @@ export class MagneticCompass {
     if (this._enabled) this._setupViewEvents();
   }
 
+  /** Whether the compass is live — read by DrawingCueEngine when it switches off. */
+  public get isEnabled(): boolean {
+    return this._enabled;
+  }
+
   public enable(): void {
     this._enabled = true;
     if (this._view && !this._dragHandle) this._setupViewEvents();

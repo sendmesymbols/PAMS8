@@ -2935,16 +2935,26 @@ export default class SlideEditorUI {
       }
       .ms-sledit-cmtmarker.fresh { animation: ms-sledit-cmtpop 0.45s ease-out; }
       .ms-sledit-cmtpop {
+        /* The popover mounts on <body>, OUTSIDE #msSlideEditor, so the editor's
+           --sl-* tokens never cascade here — that is why the card and its input
+           rendered transparent. Re-anchor the tokens from --ms-* (which
+           ThemeManager DOES publish on :root) so the popover themes for free. */
+        --sl-surface: rgba(20, 25, 32, 0.98);
+        --sl-input: var(--ms-bg-input, rgba(255, 255, 255, 0.05));
+        --sl-line: var(--ms-border, rgba(255, 255, 255, 0.14));
+        --sl-text: var(--ms-text, #dde3e8);
+        --sl-dim: var(--ms-text-dim, #8a97a5);
+        --sl-accent: var(--ms-accent, #64b4ff);
         position: fixed;
         z-index: 10050;
-        width: 300px;
+        width: 304px;
         background: var(--sl-surface);
         border: 1px solid var(--sl-line);
-        border-radius: 10px;
-        box-shadow: 0 18px 44px rgba(2,5,10,0.55);
-        padding: 11px 13px;
+        border-radius: 12px;
+        box-shadow: 0 18px 44px rgba(2,5,10,0.55), 0 2px 8px rgba(2,5,10,0.4);
+        padding: 13px 14px 12px;
         color: var(--sl-text);
-        font: 12.5px/1.45 inherit;
+        font: 12.5px/1.45 var(--ms-menu-font, system-ui, sans-serif);
       }
       .ms-sledit-cmthead {
         display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
@@ -2957,31 +2967,57 @@ export default class SlideEditorUI {
       }
       .ms-sledit-cmtme:hover { color: var(--sl-text); }
       .ms-sledit-cmtentries {
-        max-height: 220px; overflow-y: auto;
-        display: flex; flex-direction: column; gap: 8px;
+        max-height: 240px; overflow-y: auto;
+        display: flex; flex-direction: column; gap: 9px;
+        margin: 0 -2px; padding: 0 2px;
       }
-      .ms-sledit-cmtentry b { font-size: 12px; }
-      .ms-sledit-cmttime { font-size: 10.5px; color: var(--sl-dim); margin-left: 5px; }
-      .ms-sledit-cmtentry p { margin: 2px 0 0; font-size: 12.5px; white-space: pre-wrap; }
+      /* Full-width hairline between threads (never a side-stripe) for scannability. */
+      .ms-sledit-cmtentry + .ms-sledit-cmtentry {
+        padding-top: 9px; border-top: 1px solid var(--sl-line);
+      }
+      .ms-sledit-cmtentry b { font-size: 12px; color: var(--sl-text); }
+      .ms-sledit-cmttime { font-size: 10.5px; color: var(--sl-dim); margin-left: 6px; }
+      .ms-sledit-cmtentry p { margin: 3px 0 0; font-size: 12.5px; color: var(--sl-text); white-space: pre-wrap; word-break: break-word; }
       .ms-sledit-cmtname, .ms-sledit-cmttext, .ms-sledit-cmtreply {
-        width: 100%; box-sizing: border-box; margin-top: 8px;
+        width: 100%; box-sizing: border-box; margin-top: 9px;
         font: inherit; font-size: 12.5px;
         background: var(--sl-input); color: var(--sl-text);
-        border: 1px solid var(--sl-line); border-radius: 7px; padding: 6px 8px;
+        border: 1px solid var(--sl-line); border-radius: 8px; padding: 7px 9px;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+        transition: border-color 0.12s ease, box-shadow 0.12s ease;
       }
-      .ms-sledit-cmttext, .ms-sledit-cmtreply { resize: vertical; }
+      .ms-sledit-cmtname::placeholder, .ms-sledit-cmttext::placeholder, .ms-sledit-cmtreply::placeholder {
+        color: var(--sl-dim);
+      }
+      .ms-sledit-cmttext, .ms-sledit-cmtreply { resize: vertical; min-height: 44px; }
       .ms-sledit-cmtname:focus, .ms-sledit-cmttext:focus, .ms-sledit-cmtreply:focus {
         outline: none; border-color: var(--sl-accent);
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.25),
+                    0 0 0 3px color-mix(in srgb, var(--sl-accent) 22%, transparent);
       }
-      .ms-sledit-cmtfoot { display: flex; gap: 6px; margin-top: 8px; }
+      .ms-sledit-cmtfoot { display: flex; gap: 7px; margin-top: 10px; }
       .ms-sledit-cmtfoot button {
-        flex: 1; justify-content: center; padding: 5px 6px; font-size: 11.5px;
+        flex: 1; justify-content: center; padding: 6px 8px; font-size: 11.5px; font-weight: 500;
         background: var(--sl-input); color: var(--sl-text);
-        border: 1px solid var(--sl-line); border-radius: 7px; cursor: pointer;
+        border: 1px solid var(--sl-line); border-radius: 8px; cursor: pointer;
+        transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
       }
-      .ms-sledit-cmtfoot button:hover { background: rgba(255,255,255,0.12); }
-      .ms-sledit-cmtfoot button.primary {
+      .ms-sledit-cmtfoot button:hover { background: rgba(255,255,255,0.12); border-color: var(--sl-accent); }
+      /* Primary action (composer's "Comment", a thread's "Reply") carries the accent. */
+      .ms-sledit-cmtfoot button.primary,
+      .ms-sledit-cmtfoot button[data-cmt="reply"] {
         background: var(--sl-accent); border-color: var(--sl-accent); color: #10161d; font-weight: 600;
+      }
+      .ms-sledit-cmtfoot button.primary:hover,
+      .ms-sledit-cmtfoot button[data-cmt="reply"]:hover {
+        background: var(--sl-accent); border-color: var(--sl-accent);
+        filter: brightness(1.08);
+      }
+      /* Delete is destructive: quiet until hovered, then clearly a danger. */
+      .ms-sledit-cmtfoot button[data-cmt="delete"]:hover {
+        background: color-mix(in srgb, var(--ms-danger, #ff6b6b) 14%, transparent);
+        border-color: var(--ms-danger, #ff6b6b);
+        color: var(--ms-danger, #ff6b6b);
       }
       .ms-sledit-cmtarmed .ms-sledit-canvaswrap,
       .ms-sledit-cmtarmed .ms-sledit-canvaswrap canvas { cursor: crosshair !important; }
@@ -3024,23 +3060,40 @@ export default class SlideEditorUI {
         white-space: nowrap;
         box-shadow: 0 2px 8px rgba(3,7,12,0.45);
       }
-      .ms-sledit-cmtempty { font-size: 11px; color: var(--sl-dim); padding: 4px 2px 6px; }
-      .ms-sledit-cmtlist { display: flex; flex-direction: column; gap: 4px; }
-      .ms-sledit-cmtrow {
-        display: flex; flex-direction: column; gap: 2px;
-        text-align: left; width: 100%;
-        background: var(--sl-input); color: var(--sl-text);
-        border: 1px solid var(--sl-line); border-radius: 7px;
-        padding: 5px 7px; cursor: pointer; font: inherit;
+      .ms-sledit-cmtempty { font-size: 11.5px; color: var(--sl-dim); padding: 6px 2px 8px; line-height: 1.5; }
+      .ms-sledit-cmtlist { display: flex; flex-direction: column; gap: 6px; }
+      /* MUST out-specify the ".ms-sledit-props button" rule (0,1,1) below, which
+         otherwise squashes each row into a 30x28 centred icon-button. The row is
+         a full-width, left-aligned, stacked list item — reset every layout prop
+         that generic rule sets (width/height/display/align/justify/padding). */
+      .ms-sledit-props .ms-sledit-cmtrow {
+        display: flex; flex-direction: column; align-items: stretch;
+        justify-content: flex-start; gap: 3px;
+        text-align: left; width: 100%; height: auto;
+        background: rgba(255,255,255,0.05); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 8px;
+        padding: 7px 9px; cursor: pointer; font: inherit;
+        transition: background 0.12s ease, border-color 0.12s ease;
       }
-      .ms-sledit-cmtrow:hover { border-color: var(--sl-accent); }
-      .ms-sledit-cmtrow.resolved { opacity: 0.45; }
-      .ms-sledit-cmtrowhead { display: flex; gap: 6px; align-items: baseline; }
-      .ms-sledit-cmtrowhead b { font-size: 11.5px; }
-      .ms-sledit-cmtrowhead i { font-size: 10px; font-style: normal; color: var(--sl-dim); }
+      .ms-sledit-props .ms-sledit-cmtrow:hover {
+        border-color: var(--sl-accent); background: rgba(255,255,255,0.09);
+      }
+      .ms-sledit-props .ms-sledit-cmtrow.resolved { opacity: 0.5; }
+      .ms-sledit-cmtrowhead {
+        display: flex; gap: 6px; align-items: baseline;
+        width: 100%; min-width: 0;
+      }
+      .ms-sledit-cmtrowhead b {
+        font-size: 11.5px; color: var(--sl-text); font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto;
+      }
+      .ms-sledit-cmtrowhead i {
+        font-size: 10px; font-style: normal; color: var(--sl-dim);
+        white-space: nowrap; flex: none; margin-left: auto;
+      }
       .ms-sledit-cmtrowtext {
-        font-size: 11.5px; color: var(--sl-dim);
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-size: 11.5px; color: var(--sl-text); opacity: 0.85;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
       }
       .ms-sledit-loading { color: var(--sl-dim); font-size: 14px; }
 

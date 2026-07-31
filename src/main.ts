@@ -2706,6 +2706,38 @@ function updateStylusPerSymbolUI(cls: string | null): void {
 
   }
 
+  // ── Collaboration switch (Menu dropdown) ───────────────────────────────────
+  // Master switch for MS/Engines/Collab. It publishes features.collab on the
+  // same 'settingsChanged' bus every other surface uses rather than touching
+  // CollabEngine directly: SymbolEngine already owns that path, lazy-importing
+  // the engine on first enable and calling disable() on the way back down, and
+  // routing through the bus keeps settingsData the single source of truth for
+  // Ctrl+K and the Settings panel.
+  {
+    const collabChk = document.getElementById('collabMenuEnable') as HTMLInputElement | null;
+    const menuBtn = document.getElementById('menuBtn');
+
+    // Read-only mirror, refreshed when the menu opens — the switch can also be
+    // flipped from Ctrl+K, the Settings panel or the API.
+    const refreshCollabMenu = () => {
+      if (collabChk) collabChk.checked = (settingsData as any)?.features?.collab === true;
+    };
+    menuBtn?.addEventListener('click', refreshCollabMenu);
+    refreshCollabMenu();
+
+    collabChk?.addEventListener('change', () => {
+      window.dispatchEvent(
+        new CustomEvent('settingsChanged', {
+          detail: {
+            path: ['features', 'collab'],
+            value: collabChk.checked,
+            fullPath: 'features.collab',
+          },
+        }),
+      );
+    });
+  }
+
   // ── Analysis Hub ──────────────────────────────────────────────────────────
   {
     const analysisHubPanel = document.getElementById('analysisHubPanel');

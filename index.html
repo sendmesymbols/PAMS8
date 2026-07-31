@@ -2242,6 +2242,17 @@
         <div class="infobar-menu-anchor">
           <button class="ms-btn infobar-btn" id="menuBtn" title="Menu — Settings / API Test panels, command palette, Analysis Hub, Draw, and test-data / plan actions."><span class="infobar-icon">☰</span>Menu</button>
           <div id="toolMenu" class="demo-symbol-menu infobar-action-menu">
+            <!-- Collaboration master switch (features.collab). SymbolEngine
+                 lazy-loads CollabEngine on first enable, so a session that never
+                 turns this on never pays for the module. -->
+            <label class="briefing-menu-toggle-row" for="collabMenuEnable" title="Master switch for the Collaboration engine (features.collab) — shared symbols and slides, presence cursors, room chat, and the collaboration rail. The engine loads on first use; room, transport and the rest live in ⚙ / Ctrl+K → Collaboration.">
+              <span>👥 Collaboration</span>
+              <span class="briefing-toggle">
+                <input type="checkbox" id="collabMenuEnable" />
+                <span class="briefing-toggle-track"></span>
+              </span>
+            </label>
+            <div class="infobar-menu-sep"></div>
             <button class="ms-btn infobar-btn" id="settingsPanelBtn" title="Open the Settings panel widget (symbol sizes, pen, measurement, declutter, …)."><span class="infobar-icon">⚙</span>Settings</button>
             <button class="ms-btn infobar-btn" id="apiTestBtn" title="Open the API Test panel widget — buttons that exercise the public engine API."><span class="infobar-icon">⧉</span>API Test</button>
             <button class="ms-btn infobar-btn" id="settingsMenuBtn" title="Open the command palette — every engine widget in one popover. Tip: Ctrl+K anywhere."><span class="infobar-icon">▤</span>Command Palette</button>

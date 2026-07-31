@@ -115,6 +115,15 @@ export class DeclutterEngine {
       clearTimeout(this._solveTimer);
       this._solveTimer = null;
     }
+    // A flush scheduled in the last GRAPHIC_BATCH_MS would otherwise still run
+    // and re-apply declutter visibility after this call: _flushDirtyLayers gates
+    // on the settings flag, not on _enabled, so disabling the engine directly
+    // (rather than through settings) left a pending pass unaccounted for.
+    if (this._dirtyTimer !== null) {
+      clearTimeout(this._dirtyTimer);
+      this._dirtyTimer = null;
+    }
+    this._dirtyLayers.clear();
     this._spatialIndex.clear();
     this._reset();
   }
