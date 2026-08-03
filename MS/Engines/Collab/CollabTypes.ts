@@ -247,6 +247,9 @@ export interface ChatPayload {
 
 /** Longest chat line accepted, in characters. */
 export const MAX_CHAT_LEN = 500;
+/** Hard caps for ephemeral point arrays before they reach render/apply paths. */
+export const MAX_PREVIEW_POINTS = 4096;
+export const MAX_INK_POINTS = 2048;
 
 /**
  * Claim or release the podium. Persistent — ordering is the arbitration, see
@@ -494,6 +497,12 @@ export function pickSnapshotProvider(
 export function isValidPayload(t: CollabMsgType, d: any): boolean {
   const str = (v: any) => typeof v === 'string' && v.length > 0;
   const ids = (v: any) => Array.isArray(v) && v.every((x) => str(x));
+  const finitePair = (v: any) =>
+    Array.isArray(v) && v.length >= 2 && Number.isFinite(v[0]) && Number.isFinite(v[1]);
+  const pointList = (v: any, max: number) =>
+    Array.isArray(v) && v.length > 0 && v.length <= max && v.every(finitePair);
+  const optionalNumber = (v: any) => v === undefined || Number.isFinite(v);
+  const optionalBoolean = (v: any) => v === undefined || typeof v === 'boolean';
   switch (t) {
     case 'ping':
     case 'bye':
@@ -504,10 +513,22 @@ export function isValidPayload(t: CollabMsgType, d: any): boolean {
     case 'cursor':
       return Number.isFinite(d?.lon) && Number.isFinite(d?.lat);
     case 'preview':
-      return str(d?.pid) && Array.isArray(d?.pts);
+      return (
+        str(d?.pid) &&
+        (d?.kind === 'point' || d?.kind === 'polyline' || d?.kind === 'polygon') &&
+        pointList(d?.pts, MAX_PREVIEW_POINTS) &&
+        (d?.label === undefined || typeof d.label === 'string')
+      );
     case 'preview-end':
       return str(d?.pid);
     case 'lock':
+      return (
+        ids(d?.ids) &&
+        d.ids.length > 0 &&
+        (d?.scope === 'map' || d?.scope === 'slide') &&
+        Number.isFinite(d?.ttlMs) &&
+        d.ttlMs > 0
+      );
     case 'unlock':
       return ids(d?.ids) && d.ids.length > 0;
     case 'g.up':
@@ -527,7 +548,12 @@ export function isValidPayload(t: CollabMsgType, d: any): boolean {
       // An empty offer (`{graphics: [], deck: null}`) is valid and meaningful:
       // it is how a provider says "you are already up to date" instead of
       // staying silent, which the requester cannot tell from a dead peer.
-      return Array.isArray(d?.graphics) || !!d?.deck || !!d?.dk || Array.isArray(d?.chat);
+      return (
+        Array.isArray(d?.graphics) ||
+        !!d?.deck ||
+        (Number.isInteger(d?.dk?.seq) && d.dk.seq >= 0 && Array.isArray(d.dk.slides)) ||
+        Array.isArray(d?.chat)
+      );
     case 'vp':
       return (
         Number.isFinite(d?.xmin) &&
@@ -538,16 +564,24 @@ export function isValidPayload(t: CollabMsgType, d: any): boolean {
     case 'look':
       return Number.isFinite(d?.lon) && Number.isFinite(d?.lat);
     case 'chat':
-      return str(d?.text);
+      return str(d?.text) && d.text.length <= MAX_CHAT_LEN && optionalNumber(d?.at);
     case 'podium':
       return typeof d?.take === 'boolean';
     case 'pres':
-      return str(d?.slideId) && Number.isFinite(d?.build) && typeof d?.active === 'boolean';
+      return (
+        str(d?.slideId) &&
+        Number.isInteger(d?.build) &&
+        d.build >= 0 &&
+        typeof d?.active === 'boolean'
+      );
     case 'ink':
       return (
         (d?.k === 'pen' || d?.k === 'laser' || d?.k === 'spot' || d?.k === 'clear') &&
         str(d?.sid) &&
-        (d.k === 'clear' || Array.isArray(d?.pts))
+        optionalBoolean(d?.done) &&
+        (d.k === 'clear' ||
+          (pointList(d?.pts, MAX_INK_POINTS) &&
+            (d.k !== 'spot' || d.r === undefined || (Number.isFinite(d.r) && d.r > 0))))
       );
     case 'view':
       return (

@@ -519,7 +519,10 @@ export default class SlideSync {
   private _onRemoteSlideUp(msg: CollabMsg): void {
     if (!this._opts.syncSlides) return;
     const incoming = msg.d?.slide;
-    if (!incoming?.id) return;
+    if (!incoming?.id) {
+      EngineLogger.error(ENGINE_NAME, `Ignored slide update without an id from ${msg.from}`);
+      return;
+    }
     if (!this.session.accept(`sl:${incoming.id}`, msg.ts)) return;
 
     const slides = this._slides();

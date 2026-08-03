@@ -91,7 +91,9 @@ import {
   injectPptxComments,
   PPTX_MIME,
   type PptxCommentRecord,
+  type PptxCommentTyped,
 } from './PptxComments';
+import { formatPrefix, isTypedComment } from '../Briefing/CommentKinds';
 
 const ENGINE_NAME = 'PptxExporter';
 
@@ -1344,9 +1346,42 @@ class PptxExporter {
       // slide-corner fallback (no overlay, no point) — matches the arithmetic
       // in commentAnchorEighths, which only consults stackIndex on that branch.
       if (!ov && !hasPoint) stack++;
-      into.push({ slide: pptxSlide, author: c.author, at: c.at, text: c.text, x, y });
+      const openerTyped: PptxCommentTyped | undefined = isTypedComment(c)
+        ? {
+            commentId: c.id,
+            ...(c.kind ? { kind: c.kind } : {}),
+            ...(c.assignee ? { assignee: c.assignee } : {}),
+            ...(c.dueAt ? { dueAt: c.dueAt } : {}),
+            ...(c.severity ? { severity: c.severity } : {}),
+            ...(c.final ? { final: true } : {}),
+            ...(c.validated ? { validated: true } : {}),
+            ...(c.answerCommentId ? { answerCommentId: c.answerCommentId } : {}),
+            ...(c.taskStatus ? { taskStatus: c.taskStatus } : {}),
+          }
+        : undefined;
+      into.push({
+        slide: pptxSlide,
+        author: c.author,
+        at: c.at,
+        text: formatPrefix(c),
+        x,
+        y,
+        ...(openerTyped ? { typed: openerTyped } : {}),
+      });
       for (const r of c.replies ?? []) {
-        into.push({ slide: pptxSlide, author: r.author, at: r.at, text: r.text, x, y });
+        into.push({
+          slide: pptxSlide,
+          author: r.author,
+          at: r.at,
+          text: r.text,
+          x,
+          y,
+          // Replies carry a back-pointer to their thread so the importer can
+          // re-attach them; no other typed metadata belongs on a reply.
+          ...(openerTyped
+            ? { typed: { commentId: r.id, isReply: true, kind: openerTyped.kind } }
+            : {}),
+        });
       }
     }
     if (skipped) onSkipped(skipped);

@@ -1252,15 +1252,16 @@ class BriefingEngine {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   public exportBriefing(): BriefingDocument {
-    // version 11 = deck chrome (headers/footers/classification/slide numbers) +
-    // per-slide noChrome; 10 = hidden slides; 9 = overlay links; 8 = per-slide
-    // buildMode + build triggers; 7 = review comments; 6 = milsym overlays +
-    // block/tactical arrows; 5 = table overlays + text listStyle; 4 = slides may
-    // be screen-only (imported PPTX: no extent/camera, backgroundDataUrl is the
+    // version 12 = typed comments (kind + per-kind metadata); 11 = deck chrome
+    // (headers/footers/classification/slide numbers) + per-slide noChrome;
+    // 10 = hidden slides; 9 = overlay links; 8 = per-slide buildMode + build
+    // triggers; 7 = review comments; 6 = milsym overlays + block/tactical
+    // arrows; 5 = table overlays + text listStyle; 4 = slides may be
+    // screen-only (imported PPTX: no extent/camera, backgroundDataUrl is the
     // slide); 3 = full-res background fallback; 2 = editor overlays. Import
-    // accepts 1–11 (every added field is optional, so it reads older documents
+    // accepts 1–12 (every added field is optional, so it reads older documents
     // unchanged).
-    const doc: BriefingDocument = { version: 11, slides: this._slides.map((s) => ({ ...s })) };
+    const doc: BriefingDocument = { version: 12, slides: this._slides.map((s) => ({ ...s })) };
     // Omitted entirely when the author never set anything, so a briefing with no
     // chrome of its own stays byte-identical to what version 10 wrote.
     if (Object.keys(this._chrome).length) doc.chrome = { ...this._chrome };

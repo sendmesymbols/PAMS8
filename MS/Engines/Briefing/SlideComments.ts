@@ -15,7 +15,12 @@
  */
 
 import EngineLogger from '../../Support/EngineLogger';
-import type { SlideComment, SlideCommentEntry } from './BriefingTypes';
+import type {
+  CommentKind,
+  CommentSeverity,
+  SlideComment,
+  SlideCommentEntry,
+} from './BriefingTypes';
 import {
   commentUuid,
   projectAnchor,
@@ -23,6 +28,17 @@ import {
   relTime,
   threadCount,
 } from './SlideCommentUtils';
+import { COMMENT_KINDS, SEVERITIES, kindSpec, severityLabel } from './CommentKinds';
+
+/** Extra fields the composer collects for a typed comment. */
+export interface TypedCommentInput {
+  kind?: CommentKind;
+  assignee?: string;
+  dueAt?: string;
+  severity?: CommentSeverity;
+  final?: boolean;
+  validated?: boolean;
+}
 
 const ENGINE_NAME = 'SlideComments';
 const AUTHOR_KEY = 'ms-briefing-author';
@@ -145,15 +161,24 @@ export class CommentsLayer {
     let stack = 0;
     for (const c of this._host.comments()) {
       const marker = document.createElement('button');
+      const kind = c.kind ?? 'comment';
       marker.className = 'ms-sledit-cmtmarker' + (c.resolved ? ' resolved' : '');
+      marker.dataset.kind = kind;
       if (c.id === this._fresh) {
         marker.classList.add('fresh');
         setTimeout(() => {
           this._fresh = null;
         }, 1200);
       }
-      marker.textContent = String(threadCount(c));
-      marker.title = `${c.author}: ${c.text.slice(0, 80)}`;
+      // Typed markers show the kind glyph; plain comments show the thread count
+      // (the historical look), which is the same UI a briefing without typed
+      // comments has always had.
+      const glyph = kind === 'comment' ? null : kindSpec(kind).glyph;
+      marker.textContent = glyph ?? String(threadCount(c));
+      const spec = kindSpec(kind);
+      marker.title =
+        (kind === 'comment' ? '' : `${spec.label} — `) +
+        `${c.author}: ${c.text.slice(0, 80)}`;
       const box = c.overlayId ? this._objectBox(c.overlayId) : null;
       if (box) {
         // Top-right corner of the live object, so the marker follows a drag.
@@ -201,6 +226,7 @@ export class CommentsLayer {
     anchor: { overlayId?: string; x?: number; y?: number },
     text: string,
     author: string,
+    typed: TypedCommentInput = {},
   ): void {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -214,11 +240,90 @@ export class CommentsLayer {
         : typeof anchor.x === 'number' && typeof anchor.y === 'number'
           ? { x: anchor.x, y: anchor.y }
           : {}),
+      // Keep the default kind implicit — a plain comment writes nothing.
+      ...(typed.kind && typed.kind !== 'comment' ? { kind: typed.kind } : {}),
+      ...(typed.assignee ? { assignee: typed.assignee } : {}),
+      ...(typed.dueAt ? { dueAt: typed.dueAt } : {}),
+      ...(typed.severity ? { severity: typed.severity } : {}),
+      ...(typed.final ? { final: true } : {}),
+      ...(typed.validated ? { validated: true } : {}),
+      ...(typed.kind === 'task' ? { taskStatus: 'open' as const } : {}),
     };
     this._fresh = comment.id;
     this._host.setComments([...this._host.comments(), comment]);
     this.refresh();
-    EngineLogger.success(ENGINE_NAME, `Comment added by ${author}`);
+    const spec = kindSpec(comment.kind);
+    EngineLogger.success(
+      ENGINE_NAME,
+      `${spec.label} added by ${author}${
+        comment.assignee ? ` → ${comment.assignee}` : ''
+      }`,
+    );
+  }
+
+  /**
+   * Apply a patch to an existing thread — kind, assignee, dueAt, severity,
+   * final, validated. `null` on a field clears it; `undefined` leaves it
+   * alone. Setting `kind` back to `'comment'` clears every typed field with it.
+   */
+  public updateTyped(
+    commentId: string,
+    patch: {
+      kind?: CommentKind;
+      assignee?: string | null;
+      dueAt?: string | null;
+      severity?: CommentSeverity | null;
+      final?: boolean | null;
+      validated?: boolean | null;
+      answerCommentId?: string | null;
+    },
+  ): void {
+    this._host.setComments(
+      this._host.comments().map((c) => {
+        if (c.id !== commentId) return { ...c };
+        const next: SlideComment = { ...c };
+        if (patch.kind !== undefined) {
+          if (patch.kind === 'comment') {
+            delete next.kind;
+            delete next.assignee;
+            delete next.dueAt;
+            delete next.severity;
+            delete next.final;
+            delete next.validated;
+            delete next.answerCommentId;
+            delete next.taskStatus;
+          } else {
+            next.kind = patch.kind;
+            if (patch.kind === 'task' && !next.taskStatus) next.taskStatus = 'open';
+          }
+        }
+        const applyStr = (k: 'assignee' | 'dueAt') => {
+          if (patch[k] === undefined) return;
+          if (patch[k] === null || patch[k] === '') delete next[k];
+          else next[k] = patch[k] as string;
+        };
+        applyStr('assignee');
+        applyStr('dueAt');
+        if (patch.severity !== undefined) {
+          if (patch.severity === null) delete next.severity;
+          else next.severity = patch.severity;
+        }
+        if (patch.final !== undefined) {
+          if (patch.final) next.final = true;
+          else delete next.final;
+        }
+        if (patch.validated !== undefined) {
+          if (patch.validated) next.validated = true;
+          else delete next.validated;
+        }
+        if (patch.answerCommentId !== undefined) {
+          if (patch.answerCommentId) next.answerCommentId = patch.answerCommentId;
+          else delete next.answerCommentId;
+        }
+        return next;
+      }),
+    );
+    this.refresh();
   }
 
   private _reply(commentId: string, text: string, author: string): void {
@@ -287,27 +392,67 @@ export class CommentsLayer {
   /**
    * The composer for a new thread. Asks for a display name too, but only the
    * first time — after that the name field is omitted entirely.
+   *
+   * `initialKind` seeds the kind chip row (used when the topbar opens the
+   * composer preset to Task / Decision / Risk / …). Absent = plain `comment`.
    */
   public openComposer(
     anchor: { overlayId?: string; x?: number; y?: number },
     clientX: number,
     clientY: number,
     anchorLabel: string,
+    initialKind: CommentKind = 'comment',
   ): void {
     const panel = document.createElement('div');
     const known = storedAuthor();
+    const chips = COMMENT_KINDS.map(
+      (s) =>
+        `<button data-kind="${s.kind}" class="ms-sledit-cmtkind" type="button" title="${s.label}">` +
+        `<span class="ms-sledit-cmtkindglyph" data-glyph="${s.kind}">${s.glyph}</span>` +
+        `<span>${s.label}</span></button>`,
+    ).join('');
     panel.innerHTML =
       `<div class="ms-sledit-cmthead"><span>${anchorLabel}</span></div>` +
+      `<div class="ms-sledit-cmtkinds">${chips}</div>` +
+      `<div class="ms-sledit-cmttyped"></div>` +
       (known
         ? ''
         : '<input type="text" class="ms-sledit-cmtname" placeholder="Your name (shown on comments)">') +
       '<textarea class="ms-sledit-cmttext" rows="3" placeholder="Comment…"></textarea>' +
       '<div class="ms-sledit-cmtfoot">' +
-      '<button data-cmt="ok" class="primary">Comment</button>' +
+      '<button data-cmt="ok" class="primary">Add</button>' +
       '<button data-cmt="cancel">Cancel</button>' +
       '</div>';
+
     const textArea = panel.querySelector('.ms-sledit-cmttext') as HTMLTextAreaElement;
     const nameInput = panel.querySelector('.ms-sledit-cmtname') as HTMLInputElement | null;
+    const typedBox = panel.querySelector('.ms-sledit-cmttyped') as HTMLElement;
+    const okBtn = panel.querySelector('[data-cmt="ok"]') as HTMLButtonElement;
+
+    let kind: CommentKind = initialKind;
+
+    const paintKind = () => {
+      panel.querySelectorAll('.ms-sledit-cmtkind').forEach((el) => {
+        (el as HTMLElement).classList.toggle(
+          'active',
+          (el as HTMLElement).dataset.kind === kind,
+        );
+      });
+      typedBox.innerHTML = this._typedFieldsHtml(kind);
+      textArea.placeholder =
+        kind === 'comment' ? 'Comment…' : `${kindSpec(kind).label}…`;
+      okBtn.textContent = kind === 'comment' ? 'Add' : `Add ${kindSpec(kind).label}`;
+    };
+    paintKind();
+
+    panel.querySelectorAll('.ms-sledit-cmtkind').forEach((el) => {
+      el.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        kind = ((el as HTMLElement).dataset.kind as CommentKind) || 'comment';
+        paintKind();
+      });
+    });
+
     const commit = () => {
       const author = (nameInput ? nameInput.value.trim() : known) || '';
       if (!author) {
@@ -319,10 +464,11 @@ export class CommentsLayer {
         return;
       }
       if (nameInput) setStoredAuthor(author);
-      this.addComment(anchor, textArea.value, author);
+      const typed = this._readTypedFields(typedBox, kind);
+      this.addComment(anchor, textArea.value, author, { kind, ...typed });
       this.closePopover();
     };
-    panel.querySelector('[data-cmt="ok"]')?.addEventListener('click', commit);
+    okBtn.addEventListener('click', commit);
     panel
       .querySelector('[data-cmt="cancel"]')
       ?.addEventListener('click', () => this.closePopover());
@@ -337,6 +483,126 @@ export class CommentsLayer {
     (nameInput ?? textArea).focus();
   }
 
+  /** Kind-specific input HTML for the composer + thread panels. */
+  private _typedFieldsHtml(kind: CommentKind): string {
+    if (kind === 'task') {
+      return (
+        `<label class="ms-sledit-cmtfield"><span>Assignee</span>` +
+        `<input type="text" class="ms-sledit-cmt-assignee" placeholder="Name or callsign"></label>` +
+        `<label class="ms-sledit-cmtfield"><span>Due</span>` +
+        `<input type="date" class="ms-sledit-cmt-due"></label>`
+      );
+    }
+    if (kind === 'risk') {
+      const opts = SEVERITIES.map(
+        (s) => `<option value="${s}">${severityLabel(s)}</option>`,
+      ).join('');
+      return (
+        `<label class="ms-sledit-cmtfield"><span>Severity</span>` +
+        `<select class="ms-sledit-cmt-sev"><option value="">—</option>${opts}</select></label>`
+      );
+    }
+    if (kind === 'decision') {
+      return (
+        `<label class="ms-sledit-cmtfield inline">` +
+        `<input type="checkbox" class="ms-sledit-cmt-final"><span>Final decision</span></label>`
+      );
+    }
+    if (kind === 'assumption') {
+      return (
+        `<label class="ms-sledit-cmtfield inline">` +
+        `<input type="checkbox" class="ms-sledit-cmt-validated"><span>Validated</span></label>`
+      );
+    }
+    return '';
+  }
+
+  /** Prefill kind-specific inputs from an existing thread's values. */
+  private _fillTypedFields(host: HTMLElement, c: SlideComment): void {
+    const kind = c.kind ?? 'comment';
+    if (kind === 'task') {
+      const a = host.querySelector('.ms-sledit-cmt-assignee') as HTMLInputElement | null;
+      const d = host.querySelector('.ms-sledit-cmt-due') as HTMLInputElement | null;
+      if (a) a.value = c.assignee ?? '';
+      if (d) d.value = (c.dueAt ?? '').slice(0, 10);
+    } else if (kind === 'risk') {
+      const sev = host.querySelector('.ms-sledit-cmt-sev') as HTMLSelectElement | null;
+      if (sev) sev.value = c.severity ?? '';
+    } else if (kind === 'decision') {
+      const f = host.querySelector('.ms-sledit-cmt-final') as HTMLInputElement | null;
+      if (f) f.checked = !!c.final;
+    } else if (kind === 'assumption') {
+      const v = host.querySelector('.ms-sledit-cmt-validated') as HTMLInputElement | null;
+      if (v) v.checked = !!c.validated;
+    }
+  }
+
+  /**
+   * Wire live change events on the thread panel's typed inputs. Every change
+   * patches the stored comment immediately — same pattern the fabric side rail
+   * uses, so there is no separate "Save" button for kind metadata.
+   */
+  private _wireTypedInputs(host: HTMLElement, commentId: string, kind: CommentKind): void {
+    const patch = (p: Parameters<CommentsLayer['updateTyped']>[1]) =>
+      this.updateTyped(commentId, p);
+    if (kind === 'task') {
+      const a = host.querySelector('.ms-sledit-cmt-assignee') as HTMLInputElement | null;
+      const d = host.querySelector('.ms-sledit-cmt-due') as HTMLInputElement | null;
+      a?.addEventListener('change', () => patch({ assignee: a.value.trim() || null }));
+      d?.addEventListener('change', () => patch({ dueAt: d.value.trim() || null }));
+    } else if (kind === 'risk') {
+      const sev = host.querySelector('.ms-sledit-cmt-sev') as HTMLSelectElement | null;
+      sev?.addEventListener('change', () =>
+        patch({ severity: (sev.value || null) as CommentSeverity | null }),
+      );
+    } else if (kind === 'decision') {
+      const f = host.querySelector('.ms-sledit-cmt-final') as HTMLInputElement | null;
+      f?.addEventListener('change', () => patch({ final: f.checked }));
+    } else if (kind === 'assumption') {
+      const v = host.querySelector('.ms-sledit-cmt-validated') as HTMLInputElement | null;
+      v?.addEventListener('change', () => patch({ validated: v.checked }));
+    }
+  }
+
+  /** HTML-escape untrusted display strings (author names, kind labels, …). */
+  private _escape(s: string): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /** Read the kind-specific fields out of a typedFields host. */
+  private _readTypedFields(host: HTMLElement, kind: CommentKind): TypedCommentInput {
+    if (kind === 'task') {
+      const assignee = (host.querySelector('.ms-sledit-cmt-assignee') as HTMLInputElement | null)
+        ?.value.trim();
+      const dueAt = (host.querySelector('.ms-sledit-cmt-due') as HTMLInputElement | null)
+        ?.value.trim();
+      return {
+        ...(assignee ? { assignee } : {}),
+        ...(dueAt ? { dueAt } : {}),
+      };
+    }
+    if (kind === 'risk') {
+      const severity = (host.querySelector('.ms-sledit-cmt-sev') as HTMLSelectElement | null)
+        ?.value as CommentSeverity | '' | undefined;
+      return severity ? { severity } : {};
+    }
+    if (kind === 'decision') {
+      const final = (host.querySelector('.ms-sledit-cmt-final') as HTMLInputElement | null)
+        ?.checked;
+      return final ? { final: true } : {};
+    }
+    if (kind === 'assumption') {
+      const validated = (host.querySelector('.ms-sledit-cmt-validated') as HTMLInputElement | null)
+        ?.checked;
+      return validated ? { validated: true } : {};
+    }
+    return {};
+  }
+
   /** Open a thread: entries, reply box, Resolve/Reopen, Delete. */
   public openThread(commentId: string): void {
     const c = this._host.comments().find((x) => x.id === commentId);
@@ -345,11 +611,13 @@ export class CommentsLayer {
     const r = marker?.getBoundingClientRect();
 
     const panel = document.createElement('div');
+    const spec = kindSpec(c.kind);
+    const kindWord = spec.label;
     const label = c.overlayId
-      ? 'Comment · annotation'
+      ? `${kindWord} · annotation`
       : typeof c.x === 'number'
-        ? `Comment · point (${c.x.toFixed(3)}, ${(c.y ?? 0).toFixed(3)})`
-        : 'Comment · slide';
+        ? `${kindWord} · point (${c.x.toFixed(3)}, ${(c.y ?? 0).toFixed(3)})`
+        : `${kindWord} · slide`;
     const entries = [c, ...(c.replies ?? [])]
       .map(
         // Only the count matters here — each entry's fields are filled in by
@@ -358,9 +626,19 @@ export class CommentsLayer {
           '<div class="ms-sledit-cmtentry"><b></b><span class="ms-sledit-cmttime"></span><p></p></div>',
       )
       .join('');
+    const kindChips = COMMENT_KINDS.map(
+      (s) =>
+        `<button data-kind="${s.kind}" class="ms-sledit-cmtkind${
+          (c.kind ?? 'comment') === s.kind ? ' active' : ''
+        }" type="button" title="${s.label}">` +
+        `<span class="ms-sledit-cmtkindglyph" data-glyph="${s.kind}">${s.glyph}</span>` +
+        `<span>${s.label}</span></button>`,
+    ).join('');
     panel.innerHTML =
-      `<div class="ms-sledit-cmthead"><span>${label}</span>` +
+      `<div class="ms-sledit-cmthead"><span data-role="cmtlabel">${this._escape(label)}</span>` +
       `<button class="ms-sledit-cmtme" title="Change the name used on your new comments and replies"></button></div>` +
+      `<div class="ms-sledit-cmtkinds">${kindChips}</div>` +
+      `<div class="ms-sledit-cmttyped">${this._typedFieldsHtml(c.kind ?? 'comment')}</div>` +
       `<div class="ms-sledit-cmtentries">${entries}</div>` +
       '<textarea class="ms-sledit-cmtreply" rows="2" placeholder="Reply…"></textarea>' +
       '<div class="ms-sledit-cmtfoot">' +
@@ -368,6 +646,38 @@ export class CommentsLayer {
       `<button data-cmt="resolve">${c.resolved ? 'Reopen' : 'Resolve'}</button>` +
       '<button data-cmt="delete">Delete</button>' +
       '</div>';
+
+    // Prefill typed inputs with the thread's current values.
+    const typedBox = panel.querySelector('.ms-sledit-cmttyped') as HTMLElement;
+    this._fillTypedFields(typedBox, c);
+
+    // Kind chip clicks → immediate patch, so the thread's badge and rail row
+    // update without an explicit save.
+    panel.querySelectorAll('.ms-sledit-cmtkind').forEach((el) => {
+      el.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        const next = ((el as HTMLElement).dataset.kind as CommentKind) || 'comment';
+        this.updateTyped(commentId, { kind: next });
+        panel.querySelectorAll('.ms-sledit-cmtkind').forEach((btn) => {
+          (btn as HTMLElement).classList.toggle(
+            'active',
+            (btn as HTMLElement).dataset.kind === next,
+          );
+        });
+        typedBox.innerHTML = this._typedFieldsHtml(next);
+        const patched = this._host.comments().find((x) => x.id === commentId);
+        if (patched) this._fillTypedFields(typedBox, patched);
+        this._wireTypedInputs(typedBox, commentId, next);
+        const nextLabel = c.overlayId
+          ? `${kindSpec(next).label} · annotation`
+          : typeof c.x === 'number'
+            ? `${kindSpec(next).label} · point (${c.x.toFixed(3)}, ${(c.y ?? 0).toFixed(3)})`
+            : `${kindSpec(next).label} · slide`;
+        const labelNode = panel.querySelector('[data-role="cmtlabel"]');
+        if (labelNode) labelNode.textContent = nextLabel;
+      });
+    });
+    this._wireTypedInputs(typedBox, commentId, c.kind ?? 'comment');
 
     // textContent, never innerHTML — comment text is user input.
     const nodes = panel.querySelectorAll('.ms-sledit-cmtentry');

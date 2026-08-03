@@ -29,3 +29,4 @@ public/assets
 *.njsproj
 *.sln
 *.sw?
+/Collaboration/go/

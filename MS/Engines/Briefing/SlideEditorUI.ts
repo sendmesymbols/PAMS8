@@ -966,6 +966,15 @@ export default class SlideEditorUI {
                 <span>All slides</span>
                 <input type="checkbox" class="ms-sledit-cmtall">
               </label>
+              <div class="ms-sledit-cmtfilter" role="tablist">
+                <button data-cmtf="all" class="ms-sledit-cmtchip active" title="Every comment kind">All</button>
+                <button data-cmtf="decision" class="ms-sledit-cmtchip" data-kind="decision" title="Decisions"><span class="g">◆</span>Decision</button>
+                <button data-cmtf="task" class="ms-sledit-cmtchip" data-kind="task" title="Tasks"><span class="g">☐</span>Task</button>
+                <button data-cmtf="question" class="ms-sledit-cmtchip" data-kind="question" title="Questions"><span class="g">?</span>Question</button>
+                <button data-cmtf="risk" class="ms-sledit-cmtchip" data-kind="risk" title="Risks"><span class="g">△</span>Risk</button>
+                <button data-cmtf="assumption" class="ms-sledit-cmtchip" data-kind="assumption" title="Assumptions"><span class="g">⬢</span>Assumption</button>
+                <button data-cmtf="issue" class="ms-sledit-cmtchip" data-kind="issue" title="Issues"><span class="g">!</span>Issue</button>
+              </div>
               <div class="ms-sledit-cmtlist"></div>
             </div>
           </div>
@@ -1271,6 +1280,7 @@ export default class SlideEditorUI {
     this._navTotal = stage.querySelector('.ms-sledit-navtotal') as HTMLElement;
     const cmtAll = stage.querySelector('.ms-sledit-cmtall') as HTMLInputElement | null;
     if (cmtAll) cmtAll.onchange = () => this.refreshComments();
+    this._wireCmtFilterChips();
     this.titleInput = stage.querySelector('.ms-sledit-title') as HTMLInputElement;
     this._notesBar = stage.querySelector('.ms-sledit-notesbar') as HTMLElement;
     this.notesArea = stage.querySelector('.ms-sledit-notes') as HTMLTextAreaElement;
@@ -1702,31 +1712,50 @@ export default class SlideEditorUI {
 
   // ── Comments ───────────────────────────────────────────────────────────────
 
+  /** Kind filter for the Comments section. 'all' = every kind. */
+  private _cmtFilter: 'all' | SlideComment['kind'] = 'all';
+
   /** Redraw the Comments review section for the current scope. */
   public refreshComments(): void {
     const box = this._stage?.querySelector('.ms-sledit-cmtlist') as HTMLElement | null;
     if (!box) return;
     const all = (this._stage?.querySelector('.ms-sledit-cmtall') as HTMLInputElement)?.checked;
-    const rows = all
+    const filter = this._cmtFilter;
+    const source = all
       ? this._host.allComments()
       : this._host.comments().map((comment) => ({ slideIndex: -1, comment }));
+    const rows = source.filter(({ comment: c }) => {
+      if (filter === 'all') return true;
+      const k = c.kind ?? 'comment';
+      return k === filter;
+    });
+    // Chip counts always reflect the SCOPE (this slide vs. all slides), not
+    // the current filter — otherwise picking Task would zero out every other
+    // chip and lose its "how many of each" signal.
+    this._paintCmtChipCounts(source);
     if (!rows.length) {
-      box.innerHTML = `<div class="ms-sledit-cmtempty">No comments${
-        all ? '' : ' on this slide'
-      } yet — press N and click.</div>`;
+      box.innerHTML = `<div class="ms-sledit-cmtempty">No ${
+        filter === 'all' ? 'comments' : filter + 's'
+      }${all ? '' : ' on this slide'} yet — press N and click.</div>`;
       return;
     }
     box.innerHTML = rows
       .map(({ slideIndex, comment: c }) => {
         const replies = c.replies?.length ?? 0;
         const where = c.overlayId ? 'annotation' : typeof c.x === 'number' ? 'point' : 'slide';
+        const kind = c.kind ?? 'comment';
+        const meta = this._cmtRowMeta(c);
         return (
           `<button class="ms-sledit-cmtrow${c.resolved ? ' resolved' : ''}"` +
+          ` data-kind="${kind}"` +
           ` data-cmt-id="${this._escape(c.id)}" data-cmt-slide="${slideIndex}">` +
-          `<span class="ms-sledit-cmtrowhead"><b>${this._escape(c.author)}</b>` +
+          `<span class="ms-sledit-cmtrowhead">` +
+          `<span class="ms-sledit-cmtrowkind" data-kind="${kind}" aria-hidden="true"></span>` +
+          `<b>${this._escape(c.author)}</b>` +
           `<i>${all && slideIndex >= 0 ? `slide ${slideIndex + 1} · ` : ''}${where}` +
           `${replies ? ` · ${replies} repl${replies === 1 ? 'y' : 'ies'}` : ''}</i></span>` +
           `<span class="ms-sledit-cmtrowtext">${this._escape(c.text.slice(0, 120))}</span>` +
+          (meta ? `<span class="ms-sledit-cmtrowmeta">${meta}</span>` : '') +
           '</button>'
         );
       })
@@ -1736,6 +1765,58 @@ export default class SlideEditorUI {
       if (!row) return;
       this._host.goToComment(Number(row.dataset.cmtSlide), row.dataset.cmtId!);
     };
+  }
+
+  /** Extra info line for a typed comment row — assignee/due/severity/…. */
+  private _cmtRowMeta(c: SlideComment): string {
+    const bits: string[] = [];
+    if (c.kind === 'task') {
+      if (c.assignee) bits.push(`@${this._escape(c.assignee)}`);
+      if (c.dueAt) bits.push(`due ${this._escape(c.dueAt.slice(0, 10))}`);
+    } else if (c.kind === 'risk' && c.severity) {
+      bits.push(`severity: ${c.severity}`);
+    } else if (c.kind === 'decision' && c.final) {
+      bits.push('final');
+    } else if (c.kind === 'question') {
+      bits.push(c.answerCommentId ? 'answered' : 'unanswered');
+    } else if (c.kind === 'assumption') {
+      bits.push(c.validated ? 'validated' : 'unvalidated');
+    }
+    return bits.join(' · ');
+  }
+
+  /** Reflect per-kind counts in the filter chip labels. */
+  private _paintCmtChipCounts(
+    rows: ReadonlyArray<{ slideIndex: number; comment: SlideComment }>,
+  ): void {
+    const counts: Record<string, number> = { all: rows.length };
+    for (const { comment: c } of rows) {
+      const k = c.kind ?? 'comment';
+      counts[k] = (counts[k] ?? 0) + 1;
+    }
+    this._stage?.querySelectorAll('.ms-sledit-cmtchip').forEach((el) => {
+      const chip = el as HTMLElement;
+      const key = chip.dataset.cmtf ?? 'all';
+      const n = counts[key] ?? 0;
+      chip.classList.toggle('active', key === this._cmtFilter);
+      chip.classList.toggle('empty', n === 0 && key !== 'all');
+      // Keep the label stable; hang the count off ::after via data-count.
+      chip.dataset.count = n > 0 ? String(n) : '';
+    });
+  }
+
+  /** Wire the filter chips — called once after the section is mounted. */
+  private _wireCmtFilterChips(): void {
+    const filter = this._stage?.querySelector('.ms-sledit-cmtfilter') as HTMLElement | null;
+    if (!filter || (filter as any)._wired) return;
+    (filter as any)._wired = true;
+    filter.addEventListener('click', (ev) => {
+      const btn = (ev.target as HTMLElement).closest('[data-cmtf]') as HTMLElement | null;
+      if (!btn) return;
+      const key = btn.dataset.cmtf as typeof this._cmtFilter;
+      this._cmtFilter = key;
+      this.refreshComments();
+    });
   }
 
   // ── New-slide layout picker ────────────────────────────────────────────────
@@ -2585,6 +2666,17 @@ export default class SlideEditorUI {
         --sl-dim: var(--ms-text-dim, #8a97a5);
         --sl-accent: var(--ms-accent, #64b4ff);
         --sl-radius: var(--ms-radius, 9px);
+        /* Typed-comment palette — see BriefingTypes.CommentKind. Kept as
+           editor-level tokens so both the on-slide markers and the right-rail
+           chips read the same set, and a theme can override any single kind
+           without touching the layout. */
+        --sl-cmt-comment: var(--ms-accent, #64b4ff);
+        --sl-cmt-decision: #6c8eff;
+        --sl-cmt-task: #4fb372;
+        --sl-cmt-question: #b174ff;
+        --sl-cmt-risk: #ffb547;
+        --sl-cmt-assumption: #7aa6c2;
+        --sl-cmt-issue: #ff6a5c;
         /* Collapse marks, drawn as masks painted in currentColor rather than as
            text: the ▾ / ‹ glyphs sat a pixel off-centre and moved with whatever
            font --ms-menu-font resolves to. Both rest pointing DOWN — rotation is
@@ -2934,6 +3026,16 @@ export default class SlideEditorUI {
         100% { transform: scale(1); }
       }
       .ms-sledit-cmtmarker.fresh { animation: ms-sledit-cmtpop 0.45s ease-out; }
+      /* Typed markers: the kind tints the background and drives the glyph
+         weight — the default (untyped) marker keeps its --sl-accent teardrop.
+         Palette lives on --sl-cmt-* tokens so a theme can override each kind. */
+      .ms-sledit-cmtmarker[data-kind="decision"] { background: var(--sl-cmt-decision); }
+      .ms-sledit-cmtmarker[data-kind="task"] { background: var(--sl-cmt-task); }
+      .ms-sledit-cmtmarker[data-kind="question"] { background: var(--sl-cmt-question); }
+      .ms-sledit-cmtmarker[data-kind="risk"] { background: var(--sl-cmt-risk); color: #10161d; }
+      .ms-sledit-cmtmarker[data-kind="assumption"] { background: var(--sl-cmt-assumption); }
+      .ms-sledit-cmtmarker[data-kind="issue"] { background: var(--sl-cmt-issue); }
+      .ms-sledit-cmtmarker[data-kind]:not([data-kind="comment"]) { font-size: 12px; }
       .ms-sledit-cmtpop {
         /* The popover mounts on <body>, OUTSIDE #msSlideEditor, so the editor's
            --sl-* tokens never cascade here — that is why the card and its input
@@ -2945,6 +3047,13 @@ export default class SlideEditorUI {
         --sl-text: var(--ms-text, #dde3e8);
         --sl-dim: var(--ms-text-dim, #8a97a5);
         --sl-accent: var(--ms-accent, #64b4ff);
+        --sl-cmt-comment: var(--ms-accent, #64b4ff);
+        --sl-cmt-decision: #6c8eff;
+        --sl-cmt-task: #4fb372;
+        --sl-cmt-question: #b174ff;
+        --sl-cmt-risk: #ffb547;
+        --sl-cmt-assumption: #7aa6c2;
+        --sl-cmt-issue: #ff6a5c;
         position: fixed;
         z-index: 10050;
         width: 304px;
@@ -3062,6 +3171,87 @@ export default class SlideEditorUI {
       }
       .ms-sledit-cmtempty { font-size: 11.5px; color: var(--sl-dim); padding: 6px 2px 8px; line-height: 1.5; }
       .ms-sledit-cmtlist { display: flex; flex-direction: column; gap: 6px; }
+      /* Filter chip row above the comments list. Uses the same --sl-cmt-* palette
+         as the on-slide markers so the visual language is one system. */
+      .ms-sledit-cmtfilter {
+        display: flex; flex-wrap: wrap; gap: 4px;
+        padding: 4px 0 8px; margin: 0 -2px;
+      }
+      .ms-sledit-props .ms-sledit-cmtchip {
+        display: inline-flex; align-items: center; gap: 4px;
+        width: auto; height: auto;
+        padding: 3px 8px; font: 600 10.5px/1.35 inherit;
+        color: var(--sl-text); background: rgba(255,255,255,0.05);
+        border: 1px solid var(--sl-line); border-radius: 999px;
+        cursor: pointer; white-space: nowrap;
+        transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+      }
+      .ms-sledit-props .ms-sledit-cmtchip .g {
+        display: inline-block; width: 12px; text-align: center;
+        font-weight: 700; opacity: 0.85;
+      }
+      .ms-sledit-props .ms-sledit-cmtchip[data-count]:not([data-count=""])::after {
+        content: attr(data-count);
+        margin-left: 4px; padding: 0 5px; font-size: 9.5px; line-height: 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.09); color: var(--sl-dim);
+      }
+      .ms-sledit-props .ms-sledit-cmtchip:hover { background: rgba(255,255,255,0.09); }
+      .ms-sledit-props .ms-sledit-cmtchip.active {
+        color: #10161d; background: var(--sl-accent); border-color: var(--sl-accent);
+      }
+      .ms-sledit-props .ms-sledit-cmtchip.active[data-kind="decision"] { background: var(--sl-cmt-decision); border-color: var(--sl-cmt-decision); }
+      .ms-sledit-props .ms-sledit-cmtchip.active[data-kind="task"] { background: var(--sl-cmt-task); border-color: var(--sl-cmt-task); }
+      .ms-sledit-props .ms-sledit-cmtchip.active[data-kind="question"] { background: var(--sl-cmt-question); border-color: var(--sl-cmt-question); }
+      .ms-sledit-props .ms-sledit-cmtchip.active[data-kind="risk"] { background: var(--sl-cmt-risk); border-color: var(--sl-cmt-risk); }
+      .ms-sledit-props .ms-sledit-cmtchip.active[data-kind="assumption"] { background: var(--sl-cmt-assumption); border-color: var(--sl-cmt-assumption); }
+      .ms-sledit-props .ms-sledit-cmtchip.active[data-kind="issue"] { background: var(--sl-cmt-issue); border-color: var(--sl-cmt-issue); }
+      .ms-sledit-props .ms-sledit-cmtchip.empty:not(.active) { opacity: 0.55; }
+      /* Composer / thread panel kind chips. Same visual as the rail's chips,
+         but mounted on <body> so the palette is anchored from --sl-cmt-* which
+         the popover block re-declares (see .ms-sledit-cmtpop above). */
+      .ms-sledit-cmtkinds {
+        display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px;
+      }
+      .ms-sledit-cmtkind {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 8px; font: 600 10.5px/1.35 inherit; color: var(--sl-text);
+        background: rgba(255,255,255,0.04); border: 1px solid var(--sl-line);
+        border-radius: 999px; cursor: pointer; white-space: nowrap;
+        transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+      }
+      .ms-sledit-cmtkindglyph {
+        display: inline-block; width: 12px; text-align: center; font-weight: 700; opacity: 0.9;
+      }
+      .ms-sledit-cmtkindglyph[data-glyph="decision"] { color: var(--sl-cmt-decision); }
+      .ms-sledit-cmtkindglyph[data-glyph="task"] { color: var(--sl-cmt-task); }
+      .ms-sledit-cmtkindglyph[data-glyph="question"] { color: var(--sl-cmt-question); }
+      .ms-sledit-cmtkindglyph[data-glyph="risk"] { color: var(--sl-cmt-risk); }
+      .ms-sledit-cmtkindglyph[data-glyph="assumption"] { color: var(--sl-cmt-assumption); }
+      .ms-sledit-cmtkindglyph[data-glyph="issue"] { color: var(--sl-cmt-issue); }
+      .ms-sledit-cmtkind:hover { background: rgba(255,255,255,0.09); }
+      .ms-sledit-cmtkind.active { color: #10161d; background: var(--sl-accent); border-color: var(--sl-accent); }
+      .ms-sledit-cmtkind.active[data-kind="decision"] { background: var(--sl-cmt-decision); border-color: var(--sl-cmt-decision); }
+      .ms-sledit-cmtkind.active[data-kind="task"] { background: var(--sl-cmt-task); border-color: var(--sl-cmt-task); }
+      .ms-sledit-cmtkind.active[data-kind="question"] { background: var(--sl-cmt-question); border-color: var(--sl-cmt-question); }
+      .ms-sledit-cmtkind.active[data-kind="risk"] { background: var(--sl-cmt-risk); border-color: var(--sl-cmt-risk); }
+      .ms-sledit-cmtkind.active[data-kind="assumption"] { background: var(--sl-cmt-assumption); border-color: var(--sl-cmt-assumption); }
+      .ms-sledit-cmtkind.active[data-kind="issue"] { background: var(--sl-cmt-issue); border-color: var(--sl-cmt-issue); }
+      .ms-sledit-cmtkind.active .ms-sledit-cmtkindglyph { color: #10161d; }
+      .ms-sledit-cmttyped {
+        display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px;
+      }
+      .ms-sledit-cmttyped:empty { margin: 0; }
+      .ms-sledit-cmtfield {
+        display: flex; flex-direction: column; gap: 3px; flex: 1 1 130px; min-width: 0;
+        font-size: 10.5px; color: var(--sl-dim);
+      }
+      .ms-sledit-cmtfield.inline { flex-direction: row; align-items: center; gap: 6px; color: var(--sl-text); }
+      .ms-sledit-cmtfield input[type="text"], .ms-sledit-cmtfield input[type="date"], .ms-sledit-cmtfield select {
+        width: 100%; box-sizing: border-box; font: inherit; font-size: 12px;
+        background: var(--sl-input); color: var(--sl-text);
+        border: 1px solid var(--sl-line); border-radius: 6px; padding: 5px 7px;
+      }
       /* MUST out-specify the ".ms-sledit-props button" rule (0,1,1) below, which
          otherwise squashes each row into a 30x28 centred icon-button. The row is
          a full-width, left-aligned, stacked list item — reset every layout prop
@@ -3095,6 +3285,39 @@ export default class SlideEditorUI {
         font-size: 11.5px; color: var(--sl-text); opacity: 0.85;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
       }
+      .ms-sledit-cmtrowmeta {
+        font-size: 10.5px; color: var(--sl-dim); font-weight: 500;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+      }
+      /* Kind stripe on the row's left edge + a glyph badge in the header — the
+         two together mirror the on-slide marker's kind cue in the rail. */
+      .ms-sledit-props .ms-sledit-cmtrow[data-kind]:not([data-kind="comment"]) {
+        border-left-width: 3px;
+      }
+      .ms-sledit-props .ms-sledit-cmtrow[data-kind="decision"] { border-left-color: var(--sl-cmt-decision); }
+      .ms-sledit-props .ms-sledit-cmtrow[data-kind="task"] { border-left-color: var(--sl-cmt-task); }
+      .ms-sledit-props .ms-sledit-cmtrow[data-kind="question"] { border-left-color: var(--sl-cmt-question); }
+      .ms-sledit-props .ms-sledit-cmtrow[data-kind="risk"] { border-left-color: var(--sl-cmt-risk); }
+      .ms-sledit-props .ms-sledit-cmtrow[data-kind="assumption"] { border-left-color: var(--sl-cmt-assumption); }
+      .ms-sledit-props .ms-sledit-cmtrow[data-kind="issue"] { border-left-color: var(--sl-cmt-issue); }
+      .ms-sledit-cmtrowkind {
+        display: inline-block; width: 13px; height: 13px; flex: none;
+        border-radius: 4px; margin-right: 2px;
+        font: 700 10px/13px inherit; text-align: center; color: #10161d;
+      }
+      .ms-sledit-cmtrowkind[data-kind="comment"] { display: none; }
+      .ms-sledit-cmtrowkind[data-kind="decision"] { background: var(--sl-cmt-decision); }
+      .ms-sledit-cmtrowkind[data-kind="task"] { background: var(--sl-cmt-task); }
+      .ms-sledit-cmtrowkind[data-kind="question"] { background: var(--sl-cmt-question); }
+      .ms-sledit-cmtrowkind[data-kind="risk"] { background: var(--sl-cmt-risk); }
+      .ms-sledit-cmtrowkind[data-kind="assumption"] { background: var(--sl-cmt-assumption); }
+      .ms-sledit-cmtrowkind[data-kind="issue"] { background: var(--sl-cmt-issue); }
+      .ms-sledit-cmtrowkind[data-kind="decision"]::after { content: "◆"; }
+      .ms-sledit-cmtrowkind[data-kind="task"]::after { content: "☐"; }
+      .ms-sledit-cmtrowkind[data-kind="question"]::after { content: "?"; }
+      .ms-sledit-cmtrowkind[data-kind="risk"]::after { content: "△"; }
+      .ms-sledit-cmtrowkind[data-kind="assumption"]::after { content: "⬢"; }
+      .ms-sledit-cmtrowkind[data-kind="issue"]::after { content: "!"; }
       .ms-sledit-loading { color: var(--sl-dim); font-size: 14px; }
 
       /* ————— speaker-notes drawer ————— */

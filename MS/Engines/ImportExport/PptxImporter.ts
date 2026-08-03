@@ -41,12 +41,19 @@
 import { composeOverlayThumbnail, overlayUuid } from '../Briefing/OverlayFabric';
 import type {
   ArrowHead,
+  CommentKind,
+  CommentSeverity,
   LinkJump,
   Slide,
+  SlideComment,
+  SlideCommentEntry,
   SlideOverlay,
   TableMerge,
   ViewKind,
 } from '../Briefing/BriefingTypes';
+import { commentUuid } from '../Briefing/SlideCommentUtils';
+import { parsePrefix } from '../Briefing/CommentKinds';
+import { TYPED_COMMENTS_NS } from './PptxComments';
 import type { ChartKind, ChartSpec } from '../Briefing/ChartFactory';
 import { normalizeMerges } from '../Briefing/OverlayTable';
 import { jumpFromPptAction, normalizeLink } from '../Briefing/SlideLinks';
@@ -212,6 +219,124 @@ interface RelTarget {
   target: string;
   type: string;
   external: boolean;
+}
+
+/**
+ * One entry parsed out of the typed-comments customXml sidecar. Ordering is
+ * preserved from the sidecar, which the exporter writes in the SAME order it
+ * writes the PPTX comment part — that is how sidecar rows are matched to
+ * `p:cm` elements by index.
+ */
+interface TypedSidecarEntry {
+  commentId: string;
+  slide: number;
+  kind?: CommentKind;
+  assignee?: string;
+  dueAt?: string;
+  severity?: CommentSeverity;
+  taskStatus?: 'open' | 'resolved';
+  answerCommentId?: string;
+  final?: boolean;
+  validated?: boolean;
+  isReply?: boolean;
+}
+
+/**
+ * Return the slide → entries map from the typed-comments customXml sidecar,
+ * empty when the sidecar is absent or unreadable. `zip` and `presRels` are the
+ * ones parsePptx already holds.
+ */
+async function readTypedCommentsSidecar(
+  zip: any,
+  presRels: Map<string, RelTarget>,
+): Promise<Map<number, TypedSidecarEntry[]>> {
+  const out = new Map<number, TypedSidecarEntry[]>();
+  const rel = [...presRels.values()].find(
+    (r) =>
+      r.type.endsWith('/customXml') &&
+      /msBriefingComments\.xml$/i.test(r.target),
+  );
+  if (!rel) return out;
+  const file = zip.file(rel.target);
+  if (!file) return out;
+  const doc = new DOMParser().parseFromString(
+    await file.async('text'),
+    'application/xml',
+  );
+  if (firstByLocal(doc, 'parsererror')) return out;
+  const root = firstByLocal(doc, 'typedComments');
+  if (!root || root.namespaceURI !== TYPED_COMMENTS_NS) return out;
+  for (const el of Array.from(root.getElementsByTagNameNS('*', 'comment'))) {
+    const slide = Number(el.getAttribute('slide'));
+    if (!Number.isFinite(slide) || slide < 1) continue;
+    const kindAttr = el.getAttribute('kind') || undefined;
+    const sevAttr = el.getAttribute('severity') || undefined;
+    const entry: TypedSidecarEntry = {
+      commentId: el.getAttribute('id') || '',
+      slide,
+      kind: (kindAttr as CommentKind | undefined) ?? undefined,
+      assignee: el.getAttribute('assignee') || undefined,
+      dueAt: el.getAttribute('dueAt') || undefined,
+      severity: (sevAttr as CommentSeverity | undefined) ?? undefined,
+      taskStatus:
+        (el.getAttribute('taskStatus') as 'open' | 'resolved' | null) || undefined,
+      answerCommentId: el.getAttribute('answerCommentId') || undefined,
+      final: el.getAttribute('final') === '1',
+      validated: el.getAttribute('validated') === '1',
+      isReply: el.getAttribute('reply') === '1',
+    };
+    if (!entry.final) delete (entry as any).final;
+    if (!entry.validated) delete (entry as any).validated;
+    if (!entry.isReply) delete (entry as any).isReply;
+    const arr = out.get(slide) ?? [];
+    arr.push(entry);
+    out.set(slide, arr);
+  }
+  return out;
+}
+
+/**
+ * Walk backwards from `k` for the nearest opener (not a reply). Used to
+ * re-parent replies during sidecar import.
+ */
+function findOpenerIndex(rows: readonly TypedSidecarEntry[], k: number): number {
+  for (let i = k - 1; i >= 0; i--) {
+    if (!rows[i]!.isReply) return i;
+  }
+  return -1;
+}
+
+/**
+ * Read + cache the commentAuthors.xml lookup table. Returned map is
+ * authorId → name; missing / unreadable = empty map, and each `p:cm` then
+ * shows as "Unknown".
+ */
+async function ensureAuthors(zip: any): Promise<Map<string, string>> {
+  const key = '__msTypedCommentAuthors' as const;
+  const cached = (zip as any)[key];
+  if (cached) return cached as Map<string, string>;
+  const map = new Map<string, string>();
+  const file = zip.file('ppt/commentAuthors.xml');
+  if (file) {
+    const doc = new DOMParser().parseFromString(
+      await file.async('text'),
+      'application/xml',
+    );
+    for (const a of allByLocal(doc, 'cmAuthor')) {
+      const id = a.getAttribute('id');
+      const name = a.getAttribute('name');
+      if (id && name) map.set(id, name);
+    }
+  }
+  (zip as any)[key] = map;
+  return map;
+}
+
+/** authorId lookup for a single `<p:cm>` element. */
+function firstAuthorName(authors: Map<string, string>, cm: Element): string | null {
+  const id = cm.getAttribute('authorId');
+  if (!id) return null;
+  return authors.get(id) ?? null;
 }
 
 /**
@@ -1556,6 +1681,112 @@ export async function parsePptx(
       }
     }
   }
+  // Legacy PowerPoint comments (p:cm) plus the optional typed-comments
+  // sidecar. Every slide with a rels entry of type /comments has one commentM
+  // part; each p:cm becomes a SlideCommentEntry. The typed sidecar (customXml)
+  // then upgrades entries whose commentId appears in it, so the round trip is
+  // lossless when it is our own export; when the sidecar is absent, the [KIND · …]
+  // text prefix is parsed as a fallback.
+  let importedComments = 0;
+  try {
+    const sidecarMap = await readTypedCommentsSidecar(zip, presRels);
+    for (let i = 0; i < slidePaths.length; i++) {
+      const slide = slideByPath.get(slidePaths[i]);
+      if (!slide) continue;
+      const slideDir = slidePaths[i].slice(0, slidePaths[i].lastIndexOf('/'));
+      const slideName = slidePaths[i].slice(slidePaths[i].lastIndexOf('/') + 1);
+      const slideRels = relTargets(
+        await readXml(`${slideDir}/_rels/${slideName}.rels`),
+        slideDir,
+      );
+      const cmtPath = [...slideRels.values()].find((r) => r.type.endsWith('/comments'))?.target;
+      if (!cmtPath) continue;
+      const cmtDoc = await readXml(cmtPath);
+      if (!cmtDoc) continue;
+      const cms = allByLocal(cmtDoc, 'cm');
+      const threads: SlideComment[] = [];
+      // First pass: opener per <p:cm>. Replies in legacy PPTX cannot be
+      // structurally distinguished from openers (they share pos + author +
+      // dt), so the sidecar drives grouping when it's there; otherwise every
+      // entry becomes its own thread — the same lossy compromise PowerPoint's
+      // own reader makes on a legacy deck without threaded comments.
+      for (const cm of cms) {
+        const author = firstAuthorName(await ensureAuthors(zip), cm) ?? 'Unknown';
+        const at = cm.getAttribute('dt') || new Date().toISOString();
+        const rawText = firstByLocal(cm, 'text')?.textContent ?? '';
+        const parsed = parsePrefix(rawText);
+        const opener: SlideComment = {
+          id: commentUuid(),
+          author,
+          text: parsed ? parsed.text : rawText,
+          at,
+          ...(parsed?.kind ? { kind: parsed.kind } : {}),
+          ...(parsed?.assignee ? { assignee: parsed.assignee } : {}),
+          ...(parsed?.dueAt ? { dueAt: parsed.dueAt } : {}),
+          ...(parsed?.severity ? { severity: parsed.severity } : {}),
+          ...(parsed?.final ? { final: true } : {}),
+          ...(parsed?.validated ? { validated: true } : {}),
+          ...(parsed?.taskStatus ? { taskStatus: parsed.taskStatus } : {}),
+        };
+        threads.push(opener);
+      }
+      // Second pass: overlay the sidecar onto the threads by array order, so
+      // typed metadata from OUR export lands back on the right comment. The
+      // sidecar records openers and replies in the same emit order as the PPTX
+      // comment part; a mismatch (deck edited outside our tool) falls back to
+      // the [KIND · …] prefix parse from the first pass and drops replies.
+      const sidecarForSlide = sidecarMap.get(i + 1) ?? [];
+      const replyGroups = new Map<string, SlideCommentEntry[]>();
+      if (sidecarForSlide.length === cms.length) {
+        for (let k = 0; k < cms.length; k++) {
+          const meta = sidecarForSlide[k]!;
+          const t = threads[k]!;
+          if (meta.isReply) {
+            // Fold into the opener referenced by this reply's commentId; the
+            // opener's commentId is what points here (answerCommentId isn't
+            // used yet). Fallback: attach to the previous opener.
+            const parentIdx = findOpenerIndex(sidecarForSlide, k);
+            if (parentIdx >= 0 && parentIdx < threads.length) {
+              const parentMeta = sidecarForSlide[parentIdx]!;
+              const parentThread = threads[parentIdx]!;
+              const arr = replyGroups.get(parentMeta.commentId) ?? [];
+              arr.push({ id: commentUuid(), author: t.author, at: t.at, text: t.text });
+              replyGroups.set(parentMeta.commentId, arr);
+              parentThread.replies = arr;
+            }
+            // Mark for removal from the top-level threads.
+            (t as SlideComment & { __drop?: boolean }).__drop = true;
+            continue;
+          }
+          // Opener: apply sidecar fields; they win over the prefix parse.
+          if (meta.kind) t.kind = meta.kind;
+          if (meta.assignee) t.assignee = meta.assignee;
+          if (meta.dueAt) t.dueAt = meta.dueAt;
+          if (meta.severity) t.severity = meta.severity;
+          if (meta.taskStatus) t.taskStatus = meta.taskStatus;
+          if (meta.final) t.final = true;
+          if (meta.validated) t.validated = true;
+        }
+      }
+      const kept = threads.filter(
+        (t) => !(t as SlideComment & { __drop?: boolean }).__drop,
+      );
+      // Strip the __drop marker before assigning.
+      for (const t of kept) delete (t as SlideComment & { __drop?: boolean }).__drop;
+      if (kept.length) {
+        slide.comments = kept;
+        importedComments += kept.length;
+      }
+    }
+  } catch (err) {
+    warnings.push(`Comment import failed — deck loaded without comments: ${err}`);
+  }
+  if (importedComments) {
+    warnings.push(
+      `Imported ${importedComments} comment thread${importedComments > 1 ? 's' : ''}`,
+    );
+  }
+
   // Sections live in a PowerPoint 2010 extension on p:sldIdLst's parent:
   // p14:sectionLst → p14:section[@name] → p14:sldIdLst → p14:sldId[@id], where
   // the id is the same numeric p:sldId/@id the slide order uses. Matched by

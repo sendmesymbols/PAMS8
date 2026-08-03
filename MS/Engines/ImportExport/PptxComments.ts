@@ -48,6 +48,29 @@ export interface PptxCommentRecord {
   /** Eighth-points from the slide's top-left. */
   x: number;
   y: number;
+  /**
+   * Optional typed metadata (see BriefingTypes.SlideComment). Rendered into
+   * the customXml sidecar so a round trip through our own reader restores every
+   * field losslessly. PowerPoint ignores the sidecar and shows the plain
+   * `text`, which is why the exporter also emits a `[KIND · …]` prefix inline.
+   */
+  typed?: PptxCommentTyped;
+}
+
+/** Typed-comment metadata that rides along in the customXml sidecar. */
+export interface PptxCommentTyped {
+  /** The `SlideComment.id` from the source thread. Sidecar key. */
+  commentId: string;
+  kind?: string;
+  assignee?: string;
+  dueAt?: string;
+  severity?: string;
+  final?: boolean;
+  validated?: boolean;
+  answerCommentId?: string;
+  taskStatus?: string;
+  /** True when this record is a reply, not a thread opener. */
+  isReply?: boolean;
 }
 
 export interface PptxCommentParts {
@@ -164,6 +187,48 @@ export function addContentTypeOverrides(
 export const PPTX_MIME =
   'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
+/** Namespace used on the typed-comments customXml sidecar. */
+export const TYPED_COMMENTS_NS = 'https://ms-briefing.internal/typed-comments/v1';
+/** Content-type override for a customXml part — the PPTX-standard value. */
+export const CT_CUSTOM_XML = 'application/xml';
+/** Relationship type for the presentation's link to the customXml part. */
+export const REL_TYPE_CUSTOM_XML =
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml';
+
+/**
+ * Build the typed-comments sidecar XML. Every record with a `typed` block is
+ * emitted as one `<comment>` element carrying the typed fields verbatim.
+ * PowerPoint has no way to read this — the exporter is round-tripping metadata
+ * that would otherwise be lossy through the [KIND · …] text prefix.
+ */
+export function buildTypedSidecar(records: readonly PptxCommentRecord[]): string | null {
+  const typed = records.filter((r) => r.typed);
+  if (!typed.length) return null;
+  const rows = typed
+    .map((r) => {
+      const t = r.typed!;
+      const attrs: string[] = [];
+      const add = (name: string, v: unknown) => {
+        if (v === undefined || v === null || v === '' || v === false) return;
+        attrs.push(`${name}="${esc(String(v))}"`);
+      };
+      add('id', t.commentId);
+      add('slide', String(r.slide));
+      add('kind', t.kind);
+      add('assignee', t.assignee);
+      add('dueAt', t.dueAt);
+      add('severity', t.severity);
+      add('taskStatus', t.taskStatus);
+      add('answerCommentId', t.answerCommentId);
+      if (t.final) attrs.push('final="1"');
+      if (t.validated) attrs.push('validated="1"');
+      if (t.isReply) attrs.push('reply="1"');
+      return `<comment ${attrs.join(' ')}/>`;
+    })
+    .join('');
+  return `${XML_DECL}<typedComments xmlns="${TYPED_COMMENTS_NS}">${rows}</typedComments>`;
+}
+
 /**
  * Map one comment's anchor to its position in eighth-points (see THE UNITS
  * TRAP above). Anchor priority mirrors `SlideComment`: a pinned overlay's box
@@ -229,10 +294,7 @@ export async function injectPptxComments(
   const presRelsPath = 'ppt/_rels/presentation.xml.rels';
   const presRels = await zip.file(presRelsPath)?.async('string');
   if (!presRels) throw new Error(`${presRelsPath} missing from the generated package`);
-  zip.file(
-    presRelsPath,
-    addRelationship(presRels, REL_TYPE_COMMENT_AUTHORS, 'commentAuthors.xml'),
-  );
+  let presRelsNext = addRelationship(presRels, REL_TYPE_COMMENT_AUTHORS, 'commentAuthors.xml');
 
   // slideN.xml.rels → ../comments/commentM.xml
   for (const p of parts.slideParts) {
@@ -243,20 +305,40 @@ export async function injectPptxComments(
     zip.file(relPath, addRelationship(rels, REL_TYPE_COMMENTS, target));
   }
 
+  // Typed-comment sidecar (customXml). Optional: only emitted when at least
+  // one record carries typed metadata. Rides in alongside the standard PPTX
+  // customXml storage layout — no [Content_Types] override on a numbered
+  // customXml/itemN.xml is required, because pptxgenjs's own template does
+  // not declare one either; the presentation-level relationship is the
+  // gateway the importer looks for.
+  const sidecarXml = buildTypedSidecar(records);
+  const ctOverrides: Array<{ partName: string; contentType: string }> = [
+    { partName: '/ppt/commentAuthors.xml', contentType: CT_COMMENT_AUTHORS },
+    ...parts.slideParts.map((p) => ({
+      partName: `/${p.path}`,
+      contentType: CT_COMMENTS,
+    })),
+  ];
+  if (sidecarXml) {
+    // Land in ppt/customXml/msBriefingComments.xml so the name is obviously
+    // ours; a fresh export from pptxgenjs never already has a file at that
+    // path, so we can pick a fixed name without collision-checking.
+    const sidecarPart = 'ppt/customXml/msBriefingComments.xml';
+    zip.file(sidecarPart, sidecarXml);
+    presRelsNext = addRelationship(
+      presRelsNext,
+      REL_TYPE_CUSTOM_XML,
+      '../customXml/msBriefingComments.xml',
+    );
+    ctOverrides.push({ partName: `/${sidecarPart}`, contentType: CT_CUSTOM_XML });
+  }
+  zip.file(presRelsPath, presRelsNext);
+
   // [Content_Types].xml → one override per part
   const ctPath = '[Content_Types].xml';
   const ct = await zip.file(ctPath)?.async('string');
   if (!ct) throw new Error(`${ctPath} missing from the generated package`);
-  zip.file(
-    ctPath,
-    addContentTypeOverrides(ct, [
-      { partName: '/ppt/commentAuthors.xml', contentType: CT_COMMENT_AUTHORS },
-      ...parts.slideParts.map((p) => ({
-        partName: `/${p.path}`,
-        contentType: CT_COMMENTS,
-      })),
-    ]),
-  );
+  zip.file(ctPath, addContentTypeOverrides(ct, ctOverrides));
 
   return zip.generateAsync({ type: 'blob', mimeType: PPTX_MIME });
 }

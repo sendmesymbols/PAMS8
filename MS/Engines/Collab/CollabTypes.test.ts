@@ -15,7 +15,10 @@ import {
   hlcSend,
   isPersistent,
   isValidPayload,
+  MAX_CHAT_LEN,
+  MAX_INK_POINTS,
   MAX_NAME_LEN,
+  MAX_PREVIEW_POINTS,
   newHlcState,
   PEER_PALETTE,
   pickSnapshotProvider,
@@ -190,9 +193,11 @@ check('…and is rejected without one', isValidPayload('g.up', { sym: {} }), fal
 check('a cursor needs finite coordinates', isValidPayload('cursor', { lon: 1, lat: 2 }), true);
 check('NaN coordinates are rejected', isValidPayload('cursor', { lon: NaN, lat: 2 }), false);
 check('a missing payload is rejected', isValidPayload('cursor', undefined), false);
-check('a lock needs at least one id', isValidPayload('lock', { ids: ['a'] }), true);
+check('a lock needs ids, scope and ttl', isValidPayload('lock', { ids: ['a'], scope: 'map', ttlMs: 1000 }), true);
 check('an empty lock is rejected', isValidPayload('lock', { ids: [] }), false);
 check('non-string ids are rejected', isValidPayload('lock', { ids: [1, 2] }), false);
+check('a lock without scope is rejected', isValidPayload('lock', { ids: ['a'], ttlMs: 1000 }), false);
+check('an unlock only needs ids', isValidPayload('unlock', { ids: ['a'] }), true);
 check('a slide upsert needs a slide id', isValidPayload('slide.up', { slide: { id: 's1' } }), true);
 check('an overlay op needs both ids', isValidPayload('ov.up', { slideId: 's1', ov: { id: 'o1' } }), true);
 check('…and fails on either alone', isValidPayload('ov.up', { slideId: 's1' }), false);
@@ -418,6 +423,12 @@ check(
 check('a pen stroke needs points', isValidPayload('ink', { k: 'pen', sid: 's1', pts: [[0, 0]] }), true);
 check('a clear needs none', isValidPayload('ink', { k: 'clear', sid: 's1' }), true);
 check('an unknown tool is rejected', isValidPayload('ink', { k: 'brush', sid: 's1', pts: [] }), false);
+check('ink points must be finite pairs', isValidPayload('ink', { k: 'pen', sid: 's1', pts: [[0, NaN]] }), false);
+check(
+  'overlarge ink payloads are rejected before rendering',
+  isValidPayload('ink', { k: 'pen', sid: 's1', pts: Array.from({ length: MAX_INK_POINTS + 1 }, () => [0, 0]) }),
+  false,
+);
 check('a look-here needs a coordinate', isValidPayload('look', { lon: 1, lat: 2 }), true);
 check('a look-here without a latitude is rejected', isValidPayload('look', { lon: 1 }), false);
 /**
@@ -429,6 +440,8 @@ check('the heartbeat still validates as before', isValidPayload('ping', undefine
 check('and the two are different types', isPersistent('look') === isPersistent('ping'), true);
 check('a chat line needs text', isValidPayload('chat', { text: 'hi' }), true);
 check('an empty chat line is rejected', isValidPayload('chat', { text: '' }), false);
+check('an overlong chat line is rejected', isValidPayload('chat', { text: 'x'.repeat(MAX_CHAT_LEN + 1) }), false);
+check('a non-numeric chat stamp is rejected', isValidPayload('chat', { text: 'hi', at: 'now' }), false);
 // `at` carries the sender's stamp so every peer keys the line identically, but it
 // stays OPTIONAL: an older v2 peer omits it and must not have its chat rejected.
 check('a stamped chat line is valid', isValidPayload('chat', { text: 'hi', at: 1 }), true);
@@ -446,8 +459,23 @@ check(
   isValidPayload('snap.off', { dk: { seq: 0, slides: [] } }),
   true,
 );
+check('a malformed deck chunk is rejected', isValidPayload('snap.off', { dk: { seq: '0', slides: [] } }), false);
 check('a chat-only offer is valid', isValidPayload('snap.off', { chat: [] }), true);
 check('an offer with nothing at all is rejected', isValidPayload('snap.off', {}), false);
+
+console.log('isValidPayload — bounded point arrays');
+check(
+  'preview points need kind and finite coordinates',
+  isValidPayload('preview', { pid: 'p1', kind: 'polyline', pts: [[10, 20]] }),
+  true,
+);
+check('preview without kind is rejected', isValidPayload('preview', { pid: 'p1', pts: [[10, 20]] }), false);
+check('preview with NaN is rejected', isValidPayload('preview', { pid: 'p1', kind: 'point', pts: [[NaN, 20]] }), false);
+check(
+  'overlarge previews are rejected before fan-out',
+  isValidPayload('preview', { pid: 'p1', kind: 'polyline', pts: Array.from({ length: MAX_PREVIEW_POINTS + 1 }, () => [1, 2]) }),
+  false,
+);
 
 console.log('these stay ephemeral — none may go through the LWW gate');
 for (const t of ['pres', 'ink', 'look', 'chat', 'vp'] as const) {

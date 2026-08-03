@@ -439,6 +439,44 @@ export interface SlideCommentEntry {
 }
 
 /**
+ * The semantic type of a comment thread. A plain `comment` is the historical
+ * default — every thread authored before typed comments existed reads as one.
+ * The other kinds are notes with a job:
+ *   - decision   — a call that was made; may carry `final`
+ *   - task       — an action item; may carry `assignee` + `dueAt`
+ *   - question   — an open ask; may point to the reply that answered it
+ *                  via `answerCommentId`
+ *   - risk       — a hazard; may carry `severity`
+ *   - assumption — a working belief; may be marked `validated`
+ *   - issue      — a defect / problem to fix
+ *
+ * The kind drives the composer's extra fields, the badge glyph on the slide,
+ * the filter chips in the right rail, and the [KIND · …] prefix the PPTX
+ * exporter writes so PowerPoint users see the type inline.
+ */
+export type CommentKind =
+  | 'comment'
+  | 'decision'
+  | 'task'
+  | 'question'
+  | 'risk'
+  | 'assumption'
+  | 'issue';
+
+/** Severity levels for `risk` comments. */
+export type CommentSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+/** Every kind other than the default. Used for filter chips and prefix parsing. */
+export const TYPED_COMMENT_KINDS: readonly CommentKind[] = [
+  'decision',
+  'task',
+  'question',
+  'risk',
+  'assumption',
+  'issue',
+];
+
+/**
  * A review comment thread. Editor-only: never drawn in present mode, in
  * thumbnails or in any rasterized export — but saved with the slide so it
  * travels with the briefing, and emitted as a real PowerPoint comment by
@@ -449,6 +487,11 @@ export interface SlideCommentEntry {
  * whole). Coordinates are normalized [0..1] like SlideOverlay's, so a thread
  * stays put when the editor canvas is resized and maps straight into the PPTX
  * contain-fit rectangle.
+ *
+ * `kind` promotes a thread into a typed marker — a Decision, Task, Question,
+ * Risk, Assumption or Issue. Extra fields apply only to the kinds that carry
+ * them; every field is optional so an older briefing without a kind reads
+ * exactly as before (`kind` absent = 'comment').
  */
 export interface SlideComment extends SlideCommentEntry {
   /**
@@ -462,6 +505,25 @@ export interface SlideComment extends SlideCommentEntry {
   y?: number;
   resolved?: boolean;
   replies?: SlideCommentEntry[];
+  /** Absent = 'comment' (plain review note). */
+  kind?: CommentKind;
+  /** task only — who owns it (free text; typically a display name). */
+  assignee?: string;
+  /** task only — ISO date string (YYYY-MM-DD) or full ISO datetime. */
+  dueAt?: string;
+  /** task only — 'open' when unresolved; 'resolved' mirrors `resolved`. */
+  taskStatus?: 'open' | 'resolved';
+  /** risk only. */
+  severity?: CommentSeverity;
+  /**
+   * question only — the id of the reply entry (from `replies`) that answered
+   * this question. Set by the author; the UI shows "answered" when present.
+   */
+  answerCommentId?: string;
+  /** decision only — a locked-in call vs. a provisional one. */
+  final?: boolean;
+  /** assumption only — whether the assumption has been validated. */
+  validated?: boolean;
 }
 
 export interface BuildStep {
@@ -556,16 +618,17 @@ export interface Slide {
 
 export interface BriefingDocument {
   /**
-   * 11 = deck chrome (headers/footers/classification/slide numbers) + per-slide
-   * noChrome; 10 = hidden slides; 9 = overlay links (slide-to-slide hyperlinks);
-   * 8 = per-slide buildMode + per-step build triggers; 7 = review comments;
-   * 6 = milsym overlays + block/tactical arrows; 5 = table overlays + text
-   * listStyle; 4 = slides may be screen-only (imported PPTX: no extent/camera);
-   * 3 = full-res backgroundDataUrl fallback; 2 = overlays; 1–11 accepted on
-   * import. Every added field is optional, so newer documents degrade in older
-   * code rather than failing to load.
+   * 12 = typed comments (kind + assignee/dueAt/severity/answerCommentId/
+   * final/validated); 11 = deck chrome (headers/footers/classification/slide
+   * numbers) + per-slide noChrome; 10 = hidden slides; 9 = overlay links
+   * (slide-to-slide hyperlinks); 8 = per-slide buildMode + per-step build
+   * triggers; 7 = review comments; 6 = milsym overlays + block/tactical arrows;
+   * 5 = table overlays + text listStyle; 4 = slides may be screen-only
+   * (imported PPTX: no extent/camera); 3 = full-res backgroundDataUrl fallback;
+   * 2 = overlays; 1–12 accepted on import. Every added field is optional, so
+   * newer documents degrade in older code rather than failing to load.
    */
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
   slides: Slide[];
   /**
    * Deck-level headers, footers, classification banners and slide numbering.
