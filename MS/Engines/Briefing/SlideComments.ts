@@ -361,6 +361,9 @@ export class CommentsLayer {
 
   private _popover: HTMLElement | null = null;
   private _popoverDismiss: ((ev: PointerEvent) => void) | null = null;
+  /** True while a confirm() dialog sits on top — outside clicks land on the
+   *  scrim/dialog, not the popover, and must not dismiss the popover underneath. */
+  private _suspendDismiss = false;
 
   public closePopover(): void {
     if (this._popoverDismiss) {
@@ -382,11 +385,58 @@ export class CommentsLayer {
     panel.style.top = `${Math.max(8, Math.min(clientY - 12, window.innerHeight - h - 8))}px`;
     this._popover = panel;
     const dismiss = (ev: PointerEvent) => {
+      if (this._suspendDismiss) return;
       if (!panel.contains(ev.target as Node)) this.closePopover();
     };
     this._popoverDismiss = dismiss;
     // Deferred, or the click that opened this panel would immediately close it.
     setTimeout(() => document.addEventListener('pointerdown', dismiss, true));
+  }
+
+  /**
+   * A themed replacement for window.confirm(). Resolves true/false; never
+   * throws. Suspends the underlying popover's outside-click dismiss for as
+   * long as the dialog is open, since the dialog itself mounts outside it.
+   */
+  private _confirm(message: string, confirmLabel = 'Delete'): Promise<boolean> {
+    return new Promise((resolve) => {
+      this._suspendDismiss = true;
+      const scrim = document.createElement('div');
+      scrim.className = 'ms-sledit-confirm-scrim';
+      const dialog = document.createElement('div');
+      dialog.className = 'ms-sledit-confirm';
+      dialog.setAttribute('role', 'alertdialog');
+      dialog.setAttribute('aria-modal', 'true');
+      dialog.innerHTML =
+        `<p class="ms-sledit-confirm-msg"></p>` +
+        '<div class="ms-sledit-cmtfoot">' +
+        '<button data-act="ok" class="danger" type="button"></button>' +
+        '<button data-act="cancel" type="button">Cancel</button>' +
+        '</div>';
+      // textContent, never innerHTML — the message may echo user-entered content.
+      (dialog.querySelector('.ms-sledit-confirm-msg') as HTMLElement).textContent = message;
+      const okBtn = dialog.querySelector('[data-act="ok"]') as HTMLButtonElement;
+      okBtn.textContent = confirmLabel;
+      scrim.appendChild(dialog);
+      document.body.appendChild(scrim);
+      const done = (result: boolean) => {
+        document.removeEventListener('keydown', onKey, true);
+        scrim.remove();
+        this._suspendDismiss = false;
+        resolve(result);
+      };
+      const onKey = (ev: KeyboardEvent) => {
+        if (ev.key === 'Escape') done(false);
+        else if (ev.key === 'Enter') done(true);
+      };
+      scrim.addEventListener('mousedown', (ev) => {
+        if (ev.target === scrim) done(false);
+      });
+      okBtn.addEventListener('click', () => done(true));
+      dialog.querySelector('[data-act="cancel"]')?.addEventListener('click', () => done(false));
+      document.addEventListener('keydown', onKey, true);
+      (dialog.querySelector('[data-act="cancel"]') as HTMLButtonElement)?.focus();
+    });
   }
 
   /**
@@ -718,9 +768,11 @@ export class CommentsLayer {
     });
     // Comments are deliberately outside the undo stack, so this confirms.
     panel.querySelector('[data-cmt="delete"]')?.addEventListener('click', () => {
-      if (!window.confirm('Delete this comment thread? This cannot be undone.')) return;
-      this._delete(commentId);
-      this.closePopover();
+      this._confirm('Delete this comment thread? This cannot be undone.').then((ok) => {
+        if (!ok) return;
+        this._delete(commentId);
+        this.closePopover();
+      });
     });
 
     this._showPopover(panel, r ? r.right : window.innerWidth / 2, r ? r.top : 120);

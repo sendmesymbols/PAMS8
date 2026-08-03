@@ -3128,6 +3128,36 @@ export default class SlideEditorUI {
         border-color: var(--ms-danger, #ff6b6b);
         color: var(--ms-danger, #ff6b6b);
       }
+      /* Themed confirm() replacement (see CommentsLayer._confirm) — a centred
+         dialog over a dimming scrim, mounted on <body> like .ms-sledit-cmtpop
+         and re-anchoring the same --sl-* tokens for the same reason. */
+      .ms-sledit-confirm-scrim {
+        position: fixed; inset: 0; z-index: 10060;
+        background: rgba(3,7,12,0.55);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .ms-sledit-confirm {
+        --sl-surface: rgba(20, 25, 32, 0.98);
+        --sl-input: var(--ms-bg-input, rgba(255, 255, 255, 0.05));
+        --sl-line: var(--ms-border, rgba(255, 255, 255, 0.14));
+        --sl-text: var(--ms-text, #dde3e8);
+        --sl-dim: var(--ms-text-dim, #8a97a5);
+        --sl-accent: var(--ms-accent, #64b4ff);
+        width: 280px;
+        background: var(--sl-surface);
+        border: 1px solid var(--sl-line);
+        border-radius: 12px;
+        box-shadow: 0 18px 44px rgba(2,5,10,0.55), 0 2px 8px rgba(2,5,10,0.4);
+        padding: 16px 16px 12px;
+        color: var(--sl-text);
+        font: 12.5px/1.5 var(--ms-menu-font, system-ui, sans-serif);
+      }
+      .ms-sledit-confirm-msg { margin: 0; }
+      .ms-sledit-confirm .ms-sledit-cmtfoot button.danger {
+        background: var(--ms-danger, #ff6b6b); border-color: var(--ms-danger, #ff6b6b);
+        color: #10161d; font-weight: 600;
+      }
+      .ms-sledit-confirm .ms-sledit-cmtfoot button.danger:hover { filter: brightness(1.08); }
       .ms-sledit-cmtarmed .ms-sledit-canvaswrap,
       .ms-sledit-cmtarmed .ms-sledit-canvaswrap canvas { cursor: crosshair !important; }
       .ms-sledit-cmthl { position: absolute; pointer-events: none; z-index: 13; }
@@ -3178,6 +3208,7 @@ export default class SlideEditorUI {
         padding: 4px 0 8px; margin: 0 -2px;
       }
       .ms-sledit-props .ms-sledit-cmtchip {
+        position: static; pointer-events: auto; z-index: auto; box-shadow: none;
         display: inline-flex; align-items: center; gap: 4px;
         width: auto; height: auto;
         padding: 3px 8px; font: 600 10.5px/1.35 inherit;
@@ -3252,6 +3283,11 @@ export default class SlideEditorUI {
         background: var(--sl-input); color: var(--sl-text);
         border: 1px solid var(--sl-line); border-radius: 6px; padding: 5px 7px;
       }
+      /* Same as .ms-sledit-topbar option above — the native dropdown list is
+         OS-painted white unless the <option>s are given explicit colors. This
+         panel mounts on <body> (see .ms-sledit-cmtpop), outside .ms-sledit-props,
+         so its own select rules don't reach here. */
+      .ms-sledit-cmtfield option { background: var(--sl-surface); color: var(--sl-text); }
       /* MUST out-specify the ".ms-sledit-props button" rule (0,1,1) below, which
          otherwise squashes each row into a 30x28 centred icon-button. The row is
          a full-width, left-aligned, stacked list item — reset every layout prop
