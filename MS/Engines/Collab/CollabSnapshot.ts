@@ -81,6 +81,16 @@ interface PendingDeck {
   at: number;
 }
 
+/** Snapshot head/chunk progress for one provider. */
+interface PendingSnapshot {
+  hasHead: boolean;
+  graphicsTotal: number;
+  graphicsSeen: Set<number>;
+  deckTotal: number;
+  deckSeen: Set<number>;
+  at: number;
+}
+
 /** What CollabSnapshot needs of the chat panel, so chat stays optional. */
 export interface ChatPort {
   history(): ChatLine[];
@@ -88,6 +98,11 @@ export interface ChatPort {
 }
 
 export default class CollabSnapshot {
+  private readonly session: CollabSession;
+  private readonly mapSync: MapSync | null;
+  private slideSync: SlideSync | null;
+  private chat: ChatPort | null;
+
   private _offMsg: Array<() => void> = [];
   private _offRoster: (() => void) | null = null;
   private _aloneTimer: ReturnType<typeof setTimeout> | null = null;
@@ -98,13 +113,19 @@ export default class CollabSnapshot {
   /** True once ANY peer has answered, which is what stops the retry ladder. */
   private _caughtUp = false;
   private _pendingDeck = new Map<ClientId, PendingDeck>();
+  private _pendingSnapshot = new Map<ClientId, PendingSnapshot>();
 
   constructor(
-    private readonly session: CollabSession,
-    private readonly mapSync: MapSync | null,
-    private readonly slideSync: SlideSync | null,
-    private chat: ChatPort | null = null,
-  ) {}
+    session: CollabSession,
+    mapSync: MapSync | null,
+    slideSync: SlideSync | null,
+    chat: ChatPort | null = null,
+  ) {
+    this.session = session;
+    this.mapSync = mapSync;
+    this.slideSync = slideSync;
+    this.chat = chat;
+  }
 
   /**
    * Re-point the chat port. `collab.chat` creates and destroys CollabChat at
@@ -115,6 +136,10 @@ export default class CollabSnapshot {
    */
   public setChat(chat: ChatPort | null): void {
     this.chat = chat;
+  }
+
+  public setSlideSync(slideSync: SlideSync | null): void {
+    this.slideSync = slideSync;
   }
 
   public start(): void {
@@ -154,6 +179,7 @@ export default class CollabSnapshot {
     this._offMsg = [];
     this._asked.clear();
     this._pendingDeck.clear();
+    this._pendingSnapshot.clear();
     this._caughtUp = false;
   }
 
@@ -172,6 +198,7 @@ export default class CollabSnapshot {
     this._caughtUp = false;
     this._asked.clear();
     this._pendingDeck.clear();
+    this._pendingSnapshot.clear();
     if (!this.session.peerCount) {
       EngineLogger.error(ENGINE_NAME, 'Nobody else is in the room — nothing to resync from');
       return;
@@ -225,9 +252,11 @@ export default class CollabSnapshot {
     const chat = this.chat?.history() ?? [];
     const slides: any[] = Array.isArray(deck?.slides) ? deck.slides : [];
     const deckChunks = CollabSnapshot._chunk(slides, 'slide');
+    const graphicChunks = CollabSnapshot._chunk(graphics, 'symbol');
 
     const head: SnapshotPayload = {
       graphics: [],
+      gTotal: graphicChunks.length,
       deck: deck ? { ...deck, slides: [] } : null,
       dkTotal: deckChunks.length,
       ...(chat.length ? { chat } : {}),
@@ -243,10 +272,14 @@ export default class CollabSnapshot {
     });
 
     let sent = 0;
-    for (const chunk of CollabSnapshot._chunk(graphics, 'symbol')) {
-      this.session.sendTo(msg.from, 'snap.off', { graphics: chunk, deck: null } as SnapshotPayload);
-      sent += chunk.length;
-    }
+    graphicChunks.forEach((symbols, seq) => {
+      this.session.sendTo(msg.from, 'snap.off', {
+        graphics: [],
+        deck: null,
+        g: { seq, symbols },
+      } as SnapshotPayload);
+      sent += symbols.length;
+    });
 
     const who = this.session.nameOf(msg.from);
     EngineLogger.success(
@@ -289,22 +322,22 @@ export default class CollabSnapshot {
   private _onOffer(msg: CollabMsg): void {
     const d: SnapshotPayload | undefined = msg.d;
     if (!d) return;
-    // Somebody answered — stop the retry ladder even if this particular message
-    // carries nothing, because an empty offer IS the answer "you are up to date".
-    if (!this._caughtUp) {
-      this._caughtUp = true;
-      if (this._waitTimer) {
-        clearTimeout(this._waitTimer);
-        this._waitTimer = null;
-      }
+    // Protocol-aware offers complete only after every declared chunk arrives.
+    // Legacy one-message offers fall through to _completeSnapshot below.
+    let applied = 0;
+    const hasProtocolHead =
+      Number.isInteger(d.gTotal) || Number.isInteger(d.dkTotal) || !!d.deck;
+    if (hasProtocolHead) {
+      const p = this._pendingFor(msg.from);
+      p.hasHead = true;
+      p.graphicsTotal = Math.max(0, Number(d.gTotal ?? 0));
+      p.deckTotal = Math.max(0, Number(d.dkTotal ?? 0));
+      p.at = Date.now();
     }
 
-    let applied = 0;
-    for (const sym of d.graphics ?? []) {
-      // Merge, not replace: a graphic we already hold is left alone, and the
-      // ordinary LWW path will reconcile it if the peer edits it next.
-      if (!sym?.id || this.mapSync?.findGraphic(sym.id)) continue;
-      if (this.mapSync?.applySymbol(sym)) applied++;
+    if (Array.isArray(d.graphics) && d.graphics.length) applied += this._applyGraphics(d.graphics);
+    if (d.g && Array.isArray(d.g.symbols)) {
+      applied += this._graphicsChunk(msg.from, d.g.seq, d.g.symbols);
     }
     if (applied) {
       EngineLogger.success(
@@ -316,7 +349,78 @@ export default class CollabSnapshot {
     if (Array.isArray(d.chat) && d.chat.length) this.chat?.adopt(d.chat);
 
     if (d.deck) this._deckHead(msg.from, d);
-    if (d.dk && Array.isArray(d.dk.slides)) this._deckChunk(msg.from, d.dk.seq, d.dk.slides);
+    if (d.dk && Array.isArray(d.dk.slides)) {
+      this._markDeckChunk(msg.from, d.dk.seq);
+      this._deckChunk(msg.from, d.dk.seq, d.dk.slides);
+    }
+
+    if (hasProtocolHead || d.g || d.dk) this._maybeCompleteSnapshot(msg.from);
+    else this._completeSnapshot();
+  }
+
+  private _applyGraphics(symbols: any[]): number {
+    let applied = 0;
+    for (const sym of symbols) {
+      // Merge, not replace: a graphic we already hold is left alone, and the
+      // ordinary LWW path will reconcile it if the peer edits it next.
+      if (!sym?.id || this.mapSync?.findGraphic(sym.id)) continue;
+      if (this.mapSync?.applySymbol(sym)) applied++;
+    }
+    return applied;
+  }
+
+  private _graphicsChunk(from: ClientId, seq: number, symbols: any[]): number {
+    const p = this._pendingFor(from);
+    const n = Number(seq);
+    if (!Number.isInteger(n) || n < 0 || p.graphicsSeen.has(n)) return 0;
+    p.graphicsSeen.add(n);
+    p.at = Date.now();
+    return this._applyGraphics(symbols);
+  }
+
+  private _markDeckChunk(from: ClientId, seq: number): void {
+    const p = this._pendingFor(from);
+    const n = Number(seq);
+    if (!Number.isInteger(n) || n < 0) return;
+    p.deckSeen.add(n);
+    p.at = Date.now();
+  }
+
+  private _pendingFor(from: ClientId): PendingSnapshot {
+    let p = this._pendingSnapshot.get(from);
+    if (!p) {
+      p = {
+        hasHead: false,
+        graphicsTotal: -1,
+        graphicsSeen: new Set(),
+        deckTotal: -1,
+        deckSeen: new Set(),
+        at: Date.now(),
+      };
+      this._pendingSnapshot.set(from, p);
+    }
+    return p;
+  }
+
+  private _maybeCompleteSnapshot(from: ClientId): void {
+    const p = this._pendingSnapshot.get(from);
+    if (!p?.hasHead) return;
+    const graphicsDone = p.graphicsTotal >= 0 && p.graphicsSeen.size >= p.graphicsTotal;
+    const deckDone = p.deckTotal >= 0 && p.deckSeen.size >= p.deckTotal;
+    if (!graphicsDone || !deckDone) return;
+    this._pendingSnapshot.delete(from);
+    this._completeSnapshot();
+  }
+
+  private _completeSnapshot(): void {
+    // Somebody answered completely; an empty complete snapshot still means
+    // "you are up to date", not "the provider disappeared".
+    if (this._caughtUp) return;
+    this._caughtUp = true;
+    if (this._waitTimer) {
+      clearTimeout(this._waitTimer);
+      this._waitTimer = null;
+    }
   }
 
   private _deckHead(from: ClientId, d: SnapshotPayload): void {

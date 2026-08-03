@@ -328,6 +328,10 @@ export interface ChatLine {
 export interface SnapshotPayload {
   /** saveSymbolToJSON() for every graphic on every symbol layer. */
   graphics: any[];
+  /** Number of `g` chunks that follow this head. Present on the head only. */
+  gTotal?: number;
+  /** One chunk of map symbols. */
+  g?: { seq: number; symbols: any[] };
   /**
    * `BriefingEngine.exportBriefing()` with its `slides` array EMPTIED — the head
    * of a chunked deck. The slides follow as `dk` messages and the receiver
@@ -551,6 +555,7 @@ export function isValidPayload(t: CollabMsgType, d: any): boolean {
       return (
         Array.isArray(d?.graphics) ||
         !!d?.deck ||
+        (Number.isInteger(d?.g?.seq) && d.g.seq >= 0 && Array.isArray(d.g.symbols)) ||
         (Number.isInteger(d?.dk?.seq) && d.dk.seq >= 0 && Array.isArray(d.dk.slides)) ||
         Array.isArray(d?.chat)
       );

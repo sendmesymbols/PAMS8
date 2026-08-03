@@ -204,6 +204,10 @@ export default class MapSync {
   private _origUpdateSymbol: ((g: Graphic, patch: any) => any) | null = null;
   /** Unbound original, used to restore — see _unwrapUpdateSymbol. */
   private _rawUpdateSymbol: Function | null = null;
+  /** Whether updateSymbol was an own property before we wrapped it. */
+  private _hadOwnUpdateSymbol = false;
+  /** The exact wrapper we installed, so teardown does not clobber later wrappers. */
+  private _patchedUpdateSymbol: Function | null = null;
 
   constructor(
     private readonly session: CollabSession,
@@ -795,10 +799,11 @@ export default class MapSync {
   private _wrapUpdateSymbol(): void {
     const host: any = this._host;
     if (!host || typeof host.updateSymbol !== 'function') return;
+    this._hadOwnUpdateSymbol = Object.prototype.hasOwnProperty.call(host, 'updateSymbol');
     this._rawUpdateSymbol = host.updateSymbol;
     this._origUpdateSymbol = host.updateSymbol.bind(host);
     const self = this;
-    host.updateSymbol = function patchedUpdateSymbol(graphic: Graphic, patch: any) {
+    const patchedUpdateSymbol = function patchedUpdateSymbol(graphic: Graphic, patch: any) {
       const id = graphic?.attributes?.id;
       if (self._opts.locks && id && self.locks.lockedByOther(id)) {
         const owner = self.locks.ownerOf(id);
@@ -819,6 +824,8 @@ export default class MapSync {
       }
       return result;
     };
+    this._patchedUpdateSymbol = patchedUpdateSymbol;
+    host.updateSymbol = patchedUpdateSymbol;
   }
 
   /**
@@ -830,11 +837,15 @@ export default class MapSync {
   private _unwrapUpdateSymbol(): void {
     const host: any = this._host;
     if (host && this._rawUpdateSymbol) {
-      delete host.updateSymbol;
-      if (typeof host.updateSymbol !== 'function') host.updateSymbol = this._rawUpdateSymbol;
+      if (host.updateSymbol === this._patchedUpdateSymbol) {
+        if (this._hadOwnUpdateSymbol) host.updateSymbol = this._rawUpdateSymbol;
+        else delete host.updateSymbol;
+      }
     }
     this._origUpdateSymbol = null;
     this._rawUpdateSymbol = null;
+    this._hadOwnUpdateSymbol = false;
+    this._patchedUpdateSymbol = null;
   }
 
   // ── Publishing ────────────────────────────────────────────────────────────

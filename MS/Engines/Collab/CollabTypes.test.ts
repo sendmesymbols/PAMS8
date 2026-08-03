@@ -460,6 +460,12 @@ check(
   true,
 );
 check('a malformed deck chunk is rejected', isValidPayload('snap.off', { dk: { seq: '0', slides: [] } }), false);
+check(
+  'a graphic chunk is a valid offer',
+  isValidPayload('snap.off', { g: { seq: 0, symbols: [{ id: 'g1' }] } }),
+  true,
+);
+check('a malformed graphic chunk is rejected', isValidPayload('snap.off', { g: { seq: -1, symbols: [] } }), false);
 check('a chat-only offer is valid', isValidPayload('snap.off', { chat: [] }), true);
 check('an offer with nothing at all is rejected', isValidPayload('snap.off', {}), false);
 

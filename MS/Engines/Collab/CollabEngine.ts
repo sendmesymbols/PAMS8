@@ -475,6 +475,16 @@ export default class CollabEngine {
    */
   private async _initSlideSync(generation: number): Promise<void> {
     if (!this._cfg.syncSlides || !this._session || !this._locks) return;
+    if (this._slideSync) {
+      this._slideSync.setOptions({
+        syncSlides: this._cfg.syncSlides,
+        locks: this._cfg.locks,
+        showLocks: this._cfg.showLocks,
+        imageMaxKb: this._cfg.slideImageMaxKb,
+      });
+      this._snapshot?.setSlideSync(this._slideSync);
+      return;
+    }
     const briefing = (this._host as any)?.briefingEngine;
     if (!briefing) {
       EngineLogger.success(ENGINE_NAME, 'Briefing disabled — sharing map only');
@@ -497,6 +507,7 @@ export default class CollabEngine {
         imageMaxKb: this._cfg.slideImageMaxKb,
       });
       this._slideSync = sync;
+      this._snapshot?.setSlideSync(sync);
       EngineLogger.success(ENGINE_NAME, 'Slide co-editing active');
     } catch (err) {
       EngineLogger.error(
@@ -623,6 +634,10 @@ export default class CollabEngine {
         return;
       case 'syncSlides':
       case 'slideImageMaxKb':
+        if (this._cfg.syncSlides && !this._slideSync) {
+          void this._initSlideSync(this._generation);
+          return;
+        }
         this._slideSync?.setOptions({
           syncSlides: this._cfg.syncSlides,
           imageMaxKb: this._cfg.slideImageMaxKb,
