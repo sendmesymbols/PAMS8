@@ -2961,6 +2961,16 @@ class SymbolEngine implements Evented {
         this._freehandDrawArmed = false;
       }
 
+      // A re-arm (param/size change, draw-type switch, …) tears down the
+      // in-flight interactive-draw instance and builds a fresh one below,
+      // whose Point/FPoint preview graphic starts life at view.center — not
+      // under the cursor. Capture the outgoing instance's last cursor
+      // position now (before it's destroyed) so it can be carried over onto
+      // the new preview instead of visibly jumping to the map's center.
+      const rearmPreviewPoint = !isPassive
+        ? ((this._activeDrawSymbol as any)?.tempGraphic?.geometry ?? null)
+        : null;
+
       // Close any active edit/move workflow before starting a new draw
       if (!isPassive) {
         this._closeActiveWorkflow();
@@ -3122,6 +3132,13 @@ class SymbolEngine implements Evented {
             this.currentSymbol.Offset,
             this.sidc._sidc,
           );
+
+          // Carry the previous instance's cursor position onto this rearmed
+          // one (see rearmPreviewPoint above) — init() just started this
+          // symbol's preview at view.center via startInteractiveDrawing().
+          if (rearmPreviewPoint && (symbol as any).tempGraphic) {
+            (symbol as any).tempGraphic.geometry = rearmPreviewPoint;
+          }
         } else {
           marker = this.sidc.getMarker(
             symbol.symGeometricType,

@@ -1397,13 +1397,34 @@ function initializeAutocomplete() {
       input.type = 'number';
       input.className = 'ms-input';
       input.dataset.token = p.value;
-      const defStr = String(p.default ?? '');
+      // The Size parameter defaults to the user's global Settings.json "size"
+      // (editable per-symbol right here, via the stepper) rather than the
+      // per-symbol-class default baked into Symbols.json.
+      const globalSize = (settingsData as any).size;
+      const defStr =
+        String(p.value).toLowerCase() === 'size' &&
+        typeof globalSize === 'number'
+          ? String(globalSize)
+          : String(p.default ?? '');
       input.value = defStr;
       input.step = /\./.test(defStr) ? '0.01' : '1';
-      input.addEventListener('input', () => mirrorParamInput(input));
-      // Committing a value re-arms the pending draw with the new parameter.
+      // Re-arm live as the value changes (debounced) so the cursor-following
+      // draw preview picks up the new size/angle immediately, instead of only
+      // on blur — which previously meant the old size stayed attached to the
+      // mouse until the user's click to place it blurred the field.
+      let rearmDebounce: number | undefined;
+      const scheduleRearm = (): void => {
+        if (rearmDebounce !== undefined) window.clearTimeout(rearmDebounce);
+        rearmDebounce = window.setTimeout(() => rearmDraw(), 150);
+      };
+      input.addEventListener('input', () => {
+        mirrorParamInput(input);
+        scheduleRearm();
+      });
+      // Committing a value re-arms the pending draw right away.
       input.addEventListener('change', () => {
         mirrorParamInput(input);
+        if (rearmDebounce !== undefined) window.clearTimeout(rearmDebounce);
         rearmDraw();
       });
       row.appendChild(span);
