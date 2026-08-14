@@ -30,3 +30,7 @@ public/assets
 *.sln
 *.sw?
 /Collaboration/go/
+
+# Large files that exceed GitHub's file size limit
+PAMS8.pptx
+MS2/RD/Adv Weather Viz.zip
