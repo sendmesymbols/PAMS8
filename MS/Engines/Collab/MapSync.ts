@@ -111,6 +111,8 @@ export interface MapSyncHost {
     on(type: string, cb: (data: any) => void): { remove(): void };
     selectedGraphics: Graphic[];
     clearSelection(): void;
+    /** Optional: swap a selected graphic for the instance that replaced it. */
+    rebaseSelection?(id: string, graphic: Graphic): void;
   };
   updateSymbol?: (graphic: Graphic, patch: any) => any;
   labelOptions?: any;
@@ -963,6 +965,15 @@ export default class MapSync {
         if (!g.attributes) (g as any).attributes = {};
         g.attributes.id = sym.id;
         this._hashes.set(sym.id, JSON.stringify(sym));
+        // The rebuild added a graphic, so the layer observer has just queued
+        // this id for publication. Drop it: re-broadcasting our re-serialisation
+        // of a symbol the peer just sent us is pure echo. It is not even a
+        // no-op, because loadSymbolFromJSON → saveSymbolToJSON is not guaranteed
+        // byte-identical to the wire form; any normalisation difference makes
+        // _publish see a "change" and bounce the symbol back, which rebuilds it
+        // again on the sender — the churn that made an open Symbol Details
+        // editor lose its graphic mid-edit.
+        this._pendingAdds.delete(sym.id);
         // If we happen to have this graphic selected (only possible with locks
         // off), rebase the diff baseline onto the rebuilt graphic so the next
         // pointer-up does not read the peer's edit as ours and bounce it back.
@@ -970,6 +981,10 @@ export default class MapSync {
           const h = this._localHash(g);
           if (h) this._preEdit.set(sym.id, h);
         }
+        // SelectionEngine keeps the OLD instance (and a highlight bound to a
+        // graphic that is no longer on the map), so a rebuild reads as the
+        // symbol silently deselecting itself. Re-point it at the new instance.
+        this._host?.selectionEngine?.rebaseSelection?.(sym.id, g);
       }
       return g;
     } catch (err) {

@@ -103,6 +103,35 @@ const RESERVED_GRAPHIC_ATTRS = new Set([
   'drawEssentials',
 ]);
 
+/**
+ * DrawEssentials keys that must never be JSON-cloned into the editor's working
+ * copy — either because the value is a live object rather than data, or because
+ * the editor models it separately:
+ *   • GEOM / CTRL_PTS / BASE_LN_PTS — ArcGIS geometry; stashed in geomRefs by
+ *     reference and re-attached through cloneGeometry() on save.
+ *   • AMPLIFIER / OPTIONS / labelOptions / extraSettings / cim — nested groups
+ *     the editor builds its own state for.
+ *   • SCOPE — the drawing symbol-class instance. 158 of the ~160 tactical symbol
+ *     classes stamp `SCOPE = this` onto their own drawEssentials (EditEngine
+ *     calls SCOPE.createSymbol() to redraw from control points), and that
+ *     instance holds `view`, so it transitively reaches the entire ArcGIS object
+ *     graph. Walking it does not terminate in any useful time. Force (UEI)
+ *     symbols never set it, which is why only tactical symbols were affected.
+ *     Every other consumer of drawEssentials strips it the same way — see
+ *     SerializationEngine, TemplateEngine and SymbolEngine.serializeSymbol.
+ */
+const DE_NON_DATA_KEYS = new Set([
+  'GEOM',
+  'CTRL_PTS',
+  'BASE_LN_PTS',
+  'AMPLIFIER',
+  'OPTIONS',
+  'labelOptions',
+  'extraSettings',
+  'cim',
+  'SCOPE',
+]);
+
 const DE_RATIO_DEFAULTS = [
   'BK_LN_DIST_RATIO',
   'BK_LN_ANGL_RATIO',
@@ -362,6 +391,11 @@ interface EditableState {
   symbolKey: string;
   /** Geometry refs kept aside — never JSON-cloned, re-attached on save. */
   geomRefs: { GEOM?: any; CTRL_PTS?: any[]; BASE_LN_PTS?: any };
+  /**
+   * Live (non-data) back-references kept aside BY REFERENCE and re-attached on
+   * save, never cloned. Currently just SCOPE — see DE_NON_DATA_KEYS.
+   */
+  liveRefs: { SCOPE?: any };
   amplifier: Record<string, any>;
   drawEssentials: Record<string, any>;
   /** FPoint OPTIONS payload (geometry + labelOptions stripped). Empty for other kinds. */
@@ -615,16 +649,21 @@ class MorphixEngine {
       if (!(k in amplifier)) amplifier[k] = this.jsonClone(ampSource[k]);
     }
 
-    // DrawEssentials — JSON-clone the saved metadata; strip geometry, nested groups.
-    const drawEssentials = this.jsonClone(de) as Record<string, any>;
-    delete drawEssentials.GEOM;
-    delete drawEssentials.CTRL_PTS;
-    delete drawEssentials.BASE_LN_PTS;
-    delete drawEssentials.AMPLIFIER;
-    delete drawEssentials.OPTIONS;
-    delete drawEssentials.labelOptions;
-    delete drawEssentials.extraSettings;
-    delete drawEssentials.cim;
+    // Live back-references held aside so the clone below never walks them, and
+    // so the re-rendered symbol can get them back (see buildEditedState).
+    const liveRefs: EditableState['liveRefs'] = {};
+    if (de.SCOPE && typeof de.SCOPE === 'object') liveRefs.SCOPE = de.SCOPE;
+
+    // DrawEssentials — JSON-clone the saved metadata field by field, skipping
+    // geometry, the nested groups and SCOPE. Cloning the whole object and
+    // deleting those keys afterwards still WALKED them first: with SCOPE present
+    // that walk reaches the ArcGIS view and never finishes, so Show Details on
+    // any tactical symbol froze the tab before its dock/modal could open.
+    const drawEssentials: Record<string, any> = {};
+    for (const key of Object.keys(de)) {
+      if (DE_NON_DATA_KEYS.has(key)) continue;
+      drawEssentials[key] = this.jsonClone(de[key]);
+    }
 
     drawEssentials.SIDC = sidc;
     drawEssentials.SID = sidc.slice(10, 16);
@@ -668,6 +707,7 @@ class MorphixEngine {
       sidc,
       symbolKey,
       geomRefs,
+      liveRefs,
       amplifier,
       drawEssentials,
       options,
@@ -1470,6 +1510,11 @@ class MorphixEngine {
       };
     }
 
+    // Hand the live symbol-class back-reference to the re-rendered symbol so
+    // control-point editing (EditEngine._redrawFromCtrlPts -> SCOPE.createSymbol)
+    // still works after a details edit. By reference, like the geometry above.
+    if (s.liveRefs.SCOPE) (drawEssentials as any).SCOPE = s.liveRefs.SCOPE;
+
     // FPoint: rebuild the milsymbol OPTIONS object the renderer reads from, syncing
     // the canonical edit homes (SIDC, ANGLE, size, opacity) back into it.
     if (s.kind === 'FPoint') {
@@ -1688,6 +1733,12 @@ class MorphixEngine {
   private jsonClone<T>(value: T, seen?: Set<unknown>, depth = 0): T {
     if (value === null || typeof value !== 'object') return value;
     if (depth > 200) return undefined as any; // pathological depth — bail rather than overflow
+    // Live SDK objects are references, not data. Every ArcGIS Accessor subclass
+    // (View, Map, Layer, Graphic, Geometry, Symbol, ...) carries declaredClass,
+    // and their graphs reach the view — cloning one is unbounded, not merely
+    // wasteful. Geometry that must survive goes through cloneGeometry() instead.
+    if (typeof (value as any).declaredClass === 'string') return undefined as any;
+    if (typeof Node !== 'undefined' && value instanceof Node) return undefined as any;
     const path = seen ?? new Set<unknown>();
     if (path.has(value)) return undefined as any; // circular — cut this branch
     path.add(value);

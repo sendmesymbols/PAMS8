@@ -938,6 +938,24 @@ class SelectionEngine {
         this._selected.has(id) ? this.deselectGraphic(graphic) : this.selectGraphic(graphic);
     }
 
+    /**
+     * Re-point an existing selection entry at the Graphic instance that replaced
+     * it. Re-renders (Morphix edits, and collaboration rebuilds in
+     * MapSync.applySymbol) remove the old Graphic and add a NEW one carrying the
+     * same `attributes.id`; the selection map would keep the dangling instance
+     * and its highlight — bound to a graphic no longer on the map — so the
+     * symbol reads as having deselected itself. No-op unless `id` is currently
+     * selected, and deliberately silent: this restores a selection rather than
+     * changing it, so it must not fire selectionChange (which would re-run the
+     * lock claim and the collab pre-edit baseline capture).
+     */
+    rebaseSelection(id: string, graphic: Graphic): void {
+        if (!id || !graphic || !this._selected.has(id)) return;
+        this._selected.set(id, graphic);
+        this._removeHighlight(id);
+        this._addHighlight(graphic, id);
+    }
+
     clearSelection(): void {
         const hadSelection = this._selected.size > 0;
         this._selected.clear();

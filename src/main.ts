@@ -1072,6 +1072,11 @@ function initializeAutocomplete() {
   // Graphic currently being edited via the context menu's "Show Details"
   // (null = draw mode, where the controls parameterise the NEXT drawn symbol).
   let dockEditGraphic: any = null;
+  // attributes.id of that graphic. Held separately because the Graphic INSTANCE
+  // is not stable: every re-render replaces it with a new object reusing the
+  // same id, and with collaboration on a symbol is rebuilt whenever a peer's
+  // copy of it syncs back. The id is what survives, so edits resolve through it.
+  let dockEditId: string | null = null;
   // Draw-mode selections stashed while the dock shows an edited symbol's values.
   let stashedDrawSelections: {
     identity: string;
@@ -1198,7 +1203,7 @@ function initializeAutocomplete() {
     document
       .getElementById('symbolParamsDockMoreBtn')
       ?.addEventListener('click', () => {
-        const graphic = dockEditGraphic;
+        const graphic = resolveDockGraphic();
         if (!graphic) return;
         exitDockEditMode();
         hideParamsDock();
@@ -1228,6 +1233,7 @@ function initializeAutocomplete() {
       };
     }
     dockEditGraphic = graphic;
+    dockEditId = graphic?.attributes?.id ?? null;
 
     const sidc = String(state?.sidc || '').padEnd(20, '0');
     dockSetSelected('symbolParamsDockIdentity', sidc.slice(2, 4));
@@ -1263,9 +1269,34 @@ function initializeAutocomplete() {
     showParamsDock();
   }
 
+  /**
+   * The graphic the dock is editing, as it exists on the map RIGHT NOW.
+   *
+   * `dockEditGraphic` is only a starting point: a re-render — ours, or a collab
+   * rebuild after the symbol round-trips through a peer — swaps in a new Graphic
+   * carrying the same `attributes.id`, leaving the cached instance detached from
+   * every layer. Patching that dangling object throws inside applyMorphixEdit,
+   * so before the fix each dock edit after the first sync silently did nothing.
+   * Returns null once the symbol is really gone (a peer deleted it).
+   */
+  function resolveDockGraphic(): any {
+    if (!dockEditGraphic) return null;
+    const live =
+      symbolEngine.selectionEngine?.resolveLive?.(dockEditGraphic)?.graphic ??
+      null;
+    if (live) {
+      dockEditGraphic = live;
+      dockEditId = live.attributes?.id ?? dockEditId;
+      return live;
+    }
+    // No live match by id — the symbol has left the map for good.
+    return dockEditId ? null : dockEditGraphic;
+  }
+
   function exitDockEditMode(): void {
     if (!dockEditGraphic) return;
     dockEditGraphic = null;
+    dockEditId = null;
     const hint = document.getElementById('symbolParamsDockEditHint');
     if (hint) hint.style.display = 'none';
     const moreBtn = document.getElementById('symbolParamsDockMoreBtn');
@@ -1280,8 +1311,14 @@ function initializeAutocomplete() {
   }
 
   function applyDockEditPatch(): void {
-    const graphic = dockEditGraphic;
-    if (!graphic) return;
+    const graphic = resolveDockGraphic();
+    if (!graphic) {
+      // Edited out from under us (peer deletion) — close rather than keep
+      // firing patches at a symbol that no longer exists.
+      exitDockEditMode();
+      hideParamsDock();
+      return;
+    }
     try {
       const state = symbolEngine.getSymbolState(graphic);
       const sidc = String(state.sidc || '').padEnd(20, '0');
@@ -1304,8 +1341,13 @@ function initializeAutocomplete() {
       }
 
       // updateSymbol re-renders into a NEW graphic — keep editing that one.
+      // (A later collab rebuild can replace it again; resolveDockGraphic above
+      // catches up by id on the next edit.)
       const updated = symbolEngine.updateSymbol(graphic, patch);
-      if (updated) dockEditGraphic = updated;
+      if (updated) {
+        dockEditGraphic = updated;
+        dockEditId = updated.attributes?.id ?? dockEditId;
+      }
     } catch (error) {
       console.error('Failed to apply symbol details edit:', error);
     }

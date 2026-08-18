@@ -3630,17 +3630,33 @@ class SymbolEngine implements Evented {
     graphic: Graphic,
     patch: MorphixSymbolPatch,
   ): Graphic | null {
-    return this._morphixEngine.update(graphic, patch);
+    return this._morphixEngine.update(this._liveGraphic(graphic), patch);
   }
 
   /** Read a symbol's current editable state (kind, sidc, amplifier, options, …) without opening the editor. */
   public getSymbolState(graphic: Graphic): MorphixSymbolSnapshot {
-    return this._morphixEngine.getSymbolState(graphic);
+    return this._morphixEngine.getSymbolState(this._liveGraphic(graphic));
   }
 
   /** Open the built-in Morphix symbol editor modal for a graphic. */
   public openSymbolEditor(graphic: Graphic): void {
-    this._morphixEngine.open(graphic);
+    this._morphixEngine.open(this._liveGraphic(graphic));
+  }
+
+  /**
+   * Map a possibly-stale Graphic onto the instance currently on the map.
+   *
+   * Every re-render removes the old Graphic and builds a NEW one that reuses
+   * `attributes.id` — applyMorphixEdit below does it, and so does
+   * MapSync.applySymbol whenever collaboration rebuilds a symbol. A host UI that
+   * holds a symbol across such a rebuild (the harness Symbol Details dock, the
+   * Morphix modal) would otherwise keep patching a dangling object:
+   * applyMorphixEdit finds no layer for it and throws, so with collab on every
+   * edit after the first sync silently did nothing. Falls back to the given
+   * instance when nothing matches, leaving the collab-off path unchanged.
+   */
+  private _liveGraphic(graphic: Graphic): Graphic {
+    return this._selectionEngine?.resolveLive(graphic)?.graphic ?? graphic;
   }
 
   /**
@@ -3670,12 +3686,16 @@ class SymbolEngine implements Evented {
     graphic: Graphic,
     editedState: MorphixEditedState,
   ): Graphic | null {
-    const oldLayer = this._resolveGraphicLayer(graphic);
+    // The caller's reference may be stale (see _liveGraphic). resolveLive also
+    // reports the layer it actually found the graphic in, which is sounder than
+    // _resolveGraphicLayer's unverified origin.layer fast path.
+    const resolved = this._selectionEngine?.resolveLive(graphic) ?? null;
+    const oldGraphic = resolved?.graphic ?? graphic;
+    const oldLayer = resolved?.layer ?? this._resolveGraphicLayer(oldGraphic);
     if (!oldLayer) {
       throw new Error('Selected symbol is not attached to a graphics layer.');
     }
 
-    const oldGraphic = graphic;
     const oldId = oldGraphic.attributes?.id || this.generateUUID();
     const oldAttrs = { ...(oldGraphic.attributes || {}) };
     const oldDe = oldAttrs.drawEssentials;
@@ -3754,6 +3774,11 @@ class SymbolEngine implements Evented {
 
       newGraphic.attributes = nextAttrs;
       newGraphic.set('id', oldId);
+      // The symbol the user is editing was just replaced by a new Graphic. If it
+      // was selected, hand the selection (and its highlight, which is bound to
+      // the removed instance) over to the replacement — otherwise editing a
+      // selected symbol visibly deselects it on every keystroke.
+      this._selectionEngine?.rebaseSelection(oldId, newGraphic);
       if ((editedState.drawEssentials as any)?.AMPLIFIER) {
         AnnotationEngine.deAnnotate(annotationLayer, oldId);
         AnnotationEngine.annotate(
