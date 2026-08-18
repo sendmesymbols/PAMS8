@@ -82,6 +82,35 @@ interface MorphixCallbacks {
 
 const SYMBOLS = symbolData as Record<string, SymbolDefinition>;
 
+/**
+ * DrawEssentials fields whose CLASS default is a concrete value AND which symbol
+ * classes resolve through GeoTools.setDefault (which tests hasOwnProperty, not
+ * the value). Re-rendering a symbol with one of these present when the symbol
+ * never carried it overrides the symbol's own default — see buildEditedState.
+ */
+/**
+ * Graphic-record attribute names — bookkeeping written by drawSymEnd / plan load,
+ * NOT symbol data. They must never be used to fill an amplifier or a milsymbol
+ * option: `attributes.type` is the record kind ('symbol'), and reading it as the
+ * FPoint `type` amplifier auto-populated every UEI symbol's Type field with
+ * "symbol". Keep in sync with the attrs built in SymbolEngine.drawSymEnd.
+ */
+const RESERVED_GRAPHIC_ATTRS = new Set([
+  'type',
+  'id',
+  'sidc',
+  'symbolId',
+  'drawEssentials',
+]);
+
+const DE_RATIO_DEFAULTS = [
+  'BK_LN_DIST_RATIO',
+  'BK_LN_ANGL_RATIO',
+  'FRNT_LN_ANGL_RATIO',
+  'FRNT_LN_DIST_RATIO',
+  'FLAP_DIST_RATIO',
+] as const;
+
 // ──────────────────────────────────────────────────────────────────────────────
 // SIDC lookup tables (MIL-STD-2525D, aligned with milsymbol.net combos)
 
@@ -339,6 +368,15 @@ interface EditableState {
   options: Record<string, any>;
   labelOptions: Record<string, any>;
   extraSettings: Record<string, any>;
+  /**
+   * Whether labelOptions / extraSettings came from the SYMBOL itself (or were
+   * edited in this session) rather than from the DrawEssentials class fallback
+   * that only exists to give the form something to show. Groups the symbol
+   * doesn't own are NOT written back on save — otherwise changing an unrelated
+   * field would stamp the class defaults (red halo, green 20pt label text,
+   * marker size 20) onto a symbol that had been using its own.
+   */
+  owns: { labelOptions: boolean; extraSettings: boolean };
   cim: Record<string, any>;
   jsonOpen: boolean;
 }
@@ -357,6 +395,8 @@ class MorphixEngine {
   private root: HTMLDivElement | null = null;
   private state: EditableState | null = null;
   private originalSnapshot: string = '';
+  /** EditableState.owns as it was when the editor opened — restored by the per-section Reset buttons. */
+  private originalOwns: EditableState['owns'] = { labelOptions: false, extraSettings: false };
   private symbolFilter: string = '';
   private focusInfo: FocusInfo | null = null;
   private keydownHandler = (e: KeyboardEvent) => this.onKeyDown(e);
@@ -375,6 +415,7 @@ class MorphixEngine {
   public open(graphic: Graphic): void {
     this.ensureRoot();
     this.state = this.buildState(graphic);
+    this.originalOwns = { ...this.state.owns };
     this.originalSnapshot = JSON.stringify(this.serialize(this.state));
     document.addEventListener('keydown', this.keydownHandler);
     this.render();
@@ -465,9 +506,11 @@ class MorphixEngine {
     }
     if (patch.labelOptions && typeof patch.labelOptions === 'object') {
       Object.assign(state.labelOptions, patch.labelOptions);
+      state.owns.labelOptions = true;
     }
     if (patch.extraSettings && typeof patch.extraSettings === 'object') {
       Object.assign(state.extraSettings, patch.extraSettings);
+      state.owns.extraSettings = true;
     }
     if (patch.cim && typeof patch.cim === 'object') {
       Object.assign(state.cim, patch.cim);
@@ -548,7 +591,7 @@ class MorphixEngine {
         options[f.key] = this.firstFilled(
           optSource[f.key],
           (de as Record<string, any>)[f.key],
-          attrs[f.key],
+          this.attrValue(attrs, f.key),
           flatKey ? ampSource[flatKey] : undefined,
           options[f.key],
         );
@@ -565,7 +608,7 @@ class MorphixEngine {
         ampSource[f.key],
         optKey ? optSource[optKey] : undefined,
         (de as Record<string, any>)[f.key],
-        attrs[f.key],
+        this.attrValue(attrs, f.key),
       );
     }
     for (const k of Object.keys(ampSource)) {
@@ -591,6 +634,14 @@ class MorphixEngine {
 
     const defaults = new DrawEssentials();
 
+    // Did the symbol actually carry these, or are we about to show class
+    // defaults? See EditableState.owns — the answer decides whether they get
+    // written back on save.
+    const owns = {
+      labelOptions: !!(de.labelOptions || optSource.labelOptions),
+      extraSettings: !!(de.extraSettings || optSource.extraSettings),
+    };
+
     const extraSettings = this.jsonClone(
       de.extraSettings || optSource.extraSettings || defaults.extraSettings,
     ) as Record<string, any>;
@@ -601,6 +652,7 @@ class MorphixEngine {
       // shows what's actually on screen.
       if (optSource.size != null && Number(optSource.size)) {
         extraSettings.size = Number(optSource.size);
+        owns.extraSettings = true;
       }
       if (drawEssentials.ANGLE == null && optSource.ANGLE != null) {
         drawEssentials.ANGLE = optSource.ANGLE;
@@ -623,6 +675,7 @@ class MorphixEngine {
         de.labelOptions || optSource.labelOptions || defaults.labelOptions,
       ),
       extraSettings,
+      owns,
       cim: this.jsonClone(de.cim || {}),
       jsonOpen: false,
     };
@@ -1169,6 +1222,7 @@ class MorphixEngine {
         const coerced = this.coerce(t.value, type);
         if (!(type === 'number' && coerced === undefined)) {
           (this.state as any)[group][key] = coerced;
+          this.claimGroup(group);
         }
         // Editing the SIDC restructures the form (combos, echelon, name) so it
         // needs a full re-render; every other value edit only affects the
@@ -1187,6 +1241,7 @@ class MorphixEngine {
         const group = t.dataset.group!;
         const key = t.dataset.key!;
         (this.state as any)[group][key] = t.checked ? 1 : 0;
+        this.claimGroup(group);
         this.refreshDynamic();
         return;
       }
@@ -1195,6 +1250,7 @@ class MorphixEngine {
         const group = t.dataset.group!;
         const key = t.dataset.key!;
         (this.state as any)[group][key] = this.hexToRgb(t.value);
+        this.claimGroup(group);
         this.refreshDynamic();
         return;
       }
@@ -1203,9 +1259,23 @@ class MorphixEngine {
         const group = t.dataset.group!;
         const key = t.dataset.key!;
         (this.state as any)[group][key] = t.value;
+        this.claimGroup(group);
         this.refreshDynamic();
         return;
       }
+    }
+  }
+
+  /**
+   * The form is seeded with DrawEssentials class defaults when the symbol has no
+   * labelOptions / extraSettings of its own. Once the user edits a field in one
+   * of those groups the values become intentional, so the symbol now owns them
+   * and they are written back on save. See EditableState.owns.
+   */
+  private claimGroup(group: string): void {
+    if (!this.state) return;
+    if (group === 'labelOptions' || group === 'extraSettings') {
+      this.state.owns[group] = true;
     }
   }
 
@@ -1232,6 +1302,7 @@ class MorphixEngine {
         const snap = this.parseSnapshot();
         this.state.drawEssentials = snap.drawEssentials;
         this.state.extraSettings = snap.extraSettings;
+        this.state.owns.extraSettings = this.originalOwns.extraSettings;
         this.state.sidc = snap.sidc;
         this.state.symbolKey = snap.symbolKey;
         break;
@@ -1239,6 +1310,7 @@ class MorphixEngine {
       case 'reset-labels': {
         const snap = this.parseSnapshot();
         this.state.labelOptions = snap.labelOptions;
+        this.state.owns.labelOptions = this.originalOwns.labelOptions;
         this.state.cim = snap.cim;
         break;
       }
@@ -1343,16 +1415,40 @@ class MorphixEngine {
     const amplifier = new Amplifier(undefined, this.jsonClone(s.amplifier) as Partial<Amplifier>);
     amplifier.SIDC = s.sidc;
 
-    const drawEssentials = new DrawEssentials(
-      this.jsonClone(s.drawEssentials) as Partial<DrawEssentials>,
-    );
+    const dePayload = this.jsonClone(s.drawEssentials) as Record<string, any>;
+    const drawEssentials = new DrawEssentials(dePayload as Partial<DrawEssentials>);
+    // A fresh DrawEssentials ships CONCRETE defaults for these five ratios, and
+    // symbol classes resolve them through GeoTools.setDefault — which keys off
+    // hasOwnProperty, not on the value. So handing one to a symbol that never
+    // carried it OVERRIDES the symbol class's OWN default and silently redraws it
+    // with a different shape (Support By Fire resolves FRNT_LN_ANGL_RATIO to 5;
+    // the injected class default of 0.8 won instead). Drop the ones the source
+    // symbol didn't have so the symbol's default applies again. Every other class
+    // default is either identity data we re-set below or inert downstream
+    // (SIZE 0 / ARROWHEAD_RATIO 0 / GEOM null are all falsy-guarded), so they stay.
+    for (const key of DE_RATIO_DEFAULTS) {
+      if (!(key in dePayload)) delete (drawEssentials as any)[key];
+    }
+
     drawEssentials.SIDC = s.sidc;
     drawEssentials.SID = s.sidc.slice(10, 16);
     drawEssentials.SYM_NAME = def?.Name || drawEssentials.SYM_NAME;
     drawEssentials.SYM_GEO_TYPE = def?.SymGeoType || drawEssentials.SYM_GEO_TYPE || s.kind;
     drawEssentials.ECHELON = s.sidc.slice(8, 10);
-    drawEssentials.labelOptions = this.jsonClone(s.labelOptions) as any;
-    drawEssentials.extraSettings = this.jsonClone(s.extraSettings) as any;
+    // Same rule for the two nested groups — and here the class default has to be
+    // deleted, not merely left unassigned: the DrawEssentials constructor already
+    // put it on the instance. Left in place it repaints an unstyled symbol's
+    // labels red-on-green at 20pt and pins its marker size to 20.
+    if (s.owns.labelOptions) {
+      drawEssentials.labelOptions = this.jsonClone(s.labelOptions) as any;
+    } else {
+      delete (drawEssentials as any).labelOptions;
+    }
+    if (s.owns.extraSettings) {
+      drawEssentials.extraSettings = this.jsonClone(s.extraSettings) as any;
+    } else {
+      delete (drawEssentials as any).extraSettings;
+    }
     if (Object.keys(s.cim).length) {
       drawEssentials.cim = this.jsonClone(s.cim);
     }
@@ -1384,9 +1480,15 @@ class MorphixEngine {
         SIDC: s.sidc,
         ANGLE: (drawEssentials as any).ANGLE ?? 0,
         opacity: drawEssentials.opacity ?? 1,
-        labelOptions: this.jsonClone(s.labelOptions),
       };
-      if (Number.isFinite(size) && size > 0) options.size = size;
+      if (s.owns.labelOptions) {
+        options.labelOptions = this.jsonClone(s.labelOptions);
+      }
+      // Only pin the marker size when it's the symbol's own — the placeholder
+      // default (20) would otherwise shrink a UEI symbol on every edit.
+      if (s.owns.extraSettings && Number.isFinite(size) && size > 0) {
+        options.size = size;
+      }
       if (s.geomRefs.GEOM) options.GEOM = this.cloneGeometry(s.geomRefs.GEOM);
       (drawEssentials as any).OPTIONS = options;
       (drawEssentials as any).UEI = '1';
@@ -1530,6 +1632,11 @@ class MorphixEngine {
   }
 
   /** Return the first argument that is neither null/undefined nor an empty/blank string. */
+  /** Read a flat graphic attribute as symbol data, skipping record bookkeeping. */
+  private attrValue(attrs: Record<string, any>, key: string): any {
+    return RESERVED_GRAPHIC_ATTRS.has(key) ? undefined : attrs[key];
+  }
+
   private firstFilled(...vals: any[]): any {
     for (const v of vals) {
       if (v === null || v === undefined) continue;

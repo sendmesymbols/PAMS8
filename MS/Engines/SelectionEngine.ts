@@ -1045,12 +1045,15 @@ class SelectionEngine {
         if (this._selected.size === 0) return;
 
         const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
-        const toDelete = this.selectedGraphics.map(g => ({
-            graphic: g,
-            layer: this._findContainingLayer(g),
-        }));
+        // resolveLive tolerates a stale instance (collab/edit re-renders swap the
+        // Graphic object while keeping attributes.id) so we delete the graphic
+        // actually on the map, not a dangling reference in the selection set.
+        const toDelete = this.selectedGraphics
+            .map(g => this.resolveLive(g))
+            .filter((r): r is { graphic: Graphic; layer: GraphicsLayer } => r !== null);
 
         this.clearSelection();
+        if (!toDelete.length) return;
 
         // Remove each symbol AND its AnnotationEngine labels (keyed by parentId ===
         // graphic id) so labels aren't orphaned on the annotation layer.
@@ -1088,14 +1091,17 @@ class SelectionEngine {
         graphic: Graphic,
         onEntry?: (entry: { label: string; undo: () => void; redo: () => void }) => void
     ): void {
-        const layer = this._findContainingLayer(graphic);
-        if (!layer) return;
+        // resolveLive maps a possibly-stale reference to the live graphic + layer
+        // (collab/edit re-renders swap the Graphic while keeping attributes.id).
+        const resolved = this.resolveLive(graphic);
+        if (!resolved) return;
+        const { graphic: live, layer } = resolved;
 
         const annotationLayer = this._layerManager.getOrCreateLayer(LAYER_NAMES.ANNOTATION_LAYER);
         this.clearSelection();
 
-        const remove = () => { layer.remove(graphic); this._deAnnotate(graphic, annotationLayer); };
-        const restore = () => { layer.add(graphic); this._reAnnotate(graphic, annotationLayer); };
+        const remove = () => { layer.remove(live); this._deAnnotate(live, annotationLayer); };
+        const restore = () => { layer.add(live); this._reAnnotate(live, annotationLayer); };
 
         remove();
 
@@ -1755,10 +1761,47 @@ class SelectionEngine {
         return this._findContainingLayer(graphic);
     }
 
+    /**
+     * Resolve the LIVE graphic and the layer that currently holds it, tolerating
+     * a stale instance.
+     *
+     * Collaboration (MapSync.applySymbol) and some edit/re-render paths REPLACE a
+     * graphic with a fresh instance that carries the SAME attributes.id. The
+     * selection set, the context menu and the keyboard manager can still hold the
+     * OLD instance, which is no longer in any layer — so deleting it resolves no
+     * layer and silently no-ops (the reason delete "stopped working" with collab
+     * on). Fall back to matching the current instance by id so delete/remove hit
+     * the symbol the user actually sees.
+     */
+    public resolveLive(graphic: Graphic): { graphic: Graphic; layer: GraphicsLayer } | null {
+        const direct = this._findContainingLayer(graphic);
+        if (direct) return { graphic, layer: direct };
+
+        const id = graphic?.attributes?.id;
+        if (!id) return null;
+        const targetIds = this._targetLayerIds.length
+            ? this._targetLayerIds
+            : this._layerManager.listLayers();
+        for (const lid of targetIds) {
+            const layer = this._layerManager.getLayer(lid);
+            const live = layer?.graphics.find(
+                (g: any) => g?.attributes?.id === id,
+            ) as Graphic | undefined;
+            if (live && layer) return { graphic: live, layer };
+        }
+        return null;
+    }
+
     private _findContainingLayer(graphic: Graphic): GraphicsLayer | null {
-        // Fast path: origin is set (e.g. graphics from FeatureLayer queries)
+        // Fast path: trust origin.layer ONLY if the graphic is actually still in
+        // it. ArcGIS 5.0 leaves origin.layer unset for plain graphics added to a
+        // GraphicsLayer, and can leave a STALE origin.layer (pointing at a layer
+        // the graphic was moved out of) after edit/morph/undo re-adds. An
+        // unverified origin.layer silently breaks deletion — remove() on the
+        // wrong layer is a no-op — so verify membership before trusting it and
+        // otherwise fall through to the authoritative scan below.
         const fromOrigin = (graphic.origin as any)?.layer as GraphicsLayer | undefined;
-        if (fromOrigin) return fromOrigin;
+        if (fromOrigin && (fromOrigin.graphics as any)?.includes?.(graphic)) return fromOrigin;
 
         const targetIds = this._targetLayerIds.length
             ? this._targetLayerIds

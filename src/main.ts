@@ -743,16 +743,14 @@ function initializeAutocomplete() {
     amplifier.DTG = "DDHHMMSSZMONYYYY";
     amplifier.EDTG = "DDHHMMSSZMONYYYY00";
     */
-    // Unique designation comes from the dock's Name field.
+    // Unique designation comes from the dock's Name field. Every OTHER amplifier
+    // (Higher Formation, Staff Comments, Addl Information, Target Designator, …)
+    // is deliberately left empty: AnnotationEngine draws any non-empty amplifier
+    // as a label, so seeding them here stamped that placeholder text onto every
+    // symbol drawn and made the fields look like they were filling themselves in.
+    // They are entered per-symbol in the dock's Details mode / the Morphix editor.
     amplifier.UNIQUE_DESIG = dockName();
-    amplifier.HIGHER_FORM = 'Higher Formation';
-    amplifier.STAFF_COM = 'Staff Comments';
-    amplifier.ADDL_INFO = 'Additional Information';
-    amplifier.TARGET_DESIGNATOR = 'Target Designator';
     amplifier.SIDC = fullSIDC;
-
-    amplifier.SIZE = 60;
-    //amplifier.SIZE = 10;
 
     var drawEssentials = new DrawEssentials();
 
@@ -922,20 +920,13 @@ function initializeAutocomplete() {
     drawEssentials.TAIL_FACTOR = 10;
     */
 
-    drawEssentials.FLAP_ANGLE = 45;
-
-    drawEssentials.BK_LN_DIST_RATIO = 5;
-    drawEssentials.BK_LN_ANGL_RATIO = 5;
-    drawEssentials.FRNT_LN_ANGL_RATIO = 0.8;
-    drawEssentials.FRNT_LN_DIST_RATIO = 1.5;
-    drawEssentials.FLAP_DIST_RATIO = 3;
-
-    drawEssentials.extraSettings = {
-      lineWidth: 3,
-      size: 20,
-      textSize: 12,
-      opacity: 1,
-    };
+    // NOTE: the per-symbol geometry knobs (FLAP_ANGLE, BK_LN_*/FRNT_LN_* ratios,
+    // FLAP_DIST_RATIO, TEETH_*, HEAD_RATIO, …) are NOT assigned here. Each symbol
+    // declares its own defaults in Symbols.json → Parameters; those populate the
+    // ⛭ Params / dock inputs and reach drawEssentials via readSymbolParamsInto()
+    // below. Blanket-assigning them forced one symbol's defaults onto every other
+    // symbol (Support By Fire's front-line ratio of 5 was overwritten with 0.8).
+    // extraSettings is likewise left at the DrawEssentials defaults.
 
     //Destroy Measurement Engine
     /*

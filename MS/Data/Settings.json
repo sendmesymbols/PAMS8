@@ -411,7 +411,7 @@
     "clipboard": true,
     "editMoveScaleRotate": true,
     "editControlPoints": true,
-    "drawingCues": true,
+    "drawingCues": false,
     "mgrsEngine": false,
     "analysisEngines": true,
     "deploymentBuilder": true,
@@ -421,7 +421,7 @@
     "briefing": true,
     "exportTools": true,
     "screenAnchor": false,
-    "collab": true
+    "collab": false
   },
   "collab": {
     "transport": "sse",

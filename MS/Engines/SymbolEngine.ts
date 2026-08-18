@@ -1293,24 +1293,34 @@ class SymbolEngine implements Evented {
   private removeGraphic(graphic: Graphic): void {
     console.log('Removing graphic:', graphic.attributes?.name || 'Unnamed');
 
-    const layer = (graphic.origin?.layer ?? null) as GraphicsLayer | null;
+    // Resolve the live graphic + its layer robustly. graphic.origin.layer is
+    // unset for plain graphics added to a GraphicsLayer (ArcGIS 5.0), and the
+    // passed instance can be STALE — collaboration (MapSync.applySymbol) and
+    // edit re-renders replace the Graphic with a fresh one sharing the same
+    // attributes.id, so the context menu / keyboard manager hand us a dangling
+    // reference. resolveLive matches the current instance by id; both traps made
+    // Remove/Del silently no-op (the latter only with collab on).
+    const resolved = this._selectionEngine?.resolveLive(graphic) ?? null;
+    const layer = (resolved?.layer ??
+      (graphic.origin?.layer ?? null)) as GraphicsLayer | null;
     if (!layer) return;
+    const target = resolved?.graphic ?? graphic;
 
     const annotationLayer = this._layerManager.getOrCreateLayer(
       LAYER_NAMES.ANNOTATION_LAYER,
     );
-    const graphicId = graphic.attributes?.id;
-    const de = graphic.attributes?.drawEssentials;
+    const graphicId = target.attributes?.id;
+    const de = target.attributes?.drawEssentials;
 
     this._pushUndo({
       label: 'Remove Symbol',
       undo: () => {
-        layer.add(graphic);
-        syncMinefieldTextureGraphic(layer, graphic, this._getView());
+        layer.add(target);
+        syncMinefieldTextureGraphic(layer, target, this._getView());
         if (de?.AMPLIFIER && graphicId) {
           AnnotationEngine.annotate(
             annotationLayer,
-            graphic.geometry,
+            target.geometry,
             de.AMPLIFIER,
             de,
             graphicId,
@@ -1322,14 +1332,14 @@ class SymbolEngine implements Evented {
         }
       },
       redo: () => {
-        removeMinefieldTextureForGraphic(layer, graphic);
-        layer.remove(graphic);
+        removeMinefieldTextureForGraphic(layer, target);
+        layer.remove(target);
         if (graphicId) AnnotationEngine.deAnnotate(annotationLayer, graphicId);
       },
     });
 
-    removeMinefieldTextureForGraphic(layer, graphic);
-    layer.remove(graphic);
+    removeMinefieldTextureForGraphic(layer, target);
+    layer.remove(target);
     if (graphicId) AnnotationEngine.deAnnotate(annotationLayer, graphicId);
   }
 
