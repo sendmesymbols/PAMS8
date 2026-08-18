@@ -411,7 +411,7 @@
     "clipboard": true,
     "editMoveScaleRotate": true,
     "editControlPoints": true,
-    "drawingCues": true,
+    "drawingCues": false,
     "mgrsEngine": false,
     "analysisEngines": true,
     "deploymentBuilder": true,
