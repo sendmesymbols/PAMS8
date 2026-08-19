@@ -6,6 +6,10 @@ import GraphicsLayerManager from '../../Managers/GraphicsLayerManager';
 import Amplifier from '../../Support/Amplifier';
 import DrawEssentials from '../../Support/DrawEssentials';
 import symbolData from '../../Data/Symbols.json';
+// The same milsymbol renderer the briefing tools use, for the live Force-symbol
+// preview. It caches by SIDC + size + amplifiers, so re-rendering on every
+// keystroke costs a map lookup once the combination has been seen.
+import { renderMilSym } from '../Briefing/MilSymFactory';
 
 type ViewLike = MapView | SceneView;
 
@@ -141,93 +145,316 @@ const DE_RATIO_DEFAULTS = [
 ] as const;
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SIDC lookup tables (MIL-STD-2525D, aligned with milsymbol.net combos)
+// SIDC lookup tables (MIL-STD-2525D)
+//
+// Labels are deliberately plain language. The two-digit code each option used to
+// carry in its label ("18 — Brigade", "15 — Land Equipment") is what the SIDC
+// stores, not something an operator should have to read or match — the digits
+// still live in `value`, so the generated SIDC is byte-for-byte the same.
 
 type Option = { value: string; label: string };
 
-const SIDC_VERSION: Option[] = [
-  { value: '1', label: '1 — MIL-STD-2525D' },
-  { value: '2', label: '2 — APP-6D' },
-  { value: '3', label: '3 — 2525E (draft)' },
-];
-
+/** Position 2 — reality / exercise / simulation. */
 const SIDC_CONTEXT: Option[] = [
-  { value: '0', label: '0 — Reality' },
-  { value: '1', label: '1 — Exercise' },
-  { value: '2', label: '2 — Simulation' },
+  { value: '0', label: 'Real world' },
+  { value: '1', label: 'Exercise' },
+  { value: '2', label: 'Simulation' },
 ];
 
+/**
+ * Position 3 — standard identity, ordered by how often it gets picked rather
+ * than by code value so the everyday three sit at the top of the list.
+ */
 const SIDC_IDENTITY: Option[] = [
-  { value: '00', label: '00 — Pending' },
-  { value: '01', label: '01 — Unknown' },
-  { value: '02', label: '02 — Assumed Friend' },
-  { value: '03', label: '03 — Friend' },
-  { value: '04', label: '04 — Neutral' },
-  { value: '05', label: '05 — Suspect / Joker' },
-  { value: '06', label: '06 — Hostile / Faker' },
+  { value: '3', label: 'Friendly' },
+  { value: '6', label: 'Hostile' },
+  { value: '4', label: 'Neutral' },
+  { value: '1', label: 'Unknown' },
+  { value: '2', label: 'Assumed friend' },
+  { value: '5', label: 'Suspect' },
+  { value: '0', label: 'Pending' },
 ];
 
+/** Positions 4–5 — symbol set. */
 const SIDC_SET: Option[] = [
-  { value: '00', label: '00 — Unknown' },
-  { value: '01', label: '01 — Air' },
-  { value: '02', label: '02 — Air Missile' },
-  { value: '05', label: '05 — Space' },
-  { value: '06', label: '06 — Space Missile' },
-  { value: '10', label: '10 — Land Unit' },
-  { value: '11', label: '11 — Land Civilian Unit/Org' },
-  { value: '15', label: '15 — Land Equipment' },
-  { value: '20', label: '20 — Land Installations' },
-  { value: '25', label: '25 — Control Measures' },
-  { value: '27', label: '27 — Dismounted Individual' },
-  { value: '30', label: '30 — Sea Surface' },
-  { value: '35', label: '35 — Sea Subsurface' },
-  { value: '36', label: '36 — Mine Warfare' },
-  { value: '40', label: '40 — Activities / Events' },
-  { value: '50', label: '50 — Cyberspace' },
+  { value: '10', label: 'Land unit' },
+  { value: '15', label: 'Land equipment' },
+  { value: '20', label: 'Land installation' },
+  { value: '11', label: 'Land civilian unit / organisation' },
+  { value: '27', label: 'Dismounted individual' },
+  { value: '25', label: 'Control measure' },
+  { value: '01', label: 'Air' },
+  { value: '02', label: 'Air missile' },
+  { value: '05', label: 'Space' },
+  { value: '06', label: 'Space missile' },
+  { value: '30', label: 'Sea surface' },
+  { value: '35', label: 'Sea subsurface' },
+  { value: '36', label: 'Mine warfare' },
+  { value: '40', label: 'Activity / event' },
+  { value: '50', label: 'Cyberspace' },
+  { value: '00', label: 'Unknown' },
 ];
 
+/** Position 6 — operational status / condition. */
 const SIDC_STATUS: Option[] = [
-  { value: '0', label: '0 — Present' },
-  { value: '1', label: '1 — Planned / Anticipated' },
-  { value: '2', label: '2 — Present / Fully Capable' },
-  { value: '3', label: '3 — Present / Damaged' },
-  { value: '4', label: '4 — Present / Destroyed' },
-  { value: '5', label: '5 — Present / Full to Capacity' },
+  { value: '0', label: 'Present' },
+  { value: '1', label: 'Planned / anticipated' },
+  { value: '2', label: 'Fully capable' },
+  { value: '3', label: 'Damaged' },
+  { value: '4', label: 'Destroyed' },
+  { value: '5', label: 'Full to capacity' },
 ];
 
+/** Position 7 — headquarters / task force / feint. */
 const SIDC_HQTF: Option[] = [
-  { value: '0', label: '0 — Not applicable' },
-  { value: '1', label: '1 — Feint / Dummy' },
-  { value: '2', label: '2 — Headquarters' },
-  { value: '3', label: '3 — Feint / Dummy HQ' },
-  { value: '4', label: '4 — Task Force' },
-  { value: '5', label: '5 — Feint / Dummy Task Force' },
-  { value: '6', label: '6 — Task Force HQ' },
-  { value: '7', label: '7 — Feint / Dummy TF HQ' },
+  { value: '0', label: 'Normal unit' },
+  { value: '2', label: 'Headquarters' },
+  { value: '4', label: 'Task force' },
+  { value: '6', label: 'Task force headquarters' },
+  { value: '1', label: 'Feint / dummy' },
+  { value: '3', label: 'Feint / dummy headquarters' },
+  { value: '5', label: 'Feint / dummy task force' },
+  { value: '7', label: 'Feint / dummy task force HQ' },
 ];
 
+/** Positions 8–9 — echelon / size amplifier. */
 const SIDC_ECHELON: Option[] = [
-  { value: '00', label: '00 — None / Unknown' },
-  { value: '11', label: '11 — Team / Crew' },
-  { value: '12', label: '12 — Squad' },
-  { value: '13', label: '13 — Section' },
-  { value: '14', label: '14 — Platoon / Detachment' },
-  { value: '15', label: '15 — Company / Battery / Troop' },
-  { value: '16', label: '16 — Battalion / Squadron' },
-  { value: '17', label: '17 — Regiment / Group' },
-  { value: '18', label: '18 — Brigade' },
-  { value: '21', label: '21 — Division' },
-  { value: '22', label: '22 — Corps / MEF' },
-  { value: '23', label: '23 — Army' },
-  { value: '24', label: '24 — Army Group / Front' },
-  { value: '25', label: '25 — Region / Theater' },
-  { value: '26', label: '26 — Command' },
+  { value: '00', label: 'None' },
+  { value: '11', label: 'Team / crew' },
+  { value: '12', label: 'Squad' },
+  { value: '13', label: 'Section' },
+  { value: '14', label: 'Platoon / detachment' },
+  { value: '15', label: 'Company / battery / troop' },
+  { value: '16', label: 'Battalion / squadron' },
+  { value: '17', label: 'Regiment / group' },
+  { value: '18', label: 'Brigade' },
+  { value: '21', label: 'Division' },
+  { value: '22', label: 'Corps / MEF' },
+  { value: '23', label: 'Army' },
+  { value: '24', label: 'Army group / front' },
+  { value: '25', label: 'Region / theatre' },
+  { value: '26', label: 'Command' },
+];
+
+/**
+ * Country amplifier picker. The stored value stays the ISO 3166-1 / GENC
+ * three-letter code — what MIL-STD-2525D puts in the Country field and what the
+ * label renderer draws — while the list shows the country name, so nobody has to
+ * remember that Germany is DEU. A code already on a symbol that isn't in this
+ * list is preserved and offered back as a custom entry (see `countryField`).
+ */
+const COUNTRIES: Option[] = [
+  { value: 'AFG', label: 'Afghanistan' },
+  { value: 'ALB', label: 'Albania' },
+  { value: 'DZA', label: 'Algeria' },
+  { value: 'AND', label: 'Andorra' },
+  { value: 'AGO', label: 'Angola' },
+  { value: 'ARG', label: 'Argentina' },
+  { value: 'ARM', label: 'Armenia' },
+  { value: 'AUS', label: 'Australia' },
+  { value: 'AUT', label: 'Austria' },
+  { value: 'AZE', label: 'Azerbaijan' },
+  { value: 'BHS', label: 'Bahamas' },
+  { value: 'BHR', label: 'Bahrain' },
+  { value: 'BGD', label: 'Bangladesh' },
+  { value: 'BRB', label: 'Barbados' },
+  { value: 'BLR', label: 'Belarus' },
+  { value: 'BEL', label: 'Belgium' },
+  { value: 'BLZ', label: 'Belize' },
+  { value: 'BEN', label: 'Benin' },
+  { value: 'BTN', label: 'Bhutan' },
+  { value: 'BOL', label: 'Bolivia' },
+  { value: 'BIH', label: 'Bosnia and Herzegovina' },
+  { value: 'BWA', label: 'Botswana' },
+  { value: 'BRA', label: 'Brazil' },
+  { value: 'BRN', label: 'Brunei' },
+  { value: 'BGR', label: 'Bulgaria' },
+  { value: 'BFA', label: 'Burkina Faso' },
+  { value: 'BDI', label: 'Burundi' },
+  { value: 'CPV', label: 'Cabo Verde' },
+  { value: 'KHM', label: 'Cambodia' },
+  { value: 'CMR', label: 'Cameroon' },
+  { value: 'CAN', label: 'Canada' },
+  { value: 'CAF', label: 'Central African Republic' },
+  { value: 'TCD', label: 'Chad' },
+  { value: 'CHL', label: 'Chile' },
+  { value: 'CHN', label: 'China' },
+  { value: 'COL', label: 'Colombia' },
+  { value: 'COM', label: 'Comoros' },
+  { value: 'COG', label: 'Congo (Republic)' },
+  { value: 'COD', label: 'Congo (DRC)' },
+  { value: 'CRI', label: 'Costa Rica' },
+  { value: 'CIV', label: 'Cote d Ivoire' },
+  { value: 'HRV', label: 'Croatia' },
+  { value: 'CUB', label: 'Cuba' },
+  { value: 'CYP', label: 'Cyprus' },
+  { value: 'CZE', label: 'Czechia' },
+  { value: 'DNK', label: 'Denmark' },
+  { value: 'DJI', label: 'Djibouti' },
+  { value: 'DMA', label: 'Dominica' },
+  { value: 'DOM', label: 'Dominican Republic' },
+  { value: 'ECU', label: 'Ecuador' },
+  { value: 'EGY', label: 'Egypt' },
+  { value: 'SLV', label: 'El Salvador' },
+  { value: 'GNQ', label: 'Equatorial Guinea' },
+  { value: 'ERI', label: 'Eritrea' },
+  { value: 'EST', label: 'Estonia' },
+  { value: 'SWZ', label: 'Eswatini' },
+  { value: 'ETH', label: 'Ethiopia' },
+  { value: 'FJI', label: 'Fiji' },
+  { value: 'FIN', label: 'Finland' },
+  { value: 'FRA', label: 'France' },
+  { value: 'GAB', label: 'Gabon' },
+  { value: 'GMB', label: 'Gambia' },
+  { value: 'GEO', label: 'Georgia' },
+  { value: 'DEU', label: 'Germany' },
+  { value: 'GHA', label: 'Ghana' },
+  { value: 'GRC', label: 'Greece' },
+  { value: 'GRD', label: 'Grenada' },
+  { value: 'GTM', label: 'Guatemala' },
+  { value: 'GIN', label: 'Guinea' },
+  { value: 'GNB', label: 'Guinea-Bissau' },
+  { value: 'GUY', label: 'Guyana' },
+  { value: 'HTI', label: 'Haiti' },
+  { value: 'HND', label: 'Honduras' },
+  { value: 'HUN', label: 'Hungary' },
+  { value: 'ISL', label: 'Iceland' },
+  { value: 'IND', label: 'India' },
+  { value: 'IDN', label: 'Indonesia' },
+  { value: 'IRN', label: 'Iran' },
+  { value: 'IRQ', label: 'Iraq' },
+  { value: 'IRL', label: 'Ireland' },
+  { value: 'ISR', label: 'Israel' },
+  { value: 'ITA', label: 'Italy' },
+  { value: 'JAM', label: 'Jamaica' },
+  { value: 'JPN', label: 'Japan' },
+  { value: 'JOR', label: 'Jordan' },
+  { value: 'KAZ', label: 'Kazakhstan' },
+  { value: 'KEN', label: 'Kenya' },
+  { value: 'KIR', label: 'Kiribati' },
+  { value: 'PRK', label: 'Korea, North' },
+  { value: 'KOR', label: 'Korea, South' },
+  { value: 'KWT', label: 'Kuwait' },
+  { value: 'KGZ', label: 'Kyrgyzstan' },
+  { value: 'LAO', label: 'Laos' },
+  { value: 'LVA', label: 'Latvia' },
+  { value: 'LBN', label: 'Lebanon' },
+  { value: 'LSO', label: 'Lesotho' },
+  { value: 'LBR', label: 'Liberia' },
+  { value: 'LBY', label: 'Libya' },
+  { value: 'LIE', label: 'Liechtenstein' },
+  { value: 'LTU', label: 'Lithuania' },
+  { value: 'LUX', label: 'Luxembourg' },
+  { value: 'MDG', label: 'Madagascar' },
+  { value: 'MWI', label: 'Malawi' },
+  { value: 'MYS', label: 'Malaysia' },
+  { value: 'MDV', label: 'Maldives' },
+  { value: 'MLI', label: 'Mali' },
+  { value: 'MLT', label: 'Malta' },
+  { value: 'MHL', label: 'Marshall Islands' },
+  { value: 'MRT', label: 'Mauritania' },
+  { value: 'MUS', label: 'Mauritius' },
+  { value: 'MEX', label: 'Mexico' },
+  { value: 'FSM', label: 'Micronesia' },
+  { value: 'MDA', label: 'Moldova' },
+  { value: 'MCO', label: 'Monaco' },
+  { value: 'MNG', label: 'Mongolia' },
+  { value: 'MNE', label: 'Montenegro' },
+  { value: 'MAR', label: 'Morocco' },
+  { value: 'MOZ', label: 'Mozambique' },
+  { value: 'MMR', label: 'Myanmar' },
+  { value: 'NAM', label: 'Namibia' },
+  { value: 'NRU', label: 'Nauru' },
+  { value: 'NPL', label: 'Nepal' },
+  { value: 'NLD', label: 'Netherlands' },
+  { value: 'NZL', label: 'New Zealand' },
+  { value: 'NIC', label: 'Nicaragua' },
+  { value: 'NER', label: 'Niger' },
+  { value: 'NGA', label: 'Nigeria' },
+  { value: 'MKD', label: 'North Macedonia' },
+  { value: 'NOR', label: 'Norway' },
+  { value: 'OMN', label: 'Oman' },
+  { value: 'PAK', label: 'Pakistan' },
+  { value: 'PLW', label: 'Palau' },
+  { value: 'PSE', label: 'Palestine' },
+  { value: 'PAN', label: 'Panama' },
+  { value: 'PNG', label: 'Papua New Guinea' },
+  { value: 'PRY', label: 'Paraguay' },
+  { value: 'PER', label: 'Peru' },
+  { value: 'PHL', label: 'Philippines' },
+  { value: 'POL', label: 'Poland' },
+  { value: 'PRT', label: 'Portugal' },
+  { value: 'QAT', label: 'Qatar' },
+  { value: 'ROU', label: 'Romania' },
+  { value: 'RUS', label: 'Russia' },
+  { value: 'RWA', label: 'Rwanda' },
+  { value: 'KNA', label: 'Saint Kitts and Nevis' },
+  { value: 'LCA', label: 'Saint Lucia' },
+  { value: 'VCT', label: 'Saint Vincent and the Grenadines' },
+  { value: 'WSM', label: 'Samoa' },
+  { value: 'SMR', label: 'San Marino' },
+  { value: 'STP', label: 'Sao Tome and Principe' },
+  { value: 'SAU', label: 'Saudi Arabia' },
+  { value: 'SEN', label: 'Senegal' },
+  { value: 'SRB', label: 'Serbia' },
+  { value: 'SYC', label: 'Seychelles' },
+  { value: 'SLE', label: 'Sierra Leone' },
+  { value: 'SGP', label: 'Singapore' },
+  { value: 'SVK', label: 'Slovakia' },
+  { value: 'SVN', label: 'Slovenia' },
+  { value: 'SLB', label: 'Solomon Islands' },
+  { value: 'SOM', label: 'Somalia' },
+  { value: 'ZAF', label: 'South Africa' },
+  { value: 'SSD', label: 'South Sudan' },
+  { value: 'ESP', label: 'Spain' },
+  { value: 'LKA', label: 'Sri Lanka' },
+  { value: 'SDN', label: 'Sudan' },
+  { value: 'SUR', label: 'Suriname' },
+  { value: 'SWE', label: 'Sweden' },
+  { value: 'CHE', label: 'Switzerland' },
+  { value: 'SYR', label: 'Syria' },
+  { value: 'TWN', label: 'Taiwan' },
+  { value: 'TJK', label: 'Tajikistan' },
+  { value: 'TZA', label: 'Tanzania' },
+  { value: 'THA', label: 'Thailand' },
+  { value: 'TLS', label: 'Timor-Leste' },
+  { value: 'TGO', label: 'Togo' },
+  { value: 'TON', label: 'Tonga' },
+  { value: 'TTO', label: 'Trinidad and Tobago' },
+  { value: 'TUN', label: 'Tunisia' },
+  { value: 'TUR', label: 'Turkiye' },
+  { value: 'TKM', label: 'Turkmenistan' },
+  { value: 'TUV', label: 'Tuvalu' },
+  { value: 'UGA', label: 'Uganda' },
+  { value: 'UKR', label: 'Ukraine' },
+  { value: 'ARE', label: 'United Arab Emirates' },
+  { value: 'GBR', label: 'United Kingdom' },
+  { value: 'USA', label: 'United States' },
+  { value: 'URY', label: 'Uruguay' },
+  { value: 'UZB', label: 'Uzbekistan' },
+  { value: 'VUT', label: 'Vanuatu' },
+  { value: 'VAT', label: 'Vatican City' },
+  { value: 'VEN', label: 'Venezuela' },
+  { value: 'VNM', label: 'Vietnam' },
+  { value: 'YEM', label: 'Yemen' },
+  { value: 'ZMB', label: 'Zambia' },
+  { value: 'ZWE', label: 'Zimbabwe' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Editable field tables
 
-type FieldType = 'number' | 'text' | 'bool' | 'color';
+type FieldType =
+  | 'number'
+  | 'text'
+  | 'bool'
+  | 'color'
+  | 'select'
+  /** Date + time picker that reads / writes a MIL-STD date-time group string. */
+  | 'dtg'
+  /** Country-name picker that stores a three-letter country code. */
+  | 'country';
+
 type FieldGroup =
   | 'amplifier'
   | 'drawEssentials'
@@ -241,55 +468,107 @@ interface FieldSpec {
   key: string;
   label: string;
   type: FieldType;
+  /** Stepper bounds — also the span of the paired slider. */
+  min?: number;
+  max?: number;
+  step?: number;
+  /** Show a slider alongside the stepper, for values with a natural range. */
+  slider?: boolean;
+  /** Suffix shown after the stepper (°, …). */
+  unit?: string;
+  /** Choices for a `select` field. */
+  choices?: Option[];
+  /** Greyed example shown in the empty input. */
+  placeholder?: string;
+  /** One line of plain-language help under the input. */
+  hint?: string;
 }
 
-const fs = (group: FieldGroup, key: string, label: string, type: FieldType = 'text'): FieldSpec => ({
-  group,
-  key,
-  label,
-  type,
-});
+const fs = (
+  group: FieldGroup,
+  key: string,
+  label: string,
+  type: FieldType = 'text',
+  extra: Partial<FieldSpec> = {},
+): FieldSpec => ({ group, key, label, type, ...extra });
+
+/** Reinforced / reduced is a fixed set of markers, not free text. */
+const REINFORCED_CHOICES: Option[] = [
+  { value: '', label: 'Neither' },
+  { value: '+', label: 'Reinforced (+)' },
+  { value: '-', label: 'Reduced (-)' },
+  { value: '+-', label: 'Reinforced and reduced (+-)' },
+];
+
+/**
+ * Amplifier fields AnnotationEngine actually draws beside the symbol — the label
+ * block it builds only ever reads these seven keys.
+ */
+const AMPLIFIER_FIELDS_DRAWN: FieldSpec[] = [
+  fs('amplifier', 'UNIQUE_DESIG', 'Unit / designation', 'text', { placeholder: 'e.g. B / 1-7' }),
+  fs('amplifier', 'HIGHER_FORM', 'Higher formation', 'text', { placeholder: 'e.g. 1 Bn' }),
+  fs('amplifier', 'STAFF_COM', 'Staff comments', 'text'),
+  fs('amplifier', 'ADDL_INFO', 'Additional info', 'text'),
+  fs('amplifier', 'TARGET_DESIGNATOR', 'Target designator', 'text'),
+  fs('amplifier', 'DTG', 'Date / time', 'dtg', { hint: 'Drawn above the symbol.' }),
+  fs('amplifier', 'EDTG', 'End date / time', 'dtg', { hint: 'Drawn below the symbol.' }),
+];
+
+/** Kept with the symbol and carried into exports, but never drawn on the map. */
+const AMPLIFIER_FIELDS_STORED: FieldSpec[] = [
+  fs('amplifier', 'TYPE', 'Type', 'text'),
+  fs('amplifier', 'QUANTITY', 'Quantity', 'number', { min: 0, step: 1 }),
+  fs('amplifier', 'COUNTRY', 'Country', 'country'),
+  fs('amplifier', 'LOC', 'Location', 'text'),
+  fs('amplifier', 'ALTITUDE_DEPTH', 'Altitude / depth', 'text'),
+  fs('amplifier', 'DISTANCE', 'Distance', 'text'),
+  fs('amplifier', 'AZIMUTH', 'Azimuth', 'number', { min: 0, max: 360, step: 1, unit: '°' }),
+];
 
 /** Object-form amplifier fields used by Point / Line / Area symbols. */
 const AMPLIFIER_FIELDS: FieldSpec[] = [
-  fs('amplifier', 'UNIQUE_DESIG', 'Unique Desig'),
-  fs('amplifier', 'HIGHER_FORM', 'Higher Formation'),
-  fs('amplifier', 'STAFF_COM', 'Staff Comments'),
-  fs('amplifier', 'ADDL_INFO', 'Addl Information'),
-  fs('amplifier', 'DTG', 'DTG'),
-  fs('amplifier', 'EDTG', 'EDTG'),
-  fs('amplifier', 'ALTITUDE_DEPTH', 'Altitude / Depth'),
-  fs('amplifier', 'LOC', 'Location'),
-  fs('amplifier', 'DISTANCE', 'Distance'),
-  fs('amplifier', 'AZIMUTH', 'Azimuth'),
-  fs('amplifier', 'TYPE', 'Type'),
-  fs('amplifier', 'QUANTITY', 'Quantity'),
-  fs('amplifier', 'COUNTRY', 'Country'),
-  fs('amplifier', 'TARGET_DESIGNATOR', 'Target Designator'),
+  ...AMPLIFIER_FIELDS_DRAWN,
+  ...AMPLIFIER_FIELDS_STORED,
 ];
 
 /**
  * milsymbol amplifier fields for Force (FPoint) symbols. These live inside the
  * symbol's OPTIONS object — the renderer (UEISymbol) reads them from there, so
- * editing the flat amplifier would have no visible effect.
+ * editing the flat amplifier would have no visible effect. Every key below is one
+ * UEISymbol forwards on to milsymbol; the two it does not (`roa`, `msn`) used to
+ * be offered here and drew nothing, so they are off the form. Values already
+ * stored under them still survive an edit — buildState clones the whole OPTIONS
+ * payload, not just the keys the form knows about.
  */
-const FPOINT_OPTION_FIELDS: FieldSpec[] = [
-  fs('options', 'uniqueDesignation', 'Unique Desig'),
-  fs('options', 'higherFormation', 'Higher Formation'),
-  fs('options', 'quantity', 'Quantity'),
-  fs('options', 'reinforcedReduced', 'Reinforced / Reduced'),
-  fs('options', 'staffComments', 'Staff Comments'),
-  fs('options', 'additionalInformation', 'Addl Information'),
-  fs('options', 'type', 'Type'),
-  fs('options', 'dtg', 'DTG'),
-  fs('options', 'location', 'Location'),
-  fs('options', 'direction', 'Direction'),
-  fs('options', 'speed', 'Speed'),
-  fs('options', 'combatEffectiveness', 'Combat Effectiveness'),
-  fs('options', 'evaluationRating', 'Evaluation Rating'),
-  fs('options', 'roa', 'ROA'),
-  fs('options', 'msn', 'Mission'),
+const FPOINT_FIELDS_MAIN: FieldSpec[] = [
+  fs('options', 'uniqueDesignation', 'Unit / designation', 'text', { placeholder: 'e.g. A Coy' }),
+  fs('options', 'higherFormation', 'Higher formation', 'text', { placeholder: 'e.g. 1 Bn' }),
+  fs('options', 'type', 'Type', 'text', { placeholder: 'e.g. M1A2' }),
+  fs('options', 'quantity', 'Quantity', 'number', { min: 0, step: 1 }),
+  fs('options', 'reinforcedReduced', 'Reinforced / reduced', 'select', { choices: REINFORCED_CHOICES }),
+  fs('options', 'staffComments', 'Staff comments', 'text'),
+  fs('options', 'additionalInformation', 'Additional info', 'text'),
+  fs('options', 'dtg', 'Date / time', 'dtg'),
+  fs('options', 'location', 'Location', 'text'),
+  fs('options', 'direction', 'Direction', 'number', { min: 0, max: 360, step: 1, unit: '°' }),
+  fs('options', 'speed', 'Speed', 'text'),
+  fs('options', 'altitudeDepth', 'Altitude / depth', 'text'),
 ];
+
+const FPOINT_FIELDS_MORE: FieldSpec[] = [
+  fs('options', 'combatEffectiveness', 'Combat effectiveness', 'text'),
+  fs('options', 'evaluationRating', 'Evaluation rating', 'text'),
+  fs('options', 'commonIdentifier', 'Common identifier', 'text'),
+  fs('options', 'specialHeadquarters', 'Special headquarters', 'text'),
+  fs('options', 'signatureEquipment', 'Signature equipment', 'text'),
+  fs('options', 'platformType', 'Platform type', 'text'),
+  fs('options', 'equipmentTeardownTime', 'Teardown time', 'text'),
+  fs('options', 'iffSif', 'IFF / SIF', 'text'),
+  fs('options', 'sigint', 'SIGINT', 'text'),
+  fs('options', 'hostile', 'Hostile marker', 'text'),
+];
+
+const FPOINT_OPTION_FIELDS: FieldSpec[] = [...FPOINT_FIELDS_MAIN, ...FPOINT_FIELDS_MORE];
 
 /**
  * Bridge between the flat amplifier field names (Point/Line/Area, e.g. `UNIQUE_DESIG`)
@@ -306,79 +585,375 @@ const FLAT_TO_OPT: Record<string, string> = {
   TYPE: 'type',
   DTG: 'dtg',
   LOC: 'location',
+  ALTITUDE_DEPTH: 'altitudeDepth',
 };
 const OPT_TO_FLAT: Record<string, string> = Object.fromEntries(
   Object.entries(FLAT_TO_OPT).map(([k, v]) => [v, k]),
 );
 
-const DRAW_FIELDS_POINT: FieldSpec[] = [
-  fs('drawEssentials', 'SIZE', 'Size', 'number'),
-  fs('drawEssentials', 'ANGLE', 'Angle (°)', 'number'),
-  fs('drawEssentials', 'OFFSET', 'Offset', 'text'),
-  fs('drawEssentials', 'opacity', 'Opacity', 'number'),
-  fs('drawEssentials', 'ISFHAND', 'Freehand', 'bool'),
-  fs('drawEssentials', 'FRHNDSZ', 'Freehand Size', 'number'),
-  fs('drawEssentials', 'FRHNDWDTH', 'Freehand Width', 'number'),
+// ── Appearance ────────────────────────────────────────────────────────────────
+// The handful of controls on the Look tab that an operator actually reaches for.
+// Everything else that used to sit in "Draw Settings" is fine-tuning and has
+// moved to Advanced.
+
+const OPACITY_FIELD = fs('drawEssentials', 'opacity', 'Opacity', 'number', {
+  min: 0,
+  max: 1,
+  step: 0.05,
+  slider: true,
+});
+
+const ROTATION_FIELD = fs('drawEssentials', 'ANGLE', 'Rotation', 'number', {
+  min: 0,
+  max: 360,
+  step: 1,
+  slider: true,
+  unit: '°',
+});
+
+const LINE_WIDTH_FIELD = fs('extraSettings', 'lineWidth', 'Line width', 'number', {
+  min: 0.5,
+  max: 12,
+  step: 0.5,
+  slider: true,
+});
+
+const LOOK_FIELDS_POINT: FieldSpec[] = [
+  fs('drawEssentials', 'SIZE', 'Size', 'number', {
+    min: 0,
+    max: 200,
+    step: 1,
+    slider: true,
+    hint: 'Leave at 0 to keep this symbol’s own default size.',
+  }),
+  ROTATION_FIELD,
+  OPACITY_FIELD,
 ];
 
 // FPoint "Size" is read from extraSettings.size by the milsymbol renderer;
-// ANGLE / opacity are read from the top-level drawEssentials.
-const DRAW_FIELDS_FPOINT: FieldSpec[] = [
-  fs('extraSettings', 'size', 'Size', 'number'),
-  fs('drawEssentials', 'ANGLE', 'Angle (°)', 'number'),
-  fs('drawEssentials', 'opacity', 'Opacity', 'number'),
+// rotation / opacity are read from the top-level drawEssentials.
+const LOOK_FIELDS_FPOINT: FieldSpec[] = [
+  fs('extraSettings', 'size', 'Size', 'number', { min: 10, max: 200, step: 1, slider: true }),
+  ROTATION_FIELD,
+  OPACITY_FIELD,
 ];
 
-const DRAW_FIELDS_LINE: FieldSpec[] = [
-  fs('drawEssentials', 'opacity', 'Opacity', 'number'),
-  fs('drawEssentials', 'DRAW_TYPE', 'Draw Type', 'number'),
-  fs('drawEssentials', 'IS_OBS', 'Is Observation', 'number'),
-  fs('drawEssentials', 'ARROWHEAD_RATIO', 'Arrowhead Ratio', 'number'),
-  fs('drawEssentials', 'BK_LN_DIST_RATIO', 'Back Line Dist Ratio', 'number'),
-  fs('drawEssentials', 'BK_LN_ANGL_RATIO', 'Back Line Angl Ratio', 'number'),
-  fs('drawEssentials', 'FRNT_LN_DIST_RATIO', 'Front Line Dist Ratio', 'number'),
-  fs('drawEssentials', 'FRNT_LN_ANGL_RATIO', 'Front Line Angl Ratio', 'number'),
-  fs('drawEssentials', 'FLAP_DIST_RATIO', 'Flap Dist Ratio', 'number'),
-  fs('drawEssentials', 'FLAP_ANGLE', 'Flap Angle', 'number'),
-  fs('drawEssentials', 'ISFHAND', 'Freehand', 'bool'),
-  fs('drawEssentials', 'FRHNDSZ', 'Freehand Size', 'number'),
-  fs('drawEssentials', 'FRHNDWDTH', 'Freehand Width', 'number'),
+const LOOK_FIELDS_LINE: FieldSpec[] = [LINE_WIDTH_FIELD, OPACITY_FIELD];
+const LOOK_FIELDS_AREA: FieldSpec[] = [LINE_WIDTH_FIELD, OPACITY_FIELD];
+
+// ── Advanced ──────────────────────────────────────────────────────────────────
+
+const FREEHAND_FIELDS: FieldSpec[] = [
+  fs('drawEssentials', 'ISFHAND', 'Freehand stroke', 'bool'),
+  fs('drawEssentials', 'FRHNDSZ', 'Freehand size', 'number', { min: 0, step: 1 }),
+  fs('drawEssentials', 'FRHNDWDTH', 'Freehand width', 'number', { min: 0, step: 0.5 }),
 ];
 
-const DRAW_FIELDS_AREA: FieldSpec[] = [
-  fs('drawEssentials', 'opacity', 'Opacity', 'number'),
-  fs('drawEssentials', 'DRAW_TYPE', 'Draw Type', 'number'),
-  fs('drawEssentials', 'IS_OBS', 'Is Observation', 'number'),
-  fs('drawEssentials', 'ISFHAND', 'Freehand', 'bool'),
-  fs('drawEssentials', 'FRHNDSZ', 'Freehand Size', 'number'),
-  fs('drawEssentials', 'FRHNDWDTH', 'Freehand Width', 'number'),
+const DRAW_TYPE_FIELD = fs('drawEssentials', 'DRAW_TYPE', 'Draw type', 'number', {
+  min: 0,
+  step: 1,
+  hint: 'Variant index defined by this symbol’s own class.',
+});
+
+const ADV_FIELDS_POINT: FieldSpec[] = [
+  fs('drawEssentials', 'OFFSET', 'Offset', 'text'),
+  ...FREEHAND_FIELDS,
+];
+
+const ADV_FIELDS_FPOINT: FieldSpec[] = [];
+
+const ADV_FIELDS_LINE: FieldSpec[] = [
+  DRAW_TYPE_FIELD,
+  fs('drawEssentials', 'ARROWHEAD_RATIO', 'Arrowhead ratio', 'number', { min: 0, step: 0.1 }),
+  fs('drawEssentials', 'BK_LN_DIST_RATIO', 'Back line distance ratio', 'number', { min: 0, step: 0.1 }),
+  fs('drawEssentials', 'BK_LN_ANGL_RATIO', 'Back line angle ratio', 'number', { min: 0, step: 0.1 }),
+  fs('drawEssentials', 'FRNT_LN_DIST_RATIO', 'Front line distance ratio', 'number', { min: 0, step: 0.1 }),
+  fs('drawEssentials', 'FRNT_LN_ANGL_RATIO', 'Front line angle ratio', 'number', { min: 0, step: 0.1 }),
+  fs('drawEssentials', 'FLAP_DIST_RATIO', 'Flap distance ratio', 'number', { min: 0, step: 0.1 }),
+  fs('drawEssentials', 'FLAP_ANGLE', 'Flap angle', 'number', { min: 0, max: 360, step: 1, unit: '°' }),
+  ...FREEHAND_FIELDS,
+];
+
+const ADV_FIELDS_AREA: FieldSpec[] = [DRAW_TYPE_FIELD, ...FREEHAND_FIELDS];
+
+/**
+ * extraSettings leftovers worth exposing. `size` and `lineWidth` are already on
+ * the Look tab for the families that use them, and `opacity` is the same value
+ * the Look tab's Opacity writes (SymbolEngine reads extraSettings.opacity in
+ * preference to the drawEssentials copy — see applyStyleMirror), so offering it
+ * twice would only invite the two copies to disagree.
+ */
+const EXTRA_ADV_FIELDS: FieldSpec[] = [
+  fs('extraSettings', 'textSize', 'Marker text size', 'number', { min: 6, max: 72, step: 1 }),
 ];
 
 // Cross-platform, 3D-safe font families (kept in sync with TextStyleSettingsManifest).
-const FONT_FAMILIES: string[] = [
+const FONT_FAMILIES: Option[] = [
   'Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Tahoma', 'Georgia', 'Trebuchet MS',
+].map((f) => ({ value: f, label: f }));
+
+const LABEL_FIELDS: FieldSpec[] = [
+  fs('labelOptions', 'fontFamily', 'Font', 'select', { choices: FONT_FAMILIES }),
+  fs('labelOptions', 'textSize', 'Text size', 'number', { min: 6, max: 72, step: 1, slider: true }),
+  fs('labelOptions', 'color', 'Text colour', 'color'),
+  fs('labelOptions', 'haloColor', 'Outline colour', 'color'),
+  fs('labelOptions', 'haloColorSize', 'Outline thickness', 'number', { min: 0, max: 10, step: 0.5, slider: true }),
 ];
 
-// A LABEL field is [key, label, type, options?]; options only for 'select'.
-const LABEL_FIELDS: Array<[string, string, 'number' | 'color' | 'bool' | 'select', string[]?]> = [
-  ['fontFamily', 'Font', 'select', FONT_FAMILIES],
-  ['textSize', 'Text Size', 'number'],
-  ['haloColorSize', 'Halo Size', 'number'],
-  ['color', 'Text Color', 'color'],
-  ['haloColor', 'Halo Color', 'color'],
-  ['bold', 'Bold', 'bool'],
-  ['italic', 'Italic', 'bool'],
-  ['uLine', 'Underline', 'bool'],
-  ['oLine', 'Overline', 'bool'],
-  ['tLine', 'Strikethrough', 'bool'],
+const LABEL_STYLE_TOGGLES: FieldSpec[] = [
+  fs('labelOptions', 'bold', 'Bold', 'bool'),
+  fs('labelOptions', 'italic', 'Italic', 'bool'),
+  fs('labelOptions', 'uLine', 'Underline', 'bool'),
+  fs('labelOptions', 'oLine', 'Overline', 'bool'),
+  fs('labelOptions', 'tLine', 'Strikethrough', 'bool'),
 ];
 
-const EXTRA_FIELDS: Array<[string, string]> = [
-  ['lineWidth', 'Line Width'],
-  ['size', 'Marker Size'],
-  ['textSize', 'Text Size'],
-  ['opacity', 'Opacity'],
-];
+// ──────────────────────────────────────────────────────────────────────────────
+// Modal chrome
+//
+// Scoped to #morphix-root and injected once, so the editor stays self-contained:
+// it borrows the shared design tokens and .ms-* form classes from Widgets.css but
+// owns its own layout (tab strip, preview card, steppers, disclosures).
+
+/** Which pane of the editor is showing. */
+type TabId = 'symbol' | 'labels' | 'look' | 'advanced';
+
+const MORPHIX_CSS = `
+#morphix-root .mx-modal {
+  position: absolute;
+  top: 4vh; left: 50%;
+  transform: translateX(-50%);
+  width: min(860px, calc(100vw - 32px));
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ms-bg);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+  box-shadow: var(--ms-shadow);
+  font-size: var(--ms-fs);
+}
+#morphix-root .mx-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 0 14px;
+}
+#morphix-root .mx-body::-webkit-scrollbar { width: 9px; }
+#morphix-root .mx-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.14);
+  border-radius: 5px;
+}
+
+/* Tab strip */
+#morphix-root .mx-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 10px;
+  background: var(--ms-bg-header);
+  border-bottom: 1px solid var(--ms-divider);
+}
+#morphix-root .mx-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ms-text-dim);
+  font-family: inherit;
+  font-size: var(--ms-fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 10px 14px 8px;
+  cursor: pointer;
+  transition: var(--ms-transition);
+}
+#morphix-root .mx-tab:hover { color: var(--ms-text); }
+#morphix-root .mx-tab.active {
+  color: var(--ms-accent);
+  border-bottom-color: var(--ms-accent);
+}
+
+/* Section header with its Reset affordance */
+#morphix-root .mx-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 12px;
+}
+#morphix-root .ms-btn.mx-mini {
+  padding: 3px 9px;
+  font-size: var(--ms-fs-xs);
+}
+
+/* Preview card */
+#morphix-root .mx-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 12px 2px;
+  padding: 12px 14px;
+  background: var(--ms-bg-subtle);
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+}
+#morphix-root .mx-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
+  color: var(--ms-accent-secondary);
+}
+#morphix-root .mx-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+#morphix-root .mx-preview-glyph { opacity: 0.75; }
+#morphix-root .mx-preview-meta { min-width: 0; }
+#morphix-root .mx-preview-name {
+  font-size: var(--ms-fs-lg);
+  font-weight: 600;
+  color: var(--ms-text);
+  line-height: 1.35;
+}
+#morphix-root .mx-preview-sub {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+/* Grids, notes, hints */
+#morphix-root .ms-grid.mx-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 720px) {
+  #morphix-root .ms-grid.mx-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+#morphix-root .mx-note {
+  padding: 0 12px 9px;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.6;
+}
+#morphix-root .mx-hint {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#morphix-root .mx-hint.warn { color: var(--ms-warning); }
+
+/* Steppers and sliders */
+#morphix-root .mx-num {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#morphix-root .mx-num .ms-input { flex: 1; min-width: 0; }
+#morphix-root .mx-unit {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  flex: 0 0 auto;
+}
+#morphix-root .mx-range {
+  width: 100%;
+  height: 4px;
+  margin: 2px 0 0;
+  accent-color: var(--ms-accent);
+  cursor: pointer;
+}
+#morphix-root .mx-color {
+  height: 30px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* Date-time group */
+#morphix-root .mx-dtg {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#morphix-root .mx-dtg .ms-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--ms-font-mono);
+}
+
+/* Checkbox row */
+#morphix-root .mx-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 0 12px 10px;
+}
+#morphix-root .mx-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--ms-fs);
+  color: var(--ms-text);
+  cursor: pointer;
+}
+#morphix-root .mx-check input[type="checkbox"] {
+  accent-color: var(--ms-accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* Disclosure */
+#morphix-root .mx-details {
+  margin: 0 12px 10px;
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+  background: rgba(0, 0, 0, 0.12);
+}
+#morphix-root .mx-details > summary {
+  padding: 8px 11px;
+  font-size: var(--ms-fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+  cursor: pointer;
+  list-style: none;
+}
+#morphix-root .mx-details > summary::-webkit-details-marker { display: none; }
+#morphix-root .mx-details > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 12px;
+  color: var(--ms-accent);
+}
+#morphix-root .mx-details[open] > summary::before { content: '▾'; }
+#morphix-root .mx-details[open] > summary { border-bottom: 1px solid var(--ms-divider); }
+#morphix-root .mx-details .ms-grid { padding-top: 9px; }
+
+/* Footer */
+#morphix-root .mx-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--ms-bg-header);
+  border-top: 1px solid var(--ms-divider);
+}
+#morphix-root .mx-footer-msg {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.5;
+}
+#morphix-root .mx-footer-msg.bad { color: var(--ms-danger); }
+#morphix-root .mx-footer-msg.warn { color: var(--ms-warning); }
+#morphix-root .mx-footer-btns { display: flex; gap: 6px; }
+`;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // State
@@ -412,7 +987,6 @@ interface EditableState {
    */
   owns: { labelOptions: boolean; extraSettings: boolean };
   cim: Record<string, any>;
-  jsonOpen: boolean;
 }
 
 interface FocusInfo {
@@ -434,6 +1008,12 @@ class MorphixEngine {
   private symbolFilter: string = '';
   private focusInfo: FocusInfo | null = null;
   private keydownHandler = (e: KeyboardEvent) => this.onKeyDown(e);
+  /** Which pane is showing. Survives value edits and re-renders, resets on close. */
+  private activeTab: TabId = 'symbol';
+  /** Ids of the disclosures the user has opened — see `disclosure()`. */
+  private openGroups = new Set<string>();
+  /** True while the footer is asking whether to throw away unsaved edits. */
+  private confirmDiscard = false;
 
   public initialize(
     view: ViewLike,
@@ -451,6 +1031,9 @@ class MorphixEngine {
     this.state = this.buildState(graphic);
     this.originalOwns = { ...this.state.owns };
     this.originalSnapshot = JSON.stringify(this.serialize(this.state));
+    this.activeTab = 'symbol';
+    this.confirmDiscard = false;
+    this.openGroups.clear();
     document.addEventListener('keydown', this.keydownHandler);
     this.render();
   }
@@ -558,6 +1141,7 @@ class MorphixEngine {
   // State
 
   private ensureRoot(): void {
+    this.ensureStyle();
     if (this.root) return;
     const root = document.createElement('div');
     root.id = 'morphix-root';
@@ -573,6 +1157,15 @@ class MorphixEngine {
     } as CSSStyleDeclaration);
     document.body.appendChild(root);
     this.root = root;
+  }
+
+  /** Inject the editor's own stylesheet once. Idempotent — keyed off its element id. */
+  private ensureStyle(): void {
+    if (typeof document === 'undefined' || document.getElementById('morphix-style')) return;
+    const style = document.createElement('style');
+    style.id = 'morphix-style';
+    style.textContent = MORPHIX_CSS;
+    document.head.appendChild(style);
   }
 
   private buildState(graphic: Graphic): EditableState {
@@ -717,7 +1310,6 @@ class MorphixEngine {
       extraSettings,
       owns,
       cim: this.jsonClone(de.cim || {}),
-      jsonOpen: false,
     };
   }
 
@@ -753,48 +1345,25 @@ class MorphixEngine {
   private render(): void {
     if (!this.root || !this.state) return;
     this.snapshotFocus();
+    this.ensureStyle();
     this.root.style.display = 'block';
 
     const s = this.state;
     const def = SYMBOLS[s.symbolKey];
     const errors = this.validate(s);
     const isValid = errors.length === 0;
-    const isDirty =
-      JSON.stringify(this.serialize(s)) !== this.originalSnapshot;
+    const dirty = this.isDirty();
 
-    const modalStyle = [
-      'position:absolute',
-      'top:4vh',
-      'left:50%',
-      'transform:translateX(-50%)',
-      'width:min(980px, calc(100vw - 32px))',
-      'max-height:92vh',
-      'background:var(--ms-bg)',
-      'border:1px solid var(--ms-border)',
-      'border-radius:var(--ms-radius)',
-      'box-shadow:var(--ms-shadow)',
-      'display:flex',
-      'flex-direction:column',
-      'overflow:hidden',
-      'font-size:var(--ms-fs)',
-    ].join(';');
+    const tabs = this.tabs();
+    if (!tabs.some((t) => t.id === this.activeTab)) this.activeTab = tabs[0].id;
 
     this.root.innerHTML = `
-      <div data-action="cancel" style="position:absolute;inset:0;"></div>
-      <section role="dialog" aria-modal="true" aria-label="Symbol editor" style="${modalStyle}">
+      <div data-action="dismiss" style="position:absolute;inset:0;"></div>
+      <section class="mx-modal" role="dialog" aria-modal="true" aria-label="Edit symbol">
         ${this.renderHeader(def)}
-        <div class="ms-body" style="flex:1;overflow:auto;padding:0 0 12px;max-height:none;">
-          ${this.renderIdentitySection(def)}
-          ${this.renderSidcSection()}
-          ${this.renderSymbolSwapSection(def)}
-          ${this.renderAmplifierSection()}
-          ${this.renderDrawSection()}
-          ${this.renderLabelSection()}
-          ${this.renderExtraSection()}
-          ${this.renderCimSection()}
-          ${this.renderJsonSection()}
-        </div>
-        ${this.renderFooter(errors, isValid, isDirty)}
+        ${this.renderTabStrip(tabs)}
+        <div class="mx-body">${this.renderTabPanel(def)}</div>
+        ${this.renderFooter(errors, isValid, dirty)}
       </section>
     `;
 
@@ -804,160 +1373,216 @@ class MorphixEngine {
 
   /**
    * Update only the parts of the modal that depend on field values — the footer
-   * status / Save button enabled-state, the read-only SIDC mirror, and the JSON
-   * preview — WITHOUT rebuilding the form. This keeps the editable inputs (and
-   * the Save button) alive and focused, so a value edit followed immediately by
-   * a Save click doesn't destroy the button mid-click. Used for plain value /
-   * bool / color edits; structural changes (SIDC, symbol swap, reset, JSON
-   * toggle) still go through the full render().
+   * status / Save button enabled-state and the live preview — WITHOUT rebuilding
+   * the form. This keeps the editable inputs (and the Save button) alive and
+   * focused, so a value edit followed immediately by a Save click doesn't destroy
+   * the button mid-click. Used for plain value / bool / colour edits; structural
+   * changes (SIDC, symbol swap, tab switch, reset) still go through render().
    */
   private refreshDynamic(): void {
     if (!this.root || !this.state) return;
-    const s = this.state;
-    const errors = this.validate(s);
+    const errors = this.validate(this.state);
     const isValid = errors.length === 0;
-    const isDirty = JSON.stringify(this.serialize(s)) !== this.originalSnapshot;
+    const dirty = this.isDirty();
 
     const saveBtn = this.root.querySelector(
       '[data-action="save"]',
     ) as HTMLButtonElement | null;
-    if (saveBtn) saveBtn.disabled = !(isValid && isDirty);
+    if (saveBtn) saveBtn.disabled = !(isValid && dirty);
 
-    const msg = this.root.querySelector(
-      '[data-mx="footer-msg"]',
-    ) as HTMLElement | null;
+    const msg = this.root.querySelector('[data-mx="footer-msg"]') as HTMLElement | null;
     if (msg) {
-      msg.textContent = isValid
-        ? isDirty
-          ? 'Ready to save.'
-          : 'No changes yet.'
-        : errors.join(' · ');
-      msg.style.color = isValid ? 'var(--ms-text-dim)' : 'var(--ms-danger)';
+      msg.textContent = isValid ? this.statusText(dirty) : errors.join(' · ');
+      msg.className = isValid ? 'mx-footer-msg' : 'mx-footer-msg bad';
     }
 
-    const mirror = this.root.querySelector(
-      '[data-mx="sidc-mirror"]',
-    ) as HTMLInputElement | null;
-    if (mirror) mirror.value = s.sidc;
-
-    if (s.jsonOpen) {
-      const ta = this.root.querySelector(
-        '[data-mx="json-text"]',
-      ) as HTMLTextAreaElement | null;
-      if (ta) ta.value = JSON.stringify(this.serialize(s), null, 2);
-    }
+    const preview = this.root.querySelector('[data-mx="preview"]') as HTMLElement | null;
+    if (preview) preview.innerHTML = this.previewMarkup();
   }
+
+  private statusText(dirty: boolean): string {
+    return dirty ? 'Unsaved changes.' : 'Nothing changed yet.';
+  }
+
+  private isDirty(): boolean {
+    if (!this.state) return false;
+    return JSON.stringify(this.serialize(this.state)) !== this.originalSnapshot;
+  }
+
+  // ── Chrome ──────────────────────────────────────────────────────────────────
 
   private renderHeader(def?: SymbolDefinition): string {
     const s = this.state!;
+    const name = def?.Name || s.drawEssentials.SYM_NAME || 'Symbol';
     return `
       <div class="ms-header" style="cursor:default;">
         <div class="ms-header-icon">MX</div>
-        <div class="ms-header-title">Morphix · ${this.esc(def?.Name || s.drawEssentials.SYM_NAME || 'Symbol')}</div>
-        <span class="ms-status-lbl">${this.esc(this.geomLabel(s.kind))} · ${this.esc(s.symbolKey || '?')}</span>
-        <button class="ms-header-btn" type="button" data-action="cancel" title="Close (Esc)">×</button>
+        <div class="ms-header-title">${this.esc(name)}</div>
+        <span class="ms-status-lbl">${this.esc(this.geomLabel(s.kind))}</span>
+        <button class="ms-header-btn" type="button" data-action="dismiss" title="Close (Esc)">×</button>
       </div>
     `;
   }
 
-  private renderSection(title: string, body: string, resetAction?: string): string {
-    const reset = resetAction
-      ? `<button type="button" class="ms-btn" data-action="${resetAction}" style="margin-right:12px;padding:3px 9px;font-size:var(--ms-fs-xs);">Reset</button>`
-      : '';
+  private tabs(): Array<{ id: TabId; label: string }> {
+    return [
+      { id: 'symbol', label: 'Symbol' },
+      { id: 'labels', label: 'Labels' },
+      { id: 'look', label: 'Look' },
+      { id: 'advanced', label: 'Advanced' },
+    ];
+  }
+
+  private renderTabStrip(tabs: Array<{ id: TabId; label: string }>): string {
     return `
-      <div style="display:flex;align-items:baseline;justify-content:space-between;">
-        <div class="ms-section-title">${this.esc(title)}</div>
-        ${reset}
+      <div class="mx-tabs" role="tablist">
+        ${tabs
+          .map(
+            (t) => `
+          <button type="button" role="tab" class="mx-tab${t.id === this.activeTab ? ' active' : ''}"
+                  aria-selected="${t.id === this.activeTab}"
+                  data-action="tab" data-tab="${this.esc(t.id)}">${this.esc(t.label)}</button>`,
+          )
+          .join('')}
       </div>
-      ${body}
     `;
   }
 
-  private renderIdentitySection(def?: SymbolDefinition): string {
-    const s = this.state!;
-    return this.renderSection('Identity', `
-      <div class="ms-grid">
-        <div class="ms-field">
-          <span class="ms-label">Symbol Name</span>
-          <input class="ms-input" type="text" disabled value="${this.esc(def?.Name || s.drawEssentials.SYM_NAME || '')}">
-        </div>
-        <div class="ms-field">
-          <span class="ms-label">Geometry</span>
-          <input class="ms-input" type="text" disabled value="${this.esc(this.geomLabel(s.kind))}">
-        </div>
-      </div>
-    `);
+  private renderTabPanel(def?: SymbolDefinition): string {
+    switch (this.activeTab) {
+      case 'labels':   return this.renderLabelsTab();
+      case 'look':     return this.renderLookTab();
+      case 'advanced': return this.renderAdvancedTab();
+      default:         return this.renderSymbolTab(def);
+    }
   }
 
-  private renderSidcSection(): string {
+  private renderFooter(errors: string[], isValid: boolean, dirty: boolean): string {
+    if (this.confirmDiscard) {
+      return `
+        <div class="mx-footer">
+          <div class="mx-footer-msg warn">Close without saving? Your edits to this symbol will be lost.</div>
+          <div class="mx-footer-btns">
+            <button type="button" class="ms-btn" data-action="keep-editing">Keep editing</button>
+            <button type="button" class="ms-btn danger" data-action="discard">Discard</button>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div class="mx-footer">
+        <div class="mx-footer-msg${isValid ? '' : ' bad'}" data-mx="footer-msg">
+          ${isValid ? this.esc(this.statusText(dirty)) : errors.map((e) => this.esc(e)).join(' · ')}
+        </div>
+        <div class="mx-footer-btns">
+          <button type="button" class="ms-btn" data-action="dismiss">Cancel</button>
+          <button type="button" class="ms-btn primary" data-action="save" ${isValid && dirty ? '' : 'disabled'}>Save</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Tab: Symbol ─────────────────────────────────────────────────────────────
+
+  private renderSymbolTab(def?: SymbolDefinition): string {
     const s = this.state!;
     const padded = s.sidc.padEnd(20, '0');
-
     const seg = (start: number, end: number) => padded.slice(start, end);
-    const combo = (label: string, hint: string, kind: string, value: string, options: Option[]) => `
+
+    return `
+      ${this.renderPreviewCard(def)}
+      ${this.sectionHead('Who and what')}
+      <div class="ms-grid mx-grid-3">
+        ${this.sidcCombo('Affiliation', 'sidc-identity', seg(3, 4), SIDC_IDENTITY)}
+        ${this.sidcCombo('Size / echelon', 'sidc-echelon', seg(8, 10), SIDC_ECHELON)}
+        ${this.sidcCombo('Role', 'sidc-hqtf', seg(7, 8), SIDC_HQTF)}
+        ${this.sidcCombo('Status', 'sidc-status', seg(6, 7), SIDC_STATUS)}
+        ${this.sidcCombo('Category', 'sidc-set', seg(4, 6), SIDC_SET)}
+        ${this.sidcCombo('Scenario', 'sidc-context', seg(2, 3), SIDC_CONTEXT)}
+      </div>
+      ${this.renderSymbolSwap(def)}
+    `;
+  }
+
+  /**
+   * Live symbol preview. Force symbols go through the same milsymbol renderer the
+   * map uses, so a designation typed on the Labels tab shows up here immediately;
+   * the other families have no off-map renderer, so they get a geometry glyph and
+   * their catalogue name instead.
+   */
+  private renderPreviewCard(def?: SymbolDefinition): string {
+    const s = this.state!;
+    return `
+      <div class="mx-preview-card">
+        <div class="mx-preview" data-mx="preview">${this.previewMarkup()}</div>
+        <div class="mx-preview-meta">
+          <div class="mx-preview-name">${this.esc(def?.Name || s.drawEssentials.SYM_NAME || 'Symbol')}</div>
+          <div class="mx-preview-sub">${this.esc(this.geomLabel(s.kind))}${
+            def?.Description ? ' · ' + this.esc(def.Description) : ''
+          }</div>
+        </div>
+      </div>
+    `;
+  }
+
+  private previewMarkup(): string {
+    const s = this.state!;
+    if (s.kind === 'FPoint') {
+      try {
+        const render = renderMilSym(s.sidc, s.options as Record<string, string>, 108);
+        if (render) {
+          return `<img class="mx-preview-img" alt="Symbol preview" src="${render.canvas.toDataURL()}">`;
+        }
+      } catch {
+        // A hand-edited or future SIDC milsymbol rejects — fall through to the glyph.
+      }
+    }
+    return `<div class="mx-preview-glyph">${this.kindGlyph(s.kind)}</div>`;
+  }
+
+  private kindGlyph(kind: GeoKind | ''): string {
+    const open = '<svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">';
+    switch (kind) {
+      case 'Line':
+        return `${open}<path d="M6 46 L22 22 L40 38 L58 14"/><circle cx="6" cy="46" r="4" fill="currentColor" stroke="none"/><circle cx="58" cy="14" r="4" fill="currentColor" stroke="none"/></svg>`;
+      case 'Area':
+        return `${open}<path d="M10 22 L34 8 L56 26 L46 52 L16 48 Z" fill="currentColor" fill-opacity="0.15"/></svg>`;
+      default:
+        return `${open}<circle cx="32" cy="32" r="10" fill="currentColor" fill-opacity="0.2"/><path d="M32 6v10M32 48v10M6 32h10M48 32h10"/></svg>`;
+    }
+  }
+
+  private sidcCombo(label: string, kind: string, value: string, options: Option[]): string {
+    const known = options.some((o) => o.value === value);
+    return `
       <div class="ms-field">
-        <span class="ms-label" title="${this.esc(hint)}">${this.esc(label)}</span>
+        <span class="ms-label">${this.esc(label)}</span>
         <select class="ms-select" data-kind="${this.esc(kind)}">
           ${options
-            .map((o) => `<option value="${this.esc(o.value)}" ${o.value === value ? 'selected' : ''}>${this.esc(o.label)}</option>`)
+            .map(
+              (o) =>
+                `<option value="${this.esc(o.value)}" ${o.value === value ? 'selected' : ''}>${this.esc(o.label)}</option>`,
+            )
             .join('')}
-          ${options.find((o) => o.value === value) ? '' : `<option value="${this.esc(value)}" selected>${this.esc(value)} — (custom)</option>`}
+          ${known ? '' : `<option value="${this.esc(value)}" selected>Other (${this.esc(value)})</option>`}
         </select>
       </div>
     `;
-
-    const mod1 = seg(16, 18);
-    const mod2 = seg(18, 20);
-
-    return this.renderSection('SIDC', `
-      <div class="ms-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-        ${combo('Version',   'Position 0 — symbology version',           'sidc-version',  seg(0, 1),  SIDC_VERSION)}
-        ${combo('Context',   'Position 1 — reality / exercise / sim',    'sidc-context',  seg(1, 2),  SIDC_CONTEXT)}
-        ${combo('Identity',  'Positions 2–3 — standard identity',        'sidc-identity', seg(2, 4),  SIDC_IDENTITY)}
-        ${combo('Set',       'Positions 4–5 — symbol set',               'sidc-set',      seg(4, 6),  SIDC_SET)}
-        ${combo('Status',    'Position 6 — operational status',          'sidc-status',   seg(6, 7),  SIDC_STATUS)}
-        ${combo('HQ / TF',   'Position 7 — HQ / Task Force / Dummy',     'sidc-hqtf',     seg(7, 8),  SIDC_HQTF)}
-        ${combo('Echelon',   'Positions 8–9 — amplifier / echelon',      'sidc-echelon',  seg(8, 10), SIDC_ECHELON)}
-        <div class="ms-field">
-          <span class="ms-label" title="Positions 16–17 — modifier 1">Modifier 1</span>
-          <input class="ms-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2"
-                 value="${this.esc(mod1)}" data-kind="sidc-mod1"
-                 style="font-family:var(--ms-font-mono);text-align:center;">
-        </div>
-        <div class="ms-field">
-          <span class="ms-label" title="Positions 18–19 — modifier 2">Modifier 2</span>
-          <input class="ms-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2"
-                 value="${this.esc(mod2)}" data-kind="sidc-mod2"
-                 style="font-family:var(--ms-font-mono);text-align:center;">
-        </div>
-      </div>
-      <div class="ms-grid full">
-        <div class="ms-field">
-          <span class="ms-label">SIDC (read-only)</span>
-          <input class="ms-input" type="text" disabled value="${this.esc(s.sidc)}" data-mx="sidc-mirror"
-                 style="font-family:var(--ms-font-mono);letter-spacing:1px;color:var(--ms-accent);">
-        </div>
-      </div>
-    `);
   }
 
-  private renderSymbolSwapSection(def?: SymbolDefinition): string {
+  private renderSymbolSwap(def?: SymbolDefinition): string {
     const s = this.state!;
 
-    // Lines and areas use a fixed SymbolEngine class — swapping changes rendering wholesale.
-    // Restrict swap to point families (Point / FPoint), like milsymbol.net.
+    // Lines and areas use a fixed SymbolEngine class — swapping changes rendering
+    // wholesale. Restrict the picker to the point families, like milsymbol.net.
     if (s.kind !== 'Point' && s.kind !== 'FPoint') {
-      return this.renderSection('Symbol Swap', `
-        <div class="ms-status warning" style="margin:6px 12px 0;">
-          Symbol swap is disabled for ${this.esc(this.geomLabel(s.kind))} graphics.
-          Edit the SIDC <em>amplifier</em>, <em>echelon</em>, <em>status</em>, and other fields above instead.
+      return `
+        ${this.sectionHead('Symbol type')}
+        <div class="mx-note">
+          A ${this.esc(this.geomLabel(s.kind).toLowerCase())} graphic keeps the type it was drawn as.
+          Change its affiliation, size or status above, or delete it and draw the type you want.
         </div>
-        <div class="ms-hint">
-          Class: ${this.esc(def?.Class || '—')} ·
-          Key: ${this.esc(s.symbolKey)} ·
-          Name: ${this.esc(def?.Name || s.drawEssentials.SYM_NAME || '—')}
-        </div>
-      `);
+      `;
     }
 
     const filter = this.symbolFilter.trim().toLowerCase();
@@ -976,82 +1601,128 @@ class MorphixEngine {
     const limit = 800;
     const trimmed = filtered.slice(0, limit);
     const options = trimmed
-      .map(([k, d]) => `<option value="${this.esc(k)}" ${k === s.symbolKey ? 'selected' : ''}>${this.esc(`${d.Name || k} · ${k}`)}</option>`)
+      .map(
+        ([k, d]) =>
+          `<option value="${this.esc(k)}" ${k === s.symbolKey ? 'selected' : ''}>${this.esc(d.Name || k)}</option>`,
+      )
       .join('');
 
-    const more = filtered.length > limit
-      ? ` <span style="opacity:.6">(first ${limit} of ${filtered.length})</span>`
-      : '';
+    const count = filtered.length === 1 ? '1 match' : `${filtered.length} matches`;
+    const more = filtered.length > limit ? ` · showing first ${limit}` : '';
 
-    return this.renderSection('Symbol Swap', `
+    return `
+      ${this.sectionHead('Symbol type')}
       <div class="ms-grid">
         <div class="ms-field">
           <span class="ms-label">Search</span>
-          <input class="ms-input" type="search" placeholder="Filter by name, class or key"
+          <input class="ms-input" type="search" placeholder="Type to filter, e.g. tank"
                  value="${this.esc(this.symbolFilter)}" data-kind="symbol-filter">
         </div>
         <div class="ms-field">
-          <span class="ms-label">Symbol (${filtered.length} match${filtered.length === 1 ? '' : 'es'})${more}</span>
-          <select class="ms-select" data-kind="symbol-key">${options}</select>
+          <span class="ms-label">Symbol</span>
+          <select class="ms-select" data-kind="symbol-key" size="1">${options}</select>
+          <span class="mx-hint">${this.esc(count + more)}</span>
         </div>
       </div>
-      <div class="ms-hint">
-        Class: ${this.esc(def?.Class || '—')} ·
-        Geometry: ${this.esc(this.geomLabel(s.kind))}
-        ${def?.Description ? ' · ' + this.esc(def.Description) : ''}
-      </div>
-    `);
+      ${def?.Description ? `<div class="mx-note">${this.esc(def.Description)}</div>` : ''}
+    `;
   }
 
-  private renderAmplifierSection(): string {
+  // ── Tab: Labels ─────────────────────────────────────────────────────────────
+
+  private renderLabelsTab(): string {
     const s = this.state!;
     const isFPoint = s.kind === 'FPoint';
-    const fields = isFPoint ? FPOINT_OPTION_FIELDS : AMPLIFIER_FIELDS;
-    const groupValues = isFPoint ? s.options : s.amplifier;
+    const values = isFPoint ? s.options : s.amplifier;
+    const main = isFPoint ? FPOINT_FIELDS_MAIN : AMPLIFIER_FIELDS_DRAWN;
+    const more = isFPoint ? FPOINT_FIELDS_MORE : AMPLIFIER_FIELDS_STORED;
 
-    const cells = fields
-      .map((f) => this.textField(f.group, f.key, f.label, groupValues[f.key], f.type))
-      .join('');
-
-    const title = isFPoint ? 'Force Symbol Options' : 'Amplifiers';
-    const hint = isFPoint
-      ? `<div class="ms-hint">These fields drive the milsymbol render of this force symbol.</div>`
-      : '';
-
-    return this.renderSection(title, `
-      <div class="ms-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-        ${cells}
+    return `
+      ${this.sectionHead('Text on this symbol', 'reset-amplifiers')}
+      <div class="mx-note">Leave a box empty to keep that label off the map.</div>
+      <div class="ms-grid mx-grid-3">
+        ${main.map((f) => this.field(f, values[f.key])).join('')}
       </div>
-      ${hint}
-    `, 'reset-amplifiers');
+      ${this.disclosure(
+        'labels-more',
+        isFPoint ? 'More amplifiers' : 'Extra details (stored, not drawn)',
+        `<div class="ms-grid mx-grid-3">
+           ${more.map((f) => this.field(f, values[f.key])).join('')}
+         </div>`,
+      )}
+    `;
   }
 
-  private renderDrawSection(): string {
+  // ── Tab: Look ───────────────────────────────────────────────────────────────
+
+  private renderLookTab(): string {
     const s = this.state!;
-    const fields = this.drawFieldsFor(s.kind);
+    const look = this.lookFieldsFor(s.kind);
 
-    const cells = fields.map((f) => {
-      if (f.type === 'bool') return this.boolField(f.group, f.key, f.label, this.groupValue(s, f.group)[f.key]);
-      return this.textField(f.group, f.key, f.label, this.groupValue(s, f.group)[f.key], f.type);
-    }).join('');
-
-    const def = SYMBOLS[s.symbolKey];
-
-    return this.renderSection('Draw Settings', `
-      <div class="ms-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-        ${cells}
+    return `
+      ${this.sectionHead('Size and opacity', 'reset-draw')}
+      <div class="ms-grid mx-grid-3">
+        ${look.map((f) => this.field(f, this.groupValue(s, f.group)[f.key])).join('')}
       </div>
-      ${this.renderParameters(def)}
-    `, 'reset-draw');
+      ${this.sectionHead('Label appearance', 'reset-labels')}
+      <div class="ms-grid mx-grid-3">
+        ${LABEL_FIELDS.map((f) => this.field(f, s.labelOptions[f.key])).join('')}
+      </div>
+      <div class="mx-toggles">
+        ${LABEL_STYLE_TOGGLES.map((f) => this.boolField(f, s.labelOptions[f.key])).join('')}
+      </div>
+    `;
   }
 
-  private drawFieldsFor(kind: GeoKind | ''): FieldSpec[] {
+  // ── Tab: Advanced ───────────────────────────────────────────────────────────
+
+  private renderAdvancedTab(): string {
+    const s = this.state!;
+    const adv = this.advFieldsFor(s.kind);
+    const cimKeys = Object.keys(s.cim);
+
+    const shapeBlock = adv.length
+      ? `<div class="ms-grid mx-grid-3">
+           ${adv.map((f) => this.field(f, this.groupValue(s, f.group)[f.key])).join('')}
+         </div>`
+      : `<div class="mx-note">This symbol family has no shape controls to tune.</div>`;
+
+    return `
+      ${this.sectionHead('Fine tuning', 'reset-draw')}
+      <div class="mx-note">
+        These feed the symbol's drawing maths. Most plans never need them — the defaults
+        come from the symbol's own class.
+      </div>
+      ${shapeBlock}
+      <div class="ms-grid mx-grid-3">
+        ${EXTRA_ADV_FIELDS.map((f) => this.field(f, s.extraSettings[f.key])).join('')}
+      </div>
+      ${
+        cimKeys.length
+          ? `${this.sectionHead('Fill pattern')}
+             <div class="ms-grid mx-grid-3">
+               ${cimKeys.map((k) => this.field(fs('cim', k, k, 'text'), s.cim[k])).join('')}
+             </div>`
+          : ''
+      }
+    `;
+  }
+
+  private lookFieldsFor(kind: GeoKind | ''): FieldSpec[] {
     switch (kind) {
-      case 'Point':  return DRAW_FIELDS_POINT;
-      case 'FPoint': return DRAW_FIELDS_FPOINT;
-      case 'Line':   return DRAW_FIELDS_LINE;
-      case 'Area':   return DRAW_FIELDS_AREA;
-      default:       return DRAW_FIELDS_POINT;
+      case 'FPoint': return LOOK_FIELDS_FPOINT;
+      case 'Line':   return LOOK_FIELDS_LINE;
+      case 'Area':   return LOOK_FIELDS_AREA;
+      default:       return LOOK_FIELDS_POINT;
+    }
+  }
+
+  private advFieldsFor(kind: GeoKind | ''): FieldSpec[] {
+    switch (kind) {
+      case 'FPoint': return ADV_FIELDS_FPOINT;
+      case 'Line':   return ADV_FIELDS_LINE;
+      case 'Area':   return ADV_FIELDS_AREA;
+      default:       return ADV_FIELDS_POINT;
     }
   }
 
@@ -1059,151 +1730,217 @@ class MorphixEngine {
     return (s as any)[group] as Record<string, any>;
   }
 
-  private renderParameters(def?: SymbolDefinition): string {
-    const params = def?.Parameters || [];
-    const tools = def?.Tools || [];
-    if (!params.length && !tools.length) return '';
+  // ────────────────────────────────────────────────────────────────────────────
+  // Layout helpers
 
-    const chip = (text: string) =>
-      `<span style="display:inline-block;margin:3px 4px 0 0;padding:2px 8px;border-radius:999px;background:var(--ms-bg-input);border:1px solid var(--ms-border);font-size:var(--ms-fs-xs);">${this.esc(text)}</span>`;
-
-    const chips = (arr: Array<Record<string, any>>) =>
-      arr.map((it) => chip(it.Name || it.value || JSON.stringify(it))).join('');
-
+  private sectionHead(title: string, resetAction?: string): string {
+    const reset = resetAction
+      ? `<button type="button" class="ms-btn mx-mini" data-action="${this.esc(resetAction)}"
+                 title="Put this section back the way it was">Reset</button>`
+      : '';
     return `
-      <div class="ms-hint" style="padding-top:8px;line-height:1.7;">
-        ${params.length ? `<div><strong>Parameters:</strong> ${chips(params)}</div>` : ''}
-        ${tools.length ? `<div style="margin-top:4px;"><strong>Tools:</strong> ${chips(tools)}</div>` : ''}
+      <div class="mx-section">
+        <div class="ms-section-title">${this.esc(title)}</div>
+        ${reset}
       </div>
     `;
   }
 
-  private renderLabelSection(): string {
-    const s = this.state!;
-    const cells = LABEL_FIELDS.map(([k, l, t, opts]) => {
-      if (t === 'color') return this.colorField('labelOptions', k, l, s.labelOptions[k]);
-      if (t === 'bool') return this.boolField('labelOptions', k, l, s.labelOptions[k]);
-      if (t === 'select') return this.selectField('labelOptions', k, l, s.labelOptions[k], opts || []);
-      return this.textField('labelOptions', k, l, s.labelOptions[k], 'number');
-    }).join('');
-
-    return this.renderSection('Label Options', `
-      <div class="ms-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-        ${cells}
-      </div>
-    `, 'reset-labels');
-  }
-
-  private renderExtraSection(): string {
-    const s = this.state!;
-    const cells = EXTRA_FIELDS
-      .map(([k, l]) => this.textField('extraSettings', k, l, s.extraSettings[k], 'number'))
-      .join('');
-    return this.renderSection('Style Controls', `
-      <div class="ms-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-        ${cells}
-      </div>
-    `);
-  }
-
-  private renderCimSection(): string {
-    const s = this.state!;
-    const keys = Object.keys(s.cim);
-    if (!keys.length) return '';
-    const cells = keys.map((k) => this.textField('cim', k, k, s.cim[k], 'text')).join('');
-    return this.renderSection('CIM (Cartographic Info Model)', `
-      <div class="ms-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-        ${cells}
-      </div>
-    `);
-  }
-
-  private renderJsonSection(): string {
-    const open = this.state!.jsonOpen;
+  /**
+   * Collapsible group. Open/closed state lives on the engine rather than on the
+   * DOM node so a re-render (tab switch, SIDC edit) doesn't snap it shut again.
+   */
+  private disclosure(id: string, title: string, body: string): string {
+    const open = this.openGroups.has(id);
     return `
-      <div style="display:flex;align-items:baseline;justify-content:space-between;">
-        <div class="ms-section-title">Advanced JSON</div>
-        <button type="button" class="ms-btn" data-action="toggle-json" style="margin-right:12px;padding:3px 9px;font-size:var(--ms-fs-xs);">${open ? 'Hide' : 'Show'}</button>
-      </div>
-      ${open
-        ? `<div class="ms-grid full"><textarea class="ms-input" readonly rows="14" data-mx="json-text" style="font-family:var(--ms-font-mono);min-height:240px;resize:vertical;">${this.esc(JSON.stringify(this.serialize(this.state!), null, 2))}</textarea></div>`
-        : ''}
-    `;
-  }
-
-  private renderFooter(errors: string[], isValid: boolean, isDirty: boolean): string {
-    const message = isValid
-      ? (isDirty ? 'Ready to save.' : 'No changes yet.')
-      : errors.map((e) => this.esc(e)).join(' · ');
-    return `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:var(--ms-bg-header);border-top:1px solid var(--ms-divider);">
-        <div data-mx="footer-msg" style="font-size:var(--ms-fs-xs);color:${isValid ? 'var(--ms-text-dim)' : 'var(--ms-danger)'};line-height:1.5;flex:1;min-width:0;">
-          ${message}
-        </div>
-        <div style="display:flex;gap:6px;">
-          <button type="button" class="ms-btn" data-action="cancel">Cancel</button>
-          <button type="button" class="ms-btn primary" data-action="save" ${isValid && isDirty ? '' : 'disabled'}>Save</button>
-        </div>
-      </div>
+      <details class="mx-details" data-mx-group="${this.esc(id)}" ${open ? 'open' : ''}>
+        <summary>${this.esc(title)}</summary>
+        ${body}
+      </details>
     `;
   }
 
   // ────────────────────────────────────────────────────────────────────────────
   // Field builders
 
-  private textField(group: string, key: string, label: string, value: any, type: FieldType): string {
-    const v = value === null || value === undefined
-      ? ''
-      : typeof value === 'object'
-        ? JSON.stringify(value)
-        : String(value);
+  private field(spec: FieldSpec, value: any): string {
+    switch (spec.type) {
+      case 'bool':    return this.boolField(spec, value);
+      case 'color':   return this.colorField(spec, value);
+      case 'select':  return this.selectField(spec, value);
+      case 'number':  return this.numberField(spec, value);
+      case 'dtg':     return this.dtgField(spec, value);
+      case 'country': return this.countryField(spec, value);
+      default:        return this.textField(spec, value);
+    }
+  }
+
+  /** `data-` attributes every editable control carries so onInput can route it. */
+  private dataAttrs(spec: FieldSpec, kind: string): string {
+    return `data-kind="${this.esc(kind)}" data-group="${this.esc(spec.group)}" data-key="${this.esc(spec.key)}" data-type="${this.esc(spec.type)}"`;
+  }
+
+  private hintMarkup(spec: FieldSpec): string {
+    return spec.hint ? `<span class="mx-hint">${this.esc(spec.hint)}</span>` : '';
+  }
+
+  private textField(spec: FieldSpec, value: any): string {
+    const v =
+      value === null || value === undefined
+        ? ''
+        : typeof value === 'object'
+          ? JSON.stringify(value)
+          : String(value);
     return `
       <div class="ms-field">
-        <span class="ms-label">${this.esc(label)}</span>
-        <input class="ms-input" type="text"
-               data-kind="value" data-group="${this.esc(group)}" data-key="${this.esc(key)}"
-               data-type="${this.esc(type)}"
+        <span class="ms-label">${this.esc(spec.label)}</span>
+        <input class="ms-input" type="text" ${this.dataAttrs(spec, 'value')}
+               ${spec.placeholder ? `placeholder="${this.esc(spec.placeholder)}"` : ''}
                value="${this.esc(v)}">
+        ${this.hintMarkup(spec)}
       </div>
     `;
   }
 
-  private boolField(group: string, key: string, label: string, value: any): string {
+  /**
+   * Numeric stepper — a real `type="number"` input with arrows and bounds, plus an
+   * optional slider for values with a natural range (rotation, opacity, size). Both
+   * controls carry the same group/key, and `syncSiblings` keeps them in step.
+   */
+  private numberField(spec: FieldSpec, value: any): string {
+    const num = value === null || value === undefined || value === '' ? '' : String(value);
+    const bounds = [
+      spec.min !== undefined ? `min="${spec.min}"` : '',
+      spec.max !== undefined ? `max="${spec.max}"` : '',
+      `step="${spec.step ?? 1}"`,
+    ].join(' ');
+
+    const slider =
+      spec.slider && spec.min !== undefined && spec.max !== undefined
+        ? `<input class="mx-range" type="range" ${bounds}
+                  value="${this.esc(num === '' ? String(spec.min) : num)}"
+                  ${this.dataAttrs(spec, 'value')}>`
+        : '';
+
+    return `
+      <div class="ms-field">
+        <span class="ms-label">${this.esc(spec.label)}</span>
+        <div class="mx-num">
+          <input class="ms-input" type="number" ${bounds} ${this.dataAttrs(spec, 'value')}
+                 value="${this.esc(num)}">
+          ${spec.unit ? `<span class="mx-unit">${this.esc(spec.unit)}</span>` : ''}
+        </div>
+        ${slider}
+        ${this.hintMarkup(spec)}
+      </div>
+    `;
+  }
+
+  private boolField(spec: FieldSpec, value: any): string {
     const checked = !!value && value !== 0 && value !== '0' && value !== '';
     return `
-      <div class="ms-toggle-row" style="padding:6px 0;">
-        <label>${this.esc(label)}</label>
-        <input type="checkbox" data-kind="value-bool" data-group="${this.esc(group)}" data-key="${this.esc(key)}" ${checked ? 'checked' : ''}>
-      </div>
+      <label class="mx-check">
+        <input type="checkbox" ${this.dataAttrs(spec, 'value-bool')} ${checked ? 'checked' : ''}>
+        <span>${this.esc(spec.label)}</span>
+      </label>
     `;
   }
 
-  private colorField(group: string, key: string, label: string, value: any): string {
+  private colorField(spec: FieldSpec, value: any): string {
     return `
       <div class="ms-field">
-        <span class="ms-label">${this.esc(label)}</span>
-        <input class="ms-input" type="color" data-kind="value-color"
-               data-group="${this.esc(group)}" data-key="${this.esc(key)}"
-               value="${this.esc(this.rgbToHex(value))}"
-               style="height:32px;padding:2px;cursor:pointer;">
+        <span class="ms-label">${this.esc(spec.label)}</span>
+        <input class="ms-input mx-color" type="color" ${this.dataAttrs(spec, 'value-color')}
+               value="${this.esc(this.rgbToHex(value))}">
+        ${this.hintMarkup(spec)}
       </div>
     `;
   }
 
-  private selectField(group: string, key: string, label: string, value: any, options: string[]): string {
+  private selectField(spec: FieldSpec, value: any): string {
     const current = value == null ? '' : String(value);
-    const opts = options
-      .map((o) => `<option value="${this.esc(o)}" ${o === current ? 'selected' : ''}>${this.esc(o)}</option>`)
-      .join('');
+    const choices = spec.choices || [];
+    const known = choices.some((o) => o.value === current);
     return `
       <div class="ms-field">
-        <span class="ms-label">${this.esc(label)}</span>
-        <select class="ms-input" data-kind="value-select"
-                data-group="${this.esc(group)}" data-key="${this.esc(key)}">
-          ${opts}
+        <span class="ms-label">${this.esc(spec.label)}</span>
+        <select class="ms-select" ${this.dataAttrs(spec, 'value-select')}>
+          ${choices
+            .map(
+              (o) =>
+                `<option value="${this.esc(o.value)}" ${o.value === current ? 'selected' : ''}>${this.esc(o.label)}</option>`,
+            )
+            .join('')}
+          ${known ? '' : `<option value="${this.esc(current)}" selected>${this.esc(current)}</option>`}
         </select>
+        ${this.hintMarkup(spec)}
       </div>
     `;
+  }
+
+  /**
+   * Country picker. Shows names, stores the three-letter code. A code already on
+   * the symbol that isn't in COUNTRIES stays selected as its own entry rather
+   * than being silently swapped for the first country in the list.
+   */
+  private countryField(spec: FieldSpec, value: any): string {
+    const current = value == null ? '' : String(value).trim();
+    const known = COUNTRIES.some((c) => c.value === current);
+    return `
+      <div class="ms-field">
+        <span class="ms-label">${this.esc(spec.label)}</span>
+        <select class="ms-select" ${this.dataAttrs(spec, 'value-select')}>
+          <option value="" ${current === '' ? 'selected' : ''}>Not set</option>
+          ${current !== '' && !known
+            ? `<option value="${this.esc(current)}" selected>${this.esc(current)}</option>`
+            : ''}
+          ${COUNTRIES.map(
+            (c) =>
+              `<option value="${this.esc(c.value)}" ${c.value === current ? 'selected' : ''}>${this.esc(
+                `${c.label} (${c.value})`,
+              )}</option>`,
+          ).join('')}
+        </select>
+        ${this.hintMarkup(spec)}
+      </div>
+    `;
+  }
+
+  /**
+   * Date-time group field. The symbol stores a MIL-STD DTG string
+   * (`191430ZAUG26`) because that's what the label renderer draws, but nobody
+   * should have to type one — this offers a native date + time picker and does the
+   * conversion both ways. A value that isn't a parseable DTG (free text from an
+   * import, say) is left alone and shown underneath, so picking a date replaces it
+   * deliberately rather than the field quietly dropping it.
+   */
+  private dtgField(spec: FieldSpec, value: any): string {
+    const raw = value == null ? '' : String(value).trim();
+    const local = this.dtgToLocal(raw);
+    const unparsed = raw !== '' && local === '';
+
+    return `
+      <div class="ms-field">
+        <span class="ms-label">${this.esc(spec.label)}</span>
+        <div class="mx-dtg">
+          <input class="ms-input" type="datetime-local" value="${this.esc(local)}"
+                 ${this.dataAttrs(spec, 'value-dtg')}>
+          <button type="button" class="ms-btn mx-mini" title="Set to now"
+                  data-action="dtg-now" data-group="${this.esc(spec.group)}" data-key="${this.esc(spec.key)}">Now</button>
+          <button type="button" class="ms-btn mx-mini" title="Clear"
+                  data-action="dtg-clear" data-group="${this.esc(spec.group)}" data-key="${this.esc(spec.key)}">Clear</button>
+        </div>
+        <span class="mx-hint${unparsed ? ' warn' : ''}" data-mx="dtg-hint:${this.esc(spec.group)}:${this.esc(spec.key)}">${this.esc(
+          this.dtgHint(raw, unparsed),
+        )}</span>
+        ${this.hintMarkup(spec)}
+      </div>
+    `;
+  }
+
+  private dtgHint(raw: string, unparsed: boolean): string {
+    if (raw === '') return 'Not set';
+    return unparsed ? `Currently "${raw}" — pick a date to replace it` : raw;
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -1227,6 +1964,15 @@ class MorphixEngine {
       const eventName = liveKinds.has(kind) ? 'input' : 'change';
       target.addEventListener(eventName, (e) => this.onInput(e));
     });
+    // Remember which disclosures the user opened so a re-render doesn't shut them.
+    this.root.querySelectorAll('details[data-mx-group]').forEach((el) => {
+      el.addEventListener('toggle', () => {
+        const id = (el as HTMLElement).dataset.mxGroup;
+        if (!id) return;
+        if ((el as HTMLDetailsElement).open) this.openGroups.add(id);
+        else this.openGroups.delete(id);
+      });
+    });
   }
 
   private onInput(event: Event): void {
@@ -1245,15 +1991,17 @@ class MorphixEngine {
         this.render();
         return;
 
-      case 'sidc-version':  this.setSidcRange(0,  1,  t.value); this.render(); return;
-      case 'sidc-context':  this.setSidcRange(1,  2,  t.value); this.render(); return;
-      case 'sidc-identity': this.setSidcRange(2,  4,  t.value); this.render(); return;
+      // SIDC digit positions, 0-indexed: 0–1 version, 2 context, 3 standard
+      // identity, 4–5 symbol set, 6 status, 7 HQ/TF/dummy, 8–9 echelon. The
+      // version pair and the two trailing modifier pairs aren't edited here —
+      // version is fixed by the standard, and the modifiers are entity-specific
+      // codes nobody types from memory.
+      case 'sidc-context':  this.setSidcRange(2,  3,  t.value); this.render(); return;
+      case 'sidc-identity': this.setSidcRange(3,  4,  t.value); this.render(); return;
       case 'sidc-set':      this.setSidcRange(4,  6,  t.value); this.render(); return;
       case 'sidc-status':   this.setSidcRange(6,  7,  t.value); this.render(); return;
       case 'sidc-hqtf':     this.setSidcRange(7,  8,  t.value); this.render(); return;
       case 'sidc-echelon':  this.setSidcRange(8,  10, t.value); this.render(); return;
-      case 'sidc-mod1':     this.setSidcRange(16, 18, t.value); this.render(); return;
-      case 'sidc-mod2':     this.setSidcRange(18, 20, t.value); this.render(); return;
 
       case 'value': {
         const group = t.dataset.group!;
@@ -1261,49 +2009,50 @@ class MorphixEngine {
         const type = (t.dataset.type as FieldType) || 'text';
         const coerced = this.coerce(t.value, type);
         if (!(type === 'number' && coerced === undefined)) {
-          (this.state as any)[group][key] = coerced;
-          this.claimGroup(group);
+          this.setValue(group, key, coerced);
         }
-        // Editing the SIDC restructures the form (combos, echelon, name) so it
-        // needs a full re-render; every other value edit only affects the
-        // footer / mirror, so refresh those in place to keep inputs (and the
-        // Save button) alive and focused.
-        if (group === 'amplifier' && key === 'SIDC') {
-          this.applySidc(String(t.value), true);
-          this.render();
-        } else {
-          this.refreshDynamic();
-        }
+        // A stepper and its slider are two inputs over one value — push the new
+        // number into whichever of the pair the user didn't touch.
+        this.syncSiblings(t);
+        this.refreshDynamic();
         return;
       }
 
       case 'value-bool': {
-        const group = t.dataset.group!;
-        const key = t.dataset.key!;
-        (this.state as any)[group][key] = t.checked ? 1 : 0;
-        this.claimGroup(group);
+        this.setValue(t.dataset.group!, t.dataset.key!, t.checked ? 1 : 0);
         this.refreshDynamic();
         return;
       }
 
       case 'value-color': {
-        const group = t.dataset.group!;
-        const key = t.dataset.key!;
-        (this.state as any)[group][key] = this.hexToRgb(t.value);
-        this.claimGroup(group);
+        this.setValue(t.dataset.group!, t.dataset.key!, this.hexToRgb(t.value));
         this.refreshDynamic();
         return;
       }
 
       case 'value-select': {
+        this.setValue(t.dataset.group!, t.dataset.key!, t.value);
+        this.refreshDynamic();
+        return;
+      }
+
+      case 'value-dtg': {
         const group = t.dataset.group!;
         const key = t.dataset.key!;
-        (this.state as any)[group][key] = t.value;
-        this.claimGroup(group);
+        this.setValue(group, key, this.localToDtg(t.value, this.groupValue(this.state, group as FieldGroup)[key]));
+        this.updateDtgHint(group, key);
         this.refreshDynamic();
         return;
       }
     }
+  }
+
+  /** Write one field and take care of the bookkeeping every write needs. */
+  private setValue(group: string, key: string, value: any): void {
+    if (!this.state) return;
+    (this.state as any)[group][key] = value;
+    this.claimGroup(group);
+    this.applyStyleMirror(group, key, value);
   }
 
   /**
@@ -1314,9 +2063,63 @@ class MorphixEngine {
    */
   private claimGroup(group: string): void {
     if (!this.state) return;
-    if (group === 'labelOptions' || group === 'extraSettings') {
-      this.state.owns[group] = true;
+    if (group !== 'labelOptions' && group !== 'extraSettings') return;
+
+    // Claiming extraSettings makes it authoritative: SymbolEngine reads
+    // extraSettings.opacity (and, for the point families, extraSettings.size) in
+    // preference to the drawEssentials copies. Seed those from what the symbol is
+    // showing right now, or nudging Line width would silently snap a half-
+    // transparent graphic back to the class default of fully opaque.
+    if (group === 'extraSettings' && !this.state.owns.extraSettings) {
+      const de = this.state.drawEssentials;
+      if (de.opacity != null) this.state.extraSettings.opacity = de.opacity;
+      if (this.state.kind === 'Point' && Number(de.SIZE) > 0) {
+        this.state.extraSettings.size = Number(de.SIZE);
+      }
     }
+
+    this.state.owns[group] = true;
+  }
+
+  /**
+   * Keep the duplicated style values in step. SymbolEngine lets
+   * extraSettings.opacity / .size override the drawEssentials copies whenever the
+   * symbol carries an extraSettings object, so an Opacity edit that only wrote
+   * drawEssentials would appear to do nothing on such a symbol.
+   */
+  private applyStyleMirror(group: string, key: string, value: any): void {
+    const s = this.state;
+    if (!s || group !== 'drawEssentials' || !s.owns.extraSettings) return;
+    if (key === 'opacity') s.extraSettings.opacity = value;
+    if (key === 'SIZE' && s.kind === 'Point' && Number(value) > 0) {
+      s.extraSettings.size = Number(value);
+    }
+  }
+
+  /**
+   * Copy a freshly typed number into the other input bound to the same field —
+   * the stepper/slider pairs, and any value that legitimately appears on two tabs.
+   */
+  private syncSiblings(source: HTMLInputElement): void {
+    const { group, key } = source.dataset;
+    if (!this.root || !group || !key) return;
+    this.root
+      .querySelectorAll(`[data-group="${group}"][data-key="${key}"]`)
+      .forEach((el) => {
+        if (el !== source) (el as HTMLInputElement).value = source.value;
+      });
+  }
+
+  /** Refresh the DTG string shown beneath a date-time picker after an edit. */
+  private updateDtgHint(group: string, key: string): void {
+    if (!this.root || !this.state) return;
+    const hint = this.root.querySelector(
+      `[data-mx="dtg-hint:${group}:${key}"]`,
+    ) as HTMLElement | null;
+    if (!hint) return;
+    const raw = String(this.groupValue(this.state, group as FieldGroup)[key] ?? '');
+    hint.textContent = this.dtgHint(raw, false);
+    hint.className = 'mx-hint';
   }
 
   private onAction(event: Event): void {
@@ -1326,12 +2129,37 @@ class MorphixEngine {
     event.preventDefault();
 
     switch (action) {
-      case 'cancel':
+      // Closing with unsaved edits asks first — the backdrop covers the whole
+      // screen, so a stray click used to throw the work away without a word.
+      case 'dismiss':
+        if (this.isDirty()) {
+          this.confirmDiscard = true;
+          break;
+        }
         this.close();
         return;
+      case 'discard':
+        this.close();
+        return;
+      case 'keep-editing':
+        this.confirmDiscard = false;
+        break;
       case 'save':
         this.save();
         return;
+      case 'tab':
+        this.activeTab = (t.dataset.tab as TabId) || 'symbol';
+        break;
+      case 'dtg-now': {
+        const group = t.dataset.group!;
+        const key = t.dataset.key!;
+        const prev = this.groupValue(this.state, group as FieldGroup)[key];
+        this.setValue(group, key, this.localToDtg(this.nowAsLocal(), prev));
+        break;
+      }
+      case 'dtg-clear':
+        this.setValue(t.dataset.group!, t.dataset.key!, '');
+        break;
       case 'reset-amplifiers': {
         const snap = this.parseSnapshot();
         this.state.amplifier = snap.amplifier;
@@ -1354,9 +2182,6 @@ class MorphixEngine {
         this.state.cim = snap.cim;
         break;
       }
-      case 'toggle-json':
-        this.state.jsonOpen = !this.state.jsonOpen;
-        break;
     }
     this.render();
   }
@@ -1365,7 +2190,12 @@ class MorphixEngine {
     if (!this.state) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      this.close();
+      if (this.isDirty() && !this.confirmDiscard) {
+        this.confirmDiscard = true;
+        this.render();
+      } else {
+        this.close();
+      }
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
       if (this.validate(this.state).length === 0) this.save();
@@ -1599,6 +2429,66 @@ class MorphixEngine {
     this.state = null;
     this.symbolFilter = '';
     this.focusInfo = null;
+    this.confirmDiscard = false;
+    this.activeTab = 'symbol';
+    this.openGroups.clear();
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Date-time groups
+  //
+  // Symbols store a MIL-STD date-time group — `191430ZAUG26`, i.e.
+  // day / hour / minute / zone letter / month / two-digit year — because that is
+  // what AnnotationEngine draws verbatim beside the symbol. The editor offers a
+  // native date + time picker instead and converts at the boundary, so the format
+  // on disk is unchanged and nobody has to type it.
+
+  private static readonly DTG_MONTHS = [
+    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+  ];
+
+  private static readonly DTG_RE = /^(\d{2})(\d{2})(\d{2})([A-Z])([A-Z]{3})(\d{2})$/i;
+
+  /**
+   * DTG string → the `YYYY-MM-DDTHH:MM` a datetime-local input wants. Returns ''
+   * for anything that isn't a well-formed DTG (free text from an import, a partial
+   * value someone typed by hand), which is the signal to leave that value alone.
+   */
+  private dtgToLocal(raw: string): string {
+    const m = MorphixEngine.DTG_RE.exec(String(raw || '').trim());
+    if (!m) return '';
+    const [, dd, hh, mm, , mon, yy] = m;
+    const monthIndex = MorphixEngine.DTG_MONTHS.indexOf(mon.toUpperCase());
+    if (monthIndex < 0) return '';
+    const day = Number(dd);
+    const hour = Number(hh);
+    const minute = Number(mm);
+    if (day < 1 || day > 31 || hour > 23 || minute > 59) return '';
+    const month = String(monthIndex + 1).padStart(2, '0');
+    return `20${yy}-${month}-${dd}T${hh}:${mm}`;
+  }
+
+  /**
+   * `YYYY-MM-DDTHH:MM` → DTG string. The zone letter of the value being replaced
+   * is carried over (a symbol logged in local zone B stays in B); anything else
+   * gets Zulu. An empty picker clears the field.
+   */
+  private localToDtg(local: string, previous?: any): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(local || '').trim());
+    if (!m) return '';
+    const [, year, month, day, hour, minute] = m;
+    const prior = MorphixEngine.DTG_RE.exec(String(previous || '').trim());
+    const zone = prior ? prior[4].toUpperCase() : 'Z';
+    const mon = MorphixEngine.DTG_MONTHS[Number(month) - 1] || 'JAN';
+    return `${day}${hour}${minute}${zone}${mon}${year.slice(2)}`;
+  }
+
+  /** Now, in the `YYYY-MM-DDTHH:MM` shape localToDtg parses. */
+  private nowAsLocal(): string {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
   // ────────────────────────────────────────────────────────────────────────────
