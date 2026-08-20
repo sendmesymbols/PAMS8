@@ -1,6 +1,8 @@
 import Graphic from "@arcgis/core/Graphic";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import Point from "@arcgis/core/geometry/Point";
+import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 
 import SelectionEngine, { SelectMode } from "./SelectionEngine.ts";
 import EditEngine from "./EditEngine.ts";
@@ -64,6 +66,19 @@ class SelectionActionPanel {
     private _minimized = false;
     private _dragAbort: AbortController | null = null;
 
+    /**
+     * True once the user has manually dragged the panel for the CURRENT selection.
+     * While set, the auto "beside the symbol" placement is suppressed so the user's
+     * chosen position wins — reset to false whenever the selection changes.
+     */
+    private _userMoved = false;
+    /** Signature of the last selection, used to detect a genuinely new selection. */
+    private _lastSelectionSig: string | null = null;
+    /** Watches view pan/zoom so the panel keeps hugging the symbol as it moves. */
+    private _viewWatchHandle: { remove(): void } | null = null;
+    /** Window-resize handler that re-evaluates placement; removed with the container. */
+    private _resizeHandler: (() => void) | null = null;
+
     constructor(
         selectionEngine: SelectionEngine,
         editEngine: EditEngine,
@@ -121,6 +136,7 @@ class SelectionActionPanel {
         if (selected.length === 0 || editActive) {
             this._removeContainer();
             this._removeSimilarPopup();
+            this._lastSelectionSig = null;
             return;
         }
 
@@ -130,8 +146,23 @@ class SelectionActionPanel {
             this._activeTab = visibleTabs[0];
         }
 
+        // A genuinely new selection clears any manual drag offset so the panel
+        // re-hugs the symbol; tab/minimize refreshes on the SAME selection keep it.
+        const sig = selected.map(g => (g as any).uid ?? g.attributes?.id ?? '').join('|');
+        if (sig !== this._lastSelectionSig) {
+            this._lastSelectionSig = sig;
+            this._userMoved = false;
+        }
+
         this._ensureContainer();
         this._render(selected, category, visibleTabs);
+
+        // Place beside the selection once the DOM is laid out (offsetWidth/Height
+        // are valid synchronously here since every style is inline). Skip while the
+        // user is manually positioning this selection's panel.
+        if (!this._userMoved) {
+            this._positionBesideSelection();
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -196,15 +227,45 @@ class SelectionActionPanel {
         document.body.appendChild(el);
         this._container = el;
         this._wireDrag(el);
+        this._wireViewFollow();
     }
 
     private _removeContainer(): void {
         if (this._container) {
             this._dragAbort?.abort();
             this._dragAbort = null;
+            this._viewWatchHandle?.remove();
+            this._viewWatchHandle = null;
+            if (this._resizeHandler) {
+                window.removeEventListener('resize', this._resizeHandler);
+                this._resizeHandler = null;
+            }
             this._container.remove();
             this._container = null;
         }
+    }
+
+    /**
+     * Keep the panel beside the symbol as the map pans/zooms and on window resize.
+     * The getter reads the CURRENT view each evaluation, so it survives a 2D↔3D
+     * view swap without needing to be re-wired. Suppressed once the user drags.
+     */
+    private _wireViewFollow(): void {
+        this._viewWatchHandle = reactiveUtils.watch(
+            () => (this._cb.getView() as any)?.extent,
+            () => {
+                if (!this._container || this._userMoved) return;
+                if (this._selectionEngine.selectedGraphics.length === 0) return;
+                this._positionBesideSelection();
+            },
+        );
+
+        this._resizeHandler = () => {
+            if (!this._container || this._userMoved) return;
+            if (this._selectionEngine.selectedGraphics.length === 0) return;
+            this._positionBesideSelection();
+        };
+        window.addEventListener('resize', this._resizeHandler);
     }
 
     /**
@@ -234,6 +295,9 @@ class SelectionActionPanel {
             ox = e.clientX - rect.left;
             oy = e.clientY - rect.top;
             dragging = true;
+            // The user is taking over placement — stop auto-hugging the symbol
+            // until the selection changes.
+            this._userMoved = true;
             document.body.style.cursor = 'grabbing';
             document.body.style.userSelect = 'none';
             e.preventDefault();
@@ -253,6 +317,148 @@ class SelectionActionPanel {
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
         }, { signal });
+    }
+
+    // -----------------------------------------------------------------------
+    // Placement — hug the selected symbol without overlapping it
+    // -----------------------------------------------------------------------
+
+    /**
+     * Position the panel just beside the current selection, choosing the side
+     * with the best fit so the panel never covers the symbol.
+     *
+     * Strategy: compute the selection's screen-space bounding box, then try
+     * right → left → bottom → top with a fixed gap. The first side where the
+     * panel fits fully inside the viewport (and is therefore clear of the box on
+     * that axis) wins; the cross-axis is clamped into view. If no side fits, the
+     * side with the most free space is used as a best-effort fallback.
+     */
+    private _positionBesideSelection(): void {
+        const view = this._cb.getView();
+        const el = this._container;
+        if (!view || !el) return;
+
+        const bounds = this._selectionScreenBounds(view);
+        if (!bounds) { this._applyDefaultPosition(); return; }
+
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        // Selection scrolled entirely off-screen → nothing to hug; fall back.
+        if (bounds.maxX < 0 || bounds.minX > vw || bounds.maxY < 0 || bounds.minY > vh) {
+            this._applyDefaultPosition();
+            return;
+        }
+
+        const margin = 8;   // keep clear of the viewport edges
+        const gap = 14;     // breathing room between symbol and panel
+        const pw = el.offsetWidth || 380;
+        const ph = el.offsetHeight || 80;
+        const midX = (bounds.minX + bounds.maxX) / 2;
+        const midY = (bounds.minY + bounds.maxY) / 2;
+        const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
+
+        // Each candidate keeps a `fits` flag (fully on-screen on its main axis, so
+        // guaranteed clear of the symbol) and the free space on that side for the
+        // fallback ranking.
+        const candidates: Array<{ fits: boolean; left: number; top: number; space: number }> = [
+            {   // right
+                left: bounds.maxX + gap,
+                top: clamp(midY - ph / 2, margin, vh - ph - margin),
+                fits: bounds.maxX + gap + pw <= vw - margin,
+                space: vw - bounds.maxX,
+            },
+            {   // left
+                left: bounds.minX - gap - pw,
+                top: clamp(midY - ph / 2, margin, vh - ph - margin),
+                fits: bounds.minX - gap - pw >= margin,
+                space: bounds.minX,
+            },
+            {   // bottom
+                left: clamp(midX - pw / 2, margin, vw - pw - margin),
+                top: bounds.maxY + gap,
+                fits: bounds.maxY + gap + ph <= vh - margin,
+                space: vh - bounds.maxY,
+            },
+            {   // top
+                left: clamp(midX - pw / 2, margin, vw - pw - margin),
+                top: bounds.minY - gap - ph,
+                fits: bounds.minY - gap - ph >= margin,
+                space: bounds.minY,
+            },
+        ];
+
+        let chosen = candidates.find(c => c.fits);
+        if (!chosen) {
+            // Nothing fits cleanly (symbol fills the viewport) — take the roomiest
+            // side and clamp both axes; minimal unavoidable overlap.
+            const best = candidates.reduce((a, b) => (b.space > a.space ? b : a));
+            chosen = {
+                fits: false,
+                space: best.space,
+                left: clamp(best.left, margin, vw - pw - margin),
+                top: clamp(best.top, margin, vh - ph - margin),
+            };
+        }
+
+        el.style.left = `${Math.round(chosen.left)}px`;
+        el.style.top = `${Math.round(chosen.top)}px`;
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+        el.style.transform = 'none';
+    }
+
+    /** Restore the original bottom-centre anchor (used when there's nothing to hug). */
+    private _applyDefaultPosition(): void {
+        const el = this._container;
+        if (!el) return;
+        el.style.left = '50%';
+        el.style.top = 'auto';
+        el.style.right = 'auto';
+        el.style.bottom = '70px';
+        el.style.transform = 'translateX(-50%)';
+    }
+
+    /**
+     * Union of the selected graphics' screen-space bounds (pixels, viewport
+     * origin). Points map directly via `toScreen`; lines/areas sample their
+     * extent corners + centre. Returns null if nothing projects (e.g. all behind
+     * the 3D camera).
+     */
+    private _selectionScreenBounds(
+        view: MapView | SceneView,
+    ): { minX: number; minY: number; maxX: number; maxY: number } | null {
+        const selected = this._selectionEngine.selectedGraphics;
+        if (!selected.length) return null;
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let any = false;
+        const add = (sp: { x: number; y: number } | null | undefined) => {
+            if (!sp) return;
+            any = true;
+            if (sp.x < minX) minX = sp.x;
+            if (sp.y < minY) minY = sp.y;
+            if (sp.x > maxX) maxX = sp.x;
+            if (sp.y > maxY) maxY = sp.y;
+        };
+
+        for (const g of selected) {
+            const geom: any = g.geometry;
+            if (!geom) continue;
+            if (geom.type === 'point') {
+                add(view.toScreen(geom));
+            } else if (geom.extent) {
+                const ext = geom.extent;
+                const sr = ext.spatialReference;
+                add(view.toScreen(new Point({ x: ext.xmin, y: ext.ymin, spatialReference: sr })));
+                add(view.toScreen(new Point({ x: ext.xmin, y: ext.ymax, spatialReference: sr })));
+                add(view.toScreen(new Point({ x: ext.xmax, y: ext.ymin, spatialReference: sr })));
+                add(view.toScreen(new Point({ x: ext.xmax, y: ext.ymax, spatialReference: sr })));
+                if (ext.center) add(view.toScreen(ext.center));
+            }
+        }
+
+        return any ? { minX, minY, maxX, maxY } : null;
     }
 
     // -----------------------------------------------------------------------
