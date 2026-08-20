@@ -2267,8 +2267,15 @@ class MorphixEngine {
     }
 
     // The symbol can only be re-rendered into the same geometry family it started in.
+    // Line and Area count as ONE vector family here: the symbol-swap picker is disabled
+    // for both (so symbolKey — hence newKind — never changes for them), they re-render
+    // through the identical pipeline, and getMarker() treats them the same. Some symbol
+    // classes stamp a SYM_GEO_TYPE that disagrees with their Symbols.json entry (e.g. an
+    // Ambush polyline once tagged "Area" while its entry said "Line"); collapsing the two
+    // stops that stale-data disagreement from blocking every edit of such a symbol.
+    const vectorFamily = (k: GeoKind | '') => (k === 'Line' || k === 'Area' ? 'vector' : k);
     const newKind = this.geomKindOf(SYMBOLS[s.symbolKey]?.SymGeoType);
-    if (newKind && s.kind && newKind !== s.kind) {
+    if (newKind && s.kind && vectorFamily(newKind) !== vectorFamily(s.kind)) {
       errors.push(`Cannot change a ${this.geomLabel(s.kind)} symbol to a ${this.geomLabel(newKind)} symbol.`);
     }
     return errors;

@@ -51,7 +51,13 @@ export class Ambush {
     // Symbol properties
     private SID: string = "141700";
     private symName: string = "Ambush";
-    private symGeometricType: string = "Area";
+    // Ambush draws a polyline (arc + teeth + arrow) rendered with a SimpleLineSymbol,
+    // and Symbols.json declares SymGeoType "Line". This value is written verbatim into
+    // drawEssentials.SYM_GEO_TYPE at draw time; if it disagrees with Symbols.json the
+    // Morphix editor's validate() rejects every edit ("Cannot change an Area symbol to
+    // a Line symbol"). Keep it "Line" — getMarker() treats Area/Line identically, so
+    // this has no effect on rendering.
+    private symGeometricType: string = "Line";
     private _lineSym: SimpleLineSymbol | null = null;
     private _points: Point[] = [];
     private _geometryType: string | null = null;
@@ -128,10 +134,15 @@ export class Ambush {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {
-                    this.tempGraphic.geometry = new Polyline({
-                        paths: options.GEOM,
-                        spatialReference: this.view.spatialReference
-                    });
+                    // A re-render (Morphix edit / plan load) hands back a live Polyline;
+                    // an interactive/programmatic caller may pass a raw paths array. Use
+                    // the Polyline as-is, else build one from paths — matching Block.ts.
+                    this.tempGraphic.geometry = (options.GEOM instanceof Polyline)
+                        ? options.GEOM
+                        : new Polyline({
+                            paths: options.GEOM as any,
+                            spatialReference: this.view.spatialReference
+                        });
                 } catch (error) {
                     console.error(this.symName, "Failed to create Polyline geometry:", error);
                 }
