@@ -49,6 +49,7 @@ export class UEISymbol {
     private _ueiData: MilSymbolMarker | null = null;
     private _ptSymbol: PictureMarkerSymbol | null = null;
     private _options: any = null;
+    private _sidc: string = "";
 
     private isDrawing: boolean = false;
     private tempGraphic: Graphic | null = null;
@@ -70,11 +71,18 @@ export class UEISymbol {
     public init(options: any, marker?: any, sic?: string, symName?: string, offset?: string, sidc?: string): void {
         if (sic) this.SIC = sic;
         if (symName) this.symName = symName;
+        if (sidc) this._sidc = sidc;
         this._options = options;
 
         const opts = options.OPTIONS || options;
         const amplifiers = Object.fromEntries(AMPLIFIER_FIELDS.map(f => [f, opts[f] || '']));
-        const milsymbolOptions = { size: Number(options.extraSettings?.size) || 35, ...amplifiers };
+        // Size can arrive two ways: on the runtime drawEssentials (extraSettings.size,
+        // what the editor / global resize write) or inside the milsymbol OPTIONS
+        // (OPTIONS.size — the canonical plan format, see AttackPlan.json). Honour
+        // whichever is present so a plan-loaded symbol renders at its stored size
+        // instead of snapping back to 35.
+        const milsymbolSize = Number(options.extraSettings?.size) || Number(opts.size) || 35;
+        const milsymbolOptions = { size: milsymbolSize, ...amplifiers };
 
         this._ueiData = new (window as any).MS.symbol(sidc, milsymbolOptions).getMarker() as MilSymbolMarker;
 
@@ -152,15 +160,44 @@ export class UEISymbol {
         de.SYM_NAME = this.symName;
         de.GEOM = geometry;
         de.AMPLIFIER = this.amplifier.toString();
-        // Record the marker size actually rendered (milsymbol read it from
-        // options.extraSettings.size in init) so the stored drawEssentials
-        // reflects what's on screen — the editor and the global resize both
-        // read de.extraSettings.size.
-        const usedSize = Number((options as any)?.extraSettings?.size);
+
+        // The real milsymbol options. `options` is the drawEssentials handed to
+        // init(); a Morphix re-render / plan load nests the milsymbol options
+        // under .OPTIONS, while an interactive draw leaves the fields flat on the
+        // drawEssentials. Unwrap once — otherwise we store the WHOLE drawEssentials
+        // (its own nested OPTIONS, AMPLIFIER, extraSettings, ratios, SCOPE and all)
+        // as de.OPTIONS, which sinks the real options a level deeper on every edit
+        // and drops the flat OPTIONS.size the plan format / serializer key off.
+        const srcOptions = (options as any)?.OPTIONS || options || {};
+
+        // Marker size actually rendered (init read it from extraSettings.size or
+        // OPTIONS.size). Keep it on BOTH the runtime field the editor/global
+        // resize read (de.extraSettings.size) and inside the canonical OPTIONS.size
+        // the plan format stores (see AttackPlan.json).
+        const usedSize =
+            Number((options as any)?.extraSettings?.size) || Number(srcOptions.size);
+
+        // Store a CLEAN, flat OPTIONS object matching the plan format: the milsymbol
+        // fields plus size / symType / SIDC / ANGLE / opacity / GEOM — never a
+        // drawEssentials. Spreading srcOptions first preserves any extra keys it
+        // carried (alphaNum, hfid, ECHELON, …); the explicit keys below then pin the
+        // canonical ones to what was actually rendered.
+        const cleanOptions: Record<string, any> = { ...srcOptions };
+        delete cleanOptions.OPTIONS;
+        delete cleanOptions.AMPLIFIER;
+        delete cleanOptions.extraSettings;
+        delete cleanOptions.SCOPE;
+        cleanOptions.symType = 'FPoint';
+        cleanOptions.SIDC = (options as any)?.SIDC || srcOptions.SIDC || this._sidc || de.SIDC;
+        cleanOptions.ANGLE = (options as any)?.ANGLE ?? srcOptions.ANGLE ?? 0;
+        cleanOptions.opacity = (options as any)?.opacity ?? srcOptions.opacity ?? 1;
+        cleanOptions.GEOM = geometry;
         if (Number.isFinite(usedSize) && usedSize > 0) {
+            cleanOptions.size = usedSize;
             de.extraSettings = { ...de.extraSettings, size: usedSize };
         }
-        (de as any).OPTIONS = options;
+
+        (de as any).OPTIONS = cleanOptions;
         (de as any).UEI = "1";
         return de;
     }

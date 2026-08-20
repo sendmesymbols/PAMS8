@@ -1218,6 +1218,24 @@ function initializeAutocomplete() {
       ce.preventDefault();
       enterDockEditMode(ce.detail.graphic, ce.detail.state);
     });
+
+    // While the dock is editing a symbol (Details mode), moving the selection to
+    // ANOTHER symbol — or clearing it — leaves the dock showing the previous
+    // symbol's values, which reads as if it had refreshed for the newly clicked
+    // one. Leave edit mode and close the dock as soon as the selection no longer
+    // includes the symbol being edited, so a stale editor can't be mistaken for a
+    // live one. Compare by attributes.id, not object identity: our own edit
+    // re-renders into a new Graphic and rebases the selection onto it under the
+    // same id (and rebaseSelection emits nothing), so this never fires on our
+    // own re-render — only when the user genuinely selects something else.
+    symbolEngine.selectionEngine?.on('selectionChange', (data: any) => {
+      if (!dockEditGraphic || !dockEditId) return;
+      const ids = (data?.selected ?? []).map((g: any) => g?.attributes?.id);
+      if (!ids.includes(dockEditId)) {
+        exitDockEditMode();
+        hideParamsDock();
+      }
+    });
   }
 
   function enterDockEditMode(graphic: any, state: any): void {
