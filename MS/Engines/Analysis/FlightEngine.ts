@@ -22,6 +22,7 @@ import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 export interface FlightPreset {
   label: string;
@@ -300,7 +301,6 @@ export class FlightEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   initialize(view: MapView | SceneView): void {
@@ -909,24 +909,41 @@ export class FlightEngine {
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
       this._panelEl.id = 'flight-engine-panel';
-      this._panelEl.className = 'flight-panel';
+      this._panelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._panelEl.setAttribute('data-engine', 'flight');
+      this._panelEl.style.top = '62px';
+      this._panelEl.style.right = '12px';
+      this._panelEl.style.width = '392px';
       document.body.appendChild(this._panelEl);
     }
     const preset = UAV_PRESETS[this._presetKey] ?? UAV_PRESETS.fixed_wing;
     this._panelEl.style.setProperty('--flight-accent', preset.accentHex);
+    // The re-edit path repopulates from the committed plan, so the panel is
+    // rebuilt rather than reused.
     this._panelEl.innerHTML = this._buildPanelHTML(isEdit);
-    this._panelEl.style.display = 'block';
+    this._panelEl.classList.add('ms-visible');
     this._bindPanelEvents();
     this._applyPendingValues();
     this._makeDraggable();
+    this._syncResultsVisible();
   }
 
   private _hidePanel(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
+    this._panelEl?.classList.remove('ms-visible');
   }
 
+  /**
+   * Collapse the body and keep the header. This was byte-identical to
+   * _hidePanel, so the minimize button made the whole panel vanish exactly
+   * like Close, with no way back short of reopening the tool.
+   */
   private _minimizePanel(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
+    const body = this._panelEl?.querySelector<HTMLElement>('.ms-body');
+    const btn = this._el('flight-min-btn');
+    if (!body || !btn) return;
+    const minimized = body.classList.toggle('ms-minimized');
+    btn.textContent = minimized ? '\u25B6' : '\u25BC';
+    btn.title = minimized ? 'Restore' : 'Minimize';
   }
 
   private _buildPanelHTML(isEdit: boolean): string {
@@ -936,27 +953,31 @@ export class FlightEngine {
       .join('');
 
     return `
-      <div class="flight-header" id="flight-drag-handle">
-        <span class="flight-header-icon">UAV</span>
-        <span class="flight-header-title">Flight Analysis${isEdit ? ' - Re-edit' : ''}</span>
-        <span class="flight-status-dot" id="flight-status-dot"></span>
-        <span class="flight-status-lbl" id="flight-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
-        <button class="flight-help-btn" id="flight-help-btn" title="How flight analysis works">?</button>
-        <button class="flight-minimize-btn" id="flight-min-btn" title="Minimize">v</button>
-        <button class="flight-close-btn" id="flight-close-btn" title="Close and clear working graphics">x</button>
+      <div class="ms-header" id="flight-drag-handle">
+        <span class="ms-header-icon">UAV</span>
+        <span class="ms-header-title">Flight Analysis${isEdit ? ' — Re-edit' : ''}</span>
+        <span class="ms-status-dot" id="flight-status-dot"></span>
+        <span class="ms-status-lbl" id="flight-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
+        <button class="ms-header-btn ms-btn-round" id="flight-help-btn" title="How flight analysis works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="flight-min-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="flight-close-btn" title="Close and clear working graphics">✕</button>
       </div>
 
-      <div class="flight-help-popover" id="flight-help-popover" hidden>
-        <div class="flight-help-head">
+      <div class="ms-help-popover" id="flight-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="flight-help-kicker">Field Guide</div>
-            <div class="flight-help-title">UAV Flight Analysis</div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">UAV Flight Analysis</div>
           </div>
-          <button class="flight-help-close" id="flight-help-close" title="Close">x</button>
+          <button class="ms-help-close" id="flight-help-close" title="Close">✕</button>
         </div>
-        <div class="flight-help-body">
+        <div class="ms-help-body">
+          <div class="ms-help-answers">
+            <div class="ms-help-answers-kicker">Answers</div>
+            <div class="ms-help-answers-q">Can this UAV fly the route, and what will it see?</div>
+          </div>
           <p>Plans a UAV mission from a launch or current position. The engine models the UAV route, computes leg distance and ETA, projects sensor coverage along the path, and visualises altitude-above-ground (AGL) and weapon envelope where relevant.</p>
-          <div class="flight-help-block">
+          <div class="ms-help-block">
             <h4>What it analyses</h4>
             <ol>
               <li><b>Route geometry</b> — waypoints, leg lengths, turn points, total track distance, and return reserve from the active endurance budget.</li>
@@ -965,17 +986,16 @@ export class FlightEngine {
               <li><b>Weapon envelope</b> (if armed) — uses weapon range to overlay the engagement reach forward of the platform.</li>
             </ol>
           </div>
-          <div class="flight-help-block">
+          <div class="ms-help-block">
             <h4>Setting waypoints</h4>
             <ol>
-              <li>Pick a UAV preset (or tune speed, altitude, endurance, payload manually).</li>
-              <li>Click on the map to drop sequential waypoints — each one extends the active leg and re-runs distance, ETA, and coverage.</li>
-              <li>Drag a waypoint to relocate it; right-click to delete. The route, sensor footprint, and timeline update live.</li>
-              <li>Scrub or animate the timeline to preview platform position, sensor cone, and coverage at any time-of-mission.</li>
+              <li>Choose a platform preset, or tune speed, altitude, endurance and payload under Advanced.</li>
+              <li>Press <strong>Add waypoint</strong> and click the map — each waypoint extends the leg and re-runs distance, ETA and coverage.</li>
+              <li>Scrub or animate the timeline to preview platform position, sensor cone and coverage at any time-of-mission.</li>
               <li>Commit the plan when the route is ready to persist as a map overlay.</li>
             </ol>
           </div>
-          <div class="flight-help-block">
+          <div class="ms-help-block">
             <h4>How parameters change the analysis</h4>
             <ol>
               <li><b>Speed &amp; endurance</b> control reachable range and ETA per leg — the return-reserve metric warns when the route exceeds the safe round-trip budget.</li>
@@ -987,84 +1007,100 @@ export class FlightEngine {
         </div>
       </div>
 
-      <div class="flight-body">
-        <div class="flight-status-msg" id="flight-status">Plan route, sensor coverage, endurance, and timing.</div>
+      <div class="ms-body">
+        <!-- Default view: pick a platform, lay down waypoints, commit. The
+             performance numbers, display toggles and the timeline all live in
+             the collapsed disclosures below. -->
+        <div class="ms-status" id="flight-status">Plan route, sensor coverage, endurance, and timing.</div>
 
-        <div class="flight-sec">Platform</div>
-        <div class="flight-field-full">
-          <select id="flight-preset" class="flight-select">${presetOptions}</select>
-          <div class="flight-coords" id="flight-role">${preset.role}</div>
-        </div>
-
-        <div class="flight-divider"></div>
-        <div class="flight-sec">Mission Performance</div>
-        <div class="flight-grid">
-          <div class="flight-field"><div class="flight-label">Speed km/h</div><input id="flight-speed" class="flight-input" type="number" min="1" max="800" step="5" value="${preset.speedKmh}"></div>
-          <div class="flight-field"><div class="flight-label">Endurance min</div><input id="flight-endurance" class="flight-input" type="number" min="1" max="2400" step="5" value="${preset.enduranceMin}"></div>
-          <div class="flight-field"><div class="flight-label">Altitude m</div><input id="flight-altitude" class="flight-input" type="number" min="0" max="20000" step="50" value="${preset.altitudeM}"></div>
-          <div class="flight-field"><div class="flight-label">Sensor range m</div><input id="flight-sensor-range" class="flight-input" type="number" min="0" max="50000" step="100" value="${preset.sensorRangeM}"></div>
-          <div class="flight-field"><div class="flight-label">Sensor FOV deg</div><input id="flight-sensor-fov" class="flight-input" type="number" min="5" max="360" step="5" value="${preset.sensorFovDeg}"></div>
-          <div class="flight-field"><div class="flight-label">Weapon range m</div><input id="flight-weapon-range" class="flight-input" type="number" min="0" max="80000" step="100" value="${preset.weaponRangeM}"></div>
-        </div>
-
-        <div class="flight-sec">Display Options</div>
-        <div class="flight-toggle-row">
-          <label class="flight-label">Armed</label>
-          <input id="flight-armed" type="checkbox" class="flight-check" ${preset.armed ? 'checked' : ''}>
-        </div>
-        <div class="flight-toggle-row">
-          <label class="flight-label">Sensor footprint</label>
-          <input id="flight-show-coverage" type="checkbox" class="flight-check" checked>
-        </div>
-        <div class="flight-toggle-row">
-          <label class="flight-label">Weapon envelope</label>
-          <input id="flight-show-weapon" type="checkbox" class="flight-check" ${preset.armed ? 'checked' : ''}>
-        </div>
-        <div class="flight-toggle-row">
-          <label class="flight-label">Endurance boundary</label>
-          <input id="flight-show-endurance" type="checkbox" class="flight-check" checked>
-        </div>
-        <div class="flight-toggle-row">
-          <label class="flight-label">Coverage trail</label>
-          <input id="flight-show-trail" type="checkbox" class="flight-check" checked>
-        </div>
-
-        <div class="flight-divider"></div>
-        <div class="flight-sec">Timeline</div>
-        <div class="flight-slider-row">
-          <span class="flight-label">Mission time</span>
-          <input id="flight-timeline" type="range" min="0" max="1" step="0.1" value="0" class="flight-slider">
-          <span id="flight-timeline-readout" class="flight-slider-val">T+0 min</span>
-        </div>
-
-        <div class="flight-metrics">
-          <div>
-            <span>Route</span>
-            <strong id="flight-metric-route">0 km</strong>
+        <div class="ms-section-title">Platform</div>
+        <div class="ms-grid full">
+          <div class="ms-field">
+            <label class="ms-label" for="flight-preset">UAV type</label>
+            <select id="flight-preset" class="ms-select">${presetOptions}</select>
           </div>
-          <div>
-            <span>ETA</span>
-            <strong id="flight-metric-eta">0 min</strong>
+        </div>
+        <div class="flight-role" id="flight-role">${preset.role}</div>
+
+        <div class="ms-section-title">Route</div>
+        <div class="ms-btn-row">
+          <button class="ms-btn primary" id="flight-add-wp-btn" title="Click, then click the map to append a waypoint">📍 Add waypoint</button>
+        </div>
+
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="flight-commit-btn">Commit ↗</button>
+        </div>
+
+        <div id="flight-results" hidden>
+          <div class="flight-metrics">
+            <div>
+              <span>Route</span>
+              <strong id="flight-metric-route">0 km</strong>
+            </div>
+            <div>
+              <span>ETA</span>
+              <strong id="flight-metric-eta">0 min</strong>
+            </div>
+            <div>
+              <span>RTB</span>
+              <strong id="flight-metric-reserve">0 min</strong>
+            </div>
+            <div>
+              <span>WP</span>
+              <strong id="flight-metric-wp">0</strong>
+            </div>
           </div>
-          <div>
-            <span>RTB</span>
-            <strong id="flight-metric-reserve">0 min</strong>
+          <div class="ms-btn-row">
+            <button class="ms-btn" id="flight-animate-btn">Animate ▶</button>
+            <button class="ms-btn" id="flight-stop-btn">Stop</button>
+            <button class="ms-btn danger" id="flight-clear-btn">Clear route</button>
           </div>
-          <div>
-            <span>WP</span>
-            <strong id="flight-metric-wp">0</strong>
+          <div class="ms-slider-row">
+            <div class="ms-slider-label">Mission time</div>
+            <input id="flight-timeline" type="range" min="0" max="1" step="0.1" value="0">
+            <div class="ms-slider-value" id="flight-timeline-readout">T+0 min</div>
           </div>
         </div>
 
-        <div class="flight-divider"></div>
-        <div class="flight-btn-row">
-          <button class="flight-btn" id="flight-add-wp-btn">Add WP</button>
-          <button class="flight-btn" id="flight-clear-btn">Clear</button>
-        </div>
-        <div class="flight-btn-row">
-          <button class="flight-btn" id="flight-animate-btn">Animate</button>
-          <button class="flight-btn" id="flight-stop-btn">Stop</button>
-          <button class="flight-btn flight-btn-primary" id="flight-commit-btn">Commit</button>
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="flight-adv-toggle" aria-expanded="false" aria-controls="flight-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Performance, payload, display</span>
+          </button>
+          <div class="ms-disclosure-body" id="flight-adv-body" hidden>
+            <div class="ms-section-title">Mission performance</div>
+            <div class="ms-grid">
+              <div class="ms-field"><label class="ms-label" for="flight-speed">Speed km/h</label><input id="flight-speed" class="ms-input" type="number" min="1" max="800" step="5" value="${preset.speedKmh}"></div>
+              <div class="ms-field"><label class="ms-label" for="flight-endurance">Endurance min</label><input id="flight-endurance" class="ms-input" type="number" min="1" max="2400" step="5" value="${preset.enduranceMin}"></div>
+              <div class="ms-field"><label class="ms-label" for="flight-altitude">Altitude m</label><input id="flight-altitude" class="ms-input" type="number" min="0" max="20000" step="50" value="${preset.altitudeM}"></div>
+              <div class="ms-field"><label class="ms-label" for="flight-sensor-range">Sensor range m</label><input id="flight-sensor-range" class="ms-input" type="number" min="0" max="50000" step="100" value="${preset.sensorRangeM}"></div>
+              <div class="ms-field"><label class="ms-label" for="flight-sensor-fov">Sensor FOV deg</label><input id="flight-sensor-fov" class="ms-input" type="number" min="5" max="360" step="5" value="${preset.sensorFovDeg}"></div>
+              <div class="ms-field"><label class="ms-label" for="flight-weapon-range">Weapon range m</label><input id="flight-weapon-range" class="ms-input" type="number" min="0" max="80000" step="100" value="${preset.weaponRangeM}"></div>
+            </div>
+
+            <div class="ms-section-title">Display options</div>
+            <div class="ms-toggle-row">
+              <label for="flight-armed">Armed</label>
+              <input id="flight-armed" type="checkbox" class="ms-input" ${preset.armed ? 'checked' : ''}>
+            </div>
+            <div class="ms-toggle-row">
+              <label for="flight-show-coverage">Sensor footprint</label>
+              <input id="flight-show-coverage" type="checkbox" class="ms-input" checked>
+            </div>
+            <div class="ms-toggle-row">
+              <label for="flight-show-weapon">Weapon envelope</label>
+              <input id="flight-show-weapon" type="checkbox" class="ms-input" ${preset.armed ? 'checked' : ''}>
+            </div>
+            <div class="ms-toggle-row">
+              <label for="flight-show-endurance">Endurance boundary</label>
+              <input id="flight-show-endurance" type="checkbox" class="ms-input" checked>
+            </div>
+            <div class="ms-toggle-row">
+              <label for="flight-show-trail">Coverage trail</label>
+              <input id="flight-show-trail" type="checkbox" class="ms-input" checked>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -1099,16 +1135,19 @@ export class FlightEngine {
       this._setVal('flight-weapon-range', preset.weaponRangeM);
       this._setChecked('flight-armed', preset.armed);
       this._setChecked('flight-show-weapon', preset.armed);
+      this._panelEl?.style.setProperty('--flight-accent', preset.accentHex);
       const role = this._el('flight-role');
       if (role) role.textContent = preset.role;
       this._redraw();
     });
 
     this._el('flight-add-wp-btn')?.addEventListener('click', () => this._startPick());
+    bindDisclosures(this._panelEl);
     this._el('flight-clear-btn')?.addEventListener('click', () => {
       this._waypoints = this._waypoints.slice(0, 1);
       this._stopAnimation();
       this._redraw();
+      this._syncResultsVisible();
     });
     this._el('flight-animate-btn')?.addEventListener('click', () => this._startAnimation());
     this._el('flight-stop-btn')?.addEventListener('click', () => this._stopAnimation());
@@ -1126,9 +1165,24 @@ export class FlightEngine {
     });
   }
 
+  /** Pulse the waypoint button while the engine is waiting on a map click. */
+  private _setPickArmed(armed: boolean): void {
+    this._el('flight-add-wp-btn')?.classList.toggle('ms-armed', armed);
+  }
+
+  /**
+   * The metrics, playback controls and timeline only mean something once a
+   * route exists; a single launch waypoint is not yet a route.
+   */
+  private _syncResultsVisible(): void {
+    const el = this._el('flight-results');
+    if (el) el.hidden = this._waypoints.length < 2;
+  }
+
   private _startPick(): void {
     if (!this._view) return;
     this._cancelPick();
+    this._setPickArmed(true);
     this._setStatus('Click the map to append the next waypoint.', 'pick');
     this._pickHandle = this._view.on('click', (event: any) => {
       event.stopPropagation?.();
@@ -1145,6 +1199,7 @@ export class FlightEngine {
   private _cancelPick(): void {
     this._pickHandle?.remove?.();
     this._pickHandle = null;
+    this._setPickArmed(false);
   }
 
   private _startAnimation(): void {
@@ -1455,6 +1510,7 @@ export class FlightEngine {
   }
 
   private _syncPanel(metrics: FlightPlanMetrics, values: FlightPanelValues): void {
+    this._syncResultsVisible();
     const timeline = this._el('flight-timeline') as HTMLInputElement | null;
     if (timeline) {
       timeline.max = String(Math.max(1, metrics.durationMin));
@@ -1530,7 +1586,9 @@ export class FlightEngine {
     else EngineLogger.nextStep(ENGINE_NAME, message);
     if (el) {
       el.textContent = message;
-      el.className = `flight-status-msg ${tone}`;
+      // .ms-status ships running / warning / success variants.
+      const cls = tone === 'ok' ? 'success' : tone === 'warn' ? 'warning' : 'running';
+      el.className = `ms-status ${cls}`;
     }
     const dotEl = this._el('flight-status-dot');
     const lblEl = this._el('flight-status-lbl');
@@ -1576,313 +1634,6 @@ export class FlightEngine {
     if (el) el.checked = checked;
   }
 
-  private _injectStyles(): void {
-    if (document.getElementById('flight-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'flight-engine-styles';
-    style.textContent = `
-      .flight-panel {
-        position: fixed;
-        top: 60px;
-        left: 306px;
-        width: 380px;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius);
-        color: var(--ms-text);
-        font-family: var(--ms-font);
-        font-size: var(--ms-fs);
-        z-index: 1100;
-        user-select: none;
-        box-shadow: var(--ms-shadow);
-        display: none;
-        animation: flightPanelIn 0.18s cubic-bezier(0.34,1.56,0.64,1);
-      }
-      @keyframes flightPanelIn {
-        from { opacity:0; transform: scale(0.94) translateY(-8px); }
-        to   { opacity:1; transform: scale(1) translateY(0); }
-      }
-      .flight-header {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 9px 10px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-        border-radius: 5px 5px 0 0;
-        cursor: grab;
-      }
-      .flight-header:active { cursor: grabbing; }
-      .flight-header-icon {
-        flex: 0 0 auto;
-        font-size: 9px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-success);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        padding: 2px 3px;
-        line-height: 1;
-      }
-      .flight-header-title {
-        font-size: var(--ms-fs-sm);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--ms-warning);
-        font-weight: 700;
-        flex: 1;
-      }
-      .flight-status-dot {
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        background: #555;
-        flex-shrink: 0;
-        transition: background 0.3s, box-shadow 0.3s;
-      }
-      .flight-status-lbl {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-        min-width: 43px;
-      }
-      .flight-help-btn, .flight-minimize-btn, .flight-close-btn {
-        background: none;
-        border: 1px solid transparent;
-        color: var(--ms-text-dim);
-        font-size: var(--ms-fs);
-        cursor: pointer;
-        padding: 0 2px;
-        line-height: 1;
-        transition: color 0.15s;
-        flex: 0 0 auto;
-      }
-      .flight-help-btn {
-        width: 17px;
-        height: 17px;
-        border-color: var(--ms-border);
-        border-radius: 50%;
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .flight-help-btn:hover, .flight-minimize-btn:hover, .flight-close-btn:hover { color: var(--ms-text); }
-      .flight-help-popover {
-        position: absolute;
-        top: 39px;
-        left: 8px;
-        right: 8px;
-        z-index: 1120;
-        max-height: min(420px, calc(100vh - 132px));
-        overflow-y: auto;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: 4px;
-        box-shadow: var(--ms-shadow);
-        color: var(--ms-text);
-      }
-      .flight-help-popover[hidden] { display: none; }
-      .flight-help-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 10px 11px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-      }
-      .flight-help-kicker {
-        font-size: var(--ms-fs-xs);
-        color: var(--ms-text-label);
-        letter-spacing: 0.09em;
-        text-transform: uppercase;
-      }
-      .flight-help-title {
-        margin-top: 2px;
-        font-size: var(--ms-fs-sm);
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .flight-help-close {
-        width: 20px;
-        height: 20px;
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        cursor: pointer;
-      }
-      .flight-help-close:hover { color: var(--ms-text); }
-      .flight-help-body {
-        padding: 10px 11px 12px;
-        font-size: var(--ms-fs);
-        line-height: 1.45;
-        color: var(--ms-text-dim);
-        user-select: text;
-      }
-      .flight-help-body p { margin: 0 0 9px; }
-      .flight-help-block { margin-top: 10px; }
-      .flight-help-block h4 {
-        margin: 0 0 5px;
-        font-size: var(--ms-fs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text);
-      }
-      .flight-help-block ol { margin: 0; padding-left: 17px; }
-      .flight-help-block li { margin: 3px 0; }
-      .flight-body { padding: 0 0 6px; }
-      .flight-status-msg {
-        margin: 8px 10px 2px;
-        padding: 6px 7px;
-        border: 1px solid var(--ms-divider);
-        border-radius: 3px;
-        color: var(--ms-text-dim);
-        background: var(--ms-bg-input);
-        font-size: var(--ms-fs-xs);
-        line-height: 1.35;
-      }
-      .flight-status-msg.ok { color: var(--ms-success); }
-      .flight-status-msg.warn { color: var(--ms-danger); border-color: var(--ms-danger); }
-      .flight-status-msg.pick { color: var(--ms-accent); border-color: var(--ms-accent); }
-      .flight-sec {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--ms-text-label);
-        padding: 9px 12px 4px;
-      }
-      .flight-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
-        margin: 4px 0;
-      }
-      .flight-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 7px;
-        padding: 0 10px 8px;
-      }
-      .flight-field { display: flex; flex-direction: column; gap: 3px; }
-      .flight-field-full { padding: 0 10px 8px; }
-      .flight-label {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-      }
-      .flight-input, .flight-select {
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        color: var(--ms-text);
-        font-family: inherit;
-        font-size: var(--ms-fs);
-        padding: 5px 7px;
-        width: 100%;
-        outline: none;
-        transition: border-color 0.15s;
-        box-sizing: border-box;
-      }
-      .flight-input:focus, .flight-select:focus { border-color: var(--flight-accent, var(--ms-accent)); }
-      .flight-select option { background: var(--ms-bg); }
-      .flight-toggle-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 12px;
-      }
-      .flight-check {
-        accent-color: var(--ms-warning);
-        width: 13px; height: 13px;
-        cursor: pointer;
-      }
-      .flight-slider-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 2px 10px 6px;
-      }
-      .flight-slider-row .flight-label { flex: 1; }
-      .flight-slider {
-        flex: 2;
-        accent-color: var(--ms-warning);
-        cursor: pointer;
-      }
-      .flight-slider-val {
-        font-size: var(--ms-fs-sm);
-        color: var(--ms-warning);
-        min-width: 54px;
-        text-align: right;
-      }
-      .flight-metrics {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 6px;
-        padding: 2px 10px 4px;
-      }
-      .flight-metrics div {
-        min-width: 0;
-        padding: 5px 6px;
-        border-radius: 3px;
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-divider);
-      }
-      .flight-metrics span {
-        display: block;
-        color: var(--ms-text-label);
-        font-size: var(--ms-fs-xs);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-      .flight-metrics strong {
-        display: block;
-        margin-top: 2px;
-        color: var(--ms-text);
-        font-size: var(--ms-fs-sm);
-        white-space: nowrap;
-      }
-      .flight-risk { color: var(--ms-danger) !important; }
-      .flight-ok { color: var(--ms-success) !important; }
-      .flight-coords {
-        font-size: var(--ms-fs-xs);
-        color: var(--flight-accent, var(--ms-accent));
-        padding: 5px 2px 0;
-        letter-spacing: 0.04em;
-      }
-      .flight-btn-row {
-        display: flex;
-        gap: 6px;
-        padding: 6px 10px 0;
-      }
-      .flight-btn {
-        flex: 1;
-        padding: 6px 4px;
-        font-family: inherit;
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        cursor: pointer;
-        border-radius: 3px;
-        border: 1px solid var(--ms-border);
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        transition: all 0.14s;
-      }
-      .flight-btn:hover { background: var(--ms-bg-header); color: var(--ms-text); }
-      .flight-btn-primary {
-        border-color: var(--ms-warning);
-        color: var(--ms-warning);
-        background: var(--ms-bg-input);
-      }
-      @media (max-width: 560px) {
-        .flight-panel {
-          left: 12px;
-          top: 72px;
-          width: calc(100vw - 24px);
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default FlightEngine;

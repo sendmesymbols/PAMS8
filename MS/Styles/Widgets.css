@@ -2919,3 +2919,66 @@ body.ms-popup-dark .esri-popup__pointer-direction {
     grid-template-columns: 1fr;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   FLIGHT ENGINE — platform role line, mission metric tiles
+   The rest of the panel uses the shared ms-* components; these are the only
+   pieces with no equivalent, so they are all that survived from the engine's
+   old private stylesheet. --flight-accent is set per UAV preset by the engine.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.flight-role {
+  font-size: var(--ms-fs-xs);
+  color: var(--flight-accent, var(--ms-accent));
+  padding: 0 14px 8px;
+  letter-spacing: 0.04em;
+}
+
+.flight-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px 12px 4px;
+}
+
+.flight-metrics > div {
+  min-width: 0;
+  padding: 5px 6px;
+  border-radius: var(--ms-radius-sm);
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-divider);
+}
+
+.flight-metrics span {
+  display: block;
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+}
+
+.flight-metrics strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ms-text);
+  font-size: var(--ms-fs-sm);
+  font-family: var(--ms-font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Return-to-base reserve flips to danger when the route outruns endurance. */
+.flight-metrics .flight-risk { color: var(--ms-danger) !important; }
+.flight-metrics .flight-ok { color: var(--ms-success) !important; }
+
+#flight-engine-panel .ms-input:focus,
+#flight-engine-panel .ms-select:focus {
+  border-color: var(--flight-accent, var(--ms-accent));
+}
+
+@media (max-width: 520px) {
+  .flight-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -9,6 +9,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Extent from '@arcgis/core/geometry/Extent';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import EngineLogger from '../../../Support/EngineLogger';
+import { bindDisclosures } from '../../../Support/Disclosure';
 
 const WGS84 = { wkid: 4326 } as any;
 const ENGINE_NAME = 'PosDefScorerEngine';
@@ -263,7 +264,7 @@ export class PosDefScorerEngine {
     if (map && !map.findLayerById(this._overlayLayer.id)) {
       map.addMany([this._overlayLayer, this._spokesLayer, this._egrLayer, this._histLayer, this._posLayer]);
     }
-    if (this._scorePanelEl && this._scorePanelEl.style.display !== 'none') this._bindMapClick();
+    if (this._scorePanelEl?.classList.contains('ms-visible')) this._bindMapClick();
   }
 
   open(graphic: Graphic, view: MapView | SceneView): void {
@@ -356,7 +357,9 @@ export class PosDefScorerEngine {
       this._scorePanelEl = document.createElement('div');
       this._scorePanelEl.id = 'posdef-left-panel';
       this._scorePanelEl.className = 'ms-panel ms-theme-ops-dark';
-      this._scorePanelEl.style.cssText = 'position: absolute; top: 14px; left: 14px; width: 440px; z-index: 1098; max-height: calc(100vh - 28px); display: none; flex-direction: column;';
+      this._scorePanelEl.id = 'posdef-score-panel';
+      this._scorePanelEl.setAttribute('data-engine', 'pos-def');
+      this._scorePanelEl.style.cssText = 'top: 14px; left: 14px; width: 440px;';
       this._scorePanelEl.innerHTML = this._scorePanelHtml();
       document.body.appendChild(this._scorePanelEl);
     }
@@ -364,7 +367,12 @@ export class PosDefScorerEngine {
       this._controlPanelEl = document.createElement('div');
       this._controlPanelEl.id = 'posdef-right-panel';
       this._controlPanelEl.className = 'ms-panel ms-theme-ops-dark';
-      this._controlPanelEl.style.cssText = 'position: absolute; top: 14px; right: 14px; width: 312px; z-index: 1098; max-height: calc(100vh - 28px); overflow-y: auto; overflow-x: hidden; display: none;';
+      this._controlPanelEl.id = 'posdef-ctrl-panel';
+      this._controlPanelEl.setAttribute('data-engine', 'pos-def');
+      // .ms-panel already caps height and hides overflow; an inline overflow-y
+      // here made the whole panel scroll, carrying the header away while
+      // .ms-body scrolled inside it as a second scroller.
+      this._controlPanelEl.style.cssText = 'top: 14px; right: 14px; width: 404px;';
       this._controlPanelEl.innerHTML = this._controlPanelHtml();
       document.body.appendChild(this._controlPanelEl);
       this._bindPanelEvents();
@@ -459,76 +467,128 @@ export class PosDefScorerEngine {
 
   private _controlPanelHtml(): string {
     return `
-      <div class="ms-header">
-        <div class="ms-header-title">Pos Def Scorer</div>
-        <div style="display: flex; gap: 4px;">
-          <button class="ms-btn" id="posdef-help-btn" title="Position defensibility wiki" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">?</button>
-          <button class="ms-btn" id="posdef-close-btn" title="Close" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">✕</button>
-        </div>
+      <div class="ms-header" id="posdef-drag-handle">
+        <div class="ms-header-icon">⊕</div>
+        <div class="ms-header-title">Position Defensibility</div>
+        <div class="ms-status-dot" id="posdef-status-dot"></div>
+        <div class="ms-status-lbl" id="posdef-status-lbl">Ready</div>
+        <button class="ms-header-btn ms-btn-round" id="posdef-help-btn" title="How position scoring works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="posdef-min-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="posdef-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
-      <div class="ms-help-popover" id="posdef-help-popover" hidden style="position: absolute; top: 37px; left: 8px; right: 8px; z-index: 1120; max-height: min(440px, calc(100vh - 132px));">
+      <div class="ms-help-popover" id="posdef-help-popover" hidden>
         <div class="ms-help-head">
           <div>
-            <div class="ms-help-kicker">Wiki</div>
+            <div class="ms-help-kicker">Field Guide</div>
             <div class="ms-help-title">Position Defensibility Scorer</div>
           </div>
           <button id="posdef-help-close" class="ms-help-close">✕</button>
         </div>
         <div class="ms-help-body">
-          <p>Scores a fighting position from terrain-derived observation, fields of fire, cover, concealment, egress, and rear dead ground.</p>
-          <div style="margin-top: 10px;"><h4 style="margin: 0 0 5px; font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase;">Workflow</h4><ol style="margin: 0; padding-left: 17px;"><li style="margin: 3px 0;">Open from More Actions or right-click a symbol.</li><li style="margin: 3px 0;">Click the map to score a position.</li><li style="margin: 3px 0;">Ctrl+Click or use + Egress to add withdrawal routes.</li><li style="margin: 3px 0;">Adjust ranges, weights, and overlays, then Re-score.</li></ol></div>
-          <div style="margin-top: 10px;"><h4 style="margin: 0 0 5px; font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase;">Factors</h4><dl style="display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 5px 8px; margin: 0;"><dt style="color: var(--ms-accent); font-weight: 700;">Observation</dt><dd style="margin: 0;">Visible ray coverage across the selected radius.</dd><dt style="color: var(--ms-accent); font-weight: 700;">Fields of fire</dt><dd style="margin: 0;">Visible arcs inside the configured threat sector.</dd><dt style="color: var(--ms-accent); font-weight: 700;">Cover</dt><dd style="margin: 0;">Nearby terrain masking from fire and view.</dd><dt style="color: var(--ms-accent); font-weight: 700;">Egress</dt><dd style="margin: 0;">Clear or masked routes away from the position.</dd><dt style="color: var(--ms-accent); font-weight: 700;">Dead ground</dt><dd style="margin: 0;">Rear terrain below line of sight for movement and FUP.</dd></dl></div>
+          <div class="ms-help-answers">
+            <div class="ms-help-answers-kicker">Answers</div>
+            <div class="ms-help-answers-q">How defensible is this spot?</div>
+          </div>
+          <p>Scores a fighting position from terrain-derived observation, fields of fire, cover, concealment, egress, and rear dead ground. Each factor scores 0-20; the weighted composite is 0-100.</p>
+          <div class="ms-help-block">
+            <h4>Workflow</h4>
+            <ol>
+              <li>Click anywhere on the map to score that position — the map itself is the probe, so no arming step.</li>
+              <li>Click other candidate spots to compare; the last five land in the history list.</li>
+              <li>Ctrl+Click (or + Egress under Advanced) to add withdrawal waypoints for a precise egress score.</li>
+              <li>Tune ranges, context and weights in the disclosures, then Re-score.</li>
+            </ol>
+          </div>
+          <div class="ms-help-block">
+            <h4>Factors</h4>
+            <dl>
+              <dt>Observation</dt><dd>Visible ray coverage across the selected radius.</dd>
+              <dt>Fields of fire</dt><dd>Visible arcs inside the configured threat sector.</dd>
+              <dt>Cover</dt><dd>Nearby terrain masking from fire and view.</dd>
+              <dt>Egress</dt><dd>Clear or masked routes away from the position.</dd>
+              <dt>Dead ground</dt><dd>Rear terrain below line of sight for movement and FUP.</dd>
+            </dl>
+          </div>
         </div>
       </div>
-      <div class="ms-body" style="display: flex; flex-direction: column; overflow-y: auto;">
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px;">
-          <div style="font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim);" id="posdef-status">Click map to score</div>
-        </div>
-        <div class="ms-section-title">Observer / position</div>
-        <div class="ms-grid">
-          <div class="ms-field"><label class="ms-label">Eye height (m)</label><input id="posdef-inp-eye" type="number" value="1.8" min="0.5" max="10" step="0.1" class="ms-input"></div>
-          <div class="ms-field"><label class="ms-label">Position type</label><select id="posdef-inp-postype" class="ms-select"><option value="dismount">Dismount</option><option value="vehicle">Vehicle</option><option value="tank">Tank</option><option value="mg">MG/ATGM</option><option value="sniper" selected>Sniper</option></select></div>
-        </div>
-        <div class="ms-section-title">Analysis ranges</div>
+      <div class="ms-body">
+        <!-- Default view: the map itself is the point-picker (click to score,
+             click again to compare), so the panel opens with just the radius
+             and the re-score CTA. Everything tunable lives in the disclosures. -->
+        <div class="ms-status" id="posdef-status">Click the map to score a position.</div>
+        <div class="ms-coords" id="posdef-pos-readout">No position scored</div>
         ${this._sliderRow('Observation radius (m)', 'obs-r', 500, 10000, 250, 3000)}
-        ${this._sliderRow('Slope check radius (m)', 'slp-r', 50, 500, 25, 150)}
-        ${this._sliderRow('Ray resolution (deg)', 'ray-res', 2, 15, 1, 5, 'deg')}
-        <div class="ms-section-title">Egress routes (optional)</div>
-        <div id="posdef-egress-list" style="padding: 0 12px 8px;"><div id="posdef-eg-add-hint" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 4px 0; letter-spacing: 0.04em;">Ctrl+Click map to add an egress waypoint</div></div>
-        <div class="ms-section-title">Scoring context</div>
-        <div class="ms-grid">
-          <div class="ms-field" style="grid-column: 1/-1;"><label class="ms-label">Threat axis (bearing deg)</label><input id="posdef-inp-threat-brg" type="number" value="270" min="0" max="359" step="1" class="ms-input"></div>
+
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="posdef-btn-rescore" disabled title="Score the current position again with the settings below">Re-score ↗</button>
         </div>
-        ${this._sliderRow('Slope acceptable (deg)', 'slp-ok', 5, 30, 1, 12, 'deg')}
-        <div class="ms-divider" style="margin: 4px 0;"></div>
-        <div class="ms-section-title">Factor weights (0-5)</div>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; padding: 0 12px 8px;">
-          ${this._weightRow('Observation', 'obs', 4)}${this._weightRow('Fields of fire', 'fof', 4)}${this._weightRow('Cover from fire', 'cff', 3)}${this._weightRow('Cover from view', 'cfv', 3)}${this._weightRow('Egress routes', 'egr', 3)}${this._weightRow('Dead ground', 'dg', 3)}
+
+        <div class="ms-progress-wrap" id="posdef-prog-wrap" hidden><div class="ms-progress-track"><div class="ms-progress-fill" id="posdef-prog-fill"></div></div><div class="ms-progress-label" id="posdef-prog-label">-</div></div>
+
+        <div class="ms-btn-row" id="posdef-clear-row" hidden>
+          <button class="ms-btn danger" id="posdef-btn-clear">Clear</button>
         </div>
-        <div class="ms-divider" style="margin: 4px 0;"></div>
-        <div class="ms-section-title">Overlays</div>
-        ${this._toggleRow('Viewshed overlay', 'vs', true)}${this._toggleRow('Dead ground overlay', 'dg', true)}${this._toggleRow('Slope overlay', 'slp', true)}${this._toggleRow('LOS spokes', 'los', true)}${this._toggleRow('Egress LOS lines', 'egr', true)}
-        <div class="ms-divider" style="margin: 4px 0;"></div>
-        <div style="padding: 0 12px 9px;"><div id="posdef-prog-track" style="height: 4px; background: var(--ms-bg-subtle); border-radius: 2px; overflow: hidden;"><div id="posdef-prog-fill" style="height: 100%; background: linear-gradient(to right, var(--ms-accent), #378ADD); border-radius: 2px; width: 0%; transition: width 0.12s;"></div></div><div id="posdef-prog-label" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); letter-spacing: 0.05em; margin-top: 4px;">-</div></div>
-        <div style="display: flex; gap: 6px; padding: 9px 12px;">
-          <button class="ms-btn" id="posdef-btn-clear" style="flex: 1;">Clear</button>
-          <button class="ms-btn" id="posdef-btn-egress-mode" style="flex: 1;">+ Egress</button>
-          <button class="ms-btn ms-btn-primary" id="posdef-btn-rescore" style="flex: 1;" disabled>Re-score</button>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="posdef-adv-toggle" aria-expanded="false" aria-controls="posdef-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Observer, ranges, egress, overlays</span>
+          </button>
+          <div class="ms-disclosure-body" id="posdef-adv-body" hidden>
+            <div class="ms-section-title">Observer / position</div>
+            <div class="ms-grid">
+              <div class="ms-field"><label class="ms-label" for="posdef-inp-eye">Eye height (m)</label><input id="posdef-inp-eye" type="number" value="1.8" min="0.5" max="10" step="0.1" class="ms-input"></div>
+              <div class="ms-field"><label class="ms-label" for="posdef-inp-postype">Position type</label><select id="posdef-inp-postype" class="ms-select"><option value="dismount">Dismount</option><option value="vehicle">Vehicle</option><option value="tank">Tank</option><option value="mg">MG/ATGM</option><option value="sniper" selected>Sniper</option></select></div>
+            </div>
+
+            <div class="ms-section-title">Analysis detail</div>
+            ${this._sliderRow('Slope check radius (m)', 'slp-r', 50, 500, 25, 150)}
+            ${this._sliderRow('Ray resolution (deg)', 'ray-res', 2, 15, 1, 5, 'deg')}
+
+            <div class="ms-section-title">Scoring context</div>
+            <div class="ms-grid full">
+              <div class="ms-field"><label class="ms-label" for="posdef-inp-threat-brg">Threat axis (bearing deg)</label><input id="posdef-inp-threat-brg" type="number" value="270" min="0" max="359" step="1" class="ms-input"></div>
+            </div>
+            ${this._sliderRow('Slope acceptable (deg)', 'slp-ok', 5, 30, 1, 12, 'deg')}
+
+            <div class="ms-section-title">Egress routes (optional)</div>
+            <div class="ms-btn-row">
+              <button class="ms-btn primary" id="posdef-btn-egress-mode" title="Click, then click the map to add egress waypoints">+ Egress waypoints</button>
+            </div>
+            <div id="posdef-egress-list" style="padding: 0 14px 8px;"></div>
+
+            <div class="ms-section-title">Overlays</div>
+            ${this._toggleRow('Viewshed overlay', 'vs', true)}${this._toggleRow('Dead ground overlay', 'dg', true)}${this._toggleRow('Slope overlay', 'slp', true)}${this._toggleRow('LOS spokes', 'los', true)}${this._toggleRow('Egress LOS lines', 'egr', true)}
+          </div>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="posdef-weights-toggle" aria-expanded="false" aria-controls="posdef-weights-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Factor weights</span>
+            <span class="ms-disclosure-meta">How the six factors are balanced</span>
+          </button>
+          <div class="ms-disclosure-body" id="posdef-weights-body" hidden>
+            <div class="ms-weight-grid">
+              ${this._weightRow('Observation', 'obs', 4)}${this._weightRow('Fields of fire', 'fof', 4)}${this._weightRow('Cover from fire', 'cff', 3)}${this._weightRow('Cover from view', 'cfv', 3)}${this._weightRow('Egress routes', 'egr', 3)}${this._weightRow('Dead ground', 'dg', 3)}
+            </div>
+          </div>
         </div>
       </div>
     `;
   }
 
   private _sliderRow(label: string, id: string, min: number, max: number, step: number, value: number, suffix = ''): string {
-    return `<div style="display: flex; align-items: center; gap: 8px; padding: 0 12px 8px;"><label style="font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim); flex: 1.8;" class="ms-label">${label}</label><input id="posdef-inp-${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" style="flex: 2; accent-color: var(--ms-accent); cursor: pointer;"><div id="posdef-${id}-v" style="font-size: var(--ms-fs-xs); color: var(--ms-accent); min-width: 38px; text-align: right;">${value}${suffix}</div></div>`;
+    return `<div class="ms-slider-row"><div class="ms-slider-label">${label}</div><input id="posdef-inp-${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"><div class="ms-slider-value" id="posdef-${id}-v">${value}${suffix}</div></div>`;
   }
 
   private _weightRow(label: string, id: FactorId, value: number): string {
-    return `<div style="display: flex; flex-direction: column; gap: 3px;"><div style="font-size: 8px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ms-text-dim);">${label}</div><div style="display: flex; align-items: center; gap: 4px;"><input type="range" id="posdef-wt-${id}" min="0" max="5" step="1" value="${value}" style="flex: 1; accent-color: var(--ms-accent);"><div id="posdef-wv-${id}" style="font-size: var(--ms-fs-xs); color: var(--ms-accent); min-width: 18px; text-align: right;">${value}</div></div></div>`;
+    return `<div class="ms-weight-row"><label class="ms-label" for="posdef-wt-${id}">${label}</label><input type="range" id="posdef-wt-${id}" min="0" max="5" step="1" value="${value}"><div class="ms-weight-val" id="posdef-wv-${id}">${value}</div></div>`;
   }
 
   private _toggleRow(label: string, id: string, checked: boolean): string {
-    return `<div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 12px;"><label style="font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim); cursor: pointer;" class="ms-label">${label}</label><input id="posdef-opt-${id}" type="checkbox"${checked ? ' checked' : ''} style="accent-color: var(--ms-accent); width: 13px; height: 13px; cursor: pointer;"></div>`;
+    return `<div class="ms-toggle-row"><label for="posdef-opt-${id}">${label}</label><input id="posdef-opt-${id}" type="checkbox" class="ms-input"${checked ? ' checked' : ''}></div>`;
   }
 
   private _bindPanelEvents(): void {
@@ -553,6 +613,15 @@ export class PosDefScorerEngine {
       if (help) help.hidden = true;
     });
     p.querySelector('#posdef-close-btn')?.addEventListener('click', () => this.close());
+    p.querySelector('#posdef-min-btn')?.addEventListener('click', () => {
+      const body = p.querySelector<HTMLElement>('.ms-body');
+      const btn = p.querySelector<HTMLElement>('#posdef-min-btn');
+      if (!body || !btn) return;
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '\u25B6' : '\u25BC';
+      btn.title = minimized ? 'Restore' : 'Minimize';
+    });
+    bindDisclosures(p);
     p.querySelector('#posdef-btn-egress-mode')?.addEventListener('click', () => this._toggleEgressMode());
     p.querySelector('#posdef-btn-rescore')?.addEventListener('click', () => { if (this._currentPos) void this._runAnalysis(this._currentPos); });
     p.querySelector('#posdef-btn-clear')?.addEventListener('click', () => this._clearAll());
@@ -582,7 +651,9 @@ export class PosDefScorerEngine {
   private async _runAnalysis(pt: Point): Promise<void> {
     if (this._running || !this._view) return;
     this._running = true;
-    this._button('posdef-btn-rescore')?.setAttribute('disabled', 'true');
+    this._setRunBusy(true);
+    this._setProgressVisible(true);
+    this._syncPosReadout(pt);
     this._clearOverlays();
 
     const eyeH = this._num('posdef-inp-eye', 1.8);
@@ -636,7 +707,6 @@ export class PosDefScorerEngine {
       this._updateScoreUI(result.scores, result.composite);
       const g = getGrade(result.composite);
       this._setText('posdef-lph-sub', `${g.label} - Score ${result.composite}/100`);
-      this._button('posdef-btn-rescore')?.removeAttribute('disabled');
 
       this._history.unshift({ pt, scores: result.scores, composite: result.composite, obsZ });
       if (this._history.length > 5) this._history.pop();
@@ -650,7 +720,43 @@ export class PosDefScorerEngine {
       this._setProgress(0, 'Unable to complete terrain scoring');
     } finally {
       this._running = false;
+      this._setRunBusy(false);
+      this._syncClearVisible();
     }
+  }
+
+  /** Primary CTA state while the engine is computing. */
+  private _setRunBusy(busy: boolean): void {
+    const btn = this._button('posdef-btn-rescore');
+    if (!btn) return;
+    btn.disabled = busy || !this._currentPos;
+    btn.classList.toggle('ms-busy', busy);
+    btn.textContent = busy ? 'Scoring\u2026' : 'Re-score \u2197';
+  }
+
+  /** Progress track stays out of the way until a run is under way. */
+  private _setProgressVisible(visible: boolean): void {
+    const el = this._el('posdef-prog-wrap');
+    if (el) el.hidden = !visible;
+  }
+
+  /** Nothing to clear until a position or egress waypoint exists. */
+  private _syncClearVisible(): void {
+    const el = this._el('posdef-clear-row');
+    if (el) el.hidden = !this._currentPos && this._history.length === 0 && this._egressPts.length === 0;
+  }
+
+  /** The always-visible confirmation of what is being scored. */
+  private _syncPosReadout(pt: Point | null): void {
+    const el = this._el('posdef-pos-readout');
+    if (!el) return;
+    if (!pt) {
+      el.textContent = 'No position scored';
+      el.style.color = 'var(--ms-text-dim)';
+      return;
+    }
+    el.textContent = `${(pt.latitude ?? 0).toFixed(5)}\u00B0N  ${(pt.longitude ?? 0).toFixed(5)}\u00B0E`;
+    el.style.color = '';
   }
 
   private async _scorePosition(positionPt: Point, obsZ: number, params: ScoreParams): Promise<ScoreResult> {
@@ -999,6 +1105,7 @@ export class PosDefScorerEngine {
     this._egressPts.push(pt);
     this._redrawEgressMarkers();
     this._renderEgressList();
+    this._syncClearVisible();
   }
 
   private _redrawEgressMarkers(): void {
@@ -1281,8 +1388,8 @@ export class PosDefScorerEngine {
     this._addingEgress = !this._addingEgress;
     const btn = this._button('posdef-btn-egress-mode');
     if (btn) {
-      btn.textContent = this._addingEgress ? 'Cancel egress' : '+ Egress';
-      btn.style.background = this._addingEgress ? 'rgba(55,138,221,0.15)' : '';
+      btn.textContent = this._addingEgress ? 'Done adding egress' : '+ Egress waypoints';
+      btn.classList.toggle('ms-armed', this._addingEgress);
     }
     if (this._hintEl) {
       this._hintEl.textContent = this._addingEgress
@@ -1299,8 +1406,8 @@ export class PosDefScorerEngine {
       this._addingEgress = false;
       const btn = this._button('posdef-btn-egress-mode');
       if (btn) {
-        btn.textContent = '+ Egress';
-        btn.style.background = '';
+        btn.textContent = '+ Egress waypoints';
+        btn.classList.remove('ms-armed');
       }
     }
     [this._overlayLayer, this._spokesLayer, this._posLayer, this._egrLayer, this._histLayer].forEach((l) => l.removeAll());
@@ -1317,9 +1424,12 @@ export class PosDefScorerEngine {
     if (hist) hist.style.display = 'none';
     this._drawRadar({ obs: 0, fof: 0, cff: 0, cfv: 0, egr: 0, dg: 0 });
     this._renderEgressList();
-    this._button('posdef-btn-rescore')?.setAttribute('disabled', 'true');
+    this._setRunBusy(false);
     this._setProgress(0, '-');
-    this._setStatus('ready', 'Click map to score');
+    this._setProgressVisible(false);
+    this._syncClearVisible();
+    this._syncPosReadout(null);
+    this._setStatus('ready', 'Click the map to score a position.');
     if (this._hintEl) this._hintEl.textContent = 'Click map to score a position - Ctrl+Click to add egress waypoints';
   }
 
@@ -1369,14 +1479,14 @@ export class PosDefScorerEngine {
   }
 
   private _showPanels(): void {
-    if (this._scorePanelEl) this._scorePanelEl.style.display = 'flex';
-    if (this._controlPanelEl) this._controlPanelEl.style.display = 'block';
+    this._scorePanelEl?.classList.add('ms-visible');
+    this._controlPanelEl?.classList.add('ms-visible');
     if (this._hintEl) this._hintEl.style.display = 'block';
   }
 
   private _hidePanels(): void {
-    if (this._scorePanelEl) this._scorePanelEl.style.display = 'none';
-    if (this._controlPanelEl) this._controlPanelEl.style.display = 'none';
+    this._scorePanelEl?.classList.remove('ms-visible');
+    this._controlPanelEl?.classList.remove('ms-visible');
     if (this._hintEl) this._hintEl.style.display = 'none';
   }
 
@@ -1390,11 +1500,14 @@ export class PosDefScorerEngine {
     else EngineLogger.nextStep(ENGINE_NAME, t);
     if (el) {
       el.textContent = t;
-      if (s === 'ready' || s === 'done') {
-        el.style.color = 'var(--ms-accent)';
-      } else if (s === 'running') {
-        el.style.color = '#EF9F27';
-      }
+      el.className = `ms-status${s === 'done' ? ' success' : s === 'running' ? ' running' : ''}`;
+    }
+    const dot = this._el('posdef-status-dot');
+    const lbl = this._el('posdef-status-lbl');
+    if (lbl) lbl.textContent = s === 'running' ? 'Scoring' : s === 'done' ? 'Scored' : 'Ready';
+    if (dot) {
+      dot.style.background = s === 'running' ? 'var(--ms-accent)' : s === 'done' ? 'var(--ms-success)' : '#888';
+      dot.style.boxShadow = s === 'ready' ? 'none' : `0 0 6px ${s === 'done' ? 'var(--ms-success)' : 'var(--ms-accent)'}`;
     }
   }
 
