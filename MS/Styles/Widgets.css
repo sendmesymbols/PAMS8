@@ -2982,3 +2982,425 @@ body.ms-popup-dark .esri-popup__pointer-direction {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* =============================================================================
+   OP RANKER ENGINE - OP cards, recommendation banner, platform picker,
+   overlay buttons, optimal strip, AO note
+   The rest of both panels uses the shared ms-* components; these are the only
+   pieces with no equivalent, so they are all that survived from the engine's
+   old private stylesheet (which also hard-coded its own blue --ms-* palette,
+   locking the widget out of theming).
+   ============================================================================= */
+
+#oprank-op-list {
+  padding: 7px;
+}
+
+.oprank-op-card {
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+  padding: 9px 11px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background-color var(--ms-transition), border-color var(--ms-transition);
+  position: relative;
+}
+
+.oprank-op-card:hover {
+  border-color: var(--ms-accent);
+}
+
+.oprank-op-card.selected {
+  border-color: var(--ms-accent);
+  background: var(--ms-bg-header);
+}
+
+/* Membership in the recommended set. Was a 3px border-left stripe; a coloured
+   side stripe is a banned pattern here, so it is a full border + tint. */
+.oprank-op-card.in-optimal {
+  border-color: rgba(29, 158, 117, 0.55);
+  background: rgba(29, 158, 117, 0.07);
+}
+
+.oprank-op-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.oprank-op-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ms-fs);
+  font-weight: 700;
+  flex-shrink: 0;
+  background: var(--ms-bg-input);
+  color: var(--ms-accent);
+  border: 1px solid var(--ms-border);
+}
+
+.oprank-op-num.optimal {
+  background: rgba(29, 158, 117, 0.15);
+  color: var(--ms-success);
+  border-color: rgba(29, 158, 117, 0.5);
+}
+
+.oprank-op-name {
+  font-size: var(--ms-fs);
+  font-weight: 600;
+  color: var(--ms-text);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.oprank-op-coords {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  font-family: var(--ms-font-mono);
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+
+.oprank-op-score-badge {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.oprank-op-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin-bottom: 6px;
+}
+
+.oprank-ob {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.oprank-ob-lbl {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+  font-weight: 600;
+}
+
+.oprank-ob-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+
+.oprank-ob-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.oprank-ob-val {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+}
+
+.oprank-op-factors {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 6px;
+  padding: 5px 0;
+  border-top: 1px solid var(--ms-divider);
+}
+
+.oprank-factor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.oprank-factor-l {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  flex: 0 0 86px;
+}
+
+.oprank-factor-v {
+  font-size: var(--ms-fs-xs);
+  font-weight: 600;
+  flex: 1;
+}
+
+.oprank-op-note {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.5;
+  border-top: 1px solid var(--ms-divider);
+  padding-top: 6px;
+}
+
+.oprank-op-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.oprank-op-action-btn {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: var(--ms-radius-sm);
+  border: 1px solid var(--ms-border);
+  background: transparent;
+  color: var(--ms-text-dim);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: color var(--ms-transition), border-color var(--ms-transition);
+}
+
+.oprank-op-action-btn:hover {
+  border-color: var(--ms-accent);
+  color: var(--ms-text);
+}
+
+.oprank-op-action-btn.remove {
+  border-color: rgba(220, 60, 48, 0.4);
+  color: var(--ms-danger);
+}
+
+#oprank-list-empty {
+  padding: 20px 14px;
+  font-size: var(--ms-fs);
+  color: var(--ms-text-label);
+  text-align: center;
+  line-height: 2;
+}
+
+.oprank-colour-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* -- Recommendation banner (list panel) ------------------------------------ */
+
+#oprank-list-recommendation {
+  flex-shrink: 0;
+  padding: 9px 12px 10px;
+  background: rgba(29, 158, 117, 0.08);
+  border-bottom: 1px solid rgba(29, 158, 117, 0.28);
+}
+
+.oprank-rec-label {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ms-success);
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+
+.oprank-rec-ops {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.oprank-rec-card {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+  flex: 1;
+  min-width: 70px;
+}
+
+.oprank-rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.oprank-rec-name {
+  font-size: var(--ms-fs);
+  font-weight: 600;
+  color: var(--ms-text);
+  flex: 1;
+}
+
+.oprank-rec-score {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.oprank-rec-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oprank-rec-cov {
+  font-size: var(--ms-fs-sm);
+  font-weight: 700;
+}
+
+.oprank-rec-avg {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  font-weight: 600;
+}
+
+.oprank-rec-note {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  letter-spacing: 0.04em;
+  margin-left: auto;
+}
+
+/* -- Control-panel specials ------------------------------------------------- */
+
+.oprank-ao-note {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  margin: 0 14px 8px;
+  padding: 4px 6px;
+  background: rgba(255, 200, 0, 0.05);
+  border: 1px solid rgba(255, 200, 0, 0.15);
+  border-radius: var(--ms-radius-sm);
+}
+
+.oprank-platform-row {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 8px;
+}
+
+.oprank-plat-btn {
+  flex: 1;
+  padding: 5px 4px;
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.04em;
+  text-align: center;
+  cursor: pointer;
+  border-radius: var(--ms-radius-sm);
+  border: 1px solid var(--ms-border);
+  background: var(--ms-bg-input);
+  color: var(--ms-text-dim);
+  font-family: inherit;
+  transition: background-color var(--ms-transition), color var(--ms-transition), border-color var(--ms-transition);
+  line-height: 1.6;
+}
+
+.oprank-plat-btn span {
+  display: block;
+  font-weight: 700;
+  color: var(--ms-text-label);
+}
+
+.oprank-plat-btn:hover {
+  border-color: var(--ms-accent);
+  color: var(--ms-text);
+}
+
+.oprank-plat-btn.active {
+  border-color: var(--ms-accent);
+  color: var(--ms-accent);
+  background: rgba(55, 138, 221, 0.12);
+}
+
+.oprank-plat-btn.active span {
+  color: var(--ms-accent);
+}
+
+.oprank-ov-row {
+  display: flex;
+  gap: 5px;
+  padding: 8px 12px 9px;
+  flex-wrap: wrap;
+}
+
+.oprank-ov-btn {
+  flex: 1;
+  min-width: 60px;
+  padding: 7px 4px;
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: var(--ms-radius-sm);
+  border: 1px solid var(--ms-border);
+  background: var(--ms-bg-input);
+  color: var(--ms-text-dim);
+  font-family: inherit;
+  transition: background-color var(--ms-transition), color var(--ms-transition), border-color var(--ms-transition);
+  font-weight: 600;
+}
+
+.oprank-ov-btn:hover {
+  color: var(--ms-text);
+}
+
+.oprank-ov-btn.on {
+  border-color: var(--ms-accent);
+  color: var(--ms-accent);
+  background: rgba(55, 138, 221, 0.12);
+}
+
+.oprank-ov-btn.gap-on {
+  border-color: rgba(220, 60, 48, 0.55);
+  color: var(--ms-danger);
+  background: rgba(220, 60, 48, 0.12);
+}
+
+.oprank-ov-btn.mutual-on {
+  border-color: rgba(80, 220, 130, 0.55);
+  color: var(--ms-success);
+  background: rgba(80, 220, 130, 0.1);
+}
+
+.oprank-optimal-strip {
+  margin: 0 12px 9px;
+  padding: 9px 11px;
+  background: rgba(29, 158, 117, 0.07);
+  border: 1px solid rgba(29, 158, 117, 0.28);
+  border-radius: var(--ms-radius-sm);
+}
+
+.oprank-opt-label {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ms-success);
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+
+.oprank-opt-body {
+  font-size: var(--ms-fs);
+  color: var(--ms-text-dim);
+  line-height: 1.6;
+}
