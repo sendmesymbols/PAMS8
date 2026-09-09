@@ -528,14 +528,14 @@ export class EffectEngine {
     if (!this._legendEl) {
       this._legendEl = document.createElement('div');
       this._legendEl.id = 'effects-legend';
-      this._legendEl.className = 'effects-legend';
+      this._legendEl.className = 'ms-map-legend';
       this._legendEl.innerHTML = `
-        <div class="effects-leg-row"><div class="effects-leg-dot" style="background:#DC3C30"></div><div class="effects-leg-lbl">Lethal (blast + frag)</div></div>
-        <div class="effects-leg-row"><div class="effects-leg-dot" style="background:#EF9F27"></div><div class="effects-leg-lbl">Injury / frag casualty</div></div>
-        <div class="effects-leg-row"><div class="effects-leg-dot" style="background:#DC7820"></div><div class="effects-leg-lbl">Thermal / 3° burn</div></div>
-        <div class="effects-leg-row"><div class="effects-leg-dot" style="background:#1D9E75"></div><div class="effects-leg-lbl">Safe distance — blast</div></div>
-        <div class="effects-leg-row"><div class="effects-leg-dot" style="background:#378ADD"></div><div class="effects-leg-lbl">QD inhabited buildings</div></div>
-        <div class="effects-leg-row"><div class="effects-leg-dot" style="background:#B428DC"></div><div class="effects-leg-lbl">Multi-strike union</div></div>
+        <div class="ms-map-legend-item"><div class="ms-map-legend-swatch" style="background:#DC3C30"></div><div class="ms-map-legend-label">Lethal (blast + frag)</div></div>
+        <div class="ms-map-legend-item"><div class="ms-map-legend-swatch" style="background:#EF9F27"></div><div class="ms-map-legend-label">Injury / frag casualty</div></div>
+        <div class="ms-map-legend-item"><div class="ms-map-legend-swatch" style="background:#DC7820"></div><div class="ms-map-legend-label">Thermal / 3° burn</div></div>
+        <div class="ms-map-legend-item"><div class="ms-map-legend-swatch" style="background:#1D9E75"></div><div class="ms-map-legend-label">Safe distance — blast</div></div>
+        <div class="ms-map-legend-item"><div class="ms-map-legend-swatch" style="background:#378ADD"></div><div class="ms-map-legend-label">QD inhabited buildings</div></div>
+        <div class="ms-map-legend-item"><div class="ms-map-legend-swatch" style="background:#B428DC"></div><div class="ms-map-legend-label">Multi-strike union</div></div>
       `;
       document.body.appendChild(this._legendEl);
     }
@@ -571,42 +571,43 @@ export class EffectEngine {
     ).join('');
 
     return `
-      <div class="effects-ph" id="effects-drag-handle">
-        <div class="effects-ph-title">✕ Weapon Effect</div>
-        <div class="effects-ph-status" id="effects-status">Awaiting strike point</div>
-        <button class="effects-help-btn" id="effects-help-btn" title="How weapon effect works">?</button>
-        <button class="effects-minimize-btn" id="effects-minimize-btn" title="Minimize">▼</button>
-        <button class="effects-close-btn" id="effects-close-btn" title="Close">✕</button>
+      <div class="ms-header" id="effects-drag-handle">
+        <div class="ms-header-icon">FX</div>
+        <div class="ms-header-title">Weapon Effect</div>
+        <div class="ms-status-dot" id="effects-status-dot"></div>
+        <div class="ms-status-lbl" id="effects-status">Awaiting strike</div>
+        <button class="ms-header-btn ms-btn-round" id="effects-help-btn" title="How weapon effect works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="effects-minimize-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="effects-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
-      <div class="effects-help-popover" id="effects-help-popover" hidden>
-        <div class="effects-help-head">
+      <div class="ms-help-popover" id="effects-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="effects-help-kicker">Field Guide</div>
-            <div class="effects-help-title">Weapon Effect</div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Weapon Effect</div>
           </div>
-          <button class="effects-help-close" id="effects-help-close" title="Close">✕</button>
+          <button class="ms-help-close" id="effects-help-close" title="Close">✕</button>
         </div>
-        <div class="effects-help-body">
-          <div style="background:rgba(220,60,48,0.08);border-left:3px solid rgba(220,60,48,0.6);padding:7px 10px;border-radius:3px;margin-bottom:10px">
-            <div style="font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:rgba(220,60,48,0.7);margin-bottom:3px">Answers</div>
-            <div style="font-style:italic;color:var(--ms-text)">What happens when it lands here?</div>
+        <div class="ms-help-body">
+          <div class="ms-help-answers">
+            <div class="ms-help-answers-kicker">Answers</div>
+            <div class="ms-help-answers-q">What happens when it lands here?</div>
           </div>
           <p>Models blast, fragmentation, thermal, and quantity-distance effects radiating outward from a detonation point, then draws hazard rings around one or more strike locations.</p>
           <p style="font-size:var(--ms-fs-xs);color:var(--ms-text-dim);border-top:1px solid var(--ms-divider);padding-top:7px;margin-top:2px">Use <strong style="color:var(--ms-text)">Weapon Effect Zone</strong> first to determine where a weapon can reach, then place a strike here to see the consequences.</p>
-          <div class="effects-help-block">
+          <div class="ms-help-block">
             <h4>How It Works</h4>
             <ol>
-              <li>Place a strike or detonation point on the map.</li>
-              <li>Pick a munition preset or override its TNT equivalent and burst height.</li>
-              <li>Apply a structural environment factor to reduce or preserve blast and fragmentation reach.</li>
-              <li>Draw the computed rings, animate the blast wave if desired, and optionally union several strikes into one footprint.</li>
+              <li>Click the map to place a strike — rings draw immediately, and more clicks add more strikes.</li>
+              <li>Pick a munition preset; override its TNT equivalent, burst height and environment under Advanced.</li>
+              <li>Replay the blast wave, union several strikes into one footprint, then commit.</li>
             </ol>
           </div>
-          <div class="effects-help-block">
+          <div class="ms-help-block">
             <h4>Phenomenon</h4>
             <p>The engine combines several hazard models: overpressure for blast injury and safe standoff, fragment decay for casualty distance, thermal scaling for burn effects, and quantity-distance rules for inhabited-building separation. Those results are then converted into map rings.</p>
           </div>
-          <div class="effects-help-block">
+          <div class="ms-help-block">
             <h4>Parameters</h4>
             <dl>
               <dt>Type</dt><dd>Loads a munition profile with default TNT equivalent, fragment velocity, casing ratio, and burst height.</dd>
@@ -622,106 +623,113 @@ export class EffectEngine {
           </div>
         </div>
       </div>
-      <div class="effects-body">
-
-      <!-- Munition -->
-      <div class="effects-ps">Munition / device</div>
-      <div class="effects-pg">
-        <div class="effects-pf effects-full">
-          <div class="effects-pl">Type</div>
-          <select id="effects-inp-munition" class="effects-select">${munOpts}</select>
+      <div class="ms-body">
+        <!-- Default view: choose the munition, click the map to drop strikes
+             (the map itself is the strike-picker; every click adds one), commit.
+             Yield, burst height, environment and the display options live in the
+             collapsed Advanced disclosure. -->
+        <div class="ms-section-title">Munition / device</div>
+        <div class="ms-grid full">
+          <div class="ms-field">
+            <label class="ms-label" for="effects-inp-munition">Type</label>
+            <select id="effects-inp-munition" class="ms-select">${munOpts}</select>
+          </div>
         </div>
-        <div class="effects-pf">
-          <div class="effects-pl">TNT equiv. (kg)</div>
-          <input id="effects-inp-tnt" class="effects-input" type="number" value="${MUNITION_PRESETS['mortar_81mm'].tntEquivKg}" min="0.01" step="0.1"/>
-        </div>
-        <div class="effects-pf">
-          <div class="effects-pl">Det. height (m)</div>
-          <input id="effects-inp-height" class="effects-input" type="number" value="${MUNITION_PRESETS['mortar_81mm'].detonationHeightM}" min="0" max="500" step="1"/>
-        </div>
-      </div>
+        <div class="ms-coords" id="effects-coords">No strike placed — click the map</div>
 
-      <!-- Environment -->
-      <div class="effects-ps">Environment / structure</div>
-      <div class="effects-pg">
-        <div class="effects-pf effects-full">
-          <div class="effects-pl">Structural factor</div>
-          <select id="effects-inp-structure" class="effects-select">${structOpts}</select>
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="effects-btn-commit" disabled>Commit to map ↗</button>
         </div>
-      </div>
 
-      <div class="effects-pdiv"></div>
+        <div id="effects-results" hidden>
+          <div class="ms-section-title">Computed radii — Hopkinson-Cranz model</div>
+          <div class="effects-phys-grid">
+            <div class="effects-phys-card effects-lethal">
+              <div class="effects-phys-label">Lethal (blast+frag)</div>
+              <div class="effects-phys-value" id="effects-ph-lethal">—</div>
+            </div>
+            <div class="effects-phys-card effects-warning">
+              <div class="effects-phys-label">Injury — blast</div>
+              <div class="effects-phys-value" id="effects-ph-injury">—</div>
+            </div>
+            <div class="effects-phys-card effects-warning">
+              <div class="effects-phys-label">Frag casualty</div>
+              <div class="effects-phys-value" id="effects-ph-frag">—</div>
+            </div>
+            <div class="effects-phys-card effects-thermal">
+              <div class="effects-phys-label">Thermal / 3° burn</div>
+              <div class="effects-phys-value" id="effects-ph-thermal">—</div>
+            </div>
+            <div class="effects-phys-card effects-safe">
+              <div class="effects-phys-label">Safe — blast</div>
+              <div class="effects-phys-value" id="effects-ph-safe">—</div>
+            </div>
+            <div class="effects-phys-card effects-qd">
+              <div class="effects-phys-label">QD inhabited</div>
+              <div class="effects-phys-value" id="effects-ph-qd">—</div>
+            </div>
+          </div>
 
-      <!-- Display options -->
-      <div class="effects-ps">Display options</div>
-      <div class="effects-ptr"><label>Donut rings (punch inner)</label><input id="effects-opt-donut" type="checkbox" checked/></div>
-      <div class="effects-ptr"><label>Ring labels</label><input id="effects-opt-labels" type="checkbox" checked/></div>
-      <div class="effects-ptr"><label>Show blast wave</label><input id="effects-opt-anim" type="checkbox" checked/></div>
-      <div class="effects-ptr"><label title="The 3D dome at the detonation point">Show impact dome</label><input id="effects-opt-dome" type="checkbox" checked/></div>
-      <div class="effects-ptr"><label>Multi-strike union</label><input id="effects-opt-union" type="checkbox" checked/></div>
-      <div class="effects-anim-row">
-        <label>Anim speed</label>
-        <input id="effects-anim-speed" type="range" min="0.3" max="3" step="0.1" value="1"/>
-        <div id="effects-anim-speed-v" class="effects-anim-speed-v">1×</div>
-      </div>
-      <div class="effects-anim-row">
-        <label>Dome opacity</label>
-        <input id="effects-dome-opacity" type="range" min="0" max="100" step="5" value="95"/>
-        <div id="effects-dome-opacity-v" class="effects-anim-speed-v">95%</div>
-      </div>
-      <div class="effects-anim-row">
-        <label>Blast opacity</label>
-        <input id="effects-blast-opacity" type="range" min="0" max="100" step="5" value="35"/>
-        <div id="effects-blast-opacity-v" class="effects-anim-speed-v">35%</div>
-      </div>
+          <div class="ms-section-title">Strikes placed</div>
+          <div id="effects-strike-list"></div>
 
-      <div class="effects-pdiv"></div>
-
-      <!-- Physics readout -->
-      <div class="effects-ps">Computed radii — Hopkinson-Cranz model</div>
-      <div class="effects-phys-grid">
-        <div class="effects-phys-card effects-lethal">
-          <div class="effects-phys-label">Lethal (blast+frag)</div>
-          <div class="effects-phys-value" id="effects-ph-lethal">—</div>
+          <div class="ms-btn-row">
+            <button class="ms-btn" id="effects-btn-blast" disabled>▶ Blast wave</button>
+            <button class="ms-btn" id="effects-btn-undo" disabled>Undo last</button>
+            <button class="ms-btn danger" id="effects-btn-clear">Clear all</button>
+          </div>
         </div>
-        <div class="effects-phys-card effects-warning">
-          <div class="effects-phys-label">Injury — blast</div>
-          <div class="effects-phys-value" id="effects-ph-injury">—</div>
-        </div>
-        <div class="effects-phys-card effects-warning">
-          <div class="effects-phys-label">Frag casualty</div>
-          <div class="effects-phys-value" id="effects-ph-frag">—</div>
-        </div>
-        <div class="effects-phys-card effects-thermal">
-          <div class="effects-phys-label">Thermal / 3° burn</div>
-          <div class="effects-phys-value" id="effects-ph-thermal">—</div>
-        </div>
-        <div class="effects-phys-card effects-safe">
-          <div class="effects-phys-label">Safe — blast</div>
-          <div class="effects-phys-value" id="effects-ph-safe">—</div>
-        </div>
-        <div class="effects-phys-card effects-qd">
-          <div class="effects-phys-label">QD inhabited</div>
-          <div class="effects-phys-value" id="effects-ph-qd">—</div>
-        </div>
-      </div>
 
-      <div class="effects-pdiv"></div>
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="effects-adv-toggle" aria-expanded="false" aria-controls="effects-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Yield, environment, display</span>
+          </button>
+          <div class="ms-disclosure-body" id="effects-adv-body" hidden>
+            <div class="ms-section-title">Yield &amp; burst</div>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <label class="ms-label" for="effects-inp-tnt">TNT equiv. (kg)</label>
+                <input id="effects-inp-tnt" class="ms-input" type="number" value="${MUNITION_PRESETS['mortar_81mm'].tntEquivKg}" min="0.01" step="0.1"/>
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="effects-inp-height">Det. height (m)</label>
+                <input id="effects-inp-height" class="ms-input" type="number" value="${MUNITION_PRESETS['mortar_81mm'].detonationHeightM}" min="0" max="500" step="1"/>
+              </div>
+            </div>
 
-      <!-- Multi-strike list -->
-      <div class="effects-ps">Strikes placed <span style="color:#888780;font-size:9px">(click map to add)</span></div>
-      <div id="effects-strike-list"></div>
+            <div class="ms-section-title">Environment / structure</div>
+            <div class="ms-grid full">
+              <div class="ms-field">
+                <label class="ms-label" for="effects-inp-structure">Structural factor</label>
+                <select id="effects-inp-structure" class="ms-select">${structOpts}</select>
+              </div>
+            </div>
 
-      <div id="effects-coords" class="effects-coords">Impact: not placed — click map</div>
-
-      <div class="effects-pb-row">
-        <button class="effects-pb" id="effects-btn-clear">Clear all</button>
-        <button class="effects-pb" id="effects-btn-undo" disabled>Undo last</button>
-        <button class="effects-pb effects-blue" id="effects-btn-blast" disabled>▶ Blast wave</button>
-      </div>
-      <div class="effects-pb-row" style="padding-top:0">
-        <button class="effects-pb effects-green" id="effects-btn-commit" disabled>Commit to map ↗</button>
-      </div>
+            <div class="ms-section-title">Display options</div>
+            <div class="ms-toggle-row"><label for="effects-opt-donut">Donut rings (punch inner)</label><input id="effects-opt-donut" type="checkbox" class="ms-input" checked/></div>
+            <div class="ms-toggle-row"><label for="effects-opt-labels">Ring labels</label><input id="effects-opt-labels" type="checkbox" class="ms-input" checked/></div>
+            <div class="ms-toggle-row"><label for="effects-opt-anim">Show blast wave</label><input id="effects-opt-anim" type="checkbox" class="ms-input" checked/></div>
+            <div class="ms-toggle-row"><label for="effects-opt-dome" title="The 3D dome at the detonation point">Show impact dome</label><input id="effects-opt-dome" type="checkbox" class="ms-input" checked/></div>
+            <div class="ms-toggle-row"><label for="effects-opt-union">Multi-strike union</label><input id="effects-opt-union" type="checkbox" class="ms-input" checked/></div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Anim speed</div>
+              <input id="effects-anim-speed" type="range" min="0.3" max="3" step="0.1" value="1"/>
+              <div class="ms-slider-value" id="effects-anim-speed-v">1×</div>
+            </div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Dome opacity</div>
+              <input id="effects-dome-opacity" type="range" min="0" max="100" step="5" value="95"/>
+              <div class="ms-slider-value" id="effects-dome-opacity-v">95%</div>
+            </div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Blast opacity</div>
+              <input id="effects-blast-opacity" type="range" min="0" max="100" step="5" value="35"/>
+              <div class="ms-slider-value" id="effects-blast-opacity-v">35%</div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
