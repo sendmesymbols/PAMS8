@@ -3404,3 +3404,103 @@ body.ms-popup-dark .esri-popup__pointer-direction {
   color: var(--ms-text-dim);
   line-height: 1.6;
 }
+
+/* =============================================================================
+   EFFECT ENGINE - computed-radii cards + strike list
+   The rest of the panel uses the shared ms-* components (the floating legend
+   and hint ride .ms-map-legend / .ms-map-hint); these are the only pieces with
+   no equivalent, so they are all that survived from the engine's old private
+   stylesheet.
+   ============================================================================= */
+
+.effects-phys-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+
+.effects-phys-card {
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-sm);
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+.effects-phys-label {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.effects-phys-value {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-family: var(--ms-font-mono);
+}
+
+.effects-phys-unit {
+  font-size: var(--ms-fs-xs);
+  margin-left: 2px;
+  opacity: 0.6;
+}
+
+.effects-lethal  .effects-phys-label, .effects-lethal  .effects-phys-value { color: #DC3C30; }
+.effects-warning .effects-phys-label, .effects-warning .effects-phys-value { color: #EF9F27; }
+.effects-thermal .effects-phys-label, .effects-thermal .effects-phys-value { color: #DC7820; }
+.effects-safe    .effects-phys-label, .effects-safe    .effects-phys-value { color: #1D9E75; }
+.effects-qd      .effects-phys-label, .effects-qd      .effects-phys-value { color: #378ADD; }
+
+#effects-strike-list {
+  padding: 0 14px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.effects-sk-row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.effects-sk-idx {
+  font-size: var(--ms-fs-sm);
+  color: var(--ms-danger);
+  font-weight: 700;
+  text-align: center;
+}
+
+.effects-sk-info {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  font-family: var(--ms-font-mono);
+  letter-spacing: 0.03em;
+}
+
+.effects-sk-del {
+  background: transparent;
+  border: none;
+  color: var(--ms-text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color var(--ms-transition);
+}
+
+.effects-sk-del:hover {
+  color: var(--ms-danger);
+}
+
+.effects-sk-empty {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  font-style: italic;
+  padding: 0 0 4px;
+}

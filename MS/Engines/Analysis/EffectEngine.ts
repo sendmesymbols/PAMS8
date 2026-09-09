@@ -20,6 +20,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Mesh from '@arcgis/core/geometry/Mesh';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 // ─── Constants & Physics Models ───────────────────────────────────────────────
 
@@ -175,7 +176,6 @@ export class EffectEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -192,10 +192,10 @@ export class EffectEngine {
   open(graphic?: Graphic | null, view?: MapView | SceneView): void {
     if (view) this.initialize(view);
 
-    // Resume mode: panel was minimised
-    if (this._panelEl && this._panelEl.style.display === 'none') {
-      this._panelEl.style.display = 'block';
-      if (this._legendEl) this._legendEl.style.display = 'flex';
+    // Resume mode: panel was closed with working state intact
+    if (this._panelEl && !this._panelEl.classList.contains('ms-visible') && this._strikes.length > 0) {
+      this._panelEl.classList.add('ms-visible');
+      this._legendEl?.classList.add('ms-visible');
       return;
     }
 
@@ -291,9 +291,10 @@ export class EffectEngine {
 
     this._strikes.push({ point: pt, result: res, munKey, struct, tntOv, hOv });
 
-    const coordsEl = this._panelEl?.querySelector('#effects-coords');
+    const coordsEl = this._panelEl?.querySelector<HTMLElement>('#effects-coords');
     if (coordsEl) {
-      coordsEl.textContent = `Strike ${this._strikes.length}: ${pt.latitude.toFixed(4)}°N  ${pt.longitude.toFixed(4)}°E`;
+      coordsEl.textContent = `Strike ${this._strikes.length}  ${pt.latitude.toFixed(4)}°N  ${pt.longitude.toFixed(4)}°E`;
+      coordsEl.style.color = '';
     }
 
     this._hideHint();
@@ -432,9 +433,14 @@ export class EffectEngine {
     const listEl = this._panelEl?.querySelector('#effects-strike-list');
     if (!listEl) return;
 
+    // The physics grid, strike list and playback actions only mean something
+    // once a strike exists.
+    const results = this._panelEl?.querySelector<HTMLElement>('#effects-results');
+    if (results) results.hidden = this._strikes.length === 0;
+
     listEl.innerHTML = '';
     if (this._strikes.length === 0) {
-      listEl.innerHTML = '<div style="font-size:9px;color:#888780;padding:0 0 4px">No strikes placed</div>';
+      listEl.innerHTML = '<div class="effects-sk-empty">No strikes placed</div>';
       return;
     }
 
@@ -479,14 +485,18 @@ export class EffectEngine {
     if (!statusEl) return;
 
     const M: Record<string, [string, string]> = {
-      awaiting: ['Awaiting strike point', ''],
-      ready: ['Ready', 'effects-ready'],
-      busy: ['Computing…', 'effects-busy'],
-      animating: ['Blast wave ↗', 'effects-animating']
+      awaiting: ['Awaiting strike', '#888'],
+      ready: ['Ready', 'var(--ms-success)'],
+      busy: ['Computing…', 'var(--ms-accent)'],
+      animating: ['Blast wave ↗', 'var(--ms-accent)']
     };
-    const [txt, cls] = M[s] ?? M.awaiting;
+    const [txt, color] = M[s] ?? M.awaiting;
     statusEl.textContent = txt;
-    statusEl.className = 'effects-ph-status' + (cls ? ' ' + cls : '');
+    const dot = this._panelEl.querySelector<HTMLElement>('#effects-status-dot');
+    if (dot) {
+      dot.style.background = color;
+      dot.style.boxShadow = s === 'awaiting' ? 'none' : `0 0 6px ${color}`;
+    }
   }
 
   private _flashStatus(msg: string, cls: string): void {
@@ -494,13 +504,11 @@ export class EffectEngine {
     const statusEl = this._panelEl.querySelector('#effects-status');
     if (!statusEl) return;
 
+    void cls;
     const prev = statusEl.textContent;
-    const pc = statusEl.className;
     statusEl.textContent = msg;
-    statusEl.className = 'effects-ph-status ' + cls;
     setTimeout(() => {
       statusEl.textContent = prev;
-      statusEl.className = pc;
     }, 1800);
   }
 
@@ -510,18 +518,24 @@ export class EffectEngine {
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
       this._panelEl.id = 'effects-engine-panel';
-      this._panelEl.className = 'effects-panel';
+      this._panelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._panelEl.setAttribute('data-engine', 'effects');
+      this._panelEl.style.top = '62px';
+      this._panelEl.style.right = '12px';
+      this._panelEl.style.width = '392px';
       document.body.appendChild(this._panelEl);
     }
+    // open() deliberately starts fresh (strikes cleared), so the markup is
+    // rebuilt rather than reused.
     this._panelEl.innerHTML = this._buildPanelHTML();
-    this._panelEl.style.display = 'block';
+    this._panelEl.classList.add('ms-visible');
     this._bindPanelEvents();
     this._makeDraggable();
     this._renderStrikeList();
   }
 
   private _hidePanel(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
+    this._panelEl?.classList.remove('ms-visible');
   }
 
   private _showLegend(): void {
@@ -539,26 +553,26 @@ export class EffectEngine {
       `;
       document.body.appendChild(this._legendEl);
     }
-    this._legendEl.style.display = 'flex';
+    this._legendEl.classList.add('ms-visible');
   }
 
   private _hideLegend(): void {
-    if (this._legendEl) this._legendEl.style.display = 'none';
+    this._legendEl?.classList.remove('ms-visible');
   }
 
   private _showHint(text: string): void {
     if (!this._hintEl) {
       this._hintEl = document.createElement('div');
       this._hintEl.id = 'effects-hint';
-      this._hintEl.className = 'effects-hint';
+      this._hintEl.className = 'ms-map-hint';
       document.body.appendChild(this._hintEl);
     }
     this._hintEl.textContent = text;
-    this._hintEl.style.opacity = '1';
+    this._hintEl.classList.add('ms-visible');
   }
 
   private _hideHint(): void {
-    if (this._hintEl) this._hintEl.style.opacity = '0';
+    this._hintEl?.classList.remove('ms-visible');
   }
 
   private _buildPanelHTML(): string {
@@ -748,13 +762,14 @@ export class EffectEngine {
     });
 
     this._panelEl.querySelector('#effects-minimize-btn')?.addEventListener('click', () => {
-      const body = this._panelEl!.querySelector<HTMLElement>('.effects-body');
+      const body = this._panelEl!.querySelector<HTMLElement>('.ms-body');
       const btn  = this._panelEl!.querySelector<HTMLElement>('#effects-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.style.display === 'none';
-      body.style.display = minimized ? '' : 'none';
-      btn.textContent = minimized ? '▼' : '▶';
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
     });
+    bindDisclosures(this._panelEl);
 
     this._panelEl.querySelector('#effects-close-btn')?.addEventListener('click', () => {
       this._hidePanel();
@@ -829,8 +844,11 @@ export class EffectEngine {
       if (btnUndo) btnUndo.disabled = true;
 
       this._showHint('Click map to place detonation point');
-      const coordsEl = this._panelEl?.querySelector('#effects-coords');
-      if (coordsEl) coordsEl.textContent = 'Impact: not placed — click map';
+      const coordsEl = this._panelEl?.querySelector<HTMLElement>('#effects-coords');
+      if (coordsEl) {
+        coordsEl.textContent = 'No strike placed — click the map';
+        coordsEl.style.color = 'var(--ms-text-dim)';
+      }
 
       ['effects-ph-lethal','effects-ph-injury','effects-ph-frag','effects-ph-thermal','effects-ph-safe','effects-ph-qd']
         .forEach(id => {
@@ -947,215 +965,6 @@ export class EffectEngine {
   }
 
   // ─── Private: Styles ────────────────────────────────────────────────────────
-
-  private _injectStyles(): void {
-    if (document.getElementById('effects-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'effects-engine-styles';
-    style.textContent = `
-      .effects-panel {
-        position: fixed;
-        top: 60px;
-        right: 14px;
-        width: 304px;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius);
-        color: var(--ms-text);
-        font-family: var(--ms-font);
-        font-size: var(--ms-fs);
-        z-index: 1100;
-        max-height: calc(100vh - 28px);
-        overflow-y: auto;
-        display: none;
-        box-shadow: var(--ms-shadow);
-      }
-      .effects-ph {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 9px 12px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        cursor: move;
-      }
-      .effects-ph-title { font-size: var(--ms-fs-xs); letter-spacing: .13em; text-transform: uppercase; color: var(--ms-danger); font-weight: 700; flex: 1; }
-      .effects-ph-status { font-size: var(--ms-fs-xs); letter-spacing: .07em; text-transform: uppercase; color: var(--ms-text-dim); transition: color .2s; }
-      .effects-ready { color: var(--ms-success); }
-      .effects-busy { color: var(--ms-warning); }
-      .effects-animating { color: var(--ms-danger); }
-      .effects-help-btn, .effects-minimize-btn, .effects-close-btn {
-        background: transparent;
-        border: 1px solid transparent;
-        color: var(--ms-text-dim);
-        font-size: 12px;
-        cursor: pointer;
-        padding: 0 2px;
-        line-height: 1;
-      }
-      .effects-help-btn {
-        width: 17px;
-        height: 17px;
-        border-color: var(--ms-border);
-        border-radius: 50%;
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .effects-help-btn:hover, .effects-minimize-btn:hover, .effects-close-btn:hover { color: var(--ms-text); }
-      .effects-help-popover {
-        position: absolute;
-        top: 39px;
-        left: 8px;
-        right: 8px;
-        z-index: 1120;
-        max-height: min(520px, calc(100vh - 132px));
-        overflow-y: auto;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: 4px;
-        box-shadow: var(--ms-shadow);
-        color: var(--ms-text);
-      }
-      .effects-help-popover[hidden] { display: none; }
-      .effects-help-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 10px 11px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-      }
-      .effects-help-kicker {
-        font-size: var(--ms-fs-xs);
-        color: var(--ms-text-label);
-        letter-spacing: 0.09em;
-        text-transform: uppercase;
-      }
-      .effects-help-title {
-        margin-top: 2px;
-        font-size: 13px;
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .effects-help-close {
-        width: 20px;
-        height: 20px;
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        cursor: pointer;
-      }
-      .effects-help-close:hover { color: var(--ms-text); }
-      .effects-help-body {
-        padding: 10px 11px 12px;
-        font-size: var(--ms-fs-xs);
-        line-height: 1.45;
-        color: var(--ms-text-dim);
-        user-select: text;
-      }
-      .effects-help-body p { margin: 0 0 9px; }
-      .effects-help-block { margin-top: 10px; }
-      .effects-help-block h4 {
-        margin: 0 0 5px;
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text);
-      }
-      .effects-help-block ol, .effects-help-block ul { margin: 0; padding-left: 17px; }
-      .effects-help-block li { margin: 3px 0; }
-      .effects-help-block dl {
-        display: grid;
-        grid-template-columns: 72px minmax(0, 1fr);
-        gap: 5px 8px;
-        margin: 0;
-      }
-      .effects-help-block dt { color: var(--ms-success); font-weight: 700; }
-      .effects-help-block dd { margin: 0; }
-      .effects-body { padding-bottom: 4px; }
-      .effects-ps { font-size: var(--ms-fs-xs); letter-spacing: .1em; text-transform: uppercase; color: var(--ms-text-label); padding: 9px 12px 5px; }
-      .effects-pg { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 10px; padding: 0 12px 9px; }
-      .effects-pf { display: flex; flex-direction: column; gap: 3px; }
-      .effects-full { grid-column: 1 / -1; }
-      .effects-pl { font-size: var(--ms-fs-xs); letter-spacing: .07em; text-transform: uppercase; color: var(--ms-text-label); }
-      .effects-input, .effects-select {
-        background: var(--ms-bg-input); border: 1px solid var(--ms-border);
-        border-radius: 3px; color: var(--ms-text); font-family: var(--ms-font);
-        font-size: var(--ms-fs); padding: 5px 7px; width: 100%; outline: none; transition: border-color .15s;
-      }
-      .effects-input:focus, .effects-select:focus { border-color: var(--ms-danger); }
-      .effects-select option { background: var(--ms-bg); }
-      .effects-pdiv { height: 1px; background: var(--ms-divider); margin: 4px 0; }
-      .effects-ptr { display: flex; align-items: center; justify-content: space-between; padding: 5px 12px; }
-      .effects-ptr label { font-size: var(--ms-fs-xs); letter-spacing: .07em; text-transform: uppercase; color: var(--ms-text-label); cursor: pointer; }
-      .effects-ptr input[type=checkbox] { accent-color: var(--ms-danger); width: 13px; height: 13px; cursor: pointer; }
-      .effects-phys-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 12px 10px; }
-      .effects-phys-card { background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px; padding: 6px 8px; }
-      .effects-phys-label { font-size: var(--ms-fs-xs); letter-spacing: .09em; text-transform: uppercase; margin-bottom: 3px; }
-      .effects-phys-value { font-size: 13px; font-weight: 700; letter-spacing: .02em; }
-      .effects-phys-unit { font-size: var(--ms-fs-xs); margin-left: 2px; opacity: .6; }
-      .effects-lethal .effects-phys-label { color: #DC3C30; } .effects-lethal .effects-phys-value { color: #DC3C30; }
-      .effects-warning .effects-phys-label { color: #EF9F27; } .effects-warning .effects-phys-value { color: #EF9F27; }
-      .effects-thermal .effects-phys-label { color: #DC7820; } .effects-thermal .effects-phys-value { color: #DC7820; }
-      .effects-safe .effects-phys-label { color: #1D9E75; } .effects-safe .effects-phys-value { color: #1D9E75; }
-      .effects-qd .effects-phys-label { color: #378ADD; } .effects-qd .effects-phys-value { color: #378ADD; }
-      .effects-anim-row { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; }
-      .effects-anim-row label { font-size: var(--ms-fs-xs); letter-spacing: .07em; text-transform: uppercase; color: var(--ms-text-label); flex: 1; }
-      #effects-anim-speed { flex: 2; accent-color: var(--ms-danger); }
-      .effects-anim-speed-v { font-size: var(--ms-fs-sm); color: var(--ms-danger); min-width: 28px; text-align: right; }
-      #effects-strike-list { padding: 0 12px 8px; display: flex; flex-direction: column; gap: 4px; max-height: 110px; overflow-y: auto; }
-      .effects-sk-row { display: grid; grid-template-columns: 20px 1fr auto; gap: 6px; align-items: center; }
-      .effects-sk-idx { font-size: var(--ms-fs-sm); color: var(--ms-danger); font-weight: 700; text-align: center; }
-      .effects-sk-info { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); letter-spacing: .03em; }
-      .effects-sk-del { background: transparent; border: none; color: var(--ms-text-dim); font-size: 11px; cursor: pointer; padding: 2px 4px; }
-      .effects-sk-del:hover { color: var(--ms-danger); }
-      .effects-pb-row { display: flex; gap: 6px; padding: 9px 12px; }
-      .effects-pb {
-        flex: 1; padding: 7px; font-family: var(--ms-font); font-size: var(--ms-fs-xs); letter-spacing: .06em;
-        text-transform: uppercase; cursor: pointer; border-radius: 3px; border: 1px solid var(--ms-danger);
-        background: transparent; color: var(--ms-danger); transition: all .14s;
-      }
-      .effects-pb:hover:not(:disabled) { background: var(--ms-accent-dim); }
-      .effects-blue { border-color: var(--ms-accent); color: var(--ms-accent); }
-      .effects-blue:hover:not(:disabled) { background: var(--ms-accent-dim); }
-      .effects-green { border-color: var(--ms-success); color: var(--ms-success); }
-      .effects-green:hover:not(:disabled) { background: var(--ms-accent-dim); }
-      .effects-pb:disabled { opacity: .3; cursor: not-allowed; }
-      .effects-coords { font-size: var(--ms-fs-xs); color: var(--ms-danger); padding: 2px 12px 7px; letter-spacing: .05em; opacity: .75; }
-
-      .effects-legend {
-        position: fixed; bottom: 30px; left: 14px; z-index: 1100;
-        background: var(--ms-bg); border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius); padding: 9px 13px; display: none; flex-direction: column; gap: 5px;
-        box-shadow: var(--ms-shadow);
-      }
-      .effects-leg-row { display: flex; align-items: center; gap: 8px; }
-      .effects-leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-      .effects-leg-lbl { font-size: var(--ms-fs-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--ms-text-dim); }
-
-      .effects-hint {
-        position: fixed; bottom: 55px; left: 50%; transform: translateX(-50%);
-        background: var(--ms-bg); border: 1px solid var(--ms-danger);
-        color: var(--ms-danger); font-family: var(--ms-font); font-size: var(--ms-fs);
-        letter-spacing: .08em; padding: 8px 22px; border-radius: var(--ms-radius);
-        pointer-events: none; z-index: 1100; text-transform: uppercase; transition: opacity .3s;
-        opacity: 0;
-      }
-      .effects-panel::-webkit-scrollbar { width: 5px; }
-      .effects-panel::-webkit-scrollbar-track { background: transparent; }
-      .effects-panel::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 3px; }
-      .effects-panel::-webkit-scrollbar-thumb:hover { background: var(--ms-danger); }
-      #effects-strike-list::-webkit-scrollbar { width: 4px; }
-      #effects-strike-list::-webkit-scrollbar-track { background: transparent; }
-      #effects-strike-list::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 2px; }
-      #effects-strike-list::-webkit-scrollbar-thumb:hover { background: var(--ms-danger); }
-    `;
-    document.head.appendChild(style);
-  }
 
   // ─── Private: Effects Geometry ──────────────────────────────────────────────
 
