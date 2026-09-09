@@ -10,6 +10,7 @@ import Extent from '@arcgis/core/geometry/Extent';
 import Mesh from '@arcgis/core/geometry/Mesh';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 const M_PER_DEG = 111_320;
 const EARTH_R = 6_371_008.8;
@@ -127,7 +128,6 @@ export class DeadGroundMapper {
   open(graphic: Graphic | undefined, view: MapView | SceneView): void {
     this.initialize(view);
     this._showPanel();
-    this._bindPick();
 
     const geom = graphic?.geometry;
     let src: Point | null = null;
@@ -139,6 +139,8 @@ export class DeadGroundMapper {
         latitude: src.latitude ?? src.y,
         spatialReference: WGS84,
       }));
+    } else if (!this._observerPt) {
+      this._beginPick();
     }
   }
 
@@ -167,7 +169,7 @@ export class DeadGroundMapper {
   close(): void {
     this._hidePanel();
     this._clearResults();
-    this._cancelPick();
+    this._endPick();
   }
 
   destroy(): void {
@@ -220,10 +222,32 @@ export class DeadGroundMapper {
     });
   }
 
+  /** Arm a one-shot observer pick: highlight the button and wait for one click. */
+  private _beginPick(): void {
+    this._setPickArmed(true);
+    const hint = this._el('dead-hint');
+    if (hint) hint.hidden = false;
+    this._setStatus('place', 'Click map to place observer');
+    this._bindPick();
+  }
+
+  /** Leave picking mode, whether the pick landed or was superseded. */
+  private _endPick(): void {
+    this._cancelPick();
+    this._setPickArmed(false);
+    const hint = this._el('dead-hint');
+    if (hint) hint.hidden = true;
+  }
+
+  /** Pulse the pick button while the engine is waiting on a map click. */
+  private _setPickArmed(armed: boolean): void {
+    this._el('dead-btn-pick')?.classList.toggle('ms-armed', armed);
+  }
+
   private _bindPick(): void {
     if (!this._view || this._pickHandle) return;
     this._pickHandle = this._view.on('click', async (event: any) => {
-      if (this._running || !this._panelEl || this._panelEl.style.display === 'none') return;
+      if (this._running || !this._panelEl?.classList.contains('ms-visible')) return;
       let gp: any = event?.mapPoint ?? null;
       if (!gp && this._view?.type === '3d') {
         try {
@@ -242,6 +266,7 @@ export class DeadGroundMapper {
         latitude: gp.latitude,
         spatialReference: WGS84,
       }));
+      this._endPick();
     });
   }
 
@@ -259,6 +284,7 @@ export class DeadGroundMapper {
     }
     const point = new Point({ longitude: lon, latitude: lat, spatialReference: WGS84 });
     this._setObserver(point);
+    this._endPick();
     this._view?.goTo({ target: point, zoom: this._view.type === '3d' ? undefined : 13 }).catch(() => {});
   }
 
@@ -271,15 +297,17 @@ export class DeadGroundMapper {
     if (latInp) latInp.value = lat.toFixed(5);
     if (lonInp) lonInp.value = lon.toFixed(5);
     const coords = this._el('dead-coords');
-    if (coords) coords.textContent = `Observer: ${lat.toFixed(5)}\u00b0N  ${lon.toFixed(5)}\u00b0E`;
-    const hint = this._el('dead-hint');
-    if (hint) hint.style.opacity = '0';
+    if (coords) {
+      coords.textContent = `${lat.toFixed(5)}\u00b0N  ${lon.toFixed(5)}\u00b0E`;
+      coords.style.color = '';
+    }
     const runBtn = this._el('dead-btn-run') as HTMLButtonElement | null;
     if (runBtn) {
       runBtn.disabled = false;
       runBtn.title = 'Run dead-ground analysis from the placed observer';
     }
-    this._setStatus('place', 'Observer placed - click Run');
+    this._endPick();
+    this._setStatus('place', 'Observer placed - press Run');
 
     this._observerLayer.removeAll();
     this._observerLayer.add(new Graphic({
@@ -311,8 +339,10 @@ export class DeadGroundMapper {
   private async _runAnalysis(): Promise<void> {
     if (!this._view || !this._observerPt || this._running) return;
     this._running = true;
-    const runBtn = this._el('dead-btn-run') as HTMLButtonElement | null;
-    if (runBtn) runBtn.disabled = true;
+    this._endPick();
+    this._setRunBusy(true);
+    this._setResultsVisible(false);
+    this._setProgressVisible(true);
 
     const radiusM = Math.max(200, this._num('dead-inp-radius', 3000));
     const cellM = Math.max(10, this._num('dead-inp-cell', 35));
@@ -330,7 +360,7 @@ export class DeadGroundMapper {
     const snapToTerrain = this._checked('dead-opt-snap', true);
     const show2D = this._checked('dead-opt-heatmap', true);
     const show3D = this._checked('dead-opt-mesh', false);
-    const showDome = this._checked('dead-opt-dome', true) && this._view.type === '3d';
+    const showDome = this._checked('dead-opt-dome', false) && this._view.type === '3d';
     const domeParams = this._readDomeParams(radiusM, opacity, showMasked, showCap, showObstructionRing, doubleSided);
 
     try {
@@ -421,7 +451,7 @@ export class DeadGroundMapper {
         }
         this._setText('dead-st-dome', `${dome.visPct}%`);
       } else {
-        this._setText('dead-st-dome', this._checked('dead-opt-dome', true) ? '3D only' : 'off');
+        this._setText('dead-st-dome', this._checked('dead-opt-dome', false) ? '3D only' : 'off');
       }
       if (showContours) {
         this._setProgress(0.9, 'Drawing contours...');
@@ -442,6 +472,7 @@ export class DeadGroundMapper {
       this._setText('dead-st-cells', (result.cols * result.rows).toLocaleString());
       this._updateDepthLegend(colorMode, realMaxDepth);
       this._setProgress(1, `Done - ${pct}% dead ground`);
+      this._setResultsVisible(true);
       this._setStatus('done', 'Done');
       this._view.goTo({ target: result.extent, tilt: show3D || showDome ? 65 : 0 }, { duration: 1000 }).catch(() => {});
     } catch (err) {
@@ -450,7 +481,7 @@ export class DeadGroundMapper {
       this._setStatus('place', 'Analysis failed');
     } finally {
       this._running = false;
-      if (runBtn) runBtn.disabled = false;
+      this._setRunBusy(false);
     }
   }
 
@@ -488,15 +519,20 @@ export class DeadGroundMapper {
     const lonInp = this._el('dead-inp-lon') as HTMLInputElement | null;
     if (latInp) latInp.value = '';
     if (lonInp) lonInp.value = '';
-    const hint = this._el('dead-hint');
-    if (hint) hint.style.opacity = '1';
-    this._setText('dead-coords', 'Observer: click map to place, or enter Lat/Lon above');
+    const coords = this._el('dead-coords');
+    if (coords) {
+      coords.textContent = 'No observer placed';
+      coords.style.color = 'var(--ms-text-dim)';
+    }
     this._setText('dead-st-dead', '\u2014');
     this._setText('dead-st-depth', '\u2014');
     this._setText('dead-st-cells', '\u2014');
     this._setText('dead-st-dome', '\u2014');
     this._setProgress(0, '\u2014');
+    this._setProgressVisible(false);
+    this._setResultsVisible(false);
     this._setStatus('place', 'Place observer');
+    this._beginPick();
   }
 
   private async _computeDeadGround(
@@ -1318,6 +1354,7 @@ export class DeadGroundMapper {
       this._makeDraggable();
     }
     this._panelEl.classList.add('ms-visible');
+    this._setRunBusy(false);
     this._syncDomeControls();
     this._updateDepthLegend(
       this._selectValue('dead-inp-color-mode', 'depth') as DeadGroundColorMode,
@@ -1337,9 +1374,9 @@ export class DeadGroundMapper {
         <div class="ms-header-title">Dead Ground Mapper</div>
         <div class="ms-status-dot" id="dead-status-dot"></div>
         <div class="ms-status-lbl" id="dead-status-lbl">Place observer</div>
-        <button class="ms-header-btn ms-btn-round" id="dead-help-btn">?</button>
-        <button class="ms-header-btn ms-btn-round" id="dead-minimize-btn">▼</button>
-        <button class="ms-header-btn ms-btn-round" id="dead-close-btn">×</button>
+        <button class="ms-header-btn ms-btn-round" id="dead-help-btn" title="How dead-ground analysis works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="dead-minimize-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="dead-close-btn" title="Close (keeps graphics)">×</button>
       </div>
       <div class="ms-help-popover" id="dead-help-popover" hidden>
         <div class="ms-help-head">
@@ -1353,118 +1390,174 @@ export class DeadGroundMapper {
           <p><strong>Dead ground</strong> is terrain hidden from an observer by intervening relief — areas where the observer cannot see, and where enemy can manoeuvre or assemble unobserved.</p>
           <div class="ms-help-block"><h4>How it works</h4><p>The engine sweeps radial rays from the observer eye, tracing the terrain skyline along each bearing. For every grid cell, it compares the cell's elevation to the masking horizon angle in that direction. Cells lying below the horizon line-of-sight are <em>masked</em>; the vertical gap between the LOS and the ground is the dead-ground depth.</p></div>
           <div class="ms-help-block"><h4>Observer position</h4><p>The observer is a single point with an eye height above ground. Where you place this observer fundamentally changes the map — moving the observer onto higher ground exposes reverse slopes and shrinks dead ground; moving into a valley creates large masked areas behind every ridge. Eye height matters too: raising it above 2&nbsp;m can dramatically reduce dead ground at short ranges.</p></div>
-          <div class="ms-help-block"><h4>Workflow</h4><ol><li>Place observer by clicking the map.</li><li>Set eye height, analysis radius, and grid cell size.</li><li>Pick 2D heatmap, 3D mesh, and / or viewshed dome.</li><li>Run analysis and inspect depth contours and stats.</li></ol></div>
+          <div class="ms-help-block"><h4>Workflow</h4><ol><li>Press <strong>Pick observer on map</strong> and click the ground.</li><li>Set the analysis radius. Everything else has a working default.</li><li>Run the analysis, then read the depth key and stats.</li></ol><p><strong>Advanced</strong> holds eye height, an exact Lat/Lon entry, grid cell size, the depth colour scale and every display toggle. <strong>Viewshed dome</strong> holds that product's azimuth, elevation and ray-density parameters.</p></div>
           <div class="ms-help-block"><h4>Display</h4><p>Pale-yellow→red shading indicates increasing dead-ground depth (deeper = redder = higher threat). Optional green shading shows visible terrain, LOS spokes show radial sample directions, and contours mark equal-depth lines. The viewshed dome (3D) wraps the observer in a hemisphere coloured by what each direction can see.</p></div>
         </div>
       </div>
       <div class="ms-body">
+        <!-- Default view: place the observer, set a radius, run. Eye height,
+             grid resolution, colour scale, the display toggles and the dome
+             parameters all live in the collapsed disclosures below. -->
         <div class="ms-section-title">Observer</div>
-        <div class="ms-grid ms-tight" style="grid-template-columns:1fr 1fr auto;align-items:end;">
-          <div class="ms-field"><div class="ms-label">Lat °</div><input id="dead-inp-lat" class="ms-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" /></div>
-          <div class="ms-field"><div class="ms-label">Lon °</div><input id="dead-inp-lon" class="ms-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" /></div>
-          <div class="ms-field"><button class="ms-btn" id="dead-btn-setloc" title="Place the observer at the latitude / longitude entered above">Set location</button></div>
-        </div>
-        <div class="ms-grid">
-          <div class="ms-field"><div class="ms-label">Eye height (m)</div><input id="dead-inp-eye" class="ms-input" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
-          <div class="ms-field"><div class="ms-label">Analysis radius (m)</div><input id="dead-inp-radius" class="ms-input" type="number" value="3000" min="200" max="15000" step="100" /></div>
-        </div>
-        <div class="ms-section-title">Grid resolution</div>
-        <div class="ms-grid">
-          <div class="ms-field full"><div class="ms-label">Cell size (m) - finer = slower</div>
-            <select id="dead-inp-cell" class="ms-select">
-              <option value="20">20 m - fine (slow)</option>
-              <option value="35" selected>35 m - balanced</option>
-              <option value="50">50 m - fast</option>
-              <option value="80">80 m - preview</option>
-            </select>
-          </div>
-        </div>
-        <div class="ms-section-title">Depth colour scale</div>
-        <div class="ms-grid ms-tight">
-          <div class="ms-field full"><div class="ms-label">Colour mode</div>
-            <select id="dead-inp-color-mode" class="ms-select">
-              <option value="depth" selected>Depth - shallow to deep</option>
-              <option value="binary">Binary - dead / visible</option>
-              <option value="range">Range - near to far</option>
-              <option value="quadrant">Quadrant - compass hue</option>
-            </select>
-          </div>
-        </div>
-        <div class="ms-slider-row"><div class="ms-slider-label">Max depth (m)</div><input id="dead-inp-maxdepth" type="range" min="5" max="200" step="5" value="50"/><div class="ms-slider-value" id="dead-maxdepth-v">50 m</div></div>
-        <div class="ms-slider-row"><div class="ms-slider-label">Heatmap opacity</div><input id="dead-inp-opacity" type="range" min="0.2" max="1.0" step="0.05" value="0.75"/><div class="ms-slider-value" id="dead-opacity-v">0.75</div></div>
-        <div class="ms-divider"></div>
-        <div class="ms-section-title">Display options</div>
-        <div class="ms-opt-grid">
-          <div class="ms-toggle-row"><label>2D heatmap</label><input id="dead-opt-heatmap" type="checkbox" checked/></div>
-          <div class="ms-toggle-row"><label>3D terrain mesh</label><input id="dead-opt-mesh" type="checkbox"/></div>
-          <div class="ms-toggle-row"><label>3D viewshed dome</label><input id="dead-opt-dome" type="checkbox"/></div>
-          <div class="ms-toggle-row"><label>Depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
-          <div class="ms-toggle-row"><label>Visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
-          <div class="ms-toggle-row"><label>LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>
-          <div class="ms-toggle-row"><label>Snap terrain</label><input id="dead-opt-snap" type="checkbox" checked/></div>
-          <div class="ms-toggle-row"><label>Masked cells</label><input id="dead-opt-masked" type="checkbox" checked/></div>
-          <div class="ms-toggle-row"><label>Bottom cap</label><input id="dead-opt-cap" type="checkbox" checked/></div>
-          <div class="ms-toggle-row"><label>Horizon ring</label><input id="dead-opt-ring" type="checkbox" checked/></div>
-          <div class="ms-toggle-row"><label>Double sided</label><input id="dead-opt-dblside" type="checkbox" checked/></div>
-        </div>
-        <div class="ms-dome-options" id="dead-dome-options">
-          <div class="ms-grid ms-tight">
-            <div class="ms-field"><div class="ms-label">Az centre</div><input id="dead-dome-az-center" class="ms-input" type="number" value="0" min="0" max="359" step="1" /></div>
-            <div class="ms-field"><div class="ms-label">Spread</div><input id="dead-dome-az-spread" class="ms-input" type="number" value="360" min="10" max="360" step="5" /></div>
-            <div class="ms-field"><div class="ms-label">Min elev</div><input id="dead-dome-el-min" class="ms-input" type="number" value="-5" min="-89" max="0" step="1" /></div>
-            <div class="ms-field"><div class="ms-label">Max elev</div><input id="dead-dome-el-max" class="ms-input" type="number" value="60" min="1" max="89" step="1" /></div>
-            <div class="ms-field"><div class="ms-label">Rays</div>
-              <select id="dead-dome-rays" class="ms-select">
-                <option value="36">36</option>
-                <option value="72" selected>72</option>
-                <option value="120">120</option>
-                <option value="180">180</option>
-              </select>
-            </div>
-            <div class="ms-field"><div class="ms-label">Slices</div>
-              <select id="dead-dome-slices" class="ms-select">
-                <option value="8">8</option>
-                <option value="16" selected>16</option>
-                <option value="24">24</option>
-                <option value="32">32</option>
-              </select>
-            </div>
-            <div class="ms-field"><div class="ms-label">Step (m)</div><input id="dead-dome-step" class="ms-input" type="number" value="50" min="10" max="250" step="10" /></div>
-            <div class="ms-field"><div class="ms-label">Dome colour</div>
-              <select id="dead-dome-color-mode" class="ms-select">
-                <option value="elevation" selected>Elevation</option>
-                <option value="binary">Binary</option>
-                <option value="range">Range</option>
-                <option value="azimuth">Azimuth</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="ms-divider"></div>
-        <div id="dead-depthkey" class="ms-depthkey">
-          <div class="ms-legend-title" id="dead-legend-title">Dead ground depth key</div>
-          <div class="ms-legend-bar" id="dead-legend-bar"></div>
-          <div class="ms-legend"><span id="dead-dk-min">0 m (shallow)</span><span id="dead-dk-max">50 m (deep)</span></div>
-        </div>
-        <div id="dead-progress-wrap" class="ms-progress-wrap"><div id="dead-progress-track" class="ms-progress-track"><div id="dead-progress-fill" class="ms-progress-fill"></div></div><div id="dead-progress-label" class="ms-progress-label">—</div></div>
-        <div id="dead-stats" class="ms-info-grid">
-          <div class="ms-info-item"><div class="ms-info-label">Dead ground</div><div class="ms-info-value" id="dead-st-dead">—</div></div>
-          <div class="ms-info-item"><div class="ms-info-label">Max depth</div><div class="ms-info-value" id="dead-st-depth">—</div></div>
-          <div class="ms-info-item"><div class="ms-info-label">Cells</div><div class="ms-info-value" id="dead-st-cells">—</div></div>
-          <div class="ms-info-item"><div class="ms-info-label">Dome vis</div><div class="ms-info-value" id="dead-st-dome">—</div></div>
-        </div>
-        <div id="dead-coords" class="ms-coords">Observer: click map to place, or enter Lat/Lon above</div>
         <div class="ms-btn-row">
-          <button class="ms-btn" id="dead-btn-clear">Clear</button>
-          <button class="ms-btn primary" id="dead-btn-run" disabled title="Place an observer first — click the map or enter a Lat/Lon and press Set location">Run analysis</button>
+          <button class="ms-btn primary" id="dead-btn-pick" title="Click, then tap the map to place the observer">📍 Pick observer on map</button>
         </div>
-        <div id="dead-legend" class="ms-legend-wrap">
-          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#fff596,#f0782d,#961212)"></div><div class="ms-legend-label">Dead ground - shallow → deep</div></div>
-          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27,#DC3C30)"></div><div class="ms-legend-label">Viewshed dome - elevation</div></div>
-          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:rgba(29,158,117,0.35);border:1px solid #1D9E75"></div><div class="ms-legend-label">Visible ground (if enabled)</div></div>
-          <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:#378ADD"></div><div class="ms-legend-label">Observer position</div></div>
+        <div id="dead-coords" class="ms-coords">No observer placed</div>
+        <div class="ms-grid full">
+          <div class="ms-field">
+            <label class="ms-label" for="dead-inp-radius">Analysis radius (m)</label>
+            <input id="dead-inp-radius" class="ms-input" type="number" value="3000" min="200" max="15000" step="100" />
+          </div>
         </div>
-        <div id="dead-hint" class="ms-hint">Click anywhere on the map to place the observer, or type a Lat/Lon and press Set location</div>
+
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="dead-btn-run" disabled title="Place an observer first">Run analysis ↗</button>
+        </div>
+
+        <div id="dead-progress-wrap" class="ms-progress-wrap" hidden><div id="dead-progress-track" class="ms-progress-track"><div id="dead-progress-fill" class="ms-progress-fill"></div></div><div id="dead-progress-label" class="ms-progress-label">—</div></div>
+
+        <div id="dead-results" hidden>
+          <div id="dead-stats" class="ms-info-grid">
+            <div class="ms-info-item"><div class="ms-info-label">Dead ground</div><div class="ms-info-value" id="dead-st-dead">—</div></div>
+            <div class="ms-info-item"><div class="ms-info-label">Max depth</div><div class="ms-info-value" id="dead-st-depth">—</div></div>
+            <div class="ms-info-item"><div class="ms-info-label">Cells</div><div class="ms-info-value" id="dead-st-cells">—</div></div>
+            <div class="ms-info-item"><div class="ms-info-label">Dome vis</div><div class="ms-info-value" id="dead-st-dome">—</div></div>
+          </div>
+          <div id="dead-depthkey" class="ms-depthkey">
+            <div class="ms-legend-title" id="dead-legend-title">Dead ground depth key</div>
+            <div class="ms-legend-bar" id="dead-legend-bar"></div>
+            <div class="ms-legend"><span id="dead-dk-min">0 m (shallow)</span><span id="dead-dk-max">50 m (deep)</span></div>
+          </div>
+          <div class="ms-btn-row">
+            <button class="ms-btn danger" id="dead-btn-clear">Clear</button>
+          </div>
+        </div>
+
+        <div id="dead-hint" class="ms-hint" hidden>Click anywhere on the map to place the observer.</div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="dead-adv-toggle" aria-expanded="false" aria-controls="dead-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Eye height, grid, colour, display</span>
+          </button>
+          <div class="ms-disclosure-body" id="dead-adv-body" hidden>
+            <div class="ms-section-title">Observer detail</div>
+            <div class="ms-grid ms-tight" style="grid-template-columns:1fr 1fr auto;align-items:end;">
+              <div class="ms-field"><label class="ms-label" for="dead-inp-lat">Lat °</label><input id="dead-inp-lat" class="ms-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" /></div>
+              <div class="ms-field"><label class="ms-label" for="dead-inp-lon">Lon °</label><input id="dead-inp-lon" class="ms-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" /></div>
+              <div class="ms-field"><button class="ms-btn" id="dead-btn-setloc" title="Place the observer at the latitude / longitude entered here">Set location</button></div>
+            </div>
+            <div class="ms-grid full">
+              <div class="ms-field"><label class="ms-label" for="dead-inp-eye">Eye height (m)</label><input id="dead-inp-eye" class="ms-input" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
+            </div>
+
+            <div class="ms-section-title">Grid resolution</div>
+            <div class="ms-grid full">
+              <div class="ms-field"><label class="ms-label" for="dead-inp-cell">Cell size (m) - finer = slower</label>
+                <select id="dead-inp-cell" class="ms-select">
+                  <option value="20">20 m - fine (slow)</option>
+                  <option value="35" selected>35 m - balanced</option>
+                  <option value="50">50 m - fast</option>
+                  <option value="80">80 m - preview</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="ms-section-title">Depth colour scale</div>
+            <div class="ms-grid full">
+              <div class="ms-field"><label class="ms-label" for="dead-inp-color-mode">Colour mode</label>
+                <select id="dead-inp-color-mode" class="ms-select">
+                  <option value="depth" selected>Depth - shallow to deep</option>
+                  <option value="binary">Binary - dead / visible</option>
+                  <option value="range">Range - near to far</option>
+                  <option value="quadrant">Quadrant - compass hue</option>
+                </select>
+              </div>
+            </div>
+            <div class="ms-slider-row"><div class="ms-slider-label">Max depth (m)</div><input id="dead-inp-maxdepth" type="range" min="5" max="200" step="5" value="50"/><div class="ms-slider-value" id="dead-maxdepth-v">50 m</div></div>
+            <div class="ms-slider-row"><div class="ms-slider-label">Heatmap opacity</div><input id="dead-inp-opacity" type="range" min="0.2" max="1.0" step="0.05" value="0.75"/><div class="ms-slider-value" id="dead-opacity-v">0.75</div></div>
+
+            <div class="ms-section-title">Products to build</div>
+            <div class="ms-opt-grid">
+              <div class="ms-toggle-row"><label for="dead-opt-heatmap">2D heatmap</label><input id="dead-opt-heatmap" type="checkbox" checked/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-mesh">3D terrain mesh</label><input id="dead-opt-mesh" type="checkbox"/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-dome">3D viewshed dome</label><input id="dead-opt-dome" type="checkbox"/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-contours">Depth contours</label><input id="dead-opt-contours" type="checkbox" checked/></div>
+            </div>
+
+            <div class="ms-section-title">Overlays &amp; shading</div>
+            <div class="ms-opt-grid">
+              <div class="ms-toggle-row"><label for="dead-opt-visible">Visible ground</label><input id="dead-opt-visible" type="checkbox"/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-spokes">LOS spokes</label><input id="dead-opt-spokes" type="checkbox"/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-snap">Snap terrain</label><input id="dead-opt-snap" type="checkbox" checked/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-masked">Masked cells</label><input id="dead-opt-masked" type="checkbox" checked/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-cap">Bottom cap</label><input id="dead-opt-cap" type="checkbox" checked/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-ring">Horizon ring</label><input id="dead-opt-ring" type="checkbox" checked/></div>
+              <div class="ms-toggle-row"><label for="dead-opt-dblside">Double sided</label><input id="dead-opt-dblside" type="checkbox" checked/></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="dead-dome-toggle-btn" aria-expanded="false" aria-controls="dead-dome-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Viewshed dome</span>
+            <span class="ms-disclosure-meta">Azimuth, elevation, ray density</span>
+          </button>
+          <div class="ms-disclosure-body" id="dead-dome-body" hidden>
+            <div class="ms-hint">Needs a 3D view and the <strong>3D viewshed dome</strong> product enabled under Advanced.</div>
+            <div class="ms-dome-options" id="dead-dome-options">
+              <div class="ms-grid ms-tight">
+                <div class="ms-field"><label class="ms-label" for="dead-dome-az-center">Az centre</label><input id="dead-dome-az-center" class="ms-input" type="number" value="0" min="0" max="359" step="1" /></div>
+                <div class="ms-field"><label class="ms-label" for="dead-dome-az-spread">Spread</label><input id="dead-dome-az-spread" class="ms-input" type="number" value="360" min="10" max="360" step="5" /></div>
+                <div class="ms-field"><label class="ms-label" for="dead-dome-el-min">Min elev</label><input id="dead-dome-el-min" class="ms-input" type="number" value="-5" min="-89" max="0" step="1" /></div>
+                <div class="ms-field"><label class="ms-label" for="dead-dome-el-max">Max elev</label><input id="dead-dome-el-max" class="ms-input" type="number" value="60" min="1" max="89" step="1" /></div>
+                <div class="ms-field"><label class="ms-label" for="dead-dome-rays">Rays</label>
+                  <select id="dead-dome-rays" class="ms-select">
+                    <option value="36">36</option>
+                    <option value="72" selected>72</option>
+                    <option value="120">120</option>
+                    <option value="180">180</option>
+                  </select>
+                </div>
+                <div class="ms-field"><label class="ms-label" for="dead-dome-slices">Slices</label>
+                  <select id="dead-dome-slices" class="ms-select">
+                    <option value="8">8</option>
+                    <option value="16" selected>16</option>
+                    <option value="24">24</option>
+                    <option value="32">32</option>
+                  </select>
+                </div>
+                <div class="ms-field"><label class="ms-label" for="dead-dome-step">Step (m)</label><input id="dead-dome-step" class="ms-input" type="number" value="50" min="10" max="250" step="10" /></div>
+                <div class="ms-field"><label class="ms-label" for="dead-dome-color-mode">Dome colour</label>
+                  <select id="dead-dome-color-mode" class="ms-select">
+                    <option value="elevation" selected>Elevation</option>
+                    <option value="binary">Binary</option>
+                    <option value="range">Range</option>
+                    <option value="azimuth">Azimuth</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="dead-legend-toggle" aria-expanded="false" aria-controls="dead-legend-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Legend</span>
+            <span class="ms-disclosure-meta">What the colours mean</span>
+          </button>
+          <div class="ms-disclosure-body" id="dead-legend-body" hidden>
+            <div id="dead-legend" class="ms-legend-wrap">
+              <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#fff596,#f0782d,#961212)"></div><div class="ms-legend-label">Dead ground - shallow → deep</div></div>
+              <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:linear-gradient(to right,#1a52dc,#1D9E75,#EF9F27,#DC3C30)"></div><div class="ms-legend-label">Viewshed dome - elevation</div></div>
+              <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:rgba(29,158,117,0.35);border:1px solid #1D9E75"></div><div class="ms-legend-label">Visible ground (if enabled)</div></div>
+              <div class="ms-legend-row"><div class="ms-legend-swatch" style="background:#378ADD"></div><div class="ms-legend-label">Observer position</div></div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1489,10 +1582,17 @@ export class DeadGroundMapper {
       body.classList.toggle('ms-minimized', !minimized);
       btn.textContent = minimized ? '▼' : '▶';
     });
-    p.querySelector('#dead-close-btn')?.addEventListener('click', () => this._hidePanel());
+    // Keeps the graphics, but must release the map-click handler or the tool
+    // goes on relocating the observer behind a closed panel.
+    p.querySelector('#dead-close-btn')?.addEventListener('click', () => {
+      this._hidePanel();
+      this._endPick();
+    });
     p.querySelector('#dead-btn-clear')?.addEventListener('click', () => this._clearAll());
     p.querySelector('#dead-btn-run')?.addEventListener('click', () => void this._runAnalysis());
+    p.querySelector('#dead-btn-pick')?.addEventListener('click', () => this._beginPick());
     p.querySelector('#dead-btn-setloc')?.addEventListener('click', () => this._setObserverFromInputs());
+    bindDisclosures(p);
     p.querySelector('#dead-inp-maxdepth')?.addEventListener('input', () => {
       this._maxDepthUserSet = true;
       const v = this._num('dead-inp-maxdepth', 50);
@@ -1557,6 +1657,30 @@ export class DeadGroundMapper {
     document.removeEventListener('mousemove', this._onDragMove);
     document.removeEventListener('mouseup', this._onDragEnd);
   };
+
+  /** Primary CTA state while the engine is computing. */
+  private _setRunBusy(busy: boolean): void {
+    const btn = this._el('dead-btn-run') as HTMLButtonElement | null;
+    if (!btn) return;
+    btn.disabled = busy || !this._observerPt;
+    btn.classList.toggle('ms-busy', busy);
+    btn.textContent = busy ? 'Analysing\u2026' : 'Run analysis \u2197';
+  }
+
+  /** Progress track stays out of the way until a run is under way. */
+  private _setProgressVisible(visible: boolean): void {
+    const el = this._el('dead-progress-wrap');
+    if (el) el.hidden = !visible;
+  }
+
+  /**
+   * Stats, depth key and Clear only mean something once a run has produced a
+   * map, so they ship hidden rather than showing a row of em dashes.
+   */
+  private _setResultsVisible(visible: boolean): void {
+    const el = this._el('dead-results');
+    if (el) el.hidden = !visible;
+  }
 
   private _setStatus(state: 'place' | 'sampling' | 'building' | 'done', text: string): void {
     if (state === 'done') EngineLogger.success(ENGINE_NAME, text);

@@ -20,6 +20,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -333,7 +334,6 @@ export class TrajectoryEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -942,6 +942,7 @@ export class TrajectoryEngine {
     this._setText('#traj-st-tof', result.tof.toFixed(1));
     this._setText('#traj-st-alt', Math.round(result.maxAlt).toLocaleString());
 
+    this._setResultsVisible(true);
     const commitBtn = this._panelEl.querySelector<HTMLButtonElement>('#traj-commit-btn');
     const animBtn = this._panelEl.querySelector<HTMLButtonElement>('#traj-animate-btn');
     if (commitBtn) commitBtn.disabled = false;
@@ -1025,7 +1026,7 @@ export class TrajectoryEngine {
 
     this._setText(
       '#traj-fire-coords',
-      `Fire: ${(this._firePoint.latitude ?? 0).toFixed(5)}°N  ${(this._firePoint.longitude ?? 0).toFixed(5)}°E`
+      `Fire  ${(this._firePoint.latitude ?? 0).toFixed(5)}°N  ${(this._firePoint.longitude ?? 0).toFixed(5)}°E`
     );
   }
 
@@ -1035,7 +1036,8 @@ export class TrajectoryEngine {
       .forEach((g: Graphic) => this._observerLayer.remove(g));
 
     if (!this._targetPoint) {
-      this._setText('#traj-target-coords', 'Target: not set');
+      this._setText('#traj-target-coords', 'No target set');
+      this._syncPlacementUI();
       return;
     }
 
@@ -1052,7 +1054,7 @@ export class TrajectoryEngine {
 
     this._setText(
       '#traj-target-coords',
-      `Target: ${(this._targetPoint.latitude ?? 0).toFixed(5)}°N  ${(this._targetPoint.longitude ?? 0).toFixed(5)}°E`
+      `Target  ${(this._targetPoint.latitude ?? 0).toFixed(5)}°N  ${(this._targetPoint.longitude ?? 0).toFixed(5)}°E`
     );
   }
 
@@ -1062,6 +1064,8 @@ export class TrajectoryEngine {
     if (!this._view) return;
     this._cancelPlacement();
     this._placeMode = 'fire';
+    this._setPickArmed('fire');
+    this._flashPickTooltip('Click the map to place the fire point.');
     this._setStatus('placing');
     this._clickHandle = this._view.on('click', async (event: any) => {
       this._cancelPlacement();
@@ -1079,12 +1083,15 @@ export class TrajectoryEngine {
     if (!this._view || !this._firePoint) return;
     this._cancelPlacement();
     this._placeMode = 'target';
+    this._setPickArmed('target');
+    this._flashPickTooltip('Click the map to place the target.', 'traj-pick-target-btn');
     this._setStatus('placing');
     this._clickHandle = this._view.on('click', async (event: any) => {
       this._cancelPlacement();
       const pt = await this._pickMapPoint(event);
       this._targetPoint = pt;
       this._drawTargetMarker();
+      this._syncPlacementUI();
       const brg = this._bearing(
         this._firePoint?.longitude ?? 0,
         this._firePoint?.latitude ?? 0,
@@ -1097,7 +1104,28 @@ export class TrajectoryEngine {
     });
   }
 
+  /** Pulse whichever placement button is waiting on a map click. */
+  private _setPickArmed(mode: 'fire' | 'target' | null): void {
+    const p = this._panelEl;
+    if (!p) return;
+    p.querySelector('#traj-pick-fire-btn')?.classList.toggle('ms-armed', mode === 'fire');
+    p.querySelector('#traj-pick-target-btn')?.classList.toggle('ms-armed', mode === 'target');
+  }
+
+  /** "Clear target" only exists once a target does. */
+  private _syncPlacementUI(): void {
+    const el = this._panelEl?.querySelector<HTMLElement>('#traj-target-actions');
+    if (el) el.hidden = !this._targetPoint;
+  }
+
+  /** Stats, animation and the scrubber only apply once an arc has been solved. */
+  private _setResultsVisible(visible: boolean): void {
+    const el = this._panelEl?.querySelector<HTMLElement>('#traj-results');
+    if (el) el.hidden = !visible;
+  }
+
   private _cancelPlacement(): void {
+    this._setPickArmed(null);
     if (this._clickHandle) {
       this._clickHandle.remove();
       this._clickHandle = null;
@@ -1136,7 +1164,7 @@ export class TrajectoryEngine {
     const playBtn = this._panelEl.querySelector<HTMLButtonElement>('#traj-play-btn');
     if (!scrubWrap || !scrub || !playBtn) return;
 
-    scrubWrap.style.display = 'flex';
+    scrubWrap.hidden = false;
     scrub.max = String(Math.max(0, this._currentTrajectory.pts.length - 1));
     scrub.value = '0';
     this._setupAnimGraphic();
@@ -1285,26 +1313,34 @@ export class TrajectoryEngine {
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
       this._panelEl.id = 'trajectory-engine-panel';
-      this._panelEl.className = 'traj-panel';
+      this._panelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._panelEl.setAttribute('data-engine', 'trajectory');
+      this._panelEl.style.top = '62px';
+      this._panelEl.style.right = '12px';
+      this._panelEl.style.width = '392px';
       document.body.appendChild(this._panelEl);
     }
 
     const preset = PROJECTILE_PRESETS[defaultPreset] ?? PROJECTILE_PRESETS.mortar_81mm;
     this._panelEl.style.setProperty('--traj-accent', preset.accentHex);
+    // The re-edit path needs the override values written into the markup, so
+    // the panel is rebuilt rather than reused.
     this._panelEl.innerHTML = this._buildPanelHTML(defaultPreset, preset, override);
-    this._panelEl.style.display = 'block';
+    this._panelEl.classList.add('ms-visible');
     this._bindPanelEvents();
     this._makeDraggable();
     this._setText('#traj-fire-coords', this._firePoint
-      ? `Fire: ${(this._firePoint.latitude ?? 0).toFixed(5)}°N  ${(this._firePoint.longitude ?? 0).toFixed(5)}°E`
-      : 'Fire: click map to place');
+      ? `Fire  ${(this._firePoint.latitude ?? 0).toFixed(5)}°N  ${(this._firePoint.longitude ?? 0).toFixed(5)}°E`
+      : 'No fire point placed');
     this._setText('#traj-target-coords', this._targetPoint
-      ? `Target: ${(this._targetPoint.latitude ?? 0).toFixed(5)}°N  ${(this._targetPoint.longitude ?? 0).toFixed(5)}°E`
-      : 'Target: not set');
+      ? `Target  ${(this._targetPoint.latitude ?? 0).toFixed(5)}°N  ${(this._targetPoint.longitude ?? 0).toFixed(5)}°E`
+      : 'No target set');
+    this._syncPlacementUI();
+    this._setResultsVisible(!!this._currentTrajectory);
   }
 
   private _hidePanel(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
+    this._panelEl?.classList.remove('ms-visible');
   }
 
   private _buildPanelHTML(
@@ -1329,40 +1365,44 @@ export class TrajectoryEngine {
       .join('');
 
     return `
-      <div class="traj-header" id="traj-drag-handle">
-        <span class="traj-header-icon">↗</span>
-        <span class="traj-header-title">Trajectory Analysis${isEdit ? ' — Re-edit' : ''}</span>
-        <span class="traj-status-dot" id="traj-status-dot"></span>
-        <span class="traj-status-lbl" id="traj-status-lbl">${isEdit ? 'Restored' : 'Awaiting fire point'}</span>
-        <button class="traj-help-btn" id="traj-help-btn" title="How trajectory analysis works">?</button>
-        <button class="traj-minimize-btn" id="traj-minimize-btn" title="Minimize">▼</button>
-        <button class="traj-close-btn" id="traj-close-btn" title="Close (keeps graphics)">✕</button>
+      <div class="ms-header" id="traj-drag-handle">
+        <span class="ms-header-icon" id="traj-header-icon">↗</span>
+        <span class="ms-header-title">Trajectory Analysis${isEdit ? ' — Re-edit' : ''}</span>
+        <span class="ms-status-dot" id="traj-status-dot"></span>
+        <span class="ms-status-lbl" id="traj-status-lbl">${isEdit ? 'Restored' : 'Awaiting fire point'}</span>
+        <button class="ms-header-btn ms-btn-round" id="traj-help-btn" title="How trajectory analysis works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="traj-minimize-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="traj-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
 
-      <div class="traj-help-popover" id="traj-help-popover" hidden>
-        <div class="traj-help-head">
+      <div class="ms-help-popover" id="traj-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="traj-help-kicker">Field Guide</div>
-            <div class="traj-help-title">Trajectory Analysis</div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Trajectory Analysis</div>
           </div>
-          <button class="traj-help-close" id="traj-help-close" title="Close">✕</button>
+          <button class="ms-help-close" id="traj-help-close" title="Close">✕</button>
         </div>
-        <div class="traj-help-body">
+        <div class="ms-help-body">
+          <div class="ms-help-answers">
+            <div class="ms-help-answers-kicker">Answers</div>
+            <div class="ms-help-answers-q">Where will this round actually land?</div>
+          </div>
           <p>Simulates projectile flight from a fire point using launch geometry, drag, wind, and optional Coriolis correction. It can also animate the path and estimate impact statistics.</p>
-          <div class="traj-help-block">
+          <div class="ms-help-block">
             <h4>How It Works</h4>
             <ol>
-              <li>Place the fire point, then optionally place a target.</li>
-              <li>Pick a projectile preset to load mass, diameter, drag coefficient, and reference CEP.</li>
-              <li>Adjust launch angle, muzzle velocity, azimuth, and wind.</li>
-              <li>Run the integrator to draw the full arc, apogee, terminal segment, impact point, and optional CEP footprint.</li>
+              <li>Press <strong>Pick fire point</strong> and click the map, then optionally pick a target.</li>
+              <li>Choose the projectile. Its preset loads mass, drag, muzzle velocity and reference CEP.</li>
+              <li>The arc redraws as you change anything, so there is no separate run step.</li>
+              <li>Animate the flight, then commit to bake the arc onto the committed layer.</li>
             </ol>
           </div>
-          <div class="traj-help-block">
+          <div class="ms-help-block">
             <h4>Phenomenon</h4>
             <p>The engine numerically integrates projectile motion in small time steps. Gravity pulls the round down, drag reduces speed, wind shifts the path, and Coriolis can add long-range lateral bias. The result is a flight path rather than a simple straight line or parabola guess.</p>
           </div>
-          <div class="traj-help-block">
+          <div class="ms-help-block">
             <h4>Parameters</h4>
             <dl>
               <dt>Projectile</dt><dd>Loads ballistic defaults such as mass, drag coefficient, muzzle velocity, and CEP for the selected round or weapon.</dd>
@@ -1381,112 +1421,126 @@ export class TrajectoryEngine {
         </div>
       </div>
 
-      <div class="traj-body">
-        <div class="traj-sec">Projectile</div>
-        <div class="traj-field-full">
-          <select id="traj-preset" class="traj-select">${options}</select>
+      <div class="ms-body">
+        <!-- Default view: place fire and target, choose the projectile, commit.
+             The arc redraws live, so launch geometry, wind and the display
+             toggles all live in the collapsed Advanced disclosure. -->
+        <div class="ms-section-title">Fire &amp; target</div>
+        <div class="ms-btn-row">
+          <button class="ms-btn primary" id="traj-pick-fire-btn" title="Click, then click the map to place the fire point">📍 Fire point</button>
+          <button class="ms-btn primary" id="traj-pick-target-btn" title="Click, then click the map to place the target">🎯 Target</button>
+        </div>
+        <div class="ms-coords" id="traj-fire-coords">No fire point placed</div>
+        <div class="ms-coords" id="traj-target-coords">No target set</div>
+        <div class="ms-btn-row" id="traj-target-actions" hidden>
+          <button class="ms-btn" id="traj-clear-target-btn">Clear target</button>
         </div>
 
-        <div class="traj-divider"></div>
-        <div class="traj-sec">Launch</div>
-        <div class="traj-slider-row">
-          <span class="traj-label">Launch angle (°)</span>
-          <input id="traj-angle" type="range" min="0" max="89" step="0.5" value="${launchAngle}" class="traj-slider" />
-          <span class="traj-slider-val" id="traj-angle-val">${Number(launchAngle).toFixed(1)}°</span>
-        </div>
-        <div class="traj-slider-row">
-          <span class="traj-label">Muzzle vel (m/s)</span>
-          <input id="traj-vel" type="range" min="20" max="1200" step="1" value="${muzzleVel}" class="traj-slider" />
-          <span class="traj-slider-val" id="traj-vel-val">${Math.round(muzzleVel)}</span>
-        </div>
-        <div class="traj-grid">
-          <div class="traj-field">
-            <div class="traj-label">Azimuth (°)</div>
-            <input id="traj-azimuth" class="traj-input" type="number" min="0" max="359" step="1" value="${Math.round(azimuth)}" />
-          </div>
-          <div class="traj-field">
-            <div class="traj-label">Obs height (m)</div>
-            <input id="traj-obsht" class="traj-input" type="number" min="0" max="100" step="0.5" value="${obsHeight}" />
+        <div class="ms-grid full">
+          <div class="ms-field">
+            <label class="ms-label" for="traj-preset">Projectile</label>
+            <select id="traj-preset" class="ms-select">${options}</select>
           </div>
         </div>
 
-        <div class="traj-divider"></div>
-        <div class="traj-sec">Wind</div>
-        <div class="traj-slider-row">
-          <span class="traj-label">Speed (m/s)</span>
-          <input id="traj-wind-spd" type="range" min="0" max="40" step="0.5" value="${windSpeed}" class="traj-slider" />
-          <span class="traj-slider-val" id="traj-wind-spd-val">${Number(windSpeed).toFixed(1)}</span>
-        </div>
-        <div class="traj-slider-row">
-          <span class="traj-label">From bearing (°)</span>
-          <input id="traj-wind-brg" type="range" min="0" max="359" step="1" value="${Math.round(windBearing)}" class="traj-slider" />
-          <span class="traj-slider-val" id="traj-wind-brg-val">${Math.round(windBearing)}°</span>
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="traj-commit-btn" ${isEdit ? '' : 'disabled'}>Commit ↗</button>
         </div>
 
-        <div class="traj-divider"></div>
-        <div class="traj-sec">Placement</div>
-        <div class="traj-grid">
-          <div class="traj-field">
-            <button class="traj-btn traj-btn-sm" id="traj-pick-fire-btn">Pick Fire ⊕</button>
+        <div id="traj-results" hidden>
+          <div class="traj-stats">
+            <div class="traj-stat"><div class="traj-stat-val" id="traj-st-range">—</div><div class="traj-stat-lbl">Range (m)</div></div>
+            <div class="traj-stat"><div class="traj-stat-val" id="traj-st-tof">—</div><div class="traj-stat-lbl">TOF (s)</div></div>
+            <div class="traj-stat"><div class="traj-stat-val" id="traj-st-alt">—</div><div class="traj-stat-lbl">Apex (m)</div></div>
           </div>
-          <div class="traj-field">
-            <button class="traj-btn traj-btn-sm" id="traj-pick-target-btn">Pick Target ⊕</button>
+          <div class="ms-btn-row">
+            <button class="ms-btn" id="traj-animate-btn" disabled>Animate ▶</button>
+            <button class="ms-btn danger" id="traj-clear-btn">Clear</button>
+          </div>
+          <div class="traj-scrub-wrap" id="traj-scrub-wrap" hidden>
+            <span class="ms-slider-label">T+</span>
+            <input id="traj-scrubber" type="range" min="0" max="0" value="0" step="1" />
+            <span id="traj-scrub-time" class="ms-slider-value">0.00 s</span>
+            <button class="ms-btn" id="traj-play-btn" style="flex:0 0 auto;">▶</button>
           </div>
         </div>
-        <div class="traj-grid">
-          <div class="traj-field">
-            <button class="traj-btn traj-btn-sm" id="traj-clear-target-btn">Clear Target</button>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="traj-adv-toggle" aria-expanded="false" aria-controls="traj-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Launch geometry, wind, display</span>
+          </button>
+          <div class="ms-disclosure-body" id="traj-adv-body" hidden>
+            <div class="ms-section-title">Launch</div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Launch angle (°)</div>
+              <input id="traj-angle" type="range" min="0" max="89" step="0.5" value="${launchAngle}" />
+              <div class="ms-slider-value" id="traj-angle-val">${Number(launchAngle).toFixed(1)}°</div>
+            </div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Muzzle vel (m/s)</div>
+              <input id="traj-vel" type="range" min="20" max="1200" step="1" value="${muzzleVel}" />
+              <div class="ms-slider-value" id="traj-vel-val">${Math.round(muzzleVel)}</div>
+            </div>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <label class="ms-label" for="traj-azimuth">Azimuth (°)</label>
+                <input id="traj-azimuth" class="ms-input" type="number" min="0" max="359" step="1" value="${Math.round(azimuth)}" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="traj-obsht">Obs height (m)</label>
+                <input id="traj-obsht" class="ms-input" type="number" min="0" max="100" step="0.5" value="${obsHeight}" />
+              </div>
+            </div>
+
+            <div class="ms-section-title">Wind</div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Speed (m/s)</div>
+              <input id="traj-wind-spd" type="range" min="0" max="40" step="0.5" value="${windSpeed}" />
+              <div class="ms-slider-value" id="traj-wind-spd-val">${Number(windSpeed).toFixed(1)}</div>
+            </div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">From bearing (°)</div>
+              <input id="traj-wind-brg" type="range" min="0" max="359" step="1" value="${Math.round(windBearing)}" />
+              <div class="ms-slider-value" id="traj-wind-brg-val">${Math.round(windBearing)}°</div>
+            </div>
+
+            <div class="ms-section-title">Display</div>
+            <div class="ms-toggle-row">
+              <label for="traj-opt-phases">Phase colouring</label>
+              <input id="traj-opt-phases" type="checkbox" class="ms-input"${usePhases ? ' checked' : ''} />
+            </div>
+            <div class="ms-toggle-row">
+              <label for="traj-opt-cep">Show CEP ring</label>
+              <input id="traj-opt-cep" type="checkbox" class="ms-input"${showCEP ? ' checked' : ''} />
+            </div>
+            <div class="ms-toggle-row">
+              <label for="traj-opt-coriolis">Coriolis effect</label>
+              <input id="traj-opt-coriolis" type="checkbox" class="ms-input"${useCoriolis ? ' checked' : ''} />
+            </div>
+            <div class="ms-toggle-row">
+              <label for="traj-opt-autosolve">Auto-solve angle to target</label>
+              <input id="traj-opt-autosolve" type="checkbox" class="ms-input" checked />
+            </div>
           </div>
-          <div class="traj-field"></div>
-        </div>
-        <div class="traj-coords" id="traj-fire-coords">Fire: click map to place</div>
-        <div class="traj-coords" id="traj-target-coords">Target: not set</div>
-
-        <div class="traj-divider"></div>
-        <div class="traj-sec">Display</div>
-        <div class="traj-toggle-row">
-          <label class="traj-label">Phase colouring</label>
-          <input id="traj-opt-phases" type="checkbox" class="traj-check"${usePhases ? ' checked' : ''} />
-        </div>
-        <div class="traj-toggle-row">
-          <label class="traj-label">Show CEP ring</label>
-          <input id="traj-opt-cep" type="checkbox" class="traj-check"${showCEP ? ' checked' : ''} />
-        </div>
-        <div class="traj-toggle-row">
-          <label class="traj-label">Coriolis effect</label>
-          <input id="traj-opt-coriolis" type="checkbox" class="traj-check"${useCoriolis ? ' checked' : ''} />
-        </div>
-        <div class="traj-toggle-row">
-          <label class="traj-label">Auto-solve angle to target</label>
-          <input id="traj-opt-autosolve" type="checkbox" class="traj-check" checked />
         </div>
 
-        <div class="traj-divider"></div>
-        <div class="traj-stats">
-          <div class="traj-stat"><div class="traj-stat-val" id="traj-st-range">—</div><div class="traj-stat-lbl">Range (m)</div></div>
-          <div class="traj-stat"><div class="traj-stat-val" id="traj-st-tof">—</div><div class="traj-stat-lbl">TOF (s)</div></div>
-          <div class="traj-stat"><div class="traj-stat-val" id="traj-st-alt">—</div><div class="traj-stat-lbl">Apex (m)</div></div>
-        </div>
-
-        <div class="traj-legend">
-          <span class="traj-leg-launch">Launch</span>
-          <span class="traj-leg-flight">Flight</span>
-          <span class="traj-leg-terminal">Terminal</span>
-          <span class="traj-leg-apogee">Apogee</span>
-          <span class="traj-leg-impact">Impact / CEP</span>
-        </div>
-
-        <div class="traj-btn-row">
-          <button class="traj-btn" id="traj-clear-btn">Clear</button>
-          <button class="traj-btn" id="traj-animate-btn" disabled>Animate ▶</button>
-          <button class="traj-btn traj-btn-primary" id="traj-commit-btn" ${isEdit ? '' : 'disabled'}>Commit ↗</button>
-        </div>
-
-        <div class="traj-scrub-wrap" id="traj-scrub-wrap" style="display:none">
-          <span class="traj-label">T+</span>
-          <input id="traj-scrubber" class="traj-slider" type="range" min="0" max="0" value="0" step="1" />
-          <span id="traj-scrub-time" class="traj-slider-val">0.00 s</span>
-          <button class="traj-btn traj-btn-sm" id="traj-play-btn">▶</button>
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="traj-legend-toggle" aria-expanded="false" aria-controls="traj-legend-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Legend</span>
+            <span class="ms-disclosure-meta">What the arc colours mean</span>
+          </button>
+          <div class="ms-disclosure-body" id="traj-legend-body" hidden>
+            <div class="traj-legend">
+              <span class="traj-leg-launch">Launch</span>
+              <span class="traj-leg-flight">Flight</span>
+              <span class="traj-leg-terminal">Terminal</span>
+              <span class="traj-leg-apogee">Apogee</span>
+              <span class="traj-leg-impact">Impact / CEP</span>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -1507,12 +1561,12 @@ export class TrajectoryEngine {
     });
 
     p.querySelector('#traj-minimize-btn')?.addEventListener('click', () => {
-      const body = p.querySelector<HTMLElement>('.traj-body');
+      const body = p.querySelector<HTMLElement>('.ms-body');
       const btn  = p.querySelector<HTMLElement>('#traj-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.style.display === 'none';
-      body.style.display = minimized ? '' : 'none';
-      btn.textContent = minimized ? '▼' : '▶';
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
     });
 
     p.querySelector('#traj-close-btn')?.addEventListener('click', () => {
@@ -1528,6 +1582,8 @@ export class TrajectoryEngine {
       this._setText('#traj-angle-val', `${preset.optimalAngle.toFixed(1)}°`);
       this._setText('#traj-vel-val', String(Math.round(preset.muzzleVelocity)));
       p.style.setProperty('--traj-accent', preset.accentHex);
+      const headerIcon = p.querySelector<HTMLElement>('#traj-header-icon');
+      if (headerIcon) headerIcon.textContent = preset.icon;
       if (this._firePoint) this._redraw();
     });
 
@@ -1563,6 +1619,7 @@ export class TrajectoryEngine {
     p.querySelector('#traj-clear-target-btn')?.addEventListener('click', () => {
       this._targetPoint = null;
       this._drawTargetMarker();
+      this._syncPlacementUI();
       if (this._firePoint) this._redraw();
     });
 
@@ -1582,9 +1639,11 @@ export class TrajectoryEngine {
       if (commitBtn) commitBtn.disabled = true;
       if (animBtn) animBtn.disabled = true;
       const scrubWrap = p.querySelector<HTMLElement>('#traj-scrub-wrap');
-      if (scrubWrap) scrubWrap.style.display = 'none';
-      this._setText('#traj-fire-coords', 'Fire: click map to place');
-      this._setText('#traj-target-coords', 'Target: not set');
+      if (scrubWrap) scrubWrap.hidden = true;
+      this._setText('#traj-fire-coords', 'No fire point placed');
+      this._setText('#traj-target-coords', 'No target set');
+      this._setResultsVisible(false);
+      this._syncPlacementUI();
       this._setStatus('awaiting');
       this._startFirePlacement();
     });
@@ -1598,6 +1657,8 @@ export class TrajectoryEngine {
       const play = p.querySelector<HTMLButtonElement>('#traj-play-btn');
       if (play) play.textContent = '▶';
     });
+
+    bindDisclosures(p);
   }
 
   private _makeDraggable(): void {
@@ -1662,8 +1723,8 @@ export class TrajectoryEngine {
   }
 
   /** Show a transient tooltip bubble anchored under the "Pick Fire ⊕" button. */
-  private _flashPickTooltip(message: string): void {
-    const anchor = this._panelEl?.querySelector<HTMLElement>('#traj-pick-fire-btn');
+  private _flashPickTooltip(message: string, anchorId = 'traj-pick-fire-btn'): void {
+    const anchor = this._panelEl?.querySelector<HTMLElement>(`#${anchorId}`);
     if (!anchor) return;
     if (!this._tooltipEl) {
       const tip = document.createElement('div');
@@ -1727,338 +1788,6 @@ export class TrajectoryEngine {
     return 'mortar_81mm';
   }
 
-  // ─── Private: Styles ────────────────────────────────────────────────────────
-
-  private _injectStyles(): void {
-    if (document.getElementById('trajectory-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'trajectory-engine-styles';
-    style.textContent = `
-      .traj-panel {
-        position: fixed;
-        top: 60px;
-        left: 602px;
-        width: 380px;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius);
-        color: var(--ms-text);
-        font-family: var(--ms-font);
-        font-size: var(--ms-fs);
-        z-index: 1100;
-        user-select: none;
-        box-shadow: var(--ms-shadow);
-        display: none;
-        animation: trajPanelIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      @keyframes trajPanelIn {
-        from { opacity: 0; transform: scale(0.94) translateY(-8px); }
-        to   { opacity: 1; transform: scale(1) translateY(0); }
-      }
-      .traj-header {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 9px 10px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-        border-radius: 5px 5px 0 0;
-        cursor: grab;
-      }
-      .traj-header:active { cursor: grabbing; }
-      .traj-header-icon { font-size: var(--ms-fs-sm); flex-shrink: 0; }
-      .traj-header-title {
-        font-size: var(--ms-fs-sm);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--ms-warning);
-        font-weight: 700;
-        flex: 1;
-      }
-      .traj-status-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: #555;
-        transition: background 0.3s, box-shadow 0.3s;
-      }
-      .traj-status-lbl {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-        min-width: 62px;
-      }
-      .traj-help-btn, .traj-minimize-btn, .traj-close-btn {
-        background: none;
-        border: 1px solid transparent;
-        color: var(--ms-text-dim);
-        font-size: var(--ms-fs);
-        cursor: pointer;
-        padding: 0 2px;
-        line-height: 1;
-        transition: color 0.15s;
-        flex: 0 0 auto;
-      }
-      .traj-help-btn {
-        width: 17px;
-        height: 17px;
-        border-color: var(--ms-border);
-        border-radius: 50%;
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .traj-help-btn:hover, .traj-minimize-btn:hover, .traj-close-btn:hover { color: var(--ms-text); }
-      .traj-help-popover {
-        position: absolute;
-        top: 39px;
-        left: 8px;
-        right: 8px;
-        z-index: 1120;
-        max-height: min(520px, calc(100vh - 132px));
-        overflow-y: auto;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: 4px;
-        box-shadow: var(--ms-shadow);
-        color: var(--ms-text);
-      }
-      .traj-help-popover[hidden] { display: none; }
-      .traj-help-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 10px 11px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-      }
-      .traj-help-kicker {
-        font-size: var(--ms-fs-xs);
-        color: var(--ms-text-label);
-        letter-spacing: 0.09em;
-        text-transform: uppercase;
-      }
-      .traj-help-title {
-        margin-top: 2px;
-        font-size: var(--ms-fs-sm);
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .traj-help-close {
-        width: 20px;
-        height: 20px;
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        cursor: pointer;
-      }
-      .traj-help-close:hover { color: var(--ms-text); }
-      .traj-help-body {
-        padding: 10px 11px 12px;
-        font-size: var(--ms-fs);
-        line-height: 1.45;
-        color: var(--ms-text-dim);
-        user-select: text;
-      }
-      .traj-help-body p { margin: 0 0 9px; }
-      .traj-help-block { margin-top: 10px; }
-      .traj-help-block h4 {
-        margin: 0 0 5px;
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text);
-      }
-      .traj-help-block ol, .traj-help-block ul { margin: 0; padding-left: 17px; }
-      .traj-help-block li { margin: 3px 0; }
-      .traj-help-block dl {
-        display: grid;
-        grid-template-columns: 72px minmax(0, 1fr);
-        gap: 5px 8px;
-        margin: 0;
-      }
-      .traj-help-block dt { color: var(--ms-success); font-weight: 700; }
-      .traj-help-block dd { margin: 0; }
-      .traj-body { padding: 0 0 6px; }
-      .traj-sec {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--ms-text-label);
-        padding: 9px 12px 4px;
-      }
-      .traj-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
-        margin: 4px 0;
-      }
-      .traj-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 7px;
-        padding: 0 10px 8px;
-      }
-      .traj-field { display: flex; flex-direction: column; gap: 3px; }
-      .traj-field-full { padding: 0 10px 8px; }
-      .traj-label {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-      }
-      .traj-input, .traj-select {
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        color: var(--ms-text);
-        font-family: inherit;
-        font-size: var(--ms-fs);
-        padding: 5px 7px;
-        width: 100%;
-        outline: none;
-        transition: border-color 0.15s;
-      }
-      .traj-input:focus, .traj-select:focus {
-        border-color: var(--ms-accent);
-      }
-      .traj-select option { background: var(--ms-bg); }
-      .traj-slider-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 2px 10px 6px;
-      }
-      .traj-slider-row .traj-label { flex: 1; }
-      .traj-slider {
-        flex: 2;
-        accent-color: var(--ms-warning);
-        cursor: pointer;
-      }
-      .traj-slider-val {
-        font-size: var(--ms-fs-sm);
-        color: var(--ms-warning);
-        min-width: 40px;
-        text-align: right;
-      }
-      .traj-toggle-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 12px;
-      }
-      .traj-check {
-        accent-color: var(--ms-warning);
-        width: 13px;
-        height: 13px;
-        cursor: pointer;
-      }
-      .traj-coords {
-        font-size: var(--ms-fs-xs);
-        color: var(--ms-accent);
-        padding: 1px 12px 5px;
-        letter-spacing: 0.04em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .traj-stats {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 1px;
-        padding: 8px 10px 6px;
-      }
-      .traj-legend {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-        padding: 0 10px 8px;
-      }
-      .traj-legend span {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-      }
-      .traj-leg-launch { color: var(--ms-success); }
-      .traj-leg-flight { color: var(--ms-warning); }
-      .traj-leg-terminal { color: var(--ms-danger); }
-      .traj-leg-apogee { color: var(--ms-accent); }
-      .traj-leg-impact { color: var(--ms-danger); }
-      .traj-stat { display: flex; flex-direction: column; gap: 2px; }
-      .traj-stat-val {
-        font-size: var(--ms-fs-sm);
-        font-weight: 700;
-        letter-spacing: 0.03em;
-        color: var(--ms-warning);
-      }
-      .traj-stat-lbl {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-      }
-      .traj-btn-row {
-        display: flex;
-        gap: 6px;
-        padding: 6px 10px 4px;
-      }
-      .traj-btn {
-        flex: 1;
-        padding: 6px 4px;
-        font-family: inherit;
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        cursor: pointer;
-        border-radius: 3px;
-        border: 1px solid var(--ms-border);
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        transition: all 0.14s;
-      }
-      .traj-btn:hover { background: var(--ms-bg-header); color: var(--ms-text); }
-      .traj-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-      .traj-btn-primary {
-        border-color: var(--ms-warning);
-        color: var(--ms-warning);
-        background: var(--ms-bg-input);
-      }
-      .traj-btn-primary:hover { background: var(--ms-bg-header); color: var(--ms-text); }
-      .traj-btn-sm {
-        flex: 0 0 auto;
-        padding: 4px 8px;
-        font-size: var(--ms-fs-xs);
-      }
-      .traj-scrub-wrap {
-        display: none;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px 4px;
-      }
-      @media (max-width: 520px) {
-        .traj-panel {
-          left: 14px;
-          right: 14px;
-          top: 56px;
-          width: auto;
-        }
-        .traj-grid,
-        .traj-stats {
-          grid-template-columns: 1fr;
-        }
-        .traj-slider-row {
-          display: grid;
-          grid-template-columns: 1fr auto;
-        }
-        .traj-slider-row .traj-slider {
-          grid-column: 1 / -1;
-          width: 100%;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default TrajectoryEngine;

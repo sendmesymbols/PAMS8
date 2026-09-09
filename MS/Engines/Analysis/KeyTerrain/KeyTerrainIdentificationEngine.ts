@@ -8,6 +8,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Extent from '@arcgis/core/geometry/Extent';
 import EngineLogger from '../../../Support/EngineLogger';
+import { bindDisclosures } from '../../../Support/Disclosure';
 
 const WGS84 = { wkid: 4326 } as any;
 const ENGINE_NAME = 'KeyTerrainIdentificationEngine';
@@ -220,23 +221,11 @@ export class KeyTerrainIdentificationEngine {
     else if ((geom as any)?.centroid) src = (geom as any).centroid as Point;
 
     if (src) {
-      const latitude = src.latitude ?? src.y;
-      const longitude = src.longitude ?? src.x;
-      const latInput = this._input('kt-inp-lat');
-      const lonInput = this._input('kt-inp-lon');
-      if (latInput) latInput.value = latitude.toFixed(4);
-      if (lonInput) lonInput.value = longitude.toFixed(4);
-      this._setAnalysisCentreMarker(latitude, longitude);
-      this._centreSet = true;
+      this._applyCentre(src.latitude ?? src.y, src.longitude ?? src.x);
     } else {
       // Opened standalone (no symbol). Clear any seeded centre and prompt the
-      // user to pick a location — validation in _runAnalysis enforces this.
-      this._centreSet = false;
-      const latInput = this._input('kt-inp-lat');
-      const lonInput = this._input('kt-inp-lon');
-      if (latInput) latInput.value = '';
-      if (lonInput) lonInput.value = '';
-      this._centerLayer.removeAll();
+      // user to pick a location; validation in _runAnalysis enforces this.
+      this._resetCentre();
       this._setStatus('ready', 'Pick a location to begin');
       this._beginPicking();
     }
@@ -377,10 +366,10 @@ export class KeyTerrainIdentificationEngine {
           <div class="ms-header-icon">⛰</div>
           <div class="ms-header-title">Key Terrain Identifier</div>
           <div class="ms-status-dot" id="kt-status-dot"></div>
-          <div class="ms-status-lbl" id="kt-status-lbl" style="flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ready</div>
-          <button class="ms-header-btn ms-btn-round" id="kt-help-btn" title="How key terrain analysis works" style="flex-shrink:0">?</button>
-          <button class="ms-header-btn ms-btn-round" id="kt-minimize-btn" title="Minimize" style="flex-shrink:0">▼</button>
-          <button class="ms-header-btn ms-btn-round" id="kt-close-btn" title="Close (keeps graphics)" style="flex-shrink:0">✕</button>
+          <div class="ms-status-lbl" id="kt-status-lbl">Ready</div>
+          <button class="ms-header-btn ms-btn-round" id="kt-help-btn" title="How key terrain analysis works">?</button>
+          <button class="ms-header-btn ms-btn-round" id="kt-minimize-btn" title="Minimize">▼</button>
+          <button class="ms-header-btn ms-btn-round" id="kt-close-btn" title="Close (keeps graphics)">✕</button>
         </div>
         <div class="ms-help-popover" id="kt-help-popover" hidden>
           <div class="ms-help-head">
@@ -402,32 +391,27 @@ export class KeyTerrainIdentificationEngine {
             </ul>
             <p><strong style="color:#EF9F27">Workflow.</strong></p>
             <ol>
-              <li>Click map to set analysis centre — yellow marker confirms.</li>
-              <li>Pick a radius matching your echelon (2 km pos, 4 km coy, 8 km bn, 15 km bde).</li>
-              <li>Grid cell size — smaller = sharper features, slower run.</li>
-              <li>Sensitivity drives prominence threshold; raise it to surface subtler features.</li>
-              <li>Toggle feature types you care about, then <strong>Run Analysis</strong>.</li>
+              <li>Click the map to set the analysis centre. A yellow marker confirms it.</li>
+              <li>Pick a radius matching your echelon: 2 km position, 4 km company, 8 km battalion, 15 km brigade.</li>
+              <li>Hit <strong>Run Analysis</strong>. The defaults suit most ground.</li>
               <li>Click any ranked card to fly to that feature.</li>
             </ol>
+            <p><strong style="color:#EF9F27">Advanced.</strong> Open the Advanced panel to type a centre by hand, trade grid cell size for speed, raise sensitivity to surface subtler ground, filter which feature types are detected, or switch the curvature and viewshed overlays.</p>
             <p><strong style="color:#EF9F27">Reading the cards.</strong> Score (0-100) = 35% prominence + 40% viewshed + 15% elevation + 10% type weight. Bars show each component normalised across the result set. The top result also drives the optional viewshed overlay.</p>
           </div>
         </div>
         <div class="ms-body">
+          <!-- Default view: pick a centre, pick a radius, run. Everything else
+               lives in the collapsed Advanced disclosure at the bottom. -->
           <div class="ms-section-title">Analysis area</div>
           <div class="ms-btn-row">
             <button class="ms-btn primary" id="kt-pick-loc" title="Click, then tap the map to set the analysis centre">📍 Pick location on map</button>
           </div>
+          <div class="ms-coords" id="kt-centre-readout">No centre set</div>
+          <div class="ms-hint" id="kt-hint" style="display:none">Click map to re-centre the analysis area</div>
           <div class="ms-grid">
-            <div class="ms-field">
-              <div class="ms-label">Centre lat</div>
-              <input id="kt-inp-lat" class="ms-input" type="number" value="" step="0.001" placeholder="—" />
-            </div>
-            <div class="ms-field">
-              <div class="ms-label">Centre lon</div>
-              <input id="kt-inp-lon" class="ms-input" type="number" value="" step="0.001" placeholder="—" />
-            </div>
             <div class="ms-field full">
-              <div class="ms-label">Radius (m)</div>
+              <div class="ms-label">Radius</div>
               <select id="kt-inp-radius" class="ms-select">
                 <option value="2000">2 km - position-level</option>
                 <option value="4000" selected>4 km - company-level</option>
@@ -436,60 +420,82 @@ export class KeyTerrainIdentificationEngine {
               </select>
             </div>
           </div>
-          <div class="ms-section-title">Resolution & sensitivity</div>
-          <div class="ms-grid">
-            <div class="ms-field full">
-              <div class="ms-label">Grid cell size (m)</div>
-              <select id="kt-inp-cell" class="ms-select">
-                <option value="20">20 m - fine (slower)</option>
-                <option value="40" selected>40 m - balanced</option>
-                <option value="70">70 m - fast</option>
-              </select>
-            </div>
-          </div>
-          <div class="ms-slider-row">
-            <div class="ms-slider-label">Peak sensitivity</div>
-            <input id="kt-inp-sens" type="range" min="1" max="10" step="1" value="5" />
-            <div class="ms-slider-value" id="kt-sens-v">5</div>
-          </div>
-          <div class="ms-slider-row">
-            <div class="ms-slider-label">Max features</div>
-            <input id="kt-inp-maxfeat" type="range" min="5" max="30" step="1" value="15" />
-            <div class="ms-slider-value" id="kt-maxfeat-v">15</div>
-          </div>
-          <div class="ms-section-title">Feature types</div>
-          <div class="ms-toggle-row"><label>Dominant ground (hilltops)</label><input id="kt-opt-hills" type="checkbox" checked /></div>
-          <div class="ms-toggle-row"><label>Saddles / passes</label><input id="kt-opt-saddles" type="checkbox" checked /></div>
-          <div class="ms-toggle-row"><label>Re-entrants / avenues</label><input id="kt-opt-reents" type="checkbox" checked /></div>
-          <div class="ms-toggle-row"><label>Spurs / flank positions</label><input id="kt-opt-spurs" type="checkbox" checked /></div>
-          <div class="ms-divider"></div>
-          <div class="ms-section-title">Overlay</div>
           <div class="ms-btn-row">
-            <button class="ms-btn primary" data-ov="curvature">Curvature</button>
-            <button class="ms-btn primary" data-ov="markers">Markers</button>
-            <button class="ms-btn" data-ov="viewshed">Top viewshed</button>
+            <button class="ms-btn ms-cta" id="kt-btn-run">Run Analysis ↗</button>
           </div>
-          <div class="ms-slider-row">
-            <div class="ms-slider-label">Overlay opacity</div>
-            <input id="kt-inp-opa" type="range" min="0.2" max="1.0" step="0.05" value="0.65" />
-            <div class="ms-slider-value" id="kt-opa-v">0.65</div>
-          </div>
-          <div class="ms-divider"></div>
-          <div class="ms-info-grid">
-            <div class="ms-info-item"><div class="ms-info-label">Features found</div><div class="ms-info-value" id="kt-sg-found">-</div></div>
-            <div class="ms-info-item"><div class="ms-info-label">Area (km2)</div><div class="ms-info-value" id="kt-sg-area">-</div></div>
-            <div class="ms-info-item"><div class="ms-info-label">Highest elev</div><div class="ms-info-value" id="kt-sg-elev">-</div></div>
-            <div class="ms-info-item"><div class="ms-info-label">Relief (m)</div><div class="ms-info-value" id="kt-sg-relief">-</div></div>
-          </div>
-          <div class="ms-progress-wrap">
+          <div class="ms-progress-wrap" id="kt-prog-wrap" hidden>
             <div class="ms-progress-track"><div class="ms-progress-fill" id="kt-prog-fill"></div></div>
             <div class="ms-progress-label" id="kt-prog-label">-</div>
           </div>
-          <div class="ms-btn-row">
-            <button class="ms-btn" id="kt-btn-clear">Clear</button>
-            <button class="ms-btn primary" id="kt-btn-run">Run Analysis ↗</button>
+          <div id="kt-results" hidden>
+            <div class="ms-divider"></div>
+            <div class="ms-info-grid">
+              <div class="ms-info-item"><div class="ms-info-label">Features found</div><div class="ms-info-value" id="kt-sg-found">-</div></div>
+              <div class="ms-info-item"><div class="ms-info-label">Area (km2)</div><div class="ms-info-value" id="kt-sg-area">-</div></div>
+              <div class="ms-info-item"><div class="ms-info-label">Highest elev</div><div class="ms-info-value" id="kt-sg-elev">-</div></div>
+              <div class="ms-info-item"><div class="ms-info-label">Relief (m)</div><div class="ms-info-value" id="kt-sg-relief">-</div></div>
+            </div>
+            <div class="ms-btn-row">
+              <button class="ms-btn danger" id="kt-btn-clear">Clear results</button>
+            </div>
           </div>
-          <div class="ms-hint" id="kt-hint" style="display:none">Click map to re-centre the analysis area</div>
+          <div class="ms-disclosure" data-open="false">
+            <button class="ms-disclosure-head" type="button" id="kt-adv-toggle" aria-expanded="false" aria-controls="kt-adv-body">
+              <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+              <span class="ms-disclosure-title">Advanced</span>
+              <span class="ms-disclosure-meta">Resolution, feature types, overlays</span>
+            </button>
+            <div class="ms-disclosure-body" id="kt-adv-body" hidden>
+              <div class="ms-section-title">Centre coordinates</div>
+              <div class="ms-grid">
+                <div class="ms-field">
+                  <div class="ms-label">Centre lat</div>
+                  <input id="kt-inp-lat" class="ms-input" type="number" value="" step="0.001" placeholder="33.6800" />
+                </div>
+                <div class="ms-field">
+                  <div class="ms-label">Centre lon</div>
+                  <input id="kt-inp-lon" class="ms-input" type="number" value="" step="0.001" placeholder="73.0600" />
+                </div>
+              </div>
+              <div class="ms-section-title">Resolution &amp; sensitivity</div>
+              <div class="ms-grid">
+                <div class="ms-field full">
+                  <div class="ms-label">Grid cell size (m)</div>
+                  <select id="kt-inp-cell" class="ms-select">
+                    <option value="20">20 m - fine (slower)</option>
+                    <option value="40" selected>40 m - balanced</option>
+                    <option value="70">70 m - fast</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ms-slider-row">
+                <div class="ms-slider-label">Peak sensitivity</div>
+                <input id="kt-inp-sens" type="range" min="1" max="10" step="1" value="5" />
+                <div class="ms-slider-value" id="kt-sens-v">5</div>
+              </div>
+              <div class="ms-slider-row">
+                <div class="ms-slider-label">Max features</div>
+                <input id="kt-inp-maxfeat" type="range" min="5" max="30" step="1" value="15" />
+                <div class="ms-slider-value" id="kt-maxfeat-v">15</div>
+              </div>
+              <div class="ms-section-title">Feature types</div>
+              <div class="ms-toggle-row"><label for="kt-opt-hills">Dominant ground (hilltops)</label><input id="kt-opt-hills" type="checkbox" checked /></div>
+              <div class="ms-toggle-row"><label for="kt-opt-saddles">Saddles / passes</label><input id="kt-opt-saddles" type="checkbox" checked /></div>
+              <div class="ms-toggle-row"><label for="kt-opt-reents">Re-entrants / avenues</label><input id="kt-opt-reents" type="checkbox" checked /></div>
+              <div class="ms-toggle-row"><label for="kt-opt-spurs">Spurs / flank positions</label><input id="kt-opt-spurs" type="checkbox" checked /></div>
+              <div class="ms-section-title">Overlays</div>
+              <div class="ms-btn-row">
+                <button class="ms-btn primary" data-ov="curvature" aria-pressed="true">Curvature</button>
+                <button class="ms-btn primary" data-ov="markers" aria-pressed="true">Markers</button>
+                <button class="ms-btn" data-ov="viewshed" aria-pressed="false">Top viewshed</button>
+              </div>
+              <div class="ms-slider-row">
+                <div class="ms-slider-label">Overlay opacity</div>
+                <input id="kt-inp-opa" type="range" min="0.2" max="1.0" step="0.05" value="0.65" />
+                <div class="ms-slider-value" id="kt-opa-v">0.65</div>
+              </div>
+            </div>
+          </div>
         </div>
       `;
       document.body.appendChild(panel);
@@ -507,6 +513,7 @@ export class KeyTerrainIdentificationEngine {
           const key = btn.dataset.ov as OverlayKey;
           this._overlayState[key] = !this._overlayState[key];
           btn.classList.toggle('primary', this._overlayState[key]);
+          btn.setAttribute('aria-pressed', String(this._overlayState[key]));
           this._syncOverlayVisibility();
         });
       });
@@ -531,6 +538,14 @@ export class KeyTerrainIdentificationEngine {
     this._controlPanelEl?.querySelector('#kt-pick-loc')?.addEventListener('click', () => {
       this._beginPicking();
     });
+
+    // Hand-typed coordinates from the Advanced panel are a first-class way to
+    // set the centre, so commit them the moment either field settles.
+    ['kt-inp-lat', 'kt-inp-lon'].forEach((id) => {
+      this._input(id)?.addEventListener('change', () => this._commitManualCentre());
+    });
+
+    bindDisclosures(this._controlPanelEl);
 
     this._controlPanelEl?.querySelector('#kt-btn-run')?.addEventListener('click', () => {
       void this._runAnalysis();
@@ -605,12 +620,7 @@ export class KeyTerrainIdentificationEngine {
       if (!mapPoint) return;
       const latitude = mapPoint.latitude ?? mapPoint.y;
       const longitude = mapPoint.longitude ?? mapPoint.x;
-      const latInput = this._input('kt-inp-lat');
-      const lonInput = this._input('kt-inp-lon');
-      if (latInput) latInput.value = latitude.toFixed(4);
-      if (lonInput) lonInput.value = longitude.toFixed(4);
-      this._setAnalysisCentreMarker(latitude, longitude);
-      this._centreSet = true;
+      this._applyCentre(latitude, longitude);
       this._endPicking();
       this._setStatus('ready', `Centre set ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
       this._setProgress(0, 'Analysis centre updated');
@@ -640,14 +650,15 @@ export class KeyTerrainIdentificationEngine {
       Math.abs(lonNum) <= 180;
     if (!hasCentre) {
       this._setStatus('error', 'No location selected');
-      this._flashHint('Pick a location on the map first — use “📍 Pick location on map”.', true);
+      this._flashHint('Pick a location first: tap "Pick location on map", then click the map.', true);
       this._beginPicking();
       return;
     }
 
-    const runBtn = this._controlPanelEl?.querySelector<HTMLButtonElement>('#kt-btn-run');
     this._running = true;
-    if (runBtn) runBtn.disabled = true;
+    this._setRunBusy(true);
+    this._setResultsVisible(false);
+    this._setProgressVisible(true);
 
     try {
       const centreLat = Number(this._input('kt-inp-lat')?.value ?? 33.68);
@@ -784,15 +795,20 @@ export class KeyTerrainIdentificationEngine {
       this._setText('kt-sg-area', `${(Math.PI * (radiusM / 1000) ** 2).toFixed(1)} km2`);
       this._setText('kt-sg-elev', `${Math.round(maxElev)} m`);
       this._setText('kt-sg-relief', `${Math.round(relief)} m`);
+      this._setResultsVisible(true);
 
       this._setProgress(1, `Done - ${rankedFeatures.length} features identified`);
       this._setStatus('done', 'Done');
       this._syncOverlayVisibility();
       this._applyOverlayOpacity();
 
-      await this._view.goTo({ target: extent, ...(this._view.type === '3d' ? { tilt: 55 } : {}) } as any, {
-        duration: 1200,
-      });
+      // Fire the camera move but don't await it. The analysis is finished at
+      // this point, and awaiting meant a camera flight that never settled left
+      // the Run button stuck in its busy state and reported the whole run as
+      // failed if the flight rejected.
+      void this._view
+        .goTo({ target: extent, ...(this._view.type === '3d' ? { tilt: 55 } : {}) } as any, { duration: 1200 })
+        .catch(() => undefined);
 
       window.setTimeout(() => {
         const first = this._listPanelEl?.querySelector<HTMLElement>('.kt-fc');
@@ -804,7 +820,7 @@ export class KeyTerrainIdentificationEngine {
       this._setProgress(0, 'Error');
     } finally {
       this._running = false;
-      if (runBtn) runBtn.disabled = false;
+      this._setRunBusy(false);
     }
   }
 
@@ -1568,12 +1584,9 @@ export class KeyTerrainIdentificationEngine {
 
   private _clearAll(): void {
     this._clearResults();
-    this._centerLayer.removeAll();
-    this._centreSet = false;
-    const latInput = this._input('kt-inp-lat');
-    const lonInput = this._input('kt-inp-lon');
-    if (latInput) latInput.value = '';
-    if (lonInput) lonInput.value = '';
+    this._resetCentre();
+    this._setResultsVisible(false);
+    this._setProgressVisible(false);
     const list = this._el('kt-feature-list');
     if (list) {
       list.innerHTML =
@@ -1688,10 +1701,11 @@ export class KeyTerrainIdentificationEngine {
 
   /** Enter "pick a centre on the map" mode — highlight the button and flash a hint. */
   private _beginPicking(): void {
+    if (this._picking) return;
     this._picking = true;
     const btn = this._el('kt-pick-loc');
     if (btn) {
-      btn.classList.add('primary');
+      btn.classList.add('ms-armed');
       btn.textContent = '📍 Click the map to set centre…';
     }
     this._flashHint('Click anywhere on the map to set the analysis centre.', false, 0);
@@ -1701,7 +1715,10 @@ export class KeyTerrainIdentificationEngine {
   private _endPicking(): void {
     this._picking = false;
     const btn = this._el('kt-pick-loc');
-    if (btn) btn.textContent = '📍 Pick location on map';
+    if (btn) {
+      btn.classList.remove('ms-armed');
+      btn.textContent = '📍 Pick location on map';
+    }
     this._flashHint('', false, 1);
   }
 
@@ -1731,6 +1748,89 @@ export class KeyTerrainIdentificationEngine {
         this._hintTimer = null;
       }, autoHideMs);
     }
+  }
+
+  /** Write a centre into the inputs, the map marker and the panel readout. */
+  private _applyCentre(latitude: number, longitude: number): void {
+    const latInput = this._input('kt-inp-lat');
+    const lonInput = this._input('kt-inp-lon');
+    if (latInput) latInput.value = latitude.toFixed(4);
+    if (lonInput) lonInput.value = longitude.toFixed(4);
+    this._setAnalysisCentreMarker(latitude, longitude);
+    this._setCentreReadout(latitude, longitude);
+    this._centreSet = true;
+  }
+
+  /** Drop the current centre: inputs, marker and readout all go blank. */
+  private _resetCentre(): void {
+    const latInput = this._input('kt-inp-lat');
+    const lonInput = this._input('kt-inp-lon');
+    if (latInput) latInput.value = '';
+    if (lonInput) lonInput.value = '';
+    this._centerLayer.removeAll();
+    this._setCentreReadout(null, null);
+    this._centreSet = false;
+  }
+
+  /**
+   * The always-visible confirmation that a centre exists. The editable lat/lon
+   * fields live inside the collapsed Advanced panel, so without this the
+   * default view would give no feedback that a map click landed.
+   */
+  private _setCentreReadout(latitude: number | null, longitude: number | null): void {
+    const el = this._el('kt-centre-readout');
+    if (!el) return;
+    if (latitude == null || longitude == null) {
+      el.textContent = 'No centre set';
+      el.style.color = 'var(--ms-text-dim)';
+      return;
+    }
+    el.textContent = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    el.style.color = '';
+  }
+
+  /**
+   * Commit a hand-typed centre from the Advanced panel. Typed coordinates
+   * previously never armed `_centreSet`, so Run Analysis kept refusing them
+   * with "No location selected".
+   */
+  private _commitManualCentre(): void {
+    const latRaw = this._input('kt-inp-lat')?.value.trim() ?? '';
+    const lonRaw = this._input('kt-inp-lon')?.value.trim() ?? '';
+    if (latRaw === '' || lonRaw === '') return;
+    const lat = Number(latRaw);
+    const lon = Number(lonRaw);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      this._flashHint('Latitude must be within 90 and longitude within 180.', true);
+      return;
+    }
+    this._setAnalysisCentreMarker(lat, lon);
+    this._setCentreReadout(lat, lon);
+    this._centreSet = true;
+    this._endPicking();
+    this._setStatus('ready', `Centre set ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+  }
+
+  /** Primary CTA state while the engine is computing. */
+  private _setRunBusy(busy: boolean): void {
+    const btn = this._controlPanelEl?.querySelector<HTMLButtonElement>('#kt-btn-run');
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.classList.toggle('ms-busy', busy);
+    btn.textContent = busy ? 'Analysing…' : 'Run Analysis ↗';
+  }
+
+  /** Summary stats and Clear only exist once a run has produced something. */
+  private _setResultsVisible(visible: boolean): void {
+    const el = this._el('kt-results');
+    if (el) el.hidden = !visible;
+  }
+
+  /** Progress track stays out of the way until a run is under way. */
+  private _setProgressVisible(visible: boolean): void {
+    const el = this._el('kt-prog-wrap');
+    if (el) el.hidden = !visible;
   }
 
   private _setStatus(statusClass: string, text: string): void {

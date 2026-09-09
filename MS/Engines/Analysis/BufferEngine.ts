@@ -17,6 +17,7 @@ import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 export interface ThreatRingDef {
   label: string;
@@ -135,6 +136,7 @@ export class BufferEngine {
   private _committedLayer!: GraphicsLayer;
 
   private _panelEl: HTMLDivElement | null = null;
+  private _panelBound = false;
   private _pickHandle: any = null;
 
   private _mode: AnalysisMode = 'single';
@@ -151,7 +153,6 @@ export class BufferEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   initialize(view: MapView | SceneView): void {
@@ -213,6 +214,7 @@ export class BufferEngine {
     this._panelEl?.remove();
     this._tooltipEl?.remove();
     this._panelEl = null;
+    this._panelBound = false;
     this._tooltipEl = null;
     this._view = null;
   }
@@ -725,6 +727,12 @@ export class BufferEngine {
     if (!this._view) return;
     this._cancelPick();
     this._setStatus('picking');
+    this._setPickArmed(true);
+    this._flashPickTooltip(
+      mode === 'add'
+        ? 'Click the map to add another source point.'
+        : 'Click the map to place the source point.',
+    );
     this._pickHandle = this._view.on('click', async (event: any) => {
       this._cancelPick();
       let point: Point | null;
@@ -747,6 +755,7 @@ export class BufferEngine {
 
       this._hideTooltip();
       this._drawSources();
+      this._syncSourceUI();
       this._redraw();
     });
   }
@@ -754,6 +763,7 @@ export class BufferEngine {
   private _cancelPick(): void {
     this._pickHandle?.remove();
     this._pickHandle = null;
+    this._setPickArmed(false);
   }
 
   private _commit(): void {
@@ -793,14 +803,25 @@ export class BufferEngine {
       this._panelEl.setAttribute('data-engine', 'buffer');
       this._panelEl.style.top = '62px';
       this._panelEl.style.left = '306px';
-      this._panelEl.style.width = '360px';
+      // 360px could not fit the two-column control grid or the full widget name
+    // in the header; 392px brings it in line with the other analysis panels.
+    this._panelEl.style.width = '392px';
       document.body.appendChild(this._panelEl);
     }
-    this._panelEl.innerHTML = this._buildPanelHTML();
+    // Build and bind once. Re-rendering the markup on every open used to reset
+    // the display toggles, corridor width/standoff and extrusion height.
+    if (!this._panelBound) {
+      this._panelEl.innerHTML = this._buildPanelHTML();
+      this._bindPanelEvents();
+      this._makeDraggable();
+      this._panelBound = true;
+    }
     this._panelEl.classList.add('ms-visible');
-    this._bindPanelEvents();
-    this._makeDraggable();
+    this._selectValue('buffer-mode', this._mode);
+    this._selectValue('buffer-preset', this._presetKey);
+    this._syncModeUI();
     this._syncStats(this._currentRings());
+    this._syncSourceUI();
     this._syncCommit();
     this._setStatus(this._sourcePoints.length > 0 ? 'ready' : 'awaiting');
   }
@@ -811,7 +832,7 @@ export class BufferEngine {
 
   private _buildPanelHTML(): string {
     const presetOptions = Object.entries(THREAT_PRESETS)
-      .map(([k, p]) => `<option value="${k}"${k === this._presetKey ? ' selected' : ''}>${p.label}</option>`)
+      .map(([k, p]) => `<option value="${k}">${p.label}</option>`)
       .join('');
 
     return `
@@ -838,11 +859,12 @@ export class BufferEngine {
           <div class="ms-help-block">
             <h4>How It Works</h4>
             <ol>
-              <li>Pick one source for a classic ring set, or add several for a shared footprint.</li>
+              <li>Pick a source on the map. Rings draw immediately, so there is no separate run step.</li>
               <li>Select a preset to load ring labels, distances, and semantic colors.</li>
-              <li>Switch to corridor mode when you want a buffered path between multiple points instead of circular rings.</li>
-              <li>Turn on labels, donut bands, extrusion, or contested overlap depending on the map product you need.</li>
+              <li>Switch to union or corridor mode to add more sources for a shared footprint or a buffered route.</li>
+              <li>Commit when the picture is right, which bakes the working graphics onto the committed layer.</li>
             </ol>
+            <p><strong>Advanced</strong> holds the display options (donut bands, labels, 3D extrusion, contested overlap) and the color legend.</p>
           </div>
           <div class="ms-help-block">
             <h4>Phenomenon</h4>
@@ -865,83 +887,102 @@ export class BufferEngine {
       </div>
 
       <div class="ms-body">
-        <div class="ms-section-title">Mode</div>
-        <div class="ms-field">
-          <select id="buffer-mode" class="ms-select">
-            <option value="single"${this._mode === 'single' ? ' selected' : ''}>Single source</option>
-            <option value="union"${this._mode === 'union' ? ' selected' : ''}>Multi-source union</option>
-            <option value="corridor"${this._mode === 'corridor' ? ' selected' : ''}>Corridor</option>
-          </select>
+        <!-- Default view: pick a source, choose a preset, commit. The mode
+             select reveals only the controls that mode needs; the display
+             options and legend live in the collapsed Advanced disclosure. -->
+        <div class="ms-section-title">Source &amp; rings</div>
+        <div class="ms-grid">
+          <div class="ms-field">
+            <label class="ms-label" for="buffer-mode">Mode</label>
+            <select id="buffer-mode" class="ms-select">
+              <option value="single">Single source</option>
+              <option value="union">Union</option>
+              <option value="corridor">Corridor</option>
+            </select>
+          </div>
+          <div class="ms-field">
+            <label class="ms-label" for="buffer-preset">Threat preset</label>
+            <select id="buffer-preset" class="ms-select">${presetOptions}</select>
+          </div>
         </div>
 
-        <div class="ms-section-title">Preset</div>
-        <div class="ms-field">
-          <select id="buffer-preset" class="ms-select">${presetOptions}</select>
-        </div>
-
-        <div id="buffer-corridor-wrap" style="display:${this._mode === 'corridor' ? 'block' : 'none'}">
-          <div class="ms-section-title">Corridor</div>
+        <div id="buffer-corridor-wrap" hidden>
           <div class="ms-grid">
             <div class="ms-field">
-              <div class="ms-label">Width (m)</div>
+              <label class="ms-label" for="buffer-corridor-width">Corridor width (m)</label>
               <input id="buffer-corridor-width" class="ms-input" type="number" value="250" min="10" step="10" />
             </div>
             <div class="ms-field">
-              <div class="ms-label">Standoff (m)</div>
+              <label class="ms-label" for="buffer-corridor-standoff">Standoff (m)</label>
               <input id="buffer-corridor-standoff" class="ms-input" type="number" value="500" min="0" step="10" />
             </div>
           </div>
         </div>
 
-        <div class="ms-divider"></div>
-        <div class="ms-section-title">Display</div>
-        <div class="ms-toggle-row">
-          <label class="ms-label">Donut rings</label>
-          <input id="buffer-opt-donut" type="checkbox" checked />
+        <div class="ms-btn-row">
+          <button class="ms-btn primary" id="buffer-pick-btn" title="Click, then tap the map to place the source">📍 Pick source on map</button>
+          <button class="ms-btn primary" id="buffer-add-btn" title="Add another source point" hidden>+ Add source</button>
         </div>
-        <div class="ms-toggle-row">
-          <label class="ms-label">Show labels</label>
-          <input id="buffer-opt-labels" type="checkbox" checked />
-        </div>
-        <div class="ms-toggle-row">
-          <label class="ms-label">Extrude rings (3D)</label>
-          <input id="buffer-opt-extrude" type="checkbox" />
-        </div>
-        <div class="ms-field" id="buffer-extrude-height-wrap" style="display:none">
-          <div class="ms-label">Height (m)</div>
-          <input id="buffer-extrude-height" class="ms-input" type="number" value="300" min="50" max="5000" step="50" />
-        </div>
-        <div class="ms-toggle-row">
-          <label class="ms-label">Show contested zone</label>
-          <input id="buffer-opt-contested" type="checkbox" />
-        </div>
-
-        <div class="ms-divider"></div>
-        <div class="ms-section-title">Legend</div>
-        <div class="buffer-legend">
-          <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#DC3C30"></span><span class="buffer-legend-label">Lethal</span></div>
-          <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#EF9F27"></span><span class="buffer-legend-label">Warning</span></div>
-          <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#1D9E75"></span><span class="buffer-legend-label">Safe / Max range</span></div>
-          <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#378ADD"></span><span class="buffer-legend-label">Info / Observe</span></div>
-          <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#B428DC"></span><span class="buffer-legend-label">Contested zone</span></div>
-        </div>
-
-        <div class="ms-divider"></div>
-        <div class="buffer-stats">
-          <div class="buffer-stat"><div class="buffer-stat-lbl">Sources</div><div class="buffer-stat-val" id="buffer-st-sources">0</div></div>
-          <div class="buffer-stat"><div class="buffer-stat-lbl">Rings</div><div class="buffer-stat-val" id="buffer-st-rings">0</div></div>
-          <div class="buffer-stat"><div class="buffer-stat-lbl">Outer</div><div class="buffer-stat-val" id="buffer-st-outer">—</div></div>
-          <div class="buffer-stat"><div class="buffer-stat-lbl">Mode</div><div class="buffer-stat-val" id="buffer-st-mode">Single</div></div>
-        </div>
+        <div class="ms-coords" id="buffer-source-readout">No source set</div>
 
         <div class="ms-btn-row">
-          <button class="ms-btn" id="buffer-pick-btn">Pick Source</button>
-          <button class="ms-btn" id="buffer-add-btn">Add Source</button>
+          <button class="ms-btn ms-cta" id="buffer-commit-btn" disabled>Commit ↗</button>
         </div>
-        <div class="ms-btn-row">
-          <button class="ms-btn" id="buffer-undo-btn">Undo Last</button>
-          <button class="ms-btn ms-btn-danger" id="buffer-clear-btn">Clear</button>
-          <button class="ms-btn ms-btn-primary" id="buffer-commit-btn" disabled>Commit ↗</button>
+
+        <div id="buffer-results" hidden>
+          <div class="ms-divider"></div>
+          <div class="buffer-stats">
+            <div class="buffer-stat"><div class="buffer-stat-lbl">Sources</div><div class="buffer-stat-val" id="buffer-st-sources">0</div></div>
+            <div class="buffer-stat"><div class="buffer-stat-lbl">Rings</div><div class="buffer-stat-val" id="buffer-st-rings">0</div></div>
+            <div class="buffer-stat"><div class="buffer-stat-lbl">Outer</div><div class="buffer-stat-val" id="buffer-st-outer">-</div></div>
+            <div class="buffer-stat"><div class="buffer-stat-lbl">Mode</div><div class="buffer-stat-val" id="buffer-st-mode">Single</div></div>
+          </div>
+          <div class="ms-btn-row">
+            <button class="ms-btn" id="buffer-undo-btn" hidden>Undo last</button>
+            <button class="ms-btn danger" id="buffer-clear-btn">Clear</button>
+          </div>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="buffer-adv-toggle" aria-expanded="false" aria-controls="buffer-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Display options, legend</span>
+          </button>
+          <div class="ms-disclosure-body" id="buffer-adv-body" hidden>
+            <div class="ms-section-title">Display</div>
+            <div class="ms-toggle-row">
+              <label for="buffer-opt-donut">Donut rings</label>
+              <input id="buffer-opt-donut" type="checkbox" checked />
+            </div>
+            <div class="ms-toggle-row">
+              <label for="buffer-opt-labels">Show labels</label>
+              <input id="buffer-opt-labels" type="checkbox" checked />
+            </div>
+            <div class="ms-toggle-row">
+              <label for="buffer-opt-extrude">Extrude rings (3D)</label>
+              <input id="buffer-opt-extrude" type="checkbox" />
+            </div>
+            <div class="ms-grid full" id="buffer-extrude-height-wrap" hidden>
+              <div class="ms-field">
+                <label class="ms-label" for="buffer-extrude-height">Extrusion height (m)</label>
+                <input id="buffer-extrude-height" class="ms-input" type="number" value="300" min="50" max="5000" step="50" />
+              </div>
+            </div>
+            <div class="ms-toggle-row">
+              <label for="buffer-opt-contested">Show contested zone</label>
+              <input id="buffer-opt-contested" type="checkbox" />
+            </div>
+
+            <div class="ms-section-title">Legend</div>
+            <div class="buffer-legend">
+              <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#DC3C30"></span><span class="buffer-legend-label">Lethal</span></div>
+              <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#EF9F27"></span><span class="buffer-legend-label">Warning</span></div>
+              <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#1D9E75"></span><span class="buffer-legend-label">Safe / Max range</span></div>
+              <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#378ADD"></span><span class="buffer-legend-label">Info / Observe</span></div>
+              <div class="buffer-legend-row"><span class="buffer-legend-dot" style="background:#B428DC"></span><span class="buffer-legend-label">Contested zone</span></div>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -961,13 +1002,15 @@ export class BufferEngine {
       if (help) help.hidden = true;
     });
 
+    bindDisclosures(p);
+
     p.querySelector('#buffer-minimize-btn')?.addEventListener('click', () => {
       const body = p.querySelector<HTMLElement>('.ms-body');
       const btn  = p.querySelector<HTMLElement>('#buffer-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.style.display === 'none';
-      body.style.display = minimized ? '' : 'none';
-      btn.textContent = minimized ? '▼' : '▶';
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
     });
 
     p.querySelector('#buffer-close-btn')?.addEventListener('click', () => {
@@ -981,8 +1024,8 @@ export class BufferEngine {
         this._sourcePoints = [this._sourcePoints[0]];
         this._drawSources();
       }
-      const cw = p.querySelector<HTMLElement>('#buffer-corridor-wrap');
-      if (cw) cw.style.display = this._mode === 'corridor' ? 'block' : 'none';
+      this._syncModeUI();
+      this._syncSourceUI();
       this._redraw();
     });
 
@@ -1000,7 +1043,7 @@ export class BufferEngine {
 
     p.querySelector('#buffer-opt-extrude')?.addEventListener('change', (e) => {
       const wrap = p.querySelector<HTMLElement>('#buffer-extrude-height-wrap');
-      if (wrap) wrap.style.display = (e.target as HTMLInputElement).checked ? 'flex' : 'none';
+      if (wrap) wrap.hidden = !(e.target as HTMLInputElement).checked;
       this._redraw();
     });
     p.querySelector('#buffer-extrude-height')?.addEventListener('change', () => this._redraw());
@@ -1012,6 +1055,7 @@ export class BufferEngine {
       if (!this._sourcePoints.length) return;
       this._sourcePoints.pop();
       this._drawSources();
+      this._syncSourceUI();
       this._redraw();
     });
 
@@ -1021,6 +1065,7 @@ export class BufferEngine {
       this._sourceLayer.removeAll();
       this._sourcePoints = [];
       this._syncStats(this._currentRings());
+      this._syncSourceUI();
       this._syncCommit();
       this._setStatus('awaiting');
     });
@@ -1054,120 +1099,6 @@ export class BufferEngine {
     document.removeEventListener('mousemove', this._onDragMove);
     document.removeEventListener('mouseup', this._onDragEnd);
   };
-
-  private _injectStyles(): void {
-    if (document.getElementById('buffer-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'buffer-engine-styles';
-    style.textContent = `
-      #buffer-engine-panel .ms-field {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-      }
-      #buffer-engine-panel .ms-field-full {
-        padding: 0 10px 8px;
-      }
-      #buffer-engine-panel .ms-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 7px;
-        padding: 0 10px 8px;
-      }
-      #buffer-engine-panel .ms-input,
-      #buffer-engine-panel .ms-select {
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        color: var(--ms-text);
-        font-family: inherit;
-        font-size: var(--ms-fs);
-        padding: 5px 7px;
-        outline: none;
-        transition: border-color 0.15s;
-        box-sizing: border-box;
-      }
-      #buffer-engine-panel .ms-grid .ms-input,
-      #buffer-engine-panel .ms-grid .ms-select {
-        width: 100%;
-      }
-      #buffer-engine-panel .ms-input:focus,
-      #buffer-engine-panel .ms-select:focus {
-        border-color: var(--ms-accent);
-      }
-      #buffer-engine-panel .ms-label {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-      }
-      #buffer-engine-panel .ms-section-title {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--ms-text-label);
-        padding: 9px 12px 4px;
-      }
-      #buffer-engine-panel .ms-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
-        margin: 4px 0;
-      }
-      #buffer-engine-panel .ms-toggle-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 6px 12px;
-        gap: 8px;
-      }
-      #buffer-engine-panel .ms-btn-row {
-        display: flex;
-        gap: 5px;
-        padding: 8px 10px 4px;
-      }
-      #buffer-engine-panel .ms-btn {
-        flex: 1;
-        padding: 6px 4px;
-        font-family: inherit;
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        cursor: pointer;
-        border-radius: 3px;
-        border: 1px solid var(--ms-border);
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        transition: all 0.14s;
-      }
-      #buffer-engine-panel .ms-btn:hover {
-        background: var(--ms-bg-header);
-        color: var(--ms-text);
-      }
-      #buffer-engine-panel .ms-btn:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-      }
-      #buffer-engine-panel .ms-btn-primary {
-        border-color: var(--ms-success);
-        color: var(--ms-success);
-        background: var(--ms-bg-input);
-      }
-      #buffer-engine-panel .ms-btn-primary:hover {
-        background: var(--ms-bg-header);
-        color: var(--ms-text);
-      }
-      #buffer-engine-panel .ms-btn-danger {
-        border-color: var(--ms-danger);
-        color: var(--ms-danger);
-        background: var(--ms-bg-input);
-      }
-      #buffer-engine-panel .ms-btn-danger:hover {
-        background: var(--ms-bg-header);
-        color: var(--ms-text);
-      }
-    `;
-    document.head.appendChild(style);
-  }
 
   private _inp(id: string): HTMLInputElement | null {
     return this._panelEl?.querySelector<HTMLInputElement>(`#${id}`) ?? null;
@@ -1207,6 +1138,58 @@ export class BufferEngine {
       this._tooltipTimer = null;
     }
     if (this._tooltipEl) this._tooltipEl.style.opacity = '0';
+  }
+
+  /**
+   * Show only the controls the chosen mode needs. Single source needs neither
+   * "Add source" nor "Undo last", and the corridor width/standoff pair is
+   * meaningless outside corridor mode.
+   */
+  private _syncModeUI(): void {
+    const p = this._panelEl;
+    if (!p) return;
+    const corridor = p.querySelector<HTMLElement>('#buffer-corridor-wrap');
+    const add = p.querySelector<HTMLElement>('#buffer-add-btn');
+    if (corridor) corridor.hidden = this._mode !== 'corridor';
+    if (add) add.hidden = this._mode === 'single';
+  }
+
+  /**
+   * The stats block and the undo/clear actions only exist once a source has
+   * been placed, and the readout is the always-visible confirmation that one
+   * has (the panel has no other feedback before the rings appear).
+   */
+  private _syncSourceUI(): void {
+    const p = this._panelEl;
+    if (!p) return;
+    const count = this._sourcePoints.length;
+    const results = p.querySelector<HTMLElement>('#buffer-results');
+    if (results) results.hidden = count === 0;
+    const undo = p.querySelector<HTMLElement>('#buffer-undo-btn');
+    if (undo) undo.hidden = this._mode === 'single' || count === 0;
+
+    const readout = p.querySelector<HTMLElement>('#buffer-source-readout');
+    if (!readout) return;
+    if (count === 0) {
+      readout.textContent = 'No source set';
+      readout.style.color = 'var(--ms-text-dim)';
+      return;
+    }
+    const last = this._sourcePoints[count - 1];
+    const coords = `${(last.latitude ?? 0).toFixed(4)}, ${(last.longitude ?? 0).toFixed(4)}`;
+    readout.textContent = count === 1 ? coords : `${count} sources · last ${coords}`;
+    readout.style.color = '';
+  }
+
+  /** Pulse the pick button while the engine is waiting on a map click. */
+  private _setPickArmed(armed: boolean): void {
+    this._panelEl?.querySelectorAll<HTMLElement>('#buffer-pick-btn, #buffer-add-btn')
+      .forEach((btn) => btn.classList.toggle('ms-armed', armed));
+  }
+
+  private _selectValue(id: string, value: string): void {
+    const el = this._panelEl?.querySelector<HTMLSelectElement>(`#${id}`);
+    if (el) el.value = value;
   }
 
   private _setStatus(state: 'awaiting' | 'picking' | 'computing' | 'ready' | 'committed' | 'error'): void {

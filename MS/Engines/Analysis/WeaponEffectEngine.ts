@@ -23,6 +23,7 @@ import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import Mesh from '@arcgis/core/geometry/Mesh';
 import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -173,7 +174,6 @@ export class WeaponEffectEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -226,8 +226,8 @@ export class WeaponEffectEngine {
 
     // ── Resume mode: panel was minimised (hidden) with working state intact ───
     if (this._panelEl && this._observerPoint &&
-        this._panelEl.style.display === 'none') {
-      this._panelEl.style.display = 'block';
+        !this._panelEl.classList.contains('ms-visible')) {
+      this._panelEl.classList.add('ms-visible');
       return;
     }
 
@@ -841,7 +841,8 @@ export class WeaponEffectEngine {
     const lon = this._observerPoint.longitude ?? 0;
     const coordsEl = this._panelEl?.querySelector<HTMLElement>('#wez-coords');
     if (coordsEl) {
-      coordsEl.textContent = `Observer: ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E`;
+      coordsEl.textContent = `${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E`;
+      coordsEl.style.color = '';
     }
     // Keep the top Lat/Lon bar in sync with the current firing point.
     const latInp = this._inp('wez-lat');
@@ -954,33 +955,40 @@ export class WeaponEffectEngine {
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
       this._panelEl.id = 'wez-engine-panel';
-      this._panelEl.className = 'wez-panel';
+      this._panelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._panelEl.setAttribute('data-engine', 'wez');
+      this._panelEl.style.top = '62px';
+      this._panelEl.style.right = '12px';
+      this._panelEl.style.width = '392px';
       document.body.appendChild(this._panelEl);
     }
 
     const preset = WEAPON_PRESETS[defaultWeapon] ?? WEAPON_PRESETS.mortar;
     this._panelEl.style.setProperty('--wez-accent', preset.accentHex);
+    // The re-edit path needs the override values written into the markup, so
+    // the panel is rebuilt rather than reused.
     this._panelEl.innerHTML = this._buildPanelHTML(defaultWeapon, preset, override);
-    this._panelEl.style.display = 'block';
+    this._panelEl.classList.add('ms-visible');
 
     this._bindPanelEvents();
     this._makeDraggable();
     this._syncTerrainBtn();
+    this._syncClearVisible();
   }
 
   private _hidePanel(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
+    this._panelEl?.classList.remove('ms-visible');
   }
 
   /** Collapse panel body, keep graphics alive. */
   private _minimizePanel(): void {
     if (!this._panelEl) return;
-    const body = this._panelEl.querySelector<HTMLElement>('.wez-body');
+    const body = this._panelEl.querySelector<HTMLElement>('.ms-body');
     const btn  = this._panelEl.querySelector<HTMLElement>('#wez-minimize-btn');
     if (!body || !btn) return;
-    const minimized = body.style.display === 'none';
-    body.style.display = minimized ? '' : 'none';
-    btn.textContent = minimized ? '▼' : '▶';
+    const minimized = body.classList.toggle('ms-minimized');
+    btn.textContent = minimized ? '▶' : '▼';
+    btn.title = minimized ? 'Restore' : 'Minimize';
   }
 
   private _buildPanelHTML(weaponKey: string, preset: WeaponPreset, override?: WEZPanelOverride): string {
@@ -1002,45 +1010,45 @@ export class WeaponEffectEngine {
     const obsLon  = this._observerPoint ? (this._observerPoint.longitude ?? 0).toFixed(5) : '';
 
     return `
-      <div class="wez-header" id="wez-drag-handle">
-        <span class="wez-header-icon">${preset.icon}</span>
-        <span class="wez-header-title">Weapon Effect Zone${isEdit ? ' — Re-edit' : ''}</span>
-        <span class="wez-status-dot" id="wez-status-dot"></span>
-        <span class="wez-status-lbl" id="wez-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
-        <button class="wez-help-btn" id="wez-help-btn" title="How WEZ analysis works">?</button>
-        <button class="wez-minimize-btn" id="wez-minimize-btn" title="Minimize">▼</button>
-        <button class="wez-close-btn" id="wez-close-btn" title="Close (keeps graphics)">✕</button>
+      <div class="ms-header" id="wez-drag-handle">
+        <span class="ms-header-icon" id="wez-header-icon">${preset.icon}</span>
+        <span class="ms-header-title">Weapon Effect Zone${isEdit ? ' — Re-edit' : ''}</span>
+        <span class="ms-status-dot" id="wez-status-dot"></span>
+        <span class="ms-status-lbl" id="wez-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
+        <button class="ms-header-btn ms-btn-round" id="wez-help-btn" title="How WEZ analysis works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="wez-minimize-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="wez-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
 
-      <div class="wez-help-popover" id="wez-help-popover" hidden>
-        <div class="wez-help-head">
+      <div class="ms-help-popover" id="wez-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="wez-help-kicker">Field Guide</div>
-            <div class="wez-help-title">Weapon Effect Zone</div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Weapon Effect Zone</div>
           </div>
-          <button class="wez-help-close" id="wez-help-close" title="Close">✕</button>
+          <button class="ms-help-close" id="wez-help-close" title="Close">✕</button>
         </div>
-        <div class="wez-help-body">
-          <div style="background:rgba(239,159,39,0.08);border-left:3px solid rgba(239,159,39,0.6);padding:7px 10px;border-radius:3px;margin-bottom:10px">
-            <div style="font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:rgba(239,159,39,0.7);margin-bottom:3px">Answers</div>
-            <div style="font-style:italic;color:var(--ms-text)">Where can this weapon reach from here?</div>
+        <div class="ms-help-body">
+          <div class="ms-help-answers">
+            <div class="ms-help-answers-kicker">Answers</div>
+            <div class="ms-help-answers-q">Where can this weapon reach from here?</div>
           </div>
           <p>Models the engagement sector a weapon system can cover from its firing position — a directional wedge clipped by minimum range, maximum range, traverse limits, and elevation envelope.</p>
           <p style="font-size:var(--ms-fs-xs);color:var(--ms-text-dim);border-top:1px solid var(--ms-divider);padding-top:7px;margin-top:2px">Use <strong style="color:var(--ms-text)">Weapon Effect</strong> to analyse what happens when the round lands at a point inside this zone.</p>
-          <div class="wez-help-block">
+          <div class="ms-help-block">
             <h4>How It Works</h4>
             <ol>
-              <li>Choose a weapon preset to load typical engagement values.</li>
-              <li>Set or reposition the observer or firing point.</li>
-              <li>Shape the zone with min/max range, azimuth center, and spread.</li>
-              <li>Use elevation limits and optional terrain masking to show where the weapon can realistically engage.</li>
+              <li>Press <strong>Pick firing point on map</strong> and click the ground.</li>
+              <li>Choose the weapon system. Its preset loads the range band, spread and elevation limits.</li>
+              <li>The zone redraws as you change anything, so there is no separate run step.</li>
+              <li>Commit when the picture is right, which bakes the zone onto the committed layer.</li>
             </ol>
           </div>
-          <div class="wez-help-block">
+          <div class="ms-help-block">
             <h4>Phenomenon</h4>
             <p>A WEZ is not just distance. It is the space a weapon can cover after applying dead space near the launcher, traverse limits left and right, and vertical firing limits for direct-fire, indirect-fire, or anti-air profiles.</p>
           </div>
-          <div class="wez-help-block">
+          <div class="ms-help-block">
             <h4>Parameters</h4>
             <dl>
               <dt>Weapon</dt><dd>Loads preset defaults such as range band, spread, elevation limits, and display color for a weapon family.</dd>
@@ -1057,7 +1065,7 @@ export class WeaponEffectEngine {
               <dt>Terrain</dt><dd>Runs a masking pass in 3D to subtract terrain-shadowed portions from the raw sector.</dd>
             </dl>
           </div>
-          <div class="wez-help-block">
+          <div class="ms-help-block">
             <h4>Reading the result</h4>
             <ul>
               <li>Filled wedge = engagement zone (cleared of dead space).</li>
@@ -1068,112 +1076,122 @@ export class WeaponEffectEngine {
         </div>
       </div>
 
-      <div class="wez-body">
-
-        <div class="wez-sec">Firing Location</div>
-        <div class="wez-locbar">
-          <div class="wez-loc-field">
-            <span class="wez-loc-lbl">Lat</span>
-            <input id="wez-lat" class="wez-loc-input" type="number" value="${obsLat}" placeholder="—" step="0.00001" min="-90" max="90" />
-          </div>
-          <div class="wez-loc-field">
-            <span class="wez-loc-lbl">Lon</span>
-            <input id="wez-lon" class="wez-loc-input" type="number" value="${obsLon}" placeholder="—" step="0.00001" min="-180" max="180" />
-          </div>
-          <button class="wez-btn wez-btn-sm wez-btn-primary" id="wez-loc-go" title="Place the firing point at these coordinates">Go</button>
-          <button class="wez-btn wez-btn-sm" id="wez-loc-pick" title="Click the map to place the firing point">Pick ⊕</button>
+      <div class="ms-body">
+        <!-- Default view: place the firing point, choose the weapon, commit.
+             The zone redraws live, so every range / azimuth / elevation /
+             display control lives in the collapsed Advanced disclosure. -->
+        <div class="ms-section-title">Firing point</div>
+        <div class="ms-btn-row">
+          <button class="ms-btn primary" id="wez-reposition-btn" title="Click, then click the map to place the firing point">📍 Pick firing point on map</button>
         </div>
-
-        <div class="wez-sec">Weapon System</div>
-        <div class="wez-field-full">
-          <select id="wez-weapon" class="wez-select">${weaponOptions}</select>
-        </div>
-
-        <div class="wez-divider"></div>
-        <div class="wez-sec">Engagement Ranges</div>
-        <div class="wez-grid">
-          <div class="wez-field">
-            <div class="wez-label">Min range (m)</div>
-            <input id="wez-minrange" class="wez-input" type="number" value="${minR}" min="0" step="50" />
-          </div>
-          <div class="wez-field">
-            <div class="wez-label">Max range (m)</div>
-            <input id="wez-maxrange" class="wez-input" type="number" value="${maxR}" min="100" step="100" />
-          </div>
-        </div>
-
-        <div class="wez-sec">Azimuth</div>
-        <div class="wez-slider-row">
-          <span class="wez-label">Centre (°)</span>
-          <input id="wez-azimuth" type="range" min="0" max="359" value="${az}" step="1" class="wez-slider" />
-          <span class="wez-slider-val" id="wez-az-val">${String(az).padStart(3,'0')}°</span>
-        </div>
-        <div class="wez-slider-row">
-          <span class="wez-label">Spread (°)</span>
-          <input id="wez-spread" type="range" min="10" max="360" value="${spread}" step="5" class="wez-slider" />
-          <span class="wez-slider-val" id="wez-sp-val">${spread}°</span>
-        </div>
-
-        <div class="wez-sec">Elevation Envelope</div>
-        <div class="wez-grid">
-          <div class="wez-field">
-            <div class="wez-label">Min elev (°)</div>
-            <input id="wez-elevmin" class="wez-input" type="number" value="${elevMin}" min="-30" max="89" step="1" />
-          </div>
-          <div class="wez-field">
-            <div class="wez-label">Max elev (°)</div>
-            <input id="wez-elevmax" class="wez-input" type="number" value="${elevMax}" min="-5" max="90" step="1" />
-          </div>
-        </div>
-
-        <div class="wez-divider"></div>
-        <div class="wez-sec">Observer</div>
-        <div class="wez-grid">
-          <div class="wez-field">
-            <div class="wez-label">Height (m)</div>
-            <input id="wez-obsheight" class="wez-input" type="number" value="${obsH}" min="0" max="100" step="0.5" />
-          </div>
-          <div class="wez-field wez-field-btn">
-            <div class="wez-label">Reposition</div>
-            <button class="wez-btn wez-btn-sm" id="wez-reposition-btn">Pick ⊕</button>
-          </div>
-        </div>
-        <div class="wez-coords" id="wez-coords">${
+        <div class="ms-coords" id="wez-coords">${
           this._observerPoint
-            ? `Observer: ${(this._observerPoint.latitude ?? 0).toFixed(5)}°N  ${(this._observerPoint.longitude ?? 0).toFixed(5)}°E`
-            : 'Observer: click map to place'
+            ? `${obsLat}°N  ${obsLon}°E`
+            : 'No firing point placed'
         }</div>
-
-        <div class="wez-divider"></div>
-        <div class="wez-sec">Display Options</div>
-        <div class="wez-toggle-row">
-          <label class="wez-label">Extrude 3D volume</label>
-          <input id="wez-opt-extrude" type="checkbox" class="wez-check" checked />
-        </div>
-        <div class="wez-toggle-row">
-          <label class="wez-label">Show dead zone</label>
-          <input id="wez-opt-deadzone" type="checkbox" class="wez-check" checked />
-        </div>
-        <div class="wez-toggle-row">
-          <label class="wez-label">Show range rings</label>
-          <input id="wez-opt-rings" type="checkbox" class="wez-check" checked />
-        </div>
-        <div class="wez-slider-row">
-          <span class="wez-label">Fill opacity</span>
-          <input id="wez-fill-opacity" type="range" min="0" max="100" value="${fo}" step="5" class="wez-slider" />
-          <span class="wez-slider-val" id="wez-fo-val">${fo}%</span>
-        </div>
-        <div class="wez-toggle-row" id="wez-terrain-row" style="display:none">
-          <label class="wez-label">Terrain masking (3D)</label>
-          <button class="wez-btn wez-btn-sm wez-btn-terrain" id="wez-terrain-btn" disabled>Run Mask</button>
+        <div class="ms-grid full">
+          <div class="ms-field">
+            <label class="ms-label" for="wez-weapon">Weapon system</label>
+            <select id="wez-weapon" class="ms-select">${weaponOptions}</select>
+          </div>
         </div>
 
-        <div class="wez-divider"></div>
-        <div class="wez-btn-row">
-          <button class="wez-btn" id="wez-clear-btn">Clear</button>
-          <button class="wez-btn wez-btn-primary" id="wez-commit-btn" ${isEdit ? '' : 'disabled'}>Commit ↗</button>
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="wez-commit-btn" ${isEdit ? '' : 'disabled'}>Commit ↗</button>
         </div>
 
+        <div class="ms-btn-row" id="wez-clear-row" hidden>
+          <button class="ms-btn danger" id="wez-clear-btn">Clear</button>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="wez-adv-toggle" aria-expanded="false" aria-controls="wez-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Ranges, azimuth, elevation, display</span>
+          </button>
+          <div class="ms-disclosure-body" id="wez-adv-body" hidden>
+            <div class="ms-section-title">Exact coordinates</div>
+            <div class="ms-grid" style="grid-template-columns:1fr 1fr auto;align-items:end;">
+              <div class="ms-field">
+                <label class="ms-label" for="wez-lat">Lat °</label>
+                <input id="wez-lat" class="ms-input" type="number" value="${obsLat}" placeholder="—" step="0.00001" min="-90" max="90" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="wez-lon">Lon °</label>
+                <input id="wez-lon" class="ms-input" type="number" value="${obsLon}" placeholder="—" step="0.00001" min="-180" max="180" />
+              </div>
+              <div class="ms-field">
+                <button class="ms-btn" id="wez-loc-go" title="Place the firing point at these coordinates">Go</button>
+              </div>
+            </div>
+
+            <div class="ms-section-title">Engagement ranges</div>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <label class="ms-label" for="wez-minrange">Min range (m)</label>
+                <input id="wez-minrange" class="ms-input" type="number" value="${minR}" min="0" step="50" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="wez-maxrange">Max range (m)</label>
+                <input id="wez-maxrange" class="ms-input" type="number" value="${maxR}" min="100" step="100" />
+              </div>
+            </div>
+
+            <div class="ms-section-title">Azimuth</div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Centre (°)</div>
+              <input id="wez-azimuth" type="range" min="0" max="359" value="${az}" step="1" />
+              <div class="ms-slider-value" id="wez-az-val">${String(az).padStart(3, '0')}°</div>
+            </div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Spread (°)</div>
+              <input id="wez-spread" type="range" min="10" max="360" value="${spread}" step="5" />
+              <div class="ms-slider-value" id="wez-sp-val">${spread}°</div>
+            </div>
+
+            <div class="ms-section-title">Elevation envelope</div>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <label class="ms-label" for="wez-elevmin">Min elev (°)</label>
+                <input id="wez-elevmin" class="ms-input" type="number" value="${elevMin}" min="-30" max="89" step="1" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="wez-elevmax">Max elev (°)</label>
+                <input id="wez-elevmax" class="ms-input" type="number" value="${elevMax}" min="-5" max="90" step="1" />
+              </div>
+            </div>
+            <div class="ms-grid full">
+              <div class="ms-field">
+                <label class="ms-label" for="wez-obsheight">Firing point height (m)</label>
+                <input id="wez-obsheight" class="ms-input" type="number" value="${obsH}" min="0" max="100" step="0.5" />
+              </div>
+            </div>
+
+            <div class="ms-section-title">Display options</div>
+            <div class="ms-toggle-row">
+              <label for="wez-opt-extrude">Extrude 3D volume</label>
+              <input id="wez-opt-extrude" type="checkbox" class="ms-input" checked />
+            </div>
+            <div class="ms-toggle-row">
+              <label for="wez-opt-deadzone">Show dead zone</label>
+              <input id="wez-opt-deadzone" type="checkbox" class="ms-input" checked />
+            </div>
+            <div class="ms-toggle-row">
+              <label for="wez-opt-rings">Show range rings</label>
+              <input id="wez-opt-rings" type="checkbox" class="ms-input" checked />
+            </div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Fill opacity</div>
+              <input id="wez-fill-opacity" type="range" min="0" max="100" value="${fo}" step="5" />
+              <div class="ms-slider-value" id="wez-fo-val">${fo}%</div>
+            </div>
+            <div class="ms-toggle-row" id="wez-terrain-row" hidden>
+              <label>Terrain masking (3D)</label>
+              <button class="ms-btn" id="wez-terrain-btn" disabled style="flex:0 0 auto;">Run Mask</button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1209,7 +1227,7 @@ export class WeaponEffectEngine {
       (p.querySelector('#wez-sp-val') as HTMLElement).textContent = preset.azimuthSpreadDeg + '°';
       // Update accent color
       p.style.setProperty('--wez-accent', preset.accentHex);
-      const headerIcon = p.querySelector<HTMLElement>('.wez-header-icon');
+      const headerIcon = p.querySelector<HTMLElement>('#wez-header-icon');
       if (headerIcon) headerIcon.textContent = preset.icon;
       this._redraw();
     });
@@ -1248,7 +1266,6 @@ export class WeaponEffectEngine {
 
     // Reposition (Observer section) + top location bar Pick
     p.querySelector('#wez-reposition-btn')?.addEventListener('click', () => this._startReposition());
-    p.querySelector('#wez-loc-pick')?.addEventListener('click', () => this._startReposition());
 
     // Manual Lat/Lon entry — "Go" places the firing point at typed coordinates.
     p.querySelector('#wez-loc-go')?.addEventListener('click', () => this._applyManualLocation());
@@ -1262,18 +1279,27 @@ export class WeaponEffectEngine {
       this._observerLayer.removeAll();
       this._observerPoint = null;
       const coordsEl = p.querySelector<HTMLElement>('#wez-coords');
-      if (coordsEl) coordsEl.textContent = 'Observer: click map to place';
+      if (coordsEl) {
+        coordsEl.textContent = 'No firing point placed';
+        coordsEl.style.color = 'var(--ms-text-dim)';
+      }
       const latInp = this._inp('wez-lat');
       const lonInp = this._inp('wez-lon');
       if (latInp) latInp.value = '';
       if (lonInp) lonInp.value = '';
       const commitBtn = p.querySelector<HTMLButtonElement>('#wez-commit-btn');
       if (commitBtn) commitBtn.disabled = true;
+      const tBtn = p.querySelector<HTMLButtonElement>('#wez-terrain-btn');
+      if (tBtn) tBtn.disabled = true;
+      this._syncClearVisible();
       this._setStatus('awaiting');
+      this._startReposition();
     });
 
     // Commit
     p.querySelector('#wez-commit-btn')?.addEventListener('click', () => this._commit());
+
+    bindDisclosures(p);
   }
 
   /** Place the firing point from the panel's Lat/Lon inputs. */
@@ -1296,6 +1322,7 @@ export class WeaponEffectEngine {
     this._hideTooltip();
     this._drawObserver();
     this._redraw();
+    this._syncClearVisible();
 
     const tBtn = this._panelEl?.querySelector<HTMLButtonElement>('#wez-terrain-btn');
     if (tBtn) tBtn.disabled = false;
@@ -1311,8 +1338,7 @@ export class WeaponEffectEngine {
     // opening with no symbol then Pick) doesn't leave multiple live click handlers
     // that each fire and re-run a full redraw on the next map click.
     this._cancelReposition();
-    const coordsEl = this._panelEl?.querySelector<HTMLElement>('#wez-coords');
-    if (coordsEl) coordsEl.textContent = '⊕  Click map to place observer…';
+    this._setPickArmed(true);
     this._setStatus('picking');
 
     this._repositionHandle = this._view.on('click', async (event: any) => {
@@ -1340,6 +1366,7 @@ export class WeaponEffectEngine {
       this._hideTooltip();
       this._drawObserver();
       this._redraw();
+      this._syncClearVisible();
 
       const tBtn = this._panelEl?.querySelector<HTMLButtonElement>('#wez-terrain-btn');
       if (tBtn) tBtn.disabled = false;
@@ -1351,6 +1378,7 @@ export class WeaponEffectEngine {
       this._repositionHandle.remove();
       this._repositionHandle = null;
     }
+    this._setPickArmed(false);
   }
 
   private _commit(): void {
@@ -1421,6 +1449,17 @@ export class WeaponEffectEngine {
 
   // ─── Private: Helpers ───────────────────────────────────────────────────────
 
+  /** Nothing to clear until a firing point exists. */
+  private _syncClearVisible(): void {
+    const el = this._panelEl?.querySelector<HTMLElement>('#wez-clear-row');
+    if (el) el.hidden = !this._observerPoint;
+  }
+
+  /** Pulse the pick button while the engine is waiting on a map click. */
+  private _setPickArmed(armed: boolean): void {
+    this._panelEl?.querySelector('#wez-reposition-btn')?.classList.toggle('ms-armed', armed);
+  }
+
   private _setStatus(state: 'awaiting' | 'picking' | 'computing' | 'ready' | 'committed' | 'error'): void {
     const dotEl = this._panelEl?.querySelector<HTMLElement>('#wez-status-dot');
     const statusTextMap: Record<typeof state, string> = { awaiting: 'Awaiting observer', picking: 'Click map', computing: 'Computing', ready: 'Ready', committed: 'Committed', error: 'Error' };
@@ -1446,7 +1485,7 @@ export class WeaponEffectEngine {
 
   private _syncTerrainBtn(): void {
     const terrainRow = this._panelEl?.querySelector<HTMLElement>('#wez-terrain-row');
-    if (terrainRow) terrainRow.style.display = this._is3D() ? 'flex' : 'none';
+    if (terrainRow) terrainRow.hidden = !this._is3D();
   }
 
   /** Show a transient tooltip bubble anchored under the "Pick ⊕" button. */
@@ -1521,316 +1560,6 @@ export class WeaponEffectEngine {
     return 'mortar';
   }
 
-  // ─── Private: Styles ────────────────────────────────────────────────────────
-
-  private _injectStyles(): void {
-    if (document.getElementById('wez-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'wez-engine-styles';
-    style.textContent = `
-      .wez-panel {
-        position: fixed;
-        top: 60px;
-        left: 14px;
-        width: 380px;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius);
-        color: var(--ms-text);
-        font-family: var(--ms-font);
-        font-size: var(--ms-fs);
-        z-index: 1100;
-        user-select: none;
-        box-shadow: var(--ms-shadow);
-        display: none;
-        animation: wezPanelIn 0.18s cubic-bezier(0.34,1.56,0.64,1);
-      }
-      @keyframes wezPanelIn {
-        from { opacity:0; transform: scale(0.94) translateY(-8px); }
-        to   { opacity:1; transform: scale(1) translateY(0); }
-      }
-      .wez-header {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 9px 10px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-        border-radius: 5px 5px 0 0;
-        cursor: grab;
-      }
-      .wez-header:active { cursor: grabbing; }
-      .wez-header-icon { font-size: 15px; flex-shrink: 0; }
-      .wez-header-title {
-        font-size: var(--ms-fs-sm);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--ms-warning);
-        font-weight: 700;
-        flex: 1;
-      }
-      .wez-status-dot {
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        background: #555;
-        flex-shrink: 0;
-        transition: background 0.3s, box-shadow 0.3s;
-      }
-      .wez-status-lbl {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-        min-width: 60px;
-      }
-      .wez-help-btn, .wez-minimize-btn, .wez-close-btn {
-        background: none;
-        border: 1px solid transparent;
-        color: var(--ms-text-dim);
-        font-size: 12px;
-        cursor: pointer;
-        padding: 0 2px;
-        line-height: 1;
-        transition: color 0.15s;
-        flex: 0 0 auto;
-      }
-      .wez-help-btn {
-        width: 17px;
-        height: 17px;
-        border-color: var(--ms-border);
-        border-radius: 50%;
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .wez-help-btn:hover, .wez-minimize-btn:hover, .wez-close-btn:hover { color: var(--ms-text); }
-      .wez-help-popover {
-        position: absolute;
-        top: 39px;
-        left: 8px;
-        right: 8px;
-        z-index: 1120;
-        max-height: min(520px, calc(100vh - 132px));
-        overflow-y: auto;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: 4px;
-        box-shadow: var(--ms-shadow);
-        color: var(--ms-text);
-      }
-      .wez-help-popover[hidden] { display: none; }
-      .wez-help-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 10px 11px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-      }
-      .wez-help-kicker {
-        font-size: var(--ms-fs-xs);
-        color: var(--ms-text-label);
-        letter-spacing: 0.09em;
-        text-transform: uppercase;
-      }
-      .wez-help-title {
-        margin-top: 2px;
-        font-size: 13px;
-        color: var(--ms-success);
-        font-weight: 700;
-      }
-      .wez-help-close {
-        width: 20px;
-        height: 20px;
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        cursor: pointer;
-      }
-      .wez-help-close:hover { color: var(--ms-text); }
-      .wez-help-body {
-        padding: 10px 11px 12px;
-        font-size: var(--ms-fs);
-        line-height: 1.45;
-        color: var(--ms-text-dim);
-        user-select: text;
-      }
-      .wez-help-body p { margin: 0 0 9px; }
-      .wez-help-block { margin-top: 10px; }
-      .wez-help-block h4 {
-        margin: 0 0 5px;
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ms-text);
-      }
-      .wez-help-block ol, .wez-help-block ul { margin: 0; padding-left: 17px; }
-      .wez-help-block li { margin: 3px 0; }
-      .wez-help-block dl {
-        display: grid;
-        grid-template-columns: 72px minmax(0, 1fr);
-        gap: 5px 8px;
-        margin: 0;
-      }
-      .wez-help-block dt { color: var(--ms-success); font-weight: 700; }
-      .wez-help-block dd { margin: 0; }
-
-      .wez-body { padding: 0 0 6px; }
-
-      .wez-sec {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--ms-text-label);
-        padding: 9px 12px 4px;
-      }
-      .wez-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
-        margin: 4px 0;
-      }
-      .wez-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 7px;
-        padding: 0 10px 8px;
-      }
-      .wez-field { display: flex; flex-direction: column; gap: 3px; }
-      .wez-field-full { padding: 0 10px 8px; }
-      .wez-field-btn { justify-content: flex-end; }
-      .wez-label {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-      }
-      .wez-input, .wez-select {
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        color: var(--ms-text);
-        font-family: inherit;
-        font-size: var(--ms-fs);
-        padding: 5px 7px;
-        width: 100%;
-        outline: none;
-        transition: border-color 0.15s;
-      }
-      .wez-input:focus, .wez-select:focus { border-color: var(--ms-accent); }
-      .wez-select option { background: var(--ms-bg); }
-
-      .wez-slider-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 2px 10px 6px;
-      }
-      .wez-slider-row .wez-label { flex: 1; }
-      .wez-slider {
-        flex: 2;
-        accent-color: var(--ms-warning);
-        cursor: pointer;
-      }
-      .wez-slider-val {
-        font-size: var(--ms-fs-sm);
-        color: var(--ms-warning);
-        min-width: 34px;
-        text-align: right;
-      }
-
-      .wez-toggle-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 12px;
-      }
-      .wez-check {
-        accent-color: var(--ms-warning);
-        width: 13px; height: 13px;
-        cursor: pointer;
-      }
-
-      .wez-coords {
-        font-size: var(--ms-fs);
-        color: var(--ms-accent);
-        padding: 2px 12px 6px;
-        letter-spacing: 0.04em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .wez-locbar {
-        display: flex;
-        align-items: flex-end;
-        gap: 6px;
-        padding: 2px 10px 8px;
-      }
-      .wez-loc-field {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        flex: 1;
-        min-width: 0;
-      }
-      .wez-loc-lbl {
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        color: var(--ms-text-dim);
-      }
-      .wez-loc-input {
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-border);
-        border-radius: 3px;
-        color: var(--ms-text);
-        font-family: var(--ms-font-mono);
-        font-size: var(--ms-fs);
-        padding: 5px 6px;
-        width: 100%;
-        outline: none;
-        transition: border-color 0.15s;
-      }
-      .wez-loc-input:focus { border-color: var(--ms-accent); }
-      .wez-locbar .wez-btn-sm { align-self: stretch; }
-
-      .wez-btn-row {
-        display: flex;
-        gap: 6px;
-        padding: 8px 10px 4px;
-      }
-      .wez-btn {
-        flex: 1;
-        padding: 6px 4px;
-        font-family: inherit;
-        font-size: var(--ms-fs-xs);
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        cursor: pointer;
-        border-radius: 3px;
-        border: 1px solid var(--ms-border);
-        background: var(--ms-bg-input);
-        color: var(--ms-text-dim);
-        transition: all 0.14s;
-      }
-      .wez-btn:hover { background: var(--ms-bg-header); color: var(--ms-text); }
-      .wez-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-      .wez-btn-primary {
-        border-color: var(--ms-warning);
-        color: var(--ms-warning);
-        background: var(--ms-bg-input);
-      }
-      .wez-btn-primary:hover { background: var(--ms-bg-header); color: var(--ms-text); }
-      .wez-btn-sm { flex: 0 0 auto; padding: 4px 8px; font-size: var(--ms-fs-xs); }
-      .wez-btn-terrain {
-        border-color: var(--ms-accent);
-        color: var(--ms-accent);
-        background: var(--ms-bg-input);
-      }
-      .wez-btn-terrain:hover { background: var(--ms-bg-header); color: var(--ms-text); }
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default WeaponEffectEngine;

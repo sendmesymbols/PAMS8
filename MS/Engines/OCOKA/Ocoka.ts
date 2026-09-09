@@ -13,6 +13,7 @@ import Polyline from '@arcgis/core/geometry/Polyline';
 import Extent from '@arcgis/core/geometry/Extent';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 import RoadNetworkEngine, { type TrafficabilitySummary } from '../Analysis/RoadNetworkEngine';
 
 const WGS84 = { wkid: 4326 } as any;
@@ -232,9 +233,11 @@ export class OcokaEngine {
       this._endPickMode();
     } else if (!this._hasValidLocation()) {
       // Opened with no symbol and no prior centre — prompt the user to pick one.
-      this._setHint('No symbol — click 📍 Pick, then click the map to set the OCOKA centre');
-      this._setStatus('ready', 'Pick a location');
+      this._setHint('Click the map to set the OCOKA analysis centre');
+      this._beginPickMode();
     }
+    this._syncCentreReadout();
+    this._setRunBusy(false);
   }
 
   public async runHeadless(options: OcokaHeadlessOptions = {}): Promise<OcokaCorridor[]> {
@@ -332,14 +335,15 @@ export class OcokaEngine {
       const panel = document.createElement('div');
       panel.className = 'ms-panel ms-theme-ops-dark';
       panel.id = 'ocoka-list-panel';
-      panel.style.cssText = 'top:60px;left:14px;width:480px;max-height:calc(100vh - 84px);';
+      panel.setAttribute('data-engine', 'ocoka');
+      panel.style.cssText = 'top:60px;left:14px;width:480px;';
       panel.innerHTML = `
         <div class="ms-header">
           <div class="ms-header-icon">⬡</div>
           <div class="ms-header-title">OCOKA — Avenues</div>
           <div class="ms-status-lbl" id="ocoka-lph-sub">Set AO then run analysis</div>
         </div>
-        <div class="buffer-stats">
+        <div class="buffer-stats" id="ocoka-stats" hidden>
           <div class="buffer-stat"><div class="buffer-stat-lbl">Corridors</div><div class="buffer-stat-val" id="ocoka-ss-n">-</div></div>
           <div class="buffer-stat"><div class="buffer-stat-lbl">Best avenue</div><div class="buffer-stat-val" id="ocoka-ss-best">-</div></div>
           <div class="buffer-stat"><div class="buffer-stat-lbl">Worst score</div><div class="buffer-stat-val" id="ocoka-ss-worst">-</div></div>
@@ -361,11 +365,13 @@ export class OcokaEngine {
     if (!this._controlPanelEl) {
       const panel = document.createElement('div');
       panel.className = 'ms-panel ms-theme-ops-dark';
-      panel.style.cssText = 'top:60px;right:14px;width:380px;max-height:calc(100vh - 84px);overflow-y:auto;';
+      panel.id = 'ocoka-ctrl-panel';
+      panel.setAttribute('data-engine', 'ocoka');
+      panel.style.cssText = 'top:60px;right:14px;width:380px;';
       panel.innerHTML = `
         <div class="ms-header" id="ocoka-drag-handle">
           <div class="ms-header-icon">⬡</div>
-          <div class="ms-header-title">OCOKA Config</div>
+          <div class="ms-header-title">OCOKA</div>
           <div class="ms-status-dot" id="ocoka-status-dot"></div>
           <div class="ms-status-lbl" id="ocoka-status-lbl">Ready</div>
           <button class="ms-header-btn ms-btn-round" id="ocoka-help-btn" title="OCOKA wiki">?</button>
@@ -381,10 +387,11 @@ export class OcokaEngine {
             <p><strong>OCOKA</strong> evaluates Obstacles, Cover and Concealment, Observation and fields of fire, Key Terrain, and Avenues of Approach.</p>
             <p>This widget focuses on the companion Avenues of Approach panel. It ranks likely approach corridors by width, masking, trafficability, observation exposure, cover/concealment, and obstacle restriction.</p>
             <ol>
-              <li>Right-click a symbol and open OCOKA from More Actions, or click the map to set the centre.</li>
-              <li>Set AO radius, force type, extraction limits, and scoring weights.</li>
+              <li>Press <strong>Pick centre on map</strong> and click the ground, or open OCOKA from a symbol's More Actions menu.</li>
+              <li>Choose the AO radius. Everything else has a working default.</li>
               <li>Run OCOKA Analysis to draw corridor centrelines, width polygons, chokepoints, score labels, and the ranked avenues list.</li>
             </ol>
+            <p><strong>Advanced</strong> holds exact centre coordinates, grid cell size, extraction limits, force type and the display toggles. <strong>Scoring weights</strong> rebalances the six factors below.</p>
             <div class="ms-help-kicker" style="margin-top:10px">Scoring weights explained</div>
             <p><strong>Width</strong> — usable corridor breadth; favours avenues that pass a force without bottleneck.</p>
             <p><strong>Masking</strong> — terrain screening from enemy observation along the route.</p>
@@ -395,16 +402,17 @@ export class OcokaEngine {
           </div>
         </div>
         <div class="ms-body">
+          <!-- Default view: place the AO centre, choose a radius, run. Grid
+               resolution, extraction limits, force type, display toggles and
+               the six scoring weights all live in the disclosures below. -->
           <div class="ms-section-title">Analysis area</div>
-          <div class="ms-grid">
-            <div class="ms-field full"><div class="ms-label">Centre coordinates</div>
-              <div style="display:flex;gap:6px;align-items:center;">
-                <input id="ocoka-inp-lat" class="ms-input" type="number" placeholder="lat" step="0.001" title="Centre latitude (decimal degrees)" style="flex:1;min-width:0;" />
-                <input id="ocoka-inp-lon" class="ms-input" type="number" placeholder="lon" step="0.001" title="Centre longitude (decimal degrees)" style="flex:1;min-width:0;" />
-                <button class="ms-btn" id="ocoka-btn-pick" title="Click, then click anywhere on the map to set the analysis centre" style="flex:0 0 auto;white-space:nowrap;padding:6px 9px;">📍 Pick</button>
-              </div>
-            </div>
-            <div class="ms-field full"><div class="ms-label">Analysis radius</div>
+          <div class="ms-btn-row">
+            <button class="ms-btn primary" id="ocoka-btn-pick" title="Click, then click anywhere on the map to set the analysis centre">📍 Pick centre on map</button>
+          </div>
+          <div class="ms-coords" id="ocoka-centre-readout">No centre set</div>
+          <div class="ms-grid full">
+            <div class="ms-field">
+              <label class="ms-label" for="ocoka-inp-radius">Analysis radius</label>
               <select id="ocoka-inp-radius" class="ms-select">
                 <option value="3000">3 km - position level</option>
                 <option value="5000" selected>5 km - company level</option>
@@ -413,42 +421,95 @@ export class OcokaEngine {
               </select>
             </div>
           </div>
-          <div class="ms-section-title">Corridor extraction</div>
-          <div class="ms-grid"><div class="ms-field full"><div class="ms-label">Grid cell size (m)</div>
-            <select id="ocoka-inp-cell" class="ms-select"><option value="30">30 m - fine (slower)</option><option value="50" selected>50 m - balanced</option><option value="80">80 m - fast</option></select>
-          </div></div>
-          <div class="ms-slider-row"><div class="ms-slider-label">Max corridors</div><input id="ocoka-inp-maxcorr" type="range" min="3" max="12" step="1" value="7" /><div class="ms-slider-value" id="ocoka-maxcorr-v">7</div></div>
-          <div class="ms-slider-row"><div class="ms-slider-label">Slope threshold (deg)</div><input id="ocoka-inp-slope" type="range" min="5" max="25" step="1" value="12" /><div class="ms-slider-value" id="ocoka-slope-v">12deg</div></div>
-          <div class="ms-section-title">Force type</div>
-          <div class="ms-grid"><div class="ms-field full"><div class="ms-label">Trafficability standard</div>
-            <select id="ocoka-inp-force" class="ms-select"><option value="dismount">Dismounted infantry</option><option value="wheeled" selected>Wheeled vehicles</option><option value="tracked">Tracked / armour</option><option value="mixed">Mixed force</option></select>
-          </div></div>
-          <div class="ms-divider"></div>
-          <div class="ms-section-title">Scoring weights (drag to adjust)</div>
-          <div class="ms-weight-grid">
-            ${this._weightControl('width', 'Width', 3)}
-            ${this._weightControl('mask', 'Masking', 4)}
-            ${this._weightControl('traf', 'Trafficability', 3)}
-            ${this._weightControl('obs', 'Observation', 4)}
-            ${this._weightControl('cc', 'Cover & concealment', 3)}
-            ${this._weightControl('obs2', 'Obstacle', 3)}
+
+          <div class="ms-btn-row">
+            <button class="ms-btn ms-cta" id="ocoka-btn-run">Run OCOKA Analysis ↗</button>
           </div>
-          <div class="ms-divider"></div>
-          <div class="ms-section-title">Display options</div>
-          <div class="ms-toggle-row"><label>Slope heatmap overlay</label><input id="ocoka-opt-slope" type="checkbox" checked /></div>
-          <div class="ms-toggle-row"><label>Corridor centrelines</label><input id="ocoka-opt-lines" type="checkbox" checked /></div>
-          <div class="ms-toggle-row"><label>Width polygons</label><input id="ocoka-opt-width" type="checkbox" checked /></div>
-          <div class="ms-toggle-row"><label>Chokepoint markers</label><input id="ocoka-opt-choke" type="checkbox" checked /></div>
-          <div class="ms-divider"></div>
-          <div class="ms-score-key">
-            <div class="ms-section-title" style="padding-top:4px">Score colour key</div>
-            ${this._scoreKey('#1D9E75', '80-100 - Primary avenue of approach')}
-            ${this._scoreKey('#78C840', '60-79 - Secondary avenue')}
-            ${this._scoreKey('#EF9F27', '40-59 - Restricted / limited use')}
-            ${this._scoreKey('#DC3C30', '0-39 - Unlikely / obstacle-rich')}
+
+          <div class="ms-progress-wrap" id="ocoka-prog-wrap" hidden><div class="ms-progress-track"><div class="ms-progress-fill" id="ocoka-prog-fill"></div></div><div class="ms-progress-label" id="ocoka-prog-label">-</div></div>
+
+          <div class="ms-btn-row" id="ocoka-clear-row" hidden>
+            <button class="ms-btn danger" id="ocoka-btn-clear">Clear</button>
           </div>
-          <div class="ms-progress-wrap"><div class="ms-progress-track"><div class="ms-progress-fill" id="ocoka-prog-fill"></div></div><div class="ms-progress-label" id="ocoka-prog-label">-</div></div>
-          <div class="ms-btn-row"><button class="ms-btn" id="ocoka-btn-clear">Clear</button><button class="ms-btn primary" id="ocoka-btn-run">Run OCOKA Analysis</button></div>
+
+          <div class="ms-disclosure" data-open="false">
+            <button class="ms-disclosure-head" type="button" id="ocoka-adv-toggle" aria-expanded="false" aria-controls="ocoka-adv-body">
+              <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+              <span class="ms-disclosure-title">Advanced</span>
+              <span class="ms-disclosure-meta">Coordinates, extraction, force, display</span>
+            </button>
+            <div class="ms-disclosure-body" id="ocoka-adv-body" hidden>
+              <div class="ms-section-title">Centre coordinates</div>
+              <div class="ms-grid">
+                <div class="ms-field">
+                  <label class="ms-label" for="ocoka-inp-lat">Latitude</label>
+                  <input id="ocoka-inp-lat" class="ms-input" type="number" placeholder="lat" step="0.001" title="Centre latitude (decimal degrees)" />
+                </div>
+                <div class="ms-field">
+                  <label class="ms-label" for="ocoka-inp-lon">Longitude</label>
+                  <input id="ocoka-inp-lon" class="ms-input" type="number" placeholder="lon" step="0.001" title="Centre longitude (decimal degrees)" />
+                </div>
+              </div>
+
+              <div class="ms-section-title">Corridor extraction</div>
+              <div class="ms-grid full">
+                <div class="ms-field">
+                  <label class="ms-label" for="ocoka-inp-cell">Grid cell size (m)</label>
+                  <select id="ocoka-inp-cell" class="ms-select"><option value="30">30 m - fine (slower)</option><option value="50" selected>50 m - balanced</option><option value="80">80 m - fast</option></select>
+                </div>
+              </div>
+              <div class="ms-slider-row"><div class="ms-slider-label">Max corridors</div><input id="ocoka-inp-maxcorr" type="range" min="3" max="12" step="1" value="7" /><div class="ms-slider-value" id="ocoka-maxcorr-v">7</div></div>
+              <div class="ms-slider-row"><div class="ms-slider-label">Slope threshold (deg)</div><input id="ocoka-inp-slope" type="range" min="5" max="25" step="1" value="12" /><div class="ms-slider-value" id="ocoka-slope-v">12deg</div></div>
+
+              <div class="ms-section-title">Force type</div>
+              <div class="ms-grid full">
+                <div class="ms-field">
+                  <label class="ms-label" for="ocoka-inp-force">Trafficability standard</label>
+                  <select id="ocoka-inp-force" class="ms-select"><option value="dismount">Dismounted infantry</option><option value="wheeled" selected>Wheeled vehicles</option><option value="tracked">Tracked / armour</option><option value="mixed">Mixed force</option></select>
+                </div>
+              </div>
+
+              <div class="ms-section-title">Display options</div>
+              <div class="ms-toggle-row"><label for="ocoka-opt-slope">Slope heatmap overlay</label><input id="ocoka-opt-slope" type="checkbox" checked /></div>
+              <div class="ms-toggle-row"><label for="ocoka-opt-lines">Corridor centrelines</label><input id="ocoka-opt-lines" type="checkbox" checked /></div>
+              <div class="ms-toggle-row"><label for="ocoka-opt-width">Width polygons</label><input id="ocoka-opt-width" type="checkbox" checked /></div>
+              <div class="ms-toggle-row"><label for="ocoka-opt-choke">Chokepoint markers</label><input id="ocoka-opt-choke" type="checkbox" checked /></div>
+            </div>
+          </div>
+
+          <div class="ms-disclosure" data-open="false">
+            <button class="ms-disclosure-head" type="button" id="ocoka-weights-toggle" aria-expanded="false" aria-controls="ocoka-weights-body">
+              <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+              <span class="ms-disclosure-title">Scoring weights</span>
+              <span class="ms-disclosure-meta">How the six factors are balanced</span>
+            </button>
+            <div class="ms-disclosure-body" id="ocoka-weights-body" hidden>
+              <div class="ms-weight-grid">
+                ${this._weightControl('width', 'Width', 3)}
+                ${this._weightControl('mask', 'Masking', 4)}
+                ${this._weightControl('traf', 'Trafficability', 3)}
+                ${this._weightControl('obs', 'Observation', 4)}
+                ${this._weightControl('cc', 'Cover & concealment', 3)}
+                ${this._weightControl('obs2', 'Obstacle', 3)}
+              </div>
+            </div>
+          </div>
+
+          <div class="ms-disclosure" data-open="false">
+            <button class="ms-disclosure-head" type="button" id="ocoka-key-toggle" aria-expanded="false" aria-controls="ocoka-key-body">
+              <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+              <span class="ms-disclosure-title">Score colour key</span>
+              <span class="ms-disclosure-meta">What the corridor colours mean</span>
+            </button>
+            <div class="ms-disclosure-body" id="ocoka-key-body" hidden>
+              <div class="ms-score-key">
+                ${this._scoreKey('#1D9E75', '80-100 - Primary avenue of approach')}
+                ${this._scoreKey('#78C840', '60-79 - Secondary avenue')}
+                ${this._scoreKey('#EF9F27', '40-59 - Restricted / limited use')}
+                ${this._scoreKey('#DC3C30', '0-39 - Unlikely / obstacle-rich')}
+              </div>
+            </div>
+          </div>
         </div>
       `;
       document.body.appendChild(panel);
@@ -481,7 +542,7 @@ export class OcokaEngine {
   }
 
   private _weightControl(id: keyof OcokaWeights, label: string, value: number): string {
-    return `<div class="ms-weight-row"><div class="ms-label">${label}</div><input type="range" id="ocoka-wt-${id}" min="0" max="10" step="1" value="${value}" /><div class="ms-weight-val" id="ocoka-wv-${id}">${value}</div></div>`;
+    return `<div class="ms-weight-row"><label class="ms-label" for="ocoka-wt-${id}">${label}</label><input type="range" id="ocoka-wt-${id}" min="0" max="10" step="1" value="${value}" /><div class="ms-weight-val" id="ocoka-wv-${id}">${value}</div></div>`;
   }
 
   private _scoreKey(color: string, label: string): string {
@@ -503,7 +564,10 @@ export class OcokaEngine {
     this._controlPanelEl?.querySelector('#ocoka-btn-pick')?.addEventListener('click', () => this._beginPickMode());
     // Typing a valid coordinate clears any "pick a location" prompt.
     ['ocoka-inp-lat', 'ocoka-inp-lon'].forEach((id) =>
-      this._input(id)?.addEventListener('input', () => { if (this._hasValidLocation()) { this._hideTooltip(); this._endPickMode(); } }),
+      this._input(id)?.addEventListener('input', () => {
+        this._syncCentreReadout();
+        if (this._hasValidLocation()) { this._hideTooltip(); this._endPickMode(); }
+      }),
     );
     this._controlPanelEl?.querySelector('#ocoka-close-btn')?.addEventListener('click', () => this.close());
     this._controlPanelEl?.querySelector('#ocoka-minimize-btn')?.addEventListener('click', () => {
@@ -523,6 +587,7 @@ export class OcokaEngine {
       const help = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-help-popover');
       if (help) help.hidden = true;
     });
+    bindDisclosures(this._controlPanelEl);
   }
 
   private _showPanels(): void {
@@ -547,6 +612,7 @@ export class OcokaEngine {
       this._setInputValue('ocoka-inp-lon', lon.toFixed(4));
       this._setAnalysisArea(lat, lon, this._num('ocoka-inp-radius', 5000));
       this._setHint(`Centre set - ${lat.toFixed(4)}N ${lon.toFixed(4)}E - click Run OCOKA`);
+      this._syncCentreReadout();
       this._hideTooltip();
       this._endPickMode();
     });
@@ -565,7 +631,10 @@ export class OcokaEngine {
       return;
     }
     this._running = true;
-    this._setRunDisabled(true);
+    this._endPickMode();
+    this._setRunBusy(true);
+    this._setClearVisible(false);
+    this._setProgressVisible(true);
     this._clearResults();
 
     try {
@@ -595,6 +664,8 @@ export class OcokaEngine {
       this._renderRankedList(scored);
 
       const best = scored[0]?.composite ?? 0;
+      this._setStatsVisible(scored.length > 0);
+      this._setClearVisible(true);
       this._setStatus('done', 'Done');
       this._setProgress(1, `Done - ${scored.length} avenues, best score ${best}`);
       EngineLogger.success(ENGINE_NAME, `OCOKA analysis complete: ${scored.length} avenues, best score ${best}.`);
@@ -611,7 +682,7 @@ export class OcokaEngine {
       this._setProgress(0, 'Analysis failed');
     } finally {
       this._running = false;
-      this._setRunDisabled(false);
+      this._setRunBusy(false);
     }
   }
 
@@ -1041,6 +1112,10 @@ export class OcokaEngine {
     this._clearResults();
     const list = this._listPanelEl?.querySelector<HTMLElement>('#ocoka-approach-list');
     if (list) list.innerHTML = '<div class="ms-empty">Set AO then run analysis</div>';
+    this._setStatsVisible(false);
+    this._setClearVisible(false);
+    this._setProgressVisible(false);
+    this._syncCentreReadout();
     ['ocoka-ss-n', 'ocoka-ss-best', 'ocoka-ss-worst'].forEach((id) => this._setText(id, '-'));
     this._setText('ocoka-lph-sub', 'Set AO then run analysis');
     this._setProgress(0, '-');
@@ -1081,11 +1156,6 @@ export class OcokaEngine {
     const lbl = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-prog-label');
     if (fill) fill.style.width = `${Math.round(clamp(fraction, 0, 1) * 100)}%`;
     if (lbl) lbl.textContent = label;
-  }
-
-  private _setRunDisabled(disabled: boolean): void {
-    const btn = this._controlPanelEl?.querySelector<HTMLButtonElement>('#ocoka-btn-run');
-    if (btn) btn.disabled = disabled;
   }
 
   private _makeDraggable(): void {
@@ -1204,11 +1274,7 @@ export class OcokaEngine {
   /** Enter "pick on map" mode — highlights the button and prompts the user. */
   private _beginPickMode(): void {
     this._pickMode = true;
-    const btn = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-btn-pick');
-    if (btn) {
-      btn.classList.add('primary');
-      btn.textContent = '📍 Click map…';
-    }
+    this._controlPanelEl?.querySelector('#ocoka-btn-pick')?.classList.add('ms-armed');
     this._setHint('Click anywhere on the map to set the OCOKA analysis centre');
     this._setStatus('ready', 'Picking location');
   }
@@ -1216,11 +1282,52 @@ export class OcokaEngine {
   private _endPickMode(): void {
     if (!this._pickMode) return;
     this._pickMode = false;
-    const btn = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-btn-pick');
-    if (btn) {
-      btn.classList.remove('primary');
-      btn.textContent = '📍 Pick';
+    this._controlPanelEl?.querySelector('#ocoka-btn-pick')?.classList.remove('ms-armed');
+  }
+
+  /**
+   * The centre readout is the always-visible confirmation that an AO exists;
+   * the exact lat/lon inputs now live in the Advanced disclosure.
+   */
+  private _syncCentreReadout(): void {
+    const el = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-centre-readout');
+    if (!el) return;
+    if (!this._hasValidLocation()) {
+      el.textContent = 'No centre set';
+      el.style.color = 'var(--ms-text-dim)';
+      return;
     }
+    const lat = Number(this._input('ocoka-inp-lat')?.value ?? 0);
+    const lon = Number(this._input('ocoka-inp-lon')?.value ?? 0);
+    el.textContent = `${lat.toFixed(4)}\u00B0N  ${lon.toFixed(4)}\u00B0E`;
+    el.style.color = '';
+  }
+
+  /** Primary CTA state while the engine is computing. */
+  private _setRunBusy(busy: boolean): void {
+    const btn = this._controlPanelEl?.querySelector<HTMLButtonElement>('#ocoka-btn-run');
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.classList.toggle('ms-busy', busy);
+    btn.textContent = busy ? 'Analysing\u2026' : 'Run OCOKA Analysis \u2197';
+  }
+
+  /** Progress track stays out of the way until a run is under way. */
+  private _setProgressVisible(visible: boolean): void {
+    const el = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-prog-wrap');
+    if (el) el.hidden = !visible;
+  }
+
+  /** Nothing to clear before the first run. */
+  private _setClearVisible(visible: boolean): void {
+    const el = this._controlPanelEl?.querySelector<HTMLElement>('#ocoka-clear-row');
+    if (el) el.hidden = !visible;
+  }
+
+  /** Summary stats live on the ranked-avenues panel and only mean something after a run. */
+  private _setStatsVisible(visible: boolean): void {
+    const el = this._listPanelEl?.querySelector<HTMLElement>('#ocoka-stats');
+    if (el) el.hidden = !visible;
   }
 
   /** Show a transient tooltip bubble anchored under the Pick button. */

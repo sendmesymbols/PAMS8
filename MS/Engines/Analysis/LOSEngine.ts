@@ -26,6 +26,7 @@ import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 // ─── Geodetic helpers ────────────────────────────────────────────────────────
 
@@ -120,7 +121,6 @@ export class LOSEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export class LOSEngine {
 
     this._showPanel();
     if (this._observerPoint) this._drawObserver();
-    else this._setStatus('awaiting');
+    else this._startPick('observer');
   }
 
   close(): void {
@@ -342,6 +342,8 @@ export class LOSEngine {
   private _setCommitEnabled(enabled: boolean): void {
     const commitBtn = this._panelEl?.querySelector<HTMLButtonElement>('#los-commit-btn');
     if (commitBtn) commitBtn.disabled = !enabled;
+    // A commitable result is exactly the case where Clear and the legend matter.
+    if (enabled) this._setResultsVisible(true);
   }
 
   private _clearNativeStateWatches(): void {
@@ -945,13 +947,25 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
 
   // ─── Private: Run orchestration ──────────────────────────────────────────────
 
+  /**
+   * Public entry point for a run. Owns the CTA busy state so the six early
+   * returns inside _runInner cannot leave the button stuck on "Analysing".
+   */
   private async _run(): Promise<void> {
+    this._setRunBusy(true);
+    try {
+      await this._runInner();
+    } finally {
+      this._setRunBusy(false);
+    }
+  }
+
+  private async _runInner(): Promise<void> {
     if (!this._view) return;
     if (!this._observerPoint) {
-      const coordsEl = this._panelEl?.querySelector<HTMLElement>('#los-coords');
-      if (coordsEl) coordsEl.textContent = 'Place an observer first — Pick ⊕ on the map, or enter a Lat/Lon and press Set';
       this._setStatus('awaiting');
       this._updateRunHint();
+      this._startPick('observer');
       return;
     }
     this._analysisLayer.removeAll();
@@ -1017,7 +1031,10 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
     const lat = (this._observerPoint.latitude  ?? 0).toFixed(5);
     const lon = (this._observerPoint.longitude ?? 0).toFixed(5);
     const coordsEl = this._panelEl?.querySelector<HTMLElement>('#los-coords');
-    if (coordsEl) coordsEl.textContent = `Observer: ${lat}°N  ${lon}°E`;
+    if (coordsEl) {
+      coordsEl.textContent = `${lat}°N  ${lon}°E`;
+      coordsEl.style.color = '';
+    }
 
     const latInp = this._inp('los-obs-lat');
     const lonInp = this._inp('los-obs-lon');
@@ -1040,12 +1057,15 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
     const lat = Number(this._inp('los-obs-lat')?.value);
     const lon = Number(this._inp('los-obs-lon')?.value);
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-      const coordsEl = this._panelEl?.querySelector<HTMLElement>('#los-coords');
-      if (coordsEl) coordsEl.textContent = 'Enter a valid Lat/Lon (lat ±90°, lon ±180°)';
+      const noteEl = this._panelEl?.querySelector<HTMLElement>('#los-native-interactive-note');
+      if (noteEl) noteEl.textContent = 'Enter a valid Lat/Lon (lat \u00B190\u00B0, lon \u00B1180\u00B0)';
       this._setStatus('error');
       return;
     }
 
+    this._cancelPick();
+    const noteEl = this._panelEl?.querySelector<HTMLElement>('#los-native-interactive-note');
+    if (noteEl && noteEl.textContent?.startsWith('Enter a valid')) noteEl.textContent = '';
     this._observerPoint = new Point({
       longitude: lon,
       latitude: lat,
@@ -1249,8 +1269,7 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
     this._cancelPick();
     this._setStatus('picking');
 
-    const coordsEl = this._panelEl?.querySelector<HTMLElement>('#los-coords');
-    if (mode === 'observer' && coordsEl) coordsEl.textContent = '⊕  Click map to place observer…';
+    this._setPickArmed(mode, true);
 
     this._pickHandle = this._view.on('click', async (event: any) => {
       this._cancelPick();
@@ -1322,14 +1341,44 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
   private _cancelPick(): void {
     this._pickHandle?.remove();
     this._pickHandle = null;
+    this._setPickArmed('observer', false);
+    this._setPickArmed('target', false);
+  }
+
+  /** Pulse whichever pick button is waiting on a map click. */
+  private _setPickArmed(mode: 'observer' | 'target', armed: boolean): void {
+    const id = mode === 'observer' ? '#los-obs-pick-btn' : '#los-add-target-btn';
+    this._panelEl?.querySelector(id)?.classList.toggle('ms-armed', armed);
+  }
+
+  /** The Clear / Commit row and the line legend only apply once a run has drawn something. */
+  private _setResultsVisible(visible: boolean): void {
+    const el = this._panelEl?.querySelector<HTMLElement>('#los-results');
+    if (el) el.hidden = !visible;
+  }
+
+  /** Primary CTA state while the engine is computing. */
+  private _setRunBusy(busy: boolean): void {
+    const btn = this._panelEl?.querySelector<HTMLButtonElement>('#los-run-btn');
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.classList.toggle('ms-busy', busy);
+    btn.textContent = busy ? 'Analysing…' : 'Run ↗';
   }
 
   private _updateTargetList(): void {
     const listEl = this._panelEl?.querySelector<HTMLElement>('#los-target-list');
     if (!listEl) return;
 
+    const meta = this._panelEl?.querySelector<HTMLElement>('#los-targets-meta');
+    if (meta) {
+      meta.textContent = this._targets.length === 0
+        ? 'Optional, for LOS lines'
+        : `${this._targets.length} target${this._targets.length === 1 ? '' : 's'}`;
+    }
+
     if (this._targets.length === 0) {
-      listEl.innerHTML = '<div class="los-no-targets">No targets — use "Add Target" to pick on map</div>';
+      listEl.innerHTML = '<div class="los-no-targets">No targets yet \u2014 press "+ Add target" and click the map.</div>';
       return;
     }
 
@@ -1370,18 +1419,25 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
       this._panelEl.id = 'los-engine-panel';
-      this._panelEl.className = 'los-panel';
+      this._panelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._panelEl.setAttribute('data-engine', 'los');
+      this._panelEl.style.top = '60px';
+      this._panelEl.style.left = '310px';
+      this._panelEl.style.width = '380px';
       document.body.appendChild(this._panelEl);
     }
+    // open() deliberately starts fresh each time (and the re-edit path needs the
+    // override values written in), so the markup is rebuilt rather than reused.
     this._panelEl.innerHTML = this._buildPanelHTML(override);
-    this._panelEl.style.display = 'block';
+    this._panelEl.classList.add('ms-visible');
     this._bindPanelEvents();
     this._makeDraggable();
     this._updateTargetList();
+    this._setResultsVisible(false);
   }
 
   private _hidePanel(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
+    this._panelEl?.classList.remove('ms-visible');
   }
 
   private _buildPanelHTML(override?: LOSPanelOverride): string {
@@ -1404,176 +1460,193 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
     const outputOpts = ['LOS line only', 'Viewshed dome', 'Both'];
     const colorOpts  = ['Range', 'Elevation angle', 'Binary'];
     const analysisOpts = ['Auto', 'ArcGIS native 3D', 'ArcGIS native 3D layer', 'Terrain ray trace (approx)'];
+    const obsLat = this._observerPoint ? (this._observerPoint.latitude ?? 0).toFixed(5) : '';
+    const obsLon = this._observerPoint ? (this._observerPoint.longitude ?? 0).toFixed(5) : '';
 
     return `
-      <div class="los-header" id="los-drag-handle">
-        <span class="los-header-icon">◉</span>
-        <span class="los-header-title">LOS Analysis${isEdit ? ' — Re-edit' : ''}</span>
-        <span class="los-status-dot" id="los-status-dot"></span>
-        <span class="los-status-lbl" id="los-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
-        <button class="los-help-btn" id="los-help-btn" title="How LOS analysis works">?</button>
-        <button class="los-minimize-btn" id="los-minimize-btn" title="Minimize">▼</button>
-        <button class="los-close-btn" id="los-close-btn" title="Close (keeps graphics)">✕</button>
+      <div class="ms-header" id="los-drag-handle">
+        <span class="ms-header-icon">◉</span>
+        <span class="ms-header-title">LOS Analysis${isEdit ? ' — Re-edit' : ''}</span>
+        <span class="ms-status-dot" id="los-status-dot"></span>
+        <span class="ms-status-lbl" id="los-status-lbl">${isEdit ? 'Restored' : 'Awaiting'}</span>
+        <button class="ms-header-btn ms-btn-round" id="los-help-btn" title="How LOS analysis works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="los-minimize-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="los-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
 
-      <div class="los-help-popover" id="los-help-popover" hidden>
-        <div class="los-help-head">
+      <div class="ms-help-popover" id="los-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="los-help-kicker">Field Guide</div>
-            <div class="los-help-title">Line Of Sight / Viewshed</div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Line Of Sight / Viewshed</div>
           </div>
-          <button class="los-help-close" id="los-help-close" title="Close">✕</button>
+          <button class="ms-help-close" id="los-help-close" title="Close">✕</button>
         </div>
-        <div class="los-help-body">
+        <div class="ms-help-body">
           <p>Evaluates what an observer can see across terrain. In 2D it samples elevation along rays, and in 3D it can also hand the problem to ArcGIS native LOS or viewshed analysis.</p>
-          <div class="los-help-block">
+          <div class="ms-help-block">
             <h4>How It Works</h4>
             <ol>
-              <li>Set an observer point and eye height above ground.</li>
-              <li>Add target points if you want direct line checks to named locations.</li>
-              <li>Define the azimuth and elevation window for the search volume.</li>
-              <li>Run the analysis to draw visible or masked LOS paths, obstruction markers, and optionally a viewshed footprint.</li>
+              <li>Press <strong>Pick observer on map</strong> and click the ground. The analysis runs straight away.</li>
+              <li>Add targets if you want direct line checks to named locations; each one re-runs the analysis.</li>
+              <li>Change anything under Advanced, then press <strong>Run</strong> to recompute.</li>
+              <li>Commit when the picture is right, which bakes the result onto the committed layer.</li>
             </ol>
           </div>
-          <div class="los-help-block">
+          <div class="ms-help-block">
             <h4>Phenomenon</h4>
             <p>LOS asks whether the straight path from observer to target stays above terrain and scene obstructions. Viewshed expands that same idea into a sector or full dome by testing many rays inside the chosen horizontal and vertical envelope.</p>
           </div>
-          <div class="los-help-block">
+          <div class="ms-help-block">
             <h4>Parameters</h4>
             <dl>
+              <dt>Max range</dt><dd>Stops ray tests and viewshed generation at this distance from the observer.</dd>
               <dt>Output</dt><dd>Choose LOS lines, viewshed coverage, or both together.</dd>
               <dt>Engine</dt><dd>"Auto" prefers native 3D tools in SceneView and falls back to terrain ray tracing when needed.</dd>
               <dt>Obs height</dt><dd>Raises the observer eye above the ground point before casting rays.</dd>
               <dt>Targets</dt><dd>Each target creates a separate visible or masked LOS test from the observer.</dd>
-              <dt>Max range</dt><dd>Stops ray tests and viewshed generation at this distance from the observer.</dd>
               <dt>Az start/end</dt><dd>Defines the horizontal bearing sector to search; 0-360 gives all-around coverage.</dd>
               <dt>Elev min/max</dt><dd>Defines the vertical look envelope, useful for low-angle scans or elevated surveillance.</dd>
-              <dt>Color by</dt><dd>Styles the result by distance, elevation angle, or simple visible vs blocked output.</dd>
+              <dt>Colour by</dt><dd>Styles the result by distance, elevation angle, or simple visible vs blocked output.</dd>
               <dt>3D handles</dt><dd>Lets ArcGIS native analyses stay interactive in SceneView so you can drag them in place.</dd>
             </dl>
           </div>
         </div>
       </div>
 
-      <div class="los-body">
-
-        <div class="los-sec">Output Type</div>
-        <div class="los-field-full">
-          <select id="los-output" class="los-select">
-            ${outputOpts.map(o => `<option value="${o}"${o===output?' selected':''}>${o}</option>`).join('')}
-          </select>
+      <div class="ms-body">
+        <!-- Default view: place the observer (which runs the analysis on its
+             own), set a range, re-run. Output type, engine, observer detail and
+             the viewshed envelope live in the collapsed disclosures below. -->
+        <div class="ms-section-title">Observer</div>
+        <div class="ms-btn-row">
+          <button class="ms-btn primary" id="los-obs-pick-btn" title="Click, then click the map to place the observer">📍 Pick observer on map</button>
         </div>
-        <div class="los-field-full">
-          <div class="los-label">Analysis Engine</div>
-          <select id="los-analysis-mode" class="los-select">
-            ${analysisOpts.map(o => `<option value="${o}"${o===analysisMode?' selected':''}>${o}</option>`).join('')}
-          </select>
-        </div>
-        <div class="los-field-full">
-          <label class="los-toggle">
-            <input id="los-native-interactive" type="checkbox"${nativeInteractive ? ' checked' : ''} />
-            <span>Enable native 3D edit handles</span>
-          </label>
-          <div class="los-inline-note" id="los-native-interactive-note"></div>
-        </div>
-
-        <div class="los-divider"></div>
-        <div class="los-sec">Observer</div>
-        <div class="los-grid los-grid-3">
-          <div class="los-field">
-            <div class="los-label">Lat °</div>
-            <input id="los-obs-lat" class="los-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat"${
-              this._observerPoint ? ` value="${(this._observerPoint.latitude ?? 0).toFixed(5)}"` : ''
-            } />
-          </div>
-          <div class="los-field">
-            <div class="los-label">Lon °</div>
-            <input id="los-obs-lon" class="los-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon"${
-              this._observerPoint ? ` value="${(this._observerPoint.longitude ?? 0).toFixed(5)}"` : ''
-            } />
-          </div>
-          <div class="los-field los-field-btn">
-            <button class="los-btn los-btn-sm" id="los-obs-setloc-btn" title="Place the observer at the Lat/Lon entered above">Set</button>
-          </div>
-        </div>
-        <div class="los-grid">
-          <div class="los-field">
-            <div class="los-label">Height (m)</div>
-            <input id="los-obsheight" class="los-input" type="number" value="${obsH}" min="0" max="100" step="0.5" />
-          </div>
-          <div class="los-field los-field-btn">
-            <div class="los-label">Reposition</div>
-            <button class="los-btn los-btn-sm" id="los-obs-pick-btn" title="Click the map to place / move the observer">Pick ⊕</button>
-          </div>
-        </div>
-        <div class="los-coords" id="los-coords">${
+        <div class="ms-coords" id="los-coords">${
           this._observerPoint
-            ? `Observer: ${(this._observerPoint.latitude ?? 0).toFixed(5)}°N  ${(this._observerPoint.longitude ?? 0).toFixed(5)}°E`
-            : 'Observer: click map (Pick ⊕) or enter a Lat/Lon and press Set'
+            ? `${obsLat}°N  ${obsLon}°E`
+            : 'No observer placed'
         }</div>
-
-        <div class="los-divider"></div>
-        <div class="los-sec">Targets <span class="los-sec-note">— for LOS lines</span></div>
-        <div class="los-grid">
-          <div class="los-field">
-            <button class="los-btn" id="los-add-target-btn">+ Add Target</button>
-          </div>
-          <div class="los-field">
-            <button class="los-btn" id="los-clear-targets-btn">Clear Targets</button>
-          </div>
-        </div>
-        <div id="los-target-list" class="los-target-list"></div>
-
-        <div class="los-divider"></div>
-        <div class="los-sec">Viewshed Parameters</div>
-        <div class="los-grid">
-          <div class="los-field">
-            <div class="los-label">Max range (m)</div>
-            <input id="los-maxrange" class="los-input" type="number" value="${maxR}" min="100" step="100" />
-          </div>
-          <div class="los-field">
-            <div class="los-label">Colour by</div>
-            <select id="los-colorby" class="los-select">
-              ${colorOpts.map(o => `<option value="${o}"${o===colorBy?' selected':''}>${o}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div class="los-slider-row">
-          <span class="los-label">Az start (°)</span>
-          <input id="los-az-start" type="range" min="0" max="359" value="${azStart}" step="1" class="los-slider" />
-          <span class="los-slider-val" id="los-az-start-val">${String(azStart).padStart(3,'0')}°</span>
-        </div>
-        <div class="los-slider-row">
-          <span class="los-label">Az end (°)</span>
-          <input id="los-az-end" type="range" min="1" max="360" value="${azEnd}" step="1" class="los-slider" />
-          <span class="los-slider-val" id="los-az-end-val">${String(azEnd).padStart(3,'0')}°</span>
-        </div>
-
-        <div class="los-sec">Elevation Envelope</div>
-        <div class="los-grid">
-          <div class="los-field">
-            <div class="los-label">Min elev (°)</div>
-            <input id="los-elevmin" class="los-input" type="number" value="${elevMin}" min="-30" max="89" step="1" />
-          </div>
-          <div class="los-field">
-            <div class="los-label">Max elev (°)</div>
-            <input id="los-elevmax" class="los-input" type="number" value="${elevMax}" min="-5" max="90" step="1" />
+        <div class="ms-grid full">
+          <div class="ms-field">
+            <label class="ms-label" for="los-maxrange">Max range (m)</label>
+            <input id="los-maxrange" class="ms-input" type="number" value="${maxR}" min="100" step="100" />
           </div>
         </div>
 
-        <div class="los-divider"></div>
-        <div class="los-btn-row">
-          <button class="los-btn los-btn-run" id="los-run-btn">▶ Run</button>
-          <button class="los-btn" id="los-clear-btn">Clear</button>
-          <button class="los-btn los-btn-primary" id="los-commit-btn" ${isEdit?'':'disabled'}>Commit ↗</button>
-        </div>
-        <div class="los-legend">
-          <span class="los-leg-visible">— Visible</span>
-          <span class="los-leg-masked">- - Masked</span>
-          <span class="los-leg-obstr">● Obstruction</span>
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="los-run-btn">Run ↗</button>
         </div>
 
+        <div id="los-results" hidden>
+          <div class="ms-btn-row">
+            <button class="ms-btn danger" id="los-clear-btn">Clear</button>
+            <button class="ms-btn primary" id="los-commit-btn" ${isEdit ? '' : 'disabled'}>Commit ↗</button>
+          </div>
+          <div class="los-legend">
+            <span class="los-leg-visible">— Visible</span>
+            <span class="los-leg-masked">- - Masked</span>
+            <span class="los-leg-obstr">● Obstruction</span>
+          </div>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="los-targets-toggle" aria-expanded="false" aria-controls="los-targets-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Targets</span>
+            <span class="ms-disclosure-meta" id="los-targets-meta">Optional, for LOS lines</span>
+          </button>
+          <div class="ms-disclosure-body" id="los-targets-body" hidden>
+            <div class="ms-btn-row">
+              <button class="ms-btn primary" id="los-add-target-btn">+ Add target</button>
+              <button class="ms-btn" id="los-clear-targets-btn">Clear targets</button>
+            </div>
+            <div id="los-target-list" class="los-target-list"></div>
+          </div>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="los-adv-toggle" aria-expanded="false" aria-controls="los-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Output, engine, envelope</span>
+          </button>
+          <div class="ms-disclosure-body" id="los-adv-body" hidden>
+            <div class="ms-section-title">Output &amp; engine</div>
+            <div class="ms-grid full">
+              <div class="ms-field">
+                <label class="ms-label" for="los-output">Output type</label>
+                <select id="los-output" class="ms-select">
+                  ${outputOpts.map(o => `<option value="${o}"${o === output ? ' selected' : ''}>${o}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="ms-grid full">
+              <div class="ms-field">
+                <label class="ms-label" for="los-analysis-mode">Analysis engine</label>
+                <select id="los-analysis-mode" class="ms-select">
+                  ${analysisOpts.map(o => `<option value="${o}"${o === analysisMode ? ' selected' : ''}>${o}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="ms-toggle-row">
+              <label for="los-native-interactive">Native 3D edit handles</label>
+              <input id="los-native-interactive" type="checkbox"${nativeInteractive ? ' checked' : ''} />
+            </div>
+            <div class="ms-hint" id="los-native-interactive-note"></div>
+
+            <div class="ms-section-title">Observer detail</div>
+            <div class="ms-grid" style="grid-template-columns:1fr 1fr auto;align-items:end;">
+              <div class="ms-field">
+                <label class="ms-label" for="los-obs-lat">Lat °</label>
+                <input id="los-obs-lat" class="ms-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat"${obsLat ? ` value="${obsLat}"` : ''} />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="los-obs-lon">Lon °</label>
+                <input id="los-obs-lon" class="ms-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon"${obsLon ? ` value="${obsLon}"` : ''} />
+              </div>
+              <div class="ms-field">
+                <button class="ms-btn" id="los-obs-setloc-btn" title="Place the observer at the Lat/Lon entered here">Set</button>
+              </div>
+            </div>
+            <div class="ms-grid full">
+              <div class="ms-field">
+                <label class="ms-label" for="los-obsheight">Eye height (m)</label>
+                <input id="los-obsheight" class="ms-input" type="number" value="${obsH}" min="0" max="100" step="0.5" />
+              </div>
+            </div>
+
+            <div class="ms-section-title">Viewshed envelope</div>
+            <div class="ms-grid full">
+              <div class="ms-field">
+                <label class="ms-label" for="los-colorby">Colour by</label>
+                <select id="los-colorby" class="ms-select">
+                  ${colorOpts.map(o => `<option value="${o}"${o === colorBy ? ' selected' : ''}>${o}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Az start (°)</div>
+              <input id="los-az-start" type="range" min="0" max="359" value="${azStart}" step="1" />
+              <div class="ms-slider-value" id="los-az-start-val">${String(azStart).padStart(3, '0')}°</div>
+            </div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Az end (°)</div>
+              <input id="los-az-end" type="range" min="1" max="360" value="${azEnd}" step="1" />
+              <div class="ms-slider-value" id="los-az-end-val">${String(azEnd).padStart(3, '0')}°</div>
+            </div>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <label class="ms-label" for="los-elevmin">Min elev (°)</label>
+                <input id="los-elevmin" class="ms-input" type="number" value="${elevMin}" min="-30" max="89" step="1" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="los-elevmax">Max elev (°)</label>
+                <input id="los-elevmax" class="ms-input" type="number" value="${elevMax}" min="-5" max="90" step="1" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1598,12 +1671,12 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
     });
 
     p.querySelector('#los-minimize-btn')?.addEventListener('click', () => {
-      const body = p.querySelector<HTMLElement>('.los-body');
+      const body = p.querySelector<HTMLElement>('.ms-body');
       const btn  = p.querySelector<HTMLElement>('#los-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.style.display === 'none';
-      body.style.display = minimized ? '' : 'none';
-      btn.textContent = minimized ? '▼' : '▶';
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
     });
 
     p.querySelector('#los-obs-pick-btn')?.addEventListener('click', () => this._startPick('observer'));
@@ -1641,15 +1714,20 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
       this._clearLOSAnalysis();
       this._observerPoint = null;
       const coordsEl = p.querySelector<HTMLElement>('#los-coords');
-      if (coordsEl) coordsEl.textContent = 'Observer: click map (Pick ⊕) or enter a Lat/Lon and press Set';
+      if (coordsEl) {
+        coordsEl.textContent = 'No observer placed';
+        coordsEl.style.color = 'var(--ms-text-dim)';
+      }
       const latInp = this._inp('los-obs-lat');
       const lonInp = this._inp('los-obs-lon');
       if (latInp) latInp.value = '';
       if (lonInp) lonInp.value = '';
       this._setCommitEnabled(false);
+      this._setResultsVisible(false);
       this._updateTargetList();
       this._updateRunHint();
       this._setStatus('awaiting');
+      this._startPick('observer');
     });
 
     p.querySelector('#los-commit-btn')?.addEventListener('click', () => this._commit());
@@ -1662,6 +1740,19 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
       const v = (e.target as HTMLInputElement).value;
       (p.querySelector('#los-az-end-val') as HTMLElement).textContent = v.padStart(3,'0') + '°';
     });
+
+    bindDisclosures(p);
+
+    // These all change the drawn product, so keep the map honest instead of
+    // leaving a stale result until the user notices the Run button.
+    ['los-maxrange', 'los-colorby', 'los-elevmin', 'los-elevmax', 'los-obsheight', 'los-output']
+      .forEach((id) => p.querySelector(`#${id}`)?.addEventListener('change', () => {
+        if (this._observerPoint) void this._run();
+      }));
+    ['los-az-start', 'los-az-end']
+      .forEach((id) => p.querySelector(`#${id}`)?.addEventListener('change', () => {
+        if (this._observerPoint) void this._run();
+      }));
 
     this._updateNativeInteractivityUI();
     this._applyNativeInteractivity();
@@ -1728,253 +1819,6 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
     return this._panelEl?.querySelector<HTMLSelectElement>(`#${id}`) ?? null;
   }
 
-  // ─── Private: Styles ─────────────────────────────────────────────────────────
-
-  private _injectStyles(): void {
-    if (document.getElementById('los-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'los-engine-styles';
-    style.textContent = `
-      .los-panel {
-        position: fixed;
-        top: 60px;
-        left: 310px;
-        width: 284px;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius);
-        color: var(--ms-text);
-        font-family: var(--ms-font);
-        font-size: var(--ms-fs);
-        z-index: 1100;
-        user-select: none;
-        box-shadow: var(--ms-shadow);
-        display: none;
-        animation: losPanelIn 0.18s cubic-bezier(0.34,1.56,0.64,1);
-      }
-      @keyframes losPanelIn {
-        from { opacity:0; transform:scale(0.94) translateY(-8px); }
-        to   { opacity:1; transform:scale(1) translateY(0); }
-      }
-      .los-header {
-        display:flex; align-items:center; gap:7px;
-        padding:9px 10px 8px;
-        border-bottom:1px solid var(--ms-divider);
-        background:var(--ms-bg-header);
-        border-radius:5px 5px 0 0;
-        cursor:grab;
-      }
-      .los-header:active { cursor:grabbing; }
-      .los-header-icon { font-size:15px; flex-shrink:0; }
-      .los-header-title {
-        font-size:var(--ms-fs-sm); letter-spacing:0.12em; text-transform:uppercase;
-        color:var(--ms-accent); font-weight:700; flex:1;
-      }
-      .los-status-dot {
-        width:7px; height:7px; border-radius:50%; background:#555; flex-shrink:0;
-        transition:background 0.3s, box-shadow 0.3s;
-      }
-      .los-status-lbl {
-        font-size:var(--ms-fs-xs); letter-spacing:0.08em; text-transform:uppercase;
-        color:var(--ms-text-dim); min-width:52px;
-      }
-      .los-help-btn, .los-minimize-btn, .los-close-btn {
-        background:none;
-        border:1px solid transparent;
-        color:var(--ms-text-dim);
-        font-size:12px;
-        cursor:pointer;
-        padding:0 2px;
-        line-height:1;
-        transition:color 0.15s;
-        flex:0 0 auto;
-      }
-      .los-help-btn {
-        width:17px;
-        height:17px;
-        border-color:var(--ms-border);
-        border-radius:50%;
-        color:var(--ms-success);
-        font-weight:700;
-      }
-      .los-help-btn:hover, .los-minimize-btn:hover, .los-close-btn:hover { color:var(--ms-text); }
-      .los-help-popover {
-        position:absolute;
-        top:39px;
-        left:8px;
-        right:8px;
-        z-index:1120;
-        max-height:min(520px, calc(100vh - 132px));
-        overflow-y:auto;
-        background:var(--ms-bg);
-        border:1px solid var(--ms-border);
-        border-radius:4px;
-        box-shadow:var(--ms-shadow);
-        color:var(--ms-text);
-      }
-      .los-help-popover[hidden] { display:none; }
-      .los-help-head {
-        display:flex;
-        justify-content:space-between;
-        gap:10px;
-        padding:10px 11px 8px;
-        border-bottom:1px solid var(--ms-divider);
-        background:var(--ms-bg-header);
-      }
-      .los-help-kicker {
-        font-size:var(--ms-fs-xs);
-        color:var(--ms-text-label);
-        letter-spacing:0.09em;
-        text-transform:uppercase;
-      }
-      .los-help-title {
-        margin-top:2px;
-        font-size:13px;
-        color:var(--ms-success);
-        font-weight:700;
-      }
-      .los-help-close {
-        width:20px;
-        height:20px;
-        border:1px solid var(--ms-border);
-        border-radius:3px;
-        background:var(--ms-bg-input);
-        color:var(--ms-text-dim);
-        cursor:pointer;
-      }
-      .los-help-close:hover { color:var(--ms-text); }
-      .los-help-body {
-        padding:10px 11px 12px;
-        font-size:var(--ms-fs-xs);
-        line-height:1.45;
-        color:var(--ms-text-dim);
-        user-select:text;
-      }
-      .los-help-body p { margin:0 0 9px; }
-      .los-help-block { margin-top:10px; }
-      .los-help-block h4 {
-        margin:0 0 5px;
-        font-size:var(--ms-fs-xs);
-        letter-spacing:0.08em;
-        text-transform:uppercase;
-        color:var(--ms-text);
-      }
-      .los-help-block ol, .los-help-block ul { margin:0; padding-left:17px; }
-      .los-help-block li { margin:3px 0; }
-      .los-help-block dl {
-        display:grid;
-        grid-template-columns:72px minmax(0, 1fr);
-        gap:5px 8px;
-        margin:0;
-      }
-      .los-help-block dt { color:var(--ms-success); font-weight:700; }
-      .los-help-block dd { margin:0; }
-      .los-body { padding:0 0 6px; }
-      .los-sec {
-        font-size:var(--ms-fs-xs); letter-spacing:0.1em; text-transform:uppercase;
-        color:var(--ms-text-label); padding:9px 12px 4px;
-      }
-      .los-sec-note { font-size:var(--ms-fs-xs); opacity:0.6; text-transform:none; letter-spacing:0; }
-      .los-divider {
-        height:1px;
-        background:linear-gradient(90deg, transparent, var(--ms-divider), transparent);
-        margin:4px 0;
-      }
-      .los-grid {
-        display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:0 10px 8px;
-      }
-      .los-grid-3 { grid-template-columns:1fr 1fr auto; align-items:end; }
-      .los-grid-3 .los-field-btn { justify-content:flex-end; }
-      .los-field { display:flex; flex-direction:column; gap:3px; }
-      .los-field-full { padding:0 10px 8px; }
-      .los-field-btn { justify-content:flex-end; }
-      .los-label {
-        font-size:var(--ms-fs-xs); letter-spacing:0.07em; text-transform:uppercase; color:var(--ms-text-dim);
-      }
-      .los-input, .los-select {
-        background:var(--ms-bg-input);
-        border:1px solid var(--ms-border);
-        border-radius:3px; color:var(--ms-text);
-        font-family:inherit; font-size:var(--ms-fs); padding:5px 7px;
-        width:100%; outline:none; transition:border-color 0.15s;
-      }
-      .los-input:focus, .los-select:focus { border-color:var(--ms-accent); }
-      .los-select option { background:var(--ms-bg); }
-      .los-toggle {
-        display:flex; align-items:center; gap:8px;
-        color:var(--ms-text); font-size:var(--ms-fs-sm);
-        padding:2px 0 4px;
-      }
-      .los-toggle input { accent-color: var(--ms-accent); }
-      .los-inline-note {
-        color:var(--ms-text-dim);
-        font-size:var(--ms-fs-xs);
-        line-height:1.35;
-        padding-bottom:4px;
-      }
-      .los-slider-row {
-        display:flex; align-items:center; gap:8px; padding:2px 10px 6px;
-      }
-      .los-slider-row .los-label { flex:1; }
-      .los-slider { flex:2; accent-color:var(--ms-accent); cursor:pointer; }
-      .los-slider-val { font-size:var(--ms-fs-sm); color:var(--ms-accent); min-width:34px; text-align:right; }
-      .los-coords {
-        font-size:var(--ms-fs-xs); color:var(--ms-accent); padding:2px 12px 6px;
-        letter-spacing:0.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      }
-      .los-target-list {
-        padding:0 10px 4px; display:flex; flex-direction:column; gap:3px;
-        max-height:88px; overflow-y:auto;
-      }
-      .los-target-list::-webkit-scrollbar { width:4px; }
-      .los-target-list::-webkit-scrollbar-thumb { background:var(--ms-border); border-radius:2px; }
-      .los-no-targets { font-size:var(--ms-fs-xs); color:var(--ms-text-label); font-style:italic; padding:4px 2px; }
-      .los-target-item {
-        display:flex; align-items:center; gap:5px; font-size:var(--ms-fs-sm);
-        padding:3px 6px;
-        background:var(--ms-bg-input);
-        border:1px solid var(--ms-border);
-        border-radius:3px;
-      }
-      .los-ti-label { color:var(--ms-accent); font-weight:700; min-width:18px; }
-      .los-ti-coords {
-        flex:1; color:var(--ms-text-dim); font-size:var(--ms-fs-xs);
-        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-      }
-      .los-ti-remove {
-        background:none; border:none; color:var(--ms-danger); cursor:pointer;
-        font-size:var(--ms-fs-sm); padding:0 2px; opacity:0.7; flex-shrink:0;
-      }
-      .los-ti-remove:hover { opacity:1; }
-      .los-btn-row { display:flex; gap:5px; padding:8px 10px 4px; }
-      .los-btn {
-        flex:1; padding:6px 4px;
-        font-family:inherit; font-size:var(--ms-fs-xs); letter-spacing:0.05em; text-transform:uppercase;
-        cursor:pointer; border-radius:3px;
-        border:1px solid var(--ms-border);
-        background:var(--ms-bg-input); color:var(--ms-text-dim); transition:all 0.14s;
-      }
-      .los-btn:hover { background:var(--ms-bg-header); color:var(--ms-text); }
-      .los-btn:disabled { opacity:0.3; cursor:not-allowed; }
-      .los-btn-sm { flex:0 0 auto; padding:4px 8px; font-size:var(--ms-fs-xs); }
-      .los-btn-run {
-        border-color:var(--ms-accent); color:var(--ms-accent); background:var(--ms-bg-input);
-      }
-      .los-btn-run:hover { background:var(--ms-bg-header); color:var(--ms-text); }
-      .los-btn-primary {
-        border-color:var(--ms-success); color:var(--ms-success); background:var(--ms-bg-input);
-      }
-      .los-btn-primary:hover { background:var(--ms-bg-header); color:var(--ms-text); }
-      .los-legend {
-        display:flex; gap:10px; padding:2px 12px 4px; flex-wrap:wrap;
-      }
-      .los-legend span { font-size:var(--ms-fs-xs); }
-      .los-leg-visible { color:var(--ms-success); }
-      .los-leg-masked  { color:var(--ms-danger); }
-      .los-leg-obstr   { color:var(--ms-danger); opacity:0.75; }
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default LOSEngine;

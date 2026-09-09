@@ -19,6 +19,7 @@ import ElevationProfile from '@arcgis/core/widgets/ElevationProfile';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../../../Support/EngineLogger';
+import { bindDisclosures } from '../../../Support/Disclosure';
 
 const WGS84 = { wkid: 4326 } as any;
 const ENGINE_NAME = 'LocalPeaksEngine';
@@ -138,6 +139,7 @@ export class LocalPeaksEngine {
   private _aoiLayer!: GraphicsLayer;
   private _profileLayer!: GraphicsLayer;
   private _panelEl: HTMLDivElement | null = null;
+  private _panelBound = false;
   private _resultsPanelEl: HTMLDivElement | null = null;
   private _resultsPanelBound = false;
   private _sketch: SketchViewModel | null = null;
@@ -179,11 +181,15 @@ export class LocalPeaksEngine {
     let src: Point | null = null;
     if (geom?.type === 'point') src = geom as Point;
     else if ((geom as any)?.centroid) src = (geom as any).centroid as Point;
-    if (src) {
-      this._bufferCenter = src;
-      this._drawBufferAoi();
-    }
     this._showPanel();
+    if (src) {
+      // Opened from a symbol: analyse a buffer around it, not the map extent.
+      this._bufferCenter = src;
+      this._setSelectValue('peaks-aoi-mode', 'buffer');
+      this._drawBufferAoi();
+      this._setStatus('Buffer AOI centred on the selected symbol. Run analysis when ready.', 'ready');
+    }
+    this._syncAoiMode();
     this._syncAutoRun();
   }
 
@@ -209,6 +215,7 @@ export class LocalPeaksEngine {
     }
     this._panelEl?.remove();
     this._panelEl = null;
+    this._panelBound = false;
     this._resultsPanelEl?.remove();
     this._resultsPanelEl = null;
     this._resultsPanelBound = false;
@@ -224,6 +231,8 @@ export class LocalPeaksEngine {
     this._renderResults();
     this._syncStats();
     this._setProgress(0, 'Idle');
+    this._setProgressVisible(false);
+    this._setClearVisible(false);
     this._setStatus('Results cleared.', 'ready');
   }
 
@@ -270,6 +279,7 @@ export class LocalPeaksEngine {
       this._customAoi = geometry;
       this._styleAoiGraphic(event.graphic);
       this._setSelectValue('peaks-aoi-mode', 'custom');
+      this._syncAoiMode();
       this._setStatus('Custom AOI set. Run analysis when ready.', 'ready');
       this._maybeAutoRun();
     });
@@ -293,15 +303,23 @@ export class LocalPeaksEngine {
 
   private async _runAnalysis(): Promise<void> {
     if (!this._view || this._running) return;
-    const runBtn = this._el('peaks-run-btn') as HTMLButtonElement | null;
     const values = this._values();
     const aoi = this._resolveAoi(values);
     if (!aoi.geometry || !aoi.extent) {
-      this._setStatus('Choose or draw a valid AOI first.', 'warn');
+      this._setStatus(
+        values.aoiMode === 'buffer'
+          ? 'Pick a buffer centre on the map first.'
+          : values.aoiMode === 'custom'
+            ? 'Draw a boundary on the map first.'
+            : 'Choose or draw a valid AOI first.',
+        'warn',
+      );
       return;
     }
     this._running = true;
-    if (runBtn) runBtn.disabled = true;
+    this._setRunBusy(true);
+    this._setClearVisible(false);
+    this._setProgressVisible(true);
     try {
       this._setStatus('Sampling terrain elevation...', 'running');
       this._setProgress(0.05, 'Preparing AOI');
@@ -340,7 +358,8 @@ export class LocalPeaksEngine {
       this._setProgress(0, 'Error');
     } finally {
       this._running = false;
-      if (runBtn) runBtn.disabled = false;
+      this._setRunBusy(false);
+      this._setClearVisible(this._results.length > 0);
     }
   }
 
@@ -434,7 +453,12 @@ export class LocalPeaksEngine {
         let count = 0;
         let nMin = Infinity;
         let nMax = -Infinity;
-        let saddle = isPeak ? -Infinity : Infinity;
+        // Approximate saddle: the LOWEST point on the surrounding annulus for a
+        // peak (highest for a valley). Taking the extreme in the same direction
+        // as the summit made prominence collapse to the cell-to-cell step,
+        // because localExtreme already guarantees no neighbour beats `elev`.
+        // Matches KeyTerrainIdentificationEngine._computeProminence.
+        let saddle = isPeak ? Infinity : -Infinity;
         for (let dr = -searchCells; dr <= searchCells; dr++) {
           for (let dc = -searchCells; dc <= searchCells; dc++) {
             if (dr === 0 && dc === 0) continue;
@@ -450,8 +474,8 @@ export class LocalPeaksEngine {
             if (v < nMin) nMin = v;
             if (v > nMax) nMax = v;
             if (distCells >= ringInner) {
-              if (isPeak && v > saddle) saddle = v;
-              if (!isPeak && v < saddle) saddle = v;
+              if (isPeak && v < saddle) saddle = v;
+              if (!isPeak && v > saddle) saddle = v;
             }
           }
         }
@@ -757,6 +781,7 @@ export class LocalPeaksEngine {
       if (!mapPoint) return;
       this._bufferCenter = mapPoint;
       this._setSelectValue('peaks-aoi-mode', 'buffer');
+      this._syncAoiMode();
       this._drawBufferAoi();
       this._cancelBufferPick();
       this._setStatus('Buffer AOI set. Run analysis when ready.', 'ready');
@@ -844,14 +869,21 @@ export class LocalPeaksEngine {
       this._panelEl.style.width = '380px';
       document.body.appendChild(this._panelEl);
     }
-    this._panelEl.innerHTML = this._buildPanelHTML();
+    // Build and bind once. Re-rendering the markup on every open used to reset
+    // every tuned detection threshold back to its default.
+    if (!this._panelBound) {
+      this._panelEl.innerHTML = this._buildPanelHTML();
+      this._bindPanelEvents();
+      this._makeDraggable();
+      this._panelBound = true;
+      this._setStatus('Ready. Choose an area of interest and run.', 'ready');
+    }
     this._panelEl.classList.add('ms-visible');
-    this._bindPanelEvents();
-    this._makeDraggable();
+    this._syncAoiMode();
     this._ensureResultsPanel();
     this._renderResults();
     this._syncStats();
-    this._setStatus('Ready. Choose AOI and run local terrain analysis.', 'ready');
+    this._setClearVisible(this._results.length > 0);
   }
 
   /**
@@ -883,6 +915,7 @@ export class LocalPeaksEngine {
       this._el('peaks-export-geojson')?.addEventListener('click', () => this._exportGeoJson(false));
       this._el('peaks-export-shp')?.addEventListener('click', () => this._exportShapefile());
       this._el('peaks-sort')?.addEventListener('change', () => this._renderResults());
+      bindDisclosures(this._resultsPanelEl);
       this._makeSubDraggable(this._resultsPanelEl, this._resultsPanelEl.querySelector<HTMLElement>('#peaks-results-drag-handle'));
       this._resultsPanelBound = true;
     }
@@ -896,14 +929,84 @@ export class LocalPeaksEngine {
 
   private _buildPanelHTML(): string {
     return `
-      <div class="ms-header" id="peaks-drag-handle"><span class="ms-header-icon">PEAK</span><span class="ms-header-title">Peak Analysis</span><span class="ms-status-dot" id="peaks-status-dot"></span><span class="ms-status-lbl" id="peaks-status-lbl">Ready</span><button class="ms-header-btn ms-btn-round" id="peaks-help-btn">?</button><button class="ms-header-btn" id="peaks-min-btn">▼</button><button class="ms-header-btn" id="peaks-close-btn">✕</button></div>
-      <div class="ms-help-popover" id="peaks-help-popover" hidden><div class="ms-help-head"><div><div class="ms-help-kicker">Field Guide</div><div class="ms-help-title">Prominence-based peaks</div></div><button id="peaks-help-close" class="ms-help-close">✕</button></div><div class="ms-help-body"><p>Samples terrain elevation inside the AOI, smooths single-cell noise, then detects true local maxima or minima using neighborhood comparison, approximate topographic prominence, and isolation filtering.</p><ol><li>Pick Current Extent, draw a custom polygon/box, or click a buffer center.</li><li>Tune search radius, prominence, and isolation to mission scale.</li><li>Run manually, or enable auto-run on pan/zoom for smaller AOIs.</li><li>Select a result to fly to it and open an elevation cross-section.</li></ol></div></div>
-      <div class="ms-body"><div class="ms-status" id="peaks-status">Ready.</div>
-        <div class="ms-section-title">AOI</div><div class="ms-grid full"><div class="ms-field"><label class="ms-label">Spatial scope</label><select id="peaks-aoi-mode" class="ms-select"><option value="extent">Current extent</option><option value="custom">Custom boundary</option><option value="buffer">Buffer zone</option></select></div><div class="ms-field"><label class="ms-label">Buffer m</label><input id="peaks-buffer-radius" type="number" min="25" max="100000" step="100" value="2000" class="ms-input"></div><div class="ms-field"><label class="ms-label">Peak type</label><select id="peaks-type" class="ms-select"><option value="peaks">Local maxima</option><option value="valleys">Valleys / pits</option></select></div></div>
-        <div class="ms-btn-row"><button id="peaks-draw-poly" class="ms-btn">Draw Polygon</button><button id="peaks-draw-box" class="ms-btn">Draw Box</button><button id="peaks-pick-buffer" class="ms-btn">Pick Buffer</button></div>
-        <div class="ms-section-title">Detection</div><div class="ms-grid"><div class="ms-field"><label class="ms-label">Cell m</label><input id="peaks-cell-size" type="number" min="10" max="500" step="5" value="45" class="ms-input"></div><div class="ms-field"><label class="ms-label">Search radius m</label><input id="peaks-search-radius" type="number" min="20" max="5000" step="25" value="180" class="ms-input"></div><div class="ms-field"><label class="ms-label">Prominence m</label><input id="peaks-prominence" type="number" min="0" max="5000" step="5" value="25" class="ms-input"></div><div class="ms-field"><label class="ms-label">Isolation m</label><input id="peaks-isolation" type="number" min="0" max="20000" step="25" value="300" class="ms-input"></div><div class="ms-field"><label class="ms-label">Min height m</label><input id="peaks-min-elev" type="number" step="10" value="-10000" class="ms-input"></div><div class="ms-field"><label class="ms-label">Max results</label><input id="peaks-max-results" type="number" min="1" max="500" step="1" value="30" class="ms-input"></div></div>
-        <div class="ms-section-title">Execution</div><div class="ms-toggle-row"><label>Auto-calculate on pan/zoom</label><input id="peaks-auto-run" type="checkbox" class="ms-input"></div><div class="ms-toggle-row"><label>Peak layer visible</label><input id="peaks-layer-visible" type="checkbox" checked class="ms-input"></div><div class="ms-toggle-row"><label>Labels</label><input id="peaks-show-labels" type="checkbox" checked class="ms-input"></div>
-        <div class="ms-progress"><div><div id="peaks-progress-fill" class="ms-progress-fill"></div></div><span id="peaks-progress-label" class="ms-progress-label">Idle</span></div><div class="ms-btn-row"><button id="peaks-clear-btn" class="ms-btn">Clear Results</button><button id="peaks-run-btn" class="ms-btn primary">Run Analysis</button></div>
+      <div class="ms-header" id="peaks-drag-handle"><span class="ms-header-icon">PEAK</span><span class="ms-header-title">Peak Analysis</span><span class="ms-status-dot" id="peaks-status-dot"></span><span class="ms-status-lbl" id="peaks-status-lbl">Ready</span><button class="ms-header-btn ms-btn-round" id="peaks-help-btn" title="How peak detection works">?</button><button class="ms-header-btn" id="peaks-min-btn" title="Minimize">▼</button><button class="ms-header-btn" id="peaks-close-btn" title="Close (keeps graphics)">✕</button></div>
+      <div class="ms-help-popover" id="peaks-help-popover" hidden><div class="ms-help-head"><div><div class="ms-help-kicker">Field Guide</div><div class="ms-help-title">Prominence-based peaks</div></div><button id="peaks-help-close" class="ms-help-close">✕</button></div><div class="ms-help-body"><p>Samples terrain elevation inside the AOI, smooths single-cell noise, then detects true local maxima or minima using neighborhood comparison, approximate topographic prominence, and isolation filtering.</p><ol><li>Pick a spatial scope: the current map extent, a boundary you draw, or a buffer around a point.</li><li>Choose whether you are hunting high points or valleys.</li><li>Run the analysis. The defaults suit most ground.</li><li>Select a result to fly to it and open an elevation cross-section.</li></ol><p><strong>Advanced</strong> holds the detection thresholds (cell size, search radius, prominence, isolation, min height, max results), the display toggles, and auto-run on pan or zoom.</p></div></div>
+      <div class="ms-body">
+        <div class="ms-status" id="peaks-status">Ready.</div>
+
+        <!-- Default view: scope, what to look for, and Run. The scope select
+             reveals only the controls that scope actually needs; every tuning
+             knob lives in the collapsed Advanced disclosure at the bottom. -->
+        <div class="ms-section-title">Area of interest</div>
+        <div class="ms-grid">
+          <div class="ms-field">
+            <label class="ms-label" for="peaks-aoi-mode">Spatial scope</label>
+            <select id="peaks-aoi-mode" class="ms-select">
+              <option value="extent">Current extent</option>
+              <option value="custom">Custom boundary</option>
+              <option value="buffer">Buffer zone</option>
+            </select>
+          </div>
+          <div class="ms-field">
+            <label class="ms-label" for="peaks-type">Looking for</label>
+            <select id="peaks-type" class="ms-select">
+              <option value="peaks">Local maxima</option>
+              <option value="valleys">Valleys / pits</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ms-hint" id="peaks-aoi-hint">Analyses whatever the map is currently showing. Pan or zoom, then run.</div>
+
+        <div class="ms-btn-row" id="peaks-aoi-custom" hidden>
+          <button id="peaks-draw-poly" class="ms-btn primary">Draw polygon</button>
+          <button id="peaks-draw-box" class="ms-btn primary">Draw box</button>
+        </div>
+
+        <div id="peaks-aoi-buffer" hidden>
+          <div class="ms-btn-row">
+            <button id="peaks-pick-buffer" class="ms-btn primary">📍 Pick centre on map</button>
+          </div>
+          <div class="ms-grid full">
+            <div class="ms-field">
+              <label class="ms-label" for="peaks-buffer-radius">Buffer radius (m)</label>
+              <input id="peaks-buffer-radius" type="number" min="25" max="100000" step="100" value="2000" class="ms-input">
+            </div>
+          </div>
+        </div>
+
+        <div class="ms-btn-row">
+          <button id="peaks-run-btn" class="ms-btn ms-cta">Run Analysis ↗</button>
+        </div>
+
+        <div class="ms-progress" id="peaks-progress-wrap" hidden><div><div id="peaks-progress-fill" class="ms-progress-fill"></div></div><span id="peaks-progress-label" class="ms-progress-label">Idle</span></div>
+
+        <div class="ms-btn-row" id="peaks-clear-row" hidden>
+          <button id="peaks-clear-btn" class="ms-btn danger">Clear results</button>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="peaks-adv-toggle" aria-expanded="false" aria-controls="peaks-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Detection thresholds, display, auto-run</span>
+          </button>
+          <div class="ms-disclosure-body" id="peaks-adv-body" hidden>
+            <div class="ms-section-title">Detection</div>
+            <div class="ms-grid">
+              <div class="ms-field"><label class="ms-label" for="peaks-cell-size">Cell size (m)</label><input id="peaks-cell-size" type="number" min="10" max="500" step="5" value="45" class="ms-input"></div>
+              <div class="ms-field"><label class="ms-label" for="peaks-search-radius">Search radius (m)</label><input id="peaks-search-radius" type="number" min="20" max="5000" step="25" value="180" class="ms-input"></div>
+              <div class="ms-field"><label class="ms-label" for="peaks-prominence">Prominence (m)</label><input id="peaks-prominence" type="number" min="0" max="5000" step="5" value="25" class="ms-input"></div>
+              <div class="ms-field"><label class="ms-label" for="peaks-isolation">Isolation (m)</label><input id="peaks-isolation" type="number" min="0" max="20000" step="25" value="300" class="ms-input"></div>
+              <div class="ms-field"><label class="ms-label" for="peaks-min-elev">Min height (m)</label><input id="peaks-min-elev" type="number" step="10" value="-10000" class="ms-input"></div>
+              <div class="ms-field"><label class="ms-label" for="peaks-max-results">Max results</label><input id="peaks-max-results" type="number" min="1" max="500" step="1" value="30" class="ms-input"></div>
+            </div>
+            <div class="ms-section-title">Display &amp; execution</div>
+            <div class="ms-toggle-row"><label for="peaks-auto-run">Auto-calculate on pan/zoom</label><input id="peaks-auto-run" type="checkbox" class="ms-input"></div>
+            <div class="ms-toggle-row"><label for="peaks-layer-visible">Peak layer visible</label><input id="peaks-layer-visible" type="checkbox" checked class="ms-input"></div>
+            <div class="ms-toggle-row"><label for="peaks-show-labels">Labels</label><input id="peaks-show-labels" type="checkbox" checked class="ms-input"></div>
+          </div>
+        </div>
       </div>`;
   }
 
@@ -916,12 +1019,20 @@ export class LocalPeaksEngine {
           <div class="peaks-stat-card"><div class="peaks-stat-lbl">Avg elev</div><div class="peaks-stat-val" id="peaks-stat-avg">-</div></div>
           <div class="peaks-stat-card"><div class="peaks-stat-lbl">Max prom</div><div class="peaks-stat-val" id="peaks-stat-prom">-</div></div>
         </div>
-        <div class="peaks-legend">
-          <div class="peaks-legend-title">What the metrics mean</div>
-          <div class="peaks-legend-item"><span class="peaks-legend-key">▲ PK / ▼ VLY</span><span class="peaks-legend-def">Feature type — Peak (local high point) or Valley/pit (local low point), with its rank.</span></div>
-          <div class="peaks-legend-item"><span class="peaks-legend-key">Prom</span><span class="peaks-legend-def"><b>Prominence</b> — how far the summit rises above the highest saddle linking it to higher ground (m).</span></div>
-          <div class="peaks-legend-item"><span class="peaks-legend-key">Iso</span><span class="peaks-legend-def"><b>Isolation</b> — straight-line distance to the nearest higher feature ("top" = highest in the area).</span></div>
-          <div class="peaks-legend-item"><span class="peaks-legend-key">ΔMean</span><span class="peaks-legend-def"><b>Delta vs mean</b> — height of this feature above the average elevation of its surrounding neighborhood (m).</span></div>
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="peaks-legend-toggle" aria-expanded="false" aria-controls="peaks-legend-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">What the metrics mean</span>
+            <span class="ms-disclosure-meta">Prom, Iso, ΔMean</span>
+          </button>
+          <div class="ms-disclosure-body" id="peaks-legend-body" hidden>
+            <div class="peaks-legend">
+              <div class="peaks-legend-item"><span class="peaks-legend-key">▲ PK / ▼ VLY</span><span class="peaks-legend-def">Feature type: Peak (local high point) or Valley/pit (local low point), with its rank.</span></div>
+              <div class="peaks-legend-item"><span class="peaks-legend-key">Prom</span><span class="peaks-legend-def"><b>Prominence</b> is how far the summit rises above the highest saddle linking it to higher ground (m).</span></div>
+              <div class="peaks-legend-item"><span class="peaks-legend-key">Iso</span><span class="peaks-legend-def"><b>Isolation</b> is the straight-line distance to the nearest higher feature ("top" = highest in the area).</span></div>
+              <div class="peaks-legend-item"><span class="peaks-legend-key">ΔMean</span><span class="peaks-legend-def"><b>Delta vs mean</b> is the height of this feature above the average elevation of its surrounding neighborhood (m).</span></div>
+            </div>
+          </div>
         </div>
         <div class="ms-field" style="padding:0 12px 8px;"><label class="ms-label">Sort</label><select id="peaks-sort" class="ms-select"><option value="rank">Rank</option><option value="elevation">Elevation</option><option value="prominence">Prominence</option></select></div>
         <div id="peaks-results"></div>
@@ -932,7 +1043,14 @@ export class LocalPeaksEngine {
   private _bindPanelEvents(): void {
     this._el('peaks-help-btn')?.addEventListener('click', (event) => { event.stopPropagation(); const help = this._el('peaks-help-popover') as HTMLElement | null; if (help) help.hidden = !help.hidden; });
     this._el('peaks-help-close')?.addEventListener('click', () => { const help = this._el('peaks-help-popover') as HTMLElement | null; if (help) help.hidden = true; });
-    this._el('peaks-min-btn')?.addEventListener('click', () => { const body = this._panelEl?.querySelector<HTMLElement>('.peaks-body'); if (body) body.style.display = body.style.display === 'none' ? '' : 'none'; });
+    this._el('peaks-min-btn')?.addEventListener('click', () => {
+      const body = this._panelEl?.querySelector<HTMLElement>('.ms-body');
+      const btn = this._el('peaks-min-btn');
+      if (!body || !btn) return;
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
+    });
     this._el('peaks-close-btn')?.addEventListener('click', () => this.close());
     this._el('peaks-run-btn')?.addEventListener('click', () => void this._runAnalysis());
     this._el('peaks-clear-btn')?.addEventListener('click', () => this.clearResults());
@@ -941,6 +1059,8 @@ export class LocalPeaksEngine {
     this._el('peaks-pick-buffer')?.addEventListener('click', () => this._startBufferPick());
     this._el('peaks-layer-visible')?.addEventListener('change', () => { const visible = this._checked('peaks-layer-visible', true); this._peakLayer.visible = visible; this._labelLayer.visible = visible; });
     this._el('peaks-show-labels')?.addEventListener('change', () => this._renderGraphics(this._values()));
+    bindDisclosures(this._panelEl);
+    this._el('peaks-aoi-mode')?.addEventListener('change', () => this._syncAoiMode());
     ['peaks-auto-run', 'peaks-aoi-mode'].forEach((id) => this._el(id)?.addEventListener('change', () => this._syncAutoRun()));
     ['peaks-cell-size', 'peaks-search-radius', 'peaks-prominence', 'peaks-isolation', 'peaks-min-elev', 'peaks-max-results', 'peaks-buffer-radius', 'peaks-type'].forEach((id) => this._el(id)?.addEventListener('change', () => this._maybeAutoRun()));
   }
@@ -1177,6 +1297,47 @@ export class LocalPeaksEngine {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Show only the AOI controls the chosen scope actually needs. 'extent' needs
+   * none at all, which is what keeps the default view down to two selects and
+   * the run button.
+   */
+  private _syncAoiMode(): void {
+    const mode = this._selectValue('peaks-aoi-mode', 'extent') as AoiMode;
+    const hint = this._el('peaks-aoi-hint');
+    const custom = this._el('peaks-aoi-custom');
+    const buffer = this._el('peaks-aoi-buffer');
+    if (custom) custom.hidden = mode !== 'custom';
+    if (buffer) buffer.hidden = mode !== 'buffer';
+    if (hint) {
+      hint.hidden = mode !== 'extent';
+      hint.textContent = 'Analyses whatever the map is currently showing. Pan or zoom, then run.';
+    }
+    if (mode !== 'custom') this._sketch?.cancel();
+    if (mode !== 'buffer') this._cancelBufferPick();
+  }
+
+  /** Primary CTA state while the engine is computing. */
+  private _setRunBusy(busy: boolean): void {
+    const btn = this._el('peaks-run-btn') as HTMLButtonElement | null;
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.classList.toggle('ms-busy', busy);
+    btn.textContent = busy ? 'Analysing…' : 'Run Analysis ↗';
+  }
+
+  /** Progress track stays out of the way until a run is under way. */
+  private _setProgressVisible(visible: boolean): void {
+    const el = this._el('peaks-progress-wrap');
+    if (el) el.hidden = !visible;
+  }
+
+  /** Nothing to clear before the first run, so the button does not exist yet. */
+  private _setClearVisible(visible: boolean): void {
+    const el = this._el('peaks-clear-row');
+    if (el) el.hidden = !visible;
   }
 
   private _setStatus(message: string, tone: StatusTone): void {

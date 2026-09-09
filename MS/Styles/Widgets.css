@@ -131,6 +131,14 @@
   flex-direction: column;
 }
 
+/* The UA stylesheet's `[hidden] { display: none }` loses to ANY author rule that
+   sets display, and .ms-btn-row / .ms-grid / .ms-toggle-row all set one. That
+   silently defeats the `hidden` attribute on those elements. Make `hidden`
+   authoritative inside a widget so progressive disclosure can rely on it. */
+.ms-panel [hidden] {
+  display: none !important;
+}
+
 @keyframes msIn {
   from {
     opacity: 0;
@@ -188,13 +196,31 @@
   flex-shrink: 0;
 }
 
+/* Header layout. The title stays on one line so a multi-word widget name cannot
+   wrap and double the header height, and it shrinks only as a last resort:
+   flexbox distributes shrinkage in proportion to flex-shrink x flex-basis, so
+   the status label's shrink factor of 200 collapses it to nothing first.
+   Nothing here grows; the trailing group is right-aligned by the margin-left
+   rule below, which keeps working whether or not a panel has a status dot or
+   label. (Relying on the title to grow pushed the close button out of the
+   overflow-hidden panel on narrower widgets.) */
 .ms-header-title {
   font-size: 16px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ms-accent);
   font-weight: 700;
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A header with no status label has nothing that grows, so right-align its
+   trailing buttons explicitly. */
+.ms-header:not(:has(.ms-status-lbl)) .ms-header-btn:first-of-type {
+  margin-left: auto;
 }
 
 .ms-status-dot {
@@ -226,9 +252,18 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ms-text-dim);
-  min-width: 48px;
   font-weight: 600;
-  flex-shrink: 0;
+  /* flex-basis 0 so the status text claims no intrinsic width: it only ever
+     fills space the title and buttons have not used, and is clipped rather than
+     competing with them. Proportional shrinking is not enough here; with a
+     basis of `auto` a long status sentence still stole ~11px from the title on
+     a 420px panel and dropped a character off the widget's name. */
+  flex: 1 1 0%;
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ms-header-btn {
@@ -272,6 +307,11 @@
   flex: 1;
 }
 
+/* A trailing disclosure paints to the panel's bottom edge itself. */
+.ms-body:has(> .ms-disclosure:last-child) {
+  padding-bottom: 0;
+}
+
 /* ═════════════════════════════════════════════════════════════════════════════
    SECTION COMPONENT
    ═════════════════════════════════════════════════════════════════════════════ */
@@ -305,6 +345,14 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* A field is a vertical stack, so its control fills it. Checkboxes and radios
+   keep their own intrinsic size. */
+.ms-field .ms-input:not([type="checkbox"]):not([type="radio"]),
+.ms-field .ms-select {
+  width: 100%;
+  min-width: 0;
 }
 
 .ms-label {
@@ -615,6 +663,197 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--ms-divider), transparent);
   margin: 4px 0;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   SHARED: PRIMARY CTA BUTTON
+
+   The single most important action in a widget (Run / Compute / Fire). Filled
+   accent so it outranks every outline button in the panel. Dark text on accent
+   clears 8:1 in all four themes because every theme pairs a dark --ms-bg with
+   a light or saturated --ms-accent.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.ms-btn.ms-cta {
+  padding: 10px 8px;
+  background: var(--ms-accent);
+  border-color: var(--ms-accent);
+  color: var(--ms-bg);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(239, 159, 39, 0);
+}
+
+.ms-btn.ms-cta:hover:not(:disabled) {
+  background: var(--ms-accent);
+  color: var(--ms-bg);
+  filter: brightness(1.12);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), 0 0 14px -2px var(--ms-accent);
+}
+
+.ms-btn.ms-cta:active:not(:disabled) {
+  filter: brightness(0.94);
+  transform: scale(0.985);
+  background: var(--ms-accent);
+}
+
+.ms-btn.ms-cta:disabled {
+  opacity: 1;
+  background: var(--ms-bg-input);
+  border-color: var(--ms-border);
+  color: var(--ms-text-dim);
+  box-shadow: none;
+}
+
+/* Busy state — set while the engine is computing. */
+.ms-btn.ms-cta.ms-busy {
+  background: var(--ms-bg-input);
+  border-color: var(--ms-accent);
+  color: var(--ms-accent);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   SHARED: ARMED CONTROL
+
+   Marks a control that is waiting on the user to act somewhere else (usually
+   "now click the map"). Pulses the border only, so nothing reflows.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.ms-btn.ms-armed {
+  border-color: var(--ms-accent);
+  color: var(--ms-accent);
+  animation: msArmedPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes msArmedPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 159, 39, 0); }
+  50%      { box-shadow: 0 0 12px -2px var(--ms-accent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-btn.ms-armed { animation: none; box-shadow: 0 0 10px -2px var(--ms-accent); }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   SHARED: DISCLOSURE (collapsible "advanced" group)
+
+   Keeps a widget's default view down to the two or three controls an operator
+   actually needs, with every tweakable parked one click away. Collapsed by
+   default: the markup ships `hidden` on the body and aria-expanded="false" on
+   the head. Only the chevron and opacity animate, never layout.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.ms-disclosure {
+  border-top: 1px solid var(--ms-divider);
+  margin-top: 8px;
+}
+
+/* A disclosure that is not the last thing in the body needs a closing edge. */
+.ms-disclosure:not(:last-child) {
+  border-bottom: 1px solid var(--ms-divider);
+  margin-bottom: 8px;
+}
+
+.ms-disclosure-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-family: inherit;
+  color: var(--ms-text-label);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ms-disclosure-head:hover {
+  background: var(--ms-bg-subtle);
+  color: var(--ms-text);
+}
+
+.ms-disclosure-head:focus-visible {
+  outline: 2px solid var(--ms-accent);
+  outline-offset: -2px;
+}
+
+.ms-disclosure-chevron {
+  flex-shrink: 0;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--ms-text-dim);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), color 0.15s ease;
+}
+
+.ms-disclosure-title {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ms-disclosure-meta {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.75;
+}
+
+.ms-disclosure[data-open='true'] > .ms-disclosure-head {
+  color: var(--ms-accent);
+}
+
+.ms-disclosure[data-open='true'] .ms-disclosure-chevron {
+  transform: rotate(90deg);
+  color: var(--ms-accent);
+}
+
+.ms-disclosure[data-open='true'] .ms-disclosure-meta {
+  opacity: 0;
+}
+
+.ms-disclosure-body {
+  background: rgba(0, 0, 0, 0.16);
+  border-top: 1px solid var(--ms-divider);
+  padding-bottom: 6px;
+  animation: msDisclosureIn 0.16s ease-out;
+}
+
+@keyframes msDisclosureIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-disclosure-body { animation: none; }
+  .ms-disclosure-chevron { transition: none; }
+}
+
+/* Sub-headings inside a disclosure step back so they don't compete with the
+   panel's real section titles. */
+.ms-disclosure-body .ms-section-title {
+  color: var(--ms-text-label);
+  opacity: 1;
+  padding: 10px 14px 4px;
+}
+
+.ms-disclosure-body > .ms-section-title:first-child {
+  padding-top: 8px;
+}
+
+/* A disclosure is the last thing in a body, so it owns the bottom corners. */
+.ms-disclosure:last-child .ms-disclosure-body {
+  border-bottom-left-radius: calc(var(--ms-radius) - 1px);
+  border-bottom-right-radius: calc(var(--ms-radius) - 1px);
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
@@ -1856,6 +2095,10 @@
   .ms-grid {
     grid-template-columns: 1fr;
   }
+
+  .ms-disclosure-meta {
+    display: none;
+  }
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
@@ -1889,6 +2132,14 @@
 #kt-ctrl-panel #kt-pick-loc {
   width: 100%;
   font-weight: 600;
+}
+
+/* The editable lat/lon fields live in the Advanced disclosure, so this readout
+   is the default view's only confirmation that a centre was actually set. */
+#kt-centre-readout {
+  font-size: var(--ms-fs-sm);
+  letter-spacing: 0.06em;
+  padding: 3px 14px 8px;
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
@@ -1989,8 +2240,16 @@ body.ms-popup-dark .esri-popup__pointer-direction {
   padding: 9px 11px 10px;
   background: var(--ms-bg-input);
   border: 1px solid var(--ms-border);
-  border-left: 3px solid var(--ms-accent);
   border-radius: var(--ms-radius-sm);
+}
+
+/* Inside a disclosure the inset body is already the container, so drop the
+   nested box instead of stacking one card inside another. */
+.ms-disclosure-body > .peaks-legend {
+  margin: 0;
+  padding: 8px 14px 10px;
+  background: none;
+  border: 0;
 }
 
 .peaks-legend-title {
@@ -2229,4 +2488,434 @@ body.ms-popup-dark .esri-popup__pointer-direction {
 
 .peaks-profile-widget {
   padding: 6px 8px 8px;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   LOS ENGINE — target list + line legend
+   The rest of the LOS panel uses the shared ms-* components; these are the only
+   pieces with no equivalent, so they are all that survived from the engine's
+   old private stylesheet.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.los-target-list {
+  max-height: 132px;
+  overflow-y: auto;
+  padding: 0 12px 4px;
+}
+
+.los-target-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.los-target-list::-webkit-scrollbar-thumb {
+  background: var(--ms-border);
+  border-radius: 2px;
+}
+
+.los-no-targets {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  font-style: italic;
+  padding: 4px 2px;
+}
+
+.los-target-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--ms-divider);
+  font-size: var(--ms-fs-xs);
+}
+
+.los-target-item:last-child {
+  border-bottom: 0;
+}
+
+.los-ti-label {
+  color: var(--ms-accent);
+  font-weight: 700;
+  min-width: 20px;
+}
+
+.los-ti-coords {
+  flex: 1;
+  min-width: 0;
+  color: var(--ms-text-dim);
+  font-family: var(--ms-font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.los-ti-remove {
+  background: none;
+  border: 0;
+  color: var(--ms-danger);
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0 2px;
+  flex-shrink: 0;
+  transition: opacity var(--ms-transition);
+}
+
+.los-ti-remove:hover {
+  opacity: 1;
+}
+
+.los-legend {
+  display: flex;
+  gap: 12px;
+  padding: 4px 12px 8px;
+  flex-wrap: wrap;
+}
+
+.los-legend span {
+  font-size: var(--ms-fs-xs);
+}
+
+.los-leg-visible { color: var(--ms-success); }
+.los-leg-masked  { color: var(--ms-danger); }
+.los-leg-obstr   { color: var(--ms-accent); }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   HELP POPOVER — "Answers" callout
+   The one-line question a widget answers, shown at the top of its field guide.
+   Was an inline style with a 3px accent border-left; a coloured side stripe is
+   a banned pattern here, so it is a tinted box with a full border instead.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.ms-help-answers {
+  background: rgba(239, 159, 39, 0.08);
+  border: 1px solid rgba(239, 159, 39, 0.35);
+  border-radius: var(--ms-radius-sm);
+  padding: 7px 10px;
+  margin-bottom: 10px;
+}
+
+.ms-help-answers-kicker {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(239, 159, 39, 0.75);
+  margin-bottom: 3px;
+}
+
+.ms-help-answers-q {
+  font-style: italic;
+  color: var(--ms-text);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   WEZ ENGINE — per-weapon accent
+   Each weapon preset carries an accentHex, which the engine writes to
+   --wez-accent. Nothing read it, so the colour never showed anywhere; the
+   header icon (which already swaps per weapon) is where it belongs.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+#wez-engine-panel .ms-header-icon {
+  color: var(--wez-accent, var(--ms-accent));
+  border-color: var(--wez-accent, var(--ms-border));
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   TRAJECTORY ENGINE — impact stats, arc legend, playback scrubber
+   The rest of the panel uses the shared ms-* components; these are the only
+   pieces with no equivalent, so they are all that survived from the engine's
+   old private stylesheet.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.traj-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px 12px 6px;
+}
+
+.traj-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.traj-stat-val {
+  font-size: var(--ms-fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ms-warning, var(--ms-accent));
+  font-family: var(--ms-font-mono);
+}
+
+.traj-stat-lbl {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ms-text-dim);
+}
+
+.traj-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 14px 10px;
+}
+
+.traj-legend span {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.traj-leg-launch   { color: var(--ms-success); }
+.traj-leg-flight   { color: var(--ms-warning, var(--ms-accent)); }
+.traj-leg-terminal { color: var(--ms-danger); }
+.traj-leg-apogee   { color: var(--ms-accent); }
+.traj-leg-impact   { color: var(--ms-danger); }
+
+.traj-scrub-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 8px;
+}
+
+.traj-scrub-wrap input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .traj-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Each projectile preset carries an accentHex, which the engine writes to
+   --traj-accent. Nothing read it, so the colour never showed; the header icon
+   (which now also swaps per preset) is where it belongs. */
+#trajectory-engine-panel .ms-header-icon,
+[data-engine="trajectory"] .ms-header-icon {
+  color: var(--traj-accent, var(--ms-accent));
+  border-color: var(--traj-accent, var(--ms-border));
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   CORRIDOR ENGINE — waypoint / threat lists, overlay picker, exposure bar
+   The rest of the panel uses the shared ms-* components; these are the only
+   pieces with no equivalent, so they are all that survived from the engine's
+   old private stylesheet.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.corr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 96px;
+  overflow-y: auto;
+  padding: 0 12px 6px;
+}
+
+.corr-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.corr-list::-webkit-scrollbar-thumb {
+  background: var(--ms-border);
+  border-radius: 2px;
+}
+
+.corr-list-empty {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  font-style: italic;
+  padding: 2px;
+}
+
+.corr-list-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-sm);
+}
+
+.corr-row-tag {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-success);
+  font-weight: 700;
+  min-width: 18px;
+}
+
+.corr-row-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  font-family: var(--ms-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.corr-row-del {
+  background: none;
+  border: 0;
+  color: var(--ms-danger);
+  cursor: pointer;
+  font-size: 10px;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity var(--ms-transition);
+}
+
+.corr-row-del:hover {
+  opacity: 1;
+}
+
+/* ── Threat overlay picker ─────────────────────────────────────────────────── */
+
+.corr-overlay-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px 8px;
+}
+
+.corr-overlay-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  color: var(--ms-text);
+  border-radius: var(--ms-radius-sm);
+  padding: 5px 7px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--ms-fs-xs);
+  text-align: left;
+  transition: background-color var(--ms-transition), border-color var(--ms-transition);
+}
+
+.corr-overlay-row:hover {
+  border-color: var(--ms-accent);
+}
+
+.corr-overlay-row.active {
+  background: rgba(220, 60, 48, 0.15);
+  border-color: rgba(220, 60, 48, 0.55);
+}
+
+.corr-overlay-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.corr-overlay-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.04em;
+  color: var(--ms-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.corr-overlay-radius {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  flex-shrink: 0;
+  font-family: var(--ms-font-mono);
+}
+
+/* ── Stats + average-exposure bar ─────────────────────────────────────────── */
+
+.corr-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px 12px 6px;
+}
+
+.corr-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.corr-stat-lbl {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+}
+
+.corr-stat-val {
+  font-size: var(--ms-fs);
+  color: var(--ms-success);
+  font-weight: 700;
+  font-family: var(--ms-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.corr-exp-wrap {
+  padding: 0 12px 8px;
+}
+
+.corr-exp-track {
+  height: 6px;
+  border-radius: 3px;
+  position: relative;
+  border: 1px solid var(--ms-divider);
+  background: linear-gradient(to right, #1D9E75, #78C840, #EF9F27, #DC3C30);
+}
+
+.corr-exp-thumb {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--ms-bg);
+  background: #fff;
+}
+
+.corr-exp-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+}
+
+.corr-help-formula {
+  margin-top: 6px;
+  padding: 5px 8px;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+  font-family: var(--ms-font-mono);
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text);
+}
+
+@media (max-width: 520px) {
+  .corr-stats {
+    grid-template-columns: 1fr;
+  }
 }
