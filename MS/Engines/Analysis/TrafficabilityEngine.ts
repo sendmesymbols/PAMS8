@@ -54,6 +54,7 @@ import RoadNetworkEngine, {
   type TrafficabilitySummary,
 } from './RoadNetworkEngine';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 const ENGINE_NAME = 'TrafficabilityEngine';
 
@@ -172,6 +173,7 @@ export class TrafficabilityEngine {
   private _mode: ReachMode = 'serviceArea';
 
   private _panelEl: HTMLDivElement | null = null;
+  private _panelBound = false;
   private _clickHandle: any = null;
   private _placeMode: 'origin' | 'dest' | 'waypoint' | null = null;
   private _running = false;
@@ -251,7 +253,6 @@ export class TrafficabilityEngine {
 
   constructor() {
     this._createLayers();
-    this._injectStyles();
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -277,7 +278,7 @@ export class TrafficabilityEngine {
     this._view = view;
     const map = view.map as any;
     if (map) map.addMany([this._committedLayer, this._analysisLayer, this._markerLayer]);
-    if (this._panelEl && this._panelEl.style.display !== 'none') {
+    if (this._panelEl?.classList.contains('ms-visible')) {
       this._ensureCalloutHost();
       this._repositionCallouts();
     }
@@ -711,7 +712,9 @@ export class TrafficabilityEngine {
     } finally {
       this._running = false;
       this._setRunDisabled(false);
-      this._setCommitDisabled(this._analysisLayer.graphics.length === 0);
+      const produced = this._analysisLayer.graphics.length > 0;
+      this._setCommitDisabled(!produced);
+      this._revealResults(produced);
     }
   }
 
@@ -1395,7 +1398,7 @@ export class TrafficabilityEngine {
     const el = this._panelEl?.querySelector<HTMLElement>('#reach-wp-list');
     if (!el) return;
     if (!this._waypoints.length) {
-      el.innerHTML = '<div class="reach-hint">No waypoints yet — click the map to drop the Start Point.</div>';
+      el.innerHTML = '<div class="ms-hint">No waypoints yet — click the map to drop the Start Point.</div>';
       this._renderWpMetaList();
       return;
     }
@@ -1439,16 +1442,16 @@ export class TrafficabilityEngine {
     const el = this._q<HTMLElement>('#reach-wp-meta-list');
     if (!el) return;
     if (!this._waypoints.length) {
-      el.innerHTML = '<div class="reach-hint">Add MSR waypoints first.</div>';
+      el.innerHTML = '<div class="ms-hint">Add MSR waypoints first.</div>';
       return;
     }
     el.innerHTML = this._waypoints.map((_wp, i) => {
       const meta = this._waypointMeta[i] ?? { label: `WP-${i}`, dwellMin: 0 };
       return `<div class="reach-wp-meta-row" data-idx="${i}">
         <span class="reach-wp-meta-idx">${i === 0 ? '🚩' : i === this._waypoints.length - 1 ? '🏁' : '🔹'}</span>
-        <input class="reach-input reach-wp-meta-label" data-idx="${i}" value="${this._escape(meta.label)}" placeholder="Label" maxlength="20" title="Custom checkpoint name" />
-        <input class="reach-input reach-wp-meta-dwell" data-idx="${i}" type="number" min="0" max="999" step="5" value="${meta.dwellMin}" title="Dwell time (min)" style="width:48px;text-align:center" />
-        <span class="reach-label" style="opacity:0.6;white-space:nowrap">min</span>
+        <input class="ms-input reach-wp-meta-label" data-idx="${i}" value="${this._escape(meta.label)}" placeholder="Label" maxlength="20" title="Custom checkpoint name" />
+        <input class="ms-input reach-wp-meta-dwell" data-idx="${i}" type="number" min="0" max="999" step="5" value="${meta.dwellMin}" title="Dwell time (min)" style="width:48px;text-align:center" />
+        <span class="ms-label" style="opacity:0.6;white-space:nowrap">min</span>
       </div>`;
     }).join('');
     // Bind live edits.
@@ -1472,6 +1475,7 @@ export class TrafficabilityEngine {
     if (!this._view) return;
     this._cancelPlacement();
     this._placeMode = 'origin';
+    this._armPick('reach-pick-origin-btn');
     this._setStatus('placing');
     this._clickHandle = this._view.on('click', async (event: any) => {
       this._cancelPlacement();
@@ -1487,6 +1491,7 @@ export class TrafficabilityEngine {
     if (!this._view) return;
     this._cancelPlacement();
     this._placeMode = 'dest';
+    this._armPick('reach-pick-dest-btn');
     this._setStatus('placing');
     this._clickHandle = this._view.on('click', async (event: any) => {
       this._cancelPlacement();
@@ -1501,6 +1506,7 @@ export class TrafficabilityEngine {
     if (!this._view) return;
     this._cancelPlacement();
     this._placeMode = 'waypoint';
+    this._armPick('reach-add-wp-btn');
     this._setStatus('placing');
     this._setWaypointBtn(true);
     this._clickHandle = this._view.on('click', async (event: any) => {
@@ -1536,10 +1542,17 @@ export class TrafficabilityEngine {
 
   private _setWaypointBtn(active: boolean): void {
     const btn = this._panelEl?.querySelector<HTMLButtonElement>('#reach-add-wp-btn');
-    if (btn) btn.textContent = active ? 'Done Adding ✓' : 'Add Waypoints ⊕';
+    if (btn) btn.textContent = active ? '✓ Done adding' : '📍 Add waypoints';
+  }
+
+  /** Mark whichever pick button is waiting on a map click; null disarms all. */
+  private _armPick(id: 'reach-pick-origin-btn' | 'reach-pick-dest-btn' | 'reach-add-wp-btn' | null): void {
+    (['reach-pick-origin-btn', 'reach-pick-dest-btn', 'reach-add-wp-btn'] as const)
+      .forEach((btn) => this._panelEl?.querySelector(`#${btn}`)?.classList.toggle('ms-armed', btn === id));
   }
 
   private _cancelPlacement(): void {
+    this._armPick(null);
     if (this._clickHandle) {
       this._clickHandle.remove();
       this._clickHandle = null;
@@ -1718,7 +1731,7 @@ export class TrafficabilityEngine {
 
   private _showScrubber(): void {
     const wrap = this._q<HTMLElement>('#reach-scrub-wrap');
-    if (wrap) wrap.style.display = this._driveModel ? 'block' : 'none';
+    if (wrap) wrap.hidden = !this._driveModel;
     if (!this._driveModel) return;
     this._animRateMinPerSec = this._driveModel.totalMin > 0 ? this._driveModel.totalMin / PLAY_DURATION_S : 1;
     const scrub = this._inp('reach-scrubber');
@@ -1729,7 +1742,7 @@ export class TrafficabilityEngine {
 
   private _hideScrubber(): void {
     const wrap = this._q<HTMLElement>('#reach-scrub-wrap');
-    if (wrap) wrap.style.display = 'none';
+    if (wrap) wrap.hidden = true;
   }
 
   private _setupVehicleCallout(): void {
@@ -1868,16 +1881,19 @@ export class TrafficabilityEngine {
   private _syncModeUI(): void {
     if (!this._panelEl) return;
     this._panelEl.querySelectorAll<HTMLElement>('.reach-tab').forEach((t) => {
-      t.classList.toggle('reach-tab-active', t.dataset.mode === this._mode);
+      t.classList.toggle('active', t.dataset.mode === this._mode);
     });
     const show = (sel: string, on: boolean) => {
       const el = this._panelEl!.querySelector<HTMLElement>(sel);
-      if (el) el.style.display = on ? '' : 'none';
+      if (el) el.hidden = !on;
     };
     show('#reach-sec-servicearea', this._mode === 'serviceArea');
     show('#reach-sec-route', this._mode === 'route');
     show('#reach-sec-msr', this._mode === 'msr');
-    show('#reach-msr-extra-row', this._mode === 'msr');
+    // Advanced holds a per-mode block too, so it tracks the same switch.
+    show('#reach-adv-servicearea', this._mode === 'serviceArea');
+    show('#reach-adv-route', this._mode === 'route');
+    show('#reach-adv-msr', this._mode === 'msr');
     const runBtn = this._panelEl.querySelector<HTMLButtonElement>('#reach-run-btn');
     if (runBtn) runBtn.textContent =
       this._mode === 'serviceArea' ? 'Compute Service Area' : this._mode === 'route' ? 'Compute Route' : 'Find MSR';
@@ -1932,6 +1948,7 @@ export class TrafficabilityEngine {
     this._renderFuelMarker();
     this._updateMovordPanel();
     this._setCommitDisabled(true);
+    this._revealResults(false);
     this._setStatus('awaiting');
     if (this._mode === 'msr') this._startWaypointPlacement();
     else this._startOriginPlacement();
@@ -1984,14 +2001,27 @@ export class TrafficabilityEngine {
     if (!this._panelEl) {
       this._panelEl = document.createElement('div');
       this._panelEl.id = 'trafficability-engine-panel';
-      this._panelEl.className = 'reach-panel';
+      this._panelEl.className = 'ms-panel ms-theme-ops-dark';
+      this._panelEl.setAttribute('data-engine', 'trafficability');
+      // Height and overflow come from .ms-panel / .ms-body.
+      this._panelEl.style.cssText = 'top: 60px; left: 360px; width: 360px;';
       document.body.appendChild(this._panelEl);
     }
-    this._panelEl.innerHTML = this._buildPanelHTML();
-    this._panelEl.style.display = 'block';
-    this._bindPanelEvents();
-    this._makeDraggable();
+    // Build once. This used to re-run innerHTML = _buildPanelHTML() on every
+    // open, which silently reset every tuned setting — drive time, bands,
+    // assumed speed, the alternates toggle — back to its default.
+    if (!this._panelBound) {
+      this._panelEl.innerHTML = this._buildPanelHTML();
+      this._bindPanelEvents();
+      bindDisclosures(this._panelEl);
+      this._makeDraggable();
+      this._panelBound = true;
+    }
+    this._panelEl.classList.add('ms-visible');
     this._ensureResultsPanel();
+    // Reopening onto existing graphics restores the output state too, so the
+    // companion panel and the Commit/Clear row do not go missing.
+    this._revealResults(this._analysisLayer.graphics.length > 0);
     this._syncModeUI();
     this._clearStats();
     this._renderWaypointList();
@@ -2003,149 +2033,196 @@ export class TrafficabilityEngine {
       if (oLat) oLat.value = (this._origin.latitude ?? 0).toFixed(5);
       if (oLon) oLon.value = (this._origin.longitude ?? 0).toFixed(5);
     } else {
-      this._setText('#reach-origin-coords', 'Origin: click map (Pick ⊕) or enter a Lat/Lon and press Set');
+      this._setText('#reach-origin-coords', 'No origin set');
     }
-    this._setText('#reach-dest-coords', 'Destination: not set');
+    if (!this._dest) this._setText('#reach-dest-coords', 'No destination set');
     this._updateRunHint();
   }
 
   private _hidePanel(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
-    if (this._resultsPanelEl) this._resultsPanelEl.style.display = 'none';
+    this._panelEl?.classList.remove('ms-visible');
+    this._resultsPanelEl?.classList.remove('ms-visible');
   }
 
   private _buildPanelHTML(): string {
     return `
-      <div class="reach-header" id="reach-drag-handle">
-        <span class="reach-header-icon">⤳</span>
-        <span class="reach-header-title">Trafficability</span>
-        <span class="reach-status-dot" id="reach-status-dot"></span>
-        <span class="reach-status-lbl" id="reach-status-lbl">Awaiting origin</span>
-        <button class="reach-help-btn" id="reach-help-btn" title="How trafficability analysis works">?</button>
-        <button class="reach-minimize-btn" id="reach-minimize-btn" title="Minimize">▼</button>
-        <button class="reach-close-btn" id="reach-close-btn" title="Close (keeps graphics)">✕</button>
+      <div class="ms-header" id="reach-drag-handle">
+        <span class="ms-header-icon">&#10547;</span>
+        <span class="ms-header-title">Trafficability</span>
+        <span class="ms-status-dot" id="reach-status-dot"></span>
+        <span class="ms-status-lbl" id="reach-status-lbl">Awaiting origin</span>
+        <button class="ms-header-btn ms-btn-round" id="reach-help-btn" title="How trafficability analysis works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="reach-minimize-btn" title="Minimize">&#9660;</button>
+        <button class="ms-header-btn ms-btn-round" id="reach-close-btn" title="Close (keeps graphics)">&#10005;</button>
       </div>
 
-      <div class="reach-help-popover" id="reach-help-popover" hidden>
-        <div class="reach-help-head">
+      <div class="ms-help-popover" id="reach-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="reach-help-kicker">Field Guide</div>
-            <div class="reach-help-title">Trafficability, Routes &amp; MSRs</div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Trafficability, Routes &amp; MSRs</div>
           </div>
-          <button class="reach-help-close" id="reach-help-close" title="Close">✕</button>
+          <button class="ms-help-close" id="reach-help-close" title="Close">&#10005;</button>
         </div>
-        <div class="reach-help-body">
+        <div class="ms-help-body">
           <p>Plans movement on the real road network: how far you can get in a given drive time, the best road route between two points, and the strongest main supply route over a chain of waypoints — with a military trafficability read throughout.</p>
-          <div class="reach-help-block">
+          <p><b>The shipped defaults run untouched:</b> pick an origin, press Compute. 30 minutes over 3 bands for a service area, 40 km/h for any offline estimate.</p>
+          <div class="ms-help-block">
             <h4>Modes</h4>
             <dl>
-              <dt>Service Area</dt><dd>Multi-band drive-time isochrones from the origin, coloured near→far.</dd>
+              <dt>Service Area</dt><dd>Multi-band drive-time isochrones from the origin, coloured near&rarr;far.</dd>
               <dt>Route</dt><dd>Shortest-time road path with distance, time, trafficability and leg list.</dd>
               <dt>MSR</dt><dd>Main Supply Route over your waypoints: routed leg-by-leg, classified MSR / ASR, with the bottleneck flagged.</dd>
             </dl>
           </div>
-          <div class="reach-help-block">
+          <div class="ms-help-block">
+            <h4>Advanced</h4>
+            <p>The collapsed panel holds Lat/Lon entry for every point, the band count, the assumed offline speed, route reversal and the alternate-route finders. None of it is needed for a first answer.</p>
+          </div>
+          <div class="ms-help-block">
+            <h4>Results &amp; Planning</h4>
+            <p>The companion panel appears with your first result: stats, legend, leg list, the drive scrubber, and the Conditions / Convoy / MOVORD tabs (movement profile, threat avoidance, convoy timing, fuel, and a movement-order export).</p>
+          </div>
+          <div class="ms-help-block">
             <h4>Smart Callouts</h4>
             <p>Colour-coded info cards float on the map at the origin, destination, waypoints and the moving vehicle. They track the map as you pan and zoom.</p>
           </div>
-          <div class="reach-help-block">
+          <div class="ms-help-block">
             <h4>Play the Drive</h4>
-            <p>For routes and MSRs, press ▶ to send a vehicle along the path. The readout shows elapsed time, current speed and the road class being travelled, leg by leg.</p>
+            <p>For routes and MSRs, press &#9654; to send a vehicle along the path. The readout shows elapsed time, current speed and the road class being travelled, leg by leg.</p>
           </div>
-          <div class="reach-help-block">
+          <div class="ms-help-block">
             <h4>Offline Estimates</h4>
             <p>The road service is optional. When offline, Service Area draws geodesic range rings and Route/MSR fall back to straight-line ETAs. Estimated values are marked with *.</p>
           </div>
         </div>
       </div>
 
-      <div class="reach-body">
-        <div class="reach-tabs">
-          <button class="reach-tab reach-tab-active" data-mode="serviceArea">Service Area</button>
-          <button class="reach-tab" data-mode="route">Route</button>
-          <button class="reach-tab" data-mode="msr">MSR</button>
-        </div>
+      <div class="ms-tabs" id="reach-mode-tabs">
+        <button class="reach-tab active" data-mode="serviceArea">Service Area</button>
+        <button class="reach-tab" data-mode="route">Route</button>
+        <button class="reach-tab" data-mode="msr">MSR</button>
+      </div>
 
+      <div class="ms-body">
         <div class="reach-road-badge-row">
           <span class="reach-road-badge" id="reach-road-badge" data-state="unknown">Roads: probing…</span>
         </div>
 
-        <div class="reach-sec">Origin</div>
-        <div class="reach-coords" id="reach-origin-coords">Origin: click map (Pick ⊕) or enter a Lat/Lon and press Set</div>
-        <div class="reach-ll-row">
-          <div class="reach-ll-field"><span class="reach-label">Lat °</span><input id="reach-origin-lat" class="reach-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" /></div>
-          <div class="reach-ll-field"><span class="reach-label">Lon °</span><input id="reach-origin-lon" class="reach-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" /></div>
-          <button class="reach-btn reach-btn-sm" id="reach-origin-setloc-btn" title="Place the origin at the Lat/Lon entered above">Set</button>
+        <!-- Default view: where you are starting from, the one control that
+             frames the question in this mode, and Compute. Coordinate entry,
+             band counts, speeds and the alternate finders are all Advanced. -->
+        <div class="ms-section-title">Origin</div>
+        <div class="ms-btn-row">
+          <button class="ms-btn primary" id="reach-pick-origin-btn" title="Click, then tap the map to place the origin">&#128205; Pick origin on map</button>
         </div>
-        <div class="reach-btn-row">
-          <button class="reach-btn reach-btn-sm" id="reach-pick-origin-btn">Pick Origin ⊕</button>
-        </div>
+        <div class="ms-coords" id="reach-origin-coords">No origin set</div>
 
         <div id="reach-sec-servicearea">
-          <div class="reach-divider"></div>
-          <div class="reach-sec">Service Area</div>
-          <div class="reach-slider-row">
-            <span class="reach-label">Max drive time (min)</span>
-            <input id="reach-maxmin" type="range" min="5" max="120" step="5" value="30" class="reach-slider" />
-            <span class="reach-slider-val" id="reach-maxmin-val">30</span>
-          </div>
-          <div class="reach-slider-row">
-            <span class="reach-label">Bands</span>
-            <input id="reach-bands" type="range" min="1" max="6" step="1" value="3" class="reach-slider" />
-            <span class="reach-slider-val" id="reach-bands-val">3</span>
+          <div class="ms-slider-row">
+            <div class="ms-slider-label">Max drive time (min)</div>
+            <input id="reach-maxmin" type="range" min="5" max="120" step="5" value="30" />
+            <div class="ms-slider-value" id="reach-maxmin-val">30</div>
           </div>
         </div>
 
-        <div id="reach-sec-route" style="display:none">
-          <div class="reach-divider"></div>
-          <div class="reach-sec">Destination</div>
-          <div class="reach-coords" id="reach-dest-coords">Destination: not set</div>
-          <div class="reach-ll-row">
-            <div class="reach-ll-field"><span class="reach-label">Lat °</span><input id="reach-dest-lat" class="reach-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" /></div>
-            <div class="reach-ll-field"><span class="reach-label">Lon °</span><input id="reach-dest-lon" class="reach-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" /></div>
-            <button class="reach-btn reach-btn-sm" id="reach-dest-setloc-btn" title="Place the destination at the Lat/Lon entered above">Set</button>
+        <div id="reach-sec-route" hidden>
+          <div class="ms-section-title">Destination</div>
+          <div class="ms-btn-row">
+            <button class="ms-btn primary" id="reach-pick-dest-btn" title="Click, then tap the map to place the destination">&#128205; Pick destination</button>
           </div>
-          <div class="reach-btn-row">
-            <button class="reach-btn reach-btn-sm" id="reach-pick-dest-btn">Pick Destination ⊕</button>
-            <button class="reach-btn reach-btn-sm" id="reach-reverse-route-btn" title="Swap origin and destination — useful for planning the return leg">Reverse ⇄</button>
-            <button class="reach-btn reach-btn-sm" id="reach-clear-dest-btn">Clear Dest</button>
-          </div>
-          <div class="reach-toggle-row">
-            <label class="reach-label" for="reach-alts">Find alternate routes</label>
-            <input type="checkbox" id="reach-alts" class="reach-check" checked />
-          </div>
+          <div class="ms-coords" id="reach-dest-coords">No destination set</div>
         </div>
 
-        <div id="reach-sec-msr" style="display:none">
-          <div class="reach-divider"></div>
-          <div class="reach-sec">Supply Route Waypoints</div>
-          <div class="reach-btn-row">
-            <button class="reach-btn reach-btn-sm" id="reach-add-wp-btn">Add Waypoints ⊕</button>
-            <button class="reach-btn reach-btn-sm" id="reach-reverse-msr-btn" title="Reverse the waypoint order — Start ↔ Release Point">Reverse ⇄</button>
-            <button class="reach-btn reach-btn-sm" id="reach-clear-wp-btn">Clear WPs</button>
+        <div id="reach-sec-msr" hidden>
+          <div class="ms-section-title">Supply route waypoints</div>
+          <div class="ms-btn-row">
+            <button class="ms-btn primary" id="reach-add-wp-btn" title="Click, then tap the map to drop waypoints in order">&#128205; Add waypoints</button>
           </div>
           <div class="reach-wp-list" id="reach-wp-list"></div>
         </div>
 
-        <div id="reach-msr-extra-row" style="display:none">
-          <div class="reach-btn-row">
-            <button class="reach-btn reach-btn-sm" id="reach-msr-alts-btn" title="Compute an alternate route for each consecutive waypoint pair and overlay them as dashed divert lines">Find Leg Alternates ⇄</button>
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="reach-run-btn">Compute Service Area</button>
+        </div>
+        <div class="ms-btn-row" id="reach-result-actions" hidden>
+          <button class="ms-btn primary" id="reach-commit-btn" disabled title="Copy the current analysis onto a permanent layer">Commit &#8599;</button>
+          <button class="ms-btn danger" id="reach-clear-btn">Clear</button>
+        </div>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="reach-adv-toggle" aria-expanded="false" aria-controls="reach-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">&#9654;</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Coordinate entry, bands, speed, alternates</span>
+          </button>
+          <div class="ms-disclosure-body" id="reach-adv-body" hidden>
+            <div class="ms-section-title">Origin coordinates</div>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <label class="ms-label" for="reach-origin-lat">Lat &deg;</label>
+                <input id="reach-origin-lat" class="ms-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="reach-origin-lon">Lon &deg;</label>
+                <input id="reach-origin-lon" class="ms-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" />
+              </div>
+            </div>
+            <div class="ms-btn-row">
+              <button class="ms-btn" id="reach-origin-setloc-btn" title="Place the origin at the Lat/Lon entered above">Set origin</button>
+            </div>
+
+            <div id="reach-adv-servicearea">
+              <div class="ms-section-title">Service area</div>
+              <div class="ms-slider-row">
+                <div class="ms-slider-label">Bands</div>
+                <input id="reach-bands" type="range" min="1" max="6" step="1" value="3" />
+                <div class="ms-slider-value" id="reach-bands-val">3</div>
+              </div>
+            </div>
+
+            <div id="reach-adv-route" hidden>
+              <div class="ms-section-title">Destination coordinates</div>
+              <div class="ms-grid">
+                <div class="ms-field">
+                  <label class="ms-label" for="reach-dest-lat">Lat &deg;</label>
+                  <input id="reach-dest-lat" class="ms-input" type="number" step="0.00001" min="-90" max="90" placeholder="lat" />
+                </div>
+                <div class="ms-field">
+                  <label class="ms-label" for="reach-dest-lon">Lon &deg;</label>
+                  <input id="reach-dest-lon" class="ms-input" type="number" step="0.00001" min="-180" max="180" placeholder="lon" />
+                </div>
+              </div>
+              <div class="ms-btn-row">
+                <button class="ms-btn" id="reach-dest-setloc-btn" title="Place the destination at the Lat/Lon entered above">Set dest</button>
+                <button class="ms-btn" id="reach-reverse-route-btn" title="Swap origin and destination — useful for planning the return leg">Reverse &#8646;</button>
+                <button class="ms-btn" id="reach-clear-dest-btn">Clear dest</button>
+              </div>
+              <div class="ms-toggle-row">
+                <label for="reach-alts">Find alternate routes</label>
+                <input type="checkbox" id="reach-alts" class="ms-input" checked />
+              </div>
+            </div>
+
+            <div id="reach-adv-msr" hidden>
+              <div class="ms-section-title">Waypoint chain</div>
+              <div class="ms-btn-row">
+                <button class="ms-btn" id="reach-reverse-msr-btn" title="Reverse the waypoint order — Start &#8596; Release Point">Reverse &#8646;</button>
+                <button class="ms-btn" id="reach-clear-wp-btn">Clear WPs</button>
+              </div>
+              <div class="ms-btn-row">
+                <button class="ms-btn" id="reach-msr-alts-btn" title="Compute an alternate route for each consecutive waypoint pair and overlay them as dashed divert lines">Find leg alternates &#8646;</button>
+              </div>
+            </div>
+
+            <div class="ms-section-title">Movement</div>
+            <div class="ms-slider-row">
+              <div class="ms-slider-label">Assumed speed (km/h)</div>
+              <input id="reach-speed" type="range" min="5" max="120" step="5" value="40" />
+              <div class="ms-slider-value" id="reach-speed-val">40</div>
+            </div>
+            <div class="ms-hint">Used for offline estimates (rings &amp; ETA).</div>
           </div>
-        </div>
-
-        <div class="reach-divider"></div>
-        <div class="reach-sec">Movement</div>
-        <div class="reach-slider-row">
-          <span class="reach-label">Assumed speed (km/h)</span>
-          <input id="reach-speed" type="range" min="5" max="120" step="5" value="40" class="reach-slider" />
-          <span class="reach-slider-val" id="reach-speed-val">40</span>
-        </div>
-        <div class="reach-hint">Used for offline estimates (rings &amp; ETA).</div>
-
-        <div class="reach-btn-row reach-btn-row-main">
-          <button class="reach-btn" id="reach-clear-btn">Clear</button>
-          <button class="reach-btn reach-btn-primary" id="reach-run-btn">Compute Service Area</button>
-          <button class="reach-btn" id="reach-commit-btn" disabled>Commit ↗</button>
         </div>
       </div>
     `;
@@ -2157,18 +2234,18 @@ export class TrafficabilityEngine {
    */
   private _buildResultsPanelHTML(): string {
     return `
-      <div class="reach-header" id="reach-results-drag-handle">
-        <span class="reach-header-icon">▦</span>
-        <span class="reach-header-title">Results &amp; Planning</span>
-        <button class="reach-minimize-btn" id="reach-results-minimize-btn" title="Minimize">▼</button>
-        <button class="reach-close-btn" id="reach-results-close-btn" title="Close (keeps graphics)">✕</button>
+      <div class="ms-header" id="reach-results-drag-handle">
+        <span class="ms-header-icon">&#9638;</span>
+        <span class="ms-header-title">Results &amp; Planning</span>
+        <button class="ms-header-btn ms-btn-round" id="reach-results-minimize-btn" title="Minimize">&#9660;</button>
+        <button class="ms-header-btn ms-btn-round" id="reach-results-close-btn" title="Close (keeps graphics)">&#10005;</button>
       </div>
 
-      <div class="reach-body" id="reach-results-body">
-        <div class="reach-stats">
-          <div class="reach-stat"><div class="reach-stat-val" id="reach-st-1-val">—</div><div class="reach-stat-lbl" id="reach-st-1-lbl">Bands</div></div>
-          <div class="reach-stat"><div class="reach-stat-val" id="reach-st-2-val">—</div><div class="reach-stat-lbl" id="reach-st-2-lbl">Max (min)</div></div>
-          <div class="reach-stat"><div class="reach-stat-val" id="reach-st-3-val">—</div><div class="reach-stat-lbl" id="reach-st-3-lbl">Roads km</div></div>
+      <div class="ms-body" id="reach-results-body">
+        <div class="ms-info-grid">
+          <div class="ms-info-item"><div class="ms-info-value" id="reach-st-1-val">-</div><div class="ms-info-label" id="reach-st-1-lbl">Bands</div></div>
+          <div class="ms-info-item"><div class="ms-info-value" id="reach-st-2-val">-</div><div class="ms-info-label" id="reach-st-2-lbl">Max (min)</div></div>
+          <div class="ms-info-item"><div class="ms-info-value" id="reach-st-3-val">-</div><div class="ms-info-label" id="reach-st-3-lbl">Roads km</div></div>
         </div>
 
         <div class="reach-legend" id="reach-legend"></div>
@@ -2177,126 +2254,134 @@ export class TrafficabilityEngine {
         <div class="reach-traffic-note" id="reach-traffic-note"></div>
         <div class="reach-steps" id="reach-steps"></div>
 
-        <div class="reach-scrub-wrap" id="reach-scrub-wrap" style="display:none">
-          <div class="reach-divider"></div>
-          <div class="reach-sec">Drive Playback</div>
+        <div class="reach-scrub-wrap" id="reach-scrub-wrap" hidden>
+          <div class="ms-divider"></div>
+          <div class="ms-section-title">Drive playback</div>
           <div class="reach-scrub-readout">
             <span class="reach-scrub-time" id="reach-scrub-time">T+ 0:00</span>
             <span class="reach-scrub-speed" id="reach-scrub-speed">0 km/h</span>
           </div>
           <div class="reach-scrub-road" id="reach-scrub-road"></div>
           <div class="reach-scrub-controls">
-            <button class="reach-btn reach-btn-sm" id="reach-play-btn">▶</button>
+            <button class="ms-btn" id="reach-play-btn">&#9654;</button>
             <input id="reach-scrubber" class="reach-slider" type="range" min="0" max="1000" step="1" value="0" />
           </div>
         </div>
 
-        <!-- ── Feature Tabs ──────────────────────────────────────────── -->
-        <div class="reach-divider"></div>
-        <div class="reach-feat-tabs">
-          <button class="reach-feat-tab reach-feat-tab-active" data-feat="conditions">Conditions</button>
+        <!-- ── Feature tabs ──────────────────────────────────────────── -->
+        <div class="ms-divider"></div>
+        <div class="ms-tabs" id="reach-feat-tabs">
+          <button class="reach-feat-tab active" data-feat="conditions">Conditions</button>
           <button class="reach-feat-tab" data-feat="convoy">Convoy</button>
           <button class="reach-feat-tab" data-feat="export">MOVORD</button>
         </div>
 
         <!-- Conditions tab -->
         <div id="reach-feat-conditions">
-          <div class="reach-slider-row">
-            <span class="reach-label">Movement Profile</span>
-            <select id="reach-profile" class="reach-select">
-              <option value="day">Day — Road (1.0×)</option>
-              <option value="night-nvg">Night — NVG (0.5×)</option>
-              <option value="night-blackout">Night — Blackout (0.3×)</option>
-              <option value="rain">Rain / Mud (0.7×)</option>
-              <option value="custom">Custom…</option>
-            </select>
+          <div class="ms-grid">
+            <div class="ms-field full">
+              <label class="ms-label" for="reach-profile">Movement profile</label>
+              <select id="reach-profile" class="ms-select">
+                <option value="day">Day — Road (1.0×)</option>
+                <option value="night-nvg">Night — NVG (0.5×)</option>
+                <option value="night-blackout">Night — Blackout (0.3×)</option>
+                <option value="rain">Rain / Mud (0.7×)</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
           </div>
-          <div class="reach-slider-row" id="reach-custom-mult-row" style="display:none">
-            <span class="reach-label">Speed mult.</span>
-            <input id="reach-custom-mult" type="range" min="0.1" max="1.5" step="0.05" value="1.0" class="reach-slider" />
-            <span class="reach-slider-val" id="reach-custom-mult-val">1.0×</span>
+          <div class="ms-slider-row" id="reach-custom-mult-row" hidden>
+            <div class="ms-slider-label">Speed mult.</div>
+            <input id="reach-custom-mult" type="range" min="0.1" max="1.5" step="0.05" value="1.0" />
+            <div class="ms-slider-value" id="reach-custom-mult-val">1.0×</div>
           </div>
-          <div class="reach-toggle-row">
-            <label class="reach-label" for="reach-threat-toggle">Avoid threat zones</label>
-            <input type="checkbox" id="reach-threat-toggle" class="reach-check" />
+          <div class="ms-toggle-row">
+            <label for="reach-threat-toggle">Avoid threat zones</label>
+            <input type="checkbox" id="reach-threat-toggle" class="ms-input" />
           </div>
-          <div class="reach-slider-row" id="reach-threat-radius-row" style="display:none">
-            <span class="reach-label">Threat radius (km)</span>
-            <input id="reach-threat-radius" type="range" min="1" max="30" step="1" value="5" class="reach-slider" />
-            <span class="reach-slider-val" id="reach-threat-radius-val">5</span>
+          <div class="ms-slider-row" id="reach-threat-radius-row" hidden>
+            <div class="ms-slider-label">Threat radius (km)</div>
+            <input id="reach-threat-radius" type="range" min="1" max="30" step="1" value="5" />
+            <div class="ms-slider-value" id="reach-threat-radius-val">5</div>
           </div>
           <div class="reach-feat-note" id="reach-threat-count"></div>
         </div>
 
         <!-- Convoy tab -->
-        <div id="reach-feat-convoy" style="display:none">
-          <div class="reach-toggle-row">
-            <label class="reach-label" for="reach-convoy-enabled">Convoy Planning</label>
-            <input type="checkbox" id="reach-convoy-enabled" class="reach-check" />
+        <div id="reach-feat-convoy" hidden>
+          <div class="ms-toggle-row">
+            <label for="reach-convoy-enabled">Convoy planning</label>
+            <input type="checkbox" id="reach-convoy-enabled" class="ms-input" />
           </div>
-          <div id="reach-convoy-fields" style="display:none">
-            <div class="reach-num-row">
-              <span class="reach-label">Vehicles</span>
-              <input id="reach-convoy-vehicles" type="number" min="1" max="200" step="1" value="10" class="reach-input reach-num-input" />
-            </div>
-            <div class="reach-num-row">
-              <span class="reach-label">Spacing (m)</span>
-              <input id="reach-convoy-spacing" type="number" min="10" max="500" step="10" value="50" class="reach-input reach-num-input" />
-            </div>
-            <div class="reach-num-row">
-              <span class="reach-label">Serials</span>
-              <input id="reach-convoy-serials" type="number" min="1" max="20" step="1" value="1" class="reach-input reach-num-input" />
-            </div>
-            <div class="reach-num-row" id="reach-headway-row" style="display:none">
-              <span class="reach-label">Serial headway (min)</span>
-              <input id="reach-convoy-headway" type="number" min="5" max="120" step="5" value="30" class="reach-input reach-num-input" />
+          <div id="reach-convoy-fields" hidden>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <label class="ms-label" for="reach-convoy-vehicles">Vehicles</label>
+                <input id="reach-convoy-vehicles" type="number" min="1" max="200" step="1" value="10" class="ms-input" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="reach-convoy-spacing">Spacing (m)</label>
+                <input id="reach-convoy-spacing" type="number" min="10" max="500" step="10" value="50" class="ms-input" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="reach-convoy-serials">Serials</label>
+                <input id="reach-convoy-serials" type="number" min="1" max="20" step="1" value="1" class="ms-input" />
+              </div>
+              <div class="ms-field" id="reach-headway-row" hidden>
+                <label class="ms-label" for="reach-convoy-headway">Serial headway (min)</label>
+                <input id="reach-convoy-headway" type="number" min="5" max="120" step="5" value="30" class="ms-input" />
+              </div>
             </div>
             <div class="reach-convoy-result" id="reach-convoy-result"></div>
           </div>
-          <div class="reach-divider"></div>
-          <div class="reach-sec-mini">H-Hour &amp; Timing</div>
-          <div class="reach-num-row">
-            <span class="reach-label">Departure (HH:MM)</span>
-            <input id="reach-h-hour" type="time" class="reach-input reach-num-input" value="" />
-          </div>
-          <div class="reach-toggle-row">
-            <label class="reach-label" for="reach-use-tot">Use required arrival (TOT)</label>
-            <input type="checkbox" id="reach-use-tot" class="reach-check" />
-          </div>
-          <div class="reach-num-row" id="reach-tot-row" style="display:none">
-            <span class="reach-label">Required arrival</span>
-            <input id="reach-tot-time" type="time" class="reach-input reach-num-input" value="" />
-          </div>
-          <div class="reach-hint">Leave blank for T+ relative times only.</div>
-          <div class="reach-timing-panel" id="reach-timing-panel"></div>
-          <div class="reach-divider"></div>
-          <div class="reach-sec-mini">Fuel Planning</div>
-          <div class="reach-toggle-row">
-            <label class="reach-label" for="reach-fuel-enabled">Enable</label>
-            <input type="checkbox" id="reach-fuel-enabled" class="reach-check" />
-          </div>
-          <div id="reach-fuel-fields" style="display:none">
-            <div class="reach-num-row">
-              <span class="reach-label">Economy (L/100 km)</span>
-              <input id="reach-fuel-economy" type="number" min="1" max="500" step="0.5" value="30" class="reach-input reach-num-input" />
+          <div class="ms-divider"></div>
+          <div class="ms-section-title">H-Hour &amp; timing</div>
+          <div class="ms-grid">
+            <div class="ms-field">
+              <label class="ms-label" for="reach-h-hour">Departure (HH:MM)</label>
+              <input id="reach-h-hour" type="time" class="ms-input" value="" />
             </div>
-            <div class="reach-num-row">
-              <span class="reach-label">On board (L)</span>
-              <input id="reach-fuel-onboard" type="number" min="1" max="5000" step="5" value="200" class="reach-input reach-num-input" />
+            <div class="ms-field" id="reach-tot-row" hidden>
+              <label class="ms-label" for="reach-tot-time">Required arrival</label>
+              <input id="reach-tot-time" type="time" class="ms-input" value="" />
+            </div>
+          </div>
+          <div class="ms-toggle-row">
+            <label for="reach-use-tot">Use required arrival (TOT)</label>
+            <input type="checkbox" id="reach-use-tot" class="ms-input" />
+          </div>
+          <div class="ms-hint">Leave blank for T+ relative times only.</div>
+          <div class="reach-timing-panel" id="reach-timing-panel"></div>
+          <div class="ms-divider"></div>
+          <div class="ms-section-title">Fuel planning</div>
+          <div class="ms-toggle-row">
+            <label for="reach-fuel-enabled">Enable</label>
+            <input type="checkbox" id="reach-fuel-enabled" class="ms-input" />
+          </div>
+          <div id="reach-fuel-fields" hidden>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <label class="ms-label" for="reach-fuel-economy">Economy (L/100 km)</label>
+                <input id="reach-fuel-economy" type="number" min="1" max="500" step="0.5" value="30" class="ms-input" />
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="reach-fuel-onboard">On board (L)</label>
+                <input id="reach-fuel-onboard" type="number" min="1" max="5000" step="5" value="200" class="ms-input" />
+              </div>
             </div>
             <div class="reach-fuel-result" id="reach-fuel-result"></div>
           </div>
         </div>
 
         <!-- MOVORD export tab -->
-        <div id="reach-feat-export" style="display:none">
-          <div class="reach-sec-mini">Named Waypoints &amp; Dwell</div>
+        <div id="reach-feat-export" hidden>
+          <div class="ms-section-title">Named waypoints &amp; dwell</div>
           <div class="reach-wp-meta-list" id="reach-wp-meta-list"></div>
-          <div class="reach-divider"></div>
+          <div class="ms-divider"></div>
           <div class="reach-movord-preview" id="reach-movord-preview">Run a Route or MSR to generate a MOVORD.</div>
-          <div class="reach-btn-row">
-            <button class="reach-btn reach-btn-sm" id="reach-movord-copy-btn" disabled>⎘ Copy</button>
-            <button class="reach-btn reach-btn-sm" id="reach-movord-regen-btn">Refresh</button>
+          <div class="ms-btn-row">
+            <button class="ms-btn primary" id="reach-movord-copy-btn" disabled>&#9112; Copy</button>
+            <button class="ms-btn" id="reach-movord-regen-btn">Refresh</button>
           </div>
         </div>
       </div>
@@ -2318,12 +2403,14 @@ export class TrafficabilityEngine {
     });
 
     p.querySelector('#reach-minimize-btn')?.addEventListener('click', () => {
-      const body = p.querySelector<HTMLElement>('.reach-body');
+      const body = p.querySelector<HTMLElement>('.ms-body');
+      const tabs = p.querySelector<HTMLElement>('.ms-tabs');
       const btn = p.querySelector<HTMLElement>('#reach-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.style.display === 'none';
-      body.style.display = minimized ? '' : 'none';
-      btn.textContent = minimized ? '▼' : '▶';
+      const minimized = body.classList.toggle('ms-minimized');
+      if (tabs) tabs.hidden = minimized;
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
     });
 
     p.querySelector('#reach-close-btn')?.addEventListener('click', () => this.close());
@@ -2398,9 +2485,9 @@ export class TrafficabilityEngine {
       const body = r.querySelector<HTMLElement>('#reach-results-body');
       const btn = r.querySelector<HTMLElement>('#reach-results-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.style.display === 'none';
-      body.style.display = minimized ? '' : 'none';
-      btn.textContent = minimized ? '▼' : '▶';
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
     });
 
     // Drive scrubber.
@@ -2424,7 +2511,7 @@ export class TrafficabilityEngine {
       const prof = MOVEMENT_PROFILES[key] ?? MOVEMENT_PROFILES.day;
       this._profileMultiplier = prof.mult;
       const customRow = r.querySelector<HTMLElement>('#reach-custom-mult-row');
-      if (customRow) customRow.style.display = key === 'custom' ? '' : 'none';
+      if (customRow) customRow.hidden = key !== 'custom';
     });
     const customMult = r.querySelector<HTMLInputElement>('#reach-custom-mult');
     customMult?.addEventListener('input', () => {
@@ -2436,7 +2523,7 @@ export class TrafficabilityEngine {
     r.querySelector('#reach-threat-toggle')?.addEventListener('change', (e) => {
       this._threatEnabled = (e.target as HTMLInputElement).checked;
       const row = r.querySelector<HTMLElement>('#reach-threat-radius-row');
-      if (row) row.style.display = this._threatEnabled ? '' : 'none';
+      if (row) row.hidden = !this._threatEnabled;
       if (!this._threatEnabled) {
         const toRemove = this._analysisLayer.graphics.filter(
           (g: Graphic) => g.attributes?.type === 'trafficability_threat',
@@ -2464,7 +2551,7 @@ export class TrafficabilityEngine {
     r.querySelector('#reach-convoy-enabled')?.addEventListener('change', (e) => {
       this._convoyEnabled = (e.target as HTMLInputElement).checked;
       const fields = r.querySelector<HTMLElement>('#reach-convoy-fields');
-      if (fields) fields.style.display = this._convoyEnabled ? '' : 'none';
+      if (fields) fields.hidden = !this._convoyEnabled;
       this._updateConvoyPanel();
     });
     const bindNum = (id: string, setter: (v: number) => void) => {
@@ -2473,7 +2560,7 @@ export class TrafficabilityEngine {
         this._updateConvoyPanel();
         if (id === 'reach-convoy-serials') {
           const row = r.querySelector<HTMLElement>('#reach-headway-row');
-          if (row) row.style.display = this._convoySerials > 1 ? '' : 'none';
+          if (row) row.hidden = this._convoySerials <= 1;
         }
       });
     };
@@ -2491,7 +2578,7 @@ export class TrafficabilityEngine {
     r.querySelector('#reach-use-tot')?.addEventListener('change', (e) => {
       this._useTOT = (e.target as HTMLInputElement).checked;
       const row = r.querySelector<HTMLElement>('#reach-tot-row');
-      if (row) row.style.display = this._useTOT ? '' : 'none';
+      if (row) row.hidden = !this._useTOT;
       this._updateTimingPanel();
     });
     r.querySelector('#reach-tot-time')?.addEventListener('change', (e) => {
@@ -2503,7 +2590,7 @@ export class TrafficabilityEngine {
     r.querySelector('#reach-fuel-enabled')?.addEventListener('change', (e) => {
       this._fuelEnabled = (e.target as HTMLInputElement).checked;
       const fields = r.querySelector<HTMLElement>('#reach-fuel-fields');
-      if (fields) fields.style.display = this._fuelEnabled ? '' : 'none';
+      if (fields) fields.hidden = !this._fuelEnabled;
       this._updateFuelPanel();
       this._renderFuelMarker();
       this._updateMovordPanel();
@@ -2574,29 +2661,29 @@ export class TrafficabilityEngine {
     const placingLbl =
       this._placeMode === 'dest' ? 'Pick destination…' :
       this._placeMode === 'waypoint' ? 'Click to add waypoints…' : 'Pick origin…';
+    // Tone classes, not hex: the dot follows the panel's theme.
     const map: Record<string, [string, string]> = {
-      awaiting: ['#555', 'Awaiting origin'],
-      placing: ['#34C0AE', placingLbl],
-      computing: ['#EF9F27', 'Computing…'],
-      ready: ['#1D9E75', 'Ready'],
-      estimate: ['#EF9F27', 'Estimate (offline)'],
-      committed: ['#1D9E75', 'Committed ✓'],
-      error: ['#E24B4A', 'Error'],
+      awaiting: ['', 'Awaiting origin'],
+      placing: ['running', placingLbl],
+      computing: ['running', 'Computing…'],
+      ready: ['ready', 'Ready'],
+      estimate: ['warning', 'Estimate (offline)'],
+      committed: ['ready', 'Committed'],
+      error: ['warning', 'Error'],
     };
-    const [color, label] = map[state] ?? map.awaiting;
+    const [tone, label] = map[state] ?? map.awaiting;
     if (state === 'ready' || state === 'committed') EngineLogger.success(ENGINE_NAME, label);
     else if (state === 'error') EngineLogger.error(ENGINE_NAME, label);
     else EngineLogger.nextStep(ENGINE_NAME, label);
-    if (dotEl) {
-      dotEl.style.background = color;
-      dotEl.style.boxShadow = `0 0 6px ${color}88`;
-    }
+    if (dotEl) dotEl.className = `ms-status-dot ${tone}`;
     if (lblEl) lblEl.textContent = label;
   }
 
   private _setRunDisabled(disabled: boolean): void {
     const btn = this._panelEl?.querySelector<HTMLButtonElement>('#reach-run-btn');
-    if (btn) btn.disabled = disabled;
+    if (!btn) return;
+    btn.disabled = disabled;
+    btn.classList.toggle('ms-busy', disabled);
   }
 
   private _setCommitDisabled(disabled: boolean): void {
@@ -2635,11 +2722,11 @@ export class TrafficabilityEngine {
     const root = this._resultsPanelEl ?? this._panelEl;
     if (!root) return;
     root.querySelectorAll<HTMLButtonElement>('.reach-feat-tab').forEach((btn) => {
-      btn.classList.toggle('reach-feat-tab-active', btn.dataset.feat === this._featureTab);
+      btn.classList.toggle('active', btn.dataset.feat === this._featureTab);
     });
     const show = (id: string, on: boolean) => {
       const el = this._q<HTMLElement>(id);
-      if (el) el.style.display = on ? '' : 'none';
+      if (el) el.hidden = !on;
     };
     show('#reach-feat-conditions', tab === 'conditions');
     show('#reach-feat-convoy',     tab === 'convoy');
@@ -2843,13 +2930,15 @@ export class TrafficabilityEngine {
     const pos = this._interpAlongPath(this._lastRoutePath, cum, targetKm);
     this._markerLayer.add(new Graphic({
       geometry: new Point({ longitude: pos[0], latitude: pos[1], spatialReference: { wkid: 4326 } }),
+      // A marker, not a glyph: a 2D MapView TextSymbol renders NOTHING when
+      // the string carries a character the font atlas lacks, so the fuel
+      // marker was invisible on the 2D map (3D drew it fine).
       symbol: {
-        type: 'text',
-        text: '⛽',
+        type: 'simple-marker',
+        style: 'diamond',
+        size: 15,
         color: exhaustedOnRoute ? [226, 75, 74, 235] : [80, 150, 220, 235],
-        haloColor: [0, 0, 0, 200],
-        haloSize: 1.5,
-        font: { size: 18, weight: 'bold' },
+        outline: { color: [0, 0, 0, 200], width: 1.5 },
       } as any,
       attributes: {
         type: 'trafficability_fuel',
@@ -2988,13 +3077,14 @@ export class TrafficabilityEngine {
         const pos = this._interpAlongPath(path, cum, midDist);
         this._markerLayer.add(new Graphic({
           geometry: new Point({ longitude: pos[0], latitude: pos[1], spatialReference: { wkid: 4326 } }),
+          // Same glyph trap as the fuel marker: every choke point was
+          // invisible in 2D while the string was a warning sign.
           symbol: {
-            type: 'text',
-            text: '⚠',
+            type: 'simple-marker',
+            style: 'triangle',
+            size: 13,
             color: [239, 159, 39, 230],
-            haloColor: [0, 0, 0, 180],
-            haloSize: 1.5,
-            font: { size: 14, weight: 'bold' },
+            outline: { color: [0, 0, 0, 180], width: 1.5 },
           } as any,
           attributes: {
             type: 'trafficability_choke',
@@ -3204,7 +3294,8 @@ export class TrafficabilityEngine {
     if (!this._resultsPanelEl) {
       this._resultsPanelEl = document.createElement('div');
       this._resultsPanelEl.id = 'trafficability-engine-results-panel';
-      this._resultsPanelEl.className = 'reach-panel reach-results-panel';
+      this._resultsPanelEl.className = 'ms-panel ms-theme-ops-dark reach-results-panel';
+      this._resultsPanelEl.setAttribute('data-engine', 'trafficability');
       this._resultsPanelEl.innerHTML = this._buildResultsPanelHTML();
       document.body.appendChild(this._resultsPanelEl);
     } else {
@@ -3219,7 +3310,17 @@ export class TrafficabilityEngine {
       );
       this._resultsPanelBound = true;
     }
-    this._resultsPanelEl.style.display = 'block';
+  }
+
+  /**
+   * The companion panel is output: it stays off screen until a run produces
+   * something, so opening the widget shows one panel with three controls
+   * instead of two panels with thirty.
+   */
+  private _revealResults(on: boolean): void {
+    this._resultsPanelEl?.classList.toggle('ms-visible', on);
+    const actions = this._panelEl?.querySelector<HTMLElement>('#reach-result-actions');
+    if (actions) actions.hidden = !on;
   }
 
   private _makeSubDraggable(panel: HTMLDivElement, handle: HTMLElement | null): void {
@@ -3253,282 +3354,6 @@ export class TrafficabilityEngine {
 
   // ─── Private: Styles ────────────────────────────────────────────────────────
 
-  private _injectStyles(): void {
-    if (document.getElementById('trafficability-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'trafficability-engine-styles';
-    style.textContent = `
-      .reach-panel {
-        position: fixed;
-        top: 60px;
-        left: 360px;
-        width: 360px;
-        background: var(--ms-bg);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius);
-        color: var(--ms-text);
-        font-family: var(--ms-font);
-        font-size: var(--ms-fs);
-        z-index: 1100;
-        user-select: none;
-        box-shadow: var(--ms-shadow);
-        display: none;
-        animation: reachPanelIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      @keyframes reachPanelIn {
-        from { opacity: 0; transform: scale(0.94) translateY(-8px); }
-        to   { opacity: 1; transform: scale(1) translateY(0); }
-      }
-      /* Results panel: same base look as .reach-panel, with a different default
-         position + a scrollable body. Declared AFTER .reach-panel so its
-         left/width win the cascade; no !important, so inline drag styles work. */
-      .reach-panel.reach-results-panel {
-        left: 740px;
-        width: 340px;
-        max-height: calc(100vh - 80px);
-        overflow-y: auto;
-      }
-      .reach-panel.reach-results-panel::-webkit-scrollbar { width: 5px; }
-      .reach-panel.reach-results-panel::-webkit-scrollbar-track { background: transparent; }
-      .reach-panel.reach-results-panel::-webkit-scrollbar-thumb { background: var(--ms-border); border-radius: 3px; }
-      .reach-header {
-        display: flex; align-items: center; gap: 7px;
-        padding: 9px 10px 8px;
-        border-bottom: 1px solid var(--ms-divider);
-        background: var(--ms-bg-header);
-        border-radius: 5px 5px 0 0;
-        cursor: grab;
-      }
-      .reach-header:active { cursor: grabbing; }
-      .reach-header-icon { font-size: var(--ms-fs-lg, 16px); flex-shrink: 0; color: #34C0AE; }
-      .reach-header-title {
-        font-size: var(--ms-fs-sm); letter-spacing: 0.12em; text-transform: uppercase;
-        color: #34C0AE; font-weight: 700; flex: 1;
-      }
-      .reach-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; transition: background 0.3s, box-shadow 0.3s; }
-      .reach-status-lbl {
-        font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase;
-        color: var(--ms-text-dim); min-width: 62px;
-      }
-      .reach-help-btn, .reach-minimize-btn, .reach-close-btn {
-        background: none; border: 1px solid transparent; color: var(--ms-text-dim);
-        font-size: var(--ms-fs); cursor: pointer; padding: 0 2px; line-height: 1;
-        transition: color 0.15s; flex: 0 0 auto;
-      }
-      .reach-help-btn { width: 17px; height: 17px; border-color: var(--ms-border); border-radius: 50%; color: #34C0AE; font-weight: 700; }
-      .reach-help-btn:hover, .reach-minimize-btn:hover, .reach-close-btn:hover { color: var(--ms-text); }
-      .reach-help-popover {
-        position: absolute; top: 39px; left: 8px; right: 8px; z-index: 1120;
-        max-height: min(520px, calc(100vh - 132px)); overflow-y: auto;
-        background: var(--ms-bg); border: 1px solid var(--ms-border); border-radius: 4px;
-        box-shadow: var(--ms-shadow); color: var(--ms-text);
-      }
-      .reach-help-popover[hidden] { display: none; }
-      .reach-help-head {
-        display: flex; justify-content: space-between; gap: 10px;
-        padding: 10px 11px 8px; border-bottom: 1px solid var(--ms-divider); background: var(--ms-bg-header);
-      }
-      .reach-help-kicker { font-size: var(--ms-fs-xs); color: var(--ms-text-label); letter-spacing: 0.09em; text-transform: uppercase; }
-      .reach-help-title { margin-top: 2px; font-size: var(--ms-fs-sm); color: #34C0AE; font-weight: 700; }
-      .reach-help-close { width: 20px; height: 20px; border: 1px solid var(--ms-border); border-radius: 3px; background: var(--ms-bg-input); color: var(--ms-text-dim); cursor: pointer; }
-      .reach-help-close:hover { color: var(--ms-text); }
-      .reach-help-body { padding: 10px 11px 12px; font-size: var(--ms-fs); line-height: 1.45; color: var(--ms-text-dim); user-select: text; }
-      .reach-help-body p { margin: 0 0 9px; }
-      .reach-help-block { margin-top: 10px; }
-      .reach-help-block h4 { margin: 0 0 5px; font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text); }
-      .reach-help-block dl { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 5px 8px; margin: 0; }
-      .reach-help-block dt { color: #34C0AE; font-weight: 700; }
-      .reach-help-block dd { margin: 0; }
-      .reach-body { padding: 0 0 6px; }
-      .reach-tabs { display: flex; gap: 4px; padding: 8px 10px 4px; }
-      .reach-tab {
-        flex: 1; padding: 6px 4px; font-family: inherit; font-size: var(--ms-fs-xs);
-        letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; border-radius: 3px;
-        border: 1px solid var(--ms-border); background: var(--ms-bg-input); color: var(--ms-text-dim); transition: all 0.14s;
-      }
-      .reach-tab:hover { color: var(--ms-text); }
-      .reach-tab-active { border-color: #34C0AE; color: #34C0AE; background: var(--ms-bg-header); font-weight: 700; }
-      .reach-road-badge-row { padding: 4px 10px 2px; }
-      .reach-road-badge {
-        display: inline-block; font-size: var(--ms-fs-xs); letter-spacing: 0.05em;
-        padding: 2px 8px; border: 1px solid var(--ms-border); border-radius: 10px; color: var(--ms-text-dim);
-      }
-      .reach-sec { font-size: var(--ms-fs-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ms-text-label); padding: 9px 12px 4px; }
-      .reach-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--ms-divider), transparent); margin: 4px 0; }
-      .reach-label { font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim); }
-      .reach-hint { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); opacity: 0.85; padding: 2px 12px 4px; font-style: italic; }
-      .reach-slider-row { display: flex; align-items: center; gap: 8px; padding: 2px 10px 6px; }
-      .reach-slider-row .reach-label { flex: 1; }
-      .reach-slider { flex: 2; accent-color: #34C0AE; cursor: pointer; }
-      .reach-slider-val { font-size: var(--ms-fs-sm); color: #34C0AE; min-width: 36px; text-align: right; }
-      .reach-coords { font-size: var(--ms-fs-xs); color: var(--ms-accent); padding: 1px 12px 5px; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .reach-ll-row { display: flex; align-items: flex-end; gap: 6px; padding: 2px 10px 6px; }
-      .reach-ll-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
-      .reach-input {
-        background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px;
-        color: var(--ms-text); font-family: inherit; font-size: var(--ms-fs); padding: 4px 6px;
-        width: 100%; outline: none; transition: border-color 0.15s;
-      }
-      .reach-input:focus { border-color: var(--ms-accent); }
-      .reach-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; padding: 8px 10px 6px; }
-      .reach-stat { display: flex; flex-direction: column; gap: 2px; }
-      .reach-stat-val { font-size: var(--ms-fs-sm); font-weight: 700; letter-spacing: 0.03em; color: #34C0AE; }
-      .reach-stat-lbl { font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-dim); }
-      .reach-legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 12px 4px; }
-      .reach-leg-item { display: inline-flex; align-items: center; gap: 5px; font-size: var(--ms-fs-xs); color: var(--ms-text-dim); }
-      .reach-leg-swatch { width: 11px; height: 4px; border-radius: 2px; display: inline-block; }
-      .reach-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 12px 2px; }
-      .reach-check { accent-color: #34C0AE; width: 14px; height: 14px; cursor: pointer; }
-      .reach-routes { padding: 2px 10px 4px; }
-      .reach-routes:empty { display: none; }
-      .reach-route-row {
-        display: flex; align-items: center; gap: 8px; padding: 5px 8px; margin: 3px 0;
-        border: 1px solid var(--ms-border); border-radius: 5px; cursor: pointer;
-        background: var(--ms-bg-input); transition: border-color 0.14s, background 0.14s;
-      }
-      .reach-route-row:hover { background: var(--ms-bg-header); }
-      .reach-route-sel { border-color: #34C0AE; background: var(--ms-bg-header); }
-      .reach-route-swatch { width: 12px; height: 4px; border-radius: 2px; flex: 0 0 auto; }
-      .reach-route-name { font-size: var(--ms-fs-xs); font-weight: 700; color: var(--ms-text); flex: 0 0 auto; }
-      .reach-route-meta { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); flex: 1; text-align: right; }
-      .reach-source-note { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 2px 12px; font-style: italic; }
-      .reach-source-note:empty { display: none; }
-      .reach-traffic-note { font-size: var(--ms-fs-xs); color: var(--ms-text); padding: 4px 12px; line-height: 1.5; }
-      .reach-traffic-note:empty { display: none; }
-      .reach-wp-list { padding: 2px 12px 4px; max-height: 110px; overflow-y: auto; }
-      .reach-wp { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: var(--ms-fs-xs); }
-      .reach-wp-tag { font-weight: 700; color: #34C0AE; min-width: 30px; }
-      .reach-wp-coords { color: var(--ms-text-dim); font-family: var(--ms-font-mono, monospace); }
-      .reach-steps { max-height: 150px; overflow-y: auto; padding: 2px 8px 4px 12px; margin: 0 2px; }
-      .reach-steps:empty { display: none; }
-      .reach-step { display: flex; align-items: center; gap: 7px; padding: 2px 0; font-size: var(--ms-fs-xs); border-bottom: 1px solid var(--ms-divider); }
-      .reach-step-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; display: inline-block; }
-      .reach-step-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ms-text); }
-      .reach-step-km { color: var(--ms-text-dim); flex: 0 0 auto; }
-      .reach-step-more { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 4px 0 2px; font-style: italic; }
-      .reach-co-chip { display: inline-block; font-size: var(--ms-fs-xs); font-weight: 700; color: #fff; background: var(--c, #888); padding: 1px 7px; border-radius: 9px; letter-spacing: 0.04em; }
-      .reach-scrub-wrap { padding: 0; }
-      .reach-scrub-readout { display: flex; justify-content: space-between; padding: 2px 12px; }
-      .reach-scrub-time { font-size: var(--ms-fs-sm); font-weight: 700; color: #5092DC; font-family: var(--ms-font-mono, monospace); }
-      .reach-scrub-speed { font-size: var(--ms-fs-sm); font-weight: 700; color: #34C0AE; }
-      .reach-scrub-road { display: flex; align-items: center; gap: 7px; padding: 1px 12px 4px; font-size: var(--ms-fs-xs); color: var(--ms-text); }
-      .reach-scrub-controls { display: flex; align-items: center; gap: 8px; padding: 2px 12px 6px; }
-      .reach-scrub-controls .reach-slider { flex: 1; }
-      .reach-btn-row { display: flex; gap: 6px; padding: 4px 10px; }
-      .reach-btn-row-main { padding: 8px 10px 6px; }
-      .reach-btn {
-        flex: 1; padding: 6px 4px; font-family: inherit; font-size: var(--ms-fs-xs);
-        letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; border-radius: 3px;
-        border: 1px solid var(--ms-border); background: var(--ms-bg-input); color: var(--ms-text-dim); transition: all 0.14s;
-      }
-      .reach-btn:hover { background: var(--ms-bg-header); color: var(--ms-text); }
-      .reach-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-      .reach-btn-sm { flex: 0 0 auto; padding: 4px 8px; }
-      .reach-btn-primary { border-color: #34C0AE; color: #34C0AE; }
-      .reach-btn-primary:hover { background: var(--ms-bg-header); color: var(--ms-text); }
-
-      /* ── Smart callouts (anchored to map points) ── */
-      .reach-callout-host { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 40; }
-      .reach-callout {
-        position: absolute; transform: translate(-50%, calc(-100% - 12px));
-        min-width: 90px; max-width: 230px; pointer-events: none;
-        background: rgba(16, 20, 30, 0.93); color: #e6eefb;
-        border: 1px solid var(--c, #34C0AE); border-left: 3px solid var(--c, #34C0AE);
-        border-radius: 7px; padding: 6px 9px; font-family: var(--ms-font, sans-serif);
-        font-size: 11px; line-height: 1.4; box-shadow: 0 6px 20px rgba(0,0,0,0.45);
-        backdrop-filter: blur(6px); white-space: normal;
-      }
-      .reach-callout::after {
-        content: ''; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%);
-        border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 7px solid var(--c, #34C0AE);
-      }
-      .reach-callout-vehicle { transform: translate(-50%, calc(-100% - 16px)); z-index: 45; }
-      .reach-co-title { font-weight: 700; color: #fff; margin-bottom: 2px; }
-      .reach-co-row { color: #cdd9ec; margin: 1px 0; }
-      .reach-co-row b { color: #fff; }
-      .reach-co-note { color: #aab8cf; font-size: 10px; margin-top: 3px; font-style: italic; }
-      .reach-co-chip { margin: 2px 0; }
-
-      /* ── Feature tabs ── */
-      .reach-feat-tabs { display: flex; gap: 3px; padding: 4px 10px 0; }
-      .reach-feat-tab {
-        flex: 1; padding: 5px 3px; font-family: inherit; font-size: var(--ms-fs-xs);
-        letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; border-radius: 3px 3px 0 0;
-        border: 1px solid var(--ms-border); border-bottom: none;
-        background: var(--ms-bg-input); color: var(--ms-text-dim); transition: all 0.14s;
-      }
-      .reach-feat-tab:hover { color: var(--ms-text); }
-      .reach-feat-tab-active { border-color: rgba(52,192,174,0.55); color: #34C0AE; background: var(--ms-bg-header); font-weight: 700; }
-
-      #reach-feat-conditions,
-      #reach-feat-convoy,
-      #reach-feat-export {
-        border: 1px solid rgba(52,192,174,0.2); border-top: none;
-        background: var(--ms-bg-header); margin: 0 10px 6px; border-radius: 0 0 4px 4px;
-        padding: 6px 0 4px;
-      }
-
-      /* ── Conditions tab ── */
-      .reach-select {
-        background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px;
-        color: var(--ms-text); font-family: inherit; font-size: var(--ms-fs-xs);
-        padding: 3px 5px; flex: 1; min-width: 0; cursor: pointer; outline: none;
-        transition: border-color 0.15s;
-      }
-      .reach-select:focus { border-color: var(--ms-accent); }
-      .reach-feat-note { font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 2px 12px 4px; font-style: italic; min-height: 14px; }
-
-      /* ── Convoy tab ── */
-      .reach-num-row { display: flex; align-items: center; gap: 8px; padding: 2px 10px 4px; }
-      .reach-num-row .reach-label { flex: 1; }
-      .reach-num-input { background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px; color: var(--ms-text); font-family: inherit; font-size: var(--ms-fs-xs); padding: 3px 6px; width: 72px; flex: none; outline: none; }
-      .reach-num-input:focus { border-color: var(--ms-accent); }
-      .reach-sec-mini { font-size: var(--ms-fs-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ms-text-label); padding: 6px 12px 3px; }
-      .reach-convoy-result { padding: 4px 12px 2px; font-size: var(--ms-fs-xs); line-height: 1.7; }
-      .reach-convoy-row { color: var(--ms-text); }
-      .reach-convoy-serial { color: #EF9F27; }
-
-      /* ── Fuel result rows ── */
-      .reach-fuel-result { padding: 4px 12px 2px; font-size: var(--ms-fs-xs); line-height: 1.7; }
-      .reach-fuel-row { color: var(--ms-text); }
-      .reach-fuel-ok { color: #1D9E75; }
-      .reach-fuel-warn { color: #EF9F27; }
-      .reach-fuel-bad { color: #E24B4A; font-weight: 600; }
-
-      /* ── Timing panel ── */
-      .reach-timing-panel { padding: 4px 10px 2px; }
-      .reach-timing-head { font-size: var(--ms-fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-label); padding: 4px 2px 2px; }
-      .reach-timing-row { display: flex; align-items: baseline; gap: 6px; font-size: var(--ms-fs-xs); padding: 2px 0; border-bottom: 1px solid var(--ms-divider); }
-      .reach-timing-lbl { color: var(--ms-text-dim); flex: 1; }
-      .reach-timing-val { font-family: var(--ms-font-mono, monospace); font-weight: 700; color: #34C0AE; white-space: nowrap; }
-      .reach-timing-dwell { font-size: 9px; color: #EF9F27; white-space: nowrap; }
-      .reach-timing-tot { background: rgba(239,159,39,0.08); border-radius: 3px; }
-      .reach-timing-tot .reach-timing-val { color: #EF9F27; }
-
-      /* ── MOVORD export tab ── */
-      .reach-wp-meta-list { padding: 2px 10px; max-height: 120px; overflow-y: auto; }
-      .reach-wp-meta-row { display: flex; align-items: center; gap: 5px; padding: 2px 0; }
-      .reach-wp-meta-idx { font-size: 12px; flex: 0 0 auto; }
-      .reach-wp-meta-label { flex: 1; min-width: 0; font-size: var(--ms-fs-xs); padding: 3px 5px; background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px; color: var(--ms-text); font-family: inherit; outline: none; }
-      .reach-wp-meta-label:focus { border-color: var(--ms-accent); }
-      .reach-wp-meta-dwell { font-size: var(--ms-fs-xs); background: var(--ms-bg-input); border: 1px solid var(--ms-border); border-radius: 3px; color: var(--ms-text); font-family: inherit; outline: none; padding: 3px 4px; }
-      .reach-wp-meta-dwell:focus { border-color: var(--ms-accent); }
-      .reach-movord-preview {
-        font-family: var(--ms-font-mono, monospace); font-size: 10px; white-space: pre;
-        background: rgba(0,0,0,0.25); border: 1px solid var(--ms-border); border-radius: 3px;
-        margin: 4px 10px; padding: 6px 8px; max-height: 220px; overflow-y: auto;
-        color: #c8daf0; line-height: 1.55; user-select: text;
-      }
-      .reach-wp-custom-lbl { font-size: var(--ms-fs-xs); color: #34C0AE; margin-left: 4px; font-style: italic; }
-
-      @media (max-width: 520px) {
-        .reach-panel { left: 14px; right: 14px; top: 56px; width: auto; }
-        .reach-panel.reach-results-panel { left: 14px; right: 14px; top: 56px; width: auto; }
-        .reach-stats { grid-template-columns: 1fr; }
-      }
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default TrafficabilityEngine;

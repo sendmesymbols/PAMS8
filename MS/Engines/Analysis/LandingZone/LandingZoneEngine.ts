@@ -11,6 +11,7 @@ import Polygon from '@arcgis/core/geometry/Polygon';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../../../Support/EngineLogger';
+import { bindDisclosures } from '../../../Support/Disclosure';
 
 /**
  * LandingZoneEngine
@@ -168,6 +169,9 @@ export class LandingZoneEngine {
   private _mode: 'zone' | 'search' = 'search';
   private _zonePolygon: Polygon | null = null;
   private _running = false;
+  private _picking = false;
+  /** Centre of the last run, so Analyze can recompute without a fresh pick. */
+  private _lastCenter: Point | null = null;
 
   constructor() {
     this._createLayers();
@@ -181,9 +185,10 @@ export class LandingZoneEngine {
     if (map && !map.findLayerById(this._zoneLayer.id)) {
       map.addMany([this._zoneLayer, this._markerLayer, this._corridorLayer, this._obstacleLayer]);
     }
-    if (this._ctrlPanelEl && this._ctrlPanelEl.style.display !== 'none' && this._mode === 'search') {
-      this._bindMapClick();
-    }
+    // Re-arm a pick that was live when the view switched. This used to test
+    // `style.display !== 'none'`, which is true for a panel that was never
+    // shown at all — and breaks outright now visibility is a class.
+    if (this._picking && this._mode === 'search') this._bindMapClick();
   }
 
   /** Open from context menu against a drawn LZ/PZ/DZ polygon and score it. */
@@ -204,7 +209,7 @@ export class LandingZoneEngine {
     } else {
       this._mode = 'search';
       this._syncModeUI();
-      this._bindMapClick();
+      this._armPick(true);
     }
   }
 
@@ -214,12 +219,12 @@ export class LandingZoneEngine {
     if (!this._view) return;
     this._ensurePanels();
     this._showPanels();
-    if (this._mode === 'search') this._bindMapClick();
+    if (this._mode === 'search' && !this._lastCenter) this._armPick(true);
   }
 
   close(): void {
+    this._armPick(false);
     this._hidePanels();
-    this._unbindMapClick();
   }
 
   destroy(): void {
@@ -255,7 +260,12 @@ export class LandingZoneEngine {
   private async _run(center: Point): Promise<void> {
     if (this._running || !this._view) return;
     this._running = true;
-    this._button('lz-btn-run')?.setAttribute('disabled', 'true');
+    this._lastCenter = center;
+    this._setCentreReadout(center);
+    this._revealResults(true);
+    const runBtn = this._button('lz-btn-run');
+    runBtn?.setAttribute('disabled', 'true');
+    runBtn?.classList.add('ms-busy');
     this._clearOverlays();
 
     const maxSlope = this._num('lz-inp-slope', 7);
@@ -289,13 +299,16 @@ export class LandingZoneEngine {
       this._setProgress(1, `Done — ${getGrade(result.composite).grade}`);
       this._setStatus('done', `Scored — ${result.composite}/100`);
       this._goToPoint(center);
-      this._button('lz-btn-run')?.removeAttribute('disabled');
     } catch (err) {
       console.warn('[LandingZoneEngine] analysis failed', err);
       this._setStatus('ready', 'Analysis failed');
       this._setProgress(0, 'Unable to complete LZ analysis');
     } finally {
+      // The re-enable used to sit on the success path only, so one failed run
+      // left Analyze disabled for the life of the panel.
       this._running = false;
+      runBtn?.removeAttribute('disabled');
+      runBtn?.classList.remove('ms-busy');
     }
   }
 
@@ -648,11 +661,15 @@ export class LandingZoneEngine {
   // ─── Panels ────────────────────────────────────────────────────────────────
 
   private _ensurePanels(): void {
+    // Height and overflow belong to .ms-panel / .ms-body. Capping the roots here
+    // and giving them their own scrollbars scrolled the headers (and the close
+    // button) away with the content.
     if (!this._outPanelEl) {
       this._outPanelEl = document.createElement('div');
       this._outPanelEl.id = 'lz-left-panel';
       this._outPanelEl.className = 'ms-panel ms-theme-ops-dark';
-      this._outPanelEl.style.cssText = 'position: absolute; top: 14px; left: 14px; width: 400px; z-index: 1098; max-height: calc(100vh - 28px); display: none; flex-direction: column;';
+      this._outPanelEl.setAttribute('data-engine', 'landing-zone');
+      this._outPanelEl.style.cssText = 'top: 14px; left: 14px; width: 400px;';
       this._outPanelEl.innerHTML = this._outPanelHtml();
       document.body.appendChild(this._outPanelEl);
     }
@@ -660,16 +677,18 @@ export class LandingZoneEngine {
       this._ctrlPanelEl = document.createElement('div');
       this._ctrlPanelEl.id = 'lz-right-panel';
       this._ctrlPanelEl.className = 'ms-panel ms-theme-ops-dark';
-      this._ctrlPanelEl.style.cssText = 'position: absolute; top: 14px; right: 14px; width: 300px; z-index: 1098; max-height: calc(100vh - 28px); overflow-y: auto; display: none;';
+      this._ctrlPanelEl.setAttribute('data-engine', 'landing-zone');
+      this._ctrlPanelEl.style.cssText = 'top: 14px; right: 14px; width: 320px;';
       this._ctrlPanelEl.innerHTML = this._ctrlPanelHtml();
       document.body.appendChild(this._ctrlPanelEl);
       this._bindPanelEvents();
+      bindDisclosures(this._ctrlPanelEl);
     }
     if (!this._hintEl) {
       this._hintEl = document.createElement('div');
       this._hintEl.id = 'lz-hint';
-      this._hintEl.style.cssText = 'position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); z-index: 1098; display: none; font-family: monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 22px; border-radius: 6px; pointer-events: none; background: rgba(20, 24, 32, 0.94); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(90, 130, 200, 0.35));';
-      this._hintEl.textContent = 'Click map to search for landing spots';
+      this._hintEl.className = 'ms-map-hint';
+      this._hintEl.textContent = 'Click the map to set the LZ search centre';
       document.body.appendChild(this._hintEl);
     }
     this._makePanelDraggable(this._outPanelEl);
@@ -679,9 +698,12 @@ export class LandingZoneEngine {
 
   private _outPanelHtml(): string {
     return `
-      <div class="ms-header"><div class="ms-header-title">Landing Zone</div></div>
-      <div class="ms-body" style="display: flex; flex-direction: column; overflow-y: auto;">
-        <div style="padding: 14px 16px; border-bottom: var(--ms-divider); font-size: 14px; color: var(--ms-text-dim);" id="lz-sub">Click map or score a drawn zone</div>
+      <div class="ms-header">
+        <div class="ms-header-icon">LZ</div>
+        <div class="ms-header-title">Landing Zone</div>
+      </div>
+      <div class="ms-body" style="display: flex; flex-direction: column;">
+        <div style="padding: 14px 16px; border-bottom: var(--ms-divider); font-size: 14px; color: var(--ms-text-dim);" id="lz-sub">Pick a centre, or score a drawn zone</div>
         <div style="display: flex; align-items: center; gap: 20px; padding: 18px; border-bottom: var(--ms-divider);">
           <div style="position: relative; width: 130px; height: 130px; flex-shrink: 0;">
             <svg width="130" height="130" viewBox="0 0 90 90">
@@ -698,8 +720,8 @@ export class LandingZoneEngine {
         <div id="lz-factors" style="overflow-y: auto; flex: 1; padding: 14px 16px;">
           <div style="padding: 20px 12px; font-size: 13px; color: var(--ms-text-dim); text-align: center;">Factor scores appear after analysis.</div>
         </div>
-        <div id="lz-obstacle-list" style="display: none; border-top: var(--ms-divider); max-height: 130px; overflow-y: auto;">
-          <div style="font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ms-text-dim); padding: 6px 12px 3px;">Obstacles</div>
+        <div id="lz-obstacle-list" style="border-top: var(--ms-divider); max-height: 130px; overflow-y: auto;" hidden>
+          <div class="ms-section-title">Obstacles</div>
           <div id="lz-obstacle-rows"></div>
         </div>
       </div>
@@ -708,84 +730,228 @@ export class LandingZoneEngine {
 
   private _ctrlPanelHtml(): string {
     return `
-      <div class="ms-header">
+      <div class="ms-header" id="lz-drag-handle">
+        <div class="ms-header-icon">LZ</div>
         <div class="ms-header-title">Landing Zone</div>
-        <button class="ms-btn" id="lz-close-btn" title="Close" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">✕</button>
+        <div class="ms-status-dot ready" id="lz-status-dot"></div>
+        <div class="ms-status-lbl" id="lz-status">Ready</div>
+        <button class="ms-header-btn ms-btn-round" id="lz-help-btn" title="How landing zone assessment works">?</button>
+        <button class="ms-header-btn ms-btn-round" id="lz-minimize-btn" title="Minimize">&#9660;</button>
+        <button class="ms-header-btn ms-btn-round" id="lz-close-btn" title="Close (keeps graphics)">&#10005;</button>
       </div>
-      <div class="ms-body" style="display: flex; flex-direction: column; overflow-y: auto;">
-        <div style="padding: 8px 12px; font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim);" id="lz-status">Ready</div>
-        <div class="ms-section-title">Mode</div>
-        <div style="display: flex; gap: 6px; padding: 0 12px 8px;">
-          <button class="ms-btn" id="lz-mode-search" style="flex: 1;">Click-to-search</button>
-          <button class="ms-btn" id="lz-mode-zone" style="flex: 1;">Score drawn zone</button>
+      <div class="ms-help-popover" id="lz-help-popover" hidden>
+        <div class="ms-help-head">
+          <div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Landing Zone Planner</div>
+          </div>
+          <button class="ms-help-close" id="lz-help-close" title="Close">&#10005;</button>
         </div>
-        <div class="ms-section-title">Aircraft</div>
+        <div class="ms-help-body">
+          <p><strong style="color:#EF9F27">What it does.</strong> Rates a helicopter LZ/PZ/DZ out of 100 across six factors, finds the flat touchdown spots inside it, and flags the terrain that penetrates the approach glide surface.</p>
+          <p><strong style="color:#EF9F27">Two ways in.</strong></p>
+          <ul style="margin:0 0 9px;padding-left:16px;list-style:none">
+            <li><strong>Click-to-search</strong> — pick a centre and the engine searches the radius around it for the best touchdown spots.</li>
+            <li><strong>Score drawn zone</strong> — right-click a drawn LZ/PZ/DZ area and choose Landing Zone to score that exact footprint.</li>
+          </ul>
+          <p><strong style="color:#EF9F27">Grades.</strong> <span style="color:#1D9E75">GO</span> at 70+, <span style="color:#EF9F27">CAUTION</span> at 45-69, <span style="color:#DC3C30">NO-GO</span> below 45. Each of the six factors scores 0-20; the composite is their sum.</p>
+          <p><strong style="color:#EF9F27">Aircraft matters most.</strong> The type sets the touchdown + rotor clearance footprint (Light 35 m, Utility 50 m, Cargo 80 m, Heavy 100 m), which drives both the capacity count and the spacing between spots. Set it before reading capacity.</p>
+          <p><strong style="color:#EF9F27">Advanced.</strong> Max slope is the flat-ground threshold (7&deg; suits most rotary wing). Approach bearing orients the two corridor fans; threat axis feeds the concealment and defensibility factors. Search radius only applies in click-to-search.</p>
+          <p><strong style="color:#EF9F27">Reading the map.</strong> Green-to-red raster = slope suitability. Green circles = touchdown spots with rotor clearance rings, labelled H1, H2... Blue fans = clear approach/departure lanes, dashed red = obstructed. Triangles = obstacles, red ones penetrate the approach.</p>
+        </div>
+      </div>
+      <div class="ms-body">
+        <!-- Default view: how to pick the ground, the aircraft it has to take,
+             and Analyze. Everything else sits in the collapsed disclosure. -->
+        <div class="ms-section-title">Landing zone</div>
         <div class="ms-grid">
-          <div class="ms-field"><label class="ms-label">Type</label><select id="lz-inp-aircraft" class="ms-select">
-            <option value="light">Light</option><option value="utility" selected>Utility</option><option value="cargo">Cargo</option><option value="heavy">Heavy</option>
-          </select></div>
-          <div class="ms-field"><label class="ms-label">Count</label><input id="lz-inp-count" type="number" value="2" min="1" max="20" step="1" class="ms-input"></div>
+          <div class="ms-field full">
+            <label class="ms-label" for="lz-inp-mode">Assess</label>
+            <select id="lz-inp-mode" class="ms-select">
+              <option value="search" selected>A point I pick on the map</option>
+              <option value="zone">The drawn zone</option>
+            </select>
+          </div>
         </div>
-        <div class="ms-section-title">Terrain &amp; geometry</div>
-        ${this._sliderRow('Max slope (deg)', 'slope', 2, 15, 1, 7, '°')}
-        ${this._sliderRow('Approach bearing (deg)', 'approach', 0, 359, 5, 0, '°')}
-        ${this._sliderRow('Threat axis (deg)', 'threat', 0, 359, 5, 180, '°')}
-        <div id="lz-radius-row">${this._sliderRow('Search radius (m)', 'radius', 200, 2000, 50, 600)}</div>
-        <div class="ms-section-title">Overlays</div>
-        ${this._toggleRow('Suitability heatmap', 'heat', true)}
-        ${this._toggleRow('Touchdown spots', 'spots', true)}
-        ${this._toggleRow('Approach corridors', 'corridor', true)}
-        ${this._toggleRow('Obstacle callouts', 'obstacle', true)}
-        <div class="ms-divider" style="margin: 4px 0;"></div>
-        <div style="padding: 0 12px 9px;"><div style="height: 4px; background: var(--ms-bg-subtle); border-radius: 2px; overflow: hidden;"><div id="lz-prog-fill" style="height: 100%; background: linear-gradient(to right, var(--ms-accent), #378ADD); width: 0%; transition: width 0.12s;"></div></div><div id="lz-prog-label" style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); margin-top: 4px;">-</div></div>
-        <div style="display: flex; gap: 6px; padding: 9px 12px;">
-          <button class="ms-btn" id="lz-btn-clear" style="flex: 1;">Clear</button>
-          <button class="ms-btn ms-btn-primary" id="lz-btn-run" style="flex: 1;">Analyze</button>
+        <div class="ms-btn-row" id="lz-pick-row">
+          <button class="ms-btn primary" id="lz-btn-pick" title="Click, then tap the map to set the search centre">&#128205; Pick centre on map</button>
+        </div>
+        <div class="ms-coords" id="lz-centre-readout">No centre set</div>
+        <div class="ms-hint" id="lz-zone-note" hidden>Right-click a drawn LZ/PZ/DZ area and choose Landing Zone to load its footprint.</div>
+        <div class="ms-grid">
+          <div class="ms-field full">
+            <label class="ms-label" for="lz-inp-aircraft">Aircraft</label>
+            <select id="lz-inp-aircraft" class="ms-select">
+              <option value="light">${AIRCRAFT.light.label}</option>
+              <option value="utility" selected>${AIRCRAFT.utility.label}</option>
+              <option value="cargo">${AIRCRAFT.cargo.label}</option>
+              <option value="heavy">${AIRCRAFT.heavy.label}</option>
+            </select>
+          </div>
+        </div>
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="lz-btn-run">Analyze &#8599;</button>
+        </div>
+        <div class="ms-progress-wrap" id="lz-prog-wrap" hidden>
+          <div class="ms-progress-track"><div class="ms-progress-fill" id="lz-prog-fill"></div></div>
+          <div class="ms-progress-label" id="lz-prog-label">-</div>
+        </div>
+        <div class="ms-btn-row" id="lz-clear-row" hidden>
+          <button class="ms-btn danger" id="lz-btn-clear">Clear results</button>
+        </div>
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="lz-adv-toggle" aria-expanded="false" aria-controls="lz-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">&#9654;</span>
+            <span class="ms-disclosure-title">Advanced</span>
+            <span class="ms-disclosure-meta">Serials, slope, bearings, radius, overlays</span>
+          </button>
+          <div class="ms-disclosure-body" id="lz-adv-body" hidden>
+            <div class="ms-section-title">Lift</div>
+            <div class="ms-grid">
+              <div class="ms-field full">
+                <label class="ms-label" for="lz-inp-count">Aircraft in the serial</label>
+                <input id="lz-inp-count" type="number" value="2" min="1" max="20" step="1" class="ms-input">
+              </div>
+            </div>
+            <div class="ms-section-title">Terrain &amp; geometry</div>
+            ${this._sliderRow('Max slope', 'slope', 2, 15, 1, 7, '°')}
+            ${this._sliderRow('Approach bearing', 'approach', 0, 359, 5, 0, '°')}
+            ${this._sliderRow('Threat axis', 'threat', 0, 359, 5, 180, '°')}
+            <div id="lz-radius-row">${this._sliderRow('Search radius', 'radius', 200, 2000, 50, 600, ' m')}</div>
+            <div class="ms-section-title">Overlays</div>
+            ${this._toggleRow('Suitability heatmap', 'heat', true)}
+            ${this._toggleRow('Touchdown spots', 'spots', true)}
+            ${this._toggleRow('Approach corridors', 'corridor', true)}
+            ${this._toggleRow('Obstacle callouts', 'obstacle', true)}
+          </div>
         </div>
       </div>
     `;
   }
 
   private _sliderRow(label: string, id: string, min: number, max: number, step: number, value: number, suffix = ''): string {
-    return `<div style="display: flex; align-items: center; gap: 8px; padding: 0 12px 8px;"><label style="font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim); flex: 1.8;" class="ms-label">${label}</label><input id="lz-inp-${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" style="flex: 2; accent-color: var(--ms-accent); cursor: pointer;"><div id="lz-${id}-v" style="font-size: var(--ms-fs-xs); color: var(--ms-accent); min-width: 38px; text-align: right;">${value}${suffix}</div></div>`;
+    return `<div class="ms-slider-row"><div class="ms-slider-label">${label}</div><input id="lz-inp-${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"><div class="ms-slider-value" id="lz-${id}-v">${value}${suffix}</div></div>`;
   }
 
   private _toggleRow(label: string, id: string, checked: boolean): string {
-    return `<div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 12px;"><label style="font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim); cursor: pointer;" class="ms-label">${label}</label><input id="lz-opt-${id}" type="checkbox"${checked ? ' checked' : ''} style="accent-color: var(--ms-accent); width: 13px; height: 13px; cursor: pointer;"></div>`;
+    return `<div class="ms-toggle-row"><label for="lz-opt-${id}">${label}</label><input id="lz-opt-${id}" type="checkbox" class="ms-input"${checked ? ' checked' : ''}></div>`;
   }
 
   private _bindPanelEvents(): void {
     const p = this._ctrlPanelEl;
     if (!p) return;
-    [['slope', '°'], ['approach', '°'], ['threat', '°'], ['radius', '']].forEach(([id, suffix]) => {
-      this._input(`lz-inp-${id}`)?.addEventListener('input', () => this._setText(`lz-${id}-v`, `${this._input(`lz-inp-${id}`)?.value ?? ''}${suffix}`));
-    });
+    ([['slope', '°'], ['approach', '°'], ['threat', '°'], ['radius', ' m']] as Array<[string, string]>)
+      .forEach(([id, suffix]) => {
+        this._input(`lz-inp-${id}`)?.addEventListener('input', () => this._setText(`lz-${id}-v`, `${this._input(`lz-inp-${id}`)?.value ?? ''}${suffix}`));
+      });
+
     p.querySelector('#lz-close-btn')?.addEventListener('click', () => this.close());
-    p.querySelector('#lz-mode-search')?.addEventListener('click', () => { this._mode = 'search'; this._zonePolygon = null; this._syncModeUI(); this._bindMapClick(); });
-    p.querySelector('#lz-mode-zone')?.addEventListener('click', () => { this._mode = 'zone'; this._syncModeUI(); this._unbindMapClick(); });
-    p.querySelector('#lz-btn-run')?.addEventListener('click', () => {
-      if (this._mode === 'zone' && this._zonePolygon) {
-        const c = polygonCentroid(this._zonePolygon);
-        if (c) void this._run(new Point({ longitude: c.longitude ?? c.x, latitude: c.latitude ?? c.y, spatialReference: WGS84 }));
-      } else {
-        this._setStatus('ready', 'Click the map to choose a search centre');
-      }
-    });
+    p.querySelector('#lz-btn-pick')?.addEventListener('click', () => this._armPick(!this._picking));
     p.querySelector('#lz-btn-clear')?.addEventListener('click', () => this._clearAll());
+
+    p.querySelector('#lz-minimize-btn')?.addEventListener('click', () => {
+      const body = p.querySelector<HTMLElement>('.ms-body');
+      const btn = p.querySelector<HTMLElement>('#lz-minimize-btn');
+      if (!body || !btn) return;
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
+    });
+    p.querySelector('#lz-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = p.querySelector<HTMLElement>('#lz-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    p.querySelector('#lz-help-close')?.addEventListener('click', () => {
+      const help = p.querySelector<HTMLElement>('#lz-help-popover');
+      if (help) help.hidden = true;
+    });
+
+    p.querySelector('#lz-inp-mode')?.addEventListener('change', () => {
+      this._mode = this._select('lz-inp-mode', 'search') === 'zone' ? 'zone' : 'search';
+      if (this._mode === 'search') this._zonePolygon = null;
+      this._armPick(false);
+      this._syncModeUI();
+    });
+
+    p.querySelector('#lz-btn-run')?.addEventListener('click', () => void this._runFromPanel());
+  }
+
+  /**
+   * Analyze with whatever centre the panel already holds. Previously this
+   * button only ever printed "click the map" in search mode, so changing the
+   * aircraft or the slope threshold after a search left the old result on the
+   * map with no way to recompute short of clicking again.
+   */
+  private async _runFromPanel(): Promise<void> {
+    if (this._mode === 'zone') {
+      if (!this._zonePolygon) {
+        this._setStatus('ready', 'No drawn zone loaded');
+        return;
+      }
+      const c = polygonCentroid(this._zonePolygon);
+      if (c) {
+        await this._run(new Point({ longitude: c.longitude ?? c.x, latitude: c.latitude ?? c.y, spatialReference: WGS84 }));
+      }
+      return;
+    }
+    if (!this._lastCenter) {
+      this._armPick(true);
+      this._setStatus('ready', 'Pick a centre on the map first');
+      return;
+    }
+    await this._run(this._lastCenter);
   }
 
   private _syncModeUI(): void {
-    const search = this._button('lz-mode-search');
-    const zone = this._button('lz-mode-zone');
-    if (search) search.style.background = this._mode === 'search' ? 'rgba(55,138,221,0.18)' : '';
-    if (zone) zone.style.background = this._mode === 'zone' ? 'rgba(55,138,221,0.18)' : '';
+    const mode = this._el('lz-inp-mode') as HTMLSelectElement | null;
+    if (mode && mode.value !== this._mode) mode.value = this._mode;
+
+    const pickRow = this._el('lz-pick-row');
+    if (pickRow) pickRow.hidden = this._mode !== 'search';
+    const readout = this._el('lz-centre-readout');
+    if (readout) readout.hidden = this._mode !== 'search';
+    const zoneNote = this._el('lz-zone-note');
+    if (zoneNote) zoneNote.hidden = this._mode !== 'zone' || !!this._zonePolygon;
+
     const radiusRow = this._el('lz-radius-row');
-    if (radiusRow) radiusRow.style.display = this._mode === 'search' ? 'block' : 'none';
+    if (radiusRow) radiusRow.hidden = this._mode !== 'search';
+
     if (this._hintEl) {
       this._hintEl.textContent = this._mode === 'search'
-        ? 'Click map to search for landing spots'
-        : 'Adjust parameters, then Analyze the drawn zone';
+        ? 'Click the map to set the LZ search centre'
+        : 'Adjust the parameters, then Analyze the drawn zone';
     }
+  }
+
+  private _setCentreReadout(pt: Point | null): void {
+    const lon = pt?.longitude ?? pt?.x;
+    const lat = pt?.latitude ?? pt?.y;
+    this._setText(
+      'lz-centre-readout',
+      pt && lon != null && lat != null ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : 'No centre set',
+    );
+  }
+
+  /** Reveal the output rows (progress track, Clear) once a run has started. */
+  private _revealResults(on: boolean): void {
+    const clear = this._el('lz-clear-row');
+    if (clear) clear.hidden = !on;
+    const prog = this._el('lz-prog-wrap');
+    if (prog) prog.hidden = !on;
+  }
+
+  /**
+   * Arm a one-shot map pick. The old panel bound a click handler for the whole
+   * time it was open, so every stray map click kicked off a full terrain
+   * sample — and nothing else on the map was selectable while it was up.
+   */
+  private _armPick(on: boolean): void {
+    this._picking = on;
+    this._el('lz-btn-pick')?.classList.toggle('ms-armed', on);
+    this._hintEl?.classList.toggle('ms-visible', on);
+    if (on) this._bindMapClick();
+    else this._unbindMapClick();
   }
 
   private _bindMapClick(): void {
@@ -795,6 +961,7 @@ export class LandingZoneEngine {
       const mp = event.mapPoint as Point | null;
       if (!mp) return;
       const pt = new Point({ longitude: mp.longitude ?? mp.x, latitude: mp.latitude ?? mp.y, spatialReference: WGS84 });
+      this._armPick(false);
       await this._run(pt);
     });
   }
@@ -839,8 +1006,8 @@ export class LandingZoneEngine {
     const wrap = this._el('lz-obstacle-list');
     const rows = this._el('lz-obstacle-rows');
     if (!wrap || !rows) return;
-    if (!obstacles.length) { wrap.style.display = 'none'; return; }
-    wrap.style.display = 'block';
+    wrap.hidden = !obstacles.length;
+    if (!obstacles.length) return;
     rows.innerHTML = '';
     obstacles
       .slice()
@@ -875,7 +1042,7 @@ export class LandingZoneEngine {
   private _clearAll(): void {
     [this._zoneLayer, this._markerLayer, this._corridorLayer, this._obstacleLayer].forEach((l) => l.removeAll());
     this._clearOverlays();
-    this._setText('lz-sub', 'Click map or score a drawn zone');
+    this._setText('lz-sub', 'Pick a centre, or score a drawn zone');
     this._setText('lz-num', '-');
     this._setText('lz-grade', '-');
     this._setText('lz-desc', 'Place or select a zone to assess.');
@@ -884,7 +1051,10 @@ export class LandingZoneEngine {
     const factors = this._el('lz-factors');
     if (factors) factors.innerHTML = '<div style="padding: 20px 12px; font-size: 13px; color: var(--ms-text-dim); text-align: center;">Factor scores appear after analysis.</div>';
     const obs = this._el('lz-obstacle-list');
-    if (obs) obs.style.display = 'none';
+    if (obs) obs.hidden = true;
+    this._lastCenter = null;
+    this._setCentreReadout(null);
+    this._revealResults(false);
     this._setProgress(0, '-');
     this._setStatus('ready', 'Ready');
   }
@@ -904,15 +1074,14 @@ export class LandingZoneEngine {
   }
 
   private _showPanels(): void {
-    if (this._outPanelEl) this._outPanelEl.style.display = 'flex';
-    if (this._ctrlPanelEl) this._ctrlPanelEl.style.display = 'block';
-    if (this._hintEl) this._hintEl.style.display = 'block';
+    this._outPanelEl?.classList.add('ms-visible');
+    this._ctrlPanelEl?.classList.add('ms-visible');
   }
 
   private _hidePanels(): void {
-    if (this._outPanelEl) this._outPanelEl.style.display = 'none';
-    if (this._ctrlPanelEl) this._ctrlPanelEl.style.display = 'none';
-    if (this._hintEl) this._hintEl.style.display = 'none';
+    this._outPanelEl?.classList.remove('ms-visible');
+    this._ctrlPanelEl?.classList.remove('ms-visible');
+    this._hintEl?.classList.remove('ms-visible');
   }
 
   private _makePanelDraggable(panel: HTMLDivElement | null): void {
@@ -961,9 +1130,10 @@ export class LandingZoneEngine {
     const el = this._el('lz-status');
     if (s === 'done') EngineLogger.success(ENGINE_NAME, t);
     else EngineLogger.nextStep(ENGINE_NAME, t);
-    if (el) {
-      el.textContent = t;
-      el.style.color = s === 'running' ? '#EF9F27' : 'var(--ms-accent)';
+    if (el) el.textContent = t;
+    const dot = this._el('lz-status-dot');
+    if (dot) {
+      dot.className = `ms-status-dot ${s === 'running' ? 'running' : 'ready'}`;
     }
   }
 

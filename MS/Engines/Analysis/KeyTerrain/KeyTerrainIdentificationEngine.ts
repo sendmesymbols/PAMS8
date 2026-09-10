@@ -566,9 +566,9 @@ export class KeyTerrainIdentificationEngine {
       const body = this._controlPanelEl?.querySelector<HTMLElement>('.ms-body');
       const btn = this._controlPanelEl?.querySelector<HTMLElement>('#kt-minimize-btn');
       if (!body || !btn) return;
-      const minimized = body.classList.contains('ms-minimized');
-      body.classList.toggle('ms-minimized', !minimized);
-      btn.textContent = !minimized ? '▼' : '▶';
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
     });
     this._controlPanelEl?.querySelector('#kt-close-btn')?.addEventListener('click', () => {
       this.close();

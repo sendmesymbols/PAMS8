@@ -29,6 +29,7 @@ import GraphicsLayerManager, {
   LEGACY_MIL_SYMBOLS_LAYER_ID,
 } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 const ENGINE_NAME = 'Combat Power';
 const PANEL_ID = 'combatPowerPanel';
@@ -54,9 +55,37 @@ const ECHELON_WEIGHT: Record<string, number> = {
   '25': 40000,  // Region / Theater
 };
 
+/** Display names for the echelon codes, for the Force detail breakdown. */
+const ECHELON_LABEL: Record<string, string> = {
+  '11': 'Team / Crew',
+  '12': 'Squad',
+  '13': 'Section',
+  '14': 'Platoon',
+  '15': 'Company',
+  '16': 'Battalion',
+  '17': 'Regiment',
+  '18': 'Brigade',
+  '21': 'Division',
+  '22': 'Corps',
+  '23': 'Army',
+  '24': 'Army Group',
+  '25': 'Theater',
+  none: 'No echelon',
+};
+
+/** Verdict tone per posture, driving the header dot and the posture line. */
+const POSTURE_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
+  'Deliberate attack': 'success',
+  'Hasty attack': 'success',
+  'Near parity': 'warning',
+  Outnumbered: 'danger',
+  Uncontested: 'info',
+  'No forces': 'info',
+};
+
 // Single icon with no echelon field (equipment, lone marker) counts as one.
 const BASE_WEIGHT = 1;
-const NO_ECHELON = '—';
+const NO_ECHELON = 'none';
 
 export interface SideTally {
   totalValue: number;
@@ -81,6 +110,9 @@ const emptyTally = (): SideTally => ({ totalValue: 0, unitCount: 0, byEchelon: {
 export default class CombatPowerEngine {
   private static _instance: CombatPowerEngine | null = null;
   private _panel: HTMLElement | null = null;
+  private _view: MapView | SceneView | null = null;
+  private _layerHandles: any[] = [];
+  private _refreshTimer: number | null = null;
 
   static getInstance(): CombatPowerEngine {
     if (!CombatPowerEngine._instance) {
@@ -239,8 +271,12 @@ export default class CombatPowerEngine {
       EngineLogger.error(ENGINE_NAME, 'No active view — cannot compute combat power.');
       return;
     }
+    this._view = view;
+    this._ensurePanel();
+    this._panel?.classList.add('ms-visible');
+    this._watchLayers(view);
     const result = this.compute(view);
-    this._render(view, result);
+    this._update(result);
     EngineLogger.success(
       ENGINE_NAME,
       `Force ratio ${result.ratio === null ? 'N/A' : result.ratio.toFixed(2) + ':1'} — ${result.posture}.`,
@@ -248,82 +284,262 @@ export default class CombatPowerEngine {
   }
 
   close(): void {
-    this._panel?.remove();
-    this._panel = null;
+    this._unwatchLayers();
+    this._panel?.classList.remove('ms-visible');
   }
 
   destroy(): void {
-    this.close();
+    this._unwatchLayers();
+    this._panel?.remove();
+    this._panel = null;
+    this._view = null;
+  }
+
+  /**
+   * Recompute whenever a unit symbol is added, removed or re-affiliated. The
+   * panel used to read the map once at open and then sit there: place another
+   * battalion and the ratio silently stayed wrong until you found the ⟳.
+   */
+  private _watchLayers(view: MapView | SceneView): void {
+    this._unwatchLayers();
+    const glm = GraphicsLayerManager.getInstance(view);
+    [LAYER_NAMES.FORCE, LEGACY_MIL_SYMBOLS_LAYER_ID].forEach((id) => {
+      const layer = glm.getLayer(id);
+      const handle = (layer as any)?.graphics?.on?.('change', () => this._scheduleRefresh());
+      if (handle) this._layerHandles.push(handle);
+    });
+  }
+
+  private _unwatchLayers(): void {
+    this._layerHandles.forEach((h) => { try { h.remove(); } catch { /* already gone */ } });
+    this._layerHandles = [];
+    if (this._refreshTimer !== null) {
+      window.clearTimeout(this._refreshTimer);
+      this._refreshTimer = null;
+    }
+  }
+
+  /** Coalesce a burst of layer changes (a paste, a plan load) into one pass. */
+  private _scheduleRefresh(): void {
+    if (this._refreshTimer !== null) window.clearTimeout(this._refreshTimer);
+    this._refreshTimer = window.setTimeout(() => {
+      this._refreshTimer = null;
+      if (!this._view || !this._panel?.classList.contains('ms-visible')) return;
+      this._update(this.compute(this._view));
+    }, 180);
   }
 
   private _ensurePanel(): HTMLElement {
     if (this._panel) return this._panel;
     const el = document.createElement('div');
     el.id = PANEL_ID;
-    el.style.cssText = [
-      'position:fixed', 'top:70px', 'right:20px', 'z-index:9999',
-      'width:300px', 'padding:14px 16px',
-      'background:rgba(13,17,23,0.96)', 'border:1px solid rgba(100,160,230,0.35)',
-      'border-radius:10px', 'box-shadow:0 8px 30px rgba(0,0,0,0.5)',
-      'font-family:system-ui,Segoe UI,sans-serif', 'color:#e8f4ff',
-      'font-size:13px', 'backdrop-filter:blur(6px)',
-    ].join(';');
+    el.className = 'ms-panel ms-theme-ops-dark';
+    el.setAttribute('data-engine', 'combat-power');
+    // z-index 9999 put this panel above every menu in the app, including the
+    // command palette. Widgets live at 1098.
+    el.style.cssText = 'top: 70px; right: 20px; width: 300px; z-index: 1098;';
+    el.innerHTML = this._panelHtml();
     document.body.appendChild(el);
     this._panel = el;
+
+    el.querySelector('#cp-close')?.addEventListener('click', () => this.close());
+    el.querySelector('#cp-refresh')?.addEventListener('click', () => {
+      if (this._view) this._update(this.compute(this._view));
+    });
+    el.querySelector('#cp-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = el.querySelector<HTMLElement>('#cp-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    el.querySelector('#cp-help-close')?.addEventListener('click', () => {
+      const help = el.querySelector<HTMLElement>('#cp-help-popover');
+      if (help) help.hidden = true;
+    });
+    el.querySelector('#cp-min-btn')?.addEventListener('click', () => {
+      const body = el.querySelector<HTMLElement>('.ms-body');
+      const btn = el.querySelector<HTMLElement>('#cp-min-btn');
+      if (!body || !btn) return;
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
+    });
+
+    bindDisclosures(el);
+    this._makeDraggable(el);
     return el;
   }
 
-  private _render(view: MapView | SceneView, r: CombatPowerResult): void {
-    const el = this._ensurePanel();
-    const ratioStr = r.ratio === null ? '—' : `${r.ratio.toFixed(2)} : 1`;
-    const postureColor =
-      r.posture === 'Deliberate attack' ? '#4caf50' :
-      r.posture === 'Hasty attack' ? '#8bc34a' :
-      r.posture === 'Near parity' ? '#ffb74d' :
-      r.posture === 'Outnumbered' ? '#ef5350' : '#7eb4e8';
-
-    const sideRow = (label: string, t: SideTally, color: string) =>
-      `<tr>
-         <td style="color:${color};padding:2px 8px 2px 0;font-weight:600">${label}</td>
-         <td style="text-align:right;color:#e8f4ff;font-variant-numeric:tabular-nums">${t.totalValue}</td>
-         <td style="text-align:right;color:#8aa;padding-left:8px">${t.unitCount}</td>
-       </tr>`;
-
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;
-                  border-bottom:1px solid rgba(100,160,230,0.3);padding-bottom:6px;margin-bottom:8px">
-        <span style="color:#64b4ff;font-weight:700">⚔ Combat Power</span>
-        <span>
-          <button id="cp-refresh" title="Recompute" style="background:none;border:none;color:#7eb4e8;cursor:pointer;font-size:14px">⟳</button>
-          <button id="cp-close" title="Close" style="background:none;border:none;color:#7eb4e8;cursor:pointer;font-size:14px">✕</button>
-        </span>
+  /**
+   * Built once. Recomputing only writes values into these nodes — re-running
+   * innerHTML would collapse the Force detail disclosure on every refresh.
+   */
+  private _panelHtml(): string {
+    return `
+      <div class="ms-header" id="cp-drag-handle">
+        <span class="ms-header-icon">CBT</span>
+        <span class="ms-header-title">Combat Power</span>
+        <span class="ms-status-dot" id="cp-status-dot"></span>
+        <span class="ms-status-lbl" id="cp-status-lbl">Reading map</span>
+        <button class="ms-header-btn ms-btn-round" id="cp-help-btn" title="How the force ratio is derived">?</button>
+        <button class="ms-header-btn ms-btn-round" id="cp-min-btn" title="Minimize">&#9660;</button>
+        <button class="ms-header-btn ms-btn-round" id="cp-close" title="Close">&#10005;</button>
       </div>
-
-      <table style="width:100%;border-spacing:0">
-        <tr style="color:#6b8;font-size:11px;text-transform:uppercase">
-          <td></td><td style="text-align:right">Power</td><td style="text-align:right;padding-left:8px">Units</td>
-        </tr>
-        ${sideRow('Friendly', r.friendly, '#5b9bd5')}
-        ${sideRow('Hostile', r.hostile, '#ef5350')}
-        ${r.neutral.unitCount ? sideRow('Neutral', r.neutral, '#4caf50') : ''}
-        ${r.unknown.unitCount ? sideRow('Unknown', r.unknown, '#ffd54f') : ''}
-      </table>
-
-      <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(100,160,230,0.2);
-                  display:flex;align-items:baseline;justify-content:space-between">
-        <span style="color:#8aa">Ratio (F : H)</span>
-        <span style="font-size:20px;font-weight:700;color:#e8f4ff;font-variant-numeric:tabular-nums">${ratioStr}</span>
+      <div class="ms-help-popover" id="cp-help-popover" hidden>
+        <div class="ms-help-head">
+          <div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Combat Power &amp; Force Ratio</div>
+          </div>
+          <button class="ms-help-close" id="cp-help-close" title="Close">&#10005;</button>
+        </div>
+        <div class="ms-help-body">
+          <p><strong style="color:#EF9F27">What it does.</strong> Sums the relative combat power of every unit symbol on the map by affiliation and reports the FRIENDLY : HOSTILE ratio against the 3:1 rule. It reads the map and recomputes itself as you place symbols — there is nothing to set.</p>
+          <p><strong style="color:#EF9F27">The verdict scale.</strong></p>
+          <ul style="margin:0 0 9px;padding-left:16px;list-style:none">
+            <li><span style="color:#1D9E75">3:1 or better</span> — meets the doctrinal minimum for a deliberate attack.</li>
+            <li><span style="color:#78C840">2:1 to 3:1</span> — supports a hasty attack, short of the deliberate minimum.</li>
+            <li><span style="color:#EF9F27">1:1 to 2:1</span> — near parity; attacking without an advantage is not recommended.</li>
+            <li><span style="color:#DC3C30">below 1:1</span> — outnumbered; favour a defensive posture.</li>
+          </ul>
+          <p><strong style="color:#EF9F27">Weighting.</strong> Power comes from the echelon field of each symbol's SIDC (positions 9-10), on a relative scale where each tier is roughly three times the one below: team 1, squad 2, platoon 4, company 13, battalion 45, brigade 150, division 450. A symbol with no echelon (equipment, a lone marker) counts as 1. Open <strong>Force detail</strong> to see the per-echelon breakdown behind each side's total.</p>
+          <p><strong style="color:#EF9F27">Limitations — read before briefing.</strong> These are deliberate ESTIMATES, not WEI/WUV scores: they give a meaningful relative ratio and nothing more. Nothing here accounts for posture, terrain, fires, logistics or morale. Only unit and equipment symbols on the force layer are counted — tactical control measures are ignored, and so is anything drawn on another layer.</p>
+        </div>
       </div>
-      <div style="margin-top:6px;color:${postureColor};font-weight:600">${r.posture}</div>
-      <div style="margin-top:2px;color:#9bb;font-size:12px;line-height:1.35">${r.verdict}</div>
-      <div style="margin-top:8px;color:#667;font-size:10px;font-style:italic">
-        Relative estimate by echelon — not WEI/WUV. Counts FORCE-layer unit symbols only.
+      <div class="ms-body">
+        <div class="ms-info-grid">
+          <div class="ms-info-item">
+            <div class="ms-info-label">Friendly power</div>
+            <div class="ms-info-value cp-friendly" id="cp-friendly-val">-</div>
+          </div>
+          <div class="ms-info-item">
+            <div class="ms-info-label">Hostile power</div>
+            <div class="ms-info-value cp-hostile" id="cp-hostile-val">-</div>
+          </div>
+        </div>
+        <div class="cp-ratio">
+          <span class="cp-ratio-lbl">Ratio (F : H)</span>
+          <span class="cp-ratio-val" id="cp-ratio">-</span>
+        </div>
+        <div class="cp-posture" id="cp-posture">-</div>
+        <div class="ms-status" id="cp-verdict">Place unit symbols to compute a force ratio.</div>
+        <div class="ms-btn-row">
+          <button class="ms-btn primary" id="cp-refresh" title="Recompute from the map now">Recompute &#10227;</button>
+        </div>
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="cp-detail-toggle" aria-expanded="false" aria-controls="cp-detail-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">&#9654;</span>
+            <span class="ms-disclosure-title">Force detail</span>
+            <span class="ms-disclosure-meta">Per-side totals and echelon breakdown</span>
+          </button>
+          <div class="ms-disclosure-body" id="cp-detail-body" hidden>
+            <div class="ms-section-title">By affiliation</div>
+            <table class="cp-table" id="cp-side-table"></table>
+            <div class="ms-section-title">By echelon</div>
+            <table class="cp-table" id="cp-echelon-table"></table>
+            <div class="ms-hint">Relative estimate by echelon — not WEI/WUV. Counts force-layer unit symbols only.</div>
+          </div>
+        </div>
       </div>
     `;
+  }
 
-    el.querySelector<HTMLButtonElement>('#cp-close')?.addEventListener('click', () => this.close());
-    el.querySelector<HTMLButtonElement>('#cp-refresh')?.addEventListener('click', () =>
-      this._render(view, this.compute(view)),
-    );
+  /** Write the current result into the panel that _ensurePanel already built. */
+  private _update(r: CombatPowerResult): void {
+    const el = this._panel;
+    if (!el) return;
+
+    const text = (id: string, value: string) => {
+      const node = el.querySelector<HTMLElement>(`#${id}`);
+      if (node) node.textContent = value;
+    };
+
+    text('cp-friendly-val', String(r.friendly.totalValue));
+    text('cp-hostile-val', String(r.hostile.totalValue));
+    text('cp-ratio', r.ratio === null ? '-' : `${r.ratio.toFixed(2)} : 1`);
+    text('cp-posture', r.posture);
+    text('cp-verdict', r.verdict);
+    text('cp-status-lbl', r.posture);
+
+    const tone = POSTURE_TONE[r.posture] ?? 'info';
+    const posture = el.querySelector<HTMLElement>('#cp-posture');
+    if (posture) posture.className = `cp-posture cp-${tone}`;
+    const verdict = el.querySelector<HTMLElement>('#cp-verdict');
+    if (verdict) {
+      verdict.className = `ms-status ${tone === 'success' ? 'success' : tone === 'danger' ? 'warning' : ''}`.trim();
+    }
+    const dot = el.querySelector<HTMLElement>('#cp-status-dot');
+    if (dot) {
+      dot.className = `ms-status-dot ${tone === 'success' ? 'ready' : tone === 'danger' ? 'warning' : 'running'}`;
+    }
+
+    const sides: Array<[string, SideTally]> = [
+      ['Friendly', r.friendly],
+      ['Hostile', r.hostile],
+      ['Neutral', r.neutral],
+      ['Unknown', r.unknown],
+    ];
+    const sideTable = el.querySelector<HTMLElement>('#cp-side-table');
+    if (sideTable) {
+      sideTable.innerHTML =
+        '<tr><th></th><th>Power</th><th>Symbols</th></tr>' +
+        sides.map(([label, t]) =>
+          `<tr><td class="cp-${label.toLowerCase()}">${label}</td><td>${t.totalValue}</td><td>${t.unitCount}</td></tr>`,
+        ).join('');
+    }
+
+    // byEchelon has always been computed and never shown. It is the only real
+    // explanation of where a side's total came from, so it goes here.
+    const echTable = el.querySelector<HTMLElement>('#cp-echelon-table');
+    if (echTable) {
+      const codes = Array.from(new Set([
+        ...Object.keys(r.friendly.byEchelon),
+        ...Object.keys(r.hostile.byEchelon),
+      ])).sort((a, b) => (ECHELON_WEIGHT[b] ?? 0) - (ECHELON_WEIGHT[a] ?? 0));
+      echTable.innerHTML = codes.length
+        ? '<tr><th>Echelon</th><th class="cp-friendly">F</th><th class="cp-hostile">H</th><th>Each</th></tr>' +
+          codes.map((code) => {
+            const f = r.friendly.byEchelon[code];
+            const h = r.hostile.byEchelon[code];
+            const each = code === NO_ECHELON ? BASE_WEIGHT : ECHELON_WEIGHT[code];
+            return `<tr><td>${ECHELON_LABEL[code] ?? code}</td>`
+              + `<td>${f ? f.count : '-'}</td>`
+              + `<td>${h ? h.count : '-'}</td>`
+              + `<td>${each}</td></tr>`;
+          }).join('')
+        : '<tr><td colspan="4" class="cp-empty">No unit symbols on the force layer.</td></tr>';
+    }
+  }
+
+  private _makeDraggable(panel: HTMLElement): void {
+    const handle = panel.querySelector<HTMLElement>('.ms-header');
+    if (!handle) return;
+    let ox = 0;
+    let oy = 0;
+
+    const onMove = (e: MouseEvent) => {
+      const maxLeft = window.innerWidth - panel.offsetWidth - 4;
+      const maxTop = window.innerHeight - panel.offsetHeight - 4;
+      panel.style.left = `${Math.max(0, Math.min(e.clientX - ox, maxLeft))}px`;
+      panel.style.top = `${Math.max(0, Math.min(e.clientY - oy, maxTop))}px`;
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.userSelect = '';
+    };
+
+    handle.addEventListener('mousedown', (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest('button, input, select')) return;
+      const rect = panel.getBoundingClientRect();
+      panel.style.left = `${rect.left}px`;
+      panel.style.top = `${rect.top}px`;
+      panel.style.right = 'auto';
+      ox = e.clientX - rect.left;
+      oy = e.clientY - rect.top;
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    });
   }
 }

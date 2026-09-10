@@ -8,6 +8,7 @@ import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 import EngineLogger from '../../../Support/EngineLogger';
+import { bindDisclosures } from '../../../Support/Disclosure';
 
 /**
  * AirspaceEngine
@@ -60,6 +61,12 @@ const TYPE_COLOR: Record<AirspaceType, [number, number, number]> = {
 
 let _volumeSeq = 1;
 
+/** Auto-designations handed out in order so repeated draws do not all collide. */
+const AUTO_NAMES = [
+  'ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT',
+  'GOLF', 'HOTEL', 'INDIA', 'JULIET', 'KILO', 'LIMA',
+];
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -84,11 +91,13 @@ export class AirspaceEngine {
   private _conflictLayer!: GraphicsLayer;
 
   private _panelEl: HTMLDivElement | null = null;
+  private _hintEl: HTMLDivElement | null = null;
   private _draggableBound: WeakSet<HTMLElement> = new WeakSet();
   private _sketch: SketchViewModel | null = null;
 
   private _volumes: AirspaceVolume[] = [];
   private _activeId: number | null = null;
+  private _renderSeq = 0;
 
   constructor() {
     this._createLayers();
@@ -133,6 +142,7 @@ export class AirspaceEngine {
 
   close(): void {
     try { this._sketch?.cancel(); } catch {}
+    this._armDraw(false);
     this._hidePanel();
   }
 
@@ -147,6 +157,8 @@ export class AirspaceEngine {
     }
     this._panelEl?.remove();
     this._panelEl = null;
+    this._hintEl?.remove();
+    this._hintEl = null;
     this._volumes = [];
     this._view = null;
   }
@@ -195,7 +207,7 @@ export class AirspaceEngine {
     const vol: AirspaceVolume = {
       id: _volumeSeq++,
       type,
-      name: (this._input('airspace-name')?.value || `Airspace ${_volumeSeq}`).trim(),
+      name: this._nameForNewVolume(),
       polygon: poly,
       floor: this._num('airspace-floor', 0),
       ceiling: this._num('airspace-ceiling', 1000),
@@ -220,7 +232,9 @@ export class AirspaceEngine {
       defaultCreateOptions: { mode: 'click' } as any,
     } as any);
     this._sketch.on('create', (event: any) => {
+      if (event.state === 'cancel') { this._armDraw(false); return; }
       if (event.state !== 'complete') return;
+      this._armDraw(false);
       const geom = event.graphic?.geometry;
       if (!geom || geom.type !== 'polygon') return;
       const poly = this._toGeographicPolygon(geom);
@@ -236,8 +250,22 @@ export class AirspaceEngine {
     if (!this._view) return;
     this._ensureSketch();
     try { this._sketch?.cancel(); } catch {}
-    this._setStatus('Draw the footprint — click vertices, double-click to finish', 'ok');
+    this._armDraw(true);
+    this._setStatus('Drawing footprint', 'run');
     this._sketch?.create('polygon');
+  }
+
+  /**
+   * Designation for a newly drawn volume. The name field doubles as the
+   * template for the next draw, so an untouched (or already-taken) value hands
+   * out the next free phonetic name instead of stamping every footprint ALPHA.
+   */
+  private _nameForNewVolume(): string {
+    const typed = (this._input('airspace-name')?.value ?? '').trim();
+    const taken = this._volumes.some((v) => v.name.toUpperCase() === typed.toUpperCase());
+    if (typed && !taken) return typed;
+    const used = new Set(this._volumes.map((v) => v.name.toUpperCase()));
+    return AUTO_NAMES.find((n) => !used.has(n)) ?? `AIRSPACE ${_volumeSeq}`;
   }
 
   /** Resolve a band value (in its unit) to absolute metres MSL. */
@@ -257,24 +285,37 @@ export class AirspaceEngine {
 
   private async _renderAll(): Promise<void> {
     if (!this._view) return;
+
+    // Elevation lookups make this async, and it is called on every edit. Two
+    // runs used to interleave — the later run's removeAll() landed before the
+    // earlier run's adds — which stacked duplicate footprints and labels on the
+    // map. Resolve every elevation first, then bail if a newer run has started,
+    // then clear and draw in one synchronous pass (which also removes the flash
+    // of an empty map while the elevation query is in flight).
+    const token = ++this._renderSeq;
+
+    for (const vol of this._volumes) {
+      // Resolve ground elevation at the centroid (best effort) for AGL bands.
+      if (vol.altMode !== 'AGL') continue;
+      try {
+        const c = polygonCentroid(vol.polygon);
+        if (c) {
+          const er = await (this._view.map as any).ground.queryElevation(
+            new Point({ longitude: c.longitude ?? c.x, latitude: c.latitude ?? c.y, spatialReference: WGS84 }),
+          );
+          vol.groundZ = (er?.geometry?.z ?? 0) as number;
+        }
+      } catch { vol.groundZ = 0; }
+    }
+
+    if (token !== this._renderSeq || !this._view) return;
+
     this._footprintLayer.removeAll();
     this._labelLayer.removeAll();
     this._volumeLayer.removeAll();
 
     const is3d = this._view.type === '3d';
     for (const vol of this._volumes) {
-      // Resolve ground elevation at the centroid (best effort) for AGL bands.
-      if (vol.altMode === 'AGL') {
-        try {
-          const c = polygonCentroid(vol.polygon);
-          if (c) {
-            const er = await (this._view.map as any).ground.queryElevation(
-              new Point({ longitude: c.longitude ?? c.x, latitude: c.latitude ?? c.y, spatialReference: WGS84 }),
-            );
-            vol.groundZ = (er?.geometry?.z ?? 0) as number;
-          }
-        } catch { vol.groundZ = 0; }
-      }
       this._drawFootprint(vol);
       this._drawLabel(vol);
       if (is3d) this._drawVolume(vol);
@@ -299,8 +340,13 @@ export class AirspaceEngine {
     const c = polygonCentroid(vol.polygon);
     if (!c) return;
     const [r, g, b] = TYPE_COLOR[vol.type];
-    const band = `${this._bandLabel(vol.floor, vol.altMode)} – ${this._bandLabel(vol.ceiling, vol.altMode)}`;
-    const dtg = vol.dtgFrom || vol.dtgTo ? `\n${vol.dtgFrom || '—'} / ${vol.dtgTo || '—'}` : '';
+    // ASCII only. A MapView TextSymbol renders NOTHING AT ALL when the
+    // string contains a glyph missing from the 2D font atlas: the en dash
+    // that separated floor from ceiling made every airspace label invisible
+    // in 2D, while 3D rendered it fine. The panel readout, which is ordinary
+    // DOM text, keeps the typographic dashes.
+    const band = `${this._bandLabel(vol.floor, vol.altMode)} - ${this._bandLabel(vol.ceiling, vol.altMode)}`;
+    const dtg = vol.dtgFrom || vol.dtgTo ? `\n${vol.dtgFrom || '-'} / ${vol.dtgTo || '-'}` : '';
     this._labelLayer.add(new Graphic({
       geometry: new Point({ longitude: c.longitude ?? c.x, latitude: c.latitude ?? c.y, spatialReference: WGS84 }),
       symbol: {
@@ -427,7 +473,16 @@ export class AirspaceEngine {
     if (c) {
       this._conflictLayer.add(new Graphic({
         geometry: new Point({ longitude: c.longitude ?? c.x, latitude: c.latitude ?? c.y, spatialReference: WGS84 }),
-        symbol: { type: 'text', text: '⚠', color: [255, 220, 0, 1], haloColor: [120, 0, 0, 1], haloSize: 2, font: { size: 16, weight: 'bold' } } as any,
+        // A marker, not a text glyph: the 2D font atlas has no warning sign, and
+        // a TextSymbol whose string carries a missing glyph renders nothing at
+        // all, so the conflict indicator was invisible on the map in 2D.
+        symbol: {
+          type: 'simple-marker',
+          style: 'triangle',
+          size: 15,
+          color: [255, 220, 0, 1],
+          outline: { color: [120, 0, 0, 1], width: 1.5 },
+        } as any,
         attributes: { type: 'airspace_conflict_label', label },
       }));
     }
@@ -484,6 +539,7 @@ export class AirspaceEngine {
     }
 
     void this._renderAll();
+    this._refreshVolumeSelect();
     this._setStatus(`${vol.type} ${vol.name} applied`, 'ok');
   }
 
@@ -494,51 +550,135 @@ export class AirspaceEngine {
     this._panelEl = document.createElement('div');
     this._panelEl.id = 'airspace-panel';
     this._panelEl.className = 'ms-panel ms-theme-ops-dark';
-    this._panelEl.style.cssText = 'position: absolute; top: 14px; right: 14px; width: 320px; z-index: 1098; max-height: calc(100vh - 28px); overflow-y: auto; display: none;';
+    this._panelEl.setAttribute('data-engine', 'airspace');
+    // Height and overflow come from .ms-panel / .ms-body. Capping the root here
+    // and giving it its own scrollbar made the header — and its close button —
+    // scroll away with the content.
+    this._panelEl.style.cssText = 'top: 14px; right: 14px; width: 320px; z-index: 1098;';
     this._panelEl.innerHTML = this._panelHtml();
     document.body.appendChild(this._panelEl);
     this._bindPanelEvents();
+    bindDisclosures(this._panelEl);
     this._makePanelDraggable(this._panelEl);
+
+    if (!this._hintEl) {
+      const hint = document.createElement('div');
+      hint.className = 'ms-map-hint';
+      hint.textContent = 'Click the map to place footprint vertices — double-click to finish';
+      document.body.appendChild(hint);
+      this._hintEl = hint;
+    }
   }
 
   private _panelHtml(): string {
     return `
-      <div class="ms-header">
-        <div class="ms-header-title">Airspace (ROZ / ACA)</div>
-        <button class="ms-btn" id="airspace-close-btn" title="Close" style="padding: 4px 8px; font-size: var(--ms-fs-xs);">✕</button>
+      <div class="ms-header" id="airspace-drag-handle">
+        <div class="ms-header-icon">ACM</div>
+        <div class="ms-header-title">Airspace</div>
+        <div class="ms-status-dot ready" id="airspace-status-dot"></div>
+        <div class="ms-status-lbl" id="airspace-status">Ready</div>
+        <button class="ms-header-btn ms-btn-round" id="airspace-help-btn" title="How airspace control measures work">?</button>
+        <button class="ms-header-btn ms-btn-round" id="airspace-minimize-btn" title="Minimize">▼</button>
+        <button class="ms-header-btn ms-btn-round" id="airspace-close-btn" title="Close (keeps graphics)">✕</button>
       </div>
-      <div class="ms-body" style="display: flex; flex-direction: column;">
-        <div style="padding: 8px 12px; font-size: var(--ms-fs-xs); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ms-text-dim);" id="airspace-status">Open or select a footprint</div>
-        <div class="ms-section-title">Active volume</div>
-        <div class="ms-grid">
-          <div class="ms-field" style="grid-column: 1/-1;"><label class="ms-label">Footprint</label><select id="airspace-volume-select" class="ms-select"><option value="">— none —</option></select></div>
+      <div class="ms-help-popover" id="airspace-help-popover" hidden>
+        <div class="ms-help-head">
+          <div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Airspace (ROZ / ACA)</div>
+          </div>
+          <button class="ms-help-close" id="airspace-help-close" title="Close">✕</button>
         </div>
-        <div style="padding: 0 12px 8px;"><button class="ms-btn ms-btn-primary" id="airspace-btn-draw" style="width: 100%;">✏ Draw footprint</button></div>
-        <div style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 0 12px 6px; line-height: 1.5;">No symbol needed — draw a footprint here, or right-click an existing area and choose Airspace.</div>
-        <div class="ms-section-title">Designation</div>
-        <div class="ms-grid">
-          <div class="ms-field"><label class="ms-label">Type</label><select id="airspace-type" class="ms-select"><option value="ROZ" selected>ROZ</option><option value="ACA">ACA</option></select></div>
-          <div class="ms-field"><label class="ms-label">Name</label><input id="airspace-name" type="text" value="ALPHA" class="ms-input"></div>
+        <div class="ms-help-body">
+          <p><strong style="color:#EF9F27">What it does.</strong> Authors airspace control measures as a footprint plus a floor/ceiling altitude band, then flags where those volumes overlap each other or a planned flight route in both plan and altitude.</p>
+          <p><strong style="color:#EF9F27">Measure types.</strong></p>
+          <ul style="margin:0 0 9px;padding-left:16px;list-style:none">
+            <li><span style="color:#DC3C30">ROZ</span> — Restricted Operations Zone. Restrictive: keeps other users out of the volume.</li>
+            <li><span style="color:#378ADD">ACA</span> — Airspace Coordination Area. Coordinating: deconflicts surface fires from air.</li>
+          </ul>
+          <p><strong style="color:#EF9F27">Workflow.</strong></p>
+          <ol>
+            <li>Hit <strong>Draw footprint</strong> and click the plan shape on the map.</li>
+            <li>The shipped default publishes a ROZ from the surface to 1000 m AGL — usable as-is.</li>
+            <li>Open <strong>Volume detail</strong> to retype the band, rename it, or set the effective DTG. Edits apply as you make them.</li>
+            <li><strong>Conflict check</strong> tests every volume against the others and against any flight routes on the map.</li>
+          </ol>
+          <p><strong style="color:#EF9F27">Altitude reference.</strong> AGL is measured from terrain at the footprint centroid, MSL from sea level, and Flight Level in hundreds of feet (FL080 = 8000 ft). Conflict detection converts every band to absolute metres MSL first, so mixed references still compare correctly.</p>
+          <p><strong style="color:#EF9F27">Persistence.</strong> Metadata is patched onto the source footprint graphic through Morphix, so a volume opened from a drawn area survives save/load.</p>
         </div>
-        <div class="ms-section-title">Altitude band</div>
-        <div class="ms-grid">
-          <div class="ms-field"><label class="ms-label">Reference</label><select id="airspace-altmode" class="ms-select"><option value="AGL" selected>AGL (m)</option><option value="MSL">MSL (m)</option><option value="FL">Flight Level</option></select></div>
-          <div class="ms-field"></div>
-          <div class="ms-field"><label class="ms-label">Floor</label><input id="airspace-floor" type="number" value="0" step="10" class="ms-input"></div>
-          <div class="ms-field"><label class="ms-label">Ceiling</label><input id="airspace-ceiling" type="number" value="1000" step="10" class="ms-input"></div>
+      </div>
+      <div class="ms-body">
+        <!-- Default view: draw a footprint. The shipped ROZ / surface-to-1000 m
+             band is publishable untouched, so everything else sits in the
+             collapsed Volume detail disclosure. -->
+        <div class="ms-section-title">Footprint</div>
+        <div class="ms-btn-row">
+          <button class="ms-btn ms-cta" id="airspace-btn-draw">✏ Draw footprint</button>
         </div>
-        <div class="ms-section-title">Effective (DTG)</div>
-        <div class="ms-grid">
-          <div class="ms-field"><label class="ms-label">From</label><input id="airspace-dtg-from" type="text" placeholder="0600Z" class="ms-input"></div>
-          <div class="ms-field"><label class="ms-label">To</label><input id="airspace-dtg-to" type="text" placeholder="1200Z" class="ms-input"></div>
+        <div class="ms-hint">No symbol needed — draw here, or right-click an existing area and choose Airspace. Ships as a ROZ from the surface to 1000 m AGL.</div>
+
+        <div id="airspace-active" hidden>
+          <div class="ms-divider"></div>
+          <div class="ms-grid">
+            <div class="ms-field full">
+              <div class="ms-label">Active volume</div>
+              <select id="airspace-volume-select" class="ms-select"><option value="">— none —</option></select>
+            </div>
+          </div>
+          <div class="ms-coords" id="airspace-band-readout">-</div>
+          <div class="ms-btn-row">
+            <button class="ms-btn primary" id="airspace-btn-conflict">Conflict check</button>
+            <button class="ms-btn danger" id="airspace-btn-clear">Clear</button>
+          </div>
         </div>
-        <div style="font-size: var(--ms-fs-xs); color: var(--ms-text-dim); padding: 4px 12px 8px; line-height: 1.5;">Switch to the 3D scene to see the extruded altitude-band volume.</div>
-        <div class="ms-divider" style="margin: 4px 0;"></div>
-        <div style="display: flex; gap: 6px; padding: 9px 12px;">
-          <button class="ms-btn" id="airspace-btn-conflict" style="flex: 1;">Conflict check</button>
-          <button class="ms-btn ms-btn-primary" id="airspace-btn-apply" style="flex: 1;">Apply</button>
+
+        <div class="ms-disclosure" data-open="false">
+          <button class="ms-disclosure-head" type="button" id="airspace-adv-toggle" aria-expanded="false" aria-controls="airspace-adv-body">
+            <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+            <span class="ms-disclosure-title">Volume detail</span>
+            <span class="ms-disclosure-meta">Type, name, altitude band, effective DTG</span>
+          </button>
+          <div class="ms-disclosure-body" id="airspace-adv-body" hidden>
+            <div class="ms-section-title">Designation</div>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <div class="ms-label">Type</div>
+                <select id="airspace-type" class="ms-select"><option value="ROZ" selected>ROZ</option><option value="ACA">ACA</option></select>
+              </div>
+              <div class="ms-field">
+                <div class="ms-label">Name</div>
+                <input id="airspace-name" type="text" value="ALPHA" class="ms-input">
+              </div>
+            </div>
+            <div class="ms-section-title">Altitude band</div>
+            <div class="ms-grid">
+              <div class="ms-field full">
+                <div class="ms-label">Reference</div>
+                <select id="airspace-altmode" class="ms-select"><option value="AGL" selected>AGL (m above ground)</option><option value="MSL">MSL (m above sea level)</option><option value="FL">Flight Level (hundreds of ft)</option></select>
+              </div>
+              <div class="ms-field">
+                <div class="ms-label">Floor</div>
+                <input id="airspace-floor" type="number" value="0" step="10" class="ms-input">
+              </div>
+              <div class="ms-field">
+                <div class="ms-label">Ceiling</div>
+                <input id="airspace-ceiling" type="number" value="1000" step="10" class="ms-input">
+              </div>
+            </div>
+            <div class="ms-section-title">Effective (DTG)</div>
+            <div class="ms-grid">
+              <div class="ms-field">
+                <div class="ms-label">From</div>
+                <input id="airspace-dtg-from" type="text" placeholder="0600Z" class="ms-input">
+              </div>
+              <div class="ms-field">
+                <div class="ms-label">To</div>
+                <input id="airspace-dtg-to" type="text" placeholder="1200Z" class="ms-input">
+              </div>
+            </div>
+            <div class="ms-hint">Edits apply to the active volume as you make them. Switch to the 3D scene to see the extruded altitude-band volume.</div>
+          </div>
         </div>
-        <div style="padding: 0 12px 10px;"><button class="ms-btn" id="airspace-btn-clear" style="width: 100%;">Clear overlays</button></div>
       </div>
     `;
   }
@@ -548,9 +688,27 @@ export class AirspaceEngine {
     if (!p) return;
     p.querySelector('#airspace-close-btn')?.addEventListener('click', () => this.close());
     p.querySelector('#airspace-btn-draw')?.addEventListener('click', () => this._startDrawing());
-    p.querySelector('#airspace-btn-apply')?.addEventListener('click', () => this._applyActive());
     p.querySelector('#airspace-btn-conflict')?.addEventListener('click', () => this._runConflictCheck());
-    p.querySelector('#airspace-btn-clear')?.addEventListener('click', () => this._conflictLayer.removeAll());
+    p.querySelector('#airspace-btn-clear')?.addEventListener('click', () => this._clearAll());
+
+    p.querySelector('#airspace-minimize-btn')?.addEventListener('click', () => {
+      const body = p.querySelector<HTMLElement>('.ms-body');
+      const btn = p.querySelector<HTMLElement>('#airspace-minimize-btn');
+      if (!body || !btn) return;
+      const minimized = body.classList.toggle('ms-minimized');
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
+    });
+    p.querySelector('#airspace-help-btn')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const help = p.querySelector<HTMLElement>('#airspace-help-popover');
+      if (help) help.hidden = !help.hidden;
+    });
+    p.querySelector('#airspace-help-close')?.addEventListener('click', () => {
+      const help = p.querySelector<HTMLElement>('#airspace-help-popover');
+      if (help) help.hidden = true;
+    });
+
     p.querySelector('#airspace-volume-select')?.addEventListener('change', () => {
       const id = Number((this._el('airspace-volume-select') as HTMLSelectElement | null)?.value || 0);
       const vol = this._volumes.find((v) => v.id === id);
@@ -560,13 +718,58 @@ export class AirspaceEngine {
         void this._renderAll();
       }
     });
+
+    // The detail fields carry no Apply button of their own: an edit is only
+    // meaningful against the active volume, so commit it the moment the field
+    // settles. The old panel needed an explicit Apply, and any field changed
+    // without pressing it left a stale band on the map and in the metadata.
+    ['airspace-type', 'airspace-name', 'airspace-altmode', 'airspace-floor', 'airspace-ceiling', 'airspace-dtg-from', 'airspace-dtg-to']
+      .forEach((id) => {
+        this._el(id)?.addEventListener('change', () => {
+          if (this._activeId == null) return;
+          this._applyActive();
+        });
+      });
+  }
+
+  /** Drop every authored volume and overlay. Source graphics are untouched. */
+  private _clearAll(): void {
+    [this._footprintLayer, this._labelLayer, this._volumeLayer, this._conflictLayer]
+      .forEach((layer) => layer.removeAll());
+    this._volumes = [];
+    this._activeId = null;
+    this._refreshVolumeSelect();
+    this._setStatus('Cleared', 'ok');
+    EngineLogger.success(ENGINE_NAME, 'Cleared all airspace volumes and overlays.');
+  }
+
+  /** Toggle the armed state on the draw button plus the map hint bar. */
+  private _armDraw(on: boolean): void {
+    this._el('airspace-btn-draw')?.classList.toggle('ms-armed', on);
+    this._hintEl?.classList.toggle('ms-visible', on);
   }
 
   private _refreshVolumeSelect(): void {
+    const active = this._volumes.find((v) => v.id === this._activeId) ?? null;
+
+    // The whole active-volume block — select, band readout, conflict/clear —
+    // is output: it stays hidden until there is something to be active.
+    const section = this._el('airspace-active');
+    if (section) section.hidden = this._volumes.length === 0;
+
     const sel = this._el('airspace-volume-select') as HTMLSelectElement | null;
-    if (!sel) return;
-    sel.innerHTML = '<option value="">— none —</option>' +
-      this._volumes.map((v) => `<option value="${v.id}"${v.id === this._activeId ? ' selected' : ''}>${v.type} ${v.name}</option>`).join('');
+    if (sel) {
+      sel.innerHTML = '<option value="">— none —</option>' +
+        this._volumes.map((v) => `<option value="${v.id}"${v.id === this._activeId ? ' selected' : ''}>${v.type} ${v.name}</option>`).join('');
+    }
+
+    const readout = this._el('airspace-band-readout');
+    if (readout) {
+      readout.textContent = active
+        ? `${active.type} ${active.name} · ${this._bandLabel(active.floor, active.altMode)} – ${this._bandLabel(active.ceiling, active.altMode)}`
+          + (active.dtgFrom || active.dtgTo ? ` · ${active.dtgFrom || '—'} / ${active.dtgTo || '—'}` : '')
+        : '-';
+    }
   }
 
   private _loadVolumeIntoPanel(vol: AirspaceVolume): void {
@@ -592,8 +795,8 @@ export class AirspaceEngine {
     return geom as Polygon;
   }
 
-  private _showPanel(): void { if (this._panelEl) this._panelEl.style.display = 'block'; }
-  private _hidePanel(): void { if (this._panelEl) this._panelEl.style.display = 'none'; }
+  private _showPanel(): void { this._panelEl?.classList.add('ms-visible'); }
+  private _hidePanel(): void { this._panelEl?.classList.remove('ms-visible'); }
 
   private _makePanelDraggable(panel: HTMLDivElement | null): void {
     if (!panel) return;
@@ -633,11 +836,13 @@ export class AirspaceEngine {
     });
   }
 
-  private _setStatus(t: string, tone: 'ok' | 'warn'): void {
+  private _setStatus(t: string, tone: 'ok' | 'warn' | 'run'): void {
     const el = this._el('airspace-status');
-    if (el) {
-      el.textContent = t;
-      el.style.color = tone === 'warn' ? '#EF9F27' : 'var(--ms-accent)';
+    if (el) el.textContent = t;
+    const dot = this._el('airspace-status-dot');
+    if (dot) {
+      dot.className = 'ms-status-dot '
+        + (tone === 'warn' ? 'warning' : tone === 'run' ? 'running' : 'ready');
     }
   }
 

@@ -38,6 +38,7 @@ import OcokaEngine, { OcokaCorridor } from '../OCOKA/Ocoka';
 import RoadNetworkEngine, { type TrafficabilitySummary } from '../Analysis/RoadNetworkEngine';
 import GraphicsLayerManager, { LAYER_NAMES } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 import { SIDC } from '../../Support/SIDC';
 import { getEchelonCode } from '../Declutter/echelon';
 
@@ -393,7 +394,6 @@ export class MissionPlannerEngine {
   private _ctxProvider: ((g: Graphic) => any[]) | null = null;
 
   constructor() {
-    this._injectStyles();
   }
 
   // ── Public lifecycle / API ──────────────────────────────────────────────────
@@ -439,7 +439,7 @@ export class MissionPlannerEngine {
     if (!this._view) return;
     this._selectedGraphic = graphic ?? null;
     this._ensurePanel();
-    if (this._panelEl) this._panelEl.style.display = 'block';
+    this._panelEl?.classList.add('ms-visible');
     const src = pointFromGraphic(graphic);
     if (src) {
       const p = new Point({ longitude: lonOf(src), latitude: latOf(src), spatialReference: WGS84 });
@@ -448,7 +448,7 @@ export class MissionPlannerEngine {
       this._drawBufferAoi();
       this._setStatus('Selected graphic loaded as friendly observer & buffer centre.', 'ready');
     } else {
-      this._setStatus('Ready. Choose AOI mode (extent, custom, or buffer) and Run Analysis.', 'ready');
+      this._setStatus('Ready. Pick a mode and unit, then Run Analysis over the current view.', 'ready');
     }
     this._renderObservers();
     this._renderResults();
@@ -463,7 +463,8 @@ export class MissionPlannerEngine {
   }
 
   close(): void {
-    if (this._panelEl) this._panelEl.style.display = 'none';
+    this._panelEl?.classList.remove('ms-visible');
+    this._armPick(null);
     this._cancelBufferPick();
     this._cancelRallyPick();
     this._detachAutoRun();
@@ -733,6 +734,7 @@ export class MissionPlannerEngine {
       this._customAoi = geometry;
       this._styleAoiGraphic(event.graphic);
       this._setSelectValue('mp-aoi-mode', 'custom');
+      this._armPick(null);
       this._setStatus('Custom AOI set. Run analysis when ready.', 'ready');
       this._maybeAutoRun();
     });
@@ -766,6 +768,7 @@ export class MissionPlannerEngine {
     this._cancelBufferPick();
     this._aoLayer.removeAll();
     this._customAoi = null;
+    this._armPick(mode === 'rectangle' ? 'mp-draw-box' : 'mp-draw-poly');
     this._setStatus(`Draw ${mode === 'rectangle' ? 'a bounding box' : 'a polygon'} AOI on the map.`, 'pick');
     this._sketch.create(mode === 'rectangle' ? 'rectangle' : 'polygon');
   }
@@ -774,6 +777,7 @@ export class MissionPlannerEngine {
     if (!this._view) return;
     this._cancelBufferPick();
     this._sketch?.cancel();
+    this._armPick('mp-pick-buffer');
     this._setStatus('Click a point to centre the buffer AOI.', 'pick');
     this._bufferPickHandle = this._view.on('click', async (event: any) => {
       event.stopPropagation?.();
@@ -789,6 +793,7 @@ export class MissionPlannerEngine {
       this._setSelectValue('mp-aoi-mode', 'buffer');
       this._drawBufferAoi();
       this._cancelBufferPick();
+      this._armPick(null);
       this._setStatus('Buffer AOI set. Run analysis when ready.', 'ready');
       this._maybeAutoRun();
     });
@@ -804,6 +809,7 @@ export class MissionPlannerEngine {
     this._cancelBufferPick();
     this._cancelRallyPick();
     this._sketch?.cancel();
+    this._armPick('mp-pick-rally');
     this._setStatus('Click a point to set the route destination (rally / objective).', 'pick');
     this._rallyPickHandle = this._view.on('click', async (event: any) => {
       event.stopPropagation?.();
@@ -1802,7 +1808,7 @@ export class MissionPlannerEngine {
     const observer = this._addObserver(side, new Point({ longitude: lonOf(p), latitude: latOf(p), spatialReference: WGS84 }));
     this._renderObservers();
     this._setStatus(`Pinned ${observer.name} from map.`, 'ready');
-    if (this._panelEl) this._panelEl.style.display = 'block';
+    this._panelEl?.classList.add('ms-visible');
     this._activateTab('observation');
   }
 
@@ -1849,38 +1855,44 @@ export class MissionPlannerEngine {
   private _ensurePanel(): void {
     if (this._panelEl) return;
     const panel = document.createElement('div');
-    panel.className = 'mp-panel';
+    panel.className = 'ms-panel ms-theme-ops-dark';
+    panel.id = 'mission-planner-panel';
+    panel.setAttribute('data-engine', 'mission-planner');
+    // Height and overflow come from .ms-panel / .ms-body.
+    panel.style.cssText = 'top: 62px; right: 18px; width: 420px;';
     panel.innerHTML = this._buildPanelHTML();
     document.body.appendChild(panel);
     this._panelEl = panel;
     this._bindPanelEvents();
+    bindDisclosures(panel);
     this._makeDraggable();
     this._registerCtxProvider();
   }
 
   private _buildPanelHTML(): string {
     return `
-      <div class="mp-header" id="mp-drag-handle">
-        <span class="mp-header-icon">MP</span>
-        <span class="mp-header-title">Mission Planner</span>
-        <span class="mp-status-dot" id="mp-status-dot"></span>
-        <span class="mp-status-lbl" id="mp-status-lbl">Ready</span>
-        <button class="mp-help-btn" id="mp-help-btn" title="Field Guide">?</button>
-        <button class="mp-min-btn" id="mp-min-btn" title="Minimize">▾</button>
-        <button class="mp-close-btn" id="mp-close-btn" title="Close">✕</button>
+      <div class="ms-header" id="mp-drag-handle">
+        <span class="ms-header-icon">MP</span>
+        <span class="ms-header-title">Mission Planner</span>
+        <span class="ms-status-dot ready" id="mp-status-dot"></span>
+        <span class="ms-status-lbl" id="mp-status-lbl">Ready</span>
+        <button class="ms-header-btn ms-btn-round" id="mp-help-btn" title="Field Guide">?</button>
+        <button class="ms-header-btn ms-btn-round" id="mp-min-btn" title="Minimize">&#9660;</button>
+        <button class="ms-header-btn ms-btn-round" id="mp-close-btn" title="Close (keeps graphics)">&#10005;</button>
       </div>
-      <div class="mp-help-popover" id="mp-help-popover" hidden>
-        <div class="mp-help-head">
+      <div class="ms-help-popover" id="mp-help-popover" hidden>
+        <div class="ms-help-head">
           <div>
-            <div class="mp-help-kicker">Field Guide</div>
-            <div class="mp-help-title">Unified Mission Terrain Dashboard</div>
+            <div class="ms-help-kicker">Field Guide</div>
+            <div class="ms-help-title">Unified Mission Terrain Dashboard</div>
           </div>
-          <button id="mp-help-close">x</button>
+          <button class="ms-help-close" id="mp-help-close" title="Close">&#10005;</button>
         </div>
-        <div class="mp-help-body">
+        <div class="ms-help-body">
           <p>Aggregates six terrain &amp; force engines into a single ranked picture of the AO: <b>peaks</b>, <b>key terrain</b>, <b>OCOKA corridors</b>, <b>dead ground</b>, <b>position defensibility</b>, and <b>OP ranking</b> — re-weighted by mission mode.</p>
+          <p><b>The shipped defaults run untouched:</b> defensive / infantry over the current view extent. Pick a mode and a unit, press Run Analysis, and read the Results tab. Everything else is optional.</p>
           <ol>
-            <li><b>Mission</b> — pick mode (defensive, offensive, recon, route, ambush), unit type, AOI radius, and threat bearing. Auto-run reruns on pan/zoom.</li>
+            <li><b>Mission</b> — mode and unit are the whole default view. <i>Area of interest</i> holds the AOI mode, radius, draw tools and destination pick; <i>Threat &amp; scoring</i> holds the threat bearing, sector, objective and auto-run.</li>
             <li><b>Forces</b> — order-of-battle summary of friendly &amp; hostile graphics inside the AOI.</li>
             <li><b>Obs</b> — add/remove friendly &amp; enemy observers. Enemies drive hostile-LOS envelopes and threat bearing.</li>
             <li><b>Mobility</b> — OCOKA corridors feed the corridor-control and ambush scores, and drive the <b>mission route</b>, whose <i>purpose</i> follows the mode: defensive = <b>Withdraw</b>, ambush/recon = <b>Exfil</b> (rearward, toward your nearest friendly force), offensive = <b>Axis of Advance</b> toward the objective (Enemy/threat or the Top-ranked feature — set by <i>Objective</i>), route = <b>MSR</b> along the dominant corridor. The route <i>style</i> follows the unit — aviation flies a direct line, mechanized takes the most trafficable corridor + a real road egress, infantry takes the most concealed (low enemy line-of-sight) corridor. <i>Pick Dest</i> overrides the destination in any mode.</li>
@@ -1900,7 +1912,7 @@ export class MissionPlannerEngine {
           <p><b>Limitations — read before briefing:</b> line-of-sight is <b>bare-earth only</b> — it ignores vegetation canopy, buildings, and any sensor beyond optical/visual (no radar/thermal/defilade behind man-made cover). Results are as good as the underlying DEM resolution. If the elevation service is unavailable the panel falls back to coarse estimates and the status line says so.</p>
         </div>
       </div>
-      <div class="mp-tabs">
+      <div class="ms-tabs" id="mp-tabs">
         <button data-tab="mission" class="active">Mission</button>
         <button data-tab="forces">Forces</button>
         <button data-tab="observation">Obs</button>
@@ -1909,93 +1921,148 @@ export class MissionPlannerEngine {
         <button data-tab="coa">COA</button>
         <button data-tab="report">Report</button>
       </div>
-      <div class="mp-body">
-        <div class="mp-status-msg" id="mp-status">Ready.</div>
+      <div class="ms-body">
+        <div class="ms-status success" id="mp-status">Ready.</div>
 
         <section data-panel="mission">
-          <div class="mp-sec">Mission</div>
-          <div class="mp-grid">
-            <label class="mp-field"><span>Mode</span><select id="mp-mode">
-              <option value="defensive">Defensive</option>
-              <option value="offensive">Offensive</option>
-              <option value="recon">Recon</option>
-              <option value="route">Route</option>
-              <option value="ambush">Ambush</option>
-            </select></label>
-            <label class="mp-field"><span>Unit</span><select id="mp-unit">
-              <option value="infantry">Infantry</option>
-              <option value="mechanized">Mechanized</option>
-              <option value="aviation">Aviation</option>
-            </select></label>
-            <label class="mp-field"><span>AOI radius (m)</span><input id="mp-radius" type="number" min="500" max="50000" step="250" value="3500"></label>
-            <label class="mp-field"><span>AOI mode</span><select id="mp-aoi-mode">
-              <option value="extent">View extent</option>
-              <option value="custom">Custom polygon</option>
-              <option value="buffer">Buffer centre</option>
-            </select></label>
-            <label class="mp-field"><span>Threat bearing °</span><input id="mp-threat-bearing" type="number" min="0" max="360" step="1" value="0"></label>
-            <label class="mp-field"><span>Sector °</span><input id="mp-sector" type="number" min="20" max="180" step="5" value="60"></label>
-            <label class="mp-field"><span>Objective (offensive)</span><select id="mp-objective" title="What the offensive Axis of Advance heads toward. 'Pick Dest' overrides this. Ignored in route/MSR mode (which follows the dominant corridor).">
-              <option value="enemy">Enemy / threat</option>
-              <option value="feature">Top-ranked feature</option>
-            </select></label>
+          <!-- Default view: what the mission is and what unit runs it, then Run.
+               The AOI defaults to the current view extent, so the shipped
+               settings produce a full ranked picture with nothing else touched. -->
+          <div class="ms-section-title">Mission</div>
+          <div class="ms-grid">
+            <div class="ms-field">
+              <label class="ms-label" for="mp-mode">Mode</label>
+              <select id="mp-mode" class="ms-select">
+                <option value="defensive">Defensive</option>
+                <option value="offensive">Offensive</option>
+                <option value="recon">Recon</option>
+                <option value="route">Route</option>
+                <option value="ambush">Ambush</option>
+              </select>
+            </div>
+            <div class="ms-field">
+              <label class="ms-label" for="mp-unit">Unit</label>
+              <select id="mp-unit" class="ms-select">
+                <option value="infantry">Infantry</option>
+                <option value="mechanized">Mechanized</option>
+                <option value="aviation">Aviation</option>
+              </select>
+            </div>
           </div>
-          <div class="mp-btn-row">
-            <button id="mp-draw-poly" class="mp-btn">Draw Polygon</button>
-            <button id="mp-draw-box" class="mp-btn">Draw Box</button>
-            <button id="mp-pick-buffer" class="mp-btn">Pick Buffer</button>
-            <button id="mp-pick-rally" class="mp-btn" title="Click the map to set the route destination — rally point for withdraw/exfil modes, objective for advance/route modes. Overrides the automatic destination.">Pick Dest</button>
+          <div class="ms-btn-row">
+            <button id="mp-run" class="ms-btn ms-cta">Run Analysis &#8599;</button>
           </div>
-          <div class="mp-toggle"><label>Auto-run on view change</label><input id="mp-auto-run" type="checkbox"></div>
-          <div class="mp-btn-row">
-            <button id="mp-run" class="mp-btn primary">Run Analysis</button>
-            <button id="mp-clear" class="mp-btn">Clear</button>
-            <button id="mp-save-coa" class="mp-btn ok">Save COA</button>
+          <div class="ms-btn-row" id="mp-result-actions" hidden>
+            <button id="mp-save-coa" class="ms-btn primary">Save COA</button>
+            <button id="mp-clear" class="ms-btn danger">Clear</button>
+          </div>
+
+          <div class="ms-disclosure" data-open="false">
+            <button class="ms-disclosure-head" type="button" id="mp-aoi-toggle" aria-expanded="false" aria-controls="mp-aoi-body">
+              <span class="ms-disclosure-chevron" aria-hidden="true">&#9654;</span>
+              <span class="ms-disclosure-title">Area of interest</span>
+              <span class="ms-disclosure-meta">Defaults to the current view extent</span>
+            </button>
+            <div class="ms-disclosure-body" id="mp-aoi-body" hidden>
+              <div class="ms-grid">
+                <div class="ms-field">
+                  <label class="ms-label" for="mp-aoi-mode">AOI mode</label>
+                  <select id="mp-aoi-mode" class="ms-select">
+                    <option value="extent">View extent</option>
+                    <option value="custom">Custom polygon</option>
+                    <option value="buffer">Buffer centre</option>
+                  </select>
+                </div>
+                <div class="ms-field">
+                  <label class="ms-label" for="mp-radius">AOI radius (m)</label>
+                  <input id="mp-radius" type="number" min="500" max="50000" step="250" value="3500" class="ms-input">
+                </div>
+              </div>
+              <div class="ms-btn-row">
+                <button id="mp-draw-poly" class="ms-btn">Draw Polygon</button>
+                <button id="mp-draw-box" class="ms-btn">Draw Box</button>
+              </div>
+              <div class="ms-btn-row">
+                <button id="mp-pick-buffer" class="ms-btn">Pick Buffer</button>
+                <button id="mp-pick-rally" class="ms-btn" title="Click the map to set the route destination — rally point for withdraw/exfil modes, objective for advance/route modes. Overrides the automatic destination.">Pick Dest</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ms-disclosure" data-open="false">
+            <button class="ms-disclosure-head" type="button" id="mp-threat-toggle" aria-expanded="false" aria-controls="mp-threat-body">
+              <span class="ms-disclosure-chevron" aria-hidden="true">&#9654;</span>
+              <span class="ms-disclosure-title">Threat &amp; scoring</span>
+              <span class="ms-disclosure-meta">Bearing derived from enemy observers</span>
+            </button>
+            <div class="ms-disclosure-body" id="mp-threat-body" hidden>
+              <div class="ms-grid">
+                <div class="ms-field">
+                  <label class="ms-label" for="mp-threat-bearing">Threat bearing &deg;</label>
+                  <input id="mp-threat-bearing" type="number" min="0" max="360" step="1" value="0" class="ms-input">
+                </div>
+                <div class="ms-field">
+                  <label class="ms-label" for="mp-sector">Sector &deg;</label>
+                  <input id="mp-sector" type="number" min="20" max="180" step="5" value="60" class="ms-input">
+                </div>
+                <div class="ms-field full">
+                  <label class="ms-label" for="mp-objective">Objective (offensive)</label>
+                  <select id="mp-objective" class="ms-select" title="What the offensive Axis of Advance heads toward. 'Pick Dest' overrides this. Ignored in route/MSR mode (which follows the dominant corridor).">
+                    <option value="enemy">Enemy / threat</option>
+                    <option value="feature">Top-ranked feature</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ms-toggle-row">
+                <label for="mp-auto-run">Auto-run on view change</label>
+                <input id="mp-auto-run" type="checkbox" class="ms-input">
+              </div>
+            </div>
           </div>
         </section>
 
         <section data-panel="forces" hidden>
-          <div class="mp-sec">Order of Battle (in AOI)</div>
+          <div class="ms-section-title">Order of Battle (in AOI)</div>
           <div id="mp-forces-summary" class="mp-forces"></div>
         </section>
 
         <section data-panel="observation" hidden>
-          <div class="mp-sec">Observers</div>
-          <div class="mp-btn-row">
-            <button id="mp-add-friendly" class="mp-btn">+ Friendly</button>
-            <button id="mp-add-enemy" class="mp-btn">+ Enemy</button>
-            <button id="mp-clear-observers" class="mp-btn">Clear</button>
+          <div class="ms-section-title">Observers</div>
+          <div class="ms-btn-row">
+            <button id="mp-add-friendly" class="ms-btn">+ Friendly</button>
+            <button id="mp-add-enemy" class="ms-btn">+ Enemy</button>
+            <button id="mp-clear-observers" class="ms-btn danger">Clear</button>
           </div>
           <div id="mp-observer-list" class="mp-observer-list"></div>
         </section>
 
         <section data-panel="mobility" hidden>
-          <div class="mp-sec">Mobility</div>
+          <div class="ms-section-title">Mobility</div>
           <div class="mp-copy">OCOKA corridors and chokepoints feed the <b>corridor control</b> score and ambush composite.</div>
           <div id="mp-corridor-summary" class="mp-forces"></div>
-          <div class="mp-sec" style="margin-top:10px">Road Network <span style="font-weight:400;opacity:0.7">(optional)</span></div>
+          <div class="ms-section-title">Road Network <span style="font-weight:400;opacity:0.7">(optional)</span></div>
           <div class="mp-copy">Road-following egress &amp; trafficability from an external road service. Falls back to terrain corridors when it is offline.</div>
           <div id="mp-road-summary" class="mp-forces"></div>
         </section>
 
         <section data-panel="results" hidden>
-          <div class="mp-sec">Ranked Mission Terrain</div>
+          <div class="ms-section-title">Ranked Mission Terrain</div>
           <div id="mp-results-list" class="mp-results"></div>
         </section>
 
         <section data-panel="coa" hidden>
-          <div class="mp-sec">COA Comparison (in-memory)</div>
+          <div class="ms-section-title">COA Comparison (in-memory)</div>
           <div id="mp-coa-list" class="mp-coa-list"></div>
           <div class="mp-copy">Save up to 3 named snapshots. Cleared on panel close or page reload.</div>
         </section>
 
         <section data-panel="report" hidden>
-          <div class="mp-sec">Report</div>
-          <div class="mp-btn-row">
-            <button id="mp-print" class="mp-btn">Print</button>
-            <button id="mp-csv" class="mp-btn">CSV</button>
-            <button id="mp-geojson" class="mp-btn">GeoJSON</button>
-            <button id="mp-shp" class="mp-btn">Shapefile</button>
+          <div class="ms-section-title">Report</div>
+          <div class="ms-btn-row">
+            <button id="mp-print" class="ms-btn">Print</button>
+            <button id="mp-csv" class="ms-btn">CSV</button>
+            <button id="mp-geojson" class="ms-btn">GeoJSON</button>
+            <button id="mp-shp" class="ms-btn">Shapefile</button>
           </div>
           <div id="mp-report"></div>
         </section>
@@ -2004,8 +2071,17 @@ export class MissionPlannerEngine {
 
   private _bindPanelEvents(): void {
     this._el('mp-min-btn')?.addEventListener('click', () => {
-      const body = this._panelEl?.querySelector<HTMLElement>('.mp-body');
-      if (body) body.style.display = body.style.display === 'none' ? '' : 'none';
+      const body = this._panelEl?.querySelector<HTMLElement>('.ms-body');
+      const tabs = this._panelEl?.querySelector<HTMLElement>('.ms-tabs');
+      const btn = this._el('mp-min-btn');
+      if (!body || !btn) return;
+      // The old handler drove `body.style.display` and never touched the
+      // caret, so a minimized panel still showed the collapse arrow — and the
+      // tab strip stayed behind as a stripe under the header.
+      const minimized = body.classList.toggle('ms-minimized');
+      if (tabs) tabs.hidden = minimized;
+      btn.textContent = minimized ? '▶' : '▼';
+      btn.title = minimized ? 'Restore' : 'Minimize';
     });
     this._el('mp-close-btn')?.addEventListener('click', () => this.close());
     this._el('mp-help-btn')?.addEventListener('click', (event) => {
@@ -2037,6 +2113,21 @@ export class MissionPlannerEngine {
     this._panelEl?.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((button) => {
       button.addEventListener('click', () => this._activateTab(button.dataset.tab as TabId));
     });
+  }
+
+  /** Reveal Save COA / Clear only once there is a run to act on. */
+  private _revealResultActions(on: boolean): void {
+    const row = this._el('mp-result-actions');
+    if (row) row.hidden = !on;
+  }
+
+  /**
+   * Mark the pick button that is waiting on a map click, and clear any other.
+   * Pass null to disarm everything (panel closed, pick cancelled or finished).
+   */
+  private _armPick(id: 'mp-draw-poly' | 'mp-draw-box' | 'mp-pick-buffer' | 'mp-pick-rally' | null): void {
+    (['mp-draw-poly', 'mp-draw-box', 'mp-pick-buffer', 'mp-pick-rally'] as const)
+      .forEach((btn) => this._el(btn)?.classList.toggle('ms-armed', btn === id));
   }
 
   private _activateTab(tab: TabId): void {
@@ -2072,7 +2163,7 @@ export class MissionPlannerEngine {
             <span class="mp-obs-mgrs">${latLonToMGRS(latOf(o.point), lonOf(o.point), 3)}</span>
             <button class="mp-obs-del" data-mp-remove="${o.id}" title="Remove">×</button>
           </label>`).join('')
-        : '<div class="mp-empty">No observers. Add friendly/enemy points to enrich the analysis.</div>';
+        : '<div class="ms-empty">No observers. Add friendly/enemy points to enrich the analysis.</div>';
       list.querySelectorAll<HTMLInputElement>('[data-mp-observer]').forEach((input) => {
         input.addEventListener('change', () => {
           const observer = this._observers.find((item) => item.id === input.dataset.mpObserver);
@@ -2093,10 +2184,11 @@ export class MissionPlannerEngine {
   }
 
   private _renderResults(): void {
+    this._revealResultActions(this._results.length > 0);
     const list = this._panelEl?.querySelector('#mp-results-list');
     if (!list) return;
     if (!this._results.length) {
-      list.innerHTML = '<div class="mp-empty">Run analysis to populate ranked mission terrain.</div>';
+      list.innerHTML = '<div class="ms-empty">Run analysis to populate ranked mission terrain.</div>';
       return;
     }
     const maxComp = Math.max(1, ...this._results.map((f) => f.compositeScore));
@@ -2165,10 +2257,10 @@ export class MissionPlannerEngine {
   /** Mobility-tab readout of the optional road service. Mirrors its availability honestly. */
   private _roadSummaryHtml(): string {
     const rn = this._roadNet();
-    if (!rn) return '<div class="mp-empty">Road-network service not loaded — terrain corridors drive mobility.</div>';
-    if (!rn.isAvailable) return '<div class="mp-empty">Road-network service offline — egress falls back to terrain corridors.</div>';
+    if (!rn) return '<div class="ms-empty">Road-network service not loaded — terrain corridors drive mobility.</div>';
+    if (!rn.isAvailable) return '<div class="ms-empty">Road-network service offline — egress falls back to terrain corridors.</div>';
     const eg = this._roadEgress;
-    if (!eg) return '<div class="mp-empty">Road service online. Run analysis to compute a road-following egress.</div>';
+    if (!eg) return '<div class="ms-empty">Road service online. Run analysis to compute a road-following egress.</div>';
     const t = eg.traffic;
     return '<table class="mp-table"><tbody>'
       + `<tr><td>Egress</td><td><b>${t.rating}</b></td></tr>`
@@ -2184,7 +2276,7 @@ export class MissionPlannerEngine {
     const corridorTarget = this._panelEl?.querySelector('#mp-corridor-summary');
     if (corridorTarget) {
       if (this._corridors.length === 0) {
-        corridorTarget.innerHTML = '<div class="mp-empty">No corridors yet. Run analysis to extract OCOKA corridors.</div>';
+        corridorTarget.innerHTML = '<div class="ms-empty">No corridors yet. Run analysis to extract OCOKA corridors.</div>';
       } else {
         corridorTarget.innerHTML = '<table class="mp-table"><thead><tr><th>#</th><th>Length</th><th>Width</th><th>Brg</th><th>Score</th></tr></thead><tbody>'
           + this._corridors.slice(0, 6).map((c) =>
@@ -2198,7 +2290,7 @@ export class MissionPlannerEngine {
     if (!this._view) { target.innerHTML = ''; return; }
     const forceLayer = GraphicsLayerManager.getInstance(this._view).getLayer(LAYER_NAMES.FORCE);
     if (!forceLayer || forceLayer.graphics.length === 0) {
-      target.innerHTML = '<div class="mp-empty">No force symbols on the map. Place units to populate the Order of Battle.</div>';
+      target.innerHTML = '<div class="ms-empty">No force symbols on the map. Place units to populate the Order of Battle.</div>';
       return;
     }
     const counts: Record<string, { fr: number; en: number; ne: number }> = {};
@@ -2222,7 +2314,7 @@ export class MissionPlannerEngine {
     });
     const keys = Object.keys(counts).sort();
     if (keys.length === 0) {
-      target.innerHTML = '<div class="mp-empty">No force symbols intersect the AOI.</div>';
+      target.innerHTML = '<div class="ms-empty">No force symbols intersect the AOI.</div>';
       return;
     }
     target.innerHTML = '<table class="mp-table"><thead><tr><th>Echelon</th><th>Friendly</th><th>Enemy</th><th>Neutral</th></tr></thead><tbody>'
@@ -2234,7 +2326,7 @@ export class MissionPlannerEngine {
     const list = this._panelEl?.querySelector('#mp-coa-list');
     if (!list) return;
     if (!this._coaSnapshots.length) {
-      list.innerHTML = '<div class="mp-empty">No saved COAs yet. Run analysis and click Save COA to capture a snapshot.</div>';
+      list.innerHTML = '<div class="ms-empty">No saved COAs yet. Run analysis and click Save COA to capture a snapshot.</div>';
       return;
     }
     list.innerHTML = '<table class="mp-table"><thead><tr><th>COA</th><th>Mode</th><th>Unit</th><th>Threat</th><th>Top 3 (score)</th><th></th></tr></thead><tbody>'
@@ -2311,21 +2403,28 @@ export class MissionPlannerEngine {
     if (tone === 'done' || tone === 'ready') EngineLogger.success(ENGINE_NAME, text);
     else if (tone === 'warn') EngineLogger.error(ENGINE_NAME, text);
     else EngineLogger.nextStep(ENGINE_NAME, text);
-    if (status) { status.textContent = text; status.className = `mp-status-msg ${tone}`; }
-    const dot = this._el('mp-status-dot');
-    const lbl = this._el('mp-status-lbl');
-    const map: Record<MpStatusTone, [string, string]> = {
-      ready: ['#1D9E75', 'Ready'], running: ['#EF9F27', 'Running'],
-      warn: ['#DC3C30', 'Check'], pick: ['#378ADD', 'Pick'], done: ['#1D9E75', 'Done'],
+    // Tone maps onto the shared .ms-status / .ms-status-dot variants so the
+    // panel follows the active theme instead of hard-coded hex.
+    const map: Record<MpStatusTone, [string, string, string]> = {
+      ready: ['success', 'ready', 'Ready'],
+      done: ['success', 'ready', 'Done'],
+      running: ['running', 'running', 'Running'],
+      pick: ['running', 'running', 'Pick'],
+      warn: ['warning', 'warning', 'Check'],
     };
-    const [color, label] = map[tone];
-    if (dot) { dot.style.background = color; dot.style.boxShadow = `0 0 8px ${color}88`; }
+    const [boxTone, dotTone, label] = map[tone];
+    if (status) { status.textContent = text; status.className = `ms-status ${boxTone}`; }
+    const dot = this._el('mp-status-dot');
+    if (dot) dot.className = `ms-status-dot ${dotTone}`;
+    const lbl = this._el('mp-status-lbl');
     if (lbl) lbl.textContent = label;
   }
 
   private _setRunDisabled(disabled: boolean): void {
     const btn = this._el('mp-run') as HTMLButtonElement | null;
-    if (btn) btn.disabled = disabled;
+    if (!btn) return;
+    btn.disabled = disabled;
+    btn.classList.toggle('ms-busy', disabled);
   }
 
   // ── Context menu provider (pin-from-map) ──────────────────────────────────
@@ -2587,101 +2686,6 @@ export class MissionPlannerEngine {
 
   // ── Styles ───────────────────────────────────────────────────────────────
 
-  private _injectStyles(): void {
-    if (document.getElementById('mission-planner-engine-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'mission-planner-engine-styles';
-    style.textContent = `
-      .mp-panel{--ms-bg:#141820;--ms-bg-header:rgba(26,32,48,.97);--ms-bg-input:rgba(0,0,0,.28);--ms-border:rgba(90,140,220,.25);--ms-divider:rgba(80,100,150,.18);--ms-text:#dce8f5;--ms-text-dim:rgba(175,200,230,.82);--ms-text-label:rgba(140,170,205,.85);--ms-shadow:0 8px 36px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.04);position:fixed;top:62px;right:18px;width:420px;max-height:calc(100vh - 84px);background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:var(--ms-radius);color:var(--ms-text);font-family:var(--ms-font);font-size:var(--ms-fs);z-index:1100;box-shadow:var(--ms-shadow);display:none;overflow:hidden;user-select:none;animation:mpIn .18s cubic-bezier(.34,1.56,.64,1)}
-      @keyframes mpIn{from{opacity:0;transform:scale(.96) translateY(-8px)}to{opacity:1;transform:scale(1) translateY(0)}}
-      .mp-header{display:flex;align-items:center;gap:7px;padding:9px 10px 8px;border-bottom:1px solid var(--ms-divider);background:var(--ms-bg-header);cursor:grab}.mp-header:active{cursor:grabbing}
-      .mp-header-icon{font-size:var(--ms-fs-xs);letter-spacing:.08em;color:#1D9E75;border:1px solid var(--ms-border);border-radius:3px;padding:2px 5px;font-weight:700}
-      .mp-header-title{font-size:var(--ms-fs-sm);letter-spacing:.12em;text-transform:uppercase;color:#1D9E75;font-weight:700;flex:1}
-      .mp-status-dot{width:9px;height:9px;border-radius:50%;background:#555}
-      .mp-status-lbl{font-size:var(--ms-fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--ms-text-dim);min-width:48px;font-weight:600}
-      .mp-help-btn,.mp-min-btn,.mp-close-btn{background:none;border:1px solid transparent;color:var(--ms-text-dim);font-size:var(--ms-fs-sm);cursor:pointer;padding:0 4px}
-      .mp-help-btn{width:21px;height:21px;border-color:var(--ms-border);border-radius:50%;color:#1D9E75;font-weight:700;font-size:var(--ms-fs)}
-      .mp-min-btn,.mp-close-btn{border-color:var(--ms-border);border-radius:3px;padding:1px 6px;font-size:var(--ms-fs)}
-      .mp-tabs{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--ms-divider)}
-      .mp-tabs button{border:0;background:var(--ms-bg-input);color:var(--ms-text-dim);padding:6px 2px;font:inherit;font-size:var(--ms-fs-xs);letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
-      .mp-tabs button.active{background:var(--ms-bg-header);color:#1D9E75}
-      .mp-body{max-height:calc(100vh - 152px);overflow-y:auto;padding:0 0 8px}
-      .mp-status-msg{margin:8px 10px 2px;padding:7px 9px;border:1px solid var(--ms-divider);border-radius:4px;background:var(--ms-bg-input);font-size:var(--ms-fs);line-height:1.4;color:var(--ms-text-dim)}
-      .mp-status-msg.running{color:#EF9F27}.mp-status-msg.warn{color:#DC3C30;border-color:#DC3C30}.mp-status-msg.pick{color:#378ADD;border-color:#378ADD}.mp-status-msg.done,.mp-status-msg.ready{color:#1D9E75}
-      .mp-sec{font-size:var(--ms-fs);letter-spacing:.12em;text-transform:uppercase;color:#1D9E75;font-weight:700;padding:11px 14px 6px}
-      .mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 10px;padding:0 12px 9px}
-      .mp-field{display:flex;flex-direction:column;gap:4px}
-      .mp-field span{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label);font-weight:600}
-      .mp-field input,.mp-field select{background:var(--ms-bg-input);border:1px solid var(--ms-border);border-radius:4px;color:var(--ms-text);font-family:inherit;font-size:var(--ms-fs);padding:7px 9px;outline:none;box-sizing:border-box;width:100%}
-      .mp-field input:focus,.mp-field select:focus{border-color:#1D9E75}
-      .mp-field select option{background:var(--ms-bg)}
-      .mp-btn-row{display:flex;gap:7px;padding:7px 12px 0}
-      .mp-btn{flex:1;padding:8px 5px;font-family:inherit;font-size:var(--ms-fs-xs);letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;border-radius:4px;border:1px solid var(--ms-border);background:var(--ms-bg-input);color:var(--ms-text-dim);transition:all .14s}
-      .mp-btn:hover:not(:disabled){background:var(--ms-bg-header);color:var(--ms-text)}
-      .mp-btn.primary{border-color:#1D9E75;color:#1D9E75;font-weight:700}
-      .mp-btn.ok{border-color:#EF9F27;color:#EF9F27}
-      .mp-btn:disabled{opacity:.35;cursor:not-allowed}
-      .mp-toggle{display:flex;align-items:center;justify-content:space-between;padding:6px 14px}
-      .mp-toggle input{accent-color:#1D9E75;width:15px;height:15px;cursor:pointer}
-      .mp-toggle label{font-size:var(--ms-fs-xs);letter-spacing:.07em;text-transform:uppercase;color:var(--ms-text-label);font-weight:600}
-      .mp-copy{padding:6px 14px;font-size:var(--ms-fs);color:var(--ms-text-dim);line-height:1.45}
-      .mp-empty{padding:14px 12px;border:1px dashed var(--ms-divider);border-radius:4px;margin:8px 12px;color:var(--ms-text-dim);font-size:var(--ms-fs);text-align:center}
-      .mp-table{border-collapse:collapse;font-size:var(--ms-fs-xs);margin:4px 12px 8px;width:calc(100% - 24px)}
-      .mp-table th,.mp-table td{border:1px solid var(--ms-divider);padding:5px 7px;text-align:left;color:var(--ms-text)}
-      .mp-table th{background:var(--ms-bg-input);color:var(--ms-text-label);text-transform:uppercase;letter-spacing:.05em;font-size:var(--ms-fs-xs);font-weight:600}
-      .mp-table .mp-fr{color:#378ADD;font-weight:700}.mp-table .mp-en{color:#DC3C30;font-weight:700}
-      .mp-observer-list{padding:0 12px}
-      .mp-observer-row{display:grid;grid-template-columns:22px 1fr auto 22px;align-items:center;gap:7px;padding:6px 9px;margin-bottom:6px;border:1px solid var(--ms-divider);border-radius:4px;background:var(--ms-bg-input);font-size:var(--ms-fs-xs);cursor:pointer}
-      .mp-observer-row[data-side="enemy"] .mp-obs-name{color:#DC3C30}
-      .mp-observer-row[data-side="friendly"] .mp-obs-name{color:#378ADD}
-      .mp-obs-mgrs{font-size:var(--ms-fs-xs);color:var(--ms-text-label);letter-spacing:.03em}
-      .mp-obs-del{background:transparent;border:1px solid var(--ms-border);color:var(--ms-text-dim);border-radius:3px;cursor:pointer;font-size:var(--ms-fs);padding:0 5px}
-      .mp-obs-del:hover{color:#DC3C30;border-color:#DC3C30}
-      .mp-results{max-height:380px;overflow-y:auto;padding:0 12px}
-      .mp-row{border:1px solid var(--ms-divider);border-radius:5px;background:var(--ms-bg-input);padding:9px 11px;margin-bottom:8px;cursor:default}
-      .mp-row:hover{border-color:#1D9E75;background:var(--ms-bg-header)}
-      .mp-row-header{display:flex;align-items:center;gap:9px;margin-bottom:7px}
-      .mp-row-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:4px;font-size:var(--ms-fs);font-weight:700;color:#fff;min-width:46px;letter-spacing:.03em}
-      .mp-row-name{flex:1;font-size:var(--ms-fs-sm);color:var(--ms-text);font-weight:600;text-transform:capitalize}
-      .mp-row-score{font-size:var(--ms-fs-sm);font-weight:700;color:#1D9E75;letter-spacing:.01em}
-      .mp-row-btns{display:flex;gap:5px}
-      .mp-row-btns button{padding:5px 10px;border:1px solid var(--ms-border);background:transparent;color:var(--ms-text-dim);border-radius:4px;font-size:var(--ms-fs-xs);cursor:pointer;font-weight:600}
-      .mp-row-btns button:hover{color:#1D9E75;border-color:#1D9E75}
-      .mp-row-bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-bottom:8px}
-      .mp-row-bar{height:100%;border-radius:2px;transition:width .2s}
-      .mp-row-metrics{display:flex;gap:14px;flex-wrap:wrap;font-size:var(--ms-fs);color:var(--ms-text);align-items:center;font-weight:600}
-      .mp-lbl{font-size:var(--ms-fs-xs);text-transform:uppercase;letter-spacing:.07em;color:var(--ms-text-label);margin-right:3px;font-weight:600}
-      .mp-row-mgrs{font-size:var(--ms-fs-xs);color:var(--ms-text-label);margin-top:5px;letter-spacing:.03em}
-      .mp-row-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
-      .mp-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:8px;font-size:var(--ms-fs-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--ms-border)}
-      .mp-chip-info{color:#378ADD;background:rgba(55,138,221,.08);border-color:rgba(55,138,221,.4)}
-      .mp-chip-warn{color:#EF9F27;background:rgba(239,159,39,.08);border-color:rgba(239,159,39,.45)}
-      .mp-chip-danger{color:#DC3C30;background:rgba(220,60,48,.10);border-color:rgba(220,60,48,.5);font-weight:700}
-      .mp-sparkline{display:inline-flex;align-items:center;margin-left:auto}
-      .mp-sparkline svg{display:block}
-      .mp-coa-list{padding:0 12px}
-      .mp-forces{padding:0 12px}
-      .mp-report-print h1{font-size:var(--ms-fs-sm);color:#1D9E75;margin:4px 0}
-      .mp-report-print h2{font-size:var(--ms-fs);color:#EF9F27;margin:8px 0 4px}
-      .mp-report-print table{width:100%;border-collapse:collapse;font-size:var(--ms-fs-xs);margin:4px 0}
-      .mp-report-print table th,.mp-report-print table td{border:1px solid var(--ms-divider);padding:4px 6px;text-align:left}
-      .mp-report-print table th{background:var(--ms-bg-input);color:var(--ms-text-label);text-transform:uppercase;font-size:var(--ms-fs-xs)}
-      #mp-report{padding:0 12px 12px}
-      .mp-help-popover{position:absolute;top:39px;left:8px;right:8px;z-index:1120;max-height:min(440px,calc(100vh - 132px));overflow-y:auto;background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:4px;box-shadow:var(--ms-shadow)}
-      .mp-help-popover[hidden]{display:none}
-      .mp-help-head{display:flex;justify-content:space-between;gap:10px;padding:10px 11px 8px;border-bottom:1px solid var(--ms-divider);background:var(--ms-bg-header)}
-      .mp-help-kicker{font-size:var(--ms-fs-xs);color:var(--ms-text-label);letter-spacing:.09em;text-transform:uppercase;font-weight:600}
-      .mp-help-title{margin-top:2px;font-size:var(--ms-fs-sm);color:#1D9E75;font-weight:700}
-      .mp-help-head button{width:20px;height:20px;border:1px solid var(--ms-border);border-radius:3px;background:var(--ms-bg-input);color:var(--ms-text-dim);cursor:pointer}
-      .mp-help-body{padding:10px 11px 12px;font-size:var(--ms-fs);line-height:1.5;color:var(--ms-text-dim);user-select:text}
-      .mp-help-body p{margin:0 0 9px}
-      .mp-help-body ol{margin:0 0 9px;padding-left:18px}
-      .mp-help-body li{margin-bottom:5px}
-      .mp-help-body b{color:var(--ms-text)}
-      @media(max-width:560px){.mp-panel{left:12px;right:12px;top:72px;width:auto}.mp-grid{grid-template-columns:1fr}}
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 export default MissionPlannerEngine;

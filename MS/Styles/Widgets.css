@@ -734,6 +734,16 @@
   .ms-btn.ms-armed { animation: none; box-shadow: 0 0 10px -2px var(--ms-accent); }
 }
 
+/* An armed CTA. `.ms-btn.ms-armed` and `.ms-btn.ms-cta` have equal specificity,
+   so the armed rule's accent text won on source order and painted accent-on-
+   accent — invisible. Drop an armed CTA back to the outline treatment for the
+   duration of the pick. */
+.ms-btn.ms-cta.ms-armed {
+  background: var(--ms-bg-input);
+  border-color: var(--ms-accent);
+  color: var(--ms-accent);
+}
+
 /* ═════════════════════════════════════════════════════════════════════════════
    SHARED: DISCLOSURE (collapsible "advanced" group)
 
@@ -2082,6 +2092,916 @@
 .ms-map-hint.ms-visible { display: block; }
 
 /* ═════════════════════════════════════════════════════════════════════════════
+   SHARED: TAB STRIP
+
+   A panel wide enough to carry several views of the same run puts them behind
+   a tab strip instead of stacking them. The columns are set from the strip's
+   own child count so a 5-tab and a 7-tab panel both fill the width.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.ms-tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 1px;
+  background: var(--ms-divider);
+  flex-shrink: 0;
+}
+
+.ms-tabs button {
+  border: 0;
+  background: var(--ms-bg-input);
+  color: var(--ms-text-dim);
+  padding: 6px 2px;
+  font: inherit;
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: var(--ms-transition);
+}
+
+.ms-tabs button:hover:not(.active) {
+  color: var(--ms-text);
+}
+
+.ms-tabs button.active {
+  background: var(--ms-bg-header);
+  color: var(--ms-accent);
+  font-weight: 700;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   MISSION PLANNER (mp-)
+
+   Migrated out of the engine's own injected <style>, which re-declared a dozen
+   shared ms-* components and redefined the --ms-* variables on its panel root
+   (hard-locking it to one palette regardless of theme). Only the rules with no
+   shared equivalent survive here.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.mp-copy {
+  padding: 6px 14px;
+  font-size: var(--ms-fs);
+  color: var(--ms-text-dim);
+  line-height: 1.45;
+}
+
+.mp-forces,
+.mp-coa-list,
+.mp-observer-list {
+  padding: 0 12px;
+}
+
+#mp-report {
+  padding: 0 12px 12px;
+}
+
+/* ─── Order-of-battle / corridor tables ──────────────────────────────────── */
+.mp-table {
+  border-collapse: collapse;
+  font-size: var(--ms-fs-xs);
+  margin: 4px 12px 8px;
+  width: calc(100% - 24px);
+}
+
+.mp-table th,
+.mp-table td {
+  border: 1px solid var(--ms-divider);
+  padding: 5px 7px;
+  text-align: left;
+  color: var(--ms-text);
+}
+
+.mp-table th {
+  background: var(--ms-bg-input);
+  color: var(--ms-text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.mp-table .mp-fr { color: var(--ms-info); font-weight: 700; }
+.mp-table .mp-en { color: var(--ms-danger); font-weight: 700; }
+
+/* ─── Observer rows ──────────────────────────────────────────────────────── */
+.mp-observer-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto 22px;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  margin-bottom: 6px;
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+  background: var(--ms-bg-input);
+  font-size: var(--ms-fs-xs);
+  cursor: pointer;
+}
+
+.mp-observer-row[data-side="enemy"] .mp-obs-name { color: var(--ms-danger); }
+.mp-observer-row[data-side="friendly"] .mp-obs-name { color: var(--ms-info); }
+
+.mp-obs-mgrs {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  letter-spacing: 0.03em;
+}
+
+.mp-obs-del {
+  background: transparent;
+  border: 1px solid var(--ms-border);
+  color: var(--ms-text-dim);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: var(--ms-fs);
+  padding: 0 5px;
+}
+
+.mp-obs-del:hover {
+  color: var(--ms-danger);
+  border-color: var(--ms-danger);
+}
+
+/* ─── Ranked result rows ─────────────────────────────────────────────────── */
+.mp-results {
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 0 12px;
+}
+
+.mp-row {
+  border: 1px solid var(--ms-divider);
+  border-radius: 5px;
+  background: var(--ms-bg-input);
+  padding: 9px 11px;
+  margin-bottom: 8px;
+}
+
+.mp-row:hover {
+  border-color: var(--ms-accent);
+  background: var(--ms-bg-header);
+}
+
+.mp-row-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+}
+
+.mp-row-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: var(--ms-radius-sm);
+  font-size: var(--ms-fs);
+  font-weight: 700;
+  color: #fff;
+  min-width: 46px;
+  letter-spacing: 0.03em;
+}
+
+.mp-row-name {
+  flex: 1;
+  font-size: var(--ms-fs-sm);
+  color: var(--ms-text);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.mp-row-score {
+  font-size: var(--ms-fs-sm);
+  font-weight: 700;
+  color: var(--ms-accent);
+}
+
+.mp-row-btns {
+  display: flex;
+  gap: 5px;
+}
+
+.mp-row-btns button {
+  padding: 5px 10px;
+  border: 1px solid var(--ms-border);
+  background: transparent;
+  color: var(--ms-text-dim);
+  border-radius: var(--ms-radius-sm);
+  font-size: var(--ms-fs-xs);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.mp-row-btns button:hover {
+  color: var(--ms-accent);
+  border-color: var(--ms-accent);
+}
+
+.mp-row-bar-wrap {
+  height: 4px;
+  background: var(--ms-bg-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.mp-row-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s;
+}
+
+.mp-row-metrics {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: var(--ms-fs);
+  color: var(--ms-text);
+  align-items: center;
+  font-weight: 600;
+}
+
+.mp-lbl {
+  font-size: var(--ms-fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ms-text-label);
+  margin-right: 3px;
+  font-weight: 600;
+}
+
+.mp-row-mgrs {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  margin-top: 5px;
+  letter-spacing: 0.03em;
+}
+
+.mp-row-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.mp-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: var(--ms-fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--ms-border);
+}
+
+.mp-chip-info {
+  color: var(--ms-info);
+  background: rgba(55, 138, 221, 0.08);
+  border-color: rgba(55, 138, 221, 0.4);
+}
+
+.mp-chip-warn {
+  color: var(--ms-warning);
+  background: rgba(239, 159, 39, 0.08);
+  border-color: rgba(239, 159, 39, 0.45);
+}
+
+.mp-chip-danger {
+  color: var(--ms-danger);
+  background: rgba(220, 60, 48, 0.1);
+  border-color: rgba(220, 60, 48, 0.5);
+  font-weight: 700;
+}
+
+.mp-sparkline {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.mp-sparkline svg { display: block; }
+
+/* ─── Printed report ─────────────────────────────────────────────────────── */
+.mp-report-print h1 {
+  font-size: var(--ms-fs-sm);
+  color: var(--ms-accent);
+  margin: 4px 0;
+}
+
+.mp-report-print h2 {
+  font-size: var(--ms-fs);
+  color: var(--ms-warning);
+  margin: 8px 0 4px;
+}
+
+.mp-report-print table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ms-fs-xs);
+  margin: 4px 0;
+}
+
+.mp-report-print table th,
+.mp-report-print table td {
+  border: 1px solid var(--ms-divider);
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.mp-report-print table th {
+  background: var(--ms-bg-input);
+  color: var(--ms-text-label);
+  text-transform: uppercase;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   TRAFFICABILITY (reach-)
+
+   Migrated out of the engine's own injected <style>, which re-declared 62
+   shared ms-* rules alongside these. Only the components with no shared
+   equivalent live here: the road badge, route/leg/step lists, map callouts,
+   the drive scrubber, and the convoy / fuel / timing / MOVORD readouts.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* Companion panel to Trafficability's control panel, parked to its right.
+   .ms-panel sets no `top`, so this carries the whole desktop position. */
+.ms-panel.reach-results-panel {
+  top: 60px;
+  left: 740px;
+  width: 340px;
+}
+
+.reach-road-badge-row {
+  padding: 4px 10px 2px;
+}
+
+.reach-road-badge {
+  display: inline-block;
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border: 1px solid var(--ms-border);
+  border-radius: 10px;
+  color: var(--ms-text-dim);
+}
+
+.reach-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 12px 4px;
+}
+
+.reach-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+}
+
+.reach-leg-swatch {
+  width: 11px;
+  height: 4px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.reach-routes {
+  padding: 2px 10px 4px;
+}
+
+.reach-routes:empty {
+  display: none;
+}
+
+.reach-route-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  margin: 3px 0;
+  border: 1px solid var(--ms-border);
+  border-radius: 5px;
+  cursor: pointer;
+  background: var(--ms-bg-input);
+  transition: border-color 0.14s, background 0.14s;
+}
+
+.reach-route-row:hover {
+  background: var(--ms-bg-header);
+}
+
+.reach-route-sel {
+  border-color: var(--ms-success);
+  background: var(--ms-bg-header);
+}
+
+.reach-route-swatch {
+  width: 12px;
+  height: 4px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.reach-route-name {
+  font-size: var(--ms-fs-xs);
+  font-weight: 700;
+  color: var(--ms-text);
+  flex: 0 0 auto;
+}
+
+.reach-route-meta {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  flex: 1;
+  text-align: right;
+}
+
+.reach-source-note {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  padding: 2px 12px;
+  font-style: italic;
+}
+
+.reach-source-note:empty {
+  display: none;
+}
+
+.reach-traffic-note {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text);
+  padding: 4px 12px;
+  line-height: 1.5;
+}
+
+.reach-traffic-note:empty {
+  display: none;
+}
+
+.reach-wp-list {
+  padding: 2px 12px 4px;
+  max-height: 110px;
+  overflow-y: auto;
+}
+
+.reach-wp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: var(--ms-fs-xs);
+}
+
+.reach-wp-tag {
+  font-weight: 700;
+  color: var(--ms-success);
+  min-width: 30px;
+}
+
+.reach-wp-coords {
+  color: var(--ms-text-dim);
+  font-family: var(--ms-font-mono, monospace);
+}
+
+.reach-steps {
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 2px 8px 4px 12px;
+  margin: 0 2px;
+}
+
+.reach-steps:empty {
+  display: none;
+}
+
+.reach-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+  font-size: var(--ms-fs-xs);
+  border-bottom: 1px solid var(--ms-divider);
+}
+
+.reach-step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  display: inline-block;
+}
+
+.reach-step-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ms-text);
+}
+
+.reach-step-km {
+  color: var(--ms-text-dim);
+  flex: 0 0 auto;
+}
+
+.reach-step-more {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  padding: 4px 0 2px;
+  font-style: italic;
+}
+
+.reach-co-chip {
+  display: inline-block;
+  font-size: var(--ms-fs-xs);
+  font-weight: 700;
+  color: #fff;
+  background: var(--c, #888);
+  padding: 1px 7px;
+  border-radius: 9px;
+  letter-spacing: 0.04em;
+}
+
+.reach-scrub-wrap {
+  padding: 0;
+}
+
+.reach-scrub-readout {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 12px;
+}
+
+.reach-scrub-time {
+  font-size: var(--ms-fs-sm);
+  font-weight: 700;
+  color: var(--ms-info);
+  font-family: var(--ms-font-mono, monospace);
+}
+
+.reach-scrub-speed {
+  font-size: var(--ms-fs-sm);
+  font-weight: 700;
+  color: var(--ms-success);
+}
+
+.reach-scrub-road {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 1px 12px 4px;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text);
+}
+
+.reach-scrub-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 12px 6px;
+}
+
+.reach-callout-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.reach-callout {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  min-width: 90px;
+  max-width: 230px;
+  pointer-events: none;
+  background: rgba(16, 20, 30, 0.93);
+  color: #e6eefb;
+  border: 1px solid var(--c, var(--ms-success));
+  border-left: 3px solid var(--c, var(--ms-success));
+  border-radius: 7px;
+  padding: 6px 9px;
+  font-family: var(--ms-font, sans-serif);
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  white-space: normal;
+}
+
+.reach-callout::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid var(--c, var(--ms-success));
+}
+
+.reach-callout-vehicle {
+  transform: translate(-50%, calc(-100% - 16px));
+  z-index: 45;
+}
+
+.reach-co-title {
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.reach-co-row {
+  color: #cdd9ec;
+  margin: 1px 0;
+}
+
+.reach-co-row b {
+  color: #fff;
+}
+
+.reach-co-note {
+  color: #aab8cf;
+  font-size: 10px;
+  margin-top: 3px;
+  font-style: italic;
+}
+
+.reach-co-chip {
+  margin: 2px 0;
+}
+
+.reach-feat-note {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  padding: 2px 12px 4px;
+  font-style: italic;
+  min-height: 14px;
+}
+
+.reach-convoy-result {
+  padding: 4px 12px 2px;
+  font-size: var(--ms-fs-xs);
+  line-height: 1.7;
+}
+
+.reach-convoy-row {
+  color: var(--ms-text);
+}
+
+.reach-convoy-serial {
+  color: #EF9F27;
+}
+
+.reach-fuel-result {
+  padding: 4px 12px 2px;
+  font-size: var(--ms-fs-xs);
+  line-height: 1.7;
+}
+
+.reach-fuel-row {
+  color: var(--ms-text);
+}
+
+.reach-fuel-ok {
+  color: #1D9E75;
+}
+
+.reach-fuel-warn {
+  color: #EF9F27;
+}
+
+.reach-fuel-bad {
+  color: #E24B4A;
+  font-weight: 600;
+}
+
+.reach-timing-panel {
+  padding: 4px 10px 2px;
+}
+
+.reach-timing-head {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+  padding: 4px 2px 2px;
+}
+
+.reach-timing-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--ms-fs-xs);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--ms-divider);
+}
+
+.reach-timing-lbl {
+  color: var(--ms-text-dim);
+  flex: 1;
+}
+
+.reach-timing-val {
+  font-family: var(--ms-font-mono, monospace);
+  font-weight: 700;
+  color: var(--ms-success);
+  white-space: nowrap;
+}
+
+.reach-timing-dwell {
+  font-size: 9px;
+  color: #EF9F27;
+  white-space: nowrap;
+}
+
+.reach-timing-tot {
+  background: rgba(239,159,39,0.08);
+  border-radius: 3px;
+}
+
+.reach-timing-tot .reach-timing-val {
+  color: #EF9F27;
+}
+
+.reach-wp-meta-list {
+  padding: 2px 10px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.reach-wp-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+}
+
+.reach-wp-meta-idx {
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.reach-wp-meta-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ms-fs-xs);
+  padding: 3px 5px;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  border-radius: 3px;
+  color: var(--ms-text);
+  font-family: inherit;
+  outline: none;
+}
+
+.reach-wp-meta-label:focus {
+  border-color: var(--ms-accent);
+}
+
+.reach-wp-meta-dwell {
+  font-size: var(--ms-fs-xs);
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  border-radius: 3px;
+  color: var(--ms-text);
+  font-family: inherit;
+  outline: none;
+  padding: 3px 4px;
+}
+
+.reach-wp-meta-dwell:focus {
+  border-color: var(--ms-accent);
+}
+
+.reach-movord-preview {
+  font-family: var(--ms-font-mono, monospace);
+  font-size: 10px;
+  white-space: pre;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--ms-border);
+  border-radius: 3px;
+  margin: 4px 10px;
+  padding: 6px 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  color: #c8daf0;
+  line-height: 1.55;
+  user-select: text;
+}
+
+.reach-wp-custom-lbl {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-success);
+  margin-left: 4px;
+  font-style: italic;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   COMBAT POWER (cp-)
+
+   Migrated off a fully inline-styled panel with hardcoded hex, so it now
+   follows the active theme like every other widget. Only the force-ratio hero
+   row, the posture line and the two detail tables have no shared equivalent.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.cp-ratio {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 12px 4px;
+  border-top: 1px solid var(--ms-divider);
+  margin-top: 2px;
+}
+
+.cp-ratio-lbl {
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+  font-weight: 600;
+}
+
+.cp-ratio-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ms-text);
+  font-family: var(--ms-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.cp-posture {
+  padding: 0 12px 2px;
+  font-size: var(--ms-fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Verdict tones, shared by the posture line and the affiliation cells. */
+.cp-success { color: var(--ms-success); }
+.cp-warning { color: var(--ms-warning); }
+.cp-danger  { color: var(--ms-danger); }
+.cp-info    { color: var(--ms-info); }
+
+.cp-friendly { color: var(--ms-info); }
+.cp-hostile  { color: var(--ms-danger); }
+.cp-neutral  { color: var(--ms-success); }
+.cp-unknown  { color: var(--ms-warning); }
+
+/* ─── Detail tables ──────────────────────────────────────────────────────── */
+.cp-table {
+  border-collapse: collapse;
+  width: calc(100% - 24px);
+  margin: 2px 12px 8px;
+  font-size: var(--ms-fs-xs);
+}
+
+.cp-table th {
+  text-align: right;
+  padding: 2px 0 4px 8px;
+  font-size: var(--ms-fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+  font-weight: 600;
+  border-bottom: 1px solid var(--ms-divider);
+}
+
+.cp-table th:first-child,
+.cp-table td:first-child {
+  text-align: left;
+  padding-left: 0;
+  font-weight: 600;
+}
+
+.cp-table td {
+  text-align: right;
+  padding: 3px 0 3px 8px;
+  color: var(--ms-text);
+  font-family: var(--ms-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-table td:first-child {
+  font-family: var(--ms-font);
+}
+
+.cp-empty {
+  text-align: center !important;
+  color: var(--ms-text-dim);
+  font-style: italic;
+  font-family: var(--ms-font) !important;
+  padding: 8px 0 !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═════════════════════════════════════════════════════════════════════════════ */
 
@@ -2098,6 +3018,13 @@
 
   .ms-disclosure-meta {
     display: none;
+  }
+
+  /* Trafficability's companion panel sits at left: 740px on the desktop
+     layout; the bare .ms-panel rule above cannot reach its `width`. */
+  .ms-panel.reach-results-panel {
+    right: 12px !important;
+    width: calc(100vw - 24px) !important;
   }
 }
 
