@@ -718,242 +718,6 @@ const LABEL_STYLE_TOGGLES: FieldSpec[] = [
 /** Which pane of the editor is showing. */
 type TabId = 'symbol' | 'labels' | 'look' | 'advanced';
 
-const MORPHIX_CSS = `
-#morphix-root .mx-modal {
-  position: absolute;
-  top: 4vh; left: 50%;
-  transform: translateX(-50%);
-  width: min(860px, calc(100vw - 32px));
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--ms-bg);
-  border: 1px solid var(--ms-border);
-  border-radius: var(--ms-radius);
-  box-shadow: var(--ms-shadow);
-  font-size: var(--ms-fs);
-}
-#morphix-root .mx-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 2px 0 14px;
-}
-#morphix-root .mx-body::-webkit-scrollbar { width: 9px; }
-#morphix-root .mx-body::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.14);
-  border-radius: 5px;
-}
-
-/* Tab strip */
-#morphix-root .mx-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 0 10px;
-  background: var(--ms-bg-header);
-  border-bottom: 1px solid var(--ms-divider);
-}
-#morphix-root .mx-tab {
-  appearance: none;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--ms-text-dim);
-  font-family: inherit;
-  font-size: var(--ms-fs-sm);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  padding: 10px 14px 8px;
-  cursor: pointer;
-  transition: var(--ms-transition);
-}
-#morphix-root .mx-tab:hover { color: var(--ms-text); }
-#morphix-root .mx-tab.active {
-  color: var(--ms-accent);
-  border-bottom-color: var(--ms-accent);
-}
-
-/* Section header with its Reset affordance */
-#morphix-root .mx-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: 12px;
-}
-#morphix-root .ms-btn.mx-mini {
-  padding: 3px 9px;
-  font-size: var(--ms-fs-xs);
-}
-
-/* Preview card */
-#morphix-root .mx-preview-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 12px 12px 2px;
-  padding: 12px 14px;
-  background: var(--ms-bg-subtle);
-  border: 1px solid var(--ms-divider);
-  border-radius: var(--ms-radius-sm);
-}
-#morphix-root .mx-preview {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76px;
-  height: 76px;
-  flex: 0 0 76px;
-  color: var(--ms-accent-secondary);
-}
-#morphix-root .mx-preview-img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-#morphix-root .mx-preview-glyph { opacity: 0.75; }
-#morphix-root .mx-preview-meta { min-width: 0; }
-#morphix-root .mx-preview-name {
-  font-size: var(--ms-fs-lg);
-  font-weight: 600;
-  color: var(--ms-text);
-  line-height: 1.35;
-}
-#morphix-root .mx-preview-sub {
-  font-size: var(--ms-fs-xs);
-  color: var(--ms-text-dim);
-  line-height: 1.5;
-  margin-top: 2px;
-}
-
-/* Grids, notes, hints */
-#morphix-root .ms-grid.mx-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 720px) {
-  #morphix-root .ms-grid.mx-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-#morphix-root .mx-note {
-  padding: 0 12px 9px;
-  font-size: var(--ms-fs-xs);
-  color: var(--ms-text-dim);
-  line-height: 1.6;
-}
-#morphix-root .mx-hint {
-  font-size: var(--ms-fs-xs);
-  color: var(--ms-text-dim);
-  line-height: 1.45;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-#morphix-root .mx-hint.warn { color: var(--ms-warning); }
-
-/* Steppers and sliders */
-#morphix-root .mx-num {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-#morphix-root .mx-num .ms-input { flex: 1; min-width: 0; }
-#morphix-root .mx-unit {
-  font-size: var(--ms-fs-xs);
-  color: var(--ms-text-dim);
-  flex: 0 0 auto;
-}
-#morphix-root .mx-range {
-  width: 100%;
-  height: 4px;
-  margin: 2px 0 0;
-  accent-color: var(--ms-accent);
-  cursor: pointer;
-}
-#morphix-root .mx-color {
-  height: 30px;
-  padding: 2px;
-  cursor: pointer;
-}
-
-/* Date-time group */
-#morphix-root .mx-dtg {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-#morphix-root .mx-dtg .ms-input {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--ms-font-mono);
-}
-
-/* Checkbox row */
-#morphix-root .mx-toggles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 18px;
-  padding: 0 12px 10px;
-}
-#morphix-root .mx-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: var(--ms-fs);
-  color: var(--ms-text);
-  cursor: pointer;
-}
-#morphix-root .mx-check input[type="checkbox"] {
-  accent-color: var(--ms-accent);
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-}
-
-/* Disclosure */
-#morphix-root .mx-details {
-  margin: 0 12px 10px;
-  border: 1px solid var(--ms-divider);
-  border-radius: var(--ms-radius-sm);
-  background: rgba(0, 0, 0, 0.12);
-}
-#morphix-root .mx-details > summary {
-  padding: 8px 11px;
-  font-size: var(--ms-fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ms-text-label);
-  cursor: pointer;
-  list-style: none;
-}
-#morphix-root .mx-details > summary::-webkit-details-marker { display: none; }
-#morphix-root .mx-details > summary::before {
-  content: '▸';
-  display: inline-block;
-  width: 12px;
-  color: var(--ms-accent);
-}
-#morphix-root .mx-details[open] > summary::before { content: '▾'; }
-#morphix-root .mx-details[open] > summary { border-bottom: 1px solid var(--ms-divider); }
-#morphix-root .mx-details .ms-grid { padding-top: 9px; }
-
-/* Footer */
-#morphix-root .mx-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--ms-bg-header);
-  border-top: 1px solid var(--ms-divider);
-}
-#morphix-root .mx-footer-msg {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--ms-fs-xs);
-  color: var(--ms-text-dim);
-  line-height: 1.5;
-}
-#morphix-root .mx-footer-msg.bad { color: var(--ms-danger); }
-#morphix-root .mx-footer-msg.warn { color: var(--ms-warning); }
-#morphix-root .mx-footer-btns { display: flex; gap: 6px; }
-`;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // State
@@ -1141,7 +905,6 @@ class MorphixEngine {
   // State
 
   private ensureRoot(): void {
-    this.ensureStyle();
     if (this.root) return;
     const root = document.createElement('div');
     root.id = 'morphix-root';
@@ -1157,15 +920,6 @@ class MorphixEngine {
     } as CSSStyleDeclaration);
     document.body.appendChild(root);
     this.root = root;
-  }
-
-  /** Inject the editor's own stylesheet once. Idempotent — keyed off its element id. */
-  private ensureStyle(): void {
-    if (typeof document === 'undefined' || document.getElementById('morphix-style')) return;
-    const style = document.createElement('style');
-    style.id = 'morphix-style';
-    style.textContent = MORPHIX_CSS;
-    document.head.appendChild(style);
   }
 
   private buildState(graphic: Graphic): EditableState {
@@ -1345,7 +1099,6 @@ class MorphixEngine {
   private render(): void {
     if (!this.root || !this.state) return;
     this.snapshotFocus();
-    this.ensureStyle();
     this.root.style.display = 'block';
 
     const s = this.state;
@@ -1419,7 +1172,7 @@ class MorphixEngine {
         <div class="ms-header-icon">MX</div>
         <div class="ms-header-title">${this.esc(name)}</div>
         <span class="ms-status-lbl">${this.esc(this.geomLabel(s.kind))}</span>
-        <button class="ms-header-btn" type="button" data-action="dismiss" title="Close (Esc)">×</button>
+        <button class="ms-header-btn ms-btn-round" type="button" data-action="dismiss" title="Close (Esc)">✕</button>
       </div>
     `;
   }
@@ -1476,7 +1229,7 @@ class MorphixEngine {
         </div>
         <div class="mx-footer-btns">
           <button type="button" class="ms-btn" data-action="dismiss">Cancel</button>
-          <button type="button" class="ms-btn primary" data-action="save" ${isValid && dirty ? '' : 'disabled'}>Save</button>
+          <button type="button" class="ms-btn ms-cta" data-action="save" ${isValid && dirty ? '' : 'disabled'}>Save</button>
         </div>
       </div>
     `;

@@ -3002,6 +3002,543 @@
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
+   DEPLOYMENT BUILDER (db-)
+
+   Moved out of the engine's own injected <style>. Every rule is scoped to
+   #deploymentBuilderWidget and none of them re-declare a shared component —
+   the handful that name ms-* classes are per-widget tweaks to them.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* Override ms-panel defaults — wider for two-column layout, custom position */
+#deploymentBuilderWidget {
+  top: 110px; left: 60px;
+  width: 560px; height: 500px;
+  min-width: 440px; min-height: 320px;
+  max-width: 90vw; max-height: 90vh;
+  z-index: 1200;
+  overflow: visible;
+}
+/* Minimized: no resize handles, and the 320px floor that keeps the panel
+   usable while resizing has to lift or the header cannot collapse. */
+#deploymentBuilderWidget.db-minimized .db-resize-handle { display: none; }
+#deploymentBuilderWidget.db-minimized { min-height: 0; }
+
+/* Body becomes a row-flex container; columns scroll independently */
+#deploymentBuilderWidget .ms-body {
+  padding: 0; overflow: hidden; min-height: 0;
+  display: flex; flex-direction: column;
+}
+/* The rule above is ID-scoped, so it outranks the shared
+   `.ms-body.ms-minimized { display: none }` on specificity alone — minimizing
+   left the body on screen and the panel grew to its content height instead of
+   collapsing to the header. Restate the collapse at matching specificity. */
+#deploymentBuilderWidget .ms-body.ms-minimized {
+  display: none;
+}
+#deploymentBuilderWidget .db-cols {
+  display: flex; flex: 1; min-height: 0; overflow: hidden;
+}
+
+/* Left column: plan picker */
+#deploymentBuilderWidget .db-left {
+  width: 232px; flex-shrink: 0;
+  border-right: 1px solid var(--ms-divider);
+  display: flex; flex-direction: column; min-width: 0;
+}
+#deploymentBuilderWidget .db-toolbar {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--ms-divider);
+  display: flex; flex-direction: column; gap: 6px;
+}
+#deploymentBuilderWidget .db-toolbar .ms-input { padding: 6px 8px; }
+#deploymentBuilderWidget .db-toolbar .ms-btn  { padding: 6px 8px; }
+#deploymentBuilderWidget .db-plan-list {
+  flex: 1; overflow-y: auto; padding: 4px 0;
+}
+#deploymentBuilderWidget .db-category-header {
+  padding: 9px 12px 4px;
+  font-size: var(--ms-fs-xs); font-weight: 700;
+  color: var(--ms-text-label);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 6px;
+  transition: var(--ms-transition);
+}
+#deploymentBuilderWidget .db-category-header:hover { color: var(--ms-accent); }
+#deploymentBuilderWidget .db-category-header .db-caret {
+  font-size: 8px; transition: transform 0.15s; opacity: 0.7;
+}
+#deploymentBuilderWidget .db-category-header.collapsed .db-caret {
+  transform: rotate(-90deg);
+}
+#deploymentBuilderWidget .db-plan-item {
+  padding: 6px 12px 6px 18px;
+  font-size: var(--ms-fs);
+  color: var(--ms-text-dim);
+  cursor: pointer;
+  transition: var(--ms-transition);
+  border-left: 2px solid transparent;
+}
+#deploymentBuilderWidget .db-plan-item:hover {
+  background: rgba(239, 159, 39, 0.06);
+  color: var(--ms-text);
+}
+#deploymentBuilderWidget .db-plan-item.active {
+  background: rgba(239, 159, 39, 0.14);
+  color: var(--ms-text);
+  border-left-color: var(--ms-accent);
+}
+#deploymentBuilderWidget .db-list-loading,
+#deploymentBuilderWidget .db-list-empty {
+  padding: 14px 12px;
+  color: var(--ms-text-dim);
+  font-size: var(--ms-fs-xs);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Right column: configure */
+#deploymentBuilderWidget .db-right {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+#deploymentBuilderWidget .db-right .ms-section-title:first-child { padding-top: 9px; }
+
+/* Formation chip grid */
+#deploymentBuilderWidget .db-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 0 12px 4px;
+}
+#deploymentBuilderWidget .db-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 7px 4px 5px;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-sm);
+  color: var(--ms-text-dim);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--ms-fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  transition: var(--ms-transition);
+  min-width: 0;
+}
+#deploymentBuilderWidget .db-chip-icon {
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0.7; transition: opacity var(--ms-transition);
+}
+#deploymentBuilderWidget .db-chip-icon svg {
+  width: 26px; height: 26px;
+}
+#deploymentBuilderWidget .db-chip:hover {
+  border-color: var(--ms-accent); color: var(--ms-text);
+}
+#deploymentBuilderWidget .db-chip:hover .db-chip-icon { opacity: 1; }
+#deploymentBuilderWidget .db-chip:active { transform: scale(0.97); }
+#deploymentBuilderWidget .db-chip.active {
+  border-color: var(--ms-accent);
+  background: rgba(239, 159, 39, 0.14);
+  color: var(--ms-accent);
+}
+#deploymentBuilderWidget .db-chip.active .db-chip-icon { opacity: 1; }
+
+/* Spacing row */
+#deploymentBuilderWidget .db-spacing-row {
+  display: flex; gap: 6px; padding: 0 12px 6px;
+  align-items: center;
+}
+#deploymentBuilderWidget .db-spacing-row .ms-input {
+  flex: 1; padding: 5px 8px;
+}
+#deploymentBuilderWidget .db-spacing-row .ms-select {
+  width: 64px; flex-shrink: 0; padding: 5px 6px;
+}
+
+/* Plan summary */
+#deploymentBuilderWidget .db-plan-summary {
+  padding: 2px 12px 4px;
+}
+#deploymentBuilderWidget .db-plan-name {
+  font-size: var(--ms-fs-sm);
+  color: var(--ms-text);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+#deploymentBuilderWidget .db-plan-name.empty {
+  color: var(--ms-text-label);
+  font-weight: 500; font-style: italic;
+}
+#deploymentBuilderWidget .db-plan-desc {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.4;
+  margin-bottom: 6px;
+  min-height: 18px;
+}
+#deploymentBuilderWidget .db-plan-summary .ms-info-grid {
+  padding: 4px 0 0;
+}
+
+/* Status / action row */
+#deploymentBuilderWidget .db-status:empty { display: none; }
+#deploymentBuilderWidget .ms-btn-row { padding: 6px 12px 12px; gap: 6px; }
+#deploymentBuilderWidget .db-btn-place { flex: 2; }
+#deploymentBuilderWidget .db-btn-cancel { flex: 1; }
+
+/* Resize handles */
+#deploymentBuilderWidget .db-resize-handle {
+  position: absolute;
+  z-index: 20;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+#deploymentBuilderWidget .db-resize-handle:hover,
+#deploymentBuilderWidget .db-resize-handle:active {
+  background: rgba(239, 159, 39, 0.18);
+}
+#deploymentBuilderWidget .db-resize-e {
+  top: 8px; right: -4px; bottom: 8px; width: 8px; cursor: ew-resize;
+}
+#deploymentBuilderWidget .db-resize-s {
+  bottom: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize;
+}
+#deploymentBuilderWidget .db-resize-se {
+  bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: se-resize;
+}
+#deploymentBuilderWidget .db-resize-se::after {
+  content: '';
+  position: absolute;
+  bottom: 4px; right: 4px;
+  width: 7px; height: 7px;
+  border-right: 2px solid var(--ms-accent);
+  border-bottom: 2px solid var(--ms-accent);
+  border-radius: 1px;
+  opacity: 0.55;
+}
+    
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   MORPHIX SYMBOL EDITOR (mx-)
+
+   Moved out of the engine's own injected <style>, unchanged. Every rule is
+   scoped to #morphix-root and token-driven. The pieces that look like shared
+   components are deliberately NOT them: the underline tab strip is a different
+   pattern from the filled .ms-tabs grid, .mx-hint is dense per-field help
+   rather than the padded italic .ms-hint block, .mx-check is an inline chip
+   rather than a full-width .ms-toggle-row, and the disclosures are native
+   <details> so they survive this editor's re-render without rebinding.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+#morphix-root .mx-modal {
+  position: absolute;
+  top: 4vh; left: 50%;
+  transform: translateX(-50%);
+  width: min(860px, calc(100vw - 32px));
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ms-bg);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius);
+  box-shadow: var(--ms-shadow);
+  font-size: var(--ms-fs);
+}
+#morphix-root .mx-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 0 14px;
+}
+#morphix-root .mx-body::-webkit-scrollbar { width: 9px; }
+#morphix-root .mx-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.14);
+  border-radius: 5px;
+}
+
+/* Tab strip */
+#morphix-root .mx-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 10px;
+  background: var(--ms-bg-header);
+  border-bottom: 1px solid var(--ms-divider);
+}
+#morphix-root .mx-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ms-text-dim);
+  font-family: inherit;
+  font-size: var(--ms-fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 10px 14px 8px;
+  cursor: pointer;
+  transition: var(--ms-transition);
+}
+#morphix-root .mx-tab:hover { color: var(--ms-text); }
+#morphix-root .mx-tab.active {
+  color: var(--ms-accent);
+  border-bottom-color: var(--ms-accent);
+}
+
+/* Section header with its Reset affordance */
+#morphix-root .mx-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 12px;
+}
+#morphix-root .ms-btn.mx-mini {
+  padding: 3px 9px;
+  font-size: var(--ms-fs-xs);
+}
+
+/* Preview card */
+#morphix-root .mx-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 12px 2px;
+  padding: 12px 14px;
+  background: var(--ms-bg-subtle);
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+}
+#morphix-root .mx-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
+  color: var(--ms-accent-secondary);
+}
+#morphix-root .mx-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+#morphix-root .mx-preview-glyph { opacity: 0.75; }
+#morphix-root .mx-preview-meta { min-width: 0; }
+#morphix-root .mx-preview-name {
+  font-size: var(--ms-fs-lg);
+  font-weight: 600;
+  color: var(--ms-text);
+  line-height: 1.35;
+}
+#morphix-root .mx-preview-sub {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+/* Grids, notes, hints */
+#morphix-root .ms-grid.mx-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 720px) {
+  #morphix-root .ms-grid.mx-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+#morphix-root .mx-note {
+  padding: 0 12px 9px;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.6;
+}
+#morphix-root .mx-hint {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#morphix-root .mx-hint.warn { color: var(--ms-warning); }
+
+/* Steppers and sliders */
+#morphix-root .mx-num {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#morphix-root .mx-num .ms-input { flex: 1; min-width: 0; }
+#morphix-root .mx-unit {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  flex: 0 0 auto;
+}
+#morphix-root .mx-range {
+  width: 100%;
+  height: 4px;
+  margin: 2px 0 0;
+  accent-color: var(--ms-accent);
+  cursor: pointer;
+}
+#morphix-root .mx-color {
+  height: 30px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* Date-time group */
+#morphix-root .mx-dtg {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#morphix-root .mx-dtg .ms-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--ms-font-mono);
+}
+
+/* Checkbox row */
+#morphix-root .mx-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 0 12px 10px;
+}
+#morphix-root .mx-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--ms-fs);
+  color: var(--ms-text);
+  cursor: pointer;
+}
+#morphix-root .mx-check input[type="checkbox"] {
+  accent-color: var(--ms-accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* Disclosure */
+#morphix-root .mx-details {
+  margin: 0 12px 10px;
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+  background: rgba(0, 0, 0, 0.12);
+}
+#morphix-root .mx-details > summary {
+  padding: 8px 11px;
+  font-size: var(--ms-fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ms-text-label);
+  cursor: pointer;
+  list-style: none;
+}
+#morphix-root .mx-details > summary::-webkit-details-marker { display: none; }
+#morphix-root .mx-details > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 12px;
+  color: var(--ms-accent);
+}
+#morphix-root .mx-details[open] > summary::before { content: '▾'; }
+#morphix-root .mx-details[open] > summary { border-bottom: 1px solid var(--ms-divider); }
+#morphix-root .mx-details .ms-grid { padding-top: 9px; }
+
+/* Footer */
+#morphix-root .mx-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--ms-bg-header);
+  border-top: 1px solid var(--ms-divider);
+}
+#morphix-root .mx-footer-msg {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+  line-height: 1.5;
+}
+#morphix-root .mx-footer-msg.bad { color: var(--ms-danger); }
+#morphix-root .mx-footer-msg.warn { color: var(--ms-warning); }
+#morphix-root .mx-footer-btns { display: flex; gap: 6px; }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   THREAT SECTORS (ts-)
+
+   Moved out of the engine's own injected <style>, which reached for
+   --ms-fg / --ms-fg-dim / --ms-bg-soft — none of which exist in this file, so
+   every one of them fell through to a hardcoded literal and the panel could not
+   follow a theme. Only the per-sector list rows have no shared equivalent.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+#ts-widget .ts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 10px 4px;
+}
+
+#ts-widget .ts-item {
+  border: 1px solid var(--ms-divider);
+  border-radius: var(--ms-radius-sm);
+  padding: 6px 7px;
+  background: var(--ms-bg-input);
+}
+
+#ts-widget .ts-item-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#ts-widget .ts-i-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--ms-text);
+  font-size: var(--ms-fs);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#ts-widget .ts-item-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+#ts-widget .ts-item-row .ms-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+#ts-widget .ts-item-row .ms-input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 5px;
+  text-align: center;
+}
+
+/* Native colour wells need their own box — the shared .ms-input padding leaves
+   the swatch a sliver. */
+#ts-widget .ts-color {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 24px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═════════════════════════════════════════════════════════════════════════════ */
 

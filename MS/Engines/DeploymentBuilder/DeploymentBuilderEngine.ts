@@ -11,6 +11,7 @@ import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import SerializationEngine from '../ImportExport/SerializationEngine';
 import Plan from '../ImportExport/Plan.ts';
 import EngineLogger from '../../Support/EngineLogger';
+import { bindDisclosures } from '../../Support/Disclosure';
 
 // ── Formation slot offsets (lateral, forward) ────────────────────────────────
 const FORMATIONS: Record<string, [number, number][] | null> = {
@@ -144,9 +145,11 @@ class DeploymentBuilderEngine {
 
   // Widget state
   private _minimized: boolean = false;
+  private _helpDismiss: ((e: MouseEvent) => void) | null = null;
   private _searchText: string = '';
   private _collapsedCategories: Set<string> = new Set();
-  private _widgetHeight: string = '430px';
+  /** Restore height for un-minimize. Must match the CSS height. */
+  private _widgetHeight: string = '500px';
 
   private constructor() {}
 
@@ -194,6 +197,10 @@ class DeploymentBuilderEngine {
   public destroy(): void {
     this.disable();
     this._removeBgClickHandle();
+    if (this._helpDismiss) {
+      document.removeEventListener('click', this._helpDismiss);
+      this._helpDismiss = null;
+    }
     if (this._widget) {
       this._widget.remove();
       this._widget = null;
@@ -237,13 +244,15 @@ class DeploymentBuilderEngine {
     const body = this._widget.querySelector('.ms-body') as HTMLElement | null;
     const minBtn = this._widget.querySelector('#db-min-btn') as HTMLElement | null;
     if (body) body.classList.toggle('ms-minimized', this._minimized);
-    if (minBtn) minBtn.textContent = this._minimized ? '▶' : '▼';
+    if (minBtn) {
+      minBtn.textContent = this._minimized ? '▶' : '▼';
+      minBtn.title = this._minimized ? 'Restore' : 'Minimize';
+    }
     this._widget.classList.toggle('db-minimized', this._minimized);
     this._widget.style.height = this._minimized ? 'auto' : this._widgetHeight;
   }
 
   private _buildWidget(): void {
-    this._injectWidgetStyles();
 
     const el = document.createElement('div');
     el.id = 'deploymentBuilderWidget';
@@ -312,25 +321,10 @@ class DeploymentBuilderEngine {
             <div class="db-plan-list"></div>
           </div>
 
-          <!-- Right: configure & place -->
+          <!-- Right: the selected plan and Place. Formation and spacing are
+               tweakables with usable defaults (As-Is keeps the plan's own
+               layout, 0 m spacing), so they sit in a collapsed disclosure. -->
           <div class="db-right">
-            <div class="ms-section-title">Formation</div>
-            <div class="db-chip-grid">${chips}</div>
-            <div class="ms-hint db-form-hint"></div>
-
-            <div class="ms-section-title">Spacing</div>
-            <div class="db-spacing-row">
-              <input class="ms-input db-spacing-val" type="number" value="0" min="0" step="1" />
-              <select class="ms-select db-spacing-unit">
-                <option value="m">m</option>
-                <option value="km">km</option>
-                <option value="mi">mi</option>
-                <option value="nm">nm</option>
-              </select>
-            </div>
-
-            <div class="ms-divider"></div>
-
             <div class="ms-section-title">Selected Plan</div>
             <div class="db-plan-summary">
               <div class="db-plan-name empty">No plan selected</div>
@@ -350,8 +344,34 @@ class DeploymentBuilderEngine {
             <div class="ms-hint db-status"></div>
 
             <div class="ms-btn-row">
-              <button class="ms-btn danger db-btn-cancel">Cancel</button>
-              <button class="ms-btn primary db-btn-place" disabled>Place on Map ↗</button>
+              <button class="ms-btn ms-cta db-btn-place" disabled>Place on Map ↗</button>
+            </div>
+            <div class="ms-btn-row db-cancel-row" hidden>
+              <button class="ms-btn danger db-btn-cancel">Cancel placement</button>
+            </div>
+
+            <div class="ms-disclosure" data-open="false">
+              <button class="ms-disclosure-head" type="button" id="db-form-toggle" aria-expanded="false" aria-controls="db-form-body">
+                <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+                <span class="ms-disclosure-title">Formation &amp; spacing</span>
+                <span class="ms-disclosure-meta db-form-meta">As-Is · 0 m</span>
+              </button>
+              <div class="ms-disclosure-body" id="db-form-body" hidden>
+                <div class="ms-section-title">Formation</div>
+                <div class="db-chip-grid">${chips}</div>
+                <div class="ms-hint db-form-hint"></div>
+
+                <div class="ms-section-title">Spacing</div>
+                <div class="db-spacing-row">
+                  <input class="ms-input db-spacing-val" type="number" value="0" min="0" step="1" />
+                  <select class="ms-select db-spacing-unit">
+                    <option value="m">m</option>
+                    <option value="km">km</option>
+                    <option value="mi">mi</option>
+                    <option value="nm">nm</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -379,13 +399,18 @@ class DeploymentBuilderEngine {
         helpPop.hidden = !helpPop.hidden;
       });
       helpClose?.addEventListener('click', () => { helpPop.hidden = true; });
-      document.addEventListener('click', (e) => {
+      // Kept on the instance so destroy() can take it off the document again;
+      // it used to be an anonymous listener that outlived the widget.
+      this._helpDismiss = (e: MouseEvent) => {
         if (helpPop.hidden) return;
         if (!helpPop.contains(e.target as Node) && e.target !== helpBtn) {
           helpPop.hidden = true;
         }
-      });
+      };
+      document.addEventListener('click', this._helpDismiss);
     }
+
+    bindDisclosures(el);
 
     // Drag (header is the handle)
     this._makeDraggable(el.querySelector('#db-drag-handle') as HTMLElement, el);
@@ -412,11 +437,13 @@ class DeploymentBuilderEngine {
       chipGrid.querySelectorAll<HTMLElement>('.db-chip').forEach((c) => {
         c.classList.toggle('active', c.dataset.form === key);
       });
+      this._syncFormationMeta();
     };
     chipGrid.querySelectorAll<HTMLElement>('.db-chip').forEach((chip) => {
       chip.addEventListener('click', () => syncFormationUI(chip.dataset.form ?? 'as-is'));
     });
     syncFormationUI(this._formationType);
+    this._showCancel(false);
 
     // Spacing: numeric input + unit select
     const spacingValEl = el.querySelector('.db-spacing-val') as HTMLInputElement;
@@ -426,6 +453,7 @@ class DeploymentBuilderEngine {
     const updateSpacing = () => {
       const val = parseFloat(spacingValEl.value) || 0;
       this._spacingMeters = val * (UNIT_TO_M[spacingUnitEl.value] ?? 1);
+      this._syncFormationMeta();
     };
     spacingValEl.addEventListener('input', updateSpacing);
     spacingUnitEl.addEventListener('change', updateSpacing);
@@ -435,215 +463,6 @@ class DeploymentBuilderEngine {
     el.querySelector('.db-btn-cancel')!.addEventListener('click', () => this._cancelPlacement());
   }
 
-  private _injectWidgetStyles(): void {
-    if (document.getElementById('db-widget-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'db-widget-styles';
-    style.textContent = `
-      /* Override ms-panel defaults — wider for two-column layout, custom position */
-      #deploymentBuilderWidget {
-        top: 110px; left: 60px;
-        width: 560px; height: 500px;
-        min-width: 440px; min-height: 320px;
-        max-width: 90vw; max-height: 90vh;
-        z-index: 1200;
-        overflow: visible;
-      }
-      #deploymentBuilderWidget.db-minimized .db-resize-handle { display: none; }
-
-      /* Body becomes a row-flex container; columns scroll independently */
-      #deploymentBuilderWidget .ms-body {
-        padding: 0; overflow: hidden; min-height: 0;
-        display: flex; flex-direction: column;
-      }
-      #deploymentBuilderWidget .db-cols {
-        display: flex; flex: 1; min-height: 0; overflow: hidden;
-      }
-
-      /* Left column: plan picker */
-      #deploymentBuilderWidget .db-left {
-        width: 232px; flex-shrink: 0;
-        border-right: 1px solid var(--ms-divider);
-        display: flex; flex-direction: column; min-width: 0;
-      }
-      #deploymentBuilderWidget .db-toolbar {
-        padding: 9px 10px;
-        border-bottom: 1px solid var(--ms-divider);
-        display: flex; flex-direction: column; gap: 6px;
-      }
-      #deploymentBuilderWidget .db-toolbar .ms-input { padding: 6px 8px; }
-      #deploymentBuilderWidget .db-toolbar .ms-btn  { padding: 6px 8px; }
-      #deploymentBuilderWidget .db-plan-list {
-        flex: 1; overflow-y: auto; padding: 4px 0;
-      }
-      #deploymentBuilderWidget .db-category-header {
-        padding: 9px 12px 4px;
-        font-size: var(--ms-fs-xs); font-weight: 700;
-        color: var(--ms-text-label);
-        text-transform: uppercase; letter-spacing: 0.1em;
-        cursor: pointer; user-select: none;
-        display: flex; align-items: center; gap: 6px;
-        transition: var(--ms-transition);
-      }
-      #deploymentBuilderWidget .db-category-header:hover { color: var(--ms-accent); }
-      #deploymentBuilderWidget .db-category-header .db-caret {
-        font-size: 8px; transition: transform 0.15s; opacity: 0.7;
-      }
-      #deploymentBuilderWidget .db-category-header.collapsed .db-caret {
-        transform: rotate(-90deg);
-      }
-      #deploymentBuilderWidget .db-plan-item {
-        padding: 6px 12px 6px 18px;
-        font-size: var(--ms-fs);
-        color: var(--ms-text-dim);
-        cursor: pointer;
-        transition: var(--ms-transition);
-        border-left: 2px solid transparent;
-      }
-      #deploymentBuilderWidget .db-plan-item:hover {
-        background: rgba(239, 159, 39, 0.06);
-        color: var(--ms-text);
-      }
-      #deploymentBuilderWidget .db-plan-item.active {
-        background: rgba(239, 159, 39, 0.14);
-        color: var(--ms-text);
-        border-left-color: var(--ms-accent);
-      }
-      #deploymentBuilderWidget .db-list-loading,
-      #deploymentBuilderWidget .db-list-empty {
-        padding: 14px 12px;
-        color: var(--ms-text-dim);
-        font-size: var(--ms-fs-xs);
-        font-style: italic;
-        text-align: center;
-      }
-
-      /* Right column: configure */
-      #deploymentBuilderWidget .db-right {
-        flex: 1; min-width: 0;
-        display: flex; flex-direction: column;
-        overflow-y: auto;
-      }
-      #deploymentBuilderWidget .db-right .ms-section-title:first-child { padding-top: 9px; }
-
-      /* Formation chip grid */
-      #deploymentBuilderWidget .db-chip-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 6px;
-        padding: 0 12px 4px;
-      }
-      #deploymentBuilderWidget .db-chip {
-        display: flex; flex-direction: column; align-items: center; gap: 3px;
-        padding: 7px 4px 5px;
-        background: var(--ms-bg-input);
-        border: 1px solid var(--ms-border);
-        border-radius: var(--ms-radius-sm);
-        color: var(--ms-text-dim);
-        cursor: pointer;
-        font-family: inherit;
-        font-size: var(--ms-fs-xs);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        font-weight: 600;
-        transition: var(--ms-transition);
-        min-width: 0;
-      }
-      #deploymentBuilderWidget .db-chip-icon {
-        display: flex; align-items: center; justify-content: center;
-        opacity: 0.7; transition: opacity var(--ms-transition);
-      }
-      #deploymentBuilderWidget .db-chip-icon svg {
-        width: 26px; height: 26px;
-      }
-      #deploymentBuilderWidget .db-chip:hover {
-        border-color: var(--ms-accent); color: var(--ms-text);
-      }
-      #deploymentBuilderWidget .db-chip:hover .db-chip-icon { opacity: 1; }
-      #deploymentBuilderWidget .db-chip:active { transform: scale(0.97); }
-      #deploymentBuilderWidget .db-chip.active {
-        border-color: var(--ms-accent);
-        background: rgba(239, 159, 39, 0.14);
-        color: var(--ms-accent);
-      }
-      #deploymentBuilderWidget .db-chip.active .db-chip-icon { opacity: 1; }
-
-      /* Spacing row */
-      #deploymentBuilderWidget .db-spacing-row {
-        display: flex; gap: 6px; padding: 0 12px 6px;
-        align-items: center;
-      }
-      #deploymentBuilderWidget .db-spacing-row .ms-input {
-        flex: 1; padding: 5px 8px;
-      }
-      #deploymentBuilderWidget .db-spacing-row .ms-select {
-        width: 64px; flex-shrink: 0; padding: 5px 6px;
-      }
-
-      /* Plan summary */
-      #deploymentBuilderWidget .db-plan-summary {
-        padding: 2px 12px 4px;
-      }
-      #deploymentBuilderWidget .db-plan-name {
-        font-size: var(--ms-fs-sm);
-        color: var(--ms-text);
-        font-weight: 700;
-        margin-bottom: 3px;
-      }
-      #deploymentBuilderWidget .db-plan-name.empty {
-        color: var(--ms-text-label);
-        font-weight: 500; font-style: italic;
-      }
-      #deploymentBuilderWidget .db-plan-desc {
-        font-size: var(--ms-fs-xs);
-        color: var(--ms-text-dim);
-        line-height: 1.4;
-        margin-bottom: 6px;
-        min-height: 18px;
-      }
-      #deploymentBuilderWidget .db-plan-summary .ms-info-grid {
-        padding: 4px 0 0;
-      }
-
-      /* Status / action row */
-      #deploymentBuilderWidget .db-status:empty { display: none; }
-      #deploymentBuilderWidget .ms-btn-row { padding: 6px 12px 12px; gap: 6px; }
-      #deploymentBuilderWidget .db-btn-place { flex: 2; }
-      #deploymentBuilderWidget .db-btn-cancel { flex: 1; }
-
-      /* Resize handles */
-      #deploymentBuilderWidget .db-resize-handle {
-        position: absolute;
-        z-index: 20;
-        border-radius: 3px;
-        transition: background 0.15s;
-      }
-      #deploymentBuilderWidget .db-resize-handle:hover,
-      #deploymentBuilderWidget .db-resize-handle:active {
-        background: rgba(239, 159, 39, 0.18);
-      }
-      #deploymentBuilderWidget .db-resize-e {
-        top: 8px; right: -4px; bottom: 8px; width: 8px; cursor: ew-resize;
-      }
-      #deploymentBuilderWidget .db-resize-s {
-        bottom: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize;
-      }
-      #deploymentBuilderWidget .db-resize-se {
-        bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: se-resize;
-      }
-      #deploymentBuilderWidget .db-resize-se::after {
-        content: '';
-        position: absolute;
-        bottom: 4px; right: 4px;
-        width: 7px; height: 7px;
-        border-right: 2px solid var(--ms-accent);
-        border-bottom: 2px solid var(--ms-accent);
-        border-radius: 1px;
-        opacity: 0.55;
-      }
-    `;
-    document.head.appendChild(style);
-  }
 
   private _makeDraggable(handle: HTMLElement, el: HTMLElement): void {
     let startX = 0, startY = 0, elX = 0, elY = 0;
@@ -941,6 +760,7 @@ class DeploymentBuilderEngine {
   private _startPlacement(_planData: any): void {
     if (!this._view) return;
     this._phase = 'anchor';
+    this._showCancel(true);
     this._clearGhostGraphics();
     this._removePointerHandles();
 
@@ -1020,6 +840,7 @@ class DeploymentBuilderEngine {
     this._rightClickHandle = this._view.on('pointer-down', (evt) => {
       if (evt.button !== 2) return;
       this._phase = 'anchor';
+    this._showCancel(true);
       this._anchorPoint = null;
       this._clearGhostGraphics();
       this._removeBearingHUD();
@@ -1046,6 +867,7 @@ class DeploymentBuilderEngine {
   private _commitFormation(bearing: number): void {
     if (!this._anchorPoint || !this._selectedPlanData || !this._serializationEngine) return;
     this._phase = 'idle';
+    this._showCancel(false);
     this._clearGhostGraphics();
     this._removePointerHandles();
     const container = this._getViewContainer();
@@ -1081,6 +903,7 @@ class DeploymentBuilderEngine {
 
   private _cancelPlacement(): void {
     this._phase = 'idle';
+    this._showCancel(false);
     this._clearGhostGraphics();
     this._removePointerHandles();
     const container = this._getViewContainer();
@@ -1791,6 +1614,25 @@ class DeploymentBuilderEngine {
       return document.getElementById(container);
     }
     return container as HTMLElement;
+  }
+
+  /**
+   * Keep the collapsed disclosure's summary honest — otherwise a tuned
+   * formation is invisible while the group is shut.
+   */
+  private _syncFormationMeta(): void {
+    const meta = this._widget?.querySelector<HTMLElement>('.db-form-meta');
+    if (!meta) return;
+    const label = FORMATION_META.find((f) => f.key === this._formationType)?.label ?? this._formationType;
+    const val = this._widget?.querySelector<HTMLInputElement>('.db-spacing-val')?.value ?? '0';
+    const unit = this._widget?.querySelector<HTMLSelectElement>('.db-spacing-unit')?.value ?? 'm';
+    meta.textContent = `${label} · ${parseFloat(val) || 0} ${unit}`;
+  }
+
+  /** The Cancel button only means anything mid-placement. */
+  private _showCancel(on: boolean): void {
+    const row = this._widget?.querySelector<HTMLElement>('.db-cancel-row');
+    if (row) row.hidden = !on;
   }
 
   private _setStatus(msg: string): void {
