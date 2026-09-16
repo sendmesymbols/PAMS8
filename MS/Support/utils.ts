@@ -4,6 +4,31 @@ import Polyline from "@arcgis/core/geometry/Polyline";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 
 class Utils {
+    /**
+     * Escape user-supplied text for interpolation into innerHTML.
+     * Symbol names, unique designations, plan/template titles and slide text
+     * are user- (or plan-file-) controlled — always route them through this
+     * before template-literal HTML. Numeric/enum values don't need it.
+     */
+    static escapeHtml(value: unknown): string {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * SVG markup → data URL, safe for any Unicode content.
+     * `btoa(svg)` throws InvalidCharacterError on the first non-Latin-1
+     * character (e.g. an Urdu label), so never call it on SVG that can carry
+     * text — use this instead.
+     */
+    static svgToDataUrl(svg: string): string {
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
     /*
     static calculateDistance(pt1: Point, pt2: Point): number {
         const dx = pt2.x - pt1.x;

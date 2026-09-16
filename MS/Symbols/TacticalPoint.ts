@@ -96,7 +96,7 @@ export class TacticalPoint {
             throw new Error("SIDC and SIC are required for tactical point symbols");
         }
 
-        const symbolKey = sidc.substr(4, 2) + sic;
+        const symbolKey = sidc.substring(4, 6) + sic;
         this._path = this.tactPtSymData[symbolKey];
         if (!this._path || this._path.length === undefined) {
             throw new Error("Symbol definition not found for key: " + symbolKey);

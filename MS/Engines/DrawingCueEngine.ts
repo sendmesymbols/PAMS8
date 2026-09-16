@@ -26,6 +26,7 @@ import Color from '@arcgis/core/Color';
 import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../Support/EngineLogger';
+import GeoTools from '../Support/GeoTools.ts';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import { MagneticCompass, MagneticCompassOptions } from './Cue/MagneticCompass';
@@ -642,11 +643,11 @@ class DrawingCueEngine {
 
     try {
       const sr = cursor.spatialReference ?? this._view?.spatialReference;
-      if (sr?.wkid === 3857) {
+      if (GeoTools.isWebMercatorSR(sr)) { // 102100 too — else readout shows meters as degrees
         const geo = webMercatorUtils.webMercatorToGeographic(cursor) as Point;
         if (geo) { geoX = geo.x; geoY = geo.y; }
       }
-    } catch {}
+    } catch { /* keep map-unit coords — hot pointer-move path, no logging */ }
 
     const latDir = geoY >= 0 ? 'N' : 'S';
     const lonDir = geoX >= 0 ? 'E' : 'W';
@@ -844,10 +845,9 @@ class DrawingCueEngine {
   }
 
   private _kmToMapUnits(km: number, ref: Point): number {
-    const wkid = (ref.spatialReference ?? this._view?.spatialReference)?.wkid;
-    if (wkid === 3857) return km * 1000;
-    if (wkid === 4326) return km / 111.32;
-    return km * 1000;
+    // Latitude-corrected: on Web Mercator "km * 1000" map units are only
+    // km·cos(lat) ground kilometers (~15–18% short at 30–35°N).
+    return GeoTools.metersToMapUnits(km * 1000, ref);
   }
 
   private _computeAdaptiveIntervalKm(ref: Point): number {
@@ -1251,10 +1251,10 @@ class DrawingCueEngine {
   }
 
   private _mapUnitsToKm(mapUnits: number, ref: Point): number {
-    const wkid = (ref.spatialReference ?? this._view?.spatialReference)?.wkid;
-    if (wkid === 3857) return mapUnits / 1000;      // meters → km
-    if (wkid === 4326) return mapUnits * 111.32;    // degrees → km (approx)
-    return mapUnits;
+    // Latitude-corrected inverse of _kmToMapUnits. The old wkid === 3857 check
+    // missed 102100, so live Web Mercator views fell through to `return
+    // mapUnits` — meters read as km, making adaptive ring intervals 1000× off.
+    return GeoTools.mapUnitsToMeters(mapUnits, ref) / 1000;
   }
 
   private _centroid(graphic: Graphic): Point | null {
@@ -1368,8 +1368,10 @@ class DrawingCueEngine {
   }
 
   private _resolveGeodesic(): void {
-    const sr = this._view?.spatialReference;
-    this._isGeodesic = sr?.wkid === 4326 || sr?.wkid === 3857;
+    // GeoTools.supportsGeodesic accepts every Web Mercator wkid — live views
+    // report 102100, and matching 3857 alone dropped rubber-band lengths and
+    // distance rings to planar math.
+    this._isGeodesic = GeoTools.supportsGeodesic(this._view?.spatialReference);
   }
 
   private _resolveContainer(): HTMLElement | null {

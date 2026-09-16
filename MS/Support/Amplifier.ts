@@ -145,7 +145,7 @@ export class Amplifier {
 
     public getEchelon(sidc: string): string {
         if (sidc != undefined) {
-            return sidc.substr(8, 2);
+            return sidc.substring(8, 10);
         } else {
             throw "SIDC not found";
         }

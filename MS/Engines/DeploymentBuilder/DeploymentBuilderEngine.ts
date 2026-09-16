@@ -11,6 +11,7 @@ import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import SerializationEngine from '../ImportExport/SerializationEngine';
 import Plan from '../ImportExport/Plan.ts';
 import EngineLogger from '../../Support/EngineLogger';
+import Utils from '../../Support/utils.ts';
 import { bindDisclosures } from '../../Support/Disclosure';
 
 // ── Formation slot offsets (lateral, forward) ────────────────────────────────
@@ -617,7 +618,8 @@ class DeploymentBuilderEngine {
       const header = document.createElement('div');
       header.className = 'db-category-header' + (isCollapsed ? ' collapsed' : '');
       const label = CATEGORY_LABELS[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1);
-      header.innerHTML = `<span class="db-caret">▼</span><span>${label}</span>`;
+      // cat comes from the plan registry (a shared file) — escape it.
+      header.innerHTML = `<span class="db-caret">▼</span><span>${Utils.escapeHtml(label)}</span>`;
       header.addEventListener('click', () => {
         if (this._collapsedCategories.has(cat)) {
           this._collapsedCategories.delete(cat);
@@ -1496,7 +1498,7 @@ class DeploymentBuilderEngine {
       for (const overlay of planDoc?.poObj?.plnOrdrOverlay ?? [])
         for (const sym of overlay?.plnOrdrSymbolSet ?? [])
           if (sym.isDelete !== 'Y') n++;
-    } catch {}
+    } catch { /* malformed plan doc — return the count so far */ }
     return n;
   }
 
@@ -1544,10 +1546,10 @@ class DeploymentBuilderEngine {
               push(de.BASE_LN_PTS.endPt);
             }
             if (group.length > 0) groups.push(group);
-          } catch {}
+          } catch { /* skip symbol with malformed drawEss JSON */ }
         }
       }
-    } catch {}
+    } catch { /* malformed plan doc — use whatever points were collected */ }
     return groups;
   }
 

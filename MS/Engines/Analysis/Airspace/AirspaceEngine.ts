@@ -107,7 +107,7 @@ export class AirspaceEngine {
     if (this._view === view) return;
     this._view = view;
     // The sketch is bound to a specific view — drop it so it rebinds on demand.
-    try { this._sketch?.destroy(); } catch {}
+    try { this._sketch?.destroy(); } catch { /* best-effort: sketch may already be destroyed */ }
     this._sketch = null;
     const map = view.map as any;
     if (map && !map.findLayerById(this._footprintLayer.id)) {
@@ -141,19 +141,19 @@ export class AirspaceEngine {
   }
 
   close(): void {
-    try { this._sketch?.cancel(); } catch {}
+    try { this._sketch?.cancel(); } catch { /* best-effort: no active sketch draw */ }
     this._armDraw(false);
     this._hidePanel();
   }
 
   destroy(): void {
     this.close();
-    try { this._sketch?.destroy(); } catch {}
+    try { this._sketch?.destroy(); } catch { /* best-effort: sketch may already be destroyed */ }
     this._sketch = null;
     const map = this._view?.map as any;
     if (map) {
       [this._footprintLayer, this._volumeLayer, this._labelLayer, this._conflictLayer]
-        .forEach((l) => { try { map.remove(l); } catch {} });
+        .forEach((l) => { try { map.remove(l); } catch { /* layer may already be removed */ } });
     }
     this._panelEl?.remove();
     this._panelEl = null;
@@ -249,7 +249,7 @@ export class AirspaceEngine {
   private _startDrawing(): void {
     if (!this._view) return;
     this._ensureSketch();
-    try { this._sketch?.cancel(); } catch {}
+    try { this._sketch?.cancel(); } catch { /* best-effort: no active sketch draw */ }
     this._armDraw(true);
     this._setStatus('Drawing footprint', 'run');
     this._sketch?.create('polygon');

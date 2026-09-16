@@ -228,15 +228,20 @@ export class OpRankerEngine {
 
     const rasters: Uint8Array[] = [];
     const obsZs: number[] = [];
+    let elevFailures = 0;
     for (const pt of points) {
       let obsZ = eyeH;
       try {
         const er = await (this._view.map as any).ground.queryElevation(pt);
         obsZ = ((er?.geometry?.z ?? 0) as number) + eyeH;
-      } catch {}
+      } catch { elevFailures++; }
       obsZs.push(obsZ);
       const { raster } = await this._computeViewshedRaster(pt, obsZ, extent, cols, rows, cellM, maxRangeM, sampler);
       rasters.push(raster);
+    }
+    // Aggregated (not per-point) so an offline elevation service logs once, not N times.
+    if (elevFailures > 0) {
+      EngineLogger.error(ENGINE_NAME, `${elevFailures}/${points.length} observer elevation queries failed — those candidates use eye height over 0 m`);
     }
 
     // AO centre elevation
@@ -246,7 +251,7 @@ export class OpRankerEngine {
         new Point({ longitude: cLon, latitude: cLat, spatialReference: WGS84 })
       );
       aoCElevM = (er?.geometry?.z ?? 0) as number;
-    } catch {}
+    } catch { EngineLogger.error(ENGINE_NAME, 'AO centre elevation query failed — assuming 0 m'); }
 
     const result = this._analyseCoverage(rasters, cols, rows, aoRadiusM, extent, cLon, cLat);
     const optimalIndices = this._selectOptimalSet(rasters, kCount, result.aoMask, cols * rows);
@@ -303,7 +308,7 @@ export class OpRankerEngine {
         this._opLayer, this._rangeLayer, this._aoLayer,
         this._aoCenterLayer, this._mutualVizLayer,
         ...this._mediaLayers,
-      ].forEach((layer) => { try { map.remove(layer); } catch {} });
+      ].forEach((layer) => { try { map.remove(layer); } catch { /* layer may already be removed */ } });
     }
     this._listPanelEl?.remove();
     this._controlPanelEl?.remove();
@@ -878,6 +883,7 @@ export class OpRankerEngine {
       await this._tick();
       const sampler = await (this._view as any).map.ground.createElevationSampler(extent, { noDataValue: 0 });
 
+      let elevFailures = 0;
       for (let i = 0; i < this._ops.length; i++) {
         this._setProgress((i / this._ops.length) * 0.60, `Viewshed ${i + 1}/${this._ops.length} — OP ${i + 1}`);
         await this._tick();
@@ -885,12 +891,16 @@ export class OpRankerEngine {
         try {
           const er = await (this._view.map as any).ground.queryElevation(this._ops[i].pt);
           obsZ = ((er?.geometry?.z ?? 0) as number) + eyeH;
-        } catch {}
+        } catch { elevFailures++; }
         const { raster } = await this._computeViewshedRaster(
           this._ops[i].pt, obsZ, extent, cols, rows, cellM, maxRangeM, sampler,
         );
         this._ops[i].raster = raster;
         this._ops[i].obsZ   = obsZ;
+      }
+      // Aggregated (not per-OP) so an offline elevation service logs once, not N times.
+      if (elevFailures > 0) {
+        EngineLogger.error(ENGINE_NAME, `${elevFailures}/${this._ops.length} OP elevation queries failed — those OPs use eye height over 0 m`);
       }
 
       // 2 — Coverage analysis (AO-centric)
@@ -1728,7 +1738,7 @@ export class OpRankerEngine {
 
   private _clearMedia(): void {
     const map = this._view?.map as any;
-    this._mediaLayers.forEach(layer => { try { map?.remove(layer); } catch {} });
+    this._mediaLayers.forEach(layer => { try { map?.remove(layer); } catch { /* layer may already be removed */ } });
     this._mediaLayers = [];
   }
 

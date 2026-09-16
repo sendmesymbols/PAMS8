@@ -6417,7 +6417,7 @@
     "15210300": {
         "Class": "UEISymbol",
         "Description": "",
-        "Name": "Anti Tank Mine",
+        "Name": "Anti Tank Mine (Eqpt)",
         "Parameters": [{
                 "Name": "Size",
                 "default": "28",
@@ -16945,7 +16945,7 @@
     "25271263": {
         "Class": "TacticalPoint",
         "Description": "",
-        "Name": "Oil Rig",
+        "Name": "Oil Rig (Boxed)",
         "Parameters": [{
                 "Name": "Size",
                 "default": "30",
@@ -19744,7 +19744,7 @@
     "30181000": {
         "Class": "UEISymbol",
         "Description": "",
-        "Name": "Helicopter Landing Site",
+        "Name": "Helicopter Landing Site (Sea)",
         "Parameters": [{
                 "Name": "Size",
                 "default": "28",

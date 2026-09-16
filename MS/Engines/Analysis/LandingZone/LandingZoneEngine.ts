@@ -233,7 +233,7 @@ export class LandingZoneEngine {
     const map = this._view?.map as any;
     if (map) {
       [this._zoneLayer, this._markerLayer, this._corridorLayer, this._obstacleLayer, ...this._mediaLayers]
-        .forEach((layer) => { try { map.remove(layer); } catch {} });
+        .forEach((layer) => { try { map.remove(layer); } catch { /* layer may already be removed */ } });
     }
     this._outPanelEl?.remove();
     this._ctrlPanelEl?.remove();
@@ -1061,7 +1061,7 @@ export class LandingZoneEngine {
 
   private _clearOverlays(): void {
     const map = this._view?.map as any;
-    this._mediaLayers.forEach((l) => { try { map?.remove(l); } catch {} });
+    this._mediaLayers.forEach((l) => { try { map?.remove(l); } catch { /* layer may already be removed */ } });
     this._mediaLayers = [];
     [this._zoneLayer, this._markerLayer, this._corridorLayer, this._obstacleLayer].forEach((l) => l.removeAll());
   }

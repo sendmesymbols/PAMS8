@@ -2219,9 +2219,8 @@ function updateStylusPerSymbolUI(cls: string | null): void {
 
 (function initMeasurementPanel() {
   const panel = document.getElementById('measurePanel')!;
-  // Optional: the top-bar measure button was removed; measurement still toggles
-  // via the M key and the API Test panel. Guard every use so its absence is fine.
-  const toggleBtn = document.getElementById('measureToggleBtn');
+  // The top-bar measure button was removed; measurement toggles via the M key
+  // and the API Test panel.
   const dataTable = document.getElementById(
     'measureDataTable',
   ) as HTMLTableElement;
@@ -2256,20 +2255,8 @@ function updateStylusPerSymbolUI(cls: string | null): void {
 
   function applyState(isEnabled: boolean) {
     panel.classList.toggle('ms-on', isEnabled);
-    if (toggleBtn) {
-      toggleBtn.classList.toggle('ms-btn-active', isEnabled);
-      toggleBtn.title = isEnabled
-        ? 'Measurements ON  — click or press M to disable'
-        : 'Measurements OFF — click or press M to enable';
-    }
     if (!isEnabled) resetRows();
   }
-
-  toggleBtn?.addEventListener('click', () => {
-    panel.classList.add('ms-active'); // show panel on first click
-    void symbolEngine.toggleMeasurement();
-  });
-
 
   // ── Keyboard shortcut M ────────────────────────────────────────────────
 

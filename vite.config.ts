@@ -53,7 +53,10 @@ export default defineConfig(({ mode }) => {
                 terser({
                     compress: {
                         passes: 3,               // Multiple passes over the code for deeper optimization
-                        drop_console: true,      // Remove all console statements
+                        // Strip debug chatter but KEEP console.warn/error — the shipped
+                        // library must still be able to report failures to host apps
+                        // (drop_console: true silenced those too).
+                        pure_funcs: ['console.log', 'console.debug', 'console.info', 'console.trace'],
                         drop_debugger: true,     // Remove debugger statements
                         pure_getters: true,      // Treat getter functions as pure for better optimization
                         unsafe: true,            // Enable potentially unsafe optimizations

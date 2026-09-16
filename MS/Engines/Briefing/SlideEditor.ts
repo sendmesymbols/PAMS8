@@ -625,7 +625,7 @@ export default class SlideEditor {
 
       try {
         this._fc?.dispose?.();
-      } catch {}
+      } catch { /* fabric canvas may already be disposed */ }
       this._fc = null;
       this._laser = null;
       this._drawing = null;
@@ -751,7 +751,7 @@ export default class SlideEditor {
     restoreSelectionControls();
     try {
       this._fc?.dispose?.();
-    } catch {}
+    } catch { /* fabric canvas may already be disposed */ }
     this._fc = null;
     this._stage?.remove();
     this._stage = null;
@@ -1721,7 +1721,7 @@ export default class SlideEditor {
         this._lassoPts = null;
         try {
           this._fc.clearContext(this._fc.contextTop);
-        } catch {}
+        } catch { /* canvas context may already be gone */ }
       }
       this._erasing = false;
     }
@@ -2703,7 +2703,7 @@ export default class SlideEditor {
     if (!fc) return;
     try {
       fc.clearContext(fc.contextTop);
-    } catch {}
+    } catch { /* canvas context may already be gone */ }
     if (!pts || pts.length < 3) {
       this._setTool('select');
       return;

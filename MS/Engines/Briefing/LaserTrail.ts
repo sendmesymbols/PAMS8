@@ -104,7 +104,7 @@ export default class LaserTrail {
     }
     try {
       this._surface()?.clear();
-    } catch {}
+    } catch { /* overlay surface may already be disposed */ }
   }
 
   private _push(x: number, y: number): void {

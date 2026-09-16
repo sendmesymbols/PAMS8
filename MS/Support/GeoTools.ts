@@ -15,6 +15,7 @@ import Graphic from "@arcgis/core/Graphic";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
+import * as geodesicUtils from "@arcgis/core/geometry/support/geodesicUtils";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 
@@ -911,6 +912,130 @@ export class GeoTools {
             const r = Math.sqrt(Xo * Xo + Yo * Yo + m14 / m11);
             return { radius: r, center: { x: Xo, y: Yo } };
         }
+    }
+
+    // ═══ Geodesic ground-truth helpers ═══════════════════════════════════════
+    //
+    // Web Mercator is conformal, so shapes drawn from clicked points are locally
+    // true — but its scale factor is 1/cos(latitude). Any code that treats map
+    // units as ground meters (or vice versa) without that factor is wrong by
+    // ~15–18% at 30–35°N. These helpers are the single conversion chokepoint:
+    // construct metric geometry through them and it will agree with the
+    // (geodesic) MeasurementEngine, in 2D and 3D alike.
+
+    /**
+     * True when the geometryEngine geodesic operators support this spatial
+     * reference: WGS84 (4326) or any Web Mercator wkid (3857, 102100, 102113,
+     * 3785). NOTE: live views usually report wkid 102100 with latestWkid 3857 —
+     * checking `wkid === 3857` alone silently falls back to planar math.
+     */
+    static supportsGeodesic(
+        sr: SpatialReference | { wkid?: number; latestWkid?: number; isWGS84?: boolean; isWebMercator?: boolean } | null | undefined,
+    ): boolean {
+        if (!sr) return false;
+        const s = sr as { wkid?: number; latestWkid?: number; isWGS84?: boolean; isWebMercator?: boolean };
+        if (s.isWGS84 === true || s.isWebMercator === true) return true;
+        const wkid = s.wkid ?? s.latestWkid;
+        return wkid === 4326 || wkid === 3857 || wkid === 102100 || wkid === 102113 || wkid === 3785;
+    }
+
+    /** True for any Web Mercator wkid variant (3857, 102100, 102113, 3785). */
+    static isWebMercatorSR(
+        sr: SpatialReference | { wkid?: number; latestWkid?: number; isWebMercator?: boolean } | null | undefined,
+    ): boolean {
+        if (!sr) return false;
+        const s = sr as { wkid?: number; latestWkid?: number; isWebMercator?: boolean };
+        if (s.isWebMercator === true) return true;
+        const wkid = s.wkid ?? s.latestWkid;
+        return wkid === 3857 || wkid === 102100 || wkid === 102113 || wkid === 3785;
+    }
+
+    /** Latitude in degrees of a WGS84 or Web Mercator point (y for anything else). */
+    static latitudeOf(at: Point): number {
+        if (this.isWebMercatorSR(at.spatialReference)) {
+            return webMercatorUtils.xyToLngLat(at.x, at.y)[1];
+        }
+        return at.y;
+    }
+
+    /**
+     * Ground meters → map units at a location.
+     * Web Mercator: meters / cos(lat) — the missing factor behind ~15–18%
+     * size errors at Pakistani latitudes. WGS84: approximate degrees. Any
+     * other projected SR is assumed meter-based and returned unchanged.
+     */
+    static metersToMapUnits(meters: number, at: Point): number {
+        const sr = at.spatialReference;
+        if (this.isWebMercatorSR(sr)) {
+            return meters / Math.cos(this.latitudeOf(at) * Math.PI / 180);
+        }
+        if ((sr as { isWGS84?: boolean })?.isWGS84 || sr?.wkid === 4326) {
+            return meters / 111_320; // approximation — N-S true value is ~110 574
+        }
+        return meters;
+    }
+
+    /** Map units → ground meters at a location (inverse of metersToMapUnits). */
+    static mapUnitsToMeters(mapUnits: number, at: Point): number {
+        const sr = at.spatialReference;
+        if (this.isWebMercatorSR(sr)) {
+            return mapUnits * Math.cos(this.latitudeOf(at) * Math.PI / 180);
+        }
+        if ((sr as { isWGS84?: boolean })?.isWGS84 || sr?.wkid === 4326) {
+            return mapUnits * 111_320;
+        }
+        return mapUnits;
+    }
+
+    /**
+     * Ground-true circle of `radiusM` meters around `center` (WGS84 or Web
+     * Mercator), computed on the ellipsoid. Use this — not a planar radius in
+     * map units — for anything that claims a real distance: range rings,
+     * weapon arcs, minefield extents.
+     */
+    static geodesicCircle(center: Point, radiusM: number): Polygon | null {
+        const buf = geometryEngine.geodesicBuffer(center, radiusM, "meters");
+        return (Array.isArray(buf) ? buf[0] : buf) as Polygon | null;
+    }
+
+    /**
+     * Ground-true sector (pie slice) of `radiusM` meters between two azimuths
+     * (degrees clockwise from true north). Sweeps from startAz to endAz
+     * clockwise; equal azimuths produce a full circle. Returned in `center`'s
+     * spatial reference (WGS84 or Web Mercator).
+     */
+    static geodesicSector(
+        center: Point,
+        radiusM: number,
+        startAzDeg: number,
+        endAzDeg: number,
+        stepDeg: number = 2,
+    ): Polygon {
+        const isWM = this.isWebMercatorSR(center.spatialReference);
+        const c84 = isWM
+            ? webMercatorUtils.webMercatorToGeographic(center) as Point
+            : center;
+        let sweep = ((endAzDeg - startAzDeg) % 360 + 360) % 360;
+        if (sweep === 0) sweep = 360;
+        const isFull = sweep === 360;
+        const steps = Math.max(2, Math.ceil(sweep / Math.max(0.1, stepDeg)));
+
+        const ring: number[][] = [];
+        if (!isFull) ring.push([c84.x, c84.y]);
+        const origin = new Point({ x: c84.x, y: c84.y, spatialReference: SpatialReference.WGS84 });
+        for (let i = 0; i <= steps; i++) {
+            const az = startAzDeg + (sweep * i) / steps;
+            // Ellipsoidal direct problem. geodesicUtils is deprecated in favor of
+            // geodeticUtilsOperator (4.33+), but that one needs an async load();
+            // this stays synchronous and is still shipped in SDK 5.x.
+            const p = geodesicUtils.pointFromDistance(origin, radiusM, az);
+            ring.push([p.x, p.y]);
+        }
+        ring.push([...ring[0]]);
+
+        let poly = new Polygon({ rings: [ring], spatialReference: SpatialReference.WGS84 });
+        if (isWM) poly = webMercatorUtils.geographicToWebMercator(poly) as Polygon;
+        return poly;
     }
 }
 

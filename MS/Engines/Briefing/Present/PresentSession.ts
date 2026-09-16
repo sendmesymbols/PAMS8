@@ -946,7 +946,7 @@ export default class PresentSession {
         cancel: () => {
           try {
             tween?.kill?.();
-          } catch {}
+          } catch { /* tween may already be finished */ }
           applyFrame(1);
           finish();
           resolve();
@@ -962,7 +962,7 @@ export default class PresentSession {
     this._activeTransition = null;
     try {
       t?.cancel();
-    } catch {}
+    } catch { /* transition may already be finalized */ }
   }
 
   public clearOverlays(): void {
@@ -976,7 +976,7 @@ export default class PresentSession {
     if (!handle) return;
     try {
       handle.canvas.dispose();
-    } catch {}
+    } catch { /* canvas may already be disposed */ }
     handle.el.remove();
   }
 
@@ -1069,7 +1069,7 @@ export default class PresentSession {
     this._wentFullscreen = false;
     try {
       if (document.fullscreenElement) await document.exitFullscreen?.();
-    } catch {}
+    } catch { /* fullscreen already exited (e.g. via Esc) */ }
   }
 
   // ── Tools / blackout / presenter panel ─────────────────────────────────────

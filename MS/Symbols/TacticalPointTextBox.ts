@@ -63,7 +63,7 @@ export class TacticalPointTextBox {
     public init(options: TacticalPointTextBoxOptions, marker: SimpleMarkerSymbol, sic: string, symName: string, offset: string, sidc: string): void {
         this._opacity = options.opacity !== undefined ? options.opacity : 1;
 
-        const symbolKey = sidc.substr(4, 2) + sic;
+        const symbolKey = sidc.substring(4, 6) + sic;
         this._path = this.tactPtSymData[symbolKey];
         this._offset = offset;
 

@@ -11,15 +11,17 @@ engines on top. It runs in both **2D (MapView)** and **3D (SceneView)**.
 ## Status (as of June 2026)
 
 - **Active development** on `master`. Last tagged checkpoint: `6971f1c "Before Huge changes"`.
-- Currently in-flight: `MS/Engines/Morphix/MorphixEngine.ts` (uncommitted edits — the
-  SYM_GEO_TYPE-driven symbol editor + external `updateSymbol()` patch API).
 - The library has grown well beyond the original symbol-drawing core into a full
   tactical-planning toolkit: measurement, proximity, drawing cues, MGRS grid,
   declutter (cluster/ladder/disperse/label-placement), visualization overlays,
   ~13 analysis engines, save/load + GeoJSON + PowerPoint export, undo/redo,
   selection/alignment, clipboard, templates, deployment builder, and a
   Ctrl+K command palette with modular settings widgets.
-- **~124 symbol classes** live in `MS/Symbols/`.
+- **~160 symbol classes** live in `MS/Symbols/` (1007 catalog entries in `Symbols.json`).
+- PAMS8 is consumed as a **library by multiple host applications** — public APIs must
+  stay headless, engines must be individually tear-down-able
+  (`SymbolEngine.destroy()` / `removeGlobalEventListener()`), and document-level draw
+  events are scoped to the emitting view's container.
 
 ## Key Dependencies
 
@@ -27,7 +29,7 @@ engines on top. It runs in both **2D (MapView)** and **3D (SceneView)**.
 | --- | --- | --- |
 | `@arcgis/core` | **5.0.19** | ArcGIS Maps SDK for JS, consumed as an ES module (not the CDN/AMD build). Assets copied to `public/assets` via the `copy-assets` script. |
 | `pptxgenjs` | 4.0.1, bundled | PowerPoint (.pptx) briefing export — offline browser bundle at `MS/ThirdParty/PptxGenJS/pptxgen.bundle.js`, injected as a `<script>` tag on first export (NOT the npm ES module), exposed as `window.PptxGenJS`. |
-| `milsymbol.js` | bundled | Legacy JS lib for UEI symbols — loaded via `<script>` tag in `index.html`, exposed as `window.MS` (NOT an ES module). |
+| `milsymbol.js` | bundled | Legacy JS lib for UEI symbols — loaded via `<script>` tag in `index.html`, exposed as `window.MS` (NOT an ES module). **Customized fork of v0.5.6** ("Edited by Abdul Razak, Sep 2016") — do NOT swap in the stock npm/dist build; local changes would be lost and the modern API differs (`ms.Symbol` vs `MS.symbol`). |
 | `fabric.js` 4.5.0 | CDN | Canvas overlay (`#fabricCanvas`) for certain freehand/overlay drawing. |
 | `tween.js` | bundled | Animation easing (loaded via script tag). |
 | TypeScript | ^5.2.2 | |
@@ -94,7 +96,9 @@ MS/
 ├── Support/                    # Cross-cutting helpers
 │   ├── Amplifier.ts            # Symbol amplifier/modifier data
 │   ├── DrawEssentials.ts       # Drawing params/config (SIZE, ANGLE, opacity, ...)
-│   ├── GeoTools.ts             # Geographic utilities
+│   ├── GeoTools.ts             # Geographic utilities + geodesic chokepoint
+│   │                           #   (supportsGeodesic / metersToMapUnits /
+│   │                           #    geodesicCircle / geodesicSector)
 │   ├── SIDC.ts  / SIDC/SIDC.ts # SIDC parsing
 │   ├── SettingsBus.ts          # Central settings event bus
 │   ├── SettingsMenu.ts / SettingsWidget.ts / CommandPalette.ts  # ⚙ menu + Ctrl+K palette
@@ -174,6 +178,13 @@ MS/
 ## Working with the Codebase
 
 ### Adding a New Symbol
+
+New tactical line/area symbols should **extend `MS/Symbols/____TacticalSymbolBase.ts`**
+(see `PhaseLine.ts` for the pilot migration): the base owns the interactive-draw
+scaffold, the three `init()` placement modes, DrawEssentials assembly, event
+emissions and cleanup — a subclass supplies its identity (config) and geometry
+(`createSymbol()`). Most legacy classes still carry their own copy of that
+scaffold; migrate them opportunistically when touching one.
 
 1. Add metadata to `MS/Data/Symbols.json`:
 
@@ -257,10 +268,9 @@ The harness is `src/main.ts` + `index.html`, which:
 ## File Naming Conventions
 
 - `.ts` — TypeScript implementations (newer / canonical).
-- `.js` — legacy JavaScript originals for some symbols.
 - `.d.ts` — declaration files.
-- `__` prefix — private/internal classes (e.g. `__Contain.ts`).
-- `____` prefix — base/abstract classes (e.g. `____UEISymbol.ts`).
+- `____` prefix — base/abstract classes (e.g. `____TacticalSymbolBase.ts`, the
+  shared line/area draw scaffold that new symbol classes should extend).
 
 ## Important Notes
 
@@ -274,3 +284,12 @@ The harness is `src/main.ts` + `index.html`, which:
    should also register a `*SettingsWidget`/`*SettingsManifest` for the Ctrl+K palette.
 6. Optional analysis features (road network / trafficability) rely on an external
    service and degrade gracefully to straight-line estimates when offline.
+7. **Geodesic correctness**: live views report Web Mercator as wkid **102100** —
+   never test `wkid === 3857` alone; use `GeoTools.supportsGeodesic()` /
+   `GeoTools.isWebMercatorSR()`. Anything that converts real meters ↔ map units
+   must go through `GeoTools.metersToMapUnits()` (cos-latitude corrected), and
+   metric shapes (range rings/fans) through `geodesicCircle()`/`geodesicSector()`
+   so they agree with the (geodesic) MeasurementEngine.
+8. Never `btoa()` SVG that can carry label text (throws on non-Latin-1, e.g. Urdu) —
+   use `Utils.svgToDataUrl()`. User-supplied text interpolated into `innerHTML`
+   goes through `Utils.escapeHtml()`.

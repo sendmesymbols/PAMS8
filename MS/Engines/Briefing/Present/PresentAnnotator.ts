@@ -276,7 +276,7 @@ export default class PresentAnnotator {
     e.stopPropagation();
     try {
       this._fx.setPointerCapture(e.pointerId);
-    } catch {}
+    } catch { /* pointer capture unavailable (pointer already up) */ }
     const p = this._at(e);
     if (this._tool === 'laser') {
       this._laser.onDown(p.x, p.y);
@@ -314,7 +314,7 @@ export default class PresentAnnotator {
     if (this._tool === 'none') return;
     try {
       this._fx.releasePointerCapture(e.pointerId);
-    } catch {}
+    } catch { /* capture already released */ }
     if (this._tool === 'laser') this._laser.onUp();
     else if (this._tool === 'pen') this._finishStroke();
   }

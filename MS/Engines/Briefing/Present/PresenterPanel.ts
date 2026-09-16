@@ -654,7 +654,7 @@ export default class PresenterPanel {
     } catch {
       try {
         win.close();
-      } catch {}
+      } catch { /* popup already closed */ }
       return false;
     }
 
@@ -669,7 +669,7 @@ export default class PresenterPanel {
     window.setTimeout(() => {
       try {
         if (this._win && !this._win.closed) this._win.focus();
-      } catch {}
+      } catch { /* window closed between the timeout and now */ }
     }, 700);
 
     // The briefer will be typing into this window, not the map one — forward
@@ -766,7 +766,7 @@ export default class PresenterPanel {
         if (this._onWinKey) win.removeEventListener('keydown', this._onWinKey);
         if (this._onWinClose) win.removeEventListener('beforeunload', this._onWinClose);
         if (!win.closed) win.close();
-      } catch {}
+      } catch { /* window already closed by the user */ }
     }
     this._onWinKey = null;
     this._onWinClose = null;
@@ -777,7 +777,7 @@ export default class PresenterPanel {
   private _closeWindow = (): void => {
     try {
       if (this._win && !this._win.closed) this._win.close();
-    } catch {}
+    } catch { /* window already closed by the user */ }
   };
 
   // ── Timer ──────────────────────────────────────────────────────────────────
@@ -973,7 +973,7 @@ export default class PresenterPanel {
         if (this._onWinKey) win.removeEventListener('keydown', this._onWinKey);
         if (this._onWinClose) win.removeEventListener('beforeunload', this._onWinClose);
         if (!win.closed) win.close();
-      } catch {}
+      } catch { /* window already closed by the user */ }
     }
     this._onWinKey = null;
     this._onWinClose = null;

@@ -74,6 +74,7 @@ import SectorPanel from './Visualization/SectorPanel.ts';
 import RouteProfileEngine from './RouteProfileEngine.ts';
 import IntervisibilityEngine from './Analysis/Intervisibility/IntervisibilityEngine.ts';
 import EngineLogger from '../Support/EngineLogger';
+import Utils from '../Support/utils.ts';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 import type { MGRSEngineOptions } from './MGRSEngine.ts';
 import type { VisualizationOptions } from './Visualization/VisualizationEngine.ts';
@@ -213,6 +214,9 @@ class SymbolEngine implements Evented {
   private amplifier: Amplifier | undefined;
   private _registeredSymbols: Set<any> = new Set();
   private eventListeners: Map<string, Function[]> = new Map();
+  // Document-level draw listeners owned by setupGlobalEventListener(); kept so
+  // the setup is idempotent and removeGlobalEventListener() can detach them.
+  private _globalDocHandlers: Array<[string, EventListener]> = [];
   private labelOptions: any = {};
   private mapper: any;
   private isDrawing = false;
@@ -569,10 +573,22 @@ class SymbolEngine implements Evented {
   /**
    * Setup global event listener for onDrawProgress events
    * This allows catching events from any symbol class without manual registration
+   *
+   * Idempotent: calling it again is a no-op while the listeners are attached,
+   * so a consuming application can never stack duplicate document handlers
+   * (which would run drawSymEnd twice and add every finished symbol twice).
+   * Detach with {@link removeGlobalEventListener}.
    */
   public setupGlobalEventListener(): void {
+    if (this._globalDocHandlers.length > 0) return; // already attached
+    const on = (type: string, handler: EventListener): void => {
+      document.addEventListener(type, handler);
+      this._globalDocHandlers.push([type, handler]);
+    };
+
     // Listen to custom events on the document
-    document.addEventListener('onDrawProgress', (event: any) => {
+    on('onDrawProgress', ((event: any) => {
+      if (!this._isOwnViewEvent(event)) return;
       // Drawing has started — stop re-arming the freehand draw on drawStyle
       // changes so a colour change mid-shape can't discard the placed points.
       this._freehandDrawArmed = false;
@@ -596,17 +612,19 @@ class SymbolEngine implements Evented {
         );
       }
 
-    });
+    }) as EventListener);
 
     // New control point clicked â€” arm the next segment measurement graphic
-    document.addEventListener('onDrawClick', (event: any) => {
+    on('onDrawClick', ((event: any) => {
+      if (!this._isOwnViewEvent(event)) return;
       const detail = event.detail;
       if (detail?.currentPts) {
         this._measurementEngine?.addSegment(detail.currentPts);
       }
-    });
+    }) as EventListener);
 
-    document.addEventListener('onDrawEnd', (event: any) => {
+    on('onDrawEnd', ((event: any) => {
+      if (!this._isOwnViewEvent(event)) return;
       // Handle the draw end event by creating and adding a graphic
       this.drawSymEnd(event.detail);
 
@@ -622,9 +640,71 @@ class SymbolEngine implements Evented {
       this._proximityEngine?.deactivate();
       // Deactivate drawing cue overlays when drawing ends
       this._drawingCueEngine?.deactivate();
-    });
+    }) as EventListener);
 
     console.log('SymbolEngine global event listeners set up');
+  }
+
+  /**
+   * Detach the document-level draw listeners added by
+   * {@link setupGlobalEventListener}. Host applications that embed more than
+   * one SymbolEngine, or tear one down (SPA route change, widget unmount),
+   * call this so the discarded engine stops reacting to draw events.
+   */
+  public removeGlobalEventListener(): void {
+    this._globalDocHandlers.forEach(([type, handler]) =>
+      document.removeEventListener(type, handler),
+    );
+    this._globalDocHandlers = [];
+  }
+
+  /**
+   * Draw events bubble up from the dispatching view's container (see
+   * SymbolEvents.emit), so `event.target` identifies which view a draw belongs
+   * to. A host application embedding several SymbolEngines / views must not
+   * have every engine react to every draw — accept only events born in OUR
+   * view. Events dispatched directly on `document` (headless symbol use, unit
+   * tests) have no container to attribute and are accepted.
+   */
+  private _isOwnViewEvent(event: Event): boolean {
+    const target = event.target as Node | null;
+    if (!target || target === (document as unknown as Node)) return true;
+    const container = this._getView?.()?.container as unknown as Node | null;
+    if (!container) return true;
+    return target === container || container.contains(target);
+  }
+
+  /**
+   * Full teardown for host applications that unmount the map or swap engines
+   * (SPA route change, multi-map dashboards). Cancels any in-flight draw,
+   * detaches the document-level draw listeners, and tears down every
+   * sub-engine that exposes a teardown API. The engine is not usable
+   * afterwards — construct a new one.
+   */
+  public destroy(): void {
+    // In-flight interactive draw holds view listeners — cancel it first.
+    this._cancelActiveDraw();
+    if (this._continuousTimeoutId !== null) {
+      clearTimeout(this._continuousTimeoutId);
+      this._continuousTimeoutId = null;
+    }
+    this.removeGlobalEventListener();
+
+    this._keyboardShortcutManager?.detach();
+    this._measurementEngine?.destroy();
+    this._proximityEngine?.disable();
+    this._drawingCueEngine?.disable();
+    this._mgrsEngine?.destroy();
+    this._editEngine?.deactivate();
+    this._selectionActionPanel?.disable();
+    this._morphixEngine?.destroy();
+    this._contextMenuManager?.destroy();
+    this._stylusController?.destroy();
+    this._visualizationEngine?.disable();
+    this._undoRedoManager?.clear();
+    this._registeredSymbols.clear();
+    this.eventListeners.clear();
+    EngineLogger.success('Symbol Engine', 'SymbolEngine destroyed');
   }
 
   /**
@@ -2874,30 +2954,6 @@ class SymbolEngine implements Evented {
       // Generate the symbol using milsymbol.js
       const symbol = new window.MS.symbol(sidc, msOptions);
 
-      /*// Initialize the marker to generate drawInstructions
-            symbol.getMarker();
-            // Generate SVG
-            const svgString = symbol.asSVG();
-            console.log("Generated SVG from milsymbol.js:", svgString);
-            // Convert SVG to data URL
-            const dataUrl = "data:image/svg+xml;base64," + btoa(svgString);
-
-            // Get symbol dimensions
-            const width = symbol.width || 35;
-            const height = symbol.height || 35;
-
-            // Calculate offsets based on anchor point
-            const anchor = symbol.markerAnchor || { x: width / 2, y: height / 2 };
-            const xoffset = (width / 2) - anchor.x;
-            const yoffset = (height / 2) - anchor.y;
-
-            const pictureMarkerSymbol = new PictureMarkerSymbol({
-                url: dataUrl,
-                width: width + "px",
-                height: height + "px",
-                xoffset,
-                yoffset
-            });*/
       symbol.getMarker();
       // Generate SVG
       const canvas = symbol.asCanvas();
@@ -3978,8 +4034,9 @@ class SymbolEngine implements Evented {
         const svgString = symbol.asSVG();
         console.log('Generated SVG:', svgString);
 
-        // Convert SVG to data URL for PictureMarkerSymbol
-        const dataUrl = 'data:image/svg+xml;base64,' + btoa(svgString);
+        // Convert SVG to data URL for PictureMarkerSymbol.
+        // Unicode-safe — btoa() throws on non-Latin-1 (e.g. Urdu) label text.
+        const dataUrl = Utils.svgToDataUrl(svgString);
 
         // Create a point at the center of the view
         const center = view.center;

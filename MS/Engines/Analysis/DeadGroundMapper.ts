@@ -151,7 +151,7 @@ export class DeadGroundMapper {
     try {
       const er = await (this._view.map as any).ground.queryElevation(observer);
       obsZ = ((er?.geometry?.z ?? 0) as number) + (options.observerHeightM ?? 1.8);
-    } catch {}
+    } catch { EngineLogger.error(ENGINE_NAME, 'Observer elevation query failed — using observer height over 0 m elevation'); }
     const result = await this._computeDeadGround(observer, obsZ, {
       radiusM: options.radiusM ?? 3000,
       cellM: options.cellM ?? 100,

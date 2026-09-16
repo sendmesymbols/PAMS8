@@ -298,7 +298,7 @@ export class PosDefScorerEngine {
     try {
       const er = await (this._view.map as any).ground.queryElevation(point);
       obsZ = ((er?.geometry?.z ?? 0) as number) + (options.observerHeightM ?? 1.8);
-    } catch {}
+    } catch { EngineLogger.error(ENGINE_NAME, 'Observer elevation query failed — using observer height over 0 m elevation'); }
     const result = await this._scorePosition(point, obsZ, {
       obsRadius: options.obsRadius ?? 2500,
       slopeRadius: options.slopeRadius ?? 150,
@@ -333,7 +333,7 @@ export class PosDefScorerEngine {
     const map = this._view?.map as any;
     if (map) {
       [this._overlayLayer, this._spokesLayer, this._posLayer, this._egrLayer, this._histLayer, ...this._mediaLayers]
-        .forEach((layer) => { try { map.remove(layer); } catch {} });
+        .forEach((layer) => { try { map.remove(layer); } catch { /* layer may already be removed */ } });
     }
     this._scorePanelEl?.remove();
     this._controlPanelEl?.remove();
@@ -670,7 +670,7 @@ export class PosDefScorerEngine {
     try {
       const er = await (this._view.map as any).ground.queryElevation(pt);
       obsZ = ((er?.geometry?.z ?? 0) as number) + eyeH;
-    } catch {}
+    } catch { EngineLogger.error(ENGINE_NAME, 'Observer elevation query failed — using eye height over 0 m elevation'); }
 
     this._drawPosition(pt);
     const params: ScoreParams = {
@@ -1440,7 +1440,7 @@ export class PosDefScorerEngine {
       .toArray()
       .forEach((g: Graphic) => this._egrLayer.remove(g));
     const map = this._view?.map as any;
-    this._mediaLayers.forEach((l) => { try { map?.remove(l); } catch {} });
+    this._mediaLayers.forEach((l) => { try { map?.remove(l); } catch { /* layer may already be removed */ } });
     this._mediaLayers = [];
   }
 

@@ -1033,7 +1033,7 @@ class BriefingEngine {
       cancel: () => {
         try {
           tween?.kill?.();
-        } catch {}
+        } catch { /* tween may already be finished */ }
         finalize();
         g.visible = true;
       },
@@ -1069,7 +1069,7 @@ class BriefingEngine {
       cancel: () => {
         try {
           tween?.kill?.();
-        } catch {}
+        } catch { /* tween may already be finished */ }
         g.geometry = original;
         g.visible = true;
       },
@@ -1123,7 +1123,7 @@ class BriefingEngine {
       cancel: () => {
         try {
           tween?.kill?.();
-        } catch {}
+        } catch { /* tween may already be finished */ }
         g.geometry = original;
         g.visible = true;
       },
@@ -1154,7 +1154,7 @@ class BriefingEngine {
     for (const b of builds) {
       try {
         b.cancel();
-      } catch {}
+      } catch { /* cancel is best-effort — build may already be finalized */ }
     }
   }
 

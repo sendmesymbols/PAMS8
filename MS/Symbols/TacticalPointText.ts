@@ -73,7 +73,7 @@ export class TacticalPointText {
         this._opacity = options.opacity !== undefined ? options.opacity : 1;
         
         // Get symbol path from tactical point symbols data
-        const symbolKey = sidc.substr(4, 2) + sic;
+        const symbolKey = sidc.substring(4, 6) + sic;
         this._path = this.tactPtSymData[symbolKey];
         this._offset = offset;
 

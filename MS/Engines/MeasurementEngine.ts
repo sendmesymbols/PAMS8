@@ -23,6 +23,7 @@ import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import Color from "@arcgis/core/Color";
 import Font from "@arcgis/core/symbols/Font";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
+import GeoTools from "../Support/GeoTools.ts";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import EngineLogger from "../Support/EngineLogger";
@@ -211,7 +212,10 @@ class MeasurementEngine {
         // resolve it now if available, otherwise _resolveGeodesic() is called
         // lazily before the first measurement operation.
         const sr = view.spatialReference;
-        this._isGeodesic = sr != null && (sr.wkid === 4326 || sr.wkid === 3857);
+        // Must accept every Web Mercator wkid — live views report 102100, and
+        // matching 3857 alone silently dropped ALL measurement to planar math
+        // (~15–18% long at 30–35°N).
+        this._isGeodesic = GeoTools.supportsGeodesic(sr);
         this._layer = this._getOrCreateLayer("measurementGraphicsLayer");
     }
 
@@ -1010,7 +1014,7 @@ class MeasurementEngine {
     private _resolveGeodesic(): void {
         const sr = this._view?.spatialReference;
         if (sr == null) return;
-        const supportsGeodesic = sr.wkid === 4326 || sr.wkid === 3857;
+        const supportsGeodesic = GeoTools.supportsGeodesic(sr);
         if (!supportsGeodesic && !this._planarWarned) {
             this._planarWarned = true;
             console.warn(
