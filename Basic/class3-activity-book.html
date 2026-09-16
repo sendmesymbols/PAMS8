@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Class 3 Activity Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2d2a4a; --accent:#ff7a59; --accent2:#2ba6a0; --accent3:#f4b400;
+    --soft:#fff7ef; --line:#c9c4e0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:'Baloo 2', sans-serif; color:var(--ink);
+    margin:0; background:#eee;
+  }
+  .page{
+    width:210mm; min-height:290mm; margin:10px auto; background:#fff;
+    padding:14mm 14mm 10mm; position:relative; page-break-after:always;
+    border:1px solid #ddd;
+  }
+  @media print{
+    body{background:#fff;}
+    .page{margin:0; border:none; width:auto; min-height:auto;}
+    @page{size:A4; margin:0;}
+  }
+  h1,h2,h3{margin:0;}
+  .banner{
+    background:var(--accent); color:#fff; border-radius:16px;
+    padding:10px 18px; display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px;
+  }
+  .banner .subject{font-size:22px; font-weight:800;}
+  .banner .tag{background:#fff; color:var(--accent); border-radius:20px; padding:2px 14px; font-weight:800; font-size:14px;}
+  .namebar{
+    display:flex; gap:20px; font-size:14px; margin-bottom:14px; font-weight:600;
+  }
+  .namebar span{flex:1; border-bottom:2px dotted var(--ink); padding-bottom:2px;}
+  .box{
+    border:2.5px dashed var(--accent2); border-radius:14px; padding:12px 16px; margin-bottom:14px;
+    background:var(--soft);
+  }
+  .box h3{color:var(--accent2); font-size:16px; margin-bottom:8px;}
+  .box.alt{border-color:var(--accent3);}
+  .box.alt h3{color:#b8860b;}
+  .sums{display:flex; flex-wrap:wrap; gap:14px;}
+  .sum{
+    font-size:18px; font-weight:700; text-align:right; background:#fff;
+    border:1.5px solid var(--line); border-radius:10px; padding:8px 14px; min-width:80px;
+  }
+  .sum .op{border-bottom:2px solid var(--ink); display:block; padding-bottom:2px;}
+  .sum .ans{display:block; height:24px;}
+  .fill{display:inline-block; min-width:60px; border-bottom:2px solid var(--ink);}
+  .lines .writeline{border-bottom:1.5px solid #9a94c2; height:26px;}
+  ol{margin:6px 0 0 20px; padding:0;}
+  ol li{margin-bottom:10px; font-size:15px;}
+  .story{font-size:15.5px; line-height:1.65; background:#fff; border-radius:10px; padding:10px 14px; border:1.5px solid var(--line);}
+  .footer{
+    position:absolute; bottom:8mm; left:14mm; right:14mm; display:flex; justify-content:space-between;
+    font-size:12px; color:#888; font-weight:600;
+  }
+  .stars{font-size:20px; letter-spacing:4px;}
+  table.match{width:100%; border-collapse:collapse; font-size:15px;}
+  table.match td{padding:6px 10px;}
+  .urdu{
+    font-family:'Noto Nastaliq Urdu', serif; direction:rtl; text-align:right;
+    font-size:16px; line-height:2.4;
+  }
+  .urdu h3{font-size:20px;}
+  .urdu ol{margin:6px 20px 0 0;}
+  .urdu .writeline{height:34px;}
+  .cover{display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; min-height:250mm;}
+  .cover h1{font-size:52px; color:var(--accent);}
+  .cover h2{font-size:26px; color:var(--accent2); margin-top:8px;}
+  .cover .big-emoji{font-size:90px; margin:24px 0;}
+  .cover .ownbox{border:3px solid var(--accent3); border-radius:16px; padding:18px 40px; margin-top:30px; font-size:20px; font-weight:700;}
+  .cover .ownbox div{margin:10px 0;}
+  .cover .ownbox span{display:inline-block; min-width:220px; border-bottom:2px dotted var(--ink);}
+  .two-col{display:flex; gap:14px;}
+  .two-col > div{flex:1;}
+  .answer-key{font-size:13px; line-height:1.7;}
+  .answer-key h4{margin:8px 0 2px; color:var(--accent2);}
+  .shapes{font-size:26px; letter-spacing:8px;}
+  .table-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; font-size:17px; font-weight:700;}
+  .table-grid div{background:#fff; border:1.5px solid var(--line); border-radius:8px; padding:6px 10px;}
+</style>
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="page">
+  <div class="cover">
+    <h1>My Fun Activity Book</h1>
+    <h2>Class 3 &nbsp;•&nbsp; Maths • English • Urdu • Puzzles</h2>
+    <div class="big-emoji">🦁 ✏️ 🎈</div>
+    <div class="ownbox">
+      <div>My Name: <span></span></div>
+      <div>My School: <span></span></div>
+      <div>I love: <span></span></div>
+    </div>
+    <p style="margin-top:40px; font-size:16px;">⭐ Finish a page, colour a star, become a champion! ⭐</p>
+  </div>
+</div>
+
+<!-- ================= PAGE 1: ADDITION & SUBTRACTION ================= -->
+<div class="page">
+  <div class="banner"><h2 class="subject">🔢 Maths Time!</h2><span class="tag">Page 1</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="box">
+    <h3>A. Add the numbers 🍎</h3>
+    <div class="sums">
+      <div class="sum"><span class="op">24<br>+ 13</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">46<br>+ 32</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">57<br>+ 28</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">65<br>+ 19</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">123<br>+ 245</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">308<br>+ 154</span><span class="ans"></span></div>
+    </div>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Subtract the numbers 🎯</h3>
+    <div class="sums">
+      <div class="sum"><span class="op">48<br>− 23</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">75<br>− 38</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">90<br>− 46</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">264<br>− 132</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">500<br>− 275</span><span class="ans"></span></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>C. Story sums 🏏</h3>
+    <ol>
+      <li>Ahmed scored <b>36 runs</b> in one cricket match and <b>27 runs</b> in the next match. How many runs did he score in total? <span class="fill" style="min-width:90px;"></span></li>
+      <li>Amma bought <b>45 mangoes</b>. The family ate <b>18 mangoes</b>. How many mangoes are left? <span class="fill" style="min-width:90px;"></span></li>
+      <li>A shopkeeper had <b>Rs. 250</b>. He sold toffees for <b>Rs. 130</b> more. How much money does he have now? <span class="fill" style="min-width:90px;"></span></li>
+    </ol>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 3 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 2: MULTIPLICATION ================= -->
+<div class="page">
+  <div class="banner"><h2 class="subject">✖️ Multiplication Magic</h2><span class="tag">Page 2</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="box">
+    <h3>A. Complete the facts ⚡</h3>
+    <div class="table-grid">
+      <div>3 × 4 = ___</div><div>5 × 6 = ___</div><div>2 × 9 = ___</div><div>4 × 7 = ___</div>
+      <div>6 × 6 = ___</div><div>3 × 8 = ___</div><div>5 × 9 = ___</div><div>7 × 4 = ___</div>
+      <div>2 × 12 = ___</div><div>4 × 5 = ___</div><div>6 × 3 = ___</div><div>8 × 2 = ___</div>
+    </div>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Fill the missing numbers 🕵️</h3>
+    <div class="table-grid">
+      <div>3 × ___ = 15</div><div>___ × 4 = 20</div><div>6 × ___ = 18</div><div>___ × 7 = 14</div>
+      <div>5 × ___ = 40</div><div>___ × 3 = 27</div><div>4 × ___ = 24</div><div>___ × 2 = 16</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>C. Story sums 🥭</h3>
+    <ol>
+      <li>Ali has <b>4 boxes</b> of mangoes. Each box has <b>6 mangoes</b>. How many mangoes in total? <span class="fill" style="min-width:90px;"></span></li>
+      <li>One rickshaw can carry <b>3 children</b>. How many children can <b>5 rickshaws</b> carry? <span class="fill" style="min-width:90px;"></span></li>
+      <li>A samosa costs <b>Rs. 20</b>. How much do <b>4 samosas</b> cost? <span class="fill" style="min-width:90px;"></span></li>
+    </ol>
+  </div>
+
+  <div class="box alt">
+    <h3>D. Skip counting rocket 🚀</h3>
+    <p style="margin:4px 0;">Count by 5s: &nbsp; 5, 10, ___, ___, 25, ___, ___, 40</p>
+    <p style="margin:4px 0;">Count by 10s: &nbsp; 10, 20, ___, ___, ___, 60</p>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 3 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 3: REASONING ================= -->
+<div class="page">
+  <div class="banner" style="background:var(--accent2);"><h2 class="subject">🧠 Brain Games</h2><span class="tag" style="color:var(--accent2);">Page 3</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="box">
+    <h3>A. What comes next? Complete the pattern 🔍</h3>
+    <ol>
+      <li>2, 4, 6, 8, <span class="fill"></span>, <span class="fill"></span></li>
+      <li>1, 3, 5, 7, <span class="fill"></span>, <span class="fill"></span></li>
+      <li class="shapes">🔺 🔵 🔺 🔵 🔺 <span class="fill"></span></li>
+      <li class="shapes">⭐ ⭐ 🌙 ⭐ ⭐ 🌙 ⭐ <span class="fill"></span> <span class="fill"></span></li>
+      <li>A, C, E, G, <span class="fill"></span></li>
+    </ol>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Odd one out — circle it! ⭕</h3>
+    <ol>
+      <li>Apple &nbsp;•&nbsp; Banana &nbsp;•&nbsp; Carrot &nbsp;•&nbsp; Mango</li>
+      <li>Car &nbsp;•&nbsp; Bus &nbsp;•&nbsp; Shoe &nbsp;•&nbsp; Train</li>
+      <li>Cat &nbsp;•&nbsp; Dog &nbsp;•&nbsp; Parrot &nbsp;•&nbsp; Chair</li>
+      <li>2 &nbsp;•&nbsp; 4 &nbsp;•&nbsp; 7 &nbsp;•&nbsp; 8</li>
+    </ol>
+  </div>
+
+  <div class="two-col">
+    <div class="box">
+      <h3>C. Riddle time! 🤔</h3>
+      <ol>
+        <li>I have hands but I cannot clap. What am I? <span class="fill" style="min-width:100px;"></span></li>
+        <li>I get wetter the more I dry. What am I? <span class="fill" style="min-width:100px;"></span></li>
+      </ol>
+    </div>
+    <div class="box alt">
+      <h3>D. Count the triangles 🔺</h3>
+      <svg width="180" height="110" viewBox="0 0 180 110">
+        <polygon points="90,5 10,105 170,105" fill="none" stroke="#2d2a4a" stroke-width="2.5"/>
+        <line x1="50" y1="55" x2="130" y2="55" stroke="#2d2a4a" stroke-width="2.5"/>
+        <line x1="90" y1="5" x2="90" y2="105" stroke="#2d2a4a" stroke-width="2.5"/>
+      </svg>
+      <p>I can see <span class="fill" style="min-width:50px;"></span> triangles.</p>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>E. Think and answer 💭</h3>
+    <ol>
+      <li>Sara is taller than Ayesha. Ayesha is taller than Zara. Who is the shortest? <span class="fill" style="min-width:110px;"></span></li>
+      <li>If today is Monday, what day will it be after 3 days? <span class="fill" style="min-width:110px;"></span></li>
+    </ol>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 3 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 4: ENGLISH STORY ================= -->
+<div class="page">
+  <div class="banner" style="background:var(--accent3);"><h2 class="subject">📖 English Story Time</h2><span class="tag" style="color:#b8860b;">Page 4</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="story">
+    <h3 style="color:var(--accent); margin-bottom:6px;">Bilal and the Little Kitten 🐱</h3>
+    <p>One rainy day, Bilal was walking home from school in Lahore. Near the gate of his street, he heard a soft sound. "Meow! Meow!" A tiny white kitten was sitting under a tree, wet and shivering.</p>
+    <p>Bilal felt sad for the kitten. He took off his cap and gently covered the kitten to keep it warm. He carried it home and gave it warm milk. His mother smiled and said, "Bilal, you have a kind heart."</p>
+    <p>The kitten drank the milk and slept on a soft towel. Bilal named her Chandni, because her fur was white like the moon. From that day, Chandni became his best friend. Every day after school, she waited for Bilal at the door!</p>
+  </div>
+
+  <div class="box" style="margin-top:14px;">
+    <h3>A. Answer the questions ✍️</h3>
+    <ol class="lines">
+      <li>Where was the kitten sitting?<div class="writeline"></div></li>
+      <li>What did Bilal give the kitten to drink?<div class="writeline"></div></li>
+      <li>Why did Bilal name the kitten "Chandni"?<div class="writeline"></div></li>
+      <li>What would YOU do if you found a wet little kitten?<div class="writeline"></div></li>
+    </ol>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Match the word to its meaning 🔗</h3>
+    <table class="match">
+      <tr><td>1. shivering</td><td>a. very small</td></tr>
+      <tr><td>2. tiny</td><td>b. shaking because of cold</td></tr>
+      <tr><td>3. gently</td><td>c. softly and carefully</td></tr>
+    </table>
+    <p>Answers: 1 → ___ &nbsp;&nbsp; 2 → ___ &nbsp;&nbsp; 3 → ___</p>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 3 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 5: ENGLISH GRAMMAR ================= -->
+<div class="page">
+  <div class="banner" style="background:var(--accent3);"><h2 class="subject">🅰️ Grammar Fun</h2><span class="tag" style="color:#b8860b;">Page 5</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="box">
+    <h3>A. Write <u>a</u> or <u>an</u> 🖊️</h3>
+    <div class="table-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div>___ apple</div><div>___ book</div><div>___ egg</div>
+      <div>___ umbrella</div><div>___ cat</div><div>___ orange</div>
+    </div>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Fill in <u>is</u> or <u>are</u> 🌟</h3>
+    <ol>
+      <li>The birds <span class="fill"></span> flying in the sky.</li>
+      <li>My brother <span class="fill"></span> playing cricket.</li>
+      <li>Amma and Abbu <span class="fill"></span> drinking chai.</li>
+      <li>The moon <span class="fill"></span> shining tonight.</li>
+    </ol>
+  </div>
+
+  <div class="box">
+    <h3>C. Make it MANY! Write the plural 👯</h3>
+    <div class="table-grid" style="grid-template-columns:repeat(2,1fr); font-size:15px;">
+      <div>one cat → two ______</div><div>one box → two ______</div>
+      <div>one mango → two ______</div><div>one child → two ______</div>
+    </div>
+  </div>
+
+  <div class="box alt">
+    <h3>D. Put the words in order to make a sentence 🧩</h3>
+    <ol class="lines">
+      <li>kite / flies / Sara / a<div class="writeline"></div></li>
+      <li>school / go / we / to / everyday<div class="writeline"></div></li>
+      <li>sweet / are / mangoes / the<div class="writeline"></div></li>
+    </ol>
+  </div>
+
+  <div class="box">
+    <h3>E. My turn to write! 📝 (Write 2 sentences about your favourite animal)</h3>
+    <div class="lines"><div class="writeline"></div><div class="writeline"></div><div class="writeline"></div></div>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 3 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 6: URDU ================= -->
+<div class="page">
+  <div class="banner" style="background:#6c5ce7;"><h2 class="subject">📚 اردو کہانی</h2><span class="tag" style="color:#6c5ce7;">Page 6</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="story urdu">
+    <h3 style="color:#6c5ce7; margin-bottom:6px;">سچائی کا انعام</h3>
+    <p>عمر ایک اچھا بچہ تھا۔ ایک دن وہ اسکول جا رہا تھا کہ اسے راستے میں ایک بٹوہ ملا۔ بٹوے میں پیسے تھے۔ عمر نے سوچا، "یہ پیسے کسی کے ہوں گے۔ وہ پریشان ہو گا۔"</p>
+    <p>عمر بٹوہ لے کر اپنے استاد کے پاس گیا۔ استاد نے بٹوے کے مالک کو تلاش کیا۔ بٹوہ ایک بوڑھے چاچا کا تھا۔ چاچا بہت خوش ہوئے اور عمر کو دعا دی۔</p>
+    <p>استاد نے پوری کلاس کے سامنے کہا، "عمر نے سچائی اور ایمانداری دکھائی۔ ہمیں سب کو ایسا ہی کرنا چاہیے۔" سب بچوں نے تالیاں بجائیں۔ عمر کا دل خوشی سے بھر گیا۔</p>
+  </div>
+
+  <div class="box urdu" style="margin-top:14px; border-color:#6c5ce7;">
+    <h3 style="color:#6c5ce7;">سوالوں کے جواب لکھیں ✍️</h3>
+    <ol class="lines">
+      <li>عمر کو راستے میں کیا ملا؟<div class="writeline"></div></li>
+      <li>عمر بٹوہ لے کر کس کے پاس گیا؟<div class="writeline"></div></li>
+      <li>بٹوہ کس کا تھا؟<div class="writeline"></div></li>
+      <li>اس کہانی سے ہمیں کیا سبق ملتا ہے؟<div class="writeline"></div></li>
+    </ol>
+  </div>
+
+  <div class="box urdu alt">
+    <h3 style="color:#b8860b;">ان الفاظ سے جملے بنائیں 🖊️</h3>
+    <ol class="lines">
+      <li>ایمانداری —<div class="writeline"></div></li>
+      <li>خوشی —<div class="writeline"></div></li>
+    </ol>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 3 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 7: ANSWER KEY ================= -->
+<div class="page">
+  <div class="banner" style="background:#2d2a4a;"><h2 class="subject">🔑 Answer Key (for parents)</h2><span class="tag" style="color:#2d2a4a;">Answers</span></div>
+  <div class="answer-key two-col">
+    <div>
+      <h4>Page 1 — Maths</h4>
+      A: 37, 78, 85, 84, 368, 462<br>
+      B: 25, 37, 44, 132, 225<br>
+      C: 1) 63 runs &nbsp;2) 27 mangoes &nbsp;3) Rs. 380
+      <h4>Page 2 — Multiplication</h4>
+      A: 12, 30, 18, 28, 36, 24, 45, 28, 24, 20, 18, 16<br>
+      B: 5, 5, 3, 2, 8, 9, 6, 8<br>
+      C: 1) 24 mangoes &nbsp;2) 15 children &nbsp;3) Rs. 80<br>
+      D: 15, 20, 30, 35 &nbsp;•&nbsp; 30, 40, 50
+      <h4>Page 3 — Brain Games</h4>
+      A: 1) 10, 12 &nbsp;2) 9, 11 &nbsp;3) 🔵 &nbsp;4) ⭐ 🌙 &nbsp;5) I<br>
+      B: 1) Carrot (vegetable) &nbsp;2) Shoe &nbsp;3) Chair &nbsp;4) 7 (odd number)<br>
+      C: 1) A clock &nbsp;2) A towel<br>
+      D: 6 triangles (4 small + the big one + count carefully!)<br>
+      E: 1) Zara &nbsp;2) Thursday
+    </div>
+    <div>
+      <h4>Page 4 — English Story</h4>
+      1) Under a tree &nbsp;2) Warm milk &nbsp;3) Her fur was white like the moon &nbsp;4) Child's own answer<br>
+      Match: 1→b, 2→a, 3→c
+      <h4>Page 5 — Grammar</h4>
+      A: an, a, an, an, a, an<br>
+      B: are, is, are, is<br>
+      C: cats, boxes, mangoes, children<br>
+      D: 1) Sara flies a kite. 2) We go to school everyday. 3) The mangoes are sweet.
+      <h4>Page 6 — اردو</h4>
+      ۱) بٹوہ &nbsp;۲) استاد کے پاس &nbsp;۳) بوڑھے چاچا کا &nbsp;۴) ہمیں ہمیشہ سچ بولنا اور ایمانداری دکھانی چاہیے
+    </div>
+  </div>
+  <div class="footer"><span>Great job! 🎉</span><span>Class 3 Activity Book</span></div>
+</div>
+
+</body>
+</html>

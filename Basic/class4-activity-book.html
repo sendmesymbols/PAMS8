@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Class 4 Activity Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1f2a44; --accent:#2f6fed; --accent2:#e2557b; --accent3:#12a37f;
+    --soft:#f2f7ff; --line:#bcd0f5;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:'Baloo 2', sans-serif; color:var(--ink); margin:0; background:#eee;}
+  .page{
+    width:210mm; min-height:290mm; margin:10px auto; background:#fff;
+    padding:14mm 14mm 10mm; position:relative; page-break-after:always;
+    border:1px solid #ddd;
+  }
+  @media print{
+    body{background:#fff;}
+    .page{margin:0; border:none; width:auto; min-height:auto;}
+    @page{size:A4; margin:0;}
+  }
+  h1,h2,h3{margin:0;}
+  .banner{
+    background:var(--accent); color:#fff; border-radius:16px;
+    padding:10px 18px; display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;
+  }
+  .banner .subject{font-size:22px; font-weight:800;}
+  .banner .tag{background:#fff; color:var(--accent); border-radius:20px; padding:2px 14px; font-weight:800; font-size:14px;}
+  .namebar{display:flex; gap:20px; font-size:14px; margin-bottom:14px; font-weight:600;}
+  .namebar span{flex:1; border-bottom:2px dotted var(--ink); padding-bottom:2px;}
+  .box{border:2.5px dashed var(--accent3); border-radius:14px; padding:12px 16px; margin-bottom:14px; background:var(--soft);}
+  .box h3{color:var(--accent3); font-size:16px; margin-bottom:8px;}
+  .box.alt{border-color:var(--accent2);}
+  .box.alt h3{color:var(--accent2);}
+  .sums{display:flex; flex-wrap:wrap; gap:14px;}
+  .sum{font-size:18px; font-weight:700; text-align:right; background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:8px 14px; min-width:90px;}
+  .sum .op{border-bottom:2px solid var(--ink); display:block; padding-bottom:2px;}
+  .sum .ans{display:block; height:24px;}
+  .fill{display:inline-block; min-width:60px; border-bottom:2px solid var(--ink);}
+  .lines .writeline{border-bottom:1.5px solid #9db4e8; height:26px;}
+  ol{margin:6px 0 0 20px; padding:0;}
+  ol li{margin-bottom:10px; font-size:15px;}
+  .story{font-size:15.5px; line-height:1.65; background:#fff; border-radius:10px; padding:10px 14px; border:1.5px solid var(--line);}
+  .footer{position:absolute; bottom:8mm; left:14mm; right:14mm; display:flex; justify-content:space-between; font-size:12px; color:#888; font-weight:600;}
+  .stars{font-size:20px; letter-spacing:4px;}
+  table.match{width:100%; border-collapse:collapse; font-size:15px;}
+  table.match td{padding:6px 10px;}
+  .urdu{font-family:'Noto Nastaliq Urdu', serif; direction:rtl; text-align:right; font-size:16px; line-height:2.4;}
+  .urdu h3{font-size:20px;}
+  .urdu ol{margin:6px 20px 0 0;}
+  .urdu .writeline{height:34px;}
+  .cover{display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; min-height:250mm;}
+  .cover h1{font-size:52px; color:var(--accent);}
+  .cover h2{font-size:26px; color:var(--accent2); margin-top:8px;}
+  .cover .big-emoji{font-size:90px; margin:24px 0;}
+  .cover .ownbox{border:3px solid var(--accent3); border-radius:16px; padding:18px 40px; margin-top:30px; font-size:20px; font-weight:700;}
+  .cover .ownbox div{margin:10px 0;}
+  .cover .ownbox span{display:inline-block; min-width:220px; border-bottom:2px dotted var(--ink);}
+  .two-col{display:flex; gap:14px;}
+  .two-col > div{flex:1;}
+  .answer-key{font-size:13px; line-height:1.7;}
+  .answer-key h4{margin:8px 0 2px; color:var(--accent);}
+  .table-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; font-size:17px; font-weight:700;}
+  .table-grid div{background:#fff; border:1.5px solid var(--line); border-radius:8px; padding:6px 10px;}
+  .fraction-row{display:flex; gap:24px; align-items:center; flex-wrap:wrap; margin-top:8px;}
+  .frac-item{text-align:center; font-weight:700;}
+</style>
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="page">
+  <div class="cover">
+    <h1>My Super Activity Book</h1>
+    <h2>Class 4 &nbsp;•&nbsp; Maths • English • Urdu • Logic</h2>
+    <div class="big-emoji">🚀 🧠 🏆</div>
+    <div class="ownbox">
+      <div>My Name: <span></span></div>
+      <div>My School: <span></span></div>
+      <div>When I grow up I want to be: <span></span></div>
+    </div>
+    <p style="margin-top:40px; font-size:16px;">⭐ Solve, learn, and earn your stars! ⭐</p>
+  </div>
+</div>
+
+<!-- ================= PAGE 1: MULTIPLICATION & DIVISION ================= -->
+<div class="page">
+  <div class="banner"><h2 class="subject">🔢 Multiply & Divide</h2><span class="tag">Page 1</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="box">
+    <h3>A. Multiply 💪</h3>
+    <div class="sums">
+      <div class="sum"><span class="op">124<br>× 3</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">215<br>× 4</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">306<br>× 5</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">142<br>× 6</span><span class="ans"></span></div>
+      <div class="sum"><span class="op">53<br>× 12</span><span class="ans"></span></div>
+    </div>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Divide 🍕</h3>
+    <div class="table-grid">
+      <div>48 ÷ 6 = ___</div><div>63 ÷ 7 = ___</div><div>81 ÷ 9 = ___</div><div>96 ÷ 8 = ___</div>
+      <div>75 ÷ 5 = ___</div><div>84 ÷ 4 = ___</div><div>72 ÷ 6 = ___</div><div>90 ÷ 3 = ___</div>
+    </div>
+    <p style="margin-top:10px;">With remainder: &nbsp; 25 ÷ 4 = ___ r ___ &nbsp;&nbsp;•&nbsp;&nbsp; 38 ÷ 5 = ___ r ___ &nbsp;&nbsp;•&nbsp;&nbsp; 50 ÷ 7 = ___ r ___</p>
+  </div>
+
+  <div class="box">
+    <h3>C. Story sums 🛍️</h3>
+    <ol>
+      <li>One school bag costs <b>Rs. 450</b>. How much do <b>3 bags</b> cost? <span class="fill" style="min-width:90px;"></span></li>
+      <li><b>72 dates</b> are shared equally among <b>8 friends</b> at Iftar. How many dates does each friend get? <span class="fill" style="min-width:90px;"></span></li>
+      <li>A bus travels <b>65 km in 1 hour</b>. How far does it travel in <b>4 hours</b>? <span class="fill" style="min-width:90px;"></span></li>
+      <li>Hina saves <b>Rs. 50 every week</b>. How many weeks will she need to save <b>Rs. 400</b>? <span class="fill" style="min-width:90px;"></span></li>
+    </ol>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 4 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 2: FRACTIONS & TIME ================= -->
+<div class="page">
+  <div class="banner"><h2 class="subject">🍰 Fractions & Time</h2><span class="tag">Page 2</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="box">
+    <h3>A. Colour the fraction 🎨</h3>
+    <div class="fraction-row">
+      <div class="frac-item">
+        <svg width="120" height="40"><rect x="0" y="0" width="30" height="38" fill="none" stroke="#1f2a44" stroke-width="2"/><rect x="30" y="0" width="30" height="38" fill="none" stroke="#1f2a44" stroke-width="2"/><rect x="60" y="0" width="30" height="38" fill="none" stroke="#1f2a44" stroke-width="2"/><rect x="90" y="0" width="30" height="38" fill="none" stroke="#1f2a44" stroke-width="2"/></svg>
+        <div>Colour 1/4</div>
+      </div>
+      <div class="frac-item">
+        <svg width="120" height="40"><rect x="0" y="0" width="40" height="38" fill="none" stroke="#1f2a44" stroke-width="2"/><rect x="40" y="0" width="40" height="38" fill="none" stroke="#1f2a44" stroke-width="2"/><rect x="80" y="0" width="40" height="38" fill="none" stroke="#1f2a44" stroke-width="2"/></svg>
+        <div>Colour 2/3</div>
+      </div>
+      <div class="frac-item">
+        <svg width="90" height="90" viewBox="0 0 90 90"><circle cx="45" cy="45" r="40" fill="none" stroke="#1f2a44" stroke-width="2"/><line x1="45" y1="5" x2="45" y2="85" stroke="#1f2a44" stroke-width="2"/><line x1="5" y1="45" x2="85" y2="45" stroke="#1f2a44" stroke-width="2"/></svg>
+        <div>Colour 3/4</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Circle the bigger fraction 🔍</h3>
+    <div class="table-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div>1/2 or 1/4</div><div>2/3 or 1/3</div><div>1/5 or 1/2</div>
+    </div>
+    <p style="margin-top:10px;">Half of 12 = ___ &nbsp;&nbsp;•&nbsp;&nbsp; Half of 30 = ___ &nbsp;&nbsp;•&nbsp;&nbsp; 1/4 of 20 = ___ &nbsp;&nbsp;•&nbsp;&nbsp; 1/3 of 18 = ___</p>
+  </div>
+
+  <div class="box">
+    <h3>C. Time questions ⏰</h3>
+    <ol>
+      <li>School starts at <b>8:00</b> and ends at <b>1:30</b>. How long is the school day? <span class="fill" style="min-width:110px;"></span></li>
+      <li>Maghrib prayer is at <b>6:15</b>. It is <b>5:45</b> now. How many minutes are left? <span class="fill" style="min-width:110px;"></span></li>
+      <li>A cartoon starts at <b>4:30</b> and is <b>45 minutes</b> long. When does it end? <span class="fill" style="min-width:110px;"></span></li>
+    </ol>
+  </div>
+
+  <div class="box alt">
+    <h3>D. Money maths 💵</h3>
+    <ol>
+      <li>You buy a juice for <b>Rs. 85</b> and pay with a <b>Rs. 100</b> note. How much change do you get? <span class="fill"></span></li>
+      <li>Copy = Rs. 60, Pencil = Rs. 25, Eraser = Rs. 15. Total? <span class="fill"></span></li>
+    </ol>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 4 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 3: LOGIC & REASONING ================= -->
+<div class="page">
+  <div class="banner" style="background:var(--accent2);"><h2 class="subject">🧠 Logic Lab</h2><span class="tag" style="color:var(--accent2);">Page 3</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="box">
+    <h3>A. Number detective — find the pattern 🔍</h3>
+    <ol>
+      <li>5, 10, 20, 40, <span class="fill"></span>, <span class="fill"></span></li>
+      <li>100, 90, 80, 70, <span class="fill"></span>, <span class="fill"></span></li>
+      <li>1, 4, 9, 16, 25, <span class="fill"></span> (hint: squares!)</li>
+      <li>2, 3, 5, 8, 12, <span class="fill"></span> (hint: +1, +2, +3…)</li>
+    </ol>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Analogies — complete the pair 🔗</h3>
+    <ol>
+      <li>Bird is to nest &nbsp;as&nbsp; bee is to <span class="fill" style="min-width:100px;"></span></li>
+      <li>Hot is to cold &nbsp;as&nbsp; day is to <span class="fill" style="min-width:100px;"></span></li>
+      <li>Pencil is to write &nbsp;as&nbsp; scissors is to <span class="fill" style="min-width:100px;"></span></li>
+      <li>Karachi is to Sindh &nbsp;as&nbsp; Lahore is to <span class="fill" style="min-width:100px;"></span></li>
+    </ol>
+  </div>
+
+  <div class="box">
+    <h3>C. Secret code! 🕵️ (A=1, B=2, C=3 … Z=26)</h3>
+    <ol>
+      <li>Decode: &nbsp; 3 - 1 - 20 &nbsp; = &nbsp; <span class="fill" style="min-width:100px;"></span></li>
+      <li>Decode: &nbsp; 19 - 21 - 14 &nbsp; = &nbsp; <span class="fill" style="min-width:100px;"></span></li>
+      <li>Write YOUR name in code: <span class="fill" style="min-width:200px;"></span></li>
+    </ol>
+  </div>
+
+  <div class="box alt">
+    <h3>D. Who has which fruit? 🍎🍌🥭 (Read the clues, fill the table)</h3>
+    <p style="margin:4px 0;">Three friends — Sana, Omar, and Fatima — each have one fruit: an apple, a banana, or a mango.</p>
+    <ul style="margin:6px 0 10px 20px; font-size:15px;">
+      <li>Sana does not like yellow fruits.</li>
+      <li>Omar's fruit is the longest one.</li>
+    </ul>
+    <p>Sana has <span class="fill" style="min-width:90px;"></span> &nbsp;•&nbsp; Omar has <span class="fill" style="min-width:90px;"></span> &nbsp;•&nbsp; Fatima has <span class="fill" style="min-width:90px;"></span></p>
+  </div>
+
+  <div class="box">
+    <h3>E. Brain teasers 💭</h3>
+    <ol>
+      <li>I am an odd number. Take away one letter from my name and I become even. What number am I? <span class="fill"></span></li>
+      <li>A farmer has 10 goats. All but 4 run away. How many goats are left? <span class="fill"></span></li>
+    </ol>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 4 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 4: ENGLISH STORY ================= -->
+<div class="page">
+  <div class="banner" style="background:var(--accent3);"><h2 class="subject">📖 English Story Time</h2><span class="tag" style="color:var(--accent3);">Page 4</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="story">
+    <h3 style="color:var(--accent); margin-bottom:6px;">The Kite That Would Not Fly 🪁</h3>
+    <p>It was Basant season, and the sky over the old city was full of colourful kites. Zainab had saved her pocket money for weeks to buy a beautiful purple kite. But there was a problem — her kite would not fly!</p>
+    <p>Again and again she ran across the rooftop, but the kite only spun in circles and crashed. Her younger brother laughed, but her grandfather watched quietly. "Zainab," he said, "a kite does not fly because you run fast. It flies when the string, the wind, and your patience work together."</p>
+    <p>Grandfather showed her how to check the balance of the kite and how to wait for the right gust of wind. Zainab tried once more. She let out the string slowly... and suddenly, the purple kite rose higher and higher until it danced above every rooftop in the neighbourhood!</p>
+    <p>"I did it!" Zainab shouted. Her grandfather smiled. "No," he said, "you learned it. That is even better."</p>
+  </div>
+
+  <div class="box" style="margin-top:14px;">
+    <h3>A. Answer in complete sentences ✍️</h3>
+    <ol class="lines">
+      <li>Why was Zainab's kite crashing at first?<div class="writeline"></div></li>
+      <li>What three things did Grandfather say must work together?<div class="writeline"></div></li>
+      <li>What is the difference between "doing it" and "learning it"? What did Grandfather mean?<div class="writeline"></div><div class="writeline"></div></li>
+      <li>Write about a time YOU learned something after failing first.<div class="writeline"></div><div class="writeline"></div></li>
+    </ol>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 4 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 5: ENGLISH GRAMMAR & WRITING ================= -->
+<div class="page">
+  <div class="banner" style="background:var(--accent3);"><h2 class="subject">🅰️ Grammar & Writing</h2><span class="tag" style="color:var(--accent3);">Page 5</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="box">
+    <h3>A. Past or present? Fill in the correct form ⏳</h3>
+    <ol>
+      <li>Yesterday, I <span class="fill"></span> (play) cricket with my cousins.</li>
+      <li>Every morning, my mother <span class="fill"></span> (make) breakfast.</li>
+      <li>Last week, we <span class="fill"></span> (go) to my Nani's house.</li>
+      <li>Right now, the baby <span class="fill"></span> (sleep).</li>
+    </ol>
+  </div>
+
+  <div class="box alt">
+    <h3>B. Fix the sentences! Add capital letters and full stops 🔧</h3>
+    <ol class="lines">
+      <li>my friend ahmed lives in karachi<div class="writeline"></div></li>
+      <li>we celebrated eid on monday<div class="writeline"></div></li>
+      <li>the river indus is very long<div class="writeline"></div></li>
+    </ol>
+  </div>
+
+  <div class="box">
+    <h3>C. Choose the describing word (adjective) 🎨</h3>
+    <div class="table-grid" style="grid-template-columns:repeat(2,1fr); font-size:15px;">
+      <div>a (brave / bravely) soldier</div><div>a (sweet / sweetly) mango</div>
+      <div>the (bright / brightly) sun</div><div>a (noisy / noise) street</div>
+    </div>
+  </div>
+
+  <div class="box alt">
+    <h3>D. My paragraph 📝 — "My Favourite Day of the Week" (write 4–5 sentences)</h3>
+    <div class="lines">
+      <div class="writeline"></div><div class="writeline"></div><div class="writeline"></div>
+      <div class="writeline"></div><div class="writeline"></div><div class="writeline"></div>
+    </div>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 4 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 6: URDU ================= -->
+<div class="page">
+  <div class="banner" style="background:#6c5ce7;"><h2 class="subject">📚 اردو کہانی</h2><span class="tag" style="color:#6c5ce7;">Page 6</span></div>
+  <div class="namebar"><span>Name:</span><span>Date:</span></div>
+
+  <div class="story urdu">
+    <h3 style="color:#6c5ce7; margin-bottom:6px;">محنت کی برکت</h3>
+    <p>ایک گاؤں میں دو بھائی رہتے تھے، حسن اور احمد۔ دونوں کے پاس ایک ایک کھیت تھا۔ حسن روز صبح سویرے اٹھتا، اپنے کھیت میں پانی دیتا اور خوب محنت کرتا۔ احمد دیر تک سوتا رہتا اور کہتا، "کل کام کر لوں گا۔"</p>
+    <p>کچھ مہینوں بعد فصل تیار ہوئی۔ حسن کے کھیت میں سنہری گندم لہرا رہی تھی، لیکن احمد کے کھیت میں جھاڑیاں اُگ آئی تھیں۔ احمد بہت شرمندہ ہوا۔</p>
+    <p>حسن نے اپنے بھائی کا ہاتھ تھاما اور کہا، "پریشان نہ ہو۔ اگلی فصل ہم مل کر اُگائیں گے۔" اگلے موسم میں دونوں بھائیوں نے ساتھ محنت کی، اور دونوں کھیت سونے کی طرح چمک اٹھے۔</p>
+    <p>سبق: محنت کبھی ضائع نہیں جاتی، اور جو کام آج کر سکتے ہو اُسے کل پر مت چھوڑو۔</p>
+  </div>
+
+  <div class="box urdu" style="margin-top:14px; border-color:#6c5ce7;">
+    <h3 style="color:#6c5ce7;">سوالوں کے جواب لکھیں ✍️</h3>
+    <ol class="lines">
+      <li>حسن روز صبح اٹھ کر کیا کرتا تھا؟<div class="writeline"></div></li>
+      <li>احمد کے کھیت میں جھاڑیاں کیوں اُگ آئیں؟<div class="writeline"></div></li>
+      <li>حسن نے اپنے بھائی کی مدد کیسے کی؟<div class="writeline"></div></li>
+      <li>اس کہانی سے ہمیں کیا سبق ملتا ہے؟<div class="writeline"></div></li>
+    </ol>
+  </div>
+
+  <div class="box urdu alt" style="border-color:#e2557b;">
+    <h3 style="color:#e2557b;">ان الفاظ سے جملے بنائیں 🖊️</h3>
+    <ol class="lines">
+      <li>محنت —<div class="writeline"></div></li>
+      <li>فصل —<div class="writeline"></div></li>
+      <li>مدد —<div class="writeline"></div></li>
+    </ol>
+  </div>
+
+  <div class="footer"><span>Colour your stars: <span class="stars">☆☆☆</span></span><span>Class 4 Activity Book</span></div>
+</div>
+
+<!-- ================= PAGE 7: ANSWER KEY ================= -->
+<div class="page">
+  <div class="banner" style="background:#1f2a44;"><h2 class="subject">🔑 Answer Key (for parents)</h2><span class="tag" style="color:#1f2a44;">Answers</span></div>
+  <div class="answer-key two-col">
+    <div>
+      <h4>Page 1 — Multiply & Divide</h4>
+      A: 372, 860, 1530, 852, 636<br>
+      B: 8, 9, 9, 12, 15, 21, 12, 30 &nbsp;•&nbsp; 6 r 1, 7 r 3, 7 r 1<br>
+      C: 1) Rs. 1350 &nbsp;2) 9 dates &nbsp;3) 260 km &nbsp;4) 8 weeks
+      <h4>Page 2 — Fractions & Time</h4>
+      B: 1/2, 2/3, 1/2 &nbsp;•&nbsp; 6, 15, 5, 6<br>
+      C: 1) 5 hours 30 minutes &nbsp;2) 30 minutes &nbsp;3) 5:15<br>
+      D: 1) Rs. 15 &nbsp;2) Rs. 100
+      <h4>Page 3 — Logic Lab</h4>
+      A: 1) 80, 160 &nbsp;2) 60, 50 &nbsp;3) 36 &nbsp;4) 17<br>
+      B: 1) hive &nbsp;2) night &nbsp;3) cut &nbsp;4) Punjab<br>
+      C: 1) CAT &nbsp;2) SUN<br>
+      D: Sana → apple, Omar → banana, Fatima → mango<br>
+      E: 1) Seven (remove the "s" → even) &nbsp;2) 4 goats
+    </div>
+    <div>
+      <h4>Page 4 — English Story</h4>
+      1) The kite was not balanced / she only ran fast. &nbsp;2) The string, the wind, and patience. &nbsp;3) Learning means you understand it and can do it again — own words accepted. &nbsp;4) Child's own answer.
+      <h4>Page 5 — Grammar</h4>
+      A: played, makes, went, is sleeping<br>
+      B: 1) My friend Ahmed lives in Karachi. 2) We celebrated Eid on Monday. 3) The River Indus is very long.<br>
+      C: brave, sweet, bright, noisy
+      <h4>Page 6 — اردو</h4>
+      ۱) کھیت میں پانی دیتا اور محنت کرتا &nbsp;۲) کیونکہ وہ کام کل پر چھوڑتا رہا اور محنت نہیں کی &nbsp;۳) اگلی فصل مل کر اُگائی &nbsp;۴) محنت کبھی ضائع نہیں جاتی؛ آج کا کام کل پر نہ چھوڑو
+    </div>
+  </div>
+  <div class="footer"><span>Great job! 🎉</span><span>Class 4 Activity Book</span></div>
+</div>
+
+</body>
+</html>
