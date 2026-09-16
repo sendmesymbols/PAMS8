@@ -36,6 +36,14 @@ import BdeAdmArea from "../Symbols/BdeAdmArea.ts"; //Fixed
 import DivAdmArea from "../Symbols/DivAdmArea.ts"; //Fixed
 import BridgeHeadLine from "../Symbols/BridgeHeadLine.ts"; //Fixed
 import PhaseLine from "../Symbols/PhaseLine.ts"; //Fixed
+import LineOfContact from "../Symbols/LineOfContact.ts";
+import MedevacMsnArea from "../Symbols/MedevacMsnArea.ts";
+import ISRMsnArea from "../Symbols/ISRMsnArea.ts";
+import VulnArea from "../Symbols/VulnArea.ts";
+import Ethernet from "../Symbols/Ethernet.ts";
+import PASCOMS from "../Symbols/PASCOMS.ts";
+import OFC from "../Symbols/OFC.ts";
+import Wrls from "../Symbols/Wrls.ts";
 import Turn from "../Symbols/Turn.ts";
 import Breach from "../Symbols/Breach.ts"; //Fixed
 import Bridge from "../Symbols/Bridge.ts"; //Fixed
@@ -185,6 +193,14 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "CLineOfDenial": CLineOfDenial,
     "ALineOfDenial": ALineOfDenial,
     "PhaseLine": PhaseLine,
+    "LineOfContact": LineOfContact,
+    "MedevacMsnArea": MedevacMsnArea,
+    "ISRMsnArea": ISRMsnArea,
+    "VulnArea": VulnArea,
+    "Ethernet": Ethernet,
+    "PASCOMS": PASCOMS,
+    "OFC": OFC,
+    "Wrls": Wrls,
     "Turn": Turn,
     "Ambush": Ambush,
     "ArcOfFireSD": ArcOfFireSD,
