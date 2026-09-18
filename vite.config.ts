@@ -100,9 +100,16 @@ export default defineConfig(({ mode }) => {
         // auto-assigned free port instead of colliding on the fixed default.
         port: Number(process.env.PORT) || (useDist ? 6548 : 6547),
         proxy: {
+            // Road-network ArcGIS Server (RoadNetwork MapServer + NAServer).
+            // A DIFFERENT box from the `/arcgis` basemap server below, so it
+            // keeps its own prefix. Same constraints though — no CORS headers
+            // and a self-signed cert — hence the same-origin proxy with
+            // `secure:false`. The rewrite strips only the `/roadnet` prefix, so
+            // `/roadnet/arcgis/rest/...` reaches the server as `/arcgis/rest/...`.
             '/roadnet': {
-                target: 'http://localhost:9191',
+                target: 'https://192.168.0.15:6443',
                 changeOrigin: true,
+                secure: false,
                 rewrite: (p) => p.replace(/^\/roadnet/, ''),
             },
             // Local ArcGIS Server (Pakistan MapServer). It ships no CORS headers

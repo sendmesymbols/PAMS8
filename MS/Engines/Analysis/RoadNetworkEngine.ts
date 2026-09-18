@@ -1,14 +1,15 @@
 /**
  * RoadNetworkEngine.ts
- * Adapter for an EXTERNAL pgRouting road-network service (PostGIS + pgRouting,
- * see D:\Roads\Network\webgis). Gives the rest of PAMS8 real road-following
- * routing and drive-time service areas on an actual graph, instead of the
- * straight-line / great-circle approximations the other engines use today.
+ * Adapter for an ArcGIS Server **Network Analyst** service (NAServer) published
+ * from a Pakistan-wide osm2po road network. Gives the rest of PAMS8 real
+ * road-following routing and drive-time service areas on an actual network
+ * dataset, instead of the straight-line / great-circle approximations the other
+ * engines use today.
  *
  * ──────────────────────────────────────────────────────────────────────────
  * DESIGN CONTRACT — this backend is OPTIONAL and INTERMITTENT.
  * ──────────────────────────────────────────────────────────────────────────
- * The road service is a separate Docker stack that may or may not be running.
+ * ArcGIS Server may or may not be reachable.
  * It must NEVER be a show-stopper for PAMS8:
  *   • No method throws. Every call resolves to a discriminated `RoadResult`
  *     ({ ok:true, data } | { ok:false, reason, error }).
@@ -19,15 +20,30 @@
  *   • Status changes are broadcast (EngineLogger + a `road-network:status`
  *     CustomEvent) so widgets can flip a badge without polling.
  *
- * The engine is UI-agnostic: it returns raw GeoJSON plus static helpers to turn
- * a result into an ArcGIS polyline/Graphic, so headless callers (CorridorEngine,
- * MissionPlannerEngine, MeasurementEngine) and panel callers share one path.
+ * The engine is UI-agnostic: it returns GeoJSON-shaped geometry plus static
+ * helpers to turn a result into an ArcGIS polyline/Graphic, so headless callers
+ * (CorridorEngine, MissionPlannerEngine, MeasurementEngine) and panel callers
+ * share one path. Everything it hands out is EPSG:4326.
  *
- * Backend API surface consumed (the only endpoints that exist):
- *   GET /health                                  → { ok, edges }
- *   GET /route?fromLng&fromLat&toLng&toLat       → Feature(MultiLineString) + props
- *   GET /service-area?lng&lat&minutes            → Feature(MultiLineString|null)
- * All responses are EPSG:4326 GeoJSON.
+ * ── Backend surface consumed ──────────────────────────────────────────────
+ *   GET  <naServerUrl>?f=json                      → capability probe: which
+ *                                                    Route / Service Area layers exist
+ *   POST <naServerUrl>/<routeLayer>/solve          → route geometry, totals, directions
+ *   POST <naServerUrl>/<saLayer>/solveServiceArea  → drive-time lines (only if published)
+ *   POST <roadsLayerUrl>/<id>/query                → road-class enrichment (see below)
+ *
+ * ── Why the extra road-class query ────────────────────────────────────────
+ * A Network Analyst solve returns geometry, totals and turn-by-turn directions
+ * — but NOT the class of each road traversed, which is exactly what military
+ * trafficability (GO / SLOW-GO / NO-GO, MSR vs ASR) is built on. So after a
+ * solve we sample the route at a fixed spacing, ask the source roads layer for
+ * edges within a few metres of those samples in ONE request, and attribute each
+ * sample to its nearest edge's class. That yields both the per-class distance
+ * breakdown and a class per direction step. It is best-effort: if it fails the
+ * route still returns, just without trafficability.
+ *
+ * NOTE: ArcGIS REST reports failures as HTTP 200 with an `{ error: {...} }`
+ * body, so HTTP status alone is not enough — see `_esri()`.
  */
 
 import type MapView from '@arcgis/core/views/MapView';
@@ -54,10 +70,11 @@ export type RoadNetworkAvailability = 'unknown' | 'available' | 'unavailable';
 export type RoadFailureReason =
   | 'disabled' //   engine turned off in settings
   | 'unavailable' // health probe says backend is down
+  | 'unsupported' //the service does not publish this capability (e.g. no Service Area layer)
   | 'timeout' //    request aborted after timeoutMs
   | 'network' //    fetch rejected (CORS, DNS, refused, offline)
-  | 'bad-request' //400 — bad/insufficient coordinates
-  | 'no-route' //   404 — no nearby vertex or no path between points
+  | 'bad-request' //bad/insufficient coordinates, or an ArcGIS parameter error
+  | 'no-route' //   no nearby network element, or no path between the stops
   | 'server' //     5xx
   | 'parse' //      response was not the JSON/GeoJSON we expected
   | 'bad-input'; // caller passed a point we could not resolve to lng/lat
@@ -131,6 +148,34 @@ export const DEFAULT_ROAD_CLASS_INFO: RoadClassInfo = {
   color: [130, 130, 130],
 };
 
+/**
+ * osm2po `CLAZZ` integer → the OSM `fclass` names keyed by ROAD_CLASS_INFO.
+ * The network dataset behind the NAServer was built by osm2po, which encodes the
+ * original `highway=*` tag as this integer. Translating back to the tag name is
+ * what lets every existing consumer keep calling `classifyClass(fclass)` with no
+ * change at all. Values confirmed against the published `pkroads` layer.
+ */
+export const OSM2PO_CLAZZ_TO_FCLASS: Record<number, string> = {
+  11: 'motorway',
+  12: 'motorway_link',
+  13: 'trunk',
+  14: 'trunk_link',
+  15: 'primary',
+  16: 'primary_link',
+  21: 'secondary',
+  22: 'secondary_link',
+  31: 'tertiary',
+  32: 'tertiary_link',
+  41: 'residential',
+  42: 'unclassified', // osm2po "road" — an unclassified carriageway
+  43: 'unclassified',
+  51: 'service',
+  63: 'track',
+  71: 'track',
+  81: 'path',
+  91: 'path',
+};
+
 export interface TrafficabilityClassBreakdown extends RouteClassBreakdown {
   info: RoadClassInfo;
   /** Share of total route distance, 0–100. */
@@ -168,8 +213,44 @@ export interface ServiceAreaData {
   geometry: GeoJsonLineGeometry | null;
 }
 
+/**
+ * An area the solver must avoid (or grudgingly cross), handed to the Network
+ * Analyst service as a polygon barrier. Unlike a via-point nudge, a `restrict`
+ * barrier is enforced by the solver itself: every road inside is removed from
+ * the graph, so the route physically cannot pass through — and if no way around
+ * exists, the solve honestly reports no route instead of quietly cutting
+ * through the threat.
+ */
+export interface RouteBarrier {
+  /** Polygon rings in lng/lat (EPSG:4326), outer ring first, first point repeated last. */
+  rings: number[][][];
+  /** Optional label, surfaced in solver messages. */
+  name?: string;
+  /**
+   * `restrict` (default) makes the area impassable. `slow` keeps it passable but
+   * multiplies the cost of roads inside by `costFactor` — the right choice for
+   * "observed but not denied" ground, where a detour may still beat driving around.
+   */
+  type?: 'restrict' | 'slow';
+  /** Cost multiplier for `slow` barriers (e.g. 5 = crossing costs five times as much). */
+  costFactor?: number;
+}
+
+/** Per-call solver options. */
+export interface RouteOptions {
+  /** Areas to avoid. Ignored when empty. */
+  barriers?: RouteBarrier[];
+}
+
 export interface HealthData {
+  /** Edge count when known. The NAServer exposes no cheap count, so this is 0. */
   edges: number;
+  /** Service description reported by the NAServer. */
+  name: string;
+  /** Route layer discovered on the service. */
+  routeLayer: string;
+  /** Service Area layer discovered on the service, or '' when none is published. */
+  serviceAreaLayer: string;
 }
 
 interface GeoJsonLineGeometry {
@@ -179,13 +260,39 @@ interface GeoJsonLineGeometry {
 
 export interface RoadNetworkConfig {
   /**
-   * Base URL of the routing API. Default `/api` assumes a same-origin reverse
-   * proxy (Vite dev proxy or shared nginx). For a direct cross-origin call set
-   * e.g. `http://localhost:8080/api` AND enable CORS on the Express service.
+   * Base URL of the Network Analyst service, WITHOUT a trailing layer name —
+   * e.g. `/roadnet/arcgis/rest/services/RoadNetwork/NAServer`. A same-origin
+   * path assumes a reverse proxy (the Vite `/roadnet` proxy in dev). A direct
+   * cross-origin URL additionally needs CORS allowed on ArcGIS Server and a
+   * certificate the browser trusts.
    */
-  apiBaseUrl: string;
-  /** Base URL serving the display GeoJSON (roads/admin). Default `/data`. */
-  dataBaseUrl: string;
+  naServerUrl: string;
+  /** Route layer name on the NAServer. Auto-corrected from the capability probe. */
+  routeLayer: string;
+  /**
+   * Service Area layer name. Empty means "auto-detect"; if the service
+   * publishes none, `serviceArea()` resolves to `unsupported` and callers
+   * degrade to their own range-ring estimates.
+   */
+  serviceAreaLayer: string;
+  /** MapServer/FeatureServer holding the source roads, for display + class enrichment. */
+  roadsLayerUrl: string;
+  /** Sublayer id of the routable roads within `roadsLayerUrl`. */
+  roadsSublayerId: number;
+  /** Cost attribute to minimise. `Cost` is travel time; `Kilometers` is distance. */
+  impedanceAttribute: string;
+  /** Units of `impedanceAttribute` — needed to convert service-area breaks. */
+  impedanceUnits: 'hours' | 'minutes' | 'seconds' | 'kilometers' | 'meters';
+  /** Cost attribute accumulated alongside the impedance so we always get distance. */
+  distanceAttribute: string;
+  /** Integer road-class field on the roads layer (osm2po `CLAZZ`). */
+  classFieldName: string;
+  /** Run the road-class enrichment query after each solve (drives trafficability). */
+  classifyRoutes: boolean;
+  /** Max samples taken along a route for enrichment. Higher = finer, slower. */
+  classifySamples: number;
+  /** Search radius, in metres, from a sample to a candidate road edge. */
+  classifyToleranceM: number;
   /** Per-request timeout in ms. */
   timeoutMs: number;
   /** How long a health result is trusted before re-probing. */
@@ -197,9 +304,24 @@ export interface RoadNetworkConfig {
 }
 
 export const DEFAULT_ROAD_NETWORK_CONFIG: RoadNetworkConfig = {
-  apiBaseUrl: '/api',
-  dataBaseUrl: '/data',
-  timeoutMs: 8000,
+  naServerUrl: '/roadnet/arcgis/rest/services/RoadNetwork/NAServer',
+  routeLayer: 'Route',
+  serviceAreaLayer: '',
+  roadsLayerUrl: '/roadnet/arcgis/rest/services/RoadNetwork/MapServer',
+  roadsSublayerId: 11,
+  impedanceAttribute: 'Cost',
+  impedanceUnits: 'hours',
+  distanceAttribute: 'Kilometers',
+  classFieldName: 'CLAZZ',
+  classifyRoutes: true,
+  classifySamples: 120,
+  classifyToleranceM: 25,
+  // Tactical-scale solves (tens of km) come back in well under a second, but
+  // the network dataset is built with `useHierarchy: false`, so a cross-country
+  // leg makes the solver walk the whole 2.5M-edge graph and can take tens of
+  // seconds. This is the ceiling before we give up and let the caller fall back
+  // to a straight-line estimate.
+  timeoutMs: 30000,
   availabilityTtlMs: 30_000,
   healthRetries: 1,
   enabled: true,
@@ -219,6 +341,8 @@ export interface DrawOptions {
   width?: number;
   /** Drop start/end (route) or origin (service area) markers (default true). */
   markers?: boolean;
+  /** Areas the route must avoid — forwarded to the solver (routes only). */
+  barriers?: RouteBarrier[];
 }
 
 export default class RoadNetworkEngine {
@@ -309,7 +433,7 @@ export default class RoadNetworkEngine {
   updateConfig(patch: Partial<RoadNetworkConfig>): void {
     const clean = RoadNetworkEngine._defined(patch);
     const urlChanged =
-      (clean.apiBaseUrl !== undefined && clean.apiBaseUrl !== this._cfg.apiBaseUrl) ||
+      (clean.naServerUrl !== undefined && clean.naServerUrl !== this._cfg.naServerUrl) ||
       (clean.enabled !== undefined && clean.enabled !== this._cfg.enabled);
     this._cfg = { ...this._cfg, ...clean };
     if (urlChanged) {
@@ -357,10 +481,39 @@ export default class RoadNetworkEngine {
         error: 'health probe not attempted',
       };
       for (let attempt = 0; attempt <= this._cfg.healthRetries; attempt++) {
-        const res = await this._request<any>('/health');
+        // The NAServer root doubles as the capability probe: it lists which
+        // analysis layers were published, so we learn the Route layer's name and
+        // whether service areas are available at all.
+        const res = await this._esri<any>(this._cfg.naServerUrl, {}, 'GET');
         if (res.ok) {
-          const edges = Number(res.data?.edges) || 0;
-          const data: HealthData = { edges };
+          const routeLayers: string[] = Array.isArray(res.data?.routeLayers) ? res.data.routeLayers : [];
+          const saLayers: string[] = Array.isArray(res.data?.serviceAreaLayers)
+            ? res.data.serviceAreaLayers
+            : [];
+          if (!routeLayers.length) {
+            last = {
+              ok: false,
+              reason: 'unsupported',
+              error: 'Network Analyst service publishes no Route layer',
+            };
+            break;
+          }
+          // Trust the service over the configured names, but honour an explicit
+          // choice when it actually exists there.
+          const routeLayer = routeLayers.includes(this._cfg.routeLayer)
+            ? this._cfg.routeLayer
+            : routeLayers[0];
+          const serviceAreaLayer =
+            this._cfg.serviceAreaLayer && saLayers.includes(this._cfg.serviceAreaLayer)
+              ? this._cfg.serviceAreaLayer
+              : (saLayers[0] ?? '');
+          this._cfg = { ...this._cfg, routeLayer, serviceAreaLayer };
+          const data: HealthData = {
+            edges: 0,
+            name: String(res.data?.serviceDescription ?? '').trim() || 'Network Analyst',
+            routeLayer,
+            serviceAreaLayer,
+          };
           this._lastProbeAt = Date.now();
           this._setStatus('available', data);
           return { ok: true, data } as RoadResult<HealthData>;
@@ -381,6 +534,11 @@ export default class RoadNetworkEngine {
     }
   }
 
+  /** True once a probe has found a Service Area layer on the service. */
+  get supportsServiceArea(): boolean {
+    return !!this._cfg.serviceAreaLayer;
+  }
+
   // ── Core operations ──────────────────────────────────────────────────────
 
   /**
@@ -388,7 +546,7 @@ export default class RoadNetworkEngine {
    * Resolves the points to lng/lat, gates on availability, and returns a
    * `RoadResult`. Callers degrade to straight-line on `ok === false`.
    */
-  async route(from: PointLike, to: PointLike): Promise<RoadResult<RouteData>> {
+  async route(from: PointLike, to: PointLike, opts: RouteOptions = {}): Promise<RoadResult<RouteData>> {
     const a = this._toLngLat(from);
     const b = this._toLngLat(to);
     if (!a || !b) {
@@ -397,41 +555,103 @@ export default class RoadNetworkEngine {
     const gate = await this._gate();
     if (gate) return gate;
 
-    const qs = `fromLng=${a.lng}&fromLat=${a.lat}&toLng=${b.lng}&toLat=${b.lat}`;
-    const res = await this._request<any>(`/route?${qs}`);
-    if (!res.ok) {
-      this._maybeMarkDown(res.reason);
-      EngineLogger.error(ENGINE_NAME, `Route failed (${res.reason}): ${res.error}`);
-      return res;
+    const barriers = RoadNetworkEngine._barrierFeatureSet(opts.barriers);
+
+    // A stop sitting inside a restriction barrier can never be routed from, and
+    // the solver only reports "No solution found" — useless to a planner. Catch
+    // it here and name the real problem, without spending a round trip.
+    const restricted = (opts.barriers ?? []).filter((bar) => (bar.type ?? 'restrict') === 'restrict');
+    const startIn = restricted.find((bar) => RoadNetworkEngine._pointInRings(a.lng, a.lat, bar.rings));
+    const destIn = restricted.find((bar) => RoadNetworkEngine._pointInRings(b.lng, b.lat, bar.rings));
+    if (startIn || destIn) {
+      const which = startIn && destIn ? 'Both stops are' : startIn ? 'Start point is' : 'Destination is';
+      const named = (startIn ?? destIn)!.name ?? 'barrier';
+      return {
+        ok: false,
+        reason: 'no-route',
+        error: `${which} inside restricted area "${named}" — no route can start or end there`,
+      };
     }
 
-    const f = res.data;
-    const geom = f?.geometry;
-    if (!geom || !Array.isArray(geom.coordinates)) {
-      return { ok: false, reason: 'parse', error: 'Route response missing geometry' };
+    const res = await this._esri<any>(`${this._cfg.naServerUrl}/${this._cfg.routeLayer}/solve`, {
+      stops: JSON.stringify(RoadNetworkEngine._pointFeatureSet([a, b])),
+      ...(barriers ? { polygonBarriers: JSON.stringify(barriers) } : {}),
+      returnRoutes: 'true',
+      returnDirections: 'true',
+      returnStops: 'false',
+      returnBarriers: 'false',
+      returnPolygonBarriers: 'false',
+      returnPolylineBarriers: 'false',
+      directionsLengthUnits: 'esriNAUKilometers',
+      impedanceAttributeName: this._cfg.impedanceAttribute,
+      accumulateAttributeNames: this._cfg.distanceAttribute,
+      outputLines: 'esriNAOutputLineTrueShape',
+      ignoreInvalidLocations: 'true',
+      outSR: '4326',
+    });
+    if (!res.ok) {
+      // ArcGIS returns a plain 400 for "there is no path", which is a routing
+      // OUTCOME, not a malformed request — and with barriers in play it is the
+      // expected answer for an objective that is sealed off. Re-classify it so
+      // callers can tell "blocked" from "the request was wrong".
+      const noSolution = /no solution|no route from location|unable to find|no path/i.test(res.error ?? '');
+      const out: RoadResult<RouteData> = noSolution
+        ? {
+            ok: false,
+            reason: 'no-route',
+            error: barriers
+              ? 'No route between these points that avoids the restricted areas'
+              : 'No route found between these points',
+            status: res.status,
+          }
+        : res;
+      this._maybeMarkDown(out.reason);
+      EngineLogger.error(ENGINE_NAME, `Route failed (${out.reason}): ${out.error}`);
+      return out;
     }
-    const p = f.properties || {};
-    const byClass: RouteClassBreakdown[] = Array.isArray(p.by_class)
-      ? p.by_class.map((c: any) => ({ fclass: String(c.fclass ?? ''), km: Number(c.km) || 0 }))
+
+    const solved = RoadNetworkEngine._readSolve(res.data);
+    if (!solved) {
+      // With restriction barriers in play, "no route" is usually a real finding
+      // — the objective is sealed off — not a malfunction. Say which it is.
+      return {
+        ok: false,
+        reason: 'no-route',
+        error: barriers
+          ? 'No route between these points that avoids the restricted areas'
+          : 'Solver returned no route between these points',
+      };
+    }
+    const { attrs, geometry, steps, totalTimeMin } = solved;
+
+    // Distance: the accumulated Kilometers attribute, else the summed steps
+    // (also kilometres, per directionsLengthUnits above).
+    const distanceKm =
+      Number(attrs[`Total_${this._cfg.distanceAttribute}`]) || steps.reduce((s, x) => s + x.km, 0);
+    // Time: the directions summary is already minutes. Total_<impedance> is in
+    // the impedance's own units, so it only gets converted as a fallback.
+    const travelTimeMin =
+      Number.isFinite(totalTimeMin) && totalTimeMin > 0
+        ? totalTimeMin
+        : this._toMinutes(Number(attrs[`Total_${this._cfg.impedanceAttribute}`]) || 0);
+
+    // Best-effort trafficability enrichment — mutates `steps` in place with a
+    // per-step fclass and never fails the route.
+    const byClass = this._cfg.classifyRoutes
+      ? await this._classifyAlongRoute(geometry, steps, distanceKm)
       : [];
+
     const data: RouteData = {
-      distanceKm: Number(p.distance_km) || 0,
-      travelTimeMin: Number(p.travel_time_min) || 0,
+      distanceKm,
+      travelTimeMin,
       byClass,
       trafficability: RoadNetworkEngine.classifyRoute(byClass),
-      steps: Array.isArray(p.steps)
-        ? p.steps.map((s: any) => ({
-            name: String(s.name ?? '(unnamed road)'),
-            fclass: String(s.fclass ?? ''),
-            km: Number(s.km) || 0,
-            min: Number(s.min) || 0,
-          }))
-        : [],
-      geometry: geom as GeoJsonLineGeometry,
+      steps,
+      geometry,
     };
     EngineLogger.success(
       ENGINE_NAME,
-      `Route: ${data.distanceKm} km, ${data.travelTimeMin} min, ${data.steps.length} legs`,
+      `Route: ${data.distanceKm.toFixed(1)} km, ${data.travelTimeMin.toFixed(0)} min, ${data.steps.length} legs`,
     );
     return { ok: true, data };
   }
@@ -451,37 +671,73 @@ export default class RoadNetworkEngine {
     const gate = await this._gate();
     if (gate) return gate;
 
-    const res = await this._request<any>(`/service-area?lng=${o.lng}&lat=${o.lat}&minutes=${m}`);
+    // The service may publish no Service Area layer at all. Say so plainly, so
+    // callers label their output "estimate" rather than "backend down" — and so
+    // the feature lights up by itself the day one IS published.
+    if (!this._cfg.serviceAreaLayer) {
+      return {
+        ok: false,
+        reason: 'unsupported',
+        error: 'Network Analyst service publishes no Service Area layer',
+      };
+    }
+
+    const res = await this._esri<any>(
+      `${this._cfg.naServerUrl}/${this._cfg.serviceAreaLayer}/solveServiceArea`,
+      {
+        facilities: JSON.stringify(RoadNetworkEngine._pointFeatureSet([o])),
+        defaultBreaks: String(this._fromMinutes(m)),
+        impedanceAttributeName: this._cfg.impedanceAttribute,
+        travelDirection: 'esriNATravelDirectionFromFacility',
+        // Ask for LINES, not polygons: every caller treats service-area geometry
+        // as a set of road centrelines (toPolyline / flatten-coords).
+        returnFacilities: 'false',
+        returnPolygons: 'false',
+        returnPolylines: 'true',
+        outputLines: 'esriNAOutputLineTrueShape',
+        splitLinesAtBreaks: 'false',
+        outSR: '4326',
+      },
+    );
     if (!res.ok) {
       this._maybeMarkDown(res.reason);
       EngineLogger.error(ENGINE_NAME, `Service area failed (${res.reason}): ${res.error}`);
       return res;
     }
-    const geom = res.data?.geometry ?? null;
+    const paths: number[][][] = [];
+    for (const f of res.data?.saPolylines?.features ?? []) {
+      for (const p of f?.geometry?.paths ?? []) paths.push(p);
+    }
+    const geometry: GeoJsonLineGeometry | null = paths.length
+      ? { type: 'MultiLineString', coordinates: paths }
+      : null;
     EngineLogger.success(ENGINE_NAME, `Service area ${m} min computed`);
-    return { ok: true, data: { minutes: m, geometry: geom as GeoJsonLineGeometry | null } };
+    return { ok: true, data: { minutes: m, geometry } };
   }
 
   // ── Optional reference roads layer (display/snapping) ────────────────────
 
   /**
-   * Load the display roads GeoJSON as a reference layer. Best-effort: a missing
-   * file or failed load is logged and swallowed — never throws.
+   * Add the source roads as a reference layer. Best-effort: an unreachable or
+   * failed service is logged and swallowed — never throws.
+   *
+   * Server-rendered (MapImageLayer), NOT a FeatureLayer: the network is ~2.5M
+   * edges, far past what is sane to stream to the client for a backdrop.
    */
   async showRoadsLayer(): Promise<boolean> {
     if (!this._view) return false;
     if (this._roadsLayer) return true;
     try {
-      const { default: GeoJSONLayer } = await import('@arcgis/core/layers/GeoJSONLayer');
-      const layer = new GeoJSONLayer({
+      const { default: MapImageLayer } = await import('@arcgis/core/layers/MapImageLayer');
+      const layer = new MapImageLayer({
         id: RoadNetworkEngine.ROADS_LAYER_ID,
-        url: `${this._cfg.dataBaseUrl}/roads.geojson`,
+        url: this._cfg.roadsLayerUrl,
         title: 'Road network (reference)',
         listMode: 'hide',
-        renderer: {
-          type: 'simple',
-          symbol: { type: 'simple-line', color: [120, 120, 120, 0.7], width: 0.8 },
-        } as any,
+        opacity: 0.7,
+        // Only the routable roads sublayer — the service also carries the
+        // solver's own Stops/Barriers/Routes scratch layers.
+        sublayers: [{ id: this._cfg.roadsSublayerId, visible: true }],
       });
       this._roadsLayer = layer;
       this._view.map.add(layer);
@@ -516,7 +772,7 @@ export default class RoadNetworkEngine {
    * branch on `ok` — rendering is a side-effect that only happens on success.
    */
   async drawRoute(from: PointLike, to: PointLike, opts: DrawOptions = {}): Promise<RoadResult<RouteData>> {
-    const res = await this.route(from, to);
+    const res = await this.route(from, to, { barriers: opts.barriers });
     if (!res.ok) return res;
     const layer = this._ensureOverlayLayer();
     if (!layer) return res; // no view to render into — data still returned
@@ -714,7 +970,10 @@ export default class RoadNetworkEngine {
     if (state === this._availability) return;
     this._availability = state;
     if (state === 'available') {
-      EngineLogger.success(ENGINE_NAME, `Road network online${info ? ` (${info.edges} edges)` : ''}`);
+      const detail = info
+        ? ` (${info.name}${info.serviceAreaLayer ? '' : ', no service-area layer'})`
+        : '';
+      EngineLogger.success(ENGINE_NAME, `Road network online${detail}`);
     } else if (state === 'unavailable') {
       EngineLogger.nextStep(ENGINE_NAME, 'Road network offline — features degrade to straight-line');
     }
@@ -738,16 +997,41 @@ export default class RoadNetworkEngine {
   }
 
   /**
-   * The single fetch path: timeout via AbortController, status→reason mapping,
-   * JSON parse guard. Always resolves to a RoadResult — never throws.
+   * The single fetch path to ArcGIS REST: timeout via AbortController,
+   * status→reason mapping, JSON parse guard. Always resolves to a RoadResult —
+   * never throws.
+   *
+   * Solve payloads (a stops feature set, a 3000-vertex route geometry) blow past
+   * URL length limits, so everything but the capability probe goes out as a POST
+   * form body.
+   *
+   * The trap: ArcGIS REST answers a *failed* request with **HTTP 200** and an
+   * `{ error: { code, message, details } }` body. Checking `resp.ok` alone would
+   * read those as successes and hand callers a result with no geometry, so the
+   * body is inspected before anything else.
    */
-  private async _request<T>(path: string): Promise<RoadResult<T>> {
-    const url = `${this._cfg.apiBaseUrl}${path}`;
+  private async _esri<T>(
+    url: string,
+    params: Record<string, string> = {},
+    method: 'GET' | 'POST' = 'POST',
+  ): Promise<RoadResult<T>> {
+    const form = new URLSearchParams({ ...params, f: 'json' });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this._cfg.timeoutMs);
     let resp: Response;
     try {
-      resp = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
+      resp = await fetch(method === 'GET' ? `${url}?${form.toString()}` : url, {
+        method,
+        signal: controller.signal,
+        headers:
+          method === 'GET'
+            ? { Accept: 'application/json' }
+            : {
+                Accept: 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+        body: method === 'GET' ? undefined : form.toString(),
+      });
     } catch (e: any) {
       clearTimeout(timer);
       if (e?.name === 'AbortError') {
@@ -765,7 +1049,7 @@ export default class RoadNetworkEngine {
     }
 
     if (!resp.ok) {
-      const msg = body?.error || `HTTP ${resp.status}`;
+      const msg = body?.error?.message || `HTTP ${resp.status}`;
       const reason: RoadFailureReason =
         resp.status === 400
           ? 'bad-request'
@@ -776,7 +1060,400 @@ export default class RoadNetworkEngine {
               : 'network';
       return { ok: false, reason, error: msg, status: resp.status };
     }
+
+    // HTTP 200 + an error envelope — the ArcGIS way of reporting failure.
+    if (body?.error) {
+      const code = Number(body.error.code) || 0;
+      const detail = Array.isArray(body.error.details) ? body.error.details.join('; ') : '';
+      const msg = [body.error.message, detail].filter(Boolean).join(' — ') || `ArcGIS error ${code}`;
+      const reason: RoadFailureReason =
+        code === 400 ? 'bad-request' : code === 404 ? 'no-route' : code >= 500 ? 'server' : 'server';
+      return { ok: false, reason, error: msg, status: code };
+    }
     return { ok: true, data: body as T };
+  }
+
+  // ── Solve-response mapping ───────────────────────────────────────────────
+
+  /**
+   * Build the polygon-barrier feature set, or null when there is nothing to
+   * avoid (so the parameter is omitted entirely rather than sent empty).
+   *
+   * Field names come from the service's own `PolygonBarriers` class: the
+   * scaled-cost multipliers are `Attr_<costAttribute>` — here `Attr_Cost` and
+   * `Attr_Kilometers` — NOT the `ScaledTimeFactor` / `ScaledDistanceFactor`
+   * spelling used by ArcGIS Online's routing service. Sending the wrong names
+   * fails silently: the barrier is accepted and then ignored.
+   */
+  private static _barrierFeatureSet(barriers: RouteBarrier[] | undefined): any | null {
+    const list = (barriers ?? []).filter((b) => b?.rings?.length);
+    if (!list.length) return null;
+    return {
+      type: 'features',
+      features: list.map((b, i) => {
+        const scaled = b.type === 'slow';
+        const factor = scaled ? Math.max(1, Number(b.costFactor) || 5) : 1;
+        return {
+          geometry: { rings: b.rings, spatialReference: { wkid: 4326 } },
+          attributes: {
+            Name: b.name ?? `Barrier ${i + 1}`,
+            // 0 = restriction (impassable), 1 = scaled cost.
+            BarrierType: scaled ? 1 : 0,
+            Attr_Cost: factor,
+            Attr_Kilometers: factor,
+          },
+        };
+      }),
+    };
+  }
+
+  /**
+   * A geodesic circle as barrier rings — the shape threat bubbles actually are.
+   * Ground-true (not a planar circle in degrees), so the barrier matches the
+   * ring drawn on the map at any latitude.
+   */
+  static circleBarrier(
+    lng: number,
+    lat: number,
+    radiusKm: number,
+    opts: Omit<RouteBarrier, 'rings'> & { sides?: number } = {},
+  ): RouteBarrier {
+    const { sides = 48, ...rest } = opts;
+    const R = 6371.0088;
+    const d = radiusKm / R;
+    const lat1 = (lat * Math.PI) / 180;
+    const lng1 = (lng * Math.PI) / 180;
+    const ring: number[][] = [];
+    for (let i = 0; i <= sides; i++) {
+      const brg = (2 * Math.PI * i) / sides;
+      const la = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg));
+      const lo =
+        lng1 +
+        Math.atan2(
+          Math.sin(brg) * Math.sin(d) * Math.cos(lat1),
+          Math.cos(d) - Math.sin(lat1) * Math.sin(la),
+        );
+      ring.push([(lo * 180) / Math.PI, (la * 180) / Math.PI]);
+    }
+    return { ...rest, rings: [ring] };
+  }
+
+  /**
+   * Ray-casting point-in-polygon over a barrier's rings, in lng/lat. Planar is
+   * fine here: barriers are a few km across, and this only decides whether a
+   * stop sits inside one.
+   */
+  private static _pointInRings(lng: number, lat: number, rings: number[][][]): boolean {
+    let inside = false;
+    for (const ring of rings ?? []) {
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+          inside = !inside;
+        }
+      }
+    }
+    return inside;
+  }
+
+  /** Build the `{type:'features'}` feature set the solver wants for stops/facilities. */
+  private static _pointFeatureSet(pts: { lng: number; lat: number }[]): any {
+    return {
+      type: 'features',
+      features: pts.map((p, i) => ({
+        geometry: { x: p.lng, y: p.lat, spatialReference: { wkid: 4326 } },
+        attributes: { Name: `Location ${i + 1}` },
+      })),
+    };
+  }
+
+  /**
+   * Normalise a solve response into geometry + attributes + steps.
+   *
+   * ArcGIS has shipped two shapes for this: older servers (and this 10.8.1 one)
+   * return top-level `routes` / `directions`, newer ones nest everything under
+   * `routeResults`. Both are accepted so the adapter survives a server upgrade.
+   */
+  private static _readSolve(body: any): {
+    attrs: Record<string, any>;
+    geometry: GeoJsonLineGeometry;
+    steps: RouteStep[];
+    totalTimeMin: number;
+  } | null {
+    const nested = body?.routeResults?.[0];
+    const routeFeature = nested?.route ?? body?.routes?.features?.[0];
+    const paths: number[][][] = routeFeature?.geometry?.paths ?? [];
+    if (!paths.length) return null;
+
+    const directions = nested?.directions ?? body?.directions?.[0];
+    const steps: RouteStep[] = (directions?.features ?? [])
+      .map((f: any) => {
+        const a = f?.attributes ?? {};
+        return {
+          // `text` is the maneuver phrasing, which carries the street name —
+          // the closest thing the solver gives us to the old per-road step name.
+          name: String(a.text ?? '').trim() || '(unnamed road)',
+          fclass: '', // filled in by the class enrichment pass, when it runs
+          km: Number(a.length) || 0,
+          min: Number(a.time) || 0,
+        };
+      })
+      // Drop the zero-length "Start at" / "Finish at" bookends.
+      .filter((s: RouteStep) => s.km > 0 || s.min > 0);
+
+    return {
+      attrs: routeFeature?.attributes ?? {},
+      // ArcGIS `paths` are already [[[lng,lat],…],…] — i.e. GeoJSON
+      // MultiLineString coordinates — so every downstream consumer of the old
+      // GeoJSON contract keeps working untouched.
+      geometry: { type: 'MultiLineString', coordinates: paths },
+      steps,
+      totalTimeMin: Number(directions?.summary?.totalTime) || 0,
+    };
+  }
+
+  /** Impedance value (in `impedanceUnits`) → minutes. */
+  private _toMinutes(v: number): number {
+    switch (this._cfg.impedanceUnits) {
+      case 'hours':
+        return v * 60;
+      case 'seconds':
+        return v / 60;
+      case 'minutes':
+        return v;
+      default:
+        return 0; // a distance impedance carries no time information
+    }
+  }
+
+  /** Minutes → a break value in `impedanceUnits`. */
+  private _fromMinutes(min: number): number {
+    switch (this._cfg.impedanceUnits) {
+      case 'hours':
+        return min / 60;
+      case 'seconds':
+        return min * 60;
+      default:
+        return min;
+    }
+  }
+
+  // ── Road-class enrichment (trafficability) ───────────────────────────────
+
+  /**
+   * Recover the per-class distance breakdown a Network Analyst solve does not
+   * give us, and stamp each direction step with the class it runs on.
+   *
+   * Sample the route at even spacing → ask the roads layer, in ONE request, for
+   * every edge within `classifyToleranceM` of any sample → attribute each sample
+   * to its nearest edge. Each sample then stands for `spacing` km of that class.
+   *
+   * Best-effort by contract: any failure returns `[]` and the caller still gets
+   * a perfectly good route, just with no trafficability rating.
+   */
+  private async _classifyAlongRoute(
+    geometry: GeoJsonLineGeometry,
+    steps: RouteStep[],
+    distanceKm: number,
+  ): Promise<RouteClassBreakdown[]> {
+    try {
+      const coords = RoadNetworkEngine._flatten(geometry);
+      if (coords.length < 2 || distanceKm <= 0) return [];
+
+      // Sample count scales with length but stays bounded: one sample per ~2 km,
+      // never fewer than 12 (short urban hops) nor more than the configured cap.
+      const n = Math.max(12, Math.min(this._cfg.classifySamples, Math.round(distanceKm / 2)));
+      const samples = RoadNetworkEngine._sampleAlong(coords, n);
+      if (samples.length < 2) return [];
+
+      const res = await this._esri<any>(
+        `${this._cfg.roadsLayerUrl}/${this._cfg.roadsSublayerId}/query`,
+        {
+          geometry: JSON.stringify({
+            points: samples.map((s) => [s.lng, s.lat]),
+            spatialReference: { wkid: 4326 },
+          }),
+          geometryType: 'esriGeometryMultipoint',
+          inSR: '4326',
+          spatialRel: 'esriSpatialRelIntersects',
+          distance: String(this._cfg.classifyToleranceM),
+          units: 'esriSRUnit_Meter',
+          outFields: this._cfg.classFieldName,
+          returnGeometry: 'true',
+          outSR: '4326',
+          resultRecordCount: '2000',
+        },
+      );
+      if (!res.ok) {
+        EngineLogger.nextStep(ENGINE_NAME, `Road classes unavailable (${res.reason}) — route has no trafficability`);
+        return [];
+      }
+      const edges: { fclass: string; paths: number[][][] }[] = [];
+      for (const f of res.data?.features ?? []) {
+        const clazz = Number(f?.attributes?.[this._cfg.classFieldName]);
+        const paths = f?.geometry?.paths;
+        if (!Array.isArray(paths) || !paths.length) continue;
+        edges.push({ fclass: OSM2PO_CLAZZ_TO_FCLASS[clazz] ?? '', paths });
+      }
+      if (!edges.length) return [];
+
+      // Nearest edge per sample. Bounded work: samples ≤ cap, edges ≤ 2000.
+      // Each sample stands for an equal share of the route, so the shares sum
+      // back to exactly `distanceKm` — dividing by the number of INTERVALS
+      // instead would inflate the total by a factor of n/(n-1).
+      const spacingKm = distanceKm / samples.length;
+      const kmByClass: Record<string, number> = {};
+      const sampleClass: string[] = [];
+      for (const s of samples) {
+        let bestD = Infinity;
+        let bestClass = '';
+        for (const e of edges) {
+          for (const path of e.paths) {
+            for (let i = 0; i < path.length - 1; i++) {
+              const d = RoadNetworkEngine._distToSegSq(s, path[i], path[i + 1]);
+              if (d < bestD) {
+                bestD = d;
+                bestClass = e.fclass;
+              }
+            }
+          }
+        }
+        sampleClass.push(bestClass);
+        if (bestClass) kmByClass[bestClass] = (kmByClass[bestClass] ?? 0) + spacingKm;
+      }
+
+      // Stamp each direction step with the class dominating its span of the
+      // route, so tier-coloured rendering and choke detection light up.
+      RoadNetworkEngine._assignStepClasses(steps, samples, sampleClass);
+
+      return Object.entries(kmByClass)
+        .map(([fclass, km]) => ({ fclass, km }))
+        .sort((a, b) => b.km - a.km);
+    } catch (e: any) {
+      EngineLogger.nextStep(ENGINE_NAME, `Road-class enrichment skipped: ${e?.message ?? e}`);
+      return [];
+    }
+  }
+
+  /** Give each step the class carrying most of its distance along the route. */
+  private static _assignStepClasses(
+    steps: RouteStep[],
+    samples: { lng: number; lat: number; alongKm: number }[],
+    sampleClass: string[],
+  ): void {
+    let cursorKm = 0;
+    for (const step of steps) {
+      const from = cursorKm;
+      const to = cursorKm + step.km;
+      cursorKm = to;
+      const tally: Record<string, number> = {};
+      for (let i = 0; i < samples.length; i++) {
+        const a = samples[i].alongKm;
+        if (a < from || a > to) continue;
+        const c = sampleClass[i];
+        if (c) tally[c] = (tally[c] ?? 0) + 1;
+      }
+      let best = '';
+      let bestN = 0;
+      for (const [c, k] of Object.entries(tally)) {
+        if (k > bestN) {
+          bestN = k;
+          best = c;
+        }
+      }
+      // A step shorter than the sample spacing may catch none — fall back to the
+      // class of the nearest sample so no step is left unclassified.
+      if (!best && samples.length) {
+        const mid = (from + to) / 2;
+        let bestIdx = 0;
+        let bestGap = Infinity;
+        for (let i = 0; i < samples.length; i++) {
+          const gap = Math.abs(samples[i].alongKm - mid);
+          if (gap < bestGap) {
+            bestGap = gap;
+            bestIdx = i;
+          }
+        }
+        best = sampleClass[bestIdx] ?? '';
+      }
+      step.fclass = best;
+    }
+  }
+
+  /** GeoJSON line/multiline → a flat [lng,lat] list. */
+  private static _flatten(geometry: GeoJsonLineGeometry): number[][] {
+    if (geometry.type === 'MultiLineString') {
+      const out: number[][] = [];
+      for (const part of geometry.coordinates as number[][][]) out.push(...part);
+      return out;
+    }
+    return geometry.coordinates as number[][];
+  }
+
+  /** `n` evenly spaced points along a coordinate list, each tagged with its along-route km. */
+  private static _sampleAlong(
+    coords: number[][],
+    n: number,
+  ): { lng: number; lat: number; alongKm: number }[] {
+    const segM: number[] = [];
+    let totalM = 0;
+    for (let i = 0; i < coords.length - 1; i++) {
+      const d = RoadNetworkEngine._haversineM(coords[i], coords[i + 1]);
+      segM.push(d);
+      totalM += d;
+    }
+    if (totalM <= 0) return [];
+    const stepM = totalM / (n - 1);
+    const out: { lng: number; lat: number; alongKm: number }[] = [];
+    let acc = 0;
+    let target = 0;
+    for (let i = 0; i < coords.length - 1 && out.length < n; i++) {
+      const d = segM[i];
+      while (target <= acc + d && out.length < n) {
+        const t = d > 0 ? (target - acc) / d : 0;
+        out.push({
+          lng: coords[i][0] + (coords[i + 1][0] - coords[i][0]) * t,
+          lat: coords[i][1] + (coords[i + 1][1] - coords[i][1]) * t,
+          alongKm: target / 1000,
+        });
+        target += stepM;
+      }
+      acc += d;
+    }
+    return out;
+  }
+
+  private static _haversineM(a: number[], b: number[]): number {
+    const R = 6371000;
+    const p = Math.PI / 180;
+    const dLat = (b[1] - a[1]) * p;
+    const dLng = (b[0] - a[0]) * p;
+    const s =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(a[1] * p) * Math.cos(b[1] * p) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+  }
+
+  /**
+   * Squared point→segment distance in degrees, with longitude scaled by
+   * cos(latitude). Only ever compared against other distances at the same
+   * latitude, so the unit never matters — this just has to rank correctly, and
+   * it avoids a projection round-trip per sample/edge pair.
+   */
+  private static _distToSegSq(p: { lng: number; lat: number }, a: number[], b: number[]): number {
+    const kx = Math.cos((p.lat * Math.PI) / 180);
+    const ax = (a[0] - p.lng) * kx;
+    const ay = a[1] - p.lat;
+    const bx = (b[0] - p.lng) * kx;
+    const by = b[1] - p.lat;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = dx * dx + dy * dy;
+    const t = len === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len));
+    const x = ax + dx * t;
+    const y = ay + dy * t;
+    return x * x + y * y;
   }
 
   /** Normalise any PointLike to plain {lng,lat} in EPSG:4326, or null if impossible. */

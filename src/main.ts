@@ -183,6 +183,37 @@ if (offline) {
   });
 }
 
+// Road network (RoadNetwork MapServer) — the same service the routing NAServer
+// is built on, drawn as a half-opacity reference so planners can see the roads a
+// route is actually following.
+//
+// Added in BOTH modes, unlike the overlays above: it lives on a different
+// ArcGIS Server from the basemap services (`/roadnet` → 192.168.0.15:6443,
+// vs `/arcgis` → localhost:6443), so it is not part of the offline/online swap.
+// Same-origin proxy path rather than the raw https URL — the server ships no
+// CORS headers and a self-signed cert, so a direct fetch is blocked.
+//
+// Sublayer 11 (`pkroads`) only: the service also carries the solver's own
+// Stops / Barriers / Routes scratch layers, which must not be drawn.
+// `minScale` exists to dodge one pathological case. The layer is ~2.5M edges
+// with no cached tiles, so every export is rendered from scratch. Measured on an
+// idle server at the resolution the 3D view actually requests (1920²):
+//   40 km wide 0.3s · 80 km 1.6s · 150 km 3.7s · 600 km 4.8s · 1200 km 5.6s
+//   …but the full-country extent (the startup view) jumps to 31s.
+// Since the service runs on a single instance, that one request also queues the
+// routing solver behind it. Hiding the layer above ~1:2 000 000 (roughly a
+// 1000 km wide view) drops only that spike and keeps every practical scale.
+const roadNetworkRef = new MapImageLayer({
+  url: '/roadnet/arcgis/rest/services/RoadNetwork/MapServer',
+  title: 'Road Network',
+  listMode: 'show',
+  opacity: 0.5,
+  minScale: 2000000,
+  sublayers: [{ id: 11, visible: true }],
+});
+baseMap.add(roadNetworkRef);
+softLoad(baseMap, roadNetworkRef, 'RoadNetwork MapServer');
+
 // Create 3D view first (as we want it active on startup)
 initialViewParams.map = baseMap;
 appConfig.sceneView = <SceneView>createView(initialViewParams, '3d');

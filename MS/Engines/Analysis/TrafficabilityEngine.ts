@@ -48,6 +48,7 @@ import Polygon from '@arcgis/core/geometry/Polygon';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import RoadNetworkEngine, {
   type RoadNetworkAvailability,
+  type RouteBarrier,
   type RouteData,
   type ServiceAreaData,
   type Trafficability,
@@ -118,6 +119,12 @@ interface RouteChain {
   traffic: TrafficabilitySummary | null;
   okLegs: number;
   degraded: boolean;
+  /** Legs the solver could not route at all because threat barriers sealed them off. */
+  blocked: number;
+  /** Movement-profile multiplier already baked into `timeMin` / `segs[].min`. */
+  appliedMult: number;
+  /** Speed slider value already baked into the straight-line estimate legs. */
+  appliedSpeed: number;
 }
 
 /** One candidate route in Route mode (primary + alternates). */
@@ -250,6 +257,8 @@ export class TrafficabilityEngine {
   private _lastRouteTraffic: import('./RoadNetworkEngine').TrafficabilitySummary | null = null;
   /** Vertices of the last computed route — used to place the fuel-exhaustion marker along the path. */
   private _lastRoutePath: number[][] = [];
+  /** Last solved MSR chain, kept so a conditions change can repaint without re-solving. */
+  private _lastMsrChain: RouteChain | null = null;
 
   constructor() {
     this._createLayers();
@@ -738,7 +747,11 @@ export class TrafficabilityEngine {
 
     const rn = this._roadNet();
     if (rn && rn.availability === 'unknown') await rn.ensureAvailable();
-    const useLive = !!rn && rn.isAvailable;
+    // The backend being up is not enough: an ArcGIS Network Analyst service can
+    // publish a Route layer and no Service Area layer at all, in which case
+    // every solve resolves to `unsupported`. Treat that exactly like offline and
+    // fall through to range-ring estimates rather than rendering nothing.
+    let useLive = !!rn && rn.isAvailable && rn.supportsServiceArea;
     const bands: ServiceBand[] = [];
 
     if (useLive) {
@@ -766,7 +779,12 @@ export class TrafficabilityEngine {
           bands.unshift({ minutes, roadKm, color });
         }
       }
-    } else {
+      // Every break failed (service hiccup mid-run) — degrade rather than
+      // leave the user staring at an empty map.
+      if (!bands.length) useLive = false;
+    }
+
+    if (!useLive) {
       // Offline estimate: geodesic range rings at speed × minutes.
       for (let i = 0; i < minutesList.length; i++) {
         const minutes = minutesList[i];
@@ -813,7 +831,9 @@ export class TrafficabilityEngine {
 
     this._setSourceNote(useLive
       ? `Live road network — ${bands.length} band${bands.length === 1 ? '' : 's'} computed. 👍`
-      : `Estimate (road service offline) — rings at ${speedKmh} km/h.`);
+      // Distinguish "backend down" from "backend up, but this service publishes
+      // no Service Area layer" — the fix for the latter is on the server, not here.
+      : `Estimate (${rn?.isAvailable ? 'no service-area layer published' : 'road service offline'}) — rings at ${speedKmh} km/h.`);
     this._repositionCallouts();
     this._setStatus(useLive ? 'ready' : 'estimate');
   }
@@ -845,7 +865,12 @@ export class TrafficabilityEngine {
     // Primary route. If it can't be routed at all, fall back to a straight-line estimate.
     const primary = await this._routeChain([origin, dest], speedKmh);
     if (primary.okLegs === 0) {
-      this._renderStraightLineEstimate(origin, dest, speedKmh);
+      // A barrier-blocked solve is a planning finding, not a service failure:
+      // there is no road to the objective that stays out of the threat zones.
+      this._renderStraightLineEstimate(
+        origin, dest, speedKmh,
+        primary.blocked > 0 ? 'no road route clears the threat zones' : undefined,
+      );
       return;
     }
 
@@ -880,7 +905,16 @@ export class TrafficabilityEngine {
     const oLon = origin.longitude ?? 0, oLat = origin.latitude ?? 0;
     const dLon = dest.longitude ?? 0, dLat = dest.latitude ?? 0;
     const distKm = this._haversineM(oLon, oLat, dLon, dLat) / 1000;
-    const etaMin = speedKmh > 0 ? (distKm / speedKmh) * 60 : 0;
+    // Degrade the slider speed by the movement profile, as the routed path does
+    // — otherwise picking Night/Blackout changes a road ETA but leaves the
+    // offline estimate quoting fair-weather daylight speed.
+    const effSpeed = speedKmh * (this._profileMultiplier > 0 ? this._profileMultiplier : 1);
+    const etaMin = effSpeed > 0 ? (distKm / effSpeed) * 60 : 0;
+
+    // Re-rendered on every conditions change, so clear the previous line first.
+    this._analysisLayer.removeAll();
+    this._clearCallouts();
+    if (this._threatEnabled) this._detectAndRenderThreatZones();
 
     this._analysisLayer.add(new Graphic({
       geometry: { type: 'polyline', paths: [[[oLon, oLat], [dLon, dLat]]], spatialReference: { wkid: 4326 } } as any,
@@ -905,7 +939,7 @@ export class TrafficabilityEngine {
 
     this._driveModel = this._buildDriveModel(
       [[oLon, oLat], [dLon, dLat]],
-      [{ km: distKm, min: etaMin, name: 'Direct (estimate)', fclass: '', speedKmh }],
+      [{ km: distKm, min: etaMin, name: 'Direct (estimate)', fclass: '', speedKmh: effSpeed }],
       true,
     );
     this._showScrubber();
@@ -913,11 +947,14 @@ export class TrafficabilityEngine {
     this._addCallout(oLon, oLat, '#34C0AE', `<div class="reach-co-title">🚩 Start</div>`);
     this._addCallout(dLon, dLat, '#EF9F27',
       `<div class="reach-co-title">🏁 Destination (estimate)</div>
-       <div class="reach-co-row">~<b>${distKm.toFixed(1)} km</b> · ~<b>${etaMin.toFixed(0)} min</b> @ ${speedKmh} km/h</div>`);
+       <div class="reach-co-row">~<b>${distKm.toFixed(1)} km</b> · ~<b>${etaMin.toFixed(0)} min</b> @ ${effSpeed.toFixed(0)} km/h</div>`);
     this._repositionCallouts();
 
     const reasonStr = reason ? ` (${reason})` : '';
-    this._setSourceNote(`Estimate${reasonStr} — straight line at ${speedKmh} km/h. Bring the road service online for a real route. 🛰`);
+    const profileStr = this._profileMultiplier !== 1
+      ? ` (${MOVEMENT_PROFILES[this._movementProfile]?.label ?? 'profile'} ${this._profileMultiplier}×)`
+      : '';
+    this._setSourceNote(`Estimate${reasonStr} — straight line at ${effSpeed.toFixed(0)} km/h${profileStr}. Bring the road service online for a real route. 🛰`);
     this._setStatus('estimate');
   }
 
@@ -937,6 +974,21 @@ export class TrafficabilityEngine {
     if (this._threatEnabled) this._detectAndRenderThreatZones();
 
     const chain = await this._routeChain(this._waypoints, speedKmh);
+    this._lastMsrChain = chain;
+    this._renderMsrResult(chain, speedKmh);
+  }
+
+  /**
+   * Draw and summarise an MSR from an already-solved chain. Split out of
+   * `_runMsr` so a speed / movement-profile change can repaint the result from
+   * the chain in hand instead of re-solving every leg.
+   */
+  private _renderMsrResult(chain: RouteChain, speedKmh: number): void {
+    this._stopDrive();
+    this._clearCallouts();
+    this._analysisLayer.removeAll();
+    if (this._threatEnabled) this._detectAndRenderThreatZones();
+
     const { path, segs, traffic, degraded } = chain;
     const liveAny = chain.okLegs > 0;
 
@@ -998,10 +1050,15 @@ export class TrafficabilityEngine {
     if (this._threatEnabled) this._detectAndRenderThreatZones();
 
     this._repositionCallouts();
+    // Name blocked legs explicitly: those stretches are straight-line fillers
+    // across ground the solver said has no threat-free road.
+    const blockedNote = chain.blocked > 0
+      ? ` ⚠ ${chain.blocked} leg${chain.blocked === 1 ? '' : 's'} had no threat-free road route — shown as a direct line.`
+      : '';
     this._setSourceNote(
       liveAny
-        ? `${degraded ? 'Partial road MSR' : 'Road MSR'} over ${this._waypoints.length} waypoints. ${cls.blurb}`
-        : `Estimate — straight-line MSR at ${speedKmh} km/h.`,
+        ? `${degraded ? 'Partial road MSR' : 'Road MSR'} over ${this._waypoints.length} waypoints. ${cls.blurb}${blockedNote}`
+        : `Estimate — straight-line MSR at ${speedKmh} km/h.${blockedNote}`,
     );
 
     // Refresh feature-tab panels with the new result.
@@ -1045,34 +1102,28 @@ export class TrafficabilityEngine {
     const rn = this._roadNet();
     if (rn && rn.availability === 'unknown') await rn.ensureAvailable();
 
-    // If threat-zone avoidance is enabled, expand each leg with via-points that
-    // steer the route around each threat circle that the straight line crosses.
-    // This re-uses the same chain mechanism — only the geometry that pgRouting
-    // sees changes; alternates and MSR legs inherit the behaviour automatically.
-    let chainPoints = points;
-    if (this._threatEnabled) {
-      const threats = this._collectThreatCircles();
-      if (threats.length) {
-        const expanded: Point[] = [points[0]];
-        for (let i = 0; i < points.length - 1; i++) {
-          const vias = this._avoidVias(points[i], points[i + 1], threats);
-          expanded.push(...vias, points[i + 1]);
-        }
-        chainPoints = expanded;
-      }
-    }
+    // Threat-zone avoidance is handed to the solver as polygon barriers: every
+    // road inside a threat bubble is cut from the network, so a returned route
+    // genuinely cannot pass through one. (The earlier via-point nudge only
+    // suggested a detour — the road network was free to bend straight back in.)
+    // Alternates and MSR legs inherit this because they all route through here.
+    const threats = this._threatEnabled ? this._collectThreatCircles() : [];
+    const barriers = this._threatBarriers(threats);
 
     const path: number[][] = [];
     const segs: DriveSeg[] = [];
     const byClassKm: Record<string, number> = {};
     let okLegs = 0, distKm = 0, timeMin = 0, degraded = false;
+    let blocked = 0;
 
-    for (let i = 0; i < chainPoints.length - 1; i++) {
-      const a = chainPoints[i], b = chainPoints[i + 1];
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i], b = points[i + 1];
       let res: any = null;
       if (rn) {
-        try { res = await rn.route(a, b); } catch { res = { ok: false }; }
+        try { res = await rn.route(a, b, barriers.length ? { barriers } : undefined); }
+        catch { res = { ok: false }; }
       }
+      if (res && !res.ok && res.reason === 'no-route' && barriers.length) blocked++;
       if (res?.ok && res.data?.geometry) {
         const data = res.data as RouteData;
         const coords = this._flattenGeoJson(data.geometry);
@@ -1084,14 +1135,29 @@ export class TrafficabilityEngine {
         for (const c of data.byClass ?? []) byClassKm[c.fclass] = (byClassKm[c.fclass] || 0) + (c.km || 0);
         for (const s of this._segsFromSteps(data, speedKmh)) segs.push(s);
       } else {
-        const aLon = a.longitude ?? 0, aLat = a.latitude ?? 0, bLon = b.longitude ?? 0, bLat = b.latitude ?? 0;
-        if (!path.length) path.push([aLon, aLat]);
-        path.push([bLon, bLat]);
-        const legKm = this._haversineM(aLon, aLat, bLon, bLat) / 1000;
+        // Straight-line estimate. The solver is not available to enforce
+        // barriers here, so this path keeps the old via-point trick — bending
+        // the estimate around each threat circle it would otherwise cross.
+        // Without it, turning the road service off would silently route the
+        // estimate straight through the threats it just drew.
+        const detour = barriers.length ? this._avoidVias(a, b, threats) : [];
+        const legPts = [a, ...detour, b];
+        let legKm = 0;
+        if (!path.length) path.push([a.longitude ?? 0, a.latitude ?? 0]);
+        for (let k = 0; k < legPts.length - 1; k++) {
+          const p = legPts[k], q = legPts[k + 1];
+          path.push([q.longitude ?? 0, q.latitude ?? 0]);
+          legKm += this._haversineM(p.longitude ?? 0, p.latitude ?? 0, q.longitude ?? 0, q.latitude ?? 0) / 1000;
+        }
         const legMin = speedKmh > 0 ? (legKm / speedKmh) * 60 : 0;
         distKm += legKm;
         timeMin += legMin;
-        segs.push({ km: legKm, min: legMin, name: `Leg ${i + 1} (straight-line estimate)`, fclass: '', speedKmh, estimate: true });
+        segs.push({
+          km: legKm,
+          min: legMin,
+          name: `Leg ${i + 1} (straight-line estimate${detour.length ? ', threat-avoiding' : ''})`,
+          fclass: '', speedKmh, estimate: true,
+        });
         degraded = true;
       }
     }
@@ -1100,13 +1166,133 @@ export class TrafficabilityEngine {
       ? RoadNetworkEngine.classifyRoute(Object.entries(byClassKm).map(([fclass, km]) => ({ fclass, km })))
       : null;
 
-    // Apply movement-profile multiplier to all travel times.
-    if (this._profileMultiplier !== 1.0) {
-      timeMin *= this._profileMultiplier;
-      for (const s of segs) { s.min *= this._profileMultiplier; s.speedKmh /= this._profileMultiplier; }
+    // Apply the movement-profile multiplier. It is a SPEED multiplier — Night
+    // NVG 0.5 means half speed, Rain/Mud 0.7, and the custom slider is labelled
+    // "Speed mult." — so time DIVIDES by it. (It used to multiply time, which
+    // made degraded conditions finish the route sooner; the mistake stayed
+    // hidden while a profile change never refreshed the displayed result.)
+    if (this._profileMultiplier > 0 && this._profileMultiplier !== 1.0) {
+      timeMin /= this._profileMultiplier;
+      for (const s of segs) { s.min /= this._profileMultiplier; s.speedKmh *= this._profileMultiplier; }
     }
 
-    return { path, segs, distKm, timeMin, traffic, okLegs, degraded };
+    return {
+      path, segs, distKm, timeMin, traffic, okLegs, degraded, blocked,
+      appliedMult: this._profileMultiplier,
+      appliedSpeed: speedKmh,
+    };
+  }
+
+  /**
+   * A condition input (speed slider, movement profile, custom multiplier)
+   * changed after a result was already on screen. Re-derive and repaint it so
+   * the numbers match the controls.
+   *
+   * Deliberately does NOT re-solve: neither speed nor the movement profile can
+   * change which roads were chosen, so re-running would return the same
+   * geometry at the cost of several solver calls. Threat changes DO alter the
+   * solver's inputs and go through `_rerunForBarrierChange()` instead.
+   */
+  private _onConditionsChanged(): void {
+    const speedKmh = Number(this._inp('reach-speed')?.value ?? 40);
+    const mult = this._profileMultiplier;
+
+    if (this._mode === 'route') {
+      if (this._routeOptions.length) {
+        for (const o of this._routeOptions) this._rescaleChain(o.chain, speedKmh, mult);
+        this._paintRoutes();
+      } else if (this._origin && this._dest && this._analysisLayer.graphics.length) {
+        // A straight-line estimate is on screen (road service down, or nothing
+        // routable). It is derived purely from speed × profile, so redraw it —
+        // this is the case where the speed slider matters most.
+        this._renderStraightLineEstimate(this._origin, this._dest, speedKmh);
+      }
+      return;
+    }
+
+    if (this._mode === 'msr') {
+      if (!this._lastMsrChain) return;
+      this._rescaleChain(this._lastMsrChain, speedKmh, mult);
+      this._renderMsrResult(this._lastMsrChain, speedKmh);
+      return;
+    }
+
+    // Service area: live bands come from the network and ignore speed entirely,
+    // so only the range-ring estimate needs redrawing — and that is local work.
+    const rn = this._roadNet();
+    const live = !!rn && rn.isAvailable && rn.supportsServiceArea;
+    if (!live && this._analysisLayer.graphics.length) void this._runServiceArea();
+    else this._refreshDerivedPanels();
+  }
+
+  /**
+   * Threat avoidance changed, which changes the barriers handed to the solver —
+   * the roads themselves may differ, so this one genuinely has to re-solve.
+   * Only fires when a result is already displayed.
+   */
+  private _rerunForBarrierChange(): void {
+    const hasResult =
+      (this._mode === 'route' && this._routeOptions.length > 0) ||
+      (this._mode === 'msr' && !!this._lastMsrChain) ||
+      (this._mode === 'serviceArea' && this._analysisLayer.graphics.length > 0);
+    if (!hasResult) return;
+    void this._run();
+  }
+
+  /** Re-render the panels that read speed/profile straight from the controls. */
+  private _refreshDerivedPanels(): void {
+    this._updateTimingPanel();
+    this._updateConvoyPanel();
+    this._updateFuelPanel();
+    this._renderFuelMarker();
+    this._updateMovordPanel();
+  }
+
+  /**
+   * Re-derive a computed chain's times for a new speed / movement profile —
+   * WITHOUT re-solving. Neither input can change the roads chosen: the profile
+   * is a scalar on travel time, and the speed slider only drives straight-line
+   * estimate legs. So a condition change is pure arithmetic on a result we
+   * already hold, and costs no server round trip.
+   */
+  private _rescaleChain(c: RouteChain, speedKmh: number, mult: number): void {
+    if (c.appliedMult === mult && c.appliedSpeed === speedKmh) return;
+    const before = c.segs.reduce((a, s) => a + s.min, 0);
+    const old = c.appliedMult || 1;
+    for (const s of c.segs) {
+      // Strip the profile already applied, back to the raw road/estimate figure.
+      // Mirror of `_routeChain`: the multiplier is a SPEED factor, so undoing it
+      // multiplies time back up and divides speed back down.
+      let baseMin = s.min * old;
+      let baseSpeed = s.speedKmh / old;
+      if (s.estimate) {
+        // Estimate legs follow the speed slider; live legs keep the network's time.
+        baseSpeed = speedKmh;
+        baseMin = baseSpeed > 0 ? (s.km / baseSpeed) * 60 : 0;
+      }
+      s.min = mult > 0 ? baseMin / mult : baseMin;
+      s.speedKmh = baseSpeed * mult;
+    }
+    // Carry the delta onto the total rather than replacing it, so any offset
+    // between the solver's summary time and its per-step times is preserved.
+    c.timeMin += c.segs.reduce((a, s) => a + s.min, 0) - before;
+    c.appliedMult = mult;
+    c.appliedSpeed = speedKmh;
+  }
+
+  /**
+   * Threat circles → solver barriers, built from the SAME geodesic ring the
+   * bubbles are drawn with, so what the user sees on the map is exactly what
+   * the solver was told to avoid.
+   */
+  private _threatBarriers(
+    threats: Array<{ lon: number; lat: number; radiusKm: number }>,
+  ): RouteBarrier[] {
+    return threats.map((t, i) => ({
+      rings: [this._ringCoords(t.lon, t.lat, t.radiusKm * 1000, 48)],
+      name: `Threat ${i + 1}`,
+      type: 'restrict' as const,
+    }));
   }
 
   /** Candidate via points offset perpendicular to the O→D line, alternating sides. */
@@ -1196,6 +1382,9 @@ export class TrafficabilityEngine {
     const altCount = this._routeOptions.length - 1;
     this._setSourceNote(
       `Selected ${sel === 0 ? 'primary (MSR)' : `alternate ${sel} (ASR)`} · ${selChain.distKm.toFixed(1)} km, ${selChain.timeMin.toFixed(0)} min` +
+      // Only claim this when every leg actually came off the network — a
+      // degraded leg is a straight-line filler that merely bends around them.
+      (this._threatEnabled && !selChain.degraded ? ' · clear of threat zones' : '') +
       (altCount > 0 ? ` · ${altCount} alternate${altCount === 1 ? '' : 's'} found — tap a route below to compare. 🚙` : '. Hit ▶ to drive it. 🚙'),
     );
     this._setStatus('ready');
@@ -1984,7 +2173,7 @@ export class TrafficabilityEngine {
     const rn = this._roadNet();
     const state: RoadNetworkAvailability = rn ? rn.availability : 'unavailable';
     const map: Record<string, [string, string, string]> = {
-      available: ['online', '#1D9E75', rn?.lastHealth ? `Roads online · ${rn.lastHealth.edges.toLocaleString()} edges` : 'Roads online'],
+      available: ['online', '#1D9E75', rn?.lastHealth ? `Roads online · ${rn.lastHealth.name}` : 'Roads online'],
       unavailable: ['offline', '#E24B4A', 'Roads offline — estimates'],
       unknown: ['probing', '#EF9F27', 'Roads: probing…'],
     };
@@ -2427,6 +2616,10 @@ export class TrafficabilityEngine {
     bindSlider('reach-maxmin');
     bindSlider('reach-bands');
     bindSlider('reach-speed');
+    // Speed feeds the displayed ETAs, so a result already on screen goes stale
+    // the moment it moves. Refresh on `change` (fires when the user lets go of
+    // the slider) rather than `input`, so dragging does not thrash the result.
+    p.querySelector('#reach-speed')?.addEventListener('change', () => this._onConditionsChanged());
 
     p.querySelector('#reach-pick-origin-btn')?.addEventListener('click', () => this._startOriginPlacement());
     p.querySelector('#reach-pick-dest-btn')?.addEventListener('click', () => this._startDestPlacement());
@@ -2512,6 +2705,7 @@ export class TrafficabilityEngine {
       this._profileMultiplier = prof.mult;
       const customRow = r.querySelector<HTMLElement>('#reach-custom-mult-row');
       if (customRow) customRow.hidden = key !== 'custom';
+      this._onConditionsChanged();
     });
     const customMult = r.querySelector<HTMLInputElement>('#reach-custom-mult');
     customMult?.addEventListener('input', () => {
@@ -2519,6 +2713,9 @@ export class TrafficabilityEngine {
       const disp = r.querySelector<HTMLElement>('#reach-custom-mult-val');
       if (disp) disp.textContent = `${Number(customMult.value).toFixed(2)}×`;
     });
+    // Same split as the speed slider: live label while dragging, result refresh
+    // once the value is committed.
+    customMult?.addEventListener('change', () => this._onConditionsChanged());
 
     r.querySelector('#reach-threat-toggle')?.addEventListener('change', (e) => {
       this._threatEnabled = (e.target as HTMLInputElement).checked;
@@ -2534,6 +2731,9 @@ export class TrafficabilityEngine {
       } else {
         this._detectAndRenderThreatZones();
       }
+      // Toggling avoidance adds or drops solver barriers, so the roads chosen
+      // can genuinely change — this one has to re-solve, unlike speed/profile.
+      this._rerunForBarrierChange();
     });
     const threatRadius = r.querySelector<HTMLInputElement>('#reach-threat-radius');
     threatRadius?.addEventListener('input', () => {
@@ -2541,6 +2741,10 @@ export class TrafficabilityEngine {
       const disp = r.querySelector<HTMLElement>('#reach-threat-radius-val');
       if (disp) disp.textContent = String(this._threatRadiusKm);
       if (this._threatEnabled) this._detectAndRenderThreatZones();
+    });
+    // Re-solve on release only — every intermediate radius would be a new solve.
+    threatRadius?.addEventListener('change', () => {
+      if (this._threatEnabled) this._rerunForBarrierChange();
     });
     if (threatRadius) {
       const disp = r.querySelector<HTMLElement>('#reach-threat-radius-val');
@@ -3214,7 +3418,7 @@ export class TrafficabilityEngine {
 
     if (countEl) {
       countEl.textContent = threats.length > 0
-        ? `${threats.length} hostile graphic${threats.length === 1 ? '' : 's'} buffered · ${this._threatRadiusKm} km radius. Routes will steer around them.`
+        ? `${threats.length} hostile graphic${threats.length === 1 ? '' : 's'} buffered · ${this._threatRadiusKm} km radius. Roads inside are cut from the network — routes cannot enter.`
         : 'No hostile graphics found in symbol layers.';
     }
   }

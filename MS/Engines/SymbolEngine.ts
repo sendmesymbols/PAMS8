@@ -945,8 +945,18 @@ class SymbolEngine implements Evented {
     }
     const cfg = (settingsData as any).roadNetwork ?? {};
     this._roadNetworkEngine = new RoadNetworkEngine({
-      apiBaseUrl: cfg.apiBaseUrl,
-      dataBaseUrl: cfg.dataBaseUrl,
+      naServerUrl: cfg.naServerUrl,
+      routeLayer: cfg.routeLayer,
+      serviceAreaLayer: cfg.serviceAreaLayer,
+      roadsLayerUrl: cfg.roadsLayerUrl,
+      roadsSublayerId: cfg.roadsSublayerId,
+      impedanceAttribute: cfg.impedanceAttribute,
+      impedanceUnits: cfg.impedanceUnits,
+      distanceAttribute: cfg.distanceAttribute,
+      classFieldName: cfg.classFieldName,
+      classifyRoutes: cfg.classifyRoutes,
+      classifySamples: cfg.classifySamples,
+      classifyToleranceM: cfg.classifyToleranceM,
       timeoutMs: cfg.timeoutMs,
       availabilityTtlMs: cfg.availabilityTtlMs,
       enabled: true,
@@ -2261,8 +2271,18 @@ class SymbolEngine implements Evented {
       } else {
         const rn = (settingsData as any).roadNetwork ?? {};
         this._roadNetworkEngine.updateConfig({
-          apiBaseUrl: rn.apiBaseUrl,
-          dataBaseUrl: rn.dataBaseUrl,
+          naServerUrl: rn.naServerUrl,
+          routeLayer: rn.routeLayer,
+          serviceAreaLayer: rn.serviceAreaLayer,
+          roadsLayerUrl: rn.roadsLayerUrl,
+          roadsSublayerId: rn.roadsSublayerId,
+          impedanceAttribute: rn.impedanceAttribute,
+          impedanceUnits: rn.impedanceUnits,
+          distanceAttribute: rn.distanceAttribute,
+          classFieldName: rn.classFieldName,
+          classifyRoutes: rn.classifyRoutes,
+          classifySamples: rn.classifySamples,
+          classifyToleranceM: rn.classifyToleranceM,
           timeoutMs: rn.timeoutMs,
           availabilityTtlMs: rn.availabilityTtlMs,
         });
