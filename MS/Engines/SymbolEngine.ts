@@ -1167,13 +1167,6 @@ class SymbolEngine implements Evented {
         action: (graphic) => this.removeGraphic(graphic),
       },
       {
-        id: 'add-threat-sector',
-        label: 'Add Threat Sector',
-        icon: menuIcon('crosshair'),
-        action: (graphic) => this.beginSectorDraw(graphic),
-        visible: () => (settingsData as any).features?.visualizationEngine === true,
-      },
-      {
         id: 'route-elevation-profile',
         label: 'Elevation Profile',
         icon: menuIcon('navigation'),
@@ -1281,13 +1274,6 @@ class SymbolEngine implements Evented {
         shortcut: 'Del',
         icon: menuIcon('trash'),
         action: (graphic) => this.removeGraphic(graphic),
-      },
-      {
-        id: 'add-threat-sector',
-        label: 'Add Threat Sector',
-        icon: menuIcon('crosshair'),
-        action: (graphic) => this.beginSectorDraw(graphic),
-        visible: () => (settingsData as any).features?.visualizationEngine === true,
       },
     ];
 

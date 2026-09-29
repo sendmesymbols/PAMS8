@@ -29,6 +29,11 @@ export interface ClonedSymbol {
   redo: () => void;
 }
 
+interface ClipItem {
+  graphic: Graphic;
+  layerId: string;
+}
+
 export interface CloneSource {
   graphic: Graphic;
   layerId: string;
@@ -51,7 +56,7 @@ export interface ClipboardEngineDeps {
  * paste-mode methods as thin delegates so existing call sites are unchanged.
  */
 export default class ClipboardEngine {
-  private _clipboard: Array<{ graphic: Graphic; layerId: string }> | null = null;
+  private _clipboard: ClipItem[] | null = null;
 
   constructor(private readonly deps: ClipboardEngineDeps) {}
 
@@ -73,6 +78,7 @@ export default class ClipboardEngine {
 
   /** Drop any held items — used when the clipboard feature is disabled. */
   public clear(): void {
+    this.cancelPasteMode();
     this._clipboard = null;
   }
 
@@ -83,147 +89,91 @@ export default class ClipboardEngine {
       sel.isSelected(graphic) && sel.count > 1
         ? sel.selectedGraphics
         : [graphic];
-    const clipboard = toCopy.map((g) => ({
-      graphic: g.clone(),
-      layerId: String((g.origin as any)?.layer?.id ?? this.deps.layerManager.getSymbolLayer().id),
-    }));
+    const fallbackLayerId = this.deps.layerManager.getSymbolLayer().id;
+    const clipboard: ClipItem[] = toCopy.map((g) => {
+      // resolveLive verifies layer membership and survives collab swapping the
+      // Graphic instance; `origin.layer` is unset/stale for plain graphics, which
+      // used to drop pasted tactical lines/areas onto the default symbol layer.
+      const live = sel.resolveLive(g);
+      return {
+        graphic: (live?.graphic ?? g).clone(),
+        layerId: String(live?.layer?.id ?? fallbackLayerId),
+      };
+    });
     this._clipboard = clipboard;
     EngineLogger.nextStep(
       'Symbol Engine',
       `${clipboard.length} symbol${clipboard.length !== 1 ? 's' : ''} copied — click the map to paste`,
     );
-    console.info(`[CopyPaste] Copied ${clipboard.length} graphic(s)`);
     this.deps.emitEvent('symbolCopied', { graphic, count: clipboard.length });
+    // Attach the paste hint to the cursor straight away.
+    this._armPasteMode(0, 'meters', true);
   }
 
+  /**
+   * Paste the clipboard around `targetPoint`. Every item moves as a rigid
+   * translation: a single item lands centred on the target, a group keeps its
+   * relative layout with the collective centroid on the target. `expandDistance`
+   * (groups only) pushes each item's centre away from / toward the target.
+   */
   public paste(
     targetPoint: Point,
     expandDistance: number = 0,
     expandUnit: string = 'meters',
   ): Graphic | null {
-    if (!this._clipboard || this._clipboard.length === 0) return null;
+    const clip = this._clipboard;
+    if (!clip || clip.length === 0) return null;
 
-    const annotationLayer = this.deps.layerManager.getOrCreateLayer(
-      LAYER_NAMES.ANNOTATION_LAYER,
-    );
+    const anchor =
+      clip.length === 1
+        ? this._geometryCenter(clip[0].graphic.geometry)
+        : this._clipboardCentroid();
+    const spread = clip.length > 1 && expandDistance !== 0;
 
-    if (this._clipboard.length === 1 && expandDistance === 0) {
-      const item = this._clipboard[0];
-      return this._pasteOneItem(
-        item,
-        this._offsetGeometryTo(item.graphic.geometry, targetPoint),
-        annotationLayer,
-      );
-    }
-
-    const centroid = this._clipboardCentroid();
-
-    const transformPt = (x: number, y: number): { x: number; y: number } => {
-      const baseX = targetPoint.x + (x - centroid.x);
-      const baseY = targetPoint.y + (y - centroid.y);
-
-      if (expandDistance === 0) return { x: baseX, y: baseY };
-
-      const dX = baseX - targetPoint.x;
-      const dY = baseY - targetPoint.y;
-      if (Math.abs(dX) < 1e-10 && Math.abs(dY) < 1e-10)
-        return { x: baseX, y: baseY };
-
-      const bearing = this._computeBearing(
-        targetPoint.x,
-        targetPoint.y,
-        baseX,
-        baseY,
-      );
-      const outwardBearing =
-        expandDistance >= 0 ? bearing : (bearing + 180) % 360;
-      const basePoint = new Point({
-        x: baseX,
-        y: baseY,
-        spatialReference: targetPoint.spatialReference,
-      });
-      const expanded = GeoTools.destination(
-        basePoint,
-        Math.abs(expandDistance),
-        outwardBearing,
-        expandUnit,
-      );
-      return { x: expanded.x, y: expanded.y };
-    };
-
-    const pasted: Graphic[] = [];
-    const undos: (() => void)[] = [];
-    const redos: (() => void)[] = [];
-
-    for (const item of this._clipboard) {
-      let newGeom = item.graphic.geometry?.clone();
-      if (newGeom) {
-        if (newGeom.type === 'point') {
-          const pt = transformPt((newGeom as any).x, (newGeom as any).y);
-          (newGeom as any).x = pt.x;
-          (newGeom as any).y = pt.y;
-          if (targetPoint.z !== undefined) (newGeom as any).z = targetPoint.z;
-        } else if (newGeom.type === 'polyline' && (newGeom as any).paths) {
-          (newGeom as any).paths = (newGeom as any).paths.map(
-            (path: number[][]) =>
-              path.map(([x, y, ...rest]) => {
-                const pt = transformPt(x, y);
-                return [pt.x, pt.y, ...rest];
-              }),
+    const jobs = clip.map((item) => {
+      const c = this._geometryCenter(item.graphic.geometry);
+      let dx = targetPoint.x + (c.x - anchor.x) - c.x;
+      let dy = targetPoint.y + (c.y - anchor.y) - c.y;
+      if (spread) {
+        // Move the item's centre as a whole — moving each vertex on its own
+        // bearing would distort lines and polygons.
+        const bx = c.x + dx;
+        const by = c.y + dy;
+        if (
+          Math.abs(bx - targetPoint.x) > 1e-10 ||
+          Math.abs(by - targetPoint.y) > 1e-10
+        ) {
+          const bearing = this._computeBearing(targetPoint.x, targetPoint.y, bx, by);
+          const moved = GeoTools.destination(
+            new Point({ x: bx, y: by, spatialReference: targetPoint.spatialReference }),
+            Math.abs(expandDistance),
+            expandDistance >= 0 ? bearing : (bearing + 180) % 360,
+            expandUnit,
           );
-        } else if (newGeom.type === 'polygon' && (newGeom as any).rings) {
-          (newGeom as any).rings = (newGeom as any).rings.map(
-            (ring: number[][]) =>
-              ring.map(([x, y, ...rest]) => {
-                const pt = transformPt(x, y);
-                return [pt.x, pt.y, ...rest];
-              }),
-          );
+          dx = moved.x - c.x;
+          dy = moved.y - c.y;
         }
       }
-
-      if (!newGeom) continue;
-      const {
-        graphic: g,
-        undo,
-        redo,
-      } = this._buildPastedGraphic(
+      return {
         item,
-        newGeom,
-        annotationLayer,
-        transformPt as any,
-      );
-      const layer =
-        this.deps.layerManager.getOrCreateLayer(item.layerId) ??
-        this.deps.layerManager.getSymbolLayer();
-      layer.add(g);
-      pasted.push(g);
-      undos.push(undo);
-      redos.push(redo);
-    }
+        dx,
+        dy,
+        geometry: this._translateGeometry(
+          item.graphic.geometry,
+          dx,
+          dy,
+          targetPoint.z,
+        ),
+      };
+    });
 
-    if (pasted.length > 0) {
-      this.deps.pushUndo({
-        label: `Paste ${pasted.length} Symbols`,
-        undo: () => undos.forEach((fn) => fn()),
-        redo: () => redos.forEach((fn) => fn()),
-      });
-      console.info(
-        `[CopyPaste] Pasted ${pasted.length} graphics at`,
-        targetPoint,
-      );
-      this.deps.emitEvent('symbolPasted', {
-        graphics: pasted,
-        count: pasted.length,
-      });
-    }
+    const pasted = this._commit(jobs, (n) =>
+      n === 1 ? 'Paste Symbol' : `Paste ${n} Symbols`,
+    );
     return pasted[0] ?? null;
   }
 
-  public buildClone(
-    source: Graphic,
-    layerId: string,
-  ): ClonedSymbol | null {
+  public buildClone(source: Graphic, layerId: string): ClonedSymbol | null {
     const newGeom = source.geometry?.clone?.();
     if (!newGeom) return null;
 
@@ -234,14 +184,12 @@ export default class ClipboardEngine {
       { graphic: source, layerId },
       newGeom,
       annotationLayer,
+      0,
+      0,
     );
-    const layer =
-      this.deps.layerManager.getOrCreateLayer(layerId) ??
-      this.deps.layerManager.getSymbolLayer();
-
     return {
       ...built,
-      layer,
+      layer: this._layerFor(layerId),
       id: String(built.graphic.attributes?.id ?? ''),
     };
   }
@@ -263,17 +211,11 @@ export default class ClipboardEngine {
 
   /**
    * Duplicate the given graphics in place at a small offset — the one-step
-   * "make another one" (Ctrl+D). Reuses the same paste builder as copy/paste, so
-   * CTRL_PTS, labels, and undo are handled identically; but it sources from the
-   * passed graphics instead of the clipboard and does NOT touch the clipboard.
-   * The new graphics are added to their layers; returns them (or null).
+   * "make another one" (Ctrl+D). Shares the paste builder/commit path, but
+   * sources from the passed graphics and does NOT touch the clipboard.
    */
   public duplicate(sources: CloneSource[], offsetPx: number = 18): Graphic[] | null {
     if (!sources || sources.length === 0) return null;
-
-    const annotationLayer = this.deps.layerManager.getOrCreateLayer(
-      LAYER_NAMES.ANNOTATION_LAYER,
-    );
 
     // A small, zoom-independent nudge (right + down). Prefer a screen-pixel offset
     // from the map resolution; fall back to a fraction of the symbol's size.
@@ -287,62 +229,105 @@ export default class ClipboardEngine {
       d = size > 0 ? size * 0.12 : 1000;
     }
 
+    const pasted = this._commit(
+      sources.map((src) => ({
+        item: { graphic: src.graphic, layerId: src.layerId },
+        dx: d,
+        dy: -d, // +x right, -y down
+        geometry: this._translateGeometry(src.graphic.geometry, d, -d),
+      })),
+      (n) => `Duplicate ${n} Symbol${n !== 1 ? 's' : ''}`,
+    );
+    return pasted.length ? pasted : null;
+  }
+
+  /**
+   * Build, add (batched per layer), announce and register one undo step for a
+   * set of pasted/duplicated graphics. Shared by paste() and duplicate().
+   */
+  private _commit(
+    jobs: Array<{ item: ClipItem; geometry: any; dx: number; dy: number }>,
+    label: (n: number) => string,
+  ): Graphic[] {
+    const annotationLayer = this.deps.layerManager.getOrCreateLayer(
+      LAYER_NAMES.ANNOTATION_LAYER,
+    );
     const pasted: Graphic[] = [];
     const undos: Array<() => void> = [];
     const redos: Array<() => void> = [];
+    const byLayer = new Map<GraphicsLayer, Graphic[]>();
 
-    for (const src of sources) {
-      const newGeom = this._shiftGeometry(src.graphic.geometry, d, -d); // +x right, -y down
-      if (!newGeom) continue;
-      const { graphic, undo, redo } = this._buildPastedGraphic(
-        { graphic: src.graphic, layerId: src.layerId },
-        newGeom,
+    for (const job of jobs) {
+      if (!job.geometry) continue;
+      const built = this._buildPastedGraphic(
+        job.item,
+        job.geometry,
         annotationLayer,
+        job.dx,
+        job.dy,
       );
-      const layer =
-        this.deps.layerManager.getOrCreateLayer(src.layerId) ??
-        this.deps.layerManager.getSymbolLayer();
-      layer.add(graphic);
-      pasted.push(graphic);
-      undos.push(undo);
-      redos.push(redo);
+      const layer = this._layerFor(job.item.layerId);
+      const bucket = byLayer.get(layer);
+      if (bucket) bucket.push(built.graphic);
+      else byLayer.set(layer, [built.graphic]);
+      pasted.push(built.graphic);
+      undos.push(built.undo);
+      redos.push(built.redo);
     }
+    if (pasted.length === 0) return pasted;
 
-    if (pasted.length === 0) return null;
+    byLayer.forEach((graphics, layer) => layer.addMany(graphics));
 
     this.deps.pushUndo({
-      label: `Duplicate ${pasted.length} Symbol${pasted.length !== 1 ? 's' : ''}`,
+      label: label(pasted.length),
       undo: () => undos.forEach((fn) => fn()),
       redo: () => redos.forEach((fn) => fn()),
     });
-    this.deps.emitEvent('symbolPasted', { graphics: pasted, count: pasted.length });
+    this.deps.emitEvent('symbolPasted', {
+      graphic: pasted[0],
+      graphics: pasted,
+      count: pasted.length,
+    });
     return pasted;
   }
 
-  /** Translate a geometry by (dx, dy) map units, preserving any z/m components. */
-  private _shiftGeometry(geom: any, dx: number, dy: number): any {
+  private _layerFor(layerId: string): GraphicsLayer {
+    return (
+      this.deps.layerManager.getOrCreateLayer(layerId) ??
+      this.deps.layerManager.getSymbolLayer()
+    );
+  }
+
+  /** Translate a geometry by (dx, dy) map units, keeping z/m. `z` (if given)
+   *  overrides a point's elevation. Handles typed ArcGIS geometries and plain
+   *  {x,y} objects. */
+  private _translateGeometry(geom: any, dx: number, dy: number, z?: number): any {
     if (!geom) return null;
     try {
-      const g = geom.clone();
-      if (g.type === 'point') {
+      const g = geom.clone?.() ?? { ...geom };
+      if (g.type === 'point' || ('x' in g && 'y' in g && !g.paths && !g.rings)) {
         g.x += dx;
         g.y += dy;
+        if (z !== undefined) g.z = z;
         return g;
       }
       const shift = (coords: number[][]) =>
-        coords.map((c: number[]) => [c[0] + dx, c[1] + dy, ...c.slice(2)]);
-      if (g.type === 'polyline' && Array.isArray(g.paths)) {
-        g.paths = g.paths.map(shift);
-        return g;
-      }
-      if (g.type === 'polygon' && Array.isArray(g.rings)) {
-        g.rings = g.rings.map(shift);
-        return g;
-      }
+        coords.map((c) => [c[0] + dx, c[1] + dy, ...c.slice(2)]);
+      if (g.type === 'polyline' && Array.isArray(g.paths)) g.paths = g.paths.map(shift);
+      else if (g.type === 'polygon' && Array.isArray(g.rings)) g.rings = g.rings.map(shift);
       return g;
     } catch {
-      return geom;
+      return geom.clone?.() ?? geom;
     }
+  }
+
+  private _geometryCenter(geom: any): { x: number; y: number } {
+    if (!geom) return { x: 0, y: 0 };
+    if (geom.type === 'point') return { x: geom.x, y: geom.y };
+    const ext = geom.extent;
+    return ext
+      ? { x: (ext.xmin + ext.xmax) / 2, y: (ext.ymin + ext.ymax) / 2 }
+      : { x: 0, y: 0 };
   }
 
   public showPasteOffsetDialog(): void {
@@ -350,6 +335,7 @@ export default class ClipboardEngine {
       console.warn('[CopyPaste] Clipboard is empty.');
       return;
     }
+    this.cancelPasteMode(); // drop the armed hint while the dialog is open
 
     let dialog = document.getElementById('pasteOffsetDialog');
     if (!dialog) {
@@ -516,14 +502,56 @@ export default class ClipboardEngine {
     expandDistance: number,
     expandUnit: string,
   ): void {
+    this._armPasteMode(expandDistance, expandUnit);
+  }
+
+  public activatePasteMode(): void {
+    this._armPasteMode(0, 'meters');
+  }
+
+  /** One-shot paste mode: the next map click pastes there, Esc cancels. A hint
+   *  tooltip follows the cursor until the paste (or cancel). */
+  private _armPasteMode(
+    expandDistance: number,
+    expandUnit: string,
+    quiet = false,
+  ): void {
     if (!this._clipboard) return;
 
     this.cancelPasteMode(); // tear down any prior arming first
     this.deps.closeActiveWorkflow();
     this.deps.emitEvent('pasteMode', { active: true });
+    if (!quiet) {
+      EngineLogger.nextStep(
+        'Symbol Engine',
+        'Paste mode active — click the map to place the copied symbol(s). Press Esc to cancel',
+      );
+    }
+
+    const container = this.view.container as HTMLElement | null;
+    const tip = document.createElement('div');
+    tip.textContent = 'Click to Paste, or CTRL+SHIFT+V for more options';
+    tip.style.cssText = `
+      position: absolute; display: none; pointer-events: none; z-index: 1000;
+      padding: 4px 8px; border-radius: 4px; white-space: nowrap;
+      background: rgba(30, 35, 45, 0.92); color: #dce8f5;
+      border: 1px solid rgba(100, 160, 230, 0.4); font: 12px 'Courier New', monospace;
+    `;
+    container?.appendChild(tip);
+    const moveHandle = this.view.on('pointer-move', (evt) => {
+      tip.style.left = `${evt.x + 16}px`;
+      tip.style.top = `${evt.y + 16}px`;
+      tip.style.display = 'block';
+    });
+    const leaveHandle = this.view.on('pointer-leave', () => {
+      tip.style.display = 'none';
+    });
 
     const cleanup = () => {
       clickHandle.remove();
+      moveHandle.remove();
+      leaveHandle.remove();
+      tip.remove();
       document.removeEventListener('keydown', keyHandler);
       this._pasteCleanup = null;
     };
@@ -539,39 +567,7 @@ export default class ClipboardEngine {
         this.deps.emitEvent('pasteMode', { active: false });
       }
     };
-    document.addEventListener('keydown', keyHandler, { once: false });
-    this._pasteCleanup = cleanup;
-  }
-
-  public activatePasteMode(): void {
-    if (!this._clipboard) return;
-
-    this.cancelPasteMode(); // tear down any prior arming first
-    this.deps.closeActiveWorkflow();
-    this.deps.emitEvent('pasteMode', { active: true });
-    EngineLogger.nextStep(
-      'Symbol Engine',
-      'Paste mode active — click the map to place the copied symbol(s). Press Esc to cancel',
-    );
-
-    const cleanup = () => {
-      clickHandle.remove();
-      document.removeEventListener('keydown', keyHandler);
-      this._pasteCleanup = null;
-    };
-    const clickHandle = this.view.on('click', (evt) => {
-      cleanup();
-      const pt = this.view.toMap({ x: evt.x, y: evt.y });
-      if (pt) this.paste(pt);
-      this.deps.emitEvent('pasteMode', { active: false });
-    });
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        cleanup();
-        this.deps.emitEvent('pasteMode', { active: false });
-      }
-    };
-    document.addEventListener('keydown', keyHandler, { once: false });
+    document.addEventListener('keydown', keyHandler);
     this._pasteCleanup = cleanup;
   }
 
@@ -587,32 +583,7 @@ export default class ClipboardEngine {
   // Internal helpers
   // ---------------------------------------------------------------------
 
-  private _pasteOneItem(
-    item: { graphic: Graphic; layerId: string },
-    newGeom: any,
-    annotationLayer: GraphicsLayer,
-    transformFn?: (pt: { x: number; y: number }) => { x: number; y: number },
-  ): Graphic | null {
-    if (!newGeom) return null;
-    const {
-      graphic: newGraphic,
-      undo,
-      redo,
-    } = this._buildPastedGraphic(item, newGeom, annotationLayer, transformFn);
-    const layer =
-      this.deps.layerManager.getOrCreateLayer(item.layerId) ??
-      this.deps.layerManager.getSymbolLayer();
-    layer.add(newGraphic);
-    this.deps.pushUndo({ label: 'Paste Symbol', undo, redo });
-    console.info('[CopyPaste] Pasted at', newGeom);
-    this.deps.emitEvent('symbolPasted', { graphic: newGraphic });
-    return newGraphic;
-  }
-
-  private _transformDrawEssentials(
-    de: any,
-    transformFn: (pt: any) => { x: number; y: number },
-  ): any {
+  private _shiftDrawEssentials(de: any, dx: number, dy: number): any {
     if (!de) return de;
     // Build a real DrawEssentials INSTANCE (not a plain `{ ...de }` object).
     // Symbol classes stash a live back-reference to themselves in `de.SCOPE`
@@ -624,39 +595,7 @@ export default class ClipboardEngine {
     // symbol is later copied. Keeping the prototype preserves edit-on-paste,
     // which reads `de.SCOPE.createSymbol()`.
     const result: any = new DrawEssentials(de);
-    const tGeom = (geom: any) => {
-      if (!geom) return geom;
-      const clone = geom.clone?.() ?? { ...geom };
-
-      if (clone.type === 'point' || ('x' in clone && 'y' in clone)) {
-        const { x, y } = transformFn(clone);
-        clone.x = x;
-        clone.y = y;
-        return clone;
-      }
-
-      if (clone.type === 'polyline' && clone.paths) {
-        clone.paths = clone.paths.map((path: number[][]) =>
-          path.map(([x, y, ...rest]) => {
-            const pt = transformFn({ x, y });
-            return [pt.x, pt.y, ...rest];
-          }),
-        );
-        return clone;
-      }
-
-      if (clone.type === 'polygon' && clone.rings) {
-        clone.rings = clone.rings.map((ring: number[][]) =>
-          ring.map(([x, y, ...rest]) => {
-            const pt = transformFn({ x, y });
-            return [pt.x, pt.y, ...rest];
-          }),
-        );
-        return clone;
-      }
-
-      return clone;
-    };
+    const tGeom = (geom: any) => this._translateGeometry(geom, dx, dy);
     if (de.CTRL_PTS) result.CTRL_PTS = de.CTRL_PTS.map(tGeom);
     if (de.BASE_LN_PTS) {
       result.BASE_LN_PTS = {
@@ -667,60 +606,30 @@ export default class ClipboardEngine {
     }
     if (de.GEOM) result.GEOM = tGeom(de.GEOM);
     if (de.OPTIONS?.GEOM) {
-      result.OPTIONS = {
-        ...de.OPTIONS,
-        GEOM: tGeom(de.OPTIONS.GEOM),
-      };
+      result.OPTIONS = { ...de.OPTIONS, GEOM: tGeom(de.OPTIONS.GEOM) };
     }
     return result;
   }
 
-  private _shiftDrawEssentials(de: any, dx: number, dy: number): any {
-    return this._transformDrawEssentials(de, (pt) => ({
-      x: pt.x + dx,
-      y: pt.y + dy,
-    }));
-  }
-
   private _buildPastedGraphic(
-    item: { graphic: Graphic; layerId: string },
+    item: ClipItem,
     newGeom: any,
     annotationLayer: GraphicsLayer,
-    transformFn?: (pt: { x: number; y: number }) => { x: number; y: number },
+    dx: number,
+    dy: number,
   ): { graphic: Graphic; undo: () => void; redo: () => void } {
     const source = item.graphic;
-    const origGeom = source.geometry;
-
-    let shiftedDe;
-    const sourceDe = source.attributes?.drawEssentials;
-
-    if (transformFn) {
-      shiftedDe = this._transformDrawEssentials(sourceDe, transformFn);
-    } else {
-      let dx = 0,
-        dy = 0;
-      if (origGeom && newGeom) {
-        if (origGeom.type === 'point') {
-          dx = (newGeom as any).x - (origGeom as any).x;
-          dy = (newGeom as any).y - (origGeom as any).y;
-        } else {
-          const oe = origGeom.extent,
-            ne = newGeom.extent;
-          if (oe && ne) {
-            dx = (ne.xmin + ne.xmax) / 2 - (oe.xmin + oe.xmax) / 2;
-            dy = (ne.ymin + ne.ymax) / 2 - (oe.ymin + oe.ymax) / 2;
-          }
-        }
-      }
-      shiftedDe = this._shiftDrawEssentials(sourceDe, dx, dy);
-    }
+    const shiftedDe = this._shiftDrawEssentials(
+      source.attributes?.drawEssentials,
+      dx,
+      dy,
+    );
     const newId = ClipboardEngine.generateUUID();
-    const newGraphic = source.clone();
-    newGraphic.geometry = newGeom;
+
     // Clone the source's data attributes WITHOUT `drawEssentials`: that key holds a
     // DrawEssentials instance whose SCOPE back-references the live symbol/view
     // (circular via ArcGIS handles/observers), so JSON.stringify throws on it. We
-    // replace drawEssentials with the freshly-transformed `shiftedDe` below anyway.
+    // replace drawEssentials with the freshly-shifted `shiftedDe` below anyway.
     const { drawEssentials: _omitDe, ...restAttrs } = (source.attributes ??
       {}) as Record<string, any>;
     let clonedAttrs: Record<string, any>;
@@ -729,21 +638,26 @@ export default class ClipboardEngine {
     } catch {
       clonedAttrs = { ...restAttrs };
     }
-    newGraphic.attributes = {
-      ...clonedAttrs,
-      id: newId,
-      drawEssentials: shiftedDe,
-    };
+
+    // Built directly rather than via source.clone(): that would structurally
+    // clone the geometry and every attribute (incl. drawEssentials) only for us
+    // to overwrite them.
+    const newGraphic = new Graphic({
+      geometry: newGeom,
+      symbol: (source.symbol as any)?.clone?.() ?? source.symbol,
+      attributes: { ...clonedAttrs, id: newId, drawEssentials: shiftedDe },
+      popupTemplate: source.popupTemplate ?? undefined,
+      visible: source.visible,
+    });
     newGraphic.set('id', newId);
 
-    const layer =
-      this.deps.layerManager.getOrCreateLayer(item.layerId) ??
-      this.deps.layerManager.getSymbolLayer();
+    const layer = this._layerFor(item.layerId);
     const labelOpts = this.deps.getLabelOptions() ?? {};
-    if (shiftedDe?.AMPLIFIER) {
+    const annotate = () => {
+      if (!shiftedDe?.AMPLIFIER) return;
       AnnotationEngine.annotate(
         annotationLayer,
-        newGraphic.geometry,
+        newGeom,
         shiftedDe.AMPLIFIER,
         shiftedDe,
         newId,
@@ -752,27 +666,25 @@ export default class ClipboardEngine {
         labelOpts,
         {},
       );
-    }
+    };
+    const findLive = () =>
+      (layer.graphics.find((g: any) => g?.attributes?.id === newId) as
+        | Graphic
+        | undefined) ?? null;
+
+    annotate();
     return {
       graphic: newGraphic,
+      // Resolve by id: with collab on, MapSync swaps Graphic instances that share
+      // an attributes.id, so removing the captured object would silently no-op.
       undo: () => {
-        layer.remove(newGraphic);
+        const live = findLive();
+        if (live) layer.remove(live);
         AnnotationEngine.deAnnotate(annotationLayer, newId);
       },
       redo: () => {
-        layer.add(newGraphic);
-        if (shiftedDe?.AMPLIFIER)
-          AnnotationEngine.annotate(
-            annotationLayer,
-            newGraphic.geometry,
-            shiftedDe.AMPLIFIER,
-            shiftedDe,
-            newId,
-            settingsData.textSize,
-            shiftedDe.ISFHAND || 0,
-            labelOpts,
-            {},
-          );
+        if (!findLive()) layer.add(newGraphic);
+        annotate();
       },
     };
   }
@@ -835,34 +747,6 @@ export default class ClipboardEngine {
     };
   }
 
-  private _offsetGeometryTo(sourceGeom: any, targetPoint: Point): any {
-    if (!sourceGeom) return null;
-    try {
-      const clone = sourceGeom.clone();
-      if (clone.type === 'point') {
-        clone.x = targetPoint.x;
-        clone.y = targetPoint.y;
-        if (targetPoint.z !== undefined) clone.z = targetPoint.z;
-      } else {
-        const ext = clone.extent;
-        if (!ext) return clone;
-        const dx = targetPoint.x - (ext.xmin + ext.xmax) / 2;
-        const dy = targetPoint.y - (ext.ymin + ext.ymax) / 2;
-        if (clone.type === 'polyline') {
-          clone.paths = clone.paths.map((path: number[][]) =>
-            path.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest]),
-          );
-        } else if (clone.type === 'polygon') {
-          clone.rings = clone.rings.map((ring: number[][]) =>
-            ring.map(([x, y, ...rest]) => [x + dx, y + dy, ...rest]),
-          );
-        }
-      }
-      return clone;
-    } catch {
-      return sourceGeom.clone();
-    }
-  }
 
   private static generateUUID(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (

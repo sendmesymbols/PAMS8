@@ -137,6 +137,7 @@ class SelectionActionPanel {
             this._removeContainer();
             this._removeSimilarPopup();
             this._lastSelectionSig = null;
+            this._placedSig = null;
             return;
         }
 
@@ -160,9 +161,34 @@ class SelectionActionPanel {
         // Place beside the selection once the DOM is laid out (offsetWidth/Height
         // are valid synchronously here since every style is inline). Skip while the
         // user is manually positioning this selection's panel.
-        if (!this._userMoved) {
+        // A tab / mode / minimize refresh on the SAME selection keeps the panel where
+        // it is (only nudged back into view) — re-hugging would flip it to another
+        // side whenever the new tab's height or width changes.
+        if (!this._userMoved && sig !== this._placedSig) {
+            this._placedSig = sig;
             this._positionBesideSelection();
+        } else {
+            this._clampIntoViewport();
         }
+    }
+
+    /** Selection the panel was last hugged to; tab switches don't re-place. */
+    private _placedSig: string | null = null;
+
+    /** Pull the panel back on-screen if a taller tab pushed it past an edge. */
+    private _clampIntoViewport(): void {
+        const el = this._container;
+        if (!el) return;
+        const margin = 8;
+        const r = el.getBoundingClientRect();
+        const left = Math.max(margin, Math.min(r.left, window.innerWidth - r.width - margin));
+        const top = Math.max(margin, Math.min(r.top, window.innerHeight - r.height - margin));
+        if (Math.abs(left - r.left) < 1 && Math.abs(top - r.top) < 1) return;
+        el.style.left = `${Math.round(left)}px`;
+        el.style.top = `${Math.round(top)}px`;
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+        el.style.transform = 'none';
     }
 
     // -----------------------------------------------------------------------
@@ -468,7 +494,8 @@ class SelectionActionPanel {
     private _render(selected: Graphic[], category: Category, visibleTabs: TabId[]): void {
         if (!this._container) return;
         this._container.innerHTML = '';
-        this._container.style.minWidth = this._minimized ? '0' : '380px';
+        // One width for every tab so switching tabs never resizes the panel sideways.
+        this._container.style.minWidth = this._minimized ? '0' : '440px';
 
         this._container.appendChild(this._renderHeader(selected, category, visibleTabs));
         if (!this._minimized) {
@@ -606,7 +633,11 @@ class SelectionActionPanel {
 
     private _renderActions(selected: Graphic[], category: Category): HTMLElement {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex; gap:6px; flex-wrap:wrap; padding-top:4px; border-top:1px solid rgba(80,100,150,0.18);';
+        row.style.cssText = 'display:flex; gap:6px; flex-wrap:wrap; align-content:flex-start; box-sizing:border-box; padding-top:4px; border-top:1px solid rgba(80,100,150,0.18);';
+        // Filter is the tallest tab (two fixed lines, 66px). Reserve that height on
+        // every tab of a selection that has one so switching tabs never resizes —
+        // and therefore never moves — the panel, whichever edge it is anchored to.
+        if (this._tabsForCategory(category).includes('filter')) row.style.minHeight = '66px';
 
         switch (this._activeTab) {
             case 'transform':  this._renderTransformActions(row, selected, category); break;
@@ -624,8 +655,8 @@ class SelectionActionPanel {
         const pushUndo = (e: any) => this._cb.pushUndo(e);
 
         switch (category) {
-            case 'A': // Single point — move + rotate (scaling auto-suppressed for lone points)
-                row.appendChild(this._mkBtn('✎ Move, Rotate', () => this._cb.modifySymbol(primary)));
+            case 'A': // Single point — move only (a lone point has nothing to rotate or scale)
+                row.appendChild(this._mkBtn('✎ Move',() => this._cb.modifySymbol(primary)));
                 row.appendChild(this._mkBtn('⎘ Copy', () => this._cb.copySymbol(primary)));
                 row.appendChild(this._mkBtn('✕ Delete', () => this._deleteOne(primary), 'danger'));
                 row.appendChild(this._mkSimilarBtn(primary));
@@ -697,13 +728,27 @@ class SelectionActionPanel {
     private _renderFilterActions(row: HTMLElement, selected: Graphic[]): void {
         const se = this._selectionEngine;
 
+        // Two fixed lines (never wrap) so the tab has the same height for every
+        // selection: line 1 = mode + geometry quick picks, line 2 = criteria.
+        const mkLine = () => {
+            const l = document.createElement('div');
+            l.style.cssText = 'display:flex; align-items:center; gap:6px; width:100%;';
+            return l;
+        };
+        const line1 = mkLine();
+        const line2 = mkLine();
+        row.appendChild(line1);
+        row.appendChild(line2);
+        const compact = (b: HTMLButtonElement, title: string): HTMLButtonElement => {
+            b.title = title;
+            b.style.padding = '5px 8px';
+            return b;
+        };
+
         // ── Mode switch ────────────────────────────────────────────────────
         const modeWrap = document.createElement('div');
-        modeWrap.style.cssText = 'display:flex; align-items:center; gap:4px; margin-right:6px;';
-        const modeLbl = document.createElement('span');
-        modeLbl.textContent = 'Mode:';
-        modeLbl.style.cssText = 'font-size:10px; color:rgba(155,180,215,0.7); text-transform:uppercase; letter-spacing:0.05em;';
-        modeWrap.appendChild(modeLbl);
+        modeWrap.style.cssText = 'display:flex; align-items:center; gap:4px; margin-right:4px;';
+        modeWrap.title = 'How a filter combines with the current selection';
         (['replace', 'add', 'refine'] as SelectMode[]).forEach(m => {
             const active = this._filterMode === m;
             const b = document.createElement('button');
@@ -718,34 +763,32 @@ class SelectionActionPanel {
             b.addEventListener('click', (e) => { e.stopPropagation(); this._filterMode = m; this.refresh(); });
             modeWrap.appendChild(b);
         });
-        row.appendChild(modeWrap);
+        line1.appendChild(modeWrap);
 
-        // ── Quick actions ──────────────────────────────────────────────────
-        row.appendChild(this._mkBtn('▦ All',    () => se.selectAll(this._filterMode)));
-        row.appendChild(this._mkBtn('◑ Invert', () => se.invertSelection()));
+        // ── Quick actions + geometry (icon buttons, labelled by tooltip) ───
+        line1.appendChild(compact(this._mkBtn('▦ All', () => se.selectAll(this._filterMode)), 'Select all symbols'));
+        line1.appendChild(compact(this._mkBtn('◑', () => se.invertSelection()), 'Invert selection'));
+        line1.appendChild(compact(this._mkBtn('●', () => se.selectPointSymbols(this._filterMode)), 'All point symbols'));
+        line1.appendChild(compact(this._mkBtn('╱', () => se.selectLineSymbols(this._filterMode)), 'All line symbols'));
+        line1.appendChild(compact(this._mkBtn('■', () => se.selectAreaSymbols(this._filterMode)), 'All area symbols'));
 
         // ── Affiliation / echelon dropdowns (present codes only) ───────────
         const ids = se.getPresentIdentities();
         if (ids.length) {
-            row.appendChild(this._mkSelect('Affiliation…',
+            line2.appendChild(this._mkSelect('Affiliation…',
                 ids.map(i => [i.code, `${i.label} (${i.count})`] as [string, string]),
                 code => se.selectByIdentity(code, this._filterMode)));
         }
         const ech = se.getPresentEchelons();
         if (ech.length) {
-            row.appendChild(this._mkSelect('Echelon…',
+            line2.appendChild(this._mkSelect('Echelon…',
                 ech.map(e => [e.code, `${e.label} (${e.count})`] as [string, string]),
                 code => se.selectByEchelon(code, this._filterMode)));
         }
 
-        // ── Geometry ───────────────────────────────────────────────────────
-        row.appendChild(this._mkBtn('● Points', () => se.selectPointSymbols(this._filterMode)));
-        row.appendChild(this._mkBtn('╱ Lines',  () => se.selectLineSymbols(this._filterMode)));
-        row.appendChild(this._mkBtn('■ Areas',  () => se.selectAreaSymbols(this._filterMode)));
-
         // ── Within radius of the first selected graphic ────────────────────
         const radiusWrap = document.createElement('div');
-        radiusWrap.style.cssText = 'display:flex; align-items:center; gap:4px;';
+        radiusWrap.style.cssText = 'display:flex; align-items:center; gap:4px; margin-left:auto;';
         const input = document.createElement('input');
         input.type = 'number';
         input.min = '1';
@@ -758,11 +801,11 @@ class SelectionActionPanel {
         `;
         input.addEventListener('click', e => e.stopPropagation());
         radiusWrap.appendChild(input);
-        radiusWrap.appendChild(this._mkBtn('◌ Within Radius (m)', () => {
+        radiusWrap.appendChild(compact(this._mkBtn('◌ Radius (m)', () => {
             const meters = parseFloat(input.value);
             if (meters > 0 && selected[0]) se.selectWithinRadius(selected[0], meters, this._filterMode);
-        }));
-        row.appendChild(radiusWrap);
+        }), 'Select symbols within this radius of the first selected symbol'));
+        line2.appendChild(radiusWrap);
     }
 
     // -----------------------------------------------------------------------
@@ -824,7 +867,7 @@ class SelectionActionPanel {
 
     /** "Select Similar ▾" button — opens a small floating popup with 4 options. */
     private _mkSimilarBtn(graphic: Graphic): HTMLButtonElement {
-        const btn = this._mkBtn('⌕ Similar ▾', () => this._toggleSimilarPopup(btn, graphic));
+        const btn = this._mkBtn('⌕ Select ▾', () => this._toggleSimilarPopup(btn, graphic));
         return btn;
     }
 

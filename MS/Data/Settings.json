@@ -421,7 +421,7 @@
     "briefing": true,
     "exportTools": true,
     "screenAnchor": false,
-    "collab": true
+    "collab": false
   },
   "collab": {
     "transport": "sse",

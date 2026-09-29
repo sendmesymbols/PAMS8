@@ -125,7 +125,10 @@ export default class KeyboardShortcutManager {
         this.deps.redo();
       } else if (e.key === 'c' || e.key === 'C') {
         if ((settingsData as any).features?.clipboard !== false) {
-          const g = this.currentGraphic();
+          // Selection wins (any size, incl. multi-select, which currentGraphic()
+          // ignores); fall back to the last right-clicked graphic.
+          const selected = this.deps.selectionEngine.selectedGraphics;
+          const g = selected.length > 0 ? selected[0] : this.currentGraphic();
           if (g) {
             e.preventDefault();
             this.deps.copySymbol(g);

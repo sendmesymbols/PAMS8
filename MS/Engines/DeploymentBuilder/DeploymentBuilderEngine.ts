@@ -899,8 +899,10 @@ class DeploymentBuilderEngine {
 
     this._setStatus(`Placed ${count} symbol${count !== 1 ? 's' : ''}`);
     this._setHeaderState(count > 0 ? 'ready' : 'warning', count > 0 ? 'Placed' : 'Empty');
-    // Restore widget
-    if (this._minimized) this._minimizeWidget();
+    // Placed → the widget has done its job, close it. Nothing placed → restore it
+    // so the empty-result status stays visible.
+    if (count > 0) this._closeWidget();
+    else if (this._minimized) this._minimizeWidget();
   }
 
   private _cancelPlacement(): void {
