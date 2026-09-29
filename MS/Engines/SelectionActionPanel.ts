@@ -249,6 +249,11 @@ class SelectionActionPanel {
             box-shadow: 0 4px 18px rgba(0,0,0,0.45);
             display: flex; flex-direction: column; gap: 6px;
             min-width: 380px;
+            /* Never shrink-to-fit against the viewport edge: a squeezed panel wraps
+               its rows and grows taller while the map is panned under it. */
+            width: 580px;
+            max-width: calc(100vw - 16px);
+            box-sizing: border-box;
         `;
         document.body.appendChild(el);
         this._container = el;
@@ -634,10 +639,9 @@ class SelectionActionPanel {
     private _renderActions(selected: Graphic[], category: Category): HTMLElement {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; gap:6px; flex-wrap:wrap; align-content:flex-start; box-sizing:border-box; padding-top:4px; border-top:1px solid rgba(80,100,150,0.18);';
-        // Filter is the tallest tab (two fixed lines, 66px). Reserve that height on
-        // every tab of a selection that has one so switching tabs never resizes —
-        // and therefore never moves — the panel, whichever edge it is anchored to.
-        if (this._tabsForCategory(category).includes('filter')) row.style.minHeight = '66px';
+        // Every tab is a single row of the same height, so switching tabs never
+        // resizes (and therefore never moves) the panel.
+        row.style.minHeight = '34px';
 
         switch (this._activeTab) {
             case 'transform':  this._renderTransformActions(row, selected, category); break;
@@ -706,18 +710,28 @@ class SelectionActionPanel {
         row.appendChild(this._mkBtn('↕ Vertical',   () => this._selectionEngine.alignVertical(pushUndo)));
     }
 
+    /** Icon-only arrange button (label in the tooltip) so all ten fit one row. */
+    private _arrangeBtn(glyph: string, title: string, onClick: () => void): HTMLButtonElement {
+        const b = this._mkBtn(glyph, onClick);
+        b.title = title;
+        b.setAttribute('aria-label', title);
+        b.style.padding = '5px 10px';
+        return b;
+    }
+
     private _renderArrangeActions(row: HTMLElement): void {
         const pushUndo = (e: any) => this._cb.pushUndo(e);
-        row.appendChild(this._mkBtn('― Line',         () => this._selectionEngine.arrangeLine(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('| Column',       () => this._selectionEngine.arrangeColumn(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('⊞ Square',       () => this._selectionEngine.arrangeSquare(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('▲ Triangle',     () => this._selectionEngine.arrangeTriangle(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('▽ Inv Triangle', () => this._selectionEngine.arrangeInvertedTriangle(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('⋁ Wedge',        () => this._selectionEngine.arrangeWedge(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('↙ Echelon L',    () => this._selectionEngine.arrangeEchelonLeft(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('↘ Echelon R',    () => this._selectionEngine.arrangeEchelonRight(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('◇ Diamond',      () => this._selectionEngine.arrangeDiamond(undefined, pushUndo)));
-        row.appendChild(this._mkBtn('○ Circle',       () => this._selectionEngine.arrangeCircle(undefined, pushUndo)));
+        const se = this._selectionEngine;
+        row.appendChild(this._arrangeBtn('―', 'Line',              () => se.arrangeLine(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('|', 'Column',            () => se.arrangeColumn(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('⊞', 'Square',            () => se.arrangeSquare(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('▲', 'Triangle',          () => se.arrangeTriangle(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('▽', 'Inverted triangle', () => se.arrangeInvertedTriangle(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('⋁', 'Wedge',             () => se.arrangeWedge(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('↙', 'Echelon left',      () => se.arrangeEchelonLeft(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('↘', 'Echelon right',     () => se.arrangeEchelonRight(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('◇', 'Diamond',           () => se.arrangeDiamond(undefined, pushUndo)));
+        row.appendChild(this._arrangeBtn('○', 'Circle',            () => se.arrangeCircle(undefined, pushUndo)));
     }
 
     /**
@@ -728,17 +742,15 @@ class SelectionActionPanel {
     private _renderFilterActions(row: HTMLElement, selected: Graphic[]): void {
         const se = this._selectionEngine;
 
-        // Two fixed lines (never wrap) so the tab has the same height for every
-        // selection: line 1 = mode + geometry quick picks, line 2 = criteria.
+        // One compact, non-wrapping line: mode · quick picks · criteria · radius.
         const mkLine = () => {
             const l = document.createElement('div');
-            l.style.cssText = 'display:flex; align-items:center; gap:6px; width:100%;';
+            l.style.cssText = 'display:flex; align-items:center; gap:8px; width:100%; flex-wrap:nowrap;';
             return l;
         };
         const line1 = mkLine();
-        const line2 = mkLine();
+        const line2 = line1;
         row.appendChild(line1);
-        row.appendChild(line2);
         const compact = (b: HTMLButtonElement, title: string): HTMLButtonElement => {
             b.title = title;
             b.style.padding = '5px 8px';
@@ -747,15 +759,22 @@ class SelectionActionPanel {
 
         // ── Mode switch ────────────────────────────────────────────────────
         const modeWrap = document.createElement('div');
-        modeWrap.style.cssText = 'display:flex; align-items:center; gap:4px; margin-right:4px;';
+        modeWrap.style.cssText = 'display:flex; align-items:center; gap:4px; margin-right:6px;';
         modeWrap.title = 'How a filter combines with the current selection';
+        const modeInfo: Record<SelectMode, [string, string]> = {
+            replace: ['⇄', 'Replace — the matches become the new selection'],
+            add:     ['∪', 'Add — the matches are added to the current selection'],
+            refine:  ['∩', 'Refine — keep only the currently selected symbols that match'],
+        };
         (['replace', 'add', 'refine'] as SelectMode[]).forEach(m => {
             const active = this._filterMode === m;
             const b = document.createElement('button');
-            b.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+            b.textContent = modeInfo[m][0];
+            b.title = modeInfo[m][1];
+            b.setAttribute('aria-label', modeInfo[m][1]);
             b.style.cssText = `
-                padding:4px 8px; font-size:10px; font-family:inherit; font-weight:600;
-                text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; border-radius:4px;
+                padding:4px 9px; font-size:13px; line-height:1; font-family:inherit; font-weight:600;
+                cursor:pointer; border-radius:4px;
                 background:${active ? 'rgba(239,159,39,0.14)' : 'transparent'};
                 border:1px solid ${active ? '#EF9F27' : 'rgba(90,140,220,0.25)'};
                 color:${active ? '#EF9F27' : 'rgba(155,180,215,0.72)'};
@@ -766,7 +785,7 @@ class SelectionActionPanel {
         line1.appendChild(modeWrap);
 
         // ── Quick actions + geometry (icon buttons, labelled by tooltip) ───
-        line1.appendChild(compact(this._mkBtn('▦ All', () => se.selectAll(this._filterMode)), 'Select all symbols'));
+        line1.appendChild(compact(this._mkBtn('▦', () => se.selectAll(this._filterMode)), 'Select all symbols'));
         line1.appendChild(compact(this._mkBtn('◑', () => se.invertSelection()), 'Invert selection'));
         line1.appendChild(compact(this._mkBtn('●', () => se.selectPointSymbols(this._filterMode)), 'All point symbols'));
         line1.appendChild(compact(this._mkBtn('╱', () => se.selectLineSymbols(this._filterMode)), 'All line symbols'));
@@ -775,15 +794,21 @@ class SelectionActionPanel {
         // ── Affiliation / echelon dropdowns (present codes only) ───────────
         const ids = se.getPresentIdentities();
         if (ids.length) {
-            line2.appendChild(this._mkSelect('Affiliation…',
+            const s = this._mkSelect('Side…',
                 ids.map(i => [i.code, `${i.label} (${i.count})`] as [string, string]),
-                code => se.selectByIdentity(code, this._filterMode)));
+                code => se.selectByIdentity(code, this._filterMode));
+            s.title = 'Select by affiliation';
+            s.style.width = '72px';
+            line2.appendChild(s);
         }
         const ech = se.getPresentEchelons();
         if (ech.length) {
-            line2.appendChild(this._mkSelect('Echelon…',
+            const s = this._mkSelect('Echelon…',
                 ech.map(e => [e.code, `${e.label} (${e.count})`] as [string, string]),
-                code => se.selectByEchelon(code, this._filterMode)));
+                code => se.selectByEchelon(code, this._filterMode));
+            s.title = 'Select by echelon';
+            s.style.width = '80px';
+            line2.appendChild(s);
         }
 
         // ── Within radius of the first selected graphic ────────────────────
@@ -795,16 +820,16 @@ class SelectionActionPanel {
         input.value = '1000';
         input.title = 'Radius in metres (from the first selected symbol)';
         input.style.cssText = `
-            width:64px; padding:4px 6px; font-family:inherit; font-size:10.5px;
+            width:52px; padding:4px 5px; font-family:inherit; font-size:10.5px;
             background:rgba(0,0,0,0.3); color:rgba(220,232,245,0.92);
             border:1px solid rgba(90,140,220,0.25); border-radius:4px;
         `;
         input.addEventListener('click', e => e.stopPropagation());
         radiusWrap.appendChild(input);
-        radiusWrap.appendChild(compact(this._mkBtn('◌ Radius (m)', () => {
+        radiusWrap.appendChild(compact(this._mkBtn('◌', () => {
             const meters = parseFloat(input.value);
             if (meters > 0 && selected[0]) se.selectWithinRadius(selected[0], meters, this._filterMode);
-        }), 'Select symbols within this radius of the first selected symbol'));
+        }), 'Select symbols within this radius (metres) of the first selected symbol'));
         line2.appendChild(radiusWrap);
     }
 
