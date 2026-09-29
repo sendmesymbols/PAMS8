@@ -524,7 +524,7 @@ class SelectionActionPanel {
         `;
         const label = document.createElement('span');
         label.style.cssText = 'color:#c8dff5; font-weight:600;';
-        label.textContent = this._summary(selected, category);
+        label.textContent = this._summary(selected);
         badge.appendChild(dot);
         badge.appendChild(label);
         header.appendChild(badge);
@@ -608,28 +608,9 @@ class SelectionActionPanel {
         return btn;
     }
 
-    private _summary(selected: Graphic[], category: Category): string {
+    private _summary(selected: Graphic[]): string {
         const n = selected.length;
-        switch (category) {
-            case 'A': return '1 Point';
-            case 'B': {
-                const t = selected[0].geometry?.type;
-                return t === 'polygon' ? '1 Area' : '1 Line';
-            }
-            case 'C': return `${n} Points`;
-            case 'D': {
-                const t = selected[0].geometry?.type;
-                return t === 'polygon' ? `${n} Areas` : `${n} Lines`;
-            }
-            case 'E': {
-                let pts = 0, areas = 0;
-                selected.forEach(g => {
-                    if (this._kind(g) === 'point') pts++;
-                    else if (this._kind(g) === 'lineArea') areas++;
-                });
-                return `${n} mixed · ${pts}pt · ${areas}area`;
-            }
-        }
+        return `${n} ${n === 1 ? 'Sym' : 'Syms'} Sel`;
     }
 
     // -----------------------------------------------------------------------

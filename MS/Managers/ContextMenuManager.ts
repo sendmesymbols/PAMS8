@@ -113,7 +113,6 @@ class ContextMenuManager extends Evented {
   private _landingZoneEngine: LandingZoneEngine | null = null;
   private _airspaceEngine: AirspaceEngine | null = null;
   private _trafficabilityEngine: TrafficabilityEngine | null = null;
-  private _deploymentBuilderEngine: { openWidget(): void } | null = null;
   private _sectorPanel: { openPanel(): void } | null = null;
 
   private _enabled: boolean = true;
@@ -446,14 +445,6 @@ class ContextMenuManager extends Evented {
     this._sectorPanel = panel;
   }
 
-  /**
-   * Link a DeploymentBuilderEngine so the "Open Deployment Builder" item
-   * appears in all graphic right-click menus when set.
-   */
-  public linkDeploymentBuilderEngine(engine: { openWidget(): void } | null): void {
-    this._deploymentBuilderEngine = engine;
-  }
-
   /** Null out all analysis engine references so the Analysis submenu is hidden. */
   public unlinkAnalysisEngines(): void {
     this._weaponEffectEngine = null;
@@ -703,30 +694,6 @@ class ContextMenuManager extends Evented {
         stopItem.classList.remove(this.options.menuItemHoverClass || ''),
       );
       this.menuElement.appendChild(stopItem);
-    }
-    // ────────────────────────────────────────────────────────────────────
-
-    // ── Deployment Manager section ──────────────────────────────────────
-    if (this._deploymentBuilderEngine) {
-      const sep3 = document.createElement('div');
-      sep3.className = this.options.menuSeparatorClass || '';
-      this.menuElement.appendChild(sep3);
-
-      const dbItem = document.createElement('div');
-      dbItem.className = this.options.menuItemClass || '';
-      dbItem.innerHTML = `<span class="menu-icon">${menuIcon('map-pin')}</span><span>Open Deployment Manager</span>`;
-      dbItem.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._deploymentBuilderEngine!.openWidget();
-        this.hideMenu();
-      });
-      dbItem.addEventListener('mouseenter', () =>
-        dbItem.classList.add(this.options.menuItemHoverClass || ''),
-      );
-      dbItem.addEventListener('mouseleave', () =>
-        dbItem.classList.remove(this.options.menuItemHoverClass || ''),
-      );
-      this.menuElement.appendChild(dbItem);
     }
     // ────────────────────────────────────────────────────────────────────
 
@@ -1135,16 +1102,6 @@ class ContextMenuManager extends Evented {
         'Runtime',
         'Esc',
         () => this._symbolEngine!.stopContinuousMode(),
-      ));
-    }
-
-    if (this._deploymentBuilderEngine) {
-      actions.push(this.createPaletteAction(
-        'deployment-manager',
-        'Open Deployment Manager',
-        'Tools',
-        undefined,
-        () => this._deploymentBuilderEngine!.openWidget(),
       ));
     }
 

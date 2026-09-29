@@ -1007,7 +1007,6 @@ class SymbolEngine implements Evented {
       this._deploymentBuilderEngine = DBE.getInstance();
       this._deploymentBuilderEngine!.start(this.view, this.serializationEngine);
       this._deploymentBuilderEngine!.enable();
-      this._contextMenuManager.linkDeploymentBuilderEngine(this._deploymentBuilderEngine!);
       (window as any).deploymentBuilderEngine = this._deploymentBuilderEngine;
       this.emitEvent('deploymentBuilderEngineReady', { engine: this._deploymentBuilderEngine });
       console.info('[SymbolEngine] DeploymentBuilderEngine loaded');
@@ -1144,6 +1143,86 @@ class SymbolEngine implements Evented {
    */
   private registerContextMenuItems(): void {
     console.log('Registered');
+
+    // Copy / paste / undo / redo live inside the Edit submenu (there is no
+    // separate Clipboard menu).
+    const clipboardChildren: ContextMenuItem[] = [
+      {
+        id: 'copy-symbol',
+        label: 'Copy Symbol',
+        shortcut: 'Ctrl+C',
+        icon: menuIcon('copy'),
+        visible: () =>
+          (settingsData as any).features?.clipboard !== false &&
+          (settingsData as any).features?.copyPaste !== false,
+        action: (graphic) => this.copySymbol(graphic),
+      },
+      {
+        id: 'paste-symbol',
+        label: 'Paste Symbol',
+        shortcut: 'Ctrl+V',
+        icon: menuIcon('clipboard'),
+        visible: () =>
+          (settingsData as any).features?.clipboard !== false &&
+          (settingsData as any).features?.copyPaste !== false &&
+          this._clipboardEngine.hasClipboard,
+        action: (_graphic) => this._activatePasteMode(),
+      },
+      {
+        id: 'paste-symbol-offset',
+        label: 'Paste with Offset...',
+        shortcut: 'Ctrl+Shift+V',
+        icon: menuIcon('move'),
+        visible: () =>
+          (settingsData as any).features?.clipboard !== false &&
+          (settingsData as any).features?.copyPaste !== false &&
+          this._clipboardEngine.hasClipboard,
+        action: (_graphic) => this._showPasteOffsetDialog(),
+      },
+      {
+        id: 'undo',
+        label: () => {
+          const lbl = this._undoRedoManager.nextUndoLabel;
+          return lbl ? `Undo ${lbl}` : 'Undo';
+        },
+        shortcut: 'Ctrl+Z',
+        icon: menuIcon('rotate-ccw'),
+        enabled: (_graphic) => this._undoRedoManager.undoCount > 0,
+        visible: () => (settingsData as any).features?.shortcuts !== false,
+        action: (_graphic) => this.undo(),
+      },
+      {
+        id: 'redo',
+        label: () => {
+          const lbl = this._undoRedoManager.nextRedoLabel;
+          return lbl ? `Redo ${lbl}` : 'Redo';
+        },
+        shortcut: 'Ctrl+Y',
+        icon: menuIcon('rotate-cw'),
+        enabled: (_graphic) => this._undoRedoManager.redoCount > 0,
+        visible: () => (settingsData as any).features?.shortcuts !== false,
+        action: (_graphic) => this.redo(),
+      },
+    ];
+    const isShown = (item: ContextMenuItem, g: Graphic): boolean =>
+      typeof item.visible === 'function' ? item.visible(g) : item.visible !== false;
+
+    const editMenuItems = this._editEngine.buildContextMenuItems(
+      (graphic) => this.modifySymbol(graphic),
+      (graphic) => this.activateEditControlPoints(graphic),
+      () => this.deactivateEdit(),
+      () => this._selectionEngine?.count ?? 0,
+    );
+    const editRoot = editMenuItems.find((i) => i.id === 'edit-submenu');
+    if (editRoot) {
+      editRoot.children = [...(editRoot.children ?? []), ...clipboardChildren];
+      // Edit must stay reachable when only the clipboard/undo entries are enabled.
+      const editVisible = editRoot.visible;
+      editRoot.visible = (g: Graphic) =>
+        (typeof editVisible === 'function' ? editVisible(g) : editVisible !== false) ||
+        clipboardChildren.some((c) => isShown(c, g));
+    }
+
     const milSymbolMenuItems: ContextMenuItem[] = [
       {
         id: 'show-details',
@@ -1174,81 +1253,12 @@ class SymbolEngine implements Evented {
         action: (graphic) => this.showRouteProfile(graphic),
       },
       // ── Edit submenu (owned by EditEngine) ─────────────────────────
-      ...this._editEngine.buildContextMenuItems(
-        (graphic) => this.modifySymbol(graphic),
-        (graphic) => this.activateEditControlPoints(graphic),
-        () => this.deactivateEdit(),
-        () => this._selectionEngine?.count ?? 0,
-      ),
+      ...editMenuItems,
       // ── Selection + Align submenus (owned by SelectionEngine) ──────────
       ...this._selectionEngine.buildContextMenuItems(
         (e) => this._pushUndo(e),
         () => this._closeActiveWorkflow(),
       ),
-      // ── Clipboard submenu ───────────────────────────────────────────
-      {
-        id: 'clipboard-submenu',
-        label: 'Clipboard',
-        icon: menuIcon('clipboard'),
-        visible: () =>
-          (settingsData as any).features?.clipboard !== false &&
-          ((settingsData as any).features?.copyPaste !== false ||
-           (settingsData as any).features?.shortcuts !== false),
-        children: [
-          {
-            id: 'copy-symbol',
-            label: 'Copy Symbol',
-            shortcut: 'Ctrl+C',
-            icon: menuIcon('copy'),
-            visible: () => (settingsData as any).features?.copyPaste !== false,
-            action: (graphic) => this.copySymbol(graphic),
-          },
-          {
-            id: 'paste-symbol',
-            label: 'Paste Symbol',
-            shortcut: 'Ctrl+V',
-            icon: menuIcon('clipboard'),
-            visible: () =>
-              (settingsData as any).features?.copyPaste !== false &&
-              this._clipboardEngine.hasClipboard,
-            action: (_graphic) => this._activatePasteMode(),
-          },
-          {
-            id: 'paste-symbol-offset',
-            label: 'Paste with Offset...',
-            shortcut: 'Ctrl+Shift+V',
-            icon: menuIcon('move'),
-            visible: () =>
-              (settingsData as any).features?.copyPaste !== false &&
-              this._clipboardEngine.hasClipboard,
-            action: (_graphic) => this._showPasteOffsetDialog(),
-          },
-          {
-            id: 'undo',
-            label: () => {
-              const lbl = this._undoRedoManager.nextUndoLabel;
-              return lbl ? `Undo ${lbl}` : 'Undo';
-            },
-            shortcut: 'Ctrl+Z',
-            icon: menuIcon('rotate-ccw'),
-            enabled: (_graphic) => this._undoRedoManager.undoCount > 0,
-            visible: () => (settingsData as any).features?.shortcuts !== false,
-            action: (_graphic) => this.undo(),
-          },
-          {
-            id: 'redo',
-            label: () => {
-              const lbl = this._undoRedoManager.nextRedoLabel;
-              return lbl ? `Redo ${lbl}` : 'Redo';
-            },
-            shortcut: 'Ctrl+Y',
-            icon: menuIcon('rotate-cw'),
-            enabled: (_graphic) => this._undoRedoManager.redoCount > 0,
-            visible: () => (settingsData as any).features?.shortcuts !== false,
-            action: (_graphic) => this.redo(),
-          },
-        ],
-      },
     ];
 
 
@@ -2299,10 +2309,8 @@ class SymbolEngine implements Evented {
         this._initDeploymentBuilderEngine();
       } else if (!value && this._deploymentBuilderEngine) {
         this._deploymentBuilderEngine.disable();
-        this._contextMenuManager.linkDeploymentBuilderEngine(null);
       } else if (value && this._deploymentBuilderEngine) {
         this._deploymentBuilderEngine.enable();
-        this._contextMenuManager.linkDeploymentBuilderEngine(this._deploymentBuilderEngine);
       }
     }
 
