@@ -925,7 +925,7 @@ export class BufferEngine {
         </div>
         <div class="ms-coords" id="buffer-source-readout">No source set</div>
 
-        <div class="ms-btn-row">
+        <div class="ms-btn-row" hidden>
           <button class="ms-btn ms-cta" id="buffer-commit-btn" disabled>Commit ↗</button>
         </div>
 

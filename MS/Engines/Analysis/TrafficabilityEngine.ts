@@ -2335,7 +2335,7 @@ export class TrafficabilityEngine {
           <button class="ms-btn ms-cta" id="reach-run-btn">Compute Service Area</button>
         </div>
         <div class="ms-btn-row" id="reach-result-actions" hidden>
-          <button class="ms-btn primary" id="reach-commit-btn" disabled title="Copy the current analysis onto a permanent layer">Commit &#8599;</button>
+          <button class="ms-btn primary" id="reach-commit-btn" disabled hidden title="Copy the current analysis onto a permanent layer">Commit &#8599;</button>
           <button class="ms-btn danger" id="reach-clear-btn">Clear</button>
         </div>
 

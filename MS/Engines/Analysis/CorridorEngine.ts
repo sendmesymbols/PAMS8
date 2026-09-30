@@ -359,7 +359,7 @@ export class CorridorEngine {
               <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
             </div>
           </div>
-          <div class="ms-btn-row">
+          <div class="ms-btn-row" hidden>
             <button class="ms-btn primary" id="corr-commit-btn" disabled>Commit ↗</button>
           </div>
         </div>

@@ -1027,7 +1027,7 @@ export class FlightEngine {
           <button class="ms-btn primary" id="flight-add-wp-btn" title="Click, then click the map to append a waypoint">📍 Add waypoint</button>
         </div>
 
-        <div class="ms-btn-row">
+        <div class="ms-btn-row" hidden>
           <button class="ms-btn ms-cta" id="flight-commit-btn">Commit ↗</button>
         </div>
 

@@ -1096,7 +1096,7 @@ export class WeaponEffectEngine {
           </div>
         </div>
 
-        <div class="ms-btn-row">
+        <div class="ms-btn-row" ${isEdit ? '' : 'hidden'}>
           <button class="ms-btn ms-cta" id="wez-commit-btn" ${isEdit ? '' : 'disabled'}>Commit ↗</button>
         </div>
 

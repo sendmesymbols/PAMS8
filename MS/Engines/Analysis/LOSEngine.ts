@@ -1541,7 +1541,7 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
         <div id="los-results" hidden>
           <div class="ms-btn-row">
             <button class="ms-btn danger" id="los-clear-btn">Clear</button>
-            <button class="ms-btn primary" id="los-commit-btn" ${isEdit ? '' : 'disabled'}>Commit ↗</button>
+            <button class="ms-btn primary" id="los-commit-btn" ${isEdit ? '' : 'disabled hidden'}>Commit ↗</button>
           </div>
           <div class="los-legend">
             <span class="los-leg-visible">— Visible</span>

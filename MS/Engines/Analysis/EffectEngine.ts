@@ -651,7 +651,7 @@ export class EffectEngine {
         </div>
         <div class="ms-coords" id="effects-coords">No strike placed — click the map</div>
 
-        <div class="ms-btn-row">
+        <div class="ms-btn-row" hidden>
           <button class="ms-btn ms-cta" id="effects-btn-commit" disabled>Commit to map ↗</button>
         </div>
 
