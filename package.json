@@ -16,13 +16,18 @@
     "preview": "vite preview",
     "dev": "vite",
     "relay": "node tools/collabRelay.js --port 6600",
-    "dev:dist": "vite build && npm run copy-data && npm run copy-thirdparty && npm run copy-styles && vite --mode dist",
-    "build": "vite build && npm run copy-data && npm run copy-thirdparty && npm run copy-styles && tsc -p tsconfig.build.json"
+    "dev:dist": "vite build && npm run copy-data && npm run copy-thirdparty && npm run copy-styles && npm run copy-docs && vite --mode dist",
+    "build": "vite build && npm run copy-data && npm run copy-thirdparty && npm run copy-styles && npm run docs:build && tsc -p tsconfig.build.json",
+    "copy-docs": "node -e \"const fs=require('fs');fs.cpSync('MS/Docs','dist/MS/Docs/markdown',{recursive:true});console.log('Copied MS/Docs -> dist/MS/Docs/markdown')\"",
+    "docs:catalog": "node tools/genSymbolCatalog.mjs",
+    "docs:api": "typedoc",
+    "docs:build": "npm run docs:catalog && npm run docs:api && npm run copy-docs"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",
     "@types/node": "^22.14.1",
     "prettier": "^3.3.1",
+    "typedoc": "^0.28.20",
     "typescript": "^5.2.2",
     "vite": "^5.2.0",
     "vite-plugin-dts": "^4.5.3"

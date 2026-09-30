@@ -1,0 +1,27 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "PAMS8 - MIL-STD-2525D Symbol Library",
+  "entryPoints": [
+    "MS/Engines/SymbolEngine.ts",
+    "MS/Support/Amplifier.ts",
+    "MS/Support/DrawEssentials.ts"
+  ],
+  "tsconfig": "tsconfig.build.json",
+  "skipErrorChecking": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "externalSymbolLinkMappings": {},
+  "out": "dist/MS/Docs",
+  "readme": "MS/Docs/README.md",
+  "projectDocuments": [
+    "MS/Docs/[0-9]*.md"
+  ],
+  "validation": {
+    "notExported": false,
+    "invalidLink": false,
+    "notDocumented": false
+  },
+  "logLevel": "Warn"
+}

@@ -10,6 +10,15 @@
       ],
       "port": 6548,
       "autoPort": true
+    },
+    {
+      "name": "pams8-docs",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": [
+        "/c",
+        "set PATH=C:\\Users\\USER\\AppData\\Roaming\\fnm\\node-versions\\v24.0.0\\installation;%PATH% && node tools/serveDocs.mjs 6550"
+      ],
+      "port": 6550
     }
   ]
 }
