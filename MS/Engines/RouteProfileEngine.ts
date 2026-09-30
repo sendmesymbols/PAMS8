@@ -1,9 +1,11 @@
 import Graphic from "@arcgis/core/Graphic";
 import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
+import Polygon from "@arcgis/core/geometry/Polygon";
 import Extent from "@arcgis/core/geometry/Extent";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
+import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
 import { ElevationUtils } from "../Support/Elevation/ElevationUtils";
 import EngineLogger from "../Support/EngineLogger";
@@ -15,6 +17,9 @@ interface ProfileSample {
   elevM: number;
   /** Slope of the segment ending at this sample, percent (signed). */
   slopePct: number;
+  /** Map location of this sample (used to mirror chart hover onto the map). */
+  x: number;
+  y: number;
 }
 
 interface ProfileStats {
@@ -45,16 +50,27 @@ export default class RouteProfileEngine {
   private static readonly STEEP_PCT = 25;
   private static readonly PANEL_ID = "routeProfilePanel";
 
+  /** Map-side marker mirroring the chart hover position. */
+  private _hoverMarker: Graphic | null = null;
+  private _hoverView: MapView | SceneView | null = null;
+
   constructor(private _getView: () => MapView | SceneView | null) {}
 
   /** Build + show the elevation profile for a polyline graphic or geometry. */
-  public async showProfile(input: Graphic | Polyline): Promise<void> {
+  public async showProfile(input: Graphic | Polyline | Polygon): Promise<void> {
     const view = this._getView();
     if (!view) return;
 
-    const geom = (input instanceof Graphic ? input.geometry : input) as Polyline | null;
-    if (!geom || geom.type !== "polyline") {
-      EngineLogger.nextStep("Route Profile", "Select a route (polyline) to profile its elevation.");
+    const raw = (input instanceof Graphic ? input.geometry : input) as Polyline | Polygon | null;
+    let geom: Polyline | null = null;
+    if (raw?.type === "polyline") {
+      geom = raw;
+    } else if (raw?.type === "polygon" && raw.rings?.length) {
+      // Profile the outer boundary (first ring, already closed) as a route.
+      geom = new Polyline({ paths: [raw.rings[0]], spatialReference: raw.spatialReference });
+    }
+    if (!geom) {
+      EngineLogger.nextStep("Route Profile", "Select a route (polyline) or area (polygon) to profile its elevation.");
       return;
     }
 
@@ -79,7 +95,7 @@ export default class RouteProfileEngine {
       return;
     }
 
-    this._render(result);
+    this._render(result, view, geom.spatialReference);
     EngineLogger.success(
       "Route Profile",
       `Profiled ${(lengthM / 1000).toFixed(2)} km — +${Math.round(result.stats.gain)} / ` +
@@ -89,6 +105,7 @@ export default class RouteProfileEngine {
 
   /** Remove the profile panel. */
   public clearProfile(): void {
+    this._clearHoverMarker();
     document.getElementById(RouteProfileEngine.PANEL_ID)?.remove();
   }
 
@@ -146,7 +163,7 @@ export default class RouteProfileEngine {
 
       if (z < minElev) minElev = z;
       if (z > maxElev) maxElev = z;
-      samples.push({ distM: cumDist, elevM: z, slopePct });
+      samples.push({ distM: cumDist, elevM: z, slopePct, x: pt.x, y: pt.y });
 
       prev = pt;
       prevZ = z;
@@ -166,7 +183,34 @@ export default class RouteProfileEngine {
 
   // ─── Rendering (self-contained SVG panel) ────────────────────────────────
 
-  private _render(result: ProfileResult): void {
+  private _clearHoverMarker(): void {
+    if (this._hoverMarker) this._hoverView?.graphics.remove(this._hoverMarker);
+    this._hoverMarker = null;
+    this._hoverView = null;
+  }
+
+  private _showHoverMarker(view: MapView | SceneView, x: number, y: number, sr: any): void {
+    const geometry = new Point({ x, y, spatialReference: sr });
+    if (this._hoverMarker && this._hoverView === view) {
+      this._hoverMarker.geometry = geometry;
+      return;
+    }
+    this._clearHoverMarker();
+    this._hoverMarker = new Graphic({
+      geometry,
+      symbol: new SimpleMarkerSymbol({
+        style: "circle",
+        size: 12,
+        color: [255, 200, 0, 0.95],
+        outline: { color: [14, 22, 32, 1], width: 2 },
+      }),
+    });
+    this._hoverView = view;
+    view.graphics.add(this._hoverMarker);
+  }
+
+  private _render(result: ProfileResult, view: MapView | SceneView, sr: any): void {
+    this._clearHoverMarker();
     const { samples, stats } = result;
     const W = 520, H = 200, PAD_L = 48, PAD_R = 12, PAD_T = 14, PAD_B = 26;
     const plotW = W - PAD_L - PAD_R;
@@ -224,6 +268,11 @@ export default class RouteProfileEngine {
       xTicks +
       `<text x="${PAD_L}" y="${PAD_T - 3}" fill="#6e8398" font-size="9">elev (m)</text>` +
       `<text x="${W - PAD_R}" y="${H - 8}" text-anchor="end" fill="#6e8398" font-size="9">dist (km)</text>` +
+      `<g id="rpHover" style="display:none;pointer-events:none">` +
+      `<line id="rpHoverLine" x1="0" x2="0" y1="${PAD_T}" y2="${PAD_T + plotH}" stroke="#ffc800" stroke-width="1" stroke-dasharray="3 3"/>` +
+      `<circle id="rpHoverDot" r="4" fill="#ffc800" stroke="#0e1620" stroke-width="1.5"/>` +
+      `<text id="rpHoverText" y="${PAD_T + 8}" fill="#ffe08a" font-size="10"></text></g>` +
+      `<rect id="rpHit" x="${PAD_L}" y="${PAD_T}" width="${plotW}" height="${plotH}" fill="transparent" style="cursor:crosshair"/>` +
       `</svg>`;
 
     const header =
@@ -257,5 +306,44 @@ export default class RouteProfileEngine {
     }
     panel.innerHTML = header + svg + statsRow;
     panel.querySelector<HTMLElement>("#rpClose")?.addEventListener("click", () => this.clearProfile());
+
+    // Chart hover -> crosshair in the panel + moving marker on the map.
+    const svgEl = panel.querySelector<SVGSVGElement>("svg");
+    const hover = panel.querySelector<SVGGElement>("#rpHover");
+    const hLine = panel.querySelector<SVGLineElement>("#rpHoverLine");
+    const hDot = panel.querySelector<SVGCircleElement>("#rpHoverDot");
+    const hText = panel.querySelector<SVGTextElement>("#rpHoverText");
+    const hit = panel.querySelector<SVGRectElement>("#rpHit");
+    if (!svgEl || !hover || !hLine || !hDot || !hText || !hit) return;
+
+    hit.addEventListener("mousemove", (ev: MouseEvent) => {
+      const rect = svgEl.getBoundingClientRect();
+      const px = ((ev.clientX - rect.left) / rect.width) * W;
+      const d = Math.min(Math.max(((px - PAD_L) / plotW) * maxDist, 0), maxDist);
+
+      // Find the segment containing d and interpolate location + elevation.
+      let i = 1;
+      while (i < samples.length - 1 && samples[i].distM < d) i++;
+      const a = samples[i - 1], b = samples[i];
+      const span = b.distM - a.distM;
+      const t = span > 0 ? Math.min(Math.max((d - a.distM) / span, 0), 1) : 0;
+      const elev = a.elevM + (b.elevM - a.elevM) * t;
+
+      hover.style.display = "";
+      hLine.setAttribute("x1", String(x(d)));
+      hLine.setAttribute("x2", String(x(d)));
+      hDot.setAttribute("cx", String(x(d)));
+      hDot.setAttribute("cy", String(y(elev)));
+      const onRight = x(d) > W / 2;
+      hText.setAttribute("x", String(x(d) + (onRight ? -6 : 6)));
+      hText.setAttribute("text-anchor", onRight ? "end" : "start");
+      hText.textContent = `${(d / 1000).toFixed(2)} km · ${Math.round(elev)} m · ${b.slopePct.toFixed(0)}%`;
+
+      this._showHoverMarker(view, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, sr);
+    });
+    hit.addEventListener("mouseleave", () => {
+      hover.style.display = "none";
+      this._clearHoverMarker();
+    });
   }
 }

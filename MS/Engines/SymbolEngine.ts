@@ -1245,13 +1245,6 @@ class SymbolEngine implements Evented {
         icon: menuIcon('trash'),
         action: (graphic) => this.removeGraphic(graphic),
       },
-      {
-        id: 'route-elevation-profile',
-        label: 'Elevation Profile',
-        icon: menuIcon('navigation'),
-        visible: (graphic: Graphic) => graphic.geometry?.type === 'polyline',
-        action: (graphic) => this.showRouteProfile(graphic),
-      },
       // ── Edit submenu (owned by EditEngine) ─────────────────────────
       ...editMenuItems,
       // ── Selection + Align submenus (owned by SelectionEngine) ──────────
@@ -1920,9 +1913,10 @@ class SymbolEngine implements Evented {
 
   /**
    * Show the terrain elevation profile (distance vs elevation cross-section)
-   * for a route. Pass a polyline graphic or Polyline geometry.
+   * for a route, or along a polygon's outer boundary. Pass a polyline/polygon
+   * graphic or geometry.
    */
-  public showRouteProfile(input: Graphic | Polyline): Promise<void> {
+  public showRouteProfile(input: Graphic | Polyline | Polygon): Promise<void> {
     return this._routeProfileEngine.showProfile(input);
   }
 
