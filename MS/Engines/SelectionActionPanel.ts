@@ -172,6 +172,18 @@ class SelectionActionPanel {
         }
     }
 
+    /**
+     * Copy from the panel: the clipboard arms paste mode (cursor hint), so dismiss
+     * the panel the way Move does — it returns on the next selection change.
+     */
+    private _copyAndClose(graphic: Graphic): void {
+        this._cb.copySymbol(graphic);
+        this._removeContainer();
+        this._removeSimilarPopup();
+        this._lastSelectionSig = null;
+        this._placedSig = null;
+    }
+
     /** Selection the panel was last hugged to; tab switches don't re-place. */
     private _placedSig: string | null = null;
 
@@ -642,7 +654,7 @@ class SelectionActionPanel {
         switch (category) {
             case 'A': // Single point — move only (a lone point has nothing to rotate or scale)
                 row.appendChild(this._mkBtn('✎ Move',() => this._cb.modifySymbol(primary)));
-                row.appendChild(this._mkBtn('⎘ Copy', () => this._cb.copySymbol(primary)));
+                row.appendChild(this._mkBtn('⎘ Copy', () => this._copyAndClose(primary)));
                 row.appendChild(this._mkBtn('✕ Delete', () => this._deleteOne(primary), 'danger'));
                 row.appendChild(this._mkSimilarBtn(primary));
                 row.appendChild(this._mkBtn('⌖ Center', () => this._centerOn(primary)));
@@ -651,7 +663,7 @@ class SelectionActionPanel {
             case 'B': // Single line/area
                 row.appendChild(this._mkBtn('✎ Move, Scale, Rotate', () => this._cb.modifySymbol(primary)));
                 row.appendChild(this._mkBtn('↕ Edit Points', () => this._editEngine.activateEditControlPoints(primary)));
-                row.appendChild(this._mkBtn('⎘ Copy', () => this._cb.copySymbol(primary)));
+                row.appendChild(this._mkBtn('⎘ Copy', () => this._copyAndClose(primary)));
                 row.appendChild(this._mkBtn('✕ Delete', () => this._deleteOne(primary), 'danger'));
                 row.appendChild(this._mkBtn('◍ Within', () => this._selectionEngine.selectWithin(primary, false)));
                 row.appendChild(this._mkBtn('◎ Within+Self', () => this._selectionEngine.selectWithin(primary, true)));
