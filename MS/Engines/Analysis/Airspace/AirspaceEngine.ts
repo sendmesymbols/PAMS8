@@ -590,21 +590,21 @@ export class AirspaceEngine {
           <button class="ms-help-close" id="airspace-help-close" title="Close">✕</button>
         </div>
         <div class="ms-help-body">
-          <p><strong style="color:#EF9F27">What it does.</strong> Authors airspace control measures as a footprint plus a floor/ceiling altitude band, then flags where those volumes overlap each other or a planned flight route in both plan and altitude.</p>
-          <p><strong style="color:#EF9F27">Measure types.</strong></p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">What it does.</strong> Authors airspace control measures as a footprint plus a floor/ceiling altitude band, then flags where those volumes overlap each other or a planned flight route in both plan and altitude.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Measure types.</strong></p>
           <ul style="margin:0 0 9px;padding-left:16px;list-style:none">
             <li><span style="color:#DC3C30">ROZ</span> — Restricted Operations Zone. Restrictive: keeps other users out of the volume.</li>
             <li><span style="color:#378ADD">ACA</span> — Airspace Coordination Area. Coordinating: deconflicts surface fires from air.</li>
           </ul>
-          <p><strong style="color:#EF9F27">Workflow.</strong></p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Workflow.</strong></p>
           <ol>
             <li>Hit <strong>Draw footprint</strong> and click the plan shape on the map.</li>
             <li>The shipped default publishes a ROZ from the surface to 1000 m AGL — usable as-is.</li>
             <li>Open <strong>Volume detail</strong> to retype the band, rename it, or set the effective DTG. Edits apply as you make them.</li>
             <li><strong>Conflict check</strong> tests every volume against the others and against any flight routes on the map.</li>
           </ol>
-          <p><strong style="color:#EF9F27">Altitude reference.</strong> AGL is measured from terrain at the footprint centroid, MSL from sea level, and Flight Level in hundreds of feet (FL080 = 8000 ft). Conflict detection converts every band to absolute metres MSL first, so mixed references still compare correctly.</p>
-          <p><strong style="color:#EF9F27">Persistence.</strong> Metadata is patched onto the source footprint graphic through Morphix, so a volume opened from a drawn area survives save/load.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Altitude reference.</strong> AGL is measured from terrain at the footprint centroid, MSL from sea level, and Flight Level in hundreds of feet (FL080 = 8000 ft). Conflict detection converts every band to absolute metres MSL first, so mixed references still compare correctly.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Persistence.</strong> Metadata is patched onto the source footprint graphic through Morphix, so a volume opened from a drawn area survives save/load.</p>
         </div>
       </div>
       <div class="ms-body">

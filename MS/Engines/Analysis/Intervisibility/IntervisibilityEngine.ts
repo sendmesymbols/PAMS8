@@ -235,33 +235,33 @@ export default class IntervisibilityEngine {
     const best = this._argmax(connectivity);
 
     const head =
-      `<tr><th style="padding:3px 6px;color:#6e8398;font-weight:600">sees →</th>` +
+      `<tr><th style="padding:3px 6px;color:color-mix(in srgb, var(--ms-text, #cdd9e5) 45%, transparent);font-weight:600">sees →</th>` +
       labels.map((l, j) =>
-        `<th style="padding:3px 6px;color:${j === best ? "#5fd068" : "#9fb3c8"};font-size:11px">${this._esc(l)}</th>`,
+        `<th style="padding:3px 6px;color:${j === best ? "#5fd068" : "color-mix(in srgb, var(--ms-text, #cdd9e5) 65%, transparent)"};font-size:11px">${this._esc(l)}</th>`,
       ).join("") +
-      `<th style="padding:3px 6px;color:#9fb3c8;font-size:11px;border-left:1px solid #243240">links</th></tr>`;
+      `<th style="padding:3px 6px;color:color-mix(in srgb, var(--ms-text, #cdd9e5) 65%, transparent);font-size:11px;border-left:1px solid var(--ms-divider, #243240)">links</th></tr>`;
 
     const rows = labels.map((rl, i) => {
       const cells = labels.map((_cl, j) => {
-        if (i === j) return `<td style="text-align:center;color:#3a4a5a">–</td>`;
+        if (i === j) return `<td style="text-align:center;color:var(--ms-text-dim, #3a4a5a)">–</td>`;
         const v = visible[i][j];
         const mutual = v && visible[j][i];
         const glyph = v ? (mutual ? "●" : "◐") : "·";
         const color = v ? (mutual ? "#5fd068" : "#ffb428") : "#46586a";
         return `<td style="text-align:center;color:${color};font-size:13px" title="${this._esc(rl)} → ${this._esc(labels[j])}: ${v ? "visible" : "blocked"}">${glyph}</td>`;
       }).join("");
-      return `<tr><th style="padding:3px 6px;text-align:right;color:${i === best ? "#5fd068" : "#cdd9e5"};font-size:11px">${this._esc(rl)}</th>` +
+      return `<tr><th style="padding:3px 6px;text-align:right;color:${i === best ? "#5fd068" : "var(--ms-text, #cdd9e5)"};font-size:11px">${this._esc(rl)}</th>` +
         cells +
-        `<td style="text-align:center;font-weight:700;color:${i === best ? "#5fd068" : "#cdd9e5"};border-left:1px solid #243240">${connectivity[i]}</td></tr>`;
+        `<td style="text-align:center;font-weight:700;color:${i === best ? "#5fd068" : "var(--ms-text, #cdd9e5)"};border-left:1px solid var(--ms-divider, #243240)">${connectivity[i]}</td></tr>`;
     }).join("");
 
     const header =
-      `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid #243240">` +
-      `<span style="font-weight:600;color:#e6eef5">Intervisibility Matrix</span>` +
-      `<span id="ivClose" style="cursor:pointer;color:#9fb3c8;font-size:14px;padding:0 4px">✕</span></div>`;
+      `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--ms-divider, #243240)">` +
+      `<span style="font-weight:600;color:var(--ms-text, #e6eef5)">Intervisibility Matrix</span>` +
+      `<span id="ivClose" style="cursor:pointer;color:color-mix(in srgb, var(--ms-text, #cdd9e5) 65%, transparent);font-size:14px;padding:0 4px">✕</span></div>`;
 
     const legend =
-      `<div style="padding:5px 10px;color:#9fb3c8;font-size:10px;border-top:1px solid #243240">` +
+      `<div style="padding:5px 10px;color:color-mix(in srgb, var(--ms-text, #cdd9e5) 65%, transparent);font-size:10px;border-top:1px solid var(--ms-divider, #243240)">` +
       `<span style="color:#5fd068">●</span> mutual&nbsp;&nbsp;` +
       `<span style="color:#ffb428">◐</span> one-way&nbsp;&nbsp;` +
       `<span style="color:#46586a">·</span> blocked&nbsp;&nbsp;•&nbsp; best connected: ` +
@@ -273,8 +273,8 @@ export default class IntervisibilityEngine {
       panel.id = IntervisibilityEngine.PANEL_ID;
       panel.style.cssText =
         "position:fixed;left:16px;bottom:16px;z-index:9999;max-width:80vw;overflow:auto;" +
-        "background:#0e1620;border:1px solid #243240;border-radius:8px;" +
-        "box-shadow:0 8px 28px rgba(0,0,0,0.5);font-family:system-ui,Segoe UI,sans-serif;color:#e6eef5";
+        "background:var(--ms-bg, #0e1620);border:1px solid var(--ms-border, #243240);border-radius:8px;" +
+        "box-shadow:0 8px 28px rgba(0,0,0,0.5);font-family:var(--ms-font, system-ui, sans-serif);color:var(--ms-text, #e6eef5)";
       document.body.appendChild(panel);
     }
     panel.innerHTML =

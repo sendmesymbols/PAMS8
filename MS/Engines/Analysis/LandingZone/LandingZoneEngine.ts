@@ -748,16 +748,16 @@ export class LandingZoneEngine {
           <button class="ms-help-close" id="lz-help-close" title="Close">&#10005;</button>
         </div>
         <div class="ms-help-body">
-          <p><strong style="color:#EF9F27">What it does.</strong> Rates a helicopter LZ/PZ/DZ out of 100 across six factors, finds the flat touchdown spots inside it, and flags the terrain that penetrates the approach glide surface.</p>
-          <p><strong style="color:#EF9F27">Two ways in.</strong></p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">What it does.</strong> Rates a helicopter LZ/PZ/DZ out of 100 across six factors, finds the flat touchdown spots inside it, and flags the terrain that penetrates the approach glide surface.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Two ways in.</strong></p>
           <ul style="margin:0 0 9px;padding-left:16px;list-style:none">
             <li><strong>Click-to-search</strong> — pick a centre and the engine searches the radius around it for the best touchdown spots.</li>
             <li><strong>Score drawn zone</strong> — right-click a drawn LZ/PZ/DZ area and choose Landing Zone to score that exact footprint.</li>
           </ul>
-          <p><strong style="color:#EF9F27">Grades.</strong> <span style="color:#1D9E75">GO</span> at 70+, <span style="color:#EF9F27">CAUTION</span> at 45-69, <span style="color:#DC3C30">NO-GO</span> below 45. Each of the six factors scores 0-20; the composite is their sum.</p>
-          <p><strong style="color:#EF9F27">Aircraft matters most.</strong> The type sets the touchdown + rotor clearance footprint (Light 35 m, Utility 50 m, Cargo 80 m, Heavy 100 m), which drives both the capacity count and the spacing between spots. Set it before reading capacity.</p>
-          <p><strong style="color:#EF9F27">Advanced.</strong> Max slope is the flat-ground threshold (7&deg; suits most rotary wing). Approach bearing orients the two corridor fans; threat axis feeds the concealment and defensibility factors. Search radius only applies in click-to-search.</p>
-          <p><strong style="color:#EF9F27">Reading the map.</strong> Green-to-red raster = slope suitability. Green circles = touchdown spots with rotor clearance rings, labelled H1, H2... Blue fans = clear approach/departure lanes, dashed red = obstructed. Triangles = obstacles, red ones penetrate the approach.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Grades.</strong> <span style="color:#1D9E75">GO</span> at 70+, <span style="color:#EF9F27">CAUTION</span> at 45-69, <span style="color:#DC3C30">NO-GO</span> below 45. Each of the six factors scores 0-20; the composite is their sum.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Aircraft matters most.</strong> The type sets the touchdown + rotor clearance footprint (Light 35 m, Utility 50 m, Cargo 80 m, Heavy 100 m), which drives both the capacity count and the spacing between spots. Set it before reading capacity.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Advanced.</strong> Max slope is the flat-ground threshold (7&deg; suits most rotary wing). Approach bearing orients the two corridor fans; threat axis feeds the concealment and defensibility factors. Search radius only applies in click-to-search.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Reading the map.</strong> Green-to-red raster = slope suitability. Green circles = touchdown spots with rotor clearance rings, labelled H1, H2... Blue fans = clear approach/departure lanes, dashed red = obstructed. Triangles = obstacles, red ones penetrate the approach.</p>
         </div>
       </div>
       <div class="ms-body">

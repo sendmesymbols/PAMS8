@@ -1435,31 +1435,31 @@ class EditEngine {
             position: fixed;
             bottom: 70px;
             right: 20px;
-            background: rgba(14,18,28,0.92);
-            border: 1px solid rgba(90,140,220,0.4);
+            background: var(--ms-bg, rgba(14,18,28,0.92));
+            border: 1px solid var(--ms-border, rgba(90,140,220,0.4));
             border-radius: 9px;
             padding: 8px 16px;
-            font-family: 'Inter','Segoe UI',sans-serif;
+            font-family: var(--ms-font, 'Inter','Segoe UI',sans-serif);
             font-size: 11.5px;
-            color: #a8c4e0;
+            color: var(--ms-text, #a8c4e0);
             z-index: 1500;
             white-space: nowrap;
             box-shadow: 0 4px 18px rgba(0,0,0,0.45);
             display: flex; gap: 12px; align-items: center;
         `;
-        const sep = `<span style="color:#334455">|</span>`;
-        const kbd = `<kbd style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:4px;padding:1px 6px;font-size:10.5px;color:#f08060;font-family:inherit">Esc</kbd>`;
+        const sep = `<span style="color:var(--ms-divider, #334455)">|</span>`;
+        const kbd = `<kbd style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:4px;padding:1px 6px;font-size:10.5px;color:var(--ms-danger, #f08060);font-family:inherit">Esc</kbd>`;
         el.innerHTML = `
-            <span><span style="color:#64b4ff;font-weight:700;margin-right:4px">${cfg.icon}</span><strong style="color:#c8dff5">${cfg.title}</strong></span>
+            <span><span style="color:var(--ms-accent, #64b4ff);font-weight:700;margin-right:4px">${cfg.icon}</span><strong style="color:var(--ms-text, #c8dff5)">${cfg.title}</strong></span>
             <span class="edit-banner-body" style="display:flex; gap:12px; align-items:center;">
                 ${sep}
                 <span style="opacity:0.85">${cfg.hint}</span>
                 ${sep}
-                <button class="edit-banner-disable" style="background:rgba(220,80,80,0.18);border:1px solid rgba(220,80,80,0.5);border-radius:4px;padding:3px 10px;color:#f08060;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0.02em">Disable</button>
+                <button class="edit-banner-disable" style="background:color-mix(in srgb, var(--ms-danger, #dc5050) 16%, transparent);border:1px solid color-mix(in srgb, var(--ms-danger, #dc5050) 55%, transparent);border-radius:4px;padding:3px 10px;color:var(--ms-danger, #f08060);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0.02em">Disable</button>
                 ${sep}
                 <span style="opacity:0.7">or press ${kbd}</span>
             </span>
-            <button class="edit-banner-min" title="Minimize" style="background:transparent;border:1px solid rgba(90,140,220,0.25);color:rgba(155,180,215,0.72);font-family:inherit;font-size:11px;cursor:pointer;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
+            <button class="edit-banner-min" title="Minimize" style="background:transparent;border:1px solid var(--ms-border, rgba(90,140,220,0.4));color:color-mix(in srgb, var(--ms-text, #dce8f5) 68%, transparent);font-family:inherit;font-size:11px;cursor:pointer;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
         `;
         this._modeBannerAbort = new AbortController();
         el.querySelector('.edit-banner-disable')?.addEventListener(

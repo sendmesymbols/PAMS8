@@ -41,7 +41,7 @@
   --ms-info: #378ADD;
 
   /* Typography */
-  --ms-font: 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  --ms-font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --ms-font-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
   --ms-fs: 11.5px;
   --ms-fs-sm: 12.5px;

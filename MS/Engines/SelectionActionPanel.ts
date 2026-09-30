@@ -238,13 +238,13 @@ class SelectionActionPanel {
             bottom: 70px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(14,18,28,0.92);
-            border: 1px solid rgba(90,140,220,0.4);
+            background: var(--ms-bg, rgba(14,18,28,0.92));
+            border: 1px solid var(--ms-border, rgba(90,140,220,0.4));
             border-radius: 9px;
             padding: 6px 12px 8px;
-            font-family: 'Inter','Segoe UI',sans-serif;
+            font-family: var(--ms-font, 'Inter','Segoe UI',sans-serif);
             font-size: 11.5px;
-            color: #a8c4e0;
+            color: var(--ms-text, #a8c4e0);
             z-index: 1490;
             box-shadow: 0 4px 18px rgba(0,0,0,0.45);
             display: flex; flex-direction: column; gap: 6px;
@@ -515,15 +515,15 @@ class SelectionActionPanel {
 
         // ── Selection badge ────────────────────────────────────────────────
         const badge = document.createElement('span');
-        badge.style.cssText = 'display:flex; align-items:center; gap:6px; padding-right:8px; border-right:1px solid #334455;';
+        badge.style.cssText = 'display:flex; align-items:center; gap:6px; padding-right:8px; border-right:1px solid var(--ms-divider, #334455);';
         const dot = document.createElement('span');
         dot.style.cssText = `
             width:9px; height:9px; border-radius:50%; flex-shrink:0;
-            background:${category === 'E' ? '#e5a540' : '#1D9E75'};
-            box-shadow: 0 0 6px ${category === 'E' ? '#e5a540' : '#1D9E75'};
+            background:${category === 'E' ? 'var(--ms-warning, #e5a540)' : 'var(--ms-success, #1D9E75)'};
+            box-shadow: 0 0 6px ${category === 'E' ? 'var(--ms-warning, #e5a540)' : 'var(--ms-success, #1D9E75)'};
         `;
         const label = document.createElement('span');
-        label.style.cssText = 'color:#c8dff5; font-weight:600;';
+        label.style.cssText = 'color:var(--ms-text, #c8dff5); font-weight:600;';
         label.textContent = this._summary(selected);
         badge.appendChild(dot);
         badge.appendChild(label);
@@ -552,10 +552,10 @@ class SelectionActionPanel {
                     text-transform: uppercase;
                     letter-spacing: 0.05em;
                     cursor: pointer;
-                    background: ${isActive ? 'rgba(239,159,39,0.12)' : 'transparent'};
-                    border: 1px solid ${isActive ? '#EF9F27' : 'rgba(90,140,220,0.25)'};
+                    background: ${isActive ? 'color-mix(in srgb, var(--ms-accent, #EF9F27) 14%, transparent)' : 'transparent'};
+                    border: 1px solid ${isActive ? 'var(--ms-accent, #EF9F27)' : 'var(--ms-border, rgba(90,140,220,0.4))'};
                     border-radius: 4px;
-                    color: ${isActive ? '#EF9F27' : 'rgba(155,180,215,0.72)'};
+                    color: ${isActive ? 'var(--ms-accent, #EF9F27)' : 'color-mix(in srgb, var(--ms-text, #dce8f5) 68%, transparent)'};
                     transition: all 0.15s ease;
                 `;
                 btn.addEventListener('click', () => {
@@ -579,21 +579,21 @@ class SelectionActionPanel {
         header.appendChild(minBtn);
 
         // ── Deselect (✕) ───────────────────────────────────────────────────
-        const close = this._mkIconBtn('✕', 'Clear selection (Esc)', () => this._selectionEngine.clearSelection(), '#f08060');
+        const close = this._mkIconBtn('✕', 'Clear selection (Esc)', () => this._selectionEngine.clearSelection(), 'var(--ms-danger, #f08060)');
         header.appendChild(close);
 
         return header;
     }
 
     /** Small square icon button used for the header's minimize/close controls. */
-    private _mkIconBtn(icon: string, title: string, onClick: () => void, hoverColor = '#EF9F27'): HTMLButtonElement {
+    private _mkIconBtn(icon: string, title: string, onClick: () => void, hoverColor = 'var(--ms-accent, #EF9F27)'): HTMLButtonElement {
         const btn = document.createElement('button');
         btn.title = title;
         btn.innerHTML = icon;
         btn.style.cssText = `
             background: transparent;
-            border: 1px solid rgba(90,140,220,0.25);
-            color: rgba(155,180,215,0.72);
+            border: 1px solid var(--ms-border, rgba(90,140,220,0.4));
+            color: color-mix(in srgb, var(--ms-text, #dce8f5) 68%, transparent);
             font-family: inherit;
             font-size: 11px;
             cursor: pointer;
@@ -603,7 +603,7 @@ class SelectionActionPanel {
             flex-shrink: 0;
         `;
         btn.addEventListener('mouseenter', () => btn.style.color = hoverColor);
-        btn.addEventListener('mouseleave', () => btn.style.color = 'rgba(155,180,215,0.72)');
+        btn.addEventListener('mouseleave', () => btn.style.color = 'color-mix(in srgb, var(--ms-text, #dce8f5) 68%, transparent)');
         btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
         return btn;
     }
@@ -756,9 +756,9 @@ class SelectionActionPanel {
             b.style.cssText = `
                 padding:4px 9px; font-size:13px; line-height:1; font-family:inherit; font-weight:600;
                 cursor:pointer; border-radius:4px;
-                background:${active ? 'rgba(239,159,39,0.14)' : 'transparent'};
-                border:1px solid ${active ? '#EF9F27' : 'rgba(90,140,220,0.25)'};
-                color:${active ? '#EF9F27' : 'rgba(155,180,215,0.72)'};
+                background:${active ? 'color-mix(in srgb, var(--ms-accent, #EF9F27) 14%, transparent)' : 'transparent'};
+                border:1px solid ${active ? 'var(--ms-accent, #EF9F27)' : 'var(--ms-border, rgba(90,140,220,0.4))'};
+                color:${active ? 'var(--ms-accent, #EF9F27)' : 'color-mix(in srgb, var(--ms-text, #dce8f5) 68%, transparent)'};
             `;
             b.addEventListener('click', (e) => { e.stopPropagation(); this._filterMode = m; this.refresh(); });
             modeWrap.appendChild(b);
@@ -802,8 +802,8 @@ class SelectionActionPanel {
         input.title = 'Radius in metres (from the first selected symbol)';
         input.style.cssText = `
             width:52px; padding:4px 5px; font-family:inherit; font-size:10.5px;
-            background:rgba(0,0,0,0.3); color:rgba(220,232,245,0.92);
-            border:1px solid rgba(90,140,220,0.25); border-radius:4px;
+            background:var(--ms-bg-input, rgba(0,0,0,0.3)); color:var(--ms-text, #dce8f5);
+            border:1px solid var(--ms-border, rgba(90,140,220,0.4)); border-radius:4px;
         `;
         input.addEventListener('click', e => e.stopPropagation());
         radiusWrap.appendChild(input);
@@ -823,8 +823,8 @@ class SelectionActionPanel {
         const sel = document.createElement('select');
         sel.style.cssText = `
             padding:4px 6px; font-family:inherit; font-size:10.5px; cursor:pointer;
-            background:rgba(0,0,0,0.3); color:rgba(220,232,245,0.92);
-            border:1px solid rgba(90,140,220,0.25); border-radius:4px;
+            background:var(--ms-bg-input, rgba(0,0,0,0.3)); color:var(--ms-text, #dce8f5);
+            border:1px solid var(--ms-border, rgba(90,140,220,0.4)); border-radius:4px;
         `;
         const ph = document.createElement('option');
         ph.value = ''; ph.textContent = placeholder; ph.disabled = true; ph.selected = true;
@@ -850,22 +850,22 @@ class SelectionActionPanel {
             letter-spacing: 0.05em;
             font-weight: 600;
             cursor: pointer;
-            background: ${isDanger ? 'rgba(220,80,80,0.10)' : 'rgba(0,0,0,0.28)'};
-            border: 1px solid ${isDanger ? 'rgba(220,80,80,0.45)' : 'rgba(90,140,220,0.25)'};
+            background: ${isDanger ? 'color-mix(in srgb, var(--ms-danger, #dc5050) 16%, transparent)' : 'var(--ms-bg-input, rgba(0,0,0,0.3))'};
+            border: 1px solid ${isDanger ? 'color-mix(in srgb, var(--ms-danger, #dc5050) 55%, transparent)' : 'var(--ms-border, rgba(90,140,220,0.4))'};
             border-radius: 4px;
-            color: ${isDanger ? '#f0a0a0' : 'rgba(220,232,245,0.92)'};
+            color: ${isDanger ? 'var(--ms-danger, #f0a0a0)' : 'var(--ms-text, #dce8f5)'};
             white-space: nowrap;
             transition: all 0.12s ease;
         `;
         btn.addEventListener('mouseenter', () => {
-            btn.style.borderColor = isDanger ? 'rgba(220,80,80,0.7)' : '#EF9F27';
-            btn.style.background = isDanger ? 'rgba(220,80,80,0.18)' : 'rgba(26,32,48,0.97)';
-            btn.style.color = isDanger ? '#fff0f0' : '#dce8f5';
+            btn.style.borderColor = isDanger ? 'color-mix(in srgb, var(--ms-danger, #dc5050) 55%, transparent)' : 'var(--ms-accent, #EF9F27)';
+            btn.style.background = isDanger ? 'color-mix(in srgb, var(--ms-danger, #dc5050) 16%, transparent)' : 'var(--ms-bg, rgba(26,32,48,0.97))';
+            btn.style.color = isDanger ? 'var(--ms-danger, #fff0f0)' : 'var(--ms-text, #dce8f5)';
         });
         btn.addEventListener('mouseleave', () => {
-            btn.style.borderColor = isDanger ? 'rgba(220,80,80,0.45)' : 'rgba(90,140,220,0.25)';
-            btn.style.background = isDanger ? 'rgba(220,80,80,0.10)' : 'rgba(0,0,0,0.28)';
-            btn.style.color = isDanger ? '#f0a0a0' : 'rgba(220,232,245,0.92)';
+            btn.style.borderColor = isDanger ? 'color-mix(in srgb, var(--ms-danger, #dc5050) 55%, transparent)' : 'var(--ms-border, rgba(90,140,220,0.4))';
+            btn.style.background = isDanger ? 'color-mix(in srgb, var(--ms-danger, #dc5050) 16%, transparent)' : 'var(--ms-bg-input, rgba(0,0,0,0.3))';
+            btn.style.color = isDanger ? 'var(--ms-danger, #f0a0a0)' : 'var(--ms-text, #dce8f5)';
         });
         btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
         return btn;
@@ -888,8 +888,8 @@ class SelectionActionPanel {
             position: fixed;
             left: ${rect.left}px;
             bottom: ${window.innerHeight - rect.top + 4}px;
-            background: rgba(20,26,38,0.97);
-            border: 1px solid rgba(90,140,220,0.4);
+            background: var(--ms-bg, rgba(20,26,38,0.97));
+            border: 1px solid var(--ms-border, rgba(90,140,220,0.4));
             border-radius: 6px;
             padding: 4px;
             display: flex; flex-direction: column; gap: 2px;
@@ -909,7 +909,7 @@ class SelectionActionPanel {
             item.style.cssText = `
                 background: transparent;
                 border: none;
-                color: rgba(220,232,245,0.92);
+                color: var(--ms-text, #dce8f5);
                 font-family: inherit;
                 font-size: 11px;
                 text-align: left;
@@ -917,7 +917,7 @@ class SelectionActionPanel {
                 border-radius: 3px;
                 cursor: pointer;
             `;
-            item.addEventListener('mouseenter', () => item.style.background = 'rgba(239,159,39,0.12)');
+            item.addEventListener('mouseenter', () => item.style.background = 'color-mix(in srgb, var(--ms-accent, #EF9F27) 14%, transparent)');
             item.addEventListener('mouseleave', () => item.style.background = 'transparent');
             item.addEventListener('click', (e) => {
                 e.stopPropagation();

@@ -351,7 +351,7 @@ export class OcokaEngine {
         <div class="ms-body" id="ocoka-approach-list" style="overflow-y:auto;flex:1;padding:6px;">
           <div class="ms-empty">
             Set the analysis area centre and radius<br>in the right panel, then click<br>
-            <strong style="color:#378ADD">Run OCOKA Analysis</strong>.<br><br>
+            <strong style="color:var(--ms-accent,#378ADD)">Run OCOKA Analysis</strong>.<br><br>
             Corridors are auto-extracted from<br>terrain topology and scored on:<br>
             width - masking - trafficability - observation
           </div>
@@ -1142,7 +1142,7 @@ export class OcokaEngine {
     if (lbl) lbl.textContent = text;
     if (dot) {
       if (cls === 'done' || cls === 'ready') {
-        dot.style.background = cls === 'done' ? 'var(--ms-success)' : '#888';
+        dot.style.background = cls === 'done' ? 'var(--ms-success)' : 'var(--ms-text-dim, #888)';
         dot.style.boxShadow = cls === 'done' ? '0 0 6px var(--ms-success)' : 'none';
       } else {
         dot.style.background = 'var(--ms-accent)';
@@ -1338,7 +1338,7 @@ export class OcokaEngine {
       const tip = document.createElement('div');
       tip.className = 'ms-panel ms-theme-ops-dark';
       tip.style.cssText =
-        'position:fixed;z-index:1200;background:var(--ms-bg-elevated,#1e2434);color:var(--ms-text,#fff);' +
+        'position:fixed;z-index:1200;background:var(--ms-bg,#1e2434);color:var(--ms-text,#fff);' +
         'border:1px solid var(--ms-accent,#e5a540);border-radius:6px;padding:7px 10px;font-size:11px;line-height:1.4;' +
         'max-width:230px;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .18s;';
       document.body.appendChild(tip);

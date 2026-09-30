@@ -1495,7 +1495,7 @@ export class WeaponEffectEngine {
     if (!this._tooltipEl) {
       const tip = document.createElement('div');
       tip.style.cssText =
-        'position:fixed;z-index:1200;background:var(--ms-bg-header,#1e2434);color:var(--ms-text,#fff);' +
+        'position:fixed;z-index:1200;background:var(--ms-bg,#1e2434);color:var(--ms-text,#fff);' +
         'border:1px solid var(--ms-accent,#378ADD);border-radius:5px;padding:7px 10px;font-size:11px;line-height:1.4;' +
         'max-width:240px;box-shadow:var(--ms-shadow,0 6px 20px rgba(0,0,0,.45));pointer-events:none;opacity:0;transition:opacity .18s;';
       document.body.appendChild(tip);

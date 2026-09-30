@@ -1111,7 +1111,7 @@ export class BufferEngine {
     if (!this._tooltipEl) {
       const tip = document.createElement('div');
       tip.style.cssText =
-        'position:fixed;z-index:1200;background:var(--ms-bg-header,#1e2434);color:var(--ms-text,#fff);' +
+        'position:fixed;z-index:1200;background:var(--ms-bg,#1e2434);color:var(--ms-text,#fff);' +
         'border:1px solid var(--ms-accent,#378ADD);border-radius:5px;padding:7px 10px;font-size:11px;line-height:1.4;' +
         'max-width:240px;box-shadow:var(--ms-shadow,0 6px 20px rgba(0,0,0,.45));pointer-events:none;opacity:0;transition:opacity .18s;';
       document.body.appendChild(tip);
@@ -1202,16 +1202,16 @@ export class BufferEngine {
     const lblEl = this._panelEl?.querySelector<HTMLElement>('#buffer-status-lbl');
     if (!dotEl || !lblEl) return;
     const map: Record<string, [string, string]> = {
-      awaiting: ['#555', 'Awaiting source'],
-      picking: ['#378ADD', 'Click map…'],
-      computing: ['#EF9F27', 'Computing…'],
-      ready: ['#1D9E75', 'Ready'],
-      committed: ['#1D9E75', 'Committed ✓'],
-      error: ['#E24B4A', 'Error'],
+      awaiting: ['var(--ms-text-dim, #555)', 'Awaiting source'],
+      picking: ['var(--ms-info, #378ADD)', 'Click map…'],
+      computing: ['var(--ms-warning, #EF9F27)', 'Computing…'],
+      ready: ['var(--ms-success, #1D9E75)', 'Ready'],
+      committed: ['var(--ms-success, #1D9E75)', 'Committed ✓'],
+      error: ['var(--ms-danger, #E24B4A)', 'Error'],
     };
     const [color, label] = map[state] ?? map.awaiting;
     dotEl.style.background = color;
-    dotEl.style.boxShadow = `0 0 6px ${color}88`;
+    dotEl.style.boxShadow = `0 0 6px color-mix(in srgb, ${color} 53%, transparent)`;
     lblEl.textContent = label;
   }
 

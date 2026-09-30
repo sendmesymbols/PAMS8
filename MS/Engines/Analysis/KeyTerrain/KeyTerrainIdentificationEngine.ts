@@ -345,7 +345,7 @@ export class KeyTerrainIdentificationEngine {
         <div class="ms-body" id="kt-feature-list">
           <div class="ms-empty" id="kt-list-empty">
             Set the analysis area in the right panel, then click<br>
-            <strong style="color:#EF9F27">Run Analysis</strong><br><br>
+            <strong style="color:var(--ms-accent,#EF9F27)">Run Analysis</strong><br><br>
             Features are ranked by composite score:<br>
             elevation prominence + viewshed coverage<br>+ tactical type weight
           </div>
@@ -380,8 +380,8 @@ export class KeyTerrainIdentificationEngine {
             <button class="ms-help-close" id="kt-help-close" title="Close">✕</button>
           </div>
           <div class="ms-help-body">
-            <p><strong style="color:#EF9F27">What it does.</strong> Detects and ranks tactically significant terrain inside the analysis area by combining elevation prominence, surface curvature (Laplacian + plan/profile), and a 36-ray viewshed score from each candidate.</p>
-            <p><strong style="color:#EF9F27">Feature classes.</strong></p>
+            <p><strong style="color:var(--ms-accent,#EF9F27)">What it does.</strong> Detects and ranks tactically significant terrain inside the analysis area by combining elevation prominence, surface curvature (Laplacian + plan/profile), and a 36-ray viewshed score from each candidate.</p>
+            <p><strong style="color:var(--ms-accent,#EF9F27)">Feature classes.</strong></p>
             <ul style="margin:0 0 9px;padding-left:16px;list-style:none">
               <li><span style="color:#DC3C30">▲ Dominant ground</span> — high points with strong prominence and viewshed; seize / deny.</li>
               <li><span style="color:#EF9F27">≡ Ridge / crest</span> — linear high ground; defensive line, enfilade fires.</li>
@@ -389,15 +389,15 @@ export class KeyTerrainIdentificationEngine {
               <li><span style="color:#1D9E75">↓ Re-entrant</span> — concave channel; covered avenue of approach.</li>
               <li><span style="color:#B428DC">↗ Spur / finger</span> — flank position; screens dead ground.</li>
             </ul>
-            <p><strong style="color:#EF9F27">Workflow.</strong></p>
+            <p><strong style="color:var(--ms-accent,#EF9F27)">Workflow.</strong></p>
             <ol>
               <li>Click the map to set the analysis centre. A yellow marker confirms it.</li>
               <li>Pick a radius matching your echelon: 2 km position, 4 km company, 8 km battalion, 15 km brigade.</li>
               <li>Hit <strong>Run Analysis</strong>. The defaults suit most ground.</li>
               <li>Click any ranked card to fly to that feature.</li>
             </ol>
-            <p><strong style="color:#EF9F27">Advanced.</strong> Open the Advanced panel to type a centre by hand, trade grid cell size for speed, raise sensitivity to surface subtler ground, filter which feature types are detected, or switch the curvature and viewshed overlays.</p>
-            <p><strong style="color:#EF9F27">Reading the cards.</strong> Score (0-100) = 35% prominence + 40% viewshed + 15% elevation + 10% type weight. Bars show each component normalised across the result set. The top result also drives the optional viewshed overlay.</p>
+            <p><strong style="color:var(--ms-accent,#EF9F27)">Advanced.</strong> Open the Advanced panel to type a centre by hand, trade grid cell size for speed, raise sensitivity to surface subtler ground, filter which feature types are detected, or switch the curvature and viewshed overlays.</p>
+            <p><strong style="color:var(--ms-accent,#EF9F27)">Reading the cards.</strong> Score (0-100) = 35% prominence + 40% viewshed + 15% elevation + 10% type weight. Bars show each component normalised across the result set. The top result also drives the optional viewshed overlay.</p>
           </div>
         </div>
         <div class="ms-body">
@@ -1529,7 +1529,7 @@ export class KeyTerrainIdentificationEngine {
             <div class="ms-feature-bar-val">${Math.round(feature.elev)}m</div>
           </div>
         </div>
-        <div class="ms-feature-assessment">${ft.assessment(feature)}${feature.controlsRoute ? ' <strong style="color:#EF9F27">Controls a road avenue — high mobility value.</strong>' : ''}</div>
+        <div class="ms-feature-assessment">${ft.assessment(feature)}${feature.controlsRoute ? ' <strong style="color:var(--ms-accent,#EF9F27)">Controls a road avenue — high mobility value.</strong>' : ''}</div>
       `;
 
       card.addEventListener('click', () => {

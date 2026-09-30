@@ -380,7 +380,7 @@ export class PosDefScorerEngine {
     if (!this._hintEl) {
       this._hintEl = document.createElement('div');
       this._hintEl.id = 'posdef-hint';
-      this._hintEl.style.cssText = 'position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); z-index: 1098; display: none; font-family: monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 22px; border-radius: 6px; pointer-events: none; background: rgba(20, 24, 32, 0.94); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(90, 130, 200, 0.35)); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); backdrop-filter: blur(10px);';
+      this._hintEl.style.cssText = 'position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); z-index: 1098; display: none; font-family: var(--ms-font, sans-serif); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 22px; border-radius: 6px; pointer-events: none; background: var(--ms-bg, rgba(20, 24, 32, 0.94)); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(90, 130, 200, 0.35)); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); backdrop-filter: blur(10px);';
       this._hintEl.textContent = 'Click map to score a position - Ctrl+Click to add egress waypoints';
       document.body.appendChild(this._hintEl);
     }
@@ -1371,7 +1371,7 @@ export class PosDefScorerEngine {
       const delBtn = document.createElement('button');
       delBtn.style.cssText = 'font-size: var(--ms-fs-xs); color: var(--ms-text-dim); cursor: pointer; border: none; background: transparent; padding: 2px 4px; transition: color 0.12s;';
       delBtn.textContent = '✕';
-      delBtn.addEventListener('mouseover', () => delBtn.style.color = 'var(--ms-accent-danger)');
+      delBtn.addEventListener('mouseover', () => delBtn.style.color = 'var(--ms-danger)');
       delBtn.addEventListener('mouseout', () => delBtn.style.color = 'var(--ms-text-dim)');
       delBtn.addEventListener('click', () => {
         this._egressPts.splice(i, 1);

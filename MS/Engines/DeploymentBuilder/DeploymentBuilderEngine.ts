@@ -1161,10 +1161,10 @@ class DeploymentBuilderEngine {
         position: fixed;
         z-index: 1500;
         display: flex; align-items: center; gap: 8px;
-        background: rgba(14, 18, 28, 0.72);
+        background: color-mix(in srgb, var(--ms-bg, #0e121c) 75%, transparent);
         -webkit-backdrop-filter: blur(10px) saturate(140%);
         backdrop-filter: blur(10px) saturate(140%);
-        border: 1px solid rgba(239, 159, 39, 0.55);
+        border: 1px solid color-mix(in srgb, var(--ms-accent, #ef9f27) 55%, transparent);
         border-radius: 7px;
         padding: 5px 12px 5px 10px;
         font-family: var(--ms-font-mono);
@@ -1174,7 +1174,7 @@ class DeploymentBuilderEngine {
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
       }
       .db-bearing-hud .db-bearing-kicker {
-        color: rgba(180, 200, 230, 0.85);
+        color: color-mix(in srgb, var(--ms-text, #b4c8e6) 80%, transparent);
         font-size: var(--ms-fs-xs);
         text-transform: uppercase;
         letter-spacing: 0.1em;
@@ -1182,12 +1182,12 @@ class DeploymentBuilderEngine {
       }
       .db-bearing-hud .db-bearing-deg {
         font-weight: 800;
-        color: #ffffff;
+        color: var(--ms-text, #fff);
         font-size: 14px;
         text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
       }
       .db-bearing-hud .db-bearing-card {
-        color: #80d8a0;
+        color: var(--ms-success, #80d8a0);
         font-size: var(--ms-fs);
         font-weight: 600;
       }
@@ -1199,39 +1199,39 @@ class DeploymentBuilderEngine {
         transform: translateX(-50%);
         z-index: 1500;
         display: flex; gap: 14px; align-items: center;
-        background: rgba(14, 18, 28, 0.68);
+        background: color-mix(in srgb, var(--ms-bg, #0e121c) 72%, transparent);
         -webkit-backdrop-filter: blur(12px) saturate(140%);
         backdrop-filter: blur(12px) saturate(140%);
-        border: 1px solid rgba(90, 140, 220, 0.4);
+        border: 1px solid var(--ms-border, rgba(90, 140, 220, 0.4));
         border-radius: 9px;
         padding: 8px 20px;
         font-family: var(--ms-font);
         font-size: var(--ms-fs);
-        color: rgba(200, 220, 240, 0.95);
+        color: var(--ms-text, #c8dcf0);
         pointer-events: none;
         white-space: nowrap;
         box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
       }
       .db-placement-instructions .db-pi-step {
-        color: #ffffff;
+        color: var(--ms-text, #fff);
         font-weight: 700;
         text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
       }
       .db-placement-instructions .db-pi-sep {
-        color: rgba(150, 170, 200, 0.4);
+        color: color-mix(in srgb, var(--ms-text, #96aac8) 40%, transparent);
       }
       .db-placement-instructions .db-pi-key {
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: color-mix(in srgb, var(--ms-text, #fff) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--ms-text, #fff) 22%, transparent);
         border-radius: var(--ms-radius-sm);
         padding: 1px 6px;
         font-size: var(--ms-fs-xs);
         font-family: inherit;
         font-weight: 600;
       }
-      .db-placement-instructions .db-pi-key-accent  { color: #ffc46e; }
-      .db-placement-instructions .db-pi-key-success { color: #90e8b0; }
-      .db-placement-instructions .db-pi-key-danger  { color: #ff9090; }
+      .db-placement-instructions .db-pi-key-accent  { color: var(--ms-accent, #ffc46e); }
+      .db-placement-instructions .db-pi-key-success { color: var(--ms-success, #90e8b0); }
+      .db-placement-instructions .db-pi-key-danger  { color: var(--ms-danger, #ff9090); }
     `;
     document.head.appendChild(style);
   }

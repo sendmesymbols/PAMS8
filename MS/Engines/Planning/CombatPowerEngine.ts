@@ -393,16 +393,16 @@ export default class CombatPowerEngine {
           <button class="ms-help-close" id="cp-help-close" title="Close">&#10005;</button>
         </div>
         <div class="ms-help-body">
-          <p><strong style="color:#EF9F27">What it does.</strong> Sums the relative combat power of every unit symbol on the map by affiliation and reports the FRIENDLY : HOSTILE ratio against the 3:1 rule. It reads the map and recomputes itself as you place symbols — there is nothing to set.</p>
-          <p><strong style="color:#EF9F27">The verdict scale.</strong></p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">What it does.</strong> Sums the relative combat power of every unit symbol on the map by affiliation and reports the FRIENDLY : HOSTILE ratio against the 3:1 rule. It reads the map and recomputes itself as you place symbols — there is nothing to set.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">The verdict scale.</strong></p>
           <ul style="margin:0 0 9px;padding-left:16px;list-style:none">
             <li><span style="color:#1D9E75">3:1 or better</span> — meets the doctrinal minimum for a deliberate attack.</li>
             <li><span style="color:#78C840">2:1 to 3:1</span> — supports a hasty attack, short of the deliberate minimum.</li>
             <li><span style="color:#EF9F27">1:1 to 2:1</span> — near parity; attacking without an advantage is not recommended.</li>
             <li><span style="color:#DC3C30">below 1:1</span> — outnumbered; favour a defensive posture.</li>
           </ul>
-          <p><strong style="color:#EF9F27">Weighting.</strong> Power comes from the echelon field of each symbol's SIDC (positions 9-10), on a relative scale where each tier is roughly three times the one below: team 1, squad 2, platoon 4, company 13, battalion 45, brigade 150, division 450. A symbol with no echelon (equipment, a lone marker) counts as 1. Open <strong>Force detail</strong> to see the per-echelon breakdown behind each side's total.</p>
-          <p><strong style="color:#EF9F27">Limitations — read before briefing.</strong> These are deliberate ESTIMATES, not WEI/WUV scores: they give a meaningful relative ratio and nothing more. Nothing here accounts for posture, terrain, fires, logistics or morale. Only unit and equipment symbols on the force layer are counted — tactical control measures are ignored, and so is anything drawn on another layer.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Weighting.</strong> Power comes from the echelon field of each symbol's SIDC (positions 9-10), on a relative scale where each tier is roughly three times the one below: team 1, squad 2, platoon 4, company 13, battalion 45, brigade 150, division 450. A symbol with no echelon (equipment, a lone marker) counts as 1. Open <strong>Force detail</strong> to see the per-echelon breakdown behind each side's total.</p>
+          <p><strong style="color:var(--ms-accent,#EF9F27)">Limitations — read before briefing.</strong> These are deliberate ESTIMATES, not WEI/WUV scores: they give a meaningful relative ratio and nothing more. Nothing here accounts for posture, terrain, fires, logistics or morale. Only unit and equipment symbols on the force layer are counted — tactical control measures are ignored, and so is anything drawn on another layer.</p>
         </div>
       </div>
       <div class="ms-body">

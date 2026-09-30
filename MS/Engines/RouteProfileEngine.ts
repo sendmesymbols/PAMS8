@@ -240,56 +240,56 @@ export default class RouteProfileEngine {
         steep.push(
           `<line x1="${x(a.distM).toFixed(1)}" y1="${y(a.elevM).toFixed(1)}" ` +
             `x2="${x(b.distM).toFixed(1)}" y2="${y(b.elevM).toFixed(1)}" ` +
-            `stroke="#ff4d4d" stroke-width="3" />`,
+            `style="stroke:var(--ms-danger, #ff4d4d)" stroke-width="3" />`,
         );
       }
     }
 
     const yTicks = [eMin, eMin + eSpan / 2, eMax]
       .map(e => `<text x="${PAD_L - 6}" y="${(y(e) + 3).toFixed(1)}" text-anchor="end" ` +
-        `fill="#9fb3c8" font-size="10">${Math.round(e)}</text>` +
+        `style="fill:color-mix(in srgb, var(--ms-text, #cdd9e5) 65%, transparent)" font-size="10">${Math.round(e)}</text>` +
         `<line x1="${PAD_L}" y1="${y(e).toFixed(1)}" x2="${W - PAD_R}" y2="${y(e).toFixed(1)}" ` +
-        `stroke="#2a3a4a" stroke-width="0.5" />`)
+        `style="stroke:var(--ms-divider, #2a3a4a)" stroke-width="0.5" />`)
       .join("");
     const xTicks = [0, maxDist / 2, maxDist]
       .map(d => `<text x="${x(d).toFixed(1)}" y="${H - 8}" text-anchor="middle" ` +
-        `fill="#9fb3c8" font-size="10">${(d / 1000).toFixed(2)}</text>`)
+        `style="fill:color-mix(in srgb, var(--ms-text, #cdd9e5) 65%, transparent)" font-size="10">${(d / 1000).toFixed(2)}</text>`)
       .join("");
 
     const svg =
       `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">` +
       `<defs><linearGradient id="rpFill" x1="0" y1="0" x2="0" y2="1">` +
-      `<stop offset="0%" stop-color="#3da9fc" stop-opacity="0.45"/>` +
-      `<stop offset="100%" stop-color="#3da9fc" stop-opacity="0.05"/></linearGradient></defs>` +
+      `<stop offset="0%" style="stop-color:var(--ms-accent, #3da9fc)" stop-opacity="0.45"/>` +
+      `<stop offset="100%" style="stop-color:var(--ms-accent, #3da9fc)" stop-opacity="0.05"/></linearGradient></defs>` +
       yTicks +
       `<path d="${areaPath}" fill="url(#rpFill)" stroke="none" />` +
-      `<path d="${linePath}" fill="none" stroke="#3da9fc" stroke-width="1.5" />` +
+      `<path d="${linePath}" fill="none" style="stroke:var(--ms-accent, #3da9fc)" stroke-width="1.5" />` +
       steep.join("") +
       xTicks +
-      `<text x="${PAD_L}" y="${PAD_T - 3}" fill="#6e8398" font-size="9">elev (m)</text>` +
-      `<text x="${W - PAD_R}" y="${H - 8}" text-anchor="end" fill="#6e8398" font-size="9">dist (km)</text>` +
+      `<text x="${PAD_L}" y="${PAD_T - 3}" style="fill:color-mix(in srgb, var(--ms-text, #cdd9e5) 45%, transparent)" font-size="9">elev (m)</text>` +
+      `<text x="${W - PAD_R}" y="${H - 8}" text-anchor="end" style="fill:color-mix(in srgb, var(--ms-text, #cdd9e5) 45%, transparent)" font-size="9">dist (km)</text>` +
       `<g id="rpHover" style="display:none;pointer-events:none">` +
       `<line id="rpHoverLine" x1="0" x2="0" y1="${PAD_T}" y2="${PAD_T + plotH}" stroke="#ffc800" stroke-width="1" stroke-dasharray="3 3"/>` +
-      `<circle id="rpHoverDot" r="4" fill="#ffc800" stroke="#0e1620" stroke-width="1.5"/>` +
-      `<text id="rpHoverText" y="${PAD_T + 8}" fill="#ffe08a" font-size="10"></text></g>` +
+      `<circle id="rpHoverDot" r="4" fill="#ffc800" style="stroke:var(--ms-bg, #0e1620)" stroke-width="1.5"/>` +
+      `<text id="rpHoverText" y="${PAD_T + 8}" style="fill:var(--ms-text, #ffe08a)" font-size="10"></text></g>` +
       `<rect id="rpHit" x="${PAD_L}" y="${PAD_T}" width="${plotW}" height="${plotH}" fill="transparent" style="cursor:crosshair"/>` +
       `</svg>`;
 
     const header =
       `<div style="display:flex;justify-content:space-between;align-items:center;` +
-      `padding:6px 10px;border-bottom:1px solid #243240">` +
-      `<span style="font-weight:600;color:#e6eef5">Route Elevation Profile</span>` +
-      `<span id="rpClose" style="cursor:pointer;color:#9fb3c8;font-size:14px;padding:0 4px">✕</span>` +
+      `padding:6px 10px;border-bottom:1px solid var(--ms-divider, #243240)">` +
+      `<span style="font-weight:600;color:var(--ms-text, #e6eef5)">Route Elevation Profile</span>` +
+      `<span id="rpClose" style="cursor:pointer;color:color-mix(in srgb, var(--ms-text, #cdd9e5) 65%, transparent);font-size:14px;padding:0 4px">✕</span>` +
       `</div>`;
 
     const statsRow =
-      `<div style="display:flex;gap:14px;padding:6px 10px;color:#cdd9e5;font-size:11px;` +
-      `border-top:1px solid #243240">` +
+      `<div style="display:flex;gap:14px;padding:6px 10px;color:var(--ms-text, #cdd9e5);font-size:11px;` +
+      `border-top:1px solid var(--ms-divider, #243240)">` +
       `<span>Length <b>${(stats.lengthM / 1000).toFixed(2)} km</b></span>` +
-      `<span style="color:#5fd068">▲ ${Math.round(stats.gain)} m</span>` +
-      `<span style="color:#ff8c8c">▼ ${Math.round(stats.loss)} m</span>` +
+      `<span style="color:var(--ms-success, #5fd068)">▲ ${Math.round(stats.gain)} m</span>` +
+      `<span style="color:var(--ms-danger, #ff8c8c)">▼ ${Math.round(stats.loss)} m</span>` +
       `<span>Range <b>${Math.round(stats.minElev)}–${Math.round(stats.maxElev)} m</b></span>` +
-      `<span>Max slope <b style="color:${stats.maxSlopePct >= RouteProfileEngine.STEEP_PCT ? "#ff6b6b" : "#cdd9e5"}">` +
+      `<span>Max slope <b style="color:${stats.maxSlopePct >= RouteProfileEngine.STEEP_PCT ? "var(--ms-danger, #ff6b6b)" : "var(--ms-text, #cdd9e5)"}">` +
       `${stats.maxSlopePct.toFixed(0)}%</b></span>` +
       `</div>`;
 
@@ -299,9 +299,9 @@ export default class RouteProfileEngine {
       panel.id = RouteProfileEngine.PANEL_ID;
       panel.style.cssText =
         "position:fixed;right:16px;bottom:16px;z-index:9999;width:520px;" +
-        "background:#0e1620;border:1px solid #243240;border-radius:8px;" +
-        "box-shadow:0 8px 28px rgba(0,0,0,0.5);font-family:system-ui,Segoe UI,sans-serif;" +
-        "color:#e6eef5;overflow:hidden";
+        "background:var(--ms-bg, #0e1620);border:1px solid var(--ms-border, #243240);border-radius:8px;" +
+        "box-shadow:0 8px 28px rgba(0,0,0,0.5);font-family:var(--ms-font, system-ui, sans-serif);" +
+        "color:var(--ms-text, #e6eef5);overflow:hidden";
       document.body.appendChild(panel);
     }
     panel.innerHTML = header + svg + statsRow;

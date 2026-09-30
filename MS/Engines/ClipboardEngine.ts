@@ -343,17 +343,17 @@ export default class ClipboardEngine {
       dialog.id = 'pasteOffsetDialog';
       dialog.style.cssText = `
         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        background: rgba(30, 35, 45, 0.95); border: 1px solid rgba(100, 160, 230, 0.4);
+        background: var(--ms-bg, rgba(30, 35, 45, 0.95)); border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4));
         padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-        z-index: 1000; color: #dce8f5; font-family: 'Courier New', monospace; min-width: 320px;
+        z-index: 1000; color: var(--ms-text, #dce8f5); font-family: var(--ms-font, sans-serif); min-width: 320px;
       `;
 
       dialog.innerHTML = `
-        <h3 style="margin: 0 0 15px 0; color: #64b4ff; font-size: 16px; border-bottom: 1px solid rgba(100, 160, 230, 0.25); padding-bottom: 8px;">Paste Offset</h3>
+        <h3 style="margin: 0 0 15px 0; color: var(--ms-accent, #64b4ff); font-size: 16px; border-bottom: 1px solid var(--ms-divider, rgba(100, 160, 230, 0.25)); padding-bottom: 8px;">Paste Offset</h3>
 
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px;">Location Mode:</label>
-          <select id="poMode" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
+          <select id="poMode" style="width: 100%; padding: 5px; background: var(--ms-bg-input, rgba(18, 22, 32, 0.9)); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4)); border-radius: 4px;">
             <option value="exact">Exact Location</option>
             <option value="offset">Direction & Offset</option>
             <option value="center">Pick Center Point</option>
@@ -364,11 +364,11 @@ export default class ClipboardEngine {
           <div style="display: flex; gap: 10px; margin-bottom: 10px;">
             <div style="flex: 1;">
               <label style="display: block; margin-bottom: 5px;">Distance:</label>
-              <input type="number" id="poDistance" value="0" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
+              <input type="number" id="poDistance" value="0" style="width: 100%; padding: 5px; background: var(--ms-bg-input, rgba(18, 22, 32, 0.9)); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4)); border-radius: 4px; box-sizing: border-box;" />
             </div>
             <div style="flex: 1;">
               <label style="display: block; margin-bottom: 5px;">Unit:</label>
-              <select id="poUnit" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
+              <select id="poUnit" style="width: 100%; padding: 5px; background: var(--ms-bg-input, rgba(18, 22, 32, 0.9)); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4)); border-radius: 4px;">
                 <option value="meters">Meters</option>
                 <option value="kilometers">Kilometers</option>
                 <option value="miles">Miles</option>
@@ -377,7 +377,7 @@ export default class ClipboardEngine {
           </div>
           <div>
             <label style="display: block; margin-bottom: 5px;">Direction:</label>
-            <select id="poDirection" style="width: 100%; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
+            <select id="poDirection" style="width: 100%; padding: 5px; background: var(--ms-bg-input, rgba(18, 22, 32, 0.9)); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4)); border-radius: 4px;">
               <option value="0">North (0°)</option>
               <option value="45">North East (45°)</option>
               <option value="90">East (90°)</option>
@@ -393,20 +393,20 @@ export default class ClipboardEngine {
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px;">Expand / Contract Distance:</label>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="poExpandDist" step="0.1" value="0" style="flex: 1; padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; box-sizing: border-box;" />
-            <select id="poExpandUnit" style="padding: 5px; background: rgba(18, 22, 32, 0.9); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px;">
+            <input type="number" id="poExpandDist" step="0.1" value="0" style="flex: 1; padding: 5px; background: var(--ms-bg-input, rgba(18, 22, 32, 0.9)); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4)); border-radius: 4px; box-sizing: border-box;" />
+            <select id="poExpandUnit" style="padding: 5px; background: var(--ms-bg-input, rgba(18, 22, 32, 0.9)); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4)); border-radius: 4px;">
               <option value="meters">m</option>
               <option value="kilometers">km</option>
               <option value="miles">mi</option>
               <option value="nautical-miles">nm</option>
             </select>
           </div>
-          <small style="color: #a0b8d8; font-size: 10px; display: block; margin-top: 4px;">&gt; 0 spreads symbols out · &lt; 0 contracts them · only affects multi-symbol paste</small>
+          <small style="color: color-mix(in srgb, var(--ms-text, #dce8f5) 65%, transparent); font-size: 10px; display: block; margin-top: 4px;">&gt; 0 spreads symbols out · &lt; 0 contracts them · only affects multi-symbol paste</small>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-          <button id="poCancel" style="padding: 6px 15px; background: rgba(100, 160, 230, 0.2); color: #dce8f5; border: 1px solid rgba(100, 160, 230, 0.4); border-radius: 4px; cursor: pointer;">Cancel</button>
-          <button id="poApply" style="padding: 6px 15px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer;">Paste</button>
+          <button id="poCancel" style="padding: 6px 15px; background: var(--ms-bg-header, rgba(100, 160, 230, 0.2)); color: var(--ms-text, #dce8f5); border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4)); border-radius: 4px; cursor: pointer;">Cancel</button>
+          <button id="poApply" style="padding: 6px 15px; background: var(--ms-accent-dim, #0078d4); color: var(--ms-bg, white); border: none; border-radius: 4px; cursor: pointer;">Paste</button>
         </div>
       `;
       document.body.appendChild(dialog);
@@ -534,8 +534,8 @@ export default class ClipboardEngine {
     tip.style.cssText = `
       position: absolute; display: none; pointer-events: none; z-index: 1000;
       padding: 4px 8px; border-radius: 4px; white-space: nowrap;
-      background: rgba(30, 35, 45, 0.92); color: #dce8f5;
-      border: 1px solid rgba(100, 160, 230, 0.4); font: 12px 'Courier New', monospace;
+      background: var(--ms-bg, rgba(30, 35, 45, 0.95)); color: var(--ms-text, #dce8f5);
+      border: 1px solid var(--ms-border, rgba(100, 160, 230, 0.4)); font: 12px var(--ms-font, sans-serif);
     `;
     container?.appendChild(tip);
     const moveHandle = this.view.on('pointer-move', (evt) => {

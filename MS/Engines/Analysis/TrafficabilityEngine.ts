@@ -2173,14 +2173,14 @@ export class TrafficabilityEngine {
     const rn = this._roadNet();
     const state: RoadNetworkAvailability = rn ? rn.availability : 'unavailable';
     const map: Record<string, [string, string, string]> = {
-      available: ['online', '#1D9E75', rn?.lastHealth ? `Roads online · ${rn.lastHealth.name}` : 'Roads online'],
-      unavailable: ['offline', '#E24B4A', 'Roads offline — estimates'],
-      unknown: ['probing', '#EF9F27', 'Roads: probing…'],
+      available: ['online', 'var(--ms-success, #1D9E75)', rn?.lastHealth ? `Roads online · ${rn.lastHealth.name}` : 'Roads online'],
+      unavailable: ['offline', 'var(--ms-danger, #E24B4A)', 'Roads offline — estimates'],
+      unknown: ['probing', 'var(--ms-warning, #EF9F27)', 'Roads: probing…'],
     };
     const [cls, color, label] = map[state] ?? map.unknown;
     el.textContent = label;
     el.style.color = color;
-    el.style.borderColor = `${color}66`;
+    el.style.borderColor = `color-mix(in srgb, ${color} 40%, transparent)`;
     el.dataset.state = cls;
   }
 
