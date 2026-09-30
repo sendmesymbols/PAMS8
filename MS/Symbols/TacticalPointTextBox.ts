@@ -85,7 +85,7 @@ export class TacticalPointTextBox {
                 options.ANGLE || marker.angle,
                 this._opacity
             );
-            this.drawEnd(options.GEOM, this._ptSymbol, drawEssentials);
+            this.drawEnd(options.GEOM, this.toHiddenMarker(this._ptSymbol), drawEssentials);
             this.cleanUp();
         } else {
             this.startInteractiveDrawing();
@@ -174,11 +174,26 @@ export class TacticalPointTextBox {
             this._opacity
         );
 
-        this._ptSymbol.color = new Color([255, 255, 255, this._opacity]);
-
-        this.drawEnd(this._point, this._ptSymbol, drawEssentials);
+        this.drawEnd(this._point, this.toHiddenMarker(this._ptSymbol), drawEssentials);
         this.cleanUp();
         this.removeEventHandlers();
+    }
+
+    /**
+     * Final (placed) marker: visually invisible but still pickable. The text is
+     * rendered by the AnnotationEngine label, so this marker only exists as the
+     * hit target SelectionEngine / EditEngine grab for move, delete, etc.
+     * Alpha must stay > 0: fully transparent markers are skipped by hitTest
+     * (verified in SceneView), whereas ~1/255 is invisible yet still picked.
+     */
+    private toHiddenMarker(src: SimpleMarkerSymbol): SimpleMarkerSymbol {
+        const hidden = src.clone();
+        hidden.color = new Color([255, 255, 255, 0.004]);
+        if (hidden.outline) {
+            hidden.outline.color = new Color([255, 255, 255, 0]);
+            hidden.outline.width = 0;
+        }
+        return hidden;
     }
 
     private createDrawEssentials(geom: Point, size: number, angle: number, opacity: number): DrawEssentials {
