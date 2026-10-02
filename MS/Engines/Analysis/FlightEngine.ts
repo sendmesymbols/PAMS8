@@ -317,12 +317,12 @@ export class FlightEngine {
     }
   }
 
-  open(graphic: Graphic, view: MapView | SceneView): void {
+  open(graphic: Graphic | undefined, view: MapView | SceneView): void {
     this.initialize(view);
     this._stopAnimation();
     this._cancelPick();
 
-    const attrs = graphic.attributes ?? {};
+    const attrs = graphic?.attributes ?? {};
     if (attrs.type === 'flight_plan' && attrs.flightPlanJson) {
       this._loadCommittedPlan(attrs.flightPlanJson);
       this._showPanel(true);
@@ -330,7 +330,7 @@ export class FlightEngine {
       return;
     }
 
-    const geom = graphic.geometry;
+    const geom = graphic?.geometry;
     let origin: Point | null = null;
     if (geom?.type === 'point') origin = geom as Point;
     else if ((geom as any)?.centroid) origin = (geom as any).centroid as Point;
@@ -342,6 +342,9 @@ export class FlightEngine {
 
     this._showPanel();
     this._redraw();
+    // No symbol to launch from: go straight to picking the launch point on the
+    // map, as the LOS engine does for its observer.
+    if (!this._waypoints.length) this._startPick();
   }
 
   close(): void {
@@ -487,7 +490,7 @@ export class FlightEngine {
     if (!this._waypoints.length) {
       this._routeLayer.removeAll();
       this._routeRenderKey = '';
-      this._setStatus('Right-click a symbol or add a waypoint to start a flight plan.', 'warn');
+      this._setStatus('Click the map or press Add waypoint to set the launch point.', 'warn');
       this._syncPanel(metrics, values);
       return;
     }

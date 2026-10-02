@@ -3,7 +3,9 @@
  * Route corridor / MSR analysis engine.
  *
  * Integrated with ContextMenuManager via linkCorridorEngine().
- * Right-clicking a symbol -> Analysis -> Corridor Analysis opens this panel.
+ * Right-clicking a symbol -> Analysis -> Corridor Analysis opens this panel, seeding
+ * the first waypoint from the symbol. The Analysis Hub opens it with no symbol at all,
+ * in which case the panel arms a map click to place the first waypoint.
  */
 
 import MapView from '@arcgis/core/views/MapView';
@@ -137,9 +139,9 @@ export class CorridorEngine {
     }
   }
 
-  open(graphic: Graphic, view: MapView | SceneView): void {
+  open(graphic: Graphic | undefined, view: MapView | SceneView): void {
     this.initialize(view);
-    const attrs = graphic.attributes ?? {};
+    const attrs = graphic?.attributes ?? {};
 
     if (attrs.type === 'corridor_zone' && attrs.committedAt != null) {
       this._restoreFromCommitted(attrs as Partial<CorridorAnalysisMeta>);
@@ -156,10 +158,11 @@ export class CorridorEngine {
 
     if (this._panelEl && !this._panelEl.classList.contains('ms-visible')) {
       this._panelEl.classList.add('ms-visible');
+      if (this._waypoints.length === 0) this._startPlacement('waypoint');
       return;
     }
 
-    const maybePoint = this._graphicToPoint(graphic);
+    const maybePoint = graphic ? this._graphicToPoint(graphic) : null;
     if (maybePoint) {
       const wp = { longitude: maybePoint.longitude, latitude: maybePoint.latitude };
       if (this._waypoints.length === 0) this._waypoints.push(wp);
@@ -169,6 +172,9 @@ export class CorridorEngine {
     this._drawPreview();
     this._refreshPanel();
     this._setStatus(this._waypoints.length >= 2 ? 'ready' : 'awaiting');
+    // No symbol to seed the route: go straight to picking the first waypoint
+    // on the map, as the LOS engine does for its observer.
+    if (this._waypoints.length === 0) this._startPlacement('waypoint');
   }
 
   close(): void {

@@ -14,6 +14,8 @@ import { bindDisclosures } from '../../Support/Disclosure';
 
 const M_PER_DEG = 111_320;
 const EARTH_R = 6_371_008.8;
+// Standard atmospheric refraction coefficient: effective curvature drop = (1-k)·d²/2R.
+const REFRACTION_K = 0.13;
 const WGS84 = { wkid: 4326 } as any;
 const ENGINE_NAME = 'DeadGroundMapper';
 
@@ -58,6 +60,8 @@ export interface DeadGroundHeadlessOptions {
   observerHeightM?: number;
   radiusM?: number;
   cellM?: number;
+  /** Height of the target above ground (m). 0 = a point on the ground. */
+  targetHeightM?: number;
 }
 
 interface ViewshedDomeParams {
@@ -155,6 +159,7 @@ export class DeadGroundMapper {
     const result = await this._computeDeadGround(observer, obsZ, {
       radiusM: options.radiusM ?? 3000,
       cellM: options.cellM ?? 100,
+      targetHeightM: options.targetHeightM ?? 0,
     });
     return {
       observer,
@@ -347,6 +352,7 @@ export class DeadGroundMapper {
     const radiusM = Math.max(200, this._num('dead-inp-radius', 3000));
     const cellM = Math.max(10, this._num('dead-inp-cell', 35));
     const eyeH = Math.max(0.5, this._num('dead-inp-eye', 1.8));
+    const targetH = Math.max(0, this._num('dead-inp-target', 0));
     const maxDepth = Math.max(5, this._num('dead-inp-maxdepth', 50));
     const opacity = Math.max(0.2, Math.min(1, this._num('dead-inp-opacity', 0.75)));
     const colorMode = this._selectValue('dead-inp-color-mode', 'depth') as DeadGroundColorMode;
@@ -380,6 +386,7 @@ export class DeadGroundMapper {
       const result = await this._computeDeadGround(this._observerPt, this._obsZ, {
         radiusM,
         cellM,
+        targetHeightM: targetH,
         onProgress: (frac, label) => this._setProgress(frac * 0.7, label),
       });
       let validCells = 0;
@@ -470,7 +477,7 @@ export class DeadGroundMapper {
       this._setText('dead-st-dead', `${pct}%`);
       this._setText('dead-st-depth', `${Math.round(result.maxDepth)} m`);
       this._setText('dead-st-cells', (result.cols * result.rows).toLocaleString());
-      this._updateDepthLegend(colorMode, realMaxDepth);
+      this._updateDepthLegend(colorMode, realMaxDepth, result.maxDepth);
       this._setProgress(1, `Done - ${pct}% dead ground`);
       this._setResultsVisible(true);
       this._setStatus('done', 'Done');
@@ -538,7 +545,7 @@ export class DeadGroundMapper {
   private async _computeDeadGround(
     observerPt: Point,
     obsZ: number,
-    opts: { radiusM: number; cellM: number; onProgress?: (frac: number, label: string) => void; },
+    opts: { radiusM: number; cellM: number; targetHeightM?: number; onProgress?: (frac: number, label: string) => void; },
   ): Promise<DeadGroundRunResult> {
     const radiusM = opts.radiusM;
     const cellM = opts.cellM;
@@ -557,9 +564,11 @@ export class DeadGroundMapper {
     const N = cols * rows;
     const depthGrid = new Float32Array(N).fill(Number.NaN);
     const stepM = Math.max(10, cellM * 0.5);
-    const horizonCache = new Map<string, number>();
+    const targetH = opts.targetHeightM ?? 0;
     const lon0 = observerPt.longitude ?? observerPt.x;
     const lat0 = observerPt.latitude ?? observerPt.y;
+    // Apparent terrain drop from Earth curvature, reduced by atmospheric refraction.
+    const curveDrop = (d: number): number => (1 - REFRACTION_K) * (d * d) / (2 * EARTH_R);
 
     // Scratch Points reused across the grid + ray-march (mutate lon/lat) instead
     // of allocating a new Point per cell and per ray step — queryElevation returns
@@ -567,30 +576,42 @@ export class DeadGroundMapper {
     const rayPt = new Point({ longitude: lon0, latitude: lat0, spatialReference: WGS84 });
     const cellPt = new Point({ longitude: lon0, latitude: lat0, spatialReference: WGS84 });
 
-    const getHorizon = (bearing: number, targetRange: number): number => {
-      const bKey = ((Math.round(bearing) % 360) + 360) % 360;
-      const rKey = Math.floor(targetRange / stepM);
-      const cacheKey = `${bKey}_${rKey}`;
-      const cached = horizonCache.get(cacheKey);
-      if (cached != null) return cached;
-      let maxSlopeDeg = -90;
-      let sawFinite = false;
-      for (let d = stepM; d <= targetRange; d += stepM) {
-        const tip = this._destPt(lon0, lat0, bKey, d);
+    // Horizon profile per azimuth bin: prof[i] = max elevation angle (deg) over the
+    // samples at d = stepM·1..(i+1), NaN while only no-data has been seen. Bin width
+    // keeps the worst-case lateral error at the outer radius <= cellM/4 (1° bins
+    // gave ~26 m at 3 km, enough to miss a narrow crest). Each bin is marched once;
+    // cells read their horizon from the prefix array, so it always reaches the cell.
+    const numBins = Math.max(360, Math.ceil((2 * Math.PI * radiusM) / (cellM / 2)));
+    const numSteps = Math.max(1, Math.ceil(radiusM / stepM));
+    const profiles: (Float32Array | undefined)[] = new Array(numBins);
+    const getProfile = (bin: number): Float32Array => {
+      let prof = profiles[bin];
+      if (prof) return prof;
+      prof = new Float32Array(numSteps);
+      const bearing = (bin * 360) / numBins;
+      let maxSlopeDeg = Number.NaN;
+      for (let i = 0; i < numSteps; i++) {
+        const d = (i + 1) * stepM;
+        const tip = this._destPt(lon0, lat0, bearing, d);
         rayPt.longitude = tip.longitude;
         rayPt.latitude = tip.latitude;
         const terrZ = sampler.queryElevation(rayPt)?.z ?? NaN;
-        if (!Number.isFinite(terrZ)) continue; // no-data: skip, don't fake a sea-level horizon
-        sawFinite = true;
-        const slopeDeg = (Math.atan2(terrZ - obsZ, d) * 180) / Math.PI;
-        if (slopeDeg > maxSlopeDeg) maxSlopeDeg = slopeDeg;
+        if (Number.isFinite(terrZ)) { // no-data: skip, don't fake a sea-level horizon
+          const slopeDeg = (Math.atan2(terrZ - curveDrop(d) - obsZ, d) * 180) / Math.PI;
+          if (!(slopeDeg <= maxSlopeDeg)) maxSlopeDeg = slopeDeg; // also seeds from NaN
+        }
+        prof[i] = maxSlopeDeg;
       }
-      // An entirely-no-data ray has no horizon. Return NaN rather than the -90
-      // sentinel — tan(-90°) ≈ -1.6e16 drives losZ hugely negative and would
-      // mislabel far cells "visible". The consumer treats NaN as no-data.
-      const horizon = sawFinite ? maxSlopeDeg : NaN;
-      horizonCache.set(cacheKey, horizon);
-      return horizon;
+      profiles[bin] = prof;
+      return prof;
+    };
+    // Horizon for a cell at `range` = max over samples short of the cell. NaN means
+    // the ray crossed only no-data terrain; the consumer treats the cell as no-data
+    // (not -90°: tan(-90°) ≈ -1.6e16 would mislabel far cells "visible").
+    const getHorizon = (bearing: number, range: number): number => {
+      const idx = Math.min(numSteps - 1, Math.ceil(range / stepM) - 2);
+      if (idx < 0) return Number.NaN;
+      return getProfile(Math.round((bearing / 360) * numBins) % numBins)[idx];
     };
 
     let deadCount = 0;
@@ -615,7 +636,7 @@ export class DeadGroundMapper {
         // Ray crossed only no-data terrain → no horizon → cell is no-data, not visible.
         if (!Number.isFinite(horizonDeg)) { depthGrid[idx] = Number.NaN; continue; }
         const losZ = obsZ + range * Math.tan((horizonDeg * Math.PI) / 180);
-        const depth = losZ - terrZ;
+        const depth = losZ - (terrZ - curveDrop(range) + targetH);
         depthGrid[idx] = depth;
         if (depth > 0) {
           deadCount++;
@@ -1326,11 +1347,11 @@ export class DeadGroundMapper {
   // The depth key must describe whatever the colour-mode dropdown is actually
   // painting — depth / range / quadrant / binary mean four different things, so
   // a fixed "shallow -> deep" key is wrong for three of them.
-  private _updateDepthLegend(mode: DeadGroundColorMode, maxDepth: number): void {
+  private _updateDepthLegend(mode: DeadGroundColorMode, maxDepth: number, trueMax?: number): void {
     const bar = this._el('dead-legend-bar');
     if (bar) bar.style.background = this._legendCss(mode);
     const labels: Record<DeadGroundColorMode, [string, string, string]> = {
-      depth: ['Dead ground depth key', '0 m (shallow)', `${Math.round(maxDepth)} m (deep)`],
+      depth: ['Dead ground depth key', '0 m (shallow)', trueMax != null && trueMax > maxDepth * 1.05 ? `${Math.round(maxDepth)}+ m (max ${Math.round(trueMax)} m)` : `${Math.round(maxDepth)} m (deep)`],
       binary: ['Dead ground key', 'Dead ground', 'depth not shown'],
       range: ['Range from observer', 'Near', 'Far edge'],
       quadrant: ['Bearing from observer', 'N', 'E · S · W'],
@@ -1450,6 +1471,7 @@ export class DeadGroundMapper {
             </div>
             <div class="ms-grid full">
               <div class="ms-field"><label class="ms-label" for="dead-inp-eye">Eye height (m)</label><input id="dead-inp-eye" class="ms-input" type="number" value="1.8" min="0.5" max="20" step="0.1" /></div>
+              <div class="ms-field"><label class="ms-label" for="dead-inp-target" title="Height of the target above ground; 0 = a point on the ground">Target height (m)</label><input id="dead-inp-target" class="ms-input" type="number" value="0" min="0" max="50" step="0.5" /></div>
             </div>
 
             <div class="ms-section-title">Grid resolution</div>

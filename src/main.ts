@@ -2906,6 +2906,11 @@ function updateStylusPerSymbolUI(cls: string | null): void {
         effects:       () => { const se = (window as any).symbolEngine; se?.effectEngine?.open(getActiveGraphic() ?? undefined, se.view); },
         // Landing Zone Planner opens standalone in click-to-search mode.
         landingZone:   () => { const se = (window as any).symbolEngine; se?.landingZoneEngine?.openWidget(se.view); },
+        // Corridor / UAV Flight open with or without a symbol — the active graphic
+        // seeds the first waypoint / launch point when present, otherwise the panel
+        // arms a map click to place it.
+        corridor:      () => { const se = (window as any).symbolEngine; se?.corridorEngine?.open(getActiveGraphic() ?? undefined, se.view); },
+        flight:        () => { const se = (window as any).symbolEngine; se?.flightEngine?.open(getActiveGraphic() ?? undefined, se.view); },
         // Airspace opens with or without a symbol — if a polygon is selected it
         // loads as the active footprint; otherwise the panel lets you draw one.
         airspace:      () => {
@@ -2915,12 +2920,6 @@ function updateStylusPerSymbolUI(cls: string | null): void {
           if (ge && (ge.type === 'polygon' || (ge as any).rings)) se?.airspaceEngine?.open(g, se.view);
           else se?.airspaceEngine?.openWidget(se.view);
         },
-      };
-
-      // Context tools — require a right-clicked or selected graphic
-      const contextTools: Record<string, (g: any, v: any, se: any) => void> = {
-        corridor:    (g, v, se) => se.corridorEngine?.open(g, v),
-        flight:      (g, v, se) => se.flightEngine?.open(g, v),
       };
 
       const toolNames: Record<string, string> = {
@@ -2960,17 +2959,7 @@ function updateStylusPerSymbolUI(cls: string | null): void {
             return;
           }
 
-          const graphic = getActiveGraphic();
-          if (!graphic) {
-            setAhStatus('Right-click or select a symbol first', 'err');
-            return;
-          }
-
-          const fn = contextTools[tool];
-          if (fn) {
-            fn(graphic, se.view, se);
-            setAhStatus(`${name} opened`, 'ok');
-          }
+          setAhStatus(`Unknown analysis tool: ${tool}`, 'err');
         });
       });
 
