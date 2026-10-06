@@ -725,7 +725,7 @@ export class EffectEngine {
             <div class="ms-toggle-row"><label for="effects-opt-donut">Donut rings (punch inner)</label><input id="effects-opt-donut" type="checkbox" class="ms-input" checked/></div>
             <div class="ms-toggle-row"><label for="effects-opt-labels">Ring labels</label><input id="effects-opt-labels" type="checkbox" class="ms-input" checked/></div>
             <div class="ms-toggle-row"><label for="effects-opt-anim">Show blast wave</label><input id="effects-opt-anim" type="checkbox" class="ms-input" checked/></div>
-            <div class="ms-toggle-row"><label for="effects-opt-dome" title="The 3D dome at the detonation point">Show impact dome</label><input id="effects-opt-dome" type="checkbox" class="ms-input" checked/></div>
+            <div class="ms-toggle-row"><label for="effects-opt-dome" title="The 3D dome at the detonation point">Show impact dome</label><input id="effects-opt-dome" type="checkbox" class="ms-input"/></div>
             <div class="ms-toggle-row"><label for="effects-opt-union">Multi-strike union</label><input id="effects-opt-union" type="checkbox" class="ms-input" checked/></div>
             <div class="ms-slider-row">
               <div class="ms-slider-label">Anim speed</div>
