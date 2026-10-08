@@ -889,15 +889,15 @@ export default class SlideEditorUI {
             <option value="pushRight">Push Right</option>
             <option value="wipe">Wipe</option>
           </select>
-          <button data-act="save" class="ms-sledit-iconbtn primary" title="Save &amp; close — writes annotations, title and notes to the slide" aria-label="Save and close">${ICONS.save}</button>
+          <button data-act="save" class="ms-sledit-iconbtn primary" title="Save &amp; close" aria-label="Save and close">${ICONS.save}</button>
           <span class="ms-sledit-sep"></span>
-          <button data-act="deckSetup" class="ms-sledit-iconbtn" title="Deck setup — slide size, header &amp; footer, classification banner, page numbers, theme fonts, document properties, and this slide's section." aria-label="Deck setup">${ICONS.deck}</button>
-          <button data-act="chromeToggle" class="ms-sledit-iconbtn active" title="Show the deck's header, footer and classification strips (view only — hiding them changes nothing about the export)" aria-label="Toggle header and footer strips" aria-pressed="true">${ICONS.chrome}</button>
-          <button data-act="importDeck" class="ms-sledit-iconbtn" title="Import a PowerPoint (.pptx) — its slides are appended to this briefing as editable slides. Saves this slide first." aria-label="Import PowerPoint">${ICONS.importDeck}</button>
-          <button data-act="exportDeck" class="ms-sledit-iconbtn" title="Export the whole briefing as a PowerPoint (.pptx) — saves this slide first. Uses the current Deck setup." aria-label="Export to PowerPoint">${ICONS.exportDeck}</button>
+          <button data-act="deckSetup" class="ms-sledit-iconbtn" title="Deck Setup" aria-label="Deck setup">${ICONS.deck}</button>
+          <button data-act="chromeToggle" class="ms-sledit-iconbtn active" title="Show Deck Header" aria-label="Toggle header and footer strips" aria-pressed="true">${ICONS.chrome}</button>
+          <button data-act="importDeck" class="ms-sledit-iconbtn" title="Import a PowerPoint (.pptx)" aria-label="Import PowerPoint">${ICONS.importDeck}</button>
+          <button data-act="exportDeck" class="ms-sledit-iconbtn" title="Export the whole briefing as a PowerPoint (.pptx)" aria-label="Export to PowerPoint">${ICONS.exportDeck}</button>
           <span class="ms-sledit-sep"></span>
-          <button data-act="cancel" class="ms-sledit-iconbtn" title="Cancel — discard changes and close" aria-label="Cancel">${ICONS.close}</button>
-          <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">${ICONS.help}</button>
+          <button data-act="cancel" class="ms-sledit-iconbtn" title="Cancel" aria-label="Cancel">${ICONS.close}</button>
+          <button data-act="help" class="ms-sledit-iconbtn" title="Keyboard Shortcuts (?)" aria-label="Keyboard shortcuts">${ICONS.help}</button>
         </span>
       </div>
       <div class="ms-sledit-main">
