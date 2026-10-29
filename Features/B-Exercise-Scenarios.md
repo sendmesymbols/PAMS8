@@ -75,7 +75,7 @@ Exercises typically use larger areas than plans (convoy routes, ambush kill zone
     // Point seed — locked, cannot be moved by planner
     {
       "id":        "convoy-start",
-      "symbolKey": "25331800",
+      "symbolKey": "25217700",
       "role":      "convoy-start",
       "label":     "START",
       "geoType":   "Point",
@@ -117,7 +117,7 @@ Exercises typically use larger areas than plans (convoy routes, ambush kill zone
     // Checkpoint — locked point the planner's route must pass through
     {
       "id":        "checkpoint-a",
-      "symbolKey": "25331800",
+      "symbolKey": "25217700",
       "role":      "checkpoint",
       "label":     "CP-A",
       "geoType":   "Point",
@@ -178,11 +178,11 @@ Exercises typically use larger areas than plans (convoy routes, ambush kill zone
 
 | id | symbolKey | geoType | Role | Position / shape |
 |----|-----------|---------|------|-----------------|
-| `convoy-start` | `25331800` | Point | convoy-start | (−0.8, −0.8) — rear-left |
-| `waypoint-1` | `25331800` | Point | waypoint | (−0.2, 0.0) |
-| `waypoint-2` | `25331800` | Point | waypoint | (+0.3, +0.4) |
-| `destination` | `25331800` | Point | convoy-end | (+0.7, +0.8) — forward-right |
-| `checkpoint-a` | `25331800` | Point | checkpoint | (+0.0, +0.1) |
+| `convoy-start` | `25217700` | Point | convoy-start | (−0.8, −0.8) — rear-left |
+| `waypoint-1` | `25217700` | Point | waypoint | (−0.2, 0.0) |
+| `waypoint-2` | `25217700` | Point | waypoint | (+0.3, +0.4) |
+| `destination` | `25217700` | Point | convoy-end | (+0.7, +0.8) — forward-right |
+| `checkpoint-a` | `25217700` | Point | checkpoint | (+0.0, +0.1) |
 | `threat-zone-1` | `25270706` | Area | threat-zone | Centre band (x: ±0.15, y: 0.0–0.3) |
 | `threat-zone-2` | `25270706` | Area | threat-zone | Right band (x: 0.5–0.8, y: 0.4–0.6) |
 
@@ -203,12 +203,12 @@ Exercises typically use larger areas than plans (convoy routes, ambush kill zone
 
 | id | symbolKey | geoType | Role | Position / shape |
 |----|-----------|---------|------|-----------------|
-| `kill-zone` | `25340100` | Area | kill-zone | Centre-forward (x: ±0.25, y: 0.3–0.7) |
+| `kill-zone` | `25242302` | Area | kill-zone | Centre-forward (x: ±0.25, y: 0.3–0.7) |
 | `ambush-pos-left` | `25141700` | Line | ambush-position | Left flank short line |
 | `ambush-pos-right` | `25141700` | Line | ambush-position | Right flank short line |
-| `blocking-pos-north` | `25340100` | Area | blocking-position | Forward-centre |
-| `withdrawal-route` | `25330100` | Line | withdrawal-route | Rear extraction line |
-| `friendly-entry` | `25331800` | Point | friendly-entry | Rear entry (0, −0.9) |
+| `blocking-pos-north` | `25151200` | Area | blocking-position | Forward-centre |
+| `withdrawal-route` | `25340800` | Line | withdrawal-route | Rear extraction line |
+| `friendly-entry` | `25217700` | Point | friendly-entry | Rear entry (0, −0.9) |
 
 **Runtime behaviour**:
 - Ambush position symbols with `scenarioProp.ambushSectorBearingDeg` get a **sector-of-fire arc** drawn automatically via `DrawingCueEngine.setOptions({ sectorOfFire: { enabled: true } })`.
@@ -227,10 +227,10 @@ Exercises typically use larger areas than plans (convoy routes, ambush kill zone
 
 | id | symbolKey | geoType | Role | Position / shape |
 |----|-----------|---------|------|-----------------|
-| `start-pt` | `25331800` | Point | route-start | (−0.8, −0.8) |
-| `end-pt` | `25331800` | Point | route-end | (+0.6, +0.8) |
-| `checkpoint-a` | `25331800` | Point | checkpoint | (−0.2, 0.0) |
-| `checkpoint-b` | `25331800` | Point | checkpoint | (+0.2, +0.4) |
+| `start-pt` | `25217700` | Point | route-start | (−0.8, −0.8) |
+| `end-pt` | `25217700` | Point | route-end | (+0.6, +0.8) |
+| `checkpoint-a` | `25217700` | Point | checkpoint | (−0.2, 0.0) |
+| `checkpoint-b` | `25217700` | Point | checkpoint | (+0.2, +0.4) |
 | `red-zone-1` | `25270706` | Area | forbidden-zone | Left-centre (x: −0.8 to −0.4, y: 0.0–0.5) |
 | `red-zone-2` | `25270706` | Area | forbidden-zone | Right strip (x: 0.5–0.9, y: 0.2–0.7) |
 | `time-gate` | `25140300` | Line | time-gate | Horizontal line at y = +0.5 |

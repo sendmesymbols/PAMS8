@@ -4,74 +4,86 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
+import Polygon from '@arcgis/core/geometry/Polygon';
+import Extent from '@arcgis/core/geometry/Extent';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
+import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
+import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 
 import SerializationEngine from '../ImportExport/SerializationEngine';
 import Plan from '../ImportExport/Plan.ts';
 import EngineLogger from '../../Support/EngineLogger';
 import Utils from '../../Support/utils.ts';
 import { bindDisclosures } from '../../Support/Disclosure';
+import symbolMeta from '../../Data/Symbols.json';
 
-// ── Formation slot offsets (lateral, forward) ────────────────────────────────
-const FORMATIONS: Record<string, [number, number][] | null> = {
-  'as-is':    null,
-  'line':     [[-2,0],[-1,0],[0,0],[1,0],[2,0]],
-  'column':   [[0,0],[0,-1],[0,-2],[0,-3],[0,-4]],
-  'wedge':    [[0,0],[-1,-1],[1,-1],[-2,-2],[2,-2]],
-  'echelonR': [[0,0],[1,-1],[2,-2],[3,-3],[4,-4]],
-  'echelonL': [[0,0],[-1,-1],[-2,-2],[-3,-3],[-4,-4]],
-  'vee':      [[0,0],[-1.5,1],[1.5,1],[-3,1.8],[3,1.8]],
-};
+// ── Web Mercator helpers ─────────────────────────────────────────────────────
+// Plan files store WGS84 degrees; every layout calculation runs in Web Mercator
+// (what the 102100 views draw in) so a rotation or scale on screen is exactly the
+// one applied to the data.
+const R_EARTH = 6378137;
+const MAX_MERC_LAT = 85.0511287798;
+const MERC_SR = { wkid: 102100 };
 
-// ── Formation chip metadata ──────────────────────────────────────────────────
-// SVG icons render in a 24×24 viewBox, top = "forward / bearing direction".
-// Filled with currentColor so chips pick up the theme accent when active.
-const FORMATION_META: Array<{ key: string; label: string; svg: string; hint: string }> = [
-  {
-    key: 'as-is',
-    label: 'As-Is',
-    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="7" r="1.5"/><circle cx="13" cy="5" r="1.5"/><circle cx="18" cy="10" r="1.5"/><circle cx="9" cy="14" r="1.5"/><circle cx="16" cy="17" r="1.5"/></svg>',
-    hint: 'Symbols keep their saved layout around the anchor. Spacing adds extra radial separation; 0 keeps the original plan exactly.',
-  },
-  {
-    key: 'line',
-    label: 'Line',
-    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="3" cy="12" r="1.5"/><circle cx="8" cy="12" r="1.5"/><circle cx="13" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="22" cy="12" r="1.5"/></svg>',
-    hint: 'Side-by-side along the bearing. Spacing controls the gap between each unit.',
-  },
-  {
-    key: 'column',
-    label: 'Column',
-    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="3" r="1.5"/><circle cx="12" cy="8" r="1.5"/><circle cx="12" cy="13" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="12" cy="22" r="1.5"/></svg>',
-    hint: 'One behind the other along the bearing. Spacing controls the gap between each unit.',
-  },
-  {
-    key: 'wedge',
-    label: 'Wedge',
-    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="4" r="1.5"/><circle cx="7" cy="11" r="1.5"/><circle cx="17" cy="11" r="1.5"/><circle cx="3" cy="18" r="1.5"/><circle cx="21" cy="18" r="1.5"/></svg>',
-    hint: 'Lead at the anchor, flanks fan behind. Spacing controls how far apart the units sit.',
-  },
-  {
-    key: 'vee',
-    label: 'Vee',
-    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="20" r="1.5"/><circle cx="7" cy="13" r="1.5"/><circle cx="17" cy="13" r="1.5"/><circle cx="3" cy="6" r="1.5"/><circle cx="21" cy="6" r="1.5"/></svg>',
-    hint: 'Lead at the anchor, arms fan toward the front. Spacing controls the spread of the arms.',
-  },
-  {
-    key: 'echelonR',
-    label: 'Ech R',
-    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="3" cy="5" r="1.5"/><circle cx="8" cy="9" r="1.5"/><circle cx="13" cy="13" r="1.5"/><circle cx="18" cy="17" r="1.5"/><circle cx="22" cy="21" r="1.5"/></svg>',
-    hint: 'Step diagonally to the right and rear. Spacing controls the step distance.',
-  },
-  {
-    key: 'echelonL',
-    label: 'Ech L',
-    svg: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="21" cy="5" r="1.5"/><circle cx="16" cy="9" r="1.5"/><circle cx="11" cy="13" r="1.5"/><circle cx="6" cy="17" r="1.5"/><circle cx="2" cy="21" r="1.5"/></svg>',
-    hint: 'Step diagonally to the left and rear. Spacing controls the step distance.',
-  },
-];
+interface XY { x: number; y: number }
+
+function lonLatToMerc(lon: number, lat: number): XY {
+  const la = Math.max(-MAX_MERC_LAT, Math.min(MAX_MERC_LAT, lat));
+  return {
+    x: (R_EARTH * lon * Math.PI) / 180,
+    y: R_EARTH * Math.log(Math.tan(Math.PI / 4 + (la * Math.PI) / 360)),
+  };
+}
+
+function mercToLonLat(x: number, y: number): XY {
+  return {
+    x: (x / R_EARTH) * (180 / Math.PI),
+    y: (2 * Math.atan(Math.exp(y / R_EARTH)) - Math.PI / 2) * (180 / Math.PI),
+  };
+}
+
+function meanXY(points: XY[]): XY {
+  if (points.length === 0) return { x: 0, y: 0 };
+  let sx = 0, sy = 0;
+  for (const p of points) { sx += p.x; sy += p.y; }
+  return { x: sx / points.length, y: sy / points.length };
+}
+
+/** Ghost colour by MIL-STD-2525D standard identity (SIDC digit 4): blue friend, red hostile. */
+function affiliationRGB(sidc?: string): [number, number, number] {
+  switch (sidc?.charAt(3)) {
+    case '3': case '2': return [60, 140, 255];   // friend / assumed friend
+    case '6': case '5': return [255, 80, 80];    // hostile / suspect
+    case '4': return [80, 200, 120];             // neutral
+    default:  return [240, 190, 60];
+  }
+}
+
+const GHOST_ICON_PX = 28;
+
+/** Exercise-template roles that are the opposing force's: drawn with the hostile (red) frame. */
+const HOSTILE_ROLES = new Set(['forbidden-zone', 'threat-zone', 'kill-zone']);
+const SPREAD_MIN_PCT = 10;
+const SPREAD_MAX_PCT = 500;
+
+/** One symbol's geometry, in Web Mercator, relative to its own centroid. */
+interface PlanSymbolGeom {
+  kind: string;      // SYM_GEO_TYPE: Point | FPoint | Line | Area
+  sidc?: string;
+  centroid: XY;
+  rel: XY[];         // one entry per geometry point, in extraction order
+  reach: number;     // furthest point from `centroid`
+}
+
+interface PlanMetrics {
+  symbolCount: number;
+  centroid: XY;      // mean of every geometry point in the plan
+  symbols: PlanSymbolGeom[];
+}
+
+interface Bounds { xmin: number; ymin: number; xmax: number; ymax: number }
 
 const CATEGORY_LABELS: Record<string, string> = {
   own:       'Own Forces',
@@ -94,13 +106,6 @@ interface PlanEntry {
   description: string;
 }
 
-interface PlanMetrics {
-  symbolCount: number;
-  points: { x: number; y: number }[];
-  symbolCentroids: { x: number; y: number }[];
-  centroid: { x: number; y: number };
-}
-
 type Phase = 'idle' | 'anchor' | 'bearing';
 
 class DeploymentBuilderEngine {
@@ -118,8 +123,10 @@ class DeploymentBuilderEngine {
   private _selectedPlanEntry: PlanEntry | null = null;
   private _selectedPlanMetrics: PlanMetrics | null = null;
   private _anchorPoint: Point | null = null;
-  private _formationType: string = 'as-is';
-  private _spacingMeters: number = 0;
+  /** Off: the plan keeps its drawn orientation. On: a second click aims it. */
+  private _rotate: boolean = false;
+  /** Multiplier on each symbol's distance from the plan centroid (1 = as drawn). */
+  private _spread: number = 1;
 
   // Event handles
   private _pointerMoveHandle: any = null;
@@ -130,8 +137,9 @@ class DeploymentBuilderEngine {
 
   // RAF throttle for ghost-preview redraws
   private _ghostRafId: number | null = null;
-  private _pendingGhostBearing: number = 0;
   private _pendingGhostCursor: Point | null = null;
+  /** Ghost unit icons by SIDC; null = milsymbol could not draw it (a dot is used). */
+  private _iconCache: Map<string, PictureMarkerSymbol | null> = new Map();
 
   // Placement overlay UI
   private _bearingHUD: HTMLElement | null = null;
@@ -166,7 +174,7 @@ class DeploymentBuilderEngine {
   public start(view: MapView | SceneView, serialEngine: SerializationEngine): void {
     this._view = view;
     this._serializationEngine = serialEngine;
-    this._ghostLayer = new GraphicsLayer({ listMode: 'hide' });
+    this._ghostLayer = new GraphicsLayer({ listMode: 'hide', opacity: 0.85 });
     view.map.add(this._ghostLayer);
     this._registryBaseUrl = this._resolveRegistryBase();
     EngineLogger.success(ENGINE_NAME, 'DeploymentBuilderEngine started');
@@ -178,7 +186,7 @@ class DeploymentBuilderEngine {
       if (this._view?.map) this._view.map.remove(this._ghostLayer);
     }
     this._view = view;
-    this._ghostLayer = new GraphicsLayer({ listMode: 'hide' });
+    this._ghostLayer = new GraphicsLayer({ listMode: 'hide', opacity: 0.85 });
     view.map.add(this._ghostLayer);
     this._removePointerHandles();
     this._removeBgPopup();
@@ -260,13 +268,6 @@ class DeploymentBuilderEngine {
     el.className = 'ms-panel ms-theme-ops-dark ms-visible';
     el.setAttribute('data-engine', 'deployment-builder');
 
-    const chips = FORMATION_META.map((f) => `
-      <button class="db-chip${f.key === this._formationType ? ' active' : ''}" data-form="${f.key}" title="${f.hint}">
-        <span class="db-chip-icon">${f.svg}</span>
-        <span class="db-chip-label">${f.label}</span>
-      </button>
-    `).join('');
-
     el.innerHTML = `
       <div class="ms-header" id="db-drag-handle">
         <div class="ms-header-icon">DEP</div>
@@ -287,22 +288,20 @@ class DeploymentBuilderEngine {
           <button class="ms-help-close" id="db-help-close" title="Close">✕</button>
         </div>
         <div class="ms-help-body">
-          <p>Drop pre-built tactical plans onto the map at a chosen anchor and bearing. Spacing controls unit separation in every formation.</p>
+          <p>Drop a pre-built tactical plan onto the map. The whole plan moves as one piece, so units, lines and areas keep the relationships they were drawn with.</p>
           <p><strong style="color:var(--ms-accent)">Workflow</strong></p>
           <ol>
             <li>Pick a plan from the list on the left.</li>
-            <li>Pick a formation and spacing on the right.</li>
-            <li>Click <strong>Place on Map</strong>, then click the map to set anchor.</li>
-            <li>Move the cursor and click again to set bearing. As-Is skips this step.</li>
+            <li>Click <strong>Place on Map</strong>. The view zooms out if the plan is too big to see, and a live preview follows the cursor.</li>
+            <li>Click the map to place the plan's centre.</li>
+            <li>With <strong>Rotate to a bearing</strong> on, move the cursor to aim the plan and click again.</li>
           </ol>
-          <p><strong style="color:var(--ms-accent)">Formations</strong></p>
+          <p><strong style="color:var(--ms-accent)">Options</strong></p>
           <ul style="list-style:none;padding:0;margin:0 0 9px">
-            <li><strong>As-Is</strong> — keep the plan's original layout</li>
-            <li><strong>Line / Column</strong> — across or along the bearing</li>
-            <li><strong>Wedge</strong> — lead at anchor, flanks behind</li>
-            <li><strong>Vee</strong> — lead at anchor, arms toward the front</li>
-            <li><strong>Ech R / Ech L</strong> — diagonal steps to right or left rear</li>
+            <li><strong>Rotate to a bearing</strong> — turn the whole plan to face a direction (as drawn it faces north)</li>
+            <li><strong>Spread</strong> — 100% is exactly as drawn; more pushes the units apart, less pulls them together</li>
           </ul>
+          <p>After placing, the map zooms to show every new symbol.</p>
           <p><strong style="color:var(--ms-accent)">Shortcuts</strong></p>
           <ul style="list-style:none;padding:0;margin:0">
             <li><strong>Right-click</strong> during bearing — reset to anchor pick</li>
@@ -322,9 +321,9 @@ class DeploymentBuilderEngine {
             <div class="db-plan-list"></div>
           </div>
 
-          <!-- Right: the selected plan and Place. Formation and spacing are
-               tweakables with usable defaults (As-Is keeps the plan's own
-               layout, 0 m spacing), so they sit in a collapsed disclosure. -->
+          <!-- Right: the selected plan and Place. Rotation and spread are
+               tweakables with usable defaults (drawn orientation, 100%), so
+               they sit in a collapsed disclosure. -->
           <div class="db-right">
             <div class="ms-section-title">Selected Plan</div>
             <div class="db-plan-summary">
@@ -354,24 +353,22 @@ class DeploymentBuilderEngine {
             <div class="ms-disclosure" data-open="false">
               <button class="ms-disclosure-head" type="button" id="db-form-toggle" aria-expanded="false" aria-controls="db-form-body">
                 <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
-                <span class="ms-disclosure-title">Formation &amp; spacing</span>
-                <span class="ms-disclosure-meta db-form-meta">As-Is · 0 m</span>
+                <span class="ms-disclosure-title">Placement options</span>
+                <span class="ms-disclosure-meta db-form-meta">As drawn · 100%</span>
               </button>
               <div class="ms-disclosure-body" id="db-form-body" hidden>
-                <div class="ms-section-title">Formation</div>
-                <div class="db-chip-grid">${chips}</div>
-                <div class="ms-hint db-form-hint"></div>
-
-                <div class="ms-section-title">Spacing</div>
-                <div class="db-spacing-row">
-                  <input class="ms-input db-spacing-val" type="number" value="0" min="0" step="1" />
-                  <select class="ms-select db-spacing-unit">
-                    <option value="m">m</option>
-                    <option value="km">km</option>
-                    <option value="mi">mi</option>
-                    <option value="nm">nm</option>
-                  </select>
+                <div class="ms-toggle-row">
+                  <label for="db-rotate">Rotate to a bearing</label>
+                  <input type="checkbox" id="db-rotate" class="db-rotate" />
                 </div>
+                <div class="ms-hint">Off: placed with one click, facing the way it was drawn. On: click the centre, then aim and click again.</div>
+
+                <div class="ms-section-title">Spread</div>
+                <div class="db-spacing-row">
+                  <input class="ms-input db-spread-val" type="number" value="100" min="${SPREAD_MIN_PCT}" max="${SPREAD_MAX_PCT}" step="10" />
+                  <span class="db-unit">%</span>
+                </div>
+                <div class="ms-hint">100% is exactly as drawn. Higher moves each unit further from the plan's centre; its own size and shape don't change.</div>
               </div>
             </div>
           </div>
@@ -427,37 +424,28 @@ class DeploymentBuilderEngine {
     });
     el.querySelector('.db-btn-import')!.addEventListener('click', () => this._importSavedPlanFromFile());
 
-    // Formation chips
-    const chipGrid = el.querySelector('.db-chip-grid') as HTMLElement;
-    const formHint = el.querySelector('.db-form-hint') as HTMLElement;
-
-    const syncFormationUI = (key: string) => {
-      this._formationType = key;
-      const meta = FORMATION_META.find((f) => f.key === key);
-      formHint.textContent = meta?.hint ?? '';
-      chipGrid.querySelectorAll<HTMLElement>('.db-chip').forEach((c) => {
-        c.classList.toggle('active', c.dataset.form === key);
-      });
-      this._syncFormationMeta();
-    };
-    chipGrid.querySelectorAll<HTMLElement>('.db-chip').forEach((chip) => {
-      chip.addEventListener('click', () => syncFormationUI(chip.dataset.form ?? 'as-is'));
-    });
-    syncFormationUI(this._formationType);
     this._showCancel(false);
 
-    // Spacing: numeric input + unit select
-    const spacingValEl = el.querySelector('.db-spacing-val') as HTMLInputElement;
-    const spacingUnitEl = el.querySelector('.db-spacing-unit') as HTMLSelectElement;
-    const UNIT_TO_M: Record<string, number> = { m: 1, km: 1000, mi: 1609.344, nm: 1852 };
+    // Rotate toggle + spread %
+    const rotateEl = el.querySelector('.db-rotate') as HTMLInputElement;
+    rotateEl.addEventListener('change', () => {
+      this._rotate = rotateEl.checked;
+      this._syncOptionsMeta();
+    });
 
-    const updateSpacing = () => {
-      const val = parseFloat(spacingValEl.value) || 0;
-      this._spacingMeters = val * (UNIT_TO_M[spacingUnitEl.value] ?? 1);
-      this._syncFormationMeta();
-    };
-    spacingValEl.addEventListener('input', updateSpacing);
-    spacingUnitEl.addEventListener('change', updateSpacing);
+    const spreadEl = el.querySelector('.db-spread-val') as HTMLInputElement;
+    spreadEl.addEventListener('input', () => {
+      const pct = parseFloat(spreadEl.value);
+      this._spread = Number.isFinite(pct)
+        ? Math.max(SPREAD_MIN_PCT, Math.min(SPREAD_MAX_PCT, pct)) / 100
+        : 1;
+      this._syncOptionsMeta();
+    });
+    // Out-of-range or empty text snaps to what is actually applied.
+    spreadEl.addEventListener('change', () => {
+      spreadEl.value = String(Math.round(this._spread * 100));
+      this._syncOptionsMeta();
+    });
 
     // Place / Cancel
     el.querySelector('.db-btn-place')!.addEventListener('click', () => this._onPlaceClicked());
@@ -682,7 +670,8 @@ class DeploymentBuilderEngine {
     this._applySelectedPlanToUI('loading');
     this._renderPlanList();
 
-    const data = await this._loadPlanFile(plan.file);
+    const raw = await this._loadPlanFile(plan.file);
+    const data = raw ? this._asPlanDocument(raw) : null;
     if (!data) {
       this._applySelectedPlanToUI('failed');
       return;
@@ -693,6 +682,98 @@ class DeploymentBuilderEngine {
   }
 
   // ── Placement Flow ─────────────────────────────────────────────────────────
+
+  /**
+   * Plans come in two shapes: a saved Plan document, or an exercise template (the
+   * normalised `symbols[]` format in Templates/Ex). Return a Plan document for either,
+   * or null when the data is neither.
+   */
+  private _asPlanDocument(data: any): any | null {
+    if (Plan.isPlanDocument(data)) return data;
+    if (Array.isArray(data?.symbols)) return this._templateToPlanDoc(data);
+    return null;
+  }
+
+  /**
+   * Turn an exercise template into a Plan document. Template positions are ratios in
+   * [-1, 1] of the placement area (x across the frontage, y through the depth, both
+   * measured from its centre), so they are laid out around lon/lat 0,0 in real
+   * kilometres and the document names that point as its origin; the placement then
+   * puts the origin on the clicked point. Seed-only fields (locked, scenarioProp,
+   * success criteria) and the colour overrides belong to the scenario engine and are
+   * not carried over: the symbols arrive as ordinary, editable ones in their standard look.
+   */
+  private _templateToPlanDoc(tpl: any): any | null {
+    const frontageM = (Number(tpl.defaults?.frontageKm) || 10) * 500;   // half-width, metres
+    const depthM = (Number(tpl.defaults?.depthKm) || 10) * 500;         // half-depth, metres
+    const point = (x: number, y: number) => {
+      const ll = mercToLonLat(x * frontageM, y * depthM);
+      return { type: 'point', x: ll.x, y: ll.y, sp: 'WGS1SP' };
+    };
+
+    const planId = Date.now();
+    const overlayId = `template-${tpl.id ?? 'plan'}`;
+    const symbols: any[] = [];
+
+    for (const s of tpl.symbols) {
+      const meta = (symbolMeta as Record<string, any>)[s.symbolKey];
+      if (!meta) {
+        EngineLogger.error(ENGINE_NAME, `Template "${tpl.id}": unknown symbol key "${s.symbolKey}" (${s.id}) skipped`);
+        continue;
+      }
+
+      let pts: { x: number; y: number }[] = [];
+      if (s.geoType === 'Line') {
+        pts = s.path ?? [];
+      } else if (s.geoType === 'Area') {
+        const ring: number[][] = s.rings?.[0] ?? [];
+        const closed = ring.length > 1 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1];
+        pts = (closed ? ring.slice(0, -1) : ring).map(([x, y]) => ({ x, y }));
+      } else if (s.position) {
+        pts = [s.position];
+      }
+      if (pts.length === 0 || (meta.SymGeoType !== s.geoType && !(meta.SymGeoType === 'Point' && s.geoType === 'FPoint'))) {
+        EngineLogger.error(ENGINE_NAME, `Template "${tpl.id}": "${s.id}" does not fit symbol ${s.symbolKey} (${meta.SymGeoType}); skipped`);
+        continue;
+      }
+
+      const key = String(s.symbolKey);
+      const identity = HOSTILE_ROLES.has(s.role) ? '6' : '3';
+      const drawEss: any = {
+        SYM_GEO_TYPE: meta.SymGeoType,
+        SID: key.slice(2),
+        SYM_NAME: meta.Name ?? '',
+        AMPLIFIER: {
+          UNIQUE_DESIG: s.amplifier?.uniqueDesignation ?? '', UNIQUE_DESIG_ID: '', HIGHER_FORM: '', hfid: '',
+          STAFF_COM: '', ADDL_INFO: '', MULTI_LINE_LABEL_TEXT: '', MULTI_LINE_LABEL_COLOR: '#000000',
+          MULTI_LINE_LABEL_ALIGN: 'center',
+        },
+        SIDC: `100${identity}${key.slice(0, 2)}0000${key.slice(2)}0000`,
+        labelOptions: {},
+        opacity: 1,
+      };
+      if (meta.SymGeoType === 'Line') {
+        drawEss.CTRL_PTS = pts.map((p) => point(p.x, p.y));
+        drawEss.DRAW_TYPE = 1;
+      } else if (meta.SymGeoType === 'Area') {
+        drawEss.CTRL_PTS = pts.map((p) => point(p.x, p.y));
+        drawEss.ECHELON = '00';
+        drawEss.DRAW_TYPE = 2;      // plain polygon — keeps the template's corners exactly
+        drawEss.FACE_GAP = 5;
+      } else {
+        drawEss.SIZE = Number(s.style?.size) || 25;
+        drawEss.ANGLE = 0;
+        drawEss.GEOM = point(pts[0].x, pts[0].y);
+      }
+      symbols.push(Plan.createSymbol(planId, overlayId, `${tpl.id}-${s.id}`, drawEss));
+    }
+
+    if (symbols.length === 0) return null;
+    return {
+      poObj: { plnOrdrOverlay: [Plan.createOverlay(planId, overlayId, String(tpl.name ?? tpl.id ?? 'Template'), 1, symbols)] },
+      pamsOrigin: { x: 0, y: 0 },
+    };
+  }
 
   private _importSavedPlanFromFile(): void {
     const input = document.createElement('input');
@@ -705,9 +786,9 @@ class DeploymentBuilderEngine {
       const reader = new FileReader();
       reader.onload = (evt) => {
         try {
-          const parsed = JSON.parse(evt.target?.result as string);
-          if (!Plan.isPlanDocument(parsed)) {
-            this._setStatus('Selected file is not a valid Save Plan JSON');
+          const parsed = this._asPlanDocument(JSON.parse(evt.target?.result as string));
+          if (!parsed) {
+            this._setStatus('Selected file is not a Save Plan or exercise template JSON');
             EngineLogger.error(ENGINE_NAME, 'Imported file is not a valid Plan document');
             return;
           }
@@ -752,16 +833,17 @@ class DeploymentBuilderEngine {
 
   private _onPlaceClicked(): void {
     if (!this._selectedPlanData) return;
-    this._setStatus('Click on map to set anchor point…');
     this._setHeaderState('running', 'Anchor');
-    this._startPlacement(this._selectedPlanData);
+    this._startPlacement();
+    this._fitViewToPlan();
     // Minimize widget so it doesn't block the map
     if (!this._minimized) this._minimizeWidget();
   }
 
-  private _startPlacement(_planData: any): void {
+  private _startPlacement(): void {
     if (!this._view) return;
     this._phase = 'anchor';
+    this._anchorPoint = null;
     this._showCancel(true);
     this._clearGhostGraphics();
     this._removePointerHandles();
@@ -769,35 +851,22 @@ class DeploymentBuilderEngine {
     const container = this._getViewContainer();
     if (container) container.style.cursor = 'none';
 
-    // Live crosshair follows cursor during anchor phase (RAF-throttled)
-    this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
-      if (this._phase !== 'anchor') return;
-      const mapPt = this._view!.toMap({ x: evt.x, y: evt.y });
-      if (!mapPt) return;
-      this._pendingGhostCursor = mapPt;
-      if (this._ghostRafId === null) {
-        this._ghostRafId = requestAnimationFrame(() => {
-          this._ghostRafId = null;
-          if (this._pendingGhostCursor) this._updateAnchorHover(this._pendingGhostCursor);
-        });
-      }
-    });
+    this._listenAnchorHover();
 
     this._pointerDownHandle = this._view.on('click', (evt) => {
+      const pt = evt.mapPoint;
+      if (!pt) return;
       if (this._phase === 'anchor') {
-        const pt = evt.mapPoint;
-        if (!pt) return;
         this._anchorPoint = pt;
         if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
-        if (this._formationType === 'as-is') {
-          // Bearing is irrelevant for As-Is — commit immediately
-          this._commitFormation(0);
-        } else {
+        if (this._rotate) {
           this._startBearingPhase(pt);
+        } else {
+          // Keeping the drawn orientation needs no bearing — commit immediately
+          this._commitPlacement(0);
         }
-      } else if (this._phase === 'bearing') {
-        const bearing = this._computeBearing(this._anchorPoint!, evt.mapPoint);
-        this._commitFormation(bearing);
+      } else if (this._phase === 'bearing' && this._anchorPoint) {
+        this._commitPlacement(this._computeBearing(this._anchorPoint, pt));
       }
     });
 
@@ -806,10 +875,21 @@ class DeploymentBuilderEngine {
     };
     document.addEventListener('keydown', this._keyDownHandler);
 
-    this._showPlacementInstructions(this._formationType === 'as-is' ? 'anchor-asIs' : 'anchor');
-    this._setStatus(this._formationType === 'as-is'
-      ? 'Click on map to place — no bearing needed for As-Is'
-      : 'Click on map to set anchor point…');
+    this._showPlacementInstructions(this._rotate ? 'anchor' : 'anchor-asIs');
+    this._setStatus(this._rotate
+      ? 'Click on map to set anchor point…'
+      : 'Click on map to place — the plan keeps its drawn orientation');
+  }
+
+  /** Anchor phase: the plan ghost follows the cursor, drawn as authored (no rotation). */
+  private _listenAnchorHover(): void {
+    if (!this._view) return;
+    if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
+    this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
+      if (this._phase !== 'anchor') return;
+      const mapPt = this._view!.toMap({ x: evt.x, y: evt.y });
+      if (mapPt) this._queueGhost(mapPt);
+    });
   }
 
   private _startBearingPhase(anchor: Point): void {
@@ -818,31 +898,23 @@ class DeploymentBuilderEngine {
     this._showPlacementInstructions('bearing');
     this._setStatus('Move cursor to set bearing — click to place');
     this._setHeaderState('running', 'Bearing');
+    this._renderGhost(anchor, 0, null);
 
     this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
       const mapPt = this._view!.toMap({ x: evt.x, y: evt.y });
       if (!mapPt) return;
-      const bearing = this._computeBearing(anchor, mapPt);
-      const bearingDeg = this._radiansToDegrees(bearing);
+      const bearingDeg = this._radiansToDegrees(this._computeBearing(anchor, mapPt));
       // HUD and status are lightweight — update immediately for responsive feel
       this._showBearingHUD(evt.x, evt.y, bearingDeg);
       this._setStatus(`Bearing: ${Math.round(bearingDeg).toString().padStart(3, '0')}° ${this._bearingToCardinal(bearingDeg)} — click to place`);
-      // Ghost redraw is expensive — throttle to one frame at a time
-      this._pendingGhostBearing = bearing;
-      this._pendingGhostCursor = mapPt;
-      if (this._ghostRafId === null) {
-        this._ghostRafId = requestAnimationFrame(() => {
-          this._ghostRafId = null;
-          this._updateGhostPreview(this._pendingGhostBearing, this._pendingGhostCursor ?? undefined);
-        });
-      }
+      this._queueGhost(mapPt);
     });
 
     // Right-click during bearing phase resets to anchor selection
     this._rightClickHandle = this._view.on('pointer-down', (evt) => {
       if (evt.button !== 2) return;
       this._phase = 'anchor';
-    this._showCancel(true);
+      this._showCancel(true);
       this._anchorPoint = null;
       this._clearGhostGraphics();
       this._removeBearingHUD();
@@ -851,22 +923,11 @@ class DeploymentBuilderEngine {
       this._showPlacementInstructions('anchor');
       this._setStatus('Click on map to set anchor point…');
       this._setHeaderState('running', 'Anchor');
-      this._pointerMoveHandle = this._view!.on('pointer-move', (evt2) => {
-        if (this._phase !== 'anchor') return;
-        const mapPt = this._view!.toMap({ x: evt2.x, y: evt2.y });
-        if (!mapPt) return;
-        this._pendingGhostCursor = mapPt;
-        if (this._ghostRafId === null) {
-          this._ghostRafId = requestAnimationFrame(() => {
-            this._ghostRafId = null;
-            if (this._pendingGhostCursor) this._updateAnchorHover(this._pendingGhostCursor);
-          });
-        }
-      });
+      this._listenAnchorHover();
     });
   }
 
-  private _commitFormation(bearing: number): void {
+  private _commitPlacement(bearing: number): void {
     if (!this._anchorPoint || !this._selectedPlanData || !this._serializationEngine) return;
     this._phase = 'idle';
     this._showCancel(false);
@@ -877,24 +938,15 @@ class DeploymentBuilderEngine {
     this._removeBearingHUD();
     this._removePlacementInstructions();
 
-    const formSlots = FORMATIONS[this._formationType];
-    const anchor = this._anchorPoint;
-
-    let count: number;
-    if (formSlots === null) {
-      // As-Is: apply a single uniform offset (anchor − plan centroid) to every point.
-      // Because it's the same delta for all points, each symbol's shape is preserved.
-      const asIsPlan = this._applyAsIsSpacingToPlan(anchor);
-      count = this._serializationEngine.loadPlanSymbolsFromData(asIsPlan);
-    } else {
-      // Formation: each symbol gets its own slot.  Pre-process the whole plan so that
-      // every symbol's centroid moves to its assigned slot while its internal shape is kept.
-      const formationPlan = this._applyFormationToPlan(bearing);
-      count = this._serializationEngine.loadPlanSymbolsFromData(formationPlan);
-    }
+    // Every point of every symbol goes through the same layout the ghost used, so
+    // what was previewed is exactly what lands on the map.
+    const { plan, bounds } = this._buildPlacedPlan(this._anchorPoint, bearing);
+    const count = Math.max(0, this._serializationEngine.loadPlanSymbolsFromData(plan));
+    this._anchorPoint = null;
 
     if (count > 0) {
       EngineLogger.success(ENGINE_NAME, `Placed ${count} symbols from "${this._selectedPlanEntry?.name}"`);
+      this._zoomToPlaced(bounds);
     }
 
     this._setStatus(`Placed ${count} symbol${count !== 1 ? 's' : ''}`);
@@ -920,128 +972,201 @@ class DeploymentBuilderEngine {
     this._setHeaderState(ready ? 'ready' : '', ready ? 'Ready' : 'Idle');
   }
 
-  // ── Ghost Preview ──────────────────────────────────────────────────────────
+  // ── View framing ───────────────────────────────────────────────────────────
 
-  private _updateAnchorHover(mapPt: Point): void {
-    if (!this._ghostLayer) return;
-    this._clearGhostGraphics();
-    // Outer ring
-    this._ghostLayer.add(new Graphic({
-      geometry: mapPt,
-      symbol: new SimpleMarkerSymbol({
-        style: 'circle', size: 28,
-        color: [0, 0, 0, 0],
-        outline: { color: [255, 0, 0, 0.7], width: 2 },
-      }),
-    }));
-    // Inner ring
-    this._ghostLayer.add(new Graphic({
-      geometry: mapPt,
-      symbol: new SimpleMarkerSymbol({
-        style: 'circle', size: 16,
-        color: [0, 0, 0, 0],
-        outline: { color: [255, 0, 0, 0.7], width: 2 },
-      }),
-    }));
-    // Cross hair
-    this._ghostLayer.add(new Graphic({
-      geometry: mapPt,
-      symbol: new SimpleMarkerSymbol({
-        style: 'cross', size: 22,
-        color: [100, 200, 255, 1],
-        outline: { color: [255, 0, 0, 7], width: 2 },
-      }),
-    }));
-
-    if (this._selectedPlanData && this._formationType === 'as-is') {
-      this._getAsIsGhostProjectedPoints(mapPt).forEach((pt) => this._addGhostDot(pt));
+  /** Visible span (Web Mercator units) of the shorter view side, or null when it can't be measured. */
+  private _viewSpanMerc(): number | null {
+    const ext = this._view?.extent;
+    if (!ext) return null;
+    const wkid = ext.spatialReference?.wkid;
+    if (wkid === 102100 || wkid === 3857) return Math.min(ext.width, ext.height);
+    if (wkid === 4326) {
+      const lo = lonLatToMerc(ext.xmin, ext.ymin);
+      const hi = lonLatToMerc(ext.xmax, ext.ymax);
+      return Math.min(hi.x - lo.x, hi.y - lo.y);
     }
+    return null;
   }
 
-  private _updateGhostPreview(bearing: number, cursorPt?: Point): void {
-    if (!this._ghostLayer || !this._anchorPoint || !this._selectedPlanData) return;
-    this._clearGhostGraphics();
+  private _goToMercBounds(b: Bounds): void {
+    const view = this._view;
+    if (!view) return;
+    const target = new Extent({ ...b, spatialReference: MERC_SR });
+    view.goTo(target, { duration: 700 }).catch(() => { /* superseded by another navigation */ });
+  }
 
-    const bearingDeg = this._radiansToDegrees(bearing);
-    const formSlots = FORMATIONS[this._formationType];
-    const anchor = this._anchorPoint;
+  /**
+   * The ghost is drawn at the plan's real ground size, so a plan tens of
+   * kilometres across is off-screen — and its markers invisible — at a tight
+   * zoom. Zoom out until the whole footprint fits; a view that already fits is
+   * left alone.
+   */
+  private _fitViewToPlan(): void {
+    const view = this._view;
+    if (!view || !this._selectedPlanData) return;
+    const c = this._toProjected(view.center);
+    const diameter = 2 * this._footprintRadius(this._spread, this._groundScale(c.y));
+    const span = this._viewSpanMerc();
+    if (!(diameter > 0) || span === null || diameter <= span * 0.8) return;
 
-    if (formSlots === null) {
-      this._getAsIsGhostProjectedPoints(anchor).forEach((pt) => this._addGhostDot(pt));
-    } else {
-      // Pre-compute once — avoids per-slot calls to _toProjected, _isProjected, and Math.cos/sin
-      const anchorProj = this._toProjected(anchor);
-      const isProj = this._isProjected();
-      const mpLat = 111320;
-      const mpLon = isProj ? 1 : 111320 * Math.cos((anchorProj.y * Math.PI) / 180);
-      const cosB = Math.cos(bearing);
-      const sinB = Math.sin(bearing);
-      const spacingM = this._spacingMeters;
+    const half = (diameter * 1.5) / 2;
+    this._goToMercBounds({ xmin: c.x - half, ymin: c.y - half, xmax: c.x + half, ymax: c.y + half });
 
-      const symCount = this._getSelectedPlanMetrics().symbolCount;
-      for (let i = 0; i < symCount; i++) {
-        const slot = formSlots[i % formSlots.length] ?? [0, 0];
-        const eM = (slot[0] * cosB + slot[1] * sinB) * spacingM;
-        const nM = (-slot[0] * sinB + slot[1] * cosB) * spacingM;
-        this._addGhostDot(isProj
-          ? { x: anchorProj.x + eM, y: anchorProj.y + nM }
-          : { x: anchorProj.x + eM / mpLon, y: anchorProj.y + nM / mpLat });
+    const groundM = diameter * Math.cos((mercToLonLat(c.x, c.y).y * Math.PI) / 180);
+    this._setStatus(`Plan spans about ${this._formatDistance(groundM)} — zoomed out to fit. ` + this._statusText());
+  }
+
+  /** After placement, pan/zoom so every placed symbol is on screen. */
+  private _zoomToPlaced(b: Bounds): void {
+    if (!Number.isFinite(b.xmin) || !Number.isFinite(b.xmax)) return;
+    const minSpan = 400;     // keeps a one-symbol plan from zooming to rooftop level
+    const pad = 1.35;
+    const cx = (b.xmin + b.xmax) / 2;
+    const cy = (b.ymin + b.ymax) / 2;
+    const halfW = (Math.max(b.xmax - b.xmin, minSpan) * pad) / 2;
+    const halfH = (Math.max(b.ymax - b.ymin, minSpan) * pad) / 2;
+    this._goToMercBounds({ xmin: cx - halfW, ymin: cy - halfH, xmax: cx + halfW, ymax: cy + halfH });
+  }
+
+  private _formatDistance(meters: number): string {
+    return meters >= 1000 ? `${(meters / 1000).toFixed(meters >= 10000 ? 0 : 1)} km` : `${Math.round(meters)} m`;
+  }
+
+  private _statusText(): string {
+    return this._rotate ? 'Click on map to set anchor point…' : 'Click on map to place…';
+  }
+
+  // ── Ghost Preview ──────────────────────────────────────────────────────────
+
+  /** Coalesce pointer-moves into one ghost redraw per frame. */
+  private _queueGhost(cursor: Point): void {
+    this._pendingGhostCursor = cursor;
+    if (this._ghostRafId !== null) return;
+    this._ghostRafId = requestAnimationFrame(() => {
+      this._ghostRafId = null;
+      const cur = this._pendingGhostCursor;
+      if (!cur) return;
+      if (this._phase === 'anchor') {
+        this._renderGhost(cur, 0, null);
+      } else if (this._phase === 'bearing' && this._anchorPoint) {
+        this._renderGhost(this._anchorPoint, this._computeBearing(this._anchorPoint, cur), cur);
+      }
+    });
+  }
+
+  /**
+   * Draw the plan at `anchor`, rotated `theta` radians clockwise from north.
+   * Units show their real icon, lines and areas their control-point outline, and
+   * a dashed ring marks the plan's footprint so it stays readable when zoomed out.
+   */
+  private _renderGhost(anchor: Point, theta: number, cursor: Point | null): void {
+    const layer = this._ghostLayer;
+    if (!layer || !this._selectedPlanData) return;
+    const metrics = this._getSelectedPlanMetrics();
+    layer.removeAll();
+
+    const a = this._toProjected(anchor);
+    const k = this._groundScale(a.y);
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    const areas: Graphic[] = [];
+    const lines: Graphic[] = [];
+    const marks: Graphic[] = [];
+
+    for (const s of metrics.symbols) {
+      const pts = this._layoutSymbol(s, metrics.centroid, a, cos, sin, this._spread, k);
+      if (pts.length === 0) continue;
+      const rgb = affiliationRGB(s.sidc);
+      if (s.kind === 'Area' && pts.length >= 3) {
+        const ring = pts.map((p) => [p.x, p.y]);
+        ring.push([pts[0].x, pts[0].y]);
+        areas.push(new Graphic({
+          geometry: new Polygon({ rings: [ring], spatialReference: MERC_SR }),
+          symbol: new SimpleFillSymbol({
+            color: [rgb[0], rgb[1], rgb[2], 0.14],
+            outline: { color: [rgb[0], rgb[1], rgb[2], 0.9], width: 1.4 },
+          }),
+        }));
+      } else if ((s.kind === 'Line' || s.kind === 'Area') && pts.length >= 2) {
+        lines.push(new Graphic({
+          geometry: new Polyline({ paths: [pts.map((p) => [p.x, p.y])], spatialReference: MERC_SR }),
+          symbol: new SimpleLineSymbol({ color: [rgb[0], rgb[1], rgb[2], 0.9], width: 2 }),
+        }));
+      } else {
+        marks.push(new Graphic({
+          geometry: new Point({ x: pts[0].x, y: pts[0].y, spatialReference: MERC_SR }),
+          symbol: (s.sidc && this._ghostIcon(s.sidc)) || this._ghostDot(rgb),
+        }));
       }
     }
 
-    // Anchor indicator: concentric rings + cross
-    this._ghostLayer.add(new Graphic({
-      geometry: anchor,
-      symbol: new SimpleMarkerSymbol({
-        style: 'circle', size: 34,
-        color: [0, 0, 0, 0],
-        outline: { color: [255, 220, 60, 0.3], width: 1 },
-      }),
-    }));
-    this._ghostLayer.add(new Graphic({
-      geometry: anchor,
-      symbol: new SimpleMarkerSymbol({
-        style: 'circle', size: 20,
-        color: [0, 0, 0, 0],
-        outline: { color: [255, 220, 60, 0.6], width: 1.5 },
-      }),
-    }));
-    this._ghostLayer.add(new Graphic({
-      geometry: anchor,
-      symbol: new SimpleMarkerSymbol({
-        style: 'cross', size: 22,
-        color: [255, 220, 60, 1],
-        outline: { color: [255, 220, 60, 1], width: 2.5 },
-      }),
-    }));
+    const radius = this._footprintRadius(this._spread, k);
+    const ring: number[][] = [];
+    for (let i = 0; i <= 72; i++) {
+      const t = (i / 72) * 2 * Math.PI;
+      ring.push([a.x + radius * Math.sin(t), a.y + radius * Math.cos(t)]);
+    }
+    const footprint = new Graphic({
+      geometry: new Polyline({ paths: [ring], spatialReference: MERC_SR }),
+      symbol: new SimpleLineSymbol({ color: [255, 220, 60, 0.55], width: 1.5, style: 'dash' }),
+    });
+
+    layer.addMany([...areas, ...lines, footprint, ...marks]);
+    this._addAnchorIndicator(layer, anchor, cursor !== null);
 
     // Bearing arrow from anchor to cursor
-    if (cursorPt) {
-      const anchorWGS = this._pointToWGS84(anchor);
-      const cursorWGS = this._pointToWGS84(cursorPt);
-      const bearingLine = new Polyline({
-        paths: [[[anchorWGS.x, anchorWGS.y], [cursorWGS.x, cursorWGS.y]]],
-        spatialReference: { wkid: 4326 },
-      });
-      this._ghostLayer.add(new Graphic({
-        geometry: bearingLine,
-        symbol: new SimpleLineSymbol({
-          color: [255, 200, 50, 0.8],
-          width: 2,
-          style: 'short-dash',
-        }),
+    if (cursor) {
+      const c = this._toProjected(cursor);
+      layer.add(new Graphic({
+        geometry: new Polyline({ paths: [[[a.x, a.y], [c.x, c.y]]], spatialReference: MERC_SR }),
+        symbol: new SimpleLineSymbol({ color: [255, 200, 50, 0.8], width: 2, style: 'short-dash' }),
       }));
       // Arrowhead at cursor — triangle rotated to bearing direction
-      this._ghostLayer.add(new Graphic({
-        geometry: cursorPt,
+      layer.add(new Graphic({
+        geometry: cursor,
         symbol: new SimpleMarkerSymbol({
           style: 'triangle',
           size: 14,
           color: [255, 200, 50, 0.9],
           outline: { color: [255, 230, 120, 1], width: 1.5 },
-          angle: -bearingDeg, // ArcGIS CCW; negate to rotate CW from north
+          angle: -this._radiansToDegrees(theta), // ArcGIS CCW; negate to rotate CW from north
         }),
       }));
+    }
+  }
+
+  /** Crosshair rings: red while hovering for the anchor, yellow once it is fixed. */
+  private _addAnchorIndicator(layer: GraphicsLayer, anchor: Point, fixed: boolean): void {
+    const ring = (size: number, color: number[], width: number) => new Graphic({
+      geometry: anchor,
+      symbol: new SimpleMarkerSymbol({ style: 'circle', size, color: [0, 0, 0, 0], outline: { color, width } }),
+    });
+    if (fixed) {
+      layer.addMany([
+        ring(34, [255, 220, 60, 0.3], 1),
+        ring(20, [255, 220, 60, 0.6], 1.5),
+        new Graphic({
+          geometry: anchor,
+          symbol: new SimpleMarkerSymbol({
+            style: 'cross', size: 22,
+            color: [255, 220, 60, 1],
+            outline: { color: [255, 220, 60, 1], width: 2.5 },
+          }),
+        }),
+      ]);
+    } else {
+      layer.addMany([
+        ring(28, [255, 0, 0, 0.7], 2),
+        ring(16, [255, 0, 0, 0.7], 2),
+        new Graphic({
+          geometry: anchor,
+          symbol: new SimpleMarkerSymbol({
+            style: 'cross', size: 22,
+            color: [100, 200, 255, 1],
+            outline: { color: [255, 0, 0, 0.9], width: 2 },
+          }),
+        }),
+      ]);
     }
   }
 
@@ -1049,36 +1174,38 @@ class DeploymentBuilderEngine {
     this._ghostLayer?.removeAll();
   }
 
-  private _addGhostDot(projPt: { x: number; y: number }): void {
-    if (!this._ghostLayer) return;
-    const wgsPt = this._toWGS84(projPt.x, projPt.y);
-    if (!wgsPt) return;
-    this._ghostLayer.add(new Graphic({
-      geometry: wgsPt,
-      symbol: new SimpleMarkerSymbol({
-        style: 'circle', size: 12,
-        color: [100, 180, 255, 0.3],
-        outline: { color: [100, 200, 255, 0.85], width: 1.5 },
-      }),
-    }));
+  private _ghostDot(rgb: [number, number, number]): SimpleMarkerSymbol {
+    return new SimpleMarkerSymbol({
+      style: 'circle', size: 12,
+      color: [rgb[0], rgb[1], rgb[2], 0.35],
+      outline: { color: [rgb[0], rgb[1], rgb[2], 0.9], width: 1.5 },
+    });
   }
 
-  private _getAsIsGhostProjectedPoints(anchor: Point): { x: number; y: number }[] {
-    const metrics = this._getSelectedPlanMetrics();
-    const anchorProj = this._toProjected(anchor);
-    const spacingM = this._spacingMeters;
-
-    return metrics.symbolCentroids.map((centroid) => {
-      const relX = centroid.x - metrics.centroid.x;
-      const relY = centroid.y - metrics.centroid.y;
-      const len = Math.hypot(relX, relY);
-      const extraX = len > 0 && spacingM > 0 ? (relX / len) * spacingM : 0;
-      const extraY = len > 0 && spacingM > 0 ? (relY / len) * spacingM : 0;
-      return {
-        x: anchorProj.x + relX + extraX,
-        y: anchorProj.y + relY + extraY,
-      };
-    });
+  /** The unit's real 2525D frame icon (cached per SIDC), or null when milsymbol can't draw it. */
+  private _ghostIcon(sidc: string): PictureMarkerSymbol | null {
+    const cached = this._iconCache.get(sidc);
+    if (cached !== undefined) return cached;
+    let sym: PictureMarkerSymbol | null = null;
+    try {
+      const ms = new (window as any).MS.symbol(sidc, { size: GHOST_ICON_PX });
+      ms.getMarker();
+      const canvas = ms.asCanvas();
+      const w = ms.width || GHOST_ICON_PX;
+      const h = ms.height || GHOST_ICON_PX;
+      const anchor = ms.markerAnchor || { x: w / 2, y: h / 2 };
+      sym = new PictureMarkerSymbol({
+        url: canvas.toDataURL(),
+        width: `${w}px`,
+        height: `${h}px`,
+        xoffset: `${w / 2 - anchor.x}px`,
+        yoffset: `${anchor.y - h / 2}px`,
+      });
+    } catch {
+      sym = null;
+    }
+    this._iconCache.set(sidc, sym);
+    return sym;
   }
 
   // ── Bearing HUD & Instructions ─────────────────────────────────────────────
@@ -1125,17 +1252,17 @@ class DeploymentBuilderEngine {
 
     if (phase === 'anchor-asIs') {
       this._placementInstructions.innerHTML = `
-        <span class="db-pi-step">As-Is placement</span>
+        <span class="db-pi-step">Place plan</span>
         ${sep}
-        <span>${key('Click')} to place at anchor — no bearing step</span>
+        <span>${key('Click')} to place the plan's centre — drawn orientation kept</span>
         ${sep}
         <span>${key('Esc', 'danger')} cancel</span>
       `;
     } else if (phase === 'anchor') {
       this._placementInstructions.innerHTML = `
-        <span class="db-pi-step">Step 1 of 2 — Anchor</span>
+        <span class="db-pi-step">Step 1 of 2 — Centre</span>
         ${sep}
-        <span>${key('Click')} to set anchor point</span>
+        <span>${key('Click')} to set the plan's centre</span>
         ${sep}
         <span>${key('Esc', 'danger')} cancel</span>
       `;
@@ -1143,7 +1270,7 @@ class DeploymentBuilderEngine {
       this._placementInstructions.innerHTML = `
         <span class="db-pi-step">Step 2 of 2 — Bearing</span>
         ${sep}
-        <span>${key('Click')} to place formation</span>
+        <span>${key('Click')} to place the plan</span>
         ${sep}
         <span>${key('Right-click', 'success')} reset anchor</span>
         ${sep}
@@ -1252,60 +1379,58 @@ class DeploymentBuilderEngine {
     return dirs[Math.round(deg / 22.5) % 16];
   }
 
-  // ── Formation Math ─────────────────────────────────────────────────────────
+  // ── Placement Math ─────────────────────────────────────────────────────────
 
+  /** Rhumb bearing in radians (0 = north, clockwise) — the same angle the cursor line shows on screen. */
   private _computeBearing(from: Point, to: Point): number {
-    const fromWGS = this._pointToWGS84(from);
-    const toWGS = this._pointToWGS84(to);
-    const dLon = ((toWGS.x - fromWGS.x) * Math.PI) / 180;
-    const lat1 = (fromWGS.y * Math.PI) / 180;
-    const lat2 = (toWGS.y * Math.PI) / 180;
-    const y = Math.sin(dLon) * Math.cos(lat2);
-    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-    return Math.atan2(y, x); // radians, 0 = north, clockwise
+    const a = this._toProjected(from);
+    const b = this._toProjected(to);
+    return Math.atan2(b.x - a.x, b.y - a.y);
   }
 
-  private _computeFormationPoint(
-    anchor: Point,
-    lat: number,
-    fwd: number,
-    bearing: number,
-    spacingM: number,
-  ): { x: number; y: number } {
-    const eastM = lat * Math.cos(bearing) + fwd * Math.sin(bearing);
-    const northM = -lat * Math.sin(bearing) + fwd * Math.cos(bearing);
-    return this._addMetersToPoint(anchor, eastM * spacingM, northM * spacingM);
+  /**
+   * Where each point of one symbol lands for a placement at `a`, rotated by the
+   * bearing (`cos`, `sin`). The symbol's centroid moves to its scaled, rotated
+   * spot around the plan centroid; the symbol's own points rotate with it, so with
+   * spread 1 the whole plan turns as one rigid piece. `k` is the latitude correction
+   * from `_groundScale`, applied to everything so real distances survive the move.
+   */
+  private _layoutSymbol(s: PlanSymbolGeom, planCentroid: XY, a: XY, cos: number, sin: number, spread: number, k: number): XY[] {
+    const cx = (s.centroid.x - planCentroid.x) * spread;
+    const cy = (s.centroid.y - planCentroid.y) * spread;
+    return s.rel.map((r) => {
+      const lx = (cx + r.x) * k;
+      const ly = (cy + r.y) * k;
+      return { x: a.x + lx * cos + ly * sin, y: a.y - lx * sin + ly * cos };
+    });
   }
 
-  private _offsetPoint(
-    pt: { x: number; y: number },
-    anchor: Point,
-    centroid: { x: number; y: number },
-  ): { x: number; y: number } {
-    // pt is WGS84 (from _extractPlanPoints); project it to match centroid's space
-    const ptProj = this._toProjected(new Point({ x: pt.x, y: pt.y, spatialReference: { wkid: 4326 } }));
-    const anchorProj = this._toProjected(anchor);
-    return {
-      x: anchorProj.x + (ptProj.x - centroid.x),
-      y: anchorProj.y + (ptProj.y - centroid.y),
-    };
-  }
-
-  private _addMetersToPoint(anchor: Point, eastM: number, northM: number): { x: number; y: number } {
-    const anchorProj = this._toProjected(anchor);
-    if (this._isProjected()) {
-      return { x: anchorProj.x + eastM, y: anchorProj.y + northM };
+  /** Furthest any point of the placed plan reaches from the anchor, in Web Mercator units. */
+  private _footprintRadius(spread: number, k: number): number {
+    if (!this._selectedPlanData) return 0;
+    const m = this._getSelectedPlanMetrics();
+    let r = 0;
+    for (const s of m.symbols) {
+      const d = Math.hypot(s.centroid.x - m.centroid.x, s.centroid.y - m.centroid.y) * spread + s.reach;
+      if (d > r) r = d;
     }
-    // Geographic: approximate degrees from meters
-    const metersPerDegLat = 111320;
-    const metersPerDegLon = 111320 * Math.cos((anchorProj.y * Math.PI) / 180);
-    return {
-      x: anchorProj.x + eastM / metersPerDegLon,
-      y: anchorProj.y + northM / metersPerDegLat,
-    };
+    return r * k;
   }
 
-  private _toProjected(pt: Point): { x: number; y: number } {
+  /**
+   * Web Mercator stretches distances by 1/cos(latitude), so a plan authored at one latitude
+   * and dropped at another would grow or shrink on the ground. Scaling by the ratio of the
+   * two cosines keeps a 25 km frontage 25 km wherever it lands.
+   */
+  private _groundScale(anchorY: number): number {
+    const m = this._getSelectedPlanMetrics();
+    const rad = Math.PI / 180;
+    const cosPlan = Math.cos(mercToLonLat(m.centroid.x, m.centroid.y).y * rad);
+    const cosHere = Math.cos(mercToLonLat(0, anchorY).y * rad);
+    return cosHere > 1e-6 ? cosPlan / cosHere : 1;
+  }
+
+  private _toProjected(pt: Point): XY {
     if (pt.spatialReference?.wkid === 4326 || pt.spatialReference?.wkid === 4269) {
       // Geographic → Web Mercator
       try {
@@ -1315,183 +1440,85 @@ class DeploymentBuilderEngine {
         return { x: pt.x, y: pt.y };
       }
     }
-    if (pt.spatialReference?.wkid === 102100 || pt.spatialReference?.wkid === 3857) {
-      return { x: pt.x, y: pt.y };
-    }
     return { x: pt.x, y: pt.y };
-  }
-
-  private _pointToWGS84(pt: Point): { x: number; y: number } {
-    if (pt.spatialReference?.wkid === 4326) return { x: pt.x, y: pt.y };
-    try {
-      const geo = webMercatorUtils.webMercatorToGeographic(pt) as Point;
-      return { x: geo.x, y: geo.y };
-    } catch {
-      return { x: pt.longitude ?? pt.x, y: pt.latitude ?? pt.y };
-    }
-  }
-
-  private _isProjected(): boolean {
-    const wkid = this._view?.spatialReference?.wkid;
-    return wkid === 102100 || wkid === 3857;
-  }
-
-  private _toWGS84(projX: number, projY: number): Point | null {
-    try {
-      const pt = new Point({ x: projX, y: projY, spatialReference: { wkid: 102100 } });
-      return webMercatorUtils.webMercatorToGeographic(pt) as Point;
-    } catch {
-      return null;
-    }
   }
 
   // ── Plan Helpers ───────────────────────────────────────────────────────────
 
-  private _applyAsIsSpacingToPlan(anchor: Point): any {
+  /**
+   * Deep-clone the plan and lay every symbol out for a placement at `anchor`,
+   * rotated by `bearing`. Returns the cloned plan plus the Web Mercator bounds of
+   * everything placed, for framing the view afterwards.
+   */
+  private _buildPlacedPlan(anchor: Point, bearing: number): { plan: any; bounds: Bounds } {
     const plan = JSON.parse(JSON.stringify(this._selectedPlanData));
     const metrics = this._getSelectedPlanMetrics();
-    const anchorProj = this._toProjected(anchor);
-    const spacingM = this._spacingMeters;
+    const a = this._toProjected(anchor);
+    const k = this._groundScale(a.y);
+    const cos = Math.cos(bearing);
+    const sin = Math.sin(bearing);
+    const bounds: Bounds = { xmin: Infinity, ymin: Infinity, xmax: -Infinity, ymax: -Infinity };
 
-    const shiftPt = (p: any, dx: number, dy: number): any => {
-      if (!p || p.x == null || p.y == null) return p;
-      const pp = this._toProjected(new Point({ x: p.x, y: p.y, spatialReference: { wkid: 4326 } }));
-      const wgs = this._toWGS84(pp.x + dx, pp.y + dy);
-      return wgs ? { ...p, x: wgs.x, y: wgs.y } : p;
-    };
+    let index = 0;
+    this._eachSymbolGeometry(plan, (_sym, _de, refs) => {
+      const geom = metrics.symbols[index++];
+      // `metrics` came from this same document, so the shapes always agree; if they ever
+      // don't, leave the symbol where it was saved rather than guess.
+      if (!geom || geom.rel.length !== refs.length) return false;
+      const placed = this._layoutSymbol(geom, metrics.centroid, a, cos, sin, this._spread, k);
+      refs.forEach((ref, i) => {
+        const ll = mercToLonLat(placed[i].x, placed[i].y);
+        ref.x = ll.x;
+        ref.y = ll.y;
+        bounds.xmin = Math.min(bounds.xmin, placed[i].x);
+        bounds.ymin = Math.min(bounds.ymin, placed[i].y);
+        bounds.xmax = Math.max(bounds.xmax, placed[i].x);
+        bounds.ymax = Math.max(bounds.ymax, placed[i].y);
+      });
+      return true;
+    });
 
-    for (const overlay of plan.poObj?.plnOrdrOverlay ?? []) {
-      for (const sym of overlay.plnOrdrSymbolSet ?? []) {
-        if (sym.isDelete === 'Y') continue;
-        try {
-          const de = JSON.parse(sym.drawEss);
-          const pts: { x: number; y: number }[] = [];
-          const push = (p: any) => {
-            if (p?.x != null && p?.y != null) pts.push({ x: p.x, y: p.y });
-          };
-
-          push(de.GEOM ?? de.geom);
-          push(de.OPTIONS?.GEOM);
-          if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS.forEach(push);
-          if (de.BASE_LN_PTS) {
-            push(de.BASE_LN_PTS.startPt);
-            push(de.BASE_LN_PTS.midPt);
-            push(de.BASE_LN_PTS.endPt);
-          }
-          if (pts.length === 0) continue;
-
-          const symCentroid = this._computeCentroid(pts);
-          const relX = symCentroid.x - metrics.centroid.x;
-          const relY = symCentroid.y - metrics.centroid.y;
-          const len = Math.hypot(relX, relY);
-          const extraX = len > 0 && spacingM > 0 ? (relX / len) * spacingM : 0;
-          const extraY = len > 0 && spacingM > 0 ? (relY / len) * spacingM : 0;
-          const target = {
-            x: anchorProj.x + relX + extraX,
-            y: anchorProj.y + relY + extraY,
-          };
-          const dx = target.x - symCentroid.x;
-          const dy = target.y - symCentroid.y;
-
-          if (de.GEOM?.x != null) de.GEOM = shiftPt(de.GEOM, dx, dy);
-          if (de.OPTIONS?.GEOM?.x != null) de.OPTIONS = { ...de.OPTIONS, GEOM: shiftPt(de.OPTIONS.GEOM, dx, dy) };
-          if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS = de.CTRL_PTS.map((p: any) => shiftPt(p, dx, dy));
-          if (de.BASE_LN_PTS) {
-            de.BASE_LN_PTS = {
-              startPt: shiftPt(de.BASE_LN_PTS.startPt, dx, dy),
-              midPt:   shiftPt(de.BASE_LN_PTS.midPt,   dx, dy),
-              endPt:   shiftPt(de.BASE_LN_PTS.endPt,   dx, dy),
-            };
-          }
-
-          sym.drawEss = JSON.stringify(de);
-        } catch { /* skip malformed symbols */ }
-      }
-    }
-
-    return plan;
+    return { plan, bounds };
   }
 
   /**
-   * Deep-clone the plan and shift every symbol so its centroid lands on its
-   * assigned formation slot.  All control points within a symbol are offset by
-   * the same (slotPos − symbolCentroid) delta, preserving the symbol's shape.
+   * Visit every live symbol that has geometry. `refs` are the symbol's own point
+   * objects inside the parsed `drawEss`, so a callback can read or move them in
+   * place; returning true writes the edited `drawEss` back onto the symbol.
    */
-  private _applyFormationToPlan(bearing: number): any {
-    const plan = JSON.parse(JSON.stringify(this._selectedPlanData));
-    const formSlots = FORMATIONS[this._formationType]!;
-    const anchor = this._anchorPoint!;
-    let slotIndex = 0;
-
-    // Pre-compute anchor projection, trig, and unit-conversion factors once for the whole loop
-    const anchorProj = this._toProjected(anchor);
-    const isProj = this._isProjected();
-    const mpLat = 111320;
-    const mpLon = isProj ? 1 : 111320 * Math.cos((anchorProj.y * Math.PI) / 180);
-    const cosB = Math.cos(bearing);
-    const sinB = Math.sin(bearing);
-    const spacingM = this._spacingMeters;
-
-    const projPt = (p: any): { x: number; y: number } =>
-      this._toProjected(new Point({ x: p.x, y: p.y, spatialReference: { wkid: 4326 } }));
-
-    const shiftPt = (p: any, dx: number, dy: number): any => {
-      if (!p || p.x == null) return p;
-      const pp = projPt(p);
-      const wgs = this._toWGS84(pp.x + dx, pp.y + dy);
-      return wgs ? { ...p, x: wgs.x, y: wgs.y } : p;
-    };
-
-    for (const overlay of plan.poObj?.plnOrdrOverlay ?? []) {
-      for (const sym of overlay.plnOrdrSymbolSet ?? []) {
-        if (sym.isDelete === 'Y') continue;
-        try {
-          const de = JSON.parse(sym.drawEss);
-
-          // Collect all WGS84 points that define this symbol's geometry
-          const pts: { x: number; y: number }[] = [];
-          const push = (p: any) => { if (p?.x != null) pts.push({ x: p.x, y: p.y }); };
-          push(de.GEOM);
-          push(de.OPTIONS?.GEOM);
-          (de.CTRL_PTS ?? []).forEach(push);
-          if (de.BASE_LN_PTS) {
-            push(de.BASE_LN_PTS.startPt);
-            push(de.BASE_LN_PTS.midPt);
-            push(de.BASE_LN_PTS.endPt);
-          }
-          if (pts.length === 0) continue;
-
-          // Symbol centroid in projected space
-          const symCentroid = this._computeCentroid(pts);
-
-          // Assign one slot per symbol, compute target projected position
-          const slot = formSlots[slotIndex % formSlots.length] ?? [0, 0];
-          slotIndex++;
-          const eM = (slot[0] * cosB + slot[1] * sinB) * spacingM;
-          const nM = (-slot[0] * sinB + slot[1] * cosB) * spacingM;
-          const slotProj = isProj
-            ? { x: anchorProj.x + eM, y: anchorProj.y + nM }
-            : { x: anchorProj.x + eM / mpLon, y: anchorProj.y + nM / mpLat };
-
-          const dx = slotProj.x - symCentroid.x;
-          const dy = slotProj.y - symCentroid.y;
-
-          if (de.GEOM?.x != null) de.GEOM = shiftPt(de.GEOM, dx, dy);
-          if (de.OPTIONS?.GEOM?.x != null) de.OPTIONS = { ...de.OPTIONS, GEOM: shiftPt(de.OPTIONS.GEOM, dx, dy) };
-          if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS = de.CTRL_PTS.map((p: any) => shiftPt(p, dx, dy));
-          if (de.BASE_LN_PTS) {
-            de.BASE_LN_PTS = {
-              startPt: shiftPt(de.BASE_LN_PTS.startPt, dx, dy),
-              midPt:   shiftPt(de.BASE_LN_PTS.midPt,   dx, dy),
-              endPt:   shiftPt(de.BASE_LN_PTS.endPt,   dx, dy),
-            };
-          }
-
-          sym.drawEss = JSON.stringify(de);
-        } catch { /* skip malformed symbols */ }
+  private _eachSymbolGeometry(
+    planDoc: any,
+    visit: (sym: any, de: any, refs: { x: any; y: any }[]) => boolean | void,
+  ): void {
+    try {
+      for (const overlay of planDoc?.poObj?.plnOrdrOverlay ?? []) {
+        for (const sym of overlay?.plnOrdrSymbolSet ?? []) {
+          if (sym.isDelete === 'Y') continue;
+          try {
+            const de = JSON.parse(sym.drawEss);
+            const refs = this._collectPointRefs(de);
+            if (refs.length === 0) continue;
+            if (visit(sym, de, refs) === true) sym.drawEss = JSON.stringify(de);
+          } catch { /* skip symbol with malformed drawEss JSON */ }
+        }
       }
+    } catch { /* malformed plan doc — use whatever was visited */ }
+  }
+
+  private _collectPointRefs(de: any): { x: any; y: any }[] {
+    const refs: { x: any; y: any }[] = [];
+    const add = (p: any) => {
+      if (p?.x != null && p?.y != null) refs.push(p);
+    };
+    add(de.GEOM ?? de.geom);
+    add(de.OPTIONS?.GEOM);
+    if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS.forEach(add);
+    if (de.BASE_LN_PTS) {
+      add(de.BASE_LN_PTS.startPt);
+      add(de.BASE_LN_PTS.midPt);
+      add(de.BASE_LN_PTS.endPt);
     }
-    return plan;
+    return refs;
   }
 
   private _countPlanSymbols(planDoc: any): number {
@@ -1512,63 +1539,32 @@ class DeploymentBuilderEngine {
   }
 
   private _buildPlanMetrics(planDoc: any): PlanMetrics {
-    const pointGroups = this._extractPlanPointGroups(planDoc);
-    const points = pointGroups.flat();
-    return {
-      symbolCount: this._countPlanSymbols(planDoc),
-      points,
-      symbolCentroids: pointGroups.map((group) => this._computeCentroid(group)),
-      centroid: this._computeCentroid(points),
-    };
-  }
-
-  private _extractPlanPoints(planDoc: any): { x: number; y: number }[] {
-    return this._extractPlanPointGroups(planDoc).flat();
-  }
-
-  private _extractPlanPointGroups(planDoc: any): { x: number; y: number }[][] {
-    const groups: { x: number; y: number }[][] = [];
-    try {
-      for (const overlay of planDoc?.poObj?.plnOrdrOverlay ?? []) {
-        for (const sym of overlay?.plnOrdrSymbolSet ?? []) {
-          if (sym.isDelete === 'Y') continue;
-          try {
-            const de = JSON.parse(sym.drawEss);
-            const group: { x: number; y: number }[] = [];
-            const push = (p: any) => {
-              if (p?.x != null && p?.y != null) group.push({ x: p.x, y: p.y });
-            };
-
-            push(de.GEOM ?? de.geom);
-            push(de.OPTIONS?.GEOM);
-            if (Array.isArray(de.CTRL_PTS)) de.CTRL_PTS.forEach(push);
-            if (de.BASE_LN_PTS) {
-              push(de.BASE_LN_PTS.startPt);
-              push(de.BASE_LN_PTS.midPt);
-              push(de.BASE_LN_PTS.endPt);
-            }
-            if (group.length > 0) groups.push(group);
-          } catch { /* skip symbol with malformed drawEss JSON */ }
-        }
-      }
-    } catch { /* malformed plan doc — use whatever points were collected */ }
-    return groups;
-  }
-
-  private _computeCentroid(points: { x: number; y: number }[]): { x: number; y: number } {
-    if (points.length === 0) return { x: 0, y: 0 };
-    // Convert to projected space for centroid
-    const projected = points.map(p => {
-      try {
-        const pt = new Point({ x: p.x, y: p.y, spatialReference: { wkid: 4326 } });
-        return this._toProjected(pt);
-      } catch {
-        return p;
-      }
+    const raw: { kind: string; sidc?: string; pts: XY[] }[] = [];
+    this._eachSymbolGeometry(planDoc, (_sym, de, refs) => {
+      raw.push({
+        kind: String(de.SYM_GEO_TYPE ?? ''),
+        sidc: de.AMPLIFIER?.SIDC ?? de.SIDC,
+        pts: refs.map((r) => lonLatToMerc(Number(r.x), Number(r.y))),
+      });
     });
-    const sumX = projected.reduce((s, p) => s + p.x, 0);
-    const sumY = projected.reduce((s, p) => s + p.y, 0);
-    return { x: sumX / projected.length, y: sumY / projected.length };
+
+    // Converted exercise templates are authored around the placement area's centre, not
+    // around wherever their symbols happen to cluster, so they name their own origin.
+    const origin = planDoc?.pamsOrigin;
+    const centroid = origin ? lonLatToMerc(Number(origin.x), Number(origin.y)) : meanXY(raw.flatMap((r) => r.pts));
+    const symbols: PlanSymbolGeom[] = raw.map((r) => {
+      const c = meanXY(r.pts);
+      const rel = r.pts.map((p) => ({ x: p.x - c.x, y: p.y - c.y }));
+      return {
+        kind: r.kind,
+        sidc: r.sidc,
+        centroid: c,
+        rel,
+        reach: rel.reduce((m, p) => Math.max(m, Math.hypot(p.x, p.y)), 0),
+      };
+    });
+
+    return { symbolCount: this._countPlanSymbols(planDoc), centroid, symbols };
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
@@ -1622,15 +1618,12 @@ class DeploymentBuilderEngine {
 
   /**
    * Keep the collapsed disclosure's summary honest — otherwise a tuned
-   * formation is invisible while the group is shut.
+   * placement is invisible while the group is shut.
    */
-  private _syncFormationMeta(): void {
+  private _syncOptionsMeta(): void {
     const meta = this._widget?.querySelector<HTMLElement>('.db-form-meta');
     if (!meta) return;
-    const label = FORMATION_META.find((f) => f.key === this._formationType)?.label ?? this._formationType;
-    const val = this._widget?.querySelector<HTMLInputElement>('.db-spacing-val')?.value ?? '0';
-    const unit = this._widget?.querySelector<HTMLSelectElement>('.db-spacing-unit')?.value ?? 'm';
-    meta.textContent = `${label} · ${parseFloat(val) || 0} ${unit}`;
+    meta.textContent = `${this._rotate ? 'Rotate' : 'As drawn'} · ${Math.round(this._spread * 100)}%`;
   }
 
   /** The Cancel button only means anything mid-placement. */

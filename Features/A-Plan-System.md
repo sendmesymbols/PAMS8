@@ -226,7 +226,7 @@ Applied per-vertex for Line and Area symbols; applied to the single `position` f
 | `25320300` | Ammo Transfer Pt | Point | Transfer point |
 | `25321200` | R3P (Rearm/Refuel/Resupply) | Point | Logistic point |
 | `25330100` | Moving Convoy / Approach | Line | MSR/ASR route, convoy |
-| `25331800` | Waypoint | Point | Waypoints, checkpoints |
+| `25217700` | Waypoint | Point | Waypoints, checkpoints |
 | `25340100` | Block | Area | Battle position, engagement area |
 | `25340200` | Breach | Area | Breach point area |
 | `25340300` | Bypass | Area | Bypass route area |

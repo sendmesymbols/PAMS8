@@ -16,7 +16,7 @@
 
     {
       "id": "kill-zone",
-      "symbolKey": "25340100",
+      "symbolKey": "25242302",
       "role": "kill-zone",
       "label": "KILL ZONE",
       "geoType": "Area",
@@ -92,7 +92,7 @@
 
     {
       "id": "blocking-north",
-      "symbolKey": "25340100",
+      "symbolKey": "25151200",
       "role": "blocking-position",
       "label": "BLOCK N",
       "geoType": "Area",
@@ -117,7 +117,7 @@
 
     {
       "id": "withdrawal-route",
-      "symbolKey": "25330100",
+      "symbolKey": "25340800",
       "role": "withdrawal-route",
       "label": "WITHDRAWAL",
       "geoType": "Line",
@@ -137,7 +137,7 @@
 
     {
       "id": "friendly-entry",
-      "symbolKey": "25331800",
+      "symbolKey": "25217700",
       "role": "friendly-entry",
       "label": "FWD ENTRY",
       "geoType": "Point",

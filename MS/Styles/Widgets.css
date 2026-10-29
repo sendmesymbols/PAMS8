@@ -3105,49 +3105,7 @@
 }
 #deploymentBuilderWidget .db-right .ms-section-title:first-child { padding-top: 9px; }
 
-/* Formation chip grid */
-#deploymentBuilderWidget .db-chip-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  padding: 0 12px 4px;
-}
-#deploymentBuilderWidget .db-chip {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 7px 4px 5px;
-  background: var(--ms-bg-input);
-  border: 1px solid var(--ms-border);
-  border-radius: var(--ms-radius-sm);
-  color: var(--ms-text-dim);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--ms-fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  transition: var(--ms-transition);
-  min-width: 0;
-}
-#deploymentBuilderWidget .db-chip-icon {
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0.7; transition: opacity var(--ms-transition);
-}
-#deploymentBuilderWidget .db-chip-icon svg {
-  width: 26px; height: 26px;
-}
-#deploymentBuilderWidget .db-chip:hover {
-  border-color: var(--ms-accent); color: var(--ms-text);
-}
-#deploymentBuilderWidget .db-chip:hover .db-chip-icon { opacity: 1; }
-#deploymentBuilderWidget .db-chip:active { transform: scale(0.97); }
-#deploymentBuilderWidget .db-chip.active {
-  border-color: var(--ms-accent);
-  background: rgba(239, 159, 39, 0.14);
-  color: var(--ms-accent);
-}
-#deploymentBuilderWidget .db-chip.active .db-chip-icon { opacity: 1; }
-
-/* Spacing row */
+/* Spread row */
 #deploymentBuilderWidget .db-spacing-row {
   display: flex; gap: 6px; padding: 0 12px 6px;
   align-items: center;
@@ -3155,8 +3113,11 @@
 #deploymentBuilderWidget .db-spacing-row .ms-input {
   flex: 1; padding: 5px 8px;
 }
-#deploymentBuilderWidget .db-spacing-row .ms-select {
-  width: 64px; flex-shrink: 0; padding: 5px 6px;
+#deploymentBuilderWidget .db-spacing-row .db-unit {
+  width: 64px; flex-shrink: 0;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-label);
+  font-weight: 600;
 }
 
 /* Plan summary */
