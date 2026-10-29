@@ -132,6 +132,14 @@ MS/
 - **ProximityEngine** — snap indicators to nearest vertex/coordinate while drawing.
 - **DrawingCueEngine** — rubber band, coordinate readout, angular guides/protractor,
   distance rings, nearby highlight, adaptive rings, magnetic compass overlays.
+- **PlacementAdvisor** (`Engines/Placement/`) — optional, off by default
+  (`features.placementAdvisor`). Live "deployable terrain?" advice while drawing
+  (ok / near / caution / partial / in), driven by a static **terrain bundle**
+  (PNG tiles + `rules.json`) the host serves; built offline by
+  `tools/terrain-pipeline/`. Hot path is synchronous typed-array reads (no I/O on
+  mouse-move); advise mode only listens, enforce mode vetoes in `drawSymEnd`.
+  See `MS/Docs/15-placement-advisor.md`. `node tools/terrain-synth.mjs` makes a
+  synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.
 - **DeclutterEngine** (+ Cluster/Ladder/Disperse/LabelPlacer) — zoom-aware hiding,
   cluster badges, flag-halyard ladders, radial disperse, and Maplex-style label placement.

@@ -1,0 +1,45 @@
+# rules.yaml — mobility profiles. scripts/profiles.py turns this (plus the
+# `classes` block of classes.yaml) into the bundle's rules.json and builds one
+# dist_<profile> layer per profile that has `nogo` or `requires`.
+#
+# Class codes: 0 open_land 1 tree_cover 2 cropland 3 built_up 4 water_permanent
+#              5 water_seasonal 6 wetland 7 mangrove 8 snow_ice 9 steep_slope
+#              10 moderate_slope 11 restricted 12 bare_desert
+#
+# Changing this file only requires `make rebuild-rules` (steps profiles..package).
+
+version: "2026.10"
+distScaleM: 10          # dist tile value x distScaleM = metres; 254 = >= 2540 m
+
+profiles:
+  dismounted:
+    label: Dismounted
+    nogo:    [4, 8, 11]
+    caution: [5, 6, 7, 9]
+  wheeled:
+    label: Wheeled vehicles
+    nogo:    [4, 5, 6, 7, 8, 9, 11]
+    caution: [1, 3, 10]
+  tracked:
+    label: Tracked vehicles
+    nogo:    [4, 6, 7, 8, 9, 11]
+    caution: [3, 5, 10]
+  vessel:
+    label: Surface vessel
+    requires: [4]       # everything NOT in requires is no-go -> dist = distance to shore
+    caution: [5]
+  generic:
+    label: Generic land
+    nogo:    [4]
+    caution: [6, 7]
+  exempt:
+    label: Not terrain-bound   # no nogo/requires -> no dist layer
+
+# Optional. Overrides the symbol-set -> profile defaults compiled into
+# MS/Engines/Placement/PlacementProfiles.ts. Keys: 2-digit 2525D symbol set, or
+# "symbolSet:entityPrefix" matched against the 6-digit entity code.
+profileOverrides:
+  symbolSets:
+    "10": wheeled
+  entities:
+    "10:1211": dismounted

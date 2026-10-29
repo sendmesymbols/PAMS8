@@ -115,6 +115,7 @@ import TrafficabilityEngine from './Analysis/TrafficabilityEngine';
 import SymbolMetadataService from './SymbolMetadataService';
 import KeyboardShortcutManager from './KeyboardShortcutManager';
 import StylusDrawController from './Stylus/StylusDrawController';
+import PlacementAdvisor from './Placement/PlacementAdvisor';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
 // imported. One side-effect import per engine keeps the wiring discoverable.
@@ -139,6 +140,7 @@ import './PptxExportCommands';
 import './ExportToolsSettingsWidget';
 import './Briefing/ChartCommands';
 import './Collab/CollabSettingsWidget';
+import './PlacementSettingsWidget';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -185,6 +187,7 @@ class SymbolEngine implements Evented {
   private _editEngine: EditEngine;
   private _measurementEngine?: MeasurementEngine;
   private _proximityEngine: ProximityEngine | null = null;
+  private _placementAdvisor: PlacementAdvisor | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
@@ -425,6 +428,9 @@ class SymbolEngine implements Evented {
     // Conditionally load ProximityEngine based on Settings.json feature flag
     this._initProximityEngine();
 
+    // Conditionally load PlacementAdvisor (terrain advice while drawing; needs a terrain bundle)
+    this._initPlacementAdvisor();
+
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
 
@@ -599,6 +605,9 @@ class SymbolEngine implements Evented {
       // Arm drawing cue overlays (idempotent)
       this._drawingCueEngine?.activate([...SYMBOL_LAYER_IDS]);
 
+      // Terrain advice — synchronous tile reads, no I/O on this path
+      this._placementAdvisor?.onDrawProgress(event.detail);
+
       // Feed drawing progress into the measurement engine
       const detail = event.detail;
       if (detail?.currentGeometry && detail?.currentDrawEssentials?.CTRL_PTS) {
@@ -640,6 +649,7 @@ class SymbolEngine implements Evented {
       this._proximityEngine?.deactivate();
       // Deactivate drawing cue overlays when drawing ends
       this._drawingCueEngine?.deactivate();
+      this._placementAdvisor?.deactivate();
     }) as EventListener);
 
     console.log('SymbolEngine global event listeners set up');
@@ -693,6 +703,7 @@ class SymbolEngine implements Evented {
     this._keyboardShortcutManager?.detach();
     this._measurementEngine?.destroy();
     this._proximityEngine?.disable();
+    this._placementAdvisor?.destroy();
     this._drawingCueEngine?.disable();
     this._mgrsEngine?.destroy();
     this._editEngine?.deactivate();
@@ -753,6 +764,8 @@ class SymbolEngine implements Evented {
     this._measurementEngine?.onViewChanged(newView);
     // Re-attach proximity engine to the new view
     this._proximityEngine?.onViewChanged(newView);
+    // Re-bind placement advisor (viewport prefetch + cursor tracking) to the new view
+    this._placementAdvisor?.onViewChanged();
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
     // Re-attach MGRS engine to the new view
@@ -887,6 +900,26 @@ class SymbolEngine implements Evented {
     this._proximityEngine.enable();
     this.emitEvent('proximityEngineReady', { engine: this._proximityEngine });
     console.info('[SymbolEngine] ProximityEngine loaded');
+  }
+
+  /**
+   * Create the PlacementAdvisor and enable it. Gated by
+   * `features.placementAdvisor` at boot; `force` is used by the runtime
+   * Settings toggle. The advisor stays dormant until a terrain bundle loads.
+   */
+  private _initPlacementAdvisor(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.placementAdvisor !== true) {
+      console.info('[SymbolEngine] PlacementAdvisor disabled via Settings.json');
+      return;
+    }
+    if (!this._placementAdvisor) {
+      this._placementAdvisor = new PlacementAdvisor(() => this._getView());
+      this._placementAdvisor.setOptions((settingsData as any).placement ?? {});
+      this.emitEvent('placementAdvisorReady', { engine: this._placementAdvisor });
+    }
+    this._placementAdvisor.enable();
+    console.info('[SymbolEngine] PlacementAdvisor loaded');
   }
 
   private _initDrawingCueEngine(): void {
@@ -1867,6 +1900,13 @@ class SymbolEngine implements Evented {
     return this._proximityEngine;
   }
 
+  /** Access the PlacementAdvisor — terrain advice while drawing. Null until
+   *  `features.placementAdvisor` is turned on; call `configure({ bundleUrl })`
+   *  to point it at a terrain bundle. */
+  public get placementAdvisor(): PlacementAdvisor | null {
+    return this._placementAdvisor;
+  }
+
   /** Access the DrawingCueEngine â€” control visual overlays during drawing. */
   public get drawingCueEngine(): DrawingCueEngine | null {
     return this._drawingCueEngine;
@@ -2103,6 +2143,12 @@ class SymbolEngine implements Evented {
         value
           ? this._proximityEngine.enable()
           : this._proximityEngine.disable();
+      } else if (feature === 'placementAdvisor') {
+        if (value) {
+          this._initPlacementAdvisor(true);
+        } else {
+          this._placementAdvisor?.disable();
+        }
       } else if (feature === 'contextMenu') {
         value
           ? this._contextMenuManager.enable()
@@ -2181,6 +2227,10 @@ class SymbolEngine implements Evented {
           );
         }
       }
+    }
+
+    if (fullPath.startsWith('placement.') && this._placementAdvisor) {
+      this._placementAdvisor.setOptions((settingsData as any).placement ?? {});
     }
 
     if (fullPath === 'features.analysisEngines') {
@@ -2541,6 +2591,7 @@ class SymbolEngine implements Evented {
     this._selectionEngine?.setDrawing(false);
     this._proximityEngine?.deactivate();
     this._drawingCueEngine?.deactivate();
+    this._placementAdvisor?.deactivate();
   }
 
   /** Stop continuous creation mode and revert to single. No-op if already single. */
@@ -2756,9 +2807,11 @@ class SymbolEngine implements Evented {
         sketchLayer.remove(event.graphic);
         sketchVM.destroy();
         this._proximityEngine?.deactivate();
+        this._placementAdvisor?.deactivate();
       }
       if (event.state === 'cancel') {
         this._proximityEngine?.deactivate();
+        this._placementAdvisor?.deactivate();
       }
     });
   }
@@ -3071,6 +3124,9 @@ class SymbolEngine implements Evented {
       // this draw completes (e.g. rapid re-pick or continuous mode).
       this._activeSIDC = this.sidc;
       this._activeAmplifier = this.amplifier;
+      // Resolve the symbol's mobility profile and warm the terrain tiles so the
+      // very first cursor move already has data (no-op when the advisor is off).
+      if (!isPassive) this._placementAdvisor?.prepareFor(amplifier.SIDC);
 
       const reqSID = this.sidc.getSID();
       const coSIDC = this.sidc.getSIDC();
@@ -3475,6 +3531,23 @@ class SymbolEngine implements Evented {
         return;
       }
 
+      // Placement advisor: stamp the terrain verdict on the graphic and, in
+      // enforce mode, refuse a placement the rules forbid. Plan load / paste /
+      // programmatic placements (lifecycle suppressed or carrying a pending id)
+      // are replays of existing data and are never checked or blocked.
+      let placementStamp: any = null;
+      if (this._placementAdvisor?.isActive && !suppressLifecycle && !this._pendingAttrs) {
+        const check = this._placementAdvisor.checkCommit(geometry, drawEssentials);
+        if (!check.allow) {
+          this.isDrawing = false;
+          this._selectionEngine.setDrawing(false);
+          this._freehandDrawArmed = false;
+          EngineLogger.error('Symbol Engine', `Placement refused — ${check.verdict.message}`);
+          return;
+        }
+        placementStamp = check.stamp;
+      }
+
       // Create the graphic
       const graphic = new Graphic({
         geometry: geometry,
@@ -3525,6 +3598,8 @@ class SymbolEngine implements Evented {
       if ((this as any).attrs) {
         Object.assign(attrs, (this as any).attrs);
       }
+
+      if (placementStamp) attrs.placement = placementStamp;
 
       graphic.attributes = attrs;
       graphic.set('id', attrs.id);

@@ -1,0 +1,74 @@
+# classes.yaml — the stable terrain class table and how sources map to it.
+# Codes are stable identifiers (never renumber, only append). The `classes`
+# block is copied verbatim into the bundle's rules.json by scripts/profiles.py.
+
+classes:
+  - { code: 0,   name: open_land,       label: "Open land" }
+  - { code: 1,   name: tree_cover,      label: "Tree cover" }
+  - { code: 2,   name: cropland,        label: "Cropland" }
+  - { code: 3,   name: built_up,        label: "Built-up area" }
+  - { code: 4,   name: water_permanent, label: "Permanent water" }
+  - { code: 5,   name: water_seasonal,  label: "Seasonal water / flood zone" }
+  - { code: 6,   name: wetland,         label: "Wetland / marsh" }
+  - { code: 7,   name: mangrove,        label: "Mangrove" }
+  - { code: 8,   name: snow_ice,        label: "Snow / ice / glacier" }
+  - { code: 9,   name: steep_slope,     label: "Steep slope (>30°)" }
+  - { code: 10,  name: moderate_slope,  label: "Moderate slope (15–30°)" }
+  - { code: 11,  name: restricted,      label: "Restricted / protected area" }
+  - { code: 12,  name: bare_desert,     label: "Bare / desert" }
+  - { code: 255, name: nodata,          label: "No data" }
+
+# When several layers claim a pixel the FIRST entry here wins.
+precedence:
+  - water_permanent
+  - wetland
+  - mangrove
+  - built_up
+  - restricted
+  - snow_ice
+  - steep_slope
+  - water_seasonal
+  - moderate_slope
+  - tree_cover
+  - cropland
+  - bare_desert
+  - open_land
+
+sources:
+  worldcover:            # ESA WorldCover code -> class name (0 = nodata)
+    10: tree_cover
+    20: open_land        # shrubland
+    30: open_land        # grassland
+    40: cropland
+    50: built_up
+    60: bare_desert
+    70: snow_ice
+    80: water_permanent
+    90: wetland
+    95: mangrove
+    100: open_land       # moss & lichen
+  jrc:                   # Global Surface Water "occurrence" (% of valid observations)
+    permanent_min_pct: 80       # >= 80 % -> water_permanent
+    seasonal_min_pct: 20        # 20..80 % -> water_seasonal
+  slope:                 # degrees, from Copernicus GLO-30
+    moderate_deg: 15            # 15..30 -> moderate_slope
+    steep_deg: 30               # >= 30  -> steep_slope
+  osm:                   # one uint8 mask per theme, produced by scripts/derive.py
+    metric_crs: EPSG:32642      # UTM 42N; buffers are built here (43N is fine too)
+    themes:
+      water:
+        class: water_permanent
+        polygons: "natural = 'water' OR other_tags LIKE '%\"water\"=>%'"
+        waterways:             # linear features buffered by type (metres)
+          river: 40
+          canal: 15
+          stream: 5
+      wetland:
+        class: wetland
+        polygons: "natural = 'wetland'"
+      restricted:
+        class: restricted
+        polygons: "landuse = 'military' OR military IS NOT NULL OR (boundary = 'protected_area')"
+      built_up:
+        class: built_up
+        polygons: "landuse IN ('residential','industrial','commercial')"

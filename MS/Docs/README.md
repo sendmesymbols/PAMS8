@@ -20,6 +20,7 @@ PAMS8 draws MIL-STD-2525D tactical symbols on ArcGIS maps (2D `MapView` and 3D `
 | Briefing slides, live collaboration, stylus | [12 Briefing, collaboration, stylus](12-briefing-collab-stylus.md) |
 | Find a symbol key | [13 Symbol catalog](13-symbol-catalog.md) (generated) |
 | Debug something | [14 FAQ and troubleshooting](14-faq-troubleshooting.md) |
+| Warn when a symbol is placed on no-go terrain (water, marsh, ...) | [15 Placement advisor](15-placement-advisor.md) |
 
 ## Where this documentation comes from
 

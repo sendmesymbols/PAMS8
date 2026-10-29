@@ -1,0 +1,10 @@
+# Python 3.11+. GDAL command-line tools (gdalwarp, gdalbuildvrt, gdal_rasterize,
+# gdal_translate, ogr2ogr, ogrinfo) must be on PATH (apt: gdal-bin libgdal-dev).
+# Install rasterio/pyogrio wheels or match them to the system GDAL version.
+numpy>=1.26
+scipy>=1.11
+rasterio>=1.3.9
+pyogrio>=0.7          # fiona>=1.9 works as an alternative for the boundary step
+shapely>=2.0
+pyyaml>=6.0
+Pillow>=10.0

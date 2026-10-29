@@ -34,3 +34,6 @@ public/assets
 # Large files that exceed GitHub's file size limit
 PAMS8.pptx
 MS2/RD/Adv Weather Viz.zip
+
+# Synthetic terrain bundle for Placement Advisor dev/tests (node tools/terrain-synth.mjs) — regenerable
+public/terrain-bundle/

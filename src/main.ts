@@ -2321,6 +2321,39 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     showToast(d.message, d.phase);
   });
 
+  // ── Placement advisor (terrain advice while drawing) ───────────────────────
+  // The cursor badge is drawn by the engine itself; the harness only mirrors
+  // the state into the Settings panel and toasts a refusal in enforce mode.
+  const placementStatus = document.getElementById('placement-status');
+  let placementState = 'off';
+  let placementAdvice = '';
+  let placementTiles = '';
+  const renderPlacementStatus = () => {
+    if (!placementStatus) return;
+    placementStatus.textContent =
+      [placementState, placementAdvice, placementTiles].filter(Boolean).join(' · ') || 'off';
+  };
+  document.addEventListener('placement-state-change', (e: any) => {
+    placementState = e.detail.state;
+    renderPlacementStatus();
+  });
+  document.addEventListener('placement-advice', (e: any) => {
+    placementAdvice = e.detail.message;
+    renderPlacementStatus();
+  });
+  document.addEventListener('placement-clear', () => {
+    placementAdvice = '';
+    renderPlacementStatus();
+  });
+  document.addEventListener('placement-tiles', (e: any) => {
+    const t = e.detail;
+    placementTiles = `tiles ${t.loaded}${t.pending ? ` (+${t.pending} loading)` : ''}${t.failed ? ` ${t.failed} failed` : ''}`;
+    renderPlacementStatus();
+  });
+  document.addEventListener('placement-blocked', (e: any) => {
+    showToast(`Placement refused — ${e.detail.verdict.message}`, 'no-targets');
+  });
+
   document.addEventListener('measurement-update', (e: any) => {
     const d = e.detail;
     lastSnap = d;

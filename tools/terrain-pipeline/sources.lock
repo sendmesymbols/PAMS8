@@ -1,0 +1,93 @@
+# sources.lock — pinned inputs of the terrain bundle.
+#
+# VERIFY BEFORE FIRST RUN: the `url`/`pattern` values below are the publicly
+# documented download layouts at the time of writing, NOT facts checked by this
+# repository. Open each `landing` page, confirm the pattern + version, then run
+# `make fetch`. `scripts/fetch.py` verifies a file's sha256 when the lock holds
+# one and, with `--record`, replaces every `TO_BE_FILLED` with the hash of the
+# file it just downloaded. Commit the recorded lock: manifest.json carries these
+# hashes so a bundle can be traced back to its inputs.
+#
+# Entry shape:
+#   id, name, version, licence, attribution, landing (human page, "verify"),
+#   files: explicit list  — OR —  pattern + tiles (expanded by fetch.py)
+#   sha256: per file (TO_BE_FILLED until recorded)
+
+sources:
+
+  - id: worldcover
+    name: ESA WorldCover 2021 v200
+    version: v200 (2021)
+    licence: CC-BY-4.0
+    attribution: "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium"
+    landing: https://esa-worldcover.org/en/data-access        # verify
+    # 3°x3° tiles named by their south-west corner. Verify the bucket layout.
+    pattern: https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{tile}_Map.tif   # verify
+    allow_missing: true   # ocean-only tiles do not exist on the server; fetch skips 404s
+    tiles:
+      - N21E060
+      - N21E063
+      - N21E066
+      - N21E069
+      - N24E060
+      - N24E063
+      - N24E066
+      - N24E069
+      - N24E072
+      - N27E060
+      - N27E063
+      - N27E066
+      - N27E069
+      - N27E072
+      - N30E060
+      - N30E063
+      - N30E066
+      - N30E069
+      - N30E072
+      - N30E075
+      - N33E069
+      - N33E072
+      - N33E075
+      - N36E072
+      - N36E075
+    sha256: TO_BE_FILLED
+
+  - id: jrc_gsw
+    name: JRC Global Surface Water — occurrence (1984-2021, v1.4)
+    version: v1_4_2021
+    licence: "Free of charge for any purpose with attribution (JRC/EC Copernicus; see landing page)"
+    attribution: "Pekel, Cottam, Gorelick, Belward (2016). Nature 540, 418-422. European Commission JRC / Google."
+    landing: https://global-surface-water.appspot.com/download        # verify
+    # 10°x10° tiles named by their NORTH-WEST corner. Verify.
+    pattern: https://storage.googleapis.com/global-surface-water/downloads2021/occurrence/occurrence_{tile}v1_4_2021.tif   # verify
+    tiles:
+      - 60E_40N
+      - 70E_40N
+      - 60E_30N
+      - 70E_30N
+    sha256: TO_BE_FILLED
+
+  - id: glo30
+    name: Copernicus DEM GLO-30
+    version: "2023_1 (verify current release)"
+    licence: "Copernicus DEM licence (free, attribution required; see landing page)"
+    attribution: "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved"
+    landing: https://registry.opendata.aws/copernicus-dem/        # verify
+    # 1°x1° COG tiles. {lat}/{lon} are zero-padded N/E codes, e.g. N33 / E073. Verify.
+    pattern: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_{lat}_00_{lon}_00_DEM/Copernicus_DSM_COG_10_{lat}_00_{lon}_00_DEM.tif   # verify
+    allow_missing: true   # ocean-only cells are absent
+    tile_range:           # expanded by fetch.py: lat 23..37, lon 60..77 (inclusive)
+      lat: [23, 37]
+      lon: [60, 77]
+    sha256: TO_BE_FILLED
+
+  - id: osm_pakistan
+    name: OpenStreetMap — Pakistan extract (Geofabrik)
+    version: "pakistan-YYMMDD (pin a dated file, not -latest)"
+    licence: ODbL-1.0
+    attribution: "© OpenStreetMap contributors, ODbL. Extract by Geofabrik GmbH."
+    landing: https://download.geofabrik.de/asia/pakistan.html        # verify
+    files:
+      - name: pakistan.osm.pbf
+        url: https://download.geofabrik.de/asia/pakistan-latest.osm.pbf   # verify; replace with a dated file for reproducibility
+    sha256: TO_BE_FILLED

@@ -421,7 +421,8 @@
     "briefing": true,
     "exportTools": true,
     "screenAnchor": false,
-    "collab": false
+    "collab": false,
+    "placementAdvisor": false
   },
   "collab": {
     "transport": "sse",
@@ -637,6 +638,18 @@
     "markerSize": 10,
     "fontSize": 11,
     "fontColor": [0, 80, 200]
+  },
+  "placement": {
+    "mode": "advise",
+    "bundleUrl": "/terrain-bundle",
+    "nearThresholdM": 250,
+    "partialFraction": 0.2,
+    "blockOn": ["in", "partial"],
+    "showBadge": true,
+    "logVerdicts": true,
+    "cacheTiles": 256,
+    "prefetchMarginTiles": 1,
+    "maxSamples": 400
   },
   "stylus": {
     "mode": "auto",
