@@ -659,8 +659,10 @@ var MS = new function () {
 		icn['GR.IC.MISSILE.MSLADCP'] = {"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 152, fontsize: 25, text: 'CP'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 146, fontsize: 24, text: 'CP'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 149, fontsize: 25, text: 'CP'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 146, fontsize: 20, text: 'CP'}]}[affiliation];
 		icn['GR.IC.MISSILE.FAADC'] = {"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 150, fontsize: 18, text: 'FAADC'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'FAADC'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 149, fontsize: 23, text: 'FAADC'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 144, fontsize: 13, text: 'FAADC'}]}[affiliation];
 
-		icn['GR.IC.MISSILE.HIMAD'] = [{type: 'text', stroke: false, x: 100, y: 90, fontsize: 30, text: 'HCU'}];
-		icn['GR.IC.MISSILE.LOMAD'] = [{type: 'text', stroke: false, x: 100, y: 90, fontsize: 30, text: 'LCU'}];
+		// icn['GR.IC.MISSILE.HIMAD'] = [{type: 'text', stroke: false, x: 100, y: 140, fontsize: 23, text: 'HCU'}];
+		// icn['GR.IC.MISSILE.LOMAD'] = [{type: 'text', stroke: false, x: 100, y: 140, fontsize: 23, text: 'LCU'}];
+		icn['GR.IC.MISSILE.HIMAD'] = [{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 128, fontsize: 23, text: 'HCU'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 143, fontsize: 23, text: 'HCU'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 147, fontsize: 23, text: 'HCU'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 114, fontsize: 23, text: 'HCU'}]}[affiliation]];
+		icn['GR.IC.MISSILE.LOMAD'] = [{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 128, fontsize: 23, text: 'LCU'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 143, fontsize: 23, text: 'LCU'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 147, fontsize: 23, text: 'LCU'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 114, fontsize: 23, text: 'LCU'}]}[affiliation]];
 		icn['GR.IC.MISSILE.ESHORAD'] = [{type: 'text', stroke: false, x: 100, y: 90, fontsize: 30, text: 'ECU'}];
 		icn['GR.IC.MISSILE.ASCC'] = [{type: 'text', stroke: false, x: 100, y: 90, fontsize: 30, text: 'ASCC'}];
 
@@ -760,7 +762,7 @@ var MS = new function () {
 		icn['GR.IC.MOTORWAY'] = {type: 'path', d: 'M114.406,84.705c-0.624,0-1.184-0.444-1.318-1.095l-5.403-25.912H91.283l-5.397,25.887c-0.154,0.748-0.875,1.222-1.602,1.064c-0.729-0.16-1.194-0.895-1.038-1.643l5.626-26.982c0.133-0.639,0.683-1.096,1.319-1.096h18.584c0.637,0,1.187,0.457,1.319,1.096l5.632,27.007c0.157,0.747-0.309,1.483-1.038,1.643C114.595,84.696,114.5,84.705,114.406,84.705z M124.674,135.119h-50.38c-0.422,0-0.822-0.195-1.087-0.532c-0.267-0.337-0.37-0.779-0.281-1.203l7.371-35.351c0.16-0.775,0.906-1.27,1.661-1.104c0.756,0.167,1.238,0.928,1.075,1.703l-7.009,33.616h46.919l-7.01-33.616c-0.163-0.775,0.32-1.537,1.076-1.703c0.753-0.167,1.5,0.328,1.661,1.104l7.372,35.351c0.089,0.423-0.014,0.865-0.28,1.203C125.496,134.924,125.096,135.119,124.674,135.119z M135.889,114.556h-7.632c-0.731,0-1.348-0.783-1.437-1.824l-1.096-12.726H73.25l-1.096,12.726c-0.089,1.042-0.705,1.824-1.437,1.824h-7.632c-0.731,0-1.347-0.783-1.437-1.824l-1.096-12.726H56.04c-0.801,0-1.449-0.932-1.449-2.08v-14.55c0-1.15,0.648-2.08,1.449-2.08h86.895c0.801,0,1.449,0.93,1.449,2.08v14.55c0,1.148-0.648,2.08-1.449,2.08h-4.513l-1.096,12.726C137.236,113.773,136.62,114.556,135.889,114.556z M129.537,110.4h5.072l1.096-12.728c0.088-1.042,0.706-1.825,1.437-1.825h4.345V85.454h-84v10.393h4.345c0.732,0,1.349,0.783,1.437,1.825l1.096,12.728h5.072l1.096-12.728c0.089-1.042,0.706-1.825,1.438-1.825h55.033c0.732,0,1.348,0.783,1.437,1.825L129.537,110.4z M98.9,98.507c0.724,0,1.311,0.6,1.311,1.34v31.819c0,0.739-0.586,1.34-1.311,1.34s-1.311-0.602-1.311-1.34V99.847C97.59,99.106,98.176,98.507,98.9,98.507z M98.59,56.5c0.574,0,1.039,0.475,1.039,1.062v25.216c0,0.585-0.465,1.062-1.039,1.062s-1.039-0.477-1.039-1.062V57.562C97.551,56.975,98.016,56.5,98.59,56.5z', fill: false};
 
 		icn['GR.IC.FF.AIR ASSAULT WITH ORGANIC LIFT'] = {"Unknown": {type: 'path', d: 'M35,120 L 90,120 l10,10 10,-10 L165,120', fill: false}, "Friend": {type: 'path', d: 'M25,120 L 90,120 l10,10 10,-10 L175,120', fill: false}, "Neutral": {type: 'path', d: 'M45,120 L 90,120 l10,10 10,-10 L155,120', fill: false}, "Hostile": {type: 'path', d: 'M50,120 L 90,120 l10,10 10,-10 L150,120', fill: false}}[affiliation];
-		icn['GR.IC.FF.AIR DEFENCE'] = {"Unknown": {type: 'path', d: 'M65,140 C65,115 135,115 135,140', fill: false}, "Friend": {type: 'path', d: 'M25,150 C25,110 175,110 175,150', fill: false}, "Neutral": {type: 'path', d: 'M45,150 C45,110 155,110 155,150', fill: false}, "Hostile": {type: 'path', d: 'M70,140 C70,115 130,115 130,140', fill: false}}[affiliation];
+		icn['GR.IC.FF.AIR DEFENCE'] = {"Unknown": {type: 'path', d: 'M135,132H63l36-98L135,132z M83.9,77.2l30.3,0.2', fill: false}, "Friend": {type: 'path', d: 'M173,148H28l72.5-95L173,148z M70.1,94.8l61,0.2', fill: false}, "Neutral": {type: 'path', d: 'M152,154H46L99,48L152,154z M76.8,94.7l44.6,0.2', fill: false}, "Hostile": {type: 'path', d: 'M146,119H55l45.5-85L146,119z M81.4,71.4l38.3,0.2', fill: false}}[affiliation];
 		icn['GR.IC.FF.AIR AND NAVAL GUNFIRE LIAISON COMPANY'] = []; //TODO
 		icn['GR.IC.FF.AMPHIBIOUS'] = {"Unknown": {type: 'path', d: 'M30,105 c10,0 0,-15 13.5,-15  c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c13.5,0 3.5,15 13.5,15', fill: false}, "Friend": {type: 'path', d: 'M25,110 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 20,20', fill: false}, "Neutral": {type: 'path', d: 'M45,90 c18.8,0 0,20 18,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18,-20', fill: false}, "Hostile": {type: 'path', d: 'M32,105 c10,0 0,-15 11.5,-15  c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c18.8,0 0,20 18.8,20 c18.8,0 0,-20 18.8,-20 c11.5,0 1.5,15 11.5,15', fill: false}}[affiliation];
 		icn['GR.IC.FF.ANALYSIS'] = {type: 'path', d: 'm 100,120 0,-65 m 0,90 -30,-25 60,0 z', fill: false};
@@ -1952,6 +1954,49 @@ var MS = new function () {
 		icn['GR.IC.EW SAF'] = [{"Hostile": [{type: 'path', fill: false, d: 'M56.3,80.9l40.2,26.9v-9l40.2,26.9 M67.6,104H57.4v7.8h11.4v2.4H54V92.6h14.2V95H57.4v6.8h10.2 C67.6,101.7,67.6,104,67.6,104z M123.8,113.3l-6.6-21.5h3.6l3.2,10.9c0.8,2.7,1.5,5.4,2,7.5h0.1c0.4-2.1,1.2-4.7,2.1-7.5l3.5-10.9 h3.6l3.2,10.9c0.8,2.6,1.4,5.1,1.8,7.4h0.1c0.5-2.4,1.3-4.8,2.1-7.5l3.5-10.9h3.5l-7.5,21.5h-3.6l-3.3-11.2c-0.8-2.7-1.4-4.9-1.7-7 h-0.1c-0.5,2.1-1,4.3-2.1,7l-3.8,11.2H123.8z'}, {type: 'text', stroke: false, x: 98, y: 136, fontsize: 20, text: 'SAF'}], "Unknown": [{type: 'path', fill: false, d: 'M56.3,80.9l40.2,26.9v-9l40.2,26.9 M67.6,104H57.4v7.8h11.4v2.4H54V92.6h14.2V95H57.4v6.8h10.2 C67.6,101.7,67.6,104,67.6,104z M123.8,113.3l-6.6-21.5h3.6l3.2,10.9c0.8,2.7,1.5,5.4,2,7.5h0.1c0.4-2.1,1.2-4.7,2.1-7.5l3.5-10.9 h3.6l3.2,10.9c0.8,2.6,1.4,5.1,1.8,7.4h0.1c0.5-2.4,1.3-4.8,2.1-7.5l3.5-10.9h3.5l-7.5,21.5h-3.6l-3.3-11.2c-0.8-2.7-1.4-4.9-1.7-7 h-0.1c-0.5,2.1-1,4.3-2.1,7l-3.8,11.2H123.8z'}, {type: 'text', stroke: false, x: 98, y: 136, fontsize: 20, text: 'SAF'}], "Friend": [{type: 'path', fill: false, d: 'M56.3,80.9l40.2,26.9v-9l40.2,26.9 M67.6,104H57.4v7.8h11.4v2.4H54V92.6h14.2V95H57.4v6.8h10.2 C67.6,101.7,67.6,104,67.6,104z M123.8,113.3l-6.6-21.5h3.6l3.2,10.9c0.8,2.7,1.5,5.4,2,7.5h0.1c0.4-2.1,1.2-4.7,2.1-7.5l3.5-10.9 h3.6l3.2,10.9c0.8,2.6,1.4,5.1,1.8,7.4h0.1c0.5-2.4,1.3-4.8,2.1-7.5l3.5-10.9h3.5l-7.5,21.5h-3.6l-3.3-11.2c-0.8-2.7-1.4-4.9-1.7-7 h-0.1c-0.5,2.1-1,4.3-2.1,7l-3.8,11.2H123.8z'}, {type: 'text', stroke: false, x: 101, y: 140, fontsize: 20, text: 'SAF'}], "Neutral": [{type: 'path', fill: false, d: 'M56.3,80.9l40.2,26.9v-9l40.2,26.9 M67.6,104H57.4v7.8h11.4v2.4H54V92.6h14.2V95H57.4v6.8h10.2 C67.6,101.7,67.6,104,67.6,104z M123.8,113.3l-6.6-21.5h3.6l3.2,10.9c0.8,2.7,1.5,5.4,2,7.5h0.1c0.4-2.1,1.2-4.7,2.1-7.5l3.5-10.9 h3.6l3.2,10.9c0.8,2.6,1.4,5.1,1.8,7.4h0.1c0.5-2.4,1.3-4.8,2.1-7.5l3.5-10.9h3.5l-7.5,21.5h-3.6l-3.3-11.2c-0.8-2.7-1.4-4.9-1.7-7 h-0.1c-0.5,2.1-1,4.3-2.1,7l-3.8,11.2H123.8z'}, {type: 'text', stroke: false, x: 98, y: 140, fontsize: 20, text: 'SAF'}]}[affiliation]];
 		icn['GR.IC.EW TA CELL'] = [{"Hostile": [{type: 'path', fill: false, d: 'M56.3,80.9l40.2,26.9v-9l40.2,26.9 M67.6,104H57.4v7.8h11.4v2.4H54V92.6h14.2V95H57.4v6.8h10.2 C67.6,101.7,67.6,104,67.6,104z M123.8,113.3l-6.6-21.5h3.6l3.2,10.9c0.8,2.7,1.5,5.4,2,7.5h0.1c0.4-2.1,1.2-4.7,2.1-7.5l3.5-10.9 h3.6l3.2,10.9c0.8,2.6,1.4,5.1,1.8,7.4h0.1c0.5-2.4,1.3-4.8,2.1-7.5l3.5-10.9h3.5l-7.5,21.5h-3.6l-3.3-11.2c-0.8-2.7-1.4-4.9-1.7-7 h-0.1c-0.5,2.1-1,4.3-2.1,7l-3.8,11.2H123.8z'}, {type: 'text', stroke: false, x: 98, y: 136, fontsize: 20, text: 'TA Cell'}], "Unknown": [{type: 'path', fill: false, d: 'M56.3,80.9l40.2,26.9v-9l40.2,26.9 M67.6,104H57.4v7.8h11.4v2.4H54V92.6h14.2V95H57.4v6.8h10.2 C67.6,101.7,67.6,104,67.6,104z M123.8,113.3l-6.6-21.5h3.6l3.2,10.9c0.8,2.7,1.5,5.4,2,7.5h0.1c0.4-2.1,1.2-4.7,2.1-7.5l3.5-10.9 h3.6l3.2,10.9c0.8,2.6,1.4,5.1,1.8,7.4h0.1c0.5-2.4,1.3-4.8,2.1-7.5l3.5-10.9h3.5l-7.5,21.5h-3.6l-3.3-11.2c-0.8-2.7-1.4-4.9-1.7-7 h-0.1c-0.5,2.1-1,4.3-2.1,7l-3.8,11.2H123.8z'}, {type: 'text', stroke: false, x: 98, y: 136, fontsize: 20, text: 'TA Cell'}], "Friend": [{type: 'path', fill: false, d: 'M56.3,80.9l40.2,26.9v-9l40.2,26.9 M67.6,104H57.4v7.8h11.4v2.4H54V92.6h14.2V95H57.4v6.8h10.2 C67.6,101.7,67.6,104,67.6,104z M123.8,113.3l-6.6-21.5h3.6l3.2,10.9c0.8,2.7,1.5,5.4,2,7.5h0.1c0.4-2.1,1.2-4.7,2.1-7.5l3.5-10.9 h3.6l3.2,10.9c0.8,2.6,1.4,5.1,1.8,7.4h0.1c0.5-2.4,1.3-4.8,2.1-7.5l3.5-10.9h3.5l-7.5,21.5h-3.6l-3.3-11.2c-0.8-2.7-1.4-4.9-1.7-7 h-0.1c-0.5,2.1-1,4.3-2.1,7l-3.8,11.2H123.8z'}, {type: 'text', stroke: false, x: 101, y: 140, fontsize: 20, text: 'TA Cell'}], "Neutral": [{type: 'path', fill: false, d: 'M56.3,80.9l40.2,26.9v-9l40.2,26.9 M67.6,104H57.4v7.8h11.4v2.4H54V92.6h14.2V95H57.4v6.8h10.2 C67.6,101.7,67.6,104,67.6,104z M123.8,113.3l-6.6-21.5h3.6l3.2,10.9c0.8,2.7,1.5,5.4,2,7.5h0.1c0.4-2.1,1.2-4.7,2.1-7.5l3.5-10.9 h3.6l3.2,10.9c0.8,2.6,1.4,5.1,1.8,7.4h0.1c0.5-2.4,1.3-4.8,2.1-7.5l3.5-10.9h3.5l-7.5,21.5h-3.6l-3.3-11.2c-0.8-2.7-1.4-4.9-1.7-7 h-0.1c-0.5,2.1-1,4.3-2.1,7l-3.8,11.2H123.8z'}, {type: 'text', stroke: false, x: 98, y: 140, fontsize: 20, text: 'TA Cell'}]}[affiliation]];
 
+		//MT Symbols
+		icn['GR.TRG.FAC.FFR'] = [[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'FFR'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'FFR'}], "Friend": [{type: 'text', stroke: false, x: 101, y: 80, fontsize: 20, text: 'FFR'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'FFR'}]}[affiliation]]];
+		icn['GR.TRG.FAC.AFV RG'] = [{"Hostile": [{type:'path',d:'M112.5,113h-29c-4.1,0-7.5-3.4-7.5-7.5v0c0-4.1,3.4-7.5,7.5-7.5h29c4.1,0,7.5,3.4,7.5,7.5v0 C120,109.6,116.6,113,112.5,113z',fill:false},{type: 'path', fill: false, d: 'M130,123H67.2V90H130V123z'}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'AFV Rg'}], "Unknown": [{type:'path',d:'M112.5,113h-29c-4.1,0-7.5-3.4-7.5-7.5v0c0-4.1,3.4-7.5,7.5-7.5h29c4.1,0,7.5,3.4,7.5,7.5v0 C120,109.6,116.6,113,112.5,113z',fill:false},{type: 'path', fill: false, d: 'M130,123H67.2V90H130V123z'}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'AFV Rg'}], "Friend": [{type:'path',d:'M122.5,121h-50c-4.1,0-7.5-3.4-7.5-7.5v0c0-4.1,3.4-7.5,7.5-7.5h50c4.1,0,7.5,3.4,7.5,7.5v0 C130,117.6,126.6,121,122.5,121z',fill:false},{type: 'path', fill: false, d: 'M144,130H52V97h92V130z'}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'AFV Rg'}], "Neutral": [{type:'path',d:'M112.5,113h-29c-4.1,0-7.5-3.4-7.5-7.5v0c0-4.1,3.4-7.5,7.5-7.5h29c4.1,0,7.5,3.4,7.5,7.5v0 C120,109.6,116.6,113,112.5,113z',fill:false},{type: 'path', fill: false, d: 'M130,123H67.2V90H130V123z'}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'AFV Rg'}]}[affiliation]];
+		icn['GR.TRG.FAC.ARTY RG'] =  [{"Hostile": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 90, fontsize: 20, text: 'Arty Rg'}], "Unknown": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 90, fontsize: 20, text: 'Arty Rg'}], "Friend": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'Arty Rg'}], "Neutral": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'Arty Rg'}]}[affiliation]];
+		icn['GR.TRG.FAC.CL RG'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [{type:'path',d:'M100.9,151v-12.7 M93,144l16,0 M101,129l-3.5,8.3h7.1L101,129z M100.3,137.9l1.5-4.9',fill:false}, {type: 'text', stroke: false, x: 98, y: 60, fontsize: 17, text: 'Cl'},{type: 'text', stroke: false, x: 100, y: 75, fontsize: 17, text: 'SA Rg'}], "Unknown": [{type:'path',d:'M100.9,151v-12.7 M93,144l16,0 M101,129l-3.5,8.3h7.1L101,129z M100.3,137.9l1.5-4.9',fill:false}, {type: 'text', stroke: false, x: 98, y: 60, fontsize: 17, text: 'Cl'},{type: 'text', stroke: false, x: 100, y: 75, fontsize: 17, text: 'SA Rg'}], "Friend": [{type:'path',d:'M100.9,149v-12.7 M93,142l16,0 M101,127l-3.5,8.3h7.1L101,127z M100.3,135.9l1.5-4.9',fill:false}, {type: 'text', stroke: false, x: 98, y: 65, fontsize: 17, text: 'Cl'},{type: 'text', stroke: false, x: 100, y: 80, fontsize: 17, text: 'SA Rg'}], "Neutral": [{type:'path',d:'M100.9,151v-12.7 M93,144l16,0 M101,129l-3.5,8.3h7.1L101,129z M100.3,137.9l1.5-4.9',fill:false}, {type: 'text', stroke: false, x: 98, y: 60, fontsize: 17, text: 'CI'},{type: 'text', stroke: false, x: 100, y: 75, fontsize: 17, text: 'SA Rg'}]}[affiliation]]];
+		icn['GR.TRG.FAC.SHORT RG'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 100, y: 70, fontsize: 20, text: 'Short'},{type: 'text', stroke: false, x: 100, y: 86, fontsize: 20, text: 'Rg'}], "Unknown": [{type: 'text', stroke: false, x: 100, y: 67, fontsize: 20, text: 'Short'},{type: 'text', stroke: false, x: 100, y: 85, fontsize: 20, text: 'Rg'}], "Friend": [{type: 'text', stroke: false, x: 100, y: 70, fontsize: 20, text: 'Short'},{type: 'text', stroke: false, x: 100, y: 88, fontsize: 20, text: 'Rg'}], "Neutral": [{type: 'text', stroke: false, x: 100, y: 65, fontsize: 20, text: 'Short'},{type: 'text', stroke: false, x: 101, y: 82, fontsize: 20, text: 'Rg'}]}[affiliation]]];
+		icn['GR.TRG.FAC.MINI RG'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 100, y: 70, fontsize: 20, text: 'Min'},{type: 'text', stroke: false, x: 100, y: 86, fontsize: 20, text: 'Rg'}], "Unknown": [{type: 'text', stroke: false, x: 100, y: 67, fontsize: 20, text: 'Min'},{type: 'text', stroke: false, x: 100, y: 85, fontsize: 20, text: 'Rg'}], "Friend": [{type: 'text', stroke: false, x: 100, y: 70, fontsize: 20, text: 'Min'},{type: 'text', stroke: false, x: 100, y: 88, fontsize: 20, text: 'Rg'}], "Neutral": [{type: 'text', stroke: false, x: 100, y: 65, fontsize: 20, text: 'Min'},{type: 'text', stroke: false, x: 101, y: 82, fontsize: 20, text: 'Rg'}]}[affiliation]]];
+		icn['GR.TRG.FAC.SUB CAL RG'] = [{"Hostile": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 94, fontsize: 18, text: 'Sub Cal Rg'}], "Unknown": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 90, fontsize: 20, text: 'Sub Cal Rg'}], "Friend": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'Sub Cal Rg'}], "Neutral": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'Sub Cal Rg'}]}[affiliation]];
+		icn['GR.TRG.FAC.UP DN HILL RG'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [{type:'path',d:'M101.5,134l-11,12.6h22L101.5,134z M96,146l7-9.5 M98,144l8.8-3.5 M100,147l8.8-3.5',fill:false},{type: 'text', stroke: false, x: 100, y: 64, fontsize: 20, text: 'Hill'},{type: 'text', stroke: false, x: 100, y:82, fontsize: 20, text: 'Rg'}], "Unknown": [{type:'path',d:'M101.5,134l-11,12.6h22L101.5,134z M96,146l7-9.5 M98,144l8.8-3.5 M100,147l8.8-3.5',fill:false},{type: 'text', stroke: false, x: 100, y: 68, fontsize: 20, text: 'Hill'},{type: 'text', stroke: false, x: 100, y:82, fontsize: 20, text: 'Rg'}], "Friend": [{type:'path',d:'M101.5,134l-11,12.6h22L101.5,134z M96,146l7-9.5 M98,144l8.8-3.5 M100,147l8.8-3.5',fill:false},{type: 'text', stroke: false, x: 100, y: 68, fontsize: 20, text: 'Hill'},{type: 'text', stroke: false, x: 100, y:82, fontsize: 20, text: 'Rg'}], "Neutral": [{type:'path',d:'M101.5,139l-11,12.6h22L101.5,139z M96,151l7-9.5 M98,149l8.8-3.5 M100,152l8.8-3.5',fill:false},{type: 'text', stroke: false, x: 100, y: 64, fontsize: 20, text: 'Hill'},{type: 'text', stroke: false, x: 100, y:82, fontsize: 20, text: 'Rg'}]}[affiliation]]];
+		icn['GR.TRG.FAC.BULT ARREST RG'] = [{"Hostile": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 88, fontsize: 20, text: 'BAR'}], "Unknown": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 88, fontsize: 20, text: 'BAR'}], "Friend": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'BAR'}], "Neutral": [{type:'path',d:'M103,113.5c0,3-2.5,5.5-5.5,5.5s-5.5-2.5-5.5-5.5s2.5-5.5,5.5-5.5S103,110.5,103,113.5z',fill:false}, {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'BAR'}]}[affiliation]];
+		icn['GR.TRG.FAC.DCB RG'] = [[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'DCB'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'DCB'}], "Friend": [{type: 'text', stroke: false, x: 101, y: 80, fontsize: 20, text: 'DCB'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'DCB'}]}[affiliation]]];
+		icn['GR.TRG.FAC.GREN RG'] =[icn['GR.IC.FF.INFANTRY'],[{"Hostile": [{type:'path',d:'M100.9,150v-22.7 M101,118l-3.5,8.3h7.1L101,118z M100.3,126.9l1.5-4.9 M101.3,128c-5.9,0-10.8,3.4-10.8,7.5 s4.8,7.5,10.8,7.5s10.8-3.4,10.8-7.5S107.2,128,101.3,128z',fill:false}, {type: 'text', stroke: false, x: 98, y: 70, fontsize: 20, text: 'GTR'}], "Unknown": [{type:'path',d:'M100.9,150v-22.7 M101,118l-3.5,8.3h7.1L101,118z M100.3,126.9l1.5-4.9 M101.3,128c-5.9,0-10.8,3.4-10.8,7.5 s4.8,7.5,10.8,7.5s10.8-3.4,10.8-7.5S107.2,128,101.3,128z',fill:false}, {type: 'text', stroke: false, x: 98, y: 70, fontsize: 20, text: 'GTR'}], "Friend": [{type:'path',d:'M100.9,149v-22.7 M101,117l-3.5,8.3h7.1L101,117z M100.3,125.9l1.5-4.9 M101.3,127c-5.9,0-10.8,3.4-10.8,7.5 s4.8,7.5,10.8,7.5s10.8-3.4,10.8-7.5S107.2,127,101.3,127z',fill:false}, {type: 'text', stroke: false, x: 98, y: 70, fontsize: 20, text: 'GTR'}], "Neutral": [{type:'path',d:'M100.9,150v-22.7 M101,118l-3.5,8.3h7.1L101,118z M100.3,126.9l1.5-4.9 M101.3,128c-5.9,0-10.8,3.4-10.8,7.5 s4.8,7.5,10.8,7.5s10.8-3.4,10.8-7.5S107.2,128,101.3,128z',fill:false}, {type: 'text', stroke: false, x: 98, y: 65, fontsize: 20, text: 'GTR'}]}[affiliation]]];
+		icn['GR.TRG.FAC.CBRN CMPLX'] = [[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'CBRNE'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'CMPLX'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'CBRNE'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'CMPLX'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'CBRNE'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'CMPLX'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'CBRNE'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'CMPLX'}]}[affiliation]]];
+		icn['GR.TRG.FAC.TRG SHED'] =  [[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Trg'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'Shed'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Trg'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'Shed'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Trg'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'Shed'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Trg'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'Shed'}]}[affiliation]]];
+		icn['GR.TRG.FAC.CQB RG'] = [[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 84, fontsize: 20, text: 'CQB Rg'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 84, fontsize: 20, text: 'CQB Rg'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'CQB Rg'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'CQB Rg'}]}[affiliation]]];
+		icn['GR.TRG.FAC.ASLT CRSE'] = [[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Aslt'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'Course'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Aslt'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'Course'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Aslt'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'Course'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Aslt'}, {type: 'text', stroke: false, x: 98, y: 104, fontsize: 20, text: 'Course'}]}[affiliation]]];
+		icn['GR.TRG.FAC.CTC'] =[icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'CTC'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'CTC'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'CTC'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 70, fontsize: 20, text: 'CTC'}]}[affiliation]]];
+		icn['GR.TRG.FAC.QRC'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'QRC'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'QRC'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'QRC'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 70, fontsize: 20, text: 'QRC'}]}[affiliation]]];
+		icn['GR.TRG.FAC.IRC'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'IRC'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'IRC'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'IRC'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 70, fontsize: 20, text: 'IRC'}]}[affiliation]]];
+		icn['GR.TRG.FAC.ICRC'] =[icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'CRC'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'CRC'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'CRC'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 70, fontsize: 20, text: 'CRC'}]}[affiliation]]];
+		icn['GR.TRG.FAC.SCF'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'SCF'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 80, fontsize: 20, text: 'SCF'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'SCF'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 70, fontsize: 20, text: 'SCF'}]}[affiliation]]];
+		icn['GR.TRG.FAC.PL POST'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 60, fontsize: 20, text: 'Pl'},  {type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'POST'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 60, fontsize: 20, text: 'Pl'},  {type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'POST'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 66, fontsize: 20, text: 'Pl'},  {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'POST'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 64, fontsize: 20, text: 'PI'},  {type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'POST'}]}[affiliation]]];
+		icn['GR.TRG.FAC.CTTS'] = [icn['GR.IC.FF.INFANTRY'],[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 74, fontsize: 20, text: 'CTTS'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 74, fontsize: 20, text: 'CTTS'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 78, fontsize: 20, text: 'CTTS'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 68, fontsize: 20, text: 'CTTS'}]}[affiliation]]];
+		icn['GR.TRG.FAC.MISC'] = [[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 84, fontsize: 20, text: 'Misc'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 84, fontsize: 20, text: 'Misc'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Misc'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Misc'}]}[affiliation]]];
+		icn['GR.TRG.FAC.SPORTS'] = [[{"Hostile": [ {type: 'text', stroke: false, x: 98, y: 84, fontsize: 20, text: 'Sports'}], "Unknown": [ {type: 'text', stroke: false, x: 98, y: 84, fontsize: 20, text: 'Sports'}], "Friend": [{type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Sports'}], "Neutral": [ {type: 'text', stroke: false, x: 98, y: 82, fontsize: 20, text: 'Sports'}]}[affiliation]]];
+
+		//
+		//New AAD Symbols
+		icn['GR.IC.FF.AIR DEFENCE SELF PROP']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": {type: 'path', d: 'M133,77.5c0,9.1-15,16.5-33.5,16.5S66,86.6,66,77.5S81,61,99.5,61S133,68.4,133,77.5z', fill: false}, "Friend": {type: 'path', d: 'M145,100c0,11-20.1,20-45,20s-45-9-45-20s20.1-20,45-20S145,89,145,100z', fill: false}, "Neutral": {type: 'path', d: 'M145,100c0,11-20.1,20-45,20s-45-9-45-20s20.1-20,45-20S145,89,145,100z', fill: false}, "Hostile": {type: 'path', d: 'M133,77.5c0,9.1-15,16.5-33.5,16.5S66,86.6,66,77.5S81,61,99.5,61S133,68.4,133,77.5z', fill: false}}[affiliation]]];
+		icn['GR.IC.FF.AIR DEFENCE OP CENT']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 130, fontsize: 16, text: 'AADOC'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'AADOC'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 149, fontsize: 23, text: 'AADOC'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 118, fontsize: 18, text: 'AADOC'}]}[affiliation]]];
+		icn['GR.IC.FF.AIR DEFENCE DIV OP CENT']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 130, fontsize: 23, text: 'DOC'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'DOC'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 149, fontsize: 23, text: 'DOC'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 118, fontsize: 23, text: 'DOC'}]}[affiliation]]];
+		icn['GR.IC.FF.AIR DEFENCE BRG COMD POST']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 130, fontsize: 23, text: 'BCP'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'BCP'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 149, fontsize: 23, text: 'BCP'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 118, fontsize: 23, text: 'BCP'}]}[affiliation]]];
+		icn['GR.IC.FF.AIR DEFENCE REGT COMD POST']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 130, fontsize: 23, text: 'RCP'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'RCP'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 149, fontsize: 23, text: 'RCP'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 118, fontsize: 23, text: 'RCP'}]}[affiliation]]];
+		icn['GR.IC.FF.AIR DEFENCE BTY COMD POST']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 130, fontsize: 18, text: 'BTYCP'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'BTYCP'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 149, fontsize: 23, text: 'BTYCP'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 118, fontsize: 20, text: 'BTYCP'}]}[affiliation]]];
+		icn['GR.IC.FF.AIR DEFENCE TPS COMD POST']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 130, fontsize: 23, text: 'TCP'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'TCP'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 149, fontsize: 23, text: 'TCP'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 118, fontsize: 23, text: 'TCP'}]}[affiliation]]];
+		icn['GR.IC.FF.AIR DEFENCE CTL RPT COMD POST']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 130, fontsize: 20, text: 'CRCP'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'CRCP'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 149, fontsize: 23, text: 'CRCP'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 118, fontsize: 23, text: 'CRCP'}]}[affiliation]]];
+		icn['GR.IC.FF.AIR DEFENCE FWD CTRE']=[icn['GR.IC.FF.AIR DEFENCE'],[{"Unknown": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 130, fontsize: 18, text: 'FAADC'}], "Friend": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 145, fontsize: 23, text: 'FAADC'}], "Neutral": [{type: 'text', stroke: false, textanchor: "middle", x: 98, y: 149, fontsize: 23, text: 'FAADC'}], "Hostile": [{type: 'text', stroke: false, textanchor: "middle", x: 100, y: 118, fontsize: 20, text: 'FAADC'}]}[affiliation]]];
+		icn['GR.EQ.CTR UNMANNED AERIAL VEHICLE']=[{"Unknown": {type: 'path', d: 'M98.1,65.8v68.1 M135,97.9H65.3 M145.4,89.4c-4.7,0-8.6,3.8-8.6,8.5s3.8,8.5,8.6,8.5s8.6-3.8,8.6-8.5 S150.2,89.4,145.4,89.4z M98.1,132.3c-4.7,0-8.6,3.8-8.6,8.5c0,4.7,3.8,8.5,8.6,8.5c4.7,0,8.6-3.8,8.6-8.5 C106.6,136.1,102.8,132.3,98.1,132.3z M54.6,89.4c-4.7,0-8.6,3.8-8.6,8.5s3.8,8.5,8.6,8.5s8.6-3.8,8.6-8.5S59.3,89.4,54.6,89.4z M98.1,47.4c-4.7,0-8.6,3.8-8.6,8.5s3.8,8.5,8.6,8.5c4.7,0,8.6-3.8,8.6-8.5S102.8,47.4,98.1,47.4z M113,40L82.8,156.7', fill: false}, "Friend": {type: 'path', d: 'M98.1,65.8v68.1 M135,97.9H65.3 M145.4,89.4c-4.7,0-8.6,3.8-8.6,8.5s3.8,8.5,8.6,8.5s8.6-3.8,8.6-8.5 S150.2,89.4,145.4,89.4z M98.1,132.3c-4.7,0-8.6,3.8-8.6,8.5c0,4.7,3.8,8.5,8.6,8.5c4.7,0,8.6-3.8,8.6-8.5 C106.6,136.1,102.8,132.3,98.1,132.3z M54.6,89.4c-4.7,0-8.6,3.8-8.6,8.5s3.8,8.5,8.6,8.5s8.6-3.8,8.6-8.5S59.3,89.4,54.6,89.4z M98.1,47.4c-4.7,0-8.6,3.8-8.6,8.5s3.8,8.5,8.6,8.5c4.7,0,8.6-3.8,8.6-8.5S102.8,47.4,98.1,47.4z M113,40L82.8,156.7', fill: false}, "Neutral": {type: 'path', d: 'M98.9,68.1v66.3 M132.9,99.4H68.7 M142.5,91.1c-4.4,0-7.9,3.7-7.9,8.3s3.5,8.3,7.9,8.3c4.4,0,7.9-3.7,7.9-8.3 S146.9,91.1,142.5,91.1z M98.9,132.9c-4.4,0-7.9,3.7-7.9,8.3s3.5,8.3,7.9,8.3c4.4,0,7.9-3.7,7.9-8.3S103.3,132.9,98.9,132.9z M58.9,91.1c-4.4,0-7.9,3.7-7.9,8.3s3.5,8.3,7.9,8.3s7.9-3.7,7.9-8.3S63.3,91.1,58.9,91.1z M98.9,50.2c-4.4,0-7.9,3.7-7.9,8.3 s3.5,8.3,7.9,8.3c4.4,0,7.9-3.7,7.9-8.3S103.3,50.2,98.9,50.2z M112.7,43L84.9,156.7', fill: false}, "Hostile": {type: 'path', d: 'M98.9,68.1v66.3 M132.9,99.4H68.7 M142.5,91.1c-4.4,0-7.9,3.7-7.9,8.3s3.5,8.3,7.9,8.3c4.4,0,7.9-3.7,7.9-8.3 S146.9,91.1,142.5,91.1z M98.9,132.9c-4.4,0-7.9,3.7-7.9,8.3s3.5,8.3,7.9,8.3c4.4,0,7.9-3.7,7.9-8.3S103.3,132.9,98.9,132.9z M58.9,91.1c-4.4,0-7.9,3.7-7.9,8.3s3.5,8.3,7.9,8.3s7.9-3.7,7.9-8.3S63.3,91.1,58.9,91.1z M98.9,50.2c-4.4,0-7.9,3.7-7.9,8.3 s3.5,8.3,7.9,8.3c4.4,0,7.9-3.7,7.9-8.3S103.3,50.2,98.9,50.2z M112.7,43L84.9,156.7', fill: false}}[affiliation]];
+		icn['GR.EQ.OERLIKON GUN']={type: 'path', d: 'M101,61v80 M116,81v40 M86,81v40', fill: false};
+		icn['GR.EQ.CLOSE WPN SYS']={type: 'path', d: 'M101,61v80 M116,81v40 M86,81v40', fill: false};
+		icn['GR.EQ.AIR DEFENCE MISSILE SURFACE-TO-AIR-MSL']={type: 'path', d: 'M98.9,76.3V121 M122,125c-1.3-15-2.5-30-3.8-45c0-6.6-4.1-12-9.2-12H90c-5,0-9.2,5.4-9.2,12 c-1.3,14.7-2.5,29.3-3.8,44 M71,125.3L117.2,82 M118.2,80l9.8,16.5', fill: false};
+		icn['GR.EQ.AD.RADAR IBIS']={type: 'path', d: 'M88,84v40 M86,84h17 M111.2,68.7c-10.6,4.3-11.2,23.9,0.1,27.7', fill: false};
+		
 
 		function defaultProperties(instructions) {
 			if (typeof instructions == 'object') {
@@ -5342,16 +5387,11 @@ MS._getNumberSIDCicn = function (symbolSet, icn, _STD2525) {
 		sId['130100'] = [icn['GR.IC.FF.AIR DEFENCE']];
 		sId['130101'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.FF.MAIN GUN SYSTEM']];
 		sId['130102'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE']];
-		sId['130103'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE'], icn['GR.IC.MISSILE.LIGHT']];
-		sId['130104'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE'], icn['GR.IC.MISSILE.MEDIUM']];
-		sId['130105'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE'], icn['GR.IC.MISSILE.HEAVY']];
 		sId['130106'] = [icn['GR.EQ.MISSILE LAUNCHER']];
 
 		sId['130107'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE'], icn['GR.IC.MISSILE.AADOC']];
 		sId['130108'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE'], icn['GR.IC.MISSILE.DOC']];
-		sId['130109'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE'], icn['GR.IC.MISSILE.DDOC']];
 		sId['130110'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE'], icn['GR.IC.MISSILE.CRCP']];
-		sId['130111'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR DEFENSE MISSILE'], icn['GR.IC.MISSILE.MSLADCP']];
 		sId['130112'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.AIR FAADC ICON'], icn['GR.IC.MISSILE.FAADC']];
 
 		sId['130113'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.MISSILE.HIMAD']];
@@ -5359,6 +5399,17 @@ MS._getNumberSIDCicn = function (symbolSet, icn, _STD2525) {
 		sId['130115'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.MISSILE.ESHORAD']];
 		sId['130116'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.MISSILE.ASCC']];
 		sId['130117'] = [icn['GR.IC.FF.AIR DEFENCE'], icn['GR.IC.MISSILE.DOC']];
+		//New AAD Symbols
+		sId['130118'] = [icn['GR.IC.FF.AIR DEFENCE SELF PROP']];
+		sId['130119'] = [icn['GR.IC.FF.AIR DEFENCE OP CENT']];
+		sId['130120'] = [icn['GR.IC.FF.AIR DEFENCE DIV OP CENT']];
+		sId['130121'] = [icn['GR.IC.FF.AIR DEFENCE BRG COMD POST']];
+		sId['130122'] = [icn['GR.IC.FF.AIR DEFENCE REGT COMD POST']];
+		sId['130123'] = [icn['GR.IC.FF.AIR DEFENCE BTY COMD POST']];
+		sId['130124'] = [icn['GR.IC.FF.AIR DEFENCE TPS COMD POST']];
+		sId['130125'] = [icn['GR.IC.FF.AIR DEFENCE CTL RPT COMD POST']];
+		sId['130126'] = [icn['GR.IC.FF.AIR DEFENCE FWD CTRE']];
+	   
 
 
 		//sId['130195'] = [icn['GR.IC.FF.AIR DEFENCE'],icn['GR.IC.FF.HEADQUARTERS OR HEADQUARTERS ELEMENT']];
@@ -5557,32 +5608,7 @@ MS._getNumberSIDCicn = function (symbolSet, icn, _STD2525) {
 		sId['150513'] = [icn['GR.IC.EW SAF']];
 		sId['150514'] = [icn['GR.IC.EW TA CELL']];
 
-    //Symbols from MT Trg Facilities
 
-    sId['121451'] = [icn['GR.TRG.FAC.AFV RG']];
-    sId['121452'] = [icn['GR.TRG.FAC.ARTY RG']];
-    sId['121453'] = [icn['GR.TRG.FAC.CL RG']];
-    sId['121454'] = [icn['GR.TRG.FAC.SHORT RG']];
-    sId['121455'] = [icn['GR.TRG.FAC.MINI RG']];
-    sId['121456'] = [icn['GR.TRG.FAC.SUB CAL RG']];
-    sId['121457'] = [icn['GR.TRG.FAC.UP DN HILL RG']];
-    sId['121458'] = [icn['GR.TRG.FAC.BULT ARREST RG']];
-    sId['121459'] = [icn['GR.TRG.FAC.DCB RG']];
-    sId['121460'] = [icn['GR.TRG.FAC.GREN RG']];
-    sId['121461'] = [icn['GR.TRG.FAC.CBRN CMPLX']];
-    sId['121462'] = [icn['GR.TRG.FAC.TRG SHED']];
-    sId['121463'] = [icn['GR.TRG.FAC.CQB RG']];
-    sId['121464'] = [icn['GR.TRG.FAC.ASLT CRSE']];
-    sId['121465'] = [icn['GR.TRG.FAC.CTC']];
-    sId['121466'] = [icn['GR.TRG.FAC.QRC']];
-    sId['121467'] = [icn['GR.TRG.FAC.IRC']];
-    sId['121468'] = [icn['GR.TRG.FAC.ICRC']];
-    sId['121469'] = [icn['GR.TRG.FAC.SCF']];
-    sId['121470'] = [icn['GR.TRG.FAC.PL POST']];
-    sId['121471'] = [icn['GR.TRG.FAC.CTTS']];
-    sId['121472'] = [icn['GR.TRG.FAC.MISC']];
-    sId['121473'] = [icn['GR.TRG.FAC.SPORTS']];
-    sId['121474'] = [icn['GR.TRG.FAC.FFR']];
 
 		sIdm1['01'] = [icn['GR.M1.AIRMOBILE/AIR ASSAULT']];
 		sIdm1['02'] = [icn['GR.M1.AREA']];
@@ -5790,6 +5816,10 @@ MS._getNumberSIDCicn = function (symbolSet, icn, _STD2525) {
 		sId['110501'] = [icn['GR.EQ.AIR DEFENCE GUN'], icn['GR.EQ.SHORT RANGE']];
 		sId['110502'] = [icn['GR.EQ.AIR DEFENCE GUN'], icn['GR.EQ.INTERMEDIATE RANGE']];
 		sId['110503'] = [icn['GR.EQ.AIR DEFENCE GUN'], icn['GR.EQ.LONG RANGE']];
+		//New AAD Symbols
+		sId['110504'] = icn['GR.EQ.OERLIKON GUN'];
+		sId['110505'] = icn['GR.EQ.CLOSE WPN SYS'];
+
 		sId['110600'] = [icn['GR.EQ.ANTITANK GUN']];
 		sId['110601'] = [icn['GR.EQ.ANTITANK GUN'], icn['GR.EQ.SHORT RANGE']];
 		sId['110602'] = [icn['GR.EQ.ANTITANK GUN'], icn['GR.EQ.INTERMEDIATE RANGE']];
@@ -5824,6 +5854,9 @@ MS._getNumberSIDCicn = function (symbolSet, icn, _STD2525) {
 		sId['111107'] = [icn['GR.EQ.AIR DEFENCE MISSILE LAUNCHER SURFACE-TO-AIR'], icn['GR.EQ.LONG RANGE']];
 		sId['111108'] = [icn['GR.EQ.AIR DEFENCE MISSILE LAUNCHER SURFACE-TO-AIR'], icn['GR.EQ.LONG RANGE'], icn['GR.EQ.AIR DEFENCE MISSILE LAUNCHER SURFACE-TO-AIR TLAR']];
 		sId['111109'] = [icn['GR.EQ.AIR DEFENCE MISSILE LAUNCHER SURFACE-TO-AIR'], icn['GR.EQ.LONG RANGE'], icn['GR.EQ.AIR DEFENCE MISSILE LAUNCHER SURFACE-TO-AIR TELAR']];
+		//New AAD Symbols
+		sId['111110'] = [icn['GR.EQ.AIR DEFENCE MISSILE SURFACE-TO-AIR-MSL']];
+	   
 		sId['111200'] = [icn['GR.EQ.ANTITANK MISSILE LAUNCHER']];
 		sId['111201'] = [icn['GR.EQ.ANTITANK MISSILE LAUNCHER'], icn['GR.EQ.SHORT RANGE']];
 		sId['111202'] = [icn['GR.EQ.ANTITANK MISSILE LAUNCHER'], icn['GR.EQ.INTERMEDIATE RANGE']];
@@ -6002,11 +6035,16 @@ MS._getNumberSIDCicn = function (symbolSet, icn, _STD2525) {
 		sId['220301'] = [icn['GR.EQ.ARTY.RADAR']];
 		sId['220302'] = [icn['GR.EQ.SOUND.RANGING.RADAR']];
 		sId['220303'] = [icn['GR.EQ.AD.RADAR']];
+		//New AAD Symbols
+		sId['220304'] = [icn['GR.EQ.AD.RADAR IBIS']];
+		sId['220305'] = [icn['GR.EQ.CTR UNMANNED AERIAL VEHICLE']];
 		sId['230000'] = [icn['GR.IC.FF.EMERGENCY OPERATION']];
 		sId['230100'] = [icn['GR.EQ.CIVILIAN VEHICLE.UTILITY VEHICLE'], icn['GR.M1.MEDEVAC']];
 		sId['230200'] = [icn['GR.IC.FIRE PROTECTION']];
 		sId['240000'] = [icn['SP.I.MANUAL TRACK']];
 
+
+		//
 		//MAJ NAEEM's CREATED SYMBOLS
 
 		sId['230302'] = [icn['GR.IC.SURV RADAR']];
@@ -6202,6 +6240,37 @@ MS._getNumberSIDCicn = function (symbolSet, icn, _STD2525) {
 		sId['121447'] = [icn['GR.IC.EME RECOVERY']];
 		sId['121448'] = [icn['GR.IC.EME MRT']];
 		sId['121449'] = [icn['GR.IC.EME SRT']];
+
+		
+		
+		//Symbols from MT Trg Facilities
+		
+		sId['121451'] = [icn['GR.TRG.FAC.AFV RG']];
+		sId['121452'] = [icn['GR.TRG.FAC.ARTY RG']];
+		sId['121453'] = [icn['GR.TRG.FAC.CL RG']];
+		sId['121454'] = [icn['GR.TRG.FAC.SHORT RG']];
+		sId['121455'] = [icn['GR.TRG.FAC.MINI RG']];
+		sId['121456'] = [icn['GR.TRG.FAC.SUB CAL RG']];
+		sId['121457'] = [icn['GR.TRG.FAC.UP DN HILL RG']];
+		sId['121458'] = [icn['GR.TRG.FAC.BULT ARREST RG']];
+		sId['121459'] = [icn['GR.TRG.FAC.DCB RG']];
+		sId['121460'] = [icn['GR.TRG.FAC.GREN RG']];
+		sId['121461'] = [icn['GR.TRG.FAC.CBRN CMPLX']];
+		sId['121462'] = [icn['GR.TRG.FAC.TRG SHED']];
+		sId['121463'] = [icn['GR.TRG.FAC.CQB RG']];
+		sId['121464'] = [icn['GR.TRG.FAC.ASLT CRSE']];
+		sId['121465'] = [icn['GR.TRG.FAC.CTC']];
+		sId['121466'] = [icn['GR.TRG.FAC.QRC']];
+		sId['121467'] = [icn['GR.TRG.FAC.IRC']];
+		sId['121468'] = [icn['GR.TRG.FAC.ICRC']];
+		sId['121469'] = [icn['GR.TRG.FAC.SCF']];
+		sId['121470'] = [icn['GR.TRG.FAC.PL POST']];
+		sId['121471'] = [icn['GR.TRG.FAC.CTTS']];
+		sId['121472'] = [icn['GR.TRG.FAC.MISC']];
+		sId['121473'] = [icn['GR.TRG.FAC.SPORTS']];
+		sId['121474'] = [icn['GR.TRG.FAC.FFR']];
+
+
 
 		//sIdm1['00'] = 'Unspecified';
 		sIdm1['01'] = [icn['GR.M1.BIOLOGICAL']];
