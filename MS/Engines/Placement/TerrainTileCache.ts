@@ -11,6 +11,8 @@
 export interface TileSource {
   /** Resolve to the pixel values (tileSize² bytes), or null when the tile does not exist (404 = no coverage). */
   fetchTile(layer: string, z: number, x: number, y: number): Promise<Uint8Array | null>;
+  /** Release resources (e.g. a worker) when the source is replaced or the engine is destroyed. */
+  dispose?(): void;
 }
 
 export const MERC_ORIGIN = 20037508.342789244; // π · 6378137
@@ -77,6 +79,9 @@ export class HttpPngTileSource implements TileSource {
     const resp = await fetch(url, { cache: 'force-cache' });
     if (resp.status === 404) return null;
     if (!resp.ok) throw new Error(`tile ${url}: HTTP ${resp.status}`);
+    // A host with an SPA fallback (Vite dev server, many production setups) answers a
+    // missing tile with 200 + index.html instead of 404 — that is "no coverage", not a failure.
+    if (!(resp.headers.get('content-type') ?? '').toLowerCase().startsWith('image/')) return null;
     const blob = await resp.blob();
     const bmp = await createImageBitmap(blob, {
       colorSpaceConversion: 'none',

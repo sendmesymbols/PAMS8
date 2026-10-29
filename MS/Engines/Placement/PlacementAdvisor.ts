@@ -26,13 +26,22 @@
 
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import EngineLogger from '../../Support/EngineLogger';
-import { compileProfile, evaluateSamples, type CompiledProfile } from './PlacementEvaluator';
+import { compileProfile, evaluateSamples, fmtDistance, type CompiledProfile } from './PlacementEvaluator';
 import { PlacementBadge } from './PlacementBadge';
+import { PlacementIndicators } from './PlacementIndicators';
+import { createOverlayLayer, type OverlayRenderingSource } from './PlacementOverlay';
+import { WorkerTileSource } from './WorkerTileSource';
 import { resolveProfile } from './PlacementProfiles';
 import { samplePoints, toMercatorShape } from './PlacementSampling';
 import {
   DEFAULT_PLACEMENT_OPTIONS,
+  DIST_FAR,
   DIST_NODATA,
+  NODATA_CLASS,
+  layerNames,
+  type MercXY,
+  type PlacementIndicator,
+  type PlacementNearest,
   type PlacementOptions,
   type PlacementProfile,
   type PlacementStamp,
@@ -43,6 +52,7 @@ import {
 } from './PlacementTypes';
 import {
   HttpPngTileSource,
+  MERC_ORIGIN,
   TerrainTileCache,
   lngLatToMercator,
   mercatorToTilePixel,
@@ -52,6 +62,9 @@ import {
 
 const ENGINE = 'Placement Advisor';
 const NULL_SAMPLE: TerrainSample = { classCode: null, distanceM: null };
+/** Half-width of the local search for the nearest terrain of the opposite kind, in tile pixels. */
+const SCAN_RADIUS_PX = 32;
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
 interface ReadContext {
   z: number;
@@ -78,6 +91,11 @@ export default class PlacementAdvisor {
   private _rules: TerrainRules | null = null;
   private _boundsMerc: [number, number, number, number] = [0, 0, 0, 0];
   private _cache: TerrainTileCache | null = null;
+  private _source: OverlayRenderingSource | null = null;
+  private _overlay: any = null;
+  private _overlayMap: any = null;
+  private _overlayShown: PlacementProfile | null = null;
+  private _lastArmedProfile: PlacementProfile | null = null;
   private _compiled = new Map<PlacementProfile, CompiledProfile>();
   private _configToken = 0;
 
@@ -89,6 +107,8 @@ export default class PlacementAdvisor {
   private _reevalTimer: ReturnType<typeof setTimeout> | null = null;
 
   private _badge = new PlacementBadge();
+  private _indicators = new PlacementIndicators(() => this._getView());
+  private _lastClient: { x: number; y: number } | null = null;
   private _container: HTMLElement | null = null;
   private _pointerHandler: ((e: PointerEvent) => void) | null = null;
   private _stationaryHandle: { remove(): void } | null = null;
@@ -132,6 +152,9 @@ export default class PlacementAdvisor {
     this._compiled.clear();
     this._cache?.clear();
     this._cache = null;
+    this._source?.dispose?.();
+    this._source = null;
+    this._removeOverlay();
 
     if (!base) {
       this._emitState('no-bundle');
@@ -151,11 +174,8 @@ export default class PlacementAdvisor {
       const [x0, y0] = lngLatToMercator(w, s);
       const [x1, y1] = lngLatToMercator(e, n);
       this._boundsMerc = [Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)];
-      this._cache = new TerrainTileCache(
-        new HttpPngTileSource(base, manifest.tileSize),
-        this._opts.cacheTiles,
-        () => this._onTilesChanged(),
-      );
+      this._source = this._makeSource(base, manifest.tileSize);
+      this._cache = new TerrainTileCache(this._source, this._opts.cacheTiles, () => this._onTilesChanged());
       EngineLogger.success(
         ENGINE,
         `Terrain bundle ready — ${manifest.name ?? base} (rules ${rules.version ?? 'unversioned'})`,
@@ -163,6 +183,7 @@ export default class PlacementAdvisor {
       this._emitState('ready');
       if (this._enabled) this._bindView();
       this._prefetch();
+      this._syncOverlay();
       return true;
     } catch (err) {
       if (token !== this._configToken) return false;
@@ -189,11 +210,30 @@ export default class PlacementAdvisor {
       next.prefetchMarginTiles = Math.max(0, Math.floor(patch.prefetchMarginTiles as number));
     }
     if (Number.isFinite(patch.maxSamples)) next.maxSamples = Math.max(8, Math.floor(patch.maxSamples as number));
+    if (typeof patch.useWorker === 'boolean') next.useWorker = patch.useWorker;
+    const ind = patch.indicators;
+    next.indicators = { ...prev.indicators };
+    if (ind && typeof ind === 'object') {
+      if (typeof ind.enabled === 'boolean') next.indicators.enabled = ind.enabled;
+      if (typeof ind.labels === 'boolean') next.indicators.labels = ind.labels;
+    }
+    const ov = patch.overlay;
+    next.overlay = { ...prev.overlay };
+    if (ov && typeof ov === 'object') {
+      if (typeof ov.enabled === 'boolean') next.overlay.enabled = ov.enabled;
+      if (typeof ov.profile === 'string' && (ov.profile === 'auto' || ov.profile !== 'exempt')) {
+        next.overlay.profile = ov.profile as PlacementOptions['overlay']['profile'];
+      }
+      if (Number.isFinite(ov.opacity)) next.overlay.opacity = Math.min(1, Math.max(0.05, ov.opacity));
+    }
     this._opts = next;
 
     if (next.cacheTiles !== prev.cacheTiles) this._cache?.setCapacity(next.cacheTiles);
+    if (next.useWorker !== prev.useWorker) this._swapSource();
+    this._syncOverlay(next.overlay.profile !== prev.overlay.profile || next.nearThresholdM !== prev.nearThresholdM);
     if (next.mode === 'off') this.deactivate();
     if (!next.showBadge) this._badge.hide();
+    if (!next.indicators.enabled) this._indicators.hide();
     if (next.bundleUrl !== prev.bundleUrl && this._enabled) void this.configure();
     this._lastKey = ''; // thresholds changed — republish the next verdict
   }
@@ -212,6 +252,7 @@ export default class PlacementAdvisor {
     this._enabled = false;
     this.deactivate();
     this._unbindView();
+    this._removeOverlay();
     this._emitState('disabled');
   }
 
@@ -222,8 +263,10 @@ export default class PlacementAdvisor {
     if (!this.isActive) return;
     this._activeSidc = sidc ?? null;
     this._activeProfile = resolveProfile(this._activeSidc, this._rules);
+    if (this._activeProfile !== 'exempt') this._lastArmedProfile = this._activeProfile;
     this._attachPointer();
     this._prefetch();
+    this._syncOverlay();
   }
 
   /** Hot path. Called for every onDrawProgress of the engine's own view. */
@@ -239,12 +282,13 @@ export default class PlacementAdvisor {
       this._activeProfile = resolveProfile(sidc, this._rules);
     }
     this._lastDetail = { geometry, sidc };
-    this._publish(this.evaluateGeometry(geometry, sidc));
+    this._apply(this.evaluateGeometry(geometry, sidc, { ref: () => this._pointerMerc() }));
   }
 
   /** Draw ended or was cancelled — hide feedback and stop tracking the cursor. */
   deactivate(): void {
     this._badge.hide();
+    this._indicators.hide();
     this._detachPointer();
     this._lastDetail = null;
     this._activeSidc = null;
@@ -286,13 +330,18 @@ export default class PlacementAdvisor {
     this._detachPointer();
     this._unbindView();
     if (this._enabled && this._manifest) this._bindView();
+    this._syncOverlay(); // moves the overlay onto the new view's map
+    this._indicators.onViewChanged(); // re-attaches to the new map on the next show
   }
 
   destroy(): void {
     this.disable();
+    this._indicators.destroy();
     this._configToken++;
     this._cache?.clear();
     this._cache = null;
+    this._source?.dispose?.();
+    this._source = null;
     this._badge.destroy();
   }
 
@@ -303,7 +352,7 @@ export default class PlacementAdvisor {
   }
 
   /** Synchronous verdict for a geometry from the tiles currently in memory. */
-  evaluateGeometry(geometry: any, sidc?: string | null): PlacementVerdict {
+  evaluateGeometry(geometry: any, sidc?: string | null, opts?: { ref?: () => MercXY | null }): PlacementVerdict {
     const profile = resolveProfile(sidc ?? this._activeSidc, this._rules);
     if (!this.isActive) return this._blank('off', profile, 'Placement advisor off');
     const compiled = this._profile(profile);
@@ -317,11 +366,259 @@ export default class PlacementAdvisor {
     const pts = samplePoints(shape, resolutionAt(ctx.z, ctx.ts), this._opts.maxSamples);
     const samples: TerrainSample[] = new Array(pts.length);
     for (let i = 0; i < pts.length; i++) samples[i] = this._read(ctx, pts[i][0], pts[i][1]);
-    const v = evaluateSamples(samples, compiled, this._opts, this._rules);
+    const v = evaluateSamples(
+      samples,
+      compiled,
+      { nearThresholdM: this._opts.nearThresholdM, partialFraction: this._opts.partialFraction, farM: DIST_FAR * ctx.scale },
+      this._rules,
+    );
+    const stats = this._cache?.stats();
     if (v.verdict === 'unknown') {
-      v.message = (this._cache?.stats().pending ?? 0) > 0 ? 'Terrain data loading…' : 'Outside terrain data coverage';
+      v.message =
+        (stats?.pending ?? 0) > 0
+          ? 'Terrain data loading…'
+          : (stats?.failed ?? 0) > 0
+            ? 'Terrain data could not be loaded'
+            : 'Outside terrain data coverage';
+    } else {
+      this._enrich(v, samples, pts, ctx, compiled);
+      this._addIndicators(v, samples, pts, compiled, opts?.ref);
+      // A shape spanning tiles that are still arriving is judged on what is known so far.
+      if (v.unknown > 0 && (stats?.pending ?? 0) > 0) {
+        v.detail = v.detail ? `${v.detail} · still loading terrain data` : 'Still loading terrain data';
+      }
     }
     return v;
+  }
+
+  /**
+   * Say what is nearby. The distance layer gives how far the nearest no-go is
+   * but not what it is, so search the class tile around the deciding sample for
+   * the closest pixel of the opposite kind (no-go near a deployable point,
+   * deployable ground near a no-go point) and report its class, distance and
+   * compass direction. One bounded window scan per evaluation (≤ 65×65 px).
+   */
+  private _enrich(
+    v: PlacementVerdict,
+    samples: TerrainSample[],
+    pts: Array<[number, number]>,
+    ctx: ReadContext,
+    cp: CompiledProfile,
+  ): void {
+    const label = v.profileLabel;
+    if (v.verdict === 'in' && pts.length === 1) {
+      const { nearest, rangeM } = this._scanNearest(ctx, pts[0][0], pts[0][1], false, cp);
+      if (nearest) {
+        v.nearest = nearest;
+        v.detail = `Nearest deployable ground: ${nearest.className}, ${fmtDistance(nearest.distanceM)} to the ${nearest.compass}`;
+      } else if (rangeM > 0) {
+        v.detail = `No deployable ground within ${fmtDistance(rangeM)}`;
+      }
+      return;
+    }
+    const touching = v.fraction > 0;
+    if (touching || (v.verdict !== 'near' && v.verdict !== 'caution' && v.verdict !== 'ok')) return;
+
+    // The deciding sample is the deployable one closest to no-go.
+    let idx = -1;
+    let best = Infinity;
+    for (let i = 0; i < samples.length; i++) {
+      const s = samples[i];
+      if (s.classCode === null || s.classCode === NODATA_CLASS || cp.nogo[s.classCode]) continue;
+      const d = s.distanceM ?? Infinity;
+      if (idx < 0 || d < best) {
+        idx = i;
+        best = d;
+      }
+    }
+    if (idx < 0) return;
+    const { nearest } = this._scanNearest(ctx, pts[idx][0], pts[idx][1], true, cp);
+    if (!nearest) return;
+    v.nearest = nearest;
+    // Prefer the pipeline's exact distance; the scan supplies the class and direction.
+    const dist = v.distanceM !== null && v.distanceM < ctx.scale * DIST_FAR ? v.distanceM : nearest.distanceM;
+    const where = `${nearest.className}, ${fmtDistance(dist)} to the ${nearest.compass}`;
+    if (v.verdict === 'near') {
+      v.message =
+        dist < 1
+          ? `At the edge of ${nearest.className}`
+          : `${nearest.className} ${fmtDistance(dist)} to the ${nearest.compass}`;
+      v.detail = `No-go for ${label}`;
+    } else if (v.verdict === 'caution') {
+      v.detail = `Difficult ground for ${label}. Nearest no-go: ${where}`;
+    } else {
+      v.detail = `Nearest no-go: ${where}`;
+    }
+  }
+
+  /**
+   * Closest pixel of the wanted kind within SCAN_RADIUS_PX of a map point.
+   * `rangeM` is the ground distance the window covered (for "none within …").
+   */
+  private _scanNearest(
+    ctx: ReadContext,
+    mx: number,
+    my: number,
+    wantNoGo: boolean,
+    cp: CompiledProfile,
+  ): { nearest: PlacementNearest | null; rangeM: number } {
+    const cache = this._cache;
+    if (!cache) return { nearest: null, rangeM: 0 };
+    const res = resolutionAt(ctx.z, ctx.ts);
+    const lat = 2 * Math.atan(Math.exp(my / 6378137)) - Math.PI / 2;
+    const groundPx = res * Math.cos(lat); // true metres per tile pixel here
+    const ts = ctx.ts;
+    const n = 2 ** ctx.z;
+    const cx = Math.floor((mx + MERC_ORIGIN) / res);
+    const cy = Math.floor((MERC_ORIGIN - my) / res);
+    const R = SCAN_RADIUS_PX;
+    const tiles = new Map<number, Uint8Array | null | undefined>();
+
+    let bestD2 = Infinity;
+    let bdx = 0;
+    let bdy = 0;
+    let bcls = -1;
+    for (let dy = -R; dy <= R; dy++) {
+      const gy = cy + dy;
+      if (gy < 0 || gy >= n * ts) continue;
+      const ty = Math.floor(gy / ts);
+      const py = gy - ty * ts;
+      for (let dx = -R; dx <= R; dx++) {
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= bestD2 || d2 > R * R) continue;
+        const gx = cx + dx;
+        if (gx < 0 || gx >= n * ts) continue;
+        const tx = Math.floor(gx / ts);
+        const key = ty * n + tx;
+        let t: Uint8Array | null | undefined;
+        if (tiles.has(key)) t = tiles.get(key);
+        else {
+          t = cache.peek(ctx.cls, ctx.z, tx, ty);
+          tiles.set(key, t);
+        }
+        if (!t) continue;
+        const c = t[py * ts + (gx - tx * ts)];
+        if (c === NODATA_CLASS) continue;
+        if (wantNoGo ? cp.nogo[c] === 1 : cp.nogo[c] === 0) {
+          bestD2 = d2;
+          bdx = dx;
+          bdy = dy;
+          bcls = c;
+        }
+      }
+    }
+    const rangeM = R * groundPx;
+    if (bcls < 0) return { nearest: null, rangeM };
+    // Pixel centres are one pixel apart; the edge of the target is half a pixel nearer.
+    const distanceM = Math.max(0, (Math.sqrt(bestD2) - 0.5) * groundPx);
+    const bearingDeg = ((Math.atan2(bdx, -bdy) * 180) / Math.PI + 360) % 360;
+    // Where the edge of that pixel is: from the sample towards the pixel centre, stopping half a pixel short.
+    const pcx = (cx + bdx + 0.5) * res - MERC_ORIGIN;
+    const pcy = MERC_ORIGIN - (cy + bdy + 0.5) * res;
+    const len = Math.hypot(pcx - mx, pcy - my);
+    const k = len > 0.5 * res ? (len - 0.5 * res) / len : 1;
+    const to: MercXY = len > 0.5 * res ? [mx + (pcx - mx) * k, my + (pcy - my) * k] : [pcx, pcy];
+    return {
+      rangeM,
+      nearest: {
+        kind: wantNoGo ? 'no-go' : 'deployable',
+        classCode: bcls,
+        className: this._rules?.classes?.[String(bcls)]?.label ?? `class ${bcls}`,
+        distanceM,
+        from: [mx, my],
+        to,
+        bearingDeg,
+        compass: COMPASS[Math.round(bearingDeg / 45) % 8],
+      },
+    };
+  }
+
+  /**
+   * Lines to the terrain behind the verdict, in Web Mercator metres (the advisor draws
+   * them itself; the same data rides on the `placement-advice` event for hosts).
+   *  - too close to no-go (point, or the part of a shape nearest it): to that no-go edge;
+   *  - a point inside no-go: to the nearest deployable ground;
+   *  - a line/area partly or mostly in no-go: from the cursor to the nearest contested
+   *    sample, with marks on the contested samples.
+   */
+  private _addIndicators(
+    v: PlacementVerdict,
+    samples: TerrainSample[],
+    pts: MercXY[],
+    cp: CompiledProfile,
+    ref?: () => MercXY | null,
+  ): void {
+    const n = v.nearest;
+    const single = pts.length === 1;
+    if (n && ((v.verdict === 'near' && v.fraction === 0) || (v.verdict === 'in' && single))) {
+      v.indicators.push({
+        kind: n.kind,
+        from: n.from,
+        to: n.to,
+        marks: [],
+        classCode: n.classCode,
+        className: n.className,
+        label:
+          n.kind === 'no-go'
+            ? v.message
+            : `${n.className} ${fmtDistance(n.distanceM)} to the ${n.compass}`,
+      });
+      return;
+    }
+    if (single || !(v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0))) return;
+
+    const bad: MercXY[] = [];
+    for (let i = 0; i < samples.length; i++) {
+      const c = samples[i].classCode;
+      if (c !== null && c !== NODATA_CLASS && cp.nogo[c]) bad.push(pts[i]);
+    }
+    if (bad.length === 0) return;
+    let from = ref?.() ?? null;
+    if (!from) {
+      let sx = 0;
+      let sy = 0;
+      for (const p of pts) {
+        sx += p[0];
+        sy += p[1];
+      }
+      from = [sx / pts.length, sy / pts.length];
+    }
+    let to = bad[0];
+    let best = Infinity;
+    for (const b of bad) {
+      const d = Math.hypot(b[0] - from[0], b[1] - from[1]);
+      if (d < best) {
+        best = d;
+        to = b;
+      }
+    }
+    const stride = Math.max(1, Math.ceil(bad.length / 16));
+    const ind: PlacementIndicator = {
+      kind: 'contested',
+      from,
+      to,
+      marks: bad.filter((_, i) => i % stride === 0),
+      classCode: v.classCode,
+      className: v.className,
+      label: `${v.className ?? 'No-go'} (${Math.max(1, Math.round(v.fraction * 100))}% of the shape)`,
+    };
+    v.indicators.push(ind);
+  }
+
+  /** Cursor position in Web Mercator metres, for shapes where "the pointer" is not a vertex. */
+  private _pointerMerc(): MercXY | null {
+    const view: any = this._getView?.();
+    const c = this._container;
+    const p = this._lastClient;
+    if (!view || !c || !p) return null;
+    const r = c.getBoundingClientRect();
+    let mp: any = null;
+    try {
+      mp = view.toMap({ x: p.x - r.left, y: p.y - r.top });
+    } catch {
+      return null;
+    }
+    return mp ? (toMercatorShape(mp)?.parts[0]?.[0] ?? null) : null;
   }
 
   /** Raw terrain reading at a map point for the armed profile (generic when none is armed). */
@@ -337,6 +634,16 @@ export default class PlacementAdvisor {
     return this._cache?.stats() ?? { loaded: 0, missing: 0, pending: 0, failed: 0 };
   }
 
+  /** The indicator-line layer (null until a line has been drawn), for hosts that want to inspect or restyle it. */
+  get indicatorLayer(): any {
+    return this._indicators.layer;
+  }
+
+  /** True while tile decoding and overlay painting run in the Web Worker (false = main thread). */
+  get tileWorkerActive(): boolean {
+    return this._source?.workerActive === true;
+  }
+
   // ── Internals ────────────────────────────────────────────────────────────
 
   private _profile(name: PlacementProfile): CompiledProfile {
@@ -349,15 +656,25 @@ export default class PlacementAdvisor {
   }
 
   private _blank(verdict: PlacementVerdict['verdict'], profile: PlacementProfile, message: string): PlacementVerdict {
-    return { verdict, profile, classCode: null, className: null, distanceM: null, fraction: 0, samples: 0, unknown: 0, message };
+    return {
+      verdict,
+      profile,
+      profileLabel: this._rules?.profiles?.[profile]?.label ?? profile,
+      detail: null,
+      nearest: null,
+      indicators: [],
+      classCode: null,
+      className: null,
+      distanceM: null,
+      fraction: 0,
+      samples: 0,
+      unknown: 0,
+      message,
+    };
   }
 
   private _layerNames(profile: PlacementProfile): { cls: string; dist: string | null } {
-    const m = this._manifest!;
-    const cls = m.layers?.class ?? 'class';
-    const tpl = m.layers?.dist ?? 'dist_{profile}';
-    const dist = profile !== 'exempt' && m.profiles.includes(profile) ? tpl.replace('{profile}', profile) : null;
-    return { cls, dist };
+    return layerNames(this._manifest!, profile);
   }
 
   /** Per-evaluation lookup state: layer names resolved once, last tile memoised. */
@@ -392,6 +709,9 @@ export default class PlacementAdvisor {
       c.dt = c.dist ? this._cache.peek(c.dist, c.z, tp.tx, tp.ty) : undefined;
     }
     if (!c.ct) return NULL_SAMPLE;
+    // Class tile arrived but its distance tile has not: report unknown rather than a verdict
+    // computed without the distance (a transient wrong "ok" next to a marsh).
+    if (c.dist && c.dt === undefined) return NULL_SAMPLE;
     const idx = tp.py * c.ts + tp.px;
     let distanceM: number | null = null;
     if (c.dt) {
@@ -427,8 +747,18 @@ export default class PlacementAdvisor {
     return res > 0 ? res : null;
   }
 
+  /** Update the map lines (every call: their end follows the cursor), then badge + events (only on change). */
+  private _apply(v: PlacementVerdict): void {
+    if (this._opts.indicators.enabled && this.isActive && v.indicators.length > 0) {
+      this._indicators.show(v.indicators, this._opts.indicators.labels);
+    } else {
+      this._indicators.hide();
+    }
+    this._publish(v);
+  }
+
   private _publish(v: PlacementVerdict): void {
-    const key = `${v.verdict}|${v.message}`;
+    const key = `${v.verdict}|${v.message}|${v.detail ?? ''}`;
     if (key === this._lastKey) return;
     this._lastKey = key;
 
@@ -450,7 +780,7 @@ export default class PlacementAdvisor {
     this._reevalTimer = setTimeout(() => {
       this._reevalTimer = null;
       const d = this._lastDetail;
-      if (d && this.isActive) this._publish(this.evaluateGeometry(d.geometry, d.sidc));
+      if (d && this.isActive) this._apply(this.evaluateGeometry(d.geometry, d.sidc, { ref: () => this._pointerMerc() }));
     }, 30);
   }
 
@@ -517,7 +847,10 @@ export default class PlacementAdvisor {
     if (this._pointerHandler) return;
     const container = (this._getView?.() as any)?.container as HTMLElement | null | undefined;
     if (!container) return;
-    this._pointerHandler = (e: PointerEvent) => this._badge.moveTo(e.clientX, e.clientY);
+    this._pointerHandler = (e: PointerEvent) => {
+      this._lastClient = { x: e.clientX, y: e.clientY };
+      this._badge.moveTo(e.clientX, e.clientY);
+    };
     container.addEventListener('pointermove', this._pointerHandler, { passive: true });
     this._container = container;
   }
@@ -528,6 +861,92 @@ export default class PlacementAdvisor {
     }
     this._container = null;
     this._pointerHandler = null;
+    this._lastClient = null;
+  }
+
+  // ── Tile source ──────────────────────────────────────────────────────────
+
+  /** Worker-backed source when enabled and supported, else the main-thread one. */
+  private _makeSource(base: string, tileSize: number): OverlayRenderingSource {
+    return this._opts.useWorker && typeof Worker !== 'undefined'
+      ? new WorkerTileSource(base, tileSize)
+      : new HttpPngTileSource(base, tileSize);
+  }
+
+  /** Switch worker ↔ main thread at runtime without reloading the bundle. */
+  private _swapSource(): void {
+    if (!this._manifest || !this._opts.bundleUrl || !this._cache) return;
+    const old = this._source;
+    this._source = this._makeSource(this._opts.bundleUrl, this._manifest.tileSize);
+    this._cache.setSource(this._source); // clears the cache; tiles reload on demand
+    old?.dispose?.();
+    if (this._overlay) {
+      this._removeOverlay();
+      this._syncOverlay();
+    }
+    this._prefetch();
+  }
+
+  // ── Map overlay ──────────────────────────────────────────────────────────
+
+  /** Profile the overlay paints: the chosen one, or (auto) the armed symbol's, else the last armed, else dismounted. */
+  private _overlayProfileNow(): PlacementProfile {
+    const p = this._opts.overlay.profile;
+    if (p !== 'auto') return p;
+    const armed = this._activeProfile && this._activeProfile !== 'exempt' ? this._activeProfile : null;
+    return armed ?? this._lastArmedProfile ?? 'dismounted';
+  }
+
+  /** Add / update / remove the overlay layer to match the options. Safe to call at any time. */
+  private _syncOverlay(refresh = false): void {
+    const want = this._enabled && this._manifest !== null && this._rules !== null && this._opts.overlay.enabled;
+    if (!want) {
+      this._removeOverlay();
+      return;
+    }
+    const map = (this._getView?.() as any)?.map;
+    if (!map || !this._source) return;
+    if (!this._overlay) {
+      this._overlay = createOverlayLayer(
+        {
+          source: this._source,
+          manifest: this._manifest!,
+          rules: this._rules!,
+          getProfile: () => this._overlayProfileNow(),
+          getNearM: () => this._opts.nearThresholdM,
+        },
+        this._opts.overlay.opacity,
+      );
+      this._overlayShown = null;
+    }
+    if (this._overlayMap !== map) {
+      this._overlayMap?.remove(this._overlay);
+      map.add(this._overlay, 0); // under the symbol graphics layers
+      this._overlayMap = map;
+    }
+    this._overlay.opacity = this._opts.overlay.opacity;
+    const profile = this._overlayProfileNow();
+    if (refresh || (this._overlayShown !== null && this._overlayShown !== profile)) this._overlay.refresh?.();
+    this._overlayShown = profile;
+  }
+
+  private _removeOverlay(): void {
+    if (this._overlay) {
+      try {
+        this._overlayMap?.remove(this._overlay);
+        this._overlay.destroy?.();
+      } catch {
+        /* map already torn down */
+      }
+    }
+    this._overlay = null;
+    this._overlayMap = null;
+    this._overlayShown = null;
+  }
+
+  /** The overlay layer when it is on the map (for hosts that want to restyle or inspect it). */
+  get overlayLayer(): any {
+    return this._overlay;
   }
 
   private async _fetchJson<T>(url: string): Promise<T> {

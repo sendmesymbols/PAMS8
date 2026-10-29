@@ -38,7 +38,10 @@ pa.setOptions({ mode: 'advise', nearThresholdM: 250 });  // see PlacementOptions
 pa.enable(); pa.disable();
 
 const v = pa.evaluateGeometry(geometry, sidc);   // synchronous, from cached tiles
-// v: { verdict, profile, classCode, className, distanceM, fraction, samples, unknown, message }
+// v: { verdict, profile, profileLabel, classCode, className, distanceM, fraction, samples, unknown,
+//      message,   <- headline: what is wrong and why
+//      detail,    <- second line: what it means for this unit type / what is nearby
+//      nearest }  <- { kind, classCode, className, distanceM, bearingDeg, compass } or null
 
 pa.sampleAt(point)        // { classCode, distanceM | null } for the active profile
 pa.resolveProfile(sidc)   // 'dismounted' | 'wheeled' | 'tracked' | 'vessel' | 'generic' | 'exempt'
@@ -58,6 +61,113 @@ pa.getManifest()          // bundle manifest or null
 | `exempt`  | the symbol's profile is `exempt` (air, space, SIGINT, cyber …) |
 | `off`     | engine disabled or no bundle configured |
 
+### What the advice says
+
+Every verdict explains itself — why, how far, what is near, and which way:
+
+| situation | headline | detail |
+|-----------|----------|--------|
+| in no-go | `Permanent water — no-go for Dismounted` | `Nearest deployable ground: Bare / desert, 314 m to the E` (or `No deployable ground within 1.1 km`) |
+| close to no-go | `Permanent water 120 m to the W` | `No-go for Dismounted` |
+| line/area partly in | `Partly in Permanent water (43%) — no-go for Dismounted` | |
+| touches no-go | `Touches Permanent water (2%) — no-go for Wheeled vehicles` | |
+| difficult ground | `Caution: Built-up area` | `Difficult ground for Wheeled vehicles. Nearest no-go: …` |
+| deployable | `Deployable: Bare / desert` | `Nearest no-go: Permanent water, 580 m to the W` (or `No no-go terrain within 2.5 km`) |
+
+The distance layer only stores *how far* the nearest no-go is, not *what* it is,
+so the advisor searches the class tile around the deciding sample (a window of
+±32 tile pixels, about ±1 km at the finest level) for the closest pixel of the
+opposite kind. It reports that pixel's class and compass direction; the distance
+comes from the pipeline's exact layer when it is below the layer cap. Beyond the
+window it says so ("No deployable ground within 1.1 km") instead of guessing.
+A shape that spans tiles still being fetched is judged on what is known and says
+`Still loading terrain data`.
+
+### Indicator lines
+
+While drawing, a line on the map joins the symbol to the terrain that is the reason
+for the advice (`placement.indicators.enabled`, on by default; `labels` writes the
+class and distance at the end of the line):
+
+| situation | line | end marker |
+|-----------|------|------------|
+| symbol too close to no-go (point, or the part of a shape nearest it) | red, dashed, to the nearest no-go edge | red ring |
+| symbol inside no-go | **green**, dashed, to the nearest deployable ground (where it could move to) | green diamond |
+| line/area partly or mostly in no-go (or touching it) | red, from the cursor to the nearest contested sample | red ring, plus red **×** on the contested samples (at most 16) |
+| deployable, caution, unknown | none | |
+
+The line has a white casing for contrast on imagery, and the label is placed beyond
+the end of the line so it never covers it. The graphics live on one ground-draped
+`GraphicsLayer` (`ms-placement-indicators`, `pa.indicatorLayer`) and are created once;
+following the cursor only swaps geometry and toggles visibility, the same approach as
+`ProximityEngine`, so no graphics are added or removed per move.
+
+The geometry is also in the verdict, so a host can draw its own cue:
+
+```ts
+v.indicators: Array<{
+  kind: 'no-go' | 'deployable' | 'contested',
+  from: [x, y], to: [x, y],      // Web Mercator metres
+  marks: [x, y][],               // contested samples of a line/area (decimated)
+  classCode, className, label
+}>
+```
+
+`from` is the symbol for a point, the deciding sample for a shape that is merely close
+to no-go, and the cursor (`view.toMap` of the last pointer position, falling back to the
+shape's centroid) for a shape that is in no-go. `to` is the edge of the target, found by
+the same ±32 px window search that names the nearest class.
+
+### Map overlay
+
+`placement.overlay.enabled` (checkbox "Show terrain on map") paints the bundle on
+the map so a planner can see where ground is available before placing anything.
+It is a `BaseTileLayer` coloured client-side from the same tiles — no extra data —
+and works in 2D and 3D (draped), sitting under the symbol layers.
+
+| colour | meaning (for the chosen profile) |
+|--------|----------------------------------|
+| green  | deployable |
+| yellow | deployable but within `nearThresholdM` of no-go |
+| amber  | caution |
+| red    | no-go |
+| clear  | no data / outside the bundle |
+
+`placement.overlay.profile` chooses whose terrain is painted: `dismounted`,
+`wheeled`, `tracked`, `vessel` (water is green, land red) or `generic`; `auto`
+follows the symbol being drawn and keeps the last one when idle. Below the
+bundle's minimum zoom nothing is drawn; above its maximum the finest tile is
+over-zoomed. `pa.overlayLayer` exposes the layer. The overlay needs the advisor
+enabled and a bundle loaded, but works in any `mode`.
+
+### Tile worker
+
+Fetching and decoding a PNG tile costs about 3 ms of canvas readback and byte
+loops, and painting an overlay tile about the same again — enough to saturate the
+main thread while panning with the overlay on. With `placement.useWorker` (default
+on) that work runs in a Web Worker (`TerrainTileWorker`, bundled inline by Vite so
+it needs no extra file on the host and works air-gapped). The worker also keeps its
+own small decoded-tile cache so the advisor and the overlay never decode a tile twice.
+
+What moves and what does not:
+
+- **Moves to the worker:** tile fetch + PNG decode (advisor cold path), and the
+  whole overlay tile (fetch, decode, paint).
+- **Stays on the main thread:** the mouse-move verdict. It reads already-decoded
+  typed arrays synchronously; a worker round trip there would add latency.
+
+Measured with a message-channel responsiveness probe on 392 tile decodes / 120
+overlay tiles (synthetic bundle): main thread busy **94 % → 31 %** (decode) and
+**99 % → 20 %** (overlay paint). Wall-clock time improves only modestly
+(about 8–18 %); the gain is that the map stays responsive, not raw throughput.
+
+If a worker cannot start (no `Worker`, a CSP that forbids blob workers) or dies, every
+call — including those already in flight — falls back to the main thread with
+identical output (verified byte-for-byte), so enabling it cannot lose data.
+`pa.tileWorkerActive` tells you which path is live; toggling `useWorker` at runtime
+swaps the source without reloading the bundle. The painter
+(`PlacementOverlayPaint.ts`) is a pure module shared by the worker and the fallback.
+
 ### Modes
 
 - `off` — nothing is sampled.
@@ -75,7 +185,7 @@ pa.getManifest()          // bundle manifest or null
 
 | event                     | detail |
 |---------------------------|--------|
-| `placement-advice`        | the current `PlacementVerdict`, dispatched only when the verdict text changes |
+| `placement-advice`        | the current `PlacementVerdict` (including `indicators`), dispatched only when the verdict text changes |
 | `placement-clear`         | `{}` when the draw ends or is cancelled |
 | `placement-state-change`  | `{ state: 'enabled' \| 'disabled' \| 'ready' \| 'no-bundle', isEnabled }` |
 | `placement-blocked`       | `{ verdict, drawEssentials }` in enforce mode |
@@ -87,6 +197,8 @@ pa.getManifest()          // bundle manifest or null
 "features": { "placementAdvisor": false },
 "placement": {
   "mode": "advise",
+  "overlay": { "enabled": false, "profile": "auto", "opacity": 0.6 },
+  "indicators": { "enabled": true, "labels": true },
   "bundleUrl": "/terrain-bundle",
   "nearThresholdM": 250,
   "partialFraction": 0.2,
@@ -95,7 +207,8 @@ pa.getManifest()          // bundle manifest or null
   "logVerdicts": true,
   "cacheTiles": 256,
   "prefetchMarginTiles": 1,
-  "maxSamples": 400
+  "maxSamples": 400,
+  "useWorker": true
 }
 ```
 
@@ -130,8 +243,10 @@ terrain-bundle/
 - Format: **PNG, 8-bit greyscale, opaque**, no `gAMA`, `sRGB`, `iCCP` or `tRNS` chunks
   (browsers would otherwise colour-manage the values). Palette or RGB PNGs are
   accepted as long as R carries the value and there is no alpha.
-- A tile that does not exist (HTTP 404) means **no coverage** — the reader records it
-  and never re-requests it in the session.
+- A tile that does not exist means **no coverage** — the reader records it and never
+  re-requests it in the session. That is an HTTP 404, **or any response that is not an
+  image** (hosts with an SPA fallback, such as the Vite dev server, answer a missing
+  file with `200 text/html`).
 - Levels: `manifest.zoom.min` … `manifest.zoom.max`. The engine picks the level
   closest to the view's resolution, never finer than `max`.
 
@@ -249,8 +364,8 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
   in a view that cannot report one (3D without an extent) it uses the finest level.
   A feature narrower than a screen pixel at the current zoom is therefore only
   seen through the distance layer's MIN overviews (`distanceM` ≈ 0), as `near`.
-- Measured on the synthetic bundle (tiles warm): point 3 µs, 60-vertex area
-  (340 samples) 0.07 ms, 300-vertex 4 km area 0.19 ms per mouse move.
+- Measured on the synthetic bundle (tiles warm, including the nearest-terrain
+  search): point 0.05 ms, 300-vertex 4 km area 0.24 ms per mouse move.
 
 ## Open decisions (rules, not code)
 

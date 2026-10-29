@@ -138,6 +138,11 @@ MS/
   (PNG tiles + `rules.json`) the host serves; built offline by
   `tools/terrain-pipeline/`. Hot path is synchronous typed-array reads (no I/O on
   mouse-move); advise mode only listens, enforce mode vetoes in `drawSymEnd`.
+  Tile fetch/decode and overlay painting run in an inline Web Worker
+  (`placement.useWorker`, falls back to the main thread automatically).
+  Advice names the reason, distance, nearest terrain and direction; an optional
+  map overlay (`placement.overlay.*`) paints go / near / caution / no-go per profile,
+  and indicator lines (`placement.indicators.*`) join the symbol to the contested terrain.
   See `MS/Docs/15-placement-advisor.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.

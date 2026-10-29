@@ -2996,6 +2996,46 @@
               <label>Badge</label>
               <input type="checkbox" id="setting-placementBadge" checked title="Show the verdict next to the cursor while drawing." />
             </div>
+            <div class="setting-row">
+              <label>Indicator lines</label>
+              <input type="checkbox" id="setting-placementIndicators" checked title="Draw a line from the symbol to the terrain that is the reason for the advice: nearest no-go (red), nearest deployable ground when inside no-go (green), or the contested part of a line/area." />
+            </div>
+            <div class="setting-row">
+              <label>Line labels</label>
+              <input type="checkbox" id="setting-placementIndicatorLabels" checked title="Write the terrain class and distance at the end of the indicator line." />
+            </div>
+            <div class="sub-feature-label">Map overlay</div>
+            <div class="setting-row">
+              <label>Show on map</label>
+              <input type="checkbox" id="setting-placementOverlay" title="Paint the terrain data on the map to see which areas are available: green deployable, yellow near no-go, amber caution, red no-go." />
+            </div>
+            <div class="setting-row">
+              <label>Paint for</label>
+              <select id="setting-placementOverlayProfile" style="width: 105px" title="Unit type the colours are for. Auto follows the symbol being drawn.">
+                <option value="auto" selected>Auto</option>
+                <option value="dismounted">Dismounted</option>
+                <option value="wheeled">Wheeled</option>
+                <option value="tracked">Tracked</option>
+                <option value="vessel">Vessel</option>
+                <option value="generic">Generic</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Opacity</label>
+              <input type="range" id="setting-placementOverlayOpacity" min="0.1" max="1" step="0.05" value="0.6" style="width: 60px" title="Overlay opacity." />
+              <span class="value-display" id="placementOverlayOpacity-display">0.6</span>
+            </div>
+            <div class="setting-row" style="font-size: 10px; gap: 6px; flex-wrap: wrap">
+              <span><span style="display:inline-block;width:9px;height:9px;background:rgb(46,160,90)"></span> go</span>
+              <span><span style="display:inline-block;width:9px;height:9px;background:rgb(241,214,70)"></span> near</span>
+              <span><span style="display:inline-block;width:9px;height:9px;background:rgb(243,156,18)"></span> caution</span>
+              <span><span style="display:inline-block;width:9px;height:9px;background:rgb(214,48,49)"></span> no-go</span>
+            </div>
+            <div class="sub-feature-label">Performance</div>
+            <div class="setting-row">
+              <label>Use worker</label>
+              <input type="checkbox" id="setting-placementWorker" checked title="Decode terrain tiles and paint the overlay in a Web Worker so panning does not stall the map. Falls back to the main thread if workers are unavailable." />
+            </div>
             <div class="sub-feature-label">Data</div>
             <div class="setting-row">
               <label>Bundle URL</label>
@@ -4308,6 +4348,12 @@
         'setting-placementNearM': (v) => ({ path: ['placement', 'nearThresholdM'], value: +v }),
         'setting-placementBadge': (v) => ({ path: ['placement', 'showBadge'], value: v }),
         'setting-placementBundleUrl': (v) => ({ path: ['placement', 'bundleUrl'], value: v }),
+        'setting-placementIndicators': (v) => ({ path: ['placement', 'indicators', 'enabled'], value: v }),
+        'setting-placementIndicatorLabels': (v) => ({ path: ['placement', 'indicators', 'labels'], value: v }),
+        'setting-placementWorker': (v) => ({ path: ['placement', 'useWorker'], value: v }),
+        'setting-placementOverlay': (v) => ({ path: ['placement', 'overlay', 'enabled'], value: v }),
+        'setting-placementOverlayProfile': (v) => ({ path: ['placement', 'overlay', 'profile'], value: v }),
+        'setting-placementOverlayOpacity': (v) => ({ path: ['placement', 'overlay', 'opacity'], value: +v }),
         'setting-uiTheme': (v) => ({ path: ['ui', 'theme'], value: v }),
         'setting-creationMode': (v) => ({ path: ['creationMode'], value: v }),
         // Measurement

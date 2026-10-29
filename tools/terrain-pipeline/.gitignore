@@ -1,0 +1,7 @@
+# Local Python environment — recreate with run_lc_data_pipeline.ps1 (repo root)
+.venv/
+__pycache__/
+
+# Pipeline products: downloads are multi-GB, work/ and out/ are regenerable from sources.lock + rules.yaml
+work/
+out/

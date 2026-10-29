@@ -22,7 +22,7 @@ sources:
     attribution: "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium"
     landing: https://esa-worldcover.org/en/data-access        # verify
     # 3°x3° tiles named by their south-west corner. Verify the bucket layout.
-    pattern: https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{tile}_Map.tif   # verify
+    pattern: https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{tile}_Map.tif   # verified 2026-10-29: HTTP 200 for every 3-degree tile touching Pakistan's bbox except open-ocean N21E060 / N21E063 (404)
     allow_missing: true   # ocean-only tiles do not exist on the server; fetch skips 404s
     tiles:
       - N21E060
@@ -48,6 +48,7 @@ sources:
       - N33E069
       - N33E072
       - N33E075
+      - N36E069      # Chitral (up to 36.9N 71.5E) - missing from the first draft
       - N36E072
       - N36E075
     sha256: TO_BE_FILLED
@@ -59,7 +60,7 @@ sources:
     attribution: "Pekel, Cottam, Gorelick, Belward (2016). Nature 540, 418-422. European Commission JRC / Google."
     landing: https://global-surface-water.appspot.com/download        # verify
     # 10°x10° tiles named by their NORTH-WEST corner. Verify.
-    pattern: https://storage.googleapis.com/global-surface-water/downloads2021/occurrence/occurrence_{tile}v1_4_2021.tif   # verify
+    pattern: https://storage.googleapis.com/global-surface-water/downloads2021/occurrence/occurrence_{tile}v1_4_2021.tif   # verified 2026-10-29: HTTP 200 (60E_40N)
     tiles:
       - 60E_40N
       - 70E_40N
@@ -74,7 +75,7 @@ sources:
     attribution: "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved"
     landing: https://registry.opendata.aws/copernicus-dem/        # verify
     # 1°x1° COG tiles. {lat}/{lon} are zero-padded N/E codes, e.g. N33 / E073. Verify.
-    pattern: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_{lat}_00_{lon}_00_DEM/Copernicus_DSM_COG_10_{lat}_00_{lon}_00_DEM.tif   # verify
+    pattern: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_{lat}_00_{lon}_00_DEM/Copernicus_DSM_COG_10_{lat}_00_{lon}_00_DEM.tif   # verified 2026-10-29: HTTP 200 (N33_E073)
     allow_missing: true   # ocean-only cells are absent
     tile_range:           # expanded by fetch.py: lat 23..37, lon 60..77 (inclusive)
       lat: [23, 37]
@@ -83,11 +84,11 @@ sources:
 
   - id: osm_pakistan
     name: OpenStreetMap — Pakistan extract (Geofabrik)
-    version: "pakistan-YYMMDD (pin a dated file, not -latest)"
+    version: "pakistan-261028 (Geofabrik daily extract of 2026-10-28)"
     licence: ODbL-1.0
     attribution: "© OpenStreetMap contributors, ODbL. Extract by Geofabrik GmbH."
     landing: https://download.geofabrik.de/asia/pakistan.html        # verify
     files:
       - name: pakistan.osm.pbf
-        url: https://download.geofabrik.de/asia/pakistan-latest.osm.pbf   # verify; replace with a dated file for reproducibility
+        url: https://download.geofabrik.de/asia/pakistan-261028.osm.pbf   # dated file (verified 2026-10-29, 157 MB); never -latest, so a rerun gets identical data
     sha256: TO_BE_FILLED

@@ -641,6 +641,15 @@
   },
   "placement": {
     "mode": "advise",
+    "overlay": {
+      "enabled": false,
+      "profile": "auto",
+      "opacity": 0.6
+    },
+    "indicators": {
+      "enabled": true,
+      "labels": true
+    },
     "bundleUrl": "/terrain-bundle",
     "nearThresholdM": 250,
     "partialFraction": 0.2,
@@ -649,7 +658,8 @@
     "logVerdicts": true,
     "cacheTiles": 256,
     "prefetchMarginTiles": 1,
-    "maxSamples": 400
+    "maxSamples": 400,
+    "useWorker": true
   },
   "stylus": {
     "mode": "auto",

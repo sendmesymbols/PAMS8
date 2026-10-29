@@ -51,6 +51,8 @@ export function compileProfile(rules: TerrainRules | null, name: PlacementProfil
 export interface EvaluateOptions {
   nearThresholdM: number;
   partialFraction: number;
+  /** Distance-layer cap in metres: a reading at or above it means "no no-go within this far". */
+  farM?: number;
 }
 
 export function classLabel(rules: TerrainRules | null, code: number | null): string | null {
@@ -59,8 +61,12 @@ export function classLabel(rules: TerrainRules | null, code: number | null): str
   return def?.label ?? def?.name ?? `class ${code}`;
 }
 
-function fmtDistance(m: number): string {
+export function fmtDistance(m: number): string {
   return m >= 1000 ? `${(m / 1000).toFixed(m >= 10_000 ? 0 : 1)} km` : `${Math.round(m)} m`;
+}
+
+export function profileLabel(rules: TerrainRules | null, name: PlacementProfile): string {
+  return rules?.profiles?.[name]?.label ?? name;
 }
 
 /**
@@ -73,8 +79,13 @@ export function evaluateSamples(
   opts: EvaluateOptions,
   rules: TerrainRules | null,
 ): PlacementVerdict {
+  const label = profileLabel(rules, profile.name);
   const base = {
     profile: profile.name,
+    profileLabel: label,
+    detail: null as string | null,
+    nearest: null as PlacementVerdict['nearest'],
+    indicators: [] as PlacementVerdict['indicators'],
     classCode: null as number | null,
     className: null as string | null,
     distanceM: null as number | null,
@@ -131,8 +142,13 @@ export function evaluateSamples(
     return best;
   };
 
+  // Headline says what is wrong and why; `detail` says what it means for this
+  // unit type and what is nearby. The advisor refines both with a local search
+  // for the nearest class of the opposite kind (PlacementAdvisor._enrich).
   let verdict: PlacementVerdictKind;
   let message: string;
+  let detail: string | null = null;
+  const pct = (f: number) => Math.max(1, Math.round(f * 100));
 
   if (inCount > 0 && (samples.length === 1 || fraction >= 0.5)) {
     verdict = 'in';
@@ -140,20 +156,20 @@ export function evaluateSamples(
     base.className = classLabel(rules, base.classCode);
     message =
       samples.length === 1
-        ? `No-go terrain: ${base.className}`
-        : `Mostly in no-go terrain (${Math.round(fraction * 100)}%): ${base.className}`;
+        ? `${base.className} — no-go for ${label}`
+        : `Mostly in ${base.className} (${pct(fraction)}%) — no-go for ${label}`;
   } else if (inCount > 0 && fraction >= opts.partialFraction) {
     verdict = 'partial';
     base.classCode = dominant(inHistogram);
     base.className = classLabel(rules, base.classCode);
-    message = `Partly in no-go terrain (${Math.round(fraction * 100)}%): ${base.className}`;
+    message = `Partly in ${base.className} (${pct(fraction)}%) — no-go for ${label}`;
   } else if (inCount > 0) {
     // A sliver of the shape (below the partial threshold) touches no-go terrain.
     verdict = 'near';
     base.distanceM = 0;
     base.classCode = dominant(inHistogram);
     base.className = classLabel(rules, base.classCode);
-    message = `Touches no-go terrain (${Math.max(1, Math.round(fraction * 100))}%): ${base.className}`;
+    message = `Touches ${base.className} (${pct(fraction)}%) — no-go for ${label}`;
   } else if (cautionCount > 0) {
     verdict = 'caution';
     base.classCode = dominant(cautionHistogram);
@@ -161,17 +177,25 @@ export function evaluateSamples(
     message =
       samples.length === 1
         ? `Caution: ${base.className}`
-        : `Caution: ${base.className} on ${Math.round((cautionCount / known) * 100)}% of the shape`;
+        : `Caution: ${base.className} on ${pct(cautionCount / known)}% of the shape`;
+    detail = `Difficult ground for ${label}`;
   } else if (minDist !== null && minDist < opts.nearThresholdM) {
     verdict = 'near';
     base.classCode = samples.length === 1 ? singleClass : null;
     base.className = classLabel(rules, base.classCode);
     message = minDist < 1 ? 'At the edge of no-go terrain' : `${fmtDistance(minDist)} from no-go terrain`;
+    detail = `No-go for ${label}`;
   } else {
     verdict = 'ok';
     base.classCode = samples.length === 1 ? singleClass : null;
     base.className = classLabel(rules, base.classCode);
     message = base.className ? `Deployable: ${base.className}` : 'Deployable';
+    if (minDist !== null) {
+      detail =
+        opts.farM !== undefined && minDist >= opts.farM
+          ? `No no-go terrain within ${fmtDistance(opts.farM)}`
+          : `Nearest no-go terrain ${fmtDistance(minDist)} away`;
+    }
   }
-  return { ...base, verdict, message };
+  return { ...base, verdict, message, detail };
 }

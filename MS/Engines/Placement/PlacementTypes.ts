@@ -75,8 +75,26 @@ export interface TerrainRules {
   };
 }
 
+/** Map overlay that paints the terrain bundle as go / caution / near / no-go. */
+export interface PlacementOverlayOptions {
+  enabled: boolean;
+  /** Mobility profile to paint; `auto` follows the armed symbol (last armed one when idle). */
+  profile: 'auto' | PlacementProfile;
+  /** Layer opacity, 0–1. */
+  opacity: number;
+}
+
+/** Lines drawn on the map from the symbol to the terrain that makes it undeployable. */
+export interface PlacementIndicatorOptions {
+  enabled: boolean;
+  /** Write the class and distance at the end of the line. */
+  labels: boolean;
+}
+
 export interface PlacementOptions {
   mode: PlacementMode;
+  overlay: PlacementOverlayOptions;
+  indicators: PlacementIndicatorOptions;
   /** Folder that holds manifest.json; '' disables the engine. */
   bundleUrl: string;
   /** Deployable samples closer than this to no-go yield `near`. */
@@ -91,6 +109,8 @@ export interface PlacementOptions {
   prefetchMarginTiles: number;
   /** Cap on samples per geometry; the step widens to stay under it. */
   maxSamples: number;
+  /** Decode tiles and paint the overlay in a Web Worker (falls back to the main thread if unavailable). */
+  useWorker: boolean;
 }
 
 /** One terrain reading. `null` = no tile loaded / no coverage. */
@@ -99,9 +119,56 @@ export interface TerrainSample {
   distanceM: number | null;
 }
 
+/** A point in Web Mercator metres (EPSG:3857 / wkid 102100). */
+export type MercXY = [number, number];
+
+/**
+ * A line from the symbol (or the part of a shape that decides the verdict) to the
+ * terrain that is the reason for it — for a host that wants to draw its own cue.
+ * The advisor draws these itself when `indicators.enabled` is on.
+ */
+export interface PlacementIndicator {
+  /**
+   * `no-go`: to the nearest no-go ground (a symbol that is too close).
+   * `deployable`: to the nearest deployable ground (a symbol that is inside no-go).
+   * `contested`: to the centre of the part of a line/area that lies in no-go.
+   */
+  kind: 'no-go' | 'deployable' | 'contested';
+  from: MercXY;
+  to: MercXY;
+  /** Extra markers on the parts of a line/area that lie in no-go (decimated). */
+  marks: MercXY[];
+  classCode: number | null;
+  className: string | null;
+  /** Short text for the end of the line, e.g. "Permanent water 120 m to the W". */
+  label: string;
+}
+
+/** The closest terrain of the opposite kind: no-go ground near a deployable point, or deployable ground near a no-go point. */
+export interface PlacementNearest {
+  kind: 'no-go' | 'deployable';
+  classCode: number;
+  className: string;
+  distanceM: number;
+  /** Where the search started (the deciding sample) and the nearest edge it found, Web Mercator metres. */
+  from: MercXY;
+  to: MercXY;
+  /** Compass bearing from the sample to it, degrees clockwise from north. */
+  bearingDeg: number;
+  /** 8-point compass label, e.g. "NE". */
+  compass: string;
+}
+
 export interface PlacementVerdict {
   verdict: PlacementVerdictKind;
   profile: PlacementProfile;
+  /** Human label of the profile ("Wheeled vehicles"). */
+  profileLabel: string;
+  /** Second line: why it is not deployable / what is nearby. */
+  detail: string | null;
+  nearest: PlacementNearest | null;
+  /** Lines to the terrain behind the verdict (empty for ok / caution / unknown). */
+  indicators: PlacementIndicator[];
   /** Dominant class of the in-no-go samples (or of the single point sample). */
   classCode: number | null;
   className: string | null;
@@ -125,6 +192,8 @@ export interface PlacementStamp {
 
 export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
   mode: 'advise',
+  overlay: { enabled: false, profile: 'auto', opacity: 0.6 },
+  indicators: { enabled: true, labels: true },
   bundleUrl: '',
   nearThresholdM: 250,
   partialFraction: 0.2,
@@ -134,7 +203,16 @@ export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
   cacheTiles: 256,
   prefetchMarginTiles: 1,
   maxSamples: 400,
+  useWorker: true,
 };
+
+/** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */
+export function layerNames(m: TerrainManifest, profile: PlacementProfile): { cls: string; dist: string | null } {
+  const cls = m.layers?.class ?? 'class';
+  const tpl = m.layers?.dist ?? 'dist_{profile}';
+  const dist = profile !== 'exempt' && m.profiles.includes(profile) ? tpl.replace('{profile}', profile) : null;
+  return { cls, dist };
+}
 
 export const NODATA_CLASS = 255;
 export const DIST_INSIDE = 0;
