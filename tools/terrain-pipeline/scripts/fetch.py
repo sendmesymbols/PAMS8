@@ -6,16 +6,21 @@ Outputs: work/raw/<source id>/<file>  and  work/raw/checksums.json
          by the recorded hash (per-source aggregate, see hash_source()).
 
 Existing files are not re-downloaded; they are re-hashed and verified.
-A source with `allow_missing: true` tolerates HTTP 404 (ocean-only tiles).
+A source with `allow_missing: true` tolerates HTTP 404/403 (ocean-only tiles).
+Downloads retry with backoff, resume partial `.part` files with a byte Range request, verify the
+size, and run four at a time; a re-run after any failure continues where it stopped.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from common import dump_json, load_json, load_yaml, setup_logging
@@ -24,22 +29,57 @@ log = setup_logging("fetch")
 
 
 def expand_files(src: dict) -> list[dict]:
-    """Turn files / pattern+tiles / pattern+tile_range into [{name, url}]."""
+    """Turn files / pattern+tiles / pattern+tile_range into [{name, url, bbox?}].
+
+    `bbox` = (west, south, east, north) of the tile when it is known; a source with `only_intersecting:
+    <boundary geojson>` keeps only the tiles that touch that polygon (the DEM range is a rectangle, but
+    over half of it lies outside the country, so downloading it all wastes hours).
+    """
     if "files" in src:
         return [dict(name=f["name"], url=f["url"]) for f in src["files"]]
     pat = src["pattern"]
     out = []
     if "tiles" in src:
         for t in src["tiles"]:
-            out.append(dict(name=pat.format(tile=t).rsplit("/", 1)[-1], url=pat.format(tile=t)))
+            url = pat.format(tile=t)
+            e = dict(name=url.rsplit("/", 1)[-1], url=url)
+            m = re.fullmatch(r"([NS])(\d+)([EW])(\d+)", t)                # WorldCover: 3-degree, south-west corner
+            if m:
+                la = int(m.group(2)) * (1 if m.group(1) == "N" else -1)
+                lo = int(m.group(4)) * (1 if m.group(3) == "E" else -1)
+                e["bbox"] = (lo, la, lo + 3, la + 3)
+            m = re.fullmatch(r"(\d+)([EW])_(\d+)([NS])", t)                # JRC: 10-degree, NORTH-west corner
+            if m:
+                lo = int(m.group(1)) * (1 if m.group(2) == "E" else -1)
+                la = int(m.group(3)) * (1 if m.group(4) == "N" else -1)
+                e["bbox"] = (lo, la - 10, lo + 10, la)
+            out.append(e)
     elif "tile_range" in src:
         la0, la1 = src["tile_range"]["lat"]
         lo0, lo1 = src["tile_range"]["lon"]
         for la in range(la0, la1 + 1):
             for lo in range(lo0, lo1 + 1):
                 url = pat.format(lat=f"N{la:02d}", lon=f"E{lo:03d}")
-                out.append(dict(name=url.rsplit("/", 1)[-1], url=url))
-    return out
+                out.append(dict(name=url.rsplit("/", 1)[-1], url=url, bbox=(lo, la, lo + 1, la + 1)))
+    return filter_by_boundary(out, src)
+
+
+def filter_by_boundary(files: list[dict], src: dict) -> list[dict]:
+    """Apply `only_intersecting` (a GeoJSON polygon path). A missing boundary file keeps every tile."""
+    spec = src.get("only_intersecting")
+    if not spec:
+        return files
+    path = Path(spec)
+    if not path.exists():
+        log.warning("%s: boundary %s not found - keeping ALL %d tiles (run make_boundary.py first to download only "
+                    "the tiles the country needs)", src["id"], spec, len(files))
+        return files
+    import shapely
+    geom = shapely.from_geojson(path.read_text(encoding="utf-8"))
+    shapely.prepare(geom)
+    kept = [f for f in files if "bbox" not in f or geom.intersects(shapely.box(*f["bbox"]))]
+    log.info("%s: %d of %d tiles intersect %s", src["id"], len(kept), len(files), path.name)
+    return kept
 
 
 def sha256_file(path: Path) -> str:
@@ -50,26 +90,106 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+MAX_ATTEMPTS = 6
+WORKERS = int(os.environ.get("FETCH_WORKERS", "4"))     # parallel downloads; raise on a fast link (the DEM is ~270 tiles)
+
+
+def _fetch_once(url: str, tmp: Path) -> int:
+    """One attempt: resume `tmp` with a Range request when it already holds bytes. Returns the final size.
+
+    Raises on any network error (the caller retries). A server that ignores Range (HTTP 200) restarts the file.
+    """
+    have = tmp.stat().st_size if tmp.exists() else 0
+    req = urllib.request.Request(url, headers={"Range": f"bytes={have}-"} if have else {})
+    try:
+        resp = urllib.request.urlopen(req, timeout=60)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 416 and have:           # range starts at/after the end: complete only if the sizes agree
+            m = re.search(r"/(\d+)\s*$", exc.headers.get("Content-Range") or "")
+            if m and int(m.group(1)) == have:
+                return have
+            tmp.unlink(missing_ok=True)        # oversize / unknown: it is corrupt, start this file again
+            raise IOError(f"{tmp.name}: partial file is {have} bytes but the server has {m.group(1) if m else '?'}; restarting")
+        raise
+    with resp:
+        if have and resp.status != 206:        # no resume support: start over
+            have = 0
+        total = int(resp.headers.get("Content-Length") or 0) + have
+        with open(tmp, "ab" if have else "wb") as out:
+            while True:
+                chunk = resp.read(1 << 20)
+                if not chunk:
+                    break
+                out.write(chunk)
+                have += len(chunk)
+    if total and have != total:
+        raise IOError(f"incomplete download: got {have} of {total} bytes")
+    return have
+
+
 def download(url: str, dest: Path, allow_missing: bool) -> bool:
+    """Download with retries, resume and size verification. False = skipped (missing, allowed)."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
-    try:
-        with urllib.request.urlopen(url, timeout=120) as resp, open(tmp, "wb") as out:
-            total = int(resp.headers.get("Content-Length") or 0)
-            got = 0
-            for chunk in iter(lambda: resp.read(1 << 20), b""):
-                out.write(chunk)
-                got += len(chunk)
-            log.info("  %s  %.1f MB%s", dest.name, got / 1e6,
-                     "" if not total or got == total else f" (expected {total})")
-    except urllib.error.HTTPError as exc:
-        tmp.unlink(missing_ok=True)
-        if exc.code == 404 and allow_missing:
-            log.warning("  %s: 404, skipped (allow_missing)", dest.name)
-            return False
-        raise
-    tmp.replace(dest)
-    return True
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            size = _fetch_once(url, tmp)
+            tmp.replace(dest)
+            log.info("  %s  %.1f MB", dest.name, size / 1e6)
+            return True
+        except urllib.error.HTTPError as exc:
+            if exc.code in (403, 404) and allow_missing:   # S3 answers 403 for keys that do not exist
+                tmp.unlink(missing_ok=True)
+                log.warning("  %s: HTTP %d, skipped (allow_missing)", dest.name, exc.code)
+                return False
+            if exc.code < 500 and exc.code != 429:
+                raise                                       # a client error will not fix itself
+            err: Exception = exc
+        except (urllib.error.URLError, OSError, TimeoutError) as exc:   # includes IncompleteRead, resets, timeouts
+            err = exc
+        if attempt == MAX_ATTEMPTS:
+            raise err
+        wait = min(60, 2 ** attempt)
+        log.warning("  %s: %s - retry %d/%d in %ds", dest.name, err, attempt, MAX_ATTEMPTS - 1, wait)
+        time.sleep(wait)
+    return False
+
+
+def remote_size(url: str) -> int | None:
+    """Content-Length of `url` from a HEAD request (None if the server does not say)."""
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=30) as r:
+                return int(r.headers.get("Content-Length") or 0) or None
+        except urllib.error.HTTPError as exc:
+            if exc.code in (403, 404):
+                return None
+        except (urllib.error.URLError, OSError, TimeoutError):
+            pass
+        time.sleep(2 ** attempt)
+    return None
+
+
+def verify_sizes(lock: dict, out: Path, only: list[str] | None) -> int:
+    """Compare every downloaded file with the server's size; delete the ones that differ so the next
+    run fetches them again. Catches interrupted or doubly-written downloads. Returns the number removed."""
+    bad = checked = 0
+    for src in lock["sources"]:
+        if only and src["id"] not in only:
+            continue
+        for f in expand_files(src):
+            dest = out / src["id"] / f["name"]
+            if not dest.exists():
+                continue
+            checked += 1
+            want = remote_size(f["url"])
+            have = dest.stat().st_size
+            if want is not None and want != have:
+                log.error("SIZE MISMATCH %s: have %d, server %d - deleting", dest.name, have, want)
+                dest.unlink()
+                bad += 1
+    log.info("size check: %d file(s) compared, %d removed", checked, bad)
+    return bad
 
 
 def hash_source(file_hashes: dict[str, str]) -> str:
@@ -97,9 +217,13 @@ def main() -> int:
     ap.add_argument("--only", nargs="*", help="source ids to fetch (default all)")
     ap.add_argument("--record", action="store_true", help="write missing hashes into sources.lock")
     ap.add_argument("--dry-run", action="store_true", help="list files, download nothing")
+    ap.add_argument("--verify-size", action="store_true",
+                    help="before fetching, compare existing files with the server's size and delete mismatches")
     args = ap.parse_args()
 
     lock = load_yaml(args.lock)
+    if args.verify_size and not args.dry_run:
+        verify_sizes(lock, args.out, args.only)
     checks_path = args.out / "checksums.json"
     checks = load_json(checks_path) if checks_path.exists() else {}
     failures, recorded = 0, {}
@@ -111,18 +235,25 @@ def main() -> int:
         files = expand_files(src)
         log.info("%s: %d file(s) [%s]", sid, len(files), src["licence"])
         file_hashes: dict[str, str] = {}
-        for f in files:
-            dest = args.out / sid / f["name"]
-            if args.dry_run:
+        if args.dry_run:
+            for f in files:
                 log.info("  would fetch %s", f["url"])
-                continue
+            continue
+
+        def get(f: dict) -> tuple[str, str | None]:
+            dest = args.out / sid / f["name"]
             if not dest.exists():
                 log.info("  GET %s", f["url"])
                 if not download(f["url"], dest, bool(src.get("allow_missing"))):
-                    continue
-            file_hashes[f["name"]] = sha256_file(dest)
-        if args.dry_run:
-            continue
+                    return f["name"], None
+            return f["name"], sha256_file(dest)
+
+        # A few files at a time: the DEM alone is ~250 tiles. One failed file stops this source (after
+        # its retries) but every finished file is kept, so re-running resumes where it stopped.
+        with ThreadPoolExecutor(WORKERS) as pool:
+            for name, digest in pool.map(get, files):
+                if digest is not None:
+                    file_hashes[name] = digest
         if not file_hashes:
             log.error("%s: nothing downloaded", sid)
             failures += 1

@@ -44,6 +44,18 @@ export interface TerrainManifest {
   built?: string;
   pipelineVersion?: string;
   rulesVersion?: string;
+  /** Built from open data plus a local topographic geodatabase (adds sand / dunes / rocky ground / salt pan / dry riverbed classes). */
+  hybrid?: boolean;
+  /** Contains pixels derived from restricted data: do not redistribute without the owner's permission. */
+  restricted?: boolean;
+  /** Which country boundary clipped the data, and the drawable outline shipped with the bundle. */
+  boundary?: {
+    /** `official` = Survey of Pakistan depiction (all of Jammu & Kashmir), `osm` = stops at the LoC, `custom` = supplied. */
+    source: 'official' | 'osm' | 'custom' | string;
+    /** Path of the GeoJSON outline (outline, provinces, Line of Control, borders) inside the bundle, when shipped. */
+    file?: string;
+    note?: string;
+  };
   sources?: Array<{ id: string; name?: string; licence?: string; sha256?: string }>;
 }
 
@@ -73,6 +85,44 @@ export interface TerrainRules {
     /** `symbolSet:entityPrefix` → profile (entity prefix 2–6 digits). */
     entities?: Record<string, string>;
   };
+  /**
+   * 2-digit 2525D echelon code → ground footprint, overriding the doctrine table compiled
+   * into PlacementFootprint.ts. Each range is `[min, max]` metres (or one number for a fixed value).
+   */
+  echelons?: Record<
+    string,
+    {
+      name?: string;
+      frontageM?: number | [number, number];
+      depthM?: number | [number, number];
+      gapM?: number | [number, number];
+    }
+  >;
+}
+
+/** How the footprint is oriented, since a placed symbol has no facing of its own. */
+export type PlacementFacingMode =
+  /** One rectangle, frontage across `bearingDeg`. */
+  | 'fixed'
+  /** Worst result of four facings (0°, 45°, 90°, 135° — a centred rectangle repeats every 180°). */
+  | 'worst4'
+  /** Orientation-free disc whose diameter is the frontage. */
+  | 'circle';
+
+/** Which end of an echelon's doctrinal range the footprint uses. */
+export type PlacementFootprintSize = 'min' | 'mid' | 'max';
+
+/** Echelon footprint: a unit is judged on the ground it occupies, not on its click point. */
+export interface PlacementFootprintOptions {
+  enabled: boolean;
+  facing: PlacementFacingMode;
+  /** Direction the frontage faces, degrees clockwise from north (used by `fixed`). */
+  bearingDeg: number;
+  size: PlacementFootprintSize;
+  /** Draw the footprint on the map while placing. */
+  outline: boolean;
+  /** Compare against same-echelon symbols already on the map for the minimum intergap. */
+  spacing: boolean;
 }
 
 /** Map overlay that paints the terrain bundle as go / caution / near / no-go. */
@@ -82,6 +132,8 @@ export interface PlacementOverlayOptions {
   profile: 'auto' | PlacementProfile;
   /** Layer opacity, 0–1. */
   opacity: number;
+  /** Also draw the bundle's boundary outline (`manifest.boundary.file`): national outline, provinces, Line of Control. */
+  boundary: boolean;
 }
 
 /** Lines drawn on the map from the symbol to the terrain that makes it undeployable. */
@@ -95,6 +147,7 @@ export interface PlacementOptions {
   mode: PlacementMode;
   overlay: PlacementOverlayOptions;
   indicators: PlacementIndicatorOptions;
+  footprint: PlacementFootprintOptions;
   /** Folder that holds manifest.json; '' disables the engine. */
   bundleUrl: string;
   /** Deployable samples closer than this to no-go yield `near`. */
@@ -159,6 +212,37 @@ export interface PlacementNearest {
   compass: string;
 }
 
+/** The ground an echelon symbol was judged on, instead of its click point. */
+export interface PlacementFootprintInfo {
+  /** 2-digit 2525D echelon code and its name ("14", "Platoon"). */
+  code: string;
+  echelon: string;
+  /** Width across the front and depth to the rear, ground metres; depth 0 = a line. */
+  frontageM: number;
+  depthM: number;
+  /** Minimum gap to the next same-echelon unit along the front, metres. */
+  gapM: number;
+  /** Facing of the footprint that decided the verdict, degrees from north; null for the disc. */
+  facingDeg: number | null;
+  facing: PlacementFacingMode;
+  /** The footprint outline in Web Mercator metres: a ring (rectangle / disc) or a 2-point line. */
+  ring: MercXY[];
+}
+
+/** Result of the intergap check against same-echelon symbols already on the map. */
+export interface PlacementSpacing {
+  /** `overlap`: footprints touch or overlap. `tight`: gap is below the echelon's minimum. */
+  status: 'ok' | 'tight' | 'overlap';
+  /** Required minimum gap, metres. */
+  minGapM: number;
+  /** Smallest gap to a neighbour within reach, metres; null when none is. */
+  nearestGapM: number | null;
+  /** Neighbours that are too close, nearest first (capped), with their footprint outlines. */
+  conflicts: Array<{ at: MercXY; gapM: number; ring: MercXY[] }>;
+  /** One sentence for the badge; null when the spacing is fine. */
+  message: string | null;
+}
+
 export interface PlacementVerdict {
   verdict: PlacementVerdictKind;
   profile: PlacementProfile;
@@ -179,6 +263,10 @@ export interface PlacementVerdict {
   samples: number;
   unknown: number;
   message: string;
+  /** Set when an echelon symbol was judged on its footprint rather than its point. */
+  footprint?: PlacementFootprintInfo | null;
+  /** Set alongside `footprint` when the intergap check ran. Advisory: never changes `verdict`. */
+  spacing?: PlacementSpacing | null;
 }
 
 /** Stamped on `graphic.attributes.placement` at commit time. */
@@ -188,19 +276,26 @@ export interface PlacementStamp {
   classCode: number | null;
   distanceM: number | null;
   fraction: number;
+  /** Echelon footprint the verdict was judged on, when there was one. */
+  echelon?: string;
+  frontageM?: number;
+  depthM?: number;
+  /** Intergap result against neighbours at the time of placing. */
+  spacing?: PlacementSpacing['status'];
 }
 
 export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
   mode: 'advise',
-  overlay: { enabled: false, profile: 'auto', opacity: 0.6 },
+  overlay: { enabled: false, profile: 'auto', opacity: 0.6, boundary: false },
   indicators: { enabled: true, labels: true },
+  footprint: { enabled: true, facing: 'fixed', bearingDeg: 0, size: 'mid', outline: true, spacing: true },
   bundleUrl: '',
   nearThresholdM: 250,
   partialFraction: 0.2,
   blockOn: ['in', 'partial'],
   showBadge: true,
   logVerdicts: true,
-  cacheTiles: 256,
+  cacheTiles: 512,
   prefetchMarginTiles: 1,
   maxSamples: 400,
   useWorker: true,

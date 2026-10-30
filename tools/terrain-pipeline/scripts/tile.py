@@ -18,6 +18,7 @@ PNGs are 8-bit greyscale with only IHDR/IDAT/IEND (see common.write_png_l).
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -141,6 +142,11 @@ def main() -> int:
             kind = "dist" if name.startswith("dist_") else "class"
             n = build_overview(args.out / name, kind, z, trange, args.class_reduce)
             log.info("z%d %s: %d tiles", z, name, n)
+    # validate.py (step 7) reads the bundle's rules.json, which package.py (step 8) would only write later.
+    rules_json = args.profiles / "rules.json"
+    if rules_json.exists():
+        shutil.copyfile(rules_json, args.out / "rules.json")
+        log.info("rules.json -> %s", args.out)
     return 0
 
 

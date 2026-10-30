@@ -2,17 +2,26 @@
 
 Inputs : work/grid/grid.json, work/grid/worldcover.tif, work/grid/jrc_occurrence.tif,
          work/derive/slope.tif, work/derive/osm_<theme>.tif, classes.yaml
-Outputs: work/classify/class.tif   uint8 class code, 255 nodata, COG + DEFLATE
+         work/derive/ncgdb_class.tif   (optional: present when derive.py ran with an NCGDB)
+Outputs: work/classify/class.tif        uint8 class code, 255 nodata, COG + DEFLATE
+         work/classify/class_stats.json class histogram + what NCGDB changed vs open data only
 
 For each block every class collects a boolean "evidence" mask from the
-sources (WorldCover code map, JRC thresholds, slope thresholds, OSM themes).
-Classes are then painted from the LOWEST precedence to the HIGHEST, so the
-first entry of `precedence` in classes.yaml wins wherever masks overlap.
-A pixel with no evidence at all (WorldCover 0 and nothing else) stays 255.
+sources (WorldCover code map, JRC thresholds, slope thresholds, OSM themes and,
+when present, the NCGDB class raster). Classes are then painted from the LOWEST
+precedence to the HIGHEST, so the first entry of `precedence` in classes.yaml
+wins wherever masks overlap. Because every class takes evidence from every source,
+this is a union per class: the hybrid result is the strongest class ANY source asserts.
+Pixels outside the WorldCover valid area (the country cutline) stay 255, so NCGDB data
+for neighbouring countries can never leak in.
+
+With an NCGDB the block is classified twice (open data only, then with NCGDB) so the
+report can say exactly how many pixels NCGDB changed and into what.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -72,6 +81,17 @@ def main() -> int:
     missing = [str(p) for p in paths.values() if not p.exists()]
     if missing:
         raise SystemExit("missing inputs: " + ", ".join(missing))
+    ncgdb_path = args.derive / "ncgdb_class.tif"
+    hybrid = ncgdb_path.exists()
+    if hybrid:
+        paths["ncgdb"] = ncgdb_path
+    log.info("mode: %s", "HYBRID (open data + NCGDB)" if hybrid else "open data only")
+
+    def paint(m: dict, shape) -> np.ndarray:
+        cls = np.full(shape, 255, dtype=np.uint8)
+        for name in order:
+            cls[m[name]] = codes[name]
+        return cls
 
     args.out.mkdir(parents=True, exist_ok=True)
     tmp = args.out / "class_tmp.tif"
@@ -80,15 +100,27 @@ def main() -> int:
                 transform=Affine(*t))
     srcs = {k: rasterio.open(p) for k, p in paths.items()}
     hist = np.zeros(256, dtype=np.int64)
+    trans = np.zeros(256 * 256, dtype=np.int64)          # open-data class -> final class
     try:
         with rasterio.open(tmp, "w", **prof) as dst:
             for i, b in enumerate(iter_blocks(grid["width"], grid["height"], args.block)):
                 win = Window(b["col"], b["row"], b["w"], b["h"])
                 arrays = {k: s.read(1, window=win) for k, s in srcs.items()}
-                m = evidence(arrays, cfg["sources"], (b["h"], b["w"]))
-                cls = np.full((b["h"], b["w"]), 255, dtype=np.uint8)
-                for name in order:
-                    cls[m[name]] = codes[name]
+                shape = (b["h"], b["w"])
+                valid = arrays["worldcover"] != 0                 # inside the country cutline
+                m = evidence(arrays, cfg["sources"], shape)
+                cls = paint(m, shape)
+                if hybrid:
+                    base = cls
+                    n = arrays["ncgdb"]
+                    for name, code in codes.items():
+                        if code != 255:
+                            m[name] |= n == code
+                    cls = paint(m, shape)
+                    base = np.where(valid, base, 255).astype(np.uint8)
+                cls[~valid] = 255
+                if hybrid:
+                    trans += np.bincount(base.astype(np.int64).ravel() * 256 + cls.ravel(), minlength=256 * 256)
                 dst.write(cls, 1, window=win)
                 hist += np.bincount(cls.ravel(), minlength=256)
                 if i % 50 == 0:
@@ -100,10 +132,26 @@ def main() -> int:
     run(["gdal_translate", *COG_OPTS, tmp, args.out / "class.tif"], log)
     tmp.unlink(missing_ok=True)
     total = int(hist.sum())
+    names = {v: k for k, v in codes.items()}
     log.info("class histogram (%% of all pixels incl. nodata):")
     for name, code in sorted(codes.items(), key=lambda kv: kv[1]):
         if hist[code]:
             log.info("  %3d %-16s %6.2f%%", code, name, 100 * hist[code] / total)
+
+    stats = {"mode": "hybrid" if hybrid else "open", "pixels": total,
+             "histogram": {names.get(c, str(c)): int(hist[c]) for c in np.nonzero(hist)[0]}}
+    if hybrid:
+        mat = trans.reshape(256, 256)
+        changed = [(int(a), int(c), int(mat[a, c])) for a in range(256) for c in range(256) if a != c and mat[a, c]]
+        changed.sort(key=lambda x: -x[2])
+        stats["ncgdb"] = {"changed_pixels": int(sum(x[2] for x in changed)),
+                          "changed_pct_of_valid": round(100 * sum(x[2] for x in changed) / max(1, int(mat.sum()) - int(mat[255].sum())), 3),
+                          "transitions": [{"from": names.get(a, str(a)), "to": names.get(c, str(c)), "pixels": n} for a, c, n in changed]}
+        log.info("NCGDB changed %.2f%% of valid pixels vs open data only; largest changes:",
+                 stats["ncgdb"]["changed_pct_of_valid"])
+        for a, c, n in changed[:12]:
+            log.info("  %-16s -> %-16s %12s px", names.get(a, a), names.get(c, c), f"{n:,}")
+    (args.out / "class_stats.json").write_text(json.dumps(stats, indent=1), encoding="utf-8")
     return 0
 
 

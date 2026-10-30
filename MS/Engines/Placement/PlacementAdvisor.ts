@@ -25,14 +25,17 @@
  */
 
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
+import { SYMBOL_LAYER_IDS } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
 import { compileProfile, evaluateSamples, fmtDistance, type CompiledProfile } from './PlacementEvaluator';
 import { PlacementBadge } from './PlacementBadge';
+import { PlacementBoundary } from './PlacementBoundary';
+import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './PlacementFootprint';
 import { PlacementIndicators } from './PlacementIndicators';
 import { createOverlayLayer, type OverlayRenderingSource } from './PlacementOverlay';
 import { WorkerTileSource } from './WorkerTileSource';
 import { resolveProfile } from './PlacementProfiles';
-import { samplePoints, toMercatorShape } from './PlacementSampling';
+import { samplePoints, toMercatorShape, type MercShape } from './PlacementSampling';
 import {
   DEFAULT_PLACEMENT_OPTIONS,
   DIST_FAR,
@@ -62,6 +65,8 @@ import {
 
 const ENGINE = 'Placement Advisor';
 const NULL_SAMPLE: TerrainSample = { classCode: null, distanceM: null };
+/** Layers whose point symbols count as neighbours for the intergap check. */
+const NEIGHBOUR_LAYER_IDS = SYMBOL_LAYER_IDS;
 /** Half-width of the local search for the nearest terrain of the opposite kind, in tile pixels. */
 const SCAN_RADIUS_PX = 32;
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -76,6 +81,25 @@ interface ReadContext {
   ty: number;
   ct: Uint8Array | null | undefined;
   dt: Uint8Array | null | undefined;
+}
+
+/** Orders verdicts for worst-of-N facings: higher is worse. Ties go to the larger share in no-go, then the smaller gap to it. */
+function severity(v: PlacementVerdict): number {
+  const rank =
+    v.verdict === 'in' ? 5
+    : v.verdict === 'partial' ? 4
+    : v.verdict === 'near' && v.fraction > 0 ? 3
+    : v.verdict === 'caution' ? 2
+    : v.verdict === 'near' ? 1
+    : v.verdict === 'ok' ? 0
+    : -1;
+  return rank * 10 + v.fraction * 5 + (v.distanceM === null ? 0 : 1 / (1 + v.distanceM));
+}
+
+/** SIDC of an already-placed graphic. */
+function graphicSidc(g: any): string | null {
+  const a = g?.attributes;
+  return a?.drawEssentials?.SIDC || a?.drawEssentials?.AMPLIFIER?.SIDC || a?.sidc || a?.SIDC || null;
 }
 
 export interface CommitCheck {
@@ -104,10 +128,12 @@ export default class PlacementAdvisor {
   private _lastDetail: { geometry: any; sidc: string | null } | null = null;
   private _lastKey = '';
   private _lastKind = '';
+  private _lastSpacingMsg = '';
   private _reevalTimer: ReturnType<typeof setTimeout> | null = null;
 
   private _badge = new PlacementBadge();
   private _indicators = new PlacementIndicators(() => this._getView());
+  private _boundary = new PlacementBoundary(() => this._getView());
   private _lastClient: { x: number; y: number } | null = null;
   private _container: HTMLElement | null = null;
   private _pointerHandler: ((e: PointerEvent) => void) | null = null;
@@ -155,6 +181,7 @@ export default class PlacementAdvisor {
     this._source?.dispose?.();
     this._source = null;
     this._removeOverlay();
+    this._boundary.reset(); // a different bundle may carry a different (or no) boundary file
 
     if (!base) {
       this._emitState('no-bundle');
@@ -225,6 +252,17 @@ export default class PlacementAdvisor {
         next.overlay.profile = ov.profile as PlacementOptions['overlay']['profile'];
       }
       if (Number.isFinite(ov.opacity)) next.overlay.opacity = Math.min(1, Math.max(0.05, ov.opacity));
+      if (typeof ov.boundary === 'boolean') next.overlay.boundary = ov.boundary;
+    }
+    const fp = patch.footprint;
+    next.footprint = { ...prev.footprint };
+    if (fp && typeof fp === 'object') {
+      if (typeof fp.enabled === 'boolean') next.footprint.enabled = fp.enabled;
+      if (fp.facing === 'fixed' || fp.facing === 'worst4' || fp.facing === 'circle') next.footprint.facing = fp.facing;
+      if (Number.isFinite(fp.bearingDeg)) next.footprint.bearingDeg = (((fp.bearingDeg % 360) + 360) % 360);
+      if (fp.size === 'min' || fp.size === 'mid' || fp.size === 'max') next.footprint.size = fp.size;
+      if (typeof fp.outline === 'boolean') next.footprint.outline = fp.outline;
+      if (typeof fp.spacing === 'boolean') next.footprint.spacing = fp.spacing;
     }
     this._opts = next;
 
@@ -234,8 +272,10 @@ export default class PlacementAdvisor {
     if (next.mode === 'off') this.deactivate();
     if (!next.showBadge) this._badge.hide();
     if (!next.indicators.enabled) this._indicators.hide();
+    if (!next.footprint.outline || !next.footprint.enabled) this._indicators.hideFootprint();
     if (next.bundleUrl !== prev.bundleUrl && this._enabled) void this.configure();
     this._lastKey = ''; // thresholds changed — republish the next verdict
+    this._prefetch(); // mode switched on / overlay profile changed — make sure its layers are warm
   }
 
   enable(): void {
@@ -253,6 +293,7 @@ export default class PlacementAdvisor {
     this.deactivate();
     this._unbindView();
     this._removeOverlay();
+    this._boundary.hide();
     this._emitState('disabled');
   }
 
@@ -289,6 +330,7 @@ export default class PlacementAdvisor {
   deactivate(): void {
     this._badge.hide();
     this._indicators.hide();
+    this._indicators.hideFootprint();
     this._detachPointer();
     this._lastDetail = null;
     this._activeSidc = null;
@@ -300,6 +342,7 @@ export default class PlacementAdvisor {
     if (this._lastKey !== '') {
       this._lastKey = '';
       this._lastKind = '';
+      this._lastSpacingMsg = '';
       this._emit('placement-clear', {});
     }
   }
@@ -320,6 +363,12 @@ export default class PlacementAdvisor {
             classCode: verdict.classCode,
             distanceM: verdict.distanceM,
             fraction: verdict.fraction,
+            ...(verdict.footprint && {
+              echelon: verdict.footprint.echelon,
+              frontageM: verdict.footprint.frontageM,
+              depthM: verdict.footprint.depthM,
+              ...(verdict.spacing && { spacing: verdict.spacing.status }),
+            }),
           };
     const block = this._opts.mode === 'enforce' && this._opts.blockOn.includes(verdict.verdict);
     if (block) this._emit('placement-blocked', { verdict, drawEssentials });
@@ -330,13 +379,15 @@ export default class PlacementAdvisor {
     this._detachPointer();
     this._unbindView();
     if (this._enabled && this._manifest) this._bindView();
-    this._syncOverlay(); // moves the overlay onto the new view's map
+    this._boundary.onViewChanged(); // leave the old map; _syncOverlay() re-attaches it to the new one
+    this._syncOverlay(); // moves the overlay (and the boundary) onto the new view's map
     this._indicators.onViewChanged(); // re-attaches to the new map on the next show
   }
 
   destroy(): void {
     this.disable();
     this._indicators.destroy();
+    this._boundary.reset();
     this._configToken++;
     this._cache?.clear();
     this._cache = null;
@@ -362,16 +413,29 @@ export default class PlacementAdvisor {
     if (!shape) return this._blank('unknown', profile, 'Cannot check this geometry');
 
     const ctx = this._readContext(profile);
-    // One sample per tile pixel along edges, so a 1–2 px wide feature (a stream) is not stepped over.
-    const pts = samplePoints(shape, resolutionAt(ctx.z, ctx.ts), this._opts.maxSamples);
-    const samples: TerrainSample[] = new Array(pts.length);
-    for (let i = 0; i < pts.length; i++) samples[i] = this._read(ctx, pts[i][0], pts[i][1]);
-    const v = evaluateSamples(
-      samples,
-      compiled,
-      { nearThresholdM: this._opts.nearThresholdM, partialFraction: this._opts.partialFraction, farM: DIST_FAR * ctx.scale },
-      this._rules,
-    );
+    const evalOpts = {
+      nearThresholdM: this._opts.nearThresholdM,
+      partialFraction: this._opts.partialFraction,
+      farM: DIST_FAR * ctx.scale,
+    };
+    // An echelon symbol occupies ground (frontage × depth), so it is judged on its footprint
+    // rather than its click point. Several candidates (worst-of-four facings) keep the worst.
+    const effSidc = sidc ?? this._activeSidc;
+    const plan = planFootprint(shape, effSidc, this._rules, this._opts.footprint);
+    const candidates: Array<{ shape: MercShape; cand: FootprintCandidate | null }> = plan
+      ? plan.candidates.map((cand) => ({ shape: cand.shape, cand }))
+      : [{ shape, cand: null }];
+
+    let best: { v: PlacementVerdict; samples: TerrainSample[]; pts: MercXY[]; cand: FootprintCandidate | null } | null = null;
+    for (const c of candidates) {
+      // One sample per tile pixel along edges, so a 1–2 px wide feature (a stream) is not stepped over.
+      const cpts = samplePoints(c.shape, resolutionAt(ctx.z, ctx.ts), this._opts.maxSamples);
+      const csamples: TerrainSample[] = new Array(cpts.length);
+      for (let i = 0; i < cpts.length; i++) csamples[i] = this._read(ctx, cpts[i][0], cpts[i][1]);
+      const cv = evaluateSamples(csamples, compiled, evalOpts, this._rules);
+      if (!best || severity(cv) > severity(best.v)) best = { v: cv, samples: csamples, pts: cpts, cand: c.cand };
+    }
+    const { v, samples, pts, cand } = best!;
     const stats = this._cache?.stats();
     if (v.verdict === 'unknown') {
       v.message =
@@ -388,7 +452,51 @@ export default class PlacementAdvisor {
         v.detail = v.detail ? `${v.detail} · still loading terrain data` : 'Still loading terrain data';
       }
     }
+    if (plan && cand) this._applyFootprint(v, plan, cand, effSidc);
     return v;
+  }
+
+  /** Record the footprint the verdict was judged on, say so in the detail line, and run the intergap check. */
+  private _applyFootprint(v: PlacementVerdict, plan: FootprintPlan, cand: FootprintCandidate, sidc: string | null): void {
+    const d = plan.dims;
+    v.footprint = {
+      code: d.code,
+      echelon: d.name,
+      frontageM: d.frontageM,
+      depthM: d.depthM,
+      gapM: d.gapM,
+      facingDeg: cand.facingDeg,
+      facing: plan.facing,
+      ring: cand.ring,
+    };
+    v.message = v.message.replace(' of the shape', ' of the footprint');
+    const text =
+      cand.facingDeg === null
+        ? `${d.name} footprint ⌀ ${fmtDistance(d.frontageM)}`
+        : `${d.name} footprint ${fmtDistance(d.frontageM)}${d.depthM > 0 ? ` × ${fmtDistance(d.depthM)}` : ' front'}, facing ${COMPASS[Math.round(cand.facingDeg / 45) % 8]}`;
+    v.detail = v.detail ? `${v.detail} · ${text}` : text;
+    if (this._opts.footprint.spacing) v.spacing = checkSpacing(plan, this._neighbours(d.code, sidc));
+  }
+
+  /** Web Mercator positions of same-echelon, same-side point symbols already on the map. */
+  private _neighbours(code: string, sidc: string | null): MercXY[] {
+    const map = (this._getView?.() as any)?.map;
+    if (!map) return [];
+    const side = sideOf(sidc);
+    const out: MercXY[] = [];
+    for (const id of NEIGHBOUR_LAYER_IDS) {
+      const layer = map.findLayerById?.(id);
+      layer?.graphics?.forEach((g: any) => {
+        const geom = g?.geometry;
+        if (geom?.type !== 'point') return;
+        const gs = graphicSidc(g);
+        // Cheap string test first: this runs for every symbol on the map on each mouse move.
+        if (!gs || gs.length !== 20 || gs.substring(8, 10) !== code || echelonCodeOf(gs) !== code || sideOf(gs) !== side) return;
+        const m = toMercatorShape(geom)?.parts[0]?.[0];
+        if (m) out.push(m);
+      });
+    }
+    return out;
   }
 
   /**
@@ -754,11 +862,16 @@ export default class PlacementAdvisor {
     } else {
       this._indicators.hide();
     }
+    if (this._opts.footprint.outline && this.isActive && v.footprint) {
+      this._indicators.showFootprint(v.footprint.ring, v.spacing?.conflicts.map((c) => c.ring) ?? []);
+    } else {
+      this._indicators.hideFootprint();
+    }
     this._publish(v);
   }
 
   private _publish(v: PlacementVerdict): void {
-    const key = `${v.verdict}|${v.message}|${v.detail ?? ''}`;
+    const key = `${v.verdict}|${v.message}|${v.detail ?? ''}|${v.spacing?.message ?? ''}`;
     if (key === this._lastKey) return;
     this._lastKey = key;
 
@@ -770,6 +883,11 @@ export default class PlacementAdvisor {
       else if (v.verdict === 'near' || v.verdict === 'caution') EngineLogger.nextStep(ENGINE, v.message);
     }
     this._lastKind = v.verdict;
+    const spacingMsg = v.spacing?.message ?? '';
+    if (this._opts.logVerdicts && spacingMsg && spacingMsg !== this._lastSpacingMsg) {
+      EngineLogger.nextStep(ENGINE, spacingMsg);
+    }
+    this._lastSpacingMsg = spacingMsg;
     this._emit('placement-advice', v);
   }
 
@@ -784,9 +902,14 @@ export default class PlacementAdvisor {
     }, 30);
   }
 
-  /** Fetch the tiles under the viewport (plus a margin) for the armed profile. */
+  /**
+   * Fetch the tiles under the viewport (plus a margin). With a symbol armed this is
+   * its profile's layers; while idle it warms the class layer and the distance layer
+   * of the profile a draw is most likely to use, so the first draw already has data.
+   */
   private _prefetch(): void {
-    if (!this.isActive || !this._cache || !this._activeProfile || this._activeProfile === 'exempt') return;
+    if (!this.isActive || !this._cache) return;
+    if (this._activeProfile === 'exempt') return;
     const view: any = this._getView?.();
     const ext = view?.extent;
     if (!ext) return;
@@ -817,11 +940,26 @@ export default class PlacementAdvisor {
     const ty1 = Math.min(n - 1, br.ty + margin);
     if ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > 120) return; // absurdly large view — rely on on-demand reads
 
-    const { cls, dist } = this._layerNames(this._activeProfile);
+    // Armed: just that symbol's layers. Idle: the class layer plus every profile's distance
+    // layer, so whatever symbol is drawn first already has its data — unless that would
+    // overflow the cache, in which case warm only the likeliest profile.
+    const perLayer = (tx1 - tx0 + 1) * (ty1 - ty0 + 1);
+    const profiles: PlacementProfile[] = [];
+    if (this._activeProfile) profiles.push(this._activeProfile);
+    else if (perLayer * (m.profiles.length + 1) <= this._opts.cacheTiles * 0.9) {
+      profiles.push(...(m.profiles as PlacementProfile[]));
+    } else {
+      profiles.push(this._overlayProfileNow());
+    }
+    const layers = new Set<string>();
+    for (const p of profiles) {
+      const { cls, dist } = this._layerNames(p);
+      layers.add(cls);
+      if (dist) layers.add(dist);
+    }
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
-        this._cache.request(cls, z, tx, ty);
-        if (dist) this._cache.request(dist, z, tx, ty);
+        for (const layer of layers) this._cache.request(layer, z, tx, ty);
       }
     }
   }
@@ -835,6 +973,7 @@ export default class PlacementAdvisor {
       (stationary: boolean) => {
         if (stationary) this._prefetch();
       },
+      { initial: true }, // warm the current viewport now, not on the first pan or draw
     );
   }
 
@@ -898,7 +1037,20 @@ export default class PlacementAdvisor {
   }
 
   /** Add / update / remove the overlay layer to match the options. Safe to call at any time. */
+  /** Draw the bundle's boundary outline when the option is on and the bundle ships one. */
+  private _syncBoundary(): void {
+    const file = this._manifest?.boundary?.file;
+    if (!(this._enabled && file && this._opts.overlay.boundary && this._opts.bundleUrl)) {
+      this._boundary.hide();
+      return;
+    }
+    void this._boundary.load(`${this._opts.bundleUrl}/${file}`).then((ok) => {
+      if (ok && this._enabled && this._opts.overlay.boundary) this._boundary.show();
+    });
+  }
+
   private _syncOverlay(refresh = false): void {
+    this._syncBoundary();
     const want = this._enabled && this._manifest !== null && this._rules !== null && this._opts.overlay.enabled;
     if (!want) {
       this._removeOverlay();

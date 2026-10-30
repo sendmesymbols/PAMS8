@@ -16,21 +16,32 @@ classes:
   - { code: 10,  name: moderate_slope,  label: "Moderate slope (15–30°)" }
   - { code: 11,  name: restricted,      label: "Restricted / protected area" }
   - { code: 12,  name: bare_desert,     label: "Bare / desert" }
+  # 13-17 only the NCGDB map sheets distinguish these (WorldCover calls all of them "bare" or cropland).
+  - { code: 13,  name: sand,            label: "Sand" }
+  - { code: 14,  name: dunes,           label: "Sand dunes" }
+  - { code: 15,  name: rocky_ground,    label: "Rocky ground / scree / stony waste" }
+  - { code: 16,  name: salt_pan,        label: "Salt pan" }
+  - { code: 17,  name: dry_riverbed,    label: "Dry riverbed / nullah" }
   - { code: 255, name: nodata,          label: "No data" }
 
 # When several layers claim a pixel the FIRST entry here wins.
 precedence:
   - water_permanent
+  - mangrove          # above wetland: NCGDB "wet mud" must not overwrite WorldCover's more specific mangrove
   - wetland
-  - mangrove
   - built_up
   - restricted
   - snow_ice
   - steep_slope
+  - dunes
+  - salt_pan
   - water_seasonal
+  - dry_riverbed
   - moderate_slope
+  - rocky_ground
   - tree_cover
   - cropland
+  - sand
   - bare_desert
   - open_land
 
@@ -72,3 +83,43 @@ sources:
       built_up:
         class: built_up
         polygons: "landuse IN ('residential','industrial','commercial')"
+
+  # NCGDB: Survey-of-Pakistan style 1:50k topographic geodatabase (local, NOT downloaded). Each rule burns
+  # `class` wherever <layer>.<field> is one of `values`; `exclude` values of the same layer cut holes in
+  # that rule (cultivation exclusions, river islands). Field values are the geodatabase's coded values:
+  #   Cultivation 1 exclusion, 2 with limit, 3 without limit, 4 salt pan
+  #   Wooded 1-8,10 gardens/orchards/palm/tea, 9 sugarcane, 11 vegetable, 12/13 forest (open/enclosed)
+  #   Soil 1 boulders, 2 broken rocky, 3 sand, 4 sand hill tail, 5 sand on elevation, 6 scree, 7 stony waste,
+  #        8 transitional dune, 9 transverse dune, 10 moraine, 11 rock outcrop, 12 dune area
+  #   Reservoir 1 dam non-perennial, 2 dam perennial, 3 lake non-perennial, 4 lake perennial,
+  #             5 pond non-perennial, 6 pond perennial, 7 fish farm
+  #   Water feature 1 reeds, 2 tank non-perennial, 3 tank perennial, 4 wet mud
+  #   River 1 nullah non-perennial, 2 dry bed random, 3 ocean, 4 river limit, 5 nullah perennial, 6 dry bed,
+  #         7 river filling, 8 nullah approximate, 9 island, 10 dry bed perennial, 11 canal perennial,
+  #         12 canal non-perennial
+  # Measured against WorldCover 2021 (see README "Hybrid data"): cultivation, sand, glacier polygons and the
+  # linework agree well; NCGDB under-maps built-up land and snow fields and has no polygon forests, so those
+  # still come from WorldCover and the two are unioned by precedence.
+  ncgdb:
+    path: 'D:\LandUse\NCGDB Ver-6.gdb'          # override: --ncgdb, $NCGDB_PATH, run script -Ncgdb; "none" = open data only
+    licence: "Restricted - owner's terms apply; confirm before redistributing a bundle built from it"
+    attribution: "Survey of Pakistan topographic data (NCGDB Ver-6) - local dataset, not redistributable by default"
+    rules:
+      - { class: built_up,        layer: Builtup_Area,          field: Type_of_BUA,                  values: ["3"], all_touched: true }
+      - { class: cropland,        layer: Cultivation,           field: Type_of_Cultivation,          values: ["2", "3"], exclude: ["1"] }
+      - { class: salt_pan,        layer: Cultivation,           field: Type_of_Cultivation,          values: ["4"] }
+      - { class: tree_cover,      layer: Wooded_Area,           field: Type_of_Wooded_Area,          values: ["1", "2", "3", "4", "5", "6", "7", "8", "10", "12", "13"] }
+      - { class: cropland,        layer: Wooded_Area,           field: Type_of_Wooded_Area,          values: ["9", "11"] }
+      - { class: snow_ice,        layer: Glacier_Polygon,       field: Type_of_Glacier,              values: ["1", "2"] }
+      - { class: water_permanent, layer: Reservior,             field: Type_of_Reservoir,            values: ["2", "4", "6", "7"] }
+      - { class: water_seasonal,  layer: Reservior,             field: Type_of_Reservoir,            values: ["1", "3", "5"] }
+      - { class: water_permanent, layer: Water_Feature_Polygon, field: Type_of_Water_Feature_Polygon, values: ["3"] }
+      - { class: water_seasonal,  layer: Water_Feature_Polygon, field: Type_of_Water_Feature_Polygon, values: ["2"] }
+      - { class: wetland,         layer: Water_Feature_Polygon, field: Type_of_Water_Feature_Polygon, values: ["1", "4"] }
+      - { class: water_permanent, layer: Sea,                   field: Type_of_Sea,                  values: ["1", "3"], exclude: ["2"] }
+      - { class: water_permanent, layer: River,                 field: TYPE_OF_RIVER,                values: ["3", "5", "7", "11"], exclude: ["9"] }
+      - { class: water_seasonal,  layer: River,                 field: TYPE_OF_RIVER,                values: ["12"], exclude: ["9"] }
+      - { class: dry_riverbed,    layer: River,                 field: TYPE_OF_RIVER,                values: ["1", "2", "6", "8", "10"], exclude: ["9"] }
+      - { class: sand,            layer: Soil_Area,             field: Type_of_Soil_Area,            values: ["3", "4", "5"] }
+      - { class: dunes,           layer: Soil_Area,             field: Type_of_Soil_Area,            values: ["8", "9", "12"] }
+      - { class: rocky_ground,    layer: Soil_Area,             field: Type_of_Soil_Area,            values: ["1", "2", "6", "7", "10", "11"] }

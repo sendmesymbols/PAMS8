@@ -83,6 +83,68 @@ window it says so ("No deployable ground within 1.1 km") instead of guessing.
 A shape that spans tiles still being fetched is judged on what is known and says
 `Still loading terrain data`.
 
+### Echelon footprint
+
+A unit is not a point: it holds **frontage** (width across its front), **depth** (to its rear)
+and keeps an **intergap** to the next unit of the same echelon along the front. A land-unit symbol
+(symbol set 10) with one of these echelons is therefore judged on the ground it covers, not on
+its click point (`placement.footprint.enabled`, on by default). Other echelons (team, squad,
+regiment and above) stay a point.
+
+| echelon (SIDC digits 9–10) | frontage | depth | intergap |
+|----------------------------|----------|-------|----------|
+| Section (13)   | 75–100 m       | none (a line) | 100–150 m |
+| Platoon (14)   | 450–600 m      | none (a line) | 300 m |
+| Company (15)   | 1200–1500 m    | 600–800 m     | 500 m |
+| Battalion (16) | 3000–5000 m    | 2800–3000 m   | 1000–1200 m |
+| Brigade (18)   | 10 000–12 000 m | 4000–6000 m  | 3000 m |
+
+The footprint is centred on the symbol and sized in ground metres (converted to Web Mercator with
+the cos-latitude factor). "Depth: none" means a line `frontage` long. `footprint.size` picks which
+end of each range is used (`min` / `mid` default / `max`, the most cautious). The numbers live in
+`PlacementFootprint.ts` (`ECHELON_FOOTPRINTS`) and a bundle's `rules.json` may override any of them:
+
+```json
+"echelons": { "14": { "name": "Platoon", "frontageM": [450, 600], "depthM": 0, "gapM": 300 } }
+```
+
+A placed symbol has no facing, so `footprint.facing` chooses how the footprint is oriented:
+
+| facing | footprint |
+|--------|-----------|
+| `fixed` (default) | one rectangle whose frontage runs across `footprint.bearingDeg` (default 0° = north, so the frontage runs east–west) |
+| `worst4` | the rectangle at 0°, 45°, 90° and 135°, keeping the worst verdict (a centred rectangle repeats every 180°, so these four cover every orientation in 45° steps) |
+| `circle` | orientation-free disc whose diameter is the frontage (depth ignored) |
+
+The footprint is sampled like any shape (edges every tile pixel, interior grid, capped at `maxSamples`),
+so the existing rules apply: `fraction` ≥ 0.5 of the footprint in no-go → `in`, ≥ `partialFraction` →
+`partial`, a sliver → `near` ("touches"), otherwise distance to no-go decides `near` / `ok`. The detail
+line names the footprint: `Platoon footprint 520 m front, facing N`. With `enforce`, `in` and `partial`
+therefore refuse a unit whose *footprint* straddles water even if its click point is dry.
+
+`footprint.outline` draws the footprint on the map while placing (blue). It is also in the verdict:
+
+```ts
+v.footprint: { code, echelon, frontageM, depthM, gapM, facingDeg | null, facing, ring: [x, y][] } | undefined
+```
+
+**Intergap check** (`footprint.spacing`, on by default, advisory only — it never changes the terrain
+verdict and `enforce` never refuses on it). The advisor compares the footprint with same-echelon,
+same-side (friendly / hostile / neutral) point symbols already on the map (the force, tactical-point,
+tactical and legacy layers; the symbol's SIDC decides echelon and side). The gap is the box-to-box
+distance between the two footprints (0 when they touch or overlap); below the echelon's minimum
+(the low end of its intergap range) the badge adds an amber line — `⚠ Only 120 m from the next
+Platoon — keep at least 300 m between them` or `⚠ Overlaps a neighbouring Platoon footprint …` —
+and the offending neighbours are outlined in orange. Under `worst4` the tightest of the four facings is
+used; under `circle` the gap is centre distance minus the frontage.
+
+```ts
+v.spacing: { status: 'ok' | 'tight' | 'overlap', minGapM, nearestGapM | null,
+             conflicts: { at, gapM, ring }[], message | null } | undefined
+```
+
+The commit stamp (`attributes.placement`) also records `echelon`, `frontageM`, `depthM` and `spacing`.
+
 ### Indicator lines
 
 While drawing, a line on the map joins the symbol to the terrain that is the reason
@@ -132,6 +194,16 @@ and works in 2D and 3D (draped), sitting under the symbol layers.
 | amber  | caution |
 | red    | no-go |
 | clear  | no data / outside the bundle |
+
+`placement.overlay.boundary` ("Show official boundary", off by default) also draws the bundle's
+`boundary.geojson`: the national outline (green), the provinces (grey), the Line of Control
+(red, dashed) and the international borders (black). It is lines only, so it never hides the
+terrain colours or your symbols. The file is written by the pipeline and named in
+`manifest.boundary.file`; a bundle without one simply has nothing to draw. In the **official**
+bundle (the pipeline's default) the whole of Jammu & Kashmir is on Pakistan's side, following the
+Survey of Pakistan's *Pakistan Relief Map*, with the Line of Control shown as a line, not a limit;
+`manifest.boundary.source` says which boundary built the bundle (`official`, `osm` or `custom`).
+The engine draws exactly what the bundle contains and adds no geometry of its own.
 
 `placement.overlay.profile` chooses whose terrain is painted: `dismounted`,
 `wheeled`, `tracked`, `vessel` (water is green, land red) or `generic`; `auto`
@@ -199,13 +271,14 @@ swaps the source without reloading the bundle. The painter
   "mode": "advise",
   "overlay": { "enabled": false, "profile": "auto", "opacity": 0.6 },
   "indicators": { "enabled": true, "labels": true },
+  "footprint": { "enabled": true, "facing": "fixed", "bearingDeg": 0, "size": "mid", "outline": true, "spacing": true },
   "bundleUrl": "/terrain-bundle",
   "nearThresholdM": 250,
   "partialFraction": 0.2,
   "blockOn": ["in", "partial"],
   "showBadge": true,
   "logVerdicts": true,
-  "cacheTiles": 256,
+  "cacheTiles": 512,
   "prefetchMarginTiles": 1,
   "maxSamples": 400,
   "useWorker": true
@@ -282,7 +355,10 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
 }
 ```
 
-`bounds` is `[west, south, east, north]` in WGS84 degrees. The engine returns
+`bounds` is `[west, south, east, north]` in WGS84 degrees (for the official bundle about
+60.8, 23.7, 79.4, 37.1: it reaches 79.4°E because Jammu & Kashmir is included). An optional
+`"boundary": { "source", "file", "note" }` names the boundary used and the drawable
+`boundary.geojson`. The engine returns
 `unknown` outside it without fetching.
 
 ### `rules.json`
@@ -304,14 +380,19 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
     "10": { "name": "moderate_slope",   "label": "Moderate slope (15–30°)" },
     "11": { "name": "restricted",       "label": "Restricted / protected area" },
     "12": { "name": "bare_desert",      "label": "Bare / desert" },
+    "13": { "name": "sand",             "label": "Sand" },
+    "14": { "name": "dunes",            "label": "Sand dunes" },
+    "15": { "name": "rocky_ground",     "label": "Rocky ground / scree / stony waste" },
+    "16": { "name": "salt_pan",         "label": "Salt pan" },
+    "17": { "name": "dry_riverbed",     "label": "Dry riverbed / nullah" },
     "255": { "name": "nodata",          "label": "No data" }
   },
   "profiles": {
-    "dismounted": { "label": "Dismounted",       "nogo": [4, 8, 11],             "caution": [5, 6, 7, 9] },
-    "wheeled":    { "label": "Wheeled vehicles", "nogo": [4, 5, 6, 7, 8, 9, 11], "caution": [1, 3, 10] },
-    "tracked":    { "label": "Tracked vehicles", "nogo": [4, 6, 7, 8, 9, 11],    "caution": [3, 5, 10] },
-    "vessel":     { "label": "Surface vessel",   "requires": [4],                "caution": [5] },
-    "generic":    { "label": "Generic land",     "nogo": [4],                    "caution": [6, 7] },
+    "dismounted": { "label": "Dismounted",       "nogo": [4, 8, 11],                   "caution": [5, 6, 7, 9, 14, 15, 16] },
+    "wheeled":    { "label": "Wheeled vehicles", "nogo": [4, 5, 6, 7, 8, 9, 11, 14],   "caution": [1, 3, 10, 13, 15, 16, 17] },
+    "tracked":    { "label": "Tracked vehicles", "nogo": [4, 6, 7, 8, 9, 11],          "caution": [3, 5, 10, 14, 15, 16] },
+    "vessel":     { "label": "Surface vessel",   "requires": [4],                      "caution": [5] },
+    "generic":    { "label": "Generic land",     "nogo": [4],                          "caution": [6, 7, 14] },
     "exempt":     { "label": "Not terrain-bound" }
   },
   "profileOverrides": {
@@ -327,7 +408,15 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
 - `profileOverrides` is optional and overrides the defaults compiled into
   `MS/Engines/Placement/PlacementProfiles.ts`. Keys: 2-digit 2525D symbol set,
   or `symbolSet:entityPrefix` matched against the 6-digit entity code.
-- Class codes are **stable identifiers**: never renumber; append new ones.
+- Class codes are **stable identifiers**: never renumber; append new ones. Classes 13–17
+  (sand, dunes, rocky ground, salt pan, dry riverbed) exist only in **hybrid** bundles,
+  where the NCGDB topographic geodatabase supplies terrain WorldCover cannot tell apart; an
+  open-data bundle simply never contains them. The engine needs no change: it reads class
+  names and profile rules from `rules.json`. Their no-go / caution entries are a starting
+  proposal for the domain owner to correct.
+- A hybrid bundle's `manifest.json` has `"hybrid": true` and `"restricted": true`, and its
+  `LICENSES.txt` carries the data owner's restriction. See `tools/terrain-pipeline/README.md`
+  ("Hybrid data") for what each source contributes and how it was assessed.
 
 ### Default symbol-set → profile mapping (MS, overridable)
 
@@ -347,7 +436,8 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
 
 ## Sampling rules
 
-- **Point**: one sample at the point.
+- **Point**: one sample at the point — or, for a land-unit echelon with a footprint (see
+  "Echelon footprint"), the footprint rectangle / line / disc sampled as an area / line.
 - **Polyline**: every vertex plus points along each segment every
   one tile pixel (Web Mercator units at the sampling zoom), capped at
   `maxSamples` (default 400) by widening the step.
@@ -373,6 +463,11 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
   `generic` profile (only permanent water is no-go), so a boundary along a river
   reads `near`/`partial`. If that is noise for planners, set
   `"symbolSets": {"25": "exempt"}` in `profileOverrides`.
+- The echelon frontage / depth / intergap table is the one supplied by the domain owner; the
+  Battalion intergap was written "100–1200 m" and is read as 1000–1200 m. Squad, team, regiment,
+  division and above have no footprint yet. A footprint is centred on the symbol (the symbol is
+  not taken to mark the front edge), and no per-symbol facing is stored, so orientation is the
+  `footprint.facing` setting.
 - Which classes are no-go versus caution for each mobility profile is the table in
   `rules.json` (`tools/terrain-pipeline/rules.yaml`); the defaults are a starting
   proposal for the domain owner to correct, not doctrine.

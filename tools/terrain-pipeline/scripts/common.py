@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
+import shutil
 import struct
 import subprocess
 import sys
@@ -33,12 +35,41 @@ def setup_logging(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
+def _gdal_data_for(tool: str) -> str | None:
+    """Folder holding GDAL's data files (osmconf.ini, ...) next to the GDAL install that owns `tool`.
+
+    The OSM reader (ogr2ogr on a .pbf) needs osmconf.ini and fails with "Cannot find osmconf.ini
+    (GDAL_DATA is not defined)" when the CLI tools come from a QGIS / OSGeo4W / conda install that is
+    only on PATH. Returns None when GDAL_DATA is already set or nothing is found.
+    """
+    if os.environ.get("GDAL_DATA"):
+        return None
+    exe = shutil.which(tool)
+    if not exe:
+        return None
+    root = Path(exe).resolve().parent.parent
+    for cand in (root / "apps" / "gdal" / "share" / "gdal",     # QGIS standalone / OSGeo4W apps
+                 root / "share" / "gdal",                       # OSGeo4W, Linux prefixes
+                 root / "Library" / "share" / "gdal"):          # conda on Windows
+        if (cand / "osmconf.ini").exists():
+            return str(cand)
+    return None
+
+
 def run(cmd: list[str], log: logging.Logger, dry: bool = False) -> None:
-    """Run an external command (GDAL etc.), echoing it; raise on failure."""
+    """Run an external command (GDAL etc.), echoing it; raise on failure.
+
+    GDAL_DATA is set for the child process only (never for this Python process, whose rasterio wheel
+    carries its own GDAL data and must not be pointed at a different install's).
+    """
     log.info("$ %s", " ".join(str(c) for c in cmd))
     if dry:
         return
-    subprocess.run([str(c) for c in cmd], check=True)
+    env = None
+    data = _gdal_data_for(str(cmd[0]))
+    if data:
+        env = {**os.environ, "GDAL_DATA": data}
+    subprocess.run([str(c) for c in cmd], check=True, env=env)
 
 # ----------------------------------------------------------------------------- tile math
 

@@ -140,9 +140,16 @@ MS/
   mouse-move); advise mode only listens, enforce mode vetoes in `drawSymEnd`.
   Tile fetch/decode and overlay painting run in an inline Web Worker
   (`placement.useWorker`, falls back to the main thread automatically).
+  Land-unit echelons (section → brigade) are judged on their **footprint** (frontage × depth, centred on
+  the symbol; `placement.footprint.*`, facing = fixed bearing / worst-of-4 / circle) rather than the click
+  point, with an advisory intergap check against same-echelon symbols already on the map
+  (`PlacementFootprint.ts`, table overridable via rules.json `echelons`).
   Advice names the reason, distance, nearest terrain and direction; an optional
   map overlay (`placement.overlay.*`) paints go / near / caution / no-go per profile,
   and indicator lines (`placement.indicators.*`) join the symbol to the contested terrain.
+  The terrain bundle is clipped to the **official Survey of Pakistan boundary** (all of Jammu &
+  Kashmir on Pakistan's side, built from NCGDB by `make_boundary.py`); `placement.overlay.boundary`
+  draws the outline the bundle ships.
   See `MS/Docs/15-placement-advisor.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.

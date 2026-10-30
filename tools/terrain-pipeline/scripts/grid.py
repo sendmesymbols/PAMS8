@@ -63,9 +63,43 @@ def warp(src: list[Path], dest: Path, grid: dict, boundary: Path, resample: str,
     run(cmd + [vrt, dest], log, dry)
 
 
+DEFAULT_AOI = "60.8,23.6,77.9,37.1"      # Pakistan-administered area only (what the OSM boundary covers)
+
+
+def _bbox_of_geojson(path: Path) -> list[float]:
+    """[w, s, e, n] of every coordinate in a GeoJSON file."""
+    import json
+    xs: list[float] = []
+    ys: list[float] = []
+
+    def walk(c):
+        if c and isinstance(c[0], (int, float)):
+            xs.append(c[0]); ys.append(c[1])
+        else:
+            for x in c:
+                walk(x)
+
+    def feats(o):
+        if o.get("type") == "FeatureCollection":
+            for f in o["features"]:
+                feats(f)
+        elif o.get("type") == "Feature":
+            feats(o["geometry"])
+        elif o.get("type") == "GeometryCollection":
+            for g in o["geometries"]:
+                feats(g)
+        elif o.get("coordinates") is not None:
+            walk(o["coordinates"])
+
+    feats(json.loads(path.read_text(encoding="utf-8")))
+    return [min(xs), min(ys), max(xs), max(ys)]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--aoi", default="60.8,23.6,77.9,37.1", help="west,south,east,north (WGS84)")
+    ap.add_argument("--aoi", default=None,
+                    help="west,south,east,north (WGS84). Default: the bounding box of the boundary polygon "
+                         f"(make_boundary.py writes it), else {DEFAULT_AOI}")
     ap.add_argument("--zmin", type=int, default=8)
     ap.add_argument("--zmax", type=int, default=12)
     ap.add_argument("--target-res-m", type=float, default=30.0,
@@ -73,16 +107,37 @@ def main() -> int:
     ap.add_argument("--raw", type=Path, default=Path("work/raw"))
     ap.add_argument("--out", type=Path, default=Path("work/grid"))
     ap.add_argument("--boundary", type=Path, help="GeoJSON clip polygon; default: extract from OSM")
+    ap.add_argument("--boundary-source", choices=["frame", "official", "custom", "osm"],
+                    help="label recorded in grid.json / the manifest (default: custom with --boundary, else osm)")
     ap.add_argument("--skip-warp", action="store_true", help="only write grid.json + boundary")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    aoi = parse_aoi(args.aoi)
+    source = args.boundary_source or ("custom" if args.boundary else "osm")
+    if args.aoi:
+        aoi = parse_aoi(args.aoi)
+    elif args.boundary:
+        info = args.boundary.with_name("boundary.json")             # written by make_boundary.py
+        if info.exists():
+            import json
+            aoi = parse_aoi(",".join(str(v) for v in json.loads(info.read_text(encoding="utf-8"))["aoi"]))
+        else:
+            w, s, e, n = _bbox_of_geojson(args.boundary)
+            aoi = parse_aoi(f"{w - 0.05:.2f},{s - 0.05:.2f},{e + 0.05:.2f},{n + 0.05:.2f}")
+        log.info("AOI from the boundary polygon: %s", list(aoi))
+    else:
+        aoi = parse_aoi(DEFAULT_AOI)
+    if source == "osm":
+        log.warning("boundary: OpenStreetMap - it stops at the Line of Control, so Indian-administered Jammu & "
+                    "Kashmir is NOT covered. Use make_boundary.py (official, needs the NCGDB) or --boundary <GeoJSON>.")
     grid = build_grid(aoi, args.zmin, args.zmax)
+    grid["boundary"] = {"source": source}
     args.out.mkdir(parents=True, exist_ok=True)
     dump_json(args.out / "grid.json", grid)
+    (args.out / ".boundary").write_text(source, encoding="ascii")
+    tx0, ty0, tx1, ty1 = grid["tile_range"]
     log.info("grid z%d: %d x %d px, %.3f m/px (equator), tiles x %d..%d y %d..%d",
-             grid["zmax"], grid["width"], grid["height"], grid["pixel_size"], *grid["tile_range"])
+             grid["zmax"], grid["width"], grid["height"], grid["pixel_size"], tx0, tx1, ty0, ty1)
     log.info("memory note: one uint8 plane = %.1f GB -> every step works in blocks",
              grid["width"] * grid["height"] / 1e9)
     import math

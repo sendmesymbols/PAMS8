@@ -90,17 +90,20 @@ def check_golden(bundle: Path, points: list, zmax: int, codes: dict[str, int]) -
     for pt in points:
         px, py = lnglat_to_pixel(pt["lon"], pt["lat"], zmax)
         tol = int(pt.get("tolerance_px", 3))
-        expect = codes[pt["expect"]]
+        # `expect` is one class name or a list of acceptable ones (a hybrid bundle can call the Thar
+        # "sand" or "dunes" where open data says "bare_desert").
+        wanted = pt["expect"] if isinstance(pt["expect"], list) else [pt["expect"]]
+        expects = {codes[n] for n in wanted}
         found = set()
         for sy in range(int(py) - tol, int(py) + tol + 1):
             for sx in range(int(px) - tol, int(px) + tol + 1):
                 p = bundle / "class" / str(zmax) / str(sx // TILE_SIZE) / f"{sy // TILE_SIZE}.png"
                 if p.exists():
                     found.add(int(png_array(p)[sy % TILE_SIZE, sx % TILE_SIZE]))
-        ok = expect in found
+        ok = bool(expects & found)
         fails += not ok
-        log.log(20 if ok else 40, "golden %-38s expect %2d (%s) found %s -> %s",
-                pt["name"], expect, pt["expect"], sorted(found) or "no tile", "OK" if ok else "FAIL")
+        log.log(20 if ok else 40, "golden %-38s expect %s (%s) found %s -> %s",
+                pt["name"], sorted(expects), "/".join(wanted), sorted(found) or "no tile", "OK" if ok else "FAIL")
     return fails
 
 

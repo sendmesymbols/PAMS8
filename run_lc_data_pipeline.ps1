@@ -76,8 +76,31 @@ param(
     # Folder with the GDAL command-line tools. Default: PATH, then QGIS / OSGeo4W.
     [string] $GdalBin,
 
+    # HYBRID build: the NCGDB geodatabase (.gdb folder) to combine with the open data.
+    # Default: $env:NCGDB_PATH, else the path in classes.yaml if that folder exists, else open data only.
+    [string] $Ncgdb,
+
+    # Open data only: ignore the NCGDB even if it is present (the bundle is then not restricted).
+    [switch] $NoNcgdb,
+
+    # What bounds the data:
+    #   frame (default) = the extent of the Survey of Pakistan relief map (a plain rectangle, see -Frame):
+    #                     all of Jammu & Kashmir, Gilgit-Baltistan and the Junagadh inset are inside it, and
+    #                     nothing inside the rectangle is clipped
+    #   official        = a clip polygon of the Survey of Pakistan border built from the NCGDB
+    #   osm             = OpenStreetMap's boundary (stops at the Line of Control: Indian-administered
+    #                     Kashmir is NOT covered)
+    # -Boundary <geojson> overrides all of them with a polygon of your own. 'official' needs the NCGDB.
+    [ValidateSet('frame', 'official', 'osm')]
+    [string] $BoundaryMode = 'frame',
+
+    # West,south,east,north (WGS84) of the data extent for -BoundaryMode frame.
+    # Default 59.5,20.5,80.5,37.5 = the Survey of Pakistan relief-map sheet (+ the Junagadh inset in the south).
+    [string] $Frame = '',
+
     # Pipeline settings (same names and defaults as the Makefile).
-    [string] $Aoi = '60.8,23.6,77.9,37.1',   # west,south,east,north (WGS84) - Pakistan
+    # -Aoi is normally NOT needed: it is taken from the boundary (west,south,east,north in WGS84).
+    [string] $Aoi = '',
     [int]    $ResM = 30,                      # target ground resolution in metres
     [int]    $ZMin = 8,
     [int]    $ZMax = 12,
@@ -88,6 +111,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$script:BoundParams = $PSBoundParameters      # functions cannot see the script's own bound parameters
 
 $RepoRoot    = $PSScriptRoot
 $PipelineDir = Join-Path $RepoRoot 'tools\terrain-pipeline'
@@ -254,15 +278,50 @@ function Resolve-OutDir {
     return $full
 }
 
+# Arguments that tell grid.py which clip polygon to use. For the OFFICIAL boundary this first builds it from
+# the NCGDB (make_boundary.py); it falls back to OSM, loudly, when there is no NCGDB.
+$script:GridBoundaryArgs = @()
+function Resolve-BoundaryArgs {
+    if ($Boundary) { return @('--boundary', $Boundary, '--boundary-source', 'custom') }
+    if ($BoundaryMode -eq 'frame') {
+        $fa = @('scripts\make_boundary.py', '--out', 'work\boundary')
+        $fa += if ($Frame) { @('--frame', $Frame) } else { @('--frame') }
+        if (-not $DryRun) {
+            & $VenvPy @fa | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'make_boundary.py --frame failed. See the output above.' }
+        }
+        return @('--boundary', 'work\boundary\clip.geojson', '--boundary-source', 'frame')
+    }
+    if ($NoNcgdb -and $BoundaryMode -eq 'official') {
+        Write-Warn 'The official boundary is built from the NCGDB, which -NoNcgdb disables: using the OSM boundary. Indian-administered Kashmir will NOT be covered; pass -Boundary <geojson> to include it.'
+        return @('--boundary-source', 'osm')
+    }
+    if ($BoundaryMode -eq 'osm') { return @('--boundary-source', 'osm') }
+    if ($DryRun) { return @('--boundary', 'work\boundary\clip.geojson', '--boundary-source', 'official') }
+    $mb = @('scripts\make_boundary.py', '--out', 'work\boundary')
+    if ($Ncgdb) { $mb += @('--ncgdb', $Ncgdb) }
+    $out = & $VenvPy @mb
+    if ($LASTEXITCODE -ne 0) { throw 'make_boundary.py failed. See the output above.' }
+    $file = Join-Path $PipelineDir 'work\boundary\pakistan_official.geojson'
+    if (Test-Path $file) { return @('--boundary', 'work\boundary\clip.geojson', '--boundary-source', 'official') }
+    Write-Warn 'No NCGDB found, so the official boundary cannot be built: using the OSM boundary. Indian-administered Kashmir will NOT be covered. Point -Ncgdb at the geodatabase, or pass -Boundary <geojson>.'
+    return @('--boundary-source', 'osm')
+}
+
 function Get-StepArgs([string] $step, [string] $outDir) {
-    $boundaryArgs = @()
-    if ($Boundary) { $boundaryArgs = @('--boundary', $Boundary) }
+    $boundaryArgs = $script:GridBoundaryArgs
     switch ($step) {
-        'fetch'    { return @('scripts\fetch.py', '--lock', 'sources.lock', '--out', 'work\raw', '--record') }
-        'grid'     { return @('scripts\grid.py', '--aoi', $Aoi, '--zmin', "$ZMin", '--zmax', "$ZMax", '--target-res-m', "$ResM",
+        'fetch'    { return @('scripts\fetch.py', '--lock', 'sources.lock', '--out', 'work\raw', '--record', '--verify-size') }
+        'grid'     {
+            $a = @()
+            if ($Aoi) { $a = @('--aoi', $Aoi) }
+            return @('scripts\grid.py') + $a + @('--zmin', "$ZMin", '--zmax', "$ZMax", '--target-res-m', "$ResM",
                               '--raw', 'work\raw', '--out', 'work\grid') + $boundaryArgs }
-        'derive'   { return @('scripts\derive.py', '--grid', 'work\grid', '--raw', 'work\raw', '--out', 'work\derive',
-                              '--classes', 'classes.yaml', '--block', "$Block") }
+        'derive'   {
+            $nc = @()
+            if ($NoNcgdb) { $nc = @('--ncgdb', 'none') } elseif ($Ncgdb) { $nc = @('--ncgdb', $Ncgdb) }
+            return @('scripts\derive.py', '--grid', 'work\grid', '--raw', 'work\raw', '--out', 'work\derive',
+                     '--classes', 'classes.yaml', '--block', "$Block", '--workers', "$Workers") + $nc }
         'classify' { return @('scripts\classify.py', '--grid', 'work\grid', '--derive', 'work\derive', '--out', 'work\classify',
                               '--classes', 'classes.yaml', '--block', "$Block") }
         'profiles' { return @('scripts\profiles.py', '--rules', 'rules.yaml', '--classes', 'classes.yaml', '--grid', 'work\grid',
@@ -277,6 +336,8 @@ function Get-StepArgs([string] $step, [string] $outDir) {
 }
 
 function Invoke-PipelineStep([string] $step, [string] $outDir) {
+    # fetch needs the boundary too (it downloads only the DEM tiles the country touches), grid uses it.
+    if ($step -eq 'grid' -or $step -eq 'fetch') { $script:GridBoundaryArgs = Resolve-BoundaryArgs }
     $stepArgs = Get-StepArgs $step $outDir
     Write-Step "[$step]"
     Write-Info ("python " + ($stepArgs -join ' '))
@@ -300,6 +361,36 @@ function Invoke-PipelineStep([string] $step, [string] $outDir) {
     Write-Info ("done in {0:hh\:mm\:ss}" -f $sw.Elapsed)
 }
 
+# If the user switched between hybrid and open-data mode since derive last ran, its output is for the other
+# mode: drop the stamps so derive, classify, profiles and tile re-run (derive.py records the mode it used).
+function Sync-DataMode {
+    $modeFile = Join-Path $PipelineDir 'work\derive\.mode'
+    $want = if ($NoNcgdb) { 'open' } elseif ($Ncgdb) { 'hybrid' } else { $null }
+    if ($want -and (Test-Path $modeFile)) {
+        $have = (Get-Content $modeFile -Raw).Trim()
+        if ($have -ne $want) {
+            Write-Warn "data mode changed ($have -> $want): derive and every later step will re-run"
+            foreach ($s in 'derive', 'classify', 'profiles', 'tile') {
+                Remove-Item (Join-Path $PipelineDir $Stamps[$s]) -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    # Same for the boundary: a different clip polygon changes the grid and everything after it.
+    $bFile = Join-Path $PipelineDir 'work\grid\.boundary'
+    # Only when the user chose a mode on this command line (the default 'official' can fall back to OSM
+    # without an NCGDB, which would otherwise look like a change on every run).
+    $wantB = if ($Boundary) { 'custom' } elseif ($script:BoundParams.ContainsKey('BoundaryMode') -or $BoundaryMode -eq 'frame') { $BoundaryMode } else { $null }
+    if ($wantB -and (Test-Path $bFile)) {
+        $haveB = (Get-Content $bFile -Raw).Trim()
+        if ($haveB -ne $wantB) {
+            Write-Warn "boundary changed ($haveB -> $wantB): grid and every later step will re-run"
+            foreach ($s in 'grid', 'derive', 'classify', 'profiles', 'tile') {
+                Remove-Item (Join-Path $PipelineDir $Stamps[$s]) -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
 function Get-Selection {
     if ($RulesOnly) { return @{ Steps = @('profiles', 'tile', 'validate', 'package'); Forced = $true } }
     if ($Only)      { return @{ Steps = @($AllSteps | Where-Object { $Only -contains $_ }); Forced = $true } }
@@ -320,13 +411,23 @@ try {
     if ($ZMax -lt $ZMin) { throw '-ZMax must be >= -ZMin.' }
     if ($Boundary -and -not (Test-Path $Boundary)) { throw "-Boundary file not found: $Boundary" }
     if ($Boundary) { $Boundary = (Resolve-Path $Boundary).Path }
+    if ($NoNcgdb -and $Ncgdb) { throw '-Ncgdb and -NoNcgdb are mutually exclusive.' }
+    if ($Ncgdb) {
+        if (-not (Test-Path -LiteralPath $Ncgdb -PathType Container)) { throw "-Ncgdb folder not found: $Ncgdb" }
+        $Ncgdb = (Resolve-Path -LiteralPath $Ncgdb).Path
+    }
     $outFull = Resolve-OutDir
     $sel = Get-Selection
 
     Write-Step 'Land-cover terrain pipeline'
     Write-Info "pipeline : $PipelineDir"
     Write-Info "steps    : $($sel.Steps -join ', ')$(if ($sel.Forced) { '  (forced)' } else { '  (skipping completed steps)' })"
-    Write-Info "settings : AOI=$Aoi  ResM=$ResM  Z=$ZMin..$ZMax  Workers=$Workers  Block=$Block"
+    $aoiText = if ($Aoi) { $Aoi } else { 'from the boundary' }
+    Write-Info "settings : AOI=$aoiText  ResM=$ResM  Z=$ZMin..$ZMax  Workers=$Workers  Block=$Block"
+    $bText = if ($Boundary) { "custom: $Boundary" } elseif ($BoundaryMode -eq 'frame') { "map frame (rectangle $(if ($Frame) { $Frame } else { 'default: Survey of Pakistan relief-map extent' }), nothing clipped inside)" } elseif ($BoundaryMode -eq 'osm') { 'OpenStreetMap (stops at the Line of Control: Indian-administered Kashmir NOT covered)' } else { 'official (Survey of Pakistan, all of Jammu & Kashmir included; needs the NCGDB)' }
+    Write-Info "boundary : $bText"
+    $dataMode = if ($NoNcgdb) { 'open data only (NCGDB ignored)' } elseif ($Ncgdb) { "HYBRID with $Ncgdb  (bundle will be RESTRICTED)" } else { 'auto: hybrid if the NCGDB in classes.yaml / $env:NCGDB_PATH exists, else open data only' }
+    Write-Info "data     : $dataMode"
     Write-Info "output   : $outFull"
 
     if ($DryRun) {
@@ -370,6 +471,8 @@ try {
             Write-Warn 'fetch downloads several GB of open data. It also records source checksums into sources.lock.'
         }
     }
+
+    if (-not $DryRun) { Sync-DataMode }
 
     if ($RulesOnly -and -not $DryRun) {
         foreach ($s in 'profiles', 'tile') { Remove-Item (Join-Path $PipelineDir $Stamps[$s]) -Force -ErrorAction SilentlyContinue }

@@ -644,11 +644,20 @@
     "overlay": {
       "enabled": false,
       "profile": "auto",
-      "opacity": 0.6
+      "opacity": 0.6,
+      "boundary": false
     },
     "indicators": {
       "enabled": true,
       "labels": true
+    },
+    "footprint": {
+      "enabled": true,
+      "facing": "fixed",
+      "bearingDeg": 0,
+      "size": "mid",
+      "outline": true,
+      "spacing": true
     },
     "bundleUrl": "/terrain-bundle",
     "nearThresholdM": 250,
@@ -656,7 +665,7 @@
     "blockOn": ["in", "partial"],
     "showBadge": true,
     "logVerdicts": true,
-    "cacheTiles": 256,
+    "cacheTiles": 512,
     "prefetchMarginTiles": 1,
     "maxSamples": 400,
     "useWorker": true

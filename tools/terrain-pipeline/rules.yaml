@@ -5,25 +5,30 @@
 # Class codes: 0 open_land 1 tree_cover 2 cropland 3 built_up 4 water_permanent
 #              5 water_seasonal 6 wetland 7 mangrove 8 snow_ice 9 steep_slope
 #              10 moderate_slope 11 restricted 12 bare_desert
+#              13 sand 14 dunes 15 rocky_ground 16 salt_pan 17 dry_riverbed   (13-17: NCGDB only)
+#
+# The entries for classes 13-17 are a STARTING PROPOSAL for the domain owner to correct, not doctrine
+# (as for the rest of this file): dunes stop wheels and slow everything; loose sand, rock, salt crust and
+# dry beds are "caution" where they plausibly hurt that mobility class.
 #
 # Changing this file only requires `make rebuild-rules` (steps profiles..package).
 
-version: "2026.10"
+version: "2026.11-hybrid"
 distScaleM: 10          # dist tile value x distScaleM = metres; 254 = >= 2540 m
 
 profiles:
   dismounted:
     label: Dismounted
     nogo:    [4, 8, 11]
-    caution: [5, 6, 7, 9]
+    caution: [5, 6, 7, 9, 14, 15, 16]
   wheeled:
     label: Wheeled vehicles
-    nogo:    [4, 5, 6, 7, 8, 9, 11]
-    caution: [1, 3, 10]
+    nogo:    [4, 5, 6, 7, 8, 9, 11, 14]
+    caution: [1, 3, 10, 13, 15, 16, 17]
   tracked:
     label: Tracked vehicles
     nogo:    [4, 6, 7, 8, 9, 11]
-    caution: [3, 5, 10]
+    caution: [3, 5, 10, 14, 15, 16]
   vessel:
     label: Surface vessel
     requires: [4]       # everything NOT in requires is no-go -> dist = distance to shore
@@ -31,7 +36,7 @@ profiles:
   generic:
     label: Generic land
     nogo:    [4]
-    caution: [6, 7]
+    caution: [6, 7, 14]
   exempt:
     label: Not terrain-bound   # no nogo/requires -> no dist layer
 

@@ -3004,10 +3004,47 @@
               <label>Line labels</label>
               <input type="checkbox" id="setting-placementIndicatorLabels" checked title="Write the terrain class and distance at the end of the indicator line." />
             </div>
+            <div class="sub-feature-label">Echelon footprint</div>
+            <div class="setting-row">
+              <label>By footprint</label>
+              <input type="checkbox" id="setting-placementFootprint" checked title="Judge a section, platoon, company, battalion or brigade on the ground it covers (frontage x depth) instead of its click point." />
+            </div>
+            <div class="setting-row">
+              <label>Facing</label>
+              <select id="setting-placementFacing" style="width: 105px" title="A placed symbol has no direction. Fixed uses the bearing; worst of 4 tries 0/45/90/135 degrees; circle uses a disc as wide as the frontage.">
+                <option value="fixed" selected>Fixed bearing</option>
+                <option value="worst4">Worst of 4</option>
+                <option value="circle">Circle</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Bearing</label>
+              <input type="number" id="setting-placementBearing" min="0" max="359" step="5" value="0" style="width: 60px" title="Direction the frontage faces, degrees clockwise from north (0 = north)." />
+            </div>
+            <div class="setting-row">
+              <label>Size</label>
+              <select id="setting-placementFootprintSize" style="width: 105px" title="Which end of the echelon's frontage / depth range the footprint uses.">
+                <option value="min">Minimum</option>
+                <option value="mid" selected>Middle</option>
+                <option value="max">Maximum</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Show outline</label>
+              <input type="checkbox" id="setting-placementFootprintOutline" checked title="Draw the footprint on the map while placing (blue), and neighbours that are too close (orange)." />
+            </div>
+            <div class="setting-row">
+              <label>Check intergap</label>
+              <input type="checkbox" id="setting-placementSpacing" checked title="Warn when the gap to the next same-echelon symbol is below the minimum intergap, or the footprints overlap." />
+            </div>
             <div class="sub-feature-label">Map overlay</div>
             <div class="setting-row">
               <label>Show on map</label>
               <input type="checkbox" id="setting-placementOverlay" title="Paint the terrain data on the map to see which areas are available: green deployable, yellow near no-go, amber caution, red no-go." />
+            </div>
+            <div class="setting-row">
+              <label>Boundary</label>
+              <input type="checkbox" id="setting-placementBoundary" title="Draw the country boundary shipped with the terrain bundle: outline, provinces, the Line of Control and the international borders. In the official bundle all of Jammu &amp; Kashmir is on Pakistan's side." />
             </div>
             <div class="setting-row">
               <label>Paint for</label>
@@ -4350,8 +4387,15 @@
         'setting-placementBundleUrl': (v) => ({ path: ['placement', 'bundleUrl'], value: v }),
         'setting-placementIndicators': (v) => ({ path: ['placement', 'indicators', 'enabled'], value: v }),
         'setting-placementIndicatorLabels': (v) => ({ path: ['placement', 'indicators', 'labels'], value: v }),
+        'setting-placementFootprint': (v) => ({ path: ['placement', 'footprint', 'enabled'], value: v }),
+        'setting-placementFacing': (v) => ({ path: ['placement', 'footprint', 'facing'], value: v }),
+        'setting-placementBearing': (v) => ({ path: ['placement', 'footprint', 'bearingDeg'], value: +v }),
+        'setting-placementFootprintSize': (v) => ({ path: ['placement', 'footprint', 'size'], value: v }),
+        'setting-placementFootprintOutline': (v) => ({ path: ['placement', 'footprint', 'outline'], value: v }),
+        'setting-placementSpacing': (v) => ({ path: ['placement', 'footprint', 'spacing'], value: v }),
         'setting-placementWorker': (v) => ({ path: ['placement', 'useWorker'], value: v }),
         'setting-placementOverlay': (v) => ({ path: ['placement', 'overlay', 'enabled'], value: v }),
+        'setting-placementBoundary': (v) => ({ path: ['placement', 'overlay', 'boundary'], value: v }),
         'setting-placementOverlayProfile': (v) => ({ path: ['placement', 'overlay', 'profile'], value: v }),
         'setting-placementOverlayOpacity': (v) => ({ path: ['placement', 'overlay', 'opacity'], value: +v }),
         'setting-uiTheme': (v) => ({ path: ['ui', 'theme'], value: v }),

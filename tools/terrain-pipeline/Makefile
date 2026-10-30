@@ -6,7 +6,7 @@
 # (or `make clean-<step>`) to force a re-run.
 
 PY       ?= python3
-AOI      ?= 60.8,23.6,77.9,37.1      # west,south,east,north (WGS84) — Pakistan
+AOI      ?=                          # west,south,east,north (WGS84); empty = taken from the boundary polygon
 RES_M    ?= 30                       # target ground resolution; grid warns if ZMAX is coarser
 ZMIN     ?= 8
 ZMAX     ?= 12
@@ -14,14 +14,20 @@ OUT_DIR  ?= out/terrain-bundle
 WORKERS  ?= 4
 BLOCK    ?= 2048                     # processing block (px); lower it on small RAM
 BOUNDARY ?=                          # optional GeoJSON clip polygon (default: OSM admin_level=2)
+NCGDB    ?=                          # NCGDB .gdb for the hybrid build; "none" = open data only (default: classes.yaml / $$NCGDB_PATH)
 SYNTH    ?= ../../public/terrain-bundle
 
 S  = scripts
 W  = work
-BOUNDARY_ARG = $(if $(strip $(BOUNDARY)),--boundary $(strip $(BOUNDARY)),)
+NCGDB_ARG    = $(if $(strip $(NCGDB)),--ncgdb "$(strip $(NCGDB))",)
+AOI_ARG      = $(if $(strip $(AOI)),--aoi "$(strip $(AOI))",)
+# Boundary: BOUNDARY=<geojson> wins; otherwise the OFFICIAL boundary (all of Jammu & Kashmir, built from the
+# NCGDB by make_boundary.py) when it could be built; otherwise OSM's (stops at the Line of Control).
+OFFICIAL     = $(W)/boundary/pakistan_official.geojson
+BOUNDARY_ARG = $(if $(strip $(BOUNDARY)),--boundary $(strip $(BOUNDARY)) --boundary-source custom,$(if $(wildcard $(OFFICIAL)),--boundary $(OFFICIAL) --boundary-source official,--boundary-source osm))
 
-.PHONY: bundle fetch grid derive classify profiles tile validate package rebuild-rules \
-        synth-check clean clean-out clean-work $(addprefix clean-,fetch grid derive classify profiles tile)
+.PHONY: bundle fetch boundary grid derive classify profiles tile validate package rebuild-rules \
+        synth-check clean clean-out clean-work $(addprefix clean-,fetch boundary grid derive classify profiles tile)
 
 bundle: package
 
@@ -32,16 +38,23 @@ $(W)/raw/.done: sources.lock
 	@touch $@
 
 # 2 ---------------------------------------------------------------- grid + warps
+# 2a --------------------------------------------------------------- official boundary (needs the NCGDB)
+boundary: $(W)/boundary/.done
+$(W)/boundary/.done:
+	$(PY) $(S)/make_boundary.py --out $(W)/boundary $(NCGDB_ARG)
+	@mkdir -p $(W)/boundary && touch $@
+
 grid: $(W)/grid/.done
-$(W)/grid/.done: $(W)/raw/.done
-	$(PY) $(S)/grid.py --aoi "$(strip $(AOI))" --zmin $(strip $(ZMIN)) --zmax $(strip $(ZMAX)) \
+$(W)/grid/.done: $(W)/raw/.done $(W)/boundary/.done
+	$(PY) $(S)/grid.py $(AOI_ARG) --zmin $(strip $(ZMIN)) --zmax $(strip $(ZMAX)) \
 	    --target-res-m $(strip $(RES_M)) --raw $(W)/raw --out $(W)/grid $(BOUNDARY_ARG)
 	@touch $@
 
 # 3 ---------------------------------------------------------------- slope, JRC, OSM masks
 derive: $(W)/derive/.done
 $(W)/derive/.done: $(W)/grid/.done classes.yaml
-	$(PY) $(S)/derive.py --grid $(W)/grid --raw $(W)/raw --out $(W)/derive --classes classes.yaml --block $(strip $(BLOCK))
+	$(PY) $(S)/derive.py --grid $(W)/grid --raw $(W)/raw --out $(W)/derive --classes classes.yaml --block $(strip $(BLOCK)) \
+	    --workers $(strip $(WORKERS)) $(NCGDB_ARG)
 	@touch $@
 
 # 4 ---------------------------------------------------------------- class.tif
@@ -85,6 +98,7 @@ synth-check:
 
 # ---------------------------------------------------------------- housekeeping
 clean-fetch:    ; rm -f $(W)/raw/.done            # keeps downloads; `rm -rf work/raw` to drop them
+clean-boundary: ; rm -rf $(W)/boundary
 clean-grid:     ; rm -rf $(W)/grid
 clean-derive:   ; rm -rf $(W)/derive
 clean-classify: ; rm -rf $(W)/classify

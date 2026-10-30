@@ -10,11 +10,11 @@ points:
   - { name: "Indus near Sukkur (mid-channel)",  lon: 68.85,  lat: 27.70,  expect: water_permanent, tolerance_px: 6 }   # verify
   - { name: "Lahore centre",                    lon: 74.33,  lat: 31.56,  expect: built_up,        tolerance_px: 3 }   # verify
   - { name: "Karachi centre",                   lon: 67.03,  lat: 24.86,  expect: built_up,        tolerance_px: 3 }   # verify
-  - { name: "Thar desert (east of Mithi)",      lon: 70.10,  lat: 24.75,  expect: bare_desert,     tolerance_px: 8 }   # verify: may be open_land (shrub)
+  - { name: "Thar desert (east of Mithi)",      lon: 70.10,  lat: 24.75,  expect: [bare_desert, sand, dunes, open_land], tolerance_px: 8 }   # verify; hybrid bundles say sand / dunes
   - { name: "K2 / Baltoro glacier",             lon: 76.51,  lat: 35.88,  expect: snow_ice,        tolerance_px: 8 }   # verify
   - { name: "Manchar Lake",                     lon: 67.65,  lat: 26.42,  expect: water_permanent, tolerance_px: 10 }  # verify: seasonal extent varies
   - { name: "Keenjhar Lake",                    lon: 68.05,  lat: 24.95,  expect: water_permanent, tolerance_px: 10 }  # verify
   - { name: "Indus delta mangroves (Keti Bandar)", lon: 67.45, lat: 24.15, expect: mangrove,      tolerance_px: 12 }  # verify
   - { name: "Punjab irrigated cropland (Okara)", lon: 73.45, lat: 30.75,  expect: cropland,        tolerance_px: 6 }   # verify
-  - { name: "Hunza valley slope",               lon: 74.60,  lat: 36.35,  expect: steep_slope,     tolerance_px: 8 }   # verify: moderate_slope also plausible
-  - { name: "Tarbela reservoir",                lon: 72.75,  lat: 34.20,  expect: water_permanent, tolerance_px: 10 }  # verify: drawdown -> water_seasonal near shore
+  - { name: "Hunza valley slope",               lon: 74.60,  lat: 36.35,  expect: [steep_slope, moderate_slope, rocky_ground], tolerance_px: 8 }   # verify
+  - { name: "Tarbela reservoir",                lon: 72.75,  lat: 34.20,  expect: [water_permanent, water_seasonal], tolerance_px: 10 }  # verify: drawdown -> water_seasonal near shore

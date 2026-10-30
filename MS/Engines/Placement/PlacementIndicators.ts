@@ -46,6 +46,9 @@ export class PlacementIndicators {
   private _ends: Graphic | null = null;
   private _marks: Graphic | null = null;
   private _label: Graphic | null = null;
+  private _fpOwn: Graphic | null = null;
+  private _fpOthers: Graphic | null = null;
+  private _fpVisible = false;
   private _labelSym: TextSymbol | null = null;
   private _kind: PlacementIndicator['kind'] | null = null;
   private _labelText = '';
@@ -119,15 +122,60 @@ export class PlacementIndicators {
     }
   }
 
+  /** Hide the indicator lines (the footprint outline has its own `hideFootprint`). */
   hide(): void {
     if (!this._visible) return;
     for (const g of [this._casing, this._line, this._ends, this._marks, this._label]) if (g) g.visible = false;
     this._visible = false;
   }
 
+  /**
+   * Draw the echelon footprint being judged (blue) and, in orange, the footprints of the
+   * neighbours that are too close. `ring` is a closed ring or the 2 end points of a line.
+   */
+  showFootprint(ring: MercXY[], others: MercXY[][]): void {
+    const view = this._getView?.();
+    const sr = view?.spatialReference;
+    const conv = sr ? this._converter(sr) : null;
+    if (!view?.map || !sr || !conv || ring.length < 2) {
+      this.hideFootprint();
+      return;
+    }
+    const path = (r: MercXY[]): [number, number][] | null => {
+      const out: [number, number][] = [];
+      for (const p of r) {
+        const c = conv(p);
+        if (!c) return null;
+        out.push(c);
+      }
+      if (out.length > 2) out.push(out[0]); // close a ring; a 2-point line stays open
+      return out;
+    };
+    const own = path(ring);
+    if (!own) {
+      this.hideFootprint();
+      return;
+    }
+    this._ensure(view.map, this._kind ?? 'no-go');
+    this._fpOwn!.geometry = new Polyline({ paths: [own], spatialReference: sr });
+    const neighbour = others.map(path).filter((p): p is [number, number][] => p !== null);
+    this._fpOthers!.geometry = neighbour.length ? new Polyline({ paths: neighbour, spatialReference: sr }) : null;
+    this._fpOthers!.visible = neighbour.length > 0;
+    this._fpOwn!.visible = true;
+    this._fpVisible = true;
+  }
+
+  hideFootprint(): void {
+    if (!this._fpVisible) return;
+    if (this._fpOwn) this._fpOwn.visible = false;
+    if (this._fpOthers) this._fpOthers.visible = false;
+    this._fpVisible = false;
+  }
+
   /** The view changed: leave the old map so the next show() attaches to the new one. */
   onViewChanged(): void {
     this.hide();
+    this.hideFootprint();
     this._detach();
   }
 
@@ -136,6 +184,8 @@ export class PlacementIndicators {
     this._layer?.destroy();
     this._layer = null;
     this._casing = this._line = this._ends = this._marks = this._label = null;
+    this._fpOwn = this._fpOthers = null;
+    this._fpVisible = false;
     this._labelSym = null;
     this._kind = null;
     this._labelText = '';
@@ -180,7 +230,24 @@ export class PlacementIndicators {
       this._ends = new Graphic({ symbol: s.end, visible: false });
       this._marks = new Graphic({ symbol: s.mark, visible: false });
       this._label = new Graphic({ symbol: s.label, visible: false });
-      this._layer.addMany([this._casing, this._line, this._marks, this._ends, this._label]);
+      // Footprint outlines sit under the indicator lines so a line to no-go ground stays readable.
+      this._fpOthers = new Graphic({
+        symbol: new SimpleLineSymbol({ style: 'dash', color: [230, 126, 34, 1], width: 2 }),
+        visible: false,
+      });
+      this._fpOwn = new Graphic({
+        symbol: new SimpleLineSymbol({ style: 'solid', color: [30, 100, 200, 1], width: 2.5 }),
+        visible: false,
+      });
+      this._layer.addMany([
+        this._fpOthers,
+        this._fpOwn,
+        this._casing,
+        this._line,
+        this._marks,
+        this._ends,
+        this._label,
+      ]);
       this._kind = kind;
       this._labelText = '';
     }
