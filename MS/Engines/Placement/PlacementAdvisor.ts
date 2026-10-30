@@ -129,6 +129,7 @@ export default class PlacementAdvisor {
   private _activeProfile: PlacementProfile | null = null;
   private _lastDetail: { geometry: any; sidc: string | null } | null = null;
   private _lastKey = '';
+  private _lastWarmKey = '';
   private _lastKind = '';
   private _lastSpacingMsg = '';
   private _reevalTimer: ReturnType<typeof setTimeout> | null = null;
@@ -325,6 +326,7 @@ export default class PlacementAdvisor {
       this._activeProfile = resolveProfile(sidc, this._rules);
     }
     this._lastDetail = { geometry, sidc };
+    this._warmAround(geometry, resolveProfile(sidc ?? this._activeSidc, this._rules));
     this._apply(this.evaluateGeometry(geometry, sidc, { ref: () => this._pointerMerc() }));
   }
 
@@ -335,6 +337,7 @@ export default class PlacementAdvisor {
     this._indicators.hideFootprint();
     this._detachPointer();
     this._lastDetail = null;
+    this._lastWarmKey = '';
     this._activeSidc = null;
     this._activeProfile = null;
     if (this._reevalTimer !== null) {
@@ -948,12 +951,23 @@ export default class PlacementAdvisor {
     const br = mercatorToTilePixel(x1, y0, z, m.tileSize);
     const margin = this._opts.prefetchMarginTiles;
     const n = 2 ** z;
-    const tx0 = Math.max(0, tl.tx - margin);
-    const tx1 = Math.min(n - 1, br.tx + margin);
-    const ty0 = Math.max(0, tl.ty - margin);
-    const ty1 = Math.min(n - 1, br.ty + margin);
-    if ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > 120) return; // absurdly large view — rely on on-demand reads
-
+    let tx0 = Math.max(0, tl.tx - margin);
+    let tx1 = Math.min(n - 1, br.tx + margin);
+    let ty0 = Math.max(0, tl.ty - margin);
+    let ty1 = Math.min(n - 1, br.ty + margin);
+    // A very large view (big monitor, tilted 3D horizon, low zoom over a wide bundle) would flood the
+    // queue, but skipping it altogether leaves every tile to load under the cursor — so warm a capped
+    // window around the middle of it and let the cursor-following warm-up (_warmAround) cover the rest.
+    const MAX_SIDE = 10;
+    if (tx1 - tx0 + 1 > MAX_SIDE) {
+      tx0 = Math.max(0, Math.round((tx0 + tx1) / 2) - MAX_SIDE / 2);
+      tx1 = Math.min(n - 1, tx0 + MAX_SIDE - 1);
+    }
+    if (ty1 - ty0 + 1 > MAX_SIDE) {
+      ty0 = Math.max(0, Math.round((ty0 + ty1) / 2) - MAX_SIDE / 2);
+      ty1 = Math.min(n - 1, ty0 + MAX_SIDE - 1);
+    }
+    this._lastWarmKey = ''; // the queue was cleared above; let the cursor ring be requested again
     // Armed: just that symbol's layers. Idle: the class layer plus every profile's distance
     // layer, so whatever symbol is drawn first already has its data — unless that would
     // overflow the cache, in which case warm only the likeliest profile.
@@ -974,6 +988,34 @@ export default class PlacementAdvisor {
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
         for (const layer of layers) this._cache.request(layer, z, tx, ty);
+      }
+    }
+  }
+
+  /**
+   * Warm the tiles around the cursor (the armed profile's class + distance layers) whenever it
+   * enters a new tile, so the next few tiles it crosses are already decoded. Requests are cheap
+   * and de-duplicated; this is what keeps the badge off "loading" while the symbol is dragged
+   * across ground the viewport prefetch did not cover.
+   */
+  private _warmAround(geometry: any, profile: PlacementProfile): void {
+    const cache = this._cache;
+    if (!cache || profile === 'exempt') return;
+    const p = toMercatorShape(geometry)?.parts[0]?.[0];
+    if (!p) return;
+    const m = this._manifest!;
+    const z = this._sampleZoom();
+    const tp = mercatorToTilePixel(p[0], p[1], z, m.tileSize);
+    const key = `${profile}|${z}|${tp.tx}|${tp.ty}`;
+    if (key === this._lastWarmKey) return;
+    this._lastWarmKey = key;
+    const { cls, dist } = this._layerNames(profile);
+    const n = 2 ** z;
+    const R = 2;
+    for (let ty = Math.max(0, tp.ty - R); ty <= Math.min(n - 1, tp.ty + R); ty++) {
+      for (let tx = Math.max(0, tp.tx - R); tx <= Math.min(n - 1, tp.tx + R); tx++) {
+        cache.request(cls, z, tx, ty);
+        if (dist) cache.request(dist, z, tx, ty);
       }
     }
   }
