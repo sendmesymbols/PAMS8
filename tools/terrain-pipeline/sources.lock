@@ -82,7 +82,7 @@ sources:
       - N36E072
       - N36E075
       - N36E078
-    sha256: TO_BE_FILLED
+    sha256: 58b929dbd2604b30e61385b6433233bd1a1074b121b7da9d2a4ed2c12d345b63
 
   - id: jrc_gsw
     name: JRC Global Surface Water — occurrence (1984-2021, v1.4)
@@ -102,7 +102,7 @@ sources:
       - 70E_40N
       - 60E_30N
       - 70E_30N
-    sha256: TO_BE_FILLED
+    sha256: a1c33964de831072400e7078434d22dd65be094ff5d1b4f38179bb7118933d2e
 
   - id: glo30
     name: Copernicus DEM GLO-30
@@ -117,7 +117,7 @@ sources:
     tile_range:           # expanded by fetch.py: lat 20..37, lon 59..80 (inclusive)
       lat: [20, 37]
       lon: [59, 80]
-    sha256: TO_BE_FILLED
+    sha256: 81014da257b6c3975ff87847fbea5d08f247aa863cc91dfba7bbcaf369c8860f
 
   - id: osm_pakistan
     name: OpenStreetMap — Pakistan extract (Geofabrik)
@@ -128,4 +128,4 @@ sources:
     files:
       - name: pakistan.osm.pbf
         url: https://download.geofabrik.de/asia/pakistan-261028.osm.pbf   # dated file (verified 2026-10-29, 157 MB); never -latest, so a rerun gets identical data
-    sha256: TO_BE_FILLED
+    sha256: d16fd9834f0a25e41f3aa4cada17358fa5e8140649c926d9087c82e04e057c82
