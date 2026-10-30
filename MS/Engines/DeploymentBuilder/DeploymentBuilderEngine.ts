@@ -70,6 +70,8 @@ const SPREAD_MAX_PCT = 500;
 
 /** One symbol's geometry, in Web Mercator, relative to its own centroid. */
 interface PlanSymbolGeom {
+  id: string;        // plnOrdrSymbolId — what a plan's `pivot` names
+  label: string;     // designation / symbol name, for the pivot picker
   kind: string;      // SYM_GEO_TYPE: Point | FPoint | Line | Area
   sidc?: string;
   centroid: XY;
@@ -98,12 +100,73 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const ENGINE_NAME = 'DeploymentManager';
 
-interface PlanEntry {
+export interface PlanEntry {
   id: string;
   name: string;
   category: string;
+  /** Path under the registry base. Unused when `data` carries the plan itself. */
   file: string;
   description: string;
+  /** Symbol the map click lands on and rotation/spread are measured from (a plnOrdrSymbolId, or the template symbol id). Default: the plan centre. */
+  pivot?: string;
+  /** The plan document inline (Plan document or exercise template), for hosts that already hold it. */
+  data?: any;
+}
+
+/** Where the plan list and plan files come from. Hosts can supply their own (an SOP library, a server). */
+export interface DeploymentPlanSource {
+  list(): Promise<PlanEntry[]>;
+  /** The Plan document / exercise template for `entry`, or null when it cannot be had. */
+  load(entry: PlanEntry): Promise<any | null>;
+}
+
+/** Hooks the host (SymbolEngine) lends the manager so a placement is one undoable step and removable as a unit. */
+export interface DeploymentHost {
+  groupUndo<T>(label: string, fn: () => T): T;
+  /** Remove symbols by attributes.id as one undoable step; returns how many were found. */
+  removeByIds(ids: string[], label?: string): number;
+}
+
+export interface DeploymentBuilderOptions {
+  /** A base URL (holding `Deployemets.json`) or a custom source. Default: `/MS/Data/Deployments/`. */
+  planSource?: string | DeploymentPlanSource;
+  host?: DeploymentHost;
+}
+
+const DEFAULT_REGISTRY_BASE = '/MS/Data/Deployments/';
+
+/** Registry + plan files served as static JSON under `base`. */
+function urlPlanSource(base: string): DeploymentPlanSource {
+  const root = base.endsWith('/') ? base : `${base}/`;
+  const getJson = async (url: string) => {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
+    try {
+      return await resp.json();
+    } catch {
+      // A wrong base usually lands on the host's HTML fallback page, not a 404.
+      throw new Error(`${url} did not return JSON — check the plan source base URL`);
+    }
+  };
+  return {
+    list: async () => {
+      const data = await getJson(`${root}Deployemets.json`);
+      return Array.isArray(data) ? data : (data?.plans ?? []);
+    },
+    load: (entry) => (entry.data != null ? Promise.resolve(entry.data) : getJson(root + entry.file)),
+  };
+}
+
+/** What a placement left on the map, so it can be removed or repositioned as a unit. */
+interface PlacementRecord {
+  id: string;
+  entry: PlanEntry;
+  data: any;
+  metrics: PlanMetrics;
+  pivotId: string | null;
+  spread: number;
+  rotate: boolean;
+  symbolIds: string[];
 }
 
 type Phase = 'idle' | 'anchor' | 'bearing';
@@ -127,6 +190,16 @@ class DeploymentBuilderEngine {
   private _rotate: boolean = false;
   /** Multiplier on each symbol's distance from the plan centroid (1 = as drawn). */
   private _spread: number = 1;
+  /** Symbol the plan pivots on; null = the plan centre. */
+  private _pivotId: string | null = null;
+  /** On: stay armed after each placement so copies can be dropped one after another. */
+  private _keepPlacing: boolean = false;
+  private _placedThisRun: number = 0;
+  private _rearmTimer: ReturnType<typeof setTimeout> | null = null;
+  private _host: DeploymentHost | null = null;
+  private _lastPlacement: PlacementRecord | null = null;
+  /** Set while repositioning: the placement the next commit replaces. */
+  private _replacing: PlacementRecord | null = null;
 
   // Event handles
   private _pointerMoveHandle: any = null;
@@ -150,7 +223,8 @@ class DeploymentBuilderEngine {
 
   // Registry cache
   private _registry: PlanEntry[] | null = null;
-  private _registryBaseUrl: string = '';
+  private _registryError: string | null = null;
+  private _source: DeploymentPlanSource = urlPlanSource(DEFAULT_REGISTRY_BASE);
 
   // Widget state
   private _minimized: boolean = false;
@@ -171,13 +245,26 @@ class DeploymentBuilderEngine {
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
-  public start(view: MapView | SceneView, serialEngine: SerializationEngine): void {
+  public start(view: MapView | SceneView, serialEngine: SerializationEngine, options: DeploymentBuilderOptions = {}): void {
     this._view = view;
     this._serializationEngine = serialEngine;
+    this._host = options.host ?? null;
     this._ghostLayer = new GraphicsLayer({ listMode: 'hide', opacity: 0.85 });
     view.map.add(this._ghostLayer);
-    this._registryBaseUrl = this._resolveRegistryBase();
+    if (options.planSource) this.setPlanSource(options.planSource);
     EngineLogger.success(ENGINE_NAME, 'DeploymentBuilderEngine started');
+  }
+
+  /**
+   * Point the manager at a different plan library: a base URL holding
+   * `Deployemets.json`, or an object with `list()` / `load(entry)`. Refreshes the
+   * open list; the current selection is kept.
+   */
+  public setPlanSource(source: string | DeploymentPlanSource): void {
+    this._source = typeof source === 'string' ? urlPlanSource(source) : source;
+    this._registry = null;
+    this._registryError = null;
+    if (this._widget?.classList.contains('ms-visible')) void this._loadRegistryIntoWidget();
   }
 
   public onViewChanged(view: MapView | SceneView): void {
@@ -190,7 +277,6 @@ class DeploymentBuilderEngine {
     view.map.add(this._ghostLayer);
     this._removePointerHandles();
     this._removeBgPopup();
-    this._registryBaseUrl = this._resolveRegistryBase();
   }
 
   public enable(): void {
@@ -233,6 +319,7 @@ class DeploymentBuilderEngine {
       this._minimized = false;
       this._applyMinimizeState();
     }
+    this._syncLastPlacement();
     this._loadRegistryIntoWidget();
   }
 
@@ -300,8 +387,10 @@ class DeploymentBuilderEngine {
           <ul style="list-style:none;padding:0;margin:0 0 9px">
             <li><strong>Rotate to a bearing</strong> — turn the whole plan to face a direction (as drawn it faces north)</li>
             <li><strong>Spread</strong> — 100% is exactly as drawn; more pushes the units apart, less pulls them together</li>
+            <li><strong>Keep placing copies</strong> — stay armed after each drop; Esc to finish</li>
+            <li><strong>Pivot</strong> — land your click on a chosen unit (an HQ, say) instead of the plan's centre</li>
           </ul>
-          <p>After placing, the map zooms to show every new symbol.</p>
+          <p>The preview shows the plan's real ground size at the current spread. After placing, the map zooms to show every new symbol, and <strong>Ctrl+Z</strong> takes the whole placement back in one step. <strong>Last placement</strong> lets you reposition or remove it later.</p>
           <p><strong style="color:var(--ms-accent)">Shortcuts</strong></p>
           <ul style="list-style:none;padding:0;margin:0">
             <li><strong>Right-click</strong> during bearing — reset to anchor pick</li>
@@ -329,6 +418,7 @@ class DeploymentBuilderEngine {
             <div class="db-plan-summary">
               <div class="db-plan-name empty">No plan selected</div>
               <div class="db-plan-desc"></div>
+              <div class="db-plan-thumb" hidden></div>
               <div class="ms-info-grid">
                 <div class="ms-info-item">
                   <div class="ms-info-label">Symbols</div>
@@ -337,6 +427,14 @@ class DeploymentBuilderEngine {
                 <div class="ms-info-item">
                   <div class="ms-info-label">Category</div>
                   <div class="ms-info-value db-plan-cat">—</div>
+                </div>
+                <div class="ms-info-item">
+                  <div class="ms-info-label">Ground size</div>
+                  <div class="ms-info-value db-plan-size">—</div>
+                </div>
+                <div class="ms-info-item">
+                  <div class="ms-info-label">Contains</div>
+                  <div class="ms-info-value db-plan-comp">—</div>
                 </div>
               </div>
             </div>
@@ -348,6 +446,15 @@ class DeploymentBuilderEngine {
             </div>
             <div class="ms-btn-row db-cancel-row" hidden>
               <button class="ms-btn danger db-btn-cancel">Cancel placement</button>
+            </div>
+
+            <div class="db-last" hidden>
+              <div class="ms-section-title">Last placement</div>
+              <div class="db-last-line"><span class="db-last-name"></span> <span class="db-last-meta"></span></div>
+              <div class="ms-btn-row">
+                <button class="ms-btn db-btn-reposition" title="Pick it up and place it again, same plan and options">Reposition</button>
+                <button class="ms-btn danger db-btn-remove" title="Remove every symbol of that placement (one undo step)">Remove</button>
+              </div>
             </div>
 
             <div class="ms-disclosure" data-open="false">
@@ -362,6 +469,20 @@ class DeploymentBuilderEngine {
                   <input type="checkbox" id="db-rotate" class="db-rotate" />
                 </div>
                 <div class="ms-hint">Off: placed with one click, facing the way it was drawn. On: click the centre, then aim and click again.</div>
+
+                <div class="ms-toggle-row">
+                  <label for="db-keep">Keep placing copies</label>
+                  <input type="checkbox" id="db-keep" class="db-keep" />
+                </div>
+                <div class="ms-hint">Stay armed after each drop to place another. Esc to finish.</div>
+
+                <div class="db-pivot-block" hidden>
+                  <div class="ms-section-title">Pivot</div>
+                  <div class="db-pivot-row">
+                    <select class="ms-input db-pivot" aria-label="Pivot unit"></select>
+                  </div>
+                  <div class="ms-hint">Your click lands on this unit; rotation and spread are measured from it. Default is the plan's centre.</div>
+                </div>
 
                 <div class="ms-section-title">Spread</div>
                 <div class="db-spacing-row">
@@ -433,6 +554,19 @@ class DeploymentBuilderEngine {
       this._syncOptionsMeta();
     });
 
+    const keepEl = el.querySelector('.db-keep') as HTMLInputElement;
+    keepEl.addEventListener('change', () => {
+      this._keepPlacing = keepEl.checked;
+      this._syncOptionsMeta();
+    });
+
+    const pivotEl = el.querySelector('.db-pivot') as HTMLSelectElement;
+    pivotEl.addEventListener('change', () => {
+      this._pivotId = pivotEl.value || null;
+      this._syncOptionsMeta();
+      this._renderPlanPreview();
+    });
+
     const spreadEl = el.querySelector('.db-spread-val') as HTMLInputElement;
     spreadEl.addEventListener('input', () => {
       const pct = parseFloat(spreadEl.value);
@@ -440,6 +574,7 @@ class DeploymentBuilderEngine {
         ? Math.max(SPREAD_MIN_PCT, Math.min(SPREAD_MAX_PCT, pct)) / 100
         : 1;
       this._syncOptionsMeta();
+      this._renderPlanPreview();
     });
     // Out-of-range or empty text snaps to what is actually applied.
     spreadEl.addEventListener('change', () => {
@@ -450,6 +585,10 @@ class DeploymentBuilderEngine {
     // Place / Cancel
     el.querySelector('.db-btn-place')!.addEventListener('click', () => this._onPlaceClicked());
     el.querySelector('.db-btn-cancel')!.addEventListener('click', () => this._cancelPlacement());
+
+    // Last placement: pick it up again, or take it away
+    el.querySelector('.db-btn-reposition')!.addEventListener('click', () => this._repositionLast());
+    el.querySelector('.db-btn-remove')!.addEventListener('click', () => this._removeLast());
   }
 
 
@@ -538,33 +677,26 @@ class DeploymentBuilderEngine {
 
   // ── Registry & Plan Loading ────────────────────────────────────────────────
 
-  private _resolveRegistryBase(): string {
-    return '/MS/Data/Deployments/';
-  }
-
   private async _loadRegistry(): Promise<PlanEntry[]> {
     if (this._registry) return this._registry;
     try {
-      const url = this._registryBaseUrl + 'Deployemets.json';
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      this._registry = data.plans ?? [];
-      return this._registry!;
+      const plans = await this._source.list();
+      this._registry = Array.isArray(plans) ? plans : [];
+      this._registryError = null;
+      return this._registry;
     } catch (err) {
-      EngineLogger.error(ENGINE_NAME, `Failed to load plan registry: ${err}`);
+      // Not cached: the next open (or Retry) asks again.
+      this._registryError = err instanceof Error ? err.message : String(err);
+      EngineLogger.error(ENGINE_NAME, `Failed to load plan registry: ${this._registryError}`);
       return [];
     }
   }
 
-  private async _loadPlanFile(relativePath: string): Promise<any> {
+  private async _loadPlanFile(entry: PlanEntry): Promise<any> {
     try {
-      const url = this._registryBaseUrl + relativePath;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      return await resp.json();
+      return await this._source.load(entry);
     } catch (err) {
-      EngineLogger.error(ENGINE_NAME, `Failed to load plan file "${relativePath}": ${err}`);
+      EngineLogger.error(ENGINE_NAME, `Failed to load plan "${entry.name}": ${err instanceof Error ? err.message : String(err)}`);
       return null;
     }
   }
@@ -573,7 +705,6 @@ class DeploymentBuilderEngine {
     const list = this._widget?.querySelector('.db-plan-list') as HTMLElement | null;
     if (list) list.innerHTML = '<div class="db-list-loading">Loading plans…</div>';
     const plans = await this._loadRegistry();
-    console.log('[DeploymentBuilder] Registry loaded:', plans.length, 'plans from', this._registryBaseUrl + 'Deployemets.json');
     this._renderPlanList(plans);
   }
 
@@ -596,7 +727,17 @@ class DeploymentBuilderEngine {
     if (filtered.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'db-list-empty';
-      empty.textContent = this._searchText ? 'No matching plans' : 'No plans available';
+      if (this._registryError && !this._registry) {
+        empty.textContent = `Could not load plans — ${this._registryError}`;
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'ms-btn db-btn-retry';
+        retry.textContent = 'Retry';
+        retry.addEventListener('click', () => { void this._loadRegistryIntoWidget(); });
+        empty.appendChild(retry);
+      } else {
+        empty.textContent = this._searchText ? 'No matching plans' : 'No plans available';
+      }
       list.appendChild(empty);
       return;
     }
@@ -660,17 +801,161 @@ class DeploymentBuilderEngine {
       if (placeBtn) placeBtn.disabled = count <= 0;
       this._setHeaderState(count > 0 ? 'ready' : '', count > 0 ? 'Ready' : 'Empty');
     }
+    this._populatePivotSelect();
+    this._renderPlanPreview();
+    this._syncOptionsMeta();
+  }
+
+  // ── Plan preview ───────────────────────────────────────────────────────────
+
+  /** Pivot candidates are units (points); lines, areas and text boxes have no single spot worth landing a click on. */
+  private _pivotCandidates(m: PlanMetrics | null): PlanSymbolGeom[] {
+    return (m?.symbols ?? []).filter((s) =>
+      s.kind !== 'Line' && s.kind !== 'Area' && s.id !== '' && !/text\s*box/i.test(s.label));
+  }
+
+  /** A plan's `pivot` names a symbol by id; template symbols are stored as `<template id>-<symbol id>`, so a suffix match counts. */
+  private _resolvePivotId(name: string | undefined, m: PlanMetrics): string | null {
+    if (!name) return null;
+    const hit = this._pivotCandidates(m).find((s) => s.id === name || s.id.endsWith(`-${name}`));
+    return hit?.id ?? null;
+  }
+
+  private _populatePivotSelect(): void {
+    const block = this._widget?.querySelector<HTMLElement>('.db-pivot-block');
+    const sel = this._widget?.querySelector<HTMLSelectElement>('.db-pivot');
+    if (!block || !sel) return;
+    const cands = this._pivotCandidates(this._selectedPlanMetrics);
+    block.hidden = cands.length === 0;
+    sel.innerHTML = '';
+    const centre = document.createElement('option');
+    centre.value = '';
+    centre.textContent = 'Plan centre';
+    sel.appendChild(centre);
+    const m = this._selectedPlanMetrics;
+    if (!m) return;   // still loading (or failed): only "Plan centre" is on offer
+    // Plans repeat names ("Inf", "Tgt"…), so say where each one sits relative to the plan centre.
+    const gk = Math.cos((mercToLonLat(m.centroid.x, m.centroid.y).y * Math.PI) / 180);
+    for (const s of cands) {
+      const dx = (s.centroid.x - m.centroid.x) * gk;
+      const dy = (s.centroid.y - m.centroid.y) * gk;
+      const dist = Math.hypot(dx, dy);
+      const where = dist < 50
+        ? 'at centre'
+        : `${this._formatDistance(dist)} ${this._bearingToCardinal(((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360)}`;
+      const o = document.createElement('option');
+      o.value = s.id;
+      o.textContent = `${s.label} — ${where}`;
+      sel.appendChild(o);
+    }
+    sel.value = this._pivotId ?? '';
+  }
+
+  /** The plan as it lands for the current spread, facing as drawn, relative to the pivot (anchor at 0,0). */
+  private _authoredLayout(): { items: { s: PlanSymbolGeom; pts: XY[] }[]; bounds: Bounds; groundK: number } | null {
+    const m = this._selectedPlanMetrics;
+    if (!m || m.symbols.length === 0) return null;
+    const pivot = this._pivot(m);
+    const origin = { x: 0, y: 0 };
+    const bounds: Bounds = { xmin: Infinity, ymin: Infinity, xmax: -Infinity, ymax: -Infinity };
+    const items = m.symbols.map((s) => {
+      const pts = this._layoutSymbol(s, pivot, origin, 1, 0, this._spread, 1);
+      for (const p of pts) {
+        bounds.xmin = Math.min(bounds.xmin, p.x);
+        bounds.xmax = Math.max(bounds.xmax, p.x);
+        bounds.ymin = Math.min(bounds.ymin, p.y);
+        bounds.ymax = Math.max(bounds.ymax, p.y);
+      }
+      return { s, pts };
+    });
+    if (!Number.isFinite(bounds.xmin)) return null;
+    // Mercator units overstate ground distance by 1/cos(latitude) at the plan's own latitude.
+    const groundK = Math.cos((mercToLonLat(pivot.x, pivot.y).y * Math.PI) / 180);
+    return { items, bounds, groundK };
+  }
+
+  /** Footprint thumbnail, real ground size and composition for the selected plan at the current spread. */
+  private _renderPlanPreview(): void {
+    const w = this._widget;
+    if (!w) return;
+    const thumb = w.querySelector<HTMLElement>('.db-plan-thumb');
+    const sizeEl = w.querySelector<HTMLElement>('.db-plan-size');
+    const compEl = w.querySelector<HTMLElement>('.db-plan-comp');
+    const layout = this._authoredLayout();
+    if (!thumb || !sizeEl || !compEl) return;
+    if (!layout) {
+      thumb.hidden = true;
+      thumb.innerHTML = '';
+      sizeEl.textContent = '—';
+      compEl.textContent = '—';
+      return;
+    }
+
+    const { items, bounds: b, groundK } = layout;
+    const spanX = b.xmax - b.xmin;
+    const spanY = b.ymax - b.ymin;
+    sizeEl.textContent = spanX * groundK < 1 && spanY * groundK < 1
+      ? 'single point'
+      : `${this._formatDistance(spanX * groundK)} × ${this._formatDistance(spanY * groundK)}`;
+
+    const counts = { unit: 0, line: 0, area: 0 };
+    for (const { s } of items) {
+      if (s.kind === 'Line') counts.line++;
+      else if (s.kind === 'Area') counts.area++;
+      else counts.unit++;
+    }
+    compEl.textContent = [
+      counts.unit && `${counts.unit} unit${counts.unit > 1 ? 's' : ''}`,
+      counts.line && `${counts.line} line${counts.line > 1 ? 's' : ''}`,
+      counts.area && `${counts.area} area${counts.area > 1 ? 's' : ''}`,
+    ].filter(Boolean).join(' · ');
+
+    const W = 260, H = 120, PAD = 12;
+    const sc = Math.min((W - 2 * PAD) / Math.max(spanX, 1), (H - 2 * PAD) / Math.max(spanY, 1));
+    const ox = (W - spanX * sc) / 2 - b.xmin * sc;
+    const oy = (H + spanY * sc) / 2 + b.ymin * sc;
+    const px = (p: XY) => `${(p.x * sc + ox).toFixed(1)},${(oy - p.y * sc).toFixed(1)}`;
+    const rgba = (rgb: [number, number, number], a: number) => `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+
+    let shapes = '';
+    let marks = '';
+    for (const { s, pts } of items) {
+      if (pts.length === 0) continue;
+      const rgb = affiliationRGB(s.sidc);
+      if (s.kind === 'Area' && pts.length >= 3) {
+        shapes += `<polygon points="${pts.map(px).join(' ')}" fill="${rgba(rgb, 0.18)}" stroke="${rgba(rgb, 0.9)}" stroke-width="1.2"/>`;
+      } else if ((s.kind === 'Line' || s.kind === 'Area') && pts.length >= 2) {
+        shapes += `<polyline points="${pts.map(px).join(' ')}" fill="none" stroke="${rgba(rgb, 0.9)}" stroke-width="1.6"/>`;
+      } else {
+        const [cx, cy] = px(pts[0]).split(',');
+        const chosen = s.id === this._pivotId;
+        marks += `<circle cx="${cx}" cy="${cy}" r="${chosen ? 4.5 : 3.4}" fill="${rgba(rgb, 0.85)}" stroke="${chosen ? '#ffdc3c' : 'rgba(0,0,0,0.5)'}" stroke-width="${chosen ? 1.8 : 0.8}"/>`;
+      }
+    }
+    // Where your click lands.
+    const [ax, ay] = px({ x: 0, y: 0 }).split(',');
+    const cross = `<path d="M${+ax - 6} ${ay}H${+ax + 6}M${ax} ${+ay - 6}V${+ay + 6}" stroke="#ffdc3c" stroke-width="1.4" fill="none"/>`;
+
+    thumb.innerHTML =
+      `<svg class="db-thumb-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Plan footprint, north up">` +
+      `${shapes}${marks}${cross}` +
+      `<text x="${W - 8}" y="14" text-anchor="end" font-size="10" fill="currentColor" opacity="0.6">N ↑</text>` +
+      `</svg>`;
+    thumb.hidden = false;
   }
 
   private async _selectPlan(plan: PlanEntry): Promise<void> {
     this._selectedPlanEntry = plan;
     this._selectedPlanData = null;
     this._selectedPlanMetrics = null;
+    this._pivotId = null;
 
     this._applySelectedPlanToUI('loading');
     this._renderPlanList();
 
-    const raw = await this._loadPlanFile(plan.file);
+    const raw = await this._loadPlanFile(plan);
+    // A slower load must not overwrite a plan picked after it.
+    if (this._selectedPlanEntry !== plan) return;
     const data = raw ? this._asPlanDocument(raw) : null;
     if (!data) {
       this._applySelectedPlanToUI('failed');
@@ -678,6 +963,7 @@ class DeploymentBuilderEngine {
     }
     this._selectedPlanData = data;
     this._selectedPlanMetrics = this._buildPlanMetrics(data);
+    this._pivotId = this._resolvePivotId(plan.pivot, this._selectedPlanMetrics);
     this._applySelectedPlanToUI('ready');
   }
 
@@ -826,6 +1112,7 @@ class DeploymentBuilderEngine {
     };
     this._selectedPlanData = data;
     this._selectedPlanMetrics = metrics;
+    this._pivotId = null;
 
     this._applySelectedPlanToUI('ready');
     this._renderPlanList();
@@ -833,6 +1120,8 @@ class DeploymentBuilderEngine {
 
   private _onPlaceClicked(): void {
     if (!this._selectedPlanData) return;
+    this._replacing = null;
+    this._placedThisRun = 0;
     this._setHeaderState('running', 'Anchor');
     this._startPlacement();
     this._fitViewToPlan();
@@ -941,13 +1230,66 @@ class DeploymentBuilderEngine {
     // Every point of every symbol goes through the same layout the ghost used, so
     // what was previewed is exactly what lands on the map.
     const { plan, bounds } = this._buildPlacedPlan(this._anchorPoint, bearing);
-    const count = Math.max(0, this._serializationEngine.loadPlanSymbolsFromData(plan));
-    this._anchorPoint = null;
+    const entry = this._selectedPlanEntry;
+    const replacing = this._replacing;
+    const deploymentId = `dep-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    const symbolIds: string[] = [];
+    const engine = this._serializationEngine;
 
-    if (count > 0) {
-      EngineLogger.success(ENGINE_NAME, `Placed ${count} symbols from "${this._selectedPlanEntry?.name}"`);
-      this._zoomToPlaced(bounds);
+    // Per-symbol "Add" undo entries fold into one: a single Ctrl+Z takes the whole
+    // placement back. When repositioning, the new copy lands first so a failed load
+    // never costs the old one, and the swap is one step too.
+    const run = (): number => {
+      const n = Math.max(0, engine.loadPlanSymbolsFromData(plan, undefined, {
+        onLoaded: (g, id) => {
+          if (!g) return;
+          symbolIds.push(id);
+          if (g.attributes) {
+            g.attributes.deploymentId = deploymentId;
+            g.attributes.deploymentName = entry?.name;
+          }
+        },
+      }));
+      if (n > 0 && replacing) this._host?.removeByIds(replacing.symbolIds, 'Remove deployment');
+      return n;
+    };
+    const label = `${replacing ? 'Reposition' : 'Place'} ${entry?.name ?? 'deployment'}`;
+    const count = this._host ? this._host.groupUndo(label, run) : run();
+    this._anchorPoint = null;
+    this._replacing = null;
+
+    if (count > 0 && entry && this._selectedPlanData) {
+      this._lastPlacement = {
+        id: deploymentId,
+        entry,
+        data: this._selectedPlanData,
+        metrics: this._getSelectedPlanMetrics(),
+        pivotId: this._pivotId,
+        spread: this._spread,
+        rotate: this._rotate,
+        symbolIds,
+      };
+      this._placedThisRun++;
+      EngineLogger.success(ENGINE_NAME, `Placed ${count} symbols from "${entry.name}"`);
     }
+
+    // Keep placing: stay armed for the next copy; the map stays where the user has it.
+    if (count > 0 && this._keepPlacing && !replacing) {
+      this._setStatus(`Placed ${this._placedThisRun} cop${this._placedThisRun === 1 ? 'y' : 'ies'} — click to place another, Esc to finish`);
+      this._setHeaderState('running', `Placed ${this._placedThisRun}`);
+      // Re-arm on the next tick: doing it inside this click's own dispatch could hand the
+      // same click to the fresh handler and drop a second copy on the same spot.
+      this._rearmTimer = setTimeout(() => {
+        this._rearmTimer = null;
+        if (this._phase !== 'idle') return;
+        const status = this._widget?.querySelector('.db-status')?.textContent ?? '';
+        this._startPlacement();
+        this._setStatus(status);
+      }, 0);
+      return;
+    }
+
+    if (count > 0) this._zoomToPlaced(bounds);
 
     this._setStatus(`Placed ${count} symbol${count !== 1 ? 's' : ''}`);
     this._setHeaderState(count > 0 ? 'ready' : 'warning', count > 0 ? 'Placed' : 'Empty');
@@ -957,8 +1299,70 @@ class DeploymentBuilderEngine {
     else if (this._minimized) this._minimizeWidget();
   }
 
+  // ── Last placement ─────────────────────────────────────────────────────────
+
+  /** Show the last-placement card only while there is something it can act on. */
+  private _syncLastPlacement(): void {
+    const card = this._widget?.querySelector<HTMLElement>('.db-last');
+    if (!card) return;
+    const rec = this._lastPlacement;
+    card.hidden = !rec || !this._host;
+    if (!rec) return;
+    const name = card.querySelector<HTMLElement>('.db-last-name');
+    const meta = card.querySelector<HTMLElement>('.db-last-meta');
+    if (name) name.textContent = rec.entry.name;
+    if (meta) meta.textContent = `${rec.symbolIds.length} symbol${rec.symbolIds.length !== 1 ? 's' : ''}`;
+  }
+
+  /** Take the last placement off the map as one undoable step. */
+  private _removeLast(): void {
+    const rec = this._lastPlacement;
+    if (!rec || !this._host) return;
+    const removed = this._host.removeByIds(rec.symbolIds, `Remove ${rec.entry.name}`);
+    this._lastPlacement = null;
+    this._syncLastPlacement();
+    this._setStatus(removed > 0
+      ? `Removed ${removed} symbol${removed !== 1 ? 's' : ''} — Ctrl+Z brings them back`
+      : 'Nothing left to remove — it was already deleted or undone');
+  }
+
+  /**
+   * Pick the last placement up: same plan and options, ghost back on the cursor. The
+   * old copy stays on the map until the new one lands, so cancelling loses nothing.
+   */
+  private _repositionLast(): void {
+    const rec = this._lastPlacement;
+    if (!rec) return;
+    this._selectedPlanEntry = rec.entry;
+    this._selectedPlanData = rec.data;
+    this._selectedPlanMetrics = rec.metrics;
+    this._pivotId = rec.pivotId;
+    this._spread = rec.spread;
+    this._rotate = rec.rotate;
+
+    const w = this._widget;
+    const rotateEl = w?.querySelector<HTMLInputElement>('.db-rotate');
+    const spreadEl = w?.querySelector<HTMLInputElement>('.db-spread-val');
+    if (rotateEl) rotateEl.checked = this._rotate;
+    if (spreadEl) spreadEl.value = String(Math.round(this._spread * 100));
+    this._applySelectedPlanToUI('ready');
+    this._renderPlanList();
+
+    this._replacing = rec;
+    this._placedThisRun = 0;
+    this._setHeaderState('running', 'Anchor');
+    this._startPlacement();
+    this._fitViewToPlan();
+    if (!this._minimized) this._minimizeWidget();
+  }
+
   private _cancelPlacement(): void {
     this._phase = 'idle';
+    this._replacing = null;
+    if (this._rearmTimer !== null) {
+      clearTimeout(this._rearmTimer);
+      this._rearmTimer = null;
+    }
     this._showCancel(false);
     this._clearGhostGraphics();
     this._removePointerHandles();
@@ -970,6 +1374,7 @@ class DeploymentBuilderEngine {
     if (this._minimized) this._minimizeWidget();
     const ready = (this._selectedPlanMetrics?.symbolCount ?? 0) > 0;
     this._setHeaderState(ready ? 'ready' : '', ready ? 'Ready' : 'Idle');
+    this._syncLastPlacement();
   }
 
   // ── View framing ───────────────────────────────────────────────────────────
@@ -1073,8 +1478,9 @@ class DeploymentBuilderEngine {
     const lines: Graphic[] = [];
     const marks: Graphic[] = [];
 
+    const pivot = this._pivot(metrics);
     for (const s of metrics.symbols) {
-      const pts = this._layoutSymbol(s, metrics.centroid, a, cos, sin, this._spread, k);
+      const pts = this._layoutSymbol(s, pivot, a, cos, sin, this._spread, k);
       if (pts.length === 0) continue;
       const rgb = affiliationRGB(s.sidc);
       if (s.kind === 'Area' && pts.length >= 3) {
@@ -1409,9 +1815,10 @@ class DeploymentBuilderEngine {
   private _footprintRadius(spread: number, k: number): number {
     if (!this._selectedPlanData) return 0;
     const m = this._getSelectedPlanMetrics();
+    const pivot = this._pivot(m);
     let r = 0;
     for (const s of m.symbols) {
-      const d = Math.hypot(s.centroid.x - m.centroid.x, s.centroid.y - m.centroid.y) * spread + s.reach;
+      const d = Math.hypot(s.centroid.x - pivot.x, s.centroid.y - pivot.y) * spread + s.reach;
       if (d > r) r = d;
     }
     return r * k;
@@ -1424,10 +1831,20 @@ class DeploymentBuilderEngine {
    */
   private _groundScale(anchorY: number): number {
     const m = this._getSelectedPlanMetrics();
+    const pivot = this._pivot(m);
     const rad = Math.PI / 180;
-    const cosPlan = Math.cos(mercToLonLat(m.centroid.x, m.centroid.y).y * rad);
+    const cosPlan = Math.cos(mercToLonLat(pivot.x, pivot.y).y * rad);
     const cosHere = Math.cos(mercToLonLat(0, anchorY).y * rad);
     return cosHere > 1e-6 ? cosPlan / cosHere : 1;
+  }
+
+  /** The point the click lands on and rotation/spread are measured from: the chosen unit, else the plan centre. */
+  private _pivot(m: PlanMetrics): XY {
+    if (this._pivotId) {
+      const s = m.symbols.find((x) => x.id === this._pivotId);
+      if (s) return s.centroid;
+    }
+    return m.centroid;
   }
 
   private _toProjected(pt: Point): XY {
@@ -1453,6 +1870,7 @@ class DeploymentBuilderEngine {
   private _buildPlacedPlan(anchor: Point, bearing: number): { plan: any; bounds: Bounds } {
     const plan = JSON.parse(JSON.stringify(this._selectedPlanData));
     const metrics = this._getSelectedPlanMetrics();
+    const pivot = this._pivot(metrics);
     const a = this._toProjected(anchor);
     const k = this._groundScale(a.y);
     const cos = Math.cos(bearing);
@@ -1465,7 +1883,7 @@ class DeploymentBuilderEngine {
       // `metrics` came from this same document, so the shapes always agree; if they ever
       // don't, leave the symbol where it was saved rather than guess.
       if (!geom || geom.rel.length !== refs.length) return false;
-      const placed = this._layoutSymbol(geom, metrics.centroid, a, cos, sin, this._spread, k);
+      const placed = this._layoutSymbol(geom, pivot, a, cos, sin, this._spread, k);
       refs.forEach((ref, i) => {
         const ll = mercToLonLat(placed[i].x, placed[i].y);
         ref.x = ll.x;
@@ -1539,9 +1957,13 @@ class DeploymentBuilderEngine {
   }
 
   private _buildPlanMetrics(planDoc: any): PlanMetrics {
-    const raw: { kind: string; sidc?: string; pts: XY[] }[] = [];
-    this._eachSymbolGeometry(planDoc, (_sym, de, refs) => {
+    const raw: { id: string; label: string; kind: string; sidc?: string; pts: XY[] }[] = [];
+    this._eachSymbolGeometry(planDoc, (sym, de, refs) => {
+      const desig = String(de.AMPLIFIER?.UNIQUE_DESIG ?? '').trim();
+      const name = String(de.SYM_NAME ?? '').trim();
       raw.push({
+        id: String(sym?.plnOrdrSymbolPK?.plnOrdrSymbolId ?? ''),
+        label: desig && name ? `${desig} · ${name}` : desig || name || 'Unit',
         kind: String(de.SYM_GEO_TYPE ?? ''),
         sidc: de.AMPLIFIER?.SIDC ?? de.SIDC,
         pts: refs.map((r) => lonLatToMerc(Number(r.x), Number(r.y))),
@@ -1556,6 +1978,8 @@ class DeploymentBuilderEngine {
       const c = meanXY(r.pts);
       const rel = r.pts.map((p) => ({ x: p.x - c.x, y: p.y - c.y }));
       return {
+        id: r.id,
+        label: r.label,
         kind: r.kind,
         sidc: r.sidc,
         centroid: c,
@@ -1623,7 +2047,10 @@ class DeploymentBuilderEngine {
   private _syncOptionsMeta(): void {
     const meta = this._widget?.querySelector<HTMLElement>('.db-form-meta');
     if (!meta) return;
-    meta.textContent = `${this._rotate ? 'Rotate' : 'As drawn'} · ${Math.round(this._spread * 100)}%`;
+    const parts = [this._rotate ? 'Rotate' : 'As drawn', `${Math.round(this._spread * 100)}%`];
+    if (this._pivotId) parts.push('pivot');
+    if (this._keepPlacing) parts.push('repeat');
+    meta.textContent = parts.join(' · ');
   }
 
   /** The Cancel button only means anything mid-placement. */

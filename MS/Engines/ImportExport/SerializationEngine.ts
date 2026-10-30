@@ -28,7 +28,7 @@ import symbolData from '../../Data/Symbols.json';
 import ContextMenuManager, { ContextMenuItem } from '../../Managers/ContextMenuManager';
 import settingsData from '../../Data/Settings.json';
 
-type LoadSymbolCallback = (data: any) => void;
+type LoadSymbolCallback = (data: any) => unknown;
 type LoadTemplateCallback = (data: any) => void;
 
 class SerializationEngine {
@@ -198,11 +198,14 @@ class SerializationEngine {
    * @param planDoc  - Already-parsed JSON matching Plan.isPlanDocument()
    * @param coordTransform - Optional function called for every {x, y} coordinate
    *   (in WGS84 degrees). Return a new {x, y} to apply offset / rotation.
+   * @param opts.onLoaded - Called per symbol with the graphic the load produced
+   *   (null if the host callback returns none) and the id it was given.
    * @returns Number of symbols loaded, or -1 if the document is invalid.
    */
   public loadPlanSymbolsFromData(
     planDoc: any,
     coordTransform?: (pt: { x: number; y: number }) => { x: number; y: number },
+    opts?: { onLoaded?: (graphic: Graphic | null, id: string) => void },
   ): number {
     if (!this._onLoadSymbol) {
       EngineLogger.error(SerializationEngine.ENGINE_NAME, 'loadPlanSymbolsFromData: engine not initialized');
@@ -252,8 +255,9 @@ class SerializationEngine {
             de.OPTIONS = { ...de.OPTIONS, GEOM: applyTransform(this._patchPlanPoint(de.OPTIONS.GEOM)) };
           }
 
-          this._onLoadSymbol!({
-            id: `${sourceSymbolId}-${placementId}`,
+          const symbolId = `${sourceSymbolId}-${placementId}`;
+          const created = this._onLoadSymbol!({
+            id: symbolId,
             sourceSymbolId,
             suppressDrawingLifecycle: true,
             sidc: amplifier?.SIDC || normalizedDrawEss?.SIDC,
@@ -263,6 +267,7 @@ class SerializationEngine {
               ? { pinned: true, xPct: drawEssObj.PIN_X_PCT, yPct: drawEssObj.PIN_Y_PCT }
               : {}),
           });
+          opts?.onLoaded?.((created as Graphic | null | undefined) ?? null, symbolId);
           loaded++;
         } catch (err) {
           EngineLogger.error(

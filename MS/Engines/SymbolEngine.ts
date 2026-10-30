@@ -1038,7 +1038,12 @@ class SymbolEngine implements Evented {
     try {
       const { default: DBE } = await import('./DeploymentBuilder/DeploymentBuilderEngine.ts');
       this._deploymentBuilderEngine = DBE.getInstance();
-      this._deploymentBuilderEngine!.start(this.view, this.serializationEngine);
+      this._deploymentBuilderEngine!.start(this.view, this.serializationEngine, {
+        host: {
+          groupUndo: (label, fn) => this.runUndoGroup(label, fn),
+          removeByIds: (ids, label) => this.removeGraphicsById(ids, label),
+        },
+      });
       this._deploymentBuilderEngine!.enable();
       (window as any).deploymentBuilderEngine = this._deploymentBuilderEngine;
       this.emitEvent('deploymentBuilderEngineReady', { engine: this._deploymentBuilderEngine });
@@ -2531,6 +2536,25 @@ class SymbolEngine implements Evented {
   /** Push an undo entry and clear the redo stack. */
   public _pushUndo(entry: UndoEntry): void {
     this._undoRedoManager.push(entry);
+  }
+
+  /** Run `fn`; every undo entry it pushes becomes one entry labelled `label`. */
+  public runUndoGroup<T>(label: string, fn: () => T): T {
+    return this._undoRedoManager.group(label, fn);
+  }
+
+  /**
+   * Remove symbols by `attributes.id` (so it survives collab/edit re-renders that
+   * swap the Graphic instance), with their labels, as a single undoable step.
+   * Returns how many were removed.
+   */
+  public removeGraphicsById(ids: string[], label = 'Remove Symbols'): number {
+    const live = ids
+      .map((id) => this._selectionEngine?.resolveLive(new Graphic({ attributes: { id } })) ?? null)
+      .filter((r): r is { graphic: Graphic; layer: GraphicsLayer } => r !== null);
+    if (live.length === 0) return 0;
+    this.runUndoGroup(label, () => live.forEach(({ graphic }) => this.removeGraphic(graphic)));
+    return live.length;
   }
 
   /** Snapshot the graphic's current geometry and CTRL_PTS before an edit begins. */

@@ -252,14 +252,20 @@ Runtime toggle: `symbolEngine.onSettingChanged(['features','deploymentBuilder'],
 
 Returns the singleton, creating it on first use. The constructor is private.
 
-### start(view: MapView | SceneView, serialEngine: SerializationEngine): void
+### start(view: MapView | SceneView, serialEngine: SerializationEngine, options?: DeploymentBuilderOptions): void
 
 | name | type | meaning |
 | --- | --- | --- |
 | `view` | `MapView \| SceneView` | Active view. A hidden `GraphicsLayer` (`listMode: 'hide'`) is added for ghost previews. |
 | `serialEngine` | `SerializationEngine` | Used at placement time via `loadPlanSymbolsFromData`. `SymbolEngine` passes its own `serializationEngine`. |
+| `options.planSource` | `string \| DeploymentPlanSource` | Optional. A base URL holding `Deployemets.json`, or a custom source (see below). Same as calling `setPlanSource`. |
+| `options.host` | `DeploymentHost` | Optional hooks `groupUndo(label, fn)` and `removeByIds(ids, label)`. `SymbolEngine` passes them. Without a host a placement still works, but it is not one undo step and the Last placement card stays hidden. |
 
-It also resolves the registry base URL (see below). Calling `start` twice adds a second ghost layer without removing the first; `SymbolEngine` calls it once.
+Calling `start` twice adds a second ghost layer without removing the first; `SymbolEngine` calls it once.
+
+### setPlanSource(source: string | DeploymentPlanSource): void
+
+Points the manager at a different plan library and refreshes the open list; the current selection is kept. A string is a base URL (trailing slash optional). An object supplies `list(): Promise<PlanEntry[]>` and `load(entry): Promise<any | null>`, so a host can serve plans from a server or its own SOP library. A `PlanEntry` may carry `data` (the plan or template inline), which the URL source returns without fetching, and `pivot` (see below). `PlanEntry` and the source types are exported from the module.
 
 ### onViewChanged(view: MapView | SceneView): void
 
@@ -280,26 +286,30 @@ Disables, removes the widget and ghost layer, and clears the singleton (the next
 ### Workflow (widget)
 
 1. Pick a plan from the categorised list (search box filters by name and category), or click "Use Saved Plan..." to load a local Save Plan JSON file.
-2. Optionally open "Placement options" (collapsed): "Rotate to a bearing" (off by default) and "Spread" (100% by default, clamped to 10–500%).
-3. Click "Place on Map". If the plan's footprint is wider than 80% of the view's shorter side, the view zooms out to fit it. A live preview follows the cursor: real unit icons, control-point outlines for lines and areas, and a dashed ring marking the footprint. Click the map to set the plan's centre. With "Rotate to a bearing" on, move the cursor to aim the plan and click again. Right-click during the bearing phase returns to anchor picking; Esc cancels.
-4. On commit the engine calls `serializationEngine.loadPlanSymbolsFromData(plan)`, then pans and zooms the view to the bounds of everything placed (padded by 35%, never tighter than about 400 m). The widget closes when at least one symbol was placed, and stays open with an "Empty" state when none were.
+   The summary shows a north-up footprint thumbnail (affiliation colours, a cross where the click lands), the plan's real ground size at the current spread, and what it contains. Plans whose symbols form separate clusters show it plainly.
+2. Optionally open "Placement options" (collapsed): "Rotate to a bearing" (off by default), "Keep placing copies" (off), "Pivot" and "Spread" (100% by default, clamped to 10–500%). Pivot lists the plan's units, each with its offset from the plan centre, and defaults to the centre; text boxes, lines and areas are not offered. A registry entry can name a default with `pivot` (a `plnOrdrSymbolId`, or a template symbol id). Imported plans pivot on the centre.
+3. Click "Place on Map". If the plan's footprint is wider than 80% of the view's shorter side, the view zooms out to fit it. A live preview follows the cursor: real unit icons, control-point outlines for lines and areas, and a dashed ring marking the footprint. Click the map to set the pivot's position. With "Rotate to a bearing" on, move the cursor to aim the plan and click again. Right-click during the bearing phase returns to anchor picking; Esc cancels.
+4. On commit the engine calls `serializationEngine.loadPlanSymbolsFromData(plan, undefined, { onLoaded })`. The per-symbol undo entries are folded into one (**Ctrl+Z** removes the whole placement), and every created graphic gets `attributes.deploymentId` and `deploymentName` (in memory only; they are not saved). The view then pans and zooms to the bounds of everything placed (padded by 35%, never tighter than about 400 m). The widget closes when at least one symbol was placed, and stays open with an "Empty" state when none were. With "Keep placing copies" on, it stays armed instead, does not zoom, and Esc finishes.
+5. Reopening the widget shows a **Last placement** card: **Reposition** picks it up with the same plan and options and swaps it for the new copy as one undo step (the old copy stays until the new one lands, so cancelling loses nothing); **Remove** takes it off as one undo step. Symbols are found by `attributes.id`, so this survives collaboration re-renders. If the symbols were already deleted or undone, Remove says so.
 
 Exercise templates (`symbols[]` with ratio positions in [-1, 1], as in `MS/Data/Templates/Ex/`) are converted to a Plan document on load, whether picked from the list or imported with "Use Saved Plan…". Ratios are laid out around the placement area's centre in real kilometres using `defaults.frontageKm` and `defaults.depthKm`, and that centre, not the average of the symbols, is what lands on the clicked point. Each `symbolKey` is looked up in `Symbols.json`; an unknown key, or one whose geometry type does not match the template's `geoType`, is skipped and logged. Forbidden, threat and kill zones get the hostile frame, everything else the friendly one. Seed-only fields (`locked`, `scenarioProp`, `successCriteria`, `scoring`) and the colour `style` overrides belong to the scenario engine and are not carried over, so the symbols arrive as ordinary editable ones.
 
 All layouts are corrected for latitude: Web Mercator stretches distances by 1/cos(latitude), so the whole plan is scaled by the ratio of the cosines at the plan's and the anchor's latitude, and a 25 km frontage stays 25 km wherever it is placed.
 
-Layout model: the plan is placed as one rigid piece. Every symbol's centroid keeps its offset from the plan centroid, multiplied by the spread and rotated by the bearing; each symbol's own points rotate with it and keep their size. At 100% spread and no rotation the plan lands exactly as saved, with its centroid on the clicked point. All maths runs in Web Mercator, so a rotation or scale on screen is exactly what is written to the data. The old formation presets (line, column, wedge, echelon, vee) and metre spacing were removed: they sent every symbol, including lines and areas, to one of five slots, which stacked a 64-symbol plan on five points. Imported files must pass `Plan.isPlanDocument` and contain at least one placeable symbol, otherwise the status line reports an error.
+Layout model: the plan is placed as one rigid piece. Every symbol's centroid keeps its offset from the pivot (the plan centroid unless a pivot unit is chosen), multiplied by the spread and rotated by the bearing; each symbol's own points rotate with it and keep their size. At 100% spread and no rotation the plan lands exactly as saved, with its centroid on the clicked point. All maths runs in Web Mercator, so a rotation or scale on screen is exactly what is written to the data. The old formation presets (line, column, wedge, echelon, vee) and metre spacing were removed: they sent every symbol, including lines and areas, to one of five slots, which stacked a 64-symbol plan on five points. Imported files must pass `Plan.isPlanDocument` and contain at least one placeable symbol, otherwise the status line reports an error.
 
-`loadPlanSymbolsFromData` (in `SerializationEngine`) returns the number of loaded symbols, or `-1` when the engine is not initialised or the document is invalid. See [07 Import and export](07-import-export.md).
+`loadPlanSymbolsFromData` (in `SerializationEngine`) returns the number of loaded symbols, or `-1` when the engine is not initialised or the document is invalid. Its optional third argument `{ onLoaded(graphic, id) }` is called per symbol. See [07 Import and export](07-import-export.md).
+
+`SymbolEngine` also gained `runUndoGroup(label, fn)` (folds every undo entry `fn` pushes into one) and `removeGraphicsById(ids, label)` (removes symbols and their labels as one undo step), which the manager uses through `DeploymentHost`.
 
 ### Plan registry and hosting requirements
 
-The registry base URL is hard-coded: `_resolveRegistryBase()` returns `'/MS/Data/Deployments/'`. The engine fetches:
+By default the engine fetches:
 
 - `/MS/Data/Deployments/Deployemets.json` (the filename is spelled this way in the source and on disk),
 - each plan file listed there, relative to the same base.
 
-A host that ships only the minified build must serve these files from that URL path. There is no option to change the base URL.
+A host that serves the library elsewhere, or keeps its own plans, calls `setPlanSource(baseUrl)` or `setPlanSource({ list, load })` once the `deploymentBuilderEngineReady` event has fired (or passes `options.planSource` to `start`).
 
 Registry file shape:
 
@@ -314,4 +324,4 @@ Registry file shape:
 
 `category` groups plans in the list. Known labels: `own` Own Forces, `en` Enemy, `attack` Attack, `defence` Defence, `logistic` Logistic, `exercises` Exercises, `imported` Imported, `other` Other; any other value is shown with its first letter capitalised. `file` may use relative segments; the shipped registry references the exercise plans as `../Templates/Ex/<name>.json`, which resolves to `/MS/Data/Templates/Ex/` and ships with the library data. A plan file can be either a saved Plan document or an exercise template (see below).
 
-Offline / failure behaviour: if the registry request fails, the engine logs `Failed to load plan registry` through `EngineLogger.error` and shows "No plans available". A failed plan file logs an error and yields `null` (nothing is placed). The registry result is cached in memory for the life of the instance. No external service is involved, and 2D and 3D use the same code path.
+Offline / failure behaviour: if the registry request fails, the engine logs `Failed to load plan registry` through `EngineLogger.error`, shows "Could not load plans" with the reason and a Retry button (a base URL that lands on an HTML fallback page says so rather than a JSON parse error). A failed plan file logs an error and yields `null` (nothing is placed). A successful registry result is cached in memory until `setPlanSource` is called; a failed one is not cached. No external service is involved, and 2D and 3D use the same code path.

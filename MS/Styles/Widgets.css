@@ -3144,6 +3144,35 @@
 #deploymentBuilderWidget .db-plan-summary .ms-info-grid {
   padding: 4px 0 0;
 }
+/* Footprint thumbnail (north up) — the SVG draws with the affiliation colours */
+#deploymentBuilderWidget .db-plan-thumb {
+  margin: 2px 0 4px;
+  border: 1px solid var(--ms-divider);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ms-text-dim);
+}
+#deploymentBuilderWidget .db-plan-thumb[hidden] { display: none; }
+#deploymentBuilderWidget .db-thumb-svg { display: block; width: 100%; height: auto; }
+#deploymentBuilderWidget .db-plan-comp { font-size: var(--ms-fs-xs); }
+
+/* Pivot picker */
+#deploymentBuilderWidget .db-pivot-block[hidden] { display: none; }
+#deploymentBuilderWidget .db-pivot-row { padding: 0 12px 6px; }
+#deploymentBuilderWidget .db-pivot { width: 100%; padding: 5px 8px; }
+
+/* Last placement */
+#deploymentBuilderWidget .db-last[hidden] { display: none; }
+#deploymentBuilderWidget .db-last-line {
+  padding: 0 12px;
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text-dim);
+}
+#deploymentBuilderWidget .db-last-name { color: var(--ms-text); font-weight: 700; }
+#deploymentBuilderWidget .db-last .ms-btn-row { padding-bottom: 8px; }
+
+/* Registry load failure */
+#deploymentBuilderWidget .db-btn-retry { display: block; margin: 8px auto 0; padding: 4px 12px; }
 
 /* Status / action row */
 #deploymentBuilderWidget .db-status:empty { display: none; }

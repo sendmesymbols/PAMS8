@@ -53,6 +53,8 @@ export default class UndoRedoManager {
   private _undoStack: UndoEntry[] = [];
   private _redoStack: UndoEntry[] = [];
   private _preEditSnapshot: PreEditSnapshot | null = null;
+  /** >0 while `group()` is collecting entries; eviction waits until the group lands as one. */
+  private _groupDepth = 0;
 
   constructor(private readonly deps: UndoRedoDeps) {
     this.wireEditEngineUndo();
@@ -62,11 +64,35 @@ export default class UndoRedoManager {
   public push(entry: UndoEntry): void {
     // Evict the oldest entry when at capacity so its captured graphics/geometry
     // clones become GC-able — bounds memory over a long editing session.
-    if (this._undoStack.length >= UndoRedoManager.MAX_UNDO_DEPTH) {
+    if (this._groupDepth === 0 && this._undoStack.length >= UndoRedoManager.MAX_UNDO_DEPTH) {
       this._undoStack.shift();
     }
     this._undoStack.push(entry);
     this._redoStack = [];
+  }
+
+  /**
+   * Run `fn` and fold every undo entry it pushes into a single entry, so one
+   * Ctrl+Z reverses the whole operation (e.g. a placed deployment of 24 symbols
+   * instead of 24 presses). Groups nest; a group that pushes nothing leaves the
+   * stack alone.
+   */
+  public group<T>(label: string, fn: () => T): T {
+    const base = this._undoStack.length;
+    this._groupDepth++;
+    try {
+      return fn();
+    } finally {
+      this._groupDepth--;
+      const entries = this._undoStack.splice(base);
+      if (entries.length > 0) {
+        this.push({
+          label,
+          undo: () => { for (let i = entries.length - 1; i >= 0; i--) entries[i].undo(); },
+          redo: () => { for (const e of entries) e.redo(); },
+        });
+      }
+    }
   }
 
   /** Undo the last operation. */
