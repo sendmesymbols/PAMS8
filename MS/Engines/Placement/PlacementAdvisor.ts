@@ -81,6 +81,8 @@ interface ReadContext {
   ty: number;
   ct: Uint8Array | null | undefined;
   dt: Uint8Array | null | undefined;
+  /** Set when a sample needed a tile that has not arrived (as opposed to one with no coverage). */
+  waiting: boolean;
 }
 
 /** Orders verdicts for worst-of-N facings: higher is worse. Ties go to the larger share in no-go, then the smaller gap to it. */
@@ -438,17 +440,18 @@ export default class PlacementAdvisor {
     const { v, samples, pts, cand } = best!;
     const stats = this._cache?.stats();
     if (v.verdict === 'unknown') {
-      v.message =
-        (stats?.pending ?? 0) > 0
+      // Judge by the tiles this shape needed, not the cache-wide counts: a prefetch burst keeps
+      // `pending` high long after the cursor's own tile arrived (or when it is outside coverage).
+      v.message = !ctx.waiting
+        ? 'Outside terrain data coverage'
+        : (stats?.pending ?? 0) > 0
           ? 'Terrain data loading…'
-          : (stats?.failed ?? 0) > 0
-            ? 'Terrain data could not be loaded'
-            : 'Outside terrain data coverage';
+          : 'Terrain data could not be loaded';
     } else {
       this._enrich(v, samples, pts, ctx, compiled);
       this._addIndicators(v, samples, pts, compiled, opts?.ref);
       // A shape spanning tiles that are still arriving is judged on what is known so far.
-      if (v.unknown > 0 && (stats?.pending ?? 0) > 0) {
+      if (v.unknown > 0 && ctx.waiting && (stats?.pending ?? 0) > 0) {
         v.detail = v.detail ? `${v.detail} · still loading terrain data` : 'Still loading terrain data';
       }
     }
@@ -799,6 +802,7 @@ export default class PlacementAdvisor {
       ty: -1,
       ct: undefined,
       dt: undefined,
+      waiting: false,
     };
   }
 
@@ -816,10 +820,16 @@ export default class PlacementAdvisor {
       c.ct = this._cache.peek(c.cls, c.z, tp.tx, tp.ty);
       c.dt = c.dist ? this._cache.peek(c.dist, c.z, tp.tx, tp.ty) : undefined;
     }
-    if (!c.ct) return NULL_SAMPLE;
+    if (!c.ct) {
+      if (c.ct === undefined) c.waiting = true;
+      return NULL_SAMPLE;
+    }
     // Class tile arrived but its distance tile has not: report unknown rather than a verdict
     // computed without the distance (a transient wrong "ok" next to a marsh).
-    if (c.dist && c.dt === undefined) return NULL_SAMPLE;
+    if (c.dist && c.dt === undefined) {
+      c.waiting = true;
+      return NULL_SAMPLE;
+    }
     const idx = tp.py * c.ts + tp.px;
     let distanceM: number | null = null;
     if (c.dt) {
@@ -904,8 +914,8 @@ export default class PlacementAdvisor {
 
   /**
    * Fetch the tiles under the viewport (plus a margin). With a symbol armed this is
-   * its profile's layers; while idle it warms the class layer and the distance layer
-   * of the profile a draw is most likely to use, so the first draw already has data.
+   * its profile's layers; while idle it warms the class layer and every profile's
+   * distance layer (when they fit the cache), so the first draw already has data.
    */
   private _prefetch(): void {
     if (!this.isActive || !this._cache) return;
@@ -920,6 +930,10 @@ export default class PlacementAdvisor {
     });
     const pts = shape?.parts[0];
     if (!pts || pts.length < 2) return;
+
+    // Whatever was queued for the previous viewport / profile is stale; letting it drain first
+    // would keep the tile under the cursor waiting behind hundreds of off-screen ones.
+    this._cache.cancelQueued();
 
     const m = this._manifest!;
     const z = this._sampleZoom();

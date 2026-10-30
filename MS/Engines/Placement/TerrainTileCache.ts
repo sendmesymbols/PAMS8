@@ -194,8 +194,18 @@ export class TerrainTileCache {
         }
         return undefined;
       default:
+        // Still queued behind a prefetch burst: the cursor needs it now, so move it to the front.
+        this._promote(key);
         return undefined;
     }
+  }
+
+  /** Drop fetches that are queued but not started (a pan/zoom made them stale). In-flight ones finish. */
+  cancelQueued(): void {
+    for (const job of this._queue) {
+      if (this._entries.get(job.key)?.state === 'pending') this._entries.delete(job.key);
+    }
+    this._queue.length = 0;
   }
 
   has(layer: string, z: number, x: number, y: number): boolean {
@@ -216,6 +226,19 @@ export class TerrainTileCache {
     const s: TileCacheStats = { loaded: 0, missing: 0, pending: 0, failed: 0 };
     for (const e of this._entries.values()) s[e.state]++;
     return s;
+  }
+
+  /** Move a queued job to the top of the (LIFO) queue; no-op when it is already in flight. */
+  private _promote(key: string): void {
+    const q = this._queue;
+    const last = q.length - 1;
+    if (last < 0 || q[last].key === key) return;
+    for (let i = last - 1; i >= 0; i--) {
+      if (q[i].key === key) {
+        q.push(q.splice(i, 1)[0]);
+        return;
+      }
+    }
   }
 
   private _pump(): void {
