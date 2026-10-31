@@ -10,7 +10,8 @@ AOI      ?=                          # west,south,east,north (WGS84); empty = ta
 RES_M    ?= 30                       # target ground resolution; grid warns if ZMAX is coarser
 ZMIN     ?= 8
 ZMAX     ?= 12
-OUT_DIR  ?= out/terrain-bundle
+# Finished bundle: lives in the library data folder, where the host serves it from.
+OUT_DIR  ?= ../../MS/Data/terrain-bundle
 WORKERS  ?= 4
 BLOCK    ?= 2048                     # processing block (px); lower it on small RAM
 BOUNDARY ?=                          # optional GeoJSON clip polygon (default: OSM admin_level=2)
@@ -104,6 +105,6 @@ clean-derive:   ; rm -rf $(W)/derive
 clean-classify: ; rm -rf $(W)/classify
 clean-profiles: ; rm -rf $(W)/profiles
 clean-tile:     ; rm -rf $(W)/tile $(OUT_DIR)
-clean-out:      ; rm -rf out
+clean-out:      ; rm -rf out $(OUT_DIR)
 clean-work:     ; rm -rf $(W)/grid $(W)/derive $(W)/classify $(W)/profiles $(W)/tile
 clean: clean-work clean-out

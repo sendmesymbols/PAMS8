@@ -7,6 +7,11 @@ inside one. It is gated by `features.placementAdvisor` and needs a
 `tools/terrain-pipeline/` and served by the host app from any plain web server.
 With no bundle configured the engine is dormant and existing hosts are unaffected.
 
+**Where the bundle lives.** The pipeline writes it to `MS/Data/terrain-bundle/` (git-ignored, several GB).
+`npm run dev` serves that folder at `/terrain-bundle`, so the default `placement.bundleUrl` works in the
+harness with nothing to copy. A host app copies the folder to wherever it serves static files and sets
+`placement.bundleUrl` to that URL.
+
 ```
 HOST SERVER  /terrain-bundle/ (static files)      BROWSER
   manifest.json  rules.json                        TileLoader  (fetch + decode, pan/zoom only)

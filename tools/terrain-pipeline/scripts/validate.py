@@ -23,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
-from common import TILE_SIZE, lnglat_to_pixel, load_json, load_yaml, read_png_chunks, setup_logging
+from common import BUNDLE_DIR, TILE_SIZE, lnglat_to_pixel, load_json, load_yaml, read_png_chunks, setup_logging
 
 log = setup_logging("validate")
 FORBIDDEN = {"gAMA", "sRGB", "iCCP", "tRNS", "pHYs", "PLTE", "cHRM", "iTXt", "tEXt", "zTXt"}
@@ -158,7 +158,7 @@ def size_report(idx) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--bundle", type=Path, default=Path("out/terrain-bundle"))
+    ap.add_argument("--bundle", type=Path, default=BUNDLE_DIR)
     ap.add_argument("--golden", type=Path, default=Path("golden_points.yaml"))
     ap.add_argument("--no-golden", action="store_true")
     ap.add_argument("--sample", type=int, default=40, help="tiles per random check")

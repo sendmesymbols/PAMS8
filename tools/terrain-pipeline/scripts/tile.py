@@ -2,7 +2,7 @@
 
 Inputs : work/grid/grid.json, work/classify/class.tif, work/profiles/dist_*.tif
 Outputs: <out>/class/{z}/{x}/{y}.png and <out>/dist_<profile>/{z}/{x}/{y}.png
-         for z = ZMIN..ZMAX (default out: out/terrain-bundle)
+         for z = ZMIN..ZMAX (default out: <repo>/MS/Data/terrain-bundle)
 
 ZMAX tiles are read straight from the rasters (the grid is snapped to whole
 ZMAX tiles, so tile (x, y) is the window at ((x-x0)*256, (y-y0)*256)).
@@ -25,7 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
-from common import TILE_SIZE, load_json, setup_logging, write_png_l
+from common import BUNDLE_DIR, TILE_SIZE, load_json, setup_logging, write_png_l
 
 log = setup_logging("tile")
 
@@ -113,7 +113,7 @@ def main() -> int:
     ap.add_argument("--grid", type=Path, default=Path("work/grid"))
     ap.add_argument("--class-tif", type=Path, default=Path("work/classify/class.tif"))
     ap.add_argument("--profiles", type=Path, default=Path("work/profiles"))
-    ap.add_argument("--out", type=Path, default=Path("out/terrain-bundle"))
+    ap.add_argument("--out", type=Path, default=BUNDLE_DIR)
     ap.add_argument("--layers", nargs="*", help="subset, e.g. class dist_wheeled")
     ap.add_argument("--class-reduce", choices=["nearest", "mode"], default="nearest")
     ap.add_argument("--workers", type=int, default=4)

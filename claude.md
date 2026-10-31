@@ -136,7 +136,8 @@ MS/
   (`features.placementAdvisor`). Live "deployable terrain?" advice while drawing
   (ok / near / caution / partial / in), driven by a static **terrain bundle**
   (PNG tiles + `rules.json`) the host serves; built offline by
-  `tools/terrain-pipeline/`. Hot path is synchronous typed-array reads (no I/O on
+  `tools/terrain-pipeline/` into `MS/Data/terrain-bundle/` (git-ignored, multi-GB; `npm run dev` serves it at
+  `/terrain-bundle`). Hot path is synchronous typed-array reads (no I/O on
   mouse-move); advise mode only listens, enforce mode vetoes in `drawSymEnd`.
   Tile fetch/decode and overlay painting run in an inline Web Worker
   (`placement.useWorker`, falls back to the main thread automatically).

@@ -57,6 +57,9 @@ def _gdal_data_for(tool: str) -> str | None:
 
 
 PIPELINE_DIR = Path(__file__).resolve().parent.parent
+# Where the finished bundle lives: next to the library's other data, <repo>/MS/Data/terrain-bundle, so the host
+# serves it from there. Anchored on this file, so it is the same whatever the working directory is.
+BUNDLE_DIR = PIPELINE_DIR.parent.parent / "MS" / "Data" / "terrain-bundle"
 CONTAINER_ROOT = "/work"                      # where the container mounts PIPELINE_DIR
 
 

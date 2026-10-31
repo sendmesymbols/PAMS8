@@ -1,9 +1,9 @@
 """Step 8 — write manifest.json + LICENSES.txt and zip the bundle.
 
-Inputs : out/terrain-bundle/ (tiles from tile.py), work/profiles/rules.json,
+Inputs : MS/Data/terrain-bundle/ (tiles from tile.py), work/profiles/rules.json,
          work/grid/grid.json, sources.lock, work/raw/checksums.json (optional),
          rules.yaml (distScaleM, version)
-Outputs: out/terrain-bundle/manifest.json, rules.json, LICENSES.txt
+Outputs: MS/Data/terrain-bundle/manifest.json, rules.json, LICENSES.txt
          out/terrain-bundle.zip (unless --no-zip)
 
 `sources[].sha256` in the manifest comes from checksums.json (written by
@@ -20,7 +20,7 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from common import PIPELINE_VERSION, TILE_SIZE, dump_json, load_json, load_yaml, setup_logging
+from common import BUNDLE_DIR, PIPELINE_VERSION, TILE_SIZE, dump_json, load_json, load_yaml, setup_logging
 
 log = setup_logging("package")
 
@@ -60,7 +60,7 @@ def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--bundle", type=Path, default=Path("out/terrain-bundle"))
+    ap.add_argument("--bundle", type=Path, default=BUNDLE_DIR)
     ap.add_argument("--grid", type=Path, default=Path("work/grid/grid.json"))
     ap.add_argument("--rules-json", type=Path, default=Path("work/profiles/rules.json"))
     ap.add_argument("--rules", type=Path, default=Path("rules.yaml"))

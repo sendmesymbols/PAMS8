@@ -111,7 +111,7 @@ param(
     [int]    $ZMax = 12,
     [int]    $Workers = 4,
     [int]    $Block = 2048,                   # processing block in px; lower it on small RAM
-    [string] $OutDir = 'out\terrain-bundle',  # must be inside tools\terrain-pipeline (it is wiped by `tile`)
+    [string] $OutDir = 'MS\Data\terrain-bundle',  # relative to the repo root; wiped by `tile`, so see Resolve-OutDir
     [string] $Boundary = ''                   # optional GeoJSON clip polygon (default: OSM admin_level=2)
 )
 
@@ -294,12 +294,16 @@ function Initialize-Gdal {
 # ---------------------------------------------------------------------------------------------
 
 function Resolve-OutDir {
-    $full = if ([System.IO.Path]::IsPathRooted($OutDir)) { $OutDir } else { Join-Path $PipelineDir $OutDir }
+    $full = if ([System.IO.Path]::IsPathRooted($OutDir)) { $OutDir } else { Join-Path $RepoRoot $OutDir }
     $full = [System.IO.Path]::GetFullPath($full).TrimEnd('\')
     $root = [System.IO.Path]::GetFullPath($PipelineDir).TrimEnd('\')
     $reserved = @($root, "$root\scripts", "$root\work", "$root\.venv", "$root\out")
-    if (-not $full.StartsWith($root + '\', [System.StringComparison]::OrdinalIgnoreCase) -or ($reserved -contains $full)) {
-        throw "-OutDir must be a folder inside $root (not $root itself, scripts, work, .venv or out): the tile step deletes it before writing. Copy the finished bundle elsewhere afterwards."
+    # The tile step deletes this folder before writing, so only accept one that is clearly a bundle: the
+    # default MS\Data\terrain-bundle (or any folder with that name), or a subfolder of the pipeline folder.
+    $inPipeline = $full.StartsWith($root + '\', [System.StringComparison]::OrdinalIgnoreCase) -and -not ($reserved -contains $full)
+    $isBundle = (Split-Path $full -Leaf) -ieq 'terrain-bundle'
+    if (-not ($inPipeline -or $isBundle)) {
+        throw "-OutDir must be a folder named terrain-bundle (default MS\Data\terrain-bundle) or a subfolder of $root (not scripts, work, .venv or out): the tile step deletes it before writing."
     }
     return $full
 }
@@ -523,7 +527,7 @@ try {
             $mb = [math]::Round((Get-ChildItem $outFull -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
             Write-Info "bundle : $outFull  ($mb MB)"
             Write-Info "zip    : $(Join-Path $PipelineDir 'out\terrain-bundle.zip')"
-            Write-Info 'To use it in the harness: copy the folder to public\terrain-bundle (or serve it anywhere and set placement.bundleUrl).'
+            Write-Info 'To use it in the harness: nothing to copy. npm run dev serves MS\Data\terrain-bundle at /terrain-bundle. In a host app, copy the folder to where the host serves static files and set placement.bundleUrl.'
         }
     }
 } catch {

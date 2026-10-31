@@ -6,7 +6,7 @@ static XYZ tiles that tells the engine, per pixel, the terrain class and the
 distance to the nearest no-go pixel for each mobility profile.
 
 ```
-out/terrain-bundle/
+MS/Data/terrain-bundle/                  (repo root; git-ignored)
   manifest.json  rules.json  LICENSES.txt
   class/{z}/{x}/{y}.png            terrain class code, 255 = nodata        (overviews: nearest)
   dist_<profile>/{z}/{x}/{y}.png   metres / distScaleM to nearest no-go,   (overviews: MIN)
@@ -15,7 +15,7 @@ out/terrain-bundle/
 
 Tiles are Web Mercator (EPSG:3857) 256 px XYZ, z = 8..12, 8-bit greyscale PNG
 with only `IHDR/IDAT/IEND` chunks. Missing tile = no coverage. Everything in
-the bundle is a static file; the air-gapped host only receives `out/`.
+the bundle is a static file; the air-gapped host only receives `MS/Data/terrain-bundle/`.
 
 ## Reproduce
 
@@ -52,9 +52,12 @@ docker start GDAL
 
 `-NoDocker` ignores it. The NCGDB is read by Python (pyogrio), so it is not mounted.
 
-**Viewing the bundle in the dev harness**: `npm run dev` serves `out/terrain-bundle` at `/terrain-bundle` when
-`public/terrain-bundle` does not exist (do not put the real bundle under `public/`: Vite indexes it and stalls).
-Its file watcher also ignores this folder's `out/`, `work/` and `.venv/`.
+**Where the bundle lives**: the pipeline writes it to `MS/Data/terrain-bundle/` (`OUT_DIR` in the Makefile, `-OutDir` in
+`run_lc_data_pipeline.ps1`), next to the library's other data, and it is git-ignored. `npm run dev` serves that folder at
+`/terrain-bundle` when `public/terrain-bundle` does not exist (do not put the real bundle under `public/`: Vite indexes it
+and stalls). The file watcher and `tsconfig.build.json` skip it, as the watcher also skips this folder's `out/`, `work/`
+and `.venv/`. `out/` now holds only `terrain-bundle.zip`. The GDAL container mounts only this folder, which is enough:
+`tile`, `validate` and `package` are pure Python and write to the bundle folder directly.
 
 ### Prerequisites
 
@@ -157,13 +160,13 @@ changed versus open data only and into which class. Switching mode re-runs deriv
 
 **Restricted data.** A hybrid bundle contains NCGDB-derived pixels. `package.py` marks the manifest
 `"restricted": true`, adds the geodatabase fingerprint (file listing hash, not its contents) to `sources`, and
-writes a warning into `LICENSES.txt`. Do not ship such a bundle, or commit `work/` / `out/`, without the data
+writes a warning into `LICENSES.txt`. Do not ship such a bundle, or commit `work/`, `out/` or `MS/Data/terrain-bundle/`, without the data
 owner's permission. `--ncgdb none` rebuilds an open-data bundle.
 
 ## Verifying a bundle
 
 ```sh
-python3 scripts/validate.py --bundle out/terrain-bundle            # also run by `make bundle`
+python3 scripts/validate.py                                        # checks MS/Data/terrain-bundle; also run by `make bundle`
 make synth-check                                                   # validates public/terrain-bundle (synthetic)
 ```
 

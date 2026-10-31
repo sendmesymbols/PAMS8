@@ -14,13 +14,13 @@ import { collabRelayPlugin } from './tools/collabRelay.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Dev-only: serve the Placement Advisor's terrain bundle at /terrain-bundle straight from the pipeline's
-// output folder when public/terrain-bundle does not exist. The real bundle is ~390k tiles, and Vite indexes
-// everything under public/ (and watches it), which exhausts memory and hangs the server; the small synthetic
-// bundle (node tools/terrain-synth.mjs) still goes in public/ as before and wins when present.
+// Dev-only: serve the Placement Advisor's terrain bundle at /terrain-bundle straight from MS/Data/terrain-bundle
+// (where the pipeline writes it) when public/terrain-bundle does not exist. The real bundle is ~390k tiles, and
+// Vite indexes everything under public/ (and watches it), which exhausts memory and hangs the server; the small
+// synthetic bundle (node tools/terrain-synth.mjs) still goes in public/ as before and wins when present.
 function terrainBundleDev(): Plugin {
     const publicDir = resolve(__dirname, 'public/terrain-bundle');
-    const outDir = resolve(__dirname, 'tools/terrain-pipeline/out/terrain-bundle');
+    const outDir = resolve(__dirname, 'MS/Data/terrain-bundle');
     const types: Record<string, string> = {
         '.json': 'application/json', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8',
     };
@@ -136,6 +136,7 @@ export default defineConfig(({ mode }) => {
         watch: {
             ignored: [
                 '**/public/terrain-bundle/**',
+                '**/MS/Data/terrain-bundle/**',
                 '**/tools/terrain-pipeline/out/**',
                 '**/tools/terrain-pipeline/work/**',
                 '**/tools/terrain-pipeline/.venv/**',
