@@ -663,6 +663,7 @@
     "nearThresholdM": 250,
     "partialFraction": 0.2,
     "blockOn": ["in", "partial"],
+    "allowOverride": true,
     "showBadge": true,
     "snapKey": true,
     "logVerdicts": true,

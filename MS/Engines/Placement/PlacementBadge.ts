@@ -211,6 +211,13 @@ function nearestRow(v: PlacementVerdict): HTMLElement | null {
   return null;
 }
 
+/** Enforce mode: this click would be refused, and whether Shift gets past it. */
+function enforceRow(v: PlacementVerdict): HTMLElement | null {
+  if (!v.blocked) return null;
+  const text = v.overridable ? 'A click here is refused. Hold Shift and click to place it anyway.' : 'A click here is refused.';
+  return row('octagon', 'Enforce mode', SPACING_COLOR.overlap, el('span', 'ms-pb-warn', text));
+}
+
 /** The quick-fix hint, shown while pressing S would move the point to usable ground. */
 function snapRow(v: PlacementVerdict): HTMLElement | null {
   if (!v.snappable) return null;
@@ -247,6 +254,10 @@ export class PlacementBadge {
   private _last: PlacementVerdict | null = null;
   private _notice: string | null = null;
   private _noticeTimer: ReturnType<typeof setTimeout> | null = null;
+  private _toastEl: HTMLDivElement | null = null;
+  private _toastBar: HTMLDivElement | null = null;
+  private _toastBody: HTMLDivElement | null = null;
+  private _toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Show a short message under the verdict for a few seconds (e.g. why the quick fix found nothing). */
   flash(text: string, ms = 3500): void {
@@ -260,6 +271,43 @@ export class PlacementBadge {
     if (this._last && this._el && this._el.style.display !== 'none') this.show(this._last);
   }
 
+  /**
+   * A card that outlives the draw (hide() does not touch it): why a placement was refused. It sits
+   * where the cursor was and goes away on its own, or as soon as the next draw shows the badge.
+   */
+  toast(t: { verdict: PlacementVerdict['verdict']; title: string; lines: string[]; hint?: string }, ms = 5000): void {
+    this._ensure();
+    if (!this._toastEl) {
+      const root = el('div', 'ms-placement-badge') as HTMLDivElement;
+      root.setAttribute('role', 'alert');
+      this._toastBar = el('div', 'ms-pb-bar') as HTMLDivElement;
+      this._toastBody = el('div', 'ms-pb-body') as HTMLDivElement;
+      root.append(this._toastBar, this._toastBody);
+      document.body.appendChild(root);
+      this._toastEl = root;
+    }
+    const root = this._toastEl;
+    root.dataset.verdict = t.verdict;
+    this._toastBar!.replaceChildren(icon('x', 17), el('span', undefined, t.title));
+    const rows = t.lines.map((l) => el('div', undefined, l));
+    if (t.hint) rows.push(el('div', 'ms-pb-soft', t.hint));
+    this._toastBody!.replaceChildren(...rows);
+    if (!this._hasPointer) {
+      this._x = Math.round(window.innerWidth / 2);
+      this._y = 90;
+    }
+    root.style.display = 'block';
+    this._position(root, root.offsetWidth, root.offsetHeight);
+    if (this._toastTimer !== null) clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => this.dismissToast(), ms);
+  }
+
+  dismissToast(): void {
+    if (this._toastTimer !== null) clearTimeout(this._toastTimer);
+    this._toastTimer = null;
+    if (this._toastEl) this._toastEl.style.display = 'none';
+  }
+
   /** Pointer position in client coordinates; call from a pointermove listener. */
   moveTo(clientX: number, clientY: number): void {
     this._x = clientX;
@@ -270,6 +318,7 @@ export class PlacementBadge {
 
   show(v: PlacementVerdict): void {
     this._last = v;
+    if (this._toastEl && this._toastEl.style.display !== 'none') this.dismissToast();
     const el0 = this._ensure();
     el0.dataset.verdict = v.verdict;
 
@@ -281,7 +330,7 @@ export class PlacementBadge {
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v), snapRow(v), spacingRow(v)].filter(
+        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v), snapRow(v), enforceRow(v), spacingRow(v)].filter(
             (r): r is HTMLElement => r !== null,
           );
     if (v.loading) rows.push(el('div', 'ms-pb-soft', 'Still loading terrain data'));
@@ -311,6 +360,9 @@ export class PlacementBadge {
 
   destroy(): void {
     this.hide();
+    this.dismissToast();
+    this._toastEl?.remove();
+    this._toastEl = this._toastBar = this._toastBody = null;
     this._last = null;
     this._el?.remove();
     this._el = null;
@@ -321,14 +373,17 @@ export class PlacementBadge {
 
   /** Below and right of the cursor; flips to the other side near a screen edge. */
   private _place(): void {
-    if (!this._el) return;
+    if (this._el) this._position(this._el, this._w, this._h);
+  }
+
+  private _position(target: HTMLElement, w: number, h: number): void {
     let x = this._x + 16;
     let y = this._y + 20;
-    if (x + this._w > window.innerWidth - EDGE) x = this._x - 16 - this._w;
-    if (y + this._h > window.innerHeight - EDGE) y = this._y - 14 - this._h;
+    if (x + w > window.innerWidth - EDGE) x = this._x - 16 - w;
+    if (y + h > window.innerHeight - EDGE) y = this._y - 14 - h;
     x = Math.max(EDGE / 2, x);
     y = Math.max(EDGE / 2, y);
-    this._el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+    target.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
 
   private _ensure(): HTMLDivElement {

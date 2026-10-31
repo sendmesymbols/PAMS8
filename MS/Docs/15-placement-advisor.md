@@ -255,6 +255,12 @@ swaps the source without reloading the bundle. The painter
   so the host can show why. Plan load, paste and other programmatic placements
   (lifecycle suppressed, or carrying a pending id) are never checked or blocked.
   A refused draw is not re-armed, even in continuous creation mode.
+  While drawing, the badge says when a click would be refused. On a refusal the advisor itself
+  shows a "Not placed" card at the cursor for five seconds (why, and what is nearby).
+  **Shift-click places it anyway** (`placement.allowOverride`, default on): the graphic is stamped
+  `placement.overridden = true`, a `placement-override` event is dispatched, and the host can record
+  a reason with `advisor.annotateOverride(graphic, reason)` (stored as `placement.reason`).
+  With `allowOverride` off the block is final.
   The legacy milsymbol sketch path (`drawMilSymbolInteractively`) shows advice
   but is not enforced.
 
@@ -267,6 +273,7 @@ swaps the source without reloading the bundle. The painter
 | `placement-state-change`  | `{ state: 'enabled' \| 'disabled' \| 'ready' \| 'no-bundle', isEnabled }` |
 | `placement-blocked`       | `{ verdict, drawEssentials }` in enforce mode |
 | `placement-tiles`         | `{ loaded, pending, failed }` — cache stats, for HUDs/tests |
+| `placement-override`      | `{ verdict, drawEssentials }` — enforce mode, Shift-click placed it anyway |
 | `placement-snap`          | `PlacementSnapResult` — the quick fix moved the symbol (`moved: true`) or found nowhere to go (`reason`) |
 
 ### Quick fix: move to usable ground
@@ -293,6 +300,7 @@ Lines and areas are not moved. Turn it off with `placement.snapKey`.
   "nearThresholdM": 250,
   "partialFraction": 0.2,
   "blockOn": ["in", "partial"],
+  "allowOverride": true,
   "showBadge": true,
   "snapKey": true,
   "logVerdicts": true,

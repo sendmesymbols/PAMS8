@@ -62,6 +62,14 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     help: 'Show the verdict next to the cursor while drawing.',
   },
   {
+    path: ['placement', 'allowOverride'],
+    label: 'Shift-click overrides a refusal',
+    group: 'Feedback',
+    type: 'boolean',
+    help: 'In Enforce mode, hold Shift while clicking to place a symbol the rules would refuse. It is stamped as overridden. Off makes the block final.',
+    keywords: ['enforce', 'override', 'block', 'place anyway', 'refuse'],
+  },
+  {
     path: ['placement', 'snapKey'],
     label: 'S key moves to usable ground',
     group: 'Feedback',

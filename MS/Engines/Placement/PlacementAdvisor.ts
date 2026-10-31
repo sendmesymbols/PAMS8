@@ -17,6 +17,8 @@
  *   "placement-clear"        – {} when the draw ends / is cancelled
  *   "placement-state-change" – { state: "enabled"|"disabled"|"ready"|"no-bundle", isEnabled }
  *   "placement-blocked"      – { verdict, drawEssentials } (enforce mode)
+ *   "placement-override"     – { verdict, drawEssentials } (enforce mode, Shift-click placed it anyway)
+ *   "placement-snap"         – PlacementSnapResult (the S quick fix)
  *   "placement-tiles"        – { loaded, pending, failed, missing }
  *
  * Integration: SymbolEngine feeds onDrawProgress, calls prepareFor() when a
@@ -138,6 +140,9 @@ export default class PlacementAdvisor {
   private _lastDetail: { geometry: any; sidc: string | null } | null = null;
   private _lastSnappable = false;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private _blurHandler: (() => void) | null = null;
+  /** Shift is held (tracked from pointer and key events while a draw is armed): the click is a deliberate override. */
+  private _shift = false;
   private _lastKey = '';
   private _lastBadgeKey = '';
   private _lastWarmKey = '';
@@ -246,6 +251,7 @@ export default class PlacementAdvisor {
     if (Array.isArray(patch.blockOn)) next.blockOn = [...patch.blockOn];
     if (typeof patch.showBadge === 'boolean') next.showBadge = patch.showBadge;
     if (typeof patch.snapKey === 'boolean') next.snapKey = patch.snapKey;
+    if (typeof patch.allowOverride === 'boolean') next.allowOverride = patch.allowOverride;
     if (typeof patch.logVerdicts === 'boolean') next.logVerdicts = patch.logVerdicts;
     if (Number.isFinite(patch.cacheTiles)) next.cacheTiles = Math.max(16, Math.floor(patch.cacheTiles as number));
     if (Number.isFinite(patch.prefetchMarginTiles)) {
@@ -348,12 +354,19 @@ export default class PlacementAdvisor {
     const v = this.evaluateGeometry(geometry, sidc, { ref: () => this._pointerMerc() });
     v.snappable = this._opts.snapKey && geometry?.type === 'point' && this._isBad(v);
     this._lastSnappable = v.snappable;
+    v.blocked = this._refuses(v);
+    v.overridable = v.blocked && this._opts.allowOverride;
     return v;
+  }
+
+  /** Would `enforce` mode refuse a click with this verdict? */
+  private _refuses(v: PlacementVerdict): boolean {
+    return this._opts.mode === 'enforce' && this._opts.blockOn.includes(v.verdict);
   }
 
   /** A verdict the user cannot keep: in/partial, or anything `enforce` mode would refuse. */
   private _isBad(v: PlacementVerdict): boolean {
-    return v.verdict === 'in' || v.verdict === 'partial' || (this._opts.mode === 'enforce' && this._opts.blockOn.includes(v.verdict));
+    return v.verdict === 'in' || v.verdict === 'partial' || this._refuses(v);
   }
 
   /** Draw ended or was cancelled — hide feedback and stop tracking the cursor. */
@@ -364,6 +377,7 @@ export default class PlacementAdvisor {
     this._detachPointer();
     this._lastDetail = null;
     this._lastSnappable = false;
+    this._shift = false;
     this._lastBadgeKey = '';
     this._lastWarmKey = '';
     this._activeSidc = null;
@@ -403,9 +417,43 @@ export default class PlacementAdvisor {
               ...(verdict.spacing && { spacing: verdict.spacing.status }),
             }),
           };
-    const block = this._opts.mode === 'enforce' && this._opts.blockOn.includes(verdict.verdict);
-    if (block) this._emit('placement-blocked', { verdict, drawEssentials });
+    const refused = this._refuses(verdict);
+    // Shift held at the click places it anyway, and the stamp says so for whoever reviews the plan.
+    const override = refused && this._opts.allowOverride && this._shift;
+    const block = refused && !override;
+    if (override) {
+      if (stamp) stamp.overridden = true;
+      EngineLogger.nextStep(ENGINE, `Placed anyway (Shift-click): ${verdict.message}`);
+      this._emit('placement-override', { verdict, drawEssentials });
+    }
+    if (block) {
+      this._emit('placement-blocked', { verdict, drawEssentials });
+      this._badge.toast(
+        {
+          verdict: verdict.verdict,
+          title: 'Not placed',
+          lines: [verdict.message, verdict.detail ?? ''].filter(Boolean),
+          hint: this._opts.allowOverride
+            ? 'Hold Shift and click to place it anyway.'
+            : 'Placement on this ground is blocked.',
+        },
+        5000,
+      );
+    }
     return { allow: !block, verdict, stamp };
+  }
+
+  /**
+   * Record why a symbol was placed against the rules. Call after a `placement-override` placement with the
+   * graphic the engine created; returns false when the graphic was not an override.
+   */
+  annotateOverride(graphic: any, reason: string): boolean {
+    const p = graphic?.attributes?.placement;
+    if (!p || p.overridden !== true) return false;
+    const text = String(reason ?? '').trim().slice(0, 500);
+    if (text) p.reason = text;
+    else delete p.reason;
+    return true;
   }
 
   /**
@@ -1245,12 +1293,16 @@ export default class PlacementAdvisor {
     if (this._pointerHandler) return;
     if (!this._keyHandler) {
       this._keyHandler = (e: KeyboardEvent) => this._onKey(e);
+      this._blurHandler = () => (this._shift = false); // keyup lands elsewhere on Alt-Tab
       window.addEventListener('keydown', this._keyHandler, true);
+      window.addEventListener('keyup', this._keyHandler, true);
+      window.addEventListener('blur', this._blurHandler);
     }
     const container = (this._getView?.() as any)?.container as HTMLElement | null | undefined;
     if (!container) return;
     this._pointerHandler = (e: PointerEvent) => {
       this._lastClient = { x: e.clientX, y: e.clientY };
+      this._shift = e.shiftKey;
       this._badge.moveTo(e.clientX, e.clientY);
     };
     container.addEventListener('pointermove', this._pointerHandler, { passive: true });
@@ -1259,6 +1311,8 @@ export default class PlacementAdvisor {
 
   /** S while drawing a point on bad ground: take the quick fix. Ignored when typing, with modifiers, or when there is nothing to fix. */
   private _onKey(e: KeyboardEvent): void {
+    this._shift = e.shiftKey;
+    if (e.type !== 'keydown') return;
     if ((e.key !== 's' && e.key !== 'S') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -1270,7 +1324,12 @@ export default class PlacementAdvisor {
   private _detachPointer(): void {
     if (this._keyHandler) {
       window.removeEventListener('keydown', this._keyHandler, true);
+      window.removeEventListener('keyup', this._keyHandler, true);
       this._keyHandler = null;
+    }
+    if (this._blurHandler) {
+      window.removeEventListener('blur', this._blurHandler);
+      this._blurHandler = null;
     }
     if (this._container && this._pointerHandler) {
       this._container.removeEventListener('pointermove', this._pointerHandler);

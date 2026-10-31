@@ -156,6 +156,8 @@ export interface PlacementOptions {
   partialFraction: number;
   /** Verdicts refused by `enforce` mode. */
   blockOn: PlacementVerdictKind[];
+  /** In `enforce` mode, holding Shift while clicking places the symbol anyway, stamped `overridden`. Off = a hard block. */
+  allowOverride: boolean;
   showBadge: boolean;
   /** Pressing S while drawing a point on bad ground places it at the nearest usable ground instead. */
   snapKey: boolean;
@@ -275,6 +277,10 @@ export interface PlacementVerdict {
   spacing?: PlacementSpacing | null;
   /** Set while drawing a point the snap key can move to usable ground (the verdict is bad and the quick fix is on). */
   snappable?: boolean;
+  /** Set while drawing when `enforce` mode would refuse this verdict at the click. */
+  blocked?: boolean;
+  /** Set alongside `blocked` when holding Shift at the click places it anyway. */
+  overridable?: boolean;
 }
 
 /** Result of `snapToDeployable()`, also the detail of the `placement-snap` event. */
@@ -308,6 +314,10 @@ export interface PlacementStamp {
   depthM?: number;
   /** Intergap result against neighbours at the time of placing. */
   spacing?: PlacementSpacing['status'];
+  /** `enforce` mode would have refused this placement; the user placed it anyway (Shift-click). */
+  overridden?: true;
+  /** Why, when the host recorded one with `annotateOverride()`. */
+  reason?: string;
 }
 
 export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
@@ -319,6 +329,7 @@ export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
   nearThresholdM: 250,
   partialFraction: 0.2,
   blockOn: ['in', 'partial'],
+  allowOverride: true,
   showBadge: true,
   snapKey: true,
   logVerdicts: true,
