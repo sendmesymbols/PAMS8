@@ -15,9 +15,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Dev-only: serve the Placement Advisor's terrain bundle at /terrain-bundle straight from MS/Data/terrain-bundle
-// (where the pipeline writes it) when public/terrain-bundle does not exist. The real bundle is ~390k tiles, and
-// Vite indexes everything under public/ (and watches it), which exhausts memory and hangs the server; the small
-// synthetic bundle (node tools/terrain-synth.mjs) still goes in public/ as before and wins when present.
+// (where the pipeline writes it) unless the requested file exists under public/terrain-bundle. The real bundle is
+// ~390k tiles, and Vite indexes everything under public/ (and watches it), which exhausts memory and hangs the
+// server; the small synthetic bundle (node tools/terrain-synth.mjs) still goes in public/ as before and wins when
+// present. That is decided per request, not once at startup: a server started while a synthetic bundle happened to
+// be in public/ used to have no route to the real one at all, even after the synthetic folder was deleted.
 function terrainBundleDev(): Plugin {
     const publicDir = resolve(__dirname, 'public/terrain-bundle');
     const outDir = resolve(__dirname, 'MS/Data/terrain-bundle');
@@ -28,11 +30,12 @@ function terrainBundleDev(): Plugin {
         name: 'pams8-terrain-bundle-dev',
         apply: 'serve',
         configureServer(server) {
-            if (existsSync(publicDir) || !existsSync(outDir)) return;
             server.middlewares.use('/terrain-bundle', (req, res, next) => {
                 const rel = decodeURIComponent((req.url ?? '/').split('?')[0]);
                 const file = resolve(outDir, '.' + rel);
                 if (file !== outDir && !file.startsWith(outDir + sep)) return next();
+                // A file of the same name under public/ (the synthetic dev bundle) is left to Vite's own static serving.
+                if (existsSync(resolve(publicDir, '.' + rel))) return next();
                 stat(file, (err, st) => {
                     if (err || !st.isFile()) return next();   // missing tile = no coverage; the client treats a non-image as such
                     res.setHeader('Content-Type', types[extname(file)] ?? 'application/octet-stream');

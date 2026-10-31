@@ -655,6 +655,13 @@ about 2 MB, ~45 s) to `public/terrain-bundle/` (git-ignored) for development and
 tests without real data. Its manifest carries `synthetic: true` and a
 `landmarks.json` of known coordinates with their expected class. Never ship it.
 
+`npm run dev` serves `/terrain-bundle` from the real bundle in `MS/Data/terrain-bundle/`, **except** for any
+file that also exists under `public/terrain-bundle/`: the synthetic bundle wins file by file, so while that
+folder exists the harness shows synthetic data instead of the real data. **Delete `public/terrain-bundle/`
+when you are done with the synthetic bundle.** (This is decided per request, so no restart is needed after
+adding or deleting it.) Tile URLs carry the bundle's `built` stamp (`…/12/2877/1637.png?v=…`), so tiles the
+browser cached for one bundle are not reused for another served from the same address.
+
 In the harness: tick **Placement Advisor** in the Settings panel (bundle URL
 defaults to `/terrain-bundle`), then draw a symbol over the synthetic area around
 69.35°E 30.35°N.

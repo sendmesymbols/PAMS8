@@ -63,6 +63,16 @@ export function mercatorToTilePixel(x: number, y: number, z: number, tileSize = 
   };
 }
 
+/**
+ * URL of one tile. Tiles are fetched with `cache: 'force-cache'`, which reuses any cached copy of a URL however old,
+ * so two different bundles served from the same address (a synthetic dev bundle replaced by the real one, a rebuilt
+ * bundle) would show the first one's tiles from the browser cache. The bundle's own `built` stamp in the query makes
+ * each bundle's tiles distinct; static hosts ignore the query.
+ */
+export function tileUrl(baseUrl: string, layer: string, z: number, x: number, y: number, version = ''): string {
+  return `${baseUrl}/${layer}/${z}/${x}/${y}.png${version ? `?v=${encodeURIComponent(version)}` : ''}`;
+}
+
 export function tileKey(layer: string, z: number, x: number, y: number): string {
   return `${layer}/${z}/${x}/${y}`;
 }
@@ -78,10 +88,12 @@ export class HttpPngTileSource implements TileSource {
   constructor(
     private readonly baseUrl: string,
     private readonly tileSize: number,
+    /** Identifies the bundle (its `built` stamp); part of every tile URL, see {@link tileUrl}. */
+    private readonly version = '',
   ) {}
 
   async fetchTile(layer: string, z: number, x: number, y: number): Promise<Uint8Array | null> {
-    const url = `${this.baseUrl}/${layer}/${z}/${x}/${y}.png`;
+    const url = tileUrl(this.baseUrl, layer, z, x, y, this.version);
     const resp = await fetch(url, { cache: 'force-cache' });
     if (resp.status === 404) return null;
     if (!resp.ok) throw new Error(`tile ${url}: HTTP ${resp.status}`);

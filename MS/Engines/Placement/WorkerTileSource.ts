@@ -11,7 +11,7 @@
 
 import TerrainTileWorker from './TerrainTileWorker.ts?worker&inline';
 import type { OverlayPaintParams } from './PlacementOverlayPaint';
-import { HttpPngTileSource, type TileSource } from './TerrainTileCache';
+import { HttpPngTileSource, tileUrl, type TileSource } from './TerrainTileCache';
 
 interface Pending {
   resolve: (v: any) => void;
@@ -32,9 +32,10 @@ export class WorkerTileSource implements TileSource {
   constructor(
     baseUrl: string,
     private readonly _tileSize: number,
+    private readonly _version = '',
   ) {
     this._abs = new URL(baseUrl, document.baseURI).href.replace(/\/+$/, '');
-    this._fallback = new HttpPngTileSource(baseUrl, _tileSize);
+    this._fallback = new HttpPngTileSource(baseUrl, _tileSize, _version);
   }
 
   /** True while the worker is running; false once it failed or was never available. */
@@ -45,7 +46,7 @@ export class WorkerTileSource implements TileSource {
   async fetchTile(layer: string, z: number, x: number, y: number): Promise<Uint8Array | null> {
     const fb = () => this._fallback.fetchTile(layer, z, x, y);
     const data = await this._call<ArrayBuffer | null>(
-      { op: 'tile', url: `${this._abs}/${layer}/${z}/${x}/${y}.png`, tileSize: this._tileSize },
+      { op: 'tile', url: tileUrl(this._abs, layer, z, x, y, this._version), tileSize: this._tileSize },
       fb,
     );
     // The fallback resolves a Uint8Array; the worker resolves its transferred buffer.
@@ -66,7 +67,7 @@ export class WorkerTileSource implements TileSource {
     params: OverlayPaintParams,
     fallback: () => Promise<Uint8ClampedArray | null>,
   ): Promise<Uint8ClampedArray | null> {
-    const url = (layer: string) => `${this._abs}/${layer}/${z}/${ax}/${ay}.png`;
+    const url = (layer: string) => tileUrl(this._abs, layer, z, ax, ay, this._version);
     const out = await this._call<ArrayBuffer | Uint8ClampedArray | null>(
       { op: 'overlay', clsUrl: url(clsLayer), distUrl: distLayer ? url(distLayer) : null, params },
       fallback,

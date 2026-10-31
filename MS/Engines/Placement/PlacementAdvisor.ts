@@ -300,7 +300,7 @@ export default class PlacementAdvisor {
       const [x0, y0] = lngLatToMercator(w, s);
       const [x1, y1] = lngLatToMercator(e, n);
       this._boundsMerc = [Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)];
-      this._source = this._makeSource(base, manifest.tileSize);
+      this._source = this._makeSource(base, manifest.tileSize, manifest);
       this._cache = new TerrainTileCache(this._source, this._opts.cacheTiles, () => this._onTilesChanged());
       EngineLogger.success(
         ENGINE,
@@ -2094,17 +2094,19 @@ export default class PlacementAdvisor {
   // ── Tile source ──────────────────────────────────────────────────────────
 
   /** Worker-backed source when enabled and supported, else the main-thread one. */
-  private _makeSource(base: string, tileSize: number): OverlayRenderingSource {
+  private _makeSource(base: string, tileSize: number, manifest: TerrainManifest): OverlayRenderingSource {
+    // The bundle's own stamp goes into every tile URL, so tiles cached for a different bundle at this address are not reused.
+    const version = manifest.built ?? manifest.pipelineVersion ?? manifest.rulesVersion ?? '';
     return this._opts.useWorker && typeof Worker !== 'undefined'
-      ? new WorkerTileSource(base, tileSize)
-      : new HttpPngTileSource(base, tileSize);
+      ? new WorkerTileSource(base, tileSize, version)
+      : new HttpPngTileSource(base, tileSize, version);
   }
 
   /** Switch worker ↔ main thread at runtime without reloading the bundle. */
   private _swapSource(): void {
     if (!this._manifest || !this._opts.bundleUrl || !this._cache) return;
     const old = this._source;
-    this._source = this._makeSource(this._opts.bundleUrl, this._manifest.tileSize);
+    this._source = this._makeSource(this._opts.bundleUrl, this._manifest.tileSize, this._manifest);
     this._cache.setSource(this._source); // clears the cache; tiles reload on demand
     old?.dispose?.();
     if (this._overlay) {
