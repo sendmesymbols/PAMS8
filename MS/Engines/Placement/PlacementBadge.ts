@@ -12,7 +12,7 @@
  * layout reads and the card can flip to stay on screen.
  */
 
-import { fmtDistance } from './PlacementEvaluator';
+import { fmtDistance, titleCase } from './PlacementEvaluator';
 import type { PlacementVerdict } from './PlacementTypes';
 
 const STYLE_ID = 'ms-placement-badge-style';
@@ -116,20 +116,25 @@ function row(iconName: string, label: string, color: string | undefined, ...cont
 /** A class label as a noun for a sentence: "Steep slope (>30°)" becomes "steep slope". */
 function feature(label: string | null | undefined): string {
   const s = plain(label ?? '').replace(/\s*\([^)]*\)/g, '').trim();
-  return s ? s.charAt(0).toLowerCase() + s.slice(1) : 'unusable ground';
+  return s ? s.charAt(0).toLowerCase() + s.slice(1) : 'NO-GO ground';
+}
+
+/** `feature()` in Title Case for a headline: "Steep slope (>30°)" becomes "Steep Slope". */
+function featureTitle(label: string | null | undefined): string {
+  return titleCase(feature(label));
 }
 
 function titleOf(v: PlacementVerdict): string {
   switch (v.verdict) {
-    case 'ok': return 'Good spot';
+    case 'ok': return 'Suitable Position';
     case 'near': {
       // Name the ground itself: touching the shape's own class, otherwise the nearest ground the unit can't use.
-      const thing = feature(v.fraction > 0 ? v.className : v.nearest?.className);
-      return v.fraction > 0 ? `Touching ${thing}` : `Close to ${thing}`;
+      const thing = featureTitle(v.fraction > 0 ? v.className : v.nearest?.className);
+      return v.fraction > 0 ? `Encroaching on ${thing}` : `Adjacent to ${thing}`;
     }
-    case 'caution': return 'Difficult ground';
-    case 'partial': return 'Partly blocked';
-    case 'in': return 'Cannot deploy here';
+    case 'caution': return 'SLOW-GO Terrain';
+    case 'partial': return 'Partially Obstructed';
+    case 'in': return 'Unsuitable Position';
     default: return v.message;
   }
 }
@@ -152,22 +157,22 @@ function whyRow(v: PlacementVerdict): HTMLElement | null {
   let rule: string;
   switch (v.verdict) {
     case 'ok':
-      name = v.className ? plain(v.className) : 'Deployable ground';
-      rule = `${unit} can use it.`;
+      name = v.className ? plain(v.className) : 'Suitable ground';
+      rule = `GO for ${unit}.`;
       break;
     case 'caution':
-      name = v.className ? plain(v.className) : 'Difficult ground';
-      rule = `Hard going for ${unit}.`;
+      name = v.className ? plain(v.className) : 'SLOW-GO terrain';
+      rule = `SLOW-GO for ${unit}.`;
       break;
     case 'near':
       // Touching: the shape's own class. Otherwise the nearest ground the unit can't use.
-      name = plain(v.fraction > 0 ? (v.className ?? '') : (v.nearest?.className ?? v.className ?? '')) || 'Unusable ground nearby';
-      rule = `${unit} can't use it.`;
+      name = plain(v.fraction > 0 ? (v.className ?? '') : (v.nearest?.className ?? v.className ?? '')) || 'NO-GO ground nearby';
+      rule = `NO-GO for ${unit}.`;
       break;
     case 'partial':
     case 'in':
-      name = v.className ? plain(v.className) : 'Unusable ground';
-      rule = `${unit} can't use it.`;
+      name = v.className ? plain(v.className) : 'NO-GO ground';
+      rule = `NO-GO for ${unit}.`;
       break;
     default:
       return null;
@@ -204,7 +209,7 @@ function nearestRow(v: PlacementVerdict): HTMLElement | null {
     body.append(icon('arrow', 13, verdictColor(v), n.bearingDeg));
     return row('target', `Nearest ${feature(n.className)}`, undefined, body);
   }
-  const label = v.verdict === 'in' ? 'Nearest open ground' : 'Nearest unusable ground';
+  const label = v.verdict === 'in' ? 'Nearest suitable ground' : 'Nearest NO-GO ground';
   if (v.noneWithinM) return row('target', label, undefined, `Nothing within ${fmtDistance(v.noneWithinM)}`);
   if ((v.verdict === 'ok' || v.verdict === 'caution') && v.distanceM !== null) {
     return row('target', label, undefined, `${fmtDistance(v.distanceM)} away`);

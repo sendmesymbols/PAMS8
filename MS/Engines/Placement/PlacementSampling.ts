@@ -190,3 +190,45 @@ export function samplePoints(shape: MercShape, stepM: number, maxSamples: number
   }
   return out;
 }
+
+/**
+ * The edges of a line or area as ordered point runs, one per part (a ring is closed by repeating its first
+ * point). Spaced `stepM` apart, widened so the total stays under `maxPoints`. Used to find which stretches of
+ * a shape lie in no-go ground; empty for a point.
+ */
+export function boundaryPaths(shape: MercShape, stepM: number, maxPoints: number): XY[][] {
+  if (shape.kind === 'point') return [];
+  const closed = shape.kind === 'area';
+  let totalLen = 0;
+  for (const p of shape.parts) totalLen += pathLength(p, closed);
+  const step = Math.max(stepM, 1e-6, totalLen / Math.max(1, maxPoints));
+  return shape.parts
+    .filter((p) => p.length > 0)
+    .map((p) => {
+      const out: XY[] = [];
+      pushPath(out, p, step, closed);
+      if (closed && out.length > 2) out.push(out[0]);
+      return out;
+    });
+}
+
+/** True when (x, y) is within `tol` of an edge of any ring / path. */
+export function nearEdges(x: number, y: number, parts: XY[][], closed: boolean, tol: number): boolean {
+  const t2 = tol * tol;
+  for (const path of parts) {
+    const n = path.length;
+    const last = closed ? n : n - 1;
+    for (let i = 0; i < last; i++) {
+      const a = path[i];
+      const b = path[(i + 1) % n];
+      const dx = b[0] - a[0];
+      const dy = b[1] - a[1];
+      const len2 = dx * dx + dy * dy;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / len2)) : 0;
+      const ex = a[0] + dx * t - x;
+      const ey = a[1] + dy * t - y;
+      if (ex * ex + ey * ey <= t2) return true;
+    }
+  }
+  return false;
+}

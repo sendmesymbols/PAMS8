@@ -32,7 +32,7 @@
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import { SYMBOL_LAYER_IDS } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
-import { compileProfile, evaluateSamples, fmtDistance, type CompiledProfile } from './PlacementEvaluator';
+import { compileProfile, evaluateSamples, fmtDistance, titleCase, type CompiledProfile } from './PlacementEvaluator';
 import { PlacementAuditPanel, type AuditPanelHandlers } from './PlacementAuditPanel';
 import { PlacementBadge } from './PlacementBadge';
 import { PlacementBoundary } from './PlacementBoundary';
@@ -42,7 +42,7 @@ import { PlacementLegend } from './PlacementLegend';
 import { createOverlayLayer, OVERLAY_COLORS, OVERLAY_LEGEND, type OverlayRenderingSource } from './PlacementOverlay';
 import { WorkerTileSource } from './WorkerTileSource';
 import { resolveProfile } from './PlacementProfiles';
-import { fromMercatorXY, samplePoints, toMercatorShape, type MercShape } from './PlacementSampling';
+import { boundaryPaths, fromMercatorXY, nearEdges, samplePoints, toMercatorShape, type MercShape } from './PlacementSampling';
 import {
   DEFAULT_PLACEMENT_OPTIONS,
   DIST_FAR,
@@ -95,6 +95,8 @@ const LOADING_GRACE_MS = 200;
 const STALE_MAX_PX = 80;
 /** Audit: symbols judged per batch (their tiles must fit the cache), passes to wait out missing tiles, wait per pass, and the tile span a shape is judged over. */
 const FIRST_USE_KEY = 'ms.placement.hintSeen';
+/** Points walked along a shape's edge to find which stretches lie in no-go ground. */
+const STRETCH_MAX_POINTS = 1200;
 const AUDIT_BATCH = 16;
 const AUDIT_PASSES = 4;
 const AUDIT_TILE_WAIT_MS = 8000;
@@ -1170,7 +1172,7 @@ export default class PlacementAdvisor {
     const profile = opts?.profile ?? this._profileFor(sidc);
     if (!this.isActive) return this._blank('off', profile, 'Placement advisor off');
     const compiled = this._profile(profile);
-    if (compiled.exempt) return this._blank('exempt', profile, 'Not terrain-bound');
+    if (compiled.exempt) return this._blank('exempt', profile, 'Not Terrain-Bound');
 
     const shape = toMercatorShape(geometry);
     if (!shape) return this._blank('unknown', profile, 'Cannot check this geometry');
@@ -1189,16 +1191,22 @@ export default class PlacementAdvisor {
       ? plan.candidates.map((cand) => ({ shape: cand.shape, cand }))
       : [{ shape, cand: null }];
 
-    let best: { v: PlacementVerdict; samples: TerrainSample[]; pts: MercXY[]; cand: FootprintCandidate | null } | null = null;
+    let best: {
+      v: PlacementVerdict;
+      samples: TerrainSample[];
+      pts: MercXY[];
+      cand: FootprintCandidate | null;
+      shape: MercShape;
+    } | null = null;
     for (const c of candidates) {
       // One sample per tile pixel along edges, so a 1–2 px wide feature (a stream) is not stepped over.
       const cpts = samplePoints(c.shape, resolutionAt(ctx.z, ctx.ts), this._opts.maxSamples);
       const csamples: TerrainSample[] = new Array(cpts.length);
       for (let i = 0; i < cpts.length; i++) csamples[i] = this._read(ctx, cpts[i][0], cpts[i][1]);
       const cv = evaluateSamples(csamples, compiled, evalOpts, this._rules);
-      if (!best || severity(cv) > severity(best.v)) best = { v: cv, samples: csamples, pts: cpts, cand: c.cand };
+      if (!best || severity(cv) > severity(best.v)) best = { v: cv, samples: csamples, pts: cpts, cand: c.cand, shape: c.shape };
     }
-    const { v, samples, pts, cand } = best!;
+    const { v, samples, pts, cand, shape: judged } = best!;
     const stats = this._cache?.stats();
     if (v.verdict === 'unknown') {
       // Judge by the tiles this shape needed, not the cache-wide counts: a prefetch burst keeps
@@ -1212,7 +1220,7 @@ export default class PlacementAdvisor {
     } else {
       if (!opts?.light) {
         this._enrich(v, samples, pts, ctx, compiled);
-        this._addIndicators(v, samples, pts, compiled, opts?.ref);
+        this._addIndicators(v, samples, pts, compiled, opts?.ref, judged, ctx);
       }
       // A shape spanning tiles that are still arriving is judged on what is known so far.
       if (v.unknown > 0 && ctx.waiting && (stats?.pending ?? 0) > 0) {
@@ -1301,9 +1309,9 @@ export default class PlacementAdvisor {
       const { nearest, rangeM } = this._scanNearest(ctx, pts[0][0], pts[0][1], false, cp);
       if (nearest) {
         v.nearest = nearest;
-        v.detail = `Nearest deployable ground: ${nearest.className}, ${fmtDistance(nearest.distanceM)} to the ${nearest.compass}`;
+        v.detail = `Nearest suitable ground: ${nearest.className}, ${fmtDistance(nearest.distanceM)} to the ${nearest.compass}`;
       } else if (rangeM > 0) {
-        v.detail = `No deployable ground within ${fmtDistance(rangeM)}`;
+        v.detail = `No suitable ground within ${fmtDistance(rangeM)}`;
         v.noneWithinM = rangeM;
       }
       return;
@@ -1334,13 +1342,13 @@ export default class PlacementAdvisor {
     if (v.verdict === 'near') {
       v.message =
         dist < 1
-          ? `At the edge of ${nearest.className}`
-          : `${nearest.className} ${fmtDistance(dist)} to the ${nearest.compass}`;
-      v.detail = `No-go for ${label}`;
+          ? `At Edge of ${titleCase(nearest.className)}`
+          : `${titleCase(nearest.className)} ${fmtDistance(dist)} to the ${nearest.compass}`;
+      v.detail = `NO-GO for ${label}`;
     } else if (v.verdict === 'caution') {
-      v.detail = `Difficult ground for ${label}. Nearest no-go: ${where}`;
+      v.detail = `SLOW-GO terrain for ${label}. Nearest NO-GO: ${where}`;
     } else {
-      v.detail = `Nearest no-go: ${where}`;
+      v.detail = `Nearest NO-GO: ${where}`;
     }
   }
 
@@ -1439,7 +1447,9 @@ export default class PlacementAdvisor {
     samples: TerrainSample[],
     pts: MercXY[],
     cp: CompiledProfile,
-    ref?: () => MercXY | null,
+    ref: (() => MercXY | null) | undefined,
+    judged: MercShape,
+    ctx: ReadContext,
   ): void {
     const n = v.nearest;
     const single = pts.length === 1;
@@ -1454,7 +1464,7 @@ export default class PlacementAdvisor {
         label:
           n.kind === 'no-go'
             ? v.message
-            : `${n.className} ${fmtDistance(n.distanceM)} to the ${n.compass}`,
+            : `${titleCase(n.className)} ${fmtDistance(n.distanceM)} to the ${n.compass}`,
       });
       return;
     }
@@ -1485,17 +1495,57 @@ export default class PlacementAdvisor {
         to = b;
       }
     }
-    const stride = Math.max(1, Math.ceil(bad.length / 16));
+    // Colour the edge where it runs through no-go ground; the X marks are left for ground inside an area
+    // (no edge to colour there) and for single samples too short to make a stretch.
+    const { stretches, isolated } = this._badStretches(judged, ctx, cp);
+    const res = resolutionAt(ctx.z, ctx.ts);
+    const closed = judged.kind === 'area';
+    const loose =
+      stretches.length === 0 && isolated.length === 0
+        ? bad
+        : [...(closed ? bad.filter((p) => !nearEdges(p[0], p[1], judged.parts, true, res * 0.75)) : []), ...isolated];
+    const stride = Math.max(1, Math.ceil(loose.length / 16));
     const ind: PlacementIndicator = {
       kind: 'contested',
       from,
       to,
-      marks: bad.filter((_, i) => i % stride === 0),
+      marks: loose.filter((_, i) => i % stride === 0),
+      stretches,
       classCode: v.classCode,
       className: v.className,
-      label: `${v.className ?? 'No-go'} (${Math.max(1, Math.round(v.fraction * 100))}% of the shape)`,
+      label: `${v.className ?? 'NO-GO'} (${Math.max(1, Math.round(v.fraction * 100))}% of the shape)`,
     };
     v.indicators.push(ind);
+  }
+
+  /**
+   * Walk the edge of a line / area (or footprint outline) one tile pixel at a time and return the runs that lie in
+   * no-go ground, each run ending half a step into the good ground beside it. A run of one sample is too short to
+   * draw as a line and comes back in `isolated` to be marked instead.
+   */
+  private _badStretches(shape: MercShape, ctx: ReadContext, cp: CompiledProfile): { stretches: MercXY[][]; isolated: MercXY[] } {
+    const stretches: MercXY[][] = [];
+    const isolated: MercXY[] = [];
+    const mid = (a: MercXY, b: MercXY): MercXY => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const flush = (run: MercXY[]) => (run.length >= 2 ? stretches.push(run) : isolated.push(run[0]));
+    for (const path of boundaryPaths(shape, resolutionAt(ctx.z, ctx.ts), STRETCH_MAX_POINTS)) {
+      let run: MercXY[] | null = null;
+      let prev: MercXY | null = null;
+      for (const p of path) {
+        const c = this._read(ctx, p[0], p[1]).classCode;
+        if (c !== null && c !== NODATA_CLASS && cp.nogo[c]) {
+          if (!run) run = prev ? [mid(prev, p)] : [];
+          run.push(p);
+        } else if (run) {
+          run.push(mid(run[run.length - 1], p));
+          flush(run);
+          run = null;
+        }
+        prev = p;
+      }
+      if (run) flush(run);
+    }
+    return { stretches, isolated };
   }
 
   /** Cursor position in Web Mercator metres, for shapes where "the pointer" is not a vertex. */

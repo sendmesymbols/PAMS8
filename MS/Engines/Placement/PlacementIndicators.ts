@@ -45,6 +45,8 @@ export class PlacementIndicators {
   private _line: Graphic | null = null;
   private _ends: Graphic | null = null;
   private _marks: Graphic | null = null;
+  private _stretchCasing: Graphic | null = null;
+  private _stretch: Graphic | null = null;
   private _label: Graphic | null = null;
   private _fpOwn: Graphic | null = null;
   private _fpOthers: Graphic | null = null;
@@ -70,6 +72,7 @@ export class PlacementIndicators {
     const paths: [number, number][][] = [];
     const ends: [number, number][] = [];
     const marks: [number, number][] = [];
+    const stretches: [number, number][][] = [];
     for (const ind of indicators) {
       const a = conv(ind.from);
       const b = conv(ind.to);
@@ -79,6 +82,10 @@ export class PlacementIndicators {
       for (const m of ind.marks) {
         const c = conv(m);
         if (c) marks.push(c);
+      }
+      for (const run of ind.stretches ?? []) {
+        const pts = run.map(conv).filter((c): c is [number, number] => c !== null);
+        if (pts.length >= 2) stretches.push(pts);
       }
     }
     if (paths.length === 0) {
@@ -95,6 +102,10 @@ export class PlacementIndicators {
     this._ends!.geometry = new Multipoint({ points: ends, spatialReference: sr });
     this._marks!.geometry = marks.length ? new Multipoint({ points: marks, spatialReference: sr }) : null;
     this._marks!.visible = marks.length > 0;
+    const stretchGeom = stretches.length ? new Polyline({ paths: stretches, spatialReference: sr }) : null;
+    this._stretchCasing!.geometry = stretchGeom;
+    this._stretch!.geometry = stretchGeom;
+    this._stretchCasing!.visible = this._stretch!.visible = stretchGeom !== null;
 
     const text = labels ? indicators[0].label : '';
     if (text) {
@@ -125,7 +136,9 @@ export class PlacementIndicators {
   /** Hide the indicator lines (the footprint outline has its own `hideFootprint`). */
   hide(): void {
     if (!this._visible) return;
-    for (const g of [this._casing, this._line, this._ends, this._marks, this._label]) if (g) g.visible = false;
+    for (const g of [this._casing, this._line, this._ends, this._marks, this._stretchCasing, this._stretch, this._label]) {
+      if (g) g.visible = false;
+    }
     this._visible = false;
   }
 
@@ -184,6 +197,7 @@ export class PlacementIndicators {
     this._layer?.destroy();
     this._layer = null;
     this._casing = this._line = this._ends = this._marks = this._label = null;
+    this._stretchCasing = this._stretch = null;
     this._fpOwn = this._fpOthers = null;
     this._fpVisible = false;
     this._labelSym = null;
@@ -230,6 +244,15 @@ export class PlacementIndicators {
       this._ends = new Graphic({ symbol: s.end, visible: false });
       this._marks = new Graphic({ symbol: s.mark, visible: false });
       this._label = new Graphic({ symbol: s.label, visible: false });
+      // The stretches of a line / area edge that run through no-go ground: solid red on a white casing.
+      this._stretchCasing = new Graphic({
+        symbol: new SimpleLineSymbol({ style: 'solid', color: [255, 255, 255, 0.9], width: 9, cap: 'round', join: 'round' }),
+        visible: false,
+      });
+      this._stretch = new Graphic({
+        symbol: new SimpleLineSymbol({ style: 'solid', color: [...RGB.contested, 1], width: 5, cap: 'round', join: 'round' }),
+        visible: false,
+      });
       // Footprint outlines sit under the indicator lines so a line to no-go ground stays readable.
       this._fpOthers = new Graphic({
         symbol: new SimpleLineSymbol({ style: 'dash', color: [230, 126, 34, 1], width: 2 }),
@@ -242,6 +265,8 @@ export class PlacementIndicators {
       this._layer.addMany([
         this._fpOthers,
         this._fpOwn,
+        this._stretchCasing,
+        this._stretch,
         this._casing,
         this._line,
         this._marks,

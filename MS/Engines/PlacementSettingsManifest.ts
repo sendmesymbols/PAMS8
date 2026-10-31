@@ -57,7 +57,7 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Show terrain on map',
     group: 'Feedback',
     type: 'boolean',
-    help: 'Paint the terrain data on the map: green = deployable, yellow = near no-go, amber = caution, red = no-go. Needs the advisor on and a bundle loaded.',
+    help: 'Paint the terrain data on the map: green = suitable, yellow = marginal, amber = SLOW-GO, red = NO-GO. Needs the advisor on and a bundle loaded.',
     keywords: ['overlay', 'layer', 'map', 'available', 'areas', 'show'],
   },
   {

@@ -25,10 +25,10 @@ import type { TileSource } from './TerrainTileCache';
 export { OVERLAY_COLORS };
 
 export const OVERLAY_LEGEND: Array<{ key: keyof typeof OVERLAY_COLORS; label: string }> = [
-  { key: 'ok', label: 'Deployable' },
-  { key: 'near', label: 'Near no-go' },
-  { key: 'caution', label: 'Caution' },
-  { key: 'nogo', label: 'No-go' },
+  { key: 'ok', label: 'Suitable' },
+  { key: 'near', label: 'Marginal' },
+  { key: 'caution', label: 'SLOW-GO' },
+  { key: 'nogo', label: 'NO-GO' },
 ];
 
 /** A TileSource that can also paint overlay tiles itself (WorkerTileSource). */

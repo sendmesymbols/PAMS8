@@ -61,6 +61,16 @@ export function classLabel(rules: TerrainRules | null, code: number | null): str
   return def?.label ?? def?.name ?? `class ${code}`;
 }
 
+const TITLE_MINOR = new Set(['a', 'an', 'and', 'at', 'for', 'in', 'of', 'on', 'or', 'the', 'to']);
+
+/** Title Case for a headline: "Built-up area" becomes "Built-Up Area". Words already in capitals ("NO-GO") are left alone. */
+export function titleCase(text: string): string {
+  return text
+    .split(' ')
+    .map((w, i) => (i > 0 && TITLE_MINOR.has(w) ? w : w.replace(/(^|[-(])([a-z])/g, (_m, p: string, c: string) => p + c.toUpperCase())))
+    .join(' ');
+}
+
 export function fmtDistance(m: number): string {
   return m >= 1000 ? `${(m / 1000).toFixed(m >= 10_000 ? 0 : 1)} km` : `${Math.round(m)} m`;
 }
@@ -95,7 +105,7 @@ export function evaluateSamples(
   };
 
   if (profile.exempt) {
-    return { ...base, verdict: 'exempt', message: 'Not terrain-bound' };
+    return { ...base, verdict: 'exempt', message: 'Not Terrain-Bound' };
   }
 
   let known = 0;
@@ -128,7 +138,7 @@ export function evaluateSamples(
   }
 
   if (known === 0) {
-    return { ...base, verdict: 'unknown', message: 'No terrain data here yet' };
+    return { ...base, verdict: 'unknown', message: 'No Terrain Data Yet' };
   }
 
   const fraction = inCount / known;
@@ -150,6 +160,7 @@ export function evaluateSamples(
   let detail: string | null = null;
   let noneWithinM: number | undefined;
   const pct = (f: number) => Math.max(1, Math.round(f * 100));
+  const unitName = titleCase(label);
 
   if (inCount > 0 && (samples.length === 1 || fraction >= 0.5)) {
     verdict = 'in';
@@ -157,46 +168,46 @@ export function evaluateSamples(
     base.className = classLabel(rules, base.classCode);
     message =
       samples.length === 1
-        ? `${base.className}: ${label} can't use it`
-        : `Mostly in ${base.className} (${pct(fraction)}%): ${label} can't use it`;
+        ? `${titleCase(base.className ?? '')}: NO-GO for ${unitName}`
+        : `Mostly in ${titleCase(base.className ?? '')} (${pct(fraction)}%): NO-GO for ${unitName}`;
   } else if (inCount > 0 && fraction >= opts.partialFraction) {
     verdict = 'partial';
     base.classCode = dominant(inHistogram);
     base.className = classLabel(rules, base.classCode);
-    message = `Partly in ${base.className} (${pct(fraction)}%): ${label} can't use it`;
+    message = `Partially in ${titleCase(base.className ?? '')} (${pct(fraction)}%): NO-GO for ${unitName}`;
   } else if (inCount > 0) {
     // A sliver of the shape (below the partial threshold) touches no-go terrain.
     verdict = 'near';
     base.distanceM = 0;
     base.classCode = dominant(inHistogram);
     base.className = classLabel(rules, base.classCode);
-    message = `Touches ${base.className} (${pct(fraction)}%): ${label} can't use it`;
+    message = `Encroaching on ${titleCase(base.className ?? '')} (${pct(fraction)}%): NO-GO for ${unitName}`;
   } else if (cautionCount > 0) {
     verdict = 'caution';
     base.classCode = dominant(cautionHistogram);
     base.className = classLabel(rules, base.classCode);
     message =
       samples.length === 1
-        ? `Caution: ${base.className}`
-        : `Caution: ${base.className} on ${pct(cautionCount / known)}% of the shape`;
-    detail = `Difficult ground for ${label}`;
+        ? `SLOW-GO: ${titleCase(base.className ?? '')}`
+        : `SLOW-GO: ${titleCase(base.className ?? '')} (${pct(cautionCount / known)}% of Shape)`;
+    detail = `SLOW-GO terrain for ${label}`;
   } else if (minDist !== null && minDist < opts.nearThresholdM) {
     verdict = 'near';
     base.classCode = samples.length === 1 ? singleClass : null;
     base.className = classLabel(rules, base.classCode);
-    message = minDist < 1 ? 'At the edge of no-go terrain' : `${fmtDistance(minDist)} from no-go terrain`;
-    detail = `No-go for ${label}`;
+    message = minDist < 1 ? 'At Edge of NO-GO Terrain' : `${fmtDistance(minDist)} from NO-GO Terrain`;
+    detail = `NO-GO for ${label}`;
   } else {
     verdict = 'ok';
     base.classCode = samples.length === 1 ? singleClass : null;
     base.className = classLabel(rules, base.classCode);
-    message = base.className ? `Deployable: ${base.className}` : 'Deployable';
+    message = base.className ? `Suitable: ${titleCase(base.className)}` : 'Suitable Position';
     if (minDist !== null) {
       if (opts.farM !== undefined && minDist >= opts.farM) {
         noneWithinM = opts.farM;
-        detail = `No no-go terrain within ${fmtDistance(opts.farM)}`;
+        detail = `Clear of NO-GO terrain within ${fmtDistance(opts.farM)}`;
       } else {
-        detail = `Nearest no-go terrain ${fmtDistance(minDist)} away`;
+        detail = `Nearest NO-GO terrain ${fmtDistance(minDist)} away`;
       }
     }
   }

@@ -209,6 +209,11 @@ export interface PlacementIndicator {
   className: string | null;
   /** Short text for the end of the line, e.g. "Permanent water 120 m to the W". */
   label: string;
+  /**
+   * `contested` only: the stretches of the line / area edge (or footprint outline) that lie in no-go ground,
+   * as Web Mercator point runs, for the map to colour where the shape needs fixing.
+   */
+  stretches?: MercXY[][];
 }
 
 /** The closest terrain of the opposite kind: no-go ground near a deployable point, or deployable ground near a no-go point. */

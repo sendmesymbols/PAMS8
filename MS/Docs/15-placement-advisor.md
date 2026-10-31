@@ -72,12 +72,15 @@ Every verdict explains itself — why, how far, what is near, and which way:
 
 | situation | headline | detail |
 |-----------|----------|--------|
-| in no-go | `Permanent water — no-go for Dismounted` | `Nearest deployable ground: Bare / desert, 314 m to the E` (or `No deployable ground within 1.1 km`) |
-| close to no-go | `Permanent water 120 m to the W` | `No-go for Dismounted` |
-| line/area partly in | `Partly in Permanent water (43%) — no-go for Dismounted` | |
-| touches no-go | `Touches Permanent water (2%) — no-go for Wheeled vehicles` | |
-| difficult ground | `Caution: Built-up area` | `Difficult ground for Wheeled vehicles. Nearest no-go: …` |
-| deployable | `Deployable: Bare / desert` | `Nearest no-go: Permanent water, 580 m to the W` (or `No no-go terrain within 2.5 km`) |
+| in no-go | `Permanent Water: NO-GO for Dismounted` | `Nearest suitable ground: Bare / desert, 314 m to the E` (or `No suitable ground within 1.1 km`) |
+| close to no-go | `Permanent Water 120 m to the W` | `NO-GO for Dismounted` |
+| line/area partly in | `Partially in Permanent Water (43%): NO-GO for Dismounted` | |
+| touches no-go | `Encroaching on Permanent Water (2%): NO-GO for Wheeled Vehicles` | |
+| difficult ground | `SLOW-GO: Built-Up Area` | `SLOW-GO terrain for Wheeled vehicles. Nearest NO-GO: …` |
+| suitable | `Suitable: Bare / Desert` | `Nearest NO-GO: Permanent water, 580 m to the W` (or `Clear of NO-GO terrain within 2.5 km`) |
+
+The badge title above the headline uses the same words: *Suitable Position*, *Adjacent to …* /
+*Encroaching on …*, *SLOW-GO Terrain*, *Partially Obstructed*, *Unsuitable Position*.
 
 The distance layer only stores *how far* the nearest no-go is, not *what* it is,
 so the advisor searches the class tile around the deciding sample (a window of
@@ -202,10 +205,10 @@ and works in 2D and 3D (draped), sitting under the symbol layers.
 
 | colour | meaning (for the chosen profile) |
 |--------|----------------------------------|
-| green  | deployable |
-| yellow | deployable but within `nearThresholdM` of no-go |
-| amber  | caution |
-| red    | no-go |
+| green  | Suitable |
+| yellow | Marginal: suitable but within `nearThresholdM` of no-go |
+| amber  | SLOW-GO |
+| red    | NO-GO |
 | clear  | no data / outside the bundle |
 
 The same key is shown on the map while the overlay is on: a small card docked bottom-left through the
