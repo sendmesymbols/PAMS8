@@ -2116,7 +2116,6 @@ export default class PlacementAdvisor {
     return armed ?? this._lastArmedProfile ?? 'dismounted';
   }
 
-  /** Add / update / remove the overlay layer to match the options. Safe to call at any time. */
   /** Draw the bundle's boundary outline when the option is on and the bundle ships one. */
   private _syncBoundary(): void {
     const file = this._manifest?.boundary?.file;
@@ -2129,6 +2128,7 @@ export default class PlacementAdvisor {
     });
   }
 
+  /** Add / update / remove the overlay layer (and its key and the boundary outline) to match the options. Safe to call at any time. */
   private _syncOverlay(refresh = false): void {
     this._syncBoundary();
     const want = this._enabled && this._manifest !== null && this._rules !== null && this._opts.overlay.enabled;
