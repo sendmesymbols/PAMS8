@@ -84,6 +84,14 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     keywords: ['enforce', 'override', 'block', 'place anyway', 'refuse'],
   },
   {
+    path: ['placement', 'profileKey'],
+    label: 'P key changes the unit type',
+    group: 'Feedback',
+    type: 'boolean',
+    help: 'While drawing, press P to judge the ground for a different unit type (dismounted, wheeled, tracked, …) for that one symbol, when its SIDC does not say how it moves. It is stamped as chosen by hand.',
+    keywords: ['profile', 'mounted', 'dismounted', 'tracked', 'wheeled', 'treat as', 'mobility'],
+  },
+  {
     path: ['placement', 'snapKey'],
     label: 'S key moves to usable ground',
     group: 'Feedback',

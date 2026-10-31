@@ -168,6 +168,8 @@ export default class PlacementAdvisor {
   /** The last real verdict of this draw and where the cursor was, to show while the next tile loads. */
   private _lastGood: PlacementVerdict | null = null;
   private _lastGoodGeom: any = null;
+  /** Unit type chosen by hand for the draw in progress (P key); null = derived from the SIDC. Cleared when the draw ends. */
+  private _profileOverride: PlacementProfile | null = null;
   private _loadingSince = 0;
   private _graceTimer: ReturnType<typeof setTimeout> | null = null;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -382,6 +384,7 @@ export default class PlacementAdvisor {
     if (Array.isArray(patch.blockOn)) next.blockOn = [...patch.blockOn];
     if (typeof patch.showBadge === 'boolean') next.showBadge = patch.showBadge;
     if (typeof patch.snapKey === 'boolean') next.snapKey = patch.snapKey;
+    if (typeof patch.profileKey === 'boolean') next.profileKey = patch.profileKey;
     if (typeof patch.allowOverride === 'boolean') next.allowOverride = patch.allowOverride;
     if (typeof patch.logVerdicts === 'boolean') next.logVerdicts = patch.logVerdicts;
     if (Number.isFinite(patch.cacheTiles)) next.cacheTiles = Math.max(16, Math.floor(patch.cacheTiles as number));
@@ -467,7 +470,8 @@ export default class PlacementAdvisor {
       return;
     }
     this._activeSidc = sidc ?? null;
-    this._activeProfile = resolveProfile(this._activeSidc, this._rules);
+    this._profileOverride = null; // a hand-picked unit type lasts for one draw
+    this._activeProfile = this._profileFor(this._activeSidc);
     if (this._activeProfile !== 'exempt') this._lastArmedProfile = this._activeProfile;
     // Say why there is no card, rather than leaving it looking broken; any other hint has done its job.
     if (this._activeProfile === 'exempt') {
@@ -490,10 +494,10 @@ export default class PlacementAdvisor {
     if (!this._pointerHandler) this._attachPointer();
     if (sidc && sidc !== this._activeSidc) {
       this._activeSidc = sidc;
-      this._activeProfile = resolveProfile(sidc, this._rules);
+      this._activeProfile = this._profileFor(sidc);
     }
     this._lastDetail = { geometry, sidc };
-    this._warmAround(geometry, resolveProfile(sidc ?? this._activeSidc, this._rules));
+    this._warmAround(geometry, this._profileFor(sidc));
     this._apply(this._judgeLive(geometry, sidc));
   }
 
@@ -507,6 +511,8 @@ export default class PlacementAdvisor {
     this._lastSnappable = v.snappable;
     v.blocked = this._refuses(v);
     v.overridable = v.blocked && this._opts.allowOverride;
+    v.profileKey = this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
+    v.profileOverride = this._profileOverride !== null && v.profile === this._profileOverride;
     if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
       this._lastGood = v;
       this._lastGoodGeom = geometry;
@@ -548,6 +554,7 @@ export default class PlacementAdvisor {
     this._detachPointer();
     this._lastDetail = null;
     this._lastSnappable = false;
+    this._profileOverride = null;
     this._lastGood = null;
     this._lastGoodGeom = null;
     this._loadingSince = 0;
@@ -580,6 +587,7 @@ export default class PlacementAdvisor {
     const sidc: string | null = drawEssentials?.SIDC || drawEssentials?.AMPLIFIER?.SIDC || this._activeSidc;
     const verdict = this.evaluateGeometry(geometry, sidc);
     const stamp = this._stampOf(verdict);
+    if (stamp && this._profileOverride !== null && verdict.profile === this._profileOverride) stamp.profileOverride = true;
     const refused = this._refuses(verdict);
     // Shift held at the click places it anyway, and the stamp says so for whoever reviews the plan.
     const override = refused && this._opts.allowOverride && this._shift;
@@ -808,15 +816,19 @@ export default class PlacementAdvisor {
     if (!this.isActive) return audit;
     const token = this._configToken;
 
-    const items: Array<{ g: any; sidc: string | null; zoom: number }> = [];
+    const items: Array<{ g: any; sidc: string | null; zoom: number; profile: PlacementProfile }> = [];
     for (const g of graphics) {
       const sidc = graphicSidc(g);
       const shape = toMercatorShape(g?.geometry);
-      if (!shape || this._profile(resolveProfile(sidc, this._rules)).exempt) {
+      // A unit type chosen by hand when the symbol was placed keeps being the one it is judged for.
+      const stamped = g?.attributes?.placement as PlacementStamp | undefined;
+      const profile =
+        stamped?.profileOverride && this.profileChoices.includes(stamped.profile) ? stamped.profile : resolveProfile(sidc, this._rules);
+      if (!shape || this._profile(profile).exempt) {
         audit.exempt++;
         continue;
       }
-      items.push({ g, sidc, zoom: this._auditZoom(shape, sidc) });
+      items.push({ g, sidc, profile, zoom: this._auditZoom(shape, sidc) });
     }
 
     for (let i = 0; i < items.length; i += AUDIT_BATCH) {
@@ -828,7 +840,7 @@ export default class PlacementAdvisor {
       for (let pass = 0; pass < AUDIT_PASSES && pending.length > 0; pass++) {
         const missing: typeof batch = [];
         for (const it of pending) {
-          const v = this.evaluateGeometry(it.g.geometry, it.sidc, { light: true, zoom: it.zoom });
+          const v = this.evaluateGeometry(it.g.geometry, it.sidc, { light: true, zoom: it.zoom, profile: it.profile });
           verdicts.set(it, v);
           if (v.waiting) missing.push(it);
         }
@@ -849,7 +861,7 @@ export default class PlacementAdvisor {
         }
         const problem = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
         // The cheap pass has no wording; spend the full one only on what will be listed.
-        if (problem || this._opts.footprint.spacing) v = this.evaluateGeometry(it.g.geometry, it.sidc, { zoom: it.zoom });
+        if (problem || this._opts.footprint.spacing) v = this.evaluateGeometry(it.g.geometry, it.sidc, { zoom: it.zoom, profile: it.profile });
         audit.entries.push(this._auditEntry(it.g, it.sidc, v, problem, opts.refreshStamps !== false));
         audit.checked++;
         audit.counts[v.verdict] = (audit.counts[v.verdict] ?? 0) + 1;
@@ -873,6 +885,7 @@ export default class PlacementAdvisor {
           stamp.overridden = true;
           if (old.reason) stamp.reason = old.reason;
         }
+        if (old?.profileOverride && old.profile === v.profile) stamp.profileOverride = true;
         g.attributes.placement = stamp;
       }
     }
@@ -888,6 +901,7 @@ export default class PlacementAdvisor {
       message: v.message,
       detail: v.detail,
       rule: v.reason ?? null,
+      profileOverride: old?.profileOverride === true && old.profile === v.profile,
       fraction: v.fraction,
       spacing: v.spacing && v.spacing.status !== 'ok' ? v.spacing.message : null,
       previous: old?.verdict ?? null,
@@ -994,7 +1008,7 @@ export default class PlacementAdvisor {
   ):
     | { at: MercXY; distanceM: number; bearingDeg: number; verdict: PlacementVerdict['verdict']; searchedM: number }
     | { at: null; searchedM: number; loading: boolean } {
-    const profile = resolveProfile(sidc ?? this._activeSidc, this._rules);
+    const profile = this._profileFor(sidc);
     const origin = toMercatorShape(geometry)?.parts[0]?.[0];
     if (!origin || profile === 'exempt') return { at: null, searchedM: 0, loading: false };
     const res = resolutionAt(this._sampleZoom(), this._manifest!.tileSize);
@@ -1084,6 +1098,61 @@ export default class PlacementAdvisor {
     return resolveProfile(sidc, this._rules);
   }
 
+  /** The profile a draw is judged for: the hand-picked one, else the one derived from the SIDC (never for a symbol that is not terrain-bound). */
+  private _profileFor(sidc: string | null | undefined): PlacementProfile {
+    const base = resolveProfile(sidc ?? this._activeSidc, this._rules);
+    return this._profileOverride !== null && base !== 'exempt' ? this._profileOverride : base;
+  }
+
+  /** Unit types the P key cycles through: those the bundle has distance layers for. */
+  get profileChoices(): PlacementProfile[] {
+    return ((this._manifest?.profiles ?? []) as PlacementProfile[]).filter((p) => p !== 'exempt');
+  }
+
+  /** The unit type chosen by hand for the draw in progress, or null when it is derived from the SIDC. */
+  get profileOverride(): PlacementProfile | null {
+    return this._profileOverride;
+  }
+
+  /**
+   * Judge the draw in progress for a different unit type (null = back to what the SIDC says), for that one
+   * symbol: the SIDC does not always say how a unit moves (a mounted vs dismounted infantry platoon).
+   * The stamp records it as chosen by hand and the audit keeps judging the symbol that way. Returns false
+   * when nothing is being drawn, the symbol is not terrain-bound, or the bundle has no such profile.
+   */
+  setProfileOverride(profile: PlacementProfile | null): boolean {
+    if (!this.isActive || this._activeSidc === null) return false;
+    if (resolveProfile(this._activeSidc, this._rules) === 'exempt') return false;
+    if (profile !== null && !this.profileChoices.includes(profile)) return false;
+    if (profile === this._profileOverride) return true;
+    this._profileOverride = profile;
+    this._activeProfile = this._profileFor(this._activeSidc);
+    if (this._activeProfile !== 'exempt') this._lastArmedProfile = this._activeProfile;
+    // Everything cached about the old profile (last verdict, key, tiles of its distance layer) is stale.
+    this._lastGood = null;
+    this._lastGoodGeom = null;
+    this._lastKey = '';
+    this._lastBadgeKey = '';
+    this._lastWarmKey = '';
+    this._prefetch();
+    this._syncOverlay();
+    const label = this._rules?.profiles?.[this._activeProfile]?.label ?? this._activeProfile;
+    EngineLogger.nextStep(ENGINE, profile === null ? `Judging by the symbol again: ${label}` : `Judging this symbol as: ${label}`);
+    this._emit('placement-profile', { profile: this._activeProfile, overridden: profile !== null });
+    const d = this._lastDetail;
+    if (d) this._apply(this._judgeLive(d.geometry, d.sidc));
+    return true;
+  }
+
+  /** Next unit type for the draw in progress: auto (from the SIDC), then each other profile of the bundle in turn. */
+  cycleProfile(): PlacementProfile | null {
+    // "Auto" already is the profile the SIDC gives, so it is not offered a second time.
+    const fromSidc = resolveProfile(this._activeSidc, this._rules);
+    const order: Array<PlacementProfile | null> = [null, ...this.profileChoices.filter((p) => p !== fromSidc)];
+    const next = order[(order.indexOf(this._profileOverride) + 1) % order.length];
+    return this.setProfileOverride(next) ? next : this._profileOverride;
+  }
+
   /** Synchronous verdict for a geometry from the tiles currently in memory. */
   evaluateGeometry(
     geometry: any,
@@ -1094,9 +1163,11 @@ export default class PlacementAdvisor {
       light?: boolean;
       /** Judge at this tile zoom instead of the one matching the view (audits of symbols anywhere on the map). */
       zoom?: number;
+      /** Judge for this profile, ignoring the SIDC and any override of the draw in progress (audits). */
+      profile?: PlacementProfile;
     },
   ): PlacementVerdict {
-    const profile = resolveProfile(sidc ?? this._activeSidc, this._rules);
+    const profile = opts?.profile ?? this._profileFor(sidc);
     if (!this.isActive) return this._blank('off', profile, 'Placement advisor off');
     const compiled = this._profile(profile);
     if (compiled.exempt) return this._blank('exempt', profile, 'Not terrain-bound');
@@ -1817,9 +1888,16 @@ export default class PlacementAdvisor {
   private _onKey(e: KeyboardEvent): void {
     this._shift = e.shiftKey;
     if (e.type !== 'keydown') return;
-    if ((e.key !== 's' && e.key !== 'S') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    const k = e.key.toLowerCase();
+    if ((k !== 's' && k !== 'p') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (k === 'p') {
+      if (!this._opts.profileKey || !this._lastDetail || this._activeProfile === 'exempt') return;
+      e.preventDefault();
+      this.cycleProfile();
+      return;
+    }
     if (!this._opts.snapKey || !this._lastSnappable || !this._lastDetail) return;
     e.preventDefault();
     this.snapToDeployable();

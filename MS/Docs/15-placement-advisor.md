@@ -294,6 +294,7 @@ swaps the source without reloading the bundle. The painter
 | `placement-override`      | `{ verdict, drawEssentials }` — enforce mode, Shift-click placed it anyway |
 | `placement-audit`         | `PlacementAudit` — `openAudit()` re-judged every placed symbol |
 | `placement-recheck`       | `PlacementAudit` — symbols re-judged after a move or edit |
+| `placement-profile`       | `{ profile, overridden }` — the draw is now judged for this unit type (P key) |
 | `placement-snap`          | `PlacementSnapResult` — the quick fix moved the symbol (`moved: true`) or found nowhere to go (`reason`) |
 
 ### Quick fix: move to usable ground
@@ -306,6 +307,19 @@ function that gates a commit, footprint included, and prefers a clean `ok` spot 
 `near`/`caution` one if it is only a little further out. It then clicks that spot with real pointer
 events, so the symbol's own draw end, the commit check and the stamp run as usual (Ctrl+Z undoes it).
 Lines and areas are not moved. Turn it off with `placement.snapKey`.
+
+### Judging for a different unit type
+
+The unit type the ground is judged for (`dismounted`, `wheeled`, `tracked`, …) comes from the SIDC, which
+does not always say how a unit moves: a mounted and a dismounted infantry platoon share one. While a
+symbol is being drawn the card says "Judged as … P changes it", and **P** (or
+`advisor.cycleProfile()` / `setProfileOverride(profile | null)`) judges it for the next other profile of the
+bundle, then back to the SIDC's own. The card, overlay, quick fix and the commit check all follow at once.
+It is for **that one draw**: arming the next symbol starts from the SIDC again. The stamp records
+`placement.profileOverride = true` with the profile used, and the audit keeps judging that symbol for the
+profile it was placed with (the panel says "chosen when placed"). Symbols that are not terrain-bound have
+nothing to change. Turn the key off with `placement.profileKey`; the `placement-profile` event reports
+each change.
 
 ### Symbols already on the map
 
@@ -357,6 +371,7 @@ resets the schedule.
   "allowOverride": true,
   "showBadge": true,
   "snapKey": true,
+  "profileKey": true,
   "logVerdicts": true,
   "cacheTiles": 512,
   "prefetchMarginTiles": 1,

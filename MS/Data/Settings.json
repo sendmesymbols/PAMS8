@@ -666,6 +666,7 @@
     "allowOverride": true,
     "showBadge": true,
     "snapKey": true,
+    "profileKey": true,
     "logVerdicts": true,
     "cacheTiles": 512,
     "prefetchMarginTiles": 1,

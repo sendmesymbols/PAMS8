@@ -212,6 +212,17 @@ function nearestRow(v: PlacementVerdict): HTMLElement | null {
   return null;
 }
 
+/** Which unit type the ground is judged for, and that P changes it (the SIDC does not always say how a unit moves). */
+function profileRow(v: PlacementVerdict): HTMLElement | null {
+  if (!v.profileKey) return null;
+  const body = el('div');
+  body.append(
+    el('span', 'ms-pb-b', v.profileLabel),
+    el('span', v.profileOverride ? 'ms-pb-warn' : 'ms-pb-soft', `${v.profileOverride ? ', set by hand' : ''}. P changes it`),
+  );
+  return row('info', 'Judged as', undefined, body);
+}
+
 /** Enforce mode: this click would be refused, and whether Shift gets past it. */
 function enforceRow(v: PlacementVerdict): HTMLElement | null {
   if (!v.blocked) return null;
@@ -331,7 +342,7 @@ export class PlacementBadge {
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v), snapRow(v), enforceRow(v), spacingRow(v)].filter(
+        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v), snapRow(v), enforceRow(v), spacingRow(v), profileRow(v)].filter(
             (r): r is HTMLElement => r !== null,
           );
     if (v.loading) rows.push(el('div', 'ms-pb-soft', 'Still loading terrain data'));

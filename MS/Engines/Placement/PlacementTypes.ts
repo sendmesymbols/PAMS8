@@ -169,6 +169,8 @@ export interface PlacementOptions {
   showBadge: boolean;
   /** Pressing S while drawing a point on bad ground places it at the nearest usable ground instead. */
   snapKey: boolean;
+  /** Pressing P while drawing cycles which unit type the ground is judged for (auto, then each profile in the bundle) for that one draw. */
+  profileKey: boolean;
   logVerdicts: boolean;
   cacheTiles: number;
   prefetchMarginTiles: number;
@@ -289,6 +291,10 @@ export interface PlacementVerdict {
   blocked?: boolean;
   /** Set alongside `blocked` when holding Shift at the click places it anyway. */
   overridable?: boolean;
+  /** Set while drawing: the judged profile was chosen by hand rather than derived from the SIDC. */
+  profileOverride?: boolean;
+  /** Set while drawing when the P key can change the judged profile. */
+  profileKey?: boolean;
   /** The rule behind the verdict, in the rule owner's words (rules.json `why` / class `note`); null when the bundle has none. */
   reason?: string | null;
   /** Set on an `unknown` verdict when a tile it needs is still on its way (as opposed to no coverage). */
@@ -308,6 +314,8 @@ export interface PlacementAuditEntry {
   detail: string | null;
   /** The rule behind the verdict in the rule owner's words, when the bundle gives one. */
   rule: string | null;
+  /** `profile` was set by hand when the symbol was placed, so the audit keeps judging it that way. */
+  profileOverride: boolean;
   fraction: number;
   /** Intergap message when the spacing rule is not met. */
   spacing: string | null;
@@ -383,6 +391,8 @@ export interface PlacementStamp {
   overridden?: true;
   /** Why, when the host recorded one with `annotateOverride()`. */
   reason?: string;
+  /** `profile` was chosen by hand for this draw (P key / `setProfileOverride()`), not derived from the SIDC. */
+  profileOverride?: true;
 }
 
 export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
@@ -397,6 +407,7 @@ export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
   allowOverride: true,
   showBadge: true,
   snapKey: true,
+  profileKey: true,
   logVerdicts: true,
   cacheTiles: 512,
   prefetchMarginTiles: 1,
