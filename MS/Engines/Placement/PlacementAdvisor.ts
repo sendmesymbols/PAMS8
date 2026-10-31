@@ -15,7 +15,8 @@
  * Events (dispatched from the view container, bubbling to document):
  *   "placement-advice"       – PlacementVerdict (only when the verdict text changes)
  *   "placement-clear"        – {} when the draw ends / is cancelled
- *   "placement-state-change" – { state: "enabled"|"disabled"|"ready"|"no-bundle", isEnabled }
+ *   "placement-state-change" – { state: "enabled"|"disabled"|"ready"|"no-bundle", isEnabled, error }
+ *                              (`error` says why when the bundle failed; see also `status` / `retry()`)
  *   "placement-blocked"      – { verdict, drawEssentials } (enforce mode)
  *   "placement-override"     – { verdict, drawEssentials } (enforce mode, Shift-click placed it anyway)
  *   "placement-snap"         – PlacementSnapResult (the S quick fix)
@@ -51,6 +52,7 @@ import {
   type PlacementProfile,
   type PlacementSnapResult,
   type PlacementStamp,
+  type PlacementStatus,
   type PlacementVerdict,
   type TerrainManifest,
   type TerrainRules,
@@ -78,6 +80,8 @@ const SNAP_MAX_PX = 160;
 const SNAP_FIRST_PX = 2;
 const SNAP_GROWTH = 1.25;
 const SNAP_DIRECTIONS = 16;
+/** Waits before the automatic retries of a bundle that failed for a reason that may pass (network, 5xx). */
+const RETRY_DELAYS_MS = [4000, 15000, 45000];
 /** After a ring with only a marginal spot (near / caution), keep looking this much further for a clean `ok`. */
 const SNAP_PREFER_OK = 1.6;
 
@@ -134,6 +138,13 @@ export default class PlacementAdvisor {
   private _lastArmedProfile: PlacementProfile | null = null;
   private _compiled = new Map<PlacementProfile, CompiledProfile>();
   private _configToken = 0;
+  private _loading = false;
+  private _loadError: string | null = null;
+  private _retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private _retryAttempt = 0;
+  private _retryAt = 0;
+  /** What the user was last told about the data ("loading", "failed|why", "ready"), so each is said once. */
+  private _noticedKey = '';
 
   private _activeSidc: string | null = null;
   private _activeProfile: PlacementProfile | null = null;
@@ -175,6 +186,30 @@ export default class PlacementAdvisor {
     return this._enabled && this._opts.mode !== 'off' && this._manifest !== null;
   }
 
+  /** Data state: why there is (not) advice, and whether a retry is on its way. */
+  get status(): PlacementStatus {
+    const state: PlacementStatus['state'] = !this._enabled
+      ? 'disabled'
+      : this._manifest
+        ? 'ready'
+        : this._loading
+          ? 'loading'
+          : !this._opts.bundleUrl
+            ? 'no-bundle-url'
+            : 'failed';
+    return {
+      state,
+      error: state === 'failed' ? this._loadError : null,
+      retryInMs: this._retryTimer !== null ? Math.max(0, this._retryAt - Date.now()) : null,
+    };
+  }
+
+  /** Try loading the terrain bundle again now (e.g. after the server came back). Resolves true when it is ready. */
+  retry(): Promise<boolean> {
+    this._retryAttempt = 0;
+    return this.configure();
+  }
+
   getManifest(): TerrainManifest | null {
     return this._manifest;
   }
@@ -191,6 +226,9 @@ export default class PlacementAdvisor {
     if (cfg?.bundleUrl !== undefined) this._opts.bundleUrl = cfg.bundleUrl.trim().replace(/\/+$/, '');
     const base = this._opts.bundleUrl;
     const token = ++this._configToken;
+    this._clearRetry();
+    this._loadError = null;
+    this._loading = base !== '';
 
     this._manifest = null;
     this._rules = null;
@@ -226,6 +264,13 @@ export default class PlacementAdvisor {
         ENGINE,
         `Terrain bundle ready — ${manifest.name ?? base} (rules ${rules.version ?? 'unversioned'})`,
       );
+      this._loading = false;
+      this._retryAttempt = 0;
+      // The user was told it was down or loading: say it is back, so they do not have to guess.
+      if (this._enabled && this._noticedKey !== '' && this._noticedKey !== 'ready') {
+        this._badge.toast({ verdict: 'ok', title: 'Placement advisor ready', lines: ['Terrain data loaded. Advice is on.'] }, 3500);
+      }
+      this._noticedKey = 'ready';
       this._emitState('ready');
       if (this._enabled) this._bindView();
       this._prefetch();
@@ -233,10 +278,69 @@ export default class PlacementAdvisor {
       return true;
     } catch (err) {
       if (token !== this._configToken) return false;
-      EngineLogger.error(ENGINE, `Terrain bundle unavailable (${base}): ${(err as Error).message}`);
-      this._emitState('no-bundle');
+      const message = (err as Error).message;
+      this._loading = false;
+      this._loadError = message;
+      const retryMs = this._scheduleRetry(err);
+      EngineLogger.error(
+        ENGINE,
+        `Terrain bundle unavailable (${base}): ${message}${retryMs === null ? '' : ` — retrying in ${Math.round(retryMs / 1000)} s`}`,
+      );
+      this._emitState('no-bundle', message);
       return false;
     }
+  }
+
+  /** Queue the next automatic attempt for a failure that may pass by itself; null when it is a dead end. */
+  private _scheduleRetry(err: unknown): number | null {
+    if (!this._enabled || (err as { transient?: boolean })?.transient !== true) return null;
+    if (this._retryAttempt >= RETRY_DELAYS_MS.length) return null;
+    const delay = RETRY_DELAYS_MS[this._retryAttempt++];
+    this._retryAt = Date.now() + delay;
+    this._retryTimer = setTimeout(() => {
+      this._retryTimer = null;
+      void this.configure();
+    }, delay);
+    return delay;
+  }
+
+  private _clearRetry(): void {
+    if (this._retryTimer !== null) clearTimeout(this._retryTimer);
+    this._retryTimer = null;
+  }
+
+  /**
+   * A draw was armed while there is no terrain data: say why there will be no advice, once per cause
+   * (the Engine Log has it too, but nobody is looking there while drawing).
+   */
+  private _noticeUnavailable(): void {
+    if (!this._enabled || this._opts.mode === 'off' || this._manifest) return;
+    const s = this.status;
+    const key = s.state === 'failed' ? `failed|${s.error}` : s.state;
+    if (key === this._noticedKey) return;
+    this._noticedKey = key;
+    if (s.state === 'loading') {
+      this._badge.toast({ verdict: 'unknown', title: 'Loading terrain data', lines: ['Advice starts as soon as it is ready.'] }, 3500);
+      return;
+    }
+    const retrying = s.retryInMs !== null;
+    this._badge.toast(
+      {
+        verdict: 'unknown',
+        title: 'Placement advisor paused',
+        lines: [
+          'Terrain data is unavailable, so this symbol gets no advice.',
+          s.state === 'no-bundle-url' ? 'No terrain bundle is configured.' : (s.error ?? 'The terrain bundle could not be loaded.'),
+        ],
+        hint:
+          s.state === 'no-bundle-url'
+            ? 'Set the bundle URL in the Placement settings.'
+            : retrying
+              ? `Retrying automatically in ${Math.max(1, Math.round((s.retryInMs ?? 0) / 1000))} s. Settings has a Retry button.`
+              : 'Press Retry in the Placement settings, or call placementAdvisor.retry().',
+      },
+      7000,
+    );
   }
 
   setOptions(patch: Partial<PlacementOptions>): void {
@@ -294,7 +398,10 @@ export default class PlacementAdvisor {
     if (!next.showBadge) this._badge.hide();
     if (!next.indicators.enabled) this._indicators.hide();
     if (!next.footprint.outline || !next.footprint.enabled) this._indicators.hideFootprint();
-    if (next.bundleUrl !== prev.bundleUrl && this._enabled) void this.configure();
+    if (next.bundleUrl !== prev.bundleUrl && this._enabled) {
+      this._retryAttempt = 0;
+      void this.configure();
+    }
     this._lastKey = ''; // thresholds changed — republish the next verdict
     this._lastBadgeKey = '';
     this._prefetch(); // mode switched on / overlay profile changed — make sure its layers are warm
@@ -303,6 +410,7 @@ export default class PlacementAdvisor {
   enable(): void {
     if (this._enabled) return;
     this._enabled = true;
+    this._retryAttempt = 0;
     this._emitState('enabled');
     if (this._manifest) this._bindView();
     else if (this._opts.bundleUrl) void this.configure();
@@ -312,6 +420,7 @@ export default class PlacementAdvisor {
   disable(): void {
     if (!this._enabled) return;
     this._enabled = false;
+    this._clearRetry();
     this.deactivate();
     this._unbindView();
     this._removeOverlay();
@@ -323,7 +432,10 @@ export default class PlacementAdvisor {
 
   /** A draw was armed for this SIDC: resolve its profile and warm the tiles. */
   prepareFor(sidc: string | null | undefined): void {
-    if (!this.isActive) return;
+    if (!this.isActive) {
+      this._noticeUnavailable();
+      return;
+    }
     this._activeSidc = sidc ?? null;
     this._activeProfile = resolveProfile(this._activeSidc, this._rules);
     if (this._activeProfile !== 'exempt') this._lastArmedProfile = this._activeProfile;
@@ -625,6 +737,7 @@ export default class PlacementAdvisor {
     this._indicators.destroy();
     this._boundary.reset();
     this._configToken++;
+    this._clearRetry();
     this._cache?.clear();
     this._cache = null;
     this._source?.dispose?.();
@@ -1438,9 +1551,23 @@ export default class PlacementAdvisor {
   }
 
   private async _fetchJson<T>(url: string): Promise<T> {
-    const resp = await fetch(url, { cache: 'no-cache' });
-    if (!resp.ok) throw new Error(`${url}: HTTP ${resp.status}`);
-    return (await resp.json()) as T;
+    // Network errors and 5xx/408/429 can pass by themselves, so they are marked for the automatic retry;
+    // a 404 or a file that is not valid JSON will not get better by asking again.
+    let resp: Response;
+    try {
+      resp = await fetch(url, { cache: 'no-cache' });
+    } catch {
+      throw Object.assign(new Error(`${url}: could not reach the server`), { transient: true });
+    }
+    if (!resp.ok) {
+      const transient = resp.status >= 500 || resp.status === 408 || resp.status === 429;
+      throw Object.assign(new Error(`${url}: HTTP ${resp.status}`), { transient });
+    }
+    try {
+      return (await resp.json()) as T;
+    } catch {
+      throw new Error(`${url}: not valid JSON (is the bundle URL right?)`);
+    }
   }
 
   private _validate(m: TerrainManifest, r: TerrainRules): void {
@@ -1453,8 +1580,8 @@ export default class PlacementAdvisor {
     if (!r || typeof r.classes !== 'object' || typeof r.profiles !== 'object') throw new Error('rules.json invalid');
   }
 
-  private _emitState(state: 'enabled' | 'disabled' | 'ready' | 'no-bundle'): void {
-    this._emit('placement-state-change', { state, isEnabled: this._enabled });
+  private _emitState(state: 'enabled' | 'disabled' | 'ready' | 'no-bundle', error: string | null = null): void {
+    this._emit('placement-state-change', { state, isEnabled: this._enabled, error });
   }
 
   private _emit(type: string, detail: unknown): void {

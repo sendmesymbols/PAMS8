@@ -283,6 +283,15 @@ export interface PlacementVerdict {
   overridable?: boolean;
 }
 
+/** Whether the advisor has terrain data, for hosts that want to show it (also on `placement-state-change`). */
+export interface PlacementStatus {
+  state: 'disabled' | 'no-bundle-url' | 'loading' | 'ready' | 'failed';
+  /** Why the bundle failed to load (`failed` only). */
+  error: string | null;
+  /** Milliseconds until the next automatic retry, or null when none is scheduled. */
+  retryInMs: number | null;
+}
+
 /** Result of `snapToDeployable()`, also the detail of the `placement-snap` event. */
 export interface PlacementSnapResult {
   /** True when the symbol was placed at a better spot. */

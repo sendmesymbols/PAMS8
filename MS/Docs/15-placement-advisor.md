@@ -287,6 +287,17 @@ function that gates a commit, footprint included, and prefers a clean `ok` spot 
 events, so the symbol's own draw end, the commit check and the stamp run as usual (Ctrl+Z undoes it).
 Lines and areas are not moved. Turn it off with `placement.snapKey`.
 
+### When the terrain data is unavailable
+
+`advisor.status` is `{ state, error, retryInMs }` with `state` one of `disabled`, `no-bundle-url`,
+`loading`, `ready`, `failed`; `placement-state-change` carries the same `error`. When a draw is armed
+while there is no data, the advisor shows a card once per cause ("Placement advisor paused": why, and
+whether a retry is coming) instead of staying silent, and a "ready" card when the data arrives after
+that. A load that failed for a reason that may pass (server unreachable, HTTP 5xx / 408 / 429) is
+retried automatically after 4, 15 and 45 seconds; a 404, a non-JSON answer or an invalid bundle is not,
+because asking again will not help. `advisor.retry()` (Settings: *Retry loading*) tries again at once and
+resets the schedule.
+
 ### Settings (`MS/Data/Settings.json`)
 
 ```json

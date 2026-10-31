@@ -2334,8 +2334,13 @@ function updateStylusPerSymbolUI(cls: string | null): void {
       [placementState, placementAdvice, placementTiles].filter(Boolean).join(' · ') || 'off';
   };
   document.addEventListener('placement-state-change', (e: any) => {
-    placementState = e.detail.state;
+    placementState = e.detail.error ? `${e.detail.state} (${e.detail.error})` : e.detail.state;
     renderPlacementStatus();
+  });
+  document.getElementById('placement-retry')?.addEventListener('click', () => {
+    const adv = (window as any).symbolEngine?.placementAdvisor;
+    if (adv) void adv.retry();
+    else showToast('Turn on the Placement advisor first', 'no-targets');
   });
   document.addEventListener('placement-advice', (e: any) => {
     placementAdvice = e.detail.message;

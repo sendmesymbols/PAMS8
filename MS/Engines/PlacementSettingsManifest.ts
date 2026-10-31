@@ -226,6 +226,21 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     keywords: ['data', 'tiles', 'url', 'path'],
   },
   {
+    path: ['placement', '__retry'],
+    label: 'Terrain data',
+    buttonLabel: '↻ Retry loading',
+    group: 'Data',
+    type: 'action',
+    advanced: true,
+    help: 'Load the terrain bundle again, e.g. after the server came back. Failed loads are also retried automatically a few times when the cause may pass.',
+    keywords: ['reload', 'retry', 'bundle', 'unavailable', 'no data', 'failed'],
+    onClick: () => {
+      const adv = (window as any).symbolEngine?.placementAdvisor;
+      if (adv?.retry) void adv.retry();
+      else console.warn('PlacementAdvisor not ready yet — turn on the Placement advisor first');
+    },
+  },
+  {
     path: ['placement', 'useWorker'],
     label: 'Decode tiles in a worker',
     group: 'Performance',
