@@ -32,7 +32,7 @@
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import { SYMBOL_LAYER_IDS } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
-import { compileProfile, evaluateSamples, fmtDistance, titleCase, type CompiledProfile } from './PlacementEvaluator';
+import { compileProfile, evaluateSamples, fmtDistance, setDistanceUnits, titleCase, type CompiledProfile } from './PlacementEvaluator';
 import { PlacementAuditPanel, type AuditPanelHandlers } from './PlacementAuditPanel';
 import { PlacementBadge } from './PlacementBadge';
 import { PlacementBoundary } from './PlacementBoundary';
@@ -385,6 +385,7 @@ export default class PlacementAdvisor {
     }
     if (Array.isArray(patch.blockOn)) next.blockOn = [...patch.blockOn];
     if (typeof patch.showBadge === 'boolean') next.showBadge = patch.showBadge;
+    if (patch.units === 'metric' || patch.units === 'imperial' || patch.units === 'nautical') next.units = patch.units;
     if (typeof patch.snapKey === 'boolean') next.snapKey = patch.snapKey;
     if (typeof patch.profileKey === 'boolean') next.profileKey = patch.profileKey;
     if (typeof patch.allowOverride === 'boolean') next.allowOverride = patch.allowOverride;
@@ -422,6 +423,7 @@ export default class PlacementAdvisor {
       if (typeof fp.spacing === 'boolean') next.footprint.spacing = fp.spacing;
     }
     this._opts = next;
+    setDistanceUnits(next.units);
 
     if (next.cacheTiles !== prev.cacheTiles) this._cache?.setCapacity(next.cacheTiles);
     if (next.useWorker !== prev.useWorker) this._swapSource();
@@ -437,6 +439,13 @@ export default class PlacementAdvisor {
     this._lastKey = ''; // thresholds changed — republish the next verdict
     this._lastBadgeKey = '';
     this._prefetch(); // mode switched on / overlay profile changed — make sure its layers are warm
+    if (next.units !== prev.units) {
+      // Every sentence on screen was written in the old units: drop the cached verdict and say it again.
+      this._lastGood = null;
+      this._lastGoodGeom = null;
+      const d = this._lastDetail;
+      if (d && this.isActive) this._apply(this._judgeLive(d.geometry, d.sidc));
+    }
   }
 
   enable(): void {

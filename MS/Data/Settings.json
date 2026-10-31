@@ -665,6 +665,7 @@
     "blockOn": ["in", "partial"],
     "allowOverride": true,
     "showBadge": true,
+    "units": "metric",
     "snapKey": true,
     "profileKey": true,
     "logVerdicts": true,

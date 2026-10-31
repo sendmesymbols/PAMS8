@@ -27,6 +27,9 @@ export type PlacementVerdictKind =
 
 export type PlacementMode = 'off' | 'advise' | 'enforce';
 
+/** How distances are written in the advice: metres / kilometres, yards / miles, or metres / nautical miles. */
+export type PlacementUnits = 'metric' | 'imperial' | 'nautical';
+
 /** `manifest.json` at the bundle root. */
 export interface TerrainManifest {
   format: 'pams-terrain-bundle';
@@ -167,6 +170,11 @@ export interface PlacementOptions {
   /** In `enforce` mode, holding Shift while clicking places the symbol anyway, stamped `overridden`. Off = a hard block. */
   allowOverride: boolean;
   showBadge: boolean;
+  /**
+   * Units for the distances in the card, messages, key and panel. Display only: the data, thresholds
+   * (`nearThresholdM`) and event payloads stay in metres. One setting for the whole page.
+   */
+  units: PlacementUnits;
   /** Pressing S while drawing a point on bad ground places it at the nearest usable ground instead. */
   snapKey: boolean;
   /** Pressing P while drawing cycles which unit type the ground is judged for (auto, then each profile in the bundle) for that one draw. */
@@ -411,6 +419,7 @@ export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
   blockOn: ['in', 'partial'],
   allowOverride: true,
   showBadge: true,
+  units: 'metric',
   snapKey: true,
   profileKey: true,
   logVerdicts: true,

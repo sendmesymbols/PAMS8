@@ -69,6 +69,19 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     keywords: ['line', 'indicator', 'feature', 'reason', 'contested', 'distance'],
   },
   {
+    path: ['placement', 'units'],
+    label: 'Distance units',
+    group: 'Feedback',
+    type: 'enum',
+    options: [
+      { value: 'metric', label: 'Metres / kilometres' },
+      { value: 'imperial', label: 'Yards / miles' },
+      { value: 'nautical', label: 'Metres / nautical miles' },
+    ],
+    help: 'How distances are written in the advice, key and check panel. Display only: thresholds stay in metres.',
+    keywords: ['units', 'metric', 'imperial', 'yards', 'miles', 'nautical', 'nm', 'km', 'metres'],
+  },
+  {
     path: ['placement', 'showBadge'],
     label: 'Show cursor badge',
     group: 'Feedback',

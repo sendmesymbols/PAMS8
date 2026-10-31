@@ -305,6 +305,17 @@ swaps the source without reloading the bundle. The painter
 | `placement-profile`       | `{ profile, overridden }` — the draw is now judged for this unit type (P key) |
 | `placement-snap`          | `PlacementSnapResult` — the quick fix moved the symbol (`moved: true`) or found nowhere to go (`reason`) |
 
+### Distance units
+
+`placement.units` (`metric` default, `imperial`, `nautical`; Settings: *Distance units*) chooses how
+distances are written everywhere the advisor writes one: the card, the messages, the overlay key, the
+refusal card and the placement-check panel. `metric` is m, then km from 1 km; `imperial` is yd, then
+mi from 1 mile; `nautical` is m, then nm from half a nautical mile (a shorter distance is never quoted
+in nm). One decimal under 10 of the big unit, none above. It is display only: the data,
+`nearThresholdM` (the "Near (m)" setting), the event payloads and the stamp stay in metres, so a host
+can format them its own way. The setting is read by `fmtDistance`, so it applies to every advisor on
+the page.
+
 ### Accessibility
 
 The verdict never relies on colour alone: the card's header carries an icon and the verdict in words
@@ -398,6 +409,7 @@ resets the schedule.
   "blockOn": ["in", "partial"],
   "allowOverride": true,
   "showBadge": true,
+  "units": "metric",
   "snapKey": true,
   "profileKey": true,
   "logVerdicts": true,

@@ -8,6 +8,7 @@
 
 import type {
   PlacementProfile,
+  PlacementUnits,
   PlacementVerdict,
   PlacementVerdictKind,
   TerrainRules,
@@ -71,8 +72,41 @@ export function titleCase(text: string): string {
     .join(' ');
 }
 
+let distanceUnits: PlacementUnits = 'metric';
+
+/** Units `fmtDistance` writes in. A display preference for the page, set from `placement.units`. */
+export function setDistanceUnits(units: PlacementUnits): void {
+  distanceUnits = units;
+}
+
+export function getDistanceUnits(): PlacementUnits {
+  return distanceUnits;
+}
+
+const YARDS_PER_METRE = 1.0936133;
+const YARDS_PER_MILE = 1760;
+const METRES_PER_NM = 1852;
+
+/**
+ * A distance in metres written in the chosen units: m then km (from 1 km); yd then mi (from 1 mile);
+ * m then nm (from half a nautical mile, below which nobody quotes a naval distance in nm). One decimal
+ * under 10 of the big unit, none above.
+ */
 export function fmtDistance(m: number): string {
-  return m >= 1000 ? `${(m / 1000).toFixed(m >= 10_000 ? 0 : 1)} km` : `${Math.round(m)} m`;
+  // Choose the unit from the rounded figure, so 1,609 m reads "1.0 mi", not "1760 yd", and 9,999 m "10 km", not "10.0 km".
+  const big = (v: number) => (v >= 9.95 ? v.toFixed(0) : v.toFixed(1));
+  switch (distanceUnits) {
+    case 'imperial': {
+      const yd = m * YARDS_PER_METRE;
+      return Math.round(yd) >= YARDS_PER_MILE ? `${big(yd / YARDS_PER_MILE)} mi` : `${Math.round(yd)} yd`;
+    }
+    case 'nautical': {
+      const nm = m / METRES_PER_NM;
+      return nm >= 0.5 ? `${big(nm)} nm` : `${Math.round(m)} m`;
+    }
+    default:
+      return Math.round(m) >= 1000 ? `${big(m / 1000)} km` : `${Math.round(m)} m`;
+  }
 }
 
 export function profileLabel(rules: TerrainRules | null, name: PlacementProfile): string {

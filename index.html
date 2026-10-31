@@ -3006,6 +3006,14 @@
               <input type="checkbox" id="setting-placementAllowOverride" checked title="In Enforce mode, hold Shift while clicking to place a symbol the rules would refuse. It is stamped as overridden. Off makes the block final." />
             </div>
             <div class="setting-row">
+              <label>Distance units</label>
+              <select id="setting-placementUnits" style="width: 105px" title="How distances are written in the advice, key and check panel. Display only: thresholds stay in metres.">
+                <option value="metric" selected>m / km</option>
+                <option value="imperial">yd / mi</option>
+                <option value="nautical">m / nm</option>
+              </select>
+            </div>
+            <div class="setting-row">
               <label>P = change unit type</label>
               <input type="checkbox" id="setting-placementProfileKey" checked title="While drawing, press P to judge the ground for a different unit type (dismounted, wheeled, tracked, ...) for that one symbol. It is stamped as chosen by hand." />
             </div>
@@ -4410,6 +4418,7 @@
         'setting-placementNearM': (v) => ({ path: ['placement', 'nearThresholdM'], value: +v }),
         'setting-placementBadge': (v) => ({ path: ['placement', 'showBadge'], value: v }),
         'setting-placementAllowOverride': (v) => ({ path: ['placement', 'allowOverride'], value: v }),
+        'setting-placementUnits': (v) => ({ path: ['placement', 'units'], value: v }),
         'setting-placementProfileKey': (v) => ({ path: ['placement', 'profileKey'], value: v }),
         'setting-placementSnapKey': (v) => ({ path: ['placement', 'snapKey'], value: v }),
         'setting-placementBundleUrl': (v) => ({ path: ['placement', 'bundleUrl'], value: v }),
