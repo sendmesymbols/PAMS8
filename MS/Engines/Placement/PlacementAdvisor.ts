@@ -54,12 +54,14 @@ import {
   type PlacementAuditEntry,
   type PlacementIndicator,
   type PlacementNearest,
+  type PlacementOptionIssue,
   type PlacementOptions,
   type PlacementProfile,
   type PlacementSnapResult,
   type PlacementStamp,
   type PlacementStatus,
   type PlacementVerdict,
+  type PlacementVerdictKind,
   type TerrainManifest,
   type TerrainRules,
   type TerrainSample,
@@ -189,6 +191,7 @@ export default class PlacementAdvisor {
   private _auditPanel = new PlacementAuditPanel();
   private _legend = new PlacementLegend();
   private _hintedThisSession = false;
+  private _lastIssueKey = '';
   private _tileWaiters: Array<() => void> = [];
   private _indicators = new PlacementIndicators(() => this._getView());
   private _boundary = new PlacementBoundary(() => this._getView());
@@ -282,6 +285,12 @@ export default class PlacementAdvisor {
 
       this._manifest = manifest;
       this._rules = rules;
+      // A profile chosen for the overlay before the bundle was known may not exist in it.
+      const problem = this._overlayProfileProblem(this._opts.overlay.profile);
+      if (problem !== null) {
+        EngineLogger.error(ENGINE, `Setting placement.overlay.profile = ${JSON.stringify(this._opts.overlay.profile)}: ${problem}; using auto`);
+        this._opts.overlay.profile = 'auto';
+      }
       const [w, s, e, n] = manifest.bounds;
       const [x0, y0] = lngLatToMercator(w, s);
       const [x1, y1] = lngLatToMercator(e, n);
@@ -374,54 +383,93 @@ export default class PlacementAdvisor {
     );
   }
 
-  setOptions(patch: Partial<PlacementOptions>): void {
+  /**
+   * Apply settings. Anything that is not a valid value for its setting is ignored (the previous value stays)
+   * and reported, as is a number that had to be clamped; the list comes back and is written once to the
+   * Engine Log, so a typo in a settings file does not fail silently.
+   */
+  setOptions(patch: Partial<PlacementOptions>): PlacementOptionIssue[] {
     const prev = this._opts;
     const next: PlacementOptions = { ...prev };
-    if (patch.mode === 'off' || patch.mode === 'advise' || patch.mode === 'enforce') next.mode = patch.mode;
-    if (typeof patch.bundleUrl === 'string') next.bundleUrl = patch.bundleUrl.trim().replace(/\/+$/, '');
-    if (Number.isFinite(patch.nearThresholdM)) next.nearThresholdM = Math.max(0, patch.nearThresholdM as number);
-    if (Number.isFinite(patch.partialFraction)) {
-      next.partialFraction = Math.min(1, Math.max(0.01, patch.partialFraction as number));
+    const issues: PlacementOptionIssue[] = [];
+    const bad = (path: string, value: unknown, reason: string) => issues.push({ path: `placement.${path}`, value, reason });
+    const flag = (path: string, v: unknown, set: (b: boolean) => void) => {
+      if (v === undefined) return;
+      if (typeof v === 'boolean') set(v);
+      else bad(path, v, 'must be true or false');
+    };
+    const pick = <T extends string>(path: string, v: unknown, allowed: readonly T[], set: (x: T) => void) => {
+      if (v === undefined) return;
+      if (allowed.includes(v as T)) set(v as T);
+      else bad(path, v, `must be one of: ${allowed.join(', ')}`);
+    };
+    /** A finite number kept within [lo, hi]; reports when it had to be moved. */
+    const num = (path: string, v: unknown, lo: number, hi: number, set: (n: number) => void, whole = false) => {
+      if (v === undefined) return;
+      if (typeof v !== 'number' || !Number.isFinite(v)) return void bad(path, v, 'must be a number');
+      const n = Math.min(hi, Math.max(lo, whole ? Math.floor(v) : v));
+      if (n !== v) bad(path, v, `out of range, using ${n}`);
+      set(n);
+    };
+
+    pick('mode', patch.mode, ['off', 'advise', 'enforce'] as const, (x) => (next.mode = x));
+    if (patch.bundleUrl !== undefined) {
+      if (typeof patch.bundleUrl === 'string') next.bundleUrl = patch.bundleUrl.trim().replace(/\/+$/, '');
+      else bad('bundleUrl', patch.bundleUrl, 'must be a URL string');
     }
-    if (Array.isArray(patch.blockOn)) next.blockOn = [...patch.blockOn];
-    if (typeof patch.showBadge === 'boolean') next.showBadge = patch.showBadge;
-    if (patch.units === 'metric' || patch.units === 'imperial' || patch.units === 'nautical') next.units = patch.units;
-    if (typeof patch.snapKey === 'boolean') next.snapKey = patch.snapKey;
-    if (typeof patch.profileKey === 'boolean') next.profileKey = patch.profileKey;
-    if (typeof patch.allowOverride === 'boolean') next.allowOverride = patch.allowOverride;
-    if (typeof patch.logVerdicts === 'boolean') next.logVerdicts = patch.logVerdicts;
-    if (Number.isFinite(patch.cacheTiles)) next.cacheTiles = Math.max(16, Math.floor(patch.cacheTiles as number));
-    if (Number.isFinite(patch.prefetchMarginTiles)) {
-      next.prefetchMarginTiles = Math.max(0, Math.floor(patch.prefetchMarginTiles as number));
+    num('nearThresholdM', patch.nearThresholdM, 0, Number.MAX_SAFE_INTEGER, (n) => (next.nearThresholdM = n));
+    num('partialFraction', patch.partialFraction, 0.01, 1, (n) => (next.partialFraction = n));
+    if (patch.blockOn !== undefined) {
+      const blockable: readonly PlacementVerdictKind[] = ['unknown', 'near', 'caution', 'partial', 'in'];
+      if (!Array.isArray(patch.blockOn)) bad('blockOn', patch.blockOn, 'must be a list of verdicts');
+      else {
+        const unknown = patch.blockOn.filter((k) => !blockable.includes(k));
+        if (unknown.length) bad('blockOn', unknown, `not verdicts that can be refused (${blockable.join(', ')})`);
+        next.blockOn = patch.blockOn.filter((k) => blockable.includes(k));
+      }
     }
-    if (Number.isFinite(patch.maxSamples)) next.maxSamples = Math.max(8, Math.floor(patch.maxSamples as number));
-    if (typeof patch.useWorker === 'boolean') next.useWorker = patch.useWorker;
+    flag('showBadge', patch.showBadge, (b) => (next.showBadge = b));
+    pick('units', patch.units, ['metric', 'imperial', 'nautical'] as const, (x) => (next.units = x));
+    flag('snapKey', patch.snapKey, (b) => (next.snapKey = b));
+    flag('profileKey', patch.profileKey, (b) => (next.profileKey = b));
+    flag('allowOverride', patch.allowOverride, (b) => (next.allowOverride = b));
+    flag('logVerdicts', patch.logVerdicts, (b) => (next.logVerdicts = b));
+    num('cacheTiles', patch.cacheTiles, 16, Number.MAX_SAFE_INTEGER, (n) => (next.cacheTiles = n), true);
+    num('prefetchMarginTiles', patch.prefetchMarginTiles, 0, Number.MAX_SAFE_INTEGER, (n) => (next.prefetchMarginTiles = n), true);
+    num('maxSamples', patch.maxSamples, 8, Number.MAX_SAFE_INTEGER, (n) => (next.maxSamples = n), true);
+    flag('useWorker', patch.useWorker, (b) => (next.useWorker = b));
     const ind = patch.indicators;
     next.indicators = { ...prev.indicators };
     if (ind && typeof ind === 'object') {
-      if (typeof ind.enabled === 'boolean') next.indicators.enabled = ind.enabled;
-      if (typeof ind.labels === 'boolean') next.indicators.labels = ind.labels;
+      flag('indicators.enabled', ind.enabled, (b) => (next.indicators.enabled = b));
+      flag('indicators.labels', ind.labels, (b) => (next.indicators.labels = b));
     }
     const ov = patch.overlay;
     next.overlay = { ...prev.overlay };
     if (ov && typeof ov === 'object') {
-      if (typeof ov.enabled === 'boolean') next.overlay.enabled = ov.enabled;
-      if (typeof ov.profile === 'string' && (ov.profile === 'auto' || ov.profile !== 'exempt')) {
-        next.overlay.profile = ov.profile as PlacementOptions['overlay']['profile'];
+      flag('overlay.enabled', ov.enabled, (b) => (next.overlay.enabled = b));
+      if (ov.profile !== undefined) {
+        const problem = this._overlayProfileProblem(ov.profile);
+        if (problem === null) next.overlay.profile = ov.profile as PlacementOptions['overlay']['profile'];
+        else bad('overlay.profile', ov.profile, problem);
       }
-      if (Number.isFinite(ov.opacity)) next.overlay.opacity = Math.min(1, Math.max(0.05, ov.opacity));
-      if (typeof ov.boundary === 'boolean') next.overlay.boundary = ov.boundary;
+      num('overlay.opacity', ov.opacity, 0.05, 1, (n) => (next.overlay.opacity = n));
+      flag('overlay.boundary', ov.boundary, (b) => (next.overlay.boundary = b));
     }
     const fp = patch.footprint;
     next.footprint = { ...prev.footprint };
     if (fp && typeof fp === 'object') {
-      if (typeof fp.enabled === 'boolean') next.footprint.enabled = fp.enabled;
-      if (fp.facing === 'fixed' || fp.facing === 'worst4' || fp.facing === 'circle') next.footprint.facing = fp.facing;
-      if (Number.isFinite(fp.bearingDeg)) next.footprint.bearingDeg = (((fp.bearingDeg % 360) + 360) % 360);
-      if (fp.size === 'min' || fp.size === 'mid' || fp.size === 'max') next.footprint.size = fp.size;
-      if (typeof fp.outline === 'boolean') next.footprint.outline = fp.outline;
-      if (typeof fp.spacing === 'boolean') next.footprint.spacing = fp.spacing;
+      flag('footprint.enabled', fp.enabled, (b) => (next.footprint.enabled = b));
+      pick('footprint.facing', fp.facing, ['fixed', 'worst4', 'circle'] as const, (x) => (next.footprint.facing = x));
+      if (fp.bearingDeg !== undefined) {
+        if (typeof fp.bearingDeg === 'number' && Number.isFinite(fp.bearingDeg)) next.footprint.bearingDeg = ((fp.bearingDeg % 360) + 360) % 360;
+        else bad('footprint.bearingDeg', fp.bearingDeg, 'must be a number of degrees');
+      }
+      pick('footprint.size', fp.size, ['min', 'mid', 'max'] as const, (x) => (next.footprint.size = x));
+      flag('footprint.outline', fp.outline, (b) => (next.footprint.outline = b));
+      flag('footprint.spacing', fp.spacing, (b) => (next.footprint.spacing = b));
     }
+    this._reportIssues(issues);
     this._opts = next;
     setDistanceUnits(next.units);
 
@@ -446,6 +494,24 @@ export default class PlacementAdvisor {
       const d = this._lastDetail;
       if (d && this.isActive) this._apply(this._judgeLive(d.geometry, d.sidc));
     }
+    return issues;
+  }
+
+  /** Why `profile` cannot be the overlay's profile, or null when it can (checked against the bundle once one is loaded). */
+  private _overlayProfileProblem(profile: unknown): string | null {
+    if (profile === 'auto') return null;
+    if (typeof profile !== 'string' || profile === '' || profile === 'exempt') return 'must be auto or the name of a unit type (not exempt)';
+    const known = this._manifest?.profiles;
+    if (known && !known.includes(profile)) return `this bundle has no "${profile}" profile (it has: ${known.join(', ')})`;
+    return null;
+  }
+
+  /** Write option problems to the Engine Log, once per distinct set (the whole settings block is re-sent on every change). */
+  private _reportIssues(issues: PlacementOptionIssue[]): void {
+    const key = issues.map((i) => `${i.path}=${JSON.stringify(i.value)}`).join('|');
+    if (key === this._lastIssueKey) return;
+    this._lastIssueKey = key;
+    for (const i of issues) EngineLogger.error(ENGINE, `Setting ${i.path} = ${JSON.stringify(i.value)}: ${i.reason}`);
   }
 
   enable(): void {

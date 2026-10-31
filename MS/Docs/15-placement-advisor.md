@@ -422,6 +422,13 @@ resets the schedule.
 
 `placement.*` is read live: changing `bundleUrl` reloads the bundle, the rest applies on the next mouse move.
 
+Every value is validated. One that is not valid for its setting (`"units": "yards"`, `"mode": "enforse"`,
+a `blockOn` entry that is not a verdict, an `overlay.profile` the bundle does not have, a string where a
+switch is expected) is ignored and the previous value stays; a number outside its range is moved into it.
+`advisor.setOptions(patch)` returns the list of these (`{ path, value, reason }`), and each distinct set
+is written once to the Engine Log, so a typo in a settings file does not fail silently. An overlay profile
+chosen before the bundle was known is checked when it loads and falls back to `auto` if it is not there.
+
 Registered in the ⚙ Settings menu and the Ctrl+K palette as **Placement**.
 
 ---

@@ -27,6 +27,14 @@ export type PlacementVerdictKind =
 
 export type PlacementMode = 'off' | 'advise' | 'enforce';
 
+/** A value `setOptions()` did not take as given: ignored (it was invalid) or moved into range. */
+export interface PlacementOptionIssue {
+  /** Setting path, e.g. `placement.units`. */
+  path: string;
+  value: unknown;
+  reason: string;
+}
+
 /** How distances are written in the advice: metres / kilometres, yards / miles, or metres / nautical miles. */
 export type PlacementUnits = 'metric' | 'imperial' | 'nautical';
 
