@@ -129,6 +129,7 @@ export default class PlacementAdvisor {
   private _activeProfile: PlacementProfile | null = null;
   private _lastDetail: { geometry: any; sidc: string | null } | null = null;
   private _lastKey = '';
+  private _lastBadgeKey = '';
   private _lastWarmKey = '';
   private _lastKind = '';
   private _lastSpacingMsg = '';
@@ -278,6 +279,7 @@ export default class PlacementAdvisor {
     if (!next.footprint.outline || !next.footprint.enabled) this._indicators.hideFootprint();
     if (next.bundleUrl !== prev.bundleUrl && this._enabled) void this.configure();
     this._lastKey = ''; // thresholds changed — republish the next verdict
+    this._lastBadgeKey = '';
     this._prefetch(); // mode switched on / overlay profile changed — make sure its layers are warm
   }
 
@@ -337,6 +339,7 @@ export default class PlacementAdvisor {
     this._indicators.hideFootprint();
     this._detachPointer();
     this._lastDetail = null;
+    this._lastBadgeKey = '';
     this._lastWarmKey = '';
     this._activeSidc = null;
     this._activeProfile = null;
@@ -456,6 +459,7 @@ export default class PlacementAdvisor {
       // A shape spanning tiles that are still arriving is judged on what is known so far.
       if (v.unknown > 0 && ctx.waiting && (stats?.pending ?? 0) > 0) {
         v.detail = v.detail ? `${v.detail} · still loading terrain data` : 'Still loading terrain data';
+        v.loading = true;
       }
     }
     if (plan && cand) this._applyFootprint(v, plan, cand, effSidc);
@@ -527,6 +531,7 @@ export default class PlacementAdvisor {
         v.detail = `Nearest deployable ground: ${nearest.className}, ${fmtDistance(nearest.distanceM)} to the ${nearest.compass}`;
       } else if (rangeM > 0) {
         v.detail = `No deployable ground within ${fmtDistance(rangeM)}`;
+        v.noneWithinM = rangeM;
       }
       return;
     }
@@ -551,6 +556,7 @@ export default class PlacementAdvisor {
     v.nearest = nearest;
     // Prefer the pipeline's exact distance; the scan supplies the class and direction.
     const dist = v.distanceM !== null && v.distanceM < ctx.scale * DIST_FAR ? v.distanceM : nearest.distanceM;
+    nearest.distanceM = dist; // the badge shows the exact figure, not the pixel-scan estimate
     const where = `${nearest.className}, ${fmtDistance(dist)} to the ${nearest.compass}`;
     if (v.verdict === 'near') {
       v.message =
@@ -883,13 +889,24 @@ export default class PlacementAdvisor {
     this._publish(v);
   }
 
+  /** The card shows figures (percent, distances, gaps) the event key does not carry, so it refreshes on its own key. */
+  private _showBadge(v: PlacementVerdict): void {
+    const key = [
+      v.verdict, v.message, v.detail ?? '', v.loading ? 1 : 0, Math.round(v.fraction * 100),
+      Math.round(v.nearest?.distanceM ?? -1), v.nearest?.compass ?? '',
+      v.spacing?.status ?? '', Math.round(v.spacing?.nearestGapM ?? -1),
+    ].join('|');
+    if (key === this._lastBadgeKey) return;
+    this._lastBadgeKey = key;
+    if (this._opts.showBadge && v.verdict !== 'off' && v.verdict !== 'exempt') this._badge.show(v);
+    else this._badge.hide();
+  }
+
   private _publish(v: PlacementVerdict): void {
+    this._showBadge(v);
     const key = `${v.verdict}|${v.message}|${v.detail ?? ''}|${v.spacing?.message ?? ''}`;
     if (key === this._lastKey) return;
     this._lastKey = key;
-
-    if (this._opts.showBadge && v.verdict !== 'off' && v.verdict !== 'exempt') this._badge.show(v);
-    else this._badge.hide();
 
     if (this._opts.logVerdicts && v.verdict !== this._lastKind) {
       if (v.verdict === 'in' || v.verdict === 'partial') EngineLogger.error(ENGINE, v.message);

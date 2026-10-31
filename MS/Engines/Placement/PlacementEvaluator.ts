@@ -148,6 +148,7 @@ export function evaluateSamples(
   let verdict: PlacementVerdictKind;
   let message: string;
   let detail: string | null = null;
+  let noneWithinM: number | undefined;
   const pct = (f: number) => Math.max(1, Math.round(f * 100));
 
   if (inCount > 0 && (samples.length === 1 || fraction >= 0.5)) {
@@ -156,20 +157,20 @@ export function evaluateSamples(
     base.className = classLabel(rules, base.classCode);
     message =
       samples.length === 1
-        ? `${base.className} — no-go for ${label}`
-        : `Mostly in ${base.className} (${pct(fraction)}%) — no-go for ${label}`;
+        ? `${base.className}: ${label} can't use it`
+        : `Mostly in ${base.className} (${pct(fraction)}%): ${label} can't use it`;
   } else if (inCount > 0 && fraction >= opts.partialFraction) {
     verdict = 'partial';
     base.classCode = dominant(inHistogram);
     base.className = classLabel(rules, base.classCode);
-    message = `Partly in ${base.className} (${pct(fraction)}%) — no-go for ${label}`;
+    message = `Partly in ${base.className} (${pct(fraction)}%): ${label} can't use it`;
   } else if (inCount > 0) {
     // A sliver of the shape (below the partial threshold) touches no-go terrain.
     verdict = 'near';
     base.distanceM = 0;
     base.classCode = dominant(inHistogram);
     base.className = classLabel(rules, base.classCode);
-    message = `Touches ${base.className} (${pct(fraction)}%) — no-go for ${label}`;
+    message = `Touches ${base.className} (${pct(fraction)}%): ${label} can't use it`;
   } else if (cautionCount > 0) {
     verdict = 'caution';
     base.classCode = dominant(cautionHistogram);
@@ -191,11 +192,13 @@ export function evaluateSamples(
     base.className = classLabel(rules, base.classCode);
     message = base.className ? `Deployable: ${base.className}` : 'Deployable';
     if (minDist !== null) {
-      detail =
-        opts.farM !== undefined && minDist >= opts.farM
-          ? `No no-go terrain within ${fmtDistance(opts.farM)}`
-          : `Nearest no-go terrain ${fmtDistance(minDist)} away`;
+      if (opts.farM !== undefined && minDist >= opts.farM) {
+        noneWithinM = opts.farM;
+        detail = `No no-go terrain within ${fmtDistance(opts.farM)}`;
+      } else {
+        detail = `Nearest no-go terrain ${fmtDistance(minDist)} away`;
+      }
     }
   }
-  return { ...base, verdict, message, detail };
+  return { ...base, verdict, message, detail, ...(noneWithinM !== undefined && { noneWithinM }) };
 }

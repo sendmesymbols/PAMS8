@@ -263,6 +263,10 @@ export interface PlacementVerdict {
   samples: number;
   unknown: number;
   message: string;
+  /** Set when the search for the nearest terrain of the other kind found none within this many metres. */
+  noneWithinM?: number;
+  /** Set while tiles the shape needs are still arriving, so the verdict is provisional. */
+  loading?: boolean;
   /** Set when an echelon symbol was judged on its footprint rather than its point. */
   footprint?: PlacementFootprintInfo | null;
   /** Set alongside `footprint` when the intergap check ran. Advisory: never changes `verdict`. */

@@ -272,8 +272,8 @@ export function checkSpacing(plan: FootprintPlan, neighbours: MercXY[]): Placeme
     status = worst <= 0 ? 'overlap' : 'tight';
     message =
       status === 'overlap'
-        ? `Overlaps a neighbouring ${dims.name} footprint — keep at least ${fmtDistance(dims.gapM)} between them`
-        : `Only ${fmtDistance(worst)} from the next ${dims.name} — keep at least ${fmtDistance(dims.gapM)} between them`;
+        ? `Overlaps a neighbouring ${dims.name} footprint. Keep at least ${fmtDistance(dims.gapM)} between them`
+        : `Only ${fmtDistance(worst)} from the next ${dims.name}. Keep at least ${fmtDistance(dims.gapM)} between them`;
   }
   return { status, minGapM: dims.gapM, nearestGapM: nearest, conflicts, message };
 }
