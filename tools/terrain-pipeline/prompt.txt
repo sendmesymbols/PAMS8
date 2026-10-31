@@ -1,0 +1,91 @@
+Map overlay checkbox
+Show on map is in the Placement panel in index.html, and in the Placement widget (Ctrl+K and the Settings menu) as Show terrain on map.
+
+What it paints: green is deployable, yellow is deployable but near no-go, amber is caution, and red is no-go. Areas with no data stay clear.
+Per unit type: a Paint for selector chooses dismounted, wheeled, tracked, vessel (water is green, land is red) or generic. Auto follows the symbol you’re drawing. There is also an opacity slider.
+Where it works: both 2D and 3D, under your symbols, and it moves with you when you switch views. I checked it on the live map, not just in code.
+Limit: zoomed out below the bundle’s minimum zoom (8 in the synthetic one) it draws nothing.
+Needs: the advisor enabled and a bundle loaded.
+Why, how far, what is near
+Each verdict now has a headline and a detail line. Examples from the tests:
+
+situation	headline	detail
+in water (dismounted)	Permanent water — no-go for Dismounted	Nearest deployable ground: Bare / desert, 314 m to the E
+beside water	Permanent water 120 m to the W	No-go for Dismounted
+in a marsh (wheeled)	Wetland / marsh — no-go for Wheeled vehicles	No deployable ground within 1.1 km
+open ground	Deployable: Bare / desert	Nearest no-go: Permanent water, 580 m to the W
+The distance layer only stores how far the nearest no-go is, not what it is. So the engine searches the class tile around the cursor for the closest pixel of the opposite kind. That search reaches about 1 km at the finest zoom. Beyond it the message says “within 1.1 km” and doesn’t guess. The cursor badge shows both lines.
+
+Bugs found while testing
+A distance tile arriving after its class tile gave a brief false “ok” next to a marsh. It now says “loading…” until both are in.
+Missing tiles were treated as errors and retried forever, because the dev server answers a missing file with 200 text/html, not a 404. Many production hosts do the same. Any non-image response now counts as “no coverage”.
+The phrasing “120 m W of water” read backwards. It now says “to the W”.
+Not done
+The overlay paints one unit type at a time. It has no “why” view by terrain class.
+I verified the overlay and badge by script and one screenshot, not by drawing a symbol with the mouse, because this browser pane can’t drive real draw gestures.
+Both downloaders have slowed to roughly one DEM tile per minute, and I’ve added a third tile column (78–79°E) for Kashmir. Many DEM tiles fall outside the boundary, so I’m now counting how many the official boundary really needs.
+
+Created tiles_needed.py, ran a command
+Only 131 of the 300 DEM tiles in range touch the official boundary, and 39 of the 66 already downloaded are useless. I’ll make the fetcher grab only the boundary-intersecting tiles, then switch the running downloaders over.
+
+Edited 3 files, ran 4 commands, compacted the session, and 3 more actions (1 failed)
+I’m fetching the remaining DEM tiles along the official boundary and the two new Kashmir WorldCover tiles, checking their sizes first. After that I’ll record the hashes and run the full pipeline.
+
+Finished a background command, ran 2 commands (1 failed)
+The first launch failed because I ran Python in isolated mode (-I), which blocked the script’s own imports. I’ve restarted the fetch without it. It’s running in the background, and I’ll pick up when it finishes.
+
+https://aneebazhar.com/wp-content/uploads/2026/04/map-relief.png
+https://www.surveyofpakistan.gov.pk/SiteImage/Misc/maps/Pakistan%20Folio%20Map%20500-DPI_page-0001.jpg
+
+These were meant to be the bounds for the data you are downloading, not the border that you have given me
+
+Read 3 files, searched code, stopped task
+The two maps only define the data’s extent, so I’m making the default a rectangle from the Survey of Pakistan map frame, insets included. The NCGDB-built boundary will become opt-in.
+
+Edited 4 files, ran 3 commands (1 failed)
+Meanwhile I’ll update the memory note and the docs for the new default.
+
+Saved a memory, searched code, read and edited README.md, ran a command
+I misread the maps. You meant them as the bounds of the data, and I treated them as a border to clip to. That’s now corrected.
+
+What changed
+
+Default extent: the data is bounded by a plain rectangle, 59.5–80.5°E by 20.5–37.5°N. I read it off the relief map’s graticule and widened it slightly. All of Kashmir and Gilgit-Baltistan are inside it, and so are the Junagadh & Manavadar and Sir Creek insets. Nothing inside the rectangle is clipped, and the bundle ships no border outline.
+Border polygon: the one I built from your NCGDB is still there, but you only get it with -BoundaryMode official.
+Override: you can set your own extent with -Frame W,S,E,N.
+Downloads: the script fetches only the source tiles that touch the extent: 56 land-cover (ESA WorldCover) tiles, 8 water (JRC) tiles and up to 396 elevation (DEM) tiles. Ocean-only tiles don’t exist on the servers and are skipped. I stopped the earlier downloaders and restarted a single fetch with these filters. It runs in the background and checks file sizes first, and I’ll pick up when it finishes.
+Things you should know
+
+Frame is a read-off: I took the extent from the relief map’s graticule, not from the survey data. I couldn’t get the Folio JPG, because the Survey’s server returns HTTP 500 to scripted requests and I won’t spoof a browser to get around that.
+Disk: only 68 GB is free on D:. The new rectangle is about 40% larger than the previous extent, so the full run may need more space than that.
+Elevation tiles: the DEM downloads were slow before, so expect hours for the elevation tiles.
+Not tested yet: the full pipeline hasn’t run on the new extent, and the golden-point checks are still unverified.
+Not committed: everything since commit 02439b22 is still uncommitted.
+Docs: I updated the pipeline README and my notes to match.
+The data extent is now the Survey of Pakistan map sheet as a rectangle (59.5–80.5°E, 20.5–37.5°N), with no border clipped or drawn. The earlier NCGDB border polygon is opt-in. The fetch of all tiles in that extent is running in the background, so no data is processed yet.
+Is the extent 59.5,20.5,80.5,37.5 right, or should it be tighter?
+Extent is right
+Extent is right
+
+Confirmed. The extent stays at 59.5,20.5,80.5,37.5.
+
+The tile fetch is still running in the background. When it finishes I’ll check the file sizes and run .\run_lc_data_pipeline.ps1 -Workers 8. After that I’ll validate the result against the golden points and report back.
+
+
+Background command failed
+· Fetch all tiles inside the map-frame extent
+5-hour limit reached
+continue
+
+Ran 2 commands
+The network drop caused the failure: DNS lookups failed around 12:47, and DNS resolves again now. The fetch resumes from the files already on disk, so I’m re-running it.
+
+Resume the fetch of all tiles in the extent
+The previous fetch stopped at about 12:48 when DNS lookups failed. DNS works again, so I restarted it in the background. It had 26 of 56 land-cover tiles, 4 of 8 water tiles, 93 DEM tiles and the OSM extract on disk. It continues from those and from the partial files. When it finishes I’ll run the full pipeline.
+
+resume it
+
+Checked whether the resumed fetch is still running
+The fetch is already running again and nothing needs resuming. I restarted it at 14:41 and two fetch processes are active. It’s on the land-cover tiles now, skipping the ocean-only ones that return 404.
+
+I’ll run the full pipeline when it finishes.
