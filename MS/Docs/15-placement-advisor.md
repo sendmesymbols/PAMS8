@@ -211,6 +211,16 @@ and works in 2D and 3D (draped), sitting under the symbol layers.
 `placement.overlay.boundary` ("Show official boundary", off by default) also draws the bundle's
 `boundary.geojson`: the national outline (green), the provinces (grey), the Line of Control
 (red, dashed) and the international borders (black). It is lines only, so it never hides the
+The same key is shown on the map while the overlay is on: a small card docked bottom-left through the
+view's own UI (so it follows 2D / 3D switches), titled with the unit type being painted ("Terrain for
+Dismounted") and carrying the current `nearThresholdM` on the marginal row. The labels come from
+`OVERLAY_LEGEND`, so a host that renames the verdicts changes the card too.
+
+**Hints.** Nothing shows until a symbol is picked, so the advisor says so once per browser (remembered in
+`localStorage` under `ms.placement.hintSeen`): "Placement advisor is on: pick a symbol and terrain advice
+follows your cursor." Arming a symbol that is not terrain-bound (air, space, …) shows "This symbol is
+not terrain-bound, so it gets no terrain advice." instead of leaving the missing card looking broken.
+
 terrain colours or your symbols. The file is written by the pipeline and named in
 `manifest.boundary.file`; a bundle without one simply has nothing to draw. In the **official**
 bundle (the pipeline's default) the whole of Jammu & Kashmir is on Pakistan's side, following the

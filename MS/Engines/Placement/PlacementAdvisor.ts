@@ -38,7 +38,8 @@ import { PlacementBadge } from './PlacementBadge';
 import { PlacementBoundary } from './PlacementBoundary';
 import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './PlacementFootprint';
 import { PlacementIndicators } from './PlacementIndicators';
-import { createOverlayLayer, type OverlayRenderingSource } from './PlacementOverlay';
+import { PlacementLegend } from './PlacementLegend';
+import { createOverlayLayer, OVERLAY_COLORS, OVERLAY_LEGEND, type OverlayRenderingSource } from './PlacementOverlay';
 import { WorkerTileSource } from './WorkerTileSource';
 import { resolveProfile } from './PlacementProfiles';
 import { fromMercatorXY, samplePoints, toMercatorShape, type MercShape } from './PlacementSampling';
@@ -93,6 +94,7 @@ const SNAP_PREFER_OK = 1.6;
 const LOADING_GRACE_MS = 200;
 const STALE_MAX_PX = 80;
 /** Audit: symbols judged per batch (their tiles must fit the cache), passes to wait out missing tiles, wait per pass, and the tile span a shape is judged over. */
+const FIRST_USE_KEY = 'ms.placement.hintSeen';
 const AUDIT_BATCH = 16;
 const AUDIT_PASSES = 4;
 const AUDIT_TILE_WAIT_MS = 8000;
@@ -181,6 +183,8 @@ export default class PlacementAdvisor {
 
   private _badge = new PlacementBadge();
   private _auditPanel = new PlacementAuditPanel();
+  private _legend = new PlacementLegend();
+  private _hintedThisSession = false;
   private _tileWaiters: Array<() => void> = [];
   private _indicators = new PlacementIndicators(() => this._getView());
   private _boundary = new PlacementBoundary(() => this._getView());
@@ -292,7 +296,10 @@ export default class PlacementAdvisor {
       }
       this._noticedKey = 'ready';
       this._emitState('ready');
-      if (this._enabled) this._bindView();
+      if (this._enabled) {
+        this._firstUseHint();
+        this._bindView();
+      }
       this._prefetch();
       this._syncOverlay();
       return true;
@@ -432,8 +439,10 @@ export default class PlacementAdvisor {
     this._enabled = true;
     this._retryAttempt = 0;
     this._emitState('enabled');
-    if (this._manifest) this._bindView();
-    else if (this._opts.bundleUrl) void this.configure();
+    if (this._manifest) {
+      this._firstUseHint();
+      this._bindView();
+    } else if (this._opts.bundleUrl) void this.configure();
     else this._emitState('no-bundle');
   }
 
@@ -444,6 +453,7 @@ export default class PlacementAdvisor {
     this.deactivate();
     this._unbindView();
     this._removeOverlay();
+    this._legend.hideHint();
     this._boundary.hide();
     this._emitState('disabled');
   }
@@ -459,6 +469,12 @@ export default class PlacementAdvisor {
     this._activeSidc = sidc ?? null;
     this._activeProfile = resolveProfile(this._activeSidc, this._rules);
     if (this._activeProfile !== 'exempt') this._lastArmedProfile = this._activeProfile;
+    // Say why there is no card, rather than leaving it looking broken; any other hint has done its job.
+    if (this._activeProfile === 'exempt') {
+      this._legend.hint('This symbol is not terrain-bound, so it gets no terrain advice.', 'exempt', 3500);
+    } else {
+      this._legend.hideHint();
+    }
     this._attachPointer();
     this._prefetch();
     this._syncOverlay();
@@ -528,6 +544,7 @@ export default class PlacementAdvisor {
     this._badge.hide();
     this._indicators.hide();
     this._indicators.hideFootprint();
+    this._legend.hideHint('exempt');
     this._detachPointer();
     this._lastDetail = null;
     this._lastSnappable = false;
@@ -1057,6 +1074,7 @@ export default class PlacementAdvisor {
     this._source = null;
     this._badge.destroy();
     this._auditPanel.destroy();
+    this._legend.destroy();
   }
 
   // ── Queries ──────────────────────────────────────────────────────────────
@@ -1862,7 +1880,8 @@ export default class PlacementAdvisor {
       this._removeOverlay();
       return;
     }
-    const map = (this._getView?.() as any)?.map;
+    const view: any = this._getView?.();
+    const map = view?.map;
     if (!map || !this._source) return;
     if (!this._overlay) {
       this._overlay = createOverlayLayer(
@@ -1886,9 +1905,38 @@ export default class PlacementAdvisor {
     const profile = this._overlayProfileNow();
     if (refresh || (this._overlayShown !== null && this._overlayShown !== profile)) this._overlay.refresh?.();
     this._overlayShown = profile;
+    this._syncLegend(view, profile);
+  }
+
+  /** The colour key for what the overlay is painting now: which unit type, and what each colour means. */
+  private _syncLegend(view: any, profile: PlacementProfile): void {
+    const unit = this._rules?.profiles?.[profile]?.label ?? profile;
+    const nogo = OVERLAY_LEGEND.find((e) => e.key === 'nogo')?.label ?? 'no-go';
+    this._legend.show(
+      view,
+      `Terrain for ${unit}`,
+      OVERLAY_LEGEND.map((e) => ({
+        label: e.key === 'near' ? `${e.label}, within ${fmtDistance(this._opts.nearThresholdM)} of ${nogo}` : e.label,
+        rgba: OVERLAY_COLORS[e.key],
+      })),
+    );
+  }
+
+  /** Once per browser: tell whoever just got the advisor what it does, since nothing shows until a symbol is picked. */
+  private _firstUseHint(): void {
+    if (this._hintedThisSession || this._opts.mode === 'off' || this._activeSidc !== null) return;
+    this._hintedThisSession = true;
+    try {
+      if (localStorage.getItem(FIRST_USE_KEY)) return;
+      localStorage.setItem(FIRST_USE_KEY, '1');
+    } catch {
+      /* storage blocked: the session flag still keeps it to once per page */
+    }
+    this._legend.hint('Placement advisor is on: pick a symbol and terrain advice follows your cursor.', 'first-use', 7000);
   }
 
   private _removeOverlay(): void {
+    this._legend.hide();
     if (this._overlay) {
       try {
         this._overlayMap?.remove(this._overlay);

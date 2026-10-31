@@ -1405,6 +1405,11 @@
         transition: height 0.2s ease;
       }
 
+      /* Keep widgets docked bottom-left on the map (e.g. the Placement Advisor's terrain key) above the collapsed log bar. */
+      .esri-ui-corner.esri-ui-bottom-left {
+        margin-bottom: 66px;
+      }
+
       #engineLogPanel.log-collapsed {
         height: 38px;
       }
