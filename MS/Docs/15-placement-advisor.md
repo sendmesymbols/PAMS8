@@ -171,8 +171,12 @@ class and distance at the end of the line):
 |-----------|------|------------|
 | symbol too close to no-go (point, or the part of a shape nearest it) | red, dashed, to the nearest no-go edge | red ring |
 | symbol inside no-go | **green**, dashed, to the nearest deployable ground (where it could move to) | green diamond |
-| line/area partly or mostly in no-go (or touching it) | red, from the cursor to the nearest contested sample | red ring, plus red **×** on the contested samples (at most 16) |
+| line/area partly or mostly in no-go (or touching it) | red, from the cursor to the nearest contested sample | red ring; the stretches of the line / area edge (or footprint outline) in no-go are drawn **solid red on a white casing**, plus red **×** on contested ground inside an area and on single samples too short to draw (at most 16) |
 | deployable, caution, unknown | none | |
+
+The edge is walked one tile pixel at a time (at most 1,200 points) and each run through no-go ground is
+drawn from half a step before it to half a step after, so the colour stops where the ground does. That shows
+where a line or area needs to move, not just how much of it is wrong.
 
 The line has a white casing for contrast on imagery, and the label is placed beyond
 the end of the line so it never covers it. The graphics live on one ground-draped
@@ -187,6 +191,7 @@ v.indicators: Array<{
   kind: 'no-go' | 'deployable' | 'contested',
   from: [x, y], to: [x, y],      // Web Mercator metres
   marks: [x, y][],               // contested samples of a line/area (decimated)
+  stretches?: [x, y][][],        // contested only: runs of the edge that lie in no-go
   classCode, className, label
 }>
 ```
