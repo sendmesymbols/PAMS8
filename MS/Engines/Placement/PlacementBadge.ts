@@ -174,12 +174,12 @@ function whyRow(v: PlacementVerdict): HTMLElement | null {
   }
   const body = el('div');
   body.append(el('span', 'ms-pb-b', name), el('div', undefined, rule));
+  if (v.reason) body.append(el('div', 'ms-pb-soft', v.reason)); // the rule owner's own words, when the bundle gives them
   return row('info', 'Why', undefined, body);
 }
 
 function insideRow(v: PlacementVerdict, pct: number): HTMLElement {
   const color = verdictColor(v);
-  if (v.reason) body.append(el('div', 'ms-pb-soft', v.reason)); // the rule owner's own words, when the bundle gives them
   return row('pie', 'Inside', undefined, track(pct / 100, color), `${pct}% of the ${v.footprint ? 'footprint' : 'shape'}`);
 }
 

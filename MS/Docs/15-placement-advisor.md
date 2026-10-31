@@ -88,9 +88,6 @@ window it says so ("No deployable ground within 1.1 km") instead of guessing.
 A shape that spans tiles still being fetched is judged on what is known and says
 `Still loading terrain data`.
 
-### Echelon footprint
-
-A unit is not a point: it holds **frontage** (width across its front), **depth** (to its rear)
 **While tiles load**, the cursor card does not blank out. When the tile under the cursor is missing, the
 last real verdict of the draw stays up marked `Still loading terrain data`, provided the cursor is within
 80 screen pixels of where that verdict was given (measured on screen between the two map positions, so
@@ -99,6 +96,9 @@ before saying `Terrain data loading…`, so a tile that arrives in a blink never
 bundle's bounds it says how far the nearest data is and which way ("Outside terrain data coverage,
 nearest data 42 km NW").
 
+### Echelon footprint
+
+A unit is not a point: it holds **frontage** (width across its front), **depth** (to its rear)
 and keeps an **intergap** to the next unit of the same echelon along the front. A land-unit symbol
 (symbol set 10) with one of these echelons is therefore judged on the ground it covers, not on
 its click point (`placement.footprint.enabled`, on by default). Other echelons (team, squad,
@@ -208,9 +208,6 @@ and works in 2D and 3D (draped), sitting under the symbol layers.
 | red    | no-go |
 | clear  | no data / outside the bundle |
 
-`placement.overlay.boundary` ("Show official boundary", off by default) also draws the bundle's
-`boundary.geojson`: the national outline (green), the provinces (grey), the Line of Control
-(red, dashed) and the international borders (black). It is lines only, so it never hides the
 The same key is shown on the map while the overlay is on: a small card docked bottom-left through the
 view's own UI (so it follows 2D / 3D switches), titled with the unit type being painted ("Terrain for
 Dismounted") and carrying the current `nearThresholdM` on the marginal row. The labels come from
@@ -221,6 +218,9 @@ Dismounted") and carrying the current `nearThresholdM` on the marginal row. The 
 follows your cursor." Arming a symbol that is not terrain-bound (air, space, …) shows "This symbol is
 not terrain-bound, so it gets no terrain advice." instead of leaving the missing card looking broken.
 
+`placement.overlay.boundary` ("Show official boundary", off by default) also draws the bundle's
+`boundary.geojson`: the national outline (green), the provinces (grey), the Line of Control
+(red, dashed) and the international borders (black). It is lines only, so it never hides the
 terrain colours or your symbols. The file is written by the pipeline and named in
 `manifest.boundary.file`; a bundle without one simply has nothing to draw. In the **official**
 bundle (the pipeline's default) the whole of Jammu & Kashmir is on Pakistan's side, following the
@@ -485,9 +485,6 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
 - A profile with `requires` treats every class **not** in `requires` as no-go
   (vessels need water). Its `dist_` layer is the distance to the nearest non-water
   pixel, i.e. distance to shore.
-- `profileOverrides` is optional and overrides the defaults compiled into
-  `MS/Engines/Placement/PlacementProfiles.ts`. Keys: 2-digit 2525D symbol set,
-  or `symbolSet:entityPrefix` matched against the 6-digit entity code.
 - `why` (per profile) and `note` (per class) are optional: one sentence each, in the rule owner's
   words. `profiles.<p>.why` maps a class code to why that ground is no-go or difficult for that
   profile (`"tracked": { "why": { "6": "…" } }`); `classes.<code>.note` is the fallback when a
@@ -498,6 +495,9 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
   no reason line. `rules.yaml` takes `why:` under a profile and `classes.yaml` a `note:`;
   `scripts/profiles.py` copies both through. The synthetic dev bundle carries a few
   clearly-marked sample sentences so the line can be seen.
+- `profileOverrides` is optional and overrides the defaults compiled into
+  `MS/Engines/Placement/PlacementProfiles.ts`. Keys: 2-digit 2525D symbol set,
+  or `symbolSet:entityPrefix` matched against the 6-digit entity code.
 - Class codes are **stable identifiers**: never renumber; append new ones. Classes 13–17
   (sand, dunes, rocky ground, salt pan, dry riverbed) exist only in **hybrid** bundles,
   where the NCGDB topographic geodatabase supplies terrain WorldCover cannot tell apart; an
