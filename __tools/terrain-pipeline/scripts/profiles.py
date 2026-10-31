@@ -33,14 +33,22 @@ log = setup_logging("profiles")
 
 
 def build_rules(rules: dict, classes: dict) -> dict:
+    def class_entry(c: dict) -> dict:
+        e = {"name": c["name"], "label": c["label"]}
+        if c.get("note"):                       # optional one-line note on the ground itself
+            e["note"] = str(c["note"])
+        return e
+
     out = {"version": str(rules["version"]),
-           "classes": {str(c["code"]): {"name": c["name"], "label": c["label"]} for c in classes["classes"]},
+           "classes": {str(c["code"]): class_entry(c) for c in classes["classes"]},
            "profiles": {}}
     for pid, p in rules["profiles"].items():
         entry = {"label": p["label"]}
         for key in ("nogo", "requires", "caution"):
             if key in p:
                 entry[key] = [int(v) for v in p[key]]
+        if p.get("why"):                        # optional: class code -> why it is no-go / difficult for this profile
+            entry["why"] = {str(k): str(v) for k, v in p["why"].items()}
         out["profiles"][pid] = entry
     if rules.get("profileOverrides"):
         out["profileOverrides"] = rules["profileOverrides"]

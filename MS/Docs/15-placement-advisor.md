@@ -488,6 +488,16 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
 - `profileOverrides` is optional and overrides the defaults compiled into
   `MS/Engines/Placement/PlacementProfiles.ts`. Keys: 2-digit 2525D symbol set,
   or `symbolSet:entityPrefix` matched against the 6-digit entity code.
+- `why` (per profile) and `note` (per class) are optional: one sentence each, in the rule owner's
+  words. `profiles.<p>.why` maps a class code to why that ground is no-go or difficult for that
+  profile (`"tracked": { "why": { "6": "…" } }`); `classes.<code>.note` is the fallback when a
+  profile has no `why` for it. The advisor looks up the class that decides the verdict (for "close
+  to no-go", the nearest no-go) and shows the sentence under the verdict in the badge, in the
+  "Not placed" card and in the placement-check panel (`PlacementVerdict.reason`,
+  `PlacementAuditEntry.rule`). It never writes any text of its own, so a bundle without them just has
+  no reason line. `rules.yaml` takes `why:` under a profile and `classes.yaml` a `note:`;
+  `scripts/profiles.py` copies both through. The synthetic dev bundle carries a few
+  clearly-marked sample sentences so the line can be seen.
 - Class codes are **stable identifiers**: never renumber; append new ones. Classes 13–17
   (sand, dunes, rocky ground, salt pan, dry riverbed) exist only in **hybrid** bundles,
   where the NCGDB topographic geodatabase supplies terrain WorldCover cannot tell apart; an

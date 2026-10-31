@@ -62,6 +62,8 @@ export interface TerrainManifest {
 export interface TerrainClassDef {
   name: string;
   label: string;
+  /** Optional one-sentence note on this ground, shown when no profile-specific reason is given. */
+  note?: string;
 }
 
 export interface TerrainProfileRule {
@@ -72,6 +74,12 @@ export interface TerrainProfileRule {
   caution?: number[];
   /** When set, every class NOT listed here is no-go (vessels need water). */
   requires?: number[];
+  /**
+   * Optional: class code → why that ground is no-go / difficult for this profile, one sentence
+   * ("Tracks bog down in marsh and wetland soils."). Authored by the rule owner; the advisor shows it
+   * under the verdict and never writes any of its own.
+   */
+  why?: Record<string, string>;
 }
 
 /** `rules.json` at the bundle root. */
@@ -281,6 +289,8 @@ export interface PlacementVerdict {
   blocked?: boolean;
   /** Set alongside `blocked` when holding Shift at the click places it anyway. */
   overridable?: boolean;
+  /** The rule behind the verdict, in the rule owner's words (rules.json `why` / class `note`); null when the bundle has none. */
+  reason?: string | null;
   /** Set on an `unknown` verdict when a tile it needs is still on its way (as opposed to no coverage). */
   waiting?: boolean;
 }
@@ -296,6 +306,8 @@ export interface PlacementAuditEntry {
   verdict: PlacementVerdictKind;
   message: string;
   detail: string | null;
+  /** The rule behind the verdict in the rule owner's words, when the bundle gives one. */
+  rule: string | null;
   fraction: number;
   /** Intergap message when the spacing rule is not met. */
   spacing: string | null;

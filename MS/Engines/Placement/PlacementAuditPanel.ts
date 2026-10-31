@@ -181,6 +181,7 @@ export class PlacementAuditPanel {
 
     if (open) {
       const more = el('div', 'ms-pa-more');
+      if (e.rule) more.append(el('div', undefined, e.rule));
       if (e.detail) more.append(el('div', undefined, e.detail));
       more.append(el('div', 'ms-pa-soft', `Judged as: ${e.profileLabel}`));
       if (e.previous === null) more.append(el('div', 'ms-pa-soft', 'Not checked when it was placed.'));

@@ -595,7 +595,7 @@ export default class PlacementAdvisor {
         {
           verdict: verdict.verdict,
           title: 'Not placed',
-          lines: [verdict.message, verdict.detail ?? ''].filter(Boolean),
+          lines: [verdict.message, verdict.reason ?? '', verdict.detail ?? ''].filter(Boolean),
           hint: this._opts.allowOverride
             ? 'Hold Shift and click to place it anyway.'
             : 'Placement on this ground is blocked.',
@@ -887,6 +887,7 @@ export default class PlacementAdvisor {
       verdict: v.verdict,
       message: v.message,
       detail: v.detail,
+      rule: v.reason ?? null,
       fraction: v.fraction,
       spacing: v.spacing && v.spacing.status !== 'ok' ? v.spacing.message : null,
       previous: old?.verdict ?? null,
@@ -1149,7 +1150,22 @@ export default class PlacementAdvisor {
       }
     }
     if (plan && cand) this._applyFootprint(v, plan, cand, effSidc, !opts?.light);
+    v.reason = this._reasonFor(v);
     return v;
+  }
+
+  /**
+   * The rule owner's own words for why this ground decides the verdict: the profile's `why` for the class,
+   * else the class's `note` (rules.json). Next to no-go (nothing touching), it is the nearest no-go that
+   * counts. Null when the bundle carries no text; the advisor never makes any up.
+   */
+  private _reasonFor(v: PlacementVerdict): string | null {
+    const rules = this._rules;
+    if (!rules || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    const code = v.verdict === 'near' && v.fraction === 0 ? (v.nearest?.kind === 'no-go' ? v.nearest.classCode : null) : v.classCode;
+    if (code === null || code === undefined) return null;
+    const text = rules.profiles?.[v.profile]?.why?.[String(code)] ?? rules.classes?.[String(code)]?.note;
+    return typeof text === 'string' && text.trim() !== '' ? text.trim() : null;
   }
 
   /** Record the footprint the verdict was judged on, say so in the detail line, and run the intergap check. */

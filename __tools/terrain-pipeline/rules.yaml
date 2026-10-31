@@ -12,6 +12,14 @@
 # dry beds are "caution" where they plausibly hurt that mobility class.
 #
 # Changing this file only requires `make rebuild-rules` (steps profiles..package).
+#
+# Optional, per profile: `why`, a map of class code -> one sentence on why that ground is no-go or
+# difficult for the profile. The Placement Advisor shows it under the verdict in the planner's own
+# words and never writes any of its own, so leaving it out just means no reason line. Example:
+#   tracked:
+#     why:
+#       6: "<the rule owner's sentence about tracked vehicles in wetland>"
+# (A class can also carry a `note:` in classes.yaml, used when a profile has no `why` for it.)
 
 version: "2026.11-hybrid"
 distScaleM: 10          # dist tile value x distScaleM = metres; 254 = >= 2540 m
