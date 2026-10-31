@@ -76,6 +76,11 @@ param(
     # Folder with the GDAL command-line tools. Default: PATH, then QGIS / OSGeo4W.
     [string] $GdalBin,
 
+    # Docker container that provides GDAL (must mount tools\terrain-pipeline at /work). Default: a running or
+    # stopped container named GDAL (or $env:GDAL_CONTAINER) is used before any host install. -NoDocker skips it.
+    [string] $GdalContainer,
+    [switch] $NoDocker,
+
     # HYBRID build: the NCGDB geodatabase (.gdb folder) to combine with the open data.
     # Default: $env:NCGDB_PATH, else the path in classes.yaml if that folder exists, else open data only.
     [string] $Ncgdb,
@@ -247,7 +252,28 @@ function Find-GdalDir {
     return $null
 }
 
+# A running Docker container that mounts tools\terrain-pipeline at /work and has the GDAL tools. The pipeline's
+# common.run() then sends every GDAL command there (env GDAL_CONTAINER) instead of needing a host install.
+function Initialize-GdalContainer {
+    $name = if ($GdalContainer) { $GdalContainer } elseif ($env:GDAL_CONTAINER) { $env:GDAL_CONTAINER } else { 'GDAL' }
+    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { return $false }
+    $state = & docker inspect -f '{{.State.Running}}' $name 2>$null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    if ("$state".Trim() -ne 'true') {
+        & docker start $name | Out-Null
+        if ($LASTEXITCODE -ne 0) { return $false }
+    }
+    foreach ($t in $GdalTools) {
+        & docker exec $name which $t 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) { Write-Warn "container '$name' has no $t"; return $false }
+    }
+    $env:GDAL_CONTAINER = $name
+    Write-Info ("GDAL in Docker container '$name': " + (& docker exec $name gdalinfo --version))
+    return $true
+}
+
 function Initialize-Gdal {
+    if (-not $NoDocker -and (Initialize-GdalContainer)) { return }
     if (-not (Test-GdalOnPath)) {
         $dir = Find-GdalDir
         if (-not $dir) {

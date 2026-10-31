@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-import { defineConfig } from 'vite';
+import { createReadStream, existsSync, stat } from 'fs';
+import { dirname, extname, resolve, sep } from 'path';
+import { defineConfig, type Plugin } from 'vite';
 import dts from 'vite-plugin-dts';
 import terser from '@rollup/plugin-terser';
 // Collaboration fan-out relay. Build-time tooling, so it lives in tools/ rather
@@ -12,6 +13,36 @@ import { collabRelayPlugin } from './tools/collabRelay.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Dev-only: serve the Placement Advisor's terrain bundle at /terrain-bundle straight from the pipeline's
+// output folder when public/terrain-bundle does not exist. The real bundle is ~390k tiles, and Vite indexes
+// everything under public/ (and watches it), which exhausts memory and hangs the server; the small synthetic
+// bundle (node tools/terrain-synth.mjs) still goes in public/ as before and wins when present.
+function terrainBundleDev(): Plugin {
+    const publicDir = resolve(__dirname, 'public/terrain-bundle');
+    const outDir = resolve(__dirname, 'tools/terrain-pipeline/out/terrain-bundle');
+    const types: Record<string, string> = {
+        '.json': 'application/json', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8',
+    };
+    return {
+        name: 'pams8-terrain-bundle-dev',
+        apply: 'serve',
+        configureServer(server) {
+            if (existsSync(publicDir) || !existsSync(outDir)) return;
+            server.middlewares.use('/terrain-bundle', (req, res, next) => {
+                const rel = decodeURIComponent((req.url ?? '/').split('?')[0]);
+                const file = resolve(outDir, '.' + rel);
+                if (file !== outDir && !file.startsWith(outDir + sep)) return next();
+                stat(file, (err, st) => {
+                    if (err || !st.isFile()) return next();   // missing tile = no coverage; the client treats a non-image as such
+                    res.setHeader('Content-Type', types[extname(file)] ?? 'application/octet-stream');
+                    res.setHeader('Content-Length', st.size);
+                    createReadStream(file).pipe(res);
+                });
+            });
+        },
+    };
+}
 
 // `npm run dev`        → serves the harness against the MS/ TypeScript source.
 // `npm run dev:dist`   → runs with `--mode dist`; the `@lib` alias is repointed at
@@ -99,6 +130,17 @@ export default defineConfig(({ mode }) => {
         // PORT env override lets multiple concurrent dev-tool sessions each get an
         // auto-assigned free port instead of colliding on the fixed default.
         port: Number(process.env.PORT) || (useDist ? 6548 : 6547),
+        // Vite's watcher crawls the whole project root. The Placement Advisor's terrain bundle is ~390k
+        // static tiles and the terrain pipeline's work/ and .venv/ hold GBs of rasters and packages;
+        // watching them stalls the server at ~2.5 GB and they are never modules.
+        watch: {
+            ignored: [
+                '**/public/terrain-bundle/**',
+                '**/tools/terrain-pipeline/out/**',
+                '**/tools/terrain-pipeline/work/**',
+                '**/tools/terrain-pipeline/.venv/**',
+            ],
+        },
         proxy: {
             // Road-network ArcGIS Server (RoadNetwork MapServer + NAServer).
             // A DIFFERENT box from the `/arcgis` basemap server below, so it
@@ -126,6 +168,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
         collabRelayPlugin(),
+        terrainBundleDev(),
         dts({
             entryRoot: 'MS',
             outDir: 'dist/MS',

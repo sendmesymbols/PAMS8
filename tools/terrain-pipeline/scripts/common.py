@@ -56,14 +56,37 @@ def _gdal_data_for(tool: str) -> str | None:
     return None
 
 
+PIPELINE_DIR = Path(__file__).resolve().parent.parent
+CONTAINER_ROOT = "/work"                      # where the container mounts PIPELINE_DIR
+
+
+def _to_container(arg) -> str:
+    """Translate a Path (relative to the cwd, or absolute) under PIPELINE_DIR to its path in the container."""
+    if not isinstance(arg, os.PathLike):
+        return str(arg)
+    full = Path(os.path.abspath(arg))
+    try:
+        rel = full.relative_to(PIPELINE_DIR)
+    except ValueError:
+        raise SystemExit(f"{full} is outside {PIPELINE_DIR}, which is all the GDAL container can see")
+    return CONTAINER_ROOT + "/" + rel.as_posix() if rel.parts else CONTAINER_ROOT
+
+
 def run(cmd: list[str], log: logging.Logger, dry: bool = False) -> None:
     """Run an external command (GDAL etc.), echoing it; raise on failure.
+
+    With $GDAL_CONTAINER set (a running Docker container that mounts this folder at /work) the command runs
+    there via `docker exec`, Path arguments translated to container paths; no GDAL install is needed on the host.
 
     GDAL_DATA is set for the child process only (never for this Python process, whose rasterio wheel
     carries its own GDAL data and must not be pointed at a different install's).
     """
     log.info("$ %s", " ".join(str(c) for c in cmd))
     if dry:
+        return
+    container = os.environ.get("GDAL_CONTAINER")
+    if container:
+        subprocess.run(["docker", "exec", container, *[_to_container(c) for c in cmd]], check=True)
         return
     env = None
     data = _gdal_data_for(str(cmd[0]))

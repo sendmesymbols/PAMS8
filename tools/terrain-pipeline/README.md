@@ -39,6 +39,23 @@ folder's `.venv`, installs `requirements.txt`, finds GDAL (QGIS / OSGeo4W), and 
 the same skip-if-done behaviour. `-Check` sets everything up without running a step; `-NoNcgdb` builds
 from open data only; `-Ncgdb <folder>` chooses the geodatabase (see "Hybrid data").
 
+**GDAL in Docker instead of a host install**: if a container named `GDAL` exists (`-GdalContainer <name>` or
+`$env:GDAL_CONTAINER` pick another), the script uses it before looking for QGIS / OSGeo4W, and `scripts/common.py`
+runs every GDAL command there with `docker exec`, translating paths. The container only needs the GDAL
+command-line tools (e.g. `ghcr.io/osgeo/gdal:ubuntu-small-latest`) and this folder mounted at `/work`:
+
+```sh
+docker create --name GDAL --restart unless-stopped --entrypoint sleep \
+  -v "<repo>/tools/terrain-pipeline:/work" -w /work ghcr.io/osgeo/gdal:ubuntu-small-latest infinity
+docker start GDAL
+```
+
+`-NoDocker` ignores it. The NCGDB is read by Python (pyogrio), so it is not mounted.
+
+**Viewing the bundle in the dev harness**: `npm run dev` serves `out/terrain-bundle` at `/terrain-bundle` when
+`public/terrain-bundle` does not exist (do not put the real bundle under `public/`: Vite indexes it and stalls).
+Its file watcher also ignores this folder's `out/`, `work/` and `.venv/`.
+
 ### Prerequisites
 
 - Linux / WSL / Windows, Python 3.11+, GDAL 3.4+ command-line tools on `PATH`
