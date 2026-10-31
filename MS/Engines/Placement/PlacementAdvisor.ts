@@ -20,6 +20,8 @@
  *   "placement-blocked"      – { verdict, drawEssentials } (enforce mode)
  *   "placement-override"     – { verdict, drawEssentials } (enforce mode, Shift-click placed it anyway)
  *   "placement-snap"         – PlacementSnapResult (the S quick fix)
+ *   "placement-audit"        – PlacementAudit (openAudit(): every symbol on the map re-judged)
+ *   "placement-recheck"      – PlacementAudit (symbols re-judged after a move / edit)
  *   "placement-tiles"        – { loaded, pending, failed, missing }
  *
  * Integration: SymbolEngine feeds onDrawProgress, calls prepareFor() when a
@@ -31,6 +33,7 @@ import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import { SYMBOL_LAYER_IDS } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
 import { compileProfile, evaluateSamples, fmtDistance, type CompiledProfile } from './PlacementEvaluator';
+import { PlacementAuditPanel, type AuditPanelHandlers } from './PlacementAuditPanel';
 import { PlacementBadge } from './PlacementBadge';
 import { PlacementBoundary } from './PlacementBoundary';
 import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './PlacementFootprint';
@@ -46,6 +49,8 @@ import {
   NODATA_CLASS,
   layerNames,
   type MercXY,
+  type PlacementAudit,
+  type PlacementAuditEntry,
   type PlacementIndicator,
   type PlacementNearest,
   type PlacementOptions,
@@ -84,6 +89,11 @@ const SNAP_DIRECTIONS = 16;
 const RETRY_DELAYS_MS = [4000, 15000, 45000];
 /** After a ring with only a marginal spot (near / caution), keep looking this much further for a clean `ok`. */
 const SNAP_PREFER_OK = 1.6;
+/** Audit: symbols judged per batch (their tiles must fit the cache), passes to wait out missing tiles, wait per pass, and the tile span a shape is judged over. */
+const AUDIT_BATCH = 16;
+const AUDIT_PASSES = 4;
+const AUDIT_TILE_WAIT_MS = 8000;
+const AUDIT_SPAN_PX = 96;
 
 interface ReadContext {
   z: number;
@@ -162,6 +172,8 @@ export default class PlacementAdvisor {
   private _reevalTimer: ReturnType<typeof setTimeout> | null = null;
 
   private _badge = new PlacementBadge();
+  private _auditPanel = new PlacementAuditPanel();
+  private _tileWaiters: Array<() => void> = [];
   private _indicators = new PlacementIndicators(() => this._getView());
   private _boundary = new PlacementBoundary(() => this._getView());
   private _lastClient: { x: number; y: number } | null = null;
@@ -513,22 +525,7 @@ export default class PlacementAdvisor {
   checkCommit(geometry: any, drawEssentials: any): CommitCheck {
     const sidc: string | null = drawEssentials?.SIDC || drawEssentials?.AMPLIFIER?.SIDC || this._activeSidc;
     const verdict = this.evaluateGeometry(geometry, sidc);
-    const stamp: PlacementStamp | null =
-      verdict.verdict === 'off' || verdict.verdict === 'exempt'
-        ? null
-        : {
-            verdict: verdict.verdict,
-            profile: verdict.profile,
-            classCode: verdict.classCode,
-            distanceM: verdict.distanceM,
-            fraction: verdict.fraction,
-            ...(verdict.footprint && {
-              echelon: verdict.footprint.echelon,
-              frontageM: verdict.footprint.frontageM,
-              depthM: verdict.footprint.depthM,
-              ...(verdict.spacing && { spacing: verdict.spacing.status }),
-            }),
-          };
+    const stamp = this._stampOf(verdict);
     const refused = this._refuses(verdict);
     // Shift held at the click places it anyway, and the stamp says so for whoever reviews the plan.
     const override = refused && this._opts.allowOverride && this._shift;
@@ -555,6 +552,24 @@ export default class PlacementAdvisor {
     return { allow: !block, verdict, stamp };
   }
 
+  /** What is stored on `graphic.attributes.placement`; null for verdicts that say nothing (off / exempt). */
+  private _stampOf(verdict: PlacementVerdict): PlacementStamp | null {
+    if (verdict.verdict === 'off' || verdict.verdict === 'exempt') return null;
+    return {
+      verdict: verdict.verdict,
+      profile: verdict.profile,
+      classCode: verdict.classCode,
+      distanceM: verdict.distanceM,
+      fraction: verdict.fraction,
+      ...(verdict.footprint && {
+        echelon: verdict.footprint.echelon,
+        frontageM: verdict.footprint.frontageM,
+        depthM: verdict.footprint.depthM,
+        ...(verdict.spacing && { spacing: verdict.spacing.status }),
+      }),
+    };
+  }
+
   /**
    * Record why a symbol was placed against the rules. Call after a `placement-override` placement with the
    * graphic the engine created; returns false when the graphic was not an override.
@@ -566,6 +581,267 @@ export default class PlacementAdvisor {
     if (text) p.reason = text;
     else delete p.reason;
     return true;
+  }
+
+  // ── Symbols already on the map ───────────────────────────────────────────
+
+  /** Point / line / area graphics in the symbol layers (not the sketch or declutter layers). */
+  private _placedGraphics(): any[] {
+    const map = (this._getView?.() as any)?.map;
+    const out: any[] = [];
+    if (!map) return out;
+    for (const id of NEIGHBOUR_LAYER_IDS) {
+      map.findLayerById?.(id)?.graphics?.forEach((g: any) => {
+        const t = g?.geometry?.type;
+        if (g?.attributes?.id && (t === 'point' || t === 'polyline' || t === 'polygon')) out.push(g);
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Judge every symbol on the map against the terrain now, bring each stamp up to date (an Shift-click
+   * override is kept while it is still needed) and return the ones that need attention, worst first.
+   * Symbols anywhere on the map are checked, not only those in view: their tiles are loaded in small
+   * batches first.
+   */
+  async auditPlacements(
+    opts: { onProgress?: (done: number, total: number) => void; refreshStamps?: boolean } = {},
+  ): Promise<PlacementAudit> {
+    return this._auditGraphics(this._placedGraphics(), opts);
+  }
+
+  /** `auditPlacements()` with the results panel: progress while it runs, then the list (click a row to zoom to the symbol). */
+  async openAudit(): Promise<PlacementAudit> {
+    if (!this.isActive) {
+      this._toastUnavailable('Placement check');
+      return this._auditGraphics([]);
+    }
+    this._auditPanel.showProgress(0, this._placedGraphics().length);
+    const audit = await this.auditPlacements({ onProgress: (d, t) => this._auditPanel.showProgress(d, t) });
+    this._auditPanel.show(audit, this._panelHandlers(() => void this.openAudit()));
+    this._emit('placement-audit', audit);
+    return audit;
+  }
+
+  /** Judge one symbol and show why in the panel (context menu: "Placement check…"). */
+  async explain(graphic: any): Promise<PlacementAuditEntry | null> {
+    if (!this.isActive) {
+      this._toastUnavailable('Placement check');
+      return null;
+    }
+    const audit = await this._auditGraphics([graphic], { refreshStamps: true });
+    const entry = audit.entries[0] ?? null;
+    if (!entry) {
+      const why = audit.exempt
+        ? 'This symbol is not terrain-bound.'
+        : audit.outside
+          ? 'Outside terrain data coverage.'
+          : 'Terrain data could not be loaded for this symbol.';
+      this._badge.toast({ verdict: 'unknown', title: 'Placement check', lines: [why] }, 4000);
+      return null;
+    }
+    this._auditPanel.show(audit, this._panelHandlers(() => void this.explain(graphic)), { title: 'Placement check', focus: entry });
+    return entry;
+  }
+
+  /**
+   * Judge symbols again after they were moved or edited, keep their stamps true, and tell the user when one
+   * has ended up on ground it cannot use. Fire and forget; does nothing while the advisor is inactive.
+   */
+  recheck(graphics: any[]): void {
+    const list = graphics.filter((g) => g?.geometry);
+    if (!this.isActive || list.length === 0) return;
+    void this._auditGraphics(list, { refreshStamps: true }).then((audit) => {
+      const worse = audit.problems.filter((e) => e.previous !== e.verdict);
+      for (const e of worse) EngineLogger.nextStep(ENGINE, `${e.name}: ${e.message}`);
+      if (worse.length > 0) {
+        this._badge.toast(
+          {
+            verdict: worse[0].verdict,
+            title: worse.length === 1 ? 'Placement changed' : `${worse.length} placements changed`,
+            lines: worse.slice(0, 3).map((e) => `${e.name}: ${e.message}`),
+            hint: 'Right-click a symbol, Placement check, for details.',
+          },
+          5000,
+        );
+      }
+      this._emit('placement-recheck', audit);
+    });
+  }
+
+  private _panelHandlers(again: () => void): AuditPanelHandlers {
+    return { onZoom: (e) => this._zoomTo(e.graphic), onRecheck: again };
+  }
+
+  /** Bring a symbol into view and flash it. */
+  private _zoomTo(graphic: any): void {
+    const view: any = this._getView?.();
+    const geom = graphic?.geometry;
+    if (!view || !geom) return;
+    try {
+      const target = geom.type === 'point' ? { target: geom, scale: Math.min(view.scale || 25000, 25000) } : { target: graphic };
+      void Promise.resolve(view.goTo(target, { duration: 600 })).catch(() => {});
+      const layer = graphic.layer;
+      void Promise.resolve(view.whenLayerView?.(layer))
+        .then((lv: any) => {
+          const h = lv?.highlight?.(graphic);
+          setTimeout(() => h?.remove?.(), 2500);
+        })
+        .catch(() => {});
+    } catch {
+      /* view not ready */
+    }
+  }
+
+  private _toastUnavailable(title: string): void {
+    const s = this.status;
+    const why =
+      s.state === 'disabled' ? 'The Placement advisor is off.'
+      : this._opts.mode === 'off' ? 'The Placement advisor mode is Off.'
+      : s.state === 'loading' ? 'Terrain data is still loading.'
+      : s.state === 'no-bundle-url' ? 'No terrain bundle is configured.'
+      : (s.error ?? 'Terrain data is unavailable.');
+    this._badge.toast({ verdict: 'unknown', title, lines: [why] }, 4500);
+  }
+
+  /** Resolves when no tile is outstanding, or after `timeoutMs`. */
+  private _tilesSettled(timeoutMs: number): Promise<void> {
+    if ((this._cache?.stats().pending ?? 0) === 0) return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        const i = this._tileWaiters.indexOf(done);
+        if (i >= 0) this._tileWaiters.splice(i, 1);
+        resolve();
+      }, timeoutMs);
+      this._tileWaiters.push(done);
+    });
+  }
+
+  /** Tile zoom that keeps a shape (or the footprints it would be judged on) within about AUDIT_SPAN_PX pixels. */
+  private _auditZoom(shape: MercShape, sidc: string | null): number {
+    const m = this._manifest!;
+    const plan = planFootprint(shape, sidc, this._rules, this._opts.footprint);
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    const take = (s: MercShape) => {
+      for (const part of s.parts) {
+        for (const p of part) {
+          x0 = Math.min(x0, p[0]);
+          x1 = Math.max(x1, p[0]);
+          y0 = Math.min(y0, p[1]);
+          y1 = Math.max(y1, p[1]);
+        }
+      }
+    };
+    if (plan) plan.candidates.forEach((c) => take(c.shape));
+    else take(shape);
+    const extent = Math.max(x1 - x0, y1 - y0);
+    return extent > 0 ? zoomForResolution(extent / AUDIT_SPAN_PX, m.zoom.min, m.zoom.max, m.tileSize) : m.zoom.max;
+  }
+
+  private async _auditGraphics(
+    graphics: any[],
+    opts: { onProgress?: (done: number, total: number) => void; refreshStamps?: boolean } = {},
+  ): Promise<PlacementAudit> {
+    const audit: PlacementAudit = { checked: 0, exempt: 0, outside: 0, unchecked: 0, counts: {}, entries: [], problems: [] };
+    if (!this.isActive) return audit;
+    const token = this._configToken;
+
+    const items: Array<{ g: any; sidc: string | null; zoom: number }> = [];
+    for (const g of graphics) {
+      const sidc = graphicSidc(g);
+      const shape = toMercatorShape(g?.geometry);
+      if (!shape || this._profile(resolveProfile(sidc, this._rules)).exempt) {
+        audit.exempt++;
+        continue;
+      }
+      items.push({ g, sidc, zoom: this._auditZoom(shape, sidc) });
+    }
+
+    for (let i = 0; i < items.length; i += AUDIT_BATCH) {
+      if (token !== this._configToken || !this.isActive) break;
+      const batch = items.slice(i, i + AUDIT_BATCH);
+      const verdicts = new Map<(typeof items)[number], PlacementVerdict>();
+      // Judging a symbol queues the tiles it needs; wait for them and judge again until none is missing.
+      let pending = batch;
+      for (let pass = 0; pass < AUDIT_PASSES && pending.length > 0; pass++) {
+        const missing: typeof batch = [];
+        for (const it of pending) {
+          const v = this.evaluateGeometry(it.g.geometry, it.sidc, { light: true, zoom: it.zoom });
+          verdicts.set(it, v);
+          if (v.waiting) missing.push(it);
+        }
+        if (missing.length === 0) break;
+        await this._tilesSettled(AUDIT_TILE_WAIT_MS);
+        pending = missing;
+      }
+
+      for (const it of batch) {
+        let v = verdicts.get(it)!;
+        if (v.waiting) {
+          audit.unchecked++;
+          continue;
+        }
+        if (v.verdict === 'unknown') {
+          audit.outside++;
+          continue;
+        }
+        const problem = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
+        // The cheap pass has no wording; spend the full one only on what will be listed.
+        if (problem || this._opts.footprint.spacing) v = this.evaluateGeometry(it.g.geometry, it.sidc, { zoom: it.zoom });
+        audit.entries.push(this._auditEntry(it.g, it.sidc, v, problem, opts.refreshStamps !== false));
+        audit.checked++;
+        audit.counts[v.verdict] = (audit.counts[v.verdict] ?? 0) + 1;
+      }
+      opts.onProgress?.(Math.min(items.length, i + batch.length), items.length);
+      await new Promise((r) => setTimeout(r, 0)); // let the page breathe between batches
+    }
+
+    audit.entries.sort((a, b) => b.severity - a.severity);
+    audit.problems = audit.entries.filter((e) => e.problem);
+    return audit;
+  }
+
+  private _auditEntry(g: any, sidc: string | null, v: PlacementVerdict, problem: boolean, refresh: boolean): PlacementAuditEntry {
+    const old = g.attributes?.placement as PlacementStamp | undefined;
+    if (refresh && g.attributes) {
+      const stamp = this._stampOf(v);
+      if (stamp) {
+        // A Shift-click override stays on record for as long as the symbol is still somewhere it needs one.
+        if (old?.overridden && this._isBad(v)) {
+          stamp.overridden = true;
+          if (old.reason) stamp.reason = old.reason;
+        }
+        g.attributes.placement = stamp;
+      }
+    }
+    const de = g.attributes?.drawEssentials;
+    return {
+      graphic: g,
+      id: g.attributes?.id != null ? String(g.attributes.id) : null,
+      name: de?.SYM_NAME || g.attributes?.name || g.attributes?.type || 'Symbol',
+      sidc,
+      profile: v.profile,
+      profileLabel: v.profileLabel,
+      verdict: v.verdict,
+      message: v.message,
+      detail: v.detail,
+      fraction: v.fraction,
+      spacing: v.spacing && v.spacing.status !== 'ok' ? v.spacing.message : null,
+      previous: old?.verdict ?? null,
+      changed: old?.verdict !== undefined && old.verdict !== v.verdict,
+      overridden: old?.overridden === true,
+      reason: old?.reason ?? null,
+      problem,
+      severity: severity(v),
+    };
   }
 
   /**
@@ -743,6 +1019,7 @@ export default class PlacementAdvisor {
     this._source?.dispose?.();
     this._source = null;
     this._badge.destroy();
+    this._auditPanel.destroy();
   }
 
   // ── Queries ──────────────────────────────────────────────────────────────
@@ -755,7 +1032,13 @@ export default class PlacementAdvisor {
   evaluateGeometry(
     geometry: any,
     sidc?: string | null,
-    opts?: { ref?: () => MercXY | null; /** Verdict only: skips the nearest-terrain scan, indicator lines and the intergap check. */ light?: boolean },
+    opts?: {
+      ref?: () => MercXY | null;
+      /** Verdict only: skips the nearest-terrain scan, indicator lines and the intergap check. */
+      light?: boolean;
+      /** Judge at this tile zoom instead of the one matching the view (audits of symbols anywhere on the map). */
+      zoom?: number;
+    },
   ): PlacementVerdict {
     const profile = resolveProfile(sidc ?? this._activeSidc, this._rules);
     if (!this.isActive) return this._blank('off', profile, 'Placement advisor off');
@@ -765,7 +1048,7 @@ export default class PlacementAdvisor {
     const shape = toMercatorShape(geometry);
     if (!shape) return this._blank('unknown', profile, 'Cannot check this geometry');
 
-    const ctx = this._readContext(profile);
+    const ctx = this._readContext(profile, opts?.zoom);
     const evalOpts = {
       nearThresholdM: this._opts.nearThresholdM,
       partialFraction: this._opts.partialFraction,
@@ -798,6 +1081,7 @@ export default class PlacementAdvisor {
         : (stats?.pending ?? 0) > 0
           ? 'Terrain data loading…'
           : 'Terrain data could not be loaded';
+      v.waiting = ctx.waiting;
     } else {
       if (!opts?.light) {
         this._enrich(v, samples, pts, ctx, compiled);
@@ -1145,11 +1429,11 @@ export default class PlacementAdvisor {
   }
 
   /** Per-evaluation lookup state: layer names resolved once, last tile memoised. */
-  private _readContext(profile: PlacementProfile): ReadContext {
+  private _readContext(profile: PlacementProfile, zoom?: number): ReadContext {
     const m = this._manifest!;
     const { cls, dist } = this._layerNames(profile);
     return {
-      z: this._sampleZoom(),
+      z: zoom ?? this._sampleZoom(),
       ts: m.tileSize,
       scale: m.distScaleM,
       cls,
@@ -1270,6 +1554,9 @@ export default class PlacementAdvisor {
 
   private _onTilesChanged(): void {
     this._emit('placement-tiles', this.tileStats());
+    if (this._tileWaiters.length > 0 && (this._cache?.stats().pending ?? 0) === 0) {
+      for (const wake of this._tileWaiters.splice(0)) wake();
+    }
     // A tile the cursor was waiting on may have arrived — refresh the verdict.
     if (!this._lastDetail || this._reevalTimer !== null) return;
     this._reevalTimer = setTimeout(() => {

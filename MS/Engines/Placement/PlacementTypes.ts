@@ -281,6 +281,50 @@ export interface PlacementVerdict {
   blocked?: boolean;
   /** Set alongside `blocked` when holding Shift at the click places it anyway. */
   overridable?: boolean;
+  /** Set on an `unknown` verdict when a tile it needs is still on its way (as opposed to no coverage). */
+  waiting?: boolean;
+}
+
+/** One symbol judged by `auditPlacements()` / `explain()`. */
+export interface PlacementAuditEntry {
+  graphic: any;
+  id: string | null;
+  name: string;
+  sidc: string | null;
+  profile: PlacementProfile;
+  profileLabel: string;
+  verdict: PlacementVerdictKind;
+  message: string;
+  detail: string | null;
+  fraction: number;
+  /** Intergap message when the spacing rule is not met. */
+  spacing: string | null;
+  /** What the stamp said before this check (null = never stamped, e.g. loaded from a plan). */
+  previous: PlacementVerdictKind | null;
+  /** True when the verdict is different from the stamp it carried. */
+  changed: boolean;
+  /** Placed against the rules with Shift-click, and why when a reason was recorded. */
+  overridden: boolean;
+  reason: string | null;
+  /** In / partial / touching no-go: needs a look. */
+  problem: boolean;
+  /** Orders problems worst first. */
+  severity: number;
+}
+
+export interface PlacementAudit {
+  /** Symbols judged. */
+  checked: number;
+  /** Symbols that are not terrain-bound (air, sea, …) or have no usable geometry. */
+  exempt: number;
+  /** Symbols outside the terrain bundle's coverage. */
+  outside: number;
+  /** Symbols whose tiles never arrived, so they are not judged. */
+  unchecked: number;
+  counts: Partial<Record<PlacementVerdictKind, number>>;
+  entries: PlacementAuditEntry[];
+  /** `entries` that are problems, worst first. */
+  problems: PlacementAuditEntry[];
 }
 
 /** Whether the advisor has terrain data, for hosts that want to show it (also on `placement-state-change`). */

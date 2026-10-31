@@ -26,6 +26,20 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     keywords: ['enable', 'disable', 'master', 'terrain', 'deployable'],
   },
   {
+    path: ['placement', '__audit'],
+    label: 'Placed symbols',
+    buttonLabel: '🧭 Check all placements',
+    group: 'Engine',
+    type: 'action',
+    help: 'Re-judge every symbol already on the map against the terrain and list the ones on ground their unit type cannot use. Click a row to zoom to it.',
+    keywords: ['audit', 'check', 'verify', 'review', 'existing', 'placed', 'all'],
+    onClick: () => {
+      const adv = (window as any).symbolEngine?.placementAdvisor;
+      if (adv?.openAudit) void adv.openAudit();
+      else console.warn('PlacementAdvisor not ready yet — turn on the Placement advisor first');
+    },
+  },
+  {
     path: ['placement', 'mode'],
     label: 'Mode',
     group: 'Engine',

@@ -274,6 +274,8 @@ swaps the source without reloading the bundle. The painter
 | `placement-blocked`       | `{ verdict, drawEssentials }` in enforce mode |
 | `placement-tiles`         | `{ loaded, pending, failed }` — cache stats, for HUDs/tests |
 | `placement-override`      | `{ verdict, drawEssentials }` — enforce mode, Shift-click placed it anyway |
+| `placement-audit`         | `PlacementAudit` — `openAudit()` re-judged every placed symbol |
+| `placement-recheck`       | `PlacementAudit` — symbols re-judged after a move or edit |
 | `placement-snap`          | `PlacementSnapResult` — the quick fix moved the symbol (`moved: true`) or found nowhere to go (`reason`) |
 
 ### Quick fix: move to usable ground
@@ -286,6 +288,29 @@ function that gates a commit, footprint included, and prefers a clean `ok` spot 
 `near`/`caution` one if it is only a little further out. It then clicks that spot with real pointer
 events, so the symbol's own draw end, the commit check and the stamp run as usual (Ctrl+Z undoes it).
 Lines and areas are not moved. Turn it off with `placement.snapKey`.
+
+### Symbols already on the map
+
+The advice above only runs while drawing, so the stamp can go stale (a symbol moved, edited, loaded from
+a plan). Three things keep it honest:
+
+- **Check all placements** — `await advisor.openAudit()` (Settings / Ctrl+K: *Check all placements*)
+  re-judges every point, line and area in the symbol layers, anywhere on the map, refreshes each
+  `attributes.placement` and lists the ones in, partly in or touching no-go, worst first. Click a row
+  to zoom to the symbol and flash it; the row opens to show what changed since it was placed, a
+  Shift-click override with its reason, and any spacing breach. `advisor.auditPlacements()` is the same
+  without the panel and returns a `PlacementAudit` (`entries`, `problems`, counts of exempt / outside
+  coverage / unchecked symbols); `placement-audit` carries the result. Tiles for symbols outside the
+  view are loaded in batches of 16, and each symbol is judged at a zoom that keeps its footprint within
+  about 96 tile pixels, so the result does not depend on where the camera is.
+- **Re-check on move / edit** — after an `EditEngine` `changeInSymbol` (move, rotate, scale, control
+  points) or a Morphix edit, the affected symbols are judged again and their stamps updated. One that
+  has ended up on bad ground gets a "Placement changed" card and an Engine Log line; a
+  `placement-recheck` event carries the result. An override survives while the symbol still needs it.
+  Undo / redo does not trigger a re-check; run the audit.
+- **Placement check…** — right-click a symbol while the advisor is active. `advisor.explain(graphic)` does
+  the same from code and opens the panel on that symbol. Air and sea symbols say they are not
+  terrain-bound.
 
 ### When the terrain data is unavailable
 

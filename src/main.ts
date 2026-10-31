@@ -2337,6 +2337,11 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     placementState = e.detail.error ? `${e.detail.state} (${e.detail.error})` : e.detail.state;
     renderPlacementStatus();
   });
+  document.getElementById('placement-audit')?.addEventListener('click', () => {
+    const adv = (window as any).symbolEngine?.placementAdvisor;
+    if (adv) void adv.openAudit();
+    else showToast('Turn on the Placement advisor first', 'no-targets');
+  });
   document.getElementById('placement-retry')?.addEventListener('click', () => {
     const adv = (window as any).symbolEngine?.placementAdvisor;
     if (adv) void adv.retry();

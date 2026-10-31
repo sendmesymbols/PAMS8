@@ -288,6 +288,7 @@ class SymbolEngine implements Evented {
     this._layerManager = GraphicsLayerManager.getInstance(this.view);
     this._layerManager.initializeLayers();
     this._editEngine = new EditEngine(viewProvider, this._layerManager);
+    this._wirePlacementRecheck();
     this._stylusController = new StylusDrawController({
       getView: () => this.view,
       getLayerManager: () => this._layerManager,
@@ -745,6 +746,7 @@ class SymbolEngine implements Evented {
     this._layerManager.initializeLayers();
     this._clipboardEngine.rewireLayerManager(this._layerManager);
     this._editEngine = new EditEngine(this._getView, this._layerManager);
+    this._wirePlacementRecheck();
     this._undoRedoManager.rewireEditEngine(this._editEngine);
     // SelectionActionPanel and KeyboardShortcutManager both capture the original
     // EditEngine reference at construction.  Without swapping them here the old
@@ -919,7 +921,35 @@ class SymbolEngine implements Evented {
       this.emitEvent('placementAdvisorReady', { engine: this._placementAdvisor });
     }
     this._placementAdvisor.enable();
+    this._registerPlacementMenu();
     console.info('[SymbolEngine] PlacementAdvisor loaded');
+  }
+
+  /** A moved or edited symbol is judged again, so its stamp stays true and the user hears when it ended up on bad ground. */
+  private _wirePlacementRecheck(): void {
+    this._editEngine.on('changeInSymbol', ({ graphic, additionalGraphics }: { graphic: Graphic; additionalGraphics?: Graphic[] }) => {
+      this._placementAdvisor?.recheck([graphic, ...(additionalGraphics ?? [])]);
+    });
+  }
+
+  private _placementMenuRegistered = false;
+
+  /** Right-click, "Placement check…" on terrain-bound symbols while the advisor is active. */
+  private _registerPlacementMenu(): void {
+    if (this._placementMenuRegistered) return;
+    this._placementMenuRegistered = true;
+    this._contextMenuManager.addDynamicItemProvider((graphic: Graphic): ContextMenuItem[] => {
+      const advisor = this._placementAdvisor;
+      if (!advisor?.isActive || !graphic?.attributes?.id) return [];
+      return [
+        {
+          id: 'placement-check',
+          label: 'Placement check…',
+          icon: '🧭',
+          action: (g: Graphic) => void advisor.explain(g),
+        },
+      ];
+    });
   }
 
   private _initDrawingCueEngine(): void {
@@ -4000,6 +4030,7 @@ class SymbolEngine implements Evented {
       });
       }
 
+      this._placementAdvisor?.recheck([newGraphic]);
       this.emitEvent('symbolDetailsEdited', {
         graphic: newGraphic,
         id: oldId,
