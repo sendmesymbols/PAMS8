@@ -19,15 +19,19 @@ const CSS = `
 .ms-pa-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#242a32;border-bottom:1px solid #39414b}
 .ms-pa-title{font-weight:600;font-size:13px;flex:1}
 .ms-pa button{font:inherit;color:inherit;cursor:pointer}
-.ms-pa-btn{padding:3px 9px;border-radius:6px;border:1px solid #4a535e;background:#2b323b}
+.ms-pa-btn{padding:3px 10px;min-height:28px;border-radius:6px;border:1px solid #4a535e;background:#2b323b}
 .ms-pa-btn:hover{background:#363f4a}
-.ms-pa-x{padding:0 7px;font-size:16px;line-height:1.3;border:0;background:none;color:#9aa3ad}
+.ms-pa-x{padding:0;min-width:28px;min-height:28px;font-size:18px;line-height:1;border:0;background:none;color:#9aa3ad}
+.ms-pa button:focus-visible,.ms-pa input:focus-visible,.ms-pa-title:focus-visible{outline:2px solid #6db3ff;outline-offset:1px}
+.ms-pa-title{outline:none}
+@media (prefers-reduced-motion:reduce){.ms-pa-bar>div{transition:none}}
 .ms-pa-sum{padding:8px 12px;border-bottom:1px solid #2c333c}
 .ms-pa-soft{color:#9aa3ad;font-size:11px}
 .ms-pa-opt{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid #2c333c;color:#c5cbd2}
 .ms-pa-list{overflow:auto;flex:1;min-height:0}
 .ms-pa-row{display:block;width:100%;text-align:left;padding:7px 12px;border:0;border-bottom:1px solid #2c333c;background:none}
-.ms-pa-row:hover,.ms-pa-row:focus-visible{background:#262d36;outline:none}
+.ms-pa-row:hover,.ms-pa-row:focus-visible{background:#262d36}
+.ms-pa-row:focus-visible{outline:2px solid #6db3ff;outline-offset:-2px}
 .ms-pa-line{display:flex;align-items:center;gap:8px}
 .ms-pa-dot{flex:none;width:10px;height:10px;border-radius:50%}
 .ms-pa-name{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -87,6 +91,7 @@ export class PlacementAuditPanel {
   private _opts: AuditPanelOptions = {};
   private _showAll = false;
   private _open = new Set<any>();
+  private _returnFocus: HTMLElement | null = null;
 
   get isOpen(): boolean {
     return this._root !== null && this._root.style.display !== 'none';
@@ -110,12 +115,22 @@ export class PlacementAuditPanel {
     this._opts = opts;
     this._showAll = opts.focus !== undefined;
     this._open = new Set(opts.focus ? [opts.focus.graphic] : []);
-    this._ensure().style.display = 'flex';
+    const root = this._ensure();
+    root.style.display = 'flex';
     this._render();
+    // Opened from a button or a menu: take keyboard focus into the panel (on its title, so the heading is read
+    // first), and give it back on close. Re-checking from inside the panel leaves focus where it is.
+    if (!root.contains(document.activeElement)) {
+      this._returnFocus = document.activeElement as HTMLElement | null;
+      this._title.focus({ preventScroll: true });
+    }
   }
 
   hide(): void {
     if (this._root) this._root.style.display = 'none';
+    const back = this._returnFocus;
+    this._returnFocus = null;
+    if (back && back.isConnected && typeof back.focus === 'function') back.focus({ preventScroll: true });
   }
 
   destroy(): void {
@@ -143,7 +158,9 @@ export class PlacementAuditPanel {
         : a.problems.length === 0
           ? `All ${plural(a.checked, 'checked symbol')} on suitable ground.`
           : `${plural(a.problems.length, 'symbol')} ${a.problems.length === 1 ? 'needs' : 'need'} attention, ${a.checked} checked.`;
-    sum.append(el('div', undefined, headline));
+    const head = el('div', undefined, headline);
+    head.setAttribute('role', 'status'); // read out when the result arrives or changes
+    sum.append(head);
     if (skipped.length) sum.append(el('div', 'ms-pa-soft', skipped.join(' · ')));
     parts.push(sum);
 
@@ -217,6 +234,9 @@ export class PlacementAuditPanel {
     root.setAttribute('aria-label', 'Placement check');
     const head = el('div', 'ms-pa-head');
     this._title = el('div', 'ms-pa-title', 'Placement check');
+    this._title.tabIndex = -1; // focusable by script only, so opening the panel can land on its heading
+    this._title.setAttribute('role', 'heading');
+    this._title.setAttribute('aria-level', '2');
     const again = el('button', 'ms-pa-btn', 'Check again');
     again.type = 'button';
     again.addEventListener('click', () => this._handlers?.onRecheck());

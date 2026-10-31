@@ -18,20 +18,23 @@ import type { PlacementVerdict } from './PlacementTypes';
 const STYLE_ID = 'ms-placement-badge-style';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const EDGE = 8;
+/** How long the cursor must rest on a verdict before it is read out to a screen reader. */
+const SPEAK_DELAY_MS = 500;
 
 const CSS = `
 .ms-placement-badge{position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;
   --pb-c:#5b6470;--pb-fg:#fff;width:280px;border-radius:10px;overflow:hidden;
   font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
   background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:none}
-.ms-placement-badge[data-verdict="ok"]{--pb-c:#1f8a4c}
+.ms-placement-badge[data-verdict="ok"]{--pb-c:#1c8247}
 .ms-placement-badge[data-verdict="near"]{--pb-c:#e9a526;--pb-fg:#1b1f25}
 .ms-placement-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25}
-.ms-placement-badge[data-verdict="partial"]{--pb-c:#d9622b}
+.ms-placement-badge[data-verdict="partial"]{--pb-c:#d9622b;--pb-fg:#1b1f25}
 .ms-placement-badge[data-verdict="in"]{--pb-c:#d63a3f}
 .ms-pb-bar{display:flex;align-items:center;gap:7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
 .ms-pb-pct{margin-left:auto;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:12px;white-space:nowrap}
-.ms-placement-badge[data-verdict="near"] .ms-pb-pct,.ms-placement-badge[data-verdict="caution"] .ms-pb-pct{background:rgba(0,0,0,.12)}
+.ms-placement-badge[data-verdict="near"] .ms-pb-pct,.ms-placement-badge[data-verdict="caution"] .ms-pb-pct,.ms-placement-badge[data-verdict="partial"] .ms-pb-pct{background:rgba(0,0,0,.12)}
+.ms-pb-sr{position:fixed;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 .ms-pb-body{padding:6px 11px 8px}
 .ms-pb-row{display:flex;gap:8px;padding:4px 0;align-items:flex-start}
 .ms-pb-row>svg{flex:none;margin-top:1px;color:#9aa3ad}
@@ -150,6 +153,15 @@ function iconOf(v: PlacementVerdict): string {
   }
 }
 
+/** The card as one short sentence for a screen reader: the verdict, why, and the keys that can change it. */
+function spokenFor(v: PlacementVerdict): string {
+  const parts = [titleOf(v)];
+  if (v.verdict !== 'unknown' && v.verdict !== 'ok' && v.message) parts.push(v.message);
+  if (v.snappable) parts.push('Press S to move it to the nearest usable ground');
+  if (v.blocked) parts.push(v.overridable ? 'A click here is refused. Hold Shift and click to place it anyway' : 'A click here is refused');
+  return parts.map((p) => p.replace(/[.\s]+$/, '')).join('. ') + '.';
+}
+
 /** Why: the ground that decides the verdict, and what it means for this unit type. */
 function whyRow(v: PlacementVerdict): HTMLElement | null {
   const unit = v.profileLabel;
@@ -191,7 +203,7 @@ function insideRow(v: PlacementVerdict, pct: number): HTMLElement {
 /** Header colour, for the bar and arrow that echo it; keep in step with the CSS above. */
 function verdictColor(v: PlacementVerdict): string {
   switch (v.verdict) {
-    case 'ok': return '#1f8a4c';
+    case 'ok': return '#1c8247';
     case 'near': return '#e9a526';
     case 'caution': return '#e08a1e';
     case 'partial': return '#d9622b';
@@ -275,10 +287,33 @@ export class PlacementBadge {
   private _toastBar: HTMLDivElement | null = null;
   private _toastBody: HTMLDivElement | null = null;
   private _toastTimer: ReturnType<typeof setTimeout> | null = null;
+  private _live: HTMLDivElement | null = null;
+  private _spoken = '';
+  private _pending = '';
+  private _speakTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Say the verdict to a screen reader, once the cursor has settled and only when what is said changes: the
+   * card is rebuilt on every move, and reading it out each time would drown out everything else.
+   */
+  private _say(text: string): void {
+    if (text === this._pending) return;
+    this._pending = text;
+    if (this._speakTimer !== null) clearTimeout(this._speakTimer);
+    this._speakTimer = setTimeout(() => {
+      this._speakTimer = null;
+      if (text !== this._spoken && this._live) {
+        this._spoken = text;
+        this._live.textContent = text;
+      }
+    }, SPEAK_DELAY_MS);
+  }
 
   /** Show a short message under the verdict for a few seconds (e.g. why the quick fix found nothing). */
   flash(text: string, ms = 3500): void {
     this._notice = text;
+    if (this._live) this._live.textContent = text; // the card is hidden from assistive tech, so say it here
+    this._spoken = '';
     if (this._noticeTimer !== null) clearTimeout(this._noticeTimer);
     this._noticeTimer = setTimeout(() => {
       this._noticeTimer = null;
@@ -296,7 +331,6 @@ export class PlacementBadge {
     this._ensure();
     if (!this._toastEl) {
       const root = el('div', 'ms-placement-badge') as HTMLDivElement;
-      root.setAttribute('role', 'alert');
       this._toastBar = el('div', 'ms-pb-bar') as HTMLDivElement;
       this._toastBody = el('div', 'ms-pb-body') as HTMLDivElement;
       root.append(this._toastBar, this._toastBody);
@@ -305,6 +339,8 @@ export class PlacementBadge {
     }
     const root = this._toastEl;
     root.dataset.verdict = t.verdict;
+    // A refusal interrupts (alert); "advisor ready", "loading", "not terrain-bound" wait their turn (status).
+    root.setAttribute('role', t.verdict === 'in' || t.verdict === 'partial' ? 'alert' : 'status');
     this._toastBar!.replaceChildren(icon('x', 17), el('span', undefined, t.title));
     const rows = t.lines.map((l) => el('div', undefined, l));
     if (t.hint) rows.push(el('div', 'ms-pb-soft', t.hint));
@@ -355,6 +391,7 @@ export class PlacementBadge {
     const body = this._body!;
     body.replaceChildren(...rows);
     body.style.display = rows.length ? 'block' : 'none';
+    this._say(spokenFor(v));
 
     if (!this._hasPointer) {
       this._x = Math.round(window.innerWidth / 2);
@@ -368,6 +405,11 @@ export class PlacementBadge {
 
   hide(): void {
     if (this._el) this._el.style.display = 'none';
+    // Forget what was said, so the next draw announces its first verdict again.
+    if (this._speakTimer !== null) clearTimeout(this._speakTimer);
+    this._speakTimer = null;
+    this._spoken = this._pending = '';
+    if (this._live) this._live.textContent = '';
     this._notice = null;
     if (this._noticeTimer !== null) {
       clearTimeout(this._noticeTimer);
@@ -382,6 +424,8 @@ export class PlacementBadge {
     this._toastEl = this._toastBar = this._toastBody = null;
     this._last = null;
     this._el?.remove();
+    this._live?.remove();
+    this._live = null;
     this._el = null;
     this._bar = null;
     this._body = null;
@@ -413,8 +457,15 @@ export class PlacementBadge {
     }
     const root = document.createElement('div');
     root.className = 'ms-placement-badge';
-    root.setAttribute('role', 'status');
-    root.setAttribute('aria-live', 'polite');
+    // The card follows the cursor and is rebuilt as it moves, so it is not a live region itself (that would
+    // read the whole card out again on every change); a screen reader gets a short sentence from `_live`.
+    root.setAttribute('aria-hidden', 'true');
+    const live = el('div', 'ms-pb-sr') as HTMLDivElement;
+    live.setAttribute('role', 'status');
+    live.setAttribute('aria-live', 'polite');
+    live.setAttribute('aria-atomic', 'true');
+    document.body.appendChild(live);
+    this._live = live;
     const bar = el('div', 'ms-pb-bar') as HTMLDivElement;
     const body = el('div', 'ms-pb-body') as HTMLDivElement;
     root.append(bar, body);

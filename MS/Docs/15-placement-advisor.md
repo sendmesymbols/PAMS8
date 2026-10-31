@@ -305,6 +305,26 @@ swaps the source without reloading the bundle. The painter
 | `placement-profile`       | `{ profile, overridden }` — the draw is now judged for this unit type (P key) |
 | `placement-snap`          | `PlacementSnapResult` — the quick fix moved the symbol (`moved: true`) or found nowhere to go (`reason`) |
 
+### Accessibility
+
+The verdict never relies on colour alone: the card's header carries an icon and the verdict in words
+("Unsuitable Position"), the overlay key and the placement-check panel give every colour a text label,
+and a refusal says so in the card. All header colours meet WCAG 2.1 AA contrast for their text (4.5:1;
+the green bar is `#1c8247`, and the orange "Partially Obstructed" bar uses dark text like the amber
+ones); the bar colours against the card background pass 3:1.
+
+The card follows the cursor and is rebuilt as it moves, so it is hidden from assistive technology
+(`aria-hidden`) and a separate visually hidden `role="status"` `aria-live="polite"` region speaks
+instead: one short sentence (verdict, why, and the keys S / Shift-click that can change it), only once
+the cursor has rested on a verdict for half a second and only when the sentence changes. The quick
+fix's "no usable ground within …" message is spoken at once. Cards that outlive a draw use
+`role="alert"` for a refusal and `role="status"` for everything else ("ready", "loading", "not
+terrain-bound"). The placement-check panel moves keyboard focus to its heading when it opens, returns
+it to whatever opened it on close (Escape or ×), shows a visible focus ring on every control, keeps
+its controls at least 28 px tall, reads its summary as a status and does not animate for
+`prefers-reduced-motion`. The map overlay itself is colour only by nature; its key is the text
+alternative.
+
 ### Quick fix: move to usable ground
 
 While a **point** symbol is being drawn on ground the verdict rejects (`in`, `partial`, or anything
