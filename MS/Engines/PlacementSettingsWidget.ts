@@ -3,7 +3,7 @@ import {
   type SettingsWidgetHandle,
 } from '../Support/SettingsWidget';
 import CommandPalette from '../Support/CommandPalette';
-import { placementSettingsManifest } from './PlacementSettingsManifest';
+import { placementSettingsManifest, PLACEMENT_ADVANCED_META } from './PlacementSettingsManifest';
 
 export function openPlacementSettings(opts: { anchor?: { x?: number; y?: number } } = {}): SettingsWidgetHandle {
   return mountSettingsWidget({
@@ -11,6 +11,7 @@ export function openPlacementSettings(opts: { anchor?: { x?: number; y?: number 
     title: 'Placement',
     icon: '⛰',
     manifest: placementSettingsManifest,
+    advancedMeta: PLACEMENT_ADVANCED_META,
     anchor: opts.anchor,
   });
 }

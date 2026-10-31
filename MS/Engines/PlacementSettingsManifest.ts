@@ -4,11 +4,19 @@
  * Live terrain advice while drawing — warns when a symbol is placed on, in, or
  * near no-go terrain (water, marsh, built-up, steep slope, …) using a terrain
  * bundle served by the host app.
+ *
+ * Layout: the default view holds only the settings people reach for (switch,
+ * mode, what to show). Everything else is `advanced: true` and collapses into the
+ * widget's Advanced disclosure.
  */
 
 import type { SettingDescriptor } from '../Support/SettingsWidget';
 
+/** Subtitle on the Advanced disclosure head. */
+export const PLACEMENT_ADVANCED_META = 'Footprint, overlay, thresholds, data';
+
 export const placementSettingsManifest: SettingDescriptor[] = [
+  // ── Default view ──────────────────────────────────────────────────────────
   {
     path: ['features', 'placementAdvisor'],
     label: 'Placement advisor',
@@ -31,6 +39,14 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     keywords: ['block', 'warn', 'advisory'],
   },
   {
+    path: ['placement', 'overlay', 'enabled'],
+    label: 'Show terrain on map',
+    group: 'Feedback',
+    type: 'boolean',
+    help: 'Paint the terrain data on the map: green = deployable, yellow = near no-go, amber = caution, red = no-go. Needs the advisor on and a bundle loaded.',
+    keywords: ['overlay', 'layer', 'map', 'available', 'areas', 'show'],
+  },
+  {
     path: ['placement', 'indicators', 'enabled'],
     label: 'Show indicator lines',
     group: 'Feedback',
@@ -39,25 +55,44 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     keywords: ['line', 'indicator', 'feature', 'reason', 'contested', 'distance'],
   },
   {
-    path: ['placement', 'indicators', 'labels'],
-    label: 'Label the feature',
+    path: ['placement', 'showBadge'],
+    label: 'Show cursor badge',
     group: 'Feedback',
     type: 'boolean',
-    help: 'Write the terrain class and distance at the end of the indicator line.',
+    help: 'Show the verdict next to the cursor while drawing.',
   },
   {
     path: ['placement', 'footprint', 'enabled'],
     label: 'Judge echelons by footprint',
-    group: 'Footprint',
+    group: 'Feedback',
     type: 'boolean',
     help: 'A section, platoon, company, battalion or brigade holds ground (frontage across its front, depth to its rear), so it is checked against the terrain it covers, not just its click point. Other echelons stay a point.',
     keywords: ['echelon', 'frontage', 'depth', 'area', 'section', 'platoon', 'company', 'battalion', 'brigade'],
+  },
+
+  // ── Advanced ──────────────────────────────────────────────────────────────
+  {
+    path: ['placement', 'indicators', 'labels'],
+    label: 'Label the feature',
+    group: 'Indicators & log',
+    type: 'boolean',
+    advanced: true,
+    help: 'Write the terrain class and distance at the end of the indicator line.',
+  },
+  {
+    path: ['placement', 'logVerdicts'],
+    label: 'Log to Engine Log',
+    group: 'Indicators & log',
+    type: 'boolean',
+    advanced: true,
+    help: 'Write near / caution / partial / in verdict changes to the Engine Log panel.',
   },
   {
     path: ['placement', 'footprint', 'facing'],
     label: 'Footprint facing',
     group: 'Footprint',
     type: 'enum',
+    advanced: true,
     options: [
       { value: 'fixed', label: 'Fixed bearing' },
       { value: 'worst4', label: 'Worst of 4 facings' },
@@ -71,6 +106,7 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Facing bearing (°)',
     group: 'Footprint',
     type: 'number',
+    advanced: true,
     min: 0,
     max: 359,
     step: 5,
@@ -81,6 +117,7 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Footprint size',
     group: 'Footprint',
     type: 'enum',
+    advanced: true,
     options: [
       { value: 'min', label: 'Minimum of range' },
       { value: 'mid', label: 'Middle of range' },
@@ -93,6 +130,7 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Show footprint on map',
     group: 'Footprint',
     type: 'boolean',
+    advanced: true,
     help: 'Draw the footprint being judged (blue) while placing, and the neighbours that are too close (orange dashed).',
   },
   {
@@ -100,22 +138,16 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Check intergap to neighbours',
     group: 'Footprint',
     type: 'boolean',
+    advanced: true,
     help: 'Compare with same-echelon symbols already on the map: warn when the gap to the next one is below the echelon\'s minimum intergap (section 100 m, platoon 300 m, company 500 m, battalion 1000 m, brigade 3000 m) or the footprints overlap. Advisory only.',
     keywords: ['gap', 'spacing', 'interval', 'neighbour', 'adjacent', 'crowding'],
-  },
-  {
-    path: ['placement', 'overlay', 'enabled'],
-    label: 'Show terrain on map',
-    group: 'Map overlay',
-    type: 'boolean',
-    help: 'Paint the terrain data on the map: green = deployable, yellow = near no-go, amber = caution, red = no-go. Needs the advisor on and a bundle loaded.',
-    keywords: ['overlay', 'layer', 'map', 'available', 'areas', 'show'],
   },
   {
     path: ['placement', 'overlay', 'boundary'],
     label: 'Show official boundary',
     group: 'Map overlay',
     type: 'boolean',
+    advanced: true,
     help: 'Draw the country boundary shipped with the terrain bundle: national outline (green), provinces, the Line of Control (red dashed) and the international borders. In the official bundle all of Jammu & Kashmir is on Pakistan\'s side, as on the Survey of Pakistan map.',
     keywords: ['boundary', 'border', 'kashmir', 'loc', 'line of control', 'outline', 'province'],
   },
@@ -124,6 +156,7 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Paint for',
     group: 'Map overlay',
     type: 'enum',
+    advanced: true,
     options: [
       { value: 'auto', label: 'Auto (symbol being drawn)' },
       { value: 'dismounted', label: 'Dismounted' },
@@ -139,24 +172,18 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Overlay opacity',
     group: 'Map overlay',
     type: 'number',
+    advanced: true,
     min: 0.1,
     max: 1,
     step: 0.05,
     help: 'How strongly the overlay covers the basemap.',
   },
   {
-    path: ['placement', 'bundleUrl'],
-    label: 'Terrain bundle URL',
-    group: 'Data',
-    type: 'string',
-    help: 'Folder URL that holds manifest.json, rules.json and the tile folders, served as static files by the host app.',
-    keywords: ['data', 'tiles', 'url', 'path'],
-  },
-  {
     path: ['placement', 'nearThresholdM'],
     label: 'Near threshold (m)',
     group: 'Verdicts',
     type: 'number',
+    advanced: true,
     min: 0,
     max: 5000,
     step: 10,
@@ -167,30 +194,27 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Partial share',
     group: 'Verdicts',
     type: 'number',
+    advanced: true,
     min: 0.01,
     max: 1,
     step: 0.01,
     help: 'Lines and areas with at least this share of their outline/interior in no-go terrain are reported as "partial".',
   },
   {
-    path: ['placement', 'showBadge'],
-    label: 'Show cursor badge',
-    group: 'Feedback',
-    type: 'boolean',
-    help: 'Show the verdict next to the cursor while drawing.',
-  },
-  {
-    path: ['placement', 'logVerdicts'],
-    label: 'Log to Engine Log',
-    group: 'Feedback',
-    type: 'boolean',
-    help: 'Write near / caution / partial / in verdict changes to the Engine Log panel.',
+    path: ['placement', 'bundleUrl'],
+    label: 'Terrain bundle URL',
+    group: 'Data',
+    type: 'string',
+    advanced: true,
+    help: 'Folder URL that holds manifest.json, rules.json and the tile folders, served as static files by the host app.',
+    keywords: ['data', 'tiles', 'url', 'path'],
   },
   {
     path: ['placement', 'useWorker'],
     label: 'Decode tiles in a worker',
     group: 'Performance',
     type: 'boolean',
+    advanced: true,
     help: 'Fetch, decode and paint terrain tiles in a Web Worker so panning and the overlay do not stall the map. Falls back to the main thread automatically if workers are unavailable.',
     keywords: ['worker', 'thread', 'speed', 'performance'],
   },
@@ -199,6 +223,7 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Tile cache size',
     group: 'Performance',
     type: 'number',
+    advanced: true,
     min: 16,
     max: 2048,
     step: 16,
@@ -209,6 +234,7 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     label: 'Prefetch margin (tiles)',
     group: 'Performance',
     type: 'number',
+    advanced: true,
     min: 0,
     max: 4,
     step: 1,

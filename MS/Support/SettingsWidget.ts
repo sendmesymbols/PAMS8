@@ -23,6 +23,7 @@
  */
 
 import { getSetting, setSetting, onSettingsChanged, toHexColor, hexToRgb } from './SettingsBus';
+import { bindDisclosures } from './Disclosure';
 
 export type SettingType = 'boolean' | 'number' | 'enum' | 'color' | 'string' | 'action';
 
@@ -50,6 +51,12 @@ export interface SettingDescriptor {
   buttonLabel?: string;
   /** For `type: 'action'` — invoked when the button is clicked. */
   onClick?: () => void;
+  /**
+   * Park the row in the collapsed "Advanced" disclosure at the bottom of the widget
+   * instead of the default view. Groups keep their titles inside it; leave unset
+   * for the few settings most people reach for.
+   */
+  advanced?: boolean;
 }
 
 export interface MountWidgetOptions {
@@ -67,6 +74,8 @@ export interface MountWidgetOptions {
   width?: number;
   /** Optional preselected group to scroll into view on open. */
   focusGroup?: string;
+  /** Subtitle on the Advanced disclosure head (only shown when the manifest has advanced rows). */
+  advancedMeta?: string;
 }
 
 export interface SettingsWidgetHandle {
@@ -171,6 +180,7 @@ export function mountSettingsWidget(opts: MountWidgetOptions): SettingsWidgetHan
 
   // Wire row controls
   const cleanupRows = bindRowControls(panel, opts.manifest);
+  bindDisclosures(panel);
 
   // Cross-sync — if the old panel changes the same path, update our control.
   const unsubBus = onSettingsChanged((detail) => {
@@ -227,7 +237,13 @@ export function mountSettingsWidget(opts: MountWidgetOptions): SettingsWidgetHan
       const target = panel.querySelector(
         `.ms-sw-group[data-group="${cssEscape(group)}"]`,
       ) as HTMLElement | null;
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (!target) return;
+      // A group inside the collapsed Advanced disclosure has no box until it is opened.
+      const disclosure = target.closest<HTMLElement>('.ms-disclosure');
+      if (disclosure && disclosure.dataset.open !== 'true') {
+        disclosure.querySelector<HTMLButtonElement>('.ms-disclosure-head')?.click();
+      }
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     close() {
       close();
@@ -250,8 +266,6 @@ export function closeAllSettingsWidgets(): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildPanelHTML(opts: MountWidgetOptions): string {
-  const groups = groupManifest(opts.manifest);
-
   const header = `
     <div class="ms-header" data-drag-handle>
       <span class="ms-header-icon">${escapeHtml(opts.icon)}</span>
@@ -274,20 +288,39 @@ function buildPanelHTML(opts: MountWidgetOptions): string {
     </div>
   `;
 
+  const renderGroup = (g: GroupBlock) => `
+    <div class="ms-sw-group" data-group="${escapeHtml(g.title)}">
+      <div class="ms-section-title">${escapeHtml(g.title)}</div>
+      <div class="ms-sw-rows">
+        ${g.items.map((it) => renderRow(it)).join('')}
+      </div>
+    </div>
+  `;
+
+  // Advanced rows leave the default view and collapse into one disclosure (the
+  // same markup the analysis panels use). It renders closed with no JS.
+  const basic = groupManifest(opts.manifest.filter((d) => !d.advanced));
+  const advanced = groupManifest(opts.manifest.filter((d) => d.advanced));
+  const advBodyId = `${opts.id}-adv-body`;
+  const advancedHtml = advanced.length
+    ? `
+      <div class="ms-disclosure" data-open="false">
+        <button class="ms-disclosure-head" type="button" aria-expanded="false" aria-controls="${escapeHtml(advBodyId)}">
+          <span class="ms-disclosure-chevron" aria-hidden="true">▶</span>
+          <span class="ms-disclosure-title">Advanced</span>
+          ${opts.advancedMeta ? `<span class="ms-disclosure-meta">${escapeHtml(opts.advancedMeta)}</span>` : ''}
+        </button>
+        <div class="ms-disclosure-body" id="${escapeHtml(advBodyId)}" hidden>
+          ${advanced.map(renderGroup).join('')}
+        </div>
+      </div>
+    `
+    : '';
+
   const body = `
     <div class="ms-body ms-sw-body">
-      ${groups
-        .map(
-          (g) => `
-            <div class="ms-sw-group" data-group="${escapeHtml(g.title)}">
-              <div class="ms-section-title">${escapeHtml(g.title)}</div>
-              <div class="ms-sw-rows">
-                ${g.items.map((it) => renderRow(it)).join('')}
-              </div>
-            </div>
-          `,
-        )
-        .join('')}
+      ${basic.map(renderGroup).join('')}
+      ${advancedHtml}
     </div>
   `;
 
