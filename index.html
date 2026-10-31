@@ -2997,6 +2997,10 @@
               <input type="checkbox" id="setting-placementBadge" checked title="Show the verdict next to the cursor while drawing." />
             </div>
             <div class="setting-row">
+              <label>S = move to ground</label>
+              <input type="checkbox" id="setting-placementSnapKey" checked title="While drawing a point on ground the unit cannot use, press S to place it at the nearest usable ground." />
+            </div>
+            <div class="setting-row">
               <label>Indicator lines</label>
               <input type="checkbox" id="setting-placementIndicators" checked title="Draw a line from the symbol to the terrain that is the reason for the advice: nearest no-go (red), nearest deployable ground when inside no-go (green), or the contested part of a line/area." />
             </div>
@@ -4384,6 +4388,7 @@
         'setting-placementMode': (v) => ({ path: ['placement', 'mode'], value: v }),
         'setting-placementNearM': (v) => ({ path: ['placement', 'nearThresholdM'], value: +v }),
         'setting-placementBadge': (v) => ({ path: ['placement', 'showBadge'], value: v }),
+        'setting-placementSnapKey': (v) => ({ path: ['placement', 'snapKey'], value: v }),
         'setting-placementBundleUrl': (v) => ({ path: ['placement', 'bundleUrl'], value: v }),
         'setting-placementIndicators': (v) => ({ path: ['placement', 'indicators', 'enabled'], value: v }),
         'setting-placementIndicatorLabels': (v) => ({ path: ['placement', 'indicators', 'labels'], value: v }),

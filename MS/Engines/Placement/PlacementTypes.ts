@@ -157,6 +157,8 @@ export interface PlacementOptions {
   /** Verdicts refused by `enforce` mode. */
   blockOn: PlacementVerdictKind[];
   showBadge: boolean;
+  /** Pressing S while drawing a point on bad ground places it at the nearest usable ground instead. */
+  snapKey: boolean;
   logVerdicts: boolean;
   cacheTiles: number;
   prefetchMarginTiles: number;
@@ -271,6 +273,26 @@ export interface PlacementVerdict {
   footprint?: PlacementFootprintInfo | null;
   /** Set alongside `footprint` when the intergap check ran. Advisory: never changes `verdict`. */
   spacing?: PlacementSpacing | null;
+  /** Set while drawing a point the snap key can move to usable ground (the verdict is bad and the quick fix is on). */
+  snappable?: boolean;
+}
+
+/** Result of `snapToDeployable()`, also the detail of the `placement-snap` event. */
+export interface PlacementSnapResult {
+  /** True when the symbol was placed at a better spot. */
+  moved: boolean;
+  /** Where it went, Web Mercator metres (null when nothing was found). */
+  at: MercXY | null;
+  /** How far it moved in ground metres, and in which compass direction. */
+  distanceM: number | null;
+  compass: string | null;
+  /** Verdict at the new spot. */
+  verdict: PlacementVerdictKind | null;
+  /** Ground distance the search covered, metres (for "nothing within …"). */
+  searchedM: number;
+  /** Why nothing moved, when `moved` is false. */
+  reason?: 'no-draw' | 'not-point' | 'no-ground' | 'loading';
+  message: string;
 }
 
 /** Stamped on `graphic.attributes.placement` at commit time. */
@@ -298,6 +320,7 @@ export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
   partialFraction: 0.2,
   blockOn: ['in', 'partial'],
   showBadge: true,
+  snapKey: true,
   logVerdicts: true,
   cacheTiles: 512,
   prefetchMarginTiles: 1,

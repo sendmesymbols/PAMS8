@@ -211,6 +211,12 @@ function nearestRow(v: PlacementVerdict): HTMLElement | null {
   return null;
 }
 
+/** The quick-fix hint, shown while pressing S would move the point to usable ground. */
+function snapRow(v: PlacementVerdict): HTMLElement | null {
+  if (!v.snappable) return null;
+  return row('target', 'Quick fix', undefined, el('span', 'ms-pb-b', 'S'), ' moves it to the nearest usable ground');
+}
+
 /** The echelon's minimum gap to the next same-echelon unit. Advisory, so it never changes the title. */
 function spacingRow(v: PlacementVerdict): HTMLElement | null {
   const s = v.spacing;
@@ -238,6 +244,21 @@ export class PlacementBadge {
   private _w = 280;
   private _h = 120;
   private _hasPointer = false;
+  private _last: PlacementVerdict | null = null;
+  private _notice: string | null = null;
+  private _noticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Show a short message under the verdict for a few seconds (e.g. why the quick fix found nothing). */
+  flash(text: string, ms = 3500): void {
+    this._notice = text;
+    if (this._noticeTimer !== null) clearTimeout(this._noticeTimer);
+    this._noticeTimer = setTimeout(() => {
+      this._noticeTimer = null;
+      this._notice = null;
+      if (this._last && this._el && this._el.style.display !== 'none') this.show(this._last);
+    }, ms);
+    if (this._last && this._el && this._el.style.display !== 'none') this.show(this._last);
+  }
 
   /** Pointer position in client coordinates; call from a pointermove listener. */
   moveTo(clientX: number, clientY: number): void {
@@ -248,6 +269,7 @@ export class PlacementBadge {
   }
 
   show(v: PlacementVerdict): void {
+    this._last = v;
     const el0 = this._ensure();
     el0.dataset.verdict = v.verdict;
 
@@ -259,10 +281,11 @@ export class PlacementBadge {
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v), spacingRow(v)].filter(
+        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v), snapRow(v), spacingRow(v)].filter(
             (r): r is HTMLElement => r !== null,
           );
     if (v.loading) rows.push(el('div', 'ms-pb-soft', 'Still loading terrain data'));
+    if (this._notice) rows.push(el('div', 'ms-pb-warn', this._notice));
     const body = this._body!;
     body.replaceChildren(...rows);
     body.style.display = rows.length ? 'block' : 'none';
@@ -279,9 +302,16 @@ export class PlacementBadge {
 
   hide(): void {
     if (this._el) this._el.style.display = 'none';
+    this._notice = null;
+    if (this._noticeTimer !== null) {
+      clearTimeout(this._noticeTimer);
+      this._noticeTimer = null;
+    }
   }
 
   destroy(): void {
+    this.hide();
+    this._last = null;
     this._el?.remove();
     this._el = null;
     this._bar = null;

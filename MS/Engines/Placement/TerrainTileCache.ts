@@ -24,6 +24,12 @@ export function lngLatToMercator(lng: number, lat: number): [number, number] {
   return [x, y];
 }
 
+export function mercatorToLngLat(x: number, y: number): [number, number] {
+  const lng = (x * 180) / MERC_ORIGIN;
+  const lat = (Math.atan(Math.exp((y * Math.PI) / MERC_ORIGIN)) * 360) / Math.PI - 90;
+  return [lng, lat];
+}
+
 /** Web Mercator units per pixel at zoom `z` (equator; multiply by cos(lat) for ground metres). */
 export function resolutionAt(z: number, tileSize = 256): number {
   return (2 * MERC_ORIGIN) / (tileSize * Math.pow(2, z));

@@ -267,6 +267,18 @@ swaps the source without reloading the bundle. The painter
 | `placement-state-change`  | `{ state: 'enabled' \| 'disabled' \| 'ready' \| 'no-bundle', isEnabled }` |
 | `placement-blocked`       | `{ verdict, drawEssentials }` in enforce mode |
 | `placement-tiles`         | `{ loaded, pending, failed }` — cache stats, for HUDs/tests |
+| `placement-snap`          | `PlacementSnapResult` — the quick fix moved the symbol (`moved: true`) or found nowhere to go (`reason`) |
+
+### Quick fix: move to usable ground
+
+While a **point** symbol is being drawn on ground the verdict rejects (`in`, `partial`, or anything
+`blockOn` refuses in `enforce` mode) the badge adds a *Quick fix* row, and pressing **S** places the
+symbol at the nearest ground that passes. `snapToDeployable()` does the same from code. It searches
+rings of candidate spots around the cursor (out to 160 tile pixels, 16 directions) with the same verdict
+function that gates a commit, footprint included, and prefers a clean `ok` spot over a marginal
+`near`/`caution` one if it is only a little further out. It then clicks that spot with real pointer
+events, so the symbol's own draw end, the commit check and the stamp run as usual (Ctrl+Z undoes it).
+Lines and areas are not moved. Turn it off with `placement.snapKey`.
 
 ### Settings (`MS/Data/Settings.json`)
 
@@ -282,6 +294,7 @@ swaps the source without reloading the bundle. The painter
   "partialFraction": 0.2,
   "blockOn": ["in", "partial"],
   "showBadge": true,
+  "snapKey": true,
   "logVerdicts": true,
   "cacheTiles": 512,
   "prefetchMarginTiles": 1,

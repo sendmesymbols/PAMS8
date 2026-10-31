@@ -62,6 +62,14 @@ export const placementSettingsManifest: SettingDescriptor[] = [
     help: 'Show the verdict next to the cursor while drawing.',
   },
   {
+    path: ['placement', 'snapKey'],
+    label: 'S key moves to usable ground',
+    group: 'Feedback',
+    type: 'boolean',
+    help: 'While drawing a point on ground the unit cannot use, press S to place it at the nearest usable ground.',
+    keywords: ['snap', 'quick fix', 'move', 'nearest', 'deployable'],
+  },
+  {
     path: ['placement', 'footprint', 'enabled'],
     label: 'Judge echelons by footprint',
     group: 'Feedback',

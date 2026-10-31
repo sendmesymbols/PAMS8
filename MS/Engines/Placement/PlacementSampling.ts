@@ -12,7 +12,7 @@
  * The step widens so a geometry never exceeds `maxSamples`.
  */
 
-import { lngLatToMercator } from './TerrainTileCache';
+import { lngLatToMercator, mercatorToLngLat } from './TerrainTileCache';
 
 export type XY = [number, number];
 
@@ -30,6 +30,14 @@ function srKind(geometry: any): 'merc' | 'wgs84' | null {
   const wkid = sr.wkid ?? sr.latestWkid;
   if (wkid === 102100 || wkid === 3857 || wkid === 102113 || wkid === 3785) return 'merc';
   if (wkid === 4326) return 'wgs84';
+  return null;
+}
+
+/** A Web Mercator position in the coordinates of `geometry`'s own spatial reference, or null when that is not Mercator or WGS84. */
+export function fromMercatorXY(geometry: any, xy: XY): XY | null {
+  const k = srKind(geometry);
+  if (k === 'merc') return [xy[0], xy[1]];
+  if (k === 'wgs84') return mercatorToLngLat(xy[0], xy[1]);
   return null;
 }
 

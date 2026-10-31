@@ -35,7 +35,7 @@ import { PlacementIndicators } from './PlacementIndicators';
 import { createOverlayLayer, type OverlayRenderingSource } from './PlacementOverlay';
 import { WorkerTileSource } from './WorkerTileSource';
 import { resolveProfile } from './PlacementProfiles';
-import { samplePoints, toMercatorShape, type MercShape } from './PlacementSampling';
+import { fromMercatorXY, samplePoints, toMercatorShape, type MercShape } from './PlacementSampling';
 import {
   DEFAULT_PLACEMENT_OPTIONS,
   DIST_FAR,
@@ -47,6 +47,7 @@ import {
   type PlacementNearest,
   type PlacementOptions,
   type PlacementProfile,
+  type PlacementSnapResult,
   type PlacementStamp,
   type PlacementVerdict,
   type TerrainManifest,
@@ -70,6 +71,13 @@ const NEIGHBOUR_LAYER_IDS = SYMBOL_LAYER_IDS;
 /** Half-width of the local search for the nearest terrain of the opposite kind, in tile pixels. */
 const SCAN_RADIUS_PX = 32;
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+/** Snap search: rings of candidate spots out to this many tile pixels (inside the 2-tile ring _warmAround keeps loaded). */
+const SNAP_MAX_PX = 160;
+const SNAP_FIRST_PX = 2;
+const SNAP_GROWTH = 1.25;
+const SNAP_DIRECTIONS = 16;
+/** After a ring with only a marginal spot (near / caution), keep looking this much further for a clean `ok`. */
+const SNAP_PREFER_OK = 1.6;
 
 interface ReadContext {
   z: number;
@@ -128,6 +136,8 @@ export default class PlacementAdvisor {
   private _activeSidc: string | null = null;
   private _activeProfile: PlacementProfile | null = null;
   private _lastDetail: { geometry: any; sidc: string | null } | null = null;
+  private _lastSnappable = false;
+  private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _lastKey = '';
   private _lastBadgeKey = '';
   private _lastWarmKey = '';
@@ -235,6 +245,7 @@ export default class PlacementAdvisor {
     }
     if (Array.isArray(patch.blockOn)) next.blockOn = [...patch.blockOn];
     if (typeof patch.showBadge === 'boolean') next.showBadge = patch.showBadge;
+    if (typeof patch.snapKey === 'boolean') next.snapKey = patch.snapKey;
     if (typeof patch.logVerdicts === 'boolean') next.logVerdicts = patch.logVerdicts;
     if (Number.isFinite(patch.cacheTiles)) next.cacheTiles = Math.max(16, Math.floor(patch.cacheTiles as number));
     if (Number.isFinite(patch.prefetchMarginTiles)) {
@@ -329,7 +340,20 @@ export default class PlacementAdvisor {
     }
     this._lastDetail = { geometry, sidc };
     this._warmAround(geometry, resolveProfile(sidc ?? this._activeSidc, this._rules));
-    this._apply(this.evaluateGeometry(geometry, sidc, { ref: () => this._pointerMerc() }));
+    this._apply(this._judgeLive(geometry, sidc));
+  }
+
+  /** Verdict for the live cursor position, flagged when the snap key could improve it. */
+  private _judgeLive(geometry: any, sidc: string | null): PlacementVerdict {
+    const v = this.evaluateGeometry(geometry, sidc, { ref: () => this._pointerMerc() });
+    v.snappable = this._opts.snapKey && geometry?.type === 'point' && this._isBad(v);
+    this._lastSnappable = v.snappable;
+    return v;
+  }
+
+  /** A verdict the user cannot keep: in/partial, or anything `enforce` mode would refuse. */
+  private _isBad(v: PlacementVerdict): boolean {
+    return v.verdict === 'in' || v.verdict === 'partial' || (this._opts.mode === 'enforce' && this._opts.blockOn.includes(v.verdict));
   }
 
   /** Draw ended or was cancelled — hide feedback and stop tracking the cursor. */
@@ -339,6 +363,7 @@ export default class PlacementAdvisor {
     this._indicators.hideFootprint();
     this._detachPointer();
     this._lastDetail = null;
+    this._lastSnappable = false;
     this._lastBadgeKey = '';
     this._lastWarmKey = '';
     this._activeSidc = null;
@@ -383,6 +408,161 @@ export default class PlacementAdvisor {
     return { allow: !block, verdict, stamp };
   }
 
+  /**
+   * Quick fix for the point being drawn: place it at the nearest ground that passes, as if the
+   * user had clicked there. Candidates are rings of spots around the cursor judged by the same
+   * verdict function that gates a commit (footprint included), so what it picks is never one
+   * the advisor would flag or `enforce` refuse. An `ok` spot wins over one that is merely
+   * `near`/`caution`, if there is one just a little further out. Point symbols only.
+   */
+  snapToDeployable(): PlacementSnapResult {
+    const none = (reason: NonNullable<PlacementSnapResult['reason']>, message: string, searchedM = 0): PlacementSnapResult =>
+      this._announceSnap({ moved: false, at: null, distanceM: null, compass: null, verdict: null, searchedM, reason, message });
+    const d = this._lastDetail;
+    if (!this.isActive || !d) return none('no-draw', 'Nothing is being drawn');
+    if (d.geometry?.type !== 'point') return none('not-point', 'Moving to usable ground works for point symbols only');
+    const view: any = this._getView?.();
+    const found = this._findSnap(d.geometry, d.sidc);
+    if (!found.at) {
+      return found.loading
+        ? none('loading', 'Terrain data is still loading, try again in a moment')
+        : none('no-ground', `No usable ground within ${fmtDistance(found.searchedM)}`, found.searchedM);
+    }
+    const target = this._withMerc(d.geometry, found.at);
+    const px = target && this._settleOnScreen(view, target, d.sidc);
+    if (!px) return none('no-ground', 'Cannot place the symbol there on this view');
+    const compass = COMPASS[Math.round(found.bearingDeg / 45) % 8];
+    const result: PlacementSnapResult = {
+      moved: true,
+      at: found.at,
+      distanceM: found.distanceM,
+      compass,
+      verdict: found.verdict,
+      searchedM: found.searchedM,
+      message: `Moved ${fmtDistance(found.distanceM)} ${compass} to ${found.verdict === 'ok' ? 'usable ground' : 'the nearest usable ground'}`,
+    };
+    this._announceSnap(result);
+    // The armed symbol's own click handler finishes the draw at this spot, so every point
+    // symbol type, the commit check and the stamp go through their normal path.
+    this._clickAt(view, px.x, px.y);
+    return result;
+  }
+
+  /** 0 = clean spot, 1 = usable but marginal (near / caution, not touching), -1 = not usable. */
+  private _snapRank(v: PlacementVerdict): number {
+    if (v.verdict === 'unknown' || v.loading) return -1;
+    if (v.verdict === 'ok') return 0;
+    return (v.verdict === 'near' || v.verdict === 'caution') && v.fraction === 0 && !this._isBad(v) ? 1 : -1;
+  }
+
+  /**
+   * Whole screen pixel to click for a Web Mercator target. A click lands on an integer pixel, which can
+   * be many metres from the target when zoomed out, so the verdict is re-checked where the click will
+   * really land and the neighbouring pixels are tried when it no longer passes.
+   */
+  private _settleOnScreen(view: any, target: any, sidc: string | null): { x: number; y: number } | null {
+    const sp = view?.toScreen?.(target);
+    if (!sp || !Number.isFinite(sp.x) || !Number.isFinite(sp.y)) return null;
+    const bx = Math.round(sp.x);
+    const by = Math.round(sp.y);
+    const around: Array<[number, number]> = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) around.push([dx, dy]);
+    around.sort((a, b) => Math.hypot(bx + a[0] - sp.x, by + a[1] - sp.y) - Math.hypot(bx + b[0] - sp.x, by + b[1] - sp.y));
+    for (const [dx, dy] of around) {
+      let mp: any = null;
+      try {
+        mp = view.toMap({ x: bx + dx, y: by + dy });
+      } catch {
+        /* off the globe */
+      }
+      if (mp && this._snapRank(this.evaluateGeometry(mp, sidc, { light: true })) >= 0) return { x: bx + dx, y: by + dy };
+    }
+    return null;
+  }
+
+  /** Move the pointer to a view pixel and click it, with real pointer events (the view's own `emit` does not reach `view.on` listeners). */
+  private _clickAt(view: any, x: number, y: number): void {
+    const container = view?.container as HTMLElement | undefined;
+    if (!container) return;
+    const surface = (container.querySelector('.esri-view-surface') as HTMLElement | null) ?? container;
+    const r = container.getBoundingClientRect();
+    const make = (type: string, down: boolean) =>
+      new PointerEvent(type, {
+        bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: 'mouse', isPrimary: true,
+        button: down ? 0 : -1, buttons: down ? 1 : 0, clientX: r.left + x, clientY: r.top + y, view: window,
+      });
+    surface.dispatchEvent(make('pointermove', false));
+    surface.dispatchEvent(make('pointerdown', true));
+    surface.dispatchEvent(make('pointerup', true));
+  }
+
+  /** Search outward in rings; see {@link snapToDeployable}. */
+  private _findSnap(
+    geometry: any,
+    sidc: string | null,
+  ):
+    | { at: MercXY; distanceM: number; bearingDeg: number; verdict: PlacementVerdict['verdict']; searchedM: number }
+    | { at: null; searchedM: number; loading: boolean } {
+    const profile = resolveProfile(sidc ?? this._activeSidc, this._rules);
+    const origin = toMercatorShape(geometry)?.parts[0]?.[0];
+    if (!origin || profile === 'exempt') return { at: null, searchedM: 0, loading: false };
+    const res = resolutionAt(this._sampleZoom(), this._manifest!.tileSize);
+    const lat = 2 * Math.atan(Math.exp(origin[1] / 6378137)) - Math.PI / 2;
+    const groundK = Math.cos(lat); // true metres per Web Mercator metre here
+    const searchedM = SNAP_MAX_PX * res * groundK;
+
+    let best: { rank: number; at: MercXY; dx: number; dy: number; verdict: PlacementVerdict['verdict'] } | null = null;
+    let loading = false;
+    let limit = SNAP_MAX_PX;
+    for (let px = SNAP_FIRST_PX; px <= limit; px *= SNAP_GROWTH) {
+      const r = px * res;
+      for (let k = 0; k < SNAP_DIRECTIONS; k++) {
+        const a = (k / SNAP_DIRECTIONS) * 2 * Math.PI;
+        const dx = Math.sin(a) * r;
+        const dy = Math.cos(a) * r;
+        const at: MercXY = [origin[0] + dx, origin[1] + dy];
+        const g = this._withMerc(geometry, at);
+        if (!g) continue;
+        const v = this.evaluateGeometry(g, sidc, { light: true });
+        if (v.verdict === 'unknown' || v.loading) loading = true;
+        const rank = this._snapRank(v);
+        if (rank >= 0 && (!best || rank < best.rank)) best = { rank, at, dx, dy, verdict: v.verdict };
+      }
+      if (best) {
+        if (best.rank === 0) break;
+        limit = Math.min(limit, px * SNAP_PREFER_OK); // marginal spot found: only look a bit further for a clean one
+      }
+    }
+    if (!best) return { at: null, searchedM, loading };
+    return {
+      at: best.at,
+      distanceM: Math.hypot(best.dx, best.dy) * groundK,
+      bearingDeg: ((Math.atan2(best.dx, best.dy) * 180) / Math.PI + 360) % 360,
+      verdict: best.verdict,
+      searchedM,
+    };
+  }
+
+  /** A copy of the point geometry moved to a Web Mercator position (same spatial reference and z). */
+  private _withMerc(geometry: any, xy: MercXY): any | null {
+    const c = fromMercatorXY(geometry, xy);
+    if (!c || typeof geometry.clone !== 'function') return null;
+    const g = geometry.clone();
+    g.x = c[0];
+    g.y = c[1];
+    return g;
+  }
+
+  private _announceSnap(r: PlacementSnapResult): PlacementSnapResult {
+    this._emit('placement-snap', r);
+    if (r.moved) EngineLogger.success(ENGINE, r.message);
+    else {
+      EngineLogger.nextStep(ENGINE, r.message);
+      this._badge.flash(r.message);
+    }
+    return r;
+  }
+
   onViewChanged(): void {
     this._detachPointer();
     this._unbindView();
@@ -411,7 +591,11 @@ export default class PlacementAdvisor {
   }
 
   /** Synchronous verdict for a geometry from the tiles currently in memory. */
-  evaluateGeometry(geometry: any, sidc?: string | null, opts?: { ref?: () => MercXY | null }): PlacementVerdict {
+  evaluateGeometry(
+    geometry: any,
+    sidc?: string | null,
+    opts?: { ref?: () => MercXY | null; /** Verdict only: skips the nearest-terrain scan, indicator lines and the intergap check. */ light?: boolean },
+  ): PlacementVerdict {
     const profile = resolveProfile(sidc ?? this._activeSidc, this._rules);
     if (!this.isActive) return this._blank('off', profile, 'Placement advisor off');
     const compiled = this._profile(profile);
@@ -454,20 +638,22 @@ export default class PlacementAdvisor {
           ? 'Terrain data loading…'
           : 'Terrain data could not be loaded';
     } else {
-      this._enrich(v, samples, pts, ctx, compiled);
-      this._addIndicators(v, samples, pts, compiled, opts?.ref);
+      if (!opts?.light) {
+        this._enrich(v, samples, pts, ctx, compiled);
+        this._addIndicators(v, samples, pts, compiled, opts?.ref);
+      }
       // A shape spanning tiles that are still arriving is judged on what is known so far.
       if (v.unknown > 0 && ctx.waiting && (stats?.pending ?? 0) > 0) {
         v.detail = v.detail ? `${v.detail} · still loading terrain data` : 'Still loading terrain data';
         v.loading = true;
       }
     }
-    if (plan && cand) this._applyFootprint(v, plan, cand, effSidc);
+    if (plan && cand) this._applyFootprint(v, plan, cand, effSidc, !opts?.light);
     return v;
   }
 
   /** Record the footprint the verdict was judged on, say so in the detail line, and run the intergap check. */
-  private _applyFootprint(v: PlacementVerdict, plan: FootprintPlan, cand: FootprintCandidate, sidc: string | null): void {
+  private _applyFootprint(v: PlacementVerdict, plan: FootprintPlan, cand: FootprintCandidate, sidc: string | null, withSpacing: boolean): void {
     const d = plan.dims;
     v.footprint = {
       code: d.code,
@@ -485,7 +671,7 @@ export default class PlacementAdvisor {
         ? `${d.name} footprint ⌀ ${fmtDistance(d.frontageM)}`
         : `${d.name} footprint ${fmtDistance(d.frontageM)}${d.depthM > 0 ? ` × ${fmtDistance(d.depthM)}` : ' front'}, facing ${COMPASS[Math.round(cand.facingDeg / 45) % 8]}`;
     v.detail = v.detail ? `${v.detail} · ${text}` : text;
-    if (this._opts.footprint.spacing) v.spacing = checkSpacing(plan, this._neighbours(d.code, sidc));
+    if (withSpacing && this._opts.footprint.spacing) v.spacing = checkSpacing(plan, this._neighbours(d.code, sidc));
   }
 
   /** Web Mercator positions of same-echelon, same-side point symbols already on the map. */
@@ -894,7 +1080,7 @@ export default class PlacementAdvisor {
     const key = [
       v.verdict, v.message, v.detail ?? '', v.loading ? 1 : 0, Math.round(v.fraction * 100),
       Math.round(v.nearest?.distanceM ?? -1), v.nearest?.compass ?? '',
-      v.spacing?.status ?? '', Math.round(v.spacing?.nearestGapM ?? -1),
+      v.spacing?.status ?? '', Math.round(v.spacing?.nearestGapM ?? -1), v.snappable ? 1 : 0,
     ].join('|');
     if (key === this._lastBadgeKey) return;
     this._lastBadgeKey = key;
@@ -928,7 +1114,7 @@ export default class PlacementAdvisor {
     this._reevalTimer = setTimeout(() => {
       this._reevalTimer = null;
       const d = this._lastDetail;
-      if (d && this.isActive) this._apply(this.evaluateGeometry(d.geometry, d.sidc, { ref: () => this._pointerMerc() }));
+      if (d && this.isActive) this._apply(this._judgeLive(d.geometry, d.sidc));
     }, 30);
   }
 
@@ -1057,6 +1243,10 @@ export default class PlacementAdvisor {
 
   private _attachPointer(): void {
     if (this._pointerHandler) return;
+    if (!this._keyHandler) {
+      this._keyHandler = (e: KeyboardEvent) => this._onKey(e);
+      window.addEventListener('keydown', this._keyHandler, true);
+    }
     const container = (this._getView?.() as any)?.container as HTMLElement | null | undefined;
     if (!container) return;
     this._pointerHandler = (e: PointerEvent) => {
@@ -1067,7 +1257,21 @@ export default class PlacementAdvisor {
     this._container = container;
   }
 
+  /** S while drawing a point on bad ground: take the quick fix. Ignored when typing, with modifiers, or when there is nothing to fix. */
+  private _onKey(e: KeyboardEvent): void {
+    if ((e.key !== 's' && e.key !== 'S') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (!this._opts.snapKey || !this._lastSnappable || !this._lastDetail) return;
+    e.preventDefault();
+    this.snapToDeployable();
+  }
+
   private _detachPointer(): void {
+    if (this._keyHandler) {
+      window.removeEventListener('keydown', this._keyHandler, true);
+      this._keyHandler = null;
+    }
     if (this._container && this._pointerHandler) {
       this._container.removeEventListener('pointermove', this._pointerHandler);
     }
