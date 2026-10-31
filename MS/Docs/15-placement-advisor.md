@@ -154,6 +154,11 @@ Platoon — keep at least 300 m between them` or `⚠ Overlaps a neighbouring Pl
 and the offending neighbours are outlined in orange. Under `worst4` the tightest of the four facings is
 used; under `circle` the gap is centre distance minus the frontage.
 
+The placed symbols are grouped by echelon and side once and reused for two seconds, not re-scanned on every
+mouse move (the grouping is dropped when a draw starts or ends and at the start of an audit), so the check
+costs the same however many symbols are on the map. A symbol judged after it was placed (an audit, a
+re-check after a move, "Placement check…") is never counted as its own neighbour.
+
 ```ts
 v.spacing: { status: 'ok' | 'tight' | 'overlap', minGapM, nearestGapM | null,
              conflicts: { at, gapM, ring }[], message | null } | undefined

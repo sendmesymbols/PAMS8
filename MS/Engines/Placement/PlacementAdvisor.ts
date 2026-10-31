@@ -97,6 +97,8 @@ const LOADING_GRACE_MS = 200;
 const STALE_MAX_PX = 80;
 /** Audit: symbols judged per batch (their tiles must fit the cache), passes to wait out missing tiles, wait per pass, and the tile span a shape is judged over. */
 const FIRST_USE_KEY = 'ms.placement.hintSeen';
+/** How long the grouping of placed symbols (for the spacing check) is reused. */
+const NEIGHBOUR_TTL_MS = 2000;
 /** Points walked along a shape's edge to find which stretches lie in no-go ground. */
 const STRETCH_MAX_POINTS = 1200;
 const AUDIT_BATCH = 16;
@@ -192,6 +194,7 @@ export default class PlacementAdvisor {
   private _legend = new PlacementLegend();
   private _hintedThisSession = false;
   private _lastIssueKey = '';
+  private _nbr: { at: number; map: Map<string, { pts: MercXY[]; gs: any[] }> } | null = null;
   private _tileWaiters: Array<() => void> = [];
   private _indicators = new PlacementIndicators(() => this._getView());
   private _boundary = new PlacementBoundary(() => this._getView());
@@ -547,6 +550,7 @@ export default class PlacementAdvisor {
       return;
     }
     this._activeSidc = sidc ?? null;
+    this._nbr = null; // the symbols already placed may have changed since the last draw
     this._profileOverride = null; // a hand-picked unit type lasts for one draw
     this._activeProfile = this._profileFor(this._activeSidc);
     if (this._activeProfile !== 'exempt') this._lastArmedProfile = this._activeProfile;
@@ -631,6 +635,7 @@ export default class PlacementAdvisor {
     this._detachPointer();
     this._lastDetail = null;
     this._lastSnappable = false;
+    this._nbr = null;
     this._profileOverride = null;
     this._lastGood = null;
     this._lastGoodGeom = null;
@@ -892,6 +897,7 @@ export default class PlacementAdvisor {
     const audit: PlacementAudit = { checked: 0, exempt: 0, outside: 0, unchecked: 0, counts: {}, entries: [], problems: [] };
     if (!this.isActive) return audit;
     const token = this._configToken;
+    this._nbr = null; // judge against the symbols as they are now
 
     const items: Array<{ g: any; sidc: string | null; zoom: number; profile: PlacementProfile }> = [];
     for (const g of graphics) {
@@ -938,7 +944,7 @@ export default class PlacementAdvisor {
         }
         const problem = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
         // The cheap pass has no wording; spend the full one only on what will be listed.
-        if (problem || this._opts.footprint.spacing) v = this.evaluateGeometry(it.g.geometry, it.sidc, { zoom: it.zoom, profile: it.profile });
+        if (problem || this._opts.footprint.spacing) v = this.evaluateGeometry(it.g.geometry, it.sidc, { zoom: it.zoom, profile: it.profile, self: it.g });
         audit.entries.push(this._auditEntry(it.g, it.sidc, v, problem, opts.refreshStamps !== false));
         audit.checked++;
         audit.counts[v.verdict] = (audit.counts[v.verdict] ?? 0) + 1;
@@ -1242,6 +1248,8 @@ export default class PlacementAdvisor {
       zoom?: number;
       /** Judge for this profile, ignoring the SIDC and any override of the draw in progress (audits). */
       profile?: PlacementProfile;
+      /** The placed symbol being judged, so the spacing check does not count it as its own neighbour. */
+      self?: any;
     },
   ): PlacementVerdict {
     const profile = opts?.profile ?? this._profileFor(sidc);
@@ -1303,7 +1311,7 @@ export default class PlacementAdvisor {
         v.loading = true;
       }
     }
-    if (plan && cand) this._applyFootprint(v, plan, cand, effSidc, !opts?.light);
+    if (plan && cand) this._applyFootprint(v, plan, cand, effSidc, !opts?.light, opts?.self);
     v.reason = this._reasonFor(v);
     return v;
   }
@@ -1323,7 +1331,14 @@ export default class PlacementAdvisor {
   }
 
   /** Record the footprint the verdict was judged on, say so in the detail line, and run the intergap check. */
-  private _applyFootprint(v: PlacementVerdict, plan: FootprintPlan, cand: FootprintCandidate, sidc: string | null, withSpacing: boolean): void {
+  private _applyFootprint(
+    v: PlacementVerdict,
+    plan: FootprintPlan,
+    cand: FootprintCandidate,
+    sidc: string | null,
+    withSpacing: boolean,
+    self?: any,
+  ): void {
     const d = plan.dims;
     v.footprint = {
       code: d.code,
@@ -1341,28 +1356,50 @@ export default class PlacementAdvisor {
         ? `${d.name} footprint ⌀ ${fmtDistance(d.frontageM)}`
         : `${d.name} footprint ${fmtDistance(d.frontageM)}${d.depthM > 0 ? ` × ${fmtDistance(d.depthM)}` : ' front'}, facing ${COMPASS[Math.round(cand.facingDeg / 45) % 8]}`;
     v.detail = v.detail ? `${v.detail} · ${text}` : text;
-    if (withSpacing && this._opts.footprint.spacing) v.spacing = checkSpacing(plan, this._neighbours(d.code, sidc));
+    if (withSpacing && this._opts.footprint.spacing) v.spacing = checkSpacing(plan, this._neighbours(d.code, sidc, self));
   }
 
-  /** Web Mercator positions of same-echelon, same-side point symbols already on the map. */
-  private _neighbours(code: string, sidc: string | null): MercXY[] {
-    const map = (this._getView?.() as any)?.map;
-    if (!map) return [];
-    const side = sideOf(sidc);
-    const out: MercXY[] = [];
+  /**
+   * Web Mercator positions of same-echelon, same-side point symbols already on the map, other than `exclude`
+   * (a symbol being checked for spacing is on the map itself and is not its own neighbour).
+   */
+  private _neighbours(code: string, sidc: string | null, exclude?: any): MercXY[] {
+    const entry = this._neighbourIndex().get(`${code}|${sideOf(sidc)}`);
+    if (!entry) return [];
+    if (!exclude) return entry.pts;
+    return entry.pts.filter((_, i) => entry.gs[i] !== exclude);
+  }
+
+  /**
+   * Every placed point symbol that has an echelon, grouped by echelon and side. The check runs on every mouse move
+   * while an echelon symbol is drawn, and walking every graphic on the map each time cost more the more symbols
+   * there were; during a draw the others do not move, so the grouping is built once and reused for a couple of
+   * seconds (and dropped when a draw starts or ends, or an audit begins).
+   */
+  private _neighbourIndex(): Map<string, { pts: MercXY[]; gs: any[] }> {
+    const now = Date.now();
+    if (this._nbr && now - this._nbr.at < NEIGHBOUR_TTL_MS) return this._nbr.map;
+    const map = new Map<string, { pts: MercXY[]; gs: any[] }>();
+    const view = (this._getView?.() as any)?.map;
     for (const id of NEIGHBOUR_LAYER_IDS) {
-      const layer = map.findLayerById?.(id);
-      layer?.graphics?.forEach((g: any) => {
+      view?.findLayerById?.(id)?.graphics?.forEach((g: any) => {
         const geom = g?.geometry;
         if (geom?.type !== 'point') return;
         const gs = graphicSidc(g);
-        // Cheap string test first: this runs for every symbol on the map on each mouse move.
-        if (!gs || gs.length !== 20 || gs.substring(8, 10) !== code || echelonCodeOf(gs) !== code || sideOf(gs) !== side) return;
+        if (!gs || gs.length !== 20) return;
+        const code = gs.substring(8, 10);
+        if (echelonCodeOf(gs) !== code) return;
         const m = toMercatorShape(geom)?.parts[0]?.[0];
-        if (m) out.push(m);
+        if (!m) return;
+        const key = `${code}|${sideOf(gs)}`;
+        let e = map.get(key);
+        if (!e) map.set(key, (e = { pts: [], gs: [] }));
+        e.pts.push(m);
+        e.gs.push(g);
       });
     }
-    return out;
+    this._nbr = { at: now, map };
+    return map;
   }
 
   /**
