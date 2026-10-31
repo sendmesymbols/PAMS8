@@ -20,10 +20,12 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const EDGE = 8;
 /** How long the cursor must rest on a verdict before it is read out to a screen reader. */
 const SPEAK_DELAY_MS = 500;
+/** Gap between a fingertip and the card above it. */
+const TOUCH_GAP = 28;
 
 const CSS = `
 .ms-placement-badge{position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;
-  --pb-c:#5b6470;--pb-fg:#fff;width:280px;border-radius:10px;overflow:hidden;
+  --pb-c:#5b6470;--pb-fg:#fff;width:280px;max-width:calc(100vw - 8px);box-sizing:border-box;border-radius:10px;overflow:hidden;
   font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
   background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:none}
 .ms-placement-badge[data-verdict="ok"]{--pb-c:#1c8247}
@@ -280,6 +282,7 @@ export class PlacementBadge {
   private _w = 280;
   private _h = 120;
   private _hasPointer = false;
+  private _touch = false;
   private _last: PlacementVerdict | null = null;
   private _notice: string | null = null;
   private _noticeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -361,10 +364,11 @@ export class PlacementBadge {
     if (this._toastEl) this._toastEl.style.display = 'none';
   }
 
-  /** Pointer position in client coordinates; call from a pointermove listener. */
-  moveTo(clientX: number, clientY: number): void {
+  /** Pointer position in client coordinates; call from a pointermove listener. `touch`: it is a finger, so keep the card off it. */
+  moveTo(clientX: number, clientY: number, touch = false): void {
     this._x = clientX;
     this._y = clientY;
+    this._touch = touch;
     this._hasPointer = true;
     if (this._el && this._el.style.display !== 'none') this._place();
   }
@@ -438,6 +442,15 @@ export class PlacementBadge {
   }
 
   private _position(target: HTMLElement, w: number, h: number): void {
+    if (this._touch) {
+      // A finger covers what is below and beside it: centre the card above the touch point, below it only when
+      // there is no room above.
+      const tx = Math.min(Math.max(EDGE / 2, this._x - w / 2), window.innerWidth - w - EDGE / 2);
+      const above = this._y - h - TOUCH_GAP;
+      const ty = above >= EDGE / 2 ? above : this._y + TOUCH_GAP;
+      target.style.transform = `translate(${Math.round(tx)}px, ${Math.round(ty)}px)`;
+      return;
+    }
     let x = this._x + 16;
     let y = this._y + 20;
     if (x + w > window.innerWidth - EDGE) x = this._x - 16 - w;

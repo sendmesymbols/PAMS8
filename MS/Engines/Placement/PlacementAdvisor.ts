@@ -194,6 +194,8 @@ export default class PlacementAdvisor {
   private _legend = new PlacementLegend();
   private _hintedThisSession = false;
   private _lastIssueKey = '';
+  /** The last pointer move was a finger: the card goes above it and does not offer keyboard shortcuts. */
+  private _touchInput = false;
   private _nbr: { at: number; map: Map<string, { pts: MercXY[]; gs: any[] }> } | null = null;
   private _tileWaiters: Array<() => void> = [];
   private _indicators = new PlacementIndicators(() => this._getView());
@@ -588,11 +590,13 @@ export default class PlacementAdvisor {
     // The cursor is on a tile that has not arrived: keep showing the verdict from a moment ago, marked
     // as updating, rather than blanking the card to "loading" on every pan.
     if (v.verdict === 'unknown' && v.waiting) return this._staleVerdict(geometry) ?? v;
-    v.snappable = this._opts.snapKey && geometry?.type === 'point' && this._isBad(v);
+    // S, P and Shift-click need a keyboard: with a finger on the screen the card does not offer them.
+    const keys = !this._touchInput;
+    v.snappable = keys && this._opts.snapKey && geometry?.type === 'point' && this._isBad(v);
     this._lastSnappable = v.snappable;
     v.blocked = this._refuses(v);
-    v.overridable = v.blocked && this._opts.allowOverride;
-    v.profileKey = this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
+    v.overridable = keys && v.blocked && this._opts.allowOverride;
+    v.profileKey = keys && this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
     v.profileOverride = this._profileOverride !== null && v.profile === this._profileOverride;
     if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
       this._lastGood = v;
@@ -635,6 +639,7 @@ export default class PlacementAdvisor {
     this._detachPointer();
     this._lastDetail = null;
     this._lastSnappable = false;
+    this._touchInput = false;
     this._nbr = null;
     this._profileOverride = null;
     this._lastGood = null;
@@ -687,7 +692,9 @@ export default class PlacementAdvisor {
           title: 'Not placed',
           lines: [verdict.message, verdict.reason ?? '', verdict.detail ?? ''].filter(Boolean),
           hint: this._opts.allowOverride
-            ? 'Hold Shift and click to place it anyway.'
+            ? this._touchInput
+              ? 'Placing it anyway needs a keyboard (Shift-click).'
+              : 'Hold Shift and click to place it anyway.'
             : 'Placement on this ground is blocked.',
         },
         5000,
@@ -2040,7 +2047,8 @@ export default class PlacementAdvisor {
     this._pointerHandler = (e: PointerEvent) => {
       this._lastClient = { x: e.clientX, y: e.clientY };
       this._shift = e.shiftKey;
-      this._badge.moveTo(e.clientX, e.clientY);
+      this._touchInput = e.pointerType === 'touch';
+      this._badge.moveTo(e.clientX, e.clientY, this._touchInput);
     };
     container.addEventListener('pointermove', this._pointerHandler, { passive: true });
     this._container = container;

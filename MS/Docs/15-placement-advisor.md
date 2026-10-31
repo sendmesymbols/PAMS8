@@ -321,6 +321,21 @@ in nm). One decimal under 10 of the big unit, none above. It is display only: th
 can format them its own way. The setting is read by `fmtDistance`, so it applies to every advisor on
 the page.
 
+### Touch screens and 3D
+
+When the last pointer move was a finger, the card is centred **above** the touch point (below it only
+when there is no room above), so the hand never covers it, and it does not offer the S, P and Shift-click
+shortcuts (in the card or the spoken sentence), since there is no keyboard to press them on; the refusal
+card says that placing a refused symbol anyway needs a keyboard. The card is at most as wide as the
+viewport, so it fits a narrow phone. The quick fix and unit type are still available from code
+(`snapToDeployable()`, `setProfileOverride()`).
+
+In 3D the sampling zoom comes from `view.resolution`, which a SceneView does report; the extent-based
+fallback only runs for views that do not. Measured on a tilted scene (up to 70°) the local pixel size under
+the cursor differs from it by up to about 2× near the centre and 4× toward the horizon, but the zoom is
+clamped to the bundle's finest level there, and a finer zoom than the screen shows only costs a few more
+tiles; it never loses accuracy, so no correction is made.
+
 ### Accessibility
 
 The verdict never relies on colour alone: the card's header carries an icon and the verdict in words
