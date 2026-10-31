@@ -113,10 +113,20 @@ function row(iconName: string, label: string, color: string | undefined, ...cont
   return r;
 }
 
+/** A class label as a noun for a sentence: "Steep slope (>30°)" becomes "steep slope". */
+function feature(label: string | null | undefined): string {
+  const s = plain(label ?? '').replace(/\s*\([^)]*\)/g, '').trim();
+  return s ? s.charAt(0).toLowerCase() + s.slice(1) : 'unusable ground';
+}
+
 function titleOf(v: PlacementVerdict): string {
   switch (v.verdict) {
     case 'ok': return 'Good spot';
-    case 'near': return v.fraction > 0 ? 'Touching trouble' : 'Close to trouble';
+    case 'near': {
+      // Name the ground itself: touching the shape's own class, otherwise the nearest ground the unit can't use.
+      const thing = feature(v.fraction > 0 ? v.className : v.nearest?.className);
+      return v.fraction > 0 ? `Touching ${thing}` : `Close to ${thing}`;
+    }
     case 'caution': return 'Difficult ground';
     case 'partial': return 'Partly blocked';
     case 'in': return 'Cannot deploy here';
@@ -187,12 +197,13 @@ function verdictColor(v: PlacementVerdict): string {
 function nearestRow(v: PlacementVerdict): HTMLElement | null {
   const n = v.nearest;
   if (n) {
+    // The label names the ground, so the row only has to say how far and which way.
     const body = el('div');
-    body.append(el('span', 'ms-pb-b', plain(n.className)), ` ${fmtDistance(n.distanceM)} ${n.compass} `);
+    body.append(el('span', 'ms-pb-b', fmtDistance(n.distanceM)), ` ${n.compass} `);
     body.append(icon('arrow', 13, verdictColor(v), n.bearingDeg));
-    return row('target', n.kind === 'no-go' ? 'Nearest trouble' : 'Nearest open ground', undefined, body);
+    return row('target', `Nearest ${feature(n.className)}`, undefined, body);
   }
-  const label = v.verdict === 'in' ? 'Nearest open ground' : 'Nearest trouble';
+  const label = v.verdict === 'in' ? 'Nearest open ground' : 'Nearest unusable ground';
   if (v.noneWithinM) return row('target', label, undefined, `Nothing within ${fmtDistance(v.noneWithinM)}`);
   if ((v.verdict === 'ok' || v.verdict === 'caution') && v.distanceM !== null) {
     return row('target', label, undefined, `${fmtDistance(v.distanceM)} away`);
