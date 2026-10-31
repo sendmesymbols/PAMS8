@@ -91,6 +91,14 @@ A shape that spans tiles still being fetched is judged on what is known and says
 ### Echelon footprint
 
 A unit is not a point: it holds **frontage** (width across its front), **depth** (to its rear)
+**While tiles load**, the cursor card does not blank out. When the tile under the cursor is missing, the
+last real verdict of the draw stays up marked `Still loading terrain data`, provided the cursor is within
+80 screen pixels of where that verdict was given (measured on screen between the two map positions, so
+panning is accounted for). With nothing close enough to show, the card keeps what it had and waits 200 ms
+before saying `Terrain data loading…`, so a tile that arrives in a blink never flashes it. Outside the
+bundle's bounds it says how far the nearest data is and which way ("Outside terrain data coverage,
+nearest data 42 km NW").
+
 and keeps an **intergap** to the next unit of the same echelon along the front. A land-unit symbol
 (symbol set 10) with one of these echelons is therefore judged on the ground it covers, not on
 its click point (`placement.footprint.enabled`, on by default). Other echelons (team, squad,

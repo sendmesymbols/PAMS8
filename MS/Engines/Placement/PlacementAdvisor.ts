@@ -89,6 +89,9 @@ const SNAP_DIRECTIONS = 16;
 const RETRY_DELAYS_MS = [4000, 15000, 45000];
 /** After a ring with only a marginal spot (near / caution), keep looking this much further for a clean `ok`. */
 const SNAP_PREFER_OK = 1.6;
+/** How long the card waits on a missing tile before saying "loading", and how far (screen px) the cursor may move before the last verdict stops being a fair stand-in for the new spot. */
+const LOADING_GRACE_MS = 200;
+const STALE_MAX_PX = 80;
 /** Audit: symbols judged per batch (their tiles must fit the cache), passes to wait out missing tiles, wait per pass, and the tile span a shape is judged over. */
 const AUDIT_BATCH = 16;
 const AUDIT_PASSES = 4;
@@ -160,6 +163,11 @@ export default class PlacementAdvisor {
   private _activeProfile: PlacementProfile | null = null;
   private _lastDetail: { geometry: any; sidc: string | null } | null = null;
   private _lastSnappable = false;
+  /** The last real verdict of this draw and where the cursor was, to show while the next tile loads. */
+  private _lastGood: PlacementVerdict | null = null;
+  private _lastGoodGeom: any = null;
+  private _loadingSince = 0;
+  private _graceTimer: ReturnType<typeof setTimeout> | null = null;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private _blurHandler: (() => void) | null = null;
   /** Shift is held (tracked from pointer and key events while a draw is armed): the click is a deliberate override. */
@@ -476,11 +484,33 @@ export default class PlacementAdvisor {
   /** Verdict for the live cursor position, flagged when the snap key could improve it. */
   private _judgeLive(geometry: any, sidc: string | null): PlacementVerdict {
     const v = this.evaluateGeometry(geometry, sidc, { ref: () => this._pointerMerc() });
+    // The cursor is on a tile that has not arrived: keep showing the verdict from a moment ago, marked
+    // as updating, rather than blanking the card to "loading" on every pan.
+    if (v.verdict === 'unknown' && v.waiting) return this._staleVerdict(geometry) ?? v;
     v.snappable = this._opts.snapKey && geometry?.type === 'point' && this._isBad(v);
     this._lastSnappable = v.snappable;
     v.blocked = this._refuses(v);
     v.overridable = v.blocked && this._opts.allowOverride;
+    if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
+      this._lastGood = v;
+      this._lastGoodGeom = geometry;
+    }
     return v;
+  }
+
+  /**
+   * The last real verdict flagged as updating; null when there is none, the cursor has moved on, or the tiles
+   * are not coming. "Moved on" is measured between the two map positions on screen now (not from pointer
+   * events, which reach us after the view has already reported the move).
+   */
+  private _staleVerdict(geometry: any): PlacementVerdict | null {
+    const g = this._lastGood;
+    if (!g || !this._lastGoodGeom || (this._cache?.stats().pending ?? 0) === 0) return null;
+    const view: any = this._getView?.();
+    const a = view?.toScreen?.(this._lastGoodGeom);
+    const b = view?.toScreen?.(geometry);
+    if (!a || !b || Math.hypot(a.x - b.x, a.y - b.y) > STALE_MAX_PX) return null;
+    return { ...g, loading: true };
   }
 
   /** Would `enforce` mode refuse a click with this verdict? */
@@ -501,6 +531,13 @@ export default class PlacementAdvisor {
     this._detachPointer();
     this._lastDetail = null;
     this._lastSnappable = false;
+    this._lastGood = null;
+    this._lastGoodGeom = null;
+    this._loadingSince = 0;
+    if (this._graceTimer !== null) {
+      clearTimeout(this._graceTimer);
+      this._graceTimer = null;
+    }
     this._shift = false;
     this._lastBadgeKey = '';
     this._lastWarmKey = '';
@@ -1077,7 +1114,7 @@ export default class PlacementAdvisor {
       // Judge by the tiles this shape needed, not the cache-wide counts: a prefetch burst keeps
       // `pending` high long after the cursor's own tile arrived (or when it is outside coverage).
       v.message = !ctx.waiting
-        ? 'Outside terrain data coverage'
+        ? this._coverageMessage(shape.parts[0]?.[0])
         : (stats?.pending ?? 0) > 0
           ? 'Terrain data loading…'
           : 'Terrain data could not be loaded';
@@ -1372,6 +1409,20 @@ export default class PlacementAdvisor {
     return mp ? (toMercatorShape(mp)?.parts[0]?.[0] ?? null) : null;
   }
 
+  /** "Outside terrain data coverage", plus how far the nearest covered ground is and which way, when outside the bundle's bounds. */
+  private _coverageMessage(p: MercXY | undefined): string {
+    const base = 'Outside terrain data coverage';
+    if (!p) return base;
+    const b = this._boundsMerc;
+    const vx = Math.min(b[2], Math.max(b[0], p[0])) - p[0];
+    const vy = Math.min(b[3], Math.max(b[1], p[1])) - p[1];
+    const d = Math.hypot(vx, vy);
+    if (d < 1) return base; // inside the bounds: a gap in the data (e.g. outside the boundary), nothing to point at
+    const lat = 2 * Math.atan(Math.exp(p[1] / 6378137)) - Math.PI / 2;
+    const bearing = ((Math.atan2(vx, vy) * 180) / Math.PI + 360) % 360;
+    return `${base}, nearest data ${fmtDistance(d * Math.cos(lat))} ${COMPASS[Math.round(bearing / 45) % 8]}`;
+  }
+
   /** Raw terrain reading at a map point for the armed profile (generic when none is armed). */
   sampleAt(point: any): TerrainSample {
     if (!this.isActive) return NULL_SAMPLE;
@@ -1507,6 +1558,25 @@ export default class PlacementAdvisor {
 
   /** Update the map lines (every call: their end follows the cursor), then badge + events (only on change). */
   private _apply(v: PlacementVerdict): void {
+    // Nothing earlier to show while the tile loads: give it a moment before the card says "loading",
+    // so a tile that arrives within the blink never flashes it.
+    if (v.verdict === 'unknown' && v.waiting) {
+      const now = Date.now();
+      if (this._loadingSince === 0) this._loadingSince = now;
+      const left = LOADING_GRACE_MS - (now - this._loadingSince);
+      if (left > 0) {
+        if (this._graceTimer === null) {
+          this._graceTimer = setTimeout(() => {
+            this._graceTimer = null;
+            const d = this._lastDetail;
+            if (d && this.isActive) this._apply(this._judgeLive(d.geometry, d.sidc));
+          }, left + 5);
+        }
+        return;
+      }
+    } else {
+      this._loadingSince = 0;
+    }
     if (this._opts.indicators.enabled && this.isActive && v.indicators.length > 0) {
       this._indicators.show(v.indicators, this._opts.indicators.labels);
     } else {
