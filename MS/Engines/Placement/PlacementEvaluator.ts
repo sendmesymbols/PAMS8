@@ -23,18 +23,23 @@ export interface CompiledProfile {
   nogo: Uint8Array;
   /** 256 flags: 1 = deployable with warning. */
   caution: Uint8Array;
+  /**
+   * 256 flags: 1 = no-go ground the distance layer measures to (makes the ground beside it Marginal).
+   * Thin lines in the bundle's `marginalIgnore` are no-go but not targets; a `marginal: false` mode has none.
+   */
+  target: Uint8Array;
 }
 
 export function compileProfile(rules: TerrainRules | null, name: PlacementProfile): CompiledProfile {
   const nogo = new Uint8Array(256);
   const caution = new Uint8Array(256);
-  if (name === 'exempt') return { name, exempt: true, nogo, caution };
+  if (name === 'exempt') return { name, exempt: true, nogo, caution, target: nogo };
 
   const rule = rules?.profiles?.[name];
   if (!rule) {
     // No rule for this profile in the bundle — nothing is no-go rather than
     // everything, so a half-configured bundle never blocks placement.
-    return { name, exempt: false, nogo, caution };
+    return { name, exempt: false, nogo, caution, target: nogo };
   }
   if (rule.requires && rule.requires.length > 0) {
     nogo.fill(1);
@@ -46,7 +51,9 @@ export function compileProfile(rules: TerrainRules | null, name: PlacementProfil
   // Nodata is never a verdict on its own; the sample is treated as unknown.
   nogo[NODATA_CLASS] = 0;
   caution[NODATA_CLASS] = 0;
-  return { name, exempt: false, nogo, caution };
+  const target = rule.marginal === false ? new Uint8Array(256) : nogo.slice();
+  if (!rule.requires?.length) for (const c of rules?.marginalIgnore ?? []) if (c >= 0 && c < 256) target[c] = 0;
+  return { name, exempt: false, nogo, caution, target };
 }
 
 export interface EvaluateOptions {

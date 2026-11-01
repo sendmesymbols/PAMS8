@@ -1,5 +1,5 @@
 # Terrain-bundle pipeline for the PAMS8 Placement Advisor.
-#   make bundle            full run: fetch grid derive classify profiles tile validate package
+#   make bundle            full run: fetch grid derive grotbc classify profiles tile validate package
 #   make rebuild-rules     after editing rules.yaml / classes.yaml: steps 5-8 only
 #   make synth-check       validate the synthetic dev bundle (no data needed)
 # Every step writes work/<step>/ and leaves work/<step>/.done; delete the stamp
@@ -27,8 +27,8 @@ AOI_ARG      = $(if $(strip $(AOI)),--aoi "$(strip $(AOI))",)
 OFFICIAL     = $(W)/boundary/pakistan_official.geojson
 BOUNDARY_ARG = $(if $(strip $(BOUNDARY)),--boundary $(strip $(BOUNDARY)) --boundary-source custom,$(if $(wildcard $(OFFICIAL)),--boundary $(OFFICIAL) --boundary-source official,--boundary-source osm))
 
-.PHONY: bundle fetch boundary grid derive classify profiles tile validate package rebuild-rules \
-        synth-check clean clean-out clean-work $(addprefix clean-,fetch boundary grid derive classify profiles tile)
+.PHONY: bundle fetch boundary grid derive grotbc classify profiles tile validate package rebuild-rules \
+        synth-check clean clean-out clean-work $(addprefix clean-,fetch boundary grid derive grotbc classify profiles tile)
 
 bundle: package
 
@@ -58,10 +58,17 @@ $(W)/derive/.done: $(W)/grid/.done classes.yaml
 	    --workers $(strip $(WORKERS)) $(NCGDB_ARG)
 	@touch $@
 
-# 4 ---------------------------------------------------------------- class.tif
+# 3b --------------------------------------------------------------- GROTBC (v2): NCGDB lines / points, relief
+grotbc: $(W)/grotbc/.done
+$(W)/grotbc/.done: $(W)/derive/.done classes.yaml rules.yaml
+	$(PY) $(S)/grotbc.py --grid $(W)/grid --derive $(W)/derive --out $(W)/grotbc --classes classes.yaml --rules rules.yaml \
+	    --block $(strip $(BLOCK)) --workers $(strip $(WORKERS)) $(NCGDB_ARG)
+	@touch $@
+
+# 4 ---------------------------------------------------------------- class.tif (+ cc.tif, wet.tif)
 classify: $(W)/classify/.done
-$(W)/classify/.done: $(W)/derive/.done classes.yaml
-	$(PY) $(S)/classify.py --grid $(W)/grid --derive $(W)/derive --out $(W)/classify --classes classes.yaml --block $(strip $(BLOCK))
+$(W)/classify/.done: $(W)/grotbc/.done classes.yaml
+	$(PY) $(S)/classify.py --grid $(W)/grid --derive $(W)/derive --grotbc $(W)/grotbc --out $(W)/classify --classes classes.yaml --block $(strip $(BLOCK))
 	@touch $@
 
 # 5 ---------------------------------------------------------------- rules.json + dist_*.tif
@@ -76,7 +83,7 @@ tile: $(W)/tile/.done
 $(W)/tile/.done: $(W)/profiles/.done
 	rm -rf $(OUT_DIR)
 	$(PY) $(S)/tile.py --grid $(W)/grid --class-tif $(W)/classify/class.tif \
-	    --profiles $(W)/profiles --out $(OUT_DIR) --workers $(strip $(WORKERS))
+	    --profiles $(W)/profiles --grotbc $(W)/grotbc --out $(OUT_DIR) --workers $(strip $(WORKERS))
 	@mkdir -p $(W)/tile && touch $@
 
 # 7 ---------------------------------------------------------------- checks
@@ -87,7 +94,7 @@ validate: $(W)/tile/.done
 package: validate
 	$(PY) $(S)/package.py --bundle $(OUT_DIR) --grid $(W)/grid/grid.json \
 	    --rules-json $(W)/profiles/rules.json --rules rules.yaml --lock sources.lock \
-	    --checksums $(W)/raw/checksums.json --zip out/terrain-bundle.zip
+	    --checksums $(W)/raw/checksums.json --grotbc-vector $(W)/grotbc/vector --zip out/terrain-bundle.zip
 
 # steps 5-8 only (rules/classes changed; class.tif unchanged)
 rebuild-rules: clean-profiles clean-tile package
@@ -102,9 +109,10 @@ clean-fetch:    ; rm -f $(W)/raw/.done            # keeps downloads; `rm -rf wor
 clean-boundary: ; rm -rf $(W)/boundary
 clean-grid:     ; rm -rf $(W)/grid
 clean-derive:   ; rm -rf $(W)/derive
+clean-grotbc:   ; rm -rf $(W)/grotbc
 clean-classify: ; rm -rf $(W)/classify
 clean-profiles: ; rm -rf $(W)/profiles
 clean-tile:     ; rm -rf $(W)/tile $(OUT_DIR)
 clean-out:      ; rm -rf out $(OUT_DIR)
-clean-work:     ; rm -rf $(W)/grid $(W)/derive $(W)/classify $(W)/profiles $(W)/tile
+clean-work:     ; rm -rf $(W)/grid $(W)/derive $(W)/grotbc $(W)/classify $(W)/profiles $(W)/tile
 clean: clean-work clean-out

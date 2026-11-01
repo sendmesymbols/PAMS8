@@ -8,6 +8,11 @@ Outputs: work/profiles/rules.json             bundle rules (classes + profiles)
 No-go per profile: the `nogo` set, or — for a profile with `requires` — every
 class NOT in `requires` (nodata is never no-go; it stays 255 in the output).
 
+Marginal band (bundle v2): the distance is measured only to the no-go ground that should make the ground
+beside it Marginal. Classes in rules.yaml `marginalIgnore` (thin lines: distributaries, walls, railways ...)
+are still 0 where they lie but do not count as targets; a profile with `marginal: false` (road- and
+rail-bound) gets no band at all: 0 on no-go, 254 elsewhere.
+
 Distance is a Euclidean distance transform (scipy.ndimage.distance_transform_edt)
 run on blocks with a halo of cap_px pixels, so distances up to the cap are exact
 across block edges; anything beyond the halo is >= cap -> 254 anyway.
@@ -32,18 +37,34 @@ from common import GTIFF_U8, dump_json, iter_blocks, load_json, load_yaml, row_l
 log = setup_logging("profiles")
 
 
+CLASS_KEYS = ("name", "label", "note", "grotbc", "origin", "kind")
+
+
 def build_rules(rules: dict, classes: dict) -> dict:
     out = {"version": str(rules["version"]),
-           "classes": {str(c["code"]): {"name": c["name"], "label": c["label"]} for c in classes["classes"]},
+           "classes": {str(c["code"]): {k: c[k] for k in CLASS_KEYS if c.get(k) not in (None, "")}
+                       for c in classes["classes"]},
            "profiles": {}}
     for pid, p in rules["profiles"].items():
         entry = {"label": p["label"]}
         for key in ("nogo", "requires", "caution"):
             if key in p:
                 entry[key] = [int(v) for v in p[key]]
+        if p.get("why"):
+            entry["why"] = {str(k): str(v) for k, v in p["why"].items()}
+        if p.get("marginal") is False:
+            entry["marginal"] = False
         out["profiles"][pid] = entry
+    if rules.get("marginalIgnore"):
+        out["marginalIgnore"] = [int(c) for c in rules["marginalIgnore"]]
     if rules.get("profileOverrides"):
         out["profileOverrides"] = rules["profileOverrides"]
+    # Bundle v2: the doctrine numbers and the codebooks of the auxiliary layers, for the engine to read.
+    grotbc = {k: rules[k] for k in ("loadClassCode", "tanks", "tankable", "msr", "water") if k in rules}
+    if classes.get("layers"):
+        grotbc["layers"] = classes["layers"]
+    if grotbc:
+        out["grotbc"] = grotbc
     return out
 
 
@@ -54,7 +75,8 @@ def nogo_mask(cls: np.ndarray, profile: dict) -> np.ndarray:
     return np.isin(cls, profile["nogo"])
 
 
-def dist_layer(grid: dict, class_tif: Path, out: Path, profile: dict, scale_m: float, block: int) -> None:
+def dist_layer(grid: dict, class_tif: Path, out: Path, profile: dict, scale_m: float, block: int,
+               ignore: list[int] | None = None) -> None:
     import rasterio
     from rasterio.transform import Affine
     from rasterio.windows import Window
@@ -72,13 +94,15 @@ def dist_layer(grid: dict, class_tif: Path, out: Path, profile: dict, scale_m: f
         for i, b in enumerate(iter_blocks(grid["width"], grid["height"], block, halo)):
             cls = src.read(1, window=Window(b["rcol"], b["rrow"], b["rw"], b["rh"]))
             nogo = nogo_mask(cls, profile)
+            target = nogo & ~np.isin(cls, ignore) if ignore else nogo
             lat_c = float(row_latitudes(grid, b["rrow"] + b["rh"] // 2, 1)[0])
             pm = grid["pixel_size"] * math.cos(math.radians(lat_c))
-            if nogo.any():
-                d = distance_transform_edt(~nogo, sampling=(pm, pm))
+            if target.any() and profile.get("marginal", True):
+                d = distance_transform_edt(~target, sampling=(pm, pm))
                 val = np.minimum(np.rint(d / scale_m), 254).astype(np.uint8)
             else:
                 val = np.full(cls.shape, 254, dtype=np.uint8)
+            val[nogo] = 0
             val[cls == 255] = 255
             core = val[b["oy"]:b["oy"] + b["h"], b["ox"]:b["ox"] + b["w"]]
             dst.write(core, 1, window=Window(b["col"], b["row"], b["w"], b["h"]))
@@ -113,7 +137,8 @@ def main() -> int:
             continue
         if args.only and pid not in args.only:
             continue
-        dist_layer(grid, args.class_tif, args.out / f"dist_{pid}.tif", p, scale, args.block)
+        dist_layer(grid, args.class_tif, args.out / f"dist_{pid}.tif", p, scale, args.block,
+                   [int(c) for c in rules.get("marginalIgnore", [])] if "requires" not in p else None)
     return 0
 
 

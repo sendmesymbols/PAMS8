@@ -619,6 +619,41 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
   `LICENSES.txt` carries the data owner's restriction. See `tools/terrain-pipeline/README.md`
   ("Hybrid data") for what each source contributes and how it was assessed.
 
+## Terrain bundle v2 (GROTBC)
+
+Bundle v2 keeps the v1 format (`manifest.version` stays `1`, so the engine reads it with no change) and
+adds `dataVersion: 2`, a `grotbc` block in the manifest, and more data, organised by the staff headings
+**G**round, **R**elief, **O**bstacles, **T**actical features, **B**oundaries & built-up,
+**C**over & concealment. The card that presents it by heading is the next piece of work:
+[16 Placement card: GROTBC handover](16-placement-grotbc-card.md) has the decisions, style guide and the full
+data contract.
+
+- **Classes 18–50** are appended (codes 0–17 unchanged): slope bands 3–7° and 7–15°, canals, distributaries,
+  drains, irrigated cropland, embankments and bunds, cuttings, cliffs, railways, walled orchards, orchards,
+  forest, graveyards, power line corridors, metalled roads by load class (60+, 50–59, below 50, not recorded),
+  unmetalled roads, bridges by load class, railway and foot bridges, fords / ferries, perennial streams, dry
+  nullahs, walls / fences and level crossings. Each class in `rules.json` carries `note` (shown under the
+  verdict), `grotbc` (heading letters), `origin` (natural / man-made) and `kind`.
+- **Crossings are gaps in the obstacles.** A road or railway over a river polygon, or at a true line
+  intersection with a canal or stream, becomes the bridge of its load class; a road along a canal bank or beside
+  a railway does not.
+- **Fourteen modes:** the five v1 modes plus Gun Position (`gun`), Air Defence Site (`ad`), Helicopter Landing
+  Site (`hls`), Signals / EW Site (`signals`), Amphibious (`amphibious`), Mountain / Pack Transport (`pack`),
+  Over-Snow (`oversnow`), Road-Bound Wheeled (`roadbound`) and Rail-Bound (`rail`). The bundle's
+  `profileOverrides` pick them from the SIDC: field artillery, missiles and mortars → Gun Position, air defence →
+  Air Defence Site, signal and EW units → Signals / EW Site, amphibious → Amphibious, trains → Rail-Bound,
+  tractor-trailers → Road-Bound Wheeled, helicopter landing sites and landing zones → Helicopter Landing Site.
+- **Tankable** = load class 60 or more (carries Al-Khalid, T-80UD, T-80 and Al-Zarrar); 50–59 carries Al-Zarrar
+  only. The numbers live in `rules.json grotbc.tanks` / `grotbc.tankable`.
+- **Marginal band:** thin lines (`rules.json marginalIgnore`: distributaries, drains, walls, railways, bunds,
+  crossings …) are NO-GO on the line itself but do not make the ground beside them Marginal; the
+  nearest-NO-GO search ignores them too, so the class it names and the distance agree. Road- and rail-bound
+  modes have no Marginal band (`marginal: false`).
+- **Auxiliary layers** (`route`, `landform`, `cc`, `wet`, `elev_hi` / `elev_lo`), **features**
+  (`features/10/{x}/{y}.json`: water sources by kind, crossings, helipads, airfields, stations, passes, posts,
+  settlements, spot heights …, plus named roads, railways, canals and rivers), `admin.geojson`,
+  `boundaries.geojson` and `sheets.json`. The engine does not read them yet.
+
 ### Default symbol-set → profile mapping (MS, overridable)
 
 | 2525D symbol set | profile |
@@ -676,7 +711,7 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
 ## Reproducing the data
 
 See `tools/terrain-pipeline/README.md`. One command (`make bundle`) runs
-fetch → grid → derive → classify → profiles → tile → validate → package against
+fetch → grid → derive → grotbc → classify → profiles → tile → validate → package against
 pinned source versions and `rules.yaml`; the emitted `manifest.json` records
 every source hash so a bundle can be traced back to its inputs.
 `node tools/terrain-synth.mjs` writes a small **synthetic** bundle (1,644 tiles,

@@ -98,8 +98,11 @@ const LOADING_GRACE_MS = 200;
 const STALE_MAX_PX = 80;
 /** Audit: symbols judged per batch (their tiles must fit the cache), passes to wait out missing tiles, wait per pass, and the tile span a shape is judged over. */
 const FIRST_USE_KEY = 'ms.placement.hintSeen';
-/** The order modes are offered in (P, the Legend): on foot, wheels, tracks, then the rest. */
-const PROFILE_ORDER: readonly PlacementProfile[] = ['dismounted', 'wheeled', 'tracked', 'generic', 'vessel'];
+/** The order modes are offered in (P, the Legend): on foot, wheels, tracks, then the rest; the v2 site and movement modes after. */
+const PROFILE_ORDER: readonly PlacementProfile[] = [
+  'dismounted', 'wheeled', 'tracked', 'generic', 'vessel',
+  'gun', 'ad', 'hls', 'signals', 'amphibious', 'pack', 'oversnow', 'roadbound', 'rail',
+];
 /** How long the grouping of placed symbols (for the spacing check) is reused. */
 const NEIGHBOUR_TTL_MS = 2000;
 /** Points walked along a shape's edge to find which stretches lie in no-go ground. */
@@ -1542,7 +1545,8 @@ export default class PlacementAdvisor {
         if (!t) continue;
         const c = t[py * ts + (gx - tx * ts)];
         if (c === NODATA_CLASS) continue;
-        if (wantNoGo ? cp.nogo[c] === 1 : cp.nogo[c] === 0) {
+        // No-go wanted: only what the distance layer measures to, so the class and the distance agree.
+        if (wantNoGo ? cp.target[c] === 1 : cp.nogo[c] === 0) {
           bestD2 = d2;
           bdx = dx;
           bdy = dy;

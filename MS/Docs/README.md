@@ -21,6 +21,7 @@ PAMS8 draws MIL-STD-2525D tactical symbols on ArcGIS maps (2D `MapView` and 3D `
 | Find a symbol key | [13 Symbol catalog](13-symbol-catalog.md) (generated) |
 | Debug something | [14 FAQ and troubleshooting](14-faq-troubleshooting.md) |
 | Warn when a symbol is placed on no-go terrain (water, marsh, ...) | [15 Placement advisor](15-placement-advisor.md) |
+| Continue the GROTBC card and legend work (decisions, style guide, v2 data) | [16 Placement card: GROTBC handover](16-placement-grotbc-card.md) |
 
 ## Where this documentation comes from
 

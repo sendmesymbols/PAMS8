@@ -11,7 +11,14 @@ MS/Data/terrain-bundle/                  (repo root; git-ignored)
   class/{z}/{x}/{y}.png            terrain class code, 255 = nodata        (overviews: nearest)
   dist_<profile>/{z}/{x}/{y}.png   metres / distScaleM to nearest no-go,   (overviews: MIN)
                                    0 = inside no-go, 254 = >= cap, 255 = nodata
+  -- bundle v2 (GROTBC, hybrid builds) --
+  route/ landform/ cc/ wet/ elev_hi/ elev_lo/   auxiliary layers (codebooks in rules.json `grotbc.layers`)
+  features/10/{x}/{y}.json  features/index.json  points and named lines from the NCGDB
+  admin.geojson  boundaries.geojson  sheets.json
 ```
+
+Bundle v2 organises the data by **GROTBC** (Ground, Relief, Obstacles, Tactical features, Boundaries & built-up,
+Cover & concealment); see "Bundle v2 (GROTBC)" below and `MS/Docs/16-placement-grotbc-card.md`.
 
 Tiles are Web Mercator (EPSG:3857) 256 px XYZ, z = 8..12, 8-bit greyscale PNG
 with only `IHDR/IDAT/IEND` chunks. Missing tile = no coverage. Everything in
@@ -163,6 +170,30 @@ changed versus open data only and into which class. Switching mode re-runs deriv
 writes a warning into `LICENSES.txt`. Do not ship such a bundle, or commit `work/`, `out/` or `MS/Data/terrain-bundle/`, without the data
 owner's permission. `--ncgdb none` rebuilds an open-data bundle.
 
+## Bundle v2 (GROTBC)
+
+Step **grotbc** (`scripts/grotbc.py`, between derive and classify) reads the NCGDB's lines and points and the
+DEM; `classify.py`, `profiles.py`, `tile.py` and `package.py` pick its products up when they exist.
+
+| product | from | becomes |
+|---|---|---|
+| `obst.tif` | `classes.yaml sources.grotbc.obstacles`: canals / distributaries / drains (Canal, Canal_Pakmap), perennial streams and dry nullahs (Water_Feature_Line), embankments, bunds, cuttings, broken edges (Embankment), cliffs (Contour), walls and fences (Boundry) | classes 20-22, 24-27, 46, 47, 49 |
+| `road.tif`, `rail.tif`, `route.tif` | Roads_updated_2016_Pakmap (load class, MSR), Road, Tracks, Railway, Railways_Pakmap | classes 28, 34-38; the bundle's `route` layer |
+| `rx.tif`, `xing.tif` | true line intersections of roads / railways with canal and stream lines and with each other; Crossings_Point, Crosings_line, fords | classes 39-45 and 50 (bridges by load class, railway / foot bridges, fords, level crossings), derived in classify on water only |
+| `wire.tif`, `irrig.tif` | power lines and masts (50-100 m), field-channel density (one every ~400 m) | classes 33, 48, 23 |
+| `veg.tif` | 3.58 M vegetation symbols (weighted density) | the `cc` layer (with the classes) |
+| `slopeband.tif`, `landform.tif`, `elev_hi/lo.tif` | DEM: 3x3-mean slope, topographic position index at 300 m and 2 km | classes 18-19; `landform`, `elev_*` layers |
+| `vector/` | water sources, crossings, helipads, airfields, stations, passes, posts, settlements, heights, KM stones; named roads, railways, canals, rivers; province / district / tehsil / corps AOR; IB / LoC / LAC; map sheets | `features/`, `admin.geojson`, `boundaries.geojson`, `sheets.json` |
+
+The road load codes (40A1, 70A2, 9F1) are read as `<class><A all-weather / F fair-weather><lanes>`; tankable is
+class 60+ (`rules.yaml tankable`, from the tank table there). Lines are burned as connected 1-px paths; a road on
+a canal bank or beside a railway is never mistaken for a crossing because crossings come from line
+intersections. Thin obstacle lines are NO-GO on the line but cast no Marginal band (`rules.yaml marginalIgnore`).
+An open-data build (`--ncgdb none` / `-NoNcgdb`) runs `grotbc --only relief` and gets the relief layers only.
+
+The NCGDB lives on a USB disk here; copying it to an NVMe folder for the build (`work/ncgdb/`, git-ignored)
+cut the block reads several-fold. Delete the copy afterwards.
+
 ## Verifying a bundle
 
 ```sh
@@ -180,9 +211,10 @@ monotonicity (coarse ≤ min of children), tile counts and size.
 |------|--------|-------|
 | grid | `grid.py` | pixel = resolution(ZMAX) = 2π·6378137/(256·2^ZMAX); extent snapped outward to whole ZMAX tiles; `gdalwarp` nearest (categorical) / bilinear (DEM), cut to the boundary |
 | derive | `derive.py` | slope in degrees from `np.gradient` scaled by `pixel·cos(lat)` per row; JRC occurrence ≥ 80 % permanent, 20–80 % seasonal; OSM themes extracted with `ogr2ogr`, waterways buffered in UTM 42N (river 40 m, canal 15 m, stream 5 m), rasterised with `gdal_rasterize`; **NCGDB** (hybrid): each worker reads one block's polygons straight from the `.gdb`, projects them to Web Mercator, burns the `classes.yaml` rules (holes for cultivation exclusions / river islands) and paints lowest precedence first |
-| classify | `classify.py` | evidence masks painted low→high precedence: water_permanent > mangrove > wetland > built_up > restricted > snow_ice > steep_slope > dunes > salt_pan > water_seasonal > dry_riverbed > moderate_slope > rocky_ground > tree_cover > cropland > sand > bare_desert > open_land; everything outside the country cutline stays 255 |
+| grotbc | `grotbc.py` | NCGDB lines / points per block (bbox reads, like derive's NCGDB product), 1-px all-touched lines, points buffered; crossings from vector intersections; relief from the DEM; features as z10 JSON tiles (tile-local 0..4095) |
+| classify | `classify.py` | evidence masks painted low→high precedence (`classes.yaml precedence`: crossings > canal > water_permanent > … > roads > railway > built_up > … > open_land); then crossings derived where a road / railway / crossing point meets water; `cc.tif` and `wet.tif` written alongside; everything outside the country cutline stays 255 |
 | profiles | `profiles.py` | `scipy.ndimage.distance_transform_edt` per block with a halo ≥ cap; `sampling` = pixel·cos(lat at block centre). Approximation: < 1 % scale error inside a 2048-px block, i.e. < 1 tile value at the 2540 m cap. Nodata is never no-go and stays 255 |
-| tile | `tile.py` | ZMAX straight from the rasters; each coarser level from the four child PNGs: class nearest (`--class-reduce mode` for majority), dist MIN. All-nodata tiles are not written |
+| tile | `tile.py` | ZMAX straight from the rasters; each coarser level from the four child PNGs: class nearest (`--class-reduce mode` for majority), dist MIN, route / wet MAX, cc / landform majority, elevation mean of the 16-bit value. Tiles are written only where the class tile has data |
 
 ## Licences and attribution
 

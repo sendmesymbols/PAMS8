@@ -15,6 +15,15 @@ const PROFILES: ReadonlySet<string> = new Set<PlacementProfile>([
   'tracked',
   'vessel',
   'generic',
+  'gun',
+  'ad',
+  'hls',
+  'signals',
+  'amphibious',
+  'pack',
+  'oversnow',
+  'roadbound',
+  'rail',
   'exempt',
 ]);
 
@@ -83,9 +92,10 @@ export function resolveProfile(
   const entity = s.substring(10, 16);
   const ov = rules?.profileOverrides;
 
+  // A bundle may name a mode of its own in its overrides, as long as it defines that mode.
   const pick = (table: Record<string, string> | undefined, key: string): PlacementProfile | null => {
     const v = table?.[key];
-    return isPlacementProfile(v) ? v : null;
+    return isPlacementProfile(v) || (typeof v === 'string' && !!rules?.profiles?.[v]) ? (v as PlacementProfile) : null;
   };
 
   for (let len = Math.min(6, entity.length); len >= 2; len--) {

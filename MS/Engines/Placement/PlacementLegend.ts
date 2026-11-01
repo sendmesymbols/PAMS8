@@ -25,9 +25,9 @@ const LEGEND_CSS = `
 .ms-pl-title{font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
 .ms-pl-count{margin-left:auto;font:500 11px/1 ui-monospace,Consolas,monospace;color:#9aa3ad}
 .ms-pl-more{width:22px;height:20px;font-size:11px;line-height:1}
-.ms-pl-strip{display:flex;align-items:center;gap:4px;margin-top:9px}
-.ms-pl-strip>button{flex:none;width:24px;height:32px;font-size:15px}
-.ms-pl-icons{flex:1;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px}
+.ms-pl-strip{display:flex;align-items:stretch;gap:4px;margin-top:9px}
+.ms-pl-strip>button{flex:none;width:24px;min-height:32px;font-size:15px}
+.ms-pl-icons{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));gap:3px}
 .ms-pl-icons button{height:32px;display:flex;align-items:center;justify-content:center;color:#9aa3ad}
 .ms-pl-icons button[aria-pressed="true"]{color:#1b1f25;background:#8ec1ea;border-color:#8ec1ea}
 .ms-pl-name{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-top:7px}
@@ -41,7 +41,8 @@ const LEGEND_CSS = `
 .ms-pl-ramp-l>span:first-child{text-align:left}
 .ms-pl-ramp-l>span:last-child{text-align:right}
 .ms-pl-note{font-size:11px;color:#9aa3ad;margin-top:3px}
-.ms-pl-list{display:flex;flex-direction:column;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09)}
+.ms-pl-list{display:flex;flex-direction:column;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09);
+  max-height:190px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#4a535e transparent}
 .ms-pl-cap{font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
 .ms-pl-chips{display:flex;flex-wrap:wrap;gap:4px}
 .ms-pl-chips>span{font-size:11px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
@@ -65,6 +66,15 @@ const MODE_ICONS: Record<string, string[]> = {
   tracked: ['M5 14h14a3 3 0 0 1 0 6H5a3 3 0 0 1 0-6z', 'M8 14l1.5-4h6l1 4', 'M15 11.5h6', 'M7 17h.01', 'M12 17h.01', 'M17 17h.01'],
   vessel: ['M3 14h18l-3 5H6z', 'M8 14V9h6v5', 'M11 9V5'],
   generic: ['M4 20h16', 'M6 20V10l6-4 6 4v10', 'M10 20v-5h4v5'],
+  gun: ['M8 16L20 7', 'M8 16l-5 4', 'M11 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'],
+  ad: ['M5 20h14', 'M9 20l2-5h2l2 5', 'M12 15V5', 'M10 7l2-3 2 3'],
+  hls: ['M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z', 'M9 8v8', 'M15 8v8', 'M9 12h6'],
+  signals: ['M12 21V10', 'M9 21h6', 'M8.5 7.5a5 5 0 0 1 7 0', 'M6 5a8.5 8.5 0 0 1 12 0', 'M12 10h.01'],
+  amphibious: ['M4 11h12l3 3H4z', 'M7 11V8h5v3', 'M3 18c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0'],
+  pack: ['M2 20l7-12 4 6 3-4 6 10z'],
+  oversnow: ['M12 3v18', 'M4.2 7.5l15.6 9', 'M4.2 16.5l15.6-9'],
+  roadbound: ['M7 21L10 3', 'M17 21L14 3', 'M12 6v2', 'M12 11v2', 'M12 16v3'],
+  rail: ['M8 3L6 21', 'M16 3l2 18', 'M6.8 7h10.4', 'M6.4 11h11.2', 'M6 15h12', 'M5.6 19h12.8'],
   _: ['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
 };
 

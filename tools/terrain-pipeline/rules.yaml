@@ -1,50 +1,203 @@
-# rules.yaml — mobility profiles. scripts/profiles.py turns this (plus the
-# `classes` block of classes.yaml) into the bundle's rules.json and builds one
-# dist_<profile> layer per profile that has `nogo` or `requires`.
+# rules.yaml — the modes (mobility profiles) and the doctrine numbers behind them. scripts/profiles.py
+# turns this (plus the class table of classes.yaml) into the bundle's rules.json and builds one
+# dist_<mode> layer per mode that has `nogo` or `requires`.
 #
-# Class codes: 0 open_land 1 tree_cover 2 cropland 3 built_up 4 water_permanent
-#              5 water_seasonal 6 wetland 7 mangrove 8 snow_ice 9 steep_slope
-#              10 moderate_slope 11 restricted 12 bare_desert
-#              13 sand 14 dunes 15 rocky_ground 16 salt_pan 17 dry_riverbed   (13-17: NCGDB only)
+# Class codes (classes.yaml):
+#    0 open_land        1 tree_cover        2 cropland          3 built_up          4 water_permanent
+#    5 water_seasonal   6 wetland           7 mangrove          8 snow_ice          9 steep_slope (>30°)
+#   10 moderate_slope   11 restricted       12 bare_desert      13 sand             14 dunes
+#   15 rocky_ground     16 salt_pan         17 dry_riverbed     18 gentle_slope 3-7° 19 sloping_ground 7-15°
+#   20 canal            21 distributary     22 drain            23 irrigated_cropland 24 embankment_high
+#   25 bund             26 cutting          27 escarpment       28 railway          29 walled_orchard
+#   30 orchard          31 forest           32 graveyard        33 wire_hazard      34 road_tankable
+#   35 road_limited     36 road_light       37 road_unclassed   38 road_unmetalled  39 bridge_tankable
+#   40 bridge_limited   41 bridge_light     42 bridge_unclassed 43 rail_bridge      44 foot_bridge
+#   45 ford_ferry       46 stream_perennial 47 nullah_dry       48 irrigated_wire   49 wall_fence
+#   50 level_crossing
 #
-# The entries for classes 13-17 are a STARTING PROPOSAL for the domain owner to correct, not doctrine
-# (as for the rest of this file): dunes stop wheels and slow everything; loose sand, rock, salt crust and
-# dry beds are "caution" where they plausibly hurt that mobility class.
+# Every mode below is a STARTING PROPOSAL for the domain owner to correct, not doctrine. The effects
+# follow the obstacle table agreed for bundle v2: an obstacle that stops a tank need not stop infantry.
+# `why` is the mode's own sentence for a class (the card shows it under the verdict); classes without one
+# fall back to the class `note` in classes.yaml.
 #
-# Changing this file only requires `make rebuild-rules` (steps profiles..package).
+# Changing modes only requires `make rebuild-rules` (steps profiles..package). Changing `tankable`
+# re-sorts the road and bridge classes, so it needs grotbc + classify as well.
 
-version: "2026.11-hybrid"
+version: "2026.11-grotbc-v2"
 distScaleM: 10          # dist tile value x distScaleM = metres; 254 = >= 2540 m
+
+# Thin linear and small obstacles: NO-GO on the line itself, but they do not make the ground beside them
+# Marginal (the distance layers measure only to the other NO-GO ground). In the Punjab a distributary, drain,
+# wall or railway lies within 250 m of almost everywhere, so with them every position would read Marginal.
+# Main canals (20), rivers, cliffs and areas still cast the Marginal band.
+marginalIgnore: [21, 22, 24, 25, 26, 28, 29, 32, 33, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
+
+# ── Load classes ──────────────────────────────────────────────────────────────────────────────────
+# NCGDB road load codes look like 40A1 / 70A2 / 9F1: <load class><A|F><1|2>. Read from the data itself
+# (Roads_updated_2016_Pakmap): highways are almost all 70A2, motorways 80A2, the 3-4 m roads A1 and the
+# F1 roads mostly unmetalled, so the letter reads as A = all-weather / F = fair-weather and the digit as
+# single / double lane. The number is the load class the weakest structure on that stretch carries.
+# Confirm the convention with the issuing authority; nothing in the pipeline depends on the letter.
+loadClassCode: "<class><A all-weather | F fair-weather><1 single | 2 double lane>, e.g. 40A1"
+
+# Main tanks in service. Weights are open-source combat weights; the MLC (military load class) of a
+# tracked vehicle is roughly 1.1 x its weight in tonnes. Replace `mlc` with the official figures.
+tanks:
+  - { name: Al-Khalid, weightT: 48, mlc: 53 }
+  - { name: T-80UD,    weightT: 46, mlc: 51 }
+  - { name: T-80,      weightT: 46, mlc: 51 }
+  - { name: Al-Zarrar, weightT: 40, mlc: 44 }
+
+tankable:
+  minClass: 60          # carries every tank above: the heaviest needs ~MLC 53 and the recorded classes are 50, 52, 56, 60, 70, 80
+  limitedClass: 50      # carries Al-Zarrar (~MLC 44) but not Al-Khalid or T-80UD
+  minWidthM: 3.5        # a narrower road is never tankable, whatever its class
+  transporterClass: 70  # a tank on a transporter (HET) needs class 70 roads and bridges
+
+# Main supply routes (decision 3): motorway, highway, main road, defence road, broad-gauge railway, and any
+# metalled road of load class 40 or more.
+msr:
+  types: [motorway, highway, main_road]
+  defenceRoad: true
+  railBroadGauge: true
+  metalledMinClass: 40
+
+# The card lists the nearest of each kind (decision 4). Codes are features.json point kinds (grotbc.py).
+water:
+  kinds: [tube_well, well_lined, well_unlined, spring, tank_perennial, karez]
 
 profiles:
   dismounted:
     label: Dismounted Force
-    nogo:    [4, 8, 11]
-    caution: [5, 6, 7, 9, 14, 15, 16]
+    nogo:    [4, 8, 11, 20]
+    caution: [5, 6, 7, 9, 14, 15, 16, 21, 22, 24, 26, 27, 29, 43, 45, 46, 49]
+    why:
+      "20": "Main canals are deep, fast and steep-banked: cross at a bridge."
+      "21": "Wade or jump a distributary only at a low bank; better at a bridge."
+      "27": "A cliff or broken edge has to be climbed round, not across."
   wheeled:
     label: Wheeled Vehicle
-    nogo:    [4, 5, 6, 7, 8, 9, 11, 14]
-    caution: [1, 3, 10, 13, 15, 16, 17]
+    nogo:    [4, 5, 6, 7, 8, 9, 11, 14, 20, 21, 22, 24, 27, 28, 29, 31, 43, 44, 46, 49]
+    caution: [1, 3, 10, 13, 15, 16, 17, 23, 25, 26, 30, 32, 45, 47, 48]
+    why:
+      "23": "Watercourses every few hundred metres: wheels cross each one at a crawl."
+      "28": "Wheels cross a railway only at a level crossing or under a bridge."
+      "21": "Even a small canal stops wheels: find a bridge or culvert."
+      "24": "An earth bank over 2 m stops wheels; look for a ramp or a road cut."
   tracked:
     label: Tracked Vehicle
-    nogo:    [4, 6, 7, 8, 9, 11]
-    caution: [3, 5, 10, 14, 15, 16]
+    nogo:    [4, 6, 7, 8, 9, 11, 20, 27, 41, 43, 44]
+    caution: [3, 5, 10, 14, 15, 16, 21, 22, 24, 26, 28, 29, 31, 32, 40, 42, 45, 46, 49]
+    why:
+      "20": "Canals are too deep and steep-banked for tanks: cross at a class 60 bridge."
+      "41": "Below class 50: Al-Khalid (~48 t) and T-80UD (~46 t) need class 60."
+      "40": "Class 50–59: Al-Zarrar crosses; Al-Khalid and T-80UD need class 60."
+      "42": "No load class on record: recce the bridge before crossing with tanks."
+      "21": "A distributary can be crossed where the banks are low; check the width first."
   vessel:
     label: Surface Vessel
-    requires: [4]       # everything NOT in requires is no-go -> dist = distance to shore
-    caution: [5]
+    requires: [4, 20, 39, 40, 41, 42, 43, 44, 45]   # everything else is no-go -> dist = distance to the bank
+    caution: [5, 45]
   generic:
     label: Gr Based
-    nogo:    [4]
-    caution: [6, 7, 14]
+    nogo:    [4, 20, 21, 22]
+    caution: [6, 7, 14, 46]
+
+  # ── v2 modes (GROTBC) ───────────────────────────────────────────────────────────────────────────
+  gun:
+    label: Gun Position
+    nogo:    [4, 5, 6, 7, 8, 9, 10, 11, 14, 19, 20, 21, 22, 24, 26, 27, 28, 29, 31, 32, 39, 40, 41, 42, 43, 44, 45, 46, 49]
+    caution: [1, 3, 13, 15, 16, 17, 18, 23, 25, 30, 34, 35, 36, 37, 38, 47, 48, 50]
+    why:
+      "18": "A gun platform wants under 3°: on 3–7° the guns need levelling and the crews work slower."
+      "19": "Over 7° a gun cannot be laid steadily: find level ground."
+      "10": "Far too steep for a gun position."
+      "1":  "Trees give concealment but check crest clearance for the guns."
+      "34": "Guns on the road block the route: deploy off it."
+      "23": "Soft irrigated fields: spades and platforms sink after watering."
+  ad:
+    label: Air Defence Site
+    nogo:    [4, 5, 6, 7, 8, 9, 11, 14, 20, 21, 22, 27, 31, 39, 40, 41, 42, 43, 44, 45, 46]
+    caution: [1, 3, 10, 13, 15, 16, 17, 24, 26, 28, 29, 30, 32, 33, 47, 48, 49]
+    why:
+      "1":  "Trees mask the radar and the arcs of fire: prefer open, dominating ground."
+      "3":  "Buildings mask the arcs of fire."
+      "33": "Power lines clutter the radar and cut the low arcs."
+  hls:
+    label: Helicopter Landing Site
+    nogo:    [1, 3, 4, 5, 6, 7, 9, 10, 11, 14, 19, 20, 21, 22, 24, 26, 27, 28, 29, 30, 31, 32, 33, 39, 40, 41, 42, 43, 44, 45, 46, 48, 49, 50]
+    caution: [8, 13, 15, 16, 17, 18, 23, 25, 34, 35, 36, 37, 38, 47]
+    why:
+      "33": "Power lines within 50–100 m: the classic wire-strike hazard on approach."
+      "48": "Power lines over the fields: a wire-strike hazard on approach."
+      "19": "Over 7° a helicopter cannot land safely."
+      "18": "3–7°: landing needs care; under 3° is ideal."
+      "13": "Loose sand: expect brown-out on landing."
+      "1":  "Trees: no clear landing point and obstacles on approach."
+      "34": "Roads usually carry wires and traffic: land beside the road only after a check."
+  amphibious:
+    label: Amphibious
+    nogo:    [7, 8, 9, 11, 27]
+    caution: [3, 4, 5, 6, 10, 14, 15, 16, 20, 21, 22, 24, 26, 28, 29, 31, 32, 46, 49]
+    why:
+      "4":  "Swimming is possible: pick entry and exit points with low, firm banks."
+      "20": "Lined canals have steep banks: exit is the problem, not the water."
+  pack:
+    label: Mountain / Pack Transport
+    nogo:    [4, 7, 11, 20, 27]
+    caution: [5, 6, 8, 9, 14, 15, 16, 21, 22, 24, 26, 29, 43, 44, 45, 46, 49]
+    why:
+      "9":  "Over 30°: mules and porters climb slowly, by zig-zag tracks."
+      "8":  "Snow and ice: possible with crampons and roped animals, slowly."
+      "27": "A cliff stops pack animals: find a track round it."
+  oversnow:
+    label: Over-Snow
+    nogo:    [4, 7, 9, 11, 20, 27, 29, 43, 44]
+    caution: [0, 1, 2, 3, 5, 6, 10, 12, 13, 14, 15, 16, 17, 21, 22, 24, 26, 28, 31, 32, 45, 46, 49]
+    why:
+      "8":  "Snow and ice: the going an over-snow vehicle is built for."
+      "0":  "No snow cover: over-snow vehicles run on bare ground slowly."
+  roadbound:
+    label: Road-Bound Wheeled
+    requires: [34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 50]   # off the road network is no-go
+    caution: [38, 45]
+    marginal: false     # a road is a pixel or two wide: every point on it borders "off the road", so no Marginal band
+    why:
+      "38": "Unmetalled road: passable when dry, mud after rain."
+      "45": "Ford or ferry: check the water level and the ferry's capacity."
+  rail:
+    label: Rail-Bound
+    requires: [28, 43, 50]   # off the railway is no-go
+    caution: [50]
+    marginal: false
+  signals:
+    label: Signals / EW Site
+    nogo:    [4, 5, 6, 7, 8, 11, 20, 21, 22, 27, 39, 40, 41, 42, 43, 44, 45, 46]
+    caution: [1, 3, 9, 14, 17, 31, 33, 47, 48]
+    why:
+      "33": "Power lines cause interference: site antennas at least 100 m away."
+      "17": "Low ground in a riverbed screens the signal: prefer high ground."
+      "1":  "Trees absorb VHF and UHF: get the antenna above the canopy."
   exempt:
     label: Not Terrain-Bound   # no nogo/requires -> no dist layer
 
-# Optional. Overrides the symbol-set -> profile defaults compiled into
-# MS/Engines/Placement/PlacementProfiles.ts. Keys: 2-digit 2525D symbol set, or
-# "symbolSet:entityPrefix" matched against the 6-digit entity code.
+# Optional. Overrides the symbol-set -> mode defaults compiled into MS/Engines/Placement/PlacementProfiles.ts.
+# Keys: 2-digit 2525D symbol set, or "symbolSet:entityPrefix" matched (longest first) against the 6-digit
+# entity code (entity, type, subtype).
 profileOverrides:
   symbolSets:
     "10": wheeled
   entities:
     "10:1211": dismounted
+    "10:121101": amphibious   # amphibious infantry
+    "10:1203": amphibious
+    "10:1301": ad             # air defence
+    "10:1303": gun            # field artillery
+    "10:1307": gun            # surface-to-surface missile
+    "10:1308": gun            # mortar
+    "10:1110": signals        # signal
+    "10:1505": signals        # electronic warfare (incl. direction finding)
+    "15:15": rail             # trains and railcars
+    "15:1406": roadbound      # tractor-trailer (tank transporter)
+    "20:121305": hls          # helicopter landing site
+    "25:242304": hls          # landing zone

@@ -6,13 +6,25 @@
  * MS/Docs/15-placement-advisor.md for the bundle format these mirror.
  */
 
-/** Mobility class a symbol is evaluated as. `exempt` = never terrain-bound. */
+/**
+ * Mobility class (mode) a symbol is evaluated as. `exempt` = never terrain-bound. The first five are in
+ * every bundle; the rest come with bundle v2 (GROTBC). A bundle may define further modes of its own.
+ */
 export type PlacementProfile =
   | 'dismounted'
   | 'wheeled'
   | 'tracked'
   | 'vessel'
   | 'generic'
+  | 'gun'
+  | 'ad'
+  | 'hls'
+  | 'signals'
+  | 'amphibious'
+  | 'pack'
+  | 'oversnow'
+  | 'roadbound'
+  | 'rail'
   | 'exempt';
 
 export type PlacementVerdictKind =
@@ -75,6 +87,12 @@ export interface TerrainClassDef {
   label: string;
   /** Optional one-sentence note on this ground, shown when no profile-specific reason is given. */
   note?: string;
+  /** Bundle v2: GROTBC heading letters (e.g. "OC" = Obstacles + Cover & concealment). */
+  grotbc?: string;
+  /** Bundle v2: obstacle origin. */
+  origin?: 'natural' | 'man_made' | string;
+  /** Bundle v2: obstacle kind (water, gradient, soft_ground, vegetation, structure, route, crossing, ...). */
+  kind?: string;
 }
 
 export interface TerrainProfileRule {
@@ -91,6 +109,8 @@ export interface TerrainProfileRule {
    * under the verdict and never writes any of its own.
    */
   why?: Record<string, string>;
+  /** False: the distance layer carries no Marginal band (road- and rail-bound modes, a pixel or two wide). */
+  marginal?: boolean;
 }
 
 /** `rules.json` at the bundle root. */
@@ -98,6 +118,8 @@ export interface TerrainRules {
   version?: string;
   classes: Record<string, TerrainClassDef>;
   profiles: Record<string, TerrainProfileRule>;
+  /** Bundle v2: thin no-go lines (distributaries, walls, railways) the distance layers do not measure to. */
+  marginalIgnore?: number[];
   profileOverrides?: {
     /** 2-digit 2525D symbol set → profile. */
     symbolSets?: Record<string, string>;

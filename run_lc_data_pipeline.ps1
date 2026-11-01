@@ -48,11 +48,11 @@
 [CmdletBinding()]
 param(
     # Run only these steps (forced, ignoring stamps).
-    [ValidateSet('fetch', 'grid', 'derive', 'classify', 'profiles', 'tile', 'validate', 'package')]
+    [ValidateSet('fetch', 'grid', 'derive', 'grotbc', 'classify', 'profiles', 'tile', 'validate', 'package')]
     [string[]] $Only,
 
     # Run this step and everything after it (forced).
-    [ValidateSet('fetch', 'grid', 'derive', 'classify', 'profiles', 'tile', 'validate', 'package')]
+    [ValidateSet('fetch', 'grid', 'derive', 'grotbc', 'classify', 'profiles', 'tile', 'validate', 'package')]
     [string] $From,
 
     # rules.yaml / classes.yaml changed: re-run profiles, tile, validate, package.
@@ -125,11 +125,12 @@ $VenvPy      = Join-Path $VenvDir 'Scripts\python.exe'
 $ReqFile     = Join-Path $PipelineDir 'requirements.txt'
 $ReqStamp    = Join-Path $VenvDir '.requirements.sha256'
 
-$AllSteps = @('fetch', 'grid', 'derive', 'classify', 'profiles', 'tile', 'validate', 'package')
+$AllSteps = @('fetch', 'grid', 'derive', 'grotbc', 'classify', 'profiles', 'tile', 'validate', 'package')
 $Stamps = @{
     fetch    = 'work\raw\.done'
     grid     = 'work\grid\.done'
     derive   = 'work\derive\.done'
+    grotbc   = 'work\grotbc\.done'
     classify = 'work\classify\.done'
     profiles = 'work\profiles\.done'
     tile     = 'work\tile\.done'
@@ -352,16 +353,23 @@ function Get-StepArgs([string] $step, [string] $outDir) {
             if ($NoNcgdb) { $nc = @('--ncgdb', 'none') } elseif ($Ncgdb) { $nc = @('--ncgdb', $Ncgdb) }
             return @('scripts\derive.py', '--grid', 'work\grid', '--raw', 'work\raw', '--out', 'work\derive',
                      '--classes', 'classes.yaml', '--block', "$Block", '--workers', "$Workers") + $nc }
-        'classify' { return @('scripts\classify.py', '--grid', 'work\grid', '--derive', 'work\derive', '--out', 'work\classify',
-                              '--classes', 'classes.yaml', '--block', "$Block") }
+        'grotbc'   {
+            # Bundle v2 (GROTBC): NCGDB lines and points, and relief from the DEM. An open-data build gets the relief only.
+            $nc = @()
+            if ($NoNcgdb) { $nc = @('--only', 'relief') } elseif ($Ncgdb) { $nc = @('--ncgdb', $Ncgdb) }
+            return @('scripts\grotbc.py', '--grid', 'work\grid', '--derive', 'work\derive', '--out', 'work\grotbc',
+                     '--classes', 'classes.yaml', '--rules', 'rules.yaml', '--block', "$Block", '--workers', "$Workers") + $nc }
+        'classify' { return @('scripts\classify.py', '--grid', 'work\grid', '--derive', 'work\derive', '--grotbc', 'work\grotbc',
+                              '--out', 'work\classify', '--classes', 'classes.yaml', '--block', "$Block") }
         'profiles' { return @('scripts\profiles.py', '--rules', 'rules.yaml', '--classes', 'classes.yaml', '--grid', 'work\grid',
                               '--class-tif', 'work\classify\class.tif', '--out', 'work\profiles', '--block', "$Block") }
         'tile'     { return @('scripts\tile.py', '--grid', 'work\grid', '--class-tif', 'work\classify\class.tif',
-                              '--profiles', 'work\profiles', '--out', $outDir, '--workers', "$Workers") }
+                              '--profiles', 'work\profiles', '--grotbc', 'work\grotbc', '--out', $outDir, '--workers', "$Workers") }
         'validate' { return @('scripts\validate.py', '--bundle', $outDir, '--golden', 'golden_points.yaml') }
         'package'  { return @('scripts\package.py', '--bundle', $outDir, '--grid', 'work\grid\grid.json',
                               '--rules-json', 'work\profiles\rules.json', '--rules', 'rules.yaml', '--lock', 'sources.lock',
-                              '--checksums', 'work\raw\checksums.json', '--zip', 'out\terrain-bundle.zip') }
+                              '--checksums', 'work\raw\checksums.json', '--grotbc-vector', 'work\grotbc\vector',
+                              '--zip', 'out\terrain-bundle.zip') }
     }
 }
 

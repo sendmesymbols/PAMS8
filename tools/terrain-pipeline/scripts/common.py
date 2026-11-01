@@ -243,6 +243,15 @@ def class_table(classes_cfg: dict) -> dict[str, int]:
 
 COG_OPTS = ["-of", "COG", "-co", "COMPRESS=DEFLATE", "-co", "BLOCKSIZE=512",
             "-co", "OVERVIEWS=NONE", "-co", "BIGTIFF=IF_SAFER"]
+
+
+def to_cog(src: Path, dst: Path, log: logging.Logger) -> None:
+    """Rewrite a tiled GTiff as a DEFLATE Cloud-Optimised GeoTIFF with rasterio's own GDAL (no GDAL CLI needed)."""
+    import rasterio.shutil
+    log.info("COG %s -> %s", Path(src).name, Path(dst).name)
+    Path(dst).unlink(missing_ok=True)
+    rasterio.shutil.copy(str(src), str(dst), driver="COG", COMPRESS="DEFLATE", BLOCKSIZE=512,
+                         OVERVIEWS="NONE", BIGTIFF="IF_SAFER")
 # rasterio profile for intermediate uint8 rasters (tiled GTiff; converted to COG at the end)
 GTIFF_U8 = dict(driver="GTiff", dtype="uint8", count=1, nodata=255, tiled=True,
                 blockxsize=512, blockysize=512, compress="deflate", bigtiff="IF_SAFER")

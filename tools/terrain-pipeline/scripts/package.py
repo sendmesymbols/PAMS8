@@ -4,12 +4,16 @@ Inputs : MS/Data/terrain-bundle/ (tiles from tile.py), work/profiles/rules.json,
          work/grid/grid.json, sources.lock, work/raw/checksums.json (optional),
          rules.yaml (distScaleM, version)
 Outputs: MS/Data/terrain-bundle/manifest.json, rules.json, LICENSES.txt
+         bundle v2 (when work/grotbc/vector exists): features/, admin.geojson, boundaries.geojson, sheets.json
          out/terrain-bundle.zip (unless --no-zip)
 
 `sources[].sha256` in the manifest comes from checksums.json (written by
 fetch.py) and falls back to the value pinned in sources.lock, so a bundle
 can be traced to its exact inputs. `profiles` lists only the profiles that
 actually have a dist_ folder in the bundle.
+
+Bundle v2 keeps manifest `version` 1 (an engine that reads v1 still loads it: class + dist_<mode> are
+unchanged in form) and adds `dataVersion: 2` and a `grotbc` block naming the auxiliary layers and files.
 """
 from __future__ import annotations
 
@@ -52,10 +56,45 @@ def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
                   f"  attribution : {ncgdb.get('attribution', '')}",
                   "  *** RESTRICTED: this bundle contains pixels derived from NCGDB. Do not redistribute it",
                   "      outside the data owner's permission. Rebuild with --ncgdb none for an open-data bundle. ***", ""]
+    lines += ["Bundle v2 also carries NCGDB point and line features (features/, admin.geojson, boundaries.geojson,",
+              "sheets.json), including sensitive military content: corps areas, cantonments, posts, bunkers and",
+              "air bases with their units. Treat the whole bundle as restricted.", ""] if ncgdb else []
     lines += ["Derived data (class and distance tiles) is a mechanical combination of",
               "the sources above; redistribute it under the most restrictive of their",
               "terms (ODbL for anything containing OpenStreetMap-derived pixels)."]
     return "\n".join(lines) + "\n"
+
+
+AUX_LAYERS = {
+    "route":    {"reduce": "max", "codebook": "rules.json grotbc.layers.route",
+                 "note": "bit 7 main supply route, bits 5-6 load-class tier, bits 0-4 route type; 0 = no route"},
+    "landform": {"reduce": "mode", "codebook": "rules.json grotbc.layers.landform", "nodata": 255},
+    "cc":       {"reduce": "mode", "codebook": "rules.json grotbc.layers.cc", "nodata": 255,
+                 "note": "concealment = value >> 4, cover = value & 15; 0 none, 1 poor, 2 fair, 3 good"},
+    "wet":      {"reduce": "max", "codebook": "rules.json grotbc.layers.wet", "nodata": 255},
+    "elev_hi":  {"reduce": "mean", "note": "elevation m = elev_hi * 256 + elev_lo - 500; elev_hi 255 = nodata"},
+    "elev_lo":  {"reduce": "mean"},
+}
+
+
+def grotbc_block(bundle: Path, vector: Path) -> dict | None:
+    """Copy the v2 vector files into the bundle and describe the v2 layers; None for a v1 bundle."""
+    layers = {k: dict(v, path=k) for k, v in AUX_LAYERS.items() if (bundle / k).is_dir()}
+    if not layers:
+        return None
+    out = {"version": 2, "layers": layers, "elevation": {"hi": "elev_hi", "lo": "elev_lo", "offsetM": 500}}
+    if vector.is_dir():
+        for name in ("admin.geojson", "boundaries.geojson", "sheets.json"):
+            if (vector / name).exists():
+                shutil.copyfile(vector / name, bundle / name)
+                out[name.split(".")[0]] = name
+        if (vector / "features" / "index.json").exists():
+            shutil.rmtree(bundle / "features", ignore_errors=True)
+            shutil.copytree(vector / "features", bundle / "features")
+            idx = load_json(vector / "features" / "index.json")
+            out["features"] = {"path": "features/{z}/{x}/{y}.json", "index": "features/index.json", "z": idx["z"],
+                               "quant": idx["quant"]}
+    return out
 
 
 def main() -> int:
@@ -71,6 +110,8 @@ def main() -> int:
     ap.add_argument("--class-stats", type=Path, default=Path("work/classify/class_stats.json"))
     ap.add_argument("--boundary-display", type=Path, default=Path("work/boundary/boundary_display.geojson"),
                     help="outline for drawing on a map; copied into the bundle as boundary.geojson (official boundary only)")
+    ap.add_argument("--grotbc-vector", type=Path, default=Path("work/grotbc/vector"),
+                    help="bundle v2 features / admin / boundaries / sheets written by grotbc.py")
     ap.add_argument("--name", default="Pakistan deployable terrain")
     ap.add_argument("--zip", type=Path, default=Path("out/terrain-bundle.zip"))
     ap.add_argument("--no-zip", action="store_true")
@@ -101,6 +142,11 @@ def main() -> int:
         "hybrid": bool(ncgdb),
         "restricted": bool(ncgdb),
     }
+    v2 = grotbc_block(args.bundle, args.grotbc_vector)
+    if v2:
+        manifest["dataVersion"] = 2
+        manifest["layers"].update({k: k for k in v2["layers"]})
+        manifest["grotbc"] = v2
     bsrc = grid.get("boundary", {}).get("source", "osm")
     manifest["boundary"] = {"source": bsrc}
     if bsrc == "official" and args.boundary_display.exists():
