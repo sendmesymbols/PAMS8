@@ -32,9 +32,10 @@
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import { SYMBOL_LAYER_IDS } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
+import { setSetting } from '../../Support/SettingsBus';
 import { compileProfile, evaluateSamples, fmtDistance, setDistanceUnits, titleCase, type CompiledProfile } from './PlacementEvaluator';
 import { PlacementAuditPanel, type AuditPanelHandlers } from './PlacementAuditPanel';
-import { PlacementBadge } from './PlacementBadge';
+import { PlacementBadge, plainLabel } from './PlacementBadge';
 import { PlacementBoundary } from './PlacementBoundary';
 import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './PlacementFootprint';
 import { PlacementIndicators } from './PlacementIndicators';
@@ -97,6 +98,8 @@ const LOADING_GRACE_MS = 200;
 const STALE_MAX_PX = 80;
 /** Audit: symbols judged per batch (their tiles must fit the cache), passes to wait out missing tiles, wait per pass, and the tile span a shape is judged over. */
 const FIRST_USE_KEY = 'ms.placement.hintSeen';
+/** The order modes are offered in (P, the Legend): on foot, wheels, tracks, then the rest. */
+const PROFILE_ORDER: readonly PlacementProfile[] = ['dismounted', 'wheeled', 'tracked', 'generic', 'vessel'];
 /** How long the grouping of placed symbols (for the spacing check) is reused. */
 const NEIGHBOUR_TTL_MS = 2000;
 /** Points walked along a shape's edge to find which stretches lie in no-go ground. */
@@ -191,7 +194,10 @@ export default class PlacementAdvisor {
 
   private _badge = new PlacementBadge();
   private _auditPanel = new PlacementAuditPanel();
-  private _legend = new PlacementLegend();
+  private _legend = new PlacementLegend({
+    step: (dir) => this._legendStep(dir),
+    pick: (key) => this._legendPick(key as PlacementProfile),
+  });
   private _hintedThisSession = false;
   private _lastIssueKey = '';
   /** The last pointer move was a finger: the card goes above it and does not offer keyboard shortcuts. */
@@ -539,6 +545,7 @@ export default class PlacementAdvisor {
     this.deactivate();
     this._unbindView();
     this._removeOverlay();
+    this._legend.hide();
     this._legend.hideHint();
     this._boundary.hide();
     this._emitState('disabled');
@@ -599,6 +606,7 @@ export default class PlacementAdvisor {
     v.overridable = keys && v.blocked && this._opts.allowOverride;
     v.profileKey = keys && this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
     v.profileOverride = this._profileOverride !== null && v.profile === this._profileOverride;
+    this._legend.setKeys(v.profileKey, v.snappable);
     if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
       this._lastGood = v;
       this._lastGoodGeom = geometry;
@@ -655,6 +663,8 @@ export default class PlacementAdvisor {
     this._lastWarmKey = '';
     this._activeSidc = null;
     this._activeProfile = null;
+    this._legend.setKeys(false, false);
+    this._syncLegend(); // back to the overlay's mode, or hidden when the overlay is off
     if (this._reevalTimer !== null) {
       clearTimeout(this._reevalTimer);
       this._reevalTimer = null;
@@ -1195,9 +1205,16 @@ export default class PlacementAdvisor {
     return this._profileOverride !== null && base !== 'exempt' ? this._profileOverride : base;
   }
 
-  /** Unit types the P key cycles through: those the bundle has distance layers for. */
+  /**
+   * Unit types P and the Legend step through: those the bundle has distance layers for, foot to heavy
+   * then the rest (the manifest lists them alphabetically), any others the bundle adds after them.
+   */
   get profileChoices(): PlacementProfile[] {
-    return ((this._manifest?.profiles ?? []) as PlacementProfile[]).filter((p) => p !== 'exempt');
+    const rank = (p: string) => {
+      const i = PROFILE_ORDER.indexOf(p as PlacementProfile);
+      return i < 0 ? PROFILE_ORDER.length : i;
+    };
+    return ((this._manifest?.profiles ?? []) as PlacementProfile[]).filter((p) => p !== 'exempt').sort((a, b) => rank(a) - rank(b));
   }
 
   /** The unit type chosen by hand for the draw in progress, or null when it is derived from the SIDC. */
@@ -1235,13 +1252,18 @@ export default class PlacementAdvisor {
     return true;
   }
 
-  /** Next unit type for the draw in progress: auto (from the SIDC), then each other profile of the bundle in turn. */
-  cycleProfile(): PlacementProfile | null {
-    // "Auto" already is the profile the SIDC gives, so it is not offered a second time.
+  /**
+   * Step the draw in progress to the next (or previous) unit type, in the legend's order; reaching the
+   * SIDC's own type goes back to "auto". Returns the override now in force (null = from the SIDC).
+   */
+  cycleProfile(dir: 1 | -1 = 1): PlacementProfile | null {
+    const choices = this.profileChoices;
+    if (!choices.length) return this._profileOverride;
     const fromSidc = resolveProfile(this._activeSidc, this._rules);
-    const order: Array<PlacementProfile | null> = [null, ...this.profileChoices.filter((p) => p !== fromSidc)];
-    const next = order[(order.indexOf(this._profileOverride) + 1) % order.length];
-    return this.setProfileOverride(next) ? next : this._profileOverride;
+    const i = choices.indexOf(this._profileOverride ?? fromSidc);
+    const next = choices[(i + dir + choices.length) % choices.length];
+    const override = next === fromSidc ? null : next;
+    return this.setProfileOverride(override) ? override : this._profileOverride;
   }
 
   /** Synchronous verdict for a geometry from the tiles currently in memory. */
@@ -2056,7 +2078,11 @@ export default class PlacementAdvisor {
     this._pointerHandler = (e: PointerEvent) => {
       this._lastClient = { x: e.clientX, y: e.clientY };
       this._shift = e.shiftKey;
-      this._touchInput = e.pointerType === 'touch';
+      const touch = e.pointerType === 'touch';
+      if (touch !== this._touchInput) {
+        this._touchInput = touch;
+        this._syncLegend(); // the keys need a keyboard: the legend explains them only for mouse and pen
+      }
       this._badge.moveTo(e.clientX, e.clientY, this._touchInput);
     };
     container.addEventListener('pointermove', this._pointerHandler, { passive: true });
@@ -2153,11 +2179,15 @@ export default class PlacementAdvisor {
     const want = this._enabled && this._manifest !== null && this._rules !== null && this._opts.overlay.enabled;
     if (!want) {
       this._removeOverlay();
+      this._syncLegend();
       return;
     }
     const view: any = this._getView?.();
     const map = view?.map;
-    if (!map || !this._source) return;
+    if (!map || !this._source) {
+      this._syncLegend();
+      return;
+    }
     if (!this._overlay) {
       this._overlay = createOverlayLayer(
         {
@@ -2180,21 +2210,85 @@ export default class PlacementAdvisor {
     const profile = this._overlayProfileNow();
     if (refresh || (this._overlayShown !== null && this._overlayShown !== profile)) this._overlay.refresh?.();
     this._overlayShown = profile;
-    this._syncLegend(view, profile);
+    this._syncLegend();
   }
 
-  /** The colour key for what the overlay is painting now: which unit type, and what each colour means. */
-  private _syncLegend(view: any, profile: PlacementProfile): void {
-    const unit = this._rules?.profiles?.[profile]?.label ?? profile;
-    const nogo = OVERLAY_LEGEND.find((e) => e.key === 'nogo')?.label ?? 'no-go';
-    this._legend.show(
-      view,
-      `Terrain for ${unit}`,
-      OVERLAY_LEGEND.map((e) => ({
-        label: e.key === 'near' ? `${e.label}, within ${fmtDistance(this._opts.nearThresholdM)} of ${nogo}` : e.label,
-        rgba: OVERLAY_COLORS[e.key],
-      })),
-    );
+  /** A terrain-bound symbol is armed for drawing, so the legend's mode is that draw's own. */
+  private _drawingTerrainBound(): boolean {
+    return this._activeSidc !== null && this._activeProfile !== null && this._activeProfile !== 'exempt';
+  }
+
+  /** The mode the legend names: the draw's own while drawing, otherwise the one the overlay paints. */
+  private _legendProfile(): PlacementProfile {
+    return this._drawingTerrainBound() ? this._activeProfile! : this._overlayProfileNow();
+  }
+
+  /**
+   * The Legend, shown while the overlay is on or a terrain-bound symbol is being drawn: which mode the ground is
+   * judged for (and how it was chosen), the overlay's colours, what counts as NO-GO and SLOW-GO for that mode
+   * (from the bundle's own rules) and the P / S keys. Rebuilt on mode and option changes, not per cursor move.
+   */
+  private _syncLegend(): void {
+    const view: any = this._getView?.();
+    const drawing = this._drawingTerrainBound();
+    const rules = this._rules;
+    if (!this._enabled || !rules || !this._manifest || !view || !(this._overlay || drawing)) {
+      this._legend.hide();
+      return;
+    }
+    const profile = this._legendProfile();
+    const rule = rules.profiles?.[profile];
+    const classes = (codes: readonly number[] | undefined): string[] =>
+      (codes ?? []).map((c) => titleCase(plainLabel(rules.classes?.[String(c)]?.label ?? String(c))));
+    const label = (e: (typeof OVERLAY_LEGEND)[number]['key']) => OVERLAY_LEGEND.find((x) => x.key === e)?.label ?? e;
+    const fixed = this._opts.overlay.profile !== 'auto';
+    const hand = drawing ? this._profileOverride !== null : fixed;
+    let tag = '';
+    if (drawing) tag = hand ? 'Set by Hand' : 'Auto · From Symbol';
+    else if (fixed) tag = 'Set in Settings';
+    const keyboard = !this._touchInput && (this._opts.profileKey || this._opts.snapKey);
+    this._legend.show(view, {
+      modes: this.profileChoices.map((p) => ({ key: p, label: rules.profiles?.[p]?.label ?? p })),
+      current: profile,
+      tag,
+      hand,
+      entries: OVERLAY_LEGEND.map((e) => ({ label: e.label, rgba: OVERLAY_COLORS[e.key] })),
+      note: `${label('near')}: Within ${fmtDistance(this._opts.nearThresholdM)} of ${label('nogo')}`,
+      // A vessel needs water: everything off it is NO-GO, so say that rather than list every land class.
+      nogo: rule?.requires?.length ? [`Anywhere Off ${classes(rule.requires).join(' / ')}`] : classes(rule?.nogo),
+      slow: classes(rule?.caution),
+      keys: keyboard ? { profile: this._opts.profileKey, snap: this._opts.snapKey } : null,
+    });
+  }
+
+  /** Legend Previous / Next: the draw's mode while drawing (as P does), otherwise the mode the overlay paints. */
+  private _legendStep(dir: 1 | -1): void {
+    if (this._drawingTerrainBound()) {
+      this.cycleProfile(dir);
+      return;
+    }
+    const choices = this.profileChoices;
+    if (!choices.length) return;
+    const i = choices.indexOf(this._legendProfile());
+    this._legendPick(choices[(i + dir + choices.length) % choices.length]);
+  }
+
+  /** A mode's icon in the legend was clicked. */
+  private _legendPick(profile: PlacementProfile): void {
+    if (this._drawingTerrainBound()) {
+      this.setProfileOverride(profile === resolveProfile(this._activeSidc, this._rules) ? null : profile);
+      return;
+    }
+    if (this._opts.overlay.profile === 'auto') {
+      // With nothing drawn, "auto" paints the last symbol's mode: change that; the next draw takes over again.
+      if (profile === this._lastArmedProfile) return;
+      this._lastArmedProfile = profile;
+      this._syncOverlay();
+      return;
+    }
+    // A mode fixed in the settings: change the setting, and tell the settings panel so it stays in step.
+    this.setOptions({ overlay: { ...this._opts.overlay, profile } });
+    setSetting(['placement', 'overlay', 'profile'], profile);
   }
 
   /** Once per browser: tell whoever just got the advisor what it does, since nothing shows until a symbol is picked. */
@@ -2210,8 +2304,8 @@ export default class PlacementAdvisor {
     this._legend.hint('Placement advisor is on: pick a symbol and terrain advice follows your cursor.', 'first-use', 7000);
   }
 
+  /** Take the overlay off the map. The legend may stay for a draw in progress; `_syncLegend` decides. */
   private _removeOverlay(): void {
-    this._legend.hide();
     if (this._overlay) {
       try {
         this._overlayMap?.remove(this._overlay);

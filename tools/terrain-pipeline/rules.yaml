@@ -18,27 +18,27 @@ distScaleM: 10          # dist tile value x distScaleM = metres; 254 = >= 2540 m
 
 profiles:
   dismounted:
-    label: Dismounted
+    label: Dismounted Force
     nogo:    [4, 8, 11]
     caution: [5, 6, 7, 9, 14, 15, 16]
   wheeled:
-    label: Wheeled vehicles
+    label: Wheeled Vehicle
     nogo:    [4, 5, 6, 7, 8, 9, 11, 14]
     caution: [1, 3, 10, 13, 15, 16, 17]
   tracked:
-    label: Tracked vehicles
+    label: Tracked Vehicle
     nogo:    [4, 6, 7, 8, 9, 11]
     caution: [3, 5, 10, 14, 15, 16]
   vessel:
-    label: Surface vessel
+    label: Surface Vessel
     requires: [4]       # everything NOT in requires is no-go -> dist = distance to shore
     caution: [5]
   generic:
-    label: Generic land
+    label: Gr Based
     nogo:    [4]
     caution: [6, 7, 14]
   exempt:
-    label: Not terrain-bound   # no nogo/requires -> no dist layer
+    label: Not Terrain-Bound   # no nogo/requires -> no dist layer
 
 # Optional. Overrides the symbol-set -> profile defaults compiled into
 # MS/Engines/Placement/PlacementProfiles.ts. Keys: 2-digit 2525D symbol set, or

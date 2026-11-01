@@ -118,21 +118,21 @@ const RULES = {
     // `why` is sample text so the dev bundle exercises the "reason" line in the UI; it is not doctrine.
     // A real bundle takes it from rules.yaml (see scripts/profiles.py).
     dismounted: {
-      label: 'Dismounted',
+      label: 'Dismounted Force',
       nogo: [4, 8, 11],
       caution: [5, 6, 7, 9],
       why: { 4: 'Sample text: infantry cannot cross deep water without a bridge or boats.', 9: 'Sample text: steep slopes slow a dismounted march.' },
     },
-    wheeled: { label: 'Wheeled vehicles', nogo: [4, 5, 6, 7, 8, 9, 11], caution: [1, 3, 10] },
+    wheeled: { label: 'Wheeled Vehicle', nogo: [4, 5, 6, 7, 8, 9, 11], caution: [1, 3, 10] },
     tracked: {
-      label: 'Tracked vehicles',
+      label: 'Tracked Vehicle',
       nogo: [4, 6, 7, 8, 9, 11],
       caution: [3, 5, 10],
       why: { 6: 'Sample text: tracks bog down in marsh and wetland soils.' },
     },
-    vessel: { label: 'Surface vessel', requires: [4], caution: [5] },
-    generic: { label: 'Generic land', nogo: [4], caution: [6, 7] },
-    exempt: { label: 'Not terrain-bound' },
+    vessel: { label: 'Surface Vessel', requires: [4], caution: [5] },
+    generic: { label: 'Gr Based', nogo: [4], caution: [6, 7] },
+    exempt: { label: 'Not Terrain-Bound' },
   },
 };
 const PROFILES = ['dismounted', 'wheeled', 'tracked', 'vessel', 'generic'];

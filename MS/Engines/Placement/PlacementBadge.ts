@@ -2,9 +2,12 @@
  * PlacementBadge.ts
  *
  * The small cursor-following card the Placement Advisor shows while drawing.
- * A coloured header gives the verdict (and how much of the shape is inside bad
- * ground); labelled rows underneath say why, how much, what is nearest and
- * whether the echelon's intermediate gap rule holds. Built from DOM nodes and
+ * A coloured header gives the verdict (how much of the shape is inside bad
+ * ground, and an S keycap when the quick fix can help); sections underneath, on
+ * alternating bands and captioned in the verdict colour, say why (with a GO /
+ * SLOW-GO / NO-GO scale), how much, what is nearest and whether the echelon's
+ * intermediate gap rule holds. Enforce mode closes the card with a red strip.
+ * The unit type and the P / S keys live in the legend. Built from DOM nodes and
  * `textContent` only, so class names and unit labels can never inject markup.
  *
  * Position updates are direct style writes from a passive pointermove listener.
@@ -25,26 +28,40 @@ const TOUCH_GAP = 28;
 
 const CSS = `
 .ms-placement-badge{position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;
-  --pb-c:#5b6470;--pb-fg:#fff;width:280px;max-width:calc(100vw - 8px);box-sizing:border-box;border-radius:10px;overflow:hidden;
+  --pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:280px;max-width:calc(100vw - 8px);box-sizing:border-box;border-radius:10px;overflow:hidden;
   font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
   background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:none}
-.ms-placement-badge[data-verdict="ok"]{--pb-c:#1c8247}
-.ms-placement-badge[data-verdict="near"]{--pb-c:#e9a526;--pb-fg:#1b1f25}
-.ms-placement-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25}
-.ms-placement-badge[data-verdict="partial"]{--pb-c:#d9622b;--pb-fg:#1b1f25}
-.ms-placement-badge[data-verdict="in"]{--pb-c:#d63a3f}
-.ms-pb-bar{display:flex;align-items:center;gap:7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
-.ms-pb-pct{margin-left:auto;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:12px;white-space:nowrap}
-.ms-placement-badge[data-verdict="near"] .ms-pb-pct,.ms-placement-badge[data-verdict="caution"] .ms-pb-pct,.ms-placement-badge[data-verdict="partial"] .ms-pb-pct{background:rgba(0,0,0,.12)}
+.ms-placement-badge[data-verdict="ok"]{--pb-c:#1c8247;--pb-k:#3fc07a}
+.ms-placement-badge[data-verdict="near"]{--pb-c:#e9a526;--pb-fg:#1b1f25;--pb-k:#f2b84b}
+.ms-placement-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25;--pb-k:#f0a04b}
+.ms-placement-badge[data-verdict="partial"]{--pb-c:#d9622b;--pb-fg:#1b1f25;--pb-k:#ef7d4a}
+.ms-placement-badge[data-verdict="in"]{--pb-c:#d63a3f;--pb-k:#ff6b6f}
+.ms-pb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
+.ms-pb-bar>svg{flex:none}
+.ms-pb-title{flex:1 1 0;min-width:0}
+.ms-pb-pills{display:flex;gap:4px;margin-left:auto}
+.ms-pb-pct,.ms-pb-fix{display:flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:11.5px;white-space:nowrap}
+.ms-pb-fix{padding-left:2px}
+.ms-placement-badge[data-verdict="near"] .ms-pb-pills>span,.ms-placement-badge[data-verdict="caution"] .ms-pb-pills>span,.ms-placement-badge[data-verdict="partial"] .ms-pb-pills>span{background:rgba(0,0,0,.12)}
+.ms-pb-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:4px;
+  font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3f8f5b,#2b6b42);border:1px solid #5fc183;border-bottom-width:2px}
 .ms-pb-sr{position:fixed;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 .ms-pb-body{padding:6px 11px 8px}
-.ms-pb-row{display:flex;gap:8px;padding:4px 0;align-items:flex-start}
-.ms-pb-row>svg{flex:none;margin-top:1px;color:#9aa3ad}
-.ms-pb-main{flex:1;min-width:0}
-.ms-pb-k{display:block;font-size:11px;color:#9aa3ad}
+.ms-pb-sec{padding:7px 11px 8px}
+.ms-pb-sec:nth-child(even){background:#222830}
+.ms-pb-cap{font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--pb-k);margin-bottom:5px}
 .ms-pb-b{font-weight:600;color:#fff}
+.ms-pb-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:6px}
+.ms-pb-scale>span{font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-align:center;padding:4px 0 3px;border-radius:2px;background:rgba(255,255,255,.06);color:#6b737c}
+.ms-pb-scale>.ms-on-go{background:#2fa862;color:#fff}
+.ms-pb-scale>.ms-on-slow{background:#f0932b;color:#1b1f25}
+.ms-pb-scale>.ms-on-nogo{background:#e5484d;color:#fff}
+.ms-pb-nr{display:flex;gap:10px;align-items:center}
+.ms-pb-big{font-size:18px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
 .ms-pb-track{height:6px;margin:4px 0 2px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
 .ms-pb-track>div{height:100%}
+.ms-pb-enf{display:flex;gap:7px;align-items:flex-start;padding:7px 11px;background:rgba(229,72,77,.14);border-top:1px solid rgba(229,72,77,.45);color:#ffb3b5}
+.ms-pb-enf>svg{flex:none;margin-top:1px;color:#e5484d}
 .ms-pb-warn{color:#ffc861}
 .ms-pb-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
 `;
@@ -55,21 +72,26 @@ const ICONS: Record<string, string[]> = {
   triangle: ['M12 9v4', 'M12 17h.01', 'M10.3 3.9L1.9 18.4a1.9 1.9 0 0 0 1.7 2.8h16.8a1.9 1.9 0 0 0 1.7-2.8L13.7 3.9a1.9 1.9 0 0 0-3.4 0z'],
   octagon: ['M12 8v4', 'M12 16h.01', 'M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z'],
   help: ['M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3', 'M12 17h.01', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z'],
-  info: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M12 8h.01', 'M11 12h1v4h1'],
-  pie: ['M21.2 15.9A10 10 0 1 1 8 2.8', 'M22 12A10 10 0 0 0 12 2v10z'],
-  target: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z', 'M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'],
-  ruler: [
-    'M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z',
-    'M14.5 12.5l2-2', 'M11.5 9.5l2-2', 'M8.5 6.5l2-2', 'M17.5 15.5l2-2',
-  ],
 };
 
 const SPACING_COLOR = { ok: '#2fa862', tight: '#ee7b30', overlap: '#e5484d' } as const;
+
+/** Where a verdict sits on the GO / SLOW-GO / NO-GO scale. */
+const GOING: Partial<Record<PlacementVerdict['verdict'], 'go' | 'slow' | 'nogo'>> = {
+  ok: 'go',
+  caution: 'slow',
+  near: 'nogo',
+  partial: 'nogo',
+  in: 'nogo',
+};
 
 /** Rule labels read ">30°" and "15–30°"; say them in words, with no symbols or dashes. */
 function plain(label: string): string {
   return label.replace(/>\s*(\d)/g, 'over $1').replace(/(\d+)\s*[–-]\s*(\d+)/g, '$1 to $2');
 }
+
+/** `plain()` for other Placement UI (the legend's terrain lists), so a class reads the same everywhere. */
+export const plainLabel = plain;
 
 function icon(name: string, size = 15, color?: string): SVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg');
@@ -153,13 +175,25 @@ function track(fraction: number, color: string): HTMLElement {
   return t;
 }
 
-function row(iconName: string, label: string, color: string | undefined, ...content: Array<Node | string>): HTMLElement {
-  const r = el('div', 'ms-pb-row');
-  const main = el('div', 'ms-pb-main');
-  main.appendChild(el('span', 'ms-pb-k', label));
-  main.append(...content);
-  r.append(icon(iconName, 15, color), main);
-  return r;
+/** One band of the card: a caption in the verdict colour over its content. */
+function section(caption: string, ...content: Array<Node | string>): HTMLElement {
+  const s = el('div', 'ms-pb-sec');
+  s.append(el('div', 'ms-pb-cap', caption), ...content);
+  return s;
+}
+
+/** GO / SLOW-GO / NO-GO with the verdict's own step lit. */
+function goingScale(step: 'go' | 'slow' | 'nogo'): HTMLElement {
+  const s = el('div', 'ms-pb-scale');
+  for (const [k, text] of [['go', 'GO'], ['slow', 'SLOW-GO'], ['nogo', 'NO-GO']] as const) {
+    s.appendChild(el('span', k === step ? `ms-on-${k}` : undefined, text));
+  }
+  return s;
+}
+
+/** A keyboard key as drawn on the card. */
+function keycap(key: string): HTMLElement {
+  return el('span', 'ms-pb-kbd', key);
 }
 
 /** A class label as a noun for a sentence: "Steep slope (>30°)" becomes "steep slope". */
@@ -208,42 +242,35 @@ function spokenFor(v: PlacementVerdict): string {
   return parts.map((p) => p.replace(/[.\s]+$/, '')).join('. ') + '.';
 }
 
-/** Why: the ground that decides the verdict, and what it means for this unit type. */
-function whyRow(v: PlacementVerdict): HTMLElement | null {
-  const unit = v.profileLabel;
+/** Why: the ground that decides the verdict, for which unit type, and where that sits on the going scale. */
+function whySection(v: PlacementVerdict): HTMLElement | null {
+  const step = GOING[v.verdict];
+  if (!step) return null;
   let name: string;
-  let rule: string;
   switch (v.verdict) {
     case 'ok':
-      name = v.className ? plain(v.className) : 'Suitable ground';
-      rule = `GO for ${unit}.`;
+      name = v.className ? plain(v.className) : 'Suitable Ground';
       break;
     case 'caution':
-      name = v.className ? plain(v.className) : 'SLOW-GO terrain';
-      rule = `SLOW-GO for ${unit}.`;
+      name = v.className ? plain(v.className) : 'SLOW-GO Terrain';
       break;
     case 'near':
       // Touching: the shape's own class. Otherwise the nearest ground the unit can't use.
-      name = plain(v.fraction > 0 ? (v.className ?? '') : (v.nearest?.className ?? v.className ?? '')) || 'NO-GO ground nearby';
-      rule = `NO-GO for ${unit}.`;
-      break;
-    case 'partial':
-    case 'in':
-      name = v.className ? plain(v.className) : 'NO-GO ground';
-      rule = `NO-GO for ${unit}.`;
+      name = plain(v.fraction > 0 ? (v.className ?? '') : (v.nearest?.className ?? v.className ?? '')) || 'NO-GO Ground Nearby';
       break;
     default:
-      return null;
+      name = v.className ? plain(v.className) : 'NO-GO Ground';
   }
-  const body = el('div');
-  body.append(el('span', 'ms-pb-b', name), el('div', undefined, rule));
-  if (v.reason) body.append(el('div', 'ms-pb-soft', v.reason)); // the rule owner's own words, when the bundle gives them
-  return row('info', 'Why', undefined, body);
+  const line = el('div');
+  line.append(el('span', 'ms-pb-b', titleCase(name)), ` · ${v.profileLabel}`);
+  const s = section('Why', line);
+  if (v.reason) s.append(el('div', 'ms-pb-soft', v.reason)); // the rule owner's own words, when the bundle gives them
+  s.append(goingScale(step));
+  return s;
 }
 
-function insideRow(v: PlacementVerdict, pct: number): HTMLElement {
-  const color = verdictColor(v);
-  return row('pie', 'Inside', undefined, track(pct / 100, color), `${pct}% of the ${v.footprint ? 'footprint' : 'shape'}`);
+function insideSection(v: PlacementVerdict, pct: number): HTMLElement {
+  return section('Inside', track(pct / 100, verdictColor(v)), `${pct}% of the ${v.footprint ? 'Footprint' : 'Shape'}`);
 }
 
 /** Header colour, for the bar and arrow that echo it; keep in step with the CSS above. */
@@ -258,65 +285,52 @@ function verdictColor(v: PlacementVerdict): string {
   }
 }
 
-function nearestRow(v: PlacementVerdict, northDeg: number): HTMLElement | null {
+function nearestSection(v: PlacementVerdict, northDeg: number): HTMLElement | null {
   const n = v.nearest;
   if (n) {
-    // The label names the ground, so the row only has to say how far and which way.
-    const body = el('div');
-    body.append(el('span', 'ms-pb-b', fmtDistance(n.distanceM)), ` ${n.compass}`);
-    const r = row('target', `Nearest ${feature(n.className)}`, undefined, body);
-    r.firstElementChild?.replaceWith(dial(n.bearingDeg, verdictColor(v), northDeg)); // the dial stands in for the generic target icon
-    r.style.alignItems = 'center';
-    return r;
+    // The dial points at the ground; the text names it and says how far.
+    const text = el('div');
+    const far = el('div');
+    far.append(el('span', 'ms-pb-big', fmtDistance(n.distanceM)), ` ${n.compass}`);
+    text.append(el('div', 'ms-pb-b', featureTitle(n.className)), far);
+    const nr = el('div', 'ms-pb-nr');
+    nr.append(dial(n.bearingDeg, verdictColor(v), northDeg), text);
+    return section('Nearest', nr);
   }
-  const label = v.verdict === 'in' ? 'Nearest suitable ground' : 'Nearest NO-GO ground';
-  if (v.noneWithinM) return row('target', label, undefined, `Nothing within ${fmtDistance(v.noneWithinM)}`);
+  const label = v.verdict === 'in' ? 'Suitable Ground' : 'NO-GO Ground';
+  if (v.noneWithinM) return section('Nearest', el('div', 'ms-pb-b', label), `Nothing within ${fmtDistance(v.noneWithinM)}`);
   if ((v.verdict === 'ok' || v.verdict === 'caution') && v.distanceM !== null) {
-    return row('target', label, undefined, `${fmtDistance(v.distanceM)} away`);
+    return section('Nearest', el('div', 'ms-pb-b', label), `${fmtDistance(v.distanceM)} away`);
   }
   return null;
 }
 
-/** Which unit type the ground is judged for, and that P changes it (the SIDC does not always say how a unit moves). */
-function profileRow(v: PlacementVerdict): HTMLElement | null {
-  if (!v.profileKey) return null;
-  const body = el('div');
-  body.append(
-    el('span', 'ms-pb-b', v.profileLabel),
-    el('span', v.profileOverride ? 'ms-pb-warn' : 'ms-pb-soft', `${v.profileOverride ? ', set by hand' : ''}. P changes it`),
-  );
-  return row('info', 'Judged as', undefined, body);
-}
-
-/** Enforce mode: this click would be refused, and whether Shift gets past it. */
-function enforceRow(v: PlacementVerdict): HTMLElement | null {
+/** Enforce mode: this click would be refused, and whether Shift gets past it. A red strip that closes the card. */
+function enforceStrip(v: PlacementVerdict): HTMLElement | null {
   if (!v.blocked) return null;
   const text = v.overridable ? 'A click here is refused. Hold Shift and click to place it anyway.' : 'A click here is refused.';
-  return row('octagon', 'Enforce mode', SPACING_COLOR.overlap, el('span', 'ms-pb-warn', text));
-}
-
-/** The quick-fix hint, shown while pressing S would move the point to usable ground. */
-function snapRow(v: PlacementVerdict): HTMLElement | null {
-  if (!v.snappable) return null;
-  return row('target', 'Quick fix', undefined, el('span', 'ms-pb-b', 'S'), ' moves it to the nearest usable ground');
+  const body = el('div');
+  body.append(el('span', 'ms-pb-b', 'Enforce Mode: '), text);
+  const strip = el('div', 'ms-pb-enf');
+  strip.append(icon('octagon', 14), body);
+  return strip;
 }
 
 /** The echelon's minimum gap to the next same-echelon unit. Advisory, so it never changes the title. */
-function spacingRow(v: PlacementVerdict): HTMLElement | null {
+function spacingSection(v: PlacementVerdict): HTMLElement | null {
   const s = v.spacing;
   if (!s) return null;
   const echelon = v.footprint?.echelon ?? 'unit';
   const colour = SPACING_COLOR[s.status];
-  if (s.nearestGapM === null) return row('ruler', 'Intermediate gap rule', undefined, el('span', 'ms-pb-soft', `No other ${echelon} nearby`));
-  const bad = s.status !== 'ok';
+  if (s.nearestGapM === null) return section('Intermediate Gap Rule', el('span', 'ms-pb-soft', `No other ${echelon} nearby`));
   const text = el(
     'span',
-    bad ? 'ms-pb-warn' : undefined,
+    s.status !== 'ok' ? 'ms-pb-warn' : undefined,
     s.status === 'overlap'
       ? `Overlaps the next ${echelon}`
       : `${fmtDistance(s.nearestGapM)} of ${fmtDistance(s.minGapM)} to the next ${echelon}`,
   );
-  return row('ruler', 'Intermediate gap rule', bad ? colour : undefined, track(s.nearestGapM / s.minGapM, colour), text);
+  return section('Intermediate Gap Rule', track(s.nearestGapM / s.minGapM, colour), text);
 }
 
 export class PlacementBadge {
@@ -435,18 +449,28 @@ export class PlacementBadge {
     el0.dataset.verdict = v.verdict;
 
     const bar = this._bar!;
-    bar.replaceChildren(icon(iconOf(v), 17), el('span', undefined, titleOf(v)));
+    bar.replaceChildren(icon(iconOf(v), 17), el('span', 'ms-pb-title', titleOf(v)));
     const pct = v.samples > 1 && v.fraction > 0 ? Math.max(1, Math.round(v.fraction * 100)) : 0;
-    if (pct > 0) bar.appendChild(el('span', 'ms-pb-pct', `${pct}% inside`));
+    const pills = el('div', 'ms-pb-pills');
+    if (pct > 0) pills.appendChild(el('span', 'ms-pb-pct', `${pct}% Inside`));
+    if (v.snappable) {
+      // S moves the point to the nearest usable ground; the legend explains the key, the card only cues it.
+      const fix = el('span', 'ms-pb-fix');
+      fix.append(keycap('S'), 'Quick Fix');
+      pills.appendChild(fix);
+    }
+    if (pills.childElementCount) bar.appendChild(pills);
 
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v, this._north), snapRow(v), enforceRow(v), spacingRow(v), profileRow(v)].filter(
+        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v)].filter(
             (r): r is HTMLElement => r !== null,
           );
-    if (v.loading) rows.push(el('div', 'ms-pb-soft', 'Still loading terrain data'));
-    if (this._notice) rows.push(el('div', 'ms-pb-warn', this._notice));
+    if (v.loading) rows.push(el('div', 'ms-pb-sec ms-pb-soft', 'Still loading terrain data'));
+    if (this._notice) rows.push(el('div', 'ms-pb-sec ms-pb-warn', this._notice));
+    const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
+    if (strip) rows.push(strip);
     const body = this._body!;
     body.replaceChildren(...rows);
     body.style.display = rows.length ? 'block' : 'none';
@@ -535,7 +559,7 @@ export class PlacementBadge {
     document.body.appendChild(live);
     this._live = live;
     const bar = el('div', 'ms-pb-bar') as HTMLDivElement;
-    const body = el('div', 'ms-pb-body') as HTMLDivElement;
+    const body = el('div') as HTMLDivElement; // its sections carry their own padding and bands
     root.append(bar, body);
     document.body.appendChild(root);
     this._el = root;

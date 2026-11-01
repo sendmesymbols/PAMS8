@@ -72,15 +72,29 @@ Every verdict explains itself — why, how far, what is near, and which way:
 
 | situation | headline | detail |
 |-----------|----------|--------|
-| in no-go | `Permanent Water: NO-GO for Dismounted` | `Nearest suitable ground: Bare / desert, 314 m to the E` (or `No suitable ground within 1.1 km`) |
-| close to no-go | `Permanent Water 120 m to the W` | `NO-GO for Dismounted` |
-| line/area partly in | `Partially in Permanent Water (43%): NO-GO for Dismounted` | |
-| touches no-go | `Encroaching on Permanent Water (2%): NO-GO for Wheeled Vehicles` | |
-| difficult ground | `SLOW-GO: Built-Up Area` | `SLOW-GO terrain for Wheeled vehicles. Nearest NO-GO: …` |
+| in no-go | `Permanent Water: NO-GO for Dismounted Force` | `Nearest suitable ground: Bare / desert, 314 m to the E` (or `No suitable ground within 1.1 km`) |
+| close to no-go | `Permanent Water 120 m to the W` | `NO-GO for Dismounted Force` |
+| line/area partly in | `Partially in Permanent Water (43%): NO-GO for Dismounted Force` | |
+| touches no-go | `Encroaching on Permanent Water (2%): NO-GO for Wheeled Vehicle` | |
+| difficult ground | `SLOW-GO: Built-Up Area` | `SLOW-GO terrain for Wheeled Vehicle. Nearest NO-GO: …` |
 | suitable | `Suitable: Bare / Desert` | `Nearest NO-GO: Permanent water, 580 m to the W` (or `Clear of NO-GO terrain within 2.5 km`) |
 
 The badge title above the headline uses the same words: *Suitable Position*, *Adjacent to …* /
 *Encroaching on …*, *SLOW-GO Terrain*, *Partially Obstructed*, *Unsuitable Position*.
+
+**The cursor card.** Under that coloured header (which also carries the share inside bad ground, e.g.
+`34% Inside`, and an **S** keycap with *Quick Fix* while the quick fix can help) the card is a stack of
+bands on alternating backgrounds, each captioned in capitals in the verdict's colour:
+
+| band | shows |
+|------|-------|
+| **Why** | the deciding ground and the mode (`Permanent Water · Dismounted Force`), the rule owner's reason when the bundle gives one, and a GO / SLOW-GO / NO-GO scale with the verdict's step lit |
+| **Inside** | lines and areas: how much of the shape (or footprint) is in bad ground, as a bar and `34% of the Footprint` |
+| **Nearest** | a compass dial pointing at the nearest deciding ground (it turns with the map), its name, and the distance in large type |
+| **Intermediate Gap Rule** | footprint-judged echelons: the gap to the next same-echelon unit against the minimum |
+
+In `enforce` mode a red strip closes the card ("Enforce Mode: A click here is refused. Hold Shift and
+click to place it anyway."). The mode and the P / S keys are explained in the Legend, not on the card.
 
 The distance layer only stores *how far* the nearest no-go is, not *what* it is,
 so the advisor searches the class tile around the deciding sample (a window of
@@ -221,10 +235,23 @@ and works in 2D and 3D (draped), sitting under the symbol layers.
 | red    | NO-GO |
 | clear  | no data / outside the bundle |
 
-The same key is shown on the map while the overlay is on: a small card docked bottom-left through the
-view's own UI (so it follows 2D / 3D switches), titled with the unit type being painted ("Terrain for
-Dismounted") and carrying the current `nearThresholdM` on the marginal row. The labels come from
-`OVERLAY_LEGEND`, so a host that renames the verdicts changes the card too.
+**The Legend.** While the overlay is on, or a terrain-bound symbol is being drawn, a card titled
+*Legend* is docked bottom-left through the view's own UI (so it follows 2D / 3D switches). From top to
+bottom:
+
+- the **mode** the ground is judged for, with *Mode 2 / 5*, Previous / Next buttons and one icon per mode
+  of the bundle. While drawing it is the draw's own mode, tagged *Auto · From Symbol* or *Set by Hand*,
+  and the buttons do what P does. With nothing drawn it is the mode the overlay paints; under
+  `overlay.profile: auto` the buttons change which mode that is until the next draw, and when the
+  setting names a mode they change the setting (tagged *Set in Settings*);
+- the overlay's four colours as a ramp (*Suitable*, *Marginal*, *SLOW-GO*, *NO-GO*) with
+  `Marginal: Within 250 m of NO-GO` from the current `nearThresholdM`. The labels come from
+  `OVERLAY_LEGEND`, so a host that renames the verdicts changes the card too;
+- what counts as **NO-GO** and **SLOW-GO** for that mode, listed from the bundle's own rules
+  (a vessel's NO-GO reads "Anywhere Off Permanent Water"). The ▾ button folds these lists away, and the
+  choice is remembered in `localStorage` (`ms-placement-legend-details`);
+- the keys: **P** *Change Mode* (lit while a draw can change mode) and **S** *Quick Fix* (lit, in green,
+  while the quick fix can help). They are left out for touch input and when `profileKey` / `snapKey` are off.
 
 **Hints.** Nothing shows until a symbol is picked, so the advisor says so once per browser (remembered in
 `localStorage` under `ms.placement.hintSeen`): "Placement advisor is on: pick a symbol and terrain advice
@@ -241,8 +268,9 @@ Survey of Pakistan's *Pakistan Relief Map*, with the Line of Control shown as a 
 `manifest.boundary.source` says which boundary built the bundle (`official`, `osm` or `custom`).
 The engine draws exactly what the bundle contains and adds no geometry of its own.
 
-`placement.overlay.profile` chooses whose terrain is painted: `dismounted`,
-`wheeled`, `tracked`, `vessel` (water is green, land red) or `generic`; `auto`
+`placement.overlay.profile` chooses whose terrain is painted: `dismounted` (Dismounted Force),
+`wheeled` (Wheeled Vehicle), `tracked` (Tracked Vehicle), `vessel` (Surface Vessel; water is green,
+land red) or `generic` (Gr Based); `auto`
 follows the symbol being drawn and keeps the last one when idle. Below the
 bundle's minimum zoom nothing is drawn; above its maximum the finest tile is
 over-zoomed. `pa.overlayLayer` exposes the layer. The overlay needs the advisor
@@ -325,10 +353,10 @@ the page.
 
 When the last pointer move was a finger, the card is centred **above** the touch point (below it only
 when there is no room above), so the hand never covers it, and it does not offer the S, P and Shift-click
-shortcuts (in the card or the spoken sentence), since there is no keyboard to press them on; the refusal
+shortcuts (in the card, the Legend or the spoken sentence), since there is no keyboard to press them on; the refusal
 card says that placing a refused symbol anyway needs a keyboard. The card is at most as wide as the
-viewport, so it fits a narrow phone. The quick fix and unit type are still available from code
-(`snapToDeployable()`, `setProfileOverride()`).
+viewport, so it fits a narrow phone. The mode can still be changed with the Legend's buttons, and both it and the quick fix are available
+from code (`setProfileOverride()`, `snapToDeployable()`).
 
 In 3D the sampling zoom comes from `view.resolution`, which a SceneView does report; the extent-based
 fallback only runs for views that do not. Measured on a tilted scene (up to 70°) the local pixel size under
@@ -359,7 +387,7 @@ alternative.
 ### Quick fix: move to usable ground
 
 While a **point** symbol is being drawn on ground the verdict rejects (`in`, `partial`, or anything
-`blockOn` refuses in `enforce` mode) the badge adds a *Quick fix* row, and pressing **S** places the
+`blockOn` refuses in `enforce` mode) the card's header shows an **S** keycap with *Quick Fix* and the Legend lights its S key; pressing **S** places the
 symbol at the nearest ground that passes. `snapToDeployable()` does the same from code. It searches
 rings of candidate spots around the cursor (out to 160 tile pixels, 16 directions) with the same verdict
 function that gates a commit, footprint included, and prefers a clean `ok` spot over a marginal
@@ -367,13 +395,14 @@ function that gates a commit, footprint included, and prefers a clean `ok` spot 
 events, so the symbol's own draw end, the commit check and the stamp run as usual (Ctrl+Z undoes it).
 Lines and areas are not moved. Turn it off with `placement.snapKey`.
 
-### Judging for a different unit type
+### Judging for a different mode
 
 The unit type the ground is judged for (`dismounted`, `wheeled`, `tracked`, …) comes from the SIDC, which
 does not always say how a unit moves: a mounted and a dismounted infantry platoon share one. While a
-symbol is being drawn the card says "Judged as … P changes it", and **P** (or
-`advisor.cycleProfile()` / `setProfileOverride(profile | null)`) judges it for the next other profile of the
-bundle, then back to the SIDC's own. The card, overlay, quick fix and the commit check all follow at once.
+symbol is being drawn the Legend names the **mode** ("Dismounted Force · Auto · From Symbol"), and **P**,
+the Legend's Previous / Next or a mode's icon (or `advisor.cycleProfile(1 | -1)` /
+`setProfileOverride(profile | null)`) judges it for another mode of the bundle, stepping in the Legend's
+order; reaching the SIDC's own mode goes back to auto. The card, overlay, quick fix and the commit check all follow at once.
 It is for **that one draw**: arming the next symbol starts from the SIDC again. The stamp records
 `placement.profileOverride = true` with the profile used, and the audit keeps judging that symbol for the
 profile it was placed with (the panel says "chosen when placed"). Symbols that are not terrain-bound have
@@ -550,12 +579,12 @@ pixel never claims to be farther from no-go than any fine pixel it covers.
     "255": { "name": "nodata",          "label": "No data" }
   },
   "profiles": {
-    "dismounted": { "label": "Dismounted",       "nogo": [4, 8, 11],                   "caution": [5, 6, 7, 9, 14, 15, 16] },
-    "wheeled":    { "label": "Wheeled vehicles", "nogo": [4, 5, 6, 7, 8, 9, 11, 14],   "caution": [1, 3, 10, 13, 15, 16, 17] },
-    "tracked":    { "label": "Tracked vehicles", "nogo": [4, 6, 7, 8, 9, 11],          "caution": [3, 5, 10, 14, 15, 16] },
-    "vessel":     { "label": "Surface vessel",   "requires": [4],                      "caution": [5] },
-    "generic":    { "label": "Generic land",     "nogo": [4],                          "caution": [6, 7, 14] },
-    "exempt":     { "label": "Not terrain-bound" }
+    "dismounted": { "label": "Dismounted Force", "nogo": [4, 8, 11],                   "caution": [5, 6, 7, 9, 14, 15, 16] },
+    "wheeled":    { "label": "Wheeled Vehicle",  "nogo": [4, 5, 6, 7, 8, 9, 11, 14],   "caution": [1, 3, 10, 13, 15, 16, 17] },
+    "tracked":    { "label": "Tracked Vehicle",  "nogo": [4, 6, 7, 8, 9, 11],          "caution": [3, 5, 10, 14, 15, 16] },
+    "vessel":     { "label": "Surface Vessel",   "requires": [4],                      "caution": [5] },
+    "generic":    { "label": "Gr Based",         "nogo": [4],                          "caution": [6, 7, 14] },
+    "exempt":     { "label": "Not Terrain-Bound" }
   },
   "profileOverrides": {
     "symbolSets": { "10": "wheeled" },

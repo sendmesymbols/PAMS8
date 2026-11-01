@@ -200,7 +200,7 @@ export class PlacementAuditPanel {
       const more = el('div', 'ms-pa-more');
       if (e.rule) more.append(el('div', undefined, e.rule));
       if (e.detail) more.append(el('div', undefined, e.detail));
-      more.append(el('div', 'ms-pa-soft', `Judged as: ${e.profileLabel}${e.profileOverride ? ' (chosen when placed)' : ''}`));
+      more.append(el('div', 'ms-pa-soft', `Mode: ${e.profileLabel}${e.profileOverride ? ' (chosen when placed)' : ''}`));
       if (e.previous === null) more.append(el('div', 'ms-pa-soft', 'Not checked when it was placed.'));
       else if (e.changed) {
         more.append(el('div', 'ms-pa-warn', `Was ${LABEL[e.previous] ?? e.previous} when placed.`));
