@@ -62,7 +62,6 @@ const ICONS: Record<string, string[]> = {
     'M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z',
     'M14.5 12.5l2-2', 'M11.5 9.5l2-2', 'M8.5 6.5l2-2', 'M17.5 15.5l2-2',
   ],
-  arrow: ['M12 19V5', 'M5 12l7-7 7 7'],
 };
 
 const SPACING_COLOR = { ok: '#2fa862', tight: '#ee7b30', overlap: '#e5484d' } as const;
@@ -72,7 +71,7 @@ function plain(label: string): string {
   return label.replace(/>\s*(\d)/g, 'over $1').replace(/(\d+)\s*[–-]\s*(\d+)/g, '$1 to $2');
 }
 
-function icon(name: string, size = 15, color?: string, rotateDeg?: number): SVGElement {
+function icon(name: string, size = 15, color?: string): SVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('width', String(size));
   svg.setAttribute('height', String(size));
@@ -84,13 +83,58 @@ function icon(name: string, size = 15, color?: string, rotateDeg?: number): SVGE
   svg.setAttribute('stroke-linejoin', 'round');
   svg.setAttribute('aria-hidden', 'true');
   if (color) svg.style.color = color;
-  if (rotateDeg !== undefined) svg.style.transform = `rotate(${Math.round(rotateDeg)}deg)`;
   for (const d of ICONS[name]) {
     const p = document.createElementNS(SVG_NS, 'path');
     p.setAttribute('d', d);
     svg.appendChild(p);
   }
   return svg;
+}
+
+/**
+ * A small compass for the view as it is on screen. `northDeg` is where north points on screen (clockwise from up):
+ * the ring turns to it, with N kept upright, and the needle points `bearingDeg` (clockwise from north) from there,
+ * so it still points at the feature when the map is rotated.
+ */
+function dial(bearingDeg: number, color: string, northDeg: number): SVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('width', '44');
+  svg.setAttribute('height', '44');
+  svg.setAttribute('viewBox', '0 0 44 44');
+  svg.setAttribute('aria-hidden', 'true'); // the row's text already gives the distance and compass point
+  svg.dataset.pbDial = String(Math.round(bearingDeg));
+  const add = (parent: Element, tag: string, attrs: Record<string, string>, text?: string): SVGElement => {
+    const e = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text) e.textContent = text;
+    parent.appendChild(e);
+    return e as SVGElement;
+  };
+  const ring = add(svg, 'g', { 'data-pb-ring': '' });
+  add(ring, 'circle', { cx: '22', cy: '22', r: '20.5', fill: 'rgba(255,255,255,.06)', stroke: 'rgba(255,255,255,.3)', 'stroke-width': '1.5' });
+  add(ring, 'text', { x: '22', y: '12', 'text-anchor': 'middle', 'font-size': '11', fill: '#9aa3ad', 'font-family': 'system-ui,Segoe UI,Arial,sans-serif', 'data-pb-n': '' }, 'N');
+  for (const [x1, y1, x2, y2] of [[41.5, 22, 37.5, 22], [22, 41.5, 22, 37.5], [2.5, 22, 6.5, 22]]) {
+    add(ring, 'line', { x1: String(x1), y1: String(y1), x2: String(x2), y2: String(y2), stroke: '#9aa3ad', 'stroke-width': '1.5' });
+  }
+  add(svg, 'polygon', {
+    points: '22,14 27.5,30 22,26 16.5,30',
+    fill: color,
+    stroke: color,
+    'stroke-width': '1.5',
+    'stroke-linejoin': 'round',
+    'data-pb-needle': '',
+  });
+  orientDial(svg, northDeg);
+  return svg;
+}
+
+/** Turn an existing dial to a new on-screen north, without rebuilding it. */
+function orientDial(svg: SVGElement, northDeg: number): void {
+  const north = Math.round(northDeg);
+  const bearing = Number(svg.dataset.pbDial) || 0;
+  svg.querySelector('[data-pb-ring]')?.setAttribute('transform', `rotate(${north} 22 22)`);
+  svg.querySelector('[data-pb-n]')?.setAttribute('transform', `rotate(${-north} 22 8)`); // keep the letter upright, turning about its own centre so it stays on the north line
+  svg.querySelector('[data-pb-needle]')?.setAttribute('transform', `rotate(${north + bearing} 22 22)`);
 }
 
 function el(tag: string, cls?: string, text?: string): HTMLElement {
@@ -214,14 +258,16 @@ function verdictColor(v: PlacementVerdict): string {
   }
 }
 
-function nearestRow(v: PlacementVerdict): HTMLElement | null {
+function nearestRow(v: PlacementVerdict, northDeg: number): HTMLElement | null {
   const n = v.nearest;
   if (n) {
     // The label names the ground, so the row only has to say how far and which way.
     const body = el('div');
-    body.append(el('span', 'ms-pb-b', fmtDistance(n.distanceM)), ` ${n.compass} `);
-    body.append(icon('arrow', 13, verdictColor(v), n.bearingDeg));
-    return row('target', `Nearest ${feature(n.className)}`, undefined, body);
+    body.append(el('span', 'ms-pb-b', fmtDistance(n.distanceM)), ` ${n.compass}`);
+    const r = row('target', `Nearest ${feature(n.className)}`, undefined, body);
+    r.firstElementChild?.replaceWith(dial(n.bearingDeg, verdictColor(v), northDeg)); // the dial stands in for the generic target icon
+    r.style.alignItems = 'center';
+    return r;
   }
   const label = v.verdict === 'in' ? 'Nearest suitable ground' : 'Nearest NO-GO ground';
   if (v.noneWithinM) return row('target', label, undefined, `Nothing within ${fmtDistance(v.noneWithinM)}`);
@@ -284,6 +330,7 @@ export class PlacementBadge {
   private _hasPointer = false;
   private _touch = false;
   private _last: PlacementVerdict | null = null;
+  private _north = 0; // where north points on screen, degrees clockwise from up
   private _notice: string | null = null;
   private _noticeTimer: ReturnType<typeof setTimeout> | null = null;
   private _toastEl: HTMLDivElement | null = null;
@@ -373,6 +420,14 @@ export class PlacementBadge {
     if (this._el && this._el.style.display !== 'none') this._place();
   }
 
+  /** The map was rotated: `northDeg` is where north now points on screen. Turns the dial in place; the card is not rebuilt. */
+  setNorth(northDeg: number): void {
+    if (northDeg === this._north) return;
+    this._north = northDeg;
+    const d = this._el?.querySelector('[data-pb-dial]');
+    if (d) orientDial(d as SVGElement, northDeg);
+  }
+
   show(v: PlacementVerdict): void {
     this._last = v;
     if (this._toastEl && this._toastEl.style.display !== 'none') this.dismissToast();
@@ -387,7 +442,7 @@ export class PlacementBadge {
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v), snapRow(v), enforceRow(v), spacingRow(v), profileRow(v)].filter(
+        : [whyRow(v), pct > 0 ? insideRow(v, pct) : null, nearestRow(v, this._north), snapRow(v), enforceRow(v), spacingRow(v), profileRow(v)].filter(
             (r): r is HTMLElement => r !== null,
           );
     if (v.loading) rows.push(el('div', 'ms-pb-soft', 'Still loading terrain data'));

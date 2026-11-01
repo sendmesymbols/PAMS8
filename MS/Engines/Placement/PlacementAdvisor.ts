@@ -204,6 +204,7 @@ export default class PlacementAdvisor {
   private _container: HTMLElement | null = null;
   private _pointerHandler: ((e: PointerEvent) => void) | null = null;
   private _stationaryHandle: { remove(): void } | null = null;
+  private _northHandle: { remove(): void } | null = null;
 
   constructor(private _getView: () => any) {}
 
@@ -2026,11 +2027,19 @@ export default class PlacementAdvisor {
       },
       { initial: true }, // warm the current viewport now, not on the first pan or draw
     );
+    // Where north points on screen: the 2D rotation, or the opposite of the 3D camera heading. The badge dial follows it.
+    this._northHandle = reactiveUtils.watch(
+      () => (view.type === '3d' ? -(view.camera?.heading ?? 0) : (view.rotation ?? 0)),
+      (north: number) => this._badge.setNorth(north),
+      { initial: true },
+    );
   }
 
   private _unbindView(): void {
     this._stationaryHandle?.remove();
     this._stationaryHandle = null;
+    this._northHandle?.remove();
+    this._northHandle = null;
   }
 
   private _attachPointer(): void {
