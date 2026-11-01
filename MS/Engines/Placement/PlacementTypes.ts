@@ -338,7 +338,7 @@ export interface PlacementAuditEntry {
   /** `profile` was set by hand when the symbol was placed, so the audit keeps judging it that way. */
   profileOverride: boolean;
   fraction: number;
-  /** Intergap message when the spacing rule is not met. */
+  /** Intergap message when the intermediate gap rule is not met. */
   spacing: string | null;
   /** What the stamp said before this check (null = never stamped, e.g. loaded from a plan). */
   previous: PlacementVerdictKind | null;

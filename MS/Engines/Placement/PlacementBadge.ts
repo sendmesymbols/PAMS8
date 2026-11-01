@@ -4,7 +4,7 @@
  * The small cursor-following card the Placement Advisor shows while drawing.
  * A coloured header gives the verdict (and how much of the shape is inside bad
  * ground); labelled rows underneath say why, how much, what is nearest and
- * whether the echelon's spacing rule holds. Built from DOM nodes and
+ * whether the echelon's intermediate gap rule holds. Built from DOM nodes and
  * `textContent` only, so class names and unit labels can never inject markup.
  *
  * Position updates are direct style writes from a passive pointermove listener.
@@ -307,7 +307,7 @@ function spacingRow(v: PlacementVerdict): HTMLElement | null {
   if (!s) return null;
   const echelon = v.footprint?.echelon ?? 'unit';
   const colour = SPACING_COLOR[s.status];
-  if (s.nearestGapM === null) return row('ruler', 'Spacing rule', undefined, el('span', 'ms-pb-soft', `No other ${echelon} nearby`));
+  if (s.nearestGapM === null) return row('ruler', 'Intermediate gap rule', undefined, el('span', 'ms-pb-soft', `No other ${echelon} nearby`));
   const bad = s.status !== 'ok';
   const text = el(
     'span',
@@ -316,7 +316,7 @@ function spacingRow(v: PlacementVerdict): HTMLElement | null {
       ? `Overlaps the next ${echelon}`
       : `${fmtDistance(s.nearestGapM)} of ${fmtDistance(s.minGapM)} to the next ${echelon}`,
   );
-  return row('ruler', 'Spacing rule', bad ? colour : undefined, track(s.nearestGapM / s.minGapM, colour), text);
+  return row('ruler', 'Intermediate gap rule', bad ? colour : undefined, track(s.nearestGapM / s.minGapM, colour), text);
 }
 
 export class PlacementBadge {
