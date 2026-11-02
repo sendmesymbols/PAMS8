@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Placement Card and Legend Options</title>
+<style>
+:root{--bg:#f4f5f7;--tx:#15191e;--soft:#5d6874;--ln:#d5dae0;--pn:#fff;--ac:#1b6fb5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1318;--tx:#e8ebee;--soft:#9aa3ad;--ln:#2a323b;--pn:#171c22;--ac:#8ec1ea;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1318;--tx:#e8ebee;--soft:#9aa3ad;--ln:#2a323b;--pn:#171c22;--ac:#8ec1ea;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.5 system-ui,"Segoe UI",Arial,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:16px 16px 56px}
+h1{font-size:26px;line-height:1.2;margin:8px 0 6px;letter-spacing:-.01em}
+h2{font-size:17px;margin:36px 0 4px}
+p{margin:0 0 10px;color:var(--soft);max-width:72ch}
+.ctl{display:flex;flex-wrap:wrap;gap:10px 22px;margin:16px 0 12px}
+.seg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)}
+.seg>div{display:flex;border:1px solid var(--ln);border-radius:8px;overflow:hidden;background:var(--pn)}
+.seg button{font:inherit;font-size:13px;color:var(--tx);background:none;border:0;border-right:1px solid var(--ln);padding:6px 11px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--tx);color:var(--bg)}
+button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.map{background:radial-gradient(ellipse 60% 50% at 18% 22%,rgba(74,98,52,.9),transparent 70%),radial-gradient(ellipse 50% 60% at 82% 30%,rgba(120,104,70,.85),transparent 70%),radial-gradient(ellipse 70% 40% at 55% 85%,rgba(52,82,112,.85),transparent 70%),repeating-linear-gradient(35deg,rgba(255,255,255,.035) 0 2px,transparent 2px 9px),#3b4636}
+#stage{position:relative;height:420px;border-radius:12px;overflow:hidden;cursor:crosshair;border:1px solid var(--ln)}
+.hint{position:absolute;right:12px;top:12px;font-size:12.5px;color:#e8ebee;background:rgba(15,19,24,.75);padding:5px 12px;border-radius:99px;pointer-events:none}
+.tip{position:absolute;left:0;top:0;display:none;pointer-events:none;z-index:5;will-change:transform}
+.dock{position:absolute;left:12px;bottom:12px;z-index:4;cursor:default}
+.cp{font-size:12.5px;margin-top:8px}
+.gal{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:12px}
+.opt{border:2px solid transparent;border-radius:14px;padding:8px;max-width:100%}
+.opt.on{border-color:var(--ac)}
+.cap{margin:0 2px 8px;max-width:300px}.cap b{display:block;font-size:14px}.cap span{font-size:12.5px;color:var(--soft)}
+.plate{border-radius:10px;padding:12px;display:flow-root;overflow-x:auto}
+/* shared card parts */
+.card{width:280px;max-width:calc(100vw - 8px);border-radius:10px;overflow:hidden;background:#171b21;border:1.5px solid var(--c);box-shadow:0 6px 18px rgba(0,0,0,.45);font:400 12px/1.4 system-ui,"Segoe UI",Arial,sans-serif;color:#f3f5f7;text-align:left}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;padding:6px 10px;background:var(--c);color:var(--f);font-weight:700;font-size:13px}
+.bar svg{flex:none}.bar .t{flex:1 1 auto;min-width:0}
+.hero{padding:10px 11px;gap:4px 9px}.hero .t{font:800 17px/1.15 system-ui,"Segoe UI",Arial,sans-serif}
+.pls{display:flex;gap:4px;margin-left:auto}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:99px;background:rgba(0,0,0,.2);font-size:11px;font-weight:600;white-space:nowrap}
+.kb{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:17px;height:17px;padding:0 4px;border-radius:4px;font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
+.b{padding:8px 10px 9px;display:grid;gap:7px}
+.w{display:block;color:#fff;font-size:13px}
+.rs{color:#c3cbd3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mu{color:#9aa3ad}
+.sc{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.sc span{font:700 9.5px/1 system-ui;text-align:center;padding:4px 0 3px;border-radius:2px;background:rgba(255,255,255,.07);color:#8a939d}
+.sc .go{background:#2fa862;color:#fff}.sc .sl{background:#f0932b;color:#1b1f25}.sc .ng{background:#e5484d;color:#fff}
+.bd{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;background:rgba(255,255,255,.16);font:800 10px/1 system-ui;color:#fff}
+.nr{display:flex;align-items:center;gap:6px}.nr b{flex:1;color:#fff;font-weight:600}.nr .dv{font-weight:700;color:#fff}
+.gp{display:grid;grid-template-columns:1fr auto;gap:3px 8px;font-size:11px}.gp .wn{color:#ffc861;font-weight:600}
+.tr{grid-column:1/3;height:5px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}.tr i{display:block;height:100%}
+.enf{display:flex;gap:7px;padding:7px 10px;background:rgba(229,72,77,.15);border-top:1px solid rgba(229,72,77,.45);color:#ffb3b5}.enf svg{flex:none;margin-top:1px;color:#e5484d}
+.ft{display:flex;align-items:center;gap:7px;padding:5px 10px;background:#13171c;border-top:1px solid rgba(255,255,255,.07);color:#9aa3ad;font-size:11px}.ft .mr{margin-left:auto}
+/* A: tiles */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.tile{background:#222830;border-radius:6px;padding:6px 7px;min-width:0}
+.tl{display:flex;align-items:center;gap:5px;font-size:10.5px;color:#9aa3ad}
+.tv{font:700 19px/1.15 system-ui;color:#fff;margin-top:3px;font-variant-numeric:tabular-nums}
+.ts{font-size:11px;color:#dfe4e9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.te{font-size:10.5px;font-weight:700;color:#aab3bd}.go-t{color:#4fd184}.ng-t{color:#ff7b7f}
+/* B: rows */
+.row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;background:#222830;border-left:4px solid var(--s)}
+.rl{flex:1;min-width:0}.rl b{display:block;font-size:12.5px;color:#fff;line-height:1.2}.rl small{font-size:10.5px;color:#aab3bd}
+.rv{font:700 15px/1 system-ui;color:#fff;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* C: radar */
+.rd{display:grid;grid-template-columns:104px 1fr;gap:8px;align-items:center}
+.ky{display:grid;gap:6px}.ky div{display:flex;align-items:center;gap:6px;font-size:11.5px}.ky b{flex:1;font-weight:600;color:#fff;min-width:0}.ky span{color:#aab3bd;white-space:nowrap}
+.mk{flex:none;width:9px;height:9px}.mk.ci{border-radius:50%}.mk.bar{height:3px;width:11px}
+.rel{display:grid;grid-template-columns:auto 1fr;gap:5px 7px;align-items:center}
+.sl5{grid-column:1/3;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}.sl5 i{height:6px;border-radius:1px}.sl5 i.on{outline:1.5px solid #fff;outline-offset:1px}
+/* legends */
+.lg{width:290px;max-width:calc(100vw - 24px);padding:9px 11px 10px;border-radius:10px;background:rgba(23,27,33,.96);border:1px solid #39414b;box-shadow:0 2px 10px rgba(0,0,0,.4);font:400 12px/1.4 system-ui,"Segoe UI",Arial,sans-serif;color:#f3f5f7;text-align:left;display:grid;gap:8px}
+.lg button{font:inherit;color:inherit;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:6px;cursor:pointer}
+.lg button:hover{background:rgba(255,255,255,.14)}
+.lg button:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
+.lh{display:flex;align-items:center;gap:6px}.lh>div{flex:1;min-width:0}.lh b{display:block;font-size:13.5px}.lh small{color:#9aa3ad;font-size:11px}.lh button{width:26px;height:26px;flex:none;padding:0}
+.tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:3px}.tabs button{height:28px;font-weight:800;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}.chips button{padding:4px 10px;font-size:11.5px;font-weight:600}
+.lg button[aria-pressed=true]{background:#e8ebee;color:#171b21;border-color:#e8ebee}
+.rp{display:grid;grid-template-columns:repeat(4,1fr);border-radius:5px;overflow:hidden}.rp span{font:700 10px/1 system-ui;text-align:center;padding:9px 0}
+.ls{display:grid;gap:6px}.ls>div{display:flex;flex-wrap:wrap;align-items:center;gap:4px}.ls em{font:700 10.5px/1 system-ui;font-style:normal;margin-right:2px}
+.ch{font-size:11px;padding:2px 7px;border-radius:99px;background:rgba(255,255,255,.08)}
+.cnt{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cnt div{background:rgba(255,255,255,.06);border-radius:6px;padding:6px 9px;font-size:11px;color:#c3cbd3}.cnt b{display:block;font:800 22px/1.1 system-ui}
+.kl{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px}.kl.one{grid-template-columns:1fr}.kl div{display:flex;align-items:center;gap:7px;font-size:11.5px;min-width:0}
+.sw{flex:none;display:block}.sw.b,.sw.h{width:20px;height:10px;border-radius:2px}.sw.l{width:20px;border-top:3px solid}.sw.d{width:20px;border-top:2px dashed}
+.sw.o{width:11px;height:11px;border-radius:50%;border:2px solid;margin:0 4px}.sw.p{width:10px;height:10px;border-radius:50%;margin:0 5px}
+.kr{display:flex;flex-wrap:wrap;gap:5px 14px;color:#9aa3ad;font-size:11px;padding-top:8px;border-top:1px solid rgba(255,255,255,.09)}.kr span{display:flex;align-items:center;gap:5px}
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:2px}.mini i{height:6px;border-radius:2px}
+.lg .nt{font-size:11px;color:#9aa3ad}
+</style></head>
+<body><main>
+<h1>Placement Card and Legend Options</h1>
+<p>Same data and the same 280 px card and 290 px legend as the brief, rebuilt so the verdict reads first and the rest reads in a second. Pick a verdict, a card and a legend, then move the mouse over the map.</p>
+<div class="ctl" id="ctl"></div>
+<div id="stage" class="map"></div>
+<p class="cp">Sample data for Tracked Vehicle, showing the Relief, Obstacles and Tactical Features sections.</p>
+<h2>Cards</h2>
+<p>Letters are neutral on every card, so colour only ever means GO, SLOW-GO or NO-GO. The Cover green no longer competes with the Suitable green.</p>
+<div class="gal" id="gc" data-h="gc"></div>
+<h2>Legends</h2>
+<p>Both keep the mode strip, the layer switch and the P, S and G keys. They differ in how much stays on screen.</p>
+<div class="gal" id="gl" data-h="gl"></div>
+</main>
+<script>
+(function(){'use strict';
+var D=document;
+function h(t,c){var e=D.createElement(t);if(c)e.className=c;for(var i=2;i<arguments.length;i++){var k=arguments[i];if(k!=null&&k!==false)e.append(k)}return e}
+var NS='http://www.w3.org/2000/svg';
+function sv(t,a,p){var e=D.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+function ic(ps,s,w){var v=sv('svg',{width:s,height:s,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':w||2,'stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'});ps.forEach(function(d){sv('path',{d:d},v)});return v}
+var TRI=['M12 9v4','M12 17h.01','M10.3 3.9L1.9 18.4a1.9 1.9 0 0 0 1.7 2.8h16.8a1.9 1.9 0 0 0 1.7-2.8L13.7 3.9a1.9 1.9 0 0 0-3.4 0z'];
+var OCT=['M12 8v4','M12 16h.01','M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z'];
+var TV='Tracked Vehicle';
+var V={
+ok:{c:'#1c8247',f:'#fff',t:'Suitable Position',i:['M5 12l5 5L20 7'],g:'go',w:'Open Land',r:'Open, firm ground with low vegetation.',p:0},
+near:{c:'#e9a526',f:'#1b1f25',t:'Adjacent to Canal',i:TRI,g:'ng',w:'Distributary / Minor Canal',r:'Even a small canal stops tracks: find a bridge or culvert.',p:0},
+caution:{c:'#e08a1e',f:'#1b1f25',t:'SLOW-GO Terrain',i:TRI,g:'sl',w:'Irrigated Cropland',r:'Watercourses every few hundred metres: tracks cross each one slowly.',p:0,gap:[120,150,'tight']},
+partial:{c:'#d9622b',f:'#1b1f25',t:'Partially Obstructed',i:OCT,g:'ng',w:'Embankment / Bund over 2 m',r:'An earth bank over 2 m stops tracks: look for a ramp or a road cut.',p:34,fix:1,good:1,gap:[0,300,'overlap']},
+'in':{c:'#d63a3f',f:'#fff',t:'Unsuitable Position',i:['M18 6L6 18','M6 6l12 12'],g:'ng',w:'Permanent Water',r:'Water all year round: needs a bridge, ferry or boats to cross.',p:100,fix:1,good:1,enf:1}
+};
+function st_(v){return 'border-color:'+v.c+';--c:'+v.c+';--f:'+v.f}
+function sc(g){return h('div','sc',h('span',g==='go'?'go':'','GO'),h('span',g==='sl'?'sl':'','SLOW-GO'),h('span',g==='ng'?'ng':'','NO-GO'))}
+function kb(k){return h('span','kb',k)}
+function bd(l){return h('span','bd',l)}
+function bar(v,big){var b=h('div','bar'+(big?' hero':''),ic(v.i,big?26:17),h('span','t',v.t)),p=h('span','pls');
+ if(v.p)p.append(h('span','pill',v.p+'% Inside'));if(v.fix)p.append(h('span','pill',kb('S'),'Quick Fix'));if(p.firstChild)b.append(p);return b}
+function nr(v){if(!v.good)return null;var a=ic(['M12 20V5','M6 11l6-6 6 6'],14,2.4);a.style.transform='rotate(135deg)';
+ return h('div','nr',a,h('span','mu','Nearest'),h('b','','Open Land'),h('span','dv','140 m SE'))}
+function gp(v){if(!v.gap)return null;var g=v.gap,t=h('div','tr'),f=h('i');f.style.width=Math.min(100,g[0]/g[1]*100)+'%';f.style.background=g[2]==='tight'?'#ee7b30':'#e5484d';t.append(f);
+ return h('div','gp',h('span','mu','Intermediate Gap Rule'),h('span','wn',g[2]==='overlap'?'Overlaps Next Platoon':g[0]+' of '+g[1]+' m'),t)}
+function en(v){return v.enf?h('div','enf',ic(OCT,14),h('span','','Enforce Mode: A click here is refused. Hold Shift and click to place it anyway.')):null}
+function ft(){return h('div','ft',kb('G'),'Full Ground Brief',h('span','mr',TV))}
+function why(v){return h('div','',h('b','w',v.w),h('div','rs',v.r))}
+
+/* A: Glance Tiles */
+function cA(v){var r=h('div','card');r.style.cssText=st_(v);
+ function tl(l,n,val,s,e,cl){return h('div','tile',h('div','tl',bd(l),n),h('div','tv',val),h('div','ts',s),h('div','te '+cl,e))}
+ r.append(bar(v),h('div','b',why(v),sc(v.g),
+  h('div','tiles',tl('R','Relief','4°','Gentle','Mid-Slope',''),tl('O','Obstacle','180 m','Canal NW','NO-GO','ng-t'),tl('T','Tactical','640 m','N-5 Highway S','Tankable','go-t')),
+  nr(v),gp(v)),en(v),ft());return r}
+
+/* B: Signal Rows */
+function cB(v){var r=h('div','card');r.style.cssText=st_(v);
+ function rw(l,n,s,val,bad){var e=h('div','row');e.style.setProperty('--s',bad?'#e5484d':'#2fa862');e.append(bd(l),h('div','rl',h('b','',n),h('small','',s)),h('div','rv',val));return e}
+ r.append(bar(v,1),h('div','b',why(v),sc(v.g),
+  rw('R','Slope Gentle','Mid-Slope, 212 m','4°',0),rw('O','Canal, Man-Made','NO-GO for '+TV,'180 m NW',1),rw('T','N-5 Highway','Tankable, Class 70','640 m S',0),
+  nr(v),gp(v)),en(v),ft());return r}
+
+/* C: Radar (sqrt scale, rings at 250 m and 1 km) */
+function cC(v){var r=h('div','card');r.style.cssText=st_(v);
+ var C=52,R=47,s=sv('svg',{width:104,height:104,viewBox:'0 0 104 104','aria-hidden':'true'});
+ [R,R*.5].forEach(function(q,i){sv('circle',{cx:C,cy:C,r:q,fill:'rgba(255,255,255,.04)',stroke:'rgba(255,255,255,.3)','stroke-dasharray':i?'2 3':'0'},s)});
+ sv('text',{x:C,y:9,'text-anchor':'middle','font-size':9,fill:'#9aa3ad','font-family':'system-ui'},s).textContent='N';
+ var P=[['sq','#e5484d',180,315,'Canal','180 m NW'],['ci','#2fa862',140,135,'Open Land','140 m SE'],['ci','#5aa9e6',250,270,'Tube Well','250 m W'],['bar','#ffffff',640,180,'N-5 Highway','640 m S']],ky=h('div','ky');
+ P.forEach(function(p){var a=p[3]*Math.PI/180,q=R*Math.sqrt(Math.min(p[2],1000)/1000),x=C+q*Math.sin(a),y=C-q*Math.cos(a);
+  if(p[0]==='ci')sv('circle',{cx:x,cy:y,r:4.5,fill:p[1],stroke:'#171b21'},s);else if(p[0]==='sq')sv('rect',{x:x-4,y:y-4,width:8,height:8,fill:p[1],stroke:'#171b21'},s);else sv('rect',{x:x-5,y:y-1.5,width:10,height:3,fill:p[1]},s);
+  var m=h('i','mk '+p[0]);m.style.background=p[1];ky.append(h('div','',m,h('b','',p[4]),h('span','',p[5])))});
+ sv('circle',{cx:C,cy:C,r:4.5,fill:v.c,stroke:'#fff','stroke-width':1.5},s);
+ var sl=h('div','sl5');['#efe3c4','#dcc48f','#c4a063','#a47a3c','#7a4f1f'].forEach(function(c,i){var e=h('i',i===1?'on':'');e.style.background=c;sl.append(e)});
+ r.append(bar(v),h('div','b',why(v),sc(v.g),h('div','rd',s,ky),h('div','rel',bd('R'),h('div','',h('b','w','4° Gentle'),h('span','mu','Mid-Slope, 212 m')),sl),gp(v)),en(v),ft());return r}
+
+/* legends */
+var MODES=[
+{l:'Dismounted Force',n:[4,17],c:['Permanent Water','Snow / Ice / Glacier','Canal'],s:['Seasonal Water / Flood Zone','Wetland / Marsh','Mangrove'],i:['M15 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0z','M12 8l-2 6','M9 11l3-3 3 3 2 0','M10 14l-2 7','M10 14l3 3v4']},
+{l:'Wheeled Vehicle',n:[20,15],c:['Permanent Water','Seasonal Water / Flood Zone','Wetland / Marsh'],s:['Tree Cover','Built-Up Area','Moderate Slope (15 to 30°)'],i:['M2 7h11v8H2z','M13 10h4l3 3v2h-7','M8 17.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z','M18 17.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z']},
+{l:TV,n:[11,19],c:['Permanent Water','Wetland / Marsh','Mangrove'],s:['Built-Up Area','Seasonal Water / Flood Zone','Moderate Slope (15 to 30°)'],i:['M5 14h14a3 3 0 0 1 0 6H5a3 3 0 0 1 0-6z','M8 14l1.5-4h6l1 4','M15 11.5h6','M7 17h.01','M12 17h.01','M17 17h.01']}];
+var LN={G:'Going',R:'Slope',O:'Obstacles',T:'Routes',B:'Borders',C:'Cover'};
+var LK={
+R:'b:#efe3c4:Level (0 to 3°)|b:#dcc48f:Gentle (3 to 7°)|b:#c4a063:Sloping (7 to 15°)|b:#a47a3c:Moderate (15 to 30°)|b:#7a4f1f:Steep (over 30°)|l:#ffffff:Crest Line',
+O:'b:#2f7fbf:Natural|b:#7a5cc9:Man-Made|h:#c4383c:Reinforcing, Placed by a Force|o:#ffffff:Crossing Point',
+T:'l:#ffd24a:MSR|l:#7bd88f:Tankable Road|l:#c9ced4:Non-Tankable Road|d:#c9a46b:Track|d:#e8e8e8:Railway|o:#5aa9e6:Helipad or LZ|p:#5aa9e6:Water Source|p:#ffffff:Pass',
+B:'b:#9a8f86:Built-Up Area|d:#ff6b6f:IB or LoC|d:#c9ced4:District or Tehsil|b:rgba(255,255,255,.3):1:50k Sheet Grid',
+C:'b:#1f8a5a:Concealment Good|b:#4fae83:Concealment Fair|b:#a6d4bd:Concealment Poor|h:#9a8f86:Cover (Bund / Wall / Nullah)'};
+var RP=[['Suitable','#2ea05a','#fff'],['Marginal','#f1d646','#1b1f25'],['SLOW-GO','#f39c12','#1b1f25'],['NO-GO','#d63031','#fff']];
+function sw(k,c){var e=h('i','sw '+k);if(k==='b'||k==='p')e.style.background=c;else if(k==='h')e.style.background='repeating-linear-gradient(135deg,'+c+' 0 3px,rgba(0,0,0,.5) 3px 5px)';else if(k==='o')e.style.borderColor=c;else e.style.borderTopColor=c;return e}
+var LS={m:2,l:'G',o:1},fx=null;
+function lg(B){var m=MODES[LS.m],r=h('div','lg'+(B&&!LS.o?' min':''));
+ function bt(t,lab,f){var b=h('button','',t);b.type='button';b.setAttribute('aria-label',lab);b.dataset.f=(B?'B':'A')+lab;b.onclick=function(){fx=[b.closest('[data-h]').dataset.h,b.dataset.f];f()};return b}
+ function mv(d){LS.m=(LS.m+d+MODES.length)%MODES.length;paint()}
+ var hd=h('div','lh',ic(m.i,20,1.8),h('div','',h('b','',m.l),h('small','','Mode '+(LS.m+1)+' of '+MODES.length+', Auto From Symbol')),bt('‹','Previous Mode',function(){mv(-1)}),bt('›','Next Mode',function(){mv(1)}));
+ if(B)hd.append(bt(LS.o?'▾':'▸',LS.o?'Collapse Legend':'Expand Legend',function(){LS.o=LS.o?0:1;paint()}));
+ r.append(hd);
+ if(B&&!LS.o){var mi=h('div','mini');RP.forEach(function(x){var i=h('i');i.style.background=x[1];mi.append(i)});r.append(mi);return r}
+ var sw6=h('div',B?'chips':'tabs');sw6.setAttribute('role','group');sw6.setAttribute('aria-label','Layer');
+ Object.keys(LN).forEach(function(k){var b=bt(B?LN[k]:k,'Show '+LN[k]+' Layer',function(){LS.l=k;paint()});b.setAttribute('aria-pressed',String(LS.l===k));sw6.append(b)});
+ r.append(sw6);
+ if(!B)r.append(h('div','nt',h('b','','Layer: '),LN[LS.l]));
+ if(LS.l==='G'){
+  var rp=h('div','rp');RP.forEach(function(x){var s=h('span','',x[0]);s.style.background=x[1];s.style.color=x[2];rp.append(s)});
+  r.append(rp,h('div','nt','Marginal: Within 250 m of NO-GO'));
+  if(B){var n1=h('div','',h('b','',m.n[0]),'NO-GO Types'),n2=h('div','',h('b','',m.n[1]),'SLOW-GO Types');n1.firstChild.style.color='#ff8a8d';n2.firstChild.style.color='#ffb766';r.append(h('div','cnt',n1,n2))}
+  else{var ls=h('div','ls');[['NO-GO',m.n[0],m.c,'#ff8a8d'],['SLOW-GO',m.n[1],m.s,'#ffb766']].forEach(function(g){var row=h('div','',h('em','',g[0]+' '+g[1]));row.firstChild.style.color=g[3];g[2].forEach(function(x){row.append(h('span','ch',x))});row.append(h('span','ch mu','+'+(g[1]-3)+' More'));ls.append(row)});r.append(ls)}
+ }else{
+  var kl=h('div','kl'+(B?' one':''));LK[LS.l].split('|').forEach(function(s){var p=s.split(':');kl.append(h('div','',sw(p[0],p[1]),h('span','',p.slice(2).join(':'))))});r.append(kl)}
+ r.append(h('div','kr',h('span','',kb('P'),'Change Mode'),h('span','',kb('S'),'Quick Fix'),h('span','',kb('G'),'Ground Brief')));
+ return r}
+
+/* page */
+var SEL={v:'caution',c:0,l:0},BT=[];
+var CB=[cA,cB,cC],CN=[['Glance Tiles','Three big numbers and almost no reading. Best for scanning while moving.'],['Signal Rows','Loud verdict, then three rows with a red or green edge and the distance on the right.'],['Radar','Shows where things are instead of describing them. Rings mark 250 m and 1 km.']];
+var LN2=[['Tabbed Key','Letter tabs switch the layer. Lists the first three NO-GO and SLOW-GO types.'],['Pill That Opens','Collapses to one line. Open, it uses layer names and shows type counts only.']];
+function seg(label,items,key){var w=h('div','seg',h('span','',label)),g=h('div','');items.forEach(function(it){var b=h('button','',it[1]);b.type='button';b.dataset.k=key;b.dataset.v=it[0];b.onclick=function(){SEL[key]=it[0];paint()};g.append(b);BT.push(b)});w.append(g);$('#ctl').append(w)}
+function $(s){return D.querySelector(s)}
+seg('Verdict',[['ok','Suitable'],['near','Adjacent'],['caution','SLOW-GO'],['partial','Partial'],['in','Unsuitable']],'v');
+seg('Card',[[0,'Glance Tiles'],[1,'Signal Rows'],[2,'Radar']],'c');
+seg('Legend',[[0,'Tabbed Key'],[1,'Pill That Opens']],'l');
+function opt(n,m,on){return h('div','opt'+(on?' on':''),h('div','cap',h('b','',m[0]),h('span','',m[1])),h('div','plate map',n))}
+var st=$('#stage'),tip=h('div','tip'),dock=h('div','dock'),hint=h('div','hint','Move the mouse over the map'),gc=$('#gc'),gl=$('#gl'),tw=0,th=0,rc=null;
+dock.dataset.h='stage';st.append(hint,tip,dock);
+function fill(){tip.replaceChildren(CB[SEL.c](V[SEL.v]));tw=tip.offsetWidth;th=tip.offsetHeight}
+function on(){rc=st.getBoundingClientRect();tip.style.display='block';hint.style.display='none';fill()}
+st.addEventListener('pointerenter',on);
+st.addEventListener('pointerleave',function(){rc=null;tip.style.display='none';hint.style.display=''});
+st.addEventListener('pointermove',function(e){if(!rc)on();
+ var x=e.clientX-rc.left,y=e.clientY-rc.top,W=rc.width,H=rc.height,touch=e.pointerType==='touch';
+ tip.style.visibility=e.target.closest('.dock')?'hidden':'visible';
+ var px=x+18+tw>W-4?x-18-tw:x+18,py=touch?y-th-26:(y+18+th>H-4?y-18-th:y+18);
+ tip.style.transform='translate('+Math.max(4,px)+'px,'+Math.max(4,py)+'px)'},{passive:true});
+function paint(){
+ BT.forEach(function(b){b.setAttribute('aria-pressed',String(SEL[b.dataset.k])===b.dataset.v)});
+ var v=V[SEL.v];
+ dock.replaceChildren(lg(SEL.l===1));
+ gc.replaceChildren.apply(gc,CB.map(function(f,i){return opt(f(v),CN[i],SEL.c===i)}));
+ gl.replaceChildren.apply(gl,[lg(false),lg(true)].map(function(n,i){return opt(n,LN2[i],SEL.l===i)}));
+ if(rc)fill();
+ if(fx){var n=D.querySelector('[data-h="'+fx[0]+'"] [data-f="'+fx[1]+'"]');if(n)n.focus();fx=null}
+}
+paint();
+})();
+</script></body></html>
