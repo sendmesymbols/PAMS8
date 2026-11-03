@@ -41,8 +41,10 @@ Keep the finalized wording, only in Title Case. Military terms set by the user: 
 ### 1.2 GROTBC (approved direction)
 
 The data is prepared **and** presented by **GROTBC**, the staff terrain headings everyone knows:
-**G** Ground · **R** Relief · **O** Obstacles · **T** Tactical Features · **B** Boundaries & Built-Up ·
-**C** Cover & Concealment. The same rules drive the pipeline and the card. Obstacles are typed by **origin**
+**G** Ground · **R** Roads, Tracks & Railway Network · **O** Obstacles · **T** Terrain · **B** Built-Up Areas ·
+**C** Cover, Camouflage & Concealment (detailed in `GROTBC.md` at the repo root; relabelled 2026-11-03: the first
+build read R as Relief and T as Tactical Features, so relief now sits under G and roads, rail, crossings and
+airfields under R). The same rules drive the pipeline and the card. Obstacles are typed by **origin**
 (Natural, Man-Made, Reinforcing = placed by a force) and **kind**, with an **effect per force**: what stops a tank
 need not stop infantry. Goal: the planner needs no other source about the ground.
 
@@ -52,7 +54,7 @@ need not stop infantry. Goal: the planner needs no other source about the ground
 | --- | --- | --- | --- |
 | 1 | Load class code (40A1, 70A2) | Probably a military route class; exact convention unconfirmed | Read from the data as `<class><A all-weather / F fair-weather><1 single / 2 double lane>`: highways are almost all 70A2, motorways 80A2, the 3–4 m roads A1, F1 roads mostly unmetalled. Only the number is used; an `F` road counts as unmetalled. Flagged "inferred" in `rules.json grotbc.loadClassCode`. |
 | 2 | Tankable threshold | Other: see 8 | **Class 60+** = tankable for every main tank; **50–59** = Al-Zarrar only; below 50 = non-tankable; no class = "class not recorded" (never shown as tankable). Width under 3.5 m is never tankable. HET (tank on a transporter) needs class 70. |
-| 3 | What counts as an MSR | Motorway, highway, main road, defence road, broad-gauge railway, **plus metalled roads of class 40 and above** | MSR bit in the `route` layer; `m: 1` on road and railway lines in features. |
+| 3 | What counts as an MSR | Motorway, highway, main road, defence road, broad-gauge railway, **plus metalled roads of class 50 and above** (first answer was 40; at 40 the commonest class, 40A1, made 63 % of road fragments MSR, so it was raised on 2026-11-03). `rules.yaml msr.namedRoutes` takes an official list when there is one | MSR bit in the `route` layer; `m: 1` on road and railway lines in features. |
 | 4 | Water sources on the card | **Nearest of each kind** (tube well, well, spring, tank) | Water points in `features/` by kind (tube well, lined / unlined well, spring, perennial / seasonal tank, karez, hand pump, overhead tank); `rules.json grotbc.water.kinds` lists the card's kinds. |
 | 5 | Sensitive layers | **In the main bundle** | Corps AOR (admin.geojson, `sensitive: true`), Corps ops lines, cantonments, posts, bunkers, trenches, forts, border posts, air bases with their units: all in the main bundle. LICENSES.txt marks the whole bundle restricted. |
 | 6 | Card while drawing | **Three sections for the mode, G for the full brief** | Section 3 below. |
@@ -93,19 +95,22 @@ that matter most for the mode**, in GROTBC order, from this table (bold in the a
 | Mode | Sections while drawing | What the mode needs (data) |
 | --- | --- | --- |
 | Dismounted Force | **G O C** | going; water, snow, AP mines; cover within 100 m |
-| Wheeled Vehicle | **G O T** | firm ground; all water, bunds, railways; road within 1 km, crossings by class |
-| Tracked Vehicle | **R O T** | slope under 30°; canals by width, bunds over 2 m, AT mines; tankable route and crossings |
-| Gun Position | **R T C** | slope under 7° (3° ideal); road within 500 m; concealment from the air |
-| Air Defence Site | **R T C** | dominant ground; access road; open arcs (low vegetation) |
-| Helicopter Landing Site | **G R O** | firm, no dunes; slope under 7°; no wires within 100 m, no trees, no built-up |
-| Signals / EW Site | **R T B** | high ground; access road; away from power lines |
-| Amphibious | **O T G** | water is SLOW-GO; entry and exit points |
-| Mountain / Pack Transport | **R O T** | steep slope SLOW-GO, snow SLOW-GO; pack tracks, passes |
-| Over-Snow | **G R O** | snow cover; slope; obstacles |
-| Road-Bound Wheeled | **T O B** | on a metalled road (within 50 m); crossings by class |
-| Rail-Bound | **T B O** | on a railway; stations |
-| Surface Vessel | **O T B** | water; crossings; banks |
+| Wheeled Vehicle | **G R O** | firm ground; road within 1 km, crossings by class; all water, bunds, railways |
+| Tracked Vehicle | **G R O** | slope under 30°; tankable route and crossings; canals by width, bunds over 2 m, AT mines |
+| Gun Position | **G R C** | slope under 7° (3° ideal); road within 500 m; concealment from the air |
+| Air Defence Site | **G R C** | dominant ground; access road; open arcs (low vegetation) |
+| Helicopter Landing Site | **G O T** | firm, no dunes, slope under 7°; no wires within 100 m; no trees, no built-up |
+| Signals / EW Site | **G R O** | high ground; access road; away from power lines |
+| Amphibious | **G O T** | water is SLOW-GO; entry and exit banks |
+| Mountain / Pack Transport | **G R O** | steep slope SLOW-GO, snow SLOW-GO; pack tracks, passes |
+| Over-Snow | **G O T** | snow cover and slope; obstacles; terrain class |
+| Road-Bound Wheeled | **R O B** | on a metalled road (within 50 m); crossings by class; built-up on the route |
+| Rail-Bound | **R O B** | on a railway; stations; level crossings |
+| Surface Vessel | **G O R** | water and banks; crossings |
 | Gr Based | **G O B** | water |
+
+(Remapped 2026-11-03 from the first table, which used R = Relief and T = Tactical Features: slope and high ground
+are now G, roads, rail, crossings and airfields are R, vegetation and landform are T.)
 
 Keep NEAREST and INTERMEDIATE GAP RULE as they are today; they sit after the three sections. The INSIDE section
 stays for lines and areas.
@@ -121,12 +126,12 @@ follow the pointer.
 
 | Section | Lines | Source (bundle v2) |
 | --- | --- | --- |
-| **G Ground** | Surface (class label, firm / soft) · Going for the mode (scale) · Monsoon going · X-country speed (later) | `class` + `rules.json classes[c].kind`; `wet` layer; profile nogo / caution |
-| **R Relief** | Elevation · Slope (degrees + band: Level 0–3, Gentle 3–7, Sloping 7–15, Moderate 15–30, Steep over 30) · Landform (Crest / Upper slope / Mid-slope / Lower slope / Valley floor / Flat) · High ground nearby (spot height, distance, direction, height above) | `elev_hi`/`elev_lo` (slope from a 3×3 gradient); `landform`; features `spot_height` / `trig_station` (`e` = elevation) |
-| **O Obstacles** | Nearest obstacle: name · origin · kind · effect for the mode · distance / direction · Nearest crossing (bridge class, foot bridge, ford / ferry) · Plan obstacles (live, from drawn minefields / obstacle lines) | class scan with `rules.json classes[c].origin/kind`; crossing classes 39–45, 50; features crossings; plan graphics |
-| **T Tactical Features** | MSR (name / number, class, Tankable / Non-Tankable, distance) · Route at the point · Water: nearest of each kind · Helipad / airfield · Rail (line, station) · Chokepoints (pass, tunnel, headworks) | `route` layer; features `road` / `railway` lines (`n`, `r`, `c`, `k`, `m`); water kinds 1–9; air 40–47; rail 50; 55–58 |
-| **B Boundaries & Built-Up** | Nearest BUA (name, size class, population) · Border (distance to IB / LoC) · Admin (tehsil, district, province) · Sheet (1:50k number) | features 110–114; `boundaries.geojson`; `admin.geojson`; `sheets.json` |
-| **C Cover & Concealment** | Concealment (None / Poor / Fair / Good + what gives it) · Cover (… + nearest bund / wall / nullah) · Hide area (later) | `cc` layer (concealment = v >> 4, cover = v & 15); class `grotbc` contains `C` |
+| **G Ground** | Surface (class label, firm / soft) · Going for the mode (scale) · Monsoon going · Relief: Elevation, Slope (degrees + band: Level 0–3, Gentle 3–7, Sloping 7–15, Moderate 15–30, Steep over 30), Landform (Crest / Upper slope / Mid-slope / Lower slope / Valley floor / Flat), High ground nearby (spot height, distance, direction, height above) · Water: nearest of each kind · Soil and bearing (when the soil layer is added) | `class` + `rules.json classes[c].kind`; `wet` layer; profile nogo / caution; `elev_hi`/`elev_lo` (slope from a 3×3 gradient); `landform`; features `spot_height` / `trig_station` (`e` = elevation); water kinds 1–9 |
+| **R Roads, Tracks & Railway Network** | MSR (name / number, from – to, length, class, Tankable / Non-Tankable, distance) · Route at the point (type, class, condition, seasonal closure) · Crossings by class (bridge, foot bridge, ford / ferry) · Rail (line, station) · Airfield / helipad · Chokepoints (pass, tunnel, headworks) | `route` layer; `routes.json` (from, to, km, load, closed, cond); features `road` / `railway` lines (`n`, `r`, `c`, `k`, `m`, `x`, `cn`, `sl`); crossing classes 39–45, 50; air 40–47; rail 50; 55–58 |
+| **O Obstacles** | Nearest obstacle: name · origin · kind · effect for the mode · distance / direction · Plan obstacles (live, from drawn minefields / obstacle lines) · Temporary / seasonal: flood-prone and waterlogged ground, roads closed by season, landslide sites | class scan with `rules.json classes[c].origin/kind`; `wet` layer; features road `x` / `sl`; plan graphics |
+| **T Terrain** | Terrain class (plain / hilly / mountainous from slope and landform; desert, riverine, marsh, urban) · Vegetation (type, density) · Climate (when the climate layer is added) | `class`; `landform`; `veg`-based `cc`; `rules.json classes[c].grotbc` contains `T` |
+| **B Built-Up Areas** | Nearest BUA (name, size class, population) · Public infrastructure nearby (hospital, police, grid station…) · Border (distance to IB / LoC) · Admin (tehsil, district, province) · Sheet (1:50k number) | features 110–114 and 70–77; `boundaries.geojson`; `admin.geojson`; `sheets.json` |
+| **C Cover, Camouflage & Concealment** | Four lines: Cover from direct fire · from indirect fire · Concealment from ground observation · from aerial observation (None / Poor / Fair / Good + what gives it) · Nearest bund / wall / nullah | `rules.json grotbc.coverSplit.byClass[class]` = `[direct, indirect, ground, aerial]` (a proposal for the owner to correct); `cc` layer for the local density (concealment = v >> 4, cover = v & 15); class `grotbc` contains `C` |
 
 Water line format (decision 4): `Tube Well 250 m W · Spring 3 km N · Well 600 m SE · Tank 1.2 km E` (only kinds
 found within the search radius; nearest first).
@@ -196,10 +201,11 @@ B `#9a8f86`, C `#1f8a5a`. Obstacle origin chips: Natural `#2f7fbf`, Man-Made `#7
 ## 5 · Legend next steps (proposal; confirm)
 
 The proposal mock-up added a **GROTBC layer switch** to the legend: six letter buttons G R O T B C under the mode
-strip, each repainting the overlay and the key: G going ramp (today's), R slope bands (Level / Gentle / Sloping /
-Moderate / Steep + crest line), O obstacles by origin (Natural / Man-Made / Reinforcing + crossing points),
-T routes (MSR, tankable road, non-tankable road, track, railway, helipad / LZ, water source, pass), B built-up and
-boundaries (BUA, IB / LoC, district / tehsil, 1:50k sheet grid), C concealment (Good / Fair / Poor) and cover.
+strip, each repainting the overlay and the key: G going ramp (today's) with slope bands (Level / Gentle / Sloping /
+Moderate / Steep + crest line) and water sources, R routes (MSR, tankable road, non-tankable road, track, railway,
+helipad / LZ, pass, crossings), O obstacles by origin (Natural / Man-Made / Reinforcing + crossing points),
+T terrain class and landform, B built-up and boundaries (BUA, IB / LoC, district / tehsil, 1:50k sheet grid),
+C concealment (Good / Fair / Poor) and cover.
 The G key joins P and S in the key list. Not yet approved: ask before building.
 
 ---
@@ -218,12 +224,18 @@ block naming the layers and files.
 | Landform | `landform/…` | 1 valley floor, 2 lower slope, 3 flat, 4 mid-slope, 5 upper slope, 6 crest / ridge; 255 nodata |
 | Cover & concealment | `cc/…` | concealment = v >> 4, cover = v & 15; 0 none, 1 poor, 2 fair, 3 good; 255 nodata |
 | Wet season | `wet/…` | 0 normal, 1 flood-prone, 2 seasonal water, 3 riverbed / floodplain, 4 waterlogged / marsh, 5 permanent water; overviews MAX |
+| Terrain type (T) | `terrain/…` | 1 Plain, 2 Hilly, 3 Solid (rock / scree / stony bed), 4 Marshy, 5 Wet (open water), 6 Desert, 7 Mountainous (15°+), 8 Built-up, 9 Snow / ice; 255 nodata; overviews = majority. Rules in `rules.yaml terrainType` (starting proposal), shipped in `rules.json grotbc.terrainType` |
+| Soil (G) | `soil/…` | USDA texture of the top 30 cm, 1 Sand … 12 Clay (`rules.json grotbc.layers.soil`); `rules.json grotbc.soilBearing[code]` = `{dry, wet, note}` going. SoilGrids 2.0, ~250 m, modelled; 255 nodata |
+| Huts (B, construction) | `hut/…` | bits 0–6 permanent (kacha / mud) huts per km², bit 7 temporary huts nearby; 255 nodata |
+| Climate (T) | `climate/climate.json` + `climate.bin` | 252 × 204 cells of 5′ (WorldClim 1970–2000 normals); int16 layers: monthly `tmin` / `tmax` (0.1 °C), `prec` (mm), `wind` (0.1 m/s), plus `tmean`, `prec_year`, `monsoon_pct`, `frost_months`, `hot_months`, `wet_months`. Row 0 = north |
 | Elevation | `elev_hi/…`, `elev_lo/…` | metres = hi × 256 + lo − 500; hi 255 = nodata; overviews = mean |
 | Features | `features/10/{x}/{y}.json` + `features/index.json` | per z10 tile: `p` = `[kind, x, y, attrs?]`, `l` = `[kind, [x0, y0, x1, y1, …], attrs?]`, tile-local units 0…4095 (Web Mercator, y down). Kinds and attribute keys in `index.json` |
 | Admin | `admin.geojson` | province / district / tehsil / corps_aor polygons (WGS84, simplified) |
 | Boundaries | `boundaries.geojson` | IB, LoC, LAC, province, corps operational lines |
 | Map sheets | `sheets.json` | `[sheet number, w, s, e, n]` for 50k / 250k / 500k / 1m |
-| Doctrine numbers | `rules.json grotbc` | `tanks`, `tankable`, `msr`, `water`, `loadClassCode`, `layers` (codebooks) |
+| Named detail (features) | `features/` kinds 130–146 | mosque, graveyard / grave (single graves only when named), temple, church, eidgah, telephone / TV booster, post office, telephone exchange, market, bus stand, mill, stadium, toll plaza, waterfall, lake (named, or 0.25 km² and over; `a` = km²), glacier (named), river reach (`s` bed, `dp` / `dm` depth, `cu` current, `ws` wet span, `dc` discharge). Places carry `p` (official population where recorded), `wp` (WorldPop 2020 people nearest this place) and, for cities, district HQs and towns, `wc` (people within 12 / 8 / 4 km); `pv` province |
+| Named routes | `routes.json` | `roads` (by road number, else name) and `rails` (by name): `id`, `name` / `no` + `segs`, `from`, `to` (when the name reads "A - B"), `km` (sum of the mapped lines, geodesic), `type`, `msr`, `load` `[min, max]`, `closed` (seasons as recorded), `cond`, `bbox` `[w, s, e, n]`. Routes under 1 km that are neither MSR nor closed are left out |
+| Doctrine numbers | `rules.json grotbc` | `tanks`, `tankable`, `msr`, `water`, `loadClassCode`, `layers` (codebooks), `coverSplit` (`fields`, `byClass`) |
 
 Class codes 18–50: 18 gentle slope 3–7°, 19 sloping 7–15°, 20 canal, 21 distributary / minor, 22 drain,
 23 irrigated cropland, 24 embankment over 2 m, 25 bund 1–2 m, 26 cutting, 27 cliff / escarpment / broken edge,
@@ -235,6 +247,12 @@ cropland under power lines, 49 wall / fence, 50 level crossing.
 **Known limits of the data** (say them in the card, never hide them): load class is recorded on about 31 % of
 road segments ("class not recorded" otherwise); field channels and power lines are mapped unevenly (none near
 Lahore); slope comes from a surface model, so cities and tree lines read a little steep; tank MLCs are estimates.
+Road **condition** is recorded on about 4 % of road segments, **seasonal closure** on about 540 and **landslide
+sites** on 71 (the NCGDB fields `CONDITION`, `CLOSED_DUE`, `NO_OF_SLID`), so "no closure" means "none recorded". Road
+and rail lines also cover the Indian-administered side, because the data extent is the whole relief-map sheet.
+Not in the NCGDB or the open data used: schools, government buildings and unnamed markets (77 markets, no
+names), building construction type beyond hut symbols (`hut`), and any soil survey (`soil` is a 250 m model).
+`wp` / `wc` are WorldPop estimates, not census counts; huts are mapped symbols, not a building survey.
 
 ---
 

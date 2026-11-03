@@ -87,7 +87,7 @@ export interface TerrainClassDef {
   label: string;
   /** Optional one-sentence note on this ground, shown when no profile-specific reason is given. */
   note?: string;
-  /** Bundle v2: GROTBC heading letters (e.g. "OC" = Obstacles + Cover & concealment). */
+  /** Bundle v2: GROTBC heading letters (G Ground, R Roads/tracks/rail, O Obstacles, T Terrain, B Built-up, C Cover/concealment), e.g. "OC". */
   grotbc?: string;
   /** Bundle v2: obstacle origin. */
   origin?: 'natural' | 'man_made' | string;

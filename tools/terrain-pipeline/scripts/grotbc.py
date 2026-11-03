@@ -76,37 +76,47 @@ UNMETALLED_WORDS = ("un_metal", "unmetal", "un-metal", "jeep", "fair weather", "
 SHINGLE_WORDS = ("shingl", "gravel")
 
 # ----------------------------------------------------------------------------- feature kinds (features.json)
-# code -> (key, label, GROTBC letter). Codes are stable; the engine reads them from features/index.json.
+# code -> (key, label, GROTBC letters). Codes are stable; the engine reads them from features/index.json.
+# Letters follow GROTBC.md: G Ground (relief, soil, hydrology), R Roads / tracks / railway network (incl. crossings,
+# airfields), O Obstacles, T Terrain, B Built-up areas (settlements, public infrastructure, installations, borders),
+# C Cover & concealment.
 KINDS = {
-    1: ("tube_well", "Tube well", "T"), 2: ("well_lined", "Well (lined)", "T"), 3: ("well_unlined", "Well (unlined)", "T"),
-    4: ("spring", "Spring", "T"), 5: ("tank_perennial", "Tank (perennial)", "T"), 6: ("tank_seasonal", "Tank (non-perennial)", "T"),
-    7: ("karez", "Karez (perennial)", "T"), 8: ("hand_pump", "Hand pump", "T"), 9: ("tank_overhead", "Overhead tank", "T"),
-    20: ("bridge", "Bridge", "O"), 21: ("bridge_iron", "Iron bridge", "O"), 22: ("foot_bridge", "Foot bridge", "O"),
-    23: ("aqueduct", "Aqueduct", "O"), 24: ("siphon", "Siphon", "O"), 25: ("ferry", "Ferry", "O"), 26: ("ford", "Ford", "O"),
-    27: ("boat_bridge", "Boat bridge", "O"), 28: ("tunnel", "Road tunnel", "T"), 29: ("rail_tunnel", "Railway tunnel", "T"),
-    30: ("viaduct", "Viaduct", "O"), 31: ("culvert", "Culvert", "O"), 32: ("canal_tunnel", "Canal tunnel", "O"),
-    40: ("helipad", "Helipad", "T"), 41: ("airfield", "Airfield", "T"), 42: ("air_base", "Air base", "T"),
-    43: ("landing_strip", "Landing strip", "T"), 44: ("airport", "Airport", "T"), 45: ("landing_ground", "Landing ground", "T"),
-    46: ("runway", "Runway", "T"), 47: ("road_runway", "Road runway", "T"),
-    50: ("rail_station", "Railway station", "T"),
-    55: ("pass", "Pass", "TR"), 56: ("dam", "Dam", "TO"), 57: ("barrage", "Barrage", "TO"), 58: ("headworks", "Headworks", "TO"),
-    60: ("watch_tower", "Watch tower", "T"), 61: ("post", "Piquet / post", "T"), 62: ("bunker", "Bunker", "TC"),
-    63: ("trench", "Trench", "TC"), 64: ("fort", "Fort", "T"), 65: ("border_post", "Border post", "B"),
-    66: ("cantonment", "Cantonment", "B"), 67: ("boundary_pillar", "Boundary pillar", "B"), 68: ("wireless_station", "Wireless station", "T"),
-    69: ("firing_range", "Firing range", "B"), 70: ("hospital", "Hospital", "T"), 71: ("bhu", "Basic health unit", "T"),
-    72: ("dispensary", "Dispensary", "T"), 73: ("vet_hospital", "Veterinary hospital", "T"), 74: ("grid_station", "Grid station", "T"),
-    75: ("rest_house", "Rest house", "T"), 76: ("petrol_pump", "Petrol pump", "T"), 77: ("police_station", "Police station", "T"),
-    78: ("mast", "Mast", "O"), 79: ("wind_tower", "Wind tower", "O"), 80: ("oil_gas_well", "Oil / gas well", "T"),
-    81: ("oil_tank", "Oil tank", "T"),
-    85: ("cave", "Cave", "TC"), 86: ("mine", "Mine", "TC"), 87: ("mine_shaft", "Mine shaft", "TC"),
+    1: ("tube_well", "Tube well", "G"), 2: ("well_lined", "Well (lined)", "G"), 3: ("well_unlined", "Well (unlined)", "G"),
+    4: ("spring", "Spring", "G"), 5: ("tank_perennial", "Tank (perennial)", "G"), 6: ("tank_seasonal", "Tank (non-perennial)", "G"),
+    7: ("karez", "Karez (perennial)", "G"), 8: ("hand_pump", "Hand pump", "G"), 9: ("tank_overhead", "Overhead tank", "G"),
+    20: ("bridge", "Bridge", "RO"), 21: ("bridge_iron", "Iron bridge", "RO"), 22: ("foot_bridge", "Foot bridge", "RO"),
+    23: ("aqueduct", "Aqueduct", "O"), 24: ("siphon", "Siphon", "O"), 25: ("ferry", "Ferry", "RO"), 26: ("ford", "Ford", "RO"),
+    27: ("boat_bridge", "Boat bridge", "RO"), 28: ("tunnel", "Road tunnel", "R"), 29: ("rail_tunnel", "Railway tunnel", "R"),
+    30: ("viaduct", "Viaduct", "RO"), 31: ("culvert", "Culvert", "RO"), 32: ("canal_tunnel", "Canal tunnel", "O"),
+    40: ("helipad", "Helipad", "R"), 41: ("airfield", "Airfield", "R"), 42: ("air_base", "Air base", "R"),
+    43: ("landing_strip", "Landing strip", "R"), 44: ("airport", "Airport", "R"), 45: ("landing_ground", "Landing ground", "R"),
+    46: ("runway", "Runway", "R"), 47: ("road_runway", "Road runway", "R"),
+    50: ("rail_station", "Railway station", "R"),
+    55: ("pass", "Pass", "RG"), 56: ("dam", "Dam", "GO"), 57: ("barrage", "Barrage", "GO"), 58: ("headworks", "Headworks", "GO"),
+    60: ("watch_tower", "Watch tower", "B"), 61: ("post", "Piquet / post", "B"), 62: ("bunker", "Bunker", "C"),
+    63: ("trench", "Trench", "C"), 64: ("fort", "Fort", "B"), 65: ("border_post", "Border post", "B"),
+    66: ("cantonment", "Cantonment", "B"), 67: ("boundary_pillar", "Boundary pillar", "B"), 68: ("wireless_station", "Wireless station", "B"),
+    69: ("firing_range", "Firing range", "B"), 70: ("hospital", "Hospital", "B"), 71: ("bhu", "Basic health unit", "B"),
+    72: ("dispensary", "Dispensary", "B"), 73: ("vet_hospital", "Veterinary hospital", "B"), 74: ("grid_station", "Grid station", "B"),
+    75: ("rest_house", "Rest house", "B"), 76: ("petrol_pump", "Petrol pump", "R"), 77: ("police_station", "Police station", "B"),
+    78: ("mast", "Mast", "O"), 79: ("wind_tower", "Wind tower", "O"), 80: ("oil_gas_well", "Oil / gas well", "B"),
+    81: ("oil_tank", "Oil tank", "B"),
+    85: ("cave", "Cave", "C"), 86: ("mine", "Mine", "B"), 87: ("mine_shaft", "Mine shaft", "B"),
     88: ("deserted_site", "Deserted site", "B"), 89: ("air_target", "Air firing / bombing target", "B"),
-    90: ("km_road", "KM stone (road)", "T"), 91: ("km_rail", "KM stone (railway)", "T"), 92: ("km_canal", "KM stone (canal)", "T"),
-    100: ("trig_station", "Trig station", "R"), 101: ("spot_height", "Spot height", "R"), 102: ("bench_mark", "Bench mark", "R"),
+    90: ("km_road", "KM stone (road)", "R"), 91: ("km_rail", "KM stone (railway)", "R"), 92: ("km_canal", "KM stone (canal)", "O"),
+    100: ("trig_station", "Trig station", "G"), 101: ("spot_height", "Spot height", "G"), 102: ("bench_mark", "Bench mark", "G"),
     110: ("city", "City", "B"), 111: ("district_hq", "District HQ", "B"), 112: ("town", "Town", "B"),
     113: ("village_imp", "Important village", "B"), 114: ("village", "Village", "B"),
     120: ("tomb", "Tomb", "B"), 121: ("kiln", "Kiln", "B"), 122: ("chimney", "Factory chimney", "B"),
+    # 2026-11-03: named detail for B, R, O (Services_Point, Reservior, Glacier_Polygon, River_Pakmap)
+    130: ("mosque", "Mosque", "B"), 131: ("graveyard_pt", "Graveyard / grave", "BC"), 132: ("temple", "Temple", "B"),
+    133: ("church", "Church", "B"), 134: ("eidgah", "Eidgah", "B"), 135: ("telecom_booster", "Telephone / TV booster", "B"),
+    136: ("post_office", "Post office", "B"), 137: ("telephone_exchange", "Telephone / telegraph office", "B"),
+    138: ("market", "Market", "B"), 139: ("bus_stand", "Bus stand", "R"), 140: ("mill", "Mill / factory", "B"),
+    141: ("stadium", "Stadium", "B"), 142: ("toll_plaza", "Toll plaza", "R"), 143: ("waterfall", "Waterfall", "GO"),
+    144: ("lake", "Lake / reservoir", "GO"), 145: ("glacier", "Glacier", "GT"), 146: ("river_reach", "River reach (bed, depth, current)", "GO"),
     # lines (features.json "l")
-    200: ("road", "Road", "T"), 201: ("railway", "Railway", "T"), 202: ("canal", "Canal", "O"), 203: ("river", "River", "O"),
+    200: ("road", "Road", "R"), 201: ("railway", "Railway", "R"), 202: ("canal", "Canal", "O"), 203: ("river", "River", "GO"),
 }
 KIND_CODE = {v[0]: k for k, v in KINDS.items()}
 FEATURE_Z = 10
@@ -170,11 +180,21 @@ def pakmap_road(row: dict, tk: dict, msr_cfg: dict) -> tuple[str, int, bool, dic
     tier = tier_of(load, width, tk)
     defence = _s(row.get("DEFENCE_RD")).lower() == "yes"
     metalled = kind in ("metalled", "metalled_local", "main_road", "highway", "motorway")
-    msr = (kind in msr_cfg.get("types", [])) or (defence and msr_cfg.get("defenceRoad", True)) or \
-          (metalled and load is not None and load >= int(msr_cfg.get("metalledMinClass", 40)))
+    named = {n.strip().lower() for n in (msr_cfg.get("namedRoutes") or [])}
+    official = bool(named) and (_s(row.get("NAME")).lower() in named or _s(row.get("ROAD_NO")).lower() in named)
+    msr = (kind in msr_cfg.get("types", [])) or (defence and msr_cfg.get("defenceRoad", True)) or official or \
+          (metalled and load is not None and load >= int(msr_cfg.get("metalledMinClass", 50)))
+    # seasonal / temporary closure, condition and landslide sites recorded on the road (few segments carry them)
+    closed = _s(row.get("CLOSED_DUE"))
+    closed = closed if len(closed) > 1 and closed.lower() not in ("none", "nan") else ""
+    cond = _s(row.get("CONDITION"))
+    cond = cond if cond.lower() not in ("", "none", "nan") else ""
+    slides = _clean(row.get("NO_OF_SLID"))
     attrs = {k: v for k, v in (("n", _s(row.get("NAME"))), ("r", _s(row.get("ROAD_NO"))), ("t", kind),
                                ("c", _s(row.get("CLASSIFICA")).upper()), ("w", width), ("k", tier),
-                               ("d", 1 if defence else 0), ("m", 1 if msr else 0)) if v not in ("", None, 0)}
+                               ("d", 1 if defence else 0), ("m", 1 if msr else 0),
+                               ("x", closed), ("cn", cond[:24]),
+                               ("sl", slides if isinstance(slides, int) else None)) if v not in ("", None, 0)}
     return kind, tier, msr, attrs
 
 
@@ -187,7 +207,7 @@ def topo_road(row: dict, tk: dict, msr_cfg: dict) -> tuple[str, int, bool]:
     defence = _s(row.get("DEFENCE_RD")).lower() == "yes"
     metalled = kind in ("metalled", "main_road", "highway", "motorway")
     msr = (kind in msr_cfg.get("types", [])) or defence or \
-          (metalled and load is not None and load >= int(msr_cfg.get("metalledMinClass", 40)))
+          (metalled and load is not None and load >= int(msr_cfg.get("metalledMinClass", 50)))
     return kind, tier, msr
 
 
@@ -538,7 +558,11 @@ POINT_RULES = [
      "7": "bench_mark", "8": "bench_mark", "9": "bench_mark"}, {"e": "Elevation", "n": "Name"}),
     ("Place_Names", "CATEGORY", {"Major City": "city", "City": "city", "Distt City": "district_hq", "Town": "town",
      "ImpVillage": "village_imp", "Village": "village", "Post": "border_post"},
-     {"n": "NAME", "p": "POPULATION", "d": "DISTT_NAME", "h": "TEH_NAME", "e": "ELEVATION"}),
+     {"n": "NAME", "p": "POPULATION", "d": "DISTT_NAME", "h": "TEH_NAME", "e": "ELEVATION", "pv": "Province"}),
+    ("Services_Point", "Type_of__Svc_Point", {"33": "mosque", "23": "graveyard_pt", "12": "graveyard_pt", "22": "graveyard_pt",
+     "51": "temple", "15": "church", "20": "eidgah", "49": "telecom_booster", "50": "telecom_booster", "37": "post_office",
+     "39": "telephone_exchange", "48": "telephone_exchange", "32": "market", "11": "bus_stand", "70": "mill", "65": "stadium",
+     "71": "toll_plaza", "57": "waterfall"}, {"n": "Name"}, {"22"}),       # single graves (22) only when named
     ("Railway_Station", "Type_of_Rly_Station", {"1": "rail_station"}, {"n": "Name"}),
     ("KM_Stone", "Type_of_KM_Stone", {"3": "km_road", "4": "km_road", "2": "km_rail", "1": "km_canal"}, {"n": "Name"}),
     ("Boundry_Piller", "Type_of_BdryPiller", {"1": "boundary_pillar", "2": "boundary_pillar"}, {"n": "Name"}),
@@ -564,7 +588,7 @@ LINE_POINT_RULES = [   # lines kept as one point (their middle)
 
 def _clean(v):
     s = _s(v)
-    if s in ("", "None", "nan", "0", "0.0") or set(s) <= {"-", " ", "c"}:
+    if s in ("", "None", "nan", "0", "0.0", "<Null>", "Unknown") or set(s) <= {"-", " ", "c"}:
         return None
     try:
         f = float(s)
@@ -594,13 +618,14 @@ class TileWriter:
         return (int(min(QUANT - 1, max(0, round((x - minx) / self.size * QUANT)))),
                 int(min(QUANT - 1, max(0, round((maxy - y) / self.size * QUANT)))))
 
-    def point(self, kind: str, x: float, y: float, attrs: dict) -> None:
+    def point(self, kind: str, x: float, y: float, attrs: dict) -> dict:
         tx, ty = self._tile(x, y)
         qx, qy = self._q(tx, ty, x, y)
         k = KIND_CODE[kind]
         a = {key: val for key, val in attrs.items() if val is not None}
         self.points[(tx, ty)].append([k, qx, qy, a] if a else [k, qx, qy])
         self.counts[k] += 1
+        return a
 
     def line(self, kind: str, geom, attrs: dict) -> None:
         import shapely
@@ -650,6 +675,11 @@ class TileWriter:
                            "w": "width (m)", "k": "load-class tier (route codebook)", "m": "main supply route",
                            "dp": "depth (m)", "b": "bank height (m)", "g": "gauge", "s": "surface / structure / size",
                            "rw": "runway size", "rd": "runway direction", "rv": "river", "f": "formation",
+                           "x": "seasonal / temporary closure as recorded (e.g. Jun-Oct, Snow)", "cn": "recorded road condition",
+                           "sl": "landslide sites on the road segment", "wp": "estimated population (WorldPop 2020, share nearest this place)",
+                           "wc": "WorldPop 2020 people within 12 km (city) / 8 km (district HQ) / 4 km (town) of the place",
+                           "pv": "province", "a": "area (km2)", "cu": "current (m/s)", "ws": "wet span of a river reach",
+                           "dc": "discharge (cusecs)", "dm": "maximum depth (m)", "bk": "bank height",
                            "pc": "parent corps", "u1": "formation", "u2": "squadrons", "u3": "combat aircraft",
                            "u4": "transport aircraft", "u5": "helicopters", "u6": "UAV"},
                  "kinds": {str(k): {"key": v[0], "label": v[1], "grotbc": v[2], "count": self.counts.get(k, 0)}
@@ -657,6 +687,241 @@ class TileWriter:
                  "tiles": len(keys)}
         (out / "index.json").write_text(json.dumps(index, indent=1, ensure_ascii=False), encoding="utf-8")
         return n
+
+
+def _geodesic_km(geom) -> float:
+    """Length of a Web Mercator line in km: planar length x cos(latitude) of its centre (fragments are short)."""
+    if geom is None or geom.is_empty:
+        return 0.0
+    lat = 2 * math.atan(math.exp(geom.centroid.y / 6378137.0)) - math.pi / 2
+    return geom.length * math.cos(lat) / 1000.0
+
+
+class RouteIndex:
+    """routes.json: roads aggregated by road number (else by name) and railways by name, each with its from-to
+    (when the name reads "A - B"), length, load class range, MSR flag, seasonal closures and recorded condition.
+    The card reads it for "MSR: N-5, Karachi - Hyderabad, 163 km, class 70, tankable"."""
+
+    LIMIT_KM = 1.0          # shorter, non-MSR, never-closed routes are left out (a village lane is not a route)
+    PLACEHOLDER = re.compile(r"^(untitled|unnamed|unknown|no name)\b|^(road|rd|path|track|street|lane)$", re.I)
+
+    def __init__(self) -> None:
+        self.roads: dict[str, dict] = {}
+        self.rails: dict[str, dict] = {}
+
+    @staticmethod
+    def _ends(name: str | None) -> tuple[str | None, str | None]:
+        parts = [p.strip() for p in re.split(r"\s+(?:-|–|to)\s+", name or "") if p.strip()]
+        return (parts[0], parts[-1]) if len(parts) >= 2 else (None, None)
+
+    def _entry(self, table: dict, key: str, geom) -> dict:
+        x0, y0, x1, y1 = geom.bounds
+        lon0, lat0 = merc_to_lnglat(x0, y0)
+        lon1, lat1 = merc_to_lnglat(x1, y1)
+        e = table.get(key)
+        if e is None:
+            e = table[key] = {"km": 0.0, "frag": 0, "segs": defaultdict(float), "types": defaultdict(float),
+                              "loads": [], "msr": 0, "closed": set(), "cond": defaultdict(int),
+                              "bbox": [lon0, lat0, lon1, lat1]}
+        b = e["bbox"]
+        b[0], b[1], b[2], b[3] = min(b[0], lon0), min(b[1], lat0), max(b[2], lon1), max(b[3], lat1)
+        return e
+
+    def add_road(self, a: dict, geom) -> None:
+        key = a.get("r") or a.get("n")
+        if not key:
+            return
+        e = self._entry(self.roads, key, geom)
+        km = _geodesic_km(geom)
+        e["km"] += km
+        e["frag"] += 1
+        e["no"] = a.get("r")
+        e["segs"][a.get("n") or ""] += km
+        e["types"][a.get("t") or ""] += km
+        load, _fair = parse_load_class(a.get("c"))
+        if load is not None:
+            e["loads"].append(load)
+        e["msr"] |= 1 if a.get("m") else 0
+        if a.get("x"):
+            e["closed"].add(a["x"])
+        if a.get("cn"):
+            e["cond"][a["cn"]] += 1
+
+    def add_rail(self, a: dict, geom) -> None:
+        key = a.get("n")
+        if not key:
+            return
+        e = self._entry(self.rails, key, geom)
+        e["km"] += _geodesic_km(geom)
+        e["frag"] += 1
+        e["types"][a.get("t") or ""] += _geodesic_km(geom)
+        e["msr"] |= 1 if a.get("m") else 0
+
+    def _rows(self, table: dict, road: bool) -> list[dict]:
+        rows = []
+        for key, e in table.items():
+            if e["km"] < self.LIMIT_KM and not e["msr"] and not e["closed"]:
+                continue
+            segs = {n: k for n, k in e["segs"].items() if n}
+            by_number = road and e.get("no") is not None and key == e["no"]
+            name = key if not by_number else (max(segs, key=segs.get) if segs else None)
+            frm, to = self._ends(key if not by_number else None)
+            if not by_number:
+                # a placeholder ("???", "Untitled Path") or a bare generic name ("Road", "Link Road") joins unrelated
+                # lines: drop it unless it reads "A - B" or its lines stay within ~3 degrees
+                span = max(e["bbox"][2] - e["bbox"][0], e["bbox"][3] - e["bbox"][1])
+                if not re.search(r"[A-Za-z]{3}", key) or self.PLACEHOLDER.search(key) or (not (frm and to) and span > 3.0):
+                    continue
+            row = {"id": key, "km": round(e["km"], 1), "frag": e["frag"],
+                   "type": max(e["types"], key=e["types"].get) or None, "msr": e["msr"],
+                   "bbox": [round(v, 2) for v in e["bbox"]]}
+            if by_number:
+                row["no"] = key
+                row["segs"] = [n for n, _k in sorted(segs.items(), key=lambda kv: -kv[1])[:8]]
+            else:
+                row["name"] = name
+            if frm and to:
+                row["from"], row["to"] = frm, to
+            if e["loads"]:
+                row["load"] = [min(e["loads"]), max(e["loads"])]
+            if e["closed"]:
+                row["closed"] = sorted(e["closed"])
+            if e["cond"]:
+                row["cond"] = max(e["cond"], key=e["cond"].get)
+            rows.append(row)
+        rows.sort(key=lambda r: -r["km"])
+        return rows
+
+    def write(self, path: Path) -> None:
+        roads, rails = self._rows(self.roads, True), self._rows(self.rails, False)
+        doc = {"format": "pams-grotbc-routes", "version": 1,
+               "note": "km = geodesic length of the NCGDB lines under that road number / name; from, to = the two ends "
+                       "of a name written 'A - B'; load = lowest and highest recorded load class on it; closed = "
+                       "seasonal closures as recorded; cond = commonest recorded condition; bbox = [w, s, e, n] WGS84. "
+                       "Length is the sum of the mapped lines, not a surveyed route length.",
+               "roads": roads, "rails": rails}
+        path.write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+        log.info("routes: %d roads (%d MSR), %d railways -> %s", len(roads), sum(r["msr"] for r in roads), len(rails), path)
+
+
+SETTLEMENT_KINDS = {"city": 25_000, "district_hq": 15_000, "town": 8_000, "village_imp": 4_000, "village": 2_500}   # radius m
+WITHIN_M = {"city": 12_000, "district_hq": 8_000, "town": 4_000}       # radius of the `wc` total
+WORLDPOP = Path("work/raw/worldpop/pak_ppp_2020_constrained.tif")
+
+
+def polygon_features(g: str, tw: "TileWriter", aoi) -> None:
+    """Named lakes and reservoirs, named glaciers and river reaches with their bed / depth / current notes: one point each."""
+    import shapely
+
+    def centroids(layer, cols):
+        gs, f = _read(g, layer, cols)
+        ok = ~shapely.is_missing(gs)
+        cen = np.full((len(gs), 2), np.nan)
+        cen[ok] = shapely.get_coordinates(shapely.centroid(gs[ok]))
+        area = np.zeros(len(gs))
+        area[ok] = shapely.area(gs[ok])
+        keep = ok & _in_aoi(np.nan_to_num(cen), aoi)
+        lat = np.arctan(np.sinh(np.nan_to_num(cen[:, 1]) / ORIGIN_SHIFT * math.pi))
+        return f, cen, area * np.cos(lat) ** 2 / 1e6, keep
+
+    f, cen, km2, keep = centroids("Reservior", ["Category", "Name"])
+    n0 = 0
+    for i in np.nonzero(keep)[0]:
+        cat = _s(f["Category"][i])
+        name = _clean(f["Name"][i])
+        if not cat.lower().startswith("lake") or (name is None and km2[i] < 0.25):
+            continue
+        if name and name.lower() in ("pond", "fish farm"):
+            continue
+        tw.point("lake", cen[i, 0], cen[i, 1], {"n": name, "t": cat.replace("_", " "), "a": round(float(km2[i]), 2)})
+        n0 += 1
+    log.info("features: Reservior -> %d lakes", n0)
+
+    f, cen, km2, keep = centroids("Glacier_Polygon", ["Name"])
+    n0 = 0
+    for i in np.nonzero(keep)[0]:
+        if _clean(f["Name"][i]):
+            tw.point("glacier", cen[i, 0], cen[i, 1], {"n": _clean(f["Name"][i]), "a": round(float(km2[i]), 2)})
+            n0 += 1
+    log.info("features: Glacier_Polygon -> %d named glaciers", n0)
+
+    detail = {"s": "BEDCONDITI", "dp": "DEPTH_m", "cu": "CURRENT_MS", "ws": "WETSPAN_M", "dc": "DISCHARGE_", "w": "WIDTH_m",
+              "dm": "DEPTHMAX_m", "bk": "BANKHT_M"}
+    f, cen, km2, keep = centroids("River_Pakmap", ["NAME"] + list(detail.values()))
+    n0 = 0
+    for i in np.nonzero(keep)[0]:
+        a = {k: _clean(f[c][i]) for k, c in detail.items()}
+        if not any(v is not None for k, v in a.items() if k != "w"):
+            continue
+        a["n"] = _clean(f["NAME"][i])
+        tw.point("river_reach", cen[i, 0], cen[i, 1], a)
+        n0 += 1
+    log.info("features: River_Pakmap -> %d river reaches with detail", n0)
+
+
+def assign_population(settle: list, tif: Path) -> None:
+    """Share every WorldPop person (2020, constrained, ~100 m) out to the NEAREST named place within that place's
+    radius, so nothing is counted twice; stored as `wp` (rounded to 10) on the place. A big city is split among the
+    named parts inside it. Returns nothing when the raster is missing."""
+    if not tif.exists() or not settle:
+        log.warning("population: %s or places missing, skipped", tif)
+        return
+    import rasterio
+    from scipy.spatial import cKDTree
+
+    def xyz(lon, lat):
+        lon, lat = np.radians(lon), np.radians(lat)
+        return np.column_stack([np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)]) * 6371008.8
+
+    px = np.array([[s[0], s[1]] for s in settle])
+    lon = np.degrees(px[:, 0] / 6378137.0)
+    lat = np.degrees(np.arctan(np.sinh(px[:, 1] / 6378137.0)))
+    tree = cKDTree(xyz(lon, lat))
+    radius = np.array([SETTLEMENT_KINDS[s[3]] for s in settle], dtype="float64")
+    with rasterio.open(tif) as d:
+        a = d.read(1)
+        nod = d.nodata
+        tr = d.transform
+    ok = np.isfinite(a) & (a > 0)
+    if nod is not None:
+        ok &= a != nod
+    rr, cc = np.nonzero(ok)
+    vals = a[rr, cc].astype("float64")
+    plon = tr.c + (cc + 0.5) * tr.a
+    plat = tr.f + (rr + 0.5) * tr.e
+    dist, idx = tree.query(xyz(plon, plat), k=1, workers=-1)
+    take = dist <= radius[idx]
+    total = np.bincount(idx[take], weights=vals[take], minlength=len(settle))
+    n0 = 0
+    for (x, y, attrs, kind), t in zip(settle, total):
+        if t >= 5:
+            attrs["wp"] = int(round(t / 10.0) * 10) or 10
+            n0 += 1
+    log.info("population: %.1f M people in the raster, %.1f M assigned to %d places (%.0f %%)", vals.sum() / 1e6,
+             vals[take].sum() / 1e6, n0, 100 * vals[take].sum() / vals.sum())
+
+    # `wp` splits a city among the named parts inside it, so towns and cities also get `wc`: everybody within a
+    # fixed radius of the place (WorldPop summed on ~1 km cells), which is what "how big is this town" means.
+    cell = 0.01
+    ci = np.floor((plon + 180.0) / cell).astype(np.int64)
+    cj = np.floor((plat + 90.0) / cell).astype(np.int64)
+    key = ci * 100000 + cj
+    uk, inv = np.unique(key, return_inverse=True)
+    cpop = np.bincount(inv, weights=vals)
+    clon = (uk // 100000 + 0.5) * cell - 180.0
+    clat = (uk % 100000 + 0.5) * cell - 90.0
+    ctree = cKDTree(xyz(clon, clat))
+    n1 = 0
+    for (x, y, attrs, kind), pt in zip(settle, xyz(lon, lat)):
+        r = WITHIN_M.get(kind)
+        if r is None:
+            continue
+        near = ctree.query_ball_point(pt, r)
+        tot = float(cpop[near].sum()) if near else 0.0
+        if tot >= 50:
+            attrs["wc"] = int(round(tot / 100.0) * 100) or 100
+            n1 += 1
+    log.info("population: %d cities / towns with a within-radius total", n1)
 
 
 def _in_aoi(xy: np.ndarray, aoi) -> np.ndarray:
@@ -673,7 +938,10 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
     g = str(gdb)
     tk, msr_cfg = rules["tankable"], rules.get("msr", {})
 
-    for layer_name, field, kinds, attrs in POINT_RULES:
+    settle: list[tuple[float, float, dict, str]] = []          # (x, y, attrs, kind) of every place, for the population share
+    for rule in POINT_RULES:
+        layer_name, field, kinds, attrs = rule[:4]
+        named_only = rule[4] if len(rule) > 4 else set()         # type values kept only when they have a name
         cols = ([field] if field else []) + list(attrs.values())
         gs, f = _read(g, layer_name, cols)
         if not len(gs):
@@ -689,9 +957,17 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
                 kind = kinds.get(_s(f[field][i]))
             if not kind:
                 continue
-            tw.point(kind, cen[i, 0], cen[i, 1], {k: _clean(f[c][i]) for k, c in attrs.items()})
+            a = {k: _clean(f[c][i]) for k, c in attrs.items()}
+            if named_only and _s(f[field][i]).replace(".0", "") in named_only and not a.get("n"):
+                continue
+            a = tw.point(kind, cen[i, 0], cen[i, 1], a)
+            if kind in SETTLEMENT_KINDS:
+                settle.append((cen[i, 0], cen[i, 1], a, kind))
             n0 += 1
         log.info("features: %s -> %d points", layer_name, n0)
+
+    polygon_features(g, tw, aoi)
+    assign_population(settle, WORLDPOP)
 
     for layer_name, field, kinds, attrs, where in LINE_POINT_RULES:
         gs, f = _read(g, layer_name, [field] + list(attrs.values()), where=where)
@@ -713,7 +989,9 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
 
     # named lines: main roads (with load class and MSR), railways, canals, rivers
     tol = 15.0
-    pcols = ["TYPE", "CLASSIFICA", "DEFENCE_RD", "WIDTH_M", "CATEGORY", "SURFACE", "NAME", "ROAD_NO"]
+    pcols = ["TYPE", "CLASSIFICA", "DEFENCE_RD", "WIDTH_M", "CATEGORY", "SURFACE", "NAME", "ROAD_NO",
+             "CONDITION", "CLOSED_DUE", "NO_OF_SLID"]
+    routes = RouteIndex()
     gs, f = _read(g, "Roads_updated_2016_Pakmap", pcols)
     n0 = 0
     for i, geom in enumerate(gs):
@@ -722,7 +1000,9 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
         kind, tier, msr, a = pakmap_road({c: f[c][i] for c in pcols}, tk, msr_cfg)
         if not (msr or tier or a.get("n") or a.get("r")):
             continue
-        tw.line("road", shapely.simplify(geom, tol), a)
+        simple = shapely.simplify(geom, tol)
+        tw.line("road", simple, a)
+        routes.add_road(a, geom)
         n0 += 1
     log.info("features: %d named / classed / MSR road lines", n0)
     gs, f = _read(g, "Railways_Pakmap", ["NAME", "GAUGE", "RLY_TYPE", "CATEGORY", "STATUS"])
@@ -730,8 +1010,9 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
         if geom is None:
             continue
         k = pakmap_rail({c: f[c][i] for c in f})
-        tw.line("railway", shapely.simplify(geom, tol), {"n": _clean(f["NAME"][i]), "t": k,
-                                                          "m": 1 if k in ("rail_bg_single", "rail_bg_double") else 0})
+        rail = {"n": _clean(f["NAME"][i]), "t": k, "m": 1 if k in ("rail_bg_single", "rail_bg_double") else 0}
+        tw.line("railway", shapely.simplify(geom, tol), rail)
+        routes.add_rail(rail, geom)
     gs, f = _read(g, "Canal_Pakmap", ["NAME", "TYPE_OF_CA", "WIDTH_M", "DEPTH_M", "RIGHTBANKH", "LEFTBANKHT", "CATEGORY"])
     for i, geom in enumerate(gs):
         if geom is None:
@@ -748,6 +1029,7 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
                                                         "s": _clean(f["CONDITION"][i]), "w": parse_width_m(f["WIDTH_m"][i])})
     n = tw.write(out / "features")
     log.info("features: %d tiles at z%d -> %s", n, FEATURE_Z, out / "features")
+    routes.write(out / "routes.json")
 
 
 def _geojson(gs_ll, props: list[dict], tol_deg: float) -> list[dict]:

@@ -232,6 +232,9 @@ def main() -> int:
         sid = src["id"]
         if args.only and sid not in args.only:
             continue
+        if src.get("fetched_by"):
+            log.info("%s: fetched by %s, skipped here", sid, src["fetched_by"])
+            continue
         files = expand_files(src)
         log.info("%s: %d file(s) [%s]", sid, len(files), src["licence"])
         file_hashes: dict[str, str] = {}

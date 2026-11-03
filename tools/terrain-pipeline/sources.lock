@@ -129,3 +129,41 @@ sources:
       - name: pakistan.osm.pbf
         url: https://download.geofabrik.de/asia/pakistan-261028.osm.pbf   # dated file (verified 2026-10-29, 157 MB); never -latest, so a rerun gets identical data
     sha256: d16fd9834f0a25e41f3aa4cada17358fa5e8140649c926d9087c82e04e057c82
+
+  # ── GROTBC additions (2026-11-03): soil, climate, population ───────────────────────────────────────
+  - id: soilgrids
+    name: ISRIC SoilGrids 2.0 — sand and clay (0-5, 5-15, 15-30 cm, mean)
+    version: "SoilGrids 2.0, files.isric.org/soilgrids/latest"
+    licence: "CC-BY-4.0 (ISRIC states SoilGrids 2.0 is CC BY 4.0; confirm on data.isric.org)"
+    attribution: "Poggio et al. 2021, SOIL 7, 217-240; ISRIC - World Soil Information"
+    landing: https://www.isric.org/explore/soilgrids        # verify
+    fetched_by: scripts/fetch_soil.py        # windowed read of the remote VRTs (not whole files), written to work/raw/soilgrids/
+    sha256: 336b17f9ab2316b6479ccfae7c05a12e400ddbc692156927a9535676d436b2af
+
+  - id: worldclim
+    name: WorldClim 2.1 historical climate 1970-2000, 5 arc-minute (tmin, tmax, prec, wind)
+    version: "2.1 (5m)"
+    licence: "WorldClim terms: provided for research and related use; check them before any non-research redistribution"
+    attribution: "Fick, S.E. and Hijmans, R.J., 2017. WorldClim 2: new 1-km spatial resolution climate surfaces for global land areas. Int. J. Climatol. 37: 4302-4315"
+    landing: https://www.worldclim.org/data/worldclim21.html        # verify
+    files:
+      - name: wc2.1_5m_tmin.zip
+        url: https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_5m_tmin.zip      # 123 MB (listing 2026-11-03)
+      - name: wc2.1_5m_tmax.zip
+        url: https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_5m_tmax.zip      # 121 MB
+      - name: wc2.1_5m_prec.zip
+        url: https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_5m_prec.zip      # 22 MB
+      - name: wc2.1_5m_wind.zip
+        url: https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_5m_wind.zip      # 82 MB
+    sha256: 6a7f3d5a23d91765fa99ad614364776a96beda666e2771c3727431294d150807
+
+  - id: worldpop
+    name: WorldPop Pakistan 2020 population count, constrained (BSGM)
+    version: "Global_2000_2020_Constrained / 2020 / BSGM / PAK"
+    licence: CC-BY-4.0
+    attribution: "WorldPop (www.worldpop.org), University of Southampton"
+    landing: https://hub.worldpop.org/        # verify
+    files:
+      - name: pak_ppp_2020_constrained.tif
+        url: https://worldpop-public-data.soton.ac.uk/GIS/Population/Global_2000_2020_Constrained/2020/BSGM/PAK/pak_ppp_2020_constrained.tif      # 32 MB (listing 2026-11-03)
+    sha256: 533f1e6ca8c272c268ced01ffeefa417dc284c96a008cb49c0a0e3b0b64942ad

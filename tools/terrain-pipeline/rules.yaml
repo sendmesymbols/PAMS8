@@ -54,13 +54,90 @@ tankable:
   minWidthM: 3.5        # a narrower road is never tankable, whatever its class
   transporterClass: 70  # a tank on a transporter (HET) needs class 70 roads and bridges
 
-# Main supply routes (decision 3): motorway, highway, main road, defence road, broad-gauge railway, and any
-# metalled road of load class 40 or more.
+# Main supply routes: motorway, highway, main road, defence road, broad-gauge railway, and any metalled road
+# of load class `metalledMinClass` or more. Decision 3 (2026-11-01) said 40; at 40 the commonest class (40A1,
+# ~40k fragments) made 63 % of recorded road fragments "MSR", so it was raised to 50 on 2026-11-03.
+# This is a rule, not an official list: when the force has one, replace it with `namedRoutes`.
 msr:
   types: [motorway, highway, main_road]
   defenceRoad: true
   railBroadGauge: true
-  metalledMinClass: 40
+  metalledMinClass: 50
+  # Optional official list; a road whose NAME or ROAD_NO equals an entry (case-insensitive) is MSR whatever its class.
+  # e.g. namedRoutes: ["N-5", "N-25", "Quetta - Taftan"]
+  namedRoutes: []
+
+# Cover and concealment split four ways (GROTBC.md, C): what the ground itself gives against
+#   direct = direct fire, indirect = indirect fire (overhead / dispersion), ground = ground observation,
+#   aerial = aerial observation.  0 none, 1 poor, 2 fair, 3 good.   Order: [direct, indirect, ground, aerial]
+# Classes not listed give none. STARTING PROPOSAL from the class `kind` and `note`, for the domain owner to correct;
+# profiles.py copies it into rules.json grotbc.coverSplit. The cc layer (one 0-3 cover + one 0-3 concealment value
+# per pixel, from the classes and vegetation density) still carries the local detail.
+coverSplit:
+  fields: [direct, indirect, ground, aerial]
+  byClass:
+    1:  [1, 1, 3, 3]    # tree cover
+    2:  [0, 0, 1, 1]    # cropland: tall crops screen the ground
+    3:  [3, 2, 3, 3]    # built-up
+    6:  [0, 0, 2, 1]    # wetland: reeds
+    7:  [1, 1, 3, 3]    # mangrove
+    9:  [2, 1, 2, 0]    # steep slope: reverse-slope defilade
+    10: [1, 1, 1, 0]
+    14: [1, 1, 2, 0]    # dunes
+    15: [2, 1, 2, 1]    # rocky ground
+    17: [2, 1, 2, 0]    # dry riverbed
+    19: [0, 0, 1, 0]
+    21: [1, 0, 0, 0]
+    22: [1, 0, 1, 0]
+    23: [0, 0, 1, 1]
+    24: [3, 2, 2, 0]    # embankment over 2 m
+    25: [2, 1, 1, 0]    # bund
+    26: [3, 2, 3, 0]    # cutting
+    27: [3, 2, 2, 0]    # escarpment
+    28: [1, 0, 0, 0]    # railway embankment
+    29: [2, 1, 3, 3]    # walled orchard
+    30: [1, 1, 3, 3]    # orchard
+    31: [2, 2, 3, 3]    # forest
+    32: [2, 1, 2, 1]    # graveyard
+    46: [1, 0, 1, 0]
+    47: [2, 1, 2, 0]    # dry nullah
+    48: [0, 0, 1, 1]
+    49: [2, 0, 1, 0]    # wall / fence
+
+# Terrain type (GROTBC T): Plain / Hilly / Solid / Marshy / Wet / Desert, plus Mountainous, Built-up and Snow / ice.
+# scripts/terrain.py gives each pixel the FIRST rule that matches, in this order:
+#   snow_ice > built_up > wet > marshy (also wet layer 4, waterlogged) > mountainous > hilly > desert > solid > plain
+# `byClass` lists class codes (classes.yaml); `slopeband` the codes of work/grotbc/slopeband.tif (0 <3°, 1 3-7°,
+# 2 7-15°, 3 15°+); `classSlope` classes that are hill / mountain whatever the 3x3 slope says. STARTING PROPOSAL.
+terrainType:
+  codes: { plain: 1, hilly: 2, solid: 3, marshy: 4, wet: 5, desert: 6, mountainous: 7, built_up: 8, snow_ice: 9 }
+  byClass:
+    snow_ice:    [8]
+    built_up:    [3, 32]
+    wet:         [4, 5]
+    marshy:      [6, 7, 16]
+    desert:      [12, 13, 14]
+    solid:       [15, 17]          # rock, scree, stony waste, stony riverbed
+  waterloggedWetValue: 4           # work/classify/wet.tif value that makes a pixel marshy
+  slopeband: { hilly: 2, mountainous: 3 }
+  classSlope: { mountainous: [9, 10, 27], hilly: [19] }
+
+# Soil bearing by texture class (classes.yaml layers.soil): the going of that soil dry and after rain, for vehicles.
+# good / fair / poor / very_poor. SoilGrids gives the texture only (250 m, modelled), so this is the ground's
+# tendency, not a trafficability survey; the card must say "modelled soil" and let the going scale decide. STARTING PROPOSAL.
+soilBearing:
+  "1":  { dry: poor,      wet: fair,      note: "Loose sand: wheels sink when dry, it firms up when damp." }
+  "2":  { dry: fair,      wet: fair,      note: "Loamy sand: drains well; soft when dry." }
+  "3":  { dry: good,      wet: fair,      note: "Sandy loam: firm and well drained." }
+  "4":  { dry: good,      wet: fair,      note: "Loam: firm when dry, softens after rain." }
+  "5":  { dry: good,      wet: poor,      note: "Silt loam: carries traffic dry, turns to slurry wet." }
+  "6":  { dry: fair,      wet: very_poor, note: "Silt: dusty when dry, a bog when wet." }
+  "7":  { dry: good,      wet: fair,      note: "Sandy clay loam: firm dry, holds water." }
+  "8":  { dry: good,      wet: poor,      note: "Clay loam: hard dry, sticky and soft wet." }
+  "9":  { dry: good,      wet: poor,      note: "Silty clay loam: hard dry, soft wet." }
+  "10": { dry: good,      wet: poor,      note: "Sandy clay: hard dry, sticky wet." }
+  "11": { dry: fair,      wet: very_poor, note: "Silty clay: cracks dry, bogs wet." }
+  "12": { dry: good,      wet: very_poor, note: "Clay: rock hard dry, impassable mud after heavy rain." }
 
 # The card lists the nearest of each kind (decision 4). Codes are features.json point kinds (grotbc.py).
 water:

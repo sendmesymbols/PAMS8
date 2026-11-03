@@ -33,7 +33,8 @@ from common import BUNDLE_DIR, TILE_SIZE, load_json, setup_logging, write_png_l
 
 log = setup_logging("tile")
 
-AUX = {"route": "max", "wet": "maxnd", "cc": "mode", "landform": "mode", "elev_hi": "elev", "elev_lo": "elev"}
+AUX = {"route": "max", "wet": "maxnd", "cc": "mode", "landform": "mode", "elev_hi": "elev", "elev_lo": "elev",
+       "terrain": "mode", "soil": "mode", "hut": "maxnd"}
 
 
 def read_tile(path: Path) -> np.ndarray | None:
@@ -162,6 +163,7 @@ def main() -> int:
     ap.add_argument("--class-tif", type=Path, default=Path("work/classify/class.tif"))
     ap.add_argument("--profiles", type=Path, default=Path("work/profiles"))
     ap.add_argument("--grotbc", type=Path, default=Path("work/grotbc"), help="v2 route / landform / elevation rasters")
+    ap.add_argument("--terrain", type=Path, default=Path("work/terrain"), help="terrain / soil / hut rasters (terrain.py)")
     ap.add_argument("--out", type=Path, default=BUNDLE_DIR)
     ap.add_argument("--layers", nargs="*", help="subset, e.g. class dist_wheeled")
     ap.add_argument("--class-reduce", choices=["nearest", "mode"], default="nearest")
@@ -176,6 +178,9 @@ def main() -> int:
     for name in ("route", "landform", "elev_hi", "elev_lo"):
         if (args.grotbc / f"{name}.tif").exists():
             rasters[name] = args.grotbc / f"{name}.tif"
+    for name in ("terrain", "soil", "hut"):
+        if (args.terrain / f"{name}.tif").exists():
+            rasters[name] = args.terrain / f"{name}.tif"
     for name in ("cc", "wet"):
         if (args.class_tif.parent / f"{name}.tif").exists():
             rasters[name] = args.class_tif.parent / f"{name}.tif"

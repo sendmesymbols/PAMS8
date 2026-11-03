@@ -13,12 +13,16 @@ MS/Data/terrain-bundle/                  (repo root; git-ignored)
                                    0 = inside no-go, 254 = >= cap, 255 = nodata
   -- bundle v2 (GROTBC, hybrid builds) --
   route/ landform/ cc/ wet/ elev_hi/ elev_lo/   auxiliary layers (codebooks in rules.json `grotbc.layers`)
+  terrain/ soil/ hut/  climate/{climate.json,climate.bin}   terrain type, soil texture, hut density, climate normals
   features/10/{x}/{y}.json  features/index.json  points and named lines from the NCGDB
-  admin.geojson  boundaries.geojson  sheets.json
+  admin.geojson  boundaries.geojson  sheets.json  routes.json
 ```
 
-Bundle v2 organises the data by **GROTBC** (Ground, Relief, Obstacles, Tactical features, Boundaries & built-up,
-Cover & concealment); see "Bundle v2 (GROTBC)" below and `MS/Docs/16-placement-grotbc-card.md`.
+Bundle v2 organises the data by **GROTBC** as defined in `GROTBC.md` (Ground, Roads / tracks / railway network,
+Obstacles, Terrain, Built-up areas, Cover / camouflage / concealment); see "Bundle v2 (GROTBC)" below and
+`MS/Docs/16-placement-grotbc-card.md`. The first build read R as Relief and T as Tactical features; relabelled on
+2026-11-03 (relief is now under G, roads / rail / crossings / airfields under R). `routes.json` (named routes with
+from - to, length, load class, closures) and `rules.json grotbc.coverSplit` (cover and concealment four ways) were added then.
 
 Tiles are Web Mercator (EPSG:3857) 256 px XYZ, z = 8..12, 8-bit greyscale PNG
 with only `IHDR/IDAT/IEND` chunks. Missing tile = no coverage. Everything in
@@ -193,6 +197,20 @@ An open-data build (`--ncgdb none` / `-NoNcgdb`) runs `grotbc --only relief` and
 
 The NCGDB lives on a USB disk here; copying it to an NVMe folder for the build (`work/ncgdb/`, git-ignored)
 cut the block reads several-fold. Delete the copy afterwards.
+
+### Terrain, soil, huts and climate (added 2026-11-03)
+
+| product | step | from | becomes |
+|---|---|---|---|
+| `terrain.tif` | `scripts/terrain.py` | class, wet and slope-band rasters; `rules.yaml terrainType` | the `terrain` layer: Plain / Hilly / Solid / Marshy / Wet / Desert (+ Mountainous, Built-up, Snow / ice) |
+| `soil.tif` | `scripts/fetch_soil.py` then `terrain.py` | SoilGrids 2.0 sand + clay, 0-30 cm, windowed from ISRIC's VRTs | the `soil` layer (USDA texture); bearing in `rules.yaml soilBearing` |
+| `hut.tif` | `terrain.py` | NCGDB `Hut` (3.77 M symbols) | the `hut` layer (huts per km2, ~600 m cells) |
+| `climate.bin/json` | `scripts/climate.py` | WorldClim 2.1 5' tmin, tmax, prec, wind | `climate/` (monthly normals + frost / hot / wet / monsoon summaries) |
+| `wp`, `wc` on places | `grotbc.py` features | WorldPop 2020 constrained | people nearest each place; people within 12 / 8 / 4 km of a city / district HQ / town |
+
+New named features (mosques, graves, telecom, post offices, lakes, glaciers, river reaches...) come from the same NCGDB
+layers as before. `fetch_soil.py` is run once after `make fetch`; `terrain.py` and `climate.py` run after `classify`
+(`python scripts/terrain.py`, `python scripts/climate.py`), then `tile` and `package` as usual.
 
 ## Verifying a bundle
 

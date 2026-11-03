@@ -71,6 +71,18 @@ $(W)/classify/.done: $(W)/grotbc/.done classes.yaml
 	$(PY) $(S)/classify.py --grid $(W)/grid --derive $(W)/derive --grotbc $(W)/grotbc --out $(W)/classify --classes classes.yaml --block $(strip $(BLOCK))
 	@touch $@
 
+# 4b --------------------------------------------------------------- terrain type, soil, hut density, climate (GROTBC T / G / B)
+terrain: $(W)/terrain/.done
+$(W)/terrain/.done: $(W)/classify/.done rules.yaml
+	$(PY) $(S)/fetch_soil.py --out $(W)/raw
+	$(PY) $(S)/terrain.py --grid $(W)/grid --classify $(W)/classify --grotbc $(W)/grotbc --raw $(W)/raw --out $(W)/terrain 	    --block $(strip $(BLOCK)) $(NCGDB_ARG)
+	@touch $@
+
+climate: $(W)/climate/.done
+$(W)/climate/.done: $(W)/raw/.done
+	$(PY) $(S)/climate.py --grid $(W)/grid/grid.json --raw $(W)/raw --out $(W)/climate
+	@touch $@
+
 # 5 ---------------------------------------------------------------- rules.json + dist_*.tif
 profiles: $(W)/profiles/.done
 $(W)/profiles/.done: $(W)/classify/.done rules.yaml classes.yaml
@@ -80,10 +92,10 @@ $(W)/profiles/.done: $(W)/classify/.done rules.yaml classes.yaml
 
 # 6 ---------------------------------------------------------------- XYZ PNG tiles
 tile: $(W)/tile/.done
-$(W)/tile/.done: $(W)/profiles/.done
+$(W)/tile/.done: $(W)/profiles/.done $(W)/terrain/.done $(W)/climate/.done
 	rm -rf $(OUT_DIR)
 	$(PY) $(S)/tile.py --grid $(W)/grid --class-tif $(W)/classify/class.tif \
-	    --profiles $(W)/profiles --grotbc $(W)/grotbc --out $(OUT_DIR) --workers $(strip $(WORKERS))
+	    --profiles $(W)/profiles --grotbc $(W)/grotbc --terrain $(W)/terrain --out $(OUT_DIR) --workers $(strip $(WORKERS))
 	@mkdir -p $(W)/tile && touch $@
 
 # 7 ---------------------------------------------------------------- checks
@@ -94,7 +106,7 @@ validate: $(W)/tile/.done
 package: validate
 	$(PY) $(S)/package.py --bundle $(OUT_DIR) --grid $(W)/grid/grid.json \
 	    --rules-json $(W)/profiles/rules.json --rules rules.yaml --lock sources.lock \
-	    --checksums $(W)/raw/checksums.json --grotbc-vector $(W)/grotbc/vector --zip out/terrain-bundle.zip
+	    --checksums $(W)/raw/checksums.json --grotbc-vector $(W)/grotbc/vector --climate $(W)/climate --zip out/terrain-bundle.zip
 
 # steps 5-8 only (rules/classes changed; class.tif unchanged)
 rebuild-rules: clean-profiles clean-tile package
@@ -111,6 +123,8 @@ clean-grid:     ; rm -rf $(W)/grid
 clean-derive:   ; rm -rf $(W)/derive
 clean-grotbc:   ; rm -rf $(W)/grotbc
 clean-classify: ; rm -rf $(W)/classify
+clean-terrain:  ; rm -rf $(W)/terrain
+clean-climate:  ; rm -rf $(W)/climate
 clean-profiles: ; rm -rf $(W)/profiles
 clean-tile:     ; rm -rf $(W)/tile $(OUT_DIR)
 clean-out:      ; rm -rf out $(OUT_DIR)

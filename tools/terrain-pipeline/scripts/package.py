@@ -72,22 +72,33 @@ AUX_LAYERS = {
     "cc":       {"reduce": "mode", "codebook": "rules.json grotbc.layers.cc", "nodata": 255,
                  "note": "concealment = value >> 4, cover = value & 15; 0 none, 1 poor, 2 fair, 3 good"},
     "wet":      {"reduce": "max", "codebook": "rules.json grotbc.layers.wet", "nodata": 255},
+    "terrain":  {"reduce": "mode", "codebook": "rules.json grotbc.layers.terrain", "nodata": 255,
+                 "note": "GROTBC T: Plain / Hilly / Solid / Marshy / Wet / Desert / Mountainous / Built-up / Snow-ice"},
+    "soil":     {"reduce": "mode", "codebook": "rules.json grotbc.layers.soil", "nodata": 255,
+                 "note": "USDA texture of the top 30 cm (SoilGrids, ~250 m, modelled); bearing in rules.json grotbc.soilBearing"},
+    "hut":      {"reduce": "maxnd", "codebook": "rules.json grotbc.layers.hut", "nodata": 255,
+                 "note": "bits 0-6 permanent (kacha) huts per km2, bit 7 temporary huts nearby"},
     "elev_hi":  {"reduce": "mean", "note": "elevation m = elev_hi * 256 + elev_lo - 500; elev_hi 255 = nodata"},
     "elev_lo":  {"reduce": "mean"},
 }
 
 
-def grotbc_block(bundle: Path, vector: Path) -> dict | None:
+def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None) -> dict | None:
     """Copy the v2 vector files into the bundle and describe the v2 layers; None for a v1 bundle."""
     layers = {k: dict(v, path=k) for k, v in AUX_LAYERS.items() if (bundle / k).is_dir()}
     if not layers:
         return None
     out = {"version": 2, "layers": layers, "elevation": {"hi": "elev_hi", "lo": "elev_lo", "offsetM": 500}}
     if vector.is_dir():
-        for name in ("admin.geojson", "boundaries.geojson", "sheets.json"):
+        for name in ("admin.geojson", "boundaries.geojson", "sheets.json", "routes.json"):
             if (vector / name).exists():
                 shutil.copyfile(vector / name, bundle / name)
                 out[name.split(".")[0]] = name
+        if climate is not None and (climate / "climate.json").exists():
+            (bundle / "climate").mkdir(exist_ok=True)
+            for name in ("climate.json", "climate.bin"):
+                shutil.copyfile(climate / name, bundle / "climate" / name)
+            out["climate"] = {"index": "climate/climate.json", "data": "climate/climate.bin"}
         if (vector / "features" / "index.json").exists():
             shutil.rmtree(bundle / "features", ignore_errors=True)
             shutil.copytree(vector / "features", bundle / "features")
@@ -110,6 +121,7 @@ def main() -> int:
     ap.add_argument("--class-stats", type=Path, default=Path("work/classify/class_stats.json"))
     ap.add_argument("--boundary-display", type=Path, default=Path("work/boundary/boundary_display.geojson"),
                     help="outline for drawing on a map; copied into the bundle as boundary.geojson (official boundary only)")
+    ap.add_argument("--climate", type=Path, default=Path("work/climate"), help="climate.json / climate.bin (climate.py)")
     ap.add_argument("--grotbc-vector", type=Path, default=Path("work/grotbc/vector"),
                     help="bundle v2 features / admin / boundaries / sheets written by grotbc.py")
     ap.add_argument("--name", default="Pakistan deployable terrain")
@@ -142,7 +154,7 @@ def main() -> int:
         "hybrid": bool(ncgdb),
         "restricted": bool(ncgdb),
     }
-    v2 = grotbc_block(args.bundle, args.grotbc_vector)
+    v2 = grotbc_block(args.bundle, args.grotbc_vector, args.climate)
     if v2:
         manifest["dataVersion"] = 2
         manifest["layers"].update({k: k for k in v2["layers"]})
