@@ -395,6 +395,38 @@
         "Cat": ["attk", "def"],
         "Grp": ["Freehand", "Shapes"]
     },
+    "00000160": {
+        "Class": "ImpGr",
+        "Description": "Important Ground (ITG): PAMS8 local symbol, not a MIL-STD-2525D code; the companion of Vital Gr (MITG)",
+        "Name": "Imp Gr",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["nav"],
+        "Grp": ["Control Measures", "Imp Gr"]
+    },
     "00000200": {
         "Class": "AutoShape",
         "Description": "",

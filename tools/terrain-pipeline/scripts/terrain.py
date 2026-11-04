@@ -1,10 +1,11 @@
-"""Step 4b — terrain type (T), soil texture (G) and hut density (B) layers for bundle v2.
+"""Step 4b — terrain type (G, read by T), soil texture (G; bearing used by T) and hut density (B) layers for bundle v2.
 
 Inputs : work/classify/{class,wet}.tif, work/grotbc/slopeband.tif, work/raw/soilgrids/*.tif (fetch_soil.py),
          rules.yaml (terrainType), the NCGDB `Hut` layer
 Outputs: work/terrain/terrain.tif   uint8 classes.yaml `layers.terrain` (Plain / Hilly / Solid / Marshy / Wet /
                                     Desert / Mountainous / Built-up / Snow-ice), 255 nodata
          work/terrain/soil.tif      uint8 classes.yaml `layers.soil` (USDA texture of the top 30 cm), 255 nodata
+         work/terrain/bank.tif      uint8 land along water: kind << 2 | distance band (rules.yaml banks), 0 none, 255 nodata
          work/terrain/hut.tif       uint8: bits 0-6 permanent huts per km2 (0..126), bit 7 temporary huts nearby;
                                     255 nodata. Huts are the 1:50k symbols for kacha (mud) and temporary dwellings.
 
@@ -221,6 +222,52 @@ def make_hut(grid: dict, classify: Path, gdb: str, out: Path, block: int) -> Non
     log.info("hut.tif -> %s", out)
 
 
+# ----------------------------------------------------------------------------- banks
+
+def make_bank(grid: dict, classify: Path, rules: dict, out: Path, block: int) -> None:
+    """bank.tif: land within rules.yaml `banks.bandsM` of water. Value = kind << 2 | band (band 0 nearest), 0 = not a
+    bank (or the water itself), 255 nodata. The kind is the water the bank faces (`banks.kinds[k].waterClasses`)."""
+    import rasterio
+    from rasterio.transform import Affine
+    from rasterio.windows import Window
+    from scipy.ndimage import distance_transform_edt
+
+    from common import row_latitudes
+
+    bk = rules["banks"]
+    bands = [float(b) for b in bk["bandsM"]]
+    kind_of = np.zeros(256, dtype=np.uint8)
+    for k, v in bk["kinds"].items():
+        for c in v["waterClasses"]:
+            kind_of[int(c)] = int(k)
+    water_cls = np.nonzero(kind_of)[0]
+    res = grid["pixel_size"]
+    lat_n = max(abs(grid["aoi"][1]), abs(grid["aoi"][3]))
+    halo = int(math.ceil(bands[-1] / (res * math.cos(math.radians(lat_n))))) + 2
+    prof = dict(GTIFF_U8, width=grid["width"], height=grid["height"], crs=grid["crs"], transform=Affine(*grid["transform"]))
+    n_bank = 0
+    with rasterio.open(classify / "class.tif") as cs, rasterio.open(out / "bank.tif", "w", **prof) as dst:
+        for i, b in enumerate(iter_blocks(grid["width"], grid["height"], block, halo)):
+            cls = cs.read(1, window=Window(b["rcol"], b["rrow"], b["rw"], b["rh"]))
+            core = (slice(b["oy"], b["oy"] + b["h"]), slice(b["ox"], b["ox"] + b["w"]))
+            water = np.isin(cls, water_cls)
+            val = np.zeros(cls.shape, dtype=np.uint8)
+            if water.any() and not water.all():
+                lat = float(row_latitudes(grid, b["rrow"] + b["rh"] // 2, 1)[0])
+                gp = res * math.cos(math.radians(lat))
+                dist, (ri, ci) = distance_transform_edt(~water, sampling=gp, return_indices=True)
+                band = np.digitize(dist, bands, right=True)          # 0 within bands[0], ..., len(bands) = beyond
+                land = ~water & (cls != 255) & (band < len(bands))
+                val[land] = (kind_of[cls[ri[land], ci[land]]] << 2) | band[land].astype(np.uint8)
+            val[cls == 255] = 255
+            out_core = val[core]
+            n_bank += int(((out_core > 0) & (out_core != 255)).sum())
+            dst.write(out_core, 1, window=Window(b["col"], b["row"], b["w"], b["h"]))
+            if i % 100 == 0:
+                log.info("  bank block %d at row %d/%d", i, b["row"], grid["height"])
+    log.info("bank.tif -> %s (%d bank pixels)", out, n_bank)
+
+
 # ----------------------------------------------------------------------------- main
 
 def main() -> int:
@@ -234,16 +281,18 @@ def main() -> int:
     ap.add_argument("--classes", type=Path, default=Path("classes.yaml"))
     ap.add_argument("--ncgdb", help="NCGDB .gdb folder (default: classes.yaml, then $NCGDB_PATH)")
     ap.add_argument("--block", type=int, default=2048)
-    ap.add_argument("--only", nargs="*", choices=["terrain", "soil", "hut"])
+    ap.add_argument("--only", nargs="*", choices=["terrain", "soil", "hut", "bank"])
     args = ap.parse_args()
 
     grid, rules, cfg = load_json(args.grid / "grid.json"), load_yaml(args.rules), load_yaml(args.classes)
-    want = set(args.only or ["terrain", "soil", "hut"])
+    want = set(args.only or ["terrain", "soil", "hut", "bank"])
     args.out.mkdir(parents=True, exist_ok=True)
     if "terrain" in want:
         make_terrain(grid, args.classify, args.grotbc, rules, args.out, args.block)
     if "soil" in want:
         make_soil(grid, args.classify, args.raw, args.out, args.block)
+    if "bank" in want:
+        make_bank(grid, args.classify, rules, args.out, args.block)
     if "hut" in want:
         from derive import resolve_ncgdb
         gdb, _ = resolve_ncgdb(args.ncgdb, cfg["sources"].get("ncgdb", {}).get("path"))

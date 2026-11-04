@@ -432,6 +432,31 @@ a plan). Three things keep it honest:
   the same from code and opens the panel on that symbol. Air and sea symbols say they are not
   terrain-bound.
 
+### Important Tactical Ground (G)
+
+A bundle built with the pipeline's `ground.py` step carries a terrain feature inventory (peaks, hills, knolls,
+saddles, plateaus, depressions, main road junctions, ridgelines) in `features/`, and marks the features that pass
+an objective test as **ITG candidates** (`it` 1 candidate, 2 strong candidate; `ig` the reason letters, labelled in
+`rules.json grotbc.itg.reasons`). ITG and MITG sit under G (Ground) in GROTBC. The bundle only proposes; the user
+designates.
+
+- **On the card** (`itg.enabled`): while drawing, an *Important Tactical Ground* section lists the nearest
+  candidates within `itg.radiusKm` of the point (or the cursor, for lines and areas), strongest first: name,
+  kind and height, *ITG Candidate* or *Strong Candidate (Check as MITG)*, distance and direction, and the
+  reasons. Feature tiles (z10, ~30 km) load in the background like terrain tiles; the card never waits on them.
+- **From code**: `await advisor.groundCandidates(point, { radiusKm, max, minLevel })` returns
+  `PlacementGroundCandidate[]` (`kind`, `kindLabel`, `name`, `level`, `reasons`, `reasonLabels`, `elevationM`,
+  `lngLat`, `distanceM`, `bearingDeg`, `compass`, `attributes`).
+- **Designate**: `symbolEngine.designateGround(candidateOrPoint, 'ITG' | 'MITG', { radiusM?, name? })` draws an
+  area round it, named after the feature: **MITG** a **Vital Gr** (2525D control measure 25-242301, "VG"),
+  **ITG** an **Imp Gr** ("IG", catalog key `00000160`: a PAMS8 local symbol, since 2525D has no Important Ground
+  symbol; symbol set 00 like the Freehand symbols, so it never collides with a 2525D code). Both are ordinary
+  symbols: saved, loaded, edited, exported and undone like any other, so no plan format change is needed, and
+  both can be drawn by hand from the catalog (the card then lists the candidates under the cursor). The radius
+  defaults to a plateau's own size, 250 m for a junction or crossing, 400 m otherwise.
+
+Settings: `itg: { enabled: true, radiusKm: 3, max: 2, minLevel: 1 }` (Ctrl+K: *Important Tactical Ground*).
+
 ### When the terrain data is unavailable
 
 `advisor.status` is `{ state, error, retryInMs }` with `state` one of `disabled`, `no-bundle-url`,
@@ -465,7 +490,8 @@ resets the schedule.
   "cacheTiles": 512,
   "prefetchMarginTiles": 1,
   "maxSamples": 400,
-  "useWorker": true
+  "useWorker": true,
+  "itg": { "enabled": true, "radiusKm": 3, "max": 2, "minLevel": 1 }
 }
 ```
 

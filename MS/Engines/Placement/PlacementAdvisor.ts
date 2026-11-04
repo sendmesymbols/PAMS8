@@ -37,6 +37,7 @@ import { compileProfile, evaluateSamples, fmtDistance, setDistanceUnits, titleCa
 import { PlacementAuditPanel, type AuditPanelHandlers } from './PlacementAuditPanel';
 import { PlacementBadge, plainLabel } from './PlacementBadge';
 import { PlacementBoundary } from './PlacementBoundary';
+import { PlacementFeatures } from './PlacementFeatures';
 import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './PlacementFootprint';
 import { PlacementIndicators } from './PlacementIndicators';
 import { PlacementLegend } from './PlacementLegend';
@@ -53,6 +54,8 @@ import {
   type MercXY,
   type PlacementAudit,
   type PlacementAuditEntry,
+  type PlacementGround,
+  type PlacementGroundCandidate,
   type PlacementIndicator,
   type PlacementNearest,
   type PlacementOptionIssue,
@@ -158,6 +161,8 @@ export default class PlacementAdvisor {
   private _rules: TerrainRules | null = null;
   private _boundsMerc: [number, number, number, number] = [0, 0, 0, 0];
   private _cache: TerrainTileCache | null = null;
+  /** Bundle v2 point features (ITG candidates); null when the bundle has none. */
+  private _features: PlacementFeatures | null = null;
   private _source: OverlayRenderingSource | null = null;
   private _overlay: any = null;
   private _overlayMap: any = null;
@@ -281,6 +286,8 @@ export default class PlacementAdvisor {
     this._compiled.clear();
     this._cache?.clear();
     this._cache = null;
+    this._features?.destroy();
+    this._features = null;
     this._source?.dispose?.();
     this._source = null;
     this._removeOverlay();
@@ -312,6 +319,8 @@ export default class PlacementAdvisor {
       this._boundsMerc = [Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)];
       this._source = this._makeSource(base, manifest.tileSize, manifest);
       this._cache = new TerrainTileCache(this._source, this._opts.cacheTiles, () => this._onTilesChanged());
+      const fm = manifest.grotbc?.features;
+      this._features = fm ? new PlacementFeatures(base, fm, rules, () => this._onTilesChanged(false)) : null;
       EngineLogger.success(
         ENGINE,
         `Terrain bundle ready — ${manifest.name ?? base} (rules ${rules.version ?? 'unversioned'})`,
@@ -484,6 +493,18 @@ export default class PlacementAdvisor {
       flag('footprint.outline', fp.outline, (b) => (next.footprint.outline = b));
       flag('footprint.spacing', fp.spacing, (b) => (next.footprint.spacing = b));
     }
+    const itg = patch.itg;
+    next.itg = { ...prev.itg };
+    if (itg && typeof itg === 'object') {
+      flag('itg.enabled', itg.enabled, (b) => (next.itg.enabled = b));
+      num('itg.radiusKm', itg.radiusKm, 0.5, 10, (n) => (next.itg.radiusKm = n));
+      num('itg.max', itg.max, 1, 5, (n) => (next.itg.max = n), true);
+      if (itg.minLevel !== undefined) {
+        const lvl = Number(itg.minLevel); // the settings widget sends enum values as strings
+        if (lvl === 1 || lvl === 2) next.itg.minLevel = lvl;
+        else bad('itg.minLevel', itg.minLevel, 'must be 1 (every candidate) or 2 (strong candidates only)');
+      }
+    }
     this._reportIssues(issues);
     this._opts = next;
     setDistanceUnits(next.units);
@@ -609,6 +630,7 @@ export default class PlacementAdvisor {
     v.overridable = keys && v.blocked && this._opts.allowOverride;
     v.profileKey = keys && this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
     v.profileOverride = this._profileOverride !== null && v.profile === this._profileOverride;
+    v.ground = this._groundNear(geometry, v);
     this._legend.setKeys(v.profileKey, v.snappable);
     if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
       this._lastGood = v;
@@ -1189,6 +1211,8 @@ export default class PlacementAdvisor {
     this._clearRetry();
     this._cache?.clear();
     this._cache = null;
+    this._features?.destroy();
+    this._features = null;
     this._source?.dispose?.();
     this._source = null;
     this._badge.destroy();
@@ -1737,6 +1761,34 @@ export default class PlacementAdvisor {
     return this._cache?.stats() ?? { loaded: 0, missing: 0, pending: 0, failed: 0 };
   }
 
+  /**
+   * Important Tactical Ground (ITG) candidates round a map point (G in GROTBC), strongest first, then nearest.
+   * Waits for the feature tiles it needs. Empty when the bundle carries no ground features. Candidates only:
+   * whether one is ITG or MITG for a task is the user's decision (`SymbolEngine.designateGround()`).
+   */
+  async groundCandidates(
+    point: any,
+    opts: { radiusKm?: number; max?: number; minLevel?: 1 | 2 } = {},
+  ): Promise<PlacementGroundCandidate[]> {
+    const f = this._features;
+    const p = toMercatorShape(point)?.parts[0]?.[0];
+    if (!f || !p) return [];
+    const radiusM = Math.min(25, Math.max(0.1, opts.radiusKm ?? this._opts.itg.radiusKm)) * 1000;
+    await f.whenReady(p, radiusM);
+    return f.candidatesNear(p, radiusM, Math.max(1, opts.max ?? 50), opts.minLevel ?? 1).list;
+  }
+
+  /** The card's ITG lines: candidates round the point being placed (or the cursor, for lines and areas). */
+  private _groundNear(geometry: any, v: PlacementVerdict): PlacementGround | null {
+    const o = this._opts.itg;
+    if (!o.enabled || !this._features || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
+    if (!at) return null;
+    const radiusM = o.radiusKm * 1000;
+    const { list, pending } = this._features.candidatesNear(at, radiusM, o.max, o.minLevel);
+    return { candidates: list, radiusM, pending };
+  }
+
   /** The indicator-line layer (null until a line has been drawn), for hosts that want to inspect or restyle it. */
   get indicatorLayer(): any {
     return this._indicators.layer;
@@ -1897,6 +1949,7 @@ export default class PlacementAdvisor {
       v.verdict, v.message, v.detail ?? '', v.loading ? 1 : 0, Math.round(v.fraction * 100),
       Math.round(v.nearest?.distanceM ?? -1), v.nearest?.compass ?? '',
       v.spacing?.status ?? '', Math.round(v.spacing?.nearestGapM ?? -1), v.snappable ? 1 : 0,
+      v.ground?.candidates.map((c) => `${c.kind}${c.level}${Math.round(c.distanceM / 50)}${c.compass}`).join(',') ?? '',
     ].join('|');
     if (key === this._lastBadgeKey) return;
     this._lastBadgeKey = key;
@@ -1923,10 +1976,12 @@ export default class PlacementAdvisor {
     this._emit('placement-advice', v);
   }
 
-  private _onTilesChanged(): void {
-    this._emit('placement-tiles', this.tileStats());
-    if (this._tileWaiters.length > 0 && (this._cache?.stats().pending ?? 0) === 0) {
-      for (const wake of this._tileWaiters.splice(0)) wake();
+  private _onTilesChanged(terrain = true): void {
+    if (terrain) {
+      this._emit('placement-tiles', this.tileStats());
+      if (this._tileWaiters.length > 0 && (this._cache?.stats().pending ?? 0) === 0) {
+        for (const wake of this._tileWaiters.splice(0)) wake();
+      }
     }
     // A tile the cursor was waiting on may have arrived — refresh the verdict.
     if (!this._lastDetail || this._reevalTimer !== null) return;

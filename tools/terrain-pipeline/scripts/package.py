@@ -34,7 +34,7 @@ def sources_block(lock: dict, checks: dict, ncgdb: dict | None = None) -> list[d
     for s in lock["sources"]:
         rec = checks.get(s["id"], {})
         out.append({"id": s["id"], "name": s["name"], "version": str(s.get("version", "")),
-                    "licence": s["licence"], "sha256": rec.get("sha256", str(s.get("sha256", ""))),
+                    "dataDate": s.get("dataDate"), "released": s.get("released"), "licence": s["licence"], "sha256": rec.get("sha256", str(s.get("sha256", ""))),
                     "files": len(rec.get("files", {})) or None})
     if ncgdb:       # local, not in sources.lock: identified by a fingerprint of the geodatabase folder
         out.append({"id": "ncgdb", "name": ncgdb["name"], "version": ncgdb["version"], "licence": ncgdb["licence"],
@@ -47,6 +47,8 @@ def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
     lines = [f"PAMS terrain bundle — data sources and licences (built {built})", ""]
     for s in lock["sources"]:
         lines += [f"{s['name']}  [{s.get('version', '')}]",
+                  f"  data date   : {s.get('dataDate', '')}",
+                  f"  released    : {s.get('released', '')}",
                   f"  licence     : {s['licence']}",
                   f"  attribution : {s.get('attribution', '')}",
                   f"  source      : {s.get('landing', '')}", ""]
@@ -73,17 +75,22 @@ AUX_LAYERS = {
                  "note": "concealment = value >> 4, cover = value & 15; 0 none, 1 poor, 2 fair, 3 good"},
     "wet":      {"reduce": "max", "codebook": "rules.json grotbc.layers.wet", "nodata": 255},
     "terrain":  {"reduce": "mode", "codebook": "rules.json grotbc.layers.terrain", "nodata": 255,
-                 "note": "GROTBC T: Plain / Hilly / Solid / Marshy / Wet / Desert / Mountainous / Built-up / Snow-ice"},
+                 "note": "GROTBC G terrain type (T reads it for the going): Plain / Hilly / Solid / Marshy / Wet / Desert / Mountainous / Built-up / Snow-ice"},
     "soil":     {"reduce": "mode", "codebook": "rules.json grotbc.layers.soil", "nodata": 255,
                  "note": "USDA texture of the top 30 cm (SoilGrids, ~250 m, modelled); bearing in rules.json grotbc.soilBearing"},
     "hut":      {"reduce": "maxnd", "codebook": "rules.json grotbc.layers.hut", "nodata": 255,
                  "note": "bits 0-6 permanent (kacha) huts per km2, bit 7 temporary huts nearby"},
+    "bank":     {"reduce": "maxnd", "codebook": "rules.json grotbc.banks", "nodata": 255,
+                 "note": "land along water: kind = value >> 2 (rules.json grotbc.banks.kinds), band = value & 3 (0 nearest, bandsM); 0 = no bank"},
+    "bld":      {"reduce": "maxnd", "codebook": "rules.json grotbc.layers.bld", "nodata": 255,
+                 "note": "Open Buildings footprints per ~150 m cell: density class = value & 7, size class = value >> 3; 0 = none"},
     "elev_hi":  {"reduce": "mean", "note": "elevation m = elev_hi * 256 + elev_lo - 500; elev_hi 255 = nodata"},
     "elev_lo":  {"reduce": "mean"},
 }
 
 
-def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None) -> dict | None:
+def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, network: Path | None = None,
+                 settlements: Path | None = None, population: Path | None = None) -> dict | None:
     """Copy the v2 vector files into the bundle and describe the v2 layers; None for a v1 bundle."""
     layers = {k: dict(v, path=k) for k, v in AUX_LAYERS.items() if (bundle / k).is_dir()}
     if not layers:
@@ -99,6 +106,19 @@ def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None) -> dic
             for name in ("climate.json", "climate.bin"):
                 shutil.copyfile(climate / name, bundle / "climate" / name)
             out["climate"] = {"index": "climate/climate.json", "data": "climate/climate.bin"}
+        if population is not None and (population / "population.json").exists():
+            (bundle / "population").mkdir(exist_ok=True)
+            for name in ("population.json", "population.bin"):
+                shutil.copyfile(population / name, bundle / "population" / name)
+            out["population"] = {"index": "population/population.json", "data": "population/population.bin"}
+        if network is not None and (network / "network.json").exists():
+            shutil.rmtree(bundle / "network", ignore_errors=True)
+            shutil.copytree(network, bundle / "network")
+            out["network"] = {"index": "network/network.json"}
+        if settlements is not None and (settlements / "settlements.json").exists():
+            for name in ("settlements.json", "settlements.geojson"):
+                shutil.copyfile(settlements / name, bundle / name)
+            out["settlements"] = {"list": "settlements.json", "geojson": "settlements.geojson"}
         if (vector / "features" / "index.json").exists():
             shutil.rmtree(bundle / "features", ignore_errors=True)
             shutil.copytree(vector / "features", bundle / "features")
@@ -121,7 +141,11 @@ def main() -> int:
     ap.add_argument("--class-stats", type=Path, default=Path("work/classify/class_stats.json"))
     ap.add_argument("--boundary-display", type=Path, default=Path("work/boundary/boundary_display.geojson"),
                     help="outline for drawing on a map; copied into the bundle as boundary.geojson (official boundary only)")
+    ap.add_argument("--network", type=Path, default=Path("work/network"), help="road graph (network.py)")
+    ap.add_argument("--settlements", type=Path, default=Path("work/settlements"), help="settlements.py output")
     ap.add_argument("--climate", type=Path, default=Path("work/climate"), help="climate.json / climate.bin (climate.py)")
+    ap.add_argument("--population", type=Path, default=Path("work/population"),
+                    help="population.json / population.bin (population.py)")
     ap.add_argument("--grotbc-vector", type=Path, default=Path("work/grotbc/vector"),
                     help="bundle v2 features / admin / boundaries / sheets written by grotbc.py")
     ap.add_argument("--name", default="Pakistan deployable terrain")
@@ -154,7 +178,7 @@ def main() -> int:
         "hybrid": bool(ncgdb),
         "restricted": bool(ncgdb),
     }
-    v2 = grotbc_block(args.bundle, args.grotbc_vector, args.climate)
+    v2 = grotbc_block(args.bundle, args.grotbc_vector, args.climate, args.network, args.settlements, args.population)
     if v2:
         manifest["dataVersion"] = 2
         manifest["layers"].update({k: k for k in v2["layers"]})

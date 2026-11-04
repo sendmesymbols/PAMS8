@@ -93,6 +93,7 @@ import KillingGr from "../Symbols/KillingGr.ts"; //Fixed
 import KillingZone from "../Symbols/KillingZone.ts"; //Fixed
 import LandingZone from "../Symbols/LandingZone.ts"; //Fixed
 import VitalGr from "../Symbols/VitalGr.ts";  //Fixed
+import ImpGr from "../Symbols/ImpGr.ts";
 import NoGo from "../Symbols/NoGo.ts";  //Fixed
 import FlightZone from "../Symbols/FlightZone.ts";  //Fixed
 import AirspaceArea from "../Symbols/AirspaceArea.ts";
@@ -352,6 +353,7 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "SupportingAttack": SupportingAttack,
     "UnspecifiedWire": UnspecifiedWire,
     "VitalGr": VitalGr,
+    "ImpGr": ImpGr,
     "Withdraw": Withdraw,
     "WithdrawUnderPressure": WithdrawUnderPressure,
     "Retire": Retire,

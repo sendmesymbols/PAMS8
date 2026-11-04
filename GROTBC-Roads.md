@@ -32,10 +32,38 @@ Bundle `MS/Data/terrain-bundle` (pipeline `tools/terrain-pipeline`, NCGDB Ver-6 
 | MSR | Rule, not an official list: motorway, highway, main road, defence road, class 50+ metalled road, broad-gauge rail (`rules.yaml msr`; `namedRoutes` takes an official list) |
 | Tank table | Al-Khalid ~48 t (MLC ~53), T-80UD / T-80 ~46 t (~51), Al-Zarrar ~40 t (~44); tankable = class 60+, class 50-59 = Al-Zarrar only, width under 3.5 m never tankable, HET needs class 70 |
 
+### 2a · The routable graph (added 2026-11-04)
+
+`D:\Imagery\Routing\Network.gdb` (1.3 GB) holds `pkroads`, an **osm2po-style graph of OpenStreetMap roads**: 2,762,810
+edges between 2,153,103 junctions, 567,613 km, with `SOURCE` / `TARGET` node ids, `KM`, `KMH` (class default speed),
+`CLAZZ` (OSM class), `REV_COST` (171,242 one-way edges), `OSM_NAME`; EPSG:3857, extent 60.8-77.1 E, 23.9-37.1 N. It
+also carries an ArcGIS network dataset (`ND_6_*`, `N_1_*` tables), which the pipeline does not need.
+
+`scripts/network.py` turns it into the bundle's `network/` (nodes, edges, simplified geometry, names; ~120 MB) and
+attaches the NCGDB attributes to every edge by reading the burned route raster every 30 m along it:
+
+| OSM class | km | matched to an NCGDB road | NCGDB load class known | MSR km |
+| --- | --- | --- | --- | --- |
+| motorway | 4,595 | 96.8 % | 26.3 % | 4,402 |
+| trunk | 20,525 | 97.6 % | 67.3 % | 17,905 |
+| primary | 18,395 | 97.3 % | 66.8 % | 10,157 |
+| secondary | 27,290 | 93.9 % | 52.2 % | 5,593 |
+| tertiary | 93,591 | 88.1 % | 26.7 % | 7,344 |
+| unclassified | 197,683 | 61.3 % | 7.3 % | 6,993 |
+| residential | 186,587 | 45.2 % | 5.9 % | 8,281 |
+| service / track | 17,577 | ~45 % | ~11 % | 1,859 |
+
+So the two sources agree on the main network, the NCGDB supplies load class and MSR for most of it, and OSM adds
+about 200,000 km of minor and residential roads the NCGDB does not carry. Each edge also keeps the worst crossing on
+it (bridge class, foot bridge, ford / ferry), so a class 40 bridge makes a class 70 road non-tankable at that point.
+Decision 9.1 below is therefore settled in practice: **OSM topology, NCGDB attributes**.
+
+Still to do for phase 1: the connectivity report (components, dead ends) and golden routes in `validate.py`, NCGDB
+closures / condition on the edges (they are on the NCGDB lines, not in the raster), and a router.
+
 **What is missing for routing**
 
-- **No graph.** The lines are fragments for display: not noded at junctions, simplified, split at tile edges, and the
-  raster is one-pixel-wide paths. Nothing can find a path along them.
+- **No router yet.** The graph above is in the bundle; nothing reads it. The feature lines remain display fragments.
 - **Load class is on about 31 % of road segments** (74,302 of 238,173 in `Roads_updated_2016_Pakmap`). The rest are
   "class not recorded".
 - **Condition ~4 %** (9,742 segments), **surface 1,000**, **seasonal closure 540** (`CLOSED_DUE`), **landslide sites 71**
@@ -164,7 +192,8 @@ Static-file rule: nothing is fetched at routing time other than bundle tiles (th
 
 ## 9 · Decisions needed from the owner
 
-1. **Basis**: NCGDB only, or NCGDB topology with OSM gap-filling (recommended)?
+1. **Basis**: settled by Network.gdb (2026-11-04): the OSM graph is the topology, the NCGDB gives load class, MSR,
+   defence roads and crossings. Confirm.
 2. **Official MSR list**: supply it for `msr.namedRoutes`; until then the rule (class 50+) stands.
 3. **Official MLCs** for Al-Khalid, T-80UD, T-80, Al-Zarrar, and the load-code convention (A / F, 1 / 2).
 4. **Area**: Pakistan only, or the whole relief-map sheet (Indian-administered and Afghan roads included)?

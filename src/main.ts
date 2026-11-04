@@ -300,7 +300,7 @@ import DrawingCueEngine from '@lib/Engines/DrawingCueEngine';
 // Engines emit 'engine-log' events — the client application decides how to
 // display them.  The log panel in index.html renders them visually; this
 // listener forwards them to the browser console so they are also searchable.
-import type { EngineLogEntry } from '../MS/Support/EngineLogger';
+import EngineLogger, { type EngineLogEntry } from '../MS/Support/EngineLogger';
 document.addEventListener('engine-log', (e: Event) => {
   const { engine, type, formatted } = (e as CustomEvent<EngineLogEntry>).detail;
   if (type === 'error') {
@@ -2347,6 +2347,38 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     if (adv) void adv.retry();
     else showToast('Turn on the Placement advisor first', 'no-targets');
   });
+  // Important Tactical Ground (G): candidates round the map centre, and designating the best one as MITG.
+  const itgAtCentre = async (): Promise<any[] | null> => {
+    const adv = (window as any).symbolEngine?.placementAdvisor;
+    const centre = appConfig.activeView?.center;
+    if (!adv || !centre) {
+      showToast('Turn on the Placement advisor first', 'no-targets');
+      return null;
+    }
+    const list = await adv.groundCandidates(centre);
+    if (!list.length) showToast(`No ITG candidates within ${adv.options.itg.radiusKm} km of the map centre`, 'no-targets');
+    return list;
+  };
+  document.getElementById('placement-itg-list')?.addEventListener('click', async () => {
+    const list = await itgAtCentre();
+    for (const c of list ?? []) {
+      EngineLogger.success(
+        'Placement Advisor',
+        `${c.level === 2 ? 'Strong candidate' : 'ITG candidate'}: ${c.name ?? c.kindLabel} (${c.kindLabel}` +
+          `${c.elevationM !== null ? ` ${c.elevationM} m` : ''}), ${Math.round(c.distanceM)} m ${c.compass} · ${c.reasonLabels.join(', ')}`,
+      );
+    }
+    if (list?.length) showToast(`${list.length} ITG candidates listed in the Engine Log`, 'success');
+  });
+  const designateAtCentre = async (level: 'ITG' | 'MITG') => {
+    const list = await itgAtCentre();
+    if (!list?.length) return;
+    const g = (window as any).symbolEngine.designateGround(list[0], level);
+    const sym = level === 'MITG' ? 'Vital Gr (MITG)' : 'Imp Gr (ITG)';
+    showToast(g ? `${sym} drawn round ${list[0].name ?? list[0].kindLabel}` : `Could not draw the ${sym}`, g ? 'success' : 'no-targets');
+  };
+  document.getElementById('placement-itg-itg')?.addEventListener('click', () => void designateAtCentre('ITG'));
+  document.getElementById('placement-itg-mitg')?.addEventListener('click', () => void designateAtCentre('MITG'));
   document.addEventListener('placement-advice', (e: any) => {
     placementAdvice = e.detail.message;
     renderPlacementStatus();

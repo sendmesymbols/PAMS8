@@ -1,4 +1,4 @@
-"""Step 4c — climate normals grid (GROTBC T, weather and climate) from WorldClim 2.1.
+"""Step 4c — climate normals grid (GROTBC T: the season for the going; weather and climate) from WorldClim 2.1.
 
 Inputs : work/raw/worldclim/wc2.1_5m_{tmin,tmax,prec,wind}.zip (fetch.py), grid.json aoi
 Outputs: work/climate/climate.bin   little-endian int16, layers in the order of climate.json `layers`, each

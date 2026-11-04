@@ -2087,6 +2087,21 @@ class Shapes {
 
 
 
+    static createIGStrokes(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
+        const iStrokes = this.createIStrokes(dx - (dr * 0.9), dy, dr, sp);
+        const gStrokes = this.createGStrokes(dx + (dr * 0.7), dy, dr, sp);
+        return [...iStrokes, ...gStrokes];
+    }
+
+    /** "IG" (Important Ground) as single-stroke line paths, like createVGRings(). */
+    static createIGRings(dx: number, dy: number, dr: number, sp: SpatialReference): number[][][] {
+        const paths: number[][][] = [];
+        for (const seg of this.createIGStrokes(dx, dy, dr, sp)) {
+            if (seg && seg.length >= 2) paths.push([[seg[0].x, seg[0].y], [seg[1].x, seg[1].y]]);
+        }
+        return paths;
+    }
+
     static createBL(dx: number, dy: number, dr: number, sp: SpatialReference): Point[][] {
         const pts1 = this.createB(new Point({ x: dx, y: dy, spatialReference: sp }), dr, 60);
         const pts2 = this.createL(dx + (dr * 0.7), dy, dr, sp);

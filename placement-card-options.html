@@ -191,6 +191,14 @@ ul.pg-l li{margin:3px 0}
 .gx-meter{display:inline-grid;grid-template-columns:repeat(3,10px);gap:2px;vertical-align:middle;margin-right:5px}
 .gx-meter>i{height:6px;border-radius:1px;background:rgba(255,255,255,.12)}
 .gx-meter>i.on{background:var(--gx-C,#1f8a5a)}
+/* C section: cover / concealment split four ways (direct fire, indirect fire, ground observation, aerial observation) */
+.gx-cc{display:grid;grid-template-columns:repeat(4,1fr);gap:1px 6px;margin:1px 0 4px}
+.gx-cc>.gx-cch{grid-column:span 2;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#9aa3ad;border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:1px}
+.gx-cc>div{display:flex;flex-direction:column;gap:2px;min-width:0;padding-top:2px}
+.gx-cc small{font-size:10px;color:#9aa3ad;line-height:1.1}
+.gx-cc b{font-size:10.5px;font-weight:600;color:#fff;line-height:1.1}
+.gx-cc .gx-meter{margin-right:0}
+.gx-note{font-size:10.5px;color:#9aa3ad}
 .gx-foot{display:flex;align-items:center;gap:7px;padding:6px 11px;border-top:1px solid rgba(255,255,255,.08);color:#9aa3ad;font-size:11px;background:#1b1f25}
 .gx-kbd{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:17px;height:17px;padding:0 4px;border-radius:4px;font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
 .gx-layers{display:flex;gap:4px;margin-top:9px}
@@ -222,7 +230,7 @@ ul.pg-l li{margin:3px 0}
 .gx-bs:nth-of-type(even){background:#222830}
 .gx-bs .gx-badge{margin-top:1px}
 .gx-bs h4{margin:0 0 4px;font:700 10px/1.2 system-ui;letter-spacing:.12em;text-transform:uppercase;color:#aab3bd}
-.gx-bs .gx-ln{grid-template-columns:96px 1fr}
+.gx-bs .gx-ln{grid-template-columns:112px 1fr}
 .gx-later .gx-v{color:#7d8791;font-style:italic}
 .gx-src{padding:7px 12px;font-size:10.5px;color:#8b95a0;border-top:1px solid rgba(255,255,255,.08)}
 .gx-act{display:flex;gap:8px;align-items:center;padding:8px 12px;border-top:1px solid rgba(255,255,255,.08);background:#171b20}
@@ -255,8 +263,13 @@ ul.pg-l li{margin:3px 0}
   suggest a style.</p>
   <p class="pg-note"><b>Compare live directions:</b> <a href="placement-card-variations.html">Open the interactive card and legend options</a> to compare three GROTBC densities and rotate the sample map with the radar.</p>
   <div class="pg-flow">
-    <span><b>G</b> Ground</span><span><b>R</b> Relief</span><span><b>O</b> Obstacles</span><span><b>T</b> Tactical Features</span><span><b>B</b> Boundaries and Built-Up</span><span><b>C</b> Cover and Concealment</span>
+    <span><b>G</b> Ground</span><span><b>R</b> Roads, Tracks &amp; Railway Network</span><span><b>O</b> Obstacles</span><span><b>T</b> Trafficability</span><span><b>B</b> Built-Up Areas</span><span><b>C</b> Cover, Camouflage &amp; Concealment</span>
   </div>
+  <p class="pg-note"><b>Relabelled 2026-11-03 (GROTBC.md).</b> The first build read R as Relief and T as Tactical Features. Now
+  <b>G</b> holds relief (elevation, slope, landform), the terrain type (Plain, Hilly, Solid, Marshy, Wet, Desert, Mountainous, Built-Up, Snow / Ice), vegetation, soil and bearing, and water sources; <b>R</b> holds roads, tracks, rail, crossings by class and airfields;
+  <b>T</b> is <b>Trafficability</b> (changed from Terrain on 2026-11-04): the going for the mode (on foot, wheeled, tracked, air, others) cross-country, on tracks, on roads by load class and on the MSR, dry and after rain, with the month's climate as the season; <b>B</b> holds settlements, kacha huts
+  and public services; <b>C</b> splits four ways (cover from direct fire, cover from indirect fire, concealment from ground observation, concealment from aerial observation).
+  Sample lines below use the terrain bundle as rebuilt (bundle v2 with terrain, soil, hut and climate layers, named detail and <code class="pg-c">routes.json</code>).</p>
 </header>
 
 <section id="how">
@@ -334,18 +347,18 @@ ul.pg-l li{margin:3px 0}
   </div>
 
   <h3>2b · Ground Brief (press G)</h3>
-  <p class="pg-sub">A panel for the cursor or the selected symbol: all six sections, a header line with mode · 1:50k sheet · tehsil · district, a sources line, and <b>Copy as Text</b> for orders. Esc or G closes it. It does not follow the pointer. Lines marked "Later" are planned, not built.</p>
+  <p class="pg-sub">A panel for the cursor or the selected symbol: all six sections, a header line with mode · 1:50k sheet · tehsil · district, a sources line, and <b>Copy as Text</b> for orders. Esc or G closes it. It does not follow the pointer. Lines marked "Planned" are not built (routing between two points is a proposal in <code class="pg-c">GROTBC-Roads.md</code>). Pick a month to see the season and after-rain going change.</p>
   <div class="pg-row">
     <div class="stage gx" style="padding:14px"><div id="gx-brief"></div></div>
     <div style="flex:1;min-width:260px;max-width:520px">
-      <div class="pg-ctl"><label>Mode <select id="gx-brief-mode"></select></label><span id="gx-copied" style="color:#7ee0a5"></span></div>
+      <div class="pg-ctl"><label>Mode <select id="gx-brief-mode"></select></label><label>Month <select id="gx-brief-month"></select></label><span id="gx-copied" style="color:#7ee0a5"></span></div>
       <p class="pg-sub">Copy as Text produces this (press the button on the panel, or read it here):</p>
       <pre class="pg-prompt" id="gx-brief-text" style="max-height:340px"></pre>
     </div>
   </div>
 
   <h3>2c · Legend with the GROTBC layer switch</h3>
-  <p class="pg-sub">Six letter buttons under the mode strip repaint the map overlay and the key. G is today's going ramp. Click the letters to see each key. The G key joins P and S.</p>
+  <p class="pg-sub">Six letter buttons under the mode strip repaint the map overlay and the key. T (Trafficability) is today's going ramp plus roads fit for the mode and soil that turns poor after rain; G is the terrain type, slope bands and water sources. Click the letters to see each key. The G key joins P and S.</p>
   <div class="pg-ctl" id="gx-leg-ctl"></div>
   <div class="pg-row">
     <div class="stage gx" style="padding:14px;min-width:330px"><div id="gx-legend"></div></div>
@@ -377,7 +390,20 @@ ul.pg-l li{margin:3px 0}
 
   <h3>3d · Proposed section content and its data</h3>
   <div class="pg-scroll"><table class="pg-t" id="t-sections"></table></div>
-  <div class="pg-note">Water line format: <code class="pg-c">Tube Well 250 m W · Spring 3 km N · Well 600 m SE · Tank 1.2 km E</code>. Only kinds found within the search radius, nearest first.</div>
+  <div class="pg-note">Water line format: <code class="pg-c">Tube Well 250 m W · Spring 3 km N · Well 600 m SE · Tank 1.2 km E</code>. Only kinds found within the search radius, nearest first.<br>
+  Line formats for the new data (sample values): <code class="pg-c">Terrain Type: Plain (Irrigated), Hilly to the N 2 km</code> ·
+  <code class="pg-c">Soil: Clay Loam (Modelled) · Firm When Dry, Soft After Rain</code> ·
+  <code class="pg-c">Cross-Country: SLOW-GO for Wheeled Vehicle (Watercourses) · Dry Season</code> ·
+  <code class="pg-c">After Rain: Clay Loam Poor (Modelled)</code> ·
+  <code class="pg-c">Jul: 35° / 26°, 149 mm, Monsoon (74 % of the Year's Rain Jun to Sep); Frost Months: None</code> ·
+  <code class="pg-c">MSR N-5 (GT Road) · Class 70 · Tankable · 1.2 km NE</code> ·
+  <code class="pg-c">Lahore – Kasur · 53 km · Class 70 · MSR</code> (from, to and km only when routes.json has them) ·
+  <code class="pg-c">Kotli – Rawala Kot · 81 km · Closed Dec to Jan (as Recorded)</code> ·
+  <code class="pg-c">Condition Good (Where Recorded)</code> · <code class="pg-c">Class Not Recorded</code> ·
+  <code class="pg-c">Bridge Class 40 (Not for Tanks) · 600 m E</code> ·
+  <code class="pg-c">Kamoke (City) 3.1 km N · About 1.2 Million within 12 km (WorldPop Estimate)</code> ·
+  <code class="pg-c">Kacha Huts: About 18 per km² Nearby</code> ·
+  <code class="pg-c">River Bank (Chenab) 150 m W: Cover from Direct Fire, Deployment Line</code>.</div>
 
   <h3>3e · Terrain classes (<code class="pg-c">rules.json classes</code>, 51 codes)</h3>
   <p class="pg-sub">Class codes 0 to 50 are what the verdict is built from. G R O T B C = the GROTBC heading(s) each class belongs to.</p>
@@ -391,7 +417,18 @@ ul.pg-l li{margin:3px 0}
     <li>Load class is recorded on about <b>31%</b> of road segments; otherwise the card says "class not recorded", never "tankable".</li>
     <li>Field channels and power lines are mapped unevenly (none near Lahore).</li>
     <li>Slope comes from a surface model, so cities and tree lines read a little steep.</li>
-    <li>Tank MLCs are estimates (Al-Khalid ~48 t, T-80UD / T-80 ~46 t, Al-Zarrar ~40 t). Class 60+ = tankable for every main tank; 50 to 59 = Al-Zarrar only; below 50 = non-tankable; width under 3.5 m is never tankable.</li>
+    <li>Tank MLCs are estimates (Al-Khalid ~48 t, T-80UD / T-80 ~46 t, Al-Zarrar ~40 t). Class 60+ = tankable for every main tank; 50 to 59 = Al-Zarrar only; below 50 = non-tankable; width under 3.5 m is never tankable; a tank on a transporter (HET) needs class 70.</li>
+    <li>Road <b>condition</b> is recorded on about <b>4%</b> of road segments, <b>seasonal closure</b> on about 540 and <b>landslide sites</b> on 71: "no closure" means "none recorded". Say "Where Recorded".</li>
+    <li>MSR is a rule, not an official list: motorway, highway, main road, defence road, broad-gauge railway, and metalled roads of class 50 and over.</li>
+    <li><b>Soil</b> is a 250 m model (SoilGrids 2.0), not a soil survey: say "Modelled". The bearing (Good / Fair / Poor / Very Poor, dry and after rain) is a starting proposal.</li>
+    <li><b>Terrain type</b> rules and the <b>four-way cover split</b> are starting proposals for the owner to correct.</li>
+    <li><b>Trafficability</b> is the per-mode going table (rules.yaml) applied to the mapped class, slope and modelled soil, with the month from climate normals. It is not a measured trafficability survey: no cone index, no live soil moisture, no cross-country speed yet.</li>
+    <li><b>Population</b> near a place (<code class="pg-c">wp</code>, <code class="pg-c">wc</code>) is a WorldPop 2020 estimate, not a census count: say "WorldPop Estimate". Official population only where recorded.</li>
+    <li><b>Huts</b> are mapped 1:50k symbols (kacha / mud dwellings), not a building survey.</li>
+    <li><b>Climate</b> is WorldClim 1970 to 2000 normals on 5′ cells (about 9 km): an average month, not a forecast.</li>
+    <li>Not in the NCGDB: schools, government offices, banks and named markets (77 markets, no names). Schools, banks and government offices come from GeoNames (feature kinds 147 to 149, <code class="pg-c">src: gn</code>) and say so; the pipeline step is written but the current bundle build does not carry them yet.</li>
+    <li><b>Routes</b> (routing from A to B) are not built: <code class="pg-c">routes.json</code> gives named roads with from, to, km, load range, closure and condition only. Any route line is "Planned".</li>
+    <li>Road and rail lines also cover the Indian-administered side, because the data extent is the whole relief-map sheet.</li>
   </ul>
 </section>
 
@@ -420,8 +457,12 @@ You are a senior interface designer for a military tactical-planning map tool (M
 
 CONTEXT
 The attached HTML file shows the Placement Advisor's Card (the cursor-following tooltip) and Legend (docked bottom-left) in their CURRENT style, and a PROPOSED GROTBC layout
-(G Ground, R Relief, O Obstacles, T Tactical Features, B Boundaries and Built-Up, C Cover and Concealment). Read the whole file: the CSS blocks are the source of truth for
+(G Ground: relief, slope, landform, terrain type, vegetation, soil and bearing, water sources · R Roads, Tracks &amp; Railway Network: MSR, road / load class, tankable, crossings by class,
+rail, airfields · O Obstacles: natural, man-made, temporary, seasonal · T Trafficability: going for the mode (GO / SLOW-GO / NO-GO) cross-country, on tracks, roads and the MSR,
+dry and after rain, season from the month's climate · B Built-Up Areas: cities, towns, villages with population, kacha huts, public services · C Cover, Camouflage &amp; Concealment: cover from direct fire, cover from
+indirect fire, concealment from ground observation, concealment from aerial observation). Read the whole file: the CSS blocks are the source of truth for
 "current"; section 3 lists every field you may show; section 4 lists the tokens, wording rules and accessibility rules that must hold. All sample data is illustrative.
+Modelled or sparse values must say so in the UI ("Modelled", "Where Recorded", "WorldPop Estimate"). Routing is not built: show any route line as "Planned".
 
 TASK
 Propose THREE distinct style options for the Card, the Ground Brief panel and the Legend (with the GROTBC layer switch). Options must differ in more than colour:
@@ -432,14 +473,16 @@ HARD CONSTRAINTS (do not break)
 - The Card follows the cursor and must never cover it, take the pointer or reflow on mouse-move. One idea per section: at most two lines of text plus one graphic.
 - Verdict colours (ok, near, caution, partial, in) and the GO / SLOW-GO / NO-GO scale keep their meaning. The six GROTBC accents must stay clearly apart from them
   (flag any clash, for example the C green against the "ok" green).
-- Wording: Title Case, military terms exactly as given (Suitable Position, SLOW-GO, NO-GO, Marginal, Quick Fix, Intermediate Gap Rule). No symbols or dashes inside sentences.
+- Wording: Title Case, military terms exactly as given (Suitable Position, Unsuitable Position, SLOW-GO, NO-GO, Marginal, Quick Fix, Intermediate Gap Rule,
+  Adjacent to X / Encroaching on X, Partially Obstructed). Mode names as in section 3c. No symbols or dashes inside sentences.
 - Built with DOM nodes and CSS only (no images, no web fonts, no framework). Works on touch and with a screen reader. Respect prefers-reduced-motion.
 - Never leave an empty row: say what is missing ("Class not recorded").
 
 DELIVERABLES (for each option)
 1. Name and a one-paragraph rationale (who it serves best, what it trades away).
 2. A token table: colours (hex), type scale, spacing, radius, borders.
-3. A self-contained HTML + CSS mock of: (a) the Card for Tracked Vehicle in caution and in partial with the three sections G / R / O... choose the right three by the mode table in section 3c;
+3. A self-contained HTML + CSS mock of: (a) the Card for Tracked Vehicle in caution and in partial with its three sections (G R O, from the mode table in section 3c),
+   and the Card for Gun Position (G R C) to show the four-way C section;
    (b) the Ground Brief panel with all six sections; (c) the Legend with the layer switch showing the R layer and the C layer.
 4. Accessibility notes: contrast ratios of the key text and badge colours, and how colour is not the only signal.
 5. Implementation cost: which existing classes change, and what is new.
@@ -456,7 +499,7 @@ Compare the three options against the acceptance checklist in the file (280 px, 
 
 </main>
 
-<script id="data" type="application/json">{"modes":[{"key":"dismounted","label":"Dismounted Force","nogo":["Permanent Water","Snow / Ice / Glacier","Restricted / Protected Area","Canal"],"slow":["Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Steep Slope (Over 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Walled Orchard","Railway Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"wheeled","label":"Wheeled Vehicle","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Sand Dunes","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Forest (Enclosed)","Railway Bridge","Foot Bridge","Perennial Stream / Nullah","Wall / Fence"],"slow":["Tree Cover","Built-Up Area","Moderate Slope (15 to 30°)","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Cutting","Orchard / Garden","Graveyard","Ford / Ferry","Dry Nullah","Irrigated Cropland Under Power Lines"],"marginal":true,"whyCount":4},{"key":"tracked","label":"Tracked Vehicle","nogo":["Permanent Water","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge","Bridge, Below Class 50","Railway Bridge","Foot Bridge"],"slow":["Built-Up Area","Seasonal Water / Flood Zone","Moderate Slope (15 to 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Bridge, Class 50 to 59","Bridge, Class Not Recorded","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":5},{"key":"generic","label":"Gr Based","nogo":["Permanent Water","Canal","Distributary / Minor Canal","Drain"],"slow":["Wetland / Marsh","Mangrove","Sand Dunes","Perennial Stream / Nullah"],"marginal":true,"whyCount":0},{"key":"vessel","label":"Surface Vessel","nogo":["Anywhere Off Permanent Water / Canal / Bridge, Class 60+ (Tankable) / Bridge, Class 50 to 59 / Bridge, Below Class 50 / Bridge, Class Not Recorded / Railway Bridge / Foot Bridge / Ford / Ferry"],"slow":["Seasonal Water / Flood Zone","Ford / Ferry"],"marginal":true,"whyCount":0},{"key":"gun","label":"Gun Position","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Moderate Slope (15 to 30°)","Restricted / Protected Area","Sand Dunes","Sloping Ground (7 to 15°)","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"slow":["Tree Cover","Built-Up Area","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Gentle Slope (3 to 7°)","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Orchard / Garden","Metalled Road, Class 60+ (Tankable)","Metalled Road, Class 50 to 59","Metalled Road, Below Class 50","Metalled Road, Class Not Recorded","Unmetalled Road","Dry Nullah","Irrigated Cropland Under Power Lines","Level Crossing"],"marginal":true,"whyCount":6},{"key":"ad","label":"Air Defence Site","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Sand Dunes","Canal","Distributary / Minor Canal","Drain","Cliff / Escarpment / Broken Edge","Forest (Enclosed)","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah"],"slow":["Tree Cover","Built-Up Area","Moderate Slope (15 to 30°)","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Orchard / Garden","Graveyard","Power Line Corridor","Dry Nullah","Irrigated Cropland Under Power Lines","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"hls","label":"Helicopter Landing Site","nogo":["Tree Cover","Built-Up Area","Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Steep Slope (Over 30°)","Moderate Slope (15 to 30°)","Restricted / Protected Area","Sand Dunes","Sloping Ground (7 to 15°)","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Orchard / Garden","Forest (Enclosed)","Graveyard","Power Line Corridor","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Irrigated Cropland Under Power Lines","Wall / Fence","Level Crossing"],"slow":["Snow / Ice / Glacier","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Gentle Slope (3 to 7°)","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Metalled Road, Class 60+ (Tankable)","Metalled Road, Class 50 to 59","Metalled Road, Below Class 50","Metalled Road, Class Not Recorded","Unmetalled Road","Dry Nullah"],"marginal":true,"whyCount":7},{"key":"signals","label":"Signals / EW Site","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Restricted / Protected Area","Canal","Distributary / Minor Canal","Drain","Cliff / Escarpment / Broken Edge","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah"],"slow":["Tree Cover","Built-Up Area","Steep Slope (Over 30°)","Sand Dunes","Dry Riverbed / Nullah","Forest (Enclosed)","Power Line Corridor","Dry Nullah","Irrigated Cropland Under Power Lines"],"marginal":true,"whyCount":3},{"key":"amphibious","label":"Amphibious","nogo":["Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Cliff / Escarpment / Broken Edge"],"slow":["Built-Up Area","Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Moderate Slope (15 to 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":2},{"key":"pack","label":"Mountain / Pack Transport","nogo":["Permanent Water","Mangrove","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge"],"slow":["Seasonal Water / Flood Zone","Wetland / Marsh","Snow / Ice / Glacier","Steep Slope (Over 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Walled Orchard","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"oversnow","label":"Over-Snow","nogo":["Permanent Water","Mangrove","Steep Slope (Over 30°)","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge","Walled Orchard","Railway Bridge","Foot Bridge"],"slow":["Open Land","Tree Cover","Cropland","Built-Up Area","Seasonal Water / Flood Zone","Wetland / Marsh","Moderate Slope (15 to 30°)","Bare / Desert","Sand","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Forest (Enclosed)","Graveyard","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":2},{"key":"roadbound","label":"Road-Bound Wheeled","nogo":["Anywhere Off Metalled Road, Class 60+ (Tankable) / Metalled Road, Class 50 to 59 / Metalled Road, Below Class 50 / Metalled Road, Class Not Recorded / Unmetalled Road / Bridge, Class 60+ (Tankable) / Bridge, Class 50 to 59 / Bridge, Below Class 50 / Bridge, Class Not Recorded / Ford / Ferry / Level Crossing"],"slow":["Unmetalled Road","Ford / Ferry"],"marginal":false,"whyCount":2},{"key":"rail","label":"Rail-Bound","nogo":["Anywhere Off Railway / Railway Bridge / Level Crossing"],"slow":["Level Crossing"],"marginal":false,"whyCount":0}],"classes":[{"c":0,"l":"Open Land","g":"G","o":"natural","k":"surface","n":"Open, firm ground with low vegetation."},{"c":1,"l":"Tree Cover","g":"GC","o":"natural","k":"vegetation","n":"Trees: good concealment from the air, slow going for vehicles."},{"c":2,"l":"Cropland","g":"G","o":"man_made","k":"surface","n":"Cultivated fields: firm when dry, soft after irrigation or rain."},{"c":3,"l":"Built-Up Area","g":"BC","o":"man_made","k":"structure","n":"Houses and streets: cover and concealment, but movement is channelled."},{"c":4,"l":"Permanent Water","g":"O","o":"natural","k":"water","n":"Water all year round: needs a bridge, ferry or boats to cross."},{"c":5,"l":"Seasonal Water / Flood Zone","g":"GO","o":"natural","k":"water","n":"Under water for part of the year and soft for the rest."},{"c":6,"l":"Wetland / Marsh","g":"GO","o":"natural","k":"soft_ground","n":"Marsh, reeds or wet mud: vehicles bog down."},{"c":7,"l":"Mangrove","g":"GO","o":"natural","k":"soft_ground","n":"Tidal mangrove: mud and roots, impassable to vehicles."},{"c":8,"l":"Snow / Ice / Glacier","g":"GO","o":"natural","k":"snow_ice","n":"Snow, ice or glacier: needs over-snow equipment."},{"c":9,"l":"Steep Slope (Over 30°)","g":"RO","o":"natural","k":"gradient","n":"Slope over 30°: climbable on foot only."},{"c":10,"l":"Moderate Slope (15 to 30°)","g":"R","o":"natural","k":"gradient","n":"Slope of 15–30°: hard going for vehicles."},{"c":11,"l":"Restricted / Protected Area","g":"B","o":"man_made","k":"restricted","n":"Military or protected land: entry needs authority."},{"c":12,"l":"Bare / Desert","g":"G","o":"natural","k":"surface","n":"Bare ground with no cover from view."},{"c":13,"l":"Sand","g":"G","o":"natural","k":"soft_ground","n":"Loose sand: wheels sink and dust gives movement away."},{"c":14,"l":"Sand Dunes","g":"GO","o":"natural","k":"soft_ground","n":"Dunes: soft, steep-sided ridges of sand."},{"c":15,"l":"Rocky Ground / Scree / Stony Waste","g":"GC","o":"natural","k":"surface","n":"Rock, scree or stones: hard on tyres and tracks, gives some cover."},{"c":16,"l":"Salt Pan","g":"G","o":"natural","k":"soft_ground","n":"Salt crust over soft mud: may not carry a vehicle when wet."},{"c":17,"l":"Dry Riverbed / Nullah","g":"GO","o":"natural","k":"gradient","n":"Dry bed with banks: floods after rain, gives cover."},{"c":18,"l":"Gentle Slope (3 to 7°)","g":"R","o":"natural","k":"gradient","n":"Gentle slope of 3–7°: easy going, but not level enough for a gun platform or a helicopter."},{"c":19,"l":"Sloping Ground (7 to 15°)","g":"R","o":"natural","k":"gradient","n":"Sloping ground of 7–15°: fine to move over, too steep to site guns or land helicopters."},{"c":20,"l":"Canal","g":"O","o":"man_made","k":"water","n":"Main or branch canal: deep, fast and steep-banked; cross at bridges only."},{"c":21,"l":"Distributary / Minor Canal","g":"O","o":"man_made","k":"water","n":"Distributary or minor canal: narrow but banked; vehicles need a bridge."},{"c":22,"l":"Drain","g":"O","o":"man_made","k":"water","n":"Drainage channel with soft banks: vehicles need a crossing."},{"c":23,"l":"Irrigated Cropland (Many Watercourses)","g":"GO","o":"man_made","k":"water","n":"Fields cut by watercourses every few hundred metres: wheels slow to a crawl."},{"c":24,"l":"Embankment / Bund Over 2 M","g":"OC","o":"man_made","k":"gradient","n":"Earth bank over 2 m high: stops wheels and gives cover from fire."},{"c":25,"l":"Bund (1 to 2 M)","g":"OC","o":"man_made","k":"gradient","n":"Low earth bank of 1–2 m: slows wheels and gives some cover."},{"c":26,"l":"Cutting","g":"OC","o":"man_made","k":"gradient","n":"Road or rail cutting: steep sides, cover from view."},{"c":27,"l":"Cliff / Escarpment / Broken Edge","g":"ROC","o":"natural","k":"gradient","n":"Cliff or broken edge: a drop no vehicle can take, with cover below it."},{"c":28,"l":"Railway","g":"TO","o":"man_made","k":"route","n":"Railway line on its embankment: vehicles cross at level crossings and bridges."},{"c":29,"l":"Walled Orchard","g":"OC","o":"man_made","k":"structure","n":"Orchard inside a wall: concealment and cover, and a block to vehicles."},{"c":30,"l":"Orchard / Garden","g":"GC","o":"man_made","k":"vegetation","n":"Orchard or garden: good concealment, slow going between the rows."},{"c":31,"l":"Forest (Enclosed)","g":"OC","o":"natural","k":"vegetation","n":"Dense forest: concealment from the air, no way through for wheels."},{"c":32,"l":"Graveyard","g":"BC","o":"man_made","k":"structure","n":"Graveyard: walls and mounds give cover, but there is no way through for vehicles."},{"c":33,"l":"Power Line Corridor","g":"O","o":"man_made","k":"air_hazard","n":"Within 50–100 m of power lines or masts: a wire-strike risk for helicopters."},{"c":34,"l":"Metalled Road, Class 60+ (Tankable)","g":"T","o":"man_made","k":"route","n":"Metalled road of load class 60 or more: carries every main tank."},{"c":35,"l":"Metalled Road, Class 50 to 59","g":"T","o":"man_made","k":"route","n":"Metalled road of load class 50–59: carries Al-Zarrar but not Al-Khalid or T-80UD."},{"c":36,"l":"Metalled Road, Below Class 50","g":"T","o":"man_made","k":"route","n":"Metalled road below load class 50: not tankable."},{"c":37,"l":"Metalled Road, Class Not Recorded","g":"T","o":"man_made","k":"route","n":"Metalled road with no load class on record: check its bridges before moving armour."},{"c":38,"l":"Unmetalled Road","g":"T","o":"man_made","k":"route","n":"Unmetalled or fair-weather road: dust when dry, mud after rain."},{"c":39,"l":"Bridge, Class 60+ (Tankable)","g":"TO","o":"man_made","k":"crossing","n":"Bridge of load class 60 or more: carries every main tank."},{"c":40,"l":"Bridge, Class 50 to 59","g":"TO","o":"man_made","k":"crossing","n":"Bridge of load class 50–59: Al-Zarrar is the only main tank it carries."},{"c":41,"l":"Bridge, Below Class 50","g":"TO","o":"man_made","k":"crossing","n":"Bridge below load class 50: not for tanks."},{"c":42,"l":"Bridge, Class Not Recorded","g":"TO","o":"man_made","k":"crossing","n":"Bridge with no load class on record: confirm it before crossing with armour."},{"c":43,"l":"Railway Bridge","g":"TO","o":"man_made","k":"crossing","n":"Railway bridge: for trains and men on foot, not for vehicles."},{"c":44,"l":"Foot Bridge","g":"TO","o":"man_made","k":"crossing","n":"Foot bridge: a crossing for men on foot only."},{"c":45,"l":"Ford / Ferry","g":"TO","o":"man_made","k":"crossing","n":"Ford or ferry point: a crossing with effort, depending on the water level."},{"c":46,"l":"Perennial Stream / Nullah","g":"O","o":"natural","k":"water","n":"Stream or nullah with water all year: banks and a soft bed."},{"c":47,"l":"Dry Nullah","g":"OC","o":"natural","k":"gradient","n":"Dry nullah: a gully that slows wheels and gives cover."},{"c":48,"l":"Irrigated Cropland Under Power Lines","g":"GO","o":"man_made","k":"air_hazard","n":"Watercourse-cut fields under power lines: slow for wheels and a wire risk for helicopters."},{"c":49,"l":"Wall / Fence","g":"OC","o":"man_made","k":"structure","n":"Wall or wire fence: blocks vehicles; a wall gives cover."},{"c":50,"l":"Level Crossing","g":"T","o":"man_made","k":"crossing","n":"Road meets railway: the place to cross the line with vehicles."}],"tanks":[{"name":"Al-Khalid","weightT":48,"mlc":53},{"name":"T-80UD","weightT":46,"mlc":51},{"name":"T-80","weightT":46,"mlc":51},{"name":"Al-Zarrar","weightT":40,"mlc":44}],"tankable":{"minClass":60,"limitedClass":50,"minWidthM":3.5,"transporterClass":70}}</script>
+<script id="data" type="application/json">{"modes":[{"key":"dismounted","label":"Dismounted Force","nogo":["Permanent Water","Snow / Ice / Glacier","Restricted / Protected Area","Canal"],"slow":["Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Steep Slope (Over 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Walled Orchard","Railway Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"wheeled","label":"Wheeled Vehicle","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Sand Dunes","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Forest (Enclosed)","Railway Bridge","Foot Bridge","Perennial Stream / Nullah","Wall / Fence"],"slow":["Tree Cover","Built-Up Area","Moderate Slope (15 to 30°)","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Cutting","Orchard / Garden","Graveyard","Ford / Ferry","Dry Nullah","Irrigated Cropland Under Power Lines"],"marginal":true,"whyCount":4},{"key":"tracked","label":"Tracked Vehicle","nogo":["Permanent Water","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge","Bridge, Below Class 50","Railway Bridge","Foot Bridge"],"slow":["Built-Up Area","Seasonal Water / Flood Zone","Moderate Slope (15 to 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Bridge, Class 50 to 59","Bridge, Class Not Recorded","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":5},{"key":"generic","label":"Gr Based","nogo":["Permanent Water","Canal","Distributary / Minor Canal","Drain"],"slow":["Wetland / Marsh","Mangrove","Sand Dunes","Perennial Stream / Nullah"],"marginal":true,"whyCount":0},{"key":"vessel","label":"Surface Vessel","nogo":["Anywhere Off Permanent Water / Canal / Bridge, Class 60+ (Tankable) / Bridge, Class 50 to 59 / Bridge, Below Class 50 / Bridge, Class Not Recorded / Railway Bridge / Foot Bridge / Ford / Ferry"],"slow":["Seasonal Water / Flood Zone","Ford / Ferry"],"marginal":true,"whyCount":0},{"key":"gun","label":"Gun Position","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Moderate Slope (15 to 30°)","Restricted / Protected Area","Sand Dunes","Sloping Ground (7 to 15°)","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"slow":["Tree Cover","Built-Up Area","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Gentle Slope (3 to 7°)","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Orchard / Garden","Metalled Road, Class 60+ (Tankable)","Metalled Road, Class 50 to 59","Metalled Road, Below Class 50","Metalled Road, Class Not Recorded","Unmetalled Road","Dry Nullah","Irrigated Cropland Under Power Lines","Level Crossing"],"marginal":true,"whyCount":6},{"key":"ad","label":"Air Defence Site","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Sand Dunes","Canal","Distributary / Minor Canal","Drain","Cliff / Escarpment / Broken Edge","Forest (Enclosed)","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah"],"slow":["Tree Cover","Built-Up Area","Moderate Slope (15 to 30°)","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Orchard / Garden","Graveyard","Power Line Corridor","Dry Nullah","Irrigated Cropland Under Power Lines","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"hls","label":"Helicopter Landing Site","nogo":["Tree Cover","Built-Up Area","Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Steep Slope (Over 30°)","Moderate Slope (15 to 30°)","Restricted / Protected Area","Sand Dunes","Sloping Ground (7 to 15°)","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Orchard / Garden","Forest (Enclosed)","Graveyard","Power Line Corridor","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Irrigated Cropland Under Power Lines","Wall / Fence","Level Crossing"],"slow":["Snow / Ice / Glacier","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Gentle Slope (3 to 7°)","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Metalled Road, Class 60+ (Tankable)","Metalled Road, Class 50 to 59","Metalled Road, Below Class 50","Metalled Road, Class Not Recorded","Unmetalled Road","Dry Nullah"],"marginal":true,"whyCount":7},{"key":"signals","label":"Signals / EW Site","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Restricted / Protected Area","Canal","Distributary / Minor Canal","Drain","Cliff / Escarpment / Broken Edge","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah"],"slow":["Tree Cover","Built-Up Area","Steep Slope (Over 30°)","Sand Dunes","Dry Riverbed / Nullah","Forest (Enclosed)","Power Line Corridor","Dry Nullah","Irrigated Cropland Under Power Lines"],"marginal":true,"whyCount":3},{"key":"amphibious","label":"Amphibious","nogo":["Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Cliff / Escarpment / Broken Edge"],"slow":["Built-Up Area","Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Moderate Slope (15 to 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":2},{"key":"pack","label":"Mountain / Pack Transport","nogo":["Permanent Water","Mangrove","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge"],"slow":["Seasonal Water / Flood Zone","Wetland / Marsh","Snow / Ice / Glacier","Steep Slope (Over 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Walled Orchard","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"oversnow","label":"Over-Snow","nogo":["Permanent Water","Mangrove","Steep Slope (Over 30°)","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge","Walled Orchard","Railway Bridge","Foot Bridge"],"slow":["Open Land","Tree Cover","Cropland","Built-Up Area","Seasonal Water / Flood Zone","Wetland / Marsh","Moderate Slope (15 to 30°)","Bare / Desert","Sand","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Forest (Enclosed)","Graveyard","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":2},{"key":"roadbound","label":"Road-Bound Wheeled","nogo":["Anywhere Off Metalled Road, Class 60+ (Tankable) / Metalled Road, Class 50 to 59 / Metalled Road, Below Class 50 / Metalled Road, Class Not Recorded / Unmetalled Road / Bridge, Class 60+ (Tankable) / Bridge, Class 50 to 59 / Bridge, Below Class 50 / Bridge, Class Not Recorded / Ford / Ferry / Level Crossing"],"slow":["Unmetalled Road","Ford / Ferry"],"marginal":false,"whyCount":2},{"key":"rail","label":"Rail-Bound","nogo":["Anywhere Off Railway / Railway Bridge / Level Crossing"],"slow":["Level Crossing"],"marginal":false,"whyCount":0}],"classes":[{"c":0,"l":"Open Land","g":"GT","o":"natural","k":"surface","n":"Open, firm ground with low vegetation."},{"c":1,"l":"Tree Cover","g":"TC","o":"natural","k":"vegetation","n":"Trees: good concealment from the air, slow going for vehicles."},{"c":2,"l":"Cropland","g":"GT","o":"man_made","k":"surface","n":"Cultivated fields: firm when dry, soft after irrigation or rain."},{"c":3,"l":"Built-Up Area","g":"BC","o":"man_made","k":"structure","n":"Houses and streets: cover and concealment, but movement is channelled."},{"c":4,"l":"Permanent Water","g":"GO","o":"natural","k":"water","n":"Water all year round: needs a bridge, ferry or boats to cross."},{"c":5,"l":"Seasonal Water / Flood Zone","g":"GO","o":"natural","k":"water","n":"Under water for part of the year and soft for the rest."},{"c":6,"l":"Wetland / Marsh","g":"GO","o":"natural","k":"soft_ground","n":"Marsh, reeds or wet mud: vehicles bog down."},{"c":7,"l":"Mangrove","g":"GO","o":"natural","k":"soft_ground","n":"Tidal mangrove: mud and roots, impassable to vehicles."},{"c":8,"l":"Snow / Ice / Glacier","g":"GO","o":"natural","k":"snow_ice","n":"Snow, ice or glacier: needs over-snow equipment."},{"c":9,"l":"Steep Slope (Over 30°)","g":"GO","o":"natural","k":"gradient","n":"Slope over 30°: climbable on foot only."},{"c":10,"l":"Moderate Slope (15 to 30°)","g":"G","o":"natural","k":"gradient","n":"Slope of 15–30°: hard going for vehicles."},{"c":11,"l":"Restricted / Protected Area","g":"B","o":"man_made","k":"restricted","n":"Military or protected land: entry needs authority."},{"c":12,"l":"Bare / Desert","g":"GT","o":"natural","k":"surface","n":"Bare ground with no cover from view."},{"c":13,"l":"Sand","g":"G","o":"natural","k":"soft_ground","n":"Loose sand: wheels sink and dust gives movement away."},{"c":14,"l":"Sand Dunes","g":"GO","o":"natural","k":"soft_ground","n":"Dunes: soft, steep-sided ridges of sand."},{"c":15,"l":"Rocky Ground / Scree / Stony Waste","g":"GC","o":"natural","k":"surface","n":"Rock, scree or stones: hard on tyres and tracks, gives some cover."},{"c":16,"l":"Salt Pan","g":"G","o":"natural","k":"soft_ground","n":"Salt crust over soft mud: may not carry a vehicle when wet."},{"c":17,"l":"Dry Riverbed / Nullah","g":"GO","o":"natural","k":"gradient","n":"Dry bed with banks: floods after rain, gives cover."},{"c":18,"l":"Gentle Slope (3 to 7°)","g":"G","o":"natural","k":"gradient","n":"Gentle slope of 3–7°: easy going, but not level enough for a gun platform or a helicopter."},{"c":19,"l":"Sloping Ground (7 to 15°)","g":"G","o":"natural","k":"gradient","n":"Sloping ground of 7–15°: fine to move over, too steep to site guns or land helicopters."},{"c":20,"l":"Canal","g":"O","o":"man_made","k":"water","n":"Main or branch canal: deep, fast and steep-banked; cross at bridges only."},{"c":21,"l":"Distributary / Minor Canal","g":"O","o":"man_made","k":"water","n":"Distributary or minor canal: narrow but banked; vehicles need a bridge."},{"c":22,"l":"Drain","g":"O","o":"man_made","k":"water","n":"Drainage channel with soft banks: vehicles need a crossing."},{"c":23,"l":"Irrigated Cropland (Many Watercourses)","g":"GO","o":"man_made","k":"water","n":"Fields cut by watercourses every few hundred metres: wheels slow to a crawl."},{"c":24,"l":"Embankment / Bund Over 2 M","g":"OC","o":"man_made","k":"gradient","n":"Earth bank over 2 m high: stops wheels and gives cover from fire."},{"c":25,"l":"Bund (1 to 2 M)","g":"OC","o":"man_made","k":"gradient","n":"Low earth bank of 1–2 m: slows wheels and gives some cover."},{"c":26,"l":"Cutting","g":"OC","o":"man_made","k":"gradient","n":"Road or rail cutting: steep sides, cover from view."},{"c":27,"l":"Cliff / Escarpment / Broken Edge","g":"GOC","o":"natural","k":"gradient","n":"Cliff or broken edge: a drop no vehicle can take, with cover below it."},{"c":28,"l":"Railway","g":"RO","o":"man_made","k":"route","n":"Railway line on its embankment: vehicles cross at level crossings and bridges."},{"c":29,"l":"Walled Orchard","g":"OC","o":"man_made","k":"structure","n":"Orchard inside a wall: concealment and cover, and a block to vehicles."},{"c":30,"l":"Orchard / Garden","g":"TC","o":"man_made","k":"vegetation","n":"Orchard or garden: good concealment, slow going between the rows."},{"c":31,"l":"Forest (Enclosed)","g":"OTC","o":"natural","k":"vegetation","n":"Dense forest: concealment from the air, no way through for wheels."},{"c":32,"l":"Graveyard","g":"BC","o":"man_made","k":"structure","n":"Graveyard: walls and mounds give cover, but there is no way through for vehicles."},{"c":33,"l":"Power Line Corridor","g":"O","o":"man_made","k":"air_hazard","n":"Within 50–100 m of power lines or masts: a wire-strike risk for helicopters."},{"c":34,"l":"Metalled Road, Class 60+ (Tankable)","g":"R","o":"man_made","k":"route","n":"Metalled road of load class 60 or more: carries every main tank."},{"c":35,"l":"Metalled Road, Class 50 to 59","g":"R","o":"man_made","k":"route","n":"Metalled road of load class 50–59: carries Al-Zarrar but not Al-Khalid or T-80UD."},{"c":36,"l":"Metalled Road, Below Class 50","g":"R","o":"man_made","k":"route","n":"Metalled road below load class 50: not tankable."},{"c":37,"l":"Metalled Road, Class Not Recorded","g":"R","o":"man_made","k":"route","n":"Metalled road with no load class on record: check its bridges before moving armour."},{"c":38,"l":"Unmetalled Road","g":"R","o":"man_made","k":"route","n":"Unmetalled or fair-weather road: dust when dry, mud after rain."},{"c":39,"l":"Bridge, Class 60+ (Tankable)","g":"RO","o":"man_made","k":"crossing","n":"Bridge of load class 60 or more: carries every main tank."},{"c":40,"l":"Bridge, Class 50 to 59","g":"RO","o":"man_made","k":"crossing","n":"Bridge of load class 50–59: Al-Zarrar is the only main tank it carries."},{"c":41,"l":"Bridge, Below Class 50","g":"RO","o":"man_made","k":"crossing","n":"Bridge below load class 50: not for tanks."},{"c":42,"l":"Bridge, Class Not Recorded","g":"RO","o":"man_made","k":"crossing","n":"Bridge with no load class on record: confirm it before crossing with armour."},{"c":43,"l":"Railway Bridge","g":"RO","o":"man_made","k":"crossing","n":"Railway bridge: for trains and men on foot, not for vehicles."},{"c":44,"l":"Foot Bridge","g":"RO","o":"man_made","k":"crossing","n":"Foot bridge: a crossing for men on foot only."},{"c":45,"l":"Ford / Ferry","g":"RO","o":"man_made","k":"crossing","n":"Ford or ferry point: a crossing with effort, depending on the water level."},{"c":46,"l":"Perennial Stream / Nullah","g":"O","o":"natural","k":"water","n":"Stream or nullah with water all year: banks and a soft bed."},{"c":47,"l":"Dry Nullah","g":"OC","o":"natural","k":"gradient","n":"Dry nullah: a gully that slows wheels and gives cover."},{"c":48,"l":"Irrigated Cropland Under Power Lines","g":"GO","o":"man_made","k":"air_hazard","n":"Watercourse-cut fields under power lines: slow for wheels and a wire risk for helicopters."},{"c":49,"l":"Wall / Fence","g":"OC","o":"man_made","k":"structure","n":"Wall or wire fence: blocks vehicles; a wall gives cover."},{"c":50,"l":"Level Crossing","g":"R","o":"man_made","k":"crossing","n":"Road meets railway: the place to cross the line with vehicles."}],"tanks":[{"name":"Al-Khalid","weightT":48,"mlc":53},{"name":"T-80UD","weightT":46,"mlc":51},{"name":"T-80","weightT":46,"mlc":51},{"name":"Al-Zarrar","weightT":40,"mlc":44}],"tankable":{"minClass":60,"limitedClass":50,"minWidthM":3.5,"transporterClass":70}}</script>
 <script>
 (function(){
 'use strict';
@@ -689,13 +732,16 @@ function swatch(r){ return 'rgba(' + r[0] + ',' + r[1] + ',' + r[2] + ',' + Math
 function btn(cls, label, text){ var b = el('button', cls, text); b.type = 'button'; b.setAttribute('aria-label', label); b.title = label; return b; }
 
 /* proposed GROTBC layer keys: [kind, colour, label]. Swatch colours are PLACEHOLDERS, not approved. */
-var LAYER_NAMES = { G: 'Ground (Going)', R: 'Relief (Slope)', O: 'Obstacles', T: 'Tactical Features', B: 'Boundaries and Built-Up', C: 'Cover and Concealment' };
+var LAYER_NAMES = { G: 'Ground (Terrain Type, Slope, Water)', R: 'Roads, Tracks & Railway Network', O: 'Obstacles', T: 'Trafficability (Going for the Mode)', B: 'Built-Up Areas', C: 'Cover, Camouflage & Concealment' };
+/* T (Trafficability) keeps the going ramp and chip lists; TRAFFIC_KEY is added under it. G shows the terrain type, SLOPE_KEY and the water / crest swatches. */
+var SLOPE_KEY = [['box', '#efe3c4', 'Level (0 to 3°)'], ['box', '#dcc48f', 'Gentle (3 to 7°)'], ['box', '#c4a063', 'Sloping (7 to 15°)'], ['box', '#a47a3c', 'Moderate (15 to 30°)'], ['box', '#7a4f1f', 'Steep (over 30°)'], ['line', '#ffffff', 'Crest Line'], ['dot', '#5aa9e6', 'Water Source']];
+var TRAFFIC_KEY = [['line', '#7bd88f', 'Road Fit for the Mode (Class, All-Weather)'], ['dash', '#c9a46b', 'Fair-Weather Road / Track: SLOW-GO After Rain'], ['line', '#ffd24a', 'MSR'], ['hatch', '#5aa9e6', 'Soil Poor After Rain (Modelled)'], ['dot', '#8ec1ea', 'Landing Site (Helicopter)']];
 var LAYER_KEYS = {
-  R: [['box', '#efe3c4', 'Level (0 to 3°)'], ['box', '#dcc48f', 'Gentle (3 to 7°)'], ['box', '#c4a063', 'Sloping (7 to 15°)'], ['box', '#a47a3c', 'Moderate (15 to 30°)'], ['box', '#7a4f1f', 'Steep (over 30°)'], ['line', '#ffffff', 'Crest Line']],
-  O: [['box', '#2f7fbf', 'Natural'], ['box', '#7a5cc9', 'Man-Made'], ['hatch', '#c4383c', 'Reinforcing (Placed by a Force)'], ['ring', '#ffffff', 'Crossing Point']],
-  T: [['line', '#ffd24a', 'MSR'], ['line', '#7bd88f', 'Tankable Road'], ['line', '#c9ced4', 'Non-Tankable Road'], ['dash', '#c9a46b', 'Track'], ['dash', '#e8e8e8', 'Railway'], ['ring', '#5aa9e6', 'Helipad / LZ'], ['dot', '#5aa9e6', 'Water Source'], ['dot', '#ffffff', 'Pass']],
-  B: [['box', '#9a8f86', 'Built-Up Area'], ['dash', '#ff6b6f', 'IB / LoC'], ['dash', '#c9ced4', 'District / Tehsil'], ['box', 'rgba(255,255,255,.25)', '1:50k Sheet Grid']],
-  C: [['box', '#1f8a5a', 'Concealment: Good'], ['box', '#4fae83', 'Concealment: Fair'], ['box', '#a6d4bd', 'Concealment: Poor'], ['hatch', '#9a8f86', 'Cover (Bund / Wall / Nullah)']]
+  R: [['line', '#ffd24a', 'MSR'], ['line', '#7bd88f', 'Tankable Road (Class 60 and Over)'], ['line', '#d7c46a', 'Road, Class 50 to 59 (Al-Zarrar Only)'], ['line', '#c9ced4', 'Non-Tankable Road (Below Class 50)'], ['dash', '#8b95a0', 'Road, Class Not Recorded'], ['dash', '#c9a46b', 'Unmetalled Road / Track'], ['dash', '#e8e8e8', 'Railway'], ['ring', '#7bd88f', 'Bridge, Tankable'], ['ring', '#c9ced4', 'Bridge, Not for Tanks'], ['ring', '#5aa9e6', 'Ford / Ferry'], ['dot', '#5aa9e6', 'Airfield / Helipad'], ['dot', '#ffffff', 'Pass / Tunnel'], ['hatch', '#e5484d', 'Closed by Season (Where Recorded)'], ['dash', '#ffd24a', 'Route (Planned, Not Built)']],
+  O: [['box', '#2f7fbf', 'Natural'], ['box', '#7a5cc9', 'Man-Made'], ['hatch', '#c4383c', 'Reinforcing (Placed by a Force)'], ['hatch', '#5aa9e6', 'Seasonal: Flood-Prone / Waterlogged'], ['dot', '#f0932b', 'Temporary: Landslide Site (Where Recorded)'], ['ring', '#ffffff', 'Crossing Point']],
+  G: [['box', '#c9d98a', 'Plain'], ['box', '#b59a62', 'Hilly'], ['box', '#8a8a86', 'Solid (Rock / Scree / Stony Bed)'], ['box', '#5f8f7a', 'Marshy'], ['box', '#3f7fbf', 'Wet (Open Water)'], ['box', '#e3c98d', 'Desert'], ['box', '#7a5a3a', 'Mountainous (15° and Over)'], ['box', '#9a8f86', 'Built-Up'], ['box', '#e8f0f6', 'Snow / Ice']].concat(SLOPE_KEY),
+  B: [['box', '#9a8f86', 'Built-Up Area'], ['hatch', '#c2a27a', 'Kacha Huts (Density)'], ['dot', '#ff6b6f', 'Hospital / BHU'], ['dot', '#8ec1ea', 'Police / Post Office / Bank'], ['dot', '#f2b84b', 'School (GeoNames)'], ['dash', '#ff6b6f', 'IB / LoC'], ['dash', '#c9ced4', 'District / Tehsil'], ['box', 'rgba(255,255,255,.25)', '1:50k Sheet Grid']],
+  C: [['box', '#1f8a5a', 'Concealment: Good'], ['box', '#4fae83', 'Concealment: Fair'], ['box', '#a6d4bd', 'Concealment: Poor'], ['hatch', '#9a8f86', 'Cover (Bund / Wall / Nullah)'], ['line', '#7bd88f', 'River / Canal Bank (Deployment Line)']]
 };
 function swNode(kind, color){
   var s = el('i', 'gx-sw ' + kind);
@@ -708,7 +754,7 @@ function swNode(kind, color){
 }
 
 function mountLegend(host, gx){
-  var st = { mode: 'wheeled', details: true, layer: 'G', sLit: true, hand: false };
+  var st = { mode: 'wheeled', details: true, layer: 'T', sLit: true, hand: false };
   var card = el('div', 'ms-pl'); card.setAttribute('role', 'group'); card.setAttribute('aria-label', 'Legend'); host.appendChild(card);
   function render(){
     var modes = DATA.modes, idx = Math.max(0, modes.map(function(m){ return m.key; }).indexOf(st.mode)), mode = modes[idx];
@@ -739,10 +785,15 @@ function mountLegend(host, gx){
       var ln = el('div', 'gx-lname'); ln.append('Layer: ', el('b', '', LAYER_NAMES[st.layer]));
       parts.push(sw, ln);
     }
-    if (!gx || st.layer === 'G'){
+    if (!gx || st.layer === 'T'){
       var ramp = el('div', 'ms-pl-ramp'), labels = el('div', 'ms-pl-ramp-l');
       OVERLAY.forEach(function(e){ var i = el('i'); i.style.background = swatch(e[1]); ramp.appendChild(i); labels.appendChild(el('span', '', e[0])); });
       parts.push(ramp, labels, el('div', 'ms-pl-note', 'Marginal: Within 250 m of NO-GO'));
+      if (gx){
+        var sk = el('div', 'gx-key');
+        TRAFFIC_KEY.forEach(function(k){ var d = el('div'); d.append(swNode(k[0], k[1]), el('span', '', k[2])); sk.appendChild(d); });
+        parts.push(sk);
+      }
       if (st.details && (mode.nogo.length || mode.slow.length)){
         var list = el('div', 'ms-pl-list');
         [['NO-GO for ' + mode.label, '#ff8a8d', mode.nogo], ['SLOW-GO', '#ffb766', mode.slow]].forEach(function(g){
@@ -786,57 +837,115 @@ function mountLegend(host, gx){
 })();
 
 /* ------------------------------------------------------------ proposed: Card by mode */
+/* Mode to the three sections shown while drawing: MS/Docs/16-placement-grotbc-card.md section 3.1 (remapped 2026-11-03). */
 var MODE_SECTIONS = {
   dismounted: ['GOC', 'Going; water, snow, AP mines; cover within 100 m'],
-  wheeled: ['GOT', 'Firm ground; all water, bunds, railways; road within 1 km, crossings by class'],
-  tracked: ['ROT', 'Slope under 30°; canals by width, bunds over 2 m, AT mines; tankable route and crossings'],
-  gun: ['RTC', 'Slope under 7° (3° ideal); road within 500 m; concealment from the air'],
-  ad: ['RTC', 'Dominant ground; access road; open arcs (low vegetation)'],
-  hls: ['GRO', 'Firm, no dunes; slope under 7°; no wires within 100 m, no trees, no built-up'],
-  signals: ['RTB', 'High ground; access road; away from power lines'],
-  amphibious: ['OTG', 'Water is SLOW-GO; entry and exit points'],
-  pack: ['ROT', 'Steep slope SLOW-GO, snow SLOW-GO; pack tracks, passes'],
-  oversnow: ['GRO', 'Snow cover; slope; obstacles'],
-  roadbound: ['TOB', 'On a metalled road (within 50 m); crossings by class'],
-  rail: ['TBO', 'On a railway; stations'],
-  vessel: ['OTB', 'Water; crossings; banks'],
+  wheeled: ['GRO', 'Firm ground; road within 1 km, crossings by class; all water, bunds, railways'],
+  tracked: ['GRO', 'Slope under 30°; tankable route and crossings; canals by width, bunds over 2 m, AT mines'],
+  gun: ['GRC', 'Slope under 7° (3° ideal); road within 500 m; concealment from the air'],
+  ad: ['GRC', 'Dominant ground; access road; open arcs (low vegetation)'],
+  hls: ['GOT', 'Firm, no dunes, slope under 7°; no wires within 100 m; no trees, no built-up'],
+  signals: ['GRO', 'High ground; access road; away from power lines'],
+  amphibious: ['GOT', 'Water is SLOW-GO; entry and exit banks'],
+  pack: ['GRO', 'Steep slope SLOW-GO, snow SLOW-GO; pack tracks, passes'],
+  oversnow: ['GOT', 'Snow cover and slope; obstacles; going over snow'],
+  roadbound: ['ROB', 'On a metalled road (within 50 m); crossings by class; built-up on the route'],
+  rail: ['ROB', 'On a railway; stations; level crossings'],
+  vessel: ['GOR', 'Water and banks; crossings'],
   generic: ['GOB', 'Water']
 };
-var SEC_NAME = { G: 'Ground', R: 'Relief', O: 'Obstacles', T: 'Tactical Features', B: 'Boundaries and Built-Up', C: 'Cover and Concealment' };
+/* Full headings (Ground Brief) and the short form for the 280 px card caption. */
+var SEC_NAME = { G: 'Ground', R: 'Roads, Tracks & Railway Network', O: 'Obstacles', T: 'Trafficability', B: 'Built-Up Areas', C: 'Cover, Camouflage & Concealment' };
+var SEC_SHORT = { G: 'Ground', R: 'Roads, Tracks & Rail', O: 'Obstacles', T: 'Trafficability', B: 'Built-Up Areas', C: 'Cover & Concealment' };
+/* Sample point (illustrative): irrigated farmland about 3 km S of Kamoke, Gujranwala District, between the N-5 (GT Road)
+   and the Upper Chenab Canal. Climate = WorldClim 1970 to 2000 normals for that cell: [month, max °C, min °C, rain mm]. */
+var CLIMATE = [['Jan', 18, 5, 26], ['Feb', 21, 8, 29], ['Mar', 25, 12, 28], ['Apr', 33, 18, 18], ['May', 39, 23, 19], ['Jun', 40, 26, 45],
+  ['Jul', 35, 26, 149], ['Aug', 34, 26, 154], ['Sep', 34, 23, 56], ['Oct', 32, 17, 8], ['Nov', 27, 10, 5], ['Dec', 21, 6, 12]];
+var CLIMATE_YEAR = { rainMm: 549, monsoonPct: 74, frostMonths: 0, hotMonths: 0 };
+var SEL_MONTH = 6, redrawCard = function(){};
+function climateLine(i, long){
+  var c = CLIMATE[i], monsoon = i >= 5 && i <= 8;
+  var s = c[0] + ': ' + c[1] + '° / ' + c[2] + '°, ' + c[3] + ' mm' + (monsoon ? ', Monsoon' : '');
+  if (long) s += ' (' + CLIMATE_YEAR.monsoonPct + ' % of the Year\'s Rain Jun to Sep); Frost Months: ' + (CLIMATE_YEAR.frostMonths ? CLIMATE_YEAR.frostMonths : 'None');
+  return s;
+}
+/* T (Trafficability) at the sample point: the mode's going on irrigated cropland, and whether the month is wet
+   (50 mm of rain or more, a sample rule) so the clay loam reads poor after rain. */
+function goingFor(m){
+  var cls = 'Irrigated Cropland (Many Watercourses)', off = m.nogo.length === 1 && m.nogo[0].indexOf('Anywhere Off') === 0;
+  var g = off || m.nogo.indexOf(cls) >= 0 ? 'NO-GO' : m.slow.indexOf(cls) >= 0 ? 'SLOW-GO' : 'GO';
+  return g + ' for ' + m.label + (off ? ' (Off Its Route)' : '');
+}
+function wetMonth(i){ return CLIMATE[i][3] >= 50; }
+/* Four-way cover split at the point and from the nearest feature that gives more (rules.json grotbc.coverSplit, a proposal). */
+var LEVEL = ['None', 'Poor', 'Fair', 'Good'];
+var COVER_HERE = { what: 'Irrigated Cropland', v: [0, 0, 1, 1] };
+var COVER_NEAR = [
+  { what: 'Canal Bank (Upper Chenab Canal)', where: '150 m W', v: [2, 1, 2, 0], note: 'Deployment Line' },
+  { what: 'Bund (1 to 2 m)', where: '90 m E', v: [2, 1, 2, 0] },
+  { what: 'Orchard', where: '450 m SE', v: [1, 1, 3, 3] }
+];
+/* What a canal means for each mode, read from the real mode lists in the data block. */
+function canalEffect(m){
+  if (m.nogo.length === 1 && m.nogo[0].indexOf('Anywhere Off') === 0) return m.nogo[0].indexOf('Canal') >= 0 ? 'Navigable for ' + m.label : 'NO-GO for ' + m.label;
+  if (m.nogo.indexOf('Canal') >= 0) return 'NO-GO for ' + m.label;
+  if (m.slow.indexOf('Canal') >= 0) return 'SLOW-GO for ' + m.label;
+  return 'GO for ' + m.label;
+}
 /* Sample content. card: two lines + one graphic. brief: every line of the full brief (later = planned, not built). */
 function chip(kind, text){ return el('span', 'gx-chip ' + kind, text); }
 function ln(k, v){ var d = el('div', 'gx-ln'); d.appendChild(el('span', 'gx-k', k)); var vv = el('span', 'gx-v'); if (v && v.nodeType) vv.appendChild(v); else if (Array.isArray(v)) vv.append.apply(vv, v); else vv.textContent = v; d.appendChild(vv); return d; }
-function cardLines(letter, modeLabel){
-  var out = [];
+function meter(level){ var m = el('span', 'gx-meter'); for (var i = 1; i <= 3; i++) m.appendChild(el('i', i <= level ? 'on' : '')); return m; }
+function ccGrid(v){
+  var g = el('div', 'gx-cc');
+  g.append(el('span', 'gx-cch', 'Cover from'), el('span', 'gx-cch', 'Concealment from'));
+  ['Direct Fire', 'Indirect Fire', 'Ground', 'Aerial'].forEach(function(name, i){
+    var c = el('div'); c.append(el('small', '', name), meter(v[i]), el('b', '', LEVEL[v[i]])); g.appendChild(c);
+  });
+  g.setAttribute('aria-label', 'Cover from direct fire ' + LEVEL[v[0]] + ', from indirect fire ' + LEVEL[v[1]] + '; concealment from ground observation ' + LEVEL[v[2]] + ', from aerial observation ' + LEVEL[v[3]]);
+  return g;
+}
+function slopeBands(on){ var sl = el('div', 'gx-slope'); for (var i = 0; i < 5; i++){ var b = el('i'); b.style.background = SLOPE_KEY[i][1]; if (i === on) b.className = 'on'; sl.appendChild(b); } return sl; }
+function cardLines(letter, m, canalAt){
+  var out = [], k = m.key;
   switch (letter){
-    case 'G': out.push(ln('Surface', 'Irrigated Cropland · Firm When Dry'), ln('Monsoon', 'Flood-Prone')); break;
+    case 'G':
+      out.push(ln('Slope', '1° · Level (0 to 3°) · Plain (Irrigated) · 213 m'));
+      if (k === 'dismounted' || k === 'generic' || k === 'amphibious' || k === 'vessel') out.push(ln('Water', 'Tube Well 250 m W · Well 600 m SE · Tank 1.2 km E'));
+      else out.push(ln('Soil', 'Clay Loam (Modelled) · Firm When Dry, Soft After Rain'));
+      out.push(slopeBands(0)); break;
     case 'R':
-      out.push(ln('Slope', '4° · Gentle (3 to 7°)'), ln('Landform', 'Mid-Slope · 212 m'));
-      var sl = el('div', 'gx-slope'); for (var i = 0; i < 5; i++){ var b = el('i'); b.style.background = LAYER_KEYS.R[i][1]; if (i === 1) b.className = 'on'; sl.appendChild(b); } out.push(sl); break;
+      if (k === 'roadbound') out.push(ln('Route Here', 'Metalled Road · Class Not Recorded · 20 m S'), ln('Crossing', 'Bridge Class 40 (Not for Tanks) · 600 m E'));
+      else if (k === 'rail') out.push(ln('Rail', 'Railway, Broad Gauge Double · 40 m N'), ln('Station', 'Kamoke Railway Station · 3.4 km N'));
+      else if (k === 'pack') out.push(ln('Track', 'Cart Track · 300 m W · No Pass within 20 km'), ln('Closure', 'None Recorded on the Nearest Road'));
+      else if (k === 'gun' || k === 'ad' || k === 'signals') out.push(ln('Access', 'Unmetalled Road · 180 m S · Class Not Recorded'), ln('MSR', 'N-5 (GT Road) · Class 70 · Tankable · 1.2 km NE'));
+      else out.push(ln('MSR', 'N-5 (GT Road) · Class 70 · Tankable · 1.2 km NE'), ln('Crossing', 'Bridge Class 40 (Not for Tanks) · 600 m E'));
+      break;
     case 'O':
-      out.push(ln('Nearest', [el('b', '', 'Canal'), ' ', chip('man', 'Man-Made'), ' Water']), ln('Effect', 'NO-GO for ' + modeLabel + ' · 180 m NW')); break;
-    case 'T': out.push(ln('MSR', 'N-5 Highway · Class 70 · Tankable · 640 m S'), ln('Water', 'Tube Well 250 m W · Spring 3 km N')); break;
-    case 'B': out.push(ln('Built-Up', 'Chak 12/4 · Village · 1,850 People · 900 m E'), ln('Admin', 'Kasur Tehsil · Kasur District')); break;
+      out.push(ln('Nearest', [el('b', '', 'Upper Chenab Canal'), ' ', chip('man', 'Man-Made'), ' Water']), ln('Effect', canalEffect(m) + ' · ' + (canalAt || '180 m NW'))); break;
+    case 'T': out.push(ln('Going', goingFor(m) + ' · ' + (wetMonth(SEL_MONTH) ? 'After Rain: Poor Soil (Modelled)' : 'Dry Season')), ln('Season', climateLine(SEL_MONTH, false))); break;
+    case 'B': out.push(ln('Built-Up', 'Kamoke (City) 3.1 km N · About 1.2 Million within 12 km (WorldPop Estimate)'), ln('Services', 'BHU 1.8 km W · Hospital 3.4 km N · Police 2.9 km N')); break;
     case 'C':
-      var m1 = el('span', 'gx-meter'); ['on', 'on', ''].forEach(function(c){ m1.appendChild(el('i', c)); });
-      var m2 = el('span', 'gx-meter'); ['on', '', ''].forEach(function(c){ m2.appendChild(el('i', c)); });
-      out.push(ln('Conceal', [m1, 'Fair · Orchard']), ln('Cover', [m2, 'Poor · Bund 90 m E'])); break;
+      out.push(ccGrid(COVER_HERE.v), ln('Best Near', COVER_NEAR[0].what + ' ' + COVER_NEAR[0].where + ': Cover from Direct Fire, ' + COVER_NEAR[0].note)); break;
   }
   return out;
 }
-function gxSection(letter, modeLabel){
+function gxSection(letter, m, v){
   var s = el('div', 'ms-pb-sec');
-  var cap = el('div', 'ms-pb-cap'); var b = el('span', 'gx-badge', letter); b.dataset.l = letter; cap.append(b, SEC_NAME[letter]);
-  s.appendChild(cap); cardLines(letter, modeLabel).forEach(function(n){ s.appendChild(n); });
+  var cap = el('div', 'ms-pb-cap'); var b = el('span', 'gx-badge', letter); b.dataset.l = letter; cap.append(b, SEC_SHORT[letter]);
+  var n = v && v.nearest, canalAt = n && /^canal$/i.test(n.className) ? fmtD(n.distanceM) + ' ' + n.compass : '180 m NW';
+  s.appendChild(cap); cardLines(letter, m, canalAt).forEach(function(x){ s.appendChild(x); });
   return s;
 }
 function buildGxCard(modeKey, verdictKey){
   var m = modeBy(modeKey), v = JSON.parse(JSON.stringify(SAMPLE[verdictKey]));
   v.profileLabel = m.label;
+  /* keep Nearest in step with the O sample (the canal 180 m NW) */
+  if (v.verdict === 'caution') v.nearest ={ className: 'Canal', distanceM: 180, compass: 'NW', bearingDeg: 315 };
   var root = el('div', 'ms-placement-badge'); root.dataset.verdict = v.verdict;
   var hb = headerBar(v);
   var rows = [whySection(v)];
-  MODE_SECTIONS[modeKey][0].split('').forEach(function(l){ rows.push(gxSection(l, m.label)); });
+  MODE_SECTIONS[modeKey][0].split('').forEach(function(l){ rows.push(gxSection(l, m, v)); });
   if (hb.pct > 0) rows.push(insideSection(v, hb.pct));
   rows.push(nearestSection(v, 0), spacingSection(v));
   rows = rows.filter(Boolean);
@@ -860,42 +969,83 @@ function buildGxCard(modeKey, verdictKey){
     var b = el('b', '', modeBy(ms.value).label + ': sections ' + d[0].split('').join(' ') + '. '); needs.append(b, 'What the mode needs: ' + d[1] + '.');
   }
   ms.onchange = vs.onchange = draw; draw();
+  redrawCard = draw;
 })();
 
 /* ------------------------------------------------------------ proposed: Ground Brief */
+/* Every line of the full brief. A third element true = planned, not built. '@…' values depend on the mode or the month. */
 var BRIEF = {
-  G: [['Surface', 'Irrigated Cropland · Firm When Dry'], ['Going', '@going'], ['Monsoon Going', 'Flood-Prone'], ['X-Country Speed', 'Later', true]],
-  R: [['Elevation', '212 m'], ['Slope', '4° · Gentle (3 to 7°)'], ['Landform', 'Mid-Slope'], ['High Ground', 'Spot Height 238 m · 1.4 km NE · 26 m Above']],
-  O: [['Nearest', 'Canal · Man-Made · Water'], ['Effect', '@effect'], ['Crossing', 'Bridge, Class 60+ (Tankable) · 420 m E'], ['Plan Obstacles', '1 Minefield · 600 m S (Live)']],
-  T: [['MSR', 'N-5 Highway · Class 70 · Tankable · 640 m S'], ['Route Here', 'Unmetalled Road · 30 m'], ['Water', 'Tube Well 250 m W · Spring 3 km N · Well 600 m SE · Tank 1.2 km E'], ['Helipad', 'Helipad 5.2 km NW'], ['Rail', 'Station 4.1 km SW'], ['Chokepoints', 'Headworks 2.3 km N']],
-  B: [['Nearest BUA', 'Chak 12/4 · Village · 1,850 People · 900 m E'], ['Border', 'IB 38 km E'], ['Admin', 'Kasur Tehsil · Kasur District · Punjab'], ['Sheet', '1:50k 44 A/7']],
-  C: [['Concealment', 'Fair · Orchard'], ['Cover', 'Poor · Nearest Bund 90 m E'], ['Hide Area', 'Later', true]]
+  G: [['Surface', 'Irrigated Cropland · Firm When Dry'], ['Terrain Type', 'Plain (Irrigated) · Built-Up 3 km N'], ['Vegetation', 'Cropland with Tree Lines · Orchard 450 m SE'],
+      ['Elevation', '213 m'], ['Slope', '1° · Level (0 to 3°)'], ['Landform', 'Flat / Plain'], ['High Ground', 'Spot Height 216 m · 2.4 km NE · 3 m Above'],
+      ['Soil', 'Clay Loam (Modelled, 250 m) · Firm When Dry, Soft After Rain'], ['Water', 'Tube Well 250 m W · Well 600 m SE · Tank 1.2 km E']],
+  R: [['MSR', 'N-5 (GT Road) · Class 70 · Tankable · 1.2 km NE'], ['Route', 'N-5 National Highway · 1,799 km Mapped · From and To Not Recorded'],
+      ['Condition', 'Not Recorded (About 4 % of Road Segments Have One)'], ['Closure', 'None Recorded on the N-5 Here'],
+      ['Route Here', 'Unmetalled Road · Class Not Recorded · 180 m S'], ['Crossing', 'Bridge Class 40 (Not for Tanks) · 600 m E'],
+      ['Tank Crossing', 'Bridge Class 70 on the N-5 over the Canal · 1.4 km NE'], ['Rail', 'Railway, Broad Gauge Double · Kamoke Station 3.4 km N'],
+      ['Air', 'Helipad 6.5 km N · Airfield None within 20 km'], ['Chokepoints', 'Canal Bridges on the N-5 · 1.4 km NE'],
+      ['Route to a Point', 'Planned (Routing Not Built)', true]],
+  O: [['Nearest', 'Upper Chenab Canal · Man-Made · Water · 180 m NW'], ['Effect', '@effect'], ['Others', 'Distributary 400 m S · Drain 700 m E · Railway Embankment 3.2 km N'],
+      ['Seasonal', 'Flood-Prone Ground 800 m W (Monsoon) · Waterlogged Patch 1.6 km SW'], ['Temporary', 'No Seasonal Road Closure or Landslide Site Recorded within 10 km'],
+      ['Plan Obstacles', '1 Minefield · 600 m S (Live)']],
+  T: [['Cross-Country', '@going'], ['After Rain', '@wetgoing'], ['Other Modes', '@others'],
+      ['Tracks', 'Unmetalled Road 180 m S · Fair-Weather: SLOW-GO After Rain'], ['On Road', '@road'],
+      ['Monsoon Going', 'Flood-Prone Ground 800 m W (Seasonal Water)'], ['Season', '@climate'], ['Year', '@year'],
+      ['X-Country Speed', 'Planned', true]],
+  B: [['Nearest BUA', 'Kamoke (City) · 3.1 km N · About 1.2 Million within 12 km (WorldPop Estimate)'], ['Village', 'Mandiala (Town) · 1.5 km W'],
+      ['Kacha Huts', 'About 18 per km² Nearby (Mapped Symbols)'],
+      ['Health', 'BHU 1.8 km W · Hospital 3.4 km N'], ['Services', 'Police Station 2.9 km N · Post Office 3.2 km N · Telephone Exchange 3.3 km N'],
+      ['Community', 'Mosque 400 m S · Market 3.1 km N (Name Not Recorded)'], ['From GeoNames', 'School 1.1 km SW · Bank 3.3 km N'],
+      ['Border', 'IB 38 km E'], ['Admin', 'Kamoke Tehsil · Gujranwala District · Punjab'], ['Sheet', '1:50k 44 I/1']],
+  C: [['Cover: Direct Fire', '@cc0'], ['Cover: Indirect Fire', '@cc1'], ['Concealment: Ground', '@cc2'], ['Concealment: Aerial', '@cc3'],
+      ['Deployment Line', 'Canal Bank (Upper Chenab Canal) 150 m W · Cover from Direct Fire and Ground Observation'],
+      ['Bund / Wall / Nullah', 'Bund 90 m E · Wall 600 m N'], ['Hide Area', 'Planned', true]]
 };
-function briefLine(mode, k, v){ if (v === '@going') return 'SLOW-GO for ' + mode.label; if (v === '@effect') return 'NO-GO for ' + mode.label + ' · 180 m NW'; return v; }
+function ccLine(i){
+  var here = LEVEL[COVER_HERE.v[i]] + ' Here (' + COVER_HERE.what + ')';
+  var better = COVER_NEAR.filter(function(n){ return n.v[i] > COVER_HERE.v[i]; }).sort(function(a, b){ return b.v[i] - a.v[i]; }).slice(0, 2).map(function(n){ return LEVEL[n.v[i]] + ': ' + n.what + ' ' + n.where; });
+  return [here].concat(better).join(' · ');
+}
+function briefLine(mode, k, v){
+  if (v === '@going') return goingFor(mode) + ' · Dry Season';
+  if (v === '@wetgoing') return wetMonth(SEL_MONTH)
+    ? CLIMATE[SEL_MONTH][0] + ' Is a Wet Month: Clay Loam Poor After Rain (Modelled); Wheels Bog Off the Road'
+    : CLIMATE[SEL_MONTH][0] + ' Is a Dry Month: Clay Loam Good (Modelled); Poor After Heavy Rain';
+  if (v === '@others') return ['dismounted', 'wheeled', 'tracked'].filter(function(key){ return key !== mode.key; }).map(function(key){ return goingFor(modeBy(key)); }).join(' · ');
+  if (v === '@road') return 'MSR N-5 (GT Road) 1.2 km NE · 70A2: Class 70, All-Weather, Double Lane' + (mode.key === 'tracked' ? ' · Tankable' : '');
+  if (v === '@effect') return canalEffect(mode) + ' · Cross at the N-5 Bridge (Class 70) 1.4 km NE';
+  if (v === '@climate') return climateLine(SEL_MONTH, true);
+  if (v === '@year') return CLIMATE_YEAR.rainMm + ' mm a Year · Hot Months (40° and Over): ' + (CLIMATE_YEAR.hotMonths || 'None') + ' · WorldClim Normals';
+  if (/^@cc\d$/.test(v)) return ccLine(Number(v.charAt(3)));
+  return v;
+}
+var BRIEF_META = 'Sheet 44 I/1 · Kamoke Tehsil · Gujranwala District';
+var BRIEF_SOURCES = 'Sources: Terrain Bundle (Data Version 2): NCGDB, SoilGrids 2.0 (Modelled), WorldClim 2.1, WorldPop 2020 (Estimate), GeoNames; Rules (Proposal); Plan Obstacles (Live). Load class is recorded on about 31 % of road segments, condition on about 4 %.';
 function briefText(modeKey){
-  var m = modeBy(modeKey), out = ['GROUND BRIEF · ' + m.label + ' · Sheet 44 A/7 · Kasur · Kasur District', ''];
+  var m = modeBy(modeKey), out = ['GROUND BRIEF · ' + m.label + ' · ' + BRIEF_META, ''];
   'GROTBC'.split('').forEach(function(l){
     out.push(l + ' ' + SEC_NAME[l].toUpperCase());
     BRIEF[l].forEach(function(r){ if (!r[2]) out.push('  ' + r[0] + ': ' + briefLine(m, r[0], r[1])); });
   });
-  out.push('', 'Load class is recorded on about 31% of road segments.', 'Sample data for layout review.');
+  out.push('', BRIEF_SOURCES, 'Sample data for layout review.');
   return out.join('\n');
 }
 (function(){
-  var host = $('gx-brief'), sel = $('gx-brief-mode'), pre = $('gx-brief-text'), msg = $('gx-copied');
+  var host = $('gx-brief'), sel = $('gx-brief-mode'), mon = $('gx-brief-month'), pre = $('gx-brief-text'), msg = $('gx-copied');
   DATA.modes.forEach(function(m){ var o = el('option', '', m.label); o.value = m.key; sel.appendChild(o); }); sel.value = 'tracked';
+  CLIMATE.forEach(function(c, i){ var o = el('option', '', c[0]); o.value = String(i); mon.appendChild(o); }); mon.value = String(SEL_MONTH);
   function draw(){
     var m = modeBy(sel.value), emphasised = MODE_SECTIONS[sel.value][0];
     var root = el('div', 'gx-brief');
     var h = el('div', 'gx-bh'); h.append(el('b', '', 'Ground Brief'), el('span', 'gx-kbd', 'Esc')); root.appendChild(h);
-    root.appendChild(el('div', 'gx-bm', m.label + ' · Sheet 44 A/7 · Kasur · Kasur District'));
+    root.appendChild(el('div', 'gx-bm', m.label + ' · ' + BRIEF_META));
     'GROTBC'.split('').forEach(function(l){
       var s = el('div', 'gx-bs'); var b = el('span', 'gx-badge', l); b.dataset.l = l;
       var box = el('div'); var h4 = el('h4', '', SEC_NAME[l] + (emphasised.indexOf(l) >= 0 ? '  ·  Shown on the Card' : '')); box.appendChild(h4);
       BRIEF[l].forEach(function(r){ var d = ln(r[0], briefLine(m, r[0], r[1])); if (r[2]) d.className += ' gx-later'; box.appendChild(d); });
+      if (l === 'C') box.insertBefore(ccGrid(COVER_HERE.v), box.children[1]);
       s.append(b, box); root.appendChild(s);
     });
-    root.appendChild(el('div', 'gx-src', 'Sources: Terrain Bundle (Data Version 2), Rules, Features, Plan Obstacles (Live). Load class is recorded on about 31% of road segments.'));
+    root.appendChild(el('div', 'gx-src', BRIEF_SOURCES));
     var act = el('div', 'gx-act'), cb = el('button', '', 'Copy as Text'); cb.type = 'button';
     cb.onclick = function(){
       var t = briefText(sel.value);
@@ -908,13 +1058,15 @@ function briefText(modeKey){
     clearKids(host); host.appendChild(root);
     pre.textContent = briefText(sel.value);
   }
-  sel.onchange = draw; draw();
+  sel.onchange = draw;
+  mon.onchange = function(){ SEL_MONTH = Number(mon.value); draw(); redrawCard(); };
+  draw();
 })();
 
 /* ------------------------------------------------------------ letter tokens */
 (function(){
   var host = $('gx-letters');
-  var L = [['G', 'Ground', '#8fb35a'], ['R', 'Relief', '#c9a46b'], ['O', 'Obstacles', '#7a5cc9'], ['T', 'Tactical Features', '#5aa9e6'], ['B', 'Boundaries and Built-Up', '#9a8f86'], ['C', 'Cover and Concealment', '#1f8a5a']];
+  var L = 'GROTBC'.split('').map(function(l){ return [l, SEC_NAME[l], { G: '#8fb35a', R: '#c9a46b', O: '#7a5cc9', T: '#5aa9e6', B: '#9a8f86', C: '#1f8a5a' }[l]]; });
   L.forEach(function(x){
     var d = el('div', 'pg-tok'); var i = el('i'); i.style.background = x[2];
     var s = el('span'); s.append(el('b', '', x[0] + ' · ' + x[1]), el('small', '', x[2])); d.append(i, s); host.appendChild(d);
@@ -933,9 +1085,10 @@ table($('changes'), ['Element', 'Current (built)', 'Proposed (GROTBC)'], [
   ['Card: footer', 'None', 'Slim hint: G Full Ground Brief'],
   ['Ground Brief', 'None', 'New panel (G key): six sections, header line, sources, Copy as Text'],
   ['Legend: mode strip', 'Previous / Next, 14 icons, name, tag', 'Unchanged'],
-  ['Legend: key', 'Going ramp (Suitable, Marginal, SLOW-GO, NO-GO) + NO-GO / SLOW-GO chip lists', 'Same for G; a GROTBC layer switch adds keys for R, O, T, B, C'],
+  ['Legend: key', 'Going ramp (Suitable, Marginal, SLOW-GO, NO-GO) + NO-GO / SLOW-GO chip lists', 'Same for T (Trafficability); a GROTBC layer switch adds keys for G, R, O, B, C'],
   ['Legend: keys', 'P Change Mode, S Quick Fix', 'Adds G Ground Brief'],
-  ['Data read', 'Class tile + distance tile (v1 and v2 classes)', 'Adds route, landform, cc, wet, elev_hi / elev_lo tiles and features/ (engine work, section 7 of the handover)']
+  ['Card: C section', 'None', 'Four-way split (cover from direct / indirect fire, concealment from ground / aerial observation) as four meters, plus the best feature nearby'],
+  ['Data read', 'Class tile + distance tile (v1 and v2 classes)', 'Adds route, landform, cc, wet, terrain, soil, hut, elev_hi / elev_lo tiles, climate grid, features/ (incl. named detail 130 to 146) and routes.json (engine work, section 7 of the handover)']
 ]);
 
 /* ------------------------------------------------------------ field tables */
@@ -981,12 +1134,12 @@ table($('t-modes'), ['Mode', 'Sections', 'What the mode needs (data)'], DATA.mod
   var d = MODE_SECTIONS[m.key]; return [m.label, d[0].split('').join(' '), d[1]];
 }));
 table($('t-sections'), ['Section', 'Lines', 'Source (bundle v2)', 'Engine status'], [
-  ['G Ground', 'Surface (class label, firm / soft) · Going for the mode · Monsoon going · X-country speed (later)', 'class + rules.json classes[c].kind; wet layer; profile nogo / caution', 'wet layer access to do'],
-  ['R Relief', 'Elevation · Slope (degrees + band: Level 0 to 3, Gentle 3 to 7, Sloping 7 to 15, Moderate 15 to 30, Steep over 30) · Landform (Crest, Upper Slope, Mid-Slope, Lower Slope, Valley Floor, Flat) · High ground nearby (spot height, distance, direction, height above)', 'elev_hi / elev_lo (slope from a 3×3 gradient); landform; features spot_height / trig_station', 'to do'],
-  ['O Obstacles', 'Nearest obstacle (name, origin, kind, effect for the mode, distance / direction) · Nearest crossing · Plan obstacles (live)', 'class scan with classes[c].origin / kind; crossing classes 39 to 45, 50; features crossings; plan graphics', 'plan obstacles to do'],
-  ['T Tactical Features', 'MSR (name / number, class, Tankable / Non-Tankable, distance) · Route at the point · Water: nearest of each kind · Helipad / airfield · Rail · Chokepoints', 'route layer; features road / railway lines (n, r, c, k, m); water kinds 1 to 9; air 40 to 47; rail 50; 55 to 58', 'to do'],
-  ['B Boundaries and Built-Up', 'Nearest BUA (name, size class, population) · Border (distance to IB / LoC) · Admin (tehsil, district, province) · Sheet (1:50k number)', 'features 110 to 114; boundaries.geojson; admin.geojson; sheets.json', 'to do'],
-  ['C Cover and Concealment', 'Concealment (None / Poor / Fair / Good + what gives it) · Cover (+ nearest bund / wall / nullah) · Hide area (later)', 'cc layer (concealment = v >> 4, cover = v & 15); class grotbc contains C', 'cc layer access to do']
+  ['G Ground', 'Surface (class label, firm / soft) · Terrain type at the point and the nearest change ("Plain (Irrigated), Hilly to the N 2 km") · Vegetation (type, density) · Relief: Elevation, Slope (degrees + band: Level 0 to 3, Gentle 3 to 7, Sloping 7 to 15, Moderate 15 to 30, Steep over 30), Landform (Crest / Ridge, Upper Slope, Mid-Slope, Lower Slope, Valley Floor, Flat / Plain), High ground nearby (spot height, distance, direction, height above) · Soil and bearing ("Clay Loam (Modelled) · Firm When Dry, Soft After Rain") · Water: nearest of each kind', 'class + rules.json classes[c].kind; terrain layer (codes 1 to 9, rules.json grotbc.terrainType, a proposal); veg-based cc; elev_hi / elev_lo (slope from a 3×3 gradient); landform; soil layer (USDA texture 1 to 12) + grotbc.soilBearing[code] {dry, wet, note}; features spot_height / trig_station (e); water kinds 1 to 9', 'terrain, elev, landform, soil layer access to do'],
+  ['R Roads, Tracks & Railway Network', 'MSR (name / number, from to, length, class, Tankable / Non-Tankable, distance) · Route detail (condition, seasonal closure: "Where Recorded") · Route at the point (type, class; "Class Not Recorded" when blank) · Crossings by class (bridge, foot bridge, ford / ferry; "Bridge Class 40 (Not for Tanks)") · Rail (line, station, level crossing) · Airfield / helipad · Chokepoints (pass, tunnel, headworks) · Route to a point (planned, GROTBC-Roads.md)', 'route layer (bit 7 MSR, bits 5 to 6 load tier, bits 0 to 4 type); routes.json roads / rails (id, name / no, from, to, km, type, msr, load [min, max], closed, cond, bbox); features road / railway lines (n, r, c, k, m, x, cn, sl); crossing classes 39 to 45, 50; air 40 to 47; rail 50; 55 to 58; grotbc.tankable, grotbc.tanks', 'to do; routing not built'],
+  ['O Obstacles', 'Nearest obstacle (name, origin chip, kind, effect for the mode, distance / direction) · Other obstacles (canal, distributary, drain, bund, railway embankment) · Seasonal (flood-prone and waterlogged ground, roads closed by season) · Temporary (landslide sites on a road) · Plan obstacles (live)', 'class scan with classes[c].origin / kind; named canals (features 202); wet layer; features road x (closure) / sl (landslide sites); plan graphics', 'plan obstacles to do'],
+  ['T Trafficability', 'Going for the mode cross-country, dry ("SLOW-GO for Wheeled Vehicle (Watercourses) · Dry Season") and after rain from the soil bearing and the month · The three main classes at a glance (Dismounted, Wheeled, Tracked) · Tracks and fair-weather roads (SLOW-GO after rain) · On road: the nearest road or MSR fit for the mode (load class against the mode, A / F, lanes; "Tankable") · Monsoon going (flood-prone and waterlogged ground) · Season for the month ("Jul: 35° / 26°, 149 mm, Monsoon") · Air: landing-site going for Helicopter Landing Site · X-country speed (planned)', 'class + rules.json profiles[mode].nogo / caution (dist_<mode> layers); wet layer; soil layer + grotbc.soilBearing[code] {dry, wet}; route layer (load tier, MSR bit) + loadClassCode A / F, lanes; routes.json; grotbc.tankable, grotbc.tanks; climate/climate.json + climate.bin (WorldClim 1970 to 2000: prec by month, monsoon_pct, frost_months, wet_months)', 'soil, route and climate grid access to do; speed not built'],
+  ['B Built-Up Areas', 'Nearest BUA (name, size class, population: official where recorded, else "WorldPop Estimate") · Kacha huts (per km² nearby; temporary huts flag) · Public services: hospital, BHU, dispensary, police, post office, telephone exchange, mosque, market, grid station; school, bank, government office (GeoNames) · Border (distance to IB / LoC) · Admin (tehsil, district, province) · Sheet (1:50k number)', 'features 110 to 114 (p, wp, wc, pv), 70 to 77, 130 to 146, 147 to 149 (GeoNames, src: gn); hut layer (bits 0 to 6 per km², bit 7 temporary); boundaries.geojson; admin.geojson; sheets.json', 'hut layer access to do; GeoNames kinds not yet in the built bundle'],
+  ['C Cover, Camouflage & Concealment', 'Four lines: Cover from direct fire · Cover from indirect fire · Concealment from ground observation · Concealment from aerial observation (None / Poor / Fair / Good + what gives it) · Deployment line (bank of a perennial river or canal) · Nearest bund / wall / nullah · Hide area (planned)', 'rules.json grotbc.coverSplit.byClass[class] = [direct, indirect, ground, aerial] (proposal: bund Fair / Poor / Fair / None, its ground concealment raised from Poor by the owner on 2026-11-04 in rules.yaml, not yet in the built bundle; embankment over 2 m Good / Fair / Fair / None, built-up Good / Fair / Good / Good, tree cover Poor / Poor / Good / Good); cc layer for the local density (concealment = v >> 4, cover = v & 15); bank layer + rules.yaml banks (river / lake, perennial stream and canal banks Fair / Poor / Fair / None and a deployment line, within 30 / 75 / 150 m of the water; a proposal)', 'cc and bank layer access to do; bank layer not yet in the built bundle']
 ]);
 table($('t-classes'), ['Code', 'Class', 'GROTBC', 'Origin', 'Kind', 'Note (shown when no mode-specific reason)'], DATA.classes.map(function(c){
   var sw = el('span'); sw.append(c.l); return [c.c, c.l, c.g, c.o, c.k, c.n];
@@ -1033,8 +1186,10 @@ fill('l-wording', [
   'Say it in words: ">30°" becomes "over 30°", "15–30°" becomes "15 to 30°". No symbols or dashes inside sentences.',
   'Reasons are the rule owner\'s sentences from rules.json. The engine never writes its own reason.',
   'Distances: metres under 1 km, then kilometres (metric); yards and miles (imperial); metres and nautical miles (nautical). Directions as 8-point compass words (N, NE, E, SE, S, SW, W, NW).',
-  'Military terms set by the user: Suitable Position, SLOW-GO, NO-GO, Marginal, Quick Fix, Intermediate Gap Rule. The unit type is called "Mode", never "Judged as".',
-  'Mode names exactly as in rules.json: Dismounted Force, Wheeled Vehicle, Tracked Vehicle, Surface Vessel, Gr Based, Not Terrain-Bound, and the nine new ones.'
+  'Military terms set by the user: Suitable Position, Unsuitable Position, SLOW-GO, NO-GO, Marginal, Quick Fix, Intermediate Gap Rule, Adjacent to X / Encroaching on X, Partially Obstructed. The unit type is called "Mode", never "Judged as".',
+  'Mode names exactly as in rules.json: Dismounted Force, Wheeled Vehicle, Tracked Vehicle, Surface Vessel, Gr Based, Gun Position, Air Defence Site, Helicopter Landing Site, Amphibious, Mountain / Pack Transport, Over-Snow, Road-Bound Wheeled, Rail-Bound, Signals / EW Site (and Not Terrain-Bound, which gets no card).',
+  'GROTBC headings: G Ground · R Roads, Tracks & Railway Network · O Obstacles · T Trafficability · B Built-Up Areas · C Cover, Camouflage & Concealment. Never R = Relief, T = Terrain or Tactical Features, or B = Boundaries.',
+  'Modelled or sparse values say so: "Modelled" (soil), "Where Recorded" (condition, closure, landslide sites), "Class Not Recorded" (load class), "WorldPop Estimate" (population), "Planned" (routing, hide areas, cross-country speed).'
 ]);
 fill('l-behaviour', [
   'Built from DOM nodes and textContent only: class labels, names and unit text can never inject markup.',
@@ -1054,6 +1209,11 @@ fill('l-questions', [
   'Confirm the load-code reading: A / F = all- / fair-weather, 1 / 2 = single / double lane.',
   'Correct the per-mode NO-GO / SLOW-GO tables and the three-sections table (section 3c): they are a starting proposal.',
   'Should "Irrigated Cropland" stay SLOW-GO for Wheeled Vehicle all year, or only in the monsoon?',
+  'Approve the remaining four-way cover split values (rules.yaml coverSplit; the bund row was set by the owner on 2026-11-04).',
+  'Banks of perennial rivers and canals are now a positive feature (cover from direct fire and ground observation, a deployment line). Confirm the bank values (Fair / Poor / Fair / None) and the 150 m strip, and whether the Card should name the bank in the C section only or also under O.',
+  'The C section shows four meters on the Card (one graphic) and spells the four lines out in the Ground Brief. Enough on the Card, or show only the line that matters for the mode?',
+  'Should the T section judge the going for the current month by default, or for a month the planner sets (operation date)?',
+  'Now that T is Trafficability: Dismounted, Wheeled and Tracked show G O C / G R O while drawing, and the Why going scale already gives the verdict. Should T replace one of their three sections (section 3c)?',
   'Wording bug in the current build: titleCase() turns unit letters into capitals, so "Bund over 2 m" reads "Bund Over 2 M". Keep units lower case (m, km, t)?'
 ]);
 (function(){

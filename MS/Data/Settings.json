@@ -672,7 +672,13 @@
     "cacheTiles": 512,
     "prefetchMarginTiles": 1,
     "maxSamples": 400,
-    "useWorker": true
+    "useWorker": true,
+    "itg": {
+      "enabled": true,
+      "radiusKm": 3,
+      "max": 2,
+      "minLevel": 1
+    }
   },
   "stylus": {
     "mode": "auto",

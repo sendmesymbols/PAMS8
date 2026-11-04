@@ -80,6 +80,11 @@ export interface TerrainManifest {
     note?: string;
   };
   sources?: Array<{ id: string; name?: string; licence?: string; sha256?: string }>;
+  /** Bundle v2 extras (only the parts the engine reads are typed). */
+  grotbc?: {
+    /** Point and line features per z tile; `quant` tile-local units across a tile. */
+    features?: { path: string; index: string; z: number; quant: number };
+  };
 }
 
 export interface TerrainClassDef {
@@ -87,7 +92,7 @@ export interface TerrainClassDef {
   label: string;
   /** Optional one-sentence note on this ground, shown when no profile-specific reason is given. */
   note?: string;
-  /** Bundle v2: GROTBC heading letters (G Ground, R Roads/tracks/rail, O Obstacles, T Terrain, B Built-up, C Cover/concealment), e.g. "OC". */
+  /** Bundle v2: GROTBC heading letters (G Ground, R Roads/tracks/rail, O Obstacles, T Trafficability, B Built-up, C Cover/concealment), e.g. "OC". */
   grotbc?: string;
   /** Bundle v2: obstacle origin. */
   origin?: 'natural' | 'man_made' | string;
@@ -139,6 +144,11 @@ export interface TerrainRules {
       gapM?: number | [number, number];
     }
   >;
+  /** Bundle v2 doctrine numbers and codebooks (only the parts the engine reads are typed). */
+  grotbc?: {
+    /** Important Tactical Ground candidates (G): what each `ig` letter means, and the strong-candidate rule. */
+    itg?: { reasons?: Record<string, { label: string }>; note?: string };
+  };
 }
 
 /** How the footprint is oriented, since a placed symbol has no facing of its own. */
@@ -216,6 +226,54 @@ export interface PlacementOptions {
   maxSamples: number;
   /** Decode tiles and paint the overlay in a Web Worker (falls back to the main thread if unavailable). */
   useWorker: boolean;
+  /** Important Tactical Ground (ITG) candidates near the cursor on the card (G, bundle v2 with ground features). */
+  itg: PlacementItgOptions;
+}
+
+export interface PlacementItgOptions {
+  /** List the candidates on the card while drawing. */
+  enabled: boolean;
+  /** How far round the cursor to look, km (ground). */
+  radiusKm: number;
+  /** How many the card lists (the API is not capped by this). */
+  max: number;
+  /** 1 = every candidate, 2 = strong candidates (check as MITG) only. */
+  minLevel: 1 | 2;
+}
+
+/**
+ * An Important Tactical Ground candidate from the terrain bundle: a terrain feature (peak, saddle, junction,
+ * bridge ...) that passed one or more of the objective tests in rules.json `grotbc.itg.reasons`. A candidate,
+ * not a designation: ITG / MITG depend on the task and are the user's decision.
+ */
+export interface PlacementGroundCandidate {
+  /** Feature kind key (`peak`, `hill`, `saddle`, `main_junction`, `bridge`, ...) and its label. */
+  kind: string;
+  kindLabel: string;
+  name: string | null;
+  /** 1 ITG candidate, 2 strong candidate (check as MITG). */
+  level: 1 | 2;
+  /** Reason letters (H, O, R, P, C, J) and the rule owner's label for each. */
+  reasons: string[];
+  reasonLabels: string[];
+  elevationM: number | null;
+  at: MercXY;
+  /** [longitude, latitude]. */
+  lngLat: [number, number];
+  /** From the point asked about. */
+  distanceM: number;
+  bearingDeg: number;
+  compass: string;
+  /** Every attribute the bundle carries for it (`rr`, `iso`, `vs`, `mv`, `hs`, ...; see features/index.json). */
+  attributes: Record<string, unknown>;
+}
+
+/** ITG candidates round the cursor, for the card. */
+export interface PlacementGround {
+  candidates: PlacementGroundCandidate[];
+  radiusM: number;
+  /** A feature tile is still loading, so the list may grow. */
+  pending: boolean;
 }
 
 /** One terrain reading. `null` = no tile loaded / no coverage. */
@@ -342,6 +400,8 @@ export interface PlacementVerdict {
   reason?: string | null;
   /** Set on an `unknown` verdict when a tile it needs is still on its way (as opposed to no coverage). */
   waiting?: boolean;
+  /** Set while drawing when `itg.enabled` and the bundle has ground features: ITG candidates round the cursor. */
+  ground?: PlacementGround | null;
 }
 
 /** One symbol judged by `auditPlacements()` / `explain()`. */
@@ -457,6 +517,7 @@ export const DEFAULT_PLACEMENT_OPTIONS: PlacementOptions = {
   prefetchMarginTiles: 1,
   maxSamples: 400,
   useWorker: true,
+  itg: { enabled: true, radiusKm: 3, max: 2, minLevel: 1 },
 };
 
 /** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */

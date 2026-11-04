@@ -5,8 +5,9 @@
  * A coloured header gives the verdict (how much of the shape is inside bad
  * ground, and an S keycap when the quick fix can help); sections underneath, on
  * alternating bands and captioned in the verdict colour, say why (with a GO /
- * SLOW-GO / NO-GO scale), how much, what is nearest and whether the echelon's
- * intermediate gap rule holds. Enforce mode closes the card with a red strip.
+ * SLOW-GO / NO-GO scale), how much, what is nearest, whether the echelon's
+ * intermediate gap rule holds and which Important Tactical Ground candidates lie
+ * round it. Enforce mode closes the card with a red strip.
  * The unit type and the P / S keys live in the legend. Built from DOM nodes and
  * `textContent` only, so class names and unit labels can never inject markup.
  *
@@ -64,6 +65,8 @@ const CSS = `
 .ms-pb-enf>svg{flex:none;margin-top:1px;color:#e5484d}
 .ms-pb-warn{color:#ffc861}
 .ms-pb-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
+.ms-pb-itg+.ms-pb-itg{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)}
+.ms-pb-strong{color:#f2b84b;font-weight:600}
 `;
 
 const ICONS: Record<string, string[]> = {
@@ -305,6 +308,33 @@ function nearestSection(v: PlacementVerdict, northDeg: number): HTMLElement | nu
   return null;
 }
 
+/**
+ * G · Important Tactical Ground: the candidates round the point, strongest first. The bundle only proposes them;
+ * the user designates ITG / MITG, so the wording stays "Candidate".
+ */
+function groundSection(v: PlacementVerdict): HTMLElement | null {
+  const g = v.ground;
+  if (!g) return null;
+  const rows: Array<Node | string> = [];
+  for (const c of g.candidates) {
+    const what = `${c.kindLabel}${c.elevationM !== null ? ` ${c.elevationM.toLocaleString('en')} m` : ''}`;
+    const head = el('div');
+    head.append(el('span', 'ms-pb-b', titleCase(c.name ?? what)), c.name ? ` · ${what}` : '');
+    const where = el('div');
+    where.append(
+      el('span', c.level === 2 ? 'ms-pb-strong' : undefined, c.level === 2 ? 'Strong Candidate (Check as MITG)' : 'ITG Candidate'),
+      ` · ${fmtDistance(c.distanceM)} ${c.compass}`,
+    );
+    const item = el('div', 'ms-pb-itg');
+    item.append(head, where, el('div', 'ms-pb-soft', c.reasonLabels.map(titleCase).join(' · ')));
+    rows.push(item);
+  }
+  if (!rows.length) {
+    rows.push(el('span', 'ms-pb-soft', g.pending ? 'Loading ground features' : `None within ${fmtDistance(g.radiusM)}`));
+  }
+  return section('Important Tactical Ground', ...rows);
+}
+
 /** Enforce mode: this click would be refused, and whether Shift gets past it. A red strip that closes the card. */
 function enforceStrip(v: PlacementVerdict): HTMLElement | null {
   if (!v.blocked) return null;
@@ -464,7 +494,7 @@ export class PlacementBadge {
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v)].filter(
+        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), groundSection(v)].filter(
             (r): r is HTMLElement => r !== null,
           );
     if (v.loading) rows.push(el('div', 'ms-pb-sec ms-pb-soft', 'Still loading terrain data'));

@@ -5,9 +5,12 @@ GROTBC:
 G: Ground
 R: Roads and Tracks, Railway Network
 O: Obstacles (Natural, Manmade, temporary, seasonal)
-T: Terrain
+T: Trafficability
 B: Built Up Area
 C: Camouflage and Concealment
+
+(Updated 2026-11-04: T is Trafficability, the going for each mode (on foot, wheeled, tracked, air, others) and each
+movement type (cross-country, tracks, roads, MSR). Terrain type and vegetation moved under G. See GROTBC.md section 4.)
 
 
 
@@ -18,7 +21,10 @@ R: Roads and Tracks, Railway Network
 classification of roads and their trafficability and load bearing, name of roads if possbile, from - to, including classification and distance
 O: Obstacles (Natural, Manmade, temporary, seasonal)
 
-T: Terrain
+T: Trafficability
+-->Going for each mode: on foot, wheeled, tracked, air, others
+-->Going by movement type: cross-country, tracks, roads, Main Supply Routes
+-->Area types: desert, sandy, marshy, boggy, open, grasslands, fields, hilly; dry and after rain
 B: Built Up Area
 Villages, Muddy Houses, Cities, (names if possible)
 C: Cover/ Camouflage and Concealment
@@ -65,7 +71,7 @@ Letter	Covered	Missing or weak
 G	Elevation, slope bands, landform, flood-prone and waterlogged ground, 14 mobility profiles (wheeled, tracked and so on)	Soil type and bearing strength, snow or monsoon by season
 R	See the table above	Road from–to (only names like “Quetta - Taftan”), road condition, seasonal trafficability, bus terminals, rail yards
 O	Water, canals, drains, embankments, bunds, cuttings, cliffs, walls, power lines, dams	Temporary obstacles (landslides, closures) and seasonal ones beyond flood zones
-T	Land cover, landform, elevation	Weather and climate
+T (Trafficability)	14 mobility profiles (going per mode), land cover, slope bands, flood-prone and waterlogged ground, road load class and MSR flag	Soil bearing dry and after rain, going by season, cross-country speed
 B	Names for about 218k villages, towns and cities, 225 district HQs, province, district and tehsil boundaries, hospitals, clinics, police stations	Population on only about 2.7k of them, building type (mud or brick), schools, markets, government buildings
 C	One 0–3 cover scale and one 0–3 concealment scale	Your four-way split: direct fire, indirect fire, ground observation, aerial observation
 Things to know

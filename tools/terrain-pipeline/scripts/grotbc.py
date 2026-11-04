@@ -45,7 +45,7 @@ from pathlib import Path
 
 import numpy as np
 
-from common import (GTIFF_U8, ORIGIN_SHIFT, class_table, iter_blocks, load_json, load_yaml, merc_to_lnglat,
+from common import (GTIFF_U8, WORLDPOP_TIF, WORLDPOP_YEAR, read_people, ORIGIN_SHIFT, class_table, iter_blocks, load_json, load_yaml, merc_to_lnglat,
                     row_latitudes, setup_logging)
 
 log = setup_logging("grotbc")
@@ -77,8 +77,8 @@ SHINGLE_WORDS = ("shingl", "gravel")
 
 # ----------------------------------------------------------------------------- feature kinds (features.json)
 # code -> (key, label, GROTBC letters). Codes are stable; the engine reads them from features/index.json.
-# Letters follow GROTBC.md: G Ground (relief, soil, hydrology), R Roads / tracks / railway network (incl. crossings,
-# airfields), O Obstacles, T Terrain, B Built-up areas (settlements, public infrastructure, installations, borders),
+# Letters follow GROTBC.md: G Ground (relief, terrain type, soil, vegetation, hydrology), R Roads / tracks / railway
+# network (incl. crossings, airfields), O Obstacles, T Trafficability (changes the going), B Built-up areas (settlements, public infrastructure, installations, borders),
 # C Cover & concealment.
 KINDS = {
     1: ("tube_well", "Tube well", "G"), 2: ("well_lined", "Well (lined)", "G"), 3: ("well_unlined", "Well (unlined)", "G"),
@@ -115,10 +115,34 @@ KINDS = {
     138: ("market", "Market", "B"), 139: ("bus_stand", "Bus stand", "R"), 140: ("mill", "Mill / factory", "B"),
     141: ("stadium", "Stadium", "B"), 142: ("toll_plaza", "Toll plaza", "R"), 143: ("waterfall", "Waterfall", "GO"),
     144: ("lake", "Lake / reservoir", "GO"), 145: ("glacier", "Glacier", "GT"), 146: ("river_reach", "River reach (bed, depth, current)", "GO"),
+    # 2026-11-04: GeoNames (PK.txt) names the NCGDB lacks
+    147: ("school", "School / college", "B"), 148: ("bank", "Bank", "B"), 149: ("government_office", "Government office / court", "B"),
+    150: ("mountain", "Mountain / hill / ridge", "G"), 151: ("dune", "Dune (named)", "GT"), 152: ("landform_name", "Named landform", "G"),
+    153: ("stream_name", "Stream (named)", "GO"), 154: ("canal_name", "Canal (named)", "O"), 155: ("well", "Well", "G"),
+    156: ("marsh", "Marsh / swamp", "GOT"), 157: ("locality", "Locality / area", "G"), 158: ("forest_name", "Forest (named)", "GTC"),
+    159: ("road_junction", "Road junction (named)", "R"),
+    # 2026-11-04: G terrain feature inventory and Important Tactical Ground candidates (ground.py merges these
+    # into features/ after this step; `ig` / `it` on any point mark an ITG candidate, rules.json grotbc.itg)
+    160: ("peak", "Peak", "G"), 161: ("hill", "Hill", "G"), 162: ("knoll", "Knoll / raised ground", "G"),
+    163: ("saddle", "Saddle / col", "G"), 164: ("plateau", "Plateau", "G"), 165: ("depression", "Closed depression", "G"),
+    166: ("main_junction", "Junction of main roads", "GR"),
     # lines (features.json "l")
     200: ("road", "Road", "R"), 201: ("railway", "Railway", "R"), 202: ("canal", "Canal", "O"), 203: ("river", "River", "GO"),
+    204: ("ridgeline", "Ridgeline", "G"),
 }
 KIND_CODE = {v[0]: k for k, v in KINDS.items()}
+GROUND_KINDS = {160, 161, 162, 163, 164, 165, 166, 204}          # written by ground.py, never by this step
+# attributes ground.py adds (G inventory + ITG candidates)
+GROUND_ATTRS = {"rr": "relative relief: height above the lowest ground within 2 km (m)",
+                "iso": "dominance: the highest ground within this radius (km; 5 = 5 km or more)",
+                "vs": "share of the ground within 5 km visible from 2 m above the feature (%)",
+                "mv": "nearest main supply route in view (km)", "sp": "mean slope within 300 m (degrees)",
+                "dr": "nearest main supply route (km, up to 5)", "dn": "nearest road or track (km, up to 5)",
+                "lc": "class code at the feature (classes.yaml)", "cv": "cover / concealment code at the feature (cc layer)",
+                "hs": "surveyed height of a trig station / spot height within 250 m (m)", "lk": "length (km)",
+                "mx": "ways out of a road junction along motorways / national highways (3+ = two highways meet)",
+                "ig": "ITG candidate: reason letters (rules.json grotbc.itg.reasons)",
+                "it": "1 ITG candidate, 2 strong candidate (check as MITG for the task)"}
 FEATURE_Z = 10
 QUANT = 4096
 
@@ -606,6 +630,7 @@ class TileWriter:
         self.points: dict[tuple, list] = defaultdict(list)
         self.lines: dict[tuple, list] = defaultdict(list)
         self.counts: dict[int, int] = defaultdict(int)
+        self.xy: dict[str, list] = defaultdict(list)        # point positions per kind, for de-duplicating other sources
         (w, s), (e, n) = _merc_xy(np.array([[aoi[0], aoi[1]], [aoi[2], aoi[3]]]))
         self.trange = (*self._tile(w, n), *self._tile(e, s))          # lines are kept only inside the AOI
 
@@ -625,6 +650,7 @@ class TileWriter:
         a = {key: val for key, val in attrs.items() if val is not None}
         self.points[(tx, ty)].append([k, qx, qy, a] if a else [k, qx, qy])
         self.counts[k] += 1
+        self.xy[kind].append((x, y))
         return a
 
     def line(self, kind: str, geom, attrs: dict) -> None:
@@ -676,12 +702,13 @@ class TileWriter:
                            "dp": "depth (m)", "b": "bank height (m)", "g": "gauge", "s": "surface / structure / size",
                            "rw": "runway size", "rd": "runway direction", "rv": "river", "f": "formation",
                            "x": "seasonal / temporary closure as recorded (e.g. Jun-Oct, Snow)", "cn": "recorded road condition",
-                           "sl": "landslide sites on the road segment", "wp": "estimated population (WorldPop 2020, share nearest this place)",
-                           "wc": "WorldPop 2020 people within 12 km (city) / 8 km (district HQ) / 4 km (town) of the place",
+                           "sl": "landslide sites on the road segment", f"wp": f"estimated population (WorldPop {WORLDPOP_YEAR}, share nearest this place)",
+                           "an": "alternate names / spellings (GeoNames)", "gn": "GeoNames id", "src": "source when not the NCGDB (gn = GeoNames)",
+                           f"wc": f"WorldPop {WORLDPOP_YEAR} people within 12 km (city) / 8 km (district HQ) / 4 km (town) of the place",
                            "pv": "province", "a": "area (km2)", "cu": "current (m/s)", "ws": "wet span of a river reach",
                            "dc": "discharge (cusecs)", "dm": "maximum depth (m)", "bk": "bank height",
                            "pc": "parent corps", "u1": "formation", "u2": "squadrons", "u3": "combat aircraft",
-                           "u4": "transport aircraft", "u5": "helicopters", "u6": "UAV"},
+                           "u4": "transport aircraft", "u5": "helicopters", "u6": "UAV", **GROUND_ATTRS},
                  "kinds": {str(k): {"key": v[0], "label": v[1], "grotbc": v[2], "count": self.counts.get(k, 0)}
                            for k, v in sorted(KINDS.items())},
                  "tiles": len(keys)}
@@ -806,7 +833,130 @@ class RouteIndex:
 
 SETTLEMENT_KINDS = {"city": 25_000, "district_hq": 15_000, "town": 8_000, "village_imp": 4_000, "village": 2_500}   # radius m
 WITHIN_M = {"city": 12_000, "district_hq": 8_000, "town": 4_000}       # radius of the `wc` total
-WORLDPOP = Path("work/raw/worldpop/pak_ppp_2020_constrained.tif")
+WORLDPOP = WORLDPOP_TIF
+WP_PART_M = 250          # a coarser WorldPop cell is split into parts of about this size before the nearest-place share
+
+
+GEONAMES = Path(r"D:\Imagery\PK.txt")      # GeoNames country dump (geonames.org, CC BY 4.0)
+# GeoNames feature class.code -> (kind, subtype written to `t`)
+GN_KINDS = {
+    "S.SCH": ("school", "school"), "S.SCHC": ("school", "college"), "S.SCHM": ("school", "military school"),
+    "S.SCHT": ("school", "technical school"), "S.SCHA": ("school", "agricultural school"), "S.SCHN": ("school", "school"),
+    "S.UNIV": ("school", "university"), "S.HSP": ("hospital", "hospital"), "S.HSPC": ("hospital", "clinic"),
+    "S.HSPD": ("hospital", "dispensary"), "S.BANK": ("bank", "bank"), "S.ADMF": ("government_office", "administrative office"),
+    "S.CTHSE": ("government_office", "court house"), "S.MSQE": ("mosque", None), "S.SHRN": ("tomb", "shrine"),
+    "S.TMB": ("tomb", "tomb"), "S.TMPL": ("temple", None), "S.CH": ("church", None), "S.CMTY": ("graveyard_pt", "cemetery"),
+    "S.GRVE": ("graveyard_pt", "grave"), "S.PP": ("police_station", "police post"), "S.PSTP": ("post", "patrol post"),
+    "S.PSTB": ("border_post", None), "S.CSTM": ("border_post", "customs post"), "S.PO": ("post_office", None),
+    "S.MKT": ("market", None), "S.MALL": ("market", "mall"), "S.HTL": ("rest_house", "hotel"), "S.RHSE": ("rest_house", None),
+    "S.FT": ("fort", None), "S.RSTN": ("rail_station", None), "S.AIRP": ("airport", None), "S.AIRF": ("airfield", None),
+    "S.AIRH": ("helipad", None), "S.AIRB": ("air_base", None), "S.DAM": ("dam", None), "S.BDG": ("bridge", None),
+    "S.ML": ("mill", "mill"), "S.MFG": ("mill", "factory"), "S.TOWR": ("mast", "tower"), "S.STDM": ("stadium", None),
+    "S.RUIN": ("deserted_site", "ruin"), "S.PS": ("grid_station", "power station"), "S.STNR": ("wireless_station", "radio station"),
+    "S.TRIG": ("trig_station", None), "S.CAVE": ("cave", None), "S.OILW": ("oil_gas_well", None), "S.MN": ("mine", None),
+    "S.MNC": ("mine", "coal mine"), "S.WEIR": ("headworks", "weir"),
+    "T.MT": ("mountain", "mountain"), "T.MTS": ("mountain", "mountain range"), "T.PK": ("mountain", "peak"),
+    "T.HLL": ("mountain", "hill"), "T.HLLS": ("mountain", "hills"), "T.RDGE": ("mountain", "ridge"), "T.SPUR": ("mountain", "spur"),
+    "T.MND": ("mountain", "mound"), "T.PASS": ("pass", None), "T.GAP": ("pass", "gap"), "T.SDL": ("pass", "saddle"),
+    "T.DUNE": ("dune", None), "T.ERG": ("dune", "sand sea"), "T.DPR": ("landform_name", "depression"),
+    "T.VAL": ("landform_name", "valley"), "T.VALG": ("landform_name", "hanging valley"), "T.GRGE": ("landform_name", "gorge"),
+    "T.PLN": ("landform_name", "plain"), "T.PLAT": ("landform_name", "plateau"), "T.DSRT": ("landform_name", "desert"),
+    "T.CLF": ("landform_name", "cliff"), "T.SLP": ("landform_name", "slope"), "T.SBED": ("landform_name", "dry stream bed"),
+    "T.SCRP": ("landform_name", "escarpment"), "T.UPLD": ("landform_name", "upland"), "T.FORD": ("ford", None),
+    "H.STM": ("stream_name", "stream"), "H.STMI": ("stream_name", "intermittent stream"), "H.STMD": ("stream_name", "distributary"),
+    "H.STMC": ("stream_name", "canalized stream"), "H.STMX": ("stream_name", "section of stream"), "H.RVN": ("stream_name", "ravine"),
+    "H.CNL": ("canal_name", "canal"), "H.CNLSB": ("canal_name", "underground irrigation canal (karez)"),
+    "H.CNLQ": ("canal_name", "abandoned canal"), "H.CNLI": ("canal_name", "irrigation canal"), "H.SPNG": ("spring", None),
+    "H.WLL": ("well", None), "H.LK": ("lake", "lake"), "H.LKI": ("lake", "intermittent lake"), "H.PND": ("lake", "pond"),
+    "H.PNDI": ("lake", "intermittent pond"), "H.RSV": ("lake", "reservoir"), "H.RSVT": ("lake", "water tank"),
+    "H.RSVI": ("lake", "intermittent reservoir"), "H.GLCR": ("glacier", None), "H.MRSH": ("marsh", "marsh"),
+    "H.SWMP": ("marsh", "swamp"), "H.WTLD": ("marsh", "wetland"), "H.MRSHN": ("marsh", "salt marsh"),
+    "L.AREA": ("locality", "area"), "L.LCTY": ("locality", "locality"), "L.RGN": ("locality", "region"),
+    "L.TRB": ("locality", "tribal area"), "L.OILF": ("locality", "oil field"), "L.GASF": ("locality", "gas field"),
+    "L.RESF": ("forest_name", "reserved forest"), "V.FRST": ("forest_name", "forest"), "R.RDJCT": ("road_junction", None),
+}
+GN_PLACE = {"PPLC": "city", "PPLA": "city", "PPLA2": "district_hq", "PPLA3": "town", "PPL": "village", "PPLX": "locality",
+            "PPLL": "locality", "PPLF": "village", "PPLS": "village", "PPLR": "village", "PPLH": "deserted_site",
+            "PPLQ": "deserted_site", "PPLW": "deserted_site"}
+GN_DEDUPE_M = 400          # a GeoNames POI this close to an NCGDB point of the same kind is the same thing
+
+
+def _norm(name) -> str:
+    return re.sub(r"[^a-z]", "", str(name or "").casefold())
+
+
+def geonames_features(path: Path, tw: "TileWriter", aoi, settle: list) -> None:
+    """GeoNames points: named terrain (mountains, passes, dunes, streams), POIs the NCGDB lacks (schools, banks,
+    government offices), and alternate spellings. A place that matches an NCGDB place within ~1 km by name gives it
+    its alternate names (`an`) and GeoNames id (`gn`); an unmatched place is added with `src: gn`. POIs of a kind the
+    NCGDB already has are skipped within GN_DEDUPE_M of one."""
+    from difflib import SequenceMatcher
+    from scipy.spatial import cKDTree
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            p = line.rstrip("\n").split("\t")
+            if len(p) >= 19:
+                rows.append(p)
+    lon = np.array([float(p[5]) for p in rows])
+    lat = np.array([float(p[4]) for p in rows])
+    xy = _merc_xy(np.column_stack([lon, lat]))
+    inside = _in_aoi(xy, aoi)
+    stree = cKDTree(np.array([[s[0], s[1]] for s in settle])) if settle else None
+    trees: dict = {}
+
+    def near_same(kind: str, x: float, y: float, r: float) -> bool:
+        if kind not in trees:
+            pts = tw.xy.get(kind)
+            trees[kind] = cKDTree(np.array(pts)) if pts else None
+        t = trees[kind]
+        return bool(t is not None and t.query_ball_point((x, y), r, return_length=True) > 0)
+
+    counts: dict[str, int] = defaultdict(int)
+    for i, p in enumerate(rows):
+        if not inside[i]:
+            continue
+        x, y = xy[i]
+        scale = 1.0 / max(math.cos(math.radians(lat[i])), 0.2)        # metres on the ground -> Web Mercator metres
+        name = p[1].strip() or None
+        alts = [a for a in dict.fromkeys(a.strip() for a in p[3].split(",")) if a and a != name][:10]
+        pop = int(p[14]) if p[14].isdigit() and int(p[14]) > 0 else None
+        ev = p[15] or p[16]
+        elev = int(ev) if ev.lstrip("-").isdigit() and int(ev) > -500 else None
+        code = p[6] + "." + p[7]
+        if p[6] == "P":
+            kind = GN_PLACE.get(p[7])
+            if kind is None:
+                continue
+            if stree is not None and kind not in ("deserted_site", "locality"):
+                d, j = stree.query((x, y), k=1, distance_upper_bound=1000.0 * scale)
+                if np.isfinite(d):
+                    sa = settle[j][2]
+                    if SequenceMatcher(None, _norm(sa.get("n")), _norm(name)).ratio() >= 0.6:
+                        extra = [a for a in [name] + alts if a and a != sa.get("n")]
+                        if extra:
+                            sa["an"] = ", ".join(extra)[:160]
+                        sa["gn"] = int(p[0])
+                        if pop and not sa.get("p"):
+                            sa["p"] = pop
+                        counts["matched place"] += 1
+                        continue
+            a = tw.point(kind, x, y, {"n": name, "an": ", ".join(alts)[:160] or None, "p": pop, "e": elev,
+                                      "gn": int(p[0]), "src": "gn"})
+            if kind in SETTLEMENT_KINDS:
+                settle.append((x, y, a, kind))
+            counts["new place"] += 1
+            continue
+        hit = GN_KINDS.get(code)
+        if hit is None:
+            continue
+        kind, sub = hit
+        if near_same(kind, x, y, GN_DEDUPE_M * scale):
+            counts["duplicate " + kind] += 1
+            continue
+        tw.point(kind, x, y, {"n": name, "t": sub, "e": elev, "an": ", ".join(alts)[:160] or None, "gn": int(p[0]), "src": "gn"})
+        counts[kind] += 1
+    log.info("geonames: %d rows; %s", len(rows), ", ".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda kv: -kv[1])))
 
 
 def polygon_features(g: str, tw: "TileWriter", aoi) -> None:
@@ -860,13 +1010,13 @@ def polygon_features(g: str, tw: "TileWriter", aoi) -> None:
 
 
 def assign_population(settle: list, tif: Path) -> None:
-    """Share every WorldPop person (2020, constrained, ~100 m) out to the NEAREST named place within that place's
-    radius, so nothing is counted twice; stored as `wp` (rounded to 10) on the place. A big city is split among the
-    named parts inside it. Returns nothing when the raster is missing."""
+    """Share every WorldPop person (constrained; common.WORLDPOP_YEAR) out to the NEAREST named place within that
+    place's radius, so nothing is counted twice; stored as `wp` (rounded to 10) on the place. A big city is split among
+    the named parts inside it. A cell coarser than WP_PART_M (the 1 km file) is first split into equal parts of about
+    that size, so two villages in one cell share it. Returns nothing when the raster is missing."""
     if not tif.exists() or not settle:
         log.warning("population: %s or places missing, skipped", tif)
         return
-    import rasterio
     from scipy.spatial import cKDTree
 
     def xyz(lon, lat):
@@ -878,17 +1028,18 @@ def assign_population(settle: list, tif: Path) -> None:
     lat = np.degrees(np.arctan(np.sinh(px[:, 1] / 6378137.0)))
     tree = cKDTree(xyz(lon, lat))
     radius = np.array([SETTLEMENT_KINDS[s[3]] for s in settle], dtype="float64")
-    with rasterio.open(tif) as d:
-        a = d.read(1)
-        nod = d.nodata
-        tr = d.transform
-    ok = np.isfinite(a) & (a > 0)
-    if nod is not None:
-        ok &= a != nod
-    rr, cc = np.nonzero(ok)
-    vals = a[rr, cc].astype("float64")
+    a, tr, _shape = read_people(tif)
+    rr, cc = np.nonzero(a > 0)
+    vals = a[rr, cc]
     plon = tr.c + (cc + 0.5) * tr.a
     plat = tr.f + (rr + 0.5) * tr.e
+    k = max(1, round(abs(tr.a) * 111320.0 * math.cos(math.radians(float(np.mean(plat)))) / WP_PART_M)) if len(vals) else 1
+    if k > 1:
+        off = (np.arange(k) + 0.5) / k - 0.5
+        ox, oy = np.meshgrid(off * tr.a, off * tr.e)
+        plon = (plon[:, None] + ox.ravel()[None, :]).ravel()
+        plat = (plat[:, None] + oy.ravel()[None, :]).ravel()
+        vals = np.repeat(vals / (k * k), k * k)
     dist, idx = tree.query(xyz(plon, plat), k=1, workers=-1)
     take = dist <= radius[idx]
     total = np.bincount(idx[take], weights=vals[take], minlength=len(settle))
@@ -967,6 +1118,8 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
         log.info("features: %s -> %d points", layer_name, n0)
 
     polygon_features(g, tw, aoi)
+    if GEONAMES.exists():
+        geonames_features(GEONAMES, tw, aoi, settle)
     assign_population(settle, WORLDPOP)
 
     for layer_name, field, kinds, attrs, where in LINE_POINT_RULES:

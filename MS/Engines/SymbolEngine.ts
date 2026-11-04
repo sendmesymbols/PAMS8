@@ -116,6 +116,7 @@ import SymbolMetadataService from './SymbolMetadataService';
 import KeyboardShortcutManager from './KeyboardShortcutManager';
 import StylusDrawController from './Stylus/StylusDrawController';
 import PlacementAdvisor from './Placement/PlacementAdvisor';
+import type { PlacementGroundCandidate } from './Placement/PlacementTypes';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
 // imported. One side-effect import per engine keeps the wiring discoverable.
@@ -1940,6 +1941,73 @@ class SymbolEngine implements Evented {
    *  to point it at a terrain bundle. */
   public get placementAdvisor(): PlacementAdvisor | null {
     return this._placementAdvisor;
+  }
+
+  /**
+   * Designate ground for the task: `ITG` (Important Tactical Ground) draws an Imp Gr area ("IG", a PAMS8 local
+   * symbol: 2525D has none), `MITG` (Most Important = Vital Ground) a Vital Gr area ("VG", 2525D 25-242301).
+   * Either is an ordinary symbol, so it is saved, loaded, edited and exported with the plan like any other.
+   * `target` is an ITG candidate from `placementAdvisor.groundCandidates()` or any map point
+   * (`Point`, or `{ longitude, latitude }`). The radius defaults by feature: a plateau's own size, 250 m
+   * for a junction or crossing, 400 m otherwise. Returns the new graphic, or null when it could not be drawn.
+   */
+  public designateGround(
+    target: PlacementGroundCandidate | Point | { longitude: number; latitude: number },
+    level: 'ITG' | 'MITG',
+    opts: { radiusM?: number; name?: string; standardIdentity?: string } = {},
+  ): Graphic | null {
+    const view: any = this._getView?.();
+    const cand = (target as PlacementGroundCandidate).lngLat ? (target as PlacementGroundCandidate) : null;
+    let lon: number;
+    let lat: number;
+    if (cand) {
+      [lon, lat] = cand.lngLat;
+    } else if (target instanceof Point) {
+      const geo = target.spatialReference?.isWebMercator ? (webMercatorUtils.webMercatorToGeographic(target) as Point) : target;
+      lon = geo.longitude ?? geo.x;
+      lat = geo.latitude ?? geo.y;
+    } else {
+      ({ longitude: lon, latitude: lat } = target as { longitude: number; latitude: number });
+    }
+    if (!view || !Number.isFinite(lon) || !Number.isFinite(lat)) {
+      EngineLogger.error('SymbolEngine', 'designateGround: needs a view and a point (or an ITG candidate)');
+      return null;
+    }
+    const areaKm2 = Number(cand?.attributes?.a);
+    const radiusM =
+      opts.radiusM ??
+      (cand?.kind === 'plateau' && areaKm2 > 0
+        ? Math.min(1500, Math.max(300, Math.sqrt(areaKm2 / Math.PI) * 1000))
+        : cand && /junction|bridge|ford|ferry|tunnel|barrage|headworks|dam|viaduct/.test(cand.kind)
+          ? 250
+          : 400);
+    // Eight control points on a circle; the smooth-polygon draw type closes them into a curve.
+    const merc = view.spatialReference?.isWebMercator !== false;
+    const [cx, cy] = webMercatorUtils.lngLatToXY(lon, lat);
+    const r = radiusM / Math.cos((lat * Math.PI) / 180); // ground metres → Web Mercator metres
+    const ctrl = Array.from({ length: 8 }, (_, i) => {
+      const a = (i * Math.PI) / 4;
+      const x = cx + r * Math.sin(a);
+      const y = cy + r * Math.cos(a);
+      if (merc) return { x, y, spatialReference: { wkid: 102100 } };
+      const [plon, plat] = webMercatorUtils.xyToLngLat(x, y);
+      return { x: plon, y: plat, spatialReference: { wkid: 4326 } };
+    });
+    const identity = /^\d$/.test(opts.standardIdentity ?? '') ? opts.standardIdentity : '3';
+    // Vital Gr: symbol set 25, entity 242301. Imp Gr: catalog key 00000160 (symbol set 00, entity 000160).
+    const sym = level === 'MITG'
+      ? { set: '25', entity: '242301', name: 'Vital Gr' }
+      : { set: '00', entity: '000160', name: 'Imp Gr' };
+    const sidc = `100${identity}${sym.set}0000${sym.entity}0000`;
+    const name = opts.name ?? cand?.name ?? '';
+    return this.loadSymbolFromJSON({
+      type: 'pams8-symbol',
+      // loadSymbolFromJSON() finds the graphic it drew by this id; without one it would also build a fallback marker
+      id: this.generateUUID(),
+      sidc,
+      amplifier: { SIDC: sidc, UNIQUE_DESIG: name },
+      drawEssentials: { SYM_GEO_TYPE: 'Area', SID: sym.entity, SYM_NAME: sym.name, DRAW_TYPE: 1, CTRL_PTS: ctrl },
+    });
   }
 
   /** Access the DrawingCueEngine â€” control visual overlays during drawing. */

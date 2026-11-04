@@ -3124,6 +3124,28 @@
               <label>Terrain data</label>
               <button type="button" id="placement-retry" title="Load the terrain bundle again, e.g. after the server came back.">Retry loading</button>
             </div>
+            <div class="sub-feature-label">Important Tactical Ground (G)</div>
+            <div class="setting-row">
+              <label>ITG on card</label>
+              <input type="checkbox" id="setting-placementItg" checked title="List the Important Tactical Ground candidates round the cursor on the card: peaks, saddles, junctions and crossings that passed an objective test. Candidates only; the user designates ITG / MITG." />
+            </div>
+            <div class="setting-row">
+              <label>Radius (km)</label>
+              <input type="number" id="setting-placementItgRadius" min="0.5" max="10" step="0.5" value="3" style="width: 60px" title="How far round the cursor the card looks for candidates." />
+            </div>
+            <div class="setting-row">
+              <label>Show</label>
+              <select id="setting-placementItgLevel" style="width: 130px" title="Every candidate, or only strong candidates (check as MITG).">
+                <option value="1" selected>Every candidate</option>
+                <option value="2">Strong only</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Map centre</label>
+              <button type="button" id="placement-itg-list" title="Log the ITG candidates within the radius of the map centre to the Engine Log.">List candidates</button>
+              <button type="button" id="placement-itg-itg" title="Draw an Imp Gr (ITG) round the strongest, nearest candidate to the map centre. It is an ordinary symbol, saved with the plan.">Designate ITG</button>
+              <button type="button" id="placement-itg-mitg" title="Draw a Vital Gr (MITG) round the strongest, nearest candidate to the map centre. It is an ordinary symbol, saved with the plan.">Designate MITG</button>
+            </div>
           </div>
         </div>
 
@@ -4439,6 +4461,9 @@
         'setting-placementFootprintSize': (v) => ({ path: ['placement', 'footprint', 'size'], value: v }),
         'setting-placementFootprintOutline': (v) => ({ path: ['placement', 'footprint', 'outline'], value: v }),
         'setting-placementSpacing': (v) => ({ path: ['placement', 'footprint', 'spacing'], value: v }),
+        'setting-placementItg': (v) => ({ path: ['placement', 'itg', 'enabled'], value: v }),
+        'setting-placementItgRadius': (v) => ({ path: ['placement', 'itg', 'radiusKm'], value: Number(v) }),
+        'setting-placementItgLevel': (v) => ({ path: ['placement', 'itg', 'minLevel'], value: Number(v) }),
         'setting-placementWorker': (v) => ({ path: ['placement', 'useWorker'], value: v }),
         'setting-placementOverlay': (v) => ({ path: ['placement', 'overlay', 'enabled'], value: v }),
         'setting-placementBoundary': (v) => ({ path: ['placement', 'overlay', 'boundary'], value: v }),

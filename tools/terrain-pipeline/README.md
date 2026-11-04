@@ -19,9 +19,10 @@ MS/Data/terrain-bundle/                  (repo root; git-ignored)
 ```
 
 Bundle v2 organises the data by **GROTBC** as defined in `GROTBC.md` (Ground, Roads / tracks / railway network,
-Obstacles, Terrain, Built-up areas, Cover / camouflage / concealment); see "Bundle v2 (GROTBC)" below and
+Obstacles, Trafficability, Built-up areas, Cover / camouflage / concealment); see "Bundle v2 (GROTBC)" below and
 `MS/Docs/16-placement-grotbc-card.md`. The first build read R as Relief and T as Tactical features; relabelled on
-2026-11-03 (relief is now under G, roads / rail / crossings / airfields under R). `routes.json` (named routes with
+2026-11-03 (relief is now under G, roads / rail / crossings / airfields under R). On 2026-11-04 T became
+Trafficability (the going per mode, dry and after rain); terrain type and vegetation moved to G. `routes.json` (named routes with
 from - to, length, load class, closures) and `rules.json grotbc.coverSplit` (cover and concealment four ways) were added then.
 
 Tiles are Web Mercator (EPSG:3857) 256 px XYZ, z = 8..12, 8-bit greyscale PNG
@@ -206,7 +207,50 @@ cut the block reads several-fold. Delete the copy afterwards.
 | `soil.tif` | `scripts/fetch_soil.py` then `terrain.py` | SoilGrids 2.0 sand + clay, 0-30 cm, windowed from ISRIC's VRTs | the `soil` layer (USDA texture); bearing in `rules.yaml soilBearing` |
 | `hut.tif` | `terrain.py` | NCGDB `Hut` (3.77 M symbols) | the `hut` layer (huts per km2, ~600 m cells) |
 | `climate.bin/json` | `scripts/climate.py` | WorldClim 2.1 5' tmin, tmax, prec, wind | `climate/` (monthly normals + frost / hot / wet / monsoon summaries) |
-| `wp`, `wc` on places | `grotbc.py` features | WorldPop 2020 constrained | people nearest each place; people within 12 / 8 / 4 km of a city / district HQ / town |
+| `wp`, `wc` on places | `grotbc.py` features | WorldPop 2026 constrained, 1 km (each cell split into ~250 m parts) | people nearest each place; people within 12 / 8 / 4 km of a city / district HQ / town |
+
+Added 2026-11-04:
+
+| product | step | from | becomes |
+|---|---|---|---|
+| `network/` | `scripts/network.py` | `D:\Imagery\Routing\Network.gdb` `pkroads` (osm2po graph of OSM roads, 2.76 M edges) + the route / class rasters | routable road graph with NCGDB load tier, MSR and worst crossing per edge (`network/network.json` has the schema) |
+| `bank.tif` | `terrain.py` | class raster (water classes) + `rules.yaml banks` | the `bank` layer: river / lake, floodplain, stream and canal banks in 30 / 75 / 150 m bands |
+| `bld.tif`, `cells.npz` | `scripts/buildings.py` | Google Open Buildings v3 (16.6 GB, 7 S2 tiles) + GHSL building height (2018) | the `bld` layer: building density, mean footprint (huts ... industrial) and height class per ~150 m cell |
+| `settlements.json/.geojson` | `scripts/settlements.py` | built-up class, WorldPop, place names, `cells.npz`, GHSL SMOD | every settlement with name, size class (metropolitan city ... hamlet), population, males 15-49 / under 15 / 65+, people per km2, area, buildings, mean height, degree of urbanisation |
+| GeoNames kinds 147-159 + `an` / `gn` on places | `grotbc.py` features | `D:\Imagery\PK.txt` (GeoNames dump, CC BY 4.0) | schools, banks, government offices, named mountains / hills / ridges, dunes, streams, canals, wells, marshes, localities, forests; alternate spellings on matched places, new places where the NCGDB has none |
+
+### Population: WorldPop 2026 (updated 2026-11-04)
+
+Rule set by the owner: where WorldPop offers two choices, take the **latest** and the **coarser** one. So the Global2
+R2025A **2026** estimate (the current year; 2027-2030 are projections) at **1 km**, constrained and UN-adjusted (the
+only 1 km form). Population Density and Population Weighted Density never moved to Global2: their latest is 2020.
+Every source in `sources.lock` carries `dataDate` (the time the data describes) and `released` (the publisher's
+release); `manifest.json` `sources[]`, `LICENSES.txt` and each `population.json` layer repeat them.
+
+| product | step | from | becomes |
+|---|---|---|---|
+| `population.bin/json` | `scripts/population.py` (`make population`) | `worldpop` (2026 count), `worldpop_agesex` (2026: males 15-49, under 15, 65+), `worldpop_density` (2020, unconstrained), `worldpop_pwd` (2020) | `population/`: 2034 x 1611 cells of 30", uint16 layers `pop`, `males15_49`, `under15`, `over65`, `density_2020` (people / km2, also over farmland); `provinces` = population weighted density per GADM 3.6 province |
+| settlement population | `settlements.py` | the same 2026 rasters + `cells.npz` | each 1 km cell's people shared over the ~150 m pixels inside it by building footprint area (evenly over built-up pixels where it has no mapped buildings) |
+
+The 2020 file (`work/raw/worldpop/pak_ppp_2020_constrained.tif`) is no longer read and can be deleted.
+
+### G: terrain feature inventory and Important Tactical Ground (added 2026-11-04)
+
+ITG and MITG belong to G (Ground), not to a letter of their own. `scripts/ground.py` (`make ground`, after `grotbc`,
+`classify` and `network`) builds the inventory from data already held and merges it into `features/`:
+
+| product | from | becomes |
+|---|---|---|
+| kinds 160-165: peak, hill, knoll / raised ground, saddle, plateau, closed depression | Copernicus DEM averaged to ~100 m | points with elevation `e`, relative relief `rr`, dominance radius `iso`, view share `vs` and nearest MSR in view `mv` (5 km rays from 2 m eye height), slope round it `sp`, class `lc`, cover `cv`, nearest MSR `dr` / road `dn`, surveyed height `hs` (NCGDB trig station / spot height within 250 m), name `n` (GeoNames / NCGDB named mountain within 1.5 km, pass within 1 km) |
+| kind 204: ridgeline | same | crest cells joined uphill into lines of 1 km or more, `e` highest point, `lk` length |
+| kind 166: junction of main roads | `network/` (motorway / trunk / primary nodes of degree 3+, interchanges merged within 400 m) | `n` road names, `m` on an MSR, `mx` ways out along motorways / national highways |
+| `ig` / `it` on any point | `rules.yaml itg.reasons` | ITG CANDIDATE: H highest ground around, O wide observation, R overlooks an MSR, P pass on a road or track, C chokepoint on an MSR (bridges over a river / canal / stream, fords, ferries, tunnels, passes, barrages, dams), J junction on an MSR; `it` 1 candidate, 2 strong (check it as MITG for the task) |
+| `work/ground/ground_inventory.gpkg` | the same | the inventory for GIS: `Feature_ID`, `Feature_Name`, `Feature_Type`, `Feature_Subtype`, `Elevation`, `Relative_Relief`, `Slope_Deg`, `View_Pct`, `ITG_Status`, `ITG_Reasons`, `Data_Source`, `Observation_Date`, `Verification`, ... |
+
+The bundle names candidates only. Whether one is important or most important depends on the task, the axis and the
+enemy: that is decided in the app and saved with the plan. Copernicus DEM is a surface model, so a knoll or depression
+under 35 m in built-up ground or under trees is dropped (`itg.dsmSuspect`). `--aoi w,s,e,n` runs a test on part of
+the grid and leaves `features/` untouched. Every threshold is in `rules.yaml itg` (a starting proposal).
 
 New named features (mosques, graves, telecom, post offices, lakes, glaciers, river reaches...) come from the same NCGDB
 layers as before. `fetch_soil.py` is run once after `make fetch`; `terrain.py` and `climate.py` run after `classify`

@@ -91,7 +91,7 @@ coverSplit:
     22: [1, 0, 1, 0]
     23: [0, 0, 1, 1]
     24: [3, 2, 2, 0]    # embankment over 2 m
-    25: [2, 1, 1, 0]    # bund
+    25: [2, 1, 2, 0]    # bund: good cover and concealment for ground troops (owner, 2026-11-04)
     26: [3, 2, 3, 0]    # cutting
     27: [3, 2, 2, 0]    # escarpment
     28: [1, 0, 0, 0]    # railway embankment
@@ -104,7 +104,21 @@ coverSplit:
     48: [0, 0, 1, 1]
     49: [2, 0, 1, 0]    # wall / fence
 
-# Terrain type (GROTBC T): Plain / Hilly / Solid / Marshy / Wet / Desert, plus Mountainous, Built-up and Snow / ice.
+# Banks (bank layer, scripts/terrain.py): the strip of land along permanent / seasonal water, perennial streams and
+# canals. The owner (2026-11-04): river banks are suitable for deployment and give ground troops cover. The layer
+# says which water the bank faces and how far; this table is what the bank gives, [direct, indirect, ground, aerial]
+# like coverSplit, plus whether it is a deployment line. STARTING PROPOSAL.
+banks:
+  bandsM: [30, 75, 150]                       # distance bands from the water's edge (bank layer bits 0-1: 0, 1, 2)
+  kinds:
+    "1": { label: "River / lake bank",        waterClasses: [4],  cover: [2, 1, 2, 0], deploy: true }
+    "2": { label: "Floodplain edge",          waterClasses: [5],  cover: [1, 0, 1, 0], deploy: true }
+    "3": { label: "Perennial stream bank",    waterClasses: [46], cover: [2, 1, 2, 0], deploy: true }
+    "4": { label: "Canal bank",               waterClasses: [20], cover: [2, 1, 2, 0], deploy: true }
+    "5": { label: "Distributary bank",        waterClasses: [21], cover: [1, 1, 1, 0], deploy: false }
+  note: "Banks of perennial rivers and canals give cover from direct fire and ground observation and make a deployment line; check the bank height and the ground behind it."
+
+# Terrain type (GROTBC G; T reads it for the going): Plain / Hilly / Solid / Marshy / Wet / Desert, plus Mountainous, Built-up and Snow / ice.
 # scripts/terrain.py gives each pixel the FIRST rule that matches, in this order:
 #   snow_ice > built_up > wet > marshy (also wet layer 4, waterlogged) > mountainous > hilly > desert > solid > plain
 # `byClass` lists class codes (classes.yaml); `slopeband` the codes of work/grotbc/slopeband.tif (0 <3°, 1 3-7°,
@@ -138,6 +152,62 @@ soilBearing:
   "10": { dry: good,      wet: poor,      note: "Sandy clay: hard dry, sticky wet." }
   "11": { dry: fair,      wet: very_poor, note: "Silty clay: cracks dry, bogs wet." }
   "12": { dry: good,      wet: very_poor, note: "Clay: rock hard dry, impassable mud after heavy rain." }
+
+# Important Tactical Ground (GROTBC G; scripts/ground.py). The DEM gives a terrain feature inventory (peaks, hills,
+# knolls, saddles, plateaus, depressions, ridgelines); main road junctions and the crossings, passes and tunnels
+# already in features/ are added to it. A feature that passes one of the `reasons` tests becomes an ITG CANDIDATE:
+# `ig` lists the letters it passed, `it` is 1 (ITG candidate) or 2 (strong candidate: check it as MITG for the task).
+# The bundle never designates ITG or MITG: that depends on the mission, the axis and the enemy, and is the
+# commander's decision, made in the app and saved with the plan. STARTING PROPOSAL for the domain owner to correct.
+itg:
+  coarse: 3                     # work on the DEM averaged over 3 x 3 pixels (~100 m on the ground)
+  eyeHeightM: 2                 # observer height for the view test
+  viewRadiusKm: 5               # view and dominance radius (also the block halo)
+  peak:
+    neighbourhoodM: 500         # a summit is the highest point within this radius
+    reliefM: 15                 # and stands at least this much above the lowest ground within 2 km ...
+    reliefShare: 0.12           # ... and at least this share of the local relief (5 km window)
+    hillM: 60                   # relief from which it is a hill (below: knoll / raised ground)
+    knollDominanceKm: 1         # a knoll must also be the highest ground within this radius
+    mountainM: 300              # relief from which it is a peak
+  dsmSuspect:                   # Copernicus DEM is a surface model: a low rise on these classes may be roofs or trees
+    classes: [built_up, tree_cover, forest, orchard, walled_orchard, graveyard]
+    maxReliefM: 35              # a knoll or depression lower than this on those classes, or in built-up ground, is dropped
+    builtShare: 0.25            # built-up ground: this share of built-up class within builtRadiusM
+    builtRadiusM: 500
+    openingM: 300               # depressions: the spill height is read with anything narrower than this taken off
+  saddle:
+    ringM: 300                  # alternating higher / lower ground on this ring marks a saddle
+    armM: 1000                  # both high arms rise at least minDepthM within this distance
+    minDepthM: 40
+    depthShare: 0.1            # and at least this share of the local relief
+    minLocalReliefM: 60         # no saddles on ground flatter than this (5 km window)
+  plateau:
+    maxSlopeDeg: 4
+    aboveM: 60                  # stands this much above the lowest ground within 5 km
+    minAreaKm2: 1
+  depression:
+    minDepthM: 10               # closed: every way out climbs at least this much within 2 km
+    excludeClasses: [water_permanent, water_seasonal, wetland, canal]
+  ridge:
+    crestM: 8                   # higher than the mean within 300 m ...
+    crestWideM: 25              # ... and within 2 km
+    minLengthKm: 1
+    minLocalReliefM: 60
+  junction:
+    clazz: [11, 12, 13, 14, 15, 16]   # network.json clazz: motorway, trunk, primary and their links
+    mergeM: 400                 # nodes this close are one junction (interchanges)
+  reasons:                      # the letters in `ig`; `label` is what the card shows, `note` the full test
+    H: { label: "Highest ground around", dominanceKm: 3, note: "The highest ground within 3 km." }
+    O: { label: "Wide observation", viewPct: 30, note: "Sees 30 % or more of the ground within 5 km from 2 m above it." }
+    R: { label: "Overlooks an MSR", routeViewKm: 4, note: "A main supply route in view within 4 km." }
+    P: { label: "Pass on a road or track", roadM: 150, note: "A saddle or pass a road or track (not a footpath) crosses within 150 m." }
+    C: { label: "Chokepoint on an MSR", note: "On a main supply route: a bridge over a river, canal or stream; a ford, ferry, tunnel, pass, barrage or dam." }
+    J: { label: "Junction on an MSR", note: "A junction of main roads (motorway, trunk, primary) on a main supply route." }
+  # strong: H + R dominates an MSR; P + C is a pass on an MSR; a junction with motorways / national highways leaving
+  # it 3+ ways (two highways meet)
+  strong: { minReasons: 3, pairs: [[H, R], [P, C]], junctionHighwayWays: 3 }
+  note: "ITG candidates come from the ground alone. Designating ITG / MITG is the commander's decision for a task, made in the app."
 
 # The card lists the nearest of each kind (decision 4). Codes are features.json point kinds (grotbc.py).
 water:

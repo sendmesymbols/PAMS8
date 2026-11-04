@@ -151,6 +151,10 @@ MS/
   The terrain bundle is clipped to the **official Survey of Pakistan boundary** (all of Jammu &
   Kashmir on Pakistan's side, built from NCGDB by `make_boundary.py`); `placement.overlay.boundary`
   draws the outline the bundle ships.
+  The card also lists **Important Tactical Ground (ITG) candidates** (G in GROTBC, not a letter of its own) from the
+  bundle's `features/` (`PlacementFeatures.ts`, `advisor.groundCandidates()`); the bundle only proposes candidates,
+  and `symbolEngine.designateGround(target, 'ITG' | 'MITG')` lets the user designate it as an ordinary symbol:
+  Imp Gr ("IG", `MS/Symbols/ImpGr.ts`, catalog key `00000160`, a local non-2525D symbol) or Vital Gr ("VG").
   See `MS/Docs/15-placement-advisor.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.

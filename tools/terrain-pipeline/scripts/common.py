@@ -26,6 +26,51 @@ ORIGIN_SHIFT = math.pi * EARTH_RADIUS          # half the Web Mercator world wid
 TILE_SIZE = 256
 PIPELINE_VERSION = "0.1.0"
 
+# WorldPop inputs (sources.lock worldpop / worldpop_agesex / worldpop_density / worldpop_pwd), read by grotbc.py,
+# settlements.py and population.py. Change the year here and in sources.lock together.
+WORLDPOP_YEAR = 2026
+WORLDPOP_TIF = Path("work/raw/worldpop/pak_pop_2026_CN_1km_R2025A_UA_v1.tif")
+WORLDPOP_AGESEX = "work/raw/worldpop_agesex/pak_{band}_2026_CN_1km_R2025A_UA_v1.tif"
+WORLDPOP_SOURCE = "WorldPop Global2 R2025A v1 (released 2025-08), 2026 estimate, 1 km, constrained, UN-adjusted"
+AGE_GROUPS = {   # field -> (label, WorldPop age-sex bands summed: m = male, t = total, number = first year of the band)
+    "males15_49": ("males aged 15-49", ("m_15", "m_20", "m_25", "m_30", "m_35", "m_40", "m_45")),
+    "under15": ("children under 15", ("t_00", "t_01", "t_05", "t_10")),
+    "over65": ("people aged 65 and over", ("t_65", "t_70", "t_75", "t_80", "t_85", "t_90")),
+}
+
+
+def read_people(path: Path):
+    """(people per cell as float64 with no-data as 0, affine transform, shape) of a WorldPop count raster."""
+    import numpy as np
+    import rasterio
+    with rasterio.open(path) as d:
+        a = d.read(1).astype("float64")
+        nod = d.nodata
+        tr = d.transform
+    bad = ~np.isfinite(a) | (a < 0)
+    if nod is not None:
+        bad |= a == nod
+    a[bad] = 0.0
+    return a, tr, a.shape
+
+
+def age_group_rasters(shape, transform) -> dict:
+    """AGE_GROUPS field -> summed people raster on the population grid; empty when the age-sex files are missing or
+    lie on another grid."""
+    out = {}
+    for key, (_label, bands) in AGE_GROUPS.items():
+        paths = [Path(WORLDPOP_AGESEX.format(band=b)) for b in bands]
+        if not all(p.exists() for p in paths):
+            return {}
+        tot = None
+        for p in paths:
+            a, tr, sh = read_people(p)
+            if sh != shape or not tr.almost_equals(transform):
+                return {}
+            tot = a if tot is None else tot + a
+        out[key] = tot
+    return out
+
 # ----------------------------------------------------------------------------- logging
 
 def setup_logging(name: str) -> logging.Logger:

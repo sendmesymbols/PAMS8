@@ -9,7 +9,8 @@
 # hashes so a bundle can be traced back to its inputs.
 #
 # Entry shape:
-#   id, name, version, licence, attribution, landing (human page, "verify"),
+#   id, name, version, dataDate (the time the data describes), released (when the publisher released
+#   this version), licence, attribution, landing (human page, "verify"),
 #   files: explicit list  — OR —  pattern + tiles (expanded by fetch.py)
 #   sha256: per file (TO_BE_FILLED until recorded)
 
@@ -18,6 +19,8 @@ sources:
   - id: worldcover
     name: ESA WorldCover 2021 v200
     version: v200 (2021)
+    dataDate: "2021"
+    released: "2022-10 (v200)"
     licence: CC-BY-4.0
     attribution: "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium"
     landing: https://esa-worldcover.org/en/data-access        # verify
@@ -87,6 +90,8 @@ sources:
   - id: jrc_gsw
     name: JRC Global Surface Water — occurrence (1984-2021, v1.4)
     version: v1_4_2021
+    dataDate: "1984-2021"
+    released: "2022 (v1.4)"
     licence: "Free of charge for any purpose with attribution (JRC/EC Copernicus; see landing page)"
     attribution: "Pekel, Cottam, Gorelick, Belward (2016). Nature 540, 418-422. European Commission JRC / Google."
     landing: https://global-surface-water.appspot.com/download        # verify
@@ -107,6 +112,8 @@ sources:
   - id: glo30
     name: Copernicus DEM GLO-30
     version: "2023_1 (verify current release)"
+    dataDate: "2011-2015 (TanDEM-X acquisitions)"
+    released: "2023 (release 2023_1)"
     licence: "Copernicus DEM licence (free, attribution required; see landing page)"
     attribution: "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved"
     landing: https://registry.opendata.aws/copernicus-dem/        # verify
@@ -122,6 +129,8 @@ sources:
   - id: osm_pakistan
     name: OpenStreetMap — Pakistan extract (Geofabrik)
     version: "pakistan-261028 (Geofabrik daily extract of 2026-10-28)"
+    dataDate: "2026-10-28"
+    released: "2026-10-28 (Geofabrik extract)"
     licence: ODbL-1.0
     attribution: "© OpenStreetMap contributors, ODbL. Extract by Geofabrik GmbH."
     landing: https://download.geofabrik.de/asia/pakistan.html        # verify
@@ -134,6 +143,8 @@ sources:
   - id: soilgrids
     name: ISRIC SoilGrids 2.0 — sand and clay (0-5, 5-15, 15-30 cm, mean)
     version: "SoilGrids 2.0, files.isric.org/soilgrids/latest"
+    dataDate: "modelled from legacy soil profiles (WoSIS snapshot 2019)"
+    released: "2020 (SoilGrids 2.0)"
     licence: "CC-BY-4.0 (ISRIC states SoilGrids 2.0 is CC BY 4.0; confirm on data.isric.org)"
     attribution: "Poggio et al. 2021, SOIL 7, 217-240; ISRIC - World Soil Information"
     landing: https://www.isric.org/explore/soilgrids        # verify
@@ -143,6 +154,8 @@ sources:
   - id: worldclim
     name: WorldClim 2.1 historical climate 1970-2000, 5 arc-minute (tmin, tmax, prec, wind)
     version: "2.1 (5m)"
+    dataDate: "1970-2000 normal"
+    released: "2020-01 (v2.1)"
     licence: "WorldClim terms: provided for research and related use; check them before any non-research redistribution"
     attribution: "Fick, S.E. and Hijmans, R.J., 2017. WorldClim 2: new 1-km spatial resolution climate surfaces for global land areas. Int. J. Climatol. 37: 4302-4315"
     landing: https://www.worldclim.org/data/worldclim21.html        # verify
@@ -157,13 +170,118 @@ sources:
         url: https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_5m_wind.zip      # 82 MB
     sha256: 6a7f3d5a23d91765fa99ad614364776a96beda666e2771c3727431294d150807
 
+  # WorldPop (updated 2026-11-04). Owner's rule: where WorldPop offers two choices take the LATEST and the COARSER
+  # one, so 2026 (the current year; 2027-2030 are projections) and 1 km rather than 100 m. Population Density and
+  # Population Weighted Density were never moved to Global2: 2020 / 1 km is the latest WorldPop publishes.
   - id: worldpop
-    name: WorldPop Pakistan 2020 population count, constrained (BSGM)
-    version: "Global_2000_2020_Constrained / 2020 / BSGM / PAK"
+    name: WorldPop Pakistan 2026 population count, constrained, UN-adjusted, 1 km (Global2 R2025A)
+    version: "Global_2015_2030 / R2025A v1 / 2026 / PAK / 1km_ua / constrained"
+    dataDate: "2026 (estimate)"
+    released: "2025-08-18 (R2025A v1, file date on data.worldpop.org)"
     licence: CC-BY-4.0
-    attribution: "WorldPop (www.worldpop.org), University of Southampton"
-    landing: https://hub.worldpop.org/        # verify
+    attribution: "WorldPop (www.worldpop.org), University of Southampton. Global2 R2025A v1, doi:10.5258/SOTON/WP00839"
+    landing: https://hub.worldpop.org/geodata/listing?id=136
     files:
-      - name: pak_ppp_2020_constrained.tif
-        url: https://worldpop-public-data.soton.ac.uk/GIS/Population/Global_2000_2020_Constrained/2020/BSGM/PAK/pak_ppp_2020_constrained.tif      # 32 MB (listing 2026-11-03)
-    sha256: 533f1e6ca8c272c268ced01ffeefa417dc284c96a008cb49c0a0e3b0b64942ad
+      - name: pak_pop_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2026/PAK/v1/1km_ua/constrained/pak_pop_2026_CN_1km_R2025A_UA_v1.tif      # 3.2 MB (listing 2026-11-04)
+    sha256: d9ae8052cafa614e4b3ad3f1d18671dbe865a0fab6beff935047f4e0d0b59525
+
+  - id: worldpop_agesex
+    name: WorldPop Pakistan 2026 age and sex structures, constrained, UN-adjusted, 1 km (Global2 R2025A) — males 15-49, all under 15, all 65+
+    version: "Global_2015_2030 / R2025A v1 / 2026 / PAK / 1km_ua / constrained"
+    dataDate: "2026 (estimate)"
+    released: "2025-08-17 (R2025A v1, file date on data.worldpop.org)"
+    licence: CC-BY-4.0
+    attribution: "WorldPop (www.worldpop.org), University of Southampton. Global2 R2025A v1, doi:10.5258/SOTON/WP00841"
+    landing: https://hub.worldpop.org/geodata/listing?id=139        # 1 km twin of listing 138 (100 m)
+    # {tile} = <sex>_<age band start>: m = male, t = total; bands are 0-1, 1-4, then 5 years (5 = 5-9 ... 90 = 90+)
+    pattern: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/PAK/v1/1km_ua/constrained/pak_{tile}_2026_CN_1km_R2025A_UA_v1.tif
+    tiles: [m_15, m_20, m_25, m_30, m_35, m_40, m_45, t_00, t_01, t_05, t_10, t_65, t_70, t_75, t_80, t_85, t_90]     # 3.2 MB each
+    sha256: c5f04dce7614f1ce4d4f86dfeb3599486f901667a6d1f04d8984cf1103992adf
+
+  - id: worldpop_density
+    name: WorldPop Pakistan 2020 population density, unconstrained, UN-adjusted, 1 km (Global1)
+    version: "Global_2000_2020_1km_UNadj / 2020 / PAK"
+    dataDate: "2020 (estimate)"
+    released: "2020-06-22 (hub.worldpop.org record date)"
+    licence: CC-BY-4.0
+    attribution: "WorldPop (www.worldpop.org), University of Southampton. Global1 population density, doi:10.5258/SOTON/WP00675"
+    landing: https://hub.worldpop.org/geodata/listing?id=77
+    files:
+      - name: pak_pd_2020_1km_UNadj.tif
+        url: https://data.worldpop.org/GIS/Population_Density/Global_2000_2020_1km_UNadj/2020/PAK/pak_pd_2020_1km_UNadj.tif      # 5.2 MB (file date 2020-06-29)
+    sha256: d19fe0b2211c9a53bc2a9979b762d3300493d53b938f485173d86ab3baed931e
+
+  - id: worldpop_pwd
+    name: WorldPop population weighted density, subnational (GADM 3.6 level 1), 1 km, 2000-2020 (all countries; Pakistan rows used)
+    version: "Population_Weighted_Density / Unconstrained_Subnational / 1km (CSV)"
+    dataDate: "2000, 2005, 2010, 2015, 2020 (2020 used)"
+    released: "2021-01-12 (hub.worldpop.org record date)"
+    licence: CC-BY-4.0
+    attribution: "Edwards R., Bondarenko M., Tatem A.J., Sorichetta A. Unconstrained subnational Population Weighted Density (1 km). WorldPop, University of Southampton. doi:10.5258/SOTON/WP00704"
+    landing: https://hub.worldpop.org/geodata/listing?id=89
+    files:
+      - name: PWD_1km_sub_national_SCV.zip
+        url: https://data.worldpop.org/GIS/Population_Weighted_Density/Unconstrained_Subnational/1km/PWD_1km_sub_national_SCV.zip     # 1.5 MB (file date 2021-01-15); (sic) "SCV" is the publisher's file name
+    sha256: 78fe0ebf90021249bdb827b3532c0e66bd16cbd736313c0ce98216d3abb3466d
+
+  - id: openbuildings
+    name: Google Open Buildings v3 — building footprints (S2 level-4 tiles touching Pakistan)
+    version: "v3 (polygons_s2_level_4_gzip)"
+    dataDate: "imagery to 2022"
+    released: "2023-05 (v3)"
+    licence: "CC-BY-4.0 or ODbL-1.0 (user's choice; see the landing page)"
+    attribution: "Google Open Buildings, W. Sirko et al. 2021, arXiv:2107.12283"
+    landing: https://sites.research.google/open-buildings/        # verify
+    # tiles chosen 2026-11-04 by intersecting score_thresholds_s2_level_4.csv geometries with the NCGDB Pakistan provinces
+    pattern: https://storage.googleapis.com/open-buildings-data/v3/polygons_s2_level_4_gzip/{tile}_buildings.csv.gz
+    tiles: ["391", "38d", "393", "395", "3ed", "3eb", "38f"]      # 16.6 GB in all (391 7.2 GB, 393 3.4, 395 3.2, 38d 1.3, 38f 0.46, 3eb 0.32, 3ed 0.28)
+    sha256: 25753a69fe1a8cda064ffaedb9f5264482b31077813f8d40eff087fa452bfeb4
+
+  - id: ghsl_height
+    name: GHSL GHS-BUILT-H R2023A — average net building height 2018, 3 arc-seconds (WGS84 tiles over the extent)
+    version: "R2023A V1-0, ANBH E2018 4326_3ss"
+    dataDate: "2018"
+    released: "2023 (R2023A)"
+    licence: CC-BY-4.0
+    attribution: "Pesaresi M., Politis P. (2023): GHS-BUILT-H R2023A - GHS building height, derived from AW3D30, SRTM30, and Sentinel2 composite (2018). European Commission, JRC. doi:10.2905/85005901-3A49-48DD-9D19-6261354F56FE"
+    landing: https://human-settlement.emergency.copernicus.eu/download.php        # verify
+    pattern: https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_BUILT_H_GLOBE_R2023A/GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_4326_3ss/V1-0/tiles/GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_4326_3ss_V1_0_{tile}.zip
+    tiles: [R6_C24, R6_C25, R6_C26, R6_C27, R7_C24, R7_C25, R7_C26]     # 10-degree tiles, ~213 MB (R7_C27 left out: 0.5 degree of India for 95 MB)
+    sha256: 4e845b2ac94bcac91103ff66e9daf280b441e5a804bfab3409ead81e536f018b
+
+  - id: ghsl_smod
+    name: GHSL GHS-SMOD R2023A — degree of urbanisation (settlement model) 2025, 1 km
+    version: "R2023A V2-0, E2025 54009_1000"
+    dataDate: "2025 (modelled epoch)"
+    released: "2023 (R2023A)"
+    licence: CC-BY-4.0
+    attribution: "Schiavina M., Melchiorri M., Pesaresi M. (2023): GHS-SMOD R2023A - GHS settlement layers. European Commission, JRC. doi:10.2905/A0DF7A6F-49DE-46EA-9BDE-563437A6E2BA"
+    landing: https://human-settlement.emergency.copernicus.eu/download.php        # verify
+    files:
+      - name: GHS_SMOD_E2025_GLOBE_R2023A_54009_1000_V2_0.zip
+        url: https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_SMOD_GLOBE_R2023A/GHS_SMOD_E2025_GLOBE_R2023A_54009_1000/V2-0/GHS_SMOD_E2025_GLOBE_R2023A_54009_1000_V2_0.zip   # 29.6 MB
+    sha256: 67fc34970bf134ebc24460edd1f3799affecadfeb53796b2689627bc1b107203
+
+  # ── local sources supplied by the owner (2026-11-04); not downloaded by fetch.py ───────────────────────────
+  - id: geonames_pk
+    name: GeoNames — Pakistan country dump (PK.txt)
+    version: "local copy D:/Imagery/PK.txt, 229,944 rows, modified 2025-12-22"
+    dataDate: "2025-12-22 (dump date)"
+    released: "2025-12-22"
+    licence: CC-BY-4.0
+    attribution: "GeoNames (www.geonames.org), CC BY 4.0"
+    landing: https://download.geonames.org/export/dump/
+    fetched_by: local file, read by scripts/grotbc.py (GEONAMES)
+    sha256: b421cdf09fc3442b94c2926c174499f99834900997143d98b8a7d639ba61de29
+
+  - id: osm_network
+    name: OpenStreetMap road graph — Network.gdb pkroads (osm2po-style, with an ArcGIS network dataset)
+    version: "local copy D:/Imagery/Routing/Network.gdb, 2,762,810 edges"
+    dataDate: "OSM to 2026-08-27 (newest table in Network.gdb)"
+    released: "2026-08-27 (local build)"
+    licence: ODbL-1.0
+    attribution: "© OpenStreetMap contributors, ODbL"
+    landing: https://www.openstreetmap.org/copyright
+    fetched_by: local geodatabase, read by scripts/network.py
+    sha256: not hashed (1.3 GB folder); identify by edge count and file dates
