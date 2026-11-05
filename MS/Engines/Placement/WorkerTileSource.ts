@@ -66,10 +66,19 @@ export class WorkerTileSource implements TileSource {
     ay: number,
     params: OverlayPaintParams,
     fallback: () => Promise<Uint8ClampedArray | null>,
+    /** Soil and wet layers for `params.going` (the going for a season). */
+    extra?: { soil: string | null; wet: string | null },
   ): Promise<Uint8ClampedArray | null> {
     const url = (layer: string) => tileUrl(this._abs, layer, z, ax, ay, this._version);
     const out = await this._call<ArrayBuffer | Uint8ClampedArray | null>(
-      { op: 'overlay', clsUrl: url(clsLayer), distUrl: distLayer ? url(distLayer) : null, params },
+      {
+        op: 'overlay',
+        clsUrl: url(clsLayer),
+        distUrl: distLayer ? url(distLayer) : null,
+        soilUrl: extra?.soil ? url(extra.soil) : null,
+        wetUrl: extra?.wet ? url(extra.wet) : null,
+        params,
+      },
       fallback,
     );
     if (out === null) return null;

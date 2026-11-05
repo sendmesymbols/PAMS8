@@ -17,7 +17,10 @@
  */
 
 import { fmtDistance, titleCase } from './PlacementEvaluator';
-import type { PlacementVerdict } from './PlacementTypes';
+import { briefCue, goingSections, orientRoses } from './PlacementGoingView';
+import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './PlacementPopulationView';
+import { decorateTraffic } from './PlacementTrafficView';
+import { DEFAULT_PLACEMENT_OPTIONS, type PlacementCardOptions, type PlacementVerdict } from './PlacementTypes';
 
 const STYLE_ID = 'ms-placement-badge-style';
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -375,6 +378,8 @@ export class PlacementBadge {
   private _touch = false;
   private _last: PlacementVerdict | null = null;
   private _north = 0; // where north points on screen, degrees clockwise from up
+  /** Which going / soil / movement sections to show (placement.card). */
+  private _card: PlacementCardOptions = { ...DEFAULT_PLACEMENT_OPTIONS.card };
   private _notice: string | null = null;
   private _noticeTimer: ReturnType<typeof setTimeout> | null = null;
   private _toastEl: HTMLDivElement | null = null;
@@ -464,12 +469,18 @@ export class PlacementBadge {
     if (this._el && this._el.style.display !== 'none') this._place();
   }
 
+  /** Which going / soil / movement sections the card shows (placement.card); applies from the next show(). */
+  setCard(card: PlacementCardOptions): void {
+    this._card = { ...card };
+  }
+
   /** The map was rotated: `northDeg` is where north now points on screen. Turns the dial in place; the card is not rebuilt. */
   setNorth(northDeg: number): void {
     if (northDeg === this._north) return;
     this._north = northDeg;
     const d = this._el?.querySelector('[data-pb-dial]');
     if (d) orientDial(d as SVGElement, northDeg);
+    if (this._el) orientRoses(this._el, northDeg);
   }
 
   show(v: PlacementVerdict): void {
@@ -489,6 +500,8 @@ export class PlacementBadge {
       fix.append(keycap('S'), 'Quick Fix');
       pills.appendChild(fix);
     }
+    const civil = v.verdict === 'unknown' ? null : populationFlagPill(v.population);
+    if (civil) pills.appendChild(civil);
     if (pills.childElementCount) bar.appendChild(pills);
 
     const rows =
@@ -497,14 +510,28 @@ export class PlacementBadge {
         : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), groundSection(v)].filter(
             (r): r is HTMLElement => r !== null,
           );
+    if (v.verdict !== 'unknown') rows.push(...goingSections(v, this._card, this._north));
+    decorateTraffic(v, bar, pills, rows, rows.length); // T: rain pill, second scale under Why, road line after the going sections
+    const people = v.verdict === 'unknown' ? null : populationSection(v.population);
+    if (people) {
+      ensurePopulationCss();
+      rows.push(people);
+    }
     if (v.loading) rows.push(el('div', 'ms-pb-sec ms-pb-soft', 'Still loading terrain data'));
     if (this._notice) rows.push(el('div', 'ms-pb-sec ms-pb-warn', this._notice));
+    const civilStrip = v.verdict === 'unknown' ? null : populationFlagStrip(v.population);
+    if (civilStrip) {
+      ensurePopulationCss();
+      rows.push(civilStrip);
+    }
     const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
     if (strip) rows.push(strip);
+    if (v.briefKey && v.verdict !== 'unknown') rows.push(briefCue());
     const body = this._body!;
     body.replaceChildren(...rows);
     body.style.display = rows.length ? 'block' : 'none';
-    this._say(spokenFor(v));
+    const civilSaid = populationSpoken(v.population);
+    this._say(civilSaid ? `${spokenFor(v)} ${civilSaid}.` : spokenFor(v));
 
     if (!this._hasPointer) {
       this._x = Math.round(window.innerWidth / 2);

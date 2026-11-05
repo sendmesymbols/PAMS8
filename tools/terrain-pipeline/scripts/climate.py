@@ -18,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 
-from common import dump_json, load_json, setup_logging
+from common import dump_json, load_json, load_yaml, setup_logging, source_ref
 
 log = setup_logging("climate")
 
@@ -49,6 +49,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--grid", type=Path, default=Path("work/grid/grid.json"))
     ap.add_argument("--raw", type=Path, default=Path("work/raw"))
+    ap.add_argument("--lock", type=Path, default=Path("sources.lock"), help="names the source's location and dates")
     ap.add_argument("--out", type=Path, default=Path("work/climate"))
     args = ap.parse_args()
 
@@ -84,6 +85,7 @@ def main() -> int:
     w, s, e, n = aoi
     dump_json(args.out / "climate.json", {
         "format": "pams-climate-grid", "version": 1, "source": "WorldClim 2.1, 1970-2000 normals, 5 arc-minutes",
+        "sourceRef": source_ref(load_yaml(args.lock) if args.lock.exists() else None, "worldclim"),
         "bounds": [w, s, e, n], "cell": CELL, "cols": cols, "rows": rows, "dtype": "int16-le", "nodata": NODATA,
         "layout": "layers x rows x cols; row 0 is the north row; value = file value / scale",
         "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],

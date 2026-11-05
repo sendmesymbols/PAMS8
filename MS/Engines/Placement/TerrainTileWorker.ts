@@ -15,7 +15,8 @@
  * production build mangles those):
  *   → { id, op: 'tile',    url }
  *   ← { id, data: ArrayBuffer | null }               null = no coverage
- *   → { id, op: 'overlay', clsUrl, distUrl | null, params: OverlayPaintParams }
+ *   → { id, op: 'overlay', clsUrl, distUrl | null, soilUrl?, wetUrl?, params: OverlayPaintParams }
+ *                                                     soil / wet tiles only when params.going is set
  *   ← { id, rgba: ArrayBuffer | null }               null = nothing to draw
  *   ← { id, error: string }                          on any failure
  */
@@ -33,6 +34,8 @@ interface OverlayRequest {
   op: 'overlay';
   clsUrl: string;
   distUrl: string | null;
+  soilUrl?: string | null;
+  wetUrl?: string | null;
   params: OverlayPaintParams;
 }
 type Request = TileRequest | OverlayRequest;
@@ -111,15 +114,13 @@ ctx.onmessage = async (e: MessageEvent<Request>) => {
       ctx.postMessage({ id: m.id, data: copy.buffer }, [copy.buffer]);
     } else if (m.op === 'overlay') {
       const ts = m.params.tileSize;
-      const [ct, dt] = await Promise.all([
-        load(m.clsUrl, ts),
-        m.distUrl ? load(m.distUrl, ts).catch(() => null) : Promise.resolve(null),
-      ]);
+      const opt = (url: string | null | undefined) => (url ? load(url, ts).catch(() => null) : Promise.resolve(null));
+      const [ct, dt, st, wt] = await Promise.all([load(m.clsUrl, ts), opt(m.distUrl), opt(m.soilUrl), opt(m.wetUrl)]);
       if (!ct) {
         ctx.postMessage({ id: m.id, rgba: null });
         return;
       }
-      const rgba = paintOverlayTile(ct, dt, m.params);
+      const rgba = paintOverlayTile(ct, dt, m.params, st, wt);
       ctx.postMessage({ id: m.id, rgba: rgba.buffer }, [rgba.buffer]);
     }
   } catch (err) {

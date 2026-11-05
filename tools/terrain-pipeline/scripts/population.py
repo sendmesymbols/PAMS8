@@ -6,10 +6,12 @@ Inputs : WorldPop 2026 population count and age-sex rasters (common.WORLDPOP_TIF
 Outputs: work/population/population.bin   little-endian uint16, layers in the order of population.json `layers`, each
                                           [rows][cols], north row first; 65535 = no data (outside the country)
          work/population/population.json  header: bounds, cell size, rows, cols, layer list with units, scale and
-                                          source dates; `provinces` = population weighted density per province
+                                          source location and dates; `provinces` = population weighted density
+                                          per province
 
-The grid is the WorldPop 2026 1 km grid (30 arc-seconds). Layers: pop (people in the cell, constrained: only cells
-with buildings), the age groups of common.AGE_GROUPS (same grid), and density_2020 (people per km2, UNconstrained: it
+The grid is the WorldPop 2026 1 km age-sex grid (30 arc-seconds). Layers: pop (the 100 m people summed into the cell,
+constrained: only cells with buildings), the age groups of common.AGE_GROUPS (those people x the cell's share of the
+group in the 1 km age-sex files), and density_2020 (people per km2, UNconstrained: it
 spreads people over farmland too, so it shows dispersed rural presence the constrained count leaves out), resampled
 nearest onto the 2026 grid. value = file value / scale.
 
@@ -28,7 +30,8 @@ from pathlib import Path
 
 import numpy as np
 
-from common import AGE_GROUPS, WORLDPOP_TIF, WORLDPOP_YEAR, age_group_rasters, dump_json, load_yaml, setup_logging
+from common import (AGE_GROUPS, WORLDPOP_TIF, WORLDPOP_YEAR, age_shares, cell_of, dump_json, load_yaml, read_people,
+                    setup_logging, source_ref)
 
 log = setup_logging("population")
 
@@ -37,8 +40,10 @@ PWD_YEAR = 2020
 
 
 def dates(lock: dict, sid: str) -> dict:
-    s = next((s for s in lock["sources"] if s["id"] == sid), {})
-    return {"source": s.get("name"), "dataDate": s.get("dataDate"), "released": s.get("released")}
+    """source name, location (download URLs), landing page, dataDate and released of one sources.lock entry."""
+    r = source_ref(lock, sid)
+    return {"source": r.get("name"), "sourceId": sid, "location": r.get("location"), "landing": r.get("landing"),
+            "dataDate": r.get("dataDate"), "released": r.get("released")}
 
 
 def to_u16(a: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, float]:
@@ -81,23 +86,28 @@ def main() -> int:
 
     lock = load_yaml(args.lock)
     args.out.mkdir(parents=True, exist_ok=True)
-    with rasterio.open(WORLDPOP_TIF) as d:
-        raw = d.read(1)
-        tr, crs = d.transform, d.crs
-        mask = ~np.isfinite(raw) | (raw < 0) | ((raw == d.nodata) if d.nodata is not None else False)
-    pop = np.where(mask, 0.0, raw.astype("float64"))
-    rows, cols = pop.shape
-    layers = [dict({"id": "pop", "label": f"people in the cell ({WORLDPOP_YEAR}, constrained)", "unit": "people"},
-                   **dates(lock, "worldpop"))]
+    shares = age_shares()
+    if shares is None:
+        raise SystemExit("WorldPop age-sex files missing (make fetch): they set the 1 km grid and the age shares")
+    sh, tr, (rows, cols), mask = shares
+    crs = "EPSG:4326"
+
+    # 100 m people summed into the 1 km cells
+    a, ptr, _shape = read_people(WORLDPOP_TIF)
+    rr, cc = np.nonzero(a > 0)
+    vals = a[rr, cc].astype("float64")
+    del a
+    ci = cell_of(tr, (rows, cols), ptr.c + (cc + 0.5) * ptr.a, ptr.f + (rr + 0.5) * ptr.e)
+    pop = np.bincount(ci[ci >= 0], weights=vals[ci >= 0], minlength=rows * cols).reshape(rows, cols)
+    log.info("100 m people: %.1f M, %.1f M outside the 1 km grid", vals.sum() / 1e6, vals[ci < 0].sum() / 1e6)
+    mask = mask & (pop <= 0)
+    layers = [dict({"id": "pop", "label": f"people in the cell ({WORLDPOP_YEAR}, constrained, summed from 100 m)",
+                    "unit": "people"}, **dates(lock, "worldpop"))]
     blocks = [pop]
-    ages = age_group_rasters(pop.shape, tr)
     for k, (label, _bands) in AGE_GROUPS.items():
-        if k in ages:
-            layers.append(dict({"id": k, "label": f"{label} in the cell ({WORLDPOP_YEAR})", "unit": "people"},
-                               **dates(lock, "worldpop_agesex")))
-            blocks.append(ages[k])
-    if not ages:
-        log.warning("age-sex files missing or on another grid: no age layers")
+        layers.append(dict({"id": k, "label": f"{label} in the cell ({WORLDPOP_YEAR}): people x the 1 km age share",
+                            "unit": "people", "people": dates(lock, "worldpop")}, **dates(lock, "worldpop_agesex")))
+        blocks.append(pop * sh[k])
 
     dens = sorted((args.raw / "worldpop_density").glob("*.tif"))
     if dens:

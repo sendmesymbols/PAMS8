@@ -15,6 +15,7 @@ Each coarser level is a 2x reduction of the four child tiles ON DISK:
   route    : MAX (the route code puts MSR and load class in the high bits, so the most important route stays)
   wet      : MAX ignoring nodata (the worst wet-season state stays)
   cc, landform : majority ignoring nodata
+  rci_dry, rci_wet : the weakest cone index of the four (value & 127), with its coarse bit
   elev_hi + elev_lo : mean of the four 16-bit elevations, ignoring nodata, split again
 Tiles are written only where the class tile has data: a 404 means "no coverage".
 PNGs are 8-bit greyscale with only IHDR/IDAT/IEND (see common.write_png_l).
@@ -34,7 +35,8 @@ from common import BUNDLE_DIR, TILE_SIZE, load_json, setup_logging, write_png_l
 log = setup_logging("tile")
 
 AUX = {"route": "max", "wet": "maxnd", "cc": "mode", "landform": "mode", "elev_hi": "elev", "elev_lo": "elev",
-       "terrain": "mode", "soil": "mode", "hut": "maxnd", "bank": "maxnd", "bld": "maxnd"}
+       "terrain": "mode", "soil": "mode", "hut": "maxnd", "bank": "maxnd", "bld": "maxnd",
+       "rci_dry": "rci", "rci_wet": "rci"}
 
 
 def read_tile(path: Path) -> np.ndarray | None:
@@ -67,6 +69,10 @@ def reduce_tile(a: np.ndarray, kind: str, class_reduce: str) -> np.ndarray:
         return np.where(v < 0, 255, v).astype(np.uint8)
     if kind == "class":
         return reduce_mode(a) if class_reduce == "mode" else a[0::2, 0::2]
+    if kind == "rci":                                  # weakest cone index (value & 127), keeping its coarse bit
+        v = np.stack([a[0::2, 0::2], a[0::2, 1::2], a[1::2, 0::2], a[1::2, 1::2]])
+        key = np.where(v == 255, 999, (v & 127).astype(np.int16))
+        return np.take_along_axis(v, key.argmin(axis=0)[None], axis=0)[0]
     return reduce_mode(a)
 
 
@@ -179,7 +185,7 @@ def main() -> int:
     for name in ("route", "landform", "elev_hi", "elev_lo"):
         if (args.grotbc / f"{name}.tif").exists():
             rasters[name] = args.grotbc / f"{name}.tif"
-    for name in ("terrain", "soil", "hut", "bank"):
+    for name in ("terrain", "soil", "rci_dry", "rci_wet", "hut", "bank"):
         if (args.terrain / f"{name}.tif").exists():
             rasters[name] = args.terrain / f"{name}.tif"
     if (args.buildings / "bld.tif").exists():

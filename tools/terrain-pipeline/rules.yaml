@@ -152,6 +152,69 @@ soilBearing:
   "10": { dry: good,      wet: poor,      note: "Sandy clay: hard dry, sticky wet." }
   "11": { dry: fair,      wet: very_poor, note: "Silty clay: cracks dry, bogs wet." }
   "12": { dry: good,      wet: very_poor, note: "Clay: rock hard dry, impassable mud after heavy rain." }
+  "13": { dry: good,      wet: good,      note: "Rock, scree or stony waste (1:50k map): firm, but hard on tyres and tracks." }
+  "14": { dry: fair,      wet: very_poor, note: "Salt pan / kallar (1:50k map): the crust carries traffic dry and breaks into mud when wet." }
+
+# Soil strength (GROTBC T; scripts/terrain.py writes the rci_dry / rci_wet layers). Replaces the soilBearing grades for
+# the going: each pixel gets a cone index (RCI for fine-grained soil, CI for sand) for the dry season and after heavy
+# rain, and the engine compares it with the vehicle cone index (VCI) of the mode:
+#   cone index >= vci50           GO        (a column can use the same ground)
+#   vci1 <= cone index < vci50    SLOW-GO   (a few vehicles; ruts form, later ones bog)
+#   cone index < vci1             NO-GO     (immobilised on the first pass)
+# The method follows US terrain-analysis practice (WES / NRMM cone index, USCS soil groups). The NUMBERS below are a
+# STARTING PROPOSAL to calibrate with field cone-penetrometer readings and own vehicle data, not quoted figures.
+# Inputs (SoilGrids 2.0, top 30 cm, weights 5:10:15): sand, silt, clay (normalised to 100 %), coarse fragments (cfvo),
+# bulk density (bdod), organic carbon (soc -> organic matter = 1.724 x SOC). Saxton & Rawls (2006) gives the
+# saturated conductivity Ks from texture and organic matter: how fast the ground drains after rain.
+soilStrength:
+  # USCS-style group of the top 30 cm, first matching rule (terrain.py soil_group):
+  #   cfvo >= gravelCfvoPct -> G;  fines (silt + clay) < cleanFinesPct -> SP;  fines < 50 % -> SC if clay >= scClayPct else SM;
+  #   fine-grained: OM >= organicOmPct -> OL; clay >= chClayPct -> CH; >= clClayPct -> CL; >= clmlClayPct -> CL-ML; else ML.
+  # cleanFinesPct is 20, not USCS's 12: SoilGrids smooths dune sand to ~85-88 % sand, and loose (loamy) sand is the
+  # going problem it has to catch.
+  classify: { gravelCfvoPct: 35, cleanFinesPct: 20, scClayPct: 20, chClayPct: 40, clClayPct: 18, clmlClayPct: 10, organicOmPct: 10 }
+  # code: work/terrain/soil_props.tif band `uscs` (diagnostic); coarse: the vehicles' `coarse` thresholds apply (sand
+  # behaves differently: tracks float on it, wheels dig in when it is dry); dry / wet: cone index of the group.
+  groups:
+    SP:      { code: 1,  coarse: true,  dry: 40,  wet: 90,  label: "Clean sand" }
+    SM:      { code: 2,  coarse: true,  dry: 110, wet: 75,  label: "Silty sand" }
+    SC:      { code: 3,  coarse: false, dry: 180, wet: 65,  label: "Clayey sand" }
+    ML:      { code: 4,  coarse: false, dry: 140, wet: 35,  label: "Silt" }
+    CL-ML:   { code: 5,  coarse: false, dry: 170, wet: 45,  label: "Silty clay, low plasticity" }
+    CL:      { code: 6,  coarse: false, dry: 210, wet: 55,  label: "Lean clay" }
+    CH:      { code: 7,  coarse: false, dry: 240, wet: 40,  label: "Fat clay" }
+    OL:      { code: 8,  coarse: false, dry: 90,  wet: 22,  label: "Organic soil" }
+    G:       { code: 9,  coarse: false, dry: 220, wet: 140, label: "Gravelly ground" }
+    rock:    { code: 10, coarse: false, dry: 250, wet: 250, label: "Rock / stony waste" }
+    salt:    { code: 11, coarse: false, dry: 130, wet: 25,  label: "Salt pan / kallar" }
+  modifiers:
+    gravelly: { cfvoPct: 15, factor: 1.15 }                        # 15-35 % stones: both seasons x factor
+    density:  { refGcm3: 1.40, perGcm3: 1.0, min: 0.85, max: 1.15 }  # x (1 + perGcm3 x (bd - ref)), clamped
+    drainage: { ksBandsMmH: [2, 10, 40], wetFactor: [0.85, 0.95, 1.0, 1.1] }  # after rain only: slow-draining soil stays soft
+  # Where the NCGDB 1:50k map shows a soil area (class.tif code) it wins over the 250 m model: soil layer code + group.
+  mapped:
+    "13": { soil: 1,  group: SP }      # sand
+    "14": { soil: 1,  group: SP }      # dunes
+    "15": { soil: 13, group: rock }    # rocky ground / scree / stony waste
+    "16": { soil: 14, group: salt }    # salt pan
+  # Confidence of the modelled soil: width of SoilGrids' 90 % prediction interval (Q0.95 - Q0.05) of clay and of sand,
+  # the wider of the two, in % points. SoilGrids is wide everywhere (2026-11-05 build: p10 67, p50 79, p90 87 points),
+  # so the bands are RELATIVE, split at the area's terciles: no modelled pixel is truly confident.
+  confidence: { pi90WidthPct: [75, 83], labels: { "0": "Better than typical", "1": Typical, "2": "Poorer than typical", "3": "Filled from nearby soil" } }
+  # Vehicle cone index [vci1, vci50] on fine-grained soil and on sand (`coarse` groups). STARTING PROPOSAL: replace
+  # with the vehicles' own figures (EME / trials).
+  vehicles:
+    foot:          { label: "On foot",                       fine: [15, 25], coarse: [10, 20] }
+    animal:        { label: "Pack animals",                  fine: [20, 35], coarse: [15, 25] }
+    wheeled:       { label: "Wheeled, light / medium",       fine: [55, 95], coarse: [50, 80] }
+    wheeled_heavy: { label: "Wheeled, heavy / towed guns",   fine: [70, 115], coarse: [65, 100] }
+    tracked:       { label: "Tracked (MBT class 60)",        fine: [45, 75], coarse: [25, 40] }
+    helicopter:    { label: "Helicopter touchdown",          fine: [35, 60], coarse: [30, 50] }
+  byProfile: { dismounted: foot, pack: animal, wheeled: wheeled, generic: wheeled, gun: wheeled_heavy, ad: wheeled_heavy,
+               tracked: tracked, amphibious: tracked, hls: helicopter }
+  # Bundle layers rci_dry / rci_wet (uint8): cone index = value & 127 (127 = 127 or more; 126 or more on sand),
+  # bit 7 = coarse (use the vehicle's `coarse` thresholds); 255 nodata. Overviews keep the weakest pixel.
+  layerCap: 127
 
 # Important Tactical Ground (GROTBC G; scripts/ground.py). The DEM gives a terrain feature inventory (peaks, hills,
 # knolls, saddles, plateaus, depressions, ridgelines); main road junctions and the crossings, passes and tunnels

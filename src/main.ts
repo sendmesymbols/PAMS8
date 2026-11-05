@@ -2193,6 +2193,52 @@ function buildDockFreehandStyle(container: HTMLElement): void {
   syncFace(); // reflect the initial value
 })();
 
+// ── Placement Advisor toggle (top bar) ──────────────────────────────────────
+// Flips the #setting-placementAdvisor checkbox (the Settings panel's feature
+// switch) and dispatches 'change', so index.html's settingMappings publishes
+// features.placementAdvisor and the feature panel enables/disables with it.
+// The face follows the engine's own 'placement-state-change' (amber when on but
+// the terrain bundle is missing) and settings changed from Ctrl+K / ⚙ widgets.
+(function initPlacementAdvisorToggle() {
+  const btn = document.getElementById('placementAdvisorBtn');
+  const box = document.getElementById('setting-placementAdvisor') as HTMLInputElement | null;
+  if (!btn || !box) return;
+  const baseTitle = btn.title;
+
+  const syncFace = (state?: string, error?: string | null) => {
+    const on = box.checked;
+    btn.classList.toggle('ms-btn-active', on);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.dataset.state = on ? state || btn.dataset.state || 'enabled' : 'disabled';
+    const s = on ? btn.dataset.state : 'off';
+    btn.title = `${baseTitle}\nState: ${s}${error ? ` (${error})` : ''}`;
+  };
+
+  btn.addEventListener('click', () => {
+    box.checked = !box.checked;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    syncFace(box.checked ? 'enabled' : 'disabled');
+  });
+  box.addEventListener('change', () => syncFace());
+
+  document.addEventListener('placement-state-change', (e: any) => {
+    const d = e.detail || {};
+    if (typeof d.isEnabled === 'boolean' && box.checked !== d.isEnabled) box.checked = d.isEnabled;
+    syncFace(d.state, d.error);
+  });
+  window.addEventListener('settingsChanged', (e: any) => {
+    if (e.detail?.fullPath !== 'features.placementAdvisor') return;
+    const on = !!e.detail.value;
+    if (box.checked !== on) {
+      box.checked = on;
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    syncFace();
+  });
+
+  syncFace();
+})();
+
 // Clear All — removes every symbol/graphic. Irreversible (also wipes the undo
 // history), so confirm before wiping the map.
 document.getElementById('clearAllBtn')?.addEventListener('click', () => {
@@ -2379,6 +2425,16 @@ function updateStylusPerSymbolUI(cls: string | null): void {
   };
   document.getElementById('placement-itg-itg')?.addEventListener('click', () => void designateAtCentre('ITG'));
   document.getElementById('placement-itg-mitg')?.addEventListener('click', () => void designateAtCentre('MITG'));
+  // People (B, civil considerations) round the map centre, as the Ground Brief's Copy as Text gives them.
+  document.getElementById('placement-pop-log')?.addEventListener('click', async () => {
+    const adv = (window as any).symbolEngine?.placementAdvisor;
+    const centre = appConfig.activeView?.center;
+    if (!adv?.populationAround || !centre) return void showToast('Turn on the Placement advisor first', 'no-targets');
+    const lines: string[] | null = await adv.populationText(centre);
+    if (!lines) return void showToast('No population data here (outside the grid, or the bundle has none)', 'no-targets');
+    for (const l of lines) EngineLogger.success('Placement Advisor', l.trim());
+    showToast('People at the map centre written to the Engine Log', 'success');
+  });
   document.addEventListener('placement-advice', (e: any) => {
     placementAdvice = e.detail.message;
     renderPlacementStatus();

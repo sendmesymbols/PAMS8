@@ -38,6 +38,37 @@ import { PlacementAuditPanel, type AuditPanelHandlers } from './PlacementAuditPa
 import { PlacementBadge, plainLabel } from './PlacementBadge';
 import { PlacementBoundary } from './PlacementBoundary';
 import { PlacementFeatures } from './PlacementFeatures';
+import { PlacementBrief } from './PlacementBrief';
+import { PlacementPopulation as PopulationGrid, POPULATION_FLAGS } from './PlacementPopulation';
+import { createPopulationLayer } from './PlacementPopulationLayer';
+import { ensurePopulationCss, populationBriefText, populationKey, populationKeyElement } from './PlacementPopulationView';
+import {
+  COMPASS8,
+  ClimateGrid,
+  decodeRci,
+  decodeSoil,
+  pixelGoing,
+  rateMovement,
+  resolveSeason,
+  vehicleFor,
+  GOING_CODE,
+  goingKey,
+  resolveMonth,
+  type GoingCause,
+  type GoingRule,
+} from './PlacementGoing';
+import {
+  bearingStep,
+  landingLine,
+  monthName,
+  pickRoad,
+  trafficKey,
+  TRAFFIC_LEGEND_STYLES,
+  TRAFFIC_RAIN_RULES,
+  type PlacementTraffic,
+} from './PlacementTrafficability';
+import type { OverlayGoing } from './PlacementOverlay';
+import { normaliseSidc } from './PlacementProfiles';
 import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './PlacementFootprint';
 import { PlacementIndicators } from './PlacementIndicators';
 import { PlacementLegend } from './PlacementLegend';
@@ -54,12 +85,20 @@ import {
   type MercXY,
   type PlacementAudit,
   type PlacementAuditEntry,
+  type GoingSeason,
+  type GoingStep,
+  type PlacementCardOptions,
+  type PlacementGoingInfo,
+  type PlacementMovementSector,
   type PlacementGround,
   type PlacementGroundCandidate,
   type PlacementIndicator,
   type PlacementNearest,
   type PlacementOptionIssue,
   type PlacementOptions,
+  type PlacementPopulation,
+  type PlacementPopulationCardStyle,
+  type PlacementPopulationReading,
   type PlacementProfile,
   type PlacementSnapResult,
   type PlacementStamp,
@@ -75,6 +114,7 @@ import {
   MERC_ORIGIN,
   TerrainTileCache,
   lngLatToMercator,
+  mercatorToLngLat,
   mercatorToTilePixel,
   resolutionAt,
   zoomForResolution,
@@ -163,6 +203,17 @@ export default class PlacementAdvisor {
   private _cache: TerrainTileCache | null = null;
   /** Bundle v2 point features (ITG candidates); null when the bundle has none. */
   private _features: PlacementFeatures | null = null;
+  /** Bundle v2 monthly climate (season for the going); null when the bundle has none. */
+  private _climate: ClimateGrid | null = null;
+  /** Bundle v2 population grid (B: people round the cursor); null when the bundle has none. */
+  private _population: PopulationGrid | null = null;
+  /** The People map layer and its key, while `population.layer` is on. */
+  private _popLayer: any = null;
+  private _popLayerMap: any = null;
+  private _popKey: HTMLElement | null = null;
+  /** The Ground Brief panel (G): all of the going, soil and movement sections, larger. */
+  private _brief = new PlacementBrief(() => this._toggleBrief(false));
+  private _briefOpen = false;
   private _source: OverlayRenderingSource | null = null;
   private _overlay: any = null;
   private _overlayMap: any = null;
@@ -205,7 +256,11 @@ export default class PlacementAdvisor {
   private _legend = new PlacementLegend({
     step: (dir) => this._legendStep(dir),
     pick: (key) => this._legendPick(key as PlacementProfile),
+    season: (s) => this._setGoing({ season: s }),
+    month: (dir) => this._setGoing({ season: 'auto', month: ((resolveMonth(this._opts.going.month) - 1 + dir + 12) % 12) + 1 }),
   });
+  /** Season (and profile) the overlay last painted the going for (T); a change repaints it. */
+  private _overlaySeasonKey = '';
   private _hintedThisSession = false;
   private _lastIssueKey = '';
   /** The last pointer move was a finger: the card goes above it and does not offer keyboard shortcuts. */
@@ -288,6 +343,10 @@ export default class PlacementAdvisor {
     this._cache = null;
     this._features?.destroy();
     this._features = null;
+    this._climate = null;
+    this._removePopulationLayer();
+    this._population?.destroy();
+    this._population = null;
     this._source?.dispose?.();
     this._source = null;
     this._removeOverlay();
@@ -321,6 +380,11 @@ export default class PlacementAdvisor {
       this._cache = new TerrainTileCache(this._source, this._opts.cacheTiles, () => this._onTilesChanged());
       const fm = manifest.grotbc?.features;
       this._features = fm ? new PlacementFeatures(base, fm, rules, () => this._onTilesChanged(false)) : null;
+      const cm = manifest.grotbc?.climate;
+      this._climate = cm ? new ClimateGrid(`${base}/${cm.index}`, `${base}/${cm.data}`, () => this._onTilesChanged(false)) : null;
+      const pm = manifest.grotbc?.population;
+      this._population = pm ? new PopulationGrid(base, pm, () => this._onPopulationReady()) : null;
+      this._loadPopulation();
       EngineLogger.success(
         ENGINE,
         `Terrain bundle ready — ${manifest.name ?? base} (rules ${rules.version ?? 'unversioned'})`,
@@ -505,6 +569,53 @@ export default class PlacementAdvisor {
         else bad('itg.minLevel', itg.minLevel, 'must be 1 (every candidate) or 2 (strong candidates only)');
       }
     }
+    const go = patch.going;
+    next.going = { ...prev.going };
+    if (go && typeof go === 'object') {
+      pick('going.season', go.season, ['auto', 'dry', 'wet'] as const, (x) => (next.going.season = x));
+      if (go.month !== undefined) {
+        const m = Number(go.month); // the settings widget sends enum values as strings
+        if (Number.isInteger(m) && m >= 0 && m <= 12) next.going.month = m;
+        else bad('going.month', go.month, 'must be 0 (this month) or 1-12');
+      }
+      num('going.wetMonthMm', go.wetMonthMm, 10, 500, (n) => (next.going.wetMonthMm = n));
+      num('going.rangeKm', go.rangeKm, 0.5, 5, (n) => (next.going.rangeKm = n));
+      pick('going.movementFor', go.movementFor, ['units', 'points', 'all'] as const, (x) => (next.going.movementFor = x));
+    }
+    const cd = patch.card;
+    next.card = { ...prev.card };
+    if (cd && typeof cd === 'object') {
+      for (const k of Object.keys(DEFAULT_PLACEMENT_OPTIONS.card) as Array<keyof PlacementCardOptions>) {
+        flag(`card.${k}`, cd[k], (b) => (next.card[k] = b));
+      }
+    }
+    const pp = patch.population;
+    next.population = { ...prev.population };
+    if (pp && typeof pp === 'object') {
+      flag('population.enabled', pp.enabled, (b) => (next.population.enabled = b));
+      pick(
+        'population.card',
+        pp.card,
+        ['off', 'line', 'scale', 'rings', 'ages', 'rose', 'minimap', 'profile', 'icons', 'compare', 'block'] as const satisfies readonly PlacementPopulationCardStyle[],
+        (x) => (next.population.card = x),
+      );
+      flag('population.flag', pp.flag, (b) => (next.population.flag = b));
+      num('population.radiusKm', pp.radiusKm, 1, 10, (n) => (next.population.radiusKm = n));
+      flag('population.layer', pp.layer, (b) => (next.population.layer = b));
+      num('population.layerOpacity', pp.layerOpacity, 0.1, 1, (n) => (next.population.layerOpacity = n));
+    }
+    const tr = patch.traffic;
+    next.traffic = { ...prev.traffic };
+    if (tr && typeof tr === 'object') {
+      flag('traffic.road', tr.road, (b) => (next.traffic.road = b));
+      num('traffic.roadRadiusKm', tr.roadRadiusKm, 0.5, 10, (n) => (next.traffic.roadRadiusKm = n));
+      pick('traffic.legend', tr.legend, TRAFFIC_LEGEND_STYLES, (x) => (next.traffic.legend = x));
+      flag('traffic.overlay', tr.overlay, (b) => (next.traffic.overlay = b));
+      pick('traffic.header', tr.header, ['dry', 'season'] as const, (x) => (next.traffic.header = x));
+      flag('traffic.pill', tr.pill, (b) => (next.traffic.pill = b));
+      flag('traffic.dual', tr.dual, (b) => (next.traffic.dual = b));
+      pick('traffic.rain', tr.rain, TRAFFIC_RAIN_RULES, (x) => (next.traffic.rain = x));
+    }
     this._reportIssues(issues);
     this._opts = next;
     setDistanceUnits(next.units);
@@ -516,6 +627,24 @@ export default class PlacementAdvisor {
     if (!next.showBadge) this._badge.hide();
     if (!next.indicators.enabled) this._indicators.hide();
     if (!next.footprint.outline || !next.footprint.enabled) this._indicators.hideFootprint();
+    this._badge.setCard(next.card);
+    if (!next.card.briefKey && this._briefOpen) this._toggleBrief(false);
+    if (JSON.stringify(next.going) !== JSON.stringify(prev.going) || JSON.stringify(next.card) !== JSON.stringify(prev.card)) {
+      this._refreshLive();
+    }
+    const trafficChanged = JSON.stringify(next.traffic) !== JSON.stringify(prev.traffic);
+    // The overlay paints the going for the season (T): a new season, month or rain rule repaints it.
+    if (trafficChanged || (next.traffic.overlay && JSON.stringify(next.going) !== JSON.stringify(prev.going))) {
+      this._overlaySeasonKey = '';
+      this._overlay?.refresh?.();
+      this._syncLegend();
+    }
+    if (trafficChanged) this._refreshLive();
+    if (JSON.stringify(next.population) !== JSON.stringify(prev.population)) {
+      this._loadPopulation();
+      this._syncPopulationLayer();
+      this._refreshLive();
+    }
     if (next.bundleUrl !== prev.bundleUrl && this._enabled) {
       this._retryAttempt = 0;
       void this.configure();
@@ -558,6 +687,8 @@ export default class PlacementAdvisor {
     if (this._manifest) {
       this._firstUseHint();
       this._bindView();
+      this._loadPopulation();
+      this._syncPopulationLayer();
     } else if (this._opts.bundleUrl) void this.configure();
     else this._emitState('no-bundle');
   }
@@ -569,6 +700,7 @@ export default class PlacementAdvisor {
     this.deactivate();
     this._unbindView();
     this._removeOverlay();
+    this._removePopulationLayer();
     this._legend.hide();
     this._legend.hideHint();
     this._boundary.hide();
@@ -631,6 +763,10 @@ export default class PlacementAdvisor {
     v.profileKey = keys && this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
     v.profileOverride = this._profileOverride !== null && v.profile === this._profileOverride;
     v.ground = this._groundNear(geometry, v);
+    v.going = this._goingNear(geometry, sidc, v);
+    v.briefKey = keys && this._opts.card.briefKey && !!v.going;
+    v.traffic = this._trafficNear(geometry, v);
+    v.population = this._populationNear(geometry, v);
     this._legend.setKeys(v.profileKey, v.snappable);
     if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
       this._lastGood = v;
@@ -1201,6 +1337,8 @@ export default class PlacementAdvisor {
     this._boundary.onViewChanged(); // leave the old map; _syncOverlay() re-attaches it to the new one
     this._syncOverlay(); // moves the overlay (and the boundary) onto the new view's map
     this._indicators.onViewChanged(); // re-attaches to the new map on the next show
+    this._removePopulationLayer(); // and the People layer and its key go to the new view
+    this._syncPopulationLayer();
   }
 
   destroy(): void {
@@ -1213,6 +1351,9 @@ export default class PlacementAdvisor {
     this._cache = null;
     this._features?.destroy();
     this._features = null;
+    this._climate = null;
+    this._population?.destroy();
+    this._population = null;
     this._source?.dispose?.();
     this._source = null;
     this._badge.destroy();
@@ -1370,7 +1511,124 @@ export default class PlacementAdvisor {
     }
     if (plan && cand) this._applyFootprint(v, plan, cand, effSidc, !opts?.light, opts?.self);
     v.reason = this._reasonFor(v);
+    if (this._opts.traffic.header === 'season' && geometry?.type === 'point') this._seasonHeader(v, shape.parts[0]?.[0]);
     return v;
+  }
+
+  /**
+   * T, `traffic.header: 'season'` (opt-in): the verdict at a point takes the going for the season, soil and wet
+   * ground included, so the header, the Why scale and Enforce Mode follow it. It only ever makes the verdict worse,
+   * and only for what the class verdict does not already say (soft soil, sand, wet ground).
+   */
+  private _seasonHeader(v: PlacementVerdict, at: MercXY | undefined): void {
+    if (!at || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt' || v.verdict === 'in') return;
+    const L = this._goingLayers();
+    if (!L || !this._cache) return;
+    const { read } = this._pixelReader(this._sampleZoom());
+    const [lon, lat] = mercatorToLngLat(at[0], at[1]);
+    const { season } = resolveSeason(this._opts.going, this._climate?.precAt(lon, lat) ?? null);
+    const rule = this._goingRule();
+    const rci = read(season === 'dry' ? L.dry : L.wet, at[0], at[1]);
+    const g = pixelGoing(
+      {
+        cls: read(this._layerNames(v.profile).cls, at[0], at[1]),
+        rci,
+        wet: L.wetLayer ? read(L.wetLayer, at[0], at[1]) : null,
+        soil: rule.kind === 'bearing' ? read(L.soil, at[0], at[1]) : null,
+      },
+      this._profile(v.profile),
+      vehicleFor(this._rules, v.profile),
+      season,
+      rule,
+    );
+    if (!g || g.step === 'go' || g.cause === 'class') return; // the class is already in the verdict
+    const when = season === 'wet' ? 'After Rain' : 'in the Dry Season';
+    const why = this._causeText(g.cause, null, decodeRci(rci)?.coarse ?? false, season);
+    if (g.step === 'nogo') {
+      v.verdict = 'in';
+      v.message = `NO-GO ${when}`;
+    } else if (v.verdict === 'ok' || (v.verdict === 'near' && v.fraction === 0)) {
+      v.verdict = 'caution';
+      v.message = `SLOW-GO ${when}`;
+    } else return;
+    const step = g.step === 'nogo' ? 'NO-GO' : 'SLOW-GO';
+    v.detail = `${why ?? 'Soil'}: ${step} for ${v.profileLabel} ${when.toLowerCase()}`;
+    v.reason = `${why ?? 'The soil'} makes this ground ${step} ${when.toLowerCase()}.`;
+  }
+
+  /** T on the card while drawing: the road (or landing-site) line, the rain pill and the second scale. Null when no T option is on. */
+  private _trafficNear(geometry: any, v: PlacementVerdict): PlacementTraffic | null {
+    const t = this._opts.traffic;
+    if (!(t.road || t.pill || t.dual) || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    const pt = v.going?.point ?? null;
+    const wet = v.going?.season === 'wet';
+    let road: PlacementTraffic['road'] = null;
+    let pending = false;
+    if (t.road) {
+      if (v.profile === 'hls') road = landingLine(v.classCode, pt ? pt.wet !== pt.dry : false);
+      else if (this._features) {
+        const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
+        if (at) {
+          const radiusM = t.roadRadiusKm * 1000;
+          const near = this._features.roadsNear(at, radiusM);
+          pending = near.pending;
+          const step: GoingStep = pt ? (wet ? pt.wet : pt.dry) : v.verdict === 'ok' || v.verdict === 'near' ? 'go' : v.verdict === 'caution' ? 'slow' : 'nogo';
+          road = pickRoad(v.profile, step, wet, near.list, radiusM);
+        }
+      }
+    }
+    if (!road && !t.pill && !t.dual) return null;
+    return { road, pending, pill: t.pill, dual: t.dual };
+  }
+
+  /**
+   * The going the overlay paints for a profile (T, `traffic.overlay`): the season at the view's centre, the mode's
+   * soil thresholds and the rain rule, with the soil and wet layers it reads. Null paints the ground classes alone.
+   */
+  private _overlayGoing(profile: PlacementProfile): OverlayGoing | null {
+    const t = this._opts.traffic;
+    const L = this._goingLayers();
+    if (!t.overlay || !L) return null;
+    const season = this._viewSeason();
+    const veh = vehicleFor(this._rules, profile);
+    let bearingMin: Uint8Array | undefined;
+    if (t.rain === 'bearing') {
+      bearingMin = new Uint8Array(256);
+      for (let b = 0; b < 255; b++) bearingMin[b] = GOING_CODE[bearingStep(this._rules, b, season, veh?.onFoot ?? false) ?? 'go'];
+    }
+    return {
+      params: { season, rule: t.rain, veh, bearingMin },
+      soilLayer: t.rain === 'words' || !veh ? null : t.rain === 'bearing' ? L.soil : season === 'dry' ? L.dry : L.wet,
+      wetLayer: season === 'wet' ? L.wetLayer : null,
+    };
+  }
+
+  /** The season at the view's centre (`going.season`, `auto` from that point's monthly rain). */
+  private _viewSeason(): GoingSeason {
+    const c = (this._getView?.() as any)?.center;
+    const p = c ? toMercatorShape(c)?.parts[0]?.[0] : null;
+    const prec = p ? this._climate?.precAt(...(mercatorToLngLat(p[0], p[1]) as [number, number])) ?? null : null;
+    return resolveSeason(this._opts.going, prec).season;
+  }
+
+  /** The view came to rest: repaint the overlay when the season at the centre changed (an `auto` season moves with the map). */
+  private _checkOverlaySeason(): void {
+    if (this._opts.traffic.legend === 'month') this._syncLegend(); // the month's rain is read at the view's centre
+    if (!this._overlay || !this._opts.traffic.overlay) return;
+    const key = `${this._viewSeason()}|${this._opts.traffic.rain}`;
+    if (this._overlaySeasonKey !== '' && key !== this._overlaySeasonKey) {
+      this._overlay.refresh?.();
+      this._syncLegend();
+    }
+    this._overlaySeasonKey = key;
+  }
+
+  /** Change the going settings from the legend (T season switch / month stepper), keeping the settings panel in step. */
+  private _setGoing(patch: Partial<PlacementOptions['going']>): void {
+    const going = { ...this._opts.going, ...patch };
+    this.setOptions({ going });
+    // The settings widget keeps the month as an enum string ("7").
+    for (const k of Object.keys(patch) as Array<keyof typeof patch>) setSetting(['placement', 'going', k], k === 'month' ? String(going[k]) : going[k]);
   }
 
   /**
@@ -1789,6 +2047,109 @@ export default class PlacementAdvisor {
     return { candidates: list, radiusM, pending };
   }
 
+  /**
+   * People round a point (B in GROTBC, civil considerations): `[lng, lat]`, an ArcGIS point or any geometry (its
+   * first vertex). Waits for the population grid and the place tiles. Null when the bundle has no population grid
+   * or the point is outside it. WorldPop estimates, not a census.
+   */
+  async populationAround(point: any, opts: { radiusKm?: number } = {}): Promise<PlacementPopulationReading | null> {
+    const grid = this._population;
+    if (!grid || !(await grid.load())) return null;
+    const ll = this._lngLatOf(point);
+    if (!ll) return null;
+    await this._features?.whenReady(lngLatToMercator(ll[0], ll[1]) as MercXY, 10000);
+    const radiusKm = Math.min(10, Math.max(1, opts.radiusKm ?? this._opts.population.radiusKm));
+    return grid.around(ll[0], ll[1], radiusKm, this._placesSource());
+  }
+
+  /** `populationAround()` as the Ground Brief's Copy as Text lines; null when there is no reading. */
+  async populationText(point: any): Promise<string[] | null> {
+    const r = await this.populationAround(point);
+    return r ? populationBriefText(r) : null;
+  }
+
+  /** True when the bundle has a population grid and it is in memory. */
+  get populationReady(): boolean {
+    return this._population?.ready === true;
+  }
+
+  private _lngLatOf(point: any): [number, number] | null {
+    if (Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1])) return [point[0], point[1]];
+    const p = toMercatorShape(point)?.parts[0]?.[0];
+    return p ? (mercatorToLngLat(p[0], p[1]) as [number, number]) : null;
+  }
+
+  private _placesSource(): ((at: MercXY, radiusM: number) => ReturnType<PlacementFeatures['placesNear']>) | undefined {
+    const f = this._features;
+    return f ? (at, radiusM) => f.placesNear(at, radiusM) : undefined;
+  }
+
+  /**
+   * The card's B row: the people round the point being placed (or the cursor, for lines and areas), the card style,
+   * and the civil flag when the unit type's threshold is met. Kept with the style `off` too: the Ground Brief uses it.
+   */
+  private _populationNear(geometry: any, v: PlacementVerdict): PlacementPopulation | null {
+    const o = this._opts.population;
+    const grid = this._population;
+    if (!o.enabled || !grid?.ready || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
+    if (!at) return null;
+    const [lng, lat] = mercatorToLngLat(at[0], at[1]);
+    const reading = grid.around(lng, lat, o.radiusKm, this._placesSource());
+    if (!reading) return null;
+    const rule = o.flag ? POPULATION_FLAGS[v.profile] : undefined;
+    const people = rule ? (reading.rings.find((r) => r.km === rule.km)?.people ?? 0) : 0;
+    return { reading, style: o.card, flag: rule && people >= rule.min ? { km: rule.km, people, message: rule.message } : null };
+  }
+
+  /** Fetch the population grid in the background when something needs it. */
+  private _loadPopulation(): void {
+    const g = this._population;
+    if (this._enabled && this._opts.population.enabled && g && !g.ready) void g.load();
+  }
+
+  private _onPopulationReady(): void {
+    EngineLogger.success(ENGINE, `Population grid ready (${this._population?.header?.layers.length ?? 0} layers, WorldPop ${this._population?.header?.year ?? ''})`);
+    this._syncPopulationLayer();
+    this._refreshLive();
+  }
+
+  /** Put the People layer and its key on the current view's map, or take them off. */
+  private _syncPopulationLayer(): void {
+    const o = this._opts.population;
+    const grid = this._population;
+    const view: any = this._getView?.();
+    const map = view?.map;
+    if (!(this._enabled && o.enabled && o.layer && grid?.ready && map)) {
+      this._removePopulationLayer();
+      return;
+    }
+    if (!this._popLayer) this._popLayer = createPopulationLayer(grid, o.layerOpacity);
+    if (this._popLayerMap !== map) {
+      this._popLayerMap?.remove(this._popLayer);
+      map.add(this._popLayer, 0); // under the symbol graphics layers
+      this._popLayerMap = map;
+    }
+    this._popLayer.opacity = o.layerOpacity;
+    const host: HTMLElement | null = view?.container ?? null;
+    if (host && !this._popKey) {
+      ensurePopulationCss();
+      this._popKey = populationKeyElement(String(grid.header?.year ?? ''));
+      host.appendChild(this._popKey);
+    }
+  }
+
+  private _removePopulationLayer(): void {
+    if (this._popLayer) {
+      this._popLayerMap?.remove(this._popLayer);
+      this._popLayer.destroy?.();
+    }
+    this._popLayer = null;
+    this._popLayerMap = null;
+    this._popKey?.remove();
+    this._popKey = null;
+  }
+
   /** The indicator-line layer (null until a line has been drawn), for hosts that want to inspect or restyle it. */
   get indicatorLayer(): any {
     return this._indicators.layer;
@@ -1797,6 +2158,282 @@ export default class PlacementAdvisor {
   /** True while tile decoding and overlay painting run in the Web Worker (false = main thread). */
   get tileWorkerActive(): boolean {
     return this._source?.workerActive === true;
+  }
+
+  // ── Going, soil and movement (GROTBC T) ──────────────────────────────────
+
+  /** True while the Ground Brief panel is open. */
+  get isBriefOpen(): boolean {
+    return this._briefOpen;
+  }
+
+  /** Open or close the Ground Brief (the G key while drawing). It keeps the last draw's content until closed. */
+  showBrief(open = true): void {
+    this._toggleBrief(open);
+  }
+
+  private _toggleBrief(open: boolean): void {
+    if (open === this._briefOpen) return;
+    this._briefOpen = open;
+    if (!open) this._brief.hide();
+    this._refreshLive();
+  }
+
+  /** Judge the cursor again now (settings changed, the brief opened). */
+  private _refreshLive(): void {
+    this._lastBadgeKey = '';
+    const d = this._lastDetail;
+    if (d && this.isActive) this._apply(this._judgeLive(d.geometry, d.sidc));
+  }
+
+  /** The bundle's soil layer names, or null when it has none (older bundle). */
+  private _goingLayers(): { soil: string; dry: string; wet: string; wetLayer: string | null } | null {
+    const l = this._manifest?.layers;
+    if (!l?.soil || !l.rci_dry || !l.rci_wet || !this._rules?.grotbc?.soilStrength) return null;
+    return { soil: l.soil, dry: l.rci_dry, wet: l.rci_wet, wetLayer: l.wet ?? null };
+  }
+
+  private _goingWanted(): boolean {
+    const c = this._opts.card;
+    const t = this._opts.traffic;
+    return (
+      this._briefOpen || c.goingLines || c.movementRose || c.soilStrength || c.exitStrip || c.modeMatrix || c.seasonRibbon || c.goingMap ||
+      t.pill || t.dual || t.header === 'season' // T reads the going at the point too
+    );
+  }
+
+  /** How the soil changes the going (`traffic.rain`), for pixelGoing. */
+  private _goingRule(): GoingRule {
+    const r = this._opts.traffic.rain;
+    if (r === 'words') return { kind: 'words' };
+    if (r === 'bearing') {
+      const rules = this._rules;
+      return { kind: 'bearing', step: (soil, season, onFoot) => bearingStep(rules, soil, season, onFoot) };
+    }
+    return { kind: 'cone' };
+  }
+
+  /** Tiles the going sections read (prefetched with the class tiles while a symbol is armed). */
+  private _goingTileLayers(): string[] {
+    const L = this._goingLayers();
+    if (!L || !this._goingWanted() || this._activeProfile === 'exempt') return [];
+    return [L.soil, L.dry, L.wet, ...(L.wetLayer ? [L.wetLayer] : [])];
+  }
+
+  /** Do the movement sections apply to this symbol (`going.movementFor`)? */
+  private _movementApplies(geometry: any, sidc: string | null): boolean {
+    const f = this._opts.going.movementFor;
+    if (f === 'all') return true;
+    if (geometry?.type !== 'point') return false;
+    if (f === 'points') return true;
+    const s = normaliseSidc(sidc);
+    const set = s ? s.slice(4, 6) : '';
+    return set === '10' || set === '15'; // land unit, land equipment
+  }
+
+  /** Synchronous pixel reads at one zoom, memoising tiles; `pending` turns true when a tile is still on its way. */
+  private _pixelReader(z: number) {
+    const cache = this._cache!;
+    const ts = this._manifest!.tileSize;
+    const n = 2 ** z;
+    const b = this._boundsMerc;
+    const memo = new Map<string, Uint8Array | null | undefined>();
+    const state = { pending: false };
+    const read = (layer: string, mx: number, my: number): number | null | undefined => {
+      if (mx < b[0] || mx > b[2] || my < b[1] || my > b[3]) return null;
+      const tp = mercatorToTilePixel(mx, my, z, ts);
+      if (tp.tx < 0 || tp.ty < 0 || tp.tx >= n || tp.ty >= n) return null;
+      const key = `${layer}/${tp.tx}/${tp.ty}`;
+      let t = memo.get(key);
+      if (!memo.has(key)) {
+        t = cache.peek(layer, z, tp.tx, tp.ty);
+        memo.set(key, t);
+      }
+      if (t === undefined) {
+        state.pending = true;
+        return undefined;
+      }
+      return t === null ? null : t[tp.py * ts + tp.px];
+    };
+    return { read, state };
+  }
+
+  /** What limits the going, in words, for the card. */
+  private _causeText(cause: GoingCause, cls: number | null | undefined, coarse: boolean, season: GoingSeason): string | null {
+    if (cause === 'class') return cls !== null && cls !== undefined ? plainLabel(this._rules?.classes?.[String(cls)]?.label ?? '') || null : null;
+    if (cause === 'soil') return coarse ? (season === 'dry' ? 'Loose sand' : 'Wet sand') : season === 'dry' ? 'Soft soil' : 'Soft soil after rain';
+    if (cause === 'wet') return 'Flood-prone or waterlogged ground';
+    return null;
+  }
+
+  /**
+   * Going, soil and movement round the point being placed (the cursor, for lines and areas): what the card's going
+   * sections and the Ground Brief show. Null when no section wants it or the bundle has no soil layers.
+   */
+  private _goingNear(geometry: any, sidc: string | null, v: PlacementVerdict): PlacementGoingInfo | null {
+    if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    const L = this._goingLayers();
+    if (!L || !this._cache || !this._goingWanted()) return null;
+    const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
+    if (!at) return null;
+    const o = this._opts.going;
+    const c = this._opts.card;
+    const brief = this._briefOpen;
+    const z = this._sampleZoom();
+    const { read, state } = this._pixelReader(z);
+    const clsLayer = this._layerNames(v.profile).cls;
+    const [lon, lat] = mercatorToLngLat(at[0], at[1]);
+
+    // Season: by hand, or from the month's rain at the point (Jul-Sep wet when the bundle has no climate).
+    const precMm = this._climate?.precAt(lon, lat) ?? null;
+    const { season, month } = resolveSeason(o, precMm);
+
+    // The point.
+    const cls = read(clsLayer, at[0], at[1]);
+    const rDryV = read(L.dry, at[0], at[1]);
+    const rWetV = read(L.wet, at[0], at[1]);
+    const wetV = L.wetLayer ? read(L.wetLayer, at[0], at[1]) : null;
+    const soilV = decodeSoil(read(L.soil, at[0], at[1]));
+    const rDry = decodeRci(rDryV);
+    const rWet = decodeRci(rWetV);
+    const coarse = (rDry ?? rWet)?.coarse ?? false;
+    const cp = this._profile(v.profile);
+    const veh = vehicleFor(this._rules, v.profile);
+    const rule = this._goingRule();
+    const soilRaw = rule.kind === 'bearing' ? read(L.soil, at[0], at[1]) : null;
+    const gDry = pixelGoing({ cls, rci: rDryV, wet: wetV, soil: soilRaw }, cp, veh, 'dry', rule);
+    const gWet = pixelGoing({ cls, rci: rWetV, wet: wetV, soil: soilRaw }, cp, veh, 'wet', rule);
+    const g = this._rules?.grotbc;
+    const soil = soilV
+      ? {
+          texture: soilV.texture,
+          label: String(g?.layers?.soil?.[String(soilV.texture)] ?? `Soil ${soilV.texture}`),
+          confidence: soilV.confidence,
+          confidenceLabel: String(
+            g?.layers?.soilConfidence?.[String(soilV.confidence)] ?? g?.soilStrength?.confidence?.labels?.[String(soilV.confidence)] ?? '',
+          ),
+          mapped: soilV.mapped,
+          note: g?.soilBearing?.[String(soilV.texture)]?.note ?? null,
+          ciDry: rDry?.ci ?? null,
+          ciWet: rWet?.ci ?? null,
+          coarse,
+        }
+      : null;
+
+    // The three main modes (and the one being placed, when it is another), at the same pixel.
+    const modeList: string[] = ['dismounted', 'wheeled', 'tracked'].filter((p) => this._manifest!.profiles.includes(p));
+    if (!modeList.includes(v.profile)) modeList.push(v.profile);
+    const modes: PlacementGoingInfo['modes'] = [];
+    for (const p of modeList) {
+      const pcp = this._profile(p as PlacementProfile);
+      const pv = vehicleFor(this._rules, p);
+      const d = pixelGoing({ cls, rci: rDryV, wet: wetV, soil: soilRaw }, pcp, pv, 'dry', rule);
+      const w = pixelGoing({ cls, rci: rWetV, wet: wetV, soil: soilRaw }, pcp, pv, 'wet', rule);
+      if (d && w) modes.push({ profile: p, label: this._rules?.profiles?.[p]?.label ?? p, dry: d.step, wet: w.step, active: p === v.profile });
+    }
+
+    const moveOk = this._movementApplies(geometry, sidc);
+    const rangeM = o.rangeKm * 1000;
+    const layerFor = season === 'dry' ? L.dry : L.wet;
+    const sample = (x: number, y: number) => {
+      const pc = read(clsLayer, x, y);
+      const pg = pixelGoing(
+        { cls: pc, rci: read(layerFor, x, y), wet: L.wetLayer ? read(L.wetLayer, x, y) : null, soil: rule.kind === 'bearing' ? read(L.soil, x, y) : null },
+        cp,
+        veh,
+        season,
+        rule,
+      );
+      return pg ? { ...pg, cls: pc } : null;
+    };
+    const movement = moveOk && (c.movementRose || c.exitStrip || brief) ? this._rays(at, lat, z, rangeM, sample, coarse, season) : null;
+    const map = moveOk && (c.goingMap || brief) ? this._goingGrid(at, lat, rangeM, brief ? 33 : 25, sample) : null;
+
+    return {
+      season,
+      month,
+      vehicle: veh ? { label: veh.label, vci: coarse ? veh.coarse : veh.fine } : null,
+      soil,
+      point:
+        gDry && gWet
+          ? {
+              dry: gDry.step,
+              wet: gWet.step,
+              limitDry: this._causeText(gDry.cause, cls, coarse, 'dry'),
+              limitWet: this._causeText(gWet.cause, cls, coarse, 'wet'),
+            }
+          : null,
+      modes,
+      movement,
+      climate: precMm ? { precMm, wetMm: o.wetMonthMm } : null,
+      map,
+      pending: state.pending,
+    };
+  }
+
+  /** Eight rays to `rangeM`: how far each direction goes before the first NO-GO, and its going on the way. */
+  private _rays(
+    at: MercXY,
+    lat: number,
+    z: number,
+    rangeM: number,
+    sample: (x: number, y: number) => { step: GoingStep; cause: GoingCause; cls: number | null | undefined } | null,
+    coarse: boolean,
+    season: GoingSeason,
+  ) {
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    const groundPx = resolutionAt(z, this._manifest!.tileSize) * cosLat;
+    const n = Math.min(80, Math.max(4, Math.ceil(rangeM / groundPx)));
+    const stepG = rangeM / n;
+    const stepM = stepG / cosLat;
+    const sectors: PlacementMovementSector[] = [];
+    for (let i = 0; i < 8; i++) {
+      const a = (i * 45 * Math.PI) / 180;
+      const dx = Math.sin(a);
+      const dy = Math.cos(a);
+      let reach = rangeM;
+      let slow = 0;
+      let walked = 0;
+      let blockedBy: string | null = null;
+      for (let k = 1; k <= n; k++) {
+        const x = at[0] + dx * k * stepM;
+        const y = at[1] + dy * k * stepM;
+        const g = sample(x, y);
+        if (!g) continue; // no data (or still loading) here: skip the sample
+        walked++;
+        if (g.step === 'nogo') {
+          reach = (k - 0.5) * stepG;
+          blockedBy = this._causeText(g.cause, g.cls, coarse, season);
+          break;
+        }
+        if (g.step === 'slow') slow++;
+      }
+      const step: GoingStep = reach < Math.min(250, rangeM / 4) ? 'nogo' : walked && slow / walked > 0.4 ? 'slow' : 'go';
+      sectors.push({ bearingDeg: i * 45, compass: COMPASS8[i], step, reachM: reach, blockedBy });
+    }
+    return rateMovement(sectors, rangeM);
+  }
+
+  /** Going on a size x size grid over the range square round the point (outside the circle = 255). */
+  private _goingGrid(
+    at: MercXY,
+    lat: number,
+    rangeM: number,
+    size: number,
+    sample: (x: number, y: number) => { step: GoingStep } | null,
+  ): PlacementGoingInfo['map'] {
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    const cells = new Uint8Array(size * size).fill(255);
+    for (let r = 0; r < size; r++) {
+      const gy = (1 - ((r + 0.5) / size) * 2) * rangeM;
+      for (let q = 0; q < size; q++) {
+        const gx = (((q + 0.5) / size) * 2 - 1) * rangeM;
+        if (gx * gx + gy * gy > rangeM * rangeM) continue;
+        const g = sample(at[0] + gx / cosLat, at[1] + gy / cosLat);
+        if (g) cells[r * size + q] = GOING_CODE[g.step];
+      }
+    }
+    return { size, cells, rangeM };
   }
 
   // ── Internals ────────────────────────────────────────────────────────────
@@ -1950,11 +2587,15 @@ export default class PlacementAdvisor {
       Math.round(v.nearest?.distanceM ?? -1), v.nearest?.compass ?? '',
       v.spacing?.status ?? '', Math.round(v.spacing?.nearestGapM ?? -1), v.snappable ? 1 : 0,
       v.ground?.candidates.map((c) => `${c.kind}${c.level}${Math.round(c.distanceM / 50)}${c.compass}`).join(',') ?? '',
+      goingKey(v.going), v.briefKey ? 1 : 0,
+      populationKey(v.population),
+      trafficKey(v.traffic),
     ].join('|');
     if (key === this._lastBadgeKey) return;
     this._lastBadgeKey = key;
     if (this._opts.showBadge && v.verdict !== 'off' && v.verdict !== 'exempt') this._badge.show(v);
     else this._badge.hide();
+    if (this._briefOpen && v.going && v.verdict !== 'off' && v.verdict !== 'exempt') this._brief.show(v);
   }
 
   private _publish(v: PlacementVerdict): void {
@@ -2062,6 +2703,7 @@ export default class PlacementAdvisor {
       layers.add(cls);
       if (dist) layers.add(dist);
     }
+    if (this._activeProfile) for (const l of this._goingTileLayers()) layers.add(l);
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
         for (const layer of layers) this._cache.request(layer, z, tx, ty);
@@ -2089,10 +2731,12 @@ export default class PlacementAdvisor {
     const { cls, dist } = this._layerNames(profile);
     const n = 2 ** z;
     const R = 2;
+    const going = this._goingTileLayers();
     for (let ty = Math.max(0, tp.ty - R); ty <= Math.min(n - 1, tp.ty + R); ty++) {
       for (let tx = Math.max(0, tp.tx - R); tx <= Math.min(n - 1, tp.tx + R); tx++) {
         cache.request(cls, z, tx, ty);
         if (dist) cache.request(dist, z, tx, ty);
+        for (const l of going) cache.request(l, z, tx, ty);
       }
     }
   }
@@ -2104,7 +2748,10 @@ export default class PlacementAdvisor {
     this._stationaryHandle = reactiveUtils.watch(
       () => view.stationary,
       (stationary: boolean) => {
-        if (stationary) this._prefetch();
+        if (stationary) {
+          this._prefetch();
+          this._checkOverlaySeason();
+        }
       },
       { initial: true }, // warm the current viewport now, not on the first pan or draw
     );
@@ -2153,9 +2800,19 @@ export default class PlacementAdvisor {
     this._shift = e.shiftKey;
     if (e.type !== 'keydown') return;
     const k = e.key.toLowerCase();
-    if ((k !== 's' && k !== 'p') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if ((k !== 's' && k !== 'p' && k !== 'g' && k !== 'escape') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (k === 'escape') {
+      if (this._briefOpen) this._toggleBrief(false); // Esc still reaches the draw tool: it may cancel the draw too
+      return;
+    }
+    if (k === 'g') {
+      if (!this._opts.card.briefKey || !this._lastDetail || this._activeProfile === 'exempt' || !this._goingLayers()) return;
+      e.preventDefault();
+      this._toggleBrief(!this._briefOpen);
+      return;
+    }
     if (k === 'p') {
       if (!this._opts.profileKey || !this._lastDetail || this._activeProfile === 'exempt') return;
       e.preventDefault();
@@ -2255,6 +2912,7 @@ export default class PlacementAdvisor {
           rules: this._rules!,
           getProfile: () => this._overlayProfileNow(),
           getNearM: () => this._opts.nearThresholdM,
+          getGoing: (p) => this._overlayGoing(p),
         },
         this._opts.overlay.opacity,
       );
@@ -2317,7 +2975,29 @@ export default class PlacementAdvisor {
       nogo: rule?.requires?.length ? [`Anywhere Off ${classes(rule.requires).join(' / ')}`] : classes(rule?.nogo),
       slow: classes(rule?.caution),
       keys: keyboard ? { profile: this._opts.profileKey, snap: this._opts.snapKey } : null,
+      traffic: this._legendTraffic(),
     });
+  }
+
+  /** T on the legend (`traffic.legend`): a caption naming the season, with a Dry / After Rain switch or a month stepper. */
+  private _legendTraffic(): { caption: string; season?: 'dry' | 'wet'; month?: string } | undefined {
+    const style = this._opts.traffic.legend;
+    if (style === 'none') return undefined;
+    const o = this._opts.going;
+    const season = this._viewSeason();
+    const what = this._opts.traffic.overlay && this._overlay ? 'Going' : 'Trafficability';
+    const when = o.season === 'auto' ? `${monthName(resolveMonth(o.month))}, ${season === 'wet' ? 'Wet' : 'Dry'}` : season === 'wet' ? 'After Rain' : 'Dry Season';
+    const caption = `T · ${what} · ${when}`;
+    if (style === 'season') return { caption, season };
+    if (style === 'month') {
+      const c = (this._getView?.() as any)?.center;
+      const p = c ? toMercatorShape(c)?.parts[0]?.[0] : null;
+      const m = resolveMonth(o.month);
+      const prec = p ? this._climate?.precAt(...(mercatorToLngLat(p[0], p[1]) as [number, number])) ?? null : null;
+      const rain = prec ? ` · ${Math.round(prec[m - 1])} mm` : '';
+      return { caption, month: `${monthName(m)}${rain}${o.season === 'auto' ? '' : ' (Season Set by Hand)'}` };
+    }
+    return { caption };
   }
 
   /** Legend Previous / Next: the draw's mode while drawing (as P does), otherwise the mode the overlay paints. */

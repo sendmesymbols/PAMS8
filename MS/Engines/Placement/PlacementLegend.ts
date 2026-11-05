@@ -56,6 +56,13 @@ const LEGEND_CSS = `
 .ms-pl-hint{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:2147482500;display:none;
   max-width:min(90vw,460px);padding:7px 14px;border-radius:999px;background:#242a32;border:1px solid #4a535e;
   box-shadow:0 3px 12px rgba(0,0,0,.4);font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;pointer-events:none}
+.ms-pl-tcap{font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5aa9e6;margin-top:9px}
+.ms-pl-season{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:6px}
+.ms-pl-season>button{font-size:11.5px;padding:4px 0}
+.ms-pl-season>button[aria-pressed="true"]{color:#1b1f25;background:#8ec1ea;border-color:#8ec1ea;font-weight:600}
+.ms-pl-month{display:flex;align-items:center;gap:6px;margin-top:6px}
+.ms-pl-month>button{flex:none;width:24px;height:24px;font-size:14px}
+.ms-pl-month>span{flex:1;text-align:center;font-size:11.5px}
 @media (prefers-reduced-motion: reduce){.ms-pl-key{transition:none}}
 `;
 
@@ -108,6 +115,11 @@ export interface LegendState {
   slow: string[];
   /** Whether to explain the keys at all (off for touch, or when both keys are switched off). */
   keys: { profile: boolean; snap: boolean } | null;
+  /**
+   * T (Trafficability): a caption over the ramp ("T · Trafficability · Dry Season"), and optionally a Dry / After Rain
+   * switch (`season`) or a month stepper (`month`, its label). Absent: the legend is as before.
+   */
+  traffic?: { caption: string; season?: 'dry' | 'wet'; month?: string };
 }
 
 export interface LegendHandlers {
@@ -115,6 +127,10 @@ export interface LegendHandlers {
   step(dir: 1 | -1): void;
   /** A mode's icon was clicked. */
   pick(key: string): void;
+  /** T: the Dry / After Rain switch was used. */
+  season?(season: 'dry' | 'wet'): void;
+  /** T: the month stepper, previous (-1) / next (+1). */
+  month?(dir: 1 | -1): void;
 }
 
 function ensureStyle(): void {
@@ -306,6 +322,34 @@ export class PlacementLegend {
     name.append(el('', mode.label, 'b'));
     if (s.tag) name.append(el(s.hand ? 'ms-pl-tag ms-hand' : 'ms-pl-tag', s.tag, 'span'));
     parts.push(name);
+
+    if (s.traffic) {
+      parts.push(el('ms-pl-tcap', s.traffic.caption));
+      if (s.traffic.season) {
+        const sw = el('ms-pl-season');
+        sw.setAttribute('role', 'group');
+        sw.setAttribute('aria-label', 'Season');
+        for (const [key, text] of [['dry', 'Dry'], ['wet', 'After Rain']] as const) {
+          const b = button('', `Going ${text === 'Dry' ? 'in the dry season' : 'after rain'}`, text);
+          b.setAttribute('aria-pressed', String(s.traffic.season === key));
+          b.dataset.plFocus = `season:${key}`;
+          b.onclick = () => this._handlers.season?.(key);
+          sw.appendChild(b);
+        }
+        parts.push(sw);
+      }
+      if (s.traffic.month) {
+        const row = el('ms-pl-month');
+        const prev = button('', 'Previous month', '‹');
+        const next = button('', 'Next month', '›');
+        prev.dataset.plFocus = 'month-prev';
+        next.dataset.plFocus = 'month-next';
+        prev.onclick = () => this._handlers.month?.(-1);
+        next.onclick = () => this._handlers.month?.(1);
+        row.append(prev, el('', s.traffic.month, 'span'), next);
+        parts.push(row);
+      }
+    }
 
     const ramp = el('ms-pl-ramp');
     const labels = el('ms-pl-ramp-l');

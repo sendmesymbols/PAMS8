@@ -45,7 +45,7 @@ from pathlib import Path
 
 import numpy as np
 
-from common import (GTIFF_U8, WORLDPOP_TIF, WORLDPOP_YEAR, read_people, ORIGIN_SHIFT, class_table, iter_blocks, load_json, load_yaml, merc_to_lnglat,
+from common import (GTIFF_U8, WORLDPOP_TIF, WORLDPOP_YEAR, read_people, source_ref, ORIGIN_SHIFT, class_table, iter_blocks, load_json, load_yaml, merc_to_lnglat,
                     row_latitudes, setup_logging)
 
 log = setup_logging("grotbc")
@@ -712,6 +712,8 @@ class TileWriter:
                  "kinds": {str(k): {"key": v[0], "label": v[1], "grotbc": v[2], "count": self.counts.get(k, 0)}
                            for k, v in sorted(KINDS.items())},
                  "tiles": len(keys)}
+        if getattr(self, "sources", None):
+            index["sources"] = self.sources
         (out / "index.json").write_text(json.dumps(index, indent=1, ensure_ascii=False), encoding="utf-8")
         return n
 
@@ -754,12 +756,13 @@ class RouteIndex:
         b[0], b[1], b[2], b[3] = min(b[0], lon0), min(b[1], lat0), max(b[2], lon1), max(b[3], lat1)
         return e
 
-    def add_road(self, a: dict, geom) -> None:
+    def add_road(self, a: dict, geom, weight: float = 1.0) -> None:
+        """weight scales the length: 0.5 for one carriageway of a dual carriageway drawn as two one-way lines."""
         key = a.get("r") or a.get("n")
         if not key:
             return
         e = self._entry(self.roads, key, geom)
-        km = _geodesic_km(geom)
+        km = _geodesic_km(geom) * weight
         e["km"] += km
         e["frag"] += 1
         e["no"] = a.get("r")
@@ -1012,7 +1015,7 @@ def polygon_features(g: str, tw: "TileWriter", aoi) -> None:
 def assign_population(settle: list, tif: Path) -> None:
     """Share every WorldPop person (constrained; common.WORLDPOP_YEAR) out to the NEAREST named place within that
     place's radius, so nothing is counted twice; stored as `wp` (rounded to 10) on the place. A big city is split among
-    the named parts inside it. A cell coarser than WP_PART_M (the 1 km file) is first split into equal parts of about
+    the named parts inside it. A cell coarser than WP_PART_M (a 1 km file) is first split into equal parts of about
     that size, so two villages in one cell share it. Returns nothing when the raster is missing."""
     if not tif.exists() or not settle:
         log.warning("population: %s or places missing, skipped", tif)
@@ -1030,7 +1033,7 @@ def assign_population(settle: list, tif: Path) -> None:
     radius = np.array([SETTLEMENT_KINDS[s[3]] for s in settle], dtype="float64")
     a, tr, _shape = read_people(tif)
     rr, cc = np.nonzero(a > 0)
-    vals = a[rr, cc]
+    vals = a[rr, cc].astype("float64")
     plon = tr.c + (cc + 0.5) * tr.a
     plat = tr.f + (rr + 0.5) * tr.e
     k = max(1, round(abs(tr.a) * 111320.0 * math.cos(math.radians(float(np.mean(plat)))) / WP_PART_M)) if len(vals) else 1
@@ -1180,6 +1183,13 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
             continue
         tw.line("river", shapely.simplify(geom, tol), {"n": _clean(f["NAME"][i]), "t": _clean(f["TYPE_OF_RI"][i]),
                                                         "s": _clean(f["CONDITION"][i]), "w": parse_width_m(f["WIDTH_m"][i])})
+    lock = load_yaml(Path("sources.lock")) if Path("sources.lock").exists() else None
+    tw.sources = {     # where and when each part of the features comes from
+        "NCGDB (places, roads, railways, obstacles, installations, named detail)": {
+            "id": "ncgdb", "location": [str(gdb)], "dataDate": "not recorded in the geodatabase (Survey of Pakistan NCGDB Ver-6)"},
+        "GeoNames (an, gn, src = gn)": source_ref(lock, "geonames_pk"),
+        "WorldPop (wp, wc)": source_ref(lock, "worldpop"),
+    }
     n = tw.write(out / "features")
     log.info("features: %d tiles at z%d -> %s", n, FEATURE_Z, out / "features")
     routes.write(out / "routes.json")

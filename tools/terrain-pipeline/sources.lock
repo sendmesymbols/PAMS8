@@ -10,7 +10,8 @@
 #
 # Entry shape:
 #   id, name, version, dataDate (the time the data describes), released (when the publisher released
-#   this version), licence, attribution, landing (human page, "verify"),
+#   this version), licence, attribution, landing (human page, "verify"), location (local path or remote
+#   template, for a source fetch.py does not download; files / pattern give it otherwise),
 #   files: explicit list  — OR —  pattern + tiles (expanded by fetch.py)
 #   sha256: per file (TO_BE_FILLED until recorded)
 
@@ -141,15 +142,16 @@ sources:
 
   # ── GROTBC additions (2026-11-03): soil, climate, population ───────────────────────────────────────
   - id: soilgrids
-    name: ISRIC SoilGrids 2.0 — sand and clay (0-5, 5-15, 15-30 cm, mean)
+    name: ISRIC SoilGrids 2.0 — sand, silt, clay (mean, Q0.05, Q0.95 for sand / clay), cfvo, bdod, soc (0-5, 5-15, 15-30 cm)
     version: "SoilGrids 2.0, files.isric.org/soilgrids/latest"
-    dataDate: "modelled from legacy soil profiles (WoSIS snapshot 2019)"
+    dataDate: "modelled from legacy soil profiles (WoSIS; the VRT metadata says 'Data stream 7, March 2020 snapshot')"
     released: "2020 (SoilGrids 2.0)"
     licence: "CC-BY-4.0 (ISRIC states SoilGrids 2.0 is CC BY 4.0; confirm on data.isric.org)"
     attribution: "Poggio et al. 2021, SOIL 7, 217-240; ISRIC - World Soil Information"
     landing: https://www.isric.org/explore/soilgrids        # verify
-    fetched_by: scripts/fetch_soil.py        # windowed read of the remote VRTs (not whole files), written to work/raw/soilgrids/
-    sha256: 336b17f9ab2316b6479ccfae7c05a12e400ddbc692156927a9535676d436b2af
+    location: https://files.isric.org/soilgrids/latest/data/{prop}/{prop}_{0-5cm,5-15cm,15-30cm}_{mean,Q0.05,Q0.95}.vrt   # prop: sand clay silt cfvo bdod soc
+    fetched_by: scripts/fetch_soil.py        # windowed read of the remote VRTs (not whole files, average resampling), written to work/raw/soilgrids/ (30 files, 2026-11-05)
+    sha256: 9bd6b4eee1cbb3e53fb0929a67d2cf93be805bb16b462b58cd858c0ccef08ff7
 
   - id: worldclim
     name: WorldClim 2.1 historical climate 1970-2000, 5 arc-minute (tmin, tmax, prec, wind)
@@ -170,34 +172,38 @@ sources:
         url: https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_5m_wind.zip      # 82 MB
     sha256: 6a7f3d5a23d91765fa99ad614364776a96beda666e2771c3727431294d150807
 
-  # WorldPop (updated 2026-11-04). Owner's rule: where WorldPop offers two choices take the LATEST and the COARSER
-  # one, so 2026 (the current year; 2027-2030 are projections) and 1 km rather than 100 m. Population Density and
-  # Population Weighted Density were never moved to Global2: 2020 / 1 km is the latest WorldPop publishes.
+  # WorldPop (updated 2026-11-04, population count at 100 m since 2026-11-05). Owner's rule: where WorldPop offers two
+  # choices take the LATEST and the COARSER one, so 2026 (the current year; 2027-2030 are projections) and 1 km. The
+  # owner chose 100 m for the population count itself (2026-11-05): settlements and villages need it. Age groups stay
+  # at 1 km and are applied as shares (group / all ages) to the 100 m people. Population Density and Population
+  # Weighted Density were never moved to Global2: 2020 / 1 km is the latest WorldPop publishes.
   - id: worldpop
-    name: WorldPop Pakistan 2026 population count, constrained, UN-adjusted, 1 km (Global2 R2025A)
-    version: "Global_2015_2030 / R2025A v1 / 2026 / PAK / 1km_ua / constrained"
+    name: WorldPop Pakistan 2026 population count, constrained, 100 m (Global2 R2025A)
+    version: "Global_2015_2030 / R2025A v1 / 2026 / PAK / 100m / constrained"
     dataDate: "2026 (estimate)"
-    released: "2025-08-18 (R2025A v1, file date on data.worldpop.org)"
+    released: "2025-07-26 (R2025A v1, file date on data.worldpop.org)"
     licence: CC-BY-4.0
     attribution: "WorldPop (www.worldpop.org), University of Southampton. Global2 R2025A v1, doi:10.5258/SOTON/WP00839"
-    landing: https://hub.worldpop.org/geodata/listing?id=136
+    landing: https://hub.worldpop.org/geodata/listing?id=135
     files:
-      - name: pak_pop_2026_CN_1km_R2025A_UA_v1.tif
-        url: https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2026/PAK/v1/1km_ua/constrained/pak_pop_2026_CN_1km_R2025A_UA_v1.tif      # 3.2 MB (listing 2026-11-04)
-    sha256: d9ae8052cafa614e4b3ad3f1d18671dbe865a0fab6beff935047f4e0d0b59525
+      - name: pak_pop_2026_CN_100m_R2025A_v1.tif
+        url: https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2026/PAK/v1/100m/constrained/pak_pop_2026_CN_100m_R2025A_v1.tif      # 136 MB (listing 2026-11-05); 100 m has no UN-adjusted form
+    sha256: 11d8c68441f4f8e9c3e720981b7154fa2a0521640d244852fc2dfa2cb8e80261
 
   - id: worldpop_agesex
-    name: WorldPop Pakistan 2026 age and sex structures, constrained, UN-adjusted, 1 km (Global2 R2025A) — males 15-49, all under 15, all 65+
+    name: WorldPop Pakistan 2026 age and sex structures, constrained, UN-adjusted, 1 km (Global2 R2025A) — males 15-49 and every total band (shares of under 15, 65+)
     version: "Global_2015_2030 / R2025A v1 / 2026 / PAK / 1km_ua / constrained"
     dataDate: "2026 (estimate)"
     released: "2025-08-17 (R2025A v1, file date on data.worldpop.org)"
     licence: CC-BY-4.0
     attribution: "WorldPop (www.worldpop.org), University of Southampton. Global2 R2025A v1, doi:10.5258/SOTON/WP00841"
     landing: https://hub.worldpop.org/geodata/listing?id=139        # 1 km twin of listing 138 (100 m)
-    # {tile} = <sex>_<age band start>: m = male, t = total; bands are 0-1, 1-4, then 5 years (5 = 5-9 ... 90 = 90+)
+    # {tile} = <sex>_<age band start>: m = male, t = total; bands are 0-1, 1-4, then 5 years (5 = 5-9 ... 90 = 90+).
+    # All 20 total bands are fetched: their sum is the denominator of each age group's share.
     pattern: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/PAK/v1/1km_ua/constrained/pak_{tile}_2026_CN_1km_R2025A_UA_v1.tif
-    tiles: [m_15, m_20, m_25, m_30, m_35, m_40, m_45, t_00, t_01, t_05, t_10, t_65, t_70, t_75, t_80, t_85, t_90]     # 3.2 MB each
-    sha256: c5f04dce7614f1ce4d4f86dfeb3599486f901667a6d1f04d8984cf1103992adf
+    tiles: [m_15, m_20, m_25, m_30, m_35, m_40, m_45, t_00, t_01, t_05, t_10, t_15, t_20, t_25, t_30, t_35, t_40, t_45,
+            t_50, t_55, t_60, t_65, t_70, t_75, t_80, t_85, t_90]     # 3.2 MB each
+    sha256: 0a42c44f7525801f67644624dcde58cce2b562ef5c9d32d4f7eca347872687b0
 
   - id: worldpop_density
     name: WorldPop Pakistan 2020 population density, unconstrained, UN-adjusted, 1 km (Global1)
@@ -272,6 +278,7 @@ sources:
     licence: CC-BY-4.0
     attribution: "GeoNames (www.geonames.org), CC BY 4.0"
     landing: https://download.geonames.org/export/dump/
+    location: D:/Imagery/PK.txt        # from https://download.geonames.org/export/dump/PK.zip
     fetched_by: local file, read by scripts/grotbc.py (GEONAMES)
     sha256: b421cdf09fc3442b94c2926c174499f99834900997143d98b8a7d639ba61de29
 
@@ -283,5 +290,6 @@ sources:
     licence: ODbL-1.0
     attribution: "© OpenStreetMap contributors, ODbL"
     landing: https://www.openstreetmap.org/copyright
+    location: D:/Imagery/Routing/Network.gdb
     fetched_by: local geodatabase, read by scripts/network.py
     sha256: not hashed (1.3 GB folder); identify by edge count and file dates

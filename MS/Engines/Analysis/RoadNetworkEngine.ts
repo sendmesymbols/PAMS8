@@ -54,6 +54,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../../Support/EngineLogger';
+import BundleRoadsLayer from './BundleRoadsLayer';
 
 const ENGINE_NAME = 'RoadNetworkEngine';
 
@@ -196,6 +197,37 @@ export interface TrafficabilitySummary {
   classes: TrafficabilityClassBreakdown[];
 }
 
+/**
+ * What a route crosses by the military road data (NCGDB load classes, MSR, crossings, closures), as a server with
+ * military routing (GeoCore `network_military`) reports it in `Military_*` route attributes. Absent otherwise.
+ */
+export interface MilitaryRouteSummary {
+  /** Lowest recorded military load class on the route; 0 when none is recorded. */
+  minLoadClass: number;
+  minLoadClassAt?: string;
+  unknownLoadKm: number;
+  unknownLoadPct: number;
+  msrKm: number;
+  msrPct: number;
+  tankableKm: number;
+  fairWeatherKm: number;
+  /** Months some part of the route is recorded closed ("Dec, Jan"), '' when none. */
+  closedMonths: string;
+  landslides: number;
+  /** The weakest crossing on the route ("bridge class 50-59 (Ravi Bridge)"), '' when none. */
+  limitingCrossing: string;
+  /** Road numbers used, most kilometres first. */
+  roads: string[];
+}
+
+/** A travel mode the routing server offers (ArcGIS `supportedTravelModes`). */
+export interface TravelModeInfo {
+  name: string;
+  description: string;
+  restrictions: string[];
+  speedCapKmh?: number;
+}
+
 export interface RouteData {
   distanceKm: number;
   travelTimeMin: number;
@@ -205,6 +237,12 @@ export interface RouteData {
   steps: RouteStep[];
   /** Raw GeoJSON geometry (MultiLineString, EPSG:4326). */
   geometry: GeoJsonLineGeometry;
+  /** Load class, MSR, crossings and closures along the route, when the server has military data. */
+  military?: MilitaryRouteSummary;
+  /** The server's messages (restrictions applied, weakest crossing, data warnings). */
+  messages?: string[];
+  /** Travel mode the route was solved for, '' for none. */
+  travelMode?: string;
 }
 
 export interface ServiceAreaData {
@@ -240,6 +278,19 @@ export interface RouteBarrier {
 export interface RouteOptions {
   /** Areas to avoid. Ignored when empty. */
   barriers?: RouteBarrier[];
+  /**
+   * Travel mode (e.g. "Tracked Vehicle", "MSR Only") the server offers; '' for none. Defaults to the configured
+   * `travelMode`. Needs a server with military routing; see `travelModes`.
+   */
+  travelMode?: string;
+  /** Military restrictions to apply besides the travel mode's (LoadClass, MSROnly, AllWeather, SeasonalClosure, ...). */
+  restrictions?: string[];
+  /** Restriction parameters, e.g. `{ attributeName: 'LoadClass', parameterName: 'VehicleMLC', value: 60 }`. */
+  parameters?: { attributeName: string; parameterName: string; value: string | number }[];
+  /** Points to pass between the start and the end, in order (unless `bestOrder`). */
+  via?: PointLike[];
+  /** Let the server reorder the via points (start and end stay put). */
+  bestOrder?: boolean;
 }
 
 export interface HealthData {
@@ -251,6 +302,17 @@ export interface HealthData {
   routeLayer: string;
   /** Service Area layer discovered on the service, or '' when none is published. */
   serviceAreaLayer: string;
+  /** Travel modes the service offers (military routing); empty when none. */
+  travelModes: TravelModeInfo[];
+  /** dataVersion of the server's military road data, '' when it has none. */
+  militaryDataVersion: string;
+  /** dataVersion of the terrain bundle's road network, '' when it has none or it could not be read. */
+  bundleNetworkVersion: string;
+  /**
+   * Whether the server routes on the same road data the terrain bundle draws: true / false, or null when either
+   * side does not say. false means a route and the roads on the map may disagree.
+   */
+  dataMatch: boolean | null;
 }
 
 interface GeoJsonLineGeometry {
@@ -301,6 +363,15 @@ export interface RoadNetworkConfig {
   healthRetries: number;
   /** Master enable flag (wired to settings). When false, every call short-circuits to `disabled`. */
   enabled: boolean;
+  /** Travel mode used when a call names none ('' = plain routing). */
+  travelMode: string;
+  /** Base URL of the terrain bundle, for its road network (map roads and the data-version check). */
+  bundleUrl: string;
+  /**
+   * Where the reference roads layer comes from: 'bundle' (the terrain bundle's network tiles, the same data a
+   * military routing server solves on), 'service' (`roadsLayerUrl`), or 'auto' (the bundle when it has a network).
+   */
+  roadsSource: 'auto' | 'bundle' | 'service';
 }
 
 export const DEFAULT_ROAD_NETWORK_CONFIG: RoadNetworkConfig = {
@@ -325,6 +396,9 @@ export const DEFAULT_ROAD_NETWORK_CONFIG: RoadNetworkConfig = {
   availabilityTtlMs: 30_000,
   healthRetries: 1,
   enabled: true,
+  travelMode: '',
+  bundleUrl: '/terrain-bundle',
+  roadsSource: 'auto',
 };
 
 type StatusListener = (state: RoadNetworkAvailability, info: HealthData | null) => void;
@@ -360,6 +434,7 @@ export default class RoadNetworkEngine {
 
   private _statusListeners = new Set<StatusListener>();
   private _roadsLayer: any = null;
+  private _bundleRoads: BundleRoadsLayer | null = null;
   private _overlayLayer: GraphicsLayer | null = null;
 
   constructor(config: Partial<RoadNetworkConfig> = {}) {
@@ -382,7 +457,7 @@ export default class RoadNetworkEngine {
 
   /** Re-attach on 2D↔3D switch; move the roads + overlay layers to the new map. */
   onViewChanged(view: MapView | SceneView): void {
-    const wasShowing = !!this._roadsLayer;
+    const wasShowing = !!this._roadsLayer || !!this._bundleRoads;
     if (wasShowing) this.hideRoadsLayer();
     // GraphicsLayer keeps its graphics; just move it between maps.
     const overlay = this._overlayLayer;
@@ -508,11 +583,36 @@ export default class RoadNetworkEngine {
               ? this._cfg.serviceAreaLayer
               : (saLayers[0] ?? '');
           this._cfg = { ...this._cfg, routeLayer, serviceAreaLayer };
+          const travelModes: TravelModeInfo[] = (Array.isArray(res.data?.supportedTravelModes)
+            ? res.data.supportedTravelModes
+            : []
+          ).map((m: any) => ({
+            name: String(m?.name ?? ''),
+            description: String(m?.description ?? ''),
+            restrictions: Array.isArray(m?.restrictionAttributeNames) ? m.restrictionAttributeNames.map(String) : [],
+            ...(Number(m?.speedCapKmh) > 0 ? { speedCapKmh: Number(m.speedCapKmh) } : {}),
+          }));
+          const militaryDataVersion = String(res.data?.militaryDataVersion ?? '');
+          const bundleNetworkVersion = await this._bundleNetworkVersion();
+          const dataMatch = militaryDataVersion && bundleNetworkVersion
+            ? militaryDataVersion === bundleNetworkVersion
+            : null;
+          if (dataMatch === false) {
+            EngineLogger.error(
+              ENGINE_NAME,
+              `Routing data ${militaryDataVersion} is not the terrain bundle's road network ${bundleNetworkVersion}: ` +
+                'routes and the roads on the map may disagree until both are rebuilt from the same network',
+            );
+          }
           const data: HealthData = {
             edges: 0,
             name: String(res.data?.serviceDescription ?? '').trim() || 'Network Analyst',
             routeLayer,
             serviceAreaLayer,
+            travelModes,
+            militaryDataVersion,
+            bundleNetworkVersion,
+            dataMatch,
           };
           this._lastProbeAt = Date.now();
           this._setStatus('available', data);
@@ -539,6 +639,54 @@ export default class RoadNetworkEngine {
     return !!this._cfg.serviceAreaLayer;
   }
 
+  /** Travel modes the server offers (empty until a probe finds some, or when it has no military routing). */
+  get travelModes(): TravelModeInfo[] {
+    return this._lastHealth?.travelModes ?? [];
+  }
+
+  /** dataVersion of the terrain bundle's road network, '' when there is none. Best-effort, never throws. */
+  private async _bundleNetworkVersion(): Promise<string> {
+    try {
+      const r = await fetch(`${this._cfg.bundleUrl.replace(/\/+$/, '')}/network/network.json`);
+      if (!r.ok) return '';
+      const j = await r.json();
+      return String(j?.dataVersion ?? '');
+    } catch {
+      return '';
+    }
+  }
+
+  /** The request parameters for a travel mode and restrictions (empty for plain routing). */
+  private _militaryParams(opts: RouteOptions): Record<string, string> {
+    const out: Record<string, string> = {};
+    const mode = opts.travelMode ?? this._cfg.travelMode;
+    if (mode) out.travelMode = mode;
+    if (opts.restrictions?.length) out.restrictionAttributeNames = opts.restrictions.join(',');
+    if (opts.parameters?.length) out.attributeParameterValues = JSON.stringify(opts.parameters);
+    return out;
+  }
+
+  /** The `Military_*` attributes of a route, or undefined when the server sent none. */
+  private static _readMilitary(attrs: Record<string, any>): MilitaryRouteSummary | undefined {
+    if (!('Military_MinLoadClass' in attrs)) return undefined;
+    const n = (k: string) => Number(attrs[k]) || 0;
+    const s = (k: string) => String(attrs[k] ?? '');
+    return {
+      minLoadClass: n('Military_MinLoadClass'),
+      ...(attrs.Military_MinLoadClassAt ? { minLoadClassAt: s('Military_MinLoadClassAt') } : {}),
+      unknownLoadKm: n('Military_UnknownLoadKm'),
+      unknownLoadPct: n('Military_UnknownLoadPct'),
+      msrKm: n('Military_MSRKm'),
+      msrPct: n('Military_MSRPct'),
+      tankableKm: n('Military_TankableKm'),
+      fairWeatherKm: n('Military_FairWeatherKm'),
+      closedMonths: s('Military_ClosedMonths'),
+      landslides: n('Military_Landslides'),
+      limitingCrossing: s('Military_LimitingCrossing'),
+      roads: s('Military_Roads') ? s('Military_Roads').split(/,\s*/) : [],
+    };
+  }
+
   // ── Core operations ──────────────────────────────────────────────────────
 
   /**
@@ -552,6 +700,11 @@ export default class RoadNetworkEngine {
     if (!a || !b) {
       return { ok: false, reason: 'bad-input', error: 'Could not resolve start/end to lng/lat' };
     }
+    const via = (opts.via ?? []).map((p) => this._toLngLat(p));
+    if (via.some((p) => !p)) {
+      return { ok: false, reason: 'bad-input', error: 'Could not resolve a via point to lng/lat' };
+    }
+    const stops = [a, ...(via as { lng: number; lat: number }[]), b];
     const gate = await this._gate();
     if (gate) return gate;
 
@@ -573,9 +726,14 @@ export default class RoadNetworkEngine {
       };
     }
 
+    const milParams = this._militaryParams(opts);
     const res = await this._esri<any>(`${this._cfg.naServerUrl}/${this._cfg.routeLayer}/solve`, {
-      stops: JSON.stringify(RoadNetworkEngine._pointFeatureSet([a, b])),
+      stops: JSON.stringify(RoadNetworkEngine._pointFeatureSet(stops)),
       ...(barriers ? { polygonBarriers: JSON.stringify(barriers) } : {}),
+      ...milParams,
+      ...(opts.bestOrder && stops.length > 3
+        ? { findBestSequence: 'true', preserveFirstStop: 'true', preserveLastStop: 'true' }
+        : {}),
       returnRoutes: 'true',
       returnDirections: 'true',
       returnStops: 'false',
@@ -594,7 +752,15 @@ export default class RoadNetworkEngine {
       // OUTCOME, not a malformed request — and with barriers in play it is the
       // expected answer for an objective that is sealed off. Re-classify it so
       // callers can tell "blocked" from "the request was wrong".
-      const noSolution = /no solution|no route from location|unable to find|no path/i.test(res.error ?? '');
+      // A military routing server (GeoCore) explains a restricted failure: which roads on the plain route the travel
+      // mode closes, or that no usable road is near a stop. That text is the finding; keep it.
+      const restricted = /travel mode|under the travel mode's restrictions/i.test(res.error ?? '');
+      if (restricted) {
+        const out: RoadResult<RouteData> = { ok: false, reason: 'no-route', error: String(res.error), status: res.status };
+        EngineLogger.error(ENGINE_NAME, `Route failed under the travel mode: ${out.error}`);
+        return out;
+      }
+      const noSolution = /no solution|no route from location|unable to find|no path|no route/i.test(res.error ?? '');
       const out: RoadResult<RouteData> = noSolution
         ? {
             ok: false,
@@ -635,12 +801,20 @@ export default class RoadNetworkEngine {
         ? totalTimeMin
         : this._toMinutes(Number(attrs[`Total_${this._cfg.impedanceAttribute}`]) || 0);
 
-    // Best-effort trafficability enrichment — mutates `steps` in place with a
-    // per-step fclass and never fails the route.
-    const byClass = this._cfg.classifyRoutes
-      ? await this._classifyAlongRoute(geometry, steps, distanceKm)
-      : [];
+    // Trafficability needs the class of each road. A server that names it on each direction step (GeoCore's
+    // `roadClass`) gives it for free; otherwise a best-effort enrichment query fills it in — it mutates `steps` in
+    // place with a per-step fclass and never fails the route.
+    const stepsClassed = steps.some((st) => st.fclass);
+    const byClass = stepsClassed
+      ? RoadNetworkEngine._byClassFromSteps(steps)
+      : this._cfg.classifyRoutes
+        ? await this._classifyAlongRoute(geometry, steps, distanceKm)
+        : [];
 
+    const messages: string[] = (Array.isArray(res.data?.messages) ? res.data.messages : [])
+      .map((m: any) => String(m?.description ?? ''))
+      .filter(Boolean);
+    const military = RoadNetworkEngine._readMilitary(attrs);
     const data: RouteData = {
       distanceKm,
       travelTimeMin,
@@ -648,6 +822,9 @@ export default class RoadNetworkEngine {
       trafficability: RoadNetworkEngine.classifyRoute(byClass),
       steps,
       geometry,
+      ...(military ? { military } : {}),
+      ...(messages.length ? { messages } : {}),
+      travelMode: military ? (opts.travelMode ?? this._cfg.travelMode) : '',
     };
     EngineLogger.success(
       ENGINE_NAME,
@@ -726,7 +903,18 @@ export default class RoadNetworkEngine {
    */
   async showRoadsLayer(): Promise<boolean> {
     if (!this._view) return false;
-    if (this._roadsLayer) return true;
+    if (this._roadsLayer || this._bundleRoads?.layer) return true;
+    // The terrain bundle's road network is the same data a military routing server solves on, so roads drawn from it
+    // agree with the routes; the service's own roads layer is the fallback.
+    if (this._cfg.roadsSource !== 'service') {
+      const bundle = new BundleRoadsLayer({ bundleUrl: this._cfg.bundleUrl, layerId: RoadNetworkEngine.ROADS_LAYER_ID });
+      if (await bundle.show(this._view)) {
+        this._bundleRoads = bundle;
+        EngineLogger.success(ENGINE_NAME, `Roads drawn from the terrain bundle (network ${bundle.dataVersion})`);
+        return true;
+      }
+      if (this._cfg.roadsSource === 'bundle') return false;
+    }
     try {
       const { default: MapImageLayer } = await import('@arcgis/core/layers/MapImageLayer');
       const layer = new MapImageLayer({
@@ -754,6 +942,8 @@ export default class RoadNetworkEngine {
   }
 
   hideRoadsLayer(): void {
+    this._bundleRoads?.hide();
+    this._bundleRoads = null;
     if (this._roadsLayer && this._view?.map) {
       try {
         this._view.map.remove(this._roadsLayer);
@@ -1194,7 +1384,8 @@ export default class RoadNetworkEngine {
           // `text` is the maneuver phrasing, which carries the street name —
           // the closest thing the solver gives us to the old per-road step name.
           name: String(a.text ?? '').trim() || '(unnamed road)',
-          fclass: '', // filled in by the class enrichment pass, when it runs
+          // GeoCore names the road class on each step; otherwise the enrichment pass fills it in.
+          fclass: String(a.roadClass ?? '').trim().toLowerCase().replace(/\s+/g, '_'),
           km: Number(a.length) || 0,
           min: Number(a.time) || 0,
         };
@@ -1211,6 +1402,16 @@ export default class RoadNetworkEngine {
       steps,
       totalTimeMin: Number(directions?.summary?.totalTime) || 0,
     };
+  }
+
+  /** Distance per road class from steps that carry their class. */
+  private static _byClassFromSteps(steps: RouteStep[]): RouteClassBreakdown[] {
+    const km = new Map<string, number>();
+    for (const st of steps) {
+      if (!st.fclass) continue;
+      km.set(st.fclass, (km.get(st.fclass) ?? 0) + st.km);
+    }
+    return [...km.entries()].map(([fclass, k]) => ({ fclass, km: k })).sort((x, y) => y.km - x.km);
   }
 
   /** Impedance value (in `impedanceUnits`) → minutes. */

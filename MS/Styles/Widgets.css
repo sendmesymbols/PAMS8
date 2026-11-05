@@ -2543,6 +2543,32 @@
   display: none;
 }
 
+/* Military route summary (travel mode, load class, MSR, weakest crossing) */
+.reach-military {
+  font-size: var(--ms-fs-xs);
+  color: var(--ms-text);
+  margin: 4px 12px;
+  padding: 6px 8px;
+  border-left: 3px solid #d64541;
+  background: rgba(214, 69, 65, 0.08);
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.reach-military:empty {
+  display: none;
+}
+
+.reach-mil-title {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.reach-mil-note {
+  opacity: 0.7;
+  margin-top: 3px;
+}
+
 .reach-wp-list {
   padding: 2px 12px 4px;
   max-height: 110px;

@@ -1023,6 +1023,9 @@ class SymbolEngine implements Evented {
       classifyToleranceM: cfg.classifyToleranceM,
       timeoutMs: cfg.timeoutMs,
       availabilityTtlMs: cfg.availabilityTtlMs,
+      travelMode: cfg.travelMode,
+      bundleUrl: cfg.bundleUrl,
+      roadsSource: cfg.roadsSource,
       enabled: true,
     });
     this._roadNetworkEngine.initialize(this.view);

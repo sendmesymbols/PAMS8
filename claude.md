@@ -155,6 +155,13 @@ MS/
   bundle's `features/` (`PlacementFeatures.ts`, `advisor.groundCandidates()`); the bundle only proposes candidates,
   and `symbolEngine.designateGround(target, 'ITG' | 'MITG')` lets the user designate it as an ordinary symbol:
   Imp Gr ("IG", `MS/Symbols/ImpGr.ts`, catalog key `00000160`, a local non-2525D symbol) or Vital Gr ("VG").
+  B also carries **people round the cursor** (`population.*`, `PlacementPopulation.ts` / `PlacementPopulationView.ts` /
+  `PlacementPopulationLayer.ts`): WorldPop 2026 from the bundle's population grid, shown in any of ten card styles
+  kept side by side for comparison (`placement-population-options.html`), a civil flag per mode, a People map layer
+  and a Ground Brief block; `advisor.populationAround()` for hosts. Estimates, not a census.
+  T in GROTBC is **Trafficability**: the going engine (`going.*`, `card.*`, `PlacementGoing.ts`) gives the going dry
+  and after rain; `traffic.*` (`PlacementTrafficability.ts` / `PlacementTrafficView.ts`) adds the road line, legend
+  season controls, an overlay and (opt-in) verdict that follow the season, and the soil rule — all kept as options to compare.
   See `MS/Docs/15-placement-advisor.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.

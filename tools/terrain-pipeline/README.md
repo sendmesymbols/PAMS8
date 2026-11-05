@@ -204,35 +204,44 @@ cut the block reads several-fold. Delete the copy afterwards.
 | product | step | from | becomes |
 |---|---|---|---|
 | `terrain.tif` | `scripts/terrain.py` | class, wet and slope-band rasters; `rules.yaml terrainType` | the `terrain` layer: Plain / Hilly / Solid / Marshy / Wet / Desert (+ Mountainous, Built-up, Snow / ice) |
-| `soil.tif` | `scripts/fetch_soil.py` then `terrain.py` | SoilGrids 2.0 sand + clay, 0-30 cm, windowed from ISRIC's VRTs | the `soil` layer (USDA texture); bearing in `rules.yaml soilBearing` |
+| `soil.tif` | `scripts/fetch_soil.py` then `terrain.py` | SoilGrids 2.0 sand / silt / clay (+ Q0.05 / Q0.95), 0-30 cm, windowed from ISRIC's VRTs (average resampling); NCGDB soil areas | the `soil` layer: USDA texture, confidence, mapped bit |
+| `rci_dry.tif`, `rci_wet.tif` | `terrain.py` | the same plus coarse fragments, bulk density, organic carbon; Saxton-Rawls Ks; `rules.yaml soilStrength` | cone index dry / after rain (the engine compares it with the mode's vehicle cone index) |
+| `soil_props.tif` | `terrain.py` | the same, on the SoilGrids grid | GIS check only (texture, USCS group, confidence, Ks, cone index); not in the bundle |
 | `hut.tif` | `terrain.py` | NCGDB `Hut` (3.77 M symbols) | the `hut` layer (huts per km2, ~600 m cells) |
 | `climate.bin/json` | `scripts/climate.py` | WorldClim 2.1 5' tmin, tmax, prec, wind | `climate/` (monthly normals + frost / hot / wet / monsoon summaries) |
-| `wp`, `wc` on places | `grotbc.py` features | WorldPop 2026 constrained, 1 km (each cell split into ~250 m parts) | people nearest each place; people within 12 / 8 / 4 km of a city / district HQ / town |
+| `wp`, `wc` on places | `grotbc.py` features | WorldPop 2026 constrained, 100 m | people nearest each place; people within 12 / 8 / 4 km of a city / district HQ / town |
 
 Added 2026-11-04:
 
 | product | step | from | becomes |
 |---|---|---|---|
-| `network/` | `scripts/network.py` | `D:\Imagery\Routing\Network.gdb` `pkroads` (osm2po graph of OSM roads, 2.76 M edges) + the route / class rasters | routable road graph with NCGDB load tier, MSR and worst crossing per edge (`network/network.json` has the schema) |
+| `network/` | `scripts/network.py` | the graph GeoCore serves (`D:\Projects\GeoCore\RoutingData\Network.gdb` `pkroads`, 2.76 M OSM edges) + NCGDB road lines (conflated per edge) + class raster (bridges, fords) | **the canonical military road network**: edges.bin (one record per OBJECTID: load class, MSR, defence, bridge class, closures, condition, landslides, width, names), tiles/ for the map, routes.json. GeoCore reads the same folder for military routing (`network_military`), so routes and the map share one `dataVersion`. `--tiles-only` / `--routes-only` rewrite those from the written files. See GROTBC-Roads.md section 0 |
 | `bank.tif` | `terrain.py` | class raster (water classes) + `rules.yaml banks` | the `bank` layer: river / lake, floodplain, stream and canal banks in 30 / 75 / 150 m bands |
 | `bld.tif`, `cells.npz` | `scripts/buildings.py` | Google Open Buildings v3 (16.6 GB, 7 S2 tiles) + GHSL building height (2018) | the `bld` layer: building density, mean footprint (huts ... industrial) and height class per ~150 m cell |
 | `settlements.json/.geojson` | `scripts/settlements.py` | built-up class, WorldPop, place names, `cells.npz`, GHSL SMOD | every settlement with name, size class (metropolitan city ... hamlet), population, males 15-49 / under 15 / 65+, people per km2, area, buildings, mean height, degree of urbanisation |
 | GeoNames kinds 147-159 + `an` / `gn` on places | `grotbc.py` features | `D:\Imagery\PK.txt` (GeoNames dump, CC BY 4.0) | schools, banks, government offices, named mountains / hills / ridges, dunes, streams, canals, wells, marshes, localities, forests; alternate spellings on matched places, new places where the NCGDB has none |
 
-### Population: WorldPop 2026 (updated 2026-11-04)
+### Population: WorldPop 2026 (updated 2026-11-04; people at 100 m since 2026-11-05)
 
 Rule set by the owner: where WorldPop offers two choices, take the **latest** and the **coarser** one. So the Global2
 R2025A **2026** estimate (the current year; 2027-2030 are projections) at **1 km**, constrained and UN-adjusted (the
-only 1 km form). Population Density and Population Weighted Density never moved to Global2: their latest is 2020.
+only 1 km form). The one exception, chosen by the owner on 2026-11-05: the **population count itself is the 100 m
+file** (136 MB; 100 m has no UN-adjusted form), because settlements and villages need it. Age groups stay 1 km and
+are applied as shares (group / all 20 total bands) to the 100 m people. Population Density and Population Weighted Density never moved to Global2: their latest is 2020.
 Every source in `sources.lock` carries `dataDate` (the time the data describes) and `released` (the publisher's
-release); `manifest.json` `sources[]`, `LICENSES.txt` and each `population.json` layer repeat them.
+release), and its location (the `files` / `pattern` URLs, or `location` for a local or VRT source).
+`manifest.json` `sources[]` (NCGDB included) and `LICENSES.txt` list location and dates for each source;
+`layerSources`, every `grotbc.layers.*.sources` and every file entry (`climate`, `population`, `network`,
+`settlements`, `features`, `adminSources` ...) name the source ids it was built from; `population.json` layers,
+`settlements.json sources`, `features/index.json sources` and `climate.json sourceRef` carry the full location and
+dates themselves.
 
 | product | step | from | becomes |
 |---|---|---|---|
-| `population.bin/json` | `scripts/population.py` (`make population`) | `worldpop` (2026 count), `worldpop_agesex` (2026: males 15-49, under 15, 65+), `worldpop_density` (2020, unconstrained), `worldpop_pwd` (2020) | `population/`: 2034 x 1611 cells of 30", uint16 layers `pop`, `males15_49`, `under15`, `over65`, `density_2020` (people / km2, also over farmland); `provinces` = population weighted density per GADM 3.6 province |
-| settlement population | `settlements.py` | the same 2026 rasters + `cells.npz` | each 1 km cell's people shared over the ~150 m pixels inside it by building footprint area (evenly over built-up pixels where it has no mapped buildings) |
+| `population.bin/json` | `scripts/population.py` (`make population`) | `worldpop` (2026 count, 100 m, summed into the 1 km cells), `worldpop_agesex` (2026: shares of males 15-49, under 15, 65+), `worldpop_density` (2020, unconstrained), `worldpop_pwd` (2020) | `population/`: 2034 x 1611 cells of 30", uint16 layers `pop`, `males15_49`, `under15`, `over65`, `density_2020` (people / km2, also over farmland); `provinces` = population weighted density per GADM 3.6 province |
+| settlement population | `settlements.py` | the same 2026 rasters | each 100 m cell's people counted in the settlement its centre falls in; age groups = those people x their 1 km cell's shares (a coarser people file would be shared out by building footprint area, `cells.npz`) |
 
-The 2020 file (`work/raw/worldpop/pak_ppp_2020_constrained.tif`) is no longer read and can be deleted.
+The earlier 2020 (100 m) and 2026 (1 km) population files were removed from `work/raw/worldpop/` on 2026-11-05.
 
 ### G: terrain feature inventory and Important Tactical Ground (added 2026-11-04)
 

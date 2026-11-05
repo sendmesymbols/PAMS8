@@ -42,6 +42,7 @@ FORMAT_VERSION = 2
 SAMPLE_M = 25.0
 MATCH_M = 35.0
 ANGLE_DEG = 35.0
+MIN_SHARE = 0.3          # a candidate NCGDB line must cover this share of the edge
 SIMPLIFY_M = 5.0
 TILE_Z = 10
 QUANT = 4096
@@ -178,8 +179,35 @@ def _bearing(dx, dy):
     return np.degrees(np.arctan2(dy, dx)) % 180.0
 
 
-def conflate(gs, lines, chunk: int = 1_500_000):
-    """Per edge: index of the NCGDB line most of its aligned samples sit on (-1 none) and the matched share."""
+def _group_osm(clazz: np.ndarray) -> np.ndarray:
+    """0 major (motorway, trunk, primary and their links), 1 mid (secondary, tertiary), 2 minor."""
+    return np.where(clazz <= 16, 0, np.where(clazz <= 32, 1, 2))
+
+
+def _group_ncgdb(kind: str) -> int:
+    """0 major (motorway, highway, main road), 1 mid (metalled), 2 minor (local, street, unmetalled, tracks)."""
+    if kind in ("motorway", "highway", "main_road", "road_tunnel"):
+        return 0
+    if kind == "metalled":
+        return 1
+    return 2
+
+
+# How well a NCGDB road of one group can be the OSM road of another: [osm group][ncgdb group]. A motorway is never a
+# village road running beside it (0 = not a candidate), a minor OSM road may be any NCGDB road.
+COMPAT = np.array([[1.0, 0.6, 0.0],
+                   [1.0, 1.0, 0.5],
+                   [0.8, 1.0, 1.0]])
+
+
+def conflate(gs, lines, recs, clazz: np.ndarray, chunk: int = 1_000_000):
+    """Per edge: the NCGDB line it is (-1 none) and the share of its samples on an aligned NCGDB road.
+
+    Every NCGDB line within MATCH_M of a sample and aligned with the edge there is a candidate (the Pakmap and the
+    topographic layer often both draw the same road, one with a load class and one without, and a village road may run
+    alongside a highway). A candidate's score is its samples x how well its road type fits the OSM class (COMPAT; a
+    motorway never takes a village road's attributes) / (1 + its mean distance / 15 m), with a small bonus for a
+    recorded load class (x1.3) and a Pakmap line (x1.1). The best must cover at least MIN_SHARE of the edge."""
     import shapely
     tree = shapely.STRtree(lines)
     dens = shapely.segmentize(gs, SAMPLE_M)
@@ -193,16 +221,19 @@ def conflate(gs, lines, chunk: int = 1_500_000):
     obear = _bearing(dx, dy)
     n_e = len(gs)
     total = np.bincount(eidx, minlength=n_e)
-    keys = []
+    keys, dsum = [], []
+    hit_samples = np.zeros(len(xy), bool)
     for a in range(0, len(xy), chunk):
         b = min(len(xy), a + chunk)
         pts = shapely.points(xy[a:b])
         lat = np.arctan(np.sinh(xy[a:b, 1] / 6378137.0))
         # MATCH_M on the ground is MATCH_M / cos(lat) in Web Mercator; use the chunk's widest
         maxd = MATCH_M / float(np.cos(lat).min())
-        (pi, ti), dist = tree.query_nearest(pts, max_distance=maxd, return_distance=True, all_matches=False)
-        ok = dist * np.cos(lat[pi]) <= MATCH_M
-        pi, ti = pi[ok], ti[ok]
+        pi, ti = tree.query(pts, predicate="dwithin", distance=maxd)
+        if len(pi):
+            dist = shapely.distance(pts[pi], lines[ti]) * np.cos(lat[pi])
+            ok = dist <= MATCH_M
+            pi, ti, dist = pi[ok], ti[ok], dist[ok]
         if len(pi):
             ln = lines[ti]
             dpos = shapely.line_locate_point(ln, pts[pi])
@@ -213,16 +244,30 @@ def conflate(gs, lines, chunk: int = 1_500_000):
             diff = np.minimum(diff, 180 - diff)
             al = diff <= ANGLE_DEG
             keys.append(eidx[a:b][pi[al]].astype(np.int64) * len(lines) + ti[al])
+            dsum.append(dist[al])
+            hit_samples[a + pi[al]] = True
         log.info("  conflation: %d / %d samples", b, len(xy))
     key = np.concatenate(keys) if keys else np.zeros(0, np.int64)
-    uk, cnt = np.unique(key, return_counts=True)
+    dall = np.concatenate(dsum) if dsum else np.zeros(0)
+    uk, inv, cnt = np.unique(key, return_inverse=True, return_counts=True)
+    mean_d = np.bincount(inv, weights=dall, minlength=len(uk)) / np.maximum(cnt, 1)
     ke, kl = uk // len(lines), uk % len(lines)
-    o = np.lexsort((-cnt, ke))
+    loaded = np.array([r["load"] is not None for r in recs])
+    pakmap = np.array([r["src"] == 1 for r in recs])
+    ngroup = np.array([_group_ncgdb(r["kind"]) for r in recs])
+    compat = COMPAT[_group_osm(clazz.astype(np.int64))[ke], ngroup[kl]]
+    covered = cnt / np.maximum(total[ke], 1)
+    score = (cnt * compat / (1.0 + mean_d / 15.0)
+             * np.where(loaded[kl], 1.3, 1.0) * np.where(pakmap[kl], 1.1, 1.0))
+    score[(covered < MIN_SHARE) | (compat <= 0)] = 0
+    o = np.lexsort((-score, ke))
     first = np.ones(len(o), bool)
     first[1:] = ke[o][1:] != ke[o][:-1]
+    sel = o[first]
+    sel = sel[score[sel] > 0]
     winner = np.full(n_e, -1, np.int64)
-    winner[ke[o][first]] = kl[o][first]
-    hits = np.bincount(ke, weights=cnt, minlength=n_e)
+    winner[ke[sel]] = kl[sel]
+    hits = np.bincount(eidx[hit_samples], minlength=n_e)
     share = np.where(total > 0, hits / np.maximum(total, 1), 0.0)
     return winner, share, xy, eidx
 
@@ -250,17 +295,14 @@ def crossings(xy, eidx, n_e, grid: dict, class_tif: Path):
             h = min(strip, grid["height"] - r0)
             cv = cs.read(1, window=Window(0, r0, grid["width"], h))
             ccode[sel] = cv[row[sel] - r0, col[sel]]
-    worst = np.zeros(n_e, np.int16)
-    xcode = np.zeros(n_e, np.uint8)
-    for cls, (code, bad) in XING_OF_CLASS.items():
-        e = np.unique(eidx[ccode == cls])
-        if bad == 0:
-            xcode[e[xcode[e] == 0]] = code
-            continue
-        better = bad > worst[e]
-        worst[e[better]] = bad
-        xcode[e[better]] = code
-    return xcode
+    # Only whether the edge crosses water on a bridge, or at a ford / ferry: the bridge pixel's class is the class of
+    # whichever NCGDB road the pixel was burned for, which for an OSM line lying 15-20 m off may be a neighbouring minor
+    # road. The edge's own bridge class comes from its own load code (see build).
+    bridge = np.zeros(n_e, bool)
+    bridge[np.unique(eidx[np.isin(ccode, [39, 40, 41, 42])])] = True
+    ford = np.zeros(n_e, bool)
+    ford[np.unique(eidx[ccode == 45])] = True
+    return bridge, ford
 
 
 # ----------------------------------------------------------------------------- build
@@ -283,8 +325,8 @@ def build(args) -> int:
     oid, gs, d = read_osm(args.network)
     n = len(gs)
     lines, recs = read_ncgdb(str(gdb), tk, msr_cfg)
-    winner, share, sxy, seidx = conflate(gs, lines)
-    xcode = crossings(sxy, seidx, n, grid, args.class_tif)
+    winner, share, sxy, seidx = conflate(gs, lines, recs, d["CLAZZ"].astype(np.int64))
+    on_bridge, at_ford = crossings(sxy, seidx, n, grid, args.class_tif)
     del sxy, seidx
 
     # names and road numbers: one string table
@@ -325,7 +367,7 @@ def build(args) -> int:
     for i in range(n):
         w = winner[i]
         osm_name = d["OSM_NAME"][i]
-        if w >= 0 and share[i] >= 0.3:
+        if w >= 0:
             r = recs[w]
             k = r["kind"]
             kind[i] = grotbc.ROUTE_TYPES.get(k, 0)
@@ -355,6 +397,15 @@ def build(args) -> int:
     tier[known & (load >= int(tk["limitedClass"]))] = 2
     tier[known & (load >= int(tk["minClass"]))] = 3
     tier[known & np.isfinite(wm) & (wm < min_w)] = 1
+    # Crossing class: the NCGDB load code is the class the weakest structure on that stretch carries, so a bridge on a
+    # road with a recorded class takes the road's class; one on a road with none is "class not recorded"; a ford or
+    # ferry is itself. Foot and railway bridges are not on a road edge (a pixel of one is a neighbour's).
+    xcode = np.zeros(n, np.uint8)
+    xcode[at_ford] = 5
+    xcode[on_bridge & ~known] = 4
+    xcode[on_bridge & known & (load >= int(tk["minClass"]))] = 1
+    xcode[on_bridge & known & (load >= int(tk["limitedClass"])) & (load < int(tk["minClass"]))] = 2
+    xcode[on_bridge & known & (load < int(tk["limitedClass"]))] = 3
     weak = np.isin(xcode, [2, 3, 4, 5, 6])
     flags |= ((tier == 3) & ~weak).astype(np.uint32) << FLAG_BITS["tankable"]
     flags |= (~known).astype(np.uint32) << FLAG_BITS["loadUnknown"]
@@ -399,7 +450,7 @@ def build(args) -> int:
     e.tofile(out / "edges.bin")
     (out / "names.json").write_text(json.dumps(names, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
-    write_tiles(simple, out / "tiles")
+    write_tiles(out)
     write_routes(e, gs, names, out / "routes.json")
     version = hashlib.sha256((out / "edges.bin").read_bytes()).hexdigest()[:16]
     header(e, ids, names, glon, rules, args, version, out)
@@ -407,36 +458,73 @@ def build(args) -> int:
     return 0
 
 
-def write_tiles(simple, out: Path) -> None:
-    """Each edge drawn in the z10 tile of its middle (edges are short; the few long ones overhang their tile)."""
-    import shapely
+def write_tiles(out: Path) -> None:
+    """network/tiles/10/{x}/{y}.json from the written edges.bin, nodes.bin and geom.bin, so the map draws exactly the
+    edges GeoCore routes on. Each edge goes in the z10 tile of its middle (edges are short; the few long ones overhang
+    their tile). A line is [edge index, clazz, flags, load, xing, name, rno, [x0, y0, x1, y1, ...]] in tile units
+    (0..QUANT-1 inside the tile, Web Mercator, y down); name / rno index names.json."""
+    e = np.fromfile(out / "edges.bin", dtype=EDGE_DTYPE)
+    nodes = np.fromfile(out / "nodes.bin", dtype="<f4").reshape(-1, 2).astype("float64")
+    geom = np.fromfile(out / "geom.bin", dtype="<f4").reshape(-1, 2).astype("float64")
+
+    def merc(lonlat):
+        x = np.radians(lonlat[:, 0]) * 6378137.0
+        y = np.log(np.tan(np.pi / 4 + np.radians(np.clip(lonlat[:, 1], -85.0511, 85.0511)) / 2)) * 6378137.0
+        return np.column_stack([x, y])
+
+    nm, gm = merc(nodes), merc(geom)
     size = 2 * ORIGIN_SHIFT / 2 ** TILE_Z
-    mid = shapely.get_coordinates(shapely.line_interpolate_point(simple, 0.5, normalized=True))
+    a, b = nm[e["src"]], nm[e["dst"]]
+    mid = (a + b) / 2
     tx = np.floor((mid[:, 0] + ORIGIN_SHIFT) / size).astype(np.int64)
     ty = np.floor((ORIGIN_SHIFT - mid[:, 1]) / size).astype(np.int64)
-    coords, cidx = shapely.get_coordinates(simple, return_index=True)
-    starts = np.concatenate([[0], np.cumsum(np.bincount(cidx, minlength=len(simple)))])
     key = tx * 100000 + ty
     order = np.argsort(key, kind="stable")
-    ks = key[order]
-    bounds = np.flatnonzero(np.diff(ks)) + 1
-    groups = np.split(order, bounds)
+    groups = np.split(order, np.flatnonzero(np.diff(key[order])) + 1)
+    tiles = out / "tiles"
     n_t = 0
     for g in groups:
         x, y = int(tx[g[0]]), int(ty[g[0]])
         minx, maxy = -ORIGIN_SHIFT + x * size, ORIGIN_SHIFT - y * size
         lines = []
         for i in g:
-            c = coords[starts[i]:starts[i + 1]]
+            r = e[i]
+            g0, gn = int(r["g0"]), int(r["gn"])
+            c = np.vstack([a[i:i + 1], gm[g0:g0 + gn], b[i:i + 1]])
             q = np.empty((len(c), 2), np.int64)
             q[:, 0] = np.rint((c[:, 0] - minx) / size * QUANT)
             q[:, 1] = np.rint((maxy - c[:, 1]) / size * QUANT)
-            lines.append([int(i), q.ravel().tolist()])
-        p = out / str(TILE_Z) / str(x) / f"{y}.json"
+            lines.append([int(i), int(r["clazz"]), int(r["flags"]), int(r["load"]), int(r["xing"]), int(r["name"]),
+                          int(r["rno"]), q.ravel().tolist()])
+        p = tiles / str(TILE_Z) / str(x) / f"{y}.json"
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps({"z": TILE_Z, "x": x, "y": y, "q": QUANT, "l": lines}, separators=(",", ":")), encoding="utf-8")
+        p.write_text(json.dumps({"z": TILE_Z, "x": x, "y": y, "q": QUANT,
+                                 "cols": ["edge", "clazz", "flags", "load", "xing", "name", "rno", "xy"], "l": lines},
+                                separators=(",", ":")), encoding="utf-8")
         n_t += 1
     log.info("tiles: %d z%d tiles", n_t, TILE_Z)
+
+
+def edge_geoms(out: Path):
+    """The edges as Web Mercator lines, rebuilt from the written nodes.bin, geom.bin and edges.bin."""
+    import shapely
+    e = np.fromfile(out / "edges.bin", dtype=EDGE_DTYPE)
+    nodes = np.fromfile(out / "nodes.bin", dtype="<f4").reshape(-1, 2).astype("float64")
+    geom = np.fromfile(out / "geom.bin", dtype="<f4").reshape(-1, 2).astype("float64")
+
+    def merc(ll):
+        return np.column_stack([np.radians(ll[:, 0]) * 6378137.0,
+                                np.log(np.tan(np.pi / 4 + np.radians(np.clip(ll[:, 1], -85.0511, 85.0511)) / 2)) * 6378137.0])
+
+    nm, gm = merc(nodes), merc(geom)
+    parts, idx = [], []
+    for i in range(len(e)):
+        g0, gn = int(e["g0"][i]), int(e["gn"][i])
+        c = np.vstack([nm[e["src"][i]][None], gm[g0:g0 + gn], nm[e["dst"][i]][None]])
+        parts.append(c)
+        idx.append(np.full(len(c), i))
+    coords, ix = np.vstack(parts), np.concatenate(idx)
+    return e, shapely.linestrings(coords, indices=ix)
 
 
 def write_routes(e, gs, names, path: Path) -> None:
@@ -452,7 +540,8 @@ def write_routes(e, gs, names, path: Path) -> None:
              "c": f"{load}" if load else None, "m": (f >> FLAG_BITS["msr"]) & 1,
              "x": ",".join(MONTHS[j].title() for j in range(12) if int(e["close"][i]) >> j & 1) or None,
              "cn": COND.get(int(e["cond"][i]))}
-        ri.add_road({k: v for k, v in a.items() if v}, gs[i])
+        # OSM draws a dual carriageway as two one-way lines: each counts half towards the road's length
+        ri.add_road({k: v for k, v in a.items() if v}, gs[i], 0.5 if f & 1 else 1.0)
     ri.write(path)
 
 
@@ -476,6 +565,8 @@ def header(e, ids, names, glon, rules, args, version: str, out: Path) -> None:
                    "attributes": "NCGDB Roads_updated_2016_Pakmap and Road lines, conflated per edge; class raster for crossings"},
         "files": {"nodes": "nodes.bin", "edges": "edges.bin", "geom": "geom.bin", "names": "names.json",
                   "tiles": "tiles/{z}/{x}/{y}.json", "routes": "routes.json"},
+        "tiles": {"z": TILE_Z, "quant": QUANT, "cols": ["edge", "clazz", "flags", "load", "xing", "name", "rno", "xy"],
+                  "note": "each edge in the z10 tile of its middle; xy in tile units 0..quant-1, Web Mercator, y down"},
         "nodes": "float32 little-endian [lon, lat] per node",
         "edge": {"bytes": EDGE_DTYPE.itemsize, "fields": [[k, str(EDGE_DTYPE.fields[k][0])] for k in EDGE_DTYPE.names],
                  "flagBits": FLAG_BITS,
@@ -492,7 +583,8 @@ def header(e, ids, names, glon, rules, args, version: str, out: Path) -> None:
                       "condition": {str(k): v for k, v in COND.items() if v}, "srcKind": {str(k): v for k, v in SRC_KIND.items()}},
         "rules": {"tankable": rules.get("tankable"), "msr": rules.get("msr"), "tanks": rules.get("tanks"),
                   "snowClosure": "a closure recorded only as 'Snow' is taken as December to March"},
-        "conflation": {"sampleM": SAMPLE_M, "matchM": MATCH_M, "angleDeg": ANGLE_DEG, "minShare": 0.3},
+        "conflation": {"sampleM": SAMPLE_M, "matchM": MATCH_M, "angleDeg": ANGLE_DEG, "minShare": MIN_SHARE,
+                       "score": "samples x road-type fit (COMPAT; a motorway never takes a village road) / (1 + mean distance / 15 m) x1.3 with a recorded load class x1.1 for Pakmap"},
         "stats": {"edges": int(len(e)), "nodes": int(len(ids)), "km": round(float(km.sum())), "geomVertices": int(len(glon)),
                   "names": len(names) - 1, "matchedKmPct": round(100 * float(km[bit("matched")].sum() / km.sum()), 1),
                   "msrKm": round(float(km[bit("msr")].sum())), "tankableKm": round(float(km[bit("tankable")].sum())),
@@ -517,7 +609,19 @@ def main() -> int:
     ap.add_argument("--rules", type=Path, default=Path("rules.yaml"))
     ap.add_argument("--classes", type=Path, default=Path("classes.yaml"))
     ap.add_argument("--out", type=Path, default=Path("work/network"))
-    return build(ap.parse_args())
+    ap.add_argument("--tiles-only", action="store_true", help="rewrite tiles/ from the edges.bin already in --out")
+    ap.add_argument("--routes-only", action="store_true", help="rewrite routes.json from the files already in --out")
+    args = ap.parse_args()
+    if args.tiles_only:
+        write_tiles(args.out)
+        return 0
+    if args.routes_only:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        e, gs = edge_geoms(args.out)
+        names = json.loads((args.out / "names.json").read_text(encoding="utf-8"))
+        write_routes(e, gs, names, args.out / "routes.json")
+        return 0
+    return build(args)
 
 
 if __name__ == "__main__":

@@ -310,7 +310,9 @@ layers:
     "7": Mountainous
     "8": Built-up
     "9": Snow / ice
-  soil:                    # USDA texture class of the top 30 cm (SoilGrids sand / clay, silt = the rest)
+  # soil layer value = texture | confidence << 4 | mapped << 6 (scripts/terrain.py): texture = value & 15 (codes below),
+  # confidence = (value >> 4) & 3 (soilConfidence), bit 6 = taken from the NCGDB 1:50k soil areas; 255 nodata.
+  soil:                    # USDA texture class of the top 30 cm (SoilGrids sand / silt / clay normalised); 13-14 mapped only
     "1": Sand
     "2": Loamy sand
     "3": Sandy loam
@@ -323,6 +325,13 @@ layers:
     "10": Sandy clay
     "11": Silty clay
     "12": Clay
+    "13": Rocky / stony
+    "14": Salt pan / kallar
+  soilConfidence:          # (soil value >> 4) & 3: width of SoilGrids' 90 % interval (rules.yaml soilStrength.confidence)
+    "0": Better than typical
+    "1": Typical
+    "2": Poorer than typical
+    "3": Filled from nearby soil
   bld:                     # GROTBC B construction: Google Open Buildings footprints per ~150 m cell (scripts/buildings.py)
     density: { "0": None, "1": "Scattered (under 30 / km2)", "2": "Sparse (30-100 / km2)", "3": "Open (100-300 / km2)", "4": "Medium (300-1,000 / km2)", "5": "Dense (1,000-3,000 / km2)", "6": "Very dense (3,000+ / km2)" }
     size: { "1": "Huts / kacha (under 40 m2)", "2": "Small houses (40-100 m2)", "3": "Houses (100-250 m2)", "4": "Large houses / blocks (250-1,000 m2)", "5": "Industrial / large buildings (1,000+ m2)" }

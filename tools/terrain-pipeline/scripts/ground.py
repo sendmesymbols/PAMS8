@@ -41,7 +41,7 @@ import numpy as np
 
 from common import class_table, load_json, load_yaml, row_latitudes, setup_logging
 from grotbc import FEATURE_Z, GROUND_ATTRS, GROUND_KINDS, KIND_CODE, KINDS, QUANT, TileWriter
-from common import ORIGIN_SHIFT
+from common import ORIGIN_SHIFT, source_ref
 
 log = setup_logging("ground")
 
@@ -791,6 +791,10 @@ def merge(feat: Path, tiles: dict, pts: list, lines: list, flagged: int) -> dict
     idx = load_json(feat / "index.json")
     for k, v in idx["kinds"].items():
         v["count"] = counts.get(int(k), 0)
+    lock = load_yaml(Path("sources.lock")) if Path("sources.lock").exists() else None
+    idx["sources"] = dict(old.get("sources") or {}, **{
+        "Copernicus DEM (kinds 160-165, 204)": source_ref(lock, "glo30"),
+        "OSM road graph (kind 166 junctions)": source_ref(lock, "osm_network")})
     idx["itg"] = {"note": "ig / it on a point: ITG candidate (rules.json grotbc.itg). Candidates only; ITG / MITG "
                           "designation belongs to the task and is made in the app.", "flaggedExisting": flagged}
     (feat / "index.json").write_text(json.dumps(idx, indent=1, ensure_ascii=False), encoding="utf-8")

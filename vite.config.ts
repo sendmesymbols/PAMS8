@@ -152,6 +152,14 @@ export default defineConfig(({ mode }) => {
             // and a self-signed cert — hence the same-origin proxy with
             // `secure:false`. The rewrite strips only the `/roadnet` prefix, so
             // `/roadnet/arcgis/rest/...` reaches the server as `/arcgis/rest/...`.
+            // GeoCore (this repo's companion routing server, an ArcGIS NAServer with military
+            // travel modes). Point roadNetwork.naServerUrl at
+            // `/geocore/arcgis/rest/services/roads/NAServer` to use it; GEOCORE_URL picks another host.
+            '/geocore': {
+                target: process.env.GEOCORE_URL || 'http://localhost:8738',
+                changeOrigin: true,
+                rewrite: (p) => p.replace(/^\/geocore/, ''),
+            },
             '/roadnet': {
                 target: 'https://192.168.0.15:6443',
                 changeOrigin: true,

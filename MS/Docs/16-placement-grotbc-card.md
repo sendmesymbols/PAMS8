@@ -126,6 +126,19 @@ selected symbol: all six sections, a header line with mode · 1:50k sheet · teh
 and **Copy as Text** for orders. Esc or G again closes it. The brief is a panel, not the cursor card: it does not
 follow the pointer.
 
+**Built 2026-11-05 (going, soil, movement; user to pick the defaults).** Every option from
+`placement-card-movement.html` is in the engine as its own switch under **Card Sections** (`placement.card.*`), so they
+can be compared live: A `goingLines` (on), B `movementRose` (on), C `soilStrength`, E `exitStrip`, F `modeMatrix`,
+G `seasonRibbon`, H `goingMap`, D `briefKey` (on: G opens the brief). **Cross-Country Going** (`placement.going.*`)
+sets the ground state (`season`: auto by the month's rain at the point / dry / wet, `month`, `wetMonthMm` 75),
+the movement range (`rangeKm` 2) and which symbols get the movement sections (`movementFor`: units / points / all).
+Code: `PlacementGoing.ts` (pure: decode soil / rci, `pixelGoing`, `resolveSeason`, `rateMovement`, `ClimateGrid`),
+`PlacementGoingView.ts` (the card sections and shared pictures), `PlacementBrief.ts` (the G panel; other modules add
+sections with `registerBriefSection()`), `PlacementAdvisor._goingNear()` (sets `v.going`: soil, point going dry /
+after rain, three-mode matrix, 8 rays to the range, going grid, monthly rain). Going at a pixel = worst of the class
+(profile no-go / caution), the soil (cone index vs `soilStrength.vehicles`) and, after rain, the `wet` layer.
+The Trafficability (`placement.traffic.*`) and People (`placement.population.*`) rows build on the same `v.going` and brief.
+
 ### 3.3 Section content and its data
 
 | Section | Lines | Source (bundle v2) |
@@ -230,7 +243,8 @@ block naming the layers and files.
 | Cover & concealment | `cc/…` | concealment = v >> 4, cover = v & 15; 0 none, 1 poor, 2 fair, 3 good; 255 nodata |
 | Wet season | `wet/…` | 0 normal, 1 flood-prone, 2 seasonal water, 3 riverbed / floodplain, 4 waterlogged / marsh, 5 permanent water; overviews MAX |
 | Terrain type (G, read by T) | `terrain/…` | 1 Plain, 2 Hilly, 3 Solid (rock / scree / stony bed), 4 Marshy, 5 Wet (open water), 6 Desert, 7 Mountainous (15°+), 8 Built-up, 9 Snow / ice; 255 nodata; overviews = majority. Rules in `rules.yaml terrainType` (starting proposal), shipped in `rules.json grotbc.terrainType` |
-| Soil (G) | `soil/…` | USDA texture of the top 30 cm, 1 Sand … 12 Clay (`rules.json grotbc.layers.soil`); `rules.json grotbc.soilBearing[code]` = `{dry, wet, note}` going (used by T). SoilGrids 2.0, ~250 m, modelled; 255 nodata |
+| Soil (G) | `soil/…` | texture = v & 15: USDA class of the top 30 cm, 1 Sand … 12 Clay, 13 Rocky / stony, 14 Salt pan (13–14 only from the NCGDB map; `rules.json grotbc.layers.soil`); confidence = (v >> 4) & 3: 0 Better than typical, 1 Typical, 2 Poorer than typical, 3 Filled from nearby soil (`layers.soilConfidence`; relative bands of the width of SoilGrids' 90 % interval, which is 67–87 points wide everywhere, so the card should always say "modelled"); bit 6 = NCGDB 1:50k soil area (wins over the model). `soilBearing[texture].note` for the card text. SoilGrids 2.0, ~250 m, modelled; 255 nodata |
+| Soil strength (T) | `rci_dry/…`, `rci_wet/…` | cone index of the top 30 cm in the dry season / after heavy rain = v & 127 (127 = 127 or more), bit 7 = coarse (sand); 255 nodata; overviews keep the weakest pixel. Going: `rules.json grotbc.soilStrength.vehicles[byProfile[mode]]` gives `[vci1, vci50]` (`coarse` pair on sand, `fine` otherwise): cone index ≥ vci50 GO, ≥ vci1 SLOW-GO, else NO-GO. Replaces the `soilBearing` grades for the going; numbers are a starting proposal |
 | Huts (B, construction) | `hut/…` | bits 0–6 permanent (kacha / mud) huts per km², bit 7 temporary huts nearby; 255 nodata |
 | Climate (T, season for the going) | `climate/climate.json` + `climate.bin` | 252 × 204 cells of 5′ (WorldClim 1970–2000 normals); int16 layers: monthly `tmin` / `tmax` (0.1 °C), `prec` (mm), `wind` (0.1 m/s), plus `tmean`, `prec_year`, `monsoon_pct`, `frost_months`, `hot_months`, `wet_months`. Row 0 = north |
 | Elevation | `elev_hi/…`, `elev_lo/…` | metres = hi × 256 + lo − 500; hi 255 = nodata; overviews = mean |
@@ -242,7 +256,7 @@ block naming the layers and files.
 | Road graph (R) | `network/network.json` + `nodes.bin`, `edges.bin`, `geom.bin`, `names.json` | OSM road graph (2.76 M edges, 567,613 km) with per-edge NCGDB route code, MSR, tankable flag and worst crossing; schema in `network.json`. No router reads it yet (`GROTBC-Roads.md`) |
 | Banks (O / C) | `bank/…` | land along water: kind = value >> 2 (1 river / lake, 2 floodplain edge, 3 perennial stream, 4 canal, 5 distributary), band = value & 3 (0 within 30 m, 1 75 m, 2 150 m); what a bank gives in `rules.json grotbc.banks` (cover four ways + deployment line) |
 | Buildings (B) | `bld/…` | Open Buildings per ~150 m cell: density = value & 7 (`grotbc.layers.bld.density`), mean footprint class = (value >> 3) & 7 (huts under 40 m² … industrial over 1,000 m²), GHSL height class = value >> 6 (low / medium / multi-storey) |
-| Population (B, civil considerations) | `population/population.json` + `population.bin` | 2034 × 1611 cells of 30″ (~1 km), uint16, value = file / `scale`, 65535 = no data, row 0 = north: `pop`, `males15_49`, `under15`, `over65` (WorldPop 2026, constrained: only cells with buildings), `density_2020` (people / km², unconstrained, so it also shows people living among the fields). `provinces.rows` = population weighted density per province (2020; GADM 3.6 names, F.A.T.A. still separate). Every layer names its source, `dataDate` and `released` |
+| Population (B, civil considerations) | `population/population.json` + `population.bin` | 2034 × 1611 cells of 30″ (~1 km), uint16, value = file / `scale`, 65535 = no data, row 0 = north: `pop` (WorldPop 2026 100 m people summed into the cell; constrained: only cells with buildings), `males15_49`, `under15`, `over65` (those people x the 1 km age share), `density_2020` (people / km², unconstrained, so it also shows people living among the fields). `provinces.rows` = population weighted density per province (2020; GADM 3.6 names, F.A.T.A. still separate). Every layer names its source, `location`, `dataDate` and `released` |
 | Settlements (B) | `settlements.json`, `settlements.geojson` | every built-up settlement: `name`, `alsoNames`, `class` / `label` (Metropolitan city 1 M+, Large city 500 k+, Mid-size city 100 k+, Town 20 k+, Large village 5 k+, Village 500+, Hamlet), `pop` (WorldPop 2026 inside the built-up patch), `males15_49`, `under15`, `over65`, `perKm2`, `km2`, `buildings`, `meanFootprintM2`, `meanHeightM`, `dou` / `douLabel` (GHSL degree of urbanisation), district / tehsil / province; outlines for 5,000+ people |
 | GeoNames detail | `features/` kinds 147–159 | schools, banks, government offices, named mountains / hills / ridges (`e` elevation), dunes, landforms, streams, canals, wells, marshes, localities, forests, road junctions; `src: gn`; places carry `an` (alternate names) and `gn` (GeoNames id) |
 | Named routes | `routes.json` | `roads` (by road number, else name) and `rails` (by name): `id`, `name` / `no` + `segs`, `from`, `to` (when the name reads "A - B"), `km` (sum of the mapped lines, geodesic), `type`, `msr`, `load` `[min, max]`, `closed` (seasons as recorded), `cond`, `bbox` `[w, s, e, n]`. Routes under 1 km that are neither MSR nor closed are left out |
@@ -263,7 +277,8 @@ Road **condition** is recorded on about 4 % of road segments, **seasonal closure
 sites** on 71 (the NCGDB fields `CONDITION`, `CLOSED_DUE`, `NO_OF_SLID`), so "no closure" means "none recorded". Road
 and rail lines also cover the Indian-administered side, because the data extent is the whole relief-map sheet.
 Not in the NCGDB or the open data used: schools, government buildings and unnamed markets (77 markets, no
-names), building construction type beyond hut symbols (`hut`), and any soil survey (`soil` is a 250 m model).
+names), building construction type beyond hut symbols (`hut`), and any soil survey (`soil` / `rci_*` are a 250 m model;
+the cone index is estimated from texture, stones, density and drainage, not measured).
 `wp` / `wc` are WorldPop estimates, not census counts; huts are mapped symbols, not a building survey.
 
 ---

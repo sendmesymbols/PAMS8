@@ -1,7 +1,63 @@
 # GROTBC-R · Roads, Tracks and Railway Network: routing requirement
 
-Status: **proposal for the owner to approve** (written 2026-11-03). Companion to `GROTBC.md` section 2 (R) and
-`MS/Docs/16-placement-grotbc-card.md`. Nothing in this document is built yet except what section 2 lists as present.
+Status: written 2026-11-03 as a proposal; **road routing built 2026-11-05** (section 0). Companion to `GROTBC.md`
+section 2 (R) and `MS/Docs/16-placement-grotbc-card.md`.
+
+## 0 · What is built (2026-11-05)
+
+**One road dataset for solving and for the map.** `tools/terrain-pipeline/scripts/network.py` makes the canonical
+military road network from the graph GeoCore serves (`D:\Projects\GeoCore\RoutingData\Network.gdb`, `pkroads`): one
+record per edge, ordered by OBJECTID, with the NCGDB attributes conflated onto it (load class, MSR, defence road,
+bridge class, ford / ferry, seasonal closure months, condition, landslide sites, width, name, road number). The same
+files are:
+
+- what **GeoCore** reads for military routing (`network_military` → `military.yaml` → `data:` the bundle's
+  `network/` folder), and
+- what the **terrain bundle** draws its roads from (`network/tiles/10/x/y.json`, `routes.json` roads) and what
+  PAMS8's road layer shows (`BundleRoadsLayer`, `roadNetwork.roadsSource: auto`).
+
+Both report the same `dataVersion` (network.json; GeoCore's `militaryDataVersion`). `RoadNetworkEngine.health()`
+compares them and warns when they differ, so a route and the roads on the map can never silently disagree. GeoCore
+re-reads a newer `edges.bin` within a minute, without a restart.
+
+**Conflation** (per OSM edge): samples every 25 m; every NCGDB road line within 35 m whose direction agrees within
+35° is a candidate; the winner is the one with the most samples, counted double when it records a load class and a
+quarter more when it is a Pakmap line. A bridge takes its road's own load class (the NCGDB load code is the class of the
+weakest structure on that stretch); a bridge on a road with no class is "bridge, class not recorded"; fords and ferries
+come from the class raster. One-way edges count half towards a road's length in `routes.json` (OSM draws a dual
+carriageway as two lines).
+
+**GeoCore military routing** (Go, `internal/military`, `internal/routing/militaryrules.go`,
+`internal/server/namilitary.go`): per request, for Route, Closest Facility and Service Area, by the standard ArcGIS
+parameters:
+
+| Restriction | Rule | Parameters |
+| --- | --- | --- |
+| `LoadClass` | closes roads and bridges recorded below the vehicle's class, foot bridges, and roads narrower than a tank for class 50+ | `VehicleMLC`; `UnknownLoad` = `Allow`, `MajorRoads` (no recorded class allowed only on motorways, national highways and main roads) or `Prohibit` |
+| `MSROnly` | main supply routes only (hard) | — |
+| `PreferMSR` | other roads cost `Factor` times as much (soft) | `Factor` (default 3) |
+| `AllWeather` | no fair-weather, unmetalled or track roads | — |
+| `SeasonalClosure` | no road recorded closed in the month | `Month` (0 = now) |
+| `AvoidLandslides`, `AvoidFords` | as named | — |
+
+Travel modes (`military.yaml`, listed as `supportedTravelModes`): **Wheeled Vehicle**, **Tracked Vehicle** (MLC 60,
+MajorRoads, 40 km/h), **Al-Zarrar** (MLC 50), **Tank Transporter** (MLC 70, all-weather, no fords), **MSR
+Preferred**, **All-Weather Wheeled**. A stop lands only on a road the mode may use. Every route carries `Military_*`
+attributes (lowest recorded class and where, km with no recorded class, MSR %, tankable km, closed months, landslides,
+weakest crossing, road numbers) and messages; a restricted request that finds no route says **what closes the
+unrestricted route** ("N-5: load class 40, 12.3 km; Ravi Bridge: bridge class 50-59, 0.4 km"). A plain request is
+unchanged and keeps the fast hierarchy.
+
+**PAMS8** (`RoadNetworkEngine`): `route(from, to, { travelMode, restrictions, parameters, via, bestOrder })`,
+`travelModes`, `health().dataMatch`, `RouteData.military`; `showRoadsLayer()` draws the bundle's network (MSR red,
+class 60+ orange, a recorded class below 60 yellow, class not recorded grey and dashed on main roads). Dev proxy
+`/geocore` → `http://localhost:8738` (`GEOCORE_URL`); point `roadNetwork.naServerUrl` at
+`/geocore/arcgis/rest/services/roads/NAServer`.
+
+**What the data says, honestly.** Motorways rarely carry a recorded load class in the NCGDB (23 % of length), trunk
+and primary roads about two-thirds; many local roads are recorded class 40. So a class 60 route between two city
+points often fails on the last kilometres (the diagnostics name them), and `MajorRoads` is the default unknown-class
+policy for tank modes. The official MLC figures and an official MSR list would sharpen every answer (section 9).
 
 ## 1 · Why a routable network
 

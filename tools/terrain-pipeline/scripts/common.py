@@ -27,49 +27,80 @@ TILE_SIZE = 256
 PIPELINE_VERSION = "0.1.0"
 
 # WorldPop inputs (sources.lock worldpop / worldpop_agesex / worldpop_density / worldpop_pwd), read by grotbc.py,
-# settlements.py and population.py. Change the year here and in sources.lock together.
+# settlements.py and population.py. Change the year here and in sources.lock together. The population count is the
+# 100 m file; the age groups come from the 1 km age-sex files as shares (group / all ages) applied to those people.
 WORLDPOP_YEAR = 2026
-WORLDPOP_TIF = Path("work/raw/worldpop/pak_pop_2026_CN_1km_R2025A_UA_v1.tif")
+WORLDPOP_TIF = Path("work/raw/worldpop/pak_pop_2026_CN_100m_R2025A_v1.tif")
 WORLDPOP_AGESEX = "work/raw/worldpop_agesex/pak_{band}_2026_CN_1km_R2025A_UA_v1.tif"
-WORLDPOP_SOURCE = "WorldPop Global2 R2025A v1 (released 2025-08), 2026 estimate, 1 km, constrained, UN-adjusted"
+WORLDPOP_SOURCE = ("WorldPop Global2 R2025A v1, 2026 estimate: people at 100 m (constrained), age groups as 1 km "
+                   "shares (constrained, UN-adjusted)")
 AGE_GROUPS = {   # field -> (label, WorldPop age-sex bands summed: m = male, t = total, number = first year of the band)
     "males15_49": ("males aged 15-49", ("m_15", "m_20", "m_25", "m_30", "m_35", "m_40", "m_45")),
     "under15": ("children under 15", ("t_00", "t_01", "t_05", "t_10")),
     "over65": ("people aged 65 and over", ("t_65", "t_70", "t_75", "t_80", "t_85", "t_90")),
 }
+ALL_AGES = ("t_00", "t_01") + tuple(f"t_{a:02d}" for a in range(5, 95, 5))      # every total band: the share denominator
 
 
-def read_people(path: Path):
-    """(people per cell as float64 with no-data as 0, affine transform, shape) of a WorldPop count raster."""
+def source_ref(lock: dict | None, sid: str) -> dict:
+    """Where and when one sources.lock entry comes from: {id, name, location [urls / local paths], landing, dataDate,
+    released}. Every product that names its inputs carries these, so each layer can be traced to a place and a date."""
+    s = next((s for s in (lock or {}).get("sources", []) if s["id"] == sid), None)
+    if s is None:
+        return {"id": sid}
+    if "files" in s:
+        loc = [f["url"] for f in s["files"]]
+    elif "tiles" in s:
+        loc = [s["pattern"].format(tile=t) for t in s["tiles"]]
+    elif "pattern" in s:
+        loc = [s["pattern"]]
+    else:
+        loc = [s["location"]] if s.get("location") else []
+    return {"id": sid, "name": s.get("name"), "location": loc, "landing": s.get("landing"),
+            "dataDate": s.get("dataDate"), "released": s.get("released")}
+
+
+def read_people(path: Path, with_mask: bool = False):
+    """(people per cell as float32 with no-data as 0, affine transform, shape[, no-data mask]) of a WorldPop count
+    raster. float32 keeps the 100 m country file at ~1.3 GB; sum it with dtype float64."""
     import numpy as np
     import rasterio
     with rasterio.open(path) as d:
-        a = d.read(1).astype("float64")
+        a = d.read(1).astype("float32", copy=False)
         nod = d.nodata
         tr = d.transform
     bad = ~np.isfinite(a) | (a < 0)
     if nod is not None:
         bad |= a == nod
     a[bad] = 0.0
-    return a, tr, a.shape
+    return (a, tr, a.shape, bad) if with_mask else (a, tr, a.shape)
 
 
-def age_group_rasters(shape, transform) -> dict:
-    """AGE_GROUPS field -> summed people raster on the population grid; empty when the age-sex files are missing or
-    lie on another grid."""
-    out = {}
-    for key, (_label, bands) in AGE_GROUPS.items():
-        paths = [Path(WORLDPOP_AGESEX.format(band=b)) for b in bands]
-        if not all(p.exists() for p in paths):
-            return {}
-        tot = None
-        for p in paths:
-            a, tr, sh = read_people(p)
-            if sh != shape or not tr.almost_equals(transform):
-                return {}
-            tot = a if tot is None else tot + a
-        out[key] = tot
-    return out
+def age_shares():
+    """({AGE_GROUPS field: share of all people in the 1 km cell}, transform, shape, no-data mask) from the age-sex
+    files, or None when any is missing."""
+    import numpy as np
+    paths = {b: Path(WORLDPOP_AGESEX.format(band=b)) for b in set(ALL_AGES).union(*(g[1] for g in AGE_GROUPS.values()))}
+    if not all(p.exists() for p in paths.values()):
+        return None
+    bands = {}
+    tr = shape = mask = None
+    for b, p in paths.items():
+        bands[b], tr, shape, bad = read_people(p, with_mask=True)
+        mask = bad if mask is None else mask & bad
+    total = sum(bands[b].astype("float64") for b in ALL_AGES)
+    shares = {k: np.where(total > 0, sum(bands[b].astype("float64") for b in bs) / np.maximum(total, 1e-9), 0.0)
+              .astype("float32") for k, (_l, bs) in AGE_GROUPS.items()}
+    return shares, tr, shape, mask
+
+
+def cell_of(transform, shape, lon, lat):
+    """Flat index of the cell of `transform` / `shape` holding each lon, lat; -1 outside the grid."""
+    import numpy as np
+    r = np.floor((np.asarray(lat) - transform.f) / transform.e).astype(np.int64)
+    c = np.floor((np.asarray(lon) - transform.c) / transform.a).astype(np.int64)
+    ok = (r >= 0) & (r < shape[0]) & (c >= 0) & (c < shape[1])
+    return np.where(ok, r * shape[1] + c, -1)
 
 # ----------------------------------------------------------------------------- logging
 

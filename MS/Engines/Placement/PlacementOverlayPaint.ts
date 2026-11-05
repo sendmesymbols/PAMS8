@@ -7,7 +7,24 @@
  * (PlacementOverlay.ts).
  */
 
+import { decodeRci, soilStep, wetStep, type VehicleRule } from './PlacementGoing';
+import type { GoingSeason } from './PlacementTypes';
+
 export const NODATA = 255;
+
+/**
+ * Paint the going for a season (T: `placement.traffic.overlay`) instead of the ground classes alone: the class
+ * step, made worse by the soil (`soil` tile: the season's cone index under `cone`, or the soil texture looked up
+ * in `bearingMin` under `bearing`) and, after rain, by the wet layer, as PlacementGoing judges a pixel.
+ */
+export interface OverlayGoingParams {
+  season: GoingSeason;
+  rule: 'cone' | 'bearing' | 'words';
+  /** The mode's soil thresholds; null when the mode is not judged on soil. */
+  veh: VehicleRule | null;
+  /** `bearing`: least step (0 GO, 1 SLOW-GO, 2 NO-GO) per soil byte. */
+  bearingMin?: Uint8Array;
+}
 
 /** RGBA per overlay state; layer opacity scales these further. */
 export const OVERLAY_COLORS = {
@@ -31,17 +48,45 @@ export interface OverlayPaintParams {
   /** Position of the requested tile inside the ancestor, in ancestor pixels. */
   offX: number;
   offY: number;
+  /** Set to paint the going for a season; the soil and wet tiles come in beside the class tile. */
+  going?: OverlayGoingParams;
 }
+
+const STEP_OF: Record<string, number> = { go: 0, slow: 1, nogo: 2 };
 
 /**
  * Paint one overlay tile. `ct` is the class tile, `dt` the distance tile (or null
- * when the bundle has none for this profile). Returns tileSize² × 4 RGBA bytes.
+ * when the bundle has none for this profile). With `p.going`, `st` is the soil tile
+ * for its rule (cone index or texture) and `wt` the wet layer, either may be null.
+ * Returns tileSize² × 4 RGBA bytes.
  */
-export function paintOverlayTile(ct: Uint8Array, dt: Uint8Array | null, p: OverlayPaintParams): Uint8ClampedArray {
+export function paintOverlayTile(
+  ct: Uint8Array,
+  dt: Uint8Array | null,
+  p: OverlayPaintParams,
+  st: Uint8Array | null = null,
+  wt: Uint8Array | null = null,
+): Uint8ClampedArray {
   const ts = p.tileSize;
   const out = new Uint8ClampedArray(ts * ts * 4);
   const { dz, offX, offY, nogo, caution, nearM, scale } = p;
   const K = OVERLAY_COLORS;
+  const g = p.going;
+  /** Extra steps from the soil and wet ground at one pixel (0 when there is no going to paint). */
+  const soilWet = (si: number): number => {
+    if (!g) return 0;
+    let s = 0;
+    if (st && g.rule !== 'words') {
+      const b = st[si];
+      if (g.rule === 'bearing') s = g.bearingMin && b !== NODATA ? g.bearingMin[b] : 0;
+      else if (g.veh) {
+        const r = decodeRci(b);
+        if (r) s = STEP_OF[soilStep(r.ci, r.coarse, g.veh)];
+      }
+    }
+    if (g.season === 'wet' && wt) s = Math.max(s, STEP_OF[wetStep(wt[si] === NODATA ? null : wt[si], g.veh)]);
+    return s;
+  };
   for (let oy = 0; oy < ts; oy++) {
     const sy = dz ? (offY + oy) >> dz : oy;
     for (let ox = 0; ox < ts; ox++) {
@@ -50,8 +95,9 @@ export function paintOverlayTile(ct: Uint8Array, dt: Uint8Array | null, p: Overl
       const c = ct[si];
       if (c === NODATA) continue;
       let col: readonly number[];
-      if (nogo[c]) col = K.nogo;
-      else if (caution[c]) col = K.caution;
+      const extra = nogo[c] ? 0 : soilWet(si);
+      if (nogo[c] || extra === 2) col = K.nogo;
+      else if (caution[c] || extra === 1) col = K.caution;
       else {
         const dv = dt ? dt[si] : NODATA;
         col = dv !== NODATA && dv * scale < nearM ? K.near : K.ok;

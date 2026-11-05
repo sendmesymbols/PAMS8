@@ -609,7 +609,7 @@
   },
   "roadNetwork": {
     "serverUrl": "https://192.168.0.15:6443",
-    "naServerUrl": "/roadnet/arcgis/rest/services/RoadNetwork/NAServer",
+    "naServerUrl": "/geocore/arcgis/rest/services/roads/NAServer",
     "routeLayer": "Route",
     "serviceAreaLayer": "",
     "roadsLayerUrl": "/roadnet/arcgis/rest/services/RoadNetwork/MapServer",
@@ -623,7 +623,10 @@
     "classifyToleranceM": 25,
     "timeoutMs": 30000,
     "availabilityTtlMs": 30000,
-    "showRoadsLayer": false
+    "showRoadsLayer": true,
+    "travelMode": "",
+    "bundleUrl": "/terrain-bundle",
+    "roadsSource": "auto"
   },
   "proximity": {
     "nearestVertex": true,
@@ -678,6 +681,41 @@
       "radiusKm": 3,
       "max": 2,
       "minLevel": 1
+    },
+    "going": {
+      "season": "auto",
+      "month": 0,
+      "wetMonthMm": 75,
+      "rangeKm": 2,
+      "movementFor": "units"
+    },
+    "card": {
+      "goingLines": true,
+      "movementRose": true,
+      "soilStrength": false,
+      "exitStrip": false,
+      "modeMatrix": false,
+      "seasonRibbon": false,
+      "goingMap": false,
+      "briefKey": true
+    },
+    "population": {
+      "enabled": true,
+      "card": "scale",
+      "flag": true,
+      "radiusKm": 5,
+      "layer": false,
+      "layerOpacity": 0.7
+    },
+    "traffic": {
+      "road": true,
+      "roadRadiusKm": 3,
+      "legend": "label",
+      "overlay": false,
+      "header": "dry",
+      "pill": true,
+      "dual": false,
+      "rain": "cone"
     }
   },
   "stylus": {

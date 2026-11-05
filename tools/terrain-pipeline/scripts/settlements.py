@@ -9,12 +9,12 @@ Outputs: work/settlements/settlements.geojson  one feature per settlement: outli
 
 Method: the built-up class is read at 1/4 resolution (~150 m), joined across gaps of up to ~150 m (closing), and each
 connected patch is a settlement. Its population is the WorldPop 2026 people in it: a WorldPop cell finer than the
-patch grid counts where its centre falls; a coarser one (the 1 km file) is shared out over the ~150 m pixels inside it
-by building footprint area (cells.npz), or evenly over its built-up pixels where it has no mapped buildings. The same
-shares give males 15-49, under 15 and 65+ (common.AGE_GROUPS) when the age-sex files are present. Its
-name is the highest-ranking named place inside it (city > district HQ > town > important village > village), the
-next ones are listed in `alsoNames`. Size class by population (SIZE_CLASSES). Patches with no WorldPop people and
-no name are dropped. A settlement is "built-up land", so dispersed farmsteads between villages are not counted.
+patch grid (the 100 m file) counts where its centre falls; a coarser one is shared out over the ~150 m pixels inside it
+by building footprint area (cells.npz), or evenly over its built-up pixels where it has no mapped buildings. Those
+people x the share of each age group in their 1 km age-sex cell give males 15-49, under 15 and 65+
+(common.AGE_GROUPS). Its name is the highest-ranking named place inside it (city > district HQ > town > important village > village), the
+next ones are listed in `alsoNames`. Size class by population (SIZE_CLASSES). Unnamed patches under MIN_UNNAMED_POP
+people are dropped (fragments of a few buildings each). A settlement is "built-up land", so dispersed farmsteads between villages are not counted.
 """
 from __future__ import annotations
 
@@ -25,14 +25,15 @@ from pathlib import Path
 
 import numpy as np
 
-from common import (AGE_GROUPS, ORIGIN_SHIFT, WORLDPOP_SOURCE, WORLDPOP_TIF, WORLDPOP_YEAR, age_group_rasters, load_json,
-                    read_people, setup_logging)
+from common import (AGE_GROUPS, ORIGIN_SHIFT, WORLDPOP_SOURCE, WORLDPOP_TIF, WORLDPOP_YEAR, age_shares, cell_of,
+                    load_json, load_yaml, read_people, setup_logging, source_ref)
 
 log = setup_logging("settlements")
 
 DECIM = 4
 CLOSE_PX = 1
 MIN_POLY_POP = 5000
+MIN_UNNAMED_POP = 50      # an unnamed patch with fewer people is not listed (owner's decision, 2026-11-05)
 SIZE_CLASSES = [  # (min people, class key, label)
     (1_000_000, "metropolitan", "Metropolitan city"),
     (500_000, "large_city", "Large city"),
@@ -54,27 +55,46 @@ def size_class(pop: float) -> tuple[str, str]:
     return "hamlet", "Hamlet"
 
 
-def patch_people(rasters: dict, transform, lab: np.ndarray, n: int, x0: float, y1: float, res: float,
-                 weight: np.ndarray | None) -> dict:
-    """name -> people per patch (index 0 = outside every patch) for rasters that share one WGS84 grid. A cell finer
-    than the ~150 m patch grid is counted where its centre falls; a coarser one is shared out over the pixels inside
-    it by `weight` (building footprint area), or evenly over its patch pixels where it has no weight."""
-    any_ = next(iter(rasters.values()))
-    hw, ww = any_.shape
+def share_at(shares, lon: np.ndarray, lat: np.ndarray) -> dict:
+    """AGE_GROUPS field -> share of the people at each lon, lat (0 outside the age-sex grid); {} without shares."""
+    if shares is None:
+        return {}
+    sh, s_tr, s_shape, _mask = shares
+    ci = cell_of(s_tr, s_shape, lon, lat)
+    return {k: np.where(ci >= 0, v.ravel()[np.maximum(ci, 0)], 0.0) for k, v in sh.items()}
+
+
+def patch_people(a: np.ndarray, transform, lab: np.ndarray, n: int, x0: float, y1: float, res: float,
+                 weight: np.ndarray | None, shares=None) -> dict:
+    """"pop" and the AGE_GROUPS fields -> people per patch (index 0 = outside every patch) from one WorldPop people
+    raster. A cell finer than the ~150 m patch grid (the 100 m file) is counted where its centre falls; a coarser one
+    is shared out over the pixels inside it by `weight` (building footprint area), or evenly over its patch pixels
+    where it has no weight. Age groups = people x the share of the age-sex cell they lie in (`shares`, age_shares())."""
+    hw, ww = a.shape
     lat0 = math.radians(abs(transform.f + transform.e * hw / 2))
     if abs(transform.a) * 111320.0 * math.cos(lat0) <= 1.5 * res:
-        ok = np.zeros(any_.shape, bool)
-        for a in rasters.values():
-            ok |= a > 0
-        rr, cc = np.nonzero(ok)
-        mx = np.radians(transform.c + (cc + 0.5) * transform.a) * 6378137.0
-        my = np.log(np.tan(np.pi / 4 + np.radians(transform.f + (rr + 0.5) * transform.e) / 2)) * 6378137.0
+        rr, cc = np.nonzero(a > 0)
+        vals = a[rr, cc].astype("float64")
+        lon = transform.c + (cc + 0.5) * transform.a
+        lat = transform.f + (rr + 0.5) * transform.e
+        mx = np.radians(lon) * 6378137.0
+        my = np.log(np.tan(np.pi / 4 + np.radians(lat) / 2)) * 6378137.0
         col = ((mx - x0) / res).astype(np.int64)
         row = ((y1 - my) / res).astype(np.int64)
         inside = (col >= 0) & (col < lab.shape[1]) & (row >= 0) & (row < lab.shape[0])
         plab = np.zeros(len(rr), dtype=np.int64)
         plab[inside] = lab[row[inside], col[inside]]
-        return {k: np.bincount(plab, weights=a[rr, cc], minlength=n + 1) for k, a in rasters.items()}
+        out = {"pop": np.bincount(plab, weights=vals, minlength=n + 1)}
+        for k, s in share_at(shares, lon, lat).items():
+            out[k] = np.bincount(plab, weights=vals * s, minlength=n + 1)
+        return out
+
+    rasters = {"pop": a}
+    if shares is not None:            # age-group rasters on this grid: people x the share at each cell centre
+        cr, cc_ = np.mgrid[0:hw, 0:ww]
+        for k, s in share_at(shares, transform.c + (cc_.ravel() + 0.5) * transform.a,
+                             transform.f + (cr.ravel() + 0.5) * transform.e).items():
+            rasters[k] = a * s.reshape(a.shape)
 
     # coarse cells: the WorldPop cell of every patch-grid pixel centre (rows and columns are separable)
     H, W = lab.shape
@@ -109,7 +129,7 @@ def patch_people(rasters: dict, transform, lab: np.ndarray, n: int, x0: float, y
     for k, a in rasters.items():
         flat = a.ravel()
         tot = np.bincount(P, weights=frac * flat[C], minlength=n + 1)
-        tot[0] = flat.sum() - tot[1:].sum()
+        tot[0] = flat.sum(dtype="float64") - tot[1:].sum()
         out[k] = tot
     return out
 
@@ -138,6 +158,7 @@ def main() -> int:
     ap.add_argument("--features", type=Path, default=Path("work/grotbc/vector/features"))
     ap.add_argument("--buildings", type=Path, default=Path("work/buildings/cells.npz"))
     ap.add_argument("--raw", type=Path, default=Path("work/raw"), help="for ghsl_smod/ (GHSL degree of urbanisation)")
+    ap.add_argument("--lock", type=Path, default=Path("sources.lock"), help="names each source's location and dates")
     ap.add_argument("--out", type=Path, default=Path("work/settlements"))
     args = ap.parse_args()
 
@@ -149,6 +170,7 @@ def main() -> int:
     from scipy import ndimage
 
     grid = load_json(args.grid)
+    lock = load_yaml(args.lock) if args.lock.exists() else None
     args.out.mkdir(parents=True, exist_ok=True)
     H, W = grid["height"] // DECIM, grid["width"] // DECIM
     res = grid["pixel_size"] * DECIM
@@ -179,15 +201,16 @@ def main() -> int:
             log.info("buildings: %.1f M inside patches", bstat[0][1:].sum() / 1e6)
 
     # WorldPop people per patch, and the age groups on the same shares
-    a, wtr, wshape = read_people(args.worldpop)
-    rasters = {"pop": a}
-    rasters.update(age_group_rasters(wshape, wtr))
-    if len(rasters) == 1:
-        log.warning("WorldPop age-sex files missing or on another grid: no age groups")
-    sums = patch_people(rasters, wtr, lab, n, x0, y1, res, barea)
+    a, wtr, _wshape = read_people(args.worldpop)
+    shares = age_shares()
+    if shares is None:
+        log.warning("WorldPop age-sex files missing: no age groups")
+    sums = patch_people(a, wtr, lab, n, x0, y1, res, barea, shares)
     pop = sums["pop"]
-    log.info("WorldPop %d: %.1f M people, %.1f M (%.0f %%) inside built-up patches", WORLDPOP_YEAR, a.sum() / 1e6,
-             pop[1:].sum() / 1e6, 100 * pop[1:].sum() / max(a.sum(), 1))
+    total = float(a.sum(dtype="float64"))
+    del a
+    log.info("WorldPop %d: %.1f M people, %.1f M (%.0f %%) inside built-up patches", WORLDPOP_YEAR, total / 1e6,
+             pop[1:].sum() / 1e6, 100 * pop[1:].sum() / max(total, 1))
 
     # names: highest-ranking place inside each patch
     places = read_places(args.features)
@@ -236,7 +259,7 @@ def main() -> int:
         if sl is None:
             continue
         names = sorted(best.get(i, []), key=lambda t: (-t[0], -t[1]))
-        if pop[i] < 1 and not names:
+        if pop[i] < MIN_UNNAMED_POP and not names:
             continue
         cnt = int((lab[sl] == i).sum())
         ry = (sl[0].start + sl[0].stop) / 2
@@ -281,7 +304,11 @@ def main() -> int:
                                                              separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
     meta = {"format": "pams-settlements", "version": 1,
             "method": "built-up class at ~150 m, gaps up to ~300 m closed, connected patches; WorldPop people inside "
-                      "(1 km cells shared out by building footprint area); named after the highest-ranking place inside",
+                      "(100 m cells; age groups as 1 km shares); named after the highest-ranking place inside",
+            "sources": {f: source_ref(lock, sid) for f, sid in (
+                ("built-up area", "worldcover"), ("population", "worldpop"), ("age groups", "worldpop_agesex"),
+                ("buildings", "openbuildings"), ("building height", "ghsl_height"),
+                ("degree of urbanisation", "ghsl_smod"), ("names", "geonames_pk"))},
             "population": {"source": WORLDPOP_SOURCE, "year": WORLDPOP_YEAR,
                            "fields": dict({"pop": "people", "perKm2": "people per km2 of built-up area"},
                                           **{k: v[0] for k, v in AGE_GROUPS.items()})},

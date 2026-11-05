@@ -235,7 +235,7 @@ uses them, with slope, soil, wetness and season, to give the going.)
 
 | Movement type | What is assessed | Main data |
 | --- | --- | --- |
-| Cross-country | Going off roads and tracks: area type, slope, soil bearing dry and after rain, wetness, vegetation density, gaps (canals, nullahs, bunds, embankments) | Land cover class, slope, soil texture, wet layer, vegetation, obstacles |
+| Cross-country | Going off roads and tracks: area type, slope, soil strength (cone index) dry and after rain, wetness, vegetation density, gaps (canals, nullahs, bunds, embankments) | Land cover class, slope, soil texture, wet layer, vegetation, obstacles |
 | Tracks | Cart track, pack track, footpath, unmetalled road: mostly fair-weather; surface, width, gradient | Route types (track, unmetalled), load code `F` |
 | Roads | Metalled roads: load class against the vehicle's class, all- or fair-weather, lanes, width, surface, condition, bridges and culverts on the road, gradient, tunnels | Route layer, load code (e.g. 40A1, 70A2), `routes.json` |
 | Main Supply Routes (MSR) | Designated or qualifying routes: capacity (class 50 and over, double lane), chokepoints (bridges, passes, tunnels, ferries), alternatives, closures by season | MSR flag, `routes.json`, closures, landslide sites |
@@ -288,7 +288,7 @@ proposal for the rule owner to correct, not doctrine.
 | --- | --- | --- | --- |
 | Slope | Slope in degrees and in bands (Level, Gentle, Sloping, Moderate, Steep) | Yes, from Copernicus DEM | Surface model reads tree lines and towns a little steep |
 | Area type | Land cover class (51 codes) and terrain type (9 codes) | Yes | Rice paddy as its own class |
-| Soil | Texture class; bearing dry and after rain | Yes, SoilGrids, modelled at 250 m | Measured bearing strength (cone index), soil depth |
+| Soil | Texture class, confidence, NCGDB soil areas; estimated cone index dry and after rain, compared with each mode's vehicle cone index | Yes, SoilGrids (texture, stones, density, organic carbon), modelled at 250 m | Measured cone index (penetrometer), soil depth, vehicle cone index from own trials |
 | Wetness | Flood-prone and waterlogged ground | Yes (wet layer) | Live soil moisture; depth to water table |
 | Vegetation | Tree cover, forest, orchard, density | Partly | Trunk size and spacing; crop height by month |
 | Surface | Sand, gravel, rock, scree, salt crust | Partly (classes) | Boulder fields; gully density |
@@ -337,7 +337,7 @@ TRAFFICABILITY_DATABASE
 ├── TERRAIN            DEM, slope, slope bands, landform, ruggedness
 ├── LAND_COVER         area type (open, grassland, fields, irrigated, orchard, desert, sandy, dunes,
 │                      rocky, marshy, boggy, salt pan, forest, built-up, snow and ice)
-├── SOIL               texture, drainage, bearing dry and after rain
+├── SOIL               texture, drainage, cone index dry and after rain, confidence
 ├── HYDROLOGY          rivers, canals, nullahs, lakes, wetland, flood-prone and waterlogged ground
 ├── VEGETATION         tree cover, density, crop calendar
 ├── TRANSPORT          roads, tracks, MSR, bridges, culverts, fords, ferries, tunnels, railways

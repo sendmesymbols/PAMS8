@@ -9,7 +9,9 @@ Outputs: MS/Data/terrain-bundle/manifest.json, rules.json, LICENSES.txt
 
 `sources[].sha256` in the manifest comes from checksums.json (written by
 fetch.py) and falls back to the value pinned in sources.lock, so a bundle
-can be traced to its exact inputs. `profiles` lists only the profiles that
+can be traced to its exact inputs. Every source also carries where it came from
+(`location`: download URLs or local path, `landing`) and when (`dataDate`, `released`),
+and every layer and file names the source ids it was built from (`sources`). `profiles` lists only the profiles that
 actually have a dist_ folder in the bundle.
 
 Bundle v2 keeps manifest `version` 1 (an engine that reads v1 still loads it: class + dist_<mode> are
@@ -18,28 +20,60 @@ unchanged in form) and adds `dataVersion: 2` and a `grotbc` block naming the aux
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import sys
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from common import BUNDLE_DIR, PIPELINE_VERSION, TILE_SIZE, dump_json, load_json, load_yaml, setup_logging
+from common import BUNDLE_DIR, PIPELINE_VERSION, TILE_SIZE, dump_json, load_json, load_yaml, setup_logging, source_ref
 
 log = setup_logging("package")
+
+
+# what each bundle product is built from (source ids; "ncgdb" only in a hybrid bundle)
+CLASS_SOURCES = ["worldcover", "jrc_gsw", "glo30", "osm_pakistan", "ncgdb"]     # class.tif, read by most layers
+PRODUCT_SOURCES = {
+    "admin": ["ncgdb"], "boundaries": ["ncgdb"], "sheets": ["ncgdb"], "routes": ["ncgdb"],
+    "climate": ["worldclim"],
+    "population": ["worldpop", "worldpop_agesex", "worldpop_density", "worldpop_pwd"],
+    "network": ["osm_network", "ncgdb"],
+    "settlements": CLASS_SOURCES + ["worldpop", "worldpop_agesex", "openbuildings", "ghsl_height", "ghsl_smod",
+                                    "geonames_pk"],
+    "features": ["ncgdb", "geonames_pk", "worldpop", "glo30", "osm_network"],
+}
+
+
+def ncgdb_source(ncgdb: dict, classes: Path) -> dict:
+    """The NCGDB as a source entry: it is not in sources.lock (restricted, identified by a folder fingerprint)."""
+    def find(o):
+        if isinstance(o, dict):
+            if isinstance(o.get("ncgdb"), dict) and o["ncgdb"].get("path"):
+                return o["ncgdb"]["path"]
+            return next((r for r in map(find, o.values()) if r), None)
+        return None
+    path = find(load_yaml(classes)) if classes.exists() else None
+    newest = ncgdb["fingerprint"].get("newest_file", "")[:10]
+    return {"id": "ncgdb", "name": ncgdb["name"], "version": ncgdb["version"], "licence": ncgdb["licence"],
+            "location": [path] if path else [], "landing": None,
+            "dataDate": "not recorded in the geodatabase (Survey of Pakistan NCGDB Ver-6)",
+            "released": f"local copy, newest file {newest}" if newest else None,
+            "sha256": ncgdb["fingerprint"]["listing_sha256"], "files": ncgdb["fingerprint"]["files"],
+            "restricted": True, "rulesSha256": ncgdb["rules_sha256"]}
 
 
 def sources_block(lock: dict, checks: dict, ncgdb: dict | None = None) -> list[dict]:
     out = []
     for s in lock["sources"]:
         rec = checks.get(s["id"], {})
+        ref = source_ref(lock, s["id"])
         out.append({"id": s["id"], "name": s["name"], "version": str(s.get("version", "")),
-                    "dataDate": s.get("dataDate"), "released": s.get("released"), "licence": s["licence"], "sha256": rec.get("sha256", str(s.get("sha256", ""))),
-                    "files": len(rec.get("files", {})) or None})
-    if ncgdb:       # local, not in sources.lock: identified by a fingerprint of the geodatabase folder
-        out.append({"id": "ncgdb", "name": ncgdb["name"], "version": ncgdb["version"], "licence": ncgdb["licence"],
-                    "sha256": ncgdb["fingerprint"]["listing_sha256"], "files": ncgdb["fingerprint"]["files"],
-                    "restricted": True, "rulesSha256": ncgdb["rules_sha256"]})
+                    "location": ref["location"], "landing": ref["landing"], "dataDate": ref["dataDate"],
+                    "released": ref["released"], "licence": s["licence"],
+                    "sha256": rec.get("sha256", str(s.get("sha256", ""))), "files": len(rec.get("files", {})) or None})
+    if ncgdb:
+        out.append(ncgdb)
     return out
 
 
@@ -51,9 +85,13 @@ def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
                   f"  released    : {s.get('released', '')}",
                   f"  licence     : {s['licence']}",
                   f"  attribution : {s.get('attribution', '')}",
-                  f"  source      : {s.get('landing', '')}", ""]
+                  f"  source      : {s.get('landing', '')}"]
+        lines += [f"  location    : {u}" for u in source_ref(lock, s["id"])["location"]] + [""]
     if ncgdb:
         lines += [f"{ncgdb['name']}  [{ncgdb['version']}]",
+                  f"  data date   : {ncgdb['dataDate']}",
+                  f"  released    : {ncgdb['released']}",
+                  f"  location    : {', '.join(ncgdb['location'])}",
                   f"  licence     : {ncgdb['licence']}",
                   f"  attribution : {ncgdb.get('attribution', '')}",
                   "  *** RESTRICTED: this bundle contains pixels derived from NCGDB. Do not redistribute it",
@@ -68,30 +106,38 @@ def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
 
 
 AUX_LAYERS = {
-    "route":    {"reduce": "max", "codebook": "rules.json grotbc.layers.route",
+    "route":    {"sources": ["ncgdb"], "reduce": "max", "codebook": "rules.json grotbc.layers.route",
                  "note": "bit 7 main supply route, bits 5-6 load-class tier, bits 0-4 route type; 0 = no route"},
-    "landform": {"reduce": "mode", "codebook": "rules.json grotbc.layers.landform", "nodata": 255},
-    "cc":       {"reduce": "mode", "codebook": "rules.json grotbc.layers.cc", "nodata": 255,
+    "landform": {"sources": ["glo30"], "reduce": "mode", "codebook": "rules.json grotbc.layers.landform", "nodata": 255},
+    "cc":       {"sources": CLASS_SOURCES, "reduce": "mode", "codebook": "rules.json grotbc.layers.cc", "nodata": 255,
                  "note": "concealment = value >> 4, cover = value & 15; 0 none, 1 poor, 2 fair, 3 good"},
-    "wet":      {"reduce": "max", "codebook": "rules.json grotbc.layers.wet", "nodata": 255},
-    "terrain":  {"reduce": "mode", "codebook": "rules.json grotbc.layers.terrain", "nodata": 255,
+    "wet":      {"sources": CLASS_SOURCES, "reduce": "max", "codebook": "rules.json grotbc.layers.wet", "nodata": 255},
+    "terrain":  {"sources": CLASS_SOURCES, "reduce": "mode", "codebook": "rules.json grotbc.layers.terrain", "nodata": 255,
                  "note": "GROTBC G terrain type (T reads it for the going): Plain / Hilly / Solid / Marshy / Wet / Desert / Mountainous / Built-up / Snow-ice"},
-    "soil":     {"reduce": "mode", "codebook": "rules.json grotbc.layers.soil", "nodata": 255,
-                 "note": "USDA texture of the top 30 cm (SoilGrids, ~250 m, modelled); bearing in rules.json grotbc.soilBearing"},
-    "hut":      {"reduce": "maxnd", "codebook": "rules.json grotbc.layers.hut", "nodata": 255,
+    "soil":     {"sources": ["soilgrids", "ncgdb"], "reduce": "mode", "codebook": "rules.json grotbc.layers.soil", "nodata": 255,
+                 "note": "texture = value & 15 (USDA class of the top 30 cm, SoilGrids ~250 m modelled; 13-14 NCGDB only), "
+                         "confidence = (value >> 4) & 3 (rules.json grotbc.layers.soilConfidence), bit 6 = NCGDB 1:50k soil area; "
+                         "notes in rules.json grotbc.soilBearing"},
+    "rci_dry":  {"sources": ["soilgrids", "ncgdb"], "reduce": "min", "codebook": "rules.json grotbc.soilStrength", "nodata": 255,
+                 "note": "dry-season cone index = value & 127 (127 = 127 or more), bit 7 = coarse (use the vehicle's coarse "
+                         "thresholds); compare with soilStrength.vehicles[byProfile[mode]]: >= vci50 GO, >= vci1 SLOW-GO, else NO-GO"},
+    "rci_wet":  {"sources": ["soilgrids", "ncgdb"], "reduce": "min", "codebook": "rules.json grotbc.soilStrength", "nodata": 255,
+                 "note": "cone index after heavy rain; encoded as rci_dry"},
+    "hut":      {"sources": ["ncgdb"], "reduce": "maxnd", "codebook": "rules.json grotbc.layers.hut", "nodata": 255,
                  "note": "bits 0-6 permanent (kacha) huts per km2, bit 7 temporary huts nearby"},
-    "bank":     {"reduce": "maxnd", "codebook": "rules.json grotbc.banks", "nodata": 255,
+    "bank":     {"sources": CLASS_SOURCES, "reduce": "maxnd", "codebook": "rules.json grotbc.banks", "nodata": 255,
                  "note": "land along water: kind = value >> 2 (rules.json grotbc.banks.kinds), band = value & 3 (0 nearest, bandsM); 0 = no bank"},
-    "bld":      {"reduce": "maxnd", "codebook": "rules.json grotbc.layers.bld", "nodata": 255,
+    "bld":      {"sources": ["openbuildings", "ghsl_height"], "reduce": "maxnd", "codebook": "rules.json grotbc.layers.bld", "nodata": 255,
                  "note": "Open Buildings footprints per ~150 m cell: density class = value & 7, size class = value >> 3; 0 = none"},
-    "elev_hi":  {"reduce": "mean", "note": "elevation m = elev_hi * 256 + elev_lo - 500; elev_hi 255 = nodata"},
-    "elev_lo":  {"reduce": "mean"},
+    "elev_hi":  {"sources": ["glo30"], "reduce": "mean", "note": "elevation m = elev_hi * 256 + elev_lo - 500; elev_hi 255 = nodata"},
+    "elev_lo":  {"sources": ["glo30"], "reduce": "mean"},
 }
 
 
 def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, network: Path | None = None,
                  settlements: Path | None = None, population: Path | None = None) -> dict | None:
-    """Copy the v2 vector files into the bundle and describe the v2 layers; None for a v1 bundle."""
+    """Copy the v2 vector files into the bundle and describe the v2 layers; None for a v1 bundle. Every layer and
+    file names its `sources` (ids in manifest.sources)."""
     layers = {k: dict(v, path=k) for k, v in AUX_LAYERS.items() if (bundle / k).is_dir()}
     if not layers:
         return None
@@ -101,31 +147,62 @@ def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, networ
             if (vector / name).exists():
                 shutil.copyfile(vector / name, bundle / name)
                 out[name.split(".")[0]] = name
+                out[name.split(".")[0] + "Sources"] = PRODUCT_SOURCES[name.split(".")[0]]
         if climate is not None and (climate / "climate.json").exists():
             (bundle / "climate").mkdir(exist_ok=True)
             for name in ("climate.json", "climate.bin"):
                 shutil.copyfile(climate / name, bundle / "climate" / name)
-            out["climate"] = {"index": "climate/climate.json", "data": "climate/climate.bin"}
+            out["climate"] = {"index": "climate/climate.json", "data": "climate/climate.bin",
+                              "sources": PRODUCT_SOURCES["climate"]}
         if population is not None and (population / "population.json").exists():
             (bundle / "population").mkdir(exist_ok=True)
             for name in ("population.json", "population.bin"):
                 shutil.copyfile(population / name, bundle / "population" / name)
-            out["population"] = {"index": "population/population.json", "data": "population/population.bin"}
+            out["population"] = {"index": "population/population.json", "data": "population/population.bin",
+                                 "sources": PRODUCT_SOURCES["population"]}
         if network is not None and (network / "network.json").exists():
             shutil.rmtree(bundle / "network", ignore_errors=True)
             shutil.copytree(network, bundle / "network")
-            out["network"] = {"index": "network/network.json"}
+            nj = load_json(network / "network.json")
+            out["network"] = {"index": "network/network.json", "tiles": "network/tiles/{z}/{x}/{y}.json",
+                              "dataVersion": nj.get("dataVersion"), "sources": PRODUCT_SOURCES["network"],
+                              "note": "the road graph GeoCore solves on (same edges, attributes and dataVersion); "
+                                      "draw roads from network/tiles so the map and a route agree"}
+            # routes.json: roads from the same canonical edges (so an MSR's length is the routed one), railways kept
+            # from the NCGDB index
+            if (network / "routes.json").exists():
+                roads = load_json(network / "routes.json")
+                rails = load_json(bundle / "routes.json").get("rails", []) if (bundle / "routes.json").exists() else []
+                roads["rails"] = rails
+                roads["note"] = roads.get("note", "") + " Roads come from the canonical road network (network/), " \
+                                                        "railways from the NCGDB railway lines."
+                (bundle / "routes.json").write_text(json.dumps(roads, separators=(",", ":"), ensure_ascii=False),
+                                                    encoding="utf-8")
         if settlements is not None and (settlements / "settlements.json").exists():
             for name in ("settlements.json", "settlements.geojson"):
                 shutil.copyfile(settlements / name, bundle / name)
-            out["settlements"] = {"list": "settlements.json", "geojson": "settlements.geojson"}
+            out["settlements"] = {"list": "settlements.json", "geojson": "settlements.geojson",
+                                  "sources": PRODUCT_SOURCES["settlements"]}
         if (vector / "features" / "index.json").exists():
             shutil.rmtree(bundle / "features", ignore_errors=True)
             shutil.copytree(vector / "features", bundle / "features")
             idx = load_json(vector / "features" / "index.json")
             out["features"] = {"path": "features/{z}/{x}/{y}.json", "index": "features/index.json", "z": idx["z"],
-                               "quant": idx["quant"]}
+                               "quant": idx["quant"], "sources": PRODUCT_SOURCES["features"]}
     return out
+
+
+def _drop_source(node, sid: str) -> None:
+    """Remove one source id from every `sources` / `*Sources` list in the manifest."""
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if (k == "sources" or k.endswith("Sources")) and isinstance(v, list) and all(isinstance(x, str) for x in v):
+                node[k] = [x for x in v if x != sid]
+            else:
+                _drop_source(v, sid)
+    elif isinstance(node, list):
+        for v in node:
+            _drop_source(v, sid)
 
 
 def main() -> int:
@@ -138,6 +215,7 @@ def main() -> int:
     ap.add_argument("--checksums", type=Path, default=Path("work/raw/checksums.json"))
     ap.add_argument("--ncgdb-provenance", type=Path, default=Path("work/derive/ncgdb_provenance.json"),
                     help="written by derive.py when an NCGDB was used (absent = open-data bundle)")
+    ap.add_argument("--classes", type=Path, default=Path("classes.yaml"), help="for the NCGDB path")
     ap.add_argument("--class-stats", type=Path, default=Path("work/classify/class_stats.json"))
     ap.add_argument("--boundary-display", type=Path, default=Path("work/boundary/boundary_display.geojson"),
                     help="outline for drawing on a map; copied into the bundle as boundary.geojson (official boundary only)")
@@ -156,7 +234,7 @@ def main() -> int:
     grid, rules = load_json(args.grid), load_yaml(args.rules)
     lock = load_yaml(args.lock)
     checks = load_json(args.checksums) if args.checksums.exists() else {}
-    ncgdb = load_json(args.ncgdb_provenance) if args.ncgdb_provenance.exists() else None
+    ncgdb = ncgdb_source(load_json(args.ncgdb_provenance), args.classes) if args.ncgdb_provenance.exists() else None
     stats = load_json(args.class_stats) if args.class_stats.exists() else {}
     if bool(ncgdb) != (stats.get("mode") == "hybrid") and stats:
         log.error("provenance (%s) and class_stats (%s) disagree about NCGDB - re-run derive and classify",
@@ -173,6 +251,7 @@ def main() -> int:
         "tileSize": TILE_SIZE, "zoom": {"min": grid["zmin"], "max": grid["zmax"]},
         "bounds": grid["aoi"], "distScaleM": float(rules.get("distScaleM", 10)),
         "layers": {"class": "class", "dist": "dist_{profile}"}, "profiles": profiles,
+        "layerSources": {"class": CLASS_SOURCES, "dist": CLASS_SOURCES},
         "built": built, "pipelineVersion": PIPELINE_VERSION, "rulesVersion": str(rules["version"]),
         "sources": sources_block(lock, checks, ncgdb),
         "hybrid": bool(ncgdb),
@@ -183,6 +262,8 @@ def main() -> int:
         manifest["dataVersion"] = 2
         manifest["layers"].update({k: k for k in v2["layers"]})
         manifest["grotbc"] = v2
+    if not ncgdb:          # open-data bundle: there is no NCGDB to name
+        _drop_source(manifest, "ncgdb")
     bsrc = grid.get("boundary", {}).get("source", "osm")
     manifest["boundary"] = {"source": bsrc}
     if bsrc == "official" and args.boundary_display.exists():

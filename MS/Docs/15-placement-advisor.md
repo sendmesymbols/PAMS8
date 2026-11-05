@@ -457,6 +457,48 @@ designates.
 
 Settings: `itg: { enabled: true, radiusKm: 3, max: 2, minLevel: 1 }` (Ctrl+K: *Important Tactical Ground*).
 
+### Trafficability (T): road line, season controls, rain rule
+
+T in GROTBC is **Trafficability**: the going for the mode cross-country, on tracks, roads and the MSR, dry and
+after rain. The going itself (soil, cone index, season, the card sections A–H, the Ground Brief) is the going
+engine's (`going.*`, `card.*`, PlacementGoing.ts). `traffic.*` adds the pieces on top of it, each an option so they
+can be compared live before one set is chosen (PlacementTrafficability.ts, PlacementTrafficView.ts):
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `traffic.road` | on | A **T · Road** band after the going sections: the nearest road the mode can use within `roadRadiusKm` (3 km), from the bundle's road lines (`features/`, kind `road`). Tracks: a tankable road (tier `k` 3, class 60+). Wheels: an all-weather road (load code `A`, else not unmetalled), and a fair-weather road that is much nearer, marked SLOW-GO after rain. The MSR comes first when it is no more than half as far again. Foot on GO ground: "Not Needed". A helicopter landing site gets a **Landing** line (slope band, power lines within 100 m, soft after rain). Also in the Ground Brief under T. |
+| `traffic.pill` | on | A header pill when rain makes the going worse ("Rain: NO-GO"), or the season is wet ("After Rain: SLOW-GO"). |
+| `traffic.dual` | off | A second GO / SLOW-GO / NO-GO scale under Why, for the other season. |
+| `traffic.legend` | `label` | `none`; `label` a caption "T · Trafficability · Dry Season"; `season` adds a Dry / After Rain switch; `month` a month stepper with the month's rain at the map centre. The switch and stepper write `going.season` / `going.month`, so the card, the overlay and the settings panel follow. |
+| `traffic.overlay` | off | The overlay paints the going for the season at the map centre (soil and wet ground included, the same rules as the card) instead of the ground classes alone. Painted in the tile worker from the class, soil (cone index or texture) and wet tiles; repainted when the season, month or rule changes or an `auto` season changes as the map moves. |
+| `traffic.header` | `dry` | `season` (opt-in): a **point** on soil or wet ground that is SLOW-GO / NO-GO for the season gets that verdict in the header and the Why scale, and Enforce Mode refuses it. Only ever makes a verdict worse; lines and areas keep the class verdict. |
+| `traffic.rain` | `cone` | How soil changes the going, everywhere (card sections, overlay, verdict): `cone` the rating cone index against the vehicle's (GO at VCI50, SLOW-GO at VCI1); `bearing` the texture's bearing for the season (`rules.json grotbc.soilBearing`: Poor lowers vehicles one step, Very Poor two and foot one); `words` the soil is described but never changes GO / SLOW-GO / NO-GO. |
+
+`v.traffic` on the verdict carries `{ road, pending, pill, dual }`; the going is `v.going`. Ctrl+K: *Trafficability (T)*.
+
+### People (B, civil considerations)
+
+With a bundle that carries a population grid (`manifest.grotbc.population`, written by the pipeline's
+`population.py`), the card gets a **B · Built-Up Areas · People** row for every mode: WorldPop 2026 people round the
+cursor (100 m people summed to ~1 km cells; males 15–49, under 15 and 65+ as 1 km shares), the nearest named place
+(bundle features 110–114, `wp`), and the province comparison (2020 population weighted density). Estimates
+modelled from buildings, not a census; every view says so. The grid (~33 MB) loads once in the background when the
+advisor is on; readings are synchronous and cached per cell (`PlacementPopulation.ts`).
+
+| Setting | Default | |
+| --- | --- | --- |
+| `population.card` | `scale` | How the row looks. Every style is built so they can be compared live (`placement-population-options.html` shows them side by side): `line` (A), `scale` (B, six-step density scale), `rings` (C, 1 / 3 / 5 km target with places at their bearing), `ages` (D), `rose` (F, people by compass sector), `minimap` (G, 11 × 11 km of cells), `profile` (H, density by distance band), `icons` (I), `compare` (J, against the province), `block` (K, the whole civil block), `off`. |
+| `population.flag` | `true` | Civil flag (E): a header pill and a strip when the unit type's threshold is met (`POPULATION_FLAGS`: gun / AD 200+ within 1 km, HLS 50+, signals 500+ within 2 km, wheeled / tracked 2,000+, road-bound 5,000+). Advisory: never changes the verdict. |
+| `population.radiusKm` | `5` | Radius of the count, density class and age split. |
+| `population.layer` / `layerOpacity` | `false` / `0.7` | The People map layer (L): every cell coloured by class (Empty, Sparse, Rural, Dense Rural, Town, Urban; B-family colours, never the verdict colours), with a key in the view's corner. |
+| `population.enabled` | `true` | Off = the grid is never fetched. |
+
+The Ground Brief (G key) draws **B · Built-Up Areas · Civil Considerations** (rings to 10 km, age, eight named
+places, province comparison, sources with dates) through `registerBriefSection`, and Copy as Text includes it.
+API: `advisor.populationAround(pointOrLngLat, { radiusKm })` → `PlacementPopulationReading | null`,
+`advisor.populationText(point)` → the Copy as Text lines. `v.population` on a live verdict carries
+`{ reading, style, flag }`. Ctrl+K: *People*. Test panel: Placement → People (B).
+
 ### When the terrain data is unavailable
 
 `advisor.status` is `{ state, error, retryInMs }` with `state` one of `disabled`, `no-bundle-url`,

@@ -18,7 +18,7 @@
 
 import BaseTileLayer from '@arcgis/core/layers/BaseTileLayer';
 import { compileProfile, type CompiledProfile } from './PlacementEvaluator';
-import { OVERLAY_COLORS, paintOverlayTile, type OverlayPaintParams } from './PlacementOverlayPaint';
+import { OVERLAY_COLORS, paintOverlayTile, type OverlayGoingParams, type OverlayPaintParams } from './PlacementOverlayPaint';
 import { layerNames, type PlacementProfile, type TerrainManifest, type TerrainRules } from './PlacementTypes';
 import type { TileSource } from './TerrainTileCache';
 
@@ -42,7 +42,15 @@ export interface OverlayRenderingSource extends TileSource {
     ay: number,
     params: OverlayPaintParams,
     fallback: () => Promise<Uint8ClampedArray | null>,
+    extra?: { soil: string | null; wet: string | null },
   ) => Promise<Uint8ClampedArray | null>;
+}
+
+/** The going for a season to paint (T, `placement.traffic.overlay`): its paint parameters and the soil / wet tile layers. */
+export interface OverlayGoing {
+  params: OverlayGoingParams;
+  soilLayer: string | null;
+  wetLayer: string | null;
 }
 
 export interface OverlayInputs {
@@ -53,6 +61,8 @@ export interface OverlayInputs {
   getProfile: () => PlacementProfile;
   /** Deployable ground within this many metres of no-go is painted "near". */
   getNearM: () => number;
+  /** The going for a season to paint for a profile, or null to paint the ground classes alone (today's overlay). */
+  getGoing?: (profile: PlacementProfile) => OverlayGoing | null;
 }
 
 export function createOverlayLayer(inputs: OverlayInputs, opacity: number): any {
@@ -89,19 +99,21 @@ export function createOverlayLayer(inputs: OverlayInputs, opacity: number): any 
       offX: (col & mask) * ts,
       offY: (row & mask) * ts,
     };
+    const going = inputs.getGoing?.(profile) ?? null;
+    if (going) params.going = going.params;
+    const extra = going ? { soil: going.soilLayer, wet: going.wetLayer } : undefined;
 
     const onMainThread = async (): Promise<Uint8ClampedArray | null> => {
-      const [ct, dt] = await Promise.all([
-        inputs.source.fetchTile(names.cls, z, ax, ay),
-        names.dist ? inputs.source.fetchTile(names.dist, z, ax, ay).catch(() => null) : Promise.resolve(null),
-      ]);
-      return ct ? paintOverlayTile(ct, dt, params) : null;
+      const opt = (layer: string | null | undefined) =>
+        layer ? inputs.source.fetchTile(layer, z, ax, ay).catch(() => null) : Promise.resolve(null);
+      const [ct, dt, st, wt] = await Promise.all([inputs.source.fetchTile(names.cls, z, ax, ay), opt(names.dist), opt(extra?.soil), opt(extra?.wet)]);
+      return ct ? paintOverlayTile(ct, dt, params, st, wt) : null;
     };
 
     const src = inputs.source;
     const rgba =
       src.renderOverlay && src.workerActive
-        ? await src.renderOverlay(names.cls, names.dist, z, ax, ay, params, onMainThread)
+        ? await src.renderOverlay(names.cls, names.dist, z, ax, ay, params, onMainThread, extra)
         : await onMainThread();
     return rgba ? new ImageData(rgba as Uint8ClampedArray<ArrayBuffer>, ts, ts) : blank();
   }

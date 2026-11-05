@@ -47,6 +47,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import RoadNetworkEngine, {
+  type MilitaryRouteSummary,
   type RoadNetworkAvailability,
   type RouteBarrier,
   type RouteData,
@@ -125,6 +126,12 @@ interface RouteChain {
   appliedMult: number;
   /** Speed slider value already baked into the straight-line estimate legs. */
   appliedSpeed: number;
+  /** What the route crosses by the server's military data (load class, MSR, crossings), merged over the legs. */
+  military: MilitaryRouteSummary | null;
+  /** Travel mode the legs were solved for ('' = none). */
+  travelMode: string;
+  /** Why a leg had no route under the travel mode (the server names what closes it). */
+  failReason: string;
 }
 
 /** One candidate route in Route mode (primary + alternates). */
@@ -372,8 +379,8 @@ export class TrafficabilityEngine {
     this._unsubscribeRoadStatus();
     const rn = this._roadNet();
     if (rn) {
-      this._statusUnsub = rn.onStatusChange(() => this._refreshRoadBadge());
-      void rn.ensureAvailable();
+      this._statusUnsub = rn.onStatusChange(() => { this._refreshRoadBadge(); this._fillVehicleModes(); });
+      void rn.ensureAvailable().then(() => this._fillVehicleModes());
     }
   }
 
@@ -818,6 +825,7 @@ export class TrafficabilityEngine {
 
     this._renderBandLegend(bands, useLive ? 'live' : 'estimate');
     this._setText('#reach-traffic-note', '');
+    this._setText('#reach-military', '');
     this._setText('#reach-steps', '');
 
     // Smart callout at the origin summarising the reach.
@@ -865,6 +873,11 @@ export class TrafficabilityEngine {
     // Primary route. If it can't be routed at all, fall back to a straight-line estimate.
     const primary = await this._routeChain([origin, dest], speedKmh);
     if (primary.okLegs === 0) {
+      if (primary.failReason) {
+        this._renderStraightLineEstimate(origin, dest, speedKmh, `no road route for ${primary.travelMode}`);
+        this._renderMilitary(primary);
+        return;
+      }
       // A barrier-blocked solve is a planning finding, not a service failure:
       // there is no road to the objective that stays out of the threat zones.
       this._renderStraightLineEstimate(
@@ -931,6 +944,7 @@ export class TrafficabilityEngine {
     this._setText('#reach-st-3-val', 'EST');
     this._setText('#reach-st-3-lbl', 'Source');
     this._setText('#reach-traffic-note', '');
+    this._setText('#reach-military', '');
     this._setText('#reach-steps', '');
     this._setText('#reach-legend', '');
     this._setText('#reach-routes', '');
@@ -954,7 +968,11 @@ export class TrafficabilityEngine {
     const profileStr = this._profileMultiplier !== 1
       ? ` (${MOVEMENT_PROFILES[this._movementProfile]?.label ?? 'profile'} ${this._profileMultiplier}×)`
       : '';
-    this._setSourceNote(`Estimate${reasonStr} — straight line at ${effSpeed.toFixed(0)} km/h${profileStr}. Bring the road service online for a real route. 🛰`);
+    // A travel-mode refusal comes from a live road service, so "bring it online" would mislead.
+    const hint = reason?.startsWith('no road route for')
+      ? 'Pick another vehicle, or see below for the roads that close it.'
+      : 'Bring the road service online for a real route. 🛰';
+    this._setSourceNote(`Estimate${reasonStr} — straight line at ${effSpeed.toFixed(0)} km/h${profileStr}. ${hint}`);
     this._setStatus('estimate');
   }
 
@@ -1005,6 +1023,7 @@ export class TrafficabilityEngine {
     this._setText('#reach-st-3-lbl', 'Class');
 
     this._renderTrafficability(traffic);
+    this._renderMilitary(chain);
     this._renderSegList(segs);
     this._renderTierLegend(segs);
     this._setText('#reach-routes', '');
@@ -1115,15 +1134,27 @@ export class TrafficabilityEngine {
     const byClassKm: Record<string, number> = {};
     let okLegs = 0, distKm = 0, timeMin = 0, degraded = false;
     let blocked = 0;
+    const travelMode = this._travelMode();
+    const month = Number(this._panelEl?.querySelector<HTMLSelectElement>('#reach-month')?.value ?? 0);
+    const routeOpts = {
+      ...(barriers.length ? { barriers } : {}),
+      travelMode,
+      ...(travelMode && month > 0
+        ? { parameters: [{ attributeName: 'SeasonalClosure', parameterName: 'Month', value: month }] }
+        : {}),
+    };
+    const milParts: MilitaryRouteSummary[] = [];
+    let failReason = '';
 
     for (let i = 0; i < points.length - 1; i++) {
       const a = points[i], b = points[i + 1];
       let res: any = null;
       if (rn) {
-        try { res = await rn.route(a, b, barriers.length ? { barriers } : undefined); }
+        try { res = await rn.route(a, b, routeOpts); }
         catch { res = { ok: false }; }
       }
       if (res && !res.ok && res.reason === 'no-route' && barriers.length) blocked++;
+      if (res && !res.ok && travelMode && !failReason) failReason = String(res.error ?? '');
       if (res?.ok && res.data?.geometry) {
         const data = res.data as RouteData;
         const coords = this._flattenGeoJson(data.geometry);
@@ -1133,6 +1164,7 @@ export class TrafficabilityEngine {
         distKm += data.distanceKm || 0;
         timeMin += data.travelTimeMin || 0;
         for (const c of data.byClass ?? []) byClassKm[c.fclass] = (byClassKm[c.fclass] || 0) + (c.km || 0);
+        if (data.military) milParts.push(data.military);
         for (const s of this._segsFromSteps(data, speedKmh)) segs.push(s);
       } else {
         // Straight-line estimate. The solver is not available to enforce
@@ -1180,7 +1212,100 @@ export class TrafficabilityEngine {
       path, segs, distKm, timeMin, traffic, okLegs, degraded, blocked,
       appliedMult: this._profileMultiplier,
       appliedSpeed: speedKmh,
+      military: TrafficabilityEngine._mergeMilitary(milParts),
+      travelMode,
+      failReason,
     };
+  }
+
+  /** The travel mode chosen in the panel ('' = any vehicle, plain routing). */
+  private _travelMode(): string {
+    return this._panelEl?.querySelector<HTMLSelectElement>('#reach-vehicle')?.value ?? '';
+  }
+
+  /** Fill the vehicle picker from the travel modes the routing server offers. */
+  private _fillVehicleModes(): void {
+    const sel = this._panelEl?.querySelector<HTMLSelectElement>('#reach-vehicle');
+    if (!sel) return;
+    const modes = this._roadNet()?.travelModes ?? [];
+    const row = this._panelEl?.querySelector<HTMLElement>('#reach-vehicle-row');
+    if (row) row.hidden = modes.length === 0;
+    const have = Array.from(sel.options).map((o) => o.value).join('|');
+    const want = ['', ...modes.map((m) => m.name)].join('|');
+    if (have === want) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Any vehicle (no restrictions)</option>' +
+      modes.map((m) => `<option value="${this._escape(m.name)}" title="${this._escape(m.description)}">${this._escape(m.name)}</option>`).join('');
+    sel.value = modes.some((m) => m.name === cur) ? cur : '';
+  }
+
+  /** Several legs' military summaries as one route's. */
+  private static _mergeMilitary(parts: MilitaryRouteSummary[]): MilitaryRouteSummary | null {
+    if (!parts.length) return null;
+    const worse = ['foot bridge', 'bridge below class 50', 'bridge, class not recorded', 'ford / ferry', 'bridge class 50-59', 'bridge class 60+'];
+    const rank = (t: string) => {
+      const i = worse.findIndex((w) => t.toLowerCase().startsWith(w));
+      return i < 0 ? 99 : i;
+    };
+    // A leg's length, recovered from its percentages (the summary carries km and % of the leg).
+    const legKm = (p: MilitaryRouteSummary) =>
+      p.msrPct > 0 ? (p.msrKm * 100) / p.msrPct : p.unknownLoadPct > 0 ? (p.unknownLoadKm * 100) / p.unknownLoadPct : 0;
+    let total = 0;
+    const out: MilitaryRouteSummary = {
+      minLoadClass: 0, unknownLoadKm: 0, unknownLoadPct: 0, msrKm: 0, msrPct: 0, tankableKm: 0, fairWeatherKm: 0,
+      closedMonths: '', landslides: 0, limitingCrossing: '', roads: [],
+    };
+    const months = new Set<string>();
+    for (const p of parts) {
+      total += legKm(p);
+      if (p.minLoadClass > 0 && (out.minLoadClass === 0 || p.minLoadClass < out.minLoadClass)) {
+        out.minLoadClass = p.minLoadClass;
+        out.minLoadClassAt = p.minLoadClassAt;
+      }
+      out.unknownLoadKm += p.unknownLoadKm;
+      out.msrKm += p.msrKm;
+      out.tankableKm += p.tankableKm;
+      out.fairWeatherKm += p.fairWeatherKm;
+      out.landslides += p.landslides;
+      p.closedMonths.split(',').map((m) => m.trim()).filter(Boolean).forEach((m) => months.add(m));
+      if (p.limitingCrossing && rank(p.limitingCrossing) < rank(out.limitingCrossing)) out.limitingCrossing = p.limitingCrossing;
+      for (const r of p.roads) if (!out.roads.includes(r)) out.roads.push(r);
+    }
+    out.unknownLoadPct = total > 0 ? (100 * out.unknownLoadKm) / total : 0;
+    out.msrPct = total > 0 ? (100 * out.msrKm) / total : 0;
+    out.closedMonths = Array.from(months).join(', ');
+    return out;
+  }
+
+  /** The military block of the results: what the route crosses, or why there is no route for the vehicle. */
+  private _renderMilitary(chain: RouteChain | null): void {
+    const el = this._q<HTMLElement>('#reach-military');
+    if (!el) return;
+    if (!chain) { el.innerHTML = ''; return; }
+    const m = chain.military;
+    const mode = chain.travelMode ? `<b>${this._escape(chain.travelMode)}</b>` : 'any vehicle';
+    if (chain.failReason && chain.okLegs === 0) {
+      el.innerHTML = `<div class="reach-mil-title">&#9888; No Road Route for ${mode}</div>` +
+        `<div class="reach-mil-row">${this._escape(chain.failReason)}</div>`;
+      return;
+    }
+    if (!m) { el.innerHTML = ''; return; }
+    const pct = (v: number) => `${v.toFixed(0)}%`;
+    const rows: string[] = [
+      `<div class="reach-mil-title">Military Route (${mode})</div>`,
+      `<div class="reach-mil-row">Lowest recorded load class: <b>${m.minLoadClass > 0 ? `Class ${m.minLoadClass}` : 'Not Recorded'}</b>` +
+        `${m.minLoadClassAt ? ` on ${this._escape(m.minLoadClassAt)}` : ''}</div>`,
+      `<div class="reach-mil-row">On MSR: <b>${m.msrKm.toFixed(0)} km (${pct(m.msrPct)})</b> · Tankable (class 60+): <b>${m.tankableKm.toFixed(0)} km</b></div>`,
+      `<div class="reach-mil-row">Load class not recorded: <b>${m.unknownLoadKm.toFixed(0)} km (${pct(m.unknownLoadPct)})</b>` +
+        `${m.fairWeatherKm >= 0.5 ? ` · Fair-weather road: <b>${m.fairWeatherKm.toFixed(1)} km</b>` : ''}</div>`,
+    ];
+    if (m.limitingCrossing) rows.push(`<div class="reach-mil-row">Weakest crossing: <b>${this._escape(m.limitingCrossing)}</b></div>`);
+    if (m.closedMonths) rows.push(`<div class="reach-mil-row">&#9888; Part of the route is recorded closed in: <b>${this._escape(m.closedMonths)}</b></div>`);
+    if (m.landslides > 0) rows.push(`<div class="reach-mil-row">&#9888; ${m.landslides} recorded landslide site${m.landslides === 1 ? '' : 's'} on the roads used</div>`);
+    if (m.roads.length) rows.push(`<div class="reach-mil-row">Roads: ${this._escape(m.roads.slice(0, 6).join(', '))}</div>`);
+    if (chain.failReason) rows.push(`<div class="reach-mil-row">&#9888; ${this._escape(chain.failReason)}</div>`);
+    rows.push('<div class="reach-mil-note">NCGDB load classes where recorded; the roads layer on the map shows the same data.</div>');
+    el.innerHTML = rows.join('');
   }
 
   /**
@@ -1352,6 +1477,7 @@ export class TrafficabilityEngine {
     this._setText('#reach-st-2-val', selChain.timeMin.toFixed(0)); this._setText('#reach-st-2-lbl', 'Time min');
     this._setText('#reach-st-3-val', selChain.traffic?.rating ?? '—'); this._setText('#reach-st-3-lbl', 'Traffic');
     this._renderTrafficability(selChain.traffic);
+    this._renderMilitary(selChain);
     this._renderSegList(selChain.segs);
     this._renderTierLegend(selChain.segs);
     this._renderRoutesList();
@@ -2146,6 +2272,7 @@ export class TrafficabilityEngine {
   private _clearStats(): void {
     ['1', '2', '3'].forEach((n) => this._setText(`#reach-st-${n}-val`, '—'));
     this._setText('#reach-traffic-note', '');
+    this._setText('#reach-military', '');
     this._setText('#reach-steps', '');
     this._setText('#reach-legend', '');
     this._setText('#reach-routes', '');
@@ -2405,6 +2532,24 @@ export class TrafficabilityEngine {
             </div>
 
             <div class="ms-section-title">Movement</div>
+            <div id="reach-vehicle-row" hidden>
+              <div class="ms-field">
+                <label class="ms-label" for="reach-vehicle">Vehicle (travel mode)</label>
+                <select id="reach-vehicle" class="ms-select" title="Routes keep to roads and bridges this vehicle may use (NCGDB load classes, MSR, closures)">
+                  <option value="">Any vehicle (no restrictions)</option>
+                </select>
+              </div>
+              <div class="ms-field">
+                <label class="ms-label" for="reach-month">Month of travel</label>
+                <select id="reach-month" class="ms-select" title="Roads recorded closed in this month are avoided">
+                  <option value="0">Current month</option>
+                  <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                  <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                  <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                  <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                </select>
+              </div>
+            </div>
             <div class="ms-slider-row">
               <div class="ms-slider-label">Assumed speed (km/h)</div>
               <input id="reach-speed" type="range" min="5" max="120" step="5" value="40" />
@@ -2441,6 +2586,7 @@ export class TrafficabilityEngine {
         <div class="reach-routes" id="reach-routes"></div>
         <div class="reach-source-note" id="reach-source-note"></div>
         <div class="reach-traffic-note" id="reach-traffic-note"></div>
+        <div class="reach-military" id="reach-military"></div>
         <div class="reach-steps" id="reach-steps"></div>
 
         <div class="reach-scrub-wrap" id="reach-scrub-wrap" hidden>

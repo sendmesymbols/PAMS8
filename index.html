@@ -337,9 +337,15 @@
       #demoMenuBtn.ms-btn-active,
       #penStyleBtn.ms-btn-active,
       #penModeBtn.ms-btn-active,
-      #creationModeBtn.ms-btn-active {
+      #creationModeBtn.ms-btn-active,
+      #placementAdvisorBtn.ms-btn-active {
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
+      }
+      /* Placement Advisor on but without terrain data (bundle missing / failed). */
+      #placementAdvisorBtn.ms-btn-active[data-state='no-bundle'] {
+        border-color: #d9a400 !important;
+        color: #d9a400 !important;
       }
       /* Freehand Style palette: single-column form (checkboxes, colour swatches, sliders) */
       #drawStyleMenu {
@@ -2030,6 +2036,8 @@
           </div>
         </div>
         </div>
+        <!-- Placement Advisor on/off — flips #setting-placementAdvisor (same source of truth as the Settings panel); wired in src/main.ts. -->
+        <button class="ms-btn infobar-btn" id="placementAdvisorBtn" aria-pressed="false" data-state="disabled" title="Placement Advisor — live terrain advice while drawing (GO / SLOW-GO / NO-GO ground, footprint, ITG candidates). Click to turn it on or off; options are in the Settings panel."><span class="infobar-icon">⛰</span>Terrain</button>
         <button class="ms-btn infobar-btn" id="switch-btn" title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."><span class="infobar-icon">⊞</span>2D</button>
         <!-- Creation Mode toggle + quick edit actions — grouped so they stay on one row (the group wraps as a unit on narrow screens). -->
         <div class="infobar-group">
@@ -3145,6 +3153,80 @@
               <button type="button" id="placement-itg-list" title="Log the ITG candidates within the radius of the map centre to the Engine Log.">List candidates</button>
               <button type="button" id="placement-itg-itg" title="Draw an Imp Gr (ITG) round the strongest, nearest candidate to the map centre. It is an ordinary symbol, saved with the plan.">Designate ITG</button>
               <button type="button" id="placement-itg-mitg" title="Draw a Vital Gr (MITG) round the strongest, nearest candidate to the map centre. It is an ordinary symbol, saved with the plan.">Designate MITG</button>
+            </div>
+            <div class="sub-feature-label">People (B, Civil Considerations)</div>
+            <div class="setting-row">
+              <label>Card style</label>
+              <select id="setting-placementPopCard" style="width: 150px" title="How the card shows the people round the cursor (WorldPop 2026 estimate). Every style is kept to compare them: see placement-population-options.html.">
+                <option value="off">Off</option>
+                <option value="line">A · One line</option>
+                <option value="scale" selected>B · Density scale</option>
+                <option value="rings">C · Range rings</option>
+                <option value="ages">D · Who lives here</option>
+                <option value="rose">F · People rose</option>
+                <option value="minimap">G · Mini heat map</option>
+                <option value="profile">H · Distance profile</option>
+                <option value="icons">I · People icons</option>
+                <option value="compare">J · Versus province</option>
+                <option value="block">K · Full civil block</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Civil flag</label>
+              <input type="checkbox" id="setting-placementPopFlag" checked title="Pill and strip on the card when people near the position matter for the unit type (gun, AD, HLS, signals, vehicles). Advisory only." />
+            </div>
+            <div class="setting-row">
+              <label>Radius (km)</label>
+              <input type="number" id="setting-placementPopRadius" min="1" max="10" step="1" value="5" style="width: 60px" title="Radius the card's count, density class and age split are measured over." />
+            </div>
+            <div class="setting-row">
+              <label>People layer</label>
+              <input type="checkbox" id="setting-placementPopLayer" title="Paint every ~1 km cell on the map by how many people live there, with a key." />
+            </div>
+            <div class="setting-row">
+              <label>Map centre</label>
+              <button type="button" id="placement-pop-log" title="Write the Civil Considerations text for the map centre to the Engine Log (as Copy as Text would).">Log people at centre</button>
+            </div>
+            <div class="sub-feature-label">Trafficability (T)</div>
+            <div class="setting-row">
+              <label>Road line</label>
+              <input type="checkbox" id="setting-placementTrafficRoad" checked title="Name the nearest road the mode can use on the card: tankable (class 60+) for tracks, all-weather for wheels, the MSR first when it is about as near. Helicopters get a landing line." />
+            </div>
+            <div class="setting-row">
+              <label>Rain pill</label>
+              <input type="checkbox" id="setting-placementTrafficPill" checked title="A pill in the card header when rain makes the going worse (Rain: NO-GO), or the season is wet." />
+            </div>
+            <div class="setting-row">
+              <label>Second scale</label>
+              <input type="checkbox" id="setting-placementTrafficDual" title="A second GO / SLOW-GO / NO-GO scale under Why, for the other season." />
+            </div>
+            <div class="setting-row">
+              <label>Legend</label>
+              <select id="setting-placementTrafficLegend" style="width: 150px" title="What the Legend adds for T. The switch and the month stepper change the Cross-Country Going season.">
+                <option value="none">No change</option>
+                <option value="label" selected>Caption</option>
+                <option value="season">Caption + Dry / After Rain</option>
+                <option value="month">Caption + month stepper</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Overlay by season</label>
+              <input type="checkbox" id="setting-placementTrafficOverlay" title="Paint the terrain overlay with the going for the season at the map centre, soil and wet ground included." />
+            </div>
+            <div class="setting-row">
+              <label>Verdict by season</label>
+              <select id="setting-placementTrafficHeader" style="width: 150px" title="Yes: a point on soil that is SLOW-GO or NO-GO for the season gets that verdict, and Enforce Mode refuses it.">
+                <option value="dry" selected>No (ground classes)</option>
+                <option value="season">Yes (soil and wet ground)</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Soil rule</label>
+              <select id="setting-placementTrafficRain" style="width: 150px" title="How soil changes the going: cone index against the vehicle's, soil bearing steps, or words only.">
+                <option value="cone" selected>Cone index</option>
+                <option value="bearing">Soil bearing steps</option>
+                <option value="words">Words only</option>
+              </select>
             </div>
           </div>
         </div>
@@ -4464,6 +4546,17 @@
         'setting-placementItg': (v) => ({ path: ['placement', 'itg', 'enabled'], value: v }),
         'setting-placementItgRadius': (v) => ({ path: ['placement', 'itg', 'radiusKm'], value: Number(v) }),
         'setting-placementItgLevel': (v) => ({ path: ['placement', 'itg', 'minLevel'], value: Number(v) }),
+        'setting-placementPopCard': (v) => ({ path: ['placement', 'population', 'card'], value: v }),
+        'setting-placementPopFlag': (v) => ({ path: ['placement', 'population', 'flag'], value: v }),
+        'setting-placementPopRadius': (v) => ({ path: ['placement', 'population', 'radiusKm'], value: Number(v) }),
+        'setting-placementPopLayer': (v) => ({ path: ['placement', 'population', 'layer'], value: v }),
+        'setting-placementTrafficRoad': (v) => ({ path: ['placement', 'traffic', 'road'], value: v }),
+        'setting-placementTrafficPill': (v) => ({ path: ['placement', 'traffic', 'pill'], value: v }),
+        'setting-placementTrafficDual': (v) => ({ path: ['placement', 'traffic', 'dual'], value: v }),
+        'setting-placementTrafficLegend': (v) => ({ path: ['placement', 'traffic', 'legend'], value: v }),
+        'setting-placementTrafficOverlay': (v) => ({ path: ['placement', 'traffic', 'overlay'], value: v }),
+        'setting-placementTrafficHeader': (v) => ({ path: ['placement', 'traffic', 'header'], value: v }),
+        'setting-placementTrafficRain': (v) => ({ path: ['placement', 'traffic', 'rain'], value: v }),
         'setting-placementWorker': (v) => ({ path: ['placement', 'useWorker'], value: v }),
         'setting-placementOverlay': (v) => ({ path: ['placement', 'overlay', 'enabled'], value: v }),
         'setting-placementBoundary': (v) => ({ path: ['placement', 'overlay', 'boundary'], value: v }),

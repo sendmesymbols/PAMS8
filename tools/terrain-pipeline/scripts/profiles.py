@@ -61,7 +61,7 @@ def build_rules(rules: dict, classes: dict) -> dict:
         out["profileOverrides"] = rules["profileOverrides"]
     # Bundle v2: the doctrine numbers and the codebooks of the auxiliary layers, for the engine to read.
     grotbc = {k: rules[k] for k in ("loadClassCode", "tanks", "tankable", "msr", "water") if k in rules}
-    for key in ("terrainType", "soilBearing", "banks", "itg"):
+    for key in ("terrainType", "soilBearing", "soilStrength", "banks", "itg"):
         if rules.get(key):
             grotbc[key] = rules[key]
     if rules.get("coverSplit"):
