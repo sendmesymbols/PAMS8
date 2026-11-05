@@ -13,19 +13,24 @@
  *
  * Like ProximityEngine, the graphics are created once, kept on one ground-draped
  * GraphicsLayer and only have their geometry swapped / visibility toggled afterwards,
- * so following the cursor never adds or removes graphics (which would redraw the layer).
+ * so following the cursor never adds or removes graphics (which would redraw the layer);
+ * the marker pools only grow when a shape needs more marks than any before it.
+ *
+ * Markers are PictureMarkerSymbols on one Point graphic each: a SceneView draws neither
+ * SimpleMarkerSymbol ('x', 'cross', 'circle', ...) nor Multipoint geometry on this draped
+ * layer, so either would show in 2D only.
  */
 
 import Graphic from '@arcgis/core/Graphic';
-import Multipoint from '@arcgis/core/geometry/Multipoint';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Font from '@arcgis/core/symbols/Font';
+import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
-import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
+import Utils from '../../Support/utils';
 import type { MercXY, GroundGuideIndicator } from './GroundGuideTypes';
 
 const LAYER_ID = 'ms-ground-guide-indicators';
@@ -38,13 +43,34 @@ const RGB: Record<GroundGuideIndicator['kind'], [number, number, number]> = {
 
 type Convert = (p: MercXY) => [number, number] | null;
 
+const svg = (body: string): string =>
+  Utils.svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">${body}</svg>`);
+
+/** The X mark for ground in no-go: the kind's colour on a white casing. */
+function markUrl([r, g, b]: [number, number, number]): string {
+  const x = 'M4 4 L18 18 M18 4 L4 18';
+  return svg(
+    `<path d="${x}" stroke="#fff" stroke-opacity="0.9" stroke-width="6" stroke-linecap="round" fill="none"/>` +
+      `<path d="${x}" stroke="rgb(${r},${g},${b})" stroke-width="3" stroke-linecap="round" fill="none"/>`,
+  );
+}
+
+/** The marker on the terrain a line points to: a white circle (diamond for deployable ground) ringed in the kind's colour. */
+function endUrl([r, g, b]: [number, number, number], diamond: boolean): string {
+  const stroke = `stroke="rgb(${r},${g},${b})" stroke-width="3" fill="#fff"`;
+  return svg(diamond ? `<path d="M11 2 L20 11 L11 20 L2 11 Z" ${stroke} stroke-linejoin="round"/>` : `<circle cx="11" cy="11" r="8" ${stroke}/>`);
+}
+
 export class GroundGuideIndicators {
   private _layer: GraphicsLayer | null = null;
   private _map: any = null;
   private _casing: Graphic | null = null;
   private _line: Graphic | null = null;
-  private _ends: Graphic | null = null;
-  private _marks: Graphic | null = null;
+  /** One Point graphic per line end / X mark; the unused tail of each pool is hidden. */
+  private _endPool: Graphic[] = [];
+  private _markPool: Graphic[] = [];
+  private _endSym: PictureMarkerSymbol | null = null;
+  private _markSym: PictureMarkerSymbol | null = null;
   private _stretchCasing: Graphic | null = null;
   private _stretch: Graphic | null = null;
   private _label: Graphic | null = null;
@@ -99,9 +125,8 @@ export class GroundGuideIndicators {
 
     this._casing!.geometry = new Polyline({ paths, spatialReference: sr });
     this._line!.geometry = new Polyline({ paths, spatialReference: sr });
-    this._ends!.geometry = new Multipoint({ points: ends, spatialReference: sr });
-    this._marks!.geometry = marks.length ? new Multipoint({ points: marks, spatialReference: sr }) : null;
-    this._marks!.visible = marks.length > 0;
+    this._placePoints(this._endPool, ends, this._endSym!, sr, () => this._label!);
+    this._placePoints(this._markPool, marks, this._markSym!, sr, () => this._endPool[0] ?? this._label!);
     const stretchGeom = stretches.length ? new Polyline({ paths: stretches, spatialReference: sr }) : null;
     this._stretchCasing!.geometry = stretchGeom;
     this._stretch!.geometry = stretchGeom;
@@ -113,8 +138,9 @@ export class GroundGuideIndicators {
       // Put the text beyond the end of the line (on the side away from the symbol) so it never covers the line.
       const left = paths[0][1][0] < paths[0][0][0];
       if (text !== this._labelText || left !== this._labelLeft) {
-        // Mutate the one text symbol and re-assign it (as ProximityEngine does) so both 2D and 3D refresh.
-        const sym = this._labelSym!;
+        // Assign a NEW text symbol: a SceneView keeps drawing the old text (or none) when the same
+        // symbol object is mutated and re-assigned. Only happens when the text or side changes.
+        const sym = this._labelSym!.clone();
         sym.text = text;
         sym.horizontalAlignment = left ? 'right' : 'left';
         sym.xoffset = left ? -10 : 10;
@@ -128,7 +154,6 @@ export class GroundGuideIndicators {
     if (!this._visible) {
       this._casing!.visible = true;
       this._line!.visible = true;
-      this._ends!.visible = true;
       this._visible = true;
     }
   }
@@ -136,7 +161,7 @@ export class GroundGuideIndicators {
   /** Hide the indicator lines (the footprint outline has its own `hideFootprint`). */
   hide(): void {
     if (!this._visible) return;
-    for (const g of [this._casing, this._line, this._ends, this._marks, this._stretchCasing, this._stretch, this._label]) {
+    for (const g of [this._casing, this._line, ...this._endPool, ...this._markPool, this._stretchCasing, this._stretch, this._label]) {
       if (g) g.visible = false;
     }
     this._visible = false;
@@ -196,7 +221,10 @@ export class GroundGuideIndicators {
     this._detach();
     this._layer?.destroy();
     this._layer = null;
-    this._casing = this._line = this._ends = this._marks = this._label = null;
+    this._casing = this._line = this._label = null;
+    this._endPool = [];
+    this._markPool = [];
+    this._endSym = this._markSym = null;
     this._stretchCasing = this._stretch = null;
     this._fpOwn = this._fpOthers = null;
     this._fpVisible = false;
@@ -239,10 +267,11 @@ export class GroundGuideIndicators {
       // never picked up when its symbol is set afterwards.
       const s = this._symbols(kind);
       this._labelSym = s.label;
+      this._endSym = s.end;
+      this._markSym = s.mark;
       this._casing = new Graphic({ symbol: s.casing, visible: false });
       this._line = new Graphic({ symbol: s.line, visible: false });
-      this._ends = new Graphic({ symbol: s.end, visible: false });
-      this._marks = new Graphic({ symbol: s.mark, visible: false });
+      this._endPool = [new Graphic({ symbol: s.end, visible: false })];
       this._label = new Graphic({ symbol: s.label, visible: false });
       // The stretches of a line / area edge that run through no-go ground: solid red on a white casing.
       this._stretchCasing = new Graphic({
@@ -269,8 +298,7 @@ export class GroundGuideIndicators {
         this._stretch,
         this._casing,
         this._line,
-        this._marks,
-        this._ends,
+        ...this._endPool,
         this._label,
       ]);
       this._kind = kind;
@@ -294,6 +322,30 @@ export class GroundGuideIndicators {
     this._map = null;
   }
 
+  /**
+   * Put one pooled Point graphic on each coordinate and hide the rest of the pool. A pool only
+   * grows (rarely: a shape with more marks than any before it); a new graphic is created WITH its
+   * symbol and goes in just below `above()`, keeping the 2D stacking marks < ends < label.
+   */
+  private _placePoints(pool: Graphic[], coords: [number, number][], sym: PictureMarkerSymbol, sr: any, above: () => Graphic): void {
+    for (let i = pool.length; i < coords.length; i++) {
+      const g = new Graphic({ symbol: sym, visible: false });
+      const graphics = this._layer!.graphics;
+      const at = graphics.indexOf(above());
+      graphics.add(g, at < 0 ? graphics.length : at);
+      pool.push(g);
+    }
+    for (let i = 0; i < pool.length; i++) {
+      const g = pool[i];
+      if (i < coords.length) {
+        g.geometry = new Point({ x: coords[i][0], y: coords[i][1], spatialReference: sr });
+        g.visible = true;
+      } else if (g.visible) {
+        g.visible = false;
+      }
+    }
+  }
+
   /** The kind (colour / marker shape) changed: swap in symbols for it. */
   private _applyKind(kind: GroundGuideIndicator['kind']): void {
     const s = this._symbols(kind);
@@ -302,8 +354,10 @@ export class GroundGuideIndicators {
     this._labelText = ''; // forces the label symbol to be re-assigned on this show()
     this._casing!.symbol = s.casing;
     this._line!.symbol = s.line;
-    this._ends!.symbol = s.end;
-    this._marks!.symbol = s.mark;
+    this._endSym = s.end;
+    this._markSym = s.mark;
+    for (const g of this._endPool) g.symbol = s.end;
+    for (const g of this._markPool) g.symbol = s.mark;
     this._label!.symbol = s.label;
   }
 
@@ -312,18 +366,8 @@ export class GroundGuideIndicators {
     return {
       casing: new SimpleLineSymbol({ style: 'solid', color: [255, 255, 255, 0.8], width: 5 }),
       line: new SimpleLineSymbol({ style: 'dash', color: [...rgb, 1], width: 2.5 }),
-      end: new SimpleMarkerSymbol({
-        style: kind === 'deployable' ? 'diamond' : 'circle',
-        color: [255, 255, 255, 1],
-        size: 11,
-        outline: { color: [...rgb, 1], width: 2.5 },
-      }),
-      mark: new SimpleMarkerSymbol({
-        style: 'x',
-        color: [...rgb, 1],
-        size: 9,
-        outline: { color: [...rgb, 1], width: 2 },
-      }),
+      end: new PictureMarkerSymbol({ url: endUrl(rgb, kind === 'deployable'), width: 12, height: 12 }),
+      mark: new PictureMarkerSymbol({ url: markUrl(rgb), width: 11, height: 11 }),
       label: new TextSymbol({
         text: '',
         font: new Font({ size: 11, weight: 'bold', family: 'Helvetica' }),
