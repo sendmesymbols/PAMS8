@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trafficability on the Card</title>
+<!--
+  PAMS8 Ground Guide: how to show GROTBC T (Trafficability) on the cursor card and the legend. Options to approve.
+  One self-contained file: no network, no build. The card CSS is copied verbatim from MS/Engines/GroundGuide/GroundGuideBadge.ts;
+  rules marked "proposal" (.ms-ggb-chip, .ms-ggb-kv, .ms-ggb-grid) are new. All map data is ILLUSTRATIVE sample data:
+  irrigated farmland about 3 km S of Kamoke (Gujranwala), the same point as ground-guide-card-options.html.
+-->
+<style>
+:root{--bg:#0f1318;--panel:#171c22;--panel2:#1d232a;--line:#2a323b;--tx:#e8ebee;--soft:#9aa3ad;--acc:#8ec1ea;--warn:#ffc861}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.55 system-ui,"Segoe UI",Arial,sans-serif}
+.pg-wrap{max-width:1320px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:28px;line-height:1.15;margin:30px 0 8px}
+h2{font-size:21px;margin:46px 0 6px;padding-top:16px;border-top:1px solid var(--line)}
+p{margin:6px 0 10px;max-width:84ch}
+.pg-lede{font-size:15.5px;color:#c8cfd6}
+.pg-sub{color:var(--soft);font-size:13px;margin:0 0 12px;max-width:86ch}
+.pg-note{border-left:3px solid #3d4a58;padding:6px 12px;color:#c3cbd3;background:rgba(255,255,255,.03);border-radius:0 6px 6px 0;font-size:13px;max-width:96ch;margin:10px 0}
+.pg-note b{color:#fff}
+.pg-note.ok{border-color:#2fa862}.pg-note.warn{border-color:#c98b2a}
+code{font:12px/1.4 ui-monospace,Consolas,monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;color:#d7e2ec}
+.pg-ctl{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);font-size:13px;color:var(--soft)}
+.pg-seg{display:inline-flex;border:1px solid #39434f;border-radius:7px;overflow:hidden}
+.pg-seg button{font:inherit;font-size:12.5px;color:var(--tx);background:#1c232b;border:0;border-left:1px solid #39434f;padding:5px 10px;cursor:pointer}
+.pg-seg button:first-child{border-left:0}
+.pg-seg button[aria-pressed="true"]{background:var(--acc);color:#10161c;font-weight:600}
+.pg-seg button:focus-visible,.pg-opt input:focus-visible+span,.pg-btn:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.pg-opts{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));align-items:start}
+.pg-opt{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;cursor:pointer;min-width:0}
+.pg-opt:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.pg-opt input{position:absolute;opacity:0;pointer-events:none}
+.pg-opt-h{display:flex;gap:8px;align-items:baseline;margin-bottom:4px}
+.pg-opt-h b{font-size:15px}
+.pg-opt-h .pg-pick{margin-left:auto;font-size:11.5px;color:var(--soft);border:1px solid #39434f;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.pg-opt:has(input:checked) .pg-pick{background:var(--acc);border-color:var(--acc);color:#10161c;font-weight:600}
+.pg-rec{font:700 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;color:#7ee0a5;background:#1d3a2a;border-radius:999px;padding:3px 7px}
+.pg-opt p{font-size:13px;color:#c3cbd3;margin:2px 0 10px}
+.pg-stage{background:#2b3a2a;background-image:linear-gradient(135deg,rgba(255,255,255,.035) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.035) 50%,rgba(255,255,255,.035) 75%,transparent 75%);background-size:22px 22px;border-radius:9px;padding:14px;display:flex;justify-content:center}
+.pg-meta{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px;margin-top:10px;color:#c3cbd3}
+.pg-meta dt{color:var(--soft)}.pg-meta dd{margin:0}
+.pg-size{font:600 12px ui-monospace,Consolas,monospace;color:var(--warn)}
+.pg-q{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.pg-q .pg-opt{padding:10px 12px}
+.pg-out{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+.pg-out pre{margin:8px 0 0;white-space:pre-wrap;font:13px/1.5 ui-monospace,Consolas,monospace;color:#d7e2ec}
+.pg-btn{font:inherit;font-size:13px;color:var(--tx);background:#222a33;border:1px solid #39434f;border-radius:6px;padding:6px 12px;cursor:pointer}
+.pg-btn:hover{background:#2b343f}
+.pg-t{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.pg-t th,.pg-t td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid var(--line)}
+.pg-t th{background:var(--panel2);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
+.pg-t tr:last-child td{border-bottom:0}
+.pg-scroll{overflow-x:auto}
+.yes{color:#7ee0a5;font-weight:600}.no{color:#ff8a8d;font-weight:600}.part{color:var(--warn);font-weight:600}
+.pg-today{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.pg-today ul{margin:0;padding-left:18px;font-size:13.5px;max-width:62ch}
+.pg-today li{margin:3px 0}
+@media (max-width:640px){h1{font-size:23px}.pg-ctl{position:static}}
+
+/* ---- card: verbatim from GroundGuideBadge.ts (position:static and display:block for the page) ---- */
+.ms-ground-guide-badge{position:static;pointer-events:none;
+  --pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:280px;max-width:100%;box-sizing:border-box;border-radius:10px;overflow:hidden;
+  font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
+  background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:block}
+.ms-ground-guide-badge[data-verdict="ok"]{--pb-c:#1c8247;--pb-k:#3fc07a}
+.ms-ground-guide-badge[data-verdict="near"]{--pb-c:#e9a526;--pb-fg:#1b1f25;--pb-k:#f2b84b}
+.ms-ground-guide-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25;--pb-k:#f0a04b}
+.ms-ground-guide-badge[data-verdict="partial"]{--pb-c:#d9622b;--pb-fg:#1b1f25;--pb-k:#ef7d4a}
+.ms-ground-guide-badge[data-verdict="in"]{--pb-c:#d63a3f;--pb-k:#ff6b6f}
+.ms-ggb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
+.ms-ggb-bar>svg{flex:none}
+.ms-ggb-title{flex:1 1 0;min-width:0}
+.ms-ggb-sec{padding:7px 11px 8px}
+.ms-ggb-sec:nth-child(even){background:#222830}
+.ms-ggb-cap{font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--pb-k);margin-bottom:5px}
+.ms-ggb-b{font-weight:600;color:#fff}
+.ms-ggb-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:6px}
+.ms-ggb-scale>span{font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-align:center;padding:4px 0 3px;border-radius:2px;background:rgba(255,255,255,.06);color:#6b737c}
+.ms-ggb-scale>.ms-on-go{background:#2fa862;color:#fff}
+.ms-ggb-scale>.ms-on-slow{background:#f0932b;color:#1b1f25}
+.ms-ggb-scale>.ms-on-nogo{background:#e5484d;color:#fff}
+.ms-ggb-nr{display:flex;gap:10px;align-items:center}
+.ms-ggb-big{font-size:18px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
+.ms-ggb-track{height:6px;margin:4px 0 2px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
+.ms-ggb-track>div{height:100%}
+.ms-ggb-warn{color:#ffc861}
+.ms-ggb-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
+.ms-ggb-strong{color:#f2b84b;font-weight:600}
+/* ---- proposal: new card rules ---- */
+.ms-ggb-chip{display:inline-block;font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;padding:3px 6px 2px;border-radius:2px;vertical-align:1px}
+.ms-ggb-chip.go{background:#2fa862;color:#fff}.ms-ggb-chip.slow{background:#f0932b;color:#1b1f25}.ms-ggb-chip.nogo{background:#e5484d;color:#fff}
+.ms-ggb-dim{opacity:.5}
+.ms-ggb-kv{display:grid;grid-template-columns:46px minmax(0,1fr);gap:4px 8px;align-items:baseline}
+.ms-ggb-kv>.k{color:#9aa3ad;font-size:11px}
+.ms-ggb-grid{display:grid;grid-template-columns:minmax(0,1fr) 62px 62px;gap:3px;align-items:center;font-size:11.5px}
+.ms-ggb-grid>.h{font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#9aa3ad;text-align:center}
+.ms-ggb-grid>.ms-ggb-chip{text-align:center;padding:4px 0 3px}
+.ms-ggb-grid>.me{color:#fff;font-weight:600}
+.ms-ggb-grid>.me::before{content:"▸ ";color:var(--pb-k)}
+.ms-ggb-line{margin-top:5px}
+
+/* ---- legend: a simplified copy of GroundGuideLegend.ts (head, mode name, ramp, keys) ---- */
+.ms-ggl{width:290px;max-width:100%;box-sizing:border-box;font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
+  background:rgba(27,31,37,.95);border:1px solid #39414b;border-radius:10px;padding:10px 12px;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.ms-ggl-head{display:flex;align-items:center;gap:8px}
+.ms-ggl-title{font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.ms-ggl-count{margin-left:auto;font:500 11px/1 ui-monospace,Consolas,monospace;color:#9aa3ad}
+.ms-ggl-name{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-top:7px}
+.ms-ggl-name b{font-size:14px;color:#fff}
+.ms-ggl-tag{font-size:11px;color:#9aa3ad}
+.ms-ggl-ramp{display:grid;grid-template-columns:repeat(4,1fr);margin-top:9px;border-radius:4px;overflow:hidden}
+.ms-ggl-ramp>i{height:10px}
+.ms-ggl-ramp-l{display:grid;grid-template-columns:repeat(4,1fr);font-size:10.5px;color:#9aa3ad;margin-top:4px}
+.ms-ggl-ramp-l>span{text-align:center}.ms-ggl-ramp-l>span:first-child{text-align:left}.ms-ggl-ramp-l>span:last-child{text-align:right}
+.ms-ggl-note{font-size:11px;color:#9aa3ad;margin-top:3px}
+.ms-ggl-keys{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09)}
+.ms-ggl-key{display:flex;align-items:center;gap:7px}
+.ms-ggl-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 5px;border-radius:5px;
+  font:700 11.5px/1 ui-monospace,Consolas,monospace;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
+/* proposal: legend additions */
+.ms-ggl-tcap{font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#5aa9e6;margin-top:9px}
+.ms-ggl-season{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:8px}
+.ms-ggl-season>span{text-align:center;font-size:11.5px;padding:4px 0;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
+.ms-ggl-season>.on{background:#8ec1ea;border-color:#8ec1ea;color:#1b1f25;font-weight:600}
+</style>
+</head>
+<body>
+<div class="pg-wrap">
+<h1>Trafficability (T) on the Ground Guide Card</h1>
+<p class="pg-lede">Is T shown in <code>GroundGuide.ts</code> today? <b>Partly.</b> The card's header and its <b>Why</b> going scale are already
+the trafficability of the point for the armed mode, but in the dry season only, and they are not labelled as T. Pick one option in each group below,
+then copy your choices at the end.</p>
+<p class="pg-note ok"><b>Now in the app (2026-11-05), all switchable:</b> the going sections cover cards A–C and the Ground Brief covers D
+(⚙ Settings → <i>Card Sections</i>: going lines, mode matrix, season ribbon, movement rose, soil gauge, exit strip, going map, G brief).
+⚙ Settings → <i>Trafficability (T)</i> adds the road line, the rain pill, a second scale under Why, the legend caption / Dry–After Rain switch /
+month stepper, the overlay and the verdict that follow the season, and the soil rule (cone index, soil bearing steps, words only).
+The rules in section 4 map to <code>traffic.rain</code>, <code>traffic.header</code> and the card section switches.</p>
+
+<div class="pg-ctl" role="group" aria-label="Sample">
+  <span>Sample mode</span><span class="pg-seg" id="c-mode"></span>
+  <span>Season</span><span class="pg-seg" id="c-season"></span>
+</div>
+
+<h2 id="today">1 · What the card shows today</h2>
+<div class="pg-today">
+  <div class="pg-stage" id="today-card"></div>
+  <div>
+    <ul>
+      <li><span class="yes">Shown:</span> the verdict in the header (Suitable Position, SLOW-GO Terrain, ...) and the <b>Why</b> band: the ground under the cursor, the mode, the rule owner's sentence and the GO / SLOW-GO / NO-GO scale. That is cross-country trafficability for the armed mode.</li>
+      <li><span class="yes">Shown:</span> the nearest NO-GO ground (Nearest), the Intermediate Gap Rule and Important Tactical Ground candidates.</li>
+      <li><span class="yes">Shown in the legend:</span> the going ramp for the mode and its NO-GO / SLOW-GO lists.</li>
+      <li><span class="no">Not shown:</span> the going <b>after rain</b> (soil), the <b>season</b>, how the <b>other modes</b> would fare, and whether a <b>road or the MSR</b> carries the mode.</li>
+      <li><span class="no">Not read by the engine:</span> the <code>soil</code>, <code>wet</code>, <code>route</code> and <code>terrain</code> tiles, the climate grid, and the road lines in <code>features/</code>. Today it reads only <code>class</code>, <code>dist_&lt;mode&gt;</code> and the feature points (for ITG).</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="card">2 · Card: how to show T</h2>
+<p class="pg-sub">The new band (or line) sits right after Why. The grey number under each card is how much taller it is than today's card, for the selected mode and season.</p>
+<div class="pg-opts" id="card-opts"></div>
+
+<h2 id="legend">3 · Legend</h2>
+<p class="pg-sub">The legend's ramp already paints the going for the mode. These options say so, and can add a season switch.</p>
+<div class="pg-opts" id="legend-opts"></div>
+
+<h2 id="rules">4 · Rules to approve</h2>
+<p class="pg-sub">Whichever layout you pick, T needs these three decisions. The sample cards above use the recommended answer to each.</p>
+<h3 style="font-size:15px;margin:18px 0 6px">4a · What rain does to the going</h3>
+<div class="pg-q" id="q-rain"></div>
+<h3 style="font-size:15px;margin:18px 0 6px">4b · Does After Rain change the verdict in the header?</h3>
+<div class="pg-q" id="q-header"></div>
+<h3 style="font-size:15px;margin:18px 0 6px">4c · When is the T band shown?</h3>
+<div class="pg-q" id="q-when"></div>
+
+<h2 id="data">5 · Data each option needs</h2>
+<div class="pg-scroll"><table class="pg-t">
+  <thead><tr><th>Data</th><th>In the bundle</th><th>Read by the engine</th><th>Used by</th></tr></thead>
+  <tbody>
+    <tr><td>Going for each mode on the class at the point</td><td class="yes">Yes (<code>rules.json profiles</code>)</td><td class="yes">Yes</td><td>B, C (other modes cost no new data)</td></tr>
+    <tr><td>Soil texture and its going dry / after rain</td><td class="yes">Yes (<code>soil/</code> tiles, <code>grotbc.soilBearing</code>)</td><td class="no">No</td><td>A, B, C; legend L3</td></tr>
+    <tr><td>Monthly rain (which months are wet)</td><td class="yes">Yes (<code>climate/</code>, 9 km normals)</td><td class="no">No</td><td>Season line; legend L3</td></tr>
+    <tr><td>Nearest road with its class, all- or fair-weather, MSR</td><td class="yes">Yes (road lines, kind 200, in <code>features/</code>)</td><td class="part">Points only, not lines</td><td>B, C (Road line)</td></tr>
+    <tr><td>Landing-site going (slope, wires, soft ground)</td><td class="yes">Yes (classes, <code>hls</code> mode)</td><td class="yes">Yes</td><td>B, C for Helicopter Landing Site</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="choices">6 · Your choices</h2>
+<div class="pg-out">
+  <button class="pg-btn" type="button" id="copy">Copy my choices</button> <span id="copied" style="color:#7ee0a5;font-size:13px"></span>
+  <pre id="summary"></pre>
+</div>
+<p class="pg-sub" style="margin-top:12px">Paste the copied text back in the chat, or just tell me, for example: "Card B, legend L2, rules recommended".</p>
+</div>
+
+<script>
+(function(){'use strict';
+var D=document;
+function el(tag,cls,text){var e=D.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
+var SVG='http://www.w3.org/2000/svg';
+function sv(tag,attrs,parent){var e=D.createElementNS(SVG,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+var ICONS={check:['M5 12l5 5L20 7'],triangle:['M12 9v4','M12 17h.01','M10.3 3.9L1.9 18.4a1.9 1.9 0 0 0 1.7 2.8h16.8a1.9 1.9 0 0 0 1.7-2.8L13.7 3.9a1.9 1.9 0 0 0-3.4 0z'],x:['M18 6L6 18','M6 6l12 12']};
+function icon(name){var s=sv('svg',{width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':2,'stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'});ICONS[name].forEach(function(d){sv('path',{d:d},s)});return s}
+function dial(bearing,color){var s=sv('svg',{width:44,height:44,viewBox:'0 0 44 44','aria-hidden':'true'});sv('circle',{cx:22,cy:22,r:20.5,fill:'rgba(255,255,255,.06)',stroke:'rgba(255,255,255,.3)','stroke-width':1.5},s);var t=sv('text',{x:22,y:12,'text-anchor':'middle','font-size':11,fill:'#9aa3ad','font-family':'system-ui,Segoe UI,Arial,sans-serif'},s);t.textContent='N';[[41.5,22,37.5,22],[22,41.5,22,37.5],[2.5,22,6.5,22]].forEach(function(l){sv('line',{x1:l[0],y1:l[1],x2:l[2],y2:l[3],stroke:'#9aa3ad','stroke-width':1.5},s)});sv('polygon',{points:'22,14 27.5,30 22,26 16.5,30',fill:color,stroke:color,'stroke-width':1.5,'stroke-linejoin':'round',transform:'rotate('+bearing+' 22 22)'},s);return s}
+function section(cap){var s=el('div','ms-ggb-sec');s.appendChild(el('div','ms-ggb-cap',cap));for(var i=1;i<arguments.length;i++){var c=arguments[i];if(c!==null&&c!==undefined)s.append(c)}return s}
+function scale(step){var s=el('div','ms-ggb-scale');[['go','GO'],['slow','SLOW-GO'],['nogo','NO-GO']].forEach(function(p){s.appendChild(el('span',p[0]===step?'ms-on-'+p[0]:undefined,p[1]))});return s}
+var WORD={go:'GO',slow:'SLOW-GO',nogo:'NO-GO'};
+function chip(step,dim){return el('span','ms-ggb-chip '+step+(dim?' ms-ggb-dim':''),WORD[step])}
+
+/* ---- sample: Irrigated cropland (class 23), clay loam (soil 8: good dry, poor after rain), canal 180 m NW ---- */
+var MODES={
+  dismounted:{label:'Dismounted Force',short:'Foot',dry:'go',vehicle:false},
+  wheeled:{label:'Wheeled Vehicle',short:'Wheels',dry:'slow',vehicle:true,why:'Watercourses every few hundred metres: wheels cross each one at a crawl.'},
+  tracked:{label:'Tracked Vehicle',short:'Tracks',dry:'go',vehicle:true},
+  hls:{label:'Helicopter Landing Site',short:'Landing',dry:'slow',vehicle:true,why:'Fields cut by watercourses every few hundred metres: wheels slow to a crawl.'}
+};
+var ROAD={
+  dismounted:['Road','Not Needed: GO Cross-Country · Cart Track 300 m W'],
+  wheeled:['Road','Track 180 m S · MSR N-5 1.2 km NE'],
+  tracked:['Road','MSR N-5 · Class 70, Tankable · 1.2 km NE'],
+  hls:['Landing','Slope 1° · No Wires within 100 m']
+};
+var ROAD_WET={wheeled:'Use MSR N-5 (All-Weather) 1.2 km NE'};
+var STEP=['go','slow','nogo'];
+/* Rule options for 4a. r1: Poor soil lowers vehicles and landing sites one step; Very Poor two steps, and foot one step. */
+function wetGoing(m,rule){var mode=MODES[m];if(rule==='r2')return mode.dry;var i=STEP.indexOf(mode.dry);if(mode.vehicle)i=Math.min(2,i+1);return STEP[i]}
+var SEL={mode:'wheeled',season:'dry',card:'B',legend:'L2',rain:'r1',header:'h1',when:'w2'};
+function now(m){return SEL.season==='wet'&&SEL.header==='h2'?wetGoing(m,SEL.rain):MODES[m].dry}
+
+function headerVerdict(m){var g=now(m);return g==='go'?['ok','check','Suitable Position']:g==='slow'?['caution','triangle','SLOW-GO Terrain']:['in','x','Unsuitable Position']}
+function why(m){var mode=MODES[m],l=el('div');l.append(el('span','ms-ggb-b','Irrigated Cropland (Many Watercourses)'),' · '+mode.label);var s=section('Why',l);if(mode.dry!=='go'&&mode.why)s.append(el('div','ms-ggb-soft',mode.why));s.append(scale(now(m)));return s}
+function nearest(color){var t=el('div'),far=el('div');far.append(el('span','ms-ggb-big','180 m'),' NW');t.append(el('div','ms-ggb-b','Canal'),far);var nr=el('div','ms-ggb-nr');nr.append(dial(315,color),t);return section('Nearest',nr)}
+function gap(m){if(m==='hls')return null;var tr=el('div','ms-ggb-track'),f=el('div');f.style.width='100%';f.style.background='#2fa862';tr.appendChild(f);return section('Intermediate Gap Rule',tr,el('span',undefined,'320 m of 150 m to the next Platoon'))}
+function itg(){var h=el('div');h.append(el('span','ms-ggb-b','Knoll 216 m'));var w=el('div');w.append(el('span',undefined,'ITG Candidate'),' · 2.4 km NE');var it=el('div');it.append(h,w,el('div','ms-ggb-soft','Highest Ground Around · Overlooks a Main Supply Route'));return section('Important Tactical Ground',it)}
+var COLOR={ok:'#1c8247',caution:'#e08a1e',in:'#d63a3f'};
+
+/* T band variants */
+function soilNote(){return 'Clay Loam (Modelled): Good Dry, Poor After Rain'}
+function tLineA(m){var wet=wetGoing(m,SEL.rain),d=el('div','ms-ggb-line');if(SEL.season==='wet'){d.append(el('span','ms-ggb-warn','Now After Rain: '),chip(wet))}else{d.append(el('span','ms-ggb-soft','After Rain: '),chip(wet))}d.append(el('span','ms-ggb-soft',' · Clay Loam (Modelled)'));return d}
+function showBand(m){return SEL.when==='w1'||m==='hls'||wetGoing(m,SEL.rain)!==MODES[m].dry||m==='wheeled'||m==='tracked'}
+function tBandB(m){
+  if(!showBand(m))return null;
+  var wet=wetGoing(m,SEL.rain),dry=MODES[m].dry,isWet=SEL.season==='wet';
+  var kv=el('div','ms-ggb-kv'),g=el('span');
+  g.append('Dry ',chip(dry,isWet),'  Rain ',chip(wet,!isWet));
+  kv.append(el('span','k','Going'),g);
+  var others=el('span');
+  ['dismounted','wheeled','tracked'].filter(function(k){return k!==m}).forEach(function(k,i){if(i)others.append('  ');others.append(MODES[k].short+' ',chip(isWet?wetGoing(k,SEL.rain):MODES[k].dry))});
+  kv.append(el('span','k','Others'),others);
+  var r=ROAD[m];kv.append(el('span','k',r[0]),el('span',undefined,isWet&&ROAD_WET[m]?ROAD_WET[m]:r[1]));
+  return section('Trafficability',kv,el('div','ms-ggb-soft','Clay Loam, Poor When Wet (Modelled)'+(isWet?' · Jul Monsoon':'')));
+}
+function tBandC(m){
+  if(!showBand(m))return null;
+  var grid=el('div','ms-ggb-grid');grid.append(el('span'),el('span','h','Dry'),el('span','h','After Rain'));
+  var rows=m==='hls'?['hls','dismounted','wheeled','tracked']:['dismounted','wheeled','tracked'];
+  rows.forEach(function(k){grid.append(el('span',k===m?'me':undefined,MODES[k].short),chip(MODES[k].dry,SEL.season==='wet'),chip(wetGoing(k,SEL.rain),SEL.season!=='wet'))});
+  var r=ROAD[m],line=el('div','ms-ggb-line');line.append(el('span','ms-ggb-soft',r[0]+': '),SEL.season==='wet'&&ROAD_WET[m]?ROAD_WET[m]:r[1]);
+  return section('Trafficability',grid,line);
+}
+function card(m,variant){
+  var hv=headerVerdict(m),c=el('article','ms-ground-guide-badge');c.dataset.verdict=hv[0];
+  var bar=el('div','ms-ggb-bar');bar.append(icon(hv[1]),el('span','ms-ggb-title',hv[2]));
+  var w=why(m);if(variant==='A')w.append(tLineA(m));
+  var t=variant==='B'?tBandB(m):variant==='C'?tBandC(m):null;
+  var body=el('div');[w,t,nearest(COLOR[hv[0]]),gap(m),itg()].forEach(function(s){if(s)body.appendChild(s)});
+  c.append(bar,body);return c;
+}
+
+/* ---- options ---- */
+var CARD_OPTS=[
+  {id:'A',name:'One Line under Why',desc:'Adds one line under the going scale: the going after rain, with the soil. Nothing else changes.',adds:'After-rain going',work:'Small: read the soil tile at the point',miss:'Other modes, roads and MSR'},
+  {id:'B',name:'Trafficability Band',rec:true,desc:'A new band after Why with three short rows: the going dry and after rain, the other main modes, and the road (or landing site) for this mode.',adds:'After rain, other modes, road / MSR, season',work:'Medium: soil tile, road lines from features/, climate month'},
+  {id:'C',name:'Going Grid',desc:'A small Dry / After Rain grid for Foot, Wheels and Tracks, the armed mode marked, then the road line.',adds:'The same as B, as a grid',work:'Medium: as B',miss:'Nothing B has; it trades words for a grid'},
+  {id:'D',name:'Ground Brief Only',desc:'The card stays as it is. T appears only in the Ground Brief panel (press G, not built yet) and the legend.',adds:'Nothing on the card',work:'Large: the Ground Brief panel (planned in doc 16)',miss:'No T while drawing'}
+];
+var LEGEND_OPTS=[
+  {id:'L1',name:'No Change',desc:'The ramp stays as it is.',work:'None'},
+  {id:'L2',name:'Label It as T',rec:true,desc:'One caption above the ramp says what it is: the trafficability for the mode, dry season.',work:'Tiny'},
+  {id:'L3',name:'Label and Season Switch',desc:'The caption plus a Dry / After Rain switch that repaints the overlay with the soil going.',work:'Large: the overlay worker reads soil tiles'}
+];
+var Q_RAIN=[
+  {id:'r1',name:'One Step Down for Vehicles',rec:true,desc:'Poor soil after rain lowers wheeled, tracked and landing-site going one step (GO to SLOW-GO, SLOW-GO to NO-GO). Very Poor lowers them two steps and foot one step.'},
+  {id:'r2',name:'Words Only',desc:'Say "Poor After Rain" but never change GO / SLOW-GO / NO-GO.'},
+  {id:'r3',name:'Per Mode in rules.yaml',desc:'The rule owner writes an after-rain table for each mode. Most exact, most work for the owner.'}
+];
+var Q_HEADER=[
+  {id:'h1',name:'No, Header Stays Dry',rec:true,desc:'The verdict, overlay and Enforce Mode keep the dry going. Only T warns about rain.'},
+  {id:'h2',name:'Yes, When Set to After Rain',desc:'With the season set to After Rain, the header, Why scale and Enforce Mode use the after-rain going. Try it with the Season switch above.'}
+];
+var Q_WHEN=[
+  {id:'w1',name:'Always',desc:'Every terrain-bound mode shows the band.'},
+  {id:'w2',name:'Only When It Adds Something',rec:true,desc:'Shown for vehicles and landing sites, or when rain changes the going. Dismounted on firm ground does not get it.'}
+];
+
+function legend(id){
+  var c=el('div','ms-ggl'),h=el('div','ms-ggl-head');h.append(el('span','ms-ggl-title','Legend'),el('span','ms-ggl-count','Mode 2 / 14'));c.appendChild(h);
+  var n=el('div','ms-ggl-name');n.append(el('b',undefined,MODES[SEL.mode].label),el('span','ms-ggl-tag','Auto · From Symbol'));c.appendChild(n);
+  if(id!=='L1')c.appendChild(el('div','ms-ggl-tcap','T · Trafficability'+(id==='L2'?' · Dry Season':'')));
+  if(id==='L3'){var s=el('div','ms-ggl-season');s.append(el('span',SEL.season==='dry'?'on':undefined,'Dry'),el('span',SEL.season==='wet'?'on':undefined,'After Rain'));c.appendChild(s)}
+  var ramp=el('div','ms-ggl-ramp'),lab=el('div','ms-ggl-ramp-l');
+  [['Suitable',[46,160,90,105]],['Marginal',[241,214,70,150]],['SLOW-GO',[243,156,18,170]],['NO-GO',[214,48,49,200]]].forEach(function(o){var i=el('i');i.style.background='rgba('+o[1].slice(0,3).join(',')+','+Math.max(.55,o[1][3]/255+.25)+')';ramp.appendChild(i);lab.appendChild(el('span',undefined,o[0]))});
+  c.append(ramp,lab,el('div','ms-ggl-note','Marginal: Within 250 m of NO-GO'));
+  var k=el('div','ms-ggl-keys');[['P','Change Mode'],['S','Quick Fix']].forEach(function(p){var r=el('div','ms-ggl-key');r.append(el('span','ms-ggl-kbd',p[0]),el('span',undefined,p[1]));k.appendChild(r)});c.appendChild(k);
+  return c;
+}
+
+function optionTile(group,o,render){
+  var lab=el('label','pg-opt'),inp=el('input');inp.type='radio';inp.name=group;inp.value=o.id;inp.checked=SEL[group]===o.id;
+  inp.onchange=function(){SEL[group]=o.id;paint()};
+  var h=el('div','pg-opt-h');h.append(el('b',undefined,o.id+' · '+o.name));if(o.rec)h.append(el('span','pg-rec','Recommended'));h.append(el('span','pg-pick',inp.checked?'Picked':'Pick'));
+  lab.append(inp,h,el('p',undefined,o.desc));
+  if(render){var st=el('div','pg-stage');st.appendChild(render(o));lab.appendChild(st)}
+  var dl=el('dl','pg-meta');
+  if(o.adds){dl.append(el('dt',undefined,'Adds'),el('dd',undefined,o.adds))}
+  if(o.miss){dl.append(el('dt',undefined,'Leaves out'),el('dd',undefined,o.miss))}
+  if(o.work){dl.append(el('dt',undefined,'Engine work'),el('dd',undefined,o.work))}
+  if(o.id.length===1){var sz=el('dd','pg-size');sz.dataset.size=o.id;dl.append(el('dt',undefined,'Height'),sz)}
+  if(dl.childElementCount)lab.appendChild(dl);
+  return lab;
+}
+function seg(host,key,items){host.replaceChildren();items.forEach(function(it){var b=el('button',undefined,it[1]);b.type='button';b.setAttribute('aria-pressed',String(SEL[key]===it[0]));b.onclick=function(){SEL[key]=it[0];paint()};host.appendChild(b)})}
+function name(list,id){for(var i=0;i<list.length;i++)if(list[i].id===id)return id+' · '+list[i].name;return id}
+
+function paint(){
+  seg(D.getElementById('c-mode'),'mode',[['dismounted','Dismounted'],['wheeled','Wheeled'],['tracked','Tracked'],['hls','Helicopter Landing Site']]);
+  seg(D.getElementById('c-season'),'season',[['dry','Dry Season'],['wet','After Rain (Jul)']]);
+  var today=card(SEL.mode,'D');D.getElementById('today-card').replaceChildren(today);
+  D.getElementById('card-opts').replaceChildren.apply(D.getElementById('card-opts'),CARD_OPTS.map(function(o){return optionTile('card',o,function(x){return card(SEL.mode,x.id)})}));
+  D.getElementById('legend-opts').replaceChildren.apply(D.getElementById('legend-opts'),LEGEND_OPTS.map(function(o){return optionTile('legend',o,function(x){return legend(x.id)})}));
+  [['q-rain','rain',Q_RAIN],['q-header','header',Q_HEADER],['q-when','when',Q_WHEN]].forEach(function(q){var h=D.getElementById(q[0]);h.replaceChildren.apply(h,q[2].map(function(o){return optionTile(q[1],o,null)}))});
+  var base=today.offsetHeight;
+  D.querySelectorAll('.pg-size').forEach(function(s){var c=s.closest('.pg-opt').querySelector('.ms-ground-guide-badge');var d=c.offsetHeight-base;s.textContent=d?('+'+d+' px over today'):'Same as today'});
+  D.getElementById('summary').textContent=['Trafficability (T) display choices:',
+    'Card: '+name(CARD_OPTS,SEL.card),'Legend: '+name(LEGEND_OPTS,SEL.legend),
+    'After rain: '+name(Q_RAIN,SEL.rain),'Header after rain: '+name(Q_HEADER,SEL.header),'T band shown: '+name(Q_WHEN,SEL.when)].join('\n');
+}
+D.getElementById('copy').onclick=function(){var t=D.getElementById('summary').textContent,m=D.getElementById('copied');
+  try{navigator.clipboard.writeText(t).then(function(){m.textContent='Copied.'},function(){m.textContent='Select the text below and copy it.'})}catch(e){m.textContent='Select the text below and copy it.'}};
+paint();
+})();
+</script>
+</body>
+</html>

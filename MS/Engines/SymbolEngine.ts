@@ -115,8 +115,8 @@ import TrafficabilityEngine from './Analysis/TrafficabilityEngine';
 import SymbolMetadataService from './SymbolMetadataService';
 import KeyboardShortcutManager from './KeyboardShortcutManager';
 import StylusDrawController from './Stylus/StylusDrawController';
-import PlacementAdvisor from './Placement/PlacementAdvisor';
-import type { PlacementGroundCandidate } from './Placement/PlacementTypes';
+import GroundGuide from './GroundGuide/GroundGuide';
+import type { GroundGuideItgCandidate } from './GroundGuide/GroundGuideTypes';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
 // imported. One side-effect import per engine keeps the wiring discoverable.
@@ -141,7 +141,7 @@ import './PptxExportCommands';
 import './ExportToolsSettingsWidget';
 import './Briefing/ChartCommands';
 import './Collab/CollabSettingsWidget';
-import './PlacementSettingsWidget';
+import './GroundGuideSettingsWidget';
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -188,7 +188,7 @@ class SymbolEngine implements Evented {
   private _editEngine: EditEngine;
   private _measurementEngine?: MeasurementEngine;
   private _proximityEngine: ProximityEngine | null = null;
-  private _placementAdvisor: PlacementAdvisor | null = null;
+  private _groundGuide: GroundGuide | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
@@ -289,7 +289,7 @@ class SymbolEngine implements Evented {
     this._layerManager = GraphicsLayerManager.getInstance(this.view);
     this._layerManager.initializeLayers();
     this._editEngine = new EditEngine(viewProvider, this._layerManager);
-    this._wirePlacementRecheck();
+    this._wireGroundGuideRecheck();
     this._stylusController = new StylusDrawController({
       getView: () => this.view,
       getLayerManager: () => this._layerManager,
@@ -430,8 +430,8 @@ class SymbolEngine implements Evented {
     // Conditionally load ProximityEngine based on Settings.json feature flag
     this._initProximityEngine();
 
-    // Conditionally load PlacementAdvisor (terrain advice while drawing; needs a terrain bundle)
-    this._initPlacementAdvisor();
+    // Conditionally load GroundGuide (terrain advice while drawing; needs a terrain bundle)
+    this._initGroundGuide();
 
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
@@ -608,7 +608,7 @@ class SymbolEngine implements Evented {
       this._drawingCueEngine?.activate([...SYMBOL_LAYER_IDS]);
 
       // Terrain advice — synchronous tile reads, no I/O on this path
-      this._placementAdvisor?.onDrawProgress(event.detail);
+      this._groundGuide?.onDrawProgress(event.detail);
 
       // Feed drawing progress into the measurement engine
       const detail = event.detail;
@@ -651,7 +651,7 @@ class SymbolEngine implements Evented {
       this._proximityEngine?.deactivate();
       // Deactivate drawing cue overlays when drawing ends
       this._drawingCueEngine?.deactivate();
-      this._placementAdvisor?.deactivate();
+      this._groundGuide?.deactivate();
     }) as EventListener);
 
     console.log('SymbolEngine global event listeners set up');
@@ -705,7 +705,7 @@ class SymbolEngine implements Evented {
     this._keyboardShortcutManager?.detach();
     this._measurementEngine?.destroy();
     this._proximityEngine?.disable();
-    this._placementAdvisor?.destroy();
+    this._groundGuide?.destroy();
     this._drawingCueEngine?.disable();
     this._mgrsEngine?.destroy();
     this._editEngine?.deactivate();
@@ -747,7 +747,7 @@ class SymbolEngine implements Evented {
     this._layerManager.initializeLayers();
     this._clipboardEngine.rewireLayerManager(this._layerManager);
     this._editEngine = new EditEngine(this._getView, this._layerManager);
-    this._wirePlacementRecheck();
+    this._wireGroundGuideRecheck();
     this._undoRedoManager.rewireEditEngine(this._editEngine);
     // SelectionActionPanel and KeyboardShortcutManager both capture the original
     // EditEngine reference at construction.  Without swapping them here the old
@@ -767,8 +767,8 @@ class SymbolEngine implements Evented {
     this._measurementEngine?.onViewChanged(newView);
     // Re-attach proximity engine to the new view
     this._proximityEngine?.onViewChanged(newView);
-    // Re-bind placement advisor (viewport prefetch + cursor tracking) to the new view
-    this._placementAdvisor?.onViewChanged();
+    // Re-bind Ground Guide (viewport prefetch + cursor tracking) to the new view
+    this._groundGuide?.onViewChanged();
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
     // Re-attach MGRS engine to the new view
@@ -906,48 +906,48 @@ class SymbolEngine implements Evented {
   }
 
   /**
-   * Create the PlacementAdvisor and enable it. Gated by
-   * `features.placementAdvisor` at boot; `force` is used by the runtime
-   * Settings toggle. The advisor stays dormant until a terrain bundle loads.
+   * Create the GroundGuide and enable it. Gated by
+   * `features.groundGuide` at boot; `force` is used by the runtime
+   * Settings toggle. The guide stays dormant until a terrain bundle loads.
    */
-  private _initPlacementAdvisor(force = false): void {
+  private _initGroundGuide(force = false): void {
     const features = (settingsData as any).features ?? {};
-    if (!force && features.placementAdvisor !== true) {
-      console.info('[SymbolEngine] PlacementAdvisor disabled via Settings.json');
+    if (!force && features.groundGuide !== true) {
+      console.info('[SymbolEngine] GroundGuide disabled via Settings.json');
       return;
     }
-    if (!this._placementAdvisor) {
-      this._placementAdvisor = new PlacementAdvisor(() => this._getView());
-      this._placementAdvisor.setOptions((settingsData as any).placement ?? {});
-      this.emitEvent('placementAdvisorReady', { engine: this._placementAdvisor });
+    if (!this._groundGuide) {
+      this._groundGuide = new GroundGuide(() => this._getView());
+      this._groundGuide.setOptions((settingsData as any).groundGuide ?? {});
+      this.emitEvent('groundGuideReady', { engine: this._groundGuide });
     }
-    this._placementAdvisor.enable();
-    this._registerPlacementMenu();
-    console.info('[SymbolEngine] PlacementAdvisor loaded');
+    this._groundGuide.enable();
+    this._registerGroundGuideMenu();
+    console.info('[SymbolEngine] GroundGuide loaded');
   }
 
   /** A moved or edited symbol is judged again, so its stamp stays true and the user hears when it ended up on bad ground. */
-  private _wirePlacementRecheck(): void {
+  private _wireGroundGuideRecheck(): void {
     this._editEngine.on('changeInSymbol', ({ graphic, additionalGraphics }: { graphic: Graphic; additionalGraphics?: Graphic[] }) => {
-      this._placementAdvisor?.recheck([graphic, ...(additionalGraphics ?? [])]);
+      this._groundGuide?.recheck([graphic, ...(additionalGraphics ?? [])]);
     });
   }
 
-  private _placementMenuRegistered = false;
+  private _groundGuideMenuRegistered = false;
 
-  /** Right-click, "Placement check…" on terrain-bound symbols while the advisor is active. */
-  private _registerPlacementMenu(): void {
-    if (this._placementMenuRegistered) return;
-    this._placementMenuRegistered = true;
+  /** Right-click, "Ground check…" on terrain-bound symbols while the guide is active. */
+  private _registerGroundGuideMenu(): void {
+    if (this._groundGuideMenuRegistered) return;
+    this._groundGuideMenuRegistered = true;
     this._contextMenuManager.addDynamicItemProvider((graphic: Graphic): ContextMenuItem[] => {
-      const advisor = this._placementAdvisor;
-      if (!advisor?.isActive || !graphic?.attributes?.id) return [];
+      const guide = this._groundGuide;
+      if (!guide?.isActive || !graphic?.attributes?.id) return [];
       return [
         {
-          id: 'placement-check',
-          label: 'Placement check…',
+          id: 'ground-guide-check',
+          label: 'Ground check…',
           icon: '🧭',
-          action: (g: Graphic) => void advisor.explain(g),
+          action: (g: Graphic) => void guide.explain(g),
         },
       ];
     });
@@ -1939,28 +1939,28 @@ class SymbolEngine implements Evented {
     return this._proximityEngine;
   }
 
-  /** Access the PlacementAdvisor — terrain advice while drawing. Null until
-   *  `features.placementAdvisor` is turned on; call `configure({ bundleUrl })`
+  /** Access the GroundGuide — terrain advice while drawing. Null until
+   *  `features.groundGuide` is turned on; call `configure({ bundleUrl })`
    *  to point it at a terrain bundle. */
-  public get placementAdvisor(): PlacementAdvisor | null {
-    return this._placementAdvisor;
+  public get groundGuide(): GroundGuide | null {
+    return this._groundGuide;
   }
 
   /**
    * Designate ground for the task: `ITG` (Important Tactical Ground) draws an Imp Gr area ("IG", a PAMS8 local
    * symbol: 2525D has none), `MITG` (Most Important = Vital Ground) a Vital Gr area ("VG", 2525D 25-242301).
    * Either is an ordinary symbol, so it is saved, loaded, edited and exported with the plan like any other.
-   * `target` is an ITG candidate from `placementAdvisor.groundCandidates()` or any map point
+   * `target` is an ITG candidate from `groundGuide.groundCandidates()` or any map point
    * (`Point`, or `{ longitude, latitude }`). The radius defaults by feature: a plateau's own size, 250 m
    * for a junction or crossing, 400 m otherwise. Returns the new graphic, or null when it could not be drawn.
    */
   public designateGround(
-    target: PlacementGroundCandidate | Point | { longitude: number; latitude: number },
+    target: GroundGuideItgCandidate | Point | { longitude: number; latitude: number },
     level: 'ITG' | 'MITG',
     opts: { radiusM?: number; name?: string; standardIdentity?: string } = {},
   ): Graphic | null {
     const view: any = this._getView?.();
-    const cand = (target as PlacementGroundCandidate).lngLat ? (target as PlacementGroundCandidate) : null;
+    const cand = (target as GroundGuideItgCandidate).lngLat ? (target as GroundGuideItgCandidate) : null;
     let lon: number;
     let lat: number;
     if (cand) {
@@ -2249,11 +2249,11 @@ class SymbolEngine implements Evented {
         value
           ? this._proximityEngine.enable()
           : this._proximityEngine.disable();
-      } else if (feature === 'placementAdvisor') {
+      } else if (feature === 'groundGuide') {
         if (value) {
-          this._initPlacementAdvisor(true);
+          this._initGroundGuide(true);
         } else {
-          this._placementAdvisor?.disable();
+          this._groundGuide?.disable();
         }
       } else if (feature === 'contextMenu') {
         value
@@ -2335,8 +2335,8 @@ class SymbolEngine implements Evented {
       }
     }
 
-    if (fullPath.startsWith('placement.') && this._placementAdvisor) {
-      this._placementAdvisor.setOptions((settingsData as any).placement ?? {});
+    if (fullPath.startsWith('groundGuide.') && this._groundGuide) {
+      this._groundGuide.setOptions((settingsData as any).groundGuide ?? {});
     }
 
     if (fullPath === 'features.analysisEngines') {
@@ -2716,7 +2716,7 @@ class SymbolEngine implements Evented {
     this._selectionEngine?.setDrawing(false);
     this._proximityEngine?.deactivate();
     this._drawingCueEngine?.deactivate();
-    this._placementAdvisor?.deactivate();
+    this._groundGuide?.deactivate();
   }
 
   /** Stop continuous creation mode and revert to single. No-op if already single. */
@@ -2932,11 +2932,11 @@ class SymbolEngine implements Evented {
         sketchLayer.remove(event.graphic);
         sketchVM.destroy();
         this._proximityEngine?.deactivate();
-        this._placementAdvisor?.deactivate();
+        this._groundGuide?.deactivate();
       }
       if (event.state === 'cancel') {
         this._proximityEngine?.deactivate();
-        this._placementAdvisor?.deactivate();
+        this._groundGuide?.deactivate();
       }
     });
   }
@@ -3250,8 +3250,8 @@ class SymbolEngine implements Evented {
       this._activeSIDC = this.sidc;
       this._activeAmplifier = this.amplifier;
       // Resolve the symbol's mobility profile and warm the terrain tiles so the
-      // very first cursor move already has data (no-op when the advisor is off).
-      if (!isPassive) this._placementAdvisor?.prepareFor(amplifier.SIDC);
+      // very first cursor move already has data (no-op when the guide is off).
+      if (!isPassive) this._groundGuide?.prepareFor(amplifier.SIDC);
 
       const reqSID = this.sidc.getSID();
       const coSIDC = this.sidc.getSIDC();
@@ -3656,13 +3656,13 @@ class SymbolEngine implements Evented {
         return;
       }
 
-      // Placement advisor: stamp the terrain verdict on the graphic and, in
+      // Ground Guide: stamp the terrain verdict on the graphic and, in
       // enforce mode, refuse a placement the rules forbid. Plan load / paste /
       // programmatic placements (lifecycle suppressed or carrying a pending id)
       // are replays of existing data and are never checked or blocked.
-      let placementStamp: any = null;
-      if (this._placementAdvisor?.isActive && !suppressLifecycle && !this._pendingAttrs) {
-        const check = this._placementAdvisor.checkCommit(geometry, drawEssentials);
+      let groundGuideStamp: any = null;
+      if (this._groundGuide?.isActive && !suppressLifecycle && !this._pendingAttrs) {
+        const check = this._groundGuide.checkCommit(geometry, drawEssentials);
         if (!check.allow) {
           this.isDrawing = false;
           this._selectionEngine.setDrawing(false);
@@ -3670,7 +3670,7 @@ class SymbolEngine implements Evented {
           EngineLogger.error('Symbol Engine', `Placement refused — ${check.verdict.message}`);
           return;
         }
-        placementStamp = check.stamp;
+        groundGuideStamp = check.stamp;
       }
 
       // Create the graphic
@@ -3724,7 +3724,7 @@ class SymbolEngine implements Evented {
         Object.assign(attrs, (this as any).attrs);
       }
 
-      if (placementStamp) attrs.placement = placementStamp;
+      if (groundGuideStamp) attrs.groundGuide = groundGuideStamp;
 
       graphic.attributes = attrs;
       graphic.set('id', attrs.id);
@@ -4101,7 +4101,7 @@ class SymbolEngine implements Evented {
       });
       }
 
-      this._placementAdvisor?.recheck([newGraphic]);
+      this._groundGuide?.recheck([newGraphic]);
       this.emitEvent('symbolDetailsEdited', {
         graphic: newGraphic,
         id: oldId,

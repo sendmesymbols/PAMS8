@@ -1,7 +1,7 @@
 # Terrain-bundle pipeline
 
-Produces the **terrain bundle** consumed by the PAMS8 Placement Advisor
-(`MS/Docs/15-placement-advisor.md`, "Terrain bundle format (v1)"): a folder of
+Produces the **terrain bundle** consumed by the PAMS8 Ground Guide
+(`MS/Docs/15-ground-guide.md`, "Terrain bundle format (v1)"): a folder of
 static XYZ tiles that tells the engine, per pixel, the terrain class and the
 distance to the nearest no-go pixel for each mobility profile.
 
@@ -20,7 +20,7 @@ MS/Data/terrain-bundle/                  (repo root; git-ignored)
 
 Bundle v2 organises the data by **GROTBC** as defined in `GROTBC.md` (Ground, Roads / tracks / railway network,
 Obstacles, Trafficability, Built-up areas, Cover / camouflage / concealment); see "Bundle v2 (GROTBC)" below and
-`MS/Docs/16-placement-grotbc-card.md`. The first build read R as Relief and T as Tactical features; relabelled on
+`MS/Docs/16-ground-guide-grotbc-card.md`. The first build read R as Relief and T as Tactical features; relabelled on
 2026-11-03 (relief is now under G, roads / rail / crossings / airfields under R). On 2026-11-04 T became
 Trafficability (the going per mode, dry and after rain); terrain type and vegetation moved to G. `routes.json` (named routes with
 from - to, length, load class, closures) and `rules.json grotbc.coverSplit` (cover and concealment four ways) were added then.

@@ -75,7 +75,7 @@ T (Trafficability)	14 mobility profiles (going per mode), land cover, slope band
 B	Names for about 218k villages, towns and cities, 225 district HQs, province, district and tehsil boundaries, hospitals, clinics, police stations	Population on only about 2.7k of them, building type (mud or brick), schools, markets, government buildings
 C	One 0–3 cover scale and one 0–3 concealment scale	Your four-way split: direct fire, indirect fire, ground observation, aerial observation
 Things to know
-Letter mismatch. The pipeline expands the letters differently from your GROTBC.md: its R is Relief and its T is Tactical features. Roads and rail are tagged T there, and spot heights are tagged R. Only a type comment in PlacementTypes.ts uses the letters, so relabelling is metadata-only.
+Letter mismatch. The pipeline expands the letters differently from your GROTBC.md: its R is Relief and its T is Tactical features. Roads and rail are tagged T there, and spot heights are tagged R. Only a type comment in GroundGuideTypes.ts uses the letters, so relabelling is metadata-only.
 MSR is generous. 40A1 is the most common load class (about 39.7k fragments), so most metalled roads count as MSR. That is 63% of road fragments in the feature tiles and about 16% of route pixels. If you have an official MSR list, it should replace the rule.
 Roads outside Pakistan are included. MSR names such as “Amritsar - Bhatinda” and “Srinagar - Kargil” show up, because the data extent is the map-sheet rectangle (59.5–80.5°E, 20.5–37.5°N).
 Licence. The manifest marks the bundle as restricted, because it is built from NCGDB.

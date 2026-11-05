@@ -1,0 +1,1240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PAMS8 Ground Guide: Card and Legend Style Brief</title>
+<!--
+  PAMS8 Ground Guide: Card (cursor tooltip) and Legend, style brief.
+  One self-contained file: no network, no build. Open it in any browser, or upload it to an AI agent.
+  Sections: 1 Current design (as built) · 2 Proposed GROTBC design · 3 Field reference · 4 Style tokens and rules · 5 Brief for reviewers.
+  The "Current" CSS blocks are copied verbatim from MS/Engines/GroundGuide/GroundGuideBadge.ts and GroundGuideLegend.ts.
+  All map data shown is ILLUSTRATIVE sample data. Mode lists and class names come from MS/Data/terrain-bundle/rules.json.
+-->
+<style id="page-css">
+:root{--bg:#0f1318;--panel:#171c22;--panel2:#1d232a;--line:#2a323b;--tx:#e8ebee;--soft:#9aa3ad;--acc:#8ec1ea;--warn:#ffc861}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:64px}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.55 system-ui,"Segoe UI",Arial,sans-serif}
+a{color:var(--acc)}
+.pg-wrap{max-width:1280px;margin:0 auto;padding:0 20px 80px}
+.pg-nav{position:sticky;top:0;z-index:50;background:#0f1318;border-bottom:1px solid var(--line)}
+.pg-nav .pg-wrap{display:flex;gap:4px 16px;flex-wrap:wrap;align-items:center;padding-top:10px;padding-bottom:10px}
+.pg-nav b{font-size:13px;letter-spacing:.04em;margin-right:8px}
+.pg-nav a{color:var(--soft);text-decoration:none;font-size:13px;padding:2px 0;border-bottom:2px solid transparent}
+.pg-nav a:hover{color:var(--tx);border-color:var(--acc)}
+h1{font-size:30px;line-height:1.15;margin:34px 0 10px;letter-spacing:-.01em}
+h2{font-size:22px;margin:56px 0 6px;padding-top:18px;border-top:1px solid var(--line)}
+h3{font-size:15px;margin:30px 0 4px;letter-spacing:.02em}
+p{margin:6px 0 10px;max-width:78ch}
+.pg-lede{font-size:16px;color:#c8cfd6;max-width:80ch}
+.pg-sub{color:var(--soft);font-size:13px;margin:0 0 14px;max-width:80ch}
+.pg-tag{display:inline-block;font:700 10px/1 system-ui;letter-spacing:.12em;text-transform:uppercase;padding:4px 8px;border-radius:999px;margin-right:6px;vertical-align:middle}
+.pg-tag.cur{background:#2a3440;color:#b7c4d1}
+.pg-tag.new{background:#1d3a2a;color:#7ee0a5}
+.pg-tag.ref{background:#3a3220;color:#e8c98a}
+.pg-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));align-items:start}
+.pg-cell{min-width:0}
+.pg-cell>.pg-cap{font-size:12px;color:var(--soft);margin:0 0 6px;display:flex;gap:8px;align-items:baseline}
+.pg-cap b{color:var(--tx);font-size:12.5px}
+.pg-row{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.stage{background:
+  radial-gradient(ellipse 60% 50% at 18% 22%,rgba(74,98,52,.9),transparent 70%),
+  radial-gradient(ellipse 50% 60% at 82% 30%,rgba(120,104,70,.85),transparent 70%),
+  radial-gradient(ellipse 70% 40% at 55% 85%,rgba(52,82,112,.85),transparent 70%),
+  repeating-linear-gradient(35deg,rgba(255,255,255,.035) 0 2px,transparent 2px 9px),#3b4636;
+  border:1px solid var(--line);border-radius:12px;padding:18px;min-height:120px}
+.stage.flat{background:#252b33}
+.stage .ms-ground-guide-badge{position:relative;left:auto;top:auto;display:block;z-index:auto;margin:0 auto 0 0}
+.stage .ms-ggl-hint{position:relative;left:auto;bottom:auto;transform:none;display:inline-block;z-index:auto}
+.pg-ctl{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:0 0 12px;font-size:13px;color:var(--soft)}
+.pg-ctl label{display:inline-flex;gap:6px;align-items:center}
+.pg-ctl select,.pg-btn{font:inherit;font-size:13px;color:var(--tx);background:#222a33;border:1px solid #39434f;border-radius:6px;padding:5px 9px}
+.pg-btn{cursor:pointer}
+.pg-btn:hover{background:#2b343f}
+.pg-btn:focus-visible,.pg-ctl select:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.pg-note{border-left:3px solid #3d4a58;padding:6px 12px;color:#c3cbd3;background:rgba(255,255,255,.03);border-radius:0 6px 6px 0;font-size:13px;max-width:92ch;margin:10px 0}
+.pg-note.warn{border-color:#c98b2a}
+.pg-note b{color:#fff}
+table.pg-t{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0 14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pg-t th,.pg-t td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid var(--line)}
+.pg-t th{background:var(--panel2);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
+.pg-t tr:last-child td{border-bottom:0}
+.pg-t code,code.pg-c{font:12px/1.4 ui-monospace,Consolas,monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;color:#d7e2ec}
+.pg-scroll{overflow-x:auto}
+.pg-sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-3px;margin-right:6px;border:1px solid rgba(255,255,255,.25)}
+.pg-tokens{display:grid;gap:8px 18px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.pg-tok{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px}
+.pg-tok i{flex:none;width:30px;height:30px;border-radius:6px;border:1px solid rgba(255,255,255,.22)}
+.pg-tok span{min-width:0}
+.pg-tok b{display:block;font-weight:600}
+.pg-tok small{color:var(--soft);font:11.5px ui-monospace,Consolas,monospace}
+pre.pg-prompt{background:#0b0e12;border:1px solid var(--line);border-radius:10px;padding:16px;white-space:pre-wrap;font:12.5px/1.55 ui-monospace,Consolas,monospace;color:#d7dde3;max-height:520px;overflow:auto}
+.pg-two{display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start}
+ul.pg-l{margin:6px 0 12px;padding-left:20px;max-width:90ch}
+ul.pg-l li{margin:3px 0}
+.pg-flow{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.pg-flow span{font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+@media (max-width:640px){.pg-wrap{padding:0 14px 60px}h1{font-size:24px}.pg-row{gap:18px}}
+@media print{.pg-nav{display:none}body{background:#fff}}
+</style>
+
+<!-- ============ CURRENT STYLE: verbatim from GroundGuideBadge.ts (CSS constant) ============ -->
+<style id="current-card-css">
+.ms-ground-guide-badge{position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;
+  --pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:280px;max-width:calc(100vw - 8px);box-sizing:border-box;border-radius:10px;overflow:hidden;
+  font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
+  background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:none}
+.ms-ground-guide-badge[data-verdict="ok"]{--pb-c:#1c8247;--pb-k:#3fc07a}
+.ms-ground-guide-badge[data-verdict="near"]{--pb-c:#e9a526;--pb-fg:#1b1f25;--pb-k:#f2b84b}
+.ms-ground-guide-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25;--pb-k:#f0a04b}
+.ms-ground-guide-badge[data-verdict="partial"]{--pb-c:#d9622b;--pb-fg:#1b1f25;--pb-k:#ef7d4a}
+.ms-ground-guide-badge[data-verdict="in"]{--pb-c:#d63a3f;--pb-k:#ff6b6f}
+.ms-ggb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
+.ms-ggb-bar>svg{flex:none}
+.ms-ggb-title{flex:1 1 0;min-width:0}
+.ms-ggb-pills{display:flex;gap:4px;margin-left:auto}
+.ms-ggb-pct,.ms-ggb-fix{display:flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:11.5px;white-space:nowrap}
+.ms-ggb-fix{padding-left:2px}
+.ms-ground-guide-badge[data-verdict="near"] .ms-ggb-pills>span,.ms-ground-guide-badge[data-verdict="caution"] .ms-ggb-pills>span,.ms-ground-guide-badge[data-verdict="partial"] .ms-ggb-pills>span{background:rgba(0,0,0,.12)}
+.ms-ggb-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:4px;
+  font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3f8f5b,#2b6b42);border:1px solid #5fc183;border-bottom-width:2px}
+.ms-ggb-sr{position:fixed;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+.ms-ggb-body{padding:6px 11px 8px}
+.ms-ggb-sec{padding:7px 11px 8px}
+.ms-ggb-sec:nth-child(even){background:#222830}
+.ms-ggb-cap{font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--pb-k);margin-bottom:5px}
+.ms-ggb-b{font-weight:600;color:#fff}
+.ms-ggb-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:6px}
+.ms-ggb-scale>span{font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-align:center;padding:4px 0 3px;border-radius:2px;background:rgba(255,255,255,.06);color:#6b737c}
+.ms-ggb-scale>.ms-on-go{background:#2fa862;color:#fff}
+.ms-ggb-scale>.ms-on-slow{background:#f0932b;color:#1b1f25}
+.ms-ggb-scale>.ms-on-nogo{background:#e5484d;color:#fff}
+.ms-ggb-nr{display:flex;gap:10px;align-items:center}
+.ms-ggb-big{font-size:18px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
+.ms-ggb-track{height:6px;margin:4px 0 2px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
+.ms-ggb-track>div{height:100%}
+.ms-ggb-enf{display:flex;gap:7px;align-items:flex-start;padding:7px 11px;background:rgba(229,72,77,.14);border-top:1px solid rgba(229,72,77,.45);color:#ffb3b5}
+.ms-ggb-enf>svg{flex:none;margin-top:1px;color:#e5484d}
+.ms-ggb-warn{color:#ffc861}
+.ms-ggb-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
+</style>
+
+<!-- ============ CURRENT STYLE: verbatim from GroundGuideLegend.ts (LEGEND_CSS) ============ -->
+<style id="current-legend-css">
+.ms-ggl{width:290px;max-width:calc(100vw - 24px);box-sizing:border-box;font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
+  background:rgba(27,31,37,.95);border:1px solid #39414b;border-radius:10px;padding:10px 12px 11px;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.ms-ggl button{font:inherit;color:inherit;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;cursor:pointer;padding:0}
+.ms-ggl button:hover{background:rgba(255,255,255,.12)}
+.ms-ggl button:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
+.ms-ggl-head{display:flex;align-items:center;gap:8px}
+.ms-ggl-title{font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.ms-ggl-count{margin-left:auto;font:500 11px/1 ui-monospace,Consolas,monospace;color:#9aa3ad}
+.ms-ggl-more{width:22px;height:20px;font-size:11px;line-height:1}
+.ms-ggl-strip{display:flex;align-items:stretch;gap:4px;margin-top:9px}
+.ms-ggl-strip>button{flex:none;width:24px;min-height:32px;font-size:15px}
+.ms-ggl-icons{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));gap:3px}
+.ms-ggl-icons button{height:32px;display:flex;align-items:center;justify-content:center;color:#9aa3ad}
+.ms-ggl-icons button[aria-pressed="true"]{color:#1b1f25;background:#8ec1ea;border-color:#8ec1ea}
+.ms-ggl-name{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-top:7px}
+.ms-ggl-name b{font-size:14px;color:#fff}
+.ms-ggl-tag{font-size:11px;color:#9aa3ad}
+.ms-ggl-tag.ms-hand{color:#ffc861}
+.ms-ggl-ramp{display:grid;grid-template-columns:repeat(4,1fr);margin-top:9px;border-radius:4px;overflow:hidden}
+.ms-ggl-ramp>i{height:10px}
+.ms-ggl-ramp-l{display:grid;grid-template-columns:repeat(4,1fr);font-size:10.5px;color:#9aa3ad;margin-top:4px}
+.ms-ggl-ramp-l>span{text-align:center}
+.ms-ggl-ramp-l>span:first-child{text-align:left}
+.ms-ggl-ramp-l>span:last-child{text-align:right}
+.ms-ggl-note{font-size:11px;color:#9aa3ad;margin-top:3px}
+.ms-ggl-list{display:flex;flex-direction:column;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09);
+  max-height:190px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#4a535e transparent}
+.ms-ggl-cap{font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.ms-ggl-chips{display:flex;flex-wrap:wrap;gap:4px}
+.ms-ggl-chips>span{font-size:11px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
+.ms-ggl-keys{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09)}
+.ms-ggl-key{display:flex;align-items:center;gap:7px;opacity:.45;transition:opacity .2s}
+.ms-ggl-key.ms-on{opacity:1}
+.ms-ggl-key small{display:block;font-size:10.5px;color:#9aa3ad}
+.ms-ggl-kbd{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:22px;height:22px;padding:0 5px;box-sizing:border-box;border-radius:5px;
+  font:700 11.5px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
+.ms-ggl-key.ms-lit .ms-ggl-kbd{background:linear-gradient(#3f8f5b,#2b6b42);border-color:#5fc183;box-shadow:0 0 0 3px rgba(47,168,98,.25)}
+.ms-ggl-hint{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:2147482500;display:none;
+  max-width:min(90vw,460px);padding:7px 14px;border-radius:999px;background:#242a32;border:1px solid #4a535e;
+  box-shadow:0 3px 12px rgba(0,0,0,.4);font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;pointer-events:none}
+@media (prefers-reduced-motion: reduce){.ms-ggl-key{transition:none}}
+</style>
+
+<!-- ============ PROPOSED STYLE: GROTBC additions (new classes, built on the current tokens) ============ -->
+<style id="proposed-css">
+.gx{--gx-G:#8fb35a;--gx-R:#c9a46b;--gx-O:#7a5cc9;--gx-T:#5aa9e6;--gx-B:#9a8f86;--gx-C:#1f8a5a}
+.gx-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;color:#1b1f25}
+.gx-badge[data-l="G"]{background:var(--gx-G,#8fb35a)}
+.gx-badge[data-l="R"]{background:var(--gx-R,#c9a46b)}
+.gx-badge[data-l="O"]{background:var(--gx-O,#7a5cc9);color:#fff}
+.gx-badge[data-l="T"]{background:var(--gx-T,#5aa9e6)}
+.gx-badge[data-l="B"]{background:var(--gx-B,#9a8f86)}
+.gx-badge[data-l="C"]{background:var(--gx-C,#1f8a5a);color:#fff}
+.gx .ms-ggb-cap{display:flex;align-items:center;gap:6px}
+.gx-ln{display:grid;grid-template-columns:64px 1fr;gap:0 8px;align-items:baseline;line-height:1.35}
+.gx-ln+.gx-ln{margin-top:2px}
+.gx-k{font-size:10.5px;color:#9aa3ad}
+.gx-v{color:#f3f5f7;min-width:0;overflow-wrap:anywhere}
+.gx-v b{color:#fff;font-weight:600}
+.gx-chip{display:inline-block;font:700 9px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;padding:2px 5px 1px;border-radius:999px;vertical-align:1px;color:#fff}
+.gx-chip.nat{background:#2f7fbf}
+.gx-chip.man{background:#7a5cc9}
+.gx-chip.rein{background:repeating-linear-gradient(135deg,#c4383c 0 3px,#8f2428 3px 5px)}
+.gx-slope{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;margin-top:5px}
+.gx-slope>i{height:5px;border-radius:1px;background:rgba(255,255,255,.1)}
+.gx-slope>i.on{outline:1.5px solid #fff;outline-offset:1px}
+.gx-meter{display:inline-grid;grid-template-columns:repeat(3,10px);gap:2px;vertical-align:middle;margin-right:5px}
+.gx-meter>i{height:6px;border-radius:1px;background:rgba(255,255,255,.12)}
+.gx-meter>i.on{background:var(--gx-C,#1f8a5a)}
+/* C section: cover / concealment split four ways (direct fire, indirect fire, ground observation, aerial observation) */
+.gx-cc{display:grid;grid-template-columns:repeat(4,1fr);gap:1px 6px;margin:1px 0 4px}
+.gx-cc>.gx-cch{grid-column:span 2;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#9aa3ad;border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:1px}
+.gx-cc>div{display:flex;flex-direction:column;gap:2px;min-width:0;padding-top:2px}
+.gx-cc small{font-size:10px;color:#9aa3ad;line-height:1.1}
+.gx-cc b{font-size:10.5px;font-weight:600;color:#fff;line-height:1.1}
+.gx-cc .gx-meter{margin-right:0}
+.gx-note{font-size:10.5px;color:#9aa3ad}
+.gx-foot{display:flex;align-items:center;gap:7px;padding:6px 11px;border-top:1px solid rgba(255,255,255,.08);color:#9aa3ad;font-size:11px;background:#1b1f25}
+.gx-kbd{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:17px;height:17px;padding:0 4px;border-radius:4px;font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
+.gx-layers{display:flex;gap:4px;margin-top:9px}
+.gx-layers button{flex:1;height:28px;font:800 12px/1 system-ui;letter-spacing:.02em}
+.gx-layers button[aria-pressed="true"]{border-color:transparent;color:#1b1f25}
+.gx-layers button[data-l="G"][aria-pressed="true"]{background:#8fb35a}
+.gx-layers button[data-l="R"][aria-pressed="true"]{background:#c9a46b}
+.gx-layers button[data-l="O"][aria-pressed="true"]{background:#7a5cc9;color:#fff}
+.gx-layers button[data-l="T"][aria-pressed="true"]{background:#5aa9e6}
+.gx-layers button[data-l="B"][aria-pressed="true"]{background:#9a8f86}
+.gx-layers button[data-l="C"][aria-pressed="true"]{background:#1f8a5a;color:#fff}
+.gx-lname{font-size:11px;color:#9aa3ad;margin-top:6px}
+.gx-lname b{color:#fff}
+.gx-key{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:8px}
+.gx-key>div{display:flex;align-items:center;gap:7px;font-size:11px;min-width:0}
+.gx-sw{flex:none;width:20px;height:10px;border-radius:2px}
+.gx-sw.line{height:0;border-top:3px solid;border-radius:0}
+.gx-sw.dash{height:0;border-top:2px dashed;border-radius:0}
+.gx-sw.dot{width:10px;height:10px;border-radius:50%;margin:0 5px}
+.gx-sw.ring{width:11px;height:11px;border-radius:50%;border:2px solid;margin:0 4px}
+.gx-sw.hatch{background-size:auto}
+/* Ground Brief panel */
+.gx-brief{width:380px;max-width:100%;border-radius:10px;overflow:hidden;background:#1b1f25;border:1.5px solid #5b6470;box-shadow:0 6px 20px rgba(0,0,0,.45);font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7}
+.gx-bh{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#2b333d}
+.gx-bh b{font-size:14px;letter-spacing:.06em;text-transform:uppercase}
+.gx-bh .gx-kbd{margin-left:auto}
+.gx-bm{padding:6px 12px;font-size:11px;color:#c3cbd3;background:#222830;border-bottom:1px solid rgba(255,255,255,.07)}
+.gx-bs{display:grid;grid-template-columns:20px 1fr;gap:0 9px;padding:8px 12px 9px}
+.gx-bs:nth-of-type(even){background:#222830}
+.gx-bs .gx-badge{margin-top:1px}
+.gx-bs h4{margin:0 0 4px;font:700 10px/1.2 system-ui;letter-spacing:.12em;text-transform:uppercase;color:#aab3bd}
+.gx-bs .gx-ln{grid-template-columns:112px 1fr}
+.gx-later .gx-v{color:#7d8791;font-style:italic}
+.gx-src{padding:7px 12px;font-size:10.5px;color:#8b95a0;border-top:1px solid rgba(255,255,255,.08)}
+.gx-act{display:flex;gap:8px;align-items:center;padding:8px 12px;border-top:1px solid rgba(255,255,255,.08);background:#171b20}
+.gx-act button{font:600 12px/1 system-ui;color:#fff;background:linear-gradient(#3f8f5b,#2b6b42);border:1px solid #5fc183;border-radius:6px;padding:7px 12px;cursor:pointer}
+.gx-act button:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
+.gx-act span{font-size:11px;color:#9aa3ad;margin-left:auto}
+</style>
+</head>
+<body>
+
+<nav class="pg-nav"><div class="pg-wrap">
+  <b>PAMS8 · Ground Guide Card Brief</b>
+  <a href="ground-guide-card-variations.html">Interactive card directions</a>
+  <a href="#how">How to use</a>
+  <a href="#current">1 · Current</a>
+  <a href="#proposed">2 · Proposed GROTBC</a>
+  <a href="#fields">3 · Fields</a>
+  <a href="#tokens">4 · Tokens and rules</a>
+  <a href="#brief">5 · Brief for reviewers</a>
+</div></nav>
+
+<main class="pg-wrap">
+
+<header>
+  <h1>Ground Guide: Card and Legend Style Brief</h1>
+  <p class="pg-lede">The Ground Guide judges whether the ground under a symbol is usable while the planner draws it. It shows a
+  <b>Card</b> (the small tooltip that follows the cursor) and a <b>Legend</b> (docked bottom-left on the map). The data underneath has
+  grown a lot (bundle v2, <b>GROTBC</b>), but the Card and Legend still show only the v1 fields. This page shows both
+  <b>exactly as built today</b> and the <b>proposed GROTBC layout</b>, with every field, colour and rule, so the team and other design agents can
+  suggest a style.</p>
+  <p class="pg-note"><b>Compare live directions:</b> <a href="ground-guide-card-variations.html">Open the interactive card and legend options</a> to compare three GROTBC densities and rotate the sample map with the radar.</p>
+  <div class="pg-flow">
+    <span><b>G</b> Ground</span><span><b>R</b> Roads, Tracks &amp; Railway Network</span><span><b>O</b> Obstacles</span><span><b>T</b> Trafficability</span><span><b>B</b> Built-Up Areas</span><span><b>C</b> Cover, Camouflage &amp; Concealment</span>
+  </div>
+  <p class="pg-note"><b>Relabelled 2026-11-03 (GROTBC.md).</b> The first build read R as Relief and T as Tactical Features. Now
+  <b>G</b> holds relief (elevation, slope, landform), the terrain type (Plain, Hilly, Solid, Marshy, Wet, Desert, Mountainous, Built-Up, Snow / Ice), vegetation, soil and bearing, and water sources; <b>R</b> holds roads, tracks, rail, crossings by class and airfields;
+  <b>T</b> is <b>Trafficability</b> (changed from Terrain on 2026-11-04): the going for the mode (on foot, wheeled, tracked, air, others) cross-country, on tracks, on roads by load class and on the MSR, dry and after rain, with the month's climate as the season; <b>B</b> holds settlements, kacha huts
+  and public services; <b>C</b> splits four ways (cover from direct fire, cover from indirect fire, concealment from ground observation, concealment from aerial observation).
+  Sample lines below use the terrain bundle as rebuilt (bundle v2 with terrain, soil, hut and climate layers, named detail and <code class="pg-c">routes.json</code>).</p>
+</header>
+
+<section id="how">
+  <h2>How to use this page</h2>
+  <div class="pg-two">
+    <div>
+      <h3>Team</h3>
+      <ul class="pg-l">
+        <li>Section 1 is the <b>live current design</b>: the same CSS as the code, fed with sample verdicts.</li>
+        <li>Section 2 is the <b>data and layout reference</b>. The interactive directions page compares three card densities and two legend treatments.</li>
+        <li>Pick a mode in the controls to see which three GROTBC sections the Card shows for it.</li>
+        <li>Sections 3 and 4 list every field and token. Section 5 has the open questions.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>AI agents</h3>
+      <ul class="pg-l">
+        <li>Read the whole file, including the CSS blocks in <code class="pg-c">&lt;head&gt;</code> (the "current" blocks are verbatim from the source).</li>
+        <li>Use the prompt in section 5 and return the deliverables it asks for.</li>
+        <li>Do not invent data fields. Everything the Card can show is listed in section 3.</li>
+        <li>All place names, numbers and distances here are <b>illustrative samples</b>.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pg-note"><b>Where the code lives.</b> Card: <code class="pg-c">MS/Engines/GroundGuide/GroundGuideBadge.ts</code> · Legend: <code class="pg-c">GroundGuideLegend.ts</code> · wiring:
+  <code class="pg-c">GroundGuide.ts</code> (<code class="pg-c">_syncLegend()</code>, <code class="pg-c">badge.show()</code>) · handover: <code class="pg-c">MS/Docs/16-ground-guide-grotbc-card.md</code>.</div>
+</section>
+
+<!-- ====================================================== 1 CURRENT ====================================================== -->
+<section id="current">
+  <h2><span class="pg-tag cur">Current</span>1 · The design as built</h2>
+  <p class="pg-sub">Decisions already taken and implemented: Sectioned Bands card, Going Scale for "Why", caps captions in the verdict colour, Going Ramp legend. Cards are 280 px wide, the legend 290 px.</p>
+
+  <h3>1a · Card: one per verdict</h3>
+  <p class="pg-sub">The header colour and the caption colour follow the verdict. Sections sit on alternating bands. The card never takes the pointer.</p>
+  <div class="stage"><div class="pg-grid" id="cur-cards"></div></div>
+
+  <h3>1b · Card: extras and edge states</h3>
+  <div class="stage"><div class="pg-grid" id="cur-extra"></div></div>
+
+  <h3>1c · Legend</h3>
+  <p class="pg-sub">Interactive. Click a mode icon or Previous / Next. The NO-GO and SLOW-GO lists come from the real <code class="pg-c">rules.json</code> for each of the 14 modes.</p>
+  <div class="pg-ctl" id="cur-leg-ctl"></div>
+  <div class="pg-row">
+    <div class="stage" style="padding:14px;min-width:330px"><div id="cur-legend"></div></div>
+    <div>
+      <p class="pg-sub" style="margin-top:0">Hint chip (shown at the bottom of the screen, 5 s):</p>
+      <div class="stage" style="padding:12px;display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+        <div class="ms-ggl-hint" role="status">Ground Guide is on: pick a symbol and terrain advice follows your cursor.</div>
+        <div class="ms-ggl-hint" role="status">This symbol is not terrain-bound, so it gets no terrain advice.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== 2 PROPOSED ====================================================== -->
+<section id="proposed">
+  <h2><span class="pg-tag new">Proposed</span>2 · GROTBC Card, Ground Brief and Legend</h2>
+  <p class="pg-sub">The data is prepared and presented by GROTBC. While drawing, the Card keeps its header and the "Why" scale and adds the <b>three GROTBC sections that matter most for the mode</b>. Pressing <b>G</b> opens the full <b>Ground Brief</b> with all six. The Legend gains a <b>GROTBC layer switch</b> and the G key.</p>
+  <div class="pg-note warn"><b>Not yet approved:</b> the six letter colours, the legend layer switch and the swatches in its keys. Everything else here follows decisions already recorded in the handover.</div>
+
+  <h3>2a · Card by mode</h3>
+  <div class="pg-ctl" id="gx-card-ctl"></div>
+  <div class="pg-row">
+    <div class="stage gx" style="padding:14px"><div id="gx-card"></div></div>
+    <div style="flex:1;min-width:260px;max-width:520px">
+      <div class="pg-note" id="gx-needs"></div>
+      <ul class="pg-l" style="font-size:13px;color:#c3cbd3">
+        <li>Order: header · Why · three sections (always in G R O T B C order) · Inside (lines and areas only) · Nearest · Intermediate Gap Rule · hint to press G.</li>
+        <li>One idea per section: at most two lines of text plus one graphic (slope bands, concealment meters, origin chip).</li>
+        <li>A section whose data is missing is left out, or says so in words ("class not recorded", "no water source mapped within 5 km"). Never an empty row.</li>
+        <li>The card stays 280 px wide, so it grows taller (compare 1a). Is that acceptable? See the questions in section 5.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>2b · Ground Brief (press G)</h3>
+  <p class="pg-sub">A panel for the cursor or the selected symbol: all six sections, a header line with mode · 1:50k sheet · tehsil · district, a sources line, and <b>Copy as Text</b> for orders. Esc or G closes it. It does not follow the pointer. Lines marked "Planned" are not built (routing between two points is a proposal in <code class="pg-c">GROTBC-Roads.md</code>). Pick a month to see the season and after-rain going change.</p>
+  <div class="pg-row">
+    <div class="stage gx" style="padding:14px"><div id="gx-brief"></div></div>
+    <div style="flex:1;min-width:260px;max-width:520px">
+      <div class="pg-ctl"><label>Mode <select id="gx-brief-mode"></select></label><label>Month <select id="gx-brief-month"></select></label><span id="gx-copied" style="color:#7ee0a5"></span></div>
+      <p class="pg-sub">Copy as Text produces this (press the button on the panel, or read it here):</p>
+      <pre class="pg-prompt" id="gx-brief-text" style="max-height:340px"></pre>
+    </div>
+  </div>
+
+  <h3>2c · Legend with the GROTBC layer switch</h3>
+  <p class="pg-sub">Six letter buttons under the mode strip repaint the map overlay and the key. T (Trafficability) is today's going ramp plus roads fit for the mode and soil that turns poor after rain; G is the terrain type, slope bands and water sources. Click the letters to see each key. The G key joins P and S.</p>
+  <div class="pg-ctl" id="gx-leg-ctl"></div>
+  <div class="pg-row">
+    <div class="stage gx" style="padding:14px;min-width:330px"><div id="gx-legend"></div></div>
+  </div>
+
+  <h3>2d · Letter and obstacle-origin colours (proposal)</h3>
+  <div class="pg-tokens gx" id="gx-letters"></div>
+  <div class="pg-note">Obstacles are typed by <b>origin</b> (Natural, Man-Made, Reinforcing = placed by a force) and <b>kind</b>, with an <b>effect per force</b>: what stops a tank need not stop infantry.
+  <span class="gx-chip nat">Natural</span> <span class="gx-chip man">Man-Made</span> <span class="gx-chip rein">Reinforcing</span></div>
+
+  <h3>What changes, at a glance</h3>
+  <div class="pg-scroll"><table class="pg-t" id="changes"></table></div>
+</section>
+
+<!-- ====================================================== 3 FIELDS ====================================================== -->
+<section id="fields">
+  <h2><span class="pg-tag ref">Reference</span>3 · Every field the Card and Legend can show</h2>
+
+  <h3>3a · Card: current fields (<code class="pg-c">GroundGuideVerdict</code>)</h3>
+  <div class="pg-scroll"><table class="pg-t" id="t-card"></table></div>
+  <h3>Card: fields that exist but are not shown today</h3>
+  <div class="pg-scroll"><table class="pg-t" id="t-unused"></table></div>
+
+  <h3>3b · Legend: current fields (<code class="pg-c">LegendState</code>)</h3>
+  <div class="pg-scroll"><table class="pg-t" id="t-legend"></table></div>
+
+  <h3>3c · Proposed Card sections: mode to sections</h3>
+  <div class="pg-scroll"><table class="pg-t" id="t-modes"></table></div>
+
+  <h3>3d · Proposed section content and its data</h3>
+  <div class="pg-scroll"><table class="pg-t" id="t-sections"></table></div>
+  <div class="pg-note">Water line format: <code class="pg-c">Tube Well 250 m W · Spring 3 km N · Well 600 m SE · Tank 1.2 km E</code>. Only kinds found within the search radius, nearest first.<br>
+  Line formats for the new data (sample values): <code class="pg-c">Terrain Type: Plain (Irrigated), Hilly to the N 2 km</code> ·
+  <code class="pg-c">Soil: Clay Loam (Modelled) · Firm When Dry, Soft After Rain</code> ·
+  <code class="pg-c">Cross-Country: SLOW-GO for Wheeled Vehicle (Watercourses) · Dry Season</code> ·
+  <code class="pg-c">After Rain: Clay Loam Poor (Modelled)</code> ·
+  <code class="pg-c">Jul: 35° / 26°, 149 mm, Monsoon (74 % of the Year's Rain Jun to Sep); Frost Months: None</code> ·
+  <code class="pg-c">MSR N-5 (GT Road) · Class 70 · Tankable · 1.2 km NE</code> ·
+  <code class="pg-c">Lahore – Kasur · 53 km · Class 70 · MSR</code> (from, to and km only when routes.json has them) ·
+  <code class="pg-c">Kotli – Rawala Kot · 81 km · Closed Dec to Jan (as Recorded)</code> ·
+  <code class="pg-c">Condition Good (Where Recorded)</code> · <code class="pg-c">Class Not Recorded</code> ·
+  <code class="pg-c">Bridge Class 40 (Not for Tanks) · 600 m E</code> ·
+  <code class="pg-c">Kamoke (City) 3.1 km N · About 1.2 Million within 12 km (WorldPop Estimate)</code> ·
+  <code class="pg-c">Kacha Huts: About 18 per km² Nearby</code> ·
+  <code class="pg-c">River Bank (Chenab) 150 m W: Cover from Direct Fire, Deployment Line</code>.</div>
+
+  <h3>3e · Terrain classes (<code class="pg-c">rules.json classes</code>, 51 codes)</h3>
+  <p class="pg-sub">Class codes 0 to 50 are what the verdict is built from. G R O T B C = the GROTBC heading(s) each class belongs to.</p>
+  <div class="pg-scroll"><table class="pg-t" id="t-classes"></table></div>
+
+  <h3>3f · The 14 modes: NO-GO and SLOW-GO counts</h3>
+  <div class="pg-scroll"><table class="pg-t" id="t-modelist"></table></div>
+
+  <h3>3g · Known limits of the data (say them in the card, never hide them)</h3>
+  <ul class="pg-l">
+    <li>Load class is recorded on about <b>31%</b> of road segments; otherwise the card says "class not recorded", never "tankable".</li>
+    <li>Field channels and power lines are mapped unevenly (none near Lahore).</li>
+    <li>Slope comes from a surface model, so cities and tree lines read a little steep.</li>
+    <li>Tank MLCs are estimates (Al-Khalid ~48 t, T-80UD / T-80 ~46 t, Al-Zarrar ~40 t). Class 60+ = tankable for every main tank; 50 to 59 = Al-Zarrar only; below 50 = non-tankable; width under 3.5 m is never tankable; a tank on a transporter (HET) needs class 70.</li>
+    <li>Road <b>condition</b> is recorded on about <b>4%</b> of road segments, <b>seasonal closure</b> on about 540 and <b>landslide sites</b> on 71: "no closure" means "none recorded". Say "Where Recorded".</li>
+    <li>MSR is a rule, not an official list: motorway, highway, main road, defence road, broad-gauge railway, and metalled roads of class 50 and over.</li>
+    <li><b>Soil</b> is a 250 m model (SoilGrids 2.0), not a soil survey: say "Modelled". The bearing (Good / Fair / Poor / Very Poor, dry and after rain) is a starting proposal.</li>
+    <li><b>Terrain type</b> rules and the <b>four-way cover split</b> are starting proposals for the owner to correct.</li>
+    <li><b>Trafficability</b> is the per-mode going table (rules.yaml) applied to the mapped class, slope and modelled soil, with the month from climate normals. It is not a measured trafficability survey: no cone index, no live soil moisture, no cross-country speed yet.</li>
+    <li><b>Population</b> near a place (<code class="pg-c">wp</code>, <code class="pg-c">wc</code>) is a WorldPop 2020 estimate, not a census count: say "WorldPop Estimate". Official population only where recorded.</li>
+    <li><b>Huts</b> are mapped 1:50k symbols (kacha / mud dwellings), not a building survey.</li>
+    <li><b>Climate</b> is WorldClim 1970 to 2000 normals on 5′ cells (about 9 km): an average month, not a forecast.</li>
+    <li>Not in the NCGDB: schools, government offices, banks and named markets (77 markets, no names). Schools, banks and government offices come from GeoNames (feature kinds 147 to 149, <code class="pg-c">src: gn</code>) and say so; the pipeline step is written but the current bundle build does not carry them yet.</li>
+    <li><b>Routes</b> (routing from A to B) are not built: <code class="pg-c">routes.json</code> gives named roads with from, to, km, load range, closure and condition only. Any route line is "Planned".</li>
+    <li>Road and rail lines also cover the Indian-administered side, because the data extent is the whole relief-map sheet.</li>
+  </ul>
+</section>
+
+<!-- ====================================================== 4 TOKENS ====================================================== -->
+<section id="tokens">
+  <h2><span class="pg-tag ref">Reference</span>4 · Style tokens and rules</h2>
+  <h3>Colour tokens (current, in use)</h3>
+  <div class="pg-tokens" id="tok-cur"></div>
+  <h3>Overlay ramp (map colours, RGBA as painted)</h3>
+  <div class="pg-tokens" id="tok-ramp"></div>
+  <h3>Type, size and spacing</h3>
+  <div class="pg-scroll"><table class="pg-t" id="t-type"></table></div>
+  <h3>Wording</h3>
+  <ul class="pg-l" id="l-wording"></ul>
+  <h3>Behaviour and accessibility (must hold in any option)</h3>
+  <ul class="pg-l" id="l-behaviour"></ul>
+</section>
+
+<!-- ====================================================== 5 BRIEF ====================================================== -->
+<section id="brief">
+  <h2><span class="pg-tag new">Brief</span>5 · Brief for reviewers and AI agents</h2>
+  <p class="pg-sub">Paste this prompt with this file attached to ask a design agent for options.</p>
+  <div class="pg-ctl"><button class="pg-btn" id="copy-prompt" type="button">Copy Prompt</button><span id="copied2" style="color:#7ee0a5"></span></div>
+<pre class="pg-prompt" id="prompt">ROLE
+You are a senior interface designer for a military tactical-planning map tool (MIL-STD-2525D symbols on an ArcGIS map, 2D and 3D).
+
+CONTEXT
+The attached HTML file shows the Ground Guide's Card (the cursor-following tooltip) and Legend (docked bottom-left) in their CURRENT style, and a PROPOSED GROTBC layout
+(G Ground: relief, slope, landform, terrain type, vegetation, soil and bearing, water sources · R Roads, Tracks &amp; Railway Network: MSR, road / load class, tankable, crossings by class,
+rail, airfields · O Obstacles: natural, man-made, temporary, seasonal · T Trafficability: going for the mode (GO / SLOW-GO / NO-GO) cross-country, on tracks, roads and the MSR,
+dry and after rain, season from the month's climate · B Built-Up Areas: cities, towns, villages with population, kacha huts, public services · C Cover, Camouflage &amp; Concealment: cover from direct fire, cover from
+indirect fire, concealment from ground observation, concealment from aerial observation). Read the whole file: the CSS blocks are the source of truth for
+"current"; section 3 lists every field you may show; section 4 lists the tokens, wording rules and accessibility rules that must hold. All sample data is illustrative.
+Modelled or sparse values must say so in the UI ("Modelled", "Where Recorded", "WorldPop Estimate"). Routing is not built: show any route line as "Planned".
+
+TASK
+Propose THREE distinct style options for the Card, the Ground Brief panel and the Legend (with the GROTBC layer switch). Options must differ in more than colour:
+different hierarchy, density and section treatment. Suggested spread: (1) calm and dense, (2) high-contrast and glanceable, (3) your own best idea.
+
+HARD CONSTRAINTS (do not break)
+- Card 280 px wide, Legend 290 px wide, dark card over a busy satellite map, readable in sunlight and at night.
+- The Card follows the cursor and must never cover it, take the pointer or reflow on mouse-move. One idea per section: at most two lines of text plus one graphic.
+- Verdict colours (ok, near, caution, partial, in) and the GO / SLOW-GO / NO-GO scale keep their meaning. The six GROTBC accents must stay clearly apart from them
+  (flag any clash, for example the C green against the "ok" green).
+- Wording: Title Case, military terms exactly as given (Suitable Position, Unsuitable Position, SLOW-GO, NO-GO, Marginal, Quick Fix, Intermediate Gap Rule,
+  Adjacent to X / Encroaching on X, Partially Obstructed). Mode names as in section 3c. No symbols or dashes inside sentences.
+- Built with DOM nodes and CSS only (no images, no web fonts, no framework). Works on touch and with a screen reader. Respect prefers-reduced-motion.
+- Never leave an empty row: say what is missing ("Class not recorded").
+
+DELIVERABLES (for each option)
+1. Name and a one-paragraph rationale (who it serves best, what it trades away).
+2. A token table: colours (hex), type scale, spacing, radius, borders.
+3. A self-contained HTML + CSS mock of: (a) the Card for Tracked Vehicle in caution and in partial with its three sections (G R O, from the mode table in section 3c),
+   and the Card for Gun Position (G R C) to show the four-way C section;
+   (b) the Ground Brief panel with all six sections; (c) the Legend with the layer switch showing the R layer and the C layer.
+4. Accessibility notes: contrast ratios of the key text and badge colours, and how colour is not the only signal.
+5. Implementation cost: which existing classes change, and what is new.
+
+THEN
+Compare the three options against the acceptance checklist in the file (280 px, no reflow, Title Case, works with missing data) and recommend one, with the single biggest risk.
+</pre>
+
+  <h3>Open questions for the team</h3>
+  <ol class="pg-l" id="l-questions"></ol>
+  <h3>Acceptance checklist for the restyle</h3>
+  <ul class="pg-l" id="l-accept" style="list-style:none;padding-left:4px"></ul>
+</section>
+
+</main>
+
+<script id="data" type="application/json">{"modes":[{"key":"dismounted","label":"Dismounted Force","nogo":["Permanent Water","Snow / Ice / Glacier","Restricted / Protected Area","Canal"],"slow":["Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Steep Slope (Over 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Walled Orchard","Railway Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"wheeled","label":"Wheeled Vehicle","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Sand Dunes","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Forest (Enclosed)","Railway Bridge","Foot Bridge","Perennial Stream / Nullah","Wall / Fence"],"slow":["Tree Cover","Built-Up Area","Moderate Slope (15 to 30°)","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Cutting","Orchard / Garden","Graveyard","Ford / Ferry","Dry Nullah","Irrigated Cropland Under Power Lines"],"marginal":true,"whyCount":4},{"key":"tracked","label":"Tracked Vehicle","nogo":["Permanent Water","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge","Bridge, Below Class 50","Railway Bridge","Foot Bridge"],"slow":["Built-Up Area","Seasonal Water / Flood Zone","Moderate Slope (15 to 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Bridge, Class 50 to 59","Bridge, Class Not Recorded","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":5},{"key":"generic","label":"Gr Based","nogo":["Permanent Water","Canal","Distributary / Minor Canal","Drain"],"slow":["Wetland / Marsh","Mangrove","Sand Dunes","Perennial Stream / Nullah"],"marginal":true,"whyCount":0},{"key":"vessel","label":"Surface Vessel","nogo":["Anywhere Off Permanent Water / Canal / Bridge, Class 60+ (Tankable) / Bridge, Class 50 to 59 / Bridge, Below Class 50 / Bridge, Class Not Recorded / Railway Bridge / Foot Bridge / Ford / Ferry"],"slow":["Seasonal Water / Flood Zone","Ford / Ferry"],"marginal":true,"whyCount":0},{"key":"gun","label":"Gun Position","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Moderate Slope (15 to 30°)","Restricted / Protected Area","Sand Dunes","Sloping Ground (7 to 15°)","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"slow":["Tree Cover","Built-Up Area","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Gentle Slope (3 to 7°)","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Orchard / Garden","Metalled Road, Class 60+ (Tankable)","Metalled Road, Class 50 to 59","Metalled Road, Below Class 50","Metalled Road, Class Not Recorded","Unmetalled Road","Dry Nullah","Irrigated Cropland Under Power Lines","Level Crossing"],"marginal":true,"whyCount":6},{"key":"ad","label":"Air Defence Site","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Sand Dunes","Canal","Distributary / Minor Canal","Drain","Cliff / Escarpment / Broken Edge","Forest (Enclosed)","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah"],"slow":["Tree Cover","Built-Up Area","Moderate Slope (15 to 30°)","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Orchard / Garden","Graveyard","Power Line Corridor","Dry Nullah","Irrigated Cropland Under Power Lines","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"hls","label":"Helicopter Landing Site","nogo":["Tree Cover","Built-Up Area","Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Steep Slope (Over 30°)","Moderate Slope (15 to 30°)","Restricted / Protected Area","Sand Dunes","Sloping Ground (7 to 15°)","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Cliff / Escarpment / Broken Edge","Railway","Walled Orchard","Orchard / Garden","Forest (Enclosed)","Graveyard","Power Line Corridor","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Irrigated Cropland Under Power Lines","Wall / Fence","Level Crossing"],"slow":["Snow / Ice / Glacier","Sand","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Gentle Slope (3 to 7°)","Irrigated Cropland (Many Watercourses)","Bund (1 to 2 M)","Metalled Road, Class 60+ (Tankable)","Metalled Road, Class 50 to 59","Metalled Road, Below Class 50","Metalled Road, Class Not Recorded","Unmetalled Road","Dry Nullah"],"marginal":true,"whyCount":7},{"key":"signals","label":"Signals / EW Site","nogo":["Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Mangrove","Snow / Ice / Glacier","Restricted / Protected Area","Canal","Distributary / Minor Canal","Drain","Cliff / Escarpment / Broken Edge","Bridge, Class 60+ (Tankable)","Bridge, Class 50 to 59","Bridge, Below Class 50","Bridge, Class Not Recorded","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah"],"slow":["Tree Cover","Built-Up Area","Steep Slope (Over 30°)","Sand Dunes","Dry Riverbed / Nullah","Forest (Enclosed)","Power Line Corridor","Dry Nullah","Irrigated Cropland Under Power Lines"],"marginal":true,"whyCount":3},{"key":"amphibious","label":"Amphibious","nogo":["Mangrove","Snow / Ice / Glacier","Steep Slope (Over 30°)","Restricted / Protected Area","Cliff / Escarpment / Broken Edge"],"slow":["Built-Up Area","Permanent Water","Seasonal Water / Flood Zone","Wetland / Marsh","Moderate Slope (15 to 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Canal","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Walled Orchard","Forest (Enclosed)","Graveyard","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":2},{"key":"pack","label":"Mountain / Pack Transport","nogo":["Permanent Water","Mangrove","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge"],"slow":["Seasonal Water / Flood Zone","Wetland / Marsh","Snow / Ice / Glacier","Steep Slope (Over 30°)","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Walled Orchard","Railway Bridge","Foot Bridge","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":3},{"key":"oversnow","label":"Over-Snow","nogo":["Permanent Water","Mangrove","Steep Slope (Over 30°)","Restricted / Protected Area","Canal","Cliff / Escarpment / Broken Edge","Walled Orchard","Railway Bridge","Foot Bridge"],"slow":["Open Land","Tree Cover","Cropland","Built-Up Area","Seasonal Water / Flood Zone","Wetland / Marsh","Moderate Slope (15 to 30°)","Bare / Desert","Sand","Sand Dunes","Rocky Ground / Scree / Stony Waste","Salt Pan","Dry Riverbed / Nullah","Distributary / Minor Canal","Drain","Embankment / Bund Over 2 M","Cutting","Railway","Forest (Enclosed)","Graveyard","Ford / Ferry","Perennial Stream / Nullah","Wall / Fence"],"marginal":true,"whyCount":2},{"key":"roadbound","label":"Road-Bound Wheeled","nogo":["Anywhere Off Metalled Road, Class 60+ (Tankable) / Metalled Road, Class 50 to 59 / Metalled Road, Below Class 50 / Metalled Road, Class Not Recorded / Unmetalled Road / Bridge, Class 60+ (Tankable) / Bridge, Class 50 to 59 / Bridge, Below Class 50 / Bridge, Class Not Recorded / Ford / Ferry / Level Crossing"],"slow":["Unmetalled Road","Ford / Ferry"],"marginal":false,"whyCount":2},{"key":"rail","label":"Rail-Bound","nogo":["Anywhere Off Railway / Railway Bridge / Level Crossing"],"slow":["Level Crossing"],"marginal":false,"whyCount":0}],"classes":[{"c":0,"l":"Open Land","g":"GT","o":"natural","k":"surface","n":"Open, firm ground with low vegetation."},{"c":1,"l":"Tree Cover","g":"TC","o":"natural","k":"vegetation","n":"Trees: good concealment from the air, slow going for vehicles."},{"c":2,"l":"Cropland","g":"GT","o":"man_made","k":"surface","n":"Cultivated fields: firm when dry, soft after irrigation or rain."},{"c":3,"l":"Built-Up Area","g":"BC","o":"man_made","k":"structure","n":"Houses and streets: cover and concealment, but movement is channelled."},{"c":4,"l":"Permanent Water","g":"GO","o":"natural","k":"water","n":"Water all year round: needs a bridge, ferry or boats to cross."},{"c":5,"l":"Seasonal Water / Flood Zone","g":"GO","o":"natural","k":"water","n":"Under water for part of the year and soft for the rest."},{"c":6,"l":"Wetland / Marsh","g":"GO","o":"natural","k":"soft_ground","n":"Marsh, reeds or wet mud: vehicles bog down."},{"c":7,"l":"Mangrove","g":"GO","o":"natural","k":"soft_ground","n":"Tidal mangrove: mud and roots, impassable to vehicles."},{"c":8,"l":"Snow / Ice / Glacier","g":"GO","o":"natural","k":"snow_ice","n":"Snow, ice or glacier: needs over-snow equipment."},{"c":9,"l":"Steep Slope (Over 30°)","g":"GO","o":"natural","k":"gradient","n":"Slope over 30°: climbable on foot only."},{"c":10,"l":"Moderate Slope (15 to 30°)","g":"G","o":"natural","k":"gradient","n":"Slope of 15–30°: hard going for vehicles."},{"c":11,"l":"Restricted / Protected Area","g":"B","o":"man_made","k":"restricted","n":"Military or protected land: entry needs authority."},{"c":12,"l":"Bare / Desert","g":"GT","o":"natural","k":"surface","n":"Bare ground with no cover from view."},{"c":13,"l":"Sand","g":"G","o":"natural","k":"soft_ground","n":"Loose sand: wheels sink and dust gives movement away."},{"c":14,"l":"Sand Dunes","g":"GO","o":"natural","k":"soft_ground","n":"Dunes: soft, steep-sided ridges of sand."},{"c":15,"l":"Rocky Ground / Scree / Stony Waste","g":"GC","o":"natural","k":"surface","n":"Rock, scree or stones: hard on tyres and tracks, gives some cover."},{"c":16,"l":"Salt Pan","g":"G","o":"natural","k":"soft_ground","n":"Salt crust over soft mud: may not carry a vehicle when wet."},{"c":17,"l":"Dry Riverbed / Nullah","g":"GO","o":"natural","k":"gradient","n":"Dry bed with banks: floods after rain, gives cover."},{"c":18,"l":"Gentle Slope (3 to 7°)","g":"G","o":"natural","k":"gradient","n":"Gentle slope of 3–7°: easy going, but not level enough for a gun platform or a helicopter."},{"c":19,"l":"Sloping Ground (7 to 15°)","g":"G","o":"natural","k":"gradient","n":"Sloping ground of 7–15°: fine to move over, too steep to site guns or land helicopters."},{"c":20,"l":"Canal","g":"O","o":"man_made","k":"water","n":"Main or branch canal: deep, fast and steep-banked; cross at bridges only."},{"c":21,"l":"Distributary / Minor Canal","g":"O","o":"man_made","k":"water","n":"Distributary or minor canal: narrow but banked; vehicles need a bridge."},{"c":22,"l":"Drain","g":"O","o":"man_made","k":"water","n":"Drainage channel with soft banks: vehicles need a crossing."},{"c":23,"l":"Irrigated Cropland (Many Watercourses)","g":"GO","o":"man_made","k":"water","n":"Fields cut by watercourses every few hundred metres: wheels slow to a crawl."},{"c":24,"l":"Embankment / Bund Over 2 M","g":"OC","o":"man_made","k":"gradient","n":"Earth bank over 2 m high: stops wheels and gives cover from fire."},{"c":25,"l":"Bund (1 to 2 M)","g":"OC","o":"man_made","k":"gradient","n":"Low earth bank of 1–2 m: slows wheels and gives some cover."},{"c":26,"l":"Cutting","g":"OC","o":"man_made","k":"gradient","n":"Road or rail cutting: steep sides, cover from view."},{"c":27,"l":"Cliff / Escarpment / Broken Edge","g":"GOC","o":"natural","k":"gradient","n":"Cliff or broken edge: a drop no vehicle can take, with cover below it."},{"c":28,"l":"Railway","g":"RO","o":"man_made","k":"route","n":"Railway line on its embankment: vehicles cross at level crossings and bridges."},{"c":29,"l":"Walled Orchard","g":"OC","o":"man_made","k":"structure","n":"Orchard inside a wall: concealment and cover, and a block to vehicles."},{"c":30,"l":"Orchard / Garden","g":"TC","o":"man_made","k":"vegetation","n":"Orchard or garden: good concealment, slow going between the rows."},{"c":31,"l":"Forest (Enclosed)","g":"OTC","o":"natural","k":"vegetation","n":"Dense forest: concealment from the air, no way through for wheels."},{"c":32,"l":"Graveyard","g":"BC","o":"man_made","k":"structure","n":"Graveyard: walls and mounds give cover, but there is no way through for vehicles."},{"c":33,"l":"Power Line Corridor","g":"O","o":"man_made","k":"air_hazard","n":"Within 50–100 m of power lines or masts: a wire-strike risk for helicopters."},{"c":34,"l":"Metalled Road, Class 60+ (Tankable)","g":"R","o":"man_made","k":"route","n":"Metalled road of load class 60 or more: carries every main tank."},{"c":35,"l":"Metalled Road, Class 50 to 59","g":"R","o":"man_made","k":"route","n":"Metalled road of load class 50–59: carries Al-Zarrar but not Al-Khalid or T-80UD."},{"c":36,"l":"Metalled Road, Below Class 50","g":"R","o":"man_made","k":"route","n":"Metalled road below load class 50: not tankable."},{"c":37,"l":"Metalled Road, Class Not Recorded","g":"R","o":"man_made","k":"route","n":"Metalled road with no load class on record: check its bridges before moving armour."},{"c":38,"l":"Unmetalled Road","g":"R","o":"man_made","k":"route","n":"Unmetalled or fair-weather road: dust when dry, mud after rain."},{"c":39,"l":"Bridge, Class 60+ (Tankable)","g":"RO","o":"man_made","k":"crossing","n":"Bridge of load class 60 or more: carries every main tank."},{"c":40,"l":"Bridge, Class 50 to 59","g":"RO","o":"man_made","k":"crossing","n":"Bridge of load class 50–59: Al-Zarrar is the only main tank it carries."},{"c":41,"l":"Bridge, Below Class 50","g":"RO","o":"man_made","k":"crossing","n":"Bridge below load class 50: not for tanks."},{"c":42,"l":"Bridge, Class Not Recorded","g":"RO","o":"man_made","k":"crossing","n":"Bridge with no load class on record: confirm it before crossing with armour."},{"c":43,"l":"Railway Bridge","g":"RO","o":"man_made","k":"crossing","n":"Railway bridge: for trains and men on foot, not for vehicles."},{"c":44,"l":"Foot Bridge","g":"RO","o":"man_made","k":"crossing","n":"Foot bridge: a crossing for men on foot only."},{"c":45,"l":"Ford / Ferry","g":"RO","o":"man_made","k":"crossing","n":"Ford or ferry point: a crossing with effort, depending on the water level."},{"c":46,"l":"Perennial Stream / Nullah","g":"O","o":"natural","k":"water","n":"Stream or nullah with water all year: banks and a soft bed."},{"c":47,"l":"Dry Nullah","g":"OC","o":"natural","k":"gradient","n":"Dry nullah: a gully that slows wheels and gives cover."},{"c":48,"l":"Irrigated Cropland Under Power Lines","g":"GO","o":"man_made","k":"air_hazard","n":"Watercourse-cut fields under power lines: slow for wheels and a wire risk for helicopters."},{"c":49,"l":"Wall / Fence","g":"OC","o":"man_made","k":"structure","n":"Wall or wire fence: blocks vehicles; a wall gives cover."},{"c":50,"l":"Level Crossing","g":"R","o":"man_made","k":"crossing","n":"Road meets railway: the place to cross the line with vehicles."}],"tanks":[{"name":"Al-Khalid","weightT":48,"mlc":53},{"name":"T-80UD","weightT":46,"mlc":51},{"name":"T-80","weightT":46,"mlc":51},{"name":"Al-Zarrar","weightT":40,"mlc":44}],"tankable":{"minClass":60,"limitedClass":50,"minWidthM":3.5,"transporterClass":70}}</script>
+<script>
+(function(){
+'use strict';
+var DATA = JSON.parse(document.getElementById('data').textContent);
+var SVG = 'http://www.w3.org/2000/svg';
+
+/* ------------------------------------------------------------------ helpers */
+function el(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function $(id){ return document.getElementById(id); }
+function svgNode(tag, attrs, parent, text){ var e = document.createElementNS(SVG, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (text) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+function fmtD(m){ var r = Math.round(m); var big = function(v){ return v >= 9.95 ? v.toFixed(0) : v.toFixed(1); }; return r >= 1000 ? big(m / 1000) + ' km' : r + ' m'; }
+var MINOR = { a:1, an:1, and:1, at:1, 'for':1, 'in':1, of:1, on:1, or:1, the:1, to:1 };
+function titleCase(t){ return t.split(' ').map(function(w, i){ return (i > 0 && MINOR[w]) ? w : w.replace(/(^|[-(])([a-z])/g, function(_m, p, c){ return p + c.toUpperCase(); }); }).join(' '); }
+function plain(l){ return l.replace(/>\s*(\d)/g, 'over $1').replace(/(\d+)\s*[–-]\s*(\d+)/g, '$1 to $2'); }
+function modeBy(key){ return DATA.modes.filter(function(m){ return m.key === key; })[0]; }
+function clearKids(n){ while (n.firstChild) n.removeChild(n.firstChild); }
+
+function table(host, heads, rows, opts){
+  clearKids(host);
+  var thead = el('thead'), tr = el('tr');
+  heads.forEach(function(h){ tr.appendChild(el('th', '', h)); });
+  thead.appendChild(tr); host.appendChild(thead);
+  var tb = el('tbody');
+  rows.forEach(function(r){
+    var row = el('tr');
+    r.forEach(function(c, i){
+      var td = el('td');
+      if (c && c.nodeType) td.appendChild(c);
+      else if (opts && opts.code && opts.code.indexOf(i) >= 0 && c) { td.appendChild(el('code', '', String(c))); }
+      else td.textContent = c === null || c === undefined ? '' : String(c);
+      row.appendChild(td);
+    });
+    tb.appendChild(row);
+  });
+  host.appendChild(tb);
+}
+
+/* ---------------------------------------------------- port: icons, dial, bits */
+var ICONS = {
+  check: ['M5 12l5 5L20 7'],
+  x: ['M18 6L6 18', 'M6 6l12 12'],
+  triangle: ['M12 9v4', 'M12 17h.01', 'M10.3 3.9L1.9 18.4a1.9 1.9 0 0 0 1.7 2.8h16.8a1.9 1.9 0 0 0 1.7-2.8L13.7 3.9a1.9 1.9 0 0 0-3.4 0z'],
+  octagon: ['M12 8v4', 'M12 16h.01', 'M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z'],
+  help: ['M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3', 'M12 17h.01', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z']
+};
+function icon(name, size){
+  var s = svgNode('svg', { width: String(size || 15), height: String(size || 15), viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
+  ICONS[name].forEach(function(d){ svgNode('path', { d: d }, s); });
+  return s;
+}
+function orientDial(svg, northDeg){
+  var north = Math.round(northDeg), bearing = Number(svg.getAttribute('data-pb-dial')) || 0;
+  svg.querySelector('[data-pb-ring]').setAttribute('transform', 'rotate(' + north + ' 22 22)');
+  svg.querySelector('[data-pb-n]').setAttribute('transform', 'rotate(' + (-north) + ' 22 8)');
+  svg.querySelector('[data-pb-needle]').setAttribute('transform', 'rotate(' + (north + bearing) + ' 22 22)');
+}
+function dial(bearingDeg, color, northDeg){
+  var svg = svgNode('svg', { width: '44', height: '44', viewBox: '0 0 44 44', 'aria-hidden': 'true', 'data-pb-dial': String(Math.round(bearingDeg)) });
+  var ring = svgNode('g', { 'data-pb-ring': '' }, svg);
+  svgNode('circle', { cx: '22', cy: '22', r: '20.5', fill: 'rgba(255,255,255,.06)', stroke: 'rgba(255,255,255,.3)', 'stroke-width': '1.5' }, ring);
+  svgNode('text', { x: '22', y: '12', 'text-anchor': 'middle', 'font-size': '11', fill: '#9aa3ad', 'font-family': 'system-ui,Segoe UI,Arial,sans-serif', 'data-pb-n': '' }, ring, 'N');
+  [[41.5, 22, 37.5, 22], [22, 41.5, 22, 37.5], [2.5, 22, 6.5, 22]].forEach(function(l){
+    svgNode('line', { x1: l[0], y1: l[1], x2: l[2], y2: l[3], stroke: '#9aa3ad', 'stroke-width': '1.5' }, ring);
+  });
+  svgNode('polygon', { points: '22,14 27.5,30 22,26 16.5,30', fill: color, stroke: color, 'stroke-width': '1.5', 'stroke-linejoin': 'round', 'data-pb-needle': '' }, svg);
+  orientDial(svg, northDeg);
+  return svg;
+}
+function track(fraction, color){
+  var t = el('div', 'ms-ggb-track'), f = el('div');
+  f.style.width = Math.round(Math.min(1, Math.max(0, fraction)) * 100) + '%'; f.style.background = color;
+  t.appendChild(f); return t;
+}
+function section(caption){ var s = el('div', 'ms-ggb-sec'); s.appendChild(el('div', 'ms-ggb-cap', caption)); for (var i = 1; i < arguments.length; i++) s.append(arguments[i]); return s; }
+function goingScale(step){
+  var s = el('div', 'ms-ggb-scale');
+  [['go', 'GO'], ['slow', 'SLOW-GO'], ['nogo', 'NO-GO']].forEach(function(p){ s.appendChild(el('span', p[0] === step ? 'ms-on-' + p[0] : '', p[1])); });
+  return s;
+}
+function keycap(k){ return el('span', 'ms-ggb-kbd', k); }
+function feature(label){ var s = plain(label || '').replace(/\s*\([^)]*\)/g, '').trim(); return s ? s.charAt(0).toLowerCase() + s.slice(1) : 'NO-GO ground'; }
+function featureTitle(label){ return titleCase(feature(label)); }
+var GOING = { ok: 'go', caution: 'slow', near: 'nogo', partial: 'nogo', 'in': 'nogo' };
+var VCOLOR = { ok: '#1c8247', near: '#e9a526', caution: '#e08a1e', partial: '#d9622b', 'in': '#d63a3f', unknown: '#5b6470' };
+var SPACING_COLOR = { ok: '#2fa862', tight: '#ee7b30', overlap: '#e5484d' };
+function titleOf(v){
+  switch (v.verdict){
+    case 'ok': return 'Suitable Position';
+    case 'near': { var thing = featureTitle(v.fraction > 0 ? v.className : (v.nearest && v.nearest.className)); return v.fraction > 0 ? 'Encroaching on ' + thing : 'Adjacent to ' + thing; }
+    case 'caution': return 'SLOW-GO Terrain';
+    case 'partial': return 'Partially Obstructed';
+    case 'in': return 'Unsuitable Position';
+    default: return v.message;
+  }
+}
+function iconOf(v){ return ({ ok: 'check', near: 'triangle', caution: 'triangle', partial: 'octagon', 'in': 'x' })[v.verdict] || 'help'; }
+function whySection(v){
+  var step = GOING[v.verdict]; if (!step) return null;
+  var name;
+  if (v.verdict === 'near') name = plain(v.fraction > 0 ? (v.className || '') : ((v.nearest && v.nearest.className) || v.className || '')) || 'NO-GO Ground Nearby';
+  else name = v.className ? plain(v.className) : (v.verdict === 'ok' ? 'Suitable Ground' : v.verdict === 'caution' ? 'SLOW-GO Terrain' : 'NO-GO Ground');
+  var line = el('div'); line.append(el('span', 'ms-ggb-b', titleCase(name)), ' · ' + v.profileLabel);
+  var s = section('Why', line);
+  if (v.reason) s.append(el('div', 'ms-ggb-soft', v.reason));
+  s.append(goingScale(step));
+  return s;
+}
+function insideSection(v, pct){ return section('Inside', track(pct / 100, VCOLOR[v.verdict]), pct + '% of the ' + (v.footprint ? 'Footprint' : 'Shape')); }
+function nearestSection(v, north){
+  var n = v.nearest;
+  if (n){
+    var text = el('div'), far = el('div');
+    far.append(el('span', 'ms-ggb-big', fmtD(n.distanceM)), ' ' + n.compass);
+    text.append(el('div', 'ms-ggb-b', featureTitle(n.className)), far);
+    var nr = el('div', 'ms-ggb-nr'); nr.append(dial(n.bearingDeg, VCOLOR[v.verdict], north || 0), text);
+    return section('Nearest', nr);
+  }
+  var label = v.verdict === 'in' ? 'Suitable Ground' : 'NO-GO Ground';
+  if (v.noneWithinM) return section('Nearest', el('div', 'ms-ggb-b', label), 'Nothing within ' + fmtD(v.noneWithinM));
+  return null;
+}
+function enforceStrip(v){
+  if (!v.blocked) return null;
+  var body = el('div'); body.append(el('span', 'ms-ggb-b', 'Enforce Mode: '), v.overridable ? 'A click here is refused. Hold Shift and click to place it anyway.' : 'A click here is refused.');
+  var s = el('div', 'ms-ggb-enf'); s.append(icon('octagon', 14), body); return s;
+}
+function spacingSection(v){
+  var s = v.spacing; if (!s) return null;
+  var ech = (v.footprint && v.footprint.echelon) || 'unit';
+  if (s.nearestGapM === null) return section('Intermediate Gap Rule', el('span', 'ms-ggb-soft', 'No other ' + ech + ' nearby'));
+  var t = el('span', s.status !== 'ok' ? 'ms-ggb-warn' : '', s.status === 'overlap' ? 'Overlaps the next ' + ech : fmtD(s.nearestGapM) + ' of ' + fmtD(s.minGapM) + ' to the next ' + ech);
+  return section('Intermediate Gap Rule', track(s.nearestGapM / s.minGapM, SPACING_COLOR[s.status]), t);
+}
+function headerBar(v){
+  var bar = el('div', 'ms-ggb-bar');
+  bar.append(icon(iconOf(v), 17), el('span', 'ms-ggb-title', titleOf(v)));
+  var pct = v.samples > 1 && v.fraction > 0 ? Math.max(1, Math.round(v.fraction * 100)) : 0;
+  var pills = el('div', 'ms-ggb-pills');
+  if (pct > 0) pills.appendChild(el('span', 'ms-ggb-pct', pct + '% Inside'));
+  if (v.snappable){ var fix = el('span', 'ms-ggb-fix'); fix.append(keycap('S'), 'Quick Fix'); pills.appendChild(fix); }
+  if (pills.childElementCount) bar.appendChild(pills);
+  return { bar: bar, pct: pct };
+}
+
+/* ------------------------------------------------------------ sample verdicts */
+var SAMPLE = {
+  ok: { verdict: 'ok', profileLabel: 'Wheeled Vehicle', className: 'Open land', reason: 'Open, firm ground with low vegetation.', fraction: 0, samples: 1,
+        nearest: { className: 'Canal', distanceM: 420, compass: 'NW', bearingDeg: 315 }, footprint: { echelon: 'Platoon' }, spacing: { status: 'ok', nearestGapM: 180, minGapM: 150 } },
+  near: { verdict: 'near', profileLabel: 'Wheeled Vehicle', className: null, reason: 'Even a small canal stops wheels: find a bridge or culvert.', fraction: 0, samples: 1,
+        nearest: { className: 'Distributary / minor canal', distanceM: 90, compass: 'NW', bearingDeg: 315 } },
+  caution: { verdict: 'caution', profileLabel: 'Wheeled Vehicle', className: 'Irrigated cropland (many watercourses)', reason: 'Watercourses every few hundred metres: wheels cross each one at a crawl.', fraction: 0, samples: 1,
+        nearest: { className: 'Canal', distanceM: 310, compass: 'E', bearingDeg: 90 }, footprint: { echelon: 'Platoon' }, spacing: { status: 'tight', nearestGapM: 120, minGapM: 150 } },
+  partial: { verdict: 'partial', profileLabel: 'Wheeled Vehicle', className: 'Embankment / bund over 2 m', reason: 'An earth bank over 2 m stops wheels; look for a ramp or a road cut.', fraction: 0.34, samples: 120, snappable: true,
+        nearest: { className: 'Open land', distanceM: 140, compass: 'SE', bearingDeg: 135 }, footprint: { echelon: 'Company' }, spacing: { status: 'overlap', nearestGapM: 0, minGapM: 300 } },
+  'in': { verdict: 'in', profileLabel: 'Wheeled Vehicle', className: 'Permanent water', reason: 'Water all year round: needs a bridge, ferry or boats to cross.', fraction: 1, samples: 90, snappable: true, blocked: true, overridable: true,
+        nearest: { className: 'Open land', distanceM: 260, compass: 'E', bearingDeg: 90 }, footprint: { echelon: 'Battalion' } },
+  unknown: { verdict: 'unknown', message: 'No Terrain Data Here', profileLabel: 'Wheeled Vehicle', fraction: 0, samples: 1 }
+};
+var CAPTIONS = {
+  ok: 'ok · Suitable Position', near: 'near · Adjacent to / Encroaching on', caution: 'caution · SLOW-GO Terrain',
+  partial: 'partial · Partially Obstructed (area, footprint, Quick Fix)', 'in': 'in · Unsuitable Position (Enforce Mode strip)', unknown: 'unknown · header only'
+};
+
+/* ------------------------------------------------------------ current card */
+function buildCard(v, o){
+  o = o || {};
+  var root = el('div', 'ms-ground-guide-badge'); root.dataset.verdict = v.verdict;
+  var hb = headerBar(v);
+  var rows = v.verdict === 'unknown' ? [] : [whySection(v), hb.pct > 0 ? insideSection(v, hb.pct) : null, nearestSection(v, o.north), spacingSection(v)].filter(Boolean);
+  if (v.loading) rows.push(el('div', 'ms-ggb-sec ms-ggb-soft', 'Still loading terrain data'));
+  if (o.notice) rows.push(el('div', 'ms-ggb-sec ms-ggb-warn', o.notice));
+  var strip = v.verdict === 'unknown' ? null : enforceStrip(v); if (strip) rows.push(strip);
+  var body = el('div'); body.append.apply(body, rows); if (!rows.length) body.style.display = 'none';
+  root.append(hb.bar, body);
+  return root;
+}
+function cell(host, caption, node, sub){
+  var c = el('div', 'pg-cell'), cap = el('div', 'pg-cap'); cap.append(el('b', '', caption)); if (sub) cap.append(sub);
+  c.append(cap, node); host.appendChild(c);
+}
+(function(){
+  var host = $('cur-cards');
+  ['ok', 'near', 'caution', 'partial', 'in', 'unknown'].forEach(function(k){ cell(host, k, buildCard(SAMPLE[k]), ' ' + CAPTIONS[k].split(' · ')[1]); });
+  var ex = $('cur-extra');
+  var loading = JSON.parse(JSON.stringify(SAMPLE.ok)); loading.loading = true;
+  cell(ex, 'Loading line', buildCard(loading), 'Tiles still arriving, verdict is provisional');
+  cell(ex, 'Notice line', buildCard(SAMPLE.caution, { notice: 'Nothing usable within 500 m of this point.' }), 'badge.flash(): Quick Fix found nothing');
+  var rot = JSON.parse(JSON.stringify(SAMPLE.near));
+  cell(ex, 'Map rotated 40°', buildCard(rot, { north: 40 }), 'The dial ring turns, N stays upright');
+  var none = JSON.parse(JSON.stringify(SAMPLE['in'])); none.nearest = null; none.noneWithinM = 5000; none.blocked = true; none.overridable = false; none.snappable = false;
+  cell(ex, 'Nothing nearby, hard block', buildCard(none), 'No Shift override (allowOverride off)');
+  // toast
+  var toast = el('div', 'ms-ground-guide-badge'); toast.dataset.verdict = 'in';
+  var tb = el('div', 'ms-ggb-bar'); tb.append(icon('x', 17), el('span', '', 'Placement Refused'));
+  var tbody = el('div', 'ms-ggb-body'); tbody.append(el('div', '', 'Enforce Mode: Unsuitable Position for Wheeled Vehicle.'), el('div', 'ms-ggb-soft', 'Hold Shift and click to place it anyway.'));
+  toast.append(tb, tbody);
+  cell(ex, 'Toast (outlives the draw)', toast, 'badge.toast(), 5 s, role alert');
+  var ready = el('div', 'ms-ground-guide-badge'); ready.dataset.verdict = 'ok';
+  var rb = el('div', 'ms-ggb-bar'); rb.append(icon('x', 17), el('span', '', 'Ground Guide ready'));
+  var rbody = el('div', 'ms-ggb-body'); rbody.append(el('div', '', 'Terrain data loaded. Advice is on.'));
+  ready.append(rb, rbody);
+  cell(ex, 'Toast: status', ready, '3.5 s, role status');
+})();
+
+/* ------------------------------------------------------------ legend (current and proposed) */
+var MODE_ICONS = {
+  dismounted: ['M15 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0z', 'M12 8l-2 6', 'M9 11l3-3 3 3 2 0', 'M10 14l-2 7', 'M10 14l3 3v4'],
+  wheeled: ['M2 7h11v8H2z', 'M13 10h4l3 3v2h-7', 'M8 17.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z', 'M18 17.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z'],
+  tracked: ['M5 14h14a3 3 0 0 1 0 6H5a3 3 0 0 1 0-6z', 'M8 14l1.5-4h6l1 4', 'M15 11.5h6', 'M7 17h.01', 'M12 17h.01', 'M17 17h.01'],
+  vessel: ['M3 14h18l-3 5H6z', 'M8 14V9h6v5', 'M11 9V5'],
+  generic: ['M4 20h16', 'M6 20V10l6-4 6 4v10', 'M10 20v-5h4v5'],
+  gun: ['M8 16L20 7', 'M8 16l-5 4', 'M11 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'],
+  ad: ['M5 20h14', 'M9 20l2-5h2l2 5', 'M12 15V5', 'M10 7l2-3 2 3'],
+  hls: ['M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z', 'M9 8v8', 'M15 8v8', 'M9 12h6'],
+  signals: ['M12 21V10', 'M9 21h6', 'M8.5 7.5a5 5 0 0 1 7 0', 'M6 5a8.5 8.5 0 0 1 12 0', 'M12 10h.01'],
+  amphibious: ['M4 11h12l3 3H4z', 'M7 11V8h5v3', 'M3 18c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0'],
+  pack: ['M2 20l7-12 4 6 3-4 6 10z'],
+  oversnow: ['M12 3v18', 'M4.2 7.5l15.6 9', 'M4.2 16.5l15.6-9'],
+  roadbound: ['M7 21L10 3', 'M17 21L14 3', 'M12 6v2', 'M12 11v2', 'M12 16v3'],
+  rail: ['M8 3L6 21', 'M16 3l2 18', 'M6.8 7h10.4', 'M6.4 11h11.2', 'M6 15h12', 'M5.6 19h12.8'],
+  _: ['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z']
+};
+function modeIcon(key){
+  var s = svgNode('svg', { width: '19', height: '19', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
+  (MODE_ICONS[key] || MODE_ICONS._).forEach(function(d){ svgNode('path', { d: d }, s); });
+  return s;
+}
+var OVERLAY = [['Suitable', [46, 160, 90, 105]], ['Marginal', [241, 214, 70, 150]], ['SLOW-GO', [243, 156, 18, 170]], ['NO-GO', [214, 48, 49, 200]]];
+function swatch(r){ return 'rgba(' + r[0] + ',' + r[1] + ',' + r[2] + ',' + Math.min(1, Math.max(0.55, r[3] / 255 + 0.25)) + ')'; }
+function btn(cls, label, text){ var b = el('button', cls, text); b.type = 'button'; b.setAttribute('aria-label', label); b.title = label; return b; }
+
+/* proposed GROTBC layer keys: [kind, colour, label]. Swatch colours are PLACEHOLDERS, not approved. */
+var LAYER_NAMES = { G: 'Ground (Terrain Type, Slope, Water)', R: 'Roads, Tracks & Railway Network', O: 'Obstacles', T: 'Trafficability (Going for the Mode)', B: 'Built-Up Areas', C: 'Cover, Camouflage & Concealment' };
+/* T (Trafficability) keeps the going ramp and chip lists; TRAFFIC_KEY is added under it. G shows the terrain type, SLOPE_KEY and the water / crest swatches. */
+var SLOPE_KEY = [['box', '#efe3c4', 'Level (0 to 3°)'], ['box', '#dcc48f', 'Gentle (3 to 7°)'], ['box', '#c4a063', 'Sloping (7 to 15°)'], ['box', '#a47a3c', 'Moderate (15 to 30°)'], ['box', '#7a4f1f', 'Steep (over 30°)'], ['line', '#ffffff', 'Crest Line'], ['dot', '#5aa9e6', 'Water Source']];
+var TRAFFIC_KEY = [['line', '#7bd88f', 'Road Fit for the Mode (Class, All-Weather)'], ['dash', '#c9a46b', 'Fair-Weather Road / Track: SLOW-GO After Rain'], ['line', '#ffd24a', 'MSR'], ['hatch', '#5aa9e6', 'Soil Poor After Rain (Modelled)'], ['dot', '#8ec1ea', 'Landing Site (Helicopter)']];
+var LAYER_KEYS = {
+  R: [['line', '#ffd24a', 'MSR'], ['line', '#7bd88f', 'Tankable Road (Class 60 and Over)'], ['line', '#d7c46a', 'Road, Class 50 to 59 (Al-Zarrar Only)'], ['line', '#c9ced4', 'Non-Tankable Road (Below Class 50)'], ['dash', '#8b95a0', 'Road, Class Not Recorded'], ['dash', '#c9a46b', 'Unmetalled Road / Track'], ['dash', '#e8e8e8', 'Railway'], ['ring', '#7bd88f', 'Bridge, Tankable'], ['ring', '#c9ced4', 'Bridge, Not for Tanks'], ['ring', '#5aa9e6', 'Ford / Ferry'], ['dot', '#5aa9e6', 'Airfield / Helipad'], ['dot', '#ffffff', 'Pass / Tunnel'], ['hatch', '#e5484d', 'Closed by Season (Where Recorded)'], ['dash', '#ffd24a', 'Route (Planned, Not Built)']],
+  O: [['box', '#2f7fbf', 'Natural'], ['box', '#7a5cc9', 'Man-Made'], ['hatch', '#c4383c', 'Reinforcing (Placed by a Force)'], ['hatch', '#5aa9e6', 'Seasonal: Flood-Prone / Waterlogged'], ['dot', '#f0932b', 'Temporary: Landslide Site (Where Recorded)'], ['ring', '#ffffff', 'Crossing Point']],
+  G: [['box', '#c9d98a', 'Plain'], ['box', '#b59a62', 'Hilly'], ['box', '#8a8a86', 'Solid (Rock / Scree / Stony Bed)'], ['box', '#5f8f7a', 'Marshy'], ['box', '#3f7fbf', 'Wet (Open Water)'], ['box', '#e3c98d', 'Desert'], ['box', '#7a5a3a', 'Mountainous (15° and Over)'], ['box', '#9a8f86', 'Built-Up'], ['box', '#e8f0f6', 'Snow / Ice']].concat(SLOPE_KEY),
+  B: [['box', '#9a8f86', 'Built-Up Area'], ['hatch', '#c2a27a', 'Kacha Huts (Density)'], ['dot', '#ff6b6f', 'Hospital / BHU'], ['dot', '#8ec1ea', 'Police / Post Office / Bank'], ['dot', '#f2b84b', 'School (GeoNames)'], ['dash', '#ff6b6f', 'IB / LoC'], ['dash', '#c9ced4', 'District / Tehsil'], ['box', 'rgba(255,255,255,.25)', '1:50k Sheet Grid']],
+  C: [['box', '#1f8a5a', 'Concealment: Good'], ['box', '#4fae83', 'Concealment: Fair'], ['box', '#a6d4bd', 'Concealment: Poor'], ['hatch', '#9a8f86', 'Cover (Bund / Wall / Nullah)'], ['line', '#7bd88f', 'River / Canal Bank (Deployment Line)']]
+};
+function swNode(kind, color){
+  var s = el('i', 'gx-sw ' + kind);
+  if (kind === 'box') s.style.background = color;
+  else if (kind === 'line' || kind === 'dash') s.style.borderTopColor = color;
+  else if (kind === 'dot') s.style.background = color;
+  else if (kind === 'ring') s.style.borderColor = color;
+  else if (kind === 'hatch') s.style.background = 'repeating-linear-gradient(135deg,' + color + ' 0 3px,rgba(0,0,0,.45) 3px 5px)';
+  return s;
+}
+
+function mountLegend(host, gx){
+  var st = { mode: 'wheeled', details: true, layer: 'T', sLit: true, hand: false };
+  var card = el('div', 'ms-ggl'); card.setAttribute('role', 'group'); card.setAttribute('aria-label', 'Legend'); host.appendChild(card);
+  function render(){
+    var modes = DATA.modes, idx = Math.max(0, modes.map(function(m){ return m.key; }).indexOf(st.mode)), mode = modes[idx];
+    var parts = [];
+    var head = el('div', 'ms-ggl-head');
+    var more = btn('ms-ggl-more', st.details ? 'Hide terrain lists' : 'Show terrain lists', st.details ? '▾' : '▸');
+    more.onclick = function(){ st.details = !st.details; render(); };
+    head.append(el('div', 'ms-ggl-title', 'Legend'), el('div', 'ms-ggl-count', 'Mode ' + (idx + 1) + ' / ' + modes.length), more);
+    parts.push(head);
+    var strip = el('div', 'ms-ggl-strip');
+    var prev = btn('', 'Previous mode', '‹'), next = btn('', 'Next mode', '›');
+    prev.onclick = function(){ st.mode = modes[(idx - 1 + modes.length) % modes.length].key; render(); };
+    next.onclick = function(){ st.mode = modes[(idx + 1) % modes.length].key; render(); };
+    var icons = el('div', 'ms-ggl-icons'); icons.setAttribute('role', 'group'); icons.setAttribute('aria-label', 'Modes');
+    modes.forEach(function(m){
+      var b = btn('', m.label); b.setAttribute('aria-pressed', String(m.key === mode.key)); b.appendChild(modeIcon(m.key));
+      b.onclick = function(){ st.mode = m.key; render(); }; icons.appendChild(b);
+    });
+    strip.append(prev, icons, next); parts.push(strip);
+    var name = el('div', 'ms-ggl-name'); name.append(el('b', '', mode.label), el('span', st.hand ? 'ms-ggl-tag ms-hand' : 'ms-ggl-tag', st.hand ? 'Set by Hand' : 'Auto · From Symbol')); parts.push(name);
+
+    if (gx){
+      var sw = el('div', 'gx-layers'); sw.setAttribute('role', 'group'); sw.setAttribute('aria-label', 'GROTBC layer');
+      'GROTBC'.split('').forEach(function(l){
+        var b = btn('', 'Show ' + LAYER_NAMES[l] + ' on the map', l); b.dataset.l = l; b.setAttribute('aria-pressed', String(st.layer === l));
+        b.onclick = function(){ st.layer = l; render(); }; sw.appendChild(b);
+      });
+      var ln = el('div', 'gx-lname'); ln.append('Layer: ', el('b', '', LAYER_NAMES[st.layer]));
+      parts.push(sw, ln);
+    }
+    if (!gx || st.layer === 'T'){
+      var ramp = el('div', 'ms-ggl-ramp'), labels = el('div', 'ms-ggl-ramp-l');
+      OVERLAY.forEach(function(e){ var i = el('i'); i.style.background = swatch(e[1]); ramp.appendChild(i); labels.appendChild(el('span', '', e[0])); });
+      parts.push(ramp, labels, el('div', 'ms-ggl-note', 'Marginal: Within 250 m of NO-GO'));
+      if (gx){
+        var sk = el('div', 'gx-key');
+        TRAFFIC_KEY.forEach(function(k){ var d = el('div'); d.append(swNode(k[0], k[1]), el('span', '', k[2])); sk.appendChild(d); });
+        parts.push(sk);
+      }
+      if (st.details && (mode.nogo.length || mode.slow.length)){
+        var list = el('div', 'ms-ggl-list');
+        [['NO-GO for ' + mode.label, '#ff8a8d', mode.nogo], ['SLOW-GO', '#ffb766', mode.slow]].forEach(function(g){
+          if (!g[2].length) return;
+          var gg = el('div'), cap = el('div', 'ms-ggl-cap', g[0]); cap.style.color = g[1];
+          var chips = el('div', 'ms-ggl-chips'); g[2].forEach(function(t){ chips.appendChild(el('span', '', t)); });
+          gg.append(cap, chips); list.appendChild(gg);
+        });
+        parts.push(list);
+      }
+    } else {
+      var key = el('div', 'gx-key');
+      LAYER_KEYS[st.layer].forEach(function(k){ var d = el('div'); d.append(swNode(k[0], k[1]), el('span', '', k[2])); key.appendChild(d); });
+      parts.push(key);
+      var n = el('div', 'ms-ggl-note', 'Swatch colours are placeholders in this proposal.'); parts.push(n);
+    }
+    var keys = el('div', 'ms-ggl-keys');
+    function kr(k, label, sub, lit){ var r = el('div', 'ms-ggl-key ms-on' + (lit ? ' ms-lit' : '')); var t = el('div', '', label); if (sub) t.appendChild(el('small', '', sub)); r.append(el('span', 'ms-ggl-kbd', k), t); keys.appendChild(r); }
+    kr('P', 'Change Mode');
+    kr('S', 'Quick Fix', 'Moves It to the Nearest Usable Ground', st.sLit);
+    if (gx) kr('G', 'Ground Brief', 'Opens All Six Sections');
+    parts.push(keys);
+    clearKids(card); card.append.apply(card, parts);
+  }
+  render();
+  return { st: st, render: render };
+}
+(function(){
+  var cur = mountLegend($('cur-legend'), false);
+  var ctl = $('cur-leg-ctl');
+  function chk(host, text, get, set){
+    var l = el('label'), c = el('input'); c.type = 'checkbox'; c.checked = get(); c.onchange = function(){ set(c.checked); };
+    l.append(c, text); host.appendChild(l);
+  }
+  chk(ctl, 'S key lit (Quick Fix can help)', function(){ return cur.st.sLit; }, function(v){ cur.st.sLit = v; cur.render(); });
+  chk(ctl, 'Mode set by hand', function(){ return cur.st.hand; }, function(v){ cur.st.hand = v; cur.render(); });
+  var gx = mountLegend($('gx-legend'), true);
+  var gctl = $('gx-leg-ctl');
+  chk(gctl, 'S key lit', function(){ return gx.st.sLit; }, function(v){ gx.st.sLit = v; gx.render(); });
+  chk(gctl, 'Mode set by hand', function(){ return gx.st.hand; }, function(v){ gx.st.hand = v; gx.render(); });
+})();
+
+/* ------------------------------------------------------------ proposed: Card by mode */
+/* Mode to the three sections shown while drawing: MS/Docs/16-ground-guide-grotbc-card.md section 3.1 (remapped 2026-11-03). */
+var MODE_SECTIONS = {
+  dismounted: ['GOC', 'Going; water, snow, AP mines; cover within 100 m'],
+  wheeled: ['GRO', 'Firm ground; road within 1 km, crossings by class; all water, bunds, railways'],
+  tracked: ['GRO', 'Slope under 30°; tankable route and crossings; canals by width, bunds over 2 m, AT mines'],
+  gun: ['GRC', 'Slope under 7° (3° ideal); road within 500 m; concealment from the air'],
+  ad: ['GRC', 'Dominant ground; access road; open arcs (low vegetation)'],
+  hls: ['GOT', 'Firm, no dunes, slope under 7°; no wires within 100 m; no trees, no built-up'],
+  signals: ['GRO', 'High ground; access road; away from power lines'],
+  amphibious: ['GOT', 'Water is SLOW-GO; entry and exit banks'],
+  pack: ['GRO', 'Steep slope SLOW-GO, snow SLOW-GO; pack tracks, passes'],
+  oversnow: ['GOT', 'Snow cover and slope; obstacles; going over snow'],
+  roadbound: ['ROB', 'On a metalled road (within 50 m); crossings by class; built-up on the route'],
+  rail: ['ROB', 'On a railway; stations; level crossings'],
+  vessel: ['GOR', 'Water and banks; crossings'],
+  generic: ['GOB', 'Water']
+};
+/* Full headings (Ground Brief) and the short form for the 280 px card caption. */
+var SEC_NAME = { G: 'Ground', R: 'Roads, Tracks & Railway Network', O: 'Obstacles', T: 'Trafficability', B: 'Built-Up Areas', C: 'Cover, Camouflage & Concealment' };
+var SEC_SHORT = { G: 'Ground', R: 'Roads, Tracks & Rail', O: 'Obstacles', T: 'Trafficability', B: 'Built-Up Areas', C: 'Cover & Concealment' };
+/* Sample point (illustrative): irrigated farmland about 3 km S of Kamoke, Gujranwala District, between the N-5 (GT Road)
+   and the Upper Chenab Canal. Climate = WorldClim 1970 to 2000 normals for that cell: [month, max °C, min °C, rain mm]. */
+var CLIMATE = [['Jan', 18, 5, 26], ['Feb', 21, 8, 29], ['Mar', 25, 12, 28], ['Apr', 33, 18, 18], ['May', 39, 23, 19], ['Jun', 40, 26, 45],
+  ['Jul', 35, 26, 149], ['Aug', 34, 26, 154], ['Sep', 34, 23, 56], ['Oct', 32, 17, 8], ['Nov', 27, 10, 5], ['Dec', 21, 6, 12]];
+var CLIMATE_YEAR = { rainMm: 549, monsoonPct: 74, frostMonths: 0, hotMonths: 0 };
+var SEL_MONTH = 6, redrawCard = function(){};
+function climateLine(i, long){
+  var c = CLIMATE[i], monsoon = i >= 5 && i <= 8;
+  var s = c[0] + ': ' + c[1] + '° / ' + c[2] + '°, ' + c[3] + ' mm' + (monsoon ? ', Monsoon' : '');
+  if (long) s += ' (' + CLIMATE_YEAR.monsoonPct + ' % of the Year\'s Rain Jun to Sep); Frost Months: ' + (CLIMATE_YEAR.frostMonths ? CLIMATE_YEAR.frostMonths : 'None');
+  return s;
+}
+/* T (Trafficability) at the sample point: the mode's going on irrigated cropland, and whether the month is wet
+   (50 mm of rain or more, a sample rule) so the clay loam reads poor after rain. */
+function goingFor(m){
+  var cls = 'Irrigated Cropland (Many Watercourses)', off = m.nogo.length === 1 && m.nogo[0].indexOf('Anywhere Off') === 0;
+  var g = off || m.nogo.indexOf(cls) >= 0 ? 'NO-GO' : m.slow.indexOf(cls) >= 0 ? 'SLOW-GO' : 'GO';
+  return g + ' for ' + m.label + (off ? ' (Off Its Route)' : '');
+}
+function wetMonth(i){ return CLIMATE[i][3] >= 50; }
+/* Four-way cover split at the point and from the nearest feature that gives more (rules.json grotbc.coverSplit, a proposal). */
+var LEVEL = ['None', 'Poor', 'Fair', 'Good'];
+var COVER_HERE = { what: 'Irrigated Cropland', v: [0, 0, 1, 1] };
+var COVER_NEAR = [
+  { what: 'Canal Bank (Upper Chenab Canal)', where: '150 m W', v: [2, 1, 2, 0], note: 'Deployment Line' },
+  { what: 'Bund (1 to 2 m)', where: '90 m E', v: [2, 1, 2, 0] },
+  { what: 'Orchard', where: '450 m SE', v: [1, 1, 3, 3] }
+];
+/* What a canal means for each mode, read from the real mode lists in the data block. */
+function canalEffect(m){
+  if (m.nogo.length === 1 && m.nogo[0].indexOf('Anywhere Off') === 0) return m.nogo[0].indexOf('Canal') >= 0 ? 'Navigable for ' + m.label : 'NO-GO for ' + m.label;
+  if (m.nogo.indexOf('Canal') >= 0) return 'NO-GO for ' + m.label;
+  if (m.slow.indexOf('Canal') >= 0) return 'SLOW-GO for ' + m.label;
+  return 'GO for ' + m.label;
+}
+/* Sample content. card: two lines + one graphic. brief: every line of the full brief (later = planned, not built). */
+function chip(kind, text){ return el('span', 'gx-chip ' + kind, text); }
+function ln(k, v){ var d = el('div', 'gx-ln'); d.appendChild(el('span', 'gx-k', k)); var vv = el('span', 'gx-v'); if (v && v.nodeType) vv.appendChild(v); else if (Array.isArray(v)) vv.append.apply(vv, v); else vv.textContent = v; d.appendChild(vv); return d; }
+function meter(level){ var m = el('span', 'gx-meter'); for (var i = 1; i <= 3; i++) m.appendChild(el('i', i <= level ? 'on' : '')); return m; }
+function ccGrid(v){
+  var g = el('div', 'gx-cc');
+  g.append(el('span', 'gx-cch', 'Cover from'), el('span', 'gx-cch', 'Concealment from'));
+  ['Direct Fire', 'Indirect Fire', 'Ground', 'Aerial'].forEach(function(name, i){
+    var c = el('div'); c.append(el('small', '', name), meter(v[i]), el('b', '', LEVEL[v[i]])); g.appendChild(c);
+  });
+  g.setAttribute('aria-label', 'Cover from direct fire ' + LEVEL[v[0]] + ', from indirect fire ' + LEVEL[v[1]] + '; concealment from ground observation ' + LEVEL[v[2]] + ', from aerial observation ' + LEVEL[v[3]]);
+  return g;
+}
+function slopeBands(on){ var sl = el('div', 'gx-slope'); for (var i = 0; i < 5; i++){ var b = el('i'); b.style.background = SLOPE_KEY[i][1]; if (i === on) b.className = 'on'; sl.appendChild(b); } return sl; }
+function cardLines(letter, m, canalAt){
+  var out = [], k = m.key;
+  switch (letter){
+    case 'G':
+      out.push(ln('Slope', '1° · Level (0 to 3°) · Plain (Irrigated) · 213 m'));
+      if (k === 'dismounted' || k === 'generic' || k === 'amphibious' || k === 'vessel') out.push(ln('Water', 'Tube Well 250 m W · Well 600 m SE · Tank 1.2 km E'));
+      else out.push(ln('Soil', 'Clay Loam (Modelled) · Firm When Dry, Soft After Rain'));
+      out.push(slopeBands(0)); break;
+    case 'R':
+      if (k === 'roadbound') out.push(ln('Route Here', 'Metalled Road · Class Not Recorded · 20 m S'), ln('Crossing', 'Bridge Class 40 (Not for Tanks) · 600 m E'));
+      else if (k === 'rail') out.push(ln('Rail', 'Railway, Broad Gauge Double · 40 m N'), ln('Station', 'Kamoke Railway Station · 3.4 km N'));
+      else if (k === 'pack') out.push(ln('Track', 'Cart Track · 300 m W · No Pass within 20 km'), ln('Closure', 'None Recorded on the Nearest Road'));
+      else if (k === 'gun' || k === 'ad' || k === 'signals') out.push(ln('Access', 'Unmetalled Road · 180 m S · Class Not Recorded'), ln('MSR', 'N-5 (GT Road) · Class 70 · Tankable · 1.2 km NE'));
+      else out.push(ln('MSR', 'N-5 (GT Road) · Class 70 · Tankable · 1.2 km NE'), ln('Crossing', 'Bridge Class 40 (Not for Tanks) · 600 m E'));
+      break;
+    case 'O':
+      out.push(ln('Nearest', [el('b', '', 'Upper Chenab Canal'), ' ', chip('man', 'Man-Made'), ' Water']), ln('Effect', canalEffect(m) + ' · ' + (canalAt || '180 m NW'))); break;
+    case 'T': out.push(ln('Going', goingFor(m) + ' · ' + (wetMonth(SEL_MONTH) ? 'After Rain: Poor Soil (Modelled)' : 'Dry Season')), ln('Season', climateLine(SEL_MONTH, false))); break;
+    case 'B': out.push(ln('Built-Up', 'Kamoke (City) 3.1 km N · About 1.2 Million within 12 km (WorldPop Estimate)'), ln('Services', 'BHU 1.8 km W · Hospital 3.4 km N · Police 2.9 km N')); break;
+    case 'C':
+      out.push(ccGrid(COVER_HERE.v), ln('Best Near', COVER_NEAR[0].what + ' ' + COVER_NEAR[0].where + ': Cover from Direct Fire, ' + COVER_NEAR[0].note)); break;
+  }
+  return out;
+}
+function gxSection(letter, m, v){
+  var s = el('div', 'ms-ggb-sec');
+  var cap = el('div', 'ms-ggb-cap'); var b = el('span', 'gx-badge', letter); b.dataset.l = letter; cap.append(b, SEC_SHORT[letter]);
+  var n = v && v.nearest, canalAt = n && /^canal$/i.test(n.className) ? fmtD(n.distanceM) + ' ' + n.compass : '180 m NW';
+  s.appendChild(cap); cardLines(letter, m, canalAt).forEach(function(x){ s.appendChild(x); });
+  return s;
+}
+function buildGxCard(modeKey, verdictKey){
+  var m = modeBy(modeKey), v = JSON.parse(JSON.stringify(SAMPLE[verdictKey]));
+  v.profileLabel = m.label;
+  /* keep Nearest in step with the O sample (the canal 180 m NW) */
+  if (v.verdict === 'caution') v.nearest ={ className: 'Canal', distanceM: 180, compass: 'NW', bearingDeg: 315 };
+  var root = el('div', 'ms-ground-guide-badge'); root.dataset.verdict = v.verdict;
+  var hb = headerBar(v);
+  var rows = [whySection(v)];
+  MODE_SECTIONS[modeKey][0].split('').forEach(function(l){ rows.push(gxSection(l, m, v)); });
+  if (hb.pct > 0) rows.push(insideSection(v, hb.pct));
+  rows.push(nearestSection(v, 0), spacingSection(v));
+  rows = rows.filter(Boolean);
+  var strip = enforceStrip(v); if (strip) rows.push(strip);
+  var body = el('div'); body.append.apply(body, rows);
+  var foot = el('div', 'gx-foot'); foot.append(el('span', 'gx-kbd', 'G'), 'Full Ground Brief');
+  root.append(hb.bar, body, foot);
+  return root;
+}
+(function(){
+  var ctl = $('gx-card-ctl'), host = $('gx-card'), needs = $('gx-needs');
+  var ms = el('select'), vs = el('select');
+  ms.setAttribute('aria-label', 'Mode'); vs.setAttribute('aria-label', 'Verdict');
+  DATA.modes.forEach(function(m){ var o = el('option', '', m.label); o.value = m.key; ms.appendChild(o); });
+  ['ok', 'near', 'caution', 'partial', 'in'].forEach(function(k){ var o = el('option', '', CAPTIONS[k].split(' · ')[1]); o.value = k; vs.appendChild(o); });
+  ms.value = 'tracked'; vs.value = 'caution';
+  var l1 = el('label'), l2 = el('label'); l1.append('Mode ', ms); l2.append('Verdict ', vs); ctl.append(l1, l2);
+  function draw(){
+    clearKids(host); host.appendChild(buildGxCard(ms.value, vs.value));
+    var d = MODE_SECTIONS[ms.value]; clearKids(needs);
+    var b = el('b', '', modeBy(ms.value).label + ': sections ' + d[0].split('').join(' ') + '. '); needs.append(b, 'What the mode needs: ' + d[1] + '.');
+  }
+  ms.onchange = vs.onchange = draw; draw();
+  redrawCard = draw;
+})();
+
+/* ------------------------------------------------------------ proposed: Ground Brief */
+/* Every line of the full brief. A third element true = planned, not built. '@…' values depend on the mode or the month. */
+var BRIEF = {
+  G: [['Surface', 'Irrigated Cropland · Firm When Dry'], ['Terrain Type', 'Plain (Irrigated) · Built-Up 3 km N'], ['Vegetation', 'Cropland with Tree Lines · Orchard 450 m SE'],
+      ['Elevation', '213 m'], ['Slope', '1° · Level (0 to 3°)'], ['Landform', 'Flat / Plain'], ['High Ground', 'Spot Height 216 m · 2.4 km NE · 3 m Above'],
+      ['Soil', 'Clay Loam (Modelled, 250 m) · Firm When Dry, Soft After Rain'], ['Water', 'Tube Well 250 m W · Well 600 m SE · Tank 1.2 km E']],
+  R: [['MSR', 'N-5 (GT Road) · Class 70 · Tankable · 1.2 km NE'], ['Route', 'N-5 National Highway · 1,799 km Mapped · From and To Not Recorded'],
+      ['Condition', 'Not Recorded (About 4 % of Road Segments Have One)'], ['Closure', 'None Recorded on the N-5 Here'],
+      ['Route Here', 'Unmetalled Road · Class Not Recorded · 180 m S'], ['Crossing', 'Bridge Class 40 (Not for Tanks) · 600 m E'],
+      ['Tank Crossing', 'Bridge Class 70 on the N-5 over the Canal · 1.4 km NE'], ['Rail', 'Railway, Broad Gauge Double · Kamoke Station 3.4 km N'],
+      ['Air', 'Helipad 6.5 km N · Airfield None within 20 km'], ['Chokepoints', 'Canal Bridges on the N-5 · 1.4 km NE'],
+      ['Route to a Point', 'Planned (Routing Not Built)', true]],
+  O: [['Nearest', 'Upper Chenab Canal · Man-Made · Water · 180 m NW'], ['Effect', '@effect'], ['Others', 'Distributary 400 m S · Drain 700 m E · Railway Embankment 3.2 km N'],
+      ['Seasonal', 'Flood-Prone Ground 800 m W (Monsoon) · Waterlogged Patch 1.6 km SW'], ['Temporary', 'No Seasonal Road Closure or Landslide Site Recorded within 10 km'],
+      ['Plan Obstacles', '1 Minefield · 600 m S (Live)']],
+  T: [['Cross-Country', '@going'], ['After Rain', '@wetgoing'], ['Other Modes', '@others'],
+      ['Tracks', 'Unmetalled Road 180 m S · Fair-Weather: SLOW-GO After Rain'], ['On Road', '@road'],
+      ['Monsoon Going', 'Flood-Prone Ground 800 m W (Seasonal Water)'], ['Season', '@climate'], ['Year', '@year'],
+      ['X-Country Speed', 'Planned', true]],
+  B: [['Nearest BUA', 'Kamoke (City) · 3.1 km N · About 1.2 Million within 12 km (WorldPop Estimate)'], ['Village', 'Mandiala (Town) · 1.5 km W'],
+      ['Kacha Huts', 'About 18 per km² Nearby (Mapped Symbols)'],
+      ['Health', 'BHU 1.8 km W · Hospital 3.4 km N'], ['Services', 'Police Station 2.9 km N · Post Office 3.2 km N · Telephone Exchange 3.3 km N'],
+      ['Community', 'Mosque 400 m S · Market 3.1 km N (Name Not Recorded)'], ['From GeoNames', 'School 1.1 km SW · Bank 3.3 km N'],
+      ['Border', 'IB 38 km E'], ['Admin', 'Kamoke Tehsil · Gujranwala District · Punjab'], ['Sheet', '1:50k 44 I/1']],
+  C: [['Cover: Direct Fire', '@cc0'], ['Cover: Indirect Fire', '@cc1'], ['Concealment: Ground', '@cc2'], ['Concealment: Aerial', '@cc3'],
+      ['Deployment Line', 'Canal Bank (Upper Chenab Canal) 150 m W · Cover from Direct Fire and Ground Observation'],
+      ['Bund / Wall / Nullah', 'Bund 90 m E · Wall 600 m N'], ['Hide Area', 'Planned', true]]
+};
+function ccLine(i){
+  var here = LEVEL[COVER_HERE.v[i]] + ' Here (' + COVER_HERE.what + ')';
+  var better = COVER_NEAR.filter(function(n){ return n.v[i] > COVER_HERE.v[i]; }).sort(function(a, b){ return b.v[i] - a.v[i]; }).slice(0, 2).map(function(n){ return LEVEL[n.v[i]] + ': ' + n.what + ' ' + n.where; });
+  return [here].concat(better).join(' · ');
+}
+function briefLine(mode, k, v){
+  if (v === '@going') return goingFor(mode) + ' · Dry Season';
+  if (v === '@wetgoing') return wetMonth(SEL_MONTH)
+    ? CLIMATE[SEL_MONTH][0] + ' Is a Wet Month: Clay Loam Poor After Rain (Modelled); Wheels Bog Off the Road'
+    : CLIMATE[SEL_MONTH][0] + ' Is a Dry Month: Clay Loam Good (Modelled); Poor After Heavy Rain';
+  if (v === '@others') return ['dismounted', 'wheeled', 'tracked'].filter(function(key){ return key !== mode.key; }).map(function(key){ return goingFor(modeBy(key)); }).join(' · ');
+  if (v === '@road') return 'MSR N-5 (GT Road) 1.2 km NE · 70A2: Class 70, All-Weather, Double Lane' + (mode.key === 'tracked' ? ' · Tankable' : '');
+  if (v === '@effect') return canalEffect(mode) + ' · Cross at the N-5 Bridge (Class 70) 1.4 km NE';
+  if (v === '@climate') return climateLine(SEL_MONTH, true);
+  if (v === '@year') return CLIMATE_YEAR.rainMm + ' mm a Year · Hot Months (40° and Over): ' + (CLIMATE_YEAR.hotMonths || 'None') + ' · WorldClim Normals';
+  if (/^@cc\d$/.test(v)) return ccLine(Number(v.charAt(3)));
+  return v;
+}
+var BRIEF_META = 'Sheet 44 I/1 · Kamoke Tehsil · Gujranwala District';
+var BRIEF_SOURCES = 'Sources: Terrain Bundle (Data Version 2): NCGDB, SoilGrids 2.0 (Modelled), WorldClim 2.1, WorldPop 2020 (Estimate), GeoNames; Rules (Proposal); Plan Obstacles (Live). Load class is recorded on about 31 % of road segments, condition on about 4 %.';
+function briefText(modeKey){
+  var m = modeBy(modeKey), out = ['GROUND BRIEF · ' + m.label + ' · ' + BRIEF_META, ''];
+  'GROTBC'.split('').forEach(function(l){
+    out.push(l + ' ' + SEC_NAME[l].toUpperCase());
+    BRIEF[l].forEach(function(r){ if (!r[2]) out.push('  ' + r[0] + ': ' + briefLine(m, r[0], r[1])); });
+  });
+  out.push('', BRIEF_SOURCES, 'Sample data for layout review.');
+  return out.join('\n');
+}
+(function(){
+  var host = $('gx-brief'), sel = $('gx-brief-mode'), mon = $('gx-brief-month'), pre = $('gx-brief-text'), msg = $('gx-copied');
+  DATA.modes.forEach(function(m){ var o = el('option', '', m.label); o.value = m.key; sel.appendChild(o); }); sel.value = 'tracked';
+  CLIMATE.forEach(function(c, i){ var o = el('option', '', c[0]); o.value = String(i); mon.appendChild(o); }); mon.value = String(SEL_MONTH);
+  function draw(){
+    var m = modeBy(sel.value), emphasised = MODE_SECTIONS[sel.value][0];
+    var root = el('div', 'gx-brief');
+    var h = el('div', 'gx-bh'); h.append(el('b', '', 'Ground Brief'), el('span', 'gx-kbd', 'Esc')); root.appendChild(h);
+    root.appendChild(el('div', 'gx-bm', m.label + ' · ' + BRIEF_META));
+    'GROTBC'.split('').forEach(function(l){
+      var s = el('div', 'gx-bs'); var b = el('span', 'gx-badge', l); b.dataset.l = l;
+      var box = el('div'); var h4 = el('h4', '', SEC_NAME[l] + (emphasised.indexOf(l) >= 0 ? '  ·  Shown on the Card' : '')); box.appendChild(h4);
+      BRIEF[l].forEach(function(r){ var d = ln(r[0], briefLine(m, r[0], r[1])); if (r[2]) d.className += ' gx-later'; box.appendChild(d); });
+      if (l === 'C') box.insertBefore(ccGrid(COVER_HERE.v), box.children[1]);
+      s.append(b, box); root.appendChild(s);
+    });
+    root.appendChild(el('div', 'gx-src', BRIEF_SOURCES));
+    var act = el('div', 'gx-act'), cb = el('button', '', 'Copy as Text'); cb.type = 'button';
+    cb.onclick = function(){
+      var t = briefText(sel.value);
+      var done = function(){ msg.textContent = 'Copied'; setTimeout(function(){ msg.textContent = ''; }, 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, function(){ pre.focus(); });
+      else { var ta = el('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+    };
+    act.append(cb, el('span', '', 'Esc or G closes'));
+    root.appendChild(act);
+    clearKids(host); host.appendChild(root);
+    pre.textContent = briefText(sel.value);
+  }
+  sel.onchange = draw;
+  mon.onchange = function(){ SEL_MONTH = Number(mon.value); draw(); redrawCard(); };
+  draw();
+})();
+
+/* ------------------------------------------------------------ letter tokens */
+(function(){
+  var host = $('gx-letters');
+  var L = 'GROTBC'.split('').map(function(l){ return [l, SEC_NAME[l], { G: '#8fb35a', R: '#c9a46b', O: '#7a5cc9', T: '#5aa9e6', B: '#9a8f86', C: '#1f8a5a' }[l]]; });
+  L.forEach(function(x){
+    var d = el('div', 'pg-tok'); var i = el('i'); i.style.background = x[2];
+    var s = el('span'); s.append(el('b', '', x[0] + ' · ' + x[1]), el('small', '', x[2])); d.append(i, s); host.appendChild(d);
+  });
+  [['Natural', '#2f7fbf'], ['Man-Made', '#7a5cc9'], ['Reinforcing (hatched)', '#c4383c']].forEach(function(x){
+    var d = el('div', 'pg-tok'); var i = el('i'); i.style.background = x[1] === '#c4383c' ? 'repeating-linear-gradient(135deg,#c4383c 0 4px,#8f2428 4px 7px)' : x[1];
+    var s = el('span'); s.append(el('b', '', 'Origin · ' + x[0]), el('small', '', x[1])); d.append(i, s); host.appendChild(d);
+  });
+})();
+
+/* ------------------------------------------------------------ comparison table */
+table($('changes'), ['Element', 'Current (built)', 'Proposed (GROTBC)'], [
+  ['Card header', 'Verdict icon, title, "NN% Inside" pill, S Quick Fix keycap', 'Unchanged'],
+  ['Card: Why', 'Ground · Mode, rule sentence, GO / SLOW-GO / NO-GO scale', 'Unchanged'],
+  ['Card: body', 'Inside, Nearest (dial), Intermediate Gap Rule', 'Adds three GROTBC sections for the mode, in G R O T B C order; Nearest and Gap Rule follow'],
+  ['Card: footer', 'None', 'Slim hint: G Full Ground Brief'],
+  ['Ground Brief', 'None', 'New panel (G key): six sections, header line, sources, Copy as Text'],
+  ['Legend: mode strip', 'Previous / Next, 14 icons, name, tag', 'Unchanged'],
+  ['Legend: key', 'Going ramp (Suitable, Marginal, SLOW-GO, NO-GO) + NO-GO / SLOW-GO chip lists', 'Same for T (Trafficability); a GROTBC layer switch adds keys for G, R, O, B, C'],
+  ['Legend: keys', 'P Change Mode, S Quick Fix', 'Adds G Ground Brief'],
+  ['Card: C section', 'None', 'Four-way split (cover from direct / indirect fire, concealment from ground / aerial observation) as four meters, plus the best feature nearby'],
+  ['Data read', 'Class tile + distance tile (v1 and v2 classes)', 'Adds route, landform, cc, wet, terrain, soil, hut, elev_hi / elev_lo tiles, climate grid, features/ (incl. named detail 130 to 146) and routes.json (engine work, section 7 of the handover)']
+]);
+
+/* ------------------------------------------------------------ field tables */
+table($('t-card'), ['Card element', 'Field(s)', 'Shown when / rule', 'Example'], [
+  ['Header title', 'verdict, className, nearest.className, fraction, message', 'ok = Suitable Position · near = Adjacent to / Encroaching on {ground} · caution = SLOW-GO Terrain · partial = Partially Obstructed · in = Unsuitable Position · unknown = message', 'Adjacent to Distributary / Minor Canal'],
+  ['Header icon', 'verdict', 'ok check · near, caution triangle · partial octagon · in x · unknown help', ''],
+  ['% Inside pill', 'samples, fraction', 'samples > 1 and fraction > 0 (lines and areas)', '34% Inside'],
+  ['S Quick Fix pill', 'snappable', 'Point on bad ground and the quick fix is on', 'S Quick Fix'],
+  ['Why: ground', 'className / nearest.className', 'Title Case, plain wording (">30°" becomes "over 30°")', 'Embankment / Bund over 2 m'],
+  ['Why: mode', 'profileLabel', 'Name of the mode the ground is judged for', 'Wheeled Vehicle'],
+  ['Why: reason', 'reason', 'Rule owner\'s sentence from rules.json (profiles[mode].why[code], else classes[code].note). Never written by the engine', 'An earth bank over 2 m stops wheels...'],
+  ['Why: scale', 'verdict', 'ok = GO · caution = SLOW-GO · near, partial, in = NO-GO', 'one of three steps lit'],
+  ['Inside', 'fraction, footprint', 'When % Inside > 0. Bar in the verdict colour', '34% of the Footprint'],
+  ['Nearest', 'nearest.{className, distanceM, compass, bearingDeg}', 'Dial follows map rotation; big distance; compass word. Else noneWithinM ("Nothing within 5 km")', 'Canal 90 m NW'],
+  ['Intermediate Gap Rule', 'spacing.{status, nearestGapM, minGapM}, footprint.echelon', 'Only for echelon symbols with the check on. Bar green / orange / red; advisory only', '120 m of 150 m to the next Platoon'],
+  ['Enforce strip', 'blocked, overridable', 'Enforce mode would refuse the click; says whether Shift gets past it', 'Enforce Mode: A click here is refused...'],
+  ['Loading line', 'loading', 'Tiles still arriving, verdict is provisional', 'Still loading terrain data'],
+  ['Notice line', 'badge.flash(text)', 'Short message for a few seconds (e.g. Quick Fix found nothing)', ''],
+  ['Toast', 'verdict, title, lines[], hint', 'Outlives the draw: refusals, "guide ready", "loading"', 'Placement Refused'],
+  ['Screen reader', 'spokenFor(v)', 'One sentence after the cursor rests 500 ms; the card itself is aria-hidden', 'Unsuitable Position. Press S to move it...']
+]);
+table($('t-unused'), ['Field', 'What it holds', 'Could feed'], [
+  ['detail', 'Second line: why not deployable / what is nearby', 'Legacy text; the Why section replaced it'],
+  ['indicators[]', 'Lines from the symbol to the terrain behind the verdict (drawn on the map)', 'A small "line on map" cue'],
+  ['footprint.frontageM / depthM / gapM / facingDeg / facing', 'Size and facing of the echelon footprint', 'Inside or Gap Rule subtitle ("300 m by 200 m, facing N")'],
+  ['distanceM', 'Smallest distance to NO-GO among deployable samples', 'Nearest (when no nearest object)'],
+  ['profileOverride, profileKey', 'Mode set by hand; P key can change it', 'Mode tag on the card ("Set by Hand")'],
+  ['waiting', 'An unknown verdict is waiting for a tile', 'Unknown card: "Waiting for terrain tile"'],
+  ['GroundGuideStamp (on the graphic)', 'verdict, profile, classCode, distanceM, fraction, echelon, frontageM, depthM, spacing, overridden, reason', 'Audit panel only']
+], { code: [0] });
+table($('t-legend'), ['Legend element', 'Field', 'Notes'], [
+  ['Title and count', '"Legend", modes.length, current', '"Mode 3 / 14"'],
+  ['Details toggle', 'remembered in localStorage ms-ground-guide-legend-details', 'Shows or hides the NO-GO / SLOW-GO lists'],
+  ['Mode strip', 'modes[{key, label}], Previous / Next handlers, icon per mode', '14 icons wrap into two rows of seven'],
+  ['Mode name', 'label', 'Name from rules.json'],
+  ['Tag', 'tag, hand', 'Auto · From Symbol / Set by Hand (amber) / Set in Settings'],
+  ['Ramp', 'entries[{label, rgba}]', 'Suitable, Marginal, SLOW-GO, NO-GO; swatch alpha raised to at least .55'],
+  ['Marginal note', 'note', 'Marginal: Within 250 m of NO-GO'],
+  ['Chip lists', 'nogo[], slow[]', 'From rules.json; scroll after 190 px. A vessel shows "Anywhere Off Permanent Water / Canal / ..."'],
+  ['Keys', 'keys {profile, snap}', 'P and S (dim until they work; S lights green when the fix can help). Hidden on touch']
+], { code: [1] });
+table($('t-modes'), ['Mode', 'Sections', 'What the mode needs (data)'], DATA.modes.map(function(m){
+  var d = MODE_SECTIONS[m.key]; return [m.label, d[0].split('').join(' '), d[1]];
+}));
+table($('t-sections'), ['Section', 'Lines', 'Source (bundle v2)', 'Engine status'], [
+  ['G Ground', 'Surface (class label, firm / soft) · Terrain type at the point and the nearest change ("Plain (Irrigated), Hilly to the N 2 km") · Vegetation (type, density) · Relief: Elevation, Slope (degrees + band: Level 0 to 3, Gentle 3 to 7, Sloping 7 to 15, Moderate 15 to 30, Steep over 30), Landform (Crest / Ridge, Upper Slope, Mid-Slope, Lower Slope, Valley Floor, Flat / Plain), High ground nearby (spot height, distance, direction, height above) · Soil and bearing ("Clay Loam (Modelled) · Firm When Dry, Soft After Rain") · Water: nearest of each kind', 'class + rules.json classes[c].kind; terrain layer (codes 1 to 9, rules.json grotbc.terrainType, a proposal); veg-based cc; elev_hi / elev_lo (slope from a 3×3 gradient); landform; soil layer (USDA texture 1 to 12) + grotbc.soilBearing[code] {dry, wet, note}; features spot_height / trig_station (e); water kinds 1 to 9', 'terrain, elev, landform, soil layer access to do'],
+  ['R Roads, Tracks & Railway Network', 'MSR (name / number, from to, length, class, Tankable / Non-Tankable, distance) · Route detail (condition, seasonal closure: "Where Recorded") · Route at the point (type, class; "Class Not Recorded" when blank) · Crossings by class (bridge, foot bridge, ford / ferry; "Bridge Class 40 (Not for Tanks)") · Rail (line, station, level crossing) · Airfield / helipad · Chokepoints (pass, tunnel, headworks) · Route to a point (planned, GROTBC-Roads.md)', 'route layer (bit 7 MSR, bits 5 to 6 load tier, bits 0 to 4 type); routes.json roads / rails (id, name / no, from, to, km, type, msr, load [min, max], closed, cond, bbox); features road / railway lines (n, r, c, k, m, x, cn, sl); crossing classes 39 to 45, 50; air 40 to 47; rail 50; 55 to 58; grotbc.tankable, grotbc.tanks', 'to do; routing not built'],
+  ['O Obstacles', 'Nearest obstacle (name, origin chip, kind, effect for the mode, distance / direction) · Other obstacles (canal, distributary, drain, bund, railway embankment) · Seasonal (flood-prone and waterlogged ground, roads closed by season) · Temporary (landslide sites on a road) · Plan obstacles (live)', 'class scan with classes[c].origin / kind; named canals (features 202); wet layer; features road x (closure) / sl (landslide sites); plan graphics', 'plan obstacles to do'],
+  ['T Trafficability', 'Going for the mode cross-country, dry ("SLOW-GO for Wheeled Vehicle (Watercourses) · Dry Season") and after rain from the soil bearing and the month · The three main classes at a glance (Dismounted, Wheeled, Tracked) · Tracks and fair-weather roads (SLOW-GO after rain) · On road: the nearest road or MSR fit for the mode (load class against the mode, A / F, lanes; "Tankable") · Monsoon going (flood-prone and waterlogged ground) · Season for the month ("Jul: 35° / 26°, 149 mm, Monsoon") · Air: landing-site going for Helicopter Landing Site · X-country speed (planned)', 'class + rules.json profiles[mode].nogo / caution (dist_<mode> layers); wet layer; soil layer + grotbc.soilBearing[code] {dry, wet}; route layer (load tier, MSR bit) + loadClassCode A / F, lanes; routes.json; grotbc.tankable, grotbc.tanks; climate/climate.json + climate.bin (WorldClim 1970 to 2000: prec by month, monsoon_pct, frost_months, wet_months)', 'soil, route and climate grid access to do; speed not built'],
+  ['B Built-Up Areas', 'Nearest BUA (name, size class, population: official where recorded, else "WorldPop Estimate") · Kacha huts (per km² nearby; temporary huts flag) · Public services: hospital, BHU, dispensary, police, post office, telephone exchange, mosque, market, grid station; school, bank, government office (GeoNames) · Border (distance to IB / LoC) · Admin (tehsil, district, province) · Sheet (1:50k number)', 'features 110 to 114 (p, wp, wc, pv), 70 to 77, 130 to 146, 147 to 149 (GeoNames, src: gn); hut layer (bits 0 to 6 per km², bit 7 temporary); boundaries.geojson; admin.geojson; sheets.json', 'hut layer access to do; GeoNames kinds not yet in the built bundle'],
+  ['C Cover, Camouflage & Concealment', 'Four lines: Cover from direct fire · Cover from indirect fire · Concealment from ground observation · Concealment from aerial observation (None / Poor / Fair / Good + what gives it) · Deployment line (bank of a perennial river or canal) · Nearest bund / wall / nullah · Hide area (planned)', 'rules.json grotbc.coverSplit.byClass[class] = [direct, indirect, ground, aerial] (proposal: bund Fair / Poor / Fair / None, its ground concealment raised from Poor by the owner on 2026-11-04 in rules.yaml, not yet in the built bundle; embankment over 2 m Good / Fair / Fair / None, built-up Good / Fair / Good / Good, tree cover Poor / Poor / Good / Good); cc layer for the local density (concealment = v >> 4, cover = v & 15); bank layer + rules.yaml banks (river / lake, perennial stream and canal banks Fair / Poor / Fair / None and a deployment line, within 30 / 75 / 150 m of the water; a proposal)', 'cc and bank layer access to do; bank layer not yet in the built bundle']
+]);
+table($('t-classes'), ['Code', 'Class', 'GROTBC', 'Origin', 'Kind', 'Note (shown when no mode-specific reason)'], DATA.classes.map(function(c){
+  var sw = el('span'); sw.append(c.l); return [c.c, c.l, c.g, c.o, c.k, c.n];
+}));
+table($('t-modelist'), ['Mode', 'Key', 'NO-GO classes', 'SLOW-GO classes', 'Rule owner sentences'], DATA.modes.map(function(m){
+  return [m.label, m.key, m.nogo.length === 1 && m.nogo[0].indexOf('Anywhere') === 0 ? 'Everything off water / road / rail' : String(m.nogo.length), String(m.slow.length), String(m.whyCount)];
+}), { code: [1] });
+
+/* ------------------------------------------------------------ tokens */
+function tok(host, name, hex, use, css){
+  var d = el('div', 'pg-tok'), i = el('i'); i.style.background = css || hex;
+  var s = el('span'); s.append(el('b', '', name), el('small', '', hex + (use ? '  ·  ' + use : ''))); d.append(i, s); host.appendChild(d);
+}
+(function(){
+  var h = $('tok-cur');
+  [['Card background', '#1b1f25', 'card and legend body'], ['Band background', '#222830', 'every second section'], ['Legend background', 'rgba(27,31,37,.95)', 'legend, 95% opaque'],
+   ['Legend border', '#39414b', '1px'], ['Text', '#f3f5f7', 'body'], ['Text bold', '#ffffff', 'bold, big figures'], ['Text soft', '#9aa3ad', 'captions, notes'],
+   ['Verdict ok', '#1c8247', '--pb-c header and border'], ['Verdict near', '#e9a526', 'header text #1b1f25'], ['Verdict caution', '#e08a1e', 'header text #1b1f25'],
+   ['Verdict partial', '#d9622b', 'header text #1b1f25'], ['Verdict in', '#d63a3f', 'header text #fff'], ['Verdict neutral', '#5b6470', 'toasts, unknown'],
+   ['Key ok', '#3fc07a', '--pb-k captions'], ['Key near', '#f2b84b', '--pb-k'], ['Key caution', '#f0a04b', '--pb-k'], ['Key partial', '#ef7d4a', '--pb-k'], ['Key in', '#ff6b6f', '--pb-k'], ['Key neutral', '#aab3bd', '--pb-k'],
+   ['GO', '#2fa862', 'scale step, ok bars'], ['SLOW-GO', '#f0932b', 'scale step (dark text)'], ['NO-GO', '#e5484d', 'scale step; enforce icon'],
+   ['Scale step off', 'rgba(255,255,255,.06)', 'text #6b737c'], ['NO-GO caption', '#ff8a8d', 'legend chip heading'], ['SLOW-GO caption', '#ffb766', 'legend chip heading'],
+   ['Gap Rule tight', '#ee7b30', 'spacing bar'], ['Warning text', '#ffc861', 'notice, tag "Set by Hand", Gap Rule text'],
+   ['Enforce strip', 'rgba(229,72,77,.14)', 'top border rgba(229,72,77,.45), text #ffb3b5'], ['Keycap', '#3a424d → #2b313a', 'border #545e6b, 2 px bottom', 'linear-gradient(#3a424d,#2b313a)'],
+   ['Keycap lit', '#3f8f5b → #2b6b42', 'border #5fc183, glow rgba(47,168,98,.25)', 'linear-gradient(#3f8f5b,#2b6b42)'],
+   ['Focus ring', '#8ec1ea', '2px, offset 1px'], ['Selected mode', '#8ec1ea', 'icon colour #1b1f25'], ['Hint chip', '#242a32', 'border #4a535e']
+  ].forEach(function(t){ tok(h, t[0], t[1], t[2], t[3]); });
+  var r = $('tok-ramp');
+  OVERLAY.slice().reverse().forEach(function(o){ var a = o[1]; tok(r, o[0], 'rgba(' + a.join(',') + ')', 'legend swatch ' + swatch(a), 'rgba(' + a[0] + ',' + a[1] + ',' + a[2] + ',' + (a[3] / 255) + ')'); });
+})();
+table($('t-type'), ['Item', 'Value'], [
+  ['Font', 'system-ui, Segoe UI, Arial, sans-serif; mono: ui-monospace, Consolas'],
+  ['Body', '12 px / 1.4'], ['Card header', '13 px, 600'], ['Big figure', '18 px, 700, tabular-nums'],
+  ['Caption', '10 px, 700, letter-spacing .12em, uppercase, in the verdict key colour'], ['Soft line', '11 px'], ['Scale step', '9.5 px, 700'],
+  ['Keycap', 'mono 10 px (card) / 11.5 px (legend), 700'], ['Legend title', '13 px, 700, letter-spacing .1em, uppercase'], ['Legend mode name', '14 px, bold'],
+  ['Card width', '280 px (max 100vw − 8 px)'], ['Legend width', '290 px (max 100vw − 24 px)'], ['Radius', 'card and legend 10 px; keycap 4 to 5 px; pills and chips 999 px; scale steps 2 px'],
+  ['Section padding', '7 / 11 / 8 px; header 6 / 11 px; caption to content 5 px'], ['Border', '1.5 px in the verdict colour (card); 1 px #39414b (legend)'],
+  ['Shadow', 'card 0 4px 14px rgba(0,0,0,.4); legend 0 2px 10px rgba(0,0,0,.35)'], ['Position', 'card below and right of the cursor, flips at edges; touch: above the fingertip (28 px gap); legend bottom-left through the view UI'],
+  ['Motion', 'legend key opacity .2 s only; none under prefers-reduced-motion']
+]);
+function fill(id, items, plainList){ var u = $(id); items.forEach(function(t){ var li = el('li'); if (t.nodeType) li.appendChild(t); else li.textContent = t; u.appendChild(li); }); }
+fill('l-wording', [
+  'Title Case for headlines and labels. Minor words stay lower: a, an, and, at, for, in, of, on, or, the, to. Words already in capitals (NO-GO, SLOW-GO, MSR, BUA) stay as they are.',
+  'Say it in words: ">30°" becomes "over 30°", "15–30°" becomes "15 to 30°". No symbols or dashes inside sentences.',
+  'Reasons are the rule owner\'s sentences from rules.json. The engine never writes its own reason.',
+  'Distances: metres under 1 km, then kilometres (metric); yards and miles (imperial); metres and nautical miles (nautical). Directions as 8-point compass words (N, NE, E, SE, S, SW, W, NW).',
+  'Military terms set by the user: Suitable Position, Unsuitable Position, SLOW-GO, NO-GO, Marginal, Quick Fix, Intermediate Gap Rule, Adjacent to X / Encroaching on X, Partially Obstructed. The unit type is called "Mode", never "Judged as".',
+  'Mode names exactly as in rules.json: Dismounted Force, Wheeled Vehicle, Tracked Vehicle, Surface Vessel, Gr Based, Gun Position, Air Defence Site, Helicopter Landing Site, Amphibious, Mountain / Pack Transport, Over-Snow, Road-Bound Wheeled, Rail-Bound, Signals / EW Site (and Not Terrain-Bound, which gets no card).',
+  'GROTBC headings: G Ground · R Roads, Tracks & Railway Network · O Obstacles · T Trafficability · B Built-Up Areas · C Cover, Camouflage & Concealment. Never R = Relief, T = Terrain or Tactical Features, or B = Boundaries.',
+  'Modelled or sparse values say so: "Modelled" (soil), "Where Recorded" (condition, closure, landslide sites), "Class Not Recorded" (load class), "WorldPop Estimate" (population), "Planned" (routing, hide areas, cross-country speed).'
+]);
+fill('l-behaviour', [
+  'Built from DOM nodes and textContent only: class labels, names and unit text can never inject markup.',
+  'The card never takes the pointer (pointer-events: none). The legend stops pointer and click events reaching the map.',
+  'Position updates are direct style writes from a passive pointermove listener. The card is measured once per show, so following the cursor causes no layout reads and no reflow.',
+  'Screen readers: the verdict is read after the cursor rests 500 ms (aria-live, polite); legend buttons have aria-label and aria-pressed; focus is restored after a re-render.',
+  'prefers-reduced-motion: no transitions. Touch: card above the fingertip, kept inside a narrow viewport; keys hidden on touch input.',
+  'Works in 2D and 3D. Engines stay headless: anything in index.html / src/main.ts is harness only.',
+  'Works on a v1 bundle too: sections without data are left out.'
+]);
+fill('l-questions', [
+  'Approve the six GROTBC letter colours? Note the C green (#1f8a5a) sits close to the ok / GO greens, and G olive is not far from them either.',
+  'Approve the legend GROTBC layer switch (G R O T B C buttons) and the per-layer keys?',
+  'With three sections the Card grows to roughly twice the height of today\'s. Acceptable, or should sections collapse to one line each?',
+  'Should the Card show the mode tag ("Set by Hand") like the legend does?',
+  'Official MLC figures for Al-Khalid, T-80UD, T-80 and Al-Zarrar (today estimated as 1.1 × tonnes) to replace the estimates.',
+  'Confirm the load-code reading: A / F = all- / fair-weather, 1 / 2 = single / double lane.',
+  'Correct the per-mode NO-GO / SLOW-GO tables and the three-sections table (section 3c): they are a starting proposal.',
+  'Should "Irrigated Cropland" stay SLOW-GO for Wheeled Vehicle all year, or only in the monsoon?',
+  'Approve the remaining four-way cover split values (rules.yaml coverSplit; the bund row was set by the owner on 2026-11-04).',
+  'Banks of perennial rivers and canals are now a positive feature (cover from direct fire and ground observation, a deployment line). Confirm the bank values (Fair / Poor / Fair / None) and the 150 m strip, and whether the Card should name the bank in the C section only or also under O.',
+  'The C section shows four meters on the Card (one graphic) and spells the four lines out in the Ground Brief. Enough on the Card, or show only the line that matters for the mode?',
+  'Should the T section judge the going for the current month by default, or for a month the planner sets (operation date)?',
+  'Now that T is Trafficability: Dismounted, Wheeled and Tracked show G O C / G R O while drawing, and the Why going scale already gives the verdict. Should T replace one of their three sections (section 3c)?',
+  'Wording bug in the current build: titleCase() turns unit letters into capitals, so "Bund over 2 m" reads "Bund Over 2 M". Keep units lower case (m, km, t)?'
+]);
+(function(){
+  var u = $('l-accept');
+  ['Each mode shows its three sections while drawing; G opens all six; Copy as Text works.',
+   'Every line names its source when the data is missing ("class not recorded", "no water source mapped within 5 km"), never an empty row.',
+   'Card stays 280 px wide, never covers the cursor, flips at screen edges, works in 2D and 3D and on touch.',
+   'No reflow on mouse-move (measure once per show), no I/O on mouse-move.',
+   'Title Case and the military wording throughout; no symbols in sentences.',
+   'Works on a v1 bundle too (sections without data are left out).'
+  ].forEach(function(t){ var li = el('li'); li.append('☐ ' + t); u.appendChild(li); });
+})();
+
+/* ------------------------------------------------------------ copy prompt */
+$('copy-prompt').onclick = function(){
+  var t = $('prompt').textContent, m = $('copied2');
+  var done = function(){ m.textContent = 'Copied'; setTimeout(function(){ m.textContent = ''; }, 1800); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, function(){});
+  else { var ta = el('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+};
+})();
+</script>
+</body>
+</html>

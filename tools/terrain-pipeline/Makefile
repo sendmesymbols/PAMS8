@@ -1,4 +1,4 @@
-# Terrain-bundle pipeline for the PAMS8 Placement Advisor.
+# Terrain-bundle pipeline for the PAMS8 Ground Guide.
 #   make bundle            full run: fetch grid derive grotbc classify profiles tile validate package
 #   make rebuild-rules     after editing rules.yaml / classes.yaml: steps 5-8 only
 #   make synth-check       validate the synthetic dev bundle (no data needed)

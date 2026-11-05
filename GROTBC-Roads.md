@@ -1,7 +1,7 @@
 # GROTBC-R · Roads, Tracks and Railway Network: routing requirement
 
 Status: written 2026-11-03 as a proposal; **road routing built 2026-11-05** (section 0). Companion to `GROTBC.md`
-section 2 (R) and `MS/Docs/16-placement-grotbc-card.md`.
+section 2 (R) and `MS/Docs/16-ground-guide-grotbc-card.md`.
 
 ## 0 · What is built (2026-11-05)
 
@@ -223,7 +223,7 @@ Static-file rule: nothing is fetched at routing time other than bundle tiles (th
 
 ## 7 · Engine requirements (library)
 
-- **Headless**, no DOM: `MS/Engines/Placement/` style, individually tear-down-able, scoped to the view container.
+- **Headless**, no DOM: `MS/Engines/GroundGuide/` style, individually tear-down-able, scoped to the view container.
 - A `RoutingEngine` (or an extension of the existing **RoadNetwork** and **Trafficability** analysis engines in
   `AnalysisEngineRegistry`) reading the bundle graph; when no graph is present it degrades to the current
   straight-line estimate, as those engines already do offline.

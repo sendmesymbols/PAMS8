@@ -14,7 +14,7 @@ import { collabRelayPlugin } from './tools/collabRelay.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Dev-only: serve the Placement Advisor's terrain bundle at /terrain-bundle straight from MS/Data/terrain-bundle
+// Dev-only: serve the Ground Guide's terrain bundle at /terrain-bundle straight from MS/Data/terrain-bundle
 // (where the pipeline writes it) unless the requested file exists under public/terrain-bundle. The real bundle is
 // ~390k tiles, and Vite indexes everything under public/ (and watches it), which exhausts memory and hangs the
 // server; the small synthetic bundle (node tools/terrain-synth.mjs) still goes in public/ as before and wins when
@@ -133,7 +133,7 @@ export default defineConfig(({ mode }) => {
         // PORT env override lets multiple concurrent dev-tool sessions each get an
         // auto-assigned free port instead of colliding on the fixed default.
         port: Number(process.env.PORT) || (useDist ? 6548 : 6547),
-        // Vite's watcher crawls the whole project root. The Placement Advisor's terrain bundle is ~390k
+        // Vite's watcher crawls the whole project root. The Ground Guide's terrain bundle is ~390k
         // static tiles and the terrain pipeline's work/ and .venv/ hold GBs of rasters and packages;
         // watching them stalls the server at ~2.5 GB and they are never modules.
         watch: {

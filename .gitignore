@@ -35,10 +35,10 @@ public/assets
 PAMS8.pptx
 MS2/RD/Adv Weather Viz.zip
 
-# Placement Advisor terrain bundle built by tools/terrain-pipeline (multi-GB, regenerable from sources.lock + rules.yaml)
+# Ground Guide terrain bundle built by tools/terrain-pipeline (multi-GB, regenerable from sources.lock + rules.yaml)
 MS/Data/terrain-bundle/
 
-# Synthetic terrain bundle for Placement Advisor dev/tests (node tools/terrain-synth.mjs) — regenerable
+# Synthetic terrain bundle for Ground Guide dev/tests (node tools/terrain-synth.mjs) — regenerable
 public/terrain-bundle/
 public/___terrain-bundle
 

@@ -2193,15 +2193,15 @@ function buildDockFreehandStyle(container: HTMLElement): void {
   syncFace(); // reflect the initial value
 })();
 
-// ── Placement Advisor toggle (top bar) ──────────────────────────────────────
-// Flips the #setting-placementAdvisor checkbox (the Settings panel's feature
+// ── Ground Guide toggle (top bar) ──────────────────────────────────────
+// Flips the #setting-groundGuide checkbox (the Settings panel's feature
 // switch) and dispatches 'change', so index.html's settingMappings publishes
-// features.placementAdvisor and the feature panel enables/disables with it.
-// The face follows the engine's own 'placement-state-change' (amber when on but
+// features.groundGuide and the feature panel enables/disables with it.
+// The face follows the engine's own 'ground-guide-state-change' (amber when on but
 // the terrain bundle is missing) and settings changed from Ctrl+K / ⚙ widgets.
-(function initPlacementAdvisorToggle() {
-  const btn = document.getElementById('placementAdvisorBtn');
-  const box = document.getElementById('setting-placementAdvisor') as HTMLInputElement | null;
+(function initGroundGuideToggle() {
+  const btn = document.getElementById('groundGuideBtn');
+  const box = document.getElementById('setting-groundGuide') as HTMLInputElement | null;
   if (!btn || !box) return;
   const baseTitle = btn.title;
 
@@ -2221,13 +2221,13 @@ function buildDockFreehandStyle(container: HTMLElement): void {
   });
   box.addEventListener('change', () => syncFace());
 
-  document.addEventListener('placement-state-change', (e: any) => {
+  document.addEventListener('ground-guide-state-change', (e: any) => {
     const d = e.detail || {};
     if (typeof d.isEnabled === 'boolean' && box.checked !== d.isEnabled) box.checked = d.isEnabled;
     syncFace(d.state, d.error);
   });
   window.addEventListener('settingsChanged', (e: any) => {
-    if (e.detail?.fullPath !== 'features.placementAdvisor') return;
+    if (e.detail?.fullPath !== 'features.groundGuide') return;
     const on = !!e.detail.value;
     if (box.checked !== on) {
       box.checked = on;
@@ -2367,49 +2367,49 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     showToast(d.message, d.phase);
   });
 
-  // ── Placement advisor (terrain advice while drawing) ───────────────────────
+  // ── Ground Guide (terrain advice while drawing) ───────────────────────
   // The cursor badge is drawn by the engine itself; the harness only mirrors
   // the state into the Settings panel and toasts a refusal in enforce mode.
-  const placementStatus = document.getElementById('placement-status');
-  let placementState = 'off';
-  let placementAdvice = '';
-  let placementTiles = '';
-  const renderPlacementStatus = () => {
-    if (!placementStatus) return;
-    placementStatus.textContent =
-      [placementState, placementAdvice, placementTiles].filter(Boolean).join(' · ') || 'off';
+  const groundGuideStatus = document.getElementById('ground-guide-status');
+  let groundGuideState = 'off';
+  let groundGuideAdvice = '';
+  let groundGuideTiles = '';
+  const renderGroundGuideStatus = () => {
+    if (!groundGuideStatus) return;
+    groundGuideStatus.textContent =
+      [groundGuideState, groundGuideAdvice, groundGuideTiles].filter(Boolean).join(' · ') || 'off';
   };
-  document.addEventListener('placement-state-change', (e: any) => {
-    placementState = e.detail.error ? `${e.detail.state} (${e.detail.error})` : e.detail.state;
-    renderPlacementStatus();
+  document.addEventListener('ground-guide-state-change', (e: any) => {
+    groundGuideState = e.detail.error ? `${e.detail.state} (${e.detail.error})` : e.detail.state;
+    renderGroundGuideStatus();
   });
-  document.getElementById('placement-audit')?.addEventListener('click', () => {
-    const adv = (window as any).symbolEngine?.placementAdvisor;
-    if (adv) void adv.openAudit();
-    else showToast('Turn on the Placement advisor first', 'no-targets');
+  document.getElementById('ground-guide-audit')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (guide) void guide.openAudit();
+    else showToast('Turn on the Ground Guide first', 'no-targets');
   });
-  document.getElementById('placement-retry')?.addEventListener('click', () => {
-    const adv = (window as any).symbolEngine?.placementAdvisor;
-    if (adv) void adv.retry();
-    else showToast('Turn on the Placement advisor first', 'no-targets');
+  document.getElementById('ground-guide-retry')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (guide) void guide.retry();
+    else showToast('Turn on the Ground Guide first', 'no-targets');
   });
   // Important Tactical Ground (G): candidates round the map centre, and designating the best one as MITG.
   const itgAtCentre = async (): Promise<any[] | null> => {
-    const adv = (window as any).symbolEngine?.placementAdvisor;
+    const guide = (window as any).symbolEngine?.groundGuide;
     const centre = appConfig.activeView?.center;
-    if (!adv || !centre) {
-      showToast('Turn on the Placement advisor first', 'no-targets');
+    if (!guide || !centre) {
+      showToast('Turn on the Ground Guide first', 'no-targets');
       return null;
     }
-    const list = await adv.groundCandidates(centre);
-    if (!list.length) showToast(`No ITG candidates within ${adv.options.itg.radiusKm} km of the map centre`, 'no-targets');
+    const list = await guide.groundCandidates(centre);
+    if (!list.length) showToast(`No ITG candidates within ${guide.options.itg.radiusKm} km of the map centre`, 'no-targets');
     return list;
   };
-  document.getElementById('placement-itg-list')?.addEventListener('click', async () => {
+  document.getElementById('ground-guide-itg-list')?.addEventListener('click', async () => {
     const list = await itgAtCentre();
     for (const c of list ?? []) {
       EngineLogger.success(
-        'Placement Advisor',
+        'Ground Guide',
         `${c.level === 2 ? 'Strong candidate' : 'ITG candidate'}: ${c.name ?? c.kindLabel} (${c.kindLabel}` +
           `${c.elevationM !== null ? ` ${c.elevationM} m` : ''}), ${Math.round(c.distanceM)} m ${c.compass} · ${c.reasonLabels.join(', ')}`,
       );
@@ -2423,32 +2423,32 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     const sym = level === 'MITG' ? 'Vital Gr (MITG)' : 'Imp Gr (ITG)';
     showToast(g ? `${sym} drawn round ${list[0].name ?? list[0].kindLabel}` : `Could not draw the ${sym}`, g ? 'success' : 'no-targets');
   };
-  document.getElementById('placement-itg-itg')?.addEventListener('click', () => void designateAtCentre('ITG'));
-  document.getElementById('placement-itg-mitg')?.addEventListener('click', () => void designateAtCentre('MITG'));
+  document.getElementById('ground-guide-itg-itg')?.addEventListener('click', () => void designateAtCentre('ITG'));
+  document.getElementById('ground-guide-itg-mitg')?.addEventListener('click', () => void designateAtCentre('MITG'));
   // People (B, civil considerations) round the map centre, as the Ground Brief's Copy as Text gives them.
-  document.getElementById('placement-pop-log')?.addEventListener('click', async () => {
-    const adv = (window as any).symbolEngine?.placementAdvisor;
+  document.getElementById('ground-guide-pop-log')?.addEventListener('click', async () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
     const centre = appConfig.activeView?.center;
-    if (!adv?.populationAround || !centre) return void showToast('Turn on the Placement advisor first', 'no-targets');
-    const lines: string[] | null = await adv.populationText(centre);
+    if (!guide?.populationAround || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const lines: string[] | null = await guide.populationText(centre);
     if (!lines) return void showToast('No population data here (outside the grid, or the bundle has none)', 'no-targets');
-    for (const l of lines) EngineLogger.success('Placement Advisor', l.trim());
+    for (const l of lines) EngineLogger.success('Ground Guide', l.trim());
     showToast('People at the map centre written to the Engine Log', 'success');
   });
-  document.addEventListener('placement-advice', (e: any) => {
-    placementAdvice = e.detail.message;
-    renderPlacementStatus();
+  document.addEventListener('ground-guide-advice', (e: any) => {
+    groundGuideAdvice = e.detail.message;
+    renderGroundGuideStatus();
   });
-  document.addEventListener('placement-clear', () => {
-    placementAdvice = '';
-    renderPlacementStatus();
+  document.addEventListener('ground-guide-clear', () => {
+    groundGuideAdvice = '';
+    renderGroundGuideStatus();
   });
-  document.addEventListener('placement-tiles', (e: any) => {
+  document.addEventListener('ground-guide-tiles', (e: any) => {
     const t = e.detail;
-    placementTiles = `tiles ${t.loaded}${t.pending ? ` (+${t.pending} loading)` : ''}${t.failed ? ` ${t.failed} failed` : ''}`;
-    renderPlacementStatus();
+    groundGuideTiles = `tiles ${t.loaded}${t.pending ? ` (+${t.pending} loading)` : ''}${t.failed ? ` ${t.failed} failed` : ''}`;
+    renderGroundGuideStatus();
   });
-  document.addEventListener('placement-blocked', (e: any) => {
+  document.addEventListener('ground-guide-blocked', (e: any) => {
     showToast(`Placement refused — ${e.detail.verdict.message}`, 'no-targets');
   });
 

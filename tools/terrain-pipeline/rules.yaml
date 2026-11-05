@@ -391,7 +391,7 @@ profiles:
   exempt:
     label: Not Terrain-Bound   # no nogo/requires -> no dist layer
 
-# Optional. Overrides the symbol-set -> mode defaults compiled into MS/Engines/Placement/PlacementProfiles.ts.
+# Optional. Overrides the symbol-set -> mode defaults compiled into MS/Engines/GroundGuide/GroundGuideProfiles.ts.
 # Keys: 2-digit 2525D symbol set, or "symbolSet:entityPrefix" matched (longest first) against the 6-digit
 # entity code (entity, type, subtype).
 profileOverrides:

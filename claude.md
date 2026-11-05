@@ -132,37 +132,37 @@ MS/
 - **ProximityEngine** — snap indicators to nearest vertex/coordinate while drawing.
 - **DrawingCueEngine** — rubber band, coordinate readout, angular guides/protractor,
   distance rings, nearby highlight, adaptive rings, magnetic compass overlays.
-- **PlacementAdvisor** (`Engines/Placement/`) — optional, off by default
-  (`features.placementAdvisor`). Live "deployable terrain?" advice while drawing
+- **GroundGuide** (`Engines/GroundGuide/`) — optional, off by default
+  (`features.groundGuide`). Live "deployable terrain?" advice while drawing
   (ok / near / caution / partial / in), driven by a static **terrain bundle**
   (PNG tiles + `rules.json`) the host serves; built offline by
   `tools/terrain-pipeline/` into `MS/Data/terrain-bundle/` (git-ignored, multi-GB; `npm run dev` serves it at
   `/terrain-bundle`). Hot path is synchronous typed-array reads (no I/O on
   mouse-move); advise mode only listens, enforce mode vetoes in `drawSymEnd`.
   Tile fetch/decode and overlay painting run in an inline Web Worker
-  (`placement.useWorker`, falls back to the main thread automatically).
+  (`groundGuide.useWorker`, falls back to the main thread automatically).
   Land-unit echelons (section → brigade) are judged on their **footprint** (frontage × depth, centred on
-  the symbol; `placement.footprint.*`, facing = fixed bearing / worst-of-4 / circle) rather than the click
+  the symbol; `groundGuide.footprint.*`, facing = fixed bearing / worst-of-4 / circle) rather than the click
   point, with an advisory intergap check against same-echelon symbols already on the map
-  (`PlacementFootprint.ts`, table overridable via rules.json `echelons`).
+  (`GroundGuideFootprint.ts`, table overridable via rules.json `echelons`).
   Advice names the reason, distance, nearest terrain and direction; an optional
-  map overlay (`placement.overlay.*`) paints go / near / caution / no-go per profile,
-  and indicator lines (`placement.indicators.*`) join the symbol to the contested terrain.
+  map overlay (`groundGuide.overlay.*`) paints go / near / caution / no-go per profile,
+  and indicator lines (`groundGuide.indicators.*`) join the symbol to the contested terrain.
   The terrain bundle is clipped to the **official Survey of Pakistan boundary** (all of Jammu &
-  Kashmir on Pakistan's side, built from NCGDB by `make_boundary.py`); `placement.overlay.boundary`
+  Kashmir on Pakistan's side, built from NCGDB by `make_boundary.py`); `groundGuide.overlay.boundary`
   draws the outline the bundle ships.
   The card also lists **Important Tactical Ground (ITG) candidates** (G in GROTBC, not a letter of its own) from the
-  bundle's `features/` (`PlacementFeatures.ts`, `advisor.groundCandidates()`); the bundle only proposes candidates,
+  bundle's `features/` (`GroundGuideFeatures.ts`, `guide.groundCandidates()`); the bundle only proposes candidates,
   and `symbolEngine.designateGround(target, 'ITG' | 'MITG')` lets the user designate it as an ordinary symbol:
   Imp Gr ("IG", `MS/Symbols/ImpGr.ts`, catalog key `00000160`, a local non-2525D symbol) or Vital Gr ("VG").
-  B also carries **people round the cursor** (`population.*`, `PlacementPopulation.ts` / `PlacementPopulationView.ts` /
-  `PlacementPopulationLayer.ts`): WorldPop 2026 from the bundle's population grid, shown in any of ten card styles
-  kept side by side for comparison (`placement-population-options.html`), a civil flag per mode, a People map layer
-  and a Ground Brief block; `advisor.populationAround()` for hosts. Estimates, not a census.
-  T in GROTBC is **Trafficability**: the going engine (`going.*`, `card.*`, `PlacementGoing.ts`) gives the going dry
-  and after rain; `traffic.*` (`PlacementTrafficability.ts` / `PlacementTrafficView.ts`) adds the road line, legend
+  B also carries **people round the cursor** (`population.*`, `GroundGuidePopulation.ts` / `GroundGuidePopulationView.ts` /
+  `GroundGuidePopulationLayer.ts`): WorldPop 2026 from the bundle's population grid, shown in any of ten card styles
+  kept side by side for comparison (`ground-guide-population-options.html`), a civil flag per mode, a People map layer
+  and a Ground Brief block; `guide.populationAround()` for hosts. Estimates, not a census.
+  T in GROTBC is **Trafficability**: the going engine (`going.*`, `card.*`, `GroundGuideGoing.ts`) gives the going dry
+  and after rain; `traffic.*` (`GroundGuideTrafficability.ts` / `GroundGuideTrafficView.ts`) adds the road line, legend
   season controls, an overlay and (opt-in) verdict that follow the season, and the soil rule — all kept as options to compare.
-  See `MS/Docs/15-placement-advisor.md`. `node tools/terrain-synth.mjs` makes a
+  See `MS/Docs/15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.
 - **DeclutterEngine** (+ Cluster/Ladder/Disperse/LabelPlacer) — zoom-aware hiding,

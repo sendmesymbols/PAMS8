@@ -338,12 +338,12 @@
       #penStyleBtn.ms-btn-active,
       #penModeBtn.ms-btn-active,
       #creationModeBtn.ms-btn-active,
-      #placementAdvisorBtn.ms-btn-active {
+      #groundGuideBtn.ms-btn-active {
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
       }
-      /* Placement Advisor on but without terrain data (bundle missing / failed). */
-      #placementAdvisorBtn.ms-btn-active[data-state='no-bundle'] {
+      /* Ground Guide on but without terrain data (bundle missing / failed). */
+      #groundGuideBtn.ms-btn-active[data-state='no-bundle'] {
         border-color: #d9a400 !important;
         color: #d9a400 !important;
       }
@@ -1411,7 +1411,7 @@
         transition: height 0.2s ease;
       }
 
-      /* Keep widgets docked bottom-left on the map (e.g. the Placement Advisor's terrain key) above the collapsed log bar. */
+      /* Keep widgets docked bottom-left on the map (e.g. the Ground Guide's terrain key) above the collapsed log bar. */
       .esri-ui-corner.esri-ui-bottom-left {
         margin-bottom: 66px;
       }
@@ -2036,8 +2036,8 @@
           </div>
         </div>
         </div>
-        <!-- Placement Advisor on/off — flips #setting-placementAdvisor (same source of truth as the Settings panel); wired in src/main.ts. -->
-        <button class="ms-btn infobar-btn" id="placementAdvisorBtn" aria-pressed="false" data-state="disabled" title="Placement Advisor — live terrain advice while drawing (GO / SLOW-GO / NO-GO ground, footprint, ITG candidates). Click to turn it on or off; options are in the Settings panel."><span class="infobar-icon">⛰</span>Terrain</button>
+        <!-- Ground Guide on/off — flips #setting-groundGuide (same source of truth as the Settings panel); wired in src/main.ts. -->
+        <button class="ms-btn infobar-btn" id="groundGuideBtn" aria-pressed="false" data-state="disabled" title="Ground Guide — live terrain advice while drawing (GO / SLOW-GO / NO-GO ground, footprint, ITG candidates). Click to turn it on or off; options are in the Settings panel."><span class="infobar-icon">⛰</span>Ground Guide</button>
         <button class="ms-btn infobar-btn" id="switch-btn" title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."><span class="infobar-icon">⊞</span>2D</button>
         <!-- Creation Mode toggle + quick edit actions — grouped so they stay on one row (the group wraps as a unit on narrow screens). -->
         <div class="infobar-group">
@@ -2982,12 +2982,12 @@
           </div>
         </div>
 
-        <!-- PLACEMENT ADVISOR FEATURE PANEL -->
-        <div class="feature-panel" id="feature-panel-placement">
+        <!-- GROUND GUIDE FEATURE PANEL -->
+        <div class="feature-panel" id="feature-panel-ground-guide">
           <div class="feature-header">
             <div class="feature-header-left">
-              <input type="checkbox" id="setting-placementAdvisor" title="Enable live terrain advice while drawing: warns when a symbol is on, in or near no-go terrain (water, marsh, built-up, steep slope, ...). Needs a terrain bundle (PlacementAdvisor)." />
-              <label>Placement Advisor</label>
+              <input type="checkbox" id="setting-groundGuide" title="Enable live terrain advice while drawing: warns when a symbol is on, in or near no-go terrain (water, marsh, built-up, steep slope, ...). Needs a terrain bundle (GroundGuide)." />
+              <label>Ground Guide</label>
             </div>
             <span class="toggle-icon">▼</span>
           </div>
@@ -2995,7 +2995,7 @@
             <div class="sub-feature-label">Behaviour</div>
             <div class="setting-row">
               <label>Mode</label>
-              <select id="setting-placementMode" style="width: 105px" title="Advise only informs. Enforce refuses to place a symbol whose verdict is in the refuse list (in / partial).">
+              <select id="setting-groundGuideMode" style="width: 105px" title="Advise only informs. Enforce refuses to place a symbol whose verdict is in the refuse list (in / partial).">
                 <option value="advise" selected>Advise</option>
                 <option value="enforce">Enforce</option>
                 <option value="off">Off</option>
@@ -3003,19 +3003,19 @@
             </div>
             <div class="setting-row">
               <label>Near (m)</label>
-              <input type="number" id="setting-placementNearM" min="0" max="5000" step="10" value="250" style="width: 60px" title="Deployable terrain closer than this to a no-go area is reported as near, with the distance." />
+              <input type="number" id="setting-groundGuideNearM" min="0" max="5000" step="10" value="250" style="width: 60px" title="Deployable terrain closer than this to a no-go area is reported as near, with the distance." />
             </div>
             <div class="setting-row">
               <label>Badge</label>
-              <input type="checkbox" id="setting-placementBadge" checked title="Show the verdict next to the cursor while drawing." />
+              <input type="checkbox" id="setting-groundGuideBadge" checked title="Show the verdict next to the cursor while drawing." />
             </div>
             <div class="setting-row">
               <label>Shift overrides block</label>
-              <input type="checkbox" id="setting-placementAllowOverride" checked title="In Enforce mode, hold Shift while clicking to place a symbol the rules would refuse. It is stamped as overridden. Off makes the block final." />
+              <input type="checkbox" id="setting-groundGuideAllowOverride" checked title="In Enforce mode, hold Shift while clicking to place a symbol the rules would refuse. It is stamped as overridden. Off makes the block final." />
             </div>
             <div class="setting-row">
               <label>Distance units</label>
-              <select id="setting-placementUnits" style="width: 105px" title="How distances are written in the advice, key and check panel. Display only: thresholds stay in metres.">
+              <select id="setting-groundGuideUnits" style="width: 105px" title="How distances are written in the advice, key and check panel. Display only: thresholds stay in metres.">
                 <option value="metric" selected>m / km</option>
                 <option value="imperial">yd / mi</option>
                 <option value="nautical">m / nm</option>
@@ -3023,28 +3023,28 @@
             </div>
             <div class="setting-row">
               <label>P = change unit type</label>
-              <input type="checkbox" id="setting-placementProfileKey" checked title="While drawing, press P to judge the ground for a different unit type (dismounted, wheeled, tracked, ...) for that one symbol. It is stamped as chosen by hand." />
+              <input type="checkbox" id="setting-groundGuideProfileKey" checked title="While drawing, press P to judge the ground for a different unit type (dismounted, wheeled, tracked, ...) for that one symbol. It is stamped as chosen by hand." />
             </div>
             <div class="setting-row">
               <label>S = move to ground</label>
-              <input type="checkbox" id="setting-placementSnapKey" checked title="While drawing a point on ground the unit cannot use, press S to place it at the nearest usable ground." />
+              <input type="checkbox" id="setting-groundGuideSnapKey" checked title="While drawing a point on ground the unit cannot use, press S to place it at the nearest usable ground." />
             </div>
             <div class="setting-row">
               <label>Indicator lines</label>
-              <input type="checkbox" id="setting-placementIndicators" checked title="Draw a line from the symbol to the terrain that is the reason for the advice: nearest no-go (red), nearest deployable ground when inside no-go (green), or the contested part of a line/area." />
+              <input type="checkbox" id="setting-groundGuideIndicators" checked title="Draw a line from the symbol to the terrain that is the reason for the advice: nearest no-go (red), nearest deployable ground when inside no-go (green), or the contested part of a line/area." />
             </div>
             <div class="setting-row">
               <label>Line labels</label>
-              <input type="checkbox" id="setting-placementIndicatorLabels" checked title="Write the terrain class and distance at the end of the indicator line." />
+              <input type="checkbox" id="setting-groundGuideIndicatorLabels" checked title="Write the terrain class and distance at the end of the indicator line." />
             </div>
             <div class="sub-feature-label">Echelon footprint</div>
             <div class="setting-row">
               <label>By footprint</label>
-              <input type="checkbox" id="setting-placementFootprint" checked title="Judge a section, platoon, company, battalion or brigade on the ground it covers (frontage x depth) instead of its click point." />
+              <input type="checkbox" id="setting-groundGuideFootprint" checked title="Judge a section, platoon, company, battalion or brigade on the ground it covers (frontage x depth) instead of its click point." />
             </div>
             <div class="setting-row">
               <label>Facing</label>
-              <select id="setting-placementFacing" style="width: 105px" title="A placed symbol has no direction. Fixed uses the bearing; worst of 4 tries 0/45/90/135 degrees; circle uses a disc as wide as the frontage.">
+              <select id="setting-groundGuideFacing" style="width: 105px" title="A placed symbol has no direction. Fixed uses the bearing; worst of 4 tries 0/45/90/135 degrees; circle uses a disc as wide as the frontage.">
                 <option value="fixed" selected>Fixed bearing</option>
                 <option value="worst4">Worst of 4</option>
                 <option value="circle">Circle</option>
@@ -3052,11 +3052,11 @@
             </div>
             <div class="setting-row">
               <label>Bearing</label>
-              <input type="number" id="setting-placementBearing" min="0" max="359" step="5" value="0" style="width: 60px" title="Direction the frontage faces, degrees clockwise from north (0 = north)." />
+              <input type="number" id="setting-groundGuideBearing" min="0" max="359" step="5" value="0" style="width: 60px" title="Direction the frontage faces, degrees clockwise from north (0 = north)." />
             </div>
             <div class="setting-row">
               <label>Size</label>
-              <select id="setting-placementFootprintSize" style="width: 105px" title="Which end of the echelon's frontage / depth range the footprint uses.">
+              <select id="setting-groundGuideFootprintSize" style="width: 105px" title="Which end of the echelon's frontage / depth range the footprint uses.">
                 <option value="min">Minimum</option>
                 <option value="mid" selected>Middle</option>
                 <option value="max">Maximum</option>
@@ -3064,24 +3064,24 @@
             </div>
             <div class="setting-row">
               <label>Show outline</label>
-              <input type="checkbox" id="setting-placementFootprintOutline" checked title="Draw the footprint on the map while placing (blue), and neighbours that are too close (orange)." />
+              <input type="checkbox" id="setting-groundGuideFootprintOutline" checked title="Draw the footprint on the map while placing (blue), and neighbours that are too close (orange)." />
             </div>
             <div class="setting-row">
               <label>Check intergap</label>
-              <input type="checkbox" id="setting-placementSpacing" checked title="Warn when the gap to the next same-echelon symbol is below the minimum intergap, or the footprints overlap." />
+              <input type="checkbox" id="setting-groundGuideSpacing" checked title="Warn when the gap to the next same-echelon symbol is below the minimum intergap, or the footprints overlap." />
             </div>
             <div class="sub-feature-label">Map overlay</div>
             <div class="setting-row">
               <label>Show on map</label>
-              <input type="checkbox" id="setting-placementOverlay" title="Paint the terrain data on the map to see which areas are available: green deployable, yellow near no-go, amber caution, red no-go." />
+              <input type="checkbox" id="setting-groundGuideOverlay" title="Paint the terrain data on the map to see which areas are available: green deployable, yellow near no-go, amber caution, red no-go." />
             </div>
             <div class="setting-row">
               <label>Boundary</label>
-              <input type="checkbox" id="setting-placementBoundary" title="Draw the country boundary shipped with the terrain bundle: outline, provinces, the Line of Control and the international borders. In the official bundle all of Jammu &amp; Kashmir is on Pakistan's side." />
+              <input type="checkbox" id="setting-groundGuideBoundary" title="Draw the country boundary shipped with the terrain bundle: outline, provinces, the Line of Control and the international borders. In the official bundle all of Jammu &amp; Kashmir is on Pakistan's side." />
             </div>
             <div class="setting-row">
               <label>Paint for</label>
-              <select id="setting-placementOverlayProfile" style="width: 130px" title="Unit type the colours are for. Auto follows the symbol being drawn.">
+              <select id="setting-groundGuideOverlayProfile" style="width: 130px" title="Unit type the colours are for. Auto follows the symbol being drawn.">
                 <option value="auto" selected>Auto</option>
                 <option value="dismounted">Dismounted Force</option>
                 <option value="wheeled">Wheeled Vehicle</option>
@@ -3101,8 +3101,8 @@
             </div>
             <div class="setting-row">
               <label>Opacity</label>
-              <input type="range" id="setting-placementOverlayOpacity" min="0.1" max="1" step="0.05" value="0.6" style="width: 60px" title="Overlay opacity." />
-              <span class="value-display" id="placementOverlayOpacity-display">0.6</span>
+              <input type="range" id="setting-groundGuideOverlayOpacity" min="0.1" max="1" step="0.05" value="0.6" style="width: 60px" title="Overlay opacity." />
+              <span class="value-display" id="groundGuideOverlayOpacity-display">0.6</span>
             </div>
             <div class="setting-row" style="font-size: 10px; gap: 6px; flex-wrap: wrap">
               <span><span style="display:inline-block;width:9px;height:9px;background:rgb(46,160,90)"></span> go</span>
@@ -3113,51 +3113,51 @@
             <div class="sub-feature-label">Performance</div>
             <div class="setting-row">
               <label>Use worker</label>
-              <input type="checkbox" id="setting-placementWorker" checked title="Decode terrain tiles and paint the overlay in a Web Worker so panning does not stall the map. Falls back to the main thread if workers are unavailable." />
+              <input type="checkbox" id="setting-groundGuideWorker" checked title="Decode terrain tiles and paint the overlay in a Web Worker so panning does not stall the map. Falls back to the main thread if workers are unavailable." />
             </div>
             <div class="sub-feature-label">Data</div>
             <div class="setting-row">
               <label>Bundle URL</label>
-              <input type="text" id="setting-placementBundleUrl" value="/terrain-bundle" style="width: 110px" title="Folder URL holding manifest.json, rules.json and the tile folders, served as static files. Dev: npm run dev serves MS/Data/terrain-bundle here; node tools/terrain-synth.mjs makes a small synthetic bundle in public/." />
+              <input type="text" id="setting-groundGuideBundleUrl" value="/terrain-bundle" style="width: 110px" title="Folder URL holding manifest.json, rules.json and the tile folders, served as static files. Dev: npm run dev serves MS/Data/terrain-bundle here; node tools/terrain-synth.mjs makes a small synthetic bundle in public/." />
             </div>
             <div class="setting-row">
               <label>Status</label>
-              <span class="value-display" id="placement-status" style="width: auto; white-space: normal" title="Last advice and tile cache state">off</span>
+              <span class="value-display" id="ground-guide-status" style="width: auto; white-space: normal" title="Last advice and tile cache state">off</span>
             </div>
             <div class="setting-row">
               <label>Placed symbols</label>
-              <button type="button" id="placement-audit" title="Re-judge every symbol already on the map against the terrain and list the ones on ground their unit type cannot use.">Check all placements</button>
+              <button type="button" id="ground-guide-audit" title="Re-judge every symbol already on the map against the terrain and list the ones on ground their unit type cannot use.">Check all placements</button>
             </div>
             <div class="setting-row">
               <label>Terrain data</label>
-              <button type="button" id="placement-retry" title="Load the terrain bundle again, e.g. after the server came back.">Retry loading</button>
+              <button type="button" id="ground-guide-retry" title="Load the terrain bundle again, e.g. after the server came back.">Retry loading</button>
             </div>
             <div class="sub-feature-label">Important Tactical Ground (G)</div>
             <div class="setting-row">
               <label>ITG on card</label>
-              <input type="checkbox" id="setting-placementItg" checked title="List the Important Tactical Ground candidates round the cursor on the card: peaks, saddles, junctions and crossings that passed an objective test. Candidates only; the user designates ITG / MITG." />
+              <input type="checkbox" id="setting-groundGuideItg" checked title="List the Important Tactical Ground candidates round the cursor on the card: peaks, saddles, junctions and crossings that passed an objective test. Candidates only; the user designates ITG / MITG." />
             </div>
             <div class="setting-row">
               <label>Radius (km)</label>
-              <input type="number" id="setting-placementItgRadius" min="0.5" max="10" step="0.5" value="3" style="width: 60px" title="How far round the cursor the card looks for candidates." />
+              <input type="number" id="setting-groundGuideItgRadius" min="0.5" max="10" step="0.5" value="3" style="width: 60px" title="How far round the cursor the card looks for candidates." />
             </div>
             <div class="setting-row">
               <label>Show</label>
-              <select id="setting-placementItgLevel" style="width: 130px" title="Every candidate, or only strong candidates (check as MITG).">
+              <select id="setting-groundGuideItgLevel" style="width: 130px" title="Every candidate, or only strong candidates (check as MITG).">
                 <option value="1" selected>Every candidate</option>
                 <option value="2">Strong only</option>
               </select>
             </div>
             <div class="setting-row">
               <label>Map centre</label>
-              <button type="button" id="placement-itg-list" title="Log the ITG candidates within the radius of the map centre to the Engine Log.">List candidates</button>
-              <button type="button" id="placement-itg-itg" title="Draw an Imp Gr (ITG) round the strongest, nearest candidate to the map centre. It is an ordinary symbol, saved with the plan.">Designate ITG</button>
-              <button type="button" id="placement-itg-mitg" title="Draw a Vital Gr (MITG) round the strongest, nearest candidate to the map centre. It is an ordinary symbol, saved with the plan.">Designate MITG</button>
+              <button type="button" id="ground-guide-itg-list" title="Log the ITG candidates within the radius of the map centre to the Engine Log.">List candidates</button>
+              <button type="button" id="ground-guide-itg-itg" title="Draw an Imp Gr (ITG) round the strongest, nearest candidate to the map centre. It is an ordinary symbol, saved with the plan.">Designate ITG</button>
+              <button type="button" id="ground-guide-itg-mitg" title="Draw a Vital Gr (MITG) round the strongest, nearest candidate to the map centre. It is an ordinary symbol, saved with the plan.">Designate MITG</button>
             </div>
             <div class="sub-feature-label">People (B, Civil Considerations)</div>
             <div class="setting-row">
               <label>Card style</label>
-              <select id="setting-placementPopCard" style="width: 150px" title="How the card shows the people round the cursor (WorldPop 2026 estimate). Every style is kept to compare them: see placement-population-options.html.">
+              <select id="setting-groundGuidePopCard" style="width: 150px" title="How the card shows the people round the cursor (WorldPop 2026 estimate). Every style is kept to compare them: see ground-guide-population-options.html.">
                 <option value="off">Off</option>
                 <option value="line">A · One line</option>
                 <option value="scale" selected>B · Density scale</option>
@@ -3173,36 +3173,36 @@
             </div>
             <div class="setting-row">
               <label>Civil flag</label>
-              <input type="checkbox" id="setting-placementPopFlag" checked title="Pill and strip on the card when people near the position matter for the unit type (gun, AD, HLS, signals, vehicles). Advisory only." />
+              <input type="checkbox" id="setting-groundGuidePopFlag" checked title="Pill and strip on the card when people near the position matter for the unit type (gun, AD, HLS, signals, vehicles). Advisory only." />
             </div>
             <div class="setting-row">
               <label>Radius (km)</label>
-              <input type="number" id="setting-placementPopRadius" min="1" max="10" step="1" value="5" style="width: 60px" title="Radius the card's count, density class and age split are measured over." />
+              <input type="number" id="setting-groundGuidePopRadius" min="1" max="10" step="1" value="5" style="width: 60px" title="Radius the card's count, density class and age split are measured over." />
             </div>
             <div class="setting-row">
               <label>People layer</label>
-              <input type="checkbox" id="setting-placementPopLayer" title="Paint every ~1 km cell on the map by how many people live there, with a key." />
+              <input type="checkbox" id="setting-groundGuidePopLayer" title="Paint every ~1 km cell on the map by how many people live there, with a key." />
             </div>
             <div class="setting-row">
               <label>Map centre</label>
-              <button type="button" id="placement-pop-log" title="Write the Civil Considerations text for the map centre to the Engine Log (as Copy as Text would).">Log people at centre</button>
+              <button type="button" id="ground-guide-pop-log" title="Write the Civil Considerations text for the map centre to the Engine Log (as Copy as Text would).">Log people at centre</button>
             </div>
             <div class="sub-feature-label">Trafficability (T)</div>
             <div class="setting-row">
               <label>Road line</label>
-              <input type="checkbox" id="setting-placementTrafficRoad" checked title="Name the nearest road the mode can use on the card: tankable (class 60+) for tracks, all-weather for wheels, the MSR first when it is about as near. Helicopters get a landing line." />
+              <input type="checkbox" id="setting-groundGuideTrafficRoad" checked title="Name the nearest road the mode can use on the card: tankable (class 60+) for tracks, all-weather for wheels, the MSR first when it is about as near. Helicopters get a landing line." />
             </div>
             <div class="setting-row">
               <label>Rain pill</label>
-              <input type="checkbox" id="setting-placementTrafficPill" checked title="A pill in the card header when rain makes the going worse (Rain: NO-GO), or the season is wet." />
+              <input type="checkbox" id="setting-groundGuideTrafficPill" checked title="A pill in the card header when rain makes the going worse (Rain: NO-GO), or the season is wet." />
             </div>
             <div class="setting-row">
               <label>Second scale</label>
-              <input type="checkbox" id="setting-placementTrafficDual" title="A second GO / SLOW-GO / NO-GO scale under Why, for the other season." />
+              <input type="checkbox" id="setting-groundGuideTrafficDual" title="A second GO / SLOW-GO / NO-GO scale under Why, for the other season." />
             </div>
             <div class="setting-row">
               <label>Legend</label>
-              <select id="setting-placementTrafficLegend" style="width: 150px" title="What the Legend adds for T. The switch and the month stepper change the Cross-Country Going season.">
+              <select id="setting-groundGuideTrafficLegend" style="width: 150px" title="What the Legend adds for T. The switch and the month stepper change the Cross-Country Going season.">
                 <option value="none">No change</option>
                 <option value="label" selected>Caption</option>
                 <option value="season">Caption + Dry / After Rain</option>
@@ -3211,18 +3211,18 @@
             </div>
             <div class="setting-row">
               <label>Overlay by season</label>
-              <input type="checkbox" id="setting-placementTrafficOverlay" title="Paint the terrain overlay with the going for the season at the map centre, soil and wet ground included." />
+              <input type="checkbox" id="setting-groundGuideTrafficOverlay" title="Paint the terrain overlay with the going for the season at the map centre, soil and wet ground included." />
             </div>
             <div class="setting-row">
               <label>Verdict by season</label>
-              <select id="setting-placementTrafficHeader" style="width: 150px" title="Yes: a point on soil that is SLOW-GO or NO-GO for the season gets that verdict, and Enforce Mode refuses it.">
+              <select id="setting-groundGuideTrafficHeader" style="width: 150px" title="Yes: a point on soil that is SLOW-GO or NO-GO for the season gets that verdict, and Enforce Mode refuses it.">
                 <option value="dry" selected>No (ground classes)</option>
                 <option value="season">Yes (soil and wet ground)</option>
               </select>
             </div>
             <div class="setting-row">
               <label>Soil rule</label>
-              <select id="setting-placementTrafficRain" style="width: 150px" title="How soil changes the going: cone index against the vehicle's, soil bearing steps, or words only.">
+              <select id="setting-groundGuideTrafficRain" style="width: 150px" title="How soil changes the going: cone index against the vehicle's, soil bearing steps, or words only.">
                 <option value="cone" selected>Cone index</option>
                 <option value="bearing">Soil bearing steps</option>
                 <option value="words">Words only</option>
@@ -4523,45 +4523,45 @@
           path: ['features', 'proximityEngine'],
           value: v,
         }),
-        'setting-placementAdvisor': (v) => ({
-          path: ['features', 'placementAdvisor'],
+        'setting-groundGuide': (v) => ({
+          path: ['features', 'groundGuide'],
           value: v,
         }),
-        'setting-placementMode': (v) => ({ path: ['placement', 'mode'], value: v }),
-        'setting-placementNearM': (v) => ({ path: ['placement', 'nearThresholdM'], value: +v }),
-        'setting-placementBadge': (v) => ({ path: ['placement', 'showBadge'], value: v }),
-        'setting-placementAllowOverride': (v) => ({ path: ['placement', 'allowOverride'], value: v }),
-        'setting-placementUnits': (v) => ({ path: ['placement', 'units'], value: v }),
-        'setting-placementProfileKey': (v) => ({ path: ['placement', 'profileKey'], value: v }),
-        'setting-placementSnapKey': (v) => ({ path: ['placement', 'snapKey'], value: v }),
-        'setting-placementBundleUrl': (v) => ({ path: ['placement', 'bundleUrl'], value: v }),
-        'setting-placementIndicators': (v) => ({ path: ['placement', 'indicators', 'enabled'], value: v }),
-        'setting-placementIndicatorLabels': (v) => ({ path: ['placement', 'indicators', 'labels'], value: v }),
-        'setting-placementFootprint': (v) => ({ path: ['placement', 'footprint', 'enabled'], value: v }),
-        'setting-placementFacing': (v) => ({ path: ['placement', 'footprint', 'facing'], value: v }),
-        'setting-placementBearing': (v) => ({ path: ['placement', 'footprint', 'bearingDeg'], value: +v }),
-        'setting-placementFootprintSize': (v) => ({ path: ['placement', 'footprint', 'size'], value: v }),
-        'setting-placementFootprintOutline': (v) => ({ path: ['placement', 'footprint', 'outline'], value: v }),
-        'setting-placementSpacing': (v) => ({ path: ['placement', 'footprint', 'spacing'], value: v }),
-        'setting-placementItg': (v) => ({ path: ['placement', 'itg', 'enabled'], value: v }),
-        'setting-placementItgRadius': (v) => ({ path: ['placement', 'itg', 'radiusKm'], value: Number(v) }),
-        'setting-placementItgLevel': (v) => ({ path: ['placement', 'itg', 'minLevel'], value: Number(v) }),
-        'setting-placementPopCard': (v) => ({ path: ['placement', 'population', 'card'], value: v }),
-        'setting-placementPopFlag': (v) => ({ path: ['placement', 'population', 'flag'], value: v }),
-        'setting-placementPopRadius': (v) => ({ path: ['placement', 'population', 'radiusKm'], value: Number(v) }),
-        'setting-placementPopLayer': (v) => ({ path: ['placement', 'population', 'layer'], value: v }),
-        'setting-placementTrafficRoad': (v) => ({ path: ['placement', 'traffic', 'road'], value: v }),
-        'setting-placementTrafficPill': (v) => ({ path: ['placement', 'traffic', 'pill'], value: v }),
-        'setting-placementTrafficDual': (v) => ({ path: ['placement', 'traffic', 'dual'], value: v }),
-        'setting-placementTrafficLegend': (v) => ({ path: ['placement', 'traffic', 'legend'], value: v }),
-        'setting-placementTrafficOverlay': (v) => ({ path: ['placement', 'traffic', 'overlay'], value: v }),
-        'setting-placementTrafficHeader': (v) => ({ path: ['placement', 'traffic', 'header'], value: v }),
-        'setting-placementTrafficRain': (v) => ({ path: ['placement', 'traffic', 'rain'], value: v }),
-        'setting-placementWorker': (v) => ({ path: ['placement', 'useWorker'], value: v }),
-        'setting-placementOverlay': (v) => ({ path: ['placement', 'overlay', 'enabled'], value: v }),
-        'setting-placementBoundary': (v) => ({ path: ['placement', 'overlay', 'boundary'], value: v }),
-        'setting-placementOverlayProfile': (v) => ({ path: ['placement', 'overlay', 'profile'], value: v }),
-        'setting-placementOverlayOpacity': (v) => ({ path: ['placement', 'overlay', 'opacity'], value: +v }),
+        'setting-groundGuideMode': (v) => ({ path: ['groundGuide', 'mode'], value: v }),
+        'setting-groundGuideNearM': (v) => ({ path: ['groundGuide', 'nearThresholdM'], value: +v }),
+        'setting-groundGuideBadge': (v) => ({ path: ['groundGuide', 'showBadge'], value: v }),
+        'setting-groundGuideAllowOverride': (v) => ({ path: ['groundGuide', 'allowOverride'], value: v }),
+        'setting-groundGuideUnits': (v) => ({ path: ['groundGuide', 'units'], value: v }),
+        'setting-groundGuideProfileKey': (v) => ({ path: ['groundGuide', 'profileKey'], value: v }),
+        'setting-groundGuideSnapKey': (v) => ({ path: ['groundGuide', 'snapKey'], value: v }),
+        'setting-groundGuideBundleUrl': (v) => ({ path: ['groundGuide', 'bundleUrl'], value: v }),
+        'setting-groundGuideIndicators': (v) => ({ path: ['groundGuide', 'indicators', 'enabled'], value: v }),
+        'setting-groundGuideIndicatorLabels': (v) => ({ path: ['groundGuide', 'indicators', 'labels'], value: v }),
+        'setting-groundGuideFootprint': (v) => ({ path: ['groundGuide', 'footprint', 'enabled'], value: v }),
+        'setting-groundGuideFacing': (v) => ({ path: ['groundGuide', 'footprint', 'facing'], value: v }),
+        'setting-groundGuideBearing': (v) => ({ path: ['groundGuide', 'footprint', 'bearingDeg'], value: +v }),
+        'setting-groundGuideFootprintSize': (v) => ({ path: ['groundGuide', 'footprint', 'size'], value: v }),
+        'setting-groundGuideFootprintOutline': (v) => ({ path: ['groundGuide', 'footprint', 'outline'], value: v }),
+        'setting-groundGuideSpacing': (v) => ({ path: ['groundGuide', 'footprint', 'spacing'], value: v }),
+        'setting-groundGuideItg': (v) => ({ path: ['groundGuide', 'itg', 'enabled'], value: v }),
+        'setting-groundGuideItgRadius': (v) => ({ path: ['groundGuide', 'itg', 'radiusKm'], value: Number(v) }),
+        'setting-groundGuideItgLevel': (v) => ({ path: ['groundGuide', 'itg', 'minLevel'], value: Number(v) }),
+        'setting-groundGuidePopCard': (v) => ({ path: ['groundGuide', 'population', 'card'], value: v }),
+        'setting-groundGuidePopFlag': (v) => ({ path: ['groundGuide', 'population', 'flag'], value: v }),
+        'setting-groundGuidePopRadius': (v) => ({ path: ['groundGuide', 'population', 'radiusKm'], value: Number(v) }),
+        'setting-groundGuidePopLayer': (v) => ({ path: ['groundGuide', 'population', 'layer'], value: v }),
+        'setting-groundGuideTrafficRoad': (v) => ({ path: ['groundGuide', 'traffic', 'road'], value: v }),
+        'setting-groundGuideTrafficPill': (v) => ({ path: ['groundGuide', 'traffic', 'pill'], value: v }),
+        'setting-groundGuideTrafficDual': (v) => ({ path: ['groundGuide', 'traffic', 'dual'], value: v }),
+        'setting-groundGuideTrafficLegend': (v) => ({ path: ['groundGuide', 'traffic', 'legend'], value: v }),
+        'setting-groundGuideTrafficOverlay': (v) => ({ path: ['groundGuide', 'traffic', 'overlay'], value: v }),
+        'setting-groundGuideTrafficHeader': (v) => ({ path: ['groundGuide', 'traffic', 'header'], value: v }),
+        'setting-groundGuideTrafficRain': (v) => ({ path: ['groundGuide', 'traffic', 'rain'], value: v }),
+        'setting-groundGuideWorker': (v) => ({ path: ['groundGuide', 'useWorker'], value: v }),
+        'setting-groundGuideOverlay': (v) => ({ path: ['groundGuide', 'overlay', 'enabled'], value: v }),
+        'setting-groundGuideBoundary': (v) => ({ path: ['groundGuide', 'overlay', 'boundary'], value: v }),
+        'setting-groundGuideOverlayProfile': (v) => ({ path: ['groundGuide', 'overlay', 'profile'], value: v }),
+        'setting-groundGuideOverlayOpacity': (v) => ({ path: ['groundGuide', 'overlay', 'opacity'], value: +v }),
         'setting-uiTheme': (v) => ({ path: ['ui', 'theme'], value: v }),
         'setting-creationMode': (v) => ({ path: ['creationMode'], value: v }),
         // Measurement

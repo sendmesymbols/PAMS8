@@ -422,7 +422,7 @@
     "exportTools": true,
     "screenAnchor": false,
     "collab": false,
-    "placementAdvisor": false
+    "groundGuide": false
   },
   "collab": {
     "transport": "sse",
@@ -642,7 +642,7 @@
     "fontSize": 11,
     "fontColor": [0, 80, 200]
   },
-  "placement": {
+  "groundGuide": {
     "mode": "advise",
     "overlay": {
       "enabled": false,

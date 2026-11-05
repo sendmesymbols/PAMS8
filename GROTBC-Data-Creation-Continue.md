@@ -19,7 +19,7 @@ Still to do or decide
 No schools or government buildings: the Survey of Pakistan data has none, and its 77 markets are unnamed.
 Bund and river-bank changes: the two small changes I suggested (bund concealment, a river-bank strip) are not made yet. Say yes and I’ll do them.
 Routing: GROTBC-Roads.md holds the routing requirement and the decisions it needs from you.
-The card: the Placement Advisor does not read the new layers yet.
+The card: the Ground Guide does not read the new layers yet.
 Not opened in the app: I have not opened the bundle in the app.
 Nothing is committed: several tracked files changed and the scripts terrain.py, climate.py and fetch_soil.py are new. Say if you want me to commit.
 Delete out/ copies: these are still yours to delete. From tools/terrain-pipeline:
