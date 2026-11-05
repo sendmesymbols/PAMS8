@@ -3,6 +3,8 @@ import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import Map from '@arcgis/core/map';
 import MapImageLayer from '@arcgis/core/layers/MapImageLayer';
+import TileLayer from '@arcgis/core/layers/TileLayer';
+import type Layer from '@arcgis/core/layers/Layer';
 import Basemap from '@arcgis/core/Basemap';
 import ElevationLayer from '@arcgis/core/layers/ElevationLayer';
 import settingsData from '../MS/Data/Settings.json';
@@ -123,7 +125,7 @@ const offline = (settingsData as { offline?: boolean }).offline === true;
 // false — so they are consumed as MapImageLayers (not TileLayers). Each layer
 // loads with the existing "add if available" pattern: on load failure it warns
 // and removes itself, so an unreachable service never breaks app startup.
-const softLoad = (map: Map, layer: MapImageLayer, label: string): void => {
+const softLoad = (map: Map, layer: Layer, label: string): void => {
   layer.load().catch((error: unknown) => {
     console.warn(`[PAMS8] ${label} unavailable — removing layer.`, error);
     map.remove(layer);
@@ -213,6 +215,19 @@ const roadNetworkRef = new MapImageLayer({
 });
 baseMap.add(roadNetworkRef);
 softLoad(baseMap, roadNetworkRef, 'RoadNetwork MapServer');
+
+// Place names (countries, provinces, cities, towns) from Esri's online
+// World Boundaries and Places reference service — cached tiles, no API key.
+// Added on top of the road layers and below the symbol layers (those are
+// created later by GraphicsLayerManager). Needs internet: with no connection
+// softLoad removes it and the map simply has no labels.
+const placeLabels = new TileLayer({
+  url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer',
+  title: 'Place Names (Esri)',
+  listMode: 'show',
+});
+baseMap.add(placeLabels);
+softLoad(baseMap, placeLabels, 'Esri World Boundaries and Places');
 
 // Create 3D view first (as we want it active on startup)
 initialViewParams.map = baseMap;

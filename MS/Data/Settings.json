@@ -717,7 +717,10 @@
       "dual": false,
       "rain": "cone",
       "block": "band",
-      "where": "afterWhy"
+      "where": "afterWhy",
+      "roadSource": "network",
+      "access": true,
+      "accessRadiusKm": 15
     }
   },
   "stylus": {

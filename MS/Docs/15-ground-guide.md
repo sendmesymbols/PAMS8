@@ -337,6 +337,7 @@ swaps the source without reloading the bundle. The painter
 | `ground-guide-recheck`       | `GroundGuideAudit` — symbols re-judged after a move or edit |
 | `ground-guide-profile`       | `{ profile, overridden }` — the draw is now judged for this unit type (P key) |
 | `ground-guide-snap`          | `GroundGuideSnapResult` — the quick fix moved the symbol (`moved: true`) or found nowhere to go (`reason`) |
+| `ground-guide-access`        | `{ graphic, access }` — the way out by road after a placement (`traffic.access`; `GroundGuideAccess`) |
 
 ### Distance units
 
@@ -466,7 +467,7 @@ can be compared live before one set is chosen (GroundGuideTrafficability.ts, Gro
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `traffic.road` | on | A **T · Road** band after the going sections: the nearest road the mode can use within `roadRadiusKm` (3 km), from the bundle's road lines (`features/`, kind `road`). Tracks: a tankable road (tier `k` 3, class 60+). Wheels: an all-weather road (load code `A`, else not unmetalled), and a fair-weather road that is much nearer, marked SLOW-GO after rain. The MSR comes first when it is no more than half as far again. Foot on GO ground: "Not Needed". A helicopter landing site gets a **Landing** line (slope band, power lines within 100 m, soft after rain). Also in the Ground Brief under T. |
+| `traffic.road` | on | A **T · Road** band after the going sections: the nearest road the mode can use within `roadRadiusKm` (3 km), from the roads `traffic.roadSource` names. Tracks: a tankable road (tier `k` 3, class 60+). Wheels: an all-weather road (load code `A`, else not unmetalled), and a fair-weather road that is much nearer, marked SLOW-GO after rain. The MSR comes first when it is no more than half as far again. Foot on GO ground: "Not Needed". A helicopter landing site gets a **Landing** line (slope band, power lines within 100 m, soft after rain). Also in the Ground Brief under T. |
 | `traffic.pill` | on | A header pill when rain makes the going worse ("Rain: NO-GO"), or the season is wet ("After Rain: SLOW-GO"). |
 | `traffic.dual` | off | A second GO / SLOW-GO / NO-GO scale under Why, for the other season. |
 | `traffic.legend` | `label` | `none`; `label` a caption "T · Trafficability · Dry Season"; `season` adds a Dry / After Rain switch; `month` a month stepper with the month's rain at the map centre. The switch and stepper write `going.season` / `going.month`, so the card, the overlay and the settings panel follow. |
@@ -476,6 +477,16 @@ can be compared live before one set is chosen (GroundGuideTrafficability.ts, Gro
 
 | `traffic.block` | `band` | T as **one block** instead of the separate pieces (`off`: the Cross-Country and Movement sections and the Road band, as before). With a block on, those two going sections and the Road band are left out (the other card sections stay as set). `band` the going now in large type, then Why (soil, cone index against the vehicle's), Road (shield, name, distance, class tag, all-weather alternative) and Move (directions open); `gauge` one GO to NO-GO bar with sun and drop markers; `calendar` twelve months coloured by the going they leave, rain bars, this month outlined; `tiles` foot / wheels / tracks (and the mode placed) with dry and after-rain bars; `wayout` a line to the road coloured by the going crossed, ending in the road shield; `rose` the movement rose with the road marked on its rim (turns with the map); `ticker` one strip under the header; `tabs` Now / Rain / Road / Months, T cycles them while drawing. Compared side by side in `ground-guide-t-presentation.html`. |
 | `traffic.where` | `afterWhy` | `afterWhy`; `grotbc` after the G sections, before B; `folded` one line (going, after rain, road) that **T** opens and closes while drawing (with `tabs`: closed, each tab, closed). The ticker always sits under the header. |
+
+| `traffic.roadSource` | `network` | Where the road line's roads come from. `network`: the bundle's **routing network** (`network/gg/10/x/y.bin`, written by the pipeline's `network.py write_gg_roads`): the same edges, load classes, MSR, tankable and fair-weather flags GeoCore routes on and the map's roads layer draws, so the card, a route and the map name the same road the same way. OSM roads with the NCGDB classes attached, so roads the NCGDB does not map are found too. Residential, service and path edges are left out unless they are an MSR, tankable or load-classed (997 k edges, 38 MB for Pakistan; the largest tile is 1.9 MB). `ncgdb`: the NCGDB road lines of the feature tiles (`features/`, kind `road`), also the fallback for a bundle with no network. |
+| `traffic.access` | on | **Way out by road** after a unit or vehicle is placed: one request to the road server (GeoCore, through RoadNetworkEngine) for the route to the nearest MSR within `accessRadiusKm` (15 km; else the nearest tankable road for tracks, all-weather road for wheels), as **Tracked Vehicle** (tracked, amphibious) or **Wheeled Vehicle** (wheeled, gun, AD, signals, road-bound, generic); foot, helicopter, vessel and rail get none. A short card says "3.4 km by Road · 6 min to N-5 (MSR)" and the weakest bridge or lowest load class on the way, or "No Road Out for Tracked Vehicle" with the roads that close it; the route is drawn dashed red for 8 s. The answer is kept on the symbol (`attributes.groundGuide.access`) and sent as `ground-guide-access`. Never while drawing; nothing without a road server (`setRouter()`). |
+| `traffic.accessRadiusKm` | 15 | How far the way out looks for an MSR, km (1-30). |
+
+**Performance.** The road line reads only tiles in memory on each mouse move (a bounding box per edge leaves a few
+dozen edges to measure; well under a millisecond); tiles are typed-array views over one binary file each, fetched
+in the background, 24 kept. The way out is one HTTP request per placement, nothing while drawing.
+
+The card's MSR shield is red, as the roads layer draws the MSR (yellow there is a recorded class below 60).
 
 `v.traffic` on the verdict carries `{ road, pending, pill, dual, block, where, open, tab }`; `road.main` / `road.alt` give the road
 as the drawn styles need it (shield, name, tag, MSR, all-weather, distance, bearing). The going is `v.going`. Ctrl+K: *Trafficability (T)*.

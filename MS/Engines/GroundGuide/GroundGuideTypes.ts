@@ -739,6 +739,50 @@ export interface GroundGuideStamp {
   reason?: string;
   /** `profile` was chosen by hand for this draw (P key / `setProfileOverride()`), not derived from the SIDC. */
   profileOverride?: true;
+  /** The way out by road to the nearest MSR, asked of the road server just after placing (`traffic.access`). */
+  access?: GroundGuideAccess;
+}
+
+/** A road server the Ground Guide can ask for the way out (SymbolEngine adapts RoadNetworkEngine / GeoCore). */
+export interface GroundGuideRouter {
+  /** Travel modes the server offers ("Tracked Vehicle", ...); empty without military routing. */
+  travelModes(): string[];
+  /** A road route between two lng/lat points under a travel mode ('' = any vehicle). */
+  route(from: [number, number], to: [number, number], travelMode: string): Promise<GroundGuideRouteAnswer>;
+}
+
+export interface GroundGuideRouteAnswer {
+  ok: boolean;
+  /** Why not, in the server's words (for a travel mode: the roads that close the way). */
+  error?: string;
+  km?: number;
+  min?: number;
+  /** The route, lng/lat paths. */
+  paths?: number[][][];
+  /** Lowest recorded load class on the way (0 = none recorded) and the road it is on. */
+  minLoadClass?: number;
+  minLoadClassAt?: string;
+  /** The weakest crossing on the way ("bridge class 50-59 (Ravi Bridge)"), '' when none. */
+  limitingCrossing?: string;
+}
+
+/** The way out, as stamped on the graphic and shown on the card. */
+export interface GroundGuideAccess {
+  /** `ok` a road route; `on` already on (or by) the MSR; `blocked` no road out for the vehicle; `none` no MSR in reach; `error` server down. */
+  status: 'ok' | 'on' | 'blocked' | 'none' | 'error';
+  /** Travel mode asked ('' = any vehicle). */
+  mode: string;
+  /** The road it leads to ("N-5", or its name), and whether it is an MSR. */
+  to: string;
+  msr: boolean;
+  km?: number;
+  min?: number;
+  /** One line for the card ("3.4 km by Road · 6 min to N-5 (MSR)"). */
+  text: string;
+  /** A second line: the weakest point on the way, or what closes it. */
+  detail?: string;
+  /** The routing network the answer came from (network.json dataVersion). */
+  dataVersion?: string;
 }
 
 export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
@@ -775,7 +819,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   population: { enabled: true, card: 'scale', flag: true, radiusKm: 5, layer: false, layerOpacity: 0.7 },
   traffic: {
     road: true, roadRadiusKm: 3, legend: 'label', overlay: false, header: 'dry', pill: true, dual: false, rain: 'cone',
-    block: 'band', where: 'afterWhy',
+    block: 'band', where: 'afterWhy', roadSource: 'network', access: true, accessRadiusKm: 15,
   },
 };
 

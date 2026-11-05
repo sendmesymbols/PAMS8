@@ -923,7 +923,37 @@ class SymbolEngine implements Evented {
     }
     this._groundGuide.enable();
     this._registerGroundGuideMenu();
+    this._wireGroundGuideRouter();
     console.info('[SymbolEngine] GroundGuide loaded');
+  }
+
+  /**
+   * Give the Ground Guide the road server (RoadNetworkEngine → GeoCore) for the way out by road after a placement.
+   * Called when either engine comes up; a no-op until both exist and the road server has answered.
+   */
+  private _wireGroundGuideRouter(): void {
+    const gg = this._groundGuide;
+    const rn = this._roadNetworkEngine;
+    if (!gg || !rn) return;
+    gg.setRouter({
+      travelModes: () => rn.travelModes.map((m) => m.name),
+      route: async (from, to, travelMode) => {
+        const r = await rn.route(from, to, { travelMode });
+        if (!r.ok) return { ok: false, error: r.error };
+        const d = r.data;
+        const g = d.geometry;
+        const paths = (g?.type === 'LineString' ? [g.coordinates] : (g?.coordinates ?? [])) as number[][][];
+        return {
+          ok: true,
+          km: d.distanceKm,
+          min: d.travelTimeMin,
+          paths,
+          minLoadClass: d.military?.minLoadClass,
+          minLoadClassAt: d.military?.minLoadClassAt,
+          limitingCrossing: d.military?.limitingCrossing,
+        };
+      },
+    });
   }
 
   /** A moved or edited symbol is judged again, so its stamp stays true and the user hears when it ended up on bad ground. */
@@ -1043,6 +1073,7 @@ class SymbolEngine implements Evented {
         void this._roadNetworkEngine!.showRoadsLayer();
       }
       this._initTrafficabilityEngine();
+      this._wireGroundGuideRouter();
       this.emitEvent('roadNetworkEngineReady', { engine: this._roadNetworkEngine });
       console.info('[SymbolEngine] RoadNetworkEngine loaded');
     });
@@ -3736,6 +3767,8 @@ class SymbolEngine implements Evented {
       graphicsLayer.add(graphic);
       this._lastCreatedGraphic = graphic;
       console.info('Symbol Added');
+      // Ground Guide: the way out by road for the placed symbol (one background request; traffic.access).
+      if (groundGuideStamp) this._groundGuide?.afterPlace(graphic);
 
       // Minefield-style polygons render through PictureFillSymbol in 2D, but
       // SceneView refuses it. The symbol class has already stamped texture

@@ -23,13 +23,16 @@
  *   "ground-guide-audit"        – GroundGuideAudit (openAudit(): every symbol on the map re-judged)
  *   "ground-guide-recheck"      – GroundGuideAudit (symbols re-judged after a move / edit)
  *   "ground-guide-tiles"        – { loaded, pending, failed, missing }
+ *   "ground-guide-access"       – { graphic, access } (the way out by road after a placement; traffic.access)
  *
  * Integration: SymbolEngine feeds onDrawProgress, calls prepareFor() when a
- * draw is armed, checkCommit() before a graphic is added, deactivate() when the
- * draw ends, and onViewChanged() on a 2D↔3D switch.
+ * draw is armed, checkCommit() before a graphic is added, afterPlace() once it is
+ * on the map, deactivate() when the draw ends, and onViewChanged() on a 2D↔3D
+ * switch; setRouter() gives it a road server for the way out by road.
  */
 
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
+import Graphic from '@arcgis/core/Graphic';
 import { SYMBOL_LAYER_IDS } from '../../Managers/GraphicsLayerManager';
 import EngineLogger from '../../Support/EngineLogger';
 import { setSetting } from '../../Support/SettingsBus';
@@ -38,6 +41,7 @@ import { GroundGuideAuditPanel, type AuditPanelHandlers } from './GroundGuideAud
 import { GroundGuideBadge, plainLabel } from './GroundGuideBadge';
 import { GroundGuideBoundary } from './GroundGuideBoundary';
 import { GroundGuideFeatures } from './GroundGuideFeatures';
+import { GroundGuideRoads } from './GroundGuideRoads';
 import { GroundGuideBrief } from './GroundGuideBrief';
 import { GroundGuidePopulation as PopulationGrid, POPULATION_FLAGS } from './GroundGuidePopulation';
 import { createPopulationLayer } from './GroundGuidePopulationLayer';
@@ -85,6 +89,7 @@ import {
   NODATA_CLASS,
   layerNames,
   type MercXY,
+  type GroundGuideAccess,
   type GroundGuideAudit,
   type GroundGuideAuditEntry,
   type GoingSeason,
@@ -102,6 +107,7 @@ import {
   type GroundGuidePopulationCardStyle,
   type GroundGuidePopulationReading,
   type GroundGuideProfile,
+  type GroundGuideRouter,
   type GroundGuideSnapResult,
   type GroundGuideStamp,
   type GroundGuideStatus,
@@ -220,6 +226,15 @@ export default class GroundGuide {
   private _cache: TerrainTileCache | null = null;
   /** Bundle v2 point features (ITG candidates); null when the bundle has none. */
   private _features: GroundGuideFeatures | null = null;
+  /**
+   * The routing network's roads for the T road line (`traffic.roadSource: 'network'`): the same edges GeoCore routes
+   * on. Null when the bundle has none; the NCGDB road lines in `_features` are used then.
+   */
+  private _roads: GroundGuideRoads | null = null;
+  /** The road server asked for the way out after a placement (`setRouter`). */
+  private _router: GroundGuideRouter | null = null;
+  private _accessGraphic: Graphic | null = null;
+  private _accessTimer: ReturnType<typeof setTimeout> | undefined;
   /** Bundle v2 monthly climate (season for the going); null when the bundle has none. */
   private _climate: ClimateGrid | null = null;
   /** Bundle v2 population grid (B: people round the cursor); null when the bundle has none. */
@@ -363,6 +378,8 @@ export default class GroundGuide {
     this._cache = null;
     this._features?.destroy();
     this._features = null;
+    this._roads?.destroy();
+    this._roads = null;
     this._climate = null;
     this._removePopulationLayer();
     this._population?.destroy();
@@ -400,6 +417,13 @@ export default class GroundGuide {
       this._cache = new TerrainTileCache(this._source, this._opts.cacheTiles, () => this._onTilesChanged());
       const fm = manifest.grotbc?.features;
       this._features = fm ? new GroundGuideFeatures(base, fm, rules, () => this._onTilesChanged(false)) : null;
+      const nm = (manifest.grotbc as any)?.network;
+      if (typeof nm?.index === 'string') {
+        void GroundGuideRoads.open(base, nm.index, () => this._onTilesChanged(false)).then((roads) => {
+          if (token !== this._configToken) roads?.destroy();
+          else this._roads = roads;
+        });
+      }
       const cm = manifest.grotbc?.climate;
       this._climate = cm ? new ClimateGrid(`${base}/${cm.index}`, `${base}/${cm.data}`, () => this._onTilesChanged(false)) : null;
       const pm = manifest.grotbc?.population;
@@ -637,6 +661,9 @@ export default class GroundGuide {
       pick('traffic.rain', tr.rain, TRAFFIC_RAIN_RULES, (x) => (next.traffic.rain = x));
       pick('traffic.block', tr.block, TRAFFIC_BLOCK_STYLES, (x) => (next.traffic.block = x));
       pick('traffic.where', tr.where, TRAFFIC_WHERE, (x) => (next.traffic.where = x));
+      pick('traffic.roadSource', tr.roadSource, ['network', 'ncgdb'] as const, (x) => (next.traffic.roadSource = x));
+      flag('traffic.access', tr.access, (b) => (next.traffic.access = b));
+      num('traffic.accessRadiusKm', tr.accessRadiusKm, 1, 30, (n) => (next.traffic.accessRadiusKm = n));
     }
     this._reportIssues(issues);
     this._opts = next;
@@ -926,6 +953,142 @@ export default class GroundGuide {
     if (text) p.reason = text;
     else delete p.reason;
     return true;
+  }
+
+  // ── The way out by road (T, `traffic.access`) ────────────────────────────
+
+  /**
+   * The road server to ask for the way out after a placement (SymbolEngine passes one built on RoadNetworkEngine,
+   * which talks to GeoCore). Null switches the Access answer off.
+   */
+  setRouter(router: GroundGuideRouter | null): void {
+    this._router = router;
+  }
+
+  /**
+   * Called by SymbolEngine once a judged point symbol is on the map: when `traffic.access` is on and a road server is
+   * attached, ask it once (in the background) for the way out by road to the nearest MSR, for the symbol's vehicle.
+   * The answer is stamped on `graphic.attributes.groundGuide.access`, shown as a short card and the route drawn for a
+   * few seconds. Never runs while drawing; nothing happens without a server.
+   */
+  afterPlace(graphic: any): void {
+    const stamp = readStamp(graphic);
+    if (!stamp || !this._opts.traffic.access || !this._router || !this.isActive) return;
+    if (graphic?.geometry?.type !== 'point') return;
+    const mode = this._accessMode(stamp.profile);
+    if (mode === null) return;
+    void this._access(graphic, stamp, mode).catch((e) => EngineLogger.error(ENGINE, `Way out by road failed: ${e?.message ?? e}`));
+  }
+
+  /** The travel mode for a profile: Tracked Vehicle for tracks, Wheeled Vehicle for wheels, null when roads do not matter. */
+  private _accessMode(profile: GroundGuideProfile): string | null {
+    const want =
+      profile === 'tracked' || profile === 'amphibious' ? 'Tracked Vehicle'
+      : profile === 'wheeled' || profile === 'gun' || profile === 'ad' || profile === 'signals' || profile === 'roadbound' || profile === 'generic' ? 'Wheeled Vehicle'
+      : null;
+    if (want === null) return null;
+    return this._router?.travelModes().includes(want) ? want : ''; // '' = any vehicle, on a server without military modes
+  }
+
+  private async _access(graphic: any, stamp: GroundGuideStamp, mode: string): Promise<void> {
+    const at = toMercatorShape(graphic.geometry)?.parts[0]?.[0] as MercXY | undefined;
+    const src = this._roadSource();
+    const router = this._router;
+    if (!at || !src || !router) return;
+    const radiusM = this._opts.traffic.accessRadiusKm * 1000;
+    await src.whenReady(at, radiusM);
+    const near = src.roadsNear(at, radiusM).list;
+    const tracked = mode === 'Tracked Vehicle';
+    // The nearest MSR; else the nearest road the vehicle can use (tankable for tracks, all-weather for wheels).
+    // A numbered MSR (N-5, M-2) is preferred to a nearer stretch of unnumbered MSR (a slip road, a U-turn) when it is
+    // no more than half as far again.
+    const msr = near.find((h) => h.attrs.m);
+    const numbered = msr && !msr.attrs.r ? near.find((h) => h.attrs.m && h.attrs.r && h.distanceM <= msr.distanceM * 1.5 + 200) : undefined;
+    const target =
+      numbered
+      ?? msr
+      ?? near.find((h) => (tracked ? h.attrs.k === 3 : h.attrs.aw !== false))
+      ?? null;
+    const modeLabel = mode || 'Any Vehicle';
+    const roadLabel = (h: { attrs: Record<string, unknown> }) =>
+      String((h.attrs.r as string) || (h.attrs.n as string) || titleCase(String(h.attrs.t ?? 'road')));
+    const version = this._roads?.dataVersion || undefined;
+    let access: GroundGuideAccess;
+    if (!target) {
+      access = { status: 'none', mode, to: '', msr: false, text: `No MSR or ${tracked ? 'Tankable' : 'All-Weather'} Road within ${fmtDistance(radiusM)}`, dataVersion: version };
+    } else if (target.distanceM <= 150) {
+      access = { status: 'on', mode, to: roadLabel(target), msr: !!target.attrs.m, text: `On ${target.attrs.m ? 'MSR ' : ''}${roadLabel(target)} (${fmtDistance(target.distanceM)})`, dataVersion: version };
+    } else {
+      const from = mercatorToLngLat(at[0], at[1]) as [number, number];
+      const to = mercatorToLngLat(target.at[0], target.at[1]) as [number, number];
+      const r = await router.route(from, to, mode);
+      const name = `${roadLabel(target)}${target.attrs.m ? ' (MSR)' : ''}`;
+      if (r.ok && r.km !== undefined) {
+        // The server starts the route on the nearest road the vehicle may use, which can be the MSR itself: the
+        // stretch from the symbol to that road is cross-country and is said separately.
+        const p0 = r.paths?.[0]?.[0];
+        const offM = p0 ? GroundGuide._groundM(at, lngLatToMercator(p0[0], p0[1]) as MercXY) : 0;
+        const roadM = r.km * 1000;
+        const cross = offM >= 150 ? `${fmtDistance(offM)} Cross-Country` : '';
+        const byRoad = roadM >= 50 ? `${fmtDistance(roadM)} by Road · ${Math.max(1, Math.round(r.min ?? 0))} min` : '';
+        const weakest = roadM < 50
+          ? undefined
+          : r.limitingCrossing
+            ? `Weakest: ${titleCase(r.limitingCrossing)}`
+            : r.minLoadClass ? `Lowest Class ${r.minLoadClass}${r.minLoadClassAt ? ` (${r.minLoadClassAt})` : ''}` : undefined;
+        access = {
+          status: 'ok', mode, to: roadLabel(target), msr: !!target.attrs.m, km: r.km, min: r.min,
+          text: `${[cross, byRoad].filter(Boolean).join(', then ') || fmtDistance(Math.max(offM, roadM))} to ${name}`,
+          detail: weakest, dataVersion: version,
+        };
+        this._drawAccess(r.paths ?? null);
+      } else {
+        const blocked = /travel mode|restriction/i.test(r.error ?? '');
+        access = {
+          status: blocked ? 'blocked' : 'error', mode, to: roadLabel(target), msr: !!target.attrs.m,
+          text: blocked ? `No Road Out for ${modeLabel} to ${name}` : 'Road server did not answer',
+          detail: blocked ? String(r.error).replace(/^.*?they close:\s*/i, 'Closed by: ').slice(0, 220) : undefined,
+          dataVersion: version,
+        };
+      }
+    }
+    stamp.access = access;
+    if (access.status === 'error') return; // nothing to tell: the road server is down, the card says so elsewhere
+    this._badge.toast(
+      {
+        verdict: access.status === 'ok' || access.status === 'on' ? 'ok' : 'caution',
+        title: `Way Out by Road · ${modeLabel}`,
+        lines: [access.text, access.detail ?? ''].filter(Boolean),
+      },
+      access.status === 'ok' ? 8000 : 6000,
+    );
+    this._emit('ground-guide-access', { graphic, access });
+  }
+
+  /** Ground metres between two Web Mercator points. */
+  private static _groundM(a: MercXY, b: MercXY): number {
+    const lat = 2 * Math.atan(Math.exp((a[1] + b[1]) / 2 / 6378137)) - Math.PI / 2;
+    return Math.hypot(b[0] - a[0], b[1] - a[1]) * Math.cos(lat);
+  }
+
+  /** The way out on the map for a few seconds: dashed, in the roads layer's MSR red. */
+  private _drawAccess(paths: number[][][] | null): void {
+    const view: any = this._getView?.();
+    if (!view?.graphics || !paths?.length) return;
+    if (this._accessGraphic) view.graphics.remove(this._accessGraphic);
+    const g = new Graphic({
+      geometry: { type: 'polyline', paths, spatialReference: { wkid: 4326 } } as any,
+      symbol: { type: 'simple-line', color: [214, 69, 65, 0.95], width: 3, style: 'dash' } as any,
+    });
+    this._accessGraphic = g;
+    view.graphics.add(g);
+    clearTimeout(this._accessTimer);
+    this._accessTimer = setTimeout(() => {
+      if (this._accessGraphic === g) {
+        view.graphics?.remove(g);
+        this._accessGraphic = null;
+      }
+    }, 8000);
   }
 
   // ── Symbols already on the map ───────────────────────────────────────────
@@ -1373,6 +1536,12 @@ export default class GroundGuide {
     this._cache = null;
     this._features?.destroy();
     this._features = null;
+    this._roads?.destroy();
+    this._roads = null;
+    this._router = null;
+    clearTimeout(this._accessTimer);
+    if (this._accessGraphic) (this._getView?.() as any)?.graphics?.remove(this._accessGraphic);
+    this._accessGraphic = null;
     this._climate = null;
     this._population?.destroy();
     this._population = null;
@@ -1589,11 +1758,11 @@ export default class GroundGuide {
     let pending = false;
     if (t.road) {
       if (v.profile === 'hls') road = landingLine(v.classCode, pt ? pt.wet !== pt.dry : false);
-      else if (this._features) {
+      else if (this._roadSource()) {
         const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
         if (at) {
           const radiusM = t.roadRadiusKm * 1000;
-          const near = this._features.roadsNear(at, radiusM);
+          const near = this._roadSource()!.roadsNear(at, radiusM);
           pending = near.pending;
           const step: GoingStep = pt ? (wet ? pt.wet : pt.dry) : v.verdict === 'ok' || v.verdict === 'near' ? 'go' : v.verdict === 'caution' ? 'slow' : 'nogo';
           road = pickRoad(v.profile, step, wet, near.list, radiusM);
@@ -1602,6 +1771,15 @@ export default class GroundGuide {
     }
     if (!road && !t.pill && !t.dual && !blockOn) return null;
     return { road, pending, pill: t.pill, dual: t.dual, block: t.block, where: t.where, open: this._trafficOpen, tab: this._trafficTab };
+  }
+
+  /**
+   * Where the road line's roads come from: the routing network (the roads GeoCore routes on and the map draws) when
+   * `traffic.roadSource` is `network` and the bundle ships it, else the NCGDB road lines of the feature tiles.
+   */
+  private _roadSource(): GroundGuideRoads | GroundGuideFeatures | null {
+    if (this._opts.traffic.roadSource === 'network' && this._roads) return this._roads;
+    return this._features;
   }
 
   /**

@@ -46,6 +46,10 @@ MIN_SHARE = 0.3          # a candidate NCGDB line must cover this share of the e
 SIMPLIFY_M = 5.0
 TILE_Z = 10
 QUANT = 4096
+# Zoomed-out maps draw main roads only (motorway, trunk, primary and their links) from these bigger tiles, so a
+# wide view needs a handful of small files instead of dozens of full z10 ones.
+OVERVIEW_Z = 8
+OVERVIEW_MAX_CLAZZ = 16
 DEFAULT_NETWORK = r"D:\Projects\GeoCore\RoutingData\Network.gdb"
 
 EDGE_DTYPE = np.dtype([
@@ -451,6 +455,7 @@ def build(args) -> int:
     (out / "names.json").write_text(json.dumps(names, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
     write_tiles(out)
+    write_gg_roads(out)
     write_routes(e, gs, names, out / "routes.json")
     version = hashlib.sha256((out / "edges.bin").read_bytes()).hexdigest()[:16]
     header(e, ids, names, glon, rules, args, version, out)
@@ -459,10 +464,17 @@ def build(args) -> int:
 
 
 def write_tiles(out: Path) -> None:
-    """network/tiles/10/{x}/{y}.json from the written edges.bin, nodes.bin and geom.bin, so the map draws exactly the
-    edges GeoCore routes on. Each edge goes in the z10 tile of its middle (edges are short; the few long ones overhang
+    """The full z10 tiles, then the main-road overview tiles a zoomed-out map draws from."""
+    _write_tiles(out, TILE_Z)
+    _write_tiles(out, OVERVIEW_Z, OVERVIEW_MAX_CLAZZ)
+
+
+def _write_tiles(out: Path, z: int, max_clazz: int | None = None) -> None:
+    """network/tiles/{z}/{x}/{y}.json from the written edges.bin, nodes.bin and geom.bin, so the map draws exactly the
+    edges GeoCore routes on. Each edge goes in the tile of its middle (edges are short; the few long ones overhang
     their tile). A line is [edge index, clazz, flags, load, xing, name, rno, [x0, y0, x1, y1, ...]] in tile units
-    (0..QUANT-1 inside the tile, Web Mercator, y down); name / rno index names.json."""
+    (0..QUANT-1 inside the tile, Web Mercator, y down); name / rno index names.json. With max_clazz only those road
+    classes go in (the overview level), and points that quantise onto the one before are dropped."""
     e = np.fromfile(out / "edges.bin", dtype=EDGE_DTYPE)
     nodes = np.fromfile(out / "nodes.bin", dtype="<f4").reshape(-1, 2).astype("float64")
     geom = np.fromfile(out / "geom.bin", dtype="<f4").reshape(-1, 2).astype("float64")
@@ -473,13 +485,17 @@ def write_tiles(out: Path) -> None:
         return np.column_stack([x, y])
 
     nm, gm = merc(nodes), merc(geom)
-    size = 2 * ORIGIN_SHIFT / 2 ** TILE_Z
+    size = 2 * ORIGIN_SHIFT / 2 ** z
     a, b = nm[e["src"]], nm[e["dst"]]
+    if max_clazz is not None:
+        keep = np.flatnonzero(e["clazz"] <= max_clazz)
+    else:
+        keep = np.arange(len(e))
     mid = (a + b) / 2
     tx = np.floor((mid[:, 0] + ORIGIN_SHIFT) / size).astype(np.int64)
     ty = np.floor((ORIGIN_SHIFT - mid[:, 1]) / size).astype(np.int64)
     key = tx * 100000 + ty
-    order = np.argsort(key, kind="stable")
+    order = keep[np.argsort(key[keep], kind="stable")]
     groups = np.split(order, np.flatnonzero(np.diff(key[order])) + 1)
     tiles = out / "tiles"
     n_t = 0
@@ -494,15 +510,98 @@ def write_tiles(out: Path) -> None:
             q = np.empty((len(c), 2), np.int64)
             q[:, 0] = np.rint((c[:, 0] - minx) / size * QUANT)
             q[:, 1] = np.rint((maxy - c[:, 1]) / size * QUANT)
+            if max_clazz is not None and len(q) > 2:
+                moved = np.any(np.diff(q, axis=0) != 0, axis=1)
+                q = q[np.concatenate([[True], moved[:-1], [True]])]
             lines.append([int(i), int(r["clazz"]), int(r["flags"]), int(r["load"]), int(r["xing"]), int(r["name"]),
                           int(r["rno"]), q.ravel().tolist()])
-        p = tiles / str(TILE_Z) / str(x) / f"{y}.json"
+        p = tiles / str(z) / str(x) / f"{y}.json"
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps({"z": TILE_Z, "x": x, "y": y, "q": QUANT,
+        p.write_text(json.dumps({"z": z, "x": x, "y": y, "q": QUANT,
                                  "cols": ["edge", "clazz", "flags", "load", "xing", "name", "rno", "xy"], "l": lines},
                                 separators=(",", ":")), encoding="utf-8")
         n_t += 1
-    log.info("tiles: %d z%d tiles", n_t, TILE_Z)
+    log.info("tiles: %d z%d tiles%s", n_t, z, f" (road classes up to {max_clazz})" if max_clazz is not None else "")
+
+
+GG_DIR = "gg"
+GG_MAGIC = b"GGR1"
+GG_QUANT = 65535
+# OSM classes left out of the Ground Guide set unless the edge is an MSR, tankable or has a recorded load class:
+# residential streets, the unknown "road" class, service roads and paths (1.8 M of the 2.76 M edges).
+GG_SKIP_CLAZZ = (41, 42, 51, 81, 91)
+GG_INFO = {"tiles": GG_DIR + "/{z}/{x}/{y}.bin", "z": TILE_Z, "format": "GGR1", "quant": GG_QUANT,
+           "skipClazz": list(GG_SKIP_CLAZZ),
+           "note": "the roads the Ground Guide card names; all but residential, service, unknown and path edges, "
+                   "plus any MSR, tankable or load-classed one; layout in network.py write_gg_roads"}
+
+
+def write_gg_roads(out: Path) -> None:
+    """network/gg/10/{x}/{y}.bin: the roads the Ground Guide card names (T, the road line), the same edges and
+    attributes GeoCore routes on, packed small so the card can search them on every mouse move.
+
+    One little-endian file per z10 tile, each edge in the tile of its middle:
+      magic "GGR1" | count u32 | npts u32
+      edge u32[count] | name u32[count] | rno u32[count] | start u32[count+1]   (start: first point of each edge)
+      flags u16[count] | xy u16[2*npts] | clazz u8[count] | load u8[count] | xing u8[count]
+    xy spans the tile plus half a tile each side (edges overhang the tile they are filed in):
+      x = tileMinX - size/2 + xy/65535 * 2*size,  y = tileMaxY + size/2 - xy/65535 * 2*size   (Web Mercator)."""
+    e = np.fromfile(out / "edges.bin", dtype=EDGE_DTYPE)
+    nodes = np.fromfile(out / "nodes.bin", dtype="<f4").reshape(-1, 2).astype("float64")
+    geom = np.fromfile(out / "geom.bin", dtype="<f4").reshape(-1, 2).astype("float64")
+
+    def merc(ll):
+        return np.column_stack([np.radians(ll[:, 0]) * 6378137.0,
+                                np.log(np.tan(np.pi / 4 + np.radians(np.clip(ll[:, 1], -85.0511, 85.0511)) / 2)) * 6378137.0])
+
+    flags = e["flags"].astype(np.int64)
+    military = (flags & ((1 << FLAG_BITS["msr"]) | (1 << FLAG_BITS["tankable"]))) != 0
+    keep = np.flatnonzero(~np.isin(e["clazz"], GG_SKIP_CLAZZ) | military | (e["load"] > 0))
+    nm, gm = merc(nodes), merc(geom)
+    size = 2 * ORIGIN_SHIFT / 2 ** TILE_Z
+    mid = (nm[e["src"][keep]] + nm[e["dst"][keep]]) / 2
+    tx = np.floor((mid[:, 0] + ORIGIN_SHIFT) / size).astype(np.int64)
+    ty = np.floor((ORIGIN_SHIFT - mid[:, 1]) / size).astype(np.int64)
+    order = np.argsort(tx * 100000 + ty, kind="stable")
+    keep, tx, ty = keep[order], tx[order], ty[order]
+
+    # Every kept edge's points in one array, edge after edge: its start node, its inner points, its end node.
+    gn = e["gn"][keep].astype(np.int64)
+    counts = gn + 2
+    first = np.concatenate([[0], np.cumsum(counts)])
+    owner = np.repeat(np.arange(len(keep)), counts)
+    within = np.arange(first[-1]) - first[owner]
+    pts = gm[np.minimum(e["g0"][keep].astype(np.int64)[owner] + within - 1, len(gm) - 1)] if len(gm) else np.zeros((first[-1], 2))
+    is_src, is_dst = within == 0, within == counts[owner] - 1
+    pts[is_src] = nm[e["src"][keep][owner[is_src]]]
+    pts[is_dst] = nm[e["dst"][keep][owner[is_dst]]]
+
+    key = tx * 100000 + ty
+    cuts = np.concatenate([[0], np.flatnonzero(np.diff(key)) + 1, [len(keep)]])
+    root = out / GG_DIR / str(TILE_Z)
+    n_t, n_bytes = 0, 0
+    for s, t in zip(cuts[:-1], cuts[1:]):
+        x, y = int(tx[s]), int(ty[s])
+        ox, oy = -ORIGIN_SHIFT + x * size - size / 2, ORIGIN_SHIFT - y * size + size / 2
+        ids = keep[s:t]
+        p = pts[first[s]:first[t]]
+        q = np.empty((len(p), 2), "<u2")
+        q[:, 0] = np.clip(np.rint((p[:, 0] - ox) / (2 * size) * GG_QUANT), 0, GG_QUANT)
+        q[:, 1] = np.clip(np.rint((oy - p[:, 1]) / (2 * size) * GG_QUANT), 0, GG_QUANT)
+        r = e[ids]
+        blob = b"".join([
+            GG_MAGIC, np.array([len(ids), len(p)], "<u4").tobytes(),
+            ids.astype("<u4").tobytes(), r["name"].astype("<u4").tobytes(), r["rno"].astype("<u4").tobytes(),
+            (first[s:t + 1] - first[s]).astype("<u4").tobytes(),
+            r["flags"].astype("<u2").tobytes(), q.tobytes(),
+            r["clazz"].astype("u1").tobytes(), r["load"].astype("u1").tobytes(), r["xing"].astype("u1").tobytes(),
+        ])
+        f = root / str(x) / f"{y}.bin"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(blob)
+        n_t += 1
+        n_bytes += len(blob)
+    log.info("ground guide roads: %d edges in %d z%d tiles, %.1f MB", len(keep), n_t, TILE_Z, n_bytes / 1e6)
 
 
 def edge_geoms(out: Path):
@@ -566,7 +665,10 @@ def header(e, ids, names, glon, rules, args, version: str, out: Path) -> None:
         "files": {"nodes": "nodes.bin", "edges": "edges.bin", "geom": "geom.bin", "names": "names.json",
                   "tiles": "tiles/{z}/{x}/{y}.json", "routes": "routes.json"},
         "tiles": {"z": TILE_Z, "quant": QUANT, "cols": ["edge", "clazz", "flags", "load", "xing", "name", "rno", "xy"],
-                  "note": "each edge in the z10 tile of its middle; xy in tile units 0..quant-1, Web Mercator, y down"},
+                  "note": "each edge in the z10 tile of its middle; xy in tile units 0..quant-1, Web Mercator, y down",
+                  "overview": {"z": OVERVIEW_Z, "maxClazz": OVERVIEW_MAX_CLAZZ,
+                               "note": "main roads only, same columns, for zoomed-out maps"}},
+        "groundGuide": GG_INFO,
         "nodes": "float32 little-endian [lon, lat] per node",
         "edge": {"bytes": EDGE_DTYPE.itemsize, "fields": [[k, str(EDGE_DTYPE.fields[k][0])] for k in EDGE_DTYPE.names],
                  "flagBits": FLAG_BITS,
@@ -614,6 +716,7 @@ def main() -> int:
     args = ap.parse_args()
     if args.tiles_only:
         write_tiles(args.out)
+        write_gg_roads(args.out)
         return 0
     if args.routes_only:
         sys.path.insert(0, str(Path(__file__).resolve().parent))

@@ -64,7 +64,8 @@ const CSS = `
 .ms-ggb-tkv>.ms-ggb-tk{color:#9aa3ad;font-size:11px;padding-top:1px}
 .ms-ggb-troad{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .ms-ggb-tshield{flex:none;font:800 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;padding:3px 5px;border-radius:3px;background:#f3f5f7;color:#1b1f25;letter-spacing:.02em}
-.ms-ggb-tshield.ms-msr{background:#ffd24a}
+/* MSR red, as the roads layer draws it (BundleRoadsLayer: there yellow is a recorded class below 60). */
+.ms-ggb-tshield.ms-msr{background:#d64541;color:#fff}
 .ms-ggb-ttag{display:inline-block;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;background:#25313c;color:#b9d6ef;white-space:nowrap;margin-top:3px}
 .ms-ggb-tg{position:relative;margin:21px 2px 4px}
 .ms-ggb-tgt{display:grid;grid-template-columns:1fr 1fr 1fr;height:10px;border-radius:5px;overflow:hidden}
@@ -339,7 +340,7 @@ function blockRose(v: GroundGuideVerdict, t: TView, northDeg: number): HTMLEleme
     const a = (m.bearingDeg * Math.PI) / 180;
     const x = c + 41 * Math.sin(a);
     const y = c - 41 * Math.cos(a);
-    grp.append(svgEl('rect', { x: x - 5, y: y - 5, width: 10, height: 10, rx: 2, fill: m.msr ? '#ffd24a' : '#f3f5f7', stroke: '#1b1f25', 'stroke-width': 1.5 }));
+    grp.append(svgEl('rect', { x: x - 5, y: y - 5, width: 10, height: 10, rx: 2, fill: m.msr ? '#d64541' : '#f3f5f7', stroke: '#1b1f25', 'stroke-width': 1.5 }));
   }
   const text = el('div');
   text.append(el('div', 'ms-ggb-tbig', WORD[t.now]), el('div', 'ms-ggb-soft', moveText(v) ?? ''));

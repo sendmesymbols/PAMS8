@@ -3,8 +3,10 @@
  * Draws the terrain bundle's road network (`<bundle>/network/tiles/10/x/y.json`): the SAME edges, attributes and
  * dataVersion the GeoCore routing server solves on, so a road has the same class on the map as in a route.
  *
- * Headless-safe and best-effort: a missing bundle or tile is logged and skipped, never thrown. Only the z10 tiles in
- * view are fetched (LRU-cached), and road classes are thinned by zoom so a country view is not millions of lines.
+ * Headless-safe and best-effort: a missing bundle or tile is logged and skipped, never thrown. Only the tiles in view
+ * are fetched (LRU-cached), and road classes are thinned by zoom so a country view is not millions of lines. Below
+ * zoom 11 only main roads are drawn, from the bundle's small main-roads overview tiles (tiles.overview in
+ * network.json, z8) when it has them, so a wide view fetches a handful of files rather than dozens of full z10 ones.
  *
  * Styling (military first): main supply route red and widest; recorded load class 60+ (tankable) orange; a recorded
  * class below 60 yellow; no recorded class grey, dashed on main roads so "class not recorded" is visible.
@@ -20,7 +22,10 @@ import type SceneView from '@arcgis/core/views/SceneView';
 const ENGINE_NAME = 'BundleRoadsLayer';
 const ORIGIN = 20037508.342789244;
 const TILE_Z = 10;
-const MAX_TILES = 48;
+/** Most tiles one view may need; past this the view is too far out for the level and draws nothing. */
+const MAX_VIEW_TILES = 96;
+/** Tiles kept in the LRU cache (at least one full view). */
+const MAX_CACHED = 128;
 
 /** Flag bits of a network edge (network.json edge.flagBits). */
 export const ROAD_FLAGS = {
@@ -90,6 +95,8 @@ export default class BundleRoadsLayer {
   private _watch: { remove(): void } | null = null;
   private _drawnZoomBand = -1;
   private _gen = 0;
+  /** network.json tiles.overview: a main-roads-only level for zoomed-out maps (bundles built before it have none). */
+  private _overview: { z: number; maxClazz: number } | null = null;
   dataVersion = '';
 
   constructor(private readonly _opts: BundleRoadsOptions) {}
@@ -105,6 +112,8 @@ export default class BundleRoadsLayer {
       if (!r.ok) return false;
       const j = await r.json();
       this.dataVersion = String(j?.dataVersion ?? '');
+      const ov = j?.tiles?.overview;
+      this._overview = ov && Number.isFinite(ov.z) && Number.isFinite(ov.maxClazz) ? { z: ov.z, maxClazz: ov.maxClazz } : null;
       return j?.format === 'pams-road-network';
     } catch {
       return false;
@@ -191,16 +200,17 @@ export default class BundleRoadsLayer {
   }
 
   /** Smallest class drawn at a zoom (bigger code = minor road). */
-  private static _maxClazz(zoom: number): number {
-    if (zoom < 9) return 0;
+  private _maxClazz(zoom: number): number {
+    if (zoom < 7) return 0;
+    if (zoom < 9) return this._overview ? 14 : 0; // motorway, trunk (from the overview tiles only)
     if (zoom < 11) return 16; // motorway, trunk, primary
     if (zoom < 12) return 22; // + secondary
     if (zoom < 14) return 43; // + tertiary, unclassified (residential / service at 14+)
     return 99;
   }
 
-  private static _zoomBand(zoom: number): number {
-    return BundleRoadsLayer._maxClazz(zoom);
+  private _zoomBand(zoom: number): number {
+    return this._maxClazz(zoom);
   }
 
   private async _refresh(): Promise<void> {
@@ -209,7 +219,9 @@ export default class BundleRoadsLayer {
     if (!view || !layer || !view.extent) return;
     const gen = ++this._gen;
     const zoom = (view as any).zoom ?? 0;
-    const maxClazz = BundleRoadsLayer._maxClazz(zoom);
+    const maxClazz = this._maxClazz(zoom);
+    // Main roads only: the small overview tiles hold all of them; otherwise the full z10 tiles.
+    const z = this._overview && maxClazz <= this._overview.maxClazz ? this._overview.z : TILE_Z;
     if (maxClazz === 0) {
       layer.removeAll();
       this._drawnZoomBand = 0;
@@ -228,23 +240,23 @@ export default class BundleRoadsLayer {
     };
     const [x0, y0] = toMerc(ext.xmin, ext.ymin);
     const [x1, y1] = toMerc(ext.xmax, ext.ymax);
-    const size = (2 * ORIGIN) / 2 ** TILE_Z;
+    const size = (2 * ORIGIN) / 2 ** z;
     const tx0 = Math.floor((x0 + ORIGIN) / size), tx1 = Math.floor((x1 + ORIGIN) / size);
     const ty0 = Math.floor((ORIGIN - y1) / size), ty1 = Math.floor((ORIGIN - y0) / size);
-    if ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > MAX_TILES) {
+    if ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > MAX_VIEW_TILES) {
       layer.removeAll();
       return; // too far out: the zoom thinning above should prevent this
     }
     const want: string[] = [];
-    for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) want.push(`${tx}/${ty}`);
+    for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) want.push(`${z}/${tx}/${ty}`);
     await Promise.all(want.map((k) => this._load(k, size)));
     if (gen !== this._gen || !this._layer) return;
-    const band = BundleRoadsLayer._zoomBand(zoom);
+    const band = this._zoomBand(zoom);
     const graphics: Graphic[] = [];
     for (const k of want) {
       const t = this._cache.get(k);
       if (!t) continue;
-      if (this._drawnZoomBand !== band || !t.graphics.length) t.graphics = this._build(t, maxClazz);
+      if (this._drawnZoomBand !== band || !t.graphics.length) t.graphics = this._build(t, maxClazz, z !== TILE_Z);
       graphics.push(...t.graphics);
     }
     this._drawnZoomBand = band;
@@ -261,18 +273,18 @@ export default class BundleRoadsLayer {
     }
     if (this._missing.has(key)) return;
     try {
-      const r = await fetch(`${this._base()}/network/tiles/${TILE_Z}/${key}.json`);
+      const r = await fetch(`${this._base()}/network/tiles/${key}.json`); // key = z/x/y
       if (!r.ok) {
         this._missing.add(key);
         return;
       }
       const j = await r.json();
-      const [tx, ty] = key.split('/').map(Number);
+      const [, tx, ty] = key.split('/').map(Number);
       this._cache.set(key, {
         key, graphics: [], raw: j.l ?? [], q: j.q ?? 4096, size,
         minx: -ORIGIN + tx * size, maxy: ORIGIN - ty * size,
       });
-      while (this._cache.size > MAX_TILES) {
+      while (this._cache.size > MAX_CACHED) {
         const oldest = this._cache.keys().next().value as string;
         this._cache.delete(oldest);
       }
@@ -287,8 +299,14 @@ export default class BundleRoadsLayer {
     return { edge: ln[0], clazz: ln[1], flags: ln[2], load: ln[3], xing: ln[4], name: names[ln[5]] ?? '', roadNo: names[ln[6]] ?? '' };
   }
 
-  private _build(t: TileData, maxClazz: number): Graphic[] {
+  /**
+   * Graphics for a tile. `merge` (the zoomed-out overview) joins every road of one style into a single multi-path
+   * graphic: a wide view holds tens of thousands of main-road edges, far more than a GraphicsLayer draws smoothly.
+   * Per-road popups then start at the full-detail zoom; roadAt() still answers from the raw lines.
+   */
+  private _build(t: TileData, maxClazz: number, merge = false): Graphic[] {
     const out: Graphic[] = [];
+    const merged = new Map<string, { symbol: object; paths: number[][][] }>();
     for (const ln of t.raw) {
       const clazz: number = ln[1];
       if (clazz > maxClazz) continue;
@@ -299,6 +317,14 @@ export default class BundleRoadsLayer {
       }
       if (path.length < 2) continue;
       const road = this._road(ln);
+      if (merge) {
+        const symbol = BundleRoadsLayer._symbol(road);
+        const k = JSON.stringify(symbol);
+        const m = merged.get(k);
+        if (m) m.paths.push(path);
+        else merged.set(k, { symbol, paths: [path] });
+        continue;
+      }
       out.push(new Graphic({
         geometry: new Polyline({ paths: [path], spatialReference: { wkid: 102100 } }),
         symbol: BundleRoadsLayer._symbol(road) as any,
@@ -307,6 +333,14 @@ export default class BundleRoadsLayer {
           description: BundleRoadsLayer.describe(road),
         },
         popupTemplate: { title: road.roadNo || road.name || 'Road', content: '{description}' } as any,
+      }));
+    }
+    // Narrowest style first, so the widest (MSR red) is drawn on top.
+    const styles = [...merged.values()].sort((a, b) => ((a.symbol as any).width ?? 0) - ((b.symbol as any).width ?? 0));
+    for (const m of styles) {
+      out.push(new Graphic({
+        geometry: new Polyline({ paths: m.paths, spatialReference: { wkid: 102100 } }),
+        symbol: m.symbol as any,
       }));
     }
     return out;

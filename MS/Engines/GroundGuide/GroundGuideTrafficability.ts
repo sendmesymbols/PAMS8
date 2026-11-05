@@ -48,6 +48,20 @@ export interface GroundGuideTrafficOptions {
   block: TrafficBlockStyle;
   /** Where the block sits: right after Why, in GROTBC order (after G, before B), or folded to one line until T. */
   where: TrafficWhere;
+  /**
+   * Where the road line's roads come from. `network`: the routing network in the bundle (the roads GeoCore routes on
+   * and the map's roads layer draws: one source, one answer); the NCGDB lines when the bundle has no network.
+   * `ncgdb`: the NCGDB road lines of the feature tiles.
+   */
+  roadSource: 'network' | 'ncgdb';
+  /**
+   * After a symbol is placed, ask the road server (GeoCore) for the way out by road to the nearest MSR, for the
+   * symbol's vehicle (Tracked Vehicle for tracks, Wheeled Vehicle for wheels); one request per placement, never while
+   * moving. Needs a road server with military travel modes; says nothing without one.
+   */
+  access: boolean;
+  /** How far the way out looks for an MSR, km (the road line's road is used when none is in reach). */
+  accessRadiusKm: number;
 }
 
 export type TrafficBlockStyle = 'off' | 'band' | 'gauge' | 'calendar' | 'tiles' | 'wayout' | 'rose' | 'ticker' | 'tabs';
@@ -118,8 +132,12 @@ function roadClass(a: Record<string, unknown>): number | null {
   return Number.isFinite(c) ? c : null;
 }
 
-/** All-weather unless the load code says F, or the road is unmetalled, shingled or a track. */
+/**
+ * All-weather unless the load code says F, or the road is unmetalled, shingled or a track. A road from the routing
+ * network (GroundGuideRoads) says so itself (`aw`), from the same flag GeoCore's All-Weather restriction reads.
+ */
 function allWeather(a: Record<string, unknown>): boolean {
+  if (typeof a.aw === 'boolean') return a.aw;
   const c = typeof a.c === 'string' ? a.c : '';
   if (/^\d+F/i.test(c)) return false;
   if (/^\d+A/i.test(c)) return true;
