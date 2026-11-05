@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Presenting Trafficability</title>
+<!--
+  PAMS8 Ground Guide: how to present GROTBC T (Trafficability) on the cursor card as ONE piece instead of the four
+  separate pieces it has today (cross-country going band, movement rose, road band, rain pill). Options to choose from.
+  One self-contained file: no network, no build. Card CSS copied from MS/Engines/GroundGuide/GroundGuideBadge.ts;
+  rules prefixed .tp- are proposals. All map data is ILLUSTRATIVE sample data: farmland about 3 km S of Kamoke
+  (Gujranwala), clay-loam soil, cone index 110 dry / 58 after rain, MSR N-5 (GT Road) 2.1 km E.
+-->
+<style>
+:root{--bg:#0f1318;--panel:#171c22;--panel2:#1d232a;--line:#2a323b;--tx:#e8ebee;--soft:#9aa3ad;--acc:#8ec1ea;--warn:#ffc861}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.55 system-ui,"Segoe UI",Arial,sans-serif}
+.pg-wrap{max-width:1360px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:28px;line-height:1.15;margin:30px 0 8px}
+h2{font-size:21px;margin:46px 0 6px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:15px;margin:18px 0 6px}
+p{margin:6px 0 10px;max-width:86ch}
+.pg-lede{font-size:15.5px;color:#c8cfd6}
+.pg-sub{color:var(--soft);font-size:13px;margin:0 0 12px;max-width:90ch}
+code{font:12px/1.4 ui-monospace,Consolas,monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;color:#d7e2ec}
+.pg-ctl{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);font-size:13px;color:var(--soft)}
+.pg-seg{display:inline-flex;border:1px solid #39434f;border-radius:7px;overflow:hidden}
+.pg-seg button{font:inherit;font-size:12.5px;color:var(--tx);background:#1c232b;border:0;border-left:1px solid #39434f;padding:5px 10px;cursor:pointer}
+.pg-seg button:first-child{border-left:0}
+.pg-seg button[aria-pressed="true"]{background:var(--acc);color:#10161c;font-weight:600}
+.pg-seg button:focus-visible,.pg-btn:focus-visible,.pg-opt:focus-within{outline:2px solid var(--acc);outline-offset:1px}
+.pg-opts{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));align-items:start}
+.pg-opt{position:relative;display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;cursor:pointer;min-width:0}
+.pg-opt:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.pg-opt input{position:absolute;opacity:0;pointer-events:none}
+.pg-opt-h{display:flex;gap:8px;align-items:baseline;margin-bottom:4px}
+.pg-opt-h b{font-size:15px}
+.pg-pick{margin-left:auto;font-size:11.5px;color:var(--soft);border:1px solid #39434f;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.pg-opt:has(input:checked) .pg-pick{background:var(--acc);border-color:var(--acc);color:#10161c;font-weight:600}
+.pg-rec{font:700 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;color:#7ee0a5;background:#1d3a2a;border-radius:999px;padding:3px 7px}
+.pg-opt p{font-size:13px;color:#c3cbd3;margin:2px 0 10px}
+.pg-stage{background:#2b3a2a;background-image:linear-gradient(135deg,rgba(255,255,255,.035) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.035) 50%,rgba(255,255,255,.035) 75%,transparent 75%);background-size:22px 22px;border-radius:9px;padding:14px;display:flex;justify-content:center}
+.pg-meta{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px;margin-top:10px;color:#c3cbd3}
+.pg-meta dt{color:var(--soft)}.pg-meta dd{margin:0}
+.pg-size{font:600 12px ui-monospace,Consolas,monospace;color:var(--warn)}
+.pg-q{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.pg-q .pg-opt{padding:10px 12px}
+.pg-out{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+.pg-out pre{margin:8px 0 0;white-space:pre-wrap;font:13px/1.5 ui-monospace,Consolas,monospace;color:#d7e2ec}
+.pg-btn{font:inherit;font-size:13px;color:var(--tx);background:#222a33;border:1px solid #39434f;border-radius:6px;padding:6px 12px;cursor:pointer}
+.pg-btn:hover{background:#2b343f}
+.pg-today{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.pg-today ul{margin:0;padding-left:18px;font-size:13.5px;max-width:64ch}
+.pg-today li{margin:4px 0}
+.yes{color:#7ee0a5;font-weight:600}.no{color:#ff8a8d;font-weight:600}
+@media (max-width:640px){h1{font-size:23px}.pg-ctl{position:static}}
+
+/* ---- card: from GroundGuideBadge.ts (static for the page) ---- */
+.ms-ground-guide-badge{position:relative;pointer-events:auto;--pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:280px;max-width:100%;border-radius:10px;overflow:hidden;
+  font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:block}
+.ms-ground-guide-badge[data-verdict="ok"]{--pb-c:#1c8247;--pb-k:#3fc07a}
+.ms-ground-guide-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25;--pb-k:#f0a04b}
+.ms-ggb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
+.ms-ggb-bar>svg{flex:none}
+.ms-ggb-title{flex:1 1 0;min-width:0}
+.ms-ggb-pills{display:flex;gap:4px;margin-left:auto}
+.ms-ggb-pct{display:flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:11.5px;white-space:nowrap}
+.ms-ground-guide-badge[data-verdict="caution"] .ms-ggb-pills>span{background:rgba(0,0,0,.12)}
+.ms-ggb-sec{padding:7px 11px 8px}
+.ms-ggb-sec:nth-child(even){background:#222830}
+.ms-ggb-cap{font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--pb-k);margin-bottom:5px}
+.ms-ggb-b{font-weight:600;color:#fff}
+.ms-ggb-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:6px}
+.ms-ggb-scale>span{font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-align:center;padding:4px 0 3px;border-radius:2px;background:rgba(255,255,255,.06);color:#6b737c}
+.ms-ggb-scale>.ms-on-go{background:#2fa862;color:#fff}.ms-ggb-scale>.ms-on-slow{background:#f0932b;color:#1b1f25}.ms-ggb-scale>.ms-on-nogo{background:#e5484d;color:#fff}
+.ms-ggb-nr{display:flex;gap:10px;align-items:center}
+.ms-ggb-big{font-size:18px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
+.ms-ggb-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
+/* going view bits used by "today" */
+.ms-gv-cap{display:flex;align-items:center;gap:6px}
+.ms-gv-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;color:#1b1f25;background:#5aa9e6}
+.ms-gv-row{display:grid;grid-template-columns:74px 1fr;gap:6px;align-items:center}
+.ms-gv-row+.ms-gv-row{margin-top:4px}
+.ms-gv-k{display:flex;align-items:center;gap:5px;font-size:11px;color:#c3cbd3;white-space:nowrap}
+
+/* ---- proposals ---- */
+.tp-step{display:inline-block;font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;padding:3px 6px 2px;border-radius:2px;vertical-align:1px;white-space:nowrap}
+.tp-go{background:#2fa862;color:#fff}.tp-slow{background:#f0932b;color:#1b1f25}.tp-nogo{background:#e5484d;color:#fff}
+.tp-dim{opacity:.45}
+.tp-head{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.tp-big{font-size:15px;font-weight:700;color:#fff}
+.tp-kv{display:grid;grid-template-columns:52px minmax(0,1fr);gap:5px 8px;align-items:center;margin-top:6px}
+.tp-kv>.k{color:#9aa3ad;font-size:11px;display:flex;gap:4px;align-items:center}
+.tp-ico{flex:none;color:#9aa3ad}
+.tp-road{display:flex;gap:7px;align-items:center}
+.tp-shield{flex:none;font:800 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;padding:3px 5px;border-radius:3px;background:#f3f5f7;color:#1b1f25;letter-spacing:.02em}
+.tp-shield.msr{background:#ffd24a}
+.tp-badge{font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;background:#25313c;color:#b9d6ef;white-space:nowrap}
+/* T2 gauge */
+.tp-g{position:relative;margin:20px 2px 4px}
+.tp-gt{display:grid;grid-template-columns:1fr 1fr 1fr;height:10px;border-radius:5px;overflow:hidden}
+.tp-gt>i{display:block}
+.tp-gm{position:absolute;top:-19px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-size:11px;line-height:1}
+.tp-gm::after{content:"";width:2px;height:16px;background:#fff;border-radius:1px;box-shadow:0 0 0 1px rgba(0,0,0,.5);margin-top:1px}
+.tp-gm.wet::after{background:#bfe2ff}
+.tp-gl{display:grid;grid-template-columns:1fr 1fr 1fr;font:700 9px/1 system-ui;letter-spacing:.06em;color:#7f8994;margin-top:5px;text-align:center}
+/* T3 calendar */
+.tp-cal{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;margin-top:6px}
+.tp-cal>div{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tp-cal i{display:block;width:100%;height:18px;border-radius:2px}
+.tp-cal i.now{outline:1.5px solid #fff;outline-offset:1px}
+.tp-cal small{font:600 9px/1 system-ui;color:#9aa3ad}
+.tp-cal b{display:block;width:100%;background:#4a90c8;border-radius:1px}
+/* T4 tiles */
+.tp-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:2px}
+.tp-tile{border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:6px 3px 5px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tp-tile.me{border-color:var(--pb-k);background:rgba(255,255,255,.09)}
+.tp-tile small{font-size:10px;color:#c3cbd3}
+.tp-tile .pair{display:flex;gap:2px}
+.tp-tile .pair i{display:block;width:16px;height:7px;border-radius:2px}
+/* T5 way out */
+.tp-way{display:flex;align-items:center;gap:0;margin-top:6px}
+.tp-way .dot{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:var(--pb-c)}
+.tp-way .leg{flex:1;height:6px;border-radius:3px;margin:0 4px;position:relative}
+.tp-way .leg span{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:10px;color:#c3cbd3;white-space:nowrap}
+.tp-way .end{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px}
+/* T7 ticker */
+.tp-tick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 11px;background:#161a1f;border-bottom:1px solid rgba(255,255,255,.06);font-size:11.5px}
+.tp-tick .t{font:800 10px/1 system-ui;background:#5aa9e6;color:#1b1f25;border-radius:3px;padding:2px 4px}
+.tp-tick .sep{color:#4a535e}
+/* T8 tabs */
+.tp-tabs{display:flex;gap:3px;margin:2px 0 7px}
+.tp-tabs span{flex:1;text-align:center;font:700 9.5px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;padding:5px 0;border-radius:5px;background:rgba(255,255,255,.05);color:#9aa3ad;cursor:pointer}
+.tp-tabs span.on{background:#5aa9e6;color:#1b1f25}
+.tp-cue{display:flex;align-items:center;gap:7px;color:#c3cbd3}
+.tp-key{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:4px;font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
+</style>
+</head>
+<body>
+<div class="pg-wrap">
+<h1>Presenting Trafficability (T)</h1>
+<p class="pg-lede">Is T shown in <code>GroundGuide.ts</code>? <b>Yes, but in pieces.</b> The card shows four separate things that are
+all T: the <i>Cross-Country</i> going band, the <i>Movement Freedom</i> rose, the <i>Road</i> band, and the <i>Rain</i> pill in the
+header. Each was built on its own, so they don't read as one answer. Below are eight ways to present T as a single, clear block.
+Pick one card style, where it sits, and the extras, then copy your choices at the end.</p>
+<p class="pg-sub" style="border-left:3px solid #2fa862;padding:6px 12px;background:rgba(255,255,255,.03)"><b style="color:#fff">All built in the app (2026-11-05):</b>
+⚙ Settings → <i>Trafficability (T)</i> → <i>T on the card</i> (separate pieces, T1 to T8) and <i>Where T sits</i> (after Why, GROTBC order, folded).
+The extras are the existing switches: rain pill, verdict follows the season, legend season switch, overlay follows the season; the Ground Brief (G) already has the T sections.</p>
+
+<div class="pg-ctl" role="group" aria-label="Sample">
+  <span>Mode</span><span class="pg-seg" id="c-mode"></span>
+  <span>Season</span><span class="pg-seg" id="c-season"></span>
+</div>
+
+<h2>1 · Today: T in four pieces</h2>
+<p class="pg-sub">A simplified copy of today's card: the real Movement Freedom band draws a rose, so today's card is taller than shown here, and the height figures below flatter today.</p>
+<div class="pg-today">
+  <div class="pg-stage" id="today"></div>
+  <div>
+    <ul>
+      <li><span class="yes">Shown:</span> the going for the mode dry and after rain, the soil and what limits it (<i>T · Cross-Country</i>), how far each direction is open (<i>T · Movement Freedom</i>), the nearest road the mode can use (<i>T · Road</i>), and a <i>Rain</i> pill when rain makes it worse.</li>
+      <li><span class="no">The problem:</span> they sit in three bands plus a pill, far apart (Nearest and ITG sit between them), with three different layouts. The one-line answer, "can I move here, now and after rain, and how do I get out", has to be pieced together.</li>
+      <li><span class="no">Also missing:</span> when in the year the going is best, and how the main modes compare at a glance, unless more sections are switched on.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>2 · One T block: eight styles</h2>
+<p class="pg-sub">Every style answers the same three questions in one place: <b>going now</b> (and what rain does), <b>the road out</b>, and <b>why</b> (soil, wet ground).
+They replace the Cross-Country, Movement and Road bands and the pill. The yellow figure is the height change against today's card.</p>
+<div class="pg-opts" id="opts"></div>
+
+<h2>3 · Where the T block sits</h2>
+<div class="pg-q" id="q-where"></div>
+
+<h2>4 · Extras</h2>
+<p class="pg-sub">Pick any. Each works with every style.</p>
+<div class="pg-q" id="q-extras"></div>
+
+<h2>5 · Your choices</h2>
+<div class="pg-out">
+  <button class="pg-btn" type="button" id="copy">Copy my choices</button> <span id="copied" style="color:#7ee0a5;font-size:13px"></span>
+  <pre id="summary"></pre>
+</div>
+<p class="pg-sub" style="margin-top:12px">Paste the copied text back in the chat, or just say, for example: "T1, after Why, calendar and tabs key".</p>
+</div>
+
+<script>
+(function(){'use strict';
+var D=document;
+function el(tag,cls,text){var e=D.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
+function app(p){for(var i=1;i<arguments.length;i++){var c=arguments[i];if(c!==null&&c!==undefined&&c!==false)p.append(c)}return p}
+var SVG='http://www.w3.org/2000/svg';
+function sv(tag,attrs,parent){var e=D.createElementNS(SVG,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+var PATHS={check:['M5 12l5 5L20 7'],tri:['M12 9v4','M12 17h.01','M10.3 3.9L1.9 18.4a1.9 1.9 0 0 0 1.7 2.8h16.8a1.9 1.9 0 0 0 1.7-2.8L13.7 3.9a1.9 1.9 0 0 0-3.4 0z'],
+  sun:['M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M12 2v2','M12 20v2','M4.9 4.9l1.4 1.4','M17.7 17.7l1.4 1.4','M2 12h2','M20 12h2','M4.9 19.1l1.4-1.4','M17.7 6.3l1.4-1.4'],
+  drop:['M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z'],road:['M7 21L10 3','M17 21L14 3','M12 6v2','M12 11v2','M12 16v3'],
+  soil:['M3 17h18','M3 21h18','M6 13c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0'],
+  foot:['M15 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0z','M12 8l-2 6','M9 11l3-3 3 3 2 0','M10 14l-2 7','M10 14l3 3v4'],
+  wheels:['M2 7h11v8H2z','M13 10h4l3 3v2h-7','M8 17.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z','M18 17.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z'],
+  tracks:['M5 14h14a3 3 0 0 1 0 6H5a3 3 0 0 1 0-6z','M8 14l1.5-4h6l1 4','M15 11.5h6','M7 17h.01','M12 17h.01','M17 17h.01'],
+  heli:['M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z','M9 8v8','M15 8v8','M9 12h6']};
+function ico(name,size,color){var s=sv('svg',{width:size||13,height:size||13,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':2,'stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true',class:'tp-ico'});if(color)s.style.color=color;PATHS[name].forEach(function(d){sv('path',{d:d},s)});return s}
+var WORD={go:'GO',slow:'SLOW-GO',nogo:'NO-GO'},COL={go:'#2fa862',slow:'#f0932b',nogo:'#e5484d'},ORD={go:0,slow:1,nogo:2};
+function step(s,dim){return el('span','tp-step tp-'+s+(dim?' tp-dim':''),WORD[s])}
+
+/* ---- sample: cone index 110 dry, 58 after rain; vehicle cone index [VCI1, VCI50] per mode (bundle soilStrength) ---- */
+var MODES={
+  dismounted:{label:'Dismounted Force',short:'Foot',ico:'foot',dry:'go',wet:'go',vci:[15,25],road:null},
+  wheeled:{label:'Wheeled Vehicle',short:'Wheels',ico:'wheels',dry:'go',wet:'slow',vci:[55,95],
+    road:{shield:'Track',msr:false,name:'Unmetalled Road',tag:'Fair-Weather',dist:'600 m',dir:'S',brg:180,wetNote:'SLOW-GO after rain',alt:{shield:'N-5',name:'GT Road',tag:'MSR · All-Weather',dist:'2.1 km',dir:'E',brg:90}}},
+  tracked:{label:'Tracked Vehicle',short:'Tracks',ico:'tracks',dry:'go',wet:'slow',vci:[45,75],
+    road:{shield:'N-5',msr:true,name:'GT Road',tag:'Class 70 · Tankable',dist:'2.1 km',dir:'E',brg:90}},
+  hls:{label:'Helicopter Landing Site',short:'Air',ico:'heli',dry:'go',wet:'slow',vci:[35,60],landing:'Level · No wires mapped'}
+};
+var MAIN=['dismounted','wheeled','tracked','hls'];
+var CI={dry:110,wet:58};
+var RAIN=[26,29,28,18,19,45,149,154,56,8,5,12],WET_MM=75,MON=['J','F','M','A','M','J','J','A','S','O','N','D'],MONL=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+/* movement: 8 directions to 1 km. after rain the flood-prone ground 320 m E stops vehicles. */
+var MOVE={dry:['go','go','go','go','go','go','go','go'],wet:['slow','slow','nogo','slow','slow','go','slow','slow'],reachWet:[1,1,.32,1,1,1,1,1]};
+var DIRS=['N','NE','E','SE','S','SW','W','NW'];
+
+var SEL={mode:'tracked',season:'dry',style:'T1',where:'W1',extras:{}};
+function M(){return MODES[SEL.mode]}
+function wetNow(){return SEL.season!=='dry'}
+function goingNow(m){return wetNow()?m.wet:m.dry}
+function seasonLabel(){return SEL.season==='dry'?'Dry Season':SEL.season==='wet'?'After Rain':'Jul · Wet (149 mm)'}
+function monthIdx(){return SEL.season==='month'?6:10}
+function monthGoing(m,i){return RAIN[i]>=WET_MM?m.wet:m.dry}
+
+/* ---- shared card parts ---- */
+function section(cap,letter){var s=el('div','ms-ggb-sec'),c=el('div','ms-ggb-cap'+(letter?' ms-gv-cap':''));if(letter)c.append(el('span','ms-gv-l',letter));c.append(cap);s.append(c);return s}
+function why(){var m=M(),s=section('Why'),l=el('div');l.append(el('span','ms-ggb-b','Cropland'),' · '+m.label);s.append(l,el('div','ms-ggb-soft','Cultivated fields: firm when dry, soft after irrigation or rain.'));var sc=el('div','ms-ggb-scale');['go','slow','nogo'].forEach(function(k){sc.append(el('span',k==='go'?'ms-on-go':undefined,WORD[k]))});s.append(sc);return s}
+function dial(brg,color){var s=sv('svg',{width:44,height:44,viewBox:'0 0 44 44','aria-hidden':'true'});sv('circle',{cx:22,cy:22,r:20.5,fill:'rgba(255,255,255,.06)',stroke:'rgba(255,255,255,.3)','stroke-width':1.5},s);var t=sv('text',{x:22,y:12,'text-anchor':'middle','font-size':11,fill:'#9aa3ad'},s);t.textContent='N';sv('polygon',{points:'22,14 27.5,30 22,26 16.5,30',fill:color,transform:'rotate('+brg+' 22 22)'},s);return s}
+function nearest(){var t=el('div'),f=el('div');f.append(el('span','ms-ggb-big','320 m'),' E');t.append(el('div','ms-ggb-b','Permanent Water'),f);var nr=el('div','ms-ggb-nr');nr.append(dial(90,'#3fc07a'),t);var s=section('Nearest');s.append(nr);return s}
+function itg(){var s=section('Important Tactical Ground');s.append(el('div',undefined,'None within 3.0 km'));return s}
+function header(extraPill){var c=el('div','ms-ggb-bar');c.append(sv('svg',{width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':2.2,'stroke-linecap':'round'}));c.lastChild.appendChild(sv('path',{d:PATHS.check[0]}));c.append(el('span','ms-ggb-title','Suitable Position'));if(extraPill){var p=el('div','ms-ggb-pills');p.append(extraPill);c.append(p)}return c}
+function roadLine(r,compact){
+  var m=M();if(!r&&m.landing){var d=el('div','tp-road');d.append(ico('heli',13),el('span',undefined,m.landing+(m.wet!==m.dry?' · Soft after rain':'')));return d}
+  if(!r){var n=el('div','tp-road');n.append(ico('foot',13),el('span',undefined,'Not needed: GO cross-country'));return n}
+  var row=el('div','tp-road'),sh=el('span','tp-shield'+(r.msr?' msr':''),r.shield);
+  var txt=el('span');txt.append(el('span','ms-ggb-b',r.name),' · '+r.dist+' '+r.dir);
+  row.append(sh,txt);if(!compact)row.append(el('span','tp-badge',r.tag));
+  return row;
+}
+function roadBlock(){var m=M(),r=m.road,box=el('div');box.append(roadLine(r,true));if(r){var tg=el('div');tg.style.marginTop='3px';tg.append(el('span','tp-badge',r.tag));box.append(tg)}if(r&&r.alt){var a=el('div','ms-ggb-soft');a.textContent=(wetNow()?'After rain use ':'All-weather: ')+r.alt.shield+' '+r.alt.name+' · '+r.alt.dist+' '+r.alt.dir+(wetNow()?' (the track is SLOW-GO)':'');box.append(a)}return box}
+function whyLine(){var m=M();return m.wet!==m.dry?'Clay loam (modelled), soft after rain: cone index '+CI.wet+', '+m.short.toLowerCase()+' need '+m.vci[1]+' for GO':'Clay loam (modelled): firm enough dry and after rain'}
+
+/* ---- today ---- */
+function todayCard(){
+  var m=M(),c=el('article','ms-ground-guide-badge');c.dataset.verdict='ok';
+  c.append(header(m.wet!==m.dry?el('span','ms-ggb-pct','Rain: '+WORD[m.wet]):null));
+  var b=el('div');b.append(why(),nearest(),itg());
+  var cc=section('Cross-Country · '+m.short,'T');
+  [['sun','Dry',m.dry],['drop','After Rain',m.wet]].forEach(function(r){var row=el('div','ms-gv-row'),k=el('span','ms-gv-k');k.append(ico(r[0],12),r[1]);var sc=el('div','ms-ggb-scale');sc.style.marginTop='0';['go','slow','nogo'].forEach(function(s){sc.append(el('span',s===r[2]?'ms-on-'+s:undefined,WORD[s]))});row.append(k,sc);cc.append(row)});
+  cc.append(el('div','ms-ggb-soft','Clay Loam · Modelled · After rain: limited by soft soil'));
+  var mv=section('Movement Freedom · Dry','T');mv.append(el('div','ms-ggb-b','Unrestricted'),el('div','ms-ggb-soft','8 of 8 directions open to 1.0 km'));
+  b.append(cc,mv);
+  if(m.road||m.landing){var rd=section((m.landing?'Landing':'Road')+' · Dry','T');rd.append(roadLine(m.road,true));b.append(rd)}
+  c.append(b);return c;
+}
+
+/* ---- the eight T blocks ---- */
+function t1(){ // unified band
+  var m=M(),s=section('Trafficability · '+m.short,'T'),h=el('div','tp-head');
+  var now=goingNow(m);h.append(el('span','tp-big',WORD[now]),el('span','ms-ggb-soft',wetNow()?'after rain':'now, dry'));
+  if(m.wet!==m.dry&&!wetNow()){h.append(el('span','ms-ggb-soft','· after rain'),step(m.wet))}
+  s.append(h);
+  var kv=el('div','tp-kv');
+  var k1=el('span','k');k1.append(ico('soil',12),'Why');kv.append(k1,el('span',undefined,whyLine()));
+  var k2=el('span','k');k2.append(ico('road',12),m.landing?'Land':'Road');kv.append(k2,roadBlock());
+  var k3=el('span','k');k3.append('Move');kv.append(k3,el('span',undefined,wetNow()?'7 of 8 directions open · E blocked 320 m (flood-prone)':'All 8 directions open to 1 km'));
+  s.append(kv);return [s];
+}
+function t2(){ // gauge
+  var m=M(),s=section('Going · '+m.short,'T'),g=el('div','tp-g'),tr=el('div','tp-gt');
+  ['go','slow','nogo'].forEach(function(k){var i=el('i');i.style.background=COL[k];tr.append(i)});g.append(tr);
+  function mark(st,cls,icon){var pos=(ORD[st]*2+1)/6*100;var mk=el('div','tp-gm'+(cls?' '+cls:''));mk.style.left=pos+'%';mk.append(ico(icon,12,cls?'#bfe2ff':'#ffd24a'));return mk}
+  if(m.dry===m.wet){g.append(mark(m.dry,'', 'sun'))}else{var a=mark(m.dry,'','sun'),b=mark(m.wet,'wet','drop');a.style.left=((ORD[m.dry]*2+1)/6*100-6)+'%';b.style.left=((ORD[m.wet]*2+1)/6*100+6)+'%';g.append(a,b)}
+  s.append(g);var gl=el('div','tp-gl');['GO','SLOW-GO','NO-GO'].forEach(function(t){gl.append(el('span',undefined,t))});s.append(gl);
+  s.append(el('div','ms-ggb-soft',whyLine()));var r=el('div');r.style.marginTop='6px';r.append(roadBlock());s.append(r);return [s];
+}
+function t3(){ // calendar
+  var m=M(),s=section('Going by Month · '+m.short,'T'),cal=el('div','tp-cal');
+  for(var i=0;i<12;i++){var d=el('div'),bar=el('b');bar.style.height=Math.max(2,Math.round(RAIN[i]/154*14))+'px';var c=el('i',i===monthIdx()?'now':undefined);c.style.background=COL[monthGoing(m,i)];c.title=MONL[i]+': '+RAIN[i]+' mm, '+WORD[monthGoing(m,i)];d.append(bar,c,el('small',undefined,MON[i]));cal.append(d)}
+  var h=el('div','tp-head');h.append(el('span','tp-big',WORD[goingNow(m)]),el('span','ms-ggb-soft',seasonLabel()));
+  s.append(h,cal);
+  var best=m.dry===m.wet?'GO all year':'Best Oct to Jun · SLOW-GO in Jul and Aug (monsoon)';
+  s.append(el('div','ms-ggb-soft',best+' · blue bars: rain'));var r=el('div');r.style.marginTop='6px';r.append(roadBlock());s.append(r);return [s];
+}
+function t4(){ // mode tiles
+  var s=section('Who Can Move Here','T'),t=el('div','tp-tiles');
+  MAIN.forEach(function(k){var m=MODES[k],tile=el('div','tp-tile'+(k===SEL.mode?' me':''));tile.append(ico(m.ico,18,'#e8ebee'),el('small',undefined,m.short));var p=el('div','pair');[m.dry,m.wet].forEach(function(g,i){var b=el('i');b.style.background=COL[g];b.title=(i?'After rain ':'Dry ')+WORD[g];if(wetNow()!==!!i)b.style.opacity='.45';p.append(b)});tile.append(p);t.append(tile)});
+  s.append(t,el('div','ms-ggb-soft','Left bar dry, right bar after rain · '+whyLine().replace(/: cone.*/,'')));var r=el('div');r.style.marginTop='6px';r.append(roadBlock());s.append(r);return [s];
+}
+function t5(){ // way out
+  var m=M(),s=section('Way Out · '+m.short,'T');
+  var h=el('div','tp-head');h.append(el('span','tp-big',WORD[goingNow(m)]),el('span','ms-ggb-soft','cross-country, '+(wetNow()?'after rain':'dry')));s.append(h);
+  var r=m.road;
+  if(!r){s.append(roadLine(null));return [s]}
+  var way=el('div','tp-way'),dot=el('span','dot'),leg=el('span','leg'),end=el('span','end');
+  leg.style.background=COL[goingNow(m)];leg.append(el('span',undefined,r.dist+' '+r.dir+' · '+WORD[goingNow(m)]));
+  end.append(el('span','tp-shield'+(r.msr?' msr':''),r.shield),el('span','ms-ggb-soft',r.msr?'MSR':'Road'));
+  way.append(dot,leg,end);way.style.marginTop='20px';s.append(way);
+  var info=el('div');info.style.marginTop='7px';info.append(el('span','ms-ggb-b',r.name),' ',el('span','tp-badge',r.tag));s.append(info);
+  if(r.alt){s.append(el('div','ms-ggb-soft',(wetNow()?'After rain the track is SLOW-GO: use ':'All-weather: ')+r.alt.shield+' '+r.alt.name+' '+r.alt.dist+' '+r.alt.dir))}
+  s.append(el('div','ms-ggb-soft',whyLine()));return [s];
+}
+function t6(){ // rose + road
+  var m=M(),s=section('Movement · '+m.short+' · '+(wetNow()?'After Rain':'Dry'),'T'),row=el('div','ms-ggb-nr');
+  var svg=sv('svg',{width:96,height:96,viewBox:'0 0 96 96','aria-hidden':'true'});sv('circle',{cx:48,cy:48,r:38,fill:'rgba(255,255,255,.05)',stroke:'rgba(255,255,255,.2)'},svg);
+  var steps=wetNow()?MOVE.wet.map(function(st){return m.wet==='go'&&st!=='nogo'?'go':st}):MOVE.dry;
+  steps.forEach(function(st,i){var a=(i*45-90-19)*Math.PI/180,b=(i*45-90+19)*Math.PI/180,r=34*(wetNow()?MOVE.reachWet[i]:1);var d='M48 48 L'+(48+r*Math.cos(a))+' '+(48+r*Math.sin(a))+' A'+r+' '+r+' 0 0 1 '+(48+r*Math.cos(b))+' '+(48+r*Math.sin(b))+' Z';sv('path',{d:d,fill:COL[st],opacity:.85},svg)});
+  var t=sv('text',{x:48,y:8,'text-anchor':'middle','font-size':9,fill:'#9aa3ad'},svg);t.textContent='N';
+  if(m.road){var br=(m.road.brg-90)*Math.PI/180;var x=48+44*Math.cos(br),y=48+44*Math.sin(br);sv('rect',{x:x-9,y:y-6,width:18,height:12,rx:2,fill:m.road.msr?'#ffd24a':'#f3f5f7'},svg);var rt=sv('text',{x:x,y:y+3.5,'text-anchor':'middle','font-size':7.5,'font-weight':800,fill:'#1b1f25'},svg);rt.textContent=m.road.shield.slice(0,4)}
+  sv('circle',{cx:48,cy:48,r:4,fill:'#fff'},svg);svg.setAttribute('width','96');
+  var txt=el('div');txt.append(el('div','tp-big',WORD[goingNow(m)]),el('div','ms-ggb-soft',wetNow()?'7 of 8 directions open · E blocked at 320 m':'8 of 8 directions open to 1 km'));
+  if(m.road){txt.append(el('div',undefined,(m.road.msr?'MSR ':'')+m.road.shield+' '+m.road.dist+' '+m.road.dir))}else if(m.landing){txt.append(el('div',undefined,m.landing))}
+  row.append(svg,txt);s.append(row,el('div','ms-ggb-soft',whyLine()));return [s];
+}
+function t7(){ // ticker (strip under the header)
+  var m=M(),t=el('div','tp-tick');t.append(el('span','t','T'),ico('sun',12,'#ffd24a'),step(m.dry,wetNow()),ico('drop',12,'#bfe2ff'),step(m.wet,!wetNow()));
+  if(m.road){t.append(el('span','sep','|'),el('span','tp-shield'+(m.road.msr?' msr':''),m.road.shield),el('span',undefined,m.road.dist+' '+m.road.dir))}
+  else if(m.landing){t.append(el('span','sep','|'),el('span',undefined,'Landing: level'))}
+  return [t];
+}
+var TAB=0;
+function t8(){ // tabs
+  var m=M(),s=section('Trafficability · '+m.short,'T'),tabs=el('div','tp-tabs');
+  ['Now','Rain','Road','Months'].forEach(function(n,i){var b=el('span',i===TAB?'on':undefined,n);b.onclick=function(e){e.preventDefault();e.stopPropagation();TAB=i;paint()};tabs.append(b)});
+  s.append(tabs);
+  if(TAB===0){var h=el('div','tp-head');h.append(el('span','tp-big',WORD[goingNow(m)]),el('span','ms-ggb-soft',seasonLabel()));s.append(h,el('div','ms-ggb-soft',whyLine()))}
+  if(TAB===1){var kv=el('div','tp-kv');var k1=el('span','k');k1.append(ico('sun',12,'#ffd24a'),'Dry');kv.append(k1,step(m.dry));var k2=el('span','k');k2.append(ico('drop',12,'#bfe2ff'),'Rain');kv.append(k2,step(m.wet));s.append(kv,el('div','ms-ggb-soft','Cone index '+CI.dry+' dry, '+CI.wet+' after rain · '+m.short+': '+m.vci[1]+' for GO, '+m.vci[0]+' to move'))}
+  if(TAB===2)s.append(roadBlock());
+  if(TAB===3){var cal=el('div','tp-cal');for(var i=0;i<12;i++){var d=el('div'),c=el('i',i===monthIdx()?'now':undefined);c.style.background=COL[monthGoing(m,i)];d.append(c,el('small',undefined,MON[i]));cal.append(d)}s.append(cal)}
+  var cue=el('div','ms-ggb-soft tp-cue');cue.style.marginTop='6px';cue.append(el('span','tp-key','T'),'next tab while drawing');s.append(cue);return [s];
+}
+var STYLES=[
+  {id:'T1',name:'One T Band',rec:true,make:t1,desc:'One band answers it all: the going now in big letters (and after rain), then three short rows: why (soil), the road out, and how open the ground is.'},
+  {id:'T2',name:'Going Gauge',make:t2,desc:'A single GO to NO-GO track with a sun marker (dry) and a drop marker (after rain). Reads at a glance, then the soil line and the road.'},
+  {id:'T3',name:'Going Calendar',make:t3,desc:'Twelve months coloured by the going they leave, rain bars above, this month outlined: when the ground is best. Then the road.'},
+  {id:'T4',name:'Who Can Move',make:t4,desc:'Four tiles (Foot, Wheels, Tracks, Air), each with a dry bar and an after-rain bar; the armed mode is outlined. Compare modes at once.'},
+  {id:'T5',name:'Way Out',make:t5,desc:'Road first: your position, a line coloured by the going you cross to reach the road, and the road shield with its class. "How do I get out?"'},
+  {id:'T6',name:'Rose and Road',make:t6,desc:'The movement rose with the road\'s shield on its rim, in the road\'s direction. Where you can go, and where the road is.'},
+  {id:'T7',name:'Ticker Strip',make:t7,desc:'One slim strip under the header: T, dry and after-rain going, the road shield and distance. Almost no height; the rest goes to the Ground Brief.'},
+  {id:'T8',name:'Tabbed Band',make:t8,desc:'One band, four tabs: Now, Rain, Road, Months. The card shows one at a time; T cycles them while drawing. Click the tabs here.'}
+];
+var WHERE=[
+  {id:'W1',name:'Right after Why',rec:true,desc:'The going is part of the verdict, so it sits next to it, before Nearest and ITG.'},
+  {id:'W2',name:'In GROTBC order',desc:'After the G sections (ITG), before B (people): the card reads G, then T, then B.'},
+  {id:'W3',name:'Folded until T',desc:'A one-line cue ("T · GO, after rain SLOW-GO ›") that opens the full block when T is pressed.'}
+];
+var EXTRAS=[
+  {id:'X1',name:'Rain pill in the header',desc:'Keep "Rain: SLOW-GO" in the header as an early warning, on top of the block.'},
+  {id:'X2',name:'Season in the header colour',desc:'With the season set to After Rain, the header verdict follows the going (opt-in today: traffic.header).'},
+  {id:'X3',name:'Legend season switch',desc:'Dry / After Rain switch on the Legend that changes the card and the overlay together.'},
+  {id:'X4',name:'Overlay follows the season',desc:'The map overlay paints the going for the season: soft soil and flood-prone ground in amber and red.'},
+  {id:'X5',name:'Ground Brief T page',desc:'G opens the Brief on the T page: soil triangle, cone gauge, all modes, months and every road within 5 km.'}
+];
+
+function placeT(rows,block){
+  if(SEL.where==='W3'){var m=M(),cue=el('div','ms-ggb-sec tp-cue');cue.append(el('span','ms-gv-l','T'),el('span',undefined,WORD[goingNow(m)]+(m.wet!==m.dry&&!wetNow()?', after rain '+WORD[m.wet]:'')+(m.road?' · '+m.road.shield+' '+m.road.dist+' '+m.road.dir:'')),el('span','tp-key','T'));rows.splice(1,0,cue);return}
+  var at=SEL.where==='W1'?1:rows.length;rows.splice.apply(rows,[at,0].concat(block));
+}
+function card(style){
+  var m=M(),c=el('article','ms-ground-guide-badge');c.dataset.verdict='ok';
+  var pill=SEL.extras.X1&&m.wet!==m.dry?el('span','ms-ggb-pct','Rain: '+WORD[m.wet]):null;
+  c.append(header(pill));
+  var block=style.make();
+  if(style.id==='T7'){c.append(block[0]);block=[]}
+  var rows=[why(),nearest(),itg()];
+  if(block.length)placeT(rows,block);
+  var b=el('div');rows.forEach(function(r){b.append(r)});c.append(b);return c;
+}
+function tile(group,o,render){
+  var lab=el('label','pg-opt'),inp=el('input');inp.type=group==='extras'?'checkbox':'radio';inp.name=group;inp.value=o.id;
+  inp.checked=group==='extras'?!!SEL.extras[o.id]:SEL[group]===o.id;
+  inp.onchange=function(){if(group==='extras')SEL.extras[o.id]=inp.checked;else SEL[group]=o.id;paint()};
+  var h=el('div','pg-opt-h');h.append(el('b',undefined,o.id+' · '+o.name));if(o.rec)h.append(el('span','pg-rec','Recommended'));h.append(el('span','pg-pick',inp.checked?'Picked':'Pick'));
+  lab.append(inp,h,el('p',undefined,o.desc));
+  if(render){var st=el('div','pg-stage');st.append(render(o));lab.append(st);var dl=el('dl','pg-meta'),sz=el('dd','pg-size');sz.dataset.size='1';dl.append(el('dt',undefined,'Height'),sz);lab.append(dl)}
+  return lab;
+}
+function seg(host,key,items){host.replaceChildren();items.forEach(function(it){var b=el('button',undefined,it[1]);b.type='button';b.setAttribute('aria-pressed',String(SEL[key]===it[0]));b.onclick=function(){SEL[key]=it[0];paint()};host.append(b)})}
+function nameOf(list,id){for(var i=0;i<list.length;i++)if(list[i].id===id)return id+' · '+list[i].name;return id}
+function paint(){
+  seg(D.getElementById('c-mode'),'mode',[['dismounted','Dismounted'],['wheeled','Wheeled'],['tracked','Tracked'],['hls','Helicopter LS']]);
+  seg(D.getElementById('c-season'),'season',[['dry','Dry'],['wet','After Rain'],['month','July']]);
+  var today=todayCard();D.getElementById('today').replaceChildren(today);
+  var opts=D.getElementById('opts');opts.replaceChildren.apply(opts,STYLES.map(function(o){return tile('style',o,function(x){return card(x)})}));
+  var w=D.getElementById('q-where');w.replaceChildren.apply(w,WHERE.map(function(o){return tile('where',o)}));
+  var x=D.getElementById('q-extras');x.replaceChildren.apply(x,EXTRAS.map(function(o){return tile('extras',o)}));
+  var base=today.offsetHeight;
+  D.querySelectorAll('#opts .pg-opt').forEach(function(o){var c=o.querySelector('.ms-ground-guide-badge'),s=o.querySelector('.pg-size');var d=c.offsetHeight-base;s.textContent=(d>0?'+':d<0?'−':'')+Math.abs(d)+' px against today'+(d<0?' (shorter)':'')});
+  var ex=EXTRAS.filter(function(e){return SEL.extras[e.id]}).map(function(e){return e.id+' · '+e.name});
+  D.getElementById('summary').textContent=['T presentation choices:','Style: '+nameOf(STYLES,SEL.style),'Where: '+nameOf(WHERE,SEL.where),'Extras: '+(ex.length?ex.join('; '):'none')].join('\n');
+}
+D.getElementById('copy').onclick=function(){var t=D.getElementById('summary').textContent,m=D.getElementById('copied');try{navigator.clipboard.writeText(t).then(function(){m.textContent='Copied.'},function(){m.textContent='Select the text below and copy it.'})}catch(e){m.textContent='Select the text below and copy it.'}};
+paint();
+})();
+</script>
+</body>
+</html>

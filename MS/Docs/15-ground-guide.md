@@ -474,7 +474,11 @@ can be compared live before one set is chosen (GroundGuideTrafficability.ts, Gro
 | `traffic.header` | `dry` | `season` (opt-in): a **point** on soil or wet ground that is SLOW-GO / NO-GO for the season gets that verdict in the header and the Why scale, and Enforce Mode refuses it. Only ever makes a verdict worse; lines and areas keep the class verdict. |
 | `traffic.rain` | `cone` | How soil changes the going, everywhere (card sections, overlay, verdict): `cone` the rating cone index against the vehicle's (GO at VCI50, SLOW-GO at VCI1); `bearing` the texture's bearing for the season (`rules.json grotbc.soilBearing`: Poor lowers vehicles one step, Very Poor two and foot one); `words` the soil is described but never changes GO / SLOW-GO / NO-GO. |
 
-`v.traffic` on the verdict carries `{ road, pending, pill, dual }`; the going is `v.going`. Ctrl+K: *Trafficability (T)*.
+| `traffic.block` | `band` | T as **one block** instead of the separate pieces (`off`: the Cross-Country and Movement sections and the Road band, as before). With a block on, those two going sections and the Road band are left out (the other card sections stay as set). `band` the going now in large type, then Why (soil, cone index against the vehicle's), Road (shield, name, distance, class tag, all-weather alternative) and Move (directions open); `gauge` one GO to NO-GO bar with sun and drop markers; `calendar` twelve months coloured by the going they leave, rain bars, this month outlined; `tiles` foot / wheels / tracks (and the mode placed) with dry and after-rain bars; `wayout` a line to the road coloured by the going crossed, ending in the road shield; `rose` the movement rose with the road marked on its rim (turns with the map); `ticker` one strip under the header; `tabs` Now / Rain / Road / Months, T cycles them while drawing. Compared side by side in `ground-guide-t-presentation.html`. |
+| `traffic.where` | `afterWhy` | `afterWhy`; `grotbc` after the G sections, before B; `folded` one line (going, after rain, road) that **T** opens and closes while drawing (with `tabs`: closed, each tab, closed). The ticker always sits under the header. |
+
+`v.traffic` on the verdict carries `{ road, pending, pill, dual, block, where, open, tab }`; `road.main` / `road.alt` give the road
+as the drawn styles need it (shield, name, tag, MSR, all-weather, distance, bearing). The going is `v.going`. Ctrl+K: *Trafficability (T)*.
 
 ### People (B, civil considerations)
 

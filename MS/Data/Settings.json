@@ -623,7 +623,7 @@
     "classifyToleranceM": 25,
     "timeoutMs": 30000,
     "availabilityTtlMs": 30000,
-    "showRoadsLayer": true,
+    "showRoadsLayer": false,
     "travelMode": "",
     "bundleUrl": "/terrain-bundle",
     "roadsSource": "auto"
@@ -715,7 +715,9 @@
       "header": "dry",
       "pill": true,
       "dual": false,
-      "rain": "cone"
+      "rain": "cone",
+      "block": "band",
+      "where": "afterWhy"
     }
   },
   "stylus": {

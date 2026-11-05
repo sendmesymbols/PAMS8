@@ -3228,6 +3228,28 @@
                 <option value="words">Words only</option>
               </select>
             </div>
+            <div class="setting-row">
+              <label>T on the card</label>
+              <select id="setting-groundGuideTrafficBlock" style="width: 150px" title="T as one block instead of the separate Cross-Country / Movement sections and Road band. Compare the styles in ground-guide-t-presentation.html.">
+                <option value="off">Separate pieces</option>
+                <option value="band" selected>T1 · One T band</option>
+                <option value="gauge">T2 · Going gauge</option>
+                <option value="calendar">T3 · Going calendar</option>
+                <option value="tiles">T4 · Who can move</option>
+                <option value="wayout">T5 · Way out</option>
+                <option value="rose">T6 · Rose and road</option>
+                <option value="ticker">T7 · Ticker strip</option>
+                <option value="tabs">T8 · Tabbed band</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Where T sits</label>
+              <select id="setting-groundGuideTrafficWhere" style="width: 150px" title="Right after Why, in GROTBC order (after G, before B), or folded to one line that T opens while drawing.">
+                <option value="afterWhy" selected>After Why</option>
+                <option value="grotbc">GROTBC order</option>
+                <option value="folded">Folded (T opens)</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -4557,6 +4579,8 @@
         'setting-groundGuideTrafficOverlay': (v) => ({ path: ['groundGuide', 'traffic', 'overlay'], value: v }),
         'setting-groundGuideTrafficHeader': (v) => ({ path: ['groundGuide', 'traffic', 'header'], value: v }),
         'setting-groundGuideTrafficRain': (v) => ({ path: ['groundGuide', 'traffic', 'rain'], value: v }),
+        'setting-groundGuideTrafficBlock': (v) => ({ path: ['groundGuide', 'traffic', 'block'], value: v }),
+        'setting-groundGuideTrafficWhere': (v) => ({ path: ['groundGuide', 'traffic', 'where'], value: v }),
         'setting-groundGuideWorker': (v) => ({ path: ['groundGuide', 'useWorker'], value: v }),
         'setting-groundGuideOverlay': (v) => ({ path: ['groundGuide', 'overlay', 'enabled'], value: v }),
         'setting-groundGuideBoundary': (v) => ({ path: ['groundGuide', 'overlay', 'boundary'], value: v }),

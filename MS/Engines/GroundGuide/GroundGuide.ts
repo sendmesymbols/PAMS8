@@ -65,6 +65,8 @@ import {
   trafficKey,
   TRAFFIC_LEGEND_STYLES,
   TRAFFIC_RAIN_RULES,
+  TRAFFIC_BLOCK_STYLES,
+  TRAFFIC_WHERE,
   type GroundGuideTraffic,
 } from './GroundGuideTrafficability';
 import type { OverlayGoing } from './GroundGuideOverlay';
@@ -276,6 +278,9 @@ export default class GroundGuide {
   });
   /** Season (and profile) the overlay last painted the going for (T); a change repaints it. */
   private _overlaySeasonKey = '';
+  /** T block state while drawing: a folded block opened with T, and the tab the `tabs` style shows (T cycles). */
+  private _trafficOpen = false;
+  private _trafficTab = 0;
   private _hintedThisSession = false;
   private _lastIssueKey = '';
   /** The last pointer move was a finger: the card goes above it and does not offer keyboard shortcuts. */
@@ -630,6 +635,8 @@ export default class GroundGuide {
       flag('traffic.pill', tr.pill, (b) => (next.traffic.pill = b));
       flag('traffic.dual', tr.dual, (b) => (next.traffic.dual = b));
       pick('traffic.rain', tr.rain, TRAFFIC_RAIN_RULES, (x) => (next.traffic.rain = x));
+      pick('traffic.block', tr.block, TRAFFIC_BLOCK_STYLES, (x) => (next.traffic.block = x));
+      pick('traffic.where', tr.where, TRAFFIC_WHERE, (x) => (next.traffic.where = x));
     }
     this._reportIssues(issues);
     this._opts = next;
@@ -1574,7 +1581,8 @@ export default class GroundGuide {
   /** T on the card while drawing: the road (or landing-site) line, the rain pill and the second scale. Null when no T option is on. */
   private _trafficNear(geometry: any, v: GroundGuideVerdict): GroundGuideTraffic | null {
     const t = this._opts.traffic;
-    if (!(t.road || t.pill || t.dual) || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    const blockOn = t.block !== 'off';
+    if (!(t.road || t.pill || t.dual || blockOn) || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
     const pt = v.going?.point ?? null;
     const wet = v.going?.season === 'wet';
     let road: GroundGuideTraffic['road'] = null;
@@ -1592,8 +1600,8 @@ export default class GroundGuide {
         }
       }
     }
-    if (!road && !t.pill && !t.dual) return null;
-    return { road, pending, pill: t.pill, dual: t.dual };
+    if (!road && !t.pill && !t.dual && !blockOn) return null;
+    return { road, pending, pill: t.pill, dual: t.dual, block: t.block, where: t.where, open: this._trafficOpen, tab: this._trafficTab };
   }
 
   /**
@@ -1624,6 +1632,30 @@ export default class GroundGuide {
     const p = c ? toMercatorShape(c)?.parts[0]?.[0] : null;
     const prec = p ? this._climate?.precAt(...(mercatorToLngLat(p[0], p[1]) as [number, number])) ?? null : null;
     return resolveSeason(this._opts.going, prec).season;
+  }
+
+  /**
+   * The T key while drawing: opens / closes a folded T block, or steps the `tabs` style to its next tab (folded and
+   * tabbed: closed, then each tab, then closed again). False when T does nothing for the current options.
+   */
+  private _stepTraffic(): boolean {
+    const t = this._opts.traffic;
+    if (t.block === 'off' || t.block === 'ticker') return false;
+    const folded = t.where === 'folded';
+    if (t.block !== 'tabs') {
+      if (!folded) return false;
+      this._trafficOpen = !this._trafficOpen;
+      return true;
+    }
+    if (folded && !this._trafficOpen) {
+      this._trafficOpen = true;
+      this._trafficTab = 0;
+    } else if (folded && this._trafficTab === 3) {
+      this._trafficOpen = false;
+    } else {
+      this._trafficTab = (this._trafficTab + 1) % 4;
+    }
+    return true;
   }
 
   /** The view came to rest: repaint the overlay when the season at the centre changed (an `auto` season moves with the map). */
@@ -2213,7 +2245,7 @@ export default class GroundGuide {
     const t = this._opts.traffic;
     return (
       this._briefOpen || c.goingLines || c.movementRose || c.soilStrength || c.exitStrip || c.modeMatrix || c.seasonRibbon || c.goingMap ||
-      t.pill || t.dual || t.header === 'season' // T reads the going at the point too
+      t.pill || t.dual || t.header === 'season' || t.block !== 'off' // T reads the going at the point too
     );
   }
 
@@ -2361,7 +2393,9 @@ export default class GroundGuide {
       );
       return pg ? { ...pg, cls: pc } : null;
     };
-    const movement = moveOk && (c.movementRose || c.exitStrip || brief) ? this._rays(at, lat, z, rangeM, sample, coarse, season) : null;
+    const tb = this._opts.traffic.block;
+    const tMove = tb === 'band' || tb === 'rose' || tb === 'tabs'; // T blocks that say how open the ground is
+    const movement = moveOk && (c.movementRose || c.exitStrip || brief || tMove) ? this._rays(at, lat, z, rangeM, sample, coarse, season) : null;
     const map = moveOk && (c.goingMap || brief) ? this._goingGrid(at, lat, rangeM, brief ? 33 : 25, sample) : null;
 
     return {
@@ -2815,7 +2849,7 @@ export default class GroundGuide {
     this._shift = e.shiftKey;
     if (e.type !== 'keydown') return;
     const k = e.key.toLowerCase();
-    if ((k !== 's' && k !== 'p' && k !== 'g' && k !== 'escape') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if ((k !== 's' && k !== 'p' && k !== 'g' && k !== 't' && k !== 'escape') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     if (k === 'escape') {
@@ -2826,6 +2860,12 @@ export default class GroundGuide {
       if (!this._opts.card.briefKey || !this._lastDetail || this._activeProfile === 'exempt' || !this._goingLayers()) return;
       e.preventDefault();
       this._toggleBrief(!this._briefOpen);
+      return;
+    }
+    if (k === 't') {
+      if (!this._lastDetail || this._activeProfile === 'exempt' || !this._stepTraffic()) return;
+      e.preventDefault();
+      this._refreshLive();
       return;
     }
     if (k === 'p') {

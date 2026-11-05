@@ -773,7 +773,10 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
     briefKey: true,
   },
   population: { enabled: true, card: 'scale', flag: true, radiusKm: 5, layer: false, layerOpacity: 0.7 },
-  traffic: { road: true, roadRadiusKm: 3, legend: 'label', overlay: false, header: 'dry', pill: true, dual: false, rain: 'cone' },
+  traffic: {
+    road: true, roadRadiusKm: 3, legend: 'label', overlay: false, header: 'dry', pill: true, dual: false, rain: 'cone',
+    block: 'band', where: 'afterWhy',
+  },
 };
 
 /** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */

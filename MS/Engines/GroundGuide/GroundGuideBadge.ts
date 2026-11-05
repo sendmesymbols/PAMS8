@@ -19,7 +19,7 @@
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
 import { briefCue, goingSections, orientRoses } from './GroundGuideGoingView';
 import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
-import { decorateTraffic } from './GroundGuideTrafficView';
+import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
 import { DEFAULT_GROUND_GUIDE_OPTIONS, type GroundGuideCardOptions, type GroundGuideVerdict } from './GroundGuideTypes';
 
 const STYLE_ID = 'ms-ground-guide-badge-style';
@@ -510,8 +510,9 @@ export class GroundGuideBadge {
         : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), groundSection(v)].filter(
             (r): r is HTMLElement => r !== null,
           );
-    if (v.verdict !== 'unknown') rows.push(...goingSections(v, this._card, this._north));
-    decorateTraffic(v, bar, pills, rows, rows.length); // T: rain pill, second scale under Why, road line after the going sections
+    // A T block (traffic.block) carries the Cross-Country and Movement sections itself.
+    if (v.verdict !== 'unknown') rows.push(...goingSections(v, trafficCard(v, this._card), this._north));
+    decorateTraffic(v, bar, pills, rows, rows.length, this._north); // T: block or road band, rain pill, second scale under Why
     const people = v.verdict === 'unknown' ? null : populationSection(v.population);
     if (people) {
       ensurePopulationCss();

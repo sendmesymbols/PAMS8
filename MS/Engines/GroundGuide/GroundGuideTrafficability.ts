@@ -38,7 +38,22 @@ export interface GroundGuideTrafficOptions {
   /** A second going scale under Why, for the other season. */
   dual: boolean;
   rain: TrafficRainRule;
+  /**
+   * T as ONE block in place of the separate pieces (the Cross-Country and Movement sections, the Road band and the
+   * pill stay as set when `off`): `band` going now + why / road / movement rows, `gauge` a GO to NO-GO bar with dry
+   * and after-rain markers, `calendar` twelve months coloured by going, `tiles` foot / wheels / tracks (/ air) with dry
+   * and after-rain bars, `wayout` a line to the road coloured by the going crossed, `rose` the movement rose with the
+   * road's shield on its rim, `ticker` one slim strip under the header, `tabs` Now / Rain / Road / Months (T cycles).
+   */
+  block: TrafficBlockStyle;
+  /** Where the block sits: right after Why, in GROTBC order (after G, before B), or folded to one line until T. */
+  where: TrafficWhere;
 }
+
+export type TrafficBlockStyle = 'off' | 'band' | 'gauge' | 'calendar' | 'tiles' | 'wayout' | 'rose' | 'ticker' | 'tabs';
+export type TrafficWhere = 'afterWhy' | 'grotbc' | 'folded';
+export const TRAFFIC_BLOCK_STYLES: readonly TrafficBlockStyle[] = ['off', 'band', 'gauge', 'calendar', 'tiles', 'wayout', 'rose', 'ticker', 'tabs'];
+export const TRAFFIC_WHERE: readonly TrafficWhere[] = ['afterWhy', 'grotbc', 'folded'];
 
 export const TRAFFIC_LEGEND_STYLES: readonly TrafficLegendStyle[] = ['none', 'label', 'season', 'month'];
 export const TRAFFIC_RAIN_RULES: readonly TrafficRainRule[] = ['cone', 'bearing', 'words'];
@@ -49,6 +64,23 @@ export interface TrafficRoad {
   text: string;
   distanceM: number | null;
   compass: string | null;
+  /** The road named first, for the drawn styles (shield, way out, rose); null for "not needed" and landing lines. */
+  main: TrafficRoadRef | null;
+  /** An all-weather road further off, when the nearest is fair-weather (wheels). */
+  alt: TrafficRoadRef | null;
+}
+
+export interface TrafficRoadRef {
+  /** Road number ("N-5"), else "Road" / "Track". */
+  shield: string;
+  name: string | null;
+  /** "Class 70 · Tankable", "Class 40 · All-Weather", "Fair-Weather". */
+  tag: string | null;
+  msr: boolean;
+  allWeather: boolean;
+  distanceM: number;
+  compass: string;
+  bearingDeg: number;
 }
 
 /** What T adds to a verdict while drawing (the going itself is `v.going`). */
@@ -58,6 +90,13 @@ export interface GroundGuideTraffic {
   pending: boolean;
   pill: boolean;
   dual: boolean;
+  /** The one-block style (`traffic.block`, `off` = the separate pieces) and where it sits. */
+  block: TrafficBlockStyle;
+  where: TrafficWhere;
+  /** `folded`: the T key has opened the block. */
+  open: boolean;
+  /** `tabs`: the tab shown (0 Now, 1 Rain, 2 Road, 3 Months). */
+  tab: number;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -103,12 +142,14 @@ function preferMsr(list: FeatureRoadHit[]): FeatureRoadHit | undefined {
  * season (foot on GO ground needs no road); `wet` the season. Null when roads do not matter for the mode.
  */
 export function pickRoad(profile: GroundGuideProfile, step: GoingStep | null, wet: boolean, roads: FeatureRoadHit[], radiusM: number): TrafficRoad | null {
-  const none = (what: string): TrafficRoad => ({ caption: 'Road', text: `No ${what} within ${fmtDistance(radiusM)}`, distanceM: null, compass: null });
-  const line = (h: FeatureRoadHit, extra: string): TrafficRoad => ({
+  const none = (what: string): TrafficRoad => ({ caption: 'Road', text: `No ${what} within ${fmtDistance(radiusM)}`, distanceM: null, compass: null, main: null, alt: null });
+  const line = (h: FeatureRoadHit, extra: string, tag: string | null): TrafficRoad => ({
     caption: 'Road',
     text: `${h.attrs.m ? 'MSR ' : ''}${roadName(h.attrs)}${extra} · ${where(h)}`,
     distanceM: h.distanceM,
     compass: h.compass,
+    main: roadRef(h, tag),
+    alt: null,
   });
   switch (profile) {
     case 'tracked':
@@ -116,12 +157,12 @@ export function pickRoad(profile: GroundGuideProfile, step: GoingStep | null, we
       const tank = preferMsr(roads.filter((h) => h.attrs.k === 3));
       if (!tank) return none('Tankable Road');
       const c = roadClass(tank.attrs);
-      return line(tank, `${c !== null ? ` · Class ${c}` : ''}, Tankable`);
+      return line(tank, `${c !== null ? ` · Class ${c}` : ''}, Tankable`, `${c !== null ? `Class ${c} · ` : ''}Tankable`);
     }
     case 'dismounted':
     case 'pack': {
-      if (step === 'go') return { caption: 'Road', text: 'Not Needed: GO Cross-Country', distanceM: null, compass: null };
-      return roads[0] ? line(roads[0], '') : none('Road or Track');
+      if (step === 'go') return { caption: 'Road', text: 'Not Needed: GO Cross-Country', distanceM: null, compass: null, main: null, alt: null };
+      return roads[0] ? line(roads[0], '', weatherTag(roads[0].attrs)) : none('Road or Track');
     }
     case 'vessel':
     case 'rail':
@@ -134,19 +175,45 @@ export function pickRoad(profile: GroundGuideProfile, step: GoingStep | null, we
       if (!good && !near) return none('Road');
       if (near && !allWeather(near.attrs) && (!good || near.distanceM < good.distanceM * 0.6)) {
         const fair = `Fair-Weather Road ${where(near)}`;
-        if (!good) return { caption: 'Road', text: wet ? `${fair}: SLOW-GO After Rain` : fair, distanceM: near.distanceM, compass: near.compass };
+        const main = roadRef(near, wet ? 'Fair-Weather · SLOW-GO After Rain' : 'Fair-Weather');
+        if (!good) return { caption: 'Road', text: wet ? `${fair}: SLOW-GO After Rain` : fair, distanceM: near.distanceM, compass: near.compass, main, alt: null };
         const all = `${good.attrs.m ? 'MSR ' : ''}${roadName(good.attrs)} ${where(good)}`;
         return {
           caption: 'Road',
           text: wet ? `Use ${all} (All-Weather); ${fair} Is SLOW-GO` : `${fair} · ${all}`,
           distanceM: near.distanceM,
           compass: near.compass,
+          main,
+          alt: roadRef(good, weatherTag(good.attrs)),
         };
       }
-      const c = roadClass(good!.attrs);
-      return line(good!, c !== null ? ` · Class ${c}` : '');
+      return line(good!, roadClass(good!.attrs) !== null ? ` · Class ${roadClass(good!.attrs)}` : '', weatherTag(good!.attrs));
     }
   }
+}
+
+/** "Class 70 · All-Weather", or just the weather when the class is not recorded. */
+function weatherTag(a: Record<string, unknown>): string {
+  const c = roadClass(a);
+  return `${c !== null ? `Class ${c} · ` : ''}${allWeather(a) ? 'All-Weather' : 'Fair-Weather'}`;
+}
+
+/** A road as the card draws it: a shield (road number, else Road / Track), its name, a tag, and where it is. */
+function roadRef(h: FeatureRoadHit, tag: string | null): TrafficRoadRef {
+  const a = h.attrs;
+  const n = typeof a.n === 'string' ? a.n.trim() : '';
+  const r = typeof a.r === 'string' ? a.r.trim() : '';
+  const aw = allWeather(a);
+  return {
+    shield: r || (aw ? 'Road' : 'Track'),
+    name: n && n !== r ? n : r ? null : typeof a.t === 'string' ? titleCase(a.t.replace(/_/g, ' ')) : null,
+    tag,
+    msr: !!a.m,
+    allWeather: aw,
+    distanceM: h.distanceM,
+    compass: h.compass,
+    bearingDeg: h.bearingDeg,
+  };
 }
 
 /** The landing-site line for a helicopter: slope band and wires from the class at the point, and soft ground after rain. */
@@ -157,7 +224,7 @@ export function landingLine(classCode: number | null | undefined, softAfterRain:
     : classCode === 9 || classCode === 10 ? 'Too Steep'
     : 'Level';
   const wires = classCode === 33 || classCode === 48 ? 'Power Lines within 100 m' : 'No Wires Mapped';
-  return { caption: 'Landing', text: `${slope} · ${wires}${softAfterRain ? ' · Soft After Rain' : ''}`, distanceM: null, compass: null };
+  return { caption: 'Landing', text: `${slope} · ${wires}${softAfterRain ? ' · Soft After Rain' : ''}`, distanceM: null, compass: null, main: null, alt: null };
 }
 
 const STEPS: GoingStep[] = ['go', 'slow', 'nogo'];
@@ -178,5 +245,5 @@ export function bearingStep(rules: TerrainRules | null, soil: number | null | un
 /** For the badge's refresh key. */
 export function trafficKey(t: GroundGuideTraffic | null | undefined): string {
   if (!t) return '';
-  return `${t.road?.text ?? ''}/${t.pending ? 1 : 0}/${t.pill ? 1 : 0}/${t.dual ? 1 : 0}`;
+  return `${t.road?.text ?? ''}/${t.pending ? 1 : 0}/${t.pill ? 1 : 0}/${t.dual ? 1 : 0}/${t.block}/${t.where}/${t.open ? 1 : 0}/${t.tab}`;
 }
