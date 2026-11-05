@@ -162,6 +162,16 @@ MS/
   T in GROTBC is **Trafficability**: the going engine (`going.*`, `card.*`, `GroundGuideGoing.ts`) gives the going dry
   and after rain; `traffic.*` (`GroundGuideTrafficability.ts` / `GroundGuideTrafficView.ts`) adds the road line, legend
   season controls, an overlay and (opt-in) verdict that follow the season, and the soil rule — all kept as options to compare.
+  C in GROTBC is **Cover, Camouflage & Concealment** (`cover.*`, `GroundGuideCover.ts` / `GroundGuideCoverView.ts`):
+  cover from direct / indirect fire and concealment from ground / aerial observation at the point (class split
+  `grotbc.coverSplit`, raised by river and canal banks, `cc` local density beside it), the nearest better cover and a
+  rose, in seven card styles kept to compare (`ground-guide-cover-options.html`); `guide.coverAround()` for hosts.
+  The **G / R / B / W sections** (`sections.*`, `GroundGuideSections.ts` / `GroundGuideSectionsView.ts`) show the layers
+  the card used to skip: terrain type, relief, slope, landform, high ground, named areas and water (GeoNames included);
+  the route here with the rules check for the mode (class not recorded = not tankable until checked) and road network
+  density round it (`GroundGuideRoadDensity.ts`, `guide.roadDensityAround()`: km/km², all-weather share, ways out; seven card
+  styles D1–D7 in `GroundGuideRoadDensityView.ts`, compared in `ground-guide-road-density-options.html`); buildings, huts,
+  services, security; the month's weather. Compact on the card by default, in full in the Brief; `guide.sectionsAround()`.
   See `MS/Docs/15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.

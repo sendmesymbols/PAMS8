@@ -1,0 +1,817 @@
+/**
+ * GroundGuideSections.ts
+ *
+ * The GROTBC data the card did not show before (2026-11-05), read at and round the point being placed. Pure: no
+ * DOM, no fetching; the engine passes a pixel reader, the feature tiles and the climate grid in.
+ *
+ *   G Ground     terrain type (`terrain`), relief: elevation and slope (`elev_hi` / `elev_lo`, 3 x 3 gradient), landform
+ *                (`landform`), the nearest change of terrain type, high ground nearby (features with `e`), the named area
+ *                (GeoNames / NCGDB: plains, plateaus, deserts, valleys, hill ranges, forests), water sources (rules.json
+ *                `grotbc.water.kinds` + wells) and the nearest named river, canal or stream.
+ *   R Roads      the route at the point or the nearest within 500 m (`route`: type, load-class tier, MSR bit), checked
+ *                against the mode with rules.json `grotbc.tankable` (class 60+ tankable, 50-59 Al-Zarrar only); the
+ *                nearest crossing (bridge, ford, ferry), railway station or line, and airfield or helipad; road network
+ *                density round the point (GroundGuideRoadDensity: km/km², all-weather, MSR, ways out).
+ *   B Buildings  building density, footprint size and height (`bld`, Open Buildings + GHSL), kacha huts and temporary
+ *                huts (`hut`, NCGDB symbols), the nearest services (health, police, school, government) and security
+ *                installations (posts, forts, border posts, cantonments).
+ *   O Obstacles  (added 2026-11-06) the nearest natural and man-made obstacle by class (rules.json `classes[c].origin`
+ *                and the `O` letter), with its effect for the mode (the profile's NO-GO / SLOW-GO lists); wet ground at
+ *                the point (`wet`); the nearest canal with its width, depth and bank height, river reach (bed, depth,
+ *                current), dam / barrage / headworks and levee; roads closed by season or with landslide sites nearby.
+ *   Also (2026-11-06): R the recorded condition, closures, landslides, load code and width of the nearest road, and its
+ *                named route (routes.json: from, to, length, MSR); G the nearest ridgeline; B the admin area, map
+ *                sheet and border (admin.geojson, sheets.json, boundaries.geojson), the nearest settlement and its
+ *                size class, utilities and landmarks (protected sites: mosques, shrines, temples, churches, graveyards).
+ *   W Weather    the month's normals (tmax / tmin, rain, wind) and the year (rain, monsoon share, frost, hot and wet
+ *                months) from the climate grid (WorldClim 1970-2000).
+ *
+ * Every label comes from the bundle (rules.json codebooks, features/index.json kinds). Every threshold that decides
+ * something comes from rules.json. Safety first (see docs/15): a load class that is not recorded is treated as not
+ * tankable until checked, and a fair-weather surface is said to turn SLOW-GO after rain.
+ */
+
+import type { ClimateNormals } from './GroundGuideGoing';
+import type { FeatureHit } from './GroundGuideFeatures';
+import type { MercXY } from './GroundGuideTypes';
+import type { RoadDensityTotals } from './GroundGuideRoads';
+import { roadDensityKey, roadDensityReading, type RoadDensityReading, type RoadDensityRules } from './GroundGuideRoadDensity';
+import type { RoadDensityLead, RoadDensityStyle } from './GroundGuideRoadDensityView';
+import type { FeatureRoadHit } from './GroundGuideFeatures';
+import type { PlaceAdmin, PlaceBorder, PlaceRoute, PlaceSheet } from './GroundGuidePlaceData';
+
+export type SectionsStyle = 'lines' | 'compact' | 'brief';
+export const SECTIONS_STYLES: readonly SectionsStyle[] = ['lines', 'compact', 'brief'];
+
+/**
+ * Per-section card styles (2026-11-06), every one kept so the owner can compare them live
+ * (ground-guide-sections-options.html shows them side by side). `auto` follows `sections.style`
+ * (compact -> line, lines -> rows, brief -> nothing on the card); `line` and `rows` are those two looks for one section.
+ *   G  relief: a cross-section with the point on it, the slope band gauge and the high ground  ·  chips: one chip each
+ *   R  shield: the road as a sign (number, name, from - to, record chips)  ·  verdict: the check for the mode in large type
+ *   O  tiles: natural beside man-made, bordered by their effect  ·  gap: the nearest canal or river drawn to its width and depth
+ *   B  where: tehsil, district, sheet and border first  ·  protected: protected sites and services (no-strike, collateral)
+ *   W  year: twelve months of temperature range and rain  ·  icons: temperature, rain and wind in large figures
+ */
+export type SectionCardStyle = 'auto' | 'line' | 'rows' | 'off';
+export type GroundCardStyle = SectionCardStyle | 'relief' | 'chips';
+export type RoadsCardStyle = SectionCardStyle | 'shield' | 'verdict';
+export type ObstaclesCardStyle = SectionCardStyle | 'tiles' | 'gap';
+export type BuildingsCardStyle = SectionCardStyle | 'where' | 'protected';
+export type WeatherCardStyle = SectionCardStyle | 'year' | 'icons';
+export const G_STYLES: readonly GroundCardStyle[] = ['auto', 'line', 'rows', 'relief', 'chips'];
+export const R_STYLES: readonly RoadsCardStyle[] = ['auto', 'line', 'rows', 'shield', 'verdict'];
+export const O_STYLES: readonly ObstaclesCardStyle[] = ['auto', 'line', 'rows', 'tiles', 'gap'];
+export const B_STYLES: readonly BuildingsCardStyle[] = ['auto', 'line', 'rows', 'where', 'protected'];
+export const W_STYLES: readonly WeatherCardStyle[] = ['auto', 'line', 'rows', 'year', 'icons'];
+
+export interface SectionStyles {
+  g: GroundCardStyle;
+  r: RoadsCardStyle;
+  o: ObstaclesCardStyle;
+  b: BuildingsCardStyle;
+  w: WeatherCardStyle;
+}
+
+export interface GroundGuideSectionsOptions {
+  /** G: terrain type, relief, landform, high ground, named area, water. */
+  ground: boolean;
+  /** R: the route at the point and how it suits the mode; crossings, rail and air nearby. */
+  roads: boolean;
+  /** B: buildings, huts, services and security installations. */
+  buildings: boolean;
+  /** W: the month's weather and the year's climate. */
+  weather: boolean;
+  /** O: the nearest natural and man-made obstacle, wet ground, gaps (canal, river reach), dams, levees, closures. */
+  obstacles: boolean;
+  /** `lines` (2-5 lines a section), `compact` (one line a section), `brief` (only in the Ground Brief). */
+  style: SectionsStyle;
+  /** Per-section card style; `auto` follows `style`. */
+  gStyle: GroundCardStyle;
+  rStyle: RoadsCardStyle;
+  oStyle: ObstaclesCardStyle;
+  bStyle: BuildingsCardStyle;
+  wStyle: WeatherCardStyle;
+  /** How far the sections look for features (high ground, water, crossings, services), km. */
+  radiusKm: number;
+  /** R: road network density round the point (km of road per km², all-weather share, MSR, ways out). */
+  roadDensity: boolean;
+  /** The circle the road density is measured in, radius km. */
+  roadDensityKm: number;
+  /** How the card shows it (GroundGuideRoadDensityView, D1-D7); the Brief always shows it in full. */
+  roadDensityStyle: RoadDensityStyle;
+  /** Which band the card leads with when tracks lift the total a band: after rain (safety), dry, or both. */
+  roadDensityLead: RoadDensityLead;
+}
+
+const COMPASS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Slope bands (doc 16 §3.3): Level 0-3, Gentle 3-7, Sloping 7-15, Moderate 15-30, Steep over 30 degrees. */
+export function slopeBand(deg: number): string {
+  return deg < 3 ? 'Level' : deg < 7 ? 'Gentle' : deg < 15 ? 'Sloping' : deg < 30 ? 'Moderate' : 'Steep';
+}
+
+/** Building height class (value >> 6 of `bld`), as the pipeline names it (tools/terrain-pipeline/scripts/buildings.py HEIGHT_LABEL). */
+const BLD_HEIGHT: Record<number, string> = {
+  0: 'Height not known / under 3 m',
+  1: 'Low (3 to 6 m, 1 to 2 storeys)',
+  2: 'Medium (6 to 12 m, 2 to 4 storeys)',
+  3: 'High (12 m and over, multi-storey)',
+};
+
+/** Route types (rules.json `grotbc.layers.route.types`) by what they are. */
+const ROAD_TYPES = new Set([14, 15, 16, 17, 18, 19, 20, 21, 22]);
+const METALLED_TYPES = new Set([17, 18, 19, 20, 21, 22]);
+const TRACK_TYPES = new Set([1, 2, 3, 4, 5, 6, 7, 15, 16]);
+const RAIL_TYPES = new Set([8, 9, 10, 11, 12, 13]);
+
+/** Feature kind keys (features/index.json) used by each line. */
+export const KINDS = {
+  high: new Set(['trig_station', 'spot_height', 'bench_mark', 'mountain', 'peak', 'hill', 'knoll', 'plateau']),
+  area: new Set(['landform_name', 'mountain', 'dune', 'forest_name', 'locality', 'glacier', 'vegetation_name']),
+  waterExtra: new Set(['well', 'hand_pump', 'tank_overhead', 'tank_seasonal']),
+  waterNamed: new Set(['stream_name', 'canal_name', 'lake', 'waterfall', 'river_reach']),
+  waterLines: new Set(['river', 'canal']),
+  crossing: new Set(['bridge', 'bridge_iron', 'boat_bridge', 'viaduct', 'ford', 'ferry', 'foot_bridge']),
+  rail: new Set(['rail_station']),
+  railLines: new Set(['railway']),
+  air: new Set(['helipad', 'airfield', 'landing_strip', 'airport', 'air_base', 'landing_ground', 'road_runway']),
+  health: new Set(['hospital', 'bhu', 'dispensary']),
+  police: new Set(['police_station']),
+  school: new Set(['school']),
+  government: new Set(['government_office', 'post_office']),
+  security: new Set(['post', 'border_post', 'fort', 'cantonment', 'watch_tower', 'firing_range']),
+  ridge: new Set(['ridgeline']),
+  dam: new Set(['dam', 'barrage', 'headworks']),
+  reach: new Set(['river_reach']),
+  canalLines: new Set(['canal']),
+  levee: new Set(['levee']),
+  utilities: new Set(['grid_station', 'mast', 'wind_tower', 'oil_gas_well', 'oil_tank', 'telecom_booster', 'telephone_exchange', 'wireless_station']),
+  landmarks: new Set(['mosque', 'tomb', 'temple', 'church', 'eidgah', 'graveyard_pt', 'market', 'mill', 'stadium', 'industrial_area', 'camp', 'park']),
+  places: new Set(['city', 'district_hq', 'town', 'village_imp', 'village']),
+};
+/** Protected sites (no-strike, collateral): named first on the Landmarks line. */
+const PROTECTED = new Set(['mosque', 'tomb', 'temple', 'church', 'eidgah', 'graveyard_pt']);
+
+/** Settlement size classes by people, as the pipeline sets them (tools/terrain-pipeline/scripts/settlements.py SIZE_CLASSES). */
+const SIZE_CLASSES: Array<[number, string]> = [
+  [1_000_000, 'Metropolitan city'],
+  [500_000, 'Large city'],
+  [100_000, 'Mid-size city'],
+  [20_000, 'Town'],
+  [5_000, 'Large village'],
+  [500, 'Village'],
+  [0, 'Hamlet'],
+];
+export function sizeClass(people: number): string {
+  return SIZE_CLASSES.find(([lo]) => people >= lo)?.[1] ?? 'Hamlet';
+}
+/** `t` subtypes of the `mountain` / `locality` / `dune` kinds that name an area rather than one hill or village lands. */
+const AREA_SUBTYPES = new Set(['mountain range', 'hills', 'ridge', 'region', 'tribal area', 'sand sea', 'plain', 'plateau', 'desert', 'valley', 'upland', 'gorge']);
+
+export interface SectionPlace {
+  label: string;
+  name: string | null;
+  distanceM: number;
+  compass: string;
+}
+
+export interface GroundReading {
+  terrain: { code: number; label: string } | null;
+  /** The nearest different terrain type along eight rays to the radius. */
+  terrainChange: { label: string; distanceM: number; compass: string } | null;
+  elevationM: number | null;
+  slopeDeg: number | null;
+  slopeBand: string | null;
+  /** The slope was read on an overview tile (map zoomed out): a mean, so gentler than the ground. */
+  slopeApprox: boolean;
+  landform: string | null;
+  high: (SectionPlace & { elevationM: number; aboveM: number | null }) | null;
+  area: SectionPlace | null;
+  water: SectionPlace[];
+  namedWater: SectionPlace | null;
+  /** The nearest ridgeline (ground.py, from the DEM): crest height and length. */
+  ridge: { crestM: number | null; lengthKm: number | null; distanceM: number; compass: string } | null;
+}
+
+export interface RoadsReading {
+  /** The route at the point (`on`), else the nearest within 500 m. Null when there is none. */
+  route: {
+    on: boolean;
+    type: number;
+    typeLabel: string;
+    tier: number;
+    tierLabel: string;
+    msr: boolean;
+    distanceM: number;
+    compass: string;
+  } | null;
+  /** The route checked against the mode with rules.json (null when no rule applies to the mode). */
+  check: { level: 'ok' | 'warn' | 'stop' | 'unknown'; text: string } | null;
+  crossing: SectionPlace | null;
+  rail: SectionPlace | null;
+  air: SectionPlace | null;
+  /** Road network density round the point (GroundGuideRoadDensity); null when off or the bundle has no network. */
+  density: RoadDensityReading | null;
+  /** What the NCGDB records on the nearest road (within 500 m), and its named route. */
+  record: RoadRecord | null;
+}
+
+export interface RoadRecord {
+  name: string | null;
+  number: string | null;
+  /** Load code as recorded: class, A / F (all- / fair-weather), lanes ("40A1"). */
+  loadCode: string | null;
+  widthM: number | null;
+  /** Recorded condition, or null when none is recorded (about 4 % of roads have one). */
+  condition: string | null;
+  /** Seasonal / temporary closure as recorded, or null when none is recorded. */
+  closed: string | null;
+  landslides: number | null;
+  defence: boolean;
+  distanceM: number;
+  compass: string;
+  route: PlaceRoute | null;
+}
+
+export interface ObstacleHit {
+  label: string;
+  origin: 'natural' | 'man_made';
+  /** What it means for the mode being placed (the profile's lists), null when it does not stop or slow it. */
+  effect: 'NO-GO' | 'SLOW-GO' | null;
+  distanceM: number;
+  compass: string;
+}
+
+export interface ObstaclesReading {
+  natural: ObstacleHit | null;
+  manMade: ObstacleHit | null;
+  /** Wet ground at the point (`wet` codebook), null when normal. */
+  wet: string | null;
+  canal: (SectionPlace & { widthM: number | null; depthM: number | null; bankM: number | null }) | null;
+  reach: (SectionPlace & { bed: string | null; depthM: number | null; currentMs: number | null }) | null;
+  dam: SectionPlace | null;
+  levee: SectionPlace | null;
+  /** A road nearby closed by season or with landslide sites, as recorded. */
+  closure: { road: string; closed: string | null; landslides: number | null; distanceM: number; compass: string } | null;
+}
+
+export interface BuildingsReading {
+  density: { code: number; label: string } | null;
+  size: string | null;
+  height: string | null;
+  huts: { perKm2: number; temporary: boolean } | null;
+  services: SectionPlace[];
+  security: SectionPlace[];
+  admin: PlaceAdmin | null;
+  sheet: PlaceSheet | null;
+  border: PlaceBorder | null;
+  settlement: (SectionPlace & { sizeClass: string; people: number | null }) | null;
+  utilities: SectionPlace[];
+  landmarks: SectionPlace[];
+}
+
+export interface WeatherReading {
+  month: number;
+  monthName: string;
+  tmax: number | null;
+  tmin: number | null;
+  precMm: number;
+  windMs: number | null;
+  precYearMm: number | null;
+  monsoonPct: number | null;
+  frost: string[];
+  hot: string[];
+  wet: string[];
+  source: string;
+  dataDate: string;
+  /** All twelve months (W3 year strip). */
+  months: { tmax: Array<number | null>; tmin: Array<number | null>; prec: number[] };
+}
+
+export interface GroundGuideSections {
+  style: SectionsStyle;
+  /** The card style of each section (`auto` = follow `style`). */
+  styles: SectionStyles;
+  /** Road density on the card: the style and the lead band rule (from the options). */
+  roadDensityStyle: RoadDensityStyle;
+  roadDensityLead: RoadDensityLead;
+  ground: GroundReading | null;
+  roads: RoadsReading | null;
+  buildings: BuildingsReading | null;
+  weather: WeatherReading | null;
+  obstacles: ObstaclesReading | null;
+  /** A tile was still loading: the figures may change. */
+  pending: boolean;
+}
+
+/** The features the sections read (GroundGuideFeatures, or null when the bundle has none). */
+export interface SectionsFeatures {
+  nearestOfKinds(at: MercXY, radiusM: number, keys: ReadonlySet<string>, max?: number, filter?: (h: FeatureHit) => boolean): { list: FeatureHit[]; pending: boolean };
+  linesNear(at: MercXY, radiusM: number, keys: ReadonlySet<string>): { list: FeatureHit[]; pending: boolean };
+  roadsNear(at: MercXY, radiusM: number): { list: FeatureRoadHit[]; pending: boolean };
+}
+
+export interface SectionsLayers {
+  terrain: string | null;
+  landform: string | null;
+  elevHi: string | null;
+  elevLo: string | null;
+  route: string | null;
+  bld: string | null;
+  hut: string | null;
+}
+
+type Read = (layer: string, mx: number, my: number) => number | null | undefined;
+
+function compassOf(deg: number): string {
+  return COMPASS8[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
+function place(h: FeatureHit, label?: string): SectionPlace {
+  const t = typeof h.attrs.t === 'string' && h.attrs.t.trim() ? h.attrs.t.trim() : null;
+  return { label: label ?? (t ? t.charAt(0).toUpperCase() + t.slice(1) : h.kindLabel), name: h.name, distanceM: h.distanceM, compass: h.compass };
+}
+
+function elevAt(read: Read, L: SectionsLayers, x: number, y: number): number | null | undefined {
+  if (!L.elevHi || !L.elevLo) return null;
+  const hi = read(L.elevHi, x, y);
+  const lo = read(L.elevLo, x, y);
+  if (hi === undefined || lo === undefined) return undefined;
+  if (hi === null || lo === null || hi === 255) return null;
+  return hi * 256 + lo - 500;
+}
+
+function label(book: Record<string, unknown> | undefined, code: number | null | undefined, fallback: string): string {
+  if (code === null || code === undefined) return fallback;
+  const v = book?.[String(code)];
+  return typeof v === 'string' ? v : `${fallback} ${code}`;
+}
+
+// ── G ────────────────────────────────────────────────────────────────────────
+function readGround(a: SectionArgs): GroundReading {
+  const { read, L, at, cosLat, books } = a;
+  const tCode = L.terrain ? read(L.terrain, at[0], at[1]) : null;
+  const terrain = tCode !== null && tCode !== undefined && tCode !== 255 && tCode > 0 ? { code: tCode, label: label(books.terrain, tCode, 'Terrain') } : null;
+
+  // Nearest change of terrain type, along eight rays.
+  let terrainChange: GroundReading['terrainChange'] = null;
+  if (terrain && L.terrain) {
+    const R = a.radiusM;
+    const n = Math.min(40, Math.max(6, Math.ceil(R / Math.max(1, a.pxM))));
+    for (let i = 0; i < 8; i++) {
+      const b = (i * 45 * Math.PI) / 180;
+      for (let k = 1; k <= n; k++) {
+        const d = (k * R) / n;
+        if (terrainChange && d >= terrainChange.distanceM) break;
+        const v = read(L.terrain, at[0] + (Math.sin(b) * d) / cosLat, at[1] + (Math.cos(b) * d) / cosLat);
+        if (v === undefined || v === null || v === 255 || v === 0) continue;
+        if (v !== terrain.code) {
+          terrainChange = { label: label(books.terrain, v, 'Terrain'), distanceM: d, compass: COMPASS8[i] };
+          break;
+        }
+      }
+    }
+  }
+
+  // Relief: elevation and slope from a 3 x 3 gradient one pixel apart.
+  const e0 = elevAt(read, L, at[0], at[1]);
+  let slopeDeg: number | null = null;
+  if (e0 !== null && e0 !== undefined) {
+    const d = a.pxM / cosLat; // one pixel, in Mercator metres
+    const ex = [elevAt(read, L, at[0] + d, at[1]), elevAt(read, L, at[0] - d, at[1]), elevAt(read, L, at[0], at[1] + d), elevAt(read, L, at[0], at[1] - d)];
+    if (ex.every((v) => typeof v === 'number')) {
+      const [e, w, n, s] = ex as number[];
+      const g = Math.hypot((e - w) / (2 * a.pxM), (n - s) / (2 * a.pxM));
+      slopeDeg = (Math.atan(g) * 180) / Math.PI;
+    }
+  }
+  const lf = L.landform ? read(L.landform, at[0], at[1]) : null;
+  const landform = lf !== null && lf !== undefined && lf !== 255 && lf > 0 ? label(books.landform, lf, 'Landform') : null;
+
+  // High ground: the highest feature with an elevation within the radius, above the point.
+  const here = typeof e0 === 'number' ? e0 : null;
+  let high: GroundReading['high'] = null;
+  if (a.features) {
+    const hits = a.features.nearestOfKinds(at, a.radiusM, KINDS.high, 400, (h) => typeof h.attrs.e === 'number');
+    for (const h of hits.list) {
+      const ev = h.attrs.e as number;
+      if (here !== null && ev <= here + 5) continue;
+      if (!high || ev > high.elevationM) high = { ...place(h), elevationM: ev, aboveM: here !== null ? Math.round(ev - here) : null };
+    }
+  }
+
+  // The named area: the nearest named landform, hill range, desert, forest or region within 10 km.
+  let area: SectionPlace | null = null;
+  let water: SectionPlace[] = [];
+  let namedWater: SectionPlace | null = null;
+  if (a.features) {
+    const hits = a.features.nearestOfKinds(at, 10000, KINDS.area, 1, (h) => {
+      if (!h.name) return false;
+      if (h.kind === 'landform_name' || h.kind === 'forest_name' || h.kind === 'glacier' || h.kind === 'vegetation_name') return true;
+      const t = String(h.attrs.t ?? '').toLowerCase();
+      return AREA_SUBTYPES.has(t);
+    });
+    if (hits.list[0]) area = place(hits.list[0]);
+
+    // Water sources: the nearest of each kind (rules.json grotbc.water.kinds and wells, pumps, tanks), up to four.
+    const wk = new Set<string>([...a.waterKinds, ...KINDS.waterExtra]);
+    const seen = new Set<string>();
+    for (const h of a.features.nearestOfKinds(at, a.radiusM, wk, 200).list) {
+      if (seen.has(h.kind)) continue;
+      seen.add(h.kind);
+      water.push(place(h, h.kindLabel));
+      if (water.length >= 4) break;
+    }
+    // The nearest named river, canal or stream (lines first, then named points).
+    const lines = a.features.linesNear(at, a.radiusM, KINDS.waterLines).list.filter((h) => h.name);
+    const pts = a.features.nearestOfKinds(at, a.radiusM, KINDS.waterNamed, 1, (h) => !!h.name).list;
+    const best = [...lines.slice(0, 1), ...pts].sort((p, q) => p.distanceM - q.distanceM)[0];
+    if (best) namedWater = place(best);
+  }
+  water = water.sort((p, q) => p.distanceM - q.distanceM);
+  let ridge: GroundReading['ridge'] = null;
+  if (a.features) {
+    const r = a.features.linesNear(at, a.radiusM, KINDS.ridge).list[0];
+    if (r) ridge = { crestM: num(r.attrs.e), lengthKm: num(r.attrs.lk), distanceM: r.distanceM, compass: r.compass };
+  }
+
+  return {
+    terrain,
+    terrainChange,
+    elevationM: here,
+    slopeDeg: slopeDeg === null ? null : Math.round(slopeDeg * 10) / 10,
+    slopeBand: slopeDeg === null ? null : slopeBand(slopeDeg),
+    slopeApprox: a.zoom < a.maxZoom,
+    landform,
+    high,
+    area,
+    water,
+    namedWater,
+    ridge,
+  };
+}
+
+function num(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+function text(v: unknown): string | null {
+  if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x.trim()).join(', ') || null;
+  return typeof v === 'string' && v.trim() ? v.trim() : typeof v === 'number' ? String(v) : null;
+}
+
+/** What the NCGDB records on the nearest road within 500 m (features `road` lines), with its named route. */
+function roadRecord(a: SectionArgs): RoadRecord | null {
+  if (!a.features) return null;
+  const hit = a.features.roadsNear(a.at, 500).list[0];
+  if (!hit) return null;
+  const at = hit.attrs;
+  const number = text(at.r);
+  const name = text(at.n);
+  const route = a.place?.route(number) ?? a.place?.route(name) ?? null;
+  return {
+    name,
+    number,
+    loadCode: text(at.c),
+    widthM: num(at.w),
+    condition: text(at.cn),
+    closed: text(at.x),
+    landslides: num(at.sl),
+    defence: at.d === 1 || at.d === true,
+    distanceM: hit.distanceM,
+    compass: hit.compass,
+    route,
+  };
+}
+
+// ── R ────────────────────────────────────────────────────────────────────────
+function routeCheck(profile: string, r: NonNullable<RoadsReading['route']>, rules: SectionArgs['rules']): RoadsReading['check'] {
+  if (!r.on) return null;
+  const t = rules?.tankable;
+  const min = t?.minClass ?? 60;
+  const lim = t?.limitedClass ?? 50;
+  if (profile === 'tracked' && ROAD_TYPES.has(r.type)) {
+    if (r.tier === 3) return { level: 'ok', text: `Tankable: class ${min} and over` };
+    if (r.tier === 2) return { level: 'warn', text: `Class ${lim} to ${min - 1}: Al-Zarrar only, not Al-Khalid or T-80` };
+    if (r.tier === 1) return { level: 'stop', text: `Below class ${lim}: not tankable` };
+    return { level: 'unknown', text: 'Load class not recorded: treat as not tankable until checked' };
+  }
+  if (profile === 'tracked' && TRACK_TYPES.has(r.type)) return { level: 'unknown', text: 'Track: no load class; check bridges and culverts' };
+  if (profile === 'wheeled' || profile === 'roadbound' || profile === 'gun' || profile === 'ad' || profile === 'signals') {
+    if (METALLED_TYPES.has(r.type)) return { level: 'ok', text: 'Metalled: all-weather' };
+    if (TRACK_TYPES.has(r.type)) return { level: 'warn', text: 'Fair-weather surface: SLOW-GO after rain' };
+  }
+  if (profile === 'rail') return RAIL_TYPES.has(r.type) ? { level: 'ok', text: 'On a railway' } : { level: 'stop', text: 'Not a railway' };
+  return null;
+}
+
+function readRoads(a: SectionArgs): RoadsReading {
+  const { read, L, at, cosLat, books } = a;
+  let route: RoadsReading['route'] = null;
+  const decode = (v: number, d: number, brg: number) => {
+    const type = v & 31;
+    const tier = (v >> 5) & 3;
+    return {
+      on: d === 0,
+      type,
+      typeLabel: label(books.routeTypes, type, 'Route'),
+      tier,
+      tierLabel: label(books.routeTiers, tier, 'Tier'),
+      msr: (v & 128) !== 0,
+      distanceM: d,
+      compass: compassOf(brg),
+    };
+  };
+  if (L.route) {
+    const v0 = read(L.route, at[0], at[1]);
+    if (typeof v0 === 'number' && v0 !== 0 && v0 !== 255) route = decode(v0, 0, 0);
+    else {
+      // The nearest route within 500 m, one pixel at a time.
+      const R = 500;
+      const n = Math.min(15, Math.max(2, Math.ceil(R / Math.max(1, a.pxM))));
+      const step = R / n;
+      let best: { v: number; d: number; b: number } | null = null;
+      for (let j = -n; j <= n; j++) {
+        for (let i = -n; i <= n; i++) {
+          const d = Math.hypot(i, j) * step;
+          if (d === 0 || d > R || (best && d >= best.d)) continue;
+          const v = read(L.route, at[0] + (i * step) / cosLat, at[1] + (j * step) / cosLat);
+          if (typeof v !== 'number' || v === 0 || v === 255) continue;
+          best = { v, d, b: (Math.atan2(i, j) * 180) / Math.PI };
+        }
+      }
+      if (best) route = decode(best.v, best.d, best.b);
+    }
+  }
+  let crossing: SectionPlace | null = null;
+  let rail: SectionPlace | null = null;
+  let air: SectionPlace | null = null;
+  if (a.features) {
+    const c = a.features.nearestOfKinds(at, a.radiusM, KINDS.crossing, 1).list[0];
+    if (c) crossing = place(c, c.kindLabel);
+    const st = a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.rail, 1).list[0];
+    const ln = a.features.linesNear(at, a.radiusM, KINDS.railLines).list[0];
+    const r = [st, ln].filter((x): x is FeatureHit => !!x).sort((p, q) => p.distanceM - q.distanceM)[0];
+    if (r) rail = place(r, r.kindLabel);
+    const ai = a.features.nearestOfKinds(at, Math.max(a.radiusM, 15000), KINDS.air, 1).list[0];
+    if (ai) air = place(ai, ai.kindLabel);
+  }
+  // Road network density (R, Road Connectivity), from the routing network the T road line reads.
+  let density: RoadDensityReading | null = null;
+  if (a.roadNet && (a.opts.roadDensity || a.all)) {
+    const res = a.roadNet.densityAround(at, Math.max(500, a.opts.roadDensityKm * 1000));
+    density = roadDensityReading(res.totals, res.pending, a.rules?.roadDensity);
+  }
+  return { route, check: route ? routeCheck(a.profile, route, a.rules) : null, crossing, rail, air, density, record: roadRecord(a) };
+}
+
+// ── O ────────────────────────────────────────────────────────────────────────
+function readObstacles(a: SectionArgs): ObstaclesReading {
+  const { read, at, cosLat } = a;
+  // The nearest natural and man-made obstacle class (the class's GROTBC letters carry O) within the radius.
+  let natural: ObstacleHit | null = null;
+  let manMade: ObstacleHit | null = null;
+  const R = Math.min(a.radiusM, 2000);
+  const n = Math.min(30, Math.max(3, Math.ceil(R / Math.max(1, a.pxM))));
+  const step = R / n;
+  for (let j = -n; j <= n; j++) {
+    for (let i = -n; i <= n; i++) {
+      const d = Math.hypot(i, j) * step;
+      if (d > R) continue;
+      const c = read(a.clsLayer, at[0] + (i * step) / cosLat, at[1] + (j * step) / cosLat);
+      if (typeof c !== 'number' || c === 255) continue;
+      const info = a.classInfo(c);
+      // Crossings (bridges, fords) carry O too, but they are the way over an obstacle, not one.
+      if (!info || !info.letters.includes('O') || info.kind === 'crossing') continue;
+      const slot = info.origin === 'natural' ? natural : manMade;
+      if (slot && slot.distanceM <= d) continue;
+      const hit: ObstacleHit = { label: info.label, origin: info.origin, effect: a.effect(c), distanceM: d, compass: compassOf((Math.atan2(i, j) * 180) / Math.PI) };
+      if (info.origin === 'natural') natural = hit;
+      else manMade = hit;
+    }
+  }
+  const wv = a.wetLayer ? read(a.wetLayer, at[0], at[1]) : null;
+  const wet = typeof wv === 'number' && wv > 0 && wv !== 255 ? label(a.books.wet, wv, 'Wet') : null;
+
+  let canal: ObstaclesReading['canal'] = null;
+  let reach: ObstaclesReading['reach'] = null;
+  let dam: SectionPlace | null = null;
+  let levee: SectionPlace | null = null;
+  if (a.features) {
+    const cl = a.features.linesNear(at, a.radiusM, KINDS.canalLines).list[0];
+    if (cl) canal = { ...place(cl, cl.kindLabel), widthM: num(cl.attrs.w), depthM: num(cl.attrs.dp), bankM: num(cl.attrs.b) };
+    const rc = a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.reach, 1).list[0];
+    if (rc) reach = { ...place(rc, 'River reach'), bed: text(rc.attrs.s), depthM: num(rc.attrs.dp) ?? num(rc.attrs.dm), currentMs: num(rc.attrs.cu) };
+    const dm = a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.dam, 1).list[0];
+    if (dm) dam = place(dm, dm.kindLabel);
+    const lv = a.features.nearestOfKinds(at, a.radiusM, KINDS.levee, 1).list[0];
+    if (lv) levee = place(lv, lv.kindLabel);
+  }
+  // Roads nearby closed by season or with landslide sites (as recorded: "none recorded" is not "open").
+  let closure: ObstaclesReading['closure'] = null;
+  if (a.features) {
+    for (const h of a.features.roadsNear(at, a.radiusM).list) {
+      const x = text(h.attrs.x);
+      const sl = num(h.attrs.sl);
+      if (!x && !sl) continue;
+      closure = { road: text(h.attrs.r) ?? text(h.attrs.n) ?? 'Road', closed: x, landslides: sl, distanceM: h.distanceM, compass: h.compass };
+      break;
+    }
+  }
+  return { natural, manMade, wet, canal, reach, dam, levee, closure };
+}
+
+// ── B ────────────────────────────────────────────────────────────────────────
+function readBuildings(a: SectionArgs): BuildingsReading {
+  const { read, L, at, books } = a;
+  const bv = L.bld ? read(L.bld, at[0], at[1]) : null;
+  let density: BuildingsReading['density'] = null;
+  let size: string | null = null;
+  let height: string | null = null;
+  if (typeof bv === 'number' && bv !== 255) {
+    const dc = bv & 7;
+    density = { code: dc, label: label(books.bldDensity, dc, 'Density') };
+    const sc = (bv >> 3) & 7;
+    if (sc > 0) size = label(books.bldSize, sc, 'Size');
+    if (dc > 0) height = BLD_HEIGHT[bv >> 6] ?? null;
+  }
+  const hv = L.hut ? read(L.hut, at[0], at[1]) : null;
+  const huts = typeof hv === 'number' && hv !== 255 ? { perKm2: hv & 127, temporary: (hv & 128) !== 0 } : null;
+  const services: SectionPlace[] = [];
+  const security: SectionPlace[] = [];
+  if (a.features) {
+    const R = Math.max(a.radiusM, 5000);
+    for (const [keys, lbl] of [[KINDS.health, null], [KINDS.police, null], [KINDS.school, null], [KINDS.government, null]] as const) {
+      const h = a.features.nearestOfKinds(at, R, keys, 1).list[0];
+      if (h) services.push(place(h, lbl ?? h.kindLabel));
+    }
+    services.sort((p, q) => p.distanceM - q.distanceM);
+    for (const h of a.features.nearestOfKinds(at, a.radiusM, KINDS.security, 2).list) security.push(place(h, h.kindLabel));
+  }
+  const utilities: SectionPlace[] = [];
+  const landmarks: SectionPlace[] = [];
+  let settlement: BuildingsReading['settlement'] = null;
+  if (a.features) {
+    const seen = new Set<string>();
+    for (const h of a.features.nearestOfKinds(at, a.radiusM, KINDS.utilities, 60).list) {
+      if (seen.has(h.kind)) continue;
+      seen.add(h.kind);
+      utilities.push(place(h, h.kindLabel));
+      if (utilities.length >= 3) break;
+    }
+    // Protected sites first (no-strike / collateral), then the nearest other landmark.
+    const lm = a.features.nearestOfKinds(at, a.radiusM, KINDS.landmarks, 80).list;
+    const prot = lm.filter((h) => PROTECTED.has(h.kind));
+    const other = lm.filter((h) => !PROTECTED.has(h.kind));
+    for (const h of [...prot.slice(0, 2), ...other.slice(0, 1)]) landmarks.push(place(h, h.kindLabel));
+    // The nearest named settlement and its size class (by people: WorldPop `wp`, else the official `p`).
+    const st = a.features.nearestOfKinds(at, 15000, KINDS.places, 1, (h) => !!h.name).list[0];
+    if (st) {
+      // People: the larger of WorldPop's share (`wp`) and the official figure (`p`). A city, district HQ or town whose
+      // figure says less than a town keeps its own kind rather than being called a hamlet (`wp` is only the people
+      // nearest the point, so a hill town's can be small).
+      const wp = num(st.attrs.wp);
+      const p = num(st.attrs.p);
+      const people = wp !== null || p !== null ? Math.max(wp ?? 0, p ?? 0) : null;
+      const big = st.kind === 'city' || st.kind === 'district_hq' || st.kind === 'town';
+      const cls = people !== null ? sizeClass(people) : st.kindLabel;
+      const trust = people !== null && (!big || people >= 20_000);
+      settlement = { ...place(st, st.kindLabel), sizeClass: trust ? cls : st.kindLabel, people: trust ? people : null };
+    }
+  }
+  const [lon, lat] = a.lonLat;
+  return {
+    density,
+    size,
+    height,
+    huts,
+    services,
+    security,
+    admin: a.place?.adminAt(lon, lat) ?? null,
+    sheet: a.place?.sheetAt(lon, lat) ?? null,
+    border: a.place?.borderNear(lon, lat) ?? null,
+    settlement,
+    utilities,
+    landmarks,
+  };
+}
+
+// ── W ────────────────────────────────────────────────────────────────────────
+function readWeather(n: ClimateNormals, month: number): WeatherReading {
+  const i = month - 1;
+  const r1 = (v: number | null | undefined) => (typeof v === 'number' ? Math.round(v) : null);
+  const pick = (pred: (k: number) => boolean) => MONTHS.filter((_, k) => pred(k));
+  return {
+    month,
+    monthName: MONTHS[i],
+    tmax: r1(n.tmax[i]),
+    tmin: r1(n.tmin[i]),
+    precMm: Math.round(n.prec[i]),
+    windMs: typeof n.wind[i] === 'number' ? Math.round((n.wind[i] as number) * 10) / 10 : null,
+    precYearMm: r1(n.precYear),
+    monsoonPct: r1(n.monsoonPct),
+    frost: pick((k) => typeof n.tmin[k] === 'number' && (n.tmin[k] as number) < n.thresholds.frostBelowC),
+    hot: pick((k) => typeof n.tmax[k] === 'number' && (n.tmax[k] as number) >= n.thresholds.hotFromC),
+    wet: pick((k) => n.prec[k] >= n.thresholds.wetFromMm),
+    source: n.source,
+    dataDate: n.dataDate,
+    months: { tmax: n.tmax.map(r1), tmin: n.tmin.map(r1), prec: n.prec.map((v) => Math.round(v)) },
+  };
+}
+
+export interface SectionArgs {
+  opts: GroundGuideSectionsOptions;
+  profile: string;
+  at: MercXY;
+  cosLat: number;
+  /** Ground size of one pixel at the reading zoom, metres. */
+  pxM: number;
+  zoom: number;
+  maxZoom: number;
+  radiusM: number;
+  L: SectionsLayers;
+  read: Read;
+  features: SectionsFeatures | null;
+  books: {
+    terrain?: Record<string, unknown>;
+    landform?: Record<string, unknown>;
+    routeTypes?: Record<string, unknown>;
+    routeTiers?: Record<string, unknown>;
+    bldDensity?: Record<string, unknown>;
+    bldSize?: Record<string, unknown>;
+    wet?: Record<string, unknown>;
+  };
+  rules: { tankable?: { minClass?: number; limitedClass?: number }; roadDensity?: RoadDensityRules } | null;
+  /** The point as lon / lat (admin, sheet, border). */
+  lonLat: [number, number];
+  /** The class layer of the mode, and the class's label, origin and GROTBC letters (rules.json `classes`). */
+  clsLayer: string;
+  classInfo: (cls: number) => { label: string; origin: 'natural' | 'man_made'; letters: string; kind: string } | null;
+  /** What a class means for the mode: the profile's NO-GO / SLOW-GO lists. */
+  effect: (cls: number) => 'NO-GO' | 'SLOW-GO' | null;
+  wetLayer: string | null;
+  /** Admin areas, borders, sheets and named routes (GroundGuidePlaceData), or null. */
+  place: {
+    adminAt(lon: number, lat: number): PlaceAdmin | null;
+    borderNear(lon: number, lat: number, maxKm?: number): PlaceBorder | null;
+    sheetAt(lon: number, lat: number): PlaceSheet | null;
+    route(numberOrName: string | null | undefined): PlaceRoute | null;
+  } | null;
+  /** The routing network for road density (GroundGuideRoads), or null when the bundle has none. */
+  roadNet: { densityAround(at: MercXY, radiusM: number): { totals: RoadDensityTotals; pending: boolean } } | null;
+  waterKinds: string[];
+  climate: ClimateNormals | null;
+  month: number;
+  /** Read everything (the Brief is open) even when the card style shows less. */
+  all: boolean;
+  pending: () => boolean;
+  featuresPending: () => boolean;
+}
+
+/** Read the sections the options ask for (all of them when the Brief is open). */
+export function readSections(a: SectionArgs): GroundGuideSections {
+  const o = a.opts;
+  const ground = o.ground || a.all ? readGround(a) : null;
+  const roads = o.roads || a.all ? readRoads(a) : null;
+  const buildings = o.buildings || a.all ? readBuildings(a) : null;
+  const weather = (o.weather || a.all) && a.climate ? readWeather(a.climate, a.month) : null;
+  const obstacles = o.obstacles || a.all ? readObstacles(a) : null;
+  return {
+    style: o.style,
+    styles: { g: o.gStyle ?? 'auto', r: o.rStyle ?? 'auto', o: o.oStyle ?? 'auto', b: o.bStyle ?? 'auto', w: o.wStyle ?? 'auto' },
+    roadDensityStyle: o.roadDensityStyle,
+    roadDensityLead: o.roadDensityLead,
+    ground,
+    roads,
+    buildings,
+    weather,
+    obstacles,
+    pending: a.pending() || a.featuresPending() || !!roads?.density?.pending,
+  };
+}
+
+/** Re-render key for the card. */
+export function sectionsKey(s: GroundGuideSections | null | undefined): string {
+  if (!s) return '';
+  const g = s.ground;
+  const r = s.roads;
+  const b = s.buildings;
+  const w = s.weather;
+  const pl = (p: SectionPlace | null | undefined) => (p ? `${p.label}${p.name ?? ''}${Math.round(p.distanceM / 50)}${p.compass}` : '-');
+  return [
+    s.style,
+    `${s.styles.g}${s.styles.r}${s.styles.o}${s.styles.b}${s.styles.w}`,
+    g ? `${g.terrain?.code ?? ''}${pl(g.terrainChange ? { label: g.terrainChange.label, name: null, distanceM: g.terrainChange.distanceM, compass: g.terrainChange.compass } : null)}${g.elevationM ?? ''}${Math.round(g.slopeDeg ?? -1)}${g.landform ?? ''}${pl(g.high)}${pl(g.area)}${g.water.map(pl).join('')}${pl(g.namedWater)}` : '',
+    `${s.roadDensityStyle}${s.roadDensityLead}`,
+    r ? `${r.route ? `${r.route.type}${r.route.tier}${r.route.msr ? 1 : 0}${Math.round(r.route.distanceM / 25)}` : '-'}${r.check?.level ?? ''}${pl(r.crossing)}${pl(r.rail)}${pl(r.air)}${roadDensityKey(r.density)}` : '',
+    b ? `${b.density?.code ?? ''}${b.size ?? ''}${b.height ?? ''}${b.huts ? `${b.huts.perKm2}${b.huts.temporary ? 't' : ''}` : ''}${b.services.map(pl).join('')}${b.security.map(pl).join('')}` : '',
+    w ? `${w.month}${w.tmax}${w.precMm}` : '',
+    g?.ridge ? `rg${Math.round(g.ridge.distanceM / 50)}` : '',
+    r?.record ? `rr${r.record.number ?? r.record.name ?? ''}${Math.round(r.record.distanceM / 50)}${r.record.route ? 'n' : ''}` : '',
+    b ? `${b.admin?.tehsil ?? ''}${b.sheet?.s50k ?? ''}${b.border ? Math.round(b.border.distanceKm) : ''}${pl(b.settlement)}${b.utilities.map(pl).join('')}${b.landmarks.map(pl).join('')}` : '',
+    s.obstacles ? `${s.obstacles.natural ? `${s.obstacles.natural.label}${Math.round(s.obstacles.natural.distanceM / 50)}` : '-'}${s.obstacles.manMade ? `${s.obstacles.manMade.label}${Math.round(s.obstacles.manMade.distanceM / 50)}` : '-'}${s.obstacles.wet ?? ''}${pl(s.obstacles.canal)}${pl(s.obstacles.reach)}${pl(s.obstacles.dam)}${pl(s.obstacles.levee)}${s.obstacles.closure ? `${s.obstacles.closure.road}${Math.round(s.obstacles.closure.distanceM / 50)}` : ''}` : '',
+    s.pending ? 'p' : '',
+  ].join('|');
+}

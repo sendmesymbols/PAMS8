@@ -108,6 +108,10 @@ KINDS = {
     110: ("city", "City", "B"), 111: ("district_hq", "District HQ", "B"), 112: ("town", "Town", "B"),
     113: ("village_imp", "Important village", "B"), 114: ("village", "Village", "B"),
     120: ("tomb", "Tomb", "B"), 121: ("kiln", "Kiln", "B"), 122: ("chimney", "Factory chimney", "B"),
+    # 2026-11-06: GeoNames (PK.txt) codes the card asked for that had no kind (levees, industrial areas, camps,
+    # named vegetation, parks)
+    123: ("levee", "Levee / flood bund", "OC"), 124: ("industrial_area", "Industrial area", "B"), 125: ("camp", "Camp", "B"),
+    126: ("vegetation_name", "Orchard / grove / cultivated area (named)", "GC"), 127: ("park", "Park / garden", "B"),
     # 2026-11-03: named detail for B, R, O (Services_Point, Reservior, Glacier_Polygon, River_Pakmap)
     130: ("mosque", "Mosque", "B"), 131: ("graveyard_pt", "Graveyard / grave", "BC"), 132: ("temple", "Temple", "B"),
     133: ("church", "Church", "B"), 134: ("eidgah", "Eidgah", "B"), 135: ("telecom_booster", "Telephone / TV booster", "B"),
@@ -877,6 +881,15 @@ GN_KINDS = {
     "L.AREA": ("locality", "area"), "L.LCTY": ("locality", "locality"), "L.RGN": ("locality", "region"),
     "L.TRB": ("locality", "tribal area"), "L.OILF": ("locality", "oil field"), "L.GASF": ("locality", "gas field"),
     "L.RESF": ("forest_name", "reserved forest"), "V.FRST": ("forest_name", "forest"), "R.RDJCT": ("road_junction", None),
+    # 2026-11-06: the rest of the codes that matter for GROTBC (O levees, B industry / camps / barracks / parks,
+    # G named vegetation, mud flats, islands)
+    "T.LEV": ("levee", "levee"), "L.INDS": ("industrial_area", "industrial area"), "S.BRKS": ("cantonment", "barracks"),
+    "S.CMP": ("camp", "camp"), "S.CMPRF": ("camp", "refugee camp"), "S.CMPMN": ("camp", "mining camp"),
+    "V.CULT": ("vegetation_name", "cultivated area"), "V.OCH": ("vegetation_name", "orchard"), "V.GROVE": ("vegetation_name", "grove"),
+    "V.SCRB": ("vegetation_name", "scrubland"), "H.FLTM": ("marsh", "mud flat"), "H.LBED": ("marsh", "lake bed"),
+    "T.ISL": ("landform_name", "island"), "L.PRK": ("park", "park"), "S.GDN": ("park", "garden"), "S.ANS": ("deserted_site", "ancient site"),
+    "S.MLSG": ("mill", "sugar mill"), "S.MLO": ("mill", "oil mill"), "H.CRKT": ("stream_name", "tidal creek"),
+    "S.DIP": ("government_office", "diplomatic facility"), "S.MNMT": ("tomb", "monument"),
 }
 GN_PLACE = {"PPLC": "city", "PPLA": "city", "PPLA2": "district_hq", "PPLA3": "town", "PPL": "village", "PPLX": "locality",
             "PPLL": "locality", "PPLF": "village", "PPLS": "village", "PPLR": "village", "PPLH": "deserted_site",

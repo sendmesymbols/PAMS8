@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Presenting Cover and Concealment</title>
+<!--
+  PAMS8 Ground Guide: GROTBC C (Cover, Camouflage & Concealment) on the cursor card. Every style is BUILT and
+  switchable live with groundGuide.cover.card (Settings > Ground Guide > Cover & Concealment (C), or Ctrl+K "cover");
+  this page shows them side by side so the owner can pick. One self-contained file: no network, no build.
+  Card CSS copied from MS/Engines/GroundGuide/GroundGuideBadge.ts and GroundGuideCoverView.ts.
+  The sample readings are REAL: taken from the engine on 2026-11-05 at five places, three modes, sample zoom 12,
+  radius 500 m (bundle rules 2026.11-grotbc-v2). The levels themselves are rules.json grotbc.coverSplit, a proposal.
+-->
+<style>
+:root{--bg:#0f1318;--panel:#171c22;--line:#2a323b;--tx:#e8ebee;--soft:#9aa3ad;--acc:#8ec1ea;--warn:#ffc861;--c:#1f8a5a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.55 system-ui,"Segoe UI",Arial,sans-serif}
+.pg-wrap{max-width:1360px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:28px;line-height:1.15;margin:30px 0 8px}
+h2{font-size:21px;margin:46px 0 6px;padding-top:16px;border-top:1px solid var(--line)}
+p{margin:6px 0 10px;max-width:86ch}
+.pg-lede{font-size:15.5px;color:#c8cfd6}
+.pg-sub{color:var(--soft);font-size:13px;margin:0 0 12px;max-width:90ch}
+code{font:12px/1.4 ui-monospace,Consolas,monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;color:#d7e2ec}
+.pg-ctl{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);font-size:13px;color:var(--soft)}
+.pg-seg{display:inline-flex;flex-wrap:wrap;border:1px solid #39434f;border-radius:7px;overflow:hidden}
+.pg-seg button{font:inherit;font-size:12.5px;color:var(--tx);background:#1c232b;border:0;border-left:1px solid #39434f;padding:5px 10px;cursor:pointer}
+.pg-seg button:first-child{border-left:0}
+.pg-seg button[aria-pressed="true"]{background:var(--acc);color:#10161c;font-weight:600}
+.pg-seg button:focus-visible,.pg-btn:focus-visible,.pg-opt:focus-within{outline:2px solid var(--acc);outline-offset:1px}
+.pg-opts{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));align-items:start}
+.pg-opt{position:relative;display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;cursor:pointer;min-width:0}
+.pg-opt:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.pg-opt input{position:absolute;opacity:0;pointer-events:none}
+.pg-opt-h{display:flex;gap:8px;align-items:baseline;margin-bottom:4px}
+.pg-opt-h b{font-size:15px}
+.pg-pick{margin-left:auto;font-size:11.5px;color:var(--soft);border:1px solid #39434f;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.pg-opt:has(input:checked) .pg-pick{background:var(--acc);border-color:var(--acc);color:#10161c;font-weight:600}
+.pg-rec{font:700 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;color:#7ee0a5;background:#1d3a2a;border-radius:999px;padding:3px 7px}
+.pg-opt p{font-size:13px;color:#c3cbd3;margin:2px 0 10px}
+.pg-stage{background:#2b3a2a;background-image:linear-gradient(135deg,rgba(255,255,255,.035) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.035) 50%,rgba(255,255,255,.035) 75%,transparent 75%);background-size:22px 22px;border-radius:9px;padding:14px;display:flex;justify-content:center}
+.pg-meta{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px;margin-top:10px;color:#c3cbd3}
+.pg-meta dt{color:var(--soft)}.pg-meta dd{margin:0}
+.pg-size{font:600 12px ui-monospace,Consolas,monospace;color:var(--warn)}
+.pg-tbl{overflow-x:auto}
+table{border-collapse:collapse;font-size:13px;min-width:560px}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--soft);font-weight:600;font-size:12px}
+.pg-lv{display:inline-block;min-width:38px;text-align:center;font:700 10.5px/1 system-ui;padding:4px 5px 3px;border-radius:3px}
+.pg-out{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+.pg-out pre{margin:8px 0 0;white-space:pre-wrap;font:13px/1.5 ui-monospace,Consolas,monospace;color:#d7e2ec}
+.pg-btn{font:inherit;font-size:13px;color:var(--tx);background:#222a33;border:1px solid #39434f;border-radius:6px;padding:6px 12px;cursor:pointer}
+.pg-q{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin:12px 0}
+.pg-q label{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer}
+.pg-q input{margin-top:3px;accent-color:#3fc07a}
+.pg-q small{display:block;color:var(--soft);font-size:12px}
+.pg-note{border-left:3px solid var(--warn);padding:6px 12px;background:rgba(255,200,97,.06);font-size:13px;max-width:96ch}
+@media (max-width:640px){h1{font-size:23px}.pg-ctl{position:static}}
+
+/* ---- card: from GroundGuideBadge.ts (static for the page) ---- */
+.ms-ground-guide-badge{position:relative;--pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:280px;max-width:100%;border-radius:10px;overflow:hidden;
+  font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:block}
+.ms-ground-guide-badge[data-verdict="ok"]{--pb-c:#1c8247;--pb-k:#3fc07a}
+.ms-ground-guide-badge[data-verdict="near"]{--pb-c:#e9a526;--pb-fg:#1b1f25;--pb-k:#f2b84b}
+.ms-ground-guide-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25;--pb-k:#f0a04b}
+.ms-ggb-bar{display:flex;align-items:center;gap:7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
+.ms-ggb-sec{padding:7px 11px 8px}
+.ms-ggb-sec:nth-child(even){background:#222830}
+.ms-ggb-cap{font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--pb-k);margin-bottom:5px}
+.ms-ggb-b{font-weight:600;color:#fff}
+.ms-ggb-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
+.ms-ggb-dim{opacity:.55}
+/* ---- C: from GroundGuideCoverView.ts ---- */
+.ms-gc-cap{display:flex;align-items:center;gap:6px}
+.ms-gc-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;color:#fff;background:#1f8a5a}
+.ms-gc-tag{margin-left:auto;font:600 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.06em;color:#7f8994;text-transform:uppercase}
+.ms-gc-k{font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#7f8994;margin:5px 0 3px}
+.ms-gc-k:first-of-type{margin-top:0}
+.ms-gc-row{display:grid;grid-template-columns:70px 46px minmax(0,1fr);gap:6px;align-items:center;font-size:11.5px;line-height:1.3}
+.ms-gc-row+.ms-gc-row{margin-top:3px}
+.ms-gc-row>.ms-gc-f{color:#c3cbd3;white-space:nowrap}
+.ms-gc-row.ms-need>.ms-gc-f{color:#fff;font-weight:600}
+.ms-gc-row.ms-need>.ms-gc-f::after{content:" \25C6";color:var(--pb-k);font-size:8px;vertical-align:1px}
+.ms-gc-row>.ms-gc-w{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-gc-row>.ms-gc-w>b{color:#fff;font-weight:600}
+.ms-gc-row>.ms-gc-w>span{color:#9aa3ad}
+.ms-gc-m{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.ms-gc-m>i{display:block;height:7px;border-radius:1.5px;background:rgba(255,255,255,.08)}
+.ms-gc-soft{color:#9aa3ad;font-size:11px;margin-top:5px}
+.ms-gc-soft b{color:#e8ebee;font-weight:600}
+.ms-gc-dep{display:inline-block;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;background:#1d3a2a;color:#7ee0a5;margin-left:4px;vertical-align:1px}
+.ms-gc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 6px}
+.ms-gc-grid>.ms-gc-k{margin:0}
+.ms-gc-tile{border-radius:6px;padding:5px 7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);min-width:0}
+.ms-gc-tile small{display:block;font-size:10px;color:#c3cbd3}
+.ms-gc-tile b{display:block;font-size:13px;color:#fff;line-height:1.25}
+.ms-gc-tile.ms-need{border-color:var(--pb-k)}
+.ms-gc-sum{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:12px}
+.ms-gc-sum b{color:#fff}
+.ms-gc-ico{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ms-gc-ico>div{display:flex;gap:7px;align-items:center;min-width:0}
+.ms-gc-ico>div>svg{flex:none}
+.ms-gc-ico small{display:block;font-size:10px;color:#9aa3ad}
+.ms-gc-ico b{display:block;font-size:12.5px;color:#fff}
+.ms-gc-near{display:grid;grid-template-columns:70px minmax(0,1fr);gap:3px 6px;font-size:11.5px;line-height:1.3}
+.ms-gc-near>span:nth-child(odd){color:#c3cbd3;white-space:nowrap}
+.ms-gc-near>span.ms-need{color:#fff;font-weight:600}
+.ms-gc-near>span:nth-child(even){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-gc-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+.ms-gc-rose{display:flex;gap:10px;align-items:center}
+.ms-gc-rose>svg{flex:none}
+.ms-gc-rose>div{min-width:0;font-size:11.5px;line-height:1.35}
+.ms-gc-rose b{color:#fff}
+.ms-gc-key{display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:#9aa3ad;margin-top:5px}
+</style>
+</head>
+<body>
+<div class="pg-wrap">
+<h1>Cover &amp; Concealment on the Card: Display Options</h1>
+<p class="pg-lede">C in GROTBC is now on the Ground Guide card. Every style below is <b>built</b>. Switch between them live with
+<code>groundGuide.cover.card</code> (Settings → Ground Guide → Cover &amp; Concealment (C), or Ctrl+K "cover"). Pick one, and
+answer the questions at the end. The Ground Brief (G key) always shows C in full, whatever you pick here.</p>
+<p class="pg-sub">What the card reads: the ground class under the symbol and <code>rules.json grotbc.coverSplit</code>
+(what each kind of ground gives against direct fire, indirect fire, ground observation and aerial observation, None / Poor / Fair /
+Good). That is raised by a river or canal bank within 75 m (<code>bank</code> layer and <code>grotbc.banks</code>). The local
+cover and concealment density (<code>cc</code> layer) is shown beside the class split, not mixed into it. The search looks out to 500 m
+(<code>cover.radiusM</code>) for the nearest Fair or better. Readings below come from the engine at five real places. The levels are
+a <b>starting proposal</b>, so every card says "Proposal".</p>
+
+<div class="pg-ctl" role="toolbar" aria-label="Sample">
+  <span>Place</span><span class="pg-seg" id="seg-place"></span>
+  <span>Mode</span><span class="pg-seg" id="seg-mode"></span>
+</div>
+
+<h2>1 · On the Drawing Card (280 px)</h2>
+<p class="pg-sub">The diamond marks what the mode needs most (<code>cover.focus</code>). When that need is short here, a line says where better is.
+Shown here is the C section and the card header; on the live card it comes after B (People), or after T with <code>cover.where = afterWhy</code>.</p>
+<div class="pg-opts" id="opts"></div>
+
+<h2>2 · Where C Sits</h2>
+<div class="pg-q" id="where"></div>
+
+<h2>3 · What Each Mode Needs (Proposal)</h2>
+<p class="pg-sub">The field marked on the card, and the one the rose (C6) shades. From <code>COVER_FOCUS</code> in
+<code>MS/Engines/GroundGuide/GroundGuideCover.ts</code>. Correct it if it is wrong.</p>
+<div class="pg-tbl"><table id="t-focus"></table></div>
+
+<h2>4 · The Levels Behind It (Proposal)</h2>
+<p class="pg-sub">The four-way split per ground class, from <code>tools/terrain-pipeline/rules.yaml coverSplit</code>. Classes not listed give none.
+You set the bund row on 2026-11-04. The bank rows come from <code>rules.yaml banks</code>.</p>
+<div class="pg-tbl"><table id="t-split"></table></div>
+<p class="pg-note"><b>Decided 5 Nov 2026: the spot, not the area.</b> The Kharian sample is a road running through trees. The class split
+gives the road nothing, but the <code>cc</code> layer says concealment Good. That is because <code>cc</code> is built from the vegetation-symbol density
+of the surrounding km² (<code>classify.py cover_layers</code>), so it describes the area, not the open strip of road.<br>
+• <b>Never raise the levels to the area's value.</b> Doing so would tell a planner a vehicle on an open road is hidden, which is the dangerous error.<br>
+• <b>Never cap the levels by it either.</b> <code>cc</code> does not know bunds or banks, so capping would undo your rules (on the Chenab bank it would cut Fair to Poor).<br>
+• <b>When the area conceals better than the spot</b>, the card says so and where: "Concealed round it, not on this spot: Good 31 m S (Tree cover)".<br>
+• <b>On a road, track or railway</b> it adds that a canopy over the road may screen it from the air. The data cannot tell, so check on the ground.<br>
+Pick the Road through Trees place above to see it.</p>
+
+<h2>5 · Decide</h2>
+<div class="pg-q" id="approve"></div>
+<div class="pg-out"><button class="pg-btn" type="button" id="copy">Copy decision</button><pre id="out"></pre></div>
+</div>
+
+<script id="data" type="application/json">
+{"places":{
+ "trees":{"label":"Road through Trees · Kharian Hills","cls":"Metalled road, class not recorded","lv":[0,0,0,0],"from":[null,null,null,null],"local":[1,3],"bank":null,"around":[3,true],
+  "near":[[2,"Dry nullah",125,"S"],null,[3,"Tree cover",31,"S"],[3,"Tree cover",31,"S"]],
+  "verdict":{"dismounted":"ok","tracked":"ok","gun":"caution"},
+  "rose":{"direct":[[2,337],[1,null],[2,250],[2,225],[2,125],[2,182],[2,296],[2,308]],"ground":[[3,31],[3,44],[3,63],[3,44],[3,31],[3,70],[3,31],[3,44]],"aerial":[[3,31],[3,44],[3,63],[3,44],[3,31],[3,70],[3,31],[3,44]]}},
+ "fields":{"label":"Cropland · Kamoke","cls":"Cropland","lv":[0,0,1,1],"from":[null,null,"Cropland","Cropland"],"local":[0,1],"bank":null,
+  "near":[[3,"Built-up area",94,"N"],[2,"Built-up area",94,"N"],[3,"Built-up area",94,"N"],[3,"Built-up area",94,"N"]],
+  "verdict":{"dismounted":"ok","tracked":"ok","gun":"ok"},
+  "rose":{"direct":[[3,94],[3,113],[3,168],[2,349],[2,411],[1,null],[1,null],[1,null]],"ground":[[3,94],[3,113],[3,168],[3,200],[3,313],[3,376],[3,376],[3,419]],"aerial":[[3,94],[3,113],[3,168],[3,200],[3,313],[3,376],[3,376],[3,419]]}},
+ "bank":{"label":"River Bank · Chenab near Wazirabad","cls":"Cropland","lv":[2,1,2,1],"from":["River / lake bank","River / lake bank","River / lake bank","Cropland"],"local":[0,1],"bank":["River / lake bank",75,true],
+  "near":[null,[2,"Built-up area",238,"NE"],null,[3,"Tree cover",63,"S"]],
+  "verdict":{"dismounted":"near","tracked":"near","gun":"near"},
+  "rose":{"direct":[[1,null],[3,44],[2,31],[2,44],[2,31],[2,70],[0,null],[1,null]],"ground":[[3,345],[3,44],[3,31],[2,44],[3,31],[2,70],[1,null],[3,88]],"aerial":[[3,345],[3,238],[3,455],[1,null],[3,63],[1,null],[1,null],[3,88]]}},
+ "town":{"label":"Built-Up · Rawalpindi","cls":"Built-up area","lv":[3,2,3,3],"from":["Built-up area","Built-up area","Built-up area","Built-up area"],"local":[3,3],"bank":null,
+  "near":[null,null,null,null],
+  "verdict":{"dismounted":"ok","tracked":"caution","gun":"caution"},
+  "rose":{"direct":[[3,31],[3,44],[3,31],[3,70],[3,31],[3,44],[3,31],[3,44]],"ground":[[3,31],[3,44],[3,31],[3,44],[3,31],[3,44],[3,31],[3,44]],"aerial":[[3,31],[3,44],[3,31],[3,44],[3,31],[3,44],[3,31],[3,44]]}},
+ "sand":{"label":"Sand · Cholistan","cls":"Sand","lv":[0,0,0,0],"from":[null,null,null,null],"local":[0,0],"bank":null,
+  "near":[null,null,null,null],
+  "verdict":{"dismounted":"ok","tracked":"ok","gun":"caution"},
+  "rose":{"direct":[[0,null],[0,null],[0,null],[0,null],[0,null],[0,null],[0,null],[0,null]],"ground":[[0,null],[0,null],[0,null],[0,null],[0,null],[0,null],[0,null],[0,null]],"aerial":[[0,null],[0,null],[0,null],[0,null],[0,null],[0,null],[0,null],[0,null]]}}
+},
+"split":[["1","Tree cover",[1,1,3,3]],["2","Cropland",[0,0,1,1]],["3","Built-up area",[3,2,3,3]],["6","Wetland / marsh",[0,0,2,1]],["7","Mangrove",[1,1,3,3]],["9","Steep slope (over 30°)",[2,1,2,0]],["10","Moderate slope (15 to 30°)",[1,1,1,0]],["14","Dunes",[1,1,2,0]],["15","Rocky / scree / stony waste",[2,1,2,1]],["17","Dry riverbed / nullah",[2,1,2,0]],["19","Sloping ground (7 to 15°)",[0,0,1,0]],["21","Distributary / minor canal",[1,0,0,0]],["22","Drain",[1,0,1,0]],["23","Irrigated cropland",[0,0,1,1]],["24","Embankment over 2 m",[3,2,2,0]],["25","Bund 1 to 2 m",[2,1,2,0]],["26","Cutting",[3,2,3,0]],["27","Escarpment / cliff",[3,2,2,0]],["28","Railway",[1,0,0,0]],["29","Walled orchard",[2,1,3,3]],["30","Orchard / garden",[1,1,3,3]],["31","Forest (enclosed)",[2,2,3,3]],["32","Graveyard",[2,1,2,1]],["46","Perennial stream",[1,0,1,0]],["47","Dry nullah",[2,1,2,0]],["48","Irrigated cropland under power lines",[0,0,1,1]],["49","Wall / fence",[2,0,1,0]],
+  ["bank 1","River / lake bank (deployment line)",[2,1,2,0]],["bank 2","Floodplain edge (deployment line)",[1,0,1,0]],["bank 3","Perennial stream bank (deployment line)",[2,1,2,0]],["bank 4","Canal bank (deployment line)",[2,1,2,0]],["bank 5","Distributary bank",[1,1,1,0]]]
+}
+</script>
+<script>
+(function(){
+var D = JSON.parse(document.getElementById('data').textContent);
+var FIELDS = ['direct','indirect','ground','aerial'];
+var LABEL = {direct:'Direct Fire', indirect:'Indirect Fire', ground:'Ground Obs', aerial:'Aerial Obs'};
+var KIND = {direct:'Cover', indirect:'Cover', ground:'Concealment', aerial:'Concealment'};
+var WORD = ['None','Poor','Fair','Good'];
+var COL = ['#4a535e','#f0932b','#9cc45a','#2fa862'];
+var COMPASS = ['N','NE','E','SE','S','SW','W','NW'];
+var MODES = {dismounted:['Dismounted Force','direct'], tracked:['Tracked Vehicle','ground'], gun:['Gun Position','aerial']};
+var TITLE = {ok:'Suitable Position', near:'Adjacent to Permanent Water', caution:'SLOW-GO Terrain'};
+var SVG = 'http://www.w3.org/2000/svg';
+var state = {place:'bank', mode:'dismounted', pick:'lines', where:'grotbc'};
+
+function el(t, c, x){ var e=document.createElement(t); if(c) e.className=c; if(x!==undefined) e.textContent=x; return e; }
+function sv(t, a){ var e=document.createElementNS(SVG,t); for(var k in a) e.setAttribute(k,String(a[k])); return e; }
+function m(n){ return n>=1000 ? (n/1000).toFixed(1)+' km' : n+' m'; }
+
+function cover(){
+  var p = D.places[state.place], md = MODES[state.mode], f = md[1];
+  var c = {focus:f, profileLabel:md[0], cls:p.cls, lv:{}, from:{}, near:{}, local:{cover:p.local[0], concealment:p.local[1]}, bank:p.bank && {label:p.bank[0], withinM:p.bank[1], deploy:p.bank[2]}, radiusM:500, roseField:f};
+  FIELDS.forEach(function(k,i){ c.lv[k]=p.lv[i]; c.from[k]=p.from[i]; var n=p.near[i]; c.near[k]= n && p.lv[i]<2 ? {level:n[0], label:n[1], d:n[2], compass:n[3]} : null; });
+  c.sectors = p.rose[f].map(function(s,i){ return {compass:COMPASS[i], bearing:i*45, level:s[0], nearM:s[1]}; });
+  c.verdict = p.verdict[state.mode];
+  if (p.around) { var g=c.near.ground, a=c.near.aerial; var pn = g && a ? (a.level>g.level || (a.level===g.level && a.d<g.d) ? a : g) : (g||a); c.around={concealment:p.around[0], clearedLine:p.around[1], nearest:pn}; }
+  return c;
+}
+/* The area conceals better than the spot: say where; never raise the levels (decided 2026-11-05). */
+function aroundLine(c){ var a=c.around; if(!a) return null; var needSaid = (c.focus==='ground'||c.focus==='aerial') && c.lv[c.focus]<2; var d=el('div','ms-gc-soft');
+  if(!needSaid){ d.append('Concealed round it, not on this spot: '); var n=a.nearest; if(n) d.append(el('b',null,WORD[n.level]+' '+m(n.d)+' '+n.compass),' ('+n.label+')'); else d.append(el('b',null,WORD[a.concealment]),' in the area'); if(a.clearedLine) d.append('. '); }
+  if(a.clearedLine) d.append('A canopy over the road may screen it from the air: check on the ground.');
+  return d.childNodes.length? d : null; }
+
+function section(cap){ var s=el('div','ms-ggb-sec'), h=el('div','ms-ggb-cap ms-gc-cap'); h.append(el('span','ms-gc-l','C'), cap, el('span','ms-gc-tag','Proposal')); s.append(h); for(var i=1;i<arguments.length;i++) if(arguments[i]) s.append(arguments[i]); return s; }
+function meter(l){ var g=el('div','ms-gc-m'); for(var k=1;k<=3;k++){ var i=el('i'); if(k<=l) i.style.background=COL[l]; g.append(i);} return g; }
+function needLine(c){ var f=c.focus; if(!f||c.lv[f]>=2) return null; var d=el('div','ms-gc-soft'); d.append(c.profileLabel+' needs '+LABEL[f]+': ', el('b',null,WORD[c.lv[f]])); var n=c.near[f]; d.append(n? ' · '+WORD[n.level]+' '+m(n.d)+' '+n.compass+' ('+n.label+')' : ' · none Fair or better within '+m(c.radiusM)); return d; }
+function bankLine(c){ if(!c.bank) return null; var d=el('div','ms-gc-soft'); d.append(el('b',null,c.bank.label),' within '+m(c.bank.withinM)); if(c.bank.deploy) d.append(el('span','ms-gc-dep','Deployment Line')); return d; }
+function localLine(c){ var d=el('div','ms-gc-soft'); d.append('Area round it: cover ', el('b',null,WORD[c.local.cover]), ', concealment ', el('b',null,WORD[c.local.concealment])); return d; }
+function four(c){ var out=[]; ['Cover','Concealment'].forEach(function(kd){ out.push(el('div','ms-gc-k',kd)); FIELDS.filter(function(f){return KIND[f]===kd;}).forEach(function(f){ var r=el('div','ms-gc-row'+(c.focus===f?' ms-need':'')); var w=el('div','ms-gc-w'); w.append(el('b',null,WORD[c.lv[f]])); if(c.from[f]) w.append(el('span',null,' · '+c.from[f])); r.append(el('span','ms-gc-f',LABEL[f]), meter(c.lv[f]), w); out.push(r); }); }); return out; }
+function nearGrid(c){ var g=el('div','ms-gc-near'); FIELDS.forEach(function(f){ g.append(el('span',c.focus===f?'ms-need':null,LABEL[f])); var v=el('span'), d=el('span','ms-gc-dot'), l=c.lv[f], n=c.near[f]; if(l>=2){ d.style.background=COL[l]; v.append(d, WORD[l]+' here'); } else if(n){ d.style.background=COL[n.level]; v.append(d, WORD[n.level]+' '+m(n.d)+' '+n.compass+' · '+n.label); } else { d.style.background=COL[0]; v.append(d,'None within '+m(c.radiusM)); } g.append(v); }); return g; }
+function rose(c, size){ var cx=size/2, r0=size*.14, R=size/2-3; var s=sv('svg',{width:size,height:size,viewBox:'0 0 '+size+' '+size}); s.append(sv('circle',{cx:cx,cy:cx,r:R,fill:'none',stroke:'rgba(255,255,255,.1)'}));
+  function P(a,r){ return (cx+r*Math.sin(a)).toFixed(1)+' '+(cx-r*Math.cos(a)).toFixed(1); }
+  c.sectors.forEach(function(x){ var a0=(x.bearing-20.5)*Math.PI/180, a1=(x.bearing+20.5)*Math.PI/180; var reach= x.nearM===null? .12 : 1-Math.min(.85, x.nearM/c.radiusM); var r=r0+(R-r0)*reach;
+    s.append(sv('path',{d:'M '+P(a0,r0)+' L '+P(a0,r)+' A '+r+' '+r+' 0 0 1 '+P(a1,r)+' L '+P(a1,r0)+' A '+r0+' '+r0+' 0 0 0 '+P(a0,r0)+' Z', fill:COL[x.level], 'fill-opacity': x.level?.9:.5})); });
+  s.append(sv('circle',{cx:cx,cy:cx,r:r0-2,fill:COL[c.lv[c.roseField]],stroke:'#fff','stroke-width':1.5}), sv('path',{d:'M '+cx+' 1 l 3.5 6 h -7 z',fill:'#fff'})); return s; }
+
+var STYLES = [
+ {k:'lines', n:'C1', name:'Four Lines', rec:true, size:'~120 px', desc:'Each of the four kinds with a meter and the ground that gives it. The mode\'s need is marked, and where better is when it is short. Then the bank, if any. The doc 16 design.',
+  fn:function(c){ return section.apply(null, ['Cover & Concealment'].concat(four(c), [needLine(c), aroundLine(c), bankLine(c)])); }},
+ {k:'grid', n:'C2', name:'Cover / Concealment Grid', size:'~105 px', desc:'Cover (direct, indirect) beside Concealment (ground, air) as four tiles shaded by level. Easy to scan, but it names the ground only once.',
+  fn:function(c){ var g=el('div','ms-gc-grid'); g.append(el('div','ms-gc-k','Cover'), el('div','ms-gc-k','Concealment')); [['direct','ground'],['indirect','aerial']].forEach(function(pr){ pr.forEach(function(f){ var l=c.lv[f], t=el('div','ms-gc-tile'+(c.focus===f?' ms-need':'')); if(l) t.style.background=COL[l]+'33'; t.append(el('small',null,'From '+LABEL[f]), el('b',null,WORD[l])); g.append(t); }); });
+   var gives=[]; FIELDS.forEach(function(f){ if(c.from[f] && gives.indexOf(c.from[f])<0) gives.push(c.from[f]); });
+   return section('Cover & Concealment', g, el('div','ms-gc-soft', gives.length? 'From '+gives.join(' · ') : c.cls+' gives none'), needLine(c), aroundLine(c)); }},
+ {k:'summary', n:'C3', name:'One Line', size:'~45 px', desc:'Cover (from direct fire) and concealment (the weaker of ground and air) in one sentence, then the mode\'s need. Smallest. It hides indirect fire and the split between ground and air.',
+  fn:function(c){ var s=el('div','ms-gc-sum'), a=el('span'), b=el('span'); a.append('Cover ', el('b',null,WORD[c.lv.direct])); b.append('Concealment ', el('b',null,WORD[Math.min(c.lv.ground,c.lv.aerial)])); s.append(a,b); var fr=c.from.direct||c.from.ground||c.from.aerial; return section('Cover & Concealment', s, fr? el('div','ms-gc-soft','From '+fr):null, needLine(c), aroundLine(c)); }},
+ {k:'icons', n:'C4', name:'Shield and Eye', size:'~75 px', desc:'A shield filled by cover from direct fire and an eye screened by concealment (the weaker of the two). Quick to read at a glance, but the least precise.',
+  fn:function(c){ var conceal=Math.min(c.lv.ground,c.lv.aerial); var g=el('div','ms-gc-ico');
+   var sh=sv('svg',{width:26,height:30,viewBox:'0 0 26 30'}); var path='M13 2 L23 6 V14 C23 21 18 26 13 28 C8 26 3 21 3 14 V6 Z'; var id='cl'+Math.random().toString(36).slice(2,7); var cp=sv('clipPath',{id:id}); cp.append(sv('rect',{x:0,y:30-30*c.lv.direct/3,width:26,height:30})); var df=sv('defs',{}); df.append(cp); sh.append(df, sv('path',{d:path,fill:COL[c.lv.direct],'clip-path':'url(#'+id+')'}), sv('path',{d:path,fill:'none',stroke:'#c3cbd3','stroke-width':1.5}));
+   var ey=sv('svg',{width:30,height:30,viewBox:'0 0 30 30'}); ey.append(sv('path',{d:'M2 15 C7 7 23 7 28 15 C23 23 7 23 2 15 Z',fill:'none',stroke:'#c3cbd3','stroke-width':1.5}), sv('circle',{cx:15,cy:15,r:4.5,fill:'#c3cbd3','fill-opacity':1-conceal/3.5})); for(var k=0;k<conceal;k++) ey.append(sv('line',{x1:6+k*7,y1:25,x2:12+k*7,y2:5,stroke:COL[conceal],'stroke-width':2.5,'stroke-linecap':'round'}));
+   var a=el('div'), at=el('div'); at.append(el('small',null,'Cover (Direct Fire)'), el('b',null,WORD[c.lv.direct])); a.append(sh,at);
+   var b=el('div'), bt=el('div'); bt.append(el('small',null,'Concealment (Weaker)'), el('b',null,WORD[conceal])); b.append(ey,bt); g.append(a,b);
+   return section('Cover & Concealment', g, el('div','ms-gc-soft','Ground: '+c.cls), needLine(c), aroundLine(c)); }},
+ {k:'nearest', n:'C5', name:'Nearest Cover', size:'~85 px', desc:'For each kind: Fair or better here, or the nearest place within 500 m that has it, with distance, direction and what it is. It answers "where do I go for cover?"',
+  fn:function(c){ return section('Nearest Cover · '+m(c.radiusM), nearGrid(c), bankLine(c)); }},
+ {k:'rose', n:'C6', name:'Cover Round It (Rose)', size:'~95 px', desc:'Eight wedges round the position, shaded by the best cover for the mode\'s need in that direction. Longer wedges mean cover is closer. It turns with the map, like the movement rose.',
+  fn:function(c){ var box=el('div','ms-gc-rose'), t=el('div'); var hd=el('div','ms-gc-soft','From '+LABEL[c.roseField]+', '+m(c.radiusM)); hd.style.marginTop='0'; t.append(hd); var h=el('div'); h.append('Here ', el('b',null,WORD[c.lv[c.roseField]])); t.append(h);
+   var best=c.sectors.filter(function(s){return s.nearM!==null;}).sort(function(a,b){return b.level-a.level||a.nearM-b.nearM;})[0];
+   if(best){ var bb=el('div'); bb.append('Best ', el('b',null,WORD[best.level]), ' '+m(best.nearM)+' '+best.compass); t.append(bb);} else t.append(el('div','ms-gc-soft','None Fair or better round it'));
+   var open=c.sectors.filter(function(s){return s.nearM===null;}).map(function(s){return s.compass;}); if(open.length && open.length<8) t.append(el('div','ms-gc-soft','Open to the '+open.join(', ')));
+   box.append(rose(c,64), t); var key=el('div','ms-gc-key'); [3,2,1].forEach(function(l){ var k=el('span'), d=el('span','ms-gc-dot'); d.style.background=COL[l]; k.append(d, WORD[l]); key.append(k); });
+   return section('Cover Round It · '+{direct:'Direct',indirect:'Indirect',ground:'Ground',aerial:'Air'}[c.roseField], box, key); }},
+ {k:'block', n:'C7', name:'Full C Block', size:'~230 px', desc:'Everything: the four lines, local density, the bank, the rose beside the nearest list, and the mode\'s need. Complete, but too tall for every mouse move. Better left to the Brief?',
+  fn:function(c){ var box=el('div','ms-gc-rose'); box.style.marginTop='7px'; box.append(rose(c,58), nearGrid(c)); return section.apply(null, ['Cover, Camouflage & Concealment'].concat(four(c), [localLine(c), aroundLine(c), bankLine(c), box, needLine(c)])); }}
+];
+
+function card(sec, c){ var b=el('div','ms-ground-guide-badge'); b.dataset.verdict=c.verdict; b.append(el('div','ms-ggb-bar',TITLE[c.verdict]||'Suitable Position')); var body=el('div'); var dim=el('div','ms-ggb-sec ms-ggb-dim'); dim.append(el('div','ms-ggb-cap','Why · T · Nearest · B …')); body.append(dim, sec); b.append(body); return b; }
+
+function seg(id, items, key){ var h=document.getElementById(id); h.textContent=''; items.forEach(function(it){ var b=el('button',null,it[1]); b.type='button'; b.setAttribute('aria-pressed', String(state[key]===it[0])); b.onclick=function(){ state[key]=it[0]; render(); }; h.append(b); }); }
+
+function render(){
+  seg('seg-place', Object.keys(D.places).map(function(k){return [k, D.places[k].label];}), 'place');
+  seg('seg-mode', Object.keys(MODES).map(function(k){return [k, MODES[k][0]];}), 'mode');
+  var c = cover(), host=document.getElementById('opts'); host.textContent='';
+  STYLES.forEach(function(s){ var lab=el('label','pg-opt'); var inp=el('input'); inp.type='radio'; inp.name='cstyle'; inp.value=s.k; inp.checked=state.pick===s.k; inp.onchange=function(){ state.pick=s.k; out(); };
+    var h=el('div','pg-opt-h'); h.append(el('b',null,s.n+' · '+s.name)); if(s.rec) h.append(el('span','pg-rec','Default')); h.append(el('span','pg-pick','Pick'));
+    var st=el('div','pg-stage'); st.append(card(s.fn(c), c));
+    var dl=el('dl','pg-meta'); dl.append(el('dt',null,'Setting'), el('dd')); dl.lastChild.append(el('code',null,"cover.card = '"+s.k+"'")); dl.append(el('dt',null,'Adds'), el('dd','pg-size',s.size));
+    lab.append(inp, h, el('p',null,s.desc), st, dl); host.append(lab); });
+  out();
+}
+
+function tables(){
+  var tf=document.getElementById('t-focus'); tf.innerHTML='<thead><tr><th>Mode</th><th>Needs most</th><th>Why</th></tr></thead>';
+  var tb=el('tbody'); [['Dismounted Force, Gr Based','Cover from direct fire','Troops in the open need protection from fire first'],['Wheeled, Tracked, Road-Bound, Pack, Over-Snow, Amphibious','Concealment from ground observation','Vehicles are big and hard to protect; not being seen keeps them alive'],['Gun Position, Air Defence Site, Signals / EW Site','Concealment from aerial observation','Sites that stay put and are found from the air'],['Helicopter Landing Site, Rail-Bound, Surface Vessel','None','Open ground is the point; nothing is marked']].forEach(function(r){ var tr=el('tr'); r.forEach(function(x){ tr.append(el('td',null,x)); }); tb.append(tr); }); tf.append(tb);
+  var ts=document.getElementById('t-split'); ts.innerHTML='<thead><tr><th>Code</th><th>Ground</th><th>Direct Fire</th><th>Indirect Fire</th><th>Ground Obs</th><th>Aerial Obs</th></tr></thead>';
+  var b2=el('tbody'); D.split.forEach(function(r){ var tr=el('tr'); tr.append(el('td',null,r[0]), el('td',null,r[1])); r[2].forEach(function(l){ var td=el('td'), s=el('span','pg-lv',WORD[l]); s.style.background=COL[l]; s.style.color=l>=2?'#10161c':'#fff'; td.append(s); tr.append(td); }); b2.append(tr); }); ts.append(b2);
+}
+
+var WHERE=[['grotbc','In GROTBC order','Last on the card, after B (People). The default.'],['afterWhy','Right after Why','Under Why and T, before Nearest: seen sooner, pushes the rest down.']];
+var QS=[['q1','Show C on the card while drawing at all',true,'Off leaves it to the Ground Brief (G).'],['q2','Mark what the mode needs (the table in section 3)',true,'cover.focus'],['q3','Keep the levels on the spot; the area (cc) never raises or lowers them, the card points to better nearby',true,'Decided 5 Nov 2026 as the safe rule (see section 4). Untick only if you want it changed.'],['q4','Banks within 75 m raise the cover (rules.yaml banks)',true,'Your rule of 2026-11-04: river and canal banks give cover and are deployment lines.'],['q5','The coverSplit levels in section 4 are right as they stand',false,'Untick and correct them in rules.yaml (then rebuild the bundle rules).'],['q6','Search radius of 500 m for the nearest cover is right',true,'cover.radiusM, 100 to 2,000 m.']];
+
+function out(){
+  var w=document.getElementById('where'); if(!w.childElementCount){ WHERE.forEach(function(x){ var l=el('label'), i=el('input'); i.type='radio'; i.name='where'; i.value=x[0]; i.checked=state.where===x[0]; i.onchange=function(){ state.where=x[0]; out(); }; var t=el('span'); t.append(el('b',null,x[1]), el('small',null,x[2])); l.append(i,t); w.append(l); }); }
+  var a=document.getElementById('approve'); if(!a.childElementCount){ QS.forEach(function(q){ var l=el('label'), i=el('input'); i.type='checkbox'; i.id=q[0]; i.checked=q[2]; i.onchange=out; var t=el('span'); t.append(el('b',null,q[1]), el('small',null,q[3])); l.append(i,t); a.append(l); }); }
+  var s=STYLES.filter(function(x){return x.k===state.pick;})[0];
+  var lines=['Cover & Concealment (C) display, my decision:', 'Card style: '+s.n+' '+s.name+" (cover.card = '"+s.k+"')", "Where: "+state.where];
+  QS.forEach(function(q){ lines.push((document.getElementById(q[0]).checked?'Yes: ':'No: ')+q[1]); });
+  lines.push('(Copy this text back to Claude.)');
+  document.getElementById('out').textContent=lines.join('\n');
+}
+document.getElementById('copy').onclick=function(){ var t=document.getElementById('out').textContent; if(navigator.clipboard) navigator.clipboard.writeText(t).catch(function(){}); };
+tables(); render();
+})();
+</script>
+</body>
+</html>

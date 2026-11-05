@@ -139,6 +139,15 @@ after rain, three-mode matrix, 8 rays to the range, going grid, monthly rain). G
 (profile no-go / caution), the soil (cone index vs `soilStrength.vehicles`) and, after rain, the `wet` layer.
 The Trafficability (`groundGuide.traffic.*`) and People (`groundGuide.population.*`) rows build on the same `v.going` and brief.
 
+**Built 2026-11-05: C (Cover, Camouflage & Concealment).** The card's C section (`groundGuide.cover.*`) reads the
+`class` layer against `rules.json grotbc.coverSplit`, raised by a bank within 75 m (`bank` + `grotbc.banks`), with the
+`cc` layer's local density beside it, and searches `cover.radiusM` (500 m) for the nearest Fair or better and an
+eight-sector rose. Seven card styles to compare (`cover.card`: C1 `lines`, the default, C2 `grid`, C3 `summary`, C4
+`icons`, C5 `nearest`, C6 `rose`, C7 `block`; side by side in `ground-guide-cover-options.html`), `cover.where`
+(`grotbc` last on the card, or `afterWhy`) and `cover.focus` (mark the mode's main need: `COVER_FOCUS`, a proposal).
+The Ground Brief has C in full. Code: `GroundGuideCover.ts`, `GroundGuideCoverView.ts`; API `guide.coverAround()` /
+`coverText()`. User to pick the defaults with the other letters.
+
 ### 3.3 Section content and its data
 
 | Section | Lines | Source (bundle v2) |
@@ -148,7 +157,7 @@ The Trafficability (`groundGuide.traffic.*`) and People (`groundGuide.population
 | **O Obstacles** | Nearest obstacle: name · origin · kind · effect for the mode · distance / direction · Plan obstacles (live, from drawn minefields / obstacle lines) · Temporary / seasonal: flood-prone and waterlogged ground, roads closed by season, landslide sites | class scan with `rules.json classes[c].origin/kind`; `wet` layer; features road `x` / `sl`; plan graphics |
 | **T Trafficability** | Going for the mode cross-country, dry ("SLOW-GO for Wheeled Vehicle (Watercourses) · Dry Season") and after rain (soil bearing for the month) · Dismounted, Wheeled and Tracked at a glance · Tracks and fair-weather roads (SLOW-GO after rain) · On road: nearest road or MSR fit for the mode (load class against the mode, A / F, lanes; "Tankable") · Monsoon going (flood-prone, waterlogged) · Season for the month ("Jul: 35° / 26°, 149 mm, Monsoon") · Air: landing-site going for Helicopter Landing Site · Cross-country speed (planned) | `class` + `rules.json profiles[mode].nogo / caution` (`dist_<mode>`); `wet` layer; `soil` layer + `grotbc.soilBearing[code]` `{dry, wet}`; `route` layer (load tier, MSR bit) + `grotbc.loadClassCode`; `routes.json`; `grotbc.tankable` / `tanks`; climate grid (`prec` by month, `monsoon_pct`, `frost_months`, `wet_months`); classes whose `grotbc` contains `T` are the ones that mainly change the going |
 | **B Built-Up Areas** | Nearest BUA (name, size class, population) · Public infrastructure nearby (hospital, police, grid station…) · Border (distance to IB / LoC) · Admin (tehsil, district, province) · Sheet (1:50k number) | features 110–114 and 70–77; `boundaries.geojson`; `admin.geojson`; `sheets.json` |
-| **C Cover, Camouflage & Concealment** | Four lines: Cover from direct fire · from indirect fire · Concealment from ground observation · from aerial observation (None / Poor / Fair / Good + what gives it) · Nearest bund / wall / nullah | `rules.json grotbc.coverSplit.byClass[class]` = `[direct, indirect, ground, aerial]` (a proposal for the owner to correct); `cc` layer for the local density (concealment = v >> 4, cover = v & 15); class `grotbc` contains `C` |
+| **C Cover, Camouflage & Concealment** (built 2026-11-05) | Four lines: Cover from direct fire · from indirect fire · Concealment from ground observation · from aerial observation (None / Poor / Fair / Good + what gives it) · Nearest bund / wall / nullah | `rules.json grotbc.coverSplit.byClass[class]` = `[direct, indirect, ground, aerial]` (a proposal for the owner to correct); `cc` layer for the local density (concealment = v >> 4, cover = v & 15); class `grotbc` contains `C` |
 
 Water line format (decision 4): `Tube Well 250 m W · Spring 3 km N · Well 600 m SE · Tank 1.2 km E` (only kinds
 found within the search radius; nearest first).
@@ -302,6 +311,19 @@ the cone index is estimated from texture, stones, density and drainage, not meas
    an Imp Gr ("IG", new local symbol `00000160`, `MS/Symbols/ImpGr.ts`) or a Vital Gr ("VG") as an ordinary plan
    symbol. Open: `KeyTerrainIdentificationEngine` ranking the bundle's candidates for the user's axis instead of
    recomputing them from the elevation service.
+8. **C section.** *Done 2026-11-05* (see 3.2): `cc` and `bank` are fetched like the going layers (`_coverTileLayers`),
+   `coverSplit` and `banks` are read. Decided the same day: the levels describe the spot and `cc` (an area density)
+   never raises or lowers them; when the area conceals better, the card points to it and, on a road or railway, says
+   a canopy may screen it from the air (check on the ground). Still open: the `bld` layer for building density,
+   underground and enclosed features (cave, bunker, trench, tunnel), and masking / defilade (needs a viewshed).
+9. **G, R, B, W sections.** *Done 2026-11-05* (`groundGuide.sections.*`, `GroundGuideSections.ts` /
+   `GroundGuideSectionsView.ts`, doc 15). Item 1 is done: `terrain`, `landform`, `elev_hi` / `elev_lo`, `route`, `bld` and
+   `hut` are fetched like the going layers. Item 2 has moved on: feature kinds are queried by key (`nearestOfKinds`,
+   `linesNear`), including the GeoNames names from `D:\Imagery\PK.txt`. The section rows of 3.3 are mostly built: G
+   terrain type, nearest change, relief, landform, high ground, named area, water; R route here with the rules check
+   for the mode, crossings, rail, air, road network density (km/km², all-weather share, ways out; added the same day,
+   `sections.roadDensity`); B buildings, huts, services, security; W the month and the year. Still open
+   from 3.3: R chokepoints and closures, O as a section of its own, B admin / border / sheet, the settlement size class.
 
 ---
 
@@ -313,6 +335,9 @@ the cone index is estimated from texture, stones, density and drainage, not meas
 4. Correct the per-mode NO-GO / SLOW-GO tables in `tools/terrain-pipeline/rules.yaml` (they are a starting
    proposal) and the three-sections table above.
 5. Should "Irrigated cropland" stay SLOW-GO for Wheeled Vehicle year-round, or only in the monsoon?
+6. C: pick the card style (C1 to C7) and where it sits, confirm the per-mode need (`COVER_FOCUS`) and the
+   `coverSplit` / `banks` levels (decision block in `ground-guide-cover-options.html`). The spot-not-area rule for
+   `cc` is decided (section 7, item 8).
 
 ## 9 · Acceptance checklist for the restyle
 

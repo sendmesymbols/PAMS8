@@ -3250,6 +3250,160 @@
                 <option value="folded">Folded (T opens)</option>
               </select>
             </div>
+            <div class="sub-feature-label">Ground, Roads, Buildings &amp; Weather (G R B W)</div>
+            <div class="setting-row">
+              <label>G terrain / relief</label>
+              <input type="checkbox" id="setting-groundGuideSecGround" checked title="Terrain type and the nearest change, elevation, slope, landform, high ground, named area, water sources and the nearest named river." />
+            </div>
+            <div class="setting-row">
+              <label>R route here</label>
+              <input type="checkbox" id="setting-groundGuideSecRoads" checked title="The route at the point checked against the mode (tankable, all-weather), then the nearest crossing, railway and airfield." />
+            </div>
+            <div class="setting-row">
+              <label>B buildings</label>
+              <input type="checkbox" id="setting-groundGuideSecBuildings" checked title="Building density, size and height, kacha huts, nearest services and security installations." />
+            </div>
+            <div class="setting-row">
+              <label>W weather</label>
+              <input type="checkbox" id="setting-groundGuideSecWeather" checked title="The month's normal temperatures, rain and wind, and the year's rain, frost and heat." />
+            </div>
+            <div class="setting-row">
+              <label>O obstacles</label>
+              <input type="checkbox" id="setting-groundGuideSecObstacles" checked title="Nearest natural and man-made obstacle with its effect for the mode, wet ground, canals, river reaches, dams, levees, recorded closures and landslides." />
+            </div>
+            <div class="setting-row">
+              <label>On the card</label>
+              <select id="setting-groundGuideSecStyle" style="width: 150px" title="A few lines a section, one line a section, or only in the Ground Brief.">
+                <option value="lines">A few lines each</option>
+                <option value="compact" selected>One line each</option>
+                <option value="brief">Ground Brief only</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>G style</label>
+              <select id="setting-groundGuideSecGStyle" style="width: 150px" title="Compare the styles in ground-guide-sections-options.html.">
+                <option value="auto" selected>Follow above</option>
+                <option value="line">One line</option>
+                <option value="rows">A few rows</option>
+                <option value="relief">G3 Relief</option>
+                <option value="chips">G4 Chips</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>R style</label>
+              <select id="setting-groundGuideSecRStyle" style="width: 150px" title="Compare the styles in ground-guide-sections-options.html.">
+                <option value="auto" selected>Follow above</option>
+                <option value="line">One line</option>
+                <option value="rows">A few rows</option>
+                <option value="shield">R3 Road sign</option>
+                <option value="verdict">R4 Check</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>O style</label>
+              <select id="setting-groundGuideSecOStyle" style="width: 150px" title="Compare the styles in ground-guide-sections-options.html.">
+                <option value="auto" selected>Follow above</option>
+                <option value="line">One line</option>
+                <option value="rows">A few rows</option>
+                <option value="tiles">O3 Tiles</option>
+                <option value="gap">O4 Gap</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>B style</label>
+              <select id="setting-groundGuideSecBStyle" style="width: 150px" title="Compare the styles in ground-guide-sections-options.html.">
+                <option value="auto" selected>Follow above</option>
+                <option value="line">One line</option>
+                <option value="rows">A few rows</option>
+                <option value="where">B3 Where</option>
+                <option value="protected">B4 Protected</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>W style</label>
+              <select id="setting-groundGuideSecWStyle" style="width: 150px" title="Compare the styles in ground-guide-sections-options.html.">
+                <option value="auto" selected>Follow above</option>
+                <option value="line">One line</option>
+                <option value="rows">A few rows</option>
+                <option value="year">W3 Year</option>
+                <option value="icons">W4 Figures</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Radius (km)</label>
+              <input type="number" id="setting-groundGuideSecRadius" min="0.5" max="10" step="0.5" value="3" style="width: 60px" title="How far the sections look for high ground, water, crossings and the change of terrain type." />
+            </div>
+            <div class="setting-row">
+              <label>R road density</label>
+              <input type="checkbox" id="setting-groundGuideSecRoadDensity" checked title="Road network density in the R section: km of road per km² round the point, all-weather share, MSR and tankable km, and the ways out by direction." />
+            </div>
+            <div class="setting-row">
+              <label>Density circle (km)</label>
+              <input type="number" id="setting-groundGuideSecRoadDensityKm" min="0.5" max="10" step="0.5" value="5" style="width: 60px" title="Radius of the circle the road density is measured in." />
+              <button type="button" id="ground-guide-road-density-log" title="Write the road network density at the map centre to the Engine Log.">Log</button>
+            </div>
+            <div class="setting-row">
+              <label>Density style</label>
+              <select id="setting-groundGuideSecRoadDensityStyle" style="width: 150px" title="How the R section shows road network density. Compare them in ground-guide-road-density-options.html.">
+                <option value="rows" selected>D1 · Rows</option>
+                <option value="chip">D2 · Chip only</option>
+                <option value="gauge">D3 · Gauge</option>
+                <option value="rose">D4 · Ways-out rose</option>
+                <option value="makeup">D5 · Make-up bar</option>
+                <option value="sentence">D6 · One sentence</option>
+                <option value="brief">D7 · Brief only</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Density band</label>
+              <select id="setting-groundGuideSecRoadDensityLead" style="width: 150px" title="Which band the card leads with when tracks lift the total a band.">
+                <option value="afterRain" selected>After rain (safe)</option>
+                <option value="dry">Dry</option>
+                <option value="both">Both</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Map centre</label>
+              <button type="button" id="ground-guide-sections-log" title="Write the G, R, B and W sections at the map centre to the Engine Log (as Copy as Text would).">Log ground at centre</button>
+            </div>
+            <div class="sub-feature-label">Cover &amp; Concealment (C)</div>
+            <div class="setting-row">
+              <label>Card style</label>
+              <select id="setting-groundGuideCoverCard" style="width: 150px" title="How the card shows cover from direct and indirect fire and concealment from ground and aerial observation. Every style is kept to compare them: see ground-guide-cover-options.html.">
+                <option value="off">Off</option>
+                <option value="lines" selected>C1 · Four lines</option>
+                <option value="grid">C2 · Grid</option>
+                <option value="summary">C3 · One line</option>
+                <option value="icons">C4 · Shield and eye</option>
+                <option value="nearest">C5 · Nearest cover</option>
+                <option value="rose">C6 · Rose</option>
+                <option value="block">C7 · Full C block</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Where C sits</label>
+              <select id="setting-groundGuideCoverWhere" style="width: 150px" title="Last on the card in GROTBC order (after B), or right after Why (after T).">
+                <option value="grotbc" selected>GROTBC order</option>
+                <option value="afterWhy">After Why</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Radius (m)</label>
+              <input type="number" id="setting-groundGuideCoverRadius" min="100" max="2000" step="50" value="500" style="width: 60px" title="How far the card looks for the nearest Fair or better cover, and for the rose." />
+            </div>
+            <div class="setting-row">
+              <label>Mark the need</label>
+              <input type="checkbox" id="setting-groundGuideCoverFocus" checked title="Mark the kind of cover the mode needs most (foot: direct fire; vehicles: ground observation; guns, AD, signals: the air) and say where better is." />
+            </div>
+            <div class="setting-row">
+              <label>Map centre</label>
+              <button type="button" id="ground-guide-cover-log" title="Write the cover and concealment at the map centre to the Engine Log (as Copy as Text would).">Log cover at centre</button>
+            </div>
           </div>
         </div>
 
@@ -4581,6 +4735,26 @@
         'setting-groundGuideTrafficRain': (v) => ({ path: ['groundGuide', 'traffic', 'rain'], value: v }),
         'setting-groundGuideTrafficBlock': (v) => ({ path: ['groundGuide', 'traffic', 'block'], value: v }),
         'setting-groundGuideTrafficWhere': (v) => ({ path: ['groundGuide', 'traffic', 'where'], value: v }),
+        'setting-groundGuideCoverCard': (v) => ({ path: ['groundGuide', 'cover', 'card'], value: v }),
+        'setting-groundGuideSecGround': (v) => ({ path: ['groundGuide', 'sections', 'ground'], value: v }),
+        'setting-groundGuideSecRoads': (v) => ({ path: ['groundGuide', 'sections', 'roads'], value: v }),
+        'setting-groundGuideSecBuildings': (v) => ({ path: ['groundGuide', 'sections', 'buildings'], value: v }),
+        'setting-groundGuideSecWeather': (v) => ({ path: ['groundGuide', 'sections', 'weather'], value: v }),
+        'setting-groundGuideSecObstacles': (v) => ({ path: ['groundGuide', 'sections', 'obstacles'], value: v }),
+        'setting-groundGuideSecStyle': (v) => ({ path: ['groundGuide', 'sections', 'style'], value: v }),
+        'setting-groundGuideSecGStyle': (v) => ({ path: ['groundGuide', 'sections', 'gStyle'], value: v }),
+        'setting-groundGuideSecRStyle': (v) => ({ path: ['groundGuide', 'sections', 'rStyle'], value: v }),
+        'setting-groundGuideSecOStyle': (v) => ({ path: ['groundGuide', 'sections', 'oStyle'], value: v }),
+        'setting-groundGuideSecBStyle': (v) => ({ path: ['groundGuide', 'sections', 'bStyle'], value: v }),
+        'setting-groundGuideSecWStyle': (v) => ({ path: ['groundGuide', 'sections', 'wStyle'], value: v }),
+        'setting-groundGuideSecRadius': (v) => ({ path: ['groundGuide', 'sections', 'radiusKm'], value: Number(v) }),
+        'setting-groundGuideSecRoadDensity': (v) => ({ path: ['groundGuide', 'sections', 'roadDensity'], value: v }),
+        'setting-groundGuideSecRoadDensityKm': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityKm'], value: Number(v) }),
+        'setting-groundGuideSecRoadDensityStyle': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityStyle'], value: v }),
+        'setting-groundGuideSecRoadDensityLead': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityLead'], value: v }),
+        'setting-groundGuideCoverWhere': (v) => ({ path: ['groundGuide', 'cover', 'where'], value: v }),
+        'setting-groundGuideCoverRadius': (v) => ({ path: ['groundGuide', 'cover', 'radiusM'], value: Number(v) }),
+        'setting-groundGuideCoverFocus': (v) => ({ path: ['groundGuide', 'cover', 'focus'], value: v }),
         'setting-groundGuideWorker': (v) => ({ path: ['groundGuide', 'useWorker'], value: v }),
         'setting-groundGuideOverlay': (v) => ({ path: ['groundGuide', 'overlay', 'enabled'], value: v }),
         'setting-groundGuideBoundary': (v) => ({ path: ['groundGuide', 'overlay', 'boundary'], value: v }),

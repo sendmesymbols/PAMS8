@@ -7,6 +7,9 @@
  */
 
 import type { GroundGuideTraffic, GroundGuideTrafficOptions } from './GroundGuideTrafficability';
+import type { CoverRules, GroundGuideCover, GroundGuideCoverOptions } from './GroundGuideCover';
+import type { GroundGuideSections, GroundGuideSectionsOptions } from './GroundGuideSections';
+import type { RoadDensityRules } from './GroundGuideRoadDensity';
 
 /**
  * Mobility class (mode) a symbol is evaluated as. `exempt` = never terrain-bound. The first five are in
@@ -161,6 +164,16 @@ export interface TerrainRules {
     soilBearing?: Record<string, { dry?: string; wet?: string; note?: string }>;
     /** Cone index against vehicle cone index (rci_dry / rci_wet layers). */
     soilStrength?: SoilStrengthRules;
+    /** C: four-way cover per class ([direct, indirect, ground, aerial], 0-3). */
+    coverSplit?: CoverRules['coverSplit'];
+    /** C: what each kind of river / canal bank gives (bank layer). */
+    banks?: CoverRules['banks'];
+    /** R: tankable road rule (class 60+ tankable, 50-59 limited) and the tanks behind it. */
+    tankable?: { minClass?: number; limitedClass?: number; minWidthM?: number; transporterClass?: number };
+    /** G: which feature kinds count as water sources. */
+    water?: { kinds?: string[] };
+    /** R: road network density bands (GroundGuideRoadDensity; defaults in the engine when absent). */
+    roadDensity?: RoadDensityRules;
   };
 }
 
@@ -260,6 +273,10 @@ export interface GroundGuideOptions {
   population: GroundGuidePopulationOptions;
   /** T (Trafficability) on top of the going sections: road line, legend season controls, overlay and header that follow the season, compact card styles, rain rule. */
   traffic: GroundGuideTrafficOptions;
+  /** C (Cover, Camouflage & Concealment): the four-way cover at the point and the nearest better (bundle v2 with the cc / bank layers). */
+  cover: GroundGuideCoverOptions;
+  /** G / R / B / W sections: terrain, relief, landform, water; route here and for the mode; buildings, huts, services; weather. */
+  sections: GroundGuideSectionsOptions;
 }
 
 export interface GroundGuideGoingOptions {
@@ -645,6 +662,10 @@ export interface GroundGuideVerdict {
   population?: GroundGuidePopulation | null;
   /** Set while drawing when a T option shows something on the card (road line, rain pill, second scale). */
   traffic?: GroundGuideTraffic | null;
+  /** Set while drawing when `cover.enabled` and the bundle has the cover rules: C at and round the point. */
+  cover?: GroundGuideCover | null;
+  /** Set while drawing when a G / R / B / W section is on: the layers and features the card did not show before. */
+  sections?: GroundGuideSections | null;
 }
 
 /** One symbol judged by `auditPlacements()` / `explain()`. */
@@ -821,6 +842,8 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
     road: true, roadRadiusKm: 3, legend: 'label', overlay: false, header: 'dry', pill: true, dual: false, rain: 'cone',
     block: 'band', where: 'afterWhy', roadSource: 'network', access: true, accessRadiusKm: 15,
   },
+  cover: { enabled: true, card: 'lines', where: 'grotbc', radiusM: 500, focus: true },
+  sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
 };
 
 /** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */

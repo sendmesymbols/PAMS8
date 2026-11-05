@@ -229,6 +229,20 @@ export function resolveSeason(
  * Monthly rain at a point from the bundle's climate grid (climate.json + climate.bin, int16 layers x rows x cols,
  * row 0 north). Loaded on first use; `precAt` returns null until it has arrived (and asks `onReady` to refresh).
  */
+/** Climate normals at a point (ClimateGrid.normalsAt). */
+export interface ClimateNormals {
+  tmin: Array<number | null>;
+  tmax: Array<number | null>;
+  prec: number[];
+  wind: Array<number | null>;
+  precYear: number | null;
+  monsoonPct: number | null;
+  tmean: number | null;
+  thresholds: { frostBelowC: number; hotFromC: number; wetFromMm: number };
+  source: string;
+  dataDate: string;
+}
+
 export class ClimateGrid {
   private _meta: any = null;
   private _data: Int16Array | null = null;
@@ -262,6 +276,43 @@ export class ClimateGrid {
       out.push(raw / (m.layers[li].scale ?? 1));
     }
     return out;
+  }
+
+  /**
+   * Every normal at lon / lat (W, the weather line): monthly tmin / tmax (degC), prec (mm), wind (m/s) and the yearly
+   * layers (prec_year, monsoon_pct, frost_months, hot_months, wet_months, tmean). Null while loading, on failure or
+   * outside the grid.
+   */
+  normalsAt(lon: number, lat: number): ClimateNormals | null {
+    if (this._state === 'idle') void this._load();
+    if (this._state !== 'ready' || !this._data) return null;
+    const m = this._meta;
+    const [w, , , n] = m.bounds as [number, number, number, number];
+    const col = Math.floor((lon - w) / m.cell);
+    const row = Math.floor((n - lat) / m.cell);
+    if (col < 0 || row < 0 || col >= m.cols || row >= m.rows) return null;
+    const plane = m.rows * m.cols;
+    const at = (id: string): number | null => {
+      const i = (m.layers ?? []).findIndex((l: any) => l.id === id);
+      if (i < 0) return null;
+      const raw = this._data![i * plane + row * m.cols + col];
+      return raw === m.nodata ? null : raw / (m.layers[i].scale ?? 1);
+    };
+    const months = (p: string) => Array.from({ length: 12 }, (_, k) => at(`${p}_${String(k + 1).padStart(2, '0')}`));
+    const prec = months('prec');
+    if (prec.some((v) => v === null)) return null;
+    return {
+      tmin: months('tmin'),
+      tmax: months('tmax'),
+      prec: prec as number[],
+      wind: months('wind'),
+      precYear: at('prec_year'),
+      monsoonPct: at('monsoon_pct'),
+      tmean: at('tmean'),
+      thresholds: { frostBelowC: m.thresholds?.frostBelowC ?? 0, hotFromC: m.thresholds?.hotFromC ?? 40, wetFromMm: m.thresholds?.wetFromMm ?? 100 },
+      source: String(m.source ?? m.sourceRef?.name ?? 'WorldClim'),
+      dataDate: String(m.sourceRef?.dataDate ?? ''),
+    };
   }
 
   private async _load(): Promise<void> {

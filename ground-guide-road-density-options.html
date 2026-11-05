@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Road Density Options</title>
+<!--
+  PAMS8 Ground Guide: GROTBC R, road network density, on the cursor card. Every style is BUILT and switchable live with
+  groundGuide.sections.roadDensityStyle (D1-D7) and groundGuide.sections.roadDensityLead (Settings > Ground Guide >
+  Ground, Roads, Buildings & Weather, or Ctrl+K "road density"); this page shows them side by side so the owner can pick.
+  One self-contained file: no network, no build. Card CSS copied from GroundGuideBadge.ts, GroundGuideSectionsView.ts and
+  GroundGuideRoadDensityView.ts; the drawing is a port of GroundGuideRoadDensityView.ts.
+  The sample readings are REAL: guide.roadDensityAround() at six places and three circles on 2026-11-06 (routing network
+  dataVersion 32dfe876cd99b9e9), and the R route line from guide.sectionsAround(). The bands are a proposal.
+-->
+<style>
+:root{--bg:#0f1318;--panel:#171c22;--line:#2a323b;--tx:#e8ebee;--soft:#9aa3ad;--acc:#c9a46b;--warn:#ffc861}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.55 system-ui,"Segoe UI",Arial,sans-serif}
+.pg-wrap{max-width:1360px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:28px;line-height:1.15;margin:30px 0 8px;text-wrap:balance}
+h2{font-size:21px;margin:46px 0 6px;padding-top:16px;border-top:1px solid var(--line)}
+p{margin:6px 0 10px;max-width:86ch}
+.pg-lede{font-size:15.5px;color:#c8cfd6}
+.pg-sub{color:var(--soft);font-size:13px;margin:0 0 12px;max-width:90ch}
+code{font:12px/1.4 ui-monospace,Consolas,monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;color:#d7e2ec}
+.pg-ctl{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);font-size:13px;color:var(--soft)}
+.pg-seg{display:inline-flex;flex-wrap:wrap;border:1px solid #39434f;border-radius:7px;overflow:hidden}
+.pg-seg button{font:inherit;font-size:12.5px;color:var(--tx);background:#1c232b;border:0;border-left:1px solid #39434f;padding:5px 10px;cursor:pointer}
+.pg-seg button:first-child{border-left:0}
+.pg-seg button[aria-pressed="true"]{background:var(--acc);color:#10161c;font-weight:600}
+.pg-seg button:focus-visible,.pg-btn:focus-visible,.pg-opt:focus-within,.pg-q label:focus-within{outline:2px solid var(--acc);outline-offset:1px}
+.pg-opts{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));align-items:start}
+.pg-opt{position:relative;display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;cursor:pointer;min-width:0}
+.pg-opt:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.pg-opt input{position:absolute;opacity:0;pointer-events:none}
+.pg-opt-h{display:flex;gap:8px;align-items:baseline;margin-bottom:4px}
+.pg-opt-h b{font-size:15px}
+.pg-pick{margin-left:auto;font-size:11.5px;color:var(--soft);border:1px solid #39434f;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.pg-opt:has(input:checked) .pg-pick{background:var(--acc);border-color:var(--acc);color:#10161c;font-weight:600}
+.pg-rec{font:700 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;color:#7ee0a5;background:#1d3a2a;border-radius:999px;padding:3px 7px}
+.pg-opt p{font-size:13px;color:#c3cbd3;margin:2px 0 10px}
+.pg-stage{background:#2b3a2a;background-image:linear-gradient(135deg,rgba(255,255,255,.035) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.035) 50%,rgba(255,255,255,.035) 75%,transparent 75%);background-size:22px 22px;border-radius:9px;padding:14px;display:flex;justify-content:center}
+.pg-meta{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px;margin-top:10px;color:#c3cbd3}
+.pg-meta dt{color:var(--soft)}.pg-meta dd{margin:0}
+.pg-size{font:600 12px ui-monospace,Consolas,monospace;color:var(--warn)}
+.pg-tbl{overflow-x:auto}
+table{border-collapse:collapse;font-size:13px;min-width:560px}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--soft);font-weight:600;font-size:12px}
+td.num{font-variant-numeric:tabular-nums;text-align:right}
+.pg-out{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+.pg-out pre{margin:8px 0 0;white-space:pre-wrap;font:13px/1.5 ui-monospace,Consolas,monospace;color:#d7e2ec}
+.pg-btn{font:inherit;font-size:13px;color:var(--tx);background:#222a33;border:1px solid #39434f;border-radius:6px;padding:6px 12px;cursor:pointer}
+.pg-q{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin:12px 0}
+.pg-q label{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer}
+.pg-q label:has(input:checked){border-color:var(--acc)}
+.pg-q input{margin-top:3px;accent-color:var(--acc)}
+.pg-q small{display:block;color:var(--soft);font-size:12px}
+.pg-note{border-left:3px solid var(--warn);padding:6px 12px;background:rgba(255,200,97,.06);font-size:13px;max-width:96ch}
+.pg-cmp{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.pg-cmp>div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+.pg-cmp h4{margin:0 0 6px;font-size:13px;color:var(--soft);font-weight:600}
+@media (max-width:640px){h1{font-size:23px}.pg-ctl{position:static}}
+/* ---- card: from GroundGuideBadge.ts (static for the page) ---- */
+.ms-ground-guide-badge{position:relative;--pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:280px;max-width:100%;border-radius:10px;overflow:hidden;
+  font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:block}
+.ms-ground-guide-badge[data-verdict="ok"]{--pb-c:#1c8247;--pb-k:#3fc07a}
+.ms-ggb-bar{display:flex;align-items:center;gap:7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
+.ms-ggb-sec{padding:7px 11px 8px}
+.ms-ggb-sec:nth-child(even){background:#222830}
+.ms-ggb-cap{font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--pb-k);margin-bottom:5px}
+.ms-ggb-dim{opacity:.55}
+/* ---- G R O B W sections: from GroundGuideSectionsView.ts ---- */
+.ms-gs-cap{display:flex;align-items:center;gap:6px}
+.ms-gs-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;background:#c9a46b;color:#1b1f25}
+.ms-gs-kv{display:grid;grid-template-columns:56px minmax(0,1fr);gap:3px 8px;font-size:11.5px;line-height:1.35}
+.ms-gs-kv>.ms-gs-k{color:#9aa3ad;font-size:10.5px;padding-top:1px}
+.ms-gs-kv>.ms-gs-v{min-width:0;color:#e8ebee}
+.ms-gs-kv b{color:#fff;font-weight:600}
+.ms-gs-chip{display:inline-block;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;vertical-align:1px;margin-left:4px;white-space:nowrap}
+.ms-gs-msr{background:#d64541;color:#fff}
+.ms-gs-one{display:flex;gap:7px;align-items:flex-start;font-size:11.5px;line-height:1.35}
+.ms-gs-one>span:last-child{min-width:0}
+.ms-gs-src{color:#7f8994;font-size:10px;margin-top:4px}
+/* ---- road density: from GroundGuideRoadDensityView.ts ---- */
+.ms-grd-chip{display:inline-block;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;vertical-align:1px;white-space:nowrap}
+.ms-grd-chip+.ms-grd-chip{margin-left:4px}
+.ms-grd-soft{color:#9aa3ad;font-size:11px;margin-top:4px;line-height:1.35}
+.ms-grd-line{font-size:11.5px;line-height:1.35;margin-top:5px}
+.ms-grd-line b{color:#fff;font-weight:600}
+.ms-grd-gauge{position:relative;height:22px;margin-top:6px}
+.ms-grd-gauge>.ms-grd-track{position:absolute;left:0;right:0;top:7px;height:8px;border-radius:2px;overflow:hidden;display:flex}
+.ms-grd-gauge>.ms-grd-track>i{display:block;height:100%}
+.ms-grd-gauge>.ms-grd-mk{position:absolute;top:0;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #fff;margin-left:-5px}
+.ms-grd-gauge>.ms-grd-mk.ms-aw{top:15px;border-top:0;border-bottom:7px solid #3fc07a}
+.ms-grd-ticks{position:relative;height:11px;font:9.5px/1 system-ui,Segoe UI,Arial,sans-serif;color:#7f8994}
+.ms-grd-ticks>span{position:absolute;transform:translateX(-50%)}
+.ms-grd-rose{display:flex;gap:10px;align-items:center;margin-top:5px}
+.ms-grd-rose>svg{flex:none}
+.ms-grd-rose>div{min-width:0;font-size:11.5px;line-height:1.35}
+.ms-grd-rose b{color:#fff;font-weight:600}
+.ms-grd-key{display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:#9aa3ad;margin-top:4px}
+.ms-grd-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:0}
+.ms-grd-bar{display:flex;height:9px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,.08);margin-top:6px}
+.ms-grd-bar>i{display:block;height:100%}
+.ms-grd-mu{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#c3cbd3;margin-top:4px}
+.ms-grd-mu b{color:#fff;font-weight:600}
+</style>
+</head>
+<body>
+<div class="pg-wrap">
+<h1>Road Network Density on the Card: Display Options</h1>
+<p class="pg-lede">Road network density (GROTBC R, Road Connectivity) is now on the Ground Guide card. Every style below is <b>built</b>.
+Switch between them live with <code>groundGuide.sections.roadDensityStyle</code> and <code>roadDensityLead</code> (Settings → Ground Guide →
+Ground, Roads, Buildings &amp; Weather, or Ctrl+K "road density"). Pick a style, the band rule and the circle, then answer the questions at the end.
+The Ground Brief (G key) always shows road density in full, whatever you pick here.</p>
+<p class="pg-sub">What it reads: the routing network the T road line and GeoCore use (<code>network/gg</code>). Every road inside a circle round the point is
+measured: km per km², all-weather and fair-weather (tracks, paths, roads flagged fair-weather), MSR and tankable. The <b>ways out</b> are where roads leave the circle.
+Crossings closer than 250 m along the circle count as one. Town streets, service roads and footpaths are not in these tiles, so a town counts only its through roads.
+The readings below come from the engine at six real places.</p>
+
+<div class="pg-ctl" role="toolbar" aria-label="Sample">
+  <span>Place</span><span class="pg-seg" id="seg-place"></span>
+  <span>Circle</span><span class="pg-seg" id="seg-radius"></span>
+  <span>Band</span><span class="pg-seg" id="seg-lead"></span>
+  <span>R on the card</span><span class="pg-seg" id="seg-layout"></span>
+</div>
+
+<h2>1 · On the Drawing Card (280 px)</h2>
+<p class="pg-sub">Only the R section is drawn; the rest of the card is dimmed. "R on the card" follows <code>sections.style</code> (now per letter as
+<code>sections.rStyle</code> in the mapping session's work): <b>one line</b> is the default. Pick <b>Thal</b> or <b>Astore Hills</b> to see the
+band rule at work: there, tracks lift the total a band above the all-weather roads.</p>
+<div class="pg-opts" id="opts"></div>
+
+<h2>2 · Which Band the Card Leads With</h2>
+<p class="pg-sub">Only matters where tracks and fair-weather roads make up the difference (75 of about 1,300 points on a 0.2° grid over Pakistan, at 5 km).</p>
+<div class="pg-q" id="lead"></div>
+<p class="pg-note"><b>Why "after rain" is the proposed default.</b> At Thal, 54 of the 93 km inside 5 km are tracks. Every road counted reads <b>Dense</b>
+("room to disperse and switch axes"), but after rain only <b>Moderate</b> is left. Leading with Dense would promise routes that may not carry traffic in the wet.
+That is the error that costs the most, so the card leads with the lower band and still shows both figures.</p>
+
+<h2>3 · The Circle</h2>
+<p class="pg-sub">The same place reads very differently at 2, 5 and 10 km. Real readings (every road / all-weather, km/km²):</p>
+<div class="pg-tbl"><table id="t-radius"></table></div>
+<div class="pg-q" id="radius"></div>
+
+<h2>4 · The Bands (Proposal)</h2>
+<p class="pg-sub">Taken from the bundle itself: 1,500 random 5 km circles over the tiles that hold any road. Median 0.15, 75th percentile 0.57,
+90th 1.17, 99th 2.95 km/km². Half of all 2 km circles hold no road at all. A bundle can override the bands with <code>rules.json grotbc.roadDensity.bands</code>.</p>
+<div class="pg-tbl"><table id="t-bands"></table></div>
+
+<h2>5 · Decide</h2>
+<div class="pg-q" id="approve"></div>
+<div class="pg-out"><button class="pg-btn" type="button" id="copy">Copy decision</button><pre id="out"></pre></div>
+</div>
+
+<script id="data" type="application/json">
+{"places":{"thal":{"label":"Thal Tracks \u00b7 near D.I. Khan","at":[70.7,31.7],"route":{"on":true,"type":"Pack track","tier":null,"msr":false,"d":0,"c":"N"},"crossing":["Bridge",null,1063,"W"],"r":{"2":[17.39,8.25,9.13,0,0,[[13,1,0,0],[99,0,0,0],[136,1,0,0],[156,1,0,0],[278,1,0,0],[360,1,0,0]],0],"5":[93.13,39.34,53.79,0,0,[[12,1,0,0],[20,1,0,0],[66,0,0,0],[84,0,0,0],[119,0,0,0],[126,1,0,0],[149,1,0,0],[161,0,0,0],[191,0,0,0],[219,1,0,0],[240,1,0,0],[251,0,0,0],[273,1,0,0],[276,1,0,0],[292,1,0,0]],0],"10":[325.3,204.64,120.66,6.97,6.97,[[4,1,0,0],[9,0,0,0],[32,1,0,0],[44,1,0,0],[77,1,0,0],[82,1,0,0],[90,1,1,1],[109,1,0,0],[127,1,1,1],[137,1,0,0],[139,1,0,0],[143,1,0,0],[162,1,0,0],[165,1,0,0],[188,1,0,0],[197,1,0,0],[211,1,0,0],[214,1,0,0],[220,1,0,0],[233,0,0,0],[278,1,0,0],[311,1,0,0],[318,1,0,0],[320,1,0,0],[333,0,0,0]],0]}},"hills":{"label":"Astore Hills","at":[74.7,35.5],"route":null,"crossing":null,"r":{"2":[1.39,1.03,0.36,0,0,[[6,0,0,0],[64,0,0,0]],0],"5":[33,9.36,23.64,8.05,0,[[3,1,1,0],[20,1,1,0],[29,1,1,0],[80,1,1,0],[100,0,0,0],[356,1,0,0]],0],"10":[94.56,56.56,38,43.33,10.66,[[99,1,0,0],[122,1,1,0],[264,1,1,1],[266,0,0,0],[313,1,1,1],[321,1,1,0]],0]}},"kharian":{"label":"Kharian \u00b7 MSR and Rail","at":[73.86,32.81],"route":{"on":true,"type":"Railway, broad gauge single","tier":null,"msr":true,"d":0,"c":"N"},"crossing":["Bridge",null,1104,"SW"],"r":{"2":[27.78,27.45,0.33,15.24,14.87,[[94,1,0,0],[134,1,1,1],[146,1,0,0],[205,1,0,0],[260,1,0,0],[304,1,0,0],[330,1,1,1],[351,1,0,0]],0],"5":[94.87,94.53,0.33,29.16,28.12,[[44,1,0,0],[54,1,0,0],[96,1,0,0],[139,1,1,1],[167,1,0,0],[170,1,0,0],[199,1,0,0],[210,1,0,0],[241,1,0,0],[257,1,0,0],[318,1,1,1]],0],"10":[318.8,309.7,9.11,50.05,48.8,[[61,1,0,0],[68,1,0,0],[77,1,0,0],[80,1,0,0],[83,1,0,0],[91,1,0,0],[93,1,0,0],[98,1,0,0],[103,1,0,0],[106,1,0,0],[115,1,0,0],[120,1,0,0],[123,1,0,0],[128,1,0,0],[137,1,0,0],[143,1,1,1],[152,1,0,0],[156,1,0,0],[164,1,0,0],[174,1,0,0],[178,1,0,0],[186,1,0,0],[191,1,0,0],[200,1,0,0],[212,1,0,0],[223,1,0,0],[240,1,0,0],[244,1,0,0],[301,1,0,0],[304,1,0,0],[318,1,1,1],[320,1,0,0],[352,1,0,0]],0]}},"desertEdge":{"label":"Desert Edge \u00b7 Bahawalpur","at":[71.9,29.2],"route":{"on":false,"type":"Cart track","tier":null,"msr":false,"d":94,"c":"NW"},"crossing":["Bridge",null,914,"NW"],"r":{"2":[7.39,7.39,0,1.9,1.9,[[102,1,0,0],[114,1,1,1],[167,1,1,1],[210,1,0,0],[227,1,0,0],[236,1,0,0],[274,1,0,0]],0],"5":[39.98,35.01,4.98,11.1,9.75,[[41,1,0,0],[112,1,1,1],[219,1,1,0],[229,1,1,1],[239,1,0,0],[292,1,0,0],[326,0,0,0]],0],"10":[106.07,96.92,9.15,27.58,20.13,[[21,0,0,0],[108,1,1,1],[190,1,0,0],[196,1,1,0],[204,1,0,0],[208,1,0,0],[225,1,0,0],[227,1,0,0],[238,1,1,1],[251,1,0,0],[285,1,0,0],[288,1,0,0],[330,1,0,0]],0]}},"cholistan":{"label":"Cholistan","at":[71.6,28.4],"route":null,"crossing":null,"r":{"2":[0,0,0,0,0,[],0],"5":[0,0,0,0,0,[],0],"10":[0,0,0,0,0,[],0]}},"lahore":{"label":"Lahore","at":[74.33,31.55],"route":{"on":false,"type":"Metalled road, local","tier":null,"msr":false,"d":33,"c":"E"},"crossing":["Bridge",null,2637,"E"],"r":{"2":[141.31,88.38,52.92,10.16,7.01,[[39,1,1,1],[79,1,0,0],[108,1,1,0],[148,1,1,0],[169,1,0,0],[185,1,0,0],[213,1,1,1],[249,1,0,0],[274,1,1,1],[330,1,0,0]],0],"5":[955.66,550.78,404.89,102.65,57.14,[[3,1,0,0],[22,1,0,0],[43,1,0,0],[53,1,1,1],[65,1,0,0],[74,1,1,0],[79,1,0,0],[91,1,1,1],[103,1,0,0],[110,1,0,0],[117,1,0,0],[122,1,0,0],[128,1,0,0],[133,1,0,0],[136,1,0,0],[142,1,0,0],[147,1,0,0],[152,1,0,0],[159,1,0,0],[170,1,0,0],[176,1,1,1],[186,1,0,0],[192,1,0,0],[198,1,1,0],[210,1,0,0],[223,1,0,0],[228,1,0,0],[237,1,0,0],[246,1,1,1],[260,1,0,0],[266,1,0,0],[270,1,0,0],[282,1,1,0],[305,1,1,0],[317,1,0,0],[322,1,0,0],[332,1,1,1],[346,1,0,0],[350,1,0,0]],0],"10":[2541.54,1627.61,913.93,396.6,149.37,[[12,1,1,0],[15,1,0,0],[20,1,0,0],[24,1,1,0],[34,1,0,0],[40,1,1,0],[42,1,0,0],[44,1,0,0],[46,1,1,0],[52,1,0,0],[63,1,1,1],[76,1,1,0],[80,1,0,0],[84,1,1,0],[99,1,1,1],[102,1,0,0],[104,1,0,0],[108,1,0,0],[116,1,1,0],[120,1,0,0],[131,1,1,0],[136,1,0,0],[138,1,0,0],[141,1,0,0],[152,1,0,0],[156,1,0,0],[159,1,0,0],[169,1,1,1],[175,1,1,0],[180,1,0,0],[187,1,0,0],[191,1,0,0],[194,1,0,0],[197,1,0,0],[201,1,0,0],[204,1,0,0],[210,1,0,0],[212,1,0,0],[214,1,0,0],[216,1,1,1],[220,1,0,0],[224,1,1,1],[230,1,0,0],[234,1,0,0],[238,1,1,1],[248,1,0,0],[252,1,0,0],[269,1,0,0],[276,1,0,0],[286,1,1,1],[288,1,1,0],[311,1,1,0],[313,1,1,0],[317,1,1,1],[321,1,0,0],[323,1,0,0],[325,1,0,0],[330,1,0,0],[334,1,0,0],[336,1,1,1],[339,1,0,0],[344,1,0,0],[348,1,0,0],[357,1,0,0]],0]}}}}
+</script>
+<script>
+(function(){
+var D = JSON.parse(document.getElementById('data').textContent);
+var SVG = 'http://www.w3.org/2000/svg';
+var COMPASS = ['N','NE','E','SE','S','SW','W','NW'];
+var BANDS = [
+  {key:'none', label:'No Roads', from:0, note:'No road or track in the circle: cross-country only.'},
+  {key:'sparse', label:'Sparse', from:0.001, note:'Few roads: movement is canalised and each road is a likely chokepoint.'},
+  {key:'moderate', label:'Moderate', from:0.25, note:'Some choice of route; alternatives are limited.'},
+  {key:'dense', label:'Dense', from:0.75, note:'Good choice of routes: room to disperse and switch axes.'},
+  {key:'veryDense', label:'Very Dense', from:1.5, note:'Built-up road grid: many routes, but channelled and slow through streets.'}
+];
+var COL = {none:['#3d1c1e','#ff8a8d'], sparse:['#3a2a14','#ffb766'], moderate:['#2e2a1c','#ffd27a'], dense:['#1d3a2a','#7ee0a5'], veryDense:['#1c2c3d','#8cc4ff']};
+var EXIT = {msr:'#d64541', aw:'#3fc07a', fair:'#f0a04b', none:'rgba(255,255,255,.08)'};
+var GAUGE_MAX = 3;
+var state = {place:'thal', radius:'5', lead:'afterRain', layout:'compact', pick:'rows', leadPick:'afterRain', radiusPick:'5'};
+
+function el(t,c,x){ var e=document.createElement(t); if(c) e.className=c; if(x!==undefined) e.textContent=x; return e; }
+function sv(t,a){ var e=document.createElementNS(SVG,t); for(var k in a) e.setAttribute(k,String(a[k])); return e; }
+function b(t){ return el('b',null,t); }
+function soft(t){ var s=el('span',null,t); s.style.color='#9aa3ad'; return s; }
+function fd(d){ return d<=0 ? '0' : d<0.01 ? 'under 0.01' : d<1 ? d.toFixed(2) : d.toFixed(1); }
+function fr(m){ return m>=1000 ? (Math.round(m/100)/10)+' km' : Math.round(m)+' m'; }
+function km(v){ return v<10 ? v.toFixed(1) : String(Math.round(v)); }
+function m(n){ return n>=1000 ? (n/1000).toFixed(1)+' km' : n+' m'; }
+
+/* ---- reading: port of GroundGuideRoadDensity.roadDensityReading ---- */
+function bandOf(v){ if(!(v>0)) return BANDS[0]; var p=BANDS[1]; BANDS.forEach(function(x){ if(x.key!=='none' && v>=x.from) p=x; }); return p; }
+function reading(place, rk){
+  var r=D.places[place].r[rk], R=Number(rk)*1000, area=Math.PI*Math.pow(R/1000,2);
+  var d={radiusM:R, totalKm:r[0], allWeatherKm:r[1], fairKm:r[2], msrKm:r[3], tankableKm:r[4]};
+  d.density=d.totalKm/area; d.allWeatherDensity=d.allWeatherKm/area; d.band=bandOf(d.density); d.allWeatherBand=bandOf(d.allWeatherDensity);
+  d.leadIsAllWeather = BANDS.indexOf(d.allWeatherBand) < BANDS.indexOf(d.band); d.lead = d.leadIsAllWeather ? d.allWeatherBand : d.band;
+  var raw=r[5].map(function(e){ return {b:e[0], aw:!!e[1], msr:!!e[2], tank:!!e[3]}; }).sort(function(a,c){return a.b-c.b;});
+  var gap=250/(2*Math.PI*R)*360, groups=[];
+  raw.forEach(function(e){ var g=groups[groups.length-1]; if(g && e.b-g[g.length-1].b<=gap) g.push(e); else groups.push([e]); });
+  if(groups.length>1){ var f=groups[0], l=groups[groups.length-1]; if(f[0].b+360-l[l.length-1].b<=gap){ groups[0]=l.concat(f); groups.pop(); } }
+  d.exits=groups.map(function(g){ var sx=0, cy=0; g.forEach(function(e){ sx+=Math.sin(e.b*Math.PI/180); cy+=Math.cos(e.b*Math.PI/180); }); var bb=(Math.atan2(sx,cy)*180/Math.PI+360)%360;
+    return {b:bb, compass:COMPASS[Math.round(bb/45)%8], aw:g.some(function(e){return e.aw;}), msr:g.some(function(e){return e.msr;}), tank:g.some(function(e){return e.tank;})}; });
+  function dirs(list){ var s={}; list.forEach(function(e){ s[e.compass]=1; }); return COMPASS.filter(function(c){return s[c];}); }
+  d.exitDirs=dirs(d.exits); d.awExitDirs=dirs(d.exits.filter(function(e){return e.aw;}));
+  return d;
+}
+function awDiffers(d){ return fd(d.allWeatherDensity)!==fd(d.density); }
+/* The bold figure always belongs to the band the chip shows. */
+function figure(d, lead){ var all=fd(d.density), aw=fd(d.allWeatherDensity); if(!d.leadIsAllWeather || lead==='dry') return [all, awDiffers(d)? ', all-weather '+aw : ''];
+  if(lead==='both') return [all+' / '+aw, ' (dry / after rain)']; return [aw, ' all-weather, '+all+' with tracks']; }
+function figNode(d, lead, tail){ var f=document.createDocumentFragment(), x=figure(d,lead); f.append(b(x[0]), soft(' km/km² within '+fr(d.radiusM)+x[1]+(tail||''))); return f; }
+function note(d){ return d.leadIsAllWeather ? 'After rain: '+d.lead.label.toLowerCase()+'. '+d.lead.note : d.lead.note; }
+
+/* ---- view: port of GroundGuideRoadDensityView ---- */
+function leadChips(d, lead){
+  if(!d.leadIsAllWeather || lead==='dry') return [{band:d.band, label:d.band.label}];
+  if(lead==='both') return [{band:d.band, label:d.band.label+' dry'}, {band:d.allWeatherBand, label:d.allWeatherBand.label+' after rain'}];
+  return [{band:d.allWeatherBand, label:d.allWeatherBand.label+' after rain'}];
+}
+function chips(d, lead){ var f=document.createDocumentFragment(); leadChips(d,lead).forEach(function(c){ var e=el('span','ms-grd-chip',c.label); e.style.background=COL[c.band.key][0]; e.style.color=COL[c.band.key][1]; e.title=note(d); f.append(e); }); return f; }
+function oneLine(d, lead){ return 'road density '+leadChips(d,lead).map(function(c){return c.label.toLowerCase();}).join(', '); }
+function densityValue(d, lead){ var f=document.createDocumentFragment(); f.append(chips(d,lead));
+  if(d.band.key==='none'){ f.append(soft(' no road or track within '+fr(d.radiusM))); return f; }
+  f.append(' ', figNode(d,lead)); return f; }
+function exitsValue(d){ if(d.band.key==='none' && !d.exits.length) return null; var n=d.exits.length; if(!n) return 'None: no road leaves the circle';
+  var allAw=d.exits.every(function(e){return e.aw;}); var aw= allAw? ' · all all-weather' : d.awExitDirs.length? ' · all-weather '+d.awExitDirs.join(', ') : ' · none all-weather';
+  var msr=d.exits.filter(function(e){return e.msr;}).length; return n+': '+d.exitDirs.join(', ')+aw+(msr? ' · '+msr+' on an MSR':''); }
+function makeUp(d){ if(d.band.key==='none') return null; return [km(d.allWeatherKm)+' km all-weather', d.fairKm>0.05? km(d.fairKm)+' km tracks / fair-weather':null, d.msrKm>0.05? 'MSR '+km(d.msrKm)+' km':'no MSR', d.tankableKm>0.05? 'tankable '+km(d.tankableKm)+' km':null].filter(Boolean).join(' · '); }
+function densityRows(d, lead, full){ var rows=[['Density', densityValue(d,lead)]]; if(full) rows.push(['Make-up', makeUp(d)]); rows.push(['Ways out', exitsValue(d)]); return rows; }
+function kv(rows){ var g=el('div','ms-gs-kv'); rows.forEach(function(r){ if(r[1]===null||r[1]==='') return; var v=el('div','ms-gs-v'); v.append(r[1]); g.append(el('div','ms-gs-k',r[0]), v); }); return g.childElementCount? g : null; }
+
+function gauge(d, lead){ var box=el('div'), g=el('div','ms-grd-gauge'), tr=el('div','ms-grd-track'); var steps=BANDS.filter(function(x){return x.key!=='none';});
+  steps.forEach(function(x,i){ var lo=i===0?0:x.from, hi=Math.min(GAUGE_MAX, steps[i+1]? steps[i+1].from : GAUGE_MAX); var it=el('i'); it.style.width=((hi-lo)/GAUGE_MAX*100)+'%'; it.style.background=COL[x.key][1]; it.style.opacity='.55'; tr.append(it); });
+  g.append(tr); function at(v){ return (Math.min(GAUGE_MAX,v)/GAUGE_MAX*100)+'%'; }
+  var mk=el('i','ms-grd-mk'); mk.style.left=at(d.density); g.append(mk); if(awDiffers(d)){ var ma=el('i','ms-grd-mk ms-aw'); ma.style.left=at(d.allWeatherDensity); g.append(ma); }
+  var ticks=el('div','ms-grd-ticks'); [0].concat(steps.slice(1).map(function(x){return x.from;}), [GAUGE_MAX]).forEach(function(v){ var t=el('span',null, v===GAUGE_MAX? v+'+' : String(v)); t.style.left=at(v); if(v===0) t.style.transform='none'; if(v===GAUGE_MAX) t.style.transform='translateX(-100%)'; ticks.append(t); });
+  var line=el('div','ms-grd-line'); line.append(chips(d,lead),' ', figNode(d,lead));
+  var k=el('div','ms-grd-key'); k.append(el('span',null,'▼ every road')); if(awDiffers(d)){ var a=el('span',null,'▲ all-weather'); a.style.color='#3fc07a'; k.append(a); }
+  box.append(line, g, ticks, k); return box; }
+function exitRose(d, size, centre){ var cx=size/2, r0=size*.16, R=size/2-3; var s=sv('svg',{width:size,height:size,viewBox:'0 0 '+size+' '+size});
+  s.append(sv('circle',{cx:cx,cy:cx,r:R,fill:'none',stroke:'rgba(255,255,255,.12)'}));
+  function P(a,r){ return (cx+r*Math.sin(a)).toFixed(1)+' '+(cx-r*Math.cos(a)).toFixed(1); }
+  var sec=COMPASS.map(function(){return {n:0,msr:false,aw:false};}); d.exits.forEach(function(e){ var x=sec[Math.round(e.b/45)%8]; x.n++; x.msr=x.msr||e.msr; x.aw=x.aw||e.aw; });
+  sec.forEach(function(x,i){ var a0=(i*45-20)*Math.PI/180, a1=(i*45+20)*Math.PI/180; var reach= x.n===0? .18 : x.n===1? .55 : x.n===2? .78 : 1; var r=r0+(R-r0)*reach;
+    var fill= x.n===0? EXIT.none : x.msr? EXIT.msr : x.aw? EXIT.aw : EXIT.fair; s.append(sv('path',{d:'M '+P(a0,r0)+' L '+P(a0,r)+' A '+r+' '+r+' 0 0 1 '+P(a1,r)+' L '+P(a1,r0)+' A '+r0+' '+r0+' 0 0 0 '+P(a0,r0)+' Z', fill:fill})); });
+  s.append(sv('circle',{cx:cx,cy:cx,r:r0-2,fill:COL[centre.key][1],stroke:'#fff','stroke-width':1.2}), sv('path',{d:'M '+cx+' 1 l 3.5 6 h -7 z',fill:'#fff'})); return s; }
+function roseBlock(d, lead){ var box=el('div'), row=el('div','ms-grd-rose'), t=el('div'); var l1=el('div'); l1.append(chips(d,lead)); var l2=el('div'); l2.append(figNode(d,lead));
+  var n=d.exits.length, l3=el('div'); l3.append(b(n+' way'+(n===1?'':'s')+' out'), soft(n? ' · '+d.exitDirs.join(', ') : '')); t.append(l1,l2,l3);
+  var closed=COMPASS.filter(function(c){return d.exitDirs.indexOf(c)<0;}); if(n && closed.length) t.append(el('div','ms-grd-soft','No road out to the '+closed.join(', ')));
+  var lc=leadChips(d,lead); row.append(exitRose(d,62,lc[lc.length-1].band), t); var key=el('div','ms-grd-key'); [[EXIT.msr,'MSR'],[EXIT.aw,'All-weather'],[EXIT.fair,'Fair-weather']].forEach(function(x){ var k=el('span'), dot=el('span','ms-grd-dot'); dot.style.background=x[0]; k.append(dot,x[1]); key.append(k); });
+  box.append(row,key); return box; }
+function makeupBlock(d, lead){ var box=el('div'), line=el('div','ms-grd-line'); line.append(chips(d,lead),' ', figNode(d,lead,' · '+Math.round(d.totalKm)+' km of road')); box.append(line);
+  if(d.totalKm>0){ var bar=el('div','ms-grd-bar'); [[d.allWeatherKm,EXIT.aw],[d.fairKm,EXIT.fair]].forEach(function(x){ if(x[0]<=0) return; var i=el('i'); i.style.width=(x[0]/d.totalKm*100)+'%'; i.style.background=x[1]; bar.append(i); }); box.append(bar);
+    var mu=el('div','ms-grd-mu'); function item(c,l,v){ var s=el('span'), dot=el('span','ms-grd-dot'); dot.style.background=c; s.append(dot,l+' ',b(km(v)+' km')); return s; }
+    mu.append(item(EXIT.aw,'All-weather',d.allWeatherKm), item(EXIT.fair,'Tracks',d.fairKm), item(EXIT.msr,'MSR',d.msrKm), item('#8cc4ff','Tankable',d.tankableKm)); box.append(mu); }
+  return box; }
+function sentence(d, lead){ var lc=leadChips(d,lead), band=lc[lc.length-1].band; if(d.band.key==='none') return 'No road or track within '+fr(d.radiusM)+': cross-country only.';
+  var n=d.exits.length; var ex= n? n+' way'+(n===1?'':'s')+' out'+(d.exits.every(function(e){return e.aw;})? ', all all-weather' : d.awExitDirs.length? ', all-weather to the '+d.awExitDirs.join(', ') : ', none all-weather') : 'no road leaves the circle';
+  var x=figure(d,lead); return lc.map(function(c){return c.label;}).join(', ')+' road net ('+x[0]+' km/km² within '+fr(d.radiusM)+x[1]+'): '+ex+'. '+band.note; }
+function block(d, style, lead){ if(style==='gauge') return gauge(d,lead); if(style==='rose') return roseBlock(d,lead); if(style==='makeup') return makeupBlock(d,lead); if(style==='sentence') return el('div','ms-grd-line',sentence(d,lead)); return null; }
+
+/* ---- the R section ---- */
+function routeText(p){ var r=p.route; if(!r) return 'No road or track within 500 m'; return [r.on? r.type : r.type+' '+m(r.d)+' '+r.c, r.tier, r.msr? 'MSR' : null].filter(Boolean).join(' · '); }
+function routeNode(p){ var r=p.route; var f=document.createDocumentFragment(); if(!r){ f.append('No road or track within 500 m'); return f; } f.append(b(r.type)); if(!r.on) f.append(soft(' · '+m(r.d)+' '+r.c)); if(r.msr){ f.append(el('span','ms-gs-chip ms-gs-msr','MSR')); } return f; }
+function rSection(p, d, style, lead, layout){
+  var sec=el('div','ms-ggb-sec'); var L=el('span','ms-gs-l','R');
+  if(layout==='compact'){ var row=el('div','ms-gs-one'), t=el('span'); var text=routeText(p); if(style==='rows') text+=' · '+oneLine(d,lead); t.append(text); if(style==='chip'){ t.append(' ', chips(d,lead)); } row.append(L,t); sec.append(row); }
+  else { var cap=el('div','ms-ggb-cap ms-gs-cap'); cap.append(L,'Roads, Tracks & Rail'); sec.append(cap);
+    var rows=[[p.route && p.route.on? 'Here':'Nearest', routeNode(p)], ['Crossing', p.crossing? p.crossing[0]+' '+m(p.crossing[2])+' '+p.crossing[3] : null]];
+    if(style==='rows') rows=rows.concat(densityRows(d,lead,false)); if(style==='chip') rows.push(['Density', chips(d,lead)]); var g=kv(rows); if(g) sec.append(g); }
+  var bl=block(d,style,lead); if(bl) sec.append(bl); return sec; }
+function card(sec){ var c=el('div','ms-ground-guide-badge'); c.dataset.verdict='ok'; c.append(el('div','ms-ggb-bar','Suitable Position')); var body=el('div'); var dim=el('div','ms-ggb-sec ms-ggb-dim'); dim.append(el('div','ms-ggb-cap','Why · T · G …')); var dim2=el('div','ms-ggb-sec ms-ggb-dim'); dim2.append(el('div','ms-ggb-cap','O · B · C · W …')); body.append(dim, sec, dim2); c.append(body); return c; }
+
+var STYLES = [
+ {k:'rows', n:'D1', name:'Rows', rec:true, size:'one line: +0 px · lines: ~35 px', desc:'In one-line R it adds "road density dense" to the line. With a few lines each: a Density row (band chip, km/km², all-weather) and a Ways out row (count, directions, how many all-weather, how many on an MSR).'},
+ {k:'chip', n:'D2', name:'Band Chip Only', size:'+0 px', desc:'Just the coloured band chip on the R line. The smallest: the figures, ways out and make-up stay in the Brief. Hover the chip for what the band means.'},
+ {k:'gauge', n:'D3', name:'Gauge', size:'~50 px', desc:'A 0–3 km/km² bar in the band colours. ▼ marks every road and ▲ marks the all-weather roads, so the gap tracks make is easy to see.'},
+ {k:'rose', n:'D4', name:'Ways-Out Rose', size:'~80 px', desc:'Eight wedges round the point: which way roads leave the circle. Longer wedges mean more roads; red is an MSR, green all-weather, amber fair-weather only. It lists the directions with no road out.'},
+ {k:'makeup', n:'D5', name:'Make-Up Bar', size:'~50 px', desc:'How much of the network is all-weather and how much is tracks, with MSR and tankable km. Answers "what will carry my vehicles?" more than "how many routes?".'},
+ {k:'sentence', n:'D6', name:'One Sentence', size:'~45 px', desc:'Band, figure, ways out and what it means for movement in plain words. Reads well; takes the longest to scan.'},
+ {k:'brief', n:'D7', name:'Ground Brief Only', size:'+0 px', desc:'Nothing on the card. The Brief (G) has the rows, make-up, rose and the meaning. Keeps the card short; you have to open the Brief to see it.'}
+];
+
+function seg(id, items, key){ var h=document.getElementById(id); h.textContent=''; items.forEach(function(it){ var bt=el('button',null,it[1]); bt.type='button'; bt.setAttribute('aria-pressed', String(state[key]===it[0])); bt.onclick=function(){ state[key]=it[0]; render(); }; h.append(bt); }); }
+
+function render(){
+  seg('seg-place', Object.keys(D.places).map(function(k){return [k, D.places[k].label];}), 'place');
+  seg('seg-radius', [['2','2 km'],['5','5 km'],['10','10 km']], 'radius');
+  seg('seg-lead', [['afterRain','After rain'],['dry','Dry'],['both','Both']], 'lead');
+  seg('seg-layout', [['compact','One line (default)'],['lines','A few lines']], 'layout');
+  var p=D.places[state.place], d=reading(state.place, state.radius), host=document.getElementById('opts'); host.textContent='';
+  STYLES.forEach(function(s){ var lab=el('label','pg-opt'), inp=el('input'); inp.type='radio'; inp.name='dstyle'; inp.value=s.k; inp.checked=state.pick===s.k; inp.onchange=function(){ state.pick=s.k; out(); };
+    var h=el('div','pg-opt-h'); h.append(b(s.n+' · '+s.name)); if(s.rec) h.append(el('span','pg-rec','Default')); h.append(el('span','pg-pick','Pick'));
+    var st=el('div','pg-stage'); st.append(card(rSection(p,d,s.k,state.lead,state.layout)));
+    var dl=el('dl','pg-meta'); dl.append(el('dt',null,'Setting'), el('dd')); dl.lastChild.append(el('code',null,"sections.roadDensityStyle = '"+s.k+"'")); dl.append(el('dt',null,'Adds'), el('dd','pg-size',s.size));
+    lab.append(inp,h,el('p',null,s.desc),st,dl); host.append(lab); });
+  out();
+}
+
+function tables(){
+  var t=document.getElementById('t-radius'); t.innerHTML='<thead><tr><th>Place</th><th>2 km</th><th>5 km</th><th>10 km</th></tr></thead>'; var tb=el('tbody');
+  Object.keys(D.places).forEach(function(k){ var tr=el('tr'); tr.append(el('td',null,D.places[k].label)); ['2','5','10'].forEach(function(rk){ var d=reading(k,rk), td=el('td'); td.append(chips(d,'both')); td.append(soft(' '+fd(d.density)+(awDiffers(d)? ' / '+fd(d.allWeatherDensity) : '')+' · '+d.exits.length+' out')); tr.append(td); }); tb.append(tr); }); t.append(tb);
+  var tbn=document.getElementById('t-bands'); tbn.innerHTML='<thead><tr><th>Band</th><th>km/km²</th><th>What the card says it means</th></tr></thead>'; var b2=el('tbody');
+  BANDS.forEach(function(x,i){ var tr=el('tr'), td=el('td'), c=el('span','ms-grd-chip',x.label); c.style.background=COL[x.key][0]; c.style.color=COL[x.key][1]; td.append(c); var nx=BANDS[i+1]; tr.append(td, el('td',null, x.key==='none'? '0' : x.key==='sparse'? 'under '+nx.from : nx? x.from+' to '+nx.from : x.from+' and over'), el('td',null,x.note)); b2.append(tr); }); tbn.append(b2);
+}
+
+var LEADS=[['afterRain','After rain (proposed)','Lead with the all-weather band, marked "after rain". Never promises routes the wet may take away.'],['dry','Dry','Lead with the band for every road and track. Higher, but optimistic after rain.'],['both','Both chips','"Dense dry" and "Moderate after rain" side by side. Complete, a little wider.']];
+var RADII=[['2','2 km','About a company to battalion position. Most circles outside towns hold no road at all.'],['5','5 km (proposed)','About a battalion to brigade area. Steady readings; the bands were set at this size.'],['10','10 km','A brigade to division area. Smooths everything out; the spot matters less.']];
+var QS=[['q1','Show road density on the card while drawing',true,'Untick to keep it to the Ground Brief (same as D7).'],['q2','Keep the proposed bands (section 4)',true,'Untick and say what to change.'],['q3','Merge crossings closer than 250 m into one way out',true,'A road weaving along the circle counts once.'],['q4','Leave town streets and footpaths out of the count',true,'They are not in the card tiles; counting them needs the full network (all 2.7 million edges).']];
+
+function radios(id, items, key, name){ var h=document.getElementById(id); if(h.childElementCount) return; items.forEach(function(x){ var l=el('label'), i=el('input'); i.type='radio'; i.name=name; i.value=x[0]; i.checked=state[key]===x[0]; i.onchange=function(){ state[key]=x[0]; out(); }; var t=el('span'); t.append(b(x[1]), el('small',null,x[2])); l.append(i,t); h.append(l); }); }
+function out(){
+  radios('lead', LEADS, 'leadPick', 'leadpick'); radios('radius', RADII, 'radiusPick', 'radiuspick');
+  var a=document.getElementById('approve'); if(!a.childElementCount){ QS.forEach(function(q){ var l=el('label'), i=el('input'); i.type='checkbox'; i.id=q[0]; i.checked=q[2]; i.onchange=out; var t=el('span'); t.append(b(q[1]), el('small',null,q[3])); l.append(i,t); a.append(l); }); }
+  var s=STYLES.filter(function(x){return x.k===state.pick;})[0];
+  var lines=['Road network density (R) display, my decision:', 'Card style: '+s.n+' '+s.name+" (sections.roadDensityStyle = '"+s.k+"')", "Band when tracks lift it: sections.roadDensityLead = '"+state.leadPick+"'", 'Circle: sections.roadDensityKm = '+state.radiusPick];
+  QS.forEach(function(q){ lines.push((document.getElementById(q[0]).checked?'Yes: ':'No: ')+q[1]); });
+  lines.push('(Copy this text back to Claude.)'); document.getElementById('out').textContent=lines.join('\n');
+}
+document.getElementById('copy').onclick=function(){ var t=document.getElementById('out').textContent; if(navigator.clipboard) navigator.clipboard.writeText(t).catch(function(){}); };
+tables(); render();
+})();
+</script>
+</body>
+</html>

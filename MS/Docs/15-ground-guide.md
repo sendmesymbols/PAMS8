@@ -514,6 +514,160 @@ API: `guide.populationAround(pointOrLngLat, { radiusKm })` → `GroundGuidePopul
 `guide.populationText(point)` → the Copy as Text lines. `v.population` on a live verdict carries
 `{ reading, style, flag }`. Ctrl+K: *People*. Test panel: Ground Guide → People (B).
 
+### Cover, Camouflage & Concealment (C)
+
+With a bundle whose `rules.json grotbc` carries `coverSplit` (bundle v2), the card gets a **C · Cover &
+Concealment** section for every mode: what the ground at the point gives against **direct fire, indirect fire, ground
+observation and aerial observation**, each None / Poor / Fair / Good. The four levels come from the class under the
+symbol (`coverSplit.byClass[class]`), raised by a river or canal bank within 75 m (`bank` layer + `grotbc.banks`;
+the owner's rule of 2026-11-04: banks give cover and are deployment lines, shown as a *Deployment Line* tag). The
+local cover and concealment density from the `cc` layer is shown beside them, never mixed in. The search looks out
+to `cover.radiusM` for the nearest Fair or better of each kind and shades an eight-sector rose. The mode's main need is
+marked (`COVER_FOCUS`: foot, direct fire; vehicles, ground observation; guns, AD and signals sites, the air; none for
+landing sites, rail and vessels), and when it is short a line says where better is ("Dismounted Force needs Direct
+Fire: None · Good 94 m N (Built-up area)"). The levels are the rule owner's **starting proposal**; every view says
+"Proposal". Code: `GroundGuideCover.ts` (pure: decode, split, scan) and `GroundGuideCoverView.ts` (card styles, Brief).
+
+**The spot, not the area (decided 2026-11-05, safety first).** The four levels describe the spot under the symbol. The
+`cc` concealment value comes from the NCGDB vegetation-symbol density of the surrounding km² (`classify.py
+cover_layers`), so a road or track through trees reads Good there although the road itself is open. The levels are
+therefore **never raised** by `cc`, so the guide never tells a planner that a vehicle on an open road is hidden. They
+are **never lowered** by it either, because `cc` does not know bunds or banks and would undo the owner's rules. When the
+area conceals better than the spot, `v.cover.around` is set. The card then says "Concealed round it, not on this spot:
+Good 31 m S (Tree cover)". On a road, track or railway (classes 28, 34–38) it adds that a canopy over the road may screen
+it from the air, to be checked on the ground.
+
+| Setting | Default | |
+| --- | --- | --- |
+| `cover.card` | `lines` | How the section looks. Every style is built so they can be compared live (`ground-guide-cover-options.html` shows them side by side): `lines` (C1, four lines with a meter and what gives each), `grid` (C2, cover beside concealment as four tiles), `summary` (C3, one line), `icons` (C4, shield and eye), `nearest` (C5, here or the nearest Fair or better of each kind), `rose` (C6, eight wedges by the best cover for the mode's need), `block` (C7, all of it), `off` (the Brief still has it). |
+| `cover.where` | `grotbc` | `grotbc`: last on the card, after B. `afterWhy`: under Why (after T when T is there too). |
+| `cover.radiusM` | `500` | How far the nearest and the rose look (100 to 2,000 m). |
+| `cover.focus` | `true` | Mark the mode's main need and say where better is. |
+| `cover.enabled` | `true` | Off = the `cc` / `bank` tiles are never fetched and nothing is shown. |
+
+The Ground Brief (G key) draws **C · Cover, Camouflage & Concealment** in full (four lines, local density, bank, rose
+and nearest list) through `registerBriefSection`, and Copy as Text includes it. API:
+`guide.coverAround(pointOrLngLat, { profile, radiusM })` → `GroundGuideCover | null` (read at the bundle's finest zoom,
+waits for the tiles), `guide.coverText(point)` → the Copy as Text lines. `v.cover` on a live verdict carries the same
+object. Ctrl+K: *cover*. Test panel: Ground Guide → Cover & Concealment (C).
+
+### Ground, Roads, Buildings & Weather (G R B W sections)
+
+Since 2026-11-05 the card also reads the bundle layers it used to skip. Every label comes from `rules.json` codebooks
+and `features/index.json`, and every threshold that decides something comes from `rules.json`. Code:
+`GroundGuideSections.ts` (pure reading) and `GroundGuideSectionsView.ts` (card, Brief, Copy as Text).
+
+| Section | Card line (`compact`, the default) | More rows (`lines` style and the Ground Brief) | Data |
+| --- | --- | --- | --- |
+| **G Ground** | Terrain type · elevation · slope in degrees and band (Level, Gentle, Sloping, Moderate, Steep) · landform | Nearest change of terrain type along 8 rays; the highest ground nearby with its height above the point; the named area (plains, plateaus, deserts, valleys, hill ranges, forests, regions); water sources (`grotbc.water.kinds` + wells); the nearest named river, canal or stream | `terrain`, `elev_hi` / `elev_lo` (3 × 3 gradient), `landform`; features 100–102, 150–164 with `e`, 152 / 150 / 157 / 151 / 158 names (NCGDB and GeoNames `D:\Imagery\PK.txt`), 1–9, 155, lines 202 / 203, 153 / 154 |
+| **R Roads** | The route at the point, or the nearest within 500 m: type · load class · MSR, then the **check for the mode** · road density band | Nearest crossing (bridge, ford, ferry), railway station or line (10 km), airfield or helipad (15 km); **road network density** (km/km², all-weather share, ways out by direction; the Brief adds the make-up: all-weather, tracks, MSR and tankable km) | `route` (type, tier, MSR bit); `grotbc.tankable`; features 20–30, 50, 40–47, line 201; routing network `network/gg` for the density |
+| **B Buildings** | Building density · kacha huts per km² · nearest service | Footprint size and height; temporary huts; nearest health, police, school, government office (5 km); security installations (posts, forts, border posts, cantonments) | `bld` (density, size, GHSL height), `hut`; features 70–72, 77, 136, 147, 149, 60–69 |
+| **W Weather** | The month: highest / lowest temperature, rain, wind | The year: rain and monsoon share, frost months, months of 40° and over, wet months | Climate grid `tmin`, `tmax`, `prec`, `wind`, `prec_year`, `monsoon_pct` (WorldClim 1970–2000; one cell is about 9 km) |
+
+**The check for the mode follows the rules and puts safety first.** For a Tracked Vehicle on a road:
+- class 60 and over: "Tankable"
+- class 50 to 59: "Al-Zarrar only, not Al-Khalid or T-80"
+- below class 50: "not tankable"
+- **class not recorded: "treat as not tankable until checked"**
+- on a track: "no load class; check bridges and culverts"
+
+For wheels, guns, AD and signals: metalled surfaces are "all-weather", and unmetalled ones get "Fair-weather surface:
+SLOW-GO after rain". A Rail-Bound symbol is told whether it is on a railway. The check is advisory and never changes the
+verdict. The slope is read at the map zoom; on an overview tile it is a mean, so the card says "about".
+
+| Setting | Default | |
+| --- | --- | --- |
+| `sections.ground` / `roads` / `buildings` / `weather` | all `true` | Each section on or off. |
+| `sections.style` | `compact` | `compact`: one line a section on the card. `lines`: a few rows a section. `brief`: only in the Ground Brief. The Brief always shows every row. Compact is the default because the card follows the cursor; the full rows add about 400 px. |
+| `sections.radiusKm` | `3` | How far the high ground, water, crossings, security and terrain-change searches look. Services look at least 5 km, stations 10 km, airfields 15 km and named areas 10 km. |
+| `sections.roadDensity` | `true` | Road network density in the R section (below). |
+| `sections.roadDensityKm` | `5` | Radius of the density circle (0.5–10 km). 5 km is about a battalion to brigade area; at 2 km most circles outside towns hold no road. |
+| `sections.roadDensityStyle` | `rows` | How the card shows it (all built, to compare in `ground-guide-road-density-options.html`): `rows` D1 Density and Ways out rows (in one-line R: "road density dense"), `chip` D2 band chip only, `gauge` D3 0–3 km/km² bar, `rose` D4 ways-out rose (MSR / all-weather / fair-weather), `makeup` D5 bar of all-weather and track km with MSR and tankable km, `sentence` D6 one sentence, `brief` D7 Ground Brief only. Code `GroundGuideRoadDensityView.ts`. |
+| `sections.roadDensityLead` | `afterRain` | When tracks lift the total a band: `afterRain` leads with the all-weather band (safe), `dry` with the band for every road, `both` shows two chips. |
+
+**Road network density (R, Road Connectivity; added 2026-11-05).** `GroundGuideRoads.densityAround` clips every edge
+of the routing network (`network/gg`, the same edges the T road line names and GeoCore routes on) to a circle round the
+point and sums the kilometres: all-weather and fair-weather (tracks, paths and edges flagged fair-weather), MSR and
+tankable. `GroundGuideRoadDensity.ts` turns that into km/km² and a band, and counts the **ways out**: where roads cross
+the circle, crossings closer than 250 m along it merged into one, listed by direction with the all-weather ones apart.
+Town streets, service roads and footpaths are not in these tiles (network.py `GG_SKIP_CLAZZ`), so a town reads as its
+through roads.
+
+| Band | km/km² | Meaning on the card |
+| --- | --- | --- |
+| No Roads | 0 | Cross-country only. |
+| Sparse | under 0.25 | Movement canalised; each road a likely chokepoint. |
+| Moderate | 0.25–0.75 | Some choice of route; alternatives limited. |
+| Dense | 0.75–1.5 | Room to disperse and switch axes. |
+| Very Dense | 1.5 and over | Built-up road grid: many routes, channelled and slow. |
+
+The bands are a proposal from the bundle itself (1,500 random 5 km circles over the tiles that hold a road: median
+0.15, 75th percentile 0.57, 90th 1.17, 99th 2.95 km/km²); `rules.json grotbc.roadDensity.bands` overrides them by key
+when the bundle ships it. **Safety first:** when tracks and fair-weather roads lift the total into a higher band than
+the all-weather roads alone, the card leads with the lower one, marked "after rain", and shows both figures. Read
+from tiles in memory on the hot path; `guide.roadDensityAround(point, { radiusKm })` waits for them. Spot checks:
+Cholistan No Roads; rural Gujranwala Dense 1.0; Kharian Dense 1.2 with 29 km of MSR; Lahore Very Dense. The Ground
+Brief's R block "Road Network Density" always shows the rows with the make-up, the ways-out rose and what the band
+means, whatever the card style. The defaults (D1, after rain) stand until the owner picks from the options page.
+
+**Added 2026-11-06 (`sections.obstacles` and more rows):**
+
+- **O Obstacles.** The card line names the nearest man-made and natural obstacle (classes whose `grotbc` letters
+  carry O, split by `classes[c].origin`) with its effect for the mode (the profile's NO-GO / SLOW-GO lists), and wet
+  ground at the point (`wet`). Crossings carry O but are left out: they are the way over an obstacle. More rows: the
+  nearest canal with width, depth and bank height (line 202 `w`, `dp`, `b`); the river reach with bed, depth and
+  current (146); dam, barrage or headworks; levee (123); roads closed by season or with landslide sites.
+- **R.** The nearest road's record: load code, width, condition, closure, landslides, defence road. Its named route
+  comes from `routes.json` (from, to, length, MSR). A missing record is said as "not recorded" / "no closure recorded",
+  never as "good" or "open".
+- **G.** Adds the nearest ridgeline (204: crest, length).
+- **B.** Adds:
+  - the nearest named settlement and its size class (thresholds of `settlements.py`; a city, district HQ or town whose
+    figure is below a town keeps its kind);
+  - landmarks, protected sites first (mosque, shrine, temple, church, eidgah, graveyard), then markets, mills,
+    industrial areas, camps and parks;
+  - utilities (grid station, mast, booster, exchange, wireless, oil and gas);
+  - the admin area (`admin.geojson`) and the 1:50k / 1:250k sheet (`sheets.json`);
+  - the distance to the international boundary, LoC or LAC (`boundaries.geojson`).
+- **W.** The Brief says plainly that fog and visibility are not in the data.
+
+`GroundGuidePlaceData.ts` loads `admin.geojson`, `boundaries.geojson`, `sheets.json` and `routes.json` once, in the
+background. It never reads the corps AOR layer or corps operational lines, which the bundle marks sensitive.
+
+The GeoNames codes the bundle lacked are mapped in `tools/terrain-pipeline/scripts/grotbc.py` (`GN_KINDS`, new kinds
+123–127):
+- levee (T.LEV)
+- industrial area (L.INDS)
+- camp (S.CMP, refugee and mining camps)
+- named vegetation (V.CULT, V.OCH, V.GROVE, V.SCRB)
+- park (L.PRK, S.GDN)
+- mud flats, lake beds, islands, barracks, sugar and oil mills, tidal creeks, ancient sites, monuments, diplomatic
+  facilities (existing kinds)
+
+That is 1,566 points. They show on the card once the feature tiles are rebuilt (`grotbc.py --only features`, then
+`ground.py`, then copying into the bundle); the engine already reads the new kinds.
+
+**Per-section card styles (2026-11-06).** Every style is built and switchable, as with T and C, so the owner can pick
+at the end (`ground-guide-sections-options.html` draws them with the engine's own code; open it from the dev server).
+`sections.gStyle`, `rStyle`, `oStyle`, `bStyle`, `wStyle`: `auto` (follow `sections.style`; the default), `line`,
+`rows`, `off`, and two drawn looks each:
+
+| Section | Drawn look 3 | Drawn look 4 |
+| --- | --- | --- |
+| G | `relief`: the point on a drawn slope (valley floor to crest), slope band gauge, high ground marked | `chips`: terrain, height, slope band, landform, high ground, water, named area |
+| R | `shield`: the road as a sign (number, from - to, length) with load, condition and closure chips | `verdict`: the rules check for the mode in large type, the route under it |
+| O | `tiles`: natural beside man-made, each bordered by its effect for the mode | `gap`: the nearest canal or river reach drawn to width, depth and bank height |
+| B | `where`: tehsil, district, sheet and border first (red under 10 km) | `protected`: worship, graves, health and schools first (no-strike, collateral) |
+| W | `year`: twelve months of temperature range and rain, this month outlined | `icons`: high / low, rain and wind as large figures |
+
+The drawn looks are in `GroundGuideSectionsStyles.ts`; R keeps the road-density block (its own setting) in every look.
+
+API: `guide.sectionsAround(pointOrLngLat, { profile, radiusKm })` → `GroundGuideSections | null`, read at the bundle's
+finest zoom with every section on; `guide.sectionsText(point)` → Copy as Text lines. `v.sections` on a live verdict.
+`guide.roadDensityAround(pointOrLngLat, { radiusKm })` → `RoadDensityReading | null` (null when the bundle has no
+routing network). Test panel: Ground Guide → Ground, Roads, Buildings & Weather → *Log ground at centre*, and *Log*
+beside *Density circle* for the road density alone.
+
 ### When the terrain data is unavailable
 
 `guide.status` is `{ state, error, retryInMs }` with `state` one of `disabled`, `no-bundle-url`,

@@ -20,6 +20,8 @@ import { fmtDistance, titleCase } from './GroundGuideEvaluator';
 import { briefCue, goingSections, orientRoses } from './GroundGuideGoingView';
 import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
+import { coverSection } from './GroundGuideCoverView';
+import { sectionsCard } from './GroundGuideSectionsView';
 import { DEFAULT_GROUND_GUIDE_OPTIONS, type GroundGuideCardOptions, type GroundGuideVerdict } from './GroundGuideTypes';
 
 const STYLE_ID = 'ms-ground-guide-badge-style';
@@ -504,20 +506,28 @@ export class GroundGuideBadge {
     if (civil) pills.appendChild(civil);
     if (pills.childElementCount) bar.appendChild(pills);
 
+    // G / R / B (buildings) / W sections (sections.*): G after the ITG lines, R after G, B buildings after People, W last.
+    const sx = sectionsCard(v);
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), groundSection(v)].filter(
+        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), groundSection(v), sx.g, sx.r, sx.o].filter(
             (r): r is HTMLElement => r !== null,
           );
     // A T block (traffic.block) carries the Cross-Country and Movement sections itself.
     if (v.verdict !== 'unknown') rows.push(...goingSections(v, trafficCard(v, this._card), this._north));
+    // C (cover.where): right after Why goes in before T, so T (also after Why) lands between them in GROTBC order.
+    const cover = coverSection(v, this._north);
+    if (cover && v.cover?.where === 'afterWhy') rows.splice(rows.length && v.verdict !== 'unknown' ? 1 : 0, 0, cover);
     decorateTraffic(v, bar, pills, rows, rows.length, this._north); // T: block or road band, rain pill, second scale under Why
     const people = v.verdict === 'unknown' ? null : populationSection(v.population);
     if (people) {
       ensurePopulationCss();
       rows.push(people);
     }
+    if (sx.b) rows.push(sx.b);
+    if (cover && v.cover?.where !== 'afterWhy') rows.push(cover); // GROTBC order: C comes last, after B
+    if (sx.w) rows.push(sx.w);
     if (v.loading) rows.push(el('div', 'ms-ggb-sec ms-ggb-soft', 'Still loading terrain data'));
     if (this._notice) rows.push(el('div', 'ms-ggb-sec ms-ggb-warn', this._notice));
     const civilStrip = v.verdict === 'unknown' ? null : populationFlagStrip(v.population);

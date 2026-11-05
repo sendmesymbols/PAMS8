@@ -42,6 +42,8 @@ import { GroundGuideBadge, plainLabel } from './GroundGuideBadge';
 import { GroundGuideBoundary } from './GroundGuideBoundary';
 import { GroundGuideFeatures } from './GroundGuideFeatures';
 import { GroundGuideRoads } from './GroundGuideRoads';
+import { roadDensityReading, type RoadDensityReading } from './GroundGuideRoadDensity';
+import { ROAD_DENSITY_LEADS, ROAD_DENSITY_STYLES } from './GroundGuideRoadDensityView';
 import { GroundGuideBrief } from './GroundGuideBrief';
 import { GroundGuidePopulation as PopulationGrid, POPULATION_FLAGS } from './GroundGuidePopulation';
 import { createPopulationLayer } from './GroundGuidePopulationLayer';
@@ -74,6 +76,10 @@ import {
   type GroundGuideTraffic,
 } from './GroundGuideTrafficability';
 import type { OverlayGoing } from './GroundGuideOverlay';
+import { COVER_CARD_STYLES, COVER_WHERE, coverKey, coverText, readCover, type GroundGuideCover } from './GroundGuideCover';
+import { SECTIONS_STYLES, G_STYLES, R_STYLES, O_STYLES, B_STYLES, W_STYLES, readSections, sectionsKey, type GroundGuideSections, type SectionsFeatures, type SectionsLayers } from './GroundGuideSections';
+import { sectionsText } from './GroundGuideSectionsView';
+import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
 import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
 import { GroundGuideIndicators } from './GroundGuideIndicators';
@@ -665,6 +671,35 @@ export default class GroundGuide {
       flag('traffic.access', tr.access, (b) => (next.traffic.access = b));
       num('traffic.accessRadiusKm', tr.accessRadiusKm, 1, 30, (n) => (next.traffic.accessRadiusKm = n));
     }
+    const sx = patch.sections;
+    next.sections = { ...prev.sections };
+    if (sx && typeof sx === 'object') {
+      flag('sections.ground', sx.ground, (b) => (next.sections.ground = b));
+      flag('sections.roads', sx.roads, (b) => (next.sections.roads = b));
+      flag('sections.buildings', sx.buildings, (b) => (next.sections.buildings = b));
+      flag('sections.weather', sx.weather, (b) => (next.sections.weather = b));
+      flag('sections.obstacles', sx.obstacles, (b) => (next.sections.obstacles = b));
+      pick('sections.style', sx.style, SECTIONS_STYLES, (x) => (next.sections.style = x));
+      num('sections.radiusKm', sx.radiusKm, 0.5, 10, (n) => (next.sections.radiusKm = n));
+      flag('sections.roadDensity', sx.roadDensity, (b) => (next.sections.roadDensity = b));
+      num('sections.roadDensityKm', sx.roadDensityKm, 0.5, 10, (n) => (next.sections.roadDensityKm = n));
+      pick('sections.roadDensityStyle', sx.roadDensityStyle, ROAD_DENSITY_STYLES, (x) => (next.sections.roadDensityStyle = x));
+      pick('sections.roadDensityLead', sx.roadDensityLead, ROAD_DENSITY_LEADS, (x) => (next.sections.roadDensityLead = x));
+      pick('sections.gStyle', sx.gStyle, G_STYLES, (x) => (next.sections.gStyle = x));
+      pick('sections.rStyle', sx.rStyle, R_STYLES, (x) => (next.sections.rStyle = x));
+      pick('sections.oStyle', sx.oStyle, O_STYLES, (x) => (next.sections.oStyle = x));
+      pick('sections.bStyle', sx.bStyle, B_STYLES, (x) => (next.sections.bStyle = x));
+      pick('sections.wStyle', sx.wStyle, W_STYLES, (x) => (next.sections.wStyle = x));
+    }
+    const cv = patch.cover;
+    next.cover = { ...prev.cover };
+    if (cv && typeof cv === 'object') {
+      flag('cover.enabled', cv.enabled, (b) => (next.cover.enabled = b));
+      pick('cover.card', cv.card, COVER_CARD_STYLES, (x) => (next.cover.card = x));
+      pick('cover.where', cv.where, COVER_WHERE, (x) => (next.cover.where = x));
+      num('cover.radiusM', cv.radiusM, 100, 2000, (n) => (next.cover.radiusM = n));
+      flag('cover.focus', cv.focus, (b) => (next.cover.focus = b));
+    }
     this._reportIssues(issues);
     this._opts = next;
     setDistanceUnits(next.units);
@@ -689,6 +724,7 @@ export default class GroundGuide {
       this._syncLegend();
     }
     if (trafficChanged) this._refreshLive();
+    if (JSON.stringify(next.cover) !== JSON.stringify(prev.cover) || JSON.stringify(next.sections) !== JSON.stringify(prev.sections)) this._refreshLive();
     if (JSON.stringify(next.population) !== JSON.stringify(prev.population)) {
       this._loadPopulation();
       this._syncPopulationLayer();
@@ -816,6 +852,8 @@ export default class GroundGuide {
     v.briefKey = keys && this._opts.card.briefKey && !!v.going;
     v.traffic = this._trafficNear(geometry, v);
     v.population = this._populationNear(geometry, v);
+    v.cover = this._coverNear(geometry, v);
+    v.sections = this._sectionsNear(geometry, v);
     this._legend.setKeys(v.profileKey, v.snappable);
     if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
       this._lastGood = v;
@@ -2287,6 +2325,54 @@ export default class GroundGuide {
     return grid.around(ll[0], ll[1], radiusKm, this._placesSource());
   }
 
+  /**
+   * C (Cover, Camouflage & Concealment) at a map point, read at the bundle's finest zoom: the four-way cover from the
+   * class split and any bank, the local cc density, the nearest Fair or better within `radiusM` and the rose.
+   * `profile` picks the need that is marked (default: the armed or last profile, else dismounted). Waits for the tiles.
+   * Null when the guide is off or the bundle has no cover rules. The levels are a proposal (rules.json coverSplit).
+   */
+  async coverAround(point: any, opts: { profile?: GroundGuideProfile; radiusM?: number } = {}): Promise<GroundGuideCover | null> {
+    const L = this._coverLayers();
+    const ll = this._lngLatOf(point);
+    if (!L || !ll || !this._cache || !this._manifest) return null;
+    const m = this._manifest;
+    const z = m.zoom.max;
+    const profile = opts.profile ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    const cls = this._layerNames(profile).cls;
+    const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
+    const cosLat = Math.cos((ll[1] * Math.PI) / 180);
+    const radiusM = Math.min(2000, Math.max(100, opts.radiusM ?? this._opts.cover.radiusM));
+    const reach = radiusM / cosLat;
+    const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, m.tileSize);
+    const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, m.tileSize);
+    for (let ty = a.ty; ty <= b.ty; ty++) {
+      for (let tx = a.tx; tx <= b.tx; tx++) {
+        for (const layer of [cls, L.cc, L.bank]) if (layer) this._cache.request(layer, z, tx, ty);
+      }
+    }
+    await this._tilesSettled(8000);
+    const { read, state } = this._pixelReader(z);
+    return readCover({
+      rules: this._rules?.grotbc ?? null,
+      opts: { ...this._opts.cover, radiusM },
+      profile,
+      at: [at[0], at[1]],
+      cosLat,
+      pxM: resolutionAt(z, m.tileSize) * cosLat,
+      layers: { cls, cc: L.cc, bank: L.bank },
+      read,
+      classLabel: (c) => plainLabel(this._rules?.classes?.[String(c)]?.label ?? '') || `Class ${c}`,
+      pending: () => state.pending,
+      scan: true,
+    });
+  }
+
+  /** `coverAround()` as the Ground Brief's Copy as Text lines; null when there is no reading. */
+  async coverText(point: any, opts: { profile?: GroundGuideProfile; radiusM?: number } = {}): Promise<string[] | null> {
+    const c = await this.coverAround(point, opts);
+    return c ? coverText(c, fmtDistance) : null;
+  }
+
   /** `populationAround()` as the Ground Brief's Copy as Text lines; null when there is no reading. */
   async populationText(point: any): Promise<string[] | null> {
     const r = await this.populationAround(point);
@@ -2443,6 +2529,237 @@ export default class GroundGuide {
     const L = this._goingLayers();
     if (!L || !this._goingWanted() || this._activeProfile === 'exempt') return [];
     return [L.soil, L.dry, L.wet, ...(L.wetLayer ? [L.wetLayer] : [])];
+  }
+
+  /** C: the bundle's cover layers, or null when it has no cover rules (older bundle). */
+  private _coverLayers(): { cc: string | null; bank: string | null } | null {
+    const l = this._manifest?.layers;
+    if (!this._rules?.grotbc?.coverSplit) return null;
+    return { cc: l?.cc ?? null, bank: l?.bank ?? null };
+  }
+
+  /** Tiles C reads (prefetched with the class tiles while a symbol is armed). */
+  private _coverTileLayers(): string[] {
+    const L = this._coverLayers();
+    if (!L || !this._opts.cover.enabled || this._activeProfile === 'exempt') return [];
+    return [L.cc, L.bank].filter((x): x is string => !!x);
+  }
+
+  /**
+   * C at the point being placed (the cursor, for lines and areas): the four-way cover from the class split and any
+   * bank, the local cc density, and (when the card style or the Brief wants it) the nearest better and the rose.
+   */
+  private _coverNear(geometry: any, v: GroundGuideVerdict): GroundGuideCover | null {
+    if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    const o = this._opts.cover;
+    const L = this._coverLayers();
+    if (!o.enabled || !L || !this._cache) return null;
+    if (o.card === 'off' && !this._briefOpen) return null;
+    const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
+    if (!at) return null;
+    const z = this._sampleZoom();
+    const { read, state } = this._pixelReader(z);
+    const [, lat] = mercatorToLngLat(at[0], at[1]);
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    return readCover({
+      rules: this._rules?.grotbc ?? null,
+      opts: o,
+      profile: v.profile,
+      at: [at[0], at[1]],
+      cosLat,
+      pxM: resolutionAt(z, this._manifest!.tileSize) * cosLat,
+      layers: { cls: this._layerNames(v.profile).cls, cc: L.cc, bank: L.bank },
+      read,
+      classLabel: (c) => plainLabel(this._rules?.classes?.[String(c)]?.label ?? '') || `Class ${c}`,
+      pending: () => state.pending,
+      // Every style can say where better cover is (the mode's need line), and the Brief always does.
+      scan: true,
+    });
+  }
+
+  /** The auxiliary layers the G / R / B sections read, by the names the manifest gives them (null when missing). */
+  private _sectionLayers(): SectionsLayers {
+    const l = this._manifest?.layers ?? {};
+    const n = (k: string) => (typeof l[k] === 'string' ? (l[k] as string) : null);
+    return { terrain: n('terrain'), landform: n('landform'), elevHi: n('elev_hi'), elevLo: n('elev_lo'), route: n('route'), bld: n('bld'), hut: n('hut') };
+  }
+
+  /** Tiles the switched-on sections read (prefetched with the class tiles while a symbol is armed). */
+  private _sectionTileLayers(all = this._briefOpen): string[] {
+    const o = this._opts.sections;
+    if (this._activeProfile === 'exempt' || (o.style === 'brief' && !all && this._sectionsAllAuto())) return [];
+    const L = this._sectionLayers();
+    const out: Array<string | null> = [];
+    if (o.ground || all) out.push(L.terrain, L.landform, L.elevHi, L.elevLo);
+    if (o.roads || all) out.push(L.route);
+    if (o.buildings || all) out.push(L.bld, L.hut);
+    if (o.obstacles || all) out.push(this._manifest?.layers?.wet ?? null); // the class layer is warmed anyway
+    return out.filter((x): x is string => !!x);
+  }
+
+  /** True when every section follows `sections.style` (so `brief` means nothing on the card). */
+  private _sectionsAllAuto(): boolean {
+    const o = this._opts.sections;
+    return [o.gStyle, o.rStyle, o.oStyle, o.bStyle, o.wStyle].every((x) => !x || x === 'auto');
+  }
+
+  /** Admin areas, borders, sheets and named routes, loaded once when a section needs them. */
+  private _placeData: GroundGuidePlaceData | null = null;
+  private _places(all: boolean): GroundGuidePlaceData | null {
+    const base = this._opts.bundleUrl;
+    if (!base || !this._manifest) return null;
+    if (!this._placeData) this._placeData = new GroundGuidePlaceData(base, () => this._refreshLive());
+    const o = this._opts.sections;
+    this._placeData.ensure({ admin: o.buildings || all, borders: o.buildings || all, sheets: o.buildings || all, routes: o.roads || all });
+    return this._placeData;
+  }
+
+  /** A class's label, origin and GROTBC letters (rules.json `classes`), for the O section. */
+  private _classInfo(c: number): { label: string; origin: 'natural' | 'man_made'; letters: string; kind: string } | null {
+    const k = this._rules?.classes?.[String(c)] as { label?: string; origin?: string; grotbc?: string; kind?: string } | undefined;
+    if (!k?.label) return null;
+    return { label: plainLabel(k.label) || k.label, origin: k.origin === 'natural' ? 'natural' : 'man_made', letters: String(k.grotbc ?? ''), kind: String(k.kind ?? '') };
+  }
+
+  /** Read the G / R / B / W sections at a point (shared by the live card and `sectionsAround`). */
+  private _readSections(at: MercXY, profile: GroundGuideProfile, z: number, all: boolean, radiusKm = this._opts.sections.radiusKm): GroundGuideSections {
+    const m = this._manifest!;
+    const { read, state } = this._pixelReader(z);
+    const [lon, lat] = mercatorToLngLat(at[0], at[1]);
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    const g = this._rules?.grotbc;
+    const books = g?.layers ?? {};
+    const route = (books.route ?? {}) as Record<string, unknown>;
+    const bld = (books.bld ?? {}) as Record<string, unknown>;
+    let featuresPending = false;
+    const f = this._features;
+    const features: SectionsFeatures | null = f
+      ? {
+          nearestOfKinds: (p, r, k, max, filter) => {
+            const res = f.nearestOfKinds(p, r, k, max, filter);
+            featuresPending ||= res.pending;
+            return res;
+          },
+          linesNear: (p, r, k) => {
+            const res = f.linesNear(p, r, k);
+            featuresPending ||= res.pending;
+            return res;
+          },
+          roadsNear: (p, r) => {
+            const res = f.roadsNear(p, r);
+            featuresPending ||= res.pending;
+            return res;
+          },
+        }
+      : null;
+    const cp = this._profile(profile);
+    return readSections({
+      opts: this._opts.sections,
+      profile,
+      at,
+      cosLat,
+      pxM: resolutionAt(z, m.tileSize) * cosLat,
+      zoom: z,
+      maxZoom: m.zoom.max,
+      radiusM: radiusKm * 1000,
+      L: this._sectionLayers(),
+      read,
+      features,
+      books: {
+        terrain: books.terrain as Record<string, unknown> | undefined,
+        landform: books.landform as Record<string, unknown> | undefined,
+        routeTypes: route.types as Record<string, unknown> | undefined,
+        routeTiers: route.tiers as Record<string, unknown> | undefined,
+        bldDensity: bld.density as Record<string, unknown> | undefined,
+        bldSize: bld.size as Record<string, unknown> | undefined,
+        wet: books.wet as Record<string, unknown> | undefined,
+      },
+      rules: g ? { tankable: g.tankable, roadDensity: g.roadDensity } : null,
+      lonLat: [lon, lat],
+      clsLayer: this._layerNames(profile).cls,
+      classInfo: (c) => this._classInfo(c),
+      effect: (c) => (cp.exempt ? null : cp.nogo[c] ? 'NO-GO' : cp.caution[c] ? 'SLOW-GO' : null),
+      wetLayer: this._manifest?.layers?.wet ?? null,
+      place: this._places(all),
+      roadNet: this._roads,
+      waterKinds: g?.water?.kinds ?? ['tube_well', 'well_lined', 'well_unlined', 'spring', 'tank_perennial', 'karez'],
+      climate: this._climate?.normalsAt(lon, lat) ?? null,
+      month: resolveMonth(this._opts.going.month),
+      all,
+      pending: () => state.pending,
+      featuresPending: () => featuresPending,
+    });
+  }
+
+  /** The card's G / R / B / W sections at the point being placed (the cursor, for lines and areas). */
+  private _sectionsNear(geometry: any, v: GroundGuideVerdict): GroundGuideSections | null {
+    if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt' || !this._cache || !this._manifest) return null;
+    const o = this._opts.sections;
+    const any = o.ground || o.roads || o.buildings || o.weather || o.obstacles;
+    if (!any && !this._briefOpen) return null;
+    if (o.style === 'brief' && !this._briefOpen && this._sectionsAllAuto()) return null;
+    const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
+    if (!at) return null;
+    return this._readSections(at, v.profile, this._sampleZoom(), this._briefOpen);
+  }
+
+  /**
+   * The G / R / B / W sections at a map point, read at the bundle's finest zoom with every section on: terrain type and
+   * relief, the route and how it suits the mode (rules.json tankable), buildings and services, the month's weather.
+   * Waits for the tiles and feature tiles. Null when the guide is off.
+   */
+  async sectionsAround(point: any, opts: { profile?: GroundGuideProfile; radiusKm?: number } = {}): Promise<GroundGuideSections | null> {
+    const ll = this._lngLatOf(point);
+    if (!ll || !this._cache || !this._manifest) return null;
+    const m = this._manifest;
+    const z = m.zoom.max;
+    const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
+    const radiusKm = Math.min(10, Math.max(0.5, opts.radiusKm ?? this._opts.sections.radiusKm));
+    const reach = 600 / Math.cos((ll[1] * Math.PI) / 180) + radiusKm * 1000; // terrain rays go out to the radius
+    const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, m.tileSize);
+    const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, m.tileSize);
+    const L = this._sectionLayers();
+    const profile0 = opts.profile ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    const more = [this._layerNames(profile0).cls, this._manifest.layers?.wet ?? null];
+    for (let ty = a.ty; ty <= b.ty; ty++) {
+      for (let tx = a.tx; tx <= b.tx; tx++) {
+        for (const layer of [...Object.values(L), ...more]) if (layer) this._cache.request(layer, z, tx, ty);
+      }
+    }
+    // Admin, borders, sheets and routes: start them and wait (once) until they are in memory.
+    const places = this._places(true);
+    for (let i = 0; i < 100 && places && !places.ensure({ admin: true, borders: true, sheets: true, routes: true }); i++) await new Promise((r) => setTimeout(r, 100));
+    await Promise.all([
+      this._tilesSettled(10000),
+      this._features?.whenReady(at, Math.max(15000, radiusKm * 1000)),
+      this._roads?.whenReady(at, this._opts.sections.roadDensityKm * 1000),
+    ]);
+    this._climate?.normalsAt(ll[0], ll[1]); // starts the climate grid if it is not in memory
+    for (let i = 0; i < 20 && this._climate && this._climate.state === 'loading'; i++) await new Promise((r) => setTimeout(r, 150));
+    const profile = opts.profile ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    return this._readSections(at, profile, z, true, radiusKm);
+  }
+
+  /**
+   * Road network density round a map point (GROTBC R, Road Connectivity): km of road and track per km² in a circle
+   * (`radiusKm`, default `sections.roadDensityKm`), all-weather and fair-weather, MSR and tankable km, the band and
+   * the ways out by direction. Read from the routing network the T road line uses; waits for its tiles. Null when the
+   * guide is off or the bundle has no network.
+   */
+  async roadDensityAround(point: any, opts: { radiusKm?: number } = {}): Promise<RoadDensityReading | null> {
+    const ll = this._lngLatOf(point);
+    if (!ll || !this._roads) return null;
+    const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
+    const radiusM = Math.min(10, Math.max(0.5, opts.radiusKm ?? this._opts.sections.roadDensityKm)) * 1000;
+    await this._roads.whenReady(at, radiusM);
+    const res = this._roads.densityAround(at, radiusM);
+    return roadDensityReading(res.totals, res.pending, this._rules?.grotbc?.roadDensity);
+  }
+
+  /** `sectionsAround()` as Copy as Text lines; null when there is no reading. */
+  async sectionsText(point: any, opts: { profile?: GroundGuideProfile; radiusKm?: number } = {}): Promise<string[] | null> {
+    const s = await this.sectionsAround(point, opts);
+    return s ? sectionsText(s) : null;
   }
 
   /** Do the movement sections apply to this symbol (`going.movementFor`)? */
@@ -2817,6 +3134,8 @@ export default class GroundGuide {
       goingKey(v.going), v.briefKey ? 1 : 0,
       populationKey(v.population),
       trafficKey(v.traffic),
+      coverKey(v.cover),
+      sectionsKey(v.sections),
     ].join('|');
     if (key === this._lastBadgeKey) return;
     this._lastBadgeKey = key;
@@ -2930,7 +3249,7 @@ export default class GroundGuide {
       layers.add(cls);
       if (dist) layers.add(dist);
     }
-    if (this._activeProfile) for (const l of this._goingTileLayers()) layers.add(l);
+    if (this._activeProfile) for (const l of [...this._goingTileLayers(), ...this._coverTileLayers(), ...this._sectionTileLayers()]) layers.add(l);
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
         for (const layer of layers) this._cache.request(layer, z, tx, ty);
@@ -2958,7 +3277,7 @@ export default class GroundGuide {
     const { cls, dist } = this._layerNames(profile);
     const n = 2 ** z;
     const R = 2;
-    const going = this._goingTileLayers();
+    const going = [...this._goingTileLayers(), ...this._coverTileLayers(), ...this._sectionTileLayers()];
     for (let ty = Math.max(0, tp.ty - R); ty <= Math.min(n - 1, tp.ty + R); ty++) {
       for (let tx = Math.max(0, tp.tx - R); tx <= Math.min(n - 1, tp.tx + R); tx++) {
         cache.request(cls, z, tx, ty);

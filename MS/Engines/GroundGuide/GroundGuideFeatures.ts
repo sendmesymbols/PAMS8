@@ -42,6 +42,33 @@ interface FeatureRoad {
   a: Record<string, unknown>;
 }
 
+/** Any other line of a feature tile (railway, canal, river, ridgeline), with its kind key. */
+interface FeatureLine {
+  key: string;
+  xy: Float64Array;
+  a: Record<string, unknown>;
+}
+
+/** A feature of a given kind near a point (G / R / B sections of the card). */
+export interface FeatureHit {
+  kind: string;
+  kindLabel: string;
+  /** The name, title-cased when the NCGDB wrote it in capitals; null when it has none (or only repeats the kind). */
+  name: string | null;
+  attrs: Record<string, unknown>;
+  distanceM: number;
+  bearingDeg: number;
+  compass: string;
+  at: MercXY;
+}
+
+/** NCGDB capitals ("KAHAN NALA") read better title-cased ("Kahan Nala"). */
+export function tidyName(raw: unknown, kindLabel = ''): string | null {
+  const name = typeof raw === 'string' ? raw.trim() : '';
+  if (!name || name.toLowerCase() === kindLabel.toLowerCase()) return null;
+  return name === name.toUpperCase() ? name.toLowerCase().replace(/(^|[\s(-])(\p{L})/gu, (_m, s: string, c: string) => s + c.toUpperCase()) : name;
+}
+
 /** A road near a point: its attributes (n, r, t, c, k, m, w, cn, x; see features/index.json) and the nearest spot on it. */
 export interface FeatureRoadHit {
   attrs: Record<string, unknown>;
@@ -88,6 +115,8 @@ export class GroundGuideFeatures {
   private _tiles = new Map<string, FeaturePoint[] | null>();
   /** Road lines per tile (T, the road line on the card); kept in step with `_tiles`. */
   private _roads = new Map<string, FeatureRoad[]>();
+  /** The other line kinds per tile (railway, canal, river, ridgeline). */
+  private _lines = new Map<string, FeatureLine[]>();
   private _pending = new Map<string, Promise<void>>();
   private _kinds: Record<string, KindDef> = {};
   private _index: Promise<void> | null = null;
@@ -221,9 +250,81 @@ export class GroundGuideFeatures {
     return { list: [...best.values()].sort((p, q) => p.distanceM - q.distanceM), pending };
   }
 
+  /**
+   * Points whose kind key is in `keys` within `radiusM` of a point, nearest first; `filter` can drop some (no name,
+   * no elevation...). Reads only tiles in memory, like `candidatesNear`.
+   */
+  nearestOfKinds(
+    at: MercXY,
+    radiusM: number,
+    keys: ReadonlySet<string>,
+    max = 20,
+    filter?: (h: FeatureHit) => boolean,
+  ): { list: FeatureHit[]; pending: boolean } {
+    const pending = !this.request(at, radiusM);
+    const found: FeatureHit[] = [];
+    for (const [x, y] of this._tilesAround(at, radiusM)) {
+      const pts = this._tiles.get(`${x}/${y}`);
+      if (!pts) continue;
+      for (const p of pts) {
+        const k = this._kinds[String(p.kind)];
+        if (!k || !keys.has(k.key)) continue;
+        const { distanceM, bearingDeg } = groundDelta(at, [p.x, p.y]);
+        if (distanceM > radiusM) continue;
+        const a = p.a ?? {};
+        const h: FeatureHit = {
+          kind: k.key,
+          kindLabel: k.label,
+          name: tidyName(a.n, k.label),
+          attrs: a,
+          distanceM,
+          bearingDeg,
+          compass: COMPASS[Math.round(bearingDeg / 45) % 8],
+          at: [p.x, p.y],
+        };
+        if (!filter || filter(h)) found.push(h);
+      }
+    }
+    found.sort((a, b) => a.distanceM - b.distanceM);
+    return { list: found.slice(0, max), pending };
+  }
+
+  /** Lines (railway, canal, river, ridgeline) whose kind key is in `keys` within `radiusM`, nearest first, one per name. */
+  linesNear(at: MercXY, radiusM: number, keys: ReadonlySet<string>): { list: FeatureHit[]; pending: boolean } {
+    const pending = !this.request(at, radiusM);
+    const best = new Map<string, FeatureHit>();
+    for (const [x, y] of this._tilesAround(at, radiusM)) {
+      for (const l of this._lines.get(`${x}/${y}`) ?? []) {
+        if (!keys.has(l.key)) continue;
+        const near = nearestOnLine(at, l.xy);
+        if (!near) continue;
+        const { distanceM, bearingDeg } = groundDelta(at, near);
+        if (distanceM > radiusM) continue;
+        const label = this._kindLabel(l.key);
+        const name = tidyName(l.a.n, label);
+        const id = `${l.key}|${name ?? ''}|${l.a.t ?? ''}`;
+        const prev = best.get(id);
+        if (prev && prev.distanceM <= distanceM) continue;
+        best.set(id, { kind: l.key, kindLabel: label, name, attrs: l.a, distanceM, bearingDeg, compass: COMPASS[Math.round(bearingDeg / 45) % 8], at: near });
+      }
+    }
+    return { list: [...best.values()].sort((p, q) => p.distanceM - q.distanceM), pending };
+  }
+
+  /** The label of a kind key ("rail_station" -> "Railway station"), from features/index.json. */
+  kindLabel(key: string): string {
+    return this._kindLabel(key);
+  }
+
+  private _kindLabel(key: string): string {
+    for (const k of Object.values(this._kinds)) if (k.key === key) return k.label;
+    return key.replace(/_/g, ' ');
+  }
+
   clear(): void {
     this._tiles.clear();
     this._roads.clear();
+    this._lines.clear();
     this._pending.clear();
   }
 
@@ -299,6 +400,7 @@ export class GroundGuideFeatures {
           const old = this._tiles.keys().next().value as string;
           this._tiles.delete(old);
           this._roads.delete(old);
+          this._lines.delete(old);
         }
       }
     } catch {
@@ -319,19 +421,26 @@ export class GroundGuideFeatures {
       if (!Array.isArray(p) || p.length < 3) continue;
       out.push({ kind: p[0], x: minx + (p[1] / q) * this._size, y: maxy - (p[2] / q) * this._size, a: p[3] ?? null });
     }
-    // Road lines (`l`, kind `road`) for the T road line; other line kinds are not read yet.
+    // Road lines (`l`, kind `road`) for the T road line; the other line kinds (railway, canal, river, ridgeline) for
+    // the G / R sections.
     const roads: FeatureRoad[] = [];
+    const lines: FeatureLine[] = [];
     for (const l of obj?.l ?? []) {
-      if (!Array.isArray(l) || !Array.isArray(l[1]) || l[1].length < 4 || this._kinds[String(l[0])]?.key !== 'road') continue;
+      if (!Array.isArray(l) || !Array.isArray(l[1]) || l[1].length < 4) continue;
+      const key = this._kinds[String(l[0])]?.key;
+      if (!key) continue;
       const c = l[1] as number[];
       const xy = new Float64Array(c.length - (c.length % 2));
       for (let i = 0; i < xy.length; i += 2) {
         xy[i] = minx + (c[i] / q) * this._size;
         xy[i + 1] = maxy - (c[i + 1] / q) * this._size;
       }
-      roads.push({ xy, a: (l[2] as Record<string, unknown>) ?? {} });
+      const a = (l[2] as Record<string, unknown>) ?? {};
+      if (key === 'road') roads.push({ xy, a });
+      else lines.push({ key, xy, a });
     }
     this._roads.set(`${tx}/${ty}`, roads);
+    this._lines.set(`${tx}/${ty}`, lines);
     return out;
   }
 }

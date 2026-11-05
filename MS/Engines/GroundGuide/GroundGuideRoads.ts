@@ -46,6 +46,19 @@ export interface GroundGuideRoadsMeta {
   quant: number;
 }
 
+/** Raw sums for `densityAround`; GroundGuideRoadDensity turns them into a reading. */
+export interface RoadDensityTotals {
+  radiusM: number;
+  totalKm: number;
+  allWeatherKm: number;
+  /** Tracks, paths and edges flagged fair-weather. */
+  fairKm: number;
+  msrKm: number;
+  tankableKm: number;
+  /** Every place a road crosses the circle, before nearby crossings are merged. */
+  exits: Array<{ bearingDeg: number; allWeather: boolean; msr: boolean; tankable: boolean }>;
+}
+
 interface RoadTile {
   n: number;
   edge: Uint32Array;
@@ -182,6 +195,64 @@ export class GroundGuideRoads {
       }
     }
     return { list: [...best.values()].sort((p, q) => p.distanceM - q.distanceM), pending };
+  }
+
+  /**
+   * Road network density within `radiusM` of a point (GROTBC R, Road Connectivity): kilometres of road and track
+   * inside the circle, split all-weather / fair-weather, MSR and tankable, and the ways out (where roads cross the
+   * circle). Each edge is clipped to the circle exactly. Counts the roads these tiles hold: residential, service and
+   * path edges are left out unless they are an MSR, tankable or load-classed (network.py GG_SKIP_CLAZZ), so a town
+   * reads lower than its street grid. Reads only tiles in memory, like `roadsNear`.
+   */
+  densityAround(at: MercXY, radiusM: number): { totals: RoadDensityTotals; pending: boolean } {
+    const pending = !this.request(at, radiusM);
+    const lat = 2 * Math.atan(Math.exp(at[1] / EARTH_R)) - Math.PI / 2;
+    const cos = Math.max(Math.cos(lat), 0.2);
+    const r = radiusM / cos; // ground metres -> Web Mercator metres
+    const r2 = r * r;
+    const tot: RoadDensityTotals = { radiusM, totalKm: 0, allWeatherKm: 0, fairKm: 0, msrKm: 0, tankableKm: 0, exits: [] };
+    for (const [x, y] of this._tilesAround(at, radiusM)) {
+      const t = this._tiles.get(`${x}/${y}`);
+      if (!t) continue;
+      const { box, xy, start } = t;
+      for (let i = 0; i < t.n; i++) {
+        const b = i * 4;
+        if (box[b] > at[0] + r || box[b + 2] < at[0] - r || box[b + 1] > at[1] + r || box[b + 3] < at[1] - r) continue;
+        const clazz = t.clazz[i], f = t.flags[i];
+        const fair = (f & F_FAIR) !== 0 || UNMETALLED.has(clazz);
+        let m = 0;
+        for (let p = start[i]; p + 1 < start[i + 1]; p++) {
+          const ax = xy[2 * p] - at[0], ay = xy[2 * p + 1] - at[1];
+          const dx = xy[2 * p + 2] - xy[2 * p], dy = xy[2 * p + 3] - xy[2 * p + 1];
+          const A = dx * dx + dy * dy;
+          if (A === 0) continue;
+          // |a + u d|^2 = r^2  ->  A u^2 + B u + C = 0
+          const B = 2 * (ax * dx + ay * dy);
+          const C = ax * ax + ay * ay - r2;
+          const disc = B * B - 4 * A * C;
+          if (disc <= 0) continue;
+          const sd = Math.sqrt(disc);
+          const u0 = (-B - sd) / (2 * A), u1 = (-B + sd) / (2 * A);
+          const lo = Math.max(0, u0), hi = Math.min(1, u1);
+          if (hi > lo) m += (hi - lo) * Math.sqrt(A);
+          // Where the segment crosses the circle (the end of a segment counts once: u in (0, 1]).
+          for (const u of [u0, u1]) {
+            if (u > 0 && u <= 1) {
+              const ex = ax + u * dx, ey = ay + u * dy;
+              tot.exits.push({ bearingDeg: ((Math.atan2(ex, ey) * 180) / Math.PI + 360) % 360, allWeather: !fair, msr: (f & F_MSR) !== 0, tankable: (f & F_TANKABLE) !== 0 });
+            }
+          }
+        }
+        if (m === 0) continue;
+        const km = (m * cos) / 1000;
+        tot.totalKm += km;
+        if (fair) tot.fairKm += km;
+        else tot.allWeatherKm += km;
+        if (f & F_MSR) tot.msrKm += km;
+        if (f & F_TANKABLE) tot.tankableKm += km;
+      }
+    }
+    return { totals: tot, pending };
   }
 
   destroy(): void {

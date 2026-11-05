@@ -316,6 +316,7 @@ import DrawingCueEngine from '@lib/Engines/DrawingCueEngine';
 // display them.  The log panel in index.html renders them visually; this
 // listener forwards them to the browser console so they are also searchable.
 import EngineLogger, { type EngineLogEntry } from '../MS/Support/EngineLogger';
+import { roadDensityText } from '../MS/Engines/GroundGuide/GroundGuideRoadDensity';
 document.addEventListener('engine-log', (e: Event) => {
   const { engine, type, formatted } = (e as CustomEvent<EngineLogEntry>).detail;
   if (type === 'error') {
@@ -2449,6 +2450,36 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     if (!lines) return void showToast('No population data here (outside the grid, or the bundle has none)', 'no-targets');
     for (const l of lines) EngineLogger.success('Ground Guide', l.trim());
     showToast('People at the map centre written to the Engine Log', 'success');
+  });
+  // G / R / B / W at the map centre: terrain, relief, route for the mode, buildings, services, weather.
+  document.getElementById('ground-guide-sections-log')?.addEventListener('click', async () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    const centre = appConfig.activeView?.center;
+    if (!guide?.sectionsText || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const lines: string[] | null = await guide.sectionsText(centre);
+    if (!lines?.length) return void showToast('No ground data here', 'no-targets');
+    for (const l of lines) EngineLogger.success('Ground Guide', l);
+    showToast('Ground at the map centre written to the Engine Log', 'success');
+  });
+  // R road network density at the map centre (guide.roadDensityAround), as the Ground Brief's Copy as Text gives it.
+  document.getElementById('ground-guide-road-density-log')?.addEventListener('click', async () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    const centre = appConfig.activeView?.center;
+    if (!guide?.roadDensityAround || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const d = await guide.roadDensityAround(centre);
+    if (!d) return void showToast('No road network in this bundle', 'no-targets');
+    for (const l of roadDensityText(d)) EngineLogger.success('Ground Guide', l);
+    showToast(`Road density: ${d.lead.label}${d.leadIsAllWeather ? ' after rain' : ''} (written to the Engine Log)`, 'success');
+  });
+  // C (Cover, Camouflage & Concealment) at the map centre, as the Ground Brief's Copy as Text gives it.
+  document.getElementById('ground-guide-cover-log')?.addEventListener('click', async () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    const centre = appConfig.activeView?.center;
+    if (!guide?.coverText || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const lines: string[] | null = await guide.coverText(centre);
+    if (!lines) return void showToast('No cover data here (the bundle has no cover rules)', 'no-targets');
+    for (const l of lines) EngineLogger.success('Ground Guide', l);
+    showToast('Cover at the map centre written to the Engine Log', 'success');
   });
   document.addEventListener('ground-guide-advice', (e: any) => {
     groundGuideAdvice = e.detail.message;

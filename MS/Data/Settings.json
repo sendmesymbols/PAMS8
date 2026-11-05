@@ -721,6 +721,31 @@
       "roadSource": "network",
       "access": true,
       "accessRadiusKm": 15
+    },
+    "cover": {
+      "enabled": true,
+      "card": "lines",
+      "where": "grotbc",
+      "radiusM": 500,
+      "focus": true
+    },
+    "sections": {
+      "ground": true,
+      "roads": true,
+      "buildings": true,
+      "weather": true,
+      "obstacles": true,
+      "style": "compact",
+      "gStyle": "auto",
+      "rStyle": "auto",
+      "oStyle": "auto",
+      "bStyle": "auto",
+      "wStyle": "auto",
+      "radiusKm": 3,
+      "roadDensity": true,
+      "roadDensityKm": 5,
+      "roadDensityStyle": "rows",
+      "roadDensityLead": "afterRain"
     }
   },
   "stylus": {

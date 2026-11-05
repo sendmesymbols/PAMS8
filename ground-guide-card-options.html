@@ -1087,8 +1087,8 @@ table($('changes'), ['Element', 'Current (built)', 'Proposed (GROTBC)'], [
   ['Legend: mode strip', 'Previous / Next, 14 icons, name, tag', 'Unchanged'],
   ['Legend: key', 'Going ramp (Suitable, Marginal, SLOW-GO, NO-GO) + NO-GO / SLOW-GO chip lists', 'Same for T (Trafficability); a GROTBC layer switch adds keys for G, R, O, B, C'],
   ['Legend: keys', 'P Change Mode, S Quick Fix', 'Adds G Ground Brief'],
-  ['Card: C section', 'None', 'Four-way split (cover from direct / indirect fire, concealment from ground / aerial observation) as four meters, plus the best feature nearby'],
-  ['Data read', 'Class tile + distance tile (v1 and v2 classes)', 'Adds route, landform, cc, wet, terrain, soil, hut, elev_hi / elev_lo tiles, climate grid, features/ (incl. named detail 130 to 146) and routes.json (engine work, section 7 of the handover)']
+  ['Card: C section', 'Built 2026-11-05 as groundGuide.cover.card, seven styles to compare (C1 four lines, the default; C2 grid; C3 one line; C4 shield and eye; C5 nearest; C6 rose; C7 full block): ground-guide-cover-options.html', 'Four-way split (cover from direct / indirect fire, concealment from ground / aerial observation) as four meters, plus the best feature nearby'],
+  ['Data read', 'Class tile + distance tile (v1 and v2 classes); soil, rci_dry, rci_wet, wet (going, T); cc and bank (C, since 2026-11-05)', 'Adds route, landform, cc, wet, terrain, soil, hut, elev_hi / elev_lo tiles, climate grid, features/ (incl. named detail 130 to 146) and routes.json (engine work, section 7 of the handover)']
 ]);
 
 /* ------------------------------------------------------------ field tables */
@@ -1211,7 +1211,7 @@ fill('l-questions', [
   'Should "Irrigated Cropland" stay SLOW-GO for Wheeled Vehicle all year, or only in the monsoon?',
   'Approve the remaining four-way cover split values (rules.yaml coverSplit; the bund row was set by the owner on 2026-11-04).',
   'Banks of perennial rivers and canals are now a positive feature (cover from direct fire and ground observation, a deployment line). Confirm the bank values (Fair / Poor / Fair / None) and the 150 m strip, and whether the Card should name the bank in the C section only or also under O.',
-  'The C section shows four meters on the Card (one graphic) and spells the four lines out in the Ground Brief. Enough on the Card, or show only the line that matters for the mode?',
+  'The C section is built with seven card styles (ground-guide-cover-options.html); the Ground Brief always spells the four lines out. Pick the card style, and confirm the per-mode need that is marked (foot: direct fire; vehicles: ground observation; guns, AD, signals: the air).',
   'Should the T section judge the going for the current month by default, or for a month the planner sets (operation date)?',
   'Now that T is Trafficability: Dismounted, Wheeled and Tracked show G O C / G R O while drawing, and the Why going scale already gives the verdict. Should T replace one of their three sections (section 3c)?',
   'Wording bug in the current build: titleCase() turns unit letters into capitals, so "Bund over 2 m" reads "Bund Over 2 M". Keep units lower case (m, km, t)?'
