@@ -82,6 +82,11 @@ export interface TrafficRoad {
   main: TrafficRoadRef | null;
   /** An all-weather road further off, when the nearest is fair-weather (wheels). */
   alt: TrafficRoadRef | null;
+  /**
+   * Foot on GO ground: cross-country is an option beside the road, not a replacement for it. The card lists both
+   * and leaves the choice to the user (the road may still be quicker or easier to follow).
+   */
+  crossCountry?: GoingStep | null;
 }
 
 export interface TrafficRoadRef {
@@ -179,8 +184,10 @@ export function pickRoad(profile: GroundGuideProfile, step: GoingStep | null, we
     }
     case 'dismounted':
     case 'pack': {
-      if (step === 'go') return { caption: 'Road', text: 'Not Needed: GO Cross-Country', distanceM: null, compass: null, main: null, alt: null };
-      return roads[0] ? line(roads[0], '', weatherTag(roads[0].attrs)) : none('Road or Track');
+      // GO ground: name the road anyway and offer cross-country beside it; the user picks which to take.
+      const r = roads[0] ? line(roads[0], '', weatherTag(roads[0].attrs)) : none('Road or Track');
+      if (step !== 'go') return r;
+      return { ...r, text: `${r.text} · Or GO Cross-Country`, crossCountry: 'go' };
     }
     case 'vessel':
     case 'rail':

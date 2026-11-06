@@ -212,6 +212,7 @@ function roadBlock(t: TView, compact = false): HTMLElement | null {
     const alt = `${a.msr ? 'MSR ' : ''}${a.shield}${a.name ? ` ${a.name}` : ''} · ${fmtDistance(a.distanceM)} ${a.compass}`;
     box.append(el('div', 'ms-ggb-soft', t.wet ? `After rain use ${alt} (all-weather)` : `All-weather: ${alt}`));
   }
+  if (r.crossCountry) box.append(el('div', 'ms-ggb-soft', `Or ${WORD[r.crossCountry]} Cross-Country`));
   return box;
 }
 
