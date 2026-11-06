@@ -74,6 +74,7 @@ import SectorPanel from './Visualization/SectorPanel.ts';
 import RouteProfileEngine from './RouteProfileEngine.ts';
 import IntervisibilityEngine from './Analysis/Intervisibility/IntervisibilityEngine.ts';
 import EngineLogger from '../Support/EngineLogger';
+import { setSetting } from '../Support/SettingsBus';
 import Utils from '../Support/utils.ts';
 import type { DrawingCueOptions } from './DrawingCueEngine.ts';
 import type { MGRSEngineOptions } from './MGRSEngine.ts';
@@ -1731,6 +1732,7 @@ class SymbolEngine implements Evented {
       stylusIsEngaged: () => this._stylusController.isEngaged,
       stylusFinish: () => this._stylusController.finish(),
       stylusCancel: () => this._stylusController.cancel(),
+      toggleGroundGuide: () => this.toggleGroundGuide(),
     });
     this._keyboardShortcutManager.attach();
   }
@@ -1975,6 +1977,34 @@ class SymbolEngine implements Evented {
    *  to point it at a terrain bundle. */
   public get groundGuide(): GroundGuide | null {
     return this._groundGuide;
+  }
+
+  /**
+   * Switch the Ground Guide on or off (Ctrl+G): the same as the `features.groundGuide` setting, applied here and
+   * published on the settings bus so the Settings panel, the ⚙ widget and a host's own button stay in step. A toast
+   * at the foot of the screen says the new state and whether the terrain data is ready. Returns the state it is in now.
+   */
+  public toggleGroundGuide(on?: boolean): boolean {
+    const next = on ?? !(this._groundGuide?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'groundGuide'], next);
+    setSetting(['features', 'groundGuide'], next);
+    const g = this._groundGuide;
+    if (g) {
+      let text = 'Ground Guide off.';
+      if (next) {
+        const st = g.status.state;
+        const data =
+          st === 'ready' ? 'terrain data ready: pick a symbol and advice follows your cursor'
+          : st === 'loading' ? 'loading the terrain data'
+          : st === 'failed' ? `terrain data unavailable${g.status.error ? ` (${g.status.error})` : ''}`
+          : st === 'no-bundle-url' ? 'no terrain bundle URL set'
+          : '';
+        text = `Ground Guide on${data ? ` · ${data}` : ''}.`;
+      }
+      g.announce(text);
+      EngineLogger.success('Symbol Engine', text);
+    }
+    return next;
   }
 
   /**

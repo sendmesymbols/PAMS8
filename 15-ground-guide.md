@@ -87,18 +87,41 @@ The badge title above the headline uses the same words: *Suitable Position*, *Ad
 *Encroaching on …*, *SLOW-GO Terrain*, *Partially Obstructed*, *Unsuitable Position*.
 
 **The cursor card.** Under that coloured header (which also carries the share inside bad ground, e.g.
-`34% Inside`, and an **S** keycap with *Quick Fix* while the quick fix can help) the card is a stack of
-bands on alternating backgrounds, each captioned in capitals in the verdict's colour:
+`34% Inside`, an **S** keycap with *Quick Fix* while the quick fix can help, and the civil flag) the card is a
+stack of bands on alternating backgrounds, each captioned in capitals in the verdict's colour. Since 2026-11-06 the
+card is **minimal** by default (`card.cursor: minimal`): these four bands and nothing else, so it stays short while
+it follows the cursor; `card.cursor: full` brings back every section the switches below turn on.
 
 | band | shows |
 |------|-------|
 | **Why** | the deciding ground and the mode (`Permanent Water · Dismounted Force`), the rule owner's reason when the bundle gives one, and a GO / SLOW-GO / NO-GO scale with the verdict's step lit |
 | **Inside** | lines and areas: how much of the shape (or footprint) is in bad ground, as a bar and `34% of the Footprint` |
 | **Nearest** | a compass dial pointing at the nearest deciding ground (it turns with the map), its name, and the distance in large type |
-| **Intermediate Gap Rule** | footprint-judged echelons: the gap to the next same-echelon unit against the minimum |
+| **Inter Gap Rule** | footprint-judged echelons: the gap to the next same-echelon unit against the minimum |
 
 In `enforce` mode a red strip closes the card ("Enforce Mode: A click here is refused. Hold Shift and
-click to place it anyway."). The mode and the P / S keys are explained in the Legend, not on the card.
+click to place it anyway."). The mode and the P / S keys are explained in the Legend, not on the card. A foot
+cue names the **D** key.
+
+**The Ground Detail (D).** Everything else the engine reads is in a wide card docked at the foot of the map
+(`GroundGuideDetail.ts`), opened with **D** while drawing, with a tab a GROTBC letter and a last **Legend** tab:
+
+| tab | tiles |
+|-----|-------|
+| **G** Ground | the slope cross-section with the military crest (or the schematic slope and band gauge), the terrain / relief / water rows, the ground chips, the soil (texture triangle, source, cone index, strength gauge), the ITG candidates |
+| **R** Roads & Rail | the road as a sign with its record, the check for the mode in large type, the route rows with rail and air, road network density (gauge, ways-out rose, make-up bar, what the band means), the road line for the mode |
+| **O** Obstacles | natural beside man-made with their effect, the gap cross-section when a canal or reach is recorded, the obstacle rows, the exits strip (what blocks each direction) |
+| **T** Trafficability | the going gauge (dry and after-rain markers), cross-country scales, who can move here, the movement rose and going map (north up), the way out, going by month, speed (headline, day / night grid, time-to-range rose, strip to the road, who moves how fast), and **W** weather (the year strip, the month's figures) |
+| **B** Built-Up | the civil flag strip, people (radar and rings, density scale), ages, people by direction, the 1 km people map, out from here, places, against the province; where (tehsil, sheet, grid, border), buildings and services, protected sites |
+| **C** Cover | the four lines with the mode's need, at a glance (shield and eye), the four tiles, the cover rose, the nearest cover per field, what else is mapped (underground, landform, buildings) |
+| **L** Legend (key **K**) | the mode as pills (one click judges or paints for it), the overlay key with the season and day / night switches, **Map Layers** switches (going overlay with its opacity, terrain data boundary, People layer, indicator lines, footprint outline), the NO-GO and SLOW-GO lists for the mode, the keys. There is no docked legend on the map any more: this tab is the legend, and D opens the card before a draw too |
+
+A letter key (**G R O T B C**, and **K** for the Legend, since L is Lasso Select) opens the detail on that tab; the same letter again, **D** or **Esc** closes it
+(Esc still reaches the draw tool). Only the active tab is built on each cursor move. **Copy as Text** in its header copies every registered
+section as plain lines for orders. The detail keeps the last draw's content until closed. API: `guide.showDetail(open,
+tab?)`, `guide.isDetailOpen`, `guide.detailTab` (`showBrief()` / `isBriefOpen` still work). The old T key, which
+stepped the T block's tabs, is now the Trafficability tab; a folded T block on the full cursor card counts as open
+while the detail is.
 
 The distance layer only stores *how far* the nearest no-go is, not *what* it is,
 so the guide searches the class tile around the deciding sample (a window of
@@ -470,13 +493,13 @@ Settings: `itg: { enabled: true, radiusKm: 3, max: 2, minLevel: 1 }` (Ctrl+K: *I
 ### Trafficability (T): road line, season controls, rain rule
 
 T in GROTBC is **Trafficability**: the going for the mode cross-country, on tracks, roads and the MSR, dry and
-after rain. The going itself (soil, cone index, season, the card sections A–H, the Ground Brief) is the going
+after rain. The going itself (soil, cone index, season, the card sections A–H, the Ground Detail) is the going
 engine's (`going.*`, `card.*`, GroundGuideGoing.ts). `traffic.*` adds the pieces on top of it, each an option so they
 can be compared live before one set is chosen (GroundGuideTrafficability.ts, GroundGuideTrafficView.ts):
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `traffic.road` | on | A **T · Road** band after the going sections: the nearest road the mode can use within `roadRadiusKm` (3 km), from the roads `traffic.roadSource` names. Tracks: a tankable road (tier `k` 3, class 60+). Wheels: an all-weather road (load code `A`, else not unmetalled), and a fair-weather road that is much nearer, marked SLOW-GO after rain. The MSR comes first when it is no more than half as far again. Foot: the nearest road or track; on GO ground the line adds "Or GO Cross-Country", so both options are shown and the user decides. A helicopter landing site gets a **Landing** line (slope band, power lines within 100 m, soft after rain). Also in the Ground Brief under T. |
+| `traffic.road` | on | A **T · Road** band after the going sections: the nearest road the mode can use within `roadRadiusKm` (3 km), from the roads `traffic.roadSource` names. Tracks: a tankable road (tier `k` 3, class 60+). Wheels: an all-weather road (load code `A`, else not unmetalled), and a fair-weather road that is much nearer, marked SLOW-GO after rain. The MSR comes first when it is no more than half as far again. Foot: the nearest road or track; on GO ground the line adds "Or GO Cross-Country", so both options are shown and the user decides. A helicopter landing site gets a **Landing** line (slope band, power lines within 100 m, soft after rain). Also in the Ground Detail under R and T. |
 | `traffic.pill` | on | A header pill when rain makes the going worse ("Rain: NO-GO"), or the season is wet ("After Rain: SLOW-GO"). |
 | `traffic.dual` | off | A second GO / SLOW-GO / NO-GO scale under Why, for the other season. |
 | `traffic.legend` | `label` | `none`; `label` a caption "T · Trafficability · Dry Season"; `season` adds a Dry / After Rain switch; `month` a month stepper with the month's rain at the map centre. The switch and stepper write `going.season` / `going.month`, so the card, the overlay and the settings panel follow. |
@@ -566,7 +589,7 @@ on a fair-weather road after rain; and the minutes to reach it cross-country in 
 | `speed.mover` | `auto` | Or a mover key: judge every symbol as it. |
 | `speed.legend` | on | A Speed caption and a Day / Night switch on the Legend. |
 
-The block sits right after the T block (or the last T section when `traffic.block` is `off`). The Ground Brief has a
+The block sits right after the T block (or the last T section when `traffic.block` is `off`). The Ground Detail has a
 **T · Speed** section: the grid, the eight-direction rose and the lines Copy as Text gives. `v.speed` on the verdict
 is a `GroundGuideSpeed` (mover, category, ground, slope, going, `kmh`, `up` / `down`, `grid`, `modes`, `road`,
 `rays`, `dayKm`, `basis`). Ctrl+K: *Speed (T)*.
@@ -591,7 +614,7 @@ guide is on; readings are synchronous and cached per cell (`GroundGuidePopulatio
 | `population.layer` / `layerOpacity` | `false` / `0.7` | The People map layer (L): every cell coloured by class (Empty, Sparse, Rural, Dense Rural, Town, Urban; B-family colours, never the verdict colours), with a key in the view's corner. |
 | `population.enabled` | `true` | Off = the grid is never fetched. |
 
-The Ground Brief (G key) draws **B · Built-Up Areas · Civil Considerations** (rings to 10 km, age, eight named
+The Ground Detail (D key, B tab) draws **B · Built-Up Areas · Civil Considerations** (rings to 10 km, age, eight named
 places, province comparison, sources with dates) through `registerBriefSection`, and Copy as Text includes it.
 API: `guide.populationAround(pointOrLngLat, { radiusKm })` → `GroundGuidePopulationReading | null`,
 `guide.populationText(point)` → the Copy as Text lines. `v.population` on a live verdict carries
@@ -635,7 +658,7 @@ there is none). They are points on the map, so they never change the four levels
 | `cover.focus` | `true` | Mark the mode's main need and say where better is. |
 | `cover.enabled` | `true` | Off = the `cc` / `bank` tiles are never fetched and nothing is shown. |
 
-The Ground Brief (G key) draws **C · Cover, Camouflage & Concealment** in full (four lines, local density, bank, rose
+The Ground Detail (D key, C tab) draws **C · Cover, Camouflage & Concealment** in full (four lines, local density, bank, rose
 and nearest list) through `registerBriefSection`, and Copy as Text includes it. API:
 `guide.coverAround(pointOrLngLat, { profile, radiusM })` → `GroundGuideCover | null` (read at the bundle's finest zoom,
 waits for the tiles), `guide.coverText(point)` → the Copy as Text lines. `v.cover` on a live verdict carries the same
@@ -647,7 +670,7 @@ Since 2026-11-05 the card also reads the bundle layers it used to skip. Every la
 and `features/index.json`, and every threshold that decides something comes from `rules.json`. Code:
 `GroundGuideSections.ts` (pure reading) and `GroundGuideSectionsView.ts` (card, Brief, Copy as Text).
 
-| Section | Card line (`compact`, the default) | More rows (`lines` style and the Ground Brief) | Data |
+| Section | Card line (`compact`, the default) | More rows (`lines` style and the Ground Detail) | Data |
 | --- | --- | --- | --- |
 | **G Ground** | Terrain type · elevation · slope in degrees and band (Level, Gentle, Sloping, Moderate, Steep) · landform | Nearest change of terrain type along 8 rays; the highest ground nearby with its height above the point; the named area (plains, plateaus, deserts, valleys, hill ranges, forests, regions); water sources (`grotbc.water.kinds` + wells); the nearest named river, canal or stream | `terrain`, `elev_hi` / `elev_lo` (3 × 3 gradient), `landform`; features 100–102, 150–164 with `e`, 152 / 150 / 157 / 151 / 158 names (NCGDB and GeoNames `D:\Imagery\PK.txt`), 1–9, 155, lines 202 / 203, 153 / 154 |
 | **R Roads** | The route at the point, or the nearest within 500 m: type · load class · MSR, then the **check for the mode** · road density band; a second small line (added 2026-11-06) with the ways across the railway and the transport hubs when there are any | Nearest crossing (bridge, ford, ferry), railway station or line (10 km), airfield or helipad (15 km); **Rail Xing**: the nearest level crossing (vehicles cross here) and railway bridge (trains and foot only) within 2 km from the class layer, and railway tunnel (10 km); **Transport**: the nearest bus stand and toll plaza (10 km); **road network density** (km/km², all-weather share, ways out by direction; the Brief adds the make-up: all-weather, tracks, MSR and tankable km) | `route` (type, tier, MSR bit); `grotbc.tankable`; features 20–30, 50, 40–47, 29, 139, 142, line 201; classes 43 and 50; routing network `network/gg` for the density |
@@ -668,12 +691,12 @@ verdict. The slope is read at the map zoom; on an overview tile it is a mean, so
 | Setting | Default | |
 | --- | --- | --- |
 | `sections.ground` / `roads` / `buildings` / `weather` | all `true` | Each section on or off. |
-| `sections.style` | `compact` | `compact`: one line a section on the card. `lines`: a few rows a section. `brief`: only in the Ground Brief. The Brief always shows every row. Compact is the default because the card follows the cursor; the full rows add about 400 px. |
+| `sections.style` | `compact` | `compact`: one line a section on the card. `lines`: a few rows a section. `brief`: only in the Ground Detail. The Detail always shows every row. Compact is the default because the card follows the cursor; the full rows add about 400 px. |
 | `sections.detail` | on | (added 2026-11-06) Under each **one-line** G, R, O, B and W section, a small muted grid of what the line leaves out, so the card carries everything "A few rows" and the Brief show while keeping the one line. G: change of terrain, high ground, named area, water, river, ridge, **going for foot / wheeled / tracked** dry and after rain (GO / SLOW-GO / NO-GO in their colours), **soil** with its cone index against the mode's. R: named road and route, what is recorded on it, crossing, rail, ways across the railway, transport, air (the rail / transport second line is folded into it). O: canal, river reach, dam, levee, closures. B: building size and height, temporary huts, services, security, place, landmarks, utilities, admin, map sheet, border, **ages** (under 15, 15 to 64, 65+, men 15 to 49). W: the year and the wet months. Off: the one line alone, as before. **Added later on 2026-11-06 (the former Partly rows):** G **Land** (the ground class at the point, with the `cc` concealment of the area round it), **Trees** (nearest tree cover, orchard or forest within 3 km), **Lake** (nearest named lake, else permanent water), **Wet** (wet ground here or the nearest, `wet` codes 1-4), **Riverbed** (nearest dry riverbed / nullah); R **Choke** (the two nearest chokepoints on an MSR within 10 km, features flagged `ig` C), **Junction** (nearest junction of main roads with its `mx` ways out, and the nearest named chowk), **Fuel** (nearest petrol pump, 15 km); O River adds discharge (`dc`, cusecs) and wet span (`ws`), **Bank** (bank at the point, `bank` layer), **Flood** (wet ground with the wet months; mapped, not live), **Snow** (nearest snow / ice with the frost months); B Landmarks include banks (kind 148). These rows are in "A few rows" and the Brief too. **And the former Data-only kinds (2026-11-06):** G **Marsh** (nearest named marsh / lake bed, 10 km); R **Culvert**, **KM** (the nearest road and railway km stone within 2 km with a recorded reading, else "no reading recorded"), runways in **Air** with `rw` / `rd`; O **Canal Xing** (aqueducts, siphons, canal km stone); B **Vet** (veterinary hospital, 10 km), **Lodging** (rest house / hotel, 10 km), **Industry** (mines, mine shafts, kilns, chimneys, 5 km), **Deserted** (deserted site), boundary pillars in **Border**, air firing / bombing targets in **Security**. Every feature kind in the bundle is now read. Adds about 450 px to the card where the data is rich (Murree). |
 | `sections.radiusKm` | `3` | How far the high ground, water, crossings, security and terrain-change searches look. Services look at least 5 km, stations 10 km, airfields 15 km and named areas 10 km. |
 | `sections.roadDensity` | `true` | Road network density in the R section (below). |
 | `sections.roadDensityKm` | `5` | Radius of the density circle (0.5–10 km). 5 km is about a battalion to brigade area; at 2 km most circles outside towns hold no road. |
-| `sections.roadDensityStyle` | `rows` | How the card shows it (all built, to compare in `ground-guide-road-density-options.html`): `rows` D1 Density and Ways out rows (in one-line R: "road density dense"), `chip` D2 band chip only, `gauge` D3 0–3 km/km² bar, `rose` D4 ways-out rose (MSR / all-weather / fair-weather), `makeup` D5 bar of all-weather and track km with MSR and tankable km, `sentence` D6 one sentence, `brief` D7 Ground Brief only. Code `GroundGuideRoadDensityView.ts`. |
+| `sections.roadDensityStyle` | `rows` | How the card shows it (all built, to compare in `ground-guide-road-density-options.html`): `rows` D1 Density and Ways out rows (in one-line R: "road density dense"), `chip` D2 band chip only, `gauge` D3 0–3 km/km² bar, `rose` D4 ways-out rose (MSR / all-weather / fair-weather), `makeup` D5 bar of all-weather and track km with MSR and tankable km, `sentence` D6 one sentence, `brief` D7 Ground Detail only. Code `GroundGuideRoadDensityView.ts`. |
 | `sections.roadDensityLead` | `afterRain` | When tracks lift the total a band: `afterRain` leads with the all-weather band (safe), `dry` with the band for every road, `both` shows two chips. |
 
 **Road network density (R, Road Connectivity; added 2026-11-05).** `GroundGuideRoads.densityAround` clips every edge
@@ -846,7 +869,8 @@ resets the schedule.
   "prefetchMarginTiles": 1,
   "maxSamples": 400,
   "useWorker": true,
-  "itg": { "enabled": true, "radiusKm": 3, "max": 2, "minLevel": 1 }
+  "itg": { "enabled": true, "radiusKm": 3, "max": 2, "minLevel": 1 },
+  "card": { "cursor": "minimal", "briefKey": true, "...": "the A-H card sections, shown only with cursor: full" }
 }
 ```
 
@@ -859,7 +883,10 @@ switch is expected) is ignored and the previous value stays; a number outside it
 is written once to the Engine Log, so a typo in a settings file does not fail silently. An overlay profile
 chosen before the bundle was known is checked when it loads and falls back to `auto` if it is not there.
 
-Registered in the ⚙ Settings menu and the Ctrl+K palette as **Ground Guide**.
+Registered in the ⚙ Settings menu and the Ctrl+K palette as **Ground Guide**. **Ctrl+G** switches the guide on and off
+from the keyboard (`SymbolEngine.toggleGroundGuide()`, the same as `features.groundGuide`, published on the settings bus so
+every panel stays in step), with a toast at the foot of the screen that says the new state and whether the terrain data
+is ready, loading or unavailable.
 
 ---
 

@@ -2677,7 +2677,7 @@
           </div>
           <div class="setting-row">
             <label>Shortcuts</label>
-            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center)." />
+            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off)." />
           </div>
           <div class="setting-row">
             <label>Copy/Paste</label>
@@ -3296,11 +3296,18 @@
               <input type="checkbox" id="setting-groundGuideSecObstacles" checked title="Nearest natural and man-made obstacle with its effect for the mode, wet ground, canals, river reaches, dams, levees, recorded closures and landslides." />
             </div>
             <div class="setting-row">
+              <label>Cursor card</label>
+              <select id="setting-groundGuideCursor" style="width: 150px" title="Minimal: verdict, Why, Inside, Nearest and the Inter Gap Rule; press D for the Ground Detail (G R O T B C and Legend tabs). Full: every card section switched on as well.">
+                <option value="minimal" selected>Minimal (D for detail)</option>
+                <option value="full">Full (every section)</option>
+              </select>
+            </div>
+            <div class="setting-row">
               <label>On the card</label>
               <select id="setting-groundGuideSecStyle" style="width: 150px" title="A few lines a section, one line a section, or only in the Ground Brief.">
                 <option value="lines">A few lines each</option>
                 <option value="compact" selected>One line each</option>
-                <option value="brief">Ground Brief only</option>
+                <option value="brief">Ground Detail only</option>
               </select>
             </div>
             <div class="setting-row">
@@ -4773,6 +4780,7 @@
         'setting-groundGuideSecBuildings': (v) => ({ path: ['groundGuide', 'sections', 'buildings'], value: v }),
         'setting-groundGuideSecWeather': (v) => ({ path: ['groundGuide', 'sections', 'weather'], value: v }),
         'setting-groundGuideSecObstacles': (v) => ({ path: ['groundGuide', 'sections', 'obstacles'], value: v }),
+        'setting-groundGuideCursor': (v) => ({ path: ['groundGuide', 'card', 'cursor'], value: v }),
         'setting-groundGuideSecStyle': (v) => ({ path: ['groundGuide', 'sections', 'style'], value: v }),
         'setting-groundGuideSecDetail': (v) => ({ path: ['groundGuide', 'sections', 'detail'], value: v }),
         'setting-groundGuideSecGStyle': (v) => ({ path: ['groundGuide', 'sections', 'gStyle'], value: v }),

@@ -88,7 +88,7 @@ function section(l: keyof typeof LETTER, caption: string, ...content: Array<Node
 }
 
 /** Label / value rows; a row whose value is null is left out. */
-function kv(rows: Array<[string, Node | string | null]>): HTMLElement | null {
+export function kv(rows: Array<[string, Node | string | null]>): HTMLElement | null {
   const g = el('div', 'ms-gs-kv');
   for (const [k, v] of rows) {
     if (v === null || v === '') continue;
@@ -189,7 +189,7 @@ export function surfaceNode(g: GroundReading): Node | null {
   return frag(b(g.rough.label), soft(` · ${g.rough.residualM} m off the plane over ~150 m · 30 m surface model: trees and roofs count`));
 }
 
-function groundRows(g: GroundReading): Array<[string, Node | string | null]> {
+export function groundRows(g: GroundReading): Array<[string, Node | string | null]> {
   const relief = [g.elevationM !== null ? `${g.elevationM} m` : null, slopeText(g), g.landform].filter(Boolean) as string[];
   const crest = crestText(g);
   const dunes = dunesText(g);
@@ -231,7 +231,7 @@ function routeNode(r: NonNullable<RoadsReading['route']>): DocumentFragment {
   return f;
 }
 
-function checkBox(c: RoadsReading['check']): HTMLElement | null {
+export function checkBox(c: RoadsReading['check']): HTMLElement | null {
   if (!c) return null;
   const d = el('div', 'ms-gs-check', c.text);
   d.style.background = CHECK[c.level][0];
@@ -275,7 +275,7 @@ function transportText(r: RoadsReading): string | null {
 }
 
 /** The second line under a one-line R: the ways across the railway and the transport hubs, when there are any. */
-function railTransportLine(r: RoadsReading): HTMLElement | null {
+export function railTransportLine(r: RoadsReading): HTMLElement | null {
   const parts = [railCrossingsText(r), transportText(r)].filter(Boolean);
   if (!parts.length) return null;
   const d = el('div', 'ms-gs-s');
@@ -289,7 +289,7 @@ function kmText(k: (SectionPlace & { km: number | null }) | null | undefined, wh
   return k ? `${k.km !== null ? `KM ${k.km}` : 'KM stone (no reading recorded)'} on the ${what}, ${at(k)}` : null;
 }
 
-function roadsRows(r: RoadsReading): Array<[string, Node | string | null]> {
+export function roadsRows(r: RoadsReading): Array<[string, Node | string | null]> {
   return [
     [r.route?.on ? 'Here' : 'Nearest', r.route ? routeNode(r.route) : 'No road or track within 500 m'],
     ['Road', r.record ? namedRoad(r.record) : null],
@@ -325,7 +325,7 @@ function densityGridRows(s: GroundGuideSections, d: RoadDensityReading | null): 
 }
 
 // ── B ────────────────────────────────────────────────────────────────────────
-function buildingsRows(bd: BuildingsReading): Array<[string, Node | string | null]> {
+export function buildingsRows(bd: BuildingsReading): Array<[string, Node | string | null]> {
   const dens = bd.density;
   return [
     ['Buildings', dens ? (dens.code === 0 ? 'None mapped here' : frag(b(dens.label), soft([bd.size, bd.height].filter(Boolean).map((x) => ` · ${x}`).join('')))) : null],
@@ -370,7 +370,7 @@ function obstacleNode(o: ObstacleHit): Node {
 }
 
 /** O rows. `s` (the whole reading) lets O name flood-prone ground and snow from the G scan, with the W months. */
-function obstaclesRows(o: ObstaclesReading, s?: GroundGuideSections | null): Array<[string, Node | string | null]> {
+export function obstaclesRows(o: ObstaclesReading, s?: GroundGuideSections | null): Array<[string, Node | string | null]> {
   const c = o.canal;
   const r = o.reach;
   const g = s?.ground ?? null;
@@ -401,12 +401,12 @@ function obstaclesOne(o: ObstaclesReading): string {
 }
 
 // ── W ────────────────────────────────────────────────────────────────────────
-function weatherMonth(w: WeatherReading): string {
+export function weatherMonth(w: WeatherReading): string {
   const t = w.tmax !== null && w.tmin !== null ? `${w.tmax}° / ${w.tmin}°` : null;
   return [t, `${w.precMm} mm rain`, w.windMs !== null ? `wind ${w.windMs} m/s` : null].filter(Boolean).join(' · ');
 }
 
-function weatherYear(w: WeatherReading): string {
+export function weatherYearText(w: WeatherReading): string {
   return [
     w.precYearMm !== null ? `${w.precYearMm} mm a year${w.monsoonPct !== null ? `, ${w.monsoonPct} % in the monsoon` : ''}` : null,
     w.frost.length ? `frost ${monthRuns(w.frost)}` : 'no frost',
@@ -480,32 +480,32 @@ function agesText(v: GroundGuideVerdict): string | null {
 }
 
 /** G: what the one line (terrain, elevation, slope, landform) leaves out. */
-function groundMore(g: GroundReading, v: GroundGuideVerdict): Array<[string, Node | string | null]> {
+export function groundMore(g: GroundReading, v: GroundGuideVerdict): Array<[string, Node | string | null]> {
   const rows = groundRows(g).filter(([k]) => k !== 'Terrain' && k !== 'Relief');
   const change = g.terrainChange ? `${g.terrainChange.label} ${fmtDistance(g.terrainChange.distanceM)} ${g.terrainChange.compass}` : null;
   return [['Changes', change], ...rows, ['Going', modesNode(v)], ['Soil', bearingNode(v)]];
 }
 
 /** R: what the one line (route, class, MSR, density) leaves out. */
-function roadsMore(r: RoadsReading): Array<[string, Node | string | null]> {
+export function roadsMore(r: RoadsReading): Array<[string, Node | string | null]> {
   return roadsRows(r).filter(([k]) => k !== 'Here' && k !== 'Nearest');
 }
 
 /** O: what the one line (wet ground, nearest man-made and natural obstacle) leaves out. */
-function obstaclesMore(o: ObstaclesReading, sx: GroundGuideSections): Array<[string, Node | string | null]> {
+export function obstaclesMore(o: ObstaclesReading, sx: GroundGuideSections): Array<[string, Node | string | null]> {
   return obstaclesRows(o, sx).filter(([k]) => k !== 'Natural' && k !== 'Man-made' && k !== 'Here');
 }
 
 /** B: what the one line (density, huts, nearest service, tehsil) leaves out. */
-function buildingsMore(bd: BuildingsReading, v: GroundGuideVerdict): Array<[string, Node | string | null]> {
+export function buildingsMore(bd: BuildingsReading, v: GroundGuideVerdict): Array<[string, Node | string | null]> {
   const rows = buildingsRows(bd).filter(([k]) => k !== 'Buildings' && k !== 'Kacha huts');
   const build = bd.density && bd.density.code > 0 ? [bd.size, bd.height].filter(Boolean).join(' · ') || null : null;
   return [['Build', build], ['Huts', bd.huts?.temporary ? 'Temporary huts nearby' : null], ...rows, ['Ages', agesText(v)]];
 }
 
 /** W: the year under the month's line. */
-function weatherMore(w: WeatherReading): Array<[string, Node | string | null]> {
-  return [['Year', weatherYear(w)], ['Wet', w.wet.length ? monthRuns(w.wet) : null]];
+export function weatherMore(w: WeatherReading): Array<[string, Node | string | null]> {
+  return [['Year', weatherYearText(w)], ['Wet', w.wet.length ? monthRuns(w.wet) : null]];
 }
 
 /** The card's G / R / B / W sections in GROTBC order, each null when off or empty. */
@@ -575,7 +575,7 @@ export function sectionsCard(v: GroundGuideVerdict): { g: HTMLElement | null; r:
       : sw === 'line' ? one('W', `${w.monthName}: ${weatherMonth(w)}`, null, weatherMore(w))
       : sw === 'year' ? weatherYearStrip(w)
       : sw === 'icons' ? weatherIcons(w)
-      : section('W', `Weather · ${w.monthName}`, kv([[w.monthName, weatherMonth(w)], ['Year', weatherYear(w)]])),
+      : section('W', `Weather · ${w.monthName}`, kv([[w.monthName, weatherMonth(w)], ['Year', weatherYearText(w)]])),
   };
 }
 
@@ -595,7 +595,7 @@ export function sectionsText(s: GroundGuideSections): string[] {
   }
   if (s.obstacles) out.push('O Obstacles', ...rowsText(obstaclesRows(s.obstacles, s)).map((l) => `  ${l}`));
   if (s.buildings) out.push('B Buildings', ...rowsText(buildingsRows(s.buildings)).map((l) => `  ${l}`));
-  if (s.weather) out.push(`W Weather (${s.weather.source})`, `  ${s.weather.monthName}: ${weatherMonth(s.weather)}`, `  Year: ${weatherYear(s.weather)}`);
+  if (s.weather) out.push(`W Weather (${s.weather.source})`, `  ${s.weather.monthName}: ${weatherMonth(s.weather)}`, `  Year: ${weatherYearText(s.weather)}`);
   return out;
 }
 
@@ -668,10 +668,10 @@ registerBriefSection({
     if (!w) return null;
     ensureSectionsCss();
     const box = el('div');
-    const g = kv([[w.monthName, weatherMonth(w)], ['Year', weatherYear(w)], ['Wet', w.wet.length ? monthRuns(w.wet) : 'no wet month'], ['Fog', 'Not in the data: the climate normals carry no fog or visibility']]);
+    const g = kv([[w.monthName, weatherMonth(w)], ['Year', weatherYearText(w)], ['Wet', w.wet.length ? monthRuns(w.wet) : 'no wet month'], ['Fog', 'Not in the data: the climate normals carry no fog or visibility']]);
     if (g) box.append(g);
     box.append(el('div', 'ms-gs-src', `${w.source}; one cell is about 9 km, so hill tops run colder than shown`));
     return box;
   },
-  text: (v) => (v.sections?.weather ? [`${v.sections.weather.monthName}: ${weatherMonth(v.sections.weather)}`, `Year: ${weatherYear(v.sections.weather)}`] : []),
+  text: (v) => (v.sections?.weather ? [`${v.sections.weather.monthName}: ${weatherMonth(v.sections.weather)}`, `Year: ${weatherYearText(v.sections.weather)}`] : []),
 });

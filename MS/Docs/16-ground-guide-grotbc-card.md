@@ -11,7 +11,7 @@ bundle reference: [15-ground-guide.md](../../15-ground-guide.md).
 | P1 · Card and legend restyle on the v1 data (picks 1–5) | **Done** (GroundGuideBadge.ts, GroundGuideLegend.ts) |
 | Bundle v2 data (GROTBC classes, 14 modes, auxiliary layers, features) | **Built** (`MS/Data/terrain-bundle`, pipeline step `grotbc`) |
 | Engine reads v2 classes and modes (verdicts, overlay, legend, P, SIDC → mode) | **Done**: the current card and legend work on v2 unchanged |
-| GROTBC card sections, three-per-mode while drawing, G brief | **To do** (this document) |
+| GROTBC card sections, three-per-mode while drawing, G brief | **Superseded 2026-11-06**: the cursor card is minimal (`card.cursor`) and the **Ground Detail** (D) shows every letter in a tab with its pictures (`GroundGuideDetail.ts`, see 15-ground-guide.md) |
 | Engine access to the auxiliary layers and features | **To do** (section 7) |
 
 ---
@@ -36,7 +36,7 @@ bundle reference: [15-ground-guide.md](../../15-ground-guide.md).
    wet-season going.
 
 Keep the finalized wording, only in Title Case. Military terms set by the user: **Suitable Position**,
-**SLOW-GO**, **NO-GO**, **Marginal**, **Quick Fix**, **Intermediate Gap Rule**.
+**SLOW-GO**, **NO-GO**, **Marginal**, **Quick Fix**, **Inter Gap Rule** (was "Intermediate Gap Rule" until 2026-11-06).
 
 ### 1.2 GROTBC (approved direction)
 
@@ -119,12 +119,12 @@ going scale already gives their verdict.)
 Keep NEAREST and INTERMEDIATE GAP RULE as they are today; they sit after the three sections. The INSIDE section
 stays for lines and areas.
 
-### 3.2 G: the full brief
+### 3.2 D: the Ground Detail (was "G: the full brief")
 
-Pressing **G** (keycap in the legend's key list, next to P and S) opens the **Ground Brief** for the cursor or the
-selected symbol: all six sections, a header line with mode · 1:50k sheet · tehsil · district, the sources line,
-and **Copy as Text** for orders. Esc or G again closes it. The brief is a panel, not the cursor card: it does not
-follow the pointer.
+Since 2026-11-06 **D** opens the **Ground Detail**: a wide card docked at the foot of the map with a tab a letter
+(G R O T B C) and the Legend, key K since L is Lasso Select (the docked legend plus layers and data), each tab a grid of tiles with the pictures the
+card styles had (dials, roses, minimaps, gauges), north up, with **Copy as Text**. A letter opens its tab; the same
+letter, D or Esc closes it. The vertical G brief it replaced opened with G.
 
 **Built 2026-11-05 (going, soil, movement; user to pick the defaults).** Every option from
 `ground-guide-card-movement.html` is in the engine as its own switch under **Card Sections** (`groundGuide.card.*`), so they

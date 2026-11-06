@@ -297,6 +297,11 @@ export interface GroundGuideGoingOptions {
 
 /** Card sections for going, soil and movement. Letters match ground-guide-card-movement.html. */
 export interface GroundGuideCardOptions {
+  /**
+   * The cursor card. `minimal`: the verdict header, Why (with the GO / SLOW-GO / NO-GO scale), Inside, Nearest and
+   * the Inter Gap Rule; everything else waits in the Ground Detail (D). `full`: every section switched on below as well.
+   */
+  cursor: 'minimal' | 'full';
   /** A: cross-country going dry and after rain, the soil and what limits the going. */
   goingLines: boolean;
   /** B: movement rose, eight directions to `going.rangeKm`, with a freedom rating and what blocks it. */
@@ -311,7 +316,7 @@ export interface GroundGuideCardOptions {
   seasonRibbon: boolean;
   /** H: going map, a small picture of the going all round the point. */
   goingMap: boolean;
-  /** D: the G key opens the Ground Brief panel (all of the above, larger). */
+  /** D: the D key opens the Ground Detail (a tab a letter: G R O T B C, and K the Legend); a letter opens it on that tab. */
   briefKey: boolean;
 }
 
@@ -692,7 +697,7 @@ export interface GroundGuideVerdict {
   ground?: GroundGuideItg | null;
   /** Set while drawing when a going section or the Ground Brief needs it and the bundle has the soil layers. */
   going?: GroundGuideGoingInfo | null;
-  /** Set while drawing when the G key opens the Ground Brief. */
+  /** Set while drawing when the D key opens the Ground Detail. */
   briefKey?: boolean;
   /** Set while drawing when `population.enabled` and the bundle has a population grid: the people round the cursor. */
   population?: GroundGuidePopulation | null;
@@ -722,7 +727,7 @@ export interface GroundGuideAuditEntry {
   /** `profile` was set by hand when the symbol was placed, so the audit keeps judging it that way. */
   profileOverride: boolean;
   fraction: number;
-  /** Intergap message when the intermediate gap rule is not met. */
+  /** Intergap message when the inter gap rule is not met. */
   spacing: string | null;
   /** What the stamp said before this check (null = never stamped, e.g. loaded from a plan). */
   previous: GroundGuideVerdictKind | null;
@@ -866,6 +871,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   itg: { enabled: true, radiusKm: 3, max: 2, minLevel: 1 },
   going: { season: 'auto', month: 0, wetMonthMm: 75, rangeKm: 2, movementFor: 'units' },
   card: {
+    cursor: 'minimal',
     goingLines: true,
     movementRose: true,
     soilStrength: false,

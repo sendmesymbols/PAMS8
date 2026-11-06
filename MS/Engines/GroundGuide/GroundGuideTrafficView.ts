@@ -105,7 +105,7 @@ const CSS = `
 .ms-ggb-tl{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;color:#1b1f25;background:#5aa9e6}
 `;
 
-function ensureStyle(): void {
+export function ensureTrafficCss(): void {
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
@@ -147,7 +147,7 @@ function whyOf(rows: HTMLElement[]): HTMLElement | null {
 
 // ── what every block says ─────────────────────────────────────────────────
 
-interface TView {
+export interface TView {
   short: string;
   wet: boolean;
   dry: GoingStep;
@@ -162,7 +162,7 @@ function short(profile: string): string {
 }
 
 /** The going at the point, dry and after rain (from `v.going`, else the verdict), and the season now. */
-function viewOf(v: GroundGuideVerdict): TView {
+export function viewOf(v: GroundGuideVerdict): TView {
   const g = v.going;
   const pt = g?.point;
   const fromVerdict: GoingStep = v.verdict === 'ok' || v.verdict === 'near' ? 'go' : v.verdict === 'caution' ? 'slow' : 'nogo';
@@ -173,7 +173,7 @@ function viewOf(v: GroundGuideVerdict): TView {
 }
 
 /** One line on why the going is what it is: the soil, its cone index against the vehicle's, or what limits it. */
-function whyText(v: GroundGuideVerdict): string {
+export function whyText(v: GroundGuideVerdict): string {
   const g = v.going;
   const pt = g?.point;
   const soil = g?.soil;
@@ -191,7 +191,7 @@ function shield(r: TrafficRoadRef): HTMLElement {
 }
 
 /** The road out: shield, name and distance, its class tag, and an all-weather alternative. */
-function roadBlock(t: TView, compact = false): HTMLElement | null {
+export function roadBlock(t: TView, compact = false): HTMLElement | null {
   const r = t.road;
   if (!r) return null;
   const box = el('div');
@@ -216,7 +216,7 @@ function roadBlock(t: TView, compact = false): HTMLElement | null {
   return box;
 }
 
-function moveText(v: GroundGuideVerdict): string | null {
+export function moveText(v: GroundGuideVerdict): string | null {
   const m = v.going?.movement;
   if (!m) return null;
   const blocked = m.sectors.filter((x) => x.blockedBy && x.reachM < m.rangeM).sort((a, b) => a.reachM - b.reachM)[0];
@@ -225,7 +225,7 @@ function moveText(v: GroundGuideVerdict): string | null {
 }
 
 /** "SLOW-GO  after rain" (or "GO  now, dry") and, in the dry season, what rain does. */
-function headline(t: TView, what = ''): HTMLElement {
+export function trafficHeadline(t: TView, what = ''): HTMLElement {
   const h = el('div', 'ms-ggb-thead');
   h.append(el('span', 'ms-ggb-tbig', WORD[t.now]), el('span', 'ms-ggb-soft', `${what}${t.wet ? 'after rain' : 'now, dry'}`));
   if (!t.wet && t.after !== t.dry) h.append(el('span', 'ms-ggb-soft', '· after rain'), step(t.after));
@@ -241,10 +241,10 @@ function blockBand(v: GroundGuideVerdict, t: TView): HTMLElement {
   if (road) kv.append(el('span', 'ms-ggb-tk', t.road!.caption === 'Landing' ? 'Land' : 'Road'), road);
   const move = moveText(v);
   if (move) kv.append(el('span', 'ms-ggb-tk', 'Move'), el('span', undefined, move));
-  return band('T', `Trafficability · ${t.short}`, headline(t), kv);
+  return band('T', `Trafficability · ${t.short}`, trafficHeadline(t), kv);
 }
 
-function blockGauge(_v: GroundGuideVerdict, t: TView): HTMLElement {
+export function blockGauge(_v: GroundGuideVerdict, t: TView): HTMLElement {
   const g = el('div', 'ms-ggb-tg');
   const track = el('div', 'ms-ggb-tgt');
   for (const k of ['go', 'slow', 'nogo'] as const) {
@@ -264,12 +264,12 @@ function blockGauge(_v: GroundGuideVerdict, t: TView): HTMLElement {
   else g.append(mark(t.dry, 'dry', -5), mark(t.after, 'wet', 5));
   const labels = el('div', 'ms-ggb-tgl');
   for (const k of ['go', 'slow', 'nogo'] as const) labels.append(el('span', undefined, WORD[k]));
-  return band('T', `Going · ${t.short}`, headline(t), g, labels, el('div', 'ms-ggb-soft', t.why), roadBlock(t, true));
+  return band('T', `Going · ${t.short}`, trafficHeadline(t), g, labels, el('div', 'ms-ggb-soft', t.why), roadBlock(t, true));
 }
 
-function blockCalendar(v: GroundGuideVerdict, t: TView): HTMLElement {
+export function blockCalendar(v: GroundGuideVerdict, t: TView): HTMLElement {
   const c = v.going?.climate;
-  if (!c) return band('T', `Going by Month · ${t.short}`, headline(t), el('div', 'ms-ggb-soft', 'No climate data here'), roadBlock(t, true));
+  if (!c) return band('T', `Going by Month · ${t.short}`, trafficHeadline(t), el('div', 'ms-ggb-soft', 'No climate data here'), roadBlock(t, true));
   const now = (v.going?.month ?? new Date().getMonth() + 1) - 1;
   const top = Math.max(...c.precMm, 1);
   const cal = el('div', 'ms-ggb-tcal');
@@ -287,10 +287,10 @@ function blockCalendar(v: GroundGuideVerdict, t: TView): HTMLElement {
     cal.append(d);
   });
   const note = wetMonths.length ? `${WORD[t.after]} in ${wetMonths.join(', ')} (wet months), ${WORD[t.dry]} the rest` : `${WORD[t.dry]} all year`;
-  return band('T', `Going by Month · ${t.short}`, headline(t), cal, el('div', 'ms-ggb-soft', `${note} · bars: rain`), roadBlock(t, true));
+  return band('T', `Going by Month · ${t.short}`, trafficHeadline(t), cal, el('div', 'ms-ggb-soft', `${note} · bars: rain`), roadBlock(t, true));
 }
 
-function blockTiles(v: GroundGuideVerdict, t: TView): HTMLElement {
+export function blockTiles(v: GroundGuideVerdict, t: TView): HTMLElement {
   const tiles = el('div', 'ms-ggb-ttiles');
   const modes = v.going?.modes?.length ? v.going.modes : [{ profile: v.profile, label: v.profileLabel, dry: t.dry, wet: t.after, active: true }];
   for (const m of modes) {
@@ -309,9 +309,9 @@ function blockTiles(v: GroundGuideVerdict, t: TView): HTMLElement {
   return band('T', 'Who Can Move Here', tiles, el('div', 'ms-ggb-soft', `Left bar dry, right bar after rain · ${t.why}`), roadBlock(t, true));
 }
 
-function blockWayOut(_v: GroundGuideVerdict, t: TView): HTMLElement {
+export function blockWayOut(_v: GroundGuideVerdict, t: TView): HTMLElement {
   const m = t.road?.main;
-  if (!m) return band('T', `Way Out · ${t.short}`, headline(t), roadBlock(t), el('div', 'ms-ggb-soft', t.why));
+  if (!m) return band('T', `Way Out · ${t.short}`, trafficHeadline(t), roadBlock(t), el('div', 'ms-ggb-soft', t.why));
   const way = el('div', 'ms-ggb-tway');
   const leg = el('span', 'ms-leg');
   leg.style.background = COLOR[t.now];
@@ -326,7 +326,7 @@ function blockWayOut(_v: GroundGuideVerdict, t: TView): HTMLElement {
   const alt = t.road?.alt
     ? el('div', 'ms-ggb-soft', `${t.wet ? 'After rain use' : 'All-weather:'} ${t.road.alt.shield}${t.road.alt.name ? ` ${t.road.alt.name}` : ''} · ${fmtDistance(t.road.alt.distanceM)} ${t.road.alt.compass}`)
     : null;
-  return band('T', `Way Out · ${t.short}`, headline(t), way, info, alt, el('div', 'ms-ggb-soft', t.why));
+  return band('T', `Way Out · ${t.short}`, trafficHeadline(t), way, info, alt, el('div', 'ms-ggb-soft', t.why));
 }
 
 function blockRose(v: GroundGuideVerdict, t: TView, northDeg: number): HTMLElement {
@@ -370,7 +370,7 @@ function blockTabs(v: GroundGuideVerdict, t: TView): HTMLElement {
   const tabs = el('div', 'ms-ggb-ttabs');
   ['Now', 'Rain', 'Road', 'Months'].forEach((n, i) => tabs.append(el('span', i === tab ? 'ms-on' : undefined, n)));
   const body: Array<HTMLElement | null> = [];
-  if (tab === 0) body.push(headline(t), el('div', 'ms-ggb-soft', t.why));
+  if (tab === 0) body.push(trafficHeadline(t), el('div', 'ms-ggb-soft', t.why));
   if (tab === 1) {
     const kv = el('div', 'ms-ggb-tkv');
     const k = (season: 'dry' | 'wet', label: string) => {
@@ -442,7 +442,7 @@ export function decorateTraffic(
 ): void {
   const t = v.traffic;
   if (!t || v.verdict === 'unknown') return;
-  ensureStyle();
+  ensureTrafficCss();
   ensureGoingCss();
   const pt = v.going?.point;
   const wet = v.going?.season === 'wet';

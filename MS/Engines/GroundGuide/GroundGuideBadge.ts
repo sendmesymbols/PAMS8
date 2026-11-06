@@ -6,7 +6,7 @@
  * ground, and an S keycap when the quick fix can help); sections underneath, on
  * alternating bands and captioned in the verdict colour, say why (with a GO /
  * SLOW-GO / NO-GO scale), how much, what is nearest, whether the echelon's
- * intermediate gap rule holds and which Important Tactical Ground candidates lie
+ * inter gap rule holds and which Important Tactical Ground candidates lie
  * round it. Enforce mode closes the card with a red strip.
  * The unit type and the P / S keys live in the legend. Built from DOM nodes and
  * `textContent` only, so class names and unit labels can never inject markup.
@@ -17,7 +17,7 @@
  */
 
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
-import { briefCue, goingSections, orientRoses } from './GroundGuideGoingView';
+import { detailCue, goingSections, orientRoses } from './GroundGuideGoingView';
 import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
 import { decorateSpeed } from './GroundGuideSpeedView';
@@ -218,7 +218,7 @@ function featureTitle(label: string | null | undefined): string {
   return titleCase(feature(label));
 }
 
-function titleOf(v: GroundGuideVerdict): string {
+export function titleOf(v: GroundGuideVerdict): string {
   switch (v.verdict) {
     case 'ok': return 'Suitable Position';
     case 'near': {
@@ -285,7 +285,7 @@ function insideSection(v: GroundGuideVerdict, pct: number): HTMLElement {
 }
 
 /** Header colour, for the bar and arrow that echo it; keep in step with the CSS above. */
-function verdictColor(v: GroundGuideVerdict): string {
+export function verdictColor(v: GroundGuideVerdict): string {
   switch (v.verdict) {
     case 'ok': return '#1c8247';
     case 'near': return '#e9a526';
@@ -320,7 +320,7 @@ function nearestSection(v: GroundGuideVerdict, northDeg: number): HTMLElement | 
  * G · Important Tactical Ground: the candidates round the point, strongest first. The bundle only proposes them;
  * the user designates ITG / MITG, so the wording stays "Candidate".
  */
-function groundSection(v: GroundGuideVerdict): HTMLElement | null {
+export function itgSection(v: GroundGuideVerdict): HTMLElement | null {
   const g = v.ground;
   if (!g) return null;
   const rows: Array<Node | string> = [];
@@ -362,7 +362,7 @@ function spacingSection(v: GroundGuideVerdict): HTMLElement | null {
   if (!s) return null;
   const echelon = v.footprint?.echelon ?? 'unit';
   const colour = SPACING_COLOR[s.status];
-  if (s.nearestGapM === null) return section('Intermediate Gap Rule', el('span', 'ms-ggb-soft', `No other ${echelon} nearby`));
+  if (s.nearestGapM === null) return section('Inter Gap Rule', el('span', 'ms-ggb-soft', `No other ${echelon} nearby`));
   const text = el(
     'span',
     s.status !== 'ok' ? 'ms-ggb-warn' : undefined,
@@ -370,7 +370,7 @@ function spacingSection(v: GroundGuideVerdict): HTMLElement | null {
       ? `Overlaps the next ${echelon}`
       : `${fmtDistance(s.nearestGapM)} of ${fmtDistance(s.minGapM)} to the next ${echelon}`,
   );
-  return section('Intermediate Gap Rule', track(s.nearestGapM / s.minGapM, colour), text);
+  return section('Inter Gap Rule', track(s.nearestGapM / s.minGapM, colour), text);
 }
 
 export class GroundGuideBadge {
@@ -511,12 +511,48 @@ export class GroundGuideBadge {
     if (civil) pills.appendChild(civil);
     if (pills.childElementCount) bar.appendChild(pills);
 
+    const rows = this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills) : this._minimalRows(v, pct);
+    const body = this._body!;
+    body.replaceChildren(...rows);
+    body.style.display = rows.length ? 'block' : 'none';
+    const civilSaid = populationSpoken(v.population);
+    this._say(civilSaid ? `${spokenFor(v)} ${civilSaid}.` : spokenFor(v));
+
+    if (!this._hasPointer) {
+      this._x = Math.round(window.innerWidth / 2);
+      this._y = 90;
+    }
+    el0.style.display = 'block';
+    this._w = el0.offsetWidth;
+    this._h = el0.offsetHeight;
+    this._place();
+  }
+
+  /**
+   * The minimal cursor card (`card.cursor: minimal`): Why with the going scale, Inside, Nearest with its compass and
+   * the Inter Gap Rule, then the enforce strip. Everything else waits in the Ground Detail, which the foot cue names.
+   */
+  private _minimalRows(v: GroundGuideVerdict, pct: number): HTMLElement[] {
+    const rows =
+      v.verdict === 'unknown'
+        ? []
+        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v)].filter((r): r is HTMLElement => r !== null);
+    if (v.loading) rows.push(el('div', 'ms-ggb-sec ms-ggb-soft', 'Still loading terrain data'));
+    if (this._notice) rows.push(el('div', 'ms-ggb-sec ms-ggb-warn', this._notice));
+    const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
+    if (strip) rows.push(strip);
+    if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue());
+    return rows;
+  }
+
+  /** The full cursor card (`card.cursor: full`): every section switched on, in GROTBC order, as before the Detail card. */
+  private _fullRows(v: GroundGuideVerdict, pct: number, bar: HTMLElement, pills: HTMLElement): HTMLElement[] {
     // G / R / B (buildings) / W sections (sections.*): G after the ITG lines, R after G, B buildings after People, W last.
     const sx = sectionsCard(v);
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), groundSection(v), sx.g, sx.r, sx.o].filter(
+        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), itgSection(v), sx.g, sx.r, sx.o].filter(
             (r): r is HTMLElement => r !== null,
           );
     // A T block (traffic.block) carries the Cross-Country and Movement sections itself.
@@ -543,21 +579,8 @@ export class GroundGuideBadge {
     }
     const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
     if (strip) rows.push(strip);
-    if (v.briefKey && v.verdict !== 'unknown') rows.push(briefCue());
-    const body = this._body!;
-    body.replaceChildren(...rows);
-    body.style.display = rows.length ? 'block' : 'none';
-    const civilSaid = populationSpoken(v.population);
-    this._say(civilSaid ? `${spokenFor(v)} ${civilSaid}.` : spokenFor(v));
-
-    if (!this._hasPointer) {
-      this._x = Math.round(window.innerWidth / 2);
-      this._y = 90;
-    }
-    el0.style.display = 'block';
-    this._w = el0.offsetWidth;
-    this._h = el0.offsetHeight;
-    this._place();
+    if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue());
+    return rows;
   }
 
   hide(): void {

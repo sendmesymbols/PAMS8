@@ -44,7 +44,7 @@ import { GroundGuideFeatures } from './GroundGuideFeatures';
 import { GroundGuideRoads } from './GroundGuideRoads';
 import { roadDensityReading, type RoadDensityReading } from './GroundGuideRoadDensity';
 import { ROAD_DENSITY_LEADS, ROAD_DENSITY_STYLES } from './GroundGuideRoadDensityView';
-import { GroundGuideBrief } from './GroundGuideBrief';
+import { GroundGuideDetail, type DetailLegendInfo, type DetailTab, type DetailToggle } from './GroundGuideDetail';
 import { GroundGuidePopulation as PopulationGrid, POPULATION_FLAGS } from './GroundGuidePopulation';
 import { createPopulationLayer } from './GroundGuidePopulationLayer';
 import { ensurePopulationCss, populationBriefText, populationKey, populationKeyElement } from './GroundGuidePopulationView';
@@ -97,7 +97,7 @@ import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
 import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
 import { GroundGuideIndicators } from './GroundGuideIndicators';
-import { GroundGuideLegend } from './GroundGuideLegend';
+import { GroundGuideLegend, type LegendState } from './GroundGuideLegend';
 import { createOverlayLayer, OVERLAY_COLORS, OVERLAY_LEGEND, type OverlayRenderingSource } from './GroundGuideOverlay';
 import { WorkerTileSource } from './WorkerTileSource';
 import { resolveProfile } from './GroundGuideProfiles';
@@ -265,8 +265,27 @@ export default class GroundGuide {
   private _popLayer: any = null;
   private _popLayerMap: any = null;
   private _popKey: HTMLElement | null = null;
-  /** The Ground Brief panel (G): all of the going, soil and movement sections, larger. */
-  private _brief = new GroundGuideBrief(() => this._toggleBrief(false));
+  /** The Ground Detail (D): a wide card with a tab a GROTBC letter and the Legend (K); it holds the docked legend's controls too. */
+  private _detail = new GroundGuideDetail({
+    close: () => this._toggleBrief(false),
+    legend: {
+      step: (dir) => this._legendStep(dir),
+      pick: (key) => this._legendPick(key as GroundGuideProfile),
+      season: (s) => this._setGoing({ season: s }),
+      month: (dir) => this._setGoing({ season: 'auto', month: ((resolveMonth(this._opts.going.month) - 1 + dir + 12) % 12) + 1 }),
+      light: (light) => {
+        this.setOptions({ speed: { ...this._opts.speed, light } });
+        setSetting(['groundGuide', 'speed', 'light'], light);
+      },
+    },
+    toggle: (key, on) => this._toggleLayer(key, on),
+    opacity: (v) => {
+      this.setOptions({ overlay: { ...this._opts.overlay, opacity: v } });
+      setSetting(['groundGuide', 'overlay', 'opacity'], v);
+      this._syncLegend();
+    },
+  });
+  /** True while the Ground Detail is open (`isDetailOpen`; the older name `isBriefOpen` still works). */
   private _briefOpen = false;
   private _source: OverlayRenderingSource | null = null;
   private _overlay: any = null;
@@ -319,7 +338,7 @@ export default class GroundGuide {
   });
   /** Season (and profile) the overlay last painted the going for (T); a change repaints it. */
   private _overlaySeasonKey = '';
-  /** T block state while drawing: a folded block opened with T, and the tab the `tabs` style shows (T cycles). */
+  /** T block state on the full cursor card: a folded block counts as open while the Ground Detail is; the `tabs` style shows its first tab (T is the Trafficability tab since 2026-11-06). */
   private _trafficOpen = false;
   private _trafficTab = 0;
   private _hintedThisSession = false;
@@ -656,7 +675,8 @@ export default class GroundGuide {
     next.card = { ...prev.card };
     if (cd && typeof cd === 'object') {
       for (const k of Object.keys(DEFAULT_GROUND_GUIDE_OPTIONS.card) as Array<keyof GroundGuideCardOptions>) {
-        flag(`card.${k}`, cd[k], (b) => (next.card[k] = b));
+        if (k === 'cursor') pick('card.cursor', cd.cursor, ['minimal', 'full'] as const, (x) => (next.card.cursor = x));
+        else flag(`card.${k}`, cd[k], (b) => (next.card[k] = b));
       }
     }
     const pp = patch.population;
@@ -804,10 +824,16 @@ export default class GroundGuide {
     for (const i of issues) EngineLogger.error(ENGINE, `Setting ${i.path} = ${JSON.stringify(i.value)}: ${i.reason}`);
   }
 
+  /** A short notice chip at the foot of the screen (the Ctrl+G toggle says the new state through it). Works while disabled too. */
+  announce(text: string, ms = 3500): void {
+    this._legend.hint(text, 'announce', ms);
+  }
+
   enable(): void {
     if (this._enabled) return;
     this._enabled = true;
     this._retryAttempt = 0;
+    this._attachKeys();
     this._emitState('enabled');
     if (this._manifest) {
       this._firstUseHint();
@@ -823,6 +849,11 @@ export default class GroundGuide {
     this._enabled = false;
     this._clearRetry();
     this.deactivate();
+    this._detachKeys();
+    if (this._briefOpen) {
+      this._briefOpen = false;
+      this._detail.hide();
+    }
     this._unbindView();
     this._removeOverlay();
     this._removePopulationLayer();
@@ -889,13 +920,14 @@ export default class GroundGuide {
     v.profileOverride = this._profileOverride !== null && v.profile === this._profileOverride;
     v.ground = this._groundNear(geometry, v);
     v.going = this._goingNear(geometry, sidc, v);
-    v.briefKey = keys && this._opts.card.briefKey && !!v.going;
+    v.briefKey = keys && this._opts.card.briefKey;
     v.traffic = this._trafficNear(geometry, v);
     v.speed = this._speedNear(geometry, sidc, v);
     v.population = this._populationNear(geometry, v);
     v.cover = this._coverNear(geometry, v);
     v.sections = this._sectionsNear(geometry, v);
     this._legend.setKeys(v.profileKey, v.snappable);
+    this._detail.setKeys(v.profileKey, v.snappable);
     if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
       this._lastGood = v;
       this._lastGoodGeom = geometry;
@@ -953,6 +985,7 @@ export default class GroundGuide {
     this._activeSidc = null;
     this._activeProfile = null;
     this._legend.setKeys(false, false);
+    this._detail.setKeys(false, false);
     this._syncLegend(); // back to the overlay's mode, or hidden when the overlay is off
     if (this._reevalTimer !== null) {
       clearTimeout(this._reevalTimer);
@@ -1627,6 +1660,7 @@ export default class GroundGuide {
     this._source?.dispose?.();
     this._source = null;
     this._badge.destroy();
+    this._detail.destroy();
     this._auditPanel.destroy();
     this._legend.destroy();
   }
@@ -1831,6 +1865,7 @@ export default class GroundGuide {
     const t = this._opts.traffic;
     const blockOn = t.block !== 'off';
     if (!(t.road || t.pill || t.dual || blockOn) || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    if (!this._extrasWanted()) return null;
     const pt = v.going?.point ?? null;
     const wet = v.going?.season === 'wet';
     let road: GroundGuideTraffic['road'] = null;
@@ -1849,7 +1884,7 @@ export default class GroundGuide {
       }
     }
     if (!road && !t.pill && !t.dual && !blockOn) return null;
-    return { road, pending, pill: t.pill, dual: t.dual, block: t.block, where: t.where, open: this._trafficOpen, tab: this._trafficTab };
+    return { road, pending, pill: t.pill, dual: t.dual, block: t.block, where: t.where, open: this._trafficOpen || this._briefOpen, tab: this._trafficTab };
   }
 
   // ── Speed (T) ────────────────────────────────────────────────────────────
@@ -1967,7 +2002,7 @@ export default class GroundGuide {
   private _speedNear(geometry: any, sidc: string | null, v: GroundGuideVerdict): GroundGuideSpeed | null {
     const o = this._opts.speed;
     if (!o.enabled || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt' || !this._cache || !this._manifest) return null;
-    if (o.card === 'off' && !this._briefOpen) return null;
+    if ((o.card === 'off' || !this._extrasWanted()) && !this._briefOpen) return null;
     const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
     if (!at) return null;
     const mover = resolveMover(this._speedTablesNow(), sidc, v.profile, { setting: o.mover, hand: !!v.profileOverride, catalog: this._moverLookup });
@@ -2056,30 +2091,6 @@ export default class GroundGuide {
     const p = c ? toMercatorShape(c)?.parts[0]?.[0] : null;
     const prec = p ? this._climate?.precAt(...(mercatorToLngLat(p[0], p[1]) as [number, number])) ?? null : null;
     return resolveSeason(this._opts.going, prec).season;
-  }
-
-  /**
-   * The T key while drawing: opens / closes a folded T block, or steps the `tabs` style to its next tab (folded and
-   * tabbed: closed, then each tab, then closed again). False when T does nothing for the current options.
-   */
-  private _stepTraffic(): boolean {
-    const t = this._opts.traffic;
-    if (t.block === 'off' || t.block === 'ticker') return false;
-    const folded = t.where === 'folded';
-    if (t.block !== 'tabs') {
-      if (!folded) return false;
-      this._trafficOpen = !this._trafficOpen;
-      return true;
-    }
-    if (folded && !this._trafficOpen) {
-      this._trafficOpen = true;
-      this._trafficTab = 0;
-    } else if (folded && this._trafficTab === 3) {
-      this._trafficOpen = false;
-    } else {
-      this._trafficTab = (this._trafficTab + 1) % 4;
-    }
-    return true;
   }
 
   /** The view came to rest: repaint the overlay when the season at the centre changed (an `auto` season moves with the map). */
@@ -2511,6 +2522,7 @@ export default class GroundGuide {
   private _groundNear(geometry: any, v: GroundGuideVerdict): GroundGuideItg | null {
     const o = this._opts.itg;
     if (!o.enabled || !this._features || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    if (!this._extrasWanted()) return null;
     const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
     if (!at) return null;
     const radiusM = o.radiusKm * 1000;
@@ -2683,21 +2695,72 @@ export default class GroundGuide {
 
   // ── Going, soil and movement (GROTBC T) ──────────────────────────────────
 
-  /** True while the Ground Brief panel is open. */
+  /** True while the Ground Detail is open. */
+  get isDetailOpen(): boolean {
+    return this._briefOpen;
+  }
+
+  /** The older name of `isDetailOpen` (the Ground Brief became the Ground Detail on 2026-11-06). */
   get isBriefOpen(): boolean {
     return this._briefOpen;
   }
 
-  /** Open or close the Ground Brief (the G key while drawing). It keeps the last draw's content until closed. */
+  /** The tab the Ground Detail shows (G R O T B C, or L the Legend, opened with K). */
+  get detailTab(): DetailTab {
+    return this._detail.tab;
+  }
+
+  /**
+   * Open or close the Ground Detail (the D key while drawing), on `tab` when given. It keeps the last draw's content
+   * until closed. While it is open the docked legend is held back: the Legend tab has it.
+   */
+  showDetail(open = true, tab?: DetailTab): void {
+    this._toggleBrief(open, tab);
+  }
+
+  /** The older name of `showDetail`. */
   showBrief(open = true): void {
     this._toggleBrief(open);
   }
 
-  private _toggleBrief(open: boolean): void {
+  private _toggleBrief(open: boolean, tab?: DetailTab): void {
+    if (tab !== undefined) this._detail.setTab(tab);
     if (open === this._briefOpen) return;
     this._briefOpen = open;
-    if (!open) this._brief.hide();
+    if (!open) this._detail.hide();
+    else {
+      this._syncLegend(); // the Legend tab gets the legend as it stands
+      if (!this._lastDetail) this._detail.open(); // no draw in progress: the Legend tab works, the letters wait for one
+    }
     this._refreshLive();
+  }
+
+  /** The Legend tab's map switches: the overlay (and its opacity), the boundary, the People layer, indicator lines, the footprint outline. */
+  private _legendInfo(): DetailLegendInfo {
+    const o = this._opts;
+    return {
+      overlayOpacity: o.overlay.opacity,
+      toggles: [
+        { key: 'overlay', label: 'Going overlay', on: o.overlay.enabled, note: o.overlay.profile === 'auto' ? 'Paints the ground for the mode being drawn' : `Paints the ground for ${this._rules?.profiles?.[o.overlay.profile]?.label ?? o.overlay.profile}` },
+        { key: 'boundary', label: 'Terrain data boundary', on: o.overlay.boundary, note: 'The outline of the ground the data covers' },
+        { key: 'people', label: 'People layer', on: o.population.layer, note: 'People per km² on the map, with its key' },
+        { key: 'indicators', label: 'Indicator lines', on: o.indicators.enabled, note: 'Lines from the symbol to the ground that decides the verdict' },
+        { key: 'footprint', label: 'Footprint outline', on: o.footprint.outline, note: 'The echelon footprint the verdict is judged on' },
+      ],
+    };
+  }
+
+  /** A map switch in the Legend tab: change the option and tell the settings panel, as the legend's mode pick does. */
+  private _toggleLayer(key: DetailToggle, on: boolean): void {
+    const o = this._opts;
+    switch (key) {
+      case 'overlay': this.setOptions({ overlay: { ...o.overlay, enabled: on } }); setSetting(['groundGuide', 'overlay', 'enabled'], on); break;
+      case 'boundary': this.setOptions({ overlay: { ...o.overlay, boundary: on } }); setSetting(['groundGuide', 'overlay', 'boundary'], on); break;
+      case 'people': this.setOptions({ population: { ...o.population, layer: on } }); setSetting(['groundGuide', 'population', 'layer'], on); break;
+      case 'indicators': this.setOptions({ indicators: { ...o.indicators, enabled: on } }); setSetting(['groundGuide', 'indicators', 'enabled'], on); break;
+      default: this.setOptions({ footprint: { ...o.footprint, outline: on } }); setSetting(['groundGuide', 'footprint', 'outline'], on);
+    }
+    this._syncLegend();
   }
 
   /** Judge the cursor again now (settings changed, the brief opened). */
@@ -2717,11 +2780,18 @@ export default class GroundGuide {
   private _goingWanted(): boolean {
     const c = this._opts.card;
     const t = this._opts.traffic;
+    if (this._briefOpen) return true;
+    if (c.cursor !== 'full') return false; // the minimal card shows none of it; the Detail reads it when open
     return (
-      this._briefOpen || c.goingLines || c.movementRose || c.soilStrength || c.exitStrip || c.modeMatrix || c.seasonRibbon || c.goingMap ||
+      c.goingLines || c.movementRose || c.soilStrength || c.exitStrip || c.modeMatrix || c.seasonRibbon || c.goingMap ||
       t.pill || t.dual || t.header === 'season' || t.block !== 'off' || // T reads the going at the point too
       this._opts.speed.enabled // and so does speed
     );
+  }
+
+  /** The cursor card shows the extra sections (`card.cursor: full`), or the Ground Detail is open to show them. */
+  private _extrasWanted(): boolean {
+    return this._briefOpen || this._opts.card.cursor === 'full';
   }
 
   /** Tiles speed reads besides the going's: elevation (slope) and the terrain type (a day's march). */
@@ -2745,7 +2815,7 @@ export default class GroundGuide {
   /** Tiles the going sections read (prefetched with the class tiles while a symbol is armed). */
   private _goingTileLayers(): string[] {
     const L = this._goingLayers();
-    if (!L || !this._goingWanted() || this._activeProfile === 'exempt') return [];
+    if (!L || !(this._goingWanted() || this._opts.card.briefKey) || this._activeProfile === 'exempt') return [];
     return [L.soil, L.dry, L.wet, ...(L.wetLayer ? [L.wetLayer] : [])];
   }
 
@@ -2772,7 +2842,7 @@ export default class GroundGuide {
     const o = this._opts.cover;
     const L = this._coverLayers();
     if (!o.enabled || !L || !this._cache) return null;
-    if (o.card === 'off' && !this._briefOpen) return null;
+    if ((o.card === 'off' || !this._extrasWanted()) && !this._briefOpen) return null;
     const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
     if (!at) return null;
     const z = this._sampleZoom();
@@ -2845,7 +2915,7 @@ export default class GroundGuide {
   }
 
   /** Tiles the switched-on sections read (prefetched with the class tiles while a symbol is armed). */
-  private _sectionTileLayers(all = this._briefOpen): string[] {
+  private _sectionTileLayers(all = this._briefOpen || this._opts.card.briefKey): string[] {
     const o = this._opts.sections;
     if (this._activeProfile === 'exempt' || (o.style === 'brief' && !all && this._sectionsAllAuto())) return [];
     const L = this._sectionLayers();
@@ -2956,7 +3026,7 @@ export default class GroundGuide {
     if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt' || !this._cache || !this._manifest) return null;
     const o = this._opts.sections;
     const any = o.ground || o.roads || o.buildings || o.weather || o.obstacles;
-    if (!any && !this._briefOpen) return null;
+    if ((!any || !this._extrasWanted()) && !this._briefOpen) return null;
     if (o.style === 'brief' && !this._briefOpen && this._sectionsAllAuto()) return null;
     const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
     if (!at) return null;
@@ -3402,7 +3472,7 @@ export default class GroundGuide {
     this._lastBadgeKey = key;
     if (this._opts.showBadge && v.verdict !== 'off' && v.verdict !== 'exempt') this._badge.show(v);
     else this._badge.hide();
-    if (this._briefOpen && v.going && v.verdict !== 'off' && v.verdict !== 'exempt') this._brief.show(v);
+    if (this._briefOpen && v.verdict !== 'off' && v.verdict !== 'exempt') this._detail.show(v);
   }
 
   private _publish(v: GroundGuideVerdict): void {
@@ -3577,15 +3647,31 @@ export default class GroundGuide {
     this._northHandle = null;
   }
 
+  /** The key handler lives as long as the guide is enabled (D and K work before a draw); the pointer handler only while drawing. */
+  private _attachKeys(): void {
+    if (this._keyHandler) return;
+    this._keyHandler = (e: KeyboardEvent) => this._onKey(e);
+    this._blurHandler = () => (this._shift = false); // keyup lands elsewhere on Alt-Tab
+    window.addEventListener('keydown', this._keyHandler, true);
+    window.addEventListener('keyup', this._keyHandler, true);
+    window.addEventListener('blur', this._blurHandler);
+  }
+
+  private _detachKeys(): void {
+    if (this._keyHandler) {
+      window.removeEventListener('keydown', this._keyHandler, true);
+      window.removeEventListener('keyup', this._keyHandler, true);
+      this._keyHandler = null;
+    }
+    if (this._blurHandler) {
+      window.removeEventListener('blur', this._blurHandler);
+      this._blurHandler = null;
+    }
+  }
+
   private _attachPointer(): void {
     if (this._pointerHandler) return;
-    if (!this._keyHandler) {
-      this._keyHandler = (e: KeyboardEvent) => this._onKey(e);
-      this._blurHandler = () => (this._shift = false); // keyup lands elsewhere on Alt-Tab
-      window.addEventListener('keydown', this._keyHandler, true);
-      window.addEventListener('keyup', this._keyHandler, true);
-      window.addEventListener('blur', this._blurHandler);
-    }
+    this._attachKeys();
     const container = (this._getView?.() as any)?.container as HTMLElement | null | undefined;
     if (!container) return;
     this._pointerHandler = (e: PointerEvent) => {
@@ -3607,23 +3693,24 @@ export default class GroundGuide {
     this._shift = e.shiftKey;
     if (e.type !== 'keydown') return;
     const k = e.key.toLowerCase();
-    if ((k !== 's' && k !== 'p' && k !== 'g' && k !== 't' && k !== 'escape') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    const tabKey = k === 'g' || k === 'r' || k === 'o' || k === 't' || k === 'b' || k === 'c' || k === 'k'; // K = the Legend tab (L is Lasso Select)
+    if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'escape' && !tabKey) || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     if (k === 'escape') {
       if (this._briefOpen) this._toggleBrief(false); // Esc still reaches the draw tool: it may cancel the draw too
       return;
     }
-    if (k === 'g') {
-      if (!this._opts.card.briefKey || !this._lastDetail || this._activeProfile === 'exempt' || !this._goingLayers()) return;
+    if (k === 'd' || tabKey) {
+      // D opens or closes the Ground Detail (before a draw too: the Legend tab); a letter opens it on that tab (K the Legend), the same letter again closes it.
+      if (!this._opts.card.briefKey || !this.isActive || this._activeProfile === 'exempt') return;
       e.preventDefault();
-      this._toggleBrief(!this._briefOpen);
-      return;
-    }
-    if (k === 't') {
-      if (!this._lastDetail || this._activeProfile === 'exempt' || !this._stepTraffic()) return;
-      e.preventDefault();
-      this._refreshLive();
+      if (k === 'd') this._toggleBrief(!this._briefOpen);
+      else {
+        const tab = (k === 'k' ? 'L' : k.toUpperCase()) as DetailTab;
+        if (this._briefOpen && this._detail.tab === tab) this._toggleBrief(false);
+        else this._toggleBrief(true, tab);
+      }
       return;
     }
     if (k === 'p') {
@@ -3638,15 +3725,6 @@ export default class GroundGuide {
   }
 
   private _detachPointer(): void {
-    if (this._keyHandler) {
-      window.removeEventListener('keydown', this._keyHandler, true);
-      window.removeEventListener('keyup', this._keyHandler, true);
-      this._keyHandler = null;
-    }
-    if (this._blurHandler) {
-      window.removeEventListener('blur', this._blurHandler);
-      this._blurHandler = null;
-    }
     if (this._container && this._pointerHandler) {
       this._container.removeEventListener('pointermove', this._pointerHandler);
     }
@@ -3762,7 +3840,7 @@ export default class GroundGuide {
     const view: any = this._getView?.();
     const drawing = this._drawingTerrainBound();
     const rules = this._rules;
-    if (!this._enabled || !rules || !this._manifest || !view || !(this._overlay || drawing)) {
+    if (!this._enabled || !rules || !this._manifest || !view) {
       this._legend.hide();
       return;
     }
@@ -3777,7 +3855,7 @@ export default class GroundGuide {
     if (drawing) tag = hand ? 'Set by Hand' : 'Auto · From Symbol';
     else if (fixed) tag = 'Set in Settings';
     const keyboard = !this._touchInput && (this._opts.profileKey || this._opts.snapKey);
-    this._legend.show(view, {
+    const state: LegendState = {
       modes: this.profileChoices.map((p) => ({ key: p, label: rules.profiles?.[p]?.label ?? p })),
       current: profile,
       tag,
@@ -3790,7 +3868,9 @@ export default class GroundGuide {
       keys: keyboard ? { profile: this._opts.profileKey, snap: this._opts.snapKey } : null,
       traffic: this._legendTraffic(),
       speed: this._legendSpeed(drawing),
-    });
+    };
+    this._legend.hide(); // the docked card is retired (2026-11-06): the Ground Detail's Legend tab (K) is the legend
+    this._detail.setLegend(state, this._legendInfo());
   }
 
   /** Speed on the legend (`speed.legend`): the mover while drawing and a Day / Night switch. */

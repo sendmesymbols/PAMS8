@@ -48,7 +48,7 @@ const CSS = `
 .ms-ggs-way>.ms-rd{background:#f3f5f7}
 `;
 
-function ensureStyle(): void {
+export function ensureSpeedCss(): void {
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
@@ -81,7 +81,7 @@ function catChip(s: GroundGuideSpeed): HTMLElement | null {
   return s.cat ? el('span', 'ms-ggs-cat', `${s.cat} VEH`) : null;
 }
 
-function headline(s: GroundGuideSpeed): HTMLElement {
+export function speedHeadline(s: GroundGuideSpeed): HTMLElement {
   const h = el('div', 'ms-ggs-head');
   h.append(el('span', 'ms-ggs-big', s.kmh === 0 ? 'NO-GO' : fmtKmh(s.kmh)), el('span', 'ms-ggb-soft', `cross-country · ${when(s)}`));
   if (s.up !== null && s.down !== null) h.append(el('span', 'ms-ggb-soft', `· up ${s.up}, down ${s.down}`));
@@ -112,14 +112,14 @@ function roadRow(s: GroundGuideSpeed): HTMLElement {
   return box;
 }
 
-function dayText(s: GroundGuideSpeed): string | null {
+export function speedDayText(s: GroundGuideSpeed): string | null {
   const d = s.dayKm;
   if (!d) return null;
   const load = d.load === 'none' ? 'without' : 'with';
   return `${d.lo}–${d.hi} km in 24 h (${d.ground}, ${load} combat load)`;
 }
 
-function groundText(s: GroundGuideSpeed): string | null {
+export function speedGroundText(s: GroundGuideSpeed): string | null {
   const bits: string[] = [];
   if (s.ground) bits.push(s.ground.label);
   if (s.slopeDeg !== null) bits.push(`slope ${Math.round(s.slopeDeg)}°${s.slopeBand ? ` (${s.slopeBand})` : ''}`);
@@ -132,14 +132,15 @@ function groundText(s: GroundGuideSpeed): string | null {
 function styleLine(s: GroundGuideSpeed): HTMLElement {
   const kv = el('div', 'ms-ggs-kv');
   kv.append(el('span', 'ms-ggs-k', 'Road'), roadRow(s));
-  const day = dayText(s);
+  const day = speedDayText(s);
   if (day) kv.append(el('span', 'ms-ggs-k', 'Day'), el('span', undefined, day));
-  const g = groundText(s);
+  const g = speedGroundText(s);
   if (g) kv.append(el('span', 'ms-ggs-k', 'Here'), el('span', 'ms-ggb-soft', g));
-  return band('T', caption(s), headline(s), kv);
+  return band('T', caption(s), speedHeadline(s), kv);
 }
 
-function styleGrid(s: GroundGuideSpeed): HTMLElement {
+/** Day / night x dry / after rain at the point (km/h), the cell in force outlined. */
+export function speedGrid(s: GroundGuideSpeed): HTMLElement {
   const g = el('div', 'ms-ggs-grid');
   const hd = (season: 'dry' | 'wet', t: string) => {
     const c = el('span', 'ms-ggs-h');
@@ -151,6 +152,11 @@ function styleGrid(s: GroundGuideSpeed): HTMLElement {
   const wet = s.season === 'wet';
   g.append(el('span', 'ms-ggs-m', 'Day'), cell(s.grid.dryDay, s.light === 'day' && !wet), cell(s.grid.wetDay, s.light === 'day' && wet));
   g.append(el('span', 'ms-ggs-m', 'Night'), cell(s.grid.dryNight, s.light === 'night' && !wet), cell(s.grid.wetNight, s.light === 'night' && wet));
+  return g;
+}
+
+function styleGrid(s: GroundGuideSpeed): HTMLElement {
+  const g = speedGrid(s);
   const head = el('div', 'ms-ggs-head');
   head.append(el('span', 'ms-ggb-soft', `km/h cross-country${s.up !== null ? ', uphill' : ''}`));
   const c = catChip(s);
@@ -168,7 +174,7 @@ function speedColor(kmh: number, top: number): string {
 }
 
 /** Eight wedges, length by km/h, coloured against the mover's best; the group turns with the map (`data-gv-rose`). */
-function speedRoseSvg(rays: SpeedDirection[], rangeM: number, size: number, northDeg: number): SVGElement {
+export function speedRoseSvg(rays: SpeedDirection[], rangeM: number, size: number, northDeg: number): SVGElement {
   const c = size / 2;
   const r0 = size * 0.12;
   const R = size / 2 - 4;
@@ -197,7 +203,7 @@ function speedRoseSvg(rays: SpeedDirection[], rangeM: number, size: number, nort
   return svg;
 }
 
-function roseLines(s: GroundGuideSpeed): HTMLElement {
+export function speedRoseLines(s: GroundGuideSpeed): HTMLElement {
   const box = el('div');
   const rays = s.rays ?? [];
   const open = rays.filter((r) => r.minutes !== null).sort((p, q) => p.minutes! - q.minutes!);
@@ -218,11 +224,12 @@ function roseLines(s: GroundGuideSpeed): HTMLElement {
 function styleRose(s: GroundGuideSpeed, northDeg: number): HTMLElement {
   if (!s.rays) return styleLine(s);
   const row = el('div', 'ms-ggs-rose');
-  row.append(speedRoseSvg(s.rays, s.rangeM, 92, northDeg), roseLines(s));
+  row.append(speedRoseSvg(s.rays, s.rangeM, 92, northDeg), speedRoseLines(s));
   return band('T', `${caption(s)} · Time to ${fmtDistance(s.rangeM)}`, row);
 }
 
-function styleModes(s: GroundGuideSpeed): HTMLElement {
+/** Foot / B truck / A tracked (and the symbol's mover) side by side, km/h now. */
+export function speedModeTiles(s: GroundGuideSpeed): HTMLElement {
   const tiles = el('div', 'ms-ggs-tiles');
   for (const m of s.modes) {
     const t = el('div', `ms-ggs-tile${m.active ? ' ms-me' : ''}`);
@@ -230,14 +237,20 @@ function styleModes(s: GroundGuideSpeed): HTMLElement {
     t.append(el('b', undefined, m.kmh === null ? '?' : m.kmh === 0 ? 'NO-GO' : String(m.kmh)), el('small', undefined, `${m.short}${m.cat ? ` · ${m.cat}` : ''}`));
     tiles.append(t);
   }
+  return tiles;
+}
+
+function styleModes(s: GroundGuideSpeed): HTMLElement {
+  const tiles = speedModeTiles(s);
   const soft = el('div', 'ms-ggb-soft', `km/h cross-country · ${when(s)}`);
   soft.style.marginTop = '5px';
   return band('T', 'Speed · Who Moves How Fast', tiles, soft);
 }
 
-function styleRoad(s: GroundGuideSpeed): HTMLElement {
+/** The strip from here to the road (cross-country leg, then the road speed) and its line under; null without a road. */
+export function speedWay(s: GroundGuideSpeed): [HTMLElement, HTMLElement] | null {
   const r = s.road;
-  if (!r) return styleLine(s);
+  if (!r) return null;
   const way = el('div', 'ms-ggs-way');
   const xc = el('span', 'ms-leg ms-xc');
   xc.append(el('span', undefined, r.reachMin === null ? `${fmtDistance(r.distanceM)} · NO-GO` : r.reachMin === 0 ? 'on the road' : `${fmtDistance(r.distanceM)} · ${fmtMinutes(r.reachMin)}`));
@@ -249,14 +262,30 @@ function styleRoad(s: GroundGuideSpeed): HTMLElement {
   const info = el('div', 'ms-ggb-soft');
   info.style.marginTop = '6px';
   info.textContent = `${r.msr ? 'MSR · ' : ''}${r.label}${r.allWeather ? '' : ' (fair-weather)'} · cross-country ${fmtKmh(s.kmh)} · ${when(s)}`;
-  return band('T', `${caption(s)} · To the Road`, way, info);
+  return [way, info];
+}
+
+function styleRoad(s: GroundGuideSpeed): HTMLElement {
+  const w = speedWay(s);
+  if (!w) return styleLine(s);
+  return band('T', `${caption(s)} · To the Road`, ...w);
+}
+
+/** "Speed · Foot" style caption, for the Detail card's tiles. */
+export function speedCaption(s: GroundGuideSpeed, what = 'Speed'): string {
+  return caption(s, what);
+}
+
+/** "dry · day", for the Detail card's lines. */
+export function speedWhen(s: GroundGuideSpeed): string {
+  return when(s);
 }
 
 export function speedSection(v: GroundGuideVerdict, northDeg = 0): HTMLElement | null {
   const s = v.speed;
   if (!s || v.verdict === 'unknown' || s.card === 'off') return null;
   ensureGoingCss();
-  ensureStyle();
+  ensureSpeedCss();
   switch (s.card) {
     case 'grid': return styleGrid(s);
     case 'rose': return styleRose(s, northDeg);
@@ -290,9 +319,9 @@ registerBriefSection({
     const s = v.speed;
     if (!s) return null;
     ensureGoingCss();
-    ensureStyle();
+    ensureSpeedCss();
     const box = el('div');
-    box.append(headline(s));
+    box.append(speedHeadline(s));
     const g = el('div', 'ms-ggs-grid');
     g.append(el('span'), el('span', 'ms-ggs-h', 'Dry'), el('span', 'ms-ggs-h', 'After Rain'));
     const cell = (x: number | null) => el('span', 'ms-ggs-c', x === null ? '?' : x === 0 ? 'NO-GO' : `${x}`);
@@ -301,7 +330,7 @@ registerBriefSection({
     if (s.rays) {
       const row = el('div', 'ms-ggs-rose');
       row.style.marginTop = '8px';
-      row.append(speedRoseSvg(s.rays, s.rangeM, 110, 0), roseLines(s));
+      row.append(speedRoseSvg(s.rays, s.rangeM, 110, 0), speedRoseLines(s));
       box.append(row);
     }
     const lines = speedText(s).slice(1); // the headline is above

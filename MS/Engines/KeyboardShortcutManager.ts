@@ -37,6 +37,8 @@ export interface KeyboardShortcutDeps {
   stylusIsEngaged: () => boolean;
   stylusFinish: () => void;
   stylusCancel: () => void;
+  /** Ctrl+G: switch the Ground Guide on or off (with a toast that says the new state). */
+  toggleGroundGuide: () => void;
 }
 
 /**
@@ -60,6 +62,7 @@ export interface KeyboardShortcutDeps {
  *   Ctrl+V      Paste
  *   Ctrl+Shift+V    Paste with offset dialog
  *   Ctrl+D      Duplicate selection in place
+ *   Ctrl+G      Ground Guide on / off, with a toast that says the new state
  */
 export default class KeyboardShortcutManager {
   private _handler: ((e: KeyboardEvent) => void) | null = null;
@@ -143,6 +146,10 @@ export default class KeyboardShortcutManager {
             this.deps.activatePasteMode();
           }
         }
+      } else if (e.key === 'g' || e.key === 'G') {
+        // Ground Guide on / off; the engine shows a toast with the new state.
+        e.preventDefault();
+        this.deps.toggleGroundGuide();
       } else if (e.key === 'd' || e.key === 'D') {
         // Duplicate the current selection in place (no clipboard, no click).
         if ((settingsData as any).features?.clipboard !== false) {

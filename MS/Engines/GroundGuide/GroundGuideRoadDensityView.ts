@@ -202,7 +202,7 @@ export function densityRows(d: RoadDensityReading | null, lead: RoadDensityLead,
 }
 
 // ── D3 gauge ─────────────────────────────────────────────────────────────────
-function gauge(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
+export function densityGauge(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
   const box = el('div');
   const g = el('div', 'ms-grd-gauge');
   const track = el('div', 'ms-grd-track');
@@ -276,7 +276,7 @@ function exitRose(d: RoadDensityReading, size: number, centre: RoadDensityBand):
   return s;
 }
 
-function roseBlock(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
+export function densityRose(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
   const box = el('div');
   const row = el('div', 'ms-grd-rose');
   const t = el('div');
@@ -304,7 +304,7 @@ function roseBlock(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
 }
 
 // ── D5 make-up ───────────────────────────────────────────────────────────────
-function makeupBlock(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
+export function densityMakeup(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
   const box = el('div');
   const line = el('div', 'ms-grd-line');
   line.append(chipsNode(d, lead), ' ', figureNode(d, lead, ` · ${Math.round(d.totalKm)} km of road`));
@@ -352,9 +352,9 @@ export function densitySentence(d: RoadDensityReading, lead: RoadDensityLead): s
 export function densityCardBlock(d: RoadDensityReading | null | undefined, style: RoadDensityStyle, lead: RoadDensityLead): HTMLElement | null {
   if (!d || style === 'rows' || style === 'brief' || style === 'chip') return null;
   ensureRoadDensityCss();
-  if (style === 'gauge') return gauge(d, lead);
-  if (style === 'rose') return roseBlock(d, lead);
-  if (style === 'makeup') return makeupBlock(d, lead);
+  if (style === 'gauge') return densityGauge(d, lead);
+  if (style === 'rose') return densityRose(d, lead);
+  if (style === 'makeup') return densityMakeup(d, lead);
   const p = el('div', 'ms-grd-line', densitySentence(d, lead));
   return p;
 }
@@ -365,7 +365,7 @@ export function densityBrief(d: RoadDensityReading, kv: (rows: Array<[string, No
   const w = el('div');
   const g = kv(densityRows(d, 'both', true));
   if (g) w.append(g);
-  if (d.exits.length) w.append(roseBlock(d, 'both'));
+  if (d.exits.length) w.append(densityRose(d, 'both'));
   const note = el('div', 'ms-grd-soft');
   note.style.cssText = `margin-top:6px;border-radius:5px;padding:4px 7px;background:${DENSITY_COLOURS[d.lead.key][0]};color:${DENSITY_COLOURS[d.lead.key][1]}`;
   note.textContent = roadDensityNote(d);

@@ -138,7 +138,7 @@ function nearText(c: GroundGuideCover, f: CoverField): string | null {
 }
 
 /** "Mode needs Ground Obs: Poor · Fair 120 m E (Bund)" — only when the mode's need is short here. */
-function needLine(c: GroundGuideCover, profileLabel: string): HTMLElement | null {
+export function needLine(c: GroundGuideCover, profileLabel: string): HTMLElement | null {
   const f = c.focus;
   if (!f || c.levels[f] >= 2) return null;
   const line = el('div', 'ms-gc-soft');
@@ -148,7 +148,7 @@ function needLine(c: GroundGuideCover, profileLabel: string): HTMLElement | null
   return line;
 }
 
-function bankLine(c: GroundGuideCover): HTMLElement | null {
+export function bankLine(c: GroundGuideCover): HTMLElement | null {
   if (!c.bank) return null;
   const line = el('div', 'ms-gc-soft');
   line.append(el('b', undefined, c.bank.label), ` within ${fmtDistance(c.bank.withinM)}`);
@@ -156,7 +156,7 @@ function bankLine(c: GroundGuideCover): HTMLElement | null {
   return line;
 }
 
-function localLine(c: GroundGuideCover): HTMLElement | null {
+export function localLine(c: GroundGuideCover): HTMLElement | null {
   if (!c.local) return null;
   const line = el('div', 'ms-gc-soft');
   line.append('Area round it: cover ', el('b', undefined, COVER_WORD[c.local.cover]), ', concealment ', el('b', undefined, COVER_WORD[c.local.concealment]));
@@ -169,7 +169,7 @@ function localLine(c: GroundGuideCover): HTMLElement | null {
  * canopy may screen it from the air but the data cannot tell. The levels themselves are never raised (GroundGuideCover.ts).
  * When the mode's need line already names the nearest concealment, only the canopy caveat is added.
  */
-function aroundLine(c: GroundGuideCover): HTMLElement | null {
+export function aroundLine(c: GroundGuideCover): HTMLElement | null {
   const a = c.around;
   if (!a) return null;
   const needSaid = !!c.focus && (c.focus === 'ground' || c.focus === 'aerial') && c.levels[c.focus] < 2;
@@ -185,7 +185,7 @@ function aroundLine(c: GroundGuideCover): HTMLElement | null {
   return line.childNodes.length ? line : null;
 }
 
-function fourLines(c: GroundGuideCover): HTMLElement[] {
+export function fourLines(c: GroundGuideCover): HTMLElement[] {
   const out: HTMLElement[] = [];
   for (const kind of ['Cover', 'Concealment'] as const) {
     out.push(el('div', 'ms-gc-k', kind));
@@ -204,7 +204,8 @@ function styleLines(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
 }
 
 // ── C2 grid ───────────────────────────────────────────────────────────────
-function styleGrid(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
+/** The four levels as shaded tiles: Cover (direct, indirect) beside Concealment (ground, aerial). */
+export function coverGridTiles(c: GroundGuideCover): HTMLElement {
   const g = el('div', 'ms-gc-grid');
   g.append(el('div', 'ms-gc-k', 'Cover'), el('div', 'ms-gc-k', 'Concealment'));
   for (const pair of [['direct', 'ground'], ['indirect', 'aerial']] as const) {
@@ -216,6 +217,17 @@ function styleGrid(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
       g.append(t);
     }
   }
+  return g;
+}
+
+/** What the ground gives, in one line ("From Tree cover · Bund"), for under the tiles. */
+export function coverGivesLine(c: GroundGuideCover): HTMLElement {
+  const gives = [...new Set(COVER_FIELDS.map((f) => c.from[f]).filter((x): x is string => !!x))];
+  return el('div', 'ms-gc-soft', gives.length ? `From ${gives.join(' · ')}` : `${c.classLabel ?? 'This ground'} gives none`);
+}
+
+function styleGrid(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
+  const g = coverGridTiles(c);
   const gives = [...new Set(COVER_FIELDS.map((f) => c.from[f]).filter((x): x is string => !!x))];
   return section(
     'Cover & Concealment',
@@ -263,7 +275,8 @@ function eye(level: CoverLevel): SVGElement {
   return sv;
 }
 
-function styleIcons(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
+/** A shield filled to the cover from direct fire and an eye screened to the weaker concealment. */
+export function coverIconsRow(c: GroundGuideCover): HTMLElement {
   const conceal = Math.min(c.levels.ground, c.levels.aerial) as CoverLevel;
   const g = el('div', 'ms-gc-ico');
   const a = el('div');
@@ -275,11 +288,16 @@ function styleIcons(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
   bt.append(el('small', undefined, 'Concealment (Weaker)'), el('b', undefined, COVER_WORD[conceal]));
   b.append(eye(conceal), bt);
   g.append(a, b);
+  return g;
+}
+
+function styleIcons(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
+  const g = coverIconsRow(c);
   return section('Cover & Concealment', g, c.classLabel ? el('div', 'ms-gc-soft', `Ground: ${c.classLabel}`) : null, needLine(c, v.profileLabel), aroundLine(c));
 }
 
 // ── C5 nearest ────────────────────────────────────────────────────────────
-function nearestGrid(c: GroundGuideCover): HTMLElement {
+export function nearestGrid(c: GroundGuideCover): HTMLElement {
   const g = el('div', 'ms-gc-near');
   for (const f of COVER_FIELDS) {
     g.append(el('span', c.focus === f ? 'ms-need' : undefined, COVER_FIELD_LABEL[f]));
@@ -337,7 +355,7 @@ export function coverRose(c: GroundGuideCover, size: number, northDeg: number): 
   return sv;
 }
 
-function roseText(c: GroundGuideCover): HTMLElement {
+export function roseText(c: GroundGuideCover): HTMLElement {
   const t = el('div');
   const f = c.roseField;
   t.append(el('div', 'ms-gc-soft', `From ${COVER_FIELD_LABEL[f]}, ${fmtDistance(c.radiusM)}`));
@@ -356,9 +374,8 @@ function roseText(c: GroundGuideCover): HTMLElement {
   return t;
 }
 
-function styleRose(_v: GroundGuideVerdict, c: GroundGuideCover, northDeg: number): HTMLElement {
-  const box = el('div', 'ms-gc-rose');
-  box.append(coverRose(c, 64, northDeg), roseText(c));
+/** Key under the rose: Good, Fair, Poor dots. */
+export function coverRoseKey(): HTMLElement {
   const key = el('div', 'ms-gc-key');
   for (const lv of [3, 2, 1] as const) {
     const k = el('span');
@@ -367,6 +384,13 @@ function styleRose(_v: GroundGuideVerdict, c: GroundGuideCover, northDeg: number
     k.append(d, COVER_WORD[lv]);
     key.append(k);
   }
+  return key;
+}
+
+function styleRose(_v: GroundGuideVerdict, c: GroundGuideCover, northDeg: number): HTMLElement {
+  const box = el('div', 'ms-gc-rose');
+  box.append(coverRose(c, 64, northDeg), roseText(c));
+  const key = coverRoseKey();
   return section(c.focus ? `Cover Round It · ${FIELD_SHORT[c.roseField]}` : 'Cover Round It', box, key);
 }
 
@@ -379,7 +403,7 @@ function styleBlock(v: GroundGuideVerdict, c: GroundGuideCover, northDeg: number
 }
 
 /** "Underground: Bunker 1.2 km NE · Trench 2.4 km N" (caves, bunkers, trenches, tunnels); null when none is mapped near. */
-function shelterLine(c: GroundGuideCover, always = false): HTMLElement | null {
+export function shelterLine(c: GroundGuideCover, always = false): HTMLElement | null {
   if (!c.shelters?.length && !always) return null;
   const text = shelterText(c, fmtDistance);
   if (!text) return null;
@@ -390,7 +414,7 @@ function shelterLine(c: GroundGuideCover, always = false): HTMLElement | null {
 }
 
 /** "Ground · Valley floor · depression 420 m N, 16 m deep": where dead ground may be; not in the four levels. */
-function formLine(c: GroundGuideCover): HTMLElement | null {
+export function formLine(c: GroundGuideCover): HTMLElement | null {
   const t = formText(c, fmtDistance);
   if (!t) return null;
   const line = el('div', 'ms-gc-soft');
@@ -400,7 +424,7 @@ function formLine(c: GroundGuideCover): HTMLElement | null {
 }
 
 /** "Buildings · Medium (300-1,000 / km2) · 2 to 4 storeys": built-up cover at the point; not in the four levels. */
-function builtLine(c: GroundGuideCover): HTMLElement | null {
+export function builtLine(c: GroundGuideCover): HTMLElement | null {
   if (!c.built) return null;
   const line = el('div', 'ms-gc-soft');
   line.append(el('b', undefined, 'Buildings'), ` · ${builtText(c)}`);

@@ -91,6 +91,8 @@ export const GOING_CSS = `
 .ms-gv-pc{display:grid;grid-template-columns:auto 1fr;gap:2px 7px;font-size:11px;align-items:center}
 .ms-gv-pc b{font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
 .ms-gv-foot{display:flex;align-items:center;gap:7px;padding:5px 11px;border-top:1px solid rgba(255,255,255,.08);color:#9aa3ad;font-size:11px}
+.ms-gv-foot-l{margin-left:auto;display:inline-flex;gap:2px;opacity:.55}
+.ms-gv-foot-l>.ms-gv-kbd{min-width:14px;height:14px;font-size:8.5px;padding:0 2px}
 .ms-gv-kbd{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:4px;font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
 `;
 
@@ -168,7 +170,7 @@ export function sourceChip(g: GroundGuideGoingInfo): HTMLElement | null {
   return h('span', 'ms-gv-chip', soil.confidenceLabel ? `Modelled · ${soil.confidenceLabel}` : 'Modelled');
 }
 
-function legend(withReach: boolean): HTMLElement {
+export function roseLegend(withReach: boolean): HTMLElement {
   const lg = h('div', 'ms-gv-leg');
   for (const k of ['go', 'slow', 'nogo'] as const) {
     const it = h('span');
@@ -181,7 +183,7 @@ function legend(withReach: boolean): HTMLElement {
   return lg;
 }
 
-function blockedText(g: GroundGuideGoingInfo, max = 3, sep = ' · '): string {
+export function blockedText(g: GroundGuideGoingInfo, max = 3, sep = ' · '): string {
   const m = g.movement;
   if (!m) return '';
   const items: string[] = [];
@@ -407,7 +409,7 @@ export function goingCanvas(g: GroundGuideGoingInfo, px: number, northDeg: numbe
   return cv;
 }
 
-function mapShares(g: GroundGuideGoingInfo): HTMLElement | null {
+export function mapShares(g: GroundGuideGoingInfo): HTMLElement | null {
   const map = g.map;
   if (!map) return null;
   const n = [0, 0, 0];
@@ -501,7 +503,7 @@ export function movementRoseSection(g: GroundGuideGoingInfo, northDeg: number): 
   rate.style.color = RATING_COLOR[m.rating];
   txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 directions open to ${fmtDistance(m.rangeM / 2)}`), h('div', 'ms-gv-blk', blockedText(g)));
   box.append(roseSvg(g, 82, false, northDeg), txt);
-  return band('T', `Movement Freedom · ${seasonWord(g)}`, box, legend(true), g.pending ? h('div', 'ms-gv-soft', 'Still loading round the edges') : null);
+  return band('T', `Movement Freedom · ${seasonWord(g)}`, box, roseLegend(true), g.pending ? h('div', 'ms-gv-soft', 'Still loading round the edges') : null);
 }
 
 /** C · Soil Strength. */
@@ -586,10 +588,13 @@ export function goingSections(v: GroundGuideVerdict, card: GroundGuideCardOption
   return out.filter((x): x is HTMLElement => x !== null);
 }
 
-/** "G Ground Brief" cue at the foot of the card. */
-export function briefCue(): HTMLElement {
+/** "D Detail · G R O T B C K" cue at the foot of the card: D opens the Ground Detail, a letter opens it on that tab (K the Legend). */
+export function detailCue(): HTMLElement {
   ensureGoingCss();
   const f = h('div', 'ms-gv-foot');
-  f.append(h('span', 'ms-gv-kbd', 'G'), 'Ground Brief');
+  f.append(h('span', 'ms-gv-kbd', 'D'), 'Detail');
+  const letters = h('span', 'ms-gv-foot-l');
+  for (const l of ['G', 'R', 'O', 'T', 'B', 'C', 'K']) letters.append(h('span', 'ms-gv-kbd', l));
+  f.append(letters);
   return f;
 }

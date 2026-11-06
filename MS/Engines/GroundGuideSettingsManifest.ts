@@ -306,6 +306,18 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     help: 'Which symbols get the movement rose, exit strip and going map. The going lines and soil show for every symbol.',
   },
   {
+    path: ['groundGuide', 'card', 'cursor'],
+    label: 'Cursor card',
+    group: 'Card Sections',
+    type: 'enum',
+    options: [
+      { value: 'minimal', label: 'Minimal: verdict, Why, Inside, Nearest, Inter Gap Rule (D for the detail)' },
+      { value: 'full', label: 'Full: every card section switched on below as well' },
+    ],
+    help: 'Minimal keeps the card that follows the cursor short: the verdict, why (with the GO / SLOW-GO / NO-GO scale), how much is inside, the nearest ground with its compass, and the Inter Gap Rule. Everything else (G R O T B C, the Legend and the layers) is in the Ground Detail: press D, or a letter for its tab. Full shows every section switched on in this group on the cursor card as well, as before.',
+    keywords: ['cursor', 'card', 'minimal', 'full', 'detail', 'tabs', 'd key'],
+  },
+  {
     path: ['groundGuide', 'card', 'goingLines'],
     label: 'A · Going lines',
     group: 'Card Sections',
@@ -363,11 +375,11 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
   },
   {
     path: ['groundGuide', 'card', 'briefKey'],
-    label: 'D · G opens the Ground Brief',
+    label: 'D opens the Ground Detail',
     group: 'Card Sections',
     type: 'boolean',
-    help: 'While drawing, press G for the Ground Brief: soil with the texture triangle and strength gauge, going by mode, a larger movement rose and going map, and the going by month. G or Esc closes it.',
-    keywords: ['ground brief', 'brief', 'panel', 'g key'],
+    help: 'While drawing, press D for the Ground Detail: a wide card with a tab a letter (G Ground, R Roads, O Obstacles, T Trafficability, B Built-Up, C Cover) and K the Legend with the layers and data (L stays Lasso Select). Every dial, rose, minimap and gauge the card styles offer sits in its tab. A letter opens the detail on that tab; the same letter again, D or Esc closes it.',
+    keywords: ['ground detail', 'ground brief', 'brief', 'panel', 'd key', 'tabs', 'legend'],
   },
   // ── Trafficability (T): options on top of the going sections, kept side by side to compare ──
   {

@@ -690,6 +690,7 @@
       "movementFor": "units"
     },
     "card": {
+      "cursor": "minimal",
       "goingLines": true,
       "movementRose": true,
       "soilStrength": false,

@@ -152,13 +152,13 @@ function km(n: number): string {
   return fmtDistance(n * 1000).replace(/\.0(?=\s)/, '');
 }
 
-function chip(c: GroundGuidePopulationClass): HTMLElement {
+export function populationChip(c: GroundGuidePopulationClass): HTMLElement {
   const x = el('span', `ms-ggp-chip${c.dark ? ' ms-dk' : ''}`, c.label);
   x.style.background = c.color;
   return x;
 }
 
-function ln(k: string, ...v: Array<Node | string>): HTMLElement {
+export function populationLine(k: string, ...v: Array<Node | string>): HTMLElement {
   const d = el('div', 'ms-ggp-ln');
   const vv = el('span', 'ms-ggp-v');
   vv.append(...v);
@@ -166,23 +166,23 @@ function ln(k: string, ...v: Array<Node | string>): HTMLElement {
   return d;
 }
 
-function placeKind(p: GroundGuidePopulationPlace): string {
+export function placeKind(p: GroundGuidePopulationPlace): string {
   return titleCase(p.kindLabel);
 }
 
-function nearestLine(r: GroundGuidePopulationReading): HTMLElement {
+export function nearestLine(r: GroundGuidePopulationReading): HTMLElement {
   const p = r.places[0];
-  if (!p) return ln('Nearest', el('span', 'ms-ggb-soft', r.pending ? 'Loading places' : 'No named place within 10 km'));
+  if (!p) return populationLine('Nearest', el('span', 'ms-ggb-soft', r.pending ? 'Loading places' : 'No named place within 10 km'));
   const who = p.people ? `${placeKind(p)}, ${shortPeople(p.people)}` : placeKind(p);
-  return ln('Nearest', el('b', undefined, p.name), ` (${who}) · ${fmtDistance(p.distanceM)} ${p.compass}`);
+  return populationLine('Nearest', el('b', undefined, p.name), ` (${who}) · ${fmtDistance(p.distanceM)} ${p.compass}`);
 }
 
-function countLine(r: GroundGuidePopulationReading): HTMLElement {
-  return ln('People', el('b', undefined, fmtPeople(r.people)), ` within ${km(r.radiusKm)} · `, chip(r.cls));
+export function countLine(r: GroundGuidePopulationReading): HTMLElement {
+  return populationLine('People', el('b', undefined, fmtPeople(r.people)), ` within ${km(r.radiusKm)} · `, populationChip(r.cls));
 }
 
 /** Six-step density scale with the class lit. */
-function densityScale(c: GroundGuidePopulationClass): HTMLElement {
+export function densityScale(c: GroundGuidePopulationClass): HTMLElement {
   const s = el('div', 'ms-ggp-scale');
   for (const x of POPULATION_CLASSES) {
     const o = el('span', x === c ? `ms-on${x.dark ? ' ms-dk' : ''}` : undefined, x.key === 'denseRural' ? 'Dense' : x.label);
@@ -193,7 +193,7 @@ function densityScale(c: GroundGuidePopulationClass): HTMLElement {
 }
 
 /** Rings at 1, 3 and 5 km shaded by the density in each band, places as dots at their bearing. */
-function radar(r: GroundGuidePopulationReading, size: number): SVGSVGElement {
+export function radar(r: GroundGuidePopulationReading, size: number): SVGSVGElement {
   const s = svg(size, size, '-50 -50 100 100');
   const ring = (k: number) => r.rings.find((x) => x.km === k)?.people ?? 0;
   const band = (a: number, b: number) => (ring(b) - (a ? ring(a) : 0)) / (Math.PI * (b * b - a * a));
@@ -212,7 +212,7 @@ function radar(r: GroundGuidePopulationReading, size: number): SVGSVGElement {
   return s;
 }
 
-function ringList(r: GroundGuidePopulationReading, kms: number[]): HTMLElement {
+export function ringList(r: GroundGuidePopulationReading, kms: number[]): HTMLElement {
   const l = el('div', 'ms-ggp-list');
   for (const k of kms) {
     const x = r.rings.find((y) => y.km === k);
@@ -221,7 +221,7 @@ function ringList(r: GroundGuidePopulationReading, kms: number[]): HTMLElement {
   return l;
 }
 
-function ageBar(people: number, a: NonNullable<GroundGuidePopulationReading['ages']>): HTMLElement[] {
+export function ageBar(people: number, a: NonNullable<GroundGuidePopulationReading['ages']>): HTMLElement[] {
   const t = people || 1;
   const mid = Math.max(0, t - a.under15 - a.over65);
   const bar = el('div', 'ms-ggp-age');
@@ -278,7 +278,7 @@ function body(r: GroundGuidePopulationReading, style: GroundGuidePopulationCardS
     case 'rings': {
       const two = el('div', 'ms-ggp-two');
       const list = ringList(r, [1, 3, 5]);
-      list.append(el('span', undefined, 'Density'), chip(r.cls));
+      list.append(el('span', undefined, 'Density'), populationChip(r.cls));
       two.append(radar(r, 84), list);
       return [two, nearestLine(r)];
     }
@@ -287,7 +287,7 @@ function body(r: GroundGuidePopulationReading, style: GroundGuidePopulationCardS
       const big = el('div');
       big.append(el('div', 'ms-ggp-big', shortPeople(r.people)), el('div', 'ms-ggb-soft', `Within ${km(r.radiusKm)}`));
       const right = el('div');
-      right.append(chip(r.cls));
+      right.append(populationChip(r.cls));
       if (r.ages && r.people > 0) {
         right.append(' ', el('span', 'ms-ggb-soft', `Males 15 to 49: ${shortPeople(r.ages.males15_49)}`), ...ageBar(r.people, r.ages));
       } else right.append(el('div', 'ms-ggb-soft', r.people > 0 ? 'No age data' : `No people mapped within ${km(r.radiusKm)}`));
@@ -295,24 +295,24 @@ function body(r: GroundGuidePopulationReading, style: GroundGuidePopulationCardS
       return [two, nearestLine(r)];
     }
     case 'rose':
-      return [rose(r), nearestLine(r)];
+      return [populationRose(r), nearestLine(r)];
     case 'minimap':
-      return [minimap(r), nearestLine(r)];
+      return [populationMinimap(r), nearestLine(r)];
     case 'profile':
-      return [...profile(r), nearestLine(r)];
+      return [...populationProfile(r), nearestLine(r)];
     case 'icons':
-      return [...icons(r), nearestLine(r)];
+      return [...populationIcons(r), nearestLine(r)];
     case 'compare':
-      return [countLine(r), ...compare(r)];
+      return [countLine(r), ...populationCompare(r)];
     case 'block':
-      return blockRows(r, 4);
+      return populationBlockRows(r, 4);
     default:
       return [];
   }
 }
 
 /** Eight petals, one per compass sector, sized by the people in it, coloured by its density. */
-function rose(r: GroundGuidePopulationReading): HTMLElement {
+export function populationRose(r: GroundGuidePopulationReading): HTMLElement {
   const two = el('div', 'ms-ggp-two');
   const s = svg(84, 84, '-50 -50 100 100');
   add(s, 'circle', { r: 44, fill: 'rgba(255,255,255,.04)', stroke: 'rgba(255,255,255,.25)', 'stroke-width': 0.8, 'stroke-dasharray': '2 2' });
@@ -340,13 +340,13 @@ function rose(r: GroundGuidePopulationReading): HTMLElement {
     list.append(el('span', undefined, 'Most People'), el('b', undefined, `${dirs[order[0].i]} · ${shortPeople(order[0].p)}`));
     list.append(el('span', undefined, 'Fewest'), el('b', undefined, `${dirs[order[7].i]} · ${shortPeople(order[7].p)}`));
   }
-  list.append(el('span', undefined, 'Density'), chip(r.cls));
+  list.append(el('span', undefined, 'Density'), populationChip(r.cls));
   two.append(s, list);
   return two;
 }
 
 /** The 1 km cells round the cursor (11 × 11 km) as a small heat map, with the radius ring. */
-function minimap(r: GroundGuidePopulationReading): HTMLElement {
+export function populationMinimap(r: GroundGuidePopulationReading): HTMLElement {
   const two = el('div', 'ms-ggp-two');
   const n = r.grid.size;
   const px = 8;
@@ -364,13 +364,13 @@ function minimap(r: GroundGuidePopulationReading): HTMLElement {
   list.append(el('span', undefined, `Within ${km(r.radiusKm)}`), el('b', undefined, fmtPeople(r.people)));
   const here = r.grid.perKm2[Math.floor((n * n) / 2)];
   list.append(el('span', undefined, 'This Cell'), el('b', undefined, here >= 0 ? `${fmtPeople(here)} / km²` : 'None Mapped'));
-  list.append(el('span', undefined, 'Density'), chip(r.cls));
+  list.append(el('span', undefined, 'Density'), populationChip(r.cls));
   two.append(s, list);
   return two;
 }
 
 /** Density in distance bands out from the point: how fast it fills up going out. */
-function profile(r: GroundGuidePopulationReading): HTMLElement[] {
+export function populationProfile(r: GroundGuidePopulationReading): HTMLElement[] {
   const max = Math.max(...r.bands.map((b) => b.perKm2), 1);
   const bars = el('div', 'ms-ggp-bars');
   const labels = el('div', 'ms-ggp-barl');
@@ -390,17 +390,17 @@ function profile(r: GroundGuidePopulationReading): HTMLElement[] {
 }
 
 /** Ten person icons, as many lit as the density (log scale: all ten at 10,000 per km²). */
-function icons(r: GroundGuidePopulationReading): HTMLElement[] {
+export function populationIcons(r: GroundGuidePopulationReading): HTMLElement[] {
   const lit = Math.max(0, Math.min(10, Math.round(Math.log10(1 + r.perKm2) * 2.5)));
   const row = el('div', 'ms-ggp-icons');
   for (let i = 0; i < 10; i++) row.appendChild(personIcon(i < lit ? r.cls.color : 'rgba(255,255,255,.12)'));
   const head = el('div');
-  head.append(el('span', 'ms-ggb-b', `${fmtPeople(r.people)} People`), ` within ${km(r.radiusKm)} · `, chip(r.cls));
+  head.append(el('span', 'ms-ggb-b', `${fmtPeople(r.people)} People`), ` within ${km(r.radiusKm)} · `, populationChip(r.cls));
   return [head, row, el('div', 'ms-ggb-soft', `${fmtPeople(r.perKm2)} per km² · each figure is a step of about 2.5 times`)];
 }
 
 /** This area against the province's average and the density its typical resident lives at. */
-function compare(r: GroundGuidePopulationReading): HTMLElement[] {
+export function populationCompare(r: GroundGuidePopulationReading): HTMLElement[] {
   const p = r.province;
   if (!p) return [el('div', 'ms-ggb-soft', r.pending ? 'Loading places' : 'No province comparison here')];
   const rows: Array<[string, number]> = [[`This Area (${km(r.radiusKm)})`, r.perKm2], [`${p.name} Average`, p.perKm2], ['Typical Resident', p.typicalPerKm2]];
@@ -419,35 +419,39 @@ function compare(r: GroundGuidePopulationReading): HTMLElement[] {
   return [g, el('div', 'ms-ggb-soft', `${say} · per km², 2020 province figures`)];
 }
 
+/** The named places nearest, as a name / people / distance grid, or a soft line when none is named. */
+export function populationPlaces(r: GroundGuidePopulationReading, maxPlaces: number): HTMLElement {
+  const list = r.places.slice(0, maxPlaces);
+  if (!list.length) return el('span', 'ms-ggb-soft', r.pending ? 'Loading places' : 'None named within 10 km');
+  const g = el('div', 'ms-ggp-places');
+  for (const p of list) {
+    const n = el('span');
+    n.append(`${p.name} `, el('small', undefined, placeKind(p)));
+    g.append(n, el('span', undefined, p.people ? shortPeople(p.people) : '—'), el('span', undefined, `${fmtDistance(p.distanceM)} ${p.compass}`));
+  }
+  return g;
+}
+
 /** The full block; `maxPlaces` named places. Used by the `block` card style and by the Ground Brief. */
-function blockRows(r: GroundGuidePopulationReading, maxPlaces: number): HTMLElement[] {
+export function populationBlockRows(r: GroundGuidePopulationReading, maxPlaces: number): HTMLElement[] {
   const out: HTMLElement[] = [];
   const two = el('div', 'ms-ggp-two');
   two.append(radar(r, 84), ringList(r, [1, 2, 3, 5, 10]));
   out.push(two);
-  const d = ln('Density', chip(r.cls), ` ${fmtPeople(r.perKm2)} per km² within ${km(r.radiusKm)}`);
+  const d = populationLine('Density', populationChip(r.cls), ` ${fmtPeople(r.perKm2)} per km² within ${km(r.radiusKm)}`);
   out.push(d);
   if (r.ages && r.people > 0) {
     const a = el('div');
     a.append(...ageBar(r.people, r.ages));
-    out.push(ln('Age', a), ln('Males 15–49', `${fmtPeople(r.ages.males15_49)} within ${km(r.radiusKm)}`));
+    out.push(populationLine('Age', a), populationLine('Males 15–49', `${fmtPeople(r.ages.males15_49)} within ${km(r.radiusKm)}`));
   }
-  const list = r.places.slice(0, maxPlaces);
-  if (list.length) {
-    const g = el('div', 'ms-ggp-places');
-    for (const p of list) {
-      const n = el('span');
-      n.append(`${p.name} `, el('small', undefined, placeKind(p)));
-      g.append(n, el('span', undefined, p.people ? shortPeople(p.people) : '—'), el('span', undefined, `${fmtDistance(p.distanceM)} ${p.compass}`));
-    }
-    out.push(ln('Places', g));
-  } else out.push(ln('Places', el('span', 'ms-ggb-soft', r.pending ? 'Loading places' : 'None named within 10 km')));
-  if (r.province) out.push(...compare(r));
-  out.push(el('div', 'ms-ggp-src', sourceLine(r)));
+  out.push(populationLine('Places', populationPlaces(r, maxPlaces)));
+  if (r.province) out.push(...populationCompare(r));
+  out.push(el('div', 'ms-ggp-src', populationSourceLine(r)));
   return out;
 }
 
-function sourceLine(r: GroundGuidePopulationReading): string {
+export function populationSourceLine(r: GroundGuidePopulationReading): string {
   const rel = r.source.released ? `, released ${r.source.released.slice(0, 10)}` : '';
   return `${r.source.label}${rel}. Modelled from buildings, not a census; people where they live.`;
 }
@@ -489,7 +493,7 @@ export function populationSpoken(p: GroundGuidePopulation | null | undefined): s
 /** B · Built-Up Areas · Civil Considerations, for the Ground Brief: every figure, eight named places, sources. */
 export function populationBriefSection(r: GroundGuidePopulationReading): HTMLElement {
   const s = el('div');
-  s.append(...blockRows(r, 8));
+  s.append(...populationBlockRows(r, 8));
   return s;
 }
 
@@ -510,7 +514,7 @@ export function populationBriefText(r: GroundGuidePopulationReading): string[] {
     `   Places:     ${r.places.length ? r.places.slice(0, 5).map((p) => `${p.name} (${placeKind(p)}${p.people ? `, ${fmtPeople(p.people)}` : ''}) ${fmtDistance(p.distanceM)} ${p.compass}`).join('; ') : 'None named within 10 km'}`,
   );
   if (r.province) out.push(`   Province:   ${r.province.name} average ${fmtPeople(r.province.perKm2)} per km²; typical resident ${fmtPeople(r.province.typicalPerKm2)} per km² (2020)`);
-  out.push(`   Source:     ${sourceLine(r)}`);
+  out.push(`   Source:     ${populationSourceLine(r)}`);
   return out;
 }
 
