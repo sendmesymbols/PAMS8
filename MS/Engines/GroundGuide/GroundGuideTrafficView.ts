@@ -27,6 +27,7 @@
 import { fmtDistance } from './GroundGuideEvaluator';
 import { registerBriefSection } from './GroundGuideBrief';
 import { band, ensureGoingCss, goingScale, roseSvg, seasonIcon } from './GroundGuideGoingView';
+import { compassNode } from './GroundGuideNorth';
 import type { TrafficRoad, TrafficRoadRef } from './GroundGuideTrafficability';
 import type { GoingStep, GroundGuideCardOptions, GroundGuideVerdict } from './GroundGuideTypes';
 
@@ -224,6 +225,17 @@ export function moveText(v: GroundGuideVerdict): string | null {
   return blocked ? `${base} · ${blocked.compass} blocked at ${fmtDistance(blocked.reachM)} (${blocked.blockedBy!.toLowerCase()})` : base;
 }
 
+/** `moveText` as nodes: the blocked direction carries its arrow (exact bearing), which turns with the map. */
+export function moveNode(v: GroundGuideVerdict): DocumentFragment | null {
+  const m = v.going?.movement;
+  if (!m) return null;
+  const f = document.createDocumentFragment();
+  const blocked = m.sectors.filter((x) => x.blockedBy && x.reachM < m.rangeM).sort((a, b) => a.reachM - b.reachM)[0];
+  f.append(`${m.open} of ${m.sectors.length} directions open to ${fmtDistance(m.rangeM)}`);
+  if (blocked) f.append(' · ', compassNode(blocked.compass, blocked.bearingDeg), ` blocked at ${fmtDistance(blocked.reachM)} (${blocked.blockedBy!.toLowerCase()})`);
+  return f;
+}
+
 /** "SLOW-GO  after rain" (or "GO  now, dry") and, in the dry season, what rain does. */
 export function trafficHeadline(t: TView, what = ''): HTMLElement {
   const h = el('div', 'ms-ggb-thead');
@@ -239,8 +251,12 @@ function blockBand(v: GroundGuideVerdict, t: TView): HTMLElement {
   kv.append(el('span', 'ms-ggb-tk', 'Why'), el('span', undefined, t.why));
   const road = roadBlock(t);
   if (road) kv.append(el('span', 'ms-ggb-tk', t.road!.caption === 'Landing' ? 'Land' : 'Road'), road);
-  const move = moveText(v);
-  if (move) kv.append(el('span', 'ms-ggb-tk', 'Move'), el('span', undefined, move));
+  const move = moveNode(v);
+  if (move) {
+    const span = el('span');
+    span.append(move);
+    kv.append(el('span', 'ms-ggb-tk', 'Move'), span);
+  }
   return band('T', `Trafficability · ${t.short}`, trafficHeadline(t), kv);
 }
 
@@ -344,7 +360,9 @@ function blockRose(v: GroundGuideVerdict, t: TView, northDeg: number): HTMLEleme
     grp.append(svgEl('rect', { x: x - 5, y: y - 5, width: 10, height: 10, rx: 2, fill: m.msr ? '#d64541' : '#f3f5f7', stroke: '#1b1f25', 'stroke-width': 1.5 }));
   }
   const text = el('div');
-  text.append(el('div', 'ms-ggb-tbig', WORD[t.now]), el('div', 'ms-ggb-soft', moveText(v) ?? ''));
+  const moveLine = el('div', 'ms-ggb-soft');
+  moveLine.append(moveNode(v) ?? '');
+  text.append(el('div', 'ms-ggb-tbig', WORD[t.now]), moveLine);
   if (m) {
     const r = el('div', 'ms-ggb-troad');
     r.style.marginTop = '4px';
@@ -384,7 +402,12 @@ function blockTabs(v: GroundGuideVerdict, t: TView): HTMLElement {
     const ci = (n: number | null) => (n === null ? '?' : n >= 127 ? '127+' : String(n)); // the layer caps at 127
     body.push(kv, soil && veh ? el('div', 'ms-ggb-soft', `Cone index ${ci(soil.ciDry)} dry, ${ci(soil.ciWet)} after rain · ${t.short}: ${veh.vci[1]} for GO, ${veh.vci[0]} to move`) : el('div', 'ms-ggb-soft', t.why));
   }
-  if (tab === 2) body.push(roadBlock(t) ?? el('div', 'ms-ggb-soft', 'Road line is off'), moveText(v) ? el('div', 'ms-ggb-soft', moveText(v)!) : null);
+  if (tab === 2) {
+    const mv = moveNode(v);
+    const line = mv ? el('div', 'ms-ggb-soft') : null;
+    line?.append(mv!);
+    body.push(roadBlock(t) ?? el('div', 'ms-ggb-soft', 'Road line is off'), line);
+  }
   if (tab === 3) {
     const cal = blockCalendar(v, t);
     cal.querySelector(':scope > .ms-ggb-cap')?.remove();

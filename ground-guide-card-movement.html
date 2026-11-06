@@ -530,7 +530,7 @@ function render() {
         <div class="mv-blk">${blockedText(fr).replace(/ · /g, '<br>')}</div></div></div>
       <div class="mv-map" style="margin-top:10px"><canvas width="136" height="136" data-bmap="1"></canvas><div class="ms-ggb-soft">Going all round the point to 2 km (north up).</div></div></div></div>
     <div class="gx-bs"><span class="gx-badge" data-l="T">T</span><div><h4>Going by Month</h4>${ribbonHtml(s, 54)}</div></div>
-    <div class="gx-src">Soil: SoilGrids 2.0 (250 m, modelled, 2020) or NCGDB 1:50k soil areas · Going: rules.json profiles + soilStrength (starting proposal) · Illustrative sample</div>
+    <div class="gx-src">Soil: SoilGrids 2.0 (250 m, modelled, 2020) or 1:50k map soil areas · Going: rules.json profiles + soilStrength (starting proposal) · Illustrative sample</div>
   </div>`;
   const bc = document.querySelector('canvas[data-bmap]'); if (bc) drawMap(bc, s, 136, 33);
 }

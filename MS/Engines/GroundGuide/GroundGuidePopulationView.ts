@@ -13,6 +13,7 @@
 
 import { registerBriefSection } from './GroundGuideBrief';
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
+import { compassNode } from './GroundGuideNorth';
 import { POPULATION_CLASSES, populationClass } from './GroundGuidePopulation';
 import type {
   GroundGuidePopulation,
@@ -194,7 +195,9 @@ export function densityScale(c: GroundGuidePopulationClass): HTMLElement {
 
 /** Rings at 1, 3 and 5 km shaded by the density in each band, places as dots at their bearing. */
 export function radar(r: GroundGuidePopulationReading, size: number): SVGSVGElement {
-  const s = svg(size, size, '-50 -50 100 100');
+  const root = svg(size, size, '-50 -50 100 100');
+  // Places at their map bearing: the group turns with the map (data-gv-rose), the N stays upright.
+  const s = add(root, 'g', { 'data-gv-rose': 0 });
   const ring = (k: number) => r.rings.find((x) => x.km === k)?.people ?? 0;
   const band = (a: number, b: number) => (ring(b) - (a ? ring(a) : 0)) / (Math.PI * (b * b - a * a));
   for (const [outer, inner] of [[5, 3], [3, 1], [1, 0]] as const) {
@@ -208,8 +211,8 @@ export function radar(r: GroundGuidePopulationReading, size: number): SVGSVGElem
     add(s, 'circle', { cx: (Math.sin(a) * d).toFixed(1), cy: (-Math.cos(a) * d).toFixed(1), r: rad.toFixed(1), fill: '#1b1f25', stroke: '#fff', 'stroke-width': 0.9 });
   }
   add(s, 'path', { d: 'M-4 0H4M0-4V4', stroke: '#fff', 'stroke-width': 1.6 });
-  add(s, 'text', { x: 0, y: -46.5, 'text-anchor': 'middle', 'font-size': 8, fill: '#cfd5db', 'font-family': 'system-ui' }, 'N');
-  return s;
+  add(s, 'text', { x: 0, y: -46.5, class: 'ms-gg-up', 'text-anchor': 'middle', 'font-size': 8, fill: '#cfd5db', 'font-family': 'system-ui' }, 'N');
+  return root;
 }
 
 export function ringList(r: GroundGuidePopulationReading, kms: number[]): HTMLElement {
@@ -314,7 +317,9 @@ function body(r: GroundGuidePopulationReading, style: GroundGuidePopulationCardS
 /** Eight petals, one per compass sector, sized by the people in it, coloured by its density. */
 export function populationRose(r: GroundGuidePopulationReading): HTMLElement {
   const two = el('div', 'ms-ggp-two');
-  const s = svg(84, 84, '-50 -50 100 100');
+  const root = svg(84, 84, '-50 -50 100 100');
+  // Petals by compass sector: the group turns with the map (data-gv-rose), the N stays upright.
+  const s = add(root, 'g', { 'data-gv-rose': 0 });
   add(s, 'circle', { r: 44, fill: 'rgba(255,255,255,.04)', stroke: 'rgba(255,255,255,.25)', 'stroke-width': 0.8, 'stroke-dasharray': '2 2' });
   const max = Math.max(...r.sectors, 1);
   const sectorArea = (Math.PI * r.radiusKm * r.radiusKm) / 8;
@@ -331,41 +336,54 @@ export function populationRose(r: GroundGuidePopulationReading): HTMLElement {
     });
   });
   add(s, 'circle', { r: 2.6, fill: '#fff' });
-  add(s, 'text', { x: 0, y: -45.5, 'text-anchor': 'middle', 'font-size': 8, fill: '#cfd5db', 'font-family': 'system-ui' }, 'N');
+  add(s, 'text', { x: 0, y: -45.5, class: 'ms-gg-up', 'text-anchor': 'middle', 'font-size': 8, fill: '#cfd5db', 'font-family': 'system-ui' }, 'N');
   const order = r.sectors.map((p, i) => ({ p, i })).sort((a, b) => b.p - a.p);
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   const list = el('div', 'ms-ggp-list');
   list.append(el('span', undefined, `Within ${km(r.radiusKm)}`), el('b', undefined, fmtPeople(r.people)));
   if (r.people > 0) {
-    list.append(el('span', undefined, 'Most People'), el('b', undefined, `${dirs[order[0].i]} · ${shortPeople(order[0].p)}`));
-    list.append(el('span', undefined, 'Fewest'), el('b', undefined, `${dirs[order[7].i]} · ${shortPeople(order[7].p)}`));
+    // The sector's compass point with its arrow (sector i is centred on i × 45°), which turns with the map.
+    const most = el('b');
+    most.append(compassNode(dirs[order[0].i], order[0].i * 45), ` · ${shortPeople(order[0].p)}`);
+    const least = el('b');
+    least.append(compassNode(dirs[order[7].i], order[7].i * 45), ` · ${shortPeople(order[7].p)}`);
+    list.append(el('span', undefined, 'Most People'), most);
+    list.append(el('span', undefined, 'Fewest'), least);
   }
   list.append(el('span', undefined, 'Density'), populationChip(r.cls));
-  two.append(s, list);
+  two.append(root, list);
   return two;
 }
+
+let clipSeq = 0;
 
 /** The 1 km cells round the cursor (11 × 11 km) as a small heat map, with the radius ring. */
 export function populationMinimap(r: GroundGuidePopulationReading): HTMLElement {
   const two = el('div', 'ms-ggp-two');
   const n = r.grid.size;
   const px = 8;
-  const s = svg(n * px, n * px, `0 0 ${n * px} ${n * px}`);
+  const c = (n * px) / 2;
+  const root = svg(n * px, n * px, `0 0 ${n * px} ${n * px}`);
+  // Round, so it can turn with the map (data-gv-rose) without its corners swinging out; N marks the top of the grid.
+  const clip = `ms-ggp-clip-${++clipSeq}`;
+  add(add(add(root, 'defs', {}), 'clipPath', { id: clip }), 'circle', { cx: c, cy: c, r: c });
+  const s = add(add(root, 'g', { 'clip-path': `url(#${clip})` }), 'g', { 'data-gv-rose': c });
   add(s, 'rect', { width: n * px, height: n * px, fill: '#2a3026' });
   r.grid.perKm2.forEach((v, i) => {
     if (v < 1) return;
     add(s, 'rect', { x: (i % n) * px, y: Math.floor(i / n) * px, width: px - 0.5, height: px - 0.5, fill: populationClass(v).color });
   });
-  const c = (n * px) / 2;
   const rr = Math.min(c - 1, (r.radiusKm / r.grid.cellKm) * px);
   add(s, 'circle', { cx: c, cy: c, r: rr.toFixed(1), fill: 'none', stroke: '#8ec1ea', 'stroke-width': 1.4, 'stroke-dasharray': '3 2' });
   add(s, 'path', { d: `M${c - 4} ${c}H${c + 4}M${c} ${c - 4}V${c + 4}`, stroke: '#fff', 'stroke-width': 1.6 });
+  add(s, 'text', { x: c, y: 9, class: 'ms-gg-up', 'text-anchor': 'middle', 'font-size': 8, 'font-weight': 700, fill: '#fff', 'font-family': 'system-ui' }, 'N');
+  add(root, 'circle', { cx: c, cy: c, r: c - 0.6, fill: 'none', stroke: 'rgba(255,255,255,.3)' });
   const list = el('div', 'ms-ggp-list');
   list.append(el('span', undefined, `Within ${km(r.radiusKm)}`), el('b', undefined, fmtPeople(r.people)));
   const here = r.grid.perKm2[Math.floor((n * n) / 2)];
   list.append(el('span', undefined, 'This Cell'), el('b', undefined, here >= 0 ? `${fmtPeople(here)} / km²` : 'None Mapped'));
   list.append(el('span', undefined, 'Density'), populationChip(r.cls));
-  two.append(s, list);
+  two.append(root, list);
   return two;
 }
 

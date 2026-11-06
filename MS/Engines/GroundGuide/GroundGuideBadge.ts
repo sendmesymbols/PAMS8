@@ -17,7 +17,8 @@
  */
 
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
-import { detailCue, goingSections, orientRoses } from './GroundGuideGoingView';
+import { detailCue, goingSections } from './GroundGuideGoingView';
+import { arrowCompass, dial, dirArrow, orientNorth } from './GroundGuideNorth';
 import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
 import { decorateSpeed } from './GroundGuideSpeedView';
@@ -122,52 +123,6 @@ function icon(name: string, size = 15, color?: string): SVGElement {
     svg.appendChild(p);
   }
   return svg;
-}
-
-/**
- * A small compass for the view as it is on screen. `northDeg` is where north points on screen (clockwise from up):
- * the ring turns to it, with N kept upright, and the needle points `bearingDeg` (clockwise from north) from there,
- * so it still points at the feature when the map is rotated.
- */
-function dial(bearingDeg: number, color: string, northDeg: number): SVGElement {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('width', '44');
-  svg.setAttribute('height', '44');
-  svg.setAttribute('viewBox', '0 0 44 44');
-  svg.setAttribute('aria-hidden', 'true'); // the row's text already gives the distance and compass point
-  svg.dataset.pbDial = String(Math.round(bearingDeg));
-  const add = (parent: Element, tag: string, attrs: Record<string, string>, text?: string): SVGElement => {
-    const e = document.createElementNS(SVG_NS, tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    if (text) e.textContent = text;
-    parent.appendChild(e);
-    return e as SVGElement;
-  };
-  const ring = add(svg, 'g', { 'data-pb-ring': '' });
-  add(ring, 'circle', { cx: '22', cy: '22', r: '20.5', fill: 'rgba(255,255,255,.06)', stroke: 'rgba(255,255,255,.3)', 'stroke-width': '1.5' });
-  add(ring, 'text', { x: '22', y: '12', 'text-anchor': 'middle', 'font-size': '11', fill: '#9aa3ad', 'font-family': 'system-ui,Segoe UI,Arial,sans-serif', 'data-pb-n': '' }, 'N');
-  for (const [x1, y1, x2, y2] of [[41.5, 22, 37.5, 22], [22, 41.5, 22, 37.5], [2.5, 22, 6.5, 22]]) {
-    add(ring, 'line', { x1: String(x1), y1: String(y1), x2: String(x2), y2: String(y2), stroke: '#9aa3ad', 'stroke-width': '1.5' });
-  }
-  add(svg, 'polygon', {
-    points: '22,14 27.5,30 22,26 16.5,30',
-    fill: color,
-    stroke: color,
-    'stroke-width': '1.5',
-    'stroke-linejoin': 'round',
-    'data-pb-needle': '',
-  });
-  orientDial(svg, northDeg);
-  return svg;
-}
-
-/** Turn an existing dial to a new on-screen north, without rebuilding it. */
-function orientDial(svg: SVGElement, northDeg: number): void {
-  const north = Math.round(northDeg);
-  const bearing = Number(svg.dataset.pbDial) || 0;
-  svg.querySelector('[data-pb-ring]')?.setAttribute('transform', `rotate(${north} 22 22)`);
-  svg.querySelector('[data-pb-n]')?.setAttribute('transform', `rotate(${-north} 22 8)`); // keep the letter upright, turning about its own centre so it stays on the north line
-  svg.querySelector('[data-pb-needle]')?.setAttribute('transform', `rotate(${north + bearing} 22 22)`);
 }
 
 function el(tag: string, cls?: string, text?: string): HTMLElement {
@@ -332,6 +287,7 @@ export function itgSection(v: GroundGuideVerdict): HTMLElement | null {
     where.append(
       el('span', c.level === 2 ? 'ms-ggb-strong' : undefined, c.level === 2 ? 'Strong Candidate (Check as MITG)' : 'ITG Candidate'),
       ` · ${fmtDistance(c.distanceM)} ${c.compass}`,
+      dirArrow(c.bearingDeg) ?? '',
     );
     const item = el('div', 'ms-ggb-itg');
     item.append(head, where, el('div', 'ms-ggb-soft', c.reasonLabels.map(titleCase).join(' · ')));
@@ -481,13 +437,11 @@ export class GroundGuideBadge {
     this._card = { ...card };
   }
 
-  /** The map was rotated: `northDeg` is where north now points on screen. Turns the dial in place; the card is not rebuilt. */
+  /** The map was rotated: `northDeg` is where north now points on screen. Turns the dial, roses, maps and arrows in place; the card is not rebuilt. */
   setNorth(northDeg: number): void {
     if (northDeg === this._north) return;
     this._north = northDeg;
-    const d = this._el?.querySelector('[data-pb-dial]');
-    if (d) orientDial(d as SVGElement, northDeg);
-    if (this._el) orientRoses(this._el, northDeg);
+    orientNorth(this._el, northDeg); // dials, roses, canvases and (through --gg-north) every arrow on the card
   }
 
   show(v: GroundGuideVerdict): void {
@@ -514,6 +468,11 @@ export class GroundGuideBadge {
     const rows = this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills) : this._minimalRows(v, pct);
     const body = this._body!;
     body.replaceChildren(...rows);
+    // Every picture and compass point on the card follows the map (GroundGuideNorth).
+    // On the card root, not the body: orientNorth sets --gg-north on what it is given, and a stale copy on the body
+    // would hide the root's value from the arrows when setNorth later turns the root.
+    orientNorth(el0, this._north);
+    arrowCompass(body);
     body.style.display = rows.length ? 'block' : 'none';
     const civilSaid = populationSpoken(v.population);
     this._say(civilSaid ? `${spokenFor(v)} ${civilSaid}.` : spokenFor(v));

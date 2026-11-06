@@ -426,7 +426,7 @@ ul.pg-l li{margin:3px 0}
     <li><b>Population</b> near a place (<code class="pg-c">wp</code>, <code class="pg-c">wc</code>) is a WorldPop 2020 estimate, not a census count: say "WorldPop Estimate". Official population only where recorded.</li>
     <li><b>Huts</b> are mapped 1:50k symbols (kacha / mud dwellings), not a building survey.</li>
     <li><b>Climate</b> is WorldClim 1970 to 2000 normals on 5′ cells (about 9 km): an average month, not a forecast.</li>
-    <li>Not in the NCGDB: schools, government offices, banks and named markets (77 markets, no names). Schools, banks and government offices come from GeoNames (feature kinds 147 to 149, <code class="pg-c">src: gn</code>) and say so; the pipeline step is written but the current bundle build does not carry them yet.</li>
+    <li>Not in the 1:50k map: schools, government offices, banks and named markets (77 markets, no names). Schools, banks and government offices come from GeoNames (feature kinds 147 to 149, <code class="pg-c">src: gn</code>) and say so; the pipeline step is written but the current bundle build does not carry them yet.</li>
     <li><b>Routes</b> (routing from A to B) are not built: <code class="pg-c">routes.json</code> gives named roads with from, to, km, load range, closure and condition only. Any route line is "Planned".</li>
     <li>Road and rail lines also cover the Indian-administered side, because the data extent is the whole relief-map sheet.</li>
   </ul>
@@ -1019,7 +1019,7 @@ function briefLine(mode, k, v){
   return v;
 }
 var BRIEF_META = 'Sheet 44 I/1 · Kamoke Tehsil · Gujranwala District';
-var BRIEF_SOURCES = 'Sources: Terrain Bundle (Data Version 2): NCGDB, SoilGrids 2.0 (Modelled), WorldClim 2.1, WorldPop 2020 (Estimate), GeoNames; Rules (Proposal); Plan Obstacles (Live). Load class is recorded on about 31 % of road segments, condition on about 4 %.';
+var BRIEF_SOURCES = 'Sources: Terrain Bundle (Data Version 2): 1:50k map, SoilGrids 2.0 (Modelled), WorldClim 2.1, WorldPop 2020 (Estimate), GeoNames; Rules (Proposal); Plan Obstacles (Live). Load class is recorded on about 31 % of road segments, condition on about 4 %.';
 function briefText(modeKey){
   var m = modeBy(modeKey), out = ['GROUND BRIEF · ' + m.label + ' · ' + BRIEF_META, ''];
   'GROTBC'.split('').forEach(function(l){

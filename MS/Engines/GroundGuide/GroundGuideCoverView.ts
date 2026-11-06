@@ -409,7 +409,7 @@ export function shelterLine(c: GroundGuideCover, always = false): HTMLElement | 
   if (!text) return null;
   const line = el('div', 'ms-gc-soft');
   line.append(el('b', undefined, 'Underground'), ` · ${text}`);
-  line.title = 'Mapped caves, bunkers, trenches and road or railway tunnels (NCGDB). Points on the map: they do not change the levels above.';
+  line.title = 'Mapped caves, bunkers, trenches and road or railway tunnels. Points on the map: they do not change the levels above.';
   return line;
 }
 

@@ -212,7 +212,7 @@ export function roadDensityHeadline(d: RoadDensityReading): string {
   return `${d.band.label} · ${fmtDensity(d.density)} km/km² within ${fmtRadius(d.radiusM)}${aw}`;
 }
 
-/** The make-up: "14 km all-weather · 6 km tracks · MSR 4.2 km · tankable 3.1 km". */
+/** The route classification: "14 km all-weather · 6 km tracks · MSR 4.2 km · tankable 3.1 km". */
 export function roadDensityMakeUp(d: RoadDensityReading): string | null {
   if (d.band.key === 'none') return null;
   return [

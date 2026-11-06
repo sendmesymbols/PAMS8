@@ -223,7 +223,7 @@ function exitsValue(d){ if(d.band.key==='none' && !d.exits.length) return null; 
   var allAw=d.exits.every(function(e){return e.aw;}); var aw= allAw? ' · all all-weather' : d.awExitDirs.length? ' · all-weather '+d.awExitDirs.join(', ') : ' · none all-weather';
   var msr=d.exits.filter(function(e){return e.msr;}).length; return n+': '+d.exitDirs.join(', ')+aw+(msr? ' · '+msr+' on an MSR':''); }
 function makeUp(d){ if(d.band.key==='none') return null; return [km(d.allWeatherKm)+' km all-weather', d.fairKm>0.05? km(d.fairKm)+' km tracks / fair-weather':null, d.msrKm>0.05? 'MSR '+km(d.msrKm)+' km':'no MSR', d.tankableKm>0.05? 'tankable '+km(d.tankableKm)+' km':null].filter(Boolean).join(' · '); }
-function densityRows(d, lead, full){ var rows=[['Density', densityValue(d,lead)]]; if(full) rows.push(['Make-up', makeUp(d)]); rows.push(['Ways out', exitsValue(d)]); return rows; }
+function densityRows(d, lead, full){ var rows=[['Density', densityValue(d,lead)]]; if(full) rows.push(['Route Class', makeUp(d)]); rows.push(['Ways out', exitsValue(d)]); return rows; }
 function kv(rows){ var g=el('div','ms-gs-kv'); rows.forEach(function(r){ if(r[1]===null||r[1]==='') return; var v=el('div','ms-gs-v'); v.append(r[1]); g.append(el('div','ms-gs-k',r[0]), v); }); return g.childElementCount? g : null; }
 
 function gauge(d, lead){ var box=el('div'), g=el('div','ms-grd-gauge'), tr=el('div','ms-grd-track'); var steps=BANDS.filter(function(x){return x.key!=='none';});
@@ -270,12 +270,12 @@ function card(sec){ var c=el('div','ms-ground-guide-badge'); c.dataset.verdict='
 
 var STYLES = [
  {k:'rows', n:'D1', name:'Rows', rec:true, size:'one line: +0 px · lines: ~35 px', desc:'In one-line R it adds "road density dense" to the line. With a few lines each: a Density row (band chip, km/km², all-weather) and a Ways out row (count, directions, how many all-weather, how many on an MSR).'},
- {k:'chip', n:'D2', name:'Band Chip Only', size:'+0 px', desc:'Just the coloured band chip on the R line. The smallest: the figures, ways out and make-up stay in the Brief. Hover the chip for what the band means.'},
+ {k:'chip', n:'D2', name:'Band Chip Only', size:'+0 px', desc:'Just the coloured band chip on the R line. The smallest: the figures, ways out and route classification stay in the Brief. Hover the chip for what the band means.'},
  {k:'gauge', n:'D3', name:'Gauge', size:'~50 px', desc:'A 0–3 km/km² bar in the band colours. ▼ marks every road and ▲ marks the all-weather roads, so the gap tracks make is easy to see.'},
  {k:'rose', n:'D4', name:'Ways-Out Rose', size:'~80 px', desc:'Eight wedges round the point: which way roads leave the circle. Longer wedges mean more roads; red is an MSR, green all-weather, amber fair-weather only. It lists the directions with no road out.'},
  {k:'makeup', n:'D5', name:'Make-Up Bar', size:'~50 px', desc:'How much of the network is all-weather and how much is tracks, with MSR and tankable km. Answers "what will carry my vehicles?" more than "how many routes?".'},
  {k:'sentence', n:'D6', name:'One Sentence', size:'~45 px', desc:'Band, figure, ways out and what it means for movement in plain words. Reads well; takes the longest to scan.'},
- {k:'brief', n:'D7', name:'Ground Brief Only', size:'+0 px', desc:'Nothing on the card. The Brief (G) has the rows, make-up, rose and the meaning. Keeps the card short; you have to open the Brief to see it.'}
+ {k:'brief', n:'D7', name:'Ground Brief Only', size:'+0 px', desc:'Nothing on the card. The Brief (G) has the rows, route classification, rose and the meaning. Keeps the card short; you have to open the Brief to see it.'}
 ];
 
 function seg(id, items, key){ var h=document.getElementById(id); h.textContent=''; items.forEach(function(it){ var bt=el('button',null,it[1]); bt.type='button'; bt.setAttribute('aria-pressed', String(state[key]===it[0])); bt.onclick=function(){ state[key]=it[0]; render(); }; h.append(bt); }); }

@@ -10,7 +10,7 @@
  *     chip      D2  The band chip alone on the R line
  *     gauge     D3  A 0-3 km/km² bar in the band colours, every road and all-weather marked
  *     rose      D4  Eight wedges round the point: where roads leave the circle, coloured MSR / all-weather / fair
- *     makeup    D5  A bar of all-weather and fair-weather km, with MSR and tankable km
+ *     makeup    D5  Route classification: a bar of all-weather and fair-weather km, with MSR and tankable km
  *     sentence  D6  One sentence: band, figure, ways out and what it means
  *     brief     D7  Nothing on the card; the Ground Brief only
  *
@@ -22,6 +22,7 @@
  * The Ground Brief always shows it in full. DOM nodes and textContent only. CSS injected once.
  */
 
+import { compassNode, joinNodes } from './GroundGuideNorth';
 import {
   awDiffers,
   fmtDensity,
@@ -191,12 +192,12 @@ export function exitsValue(d: RoadDensityReading): string | null {
   return `${n}: ${d.exitDirs.join(', ')}${aw}${msr ? ` · ${msr} on an MSR` : ''}`;
 }
 
-/** Label / value rows for the R section's grid (`full` adds the make-up, for the Brief). */
+/** Label / value rows for the R section's grid (`full` adds the route classification, for the Brief). */
 export function densityRows(d: RoadDensityReading | null, lead: RoadDensityLead, full = false): Array<[string, Node | string | null]> {
   if (!d) return [];
   return [
     ['Density', densityValue(d, lead)],
-    ...(full ? ([['Make-up', roadDensityMakeUp(d)]] as Array<[string, Node | string | null]>) : []),
+    ...(full ? ([['Route Class', roadDensityMakeUp(d)]] as Array<[string, Node | string | null]>) : []),
     ['Ways out', exitsValue(d)],
   ];
 }
@@ -252,7 +253,10 @@ export function densityGauge(d: RoadDensityReading, lead: RoadDensityLead): HTML
 // ── D4 rose ──────────────────────────────────────────────────────────────────
 function exitRose(d: RoadDensityReading, size: number, centre: RoadDensityBand): SVGElement {
   const cx = size / 2, r0 = size * 0.16, R = size / 2 - 3;
-  const s = sv('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}` });
+  const svgEl = sv('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}` });
+  // The wedges are in map bearings; the group turns with the map (data-gv-rose, GroundGuideGoingView.orientRoses).
+  const s = sv('g', { 'data-gv-rose': cx });
+  svgEl.append(s);
   s.append(sv('circle', { cx, cy: cx, r: R, fill: 'none', stroke: 'rgba(255,255,255,.12)' }));
   const P = (a: number, r: number) => `${(cx + r * Math.sin(a)).toFixed(1)} ${(cx - r * Math.cos(a)).toFixed(1)}`;
   const sectors = COMPASS8.map(() => ({ n: 0, msr: false, aw: false }));
@@ -273,7 +277,7 @@ function exitRose(d: RoadDensityReading, size: number, centre: RoadDensityBand):
     sv('circle', { cx, cy: cx, r: r0 - 2, fill: DENSITY_COLOURS[centre.key][1], stroke: '#fff', 'stroke-width': 1.2 }),
     sv('path', { d: `M ${cx} 1 l 3.5 6 h -7 z`, fill: '#fff' }),
   );
-  return s;
+  return svgEl;
 }
 
 export function densityRose(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
@@ -286,10 +290,16 @@ export function densityRose(d: RoadDensityReading, lead: RoadDensityLead): HTMLE
   l2.append(figureNode(d, lead));
   const n = d.exits.length;
   const l3 = el('div');
-  l3.append(b(`${n} way${n === 1 ? '' : 's'} out`), soft(n ? ` · ${d.exitDirs.join(', ')}` : ''));
+  const dirs = soft('');
+  if (n) dirs.append(' · ', joinNodes(d.exitDirs.map((c) => compassNode(c)), ', '));
+  l3.append(b(`${n} way${n === 1 ? '' : 's'} out`), dirs);
   t.append(l1, l2, l3);
   const closed = COMPASS8.filter((c) => !d.exitDirs.includes(c));
-  if (n && closed.length) t.append(el('div', 'ms-grd-soft', `No road out to the ${closed.join(', ')}`));
+  if (n && closed.length) {
+    const none = el('div', 'ms-grd-soft', 'No road out to the ');
+    none.append(joinNodes(closed.map((c) => compassNode(c)), ', '));
+    t.append(none);
+  }
   row.append(exitRose(d, 62, leadBand(d, lead)), t);
   const key = el('div', 'ms-grd-key');
   for (const [c, lab] of [[EXIT_COLOUR.msr, 'MSR'], [EXIT_COLOUR.aw, 'All-weather'], [EXIT_COLOUR.fair, 'Fair-weather']] as const) {
@@ -303,7 +313,7 @@ export function densityRose(d: RoadDensityReading, lead: RoadDensityLead): HTMLE
   return box;
 }
 
-// ── D5 make-up ───────────────────────────────────────────────────────────────
+// ── D5 route classification ───────────────────────────────────────────────────────────────
 export function densityMakeup(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
   const box = el('div');
   const line = el('div', 'ms-grd-line');
@@ -359,7 +369,7 @@ export function densityCardBlock(d: RoadDensityReading | null | undefined, style
   return p;
 }
 
-/** The Ground Brief block: rows with the make-up, the exit rose, what the band means, the source. */
+/** The Ground Brief block: rows with the route classification, the exit rose, what the band means, the source. */
 export function densityBrief(d: RoadDensityReading, kv: (rows: Array<[string, Node | string | null]>) => HTMLElement | null): HTMLElement {
   ensureRoadDensityCss();
   const w = el('div');
@@ -369,6 +379,6 @@ export function densityBrief(d: RoadDensityReading, kv: (rows: Array<[string, No
   const note = el('div', 'ms-grd-soft');
   note.style.cssText = `margin-top:6px;border-radius:5px;padding:4px 7px;background:${DENSITY_COLOURS[d.lead.key][0]};color:${DENSITY_COLOURS[d.lead.key][1]}`;
   note.textContent = roadDensityNote(d);
-  w.append(note, el('div', 'ms-grd-soft', 'Routing network (OSM with NCGDB load classes): roads and tracks; town streets and footpaths are not counted.'));
+  w.append(note);
   return w;
 }

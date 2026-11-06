@@ -365,7 +365,7 @@ footer{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-si
     a route.<br>
     <b>Sources.</b> GROTBC.md · GROTBC-Continue.md · GROTBC-Data-Creation-Continue.md · GROTBC-Roads.md ·
     GROTBC Coverage Map.html · the ten ground-guide-*.html option pages. Bundle rules <code>2026.11-grotbc-v2</code>,
-    checked 6 Nov 2026. NCGDB (restricted), SoilGrids 2.0 (modelled), WorldClim 2.1 normals, WorldPop (estimate),
+    checked 6 Nov 2026. 1:50k map (restricted), SoilGrids 2.0 (modelled), WorldClim 2.1 normals, WorldPop (estimate),
     GeoNames, OpenStreetMap (ODbL). The whole guide stays off until <code>features.groundGuide</code> is turned on.
   </footer>
 </div>
@@ -596,7 +596,7 @@ var DECISIONS = [
    note:"The 280 px card stays short; the Ground Brief (G) always shows every row."},
   {k:"roads", q:"Routing decisions", page:"GROTBC-Roads.md",
    opts:["Accept built defaults","Supply official MSR list","Supply official MLCs","All eight decisions"], rec:"Accept built defaults",
-   note:"OSM topology plus NCGDB attributes; MajorRoads as the unknown-class policy. Eight owner decisions remain open."}
+   note:"OSM topology plus 1:50k map attributes; MajorRoads as the unknown-class policy. Eight owner decisions remain open."}
 ];
 
 /* ---------------------------------------------------------------- state */
@@ -900,7 +900,7 @@ function renderCaveats(){
     ["Slope comes from a surface model: cities and tree lines read a little steep", "Modelled"],
     ["Data extent is the whole map sheet, so foreign roads are included", "Extent"],
     ["No measured cone index, live soil moisture or cross-country speed", "Missing"],
-    ["Bundle is restricted (NCGDB); OSM-derived parts carry ODbL duties", "Licence"]
+    ["Bundle is restricted (1:50k map); OSM-derived parts carry ODbL duties", "Licence"]
   ];
   items.forEach(function(it){
     var r=el("div","caveat"); r.appendChild(el("span",null,it[0])); r.appendChild(el("em",null,it[1])); host.appendChild(r);

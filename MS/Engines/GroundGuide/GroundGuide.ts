@@ -45,6 +45,7 @@ import { GroundGuideRoads } from './GroundGuideRoads';
 import { roadDensityReading, type RoadDensityReading } from './GroundGuideRoadDensity';
 import { ROAD_DENSITY_LEADS, ROAD_DENSITY_STYLES } from './GroundGuideRoadDensityView';
 import { GroundGuideDetail, type DetailLegendInfo, type DetailTab, type DetailToggle } from './GroundGuideDetail';
+import { screenNorth } from './GroundGuideNorth';
 import { GroundGuidePopulation as PopulationGrid, POPULATION_FLAGS } from './GroundGuidePopulation';
 import { createPopulationLayer } from './GroundGuidePopulationLayer';
 import { ensurePopulationCss, populationBriefText, populationKey, populationKeyElement } from './GroundGuidePopulationView';
@@ -3632,10 +3633,13 @@ export default class GroundGuide {
       },
       { initial: true }, // warm the current viewport now, not on the first pan or draw
     );
-    // Where north points on screen: the 2D rotation, or the opposite of the 3D camera heading. The badge dial follows it.
+    // Where north points on screen: the 2D rotation, or the opposite of the 3D camera heading. The cards' dials, roses and arrows follow it.
     this._northHandle = reactiveUtils.watch(
-      () => (view.type === '3d' ? -(view.camera?.heading ?? 0) : (view.rotation ?? 0)),
-      (north: number) => this._badge.setNorth(north),
+      () => screenNorth(view),
+      (north: number) => {
+        this._badge.setNorth(north);
+        this._detail.setNorth(north);
+      },
       { initial: true },
     );
   }

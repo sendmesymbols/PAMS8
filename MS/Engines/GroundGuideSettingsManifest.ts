@@ -397,10 +397,10 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     type: 'enum',
     options: [
       { value: 'network', label: 'Routing network (the roads GeoCore routes on)' },
-      { value: 'ncgdb', label: 'NCGDB road lines' },
+      { value: 'ncgdb', label: '1:50k map road lines' },
     ],
-    help: 'Routing network: the road line names the same roads, load classes, MSR and tankable flags as a route and the roads layer on the map (OSM roads with the NCGDB classes attached; falls back to the NCGDB lines when the terrain bundle has no network). NCGDB road lines: only the roads the NCGDB maps.',
-    keywords: ['road', 'msr', 'network', 'geocore', 'ncgdb', 'source', 'routing'],
+    help: 'Routing network: the road line names the same roads, load classes, MSR and tankable flags as a route and the roads layer on the map (OSM roads with the 1:50k map classes attached; falls back to the 1:50k map lines when the terrain bundle has no network). 1:50k map road lines: only the roads the 1:50k map shows.',
+    keywords: ['road', 'msr', 'network', 'geocore', '1:50k', 'source', 'routing'],
   },
   {
     path: ['groundGuide', 'traffic', 'access'],
@@ -681,7 +681,7 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     label: 'G: terrain, relief and water',
     group: 'Ground, Roads, Buildings & Weather (G R B W)',
     type: 'boolean',
-    help: 'A G section on the card: the terrain type at the point (Plain, Hilly, Solid, Marshy, Wet, Desert, Mountainous, Built-up, Snow / ice) and the nearest change, elevation, slope in degrees and band (Level, Gentle, Sloping, Moderate, Steep), landform (valley floor to crest), the highest ground nearby, the named area (plains, plateaus, deserts, hill ranges, forests from the NCGDB and GeoNames), water sources and the nearest named river or canal.',
+    help: 'A G section on the card: the terrain type at the point (Plain, Hilly, Solid, Marshy, Wet, Desert, Mountainous, Built-up, Snow / ice) and the nearest change, elevation, slope in degrees and band (Level, Gentle, Sloping, Moderate, Steep), landform (valley floor to crest), the highest ground nearby, the named area (plains, plateaus, deserts, hill ranges, forests from the 1:50k map and GeoNames), water sources and the nearest named river or canal.',
     keywords: ['terrain', 'terrain type', 'relief', 'elevation', 'slope', 'landform', 'high ground', 'water', 'well', 'spring', 'g', 'grotbc', 'geonames'],
   },
   {
@@ -697,7 +697,7 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     label: 'B: buildings, huts and services',
     group: 'Ground, Roads, Buildings & Weather (G R B W)',
     type: 'boolean',
-    help: 'A B section on the card after People: building density, footprint size and height (Open Buildings and GHSL), kacha and temporary huts (NCGDB), the nearest hospital, police, school and government office, and security installations (posts, forts, border posts, cantonments).',
+    help: 'A B section on the card after People: building density, footprint size and height (Open Buildings and GHSL), kacha and temporary huts (1:50k map), the nearest hospital, police, school and government office, and security installations (posts, forts, border posts, cantonments).',
     keywords: ['buildings', 'huts', 'kacha', 'construction', 'services', 'hospital', 'police', 'school', 'cantonment', 'b', 'grotbc'],
   },
   {
@@ -862,12 +862,12 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
       { value: 'chip', label: 'D2 · Band chip only' },
       { value: 'gauge', label: 'D3 · Gauge' },
       { value: 'rose', label: 'D4 · Ways-out rose' },
-      { value: 'makeup', label: 'D5 · Make-up bar' },
+      { value: 'makeup', label: 'D5 · Route classification bar' },
       { value: 'sentence', label: 'D6 · One sentence' },
       { value: 'brief', label: 'D7 · Ground Brief only' },
     ],
-    help: 'How the R section shows road network density. Every style is kept to compare them: see ground-guide-road-density-options.html. The Ground Brief always shows it in full (rows, make-up, rose and what the band means).',
-    keywords: ['road density', 'gauge', 'rose', 'ways out', 'make-up', 'chip', 'sentence', 'r'],
+    help: 'How the R section shows road network density. Every style is kept to compare them: see ground-guide-road-density-options.html. The Ground Brief always shows it in full (rows, route classification, rose and what the band means).',
+    keywords: ['road density', 'gauge', 'rose', 'ways out', 'route classification', 'make-up', 'chip', 'sentence', 'r'],
   },
   {
     path: ['groundGuide', 'sections', 'roadDensityLead'],

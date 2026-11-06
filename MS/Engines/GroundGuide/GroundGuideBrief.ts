@@ -12,6 +12,7 @@
  */
 
 import { fmtDistance } from './GroundGuideEvaluator';
+import { compassNode } from './GroundGuideNorth';
 import { RATING_COLOR, RATING_LABEL } from './GroundGuideGoing';
 import {
   ensureGoingCss,
@@ -177,8 +178,11 @@ export function movementDetail(g: GroundGuideGoingInfo, size = 136): HTMLElement
   txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 directions open to ${fmtDistance(m.rangeM / 2)}`));
   const ul = h('ul', 'ms-ggbr-list');
   for (const x of m.sectors) {
-    if (x.blockedBy && x.reachM < m.rangeM) ul.append(h('li', undefined, `${x.compass}: ${x.blockedBy}, ${fmtDistance(x.reachM)}`));
-    else if (x.step === 'nogo') ul.append(h('li', undefined, `${x.compass}: NO-GO ground`));
+    // Each blocked direction with its arrow, which turns with the map.
+    const li = h('li');
+    if (x.blockedBy && x.reachM < m.rangeM) li.append(compassNode(x.compass, x.bearingDeg), `: ${x.blockedBy}, ${fmtDistance(x.reachM)}`);
+    else if (x.step === 'nogo') li.append(compassNode(x.compass, x.bearingDeg), ': NO-GO ground');
+    if (li.childNodes.length) ul.append(li);
   }
   if (!ul.childElementCount) ul.append(h('li', undefined, `Nothing blocks the way within ${fmtDistance(m.rangeM)}`));
   txt.append(ul);

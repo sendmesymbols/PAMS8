@@ -14,6 +14,7 @@
 import { registerBriefSection } from './GroundGuideBrief';
 import { fmtDistance } from './GroundGuideEvaluator';
 import { band, ensureGoingCss, seasonIcon } from './GroundGuideGoingView';
+import { compassNode, joinNodes } from './GroundGuideNorth';
 import { fmtKmh, fmtMinutes, speedText, type GroundGuideSpeed, type SpeedDirection } from './GroundGuideSpeed';
 import type { GroundGuideVerdict } from './GroundGuideTypes';
 
@@ -209,13 +210,23 @@ export function speedRoseLines(s: GroundGuideSpeed): HTMLElement {
   const open = rays.filter((r) => r.minutes !== null).sort((p, q) => p.minutes! - q.minutes!);
   const to = fmtDistance(s.rangeM);
   if (open.length) {
-    box.append(el('div', 'ms-ggs-big', `${fmtMinutes(open[0].minutes!)} ${open[0].compass}`));
-    box.append(el('div', 'ms-ggb-soft', `fastest to ${to}; slowest ${open[open.length - 1].compass} ${fmtMinutes(open[open.length - 1].minutes!)}`));
+    // Each direction carries its arrow (exact bearing), which turns with the map.
+    const fast = open[0];
+    const slow = open[open.length - 1];
+    const big = el('div', 'ms-ggs-big', `${fmtMinutes(fast.minutes!)} `);
+    big.append(compassNode(fast.compass, fast.bearingDeg));
+    box.append(big);
+    const line = el('div', 'ms-ggb-soft', `fastest to ${to}; slowest `);
+    line.append(compassNode(slow.compass, slow.bearingDeg), ` ${fmtMinutes(slow.minutes!)}`);
+    box.append(line);
   } else box.append(el('div', 'ms-ggs-big', 'Blocked'));
   const shut = rays.filter((r) => r.minutes === null);
   if (shut.length) {
     const first = [...shut].sort((p, q) => p.reachM - q.reachM)[0];
-    box.append(el('div', 'ms-ggb-soft', `Blocked ${shut.map((r) => r.compass).join(', ')}${first.blockedBy ? ` (${first.blockedBy.toLowerCase()} at ${fmtDistance(first.reachM)})` : ''}`));
+    const line = el('div', 'ms-ggb-soft', 'Blocked ');
+    line.append(joinNodes(shut.map((r) => compassNode(r.compass, r.bearingDeg)), ', '));
+    if (first.blockedBy) line.append(` (${first.blockedBy.toLowerCase()} at ${fmtDistance(first.reachM)})`);
+    box.append(line);
   }
   box.append(el('div', 'ms-ggb-soft', `${when(s)}${s.road ? ` · ${s.road.shield} ${fmtDistance(s.road.distanceM)} ${s.road.compass}` : ''}`));
   return box;

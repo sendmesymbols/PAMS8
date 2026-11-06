@@ -10,8 +10,9 @@
  * Each tab is a grid of tiles, packed so each tile is its own height (a short tile beside a tall one neither stretches
  * nor leaves a hole), built from the same pictures the card styles offer (the soil triangle and strength
  * gauge, the military-crest profile, the movement rose and going map, the road density gauge, ways-out rose and
- * make-up bar, the speed rose and road strip, the people radar, rose and minimap, the cover rose, tiles and shield),
- * so the user compares nothing: it is all there, north up. Only the active tab is built on each verdict, and the
+ * route classification bar, the speed rose and road strip, the people radar, rose and minimap, the cover rose, tiles and shield),
+ * so the user compares nothing: it is all there, turned with the map (GroundGuideNorth: dials, the going map and an arrow
+ * after every compass point follow the 2D rotation or 3D heading). Only the active tab is built on each verdict, and the
  * Legend tab only when the legend changes. The card keeps its scroll and never shrinks while open (its height
  * ratchets), so the tiles do not jump under the eye as the cursor moves. A letter key switches tabs (and opens the card when it is closed);
  * the same letter again, D or Esc closes it. Esc still reaches the draw tool.
@@ -42,7 +43,8 @@ import {
   shelterLine,
 } from './GroundGuideCoverView';
 import { fmtDistance } from './GroundGuideEvaluator';
-import { ensureGoingCss, exitStripSection, goingCanvas, mapShares, ribbon, roseLegend, seasonIcon } from './GroundGuideGoingView';
+import { ensureGoingCss, exitStripSection, goingCanvas, mapShares, orientRoses, ribbon, roseLegend, seasonIcon } from './GroundGuideGoingView';
+import { arrowCompass, ensureNorthCss, setNorthVar } from './GroundGuideNorth';
 import { buildLegend, ensureLegendStyle, legendEl, legendKeyRow, modeIcon, type LegendHandlers, type LegendState } from './GroundGuideLegend';
 import {
   ageBar,
@@ -65,7 +67,7 @@ import {
 import { fmtRadius, roadDensityNote } from './GroundGuideRoadDensity';
 import { DENSITY_COLOURS, densityGauge, densityMakeup, densityRose, ensureRoadDensityCss } from './GroundGuideRoadDensityView';
 import type { ObstaclesReading } from './GroundGuideSections';
-import { buildingsProtected, buildingsWhere, groundChips, groundRelief, obstaclesGap, obstaclesTiles, roadsShield, roadsVerdict, weatherIcons, weatherYear } from './GroundGuideSectionsStyles';
+import { buildingsProtected, buildingsWhere, groundChips, groundRelief, obstaclesDial, obstaclesGap, obstaclesNear, obstaclesTiles, roadsShield, roadsVerdict, weatherIcons, weatherYear } from './GroundGuideSectionsStyles';
 import {
   buildingsMore,
   buildingsRows,
@@ -73,7 +75,6 @@ import {
   groundMore,
   groundRows,
   kv,
-  obstaclesMore,
   obstaclesRows,
   railTransportLine,
   roadsMore,
@@ -172,6 +173,8 @@ const CSS = `
 .ms-ggd .ms-gv-rate{font-size:17px}
 .ms-ggd .ms-ggd-b>.ms-ggd-w2{grid-column:span 2}
 .ms-ggd .ms-ggd-b>.ms-ggd-wall{grid-column:1 / -1}
+.ms-ggd .ms-ggd-b>.ms-ggd-w2p{grid-column:span 2}
+.ms-ggd .ms-ggd-b.ms-ggd-two>.ms-ggd-w2p{grid-column:auto}
 .ms-ggd .ms-ggd-b>.ms-ggp-civ{border-radius:9px;border:1px solid rgba(240,226,200,.3)}
 .ms-ggd-cap{display:flex;align-items:center;gap:7px}
 .ms-ggd-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:17px;height:17px;border-radius:4px;font:800 11px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0}
@@ -260,6 +263,12 @@ function wide(e: HTMLElement, cols: 2 | 'all' = 2): HTMLElement {
   return e;
 }
 
+/** Two columns wide on a grid of three or more; one column on a grid of two, so the next tile can sit beside it. */
+function pair(e: HTMLElement): HTMLElement {
+  e.classList.add('ms-ggd-w2p');
+  return e;
+}
+
 function empty(text: string): HTMLElement {
   return el('div', 'ms-ggd-empty', text);
 }
@@ -294,6 +303,7 @@ export class GroundGuideDetail {
   private _scroll: HTMLElement | null = null;
   private _ro: ResizeObserver | null = null;
   private _packedW = 0;
+  private _north = 0; // where north points on screen, degrees clockwise from up
   private _copy: HTMLButtonElement | null = null;
   private _copyTimer: ReturnType<typeof setTimeout> | null = null;
   private _tab: DetailTab = readTab();
@@ -363,6 +373,15 @@ export class GroundGuideDetail {
     this._keyP?.classList.toggle('ms-on', profile);
     this._keyS?.classList.toggle('ms-on', snap);
     this._keyS?.classList.toggle('ms-lit', snap);
+  }
+
+  /** The map was turned: every rose, map and arrow on the card turns with it (no rebuild). */
+  setNorth(northDeg: number): void {
+    if (northDeg === this._north) return;
+    this._north = northDeg;
+    if (!this._el) return;
+    setNorthVar(this._el, northDeg);
+    orientRoses(this._el, northDeg);
   }
 
   hide(): void {
@@ -439,8 +458,10 @@ export class GroundGuideDetail {
       for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
       keys.append(`${t} `);
     }
-    foot.append(keys, el('span', undefined, 'Pictures are north up.'));
+    foot.append(keys, el('span', undefined, 'Dials and arrows turn with the map.'));
     root.append(head, scroll, foot);
+    ensureNorthCss();
+    setNorthVar(root, this._north);
     document.body.appendChild(root);
     this._el = root;
     this._meta = meta;
@@ -490,6 +511,10 @@ export class GroundGuideDetail {
     }
     if (!tiles.length) tiles = [empty(this._v ? `Nothing to show for ${TAB_LABEL[tab]} here yet. Move the cursor over the map, or wait for the tiles.` : 'Move the cursor over the map while drawing.')];
     body.replaceChildren(...tiles);
+    // On the card root, not the body: orientNorth also sets --gg-north on what it is given, and a copy left on the
+    // body would hide the root's value from every arrow when the map is turned later (setNorth turns the root).
+    orientRoses(this._el ?? body, this._north);
+    arrowCompass(body);
     this._pack();
     scroller.scrollTop = keepScroll;
     // Ratchet: a tile that comes and goes with the cursor must not make the whole card change height. It holds the
@@ -503,6 +528,8 @@ export class GroundGuideDetail {
     const body = this._body;
     if (!body) return;
     const kids = Array.from(body.children) as HTMLElement[];
+    // On a grid of one or two columns a pair tile takes one column, so its partner sits beside it rather than below.
+    body.classList.toggle('ms-ggd-two', getComputedStyle(body).gridTemplateColumns.split(' ').length < 3);
     for (const k of kids) k.style.gridRowEnd = '';
     const heights = kids.map((k) => k.getBoundingClientRect().height);
     kids.forEach((k, i) => {
@@ -562,7 +589,7 @@ export class GroundGuideDetail {
         note.style.color = DENSITY_COLOURS[d.lead.key][1];
         out.push(wide(tile('R', `Road Network Density · ${fmtRadius(d.radiusM)}`, densityGauge(d, 'both'), note)));
         out.push(tile('R', 'Ways Out', densityRose(d, 'both')));
-        out.push(tile('R', 'Make-Up', densityMakeup(d, 'both'), soft('Routing network (OSM with NCGDB load classes): roads and tracks; town streets and footpaths are not counted.')));
+        out.push(tile('R', 'Route Classification', densityMakeup(d, 'both')));
       }
     }
     const road = v.traffic?.road;
@@ -584,13 +611,16 @@ export class GroundGuideDetail {
       ensureSectionsCss();
       out.push(obstaclesTiles(o));
       if (hasGap(o)) out.push(wide(obstaclesGap(o)));
-      const rows = kv([...obstaclesRows(o, s), ...obstaclesMore(o, s)]);
-      if (rows) out.push(tile('O', 'Obstacles Near', rows));
+      const dial = obstaclesDial(o, 132);
+      if (dial) out.push(dial);
+      // Natural and man-made apart, each row with its icon (obstaclesRows already holds every row once).
+      const near = obstaclesNear(obstaclesRows(o, s), o);
+      if (near.childElementCount) out.push(wide(tile('O', 'Obstacles Near', near)));
     }
     const g = v.going;
     if (g?.movement) {
       ensureGoingCss();
-      const es = exitStripSection(g);
+      const es = exitStripSection(g, 124);
       if (es) out.push(es);
     }
     return out;
@@ -600,6 +630,16 @@ export class GroundGuideDetail {
   private _renderT(v: GroundGuideVerdict): HTMLElement[] {
     const out: HTMLElement[] = [];
     const g = v.going;
+    const sp = v.speed;
+    if (sp) ensureSpeedCss();
+    // Time to the range (the speed rose), placed straight after Movement Freedom so the two roses sit side by side.
+    let timeTile: HTMLElement | null = null;
+    if (sp?.rays) {
+      const row = el('div', 'ms-ggs-rose');
+      row.append(speedRoseSvg(sp.rays, sp.rangeM, 124, 0), speedRoseLines(sp));
+      timeTile = tile('T', `Time to ${fmtDistance(sp.rangeM)} · ${sp.short}`, row);
+    }
+    let month: HTMLElement | null = null;
     if (g) {
       ensureGoingCss();
       ensureTrafficCss();
@@ -608,7 +648,8 @@ export class GroundGuideDetail {
       if (g.point) out.push(tile('T', 'Cross-Country Going', ...crossCountryDetail(g, false)));
       out.push(blockTiles(v, tv));
       const mv = movementDetail(g, 140);
-      if (mv) out.push(wide(tile('T', `Movement Freedom · ${g.season === 'dry' ? 'Dry' : 'After Rain'}`, mv, roseLegend(true), g.pending ? soft('Still loading round the edges') : null)));
+      if (mv) out.push(pair(tile('T', `Movement Freedom · ${g.season === 'dry' ? 'Dry' : 'After Rain'}`, mv, roseLegend(true), g.pending ? soft('Still loading round the edges') : null)));
+      if (timeTile) out.push(timeTile);
       const cv = goingCanvas(g, 140, 0, true);
       if (cv && g.map) {
         const box = el('div', 'ms-gv-map');
@@ -617,24 +658,19 @@ export class GroundGuideDetail {
       }
       if (tv.road?.main) out.push(blockWayOut(v, tv));
       const rb = ribbon(g, 54);
-      if (rb) out.push(wide(tile('T', `Going by Month · ${tv.short}`, rb)));
-    }
-    const sp = v.speed;
+      if (rb) month = wide(tile('T', `Going by Month · ${tv.short}`, rb));
+    } else if (timeTile) out.push(timeTile);
     if (sp) {
       ensureGoingCss();
-      ensureSpeedCss();
       const day = speedDayText(sp);
       const here = speedGroundText(sp);
       out.push(tile('T', speedCaption(sp), speedHeadline(sp), speedGrid(sp), day ? soft(`A day's march: ${day}`) : null, here ? soft(`Here: ${here}`) : null, soft(sp.basis)));
-      if (sp.rays) {
-        const row = el('div', 'ms-ggs-rose');
-        row.append(speedRoseSvg(sp.rays, sp.rangeM, 124, 0), speedRoseLines(sp));
-        out.push(tile('T', `Time to ${fmtDistance(sp.rangeM)} · ${sp.short}`, row));
-      }
       const way = speedWay(sp);
       if (way) out.push(tile('T', `${speedCaption(sp)} · To the Road`, ...way));
       out.push(tile('T', 'Who Moves How Fast', speedModeTiles(sp), soft(`km/h cross-country · ${speedWhen(sp)}`)));
     }
+    // The month ribbon closes the T tiles, before the weather.
+    if (month) out.push(month);
     const w = v.sections?.weather;
     if (w) {
       ensureSectionsCss();

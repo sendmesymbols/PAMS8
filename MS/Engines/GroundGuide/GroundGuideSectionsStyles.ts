@@ -19,6 +19,7 @@
  */
 
 import { fmtDistance } from './GroundGuideEvaluator';
+import { compassBearing, whereNode } from './GroundGuideNorth';
 import type { BuildingsReading, GroundReading, ObstacleHit, ObstaclesReading, RoadsReading, SectionPlace, WeatherReading } from './GroundGuideSections';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -77,6 +78,31 @@ const CSS = `
 .ms-gx-icons>div{border-radius:6px;background:rgba(255,255,255,.05);padding:5px 2px}
 .ms-gx-icons b{display:block;color:#fff;font-size:15px;line-height:1.1;font-variant-numeric:tabular-nums}
 .ms-gx-icons small{display:block;color:#9aa3ad;font-size:10px;margin-top:2px}
+.ms-gx-ob{padding:6px 8px 7px 9px}
+.ms-gx-ob small{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.ms-gx-ob svg.ms-gx-ic{width:15px;height:15px;flex:none}
+.ms-gx-ob .ms-gx-at{display:block;color:#c3cbd3;font-size:10.5px;margin-top:2px}
+.ms-gx-nat{border:1px solid rgba(156,207,106,.4);border-left:3px solid #9ccf6a;border-radius:10px;background:linear-gradient(135deg,rgba(156,207,106,.15),rgba(156,207,106,.03))}
+.ms-gx-nat small{color:#b7dc8f}
+.ms-gx-man{border:1px solid rgba(159,180,207,.4);border-left:3px solid #9fb4cf;border-radius:3px;background:repeating-linear-gradient(135deg,rgba(159,180,207,.1) 0 5px,rgba(159,180,207,.03) 5px 10px)}
+.ms-gx-man small{color:#c9d7ea}
+.ms-gx-eff{display:inline-block;margin-top:5px;font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;padding:3px 6px;border-radius:4px}
+.ms-gx-obg{padding:6px 8px 7px;margin-top:6px}
+.ms-gx-obg:first-child{margin-top:0}
+.ms-gx-obh{display:flex;align-items:center;gap:6px;font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
+.ms-gx-obh svg{width:15px;height:15px}
+.ms-gx-nat .ms-gx-obh{color:#b7dc8f}
+.ms-gx-man .ms-gx-obh{color:#c9d7ea}
+.ms-gx-obr{display:grid;grid-template-columns:16px 66px minmax(0,1fr);gap:0 6px;align-items:start;font-size:11.5px;line-height:1.4;padding:3px 0}
+.ms-gx-obr+.ms-gx-obr{border-top:1px solid rgba(255,255,255,.07)}
+.ms-gx-obr>svg{width:14px;height:14px;margin-top:1px}
+.ms-gx-obr>.k{color:#9aa3ad;font-size:10.5px;padding-top:1px}
+.ms-gx-obr>.v{min-width:0;color:#e8ebee;overflow-wrap:anywhere}
+.ms-gx-obr.ms-none>.v{color:#7d8792}
+.ms-gx-obdial{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ms-gx-obkey{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#c3cbd3}
+.ms-gx-obkey span{display:inline-flex;align-items:center;gap:6px}
+.ms-gx-obkey i{display:inline-block;width:10px;height:10px;box-sizing:border-box}
 `;
 
 function ensureCss(): void {
@@ -347,20 +373,177 @@ export function roadsVerdict(r: RoadsReading): HTMLElement {
 }
 
 // ── O ────────────────────────────────────────────────────────────────────────
-function obstacleTile(title: string, o: ObstacleHit | null): HTMLElement {
-  const t = el('div', 'ms-gx-tile');
-  if (o?.effect) t.style.borderColor = EFFECT[o.effect];
-  t.append(el('small', undefined, title));
-  if (o) t.append(el('b', undefined, o.label), el('span', undefined, `${at(o)}${o.effect ? ` · ${o.effect}` : ''}`));
-  else t.append(el('span', undefined, 'None mapped near'));
+/** Natural (green, rounded) and man-made (steel, square, hatched) obstacles are told apart by colour, shape and icon. */
+const OB_COLOR = { natural: '#9ccf6a', man_made: '#9fb4cf' } as const;
+type ObKind = keyof typeof OB_COLOR;
+type ObIcon = 'water' | 'slope' | 'tree' | 'snow' | 'built' | 'line' | 'rail' | 'dam' | 'closure' | 'crop' | 'fence' | 'hill';
+const OB_PATH: Record<ObIcon, string> = {
+  water: 'M1.5 6.5q2.1-2 4.2 0t4.2 0 4.2 0M1.5 10.5q2.1-2 4.2 0t4.2 0 4.2 0',
+  slope: 'M1 14 6 5l3 4 2-3 4 8z',
+  hill: 'M1 13c2.5-6 4-8 7-8s4.5 2 7 8z',
+  tree: 'M8 1.5 3.2 9h3.3l-2.3 3.6h7.6L9.5 9h3.3zM8 12.6V15',
+  snow: 'M8 1v14M2 4.5l12 7M2 11.5l12-7',
+  built: 'M2 15V7l4-3v11M6 15V5l8 2v8M9 9.5h2M9 12h2',
+  line: 'M8 1v14M4 4h8M5 8h6M3 15l5-11 5 11',
+  rail: 'M5 1 3 15M11 1l2 14M3.8 4.5h8.4M3.4 8h9.2M3 11.5h10',
+  dam: 'M2 4h12v3H2zM3 7l1 8h8l1-8M6 10h4',
+  closure: 'M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 1 0 0-13M3.5 8h9',
+  crop: 'M8 15V5M8 8C5 8 4 6 4 4c2 0 4 1 4 4m0 2c3 0 4-2 4-4-2 0-4 1-4 4M3 15h10',
+  fence: 'M3 3v12M8 3v12M13 3v12M1.5 6.5h13M1.5 11h13',
+};
+const ICON_RULES: Array<[RegExp, ObIcon]> = [
+  [/closure|closed|landslide/i, 'closure'],
+  [/\bdam\b|barrage|headworks|levee|bund|weir/i, 'dam'],
+  [/snow|glacier|\bice\b|frost/i, 'snow'],
+  [/power|pipeline|pylon|\bkv\b/i, 'line'],
+  [/rail/i, 'rail'],
+  [/crop|irrigat|orchard|plantation|field/i, 'crop'],
+  [/nullah|nala|river|stream|canal|water|lake|marsh|swamp|flood|wet|bank|drain|channel|pond|tank/i, 'water'],
+  [/forest|tree|wood|scrub|jungle|bush/i, 'tree'],
+  [/slope|cliff|ravine|gully|escarp|rock|ridge|steep|boulder|scree/i, 'slope'],
+  [/dune|sand|hill|mound|knoll/i, 'hill'],
+  [/built|town|village|house|wall|fence|urban|settle/i, 'built'],
+];
+
+function obIcon(k: ObIcon, kind: ObKind): SVGElement {
+  const colour = OB_COLOR[kind];
+  const solid = k === 'slope' || k === 'hill';
+  const svg = sv('svg', { class: 'ms-gx-ic', viewBox: '0 0 16 16', 'aria-hidden': 'true' });
+  svg.append(sv('path', { d: OB_PATH[k], fill: solid ? colour : 'none', 'fill-opacity': 0.35, stroke: colour, 'stroke-width': 1.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+  return svg;
+}
+
+/** A small line icon for an obstacle, picked from its words; the kind's own icon (slope / fence) when nothing matches. */
+export function obstacleIcon(text: string, kind: ObKind): SVGElement {
+  return obIcon(ICON_RULES.find(([re]) => re.test(text))?.[1] ?? (kind === 'natural' ? 'slope' : 'fence'), kind);
+}
+
+function effectChip(effect: 'NO-GO' | 'SLOW-GO'): HTMLElement {
+  const c = el('span', 'ms-gx-eff', `${effect} for the mode`);
+  c.style.background = EFFECT[effect];
+  c.style.color = effect === 'SLOW-GO' ? '#1b1f25' : '#fff';
+  return c;
+}
+
+function obstacleTile(kind: ObKind, o: ObstacleHit | null): HTMLElement {
+  const t = el('div', `ms-gx-tile ms-gx-ob ${kind === 'natural' ? 'ms-gx-nat' : 'ms-gx-man'}`);
+  const head = el('small');
+  head.append(obstacleIcon(o?.label ?? '', kind), kind === 'natural' ? 'Natural' : 'Man-made');
+  t.append(head);
+  if (o) {
+    const where = el('span', 'ms-gx-at');
+    where.append(whereNode(o.distanceM, o.compass));
+    t.append(el('b', undefined, o.label), where);
+    if (o.effect) t.append(effectChip(o.effect));
+  } else t.append(el('span', undefined, 'None mapped near'));
   return t;
 }
 
 export function obstaclesTiles(o: ObstaclesReading): HTMLElement {
   const g = el('div', 'ms-gx-tiles');
-  g.append(obstacleTile('Natural', o.natural), obstacleTile('Man-made', o.manMade));
+  g.append(obstacleTile('natural', o.natural), obstacleTile('man_made', o.manMade));
   const extra = [o.wet ? `${o.wet} here` : null, o.closure ? `${o.closure.road} ${at(o.closure)}: ${o.closure.closed ? `closed (${o.closure.closed})` : `${o.closure.landslides} landslide sites`}` : null].filter(Boolean).join(' · ');
   return section('O', 'Obstacles', g, extra ? soft(extra) : null);
+}
+
+/** Which of the O rows (GroundGuideSectionsView.obstaclesRows) are nature's, and the icon a row takes when fixed. */
+const NATURAL_ROWS = new Set(['Natural', 'Here', 'River', 'Bank', 'Flood', 'Snow']);
+const ROW_ICON: Record<string, ObIcon> = { Here: 'water', River: 'water', Bank: 'water', Flood: 'water', Snow: 'snow', Canal: 'water', 'Canal Xing': 'water', Lines: 'line', Dam: 'dam', Levee: 'dam', Closures: 'closure' };
+
+/**
+ * Obstacles Near in two groups, Natural (green, rounded) and Man-made (steel, hatched), each row with its icon.
+ * `rows` are the O rows; an empty row is left out, a "None ..." row is shown muted.
+ */
+export function obstaclesNear(rows: Array<[string, Node | string | null]>, o: ObstaclesReading): HTMLElement {
+  const box = el('div');
+  for (const kind of ['natural', 'man_made'] as const) {
+    const mine = rows.filter(([k, v]) => v !== null && v !== '' && NATURAL_ROWS.has(k) === (kind === 'natural'));
+    if (!mine.length) continue;
+    const g = el('div', `ms-gx-obg ${kind === 'natural' ? 'ms-gx-nat' : 'ms-gx-man'}`);
+    const head = el('div', 'ms-gx-obh');
+    head.append(obIcon(kind === 'natural' ? 'slope' : 'fence', kind), kind === 'natural' ? 'Natural' : 'Man-made');
+    g.append(head);
+    for (const [k, v] of mine) {
+      const text = typeof v === 'string' ? v : (v as Node).textContent ?? '';
+      const r = el('div', `ms-gx-obr${/^None (mapped|recorded)/.test(text) ? ' ms-none' : ''}`);
+      const hit = k === 'Natural' ? o.natural : k === 'Man-made' ? o.manMade : null;
+      const val = el('span', 'v');
+      val.append(v as Node | string);
+      r.append(ROW_ICON[k] ? obIcon(ROW_ICON[k], kind) : obstacleIcon(hit?.label ?? text, kind), el('span', 'k', k), val);
+      g.append(r);
+    }
+    box.append(g);
+  }
+  return box;
+}
+
+/**
+ * Obstacles Round It: each obstacle the reading names, plotted at its distance and compass point round the point
+ * (natural a green circle, man-made a steel square, a red edge where it stops the mode). The plot turns with the map
+ * (`data-gv-rose`); its N stays upright (`data-gv-upright`). Null when nothing has a place.
+ */
+export function obstaclesDial(o: ObstaclesReading, size = 132): HTMLElement | null {
+  type Mark = { kind: ObKind; label: string; distanceM: number; compass: string; stop: boolean };
+  const marks: Mark[] = [];
+  const put = (kind: ObKind, label: string | null | undefined, p: { distanceM: number; compass: string } | null | undefined, stop = false) => {
+    if (p && label && compassBearing(p.compass) !== null && Number.isFinite(p.distanceM)) marks.push({ kind, label, distanceM: p.distanceM, compass: p.compass, stop });
+  };
+  put('natural', o.natural?.label, o.natural, o.natural?.effect === 'NO-GO');
+  put('man_made', o.manMade?.label, o.manMade, o.manMade?.effect === 'NO-GO');
+  put('man_made', o.canal ? nameOf(o.canal) : null, o.canal);
+  put('natural', o.reach ? o.reach.name ?? 'River reach' : null, o.reach);
+  put('man_made', o.dam ? nameOf(o.dam) : null, o.dam);
+  put('man_made', o.levee ? nameOf(o.levee) : null, o.levee);
+  for (const l of o.lines ?? []) put('man_made', l.label, l);
+  for (const w of o.canalWorks ?? []) put('man_made', nameOf(w), w);
+  put('man_made', o.closure ? `${o.closure.road} closure` : null, o.closure, true);
+  if (!marks.length) return null;
+  const far = Math.max(...marks.map((m) => m.distanceM));
+  const range = [500, 1000, 2000, 3000, 5000, 10000, 20000, 50000].find((r) => r >= far) ?? Math.ceil(far / 10000) * 10000;
+  const c = size / 2;
+  const R = c - 13;
+  const P = (deg: number, r: number): [number, number] => [c + r * Math.sin((deg * Math.PI) / 180), c - r * Math.cos((deg * Math.PI) / 180)];
+  const svg = sv('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': 'Obstacles round the point' });
+  const g = sv('g', { 'data-gv-rose': c });
+  g.append(
+    sv('circle', { cx: c, cy: c, r: R, fill: 'rgba(255,255,255,.035)', stroke: 'rgba(255,255,255,.22)' }),
+    sv('circle', { cx: c, cy: c, r: R / 2, fill: 'none', stroke: 'rgba(255,255,255,.13)', 'stroke-dasharray': '2 3' }),
+  );
+  for (const d of [0, 90, 180, 270]) {
+    const [x1, y1] = P(d, R - 4);
+    const [x2, y2] = P(d, R);
+    g.append(sv('line', { x1, y1, x2, y2, stroke: 'rgba(255,255,255,.35)', 'stroke-width': 1.2 }));
+  }
+  const [nx, ny] = P(0, R + 7);
+  g.append(svText(nx, ny, 'N', { 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 10, 'font-weight': 700, fill: '#fff', 'data-gv-upright': `${nx.toFixed(1)} ${ny.toFixed(1)}` }));
+  // Farthest first, so a near mark is drawn over a far one.
+  for (const m of [...marks].sort((x, y) => y.distanceM - x.distanceM)) {
+    const [x, y] = P(compassBearing(m.compass)!, Math.max(7, (Math.min(m.distanceM, range) / range) * R));
+    const col = OB_COLOR[m.kind];
+    const edge = { stroke: m.stop ? '#ff5a5f' : '#1b1f25', 'stroke-width': m.stop ? 2 : 1.2 };
+    const mk = m.kind === 'natural' ? sv('circle', { cx: x, cy: y, r: 4.6, fill: col, ...edge }) : sv('rect', { x: x - 4.2, y: y - 4.2, width: 8.4, height: 8.4, rx: 1, fill: col, ...edge });
+    const tip = sv('title', {});
+    tip.textContent = `${m.label} · ${fmtDistance(m.distanceM)} ${m.compass}`;
+    mk.append(tip);
+    g.append(mk);
+  }
+  g.append(sv('circle', { cx: c, cy: c, r: 3.2, fill: '#fff', stroke: '#1b1f25', 'stroke-width': 1.2 }));
+  svg.append(g);
+  const key = el('div', 'ms-gx-obkey');
+  const item = (swatch: string, text: string) => {
+    const s = el('span');
+    const i = el('i');
+    i.style.cssText = swatch;
+    s.append(i, text);
+    return s;
+  };
+  const nNat = marks.filter((m) => m.kind === 'natural').length;
+  key.append(item(`background:${OB_COLOR.natural};border-radius:50%`, `Natural · ${nNat}`), item(`background:${OB_COLOR.man_made};border-radius:2px`, `Man-made · ${marks.length - nNat}`));
+  if (marks.some((m) => m.stop)) key.append(item('border:2px solid #ff5a5f;border-radius:50%', 'Stops the mode'));
+  key.append(el('span', undefined, `Rings ${fmtDistance(range / 2)} · ${fmtDistance(range)}`));
+  const row = el('div', 'ms-gx-obdial');
+  row.append(svg, key);
+  return section('O', `Obstacles Round It · ${fmtDistance(range)}`, row);
 }
 
 export function obstaclesGap(o: ObstaclesReading): HTMLElement {

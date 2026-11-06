@@ -90,8 +90,13 @@ function section(l: keyof typeof LETTER, caption: string, ...content: Array<Node
 /** Label / value rows; a row whose value is null is left out. */
 export function kv(rows: Array<[string, Node | string | null]>): HTMLElement | null {
   const g = el('div', 'ms-gs-kv');
+  // A row given twice (a section's rows joined with its "more" rows) is shown once.
+  const seen = new Set<string>();
   for (const [k, v] of rows) {
     if (v === null || v === '') continue;
+    const id = `${k}|${typeof v === 'string' ? v : v.textContent ?? ''}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
     const val = el('div', 'ms-gs-v');
     val.append(v);
     g.append(el('div', 'ms-gs-k', k), val);

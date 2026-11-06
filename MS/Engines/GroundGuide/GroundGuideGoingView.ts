@@ -17,6 +17,7 @@
  */
 
 import { fmtDistance } from './GroundGuideEvaluator';
+import { compassNode, joinNodes, orientNorth, registerCanvas } from './GroundGuideNorth';
 import {
   CODE_STEP,
   GOING_COLOR,
@@ -75,12 +76,7 @@ export const GOING_CSS = `
 .ms-gv-mx>.ms-gv-m.ms-gv-on{color:#fff;font-weight:600}
 .ms-gv-mx>.ms-gv-c{font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-align:center;padding:4px 0 3px;border-radius:2px}
 .ms-gv-c.ms-gv-go{background:#2fa862;color:#fff}.ms-gv-c.ms-gv-slow{background:#f0932b;color:#1b1f25}.ms-gv-c.ms-gv-nogo{background:#e5484d;color:#fff}
-.ms-gv-ex{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
-.ms-gv-ex>div{display:flex;flex-direction:column;align-items:center;gap:2px}
-.ms-gv-ex small{font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;color:#c3cbd3}
-.ms-gv-ex i{display:block;width:100%;height:16px;border-radius:2px;background:rgba(255,255,255,.07);position:relative;overflow:hidden}
-.ms-gv-ex i>b{position:absolute;left:0;bottom:0;width:100%}
-.ms-gv-ex i.ms-gv-cut{box-shadow:inset 0 2px 0 #fff}
+.ms-gv-exc{display:flex;justify-content:center;margin:2px 0 5px}
 .ms-gv-rb{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;align-items:end;height:42px}
 .ms-gv-rb>i{display:block;border-radius:2px 2px 0 0;min-height:3px}
 .ms-gv-rb>i.ms-gv-now{outline:1.5px solid #fff;outline-offset:1px}
@@ -195,6 +191,25 @@ export function blockedText(g: GroundGuideGoingInfo, max = 3, sep = ' · '): str
   return 'Blocked: ' + items.slice(0, max).join(sep) + (items.length > max ? `${sep}+${items.length - max} more` : '');
 }
 
+/** `blockedText` as nodes: each blocked direction carries its arrow, which turns with the map. */
+export function blockedNode(g: GroundGuideGoingInfo, max = 3, sep = ' · '): DocumentFragment {
+  const m = g.movement;
+  const f = document.createDocumentFragment();
+  if (!m) return f;
+  const items: DocumentFragment[] = [];
+  for (const x of m.sectors) {
+    if (x.blockedBy && x.reachM < m.rangeM) items.push(joinNodes([compassNode(x.compass, x.bearingDeg), ` ${x.blockedBy} ${fmtDistance(x.reachM)}`], ''));
+    else if (x.step === 'nogo') items.push(joinNodes([compassNode(x.compass, x.bearingDeg), ' NO-GO ground'], ''));
+  }
+  if (!items.length) {
+    f.append(`Nothing blocks the way within ${fmtDistance(m.rangeM)}`);
+    return f;
+  }
+  f.append('Blocked: ', joinNodes(items.slice(0, max), sep));
+  if (items.length > max) f.append(`${sep}+${items.length - max} more`);
+  return f;
+}
+
 // ── shared pictures (card and brief) ───────────────────────────────────────
 
 /** The movement rose. The wedges are in map bearings; the group turns with the map (`data-gv-rose`). */
@@ -238,12 +253,9 @@ export function roseSvg(g: GroundGuideGoingInfo, size: number, rings: boolean, n
   return svg;
 }
 
-/** Turn every rose under `root` to the map's north (no rebuild). */
+/** Turn every rose, arrow, dial and canvas under `root` to the map's north (no rebuild): `orientNorth` in GroundGuideNorth.ts. */
 export function orientRoses(root: ParentNode, northDeg: number): void {
-  root.querySelectorAll('[data-gv-rose]').forEach((g) => {
-    const c = g.getAttribute('data-gv-rose');
-    g.setAttribute('transform', `rotate(${northDeg} ${c} ${c})`);
-  });
+  orientNorth(root, northDeg);
 }
 
 /** Cone-index gauge: the mode's NO-GO / SLOW-GO / GO zones, the sun at the dry value, the drop after rain. */
@@ -349,7 +361,10 @@ export function ribbon(g: GroundGuideGoingInfo, tall = 42): HTMLElement | null {
   return wrap;
 }
 
-/** The going map as a round canvas, turned to the map's north. */
+/**
+ * The going map as a round canvas, turned to the map's north. The painter is registered with the north pass
+ * (`registerCanvas`), so `orientNorth` repaints it in place when the map is rotated after the card was built.
+ */
 export function goingCanvas(g: GroundGuideGoingInfo, px: number, northDeg: number, ring = false): HTMLCanvasElement | null {
   const map = g.map;
   if (!map) return null;
@@ -359,53 +374,66 @@ export function goingCanvas(g: GroundGuideGoingInfo, px: number, northDeg: numbe
   cv.style.width = cv.style.height = `${px}px`;
   const ctx = cv.getContext('2d');
   if (!ctx) return cv;
-  ctx.scale(dpr, dpr);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(px / 2, px / 2, px / 2, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.fillStyle = '#2a3038';
-  ctx.fillRect(0, 0, px, px);
-  ctx.translate(px / 2, px / 2);
-  ctx.rotate((northDeg * Math.PI) / 180);
-  ctx.translate(-px / 2, -px / 2);
-  const cell = px / map.size;
-  for (let r = 0; r < map.size; r++) {
-    for (let q = 0; q < map.size; q++) {
-      const v = map.cells[r * map.size + q];
-      if (v === 255) continue;
-      ctx.fillStyle = GOING_COLOR[CODE_STEP[v]];
-      ctx.fillRect(q * cell, r * cell, cell + 0.6, cell + 0.6);
-    }
-  }
-  ctx.restore();
-  ctx.strokeStyle = 'rgba(255,255,255,.35)';
-  ctx.lineWidth = 1;
-  if (ring) {
-    ctx.setLineDash([2, 3]);
+  const paint = (north: number): void => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.scale(dpr, dpr);
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(px / 2, px / 2, px / 4, 0, Math.PI * 2);
+    ctx.arc(px / 2, px / 2, px / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = '#2a3038';
+    ctx.fillRect(0, 0, px, px);
+    ctx.translate(px / 2, px / 2);
+    ctx.rotate((north * Math.PI) / 180);
+    ctx.translate(-px / 2, -px / 2);
+    const cell = px / map.size;
+    for (let r = 0; r < map.size; r++) {
+      for (let q = 0; q < map.size; q++) {
+        const v = map.cells[r * map.size + q];
+        if (v === 255) continue;
+        ctx.fillStyle = GOING_COLOR[CODE_STEP[v]];
+        ctx.fillRect(q * cell, r * cell, cell + 0.6, cell + 0.6);
+      }
+    }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,.35)';
+    ctx.lineWidth = 1;
+    if (ring) {
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.arc(px / 2, px / 2, px / 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.beginPath();
+    ctx.arc(px / 2, px / 2, px / 2 - 0.5, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  ctx.beginPath();
-  ctx.arc(px / 2, px / 2, px / 2 - 0.5, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fillStyle = '#1b1f25';
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(px / 2, px / 2, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  // north tick
-  const a = (northDeg * Math.PI) / 180;
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  const tx = px / 2 + Math.sin(a) * (px / 2 - 5);
-  const ty = px / 2 - Math.cos(a) * (px / 2 - 5);
-  ctx.arc(tx, ty, 2.5, 0, Math.PI * 2);
-  ctx.fill();
+    ctx.fillStyle = '#1b1f25';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(px / 2, px / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // North: a tick on the rim and the letter beside it, both where north now points.
+    const a = (north * Math.PI) / 180;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    const tx = px / 2 + Math.sin(a) * (px / 2 - 5);
+    const ty = px / 2 - Math.cos(a) * (px / 2 - 5);
+    ctx.arc(tx, ty, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    if (px >= 100) {
+      ctx.font = '700 9px system-ui,Segoe UI,Arial,sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#e8ebee';
+      ctx.fillText('N', px / 2 + Math.sin(a) * (px / 2 - 14), px / 2 - Math.cos(a) * (px / 2 - 14));
+    }
+  };
+  paint(northDeg);
+  registerCanvas(cv, paint);
   return cv;
 }
 
@@ -501,7 +529,9 @@ export function movementRoseSection(g: GroundGuideGoingInfo, northDeg: number): 
   const txt = h('div');
   const rate = h('div', 'ms-gv-rate', RATING_LABEL[m.rating]);
   rate.style.color = RATING_COLOR[m.rating];
-  txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 directions open to ${fmtDistance(m.rangeM / 2)}`), h('div', 'ms-gv-blk', blockedText(g)));
+  const blocked = h('div', 'ms-gv-blk');
+  blocked.append(blockedNode(g));
+  txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 directions open to ${fmtDistance(m.rangeM / 2)}`), blocked);
   box.append(roseSvg(g, 82, false, northDeg), txt);
   return band('T', `Movement Freedom · ${seasonWord(g)}`, box, roseLegend(true), g.pending ? h('div', 'ms-gv-soft', 'Still loading round the edges') : null);
 }
@@ -526,28 +556,80 @@ export function soilStrengthSection(g: GroundGuideGoingInfo, v: GroundGuideVerdi
   return band('G', caption, head, gauge ?? h('div', 'ms-gv-soft', 'This mode is not judged on soil.'), note);
 }
 
-/** E · Exit Strip: the eight directions in one row (bar = reach, white cap = blocked). */
-export function exitStripSection(g: GroundGuideGoingInfo): HTMLElement | null {
+/**
+ * E · Exits as an eight-point compass: one spoke per direction, as long as the going reaches (out to the range ring),
+ * coloured GO / SLOW-GO / NO-GO, with a white bar across it where something blocks the way. The group turns with the
+ * map (`data-gv-rose`, orientNorth); the letters stay upright (`data-gv-upright`).
+ */
+export function exitCompass(g: GroundGuideGoingInfo, size = 104): SVGElement | null {
   const m = g.movement;
   if (!m) return null;
-  const row = h('div', 'ms-gv-ex');
+  const c = size / 2;
+  const R = c - 14;
+  const r0 = 6;
+  const P = (deg: number, r: number): [number, number] => {
+    const a = (deg * Math.PI) / 180;
+    return [c + r * Math.sin(a), c - r * Math.cos(a)];
+  };
+  const svg = s('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': 'Exits by direction' });
+  const grp = s('g', { 'data-gv-rose': `${c}` });
+  grp.append(
+    s('circle', { cx: c, cy: c, r: R, fill: 'rgba(255,255,255,.035)', stroke: 'rgba(255,255,255,.22)' }),
+    s('circle', { cx: c, cy: c, r: r0 + (R - r0) / 2, fill: 'none', stroke: 'rgba(255,255,255,.13)', 'stroke-dasharray': '2 3' }),
+  );
   for (const x of m.sectors) {
-    const cell = h('div');
-    const bar = h('i', x.blockedBy && x.reachM < m.rangeM ? 'ms-gv-cut' : undefined);
-    const fill = h('b');
-    fill.style.height = `${Math.max(12, Math.min(100, (x.reachM / m.rangeM) * 100))}%`;
-    fill.style.background = GOING_COLOR[x.step];
-    bar.append(fill);
-    bar.title = `${x.compass}: ${GOING_WORD[x.step]}, ${fmtDistance(x.reachM)}${x.blockedBy ? ` (${x.blockedBy})` : ''}`;
-    cell.append(bar, h('small', undefined, x.compass));
-    row.append(cell);
+    const cardinal = x.bearingDeg % 90 === 0;
+    const [tx, ty] = P(x.bearingDeg, R);
+    const [ix, iy] = P(x.bearingDeg, r0);
+    grp.append(s('line', { x1: ix, y1: iy, x2: tx, y2: ty, stroke: 'rgba(255,255,255,.09)', 'stroke-width': 1 }));
+    const r = r0 + (R - r0) * Math.max(0.12, Math.min(1, x.reachM / m.rangeM));
+    const [ex, ey] = P(x.bearingDeg, r);
+    const spoke = s('line', { x1: ix, y1: iy, x2: ex, y2: ey, stroke: GOING_COLOR[x.step], 'stroke-width': cardinal ? 5 : 4, 'stroke-linecap': 'round' });
+    const tip = s('title', {});
+    tip.textContent = `${x.compass}: ${GOING_WORD[x.step]}, ${fmtDistance(x.reachM)}${x.blockedBy ? ` (${x.blockedBy})` : ''}`;
+    spoke.append(tip);
+    grp.append(spoke);
+    if (x.blockedBy && x.reachM < m.rangeM) {
+      // A white bar across the spoke's end: something stops the way there.
+      const a = (x.bearingDeg * Math.PI) / 180;
+      const dx = 4.5 * Math.cos(a);
+      const dy = 4.5 * Math.sin(a);
+      grp.append(s('line', { x1: ex - dx, y1: ey - dy, x2: ex + dx, y2: ey + dy, stroke: '#fff', 'stroke-width': 2.2, 'stroke-linecap': 'round' }));
+    }
+    const [lx, ly] = P(x.bearingDeg, R + 8);
+    const lab = s('text', {
+      x: lx.toFixed(1),
+      y: ly.toFixed(1),
+      'data-gv-upright': `${lx.toFixed(1)} ${ly.toFixed(1)}`,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      'font-size': x.compass === 'N' ? 10 : 8.5,
+      'font-weight': cardinal ? 700 : 500,
+      fill: x.compass === 'N' ? '#fff' : cardinal ? '#c3cbd3' : '#9aa3ad',
+      'font-family': 'system-ui, Segoe UI, Arial, sans-serif',
+    });
+    lab.textContent = x.compass;
+    grp.append(lab);
   }
-  const open = m.sectors.filter((x) => x.step !== 'nogo' && x.reachM >= m.rangeM / 2).map((x) => x.compass);
+  grp.append(s('circle', { cx: c, cy: c, r: r0 - 1.5, fill: '#1b1f25', stroke: '#fff', 'stroke-width': 1.5 }));
+  svg.append(grp);
+  return svg;
+}
+
+/** E · Exits: the compass, then how free the movement is and what blocks it (text unchanged). `size`: the compass width. */
+export function exitStripSection(g: GroundGuideGoingInfo, size = 96): HTMLElement | null {
+  const m = g.movement;
+  if (!m) return null;
+  const pic = h('div', 'ms-gv-exc');
+  pic.append(exitCompass(g, size)!);
+  const open = m.sectors.filter((x) => x.step !== 'nogo' && x.reachM >= m.rangeM / 2);
   const rate = h('span', 'ms-gv-b', RATING_LABEL[m.rating]);
   rate.style.color = RATING_COLOR[m.rating];
   const line = h('div', 'ms-gv-blk');
-  line.append(rate, open.length ? ` · open ${open.join(' ')}` : ' · no direction open');
-  return band('T', `Exits · ${seasonWord(g)} · ${fmtDistance(m.rangeM)}`, row, line, h('div', 'ms-gv-blk', blockedText(g, 2)));
+  line.append(rate, open.length ? joinNodes([' · open ', joinNodes(open.map((x) => compassNode(x.compass, x.bearingDeg)), ' ')], '') : ' · no direction open');
+  const blocked = h('div', 'ms-gv-blk');
+  blocked.append(blockedNode(g, 2));
+  return band('T', `Exits · ${seasonWord(g)} · ${fmtDistance(m.rangeM)}`, pic, line, blocked);
 }
 
 /** F · Mode Matrix. */
@@ -562,7 +644,7 @@ export function seasonRibbonSection(g: GroundGuideGoingInfo, v: GroundGuideVerdi
   return r ? band('T', `Going by Month · ${modeShort(v.profile, v.profileLabel)}`, r) : null;
 }
 
-/** H · Going Map. */
+/** H · Going Map. The canvas repaints itself when the map turns (registerCanvas, orientNorth). */
 export function goingMapSection(g: GroundGuideGoingInfo, northDeg: number): HTMLElement | null {
   const cv = goingCanvas(g, 84, northDeg);
   if (!cv || !g.map) return null;
