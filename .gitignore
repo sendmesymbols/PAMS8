@@ -33,6 +33,7 @@ public/assets
 
 # Large files that exceed GitHub's file size limit
 PAMS8.pptx
+Presentation/PAMS8.pptx
 MS2/RD/Adv Weather Viz.zip
 
 # Ground Guide terrain bundle built by tools/terrain-pipeline (multi-GB, regenerable from sources.lock + rules.yaml)
