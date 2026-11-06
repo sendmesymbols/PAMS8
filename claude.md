@@ -176,7 +176,7 @@ MS/
   density round it (`GroundGuideRoadDensity.ts`, `guide.roadDensityAround()`: km/km², all-weather share, ways out; seven card
   styles D1–D7 in `GroundGuideRoadDensityView.ts`, compared in `ground-guide-road-density-options.html`); buildings, huts,
   services, security; the month's weather. Compact on the card by default, in full in the Brief; `guide.sectionsAround()`.
-  See `MS/Docs/15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
+  See `15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.
 - **DeclutterEngine** (+ Cluster/Ladder/Disperse/LabelPlacer) — zoom-aware hiding,

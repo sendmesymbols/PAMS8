@@ -1,7 +1,7 @@
 # Terrain-bundle pipeline
 
 Produces the **terrain bundle** consumed by the PAMS8 Ground Guide
-(`MS/Docs/15-ground-guide.md`, "Terrain bundle format (v1)"): a folder of
+(`../../15-ground-guide.md`, "Terrain bundle format (v1)"): a folder of
 static XYZ tiles that tells the engine, per pixel, the terrain class and the
 distance to the nearest no-go pixel for each mobility profile.
 

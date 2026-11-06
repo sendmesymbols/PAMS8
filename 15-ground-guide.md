@@ -4,10 +4,10 @@ Optional engine that tells the user, **while they draw**, whether the symbol is
 on deployable land, near a no-go area (and how far), partly inside one, or
 inside one. It is gated by `features.groundGuide` and needs a
 **terrain bundle** — a folder of static tiles produced by the data pipeline in
-`tools/terrain-pipeline/` and served by the host app from any plain web server.
+`tools/terrain-pipeline` and served by the host app from any plain web server.
 With no bundle configured the engine is dormant and existing hosts are unaffected.
 
-**Where the bundle lives.** The pipeline writes it to `MS/Data/terrain-bundle/` (git-ignored, several GB).
+**Where the bundle lives.** The pipeline writes it to `MS/Data/terrain-bundle` (git-ignored, several GB).
 `npm run dev` serves that folder at `/terrain-bundle`, so the default `groundGuide.bundleUrl` works in the
 harness with nothing to copy. A host app copies the folder to wherever it serves static files and sets
 `groundGuide.bundleUrl` to that URL.
@@ -529,10 +529,10 @@ Road, 32 wheeled cross-country → B Truck, 33 tracked / 34 wheeled and tracked 
 | `c_tracked` | C | Dozer, excavator |
 | `c_wheeled` | C | Crane, tractor, bridging and mine-laying equipment |
 
-**Catalogue fields.** Vehicle entries in `MS/Data/Symbols.json` (and `MS3/Data/Symbols.json`) carry
+**Catalogue fields.** Vehicle entries in `MS/Data/Symbols.json` carry
 `"VehCat": "A" | "B" | "C"` (A combat vehicle, B general purpose, C engineer plant: `Material/Veh`) and every
 tagged entry `"Mover"`. Both are extra keys at the top of the entry, so nothing that reads the catalogue changes;
-weapons and units carry `Mover` only. 91 entries are tagged.
+weapons and units carry `Mover` only. 91 entries are tagged. (`MS2` and `MS3` are outdated and not updated.)
 
 **The arithmetic.** Speed at a spot = the mover's km/h on that kind of ground (`grounds`: open, fields, irrigated,
 orchard, forest, firm desert, loose sand, dunes, rocky, riverbed, marsh, salt pan, built-up, snow, water gap; a ground
@@ -953,7 +953,7 @@ Bundle v2 keeps the v1 format (`manifest.version` stays `1`, so the engine reads
 adds `dataVersion: 2`, a `grotbc` block in the manifest, and more data, organised by the staff headings
 **G**round, **R**elief, **O**bstacles, **T**actical features, **B**oundaries & built-up,
 **C**over & concealment. The card that presents it by heading is the next piece of work:
-[16 Ground Guide card: GROTBC handover](16-ground-guide-grotbc-card.md) has the decisions, style guide and the full
+[16 Ground Guide card: GROTBC handover](MS/Docs/16-ground-guide-grotbc-card.md) has the decisions, style guide and the full
 data contract.
 
 - **Classes 18–50** are appended (codes 0–17 unchanged): slope bands 3–7° and 7–15°, canals, distributaries,
@@ -1051,7 +1051,7 @@ about 2 MB, ~45 s) to `public/terrain-bundle/` (git-ignored) for development and
 tests without real data. Its manifest carries `synthetic: true` and a
 `landmarks.json` of known coordinates with their expected class. Never ship it.
 
-`npm run dev` serves `/terrain-bundle` from the real bundle in `MS/Data/terrain-bundle/`, **except** for any
+`npm run dev` serves `/terrain-bundle` from the real bundle in `MS/Data/terrain-bundle`, **except** for any
 file that also exists under `public/terrain-bundle/`: the synthetic bundle wins file by file, so while that
 folder exists the harness shows synthetic data instead of the real data. **Delete `public/terrain-bundle/`
 when you are done with the synthetic bundle.** (This is decided per request, so no restart is needed after

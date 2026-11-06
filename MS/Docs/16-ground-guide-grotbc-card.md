@@ -2,7 +2,7 @@
 
 Start here to continue the Ground Guide card and legend work. It records every decision taken so far, what
 is already built, the design target, the style guide, and the bundle v2 data the new card reads. Engine and
-bundle reference: [15-ground-guide.md](15-ground-guide.md).
+bundle reference: [15-ground-guide.md](../../15-ground-guide.md).
 
 **Status (2026-11-01)**
 
