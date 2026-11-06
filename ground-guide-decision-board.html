@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GROTBC Decision Board · PAMS8 Ground Guide</title>
+<!--
+  PAMS8 Ground Guide · GROTBC Decision Board
+  ---------------------------------------------------------------
+  Purpose: ONE screen that lets a planner decide at a glance. The verdict first,
+  the six GROTBC headings second, the evidence on demand. A second strip collects
+  the display decisions still open across the ten ground-guide-* option pages.
+
+  Self-contained: no network, no build, no framework, no images. Inline SVG only.
+  All place names, numbers and distances are ILLUSTRATIVE samples taken from the
+  shapes and figures in GROTBC.md, GROTBC-Roads.md, GROTBC Coverage Map.html and
+  the ground-guide-*.html option pages. They are not a verified survey.
+
+  Doctrine note: GROTBC = Ground; Roads, Tracks & Railway Network; Obstacles;
+  Trafficability; Built-Up Areas; Cover, Camouflage & Concealment.
+  T changed from Terrain to Trafficability on 2026-11-04; terrain type and
+  vegetation sit under G. ITG / MITG is a commander's designation, not terrain data.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#eef0ec; --panel:#f9faf7; --panel2:#f2f4ef; --line:#d3d8cf; --line2:#e5e9e1;
+  --fg:#1d2420; --soft:#5d675f; --faint:#818a81; --code:#e3e7df;
+  --G:#5f8a2a; --R:#9c7536; --O:#6a4cb8; --T:#2f86c8; --B:#7d7068; --C:#1f8a5a; --W:#4a7f95;
+  --go:#1f8a4c; --go-bg:#dcefe2; --slow:#b06a0b; --slow-bg:#f6e7cf; --nogo:#c8363b; --nogo-bg:#f6dcdc;
+  --on:#1f8a4c; --sw:#2f6fb0; --part:#c4740f; --data:#7a6a9a; --miss:#c8363b; --card:#4f5a63;
+  --on-bg:#dcefe2; --sw-bg:#dde8f4; --part-bg:#f6e7cf; --data-bg:#e8e3f0; --miss-bg:#f6dcdc; --card-bg:#e2e6e9;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#15191e; --panel:#1b1f25; --panel2:#21272f; --line:#303740; --line2:#282f37;
+  --fg:#eef1f4; --soft:#9aa3ad; --faint:#757f89; --code:#262c34;
+  --G:#8fb35a; --R:#c9a46b; --O:#9a80e0; --T:#5aa9e6; --B:#b3a79c; --C:#3fbf85; --W:#7fbcd2;
+  --go:#4cc483; --go-bg:#17331f; --slow:#f0a04b; --slow-bg:#3a2a14; --nogo:#ff7a7e; --nogo-bg:#3d1c1e;
+  --on:#4cc483; --sw:#7fb3e8; --part:#f0a04b; --data:#b6a3dc; --miss:#ff7a7e; --card:#aab3bd;
+  --on-bg:#17331f; --sw-bg:#182a3d; --part-bg:#3a2a14; --data-bg:#2a2438; --miss-bg:#3d1c1e; --card-bg:#262c34;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#15191e; --panel:#1b1f25; --panel2:#21272f; --line:#303740; --line2:#282f37;
+  --fg:#eef1f4; --soft:#9aa3ad; --faint:#757f89; --code:#262c34;
+  --G:#8fb35a; --R:#c9a46b; --O:#9a80e0; --T:#5aa9e6; --B:#b3a79c; --C:#3fbf85; --W:#7fbcd2;
+  --go:#4cc483; --go-bg:#17331f; --slow:#f0a04b; --slow-bg:#3a2a14; --nogo:#ff7a7e; --nogo-bg:#3d1c1e;
+  --on:#4cc483; --sw:#7fb3e8; --part:#f0a04b; --data:#b6a3dc; --miss:#ff7a7e; --card:#aab3bd;
+  --on-bg:#17331f; --sw-bg:#182a3d; --part-bg:#3a2a14; --data-bg:#2a2438; --miss-bg:#3d1c1e; --card-bg:#262c34;
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 var(--body);
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1280px;margin:0 auto;padding:22px 0 60px}
+h1,h2,h3,h4{margin:0;font-family:var(--display);font-weight:600;letter-spacing:.02em}
+h1{font-size:38px;line-height:1}
+h2{font-size:21px;line-height:1.15}
+h3{font-size:16px;line-height:1.2}
+p{margin:6px 0 10px}
+button,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--T);outline-offset:2px}
+a{color:var(--T)}
+code{font:12px var(--mono);background:var(--code);padding:1px 5px;border-radius:3px}
+.cap{font:600 11px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.soft{color:var(--soft)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ---------- header ---------- */
+.top{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.brand{display:flex;gap:10px;align-items:center}
+.brand .lt{display:flex;gap:3px}
+.brand .lt b{width:24px;height:24px;border-radius:5px;display:grid;place-items:center;color:#fff;font:700 15px/1 var(--display)}
+.lede{max-width:88ch;color:var(--soft);font-size:13.5px;margin:10px 0 0}
+.tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:7px 11px;font-size:12.5px;display:inline-flex;gap:6px;align-items:center}
+.btn:hover{border-color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn.primary:hover{opacity:.88}
+
+/* controls */
+.controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:18px;padding:12px 14px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.controls label{display:grid;gap:4px;font:600 11px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.controls select{min-width:190px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13.5px}
+.controls .spacer{flex:1 1 auto}
+.meta{font-size:11.5px;color:var(--faint);font-family:var(--mono);text-align:right;line-height:1.5}
+
+/* doctrine strip */
+.doctrine{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;margin-top:12px;
+  background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.doctrine div{background:var(--panel);padding:9px 11px;min-width:0}
+.doctrine b{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:4px;color:#fff;
+  font:700 12px/1 var(--display);margin-right:6px;vertical-align:1px}
+.doctrine span{font-size:11.5px;color:var(--soft);display:block;margin-top:3px;line-height:1.35}
+.doctrine strong{font:600 13px/1.2 var(--display);letter-spacing:.03em}
+
+/* rainfall ribbon */
+.rainbar{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px 12px}
+.rainbar .rh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.rainbars{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px;align-items:end}
+.rbtn{border:1px solid transparent;background:transparent;border-radius:6px 6px 3px 3px;padding:3px 0 2px;
+  display:grid;gap:3px;justify-items:center;min-width:0}
+.rbtn:hover{background:var(--panel2)}
+.rbtn[aria-pressed="true"]{border-color:var(--fg);background:var(--panel2)}
+.rbtn i{display:block;width:100%;max-width:38px;height:26px;border-radius:3px;background:var(--T);opacity:.35}
+.rbtn.wet i{opacity:.8}
+.rbtn[aria-pressed="true"] i{opacity:1;outline:2px solid var(--fg);outline-offset:1px}
+.rbtn small{font:11px var(--mono);color:var(--soft)}
+.rbtn em{font:10.5px var(--mono);color:var(--faint);font-style:normal}
+
+/* ---------- hero ---------- */
+.hero{display:grid;grid-template-columns:210px minmax(0,1fr) 252px;gap:0;margin-top:14px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.hero>div{padding:16px 18px;min-width:0}
+.hero>div+div{border-left:1px solid var(--line)}
+.hexbox{display:grid;place-items:center;background:var(--panel2)}
+.hexbox svg{width:190px;height:190px;max-width:100%}
+.verdict{display:flex;flex-direction:column;justify-content:center}
+.vtag{display:inline-flex;gap:8px;align-items:center;align-self:flex-start;font:700 12px/1 var(--display);
+  letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;border-radius:999px;margin-bottom:10px}
+.vtag[data-v="go"]{background:var(--go-bg);color:var(--go)}
+.vtag[data-v="slow"]{background:var(--slow-bg);color:var(--slow)}
+.vtag[data-v="nogo"]{background:var(--nogo-bg);color:var(--nogo)}
+.verdict h2{font-size:29px;margin-bottom:4px}
+.verdict .slip{font-size:14.5px;line-height:1.5;max-width:70ch;margin:0 0 10px}
+.verdict .sub{font-size:12.5px;color:var(--soft)}
+.verdict .sub b{color:var(--fg);font-weight:600}
+.changed{display:inline-flex;gap:6px;align-items:center;margin-top:10px;align-self:flex-start;
+  font-size:11.5px;padding:5px 9px;border-radius:6px;background:var(--slow-bg);color:var(--slow)}
+.changed.none{background:var(--panel2);color:var(--soft)}
+.scalebox{display:flex;flex-direction:column;justify-content:center;gap:8px;background:var(--panel2)}
+.scale{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:2px}
+.scale span{text-align:center;font:700 11px/1 var(--display);letter-spacing:.06em;padding:11px 0 10px;border-radius:4px;
+  background:var(--code);color:var(--faint)}
+.scale span.on[data-v="go"]{background:var(--go);color:#fff}
+.scale span.on[data-v="slow"]{background:var(--slow);color:#fff}
+.scale span.on[data-v="nogo"]{background:var(--nogo);color:#fff}
+.drywet{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--soft);margin-top:7px}
+.drywet b{color:var(--fg);font-weight:600}
+.confline{font-size:11.5px;color:var(--soft);border-top:1px solid var(--line);padding-top:9px;margin-top:4px;line-height:1.5}
+
+/* ---------- letter rail ---------- */
+.shead{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:26px 0 10px}
+.shead p{margin:0;color:var(--soft);font-size:12.5px}
+.lrail{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+.lcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 11px 10px;
+  text-align:left;display:flex;flex-direction:column;gap:6px;min-height:146px;border-top:3px solid var(--lc);width:100%}
+.lcard:hover{border-color:var(--lc);background:var(--panel2)}
+.lcard[aria-pressed="true"]{box-shadow:inset 0 0 0 1px var(--lc);background:var(--panel2)}
+.lcard .lh{display:flex;gap:7px;align-items:center}
+.lcard .lb{width:24px;height:24px;flex:none;border-radius:5px;background:var(--lc);color:#fff;
+  display:grid;place-items:center;font:700 15px/1 var(--display)}
+.lcard .ln{font:600 14px/1.1 var(--display);letter-spacing:.03em}
+.lcard .ll{font-size:11.8px;line-height:1.4;color:var(--fg)}
+.lcard .ll+.ll{color:var(--soft)}
+.lcard .lf{margin-top:auto;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.pill{flex:none;font:600 10px/1 var(--display);letter-spacing:.09em;text-transform:uppercase;padding:4px 6px;border-radius:999px;white-space:nowrap}
+.s-on{color:var(--on);background:var(--on-bg)}.s-sw{color:var(--sw);background:var(--sw-bg)}
+.s-part{color:var(--part);background:var(--part-bg)}.s-data{color:var(--data);background:var(--data-bg)}
+.s-miss{color:var(--miss);background:var(--miss-bg)}.s-card{color:var(--card);background:var(--card-bg)}
+.dots{display:inline-flex;gap:2px;margin-left:auto}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--line);display:block}
+.dots i.f{background:var(--lc)}
+.detail{margin-top:10px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--lc);
+  border-radius:10px;padding:14px 16px}
+.detail .dh{display:flex;gap:9px;align-items:center;margin-bottom:9px}
+.detail .dh b{width:24px;height:24px;border-radius:5px;background:var(--lc);color:#fff;display:grid;place-items:center;font:700 14px/1 var(--display)}
+.detail table{border-collapse:collapse;width:100%;font-size:12.5px}
+.detail th,.detail td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line2);vertical-align:top}
+.detail th{width:190px;color:var(--soft);font-weight:500}
+.detail tr:last-child th,.detail tr:last-child td{border-bottom:0}
+.detail .note{margin:10px 0 0;font-size:12px;color:var(--soft)}
+
+/* ---------- two columns ---------- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.box h2{margin-bottom:10px}
+.drv{display:grid;grid-template-columns:26px 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--line2)}
+.drv:first-of-type{border-top:0}
+.drv .n{width:24px;height:24px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);
+  display:grid;place-items:center;font:700 12px var(--mono);color:var(--soft)}
+.drv b{font-weight:600}
+.drv p{margin:2px 0 0;font-size:12.3px;color:var(--soft)}
+.caveat{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 0;border-top:1px solid var(--line2);font-size:12.3px}
+.caveat:first-of-type{border-top:0}
+.caveat span{color:var(--soft)}
+.caveat em{font-style:normal;font:600 10px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 6px;border-radius:999px;background:var(--card-bg);color:var(--card);white-space:nowrap;height:fit-content}
+
+/* ---------- decisions ---------- */
+.decide{margin-top:26px}
+.dtable{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.drow{display:grid;grid-template-columns:26px minmax(150px,1.05fr) minmax(0,1.7fr) minmax(0,1fr);
+  gap:12px;padding:10px 13px;border-top:1px solid var(--line2);align-items:start}
+.drow:first-child{border-top:0}
+.drow .dn{width:22px;height:22px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);
+  display:grid;place-items:center;font:700 11px var(--mono);color:var(--soft)}
+.drow .dq{font-weight:600;font-size:12.8px;line-height:1.35}
+.drow .dq small{display:block;font-weight:400;color:var(--faint);font:11px var(--mono);margin-top:3px}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{font:500 11.5px/1 var(--body);border:1px solid var(--line);background:var(--panel2);color:var(--soft);
+  padding:5px 8px;border-radius:999px;white-space:nowrap}
+.chip:hover{border-color:var(--fg);color:var(--fg)}
+.chip[aria-pressed="true"]{border-color:var(--go);background:var(--go-bg);color:var(--go)}
+.chip[aria-pressed="true"]::before{content:"● ";font-size:9px}
+.drow .dnote{font-size:11.8px;color:var(--soft);line-height:1.45}
+.decfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.output{margin-top:10px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;
+  font:11.8px/1.6 var(--mono);white-space:pre-wrap;max-height:230px;overflow:auto}
+
+/* ---------- footer ---------- */
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;font-size:11.8px;color:var(--soft);align-items:center}
+.legend .pill{font-size:10px}
+footer{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-size:11.8px;color:var(--soft);line-height:1.6}
+
+@media (max-width:1050px){
+  .hero{grid-template-columns:170px minmax(0,1fr)}
+  .hero .scalebox{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px}
+  .hero .scalebox>*{flex:1 1 190px}
+  .lrail{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .doctrine{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .drow{grid-template-columns:26px 1fr 1.4fr;gap:10px}
+  .drow .dnote{grid-column:2/-1}
+}
+@media (max-width:680px){
+  h1{font-size:30px}
+  .hero{grid-template-columns:1fr}
+  .hexbox{padding:8px}
+  .hero>div+div{border-left:0;border-top:1px solid var(--line)}
+  .lrail{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .doctrine{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two{grid-template-columns:1fr}
+  .controls select{min-width:0;width:100%}
+  .controls label{flex:1 1 140px}
+  .drow{grid-template-columns:26px 1fr}
+  .drow .chips,.drow .dnote{grid-column:2/-1}
+  .rainbars{gap:2px}
+  .rbtn em{display:none}
+}
+@media (prefers-reduced-motion:no-preference){
+  .lcard,.chip,.btn,.rbtn{transition:background-color .12s,border-color .12s,color .12s}
+  .vtag,.ll,.slip{animation:fade .22s ease-out}
+  @keyframes fade{from{opacity:.35;transform:translateY(2px)}to{opacity:1;transform:none}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <div class="brand">
+        <span class="lt" aria-hidden="true">
+          <b style="background:var(--G)">G</b><b style="background:var(--R)">R</b><b style="background:var(--O)">O</b>
+          <b style="background:var(--T)">T</b><b style="background:var(--B)">B</b><b style="background:var(--C)">C</b>
+        </span>
+        <div class="cap">PAMS8 · Ground Guide</div>
+      </div>
+      <h1>Decision board</h1>
+      <p class="lede">One screen to decide: <b>the verdict first</b>, the six GROTBC headings second, the evidence on demand.
+      Change the place, the mode or the month and the whole board re-reads the ground. Everything below the line is a display
+      decision still open across the option pages &mdash; pick one chip per row and copy the result.
+      <b>All figures are illustrative samples</b>, not a verified survey.</p>
+    </div>
+    <div class="tools">
+      <button class="btn" id="themeBtn" type="button" aria-label="Switch light or dark theme">Theme</button>
+      <button class="btn primary" id="copyBtn" type="button">Copy decision slip</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label for="placeSel">Place<select id="placeSel"></select></label>
+    <label for="modeSel">Mode<select id="modeSel"></select></label>
+    <label for="monthSel">Month<select id="monthSel"></select></label>
+    <div class="spacer"></div>
+    <div class="meta" id="metaLine"></div>
+  </div>
+
+  <div class="doctrine" id="doctrine" aria-label="What GROTBC means"></div>
+
+  <div class="rainbar">
+    <div class="rh"><span class="cap">Season</span>
+      <span class="soft" id="rainNote"></span>
+      <span class="soft mono" style="margin-left:auto">Click a bar to set the month</span>
+    </div>
+    <div class="rainbars" id="rainBars" role="group" aria-label="Monthly rainfall, click to choose a month"></div>
+  </div>
+
+  <section class="hero" aria-label="Decision at a glance">
+    <div class="hexbox"><svg id="hex" viewBox="0 0 200 200" role="img" aria-labelledby="hexTitle hexDesc">
+      <title id="hexTitle">Six-heading coverage radar</title>
+      <desc id="hexDesc">A hexagon showing how firmly each GROTBC heading is covered by the data at this place.</desc>
+    </svg></div>
+    <div class="verdict" aria-live="polite">
+      <span class="vtag" id="vTag" data-v="go">Suitable position</span>
+      <h2 id="vHead"></h2>
+      <p class="slip" id="vSlip"></p>
+      <div class="sub" id="vSub"></div>
+      <span class="changed" id="vChanged"></span>
+    </div>
+    <div class="scalebox">
+      <div>
+        <div class="cap">Going for this mode</div>
+        <div class="scale" id="scale">
+          <span data-v="go">GO</span><span data-v="slow">SLOW-GO</span><span data-v="nogo">NO-GO</span>
+        </div>
+        <div class="drywet" id="dryWet"></div>
+      </div>
+      <div class="confline" id="confLine"></div>
+    </div>
+  </section>
+
+  <pre class="output" id="copyOut" hidden tabindex="0" aria-label="Text to copy. Select all and copy if the clipboard is unavailable."></pre>
+
+  <div class="shead"><h2>The six headings</h2><p>Click a letter for the evidence behind the line. The dots show how firm that reading is.</p></div>
+  <div class="lrail" id="lRail"></div>
+  <div class="detail" id="detail" hidden></div>
+
+  <div class="two">
+    <div class="box">
+      <h2>What changes the answer</h2>
+      <div id="drivers"></div>
+    </div>
+    <div class="box">
+      <h2>Where the data stops</h2>
+      <div id="caveats"></div>
+    </div>
+  </div>
+
+  <section class="decide" aria-labelledby="decTitle">
+    <div class="shead"><h2 id="decTitle">Decide at a glance</h2>
+      <p>Recommended defaults are pre-selected. Each row is one of the option pages.</p></div>
+    <div class="dtable" id="dTable"></div>
+    <div class="decfoot">
+      <button class="btn primary" id="decBtn" type="button">Copy my decisions</button>
+      <button class="btn" id="resetBtn" type="button">Reset to recommended</button>
+      <span class="soft" id="decStatus" aria-live="polite">10 decisions, all on recommended defaults.</span>
+    </div>
+    <pre class="output" id="decOut" hidden></pre>
+  </section>
+
+  <div class="legend" aria-label="Status key">
+    <span class="cap">Coverage key</span>
+    <span class="pill s-on">Shown</span><span>read and firm</span>
+    <span class="pill s-sw">Shown with limits</span><span>read, but sparse or modelled</span>
+    <span class="pill s-part">Partial</span><span>part of the heading only</span>
+    <span class="pill s-data">Data only</span><span>in the bundle, nothing reads it</span>
+    <span class="pill s-miss">Missing</span><span>no source</span>
+  </div>
+
+  <footer>
+    <b>Reading the board.</b> GROTBC is a terrain <em>appreciation</em> framework, not a layer list. G, R, O, B and C describe
+    what is on the ground; <b>T is derived</b> from them for one mode, one movement type and one season. ITG / MITG is the
+    commander's designation saved with the plan, never a property of the terrain bundle. A GO here is a point reading, not
+    a route.<br>
+    <b>Sources.</b> GROTBC.md · GROTBC-Continue.md · GROTBC-Data-Creation-Continue.md · GROTBC-Roads.md ·
+    GROTBC Coverage Map.html · the ten ground-guide-*.html option pages. Bundle rules <code>2026.11-grotbc-v2</code>,
+    checked 6 Nov 2026. NCGDB (restricted), SoilGrids 2.0 (modelled), WorldClim 2.1 normals, WorldPop (estimate),
+    GeoNames, OpenStreetMap (ODbL). The whole guide stays off until <code>features.groundGuide</code> is turned on.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ constants */
+var LET = [
+  {k:"G", n:"Ground",      full:"Relief, terrain type, soil, vegetation, water, ITG"},
+  {k:"R", n:"Roads",       full:"Roads, tracks, railway, crossings, airfields, MSR"},
+  {k:"O", n:"Obstacles",   full:"Natural, man-made, temporary, seasonal"},
+  {k:"T", n:"Trafficability", full:"Going by mode and movement type, dry and after rain"},
+  {k:"B", n:"Built-up",    full:"Settlements, construction, services, people"},
+  {k:"C", n:"Cover",       full:"Cover and concealment, four ways"}
+];
+var LC = {G:"#7aa83f",R:"#b08a45",O:"#8a6fd0",T:"#3f96d8",B:"#948779",C:"#2fa873"};
+var STATUS = {
+  on:  {t:"Shown",       c:"s-on"},
+  sw:  {t:"With limits", c:"s-sw"},
+  part:{t:"Partial",     c:"s-part"},
+  data:{t:"Data only",   c:"s-data"},
+  miss:{t:"Missing",     c:"s-miss"},
+  card:{t:"Card core",   c:"s-card"}
+};
+var WORD = {go:"GO", slow:"SLOW-GO", nogo:"NO-GO"};
+var VERDICT = {
+  go:  {t:"Suitable position",   h:"Can occupy and move"},
+  slow:{t:"SLOW-GO terrain",     h:"Can move, with care"},
+  nogo:{t:"Unsuitable position", h:"Cannot move without work"}
+};
+var COVER_W = ["None","Poor","Fair","Good"];
+var COVER_F = ["Direct fire","Indirect fire","Ground observation","Aerial observation"];
+var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/* 14 mobility classes, as in the terrain bundle's rules.json profiles.
+   f = the going family the board uses; sec = the three GROTBC letters the card leads with. */
+var MODES = [
+  {k:"dismounted", n:"Dismounted Force",          f:"foot",    sec:"GOC", need:"Water, snow, AP mines; cover within 100 m"},
+  {k:"wheeled",    n:"Wheeled Vehicle",           f:"wheeled", sec:"GRO", need:"Firm ground; road within 1 km; crossings by class"},
+  {k:"tracked",    n:"Tracked Vehicle",           f:"tracked", sec:"GRO", need:"Slope under 30 deg; tankable route and crossings"},
+  {k:"gun",        n:"Gun Position",              f:"tracked", sec:"GRC", need:"Slope under 7 deg; road within 500 m; concealment from the air"},
+  {k:"ad",         n:"Air Defence Site",          f:"tracked", sec:"GRC", need:"Dominant ground; access road; open arcs"},
+  {k:"hls",        n:"Helicopter Landing Site",   f:"air",     sec:"GOT", need:"Firm, level; no wires within 100 m; no trees, no built-up"},
+  {k:"signals",    n:"Signals / EW Site",         f:"tracked", sec:"GRO", need:"High ground; access road; away from power lines"},
+  {k:"amphibious", n:"Amphibious",                f:"water",   sec:"GOT", need:"Water is SLOW-GO; entry and exit banks"},
+  {k:"pack",       n:"Mountain / Pack Transport", f:"foot",    sec:"GRO", need:"Steep slope SLOW-GO; pack tracks, passes"},
+  {k:"oversnow",   n:"Over-Snow",                 f:"foot",    sec:"GOT", need:"Snow cover and slope; going over snow"},
+  {k:"roadbound",  n:"Road-Bound Wheeled",        f:"wheeled", sec:"ROB", need:"On a metalled road within 50 m; crossings by class"},
+  {k:"rail",       n:"Rail-Bound",                f:"rail",    sec:"ROB", need:"On a railway; stations; level crossings"},
+  {k:"vessel",     n:"Surface Vessel",            f:"water",   sec:"GOR", need:"Water and banks; crossings"},
+  {k:"grbased",    n:"Gr Based",                  f:"tracked", sec:"GOB", need:"Water"}
+];
+
+/* ------------------------------------------------------------- sample places */
+var PLACES = [
+{
+  id:"kamoke", name:"Kamoke", region:"Irrigated farmland 3 km S · Gujranwala District",
+  sheet:"Sheet 44 I/1 · Kamoke Tehsil", clazz:"Irrigated Cropland",
+  terrain:"Plain (Irrigated)", elev:"213 m", slope:"1 deg · Level", landform:"Valley floor",
+  soil:"Clay Loam", soilConf:"Modelled", soilGroup:"Lean Clay (CL)", soilWet:"Poor after rain",
+  rain:[26,29,28,18,19,45,149,154,56,8,5,12], wetMm:75, monsoon:"Jun to Sep",
+  going:{
+    foot:{dry:"go",wet:"go",limit:"Watercourses and bunds; firm when dry"},
+    wheeled:{dry:"slow",wet:"nogo",limit:"Watercourses every few hundred metres; clay loam poor after rain"},
+    tracked:{dry:"go",wet:"slow",limit:"Distributaries; soft fields after rain"},
+    air:{dry:"slow",wet:"slow",limit:"Tree lines and power lines; soft ground after rain"},
+    water:{dry:"nogo",wet:"nogo",limit:"No navigable water at this point"},
+    rail:{dry:"go",wet:"go",limit:"Broad-gauge line 4.2 km E"}
+  },
+  movement:"7 of 8 directions open when dry, 3 of 8 after rain",
+  road:{name:"MSR N-5 (GT Road)", cls:"Class 70", tankable:"Tankable", dist:"1.2 km NE",
+    crossing:"Bridge Class 40 (Not for Tanks) 600 m E", extra:"Lahore to Kasur · 53 km · Condition Good (Where Recorded)"},
+  density:{all:"1.17", aw:"0.74", band:"Dense", bandWet:"Moderate", exits:"5 ways out, 2 all-weather", circle:"5 km"},
+  cover:{hereName:"Irrigated Cropland", here:[0,0,1,1], cc:"Concealment Good in the surrounding square kilometre",
+    near:[{what:"Canal Bank (Upper Chenab Canal)",where:"150 m W",v:[2,1,2,0],note:"Deployment Line"},
+          {what:"Bund (1 to 2 m)",where:"90 m E",v:[2,1,2,0]},
+          {what:"Orchard",where:"450 m SE",v:[1,1,2,2]}]},
+  people:{place:"Kamoke (City) 3.1 km N", pop:"About 1.2 million within 12 km", density:"Rural · about 180 per square km", age:"Under 15: 34 percent · 65 and over: 5 percent"},
+  obs:{manmade:"Distributary (Man-Made): SLOW-GO, cross at a bridge", natural:"Flood-prone ground 800 m W",
+    seasonal:"Monsoon flooding Jun to Sep", temporary:"None recorded"},
+  itg:"No ITG candidate within 3 km", highGround:"2276 m Murree Hills · 2.1 km NE (not at this place)",
+  status:{G:"on",R:"sw",O:"part",T:"on",B:"part",C:"sw"},
+  conf:{G:3,R:2,O:2,T:3,B:2,C:2}
+},
+{
+  id:"thal", name:"Thal", region:"Sandy semi-arid plain · Punjab",
+  sheet:"Sheet 39 O/9 · Thal Tehsil", clazz:"Sandy / Open Ground",
+  terrain:"Desert (Gravel)", elev:"192 m", slope:"2 deg · Gentle", landform:"Sand sheet",
+  soil:"Loamy Sand", soilConf:"Modelled", soilGroup:"Sand (SM)", soilWet:"Firmer when damp",
+  rain:[12,15,18,10,8,22,68,61,24,5,3,8], wetMm:40, monsoon:"Jul to Aug",
+  going:{
+    foot:{dry:"go",wet:"go",limit:"Loose sand slows long marches; no water source mapped within 5 km"},
+    wheeled:{dry:"go",wet:"slow",limit:"Wheels sink in dry sand; tracks turn to mud after rain"},
+    tracked:{dry:"go",wet:"go",limit:"Firm going; brown-out dust"},
+    air:{dry:"go",wet:"slow",limit:"Loose sand, brown-out on approach"},
+    water:{dry:"nogo",wet:"nogo",limit:"No surface water"},
+    rail:{dry:"nogo",wet:"nogo",limit:"No railway within 20 km"}
+  },
+  movement:"8 of 8 directions open when dry, 6 of 8 after rain",
+  road:{name:"Unmetalled Track", cls:"Class Not Recorded", tankable:"Not assessed", dist:"at the point",
+    crossing:"No bridge within 5 km", extra:"93 km of route inside 5 km, 54 km of it tracks"},
+  density:{all:"0.93", aw:"0.39", band:"Dense", bandWet:"Moderate", exits:"4 ways out, 1 all-weather", circle:"5 km"},
+  cover:{hereName:"Bare Sand Sheet", here:[0,0,0,0], cc:"Concealment None in the surrounding square kilometre",
+    near:[{what:"Sand Dune (3 m)",where:"620 m SW",v:[1,0,1,0]},
+          {what:"Scrub",where:"1.4 km N",v:[0,0,1,0]}]},
+  people:{place:"Settlement 6.2 km SE", pop:"About 9,000 within 12 km", density:"Sparse · about 12 per square km", age:"Under 15: 41 percent · 65 and over: 4 percent"},
+  obs:{manmade:"None mapped", natural:"Dune ridges 620 m SW",
+    seasonal:"Flash floods in nullahs Jul to Aug", temporary:"None recorded"},
+  itg:"No ITG candidate within 3 km", highGround:"No surveyed height within 5 km",
+  status:{G:"on",R:"sw",O:"part",T:"on",B:"sw",C:"part"},
+  conf:{G:3,R:2,O:1,T:3,B:1,C:1}
+},
+{
+  id:"astore", name:"Astore Hills", region:"Steep mountain slope · Gilgit-Baltistan",
+  sheet:"Sheet 43 A/12 · Astore Tehsil", clazz:"Rocky / Scree",
+  terrain:"Mountainous", elev:"2,940 m", slope:"34 deg · Steep", landform:"Upper slope",
+  soil:"Loam (shallow)", soilConf:"Modelled", soilGroup:"Rock with thin soil", soilWet:"Rockfall risk after rain",
+  rain:[48,55,62,58,45,22,28,30,25,18,20,38], wetMm:45, monsoon:"Dec to Mar (snow)",
+  going:{
+    foot:{dry:"slow",wet:"slow",limit:"Slope over 30 deg; snow Dec to Mar"},
+    wheeled:{dry:"nogo",wet:"nogo",limit:"Slope over 30 deg, no metalled road"},
+    tracked:{dry:"nogo",wet:"nogo",limit:"Cliffs and escarpments; tracks and passes only"},
+    air:{dry:"slow",wet:"nogo",limit:"Slope over 7 deg; no level landing site"},
+    water:{dry:"nogo",wet:"nogo",limit:"No navigable water"},
+    rail:{dry:"nogo",wet:"nogo",limit:"No railway"}
+  },
+  movement:"2 of 8 directions open when dry, 1 of 8 in snow",
+  road:{name:"Pack Track", cls:"Class Not Recorded", tankable:"Not tankable", dist:"300 m E",
+    crossing:"Foot bridge 1.8 km S", extra:"Closed Dec to Mar (as recorded) · Landslide sites: 2"},
+  density:{all:"0.21", aw:"0.04", band:"Sparse", bandWet:"No Roads", exits:"1 way out, none all-weather", circle:"5 km"},
+  cover:{hereName:"Scree Slope", here:[1,1,1,0], cc:"Concealment Poor in the surrounding square kilometre",
+    near:[{what:"Rock Outcrop",where:"210 m N",v:[2,2,1,0]},
+          {what:"Ridgeline Crest",where:"740 m NE",v:[2,1,2,0],note:"Dead ground behind"}]},
+  people:{place:"Village 4.6 km SW", pop:"About 3,400 within 12 km", density:"Empty · under 1 per square km", age:"Under 15: 38 percent · 65 and over: 6 percent"},
+  obs:{manmade:"None mapped", natural:"Cliff 210 m N, scree slope at the point",
+    seasonal:"Snow closes the pass Dec to Mar", temporary:"Landslide sites recorded on the track"},
+  itg:"Saddle 2.1 km NE: candidate H + P (pass crossed by a track)", highGround:"Crest 3,410 m · 740 m NE",
+  status:{G:"on",R:"sw",O:"sw",T:"on",B:"sw",C:"part"},
+  conf:{G:3,R:2,O:2,T:3,B:1,C:2}
+},
+{
+  id:"kharian", name:"Kharian · Road Through Trees", region:"Metalled road in tree cover · Gujrat District",
+  sheet:"Sheet 43 I/6 · Kharian Tehsil", clazz:"Metalled Road",
+  terrain:"Plain (Forested)", elev:"268 m", slope:"1 deg · Level", landform:"Flat",
+  soil:"Silt Loam", soilConf:"Modelled", soilGroup:"Lean Clay (CL)", soilWet:"Fair after rain",
+  rain:[28,32,35,22,15,42,168,170,62,10,5,14], wetMm:75, monsoon:"Jul to Aug",
+  going:{
+    foot:{dry:"go",wet:"go",limit:"Firm road; tree cover"},
+    wheeled:{dry:"go",wet:"slow",limit:"Silt loam softens after rain; surface metalled"},
+    tracked:{dry:"go",wet:"go",limit:"Class 50 road; bridge class governs"},
+    air:{dry:"slow",wet:"slow",limit:"Trees within 100 m; wires along the road"},
+    water:{dry:"nogo",wet:"nogo",limit:"No water at the point"},
+    rail:{dry:"go",wet:"go",limit:"Broad-gauge line 2.6 km W"}
+  },
+  movement:"6 of 8 directions open, road channelled both ways",
+  road:{name:"Main Road (Class 50)", cls:"Class 50", tankable:"Al-Zarrar only", dist:"at the point",
+    crossing:"Culvert Class 50 400 m S", extra:"Width 6.1 m · Condition Good (Where Recorded)"},
+  density:{all:"0.68", aw:"0.61", band:"Moderate", bandWet:"Moderate", exits:"3 ways out, 2 all-weather", circle:"5 km"},
+  cover:{hereName:"Metalled Road (spot)", here:[0,0,0,0], cc:"Concealment Good in the surrounding square kilometre",
+    near:[{what:"Tree Cover",where:"31 m S",v:[0,0,3,3],note:"Concealed round it, not on this spot"},
+          {what:"Bund (1 m)",where:"140 m E",v:[1,0,1,0]}]},
+  people:{place:"Kharian (Town) 2.4 km N", pop:"About 96,000 within 12 km", density:"Rural · about 210 per square km", age:"Under 15: 33 percent · 65 and over: 7 percent"},
+  obs:{manmade:"Boundary wall 180 m W", natural:"None at the point",
+    seasonal:"Waterlogging beside the road in Aug", temporary:"None recorded"},
+  itg:"No ITG candidate within 3 km", highGround:"No dominance within 3 km",
+  status:{G:"on",R:"on",O:"part",T:"on",B:"part",C:"sw"},
+  conf:{G:3,R:3,O:2,T:3,B:2,C:2}
+},
+{
+  id:"wazirabad", name:"Chenab Bank · Wazirabad", region:"Open farmland on the river bank · Gujranwala District",
+  sheet:"Sheet 44 I/2 · Wazirabad Tehsil", clazz:"Open Farmland / River Bank",
+  terrain:"Plain (Riverine)", elev:"219 m", slope:"2 deg · Gentle", landform:"River bank",
+  soil:"Clay Loam", soilConf:"Modelled", soilGroup:"Lean Clay (CL)", soilWet:"Poor after rain",
+  rain:[24,28,30,17,14,40,152,158,58,8,5,11], wetMm:75, monsoon:"Jul to Aug",
+  going:{
+    foot:{dry:"go",wet:"slow",limit:"Bank strip; flooded ground in the monsoon"},
+    wheeled:{dry:"slow",wet:"nogo",limit:"Clay loam poor after rain; bank too soft"},
+    tracked:{dry:"go",wet:"slow",limit:"Firm when dry; bank fails after rain"},
+    air:{dry:"go",wet:"slow",limit:"Firm and level; wires 800 m E"},
+    water:{dry:"slow",wet:"go",limit:"Chenab ford 1.1 km S; entry and exit banks"},
+    rail:{dry:"go",wet:"go",limit:"Rail bridge 3.2 km S"}
+  },
+  movement:"5 of 8 directions open when dry, 2 of 8 after rain (river to the W)",
+  road:{name:"MSR N-5 (GT Road)", cls:"Class 70", tankable:"Tankable", dist:"2.8 km E",
+    crossing:"Rail-cum-road bridge 3.2 km S", extra:"Alternate route available via the Grand Trunk Road"},
+  density:{all:"0.74", aw:"0.52", band:"Moderate", bandWet:"Sparse", exits:"3 ways out, 1 all-weather", circle:"5 km"},
+  cover:{hereName:"Chenab Bank Strip", here:[2,1,2,0], cc:"Concealment Fair in the surrounding square kilometre",
+    near:[{what:"River Bank (Chenab)",where:"150 m W",v:[2,1,2,0],note:"Cover from Direct Fire · Deployment Line"},
+          {what:"Tree Line",where:"380 m E",v:[0,0,2,2]}]},
+  people:{place:"Wazirabad (City) 3.6 km NE", pop:"About 310,000 within 12 km", density:"Rural · about 240 per square km", age:"Under 15: 35 percent · 65 and over: 6 percent"},
+  obs:{manmade:"Canal distributary 700 m E", natural:"Chenab river 150 m W, permanent water",
+    seasonal:"Monsoon flood zone Jul to Sep", temporary:"None recorded"},
+  itg:"Bridge 3.2 km S: candidate C (chokepoint on an MSR)", highGround:"No dominance within 3 km",
+  status:{G:"on",R:"on",O:"part",T:"on",B:"part",C:"on"},
+  conf:{G:3,R:3,O:2,T:3,B:2,C:3}
+}
+];
+
+/* --------------------------------------------------------- pending decisions */
+var DECISIONS = [
+  {k:"card", q:"Card hierarchy", page:"ground-guide-card-options.html",
+   opts:["Current v1","Proposed GROTBC","Compact"], rec:"Proposed GROTBC",
+   note:"Three GROTBC sections for the mode, in G R O T B C order. 280 px wide."},
+  {k:"variations", q:"Card direction", page:"ground-guide-card-variations.html",
+   opts:["A · Decision slip first","B · Verdict first","C · Section first","D · Radar first"], rec:"A · Decision slip first",
+   note:"Ground decision first, the other two sections underneath."},
+  {k:"traffic", q:"T card and rules", page:"ground-guide-trafficability-options.html",
+   opts:["Card A · One line","Card B · Two lines","Card C · Matrix","Rules: keep dry header"], rec:"Card B · Two lines",
+   note:"Legend L2 labels the ramp as T. Rain lowers vehicles one step; the header stays dry."},
+  {k:"tpres", q:"One unified T block", page:"ground-guide-t-presentation.html",
+   opts:["T1 · One T Band","T2 · Twin scale","T3 · Matrix","T4 · Tabs","T5 to T8 · Other"], rec:"T1 · One T Band",
+   note:"Replaces four scattered T pieces. Sits right after Why, with calendar and tabs key."},
+  {k:"movement", q:"Movement and soil", page:"ground-guide-card-movement.html",
+   opts:["A + B for units, D","A only","A + B + F","Everything on the card"], rec:"A + B for units, D",
+   note:"Going lines on every card, rose for manoeuvre symbols, full soil picture in the Ground Brief."},
+  {k:"cover", q:"Cover (C) style", page:"ground-guide-cover-options.html",
+   opts:["C1 · Four Lines","C2 · Matrix","C3 · Rose","C4 to C7 · Other"], rec:"C1 · Four Lines",
+   note:"Judge the spot, never the area. Banks within 75 m raise cover; 500 m search."},
+  {k:"population", q:"People (B) style", page:"ground-guide-population-options.html",
+   opts:["B + E + Brief + L","B only","A · One Line","D · Age split"], rec:"B + E + Brief + L",
+   note:"Density scale on every card, civil flag for Gun / AD / HLS / Signals, People layer on the map."},
+  {k:"density", q:"Road density (R)", page:"ground-guide-road-density-options.html",
+   opts:["D1 · After rain, 5 km","D1 · Dry, 5 km","D2 · Gauge","D3 · Ways out"], rec:"D1 · After rain, 5 km",
+   note:"Lead with the all-weather band so the card never promises routes the wet may take away."},
+  {k:"sections", q:"G R O B W section looks", page:"ground-guide-sections-options.html",
+   opts:["One line each (compact)","A few rows each","Two drawn looks","Mixed"], rec:"One line each (compact)",
+   note:"The 280 px card stays short; the Ground Brief (G) always shows every row."},
+  {k:"roads", q:"Routing decisions", page:"GROTBC-Roads.md",
+   opts:["Accept built defaults","Supply official MSR list","Supply official MLCs","All eight decisions"], rec:"Accept built defaults",
+   note:"OSM topology plus NCGDB attributes; MajorRoads as the unknown-class policy. Eight owner decisions remain open."}
+];
+
+/* ---------------------------------------------------------------- state */
+var state = {place:"kamoke", mode:"tracked", month:6, letter:null, decisions:{}, theme:null};
+DECISIONS.forEach(function(d){ state.decisions[d.k] = d.rec; });
+
+function $(id){ return document.getElementById(id); }
+function place(){ return PLACES.filter(function(p){return p.id===state.place;})[0]; }
+function mode(){ return MODES.filter(function(m){return m.k===state.mode;})[0]; }
+function wet(){ return place().rain[state.month] >= place().wetMm; }
+function going(){ var g = place().going[mode().f]; return wet() ? g.wet : g.dry; }
+function el(t, c, x){ var e=document.createElement(t); if(c) e.className=c; if(x!==undefined) e.textContent=x; return e; }
+function pill(s){ var v=STATUS[s]||STATUS.card, p=el("span","pill "+v.c,v.t); return p; }
+function opt(sel, value, label){ var o=el("option",null,label); o.value=value; sel.appendChild(o); }
+
+/* ---------------------------------------------------------------- init controls */
+function initControls(){
+  var ps=$("placeSel"); PLACES.forEach(function(p){ opt(ps,p.id,p.name+" — "+p.region.split(" · ")[0]); });
+  var ms=$("modeSel"); MODES.forEach(function(m){ opt(ms,m.k,m.n); });
+  var ns=$("monthSel"); MONTHS.forEach(function(m,i){ opt(ns,String(i),m); });
+  ps.value=state.place; ms.value=state.mode; ns.value=String(state.month);
+  ps.onchange=function(){ state.place=this.value; state.letter=null; render(); };
+  ms.onchange=function(){ state.mode=this.value; render(); };
+  ns.onchange=function(){ state.month=Number(this.value); render(); };
+
+  $("themeBtn").onclick=function(){
+    var dark = document.documentElement.getAttribute("data-theme")==="dark";
+    if(!document.documentElement.getAttribute("data-theme")){
+      dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    state.theme = dark ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme",state.theme);
+    renderHex();
+  };
+  $("copyBtn").onclick=function(){ copy(slipText(), this, "Copied"); };
+  $("decBtn").onclick=function(){
+    var o=$("decOut"); o.hidden=false; o.textContent=decisionText();
+    copy(decisionText(), this, "Copied");
+  };
+  $("resetBtn").onclick=function(){
+    DECISIONS.forEach(function(d){ state.decisions[d.k]=d.rec; });
+    renderDecisions(); $("decOut").hidden=true;
+  };
+}
+
+/* ---------------------------------------------------------------- doctrine strip */
+function renderDoctrine(){
+  var host=$("doctrine"); host.textContent="";
+  LET.forEach(function(l){
+    var d=el("div");
+    var b=el("b",null,l.k); b.style.background=LC[l.k];
+    var s=el("strong",null,l.n);
+    d.appendChild(b); d.appendChild(s);
+    d.appendChild(el("span",null,l.full));
+    host.appendChild(d);
+  });
+}
+
+/* ---------------------------------------------------------------- rainfall ribbon */
+function renderRain(){
+  var p=place(), host=$("rainBars"); host.textContent="";
+  var max=Math.max.apply(null,p.rain);
+  MONTHS.forEach(function(m,i){
+    var b=el("button","rbtn"+(p.rain[i]>=p.wetMm?" wet":""));
+    b.type="button"; b.setAttribute("aria-pressed", String(i===state.month));
+    b.setAttribute("aria-label", m+": "+p.rain[i]+" mm"+(p.rain[i]>=p.wetMm?", wet season":""));
+    var bar=el("i"); bar.style.height=Math.round(7+21*Math.sqrt(p.rain[i]/max))+"px";
+    b.appendChild(bar); b.appendChild(el("small",null,m)); b.appendChild(el("em",null,String(p.rain[i])));
+    b.onclick=function(){ state.month=i; $("monthSel").value=String(i); render(); };
+    host.appendChild(b);
+  });
+  $("rainNote").textContent = (wet() ? "After rain" : "Dry") + " · " + MONTHS[state.month] + " " +
+    p.rain[state.month] + " mm · wet threshold " + p.wetMm + " mm · monsoon " + p.monsoon +
+    " · WorldClim 1970 to 2000 normals (an average month, not a forecast)";
+}
+
+/* ---------------------------------------------------------------- hex radar */
+function cv(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function renderHex(){
+  var svg=$("hex"), p=place();
+  Array.prototype.slice.call(svg.childNodes).forEach(function(n){
+    if(n.nodeName!=="title" && n.nodeName!=="desc") svg.removeChild(n);
+  });
+  var ns="http://www.w3.org/2000/svg";
+  function node(n,a){ var e=document.createElementNS(ns,n); for(var k in a) e.setAttribute(k,a[k]); return e; }
+  var grid=cv("--line"), panel=cv("--panel"), faint=cv("--faint"), accent=cv("--T");
+  var cx=100, cy=100, R=64, ring=node("g",{});
+  function pt(i,r){ var a=(-90+i*60)*Math.PI/180; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
+  for(var lv=1;lv<=3;lv++){
+    var pts=[]; for(var i=0;i<6;i++){ var q=pt(i,R*lv/3); pts.push(q[0].toFixed(1)+","+q[1].toFixed(1)); }
+    ring.appendChild(node("polygon",{points:pts.join(" "),fill:"none",stroke:grid,"stroke-width":"0.8"}));
+  }
+  for(i=0;i<6;i++){
+    var q1=pt(i,R);
+    ring.appendChild(node("line",{x1:cx,y1:cy,x2:q1[0],y2:q1[1],stroke:grid,"stroke-width":"0.8"}));
+  }
+  svg.appendChild(ring);
+  var data=[];
+  LET.forEach(function(l,i){
+    var v=Math.max(0.35,p.conf[l.k]), q=pt(i,R*v/3);
+    data.push(q[0].toFixed(1)+","+q[1].toFixed(1));
+  });
+  svg.appendChild(node("polygon",{points:data.join(" "),fill:accent,"fill-opacity":"0.16",stroke:accent,"stroke-width":"1.6","stroke-linejoin":"round"}));
+  LET.forEach(function(l,i){
+    var v=Math.max(0.35,p.conf[l.k]), q=pt(i,R*v/3), lab=pt(i,R+22);
+    svg.appendChild(node("circle",{cx:q[0],cy:q[1],r:"3.6",fill:LC[l.k],stroke:panel,"stroke-width":"1.2"}));
+    var t=node("text",{x:lab[0],y:lab[1],"text-anchor":"middle","dominant-baseline":"central",
+      "font-family":"Barlow Condensed, Arial Narrow, system-ui, sans-serif","font-size":"15","font-weight":"700",fill:LC[l.k]});
+    t.textContent=l.k; svg.appendChild(t);
+  });
+  svg.appendChild(node("circle",{cx:cx,cy:cy,r:"2.5",fill:faint}));
+}
+
+/* ---------------------------------------------------------------- hero */
+function roadAdvice(p, isWet){
+  if(isWet) return "Use " + p.road.name + " (" + p.road.cls + ", all-weather where recorded) " + p.road.dist + "; do not rely on tracks.";
+  return "Nearest " + p.road.name + " " + p.road.dist + " · " + p.road.cls + " · " + p.road.tankable + ".";
+}
+function slipText(){
+  var p=place(), m=mode(), w=wet(), v=going(), g=p.going[m.f];
+  var lines = [
+    "GROTBC DECISION SLIP · " + MONTHS[state.month] + " · " + (w?"AFTER RAIN":"DRY"),
+    p.name + " — " + p.region,
+    p.sheet,
+    "",
+    "VERDICT: " + VERDICT[v].t.toUpperCase() + " (" + WORD[v] + ") for " + m.n,
+    "Reason: " + g.limit + ". " + (w?"Soil: "+p.soil+", "+p.soilWet+".":"Soil: "+p.soil+" ("+p.soilConf+")."),
+    "Road: " + roadAdvice(p,w),
+    "Crossing: " + p.road.crossing,
+    "Movement: " + p.movement,
+    "",
+    "G · " + p.terrain + " · " + p.elev + " · " + p.slope + " · " + p.landform + " · " + p.soil + " (" + p.soilConf + ")",
+    "R · " + p.road.name + " " + p.road.cls + " " + p.road.dist + "; " + p.road.crossing + "; density " + p.density.all + " km per square km (" + p.density.circle + ")",
+    "O · " + p.obs.manmade + "; " + p.obs.seasonal,
+    "T · " + WORD[g.dry] + " dry, " + WORD[g.wet] + " after rain · " + m.n,
+    "B · " + p.people.place + "; " + p.people.pop,
+    "C · " + p.cover.hereName + ": " + p.cover.here.map(function(x,i){return COVER_F[i]+" "+COVER_W[x];}).join(", "),
+    "",
+    "Modelled or estimated data: soil (SoilGrids, 250 m), climate (WorldClim normals, 9 km), population (WorldPop estimate).",
+    "Load class is recorded on about 31 percent of road segments; MSR is a rule, not an official list.",
+    "A point reading, not a route. All figures illustrative. Sources: GROTBC.md and the terrain bundle."
+  ];
+  return lines.join("\n");
+}
+function renderHero(){
+  var p=place(), m=mode(), w=wet(), v=going(), g=p.going[m.f];
+  var tag=$("vTag"); tag.setAttribute("data-v",v); tag.textContent=VERDICT[v].t;
+  $("vHead").textContent = WORD[v] + " for " + m.n;
+  var lead;
+  if(v==="go") lead = m.n + " can occupy and move here.";
+  else if(v==="slow") lead = m.n + " can move here, but slowly and with care.";
+  else lead = m.n + " cannot move here without engineer work, a crossing or a change of mode.";
+  $("vSlip").textContent = lead + " " + g.limit + ". " + roadAdvice(p,w);
+  $("vSub").innerHTML = "";
+  $("vSub").appendChild(document.createTextNode(p.clazz + " · " + p.terrain + " · " + p.soil + " (" + p.soilConf + ") · "));
+  var b=el("b",null,MONTHS[state.month]+" "+p.rain[state.month]+" mm"); $("vSub").appendChild(b);
+
+  var ch=$("vChanged");
+  if(g.dry!==g.wet){
+    ch.className="changed";
+    ch.textContent = "Rain changes this answer: " + WORD[g.dry] + " dry, " + WORD[g.wet] + " after rain. " +
+      p.soil + " is " + p.soilWet.toLowerCase() + ".";
+  } else {
+    ch.className="changed none"; ch.textContent = "Rain does not change the going for this mode here.";
+  }
+
+  Array.prototype.forEach.call($("scale").children,function(s){
+    s.classList.toggle("on", s.getAttribute("data-v")===v);
+  });
+  $("dryWet").innerHTML="";
+  $("dryWet").appendChild(el("span",null,"Ground state"));
+  var dw=el("b",null,w?"After rain":"Dry"); $("dryWet").appendChild(dw);
+  $("dryWet").appendChild(el("span",null,"· "+(w?p.rain[state.month]+" mm in "+MONTHS[state.month]:"no wet month selected")));
+  $("confLine").textContent = "Coverage out of 3: " +
+    LET.map(function(l){return l.k+" "+p.conf[l.k];}).join(" · ") + ". " +
+    "The card leads " + m.sec + " for this mode.";
+}
+
+/* ---------------------------------------------------------------- letter sections */
+function buildLetters(){
+  var p=place(), m=mode(), w=wet(), g=p.going[m.f], v=going();
+  var L={};
+  L.G={title:"Ground", lines:[p.terrain+" · "+p.slope, p.soil+" ("+p.soilConf+")"], rows:[
+    ["Terrain type",p.terrain],["Elevation",p.elev],["Slope",p.slope],["Landform",p.landform],
+    ["Ground class",p.clazz],["Soil",p.soil+" · "+p.soilGroup+" · "+p.soilConf],
+    ["Bearing after rain",p.soilWet],["High ground",p.highGround],
+    ["ITG / MITG",p.itg+" (the designation itself is saved with the plan, never in the bundle)"],
+    ["Still missing","Seasonal vegetation and vegetation density at the point"]
+  ], note:"G describes what is on the ground. Terrain type and vegetation sit here, not under T."};
+
+  L.R={title:"Roads, tracks and rail", lines:[p.road.name+" · "+p.road.cls, p.density.band+" network, "+p.density.exits], rows:[
+    ["Road at the point",p.road.name+" "+p.road.dist],["Load class",p.road.cls+" · "+p.road.tankable],
+    ["Nearest crossing",p.road.crossing],["Recorded detail",p.road.extra],
+    ["Network density",p.density.all+" km per square km inside "+p.density.circle+" · all-weather "+p.density.aw],
+    ["Band after rain",p.density.bandWet+" (lead with this, not "+p.density.band+")"],
+    ["Ways out",p.density.exits],["MSR","A rule (class 50 and over), not an official list"],
+    ["Still missing","Culverts, km stones, runways, petrol pumps, named junctions"]
+  ], note:"R answers what is the road here. Routing from A to B is built in GeoCore and PAMS8, but this card is a point reading."};
+
+  L.O={title:"Obstacles", lines:[p.obs.manmade.split(":")[0], p.obs.seasonal], rows:[
+    ["Man-made",p.obs.manmade],["Natural",p.obs.natural],["Seasonal",p.obs.seasonal],
+    ["Temporary",p.obs.temporary],["Origin","Natural · Man-Made · Reinforcing (placed by a force)"],
+    ["Effect","What stops a tank need not stop infantry; the effect is per mode"],
+    ["Still missing","Plan obstacles (drawn minefields, obstacle lines), construction works, live flooding"]
+  ], note:"An obstacle is typed by origin and kind. None recorded is not none."};
+
+  L.T={title:"Trafficability", lines:[WORD[v]+" for "+m.n, p.movement], rows:[
+    ["Going dry",WORD[g.dry]],["Going after rain",WORD[g.wet]],["What limits it",g.limit],
+    ["Ground state",(w?"After rain":"Dry")+" · "+MONTHS[state.month]+" "+p.rain[state.month]+" mm"],
+    ["Road for the mode",p.road.name+" "+p.road.cls+" "+p.road.dist],
+    ["Movement freedom",p.movement],
+    ["Mode",m.n+" · "+m.f+" family"],["What this mode needs",m.need],
+    ["Card sections for this mode",m.sec],
+    ["Still missing","Cross-country speed by mode; measured cone index; live soil moisture"]
+  ], note:"T is derived from G, R and O for one mode, one movement type and one season. It is not a stored going map."};
+
+  L.B={title:"Built-up areas", lines:[p.people.place, p.people.density], rows:[
+    ["Nearest place",p.people.place],["People",p.people.pop+" (WorldPop Estimate, not a census)"],
+    ["Density class",p.people.density],["Age split",p.people.age],
+    ["Admin",p.sheet],["Construction","Kacha huts used as a proxy for mud dwellings; brick and concrete not mapped"],
+    ["Civil flag","Advisory only; never changes the verdict or blocks a click in Enforce mode"],
+    ["Still missing","Schools and markets in the source survey; building material, street width"]
+  ], note:"B now carries civil considerations. Every population line says WorldPop Estimate."};
+
+  L.C={title:"Cover and concealment", lines:[
+    COVER_F[0]+" "+COVER_W[p.cover.here[0]]+" · "+COVER_F[3]+" "+COVER_W[p.cover.here[3]],
+    p.cover.near[0].what+" "+p.cover.near[0].where
+  ], rows:[
+    ["At the spot",p.cover.hereName],
+    [COVER_F[0],COVER_W[p.cover.here[0]]],[COVER_F[1],COVER_W[p.cover.here[1]]],
+    [COVER_F[2],COVER_W[p.cover.here[2]]],[COVER_F[3],COVER_W[p.cover.here[3]]],
+    ["Area reading",p.cover.cc+" (shown beside the split, never mixed into it)"],
+    ["Nearest Fair or better",p.cover.near.map(function(n){return n.what+" "+n.where;}).join(" · ")],
+    ["Bank rule","Banks within 75 m raise cover and are deployment lines"],
+    ["Still missing","Masking and defilade at the point; building density"]
+  ], note:"Decided 5 Nov 2026: judge the spot, not the area. The cc layer describes the surrounding square kilometre, so it never raises or lowers the spot levels. Saying a vehicle on an open road is hidden is the dangerous error."};
+  return L;
+}
+function renderLetters(){
+  var p=place(), L=buildLetters(), host=$("lRail"); host.textContent="";
+  LET.forEach(function(l){
+    var d=L[l.k], b=el("button","lcard");
+    b.type="button"; b.style.setProperty("--lc",LC[l.k]);
+    b.setAttribute("aria-pressed",String(state.letter===l.k));
+    b.setAttribute("aria-label",l.k+" "+l.n+". "+d.lines.join(". ")+". Click for detail.");
+    var h=el("div","lh"); h.appendChild(el("span","lb",l.k)); h.appendChild(el("span","ln",l.n)); b.appendChild(h);
+    d.lines.forEach(function(t,i){ b.appendChild(el("div","ll"+(i?" soft":""),t)); });
+    var f=el("div","lf"); f.appendChild(pill(p.status[l.k]));
+    var dots=el("span","dots");
+    for(var i=1;i<=3;i++){ var q=el("i"); if(i<=p.conf[l.k]) q.className="f"; dots.appendChild(q); }
+    f.appendChild(dots); b.appendChild(f);
+    b.onclick=function(){ state.letter = state.letter===l.k ? null : l.k; renderLetters(); renderDetail(); };
+    host.appendChild(b);
+  });
+}
+function renderDetail(){
+  var d=$("detail"), L=buildLetters();
+  if(!state.letter){ d.hidden=true; return; }
+  var l=LET.filter(function(x){return x.k===state.letter;})[0], x=L[l.k];
+  d.hidden=false; d.style.setProperty("--lc",LC[l.k]); d.textContent="";
+  var h=el("div","dh"); h.appendChild(el("b",null,l.k)); h.appendChild(el("h3",null,l.n+" · evidence")); d.appendChild(h);
+  var t=el("table");
+  x.rows.forEach(function(r){
+    var tr=el("tr"); tr.appendChild(el("th",null,r[0])); tr.appendChild(el("td",null,r[1])); t.appendChild(tr);
+  });
+  d.appendChild(t); d.appendChild(el("p","note",x.note));
+}
+
+/* ---------------------------------------------------------------- drivers + caveats */
+function renderDrivers(){
+  var p=place(), m=mode(), w=wet(), g=p.going[m.f], host=$("drivers"); host.textContent="";
+  var items=[
+    ["Rain", "<b>"+WORD[g.dry]+" dry to "+WORD[g.wet]+" after rain.</b> "+p.soil+" is "+p.soilWet.toLowerCase()+
+      ". "+p.rain[state.month]+" mm in "+MONTHS[state.month]+" against a "+p.wetMm+" mm threshold. "+
+      p.density.band+" of road becomes "+p.density.bandWet+" once fair-weather tracks are set aside."],
+    ["Road and crossings", "<b>"+p.road.name+" · "+p.road.cls+" · "+p.road.tankable+".</b> "+p.road.crossing+
+      ". Load class is recorded on about 31 percent of segments, so class not recorded is never read as tankable."],
+    [m.sec.indexOf("C")>=0?"Cover":"People",
+      m.sec.indexOf("C")>=0
+        ? "<b>"+p.cover.hereName+": "+COVER_W[p.cover.here[0]]+" against direct fire.</b> "+p.cover.near[0].what+
+          " "+p.cover.near[0].where+" gives "+COVER_W[p.cover.near[0].v[0]]+". The area reading ("+p.cover.cc+") is shown beside, never mixed in."
+        : "<b>"+p.people.place+".</b> "+p.people.pop+". "+p.people.density+". "+
+          "For "+m.n+" this is a civil consideration, not a verdict."]
+  ];
+  items.forEach(function(it,i){
+    var r=el("div","drv"); r.appendChild(el("div","n",String(i+1)));
+    var c=el("div"); var p1=el("p"); p1.innerHTML=it[1]; c.appendChild(p1); r.appendChild(c); host.appendChild(r);
+  });
+}
+function renderCaveats(){
+  var p=place(), host=$("caveats"); host.textContent="";
+  var items=[
+    ["Soil is a 250 m SoilGrids model, not a soil survey", "Modelled"],
+    ["Climate is WorldClim 1970 to 2000 normals on about 9 km cells", "Average month"],
+    ["Population is a WorldPop estimate from buildings, not a census", "Estimate"],
+    ["Load class on about 31 percent of segments; condition on about 4 percent", "Where recorded"],
+    ["Road closures 540 recorded, landslide sites 71: none recorded is not none", "Sparse"],
+    ["MSR is a rule (class 50 and over), not an official list", "Proposal"],
+    ["Tank MLCs are estimates (1.1 times tonnes) until official figures arrive", "Proposal"],
+    ["Terrain type rules and the four-way cover split are starting proposals", "Proposal"],
+    ["Slope comes from a surface model: cities and tree lines read a little steep", "Modelled"],
+    ["Data extent is the whole map sheet, so foreign roads are included", "Extent"],
+    ["No measured cone index, live soil moisture or cross-country speed", "Missing"],
+    ["Bundle is restricted (NCGDB); OSM-derived parts carry ODbL duties", "Licence"]
+  ];
+  items.forEach(function(it){
+    var r=el("div","caveat"); r.appendChild(el("span",null,it[0])); r.appendChild(el("em",null,it[1])); host.appendChild(r);
+  });
+}
+
+/* ---------------------------------------------------------------- decisions */
+function renderDecisions(){
+  var host=$("dTable"); host.textContent="";
+  DECISIONS.forEach(function(d,i){
+    var r=el("div","drow");
+    r.appendChild(el("div","dn",String(i+1)));
+    var q=el("div","dq",d.q); q.appendChild(el("small",null,d.page)); r.appendChild(q);
+    var chips=el("div","chips");
+    d.opts.forEach(function(o){
+      var b=el("button","chip",o); b.type="button";
+      b.setAttribute("aria-pressed",String(state.decisions[d.k]===o));
+      b.onclick=function(){ state.decisions[d.k]=o; renderDecisions(); };
+      chips.appendChild(b);
+    });
+    r.appendChild(chips); r.appendChild(el("div","dnote",d.note));
+    host.appendChild(r);
+  });
+  var n=DECISIONS.filter(function(d){return state.decisions[d.k]!==d.rec;}).length;
+  $("decStatus").textContent = n===0
+    ? DECISIONS.length+" decisions, all on recommended defaults."
+    : n+" of "+DECISIONS.length+" changed from recommended.";
+}
+function decisionText(){
+  var p=place(), m=mode();
+  var lines=["GROTBC DECISION BOARD · my display decisions","Place: "+p.name+" · Mode: "+m.n+" · Month: "+MONTHS[state.month],
+    "Bundle rules 2026.11-grotbc-v2 · checked 6 Nov 2026",""];
+  DECISIONS.forEach(function(d,i){
+    var mark = state.decisions[d.k]===d.rec ? "recommended" : "CHANGED";
+    lines.push((i+1)+". "+d.q+" ("+d.page+")");
+    lines.push("   -> "+state.decisions[d.k]+"  ["+mark+"]");
+  });
+  lines.push("","Also open from GROTBC-Roads.md: official MSR list, official MLCs, area extent, march rates,",
+    "unknown-class policy, cross-country routing scope, bund and river-bank treatment.",
+    "Missing data: fog and visibility, seasonal vegetation, temporary and plan obstacles,",
+    "construction material, masking and defilade, cross-country speed.");
+  return lines.join("\n");
+}
+
+/* ---------------------------------------------------------------- copy */
+function copy(text, btn, done){
+  var restore=function(label,ms){ var old=btn.textContent; btn.textContent=label; setTimeout(function(){btn.textContent=old;},ms); };
+  var ok=function(){ restore(done,1600); };
+  var fail=function(){ restore("Select text below",2800); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(ok,function(){ fallback(text,ok,fail); });
+  } else fallback(text,ok,fail);
+}
+function fallback(text,ok,fail){
+  var t=el("textarea"); t.value=text; t.style.position="absolute"; t.style.left="-9999px";
+  document.body.appendChild(t); t.select();
+  var copied=false;
+  try{ copied=document.execCommand("copy"); }catch(e){ copied=false; }
+  document.body.removeChild(t);
+  if(copied){ ok(); return; }
+  var o=$("copyOut"); o.hidden=false; o.textContent=text; o.focus();
+  var r=document.createRange(); r.selectNodeContents(o);
+  var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  fail();
+}
+
+/* ---------------------------------------------------------------- render */
+function render(){
+  var p=place(), m=mode();
+  $("metaLine").innerHTML="";
+  $("metaLine").appendChild(document.createTextNode(p.sheet));
+  $("metaLine").appendChild(el("br"));
+  $("metaLine").appendChild(document.createTextNode("Bundle rules 2026.11-grotbc-v2 · "+m.sec+" · "+p.clazz));
+  renderDoctrine(); renderRain(); renderHex(); renderHero();
+  renderLetters(); renderDetail(); renderDrivers(); renderCaveats();
+}
+
+initControls();
+renderDecisions();
+render();
+</script>
+</body>
+</html>
