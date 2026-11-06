@@ -3280,6 +3280,10 @@
               </select>
             </div>
             <div class="setting-row">
+              <label>Details under lines</label>
+              <input type="checkbox" id="setting-groundGuideSecDetail" checked title="Under each one-line G, R, O, B and W section, a small grid of what the line leaves out (ridge, water, going by mode, soil, road record, crossings, services, landmarks, border, ages, the year)." />
+            </div>
+            <div class="setting-row">
               <label>G style</label>
               <select id="setting-groundGuideSecGStyle" style="width: 150px" title="Compare the styles in ground-guide-sections-options.html.">
                 <option value="auto" selected>Follow above</option>
@@ -4742,6 +4746,7 @@
         'setting-groundGuideSecWeather': (v) => ({ path: ['groundGuide', 'sections', 'weather'], value: v }),
         'setting-groundGuideSecObstacles': (v) => ({ path: ['groundGuide', 'sections', 'obstacles'], value: v }),
         'setting-groundGuideSecStyle': (v) => ({ path: ['groundGuide', 'sections', 'style'], value: v }),
+        'setting-groundGuideSecDetail': (v) => ({ path: ['groundGuide', 'sections', 'detail'], value: v }),
         'setting-groundGuideSecGStyle': (v) => ({ path: ['groundGuide', 'sections', 'gStyle'], value: v }),
         'setting-groundGuideSecRStyle': (v) => ({ path: ['groundGuide', 'sections', 'rStyle'], value: v }),
         'setting-groundGuideSecOStyle': (v) => ({ path: ['groundGuide', 'sections', 'oStyle'], value: v }),

@@ -682,6 +682,7 @@ export default class GroundGuide {
       flag('sections.weather', sx.weather, (b) => (next.sections.weather = b));
       flag('sections.obstacles', sx.obstacles, (b) => (next.sections.obstacles = b));
       pick('sections.style', sx.style, SECTIONS_STYLES, (x) => (next.sections.style = x));
+      flag('sections.detail', sx.detail, (b) => (next.sections.detail = b));
       num('sections.radiusKm', sx.radiusKm, 0.5, 10, (n) => (next.sections.radiusKm = n));
       flag('sections.roadDensity', sx.roadDensity, (b) => (next.sections.roadDensity = b));
       num('sections.roadDensityKm', sx.roadDensityKm, 0.5, 10, (n) => (next.sections.roadDensityKm = n));

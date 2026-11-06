@@ -104,6 +104,13 @@ export interface GroundGuideSectionsOptions {
   roadDensityStyle: RoadDensityStyle;
   /** Which band the card leads with when tracks lift the total a band: after rain (safety), dry, or both. */
   roadDensityLead: RoadDensityLead;
+  /**
+   * Under each one-line section (G R O B W), a small grid of the rows the line leaves out: what "A few rows" and the
+   * Brief show (G ridge, river, area, water, going by mode, soil strength; R named road, record, crossings, rail, air;
+   * O canal, river, dam, levee, closures; B buildings, services, security, place, landmarks, utilities, admin, sheet,
+   * border, ages; W the year). Added 2026-11-06; the one line itself is unchanged.
+   */
+  detail: boolean;
 }
 
 const COMPASS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -314,6 +321,8 @@ export interface GroundGuideSections {
   /** Road density on the card: the style and the lead band rule (from the options). */
   roadDensityStyle: RoadDensityStyle;
   roadDensityLead: RoadDensityLead;
+  /** `sections.detail`: the detail grid under each one-line section. */
+  detail: boolean;
   ground: GroundReading | null;
   roads: RoadsReading | null;
   buildings: BuildingsReading | null;
@@ -835,6 +844,7 @@ export function readSections(a: SectionArgs): GroundGuideSections {
     styles: { g: o.gStyle ?? 'auto', r: o.rStyle ?? 'auto', o: o.oStyle ?? 'auto', b: o.bStyle ?? 'auto', w: o.wStyle ?? 'auto' },
     roadDensityStyle: o.roadDensityStyle,
     roadDensityLead: o.roadDensityLead,
+    detail: o.detail !== false,
     ground,
     roads,
     buildings,
@@ -853,7 +863,7 @@ export function sectionsKey(s: GroundGuideSections | null | undefined): string {
   const w = s.weather;
   const pl = (p: SectionPlace | null | undefined) => (p ? `${p.label}${p.name ?? ''}${Math.round(p.distanceM / 50)}${p.compass}` : '-');
   return [
-    s.style,
+    `${s.style}${s.detail ? 'd' : ''}`,
     `${s.styles.g}${s.styles.r}${s.styles.o}${s.styles.b}${s.styles.w}`,
     g ? `${g.terrain?.code ?? ''}${pl(g.terrainChange ? { label: g.terrainChange.label, name: null, distanceM: g.terrainChange.distanceM, compass: g.terrainChange.compass } : null)}${g.elevationM ?? ''}${Math.round(g.slopeDeg ?? -1)}${g.landform ?? ''}${pl(g.high)}${pl(g.area)}${g.water.map(pl).join('')}${pl(g.namedWater)}` : '',
     `${s.roadDensityStyle}${s.roadDensityLead}`,

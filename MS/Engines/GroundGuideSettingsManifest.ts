@@ -628,6 +628,14 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     keywords: ['compact', 'lines', 'brief', 'card', 'sections'],
   },
   {
+    path: ['groundGuide', 'sections', 'detail'],
+    label: 'Details under each one-line section',
+    group: 'Ground, Roads, Buildings & Weather (G R B W)',
+    type: 'boolean',
+    help: 'Under each one-line G, R, O, B and W section, a small grid of what the line leaves out. G: change of terrain, high ground, named area, water, river, ridge, going for foot / wheels / tracks dry and after rain, soil and its cone index. R: named road, what is recorded on it, crossings, rail, ways across the railway, transport, air. O: canal, river reach, dam, levee, closures. B: building size and height, services, security, place, landmarks, utilities, admin, map sheet, border, ages. W: the year. The one line itself is unchanged.',
+    keywords: ['detail', 'more', 'rows', 'switch', 'expand', 'ridge', 'water', 'services', 'ages', 'soil', 'modes'],
+  },
+  {
     path: ['groundGuide', 'sections', 'gStyle'],
     label: 'G on the card',
     group: 'Ground, Roads, Buildings & Weather (G R B W)',

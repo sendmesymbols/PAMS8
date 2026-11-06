@@ -876,7 +876,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
     block: 'band', where: 'afterWhy', roadSource: 'network', access: true, accessRadiusKm: 15,
   },
   cover: { enabled: true, card: 'lines', where: 'grotbc', radiusM: 500, focus: true },
-  sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
+  sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
 };
 
 /** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */

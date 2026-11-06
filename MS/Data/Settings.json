@@ -745,7 +745,8 @@
       "roadDensity": true,
       "roadDensityKm": 5,
       "roadDensityStyle": "rows",
-      "roadDensityLead": "afterRain"
+      "roadDensityLead": "afterRain",
+      "detail": true
     }
   },
   "stylus": {

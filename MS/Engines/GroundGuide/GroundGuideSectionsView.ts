@@ -49,6 +49,12 @@ const CSS = `
 .ms-gs-one>span:last-child{min-width:0}
 .ms-gs-one b{color:#fff;font-weight:600}
 .ms-gs-src{color:#7f8994;font-size:10px;margin-top:4px}
+.ms-gs-more{display:grid;grid-template-columns:50px minmax(0,1fr);gap:3px 8px;margin:6px 0 0 22px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.09);font-size:10.5px;line-height:1.35;color:#c5ccd3}
+.ms-gs-more>.ms-gs-k{color:#87909a;font:600 9px/1.5 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding-top:1px}
+.ms-gs-more>.ms-gs-v{min-width:0;color:#c5ccd3}
+.ms-gs-more b{color:#eef1f4;font-weight:600}
+.ms-gs-more .ms-gs-s{color:#8f98a2}
+.ms-gs-step{font-weight:700;letter-spacing:.02em}
 `;
 
 export function ensureSectionsCss(): void {
@@ -91,6 +97,14 @@ function kv(rows: Array<[string, Node | string | null]>): HTMLElement | null {
     g.append(el('div', 'ms-gs-k', k), val);
   }
   return g.childElementCount ? g : null;
+}
+
+/** The detail grid under a one-line section (`sections.detail`): smaller, muted, indented under the line's text. */
+function more(rows: Array<[string, Node | string | null]>): HTMLElement | null {
+  const g = kv(rows);
+  if (!g) return null;
+  g.className = 'ms-gs-more';
+  return g;
 }
 
 function frag(...parts: Array<Node | string | null | false>): DocumentFragment {
@@ -340,11 +354,89 @@ function compactR(s: GroundGuideSections, r: RoadsReading, one: (l: keyof typeof
     const line = sec.querySelector('.ms-gs-one > span:last-child');
     line?.append(' ', chipsNode(d, s.roadDensityLead));
   }
-  const rt = railTransportLine(r);
+  const rt = s.detail ? null : railTransportLine(r);
   if (rt) sec.querySelector('.ms-gs-one')?.after(rt);
+  const dm = s.detail ? more(roadsMore(r)) : null;
+  if (dm) sec.querySelector('.ms-gs-one')?.after(dm);
   const block = densityCardBlock(d, st, s.roadDensityLead);
   if (block) sec.append(block);
   return sec;
+}
+
+// ── Detail under the one-line sections (sections.detail) ────────────────────
+const STEP_WORD: Record<string, string> = { go: 'GO', slow: 'SLOW-GO', nogo: 'NO-GO' };
+const STEP_COLOR: Record<string, string> = { go: '#56c98a', slow: '#f0a04b', nogo: '#ff7a7e' };
+/** The card's short names for the three movement types (as the going sections say them). */
+const MODE_SHORT: Record<string, string> = { dismounted: 'Foot', wheeled: 'Wheeled', tracked: 'Tracked' };
+
+function step(st: string): HTMLElement {
+  const e = el('span', 'ms-gs-step', STEP_WORD[st] ?? st);
+  e.style.color = STEP_COLOR[st] ?? '#e8ebee';
+  return e;
+}
+
+/** "Foot GO · Wheeled GO, SLOW-GO after rain · Tracked GO": who can move here, dry and after rain. */
+function modesNode(v: GroundGuideVerdict): Node | null {
+  const modes = v.going?.modes ?? [];
+  if (!modes.length) return null;
+  const f = document.createDocumentFragment();
+  modes.forEach((m, i) => {
+    if (i) f.append(soft(' · '));
+    const name = MODE_SHORT[m.profile] ?? m.label;
+    f.append(m.active ? b(name) : name, ' ', step(m.dry));
+    if (m.wet !== m.dry) f.append(soft(', '), step(m.wet), soft(' after rain'));
+  });
+  return f;
+}
+
+/** "Loam · cone index 85 dry, 40 after rain · Wheeled: 30 to move, 60 for GO". */
+function bearingNode(v: GroundGuideVerdict): Node | null {
+  const g = v.going;
+  const soil = g?.soil;
+  if (!soil) return null;
+  const ci = (n: number | null) => (n === null ? '?' : n >= 127 ? '127+' : String(n)); // the layer caps at 127
+  const parts: Array<string | null> = [soil.ciDry !== null || soil.ciWet !== null ? `cone index ${ci(soil.ciDry)} dry, ${ci(soil.ciWet)} after rain` : null];
+  if (g?.vehicle) parts.push(`${MODE_SHORT[v.profile] ?? v.profileLabel}: ${g.vehicle.vci[0]} to move, ${g.vehicle.vci[1]} for GO`);
+  return frag(b(soil.label), soft(parts.filter(Boolean).map((x) => ` · ${x}`).join('')));
+}
+
+/** "Under 15 38 % · 15 to 64 58 % · 65+ 4 % · men 15 to 49: 12,300 within 5 km". */
+function agesText(v: GroundGuideVerdict): string | null {
+  const r = v.population?.reading;
+  const a = r?.ages;
+  if (!r || !a || !r.people) return null;
+  const t = r.people;
+  const pc = (n: number) => `${Math.round((100 * n) / t)} %`;
+  return `Under 15 ${pc(a.under15)} · 15 to 64 ${pc(Math.max(0, t - a.under15 - a.over65))} · 65+ ${pc(a.over65)} · men 15 to 49: ${Math.round(a.males15_49).toLocaleString('en-US')} within ${r.radiusKm} km`;
+}
+
+/** G: what the one line (terrain, elevation, slope, landform) leaves out. */
+function groundMore(g: GroundReading, v: GroundGuideVerdict): Array<[string, Node | string | null]> {
+  const rows = groundRows(g).filter(([k]) => k !== 'Terrain' && k !== 'Relief');
+  const change = g.terrainChange ? `${g.terrainChange.label} ${fmtDistance(g.terrainChange.distanceM)} ${g.terrainChange.compass}` : null;
+  return [['Changes', change], ...rows, ['Going', modesNode(v)], ['Soil', bearingNode(v)]];
+}
+
+/** R: what the one line (route, class, MSR, density) leaves out. */
+function roadsMore(r: RoadsReading): Array<[string, Node | string | null]> {
+  return roadsRows(r).filter(([k]) => k !== 'Here' && k !== 'Nearest');
+}
+
+/** O: what the one line (wet ground, nearest man-made and natural obstacle) leaves out. */
+function obstaclesMore(o: ObstaclesReading): Array<[string, Node | string | null]> {
+  return obstaclesRows(o).filter(([k]) => k !== 'Natural' && k !== 'Man-made' && k !== 'Here');
+}
+
+/** B: what the one line (density, huts, nearest service, tehsil) leaves out. */
+function buildingsMore(bd: BuildingsReading, v: GroundGuideVerdict): Array<[string, Node | string | null]> {
+  const rows = buildingsRows(bd).filter(([k]) => k !== 'Buildings' && k !== 'Kacha huts');
+  const build = bd.density && bd.density.code > 0 ? [bd.size, bd.height].filter(Boolean).join(' · ') || null : null;
+  return [['Build', build], ['Huts', bd.huts?.temporary ? 'Temporary huts nearby' : null], ...rows, ['Ages', agesText(v)]];
+}
+
+/** W: the year under the month's line. */
+function weatherMore(w: WeatherReading): Array<[string, Node | string | null]> {
+  return [['Year', weatherYear(w)], ['Wet', w.wet.length ? monthRuns(w.wet) : null]];
 }
 
 /** The card's G / R / B / W sections in GROTBC order, each null when off or empty. */
@@ -363,11 +455,13 @@ export function sectionsCard(v: GroundGuideVerdict): { g: HTMLElement | null; r:
   const sw = res(st.w);
   if ([sg, sr, so, sb, sw].every((x) => x === 'off')) return none;
   ensureSectionsCss();
-  const one = (l: keyof typeof LETTER, text: string, extra?: HTMLElement | null) => {
+  const one = (l: keyof typeof LETTER, text: string, extra?: HTMLElement | null, detail?: Array<[string, Node | string | null]>) => {
     const sec = el('div', 'ms-ggb-sec');
     const row = el('div', 'ms-gs-one');
     row.append(letter(l), el('span', undefined, text));
     sec.append(row);
+    const dm = s.detail && detail ? more(detail) : null;
+    if (dm) sec.append(dm);
     if (extra) sec.append(extra);
     return sec;
   };
@@ -389,7 +483,7 @@ export function sectionsCard(v: GroundGuideVerdict): { g: HTMLElement | null; r:
   const w = s.weather;
   return {
     g: !g || sg === 'off' ? null
-      : sg === 'line' ? one('G', groundOne(g))
+      : sg === 'line' ? one('G', groundOne(g), null, groundMore(g, v))
       : sg === 'relief' ? groundRelief(g)
       : sg === 'chips' ? groundChips(g)
       : section('G', 'Ground', kv(groundRows(g))),
@@ -399,17 +493,17 @@ export function sectionsCard(v: GroundGuideVerdict): { g: HTMLElement | null; r:
       : sr === 'verdict' ? withDensity(roadsVerdict(r))
       : section('R', 'Roads, Tracks & Rail', kv([...roadsRows(r), ...densityGridRows(s, r.density)]), densityCardBlock(r.density, s.roadDensityStyle, s.roadDensityLead), checkBox(r.check)),
     o: !o || so === 'off' ? null
-      : so === 'line' ? one('O', obstaclesOne(o))
+      : so === 'line' ? one('O', obstaclesOne(o), null, obstaclesMore(o))
       : so === 'tiles' ? obstaclesTiles(o)
       : so === 'gap' ? obstaclesGap(o)
       : section('O', 'Obstacles', kv(obstaclesRows(o))),
     b: !b || sb === 'off' ? null
-      : sb === 'line' ? one('B', buildingsOne(b) || 'No buildings or services mapped')
+      : sb === 'line' ? one('B', buildingsOne(b) || 'No buildings or services mapped', null, buildingsMore(b, v))
       : sb === 'where' ? buildingsWhere(b)
       : sb === 'protected' ? buildingsProtected(b)
       : section('B', 'Built-Up Areas · Buildings', kv(buildingsRows(b))),
     w: !w || sw === 'off' ? null
-      : sw === 'line' ? one('W', `${w.monthName}: ${weatherMonth(w)}`)
+      : sw === 'line' ? one('W', `${w.monthName}: ${weatherMonth(w)}`, null, weatherMore(w))
       : sw === 'year' ? weatherYearStrip(w)
       : sw === 'icons' ? weatherIcons(w)
       : section('W', `Weather · ${w.monthName}`, kv([[w.monthName, weatherMonth(w)], ['Year', weatherYear(w)]])),
