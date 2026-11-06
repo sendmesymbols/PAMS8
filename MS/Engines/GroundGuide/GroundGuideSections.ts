@@ -183,7 +183,18 @@ export const KINDS = {
   reach: new Set(['river_reach']),
   canalLines: new Set(['canal']),
   levee: new Set(['levee']),
-  utilities: new Set(['grid_station', 'mast', 'wind_tower', 'oil_gas_well', 'oil_tank', 'telecom_booster', 'telephone_exchange', 'wireless_station']),
+  utilities: new Set(['grid_station', 'mast', 'wind_tower', 'oil_gas_well', 'oil_tank', 'telecom_booster', 'telephone_exchange', 'wireless_station', 'solar_plant']),
+  /** G (added 2026-11-06, NCGDB Soil_Point / Soil_Line / Glacier_Line): ground the map marks with a symbol. */
+  groundSym: new Set(['scree', 'broken_ground', 'stony_waste', 'quarry', 'earth_slide', 'moraine', 'crevasse', 'ice_pinnacles', 'sand_plain']),
+  /** G: dune fields (one point per ~2 km cell: spacing and orientation of the dune lines on the 1:50k map). */
+  dunes: new Set(['dune_field']),
+  /** G: the sheet's own notes (Annotation_): going, water, vegetation, ground. */
+  notes: new Set(['note_going', 'note_water', 'note_vegetation', 'note_ground']),
+  /** O (added 2026-11-06, OpenStreetMap): power lines, pipelines, walls and fences. */
+  osmLines: new Set(['power_line', 'pipeline', 'wall_fence']),
+  /** G: the sheet's wind arrows (`wd` axis); B: national park boundaries. */
+  wind: new Set(['wind_arrow']),
+  park: new Set(['park_boundary']),
   landmarks: new Set(['mosque', 'tomb', 'temple', 'church', 'eidgah', 'graveyard_pt', 'market', 'bank', 'mill', 'stadium', 'industrial_area', 'camp', 'park']),
   places: new Set(['city', 'district_hq', 'town', 'village_imp', 'village']),
 };
@@ -250,6 +261,63 @@ export interface GroundReading {
   wetNear: SectionPlace | null;
   /** The nearest named marsh / swamp or lake bed (kind 156, GeoNames) within 10 km. */
   marsh: SectionPlace | null;
+  /**
+   * Added 2026-11-06, from the bundle's 30 m elevation (Copernicus GLO-30): the way the slope faces (null on level
+   * ground), how broken the ground is round the point, and the military crest of the slope it is on.
+   */
+  aspect: { deg: number; compass: string } | null;
+  rough: { level: 0 | 1 | 2 | 3; label: string; residualM: number } | null;
+  crest: MilitaryCrest | null;
+  /** Added 2026-11-06 (NCGDB Soil_Line / Soil_Point): the dune field at or near the point. */
+  dunes: DuneField | null;
+  /** Ground the map marks with a symbol (scree, broken rocky ground, stony waste, quarry, slide, moraine, crevasses ...), nearest of each, up to three. */
+  groundSym: SectionPlace[];
+  /**
+   * The sheet's wind arrows within 25 km (NCGDB Soil_Point 16): the axis the wind blows along (the mean of up to five
+   * arrows), the nearest arrow's distance. Which end it blows from is not recorded, so only the axis is given.
+   */
+  wind: { axis: string; arrows: number; distanceM: number; compass: string } | null;
+  /** The sheet's own notes within 2 km (Annotation_): nearest of each group, nearest first. `name` is the text as written. */
+  notes: Array<SectionPlace & { group: 'going' | 'water' | 'vegetation' | 'ground' }>;
+}
+
+/**
+ * The military crest of the slope at the point (from the DEM): along the way the slope faces, the highest point from
+ * which a man standing (2 m eye height) sees all the way to the foot of the slope. `where` says where the point is:
+ * `above` (between the crest and the military crest: the slope below is partly hidden), `on`, or `below` (on the
+ * forward slope under it: the foot is in view).
+ */
+export interface MilitaryCrest {
+  where: 'above' | 'on' | 'below';
+  /** From the point to the military crest. */
+  distanceM: number;
+  compass: string;
+  /** The topographic crest (the top of the slope) above the point. */
+  topDistanceM: number;
+  topCompass: string;
+  /** The foot of the slope (where it levels out), from the point, and the drop from the top to the foot. */
+  footDistanceM: number;
+  dropM: number;
+  /** The way the slope faces (forward to that side). */
+  faces: string;
+  /** The profile from the top (index 0) to the foot, one sample every `stepM`; `iP` the point, `iM` the military crest. */
+  profile: number[];
+  stepM: number;
+  iP: number;
+  iM: number;
+}
+
+export interface DuneField {
+  /** Mean spacing of the dune lines (m), null when the cell has only dune symbols. */
+  spacingM: number | null;
+  /** The dune lines' axis ("NE–SW"), null when they run no single way. */
+  axis: string | null;
+  /** Star dunes dominate the cell (high, irregular dunes). */
+  star: boolean;
+  /** The point is in the field (the nearest cell is within ~1.5 km) rather than near it. */
+  inField: boolean;
+  distanceM: number;
+  compass: string;
 }
 
 export interface RoadsReading {
@@ -335,9 +403,13 @@ export interface ObstaclesReading {
   /** A river, lake, canal or stream bank at the point (`bank` layer + rules.json `grotbc.banks`), within 30 / 75 / 150 m. */
   bank: { label: string; withinM: number } | null;
   dam: SectionPlace | null;
+  /** The dam / barrage / headworks as recorded (river, length, height, gates, spans, load class), null when nothing is. */
+  damDetail: string | null;
   levee: SectionPlace | null;
   /** A road nearby closed by season or with landslide sites, as recorded. */
   closure: { road: string; closed: string | null; landslides: number | null; distanceM: number; compass: string } | null;
+  /** Power lines (with kV), pipelines and walls / fences within 2 km (OpenStreetMap), nearest first. */
+  lines: Array<SectionPlace & { note: string | null }>;
 }
 
 export interface BuildingsReading {
@@ -348,9 +420,12 @@ export interface BuildingsReading {
   services: SectionPlace[];
   security: SectionPlace[];
   admin: PlaceAdmin | null;
+  /** The country at the point as the NCGDB Countries layer names it ("Pakistan", "Afghanistan", "IIOJ&K"), null when not known. */
+  country: string | null;
   sheet: PlaceSheet | null;
   border: PlaceBorder | null;
-  settlement: (SectionPlace & { sizeClass: string; people: number | null }) | null;
+  /** `hq`: the seat of a province, district or tehsil (NCGDB Places, 2026-11-06), e.g. "tehsil HQ". */
+  settlement: (SectionPlace & { sizeClass: string; people: number | null; hq: string | null }) | null;
   utilities: SectionPlace[];
   landmarks: SectionPlace[];
   /** Former "Data only" (added 2026-11-06): mines, mine shafts, kilns and chimneys (nearest of each, 5 km); the nearest
@@ -436,6 +511,166 @@ function elevAt(read: Read, L: SectionsLayers, x: number, y: number): number | n
   if (hi === undefined || lo === undefined) return undefined;
   if (hi === null || lo === null || hi === 255) return null;
   return hi * 256 + lo - 500;
+}
+
+/** Elevation `d` ground metres from the point along bearing `brg` (undefined while the tile loads). */
+function elevAlong(a: SectionArgs, brg: number, d: number): number | null | undefined {
+  const r = (brg * Math.PI) / 180;
+  return elevAt(a.read, a.L, a.at[0] + (Math.sin(r) * d) / a.cosLat, a.at[1] + (Math.cos(r) * d) / a.cosLat);
+}
+
+const AXES = ['N–S', 'NNE–SSW', 'NE–SW', 'ENE–WSW', 'E–W', 'ESE–WNW', 'SE–NW', 'SSE–NNW'];
+/** An axis (0-179 degrees from north) as "NE–SW". */
+export function axisOf(deg: number): string {
+  return AXES[Math.round((((deg % 180) + 180) % 180) / 22.5) % 8];
+}
+
+/** Ground roughness from the residual of a plane fitted to 5 x 5 elevations one pixel apart (m): proposal bands. */
+const ROUGH: Array<[number, 0 | 1 | 2 | 3, string]> = [
+  [1.0, 0, 'Smooth'],
+  [2.5, 1, 'Uneven'],
+  [5.0, 2, 'Broken'],
+  [Infinity, 3, 'Very broken'],
+];
+const EYE_M = 2; // a man standing
+const TAN3 = Math.tan((3 * Math.PI) / 180);
+
+/**
+ * Which way the slope faces: the 3 x 3 gradient over a ~90 m baseline (one pixel is DEM noise on gentle ground).
+ * Null on level ground (under 2 degrees over the baseline).
+ */
+function aspectAt(a: SectionArgs, e0: number): { deg: number; compass: string } | null {
+  const d = Math.max(a.pxM, 90);
+  const [e, w, n, s] = [elevAlong(a, 90, d), elevAlong(a, 270, d), elevAlong(a, 0, d), elevAlong(a, 180, d)];
+  if (![e, w, n, s].every((v) => typeof v === 'number')) return null;
+  const gx = ((e as number) - (w as number)) / (2 * d);
+  const gy = ((n as number) - (s as number)) / (2 * d);
+  if (Math.atan(Math.hypot(gx, gy)) < (2 * Math.PI) / 180 || !Number.isFinite(e0)) return null;
+  const deg = (((Math.atan2(-gx, -gy) * 180) / Math.PI) + 360) % 360;
+  return { deg: Math.round(deg), compass: compassOf(deg) };
+}
+
+/** Roughness at the point: the 5 x 5 elevations one pixel apart less the plane through them (finest zoom only). */
+function roughAt(a: SectionArgs): GroundReading['rough'] {
+  if (a.zoom < a.maxZoom) return null;
+  const d = a.pxM / a.cosLat;
+  const z: number[] = [];
+  for (let j = -2; j <= 2; j++) {
+    for (let i = -2; i <= 2; i++) {
+      const v = elevAt(a.read, a.L, a.at[0] + i * d, a.at[1] + j * d);
+      if (typeof v !== 'number') return null;
+      z.push(v);
+    }
+  }
+  let m = 0;
+  let bx = 0;
+  let by = 0;
+  for (let k = 0; k < 25; k++) {
+    const i = (k % 5) - 2;
+    const j = Math.floor(k / 5) - 2;
+    m += z[k];
+    bx += i * z[k];
+    by += j * z[k];
+  }
+  m /= 25;
+  bx /= 50; // sum of i² over the 5 x 5 grid
+  by /= 50;
+  let ss = 0;
+  for (let k = 0; k < 25; k++) {
+    const r = z[k] - m - bx * ((k % 5) - 2) - by * (Math.floor(k / 5) - 2);
+    ss += r * r;
+  }
+  const res = Math.sqrt(ss / 25);
+  const band = ROUGH.find(([lim]) => res < lim)!;
+  return { level: band[1], label: band[2], residualM: Math.round(res * 10) / 10 };
+}
+
+/**
+ * The military crest of the slope the point is on. Walk up the slope (against the way it faces) to the top, then
+ * down a profile from the top to the foot (where the ground levels under 3 degrees for two steps); the military crest
+ * is the highest profile point from which a man standing sees every point down to the foot. On level ground the point
+ * may be a hill top: the steepest fall of 10 m or more within 150 m gives the slope to read.
+ */
+function militaryCrestAt(a: SectionArgs, e0: number, aspect: GroundReading['aspect']): MilitaryCrest | null {
+  const step = Math.max(a.pxM, 30);
+  let A = aspect?.deg ?? null;
+  if (A === null) {
+    let best: { brg: number; drop: number } | null = null;
+    for (let i = 0; i < 8; i++) {
+      const e = elevAlong(a, i * 45, 150);
+      if (typeof e === 'number' && e0 - e >= 10 && (!best || e0 - e > best.drop)) best = { brg: i * 45, drop: e0 - e };
+    }
+    if (!best) return null;
+    A = best.brg;
+  }
+  const up = (A + 180) % 360;
+  // Up to the top: the highest sample before the ground falls 3 m below it (1.5 km at most).
+  let topD = 0;
+  let topE = e0;
+  for (let d = step; d <= 1500; d += step) {
+    const e = elevAlong(a, up, d);
+    if (e === undefined) return null;
+    if (e === null) break;
+    if (e > topE) {
+      topE = e;
+      topD = d;
+    } else if (e < topE - 3) break;
+  }
+  // The profile from the top (index 0) down through the point (index iP) to the foot (3 km below the point at most).
+  const iP = Math.round(topD / step);
+  const prof: number[] = [];
+  let foot = -1;
+  let gentle = 0;
+  for (let k = 0; k * step <= topD + 3000; k++) {
+    const dP = k * step - topD;
+    const e = dP < 0 ? elevAlong(a, up, -dP) : elevAlong(a, A, dP);
+    if (e === undefined) return null;
+    if (e === null) break;
+    prof.push(e);
+    if (k > iP && k > 0) {
+      gentle = prof[k - 1] - e < TAN3 * step ? gentle + 1 : 0;
+      if (gentle >= 2) {
+        foot = k - 2;
+        break;
+      }
+    }
+  }
+  if (foot < 0) foot = prof.length - 1;
+  if (foot <= iP || prof[0] - prof[foot] < 15) return null; // no real slope below the point
+  // The highest observer that sees every point down to the foot.
+  let m = foot;
+  for (let i = 0; i < foot; i++) {
+    const eye = prof[i] + EYE_M;
+    let maxTan = -Infinity;
+    let all = true;
+    for (let j = i + 1; j <= foot; j++) {
+      const t = (prof[j] - eye) / (j - i);
+      if (t < maxTan - 1e-9) {
+        all = false;
+        break;
+      }
+      maxTan = Math.max(maxTan, t);
+    }
+    if (all) {
+      m = i;
+      break;
+    }
+  }
+  const where: MilitaryCrest['where'] = Math.abs(m - iP) <= 1 ? 'on' : iP < m ? 'above' : 'below';
+  return {
+    where,
+    distanceM: Math.abs(m - iP) * step,
+    compass: compassOf(m > iP ? A : up),
+    topDistanceM: topD,
+    topCompass: compassOf(up),
+    footDistanceM: (foot - iP) * step,
+    dropM: Math.round(prof[0] - prof[foot]),
+    faces: compassOf(A),
+    profile: prof.slice(0, foot + 1).map((v) => Math.round(v)),
+    stepM: step,
+    iP,
+    iM: m,
+  };
 }
 
 function label(book: Record<string, unknown> | undefined, code: number | null | undefined, fallback: string): string {
@@ -587,7 +822,68 @@ function readGround(a: SectionArgs): GroundReading {
   const mh = a.features?.nearestOfKinds(at, 10000, KINDS.marsh, 1, (h) => !!h.name).list[0];
   const marsh = mh ? place(mh) : null;
 
+  // DEM (2026-11-06): the way the slope faces, roughness, the military crest.
+  const aspect = here !== null ? aspectAt(a, here) : null;
+  const rough = here !== null ? roughAt(a) : null;
+  const crest = here !== null ? militaryCrestAt(a, here, aspect) : null;
+
+  // Dune fields, ground symbols and the sheet's notes (NCGDB Soil_Line / Soil_Point / Annotation_, 2026-11-06).
+  let dunes: DuneField | null = null;
+  let wind: GroundReading['wind'] = null;
+  const groundSym: SectionPlace[] = [];
+  const notes: GroundReading['notes'] = [];
+  if (a.features) {
+    const dh = a.features.nearestOfKinds(at, 3000, KINDS.dunes, 1).list[0];
+    if (dh) {
+      const or = num(dh.attrs.or);
+      dunes = {
+        spacingM: num(dh.attrs.sp),
+        axis: or !== null && (num(dh.attrs.oc) ?? 0) >= 50 ? axisOf(or) : null,
+        star: dh.attrs.t === 'star dunes',
+        inField: dh.distanceM <= 1500,
+        distanceM: dh.distanceM,
+        compass: dh.compass,
+      };
+    }
+    const seen = new Set<string>();
+    for (const h of a.features.nearestOfKinds(at, Math.min(a.radiusM, 5000), KINDS.groundSym, 60).list) {
+      if (seen.has(h.kind)) continue;
+      seen.add(h.kind);
+      groundSym.push(place(h, h.kindLabel));
+      if (groundSym.length >= 3) break;
+    }
+    // Wind arrows: the axial mean of the nearest five (doubled angles, so 170 and 10 agree).
+    const wa = a.features.nearestOfKinds(at, 25000, KINDS.wind, 5).list.filter((h) => typeof h.attrs.wd === 'number');
+    if (wa.length) {
+      let c2 = 0;
+      let s2 = 0;
+      for (const h of wa) {
+        const r = ((h.attrs.wd as number) * Math.PI) / 90;
+        c2 += Math.cos(r);
+        s2 += Math.sin(r);
+      }
+      if (Math.hypot(c2, s2) / wa.length >= 0.5) {
+        const deg = ((Math.atan2(s2, c2) * 90) / Math.PI + 180) % 180;
+        wind = { axis: axisOf(deg), arrows: wa.length, distanceM: wa[0].distanceM, compass: wa[0].compass };
+      }
+    }
+    const group: Record<string, 'going' | 'water' | 'vegetation' | 'ground'> = { note_going: 'going', note_water: 'water', note_vegetation: 'vegetation', note_ground: 'ground' };
+    const seenN = new Set<string>();
+    for (const h of a.features.nearestOfKinds(at, 2000, KINDS.notes, 60).list) {
+      if (seenN.has(h.kind) || !h.name) continue;
+      seenN.add(h.kind);
+      notes.push({ ...place(h, h.kindLabel), group: group[h.kind] });
+    }
+  }
+
   return {
+    aspect,
+    rough,
+    crest,
+    dunes,
+    wind,
+    groundSym,
+    notes,
     land,
     marsh,
     trees,
@@ -826,14 +1122,49 @@ function readObstacles(a: SectionArgs): ObstaclesReading {
   let canal: ObstaclesReading['canal'] = null;
   let reach: ObstaclesReading['reach'] = null;
   let dam: SectionPlace | null = null;
+  let damDetail: string | null = null;
   let levee: SectionPlace | null = null;
+  const lines: ObstaclesReading['lines'] = [];
   if (a.features) {
+    // Power lines, pipelines, walls and fences (OpenStreetMap, 2026-11-06): the nearest of each within 2 km.
+    const seenL = new Set<string>();
+    const near = [...a.features.linesNear(at, Math.min(a.radiusM, 2000), KINDS.osmLines).list].sort((p, q) => p.distanceM - q.distanceM);
+    for (const h of near) {
+      if (seenL.has(h.kind)) continue; // the nearest of each kind
+      seenL.add(h.kind);
+      const v = num(h.attrs.v);
+      const t = text(h.attrs.t);
+      const note = h.kind === 'power_line' ? (v ? `${v} kV` : t === 'minor line' ? 'minor line' : null) : h.kind === 'wall_fence' ? t : t ? `${t}` : null;
+      lines.push({ ...place(h, h.kindLabel), note });
+    }
+    lines.sort((p, q) => p.distanceM - q.distanceM);
     const cl = a.features.linesNear(at, a.radiusM, KINDS.canalLines).list[0];
     if (cl) canal = { ...place(cl, cl.kindLabel), widthM: num(cl.attrs.w), depthM: num(cl.attrs.dp), bankM: num(cl.attrs.b) };
     const rc = a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.reach, 1).list[0];
     if (rc) reach = { ...place(rc, 'River reach'), bed: text(rc.attrs.s), depthM: num(rc.attrs.dp) ?? num(rc.attrs.dm), currentMs: num(rc.attrs.cu), dischargeCusecs: num(rc.attrs.dc), wetSpan: text(rc.attrs.ws) };
-    const dm = a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.dam, 1).list[0];
-    if (dm) dam = place(dm, dm.kindLabel);
+    const dams = a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.dam, 6).list;
+    const dm = dams[0];
+    if (dm) {
+      // The structure as HeadWorks_Pakmap records it (2026-11-06): length, height, gates, spans, load class. The nearest
+      // point may be a GeoNames copy without them: take them from a point of the same name within 2 km of it.
+      const key = (h: FeatureHit) => (h.name ?? '').toLowerCase().replace(/\b(dam|barrage|headworks|head works|h\/w)\b/g, '').replace(/[^a-z]/g, '');
+      const rec = (h: FeatureHit) => ['lm', 'hm', 'gt', 'sn', 'c', 'rv'].some((k) => h.attrs[k] !== undefined);
+      const src = rec(dm) ? dm : dams.find((h) => rec(h) && h.distanceM <= dm.distanceM + 2000 && !!key(h) && key(h) === key(dm)) ?? dm;
+      const lm = num(src.attrs.lm);
+      const hm = num(src.attrs.hm);
+      const gt = num(src.attrs.gt);
+      const sn = num(src.attrs.sn);
+      const parts = [
+        text(src.attrs.rv) ? `on the ${text(src.attrs.rv)}` : null,
+        lm ? `${Math.round(lm).toLocaleString('en-US')} m long` : null,
+        hm ? `${hm} m high` : null,
+        gt && gt <= 300 ? `${gt} gates` : null, // larger counts are recording errors
+        sn && sn <= 300 ? `${sn} spans` : null,
+        text(src.attrs.c) ? `class ${text(src.attrs.c)}` : null,
+      ];
+      dam = place(dm, dm.kindLabel);
+      damDetail = parts.filter(Boolean).join(', ') || null;
+    }
     const lv = a.features.nearestOfKinds(at, a.radiusM, KINDS.levee, 1).list[0];
     if (lv) levee = place(lv, lv.kindLabel);
   }
@@ -867,7 +1198,7 @@ function readObstacles(a: SectionArgs): ObstaclesReading {
     }
     canalKm = kmStone(a.features.nearestOfKinds(at, 2000, KINDS.kmCanal, 20).list, 'Canal km stone');
   }
-  return { natural, manMade, wet, canal, reach, bank, canalWorks, canalKm, dam, levee, closure };
+  return { natural, manMade, wet, canal, reach, bank, canalWorks, canalKm, dam, damDetail, levee, closure, lines };
 }
 
 // ── B ────────────────────────────────────────────────────────────────────────
@@ -925,7 +1256,8 @@ function readBuildings(a: SectionArgs): BuildingsReading {
       const big = st.kind === 'city' || st.kind === 'district_hq' || st.kind === 'town';
       const cls = people !== null ? sizeClass(people) : st.kindLabel;
       const trust = people !== null && (!big || people >= 20_000);
-      settlement = { ...place(st, st.kindLabel), sizeClass: trust ? cls : st.kindLabel, people: trust ? people : null };
+      const hq = text(st.attrs.hq);
+      settlement = { ...place(st, st.kindLabel), sizeClass: trust ? cls : st.kindLabel, people: trust ? people : null, hq: hq ? `${hq} HQ` : null };
     }
   }
   const industry: SectionPlace[] = [];
@@ -948,9 +1280,16 @@ function readBuildings(a: SectionArgs): BuildingsReading {
     if (vt) vet = place(vt, vt.kindLabel);
     const bp = a.features.nearestOfKinds(at, 10000, KINDS.pillar, 1).list[0];
     if (bp) pillar = place(bp, bp.kindLabel);
+    // A national park boundary (NCGDB Limit_Line 6, 2026-11-06) within 10 km: a protected area, named first.
+    const pk = a.features.linesNear(at, 10000, KINDS.park).list[0];
+    if (pk) landmarks.unshift(place(pk, pk.kindLabel));
   }
   const [lon, lat] = a.lonLat;
+  // The admin layers also hold the neighbours' provinces (Hilmand, Kandahar ...), so the country is named beside them.
+  const admin = a.place?.adminAt(lon, lat) ?? null;
+  const country = a.place?.countryAt?.(lon, lat) ?? null;
   return {
+    country,
     industry,
     deserted,
     lodging,
@@ -962,7 +1301,7 @@ function readBuildings(a: SectionArgs): BuildingsReading {
     huts,
     services,
     security,
-    admin: a.place?.adminAt(lon, lat) ?? null,
+    admin,
     sheet: a.place?.sheetAt(lon, lat) ?? null,
     border: a.place?.borderNear(lon, lat) ?? null,
     settlement,
@@ -1030,6 +1369,7 @@ export interface SectionArgs {
     adminAt(lon: number, lat: number): PlaceAdmin | null;
     borderNear(lon: number, lat: number, maxKm?: number): PlaceBorder | null;
     sheetAt(lon: number, lat: number): PlaceSheet | null;
+    countryAt?(lon: number, lat: number): string | null;
     route(numberOrName: string | null | undefined): PlaceRoute | null;
   } | null;
   /** The routing network for road density (GroundGuideRoads), or null when the bundle has none. */

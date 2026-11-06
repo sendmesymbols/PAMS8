@@ -130,9 +130,25 @@ KINDS = {
     160: ("peak", "Peak", "G"), 161: ("hill", "Hill", "G"), 162: ("knoll", "Knoll / raised ground", "G"),
     163: ("saddle", "Saddle / col", "G"), 164: ("plateau", "Plateau", "G"), 165: ("depression", "Closed depression", "G"),
     166: ("main_junction", "Junction of main roads", "GR"),
+    # 2026-11-06: NCGDB layers not read before. Soil_Line / Soil_Point dunes become dune fields (one point per
+    # ~2 km cell: crest spacing, orientation); the other Soil_Point symbols, moraines (Soil_Line 1), crevasses
+    # (Glacier_Line 4), solar power stations (Misc_Polygon_Feature 2) and the sheet's own text (Annotation_) as notes.
+    167: ("dune_field", "Dune field", "GT"), 168: ("quarry", "Quarry", "GB"), 169: ("broken_ground", "Broken rocky ground", "GT"),
+    170: ("stony_waste", "Stony waste", "GT"), 171: ("scree", "Scree", "GT"), 172: ("earth_slide", "Earth / gravel slide", "GO"),
+    173: ("moraine", "Moraine", "GT"), 174: ("ice_pinnacles", "Ice pinnacles", "GO"), 175: ("sand_plain", "Sand plain", "GT"),
+    176: ("crevasse", "Crevasses", "GO"), 177: ("solar_plant", "Solar power station", "B"),
+    178: ("note_going", "Map note: going", "T"), 179: ("note_vegetation", "Map note: vegetation", "GC"),
+    180: ("note_ground", "Map note: ground", "G"), 181: ("note_water", "Map note: water", "G"),
+    # Soil_Point 16: the sheet's wind arrows. `wd` = the arrow's axis (Angle clockwise from north: checked against
+    # the dune lines round 471 arrows, 79 % within 20 degrees); which end the wind blows from is not recorded.
+    182: ("wind_arrow", "Wind arrow (map)", "G"),
     # lines (features.json "l")
     200: ("road", "Road", "R"), 201: ("railway", "Railway", "R"), 202: ("canal", "Canal", "O"), 203: ("river", "River", "GO"),
     204: ("ridgeline", "Ridgeline", "G"),
+    # 2026-11-06: OpenStreetMap lines (fords, health and fuel go onto the existing point kinds with src = osm)
+    205: ("power_line", "Power line", "O"), 206: ("pipeline", "Pipeline", "O"), 207: ("wall_fence", "Wall / fence", "OC"),
+    # Limit_Line 6 (Lal Suhanra)
+    208: ("park_boundary", "National park boundary", "B"),
 }
 KIND_CODE = {v[0]: k for k, v in KINDS.items()}
 GROUND_KINDS = {160, 161, 162, 163, 164, 165, 166, 204}          # written by ground.py, never by this step
@@ -168,6 +184,29 @@ def parse_width_m(text: str) -> float | None:
     if "ft" in t or "feet" in t or "'" in t:
         v *= 0.3048
     return round(v, 1) if 0 < v < 500 else None
+
+
+def parse_len_m(text) -> float | None:
+    """A recorded length / height with its unit -> metres: '552 METERS', '300 ft', '6.30 Km', '30 MILES',
+    '1,223.5 METERS', '450' (metres when no unit). None when unreadable or 0."""
+    t = _s(text).lower().replace("\xa0", " ")
+    m = re.search(r"\d[\d,]*(?:\.\d+)?", t)
+    if not m:
+        return None
+    v = float(m.group(0).replace(",", ""))
+    rest = t[m.end():]
+    if re.match(r"\s*(km|kilomet)", rest):
+        v *= 1000.0
+    elif re.match(r"\s*mile", rest):
+        v *= 1609.344
+    elif re.match(r"\s*(ft|feet|')", rest):
+        v *= 0.3048
+    return round(v, 1) if 0 < v < 100_000 else None
+
+
+def parse_count(text) -> int | None:
+    m = re.search(r"\d+", _s(text))
+    return int(m.group(0)) if m and 0 < int(m.group(0)) < 10_000 else None
 
 
 def parse_load_class(text: str) -> tuple[int | None, bool]:
@@ -600,9 +639,16 @@ POINT_RULES = [
      {"n": "NAME", "c": "COUNTRY", "rw": "RUNWAY_SIZ", "rd": "RUNWAY_DIR", "s": "SURFACE", "e": "ELEV_M_",
       "u1": "FMN", "u2": "SQN", "u3": "CBT_AC", "u4": "TPT_AC", "u5": "HELI", "u6": "UAV"}),
     ("Airports_Pakmap", "AIR_FD_TYP", {"Airport": "airport", "Air Fd": "airfield"}, {"n": "NAME", "c": "Category", "s": "Classifica"}),
+    # 2026-11-06: the structure detail (length, width, height, gates, spans, storage, power, discharge, year) as well
     ("HeadWorks_Pakmap", "CATEGORY", {"Dam": "dam", "H/W": "headworks", "Barrage": "barrage", "Reservoir": "dam"},
-     {"n": "NAME", "c": "CLASSIFICA", "rv": "RIVER", "s": "STRUCTURE"}),
+     {"n": "NAME", "c": "CLASSIFICA", "rv": "RIVER", "s": "STRUCTURE", "lm": "LENGTH_M", "wm": "WIDTH_M", "hm": "HEIGHT",
+      "gt": "NO_OF_GATE", "sn": "SPAN_NO", "st": "STORAGE_CA", "pw": "POWER_GEN_", "dc": "DISCHARGE", "yr": "YEAR_OF_CO"}),
     ("Cantts_Pakmap", None, {"": "cantonment"}, {"n": "Cantts", "f": "Fmn_Name", "pc": "Parent_Cor", "s": "Cantts_Siz"}),
+    # 2026-11-06: layers not read before. Soil_Point dune symbols (6, 9, 11, 12) go into the dune fields instead,
+    # 16 (wind arrows) into wind_arrows(); 3 (query mark) is left out.
+    ("Soil_Point", "Type_of_Soil_Point", {"1": "broken_ground", "2": "quarry", "4": "earth_slide", "5": "moraine",
+     "7": "sand_plain", "8": "scree", "10": "stony_waste", "15": "ice_pinnacles"}, {"n": "Name"}),
+    ("Misc_Polygon_Feature", "Type_of_Misc_Polygon", {"2": "solar_plant", "3": "stadium"}, {"n": "Name"}),
 ]
 LINE_POINT_RULES = [   # lines kept as one point (their middle)
     ("Crosings_line", "Type_of_Crossing", {"4": "ferry", "5": "ford", "1": "boat_bridge", "2": "boat_bridge", "3": "bridge",
@@ -611,7 +657,29 @@ LINE_POINT_RULES = [   # lines kept as one point (their middle)
     ("Misc_Line_Features", "Type_of_Line", {"12": "landing_ground", "7": "firing_range", "18": "firing_range"}, {"n": "Name"}, None),
     ("Tracks", "Type_of_Track", {"6": "ford"}, {"n": "Name"}, "Type_of_Track = '6'"),
     ("Runway", "Type_of_RUNWAY", {"1": "runway"}, {"n": "Name"}, None),
+    ("Glacier_Line", "Type_of_Glacier_Line", {"4": "crevasse"}, {"n": "Name"}, "Type_of_Glacier_Line = '4'"),
+    ("Soil_Line", "Type_Soil_Line", {"1": "moraine"}, {"n": "Name"}, "Type_Soil_Line = '1'"),
 ]
+
+# Soil_Line dune lines (1:50k "Sand Dunes 1-5 Dot" line styles) and Soil_Point dune symbols, summed per DUNE_CELL_DEG cell
+DUNE_LINE_TYPES = ("2", "3", "4", "5", "6")
+DUNE_STAR, DUNE_OTHER = {"9"}, {"6", "11", "12"}        # star dunes; sand dunes, tail sand hill, whale-back dunes
+DUNE_CELL_DEG = 0.02                                     # ~2 km
+DUNE_MIN_KM = 1.0                                        # a cell needs this much dune line (or 3 dune symbols)
+
+# Annotation_ (the sheet's own text): first rule that matches the lower-cased text wins; NOTE_SKIP drops labels of
+# other things (boundaries, rest houses, offices). Each note keeps the text as written (`n`).
+NOTE_RULES = [
+    ("note_going", r"\b(jeepable|motorable|fair weather|follows (the )?bed|bricks? surfaced|causeway|fordable|impassable|"
+                   r"pack track|mule track|camel track|unmetalled|kacha|kutcha)\b"),
+    ("note_water", r"\b(brackish|brakish|undrinkable|sweet water|fresh water|salty|saline|dry|high water line|"
+                   r"low water line|falls \d+|flood(ed|ing)?)\b"),
+    ("note_vegetation", r"\b(scrub|jungle|pine|forest|grass|bush(es)?|reeds?|trees|plantation|deodar|chir|oak|thorn)\b"),
+    ("note_ground", r"\b(rocky|stony|scree|moraines?|sand( dunes?| hills?)?|sandy|mud|marsh(y)?|swamp(y)?|glaciated|"
+                    r"snow bed|depression|ravines?|broken ground|boulders?|cliffs?|precipitous|slides?|terraces?|salt)\b"),
+]
+NOTE_SKIP = r"\b(boundary|rest house|rh|lodge|colony|school|mills?|office|post|station|chowki|farm|kilns?|factory)\b"
+NOTE_DEDUPE_M = 500
 
 
 def _clean(v):
@@ -635,6 +703,7 @@ class TileWriter:
         self.lines: dict[tuple, list] = defaultdict(list)
         self.counts: dict[int, int] = defaultdict(int)
         self.xy: dict[str, list] = defaultdict(list)        # point positions per kind, for de-duplicating other sources
+        self.refs: dict[str, list] = defaultdict(list)      # the attrs dict of each point, aligned with xy (later steps enrich it)
         (w, s), (e, n) = _merc_xy(np.array([[aoi[0], aoi[1]], [aoi[2], aoi[3]]]))
         self.trange = (*self._tile(w, n), *self._tile(e, s))          # lines are kept only inside the AOI
 
@@ -652,10 +721,25 @@ class TileWriter:
         qx, qy = self._q(tx, ty, x, y)
         k = KIND_CODE[kind]
         a = {key: val for key, val in attrs.items() if val is not None}
-        self.points[(tx, ty)].append([k, qx, qy, a] if a else [k, qx, qy])
+        self.points[(tx, ty)].append([k, qx, qy, a])           # the dict is kept (write() drops it when empty)
         self.counts[k] += 1
         self.xy[kind].append((x, y))
+        self.refs[kind].append(a)
         return a
+
+    def nearest(self, kinds, x: float, y: float, r: float) -> tuple[str, dict, float] | None:
+        """The nearest point already written of any of `kinds` within r (Web Mercator metres): (kind, attrs, distance)."""
+        best = None
+        for kind in kinds:
+            pts = self.xy.get(kind)
+            if not pts:
+                continue
+            p = np.asarray(pts)
+            d = np.hypot(p[:, 0] - x, p[:, 1] - y)
+            i = int(d.argmin())
+            if d[i] <= r and (best is None or d[i] < best[2]):
+                best = (kind, self.refs[kind][i], float(d[i]))
+        return best
 
     def line(self, kind: str, geom, attrs: dict) -> None:
         import shapely
@@ -690,7 +774,7 @@ class TileWriter:
         for tx, ty in keys:
             obj = {"z": self.z, "x": tx, "y": ty, "q": QUANT}
             if self.points.get((tx, ty)):
-                obj["p"] = self.points[(tx, ty)]
+                obj["p"] = [p if len(p) < 4 or p[3] else p[:3] for p in self.points[(tx, ty)]]   # ground.py re-feeds tiles from disk
             if self.lines.get((tx, ty)):
                 obj["l"] = self.lines[(tx, ty)]
             p = out / str(self.z) / str(tx) / f"{ty}.json"
@@ -712,7 +796,17 @@ class TileWriter:
                            "pv": "province", "a": "area (km2)", "cu": "current (m/s)", "ws": "wet span of a river reach",
                            "dc": "discharge (cusecs)", "dm": "maximum depth (m)", "bk": "bank height",
                            "pc": "parent corps", "u1": "formation", "u2": "squadrons", "u3": "combat aircraft",
-                           "u4": "transport aircraft", "u5": "helicopters", "u6": "UAV", **GROUND_ATTRS},
+                           "u4": "transport aircraft", "u5": "helicopters", "u6": "UAV",
+                           "lm": "length (m)", "wm": "width (m)", "hm": "height (m)", "gt": "gates", "sn": "spans",
+                           "st": "storage capacity (as recorded)", "pw": "power generation (as recorded)", "yr": "year completed",
+                           "hq": "administrative seat: province / district / tehsil (NCGDB Places)",
+                           "sp": "dune field: mean spacing of the dune lines (m)",
+                           "or": "dune field: orientation of the dune lines, degrees from north (an axis, 0-179)",
+                           "oc": "dune field: how parallel the dune lines are (0-100)", "dk": "dune field: km of dune line per km²",
+                           "sd": "dune field: star-dune symbols in the cell", "ds": "dune field: other dune symbols in the cell",
+                           "v": "power line voltage (kV)",
+                           "wd": "map wind arrow: axis, degrees clockwise from north (0-179); which end the wind blows from is not recorded",
+                           **GROUND_ATTRS},
                  "kinds": {str(k): {"key": v[0], "label": v[1], "grotbc": v[2], "count": self.counts.get(k, 0)}
                            for k, v in sorted(KINDS.items())},
                  "tiles": len(keys)}
@@ -1098,6 +1192,279 @@ def _in_aoi(xy: np.ndarray, aoi) -> np.ndarray:
     return (xy[:, 0] >= x0) & (xy[:, 0] <= x1) & (xy[:, 1] >= y0) & (xy[:, 1] <= y1)
 
 
+def _ground_scale(y: float) -> float:
+    """Web Mercator metres per metre on the ground at Mercator y."""
+    lat = 2 * math.atan(math.exp(y / ORIGIN_SHIFT * math.pi)) - math.pi / 2
+    return 1.0 / max(math.cos(lat), 0.2)
+
+
+def dune_fields(g: str, tw: "TileWriter", aoi) -> None:
+    """Soil_Line dune lines and Soil_Point dune symbols summed per ~2 km cell, one `dune_field` point per cell:
+    sp = mean spacing of the dune lines (m, = 1 / line density), or = their orientation (degrees from north, an axis
+    0-179), oc = how parallel they are (0-100), dk = km of dune line per km², sd / ds = star-dune / other dune symbols."""
+    import shapely
+    types = ",".join(f"'{t}'" for t in DUNE_LINE_TYPES)
+    gs, _f = _read(g, "Soil_Line", ["Type_Soil_Line"], where=f"Type_Soil_Line IN ({types})")
+    ok = ~shapely.is_missing(gs)
+    parts = shapely.get_parts(gs[ok]) if ok.any() else np.array([], dtype=object)
+    cells: dict = defaultdict(lambda: np.zeros(7))      # [km, c2, s2, sum x*km, sum y*km, star, other]
+    if len(parts):
+        xy, idx = shapely.get_coordinates(parts, return_index=True)
+        same = idx[1:] == idx[:-1]
+        p0, p1 = xy[:-1][same], xy[1:][same]
+        mid = (p0 + p1) / 2
+        lat = np.arctan(np.sinh(mid[:, 1] / ORIGIN_SHIFT * math.pi))
+        dx, dy = p1[:, 0] - p0[:, 0], p1[:, 1] - p0[:, 1]
+        km = np.hypot(dx, dy) * np.cos(lat) / 1000.0
+        th = np.arctan2(dx, dy)                          # bearing from north; doubled so a line and its reverse agree
+        lon = np.degrees(mid[:, 0] / ORIGIN_SHIFT * math.pi)
+        key = np.floor((lon + 180) / DUNE_CELL_DEG).astype(np.int64) * 100000 + np.floor((np.degrees(lat) + 90) / DUNE_CELL_DEG).astype(np.int64)
+        uk, inv = np.unique(key, return_inverse=True)
+        sums = [np.bincount(inv, weights=w, minlength=len(uk)) for w in
+                (km, km * np.cos(2 * th), km * np.sin(2 * th), mid[:, 0] * km, mid[:, 1] * km)]
+        for i, k in enumerate(uk):
+            cells[int(k)][:5] = [s[i] for s in sums]
+    sym = sorted(DUNE_STAR | DUNE_OTHER)
+    gp, fp = _read(g, "Soil_Point", ["Type_of_Soil_Point"], where="Type_of_Soil_Point IN (" + ",".join(f"'{t}'" for t in sym) + ")")
+    for geom, t in zip(gp, fp["Type_of_Soil_Point"]):
+        if geom is None:
+            continue
+        lon, lat = merc_to_lnglat(geom.x, geom.y)
+        k = int(math.floor((lon + 180) / DUNE_CELL_DEG)) * 100000 + int(math.floor((lat + 90) / DUNE_CELL_DEG))
+        c = cells[k]
+        c[5 if t.replace(".0", "") in DUNE_STAR else 6] += 1
+    n0 = 0
+    for k, c in cells.items():
+        L, c2, s2, sx, sy, star, other = c
+        if L < DUNE_MIN_KM and star + other < 3:
+            continue
+        clon = (k // 100000 + 0.5) * DUNE_CELL_DEG - 180
+        clat = (k % 100000 + 0.5) * DUNE_CELL_DEG - 90
+        if L >= DUNE_MIN_KM:
+            x, y = sx / L, sy / L
+        else:
+            x, y = _merc_xy(np.array([[clon, clat]]))[0]
+        if not _in_aoi(np.array([[x, y]]), aoi)[0]:
+            continue
+        area = (DUNE_CELL_DEG * 111.32) ** 2 * math.cos(math.radians(clat))
+        a: dict = {"sd": int(star) or None, "ds": int(other) or None}
+        if L >= DUNE_MIN_KM:
+            dk = L / area
+            a.update({"dk": round(dk, 1), "sp": int(round(1000.0 / dk / 10.0) * 10),
+                      "or": int(round(math.degrees(math.atan2(s2, c2)) / 2)) % 180, "oc": int(round(100 * math.hypot(c2, s2) / L))})
+        a["t"] = "star dunes" if star >= 3 and star >= other and L < DUNE_MIN_KM * 3 else "dune lines"
+        tw.point("dune_field", x, y, a)
+        n0 += 1
+    log.info("features: Soil_Line / Soil_Point -> %d dune-field cells", n0)
+
+
+def wind_arrows(g: str, tw: "TileWriter", aoi) -> None:
+    """Soil_Point 16, the sheet's wind arrows, with their axis `wd` (degrees clockwise from north, 0-179).
+    The NCGDB's point `Angle` turns a symbol clockwise (bridge symbols lie along their road this way: 94 % within
+    15 degrees round Lahore); a wind arrow's axis = Angle (79 % of 471 arrows within 20 degrees of the local dune lines).
+    The arrow symbol's own drawing is not in the geodatabase, so which end the wind blows from is not stored."""
+    gp, fp = _read(g, "Soil_Point", ["Type_of_Soil_Point", "Angle"], where="Type_of_Soil_Point = '16'")
+    n0 = 0
+    for geom, ang in zip(gp, fp["Angle"]):
+        if geom is None or not _in_aoi(np.array([[geom.x, geom.y]]), aoi)[0]:
+            continue
+        try:
+            a = float(ang)
+        except ValueError:
+            continue
+        tw.point("wind_arrow", geom.x, geom.y, {"wd": int(round(a)) % 180})
+        n0 += 1
+    log.info("features: Soil_Point 16 -> %d wind arrows", n0)
+
+
+def annotation_notes(g: str, tw: "TileWriter", aoi) -> None:
+    """The sheet's own text (Annotation_) that says something about the going, water, vegetation or ground:
+    'Jeepable', 'Motorable in fair weather', '(Brackish)', 'Fairly dense pine', 'Scree'. One point per note at the
+    text's centre; the same text of the same kind within NOTE_DEDUPE_M is kept once (labels repeat along a line)."""
+    import shapely
+    from scipy.spatial import cKDTree
+    rules = [(k, re.compile(p)) for k, p in NOTE_RULES]
+    skip = re.compile(NOTE_SKIP)
+    gs, f = _read(g, "Annotation_", ["TextString"])
+    ok = ~shapely.is_missing(gs)
+    cen = np.full((len(gs), 2), np.nan)
+    cen[ok] = shapely.get_coordinates(shapely.centroid(gs[ok]))
+    keep = ok & _in_aoi(np.nan_to_num(cen), aoi)
+    kept: dict = defaultdict(list)          # (kind, text) -> [(x, y)]
+    counts: dict[str, int] = defaultdict(int)
+    for i in np.nonzero(keep)[0]:
+        raw_t = re.sub(r"\s+", " ", _s(f["TextString"][i])).strip()
+        t = raw_t.lower()
+        if len(t) < 3 or len(t) > 60 or skip.search(t):
+            continue
+        kind = next((k for k, rx in rules if rx.search(t)), None)
+        if kind is None:
+            continue
+        x, y = cen[i]
+        prev = kept[(kind, t)]
+        r = NOTE_DEDUPE_M * _ground_scale(y)
+        if prev and any((px - x) ** 2 + (py - y) ** 2 <= r * r for px, py in prev[-200:]):
+            continue
+        prev.append((x, y))
+        text = raw_t.strip("() ").replace("( ", "(").replace(" )", ")")
+        tw.point(kind, x, y, {"n": text[:1].upper() + text[1:]})
+        counts[kind] += 1
+    log.info("features: Annotation_ -> %s", ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+
+
+def extra_ncgdb_points(g: str, tw: "TileWriter", aoi, settle: list) -> None:
+    """Dam reservoirs (Reservoir_Pakmap) onto the lakes, the 74 strategic dams / headworks (HeadWorks_Pak) that
+    HeadWorks_Pakmap lacks, and administrative seats (Places 1-3: province, district, tehsil HQ) onto the places."""
+    import shapely
+    from difflib import SequenceMatcher
+    # Reservoir_Pakmap: a named dam reservoir; it names the nearest lake within 2 km, else it is added as a lake.
+    gs, f = _read(g, "Reservoir_Pakmap", ["Name", "Usage", "Category", "Type_of_La"])
+    n0 = n1 = 0
+    for i, geom in enumerate(gs):
+        if geom is None or geom.is_empty:
+            continue
+        c = geom.centroid
+        if not _in_aoi(np.array([[c.x, c.y]]), aoi)[0]:
+            continue
+        name = _clean(f["Name"][i])
+        sub = "dam reservoir" if _s(f["Usage"][i]).lower() == "dam" else "reservoir"
+        hit = tw.nearest(["lake"], c.x, c.y, 2000 * _ground_scale(c.y))
+        if hit:
+            a = hit[1]
+            a.setdefault("n", name) if name else None
+            a["t"] = sub
+            if _clean(f["Category"][i]):
+                a.setdefault("s", _clean(f["Category"][i]))
+            n0 += 1
+        else:
+            lat = math.degrees(math.atan(math.sinh(c.y / ORIGIN_SHIFT * math.pi)))
+            tw.point("lake", c.x, c.y, {"n": name, "t": sub, "s": _clean(f["Category"][i]),
+                                        "a": round(geom.area * math.cos(math.radians(lat)) ** 2 / 1e6, 2)})
+            n1 += 1
+    log.info("features: Reservoir_Pakmap -> %d lakes named as reservoirs, %d added", n0, n1)
+
+    # HeadWorks_Pak: add the ones HeadWorks_Pakmap has no point for within 3 km.
+    gs, f = _read(g, "HeadWorks_Pak", ["NAME", "CATEGORY", "STRUCTURE", "RIVER", "LENGTH_M", "WIDTH_M", "SPAN_NO", "CLASSIFICA"])
+    kinds = {"dam": "dam", "h/w": "headworks", "barrage": "barrage"}
+    n0 = 0
+    for i, geom in enumerate(gs):
+        if geom is None or not _in_aoi(np.array([[geom.x, geom.y]]), aoi)[0]:
+            continue
+        if tw.nearest(["dam", "barrage", "headworks"], geom.x, geom.y, 3000 * _ground_scale(geom.y)):
+            continue
+        kind = kinds.get(_s(f["CATEGORY"][i]).lower(), "barrage" if "barrage" in _s(f["STRUCTURE"][i]).lower() else "headworks")
+        tw.point(kind, geom.x, geom.y, {"n": _clean(f["NAME"][i]), "rv": _clean(f["RIVER"][i]), "s": _clean(f["STRUCTURE"][i]),
+                                        "c": _clean(f["CLASSIFICA"][i]), "lm": _clean(f["LENGTH_M"][i]),
+                                        "wm": _clean(f["WIDTH_M"][i]), "sn": _clean(f["SPAN_NO"][i])})
+        n0 += 1
+    log.info("features: HeadWorks_Pak -> %d dams / headworks HeadWorks_Pakmap lacks", n0)
+
+    # Places 1-3: the seat of a province, district or tehsil. Named: the place within 3 km whose name matches;
+    # unnamed: the place within 1.5 km. The higher seat wins when one place gets two.
+    hq_word = {"1": "province", "2": "district", "3": "tehsil"}
+    rank = {"tehsil": 1, "district": 2, "province": 3}
+    gs, f = _read(g, "Places", ["Type_of_Place", "Name"], where="Type_of_Place IN ('1','2','3')")
+    if settle:
+        from scipy.spatial import cKDTree
+        tree = cKDTree(np.array([[s[0], s[1]] for s in settle]))
+        n0 = 0
+        for i, geom in enumerate(gs):
+            if geom is None:
+                continue
+            hq = hq_word.get(_s(f["Type_of_Place"][i]).replace(".0", ""))
+            name = _clean(f["Name"][i])
+            sc = _ground_scale(geom.y)
+            best = None
+            for j in tree.query_ball_point((geom.x, geom.y), (3000 if name else 1500) * sc):
+                sa = settle[j][2]
+                d = math.hypot(settle[j][0] - geom.x, settle[j][1] - geom.y)
+                if name and SequenceMatcher(None, _norm(sa.get("n")), _norm(name)).ratio() < 0.6:
+                    continue
+                if best is None or d < best[0]:
+                    best = (d, sa)
+            if best and hq and rank[hq] > rank.get(best[1].get("hq", ""), 0):
+                best[1]["hq"] = hq
+                n0 += 1
+        log.info("features: Places -> %d places marked as province / district / tehsil seats", n0)
+
+
+OSM_POINT_WHERE = ("other_tags LIKE '%\"ford\"=>\"yes\"%' OR other_tags LIKE '%\"amenity\"=>\"hospital\"%' OR "
+                   "other_tags LIKE '%\"amenity\"=>\"clinic\"%' OR other_tags LIKE '%\"amenity\"=>\"doctors\"%' OR "
+                   "other_tags LIKE '%\"amenity\"=>\"fuel\"%'")
+OSM_LINE_WHERE = ("barrier IN ('wall','fence','city_wall','retaining_wall') OR man_made = 'pipeline' OR "
+                  "other_tags LIKE '%\"power\"=>\"line\"%' OR other_tags LIKE '%\"power\"=>\"minor_line\"%' OR "
+                  "other_tags LIKE '%\"ford\"=>\"yes\"%'")
+OSM_AMENITY = {"hospital": ("hospital", "hospital"), "clinic": ("hospital", "clinic"), "doctors": ("hospital", "doctors"),
+               "fuel": ("petrol_pump", "fuel station")}
+
+
+def _tag(other: str, key: str) -> str | None:
+    m = re.search(r'"' + re.escape(key) + r'"=>"([^"]*)"', other or "")
+    return m.group(1) if m else None
+
+
+def osm_features(pbf: Path, tw: "TileWriter", aoi) -> None:
+    """OpenStreetMap: fords (points and the middle of ford lines), hospitals / clinics and fuel stations (points and
+    building outlines) onto the existing kinds with src = osm, skipped within GN_DEDUPE_M of the same kind; power
+    lines (v = kV), pipelines (t = substance) and walls / fences (t = barrier) as lines."""
+    import shapely
+    if not pbf.exists():
+        log.warning("osm: %s missing, skipped", pbf)
+        return
+    counts: dict[str, int] = defaultdict(int)
+
+    def add_point(kind: str, x: float, y: float, a: dict) -> None:
+        if not _in_aoi(np.array([[x, y]]), aoi)[0]:
+            return
+        if tw.nearest([kind], x, y, GN_DEDUPE_M * _ground_scale(y)):
+            counts["duplicate " + kind] += 1
+            return
+        tw.point(kind, x, y, {**a, "src": "osm"})
+        counts[kind] += 1
+
+    gs, f = _read(str(pbf), "points", ["name", "other_tags"], where=OSM_POINT_WHERE)
+    for geom, name, other in zip(gs, f["name"], f["other_tags"]):
+        if geom is None:
+            continue
+        if _tag(other, "ford") == "yes":
+            add_point("ford", geom.x, geom.y, {"n": _clean(name)})
+        am = OSM_AMENITY.get(_tag(other, "amenity") or "")
+        if am:
+            add_point(am[0], geom.x, geom.y, {"n": _clean(name), "t": am[1]})
+    gs, f = _read(str(pbf), "multipolygons", ["name", "amenity"], where="amenity IN ('hospital','clinic','doctors','fuel')")
+    for geom, name, amen in zip(gs, f["name"], f["amenity"]):
+        if geom is None or geom.is_empty:
+            continue
+        c = geom.centroid
+        am = OSM_AMENITY[amen]
+        add_point(am[0], c.x, c.y, {"n": _clean(name), "t": am[1]})
+    gs, f = _read(str(pbf), "lines", ["name", "barrier", "man_made", "other_tags"], where=OSM_LINE_WHERE)
+    for geom, name, barrier, mm, other in zip(gs, f["name"], f["barrier"], f["man_made"], f["other_tags"]):
+        if geom is None or geom.is_empty:
+            continue
+        if _tag(other, "ford") == "yes":
+            p = geom.interpolate(0.5, normalized=True)
+            add_point("ford", p.x, p.y, {"n": _clean(name)})
+            continue
+        simple = shapely.simplify(geom, 10.0)
+        power = _tag(other, "power")
+        if power in ("line", "minor_line"):
+            volts = [float(v) for v in re.findall(r"\d+(?:\.\d+)?", _tag(other, "voltage") or "")]
+            tw.line("power_line", simple, {"n": _clean(name), "t": "minor line" if power == "minor_line" else "power line",
+                                           "v": int(round(max(volts) / 1000)) if volts and max(volts) >= 1000 else None})
+            counts["power_line"] += 1
+        elif mm == "pipeline":
+            tw.line("pipeline", simple, {"n": _clean(name), "t": _tag(other, "substance")})
+            counts["pipeline"] += 1
+        elif barrier:
+            tw.line("wall_fence", simple, {"t": barrier.replace("_", " ")})
+            counts["wall_fence"] += 1
+    log.info("osm: %s", ", ".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda kv: -kv[1])))
+
+
+OSM_PBF = Path("work/raw/osm_pakistan/pakistan.osm.pbf")
+
+
 def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
     import shapely
     aoi = grid["aoi"]
@@ -1133,7 +1500,19 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
             n0 += 1
         log.info("features: %s -> %d points", layer_name, n0)
 
+    # HeadWorks_Pakmap records sizes as text with units ("552 METERS", "300 ft", "6.30 Km"): to numbers (m, counts)
+    for kind in ("dam", "barrage", "headworks"):
+        for a in tw.refs.get(kind, []):
+            for k in ("lm", "wm", "hm"):
+                if k in a:
+                    v = parse_len_m(a[k])
+                    a.pop(k) if v is None else a.__setitem__(k, round(v))
+            for k in ("gt", "sn"):
+                if k in a:
+                    v = parse_count(a[k])
+                    a.pop(k) if v is None else a.__setitem__(k, v)
     polygon_features(g, tw, aoi)
+    extra_ncgdb_points(g, tw, aoi, settle)
     if GEONAMES.exists():
         geonames_features(GEONAMES, tw, aoi, settle)
     assign_population(settle, WORLDPOP)
@@ -1155,6 +1534,11 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
             tw.point(kind, pt.x, pt.y, {k: _clean(f[c][i]) for k, c in attrs.items()})
             n0 += 1
         log.info("features: %s -> %d points", layer_name, n0)
+
+    dune_fields(g, tw, aoi)
+    wind_arrows(g, tw, aoi)
+    annotation_notes(g, tw, aoi)
+    osm_features(OSM_PBF, tw, aoi)
 
     # named lines: main roads (with load class and MSR), railways, canals, rivers
     tol = 15.0
@@ -1196,11 +1580,46 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
             continue
         tw.line("river", shapely.simplify(geom, tol), {"n": _clean(f["NAME"][i]), "t": _clean(f["TYPE_OF_RI"][i]),
                                                         "s": _clean(f["CONDITION"][i]), "w": parse_width_m(f["WIDTH_m"][i])})
+    # 2026-11-06: the topographic river lines (River_Line, mostly the north-west) with a name
+    gs, f = _read(g, "River_Line", ["Name", "Usernote"])
+    n0 = 0
+    for i, geom in enumerate(gs):
+        if geom is None or not _clean(f["Name"][i]):
+            continue
+        tw.line("river", shapely.simplify(geom, tol), {"n": _clean(f["Name"][i]), "t": _clean(f["Usernote"][i])})
+        n0 += 1
+    log.info("features: River_Line -> %d named river lines", n0)
+    # Limit_Line: the outlines of water (1) and nawars (3) carry names nothing else has (nalas, mandas, nawars):
+    # kept as river lines when no river / canal line already has that name; 6 = national park boundary.
+    have = {_norm(ln[2].get("n")) for lst in tw.lines.values() for ln in lst
+            if len(ln) > 2 and ln[0] in (KIND_CODE["river"], KIND_CODE["canal"]) and ln[2].get("n")}
+    junk = {"fishfarm", "pond", "unknown", "limit", "burialground", "gravelimit", "none", "other", "lake"}
+    gs, f = _read(g, "Limit_Line", ["Name", "Usernote", "Type_of_Limit_Line"], where="Type_of_Limit_Line IN ('1','3','6')")
+    n0 = n1 = 0
+    for i, geom in enumerate(gs):
+        if geom is None:
+            continue
+        t = f["Type_of_Limit_Line"][i].replace(".0", "")
+        name = _clean(f["Name"][i])
+        if t == "6":
+            tw.line("park_boundary", shapely.simplify(geom, tol), {"n": name if name and "park" not in str(name).lower() else None})
+            n1 += 1
+            continue
+        key = _norm(name)
+        if not isinstance(name, str) or len(key) < 3 or key in junk or key in have:
+            continue
+        note = str(_clean(f["Usernote"][i]) or "").lower()
+        sub = next((w for k, w in (("river", "river"), ("strea", "stream"), ("stree", "stream"), ("nala", "nala"), ("lake", "lake"))
+                    if k in note), None)
+        tw.line("river", shapely.simplify(geom, tol), {"n": name, "t": "nawar (seasonal lake)" if t == "3" else sub})
+        n0 += 1
+    log.info("features: Limit_Line -> %d named water outlines, %d national park boundary lines", n0, n1)
     lock = load_yaml(Path("sources.lock")) if Path("sources.lock").exists() else None
     tw.sources = {     # where and when each part of the features comes from
         "NCGDB (places, roads, railways, obstacles, installations, named detail)": {
             "id": "ncgdb", "location": [str(gdb)], "dataDate": "not recorded in the geodatabase (Survey of Pakistan NCGDB Ver-6)"},
         "GeoNames (an, gn, src = gn)": source_ref(lock, "geonames_pk"),
+        "OpenStreetMap (src = osm: fords, hospitals / clinics, fuel; power lines, pipelines, walls / fences)": source_ref(lock, "osm_pakistan"),
         "WorldPop (wp, wc)": source_ref(lock, "worldpop"),
     }
     n = tw.write(out / "features")
@@ -1241,8 +1660,13 @@ def admin_and_sheets(gdb: Path, grid: dict, out: Path) -> None:
         ("Distt_Bdry", ["DISTT_NAME", "PROVINCE_N", "COUNTRY"], lambda d, i: {"layer": "district", "name": d["DISTT_NAME"][i], "province": d["PROVINCE_N"][i], "country": d["COUNTRY"][i]}),
         ("Tehsil_Bdry", ["TEH_NAME", "DISTT_NAME", "PROVINCE_N"], lambda d, i: {"layer": "tehsil", "name": d["TEH_NAME"][i], "district": d["DISTT_NAME"][i], "province": d["PROVINCE_N"][i]}),
         ("Corps_AOR", ["NAME", "TYPE"], lambda d, i: {"layer": "corps_aor", "name": d["NAME"][i], "type": d["TYPE"][i], "sensitive": True}),
+        # 2026-11-06: Countries (the NCGDB's own NAME wins over CNTRY_NAME, e.g. IIOJ&K)
+        ("Countries", ["NAME", "CNTRY_NAME"], lambda d, i: {"layer": "country", "name": d["NAME"][i] or d["CNTRY_NAME"][i]}),
     ):
         gs, d = read_ll(layer, cols)
+        if layer == "Countries":                  # whole countries: only the part inside the bundle's AOI
+            ok = ~shapely.is_missing(gs)
+            gs[ok] = shapely.clip_by_rect(gs[ok], *bbox)
         feats += _geojson(gs, [mk(d, i) for i in range(len(gs))], 0.0008)
         log.info("admin: %s %d", layer, len(gs))
     (out / "admin.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
@@ -1253,8 +1677,10 @@ def admin_and_sheets(gdb: Path, grid: dict, out: Path) -> None:
     gs, d = read_ll("Boundry", ["TYPE_OF_BDRY", "Name"])
     keep = [i for i, t in enumerate(d["TYPE_OF_BDRY"]) if str(t) in bdry_kinds]
     feats = _geojson([gs[i] for i in keep], [{"layer": "boundary", "kind": bdry_kinds[str(d["TYPE_OF_BDRY"][i])], "name": d["Name"][i]} for i in keep], 0.0003)
+    # 2026-11-06: the NCGDB's 80 km and 300 km lines (Trans_80KM_Line, Trans_300KM_Line), kept as sensitive lines
     for layer, kind, sens in (("LAC", "Line of Actual Control", False), ("CorpsOpsLine", "Corps operational line", True),
-                              ("Political_Bdry", "political boundary", False)):
+                              ("Political_Bdry", "political boundary", False), ("Trans_80KM_Line", "80 km line", True),
+                              ("Trans_300KM_Line", "300 km line", True)):
         gs2, d2 = read_ll(layer, ["Name"] if layer != "LAC" else ["NAME"])
         nm = d2.get("Name") or d2.get("NAME")
         feats += _geojson(gs2, [{"layer": "boundary", "kind": kind, "name": nm[i], **({"sensitive": True} if sens else {})} for i in range(len(gs2))], 0.0003)
@@ -1273,8 +1699,88 @@ def admin_and_sheets(gdb: Path, grid: dict, out: Path) -> None:
             rows.append([str(no), round(x0, 5), round(y0, 5), round(x1, 5), round(y1, 5)])
         sheets[key] = rows
         log.info("sheets: %s %d", key, len(rows))
+    sheets["grid"] = military_grid(g)
     (out / "sheets.json").write_text(json.dumps({"format": "pams-grotbc-sheets", "note": "[sheet number, west, south, east, north] (WGS84)",
                                                  **sheets}, separators=(",", ":")), encoding="utf-8")
+
+
+# The Indian grid of the 1:50k sheets (Kalianpur 1880 / India zone I and IIa, EPSG 24371 / 24372): Lambert conformal
+# conic, one standard parallel, Everest 1830, metres. Mil_Grid holds its grid lines; GridLine the zone boundary.
+GRID_ELLIPSOID = (6377299.36559538, 300.8017255)
+GRID_K0, GRID_FE, GRID_FN = 0.99878641, 2743195.5, 914398.5
+GRID_ZONES = {"I": (32.5, 68.0), "IIa": (26.0, 74.0)}
+
+
+def grid_lcc(lon, lat, zone: str):
+    """WGS84 lon / lat (arrays) -> (E, N) of the zone's Lambert projection, before the fitted correction."""
+    a, invf = GRID_ELLIPSOID
+    e = math.sqrt((2 - 1 / invf) / invf)
+    p0, l0 = map(math.radians, GRID_ZONES[zone])
+
+    def t(p):
+        s = np.sin(p)
+        return np.tan(np.pi / 4 - p / 2) / ((1 - e * s) / (1 + e * s)) ** (e / 2)
+    n = math.sin(p0)
+    F = math.cos(p0) / math.sqrt(1 - e * e * math.sin(p0) ** 2) / (n * t(p0) ** n)
+    r0 = a * F * t(p0) ** n * GRID_K0
+    r = a * F * t(np.radians(lat)) ** n * GRID_K0
+    th = n * (np.radians(lon) - l0)
+    return GRID_FE + r * np.sin(th), GRID_FN + r0 - r * np.cos(th)
+
+
+def military_grid(g: str) -> dict:
+    """Fit the grid to the sheets' own grid lines (Mil_Grid): each line's value (NAME) against the projection at up to
+    12 of its vertices, an affine correction per zone and axis (it absorbs the datum shift, Kalianpur 1880 to WGS84).
+    The browser computes the same projection plus the correction (GroundGuidePlaceData.gridAt)."""
+    import pyogrio.raw as raw
+    import shapely
+    meta, _f, geom, data = raw.read(g, layer="Mil_Grid", columns=["NAME"])
+    names = np.array([float(v) if _s(v).replace(".", "", 1).isdigit() else np.nan for v in dict(zip(meta["fields"], data))["NAME"]])
+    gs = shapely.from_wkb(geom)
+    xy, idx = shapely.get_coordinates(gs, return_index=True)
+    cnt = np.bincount(idx, minlength=len(gs))
+    starts = np.concatenate([[0], np.cumsum(cnt)[:-1]])
+    take = np.zeros(len(xy), bool)
+    for i in np.nonzero(cnt)[0]:
+        take[starts[i] + np.unique(np.linspace(0, cnt[i] - 1, min(cnt[i], 12)).astype(int))] = True
+    X, I = xy[take], idx[take]
+    zones = []
+    for z in GRID_ZONES:
+        E, N = grid_lcc(X[:, 0], X[:, 1], z)
+        fit = {}
+        for ax, arr in (("E", E), ("N", N)):
+            rows = []
+            for i in np.unique(I):
+                s = I == i
+                v = names[i]
+                if np.isfinite(v) and abs(np.median(arr[s]) - v) < 3000 and np.ptp(arr[s]) < 2000:
+                    rows.append(np.column_stack([E[s], N[s], np.full(s.sum(), v)]))
+            S = np.vstack(rows)
+            M = np.column_stack([np.ones(len(S)), S[:, 0] - GRID_FE, S[:, 1] - GRID_FN])
+            keep = np.ones(len(S), bool)
+            for _ in range(3):
+                c, *_r = np.linalg.lstsq(M[keep], S[keep, 2], rcond=None)
+                res = M @ c - S[:, 2]
+                keep = np.abs(res) < max(3 * res[keep].std(), 5)
+            fit[ax] = {"c": [round(float(v), 9) for v in c], "rmsM": round(float(res[keep].std()), 1), "n": int(keep.sum())}
+        lat0, lon0 = GRID_ZONES[z]
+        zones.append({"id": z, "lat0": lat0, "lon0": lon0, "fitE": fit["E"], "fitN": fit["N"]})
+        log.info("grid: zone %s fitted to the sheet grid lines, rms E %.1f m N %.1f m", z, fit["E"]["rmsM"], fit["N"]["rmsM"])
+    gl, _ = _read_ll_all(g, "GridLine")
+    bnd = [[round(x, 4), round(y, 4)] for x, y in shapely.get_coordinates(shapely.simplify(gl[0], 0.001))] if len(gl) else []
+    return {"name": "Indian grid (Kalianpur 1880 / India zones I and IIa)", "ellipsoid": list(GRID_ELLIPSOID), "k0": GRID_K0,
+            "fe": GRID_FE, "fn": GRID_FN, "zones": zones,
+            "note": "E = c0 + c1 (E' - fe) + c2 (N' - fn) with fitE.c, N likewise with fitN.c, where E', N' are the Lambert conformal conic (one "
+                    "parallel) of WGS84 lon / lat on the ellipsoid; c fitted to the NCGDB Mil_Grid lines. Zone I north of "
+                    "`boundary` (NCGDB GridLine, GRID-I / GRID-II), IIa south of it.",
+            "boundary": bnd}
+
+
+def _read_ll_all(g: str, layer: str):
+    import pyogrio.raw as raw
+    import shapely
+    meta, _f, geom, data = raw.read(g, layer=layer)
+    return shapely.from_wkb(geom), dict(zip(meta["fields"], data))
 
 # ----------------------------------------------------------------------------- main
 

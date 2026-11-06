@@ -738,6 +738,59 @@ The GeoNames codes the bundle lacked are mapped in `tools/terrain-pipeline/scrip
 That is 1,566 points. They show on the card once the feature tiles are rebuilt (`grotbc.py --only features`, then
 `ground.py`, then copying into the bundle); the engine already reads the new kinds.
 
+**The data the bundle had but did not use (added later on 2026-11-06).**
+
+- **G from the DEM** (the bundle's 30 m `elev_hi` / `elev_lo`, read in the browser like the slope; no new tile layer):
+  - **Faces**: the way the slope faces, from a ~90 m gradient, with "forward slope to the NE, reverse slope to the SW".
+    Not shown on level ground (under 2°).
+  - **Mil crest**: walk up the slope to its top, then down a profile from the top to the foot (where it levels under 3°
+    for two steps, 3 km at most). The military crest is the highest profile point from which a man standing (2 m) sees
+    every point down to the foot. The card says whether the point is on it, above it (the slope below is partly dead
+    ground) or below it (the foot is in view), with the top, the foot and the drop. A slope of under 15 m drop gives
+    nothing. On a level hill top the steepest fall of 10 m within 150 m is read. G3 (relief) draws this real profile with
+    MC and the dead ground marked.
+  - **Surface**: how broken the ground is, from a plane fitted to 5 x 5 elevations 30 m apart (residual under 1 m
+    Smooth, 2.5 Uneven, 5 Broken, else Very broken; a proposal). GLO-30 is a surface model, so trees and roofs count;
+    the card says so. Finest zoom only.
+- **G from NCGDB layers not read before** (`grotbc.py`, kinds 167–181):
+  - **Dunes**: Soil_Line's dune lines and Soil_Point's dune symbols summed per ~2 km cell (`dune_field`: spacing `sp`,
+    axis `or`, parallel `oc`, star / other dune symbols `sd` / `ds`), 29,551 cells. The card: "Dune lines every 280 m ·
+    running NNW–SSE · move along them, not across".
+  - **Marked**: scree, broken rocky ground, stony waste, quarries, earth slides, moraines (points and Soil_Line 1),
+    crevasses (Glacier_Line 4), ice pinnacles, sand plains.
+  - **Map notes**: the sheet's own text (Annotation_) that says something about going, water, vegetation or ground:
+    "Jeepable", "Motorable in fair weather", "Track follows bed", "Brackish", "Undrinkable", "Fairly dense pine",
+    "Grass 2 metres high", "Scree" (21,882 notes). The nearest of each kind within 2 km, as written.
+  - Dam reservoirs (Reservoir_Pakmap) on the lakes; solar power stations (Misc_Polygon_Feature) in B utilities;
+    province / district / tehsil seats (Places 1–3, `hq`) on the B place row; named river lines (River_Line).
+- **O**: the dam row adds what HeadWorks_Pakmap records (river, length, height, gates, spans, load class; these
+  fields were in the layer but not read). **Lines**: the nearest power line (kV), pipeline and wall / fence within
+  2 km, from OpenStreetMap (205–207).
+- **OSM** also adds fords, hospitals / clinics and fuel stations onto the existing kinds (`src: osm`), skipped within
+  400 m of the same kind.
+- `boundaries.geojson` gains the 80 km and 300 km lines (Trans_80KM_Line, Trans_300KM_Line), marked sensitive; the
+  border row never reads sensitive lines.
+- **Grid reference (B Grid row, Where style).** Mil_Grid holds the sheets' own grid lines: the Indian grid, zone I
+  north of GridLine (GRID-I / GRID-II, about 28–29°N) and IIa south of it ("Sec Grid" = the other zone carried
+  across), in metres. `grotbc.py military_grid()` fits the Lambert conformal conic (one parallel, Everest 1830,
+  EPSG 24371 / 24372 parameters) to every line's value with an affine correction per zone and axis, which takes up the
+  datum shift: rms 0.3–1.2 m over 128,000 samples. The fit goes into `sheets.json` `grid`;
+  `GroundGuidePlaceData.gridAt()` does the same sum in the browser: "GR 603 451 · Indian grid zone I: 3,160,312 E,
+  1,045,101 N".
+- **Wind arrows (G Wind row, kind 182).** The NCGDB's point `Angle` turns a symbol clockwise: bridge symbols then lie
+  along their road (94 % within 15° round Lahore). With that rule the wind arrows' axis agrees with the dune lines
+  round them (79 % of 471 within 20°). The arrow symbol's own drawing is not in the geodatabase, so which end the wind
+  blows from is not known: the card gives the axis only ("Along NNW–SSE · which end it blows from is not recorded").
+- **Countries** go into `admin.geojson` (`layer: country`, the NCGDB's own names, e.g. IIOJ&K); the B Admin row names
+  the country when it is not Pakistan.
+- **Limit_Line**: types 1 and 2 are the outlines of water, cultivation, burial grounds and sand already read as
+  polygons, but the water outlines carry names nothing else has (nalas, mandas, nawars such as Kalanchi Nawar): those
+  are added as river lines (for the G River row) when no river or canal line has the name. Type 6 is the Lal Suhanra
+  national park boundary (kind 208), named first on the B Landmarks row within 10 km.
+- Left out, and why: Mask (556 small white masks drawn behind map text, about 50 m long: no ground meaning), Contour
+  (the DEM is used instead), Canal_Polygon (8 polygons, no widths filled), HeadWorks_Pak (all 74 lie within 3 km of a
+  HeadWorks_Pakmap point). The 0.25 m imagery in `D:\Imagery\PK\B` is not used.
+
 **Per-section card styles (2026-11-06).** Every style is built and switchable, as with T and C, so the owner can pick
 at the end (`ground-guide-sections-options.html` draws them with the engine's own code; open it from the dev server).
 `sections.gStyle`, `rStyle`, `oStyle`, `bStyle`, `wStyle`: `auto` (follow `sections.style`; the default), `line`,

@@ -45,6 +45,53 @@ export interface PlaceBorder {
 export interface PlaceSheet {
   s50k: string | null;
   s250k: string | null;
+  /** The grid reference in the sheets' own grid (Indian grid zone I / IIa), null when the bundle has no grid. */
+  grid: PlaceGrid | null;
+}
+
+/** A point in the Indian grid of the 1:50k sheets (sheets.json `grid`, fitted to the NCGDB Mil_Grid lines). */
+export interface PlaceGrid {
+  zone: string;
+  e: number;
+  n: number;
+  /** Six-figure reference within the 100 km square: easting km + 100 m, northing likewise ("603 451"). */
+  ref: string;
+  /** How well the fit matches the sheets' grid lines (m, rms). */
+  rmsM: number;
+}
+
+interface GridDef {
+  ellipsoid: [number, number];
+  k0: number;
+  fe: number;
+  fn: number;
+  zones: Array<{ id: string; lat0: number; lon0: number; fitE: { c: number[]; rmsM: number }; fitN: { c: number[]; rmsM: number } }>;
+  boundary: number[][];
+}
+
+/** Lambert conformal conic, one standard parallel (EPSG 9801), before the fitted correction. */
+function lcc(lon: number, lat: number, g: GridDef, lat0: number, lon0: number): [number, number] {
+  const [a, invf] = g.ellipsoid;
+  const e = Math.sqrt((2 - 1 / invf) / invf);
+  const rad = Math.PI / 180;
+  const t = (p: number) => Math.tan(Math.PI / 4 - p / 2) / ((1 - e * Math.sin(p)) / (1 + e * Math.sin(p))) ** (e / 2);
+  const p0 = lat0 * rad;
+  const n = Math.sin(p0);
+  const F = Math.cos(p0) / Math.sqrt(1 - e * e * Math.sin(p0) ** 2) / (n * t(p0) ** n);
+  const r0 = a * F * t(p0) ** n * g.k0;
+  const r = a * F * t(lat * rad) ** n * g.k0;
+  const th = n * (lon - lon0) * rad;
+  return [g.fe + r * Math.sin(th), g.fn + r0 - r * Math.cos(th)];
+}
+
+/** Latitude of the zone boundary at a longitude (the boundary runs west to east). */
+function boundaryLat(b: number[][], lon: number): number | null {
+  for (let i = 0; i + 1 < b.length; i++) {
+    const [x0, y0] = b[i];
+    const [x1, y1] = b[i + 1];
+    if ((lon >= x0 && lon <= x1) || (lon >= x1 && lon <= x0)) return x1 === x0 ? y0 : y0 + ((lon - x0) / (x1 - x0)) * (y1 - y0);
+  }
+  return null;
 }
 
 export interface PlaceRoute {
@@ -117,10 +164,13 @@ function str(v: unknown): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
 }
 
-/** "RAWALPINDI" -> "Rawalpindi"; names already in mixed case are kept. */
+const ACRONYMS = new Set(['IIOJK', 'IIOJ&K', 'AJK', 'AJ&K', 'ICT', 'FATA', 'PATA', 'GB', 'KP', 'KPK']);
+
+/** "RAWALPINDI" -> "Rawalpindi"; names already in mixed case and acronyms (ACRONYMS) are kept. */
 function tidy(v: unknown): string | null {
   const s = str(v);
   if (!s) return null;
+  if (ACRONYMS.has(s.toUpperCase())) return s.toUpperCase(); // "IIOJK", "AJK", "ICT" stay as they are
   return s === s.toUpperCase() ? s.toLowerCase().replace(/(^|[\s(/-])(\p{L})/gu, (_m, a: string, c: string) => a + c.toUpperCase()) : s;
 }
 
@@ -129,6 +179,8 @@ export class GroundGuidePlaceData {
   private _borders: BorderLine[] | null = null;
   private _sheets: { s50k: Array<[string, number, number, number, number]>; s250k: Array<[string, number, number, number, number]> } | null = null;
   private _routes: Map<string, PlaceRoute> | null = null;
+  private _grid: GridDef | null = null;
+  private _countries: Array<{ name: string; bbox: [number, number, number, number]; rings: Ring[][] }> | null = null;
   private _loading = new Set<string>();
   private _failed = new Set<string>();
 
@@ -193,7 +245,33 @@ export class GroundGuidePlaceData {
     const find = (list: Array<[string, number, number, number, number]>) => list.find(([, w, s, e, n]) => lon >= w && lon < e && lat >= s && lat < n)?.[0] ?? null;
     const s50k = find(this._sheets.s50k);
     const s250k = find(this._sheets.s250k);
-    return s50k || s250k ? { s50k, s250k } : null;
+    const grid = this.gridAt(lon, lat);
+    return s50k || s250k || grid ? { s50k, s250k, grid } : null;
+  }
+
+  /** The point in the sheets' Indian grid: zone I north of the zone boundary, IIa south of it. */
+  gridAt(lon: number, lat: number): PlaceGrid | null {
+    const g = this._grid;
+    if (!g?.zones?.length) return null;
+    const bl = g.boundary?.length ? boundaryLat(g.boundary, lon) : null;
+    const id = bl === null ? (lat >= 28.5 ? 'I' : 'IIa') : lat >= bl ? 'I' : 'IIa';
+    const z = g.zones.find((x) => x.id === id) ?? g.zones[0];
+    const [e0, n0] = lcc(lon, lat, g, z.lat0, z.lon0);
+    const fit = (c: number[]) => c[0] + c[1] * (e0 - g.fe) + c[2] * (n0 - g.fn);
+    const e = Math.round(fit(z.fitE.c));
+    const n = Math.round(fit(z.fitN.c));
+    const three = (v: number) => String(Math.floor((((v % 100000) + 100000) % 100000) / 100)).padStart(3, '0');
+    return { zone: z.id, e, n, ref: `${three(e)} ${three(n)}`, rmsM: Math.max(z.fitE.rmsM, z.fitN.rmsM) };
+  }
+
+  /** The country at a point (admin.geojson `country`, the NCGDB's own names: "Pakistan", "IIOJ&K", ...). */
+  countryAt(lon: number, lat: number): string | null {
+    for (const p of this._countries ?? []) {
+      const [w, s, e, n] = p.bbox;
+      if (lon < w || lon > e || lat < s || lat > n) continue;
+      if (p.rings.some((rings) => inPolygon(lon, lat, rings))) return p.name;
+    }
+    return null;
   }
 
   /** A named road by its number ("N-5") or name, as routes.json records it. */
@@ -211,16 +289,20 @@ export class GroundGuidePlaceData {
   private async _loadAdmin(): Promise<void> {
     const gj = await this._json('admin.geojson');
     const out: AdminPoly[] = [];
+    const countries: Array<{ name: string; bbox: [number, number, number, number]; rings: Ring[][] }> = [];
     for (const f of gj?.features ?? []) {
       const layer = f?.properties?.layer;
-      if (layer !== 'province' && layer !== 'district' && layer !== 'tehsil') continue; // corps_aor is sensitive: never read
-      const g = f.geometry;
+      const g = f?.geometry;
       const polys: Ring[][] = g?.type === 'Polygon' ? [g.coordinates] : g?.type === 'MultiPolygon' ? g.coordinates : [];
       if (!polys.length) continue;
+      // Countries (2026-11-06): kept as the NCGDB writes them ("IIOJ&K" stays as it is).
+      if (layer === 'country' && str(f.properties.name)) countries.push({ name: str(f.properties.name)!, bbox: bboxOf(polys.map((p) => p[0])), rings: polys });
+      if (layer !== 'province' && layer !== 'district' && layer !== 'tehsil') continue; // corps_aor is sensitive: never read
       out.push({ layer, name: tidy(f.properties.name) ?? '', bbox: bboxOf(polys.map((p) => p[0])), rings: polys });
     }
     // Tehsils first so the smallest area wins when names overlap; each layer is filled once per point.
     this._admin = out;
+    this._countries = countries;
   }
 
   private async _loadBorders(): Promise<void> {
@@ -232,7 +314,7 @@ export class GroundGuidePlaceData {
       // International lines, the LoC and the LAC only: province and "political" lines are internal, and corps
       // operational lines are sensitive.
       const k = kind.toLowerCase();
-      if (k.startsWith('province') || k.startsWith('corps') || k.startsWith('political')) continue;
+      if (k.startsWith('province') || k.startsWith('corps') || k.startsWith('political') || f?.properties?.sensitive) continue;
       const g = f.geometry;
       const lines: number[][][] = g?.type === 'LineString' ? [g.coordinates] : g?.type === 'MultiLineString' ? g.coordinates : [];
       if (!lines.length) continue;
@@ -244,6 +326,7 @@ export class GroundGuidePlaceData {
   private async _loadSheets(): Promise<void> {
     const js = await this._json('sheets.json');
     this._sheets = { s50k: js?.['50k'] ?? [], s250k: js?.['250k'] ?? [] };
+    this._grid = js?.grid?.zones?.length ? (js.grid as GridDef) : null;
   }
 
   private async _loadRoutes(): Promise<void> {

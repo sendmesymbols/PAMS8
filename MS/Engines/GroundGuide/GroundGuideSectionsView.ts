@@ -11,7 +11,7 @@
 
 import { fmtDistance } from './GroundGuideEvaluator';
 import { registerBriefSection } from './GroundGuideBrief';
-import { buildingsProtected, buildingsWhere, groundChips, groundRelief, obstaclesGap, obstaclesTiles, roadsShield, roadsVerdict, weatherIcons, weatherYear as weatherYearStrip } from './GroundGuideSectionsStyles';
+import { buildingsProtected, buildingsWhere, crestText, dunesText, groundChips, groundRelief, obstaclesGap, obstaclesTiles, roadsShield, roadsVerdict, weatherIcons, weatherYear as weatherYearStrip } from './GroundGuideSectionsStyles';
 import type { BuildingsReading, GroundGuideSections, GroundReading, ObstacleHit, ObstaclesReading, RoadRecord, RoadsReading, SectionPlace, WeatherReading } from './GroundGuideSections';
 import type { GroundGuideVerdict } from './GroundGuideTypes';
 import { roadDensityText, type RoadDensityReading } from './GroundGuideRoadDensity';
@@ -174,11 +174,35 @@ function placeNode(p: SectionPlace | null | undefined): Node | null {
   return p ? frag(b(nameOf(p)), soft(` · ${at(p)}`)) : null;
 }
 
+const OPPOSITE: Record<string, string> = { N: 'S', NE: 'SW', E: 'W', SE: 'NW', S: 'N', SW: 'NE', W: 'E', NW: 'SE' };
+
+/** "Faces NE · forward slope to the NE, reverse slope to the SW". */
+export function facesNode(g: GroundReading): Node | null {
+  if (!g.aspect) return null;
+  const c = g.aspect.compass;
+  return frag(b(`Faces ${c}`), soft(` · forward slope to the ${c}, reverse slope to the ${OPPOSITE[c] ?? ''}`));
+}
+
+/** "Broken · 30 m surface model: trees and roofs count". */
+export function surfaceNode(g: GroundReading): Node | null {
+  if (!g.rough) return null;
+  return frag(b(g.rough.label), soft(` · ${g.rough.residualM} m off the plane over ~150 m · 30 m surface model: trees and roofs count`));
+}
+
 function groundRows(g: GroundReading): Array<[string, Node | string | null]> {
   const relief = [g.elevationM !== null ? `${g.elevationM} m` : null, slopeText(g), g.landform].filter(Boolean) as string[];
+  const crest = crestText(g);
+  const dunes = dunesText(g);
   return [
     ['Terrain', g.terrain ? frag(b(g.terrain.label), g.terrainChange && soft(` · ${g.terrainChange.label} ${fmtDistance(g.terrainChange.distanceM)} ${g.terrainChange.compass}`)) : null],
     ['Relief', relief.length ? frag(b(relief[0]), relief.length > 1 && soft(` · ${relief.slice(1).join(' · ')}`)) : null],
+    ['Faces', facesNode(g)],
+    ['Mil crest', crest ? frag(b(crest.lead), soft(` · ${crest.rest}`)) : null],
+    ['Surface', surfaceNode(g)],
+    ['Dunes', dunes ? frag(b(dunes.lead), soft(` · ${dunes.rest}`)) : null],
+    ['Wind', g.wind ? frag(b(`Along ${g.wind.axis}`), soft(` · ${g.wind.arrows} map wind arrow${g.wind.arrows > 1 ? 's' : ''}, nearest ${fmtDistance(g.wind.distanceM)} ${g.wind.compass} · which end it blows from is not recorded`)) : null],
+    ['Marked', g.groundSym?.length ? g.groundSym.map((p) => `${nameOf(p)} ${at(p)}`).join(' · ') : null],
+    ['Map notes', g.notes?.length ? g.notes.map((n) => `“${n.name}” ${at(n)}`).join(' · ') : null],
     ['Land', landNode(g)],
     ['Trees', placeNode(g.trees)],
     ['High', g.high ? frag(b(`${g.high.elevationM} m`), soft(` ${nameOf(g.high)} · ${at(g.high)}${g.high.aboveM !== null ? ` · ${g.high.aboveM} m above` : ''}`)) : null],
@@ -194,7 +218,8 @@ function groundRows(g: GroundReading): Array<[string, Node | string | null]> {
 }
 
 function groundOne(g: GroundReading): string {
-  return [g.terrain?.label, g.elevationM !== null ? `${g.elevationM} m` : null, slopeText(g), g.landform].filter(Boolean).join(' · ') || 'No relief data';
+  const crest = g.crest ? (g.crest.where === 'on' ? 'on the military crest' : `military crest ${fmtDistance(g.crest.distanceM)} ${g.crest.compass}`) : null;
+  return [g.terrain?.label, g.elevationM !== null ? `${g.elevationM} m` : null, slopeText(g), g.aspect ? `faces ${g.aspect.compass}` : null, g.landform, crest].filter(Boolean).join(' · ') || 'No relief data';
 }
 
 // ── R ────────────────────────────────────────────────────────────────────────
@@ -311,11 +336,12 @@ function buildingsRows(bd: BuildingsReading): Array<[string, Node | string | nul
     ['Lodging', bd.lodging ? `${nameOf(bd.lodging)} ${at(bd.lodging)}` : null],
     ['Industry', (bd.industry ?? []).length ? bd.industry.map((s) => `${nameOf(s)} ${at(s)}`).join(' · ') : null],
     ['Deserted', bd.deserted ? `${nameOf(bd.deserted)} ${at(bd.deserted)}` : null],
-    ['Place', bd.settlement ? frag(b(bd.settlement.name ?? bd.settlement.label), soft(` · ${bd.settlement.sizeClass}${bd.settlement.people ? `, about ${bd.settlement.people.toLocaleString('en-US')} people` : ''} · ${at(bd.settlement)}`)) : null],
+    ['Place', bd.settlement ? frag(b(bd.settlement.name ?? bd.settlement.label), soft(` · ${bd.settlement.sizeClass}${bd.settlement.hq ? `, ${bd.settlement.hq}` : ''}${bd.settlement.people ? `, about ${bd.settlement.people.toLocaleString('en-US')} people` : ''} · ${at(bd.settlement)}`)) : null],
     ['Landmarks', bd.landmarks.length ? bd.landmarks.map((s) => `${nameOf(s)} ${at(s)}`).join(' · ') : null],
     ['Utilities', bd.utilities.length ? bd.utilities.map((s) => `${nameOf(s)} ${at(s)}`).join(' · ') : null],
-    ['Admin', bd.admin ? [bd.admin.tehsil && `Tehsil ${bd.admin.tehsil}`, bd.admin.district && `District ${bd.admin.district}`, bd.admin.province].filter(Boolean).join(' · ') : null],
-    ['Sheet', bd.sheet ? [bd.sheet.s50k && `1:50k ${bd.sheet.s50k}`, bd.sheet.s250k && `1:250k ${bd.sheet.s250k}`].filter(Boolean).join(' · ') : null],
+    ['Admin', [bd.admin?.tehsil && `Tehsil ${bd.admin.tehsil}`, bd.admin?.district && `District ${bd.admin.district}`, bd.admin?.province, bd.country && bd.country !== 'Pakistan' ? bd.country : null].filter(Boolean).join(' · ') || null],
+    ['Sheet', bd.sheet ? [bd.sheet.s50k && `1:50k ${bd.sheet.s50k}`, bd.sheet.s250k && `1:250k ${bd.sheet.s250k}`].filter(Boolean).join(' · ') || null : null],
+    ['Grid', bd.sheet?.grid ? frag(b(`GR ${bd.sheet.grid.ref}`), soft(` · Indian grid zone ${bd.sheet.grid.zone}: ${bd.sheet.grid.e.toLocaleString('en-US')} E, ${bd.sheet.grid.n.toLocaleString('en-US')} N · fitted to the sheet grid lines (±${Math.max(1, Math.round(bd.sheet.grid.rmsM))} m)`)) : null],
     ['Border', [bd.border ? `${bd.border.kind} ${bd.border.distanceKm < 10 ? bd.border.distanceKm.toFixed(1) : Math.round(bd.border.distanceKm)} km ${bd.border.compass}` : null, bd.pillar ? `${nameOf(bd.pillar)} ${at(bd.pillar)}` : null].filter(Boolean).join(' · ') || null],
   ];
 }
@@ -362,7 +388,8 @@ function obstaclesRows(o: ObstaclesReading, s?: GroundGuideSections | null): Arr
     ['Canal Xing', [...(o.canalWorks ?? []).map((c) => `${nameOf(c)} ${at(c)}`), kmText(o.canalKm, 'canal')].filter(Boolean).join(' · ') || null],
     ['Flood', flood],
     ['Snow', snow],
-    ['Dam', o.dam ? `${nameOf(o.dam)} ${at(o.dam)}` : null],
+    ['Lines', o.lines?.length ? o.lines.map((l) => `${l.label}${l.note ? ` (${l.note})` : ''} ${at(l)}`).join(' · ') : null],
+    ['Dam', o.dam ? `${nameOf(o.dam)} ${at(o.dam)}${o.damDetail ? ` · ${o.damDetail}` : ''}` : null],
     ['Levee', o.levee ? `${nameOf(o.levee)} ${at(o.levee)}` : null],
     ['Closures', o.closure ? `${o.closure.road} ${fmtDistance(o.closure.distanceM)} ${o.closure.compass}: ${[o.closure.closed ? `closed (${o.closure.closed})` : null, o.closure.landslides ? `${o.closure.landslides} landslide site${o.closure.landslides > 1 ? 's' : ''}` : null].filter(Boolean).join(', ')}` : 'None recorded near'],
   ];

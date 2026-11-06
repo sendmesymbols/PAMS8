@@ -151,7 +151,89 @@ function bandIndex(g: GroundReading): number {
   return g.slopeBand ? Math.max(0, BANDS.indexOf(g.slopeBand)) : -1;
 }
 
+/** The military crest in words, with where the point is on the slope (card rows, relief style, Brief). */
+export function crestText(g: GroundReading): { lead: string; rest: string } | null {
+  const c = g.crest;
+  if (!c) return null;
+  const top = c.topDistanceM > 0 ? `top ${fmtDistance(c.topDistanceM)} ${c.topCompass}` : 'top here';
+  const foot = `foot ${fmtDistance(c.footDistanceM)} ${c.faces}`;
+  if (c.where === 'on') return { lead: 'Here', rest: `you see down to the ${foot} · ${top} · drop ${c.dropM} m` };
+  if (c.where === 'above') return { lead: `${fmtDistance(c.distanceM)} ${c.compass}, below you`, rest: `from here the slope below is partly hidden (dead ground) · ${foot} · drop ${c.dropM} m` };
+  return { lead: `${fmtDistance(c.distanceM)} ${c.compass}, above you`, rest: `the ${foot} is in view · ${top} · drop ${c.dropM} m` };
+}
+
+/** "Dune lines every 280 m · running NNW–SSE · move along them, not across" (1:50k dune lines). */
+export function dunesText(g: GroundReading): { lead: string; rest: string } | null {
+  const d = g.dunes;
+  if (!d) return null;
+  const lead = d.star ? 'Star dunes' : d.spacingM ? `Dune lines every ${d.spacingM} m` : 'Dune field';
+  const rest = [
+    !d.inField ? `${fmtDistance(d.distanceM)} ${d.compass}` : null,
+    d.axis ? `running ${d.axis}` : d.star ? 'high and irregular' : 'no single direction',
+    d.axis ? 'move along them, not across' : 'slow going for vehicles',
+  ];
+  return { lead, rest: rest.filter(Boolean).join(' · ') };
+}
+
+/**
+ * The real slope (2026-11-06): the DEM profile from the top of the slope to its foot along the way it faces, with the
+ * point, the military crest (MC) and the dead ground between them shaded. Heights are stretched to fit.
+ */
+function crestProfile(g: GroundReading): SVGElement | null {
+  const c = g.crest;
+  if (!c || c.profile.length < 3) return null;
+  const W = 256;
+  const H = 70;
+  const p = c.profile;
+  const lo = Math.min(...p);
+  const hi = Math.max(...p);
+  const X = (i: number) => 6 + (i / (p.length - 1)) * (W - 12);
+  const Y = (e: number) => 14 + (1 - (e - lo) / Math.max(1, hi - lo)) * (H - 28);
+  const svg = sv('svg', { width: '100%', height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'The slope from its top to its foot, with the military crest' });
+  let d = '';
+  p.forEach((e, i) => (d += `${i ? 'L' : 'M'} ${X(i).toFixed(1)} ${Y(e).toFixed(1)} `));
+  const tcol = g.terrain ? TERRAIN[g.terrain.code] ?? '#8a8f98' : '#8a8f98';
+  svg.append(sv('path', { d: `${d} L ${X(p.length - 1)} ${H - 12} L ${X(0)} ${H - 12} Z`, fill: tcol, 'fill-opacity': 0.25 }));
+  // Dead ground seen from the point when it is above the military crest: the stretch between them.
+  if (c.where === 'above') {
+    let dd = '';
+    for (let i = c.iP; i <= c.iM; i++) dd += `${i === c.iP ? 'M' : 'L'} ${X(i).toFixed(1)} ${Y(p[i]).toFixed(1)} `;
+    svg.append(sv('path', { d: dd, fill: 'none', stroke: '#ff8a8d', 'stroke-width': 4, 'stroke-opacity': 0.55 }));
+  }
+  svg.append(sv('path', { d, fill: 'none', stroke: tcol, 'stroke-width': 2 }));
+  const mx = X(c.iM);
+  const my = Y(p[c.iM]);
+  svg.append(sv('line', { x1: mx, y1: my - 12, x2: mx, y2: my + 2, stroke: '#ffd27a', 'stroke-width': 1.4, 'stroke-dasharray': '2 2' }), svText(mx, my - 14, 'MC', { fill: '#ffd27a', 'font-weight': 700, 'font-size': 9, 'text-anchor': 'middle' }));
+  const px = X(c.iP);
+  const py = Y(p[c.iP]);
+  svg.append(sv('circle', { cx: px, cy: py, r: 4.5, fill: '#fff', stroke: '#1b1f25', 'stroke-width': 1.5 }));
+  svg.append(svText(4, 9, `Top ${p[0]} m`, { 'font-size': 8.5, fill: '#9aa3ad' }), svText(W - 4, H - 1, `Foot ${p[p.length - 1]} m · faces ${c.faces} →`, { 'font-size': 8.5, fill: '#9aa3ad', 'text-anchor': 'end' }));
+  svg.append(svText(4, H - 1, `${fmtDistance(c.stepM * (p.length - 1))} of slope`, { 'font-size': 8.5, fill: '#9aa3ad' }));
+  return svg;
+}
+
 export function groundRelief(g: GroundReading): HTMLElement {
+  const real = crestProfile(g);
+  if (real) {
+    const ct = crestText(g);
+    const dn = dunesText(g);
+    return section(
+      'G',
+      `Ground · ${g.terrain?.label ?? 'Relief'}`,
+      real,
+      soft(
+        [
+          g.slopeDeg !== null ? `${g.slopeApprox ? 'About ' : ''}${Math.round(g.slopeDeg)}° slope` : null,
+          g.aspect ? `faces ${g.aspect.compass}` : null,
+          ct ? (g.crest?.where === 'on' ? 'on the military crest' : `military crest ${ct.lead}`) : null,
+          g.rough ? `${g.rough.label.toLowerCase()} surface` : null,
+          dn ? dn.lead.toLowerCase() : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      ),
+    );
+  }
   const W = 256;
   const H = 62;
   const svg = sv('svg', { width: '100%', height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Where the point sits on the slope' });
@@ -207,6 +289,11 @@ export function groundChips(g: GroundReading): HTMLElement {
   const bi = bandIndex(g);
   if (bi >= 0) c.append(chip(`${Math.round(g.slopeDeg ?? 0)}° ${BANDS[bi]}`, BAND_COL[bi]));
   if (g.landform) c.append(chip(g.landform));
+  if (g.aspect) c.append(chip(`Faces ${g.aspect.compass}`));
+  if (g.crest) c.append(chip(g.crest.where === 'on' ? 'On the military crest' : `MC ${fmtDistance(g.crest.distanceM)} ${g.crest.compass}`, '#ffd27a'));
+  if (g.rough && g.rough.level >= 2) c.append(chip(g.rough.label, '#c9a46b'));
+  if (g.dunes) c.append(chip(dunesText(g)?.lead ?? 'Dunes', '#d8b26a'));
+  if (g.groundSym?.[0]) c.append(chip(`${g.groundSym[0].label} ${at(g.groundSym[0])}`, '#9a8f86'));
   if (g.high) c.append(chip(`▲ ${g.high.aboveM !== null ? `+${g.high.aboveM} m` : `${g.high.elevationM} m`} ${at(g.high)}`, '#ffd27a'));
   if (g.water[0]) c.append(chip(`${g.water[0].label} ${at(g.water[0])}`, '#4a90c8'));
   if (g.namedWater) c.append(chip(`${nameOf(g.namedWater)} ${at(g.namedWater)}`, '#4a90c8'));
@@ -315,6 +402,8 @@ export function buildingsWhere(b: BuildingsReading): HTMLElement {
   };
   row('Tehsil', [b.admin?.district ? `District ${b.admin.district}` : null, b.admin?.province].filter(Boolean).join(' · ') || null, b.admin?.tehsil ?? null);
   row('Sheet', b.sheet?.s250k ? `1:250k ${b.sheet.s250k}` : null, b.sheet?.s50k ? `1:50k ${b.sheet.s50k}` : null);
+  row('Grid', b.sheet?.grid ? `zone ${b.sheet.grid.zone} · ${b.sheet.grid.e.toLocaleString('en-US')} E ${b.sheet.grid.n.toLocaleString('en-US')} N` : null, b.sheet?.grid ? `GR ${b.sheet.grid.ref}` : null);
+  if (b.country && b.country !== 'Pakistan') row('Country', null, b.country);
   if (b.border) {
     const near = b.border.distanceKm < 10;
     const v = el('span');
