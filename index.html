@@ -342,6 +342,26 @@
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
       }
+      /* A feature button and its settings gear as one segmented control: flush inner edges, one shared divider. */
+      .infobar-split {
+        display: inline-flex;
+        align-items: stretch;
+      }
+      .infobar-split > .ms-btn:first-child {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+      .infobar-split > .infobar-gear {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        margin-left: -1px; /* overlap borders so there's a single divider line */
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+      }
+      .infobar-gear[aria-expanded='true'] {
+        border-color: var(--ms-accent) !important;
+        color: var(--ms-accent) !important;
+      }
       /* Ground Guide on but without terrain data (bundle missing / failed). */
       #groundGuideBtn.ms-btn-active[data-state='no-bundle'] {
         border-color: #d9a400 !important;
@@ -2036,8 +2056,12 @@
           </div>
         </div>
         </div>
-        <!-- Ground Guide on/off — flips #setting-groundGuide (same source of truth as the Settings panel); wired in src/main.ts. -->
-        <button class="ms-btn infobar-btn" id="groundGuideBtn" aria-pressed="false" data-state="disabled" title="Ground Guide — live terrain advice while drawing (GO / SLOW-GO / NO-GO ground, footprint, ITG candidates). Click to turn it on or off; options are in the Settings panel."><span class="infobar-icon">⛰</span>Ground Guide</button>
+        <!-- Ground Guide on/off — flips #setting-groundGuide (same source of truth as the Settings panel); wired in src/main.ts.
+             The ⚙ beside it opens the Ground Guide settings widget (a full-size .infobar-gear, not the faint mini .ms-gear-btn). -->
+        <div class="infobar-split">
+          <button class="ms-btn infobar-btn" id="groundGuideBtn" aria-pressed="false" data-state="disabled" title="Ground Guide — live terrain advice while drawing (GO / SLOW-GO / NO-GO ground, footprint, ITG candidates). Click to turn it on or off; the ⚙ beside it opens its settings."><span class="infobar-icon">⛰</span>Ground Guide</button>
+          <button class="ms-btn infobar-btn infobar-gear" id="groundGuideSettingsBtn" aria-label="Ground Guide settings" aria-expanded="false" title="Ground Guide settings — mode, map layers (terrain overlay and the force it is painted for, People, boundary, indicator lines), footprint, card sections. Same settings as ⚙ / Ctrl+K → Ground Guide."><span class="infobar-icon">⚙</span></button>
+        </div>
         <button class="ms-btn infobar-btn" id="switch-btn" title="Toggle between 2D map view and 3D scene view. Updates all engines to use the new view context."><span class="infobar-icon">⊞</span>2D</button>
         <!-- Creation Mode toggle + quick edit actions — grouped so they stay on one row (the group wraps as a unit on narrow screens). -->
         <div class="infobar-group">

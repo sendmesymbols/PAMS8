@@ -317,6 +317,7 @@ import DrawingCueEngine from '@lib/Engines/DrawingCueEngine';
 // listener forwards them to the browser console so they are also searchable.
 import EngineLogger, { type EngineLogEntry } from '../MS/Support/EngineLogger';
 import { roadDensityText } from '../MS/Engines/GroundGuide/GroundGuideRoadDensity';
+import { openGroundGuideSettings } from '../MS/Engines/GroundGuideSettingsWidget';
 document.addEventListener('engine-log', (e: Event) => {
   const { engine, type, formatted } = (e as CustomEvent<EngineLogEntry>).detail;
   if (type === 'error') {
@@ -2253,6 +2254,30 @@ function buildDockFreehandStyle(container: HTMLElement): void {
   });
 
   syncFace();
+})();
+
+// ── Ground Guide settings gear (top bar, beside the toggle) ──────────────
+// Opens the Ground Guide settings widget (the same one ⚙ / Ctrl+K → Ground Guide
+// mounts) just below the button; a second click closes it.
+(function initGroundGuideSettingsGear() {
+  const gear = document.getElementById('groundGuideSettingsBtn');
+  if (!gear) return;
+  const WIDGET_ID = 'ground-guide-settings';
+  const isOpen = () => !!document.getElementById(WIDGET_ID);
+  const syncFace = () => gear.setAttribute('aria-expanded', String(isOpen()));
+
+  gear.addEventListener('click', () => {
+    if (isOpen()) {
+      // One widget per id: opening again hands back the mounted one (even if Ctrl+K opened it), so close that.
+      openGroundGuideSettings().close();
+    } else {
+      const r = gear.getBoundingClientRect();
+      openGroundGuideSettings({ anchor: { x: r.right - 340, y: r.bottom + 6 } });
+    }
+    syncFace();
+  });
+  // The widget closes itself too (its ×, Esc): follow it so the gear never shows as open over nothing.
+  new MutationObserver(syncFace).observe(document.body, { childList: true });
 })();
 
 // Clear All — removes every symbol/graphic. Irreversible (also wipes the undo

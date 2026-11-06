@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GROTBC Card Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* What the Ground Guide cursor card shows, arranged by GROTBC.md. Each item: GROTBC home, data type, how it is shown now. */
+:root {
+  --bg: #eef0ec; --panel: #f9faf7; --panel2: #f2f4ef; --line: #d3d8cf; --fg: #1d2420; --soft: #5d675f; --code-bg: #e3e7df;
+  --G: #5f8a2a; --R: #9c7536; --O: #6a4cb8; --T: #2f86c8; --B: #7d7068; --C: #1f8a5a; --W: #4a7f95; --X: #4f5a63;
+  --head: #b8442f; --band: #2f6fb0; --lineC: #1f8a4c; --grid: #7a6a9a; --off: #8a8f94; --brief: #c4740f; --map: #4f5a63;
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, "Segoe UI", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15191e; --panel: #1b1f25; --panel2: #20252c; --line: #303740; --fg: #eef1f4; --soft: #9aa3ad; --code-bg: #262c34;
+  --G: #8fb35a; --R: #c9a46b; --O: #9a80e0; --T: #5aa9e6; --B: #b3a79c; --C: #3fbf85; --W: #7fbcd2; --X: #aab3bd;
+  --head: #ff8a73; --band: #7fb3e8; --lineC: #4cc483; --grid: #b6a3dc; --off: #9aa3ad; --brief: #f0a04b; --map: #aab3bd;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15191e; --panel: #1b1f25; --panel2: #20252c; --line: #303740; --fg: #eef1f4; --soft: #9aa3ad; --code-bg: #262c34;
+  --G: #8fb35a; --R: #c9a46b; --O: #9a80e0; --T: #5aa9e6; --B: #b3a79c; --C: #3fbf85; --W: #7fbcd2; --X: #aab3bd;
+  --head: #ff8a73; --band: #7fb3e8; --lineC: #4cc483; --grid: #b6a3dc; --off: #9aa3ad; --brief: #f0a04b; --map: #aab3bd;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--body); margin: 0; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 28px 16px 64px; }
+h1 { font: 700 40px/1 var(--display); letter-spacing: .02em; margin: 0; }
+.lede { color: var(--soft); max-width: 80ch; margin: 10px 0 0; }
+code { font: 12px var(--mono); background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+.lt { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 4px; color: #fff; font: 700 14px/1 var(--display); flex: none; }
+.top { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; margin-top: 24px; align-items: start; }
+@media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.panel h2 { font: 600 20px/1.1 var(--display); letter-spacing: .03em; text-transform: uppercase; margin: 0 0 10px; }
+/* The card as it stacks today */
+.stack { display: flex; flex-direction: column; gap: 3px; }
+.stack a { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--fg); padding: 5px 8px; border-radius: 6px; background: var(--panel2); font-size: 12.5px; border-left: 3px solid var(--c, var(--X)); }
+.stack a:hover { outline: 1px solid var(--c, var(--X)); }
+.stack .n { font: 500 11px var(--mono); color: var(--soft); width: 16px; }
+.stack .tg { margin-left: auto; display: flex; gap: 2px; }
+.stack .tg .lt { width: 17px; height: 17px; font-size: 11px; }
+.stack .s { color: var(--soft); font-size: 11px; }
+/* Keys */
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.key { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; }
+.key p { margin: 0; color: var(--soft); }
+.dt { display: inline-block; font: 600 10px/1 var(--body); letter-spacing: .04em; text-transform: uppercase; padding: 4px 6px 3px; border-radius: 4px; color: #fff; white-space: nowrap; }
+.dt.head { background: var(--head); } .dt.band { background: var(--band); } .dt.line { background: var(--lineC); }
+.dt.grid { background: var(--grid); } .dt.off { background: var(--off); } .dt.brief { background: var(--brief); } .dt.map { background: var(--map); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dt { color: #15191e; } }
+:root[data-theme="dark"] .dt { color: #15191e; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+.tools input { flex: 1 1 240px; min-width: 0; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 14px var(--body); }
+.tools button { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 12.5px var(--body); cursor: pointer; }
+.tools button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.count { color: var(--soft); font-size: 12.5px; }
+/* Letters */
+.letter { margin-top: 30px; }
+.lhead { display: flex; align-items: center; gap: 12px; border-bottom: 3px solid var(--c); padding-bottom: 8px; }
+.lhead .lt { width: 40px; height: 40px; font-size: 28px; border-radius: 6px; }
+.lhead h2 { font: 700 30px/1 var(--display); letter-spacing: .02em; margin: 0; }
+.lhead .sub { color: var(--soft); font-size: 13px; }
+.lhead .num { margin-left: auto; font: 500 12px var(--mono); color: var(--soft); white-space: nowrap; }
+.lnote { color: var(--soft); font-size: 13px; margin: 8px 0 0; max-width: 100ch; }
+.group h3 { font: 600 18px/1.2 var(--display); letter-spacing: .03em; text-transform: uppercase; color: var(--c); margin: 18px 0 6px; }
+.table { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.row { display: grid; grid-template-columns: minmax(170px, 1.05fr) minmax(170px, 1fr) minmax(250px, 1.7fr); border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row.hd { background: var(--panel2); font: 600 11px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }
+.row.hd > div { padding: 9px 12px; }
+.row > div { padding: 10px 12px; min-width: 0; }
+.row > div + div { border-left: 1px solid var(--line); }
+.item b { font-weight: 600; }
+.item .ex { display: block; margin-top: 4px; font: 11.5px/1.4 var(--mono); color: var(--soft); }
+.moved { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; font-size: 11px; color: var(--soft); }
+.moved .lt { width: 15px; height: 15px; font-size: 10px; }
+.type b { display: block; font-weight: 600; }
+.type .src { display: block; margin-top: 3px; color: var(--soft); font-size: 12px; }
+.disp ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.disp li { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: 13px; }
+.disp li .dt { justify-self: start; }
+@media (max-width: 760px) {
+  .row { grid-template-columns: 1fr; }
+  .row > div + div { border-left: 0; border-top: 1px dashed var(--line); }
+  .row.hd { display: none; }
+  .type::before, .disp::before { display: block; font: 600 10px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--soft); margin-bottom: 6px; }
+  .type::before { content: "Data type · source"; }
+  .disp::before { content: "How it is shown now"; }
+}
+.hidden { display: none !important; }
+.foot { margin-top: 36px; color: var(--soft); font-size: 12.5px; max-width: 100ch; }
+.moves { margin: 0; padding-left: 18px; font-size: 13px; }
+.moves li { margin: 3px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>GROTBC Card Map</h1>
+  <p class="lede">What the Ground Guide cursor card shows (<code>MS/Engines/GroundGuide/</code>), arranged under the GROTBC headings of <code>GROTBC.md</code>. Each item gives its <b>data type</b> (the value and where it comes from) and <b>how it is shown now</b>, with the default settings of <code>MS/Data/Settings.json</code>. Items the card shows outside the six letters (the placement verdict, W weather, admin and grid) have been given the GROTBC heading that fits them best. Where that is not the letter the card puts them under today, the item says so. Read from the code on 6 Nov 2026 (commit <code>04f5407</code>).</p>
+
+  <div class="top">
+    <div class="panel">
+      <h2>The card, top to bottom</h2>
+      <div class="stack" id="stack"></div>
+    </div>
+    <div class="panel">
+      <h2>How it is shown</h2>
+      <div class="keys" id="keys"></div>
+      <h2 style="margin-top:16px">Shown under a different letter now</h2>
+      <ul class="moves" id="moves"></ul>
+    </div>
+  </div>
+
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search items, types, sources, examples…" aria-label="Search items">
+    <span id="filters"></span>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div id="out"></div>
+
+  <p class="foot">Data types: <b>Category</b> = a coded class with fixed labels from <code>rules.json</code>; <b>Rating</b> = GO / SLOW-GO / NO-GO; <b>Level</b> = None / Poor / Fair / Good; <b>Nearest feature</b> = name and kind of the closest mapped feature with its distance (m or km) and 8-point compass direction from the symbol. <b>Raster</b> sources are the bundle's terrain tile layers; <b>Feature</b> sources are the vector tiles in <code>features/</code> (kind numbers as in <code>features/index.json</code>). "Detail grid" rows show by default because <code>sections.detail</code> is on; with <code>sections.style: lines</code> the same rows show as full rows instead of under a one-line summary. Every card item is also in the Ground Brief (G key) and in Copy as Text.</p>
+</div>
+
+<script>
+const LETTERS = { G: 'Ground', R: 'Roads, Tracks & Railway', O: 'Obstacles', T: 'Trafficability', B: 'Built-up Areas', C: 'Cover, Camouflage & Concealment', W: 'Weather' };
+
+const KINDS = {
+  head:  ['Header', 'The coloured title bar at the top: verdict title and pills.'],
+  band:  ['Own band', 'A captioned band on the card, on by default.'],
+  line:  ['One line', 'In the one-line G / R / O / B / W summary (sections.style compact, the default).'],
+  grid:  ['Detail grid', 'The small muted rows under a one-line section (sections.detail, on by default).'],
+  off:   ['Switch, off', 'Built and switchable, but off by default (a style or option to compare).'],
+  brief: ['Brief', 'Ground Brief (G key) only, not on the card by default.'],
+  map:   ['Map / toast', 'Outside the card: a map graphic or a toast after placement.'],
+};
+
+// The card's bands in the order GroundGuideBadge.show() stacks them (defaults). [title, note, letters shown in it, anchor]
+const STACK = [
+  ['Header', 'Verdict title · % Inside · S Quick Fix · rain pill · civil pill', ['T', 'B'], 'T'],
+  ['Why', 'Deciding ground, mode, GO / SLOW-GO / NO-GO scale', ['T'], 'T'],
+  ['Inside', 'Lines, areas and footprints only', ['T'], 'T'],
+  ['Nearest', 'Compass dial, name, distance', ['T'], 'T'],
+  ['Intermediate Gap Rule', 'Footprint echelons only', ['T'], 'T'],
+  ['Important Tactical Ground', 'Up to 2 candidates within 3 km', ['G'], 'G'],
+  ['G line + detail grid', 'Ground (grid also carries going and soil)', ['G', 'T'], 'G'],
+  ['R line + detail grid', 'Route, rules check, road density', ['R'], 'R'],
+  ['O line + detail grid', 'Obstacles and their effect', ['O'], 'O'],
+  ['T · Trafficability band', 'Going now, Why, Road, Move', ['T'], 'T'],
+  ['T · Speed band', 'S1: km/h, road, day\'s march', ['T'], 'T'],
+  ['B · People', 'Style B: count and density scale', ['B'], 'B'],
+  ['B line + detail grid', 'Buildings, services, admin, sheet, grid, border', ['B'], 'B'],
+  ['C · Cover & Concealment', 'C1: four lines with meters', ['C'], 'C'],
+  ['W line + detail grid', 'This month, the year, wet months', ['W'], 'T'],
+  ['Civil strip', 'When the mode\'s population threshold is met', ['B'], 'B'],
+  ['Enforce strip', 'Enforce mode only: the click is refused', ['T'], 'T'],
+  ['G · Ground Brief cue', 'Key hint at the foot', [], null],
+];
+
+// Item: n name, ex example as shown, cl letter it sits under on the card now ('hdr' header, 'map' outside the card),
+// ty data type, src where the value comes from, d [[kind, how it is shown]].
+const MAP = [
+ { k: 'G', sub: 'Relief, composition, terrain type, vegetation, hydrology, ITG', groups: [
+  ['Relief and Elevation', [
+   { n: 'Elevation at the point', ex: '1890 m', cl: 'G', ty: 'Number · metres (integer)', src: 'Raster elev_hi / elev_lo (Copernicus GLO-30, 30 m surface model)',
+     d: [['line', 'G line, 2nd item'], ['off', 'G3 relief, G4 chips']] },
+   { n: 'Slope and slope band', ex: 'about 15° Sloping', cl: 'G', ty: 'Number · degrees + Category (Level < 3°, Gentle < 7°, Sloping < 15°, Moderate < 30°, Steep)', src: 'Worked out in the browser: 3 × 3 gradient of elev_hi / elev_lo. "about" when read from an overview tile',
+     d: [['line', 'G line, 3rd item'], ['off', 'G3 slope-band gauge']] },
+   { n: 'Landform', ex: 'Upper slope', cl: 'G', ty: 'Category · 6 codes (valley floor … crest)', src: 'Raster landform',
+     d: [['line', 'G line, after the slope'], ['off', 'G3 draws the point on a valley-to-crest slope']] },
+   { n: 'Faces (aspect)', ex: 'Faces NE · forward slope to the NE, reverse slope to the SW', cl: 'G', ty: 'Compass direction · 8 points', src: 'Worked out in the browser: ~90 m gradient of the DEM; not given under 2°',
+     d: [['line', 'G line, "faces NE"'], ['grid', 'Faces row: forward and reverse slope']] },
+   { n: 'Military crest', ex: 'military crest 120 m NE · top 1,410 m, foot 1,260 m, drop 150 m', cl: 'G', ty: 'Position (on / above / below) + distance m + compass + top, foot and drop in m', src: 'Worked out in the browser: a top-to-foot profile on the DEM, 2 m eye height, 3 km at most',
+     d: [['line', 'G line, "on the military crest" or "military crest 120 m NE"'], ['grid', 'Mil crest row'], ['off', 'G3 draws the profile with MC and dead ground']] },
+   { n: 'High ground nearby', ex: '2276 m Murree Hills · 2.1 km NE · 386 m above', cl: 'G', ty: 'Number · m + Nearest feature + height above the point (m)', src: 'Features 100 trig station, 101 spot height, 102 bench mark, 150 mountain, 160–164 (e = height); 3 km',
+     d: [['grid', 'High row'], ['off', 'G4 chip']] },
+   { n: 'Ridgeline', ex: 'Crest 1709 m · 2.6 km long · 524 m N', cl: 'G', ty: 'Numbers · crest m, length km + distance + compass', src: 'Feature line 204 ridgeline (e, lk)',
+     d: [['grid', 'Ridge row']] },
+   { n: 'Change of terrain nearby', ex: 'Hilly 75 m S', cl: 'G', ty: 'Category (terrain type) + distance + compass', src: 'Worked out: 8 rays over the terrain raster, 3 km',
+     d: [['grid', 'Changes row']] },
+   { n: 'Named area (plains, plateaus, valleys, hill ranges, forests, regions)', ex: 'Pabbi Reserved Forest · 1.3 km W', cl: 'G', ty: 'Text · name + kind + distance + compass', src: 'Features 152 landform name, 150 range / hills, 157 region, 151 sand sea, 158 forest, 126 named vegetation (NCGDB and GeoNames); 10 km',
+     d: [['grid', 'Area row'], ['off', 'G4 chip']] },
+  ]],
+  ['Ground Composition', [
+   { n: 'Soil and its bearing (cone index against the mode)', ex: 'Loam · cone index 85 dry, 40 after rain · Wheeled: 30 to move, 60 for GO', cl: 'G', ty: 'Category · soil texture (14 codes) + Numbers · cone index dry and after rain (0–127, capped) + the vehicle cone index pair', src: 'Raster soil (SoilGrids 2.0, 250 m, plus NCGDB soil areas), rci_dry / rci_wet; vehicles in rules.json grotbc.soilStrength',
+     d: [['grid', 'Soil row under the G line'], ['band', 'T band Why row names the soil and cone index'], ['off', 'Soil Strength gauge section (card.soilStrength)']] },
+   { n: 'Surface (how broken the ground is)', ex: 'Broken · 3.1 m off the plane over ~150 m · 30 m surface model: trees and roofs count', cl: 'G', ty: 'Category · Smooth / Uneven / Broken / Very broken + Number · residual m', src: 'Worked out in the browser: plane fitted to 5 × 5 DEM points 30 m apart; finest zoom only',
+     d: [['grid', 'Surface row']] },
+   { n: 'Dune field', ex: 'Dune lines every 280 m · running NNW–SSE · move along them, not across', cl: 'G', ty: 'Numbers · spacing m + axis (compass) + counts of parallel / star dunes', src: 'Feature dune_field cells (~2 km), from NCGDB Soil_Line / Soil_Point (kinds 167–181)',
+     d: [['grid', 'Dunes row']] },
+   { n: 'Wind axis from map wind arrows', ex: 'Along NNW–SSE · 3 map wind arrows, nearest 1.4 km W · which end it blows from is not recorded', cl: 'G', ty: 'Compass axis + count + distance', src: 'Feature kind 182 (NCGDB wind arrows, Angle field)',
+     d: [['grid', 'Wind row (kept beside Dunes: it sets the dune axis)']] },
+   { n: 'Marked ground (scree, broken rock, stony waste, quarries, earth slides, moraines, crevasses, ice pinnacles, sand plains)', ex: 'Scree 640 m N · Stony waste 1.8 km E', cl: 'G', ty: 'Nearest feature (list)', src: 'Features kinds 167–181 (NCGDB points, Soil_Line 1, Glacier_Line 4)',
+     d: [['grid', 'Marked row']] },
+   { n: 'Map notes about the ground', ex: '“Jeepable” 1.2 km N · “Brackish” 900 m E', cl: 'G', ty: 'Text · the sheet\'s own words, quoted + distance + compass', src: 'NCGDB Annotation_ notes (going, water, vegetation, ground); nearest of each kind within 2 km',
+     d: [['grid', 'Map notes row']] },
+  ]],
+  ['Terrain Type', [
+   { n: 'Terrain type at the point', ex: 'Mountainous', cl: 'G', ty: 'Category · 9 codes (Plain, Hilly, Marshy, Desert, Mountainous, Snow …)', src: 'Raster terrain; labels from rules.json grotbc.layers.terrain',
+     d: [['line', 'G line, 1st item'], ['off', 'G4 chip']] },
+   { n: 'Ground class at the point (land cover)', ex: 'Cropland · concealment round it fair', cl: 'G', ty: 'Category · 51 ground classes + Level (concealment of the area round it)', src: 'Raster class (ESA WorldCover + NCGDB) and cc',
+     d: [['grid', 'Land row'], ['band', 'Why band names it when it decides the verdict']] },
+  ]],
+  ['Vegetation', [
+   { n: 'Trees nearby (tree cover, orchard, forest)', ex: 'Orchard 420 m SW', cl: 'G', ty: 'Nearest feature', src: 'Raster class scan (classes 1, 29, 30, 31); 3 km',
+     d: [['grid', 'Trees row']] },
+  ]],
+  ['Hydrological Features', [
+   { n: 'Water sources (wells, springs, tanks)', ex: 'Spring 493 m SE · Tank (perennial) 2.8 km NE', cl: 'G', ty: 'Nearest feature (up to 3)', src: 'Features kinds 1–9 and 155 well (rules.json grotbc.water.kinds); 3 km',
+     d: [['grid', 'Water row'], ['off', 'G4 chip']] },
+   { n: 'Named river, canal or stream', ex: 'Kahan Nala (Stream) · 1.1 km E', cl: 'G', ty: 'Text · name + kind + distance + compass', src: 'Feature lines 202 canal, 203 river, kinds 153 stream / 154 canal names, Limit_Line nala names',
+     d: [['grid', 'River row']] },
+   { n: 'Lake or reservoir', ex: 'Rawal Lake 3.4 km S', cl: 'G', ty: 'Nearest feature', src: 'Feature kind 144 lake, dam reservoirs; else class 4 permanent water',
+     d: [['grid', 'Lake row']] },
+   { n: 'Wet ground (flood-prone, waterlogged)', ex: 'Flood-prone here', cl: 'G', ty: 'Category · wet codes 1–4 (here, or the nearest)', src: 'Raster wet (JRC Global Surface Water + NCGDB)',
+     d: [['grid', 'Wet row'], ['line', 'O line says it first when it is under the symbol']] },
+   { n: 'Dry riverbed / nullah', ex: 'Dry riverbed 260 m W', cl: 'G', ty: 'Nearest feature', src: 'Raster class 17 / 47 scan',
+     d: [['grid', 'Riverbed row']] },
+   { n: 'Marsh or lake bed (named)', ex: 'Kalanchi Nawar 6.2 km NE', cl: 'G', ty: 'Nearest feature', src: 'Features kind 156 marsh and lake beds; 10 km',
+     d: [['grid', 'Marsh row']] },
+  ]],
+  ['Important Tactical Ground (ITG / MITG)', [
+   { n: 'ITG candidate: name, kind and height', ex: 'Pir Sohawa · Hill 1,140 m', cl: 'G', ty: 'Text · name + Category (kind) + Number · m', src: 'Features kinds 160–166, line 204, flagged crossings, passes, dams, junctions; 3 km, strongest first, 2 at most',
+     d: [['band', 'Important Tactical Ground band, first line of each candidate']] },
+   { n: 'Candidate tier and distance', ex: 'Strong Candidate (Check as MITG) · 1.4 km NE', cl: 'G', ty: 'Category · tier 1 / 2 + distance + compass', src: 'Feature attribute it',
+     d: [['band', 'Second line; a strong candidate is highlighted']] },
+   { n: 'Reasons (H O R P C J)', ex: 'Highest Within 3 km · Main Supply Route In View', cl: 'G', ty: 'Category list · reason letters, labelled', src: 'Feature attribute ig; labels in rules.json grotbc.itg.reasons',
+     d: [['band', 'Muted line of reason labels']] },
+   { n: 'What it commands', ex: 'Rises 85 m · Highest within 3 km · Sees 42 % to 5 km · MSR in view 1.2 km', cl: 'G', ty: 'Numbers · relief m, dominance km, view %, MSR in view km', src: 'Feature attributes rr, iso, vs, mv (DEM features only)',
+     d: [['band', 'Small line under the reasons']] },
+   { n: 'What it is like to hold', ex: 'Slope 4° · MSR 2.1 km · Road or track 300 m · Scrub · Cover Poor, Concealment Fair (area) · Surveyed 1,234 m', cl: 'G', ty: 'Numbers + Category + Level · slope °, MSR km, road km, land cover, cover / concealment, surveyed height m', src: 'Feature attributes sp, dr, dn, lc, cv, hs',
+     d: [['band', 'Second small line under the reasons']] },
+   { n: 'Designation as ITG or MITG', ex: 'Imp Gr "IG" / Vital Gr "VG" area', cl: 'map', ty: 'Map symbol (area), saved with the plan', src: 'User action: symbolEngine.designateGround(candidate, \'ITG\' | \'MITG\'); never in the bundle',
+     d: [['map', 'Drawn on the map as an ordinary symbol, not on the card']] },
+  ]],
+ ]},
+
+ { k: 'R', sub: 'Road network, connectivity, railway, transport infrastructure', groups: [
+  ['Road Network', [
+   { n: 'Route here, or the nearest within 500 m', ex: 'Metalled road · Class 70 · MSR', cl: 'R', ty: 'Category · route type (22 codes) + load tier + MSR flag + distance + compass', src: 'Raster route (type, tier, MSR bit)',
+     d: [['line', 'R line, first items'], ['off', 'R3 shield (road as a sign), R4 verdict']] },
+   { n: 'Rules check for the mode', ex: 'Class not recorded: treat as not tankable until checked', cl: 'R', ty: 'Category · ok / warn / stop / unknown + sentence', src: 'Worked out from route and rules.json grotbc.tankable (60+ tankable, 50–59 Al-Zarrar only); advisory, never changes the verdict',
+     d: [['line', 'Coloured box under the R line (green / amber / red / yellow)'], ['off', 'R4 shows it in large type']] },
+   { n: 'Named road and route', ex: 'N-35 · Karakoram Highway · 779 km · MSR · Defence road', cl: 'R', ty: 'Text · number, name, from–to, length km, MSR, defence road', src: 'Feature line 200 (n, r) and routes.json',
+     d: [['grid', 'Road row']] },
+   { n: 'What is recorded on the road', ex: '40A1 · 7 m wide · condition not recorded · no closure recorded', cl: 'R', ty: 'Text + Numbers · load code, width m, condition, closure, landslide count', src: 'Feature line 200 (c, w, cn, x, sl) and routes.json; a missing record is said as "not recorded"',
+     d: [['grid', 'Recorded row']] },
+   { n: 'Nearest crossing (bridge, ford, ferry)', ex: 'Bridge 640 m E', cl: 'R', ty: 'Nearest feature', src: 'Features kinds 20–31 (NCGDB and OSM fords); 3 km',
+     d: [['grid', 'Crossing row']] },
+   { n: 'Culvert', ex: 'Culvert 210 m N', cl: 'R', ty: 'Nearest feature', src: 'Features (culvert kinds)',
+     d: [['grid', 'Culvert row']] },
+   { n: 'Chokepoints on an MSR', ex: 'Jhelum Bridge 3.1 km SE · Kohala Pass 8.4 km N (on an MSR)', cl: 'R', ty: 'Nearest feature (2)', src: 'Features flagged ig C; 10 km',
+     d: [['grid', 'Choke row']] },
+   { n: 'Junction of main roads', ex: 'Junction 1.8 km W (4 ways out along highways) · Faizabad Chowk 2.2 km S', cl: 'R', ty: 'Nearest feature + Number · ways out', src: 'Features junction kind (mx) and named chowks',
+     d: [['grid', 'Junction row']] },
+   { n: 'KM stone with a reading', ex: 'road km 142 at 400 m E', cl: 'R', ty: 'Number · km reading + distance', src: 'Road and railway km stones within 2 km; "no reading recorded" otherwise',
+     d: [['grid', 'KM row']] },
+  ]],
+  ['Road Connectivity', [
+   { n: 'Road network density', ex: 'road density dense (0.9 km/km², after rain)', cl: 'R', ty: 'Number · km/km² + Category band (No Roads, Sparse, Moderate, Dense, Very Dense) + all-weather share', src: 'Routing network tiles network/gg clipped to a 5 km circle; bands from rules.json grotbc.roadDensity or the defaults',
+     d: [['line', 'R line, last item (D1)'], ['grid', 'Density row (D1)'], ['off', 'D2 chip, D3 gauge, D4 rose, D5 make-up bar, D6 sentence, D7 Brief only'], ['brief', 'Make-up: all-weather, tracks, MSR, tankable km']] },
+   { n: 'Ways out', ex: '6 ways out · N, NE, E (all-weather) · S, SW, W', cl: 'R', ty: 'Count by compass direction, all-weather and MSR apart', src: 'Where network roads cross the 5 km circle (crossings within 250 m merged)',
+     d: [['grid', 'Ways out row (D1)'], ['off', 'D4 ways-out rose']] },
+   { n: 'Way out by road (after placement)', ex: '3.4 km by Road · 6 min to N-5 (MSR)', cl: 'map', ty: 'Numbers · route km, minutes + weakest bridge / lowest load class', src: 'GeoCore road server through RoadNetworkEngine (one request per placement)',
+     d: [['map', 'Toast after a unit or vehicle is placed; route drawn dashed red for 8 s']] },
+  ]],
+  ['Railway Network', [
+   { n: 'Railway station or line', ex: 'Bani Bangla RS 9.6 km NE', cl: 'R', ty: 'Nearest feature', src: 'Features kind 50 station, line 201 railway; 10 km',
+     d: [['grid', 'Rail row'], ['line', 'R line names a railway when the symbol is on one; Rail-Bound check "On a railway"']] },
+   { n: 'Ways across the railway (level crossing, rail bridge, rail tunnel)', ex: 'Level crossing 700 m S (vehicles cross here) · Rail bridge 1.6 km E (trains and foot only)', cl: 'R', ty: 'Nearest feature (each kind)', src: 'Raster classes 43, 50 (2 km); feature kind 29 rail tunnel (10 km)',
+     d: [['grid', 'Rail Xing row']] },
+  ]],
+  ['Transport Infrastructure', [
+   { n: 'Airfield, airstrip or helipad', ex: 'Bhurban (Helipad) 8.3 km NE · runway 1,200 m 08/26', cl: 'R', ty: 'Nearest feature + runway length and direction', src: 'Features kinds 40–47 (rw, rd); 15 km',
+     d: [['grid', 'Air row']] },
+   { n: 'Bus stand, toll plaza', ex: 'Bus stand 2.4 km W · Toll plaza 6.8 km S', cl: 'R', ty: 'Nearest feature', src: 'Features kinds 139, 142; 10 km',
+     d: [['grid', 'Transport row']] },
+   { n: 'Fuel (petrol pump)', ex: 'Petrol pump 1.9 km NW', cl: 'R', ty: 'Nearest feature', src: 'Feature kind 76 and OSM fuel stations; 15 km',
+     d: [['grid', 'Fuel row']] },
+  ]],
+ ]},
+
+ { k: 'O', sub: 'Natural, man-made, temporary, seasonal', groups: [
+  ['Natural Obstacles', [
+   { n: 'Nearest natural obstacle and its effect for the mode', ex: 'Steep slope (over 30°) 94 m NW (NO-GO)', cl: 'O', ty: 'Category (class) + distance + compass + Rating (NO-GO / SLOW-GO)', src: 'Raster class (classes whose grotbc letters carry O, origin natural); effect from the profile\'s NO-GO / SLOW-GO lists',
+     d: [['line', 'O line, natural obstacle'], ['off', 'O3 tiles (bordered by effect)']] },
+   { n: 'River reach', ex: 'Indus · 3.2 km E · bed sandy · 4 m deep · 1.2 m/s · 85,000 cusecs · wet span Jul to Sep', cl: 'O', ty: 'Text + Numbers · name, bed, depth m, current m/s, discharge cusecs, wet span', src: 'Feature kind 146 river reach (s, dp, cu, dc, ws)',
+     d: [['grid', 'River row'], ['off', 'O4 draws the gap to scale']] },
+  ]],
+  ['Man-made Obstacles', [
+   { n: 'Nearest man-made obstacle and its effect for the mode', ex: 'Canal 359 m W (NO-GO)', cl: 'O', ty: 'Category (class) + distance + compass + Rating', src: 'Raster class (origin man-made); crossings are left out',
+     d: [['line', 'O line, man-made obstacle with a coloured effect chip in the rows style'], ['off', 'O3 tiles']] },
+   { n: 'Canal', ex: 'Upper Jhelum Canal 1.2 km S · 76.2 m wide · 6 m deep · banks 12 m', cl: 'O', ty: 'Text + Numbers · name, width m, depth m, bank height m', src: 'Feature line 202 (w, dp, b)',
+     d: [['grid', 'Canal row'], ['off', 'O4 gap drawing']] },
+   { n: 'Canal crossings (aqueduct, siphon, canal km stone)', ex: 'Siphon 2.1 km E · canal km 34 at 1.5 km S', cl: 'O', ty: 'Nearest feature + km reading', src: 'Features canal works kinds',
+     d: [['grid', 'Canal Xing row']] },
+   { n: 'Bank at the point', ex: 'Canal bank within 75 m', cl: 'O', ty: 'Category (bank kind) + distance m', src: 'Raster bank; rules.json grotbc.banks',
+     d: [['grid', 'Bank row'], ['band', 'C band bank line with the Deployment Line tag']] },
+   { n: 'Power line, pipeline, wall / fence', ex: 'Power line (220 kV) 640 m N · Pipeline 1.7 km E', cl: 'O', ty: 'Nearest feature + kV note', src: 'Features 205–207 (OpenStreetMap); 2 km',
+     d: [['grid', 'Lines row']] },
+   { n: 'Dam, barrage or headworks', ex: 'Mangla Dam 9.4 km NE · Jhelum · 3,140 m long · 138 m high · gates 9 · class 70', cl: 'O', ty: 'Nearest feature + river, length m, height m, gates, spans, load class', src: 'Features kinds 56–58 (HeadWorks_Pakmap fields)',
+     d: [['grid', 'Dam row']] },
+   { n: 'Levee / flood bund', ex: 'Bagdar Door Bund (Levee / flood bund) 196 m W', cl: 'O', ty: 'Nearest feature', src: 'Feature kind 123 (GeoNames T.LEV)',
+     d: [['grid', 'Levee row']] },
+  ]],
+  ['Temporary Obstacles', [
+   { n: 'Wet ground under the symbol', ex: 'Waterlogged / marsh here', cl: 'O', ty: 'Category · wet code', src: 'Raster wet',
+     d: [['line', 'O line, first item']] },
+   { n: 'Flood (mapped, not live)', ex: 'Flood-prone here · wet months Jul to Sep · mapped, not live flooding', cl: 'O', ty: 'Category (wet code) + Month list', src: 'Raster wet + climate rain by month',
+     d: [['grid', 'Flood row']] },
+   { n: 'Road closures and landslides', ex: 'N-15 2.4 km N: closed (Snow), 3 landslide sites', cl: 'O', ty: 'Text + Number · road, distance, closure cause, landslide count', src: 'Feature line 200 (x, sl) and routes.json closed; "None recorded near" otherwise',
+     d: [['grid', 'Closures row']] },
+  ]],
+  ['Seasonal Obstacles', [
+   { n: 'Snow and ice nearby', ex: 'Snow / ice 4.2 km N · frost Dec to Feb · depth not in the data', cl: 'O', ty: 'Nearest feature + Month list', src: 'Raster class 8 / terrain 9 + climate frost months',
+     d: [['grid', 'Snow row']] },
+  ]],
+ ]},
+
+ { k: 'T', sub: 'Going by mode and movement type, dry and after rain; placement for the mode', groups: [
+  ['Ratings: placement for the mode', [
+   { n: 'Verdict title', ex: 'Unsuitable Position / SLOW-GO Terrain / Suitable Position', cl: 'hdr', ty: 'Category · ok, near, caution, partial, in, unknown', src: 'Raster class and dist_<mode> against the profile (rules.json); nearThresholdM 250',
+     d: [['head', 'Title bar, coloured by verdict, with an icon']] },
+   { n: 'Share inside bad ground', ex: '34% Inside · 34% of the Footprint', cl: 'hdr', ty: 'Percent (integer)', src: 'Share of the shape\'s or footprint\'s samples in NO-GO',
+     d: [['head', 'Pill "34% Inside"'], ['band', 'Inside band: bar + "34% of the Footprint" (lines, areas, footprints)']] },
+   { n: 'Quick Fix available', ex: 'S  Quick Fix', cl: 'hdr', ty: 'Flag (yes / no)', src: 'Verdict snappable: usable ground near enough to move to',
+     d: [['head', 'Pill with an S keycap']] },
+   { n: 'Why: deciding ground, mode, rating', ex: 'Permanent Water · Dismounted Force · NO-GO', cl: 'T', ty: 'Category (class label) + mode + Rating + the rule owner\'s reason text', src: 'rules.json classes[c].label / note, profiles[mode].why',
+     d: [['band', 'Why band: text + GO / SLOW-GO / NO-GO scale with the step lit'], ['off', 'Second scale for the other season (traffic.dual)']] },
+   { n: 'Nearest deciding ground', ex: 'Permanent Water · 120 m W', cl: 'T', ty: 'Category + distance + bearing (degrees)', src: 'dist_<mode> raster + ±32 px class search round the deciding sample',
+     d: [['band', 'Nearest band: compass dial that turns with the map, name, distance in large type']] },
+   { n: 'Footprint and intergap', ex: 'Only 120 m from the next Platoon — keep at least 300 m between them', cl: 'T', ty: 'Numbers · frontage, depth, gap m against the minimum + Category ok / tight / overlap', src: 'GroundGuideFootprint.ts ECHELON_FOOTPRINTS (rules.json echelons may override); symbols already on the map',
+     d: [['band', 'Intermediate Gap Rule band: bar + text (land-unit echelons only)'], ['map', 'Footprint outline (blue); neighbours outlined orange']] },
+   { n: 'Indicator to the deciding ground', ex: 'Permanent Water 120 m', cl: 'map', ty: 'Geometry (line) + label', src: 'Same search as Nearest; stretches of a line / area in NO-GO',
+     d: [['map', 'Dashed red line to NO-GO, green to deployable ground, red stretches on shapes']] },
+   { n: 'Enforce mode refusal', ex: 'Enforce Mode: A click here is refused. Hold Shift and click to place it anyway.', cl: 'T', ty: 'Flag', src: 'groundGuide mode = enforce and verdict in / partial',
+     d: [['band', 'Red strip that closes the card']] },
+  ]],
+  ['Going (dry and after rain)', [
+   { n: 'Going now', ex: 'SLOW-GO  after rain', cl: 'T', ty: 'Rating × season (dry / after rain)', src: 'Worked out: class + soil cone index + wet against the mode (traffic.rain = cone)',
+     d: [['band', 'T · Trafficability band headline in large type (traffic.block = band)'], ['off', 'Gauge, calendar, tiles, way-out, rose, ticker, tabs block styles']] },
+   { n: 'Why the going is what it is', ex: 'Loam, cone index 40 after rain against 60 for GO', cl: 'T', ty: 'Text · soil and cone index against the vehicle\'s', src: 'Going engine (GroundGuideGoing.ts)',
+     d: [['band', 'T band Why row']] },
+   { n: 'Rain effect', ex: 'Rain: NO-GO / After Rain: SLOW-GO', cl: 'hdr', ty: 'Rating', src: 'Going for the other season (traffic.pill)',
+     d: [['head', 'Pill in the title bar when rain makes it worse']] },
+   { n: 'Going by mode (foot, wheeled, tracked)', ex: 'Foot GO · Wheeled GO, SLOW-GO after rain · Tracked GO', cl: 'G', ty: 'Rating × 3 modes × 2 seasons', src: 'Going engine, v.going.modes',
+     d: [['grid', 'Going row under the G line, words in their rating colours'], ['off', 'Mode matrix section (card.modeMatrix), T4 tiles']] },
+  ]],
+  ['Movement Types', [
+   { n: 'Movement freedom (8 directions to 2 km)', ex: '6 of 8 directions open to 2 km · N blocked at 600 m (canal)', cl: 'T', ty: 'Count of open sectors + blocked sector distance m and cause', src: 'Rays over class + rci + wet, going.rangeKm 2',
+     d: [['band', 'T band Move row'], ['off', 'Movement rose (hidden while the T block is on), exit strip, going map, T6 rose']] },
+   { n: 'Road the mode can use (roads, tracks, MSR)', ex: 'N-5 MSR · 1.2 km E · class 70 · or GO cross-country', cl: 'T', ty: 'Text + Numbers · road number shield, name, distance, bearing, class tag, MSR, all-weather alternative', src: 'Routing network network/gg (traffic.roadSource), 3 km',
+     d: [['band', 'T band Road row with a road shield (red for MSR)']] },
+   { n: 'Landing site going (helicopter)', ex: 'Level · no power lines within 100 m · soft after rain', cl: 'T', ty: 'Category (slope band) + Flag + Rating', src: 'HLS profile, classes 9, 10, 18, 19, 33, 48',
+     d: [['band', 'T band Land row (Helicopter Landing Site only)']] },
+  ]],
+  ['Speed', [
+   { n: 'Cross-country speed now', ex: '3 km/h cross-country, uphill · 4 downhill', cl: 'T', ty: 'Number · km/h (up / down the slope) + mover category chip', src: 'MovementSpeeds.json (a proposal) × going × slope (Tobler for foot) × height; mover from SIDC amplifier or Symbols.json Mover / VehCat',
+     d: [['band', 'T · Speed band (S1): km/h in large type'], ['off', 'S2 day / night grid, S3 time rose, S4 foot / B / A, S5 strip to the road']] },
+   { n: 'Road speed and time to reach it', ex: 'N-5: 1.2 km E · 18 min to reach · then 40 km/h in column', cl: 'T', ty: 'Numbers · km, minutes, km/h (column or alone)', src: 'Routing network + MovementSpeeds.json columns',
+     d: [['band', 'Speed band Road row']] },
+   { n: 'A day\'s march (foot)', ex: '30–35 km with combat load', cl: 'T', ty: 'Number range · km', src: 'MovementSpeeds.json, by terrain type',
+     d: [['band', 'Speed band Day row']] },
+   { n: 'What the speed is based on', ex: 'Fields · Sloping · SLOW-GO', cl: 'T', ty: 'Text · ground, slope band, going', src: 'v.speed.basis',
+     d: [['band', 'Speed band Here row (muted)']] },
+  ]],
+  ['Season and Weather Effects on Going', [
+   { n: 'This month: temperature, rain, wind', ex: 'Nov: 22° / 8° · 12 mm rain · wind 2 m/s', cl: 'W', ty: 'Numbers · °C max / min, mm, m/s', src: 'Climate grid tmin, tmax, prec, wind (WorldClim 2.1 normals, ~9 km cell)',
+     d: [['line', 'W line'], ['off', 'W3 year strip, W4 large icons']] },
+   { n: 'The year: rain, monsoon share, frost, heat', ex: '1,250 mm a year, 62 % in the monsoon · frost Dec to Feb · 40° and over May to Jun', cl: 'W', ty: 'Number mm + Percent + Month lists', src: 'Climate prec_year, monsoon_pct, tmin / tmax by month',
+     d: [['grid', 'Year row under the W line']] },
+   { n: 'Wet months', ex: 'Jul to Sep', cl: 'W', ty: 'Month list', src: 'Months with rain at or above going.wetMonthMm (75 mm)',
+     d: [['grid', 'Wet row under the W line']] },
+   { n: 'Fog and visibility', ex: 'Not in the data', cl: 'W', ty: 'Text (a stated gap)', src: 'Not held: the climate normals carry no fog',
+     d: [['brief', 'Brief W block only']] },
+  ]],
+ ]},
+
+ { k: 'B', sub: 'Settlements, people, construction, public infrastructure, location', groups: [
+  ['Settlements and People', [
+   { n: 'People round the symbol', ex: '48,200 within 5 km · Dense Rural', cl: 'B', ty: 'Number (count) + Category · 6 density classes (Empty … Urban)', src: 'WorldPop 2026 grid (100 m summed to ~1 km cells); population.radiusKm 5',
+     d: [['band', 'People band (style B): count, class chip, six-step scale'], ['off', 'Styles A, C–L (rings, ages, rose, mini-map, profile, icons, province, block)'], ['map', 'People map layer (off)']] },
+   { n: 'Nearest named place (people band)', ex: 'Dograe Kalan (Village, 8.9k) · 1.4 km NE', cl: 'B', ty: 'Nearest feature + Number (people)', src: 'Features 110–114 (wp)',
+     d: [['band', 'People band Nearest row']] },
+   { n: 'Settlement and its size class', ex: 'Dograe Kalan · Large village, about 8,940 people · 1.4 km NE', cl: 'B', ty: 'Text + Category (size class) + Number (people) + HQ', src: 'Features 110–114; size thresholds of settlements.py; hq for province / district / tehsil seats',
+     d: [['grid', 'Place row']] },
+   { n: 'Civil considerations flag', ex: 'Civil: 2,000+ people within 1 km', cl: 'hdr', ty: 'Flag (threshold per mode)', src: 'POPULATION_FLAGS (gun / AD 200+ in 1 km, HLS 50+, signals 500+ in 2 km, vehicles 2,000+, road-bound 5,000+)',
+     d: [['head', 'Pill in the title bar'], ['band', 'Strip near the foot of the card']] },
+   { n: 'Ages', ex: 'Under 15 38 % · 15 to 64 58 % · 65+ 4 % · men 15 to 49: 12,300 within 5 km', cl: 'B', ty: 'Percents + Number', src: 'WorldPop age shares (1 km)',
+     d: [['grid', 'Ages row under the B line'], ['off', 'People style D (ages), K (block)']] },
+   { n: 'Deserted site', ex: 'Deserted village 2.6 km W', cl: 'B', ty: 'Nearest feature', src: 'Features (deserted kinds)',
+     d: [['grid', 'Deserted row']] },
+  ]],
+  ['Construction Characteristics', [
+   { n: 'Building density', ex: 'Buildings medium', cl: 'B', ty: 'Category · density class', src: 'Raster bld (Google Open Buildings v3)',
+     d: [['line', 'B line, 1st item']] },
+   { n: 'Building size and height', ex: 'Small houses · Medium (6 to 12 m, 2 to 4 storeys)', cl: 'B', ty: 'Category · footprint size + GHSL height class', src: 'Raster bld (GHSL built-up height)',
+     d: [['grid', 'Build row']] },
+   { n: 'Kacha huts', ex: '50 huts per km² · temporary huts nearby', cl: 'B', ty: 'Number · per km² + Flag (temporary)', src: 'Raster hut (bit 7 = temporary)',
+     d: [['line', 'B line, huts per km²'], ['grid', 'Huts row: temporary huts']] },
+   { n: 'Industry (mines, shafts, kilns, chimneys)', ex: 'Brick kiln 900 m S', cl: 'B', ty: 'Nearest feature (list)', src: 'Features industry kinds; 5 km',
+     d: [['grid', 'Industry row']] },
+  ]],
+  ['Public Infrastructure', [
+   { n: 'Nearest services (health, police, school, government office)', ex: 'Hospital 1.1 km N · Police 2.3 km E · School 600 m W', cl: 'B', ty: 'Nearest feature (up to 3)', src: 'Features 70–72, 77, 136, 147, 149 (and OSM clinics); 5 km',
+     d: [['line', 'B line, the nearest one'], ['grid', 'Services row'], ['off', 'B4 protected (worship, graves, health, schools first)']] },
+   { n: 'Veterinary hospital', ex: 'Vet hospital 4.2 km SE', cl: 'B', ty: 'Nearest feature', src: 'Features; 10 km',
+     d: [['grid', 'Vet row']] },
+   { n: 'Lodging (rest house, hotel)', ex: 'Rest house 3.8 km N', cl: 'B', ty: 'Nearest feature', src: 'Features; 10 km',
+     d: [['grid', 'Lodging row']] },
+   { n: 'Utilities (grid station, mast, exchange, wireless, oil and gas, solar)', ex: 'Grid station 2.0 km W · Mast 900 m N', cl: 'B', ty: 'Nearest feature (list)', src: 'Features 74, 78, 135, 137, 68, 81, solar polygons',
+     d: [['grid', 'Utilities row']] },
+   { n: 'Landmarks (protected sites first, markets, mills, banks, parks, camps)', ex: 'Shrine 450 m E · Graveyard 700 m S · Market 1.2 km N', cl: 'B', ty: 'Nearest feature (list)', src: 'Features 130–134, 120, 138, 140, 148, 124, 125, 127, 208',
+     d: [['grid', 'Landmarks row'], ['off', 'B4 protected']] },
+  ]],
+  ['Location, Administration and Security', [
+   { n: 'Security installations', ex: 'Murree (Cantonment) 1.1 km W', cl: 'B', ty: 'Nearest feature (list)', src: 'Features 60–69 and air firing ranges',
+     d: [['grid', 'Security row']] },
+   { n: 'Admin area', ex: 'Tehsil Murree · District Rawalpindi · Punjab', cl: 'B', ty: 'Text · tehsil, district, province, country', src: 'admin.geojson',
+     d: [['line', 'B line, last item (tehsil)'], ['grid', 'Admin row'], ['off', 'B3 where (admin first)']] },
+   { n: 'Map sheet', ex: '1:50k 43G5 · 1:250k 43G', cl: 'B', ty: 'Text · sheet numbers', src: 'sheets.json',
+     d: [['grid', 'Sheet row']] },
+   { n: 'Grid reference', ex: 'GR 603 451 · Indian grid zone I: 3,160,312 E, 1,045,101 N', cl: 'B', ty: 'Text · 6-figure GR + Numbers · easting / northing m + fit error', src: 'sheets.json grid (Lambert fit to the sheets\' grid lines)',
+     d: [['grid', 'Grid row']] },
+   { n: 'Border', ex: 'Pakistan-India 5.2 km E', cl: 'B', ty: 'Category (line kind) + distance km + compass + boundary pillar', src: 'boundaries.geojson (IB, LoC, LAC; sensitive lines never read)',
+     d: [['grid', 'Border row'], ['off', 'B3 where (red under 10 km)']] },
+  ]],
+ ]},
+
+ { k: 'C', sub: 'Natural and artificial cover, concealment', groups: [
+  ['Cover and Concealment at the Spot', [
+   { n: 'Cover from direct fire', ex: 'Poor · Built-up area', cl: 'C', ty: 'Level (None / Poor / Fair / Good) + the class that gives it', src: 'rules.json grotbc.coverSplit.byClass[class], raised by a bank within 75 m (a proposal)',
+     d: [['band', 'C band (C1): line with a three-step meter'], ['off', 'C2 grid, C3 summary, C4 icons, C5 nearest, C6 rose, C7 block']] },
+   { n: 'Cover from indirect fire', ex: 'None · Cropland', cl: 'C', ty: 'Level + class', src: 'coverSplit',
+     d: [['band', 'C band (C1) line']] },
+   { n: 'Concealment from ground observation', ex: 'Fair · Orchard', cl: 'C', ty: 'Level + class', src: 'coverSplit',
+     d: [['band', 'C band (C1) line']] },
+   { n: 'Concealment from aerial observation', ex: 'Good · Tree cover', cl: 'C', ty: 'Level + class', src: 'coverSplit',
+     d: [['band', 'C band (C1) line']] },
+   { n: 'What the mode needs and where better is', ex: 'Dismounted Force needs Direct Fire: None · Good 94 m N (Built-up area)', cl: 'C', ty: 'Level + Nearest Fair-or-better (distance, compass, class)', src: 'COVER_FOCUS (foot: direct fire; vehicles: ground obs; guns, AD, signals: air); search to cover.radiusM 500 m',
+     d: [['band', 'Diamond marker on the need + a line when it is short'], ['off', 'C5 nearest, C6 rose']] },
+  ]],
+  ['Natural Cover', [
+   { n: 'River or canal bank (deployment line)', ex: 'Canal bank within 75 m  [Deployment Line]', cl: 'C', ty: 'Category (bank kind) + distance m + tag', src: 'Raster bank + rules.json grotbc.banks',
+     d: [['band', 'C band line with a Deployment Line tag']] },
+   { n: 'Lie of the ground (where dead ground may be)', ex: 'Ground · Lower slope · Depression 1.2 km SW, 18 m deep', cl: 'C', ty: 'Category (landform) + Nearest feature + depth m', src: 'Raster landform + feature kind 165 depression; 2 km',
+     d: [['band', 'Ground line at the end of the C band']] },
+   { n: 'Underground and enclosed cover', ex: 'Underground · Trench 858 m NE', cl: 'C', ty: 'Nearest feature (up to 3 kinds)', src: 'Features 85 cave, 62 bunker, 63 trench, 28 / 29 tunnels; 5 km',
+     d: [['band', 'Underground line at the end of the C band']] },
+  ]],
+  ['Artificial Cover', [
+   { n: 'Buildings at the point', ex: 'Buildings · Medium (300–1,000 / km²) · 2 to 4 storeys', cl: 'C', ty: 'Category · density + height class', src: 'Raster bld (Open Buildings + GHSL); never changes the four levels',
+     d: [['band', 'Buildings line at the end of the C band']] },
+  ]],
+  ['General Concealment Characteristics', [
+   { n: 'Area round it (not the spot)', ex: 'Area round it: cover Fair, concealment Good', cl: 'C', ty: 'Level × 2', src: 'Raster cc (NCGDB vegetation-symbol density per km²); never raises or lowers the levels',
+     d: [['band', 'Muted line in the C band'], ['grid', 'G Land row also says "concealment round it"']] },
+   { n: 'Concealed round it, not on this spot', ex: 'Concealed round it, not on this spot: Good 31 m S (Tree cover)', cl: 'C', ty: 'Level + Nearest (distance, compass, class) + canopy caveat on roads', src: 'v.cover.around',
+     d: [['band', 'Muted line in the C band; on a road, track or railway it adds that a canopy may screen it from the air']] },
+  ]],
+ ]},
+];
+
+// ── Render ────────────────────────────────────────────────────────────────
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const lt = (k) => `<span class="lt" style="background:var(--${k})">${k}</span>`;
+const where = (cl) => (cl === 'hdr' ? 'the card header' : cl === 'map' ? 'the map, not the card' : `${cl} on the card`);
+
+document.getElementById('stack').innerHTML = STACK.map(([t, s, ls, a], i) =>
+  `<a href="${a ? '#L-' + a : '#'}" style="--c:var(--${ls[0] || 'X'})"><span class="n">${i + 1}</span><span><b>${esc(t)}</b><br><span class="s">${esc(s)}</span></span><span class="tg">${ls.map(lt).join('')}</span></a>`).join('');
+
+document.getElementById('keys').innerHTML = Object.entries(KINDS).map(([k, [l, p]]) =>
+  `<div class="key"><span class="dt ${k}">${l}</span><p>${esc(p)}</p></div>`).join('');
+
+// Items whose GROTBC home differs from where the card shows them now.
+const moves = [];
+for (const L of MAP) for (const [, items] of L.groups) for (const it of items) {
+  if (it.cl !== L.k && it.cl !== 'hdr' && it.cl !== 'map') moves.push(`${lt(L.k)} <b>${esc(it.n)}</b>: shown under ${lt(it.cl)} now`);
+}
+moves.push(`${lt('T')} <b>Placement verdict, Why, Inside, Nearest, Gap, Enforce</b>: the card's own bands, outside any letter now`);
+moves.push(`${lt('B')} <b>Admin, sheet, grid, border, security</b>: under B now; GROTBC has no location heading, so B is kept`);
+document.getElementById('moves').innerHTML = moves.map((m) => `<li>${m}</li>`).join('');
+
+const filters = document.getElementById('filters');
+filters.innerHTML = '<button data-k="" aria-pressed="true">All</button>' + Object.entries(KINDS).map(([k, [l]]) => `<button data-k="${k}" aria-pressed="false">${l}</button>`).join(' ');
+
+function render() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const kind = filters.querySelector('[aria-pressed="true"]').dataset.k;
+  let shown = 0, total = 0;
+  const html = MAP.map((L) => {
+    let lcount = 0;
+    const groups = L.groups.map(([h, items]) => {
+      const rows = items.filter((it) => {
+        total++;
+        const okK = !kind || it.d.some(([k]) => k === kind);
+        const hay = [it.n, it.ex, it.ty, it.src, ...it.d.map((x) => x[1]), h].join(' ').toLowerCase();
+        const ok = okK && (!q || hay.includes(q));
+        if (ok) { shown++; lcount++; }
+        return ok;
+      }).map((it) => {
+        const mv = it.cl !== L.k ? `<span class="moved">On the card now: ${it.cl === 'hdr' || it.cl === 'map' ? esc(where(it.cl)) : lt(it.cl) + ' section'}</span>` : '';
+        return `<div class="row">
+          <div class="item"><b>${esc(it.n)}</b><span class="ex">${esc(it.ex)}</span>${mv}</div>
+          <div class="type"><b>${esc(it.ty)}</b><span class="src">${esc(it.src)}</span></div>
+          <div class="disp"><ul>${it.d.map(([k, t]) => `<li><span class="dt ${k}">${KINDS[k][0]}</span><span>${esc(t)}</span></li>`).join('')}</ul></div>
+        </div>`;
+      });
+      if (!rows.length) return '';
+      return `<div class="group"><h3>${esc(h)}</h3><div class="table">
+        <div class="row hd"><div>Information · as shown</div><div>Data type · source</div><div>How it is shown now</div></div>${rows.join('')}</div></div>`;
+    }).join('');
+    if (!lcount) return '';
+    return `<section class="letter" id="L-${L.k}" style="--c:var(--${L.k})">
+      <div class="lhead">${lt(L.k)}<div><h2>${esc(LETTERS[L.k])}</h2><div class="sub">${esc(L.sub)}</div></div><span class="num">${lcount} item${lcount === 1 ? '' : 's'}</span></div>
+      ${L.k === 'T' ? '<p class="lnote">T also holds the card\'s placement core (verdict, Why, Inside, Nearest, gap rule, enforce), since they answer whether the mode can go and sit here, and the W weather line, which GROTBC.md places under "Season and Weather Effects on Going".</p>' : ''}
+      ${groups}</section>`;
+  }).join('');
+  document.getElementById('out').innerHTML = html || '<p class="lnote">Nothing matches.</p>';
+  document.getElementById('count').textContent = `${shown} of ${total} items`;
+}
+filters.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  filters.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+});
+document.getElementById('q').addEventListener('input', render);
+render();
+</script>
+</body>
+</html>

@@ -176,6 +176,10 @@ MS/
   density round it (`GroundGuideRoadDensity.ts`, `guide.roadDensityAround()`: km/km², all-weather share, ways out; seven card
   styles D1–D7 in `GroundGuideRoadDensityView.ts`, compared in `ground-guide-road-density-options.html`); buildings, huts,
   services, security; the month's weather. Compact on the card by default, in full in the Brief; `guide.sectionsAround()`.
+  G also works out, in the browser from the bundle's 30 m elevation, the way the slope faces, how broken the surface is
+  and the **military crest** (a real top-to-foot profile, drawn by G3), and reads NCGDB dune fields (Soil_Line /
+  Soil_Point), ground symbols and the sheet's own notes (Annotation_: "Jeepable", "Brackish"); O adds OSM power lines,
+  pipelines and walls and the recorded dam structure (kinds 167–181, 205–207; see `15-ground-guide.md`).
   See `15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.
