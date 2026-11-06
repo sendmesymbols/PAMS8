@@ -747,6 +747,15 @@
       "roadDensityStyle": "rows",
       "roadDensityLead": "afterRain",
       "detail": true
+    },
+    "speed": {
+      "enabled": true,
+      "card": "line",
+      "light": "day",
+      "road": "convoy",
+      "load": "combat",
+      "mover": "auto",
+      "legend": true
     }
   },
   "stylus": {

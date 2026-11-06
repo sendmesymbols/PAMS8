@@ -20,6 +20,7 @@ import { fmtDistance, titleCase } from './GroundGuideEvaluator';
 import { briefCue, goingSections, orientRoses } from './GroundGuideGoingView';
 import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
+import { decorateSpeed } from './GroundGuideSpeedView';
 import { coverSection } from './GroundGuideCoverView';
 import { sectionsCard } from './GroundGuideSectionsView';
 import { itgTraitLines } from './GroundGuideFeatures';
@@ -524,6 +525,7 @@ export class GroundGuideBadge {
     const cover = coverSection(v, this._north);
     if (cover && v.cover?.where === 'afterWhy') rows.splice(rows.length && v.verdict !== 'unknown' ? 1 : 0, 0, cover);
     decorateTraffic(v, bar, pills, rows, rows.length, this._north); // T: block or road band, rain pill, second scale under Why
+    decorateSpeed(v, rows, rows.length, this._north); // T, Speed: after the last T section (else before B)
     const people = v.verdict === 'unknown' ? null : populationSection(v.population);
     if (people) {
       ensurePopulationCss();

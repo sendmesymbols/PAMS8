@@ -10,6 +10,7 @@ import type { GroundGuideTraffic, GroundGuideTrafficOptions } from './GroundGuid
 import type { CoverRules, GroundGuideCover, GroundGuideCoverOptions } from './GroundGuideCover';
 import type { GroundGuideSections, GroundGuideSectionsOptions } from './GroundGuideSections';
 import type { RoadDensityRules } from './GroundGuideRoadDensity';
+import type { GroundGuideSpeed, GroundGuideSpeedOptions } from './GroundGuideSpeed';
 
 /**
  * Mobility class (mode) a symbol is evaluated as. `exempt` = never terrain-bound. The first five are in
@@ -277,6 +278,8 @@ export interface GroundGuideOptions {
   cover: GroundGuideCoverOptions;
   /** G / R / B / W sections: terrain, relief, landform, water; route here and for the mode; buildings, huts, services; weather. */
   sections: GroundGuideSectionsOptions;
+  /** T, Speed: cross-country and road speed for the symbol's mover, day / night, dry / after rain (MS/Data/MovementSpeeds.json). */
+  speed: GroundGuideSpeedOptions;
 }
 
 export interface GroundGuideGoingOptions {
@@ -699,6 +702,8 @@ export interface GroundGuideVerdict {
   cover?: GroundGuideCover | null;
   /** Set while drawing when a G / R / B / W section is on: the layers and features the card did not show before. */
   sections?: GroundGuideSections | null;
+  /** Set while drawing when `speed.enabled` and the symbol moves on the ground: how fast it goes here and on the road. */
+  speed?: GroundGuideSpeed | null;
 }
 
 /** One symbol judged by `auditPlacements()` / `explain()`. */
@@ -877,6 +882,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   },
   cover: { enabled: true, card: 'lines', where: 'grotbc', radiusM: 500, focus: true },
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
+  speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
 };
 
 /** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */

@@ -1,0 +1,288 @@
+{
+  "version": 1,
+  "status": "STARTING PROPOSAL from published rates, to be corrected by the rule owner",
+  "updated": "2026-11-06",
+  "grounds": {
+    "open": { "label": "Open / Plains", "classes": [0, 11, 18, 25, 26, 33, 47] },
+    "hill": { "label": "Hill Ground (Slope 7° or More)", "classes": [9, 10, 19] },
+    "road": { "label": "Road / Bridge Surface", "classes": [34, 35, 36, 37, 38, 39, 40, 41, 42, 50] },
+    "crops": { "label": "Fields", "classes": [2] },
+    "irrigated": { "label": "Irrigated Fields", "classes": [23, 48] },
+    "orchard": { "label": "Orchard", "classes": [30] },
+    "walled": { "label": "Walled Orchard", "classes": [29] },
+    "forest": { "label": "Trees / Forest", "classes": [1, 31] },
+    "desert": { "label": "Desert, Firm", "classes": [12] },
+    "sand": { "label": "Sand, Loose", "classes": [13] },
+    "dunes": { "label": "Sand Dunes", "classes": [14] },
+    "rocky": { "label": "Rocky / Scree", "classes": [15, 27] },
+    "riverbed": { "label": "Dry Riverbed", "classes": [17] },
+    "marsh": { "label": "Marsh / Flood Zone", "classes": [5, 6, 7] },
+    "salt": { "label": "Salt Pan", "classes": [16] },
+    "built": { "label": "Built-up", "classes": [3, 32] },
+    "snow": { "label": "Snow / Ice", "classes": [8] },
+    "crossing": { "label": "Water Gap / Obstacle", "classes": [20, 21, 22, 24, 28, 43, 44, 45, 46, 49] },
+    "water": { "label": "Water", "classes": [4] }
+  },
+  "roads": {
+    "motorway": { "label": "Motorway", "match": "motorway", "ref": "^M-?[0-9]" },
+    "highway": { "label": "Highway / Main Road", "match": "trunk|primary|highway|national", "ref": "^N-?[0-9]" },
+    "main": { "label": "Secondary Road", "match": "secondary|metalled" },
+    "track": { "label": "Track / Unmetalled", "match": "track|cart|unmetal|shingl|earth|kacha|katcha" },
+    "path": { "label": "Path", "match": "path|foot|bridle" },
+    "minor": { "label": "Minor Road", "match": "tertiary|residential|road|unclassified|service|street" }
+  },
+  "slopeBandsDeg": [3, 7, 15, 30],
+  "slopeBandLabels": ["Level", "Gentle", "Sloping", "Moderate", "Steep"],
+  "movers": {
+    "foot": {
+      "label": "On Foot (Infantry)",
+      "short": "Foot",
+      "cat": null,
+      "profile": "dismounted",
+      "ground": {
+        "open": [4, 3], "crops": [3, 2], "irrigated": [2.4, 1.6], "orchard": [3, 2], "walled": [2.4, 1.6], "forest": [2.4, 1.6],
+        "desert": [3, 2.5], "sand": [2.5, 2], "dunes": [2, 1.5], "rocky": [2, 1.5], "riverbed": [2.4, 1.6], "marsh": [1.5, 1],
+        "salt": [2.4, 1.6], "built": [3, 2], "snow": [1, 0.5], "crossing": [1, 0.5], "water": [0, 0]
+      },
+      "slowGo": 0.7,
+      "afterRain": 0.85,
+      "slope": { "model": "tobler", "a": [3.5, 5.5], "b": 0.05 },
+      "altitude": [{ "fromM": 3050, "factor": 0.9 }, { "fromM": 4000, "factor": 0.8 }, { "fromM": 4600, "factor": 0.7 }, { "fromM": 5500, "factor": 0.6 }],
+      "road": { "motorway": [4, 3], "highway": [4, 3], "main": [4, 3], "minor": [4, 3], "track": [4, 3], "path": [3.5, 2.5] },
+      "column": "foot",
+      "fairAfterRain": 0.85,
+      "dayKm": {
+        "plain": { "combat": [30, 35], "none": [40, 45] },
+        "desert": { "combat": [15, 20], "none": [25, 30] },
+        "mountain": { "combat": [10, 15], "none": [20, 25] }
+      },
+      "note": "Plains and desert: the Pakistani infantry marching table (plains 4 / 3, desert firm 3 / 2.5, loose 2.5 / 2 km/h by day / night). Fields, forest and broken ground: FM 21-18 cross-country (2.4 / 1.6). Snow: ATP 3-90.97 Table 4-1, deep unbroken snow (0.5-1). Slope: Tobler's walking formula scaled so flat ground gives the table and fitted so a 20 % path gives the Pakistani mountain ascent and descent (2 / 3 by day, 1 / 2 by night). Height: the table holds to 10,000 ft (3,050 m); above it work capacity falls about 10 % per 914 m (USARIEM TN 94-2)."
+    },
+    "pack": {
+      "label": "Pack Animals (Mules)",
+      "short": "Mules",
+      "cat": null,
+      "profile": "pack",
+      "ground": {
+        "open": [5, 3.5], "crops": [4, 3], "irrigated": [3, 2], "orchard": [3.5, 2.5], "walled": [2.5, 1.5], "forest": [3, 2],
+        "desert": [4, 3], "sand": [3, 2], "dunes": [1.5, 1], "rocky": [2.5, 1.5], "riverbed": [3, 2], "marsh": [1, 0.5],
+        "salt": [3, 2], "built": [3.5, 2.5], "snow": [1, 0.5], "crossing": [1, 0.5], "water": [0, 0]
+      },
+      "slowGo": 0.6,
+      "afterRain": 0.8,
+      "slope": { "model": "tobler", "a": [3.5, 5.5], "b": 0.05 },
+      "altitude": [{ "fromM": 3050, "factor": 0.9 }, { "fromM": 4000, "factor": 0.8 }, { "fromM": 4600, "factor": 0.7 }],
+      "road": { "motorway": [5, 3.5], "highway": [5, 3.5], "main": [5, 3.5], "minor": [5, 3.5], "track": [5, 3.5], "path": [4, 3] },
+      "column": "animal",
+      "fairAfterRain": 0.8,
+      "dayKm": {
+        "plain": { "combat": [26, 32] },
+        "desert": { "combat": [20, 26] },
+        "mountain": { "combat": [13, 16], "none": [16, 24] }
+      },
+      "note": "Led mules 5.6-6.4 km/h (FM 25-7, 1944); a mule column settled at 5 km/h and 26 km a marching day (Rand, Yunnan 1944). A day: 32 km in moderate conditions, 13-16 km in severely rugged ground at 91 kg a mule (ATP 3-90.97, 2016); 16-24 km in mountains with a lighter load (FM 25-7). Desert: no source, a proposal. With combat load = full load (about 90 kg); without = light load."
+    },
+    "b_light": {
+      "label": "B Vehicle, Light (Jeep, Land Cruiser, Hilux, Motorcycle)",
+      "short": "B Light",
+      "cat": "B",
+      "profile": "wheeled",
+      "ground": {
+        "open": [30, 15], "crops": [20, 10], "irrigated": [12, 6], "orchard": [12, 6], "walled": [6, 3], "forest": [12, 6],
+        "desert": [30, 15], "sand": [12, 6], "dunes": [6, 3], "rocky": [8, 4], "riverbed": [15, 8], "marsh": [4, 2],
+        "salt": [20, 10], "built": [15, 8], "snow": [6, 3], "crossing": [3, 2], "water": [0, 0]
+      },
+      "slowGo": 0.5,
+      "afterRain": 0.75,
+      "slope": { "model": "bands", "factors": [1, 0.75, 0.4, 0.05, 0] },
+      "road": { "motorway": [100, 60], "highway": [70, 45], "main": [60, 40], "minor": [40, 25], "track": [25, 12], "path": [8, 4] },
+      "column": "wheeled",
+      "fairAfterRain": 0.45
+    },
+    "b_truck": {
+      "label": "B Vehicle, Cross-Country Truck (Hino, Nissan, Dongfeng; Ambulance)",
+      "short": "B Truck",
+      "cat": "B",
+      "profile": "wheeled",
+      "ground": {
+        "open": [25, 12], "crops": [15, 8], "irrigated": [10, 5], "orchard": [10, 5], "walled": [5, 2], "forest": [10, 5],
+        "desert": [25, 12], "sand": [10, 5], "dunes": [4, 2], "rocky": [6, 3], "riverbed": [12, 6], "marsh": [3, 2],
+        "salt": [15, 8], "built": [12, 6], "snow": [5, 2], "crossing": [3, 2], "water": [0, 0]
+      },
+      "slowGo": 0.5,
+      "afterRain": 0.7,
+      "slope": { "model": "bands", "factors": [1, 0.75, 0.4, 0.05, 0] },
+      "road": { "motorway": [80, 50], "highway": [60, 40], "main": [50, 35], "minor": [35, 20], "track": [20, 10], "path": [5, 3] },
+      "column": "wheeled",
+      "fairAfterRain": 0.4
+    },
+    "b_truck_road": {
+      "label": "B Vehicle, Limited Cross-Country (Commercial Truck, Bus)",
+      "short": "B Road",
+      "cat": "B",
+      "profile": "wheeled",
+      "ground": {
+        "open": [15, 8], "crops": [10, 5], "irrigated": [5, 3], "orchard": [5, 3], "walled": [3, 1], "forest": [5, 3],
+        "desert": [15, 8], "sand": [4, 2], "dunes": [0, 0], "rocky": [4, 2], "riverbed": [6, 3], "marsh": [0, 0],
+        "salt": [10, 5], "built": [10, 5], "snow": [3, 1], "crossing": [2, 1], "water": [0, 0]
+      },
+      "slowGo": 0.4,
+      "afterRain": 0.6,
+      "slope": { "model": "bands", "factors": [1, 0.65, 0.25, 0, 0] },
+      "road": { "motorway": [80, 50], "highway": [60, 40], "main": [50, 35], "minor": [35, 20], "track": [15, 8], "path": [0, 0] },
+      "column": "wheeled",
+      "fairAfterRain": 0.35
+    },
+    "b_heavy": {
+      "label": "B Vehicle, Heavy (Tractor-Trailer, Tank Transporter, Missile / Rocket Carrier)",
+      "short": "B Heavy",
+      "cat": "B",
+      "profile": "wheeled",
+      "ground": {
+        "open": [15, 8], "crops": [10, 5], "irrigated": [5, 3], "orchard": [5, 3], "walled": [2, 1], "forest": [5, 3],
+        "desert": [15, 8], "sand": [5, 3], "dunes": [0, 0], "rocky": [4, 2], "riverbed": [6, 3], "marsh": [0, 0],
+        "salt": [10, 5], "built": [8, 4], "snow": [3, 1], "crossing": [2, 1], "water": [0, 0]
+      },
+      "slowGo": 0.4,
+      "afterRain": 0.6,
+      "slope": { "model": "bands", "factors": [1, 0.6, 0.2, 0, 0] },
+      "road": { "motorway": [70, 45], "highway": [55, 35], "main": [45, 30], "minor": [30, 18], "track": [12, 6], "path": [0, 0] },
+      "column": "heavy",
+      "fairAfterRain": 0.35
+    },
+    "towed": {
+      "label": "Towed (Guns, Trailers) behind a B Vehicle",
+      "short": "Towed",
+      "cat": null,
+      "profile": "gun",
+      "ground": {
+        "open": [20, 10], "crops": [12, 6], "irrigated": [8, 4], "orchard": [8, 4], "walled": [3, 2], "forest": [8, 4],
+        "desert": [20, 10], "sand": [8, 4], "dunes": [3, 1], "rocky": [5, 2], "riverbed": [10, 5], "marsh": [2, 1],
+        "salt": [12, 6], "built": [10, 5], "snow": [4, 2], "crossing": [2, 1], "water": [0, 0]
+      },
+      "slowGo": 0.45,
+      "afterRain": 0.65,
+      "slope": { "model": "bands", "factors": [1, 0.65, 0.3, 0, 0] },
+      "road": { "motorway": [70, 45], "highway": [55, 35], "main": [45, 30], "minor": [30, 18], "track": [15, 8], "path": [0, 0] },
+      "column": "wheeled",
+      "fairAfterRain": 0.35
+    },
+    "a_wheeled": {
+      "label": "A Vehicle, Wheeled (Wheeled APC, Armoured Car)",
+      "short": "A Wheels",
+      "cat": "A",
+      "profile": "wheeled",
+      "ground": {
+        "open": [35, 18], "crops": [25, 12], "irrigated": [15, 8], "orchard": [15, 8], "walled": [6, 3], "forest": [15, 8],
+        "desert": [35, 18], "sand": [15, 8], "dunes": [8, 4], "rocky": [10, 5], "riverbed": [20, 10], "marsh": [5, 2],
+        "salt": [25, 12], "built": [15, 8], "snow": [8, 4], "crossing": [4, 2], "water": [0, 0]
+      },
+      "slowGo": 0.5,
+      "afterRain": 0.75,
+      "slope": { "model": "bands", "factors": [1, 0.8, 0.5, 0.15, 0] },
+      "road": { "motorway": [80, 50], "highway": [70, 45], "main": [55, 35], "minor": [40, 25], "track": [30, 15], "path": [10, 5] },
+      "column": "wheeled",
+      "fairAfterRain": 0.45
+    },
+    "a_tracked": {
+      "label": "A Vehicle, Tracked (MBT, Tracked APC / IFV, SP Gun, ARV)",
+      "short": "A Tracks",
+      "cat": "A",
+      "profile": "tracked",
+      "ground": {
+        "open": [30, 15], "crops": [25, 12], "irrigated": [15, 8], "orchard": [15, 8], "walled": [8, 4], "forest": [15, 8],
+        "desert": [30, 15], "sand": [20, 10], "dunes": [10, 5], "rocky": [12, 6], "riverbed": [20, 10], "marsh": [4, 2],
+        "salt": [20, 10], "built": [12, 6], "snow": [8, 4], "crossing": [4, 2], "water": [0, 0]
+      },
+      "slowGo": 0.5,
+      "afterRain": 0.85,
+      "slope": { "model": "bands", "factors": [1, 0.85, 0.55, 0.15, 0] },
+      "road": { "motorway": [50, 30], "highway": [45, 30], "main": [40, 25], "minor": [30, 20], "track": [25, 12], "path": [12, 6] },
+      "column": "tracked",
+      "fairAfterRain": 0.7
+    },
+    "c_tracked": {
+      "label": "C Vehicle, Tracked (Dozer, Excavator)",
+      "short": "C Tracks",
+      "cat": "C",
+      "profile": "tracked",
+      "ground": {
+        "open": [8, 5], "crops": [7, 4], "irrigated": [5, 3], "orchard": [5, 3], "walled": [3, 2], "forest": [5, 3],
+        "desert": [8, 5], "sand": [6, 4], "dunes": [4, 2], "rocky": [4, 2], "riverbed": [6, 3], "marsh": [2, 1],
+        "salt": [6, 3], "built": [5, 3], "snow": [3, 2], "crossing": [2, 1], "water": [0, 0]
+      },
+      "slowGo": 0.6,
+      "afterRain": 0.9,
+      "slope": { "model": "bands", "factors": [1, 0.85, 0.6, 0.25, 0] },
+      "road": { "motorway": [10, 6], "highway": [10, 6], "main": [10, 6], "minor": [10, 6], "track": [8, 5], "path": [5, 3] },
+      "column": "plant",
+      "fairAfterRain": 0.8,
+      "note": "Over any distance, plant goes on a transporter (B Heavy)."
+    },
+    "c_wheeled": {
+      "label": "C Vehicle, Wheeled (Crane, Tractor, Bridging and Mine Equipment)",
+      "short": "C Wheels",
+      "cat": "C",
+      "profile": "wheeled",
+      "ground": {
+        "open": [15, 8], "crops": [10, 5], "irrigated": [6, 3], "orchard": [6, 3], "walled": [3, 1], "forest": [6, 3],
+        "desert": [15, 8], "sand": [6, 3], "dunes": [2, 1], "rocky": [4, 2], "riverbed": [8, 4], "marsh": [2, 1],
+        "salt": [10, 5], "built": [8, 4], "snow": [3, 1], "crossing": [2, 1], "water": [0, 0]
+      },
+      "slowGo": 0.45,
+      "afterRain": 0.65,
+      "slope": { "model": "bands", "factors": [1, 0.65, 0.25, 0, 0] },
+      "road": { "motorway": [50, 30], "highway": [45, 30], "main": [40, 25], "minor": [30, 18], "track": [15, 8], "path": [0, 0] },
+      "column": "heavy",
+      "fairAfterRain": 0.35
+    }
+  },
+  "columns": {
+    "foot": { "label": "Foot column", "speed": [4, 3], "halt": { "everyMin": 120, "forMin": 20 }, "note": "15-20 min rest after 2 h; 1 h after 4 h; 2 h for meals (Pakistani table; the longer rest is used). FM 21-18: 10 min in every 50." },
+    "animal": { "label": "Mule column", "speed": [5, 3.5], "halt": { "everyMin": 50, "forMin": 10 } },
+    "wheeled": { "label": "Wheeled column", "speed": [40, 16], "halt": { "everyMin": 120, "forMin": 15 }, "note": "Open column by day 40 km/h, 100 m gap; at night blackout drive 8-16 km/h (FM 55-30 Tables 5-1 / 5-2). A close column (25) or a lights-on / night-vision drive (33-50) is faster at night: change the night figure if that is the drill. Halts: 15 min after the first hour, then 10 min every 2 h (FM 55-30; STANAG 2154 at least 10 min every 2 h)." },
+    "heavy": { "label": "Heavy column", "speed": [35, 16], "halt": { "everyMin": 120, "forMin": 15 } },
+    "tracked": { "label": "Tracked column", "speed": [25, 12], "halt": { "everyMin": 120, "forMin": 15 }, "note": "Soviet regrouping 20-25 km/h on hard roads, 10-15 on poor routes (CIA 1962); US worked example 24 km in the hour by day, 16 at night (FM 55-10)." },
+    "plant": { "label": "Plant column", "speed": [8, 5], "halt": { "everyMin": 60, "forMin": 10 } }
+  },
+  "byProfile": {
+    "dismounted": "foot",
+    "pack": "pack",
+    "wheeled": "b_truck",
+    "generic": "b_truck",
+    "signals": "b_truck",
+    "gun": "towed",
+    "ad": "towed",
+    "tracked": "a_tracked",
+    "amphibious": "a_tracked",
+    "roadbound": "b_truck_road",
+    "oversnow": "foot"
+  },
+  "byMobility": {
+    "31": "b_truck_road",
+    "32": "b_truck",
+    "33": "a_tracked",
+    "34": "a_wheeled",
+    "35": "towed",
+    "37": "pack",
+    "41": "foot",
+    "42": "foot",
+    "52": "a_tracked"
+  },
+  "sources": [
+    {"name": "Pakistani infantry marching table (paras 30-31: speeds by terrain, day / night; distances in 24 h with / without combat load)", "used": "foot on plains and desert, foot column halts, a day's march", "dataDate": "supplied 2026-11-06"},
+    {"name": "FM 21-18 Foot Marches", "released": "1990", "used": "foot cross-country 2.4 / 1.6 km/h on fields, forest and broken ground", "url": "https://everyspec.com/ARMY/FM-Field-Manual/FM_21-18_14353/"},
+    {"name": "ATP 3-90.97 Mountain Warfare and Cold Weather Operations (Table 4-1, para 6-72)", "released": "2016", "used": "foot in snow; mule day's march and load", "url": "https://ciehub.info/ref/ATP/3-90x97_2016.pdf"},
+    {"name": "USARIEM Technical Note 94-2, Medical problems in high mountain environments", "released": "1994", "used": "height factor above 3,050 m (about 10 % per 914 m)", "url": "https://webarchive.library.unt.edu/web/20130214204845/http://www.usariem.army.mil/Pages/download/highmountain.pdf"},
+    {"name": "FM 25-7 Pack Transportation", "released": "1944", "used": "mule speed (led 5.6-6.4 km/h) and day's march", "url": "https://ciehub.info/ref/FM/25-7_1944.pdf"},
+    {"name": "Rand, Mules for China (Yunnan, 1944)", "released": "1944", "used": "mule column 5 km/h, 26 km a marching day", "url": "https://lrgaf.org/military/mules.htm"},
+    {"name": "FM 55-30 Army Motor Transport Units and Operations (Tables 5-1, 5-2; STANAG 2154 annex)", "released": "1997", "used": "column speeds by day and blackout night, halts", "url": "https://webarchive.library.unt.edu/web/20130213212857/http://armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/fm55_30.pdf"},
+    {"name": "FM 5-33 Terrain Analysis (ch 6, Tables 6-1 to 6-5)", "released": "1990", "used": "vehicle slope factors from gradability (T-72 and M113 45 %, truck 30 %, jeep 28 %); cross-country speed classes", "url": "https://archive.org/download/MManuals/UsArmyTerrainAnalysis1990.pdf"},
+    {"name": "Sebek, Vojenske rozhledy 1967/05 (Tables 3-4)", "released": "1967", "used": "fair-weather roads after rain (a damaged earth track 8-15 of 25 km/h)", "url": "https://vojenskerozhledy.cz/pdfs/vor/1967/05/06.pdf"},
+    {"name": "Dawn: heavy-vehicle speed limits cut to 90 km/h on motorways and 65 km/h on national highways", "released": "2026-03", "used": "ceiling for B truck and B heavy road speeds", "url": "https://www.dawn.com/news/1981314"},
+    {"name": "Vehicle data: AVNL / DDP (T-90S, T-72, BMP-2), armyrecognition / Deagel (Al-Khalid 70 road, 45 cross-country), FAS (Type 85, M109), army-guide (Talha, Saad)", "released": "accessed 2026-11-06", "used": "check: cross-country averages about half the road speed (Al-Khalid 35, M113 25)"},
+    {"name": "Tobler, W. Three presentations on geographical analysis and modeling (hiking function)", "released": "1993", "used": "foot and pack slope (shape only, fitted to the Pakistani mountain figures)"},
+    {"name": "Wehrmacht march-rate guidelines 1940-41 (reference supplied by the user)", "used": "which units and equipment need a speed of their own", "dataDate": "supplied 2026-11-06"}
+  ],
+  "gaps": "No Pakistani or Indian staff tables for vehicle or road movement are published; replace these figures with the staff duties tables and own trials when available."
+}

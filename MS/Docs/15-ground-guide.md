@@ -51,6 +51,10 @@ const v = gg.evaluateGeometry(geometry, sidc);   // synchronous, from cached til
 gg.sampleAt(point)        // { classCode, distanceM | null } for the active profile
 gg.resolveProfile(sidc)   // 'dismounted' | 'wheeled' | 'tracked' | 'vessel' | 'generic' | 'exempt'
 gg.getManifest()          // bundle manifest or null
+
+await gg.speedAround([lon, lat], { sidc })      // T Speed at a point (see "Speed (T)"); speedText() for Copy as Text
+gg.moverFor(sidc)         // { key: 'a_tracked', label, cat: 'A', from: 'catalog' } — who moves
+gg.speedTables            // the speed tables in force; gg.setSpeedTables(patch) overrides any part
 ```
 
 ### Verdicts
@@ -496,6 +500,80 @@ The card's MSR shield is red, as the roads layer draws the MSR (yellow there is 
 `v.traffic` on the verdict carries `{ road, pending, pill, dual, block, where, open, tab }`; `road.main` / `road.alt` give the road
 as the drawn styles need it (shield, name, tag, MSR, all-weather, distance, bearing). The going is `v.going`. Ctrl+K: *Trafficability (T)*.
 
+### Speed (T): how fast the unit or vehicle moves here
+
+The last open item of T. Speed is worked out in the browser from layers the bundle already ships (no pipeline step):
+the ground class, the going for the season (the going engine's GO / SLOW-GO / NO-GO, soil and wet ground included),
+the slope from `elev_hi` / `elev_lo` and the routing network's roads. The tables are **`MS/Data/MovementSpeeds.json`**,
+a **starting proposal** to be corrected by the rule owner; a bundle may override any key in `rules.json grotbc.speed`,
+and a host with `setSpeedTables(patch)` (deep merge; arrays replace). Code: `GroundGuideSpeed.ts` (pure logic),
+`GroundGuideSpeedView.ts` (card and Brief).
+
+**Who moves (the mover).** In order: `speed.mover` when set by hand; the unit type picked with **P** for this draw;
+the SIDC's **mobility amplifier** (positions 9–10 of a land equipment SIDC: 31 wheeled limited cross-country → B
+Road, 32 wheeled cross-country → B Truck, 33 tracked / 34 wheeled and tracked / 52 amphibious → A Tracks, 35 towed,
+37 pack animals); the catalogue's **`Mover`** (MS/Data/Symbols.json); else the Ground Guide profile
+(`byProfile`: dismounted → foot, tracked → A Tracks, wheeled → B Truck, gun / AD → towed, ...). Movers:
+
+| Mover | Category | Covers |
+| --- | --- | --- |
+| `foot` | — | Infantry on foot, SOF, mountain infantry; rifles, MGs, grenade launchers |
+| `pack` | — | Mules (mountain artillery) |
+| `b_light` | B | Jeep, Land Cruiser, Hilux, motorcycle; recce units, ambulances |
+| `b_truck` | B | Cross-country truck; motorised infantry and engineers |
+| `b_truck_road` | B | Limited cross-country truck, bus |
+| `b_heavy` | B | Tractor-trailer, tank transporter, missile and rocket carriers (TEL / TELAR, MLRS) |
+| `towed` | — | Guns and trailers behind a B vehicle; field and AD artillery |
+| `a_wheeled` | A | Wheeled APC, armoured car |
+| `a_tracked` | A | MBT, tracked APC / IFV, SP gun, ARV, mine-clearing tank; armour, mechanised infantry |
+| `c_tracked` | C | Dozer, excavator |
+| `c_wheeled` | C | Crane, tractor, bridging and mine-laying equipment |
+
+**Catalogue fields.** Vehicle entries in `MS/Data/Symbols.json` (and `MS3/Data/Symbols.json`) carry
+`"VehCat": "A" | "B" | "C"` (A combat vehicle, B general purpose, C engineer plant: `Material/Veh`) and every
+tagged entry `"Mover"`. Both are extra keys at the top of the entry, so nothing that reads the catalogue changes;
+weapons and units carry `Mover` only. 91 entries are tagged.
+
+**The arithmetic.** Speed at a spot = the mover's km/h on that kind of ground (`grounds`: open, fields, irrigated,
+orchard, forest, firm desert, loose sand, dunes, rocky, riverbed, marsh, salt pan, built-up, snow, water gap; a ground
+the mover has no figure for, such as `hill` or `road`, goes at its `open` speed), by **day or night**, × `slowGo` on
+SLOW-GO ground, 0 on NO-GO, × `afterRain` after rain, × the **slope**, × height above sea level (foot and pack, from
+3,050 m). Slope: **Tobler's walking formula** for foot and pack animals, scaled so flat ground gives the table and
+fitted so a 20 % path gives the Pakistani table's mountain ascent and descent (2 / 3 km/h by day, 1 / 2 by night),
+never faster than the table; vehicles take a **factor per slope band** (Level < 3°, Gentle < 7°, Sloping < 15°,
+Moderate < 30°, Steep), from FM 5-33's gradability rule (factor = (gradability − slope) ÷ gradability: tanks and
+M113 45 %, trucks 30 %, jeeps 28 %). Foot speeds on plains and desert are the Pakistani infantry marching table
+(plains 4 / 3, desert firm 3 / 2.5, loose sand 2.5 / 2 km/h by day / night), harder ground FM 21-18's cross-country
+2.4 / 1.6, snow ATP 3-90.97; a day's march is the table's 24-hour distances (plains 30–35 km with combat load, 40–45
+without; desert 15–20 / 25–30; mountain 10–15 / 20–25), chosen by the bundle's terrain type. Height above 3,050 m (where
+the table stops) takes about 10 % off per 914 m (USARIEM). Mules: FM 25-7, ATP 3-90.97 and the Yunnan record (5 km/h,
+13–32 km a day). Columns: FM 55-30 (open column 40 km/h by day, blackout 16 at night; halts 10–15 min every 2 h).
+Every figure's source and date is in the file's `sources`; no Pakistani or Indian vehicle or road movement table is
+published, so those are `gaps` for the owner's staff tables.
+
+**Roads.** The nearest road the mover would use (tankable first for tracks, all-weather first after rain), typed by
+its road number (M- motorway, N- highway) or its class; its speed for **one vehicle alone** or **a column**
+(`columns`: never faster than the road allows one vehicle, with halts for the rate in km in the hour), × `fairAfterRain`
+on a fair-weather road after rain; and the minutes to reach it cross-country in a straight line at the speed here.
+
+| Setting | Default | |
+| --- | --- | --- |
+| `speed.enabled` | on | Work out speed at all (card, Brief, `speedAround`). |
+| `speed.card` | `line` | `off` (Brief only); `line` **S1** the speed now, up / down the slope, the road and the time to reach it, a day's march on foot; `grid` **S2** day / night × dry / after rain; `rose` **S3** minutes to cover `going.rangeKm` in eight directions, slope and ground taken along the way (turns with the map); `modes` **S4** foot / B truck / A tracked (and the mover) side by side; `road` **S5** a strip from here to the road, cross-country then the road speed. All kept to compare. |
+| `speed.light` | `day` | `day` or `night` (blackout / night vision). The S2 grid and the Brief show both. |
+| `speed.road` | `convoy` | `convoy` a column on the move (convoy march rates); `single` one vehicle alone. |
+| `speed.load` | `combat` | Foot, a day's march with or without combat load. |
+| `speed.mover` | `auto` | Or a mover key: judge every symbol as it. |
+| `speed.legend` | on | A Speed caption and a Day / Night switch on the Legend. |
+
+The block sits right after the T block (or the last T section when `traffic.block` is `off`). The Ground Brief has a
+**T · Speed** section: the grid, the eight-direction rose and the lines Copy as Text gives. `v.speed` on the verdict
+is a `GroundGuideSpeed` (mover, category, ground, slope, going, `kmh`, `up` / `down`, `grid`, `modes`, `road`,
+`rays`, `dayKm`, `basis`). Ctrl+K: *Speed (T)*.
+
+Safety first: a speed is never faster than its table, uphill is the speed a foot card leads with, and every figure is
+an estimate for planning, not a march timing; check on the ground.
+
 ### People (B, civil considerations)
 
 With a bundle that carries a population grid (`manifest.grotbc.population`, written by the pipeline's
@@ -906,11 +984,15 @@ data contract.
 
 ### Default symbol-set → profile mapping (MS, overridable)
 
+Order: the bundle's entity overrides (`rules.json profileOverrides.entities`, longest prefix first), then the
+mobility amplifier (land equipment), then the built-in entity defaults, then the symbol-set overrides and defaults.
+Until 6 Nov 2026 land-equipment tanks and APCs were judged as wheeled; the Speed block already used tracks for them.
+
 | 2525D symbol set | profile |
 |------------------|---------|
 | 01 Air, 02 Air missile, 05 Space, 06 Space missile | exempt |
 | 10 Land unit, 11 Land civilian | wheeled (entity overrides: infantry → dismounted, armour/mech → tracked) |
-| 15 Land equipment | wheeled (overrides for tracked/towed) |
+| 15 Land equipment | wheeled; tracked for APC (120103/04), tank (1202), ARV (1203), mine-clearing tank (130902) and dozer (1311); the SIDC's mobility amplifier (positions 9–10) when set: 31 / 32 / 34 wheeled, 33 tracked, 35 gun (towed), 36 rail, 37 pack, 41 / 42 over-snow, 51 vessel, 52 amphibious |
 | 20 Land installation | generic |
 | 25 Control measure | generic |
 | 27 Dismounted individual | dismounted |

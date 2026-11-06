@@ -871,6 +871,7 @@
         "Grp": ["Land", "Comm"]
     },
     "10110210": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mujahid",
@@ -896,6 +897,7 @@
         "Grp": ["Land", "Infantry"]
     },
     "10110211": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Services Group",
@@ -996,6 +998,7 @@
         "Grp": ["Land", "Log"]
     },
     "10110215": {
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Amb",
@@ -1046,6 +1049,7 @@
         "Grp": ["Land", "Artillery"]
     },
     "10110217": {
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Multi-Barrel Rocket Launcher",
@@ -1071,6 +1075,7 @@
         "Grp": ["Land", "Artillery"]
     },
     "10110218": {
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Multi Barrel Rocket Launcher (Self Propelled)",
@@ -1349,6 +1354,7 @@
         "Grp": ["Land", "Log"]
     },
     "10110220": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Services Group Light Commnado",
@@ -1674,6 +1680,7 @@
         "Grp": ["Land", "Sigs"]
     },
     "10120400": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank - Anti Armor - Armr",
@@ -1699,6 +1706,7 @@
         "Grp": ["Land", "Anti Tank"]
     },
     "10120402": {
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank - Anti Armor - Motorized",
@@ -1724,6 +1732,7 @@
         "Grp": ["Land", "Anti Tank"]
     },
     "10120410": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - LAT/Light Anti Tank",
@@ -1749,6 +1758,7 @@
         "Grp": ["Land", "Anti Tank"]
     },
     "10120411": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Hy Anti Tank/HAT",
@@ -1774,6 +1784,7 @@
         "Grp": ["Land", "Anti Tank"]
     },
     "10120500": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Armr",
@@ -2239,6 +2250,7 @@
         "Grp": ["Land", "Aviation"]
     },
     "10121100": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf",
@@ -2289,6 +2301,7 @@
         "Grp": ["Land", "Infantry"]
     },
     "10121102": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - MIB",
@@ -2314,6 +2327,7 @@
         "Grp": ["Land", "Infantry"]
     },
     "10121103": {
+        "Mover": "a_wheeled",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Main Gun Sys",
@@ -2339,6 +2353,7 @@
         "Grp": ["Land", "Infantry"]
     },
     "10121104": {
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Motorized",
@@ -2364,6 +2379,7 @@
         "Grp": ["Land", "Infantry"]
     },
     "10121105": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Fighting Veh",
@@ -2389,6 +2405,7 @@
         "Grp": ["Land", "Infantry"]
     },
     "10121106": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Mtn",
@@ -2414,6 +2431,7 @@
         "Grp": ["Land", "Infantry"]
     },
     "10121300": {
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Land Unit - Recce/Cavalry/Scout",
@@ -2439,6 +2457,7 @@
         "Grp": ["Land", "Recce/Cavalry/Scout" ]
     },
     "10121301": {
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Land Unit - Recce and Surv",
@@ -2464,6 +2483,7 @@
         "Grp": ["Land", "Recce and Surv" ]
     },
     "10121800": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Ops Forces (SOF)",
@@ -2489,6 +2509,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121801": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Ops Forces (SOF) - Ground",
@@ -2564,6 +2585,7 @@
         "Grp": ["Land", "Sub Area" ]
     },
     "10121808": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Assam Rifles",
@@ -2589,6 +2611,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121809": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Rashtriya Rifles",
@@ -2614,6 +2637,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121810": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Border Security Forces",
@@ -2639,6 +2663,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121811": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Sashastra Seema Bal",
@@ -2664,6 +2689,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121812": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Indo Tibetan Border Police",
@@ -2689,6 +2715,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121813": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Territorial Army",
@@ -2714,6 +2741,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121814": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Central Reserver Police Force",
@@ -2739,6 +2767,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121600": {
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Recce Unit",
@@ -2765,6 +2794,7 @@
     },
 
     "10130100": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD",
@@ -3190,6 +3220,7 @@
         "Grp": ["Land","Air Defense"]
     },
     "10130300": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Fd Arty",
@@ -3215,6 +3246,7 @@
         "Grp": ["Land","Artillery" ]
     },
     "10130301": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Fd Arty Self-propelled",
@@ -3265,6 +3297,7 @@
         "Grp": ["Land","Artillery" ]
     },
     "10130303": {
+        "Mover": "pack",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mtn Arty",
@@ -3390,6 +3423,7 @@
         "Grp": ["Land", "Survey" ]
     },
     "10140104": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Recce Armr",
@@ -3415,6 +3449,7 @@
         "Grp": ["Land", "Recce Armr" ]
     },
     "10140700": {
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engrs",
@@ -3440,6 +3475,7 @@
         "Grp": ["Land", "Engineers"]
     },
     "10140701": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engr - Mech",
@@ -3465,6 +3501,7 @@
         "Grp": ["Land", "Engineers"]
     },
     "10140702": {
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engr - Motorized",
@@ -4263,6 +4300,7 @@
         "Grp": ["Organization","Group/Mob" ]
     },
     "15110100": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Rifle",
@@ -4314,6 +4352,7 @@
         "Grp": ["Land Eqpt","Missile Launcher" ]
     },
     "15110200": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG",
@@ -4339,6 +4378,7 @@
         "Grp": ["Land Eqpt","Machine Gun" ]
     },
     "15110201": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Light",
@@ -4364,6 +4404,7 @@
         "Grp": ["Land Eqpt","Machine Gun" ]
     },
     "15110202": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Med",
@@ -4389,6 +4430,7 @@
         "Grp": ["Land Eqpt","Machine Gun" ]
     },
     "15110203": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Hy",
@@ -4414,6 +4456,7 @@
         "Grp": ["Land Eqpt","Machine Gun" ]
     },
     "15110300": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher",
@@ -4439,6 +4482,7 @@
         "Grp": ["Land Eqpt","Grenade Launcher" ]
     },
     "15110301": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Light)",
@@ -4464,6 +4508,7 @@
         "Grp": ["Land Eqpt","Grenade Launcher" ]
     },
     "15110302": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Medium)",
@@ -4489,6 +4534,7 @@
         "Grp": ["Land Eqpt","Grenade Launcher" ]
     },
     "15110303": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Heavy)",
@@ -4513,6 +4559,7 @@
         "Grp": ["Land Eqpt","Grenade Launcher"]
     },
     "15110500": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun",
@@ -4538,6 +4585,7 @@
         "Grp": ["Land Eqpt","Air Defense Gun" ]
     },
     "15110501": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Light",
@@ -4563,6 +4611,7 @@
         "Grp": ["Land Eqpt","Air Defense Gun" ]
     },
     "15110502": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Med",
@@ -4588,6 +4637,7 @@
         "Grp": ["Land Eqpt","Air Defense Gun" ]
     },
     "15110503": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Hy",
@@ -4613,6 +4663,7 @@
         "Grp": ["Land Eqpt","Air Defense Gun" ]
     },
     "15110504": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "35 MM Oerlikon Gun",
@@ -4663,6 +4714,7 @@
         "Grp": ["Land Eqpt","Air Defense Gun"]
     },
     "15110600": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun",
@@ -4688,6 +4740,7 @@
         "Grp": ["Land Eqpt","Anti Tank Gun" ]
     },
     "15110601": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Light",
@@ -4713,6 +4766,7 @@
         "Grp": ["Land Eqpt","Anti Tank Gun" ]
     },
     "15110602": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Med",
@@ -4738,6 +4792,7 @@
         "Grp": ["Land Eqpt","Anti Tank Gun" ]
     },
     "15110603": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Hy",
@@ -4863,6 +4918,7 @@
         "Grp": ["Land Eqpt","Recoilless Gun" ]
     },
     "15110900": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer",
@@ -4888,6 +4944,7 @@
         "Grp": ["Land Eqpt","Howitzer" ]
     },
     "15110901": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Light",
@@ -4913,6 +4970,7 @@
         "Grp": ["Land Eqpt","Howitzer" ]
     },
     "15110902": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Med",
@@ -4938,6 +4996,7 @@
         "Grp": ["Land Eqpt","Howitzer" ]
     },
     "15110903": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Heavy",
@@ -4963,6 +5022,7 @@
         "Grp": ["Land Eqpt","Howitzer" ]
     },
     "15110904": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Light",
@@ -4988,6 +5048,7 @@
         "Grp": ["Land Eqpt","Artillery Gun" ]
     },
     "15110905": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Med",
@@ -5014,6 +5075,7 @@
     },
 
     "15110906": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Heavy",
@@ -5089,6 +5151,8 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111102": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Light(TLAR)",
@@ -5114,6 +5178,8 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111103": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Light(TELAR)",
@@ -5164,6 +5230,8 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111105": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Med(TLAR)",
@@ -5189,6 +5257,8 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111106": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Med(TELAR)",
@@ -5289,6 +5359,8 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111108": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Hy(TLAR)",
@@ -5314,6 +5386,8 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111109": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Hy(TELAR)",
@@ -5364,6 +5438,8 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher"]
     },
     "15111300": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Surface to Surface Msl Launcher",
@@ -5390,6 +5466,8 @@
     },
 
     "15111301": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "SSM Launcher (Short range)",
@@ -5416,6 +5494,8 @@
     },
 
     "15111302": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "SSM Launcher (Intermediate / Medium Range)",
@@ -5442,6 +5522,8 @@
     },
 
     "15111303": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "SSM Launcher (Long Range)",
@@ -5693,6 +5775,8 @@
         "Grp": ["Land Eqpt","Multiple Rocket Launcher" ]
     },
     "15111604": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MLRS",
@@ -5946,6 +6030,8 @@
         "Grp": ["Land Eqpt","Fence Lt" ]
     },
     "15120103": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "APC",
@@ -5971,6 +6057,8 @@
         "Grp": ["Land Eqpt","APC" ]
     },
     "15120200": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank",
@@ -5996,6 +6084,8 @@
         "Grp": ["Land Eqpt","Tank" ]
     },
     "15120201": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Light",
@@ -6021,6 +6111,8 @@
         "Grp": ["Land Eqpt","Tank" ]
     },
     "15120202": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Med",
@@ -6046,6 +6138,8 @@
         "Grp": ["Land Eqpt","Tank" ]
     },
     "15120203": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Hy",
@@ -6071,6 +6165,8 @@
         "Grp": ["Land Eqpt","Tank" ]
     },
     "15120300": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank Rec Veh",
@@ -6096,6 +6192,8 @@
         "Grp": ["Land Eqpt","Tank Recovery Vehicle" ]
     },
     "15120301": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "ARV - Light",
@@ -6121,6 +6219,8 @@
         "Grp": ["Land Eqpt","ARV - Light" ]
     },
     "15120302": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "ARV - Med",
@@ -6146,6 +6246,8 @@
         "Grp": ["Land Eqpt","ARV - Med" ]
     },
     "15120303": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "ARV - Hy",
@@ -6171,6 +6273,8 @@
         "Grp": ["Land Eqpt","ARV - Hy" ]
     },
     "15130100": {
+        "VehCat": "C",
+        "Mover": "c_wheeled",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engr Bridge",
@@ -6196,6 +6300,8 @@
         "Grp": ["Land Eqpt","Engineer Bridge" ]
     },
     "15130901": {
+        "VehCat": "C",
+        "Mover": "c_wheeled",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mine Clearing Vehicle (Trailer mounted)",
@@ -6222,6 +6328,8 @@
     },
 
     "15130902": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mine Clearing Vehicle (Troll Anti Mine)",
@@ -6248,6 +6356,8 @@
     },
 
     "15131001": {
+        "VehCat": "C",
+        "Mover": "c_wheeled",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mechanical Mine Layer/ MML",
@@ -6273,6 +6383,8 @@
         "Grp": ["Land Eqpt","Mechanical Mine Layer" ]
     },
     "15131100": {
+        "VehCat": "C",
+        "Mover": "c_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engineer Vehicle Dozer",
@@ -6298,6 +6410,8 @@
         "Grp": ["Land Eqpt","Engineer Vehicle Dozer" ]
     },
     "15140600": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Utility Vehicle Semi (Tractor Trailer)",
@@ -6323,6 +6437,8 @@
         "Grp": ["Land Eqpt","Utility Vehicle" ]
     },
     "15140700": {
+        "VehCat": "B",
+        "Mover": "b_truck_road",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Limited Cross-Country Truck",
@@ -6348,6 +6464,8 @@
         "Grp": ["Land Eqpt","Limited Cross-Country Truck" ]
     },
     "15140800": {
+        "VehCat": "B",
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Cross-Country Truck",
@@ -6746,6 +6864,8 @@
         "Grp": ["Land Eqpt","Counter UAS"]
     },
     "15230100": {
+        "VehCat": "B",
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Land Eqpt - Amb",

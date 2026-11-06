@@ -76,6 +76,20 @@ import {
   type GroundGuideTraffic,
 } from './GroundGuideTrafficability';
 import type { OverlayGoing } from './GroundGuideOverlay';
+import SymbolMetadataService from '../SymbolMetadataService';
+import {
+  BUILTIN_SPEED_TABLES,
+  SPEED_CARD_STYLES,
+  mergeTables,
+  readSpeed,
+  resolveMover,
+  speedKey,
+  speedText,
+  type GroundGuideSpeed,
+  type MoverSource,
+  type SpeedLight,
+  type SpeedTables,
+} from './GroundGuideSpeed';
 import { COVER_CARD_STYLES, COVER_WHERE, coverKey, coverText, readCover, type CoverShelter, type GroundGuideCover } from './GroundGuideCover';
 import { BLD_HEIGHT, KINDS as SECTION_KINDS, SECTIONS_STYLES, G_STYLES, R_STYLES, O_STYLES, B_STYLES, W_STYLES, readSections, sectionsKey, type GroundGuideSections, type SectionsFeatures, type SectionsLayers } from './GroundGuideSections';
 import { sectionsText } from './GroundGuideSectionsView';
@@ -298,6 +312,10 @@ export default class GroundGuide {
     pick: (key) => this._legendPick(key as GroundGuideProfile),
     season: (s) => this._setGoing({ season: s }),
     month: (dir) => this._setGoing({ season: 'auto', month: ((resolveMonth(this._opts.going.month) - 1 + dir + 12) % 12) + 1 }),
+    light: (light) => {
+      this.setOptions({ speed: { ...this._opts.speed, light } });
+      setSetting(['groundGuide', 'speed', 'light'], light);
+    },
   });
   /** Season (and profile) the overlay last painted the going for (T); a change repaints it. */
   private _overlaySeasonKey = '';
@@ -703,6 +721,21 @@ export default class GroundGuide {
       num('cover.radiusM', cv.radiusM, 100, 2000, (n) => (next.cover.radiusM = n));
       flag('cover.focus', cv.focus, (b) => (next.cover.focus = b));
     }
+    const sp = patch.speed;
+    next.speed = { ...prev.speed };
+    if (sp && typeof sp === 'object') {
+      flag('speed.enabled', sp.enabled, (b) => (next.speed.enabled = b));
+      pick('speed.card', sp.card, SPEED_CARD_STYLES, (x) => (next.speed.card = x));
+      pick('speed.light', sp.light, ['day', 'night'] as const, (x) => (next.speed.light = x));
+      pick('speed.road', sp.road, ['convoy', 'single'] as const, (x) => (next.speed.road = x));
+      pick('speed.load', sp.load, ['combat', 'none'] as const, (x) => (next.speed.load = x));
+      if (sp.mover !== undefined) {
+        const movers = Object.keys(this._speedTablesNow().movers);
+        if (sp.mover === 'auto' || (typeof sp.mover === 'string' && movers.includes(sp.mover))) next.speed.mover = sp.mover;
+        else bad('speed.mover', sp.mover, `must be auto or one of: ${movers.join(', ')}`);
+      }
+      flag('speed.legend', sp.legend, (b) => (next.speed.legend = b));
+    }
     this._reportIssues(issues);
     this._opts = next;
     setDistanceUnits(next.units);
@@ -728,6 +761,10 @@ export default class GroundGuide {
     }
     if (trafficChanged) this._refreshLive();
     if (JSON.stringify(next.cover) !== JSON.stringify(prev.cover) || JSON.stringify(next.sections) !== JSON.stringify(prev.sections)) this._refreshLive();
+    if (JSON.stringify(next.speed) !== JSON.stringify(prev.speed)) {
+      this._syncLegend();
+      this._refreshLive();
+    }
     if (JSON.stringify(next.population) !== JSON.stringify(prev.population)) {
       this._loadPopulation();
       this._syncPopulationLayer();
@@ -854,6 +891,7 @@ export default class GroundGuide {
     v.going = this._goingNear(geometry, sidc, v);
     v.briefKey = keys && this._opts.card.briefKey && !!v.going;
     v.traffic = this._trafficNear(geometry, v);
+    v.speed = this._speedNear(geometry, sidc, v);
     v.population = this._populationNear(geometry, v);
     v.cover = this._coverNear(geometry, v);
     v.sections = this._sectionsNear(geometry, v);
@@ -1814,6 +1852,173 @@ export default class GroundGuide {
     return { road, pending, pill: t.pill, dual: t.dual, block: t.block, where: t.where, open: this._trafficOpen, tab: this._trafficTab };
   }
 
+  // ── Speed (T) ────────────────────────────────────────────────────────────
+
+  /** A host's override of the speed tables (`setSpeedTables`), merged over the bundle's (`grotbc.speed`) and the built-in ones. */
+  private _speedPatch: unknown = null;
+  private _speedTablesCache: { rules: unknown; patch: unknown; tables: SpeedTables } | null = null;
+  /** Catalogue lookup: a Symbols.json key (symbol set + entity) to its `Mover`. */
+  private _moverLookup: (key: string) => string | null | undefined = (k) => SymbolMetadataService.getByKey(k)?.Mover ?? null;
+
+  private _speedTablesNow(): SpeedTables {
+    const fromBundle = (this._rules?.grotbc as any)?.speed;
+    const c = this._speedTablesCache;
+    if (c && c.rules === fromBundle && c.patch === this._speedPatch) return c.tables;
+    const tables = mergeTables(mergeTables(BUILTIN_SPEED_TABLES, fromBundle), this._speedPatch);
+    this._speedTablesCache = { rules: fromBundle, patch: this._speedPatch, tables };
+    return tables;
+  }
+
+  /**
+   * The movement speed tables in force: MS/Data/MovementSpeeds.json (a starting proposal), then the bundle's
+   * rules.json `grotbc.speed`, then `setSpeedTables()`. Movers, grounds, road and column speeds, slope rules, sources.
+   */
+  get speedTables(): SpeedTables {
+    return this._speedTablesNow();
+  }
+
+  /**
+   * Override any part of the speed tables (deep merge, key by key; arrays replace), e.g.
+   * `setSpeedTables({ movers: { foot: { ground: { open: [4.5, 3] } } } })`. `null` drops the override.
+   */
+  setSpeedTables(patch: unknown): void {
+    this._speedPatch = patch ?? null;
+    this._speedTablesCache = null;
+    this._refreshLive();
+  }
+
+  /** Where the catalogue's `Mover` comes from (default: MS/Data/Symbols.json); a host with its own catalogue sets its own. */
+  setMoverLookup(fn: ((catalogKey: string) => string | null | undefined) | null): void {
+    this._moverLookup = fn ?? ((k) => SymbolMetadataService.getByKey(k)?.Mover ?? null);
+    this._refreshLive();
+  }
+
+  /** Who moves for a SIDC (see GroundGuideSpeed resolveMover): the mover key, its label, A / B / C and where it came from. */
+  moverFor(sidc: string | null | undefined, profile?: GroundGuideProfile): { key: string; label: string; cat: 'A' | 'B' | 'C' | null; from: MoverSource } | null {
+    const t = this._speedTablesNow();
+    const p = profile ?? this.resolveProfile(sidc);
+    const r = resolveMover(t, sidc, p, { setting: this._opts.speed.mover, catalog: this._moverLookup });
+    if (!r) return null;
+    const m = t.movers[r.key];
+    return { key: r.key, label: m.label, cat: m.cat, from: r.from };
+  }
+
+  /** The going for any profile at a spot and season, with what limits it, read the way the card reads it. */
+  private _goingReader(read: (layer: string, mx: number, my: number) => number | null | undefined, clsLayer: string) {
+    const L = this._goingLayers();
+    const rule = this._goingRule();
+    const compiled = new Map<string, { cp: CompiledProfile; veh: ReturnType<typeof vehicleFor> }>();
+    return (profile: string, x: number, y: number, season: GoingSeason): { step: GoingStep; why: string | null } | null => {
+      let e = compiled.get(profile);
+      if (!e) {
+        e = { cp: this._profile(profile as GroundGuideProfile), veh: L ? vehicleFor(this._rules, profile) : null };
+        compiled.set(profile, e);
+      }
+      const cls = read(clsLayer, x, y);
+      const rci = L ? read(season === 'dry' ? L.dry : L.wet, x, y) : null;
+      const g = pixelGoing(
+        { cls, rci, wet: L?.wetLayer ? read(L.wetLayer, x, y) : null, soil: rule.kind === 'bearing' && L ? read(L.soil, x, y) : null },
+        e.cp,
+        e.veh,
+        season,
+        rule,
+      );
+      return g ? { step: g.step, why: this._causeText(g.cause, cls, decodeRci(rci)?.coarse ?? false, season) } : null;
+    };
+  }
+
+  /** Read speed at a point (shared by the live card and `speedAround`). */
+  private _readSpeed(
+    at: MercXY,
+    profile: GroundGuideProfile,
+    mover: { key: string; from: MoverSource },
+    z: number,
+    o: { rays: boolean; season?: GoingSeason; light?: SpeedLight; rangeKm?: number },
+  ): GroundGuideSpeed | null {
+    const m = this._manifest!;
+    const { read, state } = this._pixelReader(z);
+    const [lon, lat] = mercatorToLngLat(at[0], at[1]);
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    const season = o.season ?? resolveSeason(this._opts.going, this._climate?.precAt(lon, lat) ?? null).season;
+    const clsLayer = this._layerNames(profile).cls;
+    const L = this._sectionLayers();
+    const radiusM = this._opts.traffic.roadRadiusKm * 1000;
+    const roads = this._roadSource()?.roadsNear(at, radiusM) ?? null;
+    return readSpeed({
+      tables: this._speedTablesNow(),
+      mover,
+      opts: o.light ? { ...this._opts.speed, light: o.light } : this._opts.speed,
+      season,
+      at,
+      cosLat,
+      pxM: resolutionAt(z, m.tileSize) * cosLat,
+      read,
+      layers: { cls: clsLayer, elevHi: L.elevHi, elevLo: L.elevLo, terrain: L.terrain },
+      goingAt: this._goingReader(read, clsLayer),
+      roads,
+      roadRadiusM: radiusM,
+      rays: o.rays,
+      rangeM: (o.rangeKm ?? this._opts.going.rangeKm) * 1000,
+      pending: () => state.pending,
+    });
+  }
+
+  /** Speed at the point being placed (the cursor, for lines and areas). Null when off, or the symbol does not move on the ground. */
+  private _speedNear(geometry: any, sidc: string | null, v: GroundGuideVerdict): GroundGuideSpeed | null {
+    const o = this._opts.speed;
+    if (!o.enabled || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt' || !this._cache || !this._manifest) return null;
+    if (o.card === 'off' && !this._briefOpen) return null;
+    const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
+    if (!at) return null;
+    const mover = resolveMover(this._speedTablesNow(), sidc, v.profile, { setting: o.mover, hand: !!v.profileOverride, catalog: this._moverLookup });
+    if (!mover) return null;
+    return this._readSpeed(at, v.profile, mover, this._sampleZoom(), { rays: o.card === 'rose' || this._briefOpen });
+  }
+
+  /**
+   * Speed at a map point for a symbol (its SIDC picks the mover) or a mover key (`opts.mover`), read at the bundle's
+   * finest zoom: cross-country now, day / night x dry / after rain, up / down the slope, the road with the time to reach
+   * it, eight directions to `rangeKm`, a day's march. Waits for the tiles. Null when the guide is off or nothing moves.
+   */
+  async speedAround(
+    point: any,
+    opts: { sidc?: string; mover?: string; profile?: GroundGuideProfile; season?: GoingSeason; light?: SpeedLight; rangeKm?: number } = {},
+  ): Promise<GroundGuideSpeed | null> {
+    const ll = this._lngLatOf(point);
+    if (!ll || !this._cache || !this._manifest) return null;
+    const m = this._manifest;
+    const z = m.zoom.max;
+    const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
+    const rangeKm = Math.min(5, Math.max(0.5, opts.rangeKm ?? this._opts.going.rangeKm));
+    const t = this._speedTablesNow();
+    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : this._activeProfile ?? this._lastArmedProfile ?? 'dismounted');
+    const mover = opts.mover && t.movers[opts.mover]
+      ? { key: opts.mover, from: 'setting' as MoverSource }
+      : resolveMover(t, opts.sidc ?? null, profile, { setting: this._opts.speed.mover, catalog: this._moverLookup });
+    if (!mover) return null;
+    const reach = 600 / Math.cos((ll[1] * Math.PI) / 180) + rangeKm * 1000;
+    const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, m.tileSize);
+    const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, m.tileSize);
+    const L = this._sectionLayers();
+    const G = this._goingLayers();
+    const layers = [this._layerNames(profile).cls, L.elevHi, L.elevLo, L.terrain, G?.soil, G?.dry, G?.wet, G?.wetLayer];
+    for (let ty = a.ty; ty <= b.ty; ty++) {
+      for (let tx = a.tx; tx <= b.tx; tx++) {
+        for (const layer of layers) if (layer) this._cache.request(layer, z, tx, ty);
+      }
+    }
+    await Promise.all([this._tilesSettled(10000), this._roadSource()?.whenReady(at, this._opts.traffic.roadRadiusKm * 1000)]);
+    this._climate?.precAt(ll[0], ll[1]); // starts the climate grid if it is not in memory
+    for (let i = 0; i < 20 && this._climate && this._climate.state === 'loading'; i++) await new Promise((r) => setTimeout(r, 150));
+    return this._readSpeed(at, profile, mover, z, { rays: true, season: opts.season, light: opts.light, rangeKm });
+  }
+
+  /** `speedAround()` as Copy as Text lines; null when there is no reading. */
+  async speedText(point: any, opts: Parameters<GroundGuide['speedAround']>[1] = {}): Promise<string[] | null> {
+    const s = await this.speedAround(point, opts);
+    return s ? speedText(s) : null;
+  }
+
   /**
    * Where the road line's roads come from: the routing network (the roads GeoCore routes on and the map draws) when
    * `traffic.roadSource` is `network` and the bundle ships it, else the NCGDB road lines of the feature tiles.
@@ -2514,8 +2719,16 @@ export default class GroundGuide {
     const t = this._opts.traffic;
     return (
       this._briefOpen || c.goingLines || c.movementRose || c.soilStrength || c.exitStrip || c.modeMatrix || c.seasonRibbon || c.goingMap ||
-      t.pill || t.dual || t.header === 'season' || t.block !== 'off' // T reads the going at the point too
+      t.pill || t.dual || t.header === 'season' || t.block !== 'off' || // T reads the going at the point too
+      this._opts.speed.enabled // and so does speed
     );
+  }
+
+  /** Tiles speed reads besides the going's: elevation (slope) and the terrain type (a day's march). */
+  private _speedTileLayers(): string[] {
+    if (!this._opts.speed.enabled || this._activeProfile === 'exempt') return [];
+    const L = this._sectionLayers();
+    return [L.elevHi, L.elevLo, L.terrain].filter((x): x is string => !!x);
   }
 
   /** How the soil changes the going (`traffic.rain`), for pixelGoing. */
@@ -3181,6 +3394,7 @@ export default class GroundGuide {
       goingKey(v.going), v.briefKey ? 1 : 0,
       populationKey(v.population),
       trafficKey(v.traffic),
+      speedKey(v.speed),
       coverKey(v.cover),
       sectionsKey(v.sections),
     ].join('|');
@@ -3296,7 +3510,7 @@ export default class GroundGuide {
       layers.add(cls);
       if (dist) layers.add(dist);
     }
-    if (this._activeProfile) for (const l of [...this._goingTileLayers(), ...this._coverTileLayers(), ...this._sectionTileLayers()]) layers.add(l);
+    if (this._activeProfile) for (const l of [...this._goingTileLayers(), ...this._coverTileLayers(), ...this._sectionTileLayers(), ...this._speedTileLayers()]) layers.add(l);
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
         for (const layer of layers) this._cache.request(layer, z, tx, ty);
@@ -3324,7 +3538,7 @@ export default class GroundGuide {
     const { cls, dist } = this._layerNames(profile);
     const n = 2 ** z;
     const R = 2;
-    const going = [...this._goingTileLayers(), ...this._coverTileLayers(), ...this._sectionTileLayers()];
+    const going = [...this._goingTileLayers(), ...this._coverTileLayers(), ...this._sectionTileLayers(), ...this._speedTileLayers()];
     for (let ty = Math.max(0, tp.ty - R); ty <= Math.min(n - 1, tp.ty + R); ty++) {
       for (let tx = Math.max(0, tp.tx - R); tx <= Math.min(n - 1, tp.tx + R); tx++) {
         cache.request(cls, z, tx, ty);
@@ -3575,7 +3789,18 @@ export default class GroundGuide {
       slow: classes(rule?.caution),
       keys: keyboard ? { profile: this._opts.profileKey, snap: this._opts.snapKey } : null,
       traffic: this._legendTraffic(),
+      speed: this._legendSpeed(drawing),
     });
+  }
+
+  /** Speed on the legend (`speed.legend`): the mover while drawing and a Day / Night switch. */
+  private _legendSpeed(drawing: boolean): { caption: string; light: SpeedLight } | undefined {
+    const o = this._opts.speed;
+    if (!o.enabled || !o.legend) return undefined;
+    const t = this._speedTablesNow();
+    const mover = drawing ? this.moverFor(this._activeSidc, this._activeProfile ?? undefined) : o.mover !== 'auto' ? { label: t.movers[o.mover]?.short ?? o.mover } : null;
+    const who = mover ? ` · ${'key' in mover ? t.movers[mover.key]?.short ?? mover.label : mover.label}` : '';
+    return { caption: `Speed${who} · ${o.light === 'night' ? 'Night' : 'Day'} · ${o.road === 'convoy' ? 'Column' : 'One Vehicle'}`, light: o.light };
   }
 
   /** T on the legend (`traffic.legend`): a caption naming the season, with a Dry / After Rain switch or a month stepper. */

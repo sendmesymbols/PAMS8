@@ -120,6 +120,8 @@ export interface LegendState {
    * switch (`season`) or a month stepper (`month`, its label). Absent: the legend is as before.
    */
   traffic?: { caption: string; season?: 'dry' | 'wet'; month?: string };
+  /** T, Speed: a caption ("Speed · Foot · Day") and a Day / Night switch (`groundGuide.speed.legend`). */
+  speed?: { caption: string; light: 'day' | 'night' };
 }
 
 export interface LegendHandlers {
@@ -131,6 +133,8 @@ export interface LegendHandlers {
   season?(season: 'dry' | 'wet'): void;
   /** T: the month stepper, previous (-1) / next (+1). */
   month?(dir: 1 | -1): void;
+  /** Speed: the Day / Night switch was used. */
+  light?(light: 'day' | 'night'): void;
 }
 
 function ensureStyle(): void {
@@ -349,6 +353,20 @@ export class GroundGuideLegend {
         row.append(prev, el('', s.traffic.month, 'span'), next);
         parts.push(row);
       }
+    }
+    if (s.speed) {
+      parts.push(el('ms-ggl-tcap', s.speed.caption));
+      const sw = el('ms-ggl-season');
+      sw.setAttribute('role', 'group');
+      sw.setAttribute('aria-label', 'Speed by day or night');
+      for (const [key, text] of [['day', 'Day'], ['night', 'Night']] as const) {
+        const b = button('', `Speed ${key === 'day' ? 'by day' : 'by night (blackout / night vision)'}`, text);
+        b.setAttribute('aria-pressed', String(s.speed.light === key));
+        b.dataset.plFocus = `light:${key}`;
+        b.onclick = () => this._handlers.light?.(key);
+        sw.appendChild(b);
+      }
+      parts.push(sw);
     }
 
     const ramp = el('ms-ggl-ramp');

@@ -646,6 +646,7 @@
         "Cat": ["comm"]
     },
     "10110210": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mujahid",
@@ -670,6 +671,7 @@
         "Cat": ["attk", "def"]
     },
     "10110211": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Services Group",
@@ -764,6 +766,7 @@
         "Cat": ["log"]
     },
     "10110215": {
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Amb",
@@ -811,6 +814,7 @@
         "Cat": ["arty"]
     },
     "10110217": {
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Multi-Barrel Rocket Launcher",
@@ -834,6 +838,7 @@
         "Tools": []
     },
     "10110218": {
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Multi Barrel Rocket Launcher (Self Propelled)",
@@ -1092,6 +1097,7 @@
         "Cat": ["log"]
     },
     "10110220": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Services Group Light Commnado",
@@ -1392,6 +1398,7 @@
         "Tools": []
     },
     "10120400": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank - Anti Armor - Armr",
@@ -1415,6 +1422,7 @@
         "Tools": []
     },
     "10120402": {
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank - Anti Armor - Motorized",
@@ -1438,6 +1446,7 @@
         "Tools": []
     },
     "10120410": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - LAT/Light Anti Tank",
@@ -1461,6 +1470,7 @@
         "Tools": []
     },
     "10120411": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Hy Anti Tank/HAT",
@@ -1485,6 +1495,7 @@
         "Cat": ["attk", "def", "sz"]
     },
     "10120500": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Armr",
@@ -1928,6 +1939,7 @@
         "Cat": ["attk", "def"]
     },
     "10121100": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf",
@@ -1975,6 +1987,7 @@
         "Tools": []
     },
     "10121102": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - MIB",
@@ -1999,6 +2012,7 @@
         "Cat": ["attk", "def"]
     },
     "10121103": {
+        "Mover": "a_wheeled",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Main Gun Sys",
@@ -2022,6 +2036,7 @@
         "Tools": []
     },
     "10121104": {
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Motorized",
@@ -2045,6 +2060,7 @@
         "Tools": []
     },
     "10121105": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Fighting Veh",
@@ -2068,6 +2084,7 @@
         "Tools": []
     },
     "10121106": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Mtn",
@@ -2091,6 +2108,7 @@
         "Tools": []
     },
     "10121300": {
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Land Unit - Recce/Cavalry/Scout",
@@ -2114,6 +2132,7 @@
         "Tools": []
     },
     "10121301": {
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Land Unit - Recce and Surv",
@@ -2137,6 +2156,7 @@
         "Tools": []
     },
     "10121800": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Ops Forces (SOF)",
@@ -2160,6 +2180,7 @@
         "Tools": []
     },
     "10121801": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Ops Forces (SOF) - Ground",
@@ -2229,6 +2250,7 @@
         "Tools": []
     },
     "10121808": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Assam Rifles",
@@ -2252,6 +2274,7 @@
         "Tools": []
     },
     "10121809": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Rashtriya Rifles",
@@ -2275,6 +2298,7 @@
         "Tools": []
     },
     "10121810": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Border Security Forces",
@@ -2298,6 +2322,7 @@
         "Tools": []
     },
     "10121811": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Sashastra Seema Bal",
@@ -2321,6 +2346,7 @@
         "Tools": []
     },
     "10121812": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Indo Tibetan Border Police",
@@ -2344,6 +2370,7 @@
         "Tools": []
     },
     "10121813": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Territorial Army",
@@ -2367,6 +2394,7 @@
         "Tools": []
     },
     "10121814": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Central Reserver Police Force",
@@ -2390,6 +2418,7 @@
         "Tools": []
     },
     "10121600": {
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Recce Unit",
@@ -2414,6 +2443,7 @@
     },
 
     "10130100": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD",
@@ -2798,6 +2828,7 @@
         "Cat": ["ad"]
     },
     "10130300": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Fd Arty",
@@ -2822,6 +2853,7 @@
         "Cat": ["arty"]
     },
     "10130301": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Fd Arty Self-propelled",
@@ -2870,6 +2902,7 @@
         "Cat": ["arty"]
     },
     "10130303": {
+        "Mover": "pack",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mtn Arty",
@@ -2988,6 +3021,7 @@
         "Tools": []
     },
     "10140104": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Recce Armr",
@@ -3011,6 +3045,7 @@
         "Tools": []
     },
     "10140700": {
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engrs",
@@ -3035,6 +3070,7 @@
         "Cat": ["engr"]
     },
     "10140701": {
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engr - Mech",
@@ -3059,6 +3095,7 @@
         "Cat": ["engr"]
     },
     "10140702": {
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engr - Motorized",
@@ -3818,6 +3855,7 @@
         "Tools": []
     },
     "15110100": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Rifle",
@@ -3866,6 +3904,7 @@
         "Tools": []
     },
     "15110200": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG",
@@ -3890,6 +3929,7 @@
         "Cat": ["attk", "def"]
     },
     "15110201": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Light",
@@ -3913,6 +3953,7 @@
         "Tools": []
     },
     "15110202": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Med",
@@ -3936,6 +3977,7 @@
         "Tools": []
     },
     "15110203": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Hy",
@@ -3959,6 +4001,7 @@
         "Tools": []
     },
     "15110300": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher",
@@ -3982,6 +4025,7 @@
         "Tools": []
     },
     "15110301": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Light)",
@@ -4005,6 +4049,7 @@
         "Tools": []
     },
     "15110302": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Medium)",
@@ -4028,6 +4073,7 @@
         "Tools": []
     },
     "15110303": {
+        "Mover": "foot",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Heavy)",
@@ -4051,6 +4097,7 @@
         "Tools": []
     },
     "15110500": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun",
@@ -4075,6 +4122,7 @@
         "Cat": ["ad"]
     },
     "15110501": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Light",
@@ -4099,6 +4147,7 @@
         "Cat": ["ad"]
     },
     "15110502": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Med",
@@ -4123,6 +4172,7 @@
         "Cat": ["ad"]
     },
     "15110503": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Hy",
@@ -4147,6 +4197,7 @@
         "Cat": ["ad"]
     },
     "15110600": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun",
@@ -4170,6 +4221,7 @@
         "Tools": []
     },
     "15110601": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Light",
@@ -4193,6 +4245,7 @@
         "Tools": []
     },
     "15110602": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Med",
@@ -4216,6 +4269,7 @@
         "Tools": []
     },
     "15110603": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Hy",
@@ -4332,6 +4386,7 @@
         "Tools": []
     },
     "15110900": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer",
@@ -4356,6 +4411,7 @@
         "Cat": ["arty"]
     },
     "15110901": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Light",
@@ -4380,6 +4436,7 @@
         "Cat": ["arty"]
     },
     "15110902": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Med",
@@ -4404,6 +4461,7 @@
         "Cat": ["arty"]
     },
     "15110903": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Heavy",
@@ -4428,6 +4486,7 @@
         "Cat": ["arty"]
     },
     "15110904": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Light",
@@ -4452,6 +4511,7 @@
         "Cat": ["arty"]
     },
     "15110905": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Med",
@@ -4477,6 +4537,7 @@
     },
 
     "15110906": {
+        "Mover": "towed",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Heavy",
@@ -4549,6 +4610,8 @@
         "Cat": ["ad"]
     },
     "15111102": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Light(TLAR)",
@@ -4573,6 +4636,8 @@
         "Cat": ["ad"]
     },
     "15111103": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Light(TELAR)",
@@ -4621,6 +4686,8 @@
         "Cat": ["ad"]
     },
     "15111105": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Med(TLAR)",
@@ -4645,6 +4712,8 @@
         "Cat": ["ad"]
     },
     "15111106": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Med(TELAR)",
@@ -4741,6 +4810,8 @@
         "Cat": ["ad"]
     },
     "15111108": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Hy(TLAR)",
@@ -4765,6 +4836,8 @@
         "Cat": ["ad"]
     },
     "15111109": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Hy(TELAR)",
@@ -4789,6 +4862,8 @@
         "Cat": ["ad"]
     },
     "15111300": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Surface to Surface Msl Launcher",
@@ -4813,6 +4888,8 @@
     },
 
     "15111301": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "SSM Launcher (Short range)",
@@ -4837,6 +4914,8 @@
     },
 
     "15111302": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "SSM Launcher (Intermediate / Medium Range)",
@@ -4861,6 +4940,8 @@
     },
 
     "15111303": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "SSM Launcher (Long Range)",
@@ -5092,6 +5173,8 @@
         "Tools": []
     },
     "15111604": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MLRS",
@@ -5330,6 +5413,8 @@
         "Tools": []
     },
     "15120103": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "APC",
@@ -5354,6 +5439,8 @@
         "Cat": ["sz"]
     },
     "15120200": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank",
@@ -5378,6 +5465,8 @@
         "Cat": ["attk", "def"]
     },
     "15120201": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Light",
@@ -5401,6 +5490,8 @@
         "Tools": []
     },
     "15120202": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Med",
@@ -5424,6 +5515,8 @@
         "Tools": []
     },
     "15120203": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Hy",
@@ -5447,6 +5540,8 @@
         "Tools": []
     },
     "15120300": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank Rec Veh",
@@ -5470,6 +5565,8 @@
         "Tools": []
     },
     "15120301": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "ARV - Light",
@@ -5493,6 +5590,8 @@
         "Tools": []
     },
     "15120302": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "ARV - Med",
@@ -5516,6 +5615,8 @@
         "Tools": []
     },
     "15120303": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "ARV - Hy",
@@ -5539,6 +5640,8 @@
         "Tools": []
     },
     "15130100": {
+        "VehCat": "C",
+        "Mover": "c_wheeled",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engr Bridge",
@@ -5563,6 +5666,8 @@
         "Cat": ["engr"]
     },
     "15130901": {
+        "VehCat": "C",
+        "Mover": "c_wheeled",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mine Clearing Vehicle (Trailer mounted)",
@@ -5587,6 +5692,8 @@
     },
 
     "15130902": {
+        "VehCat": "A",
+        "Mover": "a_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mine Clearing Vehicle (Troll Anti Mine)",
@@ -5612,6 +5719,8 @@
     },
 
     "15131001": {
+        "VehCat": "C",
+        "Mover": "c_wheeled",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mechanical Mine Layer/ MML",
@@ -5635,6 +5744,8 @@
         "Tools": []
     },
     "15131100": {
+        "VehCat": "C",
+        "Mover": "c_tracked",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Engineer Vehicle Dozer",
@@ -5659,6 +5770,8 @@
         "Cat": ["engr"]
     },
     "15140600": {
+        "VehCat": "B",
+        "Mover": "b_heavy",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Utility Vehicle Semi (Tractor Trailer)",
@@ -5682,6 +5795,8 @@
         "Tools": []
     },
     "15140700": {
+        "VehCat": "B",
+        "Mover": "b_truck_road",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Limited Cross-Country Truck",
@@ -5705,6 +5820,8 @@
         "Tools": []
     },
     "15140800": {
+        "VehCat": "B",
+        "Mover": "b_truck",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Cross-Country Truck",
@@ -6028,6 +6145,8 @@
         "Tools": []
     },
     "15230100": {
+        "VehCat": "B",
+        "Mover": "b_light",
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Land Eqpt - Amb",

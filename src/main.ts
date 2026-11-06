@@ -2481,6 +2481,16 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     for (const l of lines) EngineLogger.success('Ground Guide', l);
     showToast('Cover at the map centre written to the Engine Log', 'success');
   });
+  // T Speed at the map centre (guide.speedText), for the last symbol armed (else foot), as the Ground Brief's Copy as Text gives it.
+  document.getElementById('ground-guide-speed-log')?.addEventListener('click', async () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    const centre = appConfig.activeView?.center;
+    if (!guide?.speedText || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const lines: string[] | null = await guide.speedText(centre);
+    if (!lines) return void showToast('No speed here (outside the bundle, or the symbol does not move on the ground)', 'no-targets');
+    for (const l of lines) EngineLogger.success('Ground Guide', l.trim());
+    showToast('Speed at the map centre written to the Engine Log', 'success');
+  });
   document.addEventListener('ground-guide-advice', (e: any) => {
     groundGuideAdvice = e.detail.message;
     renderGroundGuideStatus();

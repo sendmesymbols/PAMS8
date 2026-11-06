@@ -162,6 +162,10 @@ MS/
   T in GROTBC is **Trafficability**: the going engine (`going.*`, `card.*`, `GroundGuideGoing.ts`) gives the going dry
   and after rain; `traffic.*` (`GroundGuideTrafficability.ts` / `GroundGuideTrafficView.ts`) adds the road line, legend
   season controls, an overlay and (opt-in) verdict that follow the season, and the soil rule — all kept as options to compare.
+  T also gives **speed** (`speed.*`, `GroundGuideSpeed.ts` / `GroundGuideSpeedView.ts`): cross-country and road km/h for the
+  symbol's mover, day / night, dry / after rain, from `MS/Data/MovementSpeeds.json` (a starting proposal: Pakistani infantry
+  table for foot; Tobler on slopes for foot, a factor per slope band for vehicles); movers come from the SIDC mobility amplifier,
+  else Symbols.json `Mover` (vehicles also carry `VehCat` A / B / C), else the profile; five card styles S1–S5, `guide.speedAround()`.
   C in GROTBC is **Cover, Camouflage & Concealment** (`cover.*`, `GroundGuideCover.ts` / `GroundGuideCoverView.ts`):
   cover from direct / indirect fire and concealment from ground / aerial observation at the point (class split
   `grotbc.coverSplit`, raised by river and canal banks, `cc` local density beside it), the nearest better cover and a

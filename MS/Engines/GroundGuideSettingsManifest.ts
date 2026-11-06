@@ -11,6 +11,16 @@
  */
 
 import type { SettingDescriptor } from '../Support/SettingsWidget';
+import movementSpeeds from '../Data/MovementSpeeds.json';
+
+/** Mover choices for `speed.mover`, from the speed tables (MS/Data/MovementSpeeds.json). */
+const MOVER_OPTIONS = [
+  { value: 'auto', label: 'Auto (from the symbol)' },
+  ...Object.entries((movementSpeeds as any).movers as Record<string, { label: string; cat: string | null }>).map(([value, m]) => ({
+    value,
+    label: `${m.label}${m.cat ? ` (${m.cat} vehicle)` : ''}`,
+  })),
+];
 
 /** Subtitle on the Advanced disclosure head. */
 export const GROUND_GUIDE_ADVANCED_META = 'Footprint, overlay, thresholds, data';
@@ -505,6 +515,86 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     ],
     help: 'Where the T block goes on the card. Folded shows one line with the going and the road; press T while drawing to open the whole block. (The ticker always sits under the header.)',
     keywords: ['position', 'order', 'fold', 'collapse', 't key'],
+  },
+  {
+    path: ['groundGuide', 'speed', 'enabled'],
+    label: 'Speed',
+    group: 'Speed (T)',
+    type: 'boolean',
+    help: 'How fast the symbol\'s unit or vehicle moves here: cross-country (ground, going, slope, season) and on the nearest road it can use, by day or night. The tables (MS/Data/MovementSpeeds.json) are a starting proposal from published rates; change them there, in the bundle (rules.json grotbc.speed) or with setSpeedTables().',
+    keywords: ['speed', 'km/h', 'march', 'rate', 'movement', 'time', 'eta', 'convoy', 'trafficability'],
+  },
+  {
+    path: ['groundGuide', 'speed', 'card'],
+    label: 'Speed on the card',
+    group: 'Speed (T)',
+    type: 'enum',
+    // Every style is kept so the owner can compare them live.
+    options: [
+      { value: 'off', label: 'Off (Ground Brief only)' },
+      { value: 'line', label: 'S1 · Speed, road and a day\'s march' },
+      { value: 'grid', label: 'S2 · Day / Night x Dry / After Rain' },
+      { value: 'rose', label: 'S3 · Minutes to the range, 8 directions' },
+      { value: 'modes', label: 'S4 · Foot / B / A side by side' },
+      { value: 'road', label: 'S5 · Strip to the road' },
+    ],
+    help: 'S1: the speed now, up and down the slope, the road with the time to reach it and (foot) a day\'s march. S2: the four speeds at the point. S3: how long it takes to cover the movement range in each of eight directions, slope and ground taken along the way. S4: foot, B truck and A tracked at the same spot. S5: the cross-country leg to the road, then the road speed.',
+    keywords: ['speed', 'card', 'style', 'grid', 'rose', 'modes', 'road', 'presentation'],
+  },
+  {
+    path: ['groundGuide', 'speed', 'light'],
+    label: 'Day or night',
+    group: 'Speed (T)',
+    type: 'enum',
+    options: [
+      { value: 'day', label: 'Day' },
+      { value: 'night', label: 'Night (blackout / night vision)' },
+    ],
+    help: 'Which speeds the card leads with. The S2 grid and the Ground Brief always show both. The Legend has the same switch.',
+    keywords: ['night', 'day', 'blackout', 'nvg', 'light'],
+  },
+  {
+    path: ['groundGuide', 'speed', 'road'],
+    label: 'Road speed as',
+    group: 'Speed (T)',
+    type: 'enum',
+    options: [
+      { value: 'convoy', label: 'A column on the move (convoy march rates)' },
+      { value: 'single', label: 'One vehicle alone' },
+    ],
+    help: 'A column keeps to the column speed (and halts, shown as km in the hour); one vehicle goes as fast as the road allows it.',
+    keywords: ['convoy', 'column', 'march', 'single', 'vehicle', 'road'],
+  },
+  {
+    path: ['groundGuide', 'speed', 'load'],
+    label: 'Day\'s march on foot',
+    group: 'Speed (T)',
+    type: 'enum',
+    options: [
+      { value: 'combat', label: 'With combat load' },
+      { value: 'none', label: 'Without combat load' },
+    ],
+    help: 'The distance a day (12 h marching, 12 h rest) the card gives for foot, plains / desert / mountain. The speed itself is the same.',
+    keywords: ['load', 'combat load', 'march', 'day', '24 hours', 'distance'],
+  },
+  {
+    path: ['groundGuide', 'speed', 'mover'],
+    label: 'Who moves',
+    group: 'Speed (T)',
+    type: 'enum',
+    options: MOVER_OPTIONS,
+    help: 'Auto takes it from the symbol: the SIDC\'s mobility amplifier (tracked, wheeled, towed, pack animals), else the catalogue\'s Mover (Symbols.json, beside VehCat A / B / C), else the unit type. Pick one to judge every symbol as it.',
+    keywords: ['mover', 'vehicle', 'a vehicle', 'b vehicle', 'c vehicle', 'tracked', 'wheeled', 'foot', 'mule'],
+    advanced: true,
+  },
+  {
+    path: ['groundGuide', 'speed', 'legend'],
+    label: 'Day / Night switch on the Legend',
+    group: 'Speed (T)',
+    type: 'boolean',
+    help: 'A Speed caption and a Day / Night switch on the map Legend.',
+    keywords: ['legend', 'night', 'day', 'switch'],
+    advanced: true,
   },
   {
     path: ['groundGuide', 'population', 'card'],

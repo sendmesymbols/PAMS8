@@ -63,6 +63,32 @@ const ENTITY_DEFAULTS: Record<string, GroundGuideProfile> = {
   '10:1207': 'exempt', // Aviation composite
   '10:1208': 'exempt', // Aviation fixed wing
   '10:1203': 'generic', // Amphibious
+  // Land equipment that runs on tracks (A vehicles and tracked C plant; Symbols.json VehCat / Mover agree).
+  '15:120103': 'tracked', // APC (Talha / M113 / Saad)
+  '15:120104': 'tracked', // APC ambulance
+  '15:1202': 'tracked', // Tank, light / medium / heavy
+  '15:1203': 'tracked', // Armoured recovery vehicle
+  '15:130902': 'tracked', // Mine clearing (roller / plough on a tank)
+  '15:1311': 'tracked', // Engineer dozer
+};
+
+/**
+ * The mobility amplifier of a land equipment SIDC (positions 9-10) -> profile. It describes the one symbol, so it
+ * comes before the built-in entity defaults (a howitzer marked tracked is an SP gun); the bundle's own entity
+ * overrides still come first. Wheeled and tracked together is judged as wheeled, the stricter of the two.
+ */
+const MOBILITY_DEFAULTS: Record<string, GroundGuideProfile> = {
+  '31': 'wheeled', // Wheeled, limited cross-country
+  '32': 'wheeled', // Wheeled, cross-country
+  '33': 'tracked', // Tracked
+  '34': 'wheeled', // Wheeled and tracked combination
+  '35': 'gun', // Towed
+  '36': 'rail', // Rail
+  '37': 'pack', // Pack animals
+  '41': 'oversnow', // Over snow (prime mover)
+  '42': 'oversnow', // Sled
+  '51': 'vessel', // Barge
+  '52': 'amphibious', // Amphibious
 };
 
 export function isGroundGuideProfile(v: unknown): v is GroundGuideProfile {
@@ -77,10 +103,11 @@ export function normaliseSidc(sidc: string | null | undefined): string | null {
 }
 
 /**
- * Resolve the profile for a SIDC. Order: bundle entity override → bundle
- * symbol-set override → built-in entity default → built-in symbol-set default
- * → `generic`. Unparseable SIDCs are `generic` too (a land graphic with no
- * identity still should not sit in a lake).
+ * Resolve the profile for a SIDC. Order: bundle entity override → the SIDC's
+ * mobility amplifier (land equipment) → built-in entity default → bundle
+ * symbol-set override → built-in symbol-set default → `generic`. Unparseable
+ * SIDCs are `generic` too (a land graphic with no identity still should not
+ * sit in a lake).
  */
 export function resolveProfile(
   sidc: string | null | undefined,
@@ -98,9 +125,18 @@ export function resolveProfile(
     return isGroundGuideProfile(v) || (typeof v === 'string' && !!rules?.profiles?.[v]) ? (v as GroundGuideProfile) : null;
   };
 
-  for (let len = Math.min(6, entity.length); len >= 2; len--) {
-    const key = `${set}:${entity.substring(0, len)}`;
-    const hit = pick(ov?.entities, key) ?? pick(ENTITY_DEFAULTS, key);
+  const prefixes: string[] = [];
+  for (let len = Math.min(6, entity.length); len >= 2; len--) prefixes.push(`${set}:${entity.substring(0, len)}`);
+  for (const key of prefixes) {
+    const hit = pick(ov?.entities, key);
+    if (hit) return hit;
+  }
+  if (set === '15') {
+    const mob = pick(MOBILITY_DEFAULTS, s.substring(8, 10));
+    if (mob) return mob;
+  }
+  for (const key of prefixes) {
+    const hit = pick(ENTITY_DEFAULTS, key);
     if (hit) return hit;
   }
   return pick(ov?.symbolSets, set) ?? SYMBOL_SET_DEFAULTS[set] ?? 'generic';

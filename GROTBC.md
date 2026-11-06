@@ -298,7 +298,7 @@ proposal for the rule owner to correct, not doctrine.
 | Season | Monthly rain, monsoon share, frost and hot months | Yes, WorldClim normals on a 9 km grid | Snow depth and duration; flood calendar |
 | Road use | Load class, all- or fair-weather, lanes, width, surface, condition, closures, landslides | Partly (class on 31 % of segments, condition on 4 %) | Gradient, bends, overhead clearance, culvert class |
 | Built-up | Density, building size and height | Yes (buildings, huts) | Street width |
-| Speed | Cross-country speed by mode and ground | No (planned) | Speed tables by mode |
+| Speed | Cross-country and road speed by mode and ground, day / night, dry / after rain | Yes, worked out in the app from the bundle's layers and MS/Data/MovementSpeeds.json (starting proposal, 6 Nov 2026) | Speed tables from own trials and staff tables; measured speed on slopes |
 
 - Season and Weather Effects on Going
 
