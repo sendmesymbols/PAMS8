@@ -444,10 +444,15 @@ designates.
 - **On the card** (`itg.enabled`): while drawing, an *Important Tactical Ground* section lists the nearest
   candidates within `itg.radiusKm` of the point (or the cursor, for lines and areas), strongest first: name,
   kind and height, *ITG Candidate* or *Strong Candidate (Check as MITG)*, distance and direction, and the
-  reasons. Feature tiles (z10, ~30 km) load in the background like terrain tiles; the card never waits on them.
+  reasons. Under the reasons, two lines give what the pipeline measured on it (ground.py, DEM features only; added
+  2026-11-06): what it commands, "Rises 85 m · Highest within 3 km · Sees 42 % to 5 km · MSR in view 1.2 km" (`rr`,
+  `iso`, `vs`, `mv`), and what it is like to hold, "Slope 4° · MSR 2.1 km · Road or track 300 m · Scrub · Cover Poor,
+  Concealment Fair (area) · Surveyed 1,234 m" (`sp`, `dr`, `dn`, `lc`, `cv`, `hs`). A missing `mv` / `dr` / `dn` on a
+  DEM feature means none within 5 km and is said so; NCGDB features flagged as candidates (bridges, junctions) carry
+  none of these. Feature tiles (z10, ~30 km) load in the background like terrain tiles; the card never waits on them.
 - **From code**: `await guide.groundCandidates(point, { radiusKm, max, minLevel })` returns
   `GroundGuideItgCandidate[]` (`kind`, `kindLabel`, `name`, `level`, `reasons`, `reasonLabels`, `elevationM`,
-  `lngLat`, `distanceM`, `bearingDeg`, `compass`, `attributes`).
+  `lngLat`, `distanceM`, `bearingDeg`, `compass`, `attributes`, `traits`: the characteristics decoded).
 - **Designate**: `symbolEngine.designateGround(candidateOrPoint, 'ITG' | 'MITG', { radiusM?, name? })` draws an
   area round it, named after the feature: **MITG** a **Vital Gr** (2525D control measure 25-242301, "VG"),
   **ITG** an **Imp Gr** ("IG", catalog key `00000160`: a PAMS8 local symbol, since 2525D has no Important Ground
@@ -537,6 +542,11 @@ area conceals better than the spot, `v.cover.around` is set. The card then says 
 Good 31 m S (Tree cover)". On a road, track or railway (classes 28, 34–38) it adds that a canopy over the road may screen
 it from the air, to be checked on the ground.
 
+**Underground and enclosed cover (added 2026-11-06).** Every C style ends with an *Underground* line when a mapped
+cave, bunker, trench, road tunnel or railway tunnel (feature kinds 85, 62, 63, 28, 29) lies within 5 km: the nearest of
+each kind, up to three ("Underground · Trench 858 m NE"). The Brief always has the line ("none mapped within 5 km" when
+there is none). They are points on the map, so they never change the four levels. `v.cover.shelters`.
+
 | Setting | Default | |
 | --- | --- | --- |
 | `cover.card` | `lines` | How the section looks. Every style is built so they can be compared live (`ground-guide-cover-options.html` shows them side by side): `lines` (C1, four lines with a meter and what gives each), `grid` (C2, cover beside concealment as four tiles), `summary` (C3, one line), `icons` (C4, shield and eye), `nearest` (C5, here or the nearest Fair or better of each kind), `rose` (C6, eight wedges by the best cover for the mode's need), `block` (C7, all of it), `off` (the Brief still has it). |
@@ -560,7 +570,7 @@ and `features/index.json`, and every threshold that decides something comes from
 | Section | Card line (`compact`, the default) | More rows (`lines` style and the Ground Brief) | Data |
 | --- | --- | --- | --- |
 | **G Ground** | Terrain type · elevation · slope in degrees and band (Level, Gentle, Sloping, Moderate, Steep) · landform | Nearest change of terrain type along 8 rays; the highest ground nearby with its height above the point; the named area (plains, plateaus, deserts, valleys, hill ranges, forests, regions); water sources (`grotbc.water.kinds` + wells); the nearest named river, canal or stream | `terrain`, `elev_hi` / `elev_lo` (3 × 3 gradient), `landform`; features 100–102, 150–164 with `e`, 152 / 150 / 157 / 151 / 158 names (NCGDB and GeoNames `D:\Imagery\PK.txt`), 1–9, 155, lines 202 / 203, 153 / 154 |
-| **R Roads** | The route at the point, or the nearest within 500 m: type · load class · MSR, then the **check for the mode** · road density band | Nearest crossing (bridge, ford, ferry), railway station or line (10 km), airfield or helipad (15 km); **road network density** (km/km², all-weather share, ways out by direction; the Brief adds the make-up: all-weather, tracks, MSR and tankable km) | `route` (type, tier, MSR bit); `grotbc.tankable`; features 20–30, 50, 40–47, line 201; routing network `network/gg` for the density |
+| **R Roads** | The route at the point, or the nearest within 500 m: type · load class · MSR, then the **check for the mode** · road density band; a second small line (added 2026-11-06) with the ways across the railway and the transport hubs when there are any | Nearest crossing (bridge, ford, ferry), railway station or line (10 km), airfield or helipad (15 km); **Rail Xing**: the nearest level crossing (vehicles cross here) and railway bridge (trains and foot only) within 2 km from the class layer, and railway tunnel (10 km); **Transport**: the nearest bus stand and toll plaza (10 km); **road network density** (km/km², all-weather share, ways out by direction; the Brief adds the make-up: all-weather, tracks, MSR and tankable km) | `route` (type, tier, MSR bit); `grotbc.tankable`; features 20–30, 50, 40–47, 29, 139, 142, line 201; classes 43 and 50; routing network `network/gg` for the density |
 | **B Buildings** | Building density · kacha huts per km² · nearest service | Footprint size and height; temporary huts; nearest health, police, school, government office (5 km); security installations (posts, forts, border posts, cantonments) | `bld` (density, size, GHSL height), `hut`; features 70–72, 77, 136, 147, 149, 60–69 |
 | **W Weather** | The month: highest / lowest temperature, rain, wind | The year: rain and monsoon share, frost months, months of 40° and over, wet months | Climate grid `tmin`, `tmax`, `prec`, `wind`, `prec_year`, `monsoon_pct` (WorldClim 1970–2000; one cell is about 9 km) |
 

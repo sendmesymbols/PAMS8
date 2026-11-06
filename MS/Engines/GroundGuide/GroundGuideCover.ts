@@ -23,6 +23,9 @@
  *   So the levels never go up on the area's say-so. When the area is better than the spot, `around` says so and points
  *   to the nearest Fair or better; on a road, track or railway it adds that a canopy may screen it from the air, to be
  *   checked on the ground.
+ *
+ * Underground and enclosed cover (added 2026-11-06): the nearest cave, bunker, trench, road or railway tunnel from the
+ * feature tiles (`shelters`), named beside the levels. They are points on the map, so they never change the levels.
  */
 
 export type CoverLevel = 0 | 1 | 2 | 3;
@@ -139,6 +142,14 @@ export interface CoverAround {
 }
 
 /** What C adds to a verdict while drawing. */
+/** A mapped cave, bunker, trench or tunnel near the point (features; not part of the four levels). */
+export interface CoverShelter {
+  label: string;
+  name: string | null;
+  distanceM: number;
+  compass: string;
+}
+
 export interface GroundGuideCover {
   style: CoverCardStyle;
   where: CoverWhere;
@@ -165,6 +176,10 @@ export interface GroundGuideCover {
   pending: boolean;
   /** The data is a proposal and a model: say so on the card. */
   note: string | null;
+  /** Underground and enclosed cover nearby (caves, bunkers, trenches, tunnels), nearest first, one per kind. */
+  shelters: CoverShelter[];
+  /** How far `shelters` looked, m (0 when the bundle has no feature tiles). */
+  shelterRadiusM: number;
 }
 
 const COMPASS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -245,6 +260,8 @@ export function readCover(args: {
   pending: () => boolean;
   /** Look round the point (nearest and rose): the card style or the open Brief needs it. */
   scan: boolean;
+  /** Mapped caves, bunkers, trenches and tunnels near the point (the engine reads the feature tiles), and how far it looked. */
+  shelters?: { list: CoverShelter[]; radiusM: number } | null;
 }): GroundGuideCover {
   const { rules, opts, at, cosLat, layers, read, classLabel } = args;
   const cls = read(layers.cls, at[0], at[1]);
@@ -316,6 +333,8 @@ export function readCover(args: {
     radiusM: opts.radiusM,
     pending: args.pending(),
     note: rules?.coverSplit ? 'Proposal' : null,
+    shelters: args.shelters?.list ?? [],
+    shelterRadiusM: args.shelters?.radiusM ?? 0,
   };
 }
 
@@ -336,7 +355,16 @@ export function coverText(c: GroundGuideCover, fmt: (m: number) => string): stri
     if (c.around.clearedLine) out.push('On a road, track or railway: a tree canopy may screen it from the air. Not in the data: check on the ground.');
   }
   if (c.bank) out.push(`${c.bank.label} within ${c.bank.withinM} m${c.bank.deploy ? ': a deployment line' : ''}`);
+  const sh = shelterText(c, fmt);
+  if (sh) out.push(`Underground / enclosed: ${sh}`);
   return out;
+}
+
+/** "Bunker 1.2 km NE · Trench 2.4 km N", or "none mapped within 5 km"; null when the bundle has no feature tiles. */
+export function shelterText(c: GroundGuideCover, fmt: (m: number) => string): string | null {
+  const list = c.shelters ?? [];
+  if (list.length) return list.map((x) => `${x.name ? `${x.name} (${x.label})` : x.label} ${fmt(x.distanceM)} ${x.compass}`).join(' · ');
+  return c.shelterRadiusM > 0 ? `none mapped within ${fmt(c.shelterRadiusM)}` : null;
 }
 
 /** Re-render key for the card. */
@@ -349,5 +377,6 @@ export function coverKey(c: GroundGuideCover | null | undefined): string {
   }).join(',');
   const rose = c.sectors.map((s) => s.level).join('');
   const ar = c.around ? `a${c.around.concealment}${c.around.clearedLine ? 'r' : ''}` : '';
-  return `${c.style}${c.where}${c.focus ?? ''}${lv}${nr}${rose}${c.local ? c.local.cover * 4 + c.local.concealment : 'x'}${ar}${c.bank?.label ?? ''}${c.pending ? 'p' : ''}`;
+  const sh = (c.shelters ?? []).map((x) => `${x.label}${Math.round(x.distanceM / 50)}${x.compass}`).join(',');
+  return `${c.style}${c.where}${c.focus ?? ''}${lv}${nr}${rose}${c.local ? c.local.cover * 4 + c.local.concealment : 'x'}${ar}${c.bank?.label ?? ''}${sh}${c.pending ? 'p' : ''}`;
 }

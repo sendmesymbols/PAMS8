@@ -12,7 +12,7 @@
  */
 
 import { mercatorToLngLat } from './TerrainTileCache';
-import type { MercXY, GroundGuideItgCandidate, GroundGuidePopulationPlace, TerrainManifest, TerrainRules } from './GroundGuideTypes';
+import type { MercXY, GroundGuideItgCandidate, GroundGuideItgTraits, GroundGuidePopulationPlace, TerrainManifest, TerrainRules } from './GroundGuideTypes';
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 /** Feature kind keys of named places (B): city, district HQ, town, important village, village. */
@@ -67,6 +67,35 @@ export function tidyName(raw: unknown, kindLabel = ''): string | null {
   const name = typeof raw === 'string' ? raw.trim() : '';
   if (!name || name.toLowerCase() === kindLabel.toLowerCase()) return null;
   return name === name.toUpperCase() ? name.toLowerCase().replace(/(^|[\s(-])(\p{L})/gu, (_m, s: string, c: string) => s + c.toUpperCase()) : name;
+}
+
+const LEVEL_WORD = ['None', 'Poor', 'Fair', 'Good'];
+
+function km(v: number): string {
+  return v < 1 ? `${Math.round(v * 1000)} m` : `${v.toFixed(1)} km`;
+}
+
+/**
+ * An ITG candidate's characteristics as two lines for the card: what it commands (relief, dominance, view, MSR in
+ * view) and what it is like to hold (slope, access, ground, cover, surveyed height). Empty lines are left out.
+ */
+export function itgTraitLines(t: GroundGuideItgTraits): string[] {
+  const view: string[] = [];
+  if (t.reliefM !== null) view.push(`Rises ${t.reliefM} m`);
+  if (t.dominanceKm !== null) view.push(t.dominanceKm < 1 ? 'Not the highest within 1 km' : `Highest within ${t.dominanceKm} km${t.dominanceKm >= 5 ? '+' : ''}`);
+  if (t.viewPct !== null) view.push(`Sees ${t.viewPct} % to 5 km`);
+  if (t.msrInViewKm !== null) view.push(`MSR in view ${km(t.msrInViewKm)}`);
+  else if (t.viewTested) view.push('No MSR in view');
+  const hold: string[] = [];
+  if (t.slopeDeg !== null) hold.push(`Slope ${Math.round(t.slopeDeg)}°`);
+  if (t.msrKm !== null) hold.push(`MSR ${km(t.msrKm)}`);
+  else if (t.distancesTested) hold.push('No MSR within 5 km');
+  if (t.roadKm !== null) hold.push(t.roadKm === 0 ? 'On a road or track' : `Road or track ${km(t.roadKm)}`);
+  else if (t.distancesTested) hold.push('No road or track within 5 km');
+  if (t.ground) hold.push(t.ground);
+  if (t.cover !== null && t.concealment !== null) hold.push(`Cover ${LEVEL_WORD[t.cover]}, Concealment ${LEVEL_WORD[t.concealment]} (area)`);
+  if (t.surveyedM !== null) hold.push(`Surveyed ${t.surveyedM.toLocaleString('en')} m`);
+  return [view.join(' · '), hold.join(' · ')].filter(Boolean);
 }
 
 /** A road near a point: its attributes (n, r, t, c, k, m, w, cn, x; see features/index.json) and the nearest spot on it. */
@@ -355,6 +384,32 @@ export class GroundGuideFeatures {
       bearingDeg,
       compass: COMPASS[Math.round(bearingDeg / 45) % 8],
       attributes: { ...a },
+      traits: this._traits(a),
+    };
+  }
+
+  /** Decode what ground.py measured on a candidate (rr, iso, vs, mv, sp, dr, dn, lc, cv, hs). */
+  private _traits(a: Record<string, unknown>): GroundGuideItgTraits {
+    const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    const lvl = (n: number) => Math.min(3, Math.max(0, n)) as 0 | 1 | 2 | 3;
+    const lc = num(a.lc);
+    const cls = lc !== null ? this._rules?.classes?.[String(lc)]?.label : undefined;
+    const cv = num(a.cv);
+    const fromDem = a.src === 'dem';
+    return {
+      reliefM: num(a.rr),
+      dominanceKm: num(a.iso),
+      viewPct: num(a.vs),
+      msrInViewKm: num(a.mv),
+      viewTested: num(a.vs) !== null,
+      slopeDeg: num(a.sp),
+      msrKm: num(a.dr),
+      roadKm: num(a.dn),
+      distancesTested: fromDem,
+      ground: cls ? cls.replace(/\s*\(.*\)$/, '') : null,
+      cover: cv !== null && cv !== 255 ? lvl(cv & 15) : null,
+      concealment: cv !== null && cv !== 255 ? lvl(cv >> 4) : null,
+      surveyedM: num(a.hs),
     };
   }
 

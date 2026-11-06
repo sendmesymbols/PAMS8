@@ -11,7 +11,9 @@
  *   R Roads      the route at the point or the nearest within 500 m (`route`: type, load-class tier, MSR bit), checked
  *                against the mode with rules.json `grotbc.tankable` (class 60+ tankable, 50-59 Al-Zarrar only); the
  *                nearest crossing (bridge, ford, ferry), railway station or line, and airfield or helipad; road network
- *                density round the point (GroundGuideRoadDensity: km/km², all-weather, MSR, ways out).
+ *                density round the point (GroundGuideRoadDensity: km/km², all-weather, MSR, ways out). Added 2026-11-06:
+ *                the ways across the railway (level crossings and railway bridges from the class layer, railway
+ *                tunnels from the features) and transport hubs (bus stands, toll plazas).
  *   B Buildings  building density, footprint size and height (`bld`, Open Buildings + GHSL), kacha huts and temporary
  *                huts (`hut`, NCGDB symbols), the nearest services (health, police, school, government) and security
  *                installations (posts, forts, border posts, cantonments).
@@ -136,6 +138,12 @@ export const KINDS = {
   crossing: new Set(['bridge', 'bridge_iron', 'boat_bridge', 'viaduct', 'ford', 'ferry', 'foot_bridge']),
   rail: new Set(['rail_station']),
   railLines: new Set(['railway']),
+  /** Railway tunnels (features); rail bridges and level crossings come from the class layer (RAIL_CROSSING_CLASSES). */
+  railTunnel: new Set(['rail_tunnel']),
+  /** Transport hubs: bus stands and toll plazas. */
+  transport: new Set(['bus_stand', 'toll_plaza']),
+  /** Underground and enclosed cover (C): caves, bunkers, trenches, road and railway tunnels. */
+  shelter: new Set(['cave', 'bunker', 'trench', 'tunnel', 'rail_tunnel']),
   air: new Set(['helipad', 'airfield', 'landing_strip', 'airport', 'air_base', 'landing_ground', 'road_runway']),
   health: new Set(['hospital', 'bhu', 'dispensary']),
   police: new Set(['police_station']),
@@ -151,6 +159,8 @@ export const KINDS = {
   landmarks: new Set(['mosque', 'tomb', 'temple', 'church', 'eidgah', 'graveyard_pt', 'market', 'mill', 'stadium', 'industrial_area', 'camp', 'park']),
   places: new Set(['city', 'district_hq', 'town', 'village_imp', 'village']),
 };
+/** Class names (rules.json `classes[c].name`) of the ways across a railway: where vehicles or men cross the line. */
+const RAIL_CROSSING_CLASSES = new Set(['rail_bridge', 'level_crossing']);
 /** Protected sites (no-strike, collateral): named first on the Landmarks line. */
 const PROTECTED = new Set(['mosque', 'tomb', 'temple', 'church', 'eidgah', 'graveyard_pt']);
 
@@ -211,6 +221,13 @@ export interface RoadsReading {
   check: { level: 'ok' | 'warn' | 'stop' | 'unknown'; text: string } | null;
   crossing: SectionPlace | null;
   rail: SectionPlace | null;
+  /**
+   * The nearest ways across or under a railway: a level crossing (where vehicles cross the line), a railway bridge
+   * (trains and men on foot, not vehicles; class layer, within 2 km) and a railway tunnel (features). Nearest first.
+   */
+  railCrossings: Array<SectionPlace & { note: string | null }>;
+  /** The nearest bus stand and toll plaza (transport hubs). */
+  transport: SectionPlace[];
   air: SectionPlace | null;
   /** Road network density round the point (GroundGuideRoadDensity); null when off or the bundle has no network. */
   density: RoadDensityReading | null;
@@ -548,6 +565,41 @@ function readRoads(a: SectionArgs): RoadsReading {
   let crossing: SectionPlace | null = null;
   let rail: SectionPlace | null = null;
   let air: SectionPlace | null = null;
+  const railCrossings: RoadsReading['railCrossings'] = [];
+  const transport: SectionPlace[] = [];
+  // Rail bridges and level crossings are in the class layer only: the nearest of each within 2 km, one pass.
+  {
+    const R = Math.min(a.radiusM, 2000);
+    const n = Math.min(30, Math.max(3, Math.ceil(R / Math.max(1, a.pxM))));
+    const step = R / n;
+    const best = new Map<string, SectionPlace & { note: string | null }>();
+    for (let j = -n; j <= n; j++) {
+      for (let i = -n; i <= n; i++) {
+        const d = Math.hypot(i, j) * step;
+        if (d > R) continue;
+        const c = read(a.clsLayer, at[0] + (i * step) / cosLat, at[1] + (j * step) / cosLat);
+        if (typeof c !== 'number' || c === 255) continue;
+        const info = a.classInfo(c);
+        if (!info || !RAIL_CROSSING_CLASSES.has(info.name)) continue;
+        const prev = best.get(info.name);
+        if (prev && prev.distanceM <= d) continue;
+        const note = info.name === 'level_crossing' ? 'vehicles cross here' : 'trains and foot only';
+        best.set(info.name, { label: info.label, name: null, distanceM: d, compass: compassOf((Math.atan2(i, j) * 180) / Math.PI), note });
+      }
+    }
+    railCrossings.push(...best.values());
+  }
+  if (a.features) {
+    const tn = a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.railTunnel, 1).list[0];
+    if (tn) railCrossings.push({ ...place(tn, tn.kindLabel), note: null });
+    const seen = new Set<string>();
+    for (const h of a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.transport, 20).list) {
+      if (seen.has(h.kind)) continue;
+      seen.add(h.kind);
+      transport.push(place(h, h.kindLabel));
+    }
+  }
+  railCrossings.sort((p, q) => p.distanceM - q.distanceM);
   if (a.features) {
     const c = a.features.nearestOfKinds(at, a.radiusM, KINDS.crossing, 1).list[0];
     if (c) crossing = place(c, c.kindLabel);
@@ -564,7 +616,7 @@ function readRoads(a: SectionArgs): RoadsReading {
     const res = a.roadNet.densityAround(at, Math.max(500, a.opts.roadDensityKm * 1000));
     density = roadDensityReading(res.totals, res.pending, a.rules?.roadDensity);
   }
-  return { route, check: route ? routeCheck(a.profile, route, a.rules) : null, crossing, rail, air, density, record: roadRecord(a) };
+  return { route, check: route ? routeCheck(a.profile, route, a.rules) : null, crossing, rail, railCrossings, transport, air, density, record: roadRecord(a) };
 }
 
 // ── O ────────────────────────────────────────────────────────────────────────
@@ -748,7 +800,7 @@ export interface SectionArgs {
   lonLat: [number, number];
   /** The class layer of the mode, and the class's label, origin and GROTBC letters (rules.json `classes`). */
   clsLayer: string;
-  classInfo: (cls: number) => { label: string; origin: 'natural' | 'man_made'; letters: string; kind: string } | null;
+  classInfo: (cls: number) => { name: string; label: string; origin: 'natural' | 'man_made'; letters: string; kind: string } | null;
   /** What a class means for the mode: the profile's NO-GO / SLOW-GO lists. */
   effect: (cls: number) => 'NO-GO' | 'SLOW-GO' | null;
   wetLayer: string | null;
@@ -805,7 +857,7 @@ export function sectionsKey(s: GroundGuideSections | null | undefined): string {
     `${s.styles.g}${s.styles.r}${s.styles.o}${s.styles.b}${s.styles.w}`,
     g ? `${g.terrain?.code ?? ''}${pl(g.terrainChange ? { label: g.terrainChange.label, name: null, distanceM: g.terrainChange.distanceM, compass: g.terrainChange.compass } : null)}${g.elevationM ?? ''}${Math.round(g.slopeDeg ?? -1)}${g.landform ?? ''}${pl(g.high)}${pl(g.area)}${g.water.map(pl).join('')}${pl(g.namedWater)}` : '',
     `${s.roadDensityStyle}${s.roadDensityLead}`,
-    r ? `${r.route ? `${r.route.type}${r.route.tier}${r.route.msr ? 1 : 0}${Math.round(r.route.distanceM / 25)}` : '-'}${r.check?.level ?? ''}${pl(r.crossing)}${pl(r.rail)}${pl(r.air)}${roadDensityKey(r.density)}` : '',
+    r ? `${r.route ? `${r.route.type}${r.route.tier}${r.route.msr ? 1 : 0}${Math.round(r.route.distanceM / 25)}` : '-'}${r.check?.level ?? ''}${pl(r.crossing)}${pl(r.rail)}${(r.railCrossings ?? []).map(pl).join('')}${(r.transport ?? []).map(pl).join('')}${pl(r.air)}${roadDensityKey(r.density)}` : '',
     b ? `${b.density?.code ?? ''}${b.size ?? ''}${b.height ?? ''}${b.huts ? `${b.huts.perKm2}${b.huts.temporary ? 't' : ''}` : ''}${b.services.map(pl).join('')}${b.security.map(pl).join('')}` : '',
     w ? `${w.month}${w.tmax}${w.precMm}` : '',
     g?.ridge ? `rg${Math.round(g.ridge.distanceM / 50)}` : '',

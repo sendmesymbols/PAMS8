@@ -206,6 +206,27 @@ function recordText(rec: RoadRecord): string {
   ].filter(Boolean).join(' · ');
 }
 
+/** "Level crossing 450 m NE (vehicles cross here) · Railway bridge 1.2 km E (trains and foot only)". */
+function railCrossingsText(r: RoadsReading): string | null {
+  const x = r.railCrossings ?? [];
+  return x.length ? x.map((c) => `${nameOf(c)} ${at(c)}${c.note ? ` (${c.note})` : ''}`).join(' · ') : null;
+}
+
+function transportText(r: RoadsReading): string | null {
+  const t = r.transport ?? [];
+  return t.length ? t.map((c) => `${nameOf(c)} ${at(c)}`).join(' · ') : null;
+}
+
+/** The second line under a one-line R: the ways across the railway and the transport hubs, when there are any. */
+function railTransportLine(r: RoadsReading): HTMLElement | null {
+  const parts = [railCrossingsText(r), transportText(r)].filter(Boolean);
+  if (!parts.length) return null;
+  const d = el('div', 'ms-gs-s');
+  d.style.cssText = 'font-size:10.5px;line-height:1.35;margin:3px 0 0 22px';
+  d.textContent = parts.join(' · ');
+  return d;
+}
+
 function roadsRows(r: RoadsReading): Array<[string, Node | string | null]> {
   return [
     [r.route?.on ? 'Here' : 'Nearest', r.route ? routeNode(r.route) : 'No road or track within 500 m'],
@@ -213,6 +234,8 @@ function roadsRows(r: RoadsReading): Array<[string, Node | string | null]> {
     ['Recorded', r.record ? recordText(r.record) : null],
     ['Crossing', r.crossing ? `${nameOf(r.crossing)} ${at(r.crossing)}` : null],
     ['Rail', r.rail ? `${nameOf(r.rail)} ${at(r.rail)}` : null],
+    ['Rail Xing', railCrossingsText(r)],
+    ['Transport', transportText(r)],
     ['Air', r.air ? `${nameOf(r.air)} ${at(r.air)}` : null],
   ];
 }
@@ -317,6 +340,8 @@ function compactR(s: GroundGuideSections, r: RoadsReading, one: (l: keyof typeof
     const line = sec.querySelector('.ms-gs-one > span:last-child');
     line?.append(' ', chipsNode(d, s.roadDensityLead));
   }
+  const rt = railTransportLine(r);
+  if (rt) sec.querySelector('.ms-gs-one')?.after(rt);
   const block = densityCardBlock(d, st, s.roadDensityLead);
   if (block) sec.append(block);
   return sec;
@@ -348,6 +373,11 @@ export function sectionsCard(v: GroundGuideVerdict): { g: HTMLElement | null; r:
   };
   // R keeps the road-density hooks in every style (GroundGuideRoadDensityView.ts).
   const withDensity = (sec: HTMLElement): HTMLElement => {
+    const rt = s.roads ? railTransportLine(s.roads) : null;
+    if (rt) {
+      rt.style.marginLeft = '0';
+      sec.append(rt);
+    }
     const d = s.roads ? densityCardBlock(s.roads.density, s.roadDensityStyle, s.roadDensityLead) : null;
     if (d) sec.append(d);
     return sec;

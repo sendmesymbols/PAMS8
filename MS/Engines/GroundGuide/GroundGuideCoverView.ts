@@ -23,6 +23,7 @@ import {
   COVER_KIND,
   COVER_WORD,
   coverText,
+  shelterText,
   type CoverField,
   type CoverLevel,
   type GroundGuideCover,
@@ -375,20 +376,36 @@ function styleBlock(v: GroundGuideVerdict, c: GroundGuideCover, northDeg: number
   return section('Cover, Camouflage & Concealment', ...fourLines(c), localLine(c), aroundLine(c), bankLine(c), box, needLine(c, v.profileLabel));
 }
 
+/** "Underground: Bunker 1.2 km NE · Trench 2.4 km N" (caves, bunkers, trenches, tunnels); null when none is mapped near. */
+function shelterLine(c: GroundGuideCover, always = false): HTMLElement | null {
+  if (!c.shelters?.length && !always) return null;
+  const text = shelterText(c, fmtDistance);
+  if (!text) return null;
+  const line = el('div', 'ms-gc-soft');
+  line.append(el('b', undefined, 'Underground'), ` · ${text}`);
+  line.title = 'Mapped caves, bunkers, trenches and road or railway tunnels (NCGDB). Points on the map: they do not change the levels above.';
+  return line;
+}
+
 /** The C section for the card, or null when the verdict carries no C or the style is off. */
 export function coverSection(v: GroundGuideVerdict, northDeg = 0): HTMLElement | null {
   const c = v.cover;
   if (!c || c.style === 'off' || v.verdict === 'unknown') return null;
   ensureCoverCss();
+  let sec: HTMLElement;
   switch (c.style) {
-    case 'grid': return styleGrid(v, c);
-    case 'summary': return styleSummary(v, c);
-    case 'icons': return styleIcons(v, c);
-    case 'nearest': return styleNearest(v, c);
-    case 'rose': return styleRose(v, c, northDeg);
-    case 'block': return styleBlock(v, c, northDeg);
-    default: return styleLines(v, c);
+    case 'grid': sec = styleGrid(v, c); break;
+    case 'summary': sec = styleSummary(v, c); break;
+    case 'icons': sec = styleIcons(v, c); break;
+    case 'nearest': sec = styleNearest(v, c); break;
+    case 'rose': sec = styleRose(v, c, northDeg); break;
+    case 'block': sec = styleBlock(v, c, northDeg); break;
+    default: sec = styleLines(v, c);
   }
+  // Every style: the mapped underground and enclosed cover nearby, when there is any.
+  const sh = shelterLine(c);
+  if (sh) sec.append(sh);
+  return sec;
 }
 
 // The Ground Brief (G): C in full, whatever the card style.
@@ -410,6 +427,7 @@ registerBriefSection({
       localLine(c) ?? el('span'),
       aroundLine(c) ?? el('span'),
       bankLine(c) ?? el('span'),
+      shelterLine(c, true) ?? el('span'),
       box,
       el('div', 'ms-gc-soft', 'Levels: this spot, from rules.json grotbc.coverSplit and banks (a starting proposal). Area round it: the cc layer, which never raises them. Check on the ground.'),
     );

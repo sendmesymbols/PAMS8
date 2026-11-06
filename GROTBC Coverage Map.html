@@ -1,0 +1,473 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta charset="utf-8">
+<title>GROTBC Coverage Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column of GROTBC letters; each item is a row of three lanes (GROTBC | Dataset | Tooltip) with a status pill. */
+:root {
+  --bg: #eef0ec; --panel: #f9faf7; --line: #d3d8cf; --fg: #1d2420; --soft: #5d675f; --code-bg: #e3e7df;
+  --on: #1f8a4c; --sw: #2f6fb0; --part: #c4740f; --data: #7a6a9a; --miss: #c8363b; --card: #4f5a63;
+  --on-bg: #dcefe2; --sw-bg: #dde8f4; --part-bg: #f6e7cf; --data-bg: #e8e3f0; --miss-bg: #f6dcdc; --card-bg: #e2e6e9;
+  --G: #5f8a2a; --R: #9c7536; --O: #6a4cb8; --T: #2f86c8; --B: #7d7068; --C: #1f8a5a; --X: #4f5a63; --W: #4a7f95;
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, "Segoe UI", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15191e; --panel: #1b1f25; --line: #303740; --fg: #eef1f4; --soft: #9aa3ad; --code-bg: #262c34;
+  --on: #4cc483; --sw: #7fb3e8; --part: #f0a04b; --data: #b6a3dc; --miss: #ff7a7e; --card: #aab3bd;
+  --on-bg: #17331f; --sw-bg: #182a3d; --part-bg: #3a2a14; --data-bg: #2a2438; --miss-bg: #3d1c1e; --card-bg: #262c34;
+  --G: #8fb35a; --R: #c9a46b; --O: #9a80e0; --T: #5aa9e6; --B: #b3a79c; --C: #3fbf85; --X: #aab3bd; --W: #7fbcd2;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15191e; --panel: #1b1f25; --line: #303740; --fg: #eef1f4; --soft: #9aa3ad; --code-bg: #262c34;
+  --on: #4cc483; --sw: #7fb3e8; --part: #f0a04b; --data: #b6a3dc; --miss: #ff7a7e; --card: #aab3bd;
+  --on-bg: #17331f; --sw-bg: #182a3d; --part-bg: #3a2a14; --data-bg: #2a2438; --miss-bg: #3d1c1e; --card-bg: #262c34;
+  --G: #8fb35a; --R: #c9a46b; --O: #9a80e0; --T: #5aa9e6; --B: #b3a79c; --C: #3fbf85; --X: #aab3bd; --W: #7fbcd2;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--body); margin: 0; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font: 700 40px/1 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 .lt { display: inline-flex; gap: 3px; margin-left: 10px; vertical-align: 4px; }
+h1 .lt b { font: 700 15px/1 var(--display); width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 4px; color: #fff; }
+.lede { color: var(--soft); max-width: 72ch; margin: 10px 0 0; }
+.lede code, td code, .cell code, .note code, li code { font: 12px var(--mono); background: var(--code-bg); padding: 0 4px; border-radius: 3px; }
+.cap { font: 600 12px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--soft); }
+
+/* summary */
+.summary { margin-top: 24px; display: grid; gap: 10px; }
+.sumrow { display: grid; grid-template-columns: 210px 1fr 150px; gap: 12px; align-items: center; }
+.sumrow .nm { display: flex; gap: 8px; align-items: center; font-weight: 600; min-width: 0; }
+.sumrow .nm a { color: inherit; text-decoration: none; }
+.sumrow .nm a:hover { text-decoration: underline; }
+.badge { flex: none; width: 26px; height: 26px; border-radius: 5px; display: grid; place-items: center; color: #fff; font: 700 17px/1 var(--display); }
+.bar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: var(--code-bg); }
+.bar span { display: block; height: 100%; }
+.sumrow .ct { font: 12px var(--mono); color: var(--soft); font-variant-numeric: tabular-nums; }
+.verdict { font-size: 13px; color: var(--soft); grid-column: 2 / 4; margin-top: -6px; }
+
+/* filters */
+.filters { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px; margin-top: 22px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.chip { font: 500 13px/1 var(--body); border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 7px 10px; border-radius: 999px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
+.chip:focus-visible, .lchip:focus-visible { outline: 2px solid var(--sw); outline-offset: 2px; }
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; }
+.chip .n { font: 11px var(--mono); color: var(--soft); }
+.lchip { font: 700 15px/1 var(--display); width: 30px; height: 30px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; }
+.lchip[aria-pressed="true"] { color: #fff; border-color: transparent; }
+.sep { width: 1px; height: 24px; background: var(--line); margin-inline: 4px; }
+
+/* status legend */
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 18px; margin-top: 18px; font-size: 13px; }
+.legend div { display: flex; gap: 8px; align-items: baseline; }
+.pill { flex: none; font: 600 11px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; white-space: nowrap; }
+.s-on { color: var(--on); background: var(--on-bg); } .s-sw { color: var(--sw); background: var(--sw-bg); }
+.s-part { color: var(--part); background: var(--part-bg); } .s-data { color: var(--data); background: var(--data-bg); }
+.s-miss { color: var(--miss); background: var(--miss-bg); } .s-card { color: var(--card); background: var(--card-bg); }
+
+/* letter sections */
+section.letter { margin-top: 40px; }
+.lhead { display: flex; gap: 12px; align-items: center; border-bottom: 3px solid var(--lc); padding-bottom: 8px; }
+.lhead .badge { width: 40px; height: 40px; font-size: 28px; background: var(--lc); }
+.lhead h2 { font: 700 26px/1 var(--display); margin: 0; letter-spacing: .02em; }
+.lhead p { margin: 2px 0 0; color: var(--soft); font-size: 13px; }
+.lanes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1.2fr) 92px; gap: 14px; padding: 10px 12px 4px; }
+.group { margin-top: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.group > h3 { margin: 0; padding: 9px 12px; font: 600 15px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+.group > h3::before { content: ""; width: 6px; height: 14px; border-radius: 1px; background: var(--lc); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1.2fr) 92px; gap: 14px; padding: 10px 12px; border-top: 1px solid var(--line); align-items: start; }
+.group > .row:first-of-type { border-top: 0; }
+.row .item { font-weight: 600; }
+.row .note { grid-column: 1 / -1; font-size: 12.5px; color: var(--soft); margin-top: -4px; }
+.cell ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.cell li { font-size: 13px; padding-left: 12px; position: relative; overflow-wrap: anywhere; }
+.cell li::before { content: ""; position: absolute; left: 0; top: .62em; width: 5px; height: 5px; border-radius: 1px; background: var(--line); }
+.cell.d li::before { background: var(--data); } .cell.t li::before { background: var(--on); }
+.cell .none { color: var(--soft); font-size: 13px; font-style: italic; }
+.cell .off { font: 600 10.5px/1 var(--display); letter-spacing: .08em; color: var(--sw); text-transform: uppercase; margin-left: 4px; }
+.lab { display: none; }
+.row .st { justify-self: end; }
+
+/* lists */
+.twocol { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-top: 14px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.box h4 { margin: 0 0 8px; font: 600 15px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.box ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; }
+footer { margin-top: 40px; font-size: 12.5px; color: var(--soft); border-top: 1px solid var(--line); padding-top: 12px; }
+.empty { padding: 14px 12px; color: var(--soft); font-style: italic; }
+
+@media (max-width: 760px) {
+  .lanes { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; }
+  .row .item { grid-column: 1; grid-row: 1; }
+  .row .st { grid-column: 2; grid-row: 1; }
+  .row .cell { grid-column: 1 / -1; }
+  .lab { display: block; font: 600 11px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--soft); margin: 4px 0 3px; }
+  .sumrow { grid-template-columns: 1fr; gap: 4px; }
+  .verdict { grid-column: 1; margin-top: 0; }
+  h1 { font-size: 32px; }
+}
+@media (prefers-reduced-motion: no-preference) { .chip, .lchip { transition: border-color .12s, box-shadow .12s; } }
+</style>
+
+<div class="wrap">
+  <h1>GROTBC Coverage Map <span class="lt" aria-hidden="true"><b style="background:var(--G)">G</b><b style="background:var(--R)">R</b><b style="background:var(--O)">O</b><b style="background:var(--T)">T</b><b style="background:var(--B)">B</b><b style="background:var(--C)">C</b></span></h1>
+  <p class="lede">Each heading in <code>GROTBC.md</code> is traced to the dataset items that hold it in the terrain bundle and then to what the Ground Guide shows: the cursor <strong>card</strong> (tooltip), the <strong>Brief</strong> (G key) and the <strong>legend</strong>. The status shows where each item stops. Taken from the code and bundle on 5 Nov 2026 (rules <code>2026.11-grotbc-v2</code>) and updated as C, then the G, R, B and W sections and R road network density (5 Nov), then O and the rest (6 Nov), were built. Checked again against the code and bundle on 6 Nov 2026 after the ITG characteristics, the ways across the railway, transport hubs and underground cover reached the card; every feature kind in <code>features/index.json</code> now has a row (the ones nothing reads are marked Data only). The C styles are compared in <code>ground-guide-cover-options.html</code>, the road density styles in <code>ground-guide-road-density-options.html</code>, and the G, R, O, B and W card styles (one line, a few rows and two drawn looks each, switch <code>sections.gStyle</code> … <code>wStyle</code>) in <code>ground-guide-sections-options.html</code>. The feature tiles were rebuilt on 6 Nov with the remaining GeoNames codes (levees, camps, industrial areas, parks, named vegetation, mud flats). Card switches are at their <code>Settings.json</code> defaults. The whole guide stays off until <code>features.groundGuide</code> is turned on.</p>
+
+  <div class="legend" id="legend"></div>
+  <div class="summary" id="summary" aria-label="Coverage by letter"></div>
+
+  <div class="filters" role="toolbar" aria-label="Filters">
+    <span class="cap">Show</span>
+    <span id="statusChips" style="display:contents"></span>
+    <span class="sep" aria-hidden="true"></span>
+    <span id="letterChips" style="display:contents"></span>
+  </div>
+
+  <div id="map"></div>
+
+  <section class="letter" id="unused" style="--lc: var(--data)">
+    <div class="lhead"><span class="badge" aria-hidden="true">∅</span><div><h2>Dataset items the card never reads</h2><p>The pipeline builds these, but nothing in <code>MS/Engines/GroundGuide/</code> loads them.</p></div></div>
+    <div class="twocol">
+      <div class="box"><h4>Raster layers (all 15 read since 5 Nov 2026)</h4><ul>
+        <li><code>terrain</code>, <code>landform</code>, <code>elev_hi</code> / <code>elev_lo</code>: the G line (terrain type, elevation, slope, landform)</li>
+        <li><code>route</code>: the R line (route type, load class, MSR) and the check for the mode</li>
+        <li><code>bld</code>, <code>hut</code>: the B line (buildings, kacha huts)</li>
+      </ul><p class="note" style="margin:8px 0 0">The engine reads <code>class</code>, <code>dist_&lt;mode&gt;</code>, <code>soil</code>, <code>rci_dry</code>, <code>rci_wet</code>, <code>wet</code> (<code>_goingTileLayers</code>), <code>cc</code>, <code>bank</code> (<code>_coverTileLayers</code>) and <code>terrain</code>, <code>landform</code>, <code>elev_*</code>, <code>route</code>, <code>bld</code>, <code>hut</code> (<code>_sectionTileLayers</code>), only for the sections that are on.</p></div>
+      <div class="box"><h4>Files</h4><ul>
+        <li><code>settlements.json</code> / <code>.geojson</code> (30 and 42 MB): not loaded; the size class is worked out from the place points with the same thresholds</li>
+        <li>(<code>routes.json</code>, <code>admin.geojson</code> without the sensitive corps AOR, <code>boundaries.geojson</code> international lines and LoC, and <code>sheets.json</code> are read since 6 Nov 2026, once, in the background.)</li>
+        <li><code>admin.geojson</code> corps AOR and <code>boundaries.geojson</code> corps operational lines: marked sensitive, never read</li>
+        <li>Province lines in <code>boundaries.geojson</code>: not needed (the admin polygons give the province)</li>
+        <li><code>sheets.json</code> 1:500k and 1:1M sheets: not shown (1:50k and 1:250k are)</li>
+        <li><code>network/</code> edges, nodes, geom, tiles (only the <code>gg</code> road tiles and <code>names.json</code> are read)</li>
+      </ul></div>
+      <div class="box"><h4>Feature kinds and climate layers</h4><ul>
+        <li>Read since 5 Nov 2026: lines 201 railway, 202 canal, 203 river, 204 ridgeline; water sources 1–9 and 155; crossings 20–22, 25–27, 30; air 40–45, 47; rail stations 50; security 60–66, 68–69; health 70–72; police 77; post office 136; schools 147; offices 149; survey points 100–102; mountains, landform names, dunes, localities, forests 150–158; utilities, landmarks, places, dams, levees and river reaches (6 Nov)</li>
+        <li>Read since this check (6 Nov 2026): road and railway tunnels 28–29, bus stands 139, toll plazas 142, bunkers 62, trenches 63, caves 85; the ITG characteristics <code>rr</code>, <code>iso</code>, <code>vs</code>, <code>mv</code>, <code>sp</code>, <code>dr</code>, <code>dn</code>, <code>lc</code>, <code>cv</code> (<code>hs</code> is read but empty in the bundle)</li>
+        <li>Only as ITG candidates (when flagged <code>it</code>): passes 55, saddles 163, depressions 165, main junctions 166</li>
+        <li>Still unread (6 Nov 2026): aqueducts 23, siphons 24, culverts 31 (71,454), canal tunnels 32 (none in the bundle), runways 46, boundary pillars 67, vet hospitals 73, rest houses 75, petrol pumps 76, mines and mine shafts 86–87, deserted sites 88, air targets 89, km stones 90–92, kilns and chimneys 121–122, banks 148, marsh names 156, named road junctions 159; attributes <code>mx</code> (junction ways out), <code>rw</code> / <code>rd</code> (runway), <code>ws</code> / <code>dc</code> (river reach wet span, discharge), <code>an</code> (alternate names)</li>
+        <li>Climate: <code>tmin</code>, <code>tmax</code>, <code>prec</code>, <code>wind</code>, <code>prec_year</code>, <code>monsoon_pct</code> are read; <code>tmean</code>, <code>frost_months</code>, <code>hot_months</code>, <code>wet_months</code> are worked out again from the months</li>
+        <li>Population <code>density_2020</code> is loaded but never shown; settlements <code>dou</code> (GHSL degree of urbanisation) is not read</li>
+      </ul></div>
+      <div class="box"><h4>Unread <code>rules.json grotbc</code> keys</h4><ul>
+        <li><code>terrainType</code>: class → terrain type (the pipeline already used it to build the <code>terrain</code> layer)</li>
+        <li><code>tanks</code>, <code>msr</code>, <code>loadClassCode</code>: doctrine numbers (the road tiles carry the result)</li>
+        <li>(<code>tankable</code>, <code>water</code> and the <code>terrain</code>, <code>landform</code>, <code>route</code>, <code>bld</code> codebooks are read since 5 Nov 2026.)</li>
+        <li>(<code>classes[c].grotbc</code>, <code>origin</code> and <code>kind</code> are read since 6 Nov 2026 for the O section.)</li>
+        <li>(<code>coverSplit</code> and <code>banks</code> are read since C was built on 5 Nov 2026.)</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <footer>Sources: <code>GROTBC.md</code>, <code>MS/Docs/16-ground-guide-grotbc-card.md</code> §6, <code>MS/Data/terrain-bundle/</code> (manifest, rules.json, features/index.json, climate, population, network, settlements, routes), <code>tools/terrain-pipeline/</code> (grotbc.py, ground.py, rules.yaml), and <code>MS/Engines/GroundGuide/*.ts</code> with the <code>groundGuide.*</code> defaults in <code>MS/Data/Settings.json</code>. Some notes in the docs are now stale: schools (147), banks (148) and government offices (149) are in the bundle from GeoNames, and the four-way cover split exists as <code>coverSplit</code>.</footer>
+</div>
+
+<script>
+const STATUS = {
+  on:   { label: 'On card',    css: 's-on',   desc: 'In the dataset and shown with the default switches.' },
+  sw:   { label: 'Switch',     css: 's-sw',   desc: 'In the dataset; shown in the Ground Brief, and on the card when a card option is on (for G R O B W: "A few rows" or a drawn style).' },
+  part: { label: 'Partly',     css: 's-part', desc: 'Shown only in part, or only when it happens to be the limiting class in WHY / NEAREST.' },
+  data: { label: 'Data only',  css: 's-data', desc: 'In the dataset, never shown.' },
+  miss: { label: 'Missing',    css: 's-miss', desc: 'Neither in the dataset nor on the card.' },
+  card: { label: 'Card only',  css: 's-card', desc: 'On the card, worked out from the verdict, the plan or a router rather than read from the bundle.' },
+};
+const ORDER = ['on', 'sw', 'part', 'data', 'miss', 'card'];
+
+// Row: [GROTBC item, [dataset items], [card items], status, note?]. Card items ending in "(off)" are behind a switch that is off by default.
+const MAP = [
+ { k: 'G', name: 'Ground', sub: 'Relief, composition, terrain type, vegetation, hydrology, ITG',
+   verdict: 'Shown since 5 Nov 2026. The card has a G line (terrain type, elevation, slope and band, landform). The Brief, or the card with "A few lines each", adds the nearest change of terrain, high ground, the named area from the NCGDB and GeoNames, water sources and the nearest named river. ITG candidates now carry what the pipeline measured on them (relief, dominance, view, MSR in view, slope, access, ground, cover). Still missing: seasonal vegetation and vegetation density at the point.',
+   groups: [
+  ['Relief and Elevation', [
+   ['Nature of the ground (flat, undulating, rolling, broken, mountainous)', ['`terrain` 1 Plain · 2 Hilly · 7 Mountainous', '`landform` 1–6'], ['Card · G line: "Mountainous · 1890 m · 15° Sloping · Upper slope"', 'Brief · G Terrain, Relief & Water'], 'on'],
+   ['Elevation and height variations', ['`elev_hi` / `elev_lo` (metres)', 'Kinds 100 trig station · 101 spot height · 102 bench mark · 150 mountain · 160–164 (`e`)'], ['Card · G line: elevation at the point', 'Card · G High row: "2276 m Murree Hills · 2.1 km NE · 386 m above" (lines style, Brief)'], 'on'],
+   ['Slope characteristics', ['3 × 3 gradient of `elev_hi` / `elev_lo`', 'Classes 9, 10, 18, 19 (bands)'], ['Card · G line: degrees and band (Level, Gentle, Sloping, Moderate, Steep)'], 'on', 'Read at the map zoom; when zoomed out the tile is a mean, so the card says "about".'],
+   ['Ridgelines', ['Line 204 ridgeline (`e` crest, `lk` length)'], ['Card · G Ridge row: "Crest 1709 m · 2.6 km long · 524 m N" (lines style, Brief)'], 'sw'],
+   ['Valleys, ridgelines, depressions, escarpments', ['`landform` valley floor … crest', 'Kinds 163 saddle · 165 depression · line 204 ridgeline · 152 landform name', 'Class 27 escarpment'], ['Card · G line: landform at the point', 'Card · G Area row: named valleys, plains, plateaus, depressions (lines style, Brief)', 'Card · ITG: saddles and passes'], 'on', 'Ridgelines (204) are named in the G Ridge row but not drawn on the map. Saddles (163) and depressions (165) are read only when flagged as ITG candidates.'],
+   ['Drainage pattern', ['Classes 17 · 22 · 46 · 47', 'Lines 202 canal · 203 river · kind 153 stream name'], ['Card · G River row: nearest named river, canal or stream (lines style, Brief)'], 'sw'],
+  ]],
+  ['Ground Composition', [
+   ['Soil type (sandy, clayey, rocky, loamy, alluvial)', ['`soil` texture 1–14, confidence, NCGDB bit', '`grotbc.layers.soil` codebook'], ['Card · T band Why row: soil and cone index', 'Card · C Soil section (off)', 'Brief · G Soil: texture triangle, label, source chip'], 'on'],
+   ['Surface condition (firm, soft, loose)', ['`rci_dry` / `rci_wet` cone index + coarse bit', '`grotbc.soilBearing[code].note`'], ['Card · T band Why row', 'Brief · G Soil note'], 'on'],
+   ['Ground bearing', ['`rci_*` against `grotbc.soilStrength.vehicles[byProfile[mode]]`'], ['Card · C Soil cone index gauge (off)', 'Brief · G Soil gauge'], 'sw'],
+   ['Marshy, waterlogged, muddy ground', ['`wet` 4 waterlogged / marsh', 'Classes 6 · 7', 'Kind 156 marsh', '`terrain` 4 Marshy'], ['Card · G line: "Marshy"', 'Card · going cause after rain', 'Card · WHY / NEAREST when the class is the limit'], 'on', 'The named marshes (kind 156, 360 points) are not read; the ground itself comes through the classes.'],
+   ['Seasonal variation of the ground', ['`rci_wet`', 'Climate `prec_01..12`'], ['Card · T band headline', 'Card · T rain pill', 'Brief · T Going by Month'], 'on'],
+  ]],
+  ['Terrain Type', [
+   ['Plain, hilly, mountainous, solid, marshland, urban, snow and ice', ['`terrain` 1–9', '`grotbc.layers.terrain` labels'], ['Card · G line: terrain type at the point', 'Card · G Terrain row: nearest change ("Hilly 75 m S", lines style, Brief)'], 'on'],
+   ['Desert: rocky, gravel or sandy', ['`terrain` 6 Desert', 'Classes 12 · 13 · 14 · 15', 'Kind 151 dune (GeoNames sand seas)'], ['Card · G line: "Desert"', 'Card · WHY: sand, dunes, rocky when they limit'], 'on'],
+   ['Forested terrain', ['Classes 1 · 31', 'Kind 158 forest name (NCGDB, GeoNames reserved forests)'], ['Card · G Area row: "Pabbi Reserved Forest · 1.3 km W" (lines style, Brief)', 'Card · WHY / NEAREST when the class is the limit'], 'part', 'No terrain-type code of its own (not in `terrain` 1–9).'],
+   ['Named areas (plains, plateaus, deserts, valleys, hill ranges)', ['Kinds 152 landform name · 150 mountain range / hills · 157 region · 151 sand sea (GeoNames, `D:\\Imagery\\PK.txt`)'], ['Card · G Area row (lines style, Brief)'], 'sw'],
+   ['Riverine terrain', ['Classes 17 · 5', '`wet` 3 riverbed / floodplain'], ['Card · after-rain going'], 'part', 'No terrain-type code of its own.'],
+  ]],
+  ['Vegetation', [
+   ['Type and density of vegetation', ['Classes 1 · 29 · 30 · 31', 'Kind 158 forest name', '`cc` concealment (area density)'], ['Card · C Ground / Aerial Obs lines', 'Card · WHY / NEAREST when the class is the limit'], 'part', 'No density at the point. Trunk size and spacing are missing.'],
+   ['Named orchards, groves, cultivated areas', ['Kind 126 vegetation name (GeoNames V.CULT / OCH / GROVE / SCRB): 400 points'], ['Card · G Area row: "Kucha Madan grove · 450 m SE" (lines style, Brief)', 'Card · G4 chips'], 'sw', 'In the live bundle since the 6 Nov feature rebuild.'],
+   ['Grassland and agricultural fields', ['Classes 0 · 2 · 23 · 48'], ['Card · WHY / NEAREST when the class is the limit', 'Card · C "From Cropland"'], 'part', 'Rice paddy is not its own class.'],
+   ['Seasonal vegetation changes', [], [], 'miss', 'No crop calendar or crop height by month.'],
+  ]],
+  ['Hydrological Features', [
+   ['Rivers, streams, canals', ['Classes 4 · 20 · 21 · 22 · 46 · 47', 'Lines 202 canal · 203 river', 'Kinds 146 river reach · 153 stream · 154 canal names'], ['Card · G River row (lines style, Brief)', 'Card · O Canal row: width, depth, bank height; O River row: bed, depth, current (lines style, Brief)', 'Card · WHY / NEAREST / indicator when NO-GO'], 'sw', 'Width, depth and current are under O since 6 Nov 2026. Aqueducts and siphons (23, 24) and canal km stones (92) are not read.'],
+   ['Lakes, ponds, reservoirs', ['Class 4', 'Kind 144 lake'], ['Card · G River row when nearest', 'Card · NEAREST when NO-GO'], 'part'],
+   ['Floodplains and seasonal water', ['`wet` 1 · 2 · 3', 'Class 5'], ['Card · after-rain going cause'], 'part'],
+   ['Water sources (wells, springs, tanks)', ['Kinds 1–9 · 155 well', '`grotbc.water.kinds`'], ['Card · G Water row: "Spring 493 m SE · Tank (perennial) 2.8 km NE" (lines style, Brief)'], 'sw'],
+  ]],
+  ['Important Tactical Ground (ITG / MITG)', [
+   ['Terrain features', ['Kinds 160–166 · line 204', 'Flagged crossings 20, 25–28, passes 55, dams 56–58'], ['Card · ITG: name or kind and elevation, distance, direction', '`guide.groundCandidates()`'], 'on', 'Any feature with `it` set is listed, whatever its kind.'],
+   ['Candidate tests and tier', ['`ig` H O R P C J · `it` 1 / 2', '`grotbc.itg.reasons`'], ['Card · ITG: "ITG Candidate" / "Strong Candidate (Check as MITG)" + reason labels'], 'on'],
+   ['Characteristics (dominance, view, MSR in view, cover)', ['`rr`, `iso`, `vs`, `mv`, `sp`, `lc`, `cv`, `dr`, `dn`, `hs`'], ['Card · ITG: two lines under the reasons, "Rises 25 m · Highest within 1 km · Sees 31 % to 5 km · No MSR in view" and "Slope 3° · No MSR within 5 km · Road or track 900 m · Sand · Cover None, Concealment None (area)"', '`guide.groundCandidates()` · `traits`'], 'on', 'Added 6 Nov 2026. DEM features only (peaks, hills, knolls, saddles, plateaus); flagged NCGDB features (bridges, junctions) carry none. `hs` is empty in the live bundle.'],
+   ['Designation (ITG / MITG for the task)', [], ['`designateGround()` draws Imp Gr / Vital Gr, saved with the plan'], 'card', 'By design, never in the bundle.'],
+  ]],
+ ]},
+ { k: 'R', name: 'Roads, Tracks & Railway', sub: 'Road network, connectivity, railway, transport infrastructure',
+   verdict: 'Shown since 5 Nov 2026. The card has an R line with the route at the point, or the nearest within 500 m, from the `route` layer: type, load class, MSR. It is checked against the mode with the bundle rules: class 60+ tankable, 50 to 59 Al-Zarrar only, class not recorded treated as not tankable. The Brief, or "A few lines each", adds the named road and its route, what is recorded on it (load code, width, condition, closures, landslides), the nearest crossing, railway and airfield. Road network density with the ways out is on the R line too (seven styles to compare, D1 rows the default). Since 6 Nov a second small R line names the nearest level crossing, railway bridge or tunnel, bus stand and toll plaza. Still not read: culverts, km stones, runways, petrol pumps, named junctions.',
+   groups: [
+  ['Road Network', [
+   ['Classification (motorway … rural road)', ['`route` types 1–22', 'network `clazz` · line 200 `t`', 'Classes 34–38'], ['Card · R line: route type here or nearest', 'Card · T band Road row'], 'on'],
+   ['Names and numbers', ['line 200 `n`, `r` · `network/names.json` · `routes.json`'], ['Card · T band Road row: road name and number', 'Card · R Road row: "N-35 · Karakoram Highway · 779 km · MSR · Defence road" (lines style, Brief)'], 'on'],
+   ['MSR', ['`route` bit 7 · line 200 `m` · network flag msr', '`grotbc.msr`'], ['Card · R line: MSR chip', 'Card · T band Road row: MSR shield'], 'on'],
+   ['Load class and tankable', ['`route` tier · network `load`, flag tankable', '`grotbc.tankable` (minClass 60, limitedClass 50)'], ['Card · R check: "Tankable: class 60 and over" / "Al-Zarrar only" / "not tankable" / "class not recorded: treat as not tankable until checked"', 'Card · T band Road row: class tag'], 'on', 'Class is recorded on about 31 % of segments; the card says so rather than guessing.'],
+   ['Surface (metalled, unmetalled; all- or fair-weather)', ['`route` types 15–18 · class 38', 'network flag fairWeather'], ['Card · R check for wheels: "Metalled: all-weather" / "Fair-weather surface: SLOW-GO after rain"'], 'on'],
+   ['Condition and maintenance', ['line 200 `cn` · `routes.json cond`'], ['Card · R Recorded row: "condition Good" or "condition not recorded" (lines style, Brief)'], 'sw', 'Recorded on about 4 % of segments.'],
+   ['Width and gradient', ['line 200 `w` · network `width`'], ['Card · R Recorded row: "20 m wide" (lines style, Brief)'], 'sw', 'Gradient, bends and overhead clearance are missing.'],
+   ['Bridges, culverts, underpasses', ['Classes 39–44', 'Kinds 20–31 · network `xing`'], ['Card · R Crossing row: nearest bridge, ford or ferry (lines style, Brief)', 'Card · ITG: flagged bridges'], 'sw', 'Bridge load class is not shown with it. Culverts (kind 31, 71,454 points) are not read.'],
+   ['Seasonal closures and landslides', ['line 200 `x`, `sl` · `routes.json closed`'], ['Card · R Recorded row: "no closure recorded" / "closed: Snow", landslide sites', 'Card · O Closures row'], 'sw'],
+   ['Kilometre stones (road chainage)', ['Kinds 90 road (21,622) · 91 railway (6,772)'], [], 'data', 'Could give a chainage on the road or line nearest the point.'],
+  ]],
+  ['Road Connectivity', [
+   ['Connectivity between settlements, alternatives', ['network graph · `routes.json` from / to'], ['Toast "Way Out by Road" after placement (GeoCore router)', 'Card · R Ways out: roads leaving the 5 km circle by direction, all-weather and MSR ones counted', 'Card · T5 all-weather alternative (off)'], 'card'],
+   ['Named junctions and junctions of main roads', ['Kind 159 named junction (52)', 'Kind 166 main junction (`mx` ways out)'], ['Card · ITG: junctions on an MSR (reason J)'], 'part', 'Kind 159 and the `mx` count are not read; main junctions show only when flagged as ITG candidates.'],
+   ['Road network density', ['network `gg` tiles: every edge clipped to a circle (`sections.roadDensityKm`, 5 km) · `clazz`, flags fairWeather / msr / tankable', 'Bands: `grotbc.roadDensity.bands` (defaults in `GroundGuideRoadDensity.ts`)'], ['Card · R line: "road density dense" (D1 rows, the default; one line each)', 'Card · R Density and Ways out rows: band chip, km/km² of that band, the other figure (a few lines)', 'Card · D2 chip, D3 gauge, D4 ways-out rose, D5 make-up bar, D6 one sentence, D7 Brief only (off)', 'Card · band when tracks lift it: after rain (default), dry or both (`sections.roadDensityLead`)', 'Brief · R Road Network Density: rows with the make-up (all-weather, tracks, MSR, tankable km), ways-out rose, what the band means', '`guide.roadDensityAround()`'], 'on', 'Built 5 Nov 2026; the seven card styles and the band rule on 6 Nov, compared in `ground-guide-road-density-options.html` (your pick pending). Bands are a proposal from the bundle (5 km circles: median 0.15, 90th percentile 1.17 km/km²): Sparse under 0.25, Moderate to 0.75, Dense to 1.5, Very Dense above. When tracks lift the total a band (Thal: Dense with tracks, Moderate after rain), the card leads with the all-weather band and its own figure. Town streets and footpaths are not in the tiles, so towns read as their through roads.'],
+  ]],
+  ['Railway Network', [
+   ['Lines and classification', ['`route` types 8–13 · class 28', 'Line 201 railway · `routes.json rails`'], ['Card · R line when on a railway; R check for Rail-Bound: "On a railway"', 'Card · R Rail row: nearest line (lines style, Brief)'], 'on'],
+   ['Stations, terminals, yards', ['Kind 50 rail station'], ['Card · R Rail row: "Bani Bangla RS 9.6 km NE" (lines style, Brief)'], 'sw'],
+   ['Rail bridges, tunnels, level crossings', ['Class 43 · 50', 'Kind 29 rail tunnel'], ['Card · R second line: "Railway bridge 2.0 km N (trains and foot only)", level crossing "(vehicles cross here)"', 'Card · R Rail Xing row (lines style, Brief)'], 'on', 'Added 6 Nov 2026. Bridges and level crossings from the class layer within 2 km; tunnels within 10 km.'],
+   ['Passenger and freight infrastructure', [], [], 'miss'],
+  ]],
+  ['Transport Infrastructure', [
+   ['Airports, airstrips, helipads', ['Kinds 40–47'], ['Card · R Air row: "Bhurban (Helipad) 8.3 km NE" (lines style, Brief)'], 'sw', 'Runway size and direction (`rw`, `rd`) and the runways themselves (kind 46, 191) are not read.'],
+   ['Bus terminals, transport hubs', ['Kind 139 bus stand · 142 toll plaza'], ['Card · R second line: "Tool Plaza (Toll plaza) 1.1 km E"', 'Card · R Transport row (lines style, Brief)'], 'on', 'Added 6 Nov 2026, within 10 km. Only 16 bus stands and 1 toll plaza are mapped.'],
+   ['Inland waterways', ['Kind 25 ferry'], ['Card · R Crossing row when a ferry is nearest'], 'miss', 'There is no navigable-water data.'],
+   ['Logistic and commercial infrastructure', ['Kinds 76 petrol pump · 138 market · 81 oil tank'], ['Card · B Landmarks / Utilities rows: markets, oil tanks (lines style, Brief)'], 'part', 'Petrol pumps (kind 76, 110 points) are not read.'],
+  ]],
+ ]},
+ { k: 'O', name: 'Obstacles', sub: 'Natural, man-made, temporary, seasonal',
+   verdict: 'Shown since 6 Nov 2026. An O line names the nearest man-made and natural obstacle and what each means for the mode (NO-GO or SLOW-GO), plus wet ground at the point. The Brief, or "A few lines each", adds the nearest canal with its width, depth and bank height, river reach (bed, depth, current), dam or barrage, levee, and roads closed by season or with landslide sites. Plan obstacles, construction works and live flooding are still missing.',
+   groups: [
+  ['Natural Obstacles', [
+   ['Rivers and water bodies', ['Classes 4 · 5 · 46', 'Lines 203 · kind 146 river reach (`s`, `dp`, `cu`)'], ['Card · O line: nearest natural obstacle + effect', 'Card · O River row: bed, depth, current (lines style, Brief)'], 'on'],
+   ['Steep slopes, escarpments', ['Classes 9 · 27'], ['Card · O line: "Steep slope (over 30°) 94 m NW (NO-GO)"'], 'on'],
+   ['Mountains, rocky outcrops', ['Class 15 · `terrain` 7'], ['Card · O line when nearest', 'Card · G line: Mountainous'], 'on'],
+   ['Marshes and swamps', ['Classes 6 · 7 · `wet` 4'], ['Card · O line: nearest, and "Waterlogged / marsh here"'], 'on'],
+   ['Dense vegetation, forests', ['Class 31 forest'], ['Card · O line when nearest'], 'on'],
+   ['Ravines, gullies, depressions', ['Classes 17 · 47 · kind 165'], ['Card · O line: "Dry nullah 149 m NW"'], 'on', 'Gully density is missing.'],
+   ['Obstacle origin and kind', ['`classes[c].origin` / `kind` / `grotbc` letters'], ['Card · O line: natural and man-made named apart'], 'on', 'Crossings carry O too but are left out: they are the way over an obstacle.'],
+  ]],
+  ['Man-made Obstacles', [
+   ['Walls, fences, boundary structures', ['Classes 49 · 29'], ['Card · O line when nearest'], 'on'],
+   ['Embankments, bunds, cuttings, levees', ['Classes 24 · 25 · 26', 'Kind 123 levee (GeoNames T.LEV): 94 points'], ['Card · O line when nearest', 'Card · O Levee row: "Bagdar Door Bund (Levee / flood bund) 196 m W" (lines style, Brief)'], 'on', 'Bund and embankment heights are missing.'],
+   ['Buildings and industrial structures', ['Class 3 · `bld`'], ['Card · O line when nearest', 'Card · B line: building density'], 'on'],
+   ['Canals and artificial waterways', ['Classes 20–23 · line 202 (`w`, `dp`, `b`)'], ['Card · O line: "Canal 359 m W (NO-GO)"', 'Card · O Canal row: "76.2 m wide · 6 m deep · banks 12 m" (lines style, Brief)'], 'on'],
+   ['Railway infrastructure', ['Class 28'], ['Card · O line when nearest'], 'on'],
+   ['Dams and major structures', ['Kinds 56 dam · 57 barrage · 58 headworks'], ['Card · O Dam row (lines style, Brief)'], 'sw'],
+   ['Canal structures (aqueducts, siphons, canal tunnels)', ['Kinds 23 aqueduct (309) · 24 siphon (306) · 32 canal tunnel (none)', 'Kind 92 canal km stone (13,602)'], [], 'data', 'Where a canal crosses a drain or river: a crossing point or a gap in the obstacle.'],
+   ['Power lines, masts (air hazard)', ['Classes 33 · 48 · kinds 78 · 79', 'Kind 122 chimney (119)'], ['Card · O line when nearest', 'Card · B Utilities row'], 'on', 'Chimneys are not read.'],
+  ]],
+  ['Temporary Obstacles', [
+   ['Flooded areas', ['`wet` (static, not live)'], ['Card · O line: "Flood-prone here"', 'Card · after-rain going'], 'part', 'No live flood data.'],
+   ['Landslides and rockfalls', ['line 200 `sl` (71 roads)'], ['Card · O Closures row and R Recorded row (lines style, Brief)'], 'sw'],
+   ['Road closures', ['line 200 `x` · `routes.json closed` (~540 segments)'], ['Card · O Closures row: "closed (Snow)" or "None recorded near" (lines style, Brief)'], 'sw', 'Said as "none recorded", never as "open".'],
+   ['Construction works, collapsed infrastructure, temporary barriers', [], [], 'miss'],
+   ['Plan obstacles (drawn minefields, obstacle lines)', [], [], 'miss', 'Doc 16 §7 item 5: count drawn obstacles as Reinforcing. Not built.'],
+  ]],
+  ['Seasonal Obstacles', [
+   ['Snow accumulation', ['Class 8 · `terrain` 9', 'Climate frost months · "Snow" closures'], ['Card · O / G lines: snow and ice', 'Card · W Year row: frost months'], 'part', 'Snow depth and duration are missing.'],
+   ['Seasonal flooding', ['`wet` · class 5 · climate `monsoon_pct`'], ['Card · O line: wet ground', 'Card · W: monsoon share'], 'part', 'There is no flood calendar.'],
+   ['Muddy and waterlogged areas', ['`rci_wet` · `wet` 4'], ['Card · T band, rain pill'], 'on'],
+   ['River-level variations', ['Kind 146 `ws` wet span, `dc` discharge'], ['Card · O River row: depth and current'], 'part', 'Wet span and discharge are not shown.'],
+   ['Vegetation growth', [], [], 'miss'],
+  ]],
+ ]},
+ { k: 'T', name: 'Trafficability', sub: 'Going by mode and movement type, dry and after rain',
+   verdict: 'This is the best-covered letter: going dry and after rain, movement freedom, the road for the mode and the season are all on the card. Most of the clutter is here: 8 going options (A–H) and 8 T-band styles (T1–T8).',
+   groups: [
+  ['Ratings and Modes', [
+   ['GO / SLOW-GO / NO-GO for the mode', ['`class` · `dist_<mode>` · `profiles[mode].nogo / caution / requires / why`'], ['Card · header verdict and WHY scale', 'Legend · ramp and chips'], 'on'],
+   ['Mobility classes (14 modes)', ['`manifest.profiles` · `profileOverrides`'], ['Legend · mode strip, P Change Mode'], 'on'],
+   ['Who can move here (foot, wheeled, tracked at a glance)', ['`class` + `rci_*` + `wet`'], ['Card · F Going by Mode (off)', 'Card · T4 tiles (off)', 'Brief · T mode grid'], 'sw'],
+  ]],
+  ['Movement Types', [
+   ['Cross-country, dry and after rain', ['`class` · `soil` · `rci_dry` / `rci_wet` · `wet`'], ['Card · T band headline + Why row', 'Card · A going line (hidden by T band)', 'Brief · T Cross-Country Going'], 'on'],
+   ['Movement freedom (8 directions to 2 km)', ['Rays over `class` + `rci_*` + `wet`'], ['Card · T band Move row', 'Card · B rose (hidden), E exits / H map (off), T6 rose (off)', 'Brief · T Movement Freedom'], 'on'],
+   ['Tracks (fair-weather)', ['`route` types 1–7 · class 38 · load code F'], ['Card · T band Road row: "Track" shield, tagged "Fair-Weather · SLOW-GO After Rain" after rain, with the all-weather road beside it', 'Card · R check for wheels: "Fair-weather surface: SLOW-GO after rain"'], 'on'],
+   ['Roads: load class against the mode', ['network `load` / tankable · line 200 `c`, `k`'], ['Card · T band Road row'], 'on'],
+   ['MSR: chokepoints, alternatives, closures', ['network flags · `routes.json`'], ['Card · T band Road row: all-weather alternative when the nearest road is fair-weather', 'Card · ITG: chokepoints on an MSR (reason C)', 'Card · O Closures row (lines style, Brief)'], 'part', 'Chokepoints show only as ITG candidates near the point; there is no list along the route.'],
+   ['Rail', ['Class 28 (Rail-Bound mode)'], ['Card · verdict for Rail-Bound'], 'part'],
+   ['Air: landing site going', ['HLS profile · classes 9, 10, 18, 19, 33, 48'], ['Card · T band "Land" row'], 'on', 'The going for a landing site does not use the mapped airfields and helipads (they are in the R Air row).'],
+   ['Water: navigable water, banks, fords, ferries', ['Vessel / Amphibious profiles · class 45 · `bank` · `grotbc.banks`'], ['Card · verdict for those modes'], 'part', '`bank` is read for C only, not for the going.'],
+  ]],
+  ['Season, Weather, Speed', [
+   ['Rain by month, wet season', ['Climate `prec_01..12` · `going.wetMonthMm`'], ['Legend · T caption, month stepper', 'Card · T3 calendar (off), G ribbon (off)', 'Brief · T Going by Month'], 'on'],
+   ['Temperature, frost, hot months', ['Climate `tmin` / `tmax` (WorldClim normals)'], ['Card · W line (see W below)'], 'on'],
+   ['Cross-country speed by mode', [], [], 'miss', 'Planned; no speed tables yet.'],
+  ]],
+ ]},
+ { k: 'B', name: 'Built-up Areas', sub: 'Settlements, construction, public infrastructure, urban character',
+   verdict: 'Mostly shown since 5 Nov 2026. People are covered in depth. A B line adds building density and kacha huts, plus the nearest service. The Brief, or "A few lines each", adds building size and height, temporary huts, the nearest health, police, school and government office, and security installations. Since 6 Nov the place and its size class, admin areas, map sheets, the border, landmarks (protected sites first) and utilities are on it too. Still not read: mines, kilns, rest houses, vet hospitals, deserted sites, banks, boundary pillars.',
+   groups: [
+  ['Settlements', [
+   ['Villages, towns, cities, metropolitan areas', ['Kinds 110–114 (`wp`, `p`)', 'Size classes from `settlements.py`'], ['Card · B Place row: "Dograe Kalan · Large village, about 8,940 people" (lines style, Brief)', 'Card · People: nearest place'], 'on', 'A city, district HQ or town whose figure says less than a town keeps its own kind. `settlements.json` (30 MB) is not loaded.'],
+   ['Names', ['Features `n` · settlements `name`, `alsoNames`'], ['Card · People: Nearest'], 'on'],
+   ['Distribution and density', ['Population `pop` · `density_2020` · `bld` density'], ['Card · People B scale', 'Card · B line: building density'], 'on', '`density_2020` is loaded but never shown.'],
+   ['Population characteristics', ['Population `males15_49`, `under15`, `over65`'], ['Card · People D ages / K block (off)', 'Brief · B Civil Considerations'], 'sw'],
+   ['Rural-to-urban distribution', ['settlements `dou` (GHSL)'], ['Card · People scale Empty … Urban (from density)'], 'part'],
+   ['Civil considerations (collateral risk)', ['Population rings · `POPULATION_FLAGS`'], ['Card · civil flag pill and strip'], 'on'],
+   ['Industrial zones, scattered settlements', ['`bld` size 5 industrial · `hut` density'], ['Card · B line: huts per km²', 'Card · B Buildings row: footprint size (lines style, Brief)'], 'on'],
+  ]],
+  ['Construction', [
+   ['Mud houses (kacha)', ['`hut` permanent huts per km²'], ['Card · B line: "50 huts per km²"'], 'on'],
+   ['Multi-storey buildings', ['`bld` GHSL height class'], ['Card · B Buildings row: "Medium (6 to 12 m, 2 to 4 storeys)" (lines style, Brief)'], 'sw'],
+   ['Industrial buildings, warehouses', ['`bld` size class 5 · kind 140 mill'], ['Card · B Buildings row: "Industrial / large buildings" (lines style, Brief)'], 'sw'],
+   ['Temporary structures', ['`hut` bit 7'], ['Card · B Kacha huts row: "temporary huts nearby" (lines style, Brief)'], 'sw'],
+   ['Brick and concrete', [], [], 'miss', 'No building material; footprint size is the only proxy.'],
+   ['Mines, kilns, chimneys', ['Kinds 86 mine (1,453) · 87 mine shaft (820) · 121 kiln (16,305) · 122 chimney (119)'], [], 'data', 'Brick kilns are landmarks in the plains; tall chimneys are an air hazard.'],
+   ['Deserted sites', ['Kind 88 deserted site (8,724)'], [], 'data'],
+  ]],
+  ['Public Infrastructure', [
+   ['Hospitals and health', ['Kinds 70–72 (vet hospitals 73 are not read)'], ['Card · B line: nearest service', 'Card · B Services row (lines style, Brief)'], 'on'],
+   ['Schools, government offices', ['Kinds 147 · 149 (GeoNames) · 136 post office'], ['Card · B Services row (lines style, Brief)'], 'sw', 'Sparse: 307 schools and 45 offices in all.'],
+   ['Police', ['Kind 77'], ['Card · B Services row (lines style, Brief)'], 'sw'],
+   ['Markets, banks', ['Kinds 138 · 148'], ['Card · B Landmarks row: markets (lines style, Brief)'], 'part', 'Banks (kind 148) are not read; only 2 are mapped.'],
+   ['Water supply', ['Kinds 1–9 · 9 overhead tank'], ['Card · G Water row (lines style, Brief)'], 'sw'],
+   ['Electricity and communications', ['Kinds 74 grid · 135 booster · 137 exchange · 78 mast · 68 wireless · class 33'], ['Card · B Utilities row (lines style, Brief)'], 'sw'],
+   ['Rest houses, vet hospitals', ['Kinds 75 rest house (1,688) · 73 vet hospital (1,010)'], [], 'data', 'Rest houses are possible HQ or halt locations.'],
+  ]],
+  ['Urban Character, Admin and Security', [
+   ['Industrial areas, camps, parks', ['Kinds 124 industrial area (27) · 125 camp (160) · 127 park (116), GeoNames'], ['Card · B Landmarks row (lines style, Brief)'], 'sw', 'In the live bundle since the 6 Nov feature rebuild. Residential and commercial zoning is still missing.'],
+   ['Admin (tehsil, district, province), map sheet', ['`admin.geojson` · `sheets.json`'], ['Card · B line: tehsil', 'Card · B Admin and Sheet rows: "Tehsil Murree · District Rawalpindi · Punjab", "1:50k 43G5" (lines style, Brief)'], 'on', 'The corps AOR layer is marked sensitive and is never read.'],
+   ['Border (IB / LoC distance)', ['`boundaries.geojson`'], ['Card · B Border row: "Pakistan-India 5.2 km E", "Line of Control 49 km E" (lines style, Brief)'], 'sw', 'International lines, LoC and LAC only; corps operational lines are not read. Boundary pillars (kind 67, 10,872) are not read.'],
+   ['Religious and protected sites', ['Kinds 130 mosque · 120 tomb / shrine · 131 graveyard · 132 temple · 133 church · 134 eidgah'], ['Card · B Landmarks row: protected sites first (lines style, Brief)'], 'sw', 'Matters for no-strike lists and collateral.'],
+   ['Military and security installations', ['Kinds 60–69'], ['Card · B Security row: "Murree (Cantonment) 1.1 km W" (lines style, Brief)'], 'sw', 'Posts, border posts, forts, cantonments, watch towers, firing ranges. Bunkers and trenches (62, 63) are under C; boundary pillars (67) and air targets (89) are not read.'],
+  ]],
+ ]},
+ { k: 'C', name: 'Cover, Camouflage & Concealment', sub: 'Natural and artificial cover, concealment, four ways',
+   verdict: 'Built on 5 Nov 2026. The card has a C section with seven styles (C1 four lines is the default) and the Brief has C in full: four-way cover from the class split, raised by banks, the local cc density, the nearest Fair or better and a rose. Since 6 Nov mapped caves, bunkers, trenches and tunnels are named on an Underground line. Building density and defilade are still not used.',
+   groups: [
+  ['Natural Cover', [
+   ['Forests, dense vegetation', ['`coverSplit` classes 1, 30, 31 · `cc` cover'], ['Card · C four lines: "Good · Tree cover"', 'Brief · C'], 'on'],
+   ['Hills and natural depressions', ['`coverSplit` classes 9, 10, 19 · `landform` · kind 165'], ['Card · C: slope classes only'], 'part', '`landform` and the depression features are not read; slopes count through their class.'],
+   ['Rocky formations', ['Class 15 · `coverSplit`'], ['Card · C four lines'], 'on'],
+   ['Natural embankments and river banks', ['`bank` · `grotbc.banks` · class 47'], ['Card · C bank line + Deployment Line tag', 'Brief · C'], 'on', 'A bank within 75 m raises the four levels (your rule of 4 Nov 2026).'],
+  ]],
+  ['Artificial Cover', [
+   ['Buildings, walls', ['Classes 3 · 49 · 29 · `coverSplit`', '`bld`'], ['Card · C four lines'], 'on', '`bld` (building density and height) is not read; built-up counts through class 3.'],
+   ['Bunds and embankments', ['Classes 24 · 25 · 26 · `coverSplit` (bund row set by the owner)'], ['Card · C four lines and nearest'], 'on'],
+   ['Underground and enclosed', ['Kinds 85 cave · 62 bunker · 63 trench · 28 tunnel · 29 rail tunnel'], ['Card · C Underground line in every style: "Trench 858 m NE" (when one is within 5 km)', 'Brief · C Underground ("none mapped within 5 km")', '`guide.coverAround()` · `shelters`'], 'on', 'Added 6 Nov 2026. Points on the map: they never change the four levels.'],
+  ]],
+  ['Concealment', [
+   ['Vegetation cover, canopy', ['`coverSplit` (ground, aerial) · `cc` concealment (`v >> 4`, an area density)'], ['Card · C Ground Obs / Aerial Obs lines (the spot)', 'Card · C "Concealed round it, not on this spot" line', 'Brief · C area density'], 'on', 'The levels describe the spot; `cc` never raises or lowers them (decided 5 Nov 2026). On a road under trees the card says a canopy may screen it from the air: check on the ground. Canopy density over roads is missing.'],
+   ['Built-up density', ['`bld` density · `cc`'], ['Card · C: class 3 only'], 'part'],
+   ['Four ways: direct fire, indirect fire, ground obs, aerial obs', ['`grotbc.coverSplit.byClass` `[direct, indirect, ground, aerial]`'], ['Card · C1 four lines, C2 grid', 'Brief · C'], 'on'],
+   ['Nearest better cover, by direction', ['Class split + banks searched to `cover.radiusM` (500 m)'], ['Card · C need line ("needs Direct Fire: None · Good 94 m N")', 'Card · C5 nearest, C6 rose (off)', 'Brief · C rose and nearest'], 'on'],
+   ['What the mode needs most', ['`COVER_FOCUS` (foot: direct fire; vehicles: ground obs; guns, AD, signals: air)'], ['Card · C diamond marker and need line'], 'card', 'A proposal, in the engine rather than the bundle.'],
+   ['Masking and defilade at the point', ['`vs` (view %) only on G features'], [], 'miss', 'Needs a viewshed at the point.'],
+  ]],
+ ]},
+ { k: 'X', name: 'Placement Verdict (outside GROTBC)', sub: 'Card items that belong to no letter',
+   verdict: 'These are the card’s core and they answer "can I put the symbol here?". They read the class and distance layers and the plan, not a GROTBC theme.',
+   groups: [
+  ['Card Core', [
+   ['Verdict title, % Inside pill, S Quick Fix', ['`class` · `dist_<mode>` · `nearThresholdM` 250'], ['Card · header'], 'card'],
+   ['WHY: class, reason, going scale', ['`classes[c].label` / `note` · `profiles[mode].why`'], ['Card · WHY'], 'card', 'This is where most of G, O and T is seen today, but only for the one limiting class.'],
+   ['INSIDE: share of the footprint or shape', ['Samples over `class`'], ['Card · INSIDE'], 'card'],
+   ['NEAREST: compass, class, distance', ['Window scan of `class` · `dist_<mode>`'], ['Card · NEAREST', 'Map indicator line and label'], 'card'],
+   ['INTERMEDIATE GAP RULE', ['`rules.json echelons` · same-echelon symbols on the map'], ['Card · gap rule bar'], 'card'],
+   ['Enforce strip, loading notice, G Ground Brief cue', [], ['Card · strips and cue (enforce is off by default)'], 'card'],
+  ]],
+ ]},
+ { k: 'W', name: 'Weather (supplementary heading)', sub: 'GROTBC.md heading 7, beyond the six letters',
+   verdict: 'Shown since 5 Nov 2026. A W line gives the month\u2019s normal highest and lowest temperature, rain and wind. The Brief, or "A few lines each", adds the year: rain, monsoon share, frost months and months of 40° and over. Fog and visibility are missing.',
+   groups: [
+  ['Climate', [
+   ['Rainfall by month', ['Climate `prec_01..12`, `prec_year`, `monsoon_pct`'], ['Card · W line: the month\u2019s rain', 'Card · W Year row (lines style, Brief)', 'Through T (season, month stepper)'], 'on'],
+   ['Temperature, frost, heat', ['Climate `tmin`, `tmax` (frost below 0°, hot from 40°: climate.json thresholds)'], ['Card · W line: "19° / 6°"', 'Card · W Year row: frost and 40°+ months (lines style, Brief)'], 'on', 'One cell is about 9 km, so hill tops run colder than shown.'],
+   ['Wind', ['Climate `wind_01..12`'], ['Card · W line: "wind 0.8 m/s"'], 'on'],
+   ['Fog, mist, visibility', [], ['Brief · W Fog row: "Not in the data"'], 'miss', 'WorldClim normals carry no fog or visibility; a source such as ERA5 would be needed.'],
+  ]],
+ ]},
+];
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\s\(off\)$/, ' <span class="off">off</span>').replace(/\s\(hidden by the T band\)$/, ' <span class="off">hidden</span>');
+
+const state = { status: new Set(ORDER), letter: null };
+try { const s = JSON.parse(localStorage.getItem('gg-grotbc-map') || 'null'); if (s) { state.status = new Set(s.status); state.letter = s.letter; } } catch (e) {}
+const save = () => { try { localStorage.setItem('gg-grotbc-map', JSON.stringify({ status: [...state.status], letter: state.letter })); } catch (e) {} };
+
+const counts = (L) => { const c = Object.fromEntries(ORDER.map((k) => [k, 0])); L.groups.forEach(([, rows]) => rows.forEach((r) => c[r[3]]++)); return c; };
+const total = Object.fromEntries(ORDER.map((k) => [k, 0]));
+MAP.forEach((L) => { const c = counts(L); ORDER.forEach((k) => (total[k] += c[k])); });
+
+// legend
+document.getElementById('legend').innerHTML = ORDER.map((k) => `<div><span class="pill ${STATUS[k].css}">${STATUS[k].label}</span><span>${STATUS[k].desc}</span></div>`).join('');
+
+// summary bars
+const varOf = (k) => `var(--${k === 'sw' ? 'sw' : k})`;
+document.getElementById('summary').innerHTML = MAP.map((L) => {
+  const c = counts(L); const n = ORDER.reduce((a, k) => a + c[k], 0);
+  const bar = ORDER.filter((k) => c[k]).map((k) => `<span style="width:${(c[k] / n) * 100}%;background:${varOf(k)}" title="${STATUS[k].label}: ${c[k]}"></span>`).join('');
+  const ct = ORDER.filter((k) => c[k]).map((k) => `${c[k]} ${STATUS[k].label.toLowerCase()}`).join(' · ');
+  return `<div class="sumrow"><div class="nm"><span class="badge" style="background:var(--${L.k})">${L.k === 'X' ? '◎' : L.k}</span><a href="#L-${L.k}">${esc(L.name)}</a></div><div class="bar" role="img" aria-label="${esc(ct)}">${bar}</div><div class="ct">${n} items</div><div class="verdict">${esc(L.verdict)}</div></div>`;
+}).join('');
+
+// filter chips
+const sc = document.getElementById('statusChips');
+ORDER.forEach((k) => {
+  const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.id = 'f-' + k;
+  b.innerHTML = `<span class="dot" style="background:${varOf(k)}"></span>${STATUS[k].label}<span class="n">${total[k]}</span>`;
+  b.onclick = () => { if (state.status.has(k) && state.status.size === ORDER.length) { state.status = new Set([k]); } else if (state.status.has(k)) { state.status.delete(k); if (!state.status.size) state.status = new Set(ORDER); } else state.status.add(k); save(); render(); };
+  sc.append(b);
+});
+const lc = document.getElementById('letterChips');
+MAP.forEach((L) => {
+  const b = document.createElement('button'); b.className = 'lchip'; b.type = 'button'; b.id = 'l-' + L.k;
+  b.textContent = L.k === 'X' ? '◎' : L.k; b.setAttribute('aria-label', L.name);
+  b.onclick = () => { state.letter = state.letter === L.k ? null : L.k; save(); render(); };
+  lc.append(b);
+});
+
+function render() {
+  ORDER.forEach((k) => document.getElementById('f-' + k).setAttribute('aria-pressed', String(state.status.has(k))));
+  MAP.forEach((L) => { const b = document.getElementById('l-' + L.k); const on = state.letter === L.k; b.setAttribute('aria-pressed', String(on)); b.style.background = on ? `var(--${L.k})` : ''; });
+  const out = MAP.filter((L) => !state.letter || state.letter === L.k).map((L) => {
+    const groups = L.groups.map(([title, rows]) => {
+      const vis = rows.filter((r) => state.status.has(r[3]));
+      if (!vis.length) return '';
+      return `<div class="group"><h3>${esc(title)}</h3>${vis.map(([item, data, card, st, note]) => `
+        <div class="row">
+          <div class="item">${fmt(item)}</div>
+          <div class="cell d"><span class="lab">Dataset</span>${data.length ? `<ul>${data.map((d) => `<li>${fmt(d)}</li>`).join('')}</ul>` : '<span class="none">Not in the bundle</span>'}</div>
+          <div class="cell t"><span class="lab">Tooltip · Brief · Legend</span>${card.length ? `<ul>${card.map((d) => `<li>${fmt(d)}</li>`).join('')}</ul>` : '<span class="none">Not shown</span>'}</div>
+          <div class="st"><span class="pill ${STATUS[st].css}">${STATUS[st].label}</span></div>
+          ${note ? `<div class="note">${fmt(note)}</div>` : ''}
+        </div>`).join('')}</div>`;
+    }).join('');
+    return `<section class="letter" id="L-${L.k}" style="--lc: var(--${L.k})">
+      <div class="lhead"><span class="badge" aria-hidden="true">${L.k === 'X' ? '◎' : L.k}</span><div><h2>${esc(L.name)}</h2><p>${esc(L.sub)}</p></div></div>
+      <div class="lanes cap" aria-hidden="true"><span>GROTBC item</span><span>Dataset (terrain bundle)</span><span>Tooltip · Brief · Legend</span><span style="text-align:right">Status</span></div>
+      ${groups || '<div class="empty">No items with the chosen status.</div>'}
+    </section>`;
+  }).join('');
+  document.getElementById('map').innerHTML = out;
+}
+render();
+</script>
+
+</body></html>

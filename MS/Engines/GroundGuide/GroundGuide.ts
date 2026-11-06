@@ -76,8 +76,8 @@ import {
   type GroundGuideTraffic,
 } from './GroundGuideTrafficability';
 import type { OverlayGoing } from './GroundGuideOverlay';
-import { COVER_CARD_STYLES, COVER_WHERE, coverKey, coverText, readCover, type GroundGuideCover } from './GroundGuideCover';
-import { SECTIONS_STYLES, G_STYLES, R_STYLES, O_STYLES, B_STYLES, W_STYLES, readSections, sectionsKey, type GroundGuideSections, type SectionsFeatures, type SectionsLayers } from './GroundGuideSections';
+import { COVER_CARD_STYLES, COVER_WHERE, coverKey, coverText, readCover, type CoverShelter, type GroundGuideCover } from './GroundGuideCover';
+import { KINDS as SECTION_KINDS, SECTIONS_STYLES, G_STYLES, R_STYLES, O_STYLES, B_STYLES, W_STYLES, readSections, sectionsKey, type GroundGuideSections, type SectionsFeatures, type SectionsLayers } from './GroundGuideSections';
 import { sectionsText } from './GroundGuideSectionsView';
 import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
@@ -141,6 +141,8 @@ const NEIGHBOUR_LAYER_IDS = SYMBOL_LAYER_IDS;
 /** Half-width of the local search for the nearest terrain of the opposite kind, in tile pixels. */
 const SCAN_RADIUS_PX = 32;
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+/** How far C looks for mapped caves, bunkers, trenches and tunnels (they are sparse: about 1,100 in Pakistan). */
+const SHELTER_RADIUS_M = 5000;
 /** Snap search: rings of candidate spots out to this many tile pixels (inside the 2-tile ring _warmAround keeps loaded). */
 const SNAP_MAX_PX = 160;
 const SNAP_FIRST_PX = 2;
@@ -2350,7 +2352,7 @@ export default class GroundGuide {
         for (const layer of [cls, L.cc, L.bank]) if (layer) this._cache.request(layer, z, tx, ty);
       }
     }
-    await this._tilesSettled(8000);
+    await Promise.all([this._tilesSettled(8000), this._features?.whenReady(at, SHELTER_RADIUS_M)]);
     const { read, state } = this._pixelReader(z);
     return readCover({
       rules: this._rules?.grotbc ?? null,
@@ -2364,6 +2366,7 @@ export default class GroundGuide {
       classLabel: (c) => plainLabel(this._rules?.classes?.[String(c)]?.label ?? '') || `Class ${c}`,
       pending: () => state.pending,
       scan: true,
+      shelters: this._sheltersNear(at),
     });
   }
 
@@ -2574,7 +2577,28 @@ export default class GroundGuide {
       pending: () => state.pending,
       // Every style can say where better cover is (the mode's need line), and the Brief always does.
       scan: true,
+      shelters: this._sheltersNear(at),
     });
+  }
+
+  /**
+   * C: the nearest mapped cave, bunker, trench, road and railway tunnel (feature tiles), one per kind, up to three.
+   * Reads tiles in memory only; while a tile loads and nothing is found, the radius is 0 so the card does not say
+   * "none mapped" too early. Null when the bundle has no feature tiles.
+   */
+  private _sheltersNear(at: MercXY): { list: CoverShelter[]; radiusM: number } | null {
+    const f = this._features;
+    if (!f) return null;
+    const res = f.nearestOfKinds(at, SHELTER_RADIUS_M, SECTION_KINDS.shelter, 40);
+    const seen = new Set<string>();
+    const list: CoverShelter[] = [];
+    for (const h of res.list) {
+      if (seen.has(h.kind)) continue;
+      seen.add(h.kind);
+      list.push({ label: h.kindLabel, name: h.name, distanceM: h.distanceM, compass: h.compass });
+      if (list.length >= 3) break;
+    }
+    return { list, radiusM: res.pending && !list.length ? 0 : SHELTER_RADIUS_M };
   }
 
   /** The auxiliary layers the G / R / B sections read, by the names the manifest gives them (null when missing). */
@@ -2615,10 +2639,10 @@ export default class GroundGuide {
   }
 
   /** A class's label, origin and GROTBC letters (rules.json `classes`), for the O section. */
-  private _classInfo(c: number): { label: string; origin: 'natural' | 'man_made'; letters: string; kind: string } | null {
-    const k = this._rules?.classes?.[String(c)] as { label?: string; origin?: string; grotbc?: string; kind?: string } | undefined;
+  private _classInfo(c: number): { name: string; label: string; origin: 'natural' | 'man_made'; letters: string; kind: string } | null {
+    const k = this._rules?.classes?.[String(c)] as { name?: string; label?: string; origin?: string; grotbc?: string; kind?: string } | undefined;
     if (!k?.label) return null;
-    return { label: plainLabel(k.label) || k.label, origin: k.origin === 'natural' ? 'natural' : 'man_made', letters: String(k.grotbc ?? ''), kind: String(k.kind ?? '') };
+    return { name: String(k.name ?? ''), label: plainLabel(k.label) || k.label, origin: k.origin === 'natural' ? 'natural' : 'man_made', letters: String(k.grotbc ?? ''), kind: String(k.kind ?? '') };
   }
 
   /** Read the G / R / B / W sections at a point (shared by the live card and `sectionsAround`). */

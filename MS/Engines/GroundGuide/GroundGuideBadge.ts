@@ -22,6 +22,7 @@ import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populatio
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
 import { coverSection } from './GroundGuideCoverView';
 import { sectionsCard } from './GroundGuideSectionsView';
+import { itgTraitLines } from './GroundGuideFeatures';
 import { DEFAULT_GROUND_GUIDE_OPTIONS, type GroundGuideCardOptions, type GroundGuideVerdict } from './GroundGuideTypes';
 
 const STYLE_ID = 'ms-ground-guide-badge-style';
@@ -71,6 +72,7 @@ const CSS = `
 .ms-ggb-warn{color:#ffc861}
 .ms-ggb-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
 .ms-ggb-itg+.ms-ggb-itg{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)}
+.ms-ggb-itgt{font-size:10.5px;line-height:1.35;margin-top:2px}
 .ms-ggb-strong{color:#f2b84b;font-weight:600}
 `;
 
@@ -322,9 +324,9 @@ function groundSection(v: GroundGuideVerdict): HTMLElement | null {
   if (!g) return null;
   const rows: Array<Node | string> = [];
   for (const c of g.candidates) {
-    const what = `${c.kindLabel}${c.elevationM !== null ? ` ${c.elevationM.toLocaleString('en')} m` : ''}`;
+    const what = `${titleCase(c.kindLabel)}${c.elevationM !== null ? ` ${c.elevationM.toLocaleString('en')} m` : ''}`;
     const head = el('div');
-    head.append(el('span', 'ms-ggb-b', titleCase(c.name ?? what)), c.name ? ` · ${what}` : '');
+    head.append(el('span', 'ms-ggb-b', c.name ? titleCase(c.name) : what), c.name ? ` · ${what}` : '');
     const where = el('div');
     where.append(
       el('span', c.level === 2 ? 'ms-ggb-strong' : undefined, c.level === 2 ? 'Strong Candidate (Check as MITG)' : 'ITG Candidate'),
@@ -332,6 +334,8 @@ function groundSection(v: GroundGuideVerdict): HTMLElement | null {
     );
     const item = el('div', 'ms-ggb-itg');
     item.append(head, where, el('div', 'ms-ggb-soft', c.reasonLabels.map(titleCase).join(' · ')));
+    // What the bundle measured on it (ground.py): what it commands, and what it is like to hold.
+    for (const line of c.traits ? itgTraitLines(c.traits) : []) item.append(el('div', 'ms-ggb-soft ms-ggb-itgt', line));
     rows.push(item);
   }
   if (!rows.length) {

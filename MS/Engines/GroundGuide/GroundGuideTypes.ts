@@ -411,6 +411,39 @@ export interface GroundGuideItgCandidate {
   compass: string;
   /** Every attribute the bundle carries for it (`rr`, `iso`, `vs`, `mv`, `hs`, ...; see features/index.json). */
   attributes: Record<string, unknown>;
+  /** What the bundle measured on it (ground.py), decoded for the card. */
+  traits: GroundGuideItgTraits;
+}
+
+/**
+ * The characteristics of an ITG candidate, as the pipeline measured them from the DEM (ground.py). Null where the
+ * bundle carries nothing; NCGDB features flagged as candidates (bridges, passes, dams) carry few or none of them.
+ */
+export interface GroundGuideItgTraits {
+  /** `rr`: height above the lowest ground within 2 km, m. */
+  reliefM: number | null;
+  /** `iso`: the highest ground within this radius, km (0.5 = not the highest within 1 km; 5 = 5 km or more). */
+  dominanceKm: number | null;
+  /** `vs`: share of the ground within 5 km seen from 2 m above it, %. */
+  viewPct: number | null;
+  /** `mv`: the nearest MSR in view, km. Null when none is in view (only meaningful when `viewTested`). */
+  msrInViewKm: number | null;
+  /** The view test ran on it (`vs` is set): a missing `mv` then means no MSR in view within 5 km. */
+  viewTested: boolean;
+  /** `sp`: mean slope within 300 m, degrees. */
+  slopeDeg: number | null;
+  /** `dr` / `dn`: nearest MSR / road or track, km (up to 5). */
+  msrKm: number | null;
+  roadKm: number | null;
+  /** The distances were measured (a DEM feature): a missing `dr` / `dn` then means none within 5 km. */
+  distancesTested: boolean;
+  /** `lc`: the ground class at the feature (label). */
+  ground: string | null;
+  /** `cv`: the cc layer at the feature (cover = v & 15, concealment = v >> 4; 0 None, 1 Poor, 2 Fair, 3 Good). */
+  cover: 0 | 1 | 2 | 3 | null;
+  concealment: 0 | 1 | 2 | 3 | null;
+  /** `hs`: surveyed height of a trig station or spot height within 250 m, m. */
+  surveyedM: number | null;
 }
 
 /** ITG candidates round the cursor, for the card. */
