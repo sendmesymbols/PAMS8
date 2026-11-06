@@ -180,6 +180,13 @@ export interface GroundGuideCover {
   shelters: CoverShelter[];
   /** How far `shelters` looked, m (0 when the bundle has no feature tiles). */
   shelterRadiusM: number;
+  /**
+   * The lie of the ground (added 2026-11-06): the landform at the point (`landform` layer) and the nearest closed
+   * depression (features, kind 165, `dp` depth) within 2 km, where troops can get into dead ground. Not in the levels.
+   */
+  form: { landform: string | null; depression: { distanceM: number; compass: string; depthM: number | null } | null } | null;
+  /** Building density and height at the point (`bld` layer): built-up cover the class alone does not grade. Not in the levels. */
+  built: { density: string; height: string | null } | null;
 }
 
 const COMPASS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -262,6 +269,9 @@ export function readCover(args: {
   scan: boolean;
   /** Mapped caves, bunkers, trenches and tunnels near the point (the engine reads the feature tiles), and how far it looked. */
   shelters?: { list: CoverShelter[]; radiusM: number } | null;
+  /** The landform and the nearest depression, and the building density and height at the point (the engine reads them). */
+  form?: GroundGuideCover['form'];
+  built?: GroundGuideCover['built'];
 }): GroundGuideCover {
   const { rules, opts, at, cosLat, layers, read, classLabel } = args;
   const cls = read(layers.cls, at[0], at[1]);
@@ -335,6 +345,8 @@ export function readCover(args: {
     note: rules?.coverSplit ? 'Proposal' : null,
     shelters: args.shelters?.list ?? [],
     shelterRadiusM: args.shelters?.radiusM ?? 0,
+    form: args.form ?? null,
+    built: args.built ?? null,
   };
 }
 
@@ -357,7 +369,24 @@ export function coverText(c: GroundGuideCover, fmt: (m: number) => string): stri
   if (c.bank) out.push(`${c.bank.label} within ${c.bank.withinM} m${c.bank.deploy ? ': a deployment line' : ''}`);
   const sh = shelterText(c, fmt);
   if (sh) out.push(`Underground / enclosed: ${sh}`);
+  const fm = formText(c, fmt);
+  if (fm) out.push(`Lie of the ground: ${fm}`);
+  if (c.built) out.push(`Buildings here: ${builtText(c)}`);
   return out;
+}
+
+/** "Valley floor · depression 420 m N, 16 m deep"; null when neither is known. */
+export function formText(c: GroundGuideCover, fmt: (m: number) => string): string | null {
+  const f = c.form;
+  if (!f) return null;
+  const d = f.depression;
+  const parts = [f.landform, d ? `depression ${fmt(d.distanceM)} ${d.compass}${d.depthM ? `, ${d.depthM} m deep` : ''}` : null].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/** "Medium (300-1,000 / km2) · Medium (6 to 12 m, 2 to 4 storeys)". */
+export function builtText(c: GroundGuideCover): string {
+  return [c.built?.density, c.built?.height].filter(Boolean).join(' · ');
 }
 
 /** "Bunker 1.2 km NE · Trench 2.4 km N", or "none mapped within 5 km"; null when the bundle has no feature tiles. */
@@ -377,6 +406,6 @@ export function coverKey(c: GroundGuideCover | null | undefined): string {
   }).join(',');
   const rose = c.sectors.map((s) => s.level).join('');
   const ar = c.around ? `a${c.around.concealment}${c.around.clearedLine ? 'r' : ''}` : '';
-  const sh = (c.shelters ?? []).map((x) => `${x.label}${Math.round(x.distanceM / 50)}${x.compass}`).join(',');
+  const sh = (c.shelters ?? []).map((x) => `${x.label}${Math.round(x.distanceM / 50)}${x.compass}`).join(',') + (c.form ? `${c.form.landform ?? ''}${c.form.depression ? Math.round(c.form.depression.distanceM / 50) : ''}` : '') + (c.built?.density ?? '');
   return `${c.style}${c.where}${c.focus ?? ''}${lv}${nr}${rose}${c.local ? c.local.cover * 4 + c.local.concealment : 'x'}${ar}${c.bank?.label ?? ''}${sh}${c.pending ? 'p' : ''}`;
 }

@@ -24,6 +24,8 @@ import {
   COVER_WORD,
   coverText,
   shelterText,
+  formText,
+  builtText,
   type CoverField,
   type CoverLevel,
   type GroundGuideCover,
@@ -387,6 +389,25 @@ function shelterLine(c: GroundGuideCover, always = false): HTMLElement | null {
   return line;
 }
 
+/** "Ground · Valley floor · depression 420 m N, 16 m deep": where dead ground may be; not in the four levels. */
+function formLine(c: GroundGuideCover): HTMLElement | null {
+  const t = formText(c, fmtDistance);
+  if (!t) return null;
+  const line = el('div', 'ms-gc-soft');
+  line.append(el('b', undefined, 'Ground'), ` · ${t}`);
+  line.title = 'Landform at the point and the nearest closed depression (DEM). Dead ground to check on the ground; it does not change the levels above.';
+  return line;
+}
+
+/** "Buildings · Medium (300-1,000 / km2) · 2 to 4 storeys": built-up cover at the point; not in the four levels. */
+function builtLine(c: GroundGuideCover): HTMLElement | null {
+  if (!c.built) return null;
+  const line = el('div', 'ms-gc-soft');
+  line.append(el('b', undefined, 'Buildings'), ` · ${builtText(c)}`);
+  line.title = 'Building density and height at the point (Open Buildings + GHSL). The levels above come from the ground class only.';
+  return line;
+}
+
 /** The C section for the card, or null when the verdict carries no C or the style is off. */
 export function coverSection(v: GroundGuideVerdict, northDeg = 0): HTMLElement | null {
   const c = v.cover;
@@ -405,6 +426,8 @@ export function coverSection(v: GroundGuideVerdict, northDeg = 0): HTMLElement |
   // Every style: the mapped underground and enclosed cover nearby, when there is any.
   const sh = shelterLine(c);
   if (sh) sec.append(sh);
+  // Every style: the lie of the ground and the buildings at the point (added 2026-11-06).
+  for (const x of [formLine(c), builtLine(c)]) if (x) sec.append(x);
   return sec;
 }
 
@@ -428,6 +451,8 @@ registerBriefSection({
       aroundLine(c) ?? el('span'),
       bankLine(c) ?? el('span'),
       shelterLine(c, true) ?? el('span'),
+      formLine(c) ?? el('span'),
+      builtLine(c) ?? el('span'),
       box,
       el('div', 'ms-gc-soft', 'Levels: this spot, from rules.json grotbc.coverSplit and banks (a starting proposal). Area round it: the cc layer, which never raises them. Check on the ground.'),
     );

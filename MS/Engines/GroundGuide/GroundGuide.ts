@@ -77,7 +77,7 @@ import {
 } from './GroundGuideTrafficability';
 import type { OverlayGoing } from './GroundGuideOverlay';
 import { COVER_CARD_STYLES, COVER_WHERE, coverKey, coverText, readCover, type CoverShelter, type GroundGuideCover } from './GroundGuideCover';
-import { KINDS as SECTION_KINDS, SECTIONS_STYLES, G_STYLES, R_STYLES, O_STYLES, B_STYLES, W_STYLES, readSections, sectionsKey, type GroundGuideSections, type SectionsFeatures, type SectionsLayers } from './GroundGuideSections';
+import { BLD_HEIGHT, KINDS as SECTION_KINDS, SECTIONS_STYLES, G_STYLES, R_STYLES, O_STYLES, B_STYLES, W_STYLES, readSections, sectionsKey, type GroundGuideSections, type SectionsFeatures, type SectionsLayers } from './GroundGuideSections';
 import { sectionsText } from './GroundGuideSectionsView';
 import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
@@ -2350,7 +2350,7 @@ export default class GroundGuide {
     const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, m.tileSize);
     for (let ty = a.ty; ty <= b.ty; ty++) {
       for (let tx = a.tx; tx <= b.tx; tx++) {
-        for (const layer of [cls, L.cc, L.bank]) if (layer) this._cache.request(layer, z, tx, ty);
+        for (const layer of [cls, L.cc, L.bank, this._sectionLayers().landform, this._sectionLayers().bld]) if (layer) this._cache.request(layer, z, tx, ty);
       }
     }
     await Promise.all([this._tilesSettled(8000), this._features?.whenReady(at, SHELTER_RADIUS_M)]);
@@ -2368,6 +2368,7 @@ export default class GroundGuide {
       pending: () => state.pending,
       scan: true,
       shelters: this._sheltersNear(at),
+      ...this._coverExtras(at, read),
     });
   }
 
@@ -2579,7 +2580,28 @@ export default class GroundGuide {
       // Every style can say where better cover is (the mode's need line), and the Brief always does.
       scan: true,
       shelters: this._sheltersNear(at),
+      ...this._coverExtras(at, read),
     });
+  }
+
+  /**
+   * C (added 2026-11-06): the landform at the point and the nearest closed depression within 2 km (dead ground), and
+   * the building density and height at the point. Read from tiles in memory; a piece not loaded yet is left out.
+   */
+  private _coverExtras(at: MercXY, read: (layer: string, mx: number, my: number) => number | null | undefined): { form: GroundGuideCover['form']; built: GroundGuideCover['built'] } {
+    const L = this._sectionLayers();
+    const books = (this._rules?.grotbc?.layers ?? {}) as Record<string, any>;
+    const lf = L.landform ? read(L.landform, at[0], at[1]) : null;
+    const landform = typeof lf === 'number' && lf > 0 && lf !== 255 ? (books.landform?.[String(lf)] as string | undefined) ?? null : null;
+    const dep = this._features?.nearestOfKinds(at, 2000, SECTION_KINDS.depression, 1).list[0];
+    const depression = dep ? { distanceM: dep.distanceM, compass: dep.compass, depthM: typeof dep.attrs.dp === 'number' ? dep.attrs.dp : null } : null;
+    const bv = L.bld ? read(L.bld, at[0], at[1]) : null;
+    let built: GroundGuideCover['built'] = null;
+    if (typeof bv === 'number' && bv !== 255 && (bv & 7) > 0) {
+      const density = (books.bld?.density?.[String(bv & 7)] as string | undefined) ?? `Density ${bv & 7}`;
+      built = { density, height: BLD_HEIGHT[bv >> 6] ?? null };
+    }
+    return { form: landform || depression ? { landform, depression } : null, built };
   }
 
   /**
@@ -2606,7 +2628,7 @@ export default class GroundGuide {
   private _sectionLayers(): SectionsLayers {
     const l = this._manifest?.layers ?? {};
     const n = (k: string) => (typeof l[k] === 'string' ? (l[k] as string) : null);
-    return { terrain: n('terrain'), landform: n('landform'), elevHi: n('elev_hi'), elevLo: n('elev_lo'), route: n('route'), bld: n('bld'), hut: n('hut') };
+    return { terrain: n('terrain'), landform: n('landform'), elevHi: n('elev_hi'), elevLo: n('elev_lo'), route: n('route'), bld: n('bld'), hut: n('hut'), cc: n('cc'), bank: n('bank') };
   }
 
   /** Tiles the switched-on sections read (prefetched with the class tiles while a symbol is armed). */
@@ -2615,10 +2637,10 @@ export default class GroundGuide {
     if (this._activeProfile === 'exempt' || (o.style === 'brief' && !all && this._sectionsAllAuto())) return [];
     const L = this._sectionLayers();
     const out: Array<string | null> = [];
-    if (o.ground || all) out.push(L.terrain, L.landform, L.elevHi, L.elevLo);
+    if (o.ground || all) out.push(L.terrain, L.landform, L.elevHi, L.elevLo, L.cc, this._manifest?.layers?.wet ?? null);
     if (o.roads || all) out.push(L.route);
     if (o.buildings || all) out.push(L.bld, L.hut);
-    if (o.obstacles || all) out.push(this._manifest?.layers?.wet ?? null); // the class layer is warmed anyway
+    if (o.obstacles || all) out.push(this._manifest?.layers?.wet ?? null, L.bank); // the class layer is warmed anyway
     return out.filter((x): x is string => !!x);
   }
 
@@ -2699,7 +2721,7 @@ export default class GroundGuide {
         bldSize: bld.size as Record<string, unknown> | undefined,
         wet: books.wet as Record<string, unknown> | undefined,
       },
-      rules: g ? { tankable: g.tankable, roadDensity: g.roadDensity } : null,
+      rules: g ? { tankable: g.tankable, roadDensity: g.roadDensity, banks: g.banks as any } : null,
       lonLat: [lon, lat],
       clsLayer: this._layerNames(profile).cls,
       classInfo: (c) => this._classInfo(c),
