@@ -108,7 +108,15 @@ rays, road density and feature queries wait for the Detail.
 
 In `enforce` mode a red strip closes the card ("Enforce Mode: A click here is refused. Hold Shift and
 click to place it anyway."). The P / S keys are explained in the Legend, not on the card. A foot
-cue names the **D** key.
+cue names the **D** and **H** keys.
+
+**The hint chip (H).** While drawing, **H** shrinks the card to a small chip by the cursor (2026-11-07: the user
+sometimes wants to see the map under the symbol and only a hint of GO / NO-GO): the verdict colour and icon, one word
+(*GO*, *SLOW-GO*, *NO-GO*, *NO-GO Near*), and the one figure that changes the decision (`29% Inside`, or
+`180 m SW` with its arrow, or *Touching*, when NO-GO ground is close), a *Refused* tag in enforce mode, and a faint
+**H** keycap. It stays a chip across moves and draws until **H** again brings the card back; `card.hint` starts the
+session with the chip. H does nothing when no symbol is being drawn. A see-through card was considered and left out:
+text over imagery stops being readable before the map under it becomes visible.
 
 **The Ground Detail (D).** Everything else the engine reads is in a wide card docked at the foot of the map
 (`GroundGuideDetail.ts`), opened with **D** while drawing, with a tab a GROTBC letter and a last **Legend** tab.

@@ -330,6 +330,14 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     keywords: ['nearest', 'cursor', 'card', 'compass', 'obstacle', 'road', 'cover', 'place', 'itg'],
   },
   {
+    path: ['groundGuide', 'card', 'hint'],
+    label: 'Start with the hint chip (H)',
+    group: 'Card Sections',
+    type: 'boolean',
+    help: 'The cursor card starts shrunk to a small chip: the verdict colour, GO / SLOW-GO / NO-GO and the one figure that changes the decision (how much is in NO-GO, or how far and which way NO-GO ground lies when it is close), so the map under the symbol shows. Press H while drawing to switch between the chip and the full card.',
+    keywords: ['hint', 'chip', 'minimize', 'small', 'hide', 'cursor', 'card', 'h key', 'transparent'],
+  },
+  {
     path: ['groundGuide', 'card', 'goingLines'],
     label: 'A · Going lines',
     group: 'Card Sections',

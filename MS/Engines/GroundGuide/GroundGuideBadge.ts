@@ -133,6 +133,13 @@ const CSS = `
 .ms-ggb-itgt{font-size:11.5px;line-height:1.35;margin-top:2px}
 .ms-ggb-strong{color:#f2b84b;font-weight:600}
 .ms-ground-guide-badge .ms-gv-foot{padding:7px 12px;font-size:12px;color:#a3acb6}
+.ms-ground-guide-badge.ms-ggb-pip{width:auto;max-width:280px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,.42)}
+.ms-ggb-pip>.ms-ggb-bar{flex-wrap:nowrap;gap:6px;padding:4px 6px 4px 9px;font-size:13px;white-space:nowrap}
+.ms-ggb-pip>.ms-ggb-bar>svg{width:14px;height:14px}
+.ms-ggb-hw{font-weight:750;letter-spacing:.02em}
+.ms-ggb-hd{font-weight:600;font-variant-numeric:tabular-nums}
+.ms-ggb-hx{padding:1px 6px;border-radius:999px;background:rgba(0,0,0,.28);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.ms-ggb-kbd.ms-ggb-kq{min-width:16px;height:16px;font-size:10px;color:inherit;background:none;border:1px solid currentColor;opacity:.6}
 .ms-ground-guide-badge .ms-gv-foot-l{opacity:.8;gap:3px}
 .ms-ground-guide-badge .ms-gv-foot-l>.ms-gv-kbd{min-width:16px;height:16px;font-size:9.5px}
 `;
@@ -662,6 +669,59 @@ export function itgSection(v: GroundGuideVerdict): HTMLElement | null {
   return section('Important Tactical Ground', ...rows);
 }
 
+/**
+ * The hint chip (H, user 2026-11-07: "sometimes the user wants to see what is below the symbol and just a small
+ * indicative hint about GO / NO-GO"): the verdict colour and one word, with the one figure that changes the decision
+ * (how much is in NO-GO, or how far and which way NO-GO ground lies when it is close), an enforce refusal, and the H
+ * key that brings the card back. Everything else waits for the card or the Detail.
+ */
+function hintParts(v: GroundGuideVerdict): Array<Node | string> {
+  const pct = v.samples > 1 && v.fraction > 0 ? Math.max(1, Math.round(v.fraction * 100)) : 0;
+  let word: string;
+  let figure: Node | string | null = null;
+  switch (v.verdict) {
+    case 'ok':
+      word = 'GO';
+      break;
+    case 'caution':
+      word = 'SLOW-GO';
+      break;
+    case 'near':
+      if (pct > 0) {
+        word = 'NO-GO';
+        figure = `${pct}% Inside`;
+      } else {
+        word = 'NO-GO Near';
+        const n = v.nearest;
+        if (n) figure = n.distanceM < 1 ? 'Touching' : whereNode(n.distanceM, n.compass, n.bearingDeg);
+        else if (v.distanceM !== null) figure = fmtDistance(v.distanceM);
+      }
+      break;
+    case 'partial':
+      word = 'NO-GO';
+      if (pct > 0) figure = `${pct}% Inside`;
+      break;
+    case 'in':
+      word = 'NO-GO';
+      break;
+    default:
+      word = v.verdict === 'unknown' ? (v.loading ? 'Loading' : 'No Data') : titleOf(v);
+  }
+  const parts: Array<Node | string> = [icon(iconOf(v), 14), el('span', 'ms-ggb-hw', word)];
+  if (figure !== null) {
+    const f = el('span', 'ms-ggb-hd');
+    f.append(figure);
+    parts.push(f);
+  }
+  if (v.blocked) parts.push(el('span', 'ms-ggb-hx', 'Refused'));
+  if (v.briefKey) {
+    const k = keycap('H');
+    k.classList.add('ms-ggb-kq');
+    parts.push(k);
+  }
+  return parts;
+}
+
 /** Enforce mode: this click would be refused, and whether Shift gets past it. A red strip that closes the card. */
 function enforceStrip(v: GroundGuideVerdict): HTMLElement | null {
   if (!v.blocked) return null;
@@ -698,6 +758,8 @@ export class GroundGuideBadge {
   private _touch = false;
   private _last: GroundGuideVerdict | null = null;
   private _north = 0; // where north points on screen, degrees clockwise from up
+  /** The card is shrunk to the hint chip (H); starts from `card.hint`. */
+  private _hint = false;
   /** Which going / soil / movement sections to show (groundGuide.card). */
   private _card: GroundGuideCardOptions = { ...DEFAULT_GROUND_GUIDE_OPTIONS.card };
   private _notice: string | null = null;
@@ -791,7 +853,20 @@ export class GroundGuideBadge {
 
   /** Which going / soil / movement sections the card shows (groundGuide.card); applies from the next show(). */
   setCard(card: GroundGuideCardOptions): void {
+    if (card.hint !== this._card.hint) this._hint = card.hint; // the setting moved: start from it
     this._card = { ...card };
+  }
+
+  /** The hint chip is showing instead of the card. */
+  get hint(): boolean {
+    return this._hint;
+  }
+
+  /** H: shrink the card to the hint chip, or bring the card back; redrawn at once from the last verdict. */
+  toggleHint(): boolean {
+    this._hint = !this._hint;
+    if (this._last && this._el && this._el.style.display !== 'none') this.show(this._last);
+    return this._hint;
   }
 
   /** The map was rotated: `northDeg` is where north now points on screen. Turns the dial, roses, maps and arrows in place; the card is not rebuilt. */
@@ -806,6 +881,11 @@ export class GroundGuideBadge {
     if (this._toastEl && this._toastEl.style.display !== 'none') this.dismissToast();
     const el0 = this._ensure();
     el0.dataset.verdict = v.verdict;
+    el0.classList.toggle('ms-ggb-pip', this._hint);
+    if (this._hint) {
+      this._showHint(el0, v);
+      return;
+    }
 
     const bar = this._bar!;
     bar.replaceChildren(icon(iconOf(v), 17), el('span', 'ms-ggb-title', titleOf(v)));
@@ -845,6 +925,24 @@ export class GroundGuideBadge {
     this._place();
   }
 
+  /** The hint chip: the bar alone, holding `hintParts`; the body stays empty. Spoken and placed like the card. */
+  private _showHint(el0: HTMLDivElement, v: GroundGuideVerdict): void {
+    this._bar!.replaceChildren(...hintParts(v));
+    if (this._notice) this._bar!.append(el('span', 'ms-ggb-hd', this._notice));
+    this._body!.replaceChildren();
+    this._body!.style.display = 'none';
+    orientNorth(el0, this._north); // the arrow beside a distance turns with the map
+    this._say(spokenFor(v));
+    if (!this._hasPointer) {
+      this._x = Math.round(window.innerWidth / 2);
+      this._y = 90;
+    }
+    el0.style.display = 'block';
+    this._w = el0.offsetWidth;
+    this._h = el0.offsetHeight;
+    this._place();
+  }
+
   /**
    * The minimal cursor card (`card.cursor: minimal`): Why with the going scale, Inside, Nearest with its compass and
    * the Inter Gap Rule, then the enforce strip. Everything else waits in the Ground Detail, which the foot cue names.
@@ -867,7 +965,7 @@ export class GroundGuideBadge {
     if (this._notice) rows.push(el('div', 'ms-ggb-note ms-ggb-warn', this._notice));
     const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
     if (strip) rows.push(strip);
-    if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue());
+    if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue(true));
     return rows;
   }
 
@@ -905,7 +1003,7 @@ export class GroundGuideBadge {
     }
     const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
     if (strip) rows.push(strip);
-    if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue());
+    if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue(true));
     return rows;
   }
 

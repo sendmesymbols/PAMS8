@@ -1098,6 +1098,7 @@ export class GroundGuideDetail {
     if (p.keyS) keys.append(p.keyS);
     keys.append(
       legendKeyRow('D', 'Ground Detail', 'Opens and Closes This Card'),
+      legendKeyRow('H', 'Hint', 'Shrinks the Cursor Card to GO / SLOW-GO / NO-GO; Again for the Card'),
       legendKeyRow('G', 'Tabs', 'G R O T B C, One Letter a Tab; Again for the Next Page'),
       legendKeyRow('K', 'Legend', 'This Tab (L Is Lasso Select)'),
       legendKeyRow('Esc', 'Close', 'Also Cancels the Draw'),

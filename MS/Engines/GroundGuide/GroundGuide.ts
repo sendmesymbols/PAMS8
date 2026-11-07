@@ -3806,7 +3806,7 @@ export default class GroundGuide {
     if (e.type !== 'keydown') return;
     const k = e.key.toLowerCase();
     const tabKey = k === 'g' || k === 'r' || k === 'o' || k === 't' || k === 'b' || k === 'c' || k === 'k'; // K = the Legend tab (L is Lasso Select)
-    if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'escape' && !tabKey) || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'escape' && !tabKey) || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     if (k === 'escape') {
@@ -3826,6 +3826,14 @@ export default class GroundGuide {
           if (!this._detail.nextPage()) this._toggleBrief(false);
         } else this._toggleBrief(true, tab);
       }
+      return;
+    }
+    if (k === 'h') {
+      // H: the cursor card shrinks to a hint chip (GO / SLOW-GO / NO-GO) so the map under the symbol shows, and H again
+      // brings the card back (user, 2026-11-07). Only while drawing, like P: H is free for anything else otherwise.
+      if (!this.isActive || !this._lastDetail || this._activeProfile === 'exempt') return;
+      e.preventDefault();
+      this._badge.toggleHint();
       return;
     }
     if (k === 'p') {

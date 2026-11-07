@@ -309,6 +309,12 @@ export interface GroundGuideCardOptions {
    * compass. `deciding`: only the ground that decides the verdict, as before.
    */
   nearest: 'ranked' | 'deciding';
+  /**
+   * Start each session with the cursor card shrunk to the hint chip (the verdict colour, GO / SLOW-GO / NO-GO and the
+   * one figure that changes the decision), so the map under the symbol shows. H switches between the chip and the
+   * card while drawing (2026-11-07).
+   */
+  hint: boolean;
   /** A: cross-country going dry and after rain, the soil and what limits the going. */
   goingLines: boolean;
   /** B: movement rose, eight directions to `going.rangeKm`, with a freedom rating and what blocks it. */
@@ -885,6 +891,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   card: {
     cursor: 'minimal',
     nearest: 'ranked',
+    hint: false,
     goingLines: true,
     movementRose: true,
     soilStrength: false,

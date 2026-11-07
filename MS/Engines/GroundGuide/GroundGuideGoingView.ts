@@ -671,10 +671,12 @@ export function goingSections(v: GroundGuideVerdict, card: GroundGuideCardOption
 }
 
 /** "D Detail · G R O T B C K" cue at the foot of the card: D opens the Ground Detail, a letter opens it on that tab (K the Legend). */
-export function detailCue(): HTMLElement {
+export function detailCue(hintKey = false): HTMLElement {
   ensureGoingCss();
   const f = h('div', 'ms-gv-foot');
   f.append(h('span', 'ms-gv-kbd', 'D'), 'Detail');
+  // H shrinks the cursor card to its hint chip (2026-11-07).
+  if (hintKey) f.append(h('span', 'ms-gv-kbd', 'H'), 'Hint');
   const letters = h('span', 'ms-gv-foot-l');
   for (const l of ['G', 'R', 'O', 'T', 'B', 'C', 'K']) letters.append(h('span', 'ms-gv-kbd', l));
   f.append(letters);
