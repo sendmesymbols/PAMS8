@@ -59,7 +59,8 @@ export const POPULATION_CSS = `
 .ms-ggp-list{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;font-size:11px;font-variant-numeric:tabular-nums}
 .ms-ggp-list>span{color:#9aa3ad}
 .ms-ggp-list>b{color:#fff;font-weight:600;text-align:right}
-.ms-ggp-list>.ms-ggp-chip{justify-self:end}
+.ms-ggp-list>.ms-ggp-chip{justify-self:end;color:#1b1f25}
+.ms-ggp-list>.ms-ggp-chip.ms-dk{color:#fff}
 .ms-ggp-big{font-size:18px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.1}
 .ms-ggp-age{display:flex;height:9px;border-radius:2px;overflow:hidden;margin:6px 0 3px}
 .ms-ggp-age>i{display:block;height:100%}

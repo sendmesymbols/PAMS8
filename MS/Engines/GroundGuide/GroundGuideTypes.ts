@@ -302,6 +302,13 @@ export interface GroundGuideCardOptions {
    * the Inter Gap Rule; everything else waits in the Ground Detail (D). `full`: every section switched on below as well.
    */
   cursor: 'minimal' | 'full';
+  /**
+   * The minimal card's Nearest. `ranked` (2026-11-07): up to three different things round the point, most important
+   * first (the ground that decides the verdict, an obstacle for the mode, better cover when there is little here,
+   * the road for the mode, the nearest place, an ITG candidate), each with its distance and direction and all on one
+   * compass. `deciding`: only the ground that decides the verdict, as before.
+   */
+  nearest: 'ranked' | 'deciding';
   /** A: cross-country going dry and after rain, the soil and what limits the going. */
   goingLines: boolean;
   /** B: movement rose, eight directions to `going.rangeKm`, with a freedom rating and what blocks it. */
@@ -877,6 +884,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   going: { season: 'auto', month: 0, wetMonthMm: 75, rangeKm: 2, movementFor: 'units' },
   card: {
     cursor: 'minimal',
+    nearest: 'ranked',
     goingLines: true,
     movementRose: true,
     soilStrength: false,

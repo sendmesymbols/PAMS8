@@ -691,6 +691,7 @@
     },
     "card": {
       "cursor": "minimal",
+      "nearest": "ranked",
       "goingLines": true,
       "movementRose": true,
       "soilStrength": false,

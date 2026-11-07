@@ -318,6 +318,18 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     keywords: ['cursor', 'card', 'minimal', 'full', 'detail', 'tabs', 'd key'],
   },
   {
+    path: ['groundGuide', 'card', 'nearest'],
+    label: 'Nearest on the cursor card',
+    group: 'Card Sections',
+    type: 'enum',
+    options: [
+      { value: 'ranked', label: 'Ranked: up to three things round the point, most important first' },
+      { value: 'deciding', label: 'Deciding ground only: the ground that decides the verdict' },
+    ],
+    help: 'Ranked lists up to three different things round the point on one compass, most important first: the ground that decides the verdict, an obstacle that stops or slows the unit type, better cover when there is little here, the road for the unit type, the nearest place (first when the civil flag is raised) and an ITG candidate. Each gives its distance and direction. Deciding ground only shows just the first of these, as before. Minimal cursor card only.',
+    keywords: ['nearest', 'cursor', 'card', 'compass', 'obstacle', 'road', 'cover', 'place', 'itg'],
+  },
+  {
     path: ['groundGuide', 'card', 'goingLines'],
     label: 'A · Going lines',
     group: 'Card Sections',

@@ -21,7 +21,7 @@ import { fmtDistance, titleCase } from './GroundGuideEvaluator';
 import { GOING_WORD } from './GroundGuideGoing';
 import { detailCue, goingSections, seasonIcon } from './GroundGuideGoingView';
 import { modeIcon } from './GroundGuideLegend';
-import { arrowCompass, dial, dirArrow, orientNorth } from './GroundGuideNorth';
+import { arrowCompass, compassBearing, dial, dirArrow, orientNorth, whereNode } from './GroundGuideNorth';
 import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
 import { decorateSpeed } from './GroundGuideSpeedView';
@@ -40,9 +40,10 @@ const TOUCH_GAP = 28;
 
 /*
  * Layout (2026-11-07, user: "keep all five, just cleaner", a bit bigger text for laptops in daylight): the verdict
- * bar, then the five items as label-left rows (Why, Inside, Nearest, Inter Gap Rule) split by hairlines, so the eye
- * runs down one column of labels instead of reading a stacked caption above each item. The going scale leads the
- * Why row, straight under the verdict. Sections from the full card (`card.cursor: full`) keep their stacked bands.
+ * bar, then the items as label-left rows (Inside, Nearest, Inter Gap Rule) split by hairlines, so the eye runs down
+ * one column of labels instead of reading a stacked caption above each item. Why has no label (the user, same day:
+ * the going scale says what it is) and takes the card's whole width, straight under the verdict. Nearest keeps its
+ * compass under its label. Sections from the full card (`card.cursor: full`) keep their stacked bands.
  */
 const CSS = `
 .ms-ground-guide-badge{position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;
@@ -94,6 +95,21 @@ const CSS = `
 .ms-ggb-fv[data-tone="c2"]{color:#c3df8f}
 .ms-ggb-row>.ms-ggb-cap{grid-column:1;grid-row:1;margin:0;padding-top:2px;font:600 12px/1.3 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#a9b2bc}
 .ms-ggb-row>:not(.ms-ggb-cap){grid-column:2;min-width:0}
+.ms-ggb-row.ms-ggb-wide{grid-template-columns:minmax(0,1fr)}
+.ms-ggb-row.ms-ggb-wide>:not(.ms-ggb-cap){grid-column:1}
+.ms-ggb-wide>.ms-ggb-b{font-size:14px}
+.ms-ggb-row.ms-ggb-nrow{grid-template-columns:62px minmax(0,1fr);grid-template-rows:auto 1fr}
+.ms-ggb-nrow>.ms-ggb-side{grid-column:1;grid-row:2;align-self:start;line-height:0}
+.ms-ggb-nrow>.ms-ggb-nlist{grid-column:2;grid-row:1 / span 2}
+.ms-ggb-ni+.ms-ggb-ni{margin-top:7px}
+.ms-ggb-nh{display:flex;align-items:baseline;gap:6px;min-width:0}
+.ms-ggb-nd{flex:none;align-self:center;width:9px;height:9px;border-radius:50%}
+.ms-ggb-nn{flex:1 1 auto;min-width:0;font-weight:600;color:#fff;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.ms-ggb-nf{flex:none;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ms-ggb-ni:first-child .ms-ggb-nf{font-size:14px}
+.ms-ggb-nw{padding-left:15px;font-size:11.5px;line-height:1.3;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-ggb-nw[data-tone="nogo"]{color:#ff8a8d}
+.ms-ggb-nw[data-tone="slow"]{color:#ffb46b}
 .ms-ggb-row>.ms-ggb-scale,.ms-ggb-row>.ms-ggb-track{margin:0}
 .ms-ggb-row>.ms-ggb-scale{margin-bottom:2px}
 .ms-ggb-row .ms-ggb-soft{padding-top:0}
@@ -283,8 +299,12 @@ function whySection(v: GroundGuideVerdict): HTMLElement | null {
       name = v.className ? plain(v.className) : 'NO-GO Ground';
   }
   // The scale first, straight under the verdict bar: GO / SLOW-GO / NO-GO is what the eye takes in at a glance.
-  // The mode is named once, under the verdict (forLine), so the ground's name stands alone here.
-  const s = row('Why', goingScale(step), el('div', 'ms-ggb-b', titleCase(name)));
+  // The mode is named once, under the verdict (forLine), so the ground's name stands alone here. No "Why" label: the
+  // scale says what the row is, and the row gets the card's whole width (user, 2026-11-07). `data-gg-why` lets the
+  // T decorators of the full card find it.
+  const s = el('div', 'ms-ggb-row ms-ggb-wide');
+  s.dataset.ggWhy = '';
+  s.append(goingScale(step), el('div', 'ms-ggb-b', titleCase(name)));
   if (v.reason) s.append(el('div', 'ms-ggb-soft', v.reason)); // the rule owner's own words, when the bundle gives them
   return s;
 }
@@ -399,6 +419,217 @@ function nearestSection(v: GroundGuideVerdict, northDeg: number): HTMLElement | 
     return row('Nearest', el('div', 'ms-ggb-b', label), far);
   }
   return null;
+}
+
+type NearTone = 'nogo' | 'slow' | 'go' | 'road' | 'place' | 'cover' | 'itg' | 'other';
+
+/** One thing round the point on the minimal card's Nearest. */
+interface NearThing {
+  /** What it is, by name ("Permanent Water", "N-5 · GT Road", "Dullewali"). */
+  name: string;
+  /** Why it matters, in a few words ("NO-GO Ground", "SLOW-GO · Natural Obstacle", "Village"). */
+  what: string;
+  distanceM: number;
+  /** Null when only the distance is known (it then has no arrow and no mark on the compass). */
+  compass: string | null;
+  bearingDeg: number | null;
+  tone: NearTone;
+  /** Lower is more important. */
+  rank: number;
+  /** One of each kind is listed, so the three are three different things. */
+  kind: 'ground' | 'obstacle' | 'cover' | 'road' | 'place' | 'itg';
+}
+
+/** Dot and compass mark colours: the going colours for ground and obstacles, B's taupe for places. */
+const NEAR_COLOR: Record<NearTone, string> = {
+  nogo: '#e5484d',
+  slow: '#f0932b',
+  go: '#2fa862',
+  road: '#e3e7ec',
+  place: '#c8b49a',
+  cover: '#3fbfae',
+  itg: '#b892ff',
+  other: '#8a939d',
+};
+
+const NEAR_MAX = 3;
+
+/**
+ * Everything the verdict knows round the point, ranked by what a planner needs first (user, 2026-11-07: "not only
+ * water but different things according to their importance"): the ground that decides the verdict (0); an obstacle
+ * that is NO-GO for the mode (1); better cover when there is little here, and the nearest place when the civil flag is
+ * raised (2); the road for the mode, an obstacle that slows it, a strong ITG candidate (3); the nearest place (4); an
+ * ITG candidate, an obstacle that does not stop the mode (5). Nearer first within a rank.
+ */
+function nearThings(v: GroundGuideVerdict): NearThing[] {
+  const out: NearThing[] = [];
+  const n = v.nearest;
+  if (n) {
+    const nogo = n.kind === 'no-go';
+    out.push({ name: featureTitle(n.className), what: nogo ? 'NO-GO Ground' : 'Suitable Ground', distanceM: n.distanceM, compass: n.compass, bearingDeg: n.bearingDeg, tone: nogo ? 'nogo' : 'go', rank: 0, kind: 'ground' });
+  } else if ((v.verdict === 'ok' || v.verdict === 'caution') && v.distanceM !== null && !v.noneWithinM) {
+    // The distance layer has it but not where (beyond the walk): the distance alone, never a guessed direction.
+    out.push({ name: 'NO-GO Ground', what: 'Direction not known', distanceM: v.distanceM, compass: null, bearingDeg: null, tone: 'nogo', rank: 0, kind: 'ground' });
+  }
+  const o = v.sections?.obstacles;
+  const here = titleCase(plain(v.className ?? '')); // the ground at the point, which Why already names
+  for (const [h, origin] of [[o?.natural, 'Natural Obstacle'], [o?.manMade, 'Man-Made Obstacle']] as const) {
+    if (!h) continue;
+    const name = titleCase(plain(h.label));
+    if (h.distanceM < 1 && name === here) continue;
+    const e = h.effect;
+    out.push({
+      name,
+      what: e ? `${e} · ${origin}` : origin,
+      distanceM: h.distanceM,
+      compass: h.compass,
+      bearingDeg: null,
+      tone: e === 'NO-GO' ? 'nogo' : e === 'SLOW-GO' ? 'slow' : 'other',
+      rank: e === 'NO-GO' ? 1 : e === 'SLOW-GO' ? 3 : 5,
+      kind: 'obstacle',
+    });
+  }
+  const c = v.cover;
+  if (c) {
+    const f = c.focus ?? c.roseField;
+    const b = c.nearest[f];
+    // Only when the field the mode needs is Poor or None here: otherwise the point already has it.
+    if (b && c.levels[f] < 2) {
+      out.push({ name: titleCase(b.label), what: `Better ${COVER_KIND[f]} · ${COVER_WORD[b.level]}`, distanceM: b.distanceM, compass: b.compass, bearingDeg: b.bearingDeg, tone: 'cover', rank: 2, kind: 'cover' });
+    }
+  }
+  const r = v.traffic?.road?.main;
+  if (r) {
+    // A numbered road leads with its number ("N-5 · GT Road"); an unnumbered one by its name, and the small line
+    // says it is a road ("Road · All-Weather"), so "Road · Jia Musa Road" never reads twice.
+    const generic = /^(road|track)$/i.test(r.shield);
+    // An unnamed road is named by its type ("Tertiary"): say "Tertiary Road".
+    const named = r.name && /^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living street)$/i.test(r.name) ? `${r.name} Road` : r.name;
+    const name = generic ? (named ? titleCase(named) : r.shield) : named ? `${r.shield} · ${titleCase(named)}` : r.shield;
+    const what = generic ? [r.shield, r.tag].filter(Boolean).join(' · ') : (r.tag ?? 'Road');
+    out.push({ name, what, distanceM: r.distanceM, compass: r.compass, bearingDeg: r.bearingDeg ?? null, tone: 'road', rank: 3, kind: 'road' });
+  }
+  const pop = v.population;
+  const pl = pop?.reading?.places[0];
+  if (pl) {
+    out.push({ name: pl.name, what: pop?.flag ? `${titleCase(pl.kindLabel)} · Civil Flag` : titleCase(pl.kindLabel), distanceM: pl.distanceM, compass: pl.compass, bearingDeg: pl.bearingDeg, tone: 'place', rank: pop?.flag ? 2 : 4, kind: 'place' });
+  }
+  const it = v.ground?.candidates[0];
+  if (it) {
+    const what = `${titleCase(it.kindLabel)}${it.elevationM !== null ? ` ${it.elevationM.toLocaleString('en')} m` : ''}`;
+    out.push({ name: it.name ? titleCase(it.name) : what, what: it.level === 2 ? 'Strong ITG Candidate' : 'ITG Candidate', distanceM: it.distanceM, compass: it.compass, bearingDeg: it.bearingDeg, tone: 'itg', rank: it.level === 2 ? 3 : 5, kind: 'itg' });
+  }
+  return out;
+}
+
+/** The most important few, one of each kind, with the same ground seen twice (the deciding water and the river) kept once. */
+function pickNear(all: NearThing[]): NearThing[] {
+  all.sort((a, b) => a.rank - b.rank || a.distanceM - b.distanceM);
+  const out: NearThing[] = [];
+  const kinds = new Set<NearThing['kind']>();
+  const terrain = (t: NearThing) => t.kind === 'ground' || t.kind === 'obstacle';
+  for (const t of all) {
+    if (out.length >= NEAR_MAX) break;
+    if (kinds.has(t.kind)) continue;
+    const same = out.some(
+      (o) =>
+        o.name.toLowerCase() === t.name.toLowerCase() ||
+        (terrain(o) && terrain(t) && o.compass === t.compass && Math.abs(o.distanceM - t.distanceM) <= Math.max(150, 0.2 * Math.min(o.distanceM, t.distanceM))),
+    );
+    if (same) continue;
+    kinds.add(t.kind);
+    out.push(t);
+  }
+  return out;
+}
+
+/**
+ * The Nearest compass: drawn north up in map bearings inside one group that turns with the map (`data-gv-rose`, so
+ * `orientNorth` keeps it true on a rotated map), the first thing as the needle and the others as dots on the rim,
+ * each in its list colour. The list beside it gives every direction in words as well.
+ */
+function nearDial(things: NearThing[]): SVGElement | null {
+  const marks = things.map((t) => ({ t, b: t.bearingDeg ?? compassBearing(t.compass) })).filter((m): m is { t: NearThing; b: number } => m.b !== null);
+  if (!marks.length) return null;
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('width', '58');
+  svg.setAttribute('height', '58');
+  svg.setAttribute('viewBox', '0 0 58 58');
+  svg.setAttribute('aria-hidden', 'true'); // the list names every direction
+  const add = (parent: Element, tag: string, attrs: Record<string, string | number>, text?: string): SVGElement => {
+    const e = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) e.setAttribute(k, String(attrs[k]));
+    if (text) e.textContent = text;
+    parent.appendChild(e);
+    return e as SVGElement;
+  };
+  const g = add(svg, 'g', { 'data-gv-rose': '29 29' });
+  add(g, 'circle', { cx: 29, cy: 29, r: 27, fill: 'rgba(255,255,255,.06)', stroke: 'rgba(255,255,255,.3)', 'stroke-width': 1.5 });
+  for (const [x1, y1, x2, y2] of [[56, 29, 51.5, 29], [29, 56, 29, 51.5], [2, 29, 6.5, 29]]) {
+    add(g, 'line', { x1, y1, x2, y2, stroke: '#9aa3ad', 'stroke-width': 1.5 });
+  }
+  add(g, 'text', { x: 29, y: 17, 'text-anchor': 'middle', 'font-size': 11, fill: '#9aa3ad', 'font-family': 'system-ui,Segoe UI,Arial,sans-serif', 'data-gv-upright': '29 13' }, 'N');
+  const [lead, ...rest] = marks;
+  // Two things in the same direction would hide one dot under the other: the later one moves in towards the centre.
+  const placed: number[] = [];
+  const dots = rest.map(({ t, b }) => {
+    const clash = placed.some((p) => Math.abs((((b - p) % 360) + 540) % 360 - 180) < 16);
+    placed.push(b);
+    return { t, b, r: clash ? 13 : 22 };
+  });
+  for (const { t, b, r } of dots.reverse()) {
+    const rad = (b * Math.PI) / 180;
+    add(g, 'circle', { cx: (29 + r * Math.sin(rad)).toFixed(1), cy: (29 - r * Math.cos(rad)).toFixed(1), r: 4.5, fill: NEAR_COLOR[t.tone], stroke: '#1b1f25', 'stroke-width': 1.5 });
+  }
+  const needle = add(g, 'g', { transform: `rotate(${Math.round(lead.b)} 29 29)` });
+  const col = NEAR_COLOR[lead.t.tone];
+  add(needle, 'polygon', { points: '29,19 36,40 29,35 22,40', fill: col, stroke: col, 'stroke-width': 1.5, 'stroke-linejoin': 'round' });
+  return svg;
+}
+
+/**
+ * Nearest, ranked (`card.nearest: ranked`): the compass under the label, and beside it up to three things, each a
+ * dot in its colour, its name, its distance and direction, and in small type why it matters. When no ground the unit
+ * can use is in reach, that comes first, plainly.
+ */
+function nearestRanked(v: GroundGuideVerdict): HTMLElement | null {
+  const things = pickNear(nearThings(v));
+  const list = el('div', 'ms-ggb-nlist');
+  if (!v.nearest && v.noneWithinM) {
+    const none = el('div', 'ms-ggb-ni');
+    const head = el('div', 'ms-ggb-nh');
+    const dot = el('span', 'ms-ggb-nd');
+    dot.style.background = NEAR_COLOR[v.verdict === 'in' ? 'go' : 'nogo'];
+    head.append(dot, el('span', 'ms-ggb-nn', v.verdict === 'in' ? 'Suitable Ground' : 'NO-GO Ground'));
+    none.append(head, el('div', 'ms-ggb-nw', `None within ${fmtDistance(v.noneWithinM)}`));
+    list.append(none);
+  }
+  for (const t of things) {
+    const item = el('div', 'ms-ggb-ni');
+    const head = el('div', 'ms-ggb-nh');
+    const dot = el('span', 'ms-ggb-nd');
+    dot.style.background = NEAR_COLOR[t.tone];
+    const far = el('span', 'ms-ggb-nf');
+    // Under a metre is "here", not "0 m E": ground touches the shape, a road or place is at the point.
+    if (t.distanceM < 1) far.textContent = t.kind === 'ground' || t.kind === 'obstacle' ? 'Touching' : 'At the Point';
+    else far.append(t.compass ? whereNode(t.distanceM, t.compass, t.bearingDeg) : fmtDistance(t.distanceM));
+    head.append(dot, el('span', 'ms-ggb-nn', t.name), far);
+    const what = el('div', 'ms-ggb-nw', t.what);
+    if (t.tone === 'nogo' || t.tone === 'slow') what.dataset.tone = t.tone;
+    item.append(head, what);
+    list.append(item);
+  }
+  if (!list.childElementCount) return null;
+  const r = el('div', 'ms-ggb-row ms-ggb-nrow');
+  r.append(el('div', 'ms-ggb-cap', 'Nearest'));
+  const d = nearDial(things);
+  if (d) {
+    const side = el('div', 'ms-ggb-side');
+    side.append(d);
+    r.append(side);
+  }
+  r.append(list);
+  return r;
 }
 
 /**
@@ -622,7 +853,14 @@ export class GroundGuideBadge {
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [overlayWarning(v), whySection(v), keyFacts(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v)].filter(
+        : [
+            overlayWarning(v),
+            whySection(v),
+            keyFacts(v),
+            pct > 0 ? insideSection(v, pct) : null,
+            this._card.nearest === 'deciding' ? nearestSection(v, this._north) : nearestRanked(v),
+            spacingSection(v),
+          ].filter(
             (r): r is HTMLElement => r !== null,
           );
     if (v.loading) rows.push(el('div', 'ms-ggb-note ms-ggb-soft', 'Still loading terrain data'));

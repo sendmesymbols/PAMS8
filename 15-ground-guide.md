@@ -91,16 +91,19 @@ help, and the civil flag; its second line says **who the ground is judged for**:
 echelon (`Dismounted Force · Battalion`), a *Set by Hand* tag when P chose the mode instead of the symbol, and the
 season and light the going and speed are read for (`Dry, Nov · Day`). When the going overlay is fixed in the settings
 to another mode, an amber line under the header says so (`Map colours show Tracked, not Dismounted Force`). Under it
-the card is label-left rows split by hairlines (2026-11-07). Since 2026-11-06 the card is **minimal** by default
-(`card.cursor: minimal`): these rows and nothing else, so it stays short while it follows the cursor;
-`card.cursor: full` brings back every section the switches below turn on.
+the card is label-left rows split by hairlines (2026-11-07); Why has no label and takes the card's whole width.
+Since 2026-11-06 the card is **minimal** by default (`card.cursor: minimal`): these rows and nothing else, so it stays
+short while it follows the cursor; `card.cursor: full` brings back every section the switches below turn on.
+With the Detail closed the minimal card reads only what its rows need (the going at the point, the cover, the road
+for the mode, the ITG candidates and a pixel-only obstacle scan: about 2 ms more a move in central Lahore, measured 2026-11-07); the terrain
+rays, road density and feature queries wait for the Detail.
 
 | row | shows |
 |-----|-------|
-| **Why** | the GO / SLOW-GO / NO-GO scale with the verdict's step lit, the deciding ground, and the rule owner's reason when the bundle gives one |
+| *(Why, no label)* | the GO / SLOW-GO / NO-GO scale with the verdict's step lit, the deciding ground, and the rule owner's reason when the bundle gives one |
 | **Key facts** | two cells: the going in the other season (*After Rain*, or *When Dry* in the wet) and the cover or concealment the mode needs most (`Cover · Direct Fire: None`), each a word with a dot in its colour |
 | **Inside** | lines and areas: how much of the shape (or footprint) is in bad ground, as `34% of the Footprint` and a bar |
-| **Nearest** | a compass dial pointing at the nearest deciding ground (it turns with the map), its name, and the distance in large type |
+| **Nearest** | `card.nearest: ranked` (default, 2026-11-07): up to three different things round the point, most important first, each a coloured dot, its name, distance and direction, and why it matters in small type; one compass under the label (it turns with the map) carries the first as the needle and the others as dots. The order: the ground that decides the verdict; an obstacle that is NO-GO for the mode; better cover when the field the mode needs is Poor or None here, and the nearest place when the civil flag is raised; the road for the mode, an obstacle that slows it, a strong ITG candidate; the nearest place; an ITG candidate or an obstacle that does not stop the mode. One of each kind, the same ground seen twice kept once, and the point's own class (already in Why) left out. Under a metre reads *Touching* / *At the Point*. `card.nearest: deciding` shows only the deciding ground, as before |
 | **Inter Gap Rule** | footprint-judged echelons: the gap to the next same-echelon unit against the minimum |
 
 In `enforce` mode a red strip closes the card ("Enforce Mode: A click here is refused. Hold Shift and

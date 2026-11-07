@@ -220,6 +220,7 @@ const CSS = `
 /* Text a step larger than on the cursor card: the Detail is read at arm's length, often in daylight. */
 .ms-ggd .ms-gs-kv,.ms-ggd .ms-ggbr-ln,.ms-ggd .ms-gc-row,.ms-ggd .ms-gc-near,.ms-ggd .ms-ggp-list,.ms-ggd .ms-ggp-ln,.ms-ggd .ms-ggp-places,.ms-ggd .ms-ggd-kv,.ms-ggd .ms-gx-where,.ms-ggd .ms-gx-list,.ms-ggd .ms-ggs-kv,.ms-ggd .ms-ggb-tkv,.ms-ggd .ms-gs-one{font-size:13.5px}
 .ms-ggd .ms-gs-kv{line-height:1.4}
+.ms-ggd .ms-ggp-chip{font-size:10.5px;padding:4px 8px 3px}
 .ms-ggd .ms-gs-kv .ms-gs-k,.ms-ggd .ms-ggd-kv>.k,.ms-ggd .ms-ggp-k,.ms-ggd .ms-ggbr-ln>span:first-child{font-size:12.5px;color:#a3acb6}
 .ms-ggd .ms-gv-soft,.ms-ggd .ms-ggb-soft,.ms-ggd .ms-gc-soft,.ms-ggd .ms-gx-soft,.ms-ggd .ms-grd-soft,.ms-ggd .ms-gv-blk,.ms-ggd .ms-gv-limit,.ms-ggd .ms-ggbr-list,.ms-ggd .ms-ggp-src,.ms-ggd .ms-gs-src{font-size:12.5px}
 .ms-ggd .ms-gv-k,.ms-ggd .ms-gv-mx,.ms-ggd .ms-gx-chips>span,.ms-ggd .ms-ggl-chips>span,.ms-ggd .ms-gv-leg,.ms-ggd .ms-gs-more{font-size:12px}

@@ -140,10 +140,10 @@ function modeIcon(profile: string, size = 18): SVGElement {
   return svg;
 }
 
-/** The Why section the card built (its caption reads "Why"), when there is one. */
+/** The Why section the card built (`data-gg-why`; a stacked one's caption reads "Why"), when there is one. */
 function whyOf(rows: HTMLElement[]): HTMLElement | null {
   const r = rows[0];
-  return r && r.querySelector(':scope > .ms-ggb-cap')?.textContent === 'Why' ? r : null;
+  return r && (r.dataset.ggWhy !== undefined || r.querySelector(':scope > .ms-ggb-cap')?.textContent === 'Why') ? r : null;
 }
 
 // ── what every block says ─────────────────────────────────────────────────

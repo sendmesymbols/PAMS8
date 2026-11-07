@@ -677,6 +677,7 @@ export default class GroundGuide {
     if (cd && typeof cd === 'object') {
       for (const k of Object.keys(DEFAULT_GROUND_GUIDE_OPTIONS.card) as Array<keyof GroundGuideCardOptions>) {
         if (k === 'cursor') pick('card.cursor', cd.cursor, ['minimal', 'full'] as const, (x) => (next.card.cursor = x));
+        else if (k === 'nearest') pick('card.nearest', cd.nearest, ['ranked', 'deciding'] as const, (x) => (next.card.nearest = x));
         else flag(`card.${k}`, cd[k], (b) => (next.card[k] = b));
       }
     }
@@ -1868,7 +1869,7 @@ export default class GroundGuide {
     const t = this._opts.traffic;
     const blockOn = t.block !== 'off';
     if (!(t.road || t.pill || t.dual || blockOn) || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
-    if (!this._extrasWanted()) return null;
+    if (!this._extrasWanted() && !this._nearestWanted()) return null;
     const pt = v.going?.point ?? null;
     const wet = v.going?.season === 'wet';
     let road: GroundGuideTraffic['road'] = null;
@@ -2593,7 +2594,7 @@ export default class GroundGuide {
   private _groundNear(geometry: any, v: GroundGuideVerdict): GroundGuideItg | null {
     const o = this._opts.itg;
     if (!o.enabled || !this._features || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
-    if (!this._extrasWanted()) return null;
+    if (!this._extrasWanted() && !this._nearestWanted()) return null;
     const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
     if (!at) return null;
     const radiusM = o.radiusKm * 1000;
@@ -2852,7 +2853,7 @@ export default class GroundGuide {
     const c = this._opts.card;
     const t = this._opts.traffic;
     if (this._briefOpen) return true;
-    if (c.cursor !== 'full') return false; // the minimal card shows none of it; the Detail reads it when open
+    if (c.cursor !== 'full') return true; // the minimal card's key fact: the going in the other season (the point only)
     return (
       c.goingLines || c.movementRose || c.soilStrength || c.exitStrip || c.modeMatrix || c.seasonRibbon || c.goingMap ||
       t.pill || t.dual || t.header === 'season' || t.block !== 'off' || // T reads the going at the point too
@@ -2863,6 +2864,15 @@ export default class GroundGuide {
   /** The cursor card shows the extra sections (`card.cursor: full`), or the Ground Detail is open to show them. */
   private _extrasWanted(): boolean {
     return this._briefOpen || this._opts.card.cursor === 'full';
+  }
+
+  /**
+   * The minimal cursor card ranks the things round the point (`card.nearest: ranked`, 2026-11-07): it needs the road
+   * for the mode, the ITG candidates, the better cover and the obstacles even while the Detail is closed.
+   */
+  private _nearestWanted(): boolean {
+    const c = this._opts.card;
+    return c.cursor !== 'full' && c.nearest === 'ranked';
   }
 
   /** Tiles speed reads besides the going's: elevation (slope) and the terrain type (a day's march). */
@@ -2913,7 +2923,9 @@ export default class GroundGuide {
     const o = this._opts.cover;
     const L = this._coverLayers();
     if (!o.enabled || !L || !this._cache) return null;
-    if ((o.card === 'off' || !this._extrasWanted()) && !this._briefOpen) return null;
+    // The minimal card shows the cover the mode needs (a key fact) whatever the full card's style.
+    const minimal = this._opts.card.cursor !== 'full';
+    if (!minimal && (o.card === 'off' || !this._extrasWanted()) && !this._briefOpen) return null;
     const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
     if (!at) return null;
     const z = this._sampleZoom();
@@ -3023,7 +3035,16 @@ export default class GroundGuide {
   }
 
   /** Read the G / R / B / W sections at a point (shared by the live card and `sectionsAround`). */
-  private _readSections(at: MercXY, profile: GroundGuideProfile, z: number, all: boolean, radiusKm = this._opts.sections.radiusKm): GroundGuideSections {
+  private _readSections(
+    at: MercXY,
+    profile: GroundGuideProfile,
+    z: number,
+    all: boolean,
+    radiusKm = this._opts.sections.radiusKm,
+    opts: GroundGuideOptions['sections'] = this._opts.sections,
+    /** Pixels only: no feature-index queries (power lines, dams, levees, closures), for the cursor card's Nearest. */
+    pixelsOnly = false,
+  ): GroundGuideSections {
     const m = this._manifest!;
     const { read, state } = this._pixelReader(z);
     const [lon, lat] = mercatorToLngLat(at[0], at[1]);
@@ -3033,7 +3054,7 @@ export default class GroundGuide {
     const route = (books.route ?? {}) as Record<string, unknown>;
     const bld = (books.bld ?? {}) as Record<string, unknown>;
     let featuresPending = false;
-    const f = this._features;
+    const f = pixelsOnly ? null : this._features;
     const features: SectionsFeatures | null = f
       ? {
           nearestOfKinds: (p, r, k, max, filter) => {
@@ -3055,7 +3076,7 @@ export default class GroundGuide {
       : null;
     const cp = this._profile(profile);
     return readSections({
-      opts: this._opts.sections,
+      opts,
       profile,
       at,
       cosLat,
@@ -3096,11 +3117,26 @@ export default class GroundGuide {
   private _sectionsNear(geometry: any, v: GroundGuideVerdict): GroundGuideSections | null {
     if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt' || !this._cache || !this._manifest) return null;
     const o = this._opts.sections;
-    const any = o.ground || o.roads || o.buildings || o.weather || o.obstacles;
-    if ((!any || !this._extrasWanted()) && !this._briefOpen) return null;
-    if (o.style === 'brief' && !this._briefOpen && this._sectionsAllAuto()) return null;
     const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
     if (!at) return null;
+    if (!this._briefOpen && !this._extrasWanted()) {
+      // The minimal card's Nearest only needs the nearest natural and man-made obstacle class round the point (a pixel
+      // scan): the terrain rays, road density and the feature queries cost 3 to 6 ms a move in a city and wait for the
+      // Detail (measured 2026-11-07).
+      if (!this._nearestWanted() || !o.obstacles) return null;
+      return this._readSections(
+        at,
+        v.profile,
+        this._sampleZoom(),
+        false,
+        o.radiusKm,
+        { ...o, ground: false, roads: false, buildings: false, weather: false, roadDensity: false },
+        true,
+      );
+    }
+    const any = o.ground || o.roads || o.buildings || o.weather || o.obstacles;
+    if (!any && !this._briefOpen) return null;
+    if (o.style === 'brief' && !this._briefOpen && this._sectionsAllAuto()) return null;
     return this._readSections(at, v.profile, this._sampleZoom(), this._briefOpen);
   }
 
@@ -3291,8 +3327,10 @@ export default class GroundGuide {
     };
     const tb = this._opts.traffic.block;
     const tMove = tb === 'band' || tb === 'rose' || tb === 'tabs'; // T blocks that say how open the ground is
-    const movement = moveOk && (c.movementRose || c.exitStrip || brief || tMove) ? this._rays(at, lat, z, rangeM, sample, coarse, season) : null;
-    const map = moveOk && (c.goingMap || brief) ? this._goingGrid(at, lat, rangeM, brief ? 33 : 25, sample) : null;
+    // The minimal card with the Detail closed reads the point only; the rays and the map wait for the Detail.
+    const full = brief || c.cursor === 'full';
+    const movement = full && moveOk && (c.movementRose || c.exitStrip || brief || tMove) ? this._rays(at, lat, z, rangeM, sample, coarse, season) : null;
+    const map = full && moveOk && (c.goingMap || brief) ? this._goingGrid(at, lat, rangeM, brief ? 33 : 25, sample) : null;
 
     return {
       season,
