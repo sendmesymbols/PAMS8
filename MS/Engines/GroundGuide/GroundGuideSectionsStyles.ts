@@ -550,12 +550,14 @@ export function obstaclesGap(o: ObstaclesReading): HTMLElement {
   const c = o.canal;
   const r = o.reach;
   const W = 256;
-  const H = 66;
+  const H = 80;
   const gap = c && (c.widthM || c.depthM) ? { name: nameOf(c), at: at(c), w: c.widthM, d: c.depthM, b: c.bankM } : r && r.depthM ? { name: r.name ?? 'River reach', at: at(r), w: null, d: r.depthM, b: null } : null;
   if (!gap) return obstaclesTiles(o);
   const svg = sv('svg', { width: '100%', height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cross-section of the gap' });
-  // Banks, then a trapezoid channel scaled to the gap; the water fills two thirds of the depth.
-  const top = 14;
+  // Banks, then a trapezoid channel scaled to the gap; the water fills two thirds of the depth. The width is a
+  // dimension line with end ticks over the gap and its label above the line, never on it (user, 2026-11-08: the line
+  // ran through "15.7 m wide").
+  const top = 28;
   const bank = gap.b ? Math.min(14, 4 + gap.b) : 4;
   const dPx = Math.min(36, 10 + (gap.d ?? 2) * 4);
   const wPx = Math.min(170, 50 + (gap.w ?? 10) * 1.4);
@@ -566,7 +568,14 @@ export function obstaclesGap(o: ObstaclesReading): HTMLElement {
     sv('path', { d: `M 0 ${g0} L ${x0 - 14} ${g0} L ${x0 - 8} ${top} L ${x0} ${top} L ${x0 + 12} ${top + bank + dPx} L ${x1 - 12} ${top + bank + dPx} L ${x1} ${top} L ${x1 + 8} ${top} L ${x1 + 14} ${g0} L ${W} ${g0} L ${W} ${H} L 0 ${H} Z`, fill: '#8a6d4a', 'fill-opacity': 0.55 }),
     sv('path', { d: `M ${x0 + 12 * (1 / 3) + 4} ${top + bank + dPx / 3} L ${x1 - 4 - 12 / 3} ${top + bank + dPx / 3} L ${x1 - 12} ${top + bank + dPx} L ${x0 + 12} ${top + bank + dPx} Z`, fill: '#4a90c8', 'fill-opacity': 0.8 }),
   );
-  if (gap.w) svg.append(sv('line', { x1: x0, y1: 6, x2: x1, y2: 6, stroke: '#fff', 'stroke-width': 1 }), svText(W / 2 - 18, 10, `${gap.w} m wide`, { fill: '#fff', 'font-weight': 700 }));
+  if (gap.w) {
+    svg.append(
+      sv('line', { x1: x0, y1: 21, x2: x1, y2: 21, stroke: '#fff', 'stroke-width': 1 }),
+      sv('line', { x1: x0, y1: 17, x2: x0, y2: 25, stroke: '#fff', 'stroke-width': 1 }),
+      sv('line', { x1: x1, y1: 17, x2: x1, y2: 25, stroke: '#fff', 'stroke-width': 1 }),
+      svText(W / 2, 13, `${gap.w} m wide`, { fill: '#fff', 'font-weight': 700, 'text-anchor': 'middle' }),
+    );
+  }
   if (gap.d) svg.append(svText(x1 - 4, top + bank + dPx - 2, `${gap.d} m deep`, { fill: '#fff', 'text-anchor': 'end' }));
   if (gap.b) svg.append(svText(4, top + bank - 4, `banks ${gap.b} m`, { fill: '#e8ebee' }));
   const hit = o.manMade?.label?.toLowerCase().includes('canal') ? o.manMade : o.natural;

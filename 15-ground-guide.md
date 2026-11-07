@@ -128,6 +128,15 @@ pictures, then its lists and notes, placed down columns first-fit (a short tile 
 list taller than the band continues at the top of a later column). What does not fit the card's width goes to a next
 page: **the same letter again turns the page**, and closes the card from the last page; the footer shows
 `Page 1 of 2` and the key. At 1920×1080 every tab fits one page; at 1600×900 T and B take two.
+Since 2026-11-08 the card **fills its width**: when a tab fits one page its tiles are shared out side by side over
+every column there is room for (in order, the tallest column as short as it can be, a column up to 560 px), and a last
+page with columns to spare does the same with its own tiles, so a short tab no longer leaves half the card empty.
+Text is **12 px at the least**: the tiles reuse the cursor card's CSS, so after each render the Detail copies every
+Ground Guide rule set smaller into a sheet of its own at 12 px, scoped to the Detail (the cursor card keeps its sizes),
+and the pictures' own labels (compass letters, triangle corners, cross-section notes) are drawn at 10.5 px on screen
+at the least. Label / value lists have a hairline and air between rows, so a value that wraps stays one row; the G
+list's **Going** is a small grid (a mode a row, *Dry* and *After Rain* a column). Below 1160 px the tabs not shown
+keep only their key, so the header stays on one line.
 
 | tab | tiles |
 |-----|-------|

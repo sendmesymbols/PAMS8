@@ -136,9 +136,112 @@ export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T
 const TAB_COLOR: Record<DetailTab, string> = { ...LETTER_COLOR, L: '#aab3bd' };
 const TAB_FG: Record<DetailTab, string> = { G: '#1b1f25', R: '#1b1f25', O: '#fff', T: '#1b1f25', B: '#1b1f25', C: '#fff', L: '#1b1f25' };
 const W_COLOR = '#4a7f95';
-/** Space between the band's columns, and the narrowest a column may be, px. */
+/** Space between the band's columns, and the narrowest and widest a column may be, px. */
 const COL_GAP = 28;
 const COL_MIN = 262;
+const COL_MAX = 560;
+/**
+ * The smallest text the Detail shows, px (user, 2026-11-08: "small unreadable text"). The tiles reuse the cursor
+ * card's and the views' CSS, whose labels go down to 8.5 px on the small card; `raiseSmallText` lifts them here.
+ */
+const MIN_TEXT = 12;
+const MIN_STYLE_ID = 'ms-ground-guide-detail-min';
+/** The smallest a picture's own label (a compass letter, a triangle corner, a cross-section note) is drawn, px on screen. */
+const SVG_MIN_TEXT = 10.5;
+const minSeen = new WeakSet<CSSStyleSheet>();
+
+/**
+ * For every Ground Guide stylesheet not seen yet, copy each rule that sets text smaller than MIN_TEXT into a sheet of
+ * the Detail's own, at MIN_TEXT and scoped to the Detail (`.ms-ggd :is(...)`, one class more, so it wins there and
+ * nowhere else). Run after a tab is drawn: a view adds its CSS the first time it is used. The cursor card keeps its
+ * own sizes.
+ */
+function raiseSmallText(): void {
+  let out = document.getElementById(MIN_STYLE_ID) as HTMLStyleElement | null;
+  if (!out) {
+    out = document.createElement('style');
+    out.id = MIN_STYLE_ID;
+    document.head.appendChild(out);
+  }
+  const target = out.sheet;
+  if (!target) return;
+  for (const s of Array.from(document.styleSheets)) {
+    const id = (s.ownerNode as Element | null)?.id ?? '';
+    if (minSeen.has(s) || !id.startsWith('ms-ground-guide-') || id === STYLE_ID || id === MIN_STYLE_ID) continue;
+    minSeen.add(s);
+    let rules: CSSRuleList;
+    try {
+      rules = s.cssRules;
+    } catch {
+      continue;
+    }
+    for (const r of Array.from(rules)) {
+      if (!(r instanceof CSSStyleRule)) continue;
+      const fs = r.style.fontSize;
+      if (!fs.endsWith('px') || parseFloat(fs) >= MIN_TEXT) continue;
+      const sel = r.selectorText;
+      const scoped = sel.includes('::') ? sel.split(',').map((x) => `.ms-ggd ${x.trim()}`).join(',') : `.ms-ggd :is(${sel})`;
+      try {
+        target.insertRule(`${scoped}{font-size:${MIN_TEXT}px}`, target.cssRules.length);
+      } catch {
+        /* a selector this browser cannot scope: leave that rule as it is */
+      }
+    }
+  }
+}
+
+/**
+ * The pictures' own labels at least SVG_MIN_TEXT on screen: each SVG text is sized in its picture's units, so it is
+ * raised by the picture's scale. Run after the layout (a picture that fills its column scales with it); a size set
+ * before is cleared first, so a wider column can bring a label back down.
+ */
+function raiseSvgText(root: ParentNode): void {
+  for (const tx of Array.from(root.querySelectorAll<SVGTextElement>('svg text'))) {
+    const svg = tx.ownerSVGElement;
+    if (!svg || !tx.textContent?.trim()) continue;
+    tx.style.fontSize = '';
+    const w = svg.clientWidth || svg.getBoundingClientRect().width;
+    if (!w) continue;
+    const vb = svg.viewBox?.baseVal;
+    const scale = vb && vb.width ? w / vb.width : 1;
+    const fs = parseFloat(getComputedStyle(tx).fontSize);
+    if (!fs || fs * scale >= SVG_MIN_TEXT) continue;
+    tx.style.fontSize = `${(SVG_MIN_TEXT / scale).toFixed(2)}px`;
+  }
+}
+
+/**
+ * Split heights `h` (in order) into `n` non-empty columns so the tallest column is as short as it can be; `gap`
+ * between two tiles in a column. Returns the index each column starts at, and that tallest height.
+ */
+function balanceColumns(h: number[], n: number, gap: number): { starts: number[]; max: number } {
+  const k = h.length;
+  const pre = [0];
+  for (const x of h) pre.push(pre[pre.length - 1] + x);
+  const colH = (a: number, b: number) => pre[b] - pre[a] + gap * (b - a - 1);
+  const best: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(k + 1).fill(Infinity));
+  const cut: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(k + 1).fill(0));
+  for (let i = 1; i <= k; i++) best[1][i] = colH(0, i);
+  for (let j = 2; j <= n; j++) {
+    for (let i = j; i <= k; i++) {
+      for (let s = j - 1; s < i; s++) {
+        const m = Math.max(best[j - 1][s], colH(s, i));
+        if (m < best[j][i]) {
+          best[j][i] = m;
+          cut[j][i] = s;
+        }
+      }
+    }
+  }
+  const starts: number[] = [];
+  let i = k;
+  for (let j = n; j >= 1; j--) {
+    const s = j === 1 ? 0 : cut[j][i];
+    starts.unshift(s);
+    i = s;
+  }
+  return { starts, max: best[n][k] };
+}
 /** Space between two tiles in a column, px. */
 const ITEM_GAP = 16;
 
@@ -209,7 +312,12 @@ const CSS = `
 .ms-ggd-rule{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07)}
 .ms-ggd-cont{font-weight:400;color:#97a1ab}
 .ms-ggd .ms-ggd-flow .ms-gs-kv{display:block}
-.ms-ggd-pair{display:grid;grid-template-columns:84px minmax(0,1fr);column-gap:12px;padding:2px 0}
+/* Label / value rows: a hairline and air between rows, so a value that wraps to three lines still reads as one row
+   (user, 2026-11-08: "long text with headers not properly separated"). */
+.ms-ggd-pair{display:grid;grid-template-columns:84px minmax(0,1fr);column-gap:12px;padding:6px 0}
+.ms-ggd-pair:first-child{padding-top:1px}
+.ms-ggd-pair+.ms-ggd-pair{border-top:1px solid rgba(255,255,255,.075)}
+.ms-ggd .ms-gs-kv>.ms-ggd-pair>.ms-gs-k{padding-top:1px;line-height:1.35}
 /* A rose, dial or round map keeps its words beside it in a column: the tile stays short enough to share a column. */
 .ms-ggd .ms-gv-rose>div,.ms-ggd .ms-ggs-rose>div,.ms-ggd .ms-gc-rose>div,.ms-ggd .ms-gv-map>div{flex:1 1 128px;min-width:0}
 .ms-ggd-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;border-radius:4px;font:800 11px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0}
@@ -220,18 +328,21 @@ const CSS = `
 /* Text a step larger than on the cursor card: the Detail is read at arm's length, often in daylight. */
 .ms-ggd .ms-gs-kv,.ms-ggd .ms-ggbr-ln,.ms-ggd .ms-gc-row,.ms-ggd .ms-gc-near,.ms-ggd .ms-ggp-list,.ms-ggd .ms-ggp-ln,.ms-ggd .ms-ggp-places,.ms-ggd .ms-ggd-kv,.ms-ggd .ms-gx-where,.ms-ggd .ms-gx-list,.ms-ggd .ms-ggs-kv,.ms-ggd .ms-ggb-tkv,.ms-ggd .ms-gs-one{font-size:13.5px}
 .ms-ggd .ms-gs-kv{line-height:1.4}
-.ms-ggd .ms-ggp-chip{font-size:10.5px;padding:4px 8px 3px}
+.ms-ggd .ms-ggp-chip{font-size:12px;padding:4px 8px 3px}
+.ms-ggd .ms-ggp-places small{font-size:12px}
+.ms-ggd .ms-ggp-ln{grid-template-columns:minmax(58px,max-content) minmax(0,1fr)}
+.ms-ggd .ms-ggp-ln>.ms-ggp-k{white-space:nowrap}
 .ms-ggd .ms-gs-kv .ms-gs-k,.ms-ggd .ms-ggd-kv>.k,.ms-ggd .ms-ggp-k,.ms-ggd .ms-ggbr-ln>span:first-child{font-size:12.5px;color:#a3acb6}
 .ms-ggd .ms-gv-soft,.ms-ggd .ms-ggb-soft,.ms-ggd .ms-gc-soft,.ms-ggd .ms-gx-soft,.ms-ggd .ms-grd-soft,.ms-ggd .ms-gv-blk,.ms-ggd .ms-gv-limit,.ms-ggd .ms-ggbr-list,.ms-ggd .ms-ggp-src,.ms-ggd .ms-gs-src{font-size:12.5px}
-.ms-ggd .ms-gv-k,.ms-ggd .ms-gv-mx,.ms-ggd .ms-gx-chips>span,.ms-ggd .ms-ggl-chips>span,.ms-ggd .ms-gv-leg,.ms-ggd .ms-gs-more{font-size:12px}
-.ms-ggd .ms-gv-scale>span,.ms-ggd .ms-gv-mx>.ms-gv-c,.ms-ggd .ms-gv-mx>.ms-gv-h,.ms-ggd .ms-gv-chip,.ms-ggd .ms-gs-chip,.ms-ggd .ms-gs-more>.ms-gs-k{font-size:10.5px}
-.ms-ggd .ms-gv-gl{font-size:10.5px;height:14px}
-.ms-ggd .ms-gv-rl{font-size:10.5px}
+.ms-ggd .ms-gv-k,.ms-ggd .ms-gv-mx,.ms-ggd .ms-gx-chips>span,.ms-ggd .ms-ggl-chips>span,.ms-ggd .ms-gv-leg,.ms-ggd .ms-gs-more{font-size:12.5px}
+.ms-ggd .ms-gv-scale>span,.ms-ggd .ms-gv-mx>.ms-gv-c,.ms-ggd .ms-gv-mx>.ms-gv-h,.ms-ggd .ms-gv-chip,.ms-ggd .ms-gs-chip,.ms-ggd .ms-gs-more>.ms-gs-k{font-size:12px}
+.ms-ggd .ms-gv-gl{font-size:12px;height:16px}
+.ms-ggd .ms-gv-rl{font-size:12px}
 .ms-ggd .ms-ggb-big,.ms-ggd .ms-ggp-big,.ms-ggd .ms-ggs-big,.ms-ggd .ms-ggb-tbig{font-size:22px}
 .ms-ggd .ms-gv-rate{font-size:18px}
 .ms-ggd .ms-ggb-sec .ms-gv-rose,.ms-ggd .ms-ggb-sec .ms-gv-map,.ms-ggd .ms-ggb-sec .ms-gc-rose,.ms-ggd .ms-ggb-sec .ms-ggs-rose{flex-wrap:wrap}
 .ms-ggd-f{flex:none;padding:6px 14px 7px;font-size:12px;color:#97a1ab;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center}
-.ms-ggd-f .ms-ggd-k{min-width:17px;height:17px;font-size:10px;padding:0 3px;margin-right:3px}
+.ms-ggd-f .ms-ggd-k{min-width:18px;height:18px;font-size:11px;padding:0 3px;margin-right:3px}
 .ms-ggd-page{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:#c9d1d9}
 .ms-ggd-page[hidden]{display:none}
 .ms-ggd-page b{color:#ffd27a;font-weight:650}
@@ -245,7 +356,7 @@ const CSS = `
 .ms-ggd .ms-ggl-keys{margin-top:0;padding-top:0;border-top:0;flex-direction:column;gap:6px}
 .ms-ggd .ms-ggl-tcap:first-child{margin-top:0}
 .ms-ggd-kv{display:grid;grid-template-columns:62px minmax(0,1fr);gap:3px 8px;font-size:12.5px;line-height:1.35}
-.ms-ggd-kv>.k{color:#a3acb6;font-size:11.5px;padding-top:1px}
+.ms-ggd-kv>.k{color:#a3acb6;font-size:12px;padding-top:1px}
 .ms-ggd-kv>.v{min-width:0;color:#e8ebee;overflow-wrap:anywhere}
 .ms-ggd-kv b{color:#fff;font-weight:600}
 .ms-ggd-modes{display:flex;flex-wrap:wrap;gap:6px}
@@ -276,9 +387,11 @@ const CSS = `
 .ms-ggd .ms-ggl-ramp>i{height:14px}
 .ms-ggd .ms-ggl-ramp-l{font-size:12.5px;color:#c9d1d9}
 .ms-ggd .ms-ggl-note{font-size:12.5px;margin-top:5px}
-.ms-ggd .ms-ggl-tcap{font-size:11.5px}
-.ms-ggd .ms-ggl-cap{font-size:11.5px}
+.ms-ggd .ms-ggl-tcap{font-size:12px}
+.ms-ggd .ms-ggl-cap{font-size:12px}
 .ms-ggd .ms-ggl-key small{font-size:12px}
+/* A narrow window: the tabs not shown keep only their key, so the header stays on one line (the × no longer wraps). */
+@media (max-width:1160px){.ms-ggd-tab:not([aria-selected="true"]) .ms-ggd-tl{display:none}.ms-ggd-tab:not([aria-selected="true"]){padding-right:6px}}
 @media (prefers-reduced-motion:no-preference){.ms-ggd-sw,.ms-ggd-sw::after{transition:background .15s,transform .15s}.ms-ggd-tab{transition:background .12s,color .12s}}
 @media (max-width:720px){.ms-ggd{left:6px;right:6px;bottom:6px}.ms-ggd-band{height:clamp(200px,calc(70vh - 220px),460px)}
   .ms-ggd-sum{flex-wrap:wrap;padding:10px 12px;gap:8px 10px}.ms-ggd-for{width:100%;padding:0 0 8px;border-right:0;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -534,7 +647,8 @@ export class GroundGuideDetail {
       b.title = `${TAB_LABEL[t]} (${TAB_KEY_OF[t]})`;
       b.style.setProperty('--lc', TAB_COLOR[t]);
       b.style.setProperty('--lf', TAB_FG[t]);
-      b.append(el('span', 'ms-ggd-k', TAB_KEY_OF[t]), TAB_LABEL[t]);
+      b.setAttribute('aria-label', TAB_LABEL[t]);
+      b.append(el('span', 'ms-ggd-k', TAB_KEY_OF[t]), el('span', 'ms-ggd-tl', TAB_LABEL[t]));
       b.addEventListener('click', () => this.setTab(t));
       tabs.append(b);
       this._tabs.set(t, b);
@@ -660,6 +774,7 @@ export class GroundGuideDetail {
       tiles = [empty(this._v ? `Nothing to show for ${TAB_LABEL[tab]} here yet. Move the cursor over the map, or wait for the tiles.` : 'Move the cursor over the map while drawing.')];
     }
     flow.replaceChildren(...tiles);
+    raiseSmallText(); // before measuring: the sizes change the tiles' heights
     this._trimLetters(tab);
     // On the card root, not the flow: orientNorth also sets --gg-north on what it is given, and a copy left on the
     // flow would hide the root's value from every arrow when the map is turned later (setNorth turns the root).
@@ -678,11 +793,13 @@ export class GroundGuideDetail {
   }
 
   /**
-   * Lay the tiles out down the band's columns and count the pages. Every tile is set to the column width and
-   * measured; each goes into the first column (on any page) with room for it, so a short tile fills the space under
-   * a tall one; a column that is full opens the next, and the columns past the card's width make the next page. A
-   * list taller than the band is split row by row and continues at the top of a later column. `keep`: stay on the
-   * page shown (a rebuild as the cursor moves), else the first.
+   * Lay the tiles out in the band's columns and count the pages. When the tab fits one page with its tiles kept in
+   * order, they are spread over the whole width (`_spread`). Otherwise every tile is set to the narrowest column width
+   * and measured; each goes into the first column (on any page) with room for it, so a short tile fills the space
+   * under a tall one; a column that is full opens the next, and the columns past the card's width make the next page.
+   * A list taller than the band is split row by row and continues at the top of a later column. A last (or only) page
+   * that leaves columns empty widens its used ones to the card's width. `keep`: stay on the page shown (a rebuild as
+   * the cursor moves), else the first.
    */
   private _paginate(keep: boolean): void {
     const flow = this._flow;
@@ -702,17 +819,119 @@ export class GroundGuideDetail {
       return;
     }
     const per = Math.max(1, Math.floor((W + COL_GAP) / (COL_MIN + COL_GAP)));
-    const colW = (W - (per - 1) * COL_GAP) / per;
+    let cols = this._spread(tiles, W, H, per);
+    let pages = 1;
+    if (!cols) {
+      const colW = (W - (per - 1) * COL_GAP) / per;
+      for (const t of tiles) {
+        t.style.width = `${colW}px`;
+        t.style.left = t.style.top = '0px';
+      }
+      // Split the lists that run past the band's height, in place (the continuation follows its list).
+      const items: Array<{ t: HTMLElement; after: HTMLElement | null }> = [];
+      for (const t of tiles) {
+        const parts = t.classList.contains('ms-ggd-brk') && t.offsetHeight > H ? this._splitList(t, H) : [t];
+        parts.forEach((p, i) => items.push({ t: p, after: i ? parts[i - 1] : null }));
+      }
+      const fit = this._firstFit(items, per, colW, W, H);
+      cols = fit.cols;
+      pages = Math.max(1, Math.ceil(cols.length / per));
+      const first = (pages - 1) * per; // the last page's first column
+      const m = cols.length - first;
+      if (m < per) {
+        // The last (or only) page has columns to spare (user, 2026-11-08: half the card was empty). Its tiles are
+        // shared out side by side over the whole width (two left over sit beside each other, not one under the
+        // other); when that does not fit, they go first fit again into the columns the page used, made wider; when
+        // that does not fit either, everything is placed as it was.
+        const last = items.filter(({ t }) => (fit.colOf.get(t) ?? 0) >= first);
+        const dx = (pages - 1) * (W + COL_GAP);
+        const placed = this._spread(last.map(({ t }) => t), W, H, per, dx) ?? this._widen(last, m, W, H, dx);
+        if (placed) cols = [...cols.slice(0, first), ...placed];
+        else {
+          for (const { t } of items) t.style.width = `${colW}px`;
+          cols = this._firstFit(items, per, colW, W, H).cols;
+        }
+      }
+    }
+    // A hairline between neighbouring columns on each page (not before a page's first column).
+    for (const c of cols) {
+      if (c.used === 0 || c.x % (W + COL_GAP) < 1) continue;
+      const r = el('div', 'ms-ggd-rule');
+      r.style.left = `${Math.round(c.x - COL_GAP / 2)}px`;
+      flow.append(r);
+    }
+    this._pages = pages;
+    raiseSvgText(flow);
+    this._page = keep ? Math.min(this._page, this._pages - 1) : 0;
+    this._showPage(false);
+    void flow.offsetWidth; // the jump to the kept page is not animated; a page turn is
+    flow.style.transition = '';
+  }
+
+  /**
+   * The tiles side by side across the whole card, when they fit one page that way: as many columns as there is room
+   * for (or one a tile, when there are fewer tiles), as wide as `COL_MAX`, the tiles kept in order and shared out so
+   * the tallest column is as short as it can be. Null when a tile is taller than the band (a list to split) or the
+   * shared-out columns would not fit: the caller then packs first fit and pages.
+   */
+  private _spread(tiles: HTMLElement[], W: number, H: number, per: number, x0 = 0): Array<{ x: number; used: number }> | null {
+    const n = Math.min(per, tiles.length);
+    if (n < 1) return null;
+    const colW = Math.min(COL_MAX, (W - (n - 1) * COL_GAP) / n);
     for (const t of tiles) {
       t.style.width = `${colW}px`;
       t.style.left = t.style.top = '0px';
     }
-    // Split the lists that run past the band's height, in place (the continuation follows its list).
-    const items: Array<{ t: HTMLElement; after: HTMLElement | null }> = [];
-    for (const t of tiles) {
-      const parts = t.classList.contains('ms-ggd-brk') && t.offsetHeight > H ? this._splitList(t, H) : [t];
-      parts.forEach((p, i) => items.push({ t: p, after: i ? parts[i - 1] : null }));
-    }
+    const h = tiles.map((t) => t.offsetHeight);
+    if (h.some((x) => x > H)) return null;
+    const { starts, max } = balanceColumns(h, n, ITEM_GAP);
+    if (max > H) return null;
+    const cols: Array<{ x: number; used: number }> = [];
+    starts.forEach((s, j) => {
+      const end = j + 1 < starts.length ? starts[j + 1] : tiles.length;
+      const x = x0 + j * (colW + COL_GAP);
+      let y = 0;
+      for (let i = s; i < end; i++) {
+        tiles[i].style.left = `${Math.round(x)}px`;
+        tiles[i].style.top = `${Math.round(y)}px`;
+        y += h[i] + ITEM_GAP;
+      }
+      cols.push({ x, used: Math.max(0, y - ITEM_GAP) });
+    });
+    return cols;
+  }
+
+  /**
+   * The last page's tiles first fit again into its `m` columns made as wide as the card allows, shifted to the page
+   * at `dx`. Null when they no longer fit `m` columns.
+   */
+  private _widen(last: Array<{ t: HTMLElement; after: HTMLElement | null }>, m: number, W: number, H: number, dx: number): Array<{ x: number; used: number }> | null {
+    const inLast = new Set(last.map(({ t }) => t));
+    const wide = Math.min(COL_MAX, (W - (m - 1) * COL_GAP) / m);
+    for (const { t } of last) t.style.width = `${wide}px`;
+    const again = this._firstFit(
+      last.map(({ t, after }) => ({ t, after: after && inLast.has(after) ? after : null })),
+      m,
+      wide,
+      W,
+      H,
+    );
+    if (again.cols.length > m) return null;
+    for (const { t } of last) t.style.left = `${Math.round(parseFloat(t.style.left) + dx)}px`;
+    return again.cols.map((c) => ({ x: c.x + dx, used: c.used }));
+  }
+
+  /**
+   * First fit down the columns, `per` to a page of width `W`: each tile into the first column (on any page) with room
+   * for it, so a short tile fills the space under a tall one; a continuation only after its list's column.
+   */
+  private _firstFit(
+    items: Array<{ t: HTMLElement; after: HTMLElement | null }>,
+    per: number,
+    colW: number,
+    W: number,
+    H: number,
+  ): { cols: Array<{ x: number; used: number }>; colOf: Map<HTMLElement, number> } {
     const cols: Array<{ x: number; used: number }> = [];
     const colOf = new Map<HTMLElement, number>();
     const open = (): number => {
@@ -722,7 +941,6 @@ export class GroundGuideDetail {
     };
     for (const { t, after } of items) {
       const h = t.offsetHeight;
-      // A continuation goes after its list's column, never before it.
       const from = after ? (colOf.get(after) ?? -1) + 1 : 0;
       let ci = -1;
       for (let i = from; i < cols.length; i++) {
@@ -743,18 +961,7 @@ export class GroundGuideDetail {
       c.used = top + h;
       colOf.set(t, ci);
     }
-    // A hairline between neighbouring columns on each page.
-    for (let i = 0; i < cols.length; i++) {
-      if (i % per === 0 || cols[i].used === 0) continue;
-      const r = el('div', 'ms-ggd-rule');
-      r.style.left = `${Math.round(cols[i].x - COL_GAP / 2)}px`;
-      flow.append(r);
-    }
-    this._pages = Math.max(1, Math.ceil(cols.length / per));
-    this._page = keep ? Math.min(this._page, this._pages - 1) : 0;
-    this._showPage(false);
-    void flow.offsetWidth; // the jump to the kept page is not animated; a page turn is
-    flow.style.transition = '';
+    return { cols, colOf };
   }
 
   /**

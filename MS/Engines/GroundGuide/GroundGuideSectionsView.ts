@@ -55,6 +55,8 @@ const CSS = `
 .ms-gs-more b{color:#eef1f4;font-weight:600}
 .ms-gs-more .ms-gs-s{color:#8f98a2}
 .ms-gs-step{font-weight:700;letter-spacing:.02em}
+.ms-gs-modes{display:grid;grid-template-columns:auto auto auto;justify-content:start;column-gap:14px;row-gap:2px;align-items:baseline}
+.ms-gs-modes>.ms-gs-mh{font-size:12px;color:#9aa3ad}
 `;
 
 export function ensureSectionsCss(): void {
@@ -449,18 +451,21 @@ function step(st: string): HTMLElement {
   return e;
 }
 
-/** "Foot GO · Wheeled GO, SLOW-GO after rain · Tracked GO": who can move here, dry and after rain. */
+/**
+ * Who can move here, dry and after rain, as a small grid: a mode a row, Dry and After Rain a column, so every word
+ * sits under its heading (user, 2026-11-08: the running line "Wheeled GO, SLOW-GO after rain · Tracked ..." wrapped
+ * into a jumble). The mode being placed is in bold.
+ */
 function modesNode(v: GroundGuideVerdict): Node | null {
   const modes = v.going?.modes ?? [];
   if (!modes.length) return null;
-  const f = document.createDocumentFragment();
-  modes.forEach((m, i) => {
-    if (i) f.append(soft(' · '));
+  const g = el('div', 'ms-gs-modes');
+  g.append(el('span', 'ms-gs-mh'), el('span', 'ms-gs-mh', 'Dry'), el('span', 'ms-gs-mh', 'After Rain'));
+  for (const m of modes) {
     const name = MODE_SHORT[m.profile] ?? m.label;
-    f.append(m.active ? b(name) : name, ' ', step(m.dry));
-    if (m.wet !== m.dry) f.append(soft(', '), step(m.wet), soft(' after rain'));
-  });
-  return f;
+    g.append(m.active ? b(name) : el('span', undefined, name), step(m.dry), step(m.wet));
+  }
+  return g;
 }
 
 /** "Loam · cone index 85 dry, 40 after rain · Wheeled: 30 to move, 60 for GO". */
