@@ -919,6 +919,8 @@ export default class GroundGuide {
     v.overridable = keys && v.blocked && this._opts.allowOverride;
     v.profileKey = keys && this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
     v.profileOverride = this._profileOverride !== null && v.profile === this._profileOverride;
+    const op = this._opts.overlay;
+    v.overlayOther = op.enabled && this._overlay && op.profile !== 'auto' && op.profile !== v.profile ? (this._rules?.profiles?.[op.profile]?.label ?? op.profile) : null;
     v.ground = this._groundNear(geometry, v);
     v.going = this._goingNear(geometry, sidc, v);
     v.briefKey = keys && this._opts.card.briefKey;
@@ -2242,7 +2244,12 @@ export default class GroundGuide {
       }
     }
     if (idx < 0) return;
-    const { nearest } = this._scanNearest(ctx, pts[idx][0], pts[idx][1], true, cp);
+    let { nearest } = this._scanNearest(ctx, pts[idx][0], pts[idx][1], true, cp);
+    // Beyond the scan window the distance layer still knows how far the no-go is: take its direction from the layer
+    // too, so the card's Nearest keeps its compass rather than turning into a bare distance (user, 2026-11-07).
+    if (!nearest && v.distanceM !== null && v.distanceM > 0 && v.distanceM < ctx.scale * DIST_FAR) {
+      nearest = this._nearestAlongDistance(ctx, pts[idx][0], pts[idx][1], v.distanceM, cp);
+    }
     if (!nearest) return;
     v.nearest = nearest;
     // Prefer the pipeline's exact distance; the scan supplies the class and direction.
@@ -2342,6 +2349,69 @@ export default class GroundGuide {
         bearingDeg,
         compass: COMPASS[Math.round(bearingDeg / 45) % 8],
       },
+    };
+  }
+
+  /**
+   * The nearest no-go past the scan window, found from the distance layer by walking down it: from the point, step to
+   * the lowest of sixteen reads round it (half the distance left, at least a pixel, at most 40), until the distance
+   * is spent; the walk ends at the edge of the nearest no-go, and the bearing is from the point to there. One read a
+   * pixel on names the class when its tile is in; otherwise it is "NO-GO ground". Null when the walk cannot start
+   * (tiles not in, or nothing lower round the point).
+   */
+  private _nearestAlongDistance(ctx: ReadContext, mx: number, my: number, distM: number, cp: CompiledProfile): GroundGuideNearest | null {
+    const c: ReadContext = { ...ctx, tx: -1, ty: -1, ct: undefined, dt: undefined, waiting: false };
+    const lat = 2 * Math.atan(Math.exp(my / 6378137)) - Math.PI / 2;
+    const k = 1 / Math.cos(lat); // Web Mercator metres per ground metre here
+    const groundPx = resolutionAt(ctx.z, ctx.ts) / k;
+    const N = 16;
+    let x = mx;
+    let y = my;
+    let left = distM;
+    for (let step = 0; step < 48 && left > ctx.scale; step++) {
+      const s = Math.max(groundPx, Math.min(left * 0.5, 40 * groundPx));
+      let best = left;
+      let bx = x;
+      let by = y;
+      for (let i = 0; i < N; i++) {
+        const b = (i * 2 * Math.PI) / N;
+        const px = x + Math.sin(b) * s * k;
+        const py = y + Math.cos(b) * s * k;
+        const d = this._read(c, px, py).distanceM;
+        if (d !== null && d < best) {
+          best = d;
+          bx = px;
+          by = py;
+        }
+      }
+      if (bx === x && by === y) break; // nothing lower round here: the walk is as far as the layer can take it
+      x = bx;
+      y = by;
+      left = best;
+    }
+    if (x === mx && y === my) return null;
+    const bearingDeg = ((Math.atan2(x - mx, y - my) * 180) / Math.PI + 360) % 360;
+    const br = (bearingDeg * Math.PI) / 180;
+    const to: MercXY = [x, y];
+    // Name it from the first no-go pixel at the walk's end: on, then one and two pixels on, then a pixel either side.
+    let code: number | null = null;
+    const u = groundPx * k;
+    for (const [a, b] of [[0, 0], [1, 0], [2, 0], [1, 1], [1, -1]] as const) {
+      const hit = this._read(c, x + (Math.sin(br) * a + Math.cos(br) * b) * u, y + (Math.cos(br) * a - Math.sin(br) * b) * u).classCode;
+      if (hit !== null && hit !== NODATA_CLASS && cp.target[hit] === 1) {
+        code = hit;
+        break;
+      }
+    }
+    return {
+      kind: 'no-go',
+      classCode: code ?? -1,
+      className: code !== null ? (this._rules?.classes?.[String(code)]?.label ?? `class ${code}`) : 'NO-GO ground',
+      distanceM: distM,
+      from: [mx, my],
+      to,
+      bearingDeg,
+      compass: COMPASS[Math.round(bearingDeg / 45) % 8],
     };
   }
 
@@ -3706,14 +3776,17 @@ export default class GroundGuide {
       return;
     }
     if (k === 'd' || tabKey) {
-      // D opens or closes the Ground Detail (before a draw too: the Legend tab); a letter opens it on that tab (K the Legend), the same letter again closes it.
+      // D opens or closes the Ground Detail (before a draw too: the Legend tab); a letter opens it on that tab (K the Legend).
+      // The same letter again turns to the tab's next page when it has one (the card never scrolls: the mouse is busy
+      // placing the symbol, user 2026-11-07), and closes it from the last page.
       if (!this._opts.card.briefKey || !this.isActive || this._activeProfile === 'exempt') return;
       e.preventDefault();
       if (k === 'd') this._toggleBrief(!this._briefOpen);
       else {
         const tab = (k === 'k' ? 'L' : k.toUpperCase()) as DetailTab;
-        if (this._briefOpen && this._detail.tab === tab) this._toggleBrief(false);
-        else this._toggleBrief(true, tab);
+        if (this._briefOpen && this._detail.tab === tab) {
+          if (!this._detail.nextPage()) this._toggleBrief(false);
+        } else this._toggleBrief(true, tab);
       }
       return;
     }

@@ -5,24 +5,34 @@
  * (G Ground, R Roads & Rail, O Obstacles, T Trafficability, B Built-Up, C Cover) and the Legend (key K; L is Lasso Select), where the
  * docked legend and the layers and data behind the advice live while the card is open. It took the place of the
  * vertical Ground Brief on 2026-11-06, so that everything the engine reads is in view at once instead of a column
- * to scroll; the cursor card keeps only the verdict, Why, Inside, Nearest and the Inter Gap Rule.
+ * to scroll; the cursor card keeps the verdict, Why, Inside, Nearest and the Inter Gap Rule.
  *
- * Each tab is a grid of tiles, packed so each tile is its own height (a short tile beside a tall one neither stretches
- * nor leaves a hole), built from the same pictures the card styles offer (the soil triangle and strength
- * gauge, the military-crest profile, the movement rose and going map, the road density gauge, ways-out rose and
- * route classification bar, the speed rose and road strip, the people radar, rose and minimap, the cover rose, tiles and shield),
- * so the user compares nothing: it is all there, turned with the map (GroundGuideNorth: dials, the going map and an arrow
- * after every compass point follow the 2D rotation or 3D heading). Only the active tab is built on each verdict, and the
- * Legend tab only when the legend changes. The card keeps its scroll and never shrinks while open (its height
- * ratchets), so the tiles do not jump under the eye as the cursor moves. A letter key switches tabs (and opens the card when it is closed);
- * the same letter again, D or Esc closes it. Esc still reaches the draw tool.
+ * The card never scrolls (user, 2026-11-07: the tabs are switched by key while the mouse is busy placing the symbol,
+ * so there is no hand free to scroll). It reads in two parts:
+ *   1. the answer strip (GroundGuideDetailSummary): first who the ground is judged for (the mode, how it was set,
+ *      the season and light, and a warning when the map overlay paints another mode), then the letter's answer and
+ *      its key facts;
+ *   2. the band: a fixed height under it where the tab's pictures (dials, roses, the going map, gauges, bars), then
+ *      its lists and notes, run down newspaper columns. Pictures never break across a column; a list may, row by row.
+ *      What does not fit on the card's width goes to a next page, turned with the same letter key (T, then T again),
+ *      which closes the card from the last page; the footer says when there is more.
+ * A tile that only repeated the answer strip (the ground chips, the route check box, the obstacle tiles, the
+ * cross-country scales, the civil flag strip, the cover icons) was left out of its tab on 2026-11-07; Copy as Text
+ * still gives every section. A tile's own letter badge is dropped when it is the tab's letter (W weather in T, the
+ * T exits in O keep theirs).
+ *
+ * Everything turns with the map (GroundGuideNorth: dials, the going map and an arrow after every compass point
+ * follow the 2D rotation or 3D heading). Only the active tab is built on each verdict, and the Legend tab only when
+ * the legend changes; a rebuild keeps the page shown. The band's height is fixed, so the card does not change size
+ * under the eye as the cursor moves. A letter key switches tabs (and opens the card when it is closed); D or Esc
+ * closes it. Esc still reaches the draw tool.
  *
  * DOM nodes and textContent only (names and labels never become markup). The card stops pointer events reaching
  * the map, as the legend does.
  */
 
 import { itgSection, titleOf, verdictColor } from './GroundGuideBadge';
-import { briefText, crossCountryDetail, ensureBriefCss, LETTER_COLOR, monthName, movementDetail, soilDetail, type GrotbcLetter } from './GroundGuideBrief';
+import { briefText, ensureBriefCss, LETTER_COLOR, monthName, movementDetail, soilDetail, type GrotbcLetter } from './GroundGuideBrief';
 import { COVER_FIELD_LABEL } from './GroundGuideCover';
 import {
   aroundLine,
@@ -30,7 +40,6 @@ import {
   builtLine,
   coverGivesLine,
   coverGridTiles,
-  coverIconsRow,
   coverRose,
   coverRoseKey,
   ensureCoverCss,
@@ -42,7 +51,8 @@ import {
   roseText,
   shelterLine,
 } from './GroundGuideCoverView';
-import { fmtDistance } from './GroundGuideEvaluator';
+import { detailSummary } from './GroundGuideDetailSummary';
+import { fmtDistance, titleCase } from './GroundGuideEvaluator';
 import { ensureGoingCss, exitStripSection, goingCanvas, mapShares, orientRoses, ribbon, roseLegend, seasonIcon } from './GroundGuideGoingView';
 import { arrowCompass, ensureNorthCss, setNorthVar } from './GroundGuideNorth';
 import { buildLegend, ensureLegendStyle, legendEl, legendKeyRow, modeIcon, type LegendHandlers, type LegendState } from './GroundGuideLegend';
@@ -54,7 +64,6 @@ import {
   nearestLine,
   populationChip,
   populationCompare,
-  populationFlagStrip,
   populationLine,
   populationMinimap,
   populationPlaces,
@@ -67,7 +76,7 @@ import {
 import { fmtRadius, roadDensityNote } from './GroundGuideRoadDensity';
 import { DENSITY_COLOURS, densityGauge, densityMakeup, densityRose, ensureRoadDensityCss } from './GroundGuideRoadDensityView';
 import type { ObstaclesReading } from './GroundGuideSections';
-import { buildingsProtected, buildingsWhere, groundChips, groundRelief, obstaclesDial, obstaclesGap, obstaclesNear, obstaclesTiles, roadsShield, roadsVerdict, weatherIcons, weatherYear } from './GroundGuideSectionsStyles';
+import { buildingsProtected, buildingsWhere, groundRelief, obstaclesDial, obstaclesGap, obstaclesNear, roadsShield, weatherIcons, weatherYear } from './GroundGuideSectionsStyles';
 import {
   buildingsMore,
   buildingsRows,
@@ -126,87 +135,127 @@ const TAB_LABEL: Record<DetailTab, string> = { G: 'Ground', R: 'Roads & Rail', O
 export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T: 'T', B: 'B', C: 'C', L: 'K' };
 const TAB_COLOR: Record<DetailTab, string> = { ...LETTER_COLOR, L: '#aab3bd' };
 const TAB_FG: Record<DetailTab, string> = { G: '#1b1f25', R: '#1b1f25', O: '#fff', T: '#1b1f25', B: '#1b1f25', C: '#fff', L: '#1b1f25' };
-/** Caption colour per tab: the letter's accent, lightened where it would sink into the dark tiles. */
-const CAP_COLOR: Record<DetailTab, string> = { G: '#a9cf6f', R: '#d9b67e', O: '#b9a3ec', T: '#7dbcf0', B: '#c2b6aa', C: '#4fcf95', L: '#aab3bd' };
 const W_COLOR = '#4a7f95';
-/** Space between tiles, in px (the column gap in the CSS below; rows carry it inside each tile's span). */
-const TILE_GAP = 9;
+/** Space between the band's columns, and the narrowest a column may be, px. */
+const COL_GAP = 28;
+const COL_MIN = 262;
+/** Space between two tiles in a column, px. */
+const ITEM_GAP = 16;
 
 const CSS = `
-.ms-ggd{position:fixed;left:10px;right:10px;bottom:10px;z-index:2147482800;max-height:min(54vh,640px);
-  display:none;flex-direction:column;box-sizing:border-box;border-radius:12px;background:#1b1f25;border:1.5px solid #5b6470;box-shadow:0 8px 28px rgba(0,0,0,.5);
-  font:400 13px/1.45 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;--pb-k:#aab3bd}
+.ms-ggd{position:fixed;left:10px;right:10px;bottom:10px;z-index:2147482800;
+  display:none;flex-direction:column;box-sizing:border-box;border-radius:12px;background:#1b1f25;border:1px solid #4d5661;box-shadow:0 10px 30px rgba(0,0,0,.5);
+  font:400 14px/1.45 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;--pb-k:#aab3bd}
 .ms-ggd.ms-open{display:flex}
-.ms-ggd-h{display:flex;align-items:center;gap:6px 8px;padding:7px 10px;background:#2b333d;border-radius:11px 11px 0 0;flex-wrap:wrap}
-.ms-ggd-tabs{display:flex;gap:4px;flex-wrap:wrap}
-.ms-ggd-tab{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 6px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#c3cbd3;
-  font:600 12.5px/1 system-ui,Segoe UI,Arial,sans-serif;cursor:pointer;letter-spacing:.02em}
-.ms-ggd-tab:hover{background:rgba(255,255,255,.12);color:#fff}
+.ms-ggd-h{flex:none;display:flex;align-items:center;gap:6px 10px;padding:7px 10px;background:#262d36;border-radius:11px 11px 0 0;flex-wrap:wrap}
+.ms-ggd-tabs{display:flex;gap:3px;flex-wrap:wrap}
+.ms-ggd-tab{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 6px;border-radius:7px;border:1px solid transparent;background:transparent;color:#bcc5ce;
+  font:600 13px/1 system-ui,Segoe UI,Arial,sans-serif;cursor:pointer}
+.ms-ggd-tab:hover{background:rgba(255,255,255,.08);color:#fff}
 .ms-ggd-tab:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
 .ms-ggd-tab[aria-selected="true"]{background:var(--lc);border-color:var(--lc);color:var(--lf)}
-.ms-ggd-tab[aria-selected="true"] .ms-ggd-k{background:rgba(0,0,0,.25);border-color:rgba(0,0,0,.35);color:var(--lf)}
-.ms-ggd-k{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 4px;box-sizing:border-box;border-radius:4px;
+.ms-ggd-tab[aria-selected="true"] .ms-ggd-k{background:rgba(0,0,0,.22);border-color:rgba(0,0,0,.3);color:var(--lf)}
+.ms-ggd-k{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:4px;
   font:700 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
-.ms-ggd-meta{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12.5px;color:#c3cbd3;min-width:0;flex-wrap:wrap}
-.ms-ggd-meta b{color:#fff}
+.ms-ggd-meta{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:13px;color:#bcc5ce;min-width:0}
+.ms-ggd-meta b{color:#fff;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ms-ggd-dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 1.5px rgba(255,255,255,.35)}
-.ms-ggd-sep{color:#6b737c}
-.ms-ggd-upd{color:#ffc861}
-.ms-ggd-btn{font:inherit;color:#c3cbd3;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;cursor:pointer;height:24px;padding:0 8px;line-height:1;white-space:nowrap}
+.ms-ggd-upd{color:#ffc861;white-space:nowrap}
+.ms-ggd-btn{font:500 13px/1 system-ui,Segoe UI,Arial,sans-serif;color:#c9d1d9;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;cursor:pointer;height:28px;padding:0 10px;white-space:nowrap}
 .ms-ggd-btn:hover{background:rgba(255,255,255,.14);color:#fff}
 .ms-ggd-btn:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
-.ms-ggd-btn.ms-x{width:26px;padding:0;font-size:15px}
-.ms-ggd-s{overflow:auto;flex:1 1 auto;min-height:0;padding:10px;scrollbar-width:thin;scrollbar-color:#4a535e transparent}
-/* The grid sits inside the scroller, so its height is its content, never the flex-resolved height: a definite
-   height would share the rows out equally and clip every tile (the auto minimum of an overflow:hidden item is 0). */
-/* Packed like a masonry: 1px rows, each tile spans its own measured height plus the gap (_pack), so a short tile
-   beside a tall one neither stretches to match it nor leaves the row below it empty. */
-.ms-ggd-b{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));grid-auto-rows:1px;column-gap:9px;row-gap:0;align-content:start;align-items:start}
-.ms-ggd .ms-ggd-b>.ms-ggb-sec{background:#222830;border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:10px 13px 11px;min-width:0;overflow:hidden;font-size:13px}
-.ms-ggd .ms-ggd-b>.ms-ggb-sec>.ms-ggb-cap{font-size:11.5px;margin-bottom:7px}
-.ms-ggd .ms-gs-kv,.ms-ggd .ms-ggbr-ln,.ms-ggd .ms-gc-row,.ms-ggd .ms-gc-near,.ms-ggd .ms-ggp-list,.ms-ggd .ms-ggp-ln,.ms-ggd .ms-ggp-places,.ms-ggd .ms-ggd-kv,.ms-ggd .ms-gx-where,.ms-ggd .ms-gx-list,.ms-ggd .ms-ggs-kv,.ms-ggd .ms-ggb-tkv{font-size:12.5px}
-.ms-ggd .ms-gs-kv{grid-template-columns:72px minmax(0,1fr);gap:4px 10px}
-.ms-ggd .ms-gs-kv>.ms-gs-k,.ms-ggd .ms-ggd-kv>.k,.ms-ggd .ms-ggp-k,.ms-ggd .ms-ggbr-ln>span:first-child{font-size:11.5px}
-.ms-ggd .ms-gv-soft,.ms-ggd .ms-ggb-soft,.ms-ggd .ms-ggd-soft,.ms-ggd .ms-gc-soft,.ms-ggd .ms-gx-soft,.ms-ggd .ms-grd-soft,.ms-ggd .ms-gv-blk,.ms-ggd .ms-gv-limit,.ms-ggd .ms-ggbr-list,.ms-ggd .ms-ggp-src{font-size:12px}
-.ms-ggd .ms-gv-k,.ms-ggd .ms-gv-mx,.ms-ggd .ms-gx-chips>span,.ms-ggd .ms-ggl-chips>span{font-size:12px}
-.ms-ggd .ms-ggb-big,.ms-ggd .ms-ggp-big,.ms-ggd .ms-ggs-big,.ms-ggd .ms-ggb-tbig{font-size:21px}
-.ms-ggd .ms-gv-rate{font-size:17px}
-.ms-ggd .ms-ggd-b>.ms-ggd-w2{grid-column:span 2}
-.ms-ggd .ms-ggd-b>.ms-ggd-wall{grid-column:1 / -1}
-.ms-ggd .ms-ggd-b>.ms-ggd-w2p{grid-column:span 2}
-.ms-ggd .ms-ggd-b.ms-ggd-two>.ms-ggd-w2p{grid-column:auto}
-.ms-ggd .ms-ggd-b>.ms-ggp-civ{border-radius:9px;border:1px solid rgba(240,226,200,.3)}
-.ms-ggd-cap{display:flex;align-items:center;gap:7px}
-.ms-ggd-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:17px;height:17px;border-radius:4px;font:800 11px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0}
-.ms-ggd-empty{grid-column:1 / -1;color:#9aa3ad;padding:18px 12px;text-align:center;font-size:12.5px}
-.ms-ggd-soft{color:#9aa3ad;font-size:12px;margin-top:5px}
+.ms-ggd-btn.ms-x{width:28px;padding:0;font-size:17px}
+/* 1. The answer strip: who the ground is judged for, then the letter's facts on one line. */
+.ms-ggd-sum{flex:none;box-sizing:border-box;display:flex;align-items:stretch;gap:16px;padding:10px 16px 11px;background:#20262e;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.08)}
+.ms-ggd-sum[hidden]{display:none}
+.ms-ggd-for{flex:none;width:210px;min-width:0;padding-right:16px;border-right:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;justify-content:center;gap:2px}
+.ms-ggd-for-m{display:flex;align-items:center;gap:7px;font:700 14.5px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#fff;min-width:0}
+.ms-ggd-for-m>svg{flex:none;color:#8ec1ea}
+.ms-ggd-for-m>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-ggd-for-s{display:flex;align-items:center;gap:5px;font-size:12px;color:#a9b2bc;white-space:nowrap;overflow:hidden}
+.ms-ggd-for-s .ms-hand{color:#ffc861;font-weight:650}
+.ms-ggd-for-w{font-size:12px;color:#ffd27a;line-height:1.3}
+.ms-ggd-sum-row{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-content:center;row-gap:10px}
+.ms-ggd-fact{flex:1 1 130px;min-width:0;max-width:290px;padding:0 14px;border-left:1px solid rgba(255,255,255,.1)}
+.ms-ggd-fact:first-child{padding-left:0;border-left:0}
+.ms-ggd-fact.ms-lead{flex:1.25 1 170px;max-width:330px}
+.ms-ggd-fk{font-size:12px;line-height:1.3;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-ggd-fv{margin-top:2px;font:650 16px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#f4f6f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-ggd-fact.ms-lead .ms-ggd-fv{font-size:19px}
+.ms-ggd-fd{display:inline-block;width:10px;height:10px;margin-right:7px;border-radius:50%;vertical-align:1px}
+.ms-ggd-fact.ms-lead .ms-ggd-fd{width:12px;height:12px;vertical-align:2px}
+.ms-ggd-fd[data-tone="go"],.ms-ggd-fd[data-tone="c3"]{background:#2fa862}
+.ms-ggd-fd[data-tone="slow"],.ms-ggd-fd[data-tone="c1"]{background:#f0932b}
+.ms-ggd-fd[data-tone="nogo"]{background:#e5484d}
+.ms-ggd-fd[data-tone="c2"]{background:#9cc45a}
+.ms-ggd-fd[data-tone="c0"]{background:#5b6470;box-shadow:inset 0 0 0 1.5px #9aa3ad}
+.ms-ggd-fd[data-tone="warn"]{background:#f2b84b}
+.ms-ggd-fv[data-tone="go"],.ms-ggd-fv[data-tone="c3"]{color:#74dca3}
+.ms-ggd-fv[data-tone="slow"],.ms-ggd-fv[data-tone="c1"]{color:#ffb46b}
+.ms-ggd-fv[data-tone="nogo"]{color:#ff8a8d}
+.ms-ggd-fv[data-tone="c2"]{color:#c3df8f}
+.ms-ggd-fv[data-tone="warn"]{color:#ffd27a}
+.ms-ggd-fs{margin-top:1px;font-size:12.5px;line-height:1.35;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 2. The band: a fixed height, newspaper columns, pages instead of a scroll bar. */
+.ms-ggd-band{flex:none;position:relative;box-sizing:border-box;height:clamp(220px,calc(62vh - 170px),500px);padding:12px 16px 10px}
+.ms-ggd-clip{height:100%;overflow:hidden}
+/* The tiles are placed by _layout (absolute, first fit down the columns), so a short tile fills the space under a
+   tall one rather than leaving it empty; pages sit side by side and the flow slides to the one shown. */
+.ms-ggd-flow{position:relative;height:100%}
+@media (prefers-reduced-motion:no-preference){.ms-ggd-flow{transition:transform .22s cubic-bezier(.25,1,.5,1)}}
+.ms-ggd .ms-ggd-flow>.ms-ggb-sec{position:absolute;box-sizing:border-box;margin:0;padding:0;background:none;border:0;border-radius:0;min-width:0;overflow:hidden;font-size:13.5px}
+.ms-ggd .ms-ggd-flow>.ms-ggb-sec>.ms-ggb-cap{display:flex;align-items:center;gap:7px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.09);
+  font:650 13px/1.3 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#e4e8ec}
+.ms-ggd-rule{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07)}
+.ms-ggd-cont{font-weight:400;color:#97a1ab}
+.ms-ggd .ms-ggd-flow .ms-gs-kv{display:block}
+.ms-ggd-pair{display:grid;grid-template-columns:84px minmax(0,1fr);column-gap:12px;padding:2px 0}
+/* A rose, dial or round map keeps its words beside it in a column: the tile stays short enough to share a column. */
+.ms-ggd .ms-gv-rose>div,.ms-ggd .ms-ggs-rose>div,.ms-ggd .ms-gc-rose>div,.ms-ggd .ms-gv-map>div{flex:1 1 128px;min-width:0}
+.ms-ggd-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;border-radius:4px;font:800 11px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0}
+.ms-ggd-empty{color:#a3acb6;padding:20px 12px;text-align:center;font-size:13.5px;column-span:all}
+.ms-ggd-soft{color:#a3acb6;font-size:12.5px;margin-top:6px}
 .ms-ggd-soft b{color:#e8ebee;font-weight:600}
-.ms-ggd-note{margin-top:6px;border-radius:5px;padding:4px 7px;font-size:11px}
-.ms-ggd-f{padding:5px 12px 6px;font-size:11px;color:#8b95a0;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
-.ms-ggd-f .ms-ggd-k{min-width:14px;height:14px;font-size:8.5px;padding:0 2px;margin-right:2px}
+.ms-ggd-note{margin-top:7px;border-radius:5px;padding:5px 8px;font-size:12px}
+/* Text a step larger than on the cursor card: the Detail is read at arm's length, often in daylight. */
+.ms-ggd .ms-gs-kv,.ms-ggd .ms-ggbr-ln,.ms-ggd .ms-gc-row,.ms-ggd .ms-gc-near,.ms-ggd .ms-ggp-list,.ms-ggd .ms-ggp-ln,.ms-ggd .ms-ggp-places,.ms-ggd .ms-ggd-kv,.ms-ggd .ms-gx-where,.ms-ggd .ms-gx-list,.ms-ggd .ms-ggs-kv,.ms-ggd .ms-ggb-tkv,.ms-ggd .ms-gs-one{font-size:13.5px}
+.ms-ggd .ms-gs-kv{line-height:1.4}
+.ms-ggd .ms-gs-kv .ms-gs-k,.ms-ggd .ms-ggd-kv>.k,.ms-ggd .ms-ggp-k,.ms-ggd .ms-ggbr-ln>span:first-child{font-size:12.5px;color:#a3acb6}
+.ms-ggd .ms-gv-soft,.ms-ggd .ms-ggb-soft,.ms-ggd .ms-gc-soft,.ms-ggd .ms-gx-soft,.ms-ggd .ms-grd-soft,.ms-ggd .ms-gv-blk,.ms-ggd .ms-gv-limit,.ms-ggd .ms-ggbr-list,.ms-ggd .ms-ggp-src,.ms-ggd .ms-gs-src{font-size:12.5px}
+.ms-ggd .ms-gv-k,.ms-ggd .ms-gv-mx,.ms-ggd .ms-gx-chips>span,.ms-ggd .ms-ggl-chips>span,.ms-ggd .ms-gv-leg,.ms-ggd .ms-gs-more{font-size:12px}
+.ms-ggd .ms-gv-scale>span,.ms-ggd .ms-gv-mx>.ms-gv-c,.ms-ggd .ms-gv-mx>.ms-gv-h,.ms-ggd .ms-gv-chip,.ms-ggd .ms-gs-chip,.ms-ggd .ms-gs-more>.ms-gs-k{font-size:10.5px}
+.ms-ggd .ms-gv-gl{font-size:10.5px;height:14px}
+.ms-ggd .ms-gv-rl{font-size:10.5px}
+.ms-ggd .ms-ggb-big,.ms-ggd .ms-ggp-big,.ms-ggd .ms-ggs-big,.ms-ggd .ms-ggb-tbig{font-size:22px}
+.ms-ggd .ms-gv-rate{font-size:18px}
 .ms-ggd .ms-ggb-sec .ms-gv-rose,.ms-ggd .ms-ggb-sec .ms-gv-map,.ms-ggd .ms-ggb-sec .ms-gc-rose,.ms-ggd .ms-ggb-sec .ms-ggs-rose{flex-wrap:wrap}
+.ms-ggd-f{flex:none;padding:6px 14px 7px;font-size:12px;color:#97a1ab;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center}
+.ms-ggd-f .ms-ggd-k{min-width:17px;height:17px;font-size:10px;padding:0 3px;margin-right:3px}
+.ms-ggd-page{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:#c9d1d9}
+.ms-ggd-page[hidden]{display:none}
+.ms-ggd-page b{color:#ffd27a;font-weight:650}
+.ms-ggd-dots{display:inline-flex;gap:4px}
+.ms-ggd-dots>i{width:7px;height:7px;border-radius:50%;background:#4a535e}
+.ms-ggd-dots>i.ms-on{background:#ffd27a}
+.ms-ggd-band.ms-more::after{content:"";position:absolute;top:12px;right:0;bottom:10px;width:42px;pointer-events:none;background:linear-gradient(90deg,rgba(27,31,37,0),#1b1f25 85%)}
+/* The Legend tab. */
 .ms-ggd .ms-ggl-strip{margin-top:0}
 .ms-ggd .ms-ggl-list{margin-top:0;padding-top:0;border-top:0;max-height:none}
 .ms-ggd .ms-ggl-keys{margin-top:0;padding-top:0;border-top:0;flex-direction:column;gap:6px}
 .ms-ggd .ms-ggl-tcap:first-child{margin-top:0}
-.ms-ggd-kv{display:grid;grid-template-columns:62px minmax(0,1fr);gap:3px 8px;font-size:11.5px;line-height:1.35}
-.ms-ggd-kv>.k{color:#9aa3ad;font-size:10.5px;padding-top:1px}
+.ms-ggd-kv{display:grid;grid-template-columns:62px minmax(0,1fr);gap:3px 8px;font-size:12.5px;line-height:1.35}
+.ms-ggd-kv>.k{color:#a3acb6;font-size:11.5px;padding-top:1px}
 .ms-ggd-kv>.v{min-width:0;color:#e8ebee;overflow-wrap:anywhere}
 .ms-ggd-kv b{color:#fff;font-weight:600}
-.ms-ggd-chips{display:flex;flex-wrap:wrap;gap:3px}
-.ms-ggd-chips>span{font:500 10.5px/1 ui-monospace,Consolas,monospace;padding:3px 6px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#c3cbd3}
-.ms-ggd-tg{display:flex;align-items:center;gap:7px;font-size:11.5px;cursor:pointer;padding:2px 0}
-.ms-ggd-tg input{margin:0;accent-color:#8ec1ea}
-.ms-ggd-tg small{color:#9aa3ad;font-size:10.5px}
 .ms-ggd-modes{display:flex;flex-wrap:wrap;gap:6px}
-.ms-ggd-mode{display:inline-flex;align-items:center;gap:7px;padding:6px 11px 6px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#c3cbd3;
+.ms-ggd-mode{display:inline-flex;align-items:center;gap:7px;padding:6px 11px 6px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#c9d1d9;
   font:600 12.5px/1 system-ui,Segoe UI,Arial,sans-serif;cursor:pointer;white-space:nowrap}
 .ms-ggd-mode:hover{background:rgba(255,255,255,.12);color:#fff}
 .ms-ggd-mode:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
 .ms-ggd-mode[aria-pressed="true"]{background:#8ec1ea;border-color:#8ec1ea;color:#1b1f25}
-.ms-ggd-mode svg{flex:none;width:17px;height:17px}
-.ms-ggd-modetag{margin-top:8px;font-size:12px;color:#9aa3ad}
-.ms-ggd-modetag b{color:#fff;font-size:13px}
+.ms-ggd-mode svg{flex:none;width:16px;height:16px}
+.ms-ggd-modetag{margin-top:9px;font-size:13px;color:#a3acb6}
+.ms-ggd-modetag b{color:#fff;font-size:14px}
 .ms-ggd-modetag .ms-hand{color:#ffc861}
 .ms-ggd-sws{display:flex;flex-direction:column}
 .ms-ggd-swrow{position:relative;display:flex;align-items:center;gap:11px;padding:7px 0;cursor:pointer;border-top:1px solid rgba(255,255,255,.07)}
@@ -218,20 +267,21 @@ const CSS = `
 .ms-ggd-swin:checked+.ms-ggd-sw::after{transform:translateX(16px)}
 .ms-ggd-swin:focus-visible+.ms-ggd-sw{outline:2px solid #8ec1ea;outline-offset:2px}
 .ms-ggd-swrow>span:last-child{min-width:0}
-.ms-ggd-swrow b{display:block;color:#fff;font-weight:600;font-size:13px}
-.ms-ggd-swrow small{display:block;color:#9aa3ad;font-size:11.5px;line-height:1.35}
-.ms-ggd-range{display:flex;align-items:center;gap:8px;padding:0 0 8px 47px;font-size:12px;color:#9aa3ad}
+.ms-ggd-swrow b{display:block;color:#fff;font-weight:600;font-size:13.5px}
+.ms-ggd-swrow small{display:block;color:#a3acb6;font-size:12px;line-height:1.35}
+.ms-ggd-range{display:flex;align-items:center;gap:8px;padding:0 0 8px 47px;font-size:12.5px;color:#a3acb6}
 .ms-ggd-range input{flex:1;min-width:0;accent-color:#8ec1ea;margin:0}
 .ms-ggd-range b{color:#fff;font-variant-numeric:tabular-nums;min-width:34px;text-align:right}
 .ms-ggd .ms-ggl-ramp>i{height:14px}
-.ms-ggd .ms-ggl-ramp-l{font-size:12px;color:#c3cbd3}
-.ms-ggd .ms-ggl-note{font-size:12px;margin-top:5px}
-.ms-ggd .ms-ggl-tcap{font-size:11px}
-.ms-ggd .ms-ggl-cap{font-size:11px}
-.ms-ggd .ms-ggl-key small{font-size:11.5px}
-@media (prefers-reduced-motion:no-preference){.ms-ggd-sw,.ms-ggd-sw::after{transition:background .15s,transform .15s}}
-@media (max-width:720px){.ms-ggd{left:6px;right:6px;bottom:6px;max-height:70vh}.ms-ggd-src{columns:1}.ms-ggd .ms-ggd-b>.ms-ggd-w2{grid-column:auto}}
-@media (prefers-reduced-motion:no-preference){.ms-ggd-tab{transition:background .12s,color .12s}}
+.ms-ggd .ms-ggl-ramp-l{font-size:12.5px;color:#c9d1d9}
+.ms-ggd .ms-ggl-note{font-size:12.5px;margin-top:5px}
+.ms-ggd .ms-ggl-tcap{font-size:11.5px}
+.ms-ggd .ms-ggl-cap{font-size:11.5px}
+.ms-ggd .ms-ggl-key small{font-size:12px}
+@media (prefers-reduced-motion:no-preference){.ms-ggd-sw,.ms-ggd-sw::after{transition:background .15s,transform .15s}.ms-ggd-tab{transition:background .12s,color .12s}}
+@media (max-width:720px){.ms-ggd{left:6px;right:6px;bottom:6px}.ms-ggd-band{height:clamp(200px,calc(70vh - 220px),460px)}
+  .ms-ggd-sum{flex-wrap:wrap;padding:10px 12px;gap:8px 10px}.ms-ggd-for{width:100%;padding:0 0 8px;border-right:0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .ms-ggd-fact{flex-basis:120px;padding:0 10px}.ms-ggd-fact.ms-lead{flex-basis:130px}}
 `;
 
 function el(tag: string, cls?: string, text?: string): HTMLElement {
@@ -258,19 +308,24 @@ function tile(letter: DetailTab | 'W', caption: string, ...content: Array<Node |
   return sec;
 }
 
-function wide(e: HTMLElement, cols: 2 | 'all' = 2): HTMLElement {
-  e.classList.add(cols === 'all' ? 'ms-ggd-wall' : 'ms-ggd-w2');
-  return e;
-}
-
-/** Two columns wide on a grid of three or more; one column on a grid of two, so the next tile can sit beside it. */
-function pair(e: HTMLElement): HTMLElement {
-  e.classList.add('ms-ggd-w2p');
-  return e;
-}
-
 function empty(text: string): HTMLElement {
   return el('div', 'ms-ggd-empty', text);
+}
+
+/**
+ * A label / value list made to break across the band's columns row by row: each label and its value in one block
+ * (the list keeps its own look), and the tile marked as one that may continue at the top of the next column.
+ */
+function listTile(letter: DetailTab, caption: string, list: HTMLElement, ...more: Array<Node | null | undefined | false>): HTMLElement {
+  const kids = Array.from(list.children);
+  for (let i = 0; i + 1 < kids.length; i += 2) {
+    const p = el('div', 'ms-ggd-pair');
+    p.append(kids[i], kids[i + 1]);
+    list.append(p);
+  }
+  const t = tile(letter, caption, list, ...more);
+  t.classList.add('ms-ggd-brk');
+  return t;
 }
 
 /** A canal with a recorded width or depth, or a river reach with a depth: the gap cross-section has something to draw. */
@@ -295,14 +350,52 @@ function pendingOf(v: GroundGuideVerdict): boolean {
   return !!(v.loading || v.going?.pending || v.cover?.pending || v.sections?.pending || v.speed?.pending || v.population?.reading.pending || v.traffic?.pending || v.ground?.pending);
 }
 
+/**
+ * Who the ground is judged for, at the head of the strip (user, 2026-11-07: "nothing showing which layer / force type
+ * data is being used ... he can make wrong decisions"): the mode with its icon, the echelon and how the mode was set
+ * (by the symbol, or by hand with P, in amber), the season and light the going and speed are read for, and a warning
+ * when the map overlay paints another mode.
+ */
+function forBlock(v: GroundGuideVerdict): HTMLElement {
+  const box = el('div', 'ms-ggd-for');
+  const m = el('div', 'ms-ggd-for-m');
+  const ic = modeIcon(v.profile);
+  ic.setAttribute('width', '18');
+  ic.setAttribute('height', '18');
+  m.append(ic, el('span', undefined, v.profileLabel));
+  m.title = `Judged for ${v.profileLabel}`;
+  const s = el('div', 'ms-ggd-for-s');
+  const echelon = v.footprint?.echelon;
+  if (echelon) s.append(`${titleCase(echelon)} · `);
+  s.append(v.profileOverride ? el('span', 'ms-hand', 'Set by Hand (P)') : 'From the Symbol');
+  box.append(m, s);
+  const g = v.going;
+  const when: string[] = [];
+  if (g) when.push(`${g.season === 'wet' ? 'After Rain' : 'Dry'}${g.month ? `, ${monthName(g.month)}` : ''}`);
+  if (v.speed) when.push(v.speed.light === 'night' ? 'Night' : 'Day');
+  if (when.length) {
+    const w = el('div', 'ms-ggd-for-s');
+    if (g) w.append(seasonIcon(g.season, 12));
+    w.append(when.join(' · '));
+    box.append(w);
+  }
+  if (v.overlayOther) box.append(el('div', 'ms-ggd-for-w', `Map colours show ${v.overlayOther}`));
+  return box;
+}
+
 export class GroundGuideDetail {
   private _el: HTMLDivElement | null = null;
   private _tabs = new Map<DetailTab, HTMLButtonElement>();
   private _meta: HTMLElement | null = null;
-  private _body: HTMLElement | null = null;
-  private _scroll: HTMLElement | null = null;
+  private _sum: HTMLElement | null = null;
+  private _band: HTMLElement | null = null;
+  private _clip: HTMLElement | null = null;
+  private _flow: HTMLElement | null = null;
+  private _pageEl: HTMLElement | null = null;
+  private _page = 0;
+  private _pages = 1;
   private _ro: ResizeObserver | null = null;
-  private _packedW = 0;
+  private _w = 0;
   private _north = 0; // where north points on screen, degrees clockwise from up
   private _copy: HTMLButtonElement | null = null;
   private _copyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -360,6 +453,14 @@ export class GroundGuideDetail {
     if (changed) this._h.tab?.(tab);
   }
 
+  /** Turn to the tab's next page. False when it is on its last page (the caller then closes the card). */
+  nextPage(): boolean {
+    if (!this.isShown || this._page + 1 >= this._pages) return false;
+    this._page++;
+    this._showPage();
+    return true;
+  }
+
   /** The legend as the docked card would draw it, plus the layers and data; redraws the Legend tab when it is up. */
   setLegend(state: LegendState, info: DetailLegendInfo): void {
     this._legend = { state, info };
@@ -386,7 +487,8 @@ export class GroundGuideDetail {
 
   hide(): void {
     this._el?.classList.remove('ms-open');
-    if (this._body) this._body.style.minHeight = '';
+    if (this._sum) this._sum.style.minHeight = '';
+    this._page = 0;
   }
 
   destroy(): void {
@@ -395,7 +497,7 @@ export class GroundGuideDetail {
     if (this._copyTimer !== null) clearTimeout(this._copyTimer);
     this._copyTimer = null;
     this._el?.remove();
-    this._el = this._meta = this._body = this._scroll = null;
+    this._el = this._meta = this._sum = this._band = this._clip = this._flow = this._pageEl = null;
     this._copy = null;
     this._tabs.clear();
     this._v = null;
@@ -448,31 +550,48 @@ export class GroundGuideDetail {
     close.addEventListener('click', () => this._h.close());
     head.append(tabs, meta, copy, close);
 
-    const scroll = el('div', 'ms-ggd-s');
-    const body = el('div', 'ms-ggd-b');
-    body.setAttribute('role', 'tabpanel');
-    scroll.append(body);
+    const sum = el('div', 'ms-ggd-sum');
+    sum.hidden = true;
+    sum.setAttribute('role', 'group');
+    const band = el('div', 'ms-ggd-band');
+    const clip = el('div', 'ms-ggd-clip');
+    const flow = el('div', 'ms-ggd-flow');
+    flow.setAttribute('role', 'tabpanel');
+    clip.append(flow);
+    band.append(clip);
     const foot = el('div', 'ms-ggd-f');
     const keys = el('span');
     for (const [k, t] of [['D', 'open / close'], ['G R O T B C', 'tabs'], ['K', 'legend'], ['Esc', 'close']] as const) {
       for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
-      keys.append(`${t} `);
+      keys.append(`${t}  `);
     }
-    foot.append(keys, el('span', undefined, 'Dials and arrows turn with the map.'));
-    root.append(head, scroll, foot);
+    const page = el('span', 'ms-ggd-page');
+    page.hidden = true;
+    page.setAttribute('aria-live', 'polite');
+    foot.append(keys, el('span', undefined, 'Dials and arrows turn with the map.'), page);
+    root.append(head, sum, band, foot);
     ensureNorthCss();
     setNorthVar(root, this._north);
     document.body.appendChild(root);
     this._el = root;
     this._meta = meta;
-    this._body = body;
-    this._scroll = scroll;
+    this._sum = sum;
+    this._band = band;
+    this._clip = clip;
+    this._flow = flow;
+    this._pageEl = page;
     this._copy = copy;
     if (typeof ResizeObserver !== 'undefined') {
       this._ro = new ResizeObserver(() => {
-        if (body.clientWidth !== this._packedW) this._pack();
+        if (clip.clientWidth === this._w) return;
+        // A new width fits a different number of columns and facts: refit both.
+        if (this._sum && !this._sum.hidden) {
+          this._sum.style.minHeight = '';
+          this._fitSummary();
+        }
+        this._paginate(true);
       });
-      this._ro.observe(body);
+      this._ro.observe(clip);
     }
     return root;
   }
@@ -480,28 +599,55 @@ export class GroundGuideDetail {
   private _renderMeta(v: GroundGuideVerdict): void {
     const meta = this._meta;
     if (!meta) return;
-    meta.replaceChildren();
     const dot = el('span', 'ms-ggd-dot');
     dot.style.background = verdictColor(v);
-    meta.append(dot, el('b', undefined, titleOf(v)), el('span', 'ms-ggd-sep', '·'), el('span', undefined, v.profileLabel));
-    const g = v.going;
-    if (g) {
-      meta.append(el('span', 'ms-ggd-sep', '·'), seasonIcon(g.season, 12), el('span', undefined, g.season === 'dry' ? 'Dry Season' : 'After Rain'));
-      if (g.month) meta.append(el('span', undefined, monthName(g.month)));
-    }
+    meta.replaceChildren(dot, el('b', undefined, titleOf(v)));
     if (pendingOf(v)) meta.append(el('span', 'ms-ggd-upd', '· updating'));
   }
 
-  /** Rebuild the active tab. `reset`: a new tab (or the first show), so the scroll and the height ratchet start afresh. */
+  /** The answer strip for the active tab: who it is judged for and its facts, or hidden (the Legend tab, or nothing yet). */
+  private _renderSummary(tab: DetailTab): void {
+    const sum = this._sum;
+    if (!sum) return;
+    const v = this._v;
+    const strip = tab === 'L' ? null : detailSummary(tab, v);
+    if (!strip || !v) {
+      sum.replaceChildren();
+      sum.hidden = true;
+      sum.style.minHeight = '';
+      return;
+    }
+    sum.setAttribute('aria-label', `${TAB_LABEL[tab]} at a glance, for ${v.profileLabel}`);
+    sum.replaceChildren(forBlock(v), strip);
+    sum.hidden = false;
+    arrowCompass(strip);
+    this._fitSummary();
+    // A ratchet: a fact that comes and goes with the cursor must not make the strip (and the card) jump. Border-box.
+    const h = sum.offsetHeight;
+    if (h > (parseFloat(sum.style.minHeight) || 0)) sum.style.minHeight = `${h}px`;
+  }
+
+  /**
+   * Keep the facts to one line: those that wrap on a narrow card are hidden (the lead and the first facts stay;
+   * every fact is also in the band below), so the strip never eats the band.
+   */
+  private _fitSummary(): void {
+    const row = this._sum?.querySelector<HTMLElement>('.ms-ggd-sum-row');
+    if (!row) return;
+    const facts = Array.from(row.children) as HTMLElement[];
+    for (const f of facts) f.hidden = false;
+    const top = facts[0]?.offsetTop ?? 0;
+    for (const f of facts.slice(1)) if (f.offsetTop > top + 2) f.hidden = true;
+  }
+
+  /** Rebuild the active tab. `reset`: a new tab (or the first show), so it opens on its first page. */
   private _renderTab(reset: boolean): void {
-    const body = this._body;
-    if (!body) return;
+    const flow = this._flow;
+    if (!flow) return;
     const tab = this._tab;
-    const scroller = this._scroll ?? body;
-    const keepScroll = reset ? 0 : scroller.scrollTop;
-    if (reset) body.style.minHeight = '';
-    body.style.setProperty('--pb-k', CAP_COLOR[tab]);
-    body.setAttribute('aria-label', TAB_LABEL[tab]);
+    if (reset && this._sum) this._sum.style.minHeight = '';
+    flow.setAttribute('aria-label', TAB_LABEL[tab]);
+    this._renderSummary(tab);
     let tiles: HTMLElement[] = [];
     try {
       tiles = tab === 'L' ? this._renderL() : this._renderLetter(tab);
@@ -509,33 +655,156 @@ export class GroundGuideDetail {
       tiles = [empty('This tab could not be drawn. The Engine Log has the error.')];
       console.error('[Ground Guide] detail tab', tab, err);
     }
-    if (!tiles.length) tiles = [empty(this._v ? `Nothing to show for ${TAB_LABEL[tab]} here yet. Move the cursor over the map, or wait for the tiles.` : 'Move the cursor over the map while drawing.')];
-    body.replaceChildren(...tiles);
-    // On the card root, not the body: orientNorth also sets --gg-north on what it is given, and a copy left on the
-    // body would hide the root's value from every arrow when the map is turned later (setNorth turns the root).
-    orientRoses(this._el ?? body, this._north);
-    arrowCompass(body);
-    this._pack();
-    scroller.scrollTop = keepScroll;
-    // Ratchet: a tile that comes and goes with the cursor must not make the whole card change height. It holds the
-    // grid (the content), not the scroller, so a header that wraps or a shorter window still shrinks the scroll box.
-    const h = body.offsetHeight;
-    if (h > (parseFloat(body.style.minHeight) || 0)) body.style.minHeight = `${h}px`;
+    if (!tiles.length) {
+      tiles = [empty(this._v ? `Nothing to show for ${TAB_LABEL[tab]} here yet. Move the cursor over the map, or wait for the tiles.` : 'Move the cursor over the map while drawing.')];
+    }
+    flow.replaceChildren(...tiles);
+    this._trimLetters(tab);
+    // On the card root, not the flow: orientNorth also sets --gg-north on what it is given, and a copy left on the
+    // flow would hide the root's value from every arrow when the map is turned later (setNorth turns the root).
+    orientRoses(this._el ?? flow, this._north);
+    arrowCompass(flow);
+    this._paginate(!reset);
   }
 
-  /** Give every tile a row span of its own height (the grid rows are 1px), measured at content height first. */
-  private _pack(): void {
-    const body = this._body;
-    if (!body) return;
-    const kids = Array.from(body.children) as HTMLElement[];
-    // On a grid of one or two columns a pair tile takes one column, so its partner sits beside it rather than below.
-    body.classList.toggle('ms-ggd-two', getComputedStyle(body).gridTemplateColumns.split(' ').length < 3);
-    for (const k of kids) k.style.gridRowEnd = '';
-    const heights = kids.map((k) => k.getBoundingClientRect().height);
-    kids.forEach((k, i) => {
-      k.style.gridRowEnd = `span ${Math.max(1, Math.ceil(heights[i]) + TILE_GAP)}`;
-    });
-    this._packedW = body.clientWidth;
+  /** In a letter's tab every tile is that letter: its badge says nothing the tab does not, so it goes. Others (W, T) stay. */
+  private _trimLetters(tab: DetailTab): void {
+    const flow = this._flow;
+    if (!flow) return;
+    for (const b of flow.querySelectorAll<HTMLElement>(':scope > .ms-ggb-sec > .ms-ggb-cap > span:first-child')) {
+      if (b.textContent === tab && b.childElementCount === 0) b.remove();
+    }
+  }
+
+  /**
+   * Lay the tiles out down the band's columns and count the pages. Every tile is set to the column width and
+   * measured; each goes into the first column (on any page) with room for it, so a short tile fills the space under
+   * a tall one; a column that is full opens the next, and the columns past the card's width make the next page. A
+   * list taller than the band is split row by row and continues at the top of a later column. `keep`: stay on the
+   * page shown (a rebuild as the cursor moves), else the first.
+   */
+  private _paginate(keep: boolean): void {
+    const flow = this._flow;
+    const clip = this._clip;
+    if (!flow || !clip) return;
+    flow.style.transition = 'none';
+    flow.style.transform = '';
+    for (const r of Array.from(flow.querySelectorAll(':scope > .ms-ggd-rule'))) r.remove();
+    const W = clip.clientWidth;
+    const H = clip.clientHeight;
+    this._w = W;
+    const tiles = Array.from(flow.children).filter((k) => k.classList.contains('ms-ggb-sec')) as HTMLElement[];
+    if (!tiles.length || W <= 0 || H <= 0) {
+      this._pages = 1;
+      this._page = 0;
+      this._showPage(false);
+      return;
+    }
+    const per = Math.max(1, Math.floor((W + COL_GAP) / (COL_MIN + COL_GAP)));
+    const colW = (W - (per - 1) * COL_GAP) / per;
+    for (const t of tiles) {
+      t.style.width = `${colW}px`;
+      t.style.left = t.style.top = '0px';
+    }
+    // Split the lists that run past the band's height, in place (the continuation follows its list).
+    const items: Array<{ t: HTMLElement; after: HTMLElement | null }> = [];
+    for (const t of tiles) {
+      const parts = t.classList.contains('ms-ggd-brk') && t.offsetHeight > H ? this._splitList(t, H) : [t];
+      parts.forEach((p, i) => items.push({ t: p, after: i ? parts[i - 1] : null }));
+    }
+    const cols: Array<{ x: number; used: number }> = [];
+    const colOf = new Map<HTMLElement, number>();
+    const open = (): number => {
+      const i = cols.length;
+      cols.push({ x: Math.floor(i / per) * (W + COL_GAP) + (i % per) * (colW + COL_GAP), used: 0 });
+      return i;
+    };
+    for (const { t, after } of items) {
+      const h = t.offsetHeight;
+      // A continuation goes after its list's column, never before it.
+      const from = after ? (colOf.get(after) ?? -1) + 1 : 0;
+      let ci = -1;
+      for (let i = from; i < cols.length; i++) {
+        const c = cols[i];
+        if (c.used === 0 || c.used + ITEM_GAP + h <= H) {
+          ci = i;
+          break;
+        }
+      }
+      if (ci < 0) {
+        do ci = open();
+        while (ci < from);
+      }
+      const c = cols[ci];
+      const top = c.used === 0 ? 0 : c.used + ITEM_GAP;
+      t.style.left = `${Math.round(c.x)}px`;
+      t.style.top = `${Math.round(top)}px`;
+      c.used = top + h;
+      colOf.set(t, ci);
+    }
+    // A hairline between neighbouring columns on each page.
+    for (let i = 0; i < cols.length; i++) {
+      if (i % per === 0 || cols[i].used === 0) continue;
+      const r = el('div', 'ms-ggd-rule');
+      r.style.left = `${Math.round(cols[i].x - COL_GAP / 2)}px`;
+      flow.append(r);
+    }
+    this._pages = Math.max(1, Math.ceil(cols.length / per));
+    this._page = keep ? Math.min(this._page, this._pages - 1) : 0;
+    this._showPage(false);
+    void flow.offsetWidth; // the jump to the kept page is not animated; a page turn is
+    flow.style.transition = '';
+  }
+
+  /**
+   * Split a list tile (caption over a label / value list, maybe a line after it) into pieces no taller than `h`, row
+   * by row: the first keeps the caption, the others carry it again with "continued". The pieces are left in the flow
+   * in order, the line after the list at the end of the last.
+   */
+  private _splitList(t: HTMLElement, h: number): HTMLElement[] {
+    const list = t.querySelector<HTMLElement>(':scope > .ms-gs-kv');
+    const cap = t.querySelector<HTMLElement>(':scope > .ms-ggb-cap');
+    if (!list || !cap || list.childElementCount < 2) return [t];
+    const after: Element[] = [];
+    for (let n = list.nextElementSibling; n; n = n.nextElementSibling) after.push(n);
+    for (const a of after) a.remove();
+    const out: HTMLElement[] = [t];
+    let cur = t;
+    let curList = list;
+    while (cur.offsetHeight > h && curList.childElementCount > 1) {
+      const next = t.cloneNode(false) as HTMLElement;
+      const c2 = cap.cloneNode(true) as HTMLElement;
+      c2.append(el('span', 'ms-ggd-cont', ' continued'));
+      const nl = curList.cloneNode(false) as HTMLElement;
+      next.append(c2, nl);
+      cur.after(next);
+      while (cur.offsetHeight > h && curList.childElementCount > 1) nl.prepend(curList.lastElementChild!);
+      out.push(next);
+      cur = next;
+      curList = nl;
+    }
+    cur.append(...after);
+    return out;
+  }
+
+  private _showPage(animate = true): void {
+    const flow = this._flow;
+    const clip = this._clip;
+    if (!flow || !clip) return;
+    if (!animate) flow.style.transition = 'none';
+    flow.style.transform = this._page ? `translateX(${-this._page * (clip.clientWidth + COL_GAP)}px)` : '';
+    this._band?.classList.toggle('ms-more', this._page + 1 < this._pages);
+    const p = this._pageEl;
+    if (!p) return;
+    p.hidden = this._pages < 2;
+    if (this._pages < 2) return;
+    const dots = el('span', 'ms-ggd-dots');
+    for (let i = 0; i < this._pages; i++) dots.append(el('i', i === this._page ? 'ms-on' : undefined));
+    const key = TAB_KEY_OF[this._tab];
+    const more = this._page + 1 < this._pages;
+    const next = el('span');
+    next.append(el('b', undefined, `Page ${this._page + 1} of ${this._pages}`), '  ', el('span', 'ms-ggd-k', key), more ? 'next page' : 'closes');
+    p.replaceChildren(dots, next);
   }
 
   private _renderLetter(tab: GrotbcLetter): HTMLElement[] {
@@ -552,21 +821,25 @@ export class GroundGuideDetail {
     }
   }
 
+  // Each tab lists its pictures first, then its lists and notes, most telling first: the band runs them down its
+  // columns in this order and pages what does not fit.
+
   // ── G ─────────────────────────────────────────────────────────────────────
   private _renderG(v: GroundGuideVerdict): HTMLElement[] {
     const out: HTMLElement[] = [];
     const g = v.sections?.ground;
     if (g) {
       ensureSectionsCss();
-      out.push(wide(groundRelief(g)));
-      const rows = kv([...groundRows(g), ...groundMore(g, v)]);
-      if (rows) out.push(tile('G', 'Terrain, Relief & Water', rows));
-      out.push(groundChips(g));
+      out.push(groundRelief(g));
     }
     const gi = v.going;
-    if (gi?.soil) out.push(wide(tile('G', 'Soil', ...soilDetail(gi, 150))));
+    if (gi?.soil) out.push(tile('G', 'Soil', ...soilDetail(gi, 112)));
     const itg = itgSection(v);
     if (itg) out.push(itg);
+    if (g) {
+      const list = kv([...groundRows(g), ...groundMore(g, v)]);
+      if (list) out.push(listTile('G', 'Terrain, Relief & Water', list));
+    }
     return out;
   }
 
@@ -576,18 +849,14 @@ export class GroundGuideDetail {
     const r = v.sections?.roads;
     if (r) {
       ensureSectionsCss();
-      out.push(roadsShield(r), roadsVerdict(r));
-      const rows = kv([...roadsRows(r), ...roadsMore(r)]);
-      const rt = railTransportLine(r);
-      if (rt) rt.style.marginLeft = '0';
-      if (rows || rt) out.push(tile('R', 'Route Here & Nearby', rows, rt));
+      out.push(roadsShield(r));
       const d = r.density;
       if (d) {
         ensureRoadDensityCss();
         const note = el('div', 'ms-ggd-note', roadDensityNote(d));
         note.style.background = DENSITY_COLOURS[d.lead.key][0];
         note.style.color = DENSITY_COLOURS[d.lead.key][1];
-        out.push(wide(tile('R', `Road Network Density · ${fmtRadius(d.radiusM)}`, densityGauge(d, 'both'), note)));
+        out.push(tile('R', `Road Network Density · ${fmtRadius(d.radiusM)}`, densityGauge(d, 'both'), note));
         out.push(tile('R', 'Ways Out', densityRose(d, 'both')));
         out.push(tile('R', 'Route Classification', densityMakeup(d, 'both')));
       }
@@ -599,6 +868,13 @@ export class GroundGuideDetail {
       const rb = roadBlock(viewOf(v));
       if (rb) out.push(tile('R', `${road.caption} for ${v.profileLabel}`, rb));
     }
+    if (r) {
+      const list = kv([...roadsRows(r), ...roadsMore(r)]);
+      const rt = railTransportLine(r);
+      if (rt) rt.style.marginLeft = '0';
+      if (list) out.push(listTile('R', 'Route Here & Nearby', list, rt));
+      else if (rt) out.push(tile('R', 'Route Here & Nearby', rt));
+    }
     return out;
   }
 
@@ -609,19 +885,24 @@ export class GroundGuideDetail {
     const o = s?.obstacles;
     if (s && o) {
       ensureSectionsCss();
-      out.push(obstaclesTiles(o));
-      if (hasGap(o)) out.push(wide(obstaclesGap(o)));
       const dial = obstaclesDial(o, 132);
       if (dial) out.push(dial);
-      // Natural and man-made apart, each row with its icon (obstaclesRows already holds every row once).
-      const near = obstaclesNear(obstaclesRows(o, s), o);
-      if (near.childElementCount) out.push(wide(tile('O', 'Obstacles Near', near)));
     }
     const g = v.going;
     if (g?.movement) {
       ensureGoingCss();
-      const es = exitStripSection(g, 124);
+      const es = exitStripSection(g, 120);
       if (es) out.push(es);
+    }
+    if (s && o) {
+      if (hasGap(o)) out.push(obstaclesGap(o));
+      // Natural and man-made apart, each row with its icon (obstaclesRows already holds every row once).
+      const near = obstaclesNear(obstaclesRows(o, s), o);
+      if (near.childElementCount) {
+        const t = tile('O', 'Obstacles Near', near);
+        t.classList.add('ms-ggd-brk');
+        out.push(t);
+      }
     }
     return out;
   }
@@ -632,34 +913,39 @@ export class GroundGuideDetail {
     const g = v.going;
     const sp = v.speed;
     if (sp) ensureSpeedCss();
-    // Time to the range (the speed rose), placed straight after Movement Freedom so the two roses sit side by side.
-    let timeTile: HTMLElement | null = null;
-    if (sp?.rays) {
-      const row = el('div', 'ms-ggs-rose');
-      row.append(speedRoseSvg(sp.rays, sp.rangeM, 124, 0), speedRoseLines(sp));
-      timeTile = tile('T', `Time to ${fmtDistance(sp.rangeM)} · ${sp.short}`, row);
-    }
-    let month: HTMLElement | null = null;
     if (g) {
       ensureGoingCss();
       ensureTrafficCss();
       const tv = viewOf(v);
       out.push(blockGauge(v, tv));
-      if (g.point) out.push(tile('T', 'Cross-Country Going', ...crossCountryDetail(g, false)));
-      out.push(blockTiles(v, tv));
-      const mv = movementDetail(g, 140);
-      if (mv) out.push(pair(tile('T', `Movement Freedom · ${g.season === 'dry' ? 'Dry' : 'After Rain'}`, mv, roseLegend(true), g.pending ? soft('Still loading round the edges') : null)));
-      if (timeTile) out.push(timeTile);
-      const cv = goingCanvas(g, 140, 0, true);
+      const mv = movementDetail(g, 120);
+      if (mv) out.push(tile('T', `Movement Freedom · ${g.season === 'dry' ? 'Dry' : 'After Rain'}`, mv, roseLegend(true), g.pending ? soft('Still loading round the edges') : null));
+      if (sp?.rays) {
+        const row = el('div', 'ms-ggs-rose');
+        row.append(speedRoseSvg(sp.rays, sp.rangeM, 120, 0), speedRoseLines(sp));
+        out.push(tile('T', `Time to ${fmtDistance(sp.rangeM)} · ${sp.short}`, row));
+      }
+      const cv = goingCanvas(g, 120, 0, true);
       if (cv && g.map) {
         const box = el('div', 'ms-gv-map');
         box.append(cv, mapShares(g) ?? el('span'));
-        out.push(tile('T', `Going Map · ${fmtDistance(g.map.rangeM)}`, box, soft('Green GO, orange SLOW-GO, red NO-GO; the dashed ring is half the range.')));
+        out.push(tile('T', `Going Map · ${fmtDistance(g.map.rangeM)}`, box, soft('Dashed ring: half the range.')));
       }
       if (tv.road?.main) out.push(blockWayOut(v, tv));
-      const rb = ribbon(g, 54);
-      if (rb) month = wide(tile('T', `Going by Month · ${tv.short}`, rb));
-    } else if (timeTile) out.push(timeTile);
+      out.push(blockTiles(v, tv));
+      if (sp) out.push(tile('T', 'Who Moves How Fast', speedModeTiles(sp), soft(`km/h cross-country · ${speedWhen(sp)}`)));
+      const rb = ribbon(g, 48);
+      if (rb) out.push(tile('T', `Going by Month · ${tv.short}`, rb));
+    } else if (sp?.rays) {
+      const row = el('div', 'ms-ggs-rose');
+      row.append(speedRoseSvg(sp.rays, sp.rangeM, 120, 0), speedRoseLines(sp));
+      out.push(tile('T', `Time to ${fmtDistance(sp.rangeM)} · ${sp.short}`, row));
+    }
+    const w = v.sections?.weather;
+    if (w) {
+      ensureSectionsCss();
+      out.push(weatherYear(w));
+    }
     if (sp) {
       ensureGoingCss();
       const day = speedDayText(sp);
@@ -667,15 +953,8 @@ export class GroundGuideDetail {
       out.push(tile('T', speedCaption(sp), speedHeadline(sp), speedGrid(sp), day ? soft(`A day's march: ${day}`) : null, here ? soft(`Here: ${here}`) : null, soft(sp.basis)));
       const way = speedWay(sp);
       if (way) out.push(tile('T', `${speedCaption(sp)} · To the Road`, ...way));
-      out.push(tile('T', 'Who Moves How Fast', speedModeTiles(sp), soft(`km/h cross-country · ${speedWhen(sp)}`)));
     }
-    // The month ribbon closes the T tiles, before the weather.
-    if (month) out.push(month);
-    const w = v.sections?.weather;
-    if (w) {
-      ensureSectionsCss();
-      out.push(wide(weatherYear(w)), weatherIcons(w));
-    }
+    if (w) out.push(weatherIcons(w));
     return out;
   }
 
@@ -685,32 +964,32 @@ export class GroundGuideDetail {
     const p = v.population;
     const r = p?.reading;
     if (p || v.sections?.buildings) ensurePopulationCss();
-    const strip = populationFlagStrip(p);
-    if (strip) out.push(wide(strip, 'all'));
     if (r) {
       const two = el('div', 'ms-ggp-two');
-      two.append(radar(r, 110), ringList(r, [1, 2, 3, 5, 10]));
+      two.append(radar(r, 104), ringList(r, [1, 2, 3, 5, 10]));
       out.push(tile('B', `People · ${r.radiusKm} km`, two, densityScale(r.cls), populationLine('Density', populationChip(r.cls), ` ${fmtPeople(r.perKm2)} per km² within ${r.radiusKm} km`)));
+      out.push(tile('B', 'People by Direction', populationRose(r)));
+      out.push(tile('B', 'People Map · 1 km Cells', populationMinimap(r)));
+      out.push(tile('B', 'Out from Here', ...populationProfile(r)));
       if (r.ages && r.people > 0) {
         const a = el('div');
         a.append(...ageBar(r.people, r.ages));
         out.push(tile('B', 'Ages', a, populationLine('Males 15–49', `${fmtPeople(r.ages.males15_49)} within ${r.radiusKm} km`)));
       }
-      out.push(tile('B', 'People by Direction', populationRose(r)));
-      out.push(tile('B', 'People Map · 1 km Cells', populationMinimap(r)));
-      out.push(tile('B', 'Out from Here', ...populationProfile(r)));
-      out.push(tile('B', 'Places', populationPlaces(r, 8), nearestLine(r)));
-      if (r.province) out.push(tile('B', 'Against the Province', ...populationCompare(r)));
-      out.push(tile('B', 'Source', soft(populationSourceLine(r))));
+      const places = tile('B', 'Places', populationPlaces(r, 8), nearestLine(r));
+      places.classList.add('ms-ggd-brk');
+      out.push(places);
     }
     const b = v.sections?.buildings;
     if (b) {
       ensureSectionsCss();
       out.push(buildingsWhere(b));
-      const rows = kv([...buildingsRows(b), ...buildingsMore(b, v)]);
-      if (rows) out.push(tile('B', 'Buildings, Huts & Services', rows));
+      const list = kv([...buildingsRows(b), ...buildingsMore(b, v)]);
+      if (list) out.push(listTile('B', 'Buildings, Huts & Services', list));
       out.push(buildingsProtected(b));
     }
+    if (r?.province) out.push(tile('B', 'Against the Province', ...populationCompare(r)));
+    if (r) out.push(tile('B', 'Source', soft(populationSourceLine(r))));
     return out;
   }
 
@@ -720,13 +999,14 @@ export class GroundGuideDetail {
     if (!c) return [];
     ensureCoverCss();
     const out: HTMLElement[] = [];
-    out.push(wide(tile('C', 'Cover, Camouflage & Concealment', ...fourLines(c), needLine(c, v.profileLabel), bankLine(c), localLine(c), aroundLine(c))));
-    out.push(tile('C', 'At a Glance', coverIconsRow(c), c.classLabel ? soft(`Ground: ${c.classLabel}`) : null));
     out.push(tile('C', 'Four Ways', coverGridTiles(c), coverGivesLine(c)));
     const box = el('div', 'ms-gc-rose');
     box.append(coverRose(c, 112, 0), roseText(c));
     out.push(tile('C', `Cover Round It · ${COVER_FIELD_LABEL[c.roseField]}`, box, coverRoseKey()));
     out.push(tile('C', `Nearest Cover · ${fmtDistance(c.radiusM)}`, nearestGrid(c)));
+    out.push(tile('C', 'Levels', ...fourLines(c)));
+    const mode = [needLine(c, v.profileLabel), bankLine(c), localLine(c), aroundLine(c), c.classLabel ? soft(`Ground here: ${c.classLabel}`) : null].filter((x): x is HTMLElement => !!x);
+    if (mode.length) out.push(tile('C', `For ${v.profileLabel}`, ...mode));
     out.push(
       tile(
         'C',
@@ -768,7 +1048,7 @@ export class GroundGuideDetail {
     const tag = el('div', 'ms-ggd-modetag');
     tag.append(el('b', undefined, cur.label));
     if (st.tag) tag.append(' · ', el('span', st.hand ? 'ms-hand' : undefined, st.tag));
-    out.push(wide(tile('L', `Mode · ${st.modes.length} to choose from`, modes, tag), 'all'));
+    out.push(tile('L', `Mode · ${st.modes.length} to choose from`, tag, modes));
 
     // Overlay key: the ramp and what the colours mean, with the season and day / night switches.
     out.push(tile('L', 'Overlay Key', p.ramp, p.labels, p.note, ...p.traffic, ...p.speed));
@@ -805,7 +1085,11 @@ export class GroundGuideDetail {
     out.push(tile('L', 'Map Layers', sws));
 
     // What the mode cannot use and what slows it.
-    if (p.list) out.push(wide(tile('L', `Ground for ${cur.label}`, p.list)));
+    if (p.list) {
+      const t = tile('L', `Ground for ${cur.label}`, p.list);
+      t.classList.add('ms-ggd-brk');
+      out.push(t);
+    }
 
     // Keys.
     const keys = legendEl('ms-ggl-keys');
@@ -813,7 +1097,7 @@ export class GroundGuideDetail {
     if (p.keyS) keys.append(p.keyS);
     keys.append(
       legendKeyRow('D', 'Ground Detail', 'Opens and Closes This Card'),
-      legendKeyRow('G', 'Tabs', 'G R O T B C, One Letter a Tab'),
+      legendKeyRow('G', 'Tabs', 'G R O T B C, One Letter a Tab; Again for the Next Page'),
       legendKeyRow('K', 'Legend', 'This Tab (L Is Lasso Select)'),
       legendKeyRow('Esc', 'Close', 'Also Cancels the Draw'),
     );

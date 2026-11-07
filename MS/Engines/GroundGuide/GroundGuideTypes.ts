@@ -687,6 +687,11 @@ export interface GroundGuideVerdict {
   overridable?: boolean;
   /** Set while drawing: the judged profile was chosen by hand rather than derived from the SIDC. */
   profileOverride?: boolean;
+  /**
+   * Set while drawing when the map overlay is on and paints another mode (fixed in the settings) than the one judged
+   * here: that mode's label. The cards say so, or the colours under the cursor would read as this unit's going.
+   */
+  overlayOther?: string | null;
   /** Set while drawing when the P key can change the judged profile. */
   profileKey?: boolean;
   /** The rule behind the verdict, in the rule owner's words (rules.json `why` / class `note`); null when the bundle has none. */

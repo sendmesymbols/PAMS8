@@ -86,37 +86,49 @@ Every verdict explains itself — why, how far, what is near, and which way:
 The badge title above the headline uses the same words: *Suitable Position*, *Adjacent to …* /
 *Encroaching on …*, *SLOW-GO Terrain*, *Partially Obstructed*, *Unsuitable Position*.
 
-**The cursor card.** Under that coloured header (which also carries the share inside bad ground, e.g.
-`34% Inside`, an **S** keycap with *Quick Fix* while the quick fix can help, and the civil flag) the card is a
-stack of bands on alternating backgrounds, each captioned in capitals in the verdict's colour. Since 2026-11-06 the
-card is **minimal** by default (`card.cursor: minimal`): these four bands and nothing else, so it stays short while
-it follows the cursor; `card.cursor: full` brings back every section the switches below turn on.
+**The cursor card.** The coloured header gives the verdict, an **S** keycap with *Quick Fix* while the quick fix can
+help, and the civil flag; its second line says **who the ground is judged for**: the mode's icon and name with the
+echelon (`Dismounted Force · Battalion`), a *Set by Hand* tag when P chose the mode instead of the symbol, and the
+season and light the going and speed are read for (`Dry, Nov · Day`). When the going overlay is fixed in the settings
+to another mode, an amber line under the header says so (`Map colours show Tracked, not Dismounted Force`). Under it
+the card is label-left rows split by hairlines (2026-11-07). Since 2026-11-06 the card is **minimal** by default
+(`card.cursor: minimal`): these rows and nothing else, so it stays short while it follows the cursor;
+`card.cursor: full` brings back every section the switches below turn on.
 
-| band | shows |
-|------|-------|
-| **Why** | the deciding ground and the mode (`Permanent Water · Dismounted Force`), the rule owner's reason when the bundle gives one, and a GO / SLOW-GO / NO-GO scale with the verdict's step lit |
-| **Inside** | lines and areas: how much of the shape (or footprint) is in bad ground, as a bar and `34% of the Footprint` |
+| row | shows |
+|-----|-------|
+| **Why** | the GO / SLOW-GO / NO-GO scale with the verdict's step lit, the deciding ground, and the rule owner's reason when the bundle gives one |
+| **Key facts** | two cells: the going in the other season (*After Rain*, or *When Dry* in the wet) and the cover or concealment the mode needs most (`Cover · Direct Fire: None`), each a word with a dot in its colour |
+| **Inside** | lines and areas: how much of the shape (or footprint) is in bad ground, as `34% of the Footprint` and a bar |
 | **Nearest** | a compass dial pointing at the nearest deciding ground (it turns with the map), its name, and the distance in large type |
 | **Inter Gap Rule** | footprint-judged echelons: the gap to the next same-echelon unit against the minimum |
 
 In `enforce` mode a red strip closes the card ("Enforce Mode: A click here is refused. Hold Shift and
-click to place it anyway."). The mode and the P / S keys are explained in the Legend, not on the card. A foot
+click to place it anyway."). The P / S keys are explained in the Legend, not on the card. A foot
 cue names the **D** key.
 
 **The Ground Detail (D).** Everything else the engine reads is in a wide card docked at the foot of the map
-(`GroundGuideDetail.ts`), opened with **D** while drawing, with a tab a GROTBC letter and a last **Legend** tab:
+(`GroundGuideDetail.ts`), opened with **D** while drawing, with a tab a GROTBC letter and a last **Legend** tab.
+It **never scrolls** (2026-11-07: the tabs are switched by key while the mouse places the symbol). Under the tabs an
+**answer strip** (`GroundGuideDetailSummary.ts`) opens with who the ground is judged for (mode, echelon, *From the
+Symbol* or *Set by Hand (P)*, season and light, and the overlay warning), then the letter's answer and key facts on
+one line (facts that do not fit the width are left to the tiles). Below it a band of fixed height holds the tab's
+pictures, then its lists and notes, placed down columns first-fit (a short tile fills the space under a tall one; a
+list taller than the band continues at the top of a later column). What does not fit the card's width goes to a next
+page: **the same letter again turns the page**, and closes the card from the last page; the footer shows
+`Page 1 of 2` and the key. At 1920×1080 every tab fits one page; at 1600×900 T and B take two.
 
 | tab | tiles |
 |-----|-------|
-| **G** Ground | the slope cross-section with the military crest (or the schematic slope and band gauge), the terrain / relief / water rows, the ground chips, the soil (texture triangle, source, cone index, strength gauge), the ITG candidates |
-| **R** Roads & Rail | the road as a sign with its record, the check for the mode in large type, the route rows with rail and air, road network density (gauge, ways-out rose, make-up bar, what the band means), the road line for the mode |
-| **O** Obstacles | natural beside man-made with their effect, the gap cross-section when a canal or reach is recorded, the obstacle rows, the exits strip (what blocks each direction) |
-| **T** Trafficability | the going gauge (dry and after-rain markers), cross-country scales, who can move here, the movement rose and going map (north up), the way out, going by month, speed (headline, day / night grid, time-to-range rose, strip to the road, who moves how fast), and **W** weather (the year strip, the month's figures) |
-| **B** Built-Up | the civil flag strip, people (radar and rings, density scale), ages, people by direction, the 1 km people map, out from here, places, against the province; where (tehsil, sheet, grid, border), buildings and services, protected sites |
-| **C** Cover | the four lines with the mode's need, at a glance (shield and eye), the four tiles, the cover rose, the nearest cover per field, what else is mapped (underground, landform, buildings) |
+| **G** Ground | the slope cross-section with the military crest (or the schematic slope and band gauge), the soil (texture triangle, source, cone index, strength gauge), the ITG candidates, the terrain / relief / water rows |
+| **R** Roads & Rail | the road as a sign with its record, road network density (gauge, ways-out rose, route classification bar, what the band means), the road line for the mode, the route rows with rail and air (the check for the mode is on the strip) |
+| **O** Obstacles | obstacles round it (dial), the exits strip (what blocks each direction), the gap cross-section when a canal or reach is recorded, the obstacle rows (natural and man-made with their effect are on the strip) |
+| **T** Trafficability | the going gauge (dry and after-rain markers), the movement rose, the time-to-range rose, the going map (north up), the way out, who can move here, who moves how fast, going by month, **W** the year's weather, speed (headline, day / night grid, strip to the road) and the month's weather figures (the dry and after-rain going are on the strip) |
+| **B** Built-Up | people (radar and rings, density scale), people by direction, the 1 km people map, out from here, ages, places; where (tehsil, sheet, grid, border), buildings and services, protected sites, against the province (the civil flag is on the strip) |
+| **C** Cover | the four tiles, the cover rose, the nearest cover per field, the four levels as meters, what the mode needs and the area round it, what else is mapped (underground, landform, buildings); the four levels and the better cover nearby are on the strip |
 | **L** Legend (key **K**) | the mode as pills (one click judges or paints for it), the overlay key with the season and day / night switches, **Map Layers** switches (going overlay with its opacity, terrain data boundary, People layer, indicator lines, footprint outline), the NO-GO and SLOW-GO lists for the mode, the keys. There is no docked legend on the map any more: this tab is the legend, and D opens the card before a draw too |
 
-A letter key (**G R O T B C**, and **K** for the Legend, since L is Lasso Select) opens the detail on that tab; the same letter again, **D** or **Esc** closes it
+A letter key (**G R O T B C**, and **K** for the Legend, since L is Lasso Select) opens the detail on that tab; the same letter again turns to the next page or, from the last, closes it, as do **D** and **Esc**
 (Esc still reaches the draw tool). Only the active tab is built on each cursor move. **Copy as Text** in its header copies every registered
 section as plain lines for orders. The detail keeps the last draw's content until closed. API: `guide.showDetail(open,
 tab?)`, `guide.isDetailOpen`, `guide.detailTab` (`showBrief()` / `isBriefOpen` still work). The old T key, which
@@ -128,7 +140,11 @@ so the guide searches the class tile around the deciding sample (a window of
 ±32 tile pixels, about ±1 km at the finest level) for the closest pixel of the
 opposite kind. It reports that pixel's class and compass direction; the distance
 comes from the pipeline's exact layer when it is below the layer cap. Beyond the
-window it says so ("No deployable ground within 1.1 km") instead of guessing.
+window, when the distance layer still has the no-go (2026-11-07), the guide walks down that layer from the point
+(sixteen reads round it, a step of half the distance left) to the no-go's edge and takes the bearing from there,
+naming the class from the pixels at the walk's end, so the card's Nearest keeps its compass (at z12 it agreed with
+the pixel scan within 4°). Inside no-go, beyond the window, it says so ("No deployable ground within 1.1 km")
+instead of guessing.
 A shape that spans tiles still being fetched is judged on what is known and says
 `Still loading terrain data`.
 

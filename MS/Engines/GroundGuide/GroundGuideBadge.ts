@@ -2,12 +2,11 @@
  * GroundGuideBadge.ts
  *
  * The small cursor-following card the Ground Guide shows while drawing.
- * A coloured header gives the verdict (how much of the shape is inside bad
- * ground, and an S keycap when the quick fix can help); sections underneath, on
- * alternating bands and captioned in the verdict colour, say why (with a GO /
- * SLOW-GO / NO-GO scale), how much, what is nearest, whether the echelon's
- * inter gap rule holds and which Important Tactical Ground candidates lie
- * round it. Enforce mode closes the card with a red strip.
+ * A coloured header gives the verdict (and an S keycap when the quick fix can
+ * help); label-left rows underneath say why (led by the GO / SLOW-GO / NO-GO
+ * scale), how much is inside, what is nearest and whether the echelon's inter
+ * gap rule holds. The full card (`card.cursor: full`) adds the stacked GROTBC
+ * sections after them. Enforce mode closes the card with a red strip.
  * The unit type and the P / S keys live in the legend. Built from DOM nodes and
  * `textContent` only, so class names and unit labels can never inject markup.
  *
@@ -16,8 +15,12 @@
  * layout reads and the card can flip to stay on screen.
  */
 
+import { monthName } from './GroundGuideBrief';
+import { COVER_FIELD_LABEL, COVER_KIND, COVER_WORD } from './GroundGuideCover';
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
-import { detailCue, goingSections } from './GroundGuideGoingView';
+import { GOING_WORD } from './GroundGuideGoing';
+import { detailCue, goingSections, seasonIcon } from './GroundGuideGoingView';
+import { modeIcon } from './GroundGuideLegend';
 import { arrowCompass, dial, dirArrow, orientNorth } from './GroundGuideNorth';
 import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
@@ -35,47 +38,87 @@ const SPEAK_DELAY_MS = 500;
 /** Gap between a fingertip and the card above it. */
 const TOUCH_GAP = 28;
 
+/*
+ * Layout (2026-11-07, user: "keep all five, just cleaner", a bit bigger text for laptops in daylight): the verdict
+ * bar, then the five items as label-left rows (Why, Inside, Nearest, Inter Gap Rule) split by hairlines, so the eye
+ * runs down one column of labels instead of reading a stacked caption above each item. The going scale leads the
+ * Why row, straight under the verdict. Sections from the full card (`card.cursor: full`) keep their stacked bands.
+ */
 const CSS = `
 .ms-ground-guide-badge{position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;
-  --pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:280px;max-width:calc(100vw - 8px);box-sizing:border-box;border-radius:10px;overflow:hidden;
-  font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
-  background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 4px 14px rgba(0,0,0,.4);display:none}
+  --pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:320px;max-width:calc(100vw - 8px);box-sizing:border-box;border-radius:11px;overflow:hidden;
+  font:400 13px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;
+  background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 6px 18px rgba(0,0,0,.42);display:none}
 .ms-ground-guide-badge[data-verdict="ok"]{--pb-c:#1c8247;--pb-k:#3fc07a}
 .ms-ground-guide-badge[data-verdict="near"]{--pb-c:#e9a526;--pb-fg:#1b1f25;--pb-k:#f2b84b}
 .ms-ground-guide-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25;--pb-k:#f0a04b}
 .ms-ground-guide-badge[data-verdict="partial"]{--pb-c:#d9622b;--pb-fg:#1b1f25;--pb-k:#ef7d4a}
 .ms-ground-guide-badge[data-verdict="in"]{--pb-c:#d63a3f;--pb-k:#ff6b6f}
-.ms-ggb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;padding:6px 11px;background:var(--pb-c);color:var(--pb-fg);font-weight:600;font-size:13px}
+.ms-ggb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;padding:8px 12px;background:var(--pb-c);color:var(--pb-fg);font-weight:650;font-size:14.5px;line-height:1.25}
 .ms-ggb-bar>svg{flex:none}
 .ms-ggb-title{flex:1 1 0;min-width:0}
 .ms-ggb-pills{display:flex;gap:4px;margin-left:auto}
-.ms-ggb-pct,.ms-ggb-fix{display:flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:11.5px;white-space:nowrap}
-.ms-ggb-fix{padding-left:2px}
+.ms-ggb-pct,.ms-ggb-fix{display:flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:12px;font-weight:600;white-space:nowrap}
+.ms-ggb-fix{padding-left:3px}
 .ms-ground-guide-badge[data-verdict="near"] .ms-ggb-pills>span,.ms-ground-guide-badge[data-verdict="caution"] .ms-ggb-pills>span,.ms-ground-guide-badge[data-verdict="partial"] .ms-ggb-pills>span{background:rgba(0,0,0,.12)}
-.ms-ggb-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:4px;
-  font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3f8f5b,#2b6b42);border:1px solid #5fc183;border-bottom-width:2px}
+.ms-ggb-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;
+  font:700 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3f8f5b,#2b6b42);border:1px solid #5fc183;border-bottom-width:2px}
 .ms-ggb-sr{position:fixed;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
-.ms-ggb-body{padding:6px 11px 8px}
-.ms-ggb-sec{padding:7px 11px 8px}
+.ms-ggb-body{padding:7px 12px 9px}
+.ms-ggb-sec{padding:8px 12px 9px}
 .ms-ggb-sec:nth-child(even){background:#222830}
-.ms-ggb-cap{font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--pb-k);margin-bottom:5px}
+.ms-ggb-cap{font:700 10.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--pb-k);margin-bottom:6px}
+.ms-ggb-row{display:grid;grid-template-columns:86px minmax(0,1fr);column-gap:10px;row-gap:5px;align-items:start;padding:9px 12px 10px;border-top:1px solid rgba(255,255,255,.08)}
+.ms-ggb-row:first-child{border-top:0}
+.ms-ggb-note{padding:8px 12px;border-top:1px solid rgba(255,255,255,.08)}
+.ms-ggb-for{flex:1 1 100%;display:flex;align-items:center;gap:6px;min-width:0;font:600 12.5px/1.3 system-ui,Segoe UI,Arial,sans-serif}
+.ms-ggb-for>svg{flex:none}
+.ms-ggb-who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-ggb-hand{flex:none;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.32);color:#fff;font:700 10px/1.2 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase}
+.ms-ggb-when{flex:none;margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-weight:500;opacity:.88}
+.ms-ggb-other{padding:7px 12px;background:rgba(242,184,75,.13);border-bottom:1px solid rgba(242,184,75,.35);color:#ffd27a;font-size:12.5px}
+.ms-ggb-facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,.08)}
+.ms-ggb-fact{min-width:0;padding:8px 12px 9px}
+.ms-ggb-fact+.ms-ggb-fact{border-left:1px solid rgba(255,255,255,.08)}
+.ms-ggb-fk{font-size:11.5px;line-height:1.3;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-ggb-fv{margin-top:2px;font:700 13.5px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-ggb-fd{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%;vertical-align:0}
+.ms-ggb-fd[data-tone="go"],.ms-ggb-fd[data-tone="c3"]{background:#2fa862}
+.ms-ggb-fd[data-tone="slow"],.ms-ggb-fd[data-tone="c1"]{background:#f0932b}
+.ms-ggb-fd[data-tone="nogo"]{background:#e5484d}
+.ms-ggb-fd[data-tone="c2"]{background:#9cc45a}
+.ms-ggb-fd[data-tone="c0"]{background:#5b6470;box-shadow:inset 0 0 0 1.5px #9aa3ad}
+.ms-ggb-fv[data-tone="go"],.ms-ggb-fv[data-tone="c3"]{color:#74dca3}
+.ms-ggb-fv[data-tone="slow"],.ms-ggb-fv[data-tone="c1"]{color:#ffb46b}
+.ms-ggb-fv[data-tone="nogo"]{color:#ff8a8d}
+.ms-ggb-fv[data-tone="c2"]{color:#c3df8f}
+.ms-ggb-row>.ms-ggb-cap{grid-column:1;grid-row:1;margin:0;padding-top:2px;font:600 12px/1.3 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#a9b2bc}
+.ms-ggb-row>:not(.ms-ggb-cap){grid-column:2;min-width:0}
+.ms-ggb-row>.ms-ggb-scale,.ms-ggb-row>.ms-ggb-track{margin:0}
+.ms-ggb-row>.ms-ggb-scale{margin-bottom:2px}
+.ms-ggb-row .ms-ggb-soft{padding-top:0}
 .ms-ggb-b{font-weight:600;color:#fff}
+.ms-ggb-dim{color:#a9b2bc}
 .ms-ggb-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:6px}
-.ms-ggb-scale>span{font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-align:center;padding:4px 0 3px;border-radius:2px;background:rgba(255,255,255,.06);color:#6b737c}
+.ms-ggb-scale>span{font:700 11px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.03em;text-align:center;padding:5px 0 4px;border-radius:3px;background:rgba(255,255,255,.06);color:#7f8893}
 .ms-ggb-scale>.ms-on-go{background:#2fa862;color:#fff}
 .ms-ggb-scale>.ms-on-slow{background:#f0932b;color:#1b1f25}
 .ms-ggb-scale>.ms-on-nogo{background:#e5484d;color:#fff}
 .ms-ggb-nr{display:flex;gap:10px;align-items:center}
-.ms-ggb-big{font-size:18px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
+.ms-ggb-nr>svg{flex:none}
+.ms-ggb-big{font-size:19px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
 .ms-ggb-track{height:6px;margin:4px 0 2px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
 .ms-ggb-track>div{height:100%}
-.ms-ggb-enf{display:flex;gap:7px;align-items:flex-start;padding:7px 11px;background:rgba(229,72,77,.14);border-top:1px solid rgba(229,72,77,.45);color:#ffb3b5}
-.ms-ggb-enf>svg{flex:none;margin-top:1px;color:#e5484d}
+.ms-ggb-enf{display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:rgba(229,72,77,.14);border-top:1px solid rgba(229,72,77,.45);color:#ffb3b5}
+.ms-ggb-enf>svg{flex:none;margin-top:2px;color:#e5484d}
 .ms-ggb-warn{color:#ffc861}
-.ms-ggb-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
+.ms-ggb-soft{color:#a3acb6;font-size:12px;padding-top:2px}
 .ms-ggb-itg+.ms-ggb-itg{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)}
-.ms-ggb-itgt{font-size:10.5px;line-height:1.35;margin-top:2px}
+.ms-ggb-itgt{font-size:11.5px;line-height:1.35;margin-top:2px}
 .ms-ggb-strong{color:#f2b84b;font-weight:600}
+.ms-ground-guide-badge .ms-gv-foot{padding:7px 12px;font-size:12px;color:#a3acb6}
+.ms-ground-guide-badge .ms-gv-foot-l{opacity:.8;gap:3px}
+.ms-ground-guide-badge .ms-gv-foot-l>.ms-gv-kbd{min-width:16px;height:16px;font-size:9.5px}
 `;
 
 const ICONS: Record<string, string[]> = {
@@ -146,6 +189,18 @@ function section(caption: string, ...content: Array<Node | string>): HTMLElement
   const s = el('div', 'ms-ggb-sec');
   s.append(el('div', 'ms-ggb-cap', caption), ...content);
   return s;
+}
+
+/**
+ * One of the cursor card's five items: its label in a left column, the content beside it (every child after the
+ * label goes to the right column, so a section that adds to Why, such as T's second scale, lines up too). The label
+ * is `.ms-ggb-cap`, as on a stacked section, so the T and Speed decorators still find Why.
+ */
+function row(caption: string, ...content: Array<Node | string>): HTMLElement {
+  const r = el('div', 'ms-ggb-row');
+  r.append(el('div', 'ms-ggb-cap', caption));
+  for (const c of content) r.append(typeof c === 'string' ? el('div', undefined, c) : c);
+  return r;
 }
 
 /** GO / SLOW-GO / NO-GO with the verdict's own step lit. */
@@ -227,16 +282,89 @@ function whySection(v: GroundGuideVerdict): HTMLElement | null {
     default:
       name = v.className ? plain(v.className) : 'NO-GO Ground';
   }
-  const line = el('div');
-  line.append(el('span', 'ms-ggb-b', titleCase(name)), ` · ${v.profileLabel}`);
-  const s = section('Why', line);
+  // The scale first, straight under the verdict bar: GO / SLOW-GO / NO-GO is what the eye takes in at a glance.
+  // The mode is named once, under the verdict (forLine), so the ground's name stands alone here.
+  const s = row('Why', goingScale(step), el('div', 'ms-ggb-b', titleCase(name)));
   if (v.reason) s.append(el('div', 'ms-ggb-soft', v.reason)); // the rule owner's own words, when the bundle gives them
-  s.append(goingScale(step));
   return s;
 }
 
 function insideSection(v: GroundGuideVerdict, pct: number): HTMLElement {
-  return section('Inside', track(pct / 100, verdictColor(v)), `${pct}% of the ${v.footprint ? 'Footprint' : 'Shape'}`);
+  const line = el('div');
+  line.append(el('span', 'ms-ggb-b', `${pct}%`), ` of the ${v.footprint ? 'Footprint' : 'Shape'}`);
+  return row('Inside', line, track(pct / 100, verdictColor(v)));
+}
+
+/**
+ * Who the ground is judged for, as the second line of the verdict bar (user, 2026-11-07: "nothing showing which force
+ * type data is being used ... he can make wrong decisions"): the mode's icon and name with the echelon, a SET BY HAND
+ * tag when P chose it rather than the symbol, and the season and light the going and speed are read for.
+ */
+function forLine(v: GroundGuideVerdict): HTMLElement {
+  const line = el('div', 'ms-ggb-for');
+  const ic = modeIcon(v.profile);
+  ic.setAttribute('width', '16');
+  ic.setAttribute('height', '16');
+  const echelon = v.footprint?.echelon;
+  line.append(ic, el('span', 'ms-ggb-who', echelon ? `${v.profileLabel} · ${titleCase(echelon)}` : v.profileLabel));
+  if (v.profileOverride) {
+    const hand = el('span', 'ms-ggb-hand', 'Set by Hand');
+    hand.title = 'Chosen with P, not taken from the symbol';
+    line.append(hand);
+  }
+  const g = v.going;
+  const when: string[] = [];
+  if (g) when.push(`${g.season === 'wet' ? 'After Rain' : 'Dry'}${g.month ? `, ${monthName(g.month)}` : ''}`);
+  if (v.speed) when.push(v.speed.light === 'night' ? 'Night' : 'Day');
+  if (when.length) {
+    const w = el('span', 'ms-ggb-when');
+    if (g) w.append(seasonIcon(g.season, 12));
+    w.append(when.join(' · '));
+    line.append(w);
+  }
+  return line;
+}
+
+/** One key fact: a small label over a word with its dot (the word says it without the colour). */
+function keyFact(k: string, word: string, tone: string): HTMLElement {
+  const f = el('div', 'ms-ggb-fact');
+  const val = el('div', 'ms-ggb-fv');
+  val.dataset.tone = tone;
+  const dot = el('span', 'ms-ggb-fd');
+  dot.dataset.tone = tone;
+  val.append(dot, word);
+  f.append(el('div', 'ms-ggb-fk', k), val);
+  return f;
+}
+
+/**
+ * The two facts the cursor card adds to its five (user, 2026-11-07): the going in the other season (rain can turn a
+ * GO position SLOW-GO before the unit moves) and the cover or concealment the mode needs most. The full story of
+ * both is in the Detail's T and C tabs.
+ */
+function keyFacts(v: GroundGuideVerdict): HTMLElement | null {
+  const cells: HTMLElement[] = [];
+  const g = v.going;
+  const p = g?.point;
+  if (g && p) {
+    const wet = g.season === 'wet';
+    const step = wet ? p.dry : p.wet;
+    cells.push(keyFact(wet ? 'When Dry' : 'After Rain', GOING_WORD[step], step));
+  }
+  const c = v.cover;
+  if (c) {
+    const f = c.focus ?? c.roseField;
+    cells.push(keyFact(`${COVER_KIND[f]} · ${COVER_FIELD_LABEL[f]}`, COVER_WORD[c.levels[f]], `c${c.levels[f]}`));
+  }
+  if (!cells.length) return null;
+  const r = el('div', 'ms-ggb-facts');
+  r.append(...cells);
+  return r;
+}
+
+/** The map overlay paints another mode than the one judged: say so first, before the colours mislead. */
+function overlayWarning(v: GroundGuideVerdict): HTMLElement | null {
+  return v.overlayOther ? el('div', 'ms-ggb-other', `Map colours show ${v.overlayOther}, not ${v.profileLabel}`) : null;
 }
 
 /** Header colour, for the bar and arrow that echo it; keep in step with the CSS above. */
@@ -261,12 +389,14 @@ function nearestSection(v: GroundGuideVerdict, northDeg: number): HTMLElement | 
     text.append(el('div', 'ms-ggb-b', featureTitle(n.className)), far);
     const nr = el('div', 'ms-ggb-nr');
     nr.append(dial(n.bearingDeg, verdictColor(v), northDeg), text);
-    return section('Nearest', nr);
+    return row('Nearest', nr);
   }
   const label = v.verdict === 'in' ? 'Suitable Ground' : 'NO-GO Ground';
-  if (v.noneWithinM) return section('Nearest', el('div', 'ms-ggb-b', label), `Nothing within ${fmtDistance(v.noneWithinM)}`);
+  if (v.noneWithinM) return row('Nearest', el('div', 'ms-ggb-b', label), el('div', 'ms-ggb-soft', `Nothing within ${fmtDistance(v.noneWithinM)}`));
   if ((v.verdict === 'ok' || v.verdict === 'caution') && v.distanceM !== null) {
-    return section('Nearest', el('div', 'ms-ggb-b', label), `${fmtDistance(v.distanceM)} away`);
+    const far = el('div');
+    far.append(el('span', 'ms-ggb-big', fmtDistance(v.distanceM)), el('span', 'ms-ggb-dim', ' away'));
+    return row('Nearest', el('div', 'ms-ggb-b', label), far);
   }
   return null;
 }
@@ -318,15 +448,11 @@ function spacingSection(v: GroundGuideVerdict): HTMLElement | null {
   if (!s) return null;
   const echelon = v.footprint?.echelon ?? 'unit';
   const colour = SPACING_COLOR[s.status];
-  if (s.nearestGapM === null) return section('Inter Gap Rule', el('span', 'ms-ggb-soft', `No other ${echelon} nearby`));
-  const text = el(
-    'span',
-    s.status !== 'ok' ? 'ms-ggb-warn' : undefined,
-    s.status === 'overlap'
-      ? `Overlaps the next ${echelon}`
-      : `${fmtDistance(s.nearestGapM)} of ${fmtDistance(s.minGapM)} to the next ${echelon}`,
-  );
-  return section('Inter Gap Rule', track(s.nearestGapM / s.minGapM, colour), text);
+  if (s.nearestGapM === null) return row('Inter Gap Rule', el('div', 'ms-ggb-dim', `No other ${echelon} nearby`));
+  const text = el('div', s.status !== 'ok' ? 'ms-ggb-warn' : undefined);
+  if (s.status === 'overlap') text.textContent = `Overlaps the next ${echelon}`;
+  else text.append(el('span', s.status === 'ok' ? 'ms-ggb-b' : undefined, fmtDistance(s.nearestGapM)), ` of ${fmtDistance(s.minGapM)} to the next ${echelon}`);
+  return row('Inter Gap Rule', text, track(s.nearestGapM / s.minGapM, colour));
 }
 
 export class GroundGuideBadge {
@@ -454,7 +580,7 @@ export class GroundGuideBadge {
     bar.replaceChildren(icon(iconOf(v), 17), el('span', 'ms-ggb-title', titleOf(v)));
     const pct = v.samples > 1 && v.fraction > 0 ? Math.max(1, Math.round(v.fraction * 100)) : 0;
     const pills = el('div', 'ms-ggb-pills');
-    if (pct > 0) pills.appendChild(el('span', 'ms-ggb-pct', `${pct}% Inside`));
+    // The share inside bad ground is the Inside row's own figure; the bar keeps only what a key can act on.
     if (v.snappable) {
       // S moves the point to the nearest usable ground; the legend explains the key, the card only cues it.
       const fix = el('span', 'ms-ggb-fix');
@@ -464,6 +590,7 @@ export class GroundGuideBadge {
     const civil = v.verdict === 'unknown' ? null : populationFlagPill(v.population);
     if (civil) pills.appendChild(civil);
     if (pills.childElementCount) bar.appendChild(pills);
+    if (v.verdict !== 'unknown') bar.appendChild(forLine(v));
 
     const rows = this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills) : this._minimalRows(v, pct);
     const body = this._body!;
@@ -495,9 +622,11 @@ export class GroundGuideBadge {
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v)].filter((r): r is HTMLElement => r !== null);
-    if (v.loading) rows.push(el('div', 'ms-ggb-sec ms-ggb-soft', 'Still loading terrain data'));
-    if (this._notice) rows.push(el('div', 'ms-ggb-sec ms-ggb-warn', this._notice));
+        : [overlayWarning(v), whySection(v), keyFacts(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v)].filter(
+            (r): r is HTMLElement => r !== null,
+          );
+    if (v.loading) rows.push(el('div', 'ms-ggb-note ms-ggb-soft', 'Still loading terrain data'));
+    if (this._notice) rows.push(el('div', 'ms-ggb-note ms-ggb-warn', this._notice));
     const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
     if (strip) rows.push(strip);
     if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue());
