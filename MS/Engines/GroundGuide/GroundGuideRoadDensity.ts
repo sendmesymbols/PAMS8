@@ -35,7 +35,7 @@ export interface RoadDensityBand {
 
 /** The default bands, lowest first. */
 export const ROAD_DENSITY_BANDS: readonly RoadDensityBand[] = [
-  { key: 'none', label: 'No Roads', fromKmPerKm2: 0, note: 'No road or track in the circle: cross-country only.' },
+  { key: 'none', label: 'No Rds', fromKmPerKm2: 0, note: 'No road or track in the circle: cross-country only.' },
   { key: 'sparse', label: 'Sparse', fromKmPerKm2: 0.001, note: 'Few roads: movement is canalised and each road is a likely chokepoint.' },
   { key: 'moderate', label: 'Moderate', fromKmPerKm2: 0.25, note: 'Some choice of route; alternatives are limited.' },
   { key: 'dense', label: 'Dense', fromKmPerKm2: 0.75, note: 'Good choice of routes: room to disperse and switch axes.' },
@@ -203,10 +203,10 @@ export function awDiffers(d: RoadDensityReading): boolean {
 
 /** The one-line headline: "Moderate · 0.62 km/km² in 5 km (all-weather 0.41)". */
 export function roadDensityHeadline(d: RoadDensityReading): string {
-  if (d.band.key === 'none') return `No roads or tracks within ${fmtRadius(d.radiusM)}`;
+  if (d.band.key === 'none') return `No Rds or Trs within ${fmtRadius(d.radiusM)}`;
   // Safety first: lead with the after-rain band and its own figure when tracks lift the total a band.
   if (d.leadIsAllWeather) {
-    return `${d.allWeatherBand.label} after rain · ${fmtDensity(d.allWeatherDensity)} km/km² all-weather within ${fmtRadius(d.radiusM)} (${d.band.label} with tracks, ${fmtDensity(d.density)})`;
+    return `${d.allWeatherBand.label} after rain · ${fmtDensity(d.allWeatherDensity)} km/km² all-weather within ${fmtRadius(d.radiusM)} (${d.band.label} with Trs, ${fmtDensity(d.density)})`;
   }
   const aw = awDiffers(d) ? ` (all-weather ${fmtDensity(d.allWeatherDensity)})` : '';
   return `${d.band.label} · ${fmtDensity(d.density)} km/km² within ${fmtRadius(d.radiusM)}${aw}`;
@@ -217,7 +217,7 @@ export function roadDensityMakeUp(d: RoadDensityReading): string | null {
   if (d.band.key === 'none') return null;
   return [
     `${fmtKm(d.allWeatherKm)} km all-weather`,
-    d.fairKm > 0.05 ? `${fmtKm(d.fairKm)} km tracks / fair-weather` : null,
+    d.fairKm > 0.05 ? `${fmtKm(d.fairKm)} km Trs / fair-weather` : null,
     d.msrKm > 0.05 ? `MSR ${fmtKm(d.msrKm)} km` : 'no MSR',
     d.tankableKm > 0.05 ? `tankable ${fmtKm(d.tankableKm)} km` : null,
   ].filter(Boolean).join(' · ');
@@ -227,7 +227,7 @@ export function roadDensityMakeUp(d: RoadDensityReading): string | null {
 export function roadDensityExitsText(d: RoadDensityReading): string | null {
   if (d.band.key === 'none' && !d.exits.length) return null;
   const n = d.exits.length;
-  if (!n) return 'No road leaves the circle';
+  if (!n) return 'No Rd leaves the circle';
   const aw = d.allWeatherExitDirs.length;
   const awText = aw === d.exitDirs.length && d.exits.every((e) => e.allWeather) ? ' (all all-weather)' : aw ? ` (all-weather ${d.allWeatherExitDirs.join(', ')})` : ' (none all-weather)';
   return `${n} way${n === 1 ? '' : 's'} out: ${d.exitDirs.join(', ')}${awText}`;

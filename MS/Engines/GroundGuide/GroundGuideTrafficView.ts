@@ -40,7 +40,7 @@ const MONTH_LETTER = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'
 const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const SHORT: Record<string, string> = {
   dismounted: 'Foot', wheeled: 'Wheels', tracked: 'Tracks', hls: 'Air', pack: 'Pack', gun: 'Guns', ad: 'AD',
-  signals: 'Signals', amphibious: 'Amphib', generic: 'Ground', roadbound: 'Road', rail: 'Rail', vessel: 'Vessel', oversnow: 'Snow',
+  signals: 'Signals', amphibious: 'Amphib', generic: 'Gr', roadbound: 'Rd', rail: 'Rail', vessel: 'Vessel', oversnow: 'Snow',
 };
 /** Line icons for the mode tiles, on a 24-unit grid (as the Legend's). */
 const MODE_ICON: Record<string, string[]> = {
@@ -181,9 +181,9 @@ export function whyText(v: GroundGuideVerdict): string {
   const name = soil ? `${soil.label} (${soil.mapped ? 'Mapped' : 'Modelled'})` : null;
   if (pt && ORDER[pt.wet] > ORDER[pt.dry]) {
     const ci = soil?.ciWet !== null && soil?.ciWet !== undefined && g?.vehicle ? `: cone index ${soil.ciWet}, needs ${g.vehicle.vci[1]} for GO` : '';
-    return `${name ?? 'The ground'}, ${(pt.limitWet ?? 'soft after rain').toLowerCase()}${ci}`;
+    return `${name ?? 'The Gr'}, ${(pt.limitWet ?? 'soft after rain').toLowerCase()}${ci}`;
   }
-  if (pt && pt.dry !== 'go') return `${name ? `${name}: ` : ''}${pt.limitDry ?? 'limited by the ground'}`;
+  if (pt && pt.dry !== 'go') return `${name ? `${name}: ` : ''}${pt.limitDry ?? 'limited by the Gr'}`;
   return name ? `${name}: firm enough dry and after rain` : v.reason ?? 'No soil data here';
 }
 
@@ -221,7 +221,7 @@ export function moveText(v: GroundGuideVerdict): string | null {
   const m = v.going?.movement;
   if (!m) return null;
   const blocked = m.sectors.filter((x) => x.blockedBy && x.reachM < m.rangeM).sort((a, b) => a.reachM - b.reachM)[0];
-  const base = `${m.open} of ${m.sectors.length} directions open to ${fmtDistance(m.rangeM)}`;
+  const base = `${m.open} of ${m.sectors.length} Dirs open to ${fmtDistance(m.rangeM)}`;
   return blocked ? `${base} · ${blocked.compass} blocked at ${fmtDistance(blocked.reachM)} (${blocked.blockedBy!.toLowerCase()})` : base;
 }
 
@@ -231,7 +231,7 @@ export function moveNode(v: GroundGuideVerdict): DocumentFragment | null {
   if (!m) return null;
   const f = document.createDocumentFragment();
   const blocked = m.sectors.filter((x) => x.blockedBy && x.reachM < m.rangeM).sort((a, b) => a.reachM - b.reachM)[0];
-  f.append(`${m.open} of ${m.sectors.length} directions open to ${fmtDistance(m.rangeM)}`);
+  f.append(`${m.open} of ${m.sectors.length} Dirs open to ${fmtDistance(m.rangeM)}`);
   if (blocked) f.append(' · ', compassNode(blocked.compass, blocked.bearingDeg), ` blocked at ${fmtDistance(blocked.reachM)} (${blocked.blockedBy!.toLowerCase()})`);
   return f;
 }
@@ -250,7 +250,7 @@ function blockBand(v: GroundGuideVerdict, t: TView): HTMLElement {
   const kv = el('div', 'ms-ggb-tkv');
   kv.append(el('span', 'ms-ggb-tk', 'Why'), el('span', undefined, t.why));
   const road = roadBlock(t);
-  if (road) kv.append(el('span', 'ms-ggb-tk', t.road!.caption === 'Landing' ? 'Land' : 'Road'), road);
+  if (road) kv.append(el('span', 'ms-ggb-tk', t.road!.caption === 'Landing' ? 'Land' : 'Rd'), road);
   const move = moveNode(v);
   if (move) {
     const span = el('span');
@@ -333,7 +333,7 @@ export function blockWayOut(_v: GroundGuideVerdict, t: TView): HTMLElement {
   leg.style.background = COLOR[t.now];
   leg.append(el('span', undefined, `${fmtDistance(m.distanceM)} ${m.compass} · ${WORD[t.now]}`));
   const end = el('span', 'ms-end');
-  end.append(shield(m), el('span', 'ms-ggb-soft', m.msr ? 'MSR' : m.allWeather ? 'Road' : 'Track'));
+  end.append(shield(m), el('span', 'ms-ggb-soft', m.msr ? 'MSR' : m.allWeather ? 'Rd' : 'Tr'));
   way.append(el('span', 'ms-dot'), leg, end);
   const info = el('div');
   info.style.marginTop = '6px';
@@ -386,7 +386,7 @@ function blockTicker(_v: GroundGuideVerdict, t: TView): HTMLElement {
 function blockTabs(v: GroundGuideVerdict, t: TView): HTMLElement {
   const tab = v.traffic?.tab ?? 0;
   const tabs = el('div', 'ms-ggb-ttabs');
-  ['Now', 'Rain', 'Road', 'Months'].forEach((n, i) => tabs.append(el('span', i === tab ? 'ms-on' : undefined, n)));
+  ['Now', 'Rain', 'Rd', 'Months'].forEach((n, i) => tabs.append(el('span', i === tab ? 'ms-on' : undefined, n)));
   const body: Array<HTMLElement | null> = [];
   if (tab === 0) body.push(trafficHeadline(t), el('div', 'ms-ggb-soft', t.why));
   if (tab === 1) {
@@ -406,7 +406,7 @@ function blockTabs(v: GroundGuideVerdict, t: TView): HTMLElement {
     const mv = moveNode(v);
     const line = mv ? el('div', 'ms-ggb-soft') : null;
     line?.append(mv!);
-    body.push(roadBlock(t) ?? el('div', 'ms-ggb-soft', 'Road line is off'), line);
+    body.push(roadBlock(t) ?? el('div', 'ms-ggb-soft', 'Rd line is off'), line);
   }
   if (tab === 3) {
     const cal = blockCalendar(v, t);
@@ -499,7 +499,7 @@ registerBriefSection({
   id: 'traffic-road',
   letter: 'T',
   order: 15,
-  title: 'Road for the Mode',
+  title: 'Rd for the Mode',
   render: (v) => (v.traffic?.road ? el('div', undefined, `${v.traffic.road.caption}: ${v.traffic.road.text}`) : null),
   text: (v) => (v.traffic?.road ? [`${v.traffic.road.caption}: ${v.traffic.road.text}`] : []),
 });

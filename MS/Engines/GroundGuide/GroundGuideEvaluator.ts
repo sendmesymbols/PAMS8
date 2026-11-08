@@ -230,7 +230,7 @@ export function evaluateSamples(
     message =
       samples.length === 1
         ? `SLOW-GO: ${titleCase(base.className ?? '')}`
-        : `SLOW-GO: ${titleCase(base.className ?? '')} (${pct(cautionCount / known)}% of Shape)`;
+        : `SLOW-GO: ${titleCase(base.className ?? '')} (${pct(cautionCount / known)}% of Frontage)`;
     detail = `SLOW-GO terrain for ${label}`;
   } else if (minDist !== null && minDist < opts.nearThresholdM) {
     verdict = 'near';
@@ -242,7 +242,7 @@ export function evaluateSamples(
     verdict = 'ok';
     base.classCode = samples.length === 1 ? singleClass : null;
     base.className = classLabel(rules, base.classCode);
-    message = base.className ? `Suitable: ${titleCase(base.className)}` : 'Suitable Position';
+    message = base.className ? `Suitable: ${titleCase(base.className)}` : 'Suitable Posn';
     if (minDist !== null) {
       if (opts.farM !== undefined && minDist >= opts.farM) {
         noneWithinM = opts.farM;

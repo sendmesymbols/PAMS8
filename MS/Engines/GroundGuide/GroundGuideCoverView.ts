@@ -37,7 +37,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 /** C's letter colour (doc 16 §4.1) and the four levels: grey, amber, light green, green. */
 export const COVER_LETTER = '#1f8a5a';
 export const LEVEL_COLOR: Record<CoverLevel, string> = { 0: '#4a535e', 1: '#f0932b', 2: '#9cc45a', 3: '#2fa862' };
-const FIELD_SHORT: Record<CoverField, string> = { direct: 'Direct', indirect: 'Indirect', ground: 'Ground', aerial: 'Air' };
+const FIELD_SHORT: Record<CoverField, string> = { direct: 'Direct', indirect: 'Indirect', ground: 'Gr', aerial: 'Air' };
 
 const CSS = `
 .ms-gc-cap{display:flex;align-items:center;gap:6px}
@@ -223,7 +223,7 @@ export function coverGridTiles(c: GroundGuideCover): HTMLElement {
 /** What the ground gives, in one line ("From Tree cover · Bund"), for under the tiles. */
 export function coverGivesLine(c: GroundGuideCover): HTMLElement {
   const gives = [...new Set(COVER_FIELDS.map((f) => c.from[f]).filter((x): x is string => !!x))];
-  return el('div', 'ms-gc-soft', gives.length ? `From ${gives.join(' · ')}` : `${c.classLabel ?? 'This ground'} gives none`);
+  return el('div', 'ms-gc-soft', gives.length ? `From ${gives.join(' · ')}` : `${c.classLabel ?? 'This Gr'} gives none`);
 }
 
 function styleGrid(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
@@ -232,7 +232,7 @@ function styleGrid(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
   return section(
     'Cover & Concealment',
     g,
-    el('div', 'ms-gc-soft', gives.length ? `From ${gives.join(' · ')}` : `${c.classLabel ?? 'This ground'} gives none`),
+    el('div', 'ms-gc-soft', gives.length ? `From ${gives.join(' · ')}` : `${c.classLabel ?? 'This Gr'} gives none`),
     needLine(c, v.profileLabel),
     aroundLine(c),
   );
@@ -293,7 +293,7 @@ export function coverIconsRow(c: GroundGuideCover): HTMLElement {
 
 function styleIcons(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
   const g = coverIconsRow(c);
-  return section('Cover & Concealment', g, c.classLabel ? el('div', 'ms-gc-soft', `Ground: ${c.classLabel}`) : null, needLine(c, v.profileLabel), aroundLine(c));
+  return section('Cover & Concealment', g, c.classLabel ? el('div', 'ms-gc-soft', `Gr: ${c.classLabel}`) : null, needLine(c, v.profileLabel), aroundLine(c));
 }
 
 // ── C5 nearest ────────────────────────────────────────────────────────────
@@ -418,7 +418,7 @@ export function formLine(c: GroundGuideCover): HTMLElement | null {
   const t = formText(c, fmtDistance);
   if (!t) return null;
   const line = el('div', 'ms-gc-soft');
-  line.append(el('b', undefined, 'Ground'), ` · ${t}`);
+  line.append(el('b', undefined, 'Gr'), ` · ${t}`);
   line.title = 'Landform at the point and the nearest closed depression (DEM). Dead ground to check on the ground; it does not change the levels above.';
   return line;
 }
@@ -427,7 +427,7 @@ export function formLine(c: GroundGuideCover): HTMLElement | null {
 export function builtLine(c: GroundGuideCover): HTMLElement | null {
   if (!c.built) return null;
   const line = el('div', 'ms-gc-soft');
-  line.append(el('b', undefined, 'Buildings'), ` · ${builtText(c)}`);
+  line.append(el('b', undefined, 'Bldgs'), ` · ${builtText(c)}`);
   line.title = 'Building density and height at the point (Open Buildings + GHSL). The levels above come from the ground class only.';
   return line;
 }

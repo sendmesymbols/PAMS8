@@ -47,10 +47,10 @@ export interface EchelonSpec {
 /** 2525D echelon code (SIDC digits 9–10) → footprint. Echelons not listed are judged as a point. */
 export const ECHELON_FOOTPRINTS: Readonly<Record<string, EchelonSpec>> = {
   '13': { name: 'Section', frontageM: [75, 100], depthM: [0, 0], gapM: [100, 150] },
-  '14': { name: 'Platoon', frontageM: [450, 600], depthM: [0, 0], gapM: [300, 300] },
-  '15': { name: 'Company', frontageM: [1200, 1500], depthM: [600, 800], gapM: [500, 500] },
-  '16': { name: 'Battalion', frontageM: [3000, 5000], depthM: [2800, 3000], gapM: [1000, 1200] },
-  '18': { name: 'Brigade', frontageM: [10000, 12000], depthM: [4000, 6000], gapM: [3000, 3000] },
+  '14': { name: 'Pl', frontageM: [450, 600], depthM: [0, 0], gapM: [300, 300] },
+  '15': { name: 'Coy', frontageM: [1200, 1500], depthM: [600, 800], gapM: [500, 500] },
+  '16': { name: 'Bn', frontageM: [3000, 5000], depthM: [2800, 3000], gapM: [1000, 1200] },
+  '18': { name: 'Bde', frontageM: [10000, 12000], depthM: [4000, 6000], gapM: [3000, 3000] },
 };
 
 /** Facings tried by `worst4`. A centred rectangle repeats every 180°, so these cover all orientations in 45° steps. */

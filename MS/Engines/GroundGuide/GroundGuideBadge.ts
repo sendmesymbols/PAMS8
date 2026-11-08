@@ -243,7 +243,7 @@ function keycap(key: string): HTMLElement {
 /** A class label as a noun for a sentence: "Steep slope (>30°)" becomes "steep slope". */
 function feature(label: string | null | undefined): string {
   const s = plain(label ?? '').replace(/\s*\([^)]*\)/g, '').trim();
-  return s ? s.charAt(0).toLowerCase() + s.slice(1) : 'NO-GO ground';
+  return s ? s.charAt(0).toLowerCase() + s.slice(1) : 'NO-GO Gr';
 }
 
 /** `feature()` in Title Case for a headline: "Steep slope (>30°)" becomes "Steep Slope". */
@@ -253,7 +253,7 @@ function featureTitle(label: string | null | undefined): string {
 
 export function titleOf(v: GroundGuideVerdict): string {
   switch (v.verdict) {
-    case 'ok': return 'Suitable Position';
+    case 'ok': return 'Suitable Posn';
     case 'near': {
       // Name the ground itself: touching the shape's own class, otherwise the nearest ground the unit can't use.
       const thing = featureTitle(v.fraction > 0 ? v.className : v.nearest?.className);
@@ -261,7 +261,7 @@ export function titleOf(v: GroundGuideVerdict): string {
     }
     case 'caution': return 'SLOW-GO Terrain';
     case 'partial': return 'Partially Obstructed';
-    case 'in': return 'Unsuitable Position';
+    case 'in': return 'Unsuitable Posn';
     default: return v.message;
   }
 }
@@ -293,17 +293,17 @@ function whySection(v: GroundGuideVerdict): HTMLElement | null {
   let name: string;
   switch (v.verdict) {
     case 'ok':
-      name = v.className ? plain(v.className) : 'Suitable Ground';
+      name = v.className ? plain(v.className) : 'Suitable Gr';
       break;
     case 'caution':
       name = v.className ? plain(v.className) : 'SLOW-GO Terrain';
       break;
     case 'near':
       // Touching: the shape's own class. Otherwise the nearest ground the unit can't use.
-      name = plain(v.fraction > 0 ? (v.className ?? '') : (v.nearest?.className ?? v.className ?? '')) || 'NO-GO Ground Nearby';
+      name = plain(v.fraction > 0 ? (v.className ?? '') : (v.nearest?.className ?? v.className ?? '')) || 'NO-GO Gr Nearby';
       break;
     default:
-      name = v.className ? plain(v.className) : 'NO-GO Ground';
+      name = v.className ? plain(v.className) : 'NO-GO Gr';
   }
   // The scale first, straight under the verdict bar: GO / SLOW-GO / NO-GO is what the eye takes in at a glance.
   // The mode is named once, under the verdict (forLine), so the ground's name stands alone here. No "Why" label: the
@@ -418,7 +418,7 @@ function nearestSection(v: GroundGuideVerdict, northDeg: number): HTMLElement | 
     nr.append(dial(n.bearingDeg, verdictColor(v), northDeg), text);
     return row('Nearest', nr);
   }
-  const label = v.verdict === 'in' ? 'Suitable Ground' : 'NO-GO Ground';
+  const label = v.verdict === 'in' ? 'Suitable Gr' : 'NO-GO Gr';
   if (v.noneWithinM) return row('Nearest', el('div', 'ms-ggb-b', label), el('div', 'ms-ggb-soft', `Nothing within ${fmtDistance(v.noneWithinM)}`));
   if ((v.verdict === 'ok' || v.verdict === 'caution') && v.distanceM !== null) {
     const far = el('div');
@@ -473,14 +473,14 @@ function nearThings(v: GroundGuideVerdict): NearThing[] {
   const n = v.nearest;
   if (n) {
     const nogo = n.kind === 'no-go';
-    out.push({ name: featureTitle(n.className), what: nogo ? 'NO-GO Ground' : 'Suitable Ground', distanceM: n.distanceM, compass: n.compass, bearingDeg: n.bearingDeg, tone: nogo ? 'nogo' : 'go', rank: 0, kind: 'ground' });
+    out.push({ name: featureTitle(n.className), what: nogo ? 'NO-GO Gr' : 'Suitable Gr', distanceM: n.distanceM, compass: n.compass, bearingDeg: n.bearingDeg, tone: nogo ? 'nogo' : 'go', rank: 0, kind: 'ground' });
   } else if ((v.verdict === 'ok' || v.verdict === 'caution') && v.distanceM !== null && !v.noneWithinM) {
     // The distance layer has it but not where (beyond the walk): the distance alone, never a guessed direction.
-    out.push({ name: 'NO-GO Ground', what: 'Direction not known', distanceM: v.distanceM, compass: null, bearingDeg: null, tone: 'nogo', rank: 0, kind: 'ground' });
+    out.push({ name: 'NO-GO Gr', what: 'Dir not known', distanceM: v.distanceM, compass: null, bearingDeg: null, tone: 'nogo', rank: 0, kind: 'ground' });
   }
   const o = v.sections?.obstacles;
   const here = titleCase(plain(v.className ?? '')); // the ground at the point, which Why already names
-  for (const [h, origin] of [[o?.natural, 'Natural Obstacle'], [o?.manMade, 'Man-Made Obstacle']] as const) {
+  for (const [h, origin] of [[o?.natural, 'Natural Obs'], [o?.manMade, 'Man-Made Obs']] as const) {
     if (!h) continue;
     const name = titleCase(plain(h.label));
     if (h.distanceM < 1 && name === here) continue;
@@ -511,9 +511,9 @@ function nearThings(v: GroundGuideVerdict): NearThing[] {
     // says it is a road ("Road · All-Weather"), so "Road · Jia Musa Road" never reads twice.
     const generic = /^(road|track)$/i.test(r.shield);
     // An unnamed road is named by its type ("Tertiary"): say "Tertiary Road".
-    const named = r.name && /^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living street)$/i.test(r.name) ? `${r.name} Road` : r.name;
+    const named = r.name && /^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living street)$/i.test(r.name) ? `${r.name} Rd` : r.name;
     const name = generic ? (named ? titleCase(named) : r.shield) : named ? `${r.shield} · ${titleCase(named)}` : r.shield;
-    const what = generic ? [r.shield, r.tag].filter(Boolean).join(' · ') : (r.tag ?? 'Road');
+    const what = generic ? [r.shield, r.tag].filter(Boolean).join(' · ') : (r.tag ?? 'Rd');
     out.push({ name, what, distanceM: r.distanceM, compass: r.compass, bearingDeg: r.bearingDeg ?? null, tone: 'road', rank: 3, kind: 'road' });
   }
   const pop = v.population;
@@ -607,7 +607,7 @@ function nearestRanked(v: GroundGuideVerdict): HTMLElement | null {
     const head = el('div', 'ms-ggb-nh');
     const dot = el('span', 'ms-ggb-nd');
     dot.style.background = NEAR_COLOR[v.verdict === 'in' ? 'go' : 'nogo'];
-    head.append(dot, el('span', 'ms-ggb-nn', v.verdict === 'in' ? 'Suitable Ground' : 'NO-GO Ground'));
+    head.append(dot, el('span', 'ms-ggb-nn', v.verdict === 'in' ? 'Suitable Gr' : 'NO-GO Gr'));
     none.append(head, el('div', 'ms-ggb-nw', `None within ${fmtDistance(v.noneWithinM)}`));
     list.append(none);
   }
@@ -664,9 +664,9 @@ export function itgSection(v: GroundGuideVerdict): HTMLElement | null {
     rows.push(item);
   }
   if (!rows.length) {
-    rows.push(el('span', 'ms-ggb-soft', g.pending ? 'Loading ground features' : `None within ${fmtDistance(g.radiusM)}`));
+    rows.push(el('span', 'ms-ggb-soft', g.pending ? 'Loading Gr features' : `None within ${fmtDistance(g.radiusM)}`));
   }
-  return section('Important Tactical Ground', ...rows);
+  return section('Important Tactical Gr', ...rows);
 }
 
 /**

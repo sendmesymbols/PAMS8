@@ -63,9 +63,9 @@ function factsG(v: GroundGuideVerdict): Fact[] {
   const g = v.sections?.ground;
   if (g) {
     const terr = g.terrain?.label ?? g.land?.label ?? null;
-    out.push({ k: 'Ground', v: terr ? titleCase(terr) : 'Not Recorded', sub: g.landform ? titleCase(g.landform) : null });
+    out.push({ k: 'Gr', v: terr ? titleCase(terr) : 'Not Recorded', sub: g.landform ? titleCase(g.landform) : null });
     if (g.elevationM !== null) {
-      const high = g.high ? `High ground ${Math.round(g.high.elevationM).toLocaleString('en')} m, ${at(g.high)}` : null;
+      const high = g.high ? `High Gr ${Math.round(g.high.elevationM).toLocaleString('en')} m, ${at(g.high)}` : null;
       out.push({ k: 'Height', v: `${Math.round(g.elevationM).toLocaleString('en')} m`, sub: high });
     }
     if (g.slopeDeg !== null) {
@@ -99,7 +99,7 @@ function factsR(v: GroundGuideVerdict): Fact[] {
     out.push(
       x
         ? { k: 'Route', v: titleCase(x.typeLabel), sub: [x.on ? 'At the point' : at(x), x.msr ? 'MSR' : null].filter(Boolean).join(' · ') }
-        : { k: 'Route', v: 'None Near', sub: 'No road or track within 500 m' },
+        : { k: 'Route', v: 'None Near', sub: 'No Rd or Tr within 500 m' },
     );
     if (r.check) out.push({ k: 'Route Check', v: CHECK_WORD[r.check.level], sub: r.check.text, tone: CHECK_TONE[r.check.level] });
   }
@@ -112,7 +112,7 @@ function factsR(v: GroundGuideVerdict): Fact[] {
   const d = r?.density;
   if (d) {
     const per = d.leadIsAllWeather ? d.allWeatherDensity : d.density;
-    out.push({ k: 'Road Density', v: d.lead.label, sub: `${per.toFixed(2)} km per km²${d.leadIsAllWeather ? ' after rain' : ''}` });
+    out.push({ k: 'Rd Density', v: d.lead.label, sub: `${per.toFixed(2)} km per km²${d.leadIsAllWeather ? ' after rain' : ''}` });
     const n = d.exitDirs.length;
     out.push({ k: 'Ways Out', v: n ? String(n) : 'None', sub: n ? d.exitDirs.join(' ') : `Within ${fmtDistance(d.radiusM)}`, tone: n <= 1 ? 'nogo' : n === 2 ? 'slow' : null });
   }
@@ -134,11 +134,11 @@ function factsO(v: GroundGuideVerdict): Fact[] {
   if (o) {
     // What stops the mode first, then what slows it, then the nearer: the answer to O is the obstacle that matters.
     const hits: Array<[string, ObstacleHit]> = [];
-    if (o.natural) hits.push(['Natural Obstacle', o.natural]);
-    if (o.manMade) hits.push(['Man-Made Obstacle', o.manMade]);
+    if (o.natural) hits.push(['Natural Obs', o.natural]);
+    if (o.manMade) hits.push(['Man-Made Obs', o.manMade]);
     hits.sort((a, b) => (EFFECT_RANK[b[1].effect ?? ''] ?? 0) - (EFFECT_RANK[a[1].effect ?? ''] ?? 0) || a[1].distanceM - b[1].distanceM);
     for (const [k, h] of hits) out.push(obstacleFact(k, h));
-    if (o.wet) out.push({ k: 'Wet Ground', v: titleCase(o.wet), sub: 'At the point', tone: 'slow' });
+    if (o.wet) out.push({ k: 'Wet Gr', v: titleCase(o.wet), sub: 'At the point', tone: 'slow' });
     if (o.bank) out.push({ k: 'Bank', v: titleCase(o.bank.label), sub: `Within ${fmtDistance(o.bank.withinM)}` });
     const c = o.canal;
     if (c) {
@@ -170,7 +170,7 @@ function factsT(v: GroundGuideVerdict): Fact[] {
     out.push({ k: wet ? 'When Dry' : 'After Rain', v: GOING_WORD[other], sub: (wet ? p.limitDry : p.limitWet) ? `Limited by ${wet ? p.limitDry : p.limitWet}` : null, tone: other });
   }
   const m = g?.movement;
-  if (m) out.push({ k: 'Movement', v: RATING_LABEL[m.rating], sub: `${m.open} of 8 directions open`, tone: m.rating === 'unrestricted' ? 'go' : m.rating === 'restricted' ? 'slow' : 'nogo' });
+  if (m) out.push({ k: 'Movement', v: RATING_LABEL[m.rating], sub: `${m.open} of 8 Dirs open`, tone: m.rating === 'unrestricted' ? 'go' : m.rating === 'restricted' ? 'slow' : 'nogo' });
   const sp = v.speed;
   if (sp) {
     out.push({ k: `Speed · ${sp.short}`, v: sp.kmh === 0 ? 'NO-GO' : fmtKmh(sp.kmh), sub: 'Cross-country', tone: sp.kmh === 0 ? 'nogo' : null });
@@ -195,7 +195,7 @@ function factsB(v: GroundGuideVerdict): Fact[] {
   }
   const b = v.sections?.buildings;
   if (b) {
-    if (b.density) out.push({ k: 'Built-Up Here', v: titleCase(b.density.label), sub: b.height ?? b.size ?? null });
+    if (b.density) out.push({ k: 'BUA Here', v: titleCase(b.density.label), sub: b.height ?? b.size ?? null });
     // Security installations matter to the plan; services (post office, school) stay in the rows below.
     const s = b.security[0];
     if (s) out.push({ k: 'Security Site', v: titleCase(s.name ?? s.label), sub: `${s.name ? `${titleCase(s.label)} · ` : ''}${at(s)}` });

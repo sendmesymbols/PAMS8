@@ -130,7 +130,7 @@ export interface DetailHandlers {
 
 const STYLE_ID = 'ms-ground-guide-detail-style';
 const TAB_KEY = 'ms-ground-guide-detail-tab';
-const TAB_LABEL: Record<DetailTab, string> = { G: 'Ground', R: 'Roads & Rail', O: 'Obstacles', T: 'Trafficability', B: 'Built-Up', C: 'Cover', L: 'Legend' };
+const TAB_LABEL: Record<DetailTab, string> = { G: 'Gr', R: 'Rds & Rail', O: 'Obs', T: 'Trafficability', B: 'BUAs', C: 'Cover', L: 'Legend' };
 /** The key that opens each tab: the letter itself, except the Legend (K: L is Lasso Select in the app). */
 export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T: 'T', B: 'B', C: 'C', L: 'K' };
 const TAB_COLOR: Record<DetailTab, string> = { ...LETTER_COLOR, L: '#aab3bd' };
@@ -1064,7 +1064,7 @@ export class GroundGuideDetail {
         const note = el('div', 'ms-ggd-note', roadDensityNote(d));
         note.style.background = DENSITY_COLOURS[d.lead.key][0];
         note.style.color = DENSITY_COLOURS[d.lead.key][1];
-        out.push(tile('R', `Road Network Density · ${fmtRadius(d.radiusM)}`, densityGauge(d, 'both'), note));
+        out.push(tile('R', `Rd Network Density · ${fmtRadius(d.radiusM)}`, densityGauge(d, 'both'), note));
         out.push(tile('R', 'Ways Out', densityRose(d, 'both')));
         out.push(tile('R', 'Route Classification', densityMakeup(d, 'both')));
       }
@@ -1107,7 +1107,7 @@ export class GroundGuideDetail {
       // Natural and man-made apart, each row with its icon (obstaclesRows already holds every row once).
       const near = obstaclesNear(obstaclesRows(o, s), o);
       if (near.childElementCount) {
-        const t = tile('O', 'Obstacles Near', near);
+        const t = tile('O', 'Obs Near', near);
         t.classList.add('ms-ggd-brk');
         out.push(t);
       }
@@ -1160,7 +1160,7 @@ export class GroundGuideDetail {
       const here = speedGroundText(sp);
       out.push(tile('T', speedCaption(sp), speedHeadline(sp), speedGrid(sp), day ? soft(`A day's march: ${day}`) : null, here ? soft(`Here: ${here}`) : null, soft(sp.basis)));
       const way = speedWay(sp);
-      if (way) out.push(tile('T', `${speedCaption(sp)} · To the Road`, ...way));
+      if (way) out.push(tile('T', `${speedCaption(sp)} · To the Rd`, ...way));
     }
     if (w) out.push(weatherIcons(w));
     return out;
@@ -1176,7 +1176,7 @@ export class GroundGuideDetail {
       const two = el('div', 'ms-ggp-two');
       two.append(radar(r, 104), ringList(r, [1, 2, 3, 5, 10]));
       out.push(tile('B', `People · ${r.radiusKm} km`, two, densityScale(r.cls), populationLine('Density', populationChip(r.cls), ` ${fmtPeople(r.perKm2)} per km² within ${r.radiusKm} km`)));
-      out.push(tile('B', 'People by Direction', populationRose(r)));
+      out.push(tile('B', 'People by Dir', populationRose(r)));
       out.push(tile('B', 'People Map · 1 km Cells', populationMinimap(r)));
       out.push(tile('B', 'Out from Here', ...populationProfile(r)));
       if (r.ages && r.people > 0) {
@@ -1193,7 +1193,7 @@ export class GroundGuideDetail {
       ensureSectionsCss();
       out.push(buildingsWhere(b));
       const list = kv([...buildingsRows(b), ...buildingsMore(b, v)]);
-      if (list) out.push(listTile('B', 'Buildings, Huts & Services', list));
+      if (list) out.push(listTile('B', 'Bldgs, Huts & Svcs', list));
       out.push(buildingsProtected(b));
     }
     if (r?.province) out.push(tile('B', 'Against the Province', ...populationCompare(r)));
@@ -1213,7 +1213,7 @@ export class GroundGuideDetail {
     out.push(tile('C', `Cover Round It · ${COVER_FIELD_LABEL[c.roseField]}`, box, coverRoseKey()));
     out.push(tile('C', `Nearest Cover · ${fmtDistance(c.radiusM)}`, nearestGrid(c)));
     out.push(tile('C', 'Levels', ...fourLines(c)));
-    const mode = [needLine(c, v.profileLabel), bankLine(c), localLine(c), aroundLine(c), c.classLabel ? soft(`Ground here: ${c.classLabel}`) : null].filter((x): x is HTMLElement => !!x);
+    const mode = [needLine(c, v.profileLabel), bankLine(c), localLine(c), aroundLine(c), c.classLabel ? soft(`Gr here: ${c.classLabel}`) : null].filter((x): x is HTMLElement => !!x);
     if (mode.length) out.push(tile('C', `For ${v.profileLabel}`, ...mode));
     out.push(
       tile(
@@ -1294,7 +1294,7 @@ export class GroundGuideDetail {
 
     // What the mode cannot use and what slows it.
     if (p.list) {
-      const t = tile('L', `Ground for ${cur.label}`, p.list);
+      const t = tile('L', `Gr for ${cur.label}`, p.list);
       t.classList.add('ms-ggd-brk');
       out.push(t);
     }
@@ -1304,7 +1304,7 @@ export class GroundGuideDetail {
     if (p.keyP) keys.append(p.keyP);
     if (p.keyS) keys.append(p.keyS);
     keys.append(
-      legendKeyRow('D', 'Ground Detail', 'Opens and Closes This Card'),
+      legendKeyRow('D', 'Gr Detail', 'Opens and Closes This Card'),
       legendKeyRow('H', 'Hint', 'Shrinks the Cursor Card to GO / SLOW-GO / NO-GO; Again for the Card'),
       legendKeyRow('G', 'Tabs', 'G R O T B C, One Letter a Tab; Again for the Next Page'),
       legendKeyRow('K', 'Legend', 'This Tab (L Is Lasso Select)'),

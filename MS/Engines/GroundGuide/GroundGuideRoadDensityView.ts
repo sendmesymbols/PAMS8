@@ -150,7 +150,7 @@ export function chipsNode(d: RoadDensityReading, lead: RoadDensityLead): Documen
 
 /** "road density dense" / "road density sparse after rain" for a one-line R. */
 export function densityOneLine(d: RoadDensityReading, lead: RoadDensityLead): string {
-  return `road density ${leadChips(d, lead).map((c) => c.label.toLowerCase()).join(', ')}`;
+  return `Rd density ${leadChips(d, lead).map((c) => c.label.toLowerCase()).join(', ')}`;
 }
 
 /**
@@ -161,7 +161,7 @@ export function densityFigure(d: RoadDensityReading, lead: RoadDensityLead): [st
   const all = fmtDensity(d.density), aw = fmtDensity(d.allWeatherDensity);
   if (!d.leadIsAllWeather || lead === 'dry') return [all, awDiffers(d) ? `, all-weather ${aw}` : ''];
   if (lead === 'both') return [`${all} / ${aw}`, ' (dry / after rain)'];
-  return [aw, ` all-weather, ${all} with tracks`];
+  return [aw, ` all-weather, ${all} with Trs`];
 }
 
 function figureNode(d: RoadDensityReading, lead: RoadDensityLead, tail = ''): DocumentFragment {
@@ -171,7 +171,7 @@ function figureNode(d: RoadDensityReading, lead: RoadDensityLead, tail = ''): Do
 
 // ── D1 rows ──────────────────────────────────────────────────────────────────
 function densityValue(d: RoadDensityReading, lead: RoadDensityLead): Node {
-  if (d.band.key === 'none') return frag(chipsNode(d, lead), soft(` no road or track within ${fmtRadius(d.radiusM)}`));
+  if (d.band.key === 'none') return frag(chipsNode(d, lead), soft(` no Rd or Tr within ${fmtRadius(d.radiusM)}`));
   return frag(chipsNode(d, lead), ' ', figureNode(d, lead));
 }
 
@@ -185,7 +185,7 @@ function soft(text: string): HTMLElement {
 export function exitsValue(d: RoadDensityReading): string | null {
   if (d.band.key === 'none' && !d.exits.length) return null;
   const n = d.exits.length;
-  if (!n) return 'None: no road leaves the circle';
+  if (!n) return 'None: no Rd leaves the circle';
   const allAw = d.exits.every((e) => e.allWeather);
   const aw = allAw ? ' · all all-weather' : d.allWeatherExitDirs.length ? ` · all-weather ${d.allWeatherExitDirs.join(', ')}` : ' · none all-weather';
   const msr = d.exits.filter((e) => e.msr).length;
@@ -240,7 +240,7 @@ export function densityGauge(d: RoadDensityReading, lead: RoadDensityLead): HTML
   line.append(chipsNode(d, lead), ' ', figureNode(d, lead));
   box.append(line, g, ticks);
   const k = el('div', 'ms-grd-key');
-  k.append(el('span', undefined, '▼ every road'));
+  k.append(el('span', undefined, '▼ every Rd'));
   if (awDiffers(d)) {
     const a = el('span', undefined, '▲ all-weather');
     a.style.color = '#3fc07a';
@@ -296,7 +296,7 @@ export function densityRose(d: RoadDensityReading, lead: RoadDensityLead): HTMLE
   t.append(l1, l2, l3);
   const closed = COMPASS8.filter((c) => !d.exitDirs.includes(c));
   if (n && closed.length) {
-    const none = el('div', 'ms-grd-soft', 'No road out to the ');
+    const none = el('div', 'ms-grd-soft', 'No Rd out to the ');
     none.append(joinNodes(closed.map((c) => compassNode(c)), ', '));
     t.append(none);
   }
@@ -317,7 +317,7 @@ export function densityRose(d: RoadDensityReading, lead: RoadDensityLead): HTMLE
 export function densityMakeup(d: RoadDensityReading, lead: RoadDensityLead): HTMLElement {
   const box = el('div');
   const line = el('div', 'ms-grd-line');
-  line.append(chipsNode(d, lead), ' ', figureNode(d, lead, ` · ${Math.round(d.totalKm)} km of road`));
+  line.append(chipsNode(d, lead), ' ', figureNode(d, lead, ` · ${Math.round(d.totalKm)} km of Rd`));
   box.append(line);
   if (d.totalKm > 0) {
     const bar = el('div', 'ms-grd-bar');
@@ -338,7 +338,7 @@ export function densityMakeup(d: RoadDensityReading, lead: RoadDensityLead): HTM
       s.append(dot, `${lab} `, b(`${km(v)} km`));
       return s;
     };
-    mu.append(item(EXIT_COLOUR.aw, 'All-weather', d.allWeatherKm), item(EXIT_COLOUR.fair, 'Tracks', d.fairKm), item(EXIT_COLOUR.msr, 'MSR', d.msrKm), item('#8cc4ff', 'Tankable', d.tankableKm));
+    mu.append(item(EXIT_COLOUR.aw, 'All-weather', d.allWeatherKm), item(EXIT_COLOUR.fair, 'Trs', d.fairKm), item(EXIT_COLOUR.msr, 'MSR', d.msrKm), item('#8cc4ff', 'Tankable', d.tankableKm));
     box.append(mu);
   }
   return box;

@@ -184,7 +184,7 @@ export function crestText(g: GroundReading): { lead: string; rest: string } | nu
   const top = c.topDistanceM > 0 ? `top ${fmtDistance(c.topDistanceM)} ${c.topCompass}` : 'top here';
   const foot = `foot ${fmtDistance(c.footDistanceM)} ${c.faces}`;
   if (c.where === 'on') return { lead: 'Here', rest: `you see down to the ${foot} · ${top} · drop ${c.dropM} m` };
-  if (c.where === 'above') return { lead: `${fmtDistance(c.distanceM)} ${c.compass}, below you`, rest: `from here the slope below is partly hidden (dead ground) · ${foot} · drop ${c.dropM} m` };
+  if (c.where === 'above') return { lead: `${fmtDistance(c.distanceM)} ${c.compass}, below you`, rest: `from here the slope below is partly hidden (dead Gr) · ${foot} · drop ${c.dropM} m` };
   return { lead: `${fmtDistance(c.distanceM)} ${c.compass}, above you`, rest: `the ${foot} is in view · ${top} · drop ${c.dropM} m` };
 }
 
@@ -195,7 +195,7 @@ export function dunesText(g: GroundReading): { lead: string; rest: string } | nu
   const lead = d.star ? 'Star dunes' : d.spacingM ? `Dune lines every ${d.spacingM} m` : 'Dune field';
   const rest = [
     !d.inField ? `${fmtDistance(d.distanceM)} ${d.compass}` : null,
-    d.axis ? `running ${d.axis}` : d.star ? 'high and irregular' : 'no single direction',
+    d.axis ? `running ${d.axis}` : d.star ? 'high and irregular' : 'no single Dir',
     d.axis ? 'move along them, not across' : 'slow going for vehicles',
   ];
   return { lead, rest: rest.filter(Boolean).join(' · ') };
@@ -245,7 +245,7 @@ export function groundRelief(g: GroundReading): HTMLElement {
     const dn = dunesText(g);
     return section(
       'G',
-      `Ground · ${g.terrain?.label ?? 'Relief'}`,
+      `Gr · ${g.terrain?.label ?? 'Relief'}`,
       real,
       soft(
         [
@@ -297,13 +297,13 @@ export function groundRelief(g: GroundReading): HTMLElement {
   });
   return section(
     'G',
-    `Ground · ${g.terrain?.label ?? 'Relief'}`,
+    `Gr · ${g.terrain?.label ?? 'Relief'}`,
     svg,
     gauge,
     soft(
       g.slopeDeg !== null ? `${g.slopeApprox ? 'About ' : ''}${Math.round(g.slopeDeg)}° slope` : 'Slope not known',
       g.terrainChange ? ` · ${g.terrainChange.label} ${fmtDistance(g.terrainChange.distanceM)} ${g.terrainChange.compass}` : '',
-      g.high ? ` · high ground ${g.high.aboveM !== null ? `+${g.high.aboveM} m ` : ''}${at(g.high)}` : '',
+      g.high ? ` · high Gr ${g.high.aboveM !== null ? `+${g.high.aboveM} m ` : ''}${at(g.high)}` : '',
     ),
   );
 }
@@ -324,7 +324,7 @@ export function groundChips(g: GroundReading): HTMLElement {
   if (g.water[0]) c.append(chip(`${g.water[0].label} ${at(g.water[0])}`, '#4a90c8'));
   if (g.namedWater) c.append(chip(`${nameOf(g.namedWater)} ${at(g.namedWater)}`, '#4a90c8'));
   if (g.area) c.append(chip(nameOf(g.area), '#8fb35a'));
-  return section('G', 'Ground', c);
+  return section('G', 'Gr', c);
 }
 
 // ── R ────────────────────────────────────────────────────────────────────────
@@ -340,7 +340,7 @@ function checkBig(c: RoadsReading['check']): HTMLElement | null {
 
 function routeLine(r: RoadsReading): string {
   const x = r.route;
-  if (!x) return 'No road or track within 500 m';
+  if (!x) return 'No Rd or Tr within 500 m';
   return [x.typeLabel, x.tier ? x.tierLabel : null, x.on ? 'here' : at(x), x.msr ? 'MSR' : null].filter(Boolean).join(' · ');
 }
 
@@ -349,10 +349,10 @@ export function roadsShield(r: RoadsReading): HTMLElement {
   const rt = rec?.route;
   const id = rec?.number ?? rt?.number ?? null;
   const sign = el('div', 'ms-gx-sign');
-  const sh = el('div', `ms-gx-shield${rt?.msr || r.route?.msr ? ' ms-msr' : ''}`, id ?? (r.route?.typeLabel.split(' ')[0] ?? 'Road'));
+  const sh = el('div', `ms-gx-shield${rt?.msr || r.route?.msr ? ' ms-msr' : ''}`, id ?? (r.route?.typeLabel.split(' ')[0] ?? 'Rd'));
   const txt = el('div');
-  txt.append(el('b', undefined, rt?.from && rt?.to ? `${rt.from} to ${rt.to}` : rec?.name ?? rt?.name ?? r.route?.typeLabel ?? 'No named road near'));
-  txt.append(soft([rt?.km ? `${Math.round(rt.km)} km` : null, rec ? at(rec) : r.route ? (r.route.on ? 'here' : at(r.route)) : null, rec?.defence ? 'defence road' : null].filter(Boolean).join(' · ')));
+  txt.append(el('b', undefined, rt?.from && rt?.to ? `${rt.from} to ${rt.to}` : rec?.name ?? rt?.name ?? r.route?.typeLabel ?? 'No named Rd near'));
+  txt.append(soft([rt?.km ? `${Math.round(rt.km)} km` : null, rec ? at(rec) : r.route ? (r.route.on ? 'here' : at(r.route)) : null, rec?.defence ? 'defence Rd' : null].filter(Boolean).join(' · ')));
   sign.append(sh, txt);
   const chips = el('div', 'ms-gx-chips');
   chips.style.marginTop = '6px';
@@ -365,11 +365,11 @@ export function roadsShield(r: RoadsReading): HTMLElement {
     if (rec.widthM) chips.append(chip(`${rec.widthM} m wide`));
     if (rec.landslides) chips.append(chip(`${rec.landslides} landslide sites`, '#e5484d'));
   }
-  return section('R', 'Roads, Tracks & Rail', sign, chips.childElementCount ? chips : null, r.check ? soft(r.check.text) : null);
+  return section('R', 'Rds, Trs & Rail', sign, chips.childElementCount ? chips : null, r.check ? soft(r.check.text) : null);
 }
 
 export function roadsVerdict(r: RoadsReading): HTMLElement {
-  return section('R', 'Route for the Mode', checkBig(r.check) ?? soft('No rule for this mode on this route'), soft(routeLine(r)), r.record ? soft(`${r.record.number ?? r.record.name ?? 'Road'} ${at(r.record)}`) : null);
+  return section('R', 'Route for the Mode', checkBig(r.check) ?? soft('No rule for this mode on this route'), soft(routeLine(r)), r.record ? soft(`${r.record.number ?? r.record.name ?? 'Rd'} ${at(r.record)}`) : null);
 }
 
 // ── O ────────────────────────────────────────────────────────────────────────
@@ -443,7 +443,7 @@ export function obstaclesTiles(o: ObstaclesReading): HTMLElement {
   const g = el('div', 'ms-gx-tiles');
   g.append(obstacleTile('natural', o.natural), obstacleTile('man_made', o.manMade));
   const extra = [o.wet ? `${o.wet} here` : null, o.closure ? `${o.closure.road} ${at(o.closure)}: ${o.closure.closed ? `closed (${o.closure.closed})` : `${o.closure.landslides} landslide sites`}` : null].filter(Boolean).join(' · ');
-  return section('O', 'Obstacles', g, extra ? soft(extra) : null);
+  return section('O', 'Obs', g, extra ? soft(extra) : null);
 }
 
 /** Which of the O rows (GroundGuideSectionsView.obstaclesRows) are nature's, and the icon a row takes when fixed. */
@@ -543,7 +543,7 @@ export function obstaclesDial(o: ObstaclesReading, size = 132): HTMLElement | nu
   key.append(el('span', undefined, `Rings ${fmtDistance(range / 2)} · ${fmtDistance(range)}`));
   const row = el('div', 'ms-gx-obdial');
   row.append(svg, key);
-  return section('O', `Obstacles Round It · ${fmtDistance(range)}`, row);
+  return section('O', `Obs Round It · ${fmtDistance(range)}`, row);
 }
 
 export function obstaclesGap(o: ObstaclesReading): HTMLElement {
@@ -579,7 +579,7 @@ export function obstaclesGap(o: ObstaclesReading): HTMLElement {
   if (gap.d) svg.append(svText(x1 - 4, top + bank + dPx - 2, `${gap.d} m deep`, { fill: '#fff', 'text-anchor': 'end' }));
   if (gap.b) svg.append(svText(4, top + bank - 4, `banks ${gap.b} m`, { fill: '#e8ebee' }));
   const hit = o.manMade?.label?.toLowerCase().includes('canal') ? o.manMade : o.natural;
-  return section('O', 'Obstacles · Gap', svg, soft(el('b', undefined, gap.name), ` · ${gap.at}`, hit?.effect ? ` · ${hit.effect} for the mode` : '', r && gap.w === null && r.currentMs ? ` · ${r.currentMs} m/s` : ''));
+  return section('O', 'Obs · Gap', svg, soft(el('b', undefined, gap.name), ` · ${gap.at}`, hit?.effect ? ` · ${hit.effect} for the mode` : '', r && gap.w === null && r.currentMs ? ` · ${r.currentMs} m/s` : ''));
 }
 
 // ── B ────────────────────────────────────────────────────────────────────────
@@ -605,8 +605,8 @@ export function buildingsWhere(b: BuildingsReading): HTMLElement {
     g.append(el('span', undefined, 'Border'), v);
   }
   row('Place', b.settlement ? `${b.settlement.sizeClass} · ${at(b.settlement)}` : null, b.settlement ? nameOf(b.settlement) : null);
-  row('Buildings', b.density ? (b.density.code ? b.density.label : 'None mapped here') : null);
-  return section('B', 'Built-Up Areas · Where', g);
+  row('Bldgs', b.density ? (b.density.code ? b.density.label : 'None mapped here') : null);
+  return section('B', 'BUAs · Where', g);
 }
 
 export function buildingsProtected(b: BuildingsReading): HTMLElement {
@@ -619,7 +619,7 @@ export function buildingsProtected(b: BuildingsReading): HTMLElement {
   }
   return section(
     'B',
-    'Protected Sites & Services',
+    'Protected Sites & Svcs',
     items.length ? list : soft('No protected site or service mapped near'),
     soft('Worship, graves, health and schools: no-strike and collateral checks.'),
     b.settlement ? soft(el('b', undefined, nameOf(b.settlement)), ` · ${b.settlement.sizeClass}${b.settlement.people ? `, about ${b.settlement.people.toLocaleString('en-US')} people` : ''} · ${at(b.settlement)}`) : null,

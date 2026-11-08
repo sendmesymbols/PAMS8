@@ -503,7 +503,7 @@ export function readSpeed(a: SpeedArgs): GroundGuideSpeed | null {
       const r = typeof hit.attrs.r === 'string' ? hit.attrs.r.trim() : '';
       const xc = spot(a.season, o.light, 0);
       road = {
-        shield: r || (aw ? 'Road' : 'Track'),
+        shield: r || (aw ? 'Rd' : 'Tr'),
         name: n && n !== r ? n : null,
         key,
         label: t.roads[key]?.label ?? key,
@@ -639,15 +639,15 @@ export function speedText(s: GroundGuideSpeed): string[] {
   const out = [`Speed (${s.label}${s.cat ? `, ${s.cat} vehicle` : ''}): ${fmtKmh(s.kmh)} cross-country, ${when}`];
   if (s.up !== null && s.down !== null) out.push(`  Up the slope ${fmtKmh(s.up)}, down ${fmtKmh(s.down)} (slope ${s.slopeDeg} deg)`);
   else if (s.slopeDeg !== null) out.push(`  Slope ${s.slopeDeg} deg (${s.slopeBand ?? ''})`);
-  if (s.ground) out.push(`  Ground: ${s.ground.label}${s.going ? `; going dry ${s.going.dry.toUpperCase()}, after rain ${s.going.wet.toUpperCase()}` : ''}`);
+  if (s.ground) out.push(`  Gr: ${s.ground.label}${s.going ? `; going dry ${s.going.dry.toUpperCase()}, after rain ${s.going.wet.toUpperCase()}` : ''}`);
   const g = s.grid;
   out.push(`  Day ${fmtKmh(g.dryDay)} dry / ${fmtKmh(g.wetDay)} after rain; night ${fmtKmh(g.dryNight)} dry / ${fmtKmh(g.wetNight)} after rain`);
   if (s.road) {
     const r = s.road;
     const reach = r.reachMin === null ? 'no cross-country way from here' : r.reachMin === 0 ? 'on it' : `${fmtMinutes(r.reachMin)} to reach`;
     const how = s.roadMode === 'convoy' ? `${r.column ?? 'column'} ${r.kmh} km/h${r.rateKmih !== null ? `, ${r.rateKmih} km in the hour` : ''}` : `${r.kmh} km/h alone`;
-    out.push(`  Road: ${r.msr ? 'MSR ' : ''}${r.shield}${r.name ? ` (${r.name})` : ''}, ${r.label}, ${Math.round(r.distanceM)} m ${r.compass}: ${reach}, then ${how}`);
-  } else out.push(`  Road: none the mover can use within ${Math.round(s.roadRadiusM / 100) / 10} km`);
+    out.push(`  Rd: ${r.msr ? 'MSR ' : ''}${r.shield}${r.name ? ` (${r.name})` : ''}, ${r.label}, ${Math.round(r.distanceM)} m ${r.compass}: ${reach}, then ${how}`);
+  } else out.push(`  Rd: none the mover can use within ${Math.round(s.roadRadiusM / 100) / 10} km`);
   if (s.rays) {
     const open = s.rays.filter((r) => r.minutes !== null).sort((p, q) => p.minutes! - q.minutes!);
     if (open.length) out.push(`  To ${Math.round(s.rangeM / 100) / 10} km: fastest ${open[0].compass} ${fmtMinutes(open[0].minutes!)}, slowest ${open[open.length - 1].compass} ${fmtMinutes(open[open.length - 1].minutes!)}`);

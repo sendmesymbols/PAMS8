@@ -61,7 +61,7 @@ export function briefSectionsFor(letter: GrotbcLetter): BriefSection[] {
 
 /** Plain text of every section, GROTBC order, for orders. */
 export function briefText(v: GroundGuideVerdict): string {
-  const lines: string[] = [`GROUND DETAIL · ${v.profileLabel}`];
+  const lines: string[] = [`GR DETAIL · ${v.profileLabel}`];
   for (const letter of LETTERS) {
     for (const s of briefSectionsFor(letter)) {
       let t: string[] = [];
@@ -175,13 +175,13 @@ export function movementDetail(g: GroundGuideGoingInfo, size = 136): HTMLElement
   const rate = h('div', 'ms-gv-rate', RATING_LABEL[m.rating]);
   rate.style.color = RATING_COLOR[m.rating];
   rate.style.fontSize = '16px';
-  txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 directions open to ${fmtDistance(m.rangeM / 2)}`));
+  txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 Dirs open to ${fmtDistance(m.rangeM / 2)}`));
   const ul = h('ul', 'ms-ggbr-list');
   for (const x of m.sectors) {
     // Each blocked direction with its arrow, which turns with the map.
     const li = h('li');
     if (x.blockedBy && x.reachM < m.rangeM) li.append(compassNode(x.compass, x.bearingDeg), `: ${x.blockedBy}, ${fmtDistance(x.reachM)}`);
-    else if (x.step === 'nogo') li.append(compassNode(x.compass, x.bearingDeg), ': NO-GO ground');
+    else if (x.step === 'nogo') li.append(compassNode(x.compass, x.bearingDeg), ': NO-GO Gr');
     if (li.childNodes.length) ul.append(li);
   }
   if (!ul.childElementCount) ul.append(h('li', undefined, `Nothing blocks the way within ${fmtDistance(m.rangeM)}`));
@@ -260,7 +260,7 @@ registerBriefSection({
     const m = v.going?.movement;
     if (!m) return [];
     return [
-      `${RATING_LABEL[m.rating]}: ${m.open} of 8 directions open to ${fmtDistance(m.rangeM / 2)}`,
+      `${RATING_LABEL[m.rating]}: ${m.open} of 8 Dirs open to ${fmtDistance(m.rangeM / 2)}`,
       ...m.sectors.filter((x) => x.blockedBy && x.reachM < m.rangeM).map((x) => `${x.compass}: ${x.blockedBy}, ${fmtDistance(x.reachM)}`),
     ];
   },

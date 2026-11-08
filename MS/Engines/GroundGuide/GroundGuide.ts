@@ -1131,7 +1131,7 @@ export default class GroundGuide {
     const version = this._roads?.dataVersion || undefined;
     let access: GroundGuideAccess;
     if (!target) {
-      access = { status: 'none', mode, to: '', msr: false, text: `No MSR or ${tracked ? 'Tankable' : 'All-Weather'} Road within ${fmtDistance(radiusM)}`, dataVersion: version };
+      access = { status: 'none', mode, to: '', msr: false, text: `No MSR or ${tracked ? 'Tankable' : 'All-Weather'} Rd within ${fmtDistance(radiusM)}`, dataVersion: version };
     } else if (target.distanceM <= 150) {
       access = { status: 'on', mode, to: roadLabel(target), msr: !!target.attrs.m, text: `On ${target.attrs.m ? 'MSR ' : ''}${roadLabel(target)} (${fmtDistance(target.distanceM)})`, dataVersion: version };
     } else {
@@ -1146,7 +1146,7 @@ export default class GroundGuide {
         const offM = p0 ? GroundGuide._groundM(at, lngLatToMercator(p0[0], p0[1]) as MercXY) : 0;
         const roadM = r.km * 1000;
         const cross = offM >= 150 ? `${fmtDistance(offM)} Cross-Country` : '';
-        const byRoad = roadM >= 50 ? `${fmtDistance(roadM)} by Road · ${Math.max(1, Math.round(r.min ?? 0))} min` : '';
+        const byRoad = roadM >= 50 ? `${fmtDistance(roadM)} by Rd · ${Math.max(1, Math.round(r.min ?? 0))} min` : '';
         const weakest = roadM < 50
           ? undefined
           : r.limitingCrossing
@@ -1162,7 +1162,7 @@ export default class GroundGuide {
         const blocked = /travel mode|restriction/i.test(r.error ?? '');
         access = {
           status: blocked ? 'blocked' : 'error', mode, to: roadLabel(target), msr: !!target.attrs.m,
-          text: blocked ? `No Road Out for ${modeLabel} to ${name}` : 'Road server did not answer',
+          text: blocked ? `No Rd Out for ${modeLabel} to ${name}` : 'Road server did not answer',
           detail: blocked ? String(r.error).replace(/^.*?they close:\s*/i, 'Closed by: ').slice(0, 220) : undefined,
           dataVersion: version,
         };
@@ -1173,7 +1173,7 @@ export default class GroundGuide {
     this._badge.toast(
       {
         verdict: access.status === 'ok' || access.status === 'on' ? 'ok' : 'caution',
-        title: `Way Out by Road · ${modeLabel}`,
+        title: `Way Out by Rd · ${modeLabel}`,
         lines: [access.text, access.detail ?? ''].filter(Boolean),
       },
       access.status === 'ok' ? 8000 : 6000,
@@ -1238,7 +1238,7 @@ export default class GroundGuide {
   /** `auditPlacements()` with the results panel: progress while it runs, then the list (click a row to zoom to the symbol). */
   async openAudit(): Promise<GroundGuideAudit> {
     if (!this.isActive) {
-      this._toastUnavailable('Ground check');
+      this._toastUnavailable('Gr Check');
       return this._auditGraphics([]);
     }
     this._auditPanel.showProgress(0, this._placedGraphics().length);
@@ -1251,7 +1251,7 @@ export default class GroundGuide {
   /** Judge one symbol and show why in the panel (context menu: "Ground check…"). */
   async explain(graphic: any): Promise<GroundGuideAuditEntry | null> {
     if (!this.isActive) {
-      this._toastUnavailable('Ground check');
+      this._toastUnavailable('Gr Check');
       return null;
     }
     const audit = await this._auditGraphics([graphic], { refreshStamps: true });
@@ -1262,10 +1262,10 @@ export default class GroundGuide {
         : audit.outside
           ? 'Outside terrain data coverage.'
           : 'Terrain data could not be loaded for this symbol.';
-      this._badge.toast({ verdict: 'unknown', title: 'Ground check', lines: [why] }, 4000);
+      this._badge.toast({ verdict: 'unknown', title: 'Gr Check', lines: [why] }, 4000);
       return null;
     }
-    this._auditPanel.show(audit, this._panelHandlers(() => void this.explain(graphic)), { title: 'Ground check', focus: entry });
+    this._auditPanel.show(audit, this._panelHandlers(() => void this.explain(graphic)), { title: 'Gr Check', focus: entry });
     return entry;
   }
 
@@ -1285,7 +1285,7 @@ export default class GroundGuide {
             verdict: worse[0].verdict,
             title: worse.length === 1 ? 'Placement changed' : `${worse.length} placements changed`,
             lines: worse.slice(0, 3).map((e) => `${e.name}: ${e.message}`),
-            hint: 'Right-click a symbol, Ground check, for details.',
+            hint: 'Right-click a symbol, Gr Check, for details.',
           },
           5000,
         );
@@ -1494,7 +1494,7 @@ export default class GroundGuide {
     if (!found.at) {
       return found.loading
         ? none('loading', 'Terrain data is still loading, try again in a moment')
-        : none('no-ground', `No usable ground within ${fmtDistance(found.searchedM)}`, found.searchedM);
+        : none('no-ground', `No usable Gr within ${fmtDistance(found.searchedM)}`, found.searchedM);
     }
     const target = this._withMerc(d.geometry, found.at);
     const px = target && this._settleOnScreen(view, target, d.sidc);
@@ -1507,7 +1507,7 @@ export default class GroundGuide {
       compass,
       verdict: found.verdict,
       searchedM: found.searchedM,
-      message: `Moved ${fmtDistance(found.distanceM)} ${compass} to ${found.verdict === 'ok' ? 'usable ground' : 'the nearest usable ground'}`,
+      message: `Moved ${fmtDistance(found.distanceM)} ${compass} to ${found.verdict === 'ok' ? 'usable Gr' : 'the nearest usable Gr'}`,
     };
     this._announceSnap(result);
     // The armed symbol's own click handler finishes the draw at this spot, so every point
@@ -2222,9 +2222,9 @@ export default class GroundGuide {
       const { nearest, rangeM } = this._scanNearest(ctx, pts[0][0], pts[0][1], false, cp);
       if (nearest) {
         v.nearest = nearest;
-        v.detail = `Nearest suitable ground: ${nearest.className}, ${fmtDistance(nearest.distanceM)} to the ${nearest.compass}`;
+        v.detail = `Nearest suitable Gr: ${nearest.className}, ${fmtDistance(nearest.distanceM)} to the ${nearest.compass}`;
       } else if (rangeM > 0) {
-        v.detail = `No suitable ground within ${fmtDistance(rangeM)}`;
+        v.detail = `No suitable Gr within ${fmtDistance(rangeM)}`;
         v.noneWithinM = rangeM;
       }
       return;
@@ -2407,7 +2407,7 @@ export default class GroundGuide {
     return {
       kind: 'no-go',
       classCode: code ?? -1,
-      className: code !== null ? (this._rules?.classes?.[String(code)]?.label ?? `class ${code}`) : 'NO-GO ground',
+      className: code !== null ? (this._rules?.classes?.[String(code)]?.label ?? `class ${code}`) : 'NO-GO Gr',
       distanceM: distM,
       from: [mx, my],
       to,
@@ -2495,7 +2495,7 @@ export default class GroundGuide {
       stretches,
       classCode: v.classCode,
       className: v.className,
-      label: `${v.className ?? 'NO-GO'} (${Math.max(1, Math.round(v.fraction * 100))}% of the shape)`,
+      label: `${v.className ?? 'NO-GO'} (${Math.max(1, Math.round(v.fraction * 100))}% of Frontage)`,
     };
     v.indicators.push(ind);
   }
@@ -3241,7 +3241,7 @@ export default class GroundGuide {
   private _causeText(cause: GoingCause, cls: number | null | undefined, coarse: boolean, season: GoingSeason): string | null {
     if (cause === 'class') return cls !== null && cls !== undefined ? plainLabel(this._rules?.classes?.[String(cls)]?.label ?? '') || null : null;
     if (cause === 'soil') return coarse ? (season === 'dry' ? 'Loose sand' : 'Wet sand') : season === 'dry' ? 'Soft soil' : 'Soft soil after rain';
-    if (cause === 'wet') return 'Flood-prone or waterlogged ground';
+    if (cause === 'wet') return 'Flood-prone or waterlogged Gr';
     return null;
   }
 

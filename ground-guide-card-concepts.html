@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card Visual Concepts</title>
+<!--
+  PAMS8 Ground Guide: creative ways to show what the cursor card already knows, next to today's card (8 Nov 2026).
+  NOTHING HERE IS BUILT YET. Pick a reading at the top; every picture redraws from it. Decide at the bottom.
+  The readings are REAL: the live guide (Tracked Vehicle, Platoon, 525 m frontage facing N, Dry, Nov) at seven spots
+  near Jhelum, read from the verdict the card was given (GroundGuideBadge.show). The 1.5 km terrain patches are REAL:
+  48 x 48 cells of 32 m read with the guide's own tile reader (_read) and profile (tracked), coloured as the overlay
+  colours them (Suitable / Marginal within 250 m of NO-GO / SLOW-GO / NO-GO). "Clear ground" is worked out in this page
+  from those patches (the nearest place the whole 525 m front is out of NO-GO); in the app the S Quick Fix search would
+  give it. One self-contained file: no network, no build. Picks are kept in this browser only.
+-->
+<style>
+:root{--bg:#0f1318;--panel:#171c22;--panel2:#1c2229;--line:#2a323b;--line2:#39434f;--tx:#e8ebee;--soft:#a3acb6;--faint:#7f8994;--acc:#8ec1ea;--acc-ink:#0d1620;--hair:rgba(255,255,255,.08)}
+*{box-sizing:border-box}
+html{scroll-padding-top:70px}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14.5px/1.55 system-ui,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.pg{max-width:1320px;margin:0 auto;padding:0 16px 96px}
+h1{font-size:30px;line-height:1.15;margin:34px 0 10px;letter-spacing:-.01em}
+h2{font-size:22px;margin:52px 0 4px;padding-top:18px;border-top:1px solid var(--line)}
+h3{font-size:18px;margin:0}
+p{margin:6px 0 10px;max-width:82ch}
+.lede{font-size:16px;color:#c8cfd6;max-width:80ch}
+.gintro{color:var(--soft);max-width:82ch;margin:2px 0 16px}
+code{font:12.5px/1.4 ui-monospace,Consolas,monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;color:#d7e2ec}
+.bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);font-size:13.5px;color:var(--soft)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;color:var(--tx);background:var(--panel2);border:0;border-left:1px solid var(--line2);padding:6px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);font-weight:650}
+.seg button:focus-visible,.btn:focus-visible,.lnk:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.seg i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.sp{flex:1}
+.btn{font:inherit;font-weight:650;font-size:13.5px;color:var(--acc-ink);background:var(--acc);border:0;border-radius:8px;padding:7px 14px;cursor:pointer}
+.lnk{font:inherit;font-size:13px;color:var(--acc);background:none;border:1px solid var(--line2);border-radius:7px;padding:4px 10px;cursor:pointer}
+.ctx{display:flex;flex-wrap:wrap;gap:6px 18px;margin:14px 0 0;font-size:13.5px;color:var(--soft)}
+.ctx b{color:var(--tx);font-weight:650}
+
+/* layout */
+.today{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:start;margin-top:12px}
+.today .notes{max-width:60ch}
+.today .notes li{margin:5px 0;color:#c8cfd6}
+.cc{margin:34px 0 0;padding:22px 0 0;border-top:1px dashed var(--line)}
+.cc-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.cc-n{font:700 15px/1 system-ui;color:var(--acc);min-width:24px}
+.cc-idea{color:#c8cfd6;margin:6px 0 4px;max-width:86ch}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.tag{font-size:12.5px;padding:2px 9px;border-radius:999px;border:1px solid var(--line2);color:#c8cfd6;background:var(--panel2)}
+.tag.ok{border-color:#2a5a3b;color:#9fe3bb;background:#16301f}
+.tag.mid{border-color:#5a4a22;color:#ffd99a;background:#2e2410}
+.tag.rec{border-color:#2a5a3b;color:#9fe3bb;background:#16301f;font-weight:650}
+.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;align-items:start}
+.vw{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.vw-h{font-size:13.5px;font-weight:650;color:#e1e6eb;margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.vw-h small{font-weight:400;color:var(--soft)}
+.stg{border-radius:10px;padding:14px 10px;display:flex;justify-content:center;align-items:flex-start;gap:12px;flex-wrap:wrap;
+  background:radial-gradient(38% 30% at 18% 22%,rgba(168,150,104,.5),transparent 70%),radial-gradient(30% 40% at 82% 70%,rgba(62,84,52,.7),transparent 70%),linear-gradient(160deg,#625b41,#4f553a 45%,#655d43 75%,#474d35)}
+.strip{display:flex;gap:12px;overflow-x:auto;padding:10px 2px 4px;margin-top:12px;border-top:1px solid var(--line)}
+.strip figure{margin:0;flex:none;text-align:center}
+.strip figcaption{font-size:12.5px;color:var(--soft);margin-top:4px}
+.z55{zoom:.55}
+.z75{zoom:.75}
+
+/* ===== today's card (recreated from GroundGuideBadge.ts) ===== */
+.tc{--c:#5b6470;--fg:#fff;width:320px;max-width:100%;border-radius:11px;overflow:hidden;font:400 13px/1.4 system-ui,"Segoe UI",Arial,sans-serif;color:#f1f3f6;background:#1b1f25;border:1.5px solid var(--c);box-shadow:0 6px 18px rgba(0,0,0,.42);text-align:left}
+.tc-bar{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;padding:8px 12px;background:var(--c);color:var(--fg);font-weight:650;font-size:14.5px;line-height:1.25}
+.tc-bar>.ic{flex:none;width:18px;height:18px}
+.tc-title{flex:1 1 0;min-width:0}
+.tc-pills{display:flex;gap:4px;margin-left:auto}
+.tc-pill{display:flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.14);font-size:12px;font-weight:600;white-space:nowrap}
+.tc-pill .ic{width:14px;height:14px}
+.tc-kq{display:inline-grid;place-items:center;min-width:16px;height:16px;border-radius:4px;background:linear-gradient(#3f8f5b,#2b6b42);border:1px solid #5fc183;color:#fff;font:700 10px/1 ui-monospace,Consolas,monospace}
+.tc-for{flex:1 1 100%;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
+.tc-for .ic{width:16px;height:16px}
+.tc-when{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-weight:500;opacity:.88}
+.tc-row{display:grid;grid-template-columns:86px minmax(0,1fr);column-gap:10px;row-gap:5px;padding:9px 12px 10px;border-top:1px solid var(--hair)}
+.tc-row:first-of-type{border-top:0}
+.tc-wide{grid-template-columns:minmax(0,1fr)}
+.tc-cap{font-size:12px;color:#a9b2bc;padding-top:2px}
+.tc-b{font-weight:600;color:#fff;font-size:14px}
+.tc-dim{color:#a9b2bc}
+.tc-facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--hair)}
+.tc-fact{min-width:0;padding:8px 12px 9px}
+.tc-fact+.tc-fact{border-left:1px solid var(--hair)}
+.tc-fk{font-size:11.5px;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-fv{margin-top:2px;font-weight:700;font-size:13.5px;white-space:nowrap}
+.tc-fd{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%}
+.tc-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.tc-scale span{font:700 11px/1 system-ui,"Segoe UI",Arial,sans-serif;letter-spacing:.03em;text-align:center;padding:5px 0 4px;border-radius:3px;background:rgba(255,255,255,.06);color:#7f8893}
+.tc-scale .go{background:#2fa862;color:#fff}.tc-scale .slow{background:#f0932b;color:#1b1f25}.tc-scale .nogo{background:#e5484d;color:#fff}
+.tc-track{height:6px;border-radius:3px;background:rgba(255,255,255,.1);margin-top:5px;overflow:hidden}
+.tc-track i{display:block;height:100%;background:var(--c)}
+.tc-nrow{grid-template-columns:62px minmax(0,1fr)}
+.tc-ni+.tc-ni{margin-top:7px}
+.tc-nh{display:flex;align-items:baseline;gap:6px}
+.tc-nd{flex:none;align-self:center;width:9px;height:9px;border-radius:50%}
+.tc-nn{flex:1;min-width:0;font-weight:600;color:#fff}
+.tc-nf{flex:none;font-weight:700;color:#fff;white-space:nowrap}
+.tc-ni:first-child .tc-nf{font-size:14px}
+.tc-nw{padding-left:15px;font-size:11.5px;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-foot{display:flex;align-items:center;gap:6px;padding:7px 12px;border-top:1px solid var(--hair);font-size:12.5px;color:#a9b2bc}
+.tc-foot .sp{flex:1}
+.kc{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:3px;background:linear-gradient(#3a414b,#2a3038);border:1px solid #545e6b;border-bottom-width:2px;font:700 9.5px/1 system-ui;color:#e8ebee;opacity:.85}
+.tc-slot{padding:9px 12px 10px;border-top:1px solid var(--hair)}
+.tc-slot .tc-cap{margin-bottom:6px}
+
+/* chip */
+.chip{display:inline-flex;align-items:center;gap:7px;padding:5px 7px 5px 11px;border-radius:999px;font:750 13.5px/1 system-ui,"Segoe UI",Arial,sans-serif;box-shadow:0 3px 10px rgba(0,0,0,.35);white-space:nowrap}
+.chip .ic{width:16px;height:16px;flex:none}
+.chip small{font-size:12.5px;font-weight:600}
+.chip .hk{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:4px;background:rgba(0,0,0,.22);font-size:12px;opacity:.8}
+
+/* concept cards share a shell */
+.cv{width:320px;max-width:100%;border-radius:11px;overflow:hidden;background:#1b1f25;color:#f1f3f6;font:400 13.5px/1.4 system-ui,"Segoe UI",Arial,sans-serif;border:1.5px solid var(--c);box-shadow:0 6px 18px rgba(0,0,0,.42);text-align:left}
+.cv-top{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--c);color:var(--fg)}
+.cv-top .ic{width:18px;height:18px;flex:none}
+.cv-w{font-weight:780;font-size:16px;letter-spacing:.01em}
+.cv-t{font-weight:600;font-size:13.5px;flex:1;min-width:0;opacity:.95}
+.cv-mode{padding:6px 12px;font-size:12.5px;color:#c9d1d9;background:#222830;display:flex;justify-content:space-between;gap:8px}
+.cv-body{padding:10px 12px}
+.cv-list{display:grid;gap:4px;font-size:13px;margin-top:8px}
+.cv-list div{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:6px;align-items:baseline}
+.cv-list .num{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-weight:750;font-size:12px;color:#14181d}
+.cv-list b{font-weight:650}
+.cv-list small{grid-column:2/-1;color:#a9b2bc;font-size:12.5px;margin-top:-3px}
+.cv-foot{padding:6px 12px;border-top:1px solid var(--hair);font-size:12.5px;color:#a9b2bc}
+.big{font-size:20px;font-weight:780;line-height:1.2}
+.w-go{color:#74dca3}.w-marg{color:#f1d646}.w-slow{color:#ffb46b}.w-nogo{color:#ff8a8d}.w-clear{color:#74dca3}.w-soft{color:#c3cbd3}
+.w-go,.w-marg,.w-slow,.w-nogo{white-space:nowrap}
+
+/* check board */
+.bd{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.lamp{border-radius:7px;padding:7px 8px 8px;min-height:58px;background:#222830;border:1px solid #303843;color:#c3cbd3}
+.lamp .l{font-size:12px;color:#8f99a4;display:flex;align-items:center;gap:5px}
+.lamp .v{font-size:13.5px;font-weight:700;margin-top:3px;line-height:1.25}
+.lamp .l i{width:7px;height:7px;border-radius:50%;background:#2fa862;display:inline-block}
+.lamp.marg{background:#f1d646;border-color:#f1d646;color:#14181d}
+.lamp.slow{background:#f39c12;border-color:#f39c12;color:#14181d}
+.lamp.nogo{background:#c62f35;border-color:#c62f35;color:#fff}
+.lamp.marg .l,.lamp.slow .l{color:#3a2a08}.lamp.nogo .l{color:#ffd6d7}
+.lamp.marg .l i,.lamp.slow .l i,.lamp.nogo .l i{display:none}
+.lamps{display:flex;gap:4px;padding:7px 12px;background:#222830;border-top:1px solid var(--hair)}
+.lamps span{flex:1;text-align:center;font-size:12px;font-weight:650;padding:3px 0;border-radius:5px;background:#2b323c;color:#8f99a4}
+.lamps span.marg{background:#f1d646;color:#14181d}.lamps span.slow{background:#f39c12;color:#14181d}.lamps span.nogo{background:#c62f35;color:#fff}
+
+/* brevity */
+.br{padding:10px 12px 11px}
+.br-1{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.br-w{font-weight:800;font-size:15px;padding:3px 10px;border-radius:6px}
+.br-1 span{font-size:15px;font-weight:650}
+.br-2{font-size:15px;margin-top:6px}
+.br-3{font-size:12.5px;color:#a9b2bc;margin-top:6px}
+
+/* decide */
+.dec{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
+.qs{display:grid;gap:8px}
+.qrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.qrow b{font-weight:650}
+.qrow small{display:block;color:var(--soft);font-size:12.5px}
+select{font:inherit;font-size:13px;color:var(--tx);background:var(--panel2);border:1px solid var(--line2);border-radius:7px;padding:5px 8px;max-width:220px}
+select:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.qs label.ck{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.ck input{accent-color:var(--acc);width:17px;height:17px;margin-top:2px;flex:none}
+.ck small{display:block;color:var(--soft);font-size:12.5px}
+.out{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.out pre{white-space:pre-wrap;font:12.5px/1.55 ui-monospace,Consolas,monospace;color:#d7e2ec;margin:10px 0 0}
+.okk{font-size:13px;color:#9fe3bb;margin-left:8px}
+@media (max-width:720px){.today{grid-template-columns:minmax(0,1fr)}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="pg">
+<h1>Ground Guide card: creative views</h1>
+<p class="lede">Eight ways to show what the cursor card already knows, each next to today's card. Every picture is
+drawn from real readings: a Tracked Vehicle platoon (525 m frontage, facing N) at seven spots round Jhelum, and the
+real 1.5 km of terrain round each one. Choose a reading below and every picture redraws. Today's card stays; each
+idea can be its own card style, sit inside today's card, or sit beside it on the map.</p>
+
+<div class="bar">
+  <span>Reading</span>
+  <div class="seg" id="seg" role="group" aria-label="Reading"></div>
+  <span class="sp"></span>
+  <button class="btn" type="button" data-copy>Copy decision</button>
+</div>
+<div class="ctx" id="ctx"></div>
+
+<h2>Today's card</h2>
+<p class="gintro">Recreated from GroundGuideBadge.ts with the reading's real values, and the hint chip (H).</p>
+<div class="today">
+  <div style="display:flex;flex-direction:column;gap:12px;align-items:flex-start"><div id="todayCard"></div><div id="todayChip"></div></div>
+  <ul class="notes">
+    <li>The card says everything in words and one compass. It does not show <b>where</b> the trouble is relative to the unit's frontage, <b>how much room</b> there is, or <b>which check</b> failed when several did.</li>
+    <li>In the three NO-GO readings (Encroaching, Partly in, Unsuitable) nothing on the card points to the nearest ground the platoon could use; the S Quick Fix knows it but the card doesn't show it. The views below add it as "clear ground".</li>
+    <li>Each idea below uses only what the guide already reads. Where an idea needs something new, its tags say so.</li>
+  </ul>
+</div>
+
+<h2>Eight views</h2>
+<p class="gintro">For each: the view on its own, the same idea living with today's card, and a button to see it across all seven readings at once (the best test of whether it is decisive).</p>
+<div id="concepts"></div>
+
+<h2>The hint chip (H)</h2>
+<p class="gintro">The chip is the smallest read. Three ways to give it a direction or a proportion without growing it much.</p>
+<div class="views" id="chips"></div>
+
+<h2 id="decide">Decide</h2>
+<p class="gintro">Choose how each view should live, if at all. My pick is pre-selected. Then copy the text back to me.</p>
+<div class="dec">
+  <div class="qs" id="qs"></div>
+  <div class="out"><button class="btn" type="button" data-copy>Copy decision</button><span class="okk" id="copied" hidden>Copied</span><pre id="out"></pre></div>
+</div>
+</div>
+
+<script id="grids" type="application/json">{"go":"ssssssssmmmgggggggggggggggggggggggggggggggggsggg/ssmmmmmmmmmggggggggggggggggggggggggggggggggggggg/mmmmmmmmmmmggggggggggggggggggggggggggggggggggggg/mmmmmmmmmmgggggggggggggggggggggggggggggggggggggg/mmmmmmmmmggggggggggggggggggggggggggggggggggggggg/mmmmmmmmgggggggggggggggggggggggggggggggggggggggg/mmmmmmmggggggggggggggggggggggggggggggggggggggggg/sggggggggggggggggggggggggggggggggggggggggggggggg/ssgggggggggggggggggggggggggggggggggggggggggggggg/ssgggggggggggggggggggggggggggggggggggggggggggggg/sssggggggggggggggggggggggggggggggggggggggggggggg/sssggggggggggggggggggggggggggggggggggggggggggggg/ssgggggggggggggggggggggggggggggggggggggggggggggg/sggggggggggggggggggggggggggggggggggggggggggggggg/sggggggggggggggggggggggggggggggggggggggggggggggg/sggggggggggggggggggggggggggggggggggggggggggggggg/gggggggggggggggggggggggggggggggggggggggggggggggg/gggggggggggggggggggggggggggggggggggggggggggggggg/gggggggggggggggggggggggggggggggggggggggggggssggg/ggggggggggggggggssggggggggggggggggggggggggggssgg/gggggggggggggggggsssgggggggggggggggggggggggggsgg/ggggggggggggggggggggggggggggggggggggggggggggssgg/ggggggggggggggggggggggggggggggggggggggggggggsggg/ggggggggggggggggggggggggggggggggggggggggggggsggg/ggggggggggggggggggggggggggggggggggggggggggssgggg/gggggggggggggggggggggggggssgggggggggggggggssgggs/ssgsgsssggggggggggggggggssggggggggggggggggggggss/ggggsssggggggggggggggsssssggggggggggggggggssggsg/gggggggggggggggggssssssssgggggggggggggggggssggsg/ggggggggggggggggggsssggggggggggggsgggggggggsggsg/gggggggggggggggggggggggggggggggggggggggggggssgsg/ggggggggggggggggggggggggggggggggggggggggggggsgss/gggggggggggggggggggggggggggggggggggggggsggggsgss/ggggggggggggggggggggggggggggggggggggggssgssgssgs/ggggggggggggggggggggggggggggggggggggggssgssssggg/ggggggggggggggggggggggggggggggggggggggsggssgsggs/ggggggggggggggggggggggggggggggggggggggggggggssgg/gggggggggggggggggsggggggggggggggggggsgggggggssgg/ggggggggggggggggssgggggggggggggggggssggggggssssg/ggggggggggggggggssgggggggggggggggggsggggggsgggss/ggggggggggggggggsgggggggggggggggggssgggggsgggggg/ggggggggggggggggsggggggggggggggggssgggggsggggggg/gggggggggggggggssggggggggggggggggssggggsgggggggg/gggggggggggggggssgggggggggggggggssggggsggggggggg/gggggggggggggggssgggggggggggggggsggggsgggggggggg/gggggggggsssggssggggggggggggggggggggssgggggggggg/ggggggggggggggsgggggggggggggggggggggsgggggggggss/ggggggggggggggsgggggggggggggggggggggsgggggggggss","tight":"ggggggggggggggggggggggsggggggggggggggggggggssggs/ggggggggggggggggggggggggggggggggggggggggggggsggg/ggggggggggggggggggggggggggggggggggggggggggggsggg/gggggggggggggggggggggggggggggggggggssgggggggssgg/gggggggggggggggggggggggggggggggggggggggggggggsgg/gggggggggggggggggggggggggggggggggggggggggggsgggg/ggggggggggggggggggggggggggggggggggggggssggggsggg/gggggggggggggggggggggggggggggggggggggggssgsggggg/gggggggggggggggggggggggggggggggggggggggggggggggs/gggggggggggggggggggggggggggggggggggggsgggggggggg/ggggggggggggggggggggggggggggggggggssssssssggsssg/ggggggggggggggggggggggggggggggggsssssssgggggggsg/ggggggggggggggggggggggggggggggssssgggggggggggggg/ggggggggggggggggggggggggggggggssggsggggggggggggg/gggggggggggggggggggggggggggggsssgssggggggggggggg/gggggggggggggggggggggggggggggssgssgggggggggggggg/ggggggggggggggggggggggggggggsssgssgggggggggggggg/ggggggggggggggggggggggggggggssggssgggggggggggggg/gggggggggggggggggggggssgggggssggsggggggggggssgsg/ggggggggggggggggggggggssgggsssgggggggggggggsggsg/gggggggggggggggggggggggsggssssgsggggggggggsggggg/ggggggggggggggggggggggssgggggsgsgggggggggggggggg/ggggggggggggggggggggggsggggggggsgggggggggggggggg/ggggggggggggggggggggggsggggsggsggggggggggggggggg/ggggggggggggggggggggssggggssgggggggggggggggggggs/gggssgggggggggggggggssgggssggggggggggggggggggggg/ggssggggggggggggggggggggssgggggggggggggggggggggg/ssssggggggggggggggggssggsggggggggggggggggggggggg/sssgggggggggggggggggssggsggggggggggsgggggggggggs/gggggggggggsgggggggggsggsggggggggggsgggggggggssg/gggggggggggggggggggggssgsggggggggggsgggggggggggg/ggggggggggggggggggggggsgssgggsgggggggggggggggsss/gggggggggggggggggsggggsgssgssggggggggggggggggggg/ggggggggggggggggssgssgssgsgsgggggggggggggggggggg/ggggggggggggggggssgssssgggsggggggggggggggggggggs/ggggggggggggggggsggssgsggsgggggggggsgggggggggggs/ggggggggggggggggggggggssgggsggggggssggsggggggggs/ggggggggggggggsgggggggssggssgggggssggssggggggggg/gggggggggggggssggggggssssggsssggssgsssgggggggggg/gggggggggggggsggggggsgggssgggsgggggssggggggggggg/ggggggggggggssgggggsgggggggggggggsssgggggggggggg/gggggggggggssgggggsgggggggggsgggssgggggggggggssg/gggggggggggssggggsggggggggggggggssggggggggggsssg/ggggggggggssggggsgggggggggggsssggsgggggggggsssgg/ggggggggggsggggsgggggggggggssgssgssggggggggggggg/ggggggggggggggssggggggggggsggggsggggssgggggggggg/ggggggggggggggsgggggggggssggggggsgggssgggsgggggg/ggggggggggggggsgggggggggssggggggsgggssgggsgggggg","adj":"ssssssgsgssgsssssgsssggggggggggggggggsgsssssssss/ssssggssgsgsssssssgsgssggggggggggggggsgsssssssss/sssgsssssgsssssssggggggggggggggggggggsgsssssssss/gggsssssssgsssssgssggggggggggggggggggggsssssssss/ssgssssssssgssssggggggggggggggggggggggggssssssss/ssgsssssssssgsggggggggggggggggggggggggggssssssss/sssgsssssssssgsggggggggggggggggggggggggggggsssss/ssssgsssssssggggggggggggggggggggggggggggggggssss/sssssgsssssgsggggggggggggggggggggggggggggggggsss/sssssgsssggsggggggggggggggggggggggggggggsggggmss/ssssssgggssggggggggggggggggggggggggggggggsggmmms/ssssssssssgggggggggggggggggggggggggggggggggmmmmm/ssssssssssggggggggggggggggggggggggggggggggmmmmmm/sssssssssssggggggggggggggggggggggggggggggmmmmmmm/ssssssssggssggggggggggggggggggggggggggggmmmmmmmm/sssssssggggggggggggggggggggggggmmmmmgggmmmmmmsmm/ssssssgggggggggggggggggggggggmmmmmmmmmmmmmmmmmsm/ssssssggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmn/ssssssgggggggggggggggggggggmmmmmmmmmmmmmmmmmmmnn/sssssssggggggggggggggggggggmmmmmmmmmmmmmmmmmmssn/sssssssgggggggggggggggggggmmmmmmmmmmmmmmmmmmnnss/sssssgggggggggggggggsggmmmmmmmmmmmmmmmmmmmmnnnns/sssgggggggggggggggggggmmmmmmmmmmmnmmmmmmmmmnnnnn/ssgggggggggggggggggggmmmmmmmmmmmmsnmmmmmmmnnnnnn/ggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmnnnnnnn/ggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmnnnnnnn/ggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmnnnnnnnn/ggggggggggggggggmmmmmmmmmmmmnnmmmmmmmmmnnnnnnnnn/gggggggggggggggmmmmmmmmmmmmnmmmmmmmmmsnnnnnnnnnn/ggggggggggggggmmmmmmmmmmmmmmmmmmmmsssnnnnnnnnnnn/ggggggggggmmmmmmmmmmmmmmmmmmmmmmmmnnnnnnnnnnnnns/ggggggmmmmmmmmmmmmmmmmmmmmsssssnnmmnnnnnnnnnnnns/mmmmmmmmmmmmmmmmmmmmmmnnnnnnnmmmmmmnnnnnnnnnnnns/mmmmmmmmmmmmmmmmmmmmnmmmmmmmmmmmmmnnnnnnnnnnnnnn/mmmmmmmmmmmmmmmmmmmnmmmmmmmmmmmmmnnnnnnnnnnnnnnn/mmmmmmmmmmmmmmmmmmnmmmmmmmmmmmmmnnnnnnnnnnnnnnnn/mmmmmmmmmmmmmmmmnnmmmmmmmmmmmnnnnnnnnnnnnnnnnnnn/mmmmmmmmmmmmnnnnnmmmmmmssssnnnnnnnnnnnnnnnnnnnnn/mmmmmmmmnnnnnnnnmmmmmmsnnnnnnnnnnnnnnnnnnnnnnnnn/nnnnnnnnnnnnnnsmmmmmsnnnnnnnnnnnnnnnnnnnnnnnnnnn/nnnnnnnnnnnnsmmmmmmnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/nnnsnnnsnnmmmmmmmnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/snnssnnnssmmmmmnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/sssnnssnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/ssssnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/ssmmnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/mnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn","enc":"ggggggggggsssggsgsggsgggssssssssssssssssgggggggg/gggggggggsssssgsggssgggssssssssssssssssggggggggg/gggggggggssssggssssssggsssssssssssssssgggggggggg/ggggggggsggggssssssssggssssssssssssssggggggggggg/ggsssssggssssssssssssggsssssssssssgggggggggggggg/sssggggssssgssgsssssgggssssssssssggggggggggggggg/gggsssssssgggggsssgggggssssssssggggggggggggggggg/gssssssssggggggssgggggssssssssgggggggggggggggggg/gsssssggggggggggggggggssssssggggggggggggmmmmmmmm/sgssggggggggggggggggggssssggggggggggggmmmmmmmmmm/gggggggggggggggggggggggsgggggggggggggmmmmmmmmmmm/ggggggggggggggggggggggggggggggggggggmmmmmmmmmmmm/gggggggggggggggggggggggggggggggggggmmmmmmmmmmmmm/ggggggggggggggggggggggggggggggggggmmmmmmmmmmmmmm/ggggggggggggggggggggggggggggggmmmmmmmmmmmmmmmmmm/ggggggggggggggggggggggggggggmmmmmmmmmmmmmmnnnnnn/ggggggggggggggggggggggggggmmmmmmmmmmmmmmmnnnnnnn/ggggggggggggggggggggggggmmmmmmmmmmmmmmmmnnnnnnns/gggggggggggggggggggggggmmmmmmmmmmmmmmmmnnnnssnns/gggggggggggggggggggggmmmmmmmmmmmmmmmmmnnnnsssssn/ggggggggggggggggggggmmmmmmmmmmmmmmmmnnnnnnssssss/gggggggggggggggggggmmmmmmmmmmmmmnnnnnnnnnsssssmm/ggggggggggggggggggmmmmmmmmmmmmnmmsnnnnnnsssmmnnn/gggggggggggggggggmmmmmmmmmmmnnmmsnnnnnnsssnnnnnn/ggggggggggggggggmmmmmmmmmmmnnnssnnnnnnnnnnnnnnnn/ggggggggggggggggmmmmmmmmmnnnnnnnnnnnnnnnnnnnnnnn/gggggggggggggggmmmmmmmmmnnnnnnnnnnnnnnnnnnnnnnnn/gggggggggggggggmmmmmmmmnnnnnnnnnnnnnnnnnnnssssnn/ggggggggggggggmmmmmmmmnnnnnnnnnnnnnnnnnmnmnnnnnn/ggggggggggggggmmmmmmmmnnnnnnnnnnnnnmmmmmmmmnnnnn/gggggggggggggmmmmmmmmnnnnnnnnnnnnmmmmmmmmmmnnnnn/gggggggggggggmmmmmmmmnnnnnnnnnsnsmmmmmmmmmmnnnnn/gggggggggggggmmmmmmmnnnnnnnnnsnmmmmmmmmmmnnnnnnn/ggggggggggggmmmmmmmmnnnnnsssnmmmmmmmmmmmnnnnnnnn/ggggggggggggmmmmmmmmnnnnnsssnmmmmmmmmmmnnnnnnnnn/ggggggggggggmmmmmmmnnnnnsssnmmmmmmmmmsnnnnnnnnnn/ggggggggggggmmmmmmmnnnnnssnmmmmmmmmmssnnnnnnnnnn/ggggggggggggmmmmmmmnnnnssnsmmmmmmmmnnnnnnnnnnnnn/ggggggggggggmmmmmmmnnnnsnsmmmmmmmmnnnnnnnnnnnnnn/ggggggggggggmmmmmmmnnnnnssmmmmmmmsnnnnnnnnnnnnnn/ggggggggggggmmmmmmmnnnnnssmmsmmmmnnnnnnnnnnnnnnn/ggggggggggggmmmmmmmnnnnnsssmssmmmnnnnnnnnnnnnnnn/ggggggggggggmmmmmmmnnnnnsnssssmmmnnnnnnnnnnnnnnn/ggggggggggggmmmmmmmnnnnnnnssssmmmnnnnnnnnnnnnnnn/ggggggggggggmmmmmmmnnnnnnnnsmmmmnnnnnnnnnnnnnnnn/ggggggggggmmmmmmmmmnnnnnnnnsmmmmnnnnnnnnnnnnnnnn/ggggggggmmmmmmmmmmmnnnnnnnnmmmmnnnnnnnnnnnnnnnnn/gggggggmmmmmmmmmmmmnnnnnnnnmmnnnnnnnnnnnnnnnnnnn","part":"sssssggssssssssssssssssssssmssssssssnssnnnnmmmmm/gssggsssssssssssssssssssssssmssssssnnsnnnnnnmmmm/gggssssssssssssssssssssssssssmssssnnnnnnnnmnmmmm/gsssssssssssssssssssssssssssssmsssnnnnnssmmmnmmm/gsssssssssssssssssssssssssssssssnnsnnsnsmmmnmmmm/gsssssssssssssssssssssssssssssssssnnsssnsmmmmmmm/gsssssssssssssssssssssssssssssnnssnnssssnnnnnnnm/gssssssssssssssssssssssssssssnnnnsssssmsnnnnnnnn/gsssssssssssssssssssssssssssmnnnnnssssnssssmmnnn/gssssssssssssssssssssssssnsmmnnnsnnmnnnsssssmmnn/sgsssssssssssssssssssssssmmmmnnnsnnssnsmsmssmmmn/sgsssssssssssssssssssssmmmmmnnnnnnnmssmnmsmsmmmn/sgsssssssssssssssssssmmmmnmmmnnnsnnmssmmmsmmsmnn/sgssssssssssssssssmmmnmmmmmmmnnnnsmmsnsmmmsmmsnn/sgsssssssssssssssmmmmmmmmmmmmmnsnsnnsnmmmmmssnnn/sgssssssssssssssmmmmmmssnmmmmmnnnnnnnnmmmmmmnsnn/sgssssssssssssssmmmmmmmmmmmmmnnnnnnnsmmmmmmnnnsn/sgsssssssssssssmmmmmmmnmnmnmmnnnnnnsmmmmmnssnnns/sgsssssssssssssmmmmmmmmmmmmmmnnnsmmmmmmmmnnsnnnn/sgsssssssssssssmmmmmmmnnsnsnnnnmmmmmmmmmnnnssnnn/sgsssssssssssssssssmmmnsmnnnnsmmmmmmmmmnnnnnssnn/sgsssssssssssssssssmmmnsnnnnnsmmmmmmmmnnnnnnnssn/sgssssssssssssssssssssnnnnnnssmmmmmmmnnnnnnnnnss/ggssssssssssssssssssssnnnnsssmmmmmmmnnnnnnnnnnns/gggssssssssssssssssssnnnnnnsmmmmmmmnnnnnnnnnnnnn/gggssssssssssssssssssnsnnnsnsmmmmmnnnnnnnnnnnnnn/ggggggssssssssssssssnnnnnmmsnnnnnnnnnnnnnnnnnnnn/gggggggsssssssssssssnnnnsmmnnnnnnnnnnnnnnnnnnnnn/ggggggggssssssssssmnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/gggsggggmsssmmmmmmnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/ggggsggmmmssmmmmmsnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/ggggggmmmmmssmmmsnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/gggggmmmmmmsssmnnnnnnnnnnnnnnnnnnnmmssnnnnnnnnnn/ggggmmmmmmmmssmnnnnnnnnnnnnnnnnnmmmsssnnnnnnnnnn/gggmmmmmmmmmmnnnnnnnnnnnnnnnmmmmmmmsssnnnnnnnnnn/ggmmmmmmsmmmnnnnnnnnnnnnmmmmmmmmmmmsssnnnnnnnnnn/mmmmmmmmmsmssnnnnnnnnnnmmmmmmmmmmmmssnnnnnnnnnnn/mmmmmmmmmmnnssnnnnnnnmmmmmmmmmmmmmsnnnnnnnnnnnnn/mmmmmmmmmnnnnssnnnnnmmmmmmmmmmmmmmsssnnnnnnnnnnn/mmmmmmmmssnnnnssnmnmmmmmmmmmmmmmmmnnnnnnnnnnnnnn/mmmmmmmnnssnnnnssmmsmmmmmmmmmmmmmnnnnnnnnnnnnnnn/mmmmmmnnnnssnnnnmmmmsmmmmmmmmmmmnnnnnnnnnnnnnnnn/mmmmmmnnnnnssnnmmmmmmsmmmmmmmmmmnnnnnnnnnnnnnnnn/mmmmmnnnnnnnsnnmmmmmmsmmmmmmmmmmnnnnnnnnnnnnnnnn/mmmmnnnnnnnnssmmmmmmmmsmmmmmmmmmnnnnnnnnnnnnnnnn/mmmmnnnnnnnnnsmmmmmmmmmsmmmmmmmmnnnnnnnnnnnnnnnn/mmmnnnnnnnnnssmssmmsmmmmsmmmmmmnnnnnnnnnnnnnnnnn/mmnnnnnnnnnssssmmmmmmmmmmsmmmmnnnnnnnnnnnnnnnnnn","inn":"ggggggmmmmmmmmmmmmmmmmmmmmnnnnnnnnssmmmmmmmmsmmm/ggggggmmmmmmmmmmmmmmmmmmmmnnnnnnnnnsmmmmmmmmmsmm/ggggmmmmmmmmmmmmmmmmmmmmmnnnnnnnnnssmssmmsmmmmsm/ggmmmmmmmmmmmnnmmmmmmmmmnnnnnnnnnssssmmmmmmmmmms/gmmmmmmmmmmmnmmmmmmmmmsnnnnnnnnnnsssmmmmmmmmmmms/mmmmmmmmmmmmmmmmmmmsssnnnnnnnnnnnsssmmmmmmmmmmmm/mmmmmmmmmmmmmmmmmmmnnnnnnnnnnnnnssssmmmmmmmsmmmm/mmmmmmmmmmmsssssnnmmnnnnnnnnnnnnssnnmmmmmmmmmmns/mmmmmmmmnnnnnnmmmmmmnnnnnnnnnnnnsnnmmmmmmmmnnnnn/mmmmmmnmmmmmmmmmmmmnnnnnnnnnnnnnnnnmmmmnnnssnnnn/mmmmmnmmmmmmmmmmmmnnnnnnnnnnnnnnnnnnnnnnnnnssnnn/mmmmnmmmmmmmmmmmmnnnnnnnnnnnnnnnnnnnnnnnnnnnssnn/mmnnmmmmmmmmmmnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnssn/nnnmmmmmmsssnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnss/nnmmmmmmsnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnns/smmmmmsnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnns/mmmmmnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/mmmnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/mnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnsm/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnm/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnsssm/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnssmmmm/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnssmmmm/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnmnnnnnsssmmmm/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnmmmmnnnsssmmmmm/nnnnnnnnnnnnnnnnnnnnnnnnnnnnmmnnnmmmmnmnnnsmmmmm/nnnnnnnnnnnnnnnnnnnnnnnnnsssmmmmmmmmmnmssssmnnnn/nnnnnnnnnnnnnnnnnnnnnnnnmmmmmmmmmmmmmnmmmmmmmmmm/nnnnnnnnnnnnnnnnnnnnmmmmmmmmmmmmmmmmmnmnmmmmmmmm/nnnnnnnnnnnnnnnnnnmmmmmmmmmmmmmmmmmmmmmnmmmmmmmm/nnnnnnnnnnnnnnnnmmmmmmmmmmmmmmmmmmmmnmnmmmmmmmmm/nnnnnnnnnnnnnnnsmsmmmmmmmmmmmmmmmmmnnmmmmmmmmmmm/nnnnnnnnnnnnnnsssmmmmmmmmmmmmmmmmmnsmmmmmmmmmmmm/nnnnnnnnnnnnnssmmmmmmmmmmmmmmmmmmnmmmmmmmmmmmmmm/nnnnnnnnnnnnnsmmmmmmmmmmmmmmsssnnmmmmmmmmmmmmggg/nnnnnnnnnnnnsmmmmmmmmmmmmmmsnnmmmmmmmmmmmmmmgggg/nnnnnnnnnnnsmmmsssmmmmmmmmnnmmmmmmmmmmmmmmmggggg/nnnnnnnnnnnssmmssssssmmmmnmmmmmmmmmmmmmmmggggggg/nnnnnnnnnnsssmmssssssmmmmmmmmmmmmmmmmmmggggggggg/nnnnnnnnnsssssssssssssmmnsmmmmmmmmmmmmgggggggggg/nnnnnnnnnsssssssmmsssmmnmmmmmmmmmmmmmggggggggggg/nnnnnnnssssssmmmmmmmmmnnmmmmmmmmmmmggggggggggggg/snnnnnnmsssmmmmmmmmmnnmmmmmmmmmmgggggggggggggggg","slow":"nmmmmmmmmmmmmmmmgggggggsssgsssssgssssssgssssssgs/mmmmmmmmmmmmmgggggggggssssgssssssgssssssgssssgsg/mssmmmmmmmmggggggggggsssssgsssssssgssssssgssssgs/ssssssmmmmgggggggggggssssgsssssssssgsssssgssssgs/ssssssssggggggggggggsssssgssssssssssgsssssgssssg/sssssssssssggggggggssssssgsssssssssssgsssssgsssg/ssssssssssssssgggggssssssgssssssssssssgsssssgsss/ssssssssssssssssggsssssssgsssssssssssssgssgggggg/ssssssssssssssssssssssssgsssssssssssssggggsssgss/msssssssssssssssssssssssgssssssssggggggsssssssgg/smssssssssssssssssssssssgssssgggggssssssssssssss/ssmssssssssssssssssssssgggggggssssssssssssssssss/mssmsssssssssssssssggggggggsssssssssssssssssssss/smssmmmssssssssgggggggggssgsssssssssssssssssssss/ssmmmmsmmmmggggggggssssgsgssssssssssssssssssssss/msssssmmmmmmmggssssssssgsgssssssssssssssssssssss/smmmmmmmmmmssssssssssssmsgsssssssssssssssssssssg/sssssssssssssssssssssssmsmssssssssssssssssssssgs/mmssssssssssssssssssssmssmssssssssssssssssssggss/mmmmssssssssssssssssssmsmssssssssssssssssssgssss/nnmnmmssssssssssssssssmsmsssssssssssssssssgsssss/mmmmmmnnnsssssssssssssmsmsssssssssssssssssgsssss/mmmmmmmmmmsssssssnnnsmssmssssssssssssssssgssssss/mmmmmmmmmmmmsssssssssmsmssssnnssssssssssmsssssss/mmmmmmmmmmmmmmsssssssmsmsssssssssssssssmssssssss/mmmmmmmmmmmmmmmmsssssmsmssssssssnssssssmssssssss/mmmmmmmmmmmmmmmmmsssmsmsssssssssssssssmsssssssss/mmmmmmmmmmmmmmmmmsssmsmsssssssssssssmmssssssssss/ggggmmmmmmmggmmmssssmsmssssssssssssmnsssssssssss/gggggggggggggggmsssmssgsssssssssssmssnsssssssssg/ggggggggggggggggsssgssgsssssssssssmsssssssssssgs/gggggggggggggggssssgsgsssssssssssmssssnssssssmss/ggggggggggggggssssgssgssssssssssmssssssssssmmsss/gggggggggggggsssssgssgsssssssssmsssssssnssmsssss/ggggggggggggssssssgsgssssssssssgssssssssssmsssss/gggggggggggsssssssgsgsssssssssgsssssssssmmssssss/ggggggggggssssssssgsgssssssssgsssssssssmssssssss/ggggggggggssssssssgsgsssssssgsssssssssmsnsssssss/gggggggggssssssssgsgsssssssgsssssssmmmmmsmmmmmmm/ggggggggsssssssssgsgssssssgssssggmmmmmmmmmmmmmmm/ggggggggsssssssssgsgsssssgsssggsggmsssssssssssss/gggggggsssssssssgssgssssggggggggsssssssssnssssss/gggggggsssssssssgsgssssggggggsssssssssssssssssss/gggggsssssssssssgsgsssgggsssssssssssssssssssssss/ggggsssssssssssgsgssggssssssssssssssssssssssnsss/ggggsssssssssssggsggssssssssssssssssssssssssssss/gggsssssssssssgsgggssssssssssssssgsssssssssssssn/ggssssssssssssggggsssssssssssssssgggssssssssssss"}</script>
+
+<script>
+(function(){
+'use strict';
+/* ---------- data ---------- */
+var G = JSON.parse(document.getElementById('grids').textContent);
+Object.keys(G).forEach(function(k){ G[k] = G[k].split('/'); });
+var NC = 48, CELL = 32, SPAN = NC * CELL;       /* 1536 m across */
+var WHY_WATER = 'Water all year round: needs a bridge, ferry or boats to cross.';
+var R = {
+  go:   {lab:'Suitable', title:'Suitable Position', tone:'ok', lit:'go', level:'go', people:null, season:'Dry, Nov', reason:'Suitable Ground', why:'', wet:['SLOW-GO','slow'], conc:['None','c0'], inside:0, ground:'Suitable ground',
+         nogo:{n:'Steep Slope', d:860, b:333}, near:[['Steep Slope','NO-GO Ground','nogo',860,333],['Tree Cover','Better Concealment · Good','cover',31,180],['Langarpur','Strong ITG Candidate','itg',2500,90]], gap:{st:'ok', t:'No other Platoon nearby'}},
+  adj:  {lab:'Adjacent', title:'Adjacent to Permanent Water', tone:'near', lit:'nogo', level:'marg', people:'14k', season:'Dry, Nov', reason:'Permanent Water', why:WHY_WATER, wet:['SLOW-GO','slow'], conc:['Poor','c1'], inside:0, ground:'Suitable ground',
+         nogo:{n:'Permanent Water', d:50, b:45}, near:[['Permanent Water','NO-GO Ground','nogo',50,45],['Tree Cover','Better Concealment · Good','cover',44,225],['Saila','Important Village · Civil Flag','place',1100,270]], gap:{st:'ok', t:'No other Platoon nearby'}},
+  slow: {lab:'SLOW-GO', title:'SLOW-GO Terrain', tone:'caution', lit:'slow', level:'slow', people:'14k', season:'Dry, Nov', reason:'Built-Up Area', why:'Houses and streets: cover and concealment, but movement is channelled.', front:89, wet:['SLOW-GO','slow'], conc:['Good','c3'], inside:0, ground:'Built-up area',
+         nogo:{n:'Permanent Water', d:30, b:0}, near:[['Permanent Water','NO-GO Ground','nogo',30,0],['Mahe Kalan','Village · Civil Flag','place',517,180],['N-5 · GT Road','Class 70 · Tankable','road',382,0]], gap:{st:'ok', t:'No other Platoon nearby'}},
+  enc:  {lab:'Encroaching', title:'Encroaching on Permanent Water', tone:'near', lit:'nogo', level:'nogo', people:'5.8k', season:'Dry, Nov', reason:'Permanent Water', why:WHY_WATER, wet:['SLOW-GO','slow'], conc:['Good','c3'], inside:11, ground:'Permanent water',
+         nogo:{n:'Permanent Water', d:0, b:null}, near:[['Permanent Water','NO-GO · Natural Obstacle','nogo',94,135],['Saila','Important Village · Civil Flag','place',714,0],['Lillah - Jhelum','Road · Class 60 · Tankable','road',1200,0]], gap:{st:'ok', t:'No other Platoon nearby'}},
+  part: {lab:'Partly in', title:'Partially Obstructed', tone:'partial', quick:1, lit:'nogo', level:'nogo', people:'20k', season:'Dry, Nov', reason:'Permanent Water', why:WHY_WATER, wet:['NO-GO','nogo'], conc:['None','c0'], inside:39, ground:'Permanent water',
+         nogo:{n:'Permanent Water', d:0, b:null}, near:[['Built-Up Area','Better Concealment · Good','cover',44,225],['Jhelum Rs','Village · Civil Flag','place',1200,0],['N-5 · GT Road','Class 70 · Tankable','road',673,270]], gap:{st:'ok', t:'No other Platoon nearby'}},
+  inn:  {lab:'Unsuitable', title:'Unsuitable Position', tone:'in', quick:1, lit:'nogo', level:'nogo', people:null, season:'Dry, Nov', reason:'Permanent Water', why:WHY_WATER, wet:['NO-GO','nogo'], conc:['None','c0'], inside:100, ground:'Permanent water',
+         nogo:{n:'Permanent Water', d:0, b:null}, near:[['Dry Riverbed / Nullah','Better Concealment · Fair','cover',269,135],['N-5 · GT Road','Class 70 · Tankable','road',1400,90],['GT Road / N-5 / Lillah - Jhelum','Strong ITG Candidate','itg',2200,0]], gap:{st:'ok', t:'No other Platoon nearby'}},
+  tight:{lab:'Inter Gap tight', title:'SLOW-GO Terrain', tone:'caution', lit:'slow', level:'slow', people:null, season:'Dry, Nov', reason:'Moderate Slope (15 to 30°)', why:'Slope of 15–30°: hard going for vehicles.', front:17, wet:['SLOW-GO','slow'], conc:['Poor','c1'], inside:0, ground:'Moderate slope',
+         nogo:{n:'Permanent Water', d:1230, b:53}, near:[['Permanent Water','NO-GO Ground','nogo',1230,53],['Dry Nullah','Better Concealment · Fair','cover',31,0],['Langarpur','Strong ITG Candidate','itg',1800,91]], gap:{st:'tight', min:300, g:172, t:'172 m of 300 m to the next Platoon', nb:{b:270, d:700}}}
+};
+var ORDER = ['go','adj','slow','enc','part','inn','tight'];
+
+/* today's colours (GroundGuideBadge.ts) and the overlay key the views use */
+var TODAY = {ok:{c:'#1c8247',fg:'#fff',ic:'check'}, near:{c:'#e9a526',fg:'#1b1f25',ic:'tri'}, caution:{c:'#e08a1e',fg:'#1b1f25',ic:'tri'}, partial:{c:'#d9622b',fg:'#1b1f25',ic:'oct'}, in:{c:'#d63a3f',fg:'#fff',ic:'x'}};
+var KEY = {go:'#2ea05a', marg:'#f1d646', slow:'#f39c12', nogo:'#d63031'};
+var LV = {go:{c:'#1f7a46',fg:'#fff',ic:'check',w:'GO'}, marg:{c:'#f1d646',fg:'#14181d',ic:'tri',w:'NO-GO near'}, slow:{c:'#ee8a1f',fg:'#14181d',ic:'tri',w:'SLOW-GO'}, nogo:{c:'#c62f35',fg:'#fff',ic:'oct',w:'NO-GO'}};
+var NEAR = {nogo:'#e5484d', slow:'#f0932b', go:'#2fa862', road:'#e3e7ec', place:'#c8b49a', cover:'#3fbfae', itg:'#b892ff', other:'#8a939d'};
+var CONC = {c3:['#2fa862','#74dca3'], c2:['#9cc45a','#c3df8f'], c1:['#f0932b','#ffb46b'], c0:['#5b6470','#f1f3f6']};
+var CELLC = {g:'#2f7d4f', m:'#cdb944', s:'#cf6f1f', n:'#a8282e', x:'#2a2f36'};
+
+/* ---------- helpers ---------- */
+function ico(n, cut){
+  cut = cut || '#1b1f25';
+  var p = {
+    check:'<path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    tri:'<path d="M10 2.2l8.6 15.3H1.4z" fill="currentColor"/><path d="M10 7.8v4.2M10 14.6v.1" stroke="'+cut+'" stroke-width="2.2" stroke-linecap="round"/>',
+    oct:'<path d="M6.7 1.5h6.6l4.7 4.7v7.6l-4.7 4.7H6.7L2 13.8V6.2z" fill="currentColor"/><path d="M10 6v5M10 13.9v.1" stroke="'+cut+'" stroke-width="2.2" stroke-linecap="round"/>',
+    x:'<path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
+    tank:'<rect x="2" y="8.5" width="16" height="6.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="6" y="4.6" width="7.5" height="3.9" rx="1.2" fill="currentColor"/><path d="M13.5 6.4h4.5" stroke="currentColor" stroke-width="1.6"/>',
+    sun:'<circle cx="10" cy="10" r="3.4" fill="currentColor"/><path d="M10 2v2.2M10 15.8V18M2 10h2.2M15.8 10H18M4.3 4.3l1.6 1.6M14.1 14.1l1.6 1.6M4.3 15.7l1.6-1.6M14.1 5.9l1.6-1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+    people:'<circle cx="7.2" cy="6.8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.4 16.4c.6-3.1 2.5-4.8 4.8-4.8s4.2 1.7 4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="13.8" cy="7.4" r="2.1" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13.4 11.5c2.1 0 3.7 1.5 4.3 4.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>'
+  };
+  return '<svg class="ic" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">'+(p[n]||'')+'</svg>';
+}
+var COMP = ['N','NE','E','SE','S','SW','W','NW'], ARR = ['↑','↗','→','↘','↓','↙','←','↖'];
+function comp(b){ return COMP[Math.round(((b%360)+360)%360/45)%8]; }
+function arr(b){ return ARR[Math.round(((b%360)+360)%360/45)%8]; }
+function fd(m){ return m < 1000 ? Math.round(m)+' m' : (m/1000).toFixed(1)+' km'; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function rad(b){ return b*Math.PI/180; }
+function short(n){ if (n.length <= 16) return n; var a = n.split(' / ')[0]; return a.length <= 16 ? a : a.split(' ')[0]; }
+
+/* the cells under the 525 m front: 16 cells (512 m) centred on the point, on the row closest to the card's share */
+function frontCells(r){
+  var g = G[gridKey(r)], want = r.inside/100, best = 23, bestE = 9;
+  for (var j = 21; j <= 26; j++) {
+    var row = g[j].slice(16, 32), n = (row.match(/n/g)||[]).length/16, e = Math.abs(n - want) + Math.abs(j-23.5)*0.01;
+    if (e < bestE) { bestE = e; best = j; }
+  }
+  return g[best].slice(16, 32).split('');
+}
+function gridKey(r){ for (var k in R) if (R[k] === r) return k; return 'go'; }
+/* nearest place where the whole front (16 cells) is out of NO-GO: metres east, north */
+function clearGround(r){
+  if (!r.inside) return null;
+  var g = G[gridKey(r)], best = null;
+  for (var j = 0; j < NC; j++) for (var c = 8; c <= 40; c++) {
+    var seg = g[j].slice(c-8, c+8);
+    if (seg.indexOf('n') >= 0 || seg.indexOf('x') >= 0) continue;
+    var dx = (c-24)*CELL, dy = (23.5-j)*CELL, d = Math.hypot(dx, dy);
+    if (!best || d < best.d) best = {dx:dx, dy:dy, d:d};
+  }
+  if (!best) return null;
+  best.b = (Math.atan2(best.dx, best.dy)*180/Math.PI + 360) % 360;
+  best.d = Math.max(CELL, Math.round(best.d/10)*10);
+  return best;
+}
+/* worst class along each of 8 directions out to 300 m */
+function rays(r){
+  var g = G[gridKey(r)], rank = {g:0, m:1, s:2, n:3, x:0}, out = [];
+  for (var k = 0; k < 8; k++) {
+    var w = 'g';
+    for (var d = 48; d <= 300; d += 24) {
+      var x = 24 + Math.sin(rad(k*45))*d/CELL, y = 24 - Math.cos(rad(k*45))*d/CELL;
+      var cc = (g[Math.floor(y)]||'')[Math.floor(x)] || 'x';
+      if (rank[cc] > rank[w]) w = cc;
+    }
+    out.push(w);
+  }
+  return out;
+}
+var imgCache = {};
+function patch(r, dim){
+  var key = gridKey(r)+(dim?'d':'');
+  if (imgCache[key]) return imgCache[key];
+  var cv = document.createElement('canvas'); cv.width = NC; cv.height = NC;
+  var x = cv.getContext('2d'), g = G[gridKey(r)];
+  for (var j = 0; j < NC; j++) for (var i = 0; i < NC; i++) { x.fillStyle = CELLC[g[j][i]] || CELLC.x; x.fillRect(i, j, 1, 1); }
+  if (dim) { x.fillStyle = 'rgba(40,38,26,.55)'; x.fillRect(0, 0, NC, NC); }
+  return (imgCache[key] = cv.toDataURL());
+}
+function halo(x, y, txt, anchor, col, size){
+  return '<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" text-anchor="'+(anchor||'start')+'" font-size="'+(size||12)+'" font-weight="650" font-family="system-ui,Segoe UI,Arial" fill="'+(col||'#fff')+'" stroke="#0b0d10" stroke-width="3" paint-order="stroke" stroke-linejoin="round">'+esc(txt)+'</text>';
+}
+function sym(cx, cy, s){ s = s||1; return '<rect x="'+(cx-8*s)+'" y="'+(cy-5.5*s)+'" width="'+16*s+'" height="'+11*s+'" fill="#80e0ff" stroke="#0b0d10" stroke-width="1.6"/><rect x="'+(cx-4.5*s)+'" y="'+(cy-2.5*s)+'" width="'+9*s+'" height="'+5*s+'" rx="'+2.5*s+'" fill="none" stroke="#0b0d10" stroke-width="1.3"/>'; }
+function chipToday(r){
+  var t = TODAY[r.tone], w, f = '';
+  if (r.tone === 'ok') w = 'GO'; else if (r.tone === 'caution') w = 'SLOW-GO';
+  else if (r.tone === 'near' && !r.inside) { w = 'NO-GO Near'; f = fd(r.nogo.d)+' '+comp(r.nogo.b)+' '+arr(r.nogo.b); }
+  else { w = 'NO-GO'; f = r.inside+'% Inside'; }
+  return '<span class="chip" style="background:'+t.c+';color:'+t.fg+'">'+ico(t.ic, t.c)+w+(f?' <small>'+f+'</small>':'')+'<span class="hk">H</span></span>';
+}
+
+/* ---------- today's card ---------- */
+function today(r, slot){
+  slot = slot || {};
+  var t = TODAY[r.tone], s = '<div class="tc" style="--c:'+t.c+';--fg:'+t.fg+'">';
+  s += '<div class="tc-bar">'+ico(t.ic, t.c)+'<span class="tc-title">'+esc(r.title)+'</span><span class="tc-pills">'+(r.quick?'<span class="tc-pill"><span class="tc-kq">S</span>Quick Fix</span>':'')+(r.people?'<span class="tc-pill">'+ico('people')+r.people+' ≤ 1 km</span>':'')+'</span>'+
+       '<span class="tc-for">'+ico('tank')+'Tracked Vehicle · Platoon<span class="tc-when">'+ico('sun')+r.season+'</span></span></div>';
+  if (slot.underBar) s += slot.underBar;
+  s += '<div class="tc-row tc-wide">'+(slot.scale || '<div class="tc-scale">'+['go','slow','nogo'].map(function(k,i){ return '<span class="'+(k===r.lit?k:'')+'">'+['GO','SLOW-GO','NO-GO'][i]+'</span>'; }).join('')+'</div>')+
+       '<div class="tc-b">'+esc(r.reason)+'</div>'+(r.why?'<div class="tc-dim">'+esc(r.why)+'</div>':'')+'</div>';
+  var wc = r.wet[1] === 'nogo' ? ['#e5484d','#ff8a8d'] : ['#f0932b','#ffb46b'], cc = CONC[r.conc[1]];
+  s += '<div class="tc-facts"><div class="tc-fact"><div class="tc-fk">After Rain</div><div class="tc-fv" style="color:'+wc[1]+'"><i class="tc-fd" style="background:'+wc[0]+'"></i>'+r.wet[0]+'</div></div>'+
+       '<div class="tc-fact"><div class="tc-fk">Concealment · Ground Obs</div><div class="tc-fv" style="color:'+cc[1]+'"><i class="tc-fd" style="background:'+cc[0]+'"></i>'+r.conc[0]+'</div></div></div>';
+  if (slot.inside) s += slot.inside;
+  else if (r.inside) s += '<div class="tc-row"><div class="tc-cap">Inside</div><div><b>'+r.inside+'%</b> of the Footprint<div class="tc-track"><i style="width:'+r.inside+'%"></i></div></div></div>';
+  if (slot.nearest) s += slot.nearest;
+  else s += '<div class="tc-row tc-nrow"'+(slot.dialW?' style="grid-template-columns:'+slot.dialW+'px minmax(0,1fr)"':'')+'><div><div class="tc-cap" style="margin-bottom:6px">Nearest</div>'+(slot.dial || dialToday(r))+'</div><div>'+r.near.map(function(n){
+      return '<div class="tc-ni"><div class="tc-nh"><i class="tc-nd" style="background:'+NEAR[n[2]]+'"></i><span class="tc-nn">'+esc(n[0])+'</span><span class="tc-nf">'+fd(n[3])+' '+comp(n[4])+' '+arr(n[4])+'</span></div><div class="tc-nw" style="'+(n[2]==='nogo'?'color:#ff8a8d':'')+'">'+esc(n[1])+'</div></div>';
+    }).join('')+'</div></div>';
+  s += '<div class="tc-row"><div class="tc-cap">Inter Gap Rule</div><div'+(r.gap.st!=='ok'?' style="color:#ffb46b;font-weight:600"':'')+'>'+esc(r.gap.t)+'</div></div>';
+  s += '<div class="tc-foot"><span class="kc">D</span> Detail <span class="kc">H</span> Hint<span class="sp"></span>'+'GROTBCK'.split('').map(function(l){ return '<span class="kc">'+l+'</span>'; }).join(' ')+'</div>';
+  return s + '</div>';
+}
+function dialToday(r){
+  var s = '<svg width="58" height="58" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="27" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><text x="29" y="17" text-anchor="middle" font-size="11" fill="#9aa3ad" font-family="system-ui">N</text>';
+  r.near.slice(1).forEach(function(n){ s += '<circle cx="'+(29+22*Math.sin(rad(n[4]))).toFixed(1)+'" cy="'+(29-22*Math.cos(rad(n[4]))).toFixed(1)+'" r="4.5" fill="'+NEAR[n[2]]+'" stroke="#1b1f25" stroke-width="1.5"/>'; });
+  var c = NEAR[r.near[0][2]];
+  return s + '<g transform="rotate('+r.near[0][4]+' 29 29)"><polygon points="29,19 36,40 29,35 22,40" fill="'+c+'"/></g></svg>';
+}
+
+/* ---------- shared concept shell ---------- */
+function word(r){
+  if (r.level === 'marg') return 'NO-GO '+fd(r.nogo.d)+' '+comp(r.nogo.b);
+  if (r.level === 'nogo') return r.inside >= 100 ? 'NO-GO' : 'NO-GO · '+r.inside+'% in';
+  return LV[r.level].w;
+}
+function shell(r, body, opts){
+  opts = opts || {};
+  var v = LV[r.level];
+  return '<div class="cv" style="--c:'+v.c+';--fg:'+v.fg+'"><div class="cv-top">'+ico(v.ic, v.c)+'<span class="cv-w">'+word(r)+'</span><span class="cv-t">'+esc(opts.t || r.ground)+'</span></div>'+
+    (opts.noMode ? '' : '<div class="cv-mode"><span>Tracked Vehicle · Platoon</span><span>'+r.season+'</span></div>')+body+'</div>';
+}
+function things(r){
+  var list = r.near.map(function(n){ return {n:n[0], what:n[1], tone:n[2], d:n[3], b:n[4]}; });
+  var cg = clearGround(r);
+  if (cg) list.unshift({n:'Clear ground', what:'Whole front out of NO-GO', tone:'clear', d:cg.d, b:cg.b});
+  return list.slice(0, 3);
+}
+function tcol(t){ return t === 'clear' ? '#74dca3' : NEAR[t] || '#8a939d'; }
+function numList(r, list){
+  return '<div class="cv-list">'+list.map(function(t, i){
+    return '<div><span class="num" style="background:'+tcol(t.tone)+'">'+(i+1)+'</span><b>'+esc(t.n)+'</b><span style="font-weight:700;white-space:nowrap">'+fd(t.d)+' '+comp(t.b)+' '+arr(t.b)+'</span><small>'+esc(t.what)+'</small></div>';
+  }).join('')+'</div>';
+}
+
+/* 1 · ground window */
+function windowSvg(r, S, opts){
+  opts = opts || {};
+  var k = S/SPAN, c = S/2, gapBox = null, s = '<svg width="'+S+'" height="'+S+'" viewBox="0 0 '+S+' '+S+'" style="display:block;border-radius:8px" aria-hidden="true"><image href="'+patch(r)+'" width="'+S+'" height="'+S+'" style="image-rendering:pixelated" preserveAspectRatio="none"/>';
+  if (r.gap.nb) {
+    var nx = c + Math.sin(rad(r.gap.nb.b))*r.gap.nb.d*k;
+    s += '<line x1="'+(nx-262*k)+'" y1="'+c+'" x2="'+(nx+262*k)+'" y2="'+c+'" stroke="#0b0d10" stroke-width="6"/><line x1="'+(nx-262*k)+'" y1="'+c+'" x2="'+(nx+262*k)+'" y2="'+c+'" stroke="#c9b3ff" stroke-width="3" stroke-dasharray="5 3"/>';
+    var a = nx+262*k, b = c-262*k;
+    s += '<path d="M'+a+' '+(c-12)+'v6M'+a+' '+(c-9)+'H'+b+'M'+b+' '+(c-12)+'v6" stroke="#ffb46b" stroke-width="2" fill="none"/>';
+    if (!opts.small) { var gt = r.gap.g+' m (need 300)', gw = gt.length*6.9, gx = Math.max(4, (a+b)/2 - gw/2); s += halo(gx, c-17, gt, 'start', '#ffd2a1'); gapBox = [gx, c-28, gx+gw, c-14]; }
+  }
+  var cells = frontCells(r), cw = 16*CELL*k/16, x0 = c - 8*CELL*k;
+  var lw = opts.small ? 3.6 : 5;
+  s += '<line x1="'+(x0-1.5)+'" y1="'+c+'" x2="'+(x0+16*cw+1.5)+'" y2="'+c+'" stroke="#0b0d10" stroke-width="'+(lw+3.5)+'"/>';
+  cells.forEach(function(ch, i){ s += '<line x1="'+(x0+i*cw)+'" y1="'+c+'" x2="'+(x0+(i+1)*cw+.3)+'" y2="'+c+'" stroke="'+(ch==='n'?'#ff3b44':'#ffffff')+'" stroke-width="'+lw+'"/>'; });
+  s += sym(c, c, opts.small ? .75 : 1);
+  var boxes = [[c-12, c-10, c+12, c+8]];
+  if (gapBox) boxes.push(gapBox);
+  var place = function(x, y, txt){
+    var w = txt.length*6.9 + 4, cands = [[x+10, y+4, 'start'], [x-10, y+4, 'end'], [x, y-11, 'middle'], [x, y+19, 'middle'], [x+10, y-10, 'start'], [x-10, y+18, 'end']];
+    for (var q = 0; q < cands.length; q++) {
+      var cx = cands[q][0], cy = cands[q][1], an = cands[q][2], x0 = an === 'start' ? cx : an === 'end' ? cx - w : cx - w/2, b = [x0, cy-11, x0+w, cy+3];
+      if (b[0] < 2 || b[2] > S-2 || b[1] < 2 || b[3] > S-16) continue;
+      if (boxes.some(function(o){ return b[0] < o[2] && o[0] < b[2] && b[1] < o[3] && o[1] < b[3]; })) continue;
+      boxes.push(b); return cands[q];
+    }
+    return null;
+  };
+  things(r).forEach(function(t, i){
+    var dx = Math.sin(rad(t.b))*t.d*k, dy = -Math.cos(rad(t.b))*t.d*k, lim = c - 9, f = Math.max(Math.abs(dx), Math.abs(dy)) > lim ? lim/Math.max(Math.abs(dx), Math.abs(dy)) : 1;
+    var x = c + dx*f, y = c + dy*f, col = tcol(t.tone);
+    if (f < 1) s += '<g transform="translate('+x.toFixed(1)+' '+y.toFixed(1)+') rotate('+t.b+')"><path d="M0 -8 L6 3 L-6 3Z" fill="'+col+'" stroke="#0b0d10" stroke-width="1.4"/></g>';
+    else s += t.tone === 'clear' ? '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="8" fill="none" stroke="#74dca3" stroke-width="2.6" stroke-dasharray="4 2"/>' : '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="5.5" fill="'+col+'" stroke="#0b0d10" stroke-width="1.6"/>';
+    if (!opts.small) { var lb = short(t.n)+' '+fd(t.d), pl = place(x, y, lb); if (pl) s += halo(pl[0], pl[1], lb, pl[2], col === '#e3e7ec' ? '#fff' : col); }
+  });
+  s += halo(8, 18, 'N ↑', 'start', '#e8ebee');
+  if (!opts.small) { var L = 500*k; s += '<line x1="10" y1="'+(S-12)+'" x2="'+(10+L)+'" y2="'+(S-12)+'" stroke="#0b0d10" stroke-width="5"/><line x1="10" y1="'+(S-12)+'" x2="'+(10+L)+'" y2="'+(S-12)+'" stroke="#fff" stroke-width="2"/>'+halo(14+L, S-8, '500 m', 'start', '#e8ebee'); }
+  return s + '</svg>';
+}
+function viewWindow(r){ return shell(r, '<div class="cv-body">'+windowSvg(r, 294)+'<div class="cv-foot" style="padding:6px 0 0;border:0">White line: the 525 m front (red where it lies in NO-GO). 1.5 km, north up.</div></div>'); }
+
+/* 2 · range rings */
+function ringSvg(r, S){
+  var c = S/2, Rm = c - 13, rr = function(d){ return d <= 10 ? 8 : Math.min(Rm, 8 + (Rm-8)*Math.log(d/10)/Math.log(300)); };
+  var s = '<svg width="'+S+'" height="'+S+'" viewBox="0 0 '+S+' '+S+'" aria-hidden="true"><circle cx="'+c+'" cy="'+c+'" r="'+rr(250)+'" fill="rgba(241,214,70,.12)"/>';
+  /* ring labels go on the vertical (top or bottom) and side with the fewest things near them */
+  var bs = things(r).map(function(t){ return t.b; }), near = function(a, w){ return bs.filter(function(b){ return Math.abs(((b - a + 540) % 360) - 180) < w; }).length; };
+  var down = near(180, 50) <= near(0, 50), vb = down ? 180 : 0, east = near(vb + (down ? -40 : 40), 40) <= near(vb + (down ? 40 : -40), 40);
+  [100, 300, 1000, 3000].forEach(function(d){
+    var tight = d === 300 && r.gap.st !== 'ok';
+    s += '<circle cx="'+c+'" cy="'+c+'" r="'+rr(d)+'" fill="none" stroke="'+(tight?'#ffb46b':'#3d4651')+'" stroke-width="'+(tight?2:1.2)+'"'+(d===300?' stroke-dasharray="4 3"':'')+'/>';
+    if (S > 150) s += halo(c + (east ? 4 : -4), down ? c + rr(d) - 3 : c - rr(d) + 13, d < 1000 ? d+' m' : d/1000+' km', east ? 'start' : 'end', '#9aa3ad');
+  });
+  s += S > 150 ? halo(c, 12, 'N', 'middle', '#c9d1d9') : '<path d="M'+c+' 1 L'+(c+4)+' 8 L'+(c-4)+' 8Z" fill="#c9d1d9"/>';
+  if (r.gap.nb) { var nx = c + rr(r.gap.nb.d)*Math.sin(rad(r.gap.nb.b)), ny = c - rr(r.gap.nb.d)*Math.cos(rad(r.gap.nb.b)); s += '<rect x="'+(nx-6)+'" y="'+(ny-6)+'" width="12" height="12" fill="#b892ff" stroke="#0b0d10" stroke-width="1.5"/>'; }
+  things(r).forEach(function(t, i){
+    var x = c + rr(t.d)*Math.sin(rad(t.b)), y = c - rr(t.d)*Math.cos(rad(t.b)), col = tcol(t.tone);
+    if (S <= 150) { s += '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4.5" fill="'+col+'" stroke="#0b0d10" stroke-width="1.3"/>'; return; }
+    s += '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="8" fill="'+col+'" stroke="#0b0d10" stroke-width="1.5"/><text x="'+x.toFixed(1)+'" y="'+(y+4).toFixed(1)+'" text-anchor="middle" font-size="12" font-weight="800" fill="#14181d" font-family="system-ui">'+(i+1)+'</text>';
+  });
+  var lc = KEY[r.level], cr = S > 150 ? 12 : 9;
+  if (r.inside > 0 && r.inside < 100) {
+    var a = r.inside/100*360, ex = c + cr*Math.sin(rad(a)), ey = c - cr*Math.cos(rad(a));
+    s += '<circle cx="'+c+'" cy="'+c+'" r="'+cr+'" fill="#1b1f25" stroke="'+lc+'" stroke-width="2"/><path d="M'+c+' '+c+' L'+c+' '+(c-cr)+' A'+cr+' '+cr+' 0 '+(a>180?1:0)+' 1 '+ex.toFixed(2)+' '+ey.toFixed(2)+'Z" fill="'+lc+'"/>';
+  } else s += '<circle cx="'+c+'" cy="'+c+'" r="'+cr+'" fill="'+lc+'" stroke="#0b0d10" stroke-width="1.5"/>';
+  return s + '</svg>';
+}
+function viewRings(r){
+  var gapLine = r.gap.nb ? '<div style="margin-top:8px;font-size:13px;color:#ffd2a1">■ Next Platoon '+fd(r.gap.nb.d)+' '+comp(r.gap.nb.b)+': gap '+r.gap.g+' m, need 300 (dashed ring)</div>' : '';
+  return shell(r, '<div class="cv-body"><div style="display:flex;justify-content:center">'+ringSvg(r, 210)+'</div>'+numList(r, things(r))+gapLine+'</div>');
+}
+
+/* 3 · room ladder */
+function ladderSvg(r, W, compact){
+  var H = compact ? 104 : 142, ay = compact ? 40 : 56, L = r.inside ? 58 : 14, xd = function(d){ return L + (W-L-12)*Math.log(Math.max(d,10)/10)/Math.log(300); };
+  var s = '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true"><defs><pattern id="hz'+W+'" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="rgba(241,214,70,.55)"/></pattern></defs>';
+  s += '<rect x="'+L+'" y="'+(ay-4)+'" width="'+(xd(250)-L)+'" height="8" fill="url(#hz'+W+')"/><line x1="'+L+'" y1="'+ay+'" x2="'+(W-12)+'" y2="'+ay+'" stroke="#6b7580" stroke-width="2"/>';
+  [50, 100, 300, 1000, 3000].forEach(function(d){ s += '<line x1="'+xd(d)+'" y1="'+(ay-3)+'" x2="'+xd(d)+'" y2="'+(ay+3)+'" stroke="#6b7580"/>'; });
+  [[100,'100 m','middle'],[1000,'1 km','middle'],[3000,'3 km','end']].forEach(function(t){ s += '<text x="'+(t[2]==='end'?W-12:xd(t[0]))+'" y="'+(ay+15)+'" text-anchor="'+t[2]+'" font-size="12" fill="#7f8994" font-family="system-ui">'+t[1]+'</text>'; });
+  if (r.gap.st !== 'ok') s += '<line x1="'+xd(300)+'" y1="'+(ay-9)+'" x2="'+xd(300)+'" y2="'+(ay+9)+'" stroke="#ffb46b" stroke-width="2"/>';
+  if (r.inside) s += '<rect x="2" y="'+(ay-13)+'" width="'+(L-8)+'" height="26" rx="5" fill="#c62f35"/><text x="'+((L-6)/2+2)+'" y="'+(ay+5)+'" text-anchor="middle" font-size="13" font-weight="800" fill="#fff" font-family="system-ui">'+r.inside+'% in</text>';
+  var items = things(r).map(function(t){ return {x:xd(t.d), up:t.tone==='nogo', col:tcol(t.tone), t:short(t.n)+' '+fd(t.d)+' '+arr(t.b)}; });
+  if (r.gap.st !== 'ok') items.push({x:xd(r.gap.g), up:true, col:'#ffb46b', t:'Next Pl gap '+r.gap.g+' m'});
+  /* labels: greedy rows, never overlapping, never past the edges */
+  var rows = {up:[], dn:[]}, step = 15;
+  items.sort(function(a, b){ return a.x - b.x; }).forEach(function(it){
+    var w = it.t.length*6.9 + 6, x0 = it.x - 3, anchor = 'start';
+    if (x0 + w > W - 2) { x0 = it.x + 3 - w; anchor = 'end'; }
+    if (x0 < 2) { x0 = 2; anchor = 'start'; }
+    var side = it.up ? rows.up : rows.dn, lvl = 0;
+    while (side[lvl] && side[lvl].some(function(iv){ return x0 < iv[1] + 4 && iv[0] < x0 + w + 4; })) lvl++;
+    (side[lvl] = side[lvl] || []).push([x0, x0 + w]);
+    var ly = it.up ? ay - 12 - lvl*step : ay + 31 + lvl*step, tx = anchor === 'end' ? x0 + w - 3 : x0 + 3;
+    s += '<line x1="'+it.x+'" y1="'+ay+'" x2="'+it.x+'" y2="'+(it.up ? ly+3 : ly-11)+'" stroke="'+it.col+'" stroke-width="1.5" opacity=".8"/><circle cx="'+it.x+'" cy="'+ay+'" r="4.5" fill="'+it.col+'" stroke="#0b0d10" stroke-width="1.4"/>'+halo(tx, ly, it.t, anchor, it.col === '#e3e7ec' ? '#fff' : it.col);
+  });
+  return s + '</svg>';
+}
+function viewLadder(r){ return shell(r, '<div class="cv-body">'+ladderSvg(r, 294)+'<div class="cv-foot" style="padding:4px 0 0;border:0">Above the line: what limits you. Below: what helps. Yellow band: within 250 m of NO-GO.'+(r.gap.st!=='ok'?' Orange tick: the 300 m Inter Gap Rule.':'')+'</div></div>'); }
+
+/* 4 · frontage strip */
+function frontSvg(r, W){
+  var cells = frontCells(r), cw = (W-4)/16, s = '<svg width="'+W+'" height="46" viewBox="0 0 '+W+' 46" aria-hidden="true">';
+  cells.forEach(function(ch, i){ s += '<rect x="'+(2+i*cw)+'" y="4" width="'+(cw-1.5)+'" height="22" rx="2" fill="'+({g:KEY.go,m:KEY.marg,s:KEY.slow,n:KEY.nogo}[ch]||'#3a3f46')+'"/>'; });
+  s += '<text x="2" y="42" font-size="12" fill="#a3acb6" font-family="system-ui">W</text><text x="'+(W-2)+'" y="42" text-anchor="end" font-size="12" fill="#a3acb6" font-family="system-ui">E</text><text x="'+W/2+'" y="42" text-anchor="middle" font-size="12" fill="#a3acb6" font-family="system-ui">525 m front · facing N</text>';
+  return s + '</svg>';
+}
+function frontHead(r){
+  var cg = clearGround(r);
+  if (r.inside) return '<div class="big w-nogo">'+r.inside+'% of the front in '+r.nogo.n.toLowerCase()+'</div>'+(cg?'<div style="margin-top:4px;font-weight:650" class="w-clear">Clear ground: '+fd(cg.d)+' '+comp(cg.b)+' '+arr(cg.b)+'</div>':'');
+  if (r.front) return '<div class="big w-slow">SLOW-GO on '+r.front+'% of the front</div><div style="margin-top:4px;color:#c3cbd3">'+esc(r.reason)+'</div>';
+  if (r.level === 'marg') return '<div class="big w-marg">Front clear; '+r.nogo.n.toLowerCase()+' '+fd(r.nogo.d)+' '+comp(r.nogo.b)+'</div><div style="margin-top:4px;color:#c3cbd3">Yellow: within 250 m of NO-GO</div>';
+  return '<div class="big w-go">All 525 m on Suitable ground</div>';
+}
+function viewFront(r){ return shell(r, '<div class="cv-body">'+frontHead(r)+'<div style="margin-top:10px">'+frontSvg(r, 294)+'</div><div class="cv-foot" style="padding:6px 0 0;border:0">Each block is 32 m of the front, read from the map data at the point.</div></div>'); }
+
+/* 5 · margin dial */
+function dialSvg(r, W){
+  var cx = W/2, cy = W*0.42, R = W*0.36, th = function(d){ return 60 + 120*Math.log(1 + Math.min(d,3000)/10)/Math.log(301); };
+  var P = function(t, rr){ return [cx + rr*Math.cos(rad(t)), cy - rr*Math.sin(rad(t))]; };
+  var arc = function(t0, t1, col){ var a = P(t0, R), b = P(t1, R); return '<path d="M'+a[0].toFixed(1)+' '+a[1].toFixed(1)+' A'+R+' '+R+' 0 0 1 '+b[0].toFixed(1)+' '+b[1].toFixed(1)+'" stroke="'+col+'" stroke-width="'+(W*0.06)+'" fill="none"/>'; };
+  var s = '<svg width="'+W+'" height="'+(cy+W*0.13)+'" viewBox="0 0 '+W+' '+(cy+W*0.13)+'" aria-hidden="true">'+arc(180, th(250), KEY.go)+arc(th(250), 60, KEY.marg)+arc(60, 0.5, KEY.nogo);
+  var t = r.inside ? 60 - 60*r.inside/100 : th(r.nogo.d), tip = P(t, R - W*0.07), lp = P(t + 6, R*0.25), rp = P(t - 6, R*0.25);
+  s += '<polygon points="'+tip[0].toFixed(1)+','+tip[1].toFixed(1)+' '+lp[0].toFixed(1)+','+lp[1].toFixed(1)+' '+rp[0].toFixed(1)+','+rp[1].toFixed(1)+'" fill="#f1f3f6"/><circle cx="'+cx+'" cy="'+cy+'" r="'+W*0.03+'" fill="#f1f3f6"/>';
+  if (W > 200) { var l1 = P(180, R+16), l2 = P(th(250), R+16), l3 = P(60, R+16), l4 = P(0, R+16); s += halo(l1[0]+6, l1[1]+14, '3 km', 'start', '#9aa3ad')+halo(l2[0], l2[1], '250 m', 'middle', '#9aa3ad')+halo(l3[0], l3[1], 'edge', 'middle', '#9aa3ad')+halo(l4[0]-6, l4[1]+14, 'all in', 'end', '#9aa3ad'); }
+  return s + '</svg>';
+}
+function dialText(r){ return r.inside ? '<span class="w-nogo">'+r.inside+'% in '+r.nogo.n+'</span>' : '<span class="w-'+(r.nogo.d < 250 ? 'marg' : 'go')+'">'+fd(r.nogo.d)+' to '+r.nogo.n+' '+arr(r.nogo.b)+'</span>'; }
+function viewDial(r){ return shell(r, '<div class="cv-body" style="text-align:center">'+dialSvg(r, 260)+'<div class="big">'+dialText(r)+'</div><div style="color:#a3acb6;font-size:12.5px;margin-top:4px">Margin to NO-GO ground'+(r.front?' · '+r.ground+' is SLOW-GO here':'')+'</div></div>'); }
+
+/* 6 · check board */
+function checks(r){
+  var cg = r.conc[0], cmap = {Good:'', Fair:'marg', Poor:'slow', None:'slow'};
+  return [
+    ['Ground', r.level === 'go' || r.level === 'marg' ? '' : (r.inside ? 'nogo' : 'slow'), r.inside ? r.nogo.n : r.ground],
+    ['Inside NO-GO', r.inside ? 'nogo' : '', r.inside ? r.inside+'% of front' : 'None'],
+    ['NO-GO edge', r.inside ? 'nogo' : (r.nogo.d < 250 ? 'marg' : ''), r.inside ? 'In it' : fd(r.nogo.d)+' '+comp(r.nogo.b)],
+    ['After rain', r.wet[1] === 'nogo' ? 'nogo' : (r.wet[1] === 'slow' ? 'slow' : ''), r.wet[0]],
+    ['Concealment', cmap[cg], cg],
+    ['Inter Gap', r.gap.st === 'ok' ? '' : (r.gap.st === 'tight' ? 'slow' : 'nogo'), r.gap.st === 'ok' ? 'Clear' : r.gap.g+' of 300 m']
+  ];
+}
+function viewBoard(r){
+  var cs = checks(r), bad = cs.filter(function(c){ return c[1]; }).length;
+  return shell(r, '<div class="cv-body"><div class="bd">'+cs.map(function(c){ return '<div class="lamp '+c[1]+'"><div class="l"><i></i>'+c[0]+'</div><div class="v">'+esc(c[2])+'</div></div>'; }).join('')+'</div><div class="cv-foot" style="padding:8px 0 0;border:0">'+(bad ? bad+' of 6 checks need a look; passing checks stay dark.' : 'All six checks pass.')+'</div></div>');
+}
+function lampRow(r){ return '<div class="lamps">'+checks(r).map(function(c, i){ return '<span class="'+c[1]+'" title="'+c[0]+': '+esc(c[2])+'">'+['Ground','In','Edge','Wet','Conc','Gap'][i]+'</span>'; }).join('')+'</div>'; }
+
+/* 7 · map reticle */
+function reticleSvg(r, W, H){
+  var S = W, k = S/SPAN, c = S/2, cy = H/2, R = 300*k, rs = rays(r);
+  var s = '<svg width="'+W+'" height="'+H+'" viewBox="0 '+(c-cy)+' '+W+' '+H+'" style="display:block;border-radius:8px" aria-hidden="true"><image href="'+patch(r, true)+'" width="'+S+'" height="'+S+'" style="image-rendering:pixelated" preserveAspectRatio="none"/>';
+  if (r.gap.nb) { var nx = c + Math.sin(rad(r.gap.nb.b))*r.gap.nb.d*k; s += '<line x1="'+(nx-262*k)+'" y1="'+c+'" x2="'+(nx+262*k)+'" y2="'+c+'" stroke="#c9b3ff" stroke-width="3" stroke-dasharray="5 3"/><path d="M'+(nx+262*k)+' '+(c+10)+'H'+(c-262*k)+'" stroke="#ffb46b" stroke-width="2.5"/>'+halo(c-262*k-4, c+26, r.gap.g+' m gap', 'end', '#ffd2a1'); }
+  s += '<line x1="'+(c-262*k)+'" y1="'+c+'" x2="'+(c+262*k)+'" y2="'+c+'" stroke="rgba(255,255,255,.7)" stroke-width="2"/>';
+  rs.forEach(function(w, i){
+    var a0 = i*45 - 18, a1 = i*45 + 18, p0 = [c + R*Math.sin(rad(a0)), c - R*Math.cos(rad(a0))], p1 = [c + R*Math.sin(rad(a1)), c - R*Math.cos(rad(a1))];
+    s += '<path d="M'+p0[0].toFixed(1)+' '+p0[1].toFixed(1)+' A'+R+' '+R+' 0 0 1 '+p1[0].toFixed(1)+' '+p1[1].toFixed(1)+'" stroke="#0b0d10" stroke-width="10" fill="none"/><path d="M'+p0[0].toFixed(1)+' '+p0[1].toFixed(1)+' A'+R+' '+R+' 0 0 1 '+p1[0].toFixed(1)+' '+p1[1].toFixed(1)+'" stroke="'+({g:KEY.go,m:KEY.marg,s:KEY.slow,n:KEY.nogo,x:'#555'}[w])+'" stroke-width="6" fill="none"/>';
+  });
+  var cg = clearGround(r), tb = cg ? cg.b : r.nogo.b, td = cg ? cg.d : r.nogo.d, tc = cg ? '#74dca3' : (r.nogo.d < 250 ? '#f1d646' : '#ff8a8d');
+  if (tb !== null && tb !== undefined) {
+    var px = c + (R+11)*Math.sin(rad(tb)), py = c - (R+11)*Math.cos(rad(tb));
+    s += '<g transform="translate('+px.toFixed(1)+' '+py.toFixed(1)+') rotate('+tb+')"><path d="M0 -8 L7 5 L-7 5Z" fill="'+tc+'" stroke="#0b0d10" stroke-width="1.5"/></g>';
+    var txt = (cg ? 'Clear ' : short(r.nogo.n)+' ')+fd(td), tw = txt.length*6.9, lx = c + (R+22)*Math.sin(rad(tb)), ly = c - (R+22)*Math.cos(rad(tb)) + 4;
+    var an = lx < c - 4 ? 'end' : (lx > c + 4 ? 'start' : 'middle'), top = c - cy;
+    ly = Math.max(top + 15, Math.min(top + H - 34, ly));
+    if (an === 'start' && lx + tw > W - 3) lx = W - 3 - tw;
+    if (an === 'end' && lx - tw < 3) lx = 3 + tw;
+    if (an === 'middle') lx = Math.max(3 + tw/2, Math.min(W - 3 - tw/2, lx));
+    s += halo(lx, ly, txt, an, tc);
+  }
+  s += sym(c, c);
+  var v = LV[r.level], wd = word(r), pw = wd.length*7.8 + 22;
+  s += '<rect x="'+(c-pw/2)+'" y="'+(c+R+16)+'" width="'+pw+'" height="22" rx="11" fill="'+v.c+'" stroke="#0b0d10" stroke-width="1"/><text x="'+c+'" y="'+(c+R+31)+'" text-anchor="middle" font-size="13" font-weight="800" fill="'+v.fg+'" font-family="system-ui">'+esc(wd)+'</text>';
+  return s + '</svg>';
+}
+function viewReticle(r){ return '<div>'+reticleSvg(r, 300, 230)+'<div class="cap" style="font-size:12.5px;color:#a3acb6;margin-top:6px;max-width:300px">Drawn on the map round the symbol. Ring = 300 m (the Inter Gap distance), each arc the worst going that way; the pointer shows the nearest NO-GO, or clear ground when inside it.</div></div>'; }
+
+/* 8 · brevity line */
+function viewBrev(r, noShell){
+  var v = LV[r.level], cg = clearGround(r);
+  var l1 = r.inside ? r.inside+'% in '+r.nogo.n.toLowerCase() : (r.front ? r.ground.toLowerCase()+', '+r.front+'% of front' : r.ground.toLowerCase());
+  var l2 = cg ? '<span class="w-clear">Clear ground '+fd(cg.d)+' '+comp(cg.b)+' '+arr(cg.b)+'</span>' : '<span class="w-'+(r.nogo.d < 250 ? 'marg' : 'soft')+'">NO-GO: '+r.nogo.n.toLowerCase()+' '+fd(r.nogo.d)+' '+comp(r.nogo.b)+' '+arr(r.nogo.b)+'</span>';
+  var gap = r.gap.st === 'ok' ? 'gap clear' : '<span class="w-slow">gap '+r.gap.g+' of 300 m</span>';
+  var body = '<div class="br"><div class="br-1"><span class="br-w" style="background:'+v.c+';color:'+v.fg+'">'+(r.level==='marg'?'NO-GO near':LV[r.level].w)+'</span><span>'+esc(l1)+'</span></div><div class="br-2">'+l2+' · '+gap+'</div><div class="br-3">Wet '+r.wet[0]+' · concealment '+r.conc[0]+(r.people?' · '+r.people+' people ≤ 1 km':'')+'</div></div>';
+  return noShell ? body : '<div class="cv" style="--c:'+v.c+'">'+body+'</div>';
+}
+
+/* ---------- chips ---------- */
+function chipArrow(r){
+  var v = LV[r.level], cg = clearGround(r), b = cg ? cg.b : r.nogo.b, d = cg ? cg.d : r.nogo.d, w = r.level === 'marg' ? 'NO-GO' : v.w;
+  var a = '<svg width="16" height="16" viewBox="-8 -8 16 16" aria-hidden="true"><g transform="rotate('+b+')"><path d="M0 -7 L5 5 L0 2 L-5 5Z" fill="currentColor"/></g></svg>';
+  return '<span class="chip" style="background:'+v.c+';color:'+v.fg+'">'+ico(v.ic, v.c)+w+(r.inside?' <small>'+r.inside+'%</small>':'')+' '+a+'<small>'+(cg?'clear ':'')+fd(d)+'</small><span class="hk">H</span></span>';
+}
+function chipPie(r){
+  var v = LV[r.level], f = r.inside/100, a = f*360, pie;
+  if (r.inside) { var ex = 7*Math.sin(rad(a)), ey = -7*Math.cos(rad(a)); pie = '<svg width="18" height="18" viewBox="-9 -9 18 18" aria-hidden="true"><circle r="7.5" fill="rgba(0,0,0,.25)" stroke="currentColor" stroke-width="1.4"/>'+(f >= 1 ? '<circle r="7" fill="currentColor"/>' : '<path d="M0 0 L0 -7 A7 7 0 '+(a>180?1:0)+' 1 '+ex.toFixed(2)+' '+ey.toFixed(2)+'Z" fill="currentColor"/>')+'</svg>'; }
+  else { var rr = Math.max(2, Math.min(7.5, 7.5*Math.log(1+r.nogo.d/10)/Math.log(301))); pie = '<svg width="18" height="18" viewBox="-9 -9 18 18" aria-hidden="true"><circle r="7.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/><circle r="'+rr.toFixed(1)+'" fill="none" stroke="currentColor" stroke-width="2"/></svg>'; }
+  return '<span class="chip" style="background:'+v.c+';color:'+v.fg+'">'+ico(v.ic, v.c)+(r.level==='marg'?'NO-GO':v.w)+' '+pie+'<small>'+(r.inside ? r.inside+'% in' : fd(r.nogo.d))+'</small><span class="hk">H</span></span>';
+}
+function chipDial(r){
+  var v = LV[r.level], t = r.inside ? 60 - 60*r.inside/100 : 60 + 120*Math.log(1+Math.min(r.nogo.d,3000)/10)/Math.log(301);
+  var x = 9 + 7*Math.cos(rad(t)), y = 10 - 7*Math.sin(rad(t));
+  var d = '<svg width="20" height="13" viewBox="0 0 18 12" aria-hidden="true"><path d="M2 10 A7 7 0 0 1 16 10" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".55"/><line x1="9" y1="10" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  return '<span class="chip" style="background:'+v.c+';color:'+v.fg+'">'+ico(v.ic, v.c)+(r.level==='marg'?'NO-GO':v.w)+' '+d+'<small>'+(r.inside ? r.inside+'% in' : fd(r.nogo.d))+'</small><span class="hk">H</span></span>';
+}
+
+/* ---------- concepts ---------- */
+var CONCEPTS = [
+  {id:'window', n:'Ground window', idea:'A small north-up picture of the real ground round the cursor, painted in the overlay\'s four colours, with the unit\'s 525 m front drawn on it (red where it lies in NO-GO), the nearest things as markers, and the next unit\'s footprint when the gap is tight.',
+   answers:'Where is the trouble, which way is out', data:['Reads tile pixels round the cursor (same as the overlay, cheap)','ok'], rec:'inside',
+   own: viewWindow, withTitle:'Replaces the Nearest compass', with: function(r){ return today(r, {dial: windowSvg(r, 96, {small:1}), dialW:96}); }},
+  {id:'rings', n:'Range rings', idea:'A bullseye: rings at 100 m, 300 m, 1 km and 3 km on a log scale, the nearest things as numbered dots at their true bearing, the 300 m Inter Gap ring dashed (orange when a unit is inside it), and the share inside NO-GO as a red wedge in the centre.',
+   answers:'How close, in which direction, and is the gap kept', data:['Already on the card','ok'], rec:'no',
+   own: viewRings, withTitle:'Replaces the Nearest compass', with: function(r){ return today(r, {dial: ringSvg(r, 96), dialW:96}); }},
+  {id:'ladder', n:'Room ladder', idea:'One distance line from the unit outwards (log scale). What limits the unit sits above the line, what helps sits below; a yellow band marks the 250 m Marginal zone and an orange tick the 300 m Inter Gap Rule; the share already in NO-GO sits as a red block at the start.',
+   answers:'How much room is there before trouble', data:['Already on the card','ok'], rec:'style',
+   own: viewLadder, withTitle:'Replaces the Nearest list', with: function(r){ return today(r, {nearest: '<div class="tc-slot"><div class="tc-cap">Nearest</div>'+ladderSvg(r, 294, true)+'</div>'}); }},
+  {id:'front', n:'Frontage strip', idea:'The unit\'s front as 16 blocks of 32 m, each coloured by the ground under it. "39% in water" becomes a picture of which end is wet, and the line under it says where the whole front would be clear.',
+   answers:'Which part of the unit is the problem, and how far to shift', data:['Footprint samples the verdict already takes (expose them)','mid'], rec:'inside',
+   own: viewFront, withTitle:'Replaces the Inside row (shown for every reading)', with: function(r){ return today(r, {inside: '<div class="tc-slot"><div class="tc-cap">Front</div>'+frontSvg(r, 294)+'</div>'}); }},
+  {id:'dial', n:'Margin dial', idea:'A gauge for the one number that decides most cases: the margin to NO-GO. Green with room to spare, yellow inside 250 m, red once any of the front is in it, the needle going further as more of it is.',
+   answers:'How close to NO-GO, as one needle', data:['Already on the card','ok'], rec:'no',
+   own: viewDial, withTitle:'Replaces the GO / SLOW-GO / NO-GO cells', with: function(r){ return today(r, {scale: '<div style="text-align:center">'+dialSvg(r, 180)+'<div style="font-weight:700">'+dialText(r)+'</div></div>'}); }},
+  {id:'board', n:'Check board', idea:'Six checks as lamps, like an annunciator panel: ground, inside NO-GO, NO-GO edge, after rain, concealment, Inter Gap. Passing checks stay dark; only the ones that need a look light up, in their colour.',
+   answers:'Which check failed, at a glance', data:['Already on the card','ok'], rec:'style',
+   own: viewBoard, withTitle:'A lamp row under the bar', with: function(r){ return today(r, {underBar: lampRow(r)}); }},
+  {id:'reticle', n:'Map reticle', idea:'Drawn on the map round the symbol, where the eye already is: a 300 m ring whose eight arcs show the worst going each way, a pointer to the nearest NO-GO (or to clear ground when inside it), and the verdict in a small plate. Today\'s card stays as it is.',
+   answers:'Verdict and way out without looking away from the symbol', data:['Tile pixels for 8 directions (cheap) + a map graphics layer (new)','mid'], rec:'map',
+   own: viewReticle, withTitle:'Beside today\'s card, on the map', with: function(r){ return '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">'+reticleSvg(r, 220, 200)+'<div class="z75">'+today(r)+'</div></div>'; }},
+  {id:'brev', n:'Brevity line', idea:'The verdict as three short lines in report form, readable aloud over a net: what, where the limit or the way out is, the gap; then the secondary facts in small type.',
+   answers:'The whole verdict in one read', data:['Already on the card','ok'], rec:'no',
+   own: function(r){ return viewBrev(r); }, withTitle:'A level between the chip and the card (H cycles)', with: function(r){ return '<div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">'+chipToday(r)+viewBrev(r)+'<div class="z55">'+today(r)+'</div></div>'; }}
+];
+var PLACES = {inside:'Inside today\'s card', style:'Own card style (switch)', map:'Beside the card, on the map', level:'A level between chip and card', no:'Not now'};
+var ALLOWED = {window:['inside','style','no'], rings:['inside','style','no'], ladder:['inside','style','no'], front:['inside','style','no'], dial:['inside','style','no'], board:['inside','style','no'], reticle:['map','no'], brev:['level','style','no']};
+
+/* ---------- render ---------- */
+var store = {get:function(){ try { return JSON.parse(localStorage.getItem('gg-card-concepts')||'{}'); } catch(e) { return {}; } }, set:function(v){ try { localStorage.setItem('gg-card-concepts', JSON.stringify(v)); } catch(e) {} }};
+var saved = store.get(), cur = saved.cur && R[saved.cur] ? saved.cur : 'part', open = saved.open || {}, picks = saved.picks || {}, chipPick = saved.chip || 'arrow', qa = saved.qa || {};
+
+var seg = document.getElementById('seg');
+seg.innerHTML = ORDER.map(function(k){ var r = R[k]; return '<button type="button" data-r="'+k+'" aria-pressed="'+(k===cur)+'"><i style="background:'+KEY[r.level]+'"></i>'+r.lab+'</button>'; }).join('');
+seg.addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; cur = b.dataset.r; seg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x.dataset.r === cur)); }); render(); save(); });
+
+var host = document.getElementById('concepts');
+host.innerHTML = CONCEPTS.map(function(c, i){
+  return '<section class="cc" id="c-'+c.id+'"><div class="cc-h"><span class="cc-n">'+(i+1)+'</span><h3>'+c.n+'</h3></div><p class="cc-idea">'+c.idea+'</p>'+
+    '<div class="tags"><span class="tag">Answers: '+c.answers+'</span><span class="tag '+c.data[1]+'">'+c.data[0]+'</span>'+(c.rec!=='no'?'<span class="tag rec">My pick: '+PLACES[c.rec]+'</span>':'')+'</div>'+
+    '<div class="views"><div class="vw"><div class="vw-h">On its own</div><div class="stg" data-own="'+c.id+'"></div></div><div class="vw"><div class="vw-h">With today\'s card <small>'+c.withTitle+'</small></div><div class="stg" data-with="'+c.id+'"></div></div></div>'+
+    '<button class="lnk" type="button" data-all="'+c.id+'" style="margin-top:10px">'+(open[c.id]?'Hide':'Show')+' all seven readings</button><div class="strip" data-strip="'+c.id+'"'+(open[c.id]?'':' hidden')+'></div></section>';
+}).join('');
+host.addEventListener('click', function(e){
+  var b = e.target.closest('[data-all]'); if (!b) return;
+  var id = b.dataset.all, st = host.querySelector('[data-strip="'+id+'"]');
+  open[id] = !open[id]; st.hidden = !open[id]; b.textContent = (open[id]?'Hide':'Show')+' all seven readings';
+  if (open[id]) fillStrip(id); save();
+});
+function fillStrip(id){
+  var c = CONCEPTS.filter(function(x){ return x.id === id; })[0];
+  host.querySelector('[data-strip="'+id+'"]').innerHTML = ORDER.map(function(k){ return '<figure><div class="z55">'+c.own(R[k])+'</div><figcaption>'+R[k].lab+'</figcaption></figure>'; }).join('');
+}
+
+function render(){
+  var r = R[cur];
+  document.getElementById('ctx').innerHTML = '<span>Spot: <b>'+r.lab+'</b></span><span>Card said: <b>'+esc(r.title)+'</b></span><span>'+(r.inside ? '<b>'+r.inside+'%</b> of the 525 m front in NO-GO' : 'Nearest NO-GO: <b>'+esc(r.nogo.n)+' '+fd(r.nogo.d)+' '+comp(r.nogo.b)+'</b>')+'</span><span>Inter Gap: <b>'+esc(r.gap.t)+'</b></span>';
+  document.getElementById('todayCard').innerHTML = today(r);
+  document.getElementById('todayChip').innerHTML = chipToday(r);
+  CONCEPTS.forEach(function(c){
+    host.querySelector('[data-own="'+c.id+'"]').innerHTML = c.own(r);
+    host.querySelector('[data-with="'+c.id+'"]').innerHTML = c.with(r);
+    if (open[c.id]) fillStrip(c.id);
+  });
+  var ch = [['today','Today\'s chip', chipToday(r), 'Word and one figure.'],['arrow','Arrow chip', chipArrow(r), 'Adds a small arrow to the nearest NO-GO, or to clear ground when inside it, and its distance.'],['pie','Pie chip', chipPie(r), 'A filled share when the front is in NO-GO; a ring that shrinks as NO-GO gets closer otherwise.'],['dial','Dial chip', chipDial(r), 'The margin dial in miniature: the needle moves right as NO-GO gets closer and further as more of the front is in it.']];
+  document.getElementById('chips').innerHTML = ch.map(function(x){ return '<div class="vw"><div class="vw-h">'+x[1]+(x[0]==='arrow'?' <span class="tag rec" style="margin-left:4px">My pick</span>':'')+'</div><div class="stg" style="padding:22px 10px">'+x[2]+'</div><p style="font-size:13px;color:#c3cbd3;margin:8px 0 0">'+x[3]+'</p></div>'; }).join('');
+}
+
+var QS = [['vkey','V flips the card while drawing','Between today\'s card and the card style picked above. V is free while drawing (Ctrl+V is paste).', true],['def','Today\'s card stays the default','The new styles start switched off until chosen in the settings or with V.', true],['clear','Show "clear ground" in NO-GO readings','The nearest place the whole front is out of NO-GO, from the S Quick Fix search, on the card and in the views.', true]];
+var qh = document.getElementById('qs');
+qh.innerHTML = CONCEPTS.map(function(c){
+  if (!(c.id in picks)) picks[c.id] = c.rec;
+  return '<div class="qrow"><span><b>'+c.n+'</b><small>'+c.answers+'</small></span><select data-pick="'+c.id+'" aria-label="'+c.n+'">'+ALLOWED[c.id].map(function(p){ return '<option value="'+p+'"'+(picks[c.id]===p?' selected':'')+'>'+PLACES[p]+(p===c.rec?' (my pick)':'')+'</option>'; }).join('')+'</select></div>';
+}).join('')+
+  '<div class="qrow"><span><b>Hint chip</b><small>What the H chip shows</small></span><select data-chip aria-label="Hint chip">'+[['today','Today\'s chip'],['arrow','Arrow chip (my pick)'],['pie','Pie chip'],['dial','Dial chip']].map(function(o){ return '<option value="'+o[0]+'"'+(chipPick===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select></div>'+
+  QS.map(function(q){ if (!(q[0] in qa)) qa[q[0]] = q[3]; return '<label class="ck"><input type="checkbox" data-q="'+q[0]+'"'+(qa[q[0]]?' checked':'')+'><span><b>'+q[1]+'</b><small>'+q[2]+'</small></span></label>'; }).join('');
+qh.addEventListener('change', function(e){
+  var t = e.target;
+  if (t.dataset.pick) picks[t.dataset.pick] = t.value;
+  if (t.hasAttribute('data-chip')) chipPick = t.value;
+  if (t.dataset.q) qa[t.dataset.q] = t.checked;
+  out(); save();
+});
+function out(){
+  var lines = ['Ground Guide card views, my decision:'];
+  CONCEPTS.forEach(function(c, i){ lines.push((i+1)+'. '+c.n+': '+PLACES[picks[c.id]]+(picks[c.id]===c.rec?'':' (not Claude\'s pick)')); });
+  lines.push('Hint chip: '+{today:'today\'s chip', arrow:'arrow chip', pie:'pie chip', dial:'dial chip'}[chipPick]);
+  QS.forEach(function(q){ lines.push((qa[q[0]]?'Yes: ':'No: ')+q[1]); });
+  lines.push('', '(Paste this back to Claude.)');
+  document.getElementById('out').textContent = lines.join('\n');
+}
+function save(){ store.set({cur:cur, open:open, picks:picks, chip:chipPick, qa:qa}); }
+document.querySelectorAll('[data-copy]').forEach(function(b){
+  b.addEventListener('click', function(){
+    var t = document.getElementById('out').textContent, ok = document.getElementById('copied');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function(){ ok.hidden = false; setTimeout(function(){ ok.hidden = true; }, 1600); }, function(){});
+    if (b.closest('.bar')) document.getElementById('decide').scrollIntoView();
+  });
+});
+render(); out(); save();
+})();
+</script>
+</body>
+</html>

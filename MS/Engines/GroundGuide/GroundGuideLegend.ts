@@ -335,7 +335,7 @@ export function buildLegend(s: LegendState, handlers: LegendHandlers): LegendPie
       return row;
     };
     if (s.keys.profile) keyP = key('P', 'Change Mode');
-    if (s.keys.snap) keyS = key('S', 'Quick Fix', 'Moves It to the Nearest Usable Ground');
+    if (s.keys.snap) keyS = key('S', 'Quick Fix', 'Moves It to the Nearest Usable Gr');
     if (!keys.childElementCount) keys = null;
   }
   return { strip, name, traffic, speed, ramp, labels, note, list, keys, keyP, keyS };

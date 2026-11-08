@@ -976,7 +976,7 @@ class SymbolEngine implements Evented {
       return [
         {
           id: 'ground-guide-check',
-          label: 'Ground check…',
+          label: 'Gr Check…',
           icon: '🧭',
           action: (g: Graphic) => void guide.explain(g),
         },

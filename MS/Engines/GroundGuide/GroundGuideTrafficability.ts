@@ -129,7 +129,7 @@ function roadName(a: Record<string, unknown>): string {
   const r = typeof a.r === 'string' ? a.r.trim() : '';
   if (r && n && n !== r) return `${r} (${n})`;
   if (r || n) return r || n;
-  return typeof a.t === 'string' ? titleCase(a.t.replace(/_/g, ' ')) : 'Road';
+  return typeof a.t === 'string' ? titleCase(a.t.replace(/_/g, ' ')) : 'Rd';
 }
 
 function roadClass(a: Record<string, unknown>): number | null {
@@ -165,9 +165,9 @@ function preferMsr(list: FeatureRoadHit[]): FeatureRoadHit | undefined {
  * season (foot on GO ground needs no road); `wet` the season. Null when roads do not matter for the mode.
  */
 export function pickRoad(profile: GroundGuideProfile, step: GoingStep | null, wet: boolean, roads: FeatureRoadHit[], radiusM: number): TrafficRoad | null {
-  const none = (what: string): TrafficRoad => ({ caption: 'Road', text: `No ${what} within ${fmtDistance(radiusM)}`, distanceM: null, compass: null, main: null, alt: null });
+  const none = (what: string): TrafficRoad => ({ caption: 'Rd', text: `No ${what} within ${fmtDistance(radiusM)}`, distanceM: null, compass: null, main: null, alt: null });
   const line = (h: FeatureRoadHit, extra: string, tag: string | null): TrafficRoad => ({
-    caption: 'Road',
+    caption: 'Rd',
     text: `${h.attrs.m ? 'MSR ' : ''}${roadName(h.attrs)}${extra} · ${where(h)}`,
     distanceM: h.distanceM,
     compass: h.compass,
@@ -178,14 +178,14 @@ export function pickRoad(profile: GroundGuideProfile, step: GoingStep | null, we
     case 'tracked':
     case 'amphibious': {
       const tank = preferMsr(roads.filter((h) => h.attrs.k === 3));
-      if (!tank) return none('Tankable Road');
+      if (!tank) return none('Tankable Rd');
       const c = roadClass(tank.attrs);
       return line(tank, `${c !== null ? ` · Class ${c}` : ''}, Tankable`, `${c !== null ? `Class ${c} · ` : ''}Tankable`);
     }
     case 'dismounted':
     case 'pack': {
       // GO ground: name the road anyway and offer cross-country beside it; the user picks which to take.
-      const r = roads[0] ? line(roads[0], '', weatherTag(roads[0].attrs)) : none('Road or Track');
+      const r = roads[0] ? line(roads[0], '', weatherTag(roads[0].attrs)) : none('Rd or Tr');
       if (step !== 'go') return r;
       return { ...r, text: `${r.text} · Or GO Cross-Country`, crossCountry: 'go' };
     }
@@ -197,14 +197,14 @@ export function pickRoad(profile: GroundGuideProfile, step: GoingStep | null, we
     default: {
       const good = preferMsr(roads.filter((h) => allWeather(h.attrs)));
       const near = roads[0];
-      if (!good && !near) return none('Road');
+      if (!good && !near) return none('Rd');
       if (near && !allWeather(near.attrs) && (!good || near.distanceM < good.distanceM * 0.6)) {
-        const fair = `Fair-Weather Road ${where(near)}`;
+        const fair = `Fair-Weather Rd ${where(near)}`;
         const main = roadRef(near, wet ? 'Fair-Weather · SLOW-GO After Rain' : 'Fair-Weather');
-        if (!good) return { caption: 'Road', text: wet ? `${fair}: SLOW-GO After Rain` : fair, distanceM: near.distanceM, compass: near.compass, main, alt: null };
+        if (!good) return { caption: 'Rd', text: wet ? `${fair}: SLOW-GO After Rain` : fair, distanceM: near.distanceM, compass: near.compass, main, alt: null };
         const all = `${good.attrs.m ? 'MSR ' : ''}${roadName(good.attrs)} ${where(good)}`;
         return {
-          caption: 'Road',
+          caption: 'Rd',
           text: wet ? `Use ${all} (All-Weather); ${fair} Is SLOW-GO` : `${fair} · ${all}`,
           distanceM: near.distanceM,
           compass: near.compass,
@@ -230,7 +230,7 @@ function roadRef(h: FeatureRoadHit, tag: string | null): TrafficRoadRef {
   const r = typeof a.r === 'string' ? a.r.trim() : '';
   const aw = allWeather(a);
   return {
-    shield: r || (aw ? 'Road' : 'Track'),
+    shield: r || (aw ? 'Rd' : 'Tr'),
     name: n && n !== r ? n : r ? null : typeof a.t === 'string' ? titleCase(a.t.replace(/_/g, ' ')) : null,
     tag,
     msr: !!a.m,

@@ -90,8 +90,8 @@ export function itgTraitLines(t: GroundGuideItgTraits): string[] {
   if (t.slopeDeg !== null) hold.push(`Slope ${Math.round(t.slopeDeg)}°`);
   if (t.msrKm !== null) hold.push(`MSR ${km(t.msrKm)}`);
   else if (t.distancesTested) hold.push('No MSR within 5 km');
-  if (t.roadKm !== null) hold.push(t.roadKm === 0 ? 'On a road or track' : `Road or track ${km(t.roadKm)}`);
-  else if (t.distancesTested) hold.push('No road or track within 5 km');
+  if (t.roadKm !== null) hold.push(t.roadKm === 0 ? 'On a Rd or Tr' : `Rd or Tr ${km(t.roadKm)}`);
+  else if (t.distancesTested) hold.push('No Rd or Tr within 5 km');
   if (t.ground) hold.push(t.ground);
   if (t.cover !== null && t.concealment !== null) hold.push(`Cover ${LEVEL_WORD[t.cover]}, Concealment ${LEVEL_WORD[t.concealment]} (area)`);
   if (t.surveyedM !== null) hold.push(`Surveyed ${t.surveyedM.toLocaleString('en')} m`);

@@ -36,8 +36,8 @@ export const COVER_WORD: Record<CoverLevel, string> = { 0: 'None', 1: 'Poor', 2:
 export const COVER_FIELD_LABEL: Record<CoverField, string> = {
   direct: 'Direct Fire',
   indirect: 'Indirect Fire',
-  ground: 'Ground Obs',
-  aerial: 'Aerial Obs',
+  ground: 'Gr Obsn',
+  aerial: 'Aerial Obsn',
 };
 /** The two kinds: the first two fields are cover (protection), the last two concealment (not being seen). */
 export const COVER_KIND: Record<CoverField, 'Cover' | 'Concealment'> = {
@@ -356,7 +356,7 @@ export function coverText(c: GroundGuideCover, fmt: (m: number) => string): stri
   for (const f of COVER_FIELDS) {
     const from = c.from[f];
     const n = c.nearest[f];
-    let s = `${COVER_KIND[f]} from ${COVER_FIELD_LABEL[f].replace(' Obs', ' Observation')}: ${COVER_WORD[c.levels[f]]}${from ? ` (${from})` : ''}`;
+    let s = `${COVER_KIND[f]} from ${COVER_FIELD_LABEL[f]}: ${COVER_WORD[c.levels[f]]}${from ? ` (${from})` : ''}`;
     if (n) s += `; ${COVER_WORD[n.level]} ${fmt(n.distanceM)} ${n.compass} (${n.label})`;
     out.push(s);
   }
@@ -370,8 +370,8 @@ export function coverText(c: GroundGuideCover, fmt: (m: number) => string): stri
   const sh = shelterText(c, fmt);
   if (sh) out.push(`Underground / enclosed: ${sh}`);
   const fm = formText(c, fmt);
-  if (fm) out.push(`Lie of the ground: ${fm}`);
-  if (c.built) out.push(`Buildings here: ${builtText(c)}`);
+  if (fm) out.push(`Lie of the Gr: ${fm}`);
+  if (c.built) out.push(`Bldgs here: ${builtText(c)}`);
   return out;
 }
 

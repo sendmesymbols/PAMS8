@@ -692,7 +692,7 @@
     "card": {
       "cursor": "minimal",
       "nearest": "ranked",
-      "hint": false,
+      "hint": true,
       "goingLines": true,
       "movementRose": true,
       "soilStrength": false,

@@ -254,7 +254,7 @@ function namedRoad(rec: RoadRecord): Node | null {
   const between = rt?.from && rt?.to ? `${rt.from} to ${rt.to}` : rec.name && rec.name !== id ? rec.name : null;
   const f = frag(b(id), soft([between, rt?.km ? `${Math.round(rt.km)} km` : null, `${fmtDistance(rec.distanceM)} ${rec.compass}`].filter(Boolean).map((x) => ` · ${x}`).join('')));
   if (rt?.msr) f.append(' ', el('span', 'ms-gs-chip ms-gs-msr', 'MSR'));
-  if (rec.defence) f.append(' ', el('span', 'ms-gs-chip ms-gs-msr', 'Defence road'));
+  if (rec.defence) f.append(' ', el('span', 'ms-gs-chip ms-gs-msr', 'Defence Rd'));
   return f;
 }
 
@@ -298,8 +298,8 @@ function kmText(k: (SectionPlace & { km: number | null }) | null | undefined, wh
 
 export function roadsRows(r: RoadsReading): Array<[string, Node | string | null]> {
   return [
-    [r.route?.on ? 'Here' : 'Nearest', r.route ? routeNode(r.route) : 'No road or track within 500 m'],
-    ['Road', r.record ? namedRoad(r.record) : null],
+    [r.route?.on ? 'Here' : 'Nearest', r.route ? routeNode(r.route) : 'No Rd or Tr within 500 m'],
+    ['Rd', r.record ? namedRoad(r.record) : null],
     ['Recorded', r.record ? recordText(r.record) : null],
     ['Crossing', r.crossing ? `${nameOf(r.crossing)} ${at(r.crossing)}` : null],
     ['Choke', (r.chokepoints ?? []).length ? `${r.chokepoints.map((c) => `${nameOf(c)} ${at(c)}`).join(' · ')} (on an MSR)` : null],
@@ -309,7 +309,7 @@ export function roadsRows(r: RoadsReading): Array<[string, Node | string | null]
     ['Junction', [r.junction ? `${nameOf(r.junction)} ${at(r.junction)}${r.junction.ways ? ` (${r.junction.ways} ways out along highways)` : ''}` : null, r.namedJunction ? `${nameOf(r.namedJunction)} ${at(r.namedJunction)}` : null].filter(Boolean).join(' · ') || null],
     ['Fuel', r.fuel ? `${nameOf(r.fuel)} ${at(r.fuel)}` : null],
     ['Culvert', r.culvert ? `${r.culvert.label} ${at(r.culvert)}` : null],
-    ['KM', [kmText(r.kmRoad, 'road'), kmText(r.kmRail, 'railway')].filter(Boolean).join(' · ') || null],
+    ['KM', [kmText(r.kmRoad, 'Rd'), kmText(r.kmRail, 'railway')].filter(Boolean).join(' · ') || null],
     ['Air', r.air ? `${nameOf(r.air)} ${at(r.air)}${r.airRunway ? ` · runway ${r.airRunway}` : ''}` : null],
   ];
 }
@@ -317,7 +317,7 @@ export function roadsRows(r: RoadsReading): Array<[string, Node | string | null]
 function roadsOne(r: RoadsReading, lead: RoadDensityLead, withDensity: boolean): string {
   const d = r.density;
   const dens = d && withDensity ? densityOneLine(d, lead) : null;
-  if (!r.route) return ['No road or track within 500 m', dens].filter(Boolean).join(' · ');
+  if (!r.route) return ['No Rd or Tr within 500 m', dens].filter(Boolean).join(' · ');
   const x = r.route;
   return [x.on ? x.typeLabel : `${x.typeLabel} ${fmtDistance(x.distanceM)} ${x.compass}`, x.tier ? x.tierLabel : null, x.msr ? 'MSR' : null, dens].filter(Boolean).join(' · ');
 }
@@ -335,9 +335,9 @@ function densityGridRows(s: GroundGuideSections, d: RoadDensityReading | null): 
 export function buildingsRows(bd: BuildingsReading): Array<[string, Node | string | null]> {
   const dens = bd.density;
   return [
-    ['Buildings', dens ? (dens.code === 0 ? 'None mapped here' : frag(b(dens.label), soft([bd.size, bd.height].filter(Boolean).map((x) => ` · ${x}`).join('')))) : null],
+    ['Bldgs', dens ? (dens.code === 0 ? 'None mapped here' : frag(b(dens.label), soft([bd.size, bd.height].filter(Boolean).map((x) => ` · ${x}`).join('')))) : null],
     ['Kacha huts', bd.huts ? (bd.huts.perKm2 || bd.huts.temporary ? `${bd.huts.perKm2 ? `about ${bd.huts.perKm2} per km²` : 'none mapped'}${bd.huts.temporary ? ' · temporary huts nearby' : ''}` : 'None mapped') : null],
-    ['Services', bd.services.length ? bd.services.slice(0, 3).map((s) => `${s.label} ${at(s)}`).join(' · ') : null],
+    ['Svcs', bd.services.length ? bd.services.slice(0, 3).map((s) => `${s.label} ${at(s)}`).join(' · ') : null],
     ['Security', bd.security.length ? bd.security.map((s) => `${nameOf(s)} ${at(s)}`).join(' · ') : null],
     ['Vet', bd.vet ? `${nameOf(bd.vet)} ${at(bd.vet)}` : null],
     ['Lodging', bd.lodging ? `${nameOf(bd.lodging)} ${at(bd.lodging)}` : null],
@@ -355,7 +355,7 @@ export function buildingsRows(bd: BuildingsReading): Array<[string, Node | strin
 
 function buildingsOne(bd: BuildingsReading): string {
   return [
-    bd.density ? (bd.density.code ? `Buildings ${bd.density.label.split(' (')[0].toLowerCase()}` : 'No buildings') : null,
+    bd.density ? (bd.density.code ? `Bldgs ${bd.density.label.split(' (')[0].toLowerCase()}` : 'No Bldgs') : null,
     bd.huts?.perKm2 ? `${bd.huts.perKm2} huts per km²` : null,
     bd.services[0] ? `${bd.services[0].label} ${at(bd.services[0])}` : null,
     bd.admin?.tehsil ? `Tehsil ${bd.admin.tehsil}` : bd.admin?.district ? `District ${bd.admin.district}` : null,
@@ -404,7 +404,7 @@ export function obstaclesRows(o: ObstaclesReading, s?: GroundGuideSections | nul
 
 function obstaclesOne(o: ObstaclesReading): string {
   const hit = (h: ObstacleHit | null) => (h ? `${h.label} ${fmtDistance(h.distanceM)} ${h.compass}${h.effect ? ` (${h.effect})` : ''}` : null);
-  return [o.wet ? `${o.wet} here` : null, hit(o.manMade), hit(o.natural)].filter(Boolean).join(' · ') || 'No obstacle mapped near';
+  return [o.wet ? `${o.wet} here` : null, hit(o.manMade), hit(o.natural)].filter(Boolean).join(' · ') || 'No Obs mapped near';
 }
 
 // ── W ────────────────────────────────────────────────────────────────────────
@@ -508,7 +508,7 @@ export function obstaclesMore(o: ObstaclesReading, sx: GroundGuideSections): Arr
 
 /** B: what the one line (density, huts, nearest service, tehsil) leaves out. */
 export function buildingsMore(bd: BuildingsReading, v: GroundGuideVerdict): Array<[string, Node | string | null]> {
-  const rows = buildingsRows(bd).filter(([k]) => k !== 'Buildings' && k !== 'Kacha huts');
+  const rows = buildingsRows(bd).filter(([k]) => k !== 'Bldgs' && k !== 'Kacha huts');
   const build = bd.density && bd.density.code > 0 ? [bd.size, bd.height].filter(Boolean).join(' · ') || null : null;
   return [['Build', build], ['Huts', bd.huts?.temporary ? 'Temporary huts nearby' : null], ...rows, ['Ages', agesText(v)]];
 }
@@ -565,22 +565,22 @@ export function sectionsCard(v: GroundGuideVerdict): { g: HTMLElement | null; r:
       : sg === 'line' ? one('G', groundOne(g), null, groundMore(g, v))
       : sg === 'relief' ? groundRelief(g)
       : sg === 'chips' ? groundChips(g)
-      : section('G', 'Ground', kv(groundRows(g))),
+      : section('G', 'Gr', kv(groundRows(g))),
     r: !r || sr === 'off' ? null
       : sr === 'line' ? compactR(s, r, one)
       : sr === 'shield' ? withDensity(roadsShield(r))
       : sr === 'verdict' ? withDensity(roadsVerdict(r))
-      : section('R', 'Roads, Tracks & Rail', kv([...roadsRows(r), ...densityGridRows(s, r.density)]), densityCardBlock(r.density, s.roadDensityStyle, s.roadDensityLead), checkBox(r.check)),
+      : section('R', 'Rds, Trs & Rail', kv([...roadsRows(r), ...densityGridRows(s, r.density)]), densityCardBlock(r.density, s.roadDensityStyle, s.roadDensityLead), checkBox(r.check)),
     o: !o || so === 'off' ? null
       : so === 'line' ? one('O', obstaclesOne(o), null, obstaclesMore(o, s))
       : so === 'tiles' ? obstaclesTiles(o)
       : so === 'gap' ? obstaclesGap(o)
-      : section('O', 'Obstacles', kv(obstaclesRows(o, s))),
+      : section('O', 'Obs', kv(obstaclesRows(o, s))),
     b: !b || sb === 'off' ? null
-      : sb === 'line' ? one('B', buildingsOne(b) || 'No buildings or services mapped', null, buildingsMore(b, v))
+      : sb === 'line' ? one('B', buildingsOne(b) || 'No Bldgs or Svcs mapped', null, buildingsMore(b, v))
       : sb === 'where' ? buildingsWhere(b)
       : sb === 'protected' ? buildingsProtected(b)
-      : section('B', 'Built-Up Areas · Buildings', kv(buildingsRows(b))),
+      : section('B', 'BUAs · Bldgs', kv(buildingsRows(b))),
     w: !w || sw === 'off' ? null
       : sw === 'line' ? one('W', `${w.monthName}: ${weatherMonth(w)}`, null, weatherMore(w))
       : sw === 'year' ? weatherYearStrip(w)
@@ -597,14 +597,14 @@ function rowsText(rows: Array<[string, Node | string | null]>): string[] {
 /** Plain-text lines for the Ground Brief's Copy as Text and for hosts. */
 export function sectionsText(s: GroundGuideSections): string[] {
   const out: string[] = [];
-  if (s.ground) out.push('G Ground', ...rowsText(groundRows(s.ground)).map((l) => `  ${l}`));
+  if (s.ground) out.push('G Gr', ...rowsText(groundRows(s.ground)).map((l) => `  ${l}`));
   if (s.roads) {
-    out.push('R Roads, Tracks & Rail', ...rowsText(roadsRows(s.roads)).map((l) => `  ${l}`));
+    out.push('R Rds, Trs & Rail', ...rowsText(roadsRows(s.roads)).map((l) => `  ${l}`));
     if (s.roads.check) out.push(`  For the mode: ${s.roads.check.text}`);
     if (s.roads.density) out.push(...roadDensityText(s.roads.density).map((l) => `  ${l}`));
   }
-  if (s.obstacles) out.push('O Obstacles', ...rowsText(obstaclesRows(s.obstacles, s)).map((l) => `  ${l}`));
-  if (s.buildings) out.push('B Buildings', ...rowsText(buildingsRows(s.buildings)).map((l) => `  ${l}`));
+  if (s.obstacles) out.push('O Obs', ...rowsText(obstaclesRows(s.obstacles, s)).map((l) => `  ${l}`));
+  if (s.buildings) out.push('B Bldgs', ...rowsText(buildingsRows(s.buildings)).map((l) => `  ${l}`));
   if (s.weather) out.push(`W Weather (${s.weather.source})`, `  ${s.weather.monthName}: ${weatherMonth(s.weather)}`, `  Year: ${weatherYearText(s.weather)}`);
   return out;
 }
@@ -643,7 +643,7 @@ registerBriefSection({
   id: 'road-density',
   letter: 'R',
   order: 2,
-  title: 'Road Network Density',
+  title: 'Rd Network Density',
   render: (v) => {
     const d = v.sections?.roads?.density;
     if (!d) return null;
@@ -656,7 +656,7 @@ registerBriefSection({
   id: 'obstacles',
   letter: 'O',
   order: 1,
-  title: 'Obstacles: Natural, Man-Made, Temporary',
+  title: 'Obs: Natural, Man-Made, Temporary',
   render: (v) => (v.sections?.obstacles ? (ensureSectionsCss(), kv(obstaclesRows(v.sections.obstacles, v.sections))) : null),
   text: (v) => (v.sections?.obstacles ? rowsText(obstaclesRows(v.sections.obstacles, v.sections)) : []),
 });
@@ -664,7 +664,7 @@ registerBriefSection({
   id: 'buildings',
   letter: 'B',
   order: 20,
-  title: 'Buildings, Huts & Services',
+  title: 'Bldgs, Huts & Svcs',
   render: (v) => (v.sections?.buildings ? (ensureSectionsCss(), kv(buildingsRows(v.sections.buildings))) : null),
   text: (v) => (v.sections?.buildings ? rowsText(buildingsRows(v.sections.buildings)) : []),
 });

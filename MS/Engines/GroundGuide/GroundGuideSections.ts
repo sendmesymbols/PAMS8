@@ -965,7 +965,7 @@ function routeCheck(profile: string, r: NonNullable<RoadsReading['route']>, rule
     if (r.tier === 1) return { level: 'stop', text: `Below class ${lim}: not tankable` };
     return { level: 'unknown', text: 'Load class not recorded: treat as not tankable until checked' };
   }
-  if (profile === 'tracked' && TRACK_TYPES.has(r.type)) return { level: 'unknown', text: 'Track: no load class; check bridges and culverts' };
+  if (profile === 'tracked' && TRACK_TYPES.has(r.type)) return { level: 'unknown', text: 'Tr: no load class; check bridges and culverts' };
   if (profile === 'wheeled' || profile === 'roadbound' || profile === 'gun' || profile === 'ad' || profile === 'signals') {
     if (METALLED_TYPES.has(r.type)) return { level: 'ok', text: 'Metalled: all-weather' };
     if (TRACK_TYPES.has(r.type)) return { level: 'warn', text: 'Fair-weather surface: SLOW-GO after rain' };
@@ -1061,12 +1061,12 @@ function readRoads(a: SectionArgs): RoadsReading {
   if (a.features) {
     for (const h of a.features.nearestOfKinds(at, 10000, KINDS.choke, 2, (x) => String(x.attrs.ig ?? '').includes('C')).list) chokepoints.push(place(h, h.kindLabel));
     const j = a.features.nearestOfKinds(at, 10000, KINDS.mainJunction, 1).list[0];
-    if (j) junction = { ...place(j, 'Junction of main roads'), ways: num(j.attrs.mx) };
+    if (j) junction = { ...place(j, 'Junction of main Rds'), ways: num(j.attrs.mx) };
     const nj = a.features.nearestOfKinds(at, Math.max(a.radiusM, 5000), KINDS.namedJunction, 1).list[0];
     if (nj) namedJunction = place(nj, nj.kindLabel);
     const fp = a.features.nearestOfKinds(at, 15000, KINDS.fuel, 1).list[0];
     if (fp) fuel = place(fp, fp.kindLabel);
-    kmRoad = kmStone(a.features.nearestOfKinds(at, 2000, KINDS.kmRoad, 20).list, 'Road km stone');
+    kmRoad = kmStone(a.features.nearestOfKinds(at, 2000, KINDS.kmRoad, 20).list, 'Rd km stone');
     kmRail = kmStone(a.features.nearestOfKinds(at, 2000, KINDS.kmRail, 20).list, 'Railway km stone');
     const cu = a.features.nearestOfKinds(at, a.radiusM, KINDS.culvert, 1).list[0];
     if (cu) culvert = { ...place(cu, cu.kindLabel), name: null };
@@ -1175,7 +1175,7 @@ function readObstacles(a: SectionArgs): ObstaclesReading {
       const x = text(h.attrs.x);
       const sl = num(h.attrs.sl);
       if (!x && !sl) continue;
-      closure = { road: text(h.attrs.r) ?? text(h.attrs.n) ?? 'Road', closed: x, landslides: sl, distanceM: h.distanceM, compass: h.compass };
+      closure = { road: text(h.attrs.r) ?? text(h.attrs.n) ?? 'Rd', closed: x, landslides: sl, distanceM: h.distanceM, compass: h.compass };
       break;
     }
   }

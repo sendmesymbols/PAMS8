@@ -98,7 +98,7 @@ export class GroundGuideAuditPanel {
   }
 
   /** Progress while symbols are being checked. */
-  showProgress(done: number, total: number, title = 'Ground check'): void {
+  showProgress(done: number, total: number, title = 'Gr Check'): void {
     const root = this._ensure();
     this._title.textContent = title;
     root.style.display = 'flex';
@@ -143,7 +143,7 @@ export class GroundGuideAuditPanel {
   private _render(): void {
     const a = this._audit;
     if (!a || !this._root) return;
-    this._title.textContent = this._opts.title ?? 'Ground check';
+    this._title.textContent = this._opts.title ?? 'Gr Check';
 
     const parts: Node[] = [];
     const sum = el('div', 'ms-gga-sum');
@@ -173,7 +173,7 @@ export class GroundGuideAuditPanel {
         this._showAll = cb.checked;
         this._render();
       });
-      opt.append(cb, document.createTextNode('Show symbols on suitable ground too'));
+      opt.append(cb, document.createTextNode('Show symbols on suitable Gr too'));
       parts.push(opt);
     }
 
@@ -233,7 +233,7 @@ export class GroundGuideAuditPanel {
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-label', 'Ground check');
     const head = el('div', 'ms-gga-head');
-    this._title = el('div', 'ms-gga-title', 'Ground check');
+    this._title = el('div', 'ms-gga-title', 'Gr Check');
     this._title.tabIndex = -1; // focusable by script only, so opening the panel can land on its heading
     this._title.setAttribute('role', 'heading');
     this._title.setAttribute('aria-level', '2');

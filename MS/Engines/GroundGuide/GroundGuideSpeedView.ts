@@ -92,7 +92,7 @@ export function speedHeadline(s: GroundGuideSpeed): HTMLElement {
 }
 
 function shield(s: GroundGuideSpeed): HTMLElement {
-  return el('span', `ms-ggs-shield${s.road?.msr ? ' ms-msr' : ''}`, s.road?.shield ?? 'Road');
+  return el('span', `ms-ggs-shield${s.road?.msr ? ' ms-msr' : ''}`, s.road?.shield ?? 'Rd');
 }
 
 /** "1.2 km E · 18 min to reach · then 40 km/h (column)". */
@@ -106,7 +106,7 @@ function roadText(s: GroundGuideSpeed): string {
 function roadRow(s: GroundGuideSpeed): HTMLElement {
   const box = el('div');
   if (!s.road) {
-    box.textContent = `No road it can use within ${fmtDistance(s.roadRadiusM)}`;
+    box.textContent = `No Rd it can use within ${fmtDistance(s.roadRadiusM)}`;
     return box;
   }
   box.append(shield(s), roadText(s));
@@ -132,7 +132,7 @@ export function speedGroundText(s: GroundGuideSpeed): string | null {
 
 function styleLine(s: GroundGuideSpeed): HTMLElement {
   const kv = el('div', 'ms-ggs-kv');
-  kv.append(el('span', 'ms-ggs-k', 'Road'), roadRow(s));
+  kv.append(el('span', 'ms-ggs-k', 'Rd'), roadRow(s));
   const day = speedDayText(s);
   if (day) kv.append(el('span', 'ms-ggs-k', 'Day'), el('span', undefined, day));
   const g = speedGroundText(s);
@@ -164,7 +164,7 @@ function styleGrid(s: GroundGuideSpeed): HTMLElement {
   if (c) head.append(c);
   const road = el('div', 'ms-ggb-soft');
   road.style.marginTop = '6px';
-  road.append(s.road ? `${s.road.shield}: ${roadText(s)}` : `No road within ${fmtDistance(s.roadRadiusM)}`);
+  road.append(s.road ? `${s.road.shield}: ${roadText(s)}` : `No Rd within ${fmtDistance(s.roadRadiusM)}`);
   return band('T', caption(s), head, g, road);
 }
 
@@ -264,7 +264,7 @@ export function speedWay(s: GroundGuideSpeed): [HTMLElement, HTMLElement] | null
   if (!r) return null;
   const way = el('div', 'ms-ggs-way');
   const xc = el('span', 'ms-leg ms-xc');
-  xc.append(el('span', undefined, r.reachMin === null ? `${fmtDistance(r.distanceM)} · NO-GO` : r.reachMin === 0 ? 'on the road' : `${fmtDistance(r.distanceM)} · ${fmtMinutes(r.reachMin)}`));
+  xc.append(el('span', undefined, r.reachMin === null ? `${fmtDistance(r.distanceM)} · NO-GO` : r.reachMin === 0 ? 'on the Rd' : `${fmtDistance(r.distanceM)} · ${fmtMinutes(r.reachMin)}`));
   const rd = el('span', 'ms-leg ms-rd');
   rd.append(el('span', undefined, `${r.kmh} km/h${s.roadMode === 'convoy' ? ' column' : ''}`));
   const sh = shield(s);
@@ -279,7 +279,7 @@ export function speedWay(s: GroundGuideSpeed): [HTMLElement, HTMLElement] | null
 function styleRoad(s: GroundGuideSpeed): HTMLElement {
   const w = speedWay(s);
   if (!w) return styleLine(s);
-  return band('T', `${caption(s)} · To the Road`, ...w);
+  return band('T', `${caption(s)} · To the Rd`, ...w);
 }
 
 /** "Speed · Foot" style caption, for the Detail card's tiles. */

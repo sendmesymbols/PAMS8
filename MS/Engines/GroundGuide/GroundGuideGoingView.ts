@@ -185,7 +185,7 @@ export function blockedText(g: GroundGuideGoingInfo, max = 3, sep = ' · '): str
   const items: string[] = [];
   for (const x of m.sectors) {
     if (x.blockedBy && x.reachM < m.rangeM) items.push(`${x.compass} ${x.blockedBy} ${fmtDistance(x.reachM)}`);
-    else if (x.step === 'nogo') items.push(`${x.compass} NO-GO ground`);
+    else if (x.step === 'nogo') items.push(`${x.compass} NO-GO Gr`);
   }
   if (!items.length) return `Nothing blocks the way within ${fmtDistance(m.rangeM)}`;
   return 'Blocked: ' + items.slice(0, max).join(sep) + (items.length > max ? `${sep}+${items.length - max} more` : '');
@@ -199,7 +199,7 @@ export function blockedNode(g: GroundGuideGoingInfo, max = 3, sep = ' · '): Doc
   const items: DocumentFragment[] = [];
   for (const x of m.sectors) {
     if (x.blockedBy && x.reachM < m.rangeM) items.push(joinNodes([compassNode(x.compass, x.bearingDeg), ` ${x.blockedBy} ${fmtDistance(x.reachM)}`], ''));
-    else if (x.step === 'nogo') items.push(joinNodes([compassNode(x.compass, x.bearingDeg), ' NO-GO ground'], ''));
+    else if (x.step === 'nogo') items.push(joinNodes([compassNode(x.compass, x.bearingDeg), ' NO-GO Gr'], ''));
   }
   if (!items.length) {
     f.append(`Nothing blocks the way within ${fmtDistance(m.rangeM)}`);
@@ -531,7 +531,7 @@ export function movementRoseSection(g: GroundGuideGoingInfo, northDeg: number): 
   rate.style.color = RATING_COLOR[m.rating];
   const blocked = h('div', 'ms-gv-blk');
   blocked.append(blockedNode(g));
-  txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 directions open to ${fmtDistance(m.rangeM / 2)}`), blocked);
+  txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 Dirs open to ${fmtDistance(m.rangeM / 2)}`), blocked);
   box.append(roseSvg(g, 82, false, northDeg), txt);
   return band('T', `Movement Freedom · ${seasonWord(g)}`, box, roseLegend(true), g.pending ? h('div', 'ms-gv-soft', 'Still loading round the edges') : null);
 }
@@ -626,7 +626,7 @@ export function exitStripSection(g: GroundGuideGoingInfo, size = 96): HTMLElemen
   const rate = h('span', 'ms-gv-b', RATING_LABEL[m.rating]);
   rate.style.color = RATING_COLOR[m.rating];
   const line = h('div', 'ms-gv-blk');
-  line.append(rate, open.length ? joinNodes([' · open ', joinNodes(open.map((x) => compassNode(x.compass, x.bearingDeg)), ' ')], '') : ' · no direction open');
+  line.append(rate, open.length ? joinNodes([' · open ', joinNodes(open.map((x) => compassNode(x.compass, x.bearingDeg)), ' ')], '') : ' · no Dir open');
   const blocked = h('div', 'ms-gv-blk');
   blocked.append(blockedNode(g, 2));
   return band('T', `Exits · ${seasonWord(g)} · ${fmtDistance(m.rangeM)}`, pic, line, blocked);

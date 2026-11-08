@@ -482,7 +482,7 @@ export function populationSection(p: GroundGuidePopulation | null | undefined): 
   if (!p || p.style === 'off') return null;
   const s = el('div', 'ms-ggb-sec');
   const cap = el('div', 'ms-ggb-cap ms-ggp-cap');
-  cap.append(el('span', 'ms-ggp-b', 'B'), p.style === 'block' ? 'Civil Considerations' : 'Built-Up Areas · People');
+  cap.append(el('span', 'ms-ggp-b', 'B'), p.style === 'block' ? 'Civil Considerations' : 'BUAs · People');
   s.append(cap, ...body(p.reading, p.style));
   if (p.style !== 'block') s.appendChild(el('div', 'ms-ggb-soft', p.reading.source.label));
   return s;
@@ -519,7 +519,7 @@ export function populationBriefSection(r: GroundGuidePopulationReading): HTMLEle
 /** The same as plain text lines, for Copy as Text. */
 export function populationBriefText(r: GroundGuidePopulationReading): string[] {
   const out = [
-    `B  BUILT-UP AREAS · CIVIL CONSIDERATIONS (${r.source.label})`,
+    `B  BUAs · CIVIL CONSIDERATIONS (${r.source.label})`,
     `   People:     ${r.rings.filter((x) => x.km !== 2).map((x) => `${fmtPeople(x.people)} within ${km(x.km)}`).join(' · ')}`,
     `   Density:    ${r.cls.label}, ${fmtPeople(r.perKm2)} per km² within ${km(r.radiusKm)}`,
   ];
@@ -582,7 +582,7 @@ registerBriefSection({
   id: 'population',
   letter: 'B',
   order: 10,
-  title: 'Built-Up Areas · Civil Considerations',
+  title: 'BUAs · Civil Considerations',
   render: (v) => {
     if (!v.population?.reading) return null;
     ensurePopulationCss();
