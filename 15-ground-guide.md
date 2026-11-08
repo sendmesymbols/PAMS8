@@ -167,6 +167,45 @@ tab?)`, `guide.isDetailOpen`, `guide.detailTab` (`showBrief()` / `isBriefOpen` s
 stepped the T block's tabs, is now the Trafficability tab; a folded T block on the full cursor card counts as open
 while the detail is.
 
+**The Gr Scope rail (V).** A side window docked at the right edge of the map (`groundGuide.scope.side`: right or left),
+**shown and hidden with V** at any time the guide is on, drawing or not (2026-11-08, approved from
+`ground-guide-scope-window.html`). It has **nothing to do with the mouse**: it never follows the cursor, and the cursor
+card and its H chip are separate and unchanged (the cursor card steps aside from the rail, as it does from the Detail).
+Plain V is free in the app; Ctrl+V stays paste. The choice is remembered between sessions; while it is hidden a small
+**V · Gr Scope** tab sits at that edge (`scope.tab`; click it to show the rail). The rail is 400 × 836 px, scaled down to
+fit a shorter map, and **never scrolls**. While both are open the Ground Detail stops short of it.
+- **What it reads**: the symbol **being placed**; with nothing being placed, the **one selected symbol** (SymbolEngine
+  passes its selection, `guide.setScopeTarget(graphic)`); else the symbol **just placed** (until the map is panned more
+  than a fifth of the screen); else the **map centre** (a reticle, no verdict). A placed symbol is judged as the audit
+  judges it (a mode set by hand when it was placed is kept), with the clear ground the S search finds.
+- **Top**: the verdict bar (the ladder colour and title the cursor card uses), who the ground is judged for (mode,
+  echelon, season, month, day / night), what it reads with the frontage (`Placing · Frontage 525 m · Facing N`), then
+  the answer: how much of the frontage is in NO-GO and in what (a share that rounds to 0 is written 1%, never clear),
+  and the way out: `Clear Gr 200 m NW` with **S** while placing a point, `No clear Gr within 5.1 km: check on the
+  ground`, or the NO-GO beside a Marginal position.
+- **The map** is the window, the real ground round the spot for the echelon: Section 240 m each way (rings 50 / 100 /
+  200 m), Pl 720 m (100 / 300 / 600), Coy 1.5 km (250 / 500 / 1000), Bn 3.6 km (1 / 2 / 3 km), Bde 10 km (3 / 6 / 9 km);
+  a point with no frontage and the map centre read like a Coy, a line or area widens the map to hold it. The symbol is
+  a white arrow for its facing (not a unit frame: not every symbol is one); the frontage is drawn for the echelon, its
+  front edge in blocks red where it is in NO-GO (pale for some, strong for most); the clear ground is the frontage again,
+  dashed green, with an arrow to it (a pointer at the edge when it is off the map). **No Inter Gap marks** on the rail.
+  The map turns with a rotated view (north badge top left), with a scale bar.
+- **The GROTBC layers** (`GroundGuideScopeScene.ts`, from the bundle's class layer and `features/`): **G** hills with
+  their heights, ridgelines, ITG candidates as violet diamonds; **R** MSR white (cased), all-weather blue, fair-weather
+  violet, minor grey, tracks dashed, railways, road numbers, bridges close in; **O** canals and rivers, power lines;
+  **T** the going under everything (the guide's own NO-GO / SLOW-GO / Marginal classing for the mode; off: plain ground
+  with NO-GO kept in blue-grey); **B** built-up hatched, towns and villages sized by people, the biggest named; **C**
+  trees and orchards dotted, nullahs and dry beds.
+- **Kept clear**: the wider the echelon, the less is drawn. Bn drops tracks; Bde keeps only MSR and all-weather roads;
+  villages only below Bn; bridges to Coy; spot heights to Pl; junctions from Bn; ITG at most 6 drawn (strong first, then
+  nearest; the legend gives the count); names a handful (the 3 biggest towns, the 2 highest points, road numbers),
+  never one over another. A place or hill recorded twice (two sources) is drawn once.
+- **Legend**: under the map only, one line per letter, each giving the nearest or biggest of each thing in view
+  (`N-5 MSR Cl 70 383 m N`, `Jhelum 190k 2.3 km N`, `NO-GO Gr at the symbol`, the going shares). **Each line is that
+  layer's switch**: click it to hide or show the layer (remembered).
+- API: `guide.showScope(open?)` (no argument toggles, as V does), `guide.isScopeOpen`, `guide.setScopeTarget(graphic |
+  null)`; event `ground-guide-scope` `{ open }`.
+
 **Visual review (2026-11-08, the user's picks from `ground-guide-visual-options.html`).** One type scale and one set of
 colours for every Ground Guide surface live in `GroundGuideTokens.ts`: sizes 12 / 13.5 / 15.5 / 18 / 22 px, weights
 400 / 600 / 750, labels `#c3cbd3`, stronger hairlines, no faded text, dark only.
@@ -950,9 +989,14 @@ resets the schedule.
   "maxSamples": 400,
   "useWorker": true,
   "itg": { "enabled": true, "radiusKm": 3, "max": 2, "minLevel": 1 },
-  "card": { "cursor": "minimal", "briefKey": true, "...": "the A-H card sections, shown only with cursor: full" }
+  "card": { "cursor": "minimal", "briefKey": true, "...": "the A-H card sections, shown only with cursor: full" },
+  "scope": { "enabled": true, "side": "right", "tab": true, "topPx": 54 }
 }
 ```
+
+`scope`: the Gr Scope rail. `enabled` (V shows and hides it; off: no rail, no V key), `side` (the edge of the map it
+docks to), `tab` (the `V · Gr Scope` tab at that edge while it is hidden), `topPx` (room left free above it for the
+host's toolbar; it also docks inside any `view.padding` the host sets).
 
 `groundGuide.*` is read live: changing `bundleUrl` reloads the bundle, the rest applies on the next mouse move.
 
@@ -967,6 +1011,11 @@ Registered in the ⚙ Settings menu and the Ctrl+K palette as **Ground Guide**. 
 from the keyboard (`SymbolEngine.toggleGroundGuide()`, the same as `features.groundGuide`, published on the settings bus so
 every panel stays in step), with a toast at the foot of the screen that says the new state and whether the terrain data
 is ready, loading or unavailable.
+
+**Keys** while the guide is on (handled by the guide itself, listed in the harness's Show Shortcuts and the Legend tab):
+**V** Gr Scope rail (any time) · **D** Ground Detail, **G R O T B C** its tabs, **K** its Legend, **Esc** closes it ·
+while drawing **S** Quick Fix, **P** change the mode, **H** shrink the cursor card to a chip, **Shift**-click to place
+against an Enforce refusal.
 
 ---
 

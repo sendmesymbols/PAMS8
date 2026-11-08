@@ -920,6 +920,12 @@ class SymbolEngine implements Evented {
     if (!this._groundGuide) {
       this._groundGuide = new GroundGuide(() => this._getView());
       this._groundGuide.setOptions((settingsData as any).groundGuide ?? {});
+      // The Gr Scope rail (V) reads the one selected symbol while nothing is being placed.
+      const sel = this._selectionEngine;
+      if (sel) {
+        sel.on('selectionChange', ({ selected }: { selected: Graphic[] }) => this._groundGuide?.setScopeTarget(selected.length === 1 ? selected[0] : null));
+        if (sel.count === 1) this._groundGuide.setScopeTarget(sel.selectedGraphics[0]);
+      }
       this.emitEvent('groundGuideReady', { engine: this._groundGuide });
     }
     this._groundGuide.enable();

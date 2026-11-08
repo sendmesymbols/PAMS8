@@ -340,6 +340,32 @@ export class GroundGuideFeatures {
     return { list: [...best.values()].sort((p, q) => p.distanceM - q.distanceM), pending };
   }
 
+  /**
+   * Every point and line of the tiles within `radiusM` of a point, raw (Web Mercator metres, kind key, attributes), for
+   * the Gr Scope rail's map, which draws and thins them itself. Reads only tiles in memory, like `candidatesNear`.
+   */
+  sceneNear(at: MercXY, radiusM: number): {
+    points: Array<{ key: string; x: number; y: number; a: Record<string, unknown> }>;
+    lines: Array<{ key: string; xy: Float64Array; a: Record<string, unknown> }>;
+    pending: boolean;
+  } {
+    const pending = !this.request(at, radiusM);
+    const points: Array<{ key: string; x: number; y: number; a: Record<string, unknown> }> = [];
+    const lines: Array<{ key: string; xy: Float64Array; a: Record<string, unknown> }> = [];
+    for (const [x, y] of this._tilesAround(at, radiusM)) {
+      const key = `${x}/${y}`;
+      const pts = this._tiles.get(key);
+      if (!pts) continue;
+      for (const p of pts) {
+        const k = this._kinds[String(p.kind)];
+        if (k) points.push({ key: k.key, x: p.x, y: p.y, a: p.a ?? {} });
+      }
+      for (const r of this._roads.get(key) ?? []) lines.push({ key: 'road', xy: r.xy, a: r.a });
+      for (const l of this._lines.get(key) ?? []) lines.push(l);
+    }
+    return { points, lines, pending };
+  }
+
   /** The label of a kind key ("rail_station" -> "Railway station"), from features/index.json. */
   kindLabel(key: string): string {
     return this._kindLabel(key);

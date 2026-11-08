@@ -496,6 +496,8 @@ export class GroundGuideDetail {
   private _grip: HTMLButtonElement | null = null;
   /** The card's box on screen while open, for the cursor card to keep clear of (item 7); null = measure again. */
   private _rect: DOMRect | null = null;
+  /** Room left free for the Gr Scope rail (setInset). */
+  private _inset: { side: 'right' | 'left'; px: number } = { side: 'right', px: 0 };
   private _onWinResize: (() => void) | null = null;
   private _h0 = 0;
   private _band: HTMLElement | null = null;
@@ -618,6 +620,26 @@ export class GroundGuideDetail {
     orientRoses(this._el, northDeg);
   }
 
+  /**
+   * Room kept free at one side for the Gr Scope rail while it is shown (px from the window's edge; 0 = none): the card
+   * stops short of it instead of running under it, and fits its tiles to the narrower width.
+   */
+  setInset(side: 'right' | 'left', px: number): void {
+    if (side === this._inset.side && px === this._inset.px) return;
+    this._inset = { side, px };
+    this._applyInset();
+  }
+
+  private _applyInset(): void {
+    const e = this._el;
+    if (!e) return;
+    const { side, px } = this._inset;
+    e.style.right = side === 'right' && px > 0 ? `${px}px` : '';
+    e.style.left = side === 'left' && px > 0 ? `${px}px` : '';
+    this._rect = null;
+    if (this.isShown) this._h.resized?.();
+  }
+
   hide(): void {
     this._el?.classList.remove('ms-open');
     if (this._sum) this._sum.style.minHeight = '';
@@ -706,7 +728,7 @@ export class GroundGuideDetail {
     band.append(clip);
     const foot = el('div', 'ms-ggd-f');
     const keys = el('span');
-    for (const [k, t] of [['D', 'open / close'], ['G R O T B C', 'tabs, again for the next page, with Shift back'], ['K', 'legend'], ['Esc', 'close']] as const) {
+    for (const [k, t] of [['D', 'open / close'], ['G R O T B C', 'tabs, again for the next page, with Shift back'], ['K', 'legend'], ['V', 'Gr Scope'], ['Esc', 'close']] as const) {
       for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
       keys.append(`${t} `);
     }
@@ -720,6 +742,7 @@ export class GroundGuideDetail {
     this._applyHeight(root);
     document.body.appendChild(root);
     this._el = root;
+    this._applyInset();
     this._mode = mode;
     this._sum = sum;
     this._band = band;
@@ -1455,6 +1478,7 @@ export class GroundGuideDetail {
       legendKeyRow('H', 'Hint', 'Shrinks the cursor card to GO / SLOW-GO / NO-GO; again for the card'),
       legendKeyRow('G', 'Tabs', 'G R O T B C, one letter a tab; again for the next page (back to the first after the last), Shift + letter goes back'),
       legendKeyRow('K', 'Legend', 'This tab (L is Lasso Select)'),
+      legendKeyRow('V', 'Gr Scope', 'Shows or hides the side rail: the map round the symbol with range rings and the GROTBC layers'),
       legendKeyRow('Esc', 'Close', 'Closes this card; a second Esc cancels the draw'),
     );
     out.push(tile('L', 'Keys', keys));

@@ -879,7 +879,8 @@ export class GroundGuideBadge {
   private _cardW = 320;
   private _cardH = 200;
   /** Where the card must not go (the open Detail), or null. */
-  private _avoid: (() => DOMRect | null) | null = null;
+  /** Boxes the card keeps clear of: the open Ground Detail, the Gr Scope rail. */
+  private _avoid: (() => DOMRect | DOMRect[] | null) | null = null;
   /** The frontage on the map, as offsets from the cursor (setKeepClear). */
   private _keep: { l: number; t: number; r: number; b: number } | null = null;
   /** Which going / soil / movement sections to show (groundGuide.card). */
@@ -1004,7 +1005,7 @@ export class GroundGuideBadge {
    * Where the card must not go: the open Ground Detail (item 7, "Step aside, then chip"). The card opens on the side
    * of the cursor that has room and never over it; where no side has room it folds to the chip until there is.
    */
-  setAvoid(rect: (() => DOMRect | null) | null): void {
+  setAvoid(rect: (() => DOMRect | DOMRect[] | null) | null): void {
     this._avoid = rect;
   }
 
@@ -1213,7 +1214,8 @@ export class GroundGuideBadge {
   private _place(): void {
     const e = this._el;
     if (!e) return;
-    const av = this._touch ? null : (this._avoid?.() ?? null);
+    const got = this._touch ? null : (this._avoid?.() ?? null);
+    const av = got === null ? null : Array.isArray(got) ? (got.length ? got : null) : [got];
     if (av && !this._hint) {
       if (!this._autoChip && !this._spot(this._w, this._h, av, 0)) {
         this._autoChip = true;
@@ -1234,7 +1236,7 @@ export class GroundGuideBadge {
    * right, below left, above right, above left, then the same rows pushed in from the screen edge. With `keep`, it
    * must also stay clear of the frontage (setKeepClear), and may sit beside it or above / below it. Null when none.
    */
-  private _spot(w: number, h: number, av: DOMRect | null, margin: number, keep = false): { x: number; y: number } | null {
+  private _spot(w: number, h: number, av: DOMRect[] | null, margin: number, keep = false): { x: number; y: number } | null {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const right = this._x + 16;
@@ -1252,14 +1254,14 @@ export class GroundGuideBadge {
     }
     for (const [x, y] of spots) {
       if (x < EDGE / 2 || x + w > vw - EDGE / 2 || y < EDGE / 2 || y + h > vh - EDGE / 2) continue;
-      if (av && x < av.right + margin && x + w > av.left - margin && y < av.bottom + margin && y + h > av.top - margin) continue;
+      if (av && av.some((a) => x < a.right + margin && x + w > a.left - margin && y < a.bottom + margin && y + h > a.top - margin)) continue;
       if (k && x < k.r && x + w > k.l && y < k.b && y + h > k.t) continue;
       return { x, y };
     }
     return null;
   }
 
-  private _position(target: HTMLElement, w: number, h: number, av: DOMRect | null = null): void {
+  private _position(target: HTMLElement, w: number, h: number, av: DOMRect[] | null = null): void {
     if (this._touch) {
       // A finger covers what is below and beside it: centre the card above the touch point, below it only when
       // there is no room above.
@@ -1280,6 +1282,12 @@ export class GroundGuideBadge {
     if (y + h > window.innerHeight - EDGE) y = this._y - 14 - h;
     x = Math.max(EDGE / 2, x);
     y = Math.max(EDGE / 2, y);
+    // Nowhere fits: still never over a docked panel (the Gr Scope rail) when moving sideways clears it.
+    for (const a of av ?? []) {
+      if (!(x < a.right && x + w > a.left && y < a.bottom && y + h > a.top)) continue;
+      if (a.left - 8 - w >= EDGE / 2) x = a.left - 8 - w;
+      else if (a.right + 8 + w <= window.innerWidth - EDGE / 2) x = a.right + 8;
+    }
     target.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
 

@@ -2434,6 +2434,12 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     if (guide) void guide.retry();
     else showToast('Turn on the Ground Guide first', 'no-targets');
   });
+  // Gr Scope rail: the same as the V key.
+  document.getElementById('ground-guide-scope')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (guide?.isActive) guide.showScope();
+    else showToast('Turn on the Ground Guide first', 'no-targets');
+  });
   // Important Tactical Ground (G): candidates round the map centre, and designating the best one as MITG.
   const itgAtCentre = async (): Promise<any[] | null> => {
     const guide = (window as any).symbolEngine?.groundGuide;

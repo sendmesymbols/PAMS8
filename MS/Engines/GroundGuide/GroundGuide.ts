@@ -98,6 +98,8 @@ import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
 import { checkSpacing, echelonCodeOf, frontBlocks, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
 import { GroundGuideIndicators } from './GroundGuideIndicators';
+import { GroundGuideScope, type ScopeFrame, type ScopeSource } from './GroundGuideScope';
+import { buildScopeScene, overCodes, scopeHalf, scopeLevel } from './GroundGuideScopeScene';
 import { GroundGuideLegend, type LegendState } from './GroundGuideLegend';
 import { createOverlayLayer, OVERLAY_COLORS, OVERLAY_LEGEND, type OverlayRenderingSource } from './GroundGuideOverlay';
 import { verdictTone } from './GroundGuideTokens';
@@ -365,6 +367,36 @@ export default class GroundGuide {
   private _tileWaiters: Array<() => void> = [];
   private _indicators = new GroundGuideIndicators(() => this._getView());
   private _boundary = new GroundGuideBoundary(() => this._getView());
+  /**
+   * The Gr Scope rail (V; user, 2026-11-08): a side window docked at the map's edge, not tied to the mouse, with the
+   * ground round the symbol being placed (else the selected symbol, the one just placed, the map centre).
+   */
+  private _scope = new GroundGuideScope({
+    toggle: (open) => this.showScope(open),
+    redraw: () => this._scopeSoon(0, true),
+    moved: () => {
+      // The Ground Detail stops short of the rail; the cursor card steps aside from it; the map's own corner widgets
+      // (zoom, compass) move clear of it.
+      const ins = this._scope.inset;
+      this._detail.setInset(ins.side, ins.px);
+      this._badge.reflow();
+      this._scopeUiPad();
+    },
+  });
+  /** The view's `ui.padding` before the rail widened it, to put back when the rail goes. */
+  private _scopeUi: { view: any; orig: { top: number; right: number; bottom: number; left: number } } | null = null;
+  private _scopeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The last live verdict of the draw in progress, for the rail. */
+  private _scopeLive: GroundGuideVerdict | null = null;
+  /** The one selected symbol (SymbolEngine's selection), and the symbol just placed with the view centre then. */
+  private _scopeSelected: any = null;
+  private _scopePlaced: { graphic: any; centre: MercXY | null } | null = null;
+  /** Class code to the rail's cover code (built-up, trees, nullah), from the bundle's rules. */
+  private _scopeOver: Uint8Array | null = null;
+  /** What the rail last drew, and a count of tile arrivals, so an unchanged frame is not drawn again. */
+  private _scopeKey = '';
+  private _scopeTick = 0;
+  private _north = 0;
   private _lastClient: { x: number; y: number } | null = null;
   private _container: HTMLElement | null = null;
   private _pointerHandler: ((e: PointerEvent) => void) | null = null;
@@ -372,8 +404,13 @@ export default class GroundGuide {
   private _northHandle: { remove(): void } | null = null;
 
   constructor(private _getView: () => any) {
-    // The cursor card keeps clear of the open Ground Detail (user, 2026-11-08, item 7: step aside, then chip).
-    this._badge.setAvoid(() => (this._briefOpen ? this._detail.rect : null));
+    // The cursor card keeps clear of the open Ground Detail (user, 2026-11-08, item 7: step aside, then chip) and of the
+    // Gr Scope rail docked at the map's edge.
+    this._badge.setAvoid(() => {
+      const d = this._briefOpen ? this._detail.rect : null;
+      const s = this._scope.rect;
+      return d && s ? [d, s] : (d ?? s);
+    });
   }
 
   // ── Configuration ────────────────────────────────────────────────────────
@@ -438,6 +475,8 @@ export default class GroundGuide {
     this._manifest = null;
     this._rules = null;
     this._compiled.clear();
+    this._scopeOver = null;
+    this._syncScope(); // no bundle while it loads: the rail goes until it is ready
     this._cache?.clear();
     this._cache = null;
     this._features?.destroy();
@@ -775,6 +814,14 @@ export default class GroundGuide {
       }
       flag('speed.legend', sp.legend, (b) => (next.speed.legend = b));
     }
+    const so = patch.scope;
+    next.scope = { ...prev.scope };
+    if (so && typeof so === 'object') {
+      flag('scope.enabled', so.enabled, (b) => (next.scope.enabled = b));
+      pick('scope.side', so.side, ['right', 'left'] as const, (x) => (next.scope.side = x));
+      flag('scope.tab', so.tab, (b) => (next.scope.tab = b));
+      num('scope.topPx', so.topPx, 0, 400, (n) => (next.scope.topPx = n), true);
+    }
     this._reportIssues(issues);
     this._opts = next;
     setDistanceUnits(next.units);
@@ -809,6 +856,8 @@ export default class GroundGuide {
       this._syncPopulationLayer();
       this._refreshLive();
     }
+    if (JSON.stringify(next.scope) !== JSON.stringify(prev.scope)) this._syncScope();
+    else if (next.units !== prev.units || next.nearThresholdM !== prev.nearThresholdM) this._scopeSoon(0, true);
     if (next.bundleUrl !== prev.bundleUrl && this._enabled) {
       this._retryAttempt = 0;
       void this.configure();
@@ -879,6 +928,7 @@ export default class GroundGuide {
     this._legend.hide();
     this._legend.hideHint();
     this._boundary.hide();
+    this._syncScope();
     this._emitState('disabled');
   }
 
@@ -921,6 +971,232 @@ export default class GroundGuide {
     this._lastDetail = { geometry, sidc };
     this._warmAround(geometry, this._profileFor(sidc));
     this._apply(this._judgeLive(geometry, sidc));
+  }
+
+  // ── Gr Scope rail (V) ────────────────────────────────────────────────────
+
+  /** True while the Gr Scope rail is on screen. */
+  get isScopeOpen(): boolean {
+    return this._scope.isShown;
+  }
+
+  /**
+   * Show or hide the Gr Scope rail (V does this): a side window docked at the map's edge with the ground round the
+   * symbol being placed, else the selected symbol, the one just placed, the map centre. The choice is remembered.
+   * Shown only while the guide is on with a bundle and `scope.enabled`.
+   */
+  showScope(open = !this._scope.wanted): void {
+    this._scope.setShown(open);
+    this._syncScope();
+    if (open) this._scopeSoon(0, true);
+    this._emit('ground-guide-scope', { open: this._scope.isShown });
+  }
+
+  /**
+   * The symbol the rail reads while nothing is being placed: the one selected symbol (SymbolEngine passes its selection
+   * here), or null.
+   */
+  setScopeTarget(graphic: any | null): void {
+    const g = graphic?.geometry ? graphic : null;
+    if (g === this._scopeSelected) return;
+    this._scopeSelected = g;
+    this._scopeSoon(0);
+  }
+
+  /** Dock the rail to the view and show it when it may (guide on, bundle ready, `scope.enabled`); the Detail leaves it room. */
+  private _syncScope(): void {
+    const on = this._enabled && this._opts.scope.enabled && this._manifest !== null;
+    this._scope.setOptions({ side: this._opts.scope.side, tab: this._opts.scope.tab, topPx: this._opts.scope.topPx });
+    const view: any = this._getView?.();
+    this._scope.attach(on ? (view?.container ?? null) : null, view?.padding ?? null);
+    this._scope.setEnabled(on);
+    if (on && this._scope.wanted) this._scopeSoon(0, true);
+  }
+
+  /**
+   * While the rail is shown, widen the view's UI padding on its side by the room it takes, so ArcGIS's own corner widgets
+   * (zoom, compass, home) are not hidden under it; put the host's padding back when it goes or the view changes.
+   */
+  private _scopeUiPad(): void {
+    const view: any = this._getView?.();
+    const r = this._scope.rect;
+    const was = this._scopeUi;
+    if (was && (was.view !== view || !r)) {
+      try {
+        was.view.ui.padding = was.orig;
+      } catch {
+        /* the old view is gone */
+      }
+      this._scopeUi = null;
+    }
+    const ui = view?.ui;
+    const c = view?.container?.getBoundingClientRect?.();
+    if (!r || !ui || !c) return;
+    if (!this._scopeUi) {
+      const p = ui.padding ?? {};
+      const n = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+      const all = typeof p === 'number' ? p : null;
+      this._scopeUi = { view, orig: { top: all ?? n(p.top, 15), right: all ?? n(p.right, 15), bottom: all ?? n(p.bottom, 15), left: all ?? n(p.left, 15) } };
+    }
+    const o = this._scopeUi.orig;
+    const right = this._opts.scope.side === 'right';
+    const extra = Math.max(0, Math.round(right ? c.right - r.left : r.right - c.left));
+    try {
+      ui.padding = right ? { ...o, right: o.right + extra } : { ...o, left: o.left + extra };
+    } catch {
+      /* a view without UI padding */
+    }
+  }
+
+  /** Draw the rail again soon (it follows the draw at a few frames a second, not every mouse move). */
+  private _scopeSoon(ms = 140, force = false): void {
+    if (force) this._scopeKey = '';
+    if (!this._scope.isShown) return;
+    if (this._scopeTimer !== null) {
+      if (ms > 0) return;
+      clearTimeout(this._scopeTimer);
+    }
+    this._scopeTimer = setTimeout(() => {
+      this._scopeTimer = null;
+      try {
+        this._scopeRender();
+      } catch (e) {
+        EngineLogger.error(ENGINE, `Gr Scope: ${(e as Error)?.message ?? e}`);
+      }
+    }, ms);
+  }
+
+  /** Work out what the rail reads and draw it. */
+  private _scopeRender(): void {
+    if (!this._scope.isShown || !this.isActive || !this._manifest || !this._cache) return;
+    const view: any = this._getView?.();
+    // What it reads: the symbol being placed, the selected symbol, the one just placed, the map centre.
+    let source: ScopeSource;
+    let geometry: any;
+    let sidc: string | null = null;
+    let v: GroundGuideVerdict | null = null;
+    let graphic: any = null;
+    const live = this._lastDetail;
+    if (live && this._scopeLive) {
+      source = 'drawing';
+      geometry = live.geometry;
+      sidc = live.sidc;
+      v = this._scopeLive;
+    } else if (this._scopeSelected?.geometry) {
+      source = 'selected';
+      graphic = this._scopeSelected;
+    } else if (this._scopePlaced?.graphic?.geometry) {
+      source = 'placed';
+      graphic = this._scopePlaced.graphic;
+    } else {
+      source = 'centre';
+      geometry = view?.center;
+    }
+    if (graphic) {
+      geometry = graphic.geometry;
+      sidc = graphicSidc(graphic);
+    }
+    const shape = geometry ? toMercatorShape(geometry) : null;
+    const first = shape?.parts[0]?.[0];
+    if (!shape || !first) return;
+
+    // The spot, and for a line or area how far it reaches from it.
+    let centre: MercXY = first;
+    let needM = 0;
+    const isPoint = geometry.type === 'point';
+    if (!isPoint) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const part of shape.parts) for (const [x, y] of part) ((x0 = Math.min(x0, x)), (x1 = Math.max(x1, x)), (y0 = Math.min(y0, y)), (y1 = Math.max(y1, y)));
+      centre = [(x0 + x1) / 2, (y0 + y1) / 2];
+      const lat0 = 2 * Math.atan(Math.exp(centre[1] / 6378137)) - Math.PI / 2;
+      needM = (Math.max(x1 - x0, y1 - y0) / 2) * Math.cos(lat0) * 1.15;
+    }
+    const lat = 2 * Math.atan(Math.exp(centre[1] / 6378137)) - Math.PI / 2;
+    const k = 1 / Math.max(Math.cos(lat), 1e-6); // Web Mercator metres per ground metre here
+
+    const effSidc = sidc ?? (source === 'drawing' ? this._activeSidc : null);
+    const code = isPoint ? echelonCodeOf(effSidc) : null;
+    const level = scopeLevel(code, needM);
+    const north = this._north;
+    const half = scopeHalf(level.radiusM, north);
+    const m = this._manifest;
+    // The coarsest bundle zoom still as fine as a cell.
+    const cellMerc = ((2 * half) / 96) * k;
+    let z = m.zoom.max;
+    while (z > m.zoom.min && resolutionAt(z - 1, m.tileSize) <= cellMerc) z--;
+
+    // The frame key: an unchanged spot, verdict, rotation and data are not drawn again.
+    const vKey = v ? `${v.verdict}|${v.message}|${Math.round(v.fraction * 100)}|${v.clear?.distanceM ?? ''}|${v.loading ? 1 : 0}|${v.footprint?.front?.map((b) => Math.round(b.nogo * 9)).join('') ?? ''}` : '';
+    const key = [source, Math.round(centre[0] / cellMerc), Math.round(centre[1] / cellMerc), level.radiusM, Math.round(north), z, vKey, this._scopeTick, graphic?.attributes?.id ?? '', effSidc ?? ''].join('|');
+    if (key === this._scopeKey) return;
+
+    // A placed symbol is judged now (as the audit does: a mode set by hand when it was placed is kept).
+    let profile: GroundGuideProfile;
+    if (graphic) {
+      const stamp = readStamp(graphic);
+      profile = stamp?.profileOverride && this.profileChoices.includes(stamp.profile) ? stamp.profile : resolveProfile(sidc, this._rules);
+      v = this.evaluateGeometry(geometry, sidc, { profile, self: graphic });
+      const inNoGo = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
+      if (isPoint && inNoGo && !v.loading) {
+        const f = this._findSnap(geometry, sidc);
+        if (f.at) {
+          const dx = f.at[0] - first[0];
+          const dy = f.at[1] - first[1];
+          const b = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
+          v.clear = { at: f.at, distanceM: Math.hypot(dx, dy) / k, bearingDeg: b, compass: COMPASS[Math.round(b / 45) % 8], verdict: f.verdict, searchedM: f.searchedM };
+        } else if (!f.loading) v.clear = { at: null, distanceM: null, bearingDeg: null, compass: null, verdict: null, searchedM: f.searchedM };
+      }
+    } else profile = v ? v.profile : this._legendProfile();
+    const compiled = this._profile(profile);
+
+    // The tiles the map needs (deduplicated by the cache), then the grids from what is in memory.
+    const { cls, dist } = this._layerNames(profile);
+    const a = mercatorToTilePixel(centre[0] - half * k, centre[1] + half * k, z, m.tileSize);
+    const b = mercatorToTilePixel(centre[0] + half * k, centre[1] - half * k, z, m.tileSize);
+    const n = 2 ** z;
+    for (let ty = Math.max(0, a.ty); ty <= Math.min(n - 1, b.ty); ty++) {
+      for (let tx = Math.max(0, a.tx); tx <= Math.min(n - 1, b.tx); tx++) {
+        this._cache.request(cls, z, tx, ty);
+        if (dist) this._cache.request(dist, z, tx, ty);
+      }
+    }
+    const ctx = this._readContext(profile, z);
+    const feats = this._features?.sceneNear(centre, half * 1.05) ?? { points: [], lines: [], pending: false };
+    const scene = buildScopeScene({
+      centre,
+      level,
+      northDeg: north,
+      read: (mx, my) => this._read(ctx, mx, my),
+      profile: compiled.exempt ? null : compiled,
+      nearM: this._opts.nearThresholdM,
+      overOf: (this._scopeOver ??= overCodes(this._rules)),
+      points: feats.points,
+      lines: feats.lines,
+    });
+
+    const fp = v?.footprint ?? null;
+    const local = (p: MercXY): [number, number] => [(p[0] - centre[0]) / k, (p[1] - centre[1]) / k];
+    const g = v?.going;
+    const season = g?.season ?? this._viewSeason();
+    const month = g?.month || resolveMonth(this._opts.going.month);
+    const light = v?.speed?.light ?? this._opts.speed.light;
+    const frame: ScopeFrame = {
+      source,
+      scene,
+      northDeg: north,
+      verdict: v,
+      profile,
+      profileLabel: this._rules?.profiles?.[profile]?.label ?? profile,
+      echelon: fp ? { name: fp.echelon, frontageM: fp.frontageM, depthM: fp.depthM, facingDeg: fp.facing === 'circle' ? null : fp.facingDeg } : null,
+      when: { season, text: `${season === 'wet' ? 'After rain' : 'Dry'} · ${monthName(month)} · ${light === 'night' ? 'Night' : 'Day'}` },
+      keys: { snap: source === 'drawing' && !!v?.snappable, detail: this._opts.card.briefKey && !this._touchInput },
+      outline: isPoint ? null : shape.parts.map((part) => Float64Array.from(part.flatMap((p) => local(p)))),
+      closed: geometry.type === 'polygon',
+      clearAt: v?.clear?.at && isPoint ? local(v.clear.at) : null,
+      loading: ctx.waiting || feats.pending,
+    };
+    this._scopeKey = frame.loading ? '' : key; // still loading: the next tile draws it again
+    this._scope.render(frame);
   }
 
   /** Verdict for the live cursor position, flagged when the snap key could improve it. */
@@ -1019,6 +1295,10 @@ export default class GroundGuide {
       this._clearTimer = null;
     }
     this._clear = null;
+    if (this._scopeLive) {
+      this._scopeLive = null; // the rail goes back to the selected symbol, the one just placed or the map centre
+      this._scopeSoon(0, true);
+    }
     if (this._lastKey !== '') {
       this._lastKey = '';
       this._lastKind = '';
@@ -1112,6 +1392,12 @@ export default class GroundGuide {
    * few seconds. Never runs while drawing; nothing happens without a server.
    */
   afterPlace(graphic: any): void {
+    // The Gr Scope rail stays on the symbol just placed until the map is panned (or another is placed or selected).
+    if (graphic?.geometry) {
+      const c = (this._getView?.() as any)?.center;
+      this._scopePlaced = { graphic, centre: c ? (toMercatorShape(c)?.parts[0]?.[0] ?? null) : null };
+      this._scopeSoon(0, true);
+    }
     const stamp = readStamp(graphic);
     if (!stamp || !this._opts.traffic.access || !this._router || !this.isActive) return;
     if (graphic?.geometry?.type !== 'point') return;
@@ -1300,6 +1586,7 @@ export default class GroundGuide {
   recheck(graphics: any[]): void {
     const list = graphics.filter((g) => g?.geometry);
     if (!this.isActive || list.length === 0) return;
+    this._scopeSoon(0, true); // the rail may be on one of them
     void this._auditGraphics(list, { refreshStamps: true }).then((audit) => {
       const worse = audit.problems.filter((e) => e.previous !== e.verdict);
       for (const e of worse) EngineLogger.nextStep(ENGINE, `${e.name}: ${e.message}`);
@@ -1722,6 +2009,7 @@ export default class GroundGuide {
     this._indicators.onViewChanged(); // re-attaches to the new map on the next show
     this._removePopulationLayer(); // and the People layer and its key go to the new view
     this._syncPopulationLayer();
+    this._syncScope(); // the rail docks to the new view's container
   }
 
   destroy(): void {
@@ -1749,6 +2037,12 @@ export default class GroundGuide {
     this._detail.destroy();
     this._auditPanel.destroy();
     this._legend.destroy();
+    if (this._scopeTimer !== null) clearTimeout(this._scopeTimer);
+    this._scopeTimer = null;
+    this._scope.destroy();
+    this._scopeUiPad(); // the rail is gone: the host's UI padding goes back
+    this._scopeSelected = null;
+    this._scopePlaced = null;
   }
 
   // ── Queries ──────────────────────────────────────────────────────────────
@@ -3651,6 +3945,10 @@ export default class GroundGuide {
       this._badge.setKeepClear(null);
     }
     this._publish(v);
+    if (this._lastDetail) {
+      this._scopeLive = v;
+      this._scopeSoon();
+    }
   }
 
   /**
@@ -3735,6 +4033,10 @@ export default class GroundGuide {
   }
 
   private _onTilesChanged(terrain = true): void {
+    if (this._scope.isShown) {
+      this._scopeTick++; // the rail's map may have been waiting on it
+      this._scopeSoon();
+    }
     if (terrain) {
       this._emit('ground-guide-tiles', this.tileStats());
       if (this._tileWaiters.length > 0 && (this._cache?.stats().pending ?? 0) === 0) {
@@ -3868,6 +4170,7 @@ export default class GroundGuide {
         if (stationary) {
           this._prefetch();
           this._checkOverlaySeason();
+          this._scopeAfterPan(view);
         }
       },
       { initial: true }, // warm the current viewport now, not on the first pan or draw
@@ -3878,9 +4181,27 @@ export default class GroundGuide {
       (north: number) => {
         this._badge.setNorth(north);
         this._detail.setNorth(north);
+        this._north = north;
+        this._scopeSoon(); // the rail's map turns with the view
       },
       { initial: true },
     );
+    this._syncScope();
+  }
+
+  /**
+   * The view came to rest: a pan of more than a fifth of the screen lets go of the symbol just placed (the rail goes to
+   * the map centre, unless a symbol is being placed or is selected); the map centre is read again.
+   */
+  private _scopeAfterPan(view: any): void {
+    const p = this._scopePlaced;
+    if (p?.centre && view?.center) {
+      const now = toMercatorShape(view.center)?.parts[0]?.[0];
+      const res = this._viewResolution();
+      const w = (view.width ?? 0) * (res ?? 0);
+      if (now && w > 0 && Math.hypot(now[0] - p.centre[0], now[1] - p.centre[1]) > w / 5) this._scopePlaced = null;
+    }
+    this._scopeSoon();
   }
 
   private _unbindView(): void {
@@ -3937,9 +4258,17 @@ export default class GroundGuide {
     if (e.type !== 'keydown') return;
     const k = e.key.toLowerCase();
     const tabKey = k === 'g' || k === 'r' || k === 'o' || k === 't' || k === 'b' || k === 'c' || k === 'k'; // K = the Legend tab (L is Lasso Select)
-    if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'escape' && !tabKey) || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'v' && k !== 'escape' && !tabKey) || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (k === 'v') {
+      // V shows or hides the Gr Scope rail at any time the guide is on, drawing or not (user, 2026-11-08). Plain V is
+      // free in the app; Ctrl+V stays paste (modifiers return above).
+      if (!this._opts.scope.enabled || !this.isActive) return;
+      e.preventDefault();
+      this.showScope(!this._scope.wanted);
+      return;
+    }
     if (k === 'escape') {
       // The first Esc closes only the Detail (user, 2026-11-08): it is stopped here, before the draw tool or the app's
       // shortcuts see it, so the draw goes on; a second Esc, with the Detail closed, cancels the draw as before.

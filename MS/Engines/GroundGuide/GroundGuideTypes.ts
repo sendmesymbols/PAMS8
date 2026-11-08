@@ -278,6 +278,25 @@ export interface GroundGuideOptions {
   sections: GroundGuideSectionsOptions;
   /** T, Speed: cross-country and road speed for the symbol's mover, day / night, dry / after rain (MS/Data/MovementSpeeds.json). */
   speed: GroundGuideSpeedOptions;
+  /** The Gr Scope rail (V): a side window docked at the edge of the map with the ground round the symbol. */
+  scope: GroundGuideScopeOptions;
+}
+
+/**
+ * The Gr Scope rail (user, 2026-11-08): a side window docked at the edge of the map, shown and hidden with V at any time
+ * the guide is on, not tied to the mouse. Its map gives the ground round the symbol being placed (else the selected
+ * symbol, the one just placed, the map centre) with range rings, the frontage for the echelon, clear ground and the
+ * GROTBC things nearby; its legend is one line per letter, each also that layer's switch.
+ */
+export interface GroundGuideScopeOptions {
+  /** V shows and hides the rail; off: no rail and no V key. */
+  enabled: boolean;
+  /** Which edge of the map it docks to. */
+  side: 'right' | 'left';
+  /** A small "V · Gr Scope" tab at that edge while the rail is hidden (click to show it). */
+  tab: boolean;
+  /** Room kept free above the rail at the top of the map for the host's toolbar, px (inside any `view.padding`). */
+  topPx: number;
 }
 
 export interface GroundGuideGoingOptions {
@@ -944,6 +963,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   cover: { enabled: true, card: 'lines', where: 'grotbc', radiusM: 500, focus: true },
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
+  scope: { enabled: true, side: 'right', tab: true, topPx: 54 },
 };
 
 /** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */

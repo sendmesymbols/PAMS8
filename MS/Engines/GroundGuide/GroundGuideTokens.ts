@@ -77,6 +77,33 @@ export const OTHER_UNIT = '#a78bfa';
 export const OWN_UNIT = '#1e64c8';
 /** Natural obstacles in tiles and keys when no going is meant (was green). */
 export const NEUTRAL_OBSTACLE = '#7f95a8';
+/**
+ * The Gr Scope rail's map (user, 2026-11-08, approved in ground-guide-scope-window.html). Going cells are the ladder
+ * a shade darker so the marks on top read (Suitable, Marginal, SLOW-GO, NO-GO, no data); `plain` is the ground with the
+ * T layer off (NO-GO kept, in the neutral obstacle blue-grey); the rest are the GROTBC marks.
+ */
+export const SCOPE_MAP = {
+  cell: { go: '#2f7d4f', marg: '#cdb944', slow: '#cf6f1f', nogo: '#a8282e', none: '#2a2f36' },
+  plain: { ground: '#4a4f43', nogo: '#55697a' },
+  water: '#4f8fc0',
+  power: '#d6c27a',
+  ridge: '#c9a36b',
+  hill: '#c9a36b',
+  itg: '#b892ff',
+  town: '#d8c6a8',
+  clear: '#74dca3',
+  minor: '#c3cbd3',
+  rail: '#e8ebee',
+  bua: [236, 232, 222] as const,
+  trees: [10, 30, 18] as const,
+  nullah: [217, 182, 122] as const,
+  /** Front blocks: mostly in NO-GO, some in NO-GO. */
+  frontNogo: '#ff3b44',
+  frontPart: '#ff9aa0',
+  /** The dark casing under every line and the halo under every name. */
+  casing: '#0b0d10',
+} as const;
+
 /** Letter badges and tabs are neutral: GROTBC letters are not verdicts (items 8, 16). */
 export const LETTER_FILL = '#aab3bd';
 export const LETTER_FG = '#14181d';

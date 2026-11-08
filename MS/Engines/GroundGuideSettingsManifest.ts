@@ -393,6 +393,61 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     help: 'While drawing, press D for the Ground Detail: a wide card with a tab a letter (G Ground, R Roads, O Obstacles, T Trafficability, B Built-Up, C Cover) and K the Legend with the layers and data (L stays Lasso Select). Every dial, rose, minimap and gauge the card styles offer sits in its tab. A letter opens the detail on that tab; the same letter again, D or Esc closes it.',
     keywords: ['ground detail', 'ground brief', 'brief', 'panel', 'd key', 'tabs', 'legend'],
   },
+  // ── Gr Scope rail (V): a docked side window with the ground round the symbol ──
+  {
+    path: ['groundGuide', 'scope', 'enabled'],
+    label: 'V shows the Gr Scope rail',
+    group: 'Gr Scope (V)',
+    type: 'boolean',
+    help: 'Press V at any time the guide is on to show or hide the Gr Scope: a side window docked at the edge of the map (not tied to the mouse) with the ground round the symbol being placed, else the selected symbol, the one just placed or the map centre. Range rings, the frontage for the echelon, clear ground (where S moves it) and the G R O T B C things nearby; click a letter line in its legend to switch that layer. Ctrl+V stays paste.',
+    keywords: ['scope', 'rail', 'side', 'window', 'v key', 'map', 'range rings', 'bird', 'grotbc', 'overview'],
+  },
+  {
+    path: ['groundGuide', 'scope', '__toggle'],
+    label: 'Gr Scope',
+    buttonLabel: 'Show / hide (V)',
+    group: 'Gr Scope (V)',
+    type: 'action',
+    help: 'The same as pressing V.',
+    keywords: ['scope', 'rail', 'show', 'hide', 'v'],
+    onClick: () => {
+      const gg = (window as any).symbolEngine?.groundGuide;
+      if (gg?.showScope) gg.showScope();
+      else console.warn('GroundGuide not ready yet — turn on the Ground Guide first');
+    },
+  },
+  {
+    path: ['groundGuide', 'scope', 'side'],
+    label: 'Dock at',
+    group: 'Gr Scope (V)',
+    type: 'enum',
+    options: [
+      { value: 'right', label: 'Right edge of the map' },
+      { value: 'left', label: 'Left edge of the map' },
+    ],
+    help: 'Which edge of the map the rail docks to. The Ground Detail stops short of it while both are open.',
+    keywords: ['scope', 'rail', 'side', 'left', 'right', 'dock'],
+  },
+  {
+    path: ['groundGuide', 'scope', 'tab'],
+    label: 'Edge tab while hidden',
+    group: 'Gr Scope (V)',
+    type: 'boolean',
+    help: 'A small "V · Gr Scope" tab at that edge while the rail is hidden, as a reminder of the key; click it to show the rail.',
+    keywords: ['scope', 'rail', 'tab', 'reminder'],
+  },
+  {
+    path: ['groundGuide', 'scope', 'topPx'],
+    label: 'Room above the rail (px)',
+    group: 'Gr Scope (V)',
+    type: 'number',
+    advanced: true,
+    min: 0,
+    max: 400,
+    step: 2,
+    help: 'Space left free at the top of the map for the toolbar, so the rail does not cover it. The rail is scaled down to fit the height that is left.',
+    keywords: ['scope', 'rail', 'top', 'toolbar', 'offset', 'margin'],
+  },
   // ── Trafficability (T): options on top of the going sections, kept side by side to compare ──
   {
     path: ['groundGuide', 'traffic', 'road'],

@@ -758,6 +758,12 @@
       "load": "combat",
       "mover": "auto",
       "legend": true
+    },
+    "scope": {
+      "enabled": true,
+      "side": "right",
+      "tab": true,
+      "topPx": 54
     }
   },
   "stylus": {

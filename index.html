@@ -2677,7 +2677,7 @@
           </div>
           <div class="setting-row">
             <label>Shortcuts</label>
-            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off)." />
+            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off), V (Gr Scope rail, while the Ground Guide is on)." />
           </div>
           <div class="setting-row">
             <label>Copy/Paste</label>
@@ -3151,6 +3151,10 @@
             <div class="setting-row">
               <label>Terrain data</label>
               <button type="button" id="ground-guide-retry" title="Load the terrain bundle again, e.g. after the server came back.">Retry loading</button>
+            </div>
+            <div class="setting-row">
+              <label>Gr Scope (V)</label>
+              <button type="button" id="ground-guide-scope" title="Show or hide the Gr Scope rail (the V key): a side window docked at the map's edge with the ground round the symbol being placed, else the selected symbol, the one just placed or the map centre.">Show / hide</button>
             </div>
             <div class="sub-feature-label">Important Tactical Ground (G)</div>
             <div class="setting-row">
@@ -4438,7 +4442,7 @@
           <div class="ms-section-title">Keyboard Shortcuts</div>
           <button class="ms-btn" id="api-shortcut-info">Show Shortcuts</button>
           <div class="ms-status" id="api-shortcut-status">
-            L:Lasso M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center
+            L:Lasso M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center Ctrl+G:Ground Guide V:Gr Scope
           </div>
         </div>
         <div class="api-section">
@@ -6371,7 +6375,14 @@
               'Ctrl+Y - Redo\n' +
               'Ctrl+C - Copy\n' +
               'Ctrl+V - Paste\n' +
-              'Shift+Click - Toggle Selection',
+              'Shift+Click - Toggle Selection\n' +
+              '\nGround Guide (while it is on):\n' +
+              'Ctrl+G - Ground Guide on / off\n' +
+              'V - Gr Scope rail: show / hide the side map of the ground round the symbol\n' +
+              'D - Ground Detail (G R O T B C tabs, K Legend, Esc closes)\n' +
+              'S - Quick Fix: move the point to clear ground (while drawing)\n' +
+              'P - Change the mode the ground is judged for (while drawing)\n' +
+              'H - Shrink the cursor card to a chip (while drawing)',
           );
         });
 
