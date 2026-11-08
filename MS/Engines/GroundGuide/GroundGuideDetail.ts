@@ -142,8 +142,10 @@ export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T
 const HEIGHT_KEY = 'ms-ground-guide-detail-height';
 const HEIGHT_STOPS = [0.4, 0.5, 0.6] as const;
 const HEIGHT_DEFAULT = 0.5;
-/** The shortest the card gets, px: header, force line, strip and footer (about 220) plus a band of 220. */
-const MIN_CARD_PX = 440;
+/** The shortest the card gets, px: header, force line, strip and footer (about 220) plus a band of 260. */
+const MIN_CARD_PX = 480;
+/** Added to every stop, px, so the band's last line (a gauge's caption, a list's last row) is not cut at the bottom. */
+const EXTRA_PX = 40;
 /** Space between the band's columns, and the narrowest and widest a column may be, px. */
 const COL_GAP = 28;
 const COL_MIN = 262;
@@ -206,7 +208,7 @@ function balanceColumns(h: number[], n: number, gap: number): { starts: number[]
 const ITEM_GAP = 16;
 
 const CSS = `
-.ms-ggd{position:fixed;left:10px;right:10px;bottom:10px;z-index:2147482800;height:50vh;min-height:300px;
+.ms-ggd{position:fixed;left:10px;right:10px;bottom:10px;z-index:2147482800;height:calc(50vh + 40px);min-height:300px;
   display:none;flex-direction:column;box-sizing:border-box;border-radius:12px;background:#1b1f25;border:1px solid #5a6470;box-shadow:0 10px 30px rgba(0,0,0,.5);
   font:400 13.5px/1.45 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;--pb-k:#c3cbd3}
 .ms-ggd.ms-open{display:flex}
@@ -750,12 +752,12 @@ export class GroundGuideDetail {
   // ── height (item 14: drag to size) ────────────────────────────────────────
 
   /**
-   * The card's height in px for a stop: a share of the window, but never so short that the band under the strip drops
-   * below the 220 px it always had (the tallest tiles, a rose with its key or the speed table, need it: the card never
+   * The card's height in px for a stop: a share of the window plus EXTRA_PX, but never so short that the band under the
+   * strip drops below 260 px (the tallest tiles, a rose with its key or the speed table, need it: the card never
    * scrolls, so a shorter band would cut them), and never more than fits above the bottom gap.
    */
   private _px(stop: number): number {
-    return Math.round(Math.min(window.innerHeight - 20, Math.max(MIN_CARD_PX, window.innerHeight * stop)));
+    return Math.round(Math.min(window.innerHeight - 20, Math.max(MIN_CARD_PX, window.innerHeight * stop + EXTRA_PX)));
   }
 
   private _applyHeight(root: HTMLElement | null = this._el): void {
