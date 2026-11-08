@@ -651,8 +651,7 @@
       "boundary": false
     },
     "indicators": {
-      "enabled": true,
-      "labels": true
+      "enabled": true
     },
     "footprint": {
       "enabled": true,

@@ -3,16 +3,16 @@
  *
  * Draws the Ground Guide's indicator lines on the map: from the symbol (or the
  * part of a shape that decides the verdict) to the terrain that is the reason for it,
- * with a marker on that terrain, extra marks on the parts of a line/area that lie in
- * no-go ground, and a short label.
+ * with a marker on that terrain and extra marks on the parts of a line/area that lie in
+ * no-go ground.
  *
  *   line + marker in the verdict ladder's colour (GroundGuideTokens, item 1, 2026-11-08): yellow from a Marginal
  *                         position to the NO-GO ground beside it, red to the contested part of a shape (partly /
  *                         mostly in no-go)
  *   green line + marker : from a symbol that is inside no-go to the nearest deployable
  *                         ground (where it could move to)
- * The label sits on a small dark plate beside the verdict's icon, so it reads on any imagery (item 15). Other units'
- * footprints are violet, not SLOW-GO orange (item 16).
+ * No text is drawn on the map (user, 2026-11-08: the label "obstructs the view"; the cursor card already names the
+ * ground and says how far). Other units' footprints are violet, not SLOW-GO orange (item 16).
  *
  * Like ProximityEngine, the graphics are created once, kept on one ground-draped
  * GraphicsLayer and only have their geometry swapped / visibility toggled afterwards,
@@ -29,12 +29,10 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
-import Font from '@arcgis/core/symbols/Font';
 import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
-import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import Utils from '../../Support/utils';
-import { ladderIconMarkup, OTHER_UNIT, OWN_UNIT, rgbOf, STEP_COLOR, SURFACE, TONE, type Tone } from './GroundGuideTokens';
+import { OTHER_UNIT, OWN_UNIT, rgbOf, STEP_COLOR, TONE, type Tone } from './GroundGuideTokens';
 import type { MercXY, GroundGuideIndicator } from './GroundGuideTypes';
 
 const LAYER_ID = 'ms-ground-guide-indicators';
@@ -70,16 +68,6 @@ function endUrl([r, g, b]: [number, number, number], diamond: boolean): string {
   return svg(diamond ? `<path d="M11 2 L20 11 L11 20 L2 11 Z" ${stroke} stroke-linejoin="round"/>` : `<circle cx="11" cy="11" r="8" ${stroke}/>`);
 }
 
-/** The verdict's ladder icon on a small dark tile, beside the label's plate. */
-function iconUrl(tone: Tone): string {
-  const t = TONE[tone];
-  const color = tone === 'go' ? STEP_COLOR.go : tone === 'part' || tone === 'nogo' ? '#ff8a8d' : t.fill;
-  return svg(
-    `<rect x="0.5" y="0.5" width="21" height="21" rx="5" fill="${SURFACE.card}" fill-opacity="0.94" stroke="${color}" stroke-width="1"/>` +
-      `<g transform="translate(2 2) scale(0.9)">${ladderIconMarkup(t.icon, SURFACE.card, color)}</g>`,
-  );
-}
-
 export class GroundGuideIndicators {
   private _layer: GraphicsLayer | null = null;
   private _map: any = null;
@@ -92,24 +80,17 @@ export class GroundGuideIndicators {
   private _markSym: PictureMarkerSymbol | null = null;
   private _stretchCasing: Graphic | null = null;
   private _stretch: Graphic | null = null;
-  private _label: Graphic | null = null;
   private _fpOwn: Graphic | null = null;
   private _fpOthers: Graphic | null = null;
   private _fpVisible = false;
-  private _labelSym: TextSymbol | null = null;
-  /** The verdict icon on its dark tile, beside the label's plate. */
-  private _labelIcon: Graphic | null = null;
-  private _iconSym: PictureMarkerSymbol | null = null;
   /** The kind and tone the symbols were made for ("no-go:marg"). */
   private _kind: string | null = null;
-  private _labelText = '';
-  private _labelLeft = false;
   private _visible = false;
 
   constructor(private readonly _getView: () => any) {}
 
   /** Draw (or move) the lines for these indicators in the verdict's ladder colour (`tone`); hides everything when there are none. */
-  show(indicators: GroundGuideIndicator[], labels: boolean, tone: Tone = 'nogo'): void {
+  show(indicators: GroundGuideIndicator[], tone: Tone = 'nogo'): void {
     const view = this._getView?.();
     const sr = view?.spatialReference;
     const conv = sr ? this._converter(sr) : null;
@@ -149,36 +130,12 @@ export class GroundGuideIndicators {
 
     this._casing!.geometry = new Polyline({ paths, spatialReference: sr });
     this._line!.geometry = new Polyline({ paths, spatialReference: sr });
-    this._placePoints(this._endPool, ends, this._endSym!, sr, () => this._label!);
-    this._placePoints(this._markPool, marks, this._markSym!, sr, () => this._endPool[0] ?? this._label!);
+    this._placePoints(this._endPool, ends, this._endSym!, sr, () => null);
+    this._placePoints(this._markPool, marks, this._markSym!, sr, () => this._endPool[0] ?? null);
     const stretchGeom = stretches.length ? new Polyline({ paths: stretches, spatialReference: sr }) : null;
     this._stretchCasing!.geometry = stretchGeom;
     this._stretch!.geometry = stretchGeom;
     this._stretchCasing!.visible = this._stretch!.visible = stretchGeom !== null;
-
-    const text = labels ? indicators[0].label : '';
-    if (text) {
-      this._label!.geometry = new Point({ x: ends[0][0], y: ends[0][1], spatialReference: sr });
-      // Put the text beyond the end of the line (on the side away from the symbol) so it never covers the line.
-      const left = paths[0][1][0] < paths[0][0][0];
-      if (text !== this._labelText || left !== this._labelLeft) {
-        // Assign a NEW text symbol: a SceneView keeps drawing the old text (or none) when the same
-        // symbol object is mutated and re-assigned. Only happens when the text or side changes.
-        const sym = this._labelSym!.clone();
-        sym.text = text;
-        sym.horizontalAlignment = left ? 'right' : 'left';
-        sym.xoffset = left ? -32 : 32;
-        this._label!.symbol = sym;
-        const ic = this._iconSym!.clone();
-        ic.xoffset = left ? -18 : 18;
-        this._labelIcon!.symbol = ic;
-        this._labelText = text;
-        this._labelLeft = left;
-      }
-      this._labelIcon!.geometry = this._label!.geometry;
-    }
-    this._label!.visible = !!text;
-    this._labelIcon!.visible = !!text;
 
     if (!this._visible) {
       this._casing!.visible = true;
@@ -190,7 +147,7 @@ export class GroundGuideIndicators {
   /** Hide the indicator lines (the footprint outline has its own `hideFootprint`). */
   hide(): void {
     if (!this._visible) return;
-    for (const g of [this._casing, this._line, ...this._endPool, ...this._markPool, this._stretchCasing, this._stretch, this._label, this._labelIcon]) {
+    for (const g of [this._casing, this._line, ...this._endPool, ...this._markPool, this._stretchCasing, this._stretch]) {
       if (g) g.visible = false;
     }
     this._visible = false;
@@ -250,17 +207,14 @@ export class GroundGuideIndicators {
     this._detach();
     this._layer?.destroy();
     this._layer = null;
-    this._casing = this._line = this._label = this._labelIcon = null;
-    this._iconSym = null;
+    this._casing = this._line = null;
     this._endPool = [];
     this._markPool = [];
     this._endSym = this._markSym = null;
     this._stretchCasing = this._stretch = null;
     this._fpOwn = this._fpOthers = null;
     this._fpVisible = false;
-    this._labelSym = null;
     this._kind = null;
-    this._labelText = '';
     this._visible = false;
   }
 
@@ -296,15 +250,11 @@ export class GroundGuideIndicators {
       // ProximityEngine does it: a symbol-less graphic added to a SceneView layer is
       // never picked up when its symbol is set afterwards.
       const s = this._symbols(kind, tone);
-      this._labelSym = s.label;
-      this._iconSym = s.icon;
       this._endSym = s.end;
       this._markSym = s.mark;
       this._casing = new Graphic({ symbol: s.casing, visible: false });
       this._line = new Graphic({ symbol: s.line, visible: false });
       this._endPool = [new Graphic({ symbol: s.end, visible: false })];
-      this._label = new Graphic({ symbol: s.label, visible: false });
-      this._labelIcon = new Graphic({ symbol: s.icon, visible: false });
       // The stretches of a line / area edge that run through no-go ground: solid red on a white casing.
       this._stretchCasing = new Graphic({
         symbol: new SimpleLineSymbol({ style: 'solid', color: [255, 255, 255, 0.9], width: 9, cap: 'round', join: 'round' }),
@@ -331,11 +281,8 @@ export class GroundGuideIndicators {
         this._casing,
         this._line,
         ...this._endPool,
-        this._labelIcon,
-        this._label,
       ]);
       this._kind = `${kind}:${tone}`;
-      this._labelText = '';
     }
     if (this._map !== map) {
       this._detach();
@@ -358,13 +305,14 @@ export class GroundGuideIndicators {
   /**
    * Put one pooled Point graphic on each coordinate and hide the rest of the pool. A pool only
    * grows (rarely: a shape with more marks than any before it); a new graphic is created WITH its
-   * symbol and goes in just below `above()`, keeping the 2D stacking marks < ends < label.
+   * symbol and goes in just below `above()` (on top when null), keeping the 2D stacking marks < ends.
    */
-  private _placePoints(pool: Graphic[], coords: [number, number][], sym: PictureMarkerSymbol, sr: any, above: () => Graphic): void {
+  private _placePoints(pool: Graphic[], coords: [number, number][], sym: PictureMarkerSymbol, sr: any, above: () => Graphic | null): void {
     for (let i = pool.length; i < coords.length; i++) {
       const g = new Graphic({ symbol: sym, visible: false });
       const graphics = this._layer!.graphics;
-      const at = graphics.indexOf(above());
+      const ref = above();
+      const at = ref ? graphics.indexOf(ref) : -1;
       graphics.add(g, at < 0 ? graphics.length : at);
       pool.push(g);
     }
@@ -383,46 +331,23 @@ export class GroundGuideIndicators {
   private _applyKind(kind: GroundGuideIndicator['kind'], tone: Tone): void {
     const s = this._symbols(kind, tone);
     this._kind = `${kind}:${tone}`;
-    this._labelSym = s.label;
-    this._iconSym = s.icon;
-    this._labelIcon!.symbol = s.icon;
-    this._labelText = ''; // forces the label symbol to be re-assigned on this show()
     this._casing!.symbol = s.casing;
     this._line!.symbol = s.line;
     this._endSym = s.end;
     this._markSym = s.mark;
     for (const g of this._endPool) g.symbol = s.end;
     for (const g of this._markPool) g.symbol = s.mark;
-    this._label!.symbol = s.label;
   }
 
   private _symbols(kind: GroundGuideIndicator['kind'], tone: Tone) {
     const rgb = toneRgb(tone);
     // A yellow line reads on a dark casing; the reds and the green on a white one.
     const casing: [number, number, number, number] = tone === 'marg' ? [20, 24, 29, 0.85] : [255, 255, 255, 0.8];
-    const plate = rgbOf(SURFACE.card);
     return {
       casing: new SimpleLineSymbol({ style: 'solid', color: casing, width: 5 }),
       line: new SimpleLineSymbol({ style: 'dash', color: [...rgb, 1], width: 2.5 }),
       end: new PictureMarkerSymbol({ url: endUrl(rgb, kind === 'deployable'), width: 12, height: 12 }),
       mark: new PictureMarkerSymbol({ url: markUrl(rgb), width: 11, height: 11 }),
-      // On a dark plate edged in the verdict colour (item 15), so it reads over fields and roofs alike. 10 pt is about
-      // 13.5 px, the body step.
-      label: new TextSymbol({
-        text: '',
-        font: new Font({ size: 10, weight: 'bold', family: 'system-ui, Segoe UI, Arial, sans-serif' }),
-        color: [241, 243, 246, 1],
-        backgroundColor: [...plate, 0.94],
-        borderLineColor: [...rgb, 1],
-        borderLineSize: 1,
-        haloColor: [...plate, 0.9],
-        haloSize: 1,
-        horizontalAlignment: 'left',
-        verticalAlignment: 'middle',
-        xoffset: 32,
-        yoffset: 0,
-      }),
-      icon: new PictureMarkerSymbol({ url: iconUrl(tone), width: 20, height: 20, xoffset: 18 }),
     };
   }
 }

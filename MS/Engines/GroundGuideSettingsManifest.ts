@@ -133,14 +133,6 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
 
   // ── Advanced ──────────────────────────────────────────────────────────────
   {
-    path: ['groundGuide', 'indicators', 'labels'],
-    label: 'Label the feature',
-    group: 'Indicators & log',
-    type: 'boolean',
-    advanced: true,
-    help: 'Write the terrain class and distance at the end of the indicator line.',
-  },
-  {
     path: ['groundGuide', 'logVerdicts'],
     label: 'Log to Engine Log',
     group: 'Indicators & log',

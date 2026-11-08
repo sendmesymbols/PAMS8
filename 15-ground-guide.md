@@ -118,6 +118,18 @@ sometimes wants to see the map under the symbol and only a hint of GO / NO-GO): 
 session with the chip. H does nothing when no symbol is being drawn. A see-through card was considered and left out:
 text over imagery stops being readable before the map under it becomes visible.
 
+**Clear ground on the chip** (2026-11-08, the user picked the arrow chip from `ground-guide-card-concepts.html`). When
+some of a point symbol is in NO-GO, the chip adds the way out: a solid pointer that turns with the map, then
+`Clear Gr 382 m NE`, the nearest spot where all of the symbol (its footprint for an echelon) is out of NO-GO
+(`NO-GO · 44% in · ➤ Clear Gr 382 m NE`; the share shortens to `% in` beside it). It is the S Quick Fix's own search
+(`_findSnap`), so **S moves the symbol exactly there**; the spot can be GO or merely out of NO-GO (Marginal / SLOW-GO),
+as for S. `No clear Gr in 5.1 km` when the search reaches its limit (`SNAP_MAX_PX`) with nothing; nothing while it waits
+on tiles, and nothing for lines and areas (S is points only). The search costs 3–6 ms, so `_clearFor` runs it at most
+every 120 ms while the cursor moves (`CLEAR_INTERVAL_MS`; in between, the spot already found is kept and only its
+distance and direction follow the cursor), at once when the cursor has gone over half the way to the spot, and once
+more when the cursor rests. Hosts get it as `GroundGuideVerdict.clear` (`GroundGuideClearGround`) on
+`ground-guide-advice`; screen readers hear "Clear ground 382 m NE".
+
 **The Ground Detail (D).** Everything else the engine reads is in a wide card docked at the foot of the map
 (`GroundGuideDetail.ts`), opened with **D** while drawing, with a tab a GROTBC letter and a last **Legend** tab.
 It **never scrolls** (2026-11-07: the tabs are switched by key while the mouse places the symbol). Under the tabs an
@@ -181,7 +193,8 @@ colours for every Ground Guide surface live in `GroundGuideTokens.ts`: sizes 12 
 - **Height**: drag the grip on the Detail's top edge to 40, 50 or 60 % of the window (remembered, 50 % to start;
   Up / Down on the focused grip); the card is never shorter than 440 px, so the band keeps the 220 px its tallest
   tiles need, and the height is the same on every tab.
-- **Map labels** sit on a small dark plate edged in the verdict colour, with the verdict icon beside it.
+- **Map labels**: none (the user first chose a dark plate, then had it removed the same day because it covered the
+  ground; the line and its end marker in the verdict colour remain).
 
 The distance layer only stores *how far* the nearest no-go is, not *what* it is,
 so the guide searches the class tile around the deciding sample (a window of
@@ -276,8 +289,8 @@ The commit stamp (`attributes.groundGuide`) also records `echelon`, `frontageM`,
 ### Indicator lines
 
 While drawing, a line on the map joins the symbol to the terrain that is the reason
-for the advice (`groundGuide.indicators.enabled`, on by default; `labels` writes the
-class and distance at the end of the line):
+for the advice (`groundGuide.indicators.enabled`, on by default). No text is written on the map
+(2026-11-08: a label there covered the ground being judged; the cursor card names it and says how far):
 
 | situation | line | end marker |
 |-----------|------|------------|
@@ -290,8 +303,7 @@ The edge is walked one tile pixel at a time (at most 1,200 points) and each run 
 drawn from half a step before it to half a step after, so the colour stops where the ground does. That shows
 where a line or area needs to move, not just how much of it is wrong.
 
-The line has a white casing for contrast on imagery, and the label is placed beyond
-the end of the line so it never covers it. The graphics live on one ground-draped
+The line has a white casing for contrast on imagery (a dark one under a yellow Marginal line). The graphics live on one ground-draped
 `GraphicsLayer` (`ms-ground-guide-indicators`, `gg.indicatorLayer`) and are created once;
 following the cursor only swaps geometry and toggles visibility, the same approach as
 `ProximityEngine`, so no graphics are added or removed per move.
@@ -919,7 +931,7 @@ resets the schedule.
 "groundGuide": {
   "mode": "advise",
   "overlay": { "enabled": false, "profile": "auto", "opacity": 0.6 },
-  "indicators": { "enabled": true, "labels": true },
+  "indicators": { "enabled": true },
   "footprint": { "enabled": true, "facing": "fixed", "bearingDeg": 0, "size": "mid", "outline": true, "spacing": true },
   "bundleUrl": "/terrain-bundle",
   "nearThresholdM": 250,

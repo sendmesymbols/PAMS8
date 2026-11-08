@@ -32,6 +32,8 @@ const CSS = `
 .ms-gg-arrow{display:inline-block;width:11px;height:11px;vertical-align:-1px;margin-left:3px;flex:none;overflow:visible}
 .ms-gg-arrow path{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transform-origin:6px 6px;transform:rotate(calc(var(${VAR},0deg) + var(--gg-b,0deg)))}
 b>.ms-gg-arrow path,.ms-ggb-big>.ms-gg-arrow path,.ms-ggs-big>.ms-gg-arrow path{stroke-width:2.1}
+.ms-gg-arrow.ms-gg-ptr{width:15px;height:15px;margin:0 4px 0 0;vertical-align:-3px}
+.ms-gg-arrow.ms-gg-ptr path{fill:currentColor;stroke-width:1}
 .ms-gg-turn:not([data-gv-canvas]){transform:rotate(var(${VAR},0deg))}
 .ms-gg-up{transform-box:fill-box;transform-origin:center;transform:rotate(calc(-1 * var(${VAR},0deg)))}
 `;
@@ -96,6 +98,18 @@ export function dirArrow(bearing: number | string | null | undefined, northDeg =
   const p = document.createElementNS(SVG_NS, 'path');
   p.setAttribute('d', 'M6 10.6V1.9M2.7 5.2L6 1.9l3.3 3.3');
   svg.append(title, p);
+  return svg;
+}
+
+/**
+ * A solid pointer (an arrowhead) along `bearing`, turning with the map like `dirArrow`: for the one direction a
+ * small surface leads with, the hint chip's way to clear ground. It goes before its text, not after.
+ */
+export function pointerArrow(bearing: number | string | null | undefined, northDeg = 0): SVGElement | null {
+  const svg = dirArrow(bearing, northDeg);
+  if (!svg) return null;
+  svg.classList.add('ms-gg-ptr');
+  svg.querySelector('path')!.setAttribute('d', 'M6 1.2L10.4 10.6L6 8.2L1.6 10.6Z');
   return svg;
 }
 

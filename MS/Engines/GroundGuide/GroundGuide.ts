@@ -117,6 +117,7 @@ import {
   type GoingSeason,
   type GoingStep,
   type GroundGuideCardOptions,
+  type GroundGuideClearGround,
   type GroundGuideGoingInfo,
   type GroundGuideMovementSector,
   type GroundGuideItg,
@@ -168,6 +169,14 @@ const SNAP_DIRECTIONS = 16;
 const RETRY_DELAYS_MS = [4000, 15000, 45000];
 /** After a ring with only a marginal spot (near / caution), keep looking this much further for a clean `ok`. */
 const SNAP_PREFER_OK = 1.6;
+/**
+ * Clear ground for the hint chip (the snap search run for the cursor, 3–6 ms): at most one search per this many ms
+ * while the cursor moves (in between, the spot already found is kept and only its distance and direction follow the
+ * cursor; it is still clear ground, just maybe not the nearest for that moment), none while the cursor stays within
+ * this many tile pixels of the last one, and one more once the cursor rests.
+ */
+const CLEAR_INTERVAL_MS = 120;
+const CLEAR_REUSE_PX = 1;
 /** How long the card waits on a missing tile before saying "loading", and how far (screen px) the cursor may move before the last verdict stops being a fair stand-in for the new spot. */
 const LOADING_GRACE_MS = 200;
 const STALE_MAX_PX = 80;
@@ -326,6 +335,10 @@ export default class GroundGuide {
   private _lastKind = '';
   private _lastSpacingMsg = '';
   private _reevalTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The last clear-ground search (`_clearFor`): for which symbol / mode / zoom, from where, what it found and when. */
+  private _clear: { key: string; origin: MercXY; at: MercXY | null; verdict: GroundGuideVerdictKind | null; searchedM: number; t: number } | null = null;
+  /** The search to run once the cursor rests, after a move that reused the last one. */
+  private _clearTimer: ReturnType<typeof setTimeout> | null = null;
 
   private _badge = new GroundGuideBadge();
   private _auditPanel = new GroundGuideAuditPanel();
@@ -625,7 +638,6 @@ export default class GroundGuide {
     next.indicators = { ...prev.indicators };
     if (ind && typeof ind === 'object') {
       flag('indicators.enabled', ind.enabled, (b) => (next.indicators.enabled = b));
-      flag('indicators.labels', ind.labels, (b) => (next.indicators.labels = b));
     }
     const ov = patch.overlay;
     next.overlay = { ...prev.overlay };
@@ -921,6 +933,7 @@ export default class GroundGuide {
     const keys = !this._touchInput;
     v.snappable = keys && this._opts.snapKey && geometry?.type === 'point' && this._isBad(v);
     this._lastSnappable = v.snappable;
+    v.clear = this._clearFor(geometry, sidc, v);
     v.blocked = this._refuses(v);
     v.overridable = keys && v.blocked && this._opts.allowOverride;
     v.profileKey = keys && this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
@@ -1000,6 +1013,11 @@ export default class GroundGuide {
       clearTimeout(this._reevalTimer);
       this._reevalTimer = null;
     }
+    if (this._clearTimer !== null) {
+      clearTimeout(this._clearTimer);
+      this._clearTimer = null;
+    }
+    this._clear = null;
     if (this._lastKey !== '') {
       this._lastKey = '';
       this._lastKind = '';
@@ -1614,6 +1632,64 @@ export default class GroundGuide {
       verdict: best.verdict,
       searchedM,
     };
+  }
+
+  /**
+   * The nearest clear ground for the point being drawn when some of it is in NO-GO (`GroundGuideVerdict.clear`). It is
+   * the snap search (`_findSnap`, the S Quick Fix's own, footprint included), so the hint chip points where S would move
+   * the symbol. Throttled (CLEAR_INTERVAL_MS / CLEAR_REUSE_PX). Null for lines and areas, for a verdict with nothing in
+   * NO-GO, and while the search is still waiting on tiles; `at: null` when it found none within `searchedM`.
+   */
+  private _clearFor(geometry: any, sidc: string | null, v: GroundGuideVerdict): GroundGuideClearGround | null {
+    const inNoGo = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
+    if (geometry?.type !== 'point' || !inNoGo || v.loading || !this._manifest) return null;
+    const origin = toMercatorShape(geometry)?.parts[0]?.[0];
+    if (!origin) return null;
+    const zoom = this._sampleZoom();
+    const key = `${sidc ?? ''}|${v.profile}|${zoom}`;
+    const reuseM = CLEAR_REUSE_PX * resolutionAt(zoom, this._manifest.tileSize);
+    const now = performance.now();
+    let c = this._clear?.key === key ? this._clear : null;
+    const movedM = c ? Math.hypot(origin[0] - c.origin[0], origin[1] - c.origin[1]) : Infinity;
+    const moved = movedM > reuseM;
+    // Search now when: none yet; the last one was waiting on tiles (a tile arriving re-judges the cursor); the
+    // interval is up; or the cursor has gone over half the way to the spot it found (a quarter of the search's reach
+    // when it found none), so the answer may well have changed. A near spot is a short search, so this costs little.
+    const farM = c ? (c.at ? Math.hypot(c.at[0] - c.origin[0], c.at[1] - c.origin[1]) / 2 : c.searchedM / 4) : 0;
+    const stale = c !== null && moved && (now - c.t >= CLEAR_INTERVAL_MS || movedM > farM);
+    if (!c || c.verdict === 'unknown' || stale) {
+      const f = this._findSnap(geometry, sidc);
+      // Nothing found while tiles are still arriving is not "none": say nothing until the search can tell.
+      c = this._clear = f.at
+        ? { key, origin, at: f.at, verdict: f.verdict, searchedM: f.searchedM, t: now }
+        : { key, origin, at: null, verdict: f.loading ? 'unknown' : null, searchedM: f.searchedM, t: now };
+    } else if (moved) {
+      this._clearSoon(); // kept the last spot for this move; search again once the cursor rests
+    }
+    if (c.verdict === 'unknown') return null;
+    if (!c.at) return { at: null, distanceM: null, bearingDeg: null, compass: null, verdict: null, searchedM: c.searchedM };
+    const dx = c.at[0] - origin[0];
+    const dy = c.at[1] - origin[1];
+    const lat = 2 * Math.atan(Math.exp(origin[1] / 6378137)) - Math.PI / 2;
+    const bearingDeg = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
+    return {
+      at: c.at,
+      distanceM: Math.hypot(dx, dy) * Math.cos(lat), // Web Mercator metres to ground metres here
+      bearingDeg,
+      compass: COMPASS[Math.round(bearingDeg / 45) % 8],
+      verdict: c.verdict,
+      searchedM: c.searchedM,
+    };
+  }
+
+  /** Judge the cursor again once it rests, so the chip's clear ground is searched from where it stopped. */
+  private _clearSoon(): void {
+    if (this._clearTimer !== null) return;
+    this._clearTimer = setTimeout(() => {
+      this._clearTimer = null;
+      const d = this._lastDetail;
+      if (d && this.isActive) this._apply(this._judgeLive(d.geometry, d.sidc));
+    }, CLEAR_INTERVAL_MS);
   }
 
   /** A copy of the point geometry moved to a Web Mercator position (same spatial reference and z). */
@@ -3558,7 +3634,7 @@ export default class GroundGuide {
       this._loadingSince = 0;
     }
     if (this._opts.indicators.enabled && this.isActive && v.indicators.length > 0) {
-      this._indicators.show(v.indicators, this._opts.indicators.labels, verdictTone(v));
+      this._indicators.show(v.indicators, verdictTone(v));
     } else {
       this._indicators.hide();
     }
@@ -3576,6 +3652,7 @@ export default class GroundGuide {
       v.verdict, v.message, v.detail ?? '', v.loading ? 1 : 0, Math.round(v.fraction * 100),
       Math.round(v.nearest?.distanceM ?? -1), v.nearest?.compass ?? '',
       v.spacing?.status ?? '', Math.round(v.spacing?.nearestGapM ?? -1), v.snappable ? 1 : 0,
+      v.clear ? (v.clear.distanceM === null ? 'none' : `${fmtDistance(v.clear.distanceM)}${v.clear.compass}${Math.round(v.clear.bearingDeg! / 3)}`) : '',
       v.ground?.candidates.map((c) => `${c.kind}${c.level}${Math.round(c.distanceM / 50)}${c.compass}`).join(',') ?? '',
       goingKey(v.going), v.briefKey ? 1 : 0,
       populationKey(v.population),

@@ -21,7 +21,7 @@ import { fmtDistance, titleCase } from './GroundGuideEvaluator';
 import { GOING_WORD } from './GroundGuideGoing';
 import { detailCue, goingSections, seasonIcon } from './GroundGuideGoingView';
 import { modeIcon } from './GroundGuideLegend';
-import { arrowCompass, compassBearing, dial, dirArrow, orientNorth, whereNode } from './GroundGuideNorth';
+import { arrowCompass, compassBearing, dial, dirArrow, orientNorth, pointerArrow, whereNode } from './GroundGuideNorth';
 import { ensurePopulationCss, fmtPeople, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
 import { ensureTokensCss, gauge, LEVEL_COLOR, LEVEL_TEXT, STEP_COLOR, STEP_TEXT, TONE, TONE_STEP, toneIcon, verdictTone, type Tone } from './GroundGuideTokens';
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
@@ -146,7 +146,7 @@ ${toneCss}
 .ms-ggb-pills>span{font-size:12px;font-weight:600}
 .ms-ggb-mode+.ms-ggb-row,.ms-ggb-other+.ms-ggb-row{border-top:0}
 /* The hint chip (H), and the card folded to it where the Detail leaves no room (item 7). */
-.ms-ground-guide-badge.ms-ggb-pip{width:auto;max-width:300px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,.42)}
+.ms-ground-guide-badge.ms-ggb-pip{width:auto;max-width:360px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,.42)}
 .ms-ggb-pip>.ms-ggb-bar{flex-wrap:nowrap;gap:7px;padding:5px 7px 5px 11px;font-size:13.5px;white-space:nowrap}
 .ms-ggb-pip>.ms-ggb-bar>svg{width:16px;height:16px}
 .ms-ggb-hw{font-weight:750}
@@ -279,6 +279,7 @@ function spokenFor(v: GroundGuideVerdict): string {
   if (verdictTone(v) === 'chk' && v.verdict !== 'unknown') return 'Checking the ground here.';
   const parts = [titleOf(v)];
   if (v.verdict !== 'unknown' && v.verdict !== 'ok' && v.message) parts.push(v.message);
+  if (v.clear?.distanceM != null) parts.push(`Clear ground ${fmtDistance(v.clear.distanceM)} ${v.clear.compass}`);
   if (v.snappable) parts.push('Press S to move it to the nearest usable ground');
   if (v.blocked) parts.push(v.overridable ? 'A click here is refused. Hold Shift and click to place it anyway' : 'A click here is refused');
   return parts.map((p) => p.replace(/[.\s]+$/, '')).join('. ') + '.';
@@ -298,6 +299,23 @@ function nearTag(v: GroundGuideVerdict): Node | string | null {
   }
   if (v.distanceM !== null) return v.distanceM < 1 ? 'NO-GO at the edge' : `NO-GO ${fmtDistance(v.distanceM)}`;
   return 'NO-GO Gr close';
+}
+
+/**
+ * The chip's way out of NO-GO (user, 2026-11-08, from ground-guide-card-concepts.html's arrow chip): a pointer that
+ * turns with the map, then "Clear Gr 200 m NW", the nearest spot where all of the symbol is out of NO-GO. It is where
+ * S would move it. "No clear Gr in 5.1 km" when the search found none; nothing for a line or area, or while the
+ * search waits on tiles.
+ */
+function clearTag(v: GroundGuideVerdict): Node | string | null {
+  const c = v.clear;
+  if (!c) return null;
+  if (c.distanceM === null || c.compass === null) return `No clear Gr in ${fmtDistance(c.searchedM)}`;
+  const f = document.createDocumentFragment();
+  const p = pointerArrow(c.bearingDeg ?? c.compass);
+  if (p) f.append(p);
+  f.append(`Clear Gr ${fmtDistance(c.distanceM)} ${c.compass}`);
+  return f;
 }
 
 /**
@@ -729,6 +747,7 @@ function hintParts(v: GroundGuideVerdict, tone: Tone): Array<Node | string> {
   const pct = v.samples > 1 && v.fraction > 0 ? Math.max(1, Math.round(v.fraction * 100)) : 0;
   let word: string;
   let figure: Node | string | null = null;
+  let way: Node | string | null = null;
   if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') {
     word = v.verdict === 'unknown' ? (v.loading || v.waiting ? 'Checking' : 'No Data') : titleOf(v);
   } else {
@@ -750,13 +769,16 @@ function hintParts(v: GroundGuideVerdict, tone: Tone): Array<Node | string> {
         break;
       default:
         word = 'NO-GO';
-        if (pct > 0 && v.verdict !== 'in') figure = `${pct}% Inside`;
+        way = clearTag(v);
+        // With the way out beside it the share is shortened, so the chip stays one short line.
+        if (pct > 0 && v.verdict !== 'in') figure = way ? `${pct}% in` : `${pct}% Inside`;
     }
   }
   const parts: Array<Node | string> = [toneIcon(tone, 16), el('span', 'ms-ggb-hw', word)];
-  if (figure !== null) {
+  for (const fig of [figure, way]) {
+    if (fig === null) continue;
     const f = el('span', 'ms-ggb-hd');
-    f.append(figure);
+    f.append(fig);
     parts.push(f);
   }
   if (v.blocked) parts.push(el('span', 'ms-ggb-hx', 'Refused'));

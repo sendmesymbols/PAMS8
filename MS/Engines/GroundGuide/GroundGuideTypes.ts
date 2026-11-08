@@ -228,8 +228,6 @@ export interface GroundGuideOverlayOptions {
 /** Lines drawn on the map from the symbol to the terrain that makes it undeployable. */
 export interface GroundGuideIndicatorOptions {
   enabled: boolean;
-  /** Write the class and distance at the end of the line. */
-  labels: boolean;
 }
 
 export interface GroundGuideOptions {
@@ -694,6 +692,11 @@ export interface GroundGuideVerdict {
   spacing?: GroundGuideSpacing | null;
   /** Set while drawing a point the snap key can move to usable ground (the verdict is bad and the quick fix is on). */
   snappable?: boolean;
+  /**
+   * Set while drawing a point symbol with some of it in NO-GO: the nearest clear ground, where all of it (its footprint)
+   * is out of NO-GO. The hint chip points to it. It is the S Quick Fix's own search, so S moves the symbol there.
+   */
+  clear?: GroundGuideClearGround | null;
   /** Set while drawing when `enforce` mode would refuse this verdict at the click. */
   blocked?: boolean;
   /** Set alongside `blocked` when holding Shift at the click places it anyway. */
@@ -784,6 +787,23 @@ export interface GroundGuideStatus {
   retryInMs: number | null;
 }
 
+/**
+ * The nearest clear ground for a point symbol that is partly or wholly in NO-GO (`GroundGuideVerdict.clear`): the
+ * nearest spot where all of it (its footprint for an echelon) is out of NO-GO, from the S Quick Fix search.
+ */
+export interface GroundGuideClearGround {
+  /** Where it is, Web Mercator metres; null when the search found none within `searchedM`. */
+  at: MercXY | null;
+  /** Ground metres from the symbol, bearing (degrees clockwise from north) and 8-point compass; null with `at`. */
+  distanceM: number | null;
+  bearingDeg: number | null;
+  compass: string | null;
+  /** The verdict there: `ok` (GO), or `near` / `caution` (out of NO-GO, but Marginal / SLOW-GO). */
+  verdict: GroundGuideVerdictKind | null;
+  /** Ground distance the search covered, metres (for "none within …"). */
+  searchedM: number;
+}
+
 /** Result of `snapToDeployable()`, also the detail of the `ground-guide-snap` event. */
 export interface GroundGuideSnapResult {
   /** True when the symbol was placed at a better spot. */
@@ -870,7 +890,7 @@ export interface GroundGuideAccess {
 export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   mode: 'advise',
   overlay: { enabled: false, profile: 'auto', opacity: 0.6, boundary: false },
-  indicators: { enabled: true, labels: true },
+  indicators: { enabled: true },
   footprint: { enabled: true, facing: 'fixed', bearingDeg: 0, size: 'mid', outline: true, spacing: true },
   bundleUrl: '',
   nearThresholdM: 250,

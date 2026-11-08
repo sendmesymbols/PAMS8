@@ -3057,10 +3057,6 @@
               <label>Indicator lines</label>
               <input type="checkbox" id="setting-groundGuideIndicators" checked title="Draw a line from the symbol to the terrain that is the reason for the advice: nearest no-go (red), nearest deployable ground when inside no-go (green), or the contested part of a line/area." />
             </div>
-            <div class="setting-row">
-              <label>Line labels</label>
-              <input type="checkbox" id="setting-groundGuideIndicatorLabels" checked title="Write the terrain class and distance at the end of the indicator line." />
-            </div>
             <div class="sub-feature-label">Echelon footprint</div>
             <div class="setting-row">
               <label>By footprint</label>
@@ -4751,7 +4747,6 @@
         'setting-groundGuideSnapKey': (v) => ({ path: ['groundGuide', 'snapKey'], value: v }),
         'setting-groundGuideBundleUrl': (v) => ({ path: ['groundGuide', 'bundleUrl'], value: v }),
         'setting-groundGuideIndicators': (v) => ({ path: ['groundGuide', 'indicators', 'enabled'], value: v }),
-        'setting-groundGuideIndicatorLabels': (v) => ({ path: ['groundGuide', 'indicators', 'labels'], value: v }),
         'setting-groundGuideFootprint': (v) => ({ path: ['groundGuide', 'footprint', 'enabled'], value: v }),
         'setting-groundGuideFacing': (v) => ({ path: ['groundGuide', 'footprint', 'facing'], value: v }),
         'setting-groundGuideBearing': (v) => ({ path: ['groundGuide', 'footprint', 'bearingDeg'], value: +v }),
