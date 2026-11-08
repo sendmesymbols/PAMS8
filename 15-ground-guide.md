@@ -126,17 +126,15 @@ Symbol* or *Set by Hand (P)*, season and light, and the overlay warning), then t
 one line (facts that do not fit the width are left to the tiles). Below it a band of fixed height holds the tab's
 pictures, then its lists and notes, placed down columns first-fit (a short tile fills the space under a tall one; a
 list taller than the band continues at the top of a later column). What does not fit the card's width goes to a next
-page: **the same letter again turns the page**, and closes the card from the last page; the footer shows
-`Page 1 of 2` and the key. At 1920×1080 every tab fits one page; at 1600×900 T and B take two.
+page: **the same letter again turns the page**, wrapping from the last page to the first, and **Shift + the letter**
+goes back a page (2026-11-08; the letter no longer closes the card); the footer shows `Page 1 of 2` and the keys.
 Since 2026-11-08 the card **fills its width**: when a tab fits one page its tiles are shared out side by side over
 every column there is room for (in order, the tallest column as short as it can be, a column up to 560 px), and a last
 page with columns to spare does the same with its own tiles, so a short tab no longer leaves half the card empty.
-Text is **12 px at the least**: the tiles reuse the cursor card's CSS, so after each render the Detail copies every
-Ground Guide rule set smaller into a sheet of its own at 12 px, scoped to the Detail (the cursor card keeps its sizes),
-and the pictures' own labels (compass letters, triangle corners, cross-section notes) are drawn at 10.5 px on screen
-at the least. Label / value lists have a hairline and air between rows, so a value that wraps stays one row; the G
-list's **Going** is a small grid (a mode a row, *Dry* and *After Rain* a column). Below 1160 px the tabs not shown
-keep only their key, so the header stays on one line.
+Text is **12 px at the least** everywhere, from the shared type scale in `GroundGuideTokens.ts` (the runtime rule that
+raised small text in the Detail is gone, 2026-11-08), and the pictures' own labels are drawn at 10.5 px on screen at
+the least. Label / value lists have a hairline and air between rows, so a value that wraps stays one row; the G
+list's **Going** is a small grid (a mode a row, *Dry* and *After Rain* a column).
 
 | tab | tiles |
 |-----|-------|
@@ -148,12 +146,42 @@ keep only their key, so the header stays on one line.
 | **C** Cover | the four tiles, the cover rose, the nearest cover per field, the four levels as meters, what the mode needs and the area round it, what else is mapped (underground, landform, buildings); the four levels and the better cover nearby are on the strip |
 | **L** Legend (key **K**) | the mode as pills (one click judges or paints for it), the overlay key with the season and day / night switches, **Map Layers** switches (going overlay with its opacity, terrain data boundary, People layer, indicator lines, footprint outline), the NO-GO and SLOW-GO lists for the mode, the keys. There is no docked legend on the map any more: this tab is the legend, and D opens the card before a draw too |
 
-A letter key (**G R O T B C**, and **K** for the Legend, since L is Lasso Select) opens the detail on that tab; the same letter again turns to the next page or, from the last, closes it, as do **D** and **Esc**
-(Esc still reaches the draw tool). Only the active tab is built on each cursor move. **Copy as Text** in its header copies every registered
+A letter key (**G R O T B C**, and **K** for the Legend, since L is Lasso Select) opens the detail on that tab; the same
+letter again turns the page (wrapping), Shift + the letter goes back. **D** and **Esc** close it; the **first Esc closes
+only the Detail** (it is stopped before the draw tool sees it) and a second Esc reaches the draw tool as before.
+Only the active tab is built on each cursor move. **Copy as Text** in its header copies every registered
 section as plain lines for orders. The detail keeps the last draw's content until closed. API: `guide.showDetail(open,
 tab?)`, `guide.isDetailOpen`, `guide.detailTab` (`showBrief()` / `isBriefOpen` still work). The old T key, which
 stepped the T block's tabs, is now the Trafficability tab; a folded T block on the full cursor card counts as open
 while the detail is.
+
+**Visual review (2026-11-08, the user's picks from `ground-guide-visual-options.html`).** One type scale and one set of
+colours for every Ground Guide surface live in `GroundGuideTokens.ts`: sizes 12 / 13.5 / 15.5 / 18 / 22 px, weights
+400 / 600 / 750, labels `#c3cbd3`, stronger hairlines, no faded text, dark only.
+- **Verdict ladder** (bar, chip, gauge, overlay, Legend key, indicator lines): *Suitable* green ✓, *Marginal* yellow
+  outline triangle (Adjacent: the shape is on GO ground beside NO-GO, so the gauge lights **GO** with a
+  `NO-GO 120 m NE` tag), *SLOW-GO* orange filled triangle, *Part NO-GO* hatched red outline octagon (Encroaching,
+  Partially Obstructed), *NO-GO* deep red filled octagon with a cross, *Checking* grey. Red and green mean verdicts
+  only: roads are white with a dark casing and the letters MSR, blue all-weather, violet fair-weather, dashed grey
+  track; other units' footprints violet; natural obstacles blue-grey; letter badges and tabs neutral.
+- **Cursor card**: the bar holds the verdict only (icon, 18 px title, `33% Inside`); mode, echelon, season, light
+  and the civil flag's people count (written out) sit on a neutral line under it; Why opens with the gauge (one bar in
+  three colours, a pointer over the lit step); labels are written to fit (two lines rather than cut); the footer is
+  *D Detail · H Hint* (plus a lit *S Quick Fix* when it can help). With the Detail open the card opens on the side of
+  the cursor that has room and never over the Detail; where no side has room it folds to the chip until there is.
+- **Ground Detail**: every tab shows its letter, a short name and **its own answer** as a dot and a word (the open
+  tab light, tabs neutral); who the ground is judged for has its own line under the tabs; each strip opens with the
+  letter's **answer block** (22 px, in its verdict colour, judged for the mode), then the facts. One idea, one name:
+  road crossings of the circle are **Rds out** (`15 in 7 Dirs`, R only); cross-country directions for the mode are
+  **Open Dirs** (`6 of 8`, the same reading in O and T); R's route uses the road T found when the 1:50k map has none
+  within 500 m; R's density callout judges for the mode. Read-only scales (slope band, people band) are rulers with a
+  marker; *Who moves how fast* is a plain grid. Every round picture shares one frame (120 px, one ring, one N, a
+  one-line key under it) but keeps its own shape; the Rds out rose's key says white MSR, blue all-weather, violet
+  fair-weather. Group labels are sentence case; capitals only for GO, SLOW-GO, NO-GO, MSR, ITG.
+- **Height**: drag the grip on the Detail's top edge to 40, 50 or 60 % of the window (remembered, 50 % to start;
+  Up / Down on the focused grip); the card is never shorter than 440 px, so the band keeps the 220 px its tallest
+  tiles need, and the height is the same on every tab.
+- **Map labels** sit on a small dark plate edged in the verdict colour, with the verdict icon beside it.
 
 The distance layer only stores *how far* the nearest no-go is, not *what* it is,
 so the guide searches the class tile around the deciding sample (a window of
@@ -169,7 +197,9 @@ A shape that spans tiles still being fetched is judged on what is known and says
 `Still loading terrain data`.
 
 **While tiles load**, the cursor card does not blank out. When the tile under the cursor is missing, the
-last real verdict of the draw stays up marked `Still loading terrain data`, provided the cursor is within
+last real verdict of the draw stays up, but **grey**: the bar says *Checking* with `Last: Suitable` beside it, the
+gauge lights nothing and the facts read "…" (2026-11-08; a verdict judged before all its tiles arrived is shown the
+same way, unless what is known already puts NO-GO ground in the shape, which stays red), provided the cursor is within
 80 screen pixels of where that verdict was given (measured on screen between the two map positions, so
 panning is accounted for). With nothing close enough to show, the card keeps what it had and waits 200 ms
 before saying `Terrain data loading…`, so a tile that arrives in a blink never flashes it. Outside the

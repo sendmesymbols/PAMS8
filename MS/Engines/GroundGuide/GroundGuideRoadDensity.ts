@@ -230,7 +230,9 @@ export function roadDensityExitsText(d: RoadDensityReading): string | null {
   if (!n) return 'No Rd leaves the circle';
   const aw = d.allWeatherExitDirs.length;
   const awText = aw === d.exitDirs.length && d.exits.every((e) => e.allWeather) ? ' (all all-weather)' : aw ? ` (all-weather ${d.allWeatherExitDirs.join(', ')})` : ' (none all-weather)';
-  return `${n} way${n === 1 ? '' : 's'} out: ${d.exitDirs.join(', ')}${awText}`;
+  // One name, one phrase (user, 2026-11-08, item 10): road crossings of the circle are "Rds out", "15 in 7 Dirs".
+  const dirs = d.exitDirs.length;
+  return `Rds out: ${n} in ${dirs} Dir${dirs === 1 ? '' : 's'}, ${d.exitDirs.join(', ')}${awText}`;
 }
 
 /** What the lead band means, with the after-rain caveat when it is the all-weather band. */

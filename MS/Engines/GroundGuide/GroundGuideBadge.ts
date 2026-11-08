@@ -22,7 +22,8 @@ import { GOING_WORD } from './GroundGuideGoing';
 import { detailCue, goingSections, seasonIcon } from './GroundGuideGoingView';
 import { modeIcon } from './GroundGuideLegend';
 import { arrowCompass, compassBearing, dial, dirArrow, orientNorth, whereNode } from './GroundGuideNorth';
-import { ensurePopulationCss, populationFlagPill, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
+import { ensurePopulationCss, fmtPeople, populationFlagStrip, populationSection, populationSpoken } from './GroundGuidePopulationView';
+import { ensureTokensCss, gauge, LEVEL_COLOR, LEVEL_TEXT, STEP_COLOR, STEP_TEXT, TONE, TONE_STEP, toneIcon, verdictTone, type Tone } from './GroundGuideTokens';
 import { decorateTraffic, trafficCard } from './GroundGuideTrafficView';
 import { decorateSpeed } from './GroundGuideSpeedView';
 import { coverSection } from './GroundGuideCoverView';
@@ -44,60 +45,73 @@ const TOUCH_GAP = 28;
  * one column of labels instead of reading a stacked caption above each item. Why has no label (the user, same day:
  * the going scale says what it is) and takes the card's whole width, straight under the verdict. Nearest keeps its
  * compass under its label. Sections from the full card (`card.cursor: full`) keep their stacked bands.
+ *
+ * Visual review, 2026-11-08 (the user's picks): the bar holds the verdict only, icon and title at 18 px (item 3), in
+ * the verdict ladder's fill with its icon (item 1: Suitable green, Marginal yellow, SLOW-GO orange, Part NO-GO hatched
+ * red, NO-GO red, Checking grey); who it is judged for sits on a neutral line under it. Why opens with the GO /
+ * SLOW-GO / NO-GO gauge (item 2). Grey "Checking" while the verdict is provisional (item 4). Five type sizes, labels
+ * #c3cbd3, stronger hairlines, no faded text (items 17, 18). The footer keeps D and H only (item 6). The card steps
+ * aside of the open Detail, or folds to the chip where it cannot (item 7).
  */
+const toneCss = (Object.keys(TONE) as Tone[])
+  .map((t) => `.ms-ground-guide-badge[data-tone="${t}"]{--pb-c:${TONE[t].fill};--pb-fg:${TONE[t].fg}}`)
+  .join('\n');
 const CSS = `
 .ms-ground-guide-badge{position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;
-  --pb-c:#5b6470;--pb-fg:#fff;--pb-k:#aab3bd;width:320px;max-width:calc(100vw - 8px);box-sizing:border-box;border-radius:11px;overflow:hidden;
-  font:400 13px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;
+  --pb-c:#5b6470;--pb-fg:#fff;width:320px;max-width:calc(100vw - 8px);box-sizing:border-box;border-radius:11px;overflow:hidden;
+  font:400 13.5px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;
   background:#1b1f25;border:1.5px solid var(--pb-c);box-shadow:0 6px 18px rgba(0,0,0,.42);display:none}
-.ms-ground-guide-badge[data-verdict="ok"]{--pb-c:#1c8247;--pb-k:#3fc07a}
-.ms-ground-guide-badge[data-verdict="near"]{--pb-c:#e9a526;--pb-fg:#1b1f25;--pb-k:#f2b84b}
-.ms-ground-guide-badge[data-verdict="caution"]{--pb-c:#e08a1e;--pb-fg:#1b1f25;--pb-k:#f0a04b}
-.ms-ground-guide-badge[data-verdict="partial"]{--pb-c:#d9622b;--pb-fg:#1b1f25;--pb-k:#ef7d4a}
-.ms-ground-guide-badge[data-verdict="in"]{--pb-c:#d63a3f;--pb-k:#ff6b6f}
-.ms-ggb-bar{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;padding:8px 12px;background:var(--pb-c);color:var(--pb-fg);font-weight:650;font-size:14.5px;line-height:1.25}
+${toneCss}
+.ms-ggb-bar{display:flex;align-items:center;gap:6px 9px;padding:9px 12px;background-color:var(--pb-c);color:var(--pb-fg);font-weight:750;font-size:18px;line-height:1.2}
+.ms-ground-guide-badge[data-tone="part"]>.ms-ggb-bar{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.22) 0 6px,transparent 6px 12px)}
 .ms-ggb-bar>svg{flex:none}
 .ms-ggb-title{flex:1 1 0;min-width:0}
-.ms-ggb-pills{display:flex;gap:4px;margin-left:auto}
-.ms-ggb-pct,.ms-ggb-fix{display:flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:12px;font-weight:600;white-space:nowrap}
-.ms-ggb-fix{padding-left:3px}
-.ms-ground-guide-badge[data-verdict="near"] .ms-ggb-pills>span,.ms-ground-guide-badge[data-verdict="caution"] .ms-ggb-pills>span,.ms-ground-guide-badge[data-verdict="partial"] .ms-ggb-pills>span{background:rgba(0,0,0,.12)}
-.ms-ggb-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;
-  font:700 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3f8f5b,#2b6b42);border:1px solid #5fc183;border-bottom-width:2px}
+.ms-ggb-pill{flex:none;padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.2);font-size:12px;font-weight:750;line-height:1.5;white-space:nowrap}
+.ms-ground-guide-badge[data-tone="marg"] .ms-ggb-pill,.ms-ground-guide-badge[data-tone="slow"] .ms-ggb-pill{background:rgba(0,0,0,.18)}
+.ms-ggb-last{font-weight:600;color:#e3e7ec}
+.ms-ggb-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:4px;
+  font:750 12px/1 system-ui,Segoe UI,Arial,sans-serif;color:#e8ebee;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px}
+.ms-ggb-kbd.ms-lit{color:#fff;background:#2b6b42;border-color:#5fc183}
 .ms-ggb-sr{position:fixed;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
-.ms-ggb-body{padding:7px 12px 9px}
+.ms-ggb-body{padding:8px 12px 10px}
 .ms-ggb-sec{padding:8px 12px 9px}
 .ms-ggb-sec:nth-child(even){background:#222830}
-.ms-ggb-cap{font:700 10.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--pb-k);margin-bottom:6px}
-.ms-ggb-row{display:grid;grid-template-columns:86px minmax(0,1fr);column-gap:10px;row-gap:5px;align-items:start;padding:9px 12px 10px;border-top:1px solid rgba(255,255,255,.08)}
+.ms-ggb-cap{font:600 12px/1.3 system-ui,Segoe UI,Arial,sans-serif;color:#c3cbd3;margin-bottom:6px}
+.ms-ggb-row{display:grid;grid-template-columns:86px minmax(0,1fr);column-gap:10px;row-gap:5px;align-items:start;padding:9px 12px 10px;border-top:1px solid rgba(255,255,255,.14)}
 .ms-ggb-row:first-child{border-top:0}
-.ms-ggb-note{padding:8px 12px;border-top:1px solid rgba(255,255,255,.08)}
-.ms-ggb-for{flex:1 1 100%;display:flex;align-items:center;gap:6px;min-width:0;font:600 12.5px/1.3 system-ui,Segoe UI,Arial,sans-serif}
-.ms-ggb-for>svg{flex:none}
-.ms-ggb-who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ms-ggb-hand{flex:none;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.32);color:#fff;font:700 10px/1.2 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase}
-.ms-ggb-when{flex:none;margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-weight:500;opacity:.88}
-.ms-ggb-other{padding:7px 12px;background:rgba(242,184,75,.13);border-bottom:1px solid rgba(242,184,75,.35);color:#ffd27a;font-size:12.5px}
-.ms-ggb-facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,.08)}
+.ms-ggb-note{padding:8px 12px;border-top:1px solid rgba(255,255,255,.14)}
+/* Who the ground is judged for: a neutral line under the bar (item 3), never on the verdict colour. */
+.ms-ggb-mode{display:flex;flex-wrap:wrap;align-items:center;gap:3px 12px;padding:7px 12px;background:#222830;border-bottom:1px solid rgba(255,255,255,.14);font-size:12px;line-height:1.35;color:#c3cbd3}
+.ms-ggb-mode>span{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.ms-ggb-mode svg{flex:none;color:#8ec1ea}
+.ms-ggb-who{min-width:0;color:#f1f3f6;font-weight:600}
+.ms-ggb-hand{color:#ffd27a;font-weight:600}
+.ms-ggb-civ{color:#ffd27a;font-weight:600}
+.ms-ggb-mode .ms-ggb-civ svg{color:#ffd27a}
+.ms-ggb-other{padding:7px 12px;background:rgba(242,184,75,.13);border-bottom:1px solid rgba(242,184,75,.4);color:#ffd27a;font-size:12px}
+.ms-ggb-facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,.14)}
 .ms-ggb-fact{min-width:0;padding:8px 12px 9px}
-.ms-ggb-fact+.ms-ggb-fact{border-left:1px solid rgba(255,255,255,.08)}
-.ms-ggb-fk{font-size:11.5px;line-height:1.3;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-ggb-fv{margin-top:2px;font:700 13.5px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-ggb-fact+.ms-ggb-fact{border-left:1px solid rgba(255,255,255,.14)}
+/* Labels are written to fit; a long one takes a second line rather than losing its last word (item 5). */
+.ms-ggb-fk{font-size:12px;line-height:1.3;color:#c3cbd3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.ms-ggb-fv{margin-top:2px;font:750 13.5px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ms-ggb-fd{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%;vertical-align:0}
-.ms-ggb-fd[data-tone="go"],.ms-ggb-fd[data-tone="c3"]{background:#2fa862}
-.ms-ggb-fd[data-tone="slow"],.ms-ggb-fd[data-tone="c1"]{background:#f0932b}
-.ms-ggb-fd[data-tone="nogo"]{background:#e5484d}
-.ms-ggb-fd[data-tone="c2"]{background:#9cc45a}
-.ms-ggb-fd[data-tone="c0"]{background:#5b6470;box-shadow:inset 0 0 0 1.5px #9aa3ad}
-.ms-ggb-fv[data-tone="go"],.ms-ggb-fv[data-tone="c3"]{color:#74dca3}
-.ms-ggb-fv[data-tone="slow"],.ms-ggb-fv[data-tone="c1"]{color:#ffb46b}
-.ms-ggb-fv[data-tone="nogo"]{color:#ff8a8d}
-.ms-ggb-fv[data-tone="c2"]{color:#c3df8f}
-.ms-ggb-row>.ms-ggb-cap{grid-column:1;grid-row:1;margin:0;padding-top:2px;font:600 12px/1.3 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#a9b2bc}
+.ms-ggb-fd[data-tone="go"],.ms-ggb-fd[data-tone="c3"]{background:${STEP_COLOR.go}}
+.ms-ggb-fd[data-tone="slow"],.ms-ggb-fd[data-tone="c1"]{background:${STEP_COLOR.slow}}
+.ms-ggb-fd[data-tone="nogo"]{background:${STEP_COLOR.nogo}}
+.ms-ggb-fd[data-tone="c2"]{background:${LEVEL_COLOR[2]}}
+.ms-ggb-fd[data-tone="c0"],.ms-ggb-fd[data-tone="none"]{background:#5b6470;box-shadow:inset 0 0 0 1.5px #9aa3ad}
+.ms-ggb-fv[data-tone="go"],.ms-ggb-fv[data-tone="c3"]{color:${STEP_TEXT.go}}
+.ms-ggb-fv[data-tone="slow"],.ms-ggb-fv[data-tone="c1"]{color:${STEP_TEXT.slow}}
+.ms-ggb-fv[data-tone="nogo"]{color:${STEP_TEXT.nogo}}
+.ms-ggb-fv[data-tone="c2"]{color:${LEVEL_TEXT[2]}}
+.ms-ggb-fv[data-tone="none"]{color:#c3cbd3}
+.ms-ggb-row>.ms-ggb-cap{grid-column:1;grid-row:1;margin:0;padding-top:2px}
 .ms-ggb-row>:not(.ms-ggb-cap){grid-column:2;min-width:0}
 .ms-ggb-row.ms-ggb-wide{grid-template-columns:minmax(0,1fr)}
 .ms-ggb-row.ms-ggb-wide>:not(.ms-ggb-cap){grid-column:1}
-.ms-ggb-wide>.ms-ggb-b{font-size:14px}
+.ms-ggb-reason{margin-top:8px;font-size:15.5px;font-weight:750;color:#fff;line-height:1.25}
+.ms-ggb-reason.ms-was{color:#c3cbd3;font-weight:600}
 .ms-ggb-row.ms-ggb-nrow{grid-template-columns:62px minmax(0,1fr);grid-template-rows:auto 1fr}
 .ms-ggb-nrow>.ms-ggb-side{grid-column:1;grid-row:2;align-self:start;line-height:0}
 .ms-ggb-nrow>.ms-ggb-nlist{grid-column:2;grid-row:1 / span 2}
@@ -105,43 +119,40 @@ const CSS = `
 .ms-ggb-nh{display:flex;align-items:baseline;gap:6px;min-width:0}
 .ms-ggb-nd{flex:none;align-self:center;width:9px;height:9px;border-radius:50%}
 .ms-ggb-nn{flex:1 1 auto;min-width:0;font-weight:600;color:#fff;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-.ms-ggb-nf{flex:none;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
-.ms-ggb-ni:first-child .ms-ggb-nf{font-size:14px}
-.ms-ggb-nw{padding-left:15px;font-size:11.5px;line-height:1.3;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-ggb-nw[data-tone="nogo"]{color:#ff8a8d}
-.ms-ggb-nw[data-tone="slow"]{color:#ffb46b}
-.ms-ggb-row>.ms-ggb-scale,.ms-ggb-row>.ms-ggb-track{margin:0}
-.ms-ggb-row>.ms-ggb-scale{margin-bottom:2px}
+.ms-ggb-nf{flex:none;font-weight:750;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ms-ggb-ni:first-child .ms-ggb-nf{font-size:15.5px}
+.ms-ggb-nw{padding-left:15px;font-size:12px;line-height:1.3;color:#c3cbd3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.ms-ggb-nw[data-tone="nogo"]{color:${STEP_TEXT.nogo}}
+.ms-ggb-nw[data-tone="slow"]{color:${STEP_TEXT.slow}}
+.ms-ggb-row>.ms-ggb-track{margin:0}
 .ms-ggb-row .ms-ggb-soft{padding-top:0}
 .ms-ggb-b{font-weight:600;color:#fff}
-.ms-ggb-dim{color:#a9b2bc}
-.ms-ggb-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:6px}
-.ms-ggb-scale>span{font:700 11px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.03em;text-align:center;padding:5px 0 4px;border-radius:3px;background:rgba(255,255,255,.06);color:#7f8893}
-.ms-ggb-scale>.ms-on-go{background:#2fa862;color:#fff}
-.ms-ggb-scale>.ms-on-slow{background:#f0932b;color:#1b1f25}
-.ms-ggb-scale>.ms-on-nogo{background:#e5484d;color:#fff}
+.ms-ggb-dim{color:#c3cbd3}
 .ms-ggb-nr{display:flex;gap:10px;align-items:center}
 .ms-ggb-nr>svg{flex:none}
-.ms-ggb-big{font-size:19px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
+.ms-ggb-big{font-size:15.5px;font-weight:750;color:#fff;font-variant-numeric:tabular-nums;line-height:1.2}
 .ms-ggb-track{height:6px;margin:4px 0 2px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
 .ms-ggb-track>div{height:100%}
-.ms-ggb-enf{display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:rgba(229,72,77,.14);border-top:1px solid rgba(229,72,77,.45);color:#ffb3b5}
+.ms-ggb-enf{display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:rgba(229,72,77,.14);border-top:1px solid rgba(229,72,77,.5);color:#ffb3b5}
 .ms-ggb-enf>svg{flex:none;margin-top:2px;color:#e5484d}
-.ms-ggb-warn{color:#ffc861}
-.ms-ggb-soft{color:#a3acb6;font-size:12px;padding-top:2px}
-.ms-ggb-itg+.ms-ggb-itg{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)}
-.ms-ggb-itgt{font-size:11.5px;line-height:1.35;margin-top:2px}
+.ms-ggb-warn{color:#ffd27a}
+.ms-ggb-soft{color:#b8c1ca;font-size:12px;padding-top:2px}
+.ms-ggb-itg+.ms-ggb-itg{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.14)}
+.ms-ggb-itgt{font-size:12px;line-height:1.35;margin-top:2px}
 .ms-ggb-strong{color:#f2b84b;font-weight:600}
-.ms-ground-guide-badge .ms-gv-foot{padding:7px 12px;font-size:12px;color:#a3acb6}
-.ms-ground-guide-badge.ms-ggb-pip{width:auto;max-width:280px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,.42)}
-.ms-ggb-pip>.ms-ggb-bar{flex-wrap:nowrap;gap:6px;padding:4px 6px 4px 9px;font-size:13px;white-space:nowrap}
-.ms-ggb-pip>.ms-ggb-bar>svg{width:14px;height:14px}
-.ms-ggb-hw{font-weight:750;letter-spacing:.02em}
-.ms-ggb-hd{font-weight:600;font-variant-numeric:tabular-nums}
-.ms-ggb-hx{padding:1px 6px;border-radius:999px;background:rgba(0,0,0,.28);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-.ms-ggb-kbd.ms-ggb-kq{min-width:16px;height:16px;font-size:10px;color:inherit;background:none;border:1px solid currentColor;opacity:.6}
-.ms-ground-guide-badge .ms-gv-foot-l{opacity:.8;gap:3px}
-.ms-ground-guide-badge .ms-gv-foot-l>.ms-gv-kbd{min-width:16px;height:16px;font-size:9.5px}
+.ms-ground-guide-badge .ms-gv-foot{padding:7px 12px;font-size:12px;color:#c3cbd3;border-top:1px solid rgba(255,255,255,.14)}
+.ms-ggb-qf{display:inline-flex;align-items:center;gap:5px;color:#9fe3bb;font-weight:600}
+.ms-ggb-pills{display:flex;gap:4px;margin-left:auto}
+.ms-ggb-pills>span{font-size:12px;font-weight:600}
+.ms-ggb-mode+.ms-ggb-row,.ms-ggb-other+.ms-ggb-row{border-top:0}
+/* The hint chip (H), and the card folded to it where the Detail leaves no room (item 7). */
+.ms-ground-guide-badge.ms-ggb-pip{width:auto;max-width:300px;border-radius:999px;box-shadow:0 3px 10px rgba(0,0,0,.42)}
+.ms-ggb-pip>.ms-ggb-bar{flex-wrap:nowrap;gap:7px;padding:5px 7px 5px 11px;font-size:13.5px;white-space:nowrap}
+.ms-ggb-pip>.ms-ggb-bar>svg{width:16px;height:16px}
+.ms-ggb-hw{font-weight:750}
+.ms-ggb-hd{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.ms-ggb-hx{padding:1px 7px;border-radius:999px;background:rgba(0,0,0,.28);font-size:12px;font-weight:750}
+.ms-ggb-kbd.ms-ggb-kq{min-width:18px;height:18px;font-size:12px;color:inherit;background:none;border:1px solid currentColor;border-bottom-width:1px}
 `;
 
 const ICONS: Record<string, string[]> = {
@@ -152,16 +163,22 @@ const ICONS: Record<string, string[]> = {
   help: ['M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3', 'M12 17h.01', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z'],
 };
 
-const SPACING_COLOR = { ok: '#2fa862', tight: '#ee7b30', overlap: '#e5484d' } as const;
+const SPACING_COLOR = { ok: STEP_COLOR.go, tight: STEP_COLOR.slow, overlap: STEP_COLOR.nogo } as const;
 
-/** Where a verdict sits on the GO / SLOW-GO / NO-GO scale. */
-const GOING: Partial<Record<GroundGuideVerdict['verdict'], 'go' | 'slow' | 'nogo'>> = {
-  ok: 'go',
-  caution: 'slow',
-  near: 'nogo',
-  partial: 'nogo',
-  in: 'nogo',
-};
+/** The ladder's word for a tone, for "Last: …" while checking and for a screen reader. */
+const TONE_SAID: Record<Tone, string> = { go: 'Suitable', marg: 'Marginal', slow: 'SLOW-GO', part: 'Part NO-GO', nogo: 'NO-GO', chk: 'Checking' };
+
+/** The tone a refusal toast or an old caller's verdict kind is drawn in. */
+function toneOfKind(kind: GroundGuideVerdict['verdict']): Tone {
+  switch (kind) {
+    case 'ok': return 'go';
+    case 'near': return 'marg';
+    case 'caution': return 'slow';
+    case 'partial': return 'part';
+    case 'in': return 'nogo';
+    default: return 'chk';
+  }
+}
 
 /** Rule labels read ">30°" and "15–30°"; say them in words, with no symbols or dashes. */
 function plain(label: string): string {
@@ -226,15 +243,6 @@ function row(caption: string, ...content: Array<Node | string>): HTMLElement {
   return r;
 }
 
-/** GO / SLOW-GO / NO-GO with the verdict's own step lit. */
-function goingScale(step: 'go' | 'slow' | 'nogo'): HTMLElement {
-  const s = el('div', 'ms-ggb-scale');
-  for (const [k, text] of [['go', 'GO'], ['slow', 'SLOW-GO'], ['nogo', 'NO-GO']] as const) {
-    s.appendChild(el('span', k === step ? `ms-on-${k}` : undefined, text));
-  }
-  return s;
-}
-
 /** A keyboard key as drawn on the card. */
 function keycap(key: string): HTMLElement {
   return el('span', 'ms-ggb-kbd', key);
@@ -266,19 +274,9 @@ export function titleOf(v: GroundGuideVerdict): string {
   }
 }
 
-function iconOf(v: GroundGuideVerdict): string {
-  switch (v.verdict) {
-    case 'ok': return 'check';
-    case 'near':
-    case 'caution': return 'triangle';
-    case 'partial': return 'octagon';
-    case 'in': return 'x';
-    default: return 'help';
-  }
-}
-
 /** The card as one short sentence for a screen reader: the verdict, why, and the keys that can change it. */
 function spokenFor(v: GroundGuideVerdict): string {
+  if (verdictTone(v) === 'chk' && v.verdict !== 'unknown') return 'Checking the ground here.';
   const parts = [titleOf(v)];
   if (v.verdict !== 'unknown' && v.verdict !== 'ok' && v.message) parts.push(v.message);
   if (v.snappable) parts.push('Press S to move it to the nearest usable ground');
@@ -286,10 +284,29 @@ function spokenFor(v: GroundGuideVerdict): string {
   return parts.map((p) => p.replace(/[.\s]+$/, '')).join('. ') + '.';
 }
 
-/** Why: the ground that decides the verdict, for which unit type, and where that sits on the going scale. */
-function whySection(v: GroundGuideVerdict): HTMLElement | null {
-  const step = GOING[v.verdict];
-  if (!step) return null;
+/**
+ * The tag under a Marginal gauge: the NO-GO ground beside the position, how far and which way ("NO-GO 120 m NE").
+ * Adjacent lights GO (the user, 2026-11-08: the shape stands on GO ground), so the tag says what is close.
+ */
+function nearTag(v: GroundGuideVerdict): Node | string | null {
+  const n = v.nearest;
+  if (n && n.kind === 'no-go') {
+    if (n.distanceM < 1) return 'NO-GO at the edge';
+    const f = document.createDocumentFragment();
+    f.append('NO-GO ', whereNode(n.distanceM, n.compass, n.bearingDeg));
+    return f;
+  }
+  if (v.distanceM !== null) return v.distanceM < 1 ? 'NO-GO at the edge' : `NO-GO ${fmtDistance(v.distanceM)}`;
+  return 'NO-GO Gr close';
+}
+
+/**
+ * Why: the GO / SLOW-GO / NO-GO gauge (item 2) with the step the verdict stands on lit, then the ground that decides
+ * it. While checking, nothing is lit and the last reason is shown in grey as what it was.
+ */
+function whySection(v: GroundGuideVerdict, tone: Tone): HTMLElement | null {
+  if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+  const step = TONE_STEP[tone];
   let name: string;
   switch (v.verdict) {
     case 'ok':
@@ -311,43 +328,77 @@ function whySection(v: GroundGuideVerdict): HTMLElement | null {
   // T decorators of the full card find it.
   const s = el('div', 'ms-ggb-row ms-ggb-wide');
   s.dataset.ggWhy = '';
-  s.append(goingScale(step), el('div', 'ms-ggb-b', titleCase(name)));
-  if (v.reason) s.append(el('div', 'ms-ggb-soft', v.reason)); // the rule owner's own words, when the bundle gives them
+  const checking = tone === 'chk';
+  s.append(gauge(step, tone === 'marg' ? nearTag(v) : null), el('div', checking ? 'ms-ggb-reason ms-was' : 'ms-ggb-reason', titleCase(name)));
+  if (v.reason && !checking) s.append(el('div', 'ms-ggb-soft', v.reason)); // the rule owner's own words, when the bundle gives them
   return s;
 }
 
 function insideSection(v: GroundGuideVerdict, pct: number): HTMLElement {
   const line = el('div');
   line.append(el('span', 'ms-ggb-b', `${pct}%`), ` of the ${v.footprint ? 'Footprint' : 'Shape'}`);
-  return row('Inside', line, track(pct / 100, verdictColor(v)));
+  return row('Inside', line, track(pct / 100, verdictDot(v)));
+}
+
+/** A small people icon for the civil flag on the mode line. */
+function peopleIcon(): SVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('width', '15');
+  svg.setAttribute('height', '15');
+  svg.setAttribute('viewBox', '0 0 20 20');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-linecap', 'round');
+  for (const [tag, attrs] of [
+    ['circle', { cx: '7.2', cy: '6.8', r: '2.6', 'stroke-width': '1.6' }],
+    ['path', { d: 'M2.4 16.4c.6-3.1 2.5-4.8 4.8-4.8s4.2 1.7 4.8 4.8', 'stroke-width': '1.6' }],
+    ['circle', { cx: '13.8', cy: '7.4', r: '2.1', 'stroke-width': '1.5' }],
+    ['path', { d: 'M13.4 11.5c2.1 0 3.7 1.5 4.3 4.2', 'stroke-width': '1.5' }],
+  ] as const) {
+    const e = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) e.setAttribute(k, (attrs as Record<string, string>)[k]);
+    svg.appendChild(e);
+  }
+  return svg;
 }
 
 /**
- * Who the ground is judged for, as the second line of the verdict bar (user, 2026-11-07: "nothing showing which force
- * type data is being used ... he can make wrong decisions"): the mode's icon and name with the echelon, a SET BY HAND
- * tag when P chose it rather than the symbol, and the season and light the going and speed are read for.
+ * Who the ground is judged for, on a neutral line under the verdict bar (user, 2026-11-07: "nothing showing which
+ * force type data is being used ... he can make wrong decisions"; 2026-11-08, item 3: the bar holds the verdict only):
+ * the mode's icon and name with the echelon, "Set by Hand" in amber when P chose it rather than the symbol, the season
+ * and light the going and speed are read for, and the civil flag's people count written out when it is up.
  */
-function forLine(v: GroundGuideVerdict): HTMLElement {
-  const line = el('div', 'ms-ggb-for');
+function modeLine(v: GroundGuideVerdict): HTMLElement {
+  const line = el('div', 'ms-ggb-mode');
+  const who = el('span');
   const ic = modeIcon(v.profile);
-  ic.setAttribute('width', '16');
-  ic.setAttribute('height', '16');
+  ic.setAttribute('width', '15');
+  ic.setAttribute('height', '15');
   const echelon = v.footprint?.echelon;
-  line.append(ic, el('span', 'ms-ggb-who', echelon ? `${v.profileLabel} · ${titleCase(echelon)}` : v.profileLabel));
+  who.append(ic, el('span', 'ms-ggb-who', echelon ? `${v.profileLabel} · ${titleCase(echelon)}` : v.profileLabel));
   if (v.profileOverride) {
-    const hand = el('span', 'ms-ggb-hand', 'Set by Hand');
+    const hand = el('span', 'ms-ggb-hand', '· Set by Hand');
     hand.title = 'Chosen with P, not taken from the symbol';
-    line.append(hand);
+    who.append(hand);
   }
+  line.append(who);
   const g = v.going;
   const when: string[] = [];
-  if (g) when.push(`${g.season === 'wet' ? 'After Rain' : 'Dry'}${g.month ? `, ${monthName(g.month)}` : ''}`);
+  if (g) when.push(`${g.season === 'wet' ? 'After rain' : 'Dry'}${g.month ? `, ${monthName(g.month)}` : ''}`);
   if (v.speed) when.push(v.speed.light === 'night' ? 'Night' : 'Day');
   if (when.length) {
-    const w = el('span', 'ms-ggb-when');
-    if (g) w.append(seasonIcon(g.season, 12));
+    const w = el('span');
+    if (g) w.append(seasonIcon(g.season, 13));
     w.append(when.join(' · '));
     line.append(w);
+  }
+  const flag = v.verdict === 'unknown' ? null : v.population?.flag;
+  if (flag) {
+    const civ = el('span', 'ms-ggb-civ');
+    civ.title = flag.message;
+    civ.append(peopleIcon(), `${fmtPeople(flag.people)} people within ${flag.km} km`);
+    line.append(civ);
   }
   return line;
 }
@@ -369,19 +420,20 @@ function keyFact(k: string, word: string, tone: string): HTMLElement {
  * GO position SLOW-GO before the unit moves) and the cover or concealment the mode needs most. The full story of
  * both is in the Detail's T and C tabs.
  */
-function keyFacts(v: GroundGuideVerdict): HTMLElement | null {
+function keyFacts(v: GroundGuideVerdict, checking = false): HTMLElement | null {
   const cells: HTMLElement[] = [];
   const g = v.going;
   const p = g?.point;
   if (g && p) {
     const wet = g.season === 'wet';
     const step = wet ? p.dry : p.wet;
-    cells.push(keyFact(wet ? 'When Dry' : 'After Rain', GOING_WORD[step], step));
+    cells.push(checking ? keyFact(wet ? 'When dry' : 'After rain', '…', 'none') : keyFact(wet ? 'When dry' : 'After rain', GOING_WORD[step], step));
   }
   const c = v.cover;
   if (c) {
     const f = c.focus ?? c.roseField;
-    cells.push(keyFact(`${COVER_KIND[f]} · ${COVER_FIELD_LABEL[f]}`, COVER_WORD[c.levels[f]], `c${c.levels[f]}`));
+    const k = `${COVER_KIND[f]} · ${COVER_FIELD_LABEL[f]}`;
+    cells.push(checking ? keyFact(k, '…', 'none') : keyFact(k, COVER_WORD[c.levels[f]], `c${c.levels[f]}`));
   }
   if (!cells.length) return null;
   const r = el('div', 'ms-ggb-facts');
@@ -394,16 +446,14 @@ function overlayWarning(v: GroundGuideVerdict): HTMLElement | null {
   return v.overlayOther ? el('div', 'ms-ggb-other', `Map colours show ${v.overlayOther}, not ${v.profileLabel}`) : null;
 }
 
-/** Header colour, for the bar and arrow that echo it; keep in step with the CSS above. */
+/** The verdict ladder's fill for this verdict (the bar, and the marks that echo it). */
 export function verdictColor(v: GroundGuideVerdict): string {
-  switch (v.verdict) {
-    case 'ok': return '#1c8247';
-    case 'near': return '#e9a526';
-    case 'caution': return '#e08a1e';
-    case 'partial': return '#d9622b';
-    case 'in': return '#d63a3f';
-    default: return '#5b6470';
-  }
+  return TONE[verdictTone(v)].fill;
+}
+
+/** The ladder's dot colour for this verdict: a needle, track or dot on the dark card. */
+function verdictDot(v: GroundGuideVerdict): string {
+  return TONE[verdictTone(v)].dot;
 }
 
 function nearestSection(v: GroundGuideVerdict, northDeg: number): HTMLElement | null {
@@ -415,7 +465,7 @@ function nearestSection(v: GroundGuideVerdict, northDeg: number): HTMLElement | 
     far.append(el('span', 'ms-ggb-big', fmtDistance(n.distanceM)), ` ${n.compass}`);
     text.append(el('div', 'ms-ggb-b', featureTitle(n.className)), far);
     const nr = el('div', 'ms-ggb-nr');
-    nr.append(dial(n.bearingDeg, verdictColor(v), northDeg), text);
+    nr.append(dial(n.bearingDeg, verdictDot(v), northDeg), text);
     return row('Nearest', nr);
   }
   const label = v.verdict === 'in' ? 'Suitable Gr' : 'NO-GO Gr';
@@ -450,7 +500,7 @@ interface NearThing {
 /** Dot and compass mark colours: the going colours for ground and obstacles, B's taupe for places. */
 const NEAR_COLOR: Record<NearTone, string> = {
   nogo: '#e5484d',
-  slow: '#f0932b',
+  slow: STEP_COLOR.slow,
   go: '#2fa862',
   road: '#e3e7ec',
   place: '#c8b49a',
@@ -675,39 +725,35 @@ export function itgSection(v: GroundGuideVerdict): HTMLElement | null {
  * (how much is in NO-GO, or how far and which way NO-GO ground lies when it is close), an enforce refusal, and the H
  * key that brings the card back. Everything else waits for the card or the Detail.
  */
-function hintParts(v: GroundGuideVerdict): Array<Node | string> {
+function hintParts(v: GroundGuideVerdict, tone: Tone): Array<Node | string> {
   const pct = v.samples > 1 && v.fraction > 0 ? Math.max(1, Math.round(v.fraction * 100)) : 0;
   let word: string;
   let figure: Node | string | null = null;
-  switch (v.verdict) {
-    case 'ok':
-      word = 'GO';
-      break;
-    case 'caution':
-      word = 'SLOW-GO';
-      break;
-    case 'near':
-      if (pct > 0) {
+  if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') {
+    word = v.verdict === 'unknown' ? (v.loading || v.waiting ? 'Checking' : 'No Data') : titleOf(v);
+  } else {
+    // The chip's word is the step the gauge lights; colour and icon are the ladder's (item 1).
+    switch (tone) {
+      case 'chk':
+        word = 'Checking';
+        break;
+      case 'go':
+        word = 'GO';
+        break;
+      case 'marg':
+        // Adjacent: GO ground, with NO-GO close by; the figure says how close and which way.
+        word = 'GO';
+        figure = nearTag(v);
+        break;
+      case 'slow':
+        word = 'SLOW-GO';
+        break;
+      default:
         word = 'NO-GO';
-        figure = `${pct}% Inside`;
-      } else {
-        word = 'NO-GO Near';
-        const n = v.nearest;
-        if (n) figure = n.distanceM < 1 ? 'Touching' : whereNode(n.distanceM, n.compass, n.bearingDeg);
-        else if (v.distanceM !== null) figure = fmtDistance(v.distanceM);
-      }
-      break;
-    case 'partial':
-      word = 'NO-GO';
-      if (pct > 0) figure = `${pct}% Inside`;
-      break;
-    case 'in':
-      word = 'NO-GO';
-      break;
-    default:
-      word = v.verdict === 'unknown' ? (v.loading ? 'Loading' : 'No Data') : titleOf(v);
+        if (pct > 0 && v.verdict !== 'in') figure = `${pct}% Inside`;
+    }
   }
-  const parts: Array<Node | string> = [icon(iconOf(v), 14), el('span', 'ms-ggb-hw', word)];
+  const parts: Array<Node | string> = [toneIcon(tone, 16), el('span', 'ms-ggb-hw', word)];
   if (figure !== null) {
     const f = el('span', 'ms-ggb-hd');
     f.append(figure);
@@ -760,6 +806,13 @@ export class GroundGuideBadge {
   private _north = 0; // where north points on screen, degrees clockwise from up
   /** The card is shrunk to the hint chip (H); starts from `card.hint`. */
   private _hint = false;
+  /** The card is folded to the chip because the open Detail leaves it no room beside the cursor (item 7). */
+  private _autoChip = false;
+  /** The card's own size when last drawn, to tell when it fits again while folded. */
+  private _cardW = 320;
+  private _cardH = 200;
+  /** Where the card must not go (the open Detail), or null. */
+  private _avoid: (() => DOMRect | null) | null = null;
   /** Which going / soil / movement sections to show (groundGuide.card). */
   private _card: GroundGuideCardOptions = { ...DEFAULT_GROUND_GUIDE_OPTIONS.card };
   private _notice: string | null = null;
@@ -819,10 +872,12 @@ export class GroundGuideBadge {
       this._toastEl = root;
     }
     const root = this._toastEl;
+    const tone = toneOfKind(t.verdict);
     root.dataset.verdict = t.verdict;
+    root.dataset.tone = tone;
     // A refusal interrupts (alert); "guide ready", "loading", "not terrain-bound" wait their turn (status).
     root.setAttribute('role', t.verdict === 'in' || t.verdict === 'partial' ? 'alert' : 'status');
-    this._toastBar!.replaceChildren(icon('x', 17), el('span', undefined, t.title));
+    this._toastBar!.replaceChildren(toneIcon(tone, 20), el('span', 'ms-ggb-title', t.title));
     const rows = t.lines.map((l) => el('div', undefined, l));
     if (t.hint) rows.push(el('div', 'ms-ggb-soft', t.hint));
     this._toastBody!.replaceChildren(...rows);
@@ -876,34 +931,45 @@ export class GroundGuideBadge {
     orientNorth(this._el, northDeg); // dials, roses, canvases and (through --gg-north) every arrow on the card
   }
 
+  /**
+   * Where the card must not go: the open Ground Detail (item 7, "Step aside, then chip"). The card opens on the side
+   * of the cursor that has room and never over it; where no side has room it folds to the chip until there is.
+   */
+  setAvoid(rect: (() => DOMRect | null) | null): void {
+    this._avoid = rect;
+  }
+
+  /** Place the card again where it is (the Detail opened, closed or changed height under it): no rebuild unless it folds or unfolds. */
+  reflow(): void {
+    if (this._el && this._el.style.display !== 'none') this._place();
+  }
+
   show(v: GroundGuideVerdict): void {
     this._last = v;
     if (this._toastEl && this._toastEl.style.display !== 'none') this.dismissToast();
     const el0 = this._ensure();
+    const tone = verdictTone(v);
     el0.dataset.verdict = v.verdict;
-    el0.classList.toggle('ms-ggb-pip', this._hint);
-    if (this._hint) {
-      this._showHint(el0, v);
+    el0.dataset.tone = tone;
+    const chip = this._hint || this._autoChip;
+    el0.classList.toggle('ms-ggb-pip', chip);
+    if (chip) {
+      this._showHint(el0, v, tone);
       return;
     }
 
+    // The bar holds the verdict only (item 3): its icon, its title and, when there is one, how much is inside. While
+    // the verdict is still provisional it is grey "Checking", with the last word beside it (item 4).
+    const checking = tone === 'chk' && v.verdict !== 'unknown';
     const bar = this._bar!;
-    bar.replaceChildren(icon(iconOf(v), 17), el('span', 'ms-ggb-title', titleOf(v)));
+    bar.replaceChildren(toneIcon(tone, 20), el('span', 'ms-ggb-title', checking ? 'Checking' : titleOf(v)));
     const pct = v.samples > 1 && v.fraction > 0 ? Math.max(1, Math.round(v.fraction * 100)) : 0;
-    const pills = el('div', 'ms-ggb-pills');
-    // The share inside bad ground is the Inside row's own figure; the bar keeps only what a key can act on.
-    if (v.snappable) {
-      // S moves the point to the nearest usable ground; the legend explains the key, the card only cues it.
-      const fix = el('span', 'ms-ggb-fix');
-      fix.append(keycap('S'), 'Quick Fix');
-      pills.appendChild(fix);
-    }
-    const civil = v.verdict === 'unknown' ? null : populationFlagPill(v.population);
-    if (civil) pills.appendChild(civil);
-    if (pills.childElementCount) bar.appendChild(pills);
-    if (v.verdict !== 'unknown') bar.appendChild(forLine(v));
+    if (checking) bar.append(el('span', 'ms-ggb-pill ms-ggb-last', `Last: ${TONE_SAID[verdictTone({ ...v, loading: false })]}`));
+    else if (pct > 0) bar.append(el('span', 'ms-ggb-pill', `${pct}% Inside`));
+    const pills = el('div', 'ms-ggb-pills'); // the full card's T decorator may add a rain pill
 
-    const rows = this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills) : this._minimalRows(v, pct);
+    const rows = this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills, tone) : this._minimalRows(v, pct, tone);
+    if (pills.childElementCount) bar.append(pills);
     const body = this._body!;
     body.replaceChildren(...rows);
     // Every picture and compass point on the card follows the map (GroundGuideNorth).
@@ -920,14 +986,14 @@ export class GroundGuideBadge {
       this._y = 90;
     }
     el0.style.display = 'block';
-    this._w = el0.offsetWidth;
-    this._h = el0.offsetHeight;
+    this._w = this._cardW = el0.offsetWidth;
+    this._h = this._cardH = el0.offsetHeight;
     this._place();
   }
 
   /** The hint chip: the bar alone, holding `hintParts`; the body stays empty. Spoken and placed like the card. */
-  private _showHint(el0: HTMLDivElement, v: GroundGuideVerdict): void {
-    this._bar!.replaceChildren(...hintParts(v));
+  private _showHint(el0: HTMLDivElement, v: GroundGuideVerdict, tone: Tone): void {
+    this._bar!.replaceChildren(...hintParts(v, tone));
     if (this._notice) this._bar!.append(el('span', 'ms-ggb-hd', this._notice));
     this._body!.replaceChildren();
     this._body!.style.display = 'none';
@@ -947,36 +1013,57 @@ export class GroundGuideBadge {
    * The minimal cursor card (`card.cursor: minimal`): Why with the going scale, Inside, Nearest with its compass and
    * the Inter Gap Rule, then the enforce strip. Everything else waits in the Ground Detail, which the foot cue names.
    */
-  private _minimalRows(v: GroundGuideVerdict, pct: number): HTMLElement[] {
+  private _minimalRows(v: GroundGuideVerdict, pct: number, tone: Tone): HTMLElement[] {
+    // While checking, only what does not depend on the tiles still arriving: who it is for, the gauge unlit with the
+    // last reason in grey, and "…" for the facts. Nearest and the rest come back with the colour.
+    const checking = tone === 'chk';
     const rows =
       v.verdict === 'unknown'
         ? []
         : [
+            modeLine(v),
             overlayWarning(v),
-            whySection(v),
-            keyFacts(v),
-            pct > 0 ? insideSection(v, pct) : null,
-            this._card.nearest === 'deciding' ? nearestSection(v, this._north) : nearestRanked(v),
-            spacingSection(v),
+            whySection(v, tone),
+            keyFacts(v, checking),
+            !checking && pct > 0 ? insideSection(v, pct) : null,
+            checking ? null : this._card.nearest === 'deciding' ? nearestSection(v, this._north) : nearestRanked(v),
+            checking ? null : spacingSection(v),
           ].filter(
             (r): r is HTMLElement => r !== null,
           );
-    if (v.loading) rows.push(el('div', 'ms-ggb-note ms-ggb-soft', 'Still loading terrain data'));
+    if (v.loading && !checking) rows.push(el('div', 'ms-ggb-note ms-ggb-soft', 'Still loading terrain data'));
     if (this._notice) rows.push(el('div', 'ms-ggb-note ms-ggb-warn', this._notice));
     const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
     if (strip) rows.push(strip);
-    if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue(true));
+    const foot = v.verdict === 'unknown' ? null : this._foot(v);
+    if (foot) rows.push(foot);
     return rows;
   }
 
+  /**
+   * The card's last line (item 6): "D Detail · H Hint" and nothing else, at full strength; the tab letters live on the
+   * Detail's tabs. When S can move the point to usable ground, "S Quick Fix" joins it, lit.
+   */
+  private _foot(v: GroundGuideVerdict): HTMLElement | null {
+    const foot = v.briefKey ? detailCue(true) : v.snappable ? el('div', 'ms-gv-foot') : null;
+    if (foot && v.snappable) {
+      const qf = el('span', 'ms-ggb-qf');
+      const k = keycap('S');
+      k.classList.add('ms-lit');
+      qf.append(k, 'Quick Fix');
+      foot.append(qf);
+    }
+    return foot;
+  }
+
   /** The full cursor card (`card.cursor: full`): every section switched on, in GROTBC order, as before the Detail card. */
-  private _fullRows(v: GroundGuideVerdict, pct: number, bar: HTMLElement, pills: HTMLElement): HTMLElement[] {
+  private _fullRows(v: GroundGuideVerdict, pct: number, bar: HTMLElement, pills: HTMLElement, tone: Tone): HTMLElement[] {
     // G / R / B (buildings) / W sections (sections.*): G after the ITG lines, R after G, B buildings after People, W last.
     const sx = sectionsCard(v);
     const rows =
       v.verdict === 'unknown'
         ? []
-        : [whySection(v), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), itgSection(v), sx.g, sx.r, sx.o].filter(
+        : [modeLine(v), whySection(v, tone), pct > 0 ? insideSection(v, pct) : null, nearestSection(v, this._north), spacingSection(v), itgSection(v), sx.g, sx.r, sx.o].filter(
             (r): r is HTMLElement => r !== null,
           );
     // A T block (traffic.block) carries the Cross-Country and Movement sections itself.
@@ -1003,7 +1090,8 @@ export class GroundGuideBadge {
     }
     const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
     if (strip) rows.push(strip);
-    if (v.briefKey && v.verdict !== 'unknown') rows.push(detailCue(true));
+    const foot = v.verdict === 'unknown' ? null : this._foot(v);
+    if (foot) rows.push(foot);
     return rows;
   }
 
@@ -1036,12 +1124,52 @@ export class GroundGuideBadge {
     this._hasPointer = false;
   }
 
-  /** Below and right of the cursor; flips to the other side near a screen edge. */
+  /**
+   * Below and right of the cursor; flips to the other side near a screen edge, and never over the open Detail
+   * (item 7): where no side of the cursor has room for the card, it folds to the chip, and comes back as the card as
+   * soon as the card fits again (with a little to spare, so it does not flicker at the edge).
+   */
   private _place(): void {
-    if (this._el) this._position(this._el, this._w, this._h);
+    const e = this._el;
+    if (!e) return;
+    const av = this._touch ? null : (this._avoid?.() ?? null);
+    if (av && !this._hint) {
+      if (!this._autoChip && !this._spot(this._w, this._h, av, 0)) {
+        this._autoChip = true;
+        if (this._last) return this.show(this._last);
+      } else if (this._autoChip && this._spot(this._cardW, this._cardH, av, 12)) {
+        this._autoChip = false;
+        if (this._last) return this.show(this._last);
+      }
+    } else if (this._autoChip) {
+      this._autoChip = false;
+      if (this._last) return this.show(this._last);
+    }
+    this._position(e, this._w, this._h, av);
   }
 
-  private _position(target: HTMLElement, w: number, h: number): void {
+  /**
+   * The first place beside the cursor where a `w` × `h` box fits on screen without touching `av` (± `margin`): below
+   * right, below left, above right, above left, then the same rows pushed in from the screen edge. Null when none.
+   */
+  private _spot(w: number, h: number, av: DOMRect | null, margin: number): { x: number; y: number } | null {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const right = this._x + 16;
+    const left = this._x - 16 - w;
+    const xs = [right, left].filter((x) => x >= EDGE / 2 && x + w <= vw - EDGE / 2);
+    xs.push(Math.min(Math.max(EDGE / 2, right), vw - w - EDGE / 2));
+    for (const y of [this._y + 20, this._y - 14 - h]) {
+      if (y < EDGE / 2 || y + h > vh - EDGE / 2) continue;
+      for (const x of xs) {
+        if (av && x < av.right + margin && x + w > av.left - margin && y < av.bottom + margin && y + h > av.top - margin) continue;
+        return { x, y };
+      }
+    }
+    return null;
+  }
+
+  private _position(target: HTMLElement, w: number, h: number, av: DOMRect | null = null): void {
     if (this._touch) {
       // A finger covers what is below and beside it: centre the card above the touch point, below it only when
       // there is no room above.
@@ -1049,6 +1177,11 @@ export class GroundGuideBadge {
       const above = this._y - h - TOUCH_GAP;
       const ty = above >= EDGE / 2 ? above : this._y + TOUCH_GAP;
       target.style.transform = `translate(${Math.round(tx)}px, ${Math.round(ty)}px)`;
+      return;
+    }
+    const at = this._spot(w, h, av, 0);
+    if (at) {
+      target.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
       return;
     }
     let x = this._x + 16;
@@ -1062,6 +1195,7 @@ export class GroundGuideBadge {
 
   private _ensure(): HTMLDivElement {
     if (this._el) return this._el;
+    ensureTokensCss();
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;

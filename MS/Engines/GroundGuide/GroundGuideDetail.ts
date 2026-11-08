@@ -31,8 +31,8 @@
  * the map, as the legend does.
  */
 
-import { itgSection, titleOf, verdictColor } from './GroundGuideBadge';
-import { briefText, ensureBriefCss, LETTER_COLOR, monthName, movementDetail, soilDetail, type GrotbcLetter } from './GroundGuideBrief';
+import { itgSection } from './GroundGuideBadge';
+import { briefText, ensureBriefCss, monthName, movementDetail, soilDetail, type GrotbcLetter } from './GroundGuideBrief';
 import { COVER_FIELD_LABEL } from './GroundGuideCover';
 import {
   aroundLine,
@@ -51,9 +51,10 @@ import {
   roseText,
   shelterLine,
 } from './GroundGuideCoverView';
-import { detailSummary } from './GroundGuideDetailSummary';
+import { detailSummary, letterAnswer } from './GroundGuideDetailSummary';
+import { ensureTokensCss } from './GroundGuideTokens';
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
-import { ensureGoingCss, exitStripSection, goingCanvas, mapShares, orientRoses, ribbon, roseLegend, seasonIcon } from './GroundGuideGoingView';
+import { ensureGoingCss, exitStripSection, goingCanvas, mapShares, orientRoses, ribbon, roseFigure, roseLegend, seasonIcon } from './GroundGuideGoingView';
 import { arrowCompass, ensureNorthCss, setNorthVar } from './GroundGuideNorth';
 import { buildLegend, ensureLegendStyle, legendEl, legendKeyRow, modeIcon, type LegendHandlers, type LegendState } from './GroundGuideLegend';
 import {
@@ -71,6 +72,7 @@ import {
   populationRose,
   populationSourceLine,
   radar,
+  radarKey,
   ringList,
 } from './GroundGuidePopulationView';
 import { fmtRadius, roadDensityNote } from './GroundGuideRoadDensity';
@@ -98,6 +100,7 @@ import {
   speedHeadline,
   speedModeTiles,
   speedRoseLines,
+  speedRoseKey,
   speedRoseSvg,
   speedWay,
   speedWhen,
@@ -126,6 +129,8 @@ export interface DetailHandlers {
   opacity(v: number): void;
   /** The tab changed (by click or key). */
   tab?(tab: DetailTab): void;
+  /** The card's height changed (the grip, or the window): the cursor card re-checks where it may go. */
+  resized?(): void;
 }
 
 const STYLE_ID = 'ms-ground-guide-detail-style';
@@ -133,63 +138,18 @@ const TAB_KEY = 'ms-ground-guide-detail-tab';
 const TAB_LABEL: Record<DetailTab, string> = { G: 'Gr', R: 'Rds & Rail', O: 'Obs', T: 'Trafficability', B: 'BUAs', C: 'Cover', L: 'Legend' };
 /** The key that opens each tab: the letter itself, except the Legend (K: L is Lasso Select in the app). */
 export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T: 'T', B: 'B', C: 'C', L: 'K' };
-const TAB_COLOR: Record<DetailTab, string> = { ...LETTER_COLOR, L: '#aab3bd' };
-const TAB_FG: Record<DetailTab, string> = { G: '#1b1f25', R: '#1b1f25', O: '#fff', T: '#1b1f25', B: '#1b1f25', C: '#fff', L: '#1b1f25' };
-const W_COLOR = '#4a7f95';
+/** Where the Detail's height is remembered (item 14), and the three stops it snaps to, as a share of the window. */
+const HEIGHT_KEY = 'ms-ground-guide-detail-height';
+const HEIGHT_STOPS = [0.4, 0.5, 0.6] as const;
+const HEIGHT_DEFAULT = 0.5;
+/** The shortest the card gets, px: header, force line, strip and footer (about 220) plus a band of 220. */
+const MIN_CARD_PX = 440;
 /** Space between the band's columns, and the narrowest and widest a column may be, px. */
 const COL_GAP = 28;
 const COL_MIN = 262;
 const COL_MAX = 560;
-/**
- * The smallest text the Detail shows, px (user, 2026-11-08: "small unreadable text"). The tiles reuse the cursor
- * card's and the views' CSS, whose labels go down to 8.5 px on the small card; `raiseSmallText` lifts them here.
- */
-const MIN_TEXT = 12;
-const MIN_STYLE_ID = 'ms-ground-guide-detail-min';
 /** The smallest a picture's own label (a compass letter, a triangle corner, a cross-section note) is drawn, px on screen. */
 const SVG_MIN_TEXT = 10.5;
-const minSeen = new WeakSet<CSSStyleSheet>();
-
-/**
- * For every Ground Guide stylesheet not seen yet, copy each rule that sets text smaller than MIN_TEXT into a sheet of
- * the Detail's own, at MIN_TEXT and scoped to the Detail (`.ms-ggd :is(...)`, one class more, so it wins there and
- * nowhere else). Run after a tab is drawn: a view adds its CSS the first time it is used. The cursor card keeps its
- * own sizes.
- */
-function raiseSmallText(): void {
-  let out = document.getElementById(MIN_STYLE_ID) as HTMLStyleElement | null;
-  if (!out) {
-    out = document.createElement('style');
-    out.id = MIN_STYLE_ID;
-    document.head.appendChild(out);
-  }
-  const target = out.sheet;
-  if (!target) return;
-  for (const s of Array.from(document.styleSheets)) {
-    const id = (s.ownerNode as Element | null)?.id ?? '';
-    if (minSeen.has(s) || !id.startsWith('ms-ground-guide-') || id === STYLE_ID || id === MIN_STYLE_ID) continue;
-    minSeen.add(s);
-    let rules: CSSRuleList;
-    try {
-      rules = s.cssRules;
-    } catch {
-      continue;
-    }
-    for (const r of Array.from(rules)) {
-      if (!(r instanceof CSSStyleRule)) continue;
-      const fs = r.style.fontSize;
-      if (!fs.endsWith('px') || parseFloat(fs) >= MIN_TEXT) continue;
-      const sel = r.selectorText;
-      const scoped = sel.includes('::') ? sel.split(',').map((x) => `.ms-ggd ${x.trim()}`).join(',') : `.ms-ggd :is(${sel})`;
-      try {
-        target.insertRule(`${scoped}{font-size:${MIN_TEXT}px}`, target.cssRules.length);
-      } catch {
-        /* a selector this browser cannot scope: leave that rule as it is */
-      }
-    }
-  }
-}
-
 /**
  * The pictures' own labels at least SVG_MIN_TEXT on screen: each SVG text is sized in its picture's units, so it is
  * raised by the picture's scale. Run after the layout (a picture that fills its column scales with it); a size set
@@ -246,106 +206,127 @@ function balanceColumns(h: number[], n: number, gap: number): { starts: number[]
 const ITEM_GAP = 16;
 
 const CSS = `
-.ms-ggd{position:fixed;left:10px;right:10px;bottom:10px;z-index:2147482800;
-  display:none;flex-direction:column;box-sizing:border-box;border-radius:12px;background:#1b1f25;border:1px solid #4d5661;box-shadow:0 10px 30px rgba(0,0,0,.5);
-  font:400 14px/1.45 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;--pb-k:#aab3bd}
+.ms-ggd{position:fixed;left:10px;right:10px;bottom:10px;z-index:2147482800;height:50vh;min-height:300px;
+  display:none;flex-direction:column;box-sizing:border-box;border-radius:12px;background:#1b1f25;border:1px solid #5a6470;box-shadow:0 10px 30px rgba(0,0,0,.5);
+  font:400 13.5px/1.45 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;--pb-k:#c3cbd3}
 .ms-ggd.ms-open{display:flex}
-.ms-ggd-h{flex:none;display:flex;align-items:center;gap:6px 10px;padding:7px 10px;background:#262d36;border-radius:11px 11px 0 0;flex-wrap:wrap}
-.ms-ggd-tabs{display:flex;gap:3px;flex-wrap:wrap}
-.ms-ggd-tab{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 6px;border-radius:7px;border:1px solid transparent;background:transparent;color:#bcc5ce;
-  font:600 13px/1 system-ui,Segoe UI,Arial,sans-serif;cursor:pointer}
+/* Drag to size (item 14): a grip on the top edge, three stops, remembered. */
+.ms-ggd-grip{position:absolute;left:50%;top:-1px;transform:translateX(-50%);width:120px;height:14px;padding:0;border:0;background:none;cursor:ns-resize;touch-action:none;z-index:1}
+.ms-ggd-grip::before{content:"";position:absolute;left:38px;right:38px;top:5px;height:4px;border-radius:2px;background:#8a96a3}
+.ms-ggd-grip:hover::before,.ms-ggd-grip.ms-drag::before{background:#c9d1d9}
+.ms-ggd-grip:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px;border-radius:4px}
+.ms-ggd-stop{position:absolute;left:50%;transform:translate(-50%,-140%);padding:2px 8px;border-radius:999px;background:#2b313a;border:1px solid #545e6b;font-size:12px;color:#e8ebee;pointer-events:none;white-space:nowrap}
+.ms-ggd-h{flex:none;display:flex;align-items:center;gap:6px 10px;padding:8px 10px 7px;background:#262d36;border-radius:11px 11px 0 0;flex-wrap:wrap}
+.ms-ggd-tabs{display:flex;gap:4px;flex-wrap:wrap;min-width:0}
+/* GROTBC answer row (item 8): each tab its letter, a short name and its own answer as a dot and a word; tabs are neutral, the open one light. */
+.ms-ggd-tab{display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;border-radius:8px;border:1px solid transparent;background:transparent;color:#d5dbe1;
+  font:600 13.5px/1.2 system-ui,Segoe UI,Arial,sans-serif;cursor:pointer;text-align:left;max-width:200px}
 .ms-ggd-tab:hover{background:rgba(255,255,255,.08);color:#fff}
 .ms-ggd-tab:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
-.ms-ggd-tab[aria-selected="true"]{background:var(--lc);border-color:var(--lc);color:var(--lf)}
-.ms-ggd-tab[aria-selected="true"] .ms-ggd-k{background:rgba(0,0,0,.22);border-color:rgba(0,0,0,.3);color:var(--lf)}
-.ms-ggd-k{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:4px;
-  font:700 11px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
-.ms-ggd-meta{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:13px;color:#bcc5ce;min-width:0}
-.ms-ggd-meta b{color:#fff;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-ggd-dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 1.5px rgba(255,255,255,.35)}
-.ms-ggd-upd{color:#ffc861;white-space:nowrap}
-.ms-ggd-btn{font:500 13px/1 system-ui,Segoe UI,Arial,sans-serif;color:#c9d1d9;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;cursor:pointer;height:28px;padding:0 10px;white-space:nowrap}
+.ms-ggd-tab[aria-selected="true"]{background:#e4e8ec;border-color:#e4e8ec;color:#14181d}
+.ms-ggd-tab[aria-selected="true"] .ms-ggd-k{background:#fff;border-color:#9aa5b1;color:#14181d}
+.ms-ggd-tt{display:flex;flex-direction:column;min-width:0}
+.ms-ggd-tl{white-space:nowrap}
+.ms-ggd-ta{display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;font-weight:600;color:#c3cbd3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-ggd-ta>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.ms-ggd-tab[aria-selected="true"] .ms-ggd-ta{color:#3d4650}
+.ms-ggd-ta .ms-ggd-fd{margin:0}
+.ms-ggd-ring{flex:none;width:9px;height:9px;box-sizing:border-box;border-radius:50%;border:2px solid #ffd27a}
+.ms-ggd-tab[aria-selected="true"] .ms-ggd-ring{border-color:#9a6a00}
+.ms-ggd-k{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:4px;
+  font:750 12px/1 system-ui,Segoe UI,Arial,sans-serif;color:#e8ebee;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px}
+.ms-ggd-hsp{flex:1}
+.ms-ggd-btn{font:400 13.5px/1 system-ui,Segoe UI,Arial,sans-serif;color:#e1e6eb;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:6px;cursor:pointer;height:30px;padding:0 10px;white-space:nowrap}
 .ms-ggd-btn:hover{background:rgba(255,255,255,.14);color:#fff}
 .ms-ggd-btn:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
-.ms-ggd-btn.ms-x{width:28px;padding:0;font-size:17px}
-/* 1. The answer strip: who the ground is judged for, then the letter's facts on one line. */
-.ms-ggd-sum{flex:none;box-sizing:border-box;display:flex;align-items:stretch;gap:16px;padding:10px 16px 11px;background:#20262e;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.08)}
+.ms-ggd-btn.ms-x{width:30px;padding:0;font-size:18px}
+/* Who the ground is judged for: its own line under the tabs, on every tab (item 9). */
+.ms-ggd-mode{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:3px 14px;padding:6px 16px;background:#20262e;border-top:1px solid rgba(255,255,255,.1);font-size:13.5px;color:#c3cbd3}
+.ms-ggd-mode[hidden]{display:none}
+.ms-ggd-mode>span{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.ms-ggd-mode svg{flex:none;color:#8ec1ea}
+.ms-ggd-mode b{color:#fff;font-weight:600}
+.ms-ggd-mode .ms-hand{color:#ffd27a;font-weight:600}
+.ms-ggd-mode .ms-when{margin-left:auto}
+.ms-ggd-mode .ms-upd{color:#ffd27a;font-weight:600}
+.ms-ggd-mode .ms-other{color:#ffd27a}
+/* 1. The answer strip: the letter's answer, then its facts on one line. */
+.ms-ggd-sum{flex:none;box-sizing:border-box;display:flex;align-items:stretch;padding:10px 16px 11px;background:#20262e;border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.14)}
 .ms-ggd-sum[hidden]{display:none}
-.ms-ggd-for{flex:none;width:210px;min-width:0;padding-right:16px;border-right:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;justify-content:center;gap:2px}
-.ms-ggd-for-m{display:flex;align-items:center;gap:7px;font:700 14.5px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#fff;min-width:0}
-.ms-ggd-for-m>svg{flex:none;color:#8ec1ea}
-.ms-ggd-for-m>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ms-ggd-for-s{display:flex;align-items:center;gap:5px;font-size:12px;color:#a9b2bc;white-space:nowrap;overflow:hidden}
-.ms-ggd-for-s .ms-hand{color:#ffc861;font-weight:650}
-.ms-ggd-for-w{font-size:12px;color:#ffd27a;line-height:1.3}
-.ms-ggd-sum-row{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-content:center;row-gap:10px}
-.ms-ggd-fact{flex:1 1 130px;min-width:0;max-width:290px;padding:0 14px;border-left:1px solid rgba(255,255,255,.1)}
+.ms-ggd-sum-row{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-content:center;align-items:stretch;row-gap:10px}
+.ms-ggd-ans{flex:1.6 1 300px;min-width:0;max-width:460px;margin-right:12px;padding:8px 14px 9px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.18)}
+.ms-ggd-ans[data-tone="go"],.ms-ggd-ans[data-tone="c3"]{background:rgba(47,168,98,.12);border-color:rgba(47,168,98,.5)}
+.ms-ggd-ans[data-tone="marg"],.ms-ggd-ans[data-tone="c2"]{background:rgba(241,214,70,.1);border-color:rgba(241,214,70,.5)}
+.ms-ggd-ans[data-tone="slow"],.ms-ggd-ans[data-tone="c1"]{background:rgba(238,138,31,.12);border-color:rgba(238,138,31,.55)}
+.ms-ggd-ans[data-tone="nogo"]{background:rgba(229,72,77,.12);border-color:rgba(229,72,77,.55)}
+.ms-ggd-ans[data-tone="warn"]{background:rgba(255,210,122,.1);border-color:rgba(255,210,122,.5)}
+.ms-ggd-ans[data-tone="c0"]{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.22)}
+.ms-ggd-ans-l{font-size:12px;line-height:1.3;color:#c3cbd3}
+.ms-ggd-ans-v{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 9px;margin-top:1px;font-size:22px;font-weight:750;line-height:1.2;color:#fff}
+.ms-ggd-ans-v>small{font-size:13.5px;font-weight:600;color:#c3cbd3}
+.ms-ggd-ans-s{margin-top:2px;font-size:12px;line-height:1.35;color:#c3cbd3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+[data-tone="go"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="go"],[data-tone="c3"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="c3"]{color:#74dca3}
+[data-tone="slow"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="slow"],[data-tone="c1"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="c1"]{color:#ffb46b}
+[data-tone="nogo"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="nogo"]{color:#ff8a8d}
+[data-tone="marg"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="marg"],[data-tone="c2"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="c2"]{color:#f1d646}
+[data-tone="warn"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="warn"]{color:#ffd27a}
+[data-tone="c0"].ms-ggd-fv,.ms-ggd-ans-v>[data-tone="c0"]{color:#c3cbd3}
+.ms-ggd-fact{flex:1 1 130px;min-width:0;max-width:290px;padding:0 14px;border-left:1px solid rgba(255,255,255,.14)}
+.ms-ggd-ans+.ms-ggd-fact{border-left:0;padding-left:0}
 .ms-ggd-fact:first-child{padding-left:0;border-left:0}
-.ms-ggd-fact.ms-lead{flex:1.25 1 170px;max-width:330px}
-.ms-ggd-fk{font-size:12px;line-height:1.3;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-ggd-fv{margin-top:2px;font:650 16px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#f4f6f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ms-ggd-fact.ms-lead .ms-ggd-fv{font-size:19px}
-.ms-ggd-fd{display:inline-block;width:10px;height:10px;margin-right:7px;border-radius:50%;vertical-align:1px}
-.ms-ggd-fact.ms-lead .ms-ggd-fd{width:12px;height:12px;vertical-align:2px}
+.ms-ggd-fk{font-size:12px;line-height:1.3;color:#c3cbd3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.ms-ggd-fv{margin-top:2px;font:750 15.5px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#f4f6f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-ggd-fd{display:inline-block;flex:none;width:10px;height:10px;margin-right:7px;border-radius:50%;vertical-align:1px}
 .ms-ggd-fd[data-tone="go"],.ms-ggd-fd[data-tone="c3"]{background:#2fa862}
-.ms-ggd-fd[data-tone="slow"],.ms-ggd-fd[data-tone="c1"]{background:#f0932b}
+.ms-ggd-fd[data-tone="slow"],.ms-ggd-fd[data-tone="c1"]{background:#ee8a1f}
 .ms-ggd-fd[data-tone="nogo"]{background:#e5484d}
-.ms-ggd-fd[data-tone="c2"]{background:#9cc45a}
+.ms-ggd-fd[data-tone="marg"]{background:#f1d646}
+.ms-ggd-fd[data-tone="c2"]{background:#d9c23e}
 .ms-ggd-fd[data-tone="c0"]{background:#5b6470;box-shadow:inset 0 0 0 1.5px #9aa3ad}
 .ms-ggd-fd[data-tone="warn"]{background:#f2b84b}
-.ms-ggd-fv[data-tone="go"],.ms-ggd-fv[data-tone="c3"]{color:#74dca3}
-.ms-ggd-fv[data-tone="slow"],.ms-ggd-fv[data-tone="c1"]{color:#ffb46b}
-.ms-ggd-fv[data-tone="nogo"]{color:#ff8a8d}
-.ms-ggd-fv[data-tone="c2"]{color:#c3df8f}
-.ms-ggd-fv[data-tone="warn"]{color:#ffd27a}
-.ms-ggd-fs{margin-top:1px;font-size:12.5px;line-height:1.35;color:#a9b2bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* 2. The band: a fixed height, newspaper columns, pages instead of a scroll bar. */
-.ms-ggd-band{flex:none;position:relative;box-sizing:border-box;height:clamp(220px,calc(62vh - 170px),500px);padding:12px 16px 10px}
+/* Sub-lines take two lines before anything is cut (item 5); the whole line is on hover and in Copy as Text. */
+.ms-ggd-fs{margin-top:1px;font-size:12px;line-height:1.35;color:#c3cbd3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+/* 2. The band: fills the rest of the card's height, newspaper columns, pages instead of a scroll bar. */
+.ms-ggd-band{flex:1 1 auto;min-height:120px;position:relative;box-sizing:border-box;padding:12px 16px 10px}
 .ms-ggd-clip{height:100%;overflow:hidden}
 /* The tiles are placed by _layout (absolute, first fit down the columns), so a short tile fills the space under a
    tall one rather than leaving it empty; pages sit side by side and the flow slides to the one shown. */
 .ms-ggd-flow{position:relative;height:100%}
 @media (prefers-reduced-motion:no-preference){.ms-ggd-flow{transition:transform .22s cubic-bezier(.25,1,.5,1)}}
 .ms-ggd .ms-ggd-flow>.ms-ggb-sec{position:absolute;box-sizing:border-box;margin:0;padding:0;background:none;border:0;border-radius:0;min-width:0;overflow:hidden;font-size:13.5px}
-.ms-ggd .ms-ggd-flow>.ms-ggb-sec>.ms-ggb-cap{display:flex;align-items:center;gap:7px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.09);
-  font:650 13px/1.3 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#e4e8ec}
-.ms-ggd-rule{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07)}
-.ms-ggd-cont{font-weight:400;color:#97a1ab}
+.ms-ggd .ms-ggd-flow>.ms-ggb-sec>.ms-ggb-cap{display:flex;align-items:center;gap:7px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.14);
+  font:600 13.5px/1.3 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#e4e8ec}
+.ms-ggd-rule{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.1)}
+.ms-ggd-cont{font-weight:400;color:#c3cbd3}
 .ms-ggd .ms-ggd-flow .ms-gs-kv{display:block}
 /* Label / value rows: a hairline and air between rows, so a value that wraps to three lines still reads as one row
    (user, 2026-11-08: "long text with headers not properly separated"). */
 .ms-ggd-pair{display:grid;grid-template-columns:84px minmax(0,1fr);column-gap:12px;padding:6px 0}
 .ms-ggd-pair:first-child{padding-top:1px}
-.ms-ggd-pair+.ms-ggd-pair{border-top:1px solid rgba(255,255,255,.075)}
+.ms-ggd-pair+.ms-ggd-pair{border-top:1px solid rgba(255,255,255,.1)}
 .ms-ggd .ms-gs-kv>.ms-ggd-pair>.ms-gs-k{padding-top:1px;line-height:1.35}
 /* A rose, dial or round map keeps its words beside it in a column: the tile stays short enough to share a column. */
 .ms-ggd .ms-gv-rose>div,.ms-ggd .ms-ggs-rose>div,.ms-ggd .ms-gc-rose>div,.ms-ggd .ms-gv-map>div{flex:1 1 128px;min-width:0}
-.ms-ggd-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;border-radius:4px;font:800 11px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0}
-.ms-ggd-empty{color:#a3acb6;padding:20px 12px;text-align:center;font-size:13.5px;column-span:all}
-.ms-ggd-soft{color:#a3acb6;font-size:12.5px;margin-top:6px}
+.ms-ggd-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:20px;height:20px;border-radius:4px;font:750 12px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;background:#aab3bd;color:#14181d}
+.ms-ggd-empty{color:#c3cbd3;padding:20px 12px;text-align:center;font-size:13.5px;column-span:all}
+.ms-ggd-soft{color:#b8c1ca;font-size:12px;margin-top:6px}
 .ms-ggd-soft b{color:#e8ebee;font-weight:600}
 .ms-ggd-note{margin-top:7px;border-radius:5px;padding:5px 8px;font-size:12px}
 /* Text a step larger than on the cursor card: the Detail is read at arm's length, often in daylight. */
 .ms-ggd .ms-gs-kv,.ms-ggd .ms-ggbr-ln,.ms-ggd .ms-gc-row,.ms-ggd .ms-gc-near,.ms-ggd .ms-ggp-list,.ms-ggd .ms-ggp-ln,.ms-ggd .ms-ggp-places,.ms-ggd .ms-ggd-kv,.ms-ggd .ms-gx-where,.ms-ggd .ms-gx-list,.ms-ggd .ms-ggs-kv,.ms-ggd .ms-ggb-tkv,.ms-ggd .ms-gs-one{font-size:13.5px}
 .ms-ggd .ms-gs-kv{line-height:1.4}
-.ms-ggd .ms-ggp-chip{font-size:12px;padding:4px 8px 3px}
-.ms-ggd .ms-ggp-places small{font-size:12px}
 .ms-ggd .ms-ggp-ln{grid-template-columns:minmax(58px,max-content) minmax(0,1fr)}
 .ms-ggd .ms-ggp-ln>.ms-ggp-k{white-space:nowrap}
-.ms-ggd .ms-gs-kv .ms-gs-k,.ms-ggd .ms-ggd-kv>.k,.ms-ggd .ms-ggp-k,.ms-ggd .ms-ggbr-ln>span:first-child{font-size:12.5px;color:#a3acb6}
-.ms-ggd .ms-gv-soft,.ms-ggd .ms-ggb-soft,.ms-ggd .ms-gc-soft,.ms-ggd .ms-gx-soft,.ms-ggd .ms-grd-soft,.ms-ggd .ms-gv-blk,.ms-ggd .ms-gv-limit,.ms-ggd .ms-ggbr-list,.ms-ggd .ms-ggp-src,.ms-ggd .ms-gs-src{font-size:12.5px}
-.ms-ggd .ms-gv-k,.ms-ggd .ms-gv-mx,.ms-ggd .ms-gx-chips>span,.ms-ggd .ms-ggl-chips>span,.ms-ggd .ms-gv-leg,.ms-ggd .ms-gs-more{font-size:12.5px}
-.ms-ggd .ms-gv-scale>span,.ms-ggd .ms-gv-mx>.ms-gv-c,.ms-ggd .ms-gv-mx>.ms-gv-h,.ms-ggd .ms-gv-chip,.ms-ggd .ms-gs-chip,.ms-ggd .ms-gs-more>.ms-gs-k{font-size:12px}
-.ms-ggd .ms-gv-gl{font-size:12px;height:16px}
-.ms-ggd .ms-gv-rl{font-size:12px}
+.ms-ggd .ms-gs-kv .ms-gs-k,.ms-ggd .ms-ggd-kv>.k,.ms-ggd .ms-ggp-k,.ms-ggd .ms-ggbr-ln>span:first-child{font-size:12px;color:#c3cbd3}
 .ms-ggd .ms-ggb-big,.ms-ggd .ms-ggp-big,.ms-ggd .ms-ggs-big,.ms-ggd .ms-ggb-tbig{font-size:22px}
 .ms-ggd .ms-gv-rate{font-size:18px}
 .ms-ggd .ms-ggb-sec .ms-gv-rose,.ms-ggd .ms-ggb-sec .ms-gv-map,.ms-ggd .ms-ggb-sec .ms-gc-rose,.ms-ggd .ms-ggb-sec .ms-ggs-rose{flex-wrap:wrap}
-.ms-ggd-f{flex:none;padding:6px 14px 7px;font-size:12px;color:#97a1ab;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center}
-.ms-ggd-f .ms-ggd-k{min-width:18px;height:18px;font-size:11px;padding:0 3px;margin-right:3px}
-.ms-ggd-page{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:#c9d1d9}
+.ms-ggd-f{flex:none;padding:6px 14px 7px;font-size:12px;color:#c3cbd3;border-top:1px solid rgba(255,255,255,.1);display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center}
+.ms-ggd-f .ms-ggd-k{margin-right:4px}
+.ms-ggd-f>span{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 0}
+.ms-ggd-page{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:#e1e6eb}
 .ms-ggd-page[hidden]{display:none}
-.ms-ggd-page b{color:#ffd27a;font-weight:650}
+.ms-ggd-page b{color:#ffd27a;font-weight:600}
 .ms-ggd-dots{display:inline-flex;gap:4px}
 .ms-ggd-dots>i{width:7px;height:7px;border-radius:50%;background:#4a535e}
 .ms-ggd-dots>i.ms-on{background:#ffd27a}
@@ -355,47 +336,43 @@ const CSS = `
 .ms-ggd .ms-ggl-list{margin-top:0;padding-top:0;border-top:0;max-height:none}
 .ms-ggd .ms-ggl-keys{margin-top:0;padding-top:0;border-top:0;flex-direction:column;gap:6px}
 .ms-ggd .ms-ggl-tcap:first-child{margin-top:0}
-.ms-ggd-kv{display:grid;grid-template-columns:62px minmax(0,1fr);gap:3px 8px;font-size:12.5px;line-height:1.35}
-.ms-ggd-kv>.k{color:#a3acb6;font-size:12px;padding-top:1px}
+.ms-ggd-kv{display:grid;grid-template-columns:62px minmax(0,1fr);gap:3px 8px;font-size:12px;line-height:1.35}
+.ms-ggd-kv>.k{color:#c3cbd3;font-size:12px;padding-top:1px}
 .ms-ggd-kv>.v{min-width:0;color:#e8ebee;overflow-wrap:anywhere}
 .ms-ggd-kv b{color:#fff;font-weight:600}
 .ms-ggd-modes{display:flex;flex-wrap:wrap;gap:6px}
-.ms-ggd-mode{display:inline-flex;align-items:center;gap:7px;padding:6px 11px 6px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#c9d1d9;
-  font:600 12.5px/1 system-ui,Segoe UI,Arial,sans-serif;cursor:pointer;white-space:nowrap}
-.ms-ggd-mode:hover{background:rgba(255,255,255,.12);color:#fff}
-.ms-ggd-mode:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
-.ms-ggd-mode[aria-pressed="true"]{background:#8ec1ea;border-color:#8ec1ea;color:#1b1f25}
-.ms-ggd-mode svg{flex:none;width:16px;height:16px}
-.ms-ggd-modetag{margin-top:9px;font-size:13px;color:#a3acb6}
-.ms-ggd-modetag b{color:#fff;font-size:14px}
-.ms-ggd-modetag .ms-hand{color:#ffc861}
+.ms-ggd-mode-b{display:inline-flex;align-items:center;gap:7px;padding:6px 11px 6px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:#e1e6eb;
+  font:600 12px/1 system-ui,Segoe UI,Arial,sans-serif;cursor:pointer;white-space:nowrap}
+.ms-ggd-mode-b:hover{background:rgba(255,255,255,.12);color:#fff}
+.ms-ggd-mode-b:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
+.ms-ggd-mode-b[aria-pressed="true"]{background:#8ec1ea;border-color:#8ec1ea;color:#14181d}
+.ms-ggd-mode-b svg{flex:none;width:16px;height:16px}
+.ms-ggd-modetag{margin-top:9px;font-size:13.5px;color:#c3cbd3}
+.ms-ggd-modetag b{color:#fff;font-size:13.5px}
+.ms-ggd-modetag .ms-hand{color:#ffd27a}
 .ms-ggd-sws{display:flex;flex-direction:column}
-.ms-ggd-swrow{position:relative;display:flex;align-items:center;gap:11px;padding:7px 0;cursor:pointer;border-top:1px solid rgba(255,255,255,.07)}
+.ms-ggd-swrow{position:relative;display:flex;align-items:center;gap:11px;padding:7px 0;cursor:pointer;border-top:1px solid rgba(255,255,255,.1)}
 .ms-ggd-swrow:first-child{border-top:0;padding-top:2px}
 .ms-ggd-swin{position:absolute;opacity:0;width:0;height:0;margin:0}
-.ms-ggd-sw{flex:none;width:36px;height:20px;border-radius:999px;background:#3a424d;position:relative;border:1px solid rgba(255,255,255,.1)}
+.ms-ggd-sw{flex:none;width:36px;height:20px;border-radius:999px;background:#3a424d;position:relative;border:1px solid rgba(255,255,255,.14)}
 .ms-ggd-sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff}
 .ms-ggd-swin:checked+.ms-ggd-sw{background:#2fa862;border-color:#2fa862}
 .ms-ggd-swin:checked+.ms-ggd-sw::after{transform:translateX(16px)}
 .ms-ggd-swin:focus-visible+.ms-ggd-sw{outline:2px solid #8ec1ea;outline-offset:2px}
 .ms-ggd-swrow>span:last-child{min-width:0}
 .ms-ggd-swrow b{display:block;color:#fff;font-weight:600;font-size:13.5px}
-.ms-ggd-swrow small{display:block;color:#a3acb6;font-size:12px;line-height:1.35}
-.ms-ggd-range{display:flex;align-items:center;gap:8px;padding:0 0 8px 47px;font-size:12.5px;color:#a3acb6}
+.ms-ggd-swrow small{display:block;color:#c3cbd3;font-size:12px;line-height:1.35}
+.ms-ggd-range{display:flex;align-items:center;gap:8px;padding:0 0 8px 47px;font-size:12px;color:#c3cbd3}
 .ms-ggd-range input{flex:1;min-width:0;accent-color:#8ec1ea;margin:0}
 .ms-ggd-range b{color:#fff;font-variant-numeric:tabular-nums;min-width:34px;text-align:right}
 .ms-ggd .ms-ggl-ramp>i{height:14px}
-.ms-ggd .ms-ggl-ramp-l{font-size:12.5px;color:#c9d1d9}
-.ms-ggd .ms-ggl-note{font-size:12.5px;margin-top:5px}
-.ms-ggd .ms-ggl-tcap{font-size:12px}
-.ms-ggd .ms-ggl-cap{font-size:12px}
-.ms-ggd .ms-ggl-key small{font-size:12px}
-/* A narrow window: the tabs not shown keep only their key, so the header stays on one line (the × no longer wraps). */
-@media (max-width:1160px){.ms-ggd-tab:not([aria-selected="true"]) .ms-ggd-tl{display:none}.ms-ggd-tab:not([aria-selected="true"]){padding-right:6px}}
+.ms-ggd .ms-ggl-note{margin-top:5px}
 @media (prefers-reduced-motion:no-preference){.ms-ggd-sw,.ms-ggd-sw::after{transition:background .15s,transform .15s}.ms-ggd-tab{transition:background .12s,color .12s}}
-@media (max-width:720px){.ms-ggd{left:6px;right:6px;bottom:6px}.ms-ggd-band{height:clamp(200px,calc(70vh - 220px),460px)}
-  .ms-ggd-sum{flex-wrap:wrap;padding:10px 12px;gap:8px 10px}.ms-ggd-for{width:100%;padding:0 0 8px;border-right:0;border-bottom:1px solid rgba(255,255,255,.1)}
-  .ms-ggd-fact{flex-basis:120px;padding:0 10px}.ms-ggd-fact.ms-lead{flex-basis:130px}}
+/* A narrow window: answers stay, names shorten (the tab keeps its letter, name and answer on two lines). */
+@media (max-width:1160px){.ms-ggd-tab{max-width:150px;padding-right:8px}}
+@media (max-width:720px){.ms-ggd{left:6px;right:6px;bottom:6px}
+  .ms-ggd-sum{padding:10px 12px}.ms-ggd-ans{flex-basis:100%;max-width:none;margin-right:0}
+  .ms-ggd-fact{flex-basis:120px;padding:0 10px}.ms-ggd-ans+.ms-ggd-fact{padding-left:0}}
 `;
 
 function el(tag: string, cls?: string, text?: string): HTMLElement {
@@ -413,10 +390,7 @@ function soft(text: string): HTMLElement {
 function tile(letter: DetailTab | 'W', caption: string, ...content: Array<Node | string | null | undefined | false>): HTMLElement {
   const sec = el('div', 'ms-ggb-sec');
   const cap = el('div', 'ms-ggb-cap ms-ggd-cap');
-  const b = el('span', 'ms-ggd-l', letter);
-  b.style.background = letter === 'W' ? W_COLOR : TAB_COLOR[letter];
-  b.style.color = letter === 'W' || letter === 'O' || letter === 'C' ? '#fff' : '#1b1f25';
-  cap.append(b, caption);
+  cap.append(el('span', 'ms-ggd-l', letter), caption); // neutral: a letter is not a verdict (item 16)
   sec.append(cap);
   for (const c of content) if (c) sec.append(c);
   return sec;
@@ -449,6 +423,16 @@ function hasGap(o: ObstaclesReading): boolean {
   return !!(c && (c.widthM || c.depthM)) || !!(r && r.depthM);
 }
 
+function readHeight(): number {
+  try {
+    const h = Number(localStorage.getItem(HEIGHT_KEY));
+    if ((HEIGHT_STOPS as readonly number[]).includes(h)) return h;
+  } catch {
+    /* storage blocked */
+  }
+  return HEIGHT_DEFAULT;
+}
+
 function readTab(): DetailTab {
   try {
     const t = localStorage.getItem(TAB_KEY);
@@ -465,43 +449,53 @@ function pendingOf(v: GroundGuideVerdict): boolean {
 }
 
 /**
- * Who the ground is judged for, at the head of the strip (user, 2026-11-07: "nothing showing which layer / force type
- * data is being used ... he can make wrong decisions"): the mode with its icon, the echelon and how the mode was set
- * (by the symbol, or by hand with P, in amber), the season and light the going and speed are read for, and a warning
- * when the map overlay paints another mode.
+ * Who the ground is judged for (user, 2026-11-07: "nothing showing which layer / force type data is being used ... he
+ * can make wrong decisions"), on its own line under the tabs so it stays in view on every tab (2026-11-08, item 9):
+ * the mode with its icon, the echelon and how the mode was set (by the symbol, or by hand with P, in amber), a warning
+ * when the map overlay paints another mode, and the season and light the going and speed are read for.
  */
-function forBlock(v: GroundGuideVerdict): HTMLElement {
-  const box = el('div', 'ms-ggd-for');
-  const m = el('div', 'ms-ggd-for-m');
+function modeParts(v: GroundGuideVerdict): HTMLElement[] {
+  const who = el('span');
   const ic = modeIcon(v.profile);
-  ic.setAttribute('width', '18');
-  ic.setAttribute('height', '18');
-  m.append(ic, el('span', undefined, v.profileLabel));
-  m.title = `Judged for ${v.profileLabel}`;
-  const s = el('div', 'ms-ggd-for-s');
+  ic.setAttribute('width', '16');
+  ic.setAttribute('height', '16');
+  who.title = `Judged for ${v.profileLabel}`;
+  who.append(ic, 'For ', el('b', undefined, v.profileLabel));
   const echelon = v.footprint?.echelon;
-  if (echelon) s.append(`${titleCase(echelon)} · `);
-  s.append(v.profileOverride ? el('span', 'ms-hand', 'Set by Hand (P)') : 'From the Symbol');
-  box.append(m, s);
+  if (echelon) who.append(` · ${titleCase(echelon)}`);
+  who.append(' · ', v.profileOverride ? el('span', 'ms-hand', 'Set by hand (P)') : 'from the symbol');
+  const out = [who];
+  if (v.overlayOther) out.push(el('span', 'ms-other', `Map colours show ${v.overlayOther}`));
   const g = v.going;
   const when: string[] = [];
-  if (g) when.push(`${g.season === 'wet' ? 'After Rain' : 'Dry'}${g.month ? `, ${monthName(g.month)}` : ''}`);
+  if (g) when.push(`${g.season === 'wet' ? 'After rain' : 'Dry'}${g.month ? `, ${monthName(g.month)}` : ''}`);
   if (v.speed) when.push(v.speed.light === 'night' ? 'Night' : 'Day');
+  const w = el('span', 'ms-when');
   if (when.length) {
-    const w = el('div', 'ms-ggd-for-s');
-    if (g) w.append(seasonIcon(g.season, 12));
+    if (g) w.append(seasonIcon(g.season, 13));
     w.append(when.join(' · '));
-    box.append(w);
   }
-  if (v.overlayOther) box.append(el('div', 'ms-ggd-for-w', `Map colours show ${v.overlayOther}`));
-  return box;
+  // Still waiting on tiles or features: said in words, as the cursor card's grey "Checking" (item 4).
+  if (pendingOf(v)) w.append(el('span', 'ms-upd', `${when.length ? ' · ' : ''}Checking…`));
+  if (w.childNodes.length) out.push(w);
+  return out;
 }
 
 export class GroundGuideDetail {
   private _el: HTMLDivElement | null = null;
   private _tabs = new Map<DetailTab, HTMLButtonElement>();
-  private _meta: HTMLElement | null = null;
+  /** Each letter tab's answer line (item 8). */
+  private _ans = new Map<DetailTab, HTMLElement>();
+  /** Who the ground is judged for, under the tabs (item 9). */
+  private _mode: HTMLElement | null = null;
   private _sum: HTMLElement | null = null;
+  /** The card's height as a share of the window, one of HEIGHT_STOPS (item 14). */
+  private _height = readHeight();
+  private _grip: HTMLButtonElement | null = null;
+  /** The card's box on screen while open, for the cursor card to keep clear of (item 7); null = measure again. */
+  private _rect: DOMRect | null = null;
+  private _onWinResize: (() => void) | null = null;
+  private _h0 = 0;
   private _band: HTMLElement | null = null;
   private _clip: HTMLElement | null = null;
   private _flow: HTMLElement | null = null;
@@ -531,6 +525,15 @@ export class GroundGuideDetail {
     return this._tab;
   }
 
+  /**
+   * The card's box on screen while it is open, else null: the cursor card keeps clear of it (item 7). Measured once
+   * and kept until the card opens, closes, is resized or the window changes, so the pointer path reads no layout.
+   */
+  get rect(): DOMRect | null {
+    if (!this.isShown || !this._el) return null;
+    return (this._rect ??= this._el.getBoundingClientRect());
+  }
+
   /** Show the card for this verdict (rebuilds the active tab; the Legend tab waits for `setLegend`). */
   show(v: GroundGuideVerdict): void {
     this._v = v;
@@ -538,8 +541,10 @@ export class GroundGuideDetail {
     this._renderMeta(v);
     const first = !root.classList.contains('ms-open');
     root.classList.add('ms-open');
-    if (first) this._renderTab(true);
-    else if (this._tab !== 'L') this._renderTab(false);
+    if (first) {
+      this._rect = null;
+      this._renderTab(true);
+    } else if (this._tab !== 'L') this._renderTab(false);
   }
 
   /** Show the card with no verdict yet (D before a draw): the Legend tab works; the letters say what they wait for. */
@@ -547,7 +552,8 @@ export class GroundGuideDetail {
     const root = this._ensure();
     if (root.classList.contains('ms-open')) return;
     root.classList.add('ms-open');
-    this._meta?.replaceChildren(el('span', undefined, 'No symbol being placed'));
+    this._rect = null;
+    this._renderMeta(null);
     this._renderTab(true);
   }
 
@@ -567,10 +573,21 @@ export class GroundGuideDetail {
     if (changed) this._h.tab?.(tab);
   }
 
-  /** Turn to the tab's next page. False when it is on its last page (the caller then closes the card). */
+  /**
+   * Turn to the tab's next page; from the last page back to the first (user, 2026-11-08: "pages wrap"; the letter no
+   * longer closes the card, D and Esc do). False when the tab has only one page.
+   */
   nextPage(): boolean {
-    if (!this.isShown || this._page + 1 >= this._pages) return false;
-    this._page++;
+    if (!this.isShown || this._pages < 2) return false;
+    this._page = (this._page + 1) % this._pages;
+    this._showPage();
+    return true;
+  }
+
+  /** Shift + the letter: back a page (from the first to the last). False when the tab has only one page. */
+  prevPage(): boolean {
+    if (!this.isShown || this._pages < 2) return false;
+    this._page = (this._page + this._pages - 1) % this._pages;
     this._showPage();
     return true;
   }
@@ -603,17 +620,22 @@ export class GroundGuideDetail {
     this._el?.classList.remove('ms-open');
     if (this._sum) this._sum.style.minHeight = '';
     this._page = 0;
+    this._rect = null;
   }
 
   destroy(): void {
     this._ro?.disconnect();
     this._ro = null;
+    if (this._onWinResize) window.removeEventListener('resize', this._onWinResize);
+    this._onWinResize = null;
     if (this._copyTimer !== null) clearTimeout(this._copyTimer);
     this._copyTimer = null;
     this._el?.remove();
-    this._el = this._meta = this._sum = this._band = this._clip = this._flow = this._pageEl = null;
+    this._el = this._mode = this._sum = this._band = this._clip = this._flow = this._pageEl = null;
+    this._grip = null;
     this._copy = null;
     this._tabs.clear();
+    this._ans.clear();
     this._v = null;
     this._legend = null;
     this._keyP = this._keyS = null;
@@ -624,6 +646,7 @@ export class GroundGuideDetail {
   private _ensure(): HTMLDivElement {
     if (this._el) return this._el;
     ensureBriefCss();
+    ensureTokensCss();
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;
@@ -640,20 +663,23 @@ export class GroundGuideDetail {
     const tabs = el('div', 'ms-ggd-tabs');
     tabs.setAttribute('role', 'tablist');
     for (const t of DETAIL_TABS) {
+      // Two lines (item 8): the short name over the tab's own answer, a dot and a word (filled in by _renderMeta).
       const b = el('button', 'ms-ggd-tab', undefined) as HTMLButtonElement;
       b.type = 'button';
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', String(t === this._tab));
       b.title = `${TAB_LABEL[t]} (${TAB_KEY_OF[t]})`;
-      b.style.setProperty('--lc', TAB_COLOR[t]);
-      b.style.setProperty('--lf', TAB_FG[t]);
       b.setAttribute('aria-label', TAB_LABEL[t]);
-      b.append(el('span', 'ms-ggd-k', TAB_KEY_OF[t]), el('span', 'ms-ggd-tl', TAB_LABEL[t]));
+      const tt = el('span', 'ms-ggd-tt');
+      const ans = el('span', 'ms-ggd-ta');
+      ans.textContent = ' ';
+      tt.append(el('span', 'ms-ggd-tl', TAB_LABEL[t]), ans);
+      b.append(el('span', 'ms-ggd-k', TAB_KEY_OF[t]), tt);
       b.addEventListener('click', () => this.setTab(t));
       tabs.append(b);
       this._tabs.set(t, b);
+      this._ans.set(t, ans);
     }
-    const meta = el('div', 'ms-ggd-meta');
     const copy = el('button', 'ms-ggd-btn', 'Copy as Text') as HTMLButtonElement;
     copy.type = 'button';
     copy.title = 'Copy every section as plain text, for orders';
@@ -663,8 +689,10 @@ export class GroundGuideDetail {
     close.title = 'Close (D or Esc)';
     close.setAttribute('aria-label', 'Close the Ground Detail');
     close.addEventListener('click', () => this._h.close());
-    head.append(tabs, meta, copy, close);
+    head.append(tabs, el('span', 'ms-ggd-hsp'), copy, close);
 
+    const mode = el('div', 'ms-ggd-mode');
+    mode.hidden = true;
     const sum = el('div', 'ms-ggd-sum');
     sum.hidden = true;
     sum.setAttribute('role', 'group');
@@ -676,31 +704,39 @@ export class GroundGuideDetail {
     band.append(clip);
     const foot = el('div', 'ms-ggd-f');
     const keys = el('span');
-    for (const [k, t] of [['D', 'open / close'], ['G R O T B C', 'tabs'], ['K', 'legend'], ['Esc', 'close']] as const) {
+    for (const [k, t] of [['D', 'open / close'], ['G R O T B C', 'tabs, again for the next page, with Shift back'], ['K', 'legend'], ['Esc', 'close']] as const) {
       for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
-      keys.append(`${t}  `);
+      keys.append(`${t} `);
     }
     const page = el('span', 'ms-ggd-page');
     page.hidden = true;
     page.setAttribute('aria-live', 'polite');
-    foot.append(keys, el('span', undefined, 'Dials and arrows turn with the map.'), page);
-    root.append(head, sum, band, foot);
+    foot.append(keys, page);
+    root.append(this._makeGrip(), head, mode, sum, band, foot);
     ensureNorthCss();
     setNorthVar(root, this._north);
+    this._applyHeight(root);
     document.body.appendChild(root);
     this._el = root;
-    this._meta = meta;
+    this._mode = mode;
     this._sum = sum;
     this._band = band;
     this._clip = clip;
     this._flow = flow;
     this._pageEl = page;
     this._copy = copy;
+    this._onWinResize = () => {
+      this._rect = null;
+      this._applyHeight(root);
+      if (this.isShown) this._h.resized?.();
+    };
+    window.addEventListener('resize', this._onWinResize);
     if (typeof ResizeObserver !== 'undefined') {
       this._ro = new ResizeObserver(() => {
-        if (clip.clientWidth === this._w) return;
-        // A new width fits a different number of columns and facts: refit both.
-        if (this._sum && !this._sum.hidden) {
+        this._rect = null;
+        if (clip.clientWidth === this._w && clip.clientHeight === this._h0) return;
+        // A new width fits a different number of columns and facts, a new height more or fewer tiles: refit both.
+        if (this._sum && !this._sum.hidden && clip.clientWidth !== this._w) {
           this._sum.style.minHeight = '';
           this._fitSummary();
         }
@@ -711,16 +747,123 @@ export class GroundGuideDetail {
     return root;
   }
 
-  private _renderMeta(v: GroundGuideVerdict): void {
-    const meta = this._meta;
-    if (!meta) return;
-    const dot = el('span', 'ms-ggd-dot');
-    dot.style.background = verdictColor(v);
-    meta.replaceChildren(dot, el('b', undefined, titleOf(v)));
-    if (pendingOf(v)) meta.append(el('span', 'ms-ggd-upd', '· updating'));
+  // ── height (item 14: drag to size) ────────────────────────────────────────
+
+  /**
+   * The card's height in px for a stop: a share of the window, but never so short that the band under the strip drops
+   * below the 220 px it always had (the tallest tiles, a rose with its key or the speed table, need it: the card never
+   * scrolls, so a shorter band would cut them), and never more than fits above the bottom gap.
+   */
+  private _px(stop: number): number {
+    return Math.round(Math.min(window.innerHeight - 20, Math.max(MIN_CARD_PX, window.innerHeight * stop)));
   }
 
-  /** The answer strip for the active tab: who it is judged for and its facts, or hidden (the Legend tab, or nothing yet). */
+  private _applyHeight(root: HTMLElement | null = this._el): void {
+    if (!root) return;
+    root.style.height = `${this._px(this._height)}px`;
+    this._grip?.setAttribute('aria-valuenow', String(Math.round(this._height * 100)));
+    this._grip?.setAttribute('aria-valuetext', `${Math.round(this._height * 100)}% of the window`);
+  }
+
+  private _setHeight(stop: number, save: boolean): void {
+    if (stop !== this._height) {
+      this._height = stop;
+      this._rect = null;
+      this._applyHeight();
+      this._h.resized?.();
+    }
+    if (save) {
+      try {
+        localStorage.setItem(HEIGHT_KEY, String(stop));
+      } catch {
+        /* storage blocked: the height lasts for this page */
+      }
+    }
+  }
+
+  /**
+   * The grip on the top edge: drag it and the card snaps to 40, 50 or 60 % of the window, the one nearest the
+   * pointer, remembered between sessions; Up / Down on the focused grip step through them. The mouse is needed once,
+   * not while drawing; the height then stays the same on every tab, the Legend included.
+   */
+  private _makeGrip(): HTMLButtonElement {
+    const g = el('button', 'ms-ggd-grip') as HTMLButtonElement;
+    g.type = 'button';
+    g.title = 'Drag to size the Ground Detail (40, 50 or 60% of the window)';
+    g.setAttribute('role', 'slider');
+    g.setAttribute('aria-label', 'Ground Detail height');
+    g.setAttribute('aria-valuemin', '40');
+    g.setAttribute('aria-valuemax', '60');
+    const tip = el('span', 'ms-ggd-stop');
+    tip.hidden = true;
+    const nearest = (clientY: number): number => {
+      const want = (window.innerHeight - 10 - clientY) / window.innerHeight;
+      return HEIGHT_STOPS.reduce((a, b) => (Math.abs(b - want) < Math.abs(a - want) ? b : a));
+    };
+    const show = () => {
+      tip.textContent = `${Math.round(this._height * 100)}%`;
+      tip.hidden = false;
+    };
+    g.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      g.setPointerCapture(e.pointerId);
+      g.classList.add('ms-drag');
+      show();
+    });
+    g.addEventListener('pointermove', (e) => {
+      if (!g.hasPointerCapture(e.pointerId)) return;
+      this._setHeight(nearest(e.clientY), false);
+      show();
+    });
+    const end = (e: PointerEvent) => {
+      if (!g.hasPointerCapture(e.pointerId)) return;
+      g.releasePointerCapture(e.pointerId);
+      g.classList.remove('ms-drag');
+      tip.hidden = true;
+      this._setHeight(this._height, true);
+    };
+    g.addEventListener('pointerup', end);
+    g.addEventListener('pointercancel', end);
+    g.addEventListener('keydown', (e) => {
+      const i = HEIGHT_STOPS.indexOf(this._height as (typeof HEIGHT_STOPS)[number]);
+      const j = e.key === 'ArrowUp' ? i + 1 : e.key === 'ArrowDown' ? i - 1 : i;
+      if (j === i) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this._setHeight(HEIGHT_STOPS[Math.min(HEIGHT_STOPS.length - 1, Math.max(0, j))], true);
+    });
+    g.append(tip);
+    this._grip = g;
+    return g;
+  }
+
+  /** Every letter tab's answer (item 8) and the line saying who the ground is judged for (item 9). */
+  private _renderMeta(v: GroundGuideVerdict | null): void {
+    for (const [t, line] of this._ans) {
+      const a = t === 'L' ? null : letterAnswer(t, v);
+      if (!a) {
+        line.replaceChildren(' ');
+        line.title = '';
+        continue;
+      }
+      const mark = el('span', a.ring ? 'ms-ggd-ring' : 'ms-ggd-fd');
+      if (a.tone && !a.ring) mark.dataset.tone = a.tone;
+      line.replaceChildren(...(a.tone || a.ring ? [mark] : []), el('span', undefined, a.tab));
+      line.title = a.tab;
+      this._tabs.get(t)?.setAttribute('aria-label', `${TAB_LABEL[t]}: ${a.tab}`);
+    }
+    const mode = this._mode;
+    if (!mode) return;
+    if (!v || v.verdict === 'off' || v.verdict === 'exempt') {
+      mode.replaceChildren(el('span', undefined, 'No symbol being placed'));
+      mode.hidden = false;
+      return;
+    }
+    mode.replaceChildren(...modeParts(v));
+    mode.hidden = false;
+  }
+
+  /** The answer strip for the active tab: the letter's answer and its facts, or hidden (the Legend tab, or nothing yet). */
   private _renderSummary(tab: DetailTab): void {
     const sum = this._sum;
     if (!sum) return;
@@ -733,7 +876,7 @@ export class GroundGuideDetail {
       return;
     }
     sum.setAttribute('aria-label', `${TAB_LABEL[tab]} at a glance, for ${v.profileLabel}`);
-    sum.replaceChildren(forBlock(v), strip);
+    sum.replaceChildren(strip);
     sum.hidden = false;
     arrowCompass(strip);
     this._fitSummary();
@@ -741,7 +884,6 @@ export class GroundGuideDetail {
     const h = sum.offsetHeight;
     if (h > (parseFloat(sum.style.minHeight) || 0)) sum.style.minHeight = `${h}px`;
   }
-
   /**
    * Keep the facts to one line: those that wrap on a narrow card are hidden (the lead and the first facts stay;
    * every fact is also in the band below), so the strip never eats the band.
@@ -774,7 +916,6 @@ export class GroundGuideDetail {
       tiles = [empty(this._v ? `Nothing to show for ${TAB_LABEL[tab]} here yet. Move the cursor over the map, or wait for the tiles.` : 'Move the cursor over the map while drawing.')];
     }
     flow.replaceChildren(...tiles);
-    raiseSmallText(); // before measuring: the sizes change the tiles' heights
     this._trimLetters(tab);
     // On the card root, not the flow: orientNorth also sets --gg-north on what it is given, and a copy left on the
     // flow would hide the root's value from every arrow when the map is turned later (setNorth turns the root).
@@ -811,6 +952,7 @@ export class GroundGuideDetail {
     const W = clip.clientWidth;
     const H = clip.clientHeight;
     this._w = W;
+    this._h0 = H;
     const tiles = Array.from(flow.children).filter((k) => k.classList.contains('ms-ggb-sec')) as HTMLElement[];
     if (!tiles.length || W <= 0 || H <= 0) {
       this._pages = 1;
@@ -1011,7 +1153,7 @@ export class GroundGuideDetail {
     const key = TAB_KEY_OF[this._tab];
     const more = this._page + 1 < this._pages;
     const next = el('span');
-    next.append(el('b', undefined, `Page ${this._page + 1} of ${this._pages}`), '  ', el('span', 'ms-ggd-k', key), more ? 'next page' : 'closes');
+    next.append(el('b', undefined, `Page ${this._page + 1} of ${this._pages}`), ' ', el('span', 'ms-ggd-k', key), more ? 'next page' : 'back to page 1', ' Shift + ', el('span', 'ms-ggd-k', key), 'back');
     p.replaceChildren(dots, next);
   }
 
@@ -1061,11 +1203,14 @@ export class GroundGuideDetail {
       const d = r.density;
       if (d) {
         ensureRoadDensityCss();
-        const note = el('div', 'ms-ggd-note', roadDensityNote(d));
-        note.style.background = DENSITY_COLOURS[d.lead.key][0];
-        note.style.color = DENSITY_COLOURS[d.lead.key][1];
+        // The callout judges for the mode being drawn (item 10): many roads are no help to a mode none of them suits.
+        const forMode = v.traffic?.road;
+        const noneForMode = !!forMode && !forMode.main && forMode.caption === 'Rd';
+        const note = el('div', 'ms-ggd-note', noneForMode ? `${forMode!.text}: ${v.profileLabel} moves cross-country here, whatever the density.` : roadDensityNote(d));
+        note.style.background = noneForMode ? 'rgba(238,138,31,.14)' : DENSITY_COLOURS[d.lead.key][0];
+        note.style.color = noneForMode ? '#ffb46b' : DENSITY_COLOURS[d.lead.key][1];
         out.push(tile('R', `Rd Network Density · ${fmtRadius(d.radiusM)}`, densityGauge(d, 'both'), note));
-        out.push(tile('R', 'Ways Out', densityRose(d, 'both')));
+        out.push(tile('R', 'Rds Out', densityRose(d, 'both')));
         out.push(tile('R', 'Route Classification', densityMakeup(d, 'both')));
       }
     }
@@ -1130,7 +1275,7 @@ export class GroundGuideDetail {
       if (mv) out.push(tile('T', `Movement Freedom · ${g.season === 'dry' ? 'Dry' : 'After Rain'}`, mv, roseLegend(true), g.pending ? soft('Still loading round the edges') : null));
       if (sp?.rays) {
         const row = el('div', 'ms-ggs-rose');
-        row.append(speedRoseSvg(sp.rays, sp.rangeM, 120, 0), speedRoseLines(sp));
+        row.append(roseFigure(speedRoseSvg(sp.rays, sp.rangeM, 120, 0), speedRoseKey()), speedRoseLines(sp));
         out.push(tile('T', `Time to ${fmtDistance(sp.rangeM)} · ${sp.short}`, row));
       }
       const cv = goingCanvas(g, 120, 0, true);
@@ -1146,7 +1291,7 @@ export class GroundGuideDetail {
       if (rb) out.push(tile('T', `Going by Month · ${tv.short}`, rb));
     } else if (sp?.rays) {
       const row = el('div', 'ms-ggs-rose');
-      row.append(speedRoseSvg(sp.rays, sp.rangeM, 120, 0), speedRoseLines(sp));
+      row.append(roseFigure(speedRoseSvg(sp.rays, sp.rangeM, 120, 0), speedRoseKey()), speedRoseLines(sp));
       out.push(tile('T', `Time to ${fmtDistance(sp.rangeM)} · ${sp.short}`, row));
     }
     const w = v.sections?.weather;
@@ -1174,7 +1319,7 @@ export class GroundGuideDetail {
     if (p || v.sections?.buildings) ensurePopulationCss();
     if (r) {
       const two = el('div', 'ms-ggp-two');
-      two.append(radar(r, 104), ringList(r, [1, 2, 3, 5, 10]));
+      two.append(roseFigure(radar(r, 104), radarKey()), ringList(r, [1, 2, 3, 5, 10]));
       out.push(tile('B', `People · ${r.radiusKm} km`, two, densityScale(r.cls), populationLine('Density', populationChip(r.cls), ` ${fmtPeople(r.perKm2)} per km² within ${r.radiusKm} km`)));
       out.push(tile('B', 'People by Dir', populationRose(r)));
       out.push(tile('B', 'People Map · 1 km Cells', populationMinimap(r)));
@@ -1222,7 +1367,7 @@ export class GroundGuideDetail {
         shelterLine(c, true),
         formLine(c),
         builtLine(c),
-        soft('Levels: this spot, from rules.json grotbc.coverSplit and banks (a starting proposal). The area round it (cc layer) never raises them. Check on the ground.'),
+        soft('Levels: this spot, from its ground class and any river or canal bank (a starting proposal). The cover density of the area round it never raises them. Check on the ground.'),
       ),
     );
     return out;
@@ -1245,7 +1390,7 @@ export class GroundGuideDetail {
     const modes = el('div', 'ms-ggd-modes');
     const cur = st.modes.find((m) => m.key === st.current) ?? { key: st.current, label: st.current };
     for (const m of st.modes) {
-      const b = el('button', 'ms-ggd-mode') as HTMLButtonElement;
+      const b = el('button', 'ms-ggd-mode-b') as HTMLButtonElement;
       b.type = 'button';
       b.setAttribute('aria-pressed', String(m.key === st.current));
       b.title = m.key === st.current ? `${m.label} (judged for now)` : `Judge for ${m.label}`;
@@ -1304,11 +1449,11 @@ export class GroundGuideDetail {
     if (p.keyP) keys.append(p.keyP);
     if (p.keyS) keys.append(p.keyS);
     keys.append(
-      legendKeyRow('D', 'Gr Detail', 'Opens and Closes This Card'),
-      legendKeyRow('H', 'Hint', 'Shrinks the Cursor Card to GO / SLOW-GO / NO-GO; Again for the Card'),
-      legendKeyRow('G', 'Tabs', 'G R O T B C, One Letter a Tab; Again for the Next Page'),
-      legendKeyRow('K', 'Legend', 'This Tab (L Is Lasso Select)'),
-      legendKeyRow('Esc', 'Close', 'Also Cancels the Draw'),
+      legendKeyRow('D', 'Gr Detail', 'Opens and closes this card'),
+      legendKeyRow('H', 'Hint', 'Shrinks the cursor card to GO / SLOW-GO / NO-GO; again for the card'),
+      legendKeyRow('G', 'Tabs', 'G R O T B C, one letter a tab; again for the next page (back to the first after the last), Shift + letter goes back'),
+      legendKeyRow('K', 'Legend', 'This tab (L is Lasso Select)'),
+      legendKeyRow('Esc', 'Close', 'Closes this card; a second Esc cancels the draw'),
     );
     out.push(tile('L', 'Keys', keys));
     return out;

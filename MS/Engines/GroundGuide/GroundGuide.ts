@@ -100,6 +100,7 @@ import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandi
 import { GroundGuideIndicators } from './GroundGuideIndicators';
 import { GroundGuideLegend, type LegendState } from './GroundGuideLegend';
 import { createOverlayLayer, OVERLAY_COLORS, OVERLAY_LEGEND, type OverlayRenderingSource } from './GroundGuideOverlay';
+import { verdictTone } from './GroundGuideTokens';
 import { WorkerTileSource } from './WorkerTileSource';
 import { resolveProfile } from './GroundGuideProfiles';
 import { boundaryPaths, fromMercatorXY, nearEdges, samplePoints, toMercatorShape, type MercShape } from './GroundGuideSampling';
@@ -269,6 +270,7 @@ export default class GroundGuide {
   /** The Ground Detail (D): a wide card with a tab a GROTBC letter and the Legend (K); it holds the docked legend's controls too. */
   private _detail = new GroundGuideDetail({
     close: () => this._toggleBrief(false),
+    resized: () => this._badge.reflow(), // the card keeps clear of the Detail at its new height (item 7)
     legend: {
       step: (dir) => this._legendStep(dir),
       pick: (key) => this._legendPick(key as GroundGuideProfile),
@@ -356,7 +358,10 @@ export default class GroundGuide {
   private _stationaryHandle: { remove(): void } | null = null;
   private _northHandle: { remove(): void } | null = null;
 
-  constructor(private _getView: () => any) {}
+  constructor(private _getView: () => any) {
+    // The cursor card keeps clear of the open Ground Detail (user, 2026-11-08, item 7: step aside, then chip).
+    this._badge.setAvoid(() => (this._briefOpen ? this._detail.rect : null));
+  }
 
   // ── Configuration ────────────────────────────────────────────────────────
 
@@ -2443,10 +2448,11 @@ export default class GroundGuide {
         marks: [],
         classCode: n.classCode,
         className: n.className,
+        // Short enough for the dark plate it sits on (item 15): what the ground is, then how far.
         label:
           n.kind === 'no-go'
-            ? v.message
-            : `${titleCase(n.className)} ${fmtDistance(n.distanceM)} to the ${n.compass}`,
+            ? `${titleCase(n.className)} · ${n.distanceM < 1 ? 'at the edge' : fmtDistance(n.distanceM)}`
+            : `${titleCase(n.className)} · ${fmtDistance(n.distanceM)} ${n.compass}`,
       });
       return;
     }
@@ -2495,7 +2501,7 @@ export default class GroundGuide {
       stretches,
       classCode: v.classCode,
       className: v.className,
-      label: `${v.className ?? 'NO-GO'} (${Math.max(1, Math.round(v.fraction * 100))}% of Frontage)`,
+      label: `${titleCase(v.className ?? 'NO-GO Gr')} · ${Math.max(1, Math.round(v.fraction * 100))}% inside`,
     };
     v.indicators.push(ind);
   }
@@ -2805,6 +2811,7 @@ export default class GroundGuide {
       if (!this._lastDetail) this._detail.open(); // no draw in progress: the Legend tab works, the letters wait for one
     }
     this._refreshLive();
+    this._badge.reflow(); // opened: step aside of it, or fold to the chip; closed: back to the card (item 7)
   }
 
   /** The Legend tab's map switches: the overlay (and its opacity), the boundary, the People layer, indicator lines, the footprint outline. */
@@ -3551,7 +3558,7 @@ export default class GroundGuide {
       this._loadingSince = 0;
     }
     if (this._opts.indicators.enabled && this.isActive && v.indicators.length > 0) {
-      this._indicators.show(v.indicators, this._opts.indicators.labels);
+      this._indicators.show(v.indicators, this._opts.indicators.labels, verdictTone(v));
     } else {
       this._indicators.hide();
     }
@@ -3581,7 +3588,10 @@ export default class GroundGuide {
     this._lastBadgeKey = key;
     if (this._opts.showBadge && v.verdict !== 'off' && v.verdict !== 'exempt') this._badge.show(v);
     else this._badge.hide();
-    if (this._briefOpen && v.verdict !== 'off' && v.verdict !== 'exempt') this._detail.show(v);
+    if (this._briefOpen && v.verdict !== 'off' && v.verdict !== 'exempt') {
+      this._detail.show(v);
+      this._badge.reflow(); // the Detail may have just opened under the card: step aside (item 7)
+    }
   }
 
   private _publish(v: GroundGuideVerdict): void {
@@ -3810,20 +3820,29 @@ export default class GroundGuide {
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     if (k === 'escape') {
-      if (this._briefOpen) this._toggleBrief(false); // Esc still reaches the draw tool: it may cancel the draw too
+      // The first Esc closes only the Detail (user, 2026-11-08): it is stopped here, before the draw tool or the app's
+      // shortcuts see it, so the draw goes on; a second Esc, with the Detail closed, cancels the draw as before.
+      if (this._briefOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        this._toggleBrief(false);
+      }
       return;
     }
     if (k === 'd' || tabKey) {
       // D opens or closes the Ground Detail (before a draw too: the Legend tab); a letter opens it on that tab (K the Legend).
       // The same letter again turns to the tab's next page when it has one (the card never scrolls: the mouse is busy
-      // placing the symbol, user 2026-11-07), and closes it from the last page.
+      // placing the symbol, user 2026-11-07); from the last page it wraps to the first, and Shift + the letter goes back
+      // a page (user, 2026-11-08). The letter no longer closes the card: D and Esc do.
       if (!this._opts.card.briefKey || !this.isActive || this._activeProfile === 'exempt') return;
       e.preventDefault();
       if (k === 'd') this._toggleBrief(!this._briefOpen);
       else {
         const tab = (k === 'k' ? 'L' : k.toUpperCase()) as DetailTab;
         if (this._briefOpen && this._detail.tab === tab) {
-          if (!this._detail.nextPage()) this._toggleBrief(false);
+          if (e.shiftKey) this._detail.prevPage();
+          else this._detail.nextPage();
         } else this._toggleBrief(true, tab);
       }
       return;
@@ -3984,7 +4003,8 @@ export default class GroundGuide {
       tag,
       hand,
       entries: OVERLAY_LEGEND.map((e) => ({ label: e.label, rgba: OVERLAY_COLORS[e.key] })),
-      note: `${label('near')}: Within ${fmtDistance(this._opts.nearThresholdM)} of ${label('nogo')}`,
+      // What Marginal means, in the ladder's words (item 1): GO ground with NO-GO close by.
+      note: `${label('near')}: GO Gr within ${fmtDistance(this._opts.nearThresholdM)} of ${label('nogo')}`,
       // A vessel needs water: everything off it is NO-GO, so say that rather than list every land class.
       nogo: rule?.requires?.length ? [`Anywhere Off ${classes(rule.requires).join(' / ')}`] : classes(rule?.nogo),
       slow: classes(rule?.caution),

@@ -15,97 +15,120 @@
  *   B protected protected sites (worship, graves) and services (health, schools) first: no-strike and collateral
  *   W year     twelve months: temperature range bars and rain, this month outlined, frost and heat marked
  *   W icons    the month's temperature, rain and wind as large figures
+ * Visual review (user, 2026-11-08): sizes and colours from GroundGuideTokens.ts (item 17 one type scale, item 18
+ * dark with more contrast); letters neutral and red / green / orange kept for verdicts (item 16: MSR white on a dark
+ * casing, natural obstacles blue-grey); the slope band is a read-only ruler (item 11); labels in sentence case
+ * (item 13); the obstacles dial shares the round-picture frame with its key under it (item 12).
  * DOM nodes and textContent only. CSS injected once.
  */
 
 import { fmtDistance } from './GroundGuideEvaluator';
 import { compassBearing, whereNode } from './GroundGuideNorth';
 import type { BuildingsReading, GroundReading, ObstacleHit, ObstaclesReading, RoadsReading, SectionPlace, WeatherReading } from './GroundGuideSections';
+import {
+  ensureTokensCss,
+  FONT,
+  FS,
+  FW,
+  LETTER_FG,
+  LETTER_FILL,
+  LINE,
+  NEUTRAL_OBSTACLE,
+  ROAD,
+  ROSE_C,
+  ROSE_PX,
+  ROSE_R,
+  roseFrame,
+  roseHub,
+  roseKey,
+  ruler,
+  STEP_COLOR,
+  STEP_TEXT,
+  SURFACE,
+  TEXT,
+  TONE,
+} from './GroundGuideTokens';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const STYLE_ID = 'ms-ground-guide-sections-styles';
-const LETTER: Record<'G' | 'R' | 'O' | 'B' | 'W', [string, string]> = {
-  G: ['#8fb35a', '#1b1f25'],
-  R: ['#c9a46b', '#1b1f25'],
-  O: ['#7a5cc9', '#fff'],
-  B: ['#9a8f86', '#1b1f25'],
-  W: ['#4a7f95', '#fff'],
-};
+/** The section letters (neutral badges: a letter is not a verdict, item 16). */
+type Letter = 'G' | 'R' | 'O' | 'B' | 'W';
+/** The route check for the mode is a verdict, so it keeps the ladder: [background, text, heading]. */
 const CHECK: Record<string, [string, string, string]> = {
-  ok: ['#1d3a2a', '#7ee0a5', 'Suits the mode'],
-  warn: ['#3a2a14', '#ffb766', 'Limited'],
-  stop: ['#3d1c1e', '#ff8a8d', 'Does not suit the mode'],
-  unknown: ['#2e2a1c', '#ffd27a', 'Check first'],
+  ok: ['#1d3a2a', STEP_TEXT.go, 'Suits the mode'],
+  warn: ['#3a2a14', STEP_TEXT.slow, 'Limited'],
+  stop: ['#3d1c1e', STEP_TEXT.nogo, 'Does not suit the mode'],
+  unknown: ['#2e2a1c', TEXT.warn, 'Check first'],
 };
-const EFFECT: Record<string, string> = { 'NO-GO': '#e5484d', 'SLOW-GO': '#f0932b' };
-/** Terrain type colours (`terrain` codes 1-9): land greens and browns, water blues, built-up grey, snow white. */
-const TERRAIN: Record<number, string> = { 1: '#9cc45a', 2: '#c9a46b', 3: '#8a8f98', 4: '#4aa3a0', 5: '#4a90c8', 6: '#e0c070', 7: '#a07850', 8: '#9a8f86', 9: '#e8f0f8' };
+const EFFECT: Record<'NO-GO' | 'SLOW-GO', { fill: string; fg: string }> = { 'NO-GO': TONE.nogo, 'SLOW-GO': TONE.slow };
+/** Terrain type colours (`terrain` codes 1-9): land khaki and browns, water blues, built-up grey, snow white (no verdict green). */
+const TERRAIN: Record<number, string> = { 1: '#b3ad7a', 2: '#c9a46b', 3: '#8a8f98', 4: '#4aa3a0', 5: '#4a90c8', 6: '#e0c070', 7: '#a07850', 8: '#9a8f86', 9: '#e8f0f8' };
 const BANDS = ['Level', 'Gentle', 'Sloping', 'Moderate', 'Steep'];
-const BAND_COL = ['#2fa862', '#7fc35a', '#d9c54a', '#f0932b', '#e5484d'];
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+/** Month bars: a cold month blue, a 40°+ month in the caution yellow, the rest neutral (red and orange are verdicts). */
+const WX = { mild: TEXT.soft, cold: '#8cc4ff', hot: TEXT.warn, rain: '#4a90c8' } as const;
 /** Labels of protected kinds (features/index.json), for the B protected style. */
 const PROTECTED = /^(Mosque|Tomb|Temple|Church|Eidgah|Graveyard \/ grave|Hospital|Basic health unit|Dispensary|School \/ college)$/;
 
 const CSS = `
 .ms-gx-cap{display:flex;align-items:center;gap:6px}
-.ms-gx-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif}
-.ms-gx-soft{color:#9aa3ad;font-size:11px;line-height:1.35;margin-top:4px}
-.ms-gx-soft b{color:#e8ebee;font-weight:600}
+.ms-gx-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:17px;height:17px;border-radius:4px;font:${FW.bold} ${FS.meta}px/1 ${FONT};background:${LETTER_FILL};color:${LETTER_FG}}
+.ms-gx-soft{color:${TEXT.label};font-size:${FS.meta}px;line-height:1.35;margin-top:4px}
+.ms-gx-soft b{color:${TEXT.main};font-weight:${FW.semi}}
 .ms-gx-chips{display:flex;flex-wrap:wrap;gap:4px}
-.ms-gx-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:1;padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.07);color:#e8ebee;white-space:nowrap}
-.ms-gx-chip i{display:inline-block;width:8px;height:8px;border-radius:2px}
-.ms-gx-gauge{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;margin-top:5px}
-.ms-gx-gauge>span{font:700 8.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.03em;text-align:center;padding:4px 0 3px;border-radius:2px;background:rgba(255,255,255,.06);color:#6b737c}
+.ms-gx-chip{display:inline-flex;align-items:center;gap:5px;max-width:100%;font-size:${FS.meta}px;line-height:1.25;padding:3px 8px;border-radius:999px;background:${LINE.soft};color:${TEXT.main}}
+.ms-gx-chip i{display:inline-block;flex:none;width:8px;height:8px;border-radius:2px}
 .ms-gx-sign{display:flex;gap:9px;align-items:flex-start}
-.ms-gx-shield{flex:none;min-width:44px;text-align:center;font:800 13px/1 system-ui,Segoe UI,Arial,sans-serif;padding:7px 6px;border-radius:6px 6px 14px 14px;background:#f3f5f7;color:#1b1f25;border:2px solid #1b1f25;box-shadow:0 0 0 1.5px #f3f5f7}
-.ms-gx-shield.ms-msr{background:#d64541;color:#fff;box-shadow:0 0 0 1.5px #d64541}
-.ms-gx-sign b{display:block;color:#fff;font-size:12.5px;line-height:1.25}
+.ms-gx-shield{flex:none;min-width:44px;text-align:center;font:${FW.bold} ${FS.body}px/1 ${FONT};padding:7px 6px;border-radius:6px 6px 14px 14px;background:${SURFACE.head};color:${TEXT.main};border:1.5px solid ${LINE.ring}}
+.ms-gx-shield.ms-msr{background:${ROAD.msr};color:${ROAD.msrCasing};border:2px solid ${ROAD.msrCasing};box-shadow:0 0 0 1.5px ${ROAD.msr}}
+.ms-gx-shield small{display:block;margin-top:3px;font:${FW.bold} ${FS.meta}px/1 ${FONT}}
+.ms-gx-sign b{display:block;color:${TEXT.strong};font-size:${FS.meta}px;font-weight:${FW.bold};line-height:1.25}
 .ms-gx-big{border-radius:7px;padding:7px 9px}
-.ms-gx-big b{display:block;font-size:14px;letter-spacing:.02em;text-transform:uppercase}
-.ms-gx-big span{display:block;font-size:11.5px;margin-top:2px;opacity:.95}
+.ms-gx-big b{display:block;font-size:${FS.body}px;font-weight:${FW.bold}}
+.ms-gx-big span{display:block;font-size:${FS.meta}px;margin-top:2px}
 .ms-gx-tiles{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.ms-gx-tile{border-radius:6px;padding:5px 7px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.1);min-width:0}
-.ms-gx-tile small{display:block;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#9aa3ad;margin-bottom:3px}
-.ms-gx-tile b{display:block;color:#fff;font-size:11.5px;line-height:1.25}
-.ms-gx-tile span{display:block;color:#c3cbd3;font-size:10.5px;margin-top:2px}
-.ms-gx-where{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 8px;font-size:11.5px;line-height:1.35}
-.ms-gx-where>span:nth-child(odd){color:#9aa3ad;font-size:10.5px}
-.ms-gx-where b{color:#fff;font-weight:600}
-.ms-gx-list{margin:0;padding:0;list-style:none;font-size:11.5px;line-height:1.45}
+.ms-gx-tile{border-radius:6px;padding:5px 7px;background:${LINE.soft};border:1.5px solid ${LINE.hair};min-width:0}
+.ms-gx-tile small{display:block;font:${FW.semi} ${FS.meta}px/1.2 ${FONT};color:${TEXT.label};margin-bottom:3px}
+.ms-gx-tile b{display:block;color:${TEXT.strong};font-size:${FS.meta}px;font-weight:${FW.semi};line-height:1.25}
+.ms-gx-tile span{display:block;color:${TEXT.label};font-size:${FS.meta}px;margin-top:2px}
+.ms-gx-where{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 8px;font-size:${FS.meta}px;line-height:1.35;color:${TEXT.main}}
+.ms-gx-where>span:nth-child(odd){color:${TEXT.label}}
+.ms-gx-where b{color:${TEXT.strong};font-weight:${FW.semi}}
+.ms-gx-list{margin:0;padding:0;list-style:none;font-size:${FS.meta}px;line-height:1.45;color:${TEXT.main}}
 .ms-gx-list li{display:flex;justify-content:space-between;gap:8px}
-.ms-gx-list li span:last-child{color:#9aa3ad;white-space:nowrap}
+.ms-gx-list li span:last-child{color:${TEXT.label};white-space:nowrap}
 .ms-gx-icons{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center}
-.ms-gx-icons>div{border-radius:6px;background:rgba(255,255,255,.05);padding:5px 2px}
-.ms-gx-icons b{display:block;color:#fff;font-size:15px;line-height:1.1;font-variant-numeric:tabular-nums}
-.ms-gx-icons small{display:block;color:#9aa3ad;font-size:10px;margin-top:2px}
+.ms-gx-icons>div{border-radius:6px;background:${LINE.soft};padding:5px 2px}
+.ms-gx-icons b{display:block;color:${TEXT.strong};font-size:${FS.value}px;font-weight:${FW.bold};line-height:1.1;font-variant-numeric:tabular-nums}
+.ms-gx-icons small{display:block;color:${TEXT.label};font-size:${FS.meta}px;margin-top:2px}
 .ms-gx-ob{padding:6px 8px 7px 9px}
 .ms-gx-ob small{display:flex;align-items:center;gap:5px;margin-bottom:4px}
 .ms-gx-ob svg.ms-gx-ic{width:15px;height:15px;flex:none}
-.ms-gx-ob .ms-gx-at{display:block;color:#c3cbd3;font-size:10.5px;margin-top:2px}
-.ms-gx-nat{border:1px solid rgba(156,207,106,.4);border-left:3px solid #9ccf6a;border-radius:10px;background:linear-gradient(135deg,rgba(156,207,106,.15),rgba(156,207,106,.03))}
-.ms-gx-nat small{color:#b7dc8f}
-.ms-gx-man{border:1px solid rgba(159,180,207,.4);border-left:3px solid #9fb4cf;border-radius:3px;background:repeating-linear-gradient(135deg,rgba(159,180,207,.1) 0 5px,rgba(159,180,207,.03) 5px 10px)}
-.ms-gx-man small{color:#c9d7ea}
-.ms-gx-eff{display:inline-block;margin-top:5px;font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;padding:3px 6px;border-radius:4px}
+.ms-gx-ob .ms-gx-at{display:block;color:${TEXT.label};font-size:${FS.meta}px;margin-top:2px}
+.ms-gx-nat{border:1px solid rgba(127,149,168,.45);border-left:3px solid ${NEUTRAL_OBSTACLE};border-radius:10px;background:linear-gradient(135deg,rgba(127,149,168,.16),rgba(127,149,168,.04))}
+.ms-gx-man{border:1px solid rgba(194,200,206,.4);border-left:3px solid #c2c8ce;border-radius:3px;background:repeating-linear-gradient(135deg,rgba(194,200,206,.09) 0 5px,rgba(194,200,206,.03) 5px 10px)}
+.ms-gx-nat small,.ms-gx-man small{color:${TEXT.label}}
+.ms-gx-eff{display:inline-block;margin-top:5px;font:${FW.bold} ${FS.meta}px/1.2 ${FONT};padding:2px 7px;border-radius:4px}
 .ms-gx-obg{padding:6px 8px 7px;margin-top:6px}
 .ms-gx-obg:first-child{margin-top:0}
-.ms-gx-obh{display:flex;align-items:center;gap:6px;font:700 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
+.ms-gx-obh{display:flex;align-items:center;gap:6px;font:${FW.semi} ${FS.body}px/1.25 ${FONT};color:${TEXT.main};margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid ${LINE.hair}}
 .ms-gx-obh svg{width:15px;height:15px}
-.ms-gx-nat .ms-gx-obh{color:#b7dc8f}
-.ms-gx-man .ms-gx-obh{color:#c9d7ea}
-.ms-gx-obr{display:grid;grid-template-columns:16px 66px minmax(0,1fr);gap:0 6px;align-items:start;font-size:11.5px;line-height:1.4;padding:3px 0}
-.ms-gx-obr+.ms-gx-obr{border-top:1px solid rgba(255,255,255,.07)}
+.ms-gx-obr{display:grid;grid-template-columns:16px minmax(66px,auto) minmax(0,1fr);gap:0 6px;align-items:start;font-size:${FS.meta}px;line-height:1.4;padding:3px 0}
+.ms-gx-obr+.ms-gx-obr{border-top:1px solid ${LINE.soft}}
 .ms-gx-obr>svg{width:14px;height:14px;margin-top:1px}
-.ms-gx-obr>.k{color:#9aa3ad;font-size:10.5px;padding-top:1px}
-.ms-gx-obr>.v{min-width:0;color:#e8ebee;overflow-wrap:anywhere}
-.ms-gx-obr.ms-none>.v{color:#7d8792}
-.ms-gx-obdial{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.ms-gx-obkey{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#c3cbd3}
+.ms-gx-obr>.k{color:${TEXT.label};white-space:nowrap}
+.ms-gx-obr>.v{min-width:0;color:${TEXT.main};overflow-wrap:anywhere}
+.ms-gx-obr.ms-none>.v{color:${TEXT.label}}
+.ms-gx-obdial{display:flex;gap:6px 12px;align-items:flex-start;flex-wrap:wrap}
+.ms-gx-obpic{flex:none;display:flex;flex-direction:column;align-items:center;max-width:${ROSE_PX + 50}px}
+.ms-gx-obkey{flex:1 1 110px;min-width:0;display:flex;flex-direction:column;gap:5px;padding-top:8px;font-size:${FS.meta}px;color:${TEXT.label}}
 .ms-gx-obkey span{display:inline-flex;align-items:center;gap:6px}
-.ms-gx-obkey i{display:inline-block;width:10px;height:10px;box-sizing:border-box}
+.ms-gx-obkey b{color:${TEXT.strong};font-weight:${FW.semi}}
+.ms-gx-obkey i{display:inline-block;flex:none;width:10px;height:10px;box-sizing:border-box}
 `;
 
 function ensureCss(): void {
+  ensureTokensCss();
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
@@ -127,18 +150,16 @@ function sv(tag: string, attrs: Record<string, string | number>): SVGElement {
 }
 
 function svText(x: number, y: number, text: string, attrs: Record<string, string | number> = {}): SVGElement {
-  const t = sv('text', { x, y, fill: '#c3cbd3', 'font-size': 9, 'font-family': 'system-ui, Segoe UI, Arial, sans-serif', ...attrs });
+  const t = sv('text', { x, y, fill: TEXT.label, 'font-size': FS.meta, 'font-family': FONT, ...attrs });
   t.textContent = text;
   return t;
 }
 
-function section(l: keyof typeof LETTER, caption: string, ...content: Array<Node | null>): HTMLElement {
+function section(l: Letter, caption: string, ...content: Array<Node | null>): HTMLElement {
   ensureCss();
   const sec = el('div', 'ms-ggb-sec');
   const cap = el('div', 'ms-ggb-cap ms-gx-cap');
   const b = el('span', 'ms-gx-l', l);
-  b.style.background = LETTER[l][0];
-  b.style.color = LETTER[l][1];
   cap.append(b, caption);
   sec.append(cap, ...content.filter((c): c is Node => c !== null));
   return sec;
@@ -224,17 +245,20 @@ function crestProfile(g: GroundReading): SVGElement | null {
   if (c.where === 'above') {
     let dd = '';
     for (let i = c.iP; i <= c.iM; i++) dd += `${i === c.iP ? 'M' : 'L'} ${X(i).toFixed(1)} ${Y(p[i]).toFixed(1)} `;
-    svg.append(sv('path', { d: dd, fill: 'none', stroke: '#ff8a8d', 'stroke-width': 4, 'stroke-opacity': 0.55 }));
+    svg.append(sv('path', { d: dd, fill: 'none', stroke: TEXT.warn, 'stroke-width': 4, 'stroke-opacity': 0.5 })); // caution, not a verdict colour
   }
   svg.append(sv('path', { d, fill: 'none', stroke: tcol, 'stroke-width': 2 }));
   const mx = X(c.iM);
   const my = Y(p[c.iM]);
-  svg.append(sv('line', { x1: mx, y1: my - 12, x2: mx, y2: my + 2, stroke: '#ffd27a', 'stroke-width': 1.4, 'stroke-dasharray': '2 2' }), svText(mx, my - 14, 'MC', { fill: '#ffd27a', 'font-weight': 700, 'font-size': 9, 'text-anchor': 'middle' }));
+  // MC sits over its tick, kept inside the picture; it moves aside from the "Top" label when the crest is near it.
+  const mcY = Math.max(11, my - 14);
+  const mcX = mcY < 20 && mx < 92 ? Math.max(mx, 92) : mx;
+  svg.append(sv('line', { x1: mx, y1: my - 12, x2: mx, y2: my + 2, stroke: TEXT.warn, 'stroke-width': 1.4, 'stroke-dasharray': '2 2' }), svText(mcX, mcY, 'MC', { fill: TEXT.warn, 'font-weight': FW.bold, 'text-anchor': 'middle' }));
   const px = X(c.iP);
   const py = Y(p[c.iP]);
-  svg.append(sv('circle', { cx: px, cy: py, r: 4.5, fill: '#fff', stroke: '#1b1f25', 'stroke-width': 1.5 }));
-  svg.append(svText(4, 9, `Top ${p[0]} m`, { 'font-size': 8.5, fill: '#9aa3ad' }), svText(W - 4, H - 1, `Foot ${p[p.length - 1]} m · faces ${c.faces} →`, { 'font-size': 8.5, fill: '#9aa3ad', 'text-anchor': 'end' }));
-  svg.append(svText(4, H - 1, `${fmtDistance(c.stepM * (p.length - 1))} of slope`, { 'font-size': 8.5, fill: '#9aa3ad' }));
+  svg.append(sv('circle', { cx: px, cy: py, r: 4.5, fill: TEXT.strong, stroke: SURFACE.card, 'stroke-width': 1.5 }));
+  svg.append(svText(4, 11, `Top ${p[0]} m`), svText(W - 4, H - 1, `Foot ${p[p.length - 1]} m · faces ${c.faces} →`, { 'text-anchor': 'end' }));
+  svg.append(svText(4, H - 1, `${fmtDistance(c.stepM * (p.length - 1))} of slope`));
   return svg;
 }
 
@@ -277,24 +301,16 @@ export function groundRelief(g: GroundReading): HTMLElement {
   const tx = flat ? 0.5 : LANDFORM_X[g.landform!];
   const px = tx * (W - 20) + 4;
   const py = y(tx);
-  svg.append(sv('line', { x1: px, y1: py, x2: px, y2: py - 14, stroke: '#fff', 'stroke-width': 1.2 }), sv('circle', { cx: px, cy: py, r: 4.5, fill: '#fff', stroke: '#1b1f25', 'stroke-width': 1.5 }));
+  svg.append(sv('line', { x1: px, y1: py, x2: px, y2: py - 14, stroke: TEXT.strong, 'stroke-width': 1.2 }), sv('circle', { cx: px, cy: py, r: 4.5, fill: TEXT.strong, stroke: SURFACE.card, 'stroke-width': 1.5 }));
   // The point's height beside its marker (on the left when the marker is on the right half), the high ground top left.
   if (g.elevationM !== null) {
     const right = px > W / 2;
-    svg.append(svText(right ? px - 5 : px + 5, py - 16, `${g.elevationM} m`, { fill: '#fff', 'font-weight': 700, 'font-size': 10, 'text-anchor': right ? 'end' : 'start' }));
+    svg.append(svText(right ? px - 5 : px + 5, Math.max(12, py - 16), `${g.elevationM} m`, { fill: TEXT.strong, 'font-weight': FW.bold, 'text-anchor': right ? 'end' : 'start' }));
   }
-  if (g.high) svg.append(svText(4, 10, `▲ ${g.high.elevationM} m · ${g.high.compass}`, { fill: '#ffd27a' }));
-  svg.append(svText(4, H - 1, g.landform ?? 'Landform not mapped', { 'font-size': 8.5, fill: '#9aa3ad' }));
-  const gauge = el('div', 'ms-gx-gauge');
-  const bi = bandIndex(g);
-  BANDS.forEach((b, i) => {
-    const s = el('span', undefined, b);
-    if (i === bi) {
-      s.style.background = BAND_COL[i];
-      s.style.color = i >= 2 && i <= 3 ? '#1b1f25' : '#fff';
-    }
-    gauge.append(s);
-  });
+  if (g.high) svg.append(svText(4, 12, `▲ ${g.high.elevationM} m · ${g.high.compass}`, { fill: TEXT.warn }));
+  svg.append(svText(4, H - 1, g.landform ?? 'Landform not mapped'));
+  // The slope band is a reading, not a control (item 11): a ruler with a marker, not a row of pressed boxes.
+  const gauge = ruler(BANDS, bandIndex(g));
   return section(
     'G',
     `Gr · ${g.terrain?.label ?? 'Relief'}`,
@@ -313,17 +329,18 @@ export function groundChips(g: GroundReading): HTMLElement {
   if (g.terrain) c.append(chip(g.terrain.label, TERRAIN[g.terrain.code]));
   if (g.elevationM !== null) c.append(chip(`${g.elevationM} m`));
   const bi = bandIndex(g);
-  if (bi >= 0) c.append(chip(`${Math.round(g.slopeDeg ?? 0)}° ${BANDS[bi]}`, BAND_COL[bi]));
+  // The slope band is not a verdict for the mode: its chip carries no ladder colour (item 16).
+  if (bi >= 0) c.append(chip(`${Math.round(g.slopeDeg ?? 0)}° ${BANDS[bi]}`));
   if (g.landform) c.append(chip(g.landform));
   if (g.aspect) c.append(chip(`Faces ${g.aspect.compass}`));
-  if (g.crest) c.append(chip(g.crest.where === 'on' ? 'On the military crest' : `MC ${fmtDistance(g.crest.distanceM)} ${g.crest.compass}`, '#ffd27a'));
+  if (g.crest) c.append(chip(g.crest.where === 'on' ? 'On the military crest' : `MC ${fmtDistance(g.crest.distanceM)} ${g.crest.compass}`, TEXT.warn));
   if (g.rough && g.rough.level >= 2) c.append(chip(g.rough.label, '#c9a46b'));
   if (g.dunes) c.append(chip(dunesText(g)?.lead ?? 'Dunes', '#d8b26a'));
   if (g.groundSym?.[0]) c.append(chip(`${g.groundSym[0].label} ${at(g.groundSym[0])}`, '#9a8f86'));
-  if (g.high) c.append(chip(`▲ ${g.high.aboveM !== null ? `+${g.high.aboveM} m` : `${g.high.elevationM} m`} ${at(g.high)}`, '#ffd27a'));
-  if (g.water[0]) c.append(chip(`${g.water[0].label} ${at(g.water[0])}`, '#4a90c8'));
-  if (g.namedWater) c.append(chip(`${nameOf(g.namedWater)} ${at(g.namedWater)}`, '#4a90c8'));
-  if (g.area) c.append(chip(nameOf(g.area), '#8fb35a'));
+  if (g.high) c.append(chip(`▲ ${g.high.aboveM !== null ? `+${g.high.aboveM} m` : `${g.high.elevationM} m`} ${at(g.high)}`, TEXT.warn));
+  if (g.water[0]) c.append(chip(`${g.water[0].label} ${at(g.water[0])}`, WX.rain));
+  if (g.namedWater) c.append(chip(`${nameOf(g.namedWater)} ${at(g.namedWater)}`, WX.rain));
+  if (g.area) c.append(chip(nameOf(g.area), TEXT.label));
   return section('G', 'Gr', c);
 }
 
@@ -349,7 +366,10 @@ export function roadsShield(r: RoadsReading): HTMLElement {
   const rt = rec?.route;
   const id = rec?.number ?? rt?.number ?? null;
   const sign = el('div', 'ms-gx-sign');
-  const sh = el('div', `ms-gx-shield${rt?.msr || r.route?.msr ? ' ms-msr' : ''}`, id ?? (r.route?.typeLabel.split(' ')[0] ?? 'Rd'));
+  // An MSR is white on a dark casing and says MSR under its number (item 16); any other road a neutral sign.
+  const msr = !!(rt?.msr || r.route?.msr);
+  const sh = el('div', `ms-gx-shield${msr ? ' ms-msr' : ''}`, id ?? (r.route?.typeLabel.split(' ')[0] ?? 'Rd'));
+  if (msr) sh.append(el('small', undefined, 'MSR'));
   const txt = el('div');
   txt.append(el('b', undefined, rt?.from && rt?.to ? `${rt.from} to ${rt.to}` : rec?.name ?? rt?.name ?? r.route?.typeLabel ?? 'No named Rd near'));
   txt.append(soft([rt?.km ? `${Math.round(rt.km)} km` : null, rec ? at(rec) : r.route ? (r.route.on ? 'here' : at(r.route)) : null, rec?.defence ? 'defence Rd' : null].filter(Boolean).join(' · ')));
@@ -357,13 +377,15 @@ export function roadsShield(r: RoadsReading): HTMLElement {
   const chips = el('div', 'ms-gx-chips');
   chips.style.marginTop = '6px';
   if (rec) {
+    // A recorded condition is not a GO (it may be "poor"): neutral, never green. A closure stops the road: NO-GO red.
+    const unrec = TONE.chk.fill;
     chips.append(
-      chip(rec.loadCode ? `Load ${rec.loadCode}` : rt?.load ? `Class ${rt.load[0]}` : 'Load not recorded', rec.loadCode || rt?.load ? '#c9a46b' : '#6b737c'),
-      chip(`Condition ${rec.condition ?? rt?.condition ?? 'not recorded'}`, rec.condition || rt?.condition ? '#7ee0a5' : '#6b737c'),
-      chip(rec.closed ?? rt?.closed ? `Closed: ${rec.closed ?? rt?.closed}` : 'No closure recorded', rec.closed ?? rt?.closed ? '#e5484d' : '#6b737c'),
+      chip(rec.loadCode ? `Load ${rec.loadCode}` : rt?.load ? `Class ${rt.load[0]}` : 'Load not recorded', rec.loadCode || rt?.load ? '#c9a46b' : unrec),
+      chip(`Condition ${rec.condition ?? rt?.condition ?? 'not recorded'}`, rec.condition || rt?.condition ? TEXT.label : unrec),
+      chip(rec.closed ?? rt?.closed ? `Closed: ${rec.closed ?? rt?.closed}` : 'No closure recorded', rec.closed ?? rt?.closed ? STEP_COLOR.nogo : unrec),
     );
     if (rec.widthM) chips.append(chip(`${rec.widthM} m wide`));
-    if (rec.landslides) chips.append(chip(`${rec.landslides} landslide sites`, '#e5484d'));
+    if (rec.landslides) chips.append(chip(`${rec.landslides} landslide sites`, TEXT.warn));
   }
   return section('R', 'Rds, Trs & Rail', sign, chips.childElementCount ? chips : null, r.check ? soft(r.check.text) : null);
 }
@@ -373,8 +395,11 @@ export function roadsVerdict(r: RoadsReading): HTMLElement {
 }
 
 // ── O ────────────────────────────────────────────────────────────────────────
-/** Natural (green, rounded) and man-made (steel, square, hatched) obstacles are told apart by colour, shape and icon. */
-const OB_COLOR = { natural: '#9ccf6a', man_made: '#9fb4cf' } as const;
+/**
+ * Natural (blue-grey, rounded) and man-made (light steel, square, hatched) obstacles are told apart by tone, shape and
+ * icon; neither is green (item 16: green means GO).
+ */
+const OB_COLOR = { natural: NEUTRAL_OBSTACLE, man_made: '#c2c8ce' } as const;
 type ObKind = keyof typeof OB_COLOR;
 type ObIcon = 'water' | 'slope' | 'tree' | 'snow' | 'built' | 'line' | 'rail' | 'dam' | 'closure' | 'crop' | 'fence' | 'hill';
 const OB_PATH: Record<ObIcon, string> = {
@@ -420,8 +445,8 @@ export function obstacleIcon(text: string, kind: ObKind): SVGElement {
 
 function effectChip(effect: 'NO-GO' | 'SLOW-GO'): HTMLElement {
   const c = el('span', 'ms-gx-eff', `${effect} for the mode`);
-  c.style.background = EFFECT[effect];
-  c.style.color = effect === 'SLOW-GO' ? '#1b1f25' : '#fff';
+  c.style.background = EFFECT[effect].fill;
+  c.style.color = EFFECT[effect].fg;
   return c;
 }
 
@@ -451,7 +476,7 @@ const NATURAL_ROWS = new Set(['Natural', 'Here', 'River', 'Bank', 'Flood', 'Snow
 const ROW_ICON: Record<string, ObIcon> = { Here: 'water', River: 'water', Bank: 'water', Flood: 'water', Snow: 'snow', Canal: 'water', 'Canal Xing': 'water', Lines: 'line', Dam: 'dam', Levee: 'dam', Closures: 'closure' };
 
 /**
- * Obstacles Near in two groups, Natural (green, rounded) and Man-made (steel, hatched), each row with its icon.
+ * Obstacles Near in two groups, Natural (blue-grey, rounded) and Man-made (steel, hatched), each row with its icon.
  * `rows` are the O rows; an empty row is left out, a "None ..." row is shown muted.
  */
 export function obstaclesNear(rows: Array<[string, Node | string | null]>, o: ObstaclesReading): HTMLElement {
@@ -479,10 +504,12 @@ export function obstaclesNear(rows: Array<[string, Node | string | null]>, o: Ob
 
 /**
  * Obstacles Round It: each obstacle the reading names, plotted at its distance and compass point round the point
- * (natural a green circle, man-made a steel square, a red edge where it stops the mode). The plot turns with the map
- * (`data-gv-rose`); its N stays upright (`data-gv-upright`). Null when nothing has a place.
+ * (natural a blue-grey dot, man-made a steel square, a NO-GO red edge where it stops the mode), on the frame every
+ * round picture shares (item 12: one size, one ring, one N, the key under it). The plot turns with the map
+ * (`data-gv-rose`); its N stays upright (`data-gv-upright`). Null when nothing has a place. The size argument is kept
+ * for callers and ignored: the picture is always `ROSE_PX`.
  */
-export function obstaclesDial(o: ObstaclesReading, size = 132): HTMLElement | null {
+export function obstaclesDial(o: ObstaclesReading, _size = ROSE_PX): HTMLElement | null {
   type Mark = { kind: ObKind; label: string; distanceM: number; compass: string; stop: boolean };
   const marks: Mark[] = [];
   const put = (kind: ObKind, label: string | null | undefined, p: { distanceM: number; compass: string } | null | undefined, stop = false) => {
@@ -500,49 +527,38 @@ export function obstaclesDial(o: ObstaclesReading, size = 132): HTMLElement | nu
   if (!marks.length) return null;
   const far = Math.max(...marks.map((m) => m.distanceM));
   const range = [500, 1000, 2000, 3000, 5000, 10000, 20000, 50000].find((r) => r >= far) ?? Math.ceil(far / 10000) * 10000;
-  const c = size / 2;
-  const R = c - 13;
-  const P = (deg: number, r: number): [number, number] => [c + r * Math.sin((deg * Math.PI) / 180), c - r * Math.cos((deg * Math.PI) / 180)];
-  const svg = sv('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': 'Obstacles round the point' });
-  const g = sv('g', { 'data-gv-rose': c });
-  g.append(
-    sv('circle', { cx: c, cy: c, r: R, fill: 'rgba(255,255,255,.035)', stroke: 'rgba(255,255,255,.22)' }),
-    sv('circle', { cx: c, cy: c, r: R / 2, fill: 'none', stroke: 'rgba(255,255,255,.13)', 'stroke-dasharray': '2 3' }),
-  );
-  for (const d of [0, 90, 180, 270]) {
-    const [x1, y1] = P(d, R - 4);
-    const [x2, y2] = P(d, R);
-    g.append(sv('line', { x1, y1, x2, y2, stroke: 'rgba(255,255,255,.35)', 'stroke-width': 1.2 }));
-  }
-  const [nx, ny] = P(0, R + 7);
-  g.append(svText(nx, ny, 'N', { 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 10, 'font-weight': 700, fill: '#fff', 'data-gv-upright': `${nx.toFixed(1)} ${ny.toFixed(1)}` }));
+  const nNat = marks.filter((m) => m.kind === 'natural').length;
+  const f = roseFrame(`Obstacles round the point within ${fmtDistance(range)}: ${nNat} natural, ${marks.length - nNat} man-made`);
+  // The range ring just inside the frame's ring (a mark at the range stays on the disc), half the range dashed.
+  const R = ROSE_R - 4;
+  f.add('circle', { cx: ROSE_C, cy: ROSE_C, r: R, fill: 'none', stroke: LINE.hair });
+  f.add('circle', { cx: ROSE_C, cy: ROSE_C, r: R / 2, fill: 'none', stroke: LINE.hair, 'stroke-dasharray': '2 3' });
+  const P = (deg: number, r: number): [number, number] => [ROSE_C + r * Math.sin((deg * Math.PI) / 180), ROSE_C - r * Math.cos((deg * Math.PI) / 180)];
   // Farthest first, so a near mark is drawn over a far one.
   for (const m of [...marks].sort((x, y) => y.distanceM - x.distanceM)) {
-    const [x, y] = P(compassBearing(m.compass)!, Math.max(7, (Math.min(m.distanceM, range) / range) * R));
+    const [x, y] = P(compassBearing(m.compass)!, Math.max(8, (Math.min(m.distanceM, range) / range) * R));
     const col = OB_COLOR[m.kind];
-    const edge = { stroke: m.stop ? '#ff5a5f' : '#1b1f25', 'stroke-width': m.stop ? 2 : 1.2 };
-    const mk = m.kind === 'natural' ? sv('circle', { cx: x, cy: y, r: 4.6, fill: col, ...edge }) : sv('rect', { x: x - 4.2, y: y - 4.2, width: 8.4, height: 8.4, rx: 1, fill: col, ...edge });
-    const tip = sv('title', {});
-    tip.textContent = `${m.label} · ${fmtDistance(m.distanceM)} ${m.compass}`;
-    mk.append(tip);
-    g.append(mk);
+    const edge = { stroke: m.stop ? STEP_COLOR.nogo : SURFACE.ring, 'stroke-width': m.stop ? 2 : 1.2 };
+    const mk = m.kind === 'natural' ? f.add('circle', { cx: x, cy: y, r: 4.6, fill: col, ...edge }) : f.add('rect', { x: x - 4.2, y: y - 4.2, width: 8.4, height: 8.4, rx: 1, fill: col, ...edge });
+    f.add('title', {}, mk, `${m.label} · ${fmtDistance(m.distanceM)} ${m.compass}${m.stop ? ' · stops the mode' : ''}`);
   }
-  g.append(sv('circle', { cx: c, cy: c, r: 3.2, fill: '#fff', stroke: '#1b1f25', 'stroke-width': 1.2 }));
-  svg.append(g);
-  const key = el('div', 'ms-gx-obkey');
-  const item = (swatch: string, text: string) => {
+  roseHub(f, 3.5);
+  // The counts stay beside the picture; the key goes under it (item 12).
+  const pic = el('div', 'ms-gx-obpic');
+  pic.append(f.svg, roseKey(`Dots natural · squares man-made · rings ${fmtDistance(range / 2)} · ${fmtDistance(range)}`));
+  const side = el('div', 'ms-gx-obkey');
+  const item = (swatch: string, text: string, n?: number) => {
     const s = el('span');
     const i = el('i');
     i.style.cssText = swatch;
     s.append(i, text);
+    if (n !== undefined) s.append(' ', el('b', undefined, String(n)));
     return s;
   };
-  const nNat = marks.filter((m) => m.kind === 'natural').length;
-  key.append(item(`background:${OB_COLOR.natural};border-radius:50%`, `Natural · ${nNat}`), item(`background:${OB_COLOR.man_made};border-radius:2px`, `Man-made · ${marks.length - nNat}`));
-  if (marks.some((m) => m.stop)) key.append(item('border:2px solid #ff5a5f;border-radius:50%', 'Stops the mode'));
-  key.append(el('span', undefined, `Rings ${fmtDistance(range / 2)} · ${fmtDistance(range)}`));
+  side.append(item(`background:${OB_COLOR.natural};border-radius:50%`, 'Natural', nNat), item(`background:${OB_COLOR.man_made};border-radius:2px`, 'Man-made', marks.length - nNat));
+  if (marks.some((m) => m.stop)) side.append(item(`border:2px solid ${STEP_COLOR.nogo};border-radius:50%`, 'Red edge: stops the mode'));
   const row = el('div', 'ms-gx-obdial');
-  row.append(svg, key);
+  row.append(pic, side);
   return section('O', `Obs Round It · ${fmtDistance(range)}`, row);
 }
 
@@ -566,18 +582,18 @@ export function obstaclesGap(o: ObstaclesReading): HTMLElement {
   const g0 = top + bank;
   svg.append(
     sv('path', { d: `M 0 ${g0} L ${x0 - 14} ${g0} L ${x0 - 8} ${top} L ${x0} ${top} L ${x0 + 12} ${top + bank + dPx} L ${x1 - 12} ${top + bank + dPx} L ${x1} ${top} L ${x1 + 8} ${top} L ${x1 + 14} ${g0} L ${W} ${g0} L ${W} ${H} L 0 ${H} Z`, fill: '#8a6d4a', 'fill-opacity': 0.55 }),
-    sv('path', { d: `M ${x0 + 12 * (1 / 3) + 4} ${top + bank + dPx / 3} L ${x1 - 4 - 12 / 3} ${top + bank + dPx / 3} L ${x1 - 12} ${top + bank + dPx} L ${x0 + 12} ${top + bank + dPx} Z`, fill: '#4a90c8', 'fill-opacity': 0.8 }),
+    sv('path', { d: `M ${x0 + 12 * (1 / 3) + 4} ${top + bank + dPx / 3} L ${x1 - 4 - 12 / 3} ${top + bank + dPx / 3} L ${x1 - 12} ${top + bank + dPx} L ${x0 + 12} ${top + bank + dPx} Z`, fill: WX.rain, 'fill-opacity': 0.8 }),
   );
   if (gap.w) {
     svg.append(
-      sv('line', { x1: x0, y1: 21, x2: x1, y2: 21, stroke: '#fff', 'stroke-width': 1 }),
-      sv('line', { x1: x0, y1: 17, x2: x0, y2: 25, stroke: '#fff', 'stroke-width': 1 }),
-      sv('line', { x1: x1, y1: 17, x2: x1, y2: 25, stroke: '#fff', 'stroke-width': 1 }),
-      svText(W / 2, 13, `${gap.w} m wide`, { fill: '#fff', 'font-weight': 700, 'text-anchor': 'middle' }),
+      sv('line', { x1: x0, y1: 21, x2: x1, y2: 21, stroke: TEXT.strong, 'stroke-width': 1 }),
+      sv('line', { x1: x0, y1: 17, x2: x0, y2: 25, stroke: TEXT.strong, 'stroke-width': 1 }),
+      sv('line', { x1: x1, y1: 17, x2: x1, y2: 25, stroke: TEXT.strong, 'stroke-width': 1 }),
+      svText(W / 2, 13, `${gap.w} m wide`, { fill: TEXT.strong, 'font-weight': FW.bold, 'text-anchor': 'middle' }),
     );
   }
-  if (gap.d) svg.append(svText(x1 - 4, top + bank + dPx - 2, `${gap.d} m deep`, { fill: '#fff', 'text-anchor': 'end' }));
-  if (gap.b) svg.append(svText(4, top + bank - 4, `banks ${gap.b} m`, { fill: '#e8ebee' }));
+  if (gap.d) svg.append(svText(x1 - 4, top + bank + dPx - 2, `${gap.d} m deep`, { fill: TEXT.strong, 'text-anchor': 'end' }));
+  if (gap.b) svg.append(svText(4, top + bank - 4, `banks ${gap.b} m`, { fill: TEXT.main }));
   const hit = o.manMade?.label?.toLowerCase().includes('canal') ? o.manMade : o.natural;
   return section('O', 'Obs · Gap', svg, soft(el('b', undefined, gap.name), ` · ${gap.at}`, hit?.effect ? ` · ${hit.effect} for the mode` : '', r && gap.w === null && r.currentMs ? ` · ${r.currentMs} m/s` : ''));
 }
@@ -600,7 +616,7 @@ export function buildingsWhere(b: BuildingsReading): HTMLElement {
     const near = b.border.distanceKm < 10;
     const v = el('span');
     const s = el('b', undefined, `${b.border.distanceKm < 10 ? b.border.distanceKm.toFixed(1) : Math.round(b.border.distanceKm)} km ${b.border.compass}`);
-    if (near) s.style.color = '#ff8a8d';
+    if (near) s.style.color = TEXT.warn; // a caution, not a verdict
     v.append(s, ` · ${b.border.kind}`);
     g.append(el('span', undefined, 'Border'), v);
   }
@@ -638,20 +654,20 @@ export function weatherYear(w: WeatherReading): HTMLElement {
   const pMax = Math.max(...w.months.prec, 1);
   const col = W / 12;
   const ty = (t: number) => 4 + ((hi - t) / Math.max(1, hi - lo)) * 34;
-  if (lo < 0) svg.append(sv('line', { x1: 0, y1: ty(0), x2: W, y2: ty(0), stroke: '#8cc4ff', 'stroke-dasharray': '2 3', 'stroke-width': 0.8 }));
+  if (lo < 0) svg.append(sv('line', { x1: 0, y1: ty(0), x2: W, y2: ty(0), stroke: WX.cold, 'stroke-dasharray': '2 3', 'stroke-width': 0.8 }));
   for (let m = 0; m < 12; m++) {
     const x = m * col + col / 2;
     const mx = w.months.tmax[m];
     const mn = w.months.tmin[m];
     if (mx !== null && mn !== null) {
       const hot = w.hot.length && mx >= 40;
-      svg.append(sv('rect', { x: x - 4, y: ty(mx), width: 8, height: Math.max(2, ty(mn) - ty(mx)), rx: 2, fill: hot ? '#e5484d' : mn < 0 ? '#8cc4ff' : '#f0b04b' }));
+      svg.append(sv('rect', { x: x - 4, y: ty(mx), width: 8, height: Math.max(2, ty(mn) - ty(mx)), rx: 2, fill: hot ? WX.hot : mn < 0 ? WX.cold : WX.mild }));
     }
     const ph = (w.months.prec[m] / pMax) * 18;
-    svg.append(sv('rect', { x: x - 4, y: 58 - ph, width: 8, height: Math.max(0.5, ph), fill: '#4a90c8' }));
-    const lbl = svText(x, 70, MONTHS[m], { 'text-anchor': 'middle', 'font-size': 8.5, fill: m === w.month - 1 ? '#fff' : '#7f8994', 'font-weight': m === w.month - 1 ? 700 : 400 });
+    svg.append(sv('rect', { x: x - 4, y: 58 - ph, width: 8, height: Math.max(0.5, ph), fill: WX.rain }));
+    const lbl = svText(x, 70, MONTHS[m], { 'text-anchor': 'middle', fill: m === w.month - 1 ? TEXT.strong : TEXT.label, 'font-weight': m === w.month - 1 ? FW.bold : FW.regular });
     svg.append(lbl);
-    if (m === w.month - 1) svg.append(sv('rect', { x: x - col / 2 + 1, y: 1, width: col - 2, height: 72, rx: 3, fill: 'none', stroke: '#fff', 'stroke-width': 1 }));
+    if (m === w.month - 1) svg.append(sv('rect', { x: x - col / 2 + 1, y: 1, width: col - 2, height: 72, rx: 3, fill: 'none', stroke: TEXT.main, 'stroke-width': 1 }));
   }
   return section(
     'W',

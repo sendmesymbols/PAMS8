@@ -22,12 +22,41 @@
  * one line that T opens.
  *
  * Built from DOM nodes and `textContent` only, in the card's own classes plus a few of its own (injected once).
+ *
+ * Visual review (user, 2026-11-08): colours, sizes and the gauge come from GroundGuideTokens.ts. A going word carries
+ * its ladder colour and icon (item 1); GO / SLOW-GO / NO-GO as a scale is the shared gauge, never a row of boxes
+ * (item 2); roads are drawn in their class colours, off red and green (item 16): MSR white on a dark casing with the
+ * letters MSR, all-weather blue, fair-weather violet, track dashed grey. No tracked capitals (item 13), one type
+ * scale (item 17), no text dimmed by opacity (item 18). Cross-country directions are "Open Dirs 6 of 8" (item 10).
  */
 
 import { fmtDistance } from './GroundGuideEvaluator';
 import { registerBriefSection } from './GroundGuideBrief';
-import { band, ensureGoingCss, goingScale, roseSvg, seasonIcon } from './GroundGuideGoingView';
+import { band, ensureGoingCss, roseSvg, seasonIcon } from './GroundGuideGoingView';
+import { sentenceCase } from './GroundGuideLegend';
 import { compassNode } from './GroundGuideNorth';
+import {
+  ACCENT,
+  ensureTokensCss,
+  FONT,
+  FS,
+  FW,
+  gauge,
+  LETTER_FG,
+  LETTER_FILL,
+  ladderIcon,
+  LINE,
+  ROAD,
+  ROSE_C,
+  ROSE_R,
+  STEP_COLOR,
+  STEP_TEXT,
+  SURFACE,
+  TEXT,
+  TONE,
+  toneIcon,
+  type Tone,
+} from './GroundGuideTokens';
 import type { TrafficRoad, TrafficRoadRef } from './GroundGuideTrafficability';
 import type { GoingStep, GroundGuideCardOptions, GroundGuideVerdict } from './GroundGuideTypes';
 
@@ -35,7 +64,11 @@ const STYLE_ID = 'ms-ground-guide-traffic-style';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const WORD: Record<GoingStep, string> = { go: 'GO', slow: 'SLOW-GO', nogo: 'NO-GO' };
 const ORDER: Record<GoingStep, number> = { go: 0, slow: 1, nogo: 2 };
-const COLOR: Record<GoingStep, string> = { go: '#2fa862', slow: '#f0932b', nogo: '#e5484d' };
+/** Going on the dark card: segments, bars and cells (the ladder's dot colours). */
+const COLOR = STEP_COLOR;
+/** A going step on the verdict ladder: its chip fill and icon (item 1). */
+const STEP_TONE: Record<GoingStep, Tone> = { go: 'go', slow: 'slow', nogo: 'nogo' };
+const STEPS: GoingStep[] = ['go', 'slow', 'nogo'];
 const MONTH_LETTER = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const SHORT: Record<string, string> = {
@@ -52,61 +85,76 @@ const MODE_ICON: Record<string, string[]> = {
 };
 
 const CSS = `
-.ms-ggb-tdual{display:grid;grid-template-columns:62px minmax(0,1fr);gap:4px;align-items:center;margin-top:4px}
-.ms-ggb-tdual>.ms-gv-scale{margin-top:0}
-.ms-ggb-tdual>span{color:#9aa3ad;font-size:10.5px}
-.ms-ggb-tpill{display:flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:11.5px;white-space:nowrap}
-.ms-ggb-tstep{display:inline-block;font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;padding:3px 6px 2px;border-radius:2px;vertical-align:1px;white-space:nowrap}
-.ms-ggb-tstep.ms-go{background:#2fa862;color:#fff}.ms-ggb-tstep.ms-slow{background:#f0932b;color:#1b1f25}.ms-ggb-tstep.ms-nogo{background:#e5484d;color:#fff}
-.ms-ggb-tdim{opacity:.45}
-.ms-ggb-thead{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
-.ms-ggb-tbig{font-size:15px;font-weight:700;color:#fff}
-.ms-ggb-tkv{display:grid;grid-template-columns:44px minmax(0,1fr);gap:5px 8px;align-items:start;margin-top:6px}
-.ms-ggb-tkv>.ms-ggb-tk{color:#9aa3ad;font-size:11px;padding-top:1px}
+.ms-ggb-tdual{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:center;margin-top:6px}
+.ms-ggb-tdual>span{color:${TEXT.label};font:${FW.regular} ${FS.meta}px/1.3 ${FONT};white-space:nowrap}
+.ms-ggb-tpill{display:flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;background:rgba(0,0,0,.2);font-size:${FS.meta}px;white-space:nowrap}
+/* A going word as a chip: the ladder's fill, its text colour and its icon (item 1). */
+.ms-ggb-tstep{display:inline-flex;align-items:center;gap:3px;font:${FW.bold} ${FS.meta}px/1 ${FONT};padding:3px 6px 3px 4px;border-radius:3px;vertical-align:-2px;white-space:nowrap}
+.ms-ggb-tstep>svg{flex:none}
+${STEPS.map((s) => `.ms-ggb-tstep.ms-${s}{background:${TONE[STEP_TONE[s]].fill};color:${TONE[STEP_TONE[s]].fg}}`).join('')}
+/* The other season's word in the ticker: an outline in the step's colour (dimmed by colour, never by opacity). */
+${STEPS.map((s) => `.ms-ggb-tstep.ms-${s}.ms-ggb-tdim{background:none;color:${STEP_TEXT[s]};box-shadow:inset 0 0 0 1px ${STEP_COLOR[s]}}`).join('')}
+.ms-ggb-thead{display:flex;align-items:center;gap:4px 6px;flex-wrap:wrap}
+.ms-ggb-tbig{display:inline-flex;align-items:center;gap:5px;font-size:${FS.value}px;font-weight:${FW.bold};color:${TEXT.strong}}
+.ms-ggb-tbig>svg{flex:none;width:.95em;height:.95em}
+${STEPS.map((s) => `.ms-ggb-tbig.ms-${s},.ms-ggb-tw.ms-${s}{color:${STEP_TEXT[s]}}`).join('')}
+.ms-ggb-tw{font-weight:${FW.semi}}
+.ms-ggb-tkv{display:grid;grid-template-columns:48px minmax(0,1fr);gap:5px 8px;align-items:start;margin-top:6px}
+.ms-ggb-tkv>.ms-ggb-tk{color:${TEXT.label};font-size:${FS.meta}px;padding-top:1px;display:flex;align-items:center;gap:3px}
+.ms-ggb-tkv>.ms-ggb-tstep{justify-self:start}
 .ms-ggb-troad{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.ms-ggb-tshield{flex:none;font:800 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;padding:3px 5px;border-radius:3px;background:#f3f5f7;color:#1b1f25;letter-spacing:.02em}
-/* MSR red, as the roads layer draws it (BundleRoadsLayer: there yellow is a recorded class below 60). */
-.ms-ggb-tshield.ms-msr{background:#d64541;color:#fff}
-.ms-ggb-ttag{display:inline-block;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;background:#25313c;color:#b9d6ef;white-space:nowrap;margin-top:3px}
-.ms-ggb-tg{position:relative;margin:21px 2px 4px}
-.ms-ggb-tgt{display:grid;grid-template-columns:1fr 1fr 1fr;height:10px;border-radius:5px;overflow:hidden}
-.ms-ggb-tgm{position:absolute;top:-19px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:1px}
-.ms-ggb-tgm::after{content:"";width:2px;height:15px;background:#fff;border-radius:1px;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
-.ms-ggb-tgm.ms-wet::after{background:#bfe2ff}
-.ms-ggb-tgl{display:grid;grid-template-columns:1fr 1fr 1fr;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.06em;color:#7f8994;margin-top:5px;text-align:center}
+/* Road shields in the road's class colour (item 16): MSR white on a dark casing, all-weather blue, fair-weather violet, track dashed grey. */
+.ms-ggb-tshield{flex:none;font:${FW.bold} ${FS.meta}px/1 ${FONT};padding:3px 5px;border-radius:3px;white-space:nowrap;color:${ROAD.msrCasing};background:${ROAD.allWeather}}
+.ms-ggb-tshield.ms-msr{background:${ROAD.msr};box-shadow:inset 0 0 0 1.5px ${ROAD.msrCasing}}
+.ms-ggb-tshield.ms-fw{background:${ROAD.fairWeather}}
+.ms-ggb-tshield.ms-track{background:none;color:${TEXT.main};border:1.5px dashed ${ROAD.track};padding:1.5px 3.5px}
+/* The road's class and weather: a plain line in sentence case (it was a small capital chip). */
+.ms-ggb-ttag{display:block;margin-top:3px;font:${FW.regular} ${FS.meta}px/1.35 ${FONT};color:${TEXT.label}}
+/* The going gauge with the season marks: a sun over the dry step, a drop over the step after rain. */
+.ms-ggb-tsg{margin-top:6px}
+.ms-ggb-tsg>.ms-gg-gz-bar{position:relative;height:26px}
+.ms-ggb-tsg>.ms-gg-gz-bar>i.ms-on::after{display:none}
+.ms-ggb-tsm{position:absolute;top:0;transform:translateX(-50%);display:flex;line-height:0}
 .ms-ggb-tcal{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;margin-top:6px;align-items:end}
 .ms-ggb-tcal>div{display:flex;flex-direction:column;align-items:center;gap:2px}
 .ms-ggb-tcal b{display:block;width:100%;background:#4a90c8;border-radius:1px}
 .ms-ggb-tcal i{display:block;width:100%;height:16px;border-radius:2px}
-.ms-ggb-tcal i.ms-now{outline:1.5px solid #fff;outline-offset:1px}
-.ms-ggb-tcal small{font:600 9px/1 system-ui,Segoe UI,Arial,sans-serif;color:#9aa3ad}
-.ms-ggb-ttiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:4px}
-.ms-ggb-ttile{border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:6px 3px 5px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#e8ebee}
-.ms-ggb-ttile.ms-me{border-color:var(--pb-k);background:rgba(255,255,255,.09)}
-.ms-ggb-ttile small{font-size:10px;color:#c3cbd3}
-.ms-ggb-ttile>span{display:flex;gap:2px}
-.ms-ggb-ttile>span>i{display:block;width:16px;height:7px;border-radius:2px}
+.ms-ggb-tcal i.ms-now{outline:1.5px solid ${TEXT.strong};outline-offset:1px}
+.ms-ggb-tcal small{font:${FW.semi} ${FS.meta}px/1 ${FONT};color:${TEXT.label}}
+/* Who can move here: flat columns, not pressable tiles (item 11); the mode being placed in the accent colour, its bars taller for the season now. */
+.ms-ggb-ttiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:4px 0}
+.ms-ggb-ttile{padding:3px 3px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;color:${TEXT.label};border-left:1px solid ${LINE.soft}}
+.ms-ggb-ttile:first-child{border-left:0}
+.ms-ggb-ttile.ms-me{color:${ACCENT}}
+.ms-ggb-ttile small{font-size:${FS.meta}px;color:${TEXT.label}}
+.ms-ggb-ttile.ms-me small{color:${TEXT.main};font-weight:${FW.bold}}
+.ms-ggb-ttile>span{display:flex;gap:2px;align-items:flex-end;height:10px}
+.ms-ggb-ttile>span>i{display:block;width:16px;height:6px;border-radius:2px}
+.ms-ggb-ttile>span>i.ms-now{height:10px}
 .ms-ggb-tway{display:flex;align-items:center;margin-top:20px}
-.ms-ggb-tway>.ms-dot{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:var(--pb-c)}
+.ms-ggb-tway>.ms-dot{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid ${TEXT.strong};background:var(--pb-c,${TONE.chk.fill})}
 .ms-ggb-tway>.ms-leg{flex:1;height:6px;border-radius:3px;margin:0 4px;position:relative}
-.ms-ggb-tway>.ms-leg>span{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:10px;color:#c3cbd3;white-space:nowrap}
+.ms-ggb-tway>.ms-leg>span{position:absolute;left:50%;top:-18px;transform:translateX(-50%);font-size:${FS.meta}px;color:${TEXT.label};white-space:nowrap}
 .ms-ggb-tway>.ms-end{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px}
+.ms-ggb-tway>.ms-end>small{font-size:${FS.meta}px;color:${TEXT.label}}
 .ms-ggb-trose{display:flex;gap:10px;align-items:center}
 .ms-ggb-trose>svg{flex:none}
-.ms-ggb-ttick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 11px;background:#161a1f;border-bottom:1px solid rgba(255,255,255,.06);font-size:11.5px}
-.ms-ggb-ttick>.ms-t{font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;background:#5aa9e6;color:#1b1f25;border-radius:3px;padding:2px 4px}
-.ms-ggb-ttick>.ms-sep{color:#4a535e}
+.ms-ggb-ttick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 11px;background:${SURFACE.ring};border-bottom:1px solid ${LINE.soft};font-size:${FS.meta}px}
+.ms-ggb-ttick>.ms-t{font:${FW.bold} ${FS.meta}px/1 ${FONT};background:${LETTER_FILL};color:${LETTER_FG};border-radius:3px;padding:2px 4px}
+.ms-ggb-ttick>.ms-sep{color:${LINE.ring}}
+/* Now / Rain / Rd / Months: which page T is on, as a tab line (T turns it; nothing here is clicked). */
 .ms-ggb-ttabs{display:flex;gap:3px;margin:1px 0 7px}
-.ms-ggb-ttabs>span{flex:1;text-align:center;font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:5px 0;border-radius:5px;background:rgba(255,255,255,.05);color:#9aa3ad}
-.ms-ggb-ttabs>span.ms-on{background:#5aa9e6;color:#1b1f25}
-.ms-ggb-tcue{display:flex;align-items:center;gap:7px;color:#c3cbd3}
+.ms-ggb-ttabs>span{flex:1;text-align:center;font:${FW.semi} ${FS.meta}px/1.2 ${FONT};padding:3px 0 4px;color:${TEXT.label};border-bottom:2px solid ${LINE.hair}}
+.ms-ggb-ttabs>span.ms-on{color:${TEXT.main};font-weight:${FW.bold};border-bottom-color:${ACCENT}}
+.ms-ggb-tcue{display:flex;align-items:center;gap:7px;color:${TEXT.label}}
 .ms-ggb-tcue>.ms-grow{flex:1;min-width:0}
-.ms-ggb-tkey{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:4px;
-  font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
-.ms-ggb-tl{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;color:#1b1f25;background:#5aa9e6}
+.ms-ggb-tkey{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:4px;
+  font:${FW.bold} ${FS.meta}px/1 ${FONT};color:#e8ebee;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px}
+.ms-ggb-tl{display:inline-flex;align-items:center;justify-content:center;flex:none;width:16px;height:16px;border-radius:4px;font:${FW.bold} ${FS.meta}px/1 ${FONT};color:${LETTER_FG};background:${LETTER_FILL}}
 `;
 
 export function ensureTrafficCss(): void {
+  ensureTokensCss();
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
@@ -127,8 +175,26 @@ function svgEl(tag: string, attrs: Record<string, string | number>): SVGElement 
   return e;
 }
 
+/**
+ * A going word as a chip: the ladder's fill and icon (item 1). `dim`: the other season in the ticker, drawn as an
+ * outline in the step's colour on the ticker's own background (`cut`, for the mark in a filled icon).
+ */
 function step(s: GoingStep, dim = false): HTMLElement {
-  return el('span', `ms-ggb-tstep ms-${s}${dim ? ' ms-ggb-tdim' : ''}`, WORD[s]);
+  const c = el('span', `ms-ggb-tstep ms-${s}${dim ? ' ms-ggb-tdim' : ''}`);
+  c.append(dim ? ladderIcon(TONE[STEP_TONE[s]].icon, 12, SURFACE.ring) : toneIcon(STEP_TONE[s], 12), WORD[s]);
+  return c;
+}
+
+/** The going in large type, in its colour with its icon (item 1). */
+function bigWord(s: GoingStep): HTMLElement {
+  const b = el('span', `ms-ggb-tbig ms-${s}`);
+  b.append(ladderIcon(TONE[STEP_TONE[s]].icon, 16), WORD[s]);
+  return b;
+}
+
+/** A going word in its colour inside running text. */
+function word(s: GoingStep): HTMLElement {
+  return el('span', `ms-ggb-tw ms-${s}`, WORD[s]);
 }
 
 function modeIcon(profile: string, size = 18): SVGElement {
@@ -187,8 +253,36 @@ export function whyText(v: GroundGuideVerdict): string {
   return name ? `${name}: firm enough dry and after rain` : v.reason ?? 'No soil data here';
 }
 
+/** A road's class (item 16): MSR, all-weather, fair-weather, or a track (an unnumbered fair-weather way: shield "Tr"). */
+type RoadKind = 'msr' | 'aw' | 'fw' | 'track';
+
+function roadKind(r: TrafficRoadRef): RoadKind {
+  if (r.msr) return 'msr';
+  if (r.allWeather) return 'aw';
+  return r.shield === 'Tr' ? 'track' : 'fw';
+}
+
+/** The class under a way-out shield, the key to its colour. */
+const ROAD_WORD: Record<RoadKind, string> = { msr: 'MSR', aw: 'All-weather', fw: 'Fair-weather', track: 'Tr' };
+const ROAD_TITLE: Record<RoadKind, string> = { msr: 'Main supply route', aw: 'All-weather road', fw: 'Fair-weather road', track: 'Track' };
+
+/** The road's shield in its class colour; an MSR carries the letters MSR (white on a dark casing). */
 function shield(r: TrafficRoadRef): HTMLElement {
-  return el('span', `ms-ggb-tshield${r.msr ? ' ms-msr' : ''}`, r.shield);
+  const k = roadKind(r);
+  const text = k === 'msr' ? (r.shield === 'Rd' || r.shield === 'Tr' ? 'MSR' : `MSR ${r.shield}`) : r.shield;
+  const s = el('span', `ms-ggb-tshield ms-${k}`, text);
+  s.title = ROAD_TITLE[k];
+  return s;
+}
+
+/** The rim marker of a road on the movement rose, in the road's class colour. */
+function roadMarker(r: TrafficRoadRef): Record<string, string | number> {
+  switch (roadKind(r)) {
+    case 'msr': return { fill: ROAD.msr, stroke: ROAD.msrCasing, 'stroke-width': 2 };
+    case 'aw': return { fill: ROAD.allWeather, stroke: ROAD.msrCasing, 'stroke-width': 1.5 };
+    case 'fw': return { fill: ROAD.fairWeather, stroke: ROAD.msrCasing, 'stroke-width': 1.5 };
+    default: return { fill: SURFACE.ring, stroke: ROAD.track, 'stroke-width': 1.5, 'stroke-dasharray': '2 1.5' };
+  }
 }
 
 /** The road out: shield, name and distance, its class tag, and an all-weather alternative. */
@@ -207,7 +301,7 @@ export function roadBlock(t: TView, compact = false): HTMLElement | null {
   name.append(`${fmtDistance(m.distanceM)} ${m.compass}`);
   row.append(shield(m), name);
   box.append(row);
-  if (!compact && m.tag) box.append(el('span', 'ms-ggb-ttag', m.tag));
+  if (!compact && m.tag) box.append(el('span', 'ms-ggb-ttag', sentenceCase(m.tag)));
   if (r.alt) {
     const a = r.alt;
     const alt = `${a.msr ? 'MSR ' : ''}${a.shield}${a.name ? ` ${a.name}` : ''} · ${fmtDistance(a.distanceM)} ${a.compass}`;
@@ -217,11 +311,16 @@ export function roadBlock(t: TView, compact = false): HTMLElement | null {
   return box;
 }
 
+/** The cross-country directions open to the mode, in the one form the Guide uses (item 10): "Open Dirs 6 of 8". */
+function openDirs(m: NonNullable<NonNullable<GroundGuideVerdict['going']>['movement']>): string {
+  return `Open Dirs ${m.open} of ${m.sectors.length} to ${fmtDistance(m.rangeM)}`;
+}
+
 export function moveText(v: GroundGuideVerdict): string | null {
   const m = v.going?.movement;
   if (!m) return null;
   const blocked = m.sectors.filter((x) => x.blockedBy && x.reachM < m.rangeM).sort((a, b) => a.reachM - b.reachM)[0];
-  const base = `${m.open} of ${m.sectors.length} Dirs open to ${fmtDistance(m.rangeM)}`;
+  const base = openDirs(m);
   return blocked ? `${base} · ${blocked.compass} blocked at ${fmtDistance(blocked.reachM)} (${blocked.blockedBy!.toLowerCase()})` : base;
 }
 
@@ -231,7 +330,7 @@ export function moveNode(v: GroundGuideVerdict): DocumentFragment | null {
   if (!m) return null;
   const f = document.createDocumentFragment();
   const blocked = m.sectors.filter((x) => x.blockedBy && x.reachM < m.rangeM).sort((a, b) => a.reachM - b.reachM)[0];
-  f.append(`${m.open} of ${m.sectors.length} Dirs open to ${fmtDistance(m.rangeM)}`);
+  f.append(openDirs(m));
   if (blocked) f.append(' · ', compassNode(blocked.compass, blocked.bearingDeg), ` blocked at ${fmtDistance(blocked.reachM)} (${blocked.blockedBy!.toLowerCase()})`);
   return f;
 }
@@ -239,7 +338,7 @@ export function moveNode(v: GroundGuideVerdict): DocumentFragment | null {
 /** "SLOW-GO  after rain" (or "GO  now, dry") and, in the dry season, what rain does. */
 export function trafficHeadline(t: TView, what = ''): HTMLElement {
   const h = el('div', 'ms-ggb-thead');
-  h.append(el('span', 'ms-ggb-tbig', WORD[t.now]), el('span', 'ms-ggb-soft', `${what}${t.wet ? 'after rain' : 'now, dry'}`));
+  h.append(bigWord(t.now), el('span', 'ms-ggb-soft', `${what}${t.wet ? 'after rain' : 'now, dry'}`));
   if (!t.wet && t.after !== t.dry) h.append(el('span', 'ms-ggb-soft', '· after rain'), step(t.after));
   return h;
 }
@@ -260,27 +359,31 @@ function blockBand(v: GroundGuideVerdict, t: TView): HTMLElement {
   return band('T', `Trafficability · ${t.short}`, trafficHeadline(t), kv);
 }
 
-export function blockGauge(_v: GroundGuideVerdict, t: TView): HTMLElement {
-  const g = el('div', 'ms-ggb-tg');
-  const track = el('div', 'ms-ggb-tgt');
-  for (const k of ['go', 'slow', 'nogo'] as const) {
-    const i = el('i');
-    i.style.background = COLOR[k];
-    track.append(i);
+/**
+ * The shared going gauge (item 2) with the season marks: the step of the season now is lit, a sun stands over the
+ * dry step and a drop over the step after rain (one mark, the season now, when rain changes nothing).
+ */
+function seasonGauge(t: TView): HTMLElement {
+  const g = gauge(t.now);
+  g.classList.add('ms-ggb-tsg');
+  const bar = g.querySelector<HTMLElement>(':scope > .ms-gg-gz-bar');
+  if (bar) {
+    const mark = (s: GoingStep, season: 'dry' | 'wet') => {
+      const m = el('span', 'ms-ggb-tsm');
+      m.style.left = `${(((ORDER[s] * 2 + 1) / 6) * 100).toFixed(1)}%`;
+      m.append(seasonIcon(season, 13));
+      return m;
+    };
+    if (t.dry === t.after) bar.append(mark(t.now, t.wet ? 'wet' : 'dry'));
+    else bar.append(mark(t.dry, 'dry'), mark(t.after, 'wet'));
   }
-  g.append(track);
-  const at = (s: GoingStep) => ((ORDER[s] * 2 + 1) / 6) * 100;
-  const mark = (s: GoingStep, season: 'dry' | 'wet', nudge: number) => {
-    const m = el('div', `ms-ggb-tgm${season === 'wet' ? ' ms-wet' : ''}`);
-    m.style.left = `${at(s) + nudge}%`;
-    m.append(seasonIcon(season, 12));
-    return m;
-  };
-  if (t.dry === t.after) g.append(mark(t.dry, t.wet ? 'wet' : 'dry', 0));
-  else g.append(mark(t.dry, 'dry', -5), mark(t.after, 'wet', 5));
-  const labels = el('div', 'ms-ggb-tgl');
-  for (const k of ['go', 'slow', 'nogo'] as const) labels.append(el('span', undefined, WORD[k]));
-  return band('T', `Going · ${t.short}`, trafficHeadline(t), g, labels, el('div', 'ms-ggb-soft', t.why), roadBlock(t, true));
+  const other = t.dry === t.after ? '' : t.wet ? `; dry ${WORD[t.dry]}` : `; after rain ${WORD[t.after]}`;
+  g.setAttribute('aria-label', `Going: ${WORD[t.now]} ${t.wet ? 'after rain' : 'now, dry'}${other}`);
+  return g;
+}
+
+export function blockGauge(_v: GroundGuideVerdict, t: TView): HTMLElement {
+  return band('T', `Going · ${t.short}`, trafficHeadline(t), seasonGauge(t), el('div', 'ms-ggb-soft', t.why), roadBlock(t, true));
 }
 
 export function blockCalendar(v: GroundGuideVerdict, t: TView): HTMLElement {
@@ -314,35 +417,42 @@ export function blockTiles(v: GroundGuideVerdict, t: TView): HTMLElement {
     tile.title = `${m.label}: dry ${WORD[m.dry]}, after rain ${WORD[m.wet]}`;
     const pair = el('span');
     [m.dry, m.wet].forEach((s, i) => {
-      const b = el('i');
+      // Both bars keep their colour (each is a reading); the season now stands taller, as the lit step of a gauge.
+      const b = el('i', t.wet === (i === 1) ? 'ms-now' : undefined);
       b.style.background = COLOR[s];
-      if (t.wet !== (i === 1)) b.style.opacity = '.45';
       pair.append(b);
     });
     tile.append(modeIcon(m.profile), el('small', undefined, short(m.profile)), pair);
     tiles.append(tile);
   }
-  return band('T', 'Who Can Move Here', tiles, el('div', 'ms-ggb-soft', `Left bar dry, right bar after rain · ${t.why}`), roadBlock(t, true));
+  return band('T', 'Who Can Move Here', tiles, el('div', 'ms-ggb-soft', `Left bar dry, right bar after rain; the taller is now · ${t.why}`), roadBlock(t, true));
 }
 
+/**
+ * The way out: the one road this mode can use to leave, the line to it coloured by the going crossed. Captioned
+ * "Way Out to Rd" so it is not read as R's "Rds out" (roads crossing the circle) or the "Open Dirs" (item 10).
+ */
 export function blockWayOut(_v: GroundGuideVerdict, t: TView): HTMLElement {
   const m = t.road?.main;
-  if (!m) return band('T', `Way Out · ${t.short}`, trafficHeadline(t), roadBlock(t), el('div', 'ms-ggb-soft', t.why));
+  const caption = `Way Out to Rd · ${t.short}`;
+  if (!m) return band('T', caption, trafficHeadline(t), roadBlock(t), el('div', 'ms-ggb-soft', t.why));
   const way = el('div', 'ms-ggb-tway');
   const leg = el('span', 'ms-leg');
   leg.style.background = COLOR[t.now];
   leg.append(el('span', undefined, `${fmtDistance(m.distanceM)} ${m.compass} · ${WORD[t.now]}`));
   const end = el('span', 'ms-end');
-  end.append(shield(m), el('span', 'ms-ggb-soft', m.msr ? 'MSR' : m.allWeather ? 'Rd' : 'Tr'));
+  const kind = roadKind(m);
+  end.append(shield(m));
+  if (kind === 'aw' || kind === 'fw') end.append(el('small', undefined, ROAD_WORD[kind])); // an MSR's or a track's shield already says it
   way.append(el('span', 'ms-dot'), leg, end);
   const info = el('div');
   info.style.marginTop = '6px';
-  if (m.name) info.append(el('span', 'ms-ggb-b', m.name), ' ');
-  if (m.tag) info.append(el('span', 'ms-ggb-ttag', m.tag));
+  if (m.name) info.append(el('span', 'ms-ggb-b', m.name));
+  if (m.tag) info.append(el('span', 'ms-ggb-ttag', sentenceCase(m.tag)));
   const alt = t.road?.alt
-    ? el('div', 'ms-ggb-soft', `${t.wet ? 'After rain use' : 'All-weather:'} ${t.road.alt.shield}${t.road.alt.name ? ` ${t.road.alt.name}` : ''} · ${fmtDistance(t.road.alt.distanceM)} ${t.road.alt.compass}`)
+    ? el('div', 'ms-ggb-soft', `${t.wet ? 'After rain use' : 'All-weather:'} ${t.road.alt.msr ? 'MSR ' : ''}${t.road.alt.shield}${t.road.alt.name ? ` ${t.road.alt.name}` : ''} · ${fmtDistance(t.road.alt.distanceM)} ${t.road.alt.compass}`)
     : null;
-  return band('T', `Way Out · ${t.short}`, trafficHeadline(t), way, info, alt, el('div', 'ms-ggb-soft', t.why));
+  return band('T', caption, trafficHeadline(t), way, info.childElementCount ? info : null, alt, el('div', 'ms-ggb-soft', t.why));
 }
 
 function blockRose(v: GroundGuideVerdict, t: TView, northDeg: number): HTMLElement {
@@ -352,17 +462,20 @@ function blockRose(v: GroundGuideVerdict, t: TView, northDeg: number): HTMLEleme
   const m = t.road?.main;
   const grp = svg.querySelector('[data-gv-rose]');
   if (m && grp) {
-    // The road's marker sits on the rim in its map bearing, inside the group that turns with the map.
-    const c = 46;
+    // The road's marker sits on the rim in its map bearing, inside the group that turns with the map (the shared
+    // 120-unit rose frame: centre ROSE_C, drawing radius ROSE_R).
+    const c = ROSE_C;
     const a = (m.bearingDeg * Math.PI) / 180;
-    const x = c + 41 * Math.sin(a);
-    const y = c - 41 * Math.cos(a);
-    grp.append(svgEl('rect', { x: x - 5, y: y - 5, width: 10, height: 10, rx: 2, fill: m.msr ? '#d64541' : '#f3f5f7', stroke: '#1b1f25', 'stroke-width': 1.5 }));
+    const x = c + ROSE_R * Math.sin(a);
+    const y = c - ROSE_R * Math.cos(a);
+    grp.append(svgEl('rect', { x: x - 5, y: y - 5, width: 10, height: 10, rx: 2, ...roadMarker(m) }));
   }
   const text = el('div');
   const moveLine = el('div', 'ms-ggb-soft');
   moveLine.append(moveNode(v) ?? '');
-  text.append(el('div', 'ms-ggb-tbig', WORD[t.now]), moveLine);
+  const head = el('div');
+  head.append(bigWord(t.now));
+  text.append(head, moveLine);
   if (m) {
     const r = el('div', 'ms-ggb-troad');
     r.style.marginTop = '4px';
@@ -393,7 +506,7 @@ function blockTabs(v: GroundGuideVerdict, t: TView): HTMLElement {
     const kv = el('div', 'ms-ggb-tkv');
     const k = (season: 'dry' | 'wet', label: string) => {
       const c = el('span', 'ms-ggb-tk');
-      c.append(seasonIcon(season, 11), ` ${label}`);
+      c.append(seasonIcon(season, 12), label);
       return c;
     };
     kv.append(k('dry', 'Dry'), step(t.dry), k('wet', 'Rain'), step(t.after));
@@ -423,10 +536,10 @@ function blockTabs(v: GroundGuideVerdict, t: TView): HTMLElement {
 function foldedCue(t: TView): HTMLElement {
   const s = el('div', 'ms-ggb-sec ms-ggb-tcue');
   const text = el('span', 'ms-grow');
-  text.append(el('span', 'ms-ggb-b', WORD[t.now]));
-  if (!t.wet && t.after !== t.dry) text.append(`, after rain ${WORD[t.after]}`);
+  text.append(word(t.now));
+  if (!t.wet && t.after !== t.dry) text.append(', after rain ', word(t.after));
   const m = t.road?.main;
-  if (m) text.append(` · ${m.shield} ${fmtDistance(m.distanceM)} ${m.compass}`);
+  if (m) text.append(` · ${m.msr ? 'MSR ' : ''}${m.shield} ${fmtDistance(m.distanceM)} ${m.compass}`);
   s.append(el('span', 'ms-ggb-tl', 'T'), text, el('span', 'ms-ggb-tkey', 'T'));
   return s;
 }
@@ -476,7 +589,7 @@ export function decorateTraffic(
   }
   if (t.dual && pt && why) {
     const other = el('div', 'ms-ggb-tdual');
-    other.append(el('span', undefined, wet ? 'Dry' : 'After Rain'), goingScale(wet ? pt.dry : pt.wet));
+    other.append(el('span', undefined, wet ? 'Dry' : 'After Rain'), gauge(wet ? pt.dry : pt.wet)); // the shared gauge (item 2)
     why.appendChild(other);
   }
   const afterWhy = why ? 1 : 0;

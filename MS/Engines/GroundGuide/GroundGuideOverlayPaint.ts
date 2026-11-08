@@ -26,12 +26,16 @@ export interface OverlayGoingParams {
   bearingMin?: Uint8Array;
 }
 
-/** RGBA per overlay state; layer opacity scales these further. */
+/**
+ * RGBA per overlay state; layer opacity scales these further. The verdict ladder's fills (GroundGuideTokens TONE:
+ * Suitable #18733f, Marginal #f1d646, SLOW-GO #ee8a1f, NO-GO #b92b31), written out here because the tile worker
+ * loads this file.
+ */
 export const OVERLAY_COLORS = {
-  nogo: [214, 48, 49, 200],
-  caution: [243, 156, 18, 170],
+  nogo: [185, 43, 49, 205],
+  caution: [238, 138, 31, 175],
   near: [241, 214, 70, 150],
-  ok: [46, 160, 90, 105],
+  ok: [24, 115, 63, 120],
 } as const;
 
 export interface OverlayPaintParams {

@@ -6,6 +6,9 @@
  *   lines    each section as a few label / value rows (the default)
  *   compact  one line per section, behind its letter
  *   brief    nothing on the card; only the Ground Brief (G) shows them
+ * Visual review (user, 2026-11-08): sizes and colours from GroundGuideTokens.ts (items 17, 18); neutral letters, MSR a
+ * white word on its dark-cased road mark and verdict words in their ladder colours, never a pill (items 13, 16);
+ * labels in sentence case and never cut (items 5, 13).
  * DOM nodes and textContent only (feature names never become markup). CSS injected once.
  */
 
@@ -16,50 +19,49 @@ import type { BuildingsReading, GroundGuideSections, GroundReading, ObstacleHit,
 import type { GroundGuideVerdict } from './GroundGuideTypes';
 import { roadDensityText, type RoadDensityReading } from './GroundGuideRoadDensity';
 import { chipsNode, densityBrief, densityCardBlock, densityOneLine, densityRows, type RoadDensityLead } from './GroundGuideRoadDensityView';
+import { ensureTokensCss, FONT, FS, FW, LETTER_FG, LETTER_FILL, LINE, ROAD, STEP_TEXT, TEXT } from './GroundGuideTokens';
 
 const STYLE_ID = 'ms-ground-guide-sections-style';
-/** Letter colours (doc 16 §4.1); W is a supplementary heading (GROTBC.md 7), in its own blue-grey. */
-const LETTER: Record<'G' | 'R' | 'O' | 'B' | 'W', [string, string]> = {
-  G: ['#8fb35a', '#1b1f25'],
-  R: ['#c9a46b', '#1b1f25'],
-  O: ['#7a5cc9', '#fff'],
-  B: ['#9a8f86', '#1b1f25'],
-  W: ['#4a7f95', '#fff'],
-};
+/** The section letters: neutral badges, a letter is not a verdict (items 8, 16). W is a supplementary heading (GROTBC.md 7). */
+type Letter = 'G' | 'R' | 'O' | 'B' | 'W';
+/** The route check for the mode is a verdict, so it keeps the ladder: [background, text]. */
 const CHECK: Record<string, [string, string]> = {
-  ok: ['#1d3a2a', '#7ee0a5'],
-  warn: ['#3a2a14', '#ffb766'],
-  stop: ['#3d1c1e', '#ff8a8d'],
-  unknown: ['#2e2a1c', '#ffd27a'],
+  ok: ['#1d3a2a', STEP_TEXT.go],
+  warn: ['#3a2a14', STEP_TEXT.slow],
+  stop: ['#3d1c1e', STEP_TEXT.nogo],
+  unknown: ['#2e2a1c', TEXT.warn],
 };
 
 const CSS = `
 .ms-gs-cap{display:flex;align-items:center;gap:6px}
-.ms-gs-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0}
-.ms-gs-kv{display:grid;grid-template-columns:56px minmax(0,1fr);gap:3px 8px;font-size:11.5px;line-height:1.35}
-.ms-gs-kv>.ms-gs-k{color:#9aa3ad;font-size:10.5px;padding-top:1px}
-.ms-gs-kv>.ms-gs-v{min-width:0;color:#e8ebee}
-.ms-gs-kv b{color:#fff;font-weight:600}
-.ms-gs-kv .ms-gs-s{color:#9aa3ad}
-.ms-gs-chip{display:inline-block;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;vertical-align:1px;margin-left:4px;white-space:nowrap}
-.ms-gs-msr{background:#d64541;color:#fff}
-.ms-gs-check{margin-top:4px;font-size:11px;border-radius:5px;padding:4px 7px;line-height:1.3}
-.ms-gs-one{display:flex;gap:7px;align-items:flex-start;font-size:11.5px;line-height:1.35}
+.ms-gs-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:17px;height:17px;border-radius:4px;font:${FW.bold} ${FS.meta}px/1 ${FONT};background:${LETTER_FILL};color:${LETTER_FG}}
+.ms-gs-kv{display:grid;grid-template-columns:minmax(56px,auto) minmax(0,1fr);gap:3px 8px;font-size:${FS.meta}px;line-height:1.35}
+.ms-gs-kv>.ms-gs-k{color:${TEXT.label};white-space:nowrap}
+.ms-gs-kv>.ms-gs-v{min-width:0;color:${TEXT.main}}
+.ms-gs-kv b{color:${TEXT.strong};font-weight:${FW.semi}}
+.ms-gs-s{color:${TEXT.label}}
+.ms-gs-msr{color:${ROAD.msr};font-weight:${FW.bold};white-space:nowrap}
+.ms-gs-msr::before{content:"";display:inline-block;width:12px;height:5px;border-radius:2px;margin:0 4px 1px 2px;vertical-align:middle;background:${ROAD.msr};box-shadow:0 0 0 1.5px ${ROAD.msrCasing}}
+.ms-gs-tag{color:${TEXT.main};font-weight:${FW.semi};white-space:nowrap}
+.ms-gs-eff{font-weight:${FW.bold};white-space:nowrap}
+.ms-gs-check{margin-top:4px;font-size:${FS.meta}px;border-radius:5px;padding:4px 7px;line-height:1.3}
+.ms-gs-one{display:flex;gap:7px;align-items:flex-start;font-size:${FS.meta}px;line-height:1.35;color:${TEXT.main}}
 .ms-gs-one+.ms-gs-one{margin-top:4px}
 .ms-gs-one>span:last-child{min-width:0}
-.ms-gs-one b{color:#fff;font-weight:600}
-.ms-gs-src{color:#7f8994;font-size:10px;margin-top:4px}
-.ms-gs-more{display:grid;grid-template-columns:58px minmax(0,1fr);gap:3px 8px;margin:6px 0 0 22px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.09);font-size:10.5px;line-height:1.35;color:#c5ccd3}
-.ms-gs-more>.ms-gs-k{color:#87909a;font:600 9px/1.5 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding-top:1px}
-.ms-gs-more>.ms-gs-v{min-width:0;color:#c5ccd3}
-.ms-gs-more b{color:#eef1f4;font-weight:600}
-.ms-gs-more .ms-gs-s{color:#8f98a2}
-.ms-gs-step{font-weight:700;letter-spacing:.02em}
+.ms-gs-one b{color:${TEXT.strong};font-weight:${FW.semi}}
+.ms-gs-src{color:${TEXT.label};font-size:${FS.meta}px;margin-top:4px}
+.ms-gs-more{display:grid;grid-template-columns:minmax(58px,auto) minmax(0,1fr);gap:3px 8px;margin:6px 0 0 24px;padding-top:6px;border-top:1px dashed ${LINE.soft};font-size:${FS.meta}px;line-height:1.35;color:${TEXT.soft}}
+.ms-gs-more>.ms-gs-k{color:${TEXT.label};white-space:nowrap}
+.ms-gs-more>.ms-gs-v{min-width:0;color:${TEXT.soft}}
+.ms-gs-more b{color:${TEXT.main};font-weight:${FW.semi}}
+.ms-gs-more .ms-gs-s{color:${TEXT.label}}
+.ms-gs-step{font-weight:${FW.bold}}
 .ms-gs-modes{display:grid;grid-template-columns:auto auto auto;justify-content:start;column-gap:14px;row-gap:2px;align-items:baseline}
-.ms-gs-modes>.ms-gs-mh{font-size:12px;color:#9aa3ad}
+.ms-gs-modes>.ms-gs-mh{font-size:${FS.meta}px;color:${TEXT.label}}
 `;
 
 export function ensureSectionsCss(): void {
+  ensureTokensCss();
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
@@ -74,14 +76,12 @@ function el(tag: string, cls?: string, text?: string): HTMLElement {
   return e;
 }
 
-function letter(l: keyof typeof LETTER): HTMLElement {
+function letter(l: Letter): HTMLElement {
   const b = el('span', 'ms-gs-l', l);
-  b.style.background = LETTER[l][0];
-  b.style.color = LETTER[l][1];
   return b;
 }
 
-function section(l: keyof typeof LETTER, caption: string, ...content: Array<Node | null>): HTMLElement {
+function section(l: Letter, caption: string, ...content: Array<Node | null>): HTMLElement {
   const sec = el('div', 'ms-ggb-sec');
   const cap = el('div', 'ms-ggb-cap ms-gs-cap');
   cap.append(letter(l), caption);
@@ -234,7 +234,7 @@ function routeNode(r: NonNullable<RoadsReading['route']>): DocumentFragment {
   const f = frag(b(r.typeLabel));
   if (r.tier > 0 || [14, 15, 16, 17, 18, 19, 20, 21, 22].includes(r.type)) f.append(soft(` · ${r.tierLabel}`));
   if (!r.on) f.append(soft(` · ${fmtDistance(r.distanceM)} ${r.compass}`));
-  if (r.msr) f.append(' ', el('span', 'ms-gs-chip ms-gs-msr', 'MSR'));
+  if (r.msr) f.append(' ', el('span', 'ms-gs-msr', 'MSR'));
   return f;
 }
 
@@ -253,8 +253,8 @@ function namedRoad(rec: RoadRecord): Node | null {
   if (!id) return null;
   const between = rt?.from && rt?.to ? `${rt.from} to ${rt.to}` : rec.name && rec.name !== id ? rec.name : null;
   const f = frag(b(id), soft([between, rt?.km ? `${Math.round(rt.km)} km` : null, `${fmtDistance(rec.distanceM)} ${rec.compass}`].filter(Boolean).map((x) => ` · ${x}`).join('')));
-  if (rt?.msr) f.append(' ', el('span', 'ms-gs-chip ms-gs-msr', 'MSR'));
-  if (rec.defence) f.append(' ', el('span', 'ms-gs-chip ms-gs-msr', 'Defence Rd'));
+  if (rt?.msr) f.append(' ', el('span', 'ms-gs-msr', 'MSR'));
+  if (rec.defence) f.append(soft(' · '), el('span', 'ms-gs-tag', 'Defence Rd'));
   return f;
 }
 
@@ -286,7 +286,7 @@ export function railTransportLine(r: RoadsReading): HTMLElement | null {
   const parts = [railCrossingsText(r), transportText(r)].filter(Boolean);
   if (!parts.length) return null;
   const d = el('div', 'ms-gs-s');
-  d.style.cssText = 'font-size:10.5px;line-height:1.35;margin:3px 0 0 22px';
+  d.style.cssText = `font-size:${FS.meta}px;line-height:1.35;margin:3px 0 0 24px`;
   d.textContent = parts.join(' · ');
   return d;
 }
@@ -306,7 +306,7 @@ export function roadsRows(r: RoadsReading): Array<[string, Node | string | null]
     ['Rail', r.rail ? `${nameOf(r.rail)} ${at(r.rail)}` : null],
     ['Rail Xing', railCrossingsText(r)],
     ['Transport', transportText(r)],
-    ['Junction', [r.junction ? `${nameOf(r.junction)} ${at(r.junction)}${r.junction.ways ? ` (${r.junction.ways} ways out along highways)` : ''}` : null, r.namedJunction ? `${nameOf(r.namedJunction)} ${at(r.namedJunction)}` : null].filter(Boolean).join(' · ') || null],
+    ['Junction', [r.junction ? `${nameOf(r.junction)} ${at(r.junction)}${r.junction.ways ? ` (${r.junction.ways}-way, on highways)` : ''}` : null, r.namedJunction ? `${nameOf(r.namedJunction)} ${at(r.namedJunction)}` : null].filter(Boolean).join(' · ') || null],
     ['Fuel', r.fuel ? `${nameOf(r.fuel)} ${at(r.fuel)}` : null],
     ['Culvert', r.culvert ? `${r.culvert.label} ${at(r.culvert)}` : null],
     ['KM', [kmText(r.kmRoad, 'Rd'), kmText(r.kmRail, 'railway')].filter(Boolean).join(' · ') || null],
@@ -363,15 +363,15 @@ function buildingsOne(bd: BuildingsReading): string {
 }
 
 // ── O ────────────────────────────────────────────────────────────────────────
-const EFFECT: Record<'NO-GO' | 'SLOW-GO', [string, string]> = { 'NO-GO': ['#e5484d', '#fff'], 'SLOW-GO': ['#f0932b', '#1b1f25'] };
+/** An obstacle's effect on the mode is a verdict: the word in its ladder colour, in capitals, no pill (item 13). */
+const EFFECT: Record<'NO-GO' | 'SLOW-GO', string> = { 'NO-GO': STEP_TEXT.nogo, 'SLOW-GO': STEP_TEXT.slow };
 
 function obstacleNode(o: ObstacleHit): Node {
   const f = frag(b(o.label), soft(` · ${fmtDistance(o.distanceM)} ${o.compass}`));
   if (o.effect) {
-    const c = el('span', 'ms-gs-chip', o.effect);
-    c.style.background = EFFECT[o.effect][0];
-    c.style.color = EFFECT[o.effect][1];
-    f.append(' ', c);
+    const c = el('span', 'ms-gs-eff', o.effect);
+    c.style.color = EFFECT[o.effect];
+    f.append(soft(' · '), c);
   }
   return f;
 }
@@ -422,7 +422,7 @@ export function weatherYearText(w: WeatherReading): string {
 }
 
 /** One-line R: D1 adds "road density dense" to the line, D2 a chip, D3-D6 their block under it, D7 nothing. */
-function compactR(s: GroundGuideSections, r: RoadsReading, one: (l: keyof typeof LETTER, text: string, extra?: HTMLElement | null) => HTMLElement): HTMLElement {
+function compactR(s: GroundGuideSections, r: RoadsReading, one: (l: Letter, text: string, extra?: HTMLElement | null) => HTMLElement): HTMLElement {
   const d = r.density;
   const st = s.roadDensityStyle;
   const sec = one('R', roadsOne(r, s.roadDensityLead, st === 'rows'), checkBox(r.check));
@@ -441,13 +441,12 @@ function compactR(s: GroundGuideSections, r: RoadsReading, one: (l: keyof typeof
 
 // ── Detail under the one-line sections (sections.detail) ────────────────────
 const STEP_WORD: Record<string, string> = { go: 'GO', slow: 'SLOW-GO', nogo: 'NO-GO' };
-const STEP_COLOR: Record<string, string> = { go: '#56c98a', slow: '#f0a04b', nogo: '#ff7a7e' };
 /** The card's short names for the three movement types (as the going sections say them). */
 const MODE_SHORT: Record<string, string> = { dismounted: 'Foot', wheeled: 'Wheeled', tracked: 'Tracked' };
 
 function step(st: string): HTMLElement {
   const e = el('span', 'ms-gs-step', STEP_WORD[st] ?? st);
-  e.style.color = STEP_COLOR[st] ?? '#e8ebee';
+  e.style.color = (STEP_TEXT as Record<string, string>)[st] ?? TEXT.main;
   return e;
 }
 
@@ -534,7 +533,7 @@ export function sectionsCard(v: GroundGuideVerdict): { g: HTMLElement | null; r:
   const sw = res(st.w);
   if ([sg, sr, so, sb, sw].every((x) => x === 'off')) return none;
   ensureSectionsCss();
-  const one = (l: keyof typeof LETTER, text: string, extra?: HTMLElement | null, detail?: Array<[string, Node | string | null]>) => {
+  const one = (l: Letter, text: string, extra?: HTMLElement | null, detail?: Array<[string, Node | string | null]>) => {
     const sec = el('div', 'ms-ggb-sec');
     const row = el('div', 'ms-gs-one');
     row.append(letter(l), el('span', undefined, text));

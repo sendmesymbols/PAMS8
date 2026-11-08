@@ -13,43 +13,70 @@
 
 import { registerBriefSection } from './GroundGuideBrief';
 import { fmtDistance } from './GroundGuideEvaluator';
-import { band, ensureGoingCss, seasonIcon } from './GroundGuideGoingView';
+import { band, ensureGoingCss, roseFigure, seasonIcon, turnRose } from './GroundGuideGoingView';
 import { compassNode, joinNodes } from './GroundGuideNorth';
 import { fmtKmh, fmtMinutes, speedText, type GroundGuideSpeed, type SpeedDirection } from './GroundGuideSpeed';
+import {
+  ACCENT,
+  ensureTokensCss,
+  FONT,
+  FS,
+  FW,
+  LINE,
+  OWN_UNIT,
+  ROAD,
+  ROSE_C,
+  ROSE_R,
+  roseFrame,
+  roseHub,
+  roseKey,
+  STEP_COLOR,
+  STEP_TEXT,
+  SURFACE,
+  TEXT,
+  wedgePath,
+} from './GroundGuideTokens';
 import type { GroundGuideVerdict } from './GroundGuideTypes';
 
 const STYLE_ID = 'ms-ground-guide-speed-style';
-const SVG_NS = 'http://www.w3.org/2000/svg';
 
+/** Sizes and colours from GroundGuideTokens.ts (2026-11-08 visual review); road shields in the road colours, not red. */
 const CSS = `
 .ms-ggs-head{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
-.ms-ggs-big{font-size:15px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
-.ms-ggs-cat{display:inline-block;font:800 9px/1 system-ui,Segoe UI,Arial,sans-serif;padding:3px 5px 2px;border-radius:3px;background:#25313c;color:#b9d6ef;letter-spacing:.04em}
-.ms-ggs-kv{display:grid;grid-template-columns:44px minmax(0,1fr);gap:5px 8px;align-items:start;margin-top:6px}
-.ms-ggs-kv>.ms-ggs-k{color:#9aa3ad;font-size:11px;padding-top:1px}
-.ms-ggs-shield{flex:none;font:800 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;padding:3px 5px;border-radius:3px;background:#f3f5f7;color:#1b1f25;letter-spacing:.02em;margin-right:5px}
-.ms-ggs-shield.ms-msr{background:#d64541;color:#fff}
-.ms-ggs-grid{display:grid;grid-template-columns:auto 1fr 1fr;gap:3px 4px;font-size:11px;align-items:center;margin-top:6px}
-.ms-ggs-grid>.ms-ggs-h{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#9aa3ad;display:flex;gap:4px;justify-content:center;align-items:center}
-.ms-ggs-grid>.ms-ggs-m{color:#c3cbd3;padding-right:6px;white-space:nowrap}
-.ms-ggs-grid>.ms-ggs-c{text-align:center;padding:4px 0 3px;border-radius:3px;background:rgba(255,255,255,.06);font-weight:600;font-variant-numeric:tabular-nums}
-.ms-ggs-grid>.ms-ggs-c.ms-on{background:#5aa9e6;color:#1b1f25}
+.ms-ggs-big{font-size:${FS.value}px;font-weight:${FW.bold};color:${TEXT.strong};font-variant-numeric:tabular-nums}
+.ms-ggs-cat{display:inline;font:${FW.semi} ${FS.meta}px/1.3 ${FONT};color:${ACCENT}}
+.ms-ggs-kv{display:grid;grid-template-columns:48px minmax(0,1fr);gap:5px 8px;align-items:start;margin-top:6px}
+.ms-ggs-kv>.ms-ggs-k{color:${TEXT.label};font-size:${FS.meta}px;padding-top:1px}
+.ms-ggs-shield{flex:none;display:inline-block;font:${FW.bold} ${FS.meta}px/1 ${FONT};padding:3px 5px;border-radius:3px;background:${ROAD.fairWeather};color:${ROAD.msrCasing};margin-right:5px}
+.ms-ggs-shield.ms-aw{background:${ROAD.allWeather}}
+.ms-ggs-shield.ms-msr{background:${ROAD.msr};color:${ROAD.msrCasing};box-shadow:0 0 0 1.5px ${ROAD.msrCasing},0 0 0 2.5px ${ROAD.msr}}
+.ms-ggs-grid{display:grid;grid-template-columns:auto 1fr 1fr;gap:3px 4px;font-size:${FS.meta}px;align-items:center;margin-top:6px}
+.ms-ggs-grid>.ms-ggs-h{font-size:${FS.meta}px;color:${TEXT.label};display:flex;gap:4px;justify-content:center;align-items:center}
+.ms-ggs-grid>.ms-ggs-m{color:${TEXT.label};padding-right:6px;white-space:nowrap}
+.ms-ggs-grid>.ms-ggs-c{text-align:center;padding:3px 0 2px;border-radius:3px;border-bottom:1px solid ${LINE.soft};font-size:${FS.body}px;font-weight:${FW.semi};color:${TEXT.main};font-variant-numeric:tabular-nums}
+.ms-ggs-grid>.ms-ggs-c.ms-on{color:${TEXT.strong};font-weight:${FW.bold};border-bottom-color:transparent;box-shadow:inset 0 0 0 1.5px ${ACCENT}}
 .ms-ggs-rose{display:flex;gap:10px;align-items:center}
-.ms-ggs-rose>svg{flex:none}
-.ms-ggs-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:4px}
-.ms-ggs-tile{border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:6px 3px 5px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#e8ebee}
-.ms-ggs-tile.ms-me{border-color:#5aa9e6;background:rgba(90,169,230,.12)}
-.ms-ggs-tile b{font-size:13px;font-variant-numeric:tabular-nums}
-.ms-ggs-tile small{font-size:10px;color:#c3cbd3}
+.ms-ggs-rose>svg,.ms-ggs-rose>figure{flex:none}
+.ms-ggs-rose>div{min-width:0}
+.ms-ggs-modes{display:grid;gap:2px 12px;align-items:baseline}
+.ms-ggs-modes>span{font-size:${FS.meta}px;color:${TEXT.label};white-space:nowrap}
+.ms-ggs-modes>span.ms-me{color:${ACCENT};font-weight:${FW.semi}}
+.ms-ggs-modes>b{font-size:${FS.value}px;font-weight:${FW.bold};color:${TEXT.main};font-variant-numeric:tabular-nums;white-space:nowrap}
+.ms-ggs-modes>b.ms-me{color:${TEXT.strong}}
+.ms-ggs-modes>b.ms-nogo{color:${STEP_TEXT.nogo}}
+.ms-ggs-modes>b>small{font-size:${FS.meta}px;font-weight:${FW.regular};color:${TEXT.label};margin-left:2px}
 .ms-ggs-way{display:flex;align-items:center;margin-top:20px}
-.ms-ggs-way>.ms-dot{flex:none;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:#5aa9e6}
+.ms-ggs-way>.ms-dot{flex:none;width:12px;height:12px;border-radius:50%;border:2px solid ${TEXT.strong};background:${OWN_UNIT}}
 .ms-ggs-way>.ms-leg{flex:1;height:6px;border-radius:3px;margin:0 4px;position:relative}
-.ms-ggs-way>.ms-leg>span{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:10px;color:#c3cbd3;white-space:nowrap}
-.ms-ggs-way>.ms-xc{background:repeating-linear-gradient(90deg,#9aa3ad 0 6px,transparent 6px 10px)}
-.ms-ggs-way>.ms-rd{background:#f3f5f7}
+.ms-ggs-way>.ms-leg>span{position:absolute;left:50%;top:-17px;transform:translateX(-50%);font-size:${FS.meta}px;color:${TEXT.label};white-space:nowrap}
+.ms-ggs-way>.ms-xc{background:repeating-linear-gradient(90deg,${TEXT.label} 0 6px,transparent 6px 10px)}
+.ms-ggs-way>.ms-rd{background:${ROAD.fairWeather}}
+.ms-ggs-way>.ms-rd.ms-aw{background:${ROAD.allWeather}}
+.ms-ggs-way>.ms-rd.ms-msr{background:${ROAD.msr};box-shadow:0 0 0 1.5px ${ROAD.msrCasing}}
 `;
 
 export function ensureSpeedCss(): void {
+  ensureTokensCss();
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
@@ -64,12 +91,6 @@ function el(tag: string, cls?: string, text?: string): HTMLElement {
   return e;
 }
 
-function svgEl(tag: string, attrs: Record<string, string | number>): SVGElement {
-  const e = document.createElementNS(SVG_NS, tag) as SVGElement;
-  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
-  return e;
-}
-
 function when(s: GroundGuideSpeed): string {
   return `${s.season === 'wet' ? 'after rain' : 'dry'} · ${s.light}`;
 }
@@ -78,21 +99,32 @@ function caption(s: GroundGuideSpeed, what = 'Speed'): string {
   return `${what} · ${s.short}`;
 }
 
+/** The vehicle category as a coloured word ("A Veh"), not an uppercase chip (item 13). */
 function catChip(s: GroundGuideSpeed): HTMLElement | null {
-  return s.cat ? el('span', 'ms-ggs-cat', `${s.cat} VEH`) : null;
+  if (!s.cat) return null;
+  const c = el('span', 'ms-ggs-cat', `${s.cat} Veh`);
+  c.title = `${s.cat} vehicle`;
+  return c;
 }
 
 export function speedHeadline(s: GroundGuideSpeed): HTMLElement {
   const h = el('div', 'ms-ggs-head');
-  h.append(el('span', 'ms-ggs-big', s.kmh === 0 ? 'NO-GO' : fmtKmh(s.kmh)), el('span', 'ms-ggb-soft', `cross-country · ${when(s)}`));
+  const big = el('span', 'ms-ggs-big', s.kmh === 0 ? 'NO-GO' : fmtKmh(s.kmh));
+  if (s.kmh === 0) big.style.color = STEP_TEXT.nogo;
+  h.append(big, el('span', 'ms-ggb-soft', `cross-country · ${when(s)}`));
   if (s.up !== null && s.down !== null) h.append(el('span', 'ms-ggb-soft', `· up ${s.up}, down ${s.down}`));
   const c = catChip(s);
   if (c) h.append(c);
   return h;
 }
 
+/** The road class as a CSS modifier (item 16): MSR white and cased, all-weather blue, else fair-weather violet. */
+function roadClass(s: GroundGuideSpeed): string {
+  return s.road?.msr ? ' ms-msr' : s.road?.allWeather ? ' ms-aw' : '';
+}
+
 function shield(s: GroundGuideSpeed): HTMLElement {
-  return el('span', `ms-ggs-shield${s.road?.msr ? ' ms-msr' : ''}`, s.road?.shield ?? 'Rd');
+  return el('span', `ms-ggs-shield${roadClass(s)}`, s.road?.shield ?? 'Rd');
 }
 
 /** "1.2 km E · 18 min to reach · then 40 km/h (column)". */
@@ -168,40 +200,47 @@ function styleGrid(s: GroundGuideSpeed): HTMLElement {
   return band('T', caption(s), head, g, road);
 }
 
-function speedColor(kmh: number, top: number): string {
-  if (kmh <= 0) return '#e5484d';
-  const f = top > 0 ? kmh / top : 0;
-  return f >= 0.66 ? '#2fa862' : f >= 0.33 ? '#f2c14e' : '#f0932b';
+/**
+ * A way's colour on the going steps (item 12: colours only from the ladder). A ray carries its speed, not its going:
+ * blocked is NO-GO, at least half the mover's best speed reads as GO, slower as SLOW-GO (slow ground or a slope).
+ */
+function rayColor(x: SpeedDirection, top: number): string {
+  if (x.minutes === null || x.kmh <= 0) return STEP_COLOR.nogo;
+  return top > 0 && x.kmh >= top * 0.5 ? STEP_COLOR.go : STEP_COLOR.slow;
 }
 
-/** Eight wedges, length by km/h, coloured against the mover's best; the group turns with the map (`data-gv-rose`). */
+/**
+ * The T Time-to-X rose in the shared frame (item 12): eight wedges in map bearings, length by speed (longest = the
+ * mover's best way), a blocked way red and as long as it goes before it is stopped. The group turns with the map
+ * (`data-gv-rose`). Drawn at ROSE_PX on screen: `size` is kept for the callers but no longer used.
+ */
 export function speedRoseSvg(rays: SpeedDirection[], rangeM: number, size: number, northDeg: number): SVGElement {
-  const c = size / 2;
-  const r0 = size * 0.12;
-  const R = size / 2 - 4;
+  void size;
+  const r0 = 9;
+  const R = ROSE_R;
   const top = Math.max(1, ...rays.map((r) => r.kmh));
-  const svg = svgEl('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': 'Minutes to cover the range, by direction' });
-  const grp = svgEl('g', { transform: `rotate(${northDeg} ${c} ${c})`, 'data-gv-rose': `${c}` });
-  grp.append(svgEl('circle', { cx: c, cy: c, r: R, fill: 'none', stroke: 'rgba(255,255,255,.1)' }));
-  const P = (a: number, rr: number) => `${(c + rr * Math.sin(a)).toFixed(1)} ${(c - rr * Math.cos(a)).toFixed(1)}`;
+  const f = roseFrame(`Speed and minutes to cover ${fmtDistance(rangeM)}, by direction`);
+  f.add('circle', { cx: ROSE_C, cy: ROSE_C, r: r0 + (R - r0) / 2, fill: 'none', stroke: LINE.hair, 'stroke-dasharray': '2 3' });
   for (const x of rays) {
-    const a0 = ((x.bearingDeg - 20.5) * Math.PI) / 180;
-    const a1 = ((x.bearingDeg + 20.5) * Math.PI) / 180;
     // Open: length by speed. Blocked: a red wedge as long as the way goes before it is stopped.
     const k = x.minutes === null ? Math.max(0.1, x.reachM / Math.max(1, rangeM)) : x.kmh / top;
     const r = Math.max(r0 + 3, r0 + (R - r0) * Math.min(1, k));
-    grp.append(
-      svgEl('path', {
-        d: `M ${P(a0, r0)} L ${P(a0, r)} A ${r} ${r} 0 0 1 ${P(a1, r)} L ${P(a1, r0)} A ${r0} ${r0} 0 0 0 ${P(a0, r0)} Z`,
-        fill: x.minutes === null ? '#e5484d' : speedColor(x.kmh, top),
-        'fill-opacity': 0.88,
-      }),
-    );
+    const w = f.add('path', { d: wedgePath(r0, r, x.bearingDeg - 20.5, x.bearingDeg + 20.5), fill: rayColor(x, top), stroke: SURFACE.ring, 'stroke-width': 0.8 });
+    const tip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    tip.textContent =
+      x.minutes === null
+        ? `${x.compass}: blocked${x.blockedBy ? ` by ${x.blockedBy.toLowerCase()}` : ''} at ${fmtDistance(x.reachM)}`
+        : `${x.compass}: ${fmtMinutes(x.minutes)} at ${x.kmh} km/h`;
+    w.append(tip);
   }
-  grp.append(svgEl('circle', { cx: c, cy: c, r: r0 - 2, fill: '#1b1f25', stroke: '#fff', 'stroke-width': 1.5 }));
-  grp.append(svgEl('path', { d: `M ${c} 1 l 3.5 6 h -7 z`, fill: '#fff' }));
-  svg.append(grp);
-  return svg;
+  roseHub(f, r0 - 2);
+  turnRose(f, northDeg);
+  return f.svg;
+}
+
+/** The key under the Time-to-X rose: "Length = speed · colour = going". */
+export function speedRoseKey(): HTMLElement {
+  return roseKey('Length = speed · colour = going');
 }
 
 export function speedRoseLines(s: GroundGuideSpeed): HTMLElement {
@@ -235,20 +274,33 @@ export function speedRoseLines(s: GroundGuideSpeed): HTMLElement {
 function styleRose(s: GroundGuideSpeed, northDeg: number): HTMLElement {
   if (!s.rays) return styleLine(s);
   const row = el('div', 'ms-ggs-rose');
-  row.append(speedRoseSvg(s.rays, s.rangeM, 92, northDeg), speedRoseLines(s));
+  row.append(roseFigure(speedRoseSvg(s.rays, s.rangeM, 0, northDeg), speedRoseKey()), speedRoseLines(s));
   return band('T', `${caption(s)} · Time to ${fmtDistance(s.rangeM)}`, row);
 }
 
-/** Foot / B truck / A tracked (and the symbol's mover) side by side, km/h now. */
+/**
+ * Foot / B Truck / A Tracks (and the symbol's mover) side by side, km/h now (item 11): a plain table, the mode over
+ * its speed in bold, the symbol's own mover named in the accent colour. Nothing in it looks pressable.
+ */
 export function speedModeTiles(s: GroundGuideSpeed): HTMLElement {
-  const tiles = el('div', 'ms-ggs-tiles');
+  const t = el('div', 'ms-ggs-modes');
+  const n = Math.max(1, Math.min(4, s.modes.length));
+  t.style.gridTemplateColumns = `repeat(${n},minmax(0,1fr))`;
+  t.style.gridTemplateRows = 'auto auto';
+  t.style.gridAutoFlow = 'column';
+  t.setAttribute('role', 'table');
+  t.setAttribute('aria-label', `Cross-country speed by mode, ${when(s)}`);
   for (const m of s.modes) {
-    const t = el('div', `ms-ggs-tile${m.active ? ' ms-me' : ''}`);
-    t.title = `${m.short}${m.cat ? ` (${m.cat} vehicle)` : ''}: ${fmtKmh(m.kmh)} cross-country, ${when(s)}`;
-    t.append(el('b', undefined, m.kmh === null ? '?' : m.kmh === 0 ? 'NO-GO' : String(m.kmh)), el('small', undefined, `${m.short}${m.cat ? ` · ${m.cat}` : ''}`));
-    tiles.append(t);
+    const me = m.active ? ' ms-me' : '';
+    const k = el('span', me || undefined, m.short);
+    k.title = `${m.short}${m.cat ? ` (${m.cat} vehicle)` : ''}${m.active ? ', this symbol' : ''}: ${fmtKmh(m.kmh)} cross-country, ${when(s)}`;
+    const v = el('b', `${m.kmh === 0 ? 'ms-nogo' : ''}${me}`.trim() || undefined);
+    if (m.kmh === null) v.textContent = '?';
+    else if (m.kmh === 0) v.textContent = 'NO-GO';
+    else v.append(String(m.kmh), el('small', undefined, 'km/h'));
+    t.append(k, v);
   }
-  return tiles;
+  return t;
 }
 
 function styleModes(s: GroundGuideSpeed): HTMLElement {
@@ -265,7 +317,7 @@ export function speedWay(s: GroundGuideSpeed): [HTMLElement, HTMLElement] | null
   const way = el('div', 'ms-ggs-way');
   const xc = el('span', 'ms-leg ms-xc');
   xc.append(el('span', undefined, r.reachMin === null ? `${fmtDistance(r.distanceM)} · NO-GO` : r.reachMin === 0 ? 'on the Rd' : `${fmtDistance(r.distanceM)} · ${fmtMinutes(r.reachMin)}`));
-  const rd = el('span', 'ms-leg ms-rd');
+  const rd = el('span', `ms-leg ms-rd${roadClass(s)}`);
   rd.append(el('span', undefined, `${r.kmh} km/h${s.roadMode === 'convoy' ? ' column' : ''}`));
   const sh = shield(s);
   sh.style.marginRight = '0';
@@ -341,7 +393,7 @@ registerBriefSection({
     if (s.rays) {
       const row = el('div', 'ms-ggs-rose');
       row.style.marginTop = '8px';
-      row.append(speedRoseSvg(s.rays, s.rangeM, 110, 0), speedRoseLines(s));
+      row.append(roseFigure(speedRoseSvg(s.rays, s.rangeM, 0, 0), speedRoseKey()), speedRoseLines(s));
       box.append(row);
     }
     const lines = speedText(s).slice(1); // the headline is above

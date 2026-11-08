@@ -6,59 +6,60 @@
  * verdict has changed since they were placed. Click a row to open its details and
  * zoom to it. Built from DOM nodes and `textContent` only, so symbol names and class
  * labels can never inject markup.
+ *
+ * Visual review (user, 2026-11-08): each row carries its verdict as the ladder does everywhere (item 1): the icon and
+ * the word in the tone's colour (Marginal yellow, Part NO-GO red for an Encroaching symbol or a partly obstructed one).
+ * Sizes and colours from GroundGuideTokens.ts (items 17, 18); the verdict is a coloured word, not a grey chip (item 13);
+ * a long symbol name wraps to two lines instead of being cut (item 5).
  */
 
-import type { GroundGuideAudit, GroundGuideAuditEntry } from './GroundGuideTypes';
+import { ACCENT, ensureTokensCss, FONT, FS, FW, LINE, ladderIcon, SURFACE, TEXT, TONE, verdictTone, type Tone } from './GroundGuideTokens';
+import type { GroundGuideAudit, GroundGuideAuditEntry, GroundGuideVerdictKind } from './GroundGuideTypes';
 
 const STYLE_ID = 'ms-ground-guide-audit-style';
 
 const CSS = `
 .ms-gga{position:fixed;right:12px;top:72px;z-index:2147482000;width:360px;max-height:70vh;display:none;flex-direction:column;
-  font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;background:#1b1f25;border:1px solid #39414b;
+  font:${FW.regular} ${FS.meta}px/1.4 ${FONT};color:${TEXT.main};background:${SURFACE.card};border:1px solid #39414b;
   border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.45);overflow:hidden}
-.ms-gga-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#242a32;border-bottom:1px solid #39414b}
-.ms-gga-title{font-weight:600;font-size:13px;flex:1}
+.ms-gga-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:${SURFACE.head};border-bottom:1px solid #39414b}
+.ms-gga-title{font-weight:${FW.semi};font-size:${FS.body}px;flex:1}
 .ms-gga button{font:inherit;color:inherit;cursor:pointer}
 .ms-gga-btn{padding:3px 10px;min-height:28px;border-radius:6px;border:1px solid #4a535e;background:#2b323b}
 .ms-gga-btn:hover{background:#363f4a}
-.ms-gga-x{padding:0;min-width:28px;min-height:28px;font-size:18px;line-height:1;border:0;background:none;color:#9aa3ad}
-.ms-gga button:focus-visible,.ms-gga input:focus-visible,.ms-gga-title:focus-visible{outline:2px solid #6db3ff;outline-offset:1px}
+.ms-gga-x{padding:0;min-width:28px;min-height:28px;font-size:${FS.title}px;line-height:1;border:0;background:none;color:${TEXT.label}}
+.ms-gga button:focus-visible,.ms-gga input:focus-visible,.ms-gga-title:focus-visible{outline:2px solid ${ACCENT};outline-offset:1px}
 .ms-gga-title{outline:none}
 @media (prefers-reduced-motion:reduce){.ms-gga-bar>div{transition:none}}
-.ms-gga-sum{padding:8px 12px;border-bottom:1px solid #2c333c}
-.ms-gga-soft{color:#9aa3ad;font-size:11px}
-.ms-gga-opt{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid #2c333c;color:#c5cbd2}
+.ms-gga-sum{padding:8px 12px;border-bottom:1px solid ${LINE.soft}}
+.ms-gga-soft{color:${TEXT.label};font-size:${FS.meta}px}
+.ms-gga-opt{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid ${LINE.soft};color:${TEXT.label}}
 .ms-gga-list{overflow:auto;flex:1;min-height:0}
-.ms-gga-row{display:block;width:100%;text-align:left;padding:7px 12px;border:0;border-bottom:1px solid #2c333c;background:none}
-.ms-gga-row:hover,.ms-gga-row:focus-visible{background:#262d36}
-.ms-gga-row:focus-visible{outline:2px solid #6db3ff;outline-offset:-2px}
-.ms-gga-line{display:flex;align-items:center;gap:8px}
-.ms-gga-dot{flex:none;width:10px;height:10px;border-radius:50%}
-.ms-gga-name{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ms-gga-tag{flex:none;padding:0 7px;border-radius:999px;background:#323a44;font-size:11px;color:#c5cbd2}
-.ms-gga-msg{margin:2px 0 0 18px;color:#c5cbd2}
-.ms-gga-more{margin:5px 0 0 18px;padding:6px 8px;border-radius:6px;background:#14181d;color:#c5cbd2}
+.ms-gga-row{display:block;width:100%;text-align:left;padding:7px 12px;border:0;border-bottom:1px solid ${LINE.soft};background:none}
+.ms-gga-row:hover,.ms-gga-row:focus-visible{background:${SURFACE.head}}
+.ms-gga-row:focus-visible{outline:2px solid ${ACCENT};outline-offset:-2px}
+.ms-gga-line{display:flex;align-items:flex-start;gap:8px}
+.ms-gga-ic{flex:none;display:flex;width:15px;height:17px;align-items:center}
+.ms-gga-name{font-weight:${FW.semi};flex:1;min-width:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.ms-gga-tag{flex:none;font-weight:${FW.semi};white-space:nowrap}
+.ms-gga-msg{margin:2px 0 0 23px;color:${TEXT.label}}
+.ms-gga-more{margin:5px 0 0 23px;padding:6px 8px;border-radius:6px;background:${SURFACE.ring};color:${TEXT.label}}
 .ms-gga-more div+div{margin-top:3px}
-.ms-gga-warn{color:#ffc861}
-.ms-gga-empty{padding:16px 12px;color:#c5cbd2}
-.ms-gga-bar{height:4px;background:#2c333c}.ms-gga-bar>div{height:100%;background:#4f9cf0;transition:width .15s}
+.ms-gga-warn{color:${TEXT.warn}}
+.ms-gga-empty{padding:16px 12px;color:${TEXT.label}}
+.ms-gga-bar{height:4px;background:${LINE.soft}}.ms-gga-bar>div{height:100%;background:${ACCENT};transition:width .15s}
 `;
 
-const COLOR: Record<string, string> = {
-  ok: '#1f8a4c',
-  near: '#e9a526',
-  caution: '#e08a1e',
-  partial: '#d9622b',
-  in: '#d63a3f',
-};
+/** Where a verdict sits on the ladder: near is Marginal unless part of the symbol is inside (Encroaching: Part NO-GO). */
+function toneOf(verdict: GroundGuideVerdictKind | string, fraction = 0): Tone {
+  return verdictTone({ verdict: verdict as GroundGuideVerdictKind, fraction });
+}
 
-const LABEL: Record<string, string> = {
-  ok: 'Suitable',
-  near: 'Marginal',
-  caution: 'SLOW-GO',
-  partial: 'Partially obstructed',
-  in: 'Unsuitable',
-};
+/** The ladder's word for a verdict, the same word the cursor card and chip use. */
+function labelOf(verdict: GroundGuideVerdictKind | string, fraction = 0): string {
+  const t = toneOf(verdict, fraction);
+  return t === 'chk' ? verdict : TONE[t].word;
+}
 
 export interface AuditPanelHandlers {
   onZoom(entry: GroundGuideAuditEntry): void;
@@ -190,10 +191,15 @@ export class GroundGuideAuditPanel {
     const row = el('button', 'ms-gga-row');
     row.type = 'button';
     row.setAttribute('aria-expanded', String(open));
-    const dot = el('span', 'ms-gga-dot');
-    dot.style.background = COLOR[e.verdict] ?? '#5b6470';
+    // The verdict as the ladder draws it everywhere: its icon and its word, both in the tone's colour (item 1).
+    const tone = toneOf(e.verdict, e.fraction);
+    const ic = el('span', 'ms-gga-ic');
+    ic.style.color = TONE[tone].dot;
+    ic.append(ladderIcon(TONE[tone].icon, 15, SURFACE.card));
+    const tag = el('span', 'ms-gga-tag', labelOf(e.verdict, e.fraction));
+    tag.style.color = TONE[tone].text;
     const line = el('div', 'ms-gga-line');
-    line.append(dot, el('span', 'ms-gga-name', e.name), el('span', 'ms-gga-tag', LABEL[e.verdict] ?? e.verdict));
+    line.append(ic, el('span', 'ms-gga-name', e.name), tag);
     row.append(line, el('div', 'ms-gga-msg', e.message));
 
     if (open) {
@@ -203,7 +209,7 @@ export class GroundGuideAuditPanel {
       more.append(el('div', 'ms-gga-soft', `Mode: ${e.profileLabel}${e.profileOverride ? ' (chosen when placed)' : ''}`));
       if (e.previous === null) more.append(el('div', 'ms-gga-soft', 'Not checked when it was placed.'));
       else if (e.changed) {
-        more.append(el('div', 'ms-gga-warn', `Was ${LABEL[e.previous] ?? e.previous} when placed.`));
+        more.append(el('div', 'ms-gga-warn', `Was ${labelOf(e.previous)} when placed.`));
       }
       if (e.overridden) {
         more.append(el('div', 'ms-gga-warn', `Placed against the rules${e.reason ? `: ${e.reason}` : '.'}`));
@@ -223,6 +229,7 @@ export class GroundGuideAuditPanel {
 
   private _ensure(): HTMLDivElement {
     if (this._root) return this._root;
+    ensureTokensCss();
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;

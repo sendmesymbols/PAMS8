@@ -27,6 +27,7 @@ import {
   textureTriangle,
 } from './GroundGuideGoingView';
 import type { GroundGuideGoingInfo, GroundGuideVerdict } from './GroundGuideTypes';
+import { LETTER_FILL } from './GroundGuideTokens';
 
 export type GrotbcLetter = 'G' | 'R' | 'O' | 'T' | 'B' | 'C';
 
@@ -44,7 +45,8 @@ export interface BriefSection {
 
 export const LETTERS: readonly GrotbcLetter[] = ['G', 'R', 'O', 'T', 'B', 'C'];
 /** One accent a heading (doc 16 §4.1). */
-export const LETTER_COLOR: Record<GrotbcLetter, string> = { G: '#8fb35a', R: '#c9a46b', O: '#7a5cc9', T: '#5aa9e6', B: '#9a8f86', C: '#1f8a5a' };
+/** Letter badges are neutral (user, 2026-11-08, item 16): a GROTBC letter is not a verdict, so it never borrows green, tan or red. */
+export const LETTER_COLOR: Record<GrotbcLetter, string> = { G: LETTER_FILL, R: LETTER_FILL, O: LETTER_FILL, T: LETTER_FILL, B: LETTER_FILL, C: LETTER_FILL };
 const sections: BriefSection[] = [];
 
 /** Add (or replace, by id) a section of the Ground Detail. */
@@ -80,10 +82,10 @@ const STYLE_ID = 'ms-ground-guide-brief-style';
 const CSS = `
 .ms-ggbr-two{display:grid;grid-template-columns:minmax(0,136px) minmax(0,1fr);gap:10px;align-items:center}
 .ms-ggbr-two>svg{max-width:100%;height:auto}
-.ms-ggbr-ln{display:grid;grid-template-columns:78px 1fr;gap:0 8px;line-height:1.4;font-size:11.5px}
-.ms-ggbr-ln>span:first-child{color:#9aa3ad;font-size:10.5px}
-.ms-ggbr-list{margin:4px 0 0;padding:0;list-style:none;font-size:11px;color:#c3cbd3;line-height:1.45}
-.ms-ggbr-upd{color:#ffc861}
+.ms-ggbr-ln{display:grid;grid-template-columns:78px 1fr;gap:0 8px;line-height:1.4;font-size:13.5px}
+.ms-ggbr-ln>span:first-child{color:#c3cbd3;font-size:12px}
+.ms-ggbr-list{margin:4px 0 0;padding:0;list-style:none;font-size:12px;color:#c3cbd3;line-height:1.45}
+.ms-ggbr-upd{color:#ffd27a}
 `;
 
 /** Put the shared section CSS on the page once (the Detail card and the modules' sections use it). */
@@ -174,8 +176,8 @@ export function movementDetail(g: GroundGuideGoingInfo, size = 136): HTMLElement
   const txt = h('div');
   const rate = h('div', 'ms-gv-rate', RATING_LABEL[m.rating]);
   rate.style.color = RATING_COLOR[m.rating];
-  rate.style.fontSize = '16px';
-  txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 Dirs open to ${fmtDistance(m.rangeM / 2)}`));
+  rate.style.fontSize = '15.5px';
+  txt.append(rate, h('div', 'ms-gv-blk', `Open Dirs: ${m.open} of 8, to ${fmtDistance(m.rangeM / 2)}`));
   const ul = h('ul', 'ms-ggbr-list');
   for (const x of m.sectors) {
     // Each blocked direction with its arrow, which turns with the map.

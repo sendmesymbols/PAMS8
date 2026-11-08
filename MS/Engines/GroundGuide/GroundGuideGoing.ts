@@ -26,7 +26,8 @@ import type {
 
 export const GOING_ORDER: Record<GoingStep, number> = { go: 0, slow: 1, nogo: 2 };
 export const GOING_WORD: Record<GoingStep, string> = { go: 'GO', slow: 'SLOW-GO', nogo: 'NO-GO' };
-export const GOING_COLOR: Record<GoingStep, string> = { go: '#2fa862', slow: '#f0932b', nogo: '#e5484d' };
+/** Dots, wedges and segments on the dark card; the ladder's three going colours (GroundGuideTokens STEP_COLOR). */
+export const GOING_COLOR: Record<GoingStep, string> = { go: '#2fa862', slow: '#ee8a1f', nogo: '#e5484d' };
 export const GOING_CODE: Record<GoingStep, number> = { go: 0, slow: 1, nogo: 2 };
 export const CODE_STEP: GoingStep[] = ['go', 'slow', 'nogo'];
 export const COMPASS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -159,9 +160,9 @@ export const RATING_LABEL: Record<GroundGuideMovement['rating'], string> = {
   severe: 'Severely Restricted',
 };
 export const RATING_COLOR: Record<GroundGuideMovement['rating'], string> = {
-  unrestricted: '#3fc07a',
-  restricted: '#f0a04b',
-  severe: '#ff6b6f',
+  unrestricted: '#74dca3',
+  restricted: '#ffb46b',
+  severe: '#ff8a8d',
 };
 
 /** A soil swatch colour per texture code, light sand to dark clay. */

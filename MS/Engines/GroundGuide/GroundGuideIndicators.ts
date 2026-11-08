@@ -6,10 +6,13 @@
  * with a marker on that terrain, extra marks on the parts of a line/area that lie in
  * no-go ground, and a short label.
  *
- *   red   line + marker : to the nearest no-go ground (too close) or to the contested
- *                         part of a shape (partly / mostly in no-go)
+ *   line + marker in the verdict ladder's colour (GroundGuideTokens, item 1, 2026-11-08): yellow from a Marginal
+ *                         position to the NO-GO ground beside it, red to the contested part of a shape (partly /
+ *                         mostly in no-go)
  *   green line + marker : from a symbol that is inside no-go to the nearest deployable
  *                         ground (where it could move to)
+ * The label sits on a small dark plate beside the verdict's icon, so it reads on any imagery (item 15). Other units'
+ * footprints are violet, not SLOW-GO orange (item 16).
  *
  * Like ProximityEngine, the graphics are created once, kept on one ground-draped
  * GraphicsLayer and only have their geometry swapped / visibility toggled afterwards,
@@ -31,15 +34,21 @@ import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import Utils from '../../Support/utils';
+import { ladderIconMarkup, OTHER_UNIT, OWN_UNIT, rgbOf, STEP_COLOR, SURFACE, TONE, type Tone } from './GroundGuideTokens';
 import type { MercXY, GroundGuideIndicator } from './GroundGuideTypes';
 
 const LAYER_ID = 'ms-ground-guide-indicators';
 
-const RGB: Record<GroundGuideIndicator['kind'], [number, number, number]> = {
-  'no-go': [214, 48, 49],
-  contested: [214, 48, 49],
-  deployable: [46, 160, 90],
-};
+/** The line colour for an indicator: the verdict's ladder fill; green for the way to usable ground. */
+function lineTone(kind: GroundGuideIndicator['kind'], tone: Tone): Tone {
+  if (kind === 'deployable') return 'go';
+  if (tone === 'marg' || tone === 'part' || tone === 'nogo') return tone;
+  return kind === 'contested' ? 'part' : 'nogo';
+}
+
+function toneRgb(t: Tone): [number, number, number] {
+  return rgbOf(t === 'go' ? STEP_COLOR.go : TONE[t].fill);
+}
 
 type Convert = (p: MercXY) => [number, number] | null;
 
@@ -61,6 +70,16 @@ function endUrl([r, g, b]: [number, number, number], diamond: boolean): string {
   return svg(diamond ? `<path d="M11 2 L20 11 L11 20 L2 11 Z" ${stroke} stroke-linejoin="round"/>` : `<circle cx="11" cy="11" r="8" ${stroke}/>`);
 }
 
+/** The verdict's ladder icon on a small dark tile, beside the label's plate. */
+function iconUrl(tone: Tone): string {
+  const t = TONE[tone];
+  const color = tone === 'go' ? STEP_COLOR.go : tone === 'part' || tone === 'nogo' ? '#ff8a8d' : t.fill;
+  return svg(
+    `<rect x="0.5" y="0.5" width="21" height="21" rx="5" fill="${SURFACE.card}" fill-opacity="0.94" stroke="${color}" stroke-width="1"/>` +
+      `<g transform="translate(2 2) scale(0.9)">${ladderIconMarkup(t.icon, SURFACE.card, color)}</g>`,
+  );
+}
+
 export class GroundGuideIndicators {
   private _layer: GraphicsLayer | null = null;
   private _map: any = null;
@@ -78,15 +97,19 @@ export class GroundGuideIndicators {
   private _fpOthers: Graphic | null = null;
   private _fpVisible = false;
   private _labelSym: TextSymbol | null = null;
-  private _kind: GroundGuideIndicator['kind'] | null = null;
+  /** The verdict icon on its dark tile, beside the label's plate. */
+  private _labelIcon: Graphic | null = null;
+  private _iconSym: PictureMarkerSymbol | null = null;
+  /** The kind and tone the symbols were made for ("no-go:marg"). */
+  private _kind: string | null = null;
   private _labelText = '';
   private _labelLeft = false;
   private _visible = false;
 
   constructor(private readonly _getView: () => any) {}
 
-  /** Draw (or move) the lines for these indicators; hides everything when there are none. */
-  show(indicators: GroundGuideIndicator[], labels: boolean): void {
+  /** Draw (or move) the lines for these indicators in the verdict's ladder colour (`tone`); hides everything when there are none. */
+  show(indicators: GroundGuideIndicator[], labels: boolean, tone: Tone = 'nogo'): void {
     const view = this._getView?.();
     const sr = view?.spatialReference;
     const conv = sr ? this._converter(sr) : null;
@@ -120,8 +143,9 @@ export class GroundGuideIndicators {
     }
 
     const kind = indicators[0].kind;
-    this._ensure(view.map, kind);
-    if (kind !== this._kind) this._applyKind(kind);
+    const lt = lineTone(kind, tone);
+    this._ensure(view.map, kind, lt);
+    if (`${kind}:${lt}` !== this._kind) this._applyKind(kind, lt);
 
     this._casing!.geometry = new Polyline({ paths, spatialReference: sr });
     this._line!.geometry = new Polyline({ paths, spatialReference: sr });
@@ -143,13 +167,18 @@ export class GroundGuideIndicators {
         const sym = this._labelSym!.clone();
         sym.text = text;
         sym.horizontalAlignment = left ? 'right' : 'left';
-        sym.xoffset = left ? -10 : 10;
+        sym.xoffset = left ? -32 : 32;
         this._label!.symbol = sym;
+        const ic = this._iconSym!.clone();
+        ic.xoffset = left ? -18 : 18;
+        this._labelIcon!.symbol = ic;
         this._labelText = text;
         this._labelLeft = left;
       }
+      this._labelIcon!.geometry = this._label!.geometry;
     }
     this._label!.visible = !!text;
+    this._labelIcon!.visible = !!text;
 
     if (!this._visible) {
       this._casing!.visible = true;
@@ -161,15 +190,15 @@ export class GroundGuideIndicators {
   /** Hide the indicator lines (the footprint outline has its own `hideFootprint`). */
   hide(): void {
     if (!this._visible) return;
-    for (const g of [this._casing, this._line, ...this._endPool, ...this._markPool, this._stretchCasing, this._stretch, this._label]) {
+    for (const g of [this._casing, this._line, ...this._endPool, ...this._markPool, this._stretchCasing, this._stretch, this._label, this._labelIcon]) {
       if (g) g.visible = false;
     }
     this._visible = false;
   }
 
   /**
-   * Draw the echelon footprint being judged (blue) and, in orange, the footprints of the
-   * neighbours that are too close. `ring` is a closed ring or the 2 end points of a line.
+   * Draw the echelon footprint being judged (blue) and, in violet (not a verdict colour, item 16), the footprints
+   * of the neighbours that are too close. `ring` is a closed ring or the 2 end points of a line.
    */
   showFootprint(ring: MercXY[], others: MercXY[][]): void {
     const view = this._getView?.();
@@ -194,7 +223,7 @@ export class GroundGuideIndicators {
       this.hideFootprint();
       return;
     }
-    this._ensure(view.map, this._kind ?? 'no-go');
+    this._ensure(view.map, 'no-go', 'nogo');
     this._fpOwn!.geometry = new Polyline({ paths: [own], spatialReference: sr });
     const neighbour = others.map(path).filter((p): p is [number, number][] => p !== null);
     this._fpOthers!.geometry = neighbour.length ? new Polyline({ paths: neighbour, spatialReference: sr }) : null;
@@ -221,7 +250,8 @@ export class GroundGuideIndicators {
     this._detach();
     this._layer?.destroy();
     this._layer = null;
-    this._casing = this._line = this._label = null;
+    this._casing = this._line = this._label = this._labelIcon = null;
+    this._iconSym = null;
     this._endPool = [];
     this._markPool = [];
     this._endSym = this._markSym = null;
@@ -254,7 +284,7 @@ export class GroundGuideIndicators {
     return null;
   }
 
-  private _ensure(map: any, kind: GroundGuideIndicator['kind']): void {
+  private _ensure(map: any, kind: GroundGuideIndicator['kind'], tone: Tone): void {
     if (!this._layer) {
       this._layer = new GraphicsLayer({
         id: LAYER_ID,
@@ -265,30 +295,32 @@ export class GroundGuideIndicators {
       // Every graphic is created WITH its symbol (geometry arrives later), the way
       // ProximityEngine does it: a symbol-less graphic added to a SceneView layer is
       // never picked up when its symbol is set afterwards.
-      const s = this._symbols(kind);
+      const s = this._symbols(kind, tone);
       this._labelSym = s.label;
+      this._iconSym = s.icon;
       this._endSym = s.end;
       this._markSym = s.mark;
       this._casing = new Graphic({ symbol: s.casing, visible: false });
       this._line = new Graphic({ symbol: s.line, visible: false });
       this._endPool = [new Graphic({ symbol: s.end, visible: false })];
       this._label = new Graphic({ symbol: s.label, visible: false });
+      this._labelIcon = new Graphic({ symbol: s.icon, visible: false });
       // The stretches of a line / area edge that run through no-go ground: solid red on a white casing.
       this._stretchCasing = new Graphic({
         symbol: new SimpleLineSymbol({ style: 'solid', color: [255, 255, 255, 0.9], width: 9, cap: 'round', join: 'round' }),
         visible: false,
       });
       this._stretch = new Graphic({
-        symbol: new SimpleLineSymbol({ style: 'solid', color: [...RGB.contested, 1], width: 5, cap: 'round', join: 'round' }),
+        symbol: new SimpleLineSymbol({ style: 'solid', color: [...rgbOf(TONE.part.fill), 1], width: 5, cap: 'round', join: 'round' }),
         visible: false,
       });
       // Footprint outlines sit under the indicator lines so a line to no-go ground stays readable.
       this._fpOthers = new Graphic({
-        symbol: new SimpleLineSymbol({ style: 'dash', color: [230, 126, 34, 1], width: 2 }),
+        symbol: new SimpleLineSymbol({ style: 'dash', color: [...rgbOf(OTHER_UNIT), 1], width: 2 }),
         visible: false,
       });
       this._fpOwn = new Graphic({
-        symbol: new SimpleLineSymbol({ style: 'solid', color: [30, 100, 200, 1], width: 2.5 }),
+        symbol: new SimpleLineSymbol({ style: 'solid', color: [...rgbOf(OWN_UNIT), 1], width: 2.5 }),
         visible: false,
       });
       this._layer.addMany([
@@ -299,9 +331,10 @@ export class GroundGuideIndicators {
         this._casing,
         this._line,
         ...this._endPool,
+        this._labelIcon,
         this._label,
       ]);
-      this._kind = kind;
+      this._kind = `${kind}:${tone}`;
       this._labelText = '';
     }
     if (this._map !== map) {
@@ -346,11 +379,13 @@ export class GroundGuideIndicators {
     }
   }
 
-  /** The kind (colour / marker shape) changed: swap in symbols for it. */
-  private _applyKind(kind: GroundGuideIndicator['kind']): void {
-    const s = this._symbols(kind);
-    this._kind = kind;
+  /** The kind or the verdict's tone (colour / marker shape) changed: swap in symbols for it. */
+  private _applyKind(kind: GroundGuideIndicator['kind'], tone: Tone): void {
+    const s = this._symbols(kind, tone);
+    this._kind = `${kind}:${tone}`;
     this._labelSym = s.label;
+    this._iconSym = s.icon;
+    this._labelIcon!.symbol = s.icon;
     this._labelText = ''; // forces the label symbol to be re-assigned on this show()
     this._casing!.symbol = s.casing;
     this._line!.symbol = s.line;
@@ -361,23 +396,33 @@ export class GroundGuideIndicators {
     this._label!.symbol = s.label;
   }
 
-  private _symbols(kind: GroundGuideIndicator['kind']) {
-    const rgb = RGB[kind];
+  private _symbols(kind: GroundGuideIndicator['kind'], tone: Tone) {
+    const rgb = toneRgb(tone);
+    // A yellow line reads on a dark casing; the reds and the green on a white one.
+    const casing: [number, number, number, number] = tone === 'marg' ? [20, 24, 29, 0.85] : [255, 255, 255, 0.8];
+    const plate = rgbOf(SURFACE.card);
     return {
-      casing: new SimpleLineSymbol({ style: 'solid', color: [255, 255, 255, 0.8], width: 5 }),
+      casing: new SimpleLineSymbol({ style: 'solid', color: casing, width: 5 }),
       line: new SimpleLineSymbol({ style: 'dash', color: [...rgb, 1], width: 2.5 }),
       end: new PictureMarkerSymbol({ url: endUrl(rgb, kind === 'deployable'), width: 12, height: 12 }),
       mark: new PictureMarkerSymbol({ url: markUrl(rgb), width: 11, height: 11 }),
+      // On a dark plate edged in the verdict colour (item 15), so it reads over fields and roofs alike. 10 pt is about
+      // 13.5 px, the body step.
       label: new TextSymbol({
         text: '',
-        font: new Font({ size: 11, weight: 'bold', family: 'Helvetica' }),
-        color: [255, 255, 255, 1],
-        haloColor: [...rgb, 0.95],
-        haloSize: 2.5,
+        font: new Font({ size: 10, weight: 'bold', family: 'system-ui, Segoe UI, Arial, sans-serif' }),
+        color: [241, 243, 246, 1],
+        backgroundColor: [...plate, 0.94],
+        borderLineColor: [...rgb, 1],
+        borderLineSize: 1,
+        haloColor: [...plate, 0.9],
+        haloSize: 1,
         horizontalAlignment: 'left',
-        xoffset: 10,
-        yoffset: -4,
+        verticalAlignment: 'middle',
+        xoffset: 32,
+        yoffset: 0,
       }),
+      icon: new PictureMarkerSymbol({ url: iconUrl(tone), width: 20, height: 20, xoffset: 18 }),
     };
   }
 }

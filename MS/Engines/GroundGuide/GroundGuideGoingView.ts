@@ -20,13 +20,33 @@ import { fmtDistance } from './GroundGuideEvaluator';
 import { compassNode, joinNodes, orientNorth, registerCanvas } from './GroundGuideNorth';
 import {
   CODE_STEP,
-  GOING_COLOR,
   GOING_WORD,
   RATING_COLOR,
   RATING_LABEL,
   SOIL_COLOR,
   TEXTURE_POLYGONS,
 } from './GroundGuideGoing';
+import {
+  ensureTokensCss,
+  FONT,
+  FS,
+  FW,
+  gauge,
+  LETTER_FG,
+  LETTER_FILL,
+  LINE,
+  ROSE_C,
+  ROSE_R,
+  roseFrame,
+  roseHub,
+  roseKey,
+  STEP_COLOR,
+  SURFACE,
+  TEXT,
+  TONE,
+  wedgePath,
+  type RoseFrame,
+} from './GroundGuideTokens';
 import type { GoingStep, GroundGuideCardOptions, GroundGuideGoingInfo, GroundGuideVerdict } from './GroundGuideTypes';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -35,64 +55,68 @@ const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const SHORT: Record<string, string> = { dismounted: 'Foot', wheeled: 'Wheeled', tracked: 'Tracked' };
 
+/**
+ * Sizes and colours come from GroundGuideTokens.ts (2026-11-08 visual review): five type steps, labels in TEXT.label,
+ * no text faded with opacity, no uppercase labels (GO / SLOW-GO / NO-GO stay in capitals: they are terms).
+ */
 export const GOING_CSS = `
 .ms-gv-cap{display:flex;align-items:center;gap:6px}
-.ms-gv-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;color:#1b1f25}
-.ms-gv-l[data-l="G"]{background:#8fb35a}.ms-gv-l[data-l="T"]{background:#5aa9e6}
-.ms-gv-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
-.ms-gv-scale>span{font:700 9.5px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-align:center;padding:4px 0 3px;border-radius:2px;background:rgba(255,255,255,.06);color:#6b737c}
-.ms-gv-scale>.ms-gv-go{background:#2fa862;color:#fff}.ms-gv-scale>.ms-gv-slow{background:#f0932b;color:#1b1f25}.ms-gv-scale>.ms-gv-nogo{background:#e5484d;color:#fff}
-.ms-gv-row{display:grid;grid-template-columns:74px 1fr;gap:6px;align-items:center}
-.ms-gv-row+.ms-gv-row{margin-top:4px}
-.ms-gv-k{display:flex;align-items:center;gap:5px;font-size:11px;color:#c3cbd3;white-space:nowrap}
+.ms-gv-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:17px;height:17px;border-radius:4px;font:${FW.bold} ${FS.meta}px/1 ${FONT};color:${LETTER_FG};background:${LETTER_FILL}}
+.ms-gv-row{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px;align-items:center}
+.ms-gv-row+.ms-gv-row{margin-top:6px}
+.ms-gv-k{display:flex;align-items:center;gap:5px;font-size:${FS.body}px;color:${TEXT.label};white-space:nowrap}
 .ms-gv-line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
-.ms-gv-b{font-weight:600;color:#fff}
-.ms-gv-soft{color:#9aa3ad;font-size:11px;padding-top:2px}
-.ms-gv-chip{display:inline-flex;align-items:center;gap:4px;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;background:#3a3424;color:#e8cf95;white-space:nowrap}
-.ms-gv-chip.ms-gv-map{background:#2c4a2f;color:#9fe0a8}
-.ms-gv-limit{margin-top:6px;font-size:11px;color:#c3cbd3}
+.ms-gv-b{font-weight:${FW.semi};color:${TEXT.strong}}
+.ms-gv-soft{color:${TEXT.soft};font-size:${FS.meta}px;line-height:1.35;padding-top:2px}
+.ms-gv-chip{display:inline;font:${FW.semi} ${FS.meta}px/1.3 ${FONT};color:${TEXT.warn}}
+.ms-gv-chip.ms-gv-mapped{color:${TEXT.main}}
+.ms-gv-limit{margin-top:6px;font-size:${FS.meta}px;color:${TEXT.label}}
 .ms-gv-rose{display:flex;gap:10px;align-items:center}
-.ms-gv-rose>svg{flex:none}
-.ms-gv-rate{font-size:15px;font-weight:700;line-height:1.15}
-.ms-gv-blk{font-size:11px;color:#c3cbd3;margin-top:3px;line-height:1.35}
-.ms-gv-leg{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:6px;font-size:10.5px;color:#9aa3ad}
+.ms-gv-rose>svg,.ms-gv-rose>figure{flex:none}
+.ms-gv-rose>div{min-width:0}
+.ms-gv-fig{margin:0;flex:none;width:132px;display:flex;flex-direction:column;align-items:center}
+.ms-gv-fig>.ms-gg-rkey{margin-top:2px;max-width:132px}
+.ms-gv-rate{font-size:${FS.value}px;font-weight:${FW.bold};line-height:1.15}
+.ms-gv-blk{font-size:${FS.meta}px;color:${TEXT.label};margin-top:3px;line-height:1.35}
+.ms-gv-blk b{color:${TEXT.main};font-weight:${FW.semi}}
+.ms-gv-leg{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:6px;font-size:${FS.meta}px;color:${TEXT.label}}
 .ms-gv-leg>span{white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
 .ms-gv-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
 .ms-gv-soil{display:flex;gap:9px;align-items:center}
-.ms-gv-sw{flex:none;width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.25);box-shadow:inset 0 -6px 10px rgba(0,0,0,.25)}
+.ms-gv-sw{flex:none;width:30px;height:30px;border-radius:7px;border:1px solid ${LINE.hair};box-shadow:inset 0 -6px 10px rgba(0,0,0,.25)}
 .ms-gv-g{position:relative;margin:17px 2px 2px}
 .ms-gv-gt{display:flex;height:9px;border-radius:5px;overflow:hidden}
 .ms-gv-gt>i{height:100%}
-.ms-gv-gk{position:absolute;top:9px;width:1px;height:5px;background:#9aa3ad}
+.ms-gv-gk{position:absolute;top:9px;width:1px;height:5px;background:${TEXT.label}}
 .ms-gv-gm{position:absolute;top:-16px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center}
-.ms-gv-gm::after{content:"";width:2px;height:14px;background:#fff;margin-top:-1px;border-radius:1px;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.ms-gv-gm::after{content:"";width:2px;height:14px;background:${TEXT.strong};margin-top:-1px;border-radius:1px;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
 .ms-gv-gm.ms-gv-wet::after{background:#bfe2ff}
-.ms-gv-gl{position:relative;height:12px;font-size:9.5px;color:#7f8994;margin-top:3px;font-variant-numeric:tabular-nums}
+.ms-gv-gl{position:relative;height:15px;font-size:${FS.meta}px;line-height:15px;color:${TEXT.label};margin-top:3px;font-variant-numeric:tabular-nums}
 .ms-gv-gl>span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
 .ms-gv-gl>.ms-gv-l0{left:0;transform:none}.ms-gv-gl>.ms-gv-r0{right:0;transform:none}
-.ms-gv-mx{display:grid;grid-template-columns:auto 1fr 1fr;gap:3px 4px;font-size:11px;align-items:center}
-.ms-gv-mx>.ms-gv-h{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#9aa3ad;display:flex;gap:4px;justify-content:center;align-items:center}
-.ms-gv-mx>.ms-gv-m{color:#c3cbd3;padding-right:6px;white-space:nowrap}
-.ms-gv-mx>.ms-gv-m.ms-gv-on{color:#fff;font-weight:600}
-.ms-gv-mx>.ms-gv-c{font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-align:center;padding:4px 0 3px;border-radius:2px}
-.ms-gv-c.ms-gv-go{background:#2fa862;color:#fff}.ms-gv-c.ms-gv-slow{background:#f0932b;color:#1b1f25}.ms-gv-c.ms-gv-nogo{background:#e5484d;color:#fff}
-.ms-gv-exc{display:flex;justify-content:center;margin:2px 0 5px}
+.ms-gv-mx{display:grid;grid-template-columns:auto 1fr 1fr;gap:3px 4px;font-size:${FS.meta}px;align-items:center}
+.ms-gv-mx>.ms-gv-h{font-size:${FS.meta}px;color:${TEXT.label};display:flex;gap:4px;justify-content:center;align-items:center}
+.ms-gv-mx>.ms-gv-m{color:${TEXT.label};padding-right:6px;white-space:nowrap}
+.ms-gv-mx>.ms-gv-m.ms-gv-on{color:${TEXT.strong};font-weight:${FW.semi}}
+.ms-gv-mx>.ms-gv-c{font:${FW.bold} ${FS.meta}px/1 ${FONT};text-align:center;padding:4px 0 3px;border-radius:3px}
+.ms-gv-c.ms-gv-go{background:${TONE.go.fill};color:${TONE.go.fg}}.ms-gv-c.ms-gv-slow{background:${TONE.slow.fill};color:${TONE.slow.fg}}.ms-gv-c.ms-gv-nogo{background:${TONE.nogo.fill};color:${TONE.nogo.fg}}
+.ms-gv-exc{display:flex;flex-direction:column;align-items:center;margin:2px 0 5px}
 .ms-gv-rb{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;align-items:end;height:42px}
 .ms-gv-rb>i{display:block;border-radius:2px 2px 0 0;min-height:3px}
-.ms-gv-rb>i.ms-gv-now{outline:1.5px solid #fff;outline-offset:1px}
-.ms-gv-rl{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;font:600 9px/1 system-ui,Segoe UI,Arial,sans-serif;color:#9aa3ad;text-align:center;margin-top:3px}
-.ms-gv-rl>.ms-gv-now{color:#fff}
+.ms-gv-rb>i.ms-gv-now{outline:1.5px solid ${TEXT.strong};outline-offset:1px}
+.ms-gv-rl{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;font:${FW.semi} ${FS.meta}px/1.1 ${FONT};color:${TEXT.label};text-align:center;margin-top:3px}
+.ms-gv-rl>.ms-gv-now{color:${TEXT.strong};font-weight:${FW.bold}}
 .ms-gv-map{display:flex;gap:10px;align-items:center}
 .ms-gv-map>canvas{flex:none;border-radius:50%}
-.ms-gv-pc{display:grid;grid-template-columns:auto 1fr;gap:2px 7px;font-size:11px;align-items:center}
-.ms-gv-pc b{font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
-.ms-gv-foot{display:flex;align-items:center;gap:7px;padding:5px 11px;border-top:1px solid rgba(255,255,255,.08);color:#9aa3ad;font-size:11px}
-.ms-gv-foot-l{margin-left:auto;display:inline-flex;gap:2px;opacity:.55}
-.ms-gv-foot-l>.ms-gv-kbd{min-width:14px;height:14px;font-size:8.5px;padding:0 2px}
-.ms-gv-kbd{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:4px;font:700 10px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
+.ms-gv-pc{display:grid;grid-template-columns:auto 1fr;gap:2px 7px;font-size:${FS.meta}px;align-items:center;color:${TEXT.label}}
+.ms-gv-pc b{font-weight:${FW.semi};color:${TEXT.strong};font-variant-numeric:tabular-nums}
+.ms-gv-foot{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;padding:6px 12px;border-top:1px solid ${LINE.hair};color:${TEXT.main};font:${FW.regular} ${FS.body}px/1.2 ${FONT}}
+.ms-gv-foot>.ms-gv-fi{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;color:${TEXT.main};font-size:${FS.body}px}
+.ms-gv-kbd{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:4px;font:${FW.bold} ${FS.meta}px/1 ui-monospace,Consolas,monospace;color:#e8ebee;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px}
 `;
 
 export function ensureGoingCss(): void {
+  ensureTokensCss();
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
   style.id = STYLE_ID;
@@ -145,10 +169,60 @@ export function band(letter: 'G' | 'T', caption: string, ...content: Array<Node 
   return sec;
 }
 
+/** GO / SLOW-GO / NO-GO as the shared gauge (item 2): the step lit, a pointer over it, nothing that looks pressable. */
 export function goingScale(step: GoingStep): HTMLElement {
-  const sc = h('div', 'ms-gv-scale');
-  for (const k of ['go', 'slow', 'nogo'] as const) sc.append(h('span', k === step ? `ms-gv-${k}` : undefined, GOING_WORD[k]));
-  return sc;
+  const g = gauge(step);
+  g.classList.add('ms-gv-scale'); // kept for layout rules elsewhere that still name it
+  return g;
+}
+
+/** "Better Than Guess" → "better than guess": words in Title Case lowered, capitals (MSR, 1:50k) kept. */
+function sentence(s: string): string {
+  return s.replace(/\b([A-Z])([a-z]+)\b/g, (_m, a: string, b: string) => a.toLowerCase() + b);
+}
+
+/** A round picture with its one-line key under it (item 12). A `figure`, so layout rules aimed at `div` columns pass it by. */
+export function roseFigure(pic: Element, key: Element | null): HTMLElement {
+  ensureGoingCss();
+  const f = h('figure', 'ms-gv-fig');
+  f.append(pic);
+  if (key) f.append(key);
+  return f;
+}
+
+/**
+ * Turn a round picture to the map's north now, its letters upright. Attributes only (no CSS variable is stamped on the
+ * picture), so the card's own north pass (`orientNorth`) turns it again later as the map turns.
+ */
+export function turnRose(f: RoseFrame, northDeg: number): void {
+  const n = Math.round((northDeg || 0) * 10) / 10;
+  if (!n) return;
+  f.g.setAttribute('transform', `rotate(${n} ${ROSE_C} ${ROSE_C})`);
+  f.g.querySelectorAll('[data-gv-upright]').forEach((u) => {
+    const [x, y] = (u.getAttribute('data-gv-upright') ?? '0 0').split(/\s+/);
+    u.setAttribute('transform', `rotate(${-n} ${x} ${y ?? x})`);
+  });
+}
+
+/** A distance label on a range ring: readable on the wedges under it (a dark halo), never turned with the map. */
+function ringLabel(f: RoseFrame, y: number, text: string): void {
+  f.add(
+    'text',
+    {
+      x: ROSE_C + 3,
+      y,
+      fill: TEXT.label,
+      'font-size': 11,
+      'font-family': FONT,
+      'font-weight': FW.semi,
+      stroke: SURFACE.ring,
+      'stroke-width': 3,
+      'paint-order': 'stroke',
+      'stroke-linejoin': 'round',
+    },
+    f.svg,
+    text,
+  );
 }
 
 function seasonWord(g: GroundGuideGoingInfo): string {
@@ -162,21 +236,18 @@ function modeShort(profile: string, label: string): string {
 export function sourceChip(g: GroundGuideGoingInfo): HTMLElement | null {
   const soil = g.soil;
   if (!soil) return null;
-  if (soil.mapped) return h('span', 'ms-gv-chip ms-gv-map', '1:50k Map');
-  return h('span', 'ms-gv-chip', soil.confidenceLabel ? `Modelled · ${soil.confidenceLabel}` : 'Modelled');
+  // A coloured word in sentence case, not an uppercase chip (item 13): the map's own class, or a modelled guess.
+  if (soil.mapped) return h('span', 'ms-gv-chip ms-gv-mapped', '1:50k map');
+  return h('span', 'ms-gv-chip', soil.confidenceLabel ? `Modelled · ${sentence(soil.confidenceLabel)}` : 'Modelled');
 }
 
-export function roseLegend(withReach: boolean): HTMLElement {
-  const lg = h('div', 'ms-gv-leg');
-  for (const k of ['go', 'slow', 'nogo'] as const) {
-    const it = h('span');
-    const dot = h('span', 'ms-gv-dot');
-    dot.style.background = GOING_COLOR[k];
-    it.append(dot, GOING_WORD[k]);
-    lg.append(it);
-  }
-  if (withReach) lg.append(h('span', undefined, 'length = reach'));
-  return lg;
+/**
+ * The one-line key under the movement rose (item 12): "Length to 1 km · colour = going". `rangeM` names the range the
+ * longest wedge stands for; without it the key says "Length = reach".
+ */
+export function roseLegend(withReach: boolean, rangeM?: number | null): HTMLElement {
+  if (!withReach) return roseKey('Colour = going');
+  return roseKey(rangeM ? `Length to ${fmtDistance(rangeM)} · colour = going` : 'Length = reach · colour = going');
 }
 
 export function blockedText(g: GroundGuideGoingInfo, max = 3, sep = ' · '): string {
@@ -212,45 +283,43 @@ export function blockedNode(g: GroundGuideGoingInfo, max = 3, sep = ' · '): Doc
 
 // ── shared pictures (card and brief) ───────────────────────────────────────
 
-/** The movement rose. The wedges are in map bearings; the group turns with the map (`data-gv-rose`). */
+/**
+ * The movement rose in the shared frame (item 12): eight wedges in map bearings, as long as the going reaches (the
+ * ring is the range), coloured GO / SLOW-GO / NO-GO, with a white arc where something blocks the way. The group turns
+ * with the map (`data-gv-rose`). Drawn at ROSE_PX on screen: `size` is kept for the callers but no longer used.
+ * `rings`: the half-range ring and both distances written on it.
+ */
 export function roseSvg(g: GroundGuideGoingInfo, size: number, rings: boolean, northDeg: number): SVGElement {
+  void size;
   const m = g.movement!;
-  const c = size / 2;
-  const r0 = size * 0.12;
-  const R = size / 2 - (rings ? 12 : 4);
-  const svg = s('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': 'Movement rose' });
-  const grp = s('g', { transform: `rotate(${northDeg} ${c} ${c})`, 'data-gv-rose': `${c}` });
+  const f = roseFrame(`Going and reach by direction, to ${fmtDistance(m.rangeM)}`);
+  const r0 = 9;
+  const R = ROSE_R;
   const ringR = (k: number) => r0 + (R - r0) * k;
-  if (rings) {
-    for (const k of [0.5, 1]) grp.append(s('circle', { cx: c, cy: c, r: ringR(k), fill: 'none', stroke: 'rgba(255,255,255,.16)', 'stroke-dasharray': '2 3' }));
-  } else grp.append(s('circle', { cx: c, cy: c, r: R, fill: 'none', stroke: 'rgba(255,255,255,.1)' }));
-  const P = (a: number, rr: number) => `${(c + rr * Math.sin(a)).toFixed(1)} ${(c - rr * Math.cos(a)).toFixed(1)}`;
+  f.add('circle', { cx: ROSE_C, cy: ROSE_C, r: ringR(0.5), fill: 'none', stroke: rings ? LINE.ring : LINE.hair, 'stroke-dasharray': '2 3' });
+  const P = (deg: number, rr: number) => {
+    const a = (deg * Math.PI) / 180;
+    return `${(ROSE_C + rr * Math.sin(a)).toFixed(2)} ${(ROSE_C - rr * Math.cos(a)).toFixed(2)}`;
+  };
   for (const x of m.sectors) {
-    const a0 = ((x.bearingDeg - 20.5) * Math.PI) / 180;
-    const a1 = ((x.bearingDeg + 20.5) * Math.PI) / 180;
+    const a0 = x.bearingDeg - 20.5;
+    const a1 = x.bearingDeg + 20.5;
     const r = Math.max(r0 + 3, ringR(Math.min(1, x.reachM / m.rangeM)));
-    grp.append(
-      s('path', {
-        d: `M ${P(a0, r0)} L ${P(a0, r)} A ${r} ${r} 0 0 1 ${P(a1, r)} L ${P(a1, r0)} A ${r0} ${r0} 0 0 0 ${P(a0, r0)} Z`,
-        fill: GOING_COLOR[x.step],
-        'fill-opacity': 0.88,
-      }),
-    );
+    const w = f.add('path', { d: wedgePath(r0, r, a0, a1), fill: STEP_COLOR[x.step], stroke: SURFACE.ring, 'stroke-width': 0.8 });
+    const tip = s('title', {});
+    tip.textContent = `${x.compass}: ${GOING_WORD[x.step]}, ${fmtDistance(x.reachM)}${x.blockedBy && x.reachM < m.rangeM ? ` (${x.blockedBy})` : ''}`;
+    w.append(tip);
     if (x.blockedBy && x.reachM < m.rangeM) {
-      grp.append(s('path', { d: `M ${P(a0, r)} A ${r} ${r} 0 0 1 ${P(a1, r)}`, fill: 'none', stroke: '#fff', 'stroke-width': 2.5, 'stroke-linecap': 'round' }));
+      f.add('path', { d: `M${P(a0, r)} A${r} ${r} 0 0 1 ${P(a1, r)}`, fill: 'none', stroke: TEXT.strong, 'stroke-width': 2.5, 'stroke-linecap': 'round' });
     }
   }
-  grp.append(s('circle', { cx: c, cy: c, r: r0 - 2, fill: '#1b1f25', stroke: '#fff', 'stroke-width': 1.5 }));
-  grp.append(s('path', { d: `M ${c} 1 l 3.5 6 h -7 z`, fill: '#fff' }));
-  svg.append(grp);
+  roseHub(f, r0 - 2);
+  turnRose(f, northDeg);
   if (rings) {
-    const t1 = s('text', { x: c + 3, y: c - ringR(0.5) + 9, fill: '#9aa3ad', 'font-size': 8 });
-    t1.textContent = fmtDistance(m.rangeM / 2);
-    const t2 = s('text', { x: c + 3, y: c - R + 9, fill: '#9aa3ad', 'font-size': 8 });
-    t2.textContent = fmtDistance(m.rangeM);
-    svg.append(t1, t2);
+    ringLabel(f, ROSE_C - ringR(0.5) + 11, fmtDistance(m.rangeM / 2));
+    ringLabel(f, ROSE_C - R + 11, fmtDistance(m.rangeM));
   }
-  return svg;
+  return f.svg;
 }
 
 /** Turn every rose, arrow, dial and canvas under `root` to the map's north (no rebuild): `orientNorth` in GroundGuideNorth.ts. */
@@ -269,11 +338,11 @@ export function soilGauge(g: GroundGuideGoingInfo): HTMLElement | null {
   const gg = h('div', 'ms-gv-g');
   const track = h('div', 'ms-gv-gt');
   const z1 = h('i');
-  z1.style.cssText = `width:${pc(v.vci[0])}%;background:#e5484d`;
+  z1.style.cssText = `width:${pc(v.vci[0])}%;background:${STEP_COLOR.nogo}`;
   const z2 = h('i');
-  z2.style.cssText = `width:${pc(v.vci[1]) - pc(v.vci[0])}%;background:#f0932b`;
+  z2.style.cssText = `width:${pc(v.vci[1]) - pc(v.vci[0])}%;background:${STEP_COLOR.slow}`;
   const z3 = h('i');
-  z3.style.cssText = 'flex:1;background:#2fa862';
+  z3.style.cssText = `flex:1;background:${STEP_COLOR.go}`;
   track.append(z1, z2, z3);
   gg.append(track);
   for (const t of v.vci) {
@@ -290,7 +359,7 @@ export function soilGauge(g: GroundGuideGoingInfo): HTMLElement | null {
   const gl = h('div', 'ms-gv-gl');
   // End words only where the threshold numbers leave room for them (foot thresholds sit near the left end).
   if (pc(v.vci[0]) >= 18) gl.append(h('span', 'ms-gv-l0', 'bogs'));
-  const close = pc(v.vci[1]) - pc(v.vci[0]) < 9;
+  const close = pc(v.vci[1]) - pc(v.vci[0]) < 11;
   v.vci.forEach((t, i) => {
     const lab = h('span', undefined, String(t));
     lab.style.left = `${pc(t)}%`;
@@ -346,7 +415,7 @@ export function ribbon(g: GroundGuideGoingInfo, tall = 42): HTMLElement | null {
     if (wet) wetMonths.push(MONTH_NAMES[i]);
     const step = wet ? p.wet : p.dry;
     const b = h('i', i + 1 === now ? 'ms-gv-now' : undefined);
-    b.style.background = GOING_COLOR[step];
+    b.style.background = STEP_COLOR[step];
     b.style.height = prec ? `${Math.max(8, (prec[i] / top) * 100)}%` : '60%';
     b.title = `${MONTH_NAMES[i]}: ${prec ? `${Math.round(prec[i])} mm, ` : ''}${GOING_WORD[step]}`;
     bars.append(b);
@@ -382,7 +451,7 @@ export function goingCanvas(g: GroundGuideGoingInfo, px: number, northDeg: numbe
     ctx.beginPath();
     ctx.arc(px / 2, px / 2, px / 2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.fillStyle = '#2a3038';
+    ctx.fillStyle = SURFACE.head;
     ctx.fillRect(0, 0, px, px);
     ctx.translate(px / 2, px / 2);
     ctx.rotate((north * Math.PI) / 180);
@@ -392,12 +461,12 @@ export function goingCanvas(g: GroundGuideGoingInfo, px: number, northDeg: numbe
       for (let q = 0; q < map.size; q++) {
         const v = map.cells[r * map.size + q];
         if (v === 255) continue;
-        ctx.fillStyle = GOING_COLOR[CODE_STEP[v]];
+        ctx.fillStyle = STEP_COLOR[CODE_STEP[v]];
         ctx.fillRect(q * cell, r * cell, cell + 0.6, cell + 0.6);
       }
     }
     ctx.restore();
-    ctx.strokeStyle = 'rgba(255,255,255,.35)';
+    ctx.strokeStyle = LINE.ring;
     ctx.lineWidth = 1;
     if (ring) {
       ctx.setLineDash([2, 3]);
@@ -409,8 +478,8 @@ export function goingCanvas(g: GroundGuideGoingInfo, px: number, northDeg: numbe
     ctx.beginPath();
     ctx.arc(px / 2, px / 2, px / 2 - 0.5, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = '#1b1f25';
-    ctx.strokeStyle = '#fff';
+    ctx.fillStyle = SURFACE.card;
+    ctx.strokeStyle = '#c9d1d9';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(px / 2, px / 2, 4, 0, Math.PI * 2);
@@ -418,18 +487,18 @@ export function goingCanvas(g: GroundGuideGoingInfo, px: number, northDeg: numbe
     ctx.stroke();
     // North: a tick on the rim and the letter beside it, both where north now points.
     const a = (north * Math.PI) / 180;
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = TEXT.strong;
     ctx.beginPath();
     const tx = px / 2 + Math.sin(a) * (px / 2 - 5);
     const ty = px / 2 - Math.cos(a) * (px / 2 - 5);
     ctx.arc(tx, ty, 2.5, 0, Math.PI * 2);
     ctx.fill();
     if (px >= 100) {
-      ctx.font = '700 9px system-ui,Segoe UI,Arial,sans-serif';
+      ctx.font = `${FW.bold} 11px ${FONT}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#e8ebee';
-      ctx.fillText('N', px / 2 + Math.sin(a) * (px / 2 - 14), px / 2 - Math.cos(a) * (px / 2 - 14));
+      ctx.fillStyle = TEXT.main;
+      ctx.fillText('N', px / 2 + Math.sin(a) * (px / 2 - 15), px / 2 - Math.cos(a) * (px / 2 - 15));
     }
   };
   paint(northDeg);
@@ -447,7 +516,7 @@ export function mapShares(g: GroundGuideGoingInfo): HTMLElement | null {
   const grid = h('div', 'ms-gv-pc');
   for (let i = 0; i < 3; i++) {
     const dot = h('span', 'ms-gv-dot');
-    dot.style.background = GOING_COLOR[CODE_STEP[i]];
+    dot.style.background = STEP_COLOR[CODE_STEP[i]];
     const t = h('span');
     t.append(h('b', undefined, `${Math.round((n[i] / tot) * 100)}%`), ` ${GOING_WORD[CODE_STEP[i]]}`);
     grid.append(dot, t);
@@ -460,7 +529,8 @@ export function textureTriangle(texture: number, size: number): SVGElement {
   const W = size;
   const H = size * 0.87;
   const pad = 4;
-  const svg = s('svg', { width: W, height: H + 14, viewBox: `0 -6 ${W} ${H + 20}`, role: 'img', 'aria-label': 'Soil texture triangle' });
+  // Room above for "Clay" and below for "Sand" / "Silt" at 11 px, drawn 1:1 so the labels stay that size on screen.
+  const svg = s('svg', { width: W, height: H + 24, viewBox: `0 -10 ${W} ${H + 24}`, role: 'img', 'aria-label': 'Soil texture triangle' });
   const xy = ([sa, cl]: [number, number]) => {
     const si = 100 - sa - cl;
     const x = (si + cl / 2) / 100;
@@ -473,19 +543,19 @@ export function textureTriangle(texture: number, size: number): SVGElement {
       s('polygon', {
         points: poly.map(xy).join(' '),
         fill: on ? (SOIL_COLOR[texture] ?? '#8a6a4a') : 'rgba(255,255,255,.05)',
-        stroke: on ? '#fff' : 'rgba(255,255,255,.22)',
+        stroke: on ? TEXT.strong : LINE.ring,
         'stroke-width': on ? 1.6 : 0.7,
       }),
     );
   }
   const label = (x: number, y: number, t: string, anchor = 'start') => {
-    const e = s('text', { x, y, 'font-size': 8, fill: '#9aa3ad', 'text-anchor': anchor });
+    const e = s('text', { x, y, 'font-size': 11, 'font-family': FONT, fill: TEXT.label, 'text-anchor': anchor });
     e.textContent = t;
     svg.append(e);
   };
-  label(pad, H + 9, 'Sand');
-  label(W - pad, H + 9, 'Silt', 'end');
-  label(W / 2, 0, 'Clay', 'middle');
+  label(pad, H + 11, 'Sand');
+  label(W - pad, H + 11, 'Silt', 'end');
+  label(W / 2, -1, 'Clay', 'middle');
   return svg;
 }
 
@@ -531,9 +601,19 @@ export function movementRoseSection(g: GroundGuideGoingInfo, northDeg: number): 
   rate.style.color = RATING_COLOR[m.rating];
   const blocked = h('div', 'ms-gv-blk');
   blocked.append(blockedNode(g));
-  txt.append(rate, h('div', 'ms-gv-blk', `${m.open} of 8 Dirs open to ${fmtDistance(m.rangeM / 2)}`), blocked);
-  box.append(roseSvg(g, 82, false, northDeg), txt);
-  return band('T', `Movement Freedom · ${seasonWord(g)}`, box, roseLegend(true), g.pending ? h('div', 'ms-gv-soft', 'Still loading round the edges') : null);
+  txt.append(rate, openDirsLine(m.open, m.rangeM), blocked);
+  box.append(roseFigure(roseSvg(g, 0, false, northDeg), roseLegend(true, m.rangeM)), txt);
+  return band('T', `Movement Freedom · ${seasonWord(g)}`, box, g.pending ? h('div', 'ms-gv-soft', 'Still loading round the edges') : null);
+}
+
+/**
+ * "Open Dirs 6 of 8, to 500 m" (item 10): the directions the mode can go cross-country, at least half the range and
+ * not NO-GO; the same name and number on O Exits and T Movement.
+ */
+export function openDirsLine(open: number, rangeM: number): HTMLElement {
+  const d = h('div', 'ms-gv-blk');
+  d.append('Open Dirs ', h('b', undefined, `${open} of 8`), `, to ${fmtDistance(rangeM / 2)}`);
+  return d;
 }
 
 /** C · Soil Strength. */
@@ -557,76 +637,75 @@ export function soilStrengthSection(g: GroundGuideGoingInfo, v: GroundGuideVerdi
 }
 
 /**
- * E · Exits as an eight-point compass: one spoke per direction, as long as the going reaches (out to the range ring),
- * coloured GO / SLOW-GO / NO-GO, with a white bar across it where something blocks the way. The group turns with the
- * map (`data-gv-rose`, orientNorth); the letters stay upright (`data-gv-upright`).
+ * E · Exits as spokes in the shared frame (item 12): one spoke per direction, as long as the going reaches (the ring
+ * is the range), coloured GO / SLOW-GO / NO-GO, with a white bar across it where something blocks the way. The group
+ * turns with the map (`data-gv-rose`, orientNorth); the frame's N stays upright. Drawn at ROSE_PX: `size` is kept for
+ * the callers but no longer used.
  */
 export function exitCompass(g: GroundGuideGoingInfo, size = 104): SVGElement | null {
+  void size;
   const m = g.movement;
   if (!m) return null;
-  const c = size / 2;
-  const R = c - 14;
-  const r0 = 6;
+  const R = ROSE_R;
+  const r0 = 7;
   const P = (deg: number, r: number): [number, number] => {
     const a = (deg * Math.PI) / 180;
-    return [c + r * Math.sin(a), c - r * Math.cos(a)];
+    return [ROSE_C + r * Math.sin(a), ROSE_C - r * Math.cos(a)];
   };
-  const svg = s('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': 'Exits by direction' });
-  const grp = s('g', { 'data-gv-rose': `${c}` });
-  grp.append(
-    s('circle', { cx: c, cy: c, r: R, fill: 'rgba(255,255,255,.035)', stroke: 'rgba(255,255,255,.22)' }),
-    s('circle', { cx: c, cy: c, r: r0 + (R - r0) / 2, fill: 'none', stroke: 'rgba(255,255,255,.13)', 'stroke-dasharray': '2 3' }),
-  );
+  const f = roseFrame(`Open Dirs ${m.open} of 8: going by direction to ${fmtDistance(m.rangeM)}`);
+  f.add('circle', { cx: ROSE_C, cy: ROSE_C, r: r0 + (R - r0) / 2, fill: 'none', stroke: LINE.hair, 'stroke-dasharray': '2 3' });
   for (const x of m.sectors) {
     const cardinal = x.bearingDeg % 90 === 0;
     const [tx, ty] = P(x.bearingDeg, R);
     const [ix, iy] = P(x.bearingDeg, r0);
-    grp.append(s('line', { x1: ix, y1: iy, x2: tx, y2: ty, stroke: 'rgba(255,255,255,.09)', 'stroke-width': 1 }));
+    f.add('line', { x1: ix.toFixed(2), y1: iy.toFixed(2), x2: tx.toFixed(2), y2: ty.toFixed(2), stroke: LINE.soft, 'stroke-width': 1 });
     const r = r0 + (R - r0) * Math.max(0.12, Math.min(1, x.reachM / m.rangeM));
     const [ex, ey] = P(x.bearingDeg, r);
-    const spoke = s('line', { x1: ix, y1: iy, x2: ex, y2: ey, stroke: GOING_COLOR[x.step], 'stroke-width': cardinal ? 5 : 4, 'stroke-linecap': 'round' });
+    const spoke = f.add('line', {
+      x1: ix.toFixed(2),
+      y1: iy.toFixed(2),
+      x2: ex.toFixed(2),
+      y2: ey.toFixed(2),
+      stroke: STEP_COLOR[x.step],
+      'stroke-width': cardinal ? 5.5 : 4.5,
+      'stroke-linecap': 'round',
+    });
     const tip = s('title', {});
     tip.textContent = `${x.compass}: ${GOING_WORD[x.step]}, ${fmtDistance(x.reachM)}${x.blockedBy ? ` (${x.blockedBy})` : ''}`;
     spoke.append(tip);
-    grp.append(spoke);
     if (x.blockedBy && x.reachM < m.rangeM) {
       // A white bar across the spoke's end: something stops the way there.
       const a = (x.bearingDeg * Math.PI) / 180;
-      const dx = 4.5 * Math.cos(a);
-      const dy = 4.5 * Math.sin(a);
-      grp.append(s('line', { x1: ex - dx, y1: ey - dy, x2: ex + dx, y2: ey + dy, stroke: '#fff', 'stroke-width': 2.2, 'stroke-linecap': 'round' }));
+      const dx = 5 * Math.cos(a);
+      const dy = 5 * Math.sin(a);
+      f.add('line', { x1: (ex - dx).toFixed(2), y1: (ey - dy).toFixed(2), x2: (ex + dx).toFixed(2), y2: (ey + dy).toFixed(2), stroke: TEXT.strong, 'stroke-width': 2.4, 'stroke-linecap': 'round' });
     }
-    const [lx, ly] = P(x.bearingDeg, R + 8);
-    const lab = s('text', {
-      x: lx.toFixed(1),
-      y: ly.toFixed(1),
-      'data-gv-upright': `${lx.toFixed(1)} ${ly.toFixed(1)}`,
-      'text-anchor': 'middle',
-      'dominant-baseline': 'central',
-      'font-size': x.compass === 'N' ? 10 : 8.5,
-      'font-weight': cardinal ? 700 : 500,
-      fill: x.compass === 'N' ? '#fff' : cardinal ? '#c3cbd3' : '#9aa3ad',
-      'font-family': 'system-ui, Segoe UI, Arial, sans-serif',
-    });
-    lab.textContent = x.compass;
-    grp.append(lab);
   }
-  grp.append(s('circle', { cx: c, cy: c, r: r0 - 1.5, fill: '#1b1f25', stroke: '#fff', 'stroke-width': 1.5 }));
-  svg.append(grp);
-  return svg;
+  roseHub(f, r0 - 1.5);
+  return f.svg;
 }
 
-/** E · Exits: the compass, then how free the movement is and what blocks it (text unchanged). `size`: the compass width. */
+/** The key under the Exits spokes: "Spoke to 2 km · colour = going". */
+export function exitKey(rangeM: number): HTMLElement {
+  return roseKey(`Spoke to ${fmtDistance(rangeM)} · colour = going`);
+}
+
+/**
+ * E · Exits: the spokes with their key, then how free the movement is, the Open Dirs (item 10: the same number as T)
+ * and what blocks the way. `size`: kept for the callers (the spokes are drawn at ROSE_PX).
+ */
 export function exitStripSection(g: GroundGuideGoingInfo, size = 96): HTMLElement | null {
   const m = g.movement;
   if (!m) return null;
   const pic = h('div', 'ms-gv-exc');
-  pic.append(exitCompass(g, size)!);
+  pic.append(exitCompass(g, size)!, exitKey(m.rangeM));
   const open = m.sectors.filter((x) => x.step !== 'nogo' && x.reachM >= m.rangeM / 2);
   const rate = h('span', 'ms-gv-b', RATING_LABEL[m.rating]);
   rate.style.color = RATING_COLOR[m.rating];
   const line = h('div', 'ms-gv-blk');
-  line.append(rate, open.length ? joinNodes([' · open ', joinNodes(open.map((x) => compassNode(x.compass, x.bearingDeg)), ' ')], '') : ' · no Dir open');
+  line.append(rate, ' · Open Dirs ', h('b', undefined, `${m.open} of 8`));
+  // Name the open directions when some are shut (all eight open needs no list).
+  if (open.length && open.length < 8) line.append(': ', joinNodes(open.map((x) => compassNode(x.compass, x.bearingDeg)), ' '));
   const blocked = h('div', 'ms-gv-blk');
   blocked.append(blockedNode(g, 2));
   return band('T', `Exits · ${seasonWord(g)} · ${fmtDistance(m.rangeM)}`, pic, line, blocked);
@@ -670,15 +749,22 @@ export function goingSections(v: GroundGuideVerdict, card: GroundGuideCardOption
   return out.filter((x): x is HTMLElement => x !== null);
 }
 
-/** "D Detail · G R O T B C K" cue at the foot of the card: D opens the Ground Detail, a letter opens it on that tab (K the Legend). */
+/** One footer item: a keycap and its word, at full strength. */
+export function footItem(key: string, word: string): HTMLElement {
+  ensureGoingCss();
+  const it = h('span', 'ms-gv-fi');
+  it.append(h('span', 'ms-gv-kbd', key), word);
+  return it;
+}
+
+/**
+ * The card's footer (item 6): "D Detail · H Hint" at full strength (H only with `hintKey`; it shrinks the card to its
+ * hint chip). A flex row with a gap whose direct children are inline items, so the card can append its own (S Quick Fix).
+ */
 export function detailCue(hintKey = false): HTMLElement {
   ensureGoingCss();
   const f = h('div', 'ms-gv-foot');
-  f.append(h('span', 'ms-gv-kbd', 'D'), 'Detail');
-  // H shrinks the cursor card to its hint chip (2026-11-07).
-  if (hintKey) f.append(h('span', 'ms-gv-kbd', 'H'), 'Hint');
-  const letters = h('span', 'ms-gv-foot-l');
-  for (const l of ['G', 'R', 'O', 'T', 'B', 'C', 'K']) letters.append(h('span', 'ms-gv-kbd', l));
-  f.append(letters);
+  f.append(footItem('D', 'Detail'));
+  if (hintKey) f.append(footItem('H', 'Hint'));
   return f;
 }

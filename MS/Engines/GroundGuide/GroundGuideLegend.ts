@@ -11,62 +11,104 @@
  *  - a one-line hint chip ("pick a symbol to see terrain advice", "this symbol gets no terrain
  *    advice because it is not terrain-bound").
  * Built from DOM nodes and `textContent` only.
+ *
+ * Visual review (user, 2026-11-08): sizes and colours from GroundGuideTokens.ts (items 17, 18). The overlay key draws
+ * the colours it is given at full strength, so a key swatch is the same fill as the bar and the chip (item 1); the
+ * NO-GO and SLOW-GO lists are headed by their word in its ladder colour with its icon. Captions are group labels in
+ * sentence case, no tracked capitals (item 13). Keycaps share one style; nothing is dimmed by opacity.
  */
+
+import { ACCENT, ensureTokensCss, FONT, FS, FW, LINE, ladderIcon, rgbOf, STEP_TEXT, SURFACE, TEXT, TONE, type Tone } from './GroundGuideTokens';
 
 const STYLE_ID = 'ms-ground-guide-legend-style';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const DETAILS_KEY = 'ms-ground-guide-legend-details';
 
+/** One keycap style for every key the Ground Guide explains (item 17): 20 px tall, 12 px bold. */
+const KEYCAP = `display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:4px;
+  font:${FW.bold} ${FS.meta}px/1 ${FONT};color:#e8ebee;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px`;
+/** A group label (item 13): 13.5 px semibold over a hairline. */
+const GROUP = `font:${FW.semi} ${FS.body}px/1.3 ${FONT};color:${TEXT.main};padding-bottom:4px;border-bottom:1px solid ${LINE.hair};margin-bottom:6px`;
+
 const LEGEND_CSS = `
-.ms-ggl{width:290px;max-width:calc(100vw - 24px);box-sizing:border-box;font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;
+.ms-ggl{width:290px;max-width:calc(100vw - 24px);box-sizing:border-box;font:${FW.regular} ${FS.meta}px/1.4 ${FONT};color:${TEXT.main};
   background:rgba(27,31,37,.95);border:1px solid #39414b;border-radius:10px;padding:10px 12px 11px;box-shadow:0 2px 10px rgba(0,0,0,.35)}
 .ms-ggl button{font:inherit;color:inherit;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;cursor:pointer;padding:0}
 .ms-ggl button:hover{background:rgba(255,255,255,.12)}
-.ms-ggl button:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
+.ms-ggl button:focus-visible{outline:2px solid ${ACCENT};outline-offset:1px}
 .ms-ggl-head{display:flex;align-items:center;gap:8px}
-.ms-ggl-title{font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
-.ms-ggl-count{margin-left:auto;font:500 11px/1 ui-monospace,Consolas,monospace;color:#9aa3ad}
-.ms-ggl-more{width:22px;height:20px;font-size:11px;line-height:1}
+.ms-ggl-title{font-weight:${FW.bold};font-size:${FS.body}px}
+.ms-ggl-count{margin-left:auto;font:${FW.regular} ${FS.meta}px/1 ${FONT};color:${TEXT.label}}
+.ms-ggl-more{width:22px;height:20px;font-size:${FS.meta}px;line-height:1}
 .ms-ggl-strip{display:flex;align-items:stretch;gap:4px;margin-top:9px}
-.ms-ggl-strip>button{flex:none;width:24px;min-height:32px;font-size:15px}
+.ms-ggl-strip>button{flex:none;width:24px;min-height:32px;font-size:${FS.value}px}
 .ms-ggl-icons{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));gap:3px}
-.ms-ggl-icons button{height:32px;display:flex;align-items:center;justify-content:center;color:#9aa3ad}
-.ms-ggl-icons button[aria-pressed="true"]{color:#1b1f25;background:#8ec1ea;border-color:#8ec1ea}
+.ms-ggl-icons button{height:32px;display:flex;align-items:center;justify-content:center;color:${TEXT.label}}
+.ms-ggl-icons button[aria-pressed="true"]{color:${SURFACE.card};background:${ACCENT};border-color:${ACCENT}}
 .ms-ggl-name{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-top:7px}
-.ms-ggl-name b{font-size:14px;color:#fff}
-.ms-ggl-tag{font-size:11px;color:#9aa3ad}
-.ms-ggl-tag.ms-hand{color:#ffc861}
+.ms-ggl-name b{font-size:${FS.body}px;font-weight:${FW.bold};color:${TEXT.strong}}
+.ms-ggl-tag{font-size:${FS.meta}px;color:${TEXT.label}}
+.ms-ggl-tag.ms-hand{color:${TEXT.warn}}
 .ms-ggl-ramp{display:grid;grid-template-columns:repeat(4,1fr);margin-top:9px;border-radius:4px;overflow:hidden}
 .ms-ggl-ramp>i{height:10px}
-.ms-ggl-ramp-l{display:grid;grid-template-columns:repeat(4,1fr);font-size:10.5px;color:#9aa3ad;margin-top:4px}
-.ms-ggl-ramp-l>span{text-align:center}
+.ms-ggl-ramp-l{display:grid;grid-template-columns:repeat(4,1fr);gap:0 3px;font-size:${FS.meta}px;color:${TEXT.main};margin-top:4px}
+.ms-ggl-ramp-l>span{text-align:center;min-width:0;overflow-wrap:anywhere}
 .ms-ggl-ramp-l>span:first-child{text-align:left}
 .ms-ggl-ramp-l>span:last-child{text-align:right}
-.ms-ggl-note{font-size:11px;color:#9aa3ad;margin-top:3px}
-.ms-ggl-list{display:flex;flex-direction:column;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09);
+.ms-ggl-note{font-size:${FS.meta}px;color:${TEXT.soft};margin-top:3px}
+.ms-ggl-list{display:flex;flex-direction:column;gap:9px;margin-top:9px;padding-top:9px;border-top:1px solid ${LINE.hair};
   max-height:190px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#4a535e transparent}
-.ms-ggl-cap{font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+/* NO-GO / SLOW-GO for the mode: a group label, the word in its ladder colour with its icon. */
+.ms-ggl-cap{${GROUP};display:flex;align-items:center;gap:5px}
+.ms-ggl-cap>svg{flex:none}
 .ms-ggl-chips{display:flex;flex-wrap:wrap;gap:4px}
-.ms-ggl-chips>span{font-size:11px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
-.ms-ggl-keys{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09)}
-.ms-ggl-key{display:flex;align-items:center;gap:7px;opacity:.45;transition:opacity .2s}
-.ms-ggl-key.ms-on{opacity:1}
-.ms-ggl-key small{display:block;font-size:10.5px;color:#9aa3ad}
-.ms-ggl-kbd{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:22px;height:22px;padding:0 5px;box-sizing:border-box;border-radius:5px;
-  font:700 11.5px/1 ui-monospace,Consolas,monospace;color:#fff;background:linear-gradient(#3a424d,#2b313a);border:1px solid #545e6b;border-bottom-width:2px}
-.ms-ggl-key.ms-lit .ms-ggl-kbd{background:linear-gradient(#3f8f5b,#2b6b42);border-color:#5fc183;box-shadow:0 0 0 3px rgba(47,168,98,.25)}
+.ms-ggl-chips>span{font-size:${FS.meta}px;padding:2px 7px;border-radius:4px;background:${SURFACE.head};color:${TEXT.main}}
+.ms-ggl-keys{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:9px;padding-top:9px;border-top:1px solid ${LINE.hair}}
+/* A key that cannot help right now is dimmed by colour (item 18), never by opacity. */
+.ms-ggl-key{display:flex;align-items:center;gap:7px;color:${TEXT.label};transition:color .2s}
+.ms-ggl-key.ms-on{color:${TEXT.main}}
+.ms-ggl-key small{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:${FS.meta}px;color:${TEXT.label}}
+.ms-ggl-kbd{${KEYCAP}}
+.ms-ggl-key:not(.ms-on) .ms-ggl-kbd{color:${TEXT.label};background:${SURFACE.strip};border-color:#3d4550}
+.ms-ggl-key.ms-lit .ms-ggl-kbd{color:#fff;border-color:${ACCENT};box-shadow:0 0 0 3px rgba(142,193,234,.28)}
 .ms-ggl-hint{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:2147482500;display:none;
   max-width:min(90vw,460px);padding:7px 14px;border-radius:999px;background:#242a32;border:1px solid #4a535e;
-  box-shadow:0 3px 12px rgba(0,0,0,.4);font:400 12px/1.4 system-ui,Segoe UI,Arial,sans-serif;color:#f3f5f7;pointer-events:none}
-.ms-ggl-tcap{font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5aa9e6;margin-top:9px}
+  box-shadow:0 3px 12px rgba(0,0,0,.4);font:${FW.regular} ${FS.meta}px/1.4 ${FONT};color:${TEXT.main};pointer-events:none}
+/* T and Speed captions: a plain group label in sentence case (they were small blue capitals). */
+.ms-ggl-tcap{${GROUP};margin-top:9px}
 .ms-ggl-season{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:6px}
-.ms-ggl-season>button{font-size:11.5px;padding:4px 0}
-.ms-ggl-season>button[aria-pressed="true"]{color:#1b1f25;background:#8ec1ea;border-color:#8ec1ea;font-weight:600}
+.ms-ggl-season>button{font-size:${FS.meta}px;padding:4px 0}
+.ms-ggl-season>button[aria-pressed="true"]{color:${SURFACE.card};background:${ACCENT};border-color:${ACCENT};font-weight:${FW.semi}}
 .ms-ggl-month{display:flex;align-items:center;gap:6px;margin-top:6px}
-.ms-ggl-month>button{flex:none;width:24px;height:24px;font-size:14px}
-.ms-ggl-month>span{flex:1;text-align:center;font-size:11.5px}
+.ms-ggl-month>button{flex:none;width:24px;height:24px;font-size:${FS.body}px}
+.ms-ggl-month>span{flex:1;text-align:center;font-size:${FS.meta}px}
 @media (prefers-reduced-motion: reduce){.ms-ggl-key{transition:none}}
 `;
+
+/** Words kept capitalised inside a sentence: months, military short forms and key names (the user's wording rules). */
+const KEEP_CAPS = new Set([
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Sept', 'Oct', 'Nov', 'Dec',
+  'Gr', 'Rd', 'Rds', 'Tr', 'Trs', 'Obs', 'Obsn', 'Svcs', 'Bldg', 'Bldgs', 'Dir', 'Dirs', 'Posn', 'Posns',
+  'Coy', 'Bn', 'Bde', 'Div', 'Sqn', 'Regt', 'Pl', 'Sec', 'Esc', 'Shift', 'Ctrl', 'Alt',
+]);
+
+/**
+ * Sentence case for a label that used to be shown in capitals (item 13): the first word as written; later words in
+ * plain Title case ("After Rain", "Fair-Weather") lowered; all-capital terms (GO, SLOW-GO, NO-GO, MSR, ITG), single
+ * letters, numbers, months and military short forms (Gr, Rd, Dirs …) kept: "Trafficability · Nov, Dry" →
+ * "Trafficability · Nov, dry", "Fair-Weather · SLOW-GO After Rain" → "Fair-weather · SLOW-GO after rain". Idempotent.
+ */
+export function sentenceCase(text: string): string {
+  let first = true;
+  return text.replace(/[A-Za-z][A-Za-z'’]*(?:-[A-Za-z]+)*/g, (w) => {
+    if (first) {
+      first = false;
+      return w.replace(/-([A-Z])(?=[a-z])/g, (_m, c: string) => `-${c.toLowerCase()}`); // "Fair-Weather" → "Fair-weather"
+    }
+    if (w.length === 1 || w === w.toUpperCase() || KEEP_CAPS.has(w)) return w;
+    return /^[A-Z][a-z'’]+(?:-[A-Za-z][a-z]+)*$/.test(w) ? w.toLowerCase() : w;
+  });
+}
 
 /** Line icons for the modes, on a 24-unit grid. A mode without one gets a plain dot. */
 const MODE_ICONS: Record<string, string[]> = {
@@ -91,6 +133,8 @@ export interface LegendEntry {
   label: string;
   /** RGBA as the overlay paints it. */
   rgba: readonly number[];
+  /** Its step on the verdict ladder, when known (a Part NO-GO key is hatched); else found from the colour. */
+  tone?: Tone;
 }
 
 export interface LegendMode {
@@ -140,6 +184,7 @@ export interface LegendHandlers {
 }
 
 export function ensureLegendStyle(): void {
+  ensureTokensCss();
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
   style.id = STYLE_ID;
@@ -176,10 +221,36 @@ export function modeIcon(key: string): SVGElement {
   return svg;
 }
 
-/** The overlay is drawn over imagery at partial strength; the key shows it a little firmer so it reads on the dark card. */
+/**
+ * The overlay is drawn over imagery at partial strength; the key draws the colour it is given at full strength, so
+ * each swatch is the very fill the bar, chip and gauge use for that step (item 1). The alpha is the overlay's own.
+ */
 function swatch(rgba: readonly number[]): string {
-  const [r, g, b, a] = rgba;
-  return `rgba(${r},${g},${b},${Math.min(1, Math.max(0.55, a / 255 + 0.25))})`;
+  const [r, g, b] = rgba;
+  return `rgb(${r},${g},${b})`;
+}
+
+/** The ladder step an overlay key stands for: as given, else the tone whose fill is this colour. */
+function entryTone(e: LegendEntry): Tone | null {
+  if (e.tone) return e.tone;
+  const [r, g, b] = e.rgba;
+  for (const t of Object.keys(TONE) as Tone[]) {
+    const [tr, tg, tb] = rgbOf(TONE[t].fill);
+    if (tr === r && tg === g && tb === b) return t;
+  }
+  return null;
+}
+
+/** "Marginal: Within 250 m of NO-GO" → "Marginal: GO Gr within 250 m of NO-GO" (what Marginal means, item 1). */
+function legendNote(note: string): string {
+  const m = /^([^:]+):\s*within\s+(.+?)\s+of\s+(.+)$/i.exec(note.trim());
+  if (!m || /\bGO Gr\b/.test(note)) return note;
+  return `${m[1]}: GO Gr within ${m[2]} of ${m[3]}`;
+}
+
+/** A T or Speed caption as a group label: the GROTBC letter in front dropped, sentence case (item 13). */
+function captionText(caption: string): string {
+  return sentenceCase(caption.replace(/^[A-Z]\s*·\s*/, ''));
 }
 
 function readDetailsOpen(): boolean {
@@ -254,7 +325,7 @@ export function buildLegend(s: LegendState, handlers: LegendHandlers): LegendPie
 
   const traffic: HTMLElement[] = [];
   if (s.traffic) {
-    traffic.push(legendEl('ms-ggl-tcap', s.traffic.caption));
+    traffic.push(legendEl('ms-ggl-tcap', captionText(s.traffic.caption)));
     if (s.traffic.season) {
       const sw = legendEl('ms-ggl-season');
       sw.setAttribute('role', 'group');
@@ -282,7 +353,7 @@ export function buildLegend(s: LegendState, handlers: LegendHandlers): LegendPie
   }
   const speed: HTMLElement[] = [];
   if (s.speed) {
-    speed.push(legendEl('ms-ggl-tcap', s.speed.caption));
+    speed.push(legendEl('ms-ggl-tcap', captionText(s.speed.caption)));
     const sw = legendEl('ms-ggl-season');
     sw.setAttribute('role', 'group');
     sw.setAttribute('aria-label', 'Speed by day or night');
@@ -298,29 +369,33 @@ export function buildLegend(s: LegendState, handlers: LegendHandlers): LegendPie
 
   const ramp = legendEl('ms-ggl-ramp');
   const labels = legendEl('ms-ggl-ramp-l');
+  ramp.style.gridTemplateColumns = `repeat(${Math.max(1, s.entries.length)},1fr)`;
+  labels.style.gridTemplateColumns = ramp.style.gridTemplateColumns;
   for (const e of s.entries) {
-    const i = legendEl('', undefined, 'i');
-    i.style.background = swatch(e.rgba);
+    const tone = entryTone(e);
+    const i = legendEl(tone && TONE[tone].hatch ? 'ms-gg-hatch' : '', undefined, 'i');
+    i.style.backgroundColor = swatch(e.rgba);
     ramp.appendChild(i);
     labels.appendChild(legendEl('', e.label, 'span'));
   }
-  const note = s.note ? legendEl('ms-ggl-note', s.note) : null;
+  const note = s.note ? legendEl('ms-ggl-note', legendNote(s.note)) : null;
 
   let list: HTMLElement | null = null;
   if (s.nogo.length || s.slow.length) {
     list = legendEl('ms-ggl-list');
-    const group = (caption: string, color: string, items: string[]) => {
+    const group = (caption: string, tone: 'nogo' | 'slow', items: string[]) => {
       if (!items.length) return;
       const g = legendEl('');
-      const cap = legendEl('ms-ggl-cap', caption);
-      cap.style.color = color;
+      const cap = legendEl('ms-ggl-cap');
+      cap.style.color = STEP_TEXT[tone];
+      cap.append(ladderIcon(TONE[tone].icon, 15), caption);
       const chips = legendEl('ms-ggl-chips');
       for (const t of items) chips.appendChild(legendEl('', t, 'span'));
       g.append(cap, chips);
       list!.appendChild(g);
     };
-    group(`NO-GO for ${mode.label}`, '#ff8a8d', s.nogo);
-    group('SLOW-GO', '#ffb766', s.slow);
+    group(`NO-GO for ${mode.label}`, 'nogo', s.nogo);
+    group('SLOW-GO', 'slow', s.slow);
   }
 
   let keys: HTMLElement | null = null;
@@ -334,8 +409,8 @@ export function buildLegend(s: LegendState, handlers: LegendHandlers): LegendPie
       keys!.appendChild(row);
       return row;
     };
-    if (s.keys.profile) keyP = key('P', 'Change Mode');
-    if (s.keys.snap) keyS = key('S', 'Quick Fix', 'Moves It to the Nearest Usable Gr');
+    if (s.keys.profile) keyP = key('P', 'Change mode');
+    if (s.keys.snap) keyS = key('S', 'Quick fix', 'Moves it to the nearest usable Gr');
     if (!keys.childElementCount) keys = null;
   }
   return { strip, name, traffic, speed, ramp, labels, note, list, keys, keyP, keyS };

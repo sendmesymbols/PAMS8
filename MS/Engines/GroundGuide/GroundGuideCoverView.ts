@@ -30,60 +30,89 @@ import {
   type CoverLevel,
   type GroundGuideCover,
 } from './GroundGuideCover';
+import {
+  ACCENT,
+  ensureTokensCss,
+  FONT,
+  FS,
+  FW,
+  LETTER_FG,
+  LETTER_FILL,
+  LEVEL_COLOR as LEVEL_TONE,
+  LEVEL_TEXT as LEVEL_TONE_TEXT,
+  LINE,
+  ROSE_C,
+  ROSE_R,
+  roseFrame,
+  roseKey,
+  SURFACE,
+  TEXT,
+  wedgePath,
+} from './GroundGuideTokens';
 import type { GroundGuideVerdict } from './GroundGuideTypes';
 
 const STYLE_ID = 'ms-ground-guide-cover-style';
 const SVG_NS = 'http://www.w3.org/2000/svg';
-/** C's letter colour (doc 16 §4.1) and the four levels: grey, amber, light green, green. */
-export const COVER_LETTER = '#1f8a5a';
-export const LEVEL_COLOR: Record<CoverLevel, string> = { 0: '#4a535e', 1: '#f0932b', 2: '#9cc45a', 3: '#2fa862' };
+/** C's letter badge: neutral like every GROTBC letter (letters are not verdicts, 2026-11-08 review item 16). */
+export const COVER_LETTER = LETTER_FILL;
+/** The four levels on the ladder's colours (GroundGuideTokens LEVEL_COLOR): None grey, Poor orange, Fair yellow, Good green. */
+export const LEVEL_COLOR: Record<CoverLevel, string> = { 0: LEVEL_TONE[0], 1: LEVEL_TONE[1], 2: LEVEL_TONE[2], 3: LEVEL_TONE[3] };
+/** The same levels as words on the dark card. */
+export const LEVEL_TEXT: Record<CoverLevel, string> = { 0: LEVEL_TONE_TEXT[0], 1: LEVEL_TONE_TEXT[1], 2: LEVEL_TONE_TEXT[2], 3: LEVEL_TONE_TEXT[3] };
 const FIELD_SHORT: Record<CoverField, string> = { direct: 'Direct', indirect: 'Indirect', ground: 'Gr', aerial: 'Air' };
 
+/**
+ * Sizes and colours from GroundGuideTokens.ts (2026-11-08 visual review): five type steps, labels in TEXT.label, group
+ * labels in sentence case over a hairline, no uppercase chips, no text cut with an ellipsis (two lines, then clamp).
+ */
 const CSS = `
 .ms-gc-cap{display:flex;align-items:center;gap:6px}
-.ms-gc-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:15px;height:15px;border-radius:4px;font:800 10px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:0;color:#fff;background:${COVER_LETTER}}
-.ms-gc-tag{margin-left:auto;font:600 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.06em;color:#7f8994;text-transform:uppercase}
-.ms-gc-k{font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#7f8994;margin:5px 0 3px}
+.ms-gc-l{display:inline-flex;align-items:center;justify-content:center;flex:none;width:17px;height:17px;border-radius:4px;font:${FW.bold} ${FS.meta}px/1 ${FONT};color:${LETTER_FG};background:${COVER_LETTER}}
+.ms-gc-tag{margin-left:auto;font:${FW.regular} ${FS.meta}px/1.2 ${FONT};color:${TEXT.label};text-transform:none;letter-spacing:0}
+.ms-gc-k{font:${FW.semi} ${FS.body}px/1.25 ${FONT};color:${TEXT.main};margin:6px 0 4px;padding-bottom:2px;border-bottom:1px solid ${LINE.hair}}
 .ms-gc-k:first-of-type{margin-top:0}
-.ms-gc-row{display:grid;grid-template-columns:70px 46px minmax(0,1fr);gap:6px;align-items:center;font-size:11.5px;line-height:1.3}
+.ms-gc-row{display:grid;grid-template-columns:82px 46px minmax(0,1fr);gap:6px;align-items:center;font-size:${FS.meta}px;line-height:1.3}
 .ms-gc-row+.ms-gc-row{margin-top:3px}
-.ms-gc-row>.ms-gc-f{color:#c3cbd3;white-space:nowrap}
-.ms-gc-row.ms-need>.ms-gc-f{color:#fff;font-weight:600}
-.ms-gc-row.ms-need>.ms-gc-f::after{content:" \\25C6";color:var(--pb-k);font-size:8px;vertical-align:1px}
-.ms-gc-row>.ms-gc-w{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ms-gc-row>.ms-gc-w>b{color:#fff;font-weight:600}
-.ms-gc-row>.ms-gc-w>span{color:#9aa3ad}
+.ms-gc-row>.ms-gc-f{color:${TEXT.label};white-space:nowrap}
+.ms-gc-row.ms-need>.ms-gc-f{color:${TEXT.strong};font-weight:${FW.semi}}
+.ms-gc-row.ms-need>.ms-gc-f::after{content:"";display:inline-block;width:6px;height:6px;margin:0 0 1px 6px;background:${ACCENT};transform:rotate(45deg)}
+.ms-gc-row>.ms-gc-w{min-width:0;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
+.ms-gc-row>.ms-gc-w>b{font-weight:${FW.semi}}
+.ms-gc-row>.ms-gc-w>span{color:${TEXT.label}}
 .ms-gc-m{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
-.ms-gc-m>i{display:block;height:7px;border-radius:1.5px;background:rgba(255,255,255,.08)}
-.ms-gc-soft{color:#9aa3ad;font-size:11px;margin-top:5px}
-.ms-gc-soft b{color:#e8ebee;font-weight:600}
-.ms-gc-dep{display:inline-block;font:700 9px/1 system-ui,Segoe UI,Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px 2px;border-radius:999px;background:#1d3a2a;color:#7ee0a5;margin-left:4px;vertical-align:1px}
+.ms-gc-m>i{display:block;height:7px;border-radius:1.5px;background:#3a434e}
+.ms-gc-soft{color:${TEXT.soft};font-size:${FS.meta}px;line-height:1.35;margin-top:5px}
+.ms-gc-soft b{color:${TEXT.main};font-weight:${FW.semi}}
+.ms-gc-dep{margin-left:6px;font-weight:${FW.semi};color:${ACCENT}}
 .ms-gc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 6px}
 .ms-gc-grid>.ms-gc-k{margin:0}
-.ms-gc-tile{border-radius:6px;padding:5px 7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);min-width:0}
-.ms-gc-tile small{display:block;font-size:10px;color:#c3cbd3}
-.ms-gc-tile b{display:block;font-size:13px;color:#fff;line-height:1.25}
-.ms-gc-tile.ms-need{border-color:var(--pb-k)}
-.ms-gc-sum{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:12px}
-.ms-gc-sum b{color:#fff}
+.ms-gc-tile{border-radius:6px;padding:5px 7px;background:${SURFACE.raised};border:1px solid ${LINE.soft};min-width:0}
+.ms-gc-tile small{display:block;font-size:${FS.meta}px;line-height:1.25;color:${TEXT.label}}
+.ms-gc-tile b{display:block;font-size:${FS.body}px;font-weight:${FW.bold};color:${TEXT.strong};line-height:1.25}
+.ms-gc-tile.ms-need{border-color:${ACCENT}}
+.ms-gc-sum{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:${FS.body}px;color:${TEXT.label}}
+.ms-gc-sum b{font-weight:${FW.bold}}
 .ms-gc-ico{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ms-gc-ico>div{display:flex;gap:7px;align-items:center;min-width:0}
 .ms-gc-ico>div>svg{flex:none}
-.ms-gc-ico small{display:block;font-size:10px;color:#9aa3ad}
-.ms-gc-ico b{display:block;font-size:12.5px;color:#fff}
-.ms-gc-near{display:grid;grid-template-columns:70px minmax(0,1fr);gap:3px 6px;font-size:11.5px;line-height:1.3}
-.ms-gc-near>span:nth-child(odd){color:#c3cbd3;white-space:nowrap}
-.ms-gc-near>span.ms-need{color:#fff;font-weight:600}
-.ms-gc-near>span:nth-child(even){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-gc-ico small{display:block;font-size:${FS.meta}px;line-height:1.25;color:${TEXT.label}}
+.ms-gc-ico b{display:block;font-size:${FS.body}px;font-weight:${FW.bold}}
+.ms-gc-near{display:grid;grid-template-columns:82px minmax(0,1fr);gap:3px 6px;font-size:${FS.meta}px;line-height:1.3}
+.ms-gc-near>span:nth-child(odd){color:${TEXT.label};white-space:nowrap}
+.ms-gc-near>span.ms-need{color:${TEXT.strong};font-weight:${FW.semi}}
+.ms-gc-near>span:nth-child(even){min-width:0;color:${TEXT.main};overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
 .ms-gc-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
 .ms-gc-rose{display:flex;gap:10px;align-items:center}
-.ms-gc-rose>svg{flex:none}
-.ms-gc-rose>div{min-width:0;font-size:11.5px;line-height:1.35}
-.ms-gc-rose b{color:#fff}
-.ms-gc-key{display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:#9aa3ad;margin-top:5px}
+.ms-gc-rose>svg,.ms-gc-rose>figure{flex:none}
+.ms-gc-rose>div{min-width:0;font-size:${FS.meta}px;line-height:1.35;color:${TEXT.label}}
+.ms-gc-rose b{font-weight:${FW.bold}}
+.ms-gc-fig{margin:0;flex:none;width:132px;display:flex;flex-direction:column;align-items:center}
+.ms-gc-fig>.ms-gg-rkey{margin-top:2px;max-width:132px}
+.ms-gc-key i{border-radius:2px}
 `;
 
 export function ensureCoverCss(): void {
+  ensureTokensCss();
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
@@ -104,11 +133,18 @@ function svg(tag: string, attrs: Record<string, string | number>): SVGElement {
   return e;
 }
 
+/** A level's word ("Good", "Poor") in bold, in its colour on the dark card. */
+function levelWord(level: CoverLevel): HTMLElement {
+  const b = el('b', undefined, COVER_WORD[level]);
+  b.style.color = LEVEL_TEXT[level];
+  return b;
+}
+
 function section(caption: string, ...content: Array<Node | null>): HTMLElement {
   const sec = el('div', 'ms-ggb-sec');
   const cap = el('div', 'ms-ggb-cap ms-gc-cap');
   cap.append(el('span', 'ms-gc-l', 'C'), caption, el('span', 'ms-gc-tag', 'Proposal'));
-  cap.lastElementChild!.setAttribute('title', 'Levels from rules.json grotbc.coverSplit, a starting proposal for the rule owner to correct');
+  cap.lastElementChild!.setAttribute('title', 'Levels from the ground class: a starting proposal for the rule owner to correct');
   sec.append(cap, ...content.filter((c): c is Node => c !== null));
   return sec;
 }
@@ -126,7 +162,7 @@ function meter(level: CoverLevel): HTMLElement {
 
 function wordFrom(c: GroundGuideCover, f: CoverField): HTMLElement {
   const w = el('div', 'ms-gc-w');
-  w.append(el('b', undefined, COVER_WORD[c.levels[f]]));
+  w.append(levelWord(c.levels[f]));
   const from = c.from[f];
   if (from) w.append(el('span', undefined, ` · ${from}`));
   return w;
@@ -142,7 +178,7 @@ export function needLine(c: GroundGuideCover, profileLabel: string): HTMLElement
   const f = c.focus;
   if (!f || c.levels[f] >= 2) return null;
   const line = el('div', 'ms-gc-soft');
-  line.append(`${profileLabel} needs ${COVER_FIELD_LABEL[f]}: `, el('b', undefined, COVER_WORD[c.levels[f]]));
+  line.append(`${profileLabel} needs ${COVER_FIELD_LABEL[f]}: `, levelWord(c.levels[f]));
   const n = nearText(c, f);
   line.append(n ? ` · ${n}` : ` · none Fair or better within ${fmtDistance(c.radiusM)}`);
   return line;
@@ -152,15 +188,15 @@ export function bankLine(c: GroundGuideCover): HTMLElement | null {
   if (!c.bank) return null;
   const line = el('div', 'ms-gc-soft');
   line.append(el('b', undefined, c.bank.label), ` within ${fmtDistance(c.bank.withinM)}`);
-  if (c.bank.deploy) line.append(el('span', 'ms-gc-dep', 'Deployment Line'));
+  if (c.bank.deploy) line.append(el('span', 'ms-gc-dep', 'Deployment line'));
   return line;
 }
 
 export function localLine(c: GroundGuideCover): HTMLElement | null {
   if (!c.local) return null;
   const line = el('div', 'ms-gc-soft');
-  line.append('Area round it: cover ', el('b', undefined, COVER_WORD[c.local.cover]), ', concealment ', el('b', undefined, COVER_WORD[c.local.concealment]));
-  line.title = 'Vegetation density of the area (cc layer), not this spot. It never raises the levels above.';
+  line.append('Area round it: cover ', levelWord(c.local.cover), ', concealment ', levelWord(c.local.concealment));
+  line.title = 'The cover density of the area round it, not this spot. It never raises the levels above.';
   return line;
 }
 
@@ -178,7 +214,7 @@ export function aroundLine(c: GroundGuideCover): HTMLElement | null {
     line.append('Concealed round it, not on this spot: ');
     const n = a.nearest;
     if (n) line.append(el('b', undefined, `${COVER_WORD[n.level]} ${fmtDistance(n.distanceM)} ${n.compass}`), ` (${n.label})`);
-    else line.append(el('b', undefined, COVER_WORD[a.concealment]), ' in the area');
+    else line.append(levelWord(a.concealment), ' in the area');
     if (a.clearedLine) line.append('. ');
   }
   if (a.clearedLine) line.append('A canopy over the road may screen it from the air: check on the ground.');
@@ -213,7 +249,7 @@ export function coverGridTiles(c: GroundGuideCover): HTMLElement {
       const lv = c.levels[f];
       const t = el('div', `ms-gc-tile${c.focus === f ? ' ms-need' : ''}`);
       t.style.background = lv ? `${LEVEL_COLOR[lv]}33` : '';
-      t.append(el('small', undefined, `From ${COVER_FIELD_LABEL[f]}`), el('b', undefined, COVER_WORD[lv]));
+      t.append(el('small', undefined, `From ${COVER_FIELD_LABEL[f]}`), levelWord(lv));
       g.append(t);
     }
   }
@@ -243,9 +279,9 @@ function styleSummary(v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement {
   const conceal = Math.min(c.levels.ground, c.levels.aerial) as CoverLevel;
   const s = el('div', 'ms-gc-sum');
   const a = el('span');
-  a.append('Cover ', el('b', undefined, COVER_WORD[c.levels.direct]));
+  a.append('Cover ', levelWord(c.levels.direct));
   const b = el('span');
-  b.append('Concealment ', el('b', undefined, COVER_WORD[conceal]));
+  b.append('Concealment ', levelWord(conceal));
   s.append(a, b);
   const from = c.from.direct ?? c.from.ground ?? c.from.aerial;
   return section('Cover & Concealment', s, from ? el('div', 'ms-gc-soft', `From ${from}`) : null, needLine(c, v.profileLabel), aroundLine(c));
@@ -260,15 +296,15 @@ function shield(level: CoverLevel): SVGElement {
   clip.append(svg('rect', { x: 0, y: 30 - (30 * level) / 3, width: 26, height: 30 }));
   const defs = svg('defs', {});
   defs.append(clip);
-  sv.append(defs, svg('path', { d: path, fill: LEVEL_COLOR[level], 'clip-path': `url(#${id})` }), svg('path', { d: path, fill: 'none', stroke: '#c3cbd3', 'stroke-width': 1.5 }));
+  sv.append(defs, svg('path', { d: path, fill: LEVEL_COLOR[level], 'clip-path': `url(#${id})` }), svg('path', { d: path, fill: 'none', stroke: TEXT.label, 'stroke-width': 1.5 }));
   return sv;
 }
 
 function eye(level: CoverLevel): SVGElement {
   const sv = svg('svg', { width: 30, height: 30, viewBox: '0 0 30 30', 'aria-hidden': 'true' });
   sv.append(
-    svg('path', { d: 'M2 15 C7 7 23 7 28 15 C23 23 7 23 2 15 Z', fill: 'none', stroke: '#c3cbd3', 'stroke-width': 1.5 }),
-    svg('circle', { cx: 15, cy: 15, r: 4.5, fill: '#c3cbd3', 'fill-opacity': 1 - level / 3.5 }),
+    svg('path', { d: 'M2 15 C7 7 23 7 28 15 C23 23 7 23 2 15 Z', fill: 'none', stroke: TEXT.label, 'stroke-width': 1.5 }),
+    svg('circle', { cx: 15, cy: 15, r: 4.5, fill: TEXT.label, 'fill-opacity': 1 - level / 3.5 }),
   );
   // The more concealment, the more the eye is screened: one bar per level across it.
   for (let k = 0; k < level; k++) sv.append(svg('line', { x1: 6 + k * 7, y1: 25, x2: 12 + k * 7, y2: 5, stroke: LEVEL_COLOR[level], 'stroke-width': 2.5, 'stroke-linecap': 'round' }));
@@ -281,11 +317,11 @@ export function coverIconsRow(c: GroundGuideCover): HTMLElement {
   const g = el('div', 'ms-gc-ico');
   const a = el('div');
   const at = el('div');
-  at.append(el('small', undefined, 'Cover (Direct Fire)'), el('b', undefined, COVER_WORD[c.levels.direct]));
+  at.append(el('small', undefined, 'Cover (Direct Fire)'), levelWord(c.levels.direct));
   a.append(shield(c.levels.direct), at);
   const b = el('div');
   const bt = el('div');
-  bt.append(el('small', undefined, 'Concealment (Weaker)'), el('b', undefined, COVER_WORD[conceal]));
+  bt.append(el('small', undefined, 'Concealment (Weaker)'), levelWord(conceal));
   b.append(eye(conceal), bt);
   g.append(a, b);
   return g;
@@ -327,32 +363,45 @@ function styleNearest(_v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement 
 }
 
 // ── C6 rose ───────────────────────────────────────────────────────────────
+/**
+ * The C Cover rose in the shared frame (item 12): eight wedges in map bearings, longer where Fair-or-better cover is
+ * closer (a sector with none keeps a grey stub), coloured by the best level found; the hub is the level at the spot.
+ * The group turns with the map (`data-gv-rose`). Drawn at ROSE_PX on screen: `size` is kept for the callers but no
+ * longer used.
+ */
 export function coverRose(c: GroundGuideCover, size: number, northDeg: number): SVGElement {
-  const cx = size / 2;
-  const r0 = size * 0.14;
-  const R = size / 2 - 3;
-  const sv = svg('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': `Cover from ${COVER_FIELD_LABEL[c.roseField]} round the position` });
-  const grp = svg('g', { transform: `rotate(${northDeg} ${cx} ${cx})`, 'data-gv-rose': `${cx}` });
-  grp.append(svg('circle', { cx, cy: cx, r: R, fill: 'none', stroke: 'rgba(255,255,255,.1)' }));
-  const P = (a: number, rr: number) => `${(cx + rr * Math.sin(a)).toFixed(1)} ${(cx - rr * Math.cos(a)).toFixed(1)}`;
+  void size;
+  const r0 = 10;
+  const R = ROSE_R;
+  const f = roseFrame(`Cover from ${COVER_FIELD_LABEL[c.roseField]} round the position, to ${fmtDistance(c.radiusM)}`);
   for (const x of c.sectors) {
-    const a0 = ((x.bearingDeg - 20.5) * Math.PI) / 180;
-    const a1 = ((x.bearingDeg + 20.5) * Math.PI) / 180;
     // Long wedge = cover close by; a sector with none keeps a stub.
     const reach = x.nearM === null ? 0.12 : 1 - Math.min(0.85, x.nearM / c.radiusM);
     const r = r0 + (R - r0) * reach;
-    grp.append(
-      svg('path', {
-        d: `M ${P(a0, r0)} L ${P(a0, r)} A ${r} ${r} 0 0 1 ${P(a1, r)} L ${P(a1, r0)} A ${r0} ${r0} 0 0 0 ${P(a0, r0)} Z`,
-        fill: LEVEL_COLOR[x.level],
-        'fill-opacity': x.level ? 0.9 : 0.5,
-      }),
-    );
+    const w = f.add('path', { d: wedgePath(r0, r, x.bearingDeg - 20.5, x.bearingDeg + 20.5), fill: LEVEL_COLOR[x.level], stroke: SURFACE.ring, 'stroke-width': 0.8 });
+    const tip = svg('title', {});
+    tip.textContent = x.nearM === null ? `${x.compass}: none Fair or better within ${fmtDistance(c.radiusM)}` : `${x.compass}: ${COVER_WORD[x.level]} ${fmtDistance(x.nearM)}`;
+    w.append(tip);
   }
-  grp.append(svg('circle', { cx, cy: cx, r: r0 - 2, fill: LEVEL_COLOR[c.levels[c.roseField]], stroke: '#fff', 'stroke-width': 1.5 }));
-  grp.append(svg('path', { d: `M ${cx} 1 l 3.5 6 h -7 z`, fill: '#fff' }));
-  sv.append(grp);
-  return sv;
+  // The hub: the level at the spot itself.
+  f.add('circle', { cx: ROSE_C, cy: ROSE_C, r: r0 - 2, fill: LEVEL_COLOR[c.levels[c.roseField]], stroke: '#c9d1d9', 'stroke-width': 1.5 });
+  const n = Math.round((northDeg || 0) * 10) / 10;
+  if (n) {
+    // Turned to the map's north now (attributes only); the card's north pass turns it again later.
+    f.g.setAttribute('transform', `rotate(${n} ${ROSE_C} ${ROSE_C})`);
+    f.g.querySelectorAll('[data-gv-upright]').forEach((u) => {
+      const [x, y] = (u.getAttribute('data-gv-upright') ?? '0 0').split(/\s+/);
+      u.setAttribute('transform', `rotate(${-n} ${x} ${y ?? x})`);
+    });
+  }
+  return f.svg;
+}
+
+/** The C rose with its key under it, as one figure (item 12). */
+export function coverRoseFigure(c: GroundGuideCover, northDeg: number): HTMLElement {
+  const fig = el('figure', 'ms-gc-fig');
+  fig.append(coverRose(c, 0, northDeg), coverRoseKey());
+  return fig;
 }
 
 export function roseText(c: GroundGuideCover): HTMLElement {
@@ -361,44 +410,39 @@ export function roseText(c: GroundGuideCover): HTMLElement {
   t.append(el('div', 'ms-gc-soft', `From ${COVER_FIELD_LABEL[f]}, ${fmtDistance(c.radiusM)}`));
   t.firstElementChild!.setAttribute('style', 'margin-top:0');
   const here = el('div');
-  here.append('Here ', el('b', undefined, COVER_WORD[c.levels[f]]));
+  here.append('Here ', levelWord(c.levels[f]));
   t.append(here);
   const best = [...c.sectors].filter((s) => s.nearM !== null).sort((a, b) => b.level - a.level || a.nearM! - b.nearM!)[0];
   if (best) {
     const b = el('div');
-    b.append('Best ', el('b', undefined, COVER_WORD[best.level]), ` ${fmtDistance(best.nearM!)} ${best.compass}`);
+    b.append('Best ', levelWord(best.level), ` ${fmtDistance(best.nearM!)} ${best.compass}`);
     t.append(b);
   } else t.append(el('div', 'ms-gc-soft', 'None Fair or better round it'));
-  const open = c.sectors.filter((s) => s.nearM === null).map((s) => s.compass);
-  if (open.length && open.length < 8) t.append(el('div', 'ms-gc-soft', `Open to the ${open.join(', ')}`));
+  // Sectors with nothing Fair or better (not "open": Open Dirs is the cross-country count on O and T).
+  const bare = c.sectors.filter((s) => s.nearM === null).map((s) => s.compass);
+  if (bare.length && bare.length < 8) t.append(el('div', 'ms-gc-soft', `No cover to the ${bare.join(', ')}`));
   return t;
 }
 
-/** Key under the rose: Good, Fair, Poor dots. */
+/** The one-line key under the cover rose (item 12): "Longer = closer · Good · Fair · Poor" with the level swatches. */
 export function coverRoseKey(): HTMLElement {
-  const key = el('div', 'ms-gc-key');
-  for (const lv of [3, 2, 1] as const) {
-    const k = el('span');
-    const d = el('span', 'ms-gc-dot');
-    d.style.background = LEVEL_COLOR[lv];
-    k.append(d, COVER_WORD[lv]);
-    key.append(k);
-  }
+  const key = roseKey(([3, 2, 1] as const).map((lv): [string, string] => [LEVEL_COLOR[lv], COVER_WORD[lv]]));
+  key.classList.add('ms-gc-key');
+  key.prepend('Longer = closer · ');
   return key;
 }
 
 function styleRose(_v: GroundGuideVerdict, c: GroundGuideCover, northDeg: number): HTMLElement {
   const box = el('div', 'ms-gc-rose');
-  box.append(coverRose(c, 64, northDeg), roseText(c));
-  const key = coverRoseKey();
-  return section(c.focus ? `Cover Round It · ${FIELD_SHORT[c.roseField]}` : 'Cover Round It', box, key);
+  box.append(coverRoseFigure(c, northDeg), roseText(c));
+  return section(c.focus ? `Cover Round It · ${FIELD_SHORT[c.roseField]}` : 'Cover Round It', box);
 }
 
 // ── C7 block ──────────────────────────────────────────────────────────────
 function styleBlock(v: GroundGuideVerdict, c: GroundGuideCover, northDeg: number): HTMLElement {
   const box = el('div', 'ms-gc-rose');
   box.style.marginTop = '7px';
-  box.append(coverRose(c, 58, northDeg), nearestGrid(c));
+  box.append(coverRoseFigure(c, northDeg), nearestGrid(c));
   return section('Cover, Camouflage & Concealment', ...fourLines(c), localLine(c), aroundLine(c), bankLine(c), box, needLine(c, v.profileLabel));
 }
 
@@ -468,7 +512,7 @@ registerBriefSection({
     const wrap = el('div');
     const box = el('div', 'ms-gc-rose');
     box.style.marginTop = '8px';
-    box.append(coverRose(c, 84, 0), nearestGrid(c));
+    box.append(coverRoseFigure(c, 0), nearestGrid(c));
     wrap.append(
       ...fourLines(c),
       localLine(c) ?? el('span'),
@@ -478,7 +522,7 @@ registerBriefSection({
       formLine(c) ?? el('span'),
       builtLine(c) ?? el('span'),
       box,
-      el('div', 'ms-gc-soft', 'Levels: this spot, from rules.json grotbc.coverSplit and banks (a starting proposal). Area round it: the cc layer, which never raises them. Check on the ground.'),
+      el('div', 'ms-gc-soft', 'Levels: this spot, from the ground class and river or canal banks (a starting proposal). Area round it: the cover density of the area round it, which never raises them. Check on the ground.'),
     );
     return wrap;
   },
