@@ -620,8 +620,9 @@ function pickNear(all: NearThing[]): NearThing[] {
 
 /**
  * The Nearest compass: drawn north up in map bearings inside one group that turns with the map (`data-gv-rose`, so
- * `orientNorth` keeps it true on a rotated map), the first thing as the needle and the others as dots on the rim,
- * each in its list colour. The list beside it gives every direction in words as well.
+ * `orientNorth` keeps it true on a rotated map), the first thing as the needle and every thing, the first included, as a
+ * dot on the rim in its list colour: each dot in the list has its twin on the dial, and a needle that points near north
+ * is not read as a compass's own north needle (user, 2026-11-08). The list beside it gives every direction in words.
  */
 function nearDial(things: NearThing[]): SVGElement | null {
   const marks = things.map((t) => ({ t, b: t.bearingDeg ?? compassBearing(t.compass) })).filter((m): m is { t: NearThing; b: number } => m.b !== null);
@@ -643,22 +644,26 @@ function nearDial(things: NearThing[]): SVGElement | null {
   for (const [x1, y1, x2, y2] of [[56, 29, 51.5, 29], [29, 56, 29, 51.5], [2, 29, 6.5, 29]]) {
     add(g, 'line', { x1, y1, x2, y2, stroke: '#9aa3ad', 'stroke-width': 1.5 });
   }
-  add(g, 'text', { x: 29, y: 17, 'text-anchor': 'middle', 'font-size': 11, fill: '#9aa3ad', 'font-family': 'system-ui,Segoe UI,Arial,sans-serif', 'data-gv-upright': '29 13' }, 'N');
-  const [lead, ...rest] = marks;
-  // Two things in the same direction would hide one dot under the other: the later one moves in towards the centre.
+  const lead = marks[0];
+  // Two things in the same direction would hide one dot under the other: the later one moves in towards the centre
+  // (further in near north, so it stays clear of the N). The first thing's dot keeps the rim, where its needle points.
+  const gap = (a: number, b: number) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
   const placed: number[] = [];
-  const dots = rest.map(({ t, b }) => {
-    const clash = placed.some((p) => Math.abs((((b - p) % 360) + 540) % 360 - 180) < 16);
+  const dots = marks.map(({ t, b }) => {
+    const clash = placed.some((p) => gap(b, p) < 16);
     placed.push(b);
-    return { t, b, r: clash ? 13 : 22 };
+    return { t, b, r: clash ? (gap(b, 0) < 30 ? 7 : 13) : 22 };
   });
+  const needle = add(g, 'g', { transform: `rotate(${Math.round(lead.b)} 29 29)` });
+  const col = NEAR_COLOR[lead.t.tone];
+  add(needle, 'polygon', { points: '29,19 36,40 29,35 22,40', fill: col, stroke: col, 'stroke-width': 1.5, 'stroke-linejoin': 'round' });
+  // After the needle, so a dot moved in by a clash sits on top of it rather than under it.
   for (const { t, b, r } of dots.reverse()) {
     const rad = (b * Math.PI) / 180;
     add(g, 'circle', { cx: (29 + r * Math.sin(rad)).toFixed(1), cy: (29 - r * Math.cos(rad)).toFixed(1), r: 4.5, fill: NEAR_COLOR[t.tone], stroke: '#1b1f25', 'stroke-width': 1.5 });
   }
-  const needle = add(g, 'g', { transform: `rotate(${Math.round(lead.b)} 29 29)` });
-  const col = NEAR_COLOR[lead.t.tone];
-  add(needle, 'polygon', { points: '29,19 36,40 29,35 22,40', fill: col, stroke: col, 'stroke-width': 1.5, 'stroke-linejoin': 'round' });
+  // The N goes on last, on a dark halo, so a dot to the north never hides it.
+  add(g, 'text', { x: 29, y: 17, 'text-anchor': 'middle', 'font-size': 11, fill: '#9aa3ad', stroke: '#1b1f25', 'stroke-width': 3, 'paint-order': 'stroke', 'stroke-linejoin': 'round', 'font-family': 'system-ui,Segoe UI,Arial,sans-serif', 'data-gv-upright': '29 13' }, 'N');
   return svg;
 }
 
