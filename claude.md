@@ -180,6 +180,11 @@ MS/
   and the **military crest** (a real top-to-foot profile, drawn by G3), and reads NCGDB dune fields (Soil_Line /
   Soil_Point), ground symbols and the sheet's own notes (Annotation_: "Jeepable", "Brackish"); O adds OSM power lines,
   pipelines and walls and the recorded dam structure (kinds 167–181, 205–207; see `15-ground-guide.md`).
+  **V** shows / hides the **Gr Scope** rail (`GroundGuideScope.ts` view, `GroundGuideScopeScene.ts` pure scene,
+  `groundGuide.scope.*`): a side window docked at the map's edge, not tied to the mouse, whose map shows the ground round
+  the symbol being placed (else the selected symbol, the one just placed, the map centre) with range rings, the frontage
+  for the echelon, clear ground and the GROTBC layers from the bundle, thinned per echelon; its legend lines are the
+  layer switches. `guide.showScope()`, `guide.setScopeTarget(graphic)`.
   See `15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.
