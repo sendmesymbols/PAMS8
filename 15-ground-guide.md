@@ -102,7 +102,7 @@ rays, road density and feature queries wait for the Detail.
 |-----|-------|
 | *(Why, no label)* | the GO / SLOW-GO / NO-GO scale with the verdict's step lit, the deciding ground, and the rule owner's reason when the bundle gives one |
 | **Key facts** | two cells: the going in the other season (*After Rain*, or *When Dry* in the wet) and the cover or concealment the mode needs most (`Cover · Direct Fire: None`), each a word with a dot in its colour |
-| **Inside** | lines and areas: how much of the shape (or footprint) is in bad ground, as `34% of the Footprint` and a bar |
+| **Inside** | only while some of it is in NO-GO, with no label and the card's whole width: how much and in what, as `34% of the Frontage in Permanent Water` for an echelon (judged on its frontage) or `of the Shape in …` for a line or area (the commonest NO-GO class among the samples in it). An echelon gets the **frontage strip**: 16 small bars across the front, left to right as the unit faces (compass letter at each end), green or orange for SLOW-GO with red rising by the share of that block in NO-GO, so the card shows which end is in it (`footprint.front` / `frontEnds` on the verdict, from the samples the verdict already took). A line or area keeps the plain bar |
 | **Nearest** | `card.nearest: ranked` (default, 2026-11-07): up to three different things round the point, most important first, each a coloured dot, its name, distance and direction, and why it matters in small type; one compass under the label (it turns with the map) carries the first as the needle and every one, the first included, as a dot in its list colour (2026-11-08: a red needle alone near north read as the compass's own north needle; a dot moved in by a clash goes further in near north, and the N is drawn last on a dark halo). The order: the ground that decides the verdict; an obstacle that is NO-GO for the mode; better cover when the field the mode needs is Poor or None here, and the nearest place when the civil flag is raised; the road for the mode, an obstacle that slows it, a strong ITG candidate; the nearest place; an ITG candidate or an obstacle that does not stop the mode. One of each kind, the same ground seen twice kept once, and the point's own class (already in Why) left out. Under a metre reads *Touching* / *At the Point*. `card.nearest: deciding` shows only the deciding ground, as before |
 | **Inter Gap Rule** | footprint-judged echelons: the gap to the next same-echelon unit against the minimum |
 
@@ -258,7 +258,9 @@ so the existing rules apply: `fraction` ≥ 0.5 of the footprint in no-go → `i
 line names the footprint: `Platoon footprint 520 m front, facing N`. With `enforce`, `in` and `partial`
 therefore refuse a unit whose *footprint* straddles water even if its click point is dry.
 
-`footprint.outline` draws the footprint on the map while placing (blue). It is also in the verdict:
+`footprint.outline` draws the footprint on the map while placing (blue). The cursor card keeps clear of it
+(2026-11-08): the usual spots beside the cursor first, then beside the frontage or clear of it above / below, and
+only where none is clear the old spot. It is also in the verdict:
 
 ```ts
 v.footprint: { code, echelon, frontageM, depthM, gapM, facingDeg | null, facing, ring: [x, y][] } | undefined

@@ -646,6 +646,21 @@ export interface GroundGuideFootprintInfo {
   facing: GroundGuideFacingMode;
   /** The footprint outline in Web Mercator metres: a ring (rectangle / disc) or a 2-point line. */
   ring: MercXY[];
+  /**
+   * The frontage in equal blocks, left to right as the unit faces (W to E when facing N; W to E across the disc),
+   * from the samples the verdict took: the cursor card's frontage strip. Absent when no sample was known.
+   */
+  front?: GroundGuideFrontBlock[];
+  /** 8-point compass of the strip's left and right ends ("W", "E"). */
+  frontEnds?: [string, string];
+}
+
+/** One block of the frontage strip (`GroundGuideFootprintInfo.front`). */
+export interface GroundGuideFrontBlock {
+  /** Share of the block's known samples in NO-GO, 0–1. */
+  nogo: number;
+  /** The rest of the block: `slow` when any of it is SLOW-GO, else `go`; null when the block has no terrain data. */
+  rest: 'go' | 'slow' | null;
 }
 
 /** Result of the intergap check against same-echelon symbols already on the map. */

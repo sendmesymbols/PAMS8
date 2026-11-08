@@ -96,7 +96,7 @@ import { BLD_HEIGHT, KINDS as SECTION_KINDS, SECTIONS_STYLES, G_STYLES, R_STYLES
 import { sectionsText } from './GroundGuideSectionsView';
 import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
-import { checkSpacing, echelonCodeOf, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
+import { checkSpacing, echelonCodeOf, frontBlocks, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
 import { GroundGuideIndicators } from './GroundGuideIndicators';
 import { GroundGuideLegend, type LegendState } from './GroundGuideLegend';
 import { createOverlayLayer, OVERLAY_COLORS, OVERLAY_LEGEND, type OverlayRenderingSource } from './GroundGuideOverlay';
@@ -985,6 +985,7 @@ export default class GroundGuide {
   /** Draw ended or was cancelled — hide feedback and stop tracking the cursor. */
   deactivate(): void {
     this._badge.hide();
+    this._badge.setKeepClear(null);
     this._indicators.hide();
     this._indicators.hideFootprint();
     this._legend.hideHint('exempt');
@@ -1898,7 +1899,11 @@ export default class GroundGuide {
         v.loading = true;
       }
     }
-    if (plan && cand) this._applyFootprint(v, plan, cand, effSidc, !opts?.light, opts?.self);
+    if (plan && cand) {
+      this._applyFootprint(v, plan, cand, effSidc, !opts?.light, opts?.self);
+      const strip = frontBlocks(plan, cand, pts, samples, compiled);
+      if (strip && v.footprint) ((v.footprint.front = strip.blocks), (v.footprint.frontEnds = strip.ends));
+    }
     v.reason = this._reasonFor(v);
     if (this._opts.traffic.header === 'season' && geometry?.type === 'point') this._seasonHeader(v, shape.parts[0]?.[0]);
     return v;
@@ -3640,10 +3645,47 @@ export default class GroundGuide {
     }
     if (this._opts.footprint.outline && this.isActive && v.footprint) {
       this._indicators.showFootprint(v.footprint.ring, v.spacing?.conflicts.map((c) => c.ring) ?? []);
+      this._badge.setKeepClear(this._frontageOnScreen(v.footprint.ring));
     } else {
       this._indicators.hideFootprint();
+      this._badge.setKeepClear(null);
     }
     this._publish(v);
+  }
+
+  /**
+   * The frontage drawn on the map as a box of offsets from the symbol on screen (CSS px), for the card to keep clear
+   * of (user, 2026-11-08: the card's corner hid the frontage line, its NO-GO end included). Offsets, because the card
+   * follows the cursor between verdicts and the symbol moves with it. A disc is boxed by its Mercator bounds. Null
+   * when it cannot be worked out.
+   */
+  private _frontageOnScreen(ring: MercXY[]): { l: number; t: number; r: number; b: number } | null {
+    const view: any = this._getView?.();
+    const g = this._lastDetail?.geometry;
+    if (!view?.toScreen || g?.type !== 'point' || ring.length < 2) return null;
+    let pts = ring;
+    if (ring.length > 8) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const [x, y] of ring) ((x0 = Math.min(x0, x)), (x1 = Math.max(x1, x)), (y0 = Math.min(y0, y)), (y1 = Math.max(y1, y)));
+      pts = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    }
+    const screen = (p: any): { x: number; y: number } | null => {
+      try {
+        const s = p ? view.toScreen(p) : null;
+        return s && Number.isFinite(s.x) && Number.isFinite(s.y) ? s : null;
+      } catch {
+        return null;
+      }
+    };
+    const o = screen(g);
+    if (!o) return null;
+    let l = 0, t = 0, r = 0, b = 0;
+    for (const xy of pts) {
+      const s = screen(this._withMerc(g, xy));
+      if (!s) return null;
+      ((l = Math.min(l, s.x - o.x)), (r = Math.max(r, s.x - o.x)), (t = Math.min(t, s.y - o.y)), (b = Math.max(b, s.y - o.y)));
+    }
+    return { l, t, r, b };
   }
 
   /** The card shows figures (percent, distances, gaps) the event key does not carry, so it refreshes on its own key. */
@@ -3660,6 +3702,8 @@ export default class GroundGuide {
       speedKey(v.speed),
       coverKey(v.cover),
       sectionsKey(v.sections),
+      // The frontage strip (shown only while some of it is in NO-GO): the same share can sit at the other end.
+      v.fraction > 0 ? (v.footprint?.front?.map((b) => `${Math.round(b.nogo * 5)}${b.rest?.[0] ?? 'u'}`).join('') ?? '') : '',
     ].join('|');
     if (key === this._lastBadgeKey) return;
     this._lastBadgeKey = key;

@@ -23,16 +23,19 @@
  * GeoTools.metersToMapUnits (inlined here: this module works in raw Mercator metres).
  */
 
-import { fmtDistance } from './GroundGuideEvaluator';
+import { fmtDistance, type CompiledProfile } from './GroundGuideEvaluator';
 import { normaliseSidc } from './GroundGuideProfiles';
 import type { MercShape } from './GroundGuideSampling';
+import { NODATA_CLASS } from './GroundGuideTypes';
 import type {
   MercXY,
   GroundGuideFacingMode,
   GroundGuideFootprintOptions,
   GroundGuideFootprintSize,
+  GroundGuideFrontBlock,
   GroundGuideSpacing,
   TerrainRules,
+  TerrainSample,
 } from './GroundGuideTypes';
 
 type Range = [number, number];
@@ -204,6 +207,70 @@ export function planFootprint(
   const facings: Array<number | null> =
     opts.facing === 'circle' ? [null] : opts.facing === 'worst4' ? WORST_FACINGS : [normaliseBearing(opts.bearingDeg)];
   return { dims, centre, facing: opts.facing, candidates: facings.map((f) => buildCandidate(centre, dims, f)) };
+}
+
+/** Blocks in the cursor card's frontage strip (concept 4 in ground-guide-card-concepts.html: 16 blocks, 33 m each for a 525 m Pl). */
+export const FRONT_BLOCKS = 16;
+const COMPASS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+/**
+ * The frontage strip (user, 2026-11-08, concept 4): the samples the verdict already took, binned across the front into
+ * FRONT_BLOCKS equal blocks, left to right as the unit faces (W to E across the disc). Each block keeps the share of
+ * its known samples in NO-GO and whether the rest of it is SLOW-GO, so a block with any NO-GO in it never reads clear.
+ * A block no sample fell in (a Section is shorter than 16 tile pixels at most zooms) takes its nearest sampled
+ * neighbour, the worse one on a tie: the pixel under it. A block whose samples are all outside the data stays unknown.
+ * Null when no sample was known.
+ */
+export function frontBlocks(
+  plan: FootprintPlan,
+  cand: FootprintCandidate,
+  pts: readonly MercXY[],
+  samples: readonly TerrainSample[],
+  profile: CompiledProfile,
+): { blocks: GroundGuideFrontBlock[]; ends: [string, string] } | null {
+  const c = plan.centre;
+  const half = (plan.dims.frontageM * mercPerMetre(c[1])) / 2;
+  if (!(half > 0) || pts.length === 0) return null;
+  const facing = cand.facingDeg ?? 0;
+  const t = (facing * Math.PI) / 180;
+  // `across` runs along the frontage, left to right as the unit faces (as in buildCandidate).
+  const ax = Math.cos(t);
+  const ay = -Math.sin(t);
+  const n = FRONT_BLOCKS;
+  const total = new Array<number>(n).fill(0);
+  const known = new Array<number>(n).fill(0);
+  const nogo = new Array<number>(n).fill(0);
+  const slow = new Array<number>(n).fill(0);
+  let anyKnown = false;
+  for (let i = 0; i < pts.length && i < samples.length; i++) {
+    const u = ((pts[i][0] - c[0]) * ax + (pts[i][1] - c[1]) * ay + half) / (2 * half);
+    const b = Math.min(n - 1, Math.max(0, Math.floor(u * n)));
+    total[b]++;
+    const code = samples[i].classCode;
+    if (code === null || code === NODATA_CLASS) continue;
+    known[b]++;
+    anyKnown = true;
+    if (profile.nogo[code]) nogo[b]++;
+    else if (profile.caution[code]) slow[b]++;
+  }
+  if (!anyKnown) return null;
+  const share = (j: number): number => (known[j] ? nogo[j] / known[j] : -1);
+  const blocks: GroundGuideFrontBlock[] = [];
+  for (let b = 0; b < n; b++) {
+    let j = b;
+    if (total[b] === 0) {
+      for (let d = 1; d < n; d++) {
+        const l = b - d >= 0 && total[b - d] > 0 ? b - d : -1;
+        const r = b + d < n && total[b + d] > 0 ? b + d : -1;
+        if (l < 0 && r < 0) continue;
+        j = l < 0 ? r : r < 0 ? l : share(r) > share(l) || (share(r) === share(l) && slow[r] > slow[l]) ? r : l;
+        break;
+      }
+    }
+    blocks.push(known[j] ? { nogo: nogo[j] / known[j], rest: slow[j] > 0 ? 'slow' : 'go' } : { nogo: 0, rest: null });
+  }
+  const end = (deg: number): string => COMPASS8[Math.round(normaliseBearing(deg) / 45) % 8];
+  return { blocks, ends: [end(facing - 90), end(facing + 90)] };
 }
 
 /**

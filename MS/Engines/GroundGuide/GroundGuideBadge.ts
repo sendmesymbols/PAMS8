@@ -38,6 +38,8 @@ const EDGE = 8;
 const SPEAK_DELAY_MS = 500;
 /** Gap between a fingertip and the card above it. */
 const TOUCH_GAP = 28;
+/** Room the card leaves round the frontage line on the map. */
+const KEEP_PAD = 6;
 
 /*
  * Layout (2026-11-07, user: "keep all five, just cleaner", a bit bigger text for laptops in daylight): the verdict
@@ -133,6 +135,11 @@ ${toneCss}
 .ms-ggb-big{font-size:15.5px;font-weight:750;color:#fff;font-variant-numeric:tabular-nums;line-height:1.2}
 .ms-ggb-track{height:6px;margin:4px 0 2px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
 .ms-ggb-track>div{height:100%}
+.ms-ggb-front{display:flex;align-items:center;gap:5px}
+.ms-ggb-fe{flex:none;font-size:12px;font-weight:600;line-height:1;color:#c3cbd3}
+.ms-ggb-fb{flex:1 1 0;min-width:0;display:flex;gap:2px;height:14px}
+.ms-ggb-fb>i{flex:1 1 0;min-width:0;position:relative;display:block;border-radius:2px;overflow:hidden}
+.ms-ggb-fb>i>b{position:absolute;left:0;right:0;bottom:0;background:${STEP_COLOR.nogo}}
 .ms-ggb-enf{display:flex;gap:8px;align-items:flex-start;padding:8px 12px;background:rgba(229,72,77,.14);border-top:1px solid rgba(229,72,77,.5);color:#ffb3b5}
 .ms-ggb-enf>svg{flex:none;margin-top:2px;color:#e5484d}
 .ms-ggb-warn{color:#ffd27a}
@@ -352,10 +359,43 @@ function whySection(v: GroundGuideVerdict, tone: Tone): HTMLElement | null {
   return s;
 }
 
+/**
+ * Inside: how much is in NO-GO. Shown only while some of it is (the caller passes pct > 0), so the strip goes with it.
+ * An echelon is judged on its frontage (user, 2026-11-08: "It is Frontage, not Footprint"), and its bar is the
+ * frontage strip (concept 4 in ground-guide-card-concepts.html): small bars, one per block of the front, left to right
+ * as the unit faces, each green (or orange for SLOW-GO) with red rising by the share of that block in NO-GO, so the card
+ * shows which end is in it. It fits the row: the card keeps its width. A line or area keeps the plain bar.
+ * Same day: no "Inside" label, the row takes the card's whole width, and the line names what the share is in
+ * ("29% of the Frontage in Permanent Water": the commonest NO-GO class among the samples in it).
+ */
 function insideSection(v: GroundGuideVerdict, pct: number): HTMLElement {
+  const s = el('div', 'ms-ggb-row ms-ggb-wide');
   const line = el('div');
-  line.append(el('span', 'ms-ggb-b', `${pct}%`), ` of the ${v.footprint ? 'Footprint' : 'Shape'}`);
-  return row('Inside', line, track(pct / 100, verdictDot(v)));
+  line.append(el('span', 'ms-ggb-b', `${pct}%`), ` of the ${v.footprint ? 'Frontage' : 'Shape'} in `, el('span', 'ms-ggb-b', featureTitle(v.className)));
+  s.append(line, frontStrip(v) ?? track(pct / 100, verdictDot(v)));
+  return s;
+}
+
+function frontStrip(v: GroundGuideVerdict): HTMLElement | null {
+  const blocks = v.footprint?.front;
+  const ends = v.footprint?.frontEnds;
+  if (!blocks?.length || !ends) return null;
+  const s = el('div', 'ms-ggb-front');
+  s.setAttribute('aria-hidden', 'true'); // the figure beside it says it; the bars are for the eye
+  const bars = el('div', 'ms-ggb-fb');
+  for (const b of blocks) {
+    const i = el('i');
+    i.style.background = b.rest ? STEP_COLOR[b.rest] : 'rgba(255,255,255,.14)';
+    if (b.nogo > 0) {
+      const f = el('b');
+      // Never thinner than a sliver: a block with any NO-GO in it must not read clear.
+      f.style.height = `${Math.max(22, Math.round(b.nogo * 100))}%`;
+      i.append(f);
+    }
+    bars.append(i);
+  }
+  s.append(el('span', 'ms-ggb-fe', ends[0]), bars, el('span', 'ms-ggb-fe', ends[1]));
+  return s;
 }
 
 /** A small people icon for the civil flag on the mode line. */
@@ -840,6 +880,8 @@ export class GroundGuideBadge {
   private _cardH = 200;
   /** Where the card must not go (the open Detail), or null. */
   private _avoid: (() => DOMRect | null) | null = null;
+  /** The frontage on the map, as offsets from the cursor (setKeepClear). */
+  private _keep: { l: number; t: number; r: number; b: number } | null = null;
   /** Which going / soil / movement sections to show (groundGuide.card). */
   private _card: GroundGuideCardOptions = { ...DEFAULT_GROUND_GUIDE_OPTIONS.card };
   private _notice: string | null = null;
@@ -964,6 +1006,18 @@ export class GroundGuideBadge {
    */
   setAvoid(rect: (() => DOMRect | null) | null): void {
     this._avoid = rect;
+  }
+
+  /**
+   * Where the map draws the unit's frontage, as offsets from the cursor in CSS px, or null (user, 2026-11-08: the
+   * card's corner hid the frontage line and its NO-GO end). The card prefers a spot clear of it: the usual spots,
+   * then beside the frontage or clear of it above / below. Soft: where none is clear the card goes where it went before.
+   */
+  setKeepClear(rel: { l: number; t: number; r: number; b: number } | null): void {
+    const k = this._keep;
+    if (k === rel || (k && rel && Math.abs(k.l - rel.l) + Math.abs(k.t - rel.t) + Math.abs(k.r - rel.r) + Math.abs(k.b - rel.b) < 1)) return;
+    this._keep = rel;
+    if (this._el && this._el.style.display !== 'none') this._place();
   }
 
   /** Place the card again where it is (the Detail opened, closed or changed height under it): no rebuild unless it folds or unfolds. */
@@ -1177,21 +1231,30 @@ export class GroundGuideBadge {
 
   /**
    * The first place beside the cursor where a `w` × `h` box fits on screen without touching `av` (± `margin`): below
-   * right, below left, above right, above left, then the same rows pushed in from the screen edge. Null when none.
+   * right, below left, above right, above left, then the same rows pushed in from the screen edge. With `keep`, it
+   * must also stay clear of the frontage (setKeepClear), and may sit beside it or above / below it. Null when none.
    */
-  private _spot(w: number, h: number, av: DOMRect | null, margin: number): { x: number; y: number } | null {
+  private _spot(w: number, h: number, av: DOMRect | null, margin: number, keep = false): { x: number; y: number } | null {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const right = this._x + 16;
     const left = this._x - 16 - w;
     const xs = [right, left].filter((x) => x >= EDGE / 2 && x + w <= vw - EDGE / 2);
     xs.push(Math.min(Math.max(EDGE / 2, right), vw - w - EDGE / 2));
-    for (const y of [this._y + 20, this._y - 14 - h]) {
-      if (y < EDGE / 2 || y + h > vh - EDGE / 2) continue;
-      for (const x of xs) {
-        if (av && x < av.right + margin && x + w > av.left - margin && y < av.bottom + margin && y + h > av.top - margin) continue;
-        return { x, y };
-      }
+    const spots: Array<[number, number]> = [];
+    for (const y of [this._y + 20, this._y - 14 - h]) for (const x of xs) spots.push([x, y]);
+    const k = keep && this._keep ? { l: this._x + this._keep.l - KEEP_PAD, t: this._y + this._keep.t - KEEP_PAD, r: this._x + this._keep.r + KEEP_PAD, b: this._y + this._keep.b + KEEP_PAD } : null;
+    if (k) {
+      // Beside the frontage (the card too tall for above or below), then clear of it above / below.
+      const mid = Math.min(Math.max(EDGE / 2, this._y - h / 2), vh - h - EDGE / 2);
+      spots.push([k.r + 10, mid], [k.l - 10 - w, mid]);
+      for (const y of [k.b + 4, k.t - 4 - h]) spots.push([right, y], [left, y]);
+    }
+    for (const [x, y] of spots) {
+      if (x < EDGE / 2 || x + w > vw - EDGE / 2 || y < EDGE / 2 || y + h > vh - EDGE / 2) continue;
+      if (av && x < av.right + margin && x + w > av.left - margin && y < av.bottom + margin && y + h > av.top - margin) continue;
+      if (k && x < k.r && x + w > k.l && y < k.b && y + h > k.t) continue;
+      return { x, y };
     }
     return null;
   }
@@ -1206,7 +1269,7 @@ export class GroundGuideBadge {
       target.style.transform = `translate(${Math.round(tx)}px, ${Math.round(ty)}px)`;
       return;
     }
-    const at = this._spot(w, h, av, 0);
+    const at = this._spot(w, h, av, 0, true) ?? this._spot(w, h, av, 0);
     if (at) {
       target.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
       return;
