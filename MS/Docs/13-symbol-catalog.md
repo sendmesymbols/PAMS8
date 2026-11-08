@@ -2,23 +2,23 @@
 
 > Generated from `MS/Data/Symbols.json` by `tools/genSymbolCatalog.mjs`. Do not edit by hand; run `npm run docs:catalog`.
 
-The catalog holds **1007** entries. The key is what you pass to the engine to pick a symbol.
+The catalog holds **1147** entries. The key is what you pass to the engine to pick a symbol.
 
 ## Geometry types
 
 | SymGeoType | Meaning | Entries |
 | --- | --- | --- |
-| `FPoint` | Framed point symbol drawn from a SIDC (units, equipment, installations); uses `options` | 511 |
-| `Point` | Tactical point symbol placed with one click; uses amplifier + drawEssentials | 325 |
-| `Area` | Tactical area graphic (polygon) | 98 |
+| `FPoint` | Framed point symbol drawn from a SIDC (units, equipment, installations); uses `options` | 568 |
+| `Point` | Tactical point symbol placed with one click; uses amplifier + drawEssentials | 407 |
+| `Area` | Tactical area graphic (polygon) | 99 |
 | `Line` | Tactical line graphic (polyline) | 73 |
 
 ## Implementation classes
 
 | Class | Entries |
 | --- | --- |
-| `UEISymbol` | 511 |
-| `TacticalPoint` | 323 |
+| `UEISymbol` | 568 |
+| `TacticalPoint` | 405 |
 | `FreehandAreaFilled` | 2 |
 | `AirspaceArea` | 2 |
 | `AutoShape` | 2 |
@@ -188,6 +188,7 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `FreehandSemiCircle` | 1 |
 | `FreehandSemiCircleFilled` | 1 |
 | `CartoInformationModelSymbol` | 1 |
+| `ImpGr` | 1 |
 
 ## Field reference
 
@@ -285,19 +286,20 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `10130100` | AD | `UEISymbol` | Land / Air Defense | size, ANGLE |
 | `10130101` | AD - Main Gun | `UEISymbol` | Land / Air Defense | size, ANGLE |
 | `10130102` | AD - Msl | `UEISymbol` | Land / Air Defense | size, ANGLE |
-| `10130103` | AD - Light Msl Unit | `UEISymbol` | Land / Air Defense | size, ANGLE |
-| `10130104` | AD - Med Msl Unit | `UEISymbol` | Land / Air Defense | size, ANGLE |
-| `10130105` | AD - Heavy Msl Unit | `UEISymbol` | Land / Air Defense | size, ANGLE |
 | `10130106` | Surface to Surface Msl Unit | `UEISymbol` | Land / Air Defense | size, ANGLE |
-| `10130107` | AADOC | `UEISymbol` | Land / Air Defense | size, ANGLE |
-| `10130108` | DOC | `UEISymbol` | Land / Air Defense | size, ANGLE |
-| `10130109` | DDOC | `UEISymbol` | Land / Air Defense | size, ANGLE |
-| `10130111` | AD Msl CP | `UEISymbol` | Land / Air Defense | size, ANGLE |
-| `10130112` | FAADC | `UEISymbol` | Land / Air Defense | size, ANGLE |
 | `10130113` | HIMAD | `UEISymbol` | Land / Air Defense | size, ANGLE |
 | `10130114` | LOMAD | `UEISymbol` | Land / Air Defense | size, ANGLE |
 | `10130115` | ESHORAD | `UEISymbol` | Land / Air Defense | size, ANGLE |
 | `10130116` | ASCC | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130118` | Army Air Defence Self Propelled | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130119` | Army Air Defence Operational Center | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130120` | Div Op Centre | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130121` | Bde Comd Post | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130122` | Regt Comd Post | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130123` | Bty Comd Post | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130124` | Tp Comd Post | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130125` | Con and Reporting Comd Post | `UEISymbol` | Land / Air Defense | size, ANGLE |
+| `10130126` | Fwd AAD Centre | `UEISymbol` | Land / Air Defense | size, ANGLE |
 | `10130300` | Fd Arty | `UEISymbol` | Land / Artillery | size, ANGLE |
 | `10130301` | Fd Arty Self-propelled | `UEISymbol` | Land / Artillery | size, ANGLE |
 | `10130302` | Fd Arty - Tgt Acquisition | `UEISymbol` | Land / Artillery | size, ANGLE |
@@ -363,11 +365,13 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `15110300` | Grenade Launcher | `UEISymbol` | Land Eqpt / Grenade Launcher | size, ANGLE |
 | `15110301` | Grenade Launcher (Light) | `UEISymbol` | Land Eqpt / Grenade Launcher | size, ANGLE |
 | `15110302` | Grenade Launcher (Medium) | `UEISymbol` | Land Eqpt / Grenade Launcher | size, ANGLE |
-| `15110303` | Grenade Launcher (Heavy) | `UEISymbol` |  | size, ANGLE |
+| `15110303` | Grenade Launcher (Heavy) | `UEISymbol` | Land Eqpt / Grenade Launcher | size, ANGLE |
 | `15110500` | AD Gun | `UEISymbol` | Land Eqpt / Air Defense Gun | size, ANGLE |
 | `15110501` | AD Gun - Light | `UEISymbol` | Land Eqpt / Air Defense Gun | size, ANGLE |
 | `15110502` | AD Gun - Med | `UEISymbol` | Land Eqpt / Air Defense Gun | size, ANGLE |
 | `15110503` | AD Gun - Hy | `UEISymbol` | Land Eqpt / Air Defense Gun | size, ANGLE |
+| `15110504` | 35 MM Oerlikon Gun | `UEISymbol` | Land Eqpt / Air Defense Gun | size, ANGLE |
+| `15110505` | Close in Weapon System | `UEISymbol` | Land Eqpt / Air Defense Gun | size, ANGLE |
 | `15110600` | Anti Tank Gun | `UEISymbol` | Land Eqpt / Anti Tank Gun | size, ANGLE |
 | `15110601` | Anti Tank Gun - Light | `UEISymbol` | Land Eqpt / Anti Tank Gun | size, ANGLE |
 | `15110602` | Anti Tank Gun - Med | `UEISymbol` | Land Eqpt / Anti Tank Gun | size, ANGLE |
@@ -394,6 +398,7 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `15111107` | AD Msl Launcher - Long Range | `UEISymbol` | Land Eqpt / Air Defense Missile Launcher | size, ANGLE |
 | `15111108` | AD Msl Launcher - Hy(TLAR) | `UEISymbol` | Land Eqpt / Air Defense Missile Launcher | size, ANGLE |
 | `15111109` | AD Msl Launcher - Hy(TELAR) | `UEISymbol` | Land Eqpt / Air Defense Missile Launcher | size, ANGLE |
+| `15111110` | Surface to Air Missile | `UEISymbol` | Land Eqpt / Air Defense Missile Launcher | size, ANGLE |
 | `15111200` | Anti Tank Msl Launcher | `UEISymbol` | Land Eqpt / Anti Tank Missile Launcher | size, ANGLE |
 | `15111300` | Surface to Surface Msl Launcher | `UEISymbol` | Land Eqpt / Surface to Surface Missile Launcher | size, ANGLE |
 | `15111301` | SSM Launcher (Short range) | `UEISymbol` | Land Eqpt / Surface to Surface Missile Launcher | size, ANGLE |
@@ -447,6 +452,8 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `15220301` | Arty Radar | `UEISymbol` | Land Eqpt / Radar | size, ANGLE |
 | `15220302` | Sound Ranging Radar | `UEISymbol` | Land Eqpt / Radar | size, ANGLE |
 | `15220303` | AD Radar | `UEISymbol` | Land Eqpt / Radar | size, ANGLE |
+| `15220304` | IBIS-150 Radar | `UEISymbol` | Land Eqpt / Radar | size, ANGLE |
+| `15220305` | Counter Un Manned Aerial System | `UEISymbol` | Land Eqpt / Counter UAS | size, ANGLE |
 | `15230100` | Land Eqpt - Amb | `UEISymbol` | Land Eqpt / Ambulance | size, ANGLE |
 | `15230302` | Surv Radar | `UEISymbol` | Land eqpt / Surv Radar | size, ANGLE |
 | `15230303` | Fire Con Radar | `UEISymbol` | Land eqpt / Fire Con Radar | size, ANGLE |
@@ -458,6 +465,7 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `20111600` | Printing Press / Printed Media | `UEISymbol` | Land Installation / Printing Press / Printed Media | size, ANGLE |
 | `20111700` | Safe House | `UEISymbol` | Land Installation / Safe House | size, ANGLE |
 | `20111800` | White List Loc | `UEISymbol` | Land Installation / White List Loc | size, ANGLE |
+| `20111902` | Training Camp | `UEISymbol` | Land Installation / Training Camp | size, ANGLE |
 | `20112000` | Warehouse/ Storage Facility | `UEISymbol` | Land Installation / Warehouse/ Storage Facility | size, ANGLE |
 | `20112200` | Relief Camp | `UEISymbol` | Land Installation / Relief Camp | size, ANGLE |
 | `20112203` | Med Relief Camp | `UEISymbol` | Land Installation / Med Relief Camp | size, ANGLE |
@@ -507,7 +515,7 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `20121424` | Shrine | `UEISymbol` | Land Installation / Shrine | size, ANGLE |
 | `20121425` | Vuln Place | `UEISymbol` | Land Installation / Vulnerable Place | size, ANGLE |
 | `20121426` | Breaching Sec | `UEISymbol` | Land Installation / Breaching Sec | size, ANGLE |
-| `20121427` | Flood Con Center | `UEISymbol` |  | size, ANGLE |
+| `20121427` | Flood Con Center | `UEISymbol` | Land Installation / Flood Con Center | size, ANGLE |
 | `20121428` | Flood Relief Hub | `UEISymbol` | Land Installation / Flood Relief Hub | size, ANGLE |
 | `20121429` | Disaster Mgmt Hub | `UEISymbol` | Land Installation / Disaster Mgmt Hub | size, ANGLE |
 | `20121430` | Rly Line | `UEISymbol` | Land Installation / Rly Line | size, ANGLE |
@@ -530,30 +538,31 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `20121447` | EME Recovery Post | `UEISymbol` | Land Installation / EME Recovery Post | size, ANGLE |
 | `20121448` | EME - MRT | `UEISymbol` | Land Installation / EME - MRT | size, ANGLE |
 | `20121449` | EME - SRT | `UEISymbol` | Land Installation / EME - SRT | size, ANGLE |
-| `20121451` | AFV RG | `UEISymbol` |  | size, ANGLE |
-| `20121452` | Arty RG | `UEISymbol` |  | size, ANGLE |
-| `20121453` | Cl Rg/ SA Rg | `UEISymbol` |  | size, ANGLE |
-| `20121454` | Short Rg | `UEISymbol` |  | size, ANGLE |
-| `20121455` | Miniature Rg | `UEISymbol` |  | size, ANGLE |
-| `20121456` | Sub Cal Rg | `UEISymbol` |  | size, ANGLE |
-| `20121457` | Up/ Down Hill Rg | `UEISymbol` |  | size, ANGLE |
-| `20121458` | Bullet Arrester Rg | `UEISymbol` |  | size, ANGLE |
-| `20121459` | Ditch Cumb Bund (DCB) Facility | `UEISymbol` |  | size, ANGLE |
-| `20121460` | Gren Throwing Rg | `UEISymbol` |  | size, ANGLE |
-| `20121461` | NBCW/ CBRN Complex | `UEISymbol` |  | size, ANGLE |
-| `20121462` | Trg Shed | `UEISymbol` |  | size, ANGLE |
-| `20121463` | Close Quarter Battle CQB Rg | `UEISymbol` |  | size, ANGLE |
-| `20121464` | Aslt Course Facility | `UEISymbol` |  | size, ANGLE |
-| `20121465` | Counter Terrorism Complex (CTC) | `UEISymbol` |  | size, ANGLE |
-| `20121466` | Quick Reaction Course (QRC) | `UEISymbol` |  | size, ANGLE |
-| `20121467` | Infantry Reaction Course IRC | `UEISymbol` |  | size, ANGLE |
-| `20121468` | Integrated Crew Reaction Course CRC/ICRC | `UEISymbol` |  | size, ANGLE |
-| `20121469` | Stress Course Fire | `UEISymbol` |  | size, ANGLE |
-| `20121470` | Pl Post | `UEISymbol` |  | size, ANGLE |
-| `20121471` | Cine Tgt System/ CTTS | `UEISymbol` |  | size, ANGLE |
-| `20121472` | Misc Facilities | `UEISymbol` |  | size, ANGLE |
-| `20121473` | Sports Facilities | `UEISymbol` |  | size, ANGLE |
-| `20121474` | FFR | `UEISymbol` |  | size, ANGLE |
+| `20121451` | AFV RG | `UEISymbol` | Land Installation / AFV RG | size, ANGLE |
+| `20121452` | Arty RG | `UEISymbol` | Land Installation / Arty RG | size, ANGLE |
+| `20121453` | Cl Rg/ SA Rg | `UEISymbol` | Land Installation / Cl Rg/ SA Rg | size, ANGLE |
+| `20121454` | Short Rg | `UEISymbol` | Land Installation / Short Rg | size, ANGLE |
+| `20121455` | Miniature Rg | `UEISymbol` | Land Installation / Miniature Rg | size, ANGLE |
+| `20121456` | Sub Cal Rg | `UEISymbol` | Land Installation / Sub Cal Rg | size, ANGLE |
+| `20121457` | Up/ Down Hill Rg | `UEISymbol` | Land Installation / Up/ Down Hill Rg | size, ANGLE |
+| `20121458` | Bullet Arrester Rg | `UEISymbol` | Land Installation / Bullet Arrester Rg | size, ANGLE |
+| `20121459` | Ditch Cumb Bund (DCB) Facility | `UEISymbol` | Land Installation / Ditch Cumb Bund (DCB) Facility | size, ANGLE |
+| `20121460` | Gren Throwing Rg | `UEISymbol` | Land Installation / Gren Throwing Rg | size, ANGLE |
+| `20121461` | NBCW/ CBRN Complex | `UEISymbol` | Land Installation / NBCW/ CBRN Complex | size, ANGLE |
+| `20121462` | Trg Shed | `UEISymbol` | Land Installation / Trg Shed | size, ANGLE |
+| `20121463` | Close Quarter Battle CQB Rg | `UEISymbol` | Land Installation / Close Quarter Battle CQB Rg | size, ANGLE |
+| `20121464` | Aslt Course Facility | `UEISymbol` | Land Installation / Aslt Course Facility | size, ANGLE |
+| `20121465` | Counter Terrorism Complex (CTC) | `UEISymbol` | Land Installation / Counter Terrorism Complex (CTC) | size, ANGLE |
+| `20121466` | Quick Reaction Course (QRC) | `UEISymbol` | Land Installation / Quick Reaction Course (QRC) | size, ANGLE |
+| `20121467` | Infantry Reaction Course IRC | `UEISymbol` | Land Installation / Infantry Reaction Course IRC | size, ANGLE |
+| `20121468` | Integrated Crew Reaction Course CRC/ICRC | `UEISymbol` | Land Installation / Integrated Crew Reaction Course CRC/ICRC | size, ANGLE |
+| `20121469` | Stress Course Fire | `UEISymbol` | Land Installation / Stress Course Fire | size, ANGLE |
+| `20121470` | Pl Post | `UEISymbol` | Land Installation / Pl Post | size, ANGLE |
+| `20121471` | Cine Tgt System/ CTTS | `UEISymbol` | Land Installation / Cine Tgt System/ CTTS | size, ANGLE |
+| `20121472` | Misc Facilities | `UEISymbol` | Land Installation / Misc Facilities | size, ANGLE |
+| `20121473` | Sports Facilities | `UEISymbol` | Land Installation / Sports Facilities | size, ANGLE |
+| `20121474` | FFR | `UEISymbol` | Land Installation / FFR | size, ANGLE |
+| `30121005` | Cny | `UEISymbol` | Sea surface / Cny | size, ANGLE |
 | `30180000` | Reserves | `UEISymbol` | Sea surface / Reserves | size, ANGLE |
 | `30180001` | CBG | `UEISymbol` | Sea surface / CBG | size, ANGLE |
 | `30181000` | Helicopter Landing Site (Sea) | `UEISymbol` | Sea surface / Helicopter Landing Site | size, ANGLE |
@@ -565,6 +574,7 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `40110108` | Tgt of Civ/Killing | `UEISymbol` | Land Civilian Unit / Tgt of Civ/Killing | size, ANGLE |
 | `40110109` | Poisoning | `UEISymbol` | Activities / Poisoning | size, ANGLE |
 | `40110110` | Mob Attk / Scuffle / Quarrel | `UEISymbol` | Activities / Mob Attk / Scuffle / Quarrel | size, ANGLE |
+| `40110119` | Smuggling | `UEISymbol` | Activities / Smuggling | size, ANGLE |
 | `40110200` | Bomb | `UEISymbol` | Activities / Bomb | size, ANGLE |
 | `40110201` | Bomb Threat | `UEISymbol` | Activities / Bomb Threat | size, ANGLE |
 | `40110202` | Threat | `UEISymbol` | Activities / Threat | size, ANGLE |
@@ -716,6 +726,54 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `01110301` | Quad-Copter | `UEISymbol` | Air / UAV | size, ANGLE |
 | `02110000` | Air Msl | `UEISymbol` | Land Eqpt / Air Defense Missile Launcher | size, ANGLE |
 | `06110000` | Space Msl | `UEISymbol` | Land Eqpt / Air Defense Missile Launcher | size, ANGLE |
+| `01110000` | Military | `UEISymbol` | Air / Military | size, ANGLE |
+| `01110100` | Fixed-Wing | `UEISymbol` | Air / Fixed Wing | size, ANGLE |
+| `01110101` | Fixed-Wing - Medical Evacuation | `UEISymbol` | Air / Fixed Wing / Medical Evacuation | size, ANGLE |
+| `01110102` | Fixed-Wing - Attack/Strike | `UEISymbol` | Air / Fixed Wing / Attack/Strike | size, ANGLE |
+| `01110103` | Fixed-Wing - Bomber | `UEISymbol` | Air / Fixed Wing / Bomber | size, ANGLE |
+| `01110105` | Fixed-Wing - Fighter/Bomber | `UEISymbol` | Air / Fixed Wing / Fighter/Bomber | size, ANGLE |
+| `01110107` | Fixed-Wing - Cargo | `UEISymbol` | Air / Fixed Wing / Cargo | size, ANGLE |
+| `01110108` | Fixed-Wing - Jammer / Electronic Countermeasures | `UEISymbol` | Air / Fixed Wing / Jammer / Electronic Countermeasures | size, ANGLE |
+| `01110109` | Fixed-Wing - Tanker | `UEISymbol` | Air / Fixed Wing / Tanker | size, ANGLE |
+| `01110110` | Fixed-Wing - Patrol | `UEISymbol` | Air / Fixed Wing / Patrol | size, ANGLE |
+| `01110111` | Fixed-Wing - Reconnaissance | `UEISymbol` | Air / Fixed Wing / Reconnaissance | size, ANGLE |
+| `01110112` | Fixed-Wing - Trainer | `UEISymbol` | Air / Fixed Wing / Trainer | size, ANGLE |
+| `01110113` | Fixed-Wing - Utility | `UEISymbol` | Air / Fixed Wing / Utility | size, ANGLE |
+| `01110114` | Fixed-Wing - VSTOL | `UEISymbol` | Air / Fixed Wing / VSTOL | size, ANGLE |
+| `01110115` | Fixed-Wing - Airborne Command Post | `UEISymbol` | Air / Fixed Wing / Airborne Command Post | size, ANGLE |
+| `01110116` | Fixed-Wing - Airborne Early Warning | `UEISymbol` | Air / Fixed Wing / Airborne Early Warning | size, ANGLE |
+| `01110117` | Fixed-Wing - Antisurface Warfare | `UEISymbol` | Air / Fixed Wing / Antisurface Warfare | size, ANGLE |
+| `01110118` | Fixed-Wing - Antisubmarine Warfare | `UEISymbol` | Air / Fixed Wing / Antisubmarine Warfare | size, ANGLE |
+| `01110119` | Fixed-Wing - Communications | `UEISymbol` | Air / Fixed Wing / Communications | size, ANGLE |
+| `01110120` | Fixed-Wing - Combat Search and Rescue | `UEISymbol` | Air / Fixed Wing / Combat Search and Rescue | size, ANGLE |
+| `01110121` | Fixed-Wing - Electronic Support | `UEISymbol` | Air / Fixed Wing / Electronic Support | size, ANGLE |
+| `01110122` | Fixed-Wing - Government | `UEISymbol` | Air / Fixed Wing / Government | size, ANGLE |
+| `01110123` | Fixed-Wing - Mine Countermeasures | `UEISymbol` | Air / Fixed Wing / Mine Countermeasures | size, ANGLE |
+| `01110124` | Fixed-Wing - Personnel Recovery | `UEISymbol` | Air / Fixed Wing / Personnel Recovery | size, ANGLE |
+| `01110125` | Fixed-Wing - Search and Rescue | `UEISymbol` | Air / Fixed Wing / Search and Rescue | size, ANGLE |
+| `01110126` | Fixed-Wing - Special Operations Forces | `UEISymbol` | Air / Fixed Wing / Special Operations Forces | size, ANGLE |
+| `01110127` | Fixed-Wing - Ultra Light | `UEISymbol` | Air / Fixed Wing / Ultra Light | size, ANGLE |
+| `01110128` | Fixed-Wing - Photographic Reconnaissance | `UEISymbol` | Air / Fixed Wing / Photographic Reconnaissance | size, ANGLE |
+| `01110129` | Fixed-Wing - VIP | `UEISymbol` | Air / Fixed Wing / VIP | size, ANGLE |
+| `01110130` | Fixed-Wing - Suppression of Enemy Air Defence | `UEISymbol` | Air / Fixed Wing / Suppression of Enemy Air Defence | size, ANGLE |
+| `01110131` | Fixed-Wing - Passenger | `UEISymbol` | Air / Fixed Wing / Passenger | size, ANGLE |
+| `01110132` | Fixed-Wing - Escort | `UEISymbol` | Air / Fixed Wing / Escort | size, ANGLE |
+| `01110133` | Fixed-Wing - Electronic Attack (EA) | `UEISymbol` | Air / Fixed Wing / Electronic Attack (EA) | size, ANGLE |
+| `01110400` | Vertical-Takeoff UAV (VT-UAV) | `UEISymbol` | Air / UAV / Vertical-Takeoff UAV (VT-UAV) | size, ANGLE |
+| `01110500` | Military Balloon | `UEISymbol` | Air / Balloon | size, ANGLE |
+| `01110600` | Military Airship | `UEISymbol` | Air / Airship | size, ANGLE |
+| `01110700` | Tethered Lighter Than Air | `UEISymbol` | Air / Tethered Lighter Than Air | size, ANGLE |
+| `01120000` | Civilian | `UEISymbol` | Air / Civilian | size, ANGLE |
+| `01120100` | Civilian Fixed-Wing | `UEISymbol` | Air / Civilian / Fixed Wing | size, ANGLE |
+| `01120200` | Civilian Rotary Wing | `UEISymbol` | Air / Civilian / Rotary Wing | size, ANGLE |
+| `01120300` | Civilian Unmanned Aerial Vehicle | `UEISymbol` | Air / Civilian / UAV | size, ANGLE |
+| `01120400` | Civilian Balloon | `UEISymbol` | Air / Civilian / Balloon | size, ANGLE |
+| `01120500` | Civilian Airship | `UEISymbol` | Air / Civilian / Airship | size, ANGLE |
+| `01120600` | Civilian Tethered Lighter Than Air | `UEISymbol` | Air / Civilian / Tethered Lighter Than Air | size, ANGLE |
+| `01130000` | Weapon | `UEISymbol` | Air / Weapon | size, ANGLE |
+| `01130100` | Bomb | `UEISymbol` | Air / Weapon / Bomb | size, ANGLE |
+| `01130200` | Underwater Decoy | `UEISymbol` | Air / Weapon / Underwater Decoy | size, ANGLE |
+| `01140000` | Manual Track | `UEISymbol` | Air / Manual Track | size, ANGLE |
 
 ## Point symbols
 
@@ -747,6 +805,7 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `25131800` | Waypoint / Destructions of Brs, rds etc | `TacticalPoint` | Control Measures / Waypoint | SIZE, ANGLE |
 | `25131900` | Airfield(AEGIS Only) | `TacticalPoint` | Control Measures / Airfield(AEGIS Only) | SIZE, ANGLE |
 | `25160100` | Obsn Post/Outpost(Unspecified) | `TacticalPoint` | Control Measures / Obsn Post/Outpost(Unspecified) | SIZE, ANGLE |
+| `25160200` | Obsn Post/Outpost(Specified) | `TacticalPoint` | Control Measures / Obsn Post/Outpost(Specified) | SIZE, ANGLE |
 | `25160201` | Post / BOP | `TacticalPoint` | Control Measures / Post / BOP | SIZE, ANGLE |
 | `25160202` | Fwd Observer Outpost/Posn | `TacticalPoint` | Control Measures / Fwd Observer Outpost/Posn | SIZE, ANGLE |
 | `25160203` | NBC Obsn Post | `TacticalPoint` | Control Measures / NBC Obsn Post | SIZE, ANGLE |
@@ -760,6 +819,87 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `25160304` | Quarantine Center | `TacticalPoint` | Control Measures / Quarantine Center | SIZE, ANGLE |
 | `25160305` | Testing Center | `TacticalPoint` | Control Measures / Testing Center | SIZE, ANGLE |
 | `25160306` | Isolation Center | `TacticalPoint` | Control Measures / Isolation Center | SIZE, ANGLE |
+| `25160310` | Pending Gen | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160311` | Hostile X-Raid | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160312` | Gen Not Specified(Hostile) | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160313` | Gen AEW/EW/DECOY | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160314` | Gen Fighter | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160315` | Gen Civil | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160316` | Special Interceptor Gen | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160317` | Special Msn Recce | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160318` | Special Msn Electronic Sp | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160319` | Gen Bomber | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160320` | Gen Helo | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160321` | Helo Not Specified | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160322` | Special Msn Strike Tanker Gen | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160323` | Gen Tanker | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160324` | No Statement | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160325` | Pending | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160327` | Assumed Friend | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160328` | Assumed Friend AEW/EW/DECOY | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160329` | Assumed Friend Bomber | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160330` | Assumed Friend Fighter | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160331` | Assumed Friend Not Specified | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160332` | Assumed Friend Helo/Transport | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160333` | Assumed Friend Msl Platform | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160334` | Assumed Enemy | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160335` | Assumed Enemy AEW/EW/DECOY | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160336` | Assumed Enemy Bomber | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160337` | Assumed Enemy Drone/RPV | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160338` | Assumed Enemy Fighter | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160339` | Assumed Enemy Not Specified | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160340` | Assumed Enemy Helo/Transport | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160341` | Assumed Enemy msl Platform | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160342` | Assumed Enemy XRAY | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160343` | Special Msn AWE/EW/DECOY | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160344` | Special Msn Not Specified | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160345` | Special Msn Faker Jammer | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160346` | Special Msn Faker | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160347` | Special Msn Search and Rescue | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160348` | Special Msn Kilo | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160349` | Special Strike Sp Anti-Submarine Warfare | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160350` | Special Strike Sp Tanker Boom | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160351` | Special Strike Sp Closed/Dir Air Sp | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160352` | Special Strike Sp Tanker Drogue | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160353` | Special Strike Sp Not Specified | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160354` | Special Strike Sp Interdiction | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160355` | Special Strike Sp Log | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160356` | Special Interceptor Combat Air Patrol | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160357` | Special Interceptor Return to Base | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160358` | Special Interceptor Rescue Cap | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160359` | Special Interceptor Unavailable | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160360` | Gen Mil Trg | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160361` | Gen Non-Mil | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160362` | Gen Not Specified | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160363` | Gen Joker | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160364` | Gen Neut Faker | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160365` | Gen Neut | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160366` | Gen Return to Base | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160367` | Gen Bomber(Hostile) | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160368` | Gen Jammer | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160369` | Gen Helo/Transport | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160370` | Gen Msl | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160371` | Gen Msl Platform | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160372` | Helo Anti-Submarine Warfare | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160373` | Helo Log | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160374` | Helo Medevac | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160375` | Helo Gunship | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160376` | Helo Recon/Recce | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160377` | Helo Search and Rescue | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160378` | Helo Troop Lift | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160379` | Evaluated AEW/EW/DECOY | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160380` | Evaluated Bomber | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160381` | Evaluated Fighter | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160382` | Evaluated Not Specified | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160383` | Evaluated Helo/Transport | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160384` | Evaluated Msl Platform | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160385` | Evaluated Zombi | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160386` | Gen(Hostile) | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160387` | Gen(Friend) | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160388` | Special Interceptor | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160389` | Special Strike Sp | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160390` | Special Special Msn | `TacticalPoint` |  | SIZE, ANGLE |
+| `25160391` | Evaluated | `TacticalPoint` |  | SIZE, ANGLE |
 | `25160400` | Pt of Departure | `TacticalPoint` | Control Measures / Pt of Departure | SIZE, ANGLE |
 | `25180100` | Air Con Pt | `TacticalPoint` | Control Measures / Air Con Pt | SIZE, ANGLE |
 | `25180200` | Comm Check Pt | `TacticalPoint` | Control Measures / Comm Check Pt | SIZE, ANGLE |
@@ -1147,6 +1287,7 @@ The catalog holds **1007** entries. The key is what you pass to the engine to pi
 | `00000130` | Freehand - Semi Circle | `FreehandSemiCircle` | Freehand / Shapes |  |
 | `00000140` | Freehand - Semi Circle Filled | `FreehandSemiCircleFilled` | Freehand / Shapes |  |
 | `00000150` | Carto Symbol | `CartoInformationModelSymbol` | Freehand / Shapes | DRAW_TYPE |
+| `00000160` | Imp Gr | `ImpGr` | Control Measures / Imp Gr | DRAW_TYPE |
 | `00000200` | Auto Shape - Area | `AutoShape` | Freehand / AutoShapes | DRAW_TYPE |
 | `00000201` | Auto Shape - Block Arrows | `AutoShape` | Freehand / AutoShapes | DRAW_TYPE |
 

@@ -5,6 +5,7 @@
     "MS/ThirdParty/MilSymbols/milsymbol.js",
     "MS/ThirdParty/PptxGenJS/pptxgen.bundle.js",
     "MS/**/*.test.ts",
+    "MS/ThirdParty/Tacticals",
     "MS/Data/terrain-bundle"
   ],
   "compilerOptions": {

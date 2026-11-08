@@ -8,7 +8,7 @@
   },
   "scripts": {
     "copy-assets": "node -e \"const fs=require('fs');if(!fs.existsSync('public/assets')){fs.cpSync('node_modules/@arcgis/core/assets','public/assets',{recursive:true});console.log('Copied @arcgis/core assets -> public/assets')}\"",
-    "copy-data": "node -e \"const fs=require('fs');fs.cpSync('MS/Data','dist/MS/Data',{recursive:true});console.log('Copied MS/Data -> dist/MS/Data')\"",
+    "copy-data": "node -e \"const fs=require('fs'),path=require('path');const skip=path.resolve('MS/Data/terrain-bundle');fs.rmSync('dist/MS/Data/terrain-bundle',{recursive:true,force:true});fs.cpSync('MS/Data','dist/MS/Data',{recursive:true,filter:s=>path.resolve(s)!==skip});console.log('Copied MS/Data -> dist/MS/Data (terrain-bundle skipped)')\"",
     "copy-thirdparty": "node -e \"const fs=require('fs');fs.cpSync('MS/ThirdParty','dist/MS/ThirdParty',{recursive:true});console.log('Copied MS/ThirdParty -> dist/MS/ThirdParty')\"",
     "copy-styles": "node -e \"const fs=require('fs');fs.cpSync('MS/Styles','dist/MS/Styles',{recursive:true});console.log('Copied MS/Styles -> dist/MS/Styles')\"",
     "predev": "npm run copy-assets",

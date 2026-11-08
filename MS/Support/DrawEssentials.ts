@@ -16,15 +16,16 @@ export class DrawEssentials {
 
     // Control and scope properties
     public SCOPE: string = "";
-    /*
-    public BASE_LN_PTS: {
+    // `declare` = type only, no runtime field. These must NOT be real class fields:
+    // symbols test `options.hasOwnProperty("CTRL_PTS")` to pick the immediate-placement
+    // path, and with useDefineForClassFields any declared field (even uninitialised)
+    // would make that test true for every new DrawEssentials().
+    declare public BASE_LN_PTS?: {
         startPt?: Point;
         midPt?: Point;
         endPt?: Point;
-    } = {};
-    */
-
-    //public CTRL_PTS: Point[] = [];
+    };
+    declare public CTRL_PTS?: Point[];
 
     // Symbol identification
     public SID: string = "";
@@ -216,16 +217,17 @@ export class DrawEssentials {
      * Check if the DrawEssentials has control points
      */
     public hasControlPoints(): boolean {
-        return this.CTRL_PTS.length > 0;
+        return (this.CTRL_PTS?.length ?? 0) > 0;
     }
 
     /**
      * Check if the DrawEssentials has base line points
      */
     public hasBaseLinePoints(): boolean {
-        return this.BASE_LN_PTS.startPt !== undefined ||
-            this.BASE_LN_PTS.midPt !== undefined ||
-            this.BASE_LN_PTS.endPt !== undefined;
+        const b = this.BASE_LN_PTS;
+        return !!b && (b.startPt !== undefined ||
+            b.midPt !== undefined ||
+            b.endPt !== undefined);
     }
 }
 
