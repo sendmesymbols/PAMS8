@@ -309,6 +309,8 @@ By default the engine fetches:
 - `/MS/Data/Deployments/Deployemets.json` (the filename is spelled this way in the source and on disk),
 - each plan file listed there, relative to the same base.
 
+A symbol whose points are not lon/lat degrees (a corrupt vertex such as 1e27) is left out of the placement and named in the Engine Log; one such point would otherwise drag the plan centre, and every symbol with it, off the map. The source document is not changed.
+
 A host that serves the library elsewhere, or keeps its own plans, calls `setPlanSource(baseUrl)` or `setPlanSource({ list, load })` once the `deploymentBuilderEngineReady` event has fired (or passes `options.planSource` to `start`).
 
 Registry file shape:
@@ -316,8 +318,8 @@ Registry file shape:
 ```json
 {
   "plans": [
-    { "id": "own-attack-1", "name": "Attack Plan", "category": "own",
-      "file": "Plans/Own/AttackPlan.json", "description": "Maneuver attack with combined arms" }
+    { "id": "own-bde-attk", "name": "Bde Attk", "category": "attack",
+      "file": "Plans/Own/Bde Attk.json", "description": "115 Bde attack: FUP, start and phase lines, Sp Attk axes" }
   ]
 }
 ```

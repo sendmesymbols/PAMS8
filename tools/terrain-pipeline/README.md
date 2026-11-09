@@ -265,6 +265,37 @@ New named features (mosques, graves, telecom, post offices, lakes, glaciers, riv
 layers as before. `fetch_soil.py` is run once after `make fetch`; `terrain.py` and `climate.py` run after `classify`
 (`python scripts/terrain.py`, `python scripts/climate.py`), then `tile` and `package` as usual.
 
+## Formation overlays (KMZ, optional, restricted)
+
+Step **kmz** (`scripts/kmz.py`, after `ground`) merges Google Earth deployment overlays (e.g.
+`D:/Imagery/KMZs/1006.kmz`, "Depl 7 Div 15 Oct 2026") into `features/` as kinds the engine already reads, each item
+marked `src = kmz` and `dt = <overlay date>`:
+
+| GROTBC | from the overlay | kind |
+|---|---|---|
+| R | folder `MSR` (Bde MSRs, Kacha / IS / IB / exposed tracks, link roads) | `road`: `t` metalled only for BT / metalled, else unmetalled or cart_track; no load class (not tankable until checked); `m` only where the overlay names an MSR |
+| O | folder `Fence`; lines under the post folders | `wall_fence`: `t` Border fence / Perimeter wall |
+| B | post folders: posts, OPs, check posts, Pqts, gates, barriers, forts, towers, IB posts / BOPs, police; BUAs; CMH, BHU, schools, bazar, mosque, church, helipads by name | `post` / `fort` / `watch_tower` / `border_post` / `police_station` / `village` / `hospital` / `bhu` / `school` / `market` / `mosque` / `church` / `helipad` |
+
+Never taken: placemark descriptions (commanders, phone numbers, strength, weapons, ammunition, photos), VP / EVP
+ratings, unit designations, HQ names and strength in names, and the ORBAT folders (AIBs, unit / Bde / Div
+boundaries, unit and Bde labels, the international boundary, camp HQ layouts, named installations inside a cantt).
+With several overlays the latest is taken whole and an older one adds only the route / fence / wall lines the latest
+lacks; posts come from the latest only. A post already on the map within 100 m, or a BUA with a settlement within
+750 m, is not added. `work/kmz/review.txt` lists every item kept (with the name as it was in the overlay) and the
+points left out.
+
+```sh
+make kmz KMZ="D:/Imagery/KMZs/1006.kmz D:/Imagery/KMZs/xyz.kmz" KMZ_IDS="kmz_7div_1006 kmz_7div_673"
+# or straight into the live bundle (touched tiles + index.json, manifest.json, LICENSES.txt; list in work/kmz/changed.txt):
+python scripts/kmz.py --kmz D:/Imagery/KMZs/1006.kmz D:/Imagery/KMZs/xyz.kmz --ids kmz_7div_1006 kmz_7div_673 \
+    --bundle ../../MS/Data/terrain-bundle
+```
+
+The step strips every `src = kmz` item first, so it re-runs cleanly; a re-run of grotbc's features drops them (as it
+drops ground's kinds), so it follows `ground`. The overlays are in `sources.lock` (`kmz_*`, `licence: restricted`) and
+the bundle manifest marks them `restricted`.
+
 ## Verifying a bundle
 
 ```sh

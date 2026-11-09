@@ -975,9 +975,43 @@ class DeploymentBuilderEngine {
    * or null when the data is neither.
    */
   private _asPlanDocument(data: any): any | null {
-    if (Plan.isPlanDocument(data)) return data;
+    if (Plan.isPlanDocument(data)) return this._withoutUnplaceableSymbols(data);
     if (Array.isArray(data?.symbols)) return this._templateToPlanDoc(data);
     return null;
+  }
+
+  /**
+   * Leave out symbols whose points are not lon/lat degrees. A plan file can carry a
+   * corrupt vertex (an FUP at 1e27 has been seen); one such point drags the plan
+   * centre off the planet and the whole plan with it. The symbols are marked deleted
+   * on a copy, so the source document (which a host may own) is never changed.
+   */
+  private _withoutUnplaceableSymbols(doc: any): any {
+    const isDegrees = (p: { x: any; y: any }) => {
+      const x = Number(p.x);
+      const y = Number(p.y);
+      return Number.isFinite(x) && Number.isFinite(y) && Math.abs(x) <= 180 && Math.abs(y) <= 90;
+    };
+    const bad = new Set<any>();
+    this._eachSymbolGeometry(doc, (sym, _de, refs) => {
+      if (!refs.every(isDegrees)) bad.add(sym);
+    });
+    if (bad.size === 0) return doc;
+
+    const names: string[] = [];
+    const copy = { ...doc, poObj: { ...doc.poObj } };
+    copy.poObj.plnOrdrOverlay = (doc.poObj.plnOrdrOverlay ?? []).map((overlay: any) => ({
+      ...overlay,
+      plnOrdrSymbolSet: (overlay?.plnOrdrSymbolSet ?? []).map((sym: any) => {
+        if (!bad.has(sym)) return sym;
+        let name = 'symbol';
+        try { name = JSON.parse(sym.drawEss)?.SYM_NAME || name; } catch { /* keep the generic name */ }
+        names.push(`${name} (${overlay?.nameTxt ?? 'overlay'})`);
+        return { ...sym, isDelete: 'Y' };
+      }),
+    }));
+    EngineLogger.error(ENGINE_NAME, `Left out ${bad.size} symbol(s) with invalid coordinates: ${names.join(', ')}`);
+    return copy;
   }
 
   /**

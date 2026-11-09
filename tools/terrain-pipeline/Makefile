@@ -28,7 +28,7 @@ OFFICIAL     = $(W)/boundary/pakistan_official.geojson
 BOUNDARY_ARG = $(if $(strip $(BOUNDARY)),--boundary $(strip $(BOUNDARY)) --boundary-source custom,$(if $(wildcard $(OFFICIAL)),--boundary $(OFFICIAL) --boundary-source official,--boundary-source osm))
 
 .PHONY: bundle fetch boundary grid derive grotbc classify ground profiles tile validate package rebuild-rules \
-        synth-check clean clean-out clean-work $(addprefix clean-,fetch boundary grid derive grotbc classify ground profiles tile)
+        synth-check clean clean-out clean-work $(addprefix clean-,fetch boundary grid derive grotbc classify ground kmz profiles tile)
 
 bundle: package
 
@@ -105,6 +105,17 @@ $(W)/ground/.done: $(W)/grotbc/.done $(W)/classify/.done $(W)/network/.done rule
 	    --out $(W)/ground --workers $(strip $(WORKERS))
 	@touch $@
 
+# 4e --------------------------------------------------------------- formation overlay KMZs (optional, RESTRICTED)
+# KMZ = "D:/Imagery/KMZs/1006.kmz D:/Imagery/KMZs/xyz.kmz", KMZ_IDS = the matching sources.lock ids. Merges routes /
+# tracks, the border fence, perimeter walls, posts, named BUAs and services (src = kmz) into the features after
+# ground.py (strips its own first). Empty KMZ = the step does nothing.
+KMZ     ?=
+KMZ_IDS ?=
+kmz: $(W)/kmz/.done
+$(W)/kmz/.done: $(W)/ground/.done $(KMZ)
+	$(if $(strip $(KMZ)),$(PY) $(S)/kmz.py --kmz $(KMZ) $(if $(strip $(KMZ_IDS)),--ids $(KMZ_IDS)) --features $(W)/grotbc/vector/features --out $(W)/kmz,@echo "kmz: no KMZ given, skipped")
+	@mkdir -p $(W)/kmz && touch $@
+
 climate: $(W)/climate/.done
 $(W)/climate/.done: $(W)/raw/.done
 	$(PY) $(S)/climate.py --grid $(W)/grid/grid.json --raw $(W)/raw --out $(W)/climate
@@ -124,7 +135,7 @@ $(W)/profiles/.done: $(W)/classify/.done rules.yaml classes.yaml
 
 # 6 ---------------------------------------------------------------- XYZ PNG tiles
 tile: $(W)/tile/.done
-$(W)/tile/.done: $(W)/profiles/.done $(W)/terrain/.done $(W)/climate/.done $(W)/population/.done $(W)/buildings/.done $(W)/network/.done $(W)/settlements/.done $(W)/ground/.done
+$(W)/tile/.done: $(W)/profiles/.done $(W)/terrain/.done $(W)/climate/.done $(W)/population/.done $(W)/buildings/.done $(W)/network/.done $(W)/settlements/.done $(W)/ground/.done $(W)/kmz/.done
 	rm -rf $(OUT_DIR)
 	$(PY) $(S)/tile.py --grid $(W)/grid --class-tif $(W)/classify/class.tif \
 	    --profiles $(W)/profiles --grotbc $(W)/grotbc --terrain $(W)/terrain --buildings $(W)/buildings --out $(OUT_DIR) --workers $(strip $(WORKERS))
@@ -162,6 +173,7 @@ clean-network:  ; rm -rf $(W)/network
 clean-buildings: ; rm -rf $(W)/buildings
 clean-settlements: ; rm -rf $(W)/settlements
 clean-ground:   ; rm -rf $(W)/ground
+clean-kmz:      ; rm -rf $(W)/kmz
 clean-profiles: ; rm -rf $(W)/profiles
 clean-tile:     ; rm -rf $(W)/tile $(OUT_DIR)
 clean-out:      ; rm -rf out $(OUT_DIR)

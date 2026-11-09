@@ -188,7 +188,9 @@ def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, networ
             shutil.copytree(vector / "features", bundle / "features")
             idx = load_json(vector / "features" / "index.json")
             out["features"] = {"path": "features/{z}/{x}/{y}.json", "index": "features/index.json", "z": idx["z"],
-                               "quant": idx["quant"], "sources": PRODUCT_SOURCES["features"]}
+                               "quant": idx["quant"], "sources": PRODUCT_SOURCES["features"] + [   # + formation overlays (kmz.py)
+                                   v["id"] for v in (idx.get("sources") or {}).values()
+                                   if isinstance(v, dict) and str(v.get("id") or "").startswith("kmz_")]}
     return out
 
 

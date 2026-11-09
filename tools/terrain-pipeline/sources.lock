@@ -293,3 +293,26 @@ sources:
     location: D:/Imagery/Routing/Network.gdb
     fetched_by: local geodatabase, read by scripts/network.py
     sha256: not hashed (1.3 GB folder); identify by edge count and file dates
+
+  # ── formation overlays supplied by the owner (2026-11-09); RESTRICTED, read by scripts/kmz.py ───────────────
+  - id: kmz_7div_1006
+    name: Formation overlay — Depl 7 Div 15 Oct 2026 (1006)
+    version: "local copy D:/Imagery/KMZs/1006.kmz, 2,680 placemarks"
+    dataDate: "2026-10-15 (overlay date)"
+    released: "2026-10-15"
+    licence: restricted
+    attribution: "Own formation overlay (7 Div); routes / tracks, border fence, perimeter walls, posts, named BUAs and services only"
+    location: D:/Imagery/KMZs/1006.kmz
+    fetched_by: local file, read by scripts/kmz.py (descriptions and ORBAT folders never read into the bundle)
+    sha256: d3041d815fb55c090ba9723fefd6f331cb489b05e786528acbe57982414af2b3
+
+  - id: kmz_7div_673
+    name: Formation overlay — Depl 7 Div 09 Sep 2025 (673)
+    version: "local copy D:/Imagery/KMZs/xyz.kmz, 1,973 placemarks"
+    dataDate: "2025-09-09 (overlay date)"
+    released: "2025-09-09"
+    licence: restricted
+    attribution: "Own formation overlay (7 Div), older; only route / fence / wall lines the 2026 overlay lacks"
+    location: D:/Imagery/KMZs/xyz.kmz
+    fetched_by: local file, read by scripts/kmz.py (descriptions and ORBAT folders never read into the bundle)
+    sha256: f286a5a29190c631e32b3ebfd3854ab0a07d3de2ca96fbe806eb38c160ce972b

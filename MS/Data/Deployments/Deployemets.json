@@ -1,18 +1,39 @@
 {
   "plans": [
     {
-      "id": "own-attack-1",
-      "name": "Attack Plan",
-      "category": "own",
-      "file": "Plans/Own/AttackPlan.json",
-      "description": "Maneuver attack with combined arms"
+      "id": "own-div-attk",
+      "name": "Div Attk",
+      "category": "attack",
+      "file": "Plans/Own/Div Attk.json",
+      "description": "34 Div attack with its Bde and Bn attack plans; Div, Bde, Bn and Merged overlays (about 13 x 17 km)"
     },
     {
-      "id": "own-def-1",
-      "name": "Defence Plan",
-      "category": "own",
-      "file": "Plans/Own/DefPlan.json",
-      "description": "Defensive posture with depth"
+      "id": "own-bde-attk",
+      "name": "Bde Attk",
+      "category": "attack",
+      "file": "Plans/Own/Bde Attk.json",
+      "description": "115 Bde attack: FUP, start and phase lines, Sp Attk axes, BOF and battle positions (about 12 x 15 km)"
+    },
+    {
+      "id": "own-bn-attk",
+      "name": "Bn Attk",
+      "category": "attack",
+      "file": "Plans/Own/Bn Attk.json",
+      "description": "10 FF attack: FUP, SL1 / SL2, Ph 1 / Ph 2, three Sp Attk axes and coy battle positions (about 6 x 14 km)"
+    },
+    {
+      "id": "own-bde-def",
+      "name": "Bde Def",
+      "category": "defence",
+      "file": "Plans/Own/Bde Def.json",
+      "description": "103 Bde defence: battle positions, C Pen posns, counter-attack objectives, Fd Arty and Bde Res (about 4 x 4 km)"
+    },
+    {
+      "id": "own-bn-def",
+      "name": "Bn Def",
+      "category": "defence",
+      "file": "Plans/Own/Bn Def.json",
+      "description": "1 PR Def Plan: phase lines, start lines, Sp Attk axes and coy battle positions (about 6 x 15 km)"
     },
     {
       "id": "en-log-1",

@@ -989,6 +989,7 @@ GN_PLACE = {"PPLC": "city", "PPLA": "city", "PPLA2": "district_hq", "PPLA3": "to
             "PPLL": "locality", "PPLF": "village", "PPLS": "village", "PPLR": "village", "PPLH": "deserted_site",
             "PPLQ": "deserted_site", "PPLW": "deserted_site"}
 GN_DEDUPE_M = 400          # a GeoNames POI this close to an NCGDB point of the same kind is the same thing
+GN_OVERLAY_ID0 = 900_000_000   # PK.txt rows from this id up were added by pk_kmz.py from the formation overlays
 
 
 def _norm(name) -> str:
@@ -1025,6 +1026,9 @@ def geonames_features(path: Path, tw: "TileWriter", aoi, settle: list) -> None:
     counts: dict[str, int] = defaultdict(int)
     for i, p in enumerate(rows):
         if not inside[i]:
+            continue
+        if p[0].isdigit() and int(p[0]) >= GN_OVERLAY_ID0:
+            counts["overlay row (kmz.py adds it)"] += 1           # rows pk_kmz.py added from the formation overlays
             continue
         x, y = xy[i]
         scale = 1.0 / max(math.cos(math.radians(lat[i])), 0.2)        # metres on the ground -> Web Mercator metres

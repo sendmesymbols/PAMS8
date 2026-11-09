@@ -78,7 +78,7 @@ export class UEISymbol {
         const amplifiers = Object.fromEntries(AMPLIFIER_FIELDS.map(f => [f, opts[f] || '']));
         // Size can arrive two ways: on the runtime drawEssentials (extraSettings.size,
         // what the editor / global resize write) or inside the milsymbol OPTIONS
-        // (OPTIONS.size — the canonical plan format, see AttackPlan.json). Honour
+        // (OPTIONS.size — the canonical plan format, see Deployments/Plans/Own/*.json). Honour
         // whichever is present so a plan-loaded symbol renders at its stored size
         // instead of snapping back to 35.
         const milsymbolSize = Number(options.extraSettings?.size) || Number(opts.size) || 35;
@@ -173,7 +173,7 @@ export class UEISymbol {
         // Marker size actually rendered (init read it from extraSettings.size or
         // OPTIONS.size). Keep it on BOTH the runtime field the editor/global
         // resize read (de.extraSettings.size) and inside the canonical OPTIONS.size
-        // the plan format stores (see AttackPlan.json).
+        // the plan format stores (see Deployments/Plans/Own/*.json).
         const usedSize =
             Number((options as any)?.extraSettings?.size) || Number(srcOptions.size);
 
