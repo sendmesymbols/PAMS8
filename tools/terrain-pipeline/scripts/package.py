@@ -37,6 +37,7 @@ CLASS_SOURCES = ["worldcover", "jrc_gsw", "glo30", "osm_pakistan", "ncgdb"]     
 PRODUCT_SOURCES = {
     "admin": ["ncgdb"], "boundaries": ["ncgdb"], "sheets": ["ncgdb"], "routes": ["ncgdb"],
     "climate": ["worldclim"],
+    "visibility": ["gsod"],
     "population": ["worldpop", "worldpop_agesex", "worldpop_density", "worldpop_pwd"],
     "network": ["osm_network", "ncgdb"],
     "settlements": CLASS_SOURCES + ["worldpop", "worldpop_agesex", "openbuildings", "ghsl_height", "ghsl_smod",
@@ -71,10 +72,27 @@ def sources_block(lock: dict, checks: dict, ncgdb: dict | None = None) -> list[d
         out.append({"id": s["id"], "name": s["name"], "version": str(s.get("version", "")),
                     "location": ref["location"], "landing": ref["landing"], "dataDate": ref["dataDate"],
                     "released": ref["released"], "licence": s["licence"],
-                    "sha256": rec.get("sha256", str(s.get("sha256", ""))), "files": len(rec.get("files", {})) or None})
+                    "sha256": rec.get("sha256", str(s.get("sha256", ""))), "files": len(rec.get("files", {})) or None,
+                    **({"restriction": s["restriction"]} if s.get("restriction") else {})})
     if ncgdb:
         out.append(ncgdb)
     return out
+
+
+# Who may receive what, on top of "the bundle is restricted" (added 2026-11-10 with the NOAA visibility layer).
+SHARING_NOTE = [
+    "Sharing limits by source (these apply on top of the restriction above):",
+    "  - NCGDB and the formation overlays: only with the data owner's permission.",
+    "  - NOAA GSOD, layer visibility/: for non-U.S. stations the data or any derived product shall not be provided to",
+    "    other users or used for the re-export of commercial services (NCEI GSOD readme). Leave visibility/ out of a",
+    "    bundle that goes to another party (package.py --visibility <a folder that does not exist>) and out of any",
+    "    commercial service.",
+    "  - WorldClim, layer climate/: research and related use; check its terms before passing it on.",
+    "  - OpenStreetMap-derived pixels and features: ODbL, attribution and share-alike.",
+    "Not in this bundle but used with it: the OCOKA lens data in the library (MS/Data/OcokaDoctrine.json and the Rng",
+    "field of MS/Data/Symbols.json) quotes figures from Pakistan Army pamphlets and carries its own handling note;",
+    "keep it under the same terms as the pamphlets.",
+]
 
 
 def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
@@ -86,7 +104,8 @@ def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
                   f"  licence     : {s['licence']}",
                   f"  attribution : {s.get('attribution', '')}",
                   f"  source      : {s.get('landing', '')}"]
-        lines += [f"  location    : {u}" for u in source_ref(lock, s["id"])["location"]] + [""]
+        lines += [f"  location    : {u}" for u in source_ref(lock, s["id"])["location"]]
+        lines += ([f"  *** RESTRICTED USE: {s['restriction']} ***"] if s.get("restriction") else []) + [""]
     if ncgdb:
         lines += [f"{ncgdb['name']}  [{ncgdb['version']}]",
                   f"  data date   : {ncgdb['dataDate']}",
@@ -99,6 +118,7 @@ def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
     lines += ["Bundle v2 also carries NCGDB point and line features (features/, admin.geojson, boundaries.geojson,",
               "sheets.json), including sensitive military content: corps areas, cantonments, posts, bunkers and",
               "air bases with their units. Treat the whole bundle as restricted.", ""] if ncgdb else []
+    lines += SHARING_NOTE + [""]
     lines += ["Derived data (class and distance tiles) is a mechanical combination of",
               "the sources above; redistribute it under the most restrictive of their",
               "terms (ODbL for anything containing OpenStreetMap-derived pixels)."]
@@ -135,7 +155,8 @@ AUX_LAYERS = {
 
 
 def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, network: Path | None = None,
-                 settlements: Path | None = None, population: Path | None = None) -> dict | None:
+                 settlements: Path | None = None, population: Path | None = None,
+                 visibility: Path | None = None) -> dict | None:
     """Copy the v2 vector files into the bundle and describe the v2 layers; None for a v1 bundle. Every layer and
     file names its `sources` (ids in manifest.sources)."""
     layers = {k: dict(v, path=k) for k, v in AUX_LAYERS.items() if (bundle / k).is_dir()}
@@ -154,6 +175,12 @@ def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, networ
                 shutil.copyfile(climate / name, bundle / "climate" / name)
             out["climate"] = {"index": "climate/climate.json", "data": "climate/climate.bin",
                               "sources": PRODUCT_SOURCES["climate"]}
+        if visibility is not None and (visibility / "visibility.json").exists():
+            (bundle / "visibility").mkdir(exist_ok=True)
+            for name in ("visibility.json", "visibility.bin"):
+                shutil.copyfile(visibility / name, bundle / "visibility" / name)
+            out["visibility"] = {"index": "visibility/visibility.json", "data": "visibility/visibility.bin",
+                                 "sources": PRODUCT_SOURCES["visibility"]}
         if population is not None and (population / "population.json").exists():
             (bundle / "population").mkdir(exist_ok=True)
             for name in ("population.json", "population.bin"):
@@ -224,6 +251,8 @@ def main() -> int:
     ap.add_argument("--network", type=Path, default=Path("work/network"), help="road graph (network.py)")
     ap.add_argument("--settlements", type=Path, default=Path("work/settlements"), help="settlements.py output")
     ap.add_argument("--climate", type=Path, default=Path("work/climate"), help="climate.json / climate.bin (climate.py)")
+    ap.add_argument("--visibility", type=Path, default=Path("work/visibility"),
+                    help="visibility.json / visibility.bin (visibility.py; the OCOKA view by month)")
     ap.add_argument("--population", type=Path, default=Path("work/population"),
                     help="population.json / population.bin (population.py)")
     ap.add_argument("--grotbc-vector", type=Path, default=Path("work/grotbc/vector"),
@@ -259,7 +288,8 @@ def main() -> int:
         "hybrid": bool(ncgdb),
         "restricted": bool(ncgdb),
     }
-    v2 = grotbc_block(args.bundle, args.grotbc_vector, args.climate, args.network, args.settlements, args.population)
+    v2 = grotbc_block(args.bundle, args.grotbc_vector, args.climate, args.network, args.settlements, args.population,
+                      args.visibility)
     if v2:
         manifest["dataVersion"] = 2
         manifest["layers"].update({k: k for k in v2["layers"]})

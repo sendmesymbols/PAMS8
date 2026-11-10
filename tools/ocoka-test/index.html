@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCOKA lens test</title>
+<style>
+  :root { color-scheme: dark; --bg:#12161b; --panel:#1a2027; --line:#2b343e; --ink:#e6edf3; --dim:#9aa7b4; --ok:#4cc38a; --warn:#e8b04a; --bad:#ef6a6a; --acc:#6cb2ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui, Segoe UI, sans-serif; }
+  header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  header span { color:var(--dim); font-size:13px; }
+  main { display:grid; grid-template-columns: minmax(420px, 1fr) 480px; gap:12px; padding:12px; align-items:start; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  #mapwrap { position:relative; background:#000; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  canvas { display:block; width:100%; height:auto; touch-action:none; cursor:crosshair; }
+  #legend { position:absolute; left:8px; bottom:8px; background:#000b; padding:4px 8px; border-radius:4px; font-size:12px; color:var(--dim); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 12px; }
+  .controls { display:grid; grid-template-columns: 1fr 1fr; gap:6px 10px; margin-bottom:10px; }
+  .controls label { display:flex; flex-direction:column; font-size:12px; color:var(--dim); gap:2px; }
+  .controls .wide { grid-column: 1 / -1; }
+  select, input { background:#0f1318; color:var(--ink); border:1px solid var(--line); border-radius:4px; padding:5px 6px; font:inherit; }
+  .row { border-top:1px solid var(--line); padding:7px 0; }
+  .row:first-child { border-top:0; }
+  .row h3 { margin:0 0 2px; font-size:13px; display:flex; gap:8px; align-items:baseline; }
+  .tag { font-size:11px; padding:1px 6px; border-radius:9px; background:#26303a; color:var(--dim); }
+  .good { color:var(--ok); } .marginal { color:var(--warn); } .poor { color:var(--bad); }
+  .dim { color:var(--dim); } .mono { font-variant-numeric: tabular-nums; }
+  p { margin:2px 0; }
+  #timing { font-size:12px; color:var(--dim); margin-top:8px; }
+  .bar { display:inline-block; height:8px; background:var(--acc); border-radius:2px; vertical-align:middle; }
+  small { color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>OCOKA lens test</h1>
+  <span>Click the map to move the observer. Drag the yellow handle to turn the threat direction. All figures come from the terrain bundle tiles in this browser.</span>
+</header>
+<main>
+  <div id="mapwrap">
+    <canvas id="map" width="900" height="900"></canvas>
+    <div id="legend">green = may be seen &nbsp; red = dead ground inside the weapon's range, toward the threat &nbsp; white ring = effective range</div>
+  </div>
+  <div>
+    <div class="panel controls">
+      <label class="wide">Place
+        <select id="place"></select>
+      </label>
+      <label>Weapon (Symbols.json Rng)
+        <select id="weapon"></select>
+      </label>
+      <label>Mover (going)
+        <select id="mover"></select>
+      </label>
+      <label>Observer
+        <select id="eye"><option value="1.6|1.7">standing man (eye 1.6 m)</option><option value="0.5|1.7">prone man (eye 0.5 m)</option><option value="2.4|2.4">vehicle commander (2.4 m)</option><option value="3.0|1.7">observation post (3 m)</option></select>
+      </label>
+      <label>Ground blockers (towns, crops, bunds)
+        <select id="mode"><option value="mid">middle heights (central case)</option><option value="none">none: bare DEM (upper bound)</option><option value="max">tallest (lower bound)</option></select>
+      </label>
+      <label>Month (crops, visibility)
+        <select id="month"></select>
+      </label>
+      <label>Local time (UTC+5)
+        <input id="when" type="datetime-local">
+      </label>
+      <label>Threat sector
+        <select id="sector"><option value="60">60 deg</option><option value="90" selected>90 deg</option><option value="180">180 deg</option></select>
+      </label>
+      <label>Threat bearing
+        <input id="bearing" type="number" min="0" max="359" step="1" value="0">
+      </label>
+    </div>
+    <div class="panel" id="out">Loading...</div>
+    <div id="timing"></div>
+  </div>
+</main>
+<script type="module" src="./page.ts"></script>
+</body>
+</html>

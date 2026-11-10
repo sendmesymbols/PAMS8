@@ -1,0 +1,1695 @@
+{
+ "when": "2026-11-10T15:32:06.930Z",
+ "node": "v24.18.0",
+ "results": [
+  {
+   "name": "flat plain: every ray clear to 5 km",
+   "ok": true,
+   "detail": "min clear 5000 m"
+  },
+  {
+   "name": "flat plain: 100 % of the ground seen",
+   "ok": true,
+   "detail": "100.0 %"
+  },
+  {
+   "name": "20 m ridge 1 km north: sight to the north ends at the ridge",
+   "ok": true,
+   "detail": "clear 994 m"
+  },
+  {
+   "name": "20 m ridge: nothing hides the other three directions",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "20 m ridge: less than the whole ground is seen",
+   "ok": true,
+   "detail": "62.7 %"
+  },
+  {
+   "name": "earth curvature: first hidden near the radio-horizon sum for eye 2 m + target 1.7 m",
+   "ok": true,
+   "detail": "10395 m, expected 10402 m"
+  },
+  {
+   "name": "mutual visibility: A sees B exactly when B sees A",
+   "ok": true,
+   "detail": "600/600 pairs agree (453 of them see each other)"
+  },
+  {
+   "name": "noise floor: a 0.8 m step hides a prone man with no floor, not with a 1 m floor",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "a bund (class 25, 1-2 m) hides a prone man behind it, the bare DEM does not",
+   "ok": true,
+   "detail": "with 306 m, without 3000 m"
+  },
+  {
+   "name": "crop mix: a share of the cropland is tall in August, none in April",
+   "ok": true,
+   "detail": "August 16.0 %, April 0.0 %"
+  },
+  {
+   "name": "a cropland plain: the view reaches farther in April (nothing tall) than in August (16 % tall) and August is not a blank wall (median of 40 positions)",
+   "ok": true,
+   "detail": "April reach 4992 m, August reach 467 m (close), August 4.3 % of the ground seen"
+  },
+  {
+   "name": "a medium-density town is very close or close country",
+   "ok": true,
+   "detail": "veryClose, reach median 0 m, 0.0 % seen"
+  },
+  {
+   "name": "canal across the east: the flood stops short of it",
+   "ok": true,
+   "detail": "east sector reaches 547 m"
+  },
+  {
+   "name": "canal with a gap: the flood goes through it",
+   "ok": true,
+   "detail": "east sector reaches 2981 m"
+  },
+  {
+   "name": "sun at the March equinox: noon altitude 90 - latitude",
+   "ok": true,
+   "detail": "58.3 deg, expected 58.5"
+  },
+  {
+   "name": "sun at the June solstice: 90 - latitude + 23.4",
+   "ok": true,
+   "detail": "81.9 deg, expected 81.9"
+  },
+  {
+   "name": "sun at the December solstice: 90 - latitude - 23.4",
+   "ok": true,
+   "detail": "35.0 deg, expected 35.0"
+  },
+  {
+   "name": "new moon of 9 Nov 2026 is nearly dark",
+   "ok": true,
+   "detail": "illuminated 0.2 %"
+  },
+  {
+   "name": "full moon of 24 Nov 2026 is nearly full",
+   "ok": true,
+   "detail": "illuminated 99.8 %"
+  },
+  {
+   "name": "first quarter of 17 Nov 2026 is about half",
+   "ok": true,
+   "detail": "illuminated 51.0 %"
+  },
+  {
+   "name": "Lahore noon is day",
+   "ok": true,
+   "detail": "day"
+  },
+  {
+   "name": "Lahore 03:00 on 11 Nov (new moon) is starlight",
+   "ok": true,
+   "detail": "starlight, moon 2.7 % lit, -63.4 deg"
+  },
+  {
+   "name": "around the full moon of 24 Nov there is moonlight at night",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "crest sees more than the valley floor",
+   "ok": true,
+   "detail": "17 % against 3 %"
+  },
+  {
+   "name": "the crest stands higher in its surroundings than the valley floor",
+   "ok": true,
+   "detail": "-94 m against -183 m from the highest ground within 3 km"
+  },
+  {
+   "name": "a summit is not called close country: the view reaches far even though the slope below it is dead ground",
+   "ok": true,
+   "detail": "reach median 3621 m, clear median 32 m"
+  },
+  {
+   "name": "on open or mountain ground the tallest blockers still leave a view (3 % or more of the ground seen)",
+   "ok": true,
+   "detail": "Margalla crest 17 %, Cholistan flat 22 %, Skardu valley 15 %"
+  },
+  {
+   "name": "the three cases keep their order (DEM >= middle >= tallest) at every site",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the valley floor is overlooked by high ground (15 m or more above it in view)",
+   "ok": true,
+   "detail": "+659 m"
+  },
+  {
+   "name": "Cholistan is open country",
+   "ok": true,
+   "detail": "reach median 3705 m"
+  },
+  {
+   "name": "Lahore centre is close or very close country (with the blockers)",
+   "ok": true,
+   "detail": "veryClose, reach median 33 m"
+  },
+  {
+   "name": "the DEM alone calls Lahore centre more open than the blockers do (the DSM smooths the town)",
+   "ok": true,
+   "detail": "reach median 4462 m against 33 m"
+  },
+  {
+   "name": "canal bank: a NO-GO class (canal) is the nearest obstacle toward it",
+   "ok": true,
+   "detail": "class 20 at 65 m"
+  },
+  {
+   "name": "a 90 degree wedge to 2 km fits a mouse move (under 2 ms median)",
+   "ok": true,
+   "detail": "0.21 ms"
+  },
+  {
+   "name": "the full 5 km all-round view fits a Detail refresh (under 15 ms median)",
+   "ok": true,
+   "detail": "4.86 ms"
+  },
+  {
+   "name": "step 1 px agrees with the independent check on 98 % or more of the samples",
+   "ok": true,
+   "detail": "99.32 %"
+  },
+  {
+   "name": "step 0.5 px agrees on 99.5 % or more",
+   "ok": true,
+   "detail": "99.58 %"
+  },
+  {
+   "name": "crosscheck",
+   "detail": {
+    "1": {
+     "samples": 2640,
+     "agree": 2622,
+     "agreePct": 99.31818181818181,
+     "tsSeenRefHidden": 18,
+     "tsHiddenRefSeen": 0,
+     "missDistM": [
+      64,
+      95,
+      318,
+      635,
+      667,
+      762,
+      1048,
+      1080,
+      1271,
+      1302,
+      1334,
+      1493,
+      2160,
+      2287,
+      2890,
+      3017,
+      3176,
+      3462
+     ]
+    },
+    "0.5": {
+     "samples": 5280,
+     "agree": 5258,
+     "agreePct": 99.58333333333333,
+     "tsSeenRefHidden": 22,
+     "tsHiddenRefSeen": 0,
+     "missDistM": [
+      95,
+      318,
+      667,
+      683,
+      746,
+      762,
+      1001,
+      1048,
+      1064,
+      1080,
+      1096,
+      1128,
+      1271,
+      1286,
+      1334,
+      1350,
+      1493,
+      2160,
+      2890,
+      2970,
+      3002,
+      3462
+     ]
+    }
+   }
+  }
+ ],
+ "sites": [
+  {
+   "id": "Margalla crest",
+   "lon": 73.0747,
+   "lat": 33.7901,
+   "elevM": 1435,
+   "want": "wide view, not overlooked",
+   "threat": 0,
+   "modes": {
+    "none": {
+     "seenPct": 21.6,
+     "clearMedianM": 64,
+     "reachMedianM": 4097,
+     "country": "open",
+     "overlook": {
+      "riseM": 153.3970947265625,
+      "distM": 3620.9423828125,
+      "bearingDeg": 57.14863586425781
+     },
+     "rifle": {
+      "p20M": 31.762653350830078,
+      "medianM": 31.762653350830078,
+      "maxM": 95.28795623779297,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 90.62295938357059,
+      "seenEffPct": 9.377040616429412,
+      "usesPctOfEff": 10.58755111694336
+     },
+     "tank": {
+      "p20M": 31.762653350830078,
+      "medianM": 31.762653350830078,
+      "maxM": 95.28795623779297,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 90.62295938357059,
+      "seenEffPct": 9.377040616429412,
+      "usesPctOfEff": 1.588132667541504
+     },
+     "obst": {
+      "nogoM": 63.525306701660156,
+      "nogoClass": 9,
+      "covered": false,
+      "cautionM": 31.762653350830078,
+      "cautionClass": 10,
+      "blockedPct": 100
+     },
+     "rays": 989,
+     "samples": 155273
+    },
+    "mid": {
+     "seenPct": 19.4,
+     "clearMedianM": 32,
+     "reachMedianM": 3907,
+     "country": "open",
+     "overlook": {
+      "riseM": 153.3970947265625,
+      "distM": 3620.9423828125,
+      "bearingDeg": 57.14863586425781
+     },
+     "rifle": {
+      "p20M": 31.762653350830078,
+      "medianM": 31.762653350830078,
+      "maxM": 31.762653350830078,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 92.20974271908058,
+      "seenEffPct": 7.79025728091942,
+      "usesPctOfEff": 10.58755111694336
+     },
+     "tank": {
+      "p20M": 31.762653350830078,
+      "medianM": 31.762653350830078,
+      "maxM": 31.762653350830078,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 92.20974271908058,
+      "seenEffPct": 7.79025728091942,
+      "usesPctOfEff": 1.588132667541504
+     },
+     "obst": {
+      "nogoM": 63.525306701660156,
+      "nogoClass": 9,
+      "covered": false,
+      "cautionM": 31.762653350830078,
+      "cautionClass": 10,
+      "blockedPct": 100
+     },
+     "rays": 989,
+     "samples": 155273
+    },
+    "max": {
+     "seenPct": 16.6,
+     "clearMedianM": 32,
+     "reachMedianM": 3621,
+     "country": "open",
+     "overlook": {
+      "riseM": 147.47706604003906,
+      "distM": 3557.4169921875,
+      "bearingDeg": 56.42062759399414
+     },
+     "rifle": {
+      "p20M": 31.762653350830078,
+      "medianM": 31.762653350830078,
+      "maxM": 31.762653350830078,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 94.84785163902312,
+      "seenEffPct": 5.152148360976881,
+      "usesPctOfEff": 10.58755111694336
+     },
+     "tank": {
+      "p20M": 31.762653350830078,
+      "medianM": 31.762653350830078,
+      "maxM": 31.762653350830078,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 94.84785163902312,
+      "seenEffPct": 5.152148360976881,
+      "usesPctOfEff": 1.588132667541504
+     },
+     "obst": {
+      "nogoM": 63.525306701660156,
+      "nogoClass": 9,
+      "covered": false,
+      "cautionM": 31.762653350830078,
+      "cautionClass": 10,
+      "blockedPct": 100
+     },
+     "rays": 989,
+     "samples": 155273
+    }
+   },
+   "goReach": {
+    "reachPct": 45,
+    "waysOut": 24
+   },
+   "dominance": {
+    "aboveMaxM": -94,
+    "maxM": 1529
+   },
+   "cover": {
+    "classCode": 1,
+    "className": "Tree cover",
+    "split": [
+     1,
+     1,
+     3,
+     3
+    ],
+    "cc": {
+     "concealment": 3,
+     "cover": 1
+    },
+    "note": null
+   },
+   "visibility": {
+    "fogPct": 4,
+    "hazePct": 39,
+    "lt2kmPct": 33,
+    "meanViewKm": 4,
+    "stationKm": 20
+   }
+  },
+  {
+   "id": "Islamabad valley floor",
+   "lon": 73.1118,
+   "lat": 33.7313,
+   "elevM": 566,
+   "want": "short view, overlooked by the hills",
+   "threat": 0,
+   "modes": {
+    "none": {
+     "seenPct": 8.8,
+     "clearMedianM": 191,
+     "reachMedianM": 477,
+     "country": "close",
+     "overlook": {
+      "riseM": 682.1099853515625,
+      "distM": 4990.158203125,
+      "bearingDeg": 12.024291038513184
+     },
+     "rifle": {
+      "p20M": 158.9222412109375,
+      "medianM": 190.70669555664062,
+      "maxM": 1779.9290771484375,
+      "ge200Pct": 28.34008097165992,
+      "ge270Pct": 28.34008097165992,
+      "grade": "marginal",
+      "deadPct": 67.82029515476034,
+      "seenEffPct": 32.179704845239655,
+      "usesPctOfEff": 63.56889851888021
+     },
+     "tank": {
+      "p20M": 158.9222412109375,
+      "medianM": 190.70669555664062,
+      "maxM": 1779.9290771484375,
+      "ge200Pct": 28.34008097165992,
+      "ge270Pct": 28.34008097165992,
+      "grade": "marginal",
+      "deadPct": 67.82029515476034,
+      "seenEffPct": 32.179704845239655,
+      "usesPctOfEff": 9.53533477783203
+     },
+     "obst": {
+      "nogoM": 858.1801147460938,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 31.784448623657227,
+      "cautionClass": 3,
+      "blockedPct": 27.125506072874494
+     },
+     "rays": 988,
+     "samples": 155116
+    },
+    "mid": {
+     "seenPct": 4.8,
+     "clearMedianM": 64,
+     "reachMedianM": 127,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 682.1099853515625,
+      "distM": 4990.158203125,
+      "bearingDeg": 12.024291038513184
+     },
+     "rifle": {
+      "p20M": 31.784448623657227,
+      "medianM": 63.56889724731445,
+      "maxM": 635.68896484375,
+      "ge200Pct": 16.59919028340081,
+      "ge270Pct": 8.097165991902834,
+      "grade": "poor",
+      "deadPct": 93.47002742588481,
+      "seenEffPct": 6.529972574115192,
+      "usesPctOfEff": 21.189632415771484
+     },
+     "tank": {
+      "p20M": 31.784448623657227,
+      "medianM": 63.56889724731445,
+      "maxM": 635.68896484375,
+      "ge200Pct": 16.59919028340081,
+      "ge270Pct": 8.097165991902834,
+      "grade": "poor",
+      "deadPct": 93.47002742588481,
+      "seenEffPct": 6.529972574115192,
+      "usesPctOfEff": 3.1784448623657227
+     },
+     "obst": {
+      "nogoM": 858.1801147460938,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 31.784448623657227,
+      "cautionClass": 3,
+      "blockedPct": 27.125506072874494
+     },
+     "rays": 988,
+     "samples": 155116
+    },
+    "max": {
+     "seenPct": 3.2,
+     "clearMedianM": 32,
+     "reachMedianM": 32,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 659.4387817382812,
+      "distM": 4990.158203125,
+      "bearingDeg": 331.9433288574219
+     },
+     "rifle": {
+      "p20M": 31.784448623657227,
+      "medianM": 63.56889724731445,
+      "maxM": 635.68896484375,
+      "ge200Pct": 16.59919028340081,
+      "ge270Pct": 8.097165991902834,
+      "grade": "poor",
+      "deadPct": 94.03813503983284,
+      "seenEffPct": 5.961864960167162,
+      "usesPctOfEff": 21.189632415771484
+     },
+     "tank": {
+      "p20M": 31.784448623657227,
+      "medianM": 63.56889724731445,
+      "maxM": 635.68896484375,
+      "ge200Pct": 16.59919028340081,
+      "ge270Pct": 8.097165991902834,
+      "grade": "poor",
+      "deadPct": 94.03813503983284,
+      "seenEffPct": 5.961864960167162,
+      "usesPctOfEff": 3.1784448623657227
+     },
+     "obst": {
+      "nogoM": 858.1801147460938,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 31.784448623657227,
+      "cautionClass": 3,
+      "blockedPct": 27.125506072874494
+     },
+     "rays": 988,
+     "samples": 155116
+    }
+   },
+   "goReach": {
+    "reachPct": 82,
+    "waysOut": 24
+   },
+   "dominance": {
+    "aboveMaxM": -183,
+    "maxM": 749
+   },
+   "cover": {
+    "classCode": 0,
+    "className": "Open land",
+    "split": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "cc": {
+     "concealment": 0,
+     "cover": 0
+    },
+    "note": null
+   },
+   "visibility": {
+    "fogPct": 5,
+    "hazePct": 54,
+    "lt2kmPct": 46,
+    "meanViewKm": 2.9,
+    "stationKm": 10
+   }
+  },
+  {
+   "id": "Cholistan flat",
+   "lon": 71.9,
+   "lat": 28.2,
+   "elevM": 120,
+   "want": "open country, long clear sight",
+   "threat": 0,
+   "modes": {
+    "none": {
+     "seenPct": 22.2,
+     "clearMedianM": 707,
+     "reachMedianM": 3705,
+     "country": "open",
+     "overlook": {
+      "riseM": 25.054161071777344,
+      "distM": 3940.806640625,
+      "bearingDeg": 193.3118896484375
+     },
+     "rifle": {
+      "p20M": 538.9137573242188,
+      "medianM": 572.5958251953125,
+      "maxM": 1414.6485595703125,
+      "ge200Pct": 100,
+      "ge270Pct": 100,
+      "grade": "good",
+      "deadPct": 57.081545064377686,
+      "seenEffPct": 42.918454935622314,
+      "usesPctOfEff": 100
+     },
+     "tank": {
+      "p20M": 538.9137573242188,
+      "medianM": 572.5958251953125,
+      "maxM": 1414.6485595703125,
+      "ge200Pct": 100,
+      "ge270Pct": 100,
+      "grade": "good",
+      "deadPct": 57.081545064377686,
+      "seenEffPct": 42.918454935622314,
+      "usesPctOfEff": 28.629791259765625
+     },
+     "obst": {
+      "nogoM": 5000,
+      "nogoClass": 0,
+      "covered": false,
+      "cautionM": 4580.7666015625,
+      "cautionClass": 5,
+      "blockedPct": 0
+     },
+     "rays": 933,
+     "samples": 138084
+    },
+    "mid": {
+     "seenPct": 22.2,
+     "clearMedianM": 707,
+     "reachMedianM": 3705,
+     "country": "open",
+     "overlook": {
+      "riseM": 25.054161071777344,
+      "distM": 3940.806640625,
+      "bearingDeg": 193.3118896484375
+     },
+     "rifle": {
+      "p20M": 538.9137573242188,
+      "medianM": 572.5958251953125,
+      "maxM": 1414.6485595703125,
+      "ge200Pct": 100,
+      "ge270Pct": 100,
+      "grade": "good",
+      "deadPct": 57.081545064377686,
+      "seenEffPct": 42.918454935622314,
+      "usesPctOfEff": 100
+     },
+     "tank": {
+      "p20M": 538.9137573242188,
+      "medianM": 572.5958251953125,
+      "maxM": 1414.6485595703125,
+      "ge200Pct": 100,
+      "ge270Pct": 100,
+      "grade": "good",
+      "deadPct": 57.081545064377686,
+      "seenEffPct": 42.918454935622314,
+      "usesPctOfEff": 28.629791259765625
+     },
+     "obst": {
+      "nogoM": 5000,
+      "nogoClass": 0,
+      "covered": false,
+      "cautionM": 4580.7666015625,
+      "cautionClass": 5,
+      "blockedPct": 0
+     },
+     "rays": 933,
+     "samples": 138084
+    },
+    "max": {
+     "seenPct": 22.2,
+     "clearMedianM": 707,
+     "reachMedianM": 3705,
+     "country": "open",
+     "overlook": {
+      "riseM": 25.054161071777344,
+      "distM": 3940.806640625,
+      "bearingDeg": 193.3118896484375
+     },
+     "rifle": {
+      "p20M": 538.9137573242188,
+      "medianM": 572.5958251953125,
+      "maxM": 1414.6485595703125,
+      "ge200Pct": 100,
+      "ge270Pct": 100,
+      "grade": "good",
+      "deadPct": 57.081545064377686,
+      "seenEffPct": 42.918454935622314,
+      "usesPctOfEff": 100
+     },
+     "tank": {
+      "p20M": 538.9137573242188,
+      "medianM": 572.5958251953125,
+      "maxM": 1414.6485595703125,
+      "ge200Pct": 100,
+      "ge270Pct": 100,
+      "grade": "good",
+      "deadPct": 57.081545064377686,
+      "seenEffPct": 42.918454935622314,
+      "usesPctOfEff": 28.629791259765625
+     },
+     "obst": {
+      "nogoM": 5000,
+      "nogoClass": 0,
+      "covered": false,
+      "cautionM": 4580.7666015625,
+      "cautionClass": 5,
+      "blockedPct": 0
+     },
+     "rays": 933,
+     "samples": 138084
+    }
+   },
+   "goReach": {
+    "reachPct": 100,
+    "waysOut": 24
+   },
+   "dominance": {
+    "aboveMaxM": -18.554082841120305,
+    "maxM": 139
+   },
+   "cover": {
+    "classCode": 13,
+    "className": "Sand",
+    "split": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "cc": {
+     "concealment": 0,
+     "cover": 0
+    },
+    "note": null
+   },
+   "visibility": {
+    "fogPct": 35,
+    "hazePct": 40,
+    "lt2kmPct": 54,
+    "meanViewKm": 2.2,
+    "stationKm": 126
+   }
+  },
+  {
+   "id": "Lahore centre",
+   "lon": 74.3436,
+   "lat": 31.5497,
+   "elevM": 224,
+   "want": "very close country",
+   "threat": 0,
+   "modes": {
+    "none": {
+     "seenPct": 37.2,
+     "clearMedianM": 326,
+     "reachMedianM": 4462,
+     "country": "open",
+     "overlook": {
+      "riseM": 23.26249122619629,
+      "distM": 3940.885986328125,
+      "bearingDeg": 324.9326477050781
+     },
+     "rifle": {
+      "p20M": 32.569305419921875,
+      "medianM": 195.41583251953125,
+      "maxM": 1237.6336669921875,
+      "ge200Pct": 24.481327800829874,
+      "ge270Pct": 17.842323651452283,
+      "grade": "marginal",
+      "deadPct": 48.61574042582137,
+      "seenEffPct": 51.38425957417863,
+      "usesPctOfEff": 65.13861083984375
+     },
+     "tank": {
+      "p20M": 32.569305419921875,
+      "medianM": 195.41583251953125,
+      "maxM": 1237.6336669921875,
+      "ge200Pct": 24.481327800829874,
+      "ge270Pct": 17.842323651452283,
+      "grade": "marginal",
+      "deadPct": 48.61574042582137,
+      "seenEffPct": 51.38425957417863,
+      "usesPctOfEff": 9.770791625976562
+     },
+     "obst": {
+      "nogoM": 2084.435546875,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 227.98513793945312,
+      "cautionClass": 3,
+      "blockedPct": 0
+     },
+     "rays": 965,
+     "samples": 147645
+    },
+    "mid": {
+     "seenPct": 0.5,
+     "clearMedianM": 65,
+     "reachMedianM": 326,
+     "country": "close",
+     "overlook": {
+      "riseM": 19.661855697631836,
+      "distM": 4266.5791015625,
+      "bearingDeg": 326.05181884765625
+     },
+     "rifle": {
+      "p20M": 32.569305419921875,
+      "medianM": 32.569305419921875,
+      "maxM": 195.41583251953125,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 90.98020542820217,
+      "seenEffPct": 9.019794571797831,
+      "usesPctOfEff": 10.856435139973959
+     },
+     "tank": {
+      "p20M": 32.569305419921875,
+      "medianM": 32.569305419921875,
+      "maxM": 195.41583251953125,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 90.98020542820217,
+      "seenEffPct": 9.019794571797831,
+      "usesPctOfEff": 1.6284652709960938
+     },
+     "obst": {
+      "nogoM": 2084.435546875,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 227.98513793945312,
+      "cautionClass": 3,
+      "blockedPct": 0
+     },
+     "rays": 965,
+     "samples": 147645
+    },
+    "max": {
+     "seenPct": 0,
+     "clearMedianM": 33,
+     "reachMedianM": 33,
+     "country": "veryClose",
+     "overlook": null,
+     "rifle": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 0,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 100,
+      "seenEffPct": 0,
+      "usesPctOfEff": 0
+     },
+     "tank": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 0,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 100,
+      "seenEffPct": 0,
+      "usesPctOfEff": 0
+     },
+     "obst": {
+      "nogoM": 2084.435546875,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 227.98513793945312,
+      "cautionClass": 3,
+      "blockedPct": 0
+     },
+     "rays": 965,
+     "samples": 147645
+    }
+   },
+   "goReach": {
+    "reachPct": 99,
+    "waysOut": 24
+   },
+   "dominance": {
+    "aboveMaxM": -8.42577950994604,
+    "maxM": 232
+   },
+   "cover": {
+    "classCode": 1,
+    "className": "Tree cover",
+    "split": [
+     1,
+     1,
+     3,
+     3
+    ],
+    "cc": {
+     "concealment": 3,
+     "cover": 1
+    },
+    "note": null
+   },
+   "visibility": {
+    "fogPct": 35,
+    "hazePct": 20,
+    "lt2kmPct": 26,
+    "meanViewKm": 2.7,
+    "stationKm": 4
+   }
+  },
+  {
+   "id": "Lahore canal bank",
+   "lon": 74.3541,
+   "lat": 31.548,
+   "elevM": 220,
+   "want": "a canal in front, covered by fire?",
+   "threat": 307,
+   "modes": {
+    "none": {
+     "seenPct": 17.3,
+     "clearMedianM": 684,
+     "reachMedianM": 2671,
+     "country": "open",
+     "overlook": {
+      "riseM": 26.69013786315918,
+      "distM": 4722.63720703125,
+      "bearingDeg": 316.3523254394531
+     },
+     "rifle": {
+      "p20M": 227.9893798828125,
+      "medianM": 325.6991271972656,
+      "maxM": 944.5274047851562,
+      "ge200Pct": 80.91286307053942,
+      "ge270Pct": 75.51867219917013,
+      "grade": "good",
+      "deadPct": 54.44527583157608,
+      "seenEffPct": 45.55472416842392,
+      "usesPctOfEff": 100
+     },
+     "tank": {
+      "p20M": 227.9893798828125,
+      "medianM": 325.6991271972656,
+      "maxM": 944.5274047851562,
+      "ge200Pct": 80.91286307053942,
+      "ge270Pct": 75.51867219917013,
+      "grade": "good",
+      "deadPct": 54.44527583157608,
+      "seenEffPct": 45.55472416842392,
+      "usesPctOfEff": 16.28495635986328
+     },
+     "obst": {
+      "nogoM": 65.13982391357422,
+      "nogoClass": 20,
+      "covered": true,
+      "cautionM": 32.56991195678711,
+      "cautionClass": 3,
+      "blockedPct": 100
+     },
+     "rays": 965,
+     "samples": 147645
+    },
+    "mid": {
+     "seenPct": 0.1,
+     "clearMedianM": 0,
+     "reachMedianM": 0,
+     "country": "veryClose",
+     "overlook": null,
+     "rifle": {
+      "p20M": 130.27964782714844,
+      "medianM": 162.8495635986328,
+      "maxM": 423.4088439941406,
+      "ge200Pct": 18.25726141078838,
+      "ge270Pct": 9.54356846473029,
+      "grade": "marginal",
+      "deadPct": 88.95993469831984,
+      "seenEffPct": 11.040065301680158,
+      "usesPctOfEff": 54.28318786621094
+     },
+     "tank": {
+      "p20M": 130.27964782714844,
+      "medianM": 162.8495635986328,
+      "maxM": 423.4088439941406,
+      "ge200Pct": 18.25726141078838,
+      "ge270Pct": 9.54356846473029,
+      "grade": "marginal",
+      "deadPct": 88.95993469831984,
+      "seenEffPct": 11.040065301680158,
+      "usesPctOfEff": 8.14247817993164
+     },
+     "obst": {
+      "nogoM": 65.13982391357422,
+      "nogoClass": 20,
+      "covered": true,
+      "cautionM": 32.56991195678711,
+      "cautionClass": 3,
+      "blockedPct": 100
+     },
+     "rays": 965,
+     "samples": 147645
+    },
+    "max": {
+     "seenPct": 0.1,
+     "clearMedianM": 0,
+     "reachMedianM": 0,
+     "country": "veryClose",
+     "overlook": null,
+     "rifle": {
+      "p20M": 130.27964782714844,
+      "medianM": 130.27964782714844,
+      "maxM": 325.6991271972656,
+      "ge200Pct": 18.25726141078838,
+      "ge270Pct": 8.71369294605809,
+      "grade": "marginal",
+      "deadPct": 91.36793415413918,
+      "seenEffPct": 8.632065845860822,
+      "usesPctOfEff": 43.42654927571615
+     },
+     "tank": {
+      "p20M": 130.27964782714844,
+      "medianM": 130.27964782714844,
+      "maxM": 325.6991271972656,
+      "ge200Pct": 18.25726141078838,
+      "ge270Pct": 8.71369294605809,
+      "grade": "marginal",
+      "deadPct": 91.36793415413918,
+      "seenEffPct": 8.632065845860822,
+      "usesPctOfEff": 6.5139823913574215
+     },
+     "obst": {
+      "nogoM": 65.13982391357422,
+      "nogoClass": 20,
+      "covered": true,
+      "cautionM": 32.56991195678711,
+      "cautionClass": 3,
+      "blockedPct": 100
+     },
+     "rays": 965,
+     "samples": 147645
+    }
+   },
+   "goReach": {
+    "reachPct": 99,
+    "waysOut": 24
+   },
+   "dominance": {
+    "aboveMaxM": -11.990506666479632,
+    "maxM": 232
+   },
+   "cover": {
+    "classCode": 3,
+    "className": "Built-up area",
+    "split": [
+     3,
+     2,
+     3,
+     3
+    ],
+    "cc": {
+     "concealment": 3,
+     "cover": 3
+    },
+    "note": null
+   },
+   "visibility": {
+    "fogPct": 35,
+    "hazePct": 20,
+    "lt2kmPct": 26,
+    "meanViewKm": 2.7,
+    "stationKm": 4
+   }
+  },
+  {
+   "id": "Skardu valley",
+   "lon": 75.63,
+   "lat": 35.3,
+   "elevM": 2240,
+   "want": "mountain valley, overlooked",
+   "threat": 0,
+   "modes": {
+    "none": {
+     "seenPct": 33.2,
+     "clearMedianM": 281,
+     "reachMedianM": 3369,
+     "country": "open",
+     "overlook": {
+      "riseM": 1372.6995849609375,
+      "distM": 4990.650390625,
+      "bearingDeg": 196.62364196777344
+     },
+     "rifle": {
+      "p20M": 124.76626586914062,
+      "medianM": 155.95782470703125,
+      "maxM": 249.53253173828125,
+      "ge200Pct": 22.709163346613547,
+      "ge270Pct": 0,
+      "grade": "marginal",
+      "deadPct": 67.26220119521912,
+      "seenEffPct": 32.73779880478088,
+      "usesPctOfEff": 51.985941569010414
+     },
+     "tank": {
+      "p20M": 124.76626586914062,
+      "medianM": 155.95782470703125,
+      "maxM": 249.53253173828125,
+      "ge200Pct": 22.709163346613547,
+      "ge270Pct": 0,
+      "grade": "marginal",
+      "deadPct": 67.26220119521912,
+      "seenEffPct": 32.73779880478088,
+      "usesPctOfEff": 7.797891235351562
+     },
+     "obst": {
+      "nogoM": 467.8735046386719,
+      "nogoClass": 9,
+      "covered": false,
+      "cautionM": 31.191566467285156,
+      "cautionClass": 3,
+      "blockedPct": 100
+     },
+     "rays": 1007,
+     "samples": 161120
+    },
+    "mid": {
+     "seenPct": 20.8,
+     "clearMedianM": 31,
+     "reachMedianM": 1404,
+     "country": "open",
+     "overlook": {
+      "riseM": 1372.6995849609375,
+      "distM": 4990.650390625,
+      "bearingDeg": 196.62364196777344
+     },
+     "rifle": {
+      "p20M": 0,
+      "medianM": 62.38313293457031,
+      "maxM": 124.76626586914062,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 80.01120517928287,
+      "seenEffPct": 19.988794820717132,
+      "usesPctOfEff": 20.79437764485677
+     },
+     "tank": {
+      "p20M": 0,
+      "medianM": 62.38313293457031,
+      "maxM": 124.76626586914062,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 80.01120517928287,
+      "seenEffPct": 19.988794820717132,
+      "usesPctOfEff": 3.1191566467285154
+     },
+     "obst": {
+      "nogoM": 467.8735046386719,
+      "nogoClass": 9,
+      "covered": false,
+      "cautionM": 31.191566467285156,
+      "cautionClass": 3,
+      "blockedPct": 100
+     },
+     "rays": 1007,
+     "samples": 161120
+    },
+    "max": {
+     "seenPct": 14.8,
+     "clearMedianM": 31,
+     "reachMedianM": 1310,
+     "country": "open",
+     "overlook": {
+      "riseM": 1372.6995849609375,
+      "distM": 4990.650390625,
+      "bearingDeg": 196.62364196777344
+     },
+     "rifle": {
+      "p20M": 0,
+      "medianM": 62.38313293457031,
+      "maxM": 124.76626586914062,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 83.1050796812749,
+      "seenEffPct": 16.8949203187251,
+      "usesPctOfEff": 20.79437764485677
+     },
+     "tank": {
+      "p20M": 0,
+      "medianM": 62.38313293457031,
+      "maxM": 124.76626586914062,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 83.1050796812749,
+      "seenEffPct": 16.8949203187251,
+      "usesPctOfEff": 3.1191566467285154
+     },
+     "obst": {
+      "nogoM": 467.8735046386719,
+      "nogoClass": 9,
+      "covered": false,
+      "cautionM": 31.191566467285156,
+      "cautionClass": 3,
+      "blockedPct": 100
+     },
+     "rays": 1007,
+     "samples": 161120
+    }
+   },
+   "goReach": {
+    "reachPct": 48,
+    "waysOut": 18
+   },
+   "dominance": {
+    "aboveMaxM": -450.7298476398273,
+    "maxM": 2691
+   },
+   "cover": {
+    "classCode": 37,
+    "className": "Metalled road, class not recorded",
+    "split": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "cc": {
+     "concealment": 3,
+     "cover": 3
+    },
+    "note": null
+   },
+   "visibility": {
+    "fogPct": 2,
+    "hazePct": 33,
+    "lt2kmPct": 33,
+    "meanViewKm": 3.1,
+    "stationKm": 153
+   }
+  },
+  {
+   "id": "Quetta",
+   "lon": 67,
+   "lat": 30.19,
+   "elevM": 1673,
+   "want": "valley floor ringed by hills",
+   "threat": 0,
+   "modes": {
+    "none": {
+     "seenPct": 49.5,
+     "clearMedianM": 958,
+     "reachMedianM": 4988,
+     "country": "open",
+     "overlook": {
+      "riseM": 622.8455810546875,
+      "distM": 4756.990234375,
+      "bearingDeg": 113.56466674804688
+     },
+     "rifle": {
+      "p20M": 891.9356689453125,
+      "medianM": 991.0396118164062,
+      "maxM": 2345.46044921875,
+      "ge200Pct": 100,
+      "ge270Pct": 100,
+      "grade": "good",
+      "deadPct": 20.112517580872012,
+      "seenEffPct": 79.88748241912799,
+      "usesPctOfEff": 100
+     },
+     "tank": {
+      "p20M": 891.9356689453125,
+      "medianM": 991.0396118164062,
+      "maxM": 2345.46044921875,
+      "ge200Pct": 100,
+      "ge270Pct": 100,
+      "grade": "good",
+      "deadPct": 20.112517580872012,
+      "seenEffPct": 79.88748241912799,
+      "usesPctOfEff": 49.551980590820314
+     },
+     "obst": {
+      "nogoM": 1420.4901123046875,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 33.03465270996094,
+      "cautionClass": 3,
+      "blockedPct": 29.957805907172997
+     },
+     "rays": 951,
+     "samples": 143601
+    },
+    "mid": {
+     "seenPct": 2.1,
+     "clearMedianM": 66,
+     "reachMedianM": 99,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 622.8455810546875,
+      "distM": 4756.990234375,
+      "bearingDeg": 113.56466674804688
+     },
+     "rifle": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 198.20791625976562,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 97.9887482419128,
+      "seenEffPct": 2.011251758087198,
+      "usesPctOfEff": 0
+     },
+     "tank": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 198.20791625976562,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 97.9887482419128,
+      "seenEffPct": 2.011251758087198,
+      "usesPctOfEff": 0
+     },
+     "obst": {
+      "nogoM": 1420.4901123046875,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 33.03465270996094,
+      "cautionClass": 3,
+      "blockedPct": 29.957805907172997
+     },
+     "rays": 951,
+     "samples": 143601
+    },
+    "max": {
+     "seenPct": 1.4,
+     "clearMedianM": 33,
+     "reachMedianM": 33,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 622.8455810546875,
+      "distM": 4756.990234375,
+      "bearingDeg": 113.56466674804688
+     },
+     "rifle": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 99.10395812988281,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 99.0506329113924,
+      "seenEffPct": 0.9493670886076018,
+      "usesPctOfEff": 0
+     },
+     "tank": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 99.10395812988281,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 99.0506329113924,
+      "seenEffPct": 0.9493670886076018,
+      "usesPctOfEff": 0
+     },
+     "obst": {
+      "nogoM": 1420.4901123046875,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 33.03465270996094,
+      "cautionClass": 3,
+      "blockedPct": 29.957805907172997
+     },
+     "rays": 951,
+     "samples": 143601
+    }
+   },
+   "goReach": {
+    "reachPct": 95,
+    "waysOut": 24
+   },
+   "dominance": {
+    "aboveMaxM": -202.85555555555038,
+    "maxM": 1876
+   },
+   "cover": {
+    "classCode": 28,
+    "className": "Railway",
+    "split": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "cc": {
+     "concealment": 3,
+     "cover": 3
+    },
+    "note": null
+   },
+   "visibility": {
+    "fogPct": 0,
+    "hazePct": 5,
+    "lt2kmPct": 1,
+    "meanViewKm": 5.9,
+    "stationKm": 11
+   }
+  },
+  {
+   "id": "Karachi",
+   "lon": 67.01,
+   "lat": 24.86,
+   "elevM": 10,
+   "want": "built-up coastal plain",
+   "threat": 0,
+   "modes": {
+    "none": {
+     "seenPct": 2.4,
+     "clearMedianM": 312,
+     "reachMedianM": 694,
+     "country": "open",
+     "overlook": {
+      "riseM": 26.969383239746094,
+      "distM": 1837.8863525390625,
+      "bearingDeg": 257.4834289550781
+     },
+     "rifle": {
+      "p20M": 416.1252136230469,
+      "medianM": 554.8336181640625,
+      "maxM": 1040.31298828125,
+      "ge200Pct": 100,
+      "ge270Pct": 96.0352422907489,
+      "grade": "good",
+      "deadPct": 59.6723085246155,
+      "seenEffPct": 40.3276914753845,
+      "usesPctOfEff": 100
+     },
+     "tank": {
+      "p20M": 416.1252136230469,
+      "medianM": 554.8336181640625,
+      "maxM": 1040.31298828125,
+      "ge200Pct": 100,
+      "ge270Pct": 96.0352422907489,
+      "grade": "good",
+      "deadPct": 59.6723085246155,
+      "seenEffPct": 40.3276914753845,
+      "usesPctOfEff": 27.741680908203126
+     },
+     "obst": {
+      "nogoM": 2045.9488525390625,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 34.677101135253906,
+      "cautionClass": 3,
+      "blockedPct": 0
+     },
+     "rays": 906,
+     "samples": 130464
+    },
+    "mid": {
+     "seenPct": 0,
+     "clearMedianM": 35,
+     "reachMedianM": 35,
+     "country": "veryClose",
+     "overlook": null,
+     "rifle": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 173.385498046875,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 98.89481412783059,
+      "seenEffPct": 1.1051858721694146,
+      "usesPctOfEff": 0
+     },
+     "tank": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 173.385498046875,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 98.89481412783059,
+      "seenEffPct": 1.1051858721694146,
+      "usesPctOfEff": 0
+     },
+     "obst": {
+      "nogoM": 2045.9488525390625,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 34.677101135253906,
+      "cautionClass": 3,
+      "blockedPct": 0
+     },
+     "rays": 906,
+     "samples": 130464
+    },
+    "max": {
+     "seenPct": 0,
+     "clearMedianM": 35,
+     "reachMedianM": 35,
+     "country": "veryClose",
+     "overlook": null,
+     "rifle": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 173.385498046875,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 98.9257284179612,
+      "seenEffPct": 1.0742715820388042,
+      "usesPctOfEff": 0
+     },
+     "tank": {
+      "p20M": 0,
+      "medianM": 0,
+      "maxM": 173.385498046875,
+      "ge200Pct": 0,
+      "ge270Pct": 0,
+      "grade": "poor",
+      "deadPct": 98.9257284179612,
+      "seenEffPct": 1.0742715820388042,
+      "usesPctOfEff": 0
+     },
+     "obst": {
+      "nogoM": 2045.9488525390625,
+      "nogoClass": 4,
+      "covered": false,
+      "cautionM": 34.677101135253906,
+      "cautionClass": 3,
+      "blockedPct": 0
+     },
+     "rays": 906,
+     "samples": 130464
+    }
+   },
+   "goReach": {
+    "reachPct": 79,
+    "waysOut": 24
+   },
+   "dominance": {
+    "aboveMaxM": -29.014098034877243,
+    "maxM": 39
+   },
+   "cover": {
+    "classCode": 3,
+    "className": "Built-up area",
+    "split": [
+     3,
+     2,
+     3,
+     3
+    ],
+    "cc": {
+     "concealment": 3,
+     "cover": 3
+    },
+    "note": null
+   },
+   "visibility": {
+    "fogPct": 4,
+    "hazePct": 6,
+    "lt2kmPct": 2,
+    "meanViewKm": 4,
+    "stationKm": 13
+   }
+  }
+ ],
+ "timing": {
+  "Margalla crest": {
+   "wedge 90 deg, 1 deg, to 500 m (rifle)": {
+    "median": 0.04989999999997963,
+    "p95": 0.07960000000002765,
+    "mean": 0.058133500000008095
+   },
+   "wedge 90 deg, 1 deg, to 2 km (tank)": {
+    "median": 0.1587000000001808,
+    "p95": 0.2255999999999858,
+    "mean": 0.17113899999999943
+   },
+   "wedge 90 deg, fine, to 3 km (ATGM)": {
+    "median": 0.4151999999999134,
+    "p95": 0.5468000000000757,
+    "mean": 0.43542449999999233
+   },
+   "all round, 2 deg, to 1 km": {
+    "median": 0.16779999999994288,
+    "p95": 0.2402999999999338,
+    "mean": 0.17954800000000204
+   },
+   "all round, fine, to 5 km (observation)": {
+    "median": 4.86429999999973,
+    "p95": 5.14240000000018,
+    "mean": 4.876510999999996
+   },
+   "all round, fine, half-pixel step, to 5 km": {
+    "median": 9.716400000000249,
+    "p95": 10.248700000000099,
+    "mean": 9.733229500000004
+   },
+   "all round, fine, to 10 km": {
+    "median": 16.175900000000183,
+    "p95": 17.058399999999892,
+    "mean": 16.202331999999966
+   },
+   "going flood to 5 km": {
+    "median": 5.877800000000207,
+    "p95": 8.298300000000381,
+    "mean": 6.196785999999934
+   },
+   "cover at the point + month visibility + light": {
+    "median": 0.0042000000012194505,
+    "p95": 0.008899999998902786,
+    "mean": 0.005022500000013679
+   },
+   "highest ground within 3 km": {
+    "median": 0.06270000000040454,
+    "p95": 0.10180000000036671,
+    "mean": 0.07110700000002908
+   }
+  },
+  "Lahore centre": {
+   "wedge 90 deg, 1 deg, to 500 m (rifle)": {
+    "median": 0.058099999998376006,
+    "p95": 0.07709999999860884,
+    "mean": 0.06197050000000672
+   },
+   "wedge 90 deg, 1 deg, to 2 km (tank)": {
+    "median": 0.21389999999883003,
+    "p95": 0.30370000000039,
+    "mean": 0.22437950000006823
+   },
+   "wedge 90 deg, fine, to 3 km (ATGM)": {
+    "median": 0.5414999999993597,
+    "p95": 0.7106999999996333,
+    "mean": 0.5697285000000102
+   },
+   "all round, 2 deg, to 1 km": {
+    "median": 0.2147000000004482,
+    "p95": 0.3117000000002008,
+    "mean": 0.2300814999999693
+   },
+   "all round, fine, to 5 km (observation)": {
+    "median": 6.359099999999671,
+    "p95": 6.762700000001132,
+    "mean": 6.3889405000000075
+   },
+   "all round, fine, half-pixel step, to 5 km": {
+    "median": 11.221700000000055,
+    "p95": 11.835000000000946,
+    "mean": 11.26036499999992
+   },
+   "all round, fine, to 10 km": {
+    "median": 19.72479999999996,
+    "p95": 20.69290000000001,
+    "mean": 19.750550500000116
+   },
+   "going flood to 5 km": {
+    "median": 7.171800000000076,
+    "p95": 8.013500000000931,
+    "mean": 7.44011750000016
+   },
+   "cover at the point + month visibility + light": {
+    "median": 0.004700000001321314,
+    "p95": 0.006299999997281702,
+    "mean": 0.005697999999974854
+   },
+   "highest ground within 3 km": {
+    "median": 0.059900000000197906,
+    "p95": 0.09100000000034925,
+    "mean": 0.06426999999992404
+   }
+  },
+  "coldMosaicMs": 23.639400000000023
+ }
+}

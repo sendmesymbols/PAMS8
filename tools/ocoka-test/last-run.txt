@@ -1,0 +1,90 @@
+OCOKA lens test program
+bundle D:\Projects\PAMS8\MS\Data\terrain-bundle
+node v24.18.0
+
+A. Synthetic geometry (the sight engine against cases with a known answer)
+  PASS  flat plain: every ray clear to 5 km   min clear 5000 m
+  PASS  flat plain: 100 % of the ground seen   100.0 %
+  PASS  20 m ridge 1 km north: sight to the north ends at the ridge   clear 994 m
+  PASS  20 m ridge: nothing hides the other three directions
+  PASS  20 m ridge: less than the whole ground is seen   62.7 %
+  PASS  earth curvature: first hidden near the radio-horizon sum for eye 2 m + target 1.7 m   10395 m, expected 10402 m
+  PASS  mutual visibility: A sees B exactly when B sees A   600/600 pairs agree (453 of them see each other)
+  PASS  noise floor: a 0.8 m step hides a prone man with no floor, not with a 1 m floor
+  PASS  a bund (class 25, 1-2 m) hides a prone man behind it, the bare DEM does not   with 306 m, without 3000 m
+  PASS  crop mix: a share of the cropland is tall in August, none in April   August 16.0 %, April 0.0 %
+  PASS  a cropland plain: the view reaches farther in April (nothing tall) than in August (16 % tall) and August is not a blank wall (median of 40 positions)   April reach 4992 m, August reach 467 m (close), August 4.3 % of the ground seen
+  PASS  a medium-density town is very close or close country   veryClose, reach median 0 m, 0.0 % seen
+  PASS  canal across the east: the flood stops short of it   east sector reaches 547 m
+  PASS  canal with a gap: the flood goes through it   east sector reaches 2981 m
+
+B. Light (sun and moon, calculated from date, time and place)
+  PASS  sun at the March equinox: noon altitude 90 - latitude   58.3 deg, expected 58.5
+  PASS  sun at the June solstice: 90 - latitude + 23.4   81.9 deg, expected 81.9
+  PASS  sun at the December solstice: 90 - latitude - 23.4   35.0 deg, expected 35.0
+  PASS  new moon of 9 Nov 2026 is nearly dark   illuminated 0.2 %
+  PASS  full moon of 24 Nov 2026 is nearly full   illuminated 99.8 %
+  PASS  first quarter of 17 Nov 2026 is about half   illuminated 51.0 %
+  PASS  Lahore noon is day   day
+  PASS  Lahore 03:00 on 11 Nov (new moon) is starlight   starlight, moon 2.7 % lit, -63.4 deg
+  PASS  around the full moon of 24 Nov there is moonlight at night
+
+C. Real sites on the bundle (what the lens would say, with the DEM alone and with the doctrine blockers)
+  Each figure is given for the bare DEM (upper bound) / the middle blocker heights (central case) / the tallest blockers (lower bound).
+  site                       elev | % of ground seen    | median reach m        | country                      | rifle: dead ground %     | tank FoF (mid) | overlooked by (mid) | above highest in 3 km | ways out
+  Margalla crest             1435 |  22 /  19 /  17      |  4097 /  3907 /  3621 | open / open / open           |  91 /  92 /  95 (rifle 300 m) | poor     | +153 m at 3621 m | -94 m | 24/24 direct
+  Islamabad valley floor      566 |   9 /   5 /   3      |   477 /   127 /    32 | close / veryClose / veryClose |  68 /  93 /  94 (rifle 300 m) | poor     | +682 m at 4990 m | -183 m | 24/24 direct
+  Cholistan flat              120 |  22 /  22 /  22      |  3705 /  3705 /  3705 | open / open / open           |  57 /  57 /  57 (rifle 300 m) | good     | +25 m at 3941 m | -19 m | 24/24 direct
+  Lahore centre               224 |  37 /   1 /   0      |  4462 /   326 /    33 | open / close / veryClose     |  49 /  91 / 100 (rifle 300 m) | poor     | +20 m at 4267 m | -8 m | 24/24 direct
+  Lahore canal bank           220 |  17 /   0 /   0      |  2671 /     0 /     0 | open / veryClose / veryClose |  54 /  89 /  91 (rifle 300 m) | marginal | no | -12 m | 24/24 direct
+  Skardu valley              2240 |  33 /  21 /  15      |  3369 /  1404 /  1310 | open / open / open           |  67 /  80 /  83 (rifle 300 m) | poor     | +1373 m at 4991 m | -451 m | 18/24 direct
+  Quetta                     1673 |  50 /   2 /   1      |  4988 /    99 /    33 | open / veryClose / veryClose |  20 /  98 /  99 (rifle 300 m) | poor     | +623 m at 4757 m | -203 m | 24/24 direct
+  Karachi                      10 |   2 /   0 /   0      |   694 /    35 /    35 | open / veryClose / veryClose |  60 /  99 /  99 (rifle 300 m) | poor     | no | -29 m | 24/24 direct
+  plausibility checks
+  PASS  crest sees more than the valley floor   17 % against 3 %
+  PASS  the crest stands higher in its surroundings than the valley floor   -94 m against -183 m from the highest ground within 3 km
+  PASS  a summit is not called close country: the view reaches far even though the slope below it is dead ground   reach median 3621 m, clear median 32 m
+  PASS  on open or mountain ground the tallest blockers still leave a view (3 % or more of the ground seen)   Margalla crest 17 %, Cholistan flat 22 %, Skardu valley 15 %
+  PASS  the three cases keep their order (DEM >= middle >= tallest) at every site
+  PASS  the valley floor is overlooked by high ground (15 m or more above it in view)   +659 m
+  PASS  Cholistan is open country   reach median 3705 m
+  PASS  Lahore centre is close or very close country (with the blockers)   veryClose, reach median 33 m
+  PASS  the DEM alone calls Lahore centre more open than the blockers do (the DSM smooths the town)   reach median 4462 m against 33 m
+  PASS  canal bank: a NO-GO class (canal) is the nearest obstacle toward it   class 20 at 65 m
+
+D. Cost per call (Node 24 / V8, tiles already in memory; the browser main thread is within a factor of two of this)
+  Margalla crest (hills)
+    wedge 90 deg, 1 deg, to 500 m (rifle)          median   0.05 ms   p95   0.08 ms
+    wedge 90 deg, 1 deg, to 2 km (tank)            median   0.16 ms   p95   0.23 ms
+    wedge 90 deg, fine, to 3 km (ATGM)             median   0.42 ms   p95   0.55 ms
+    all round, 2 deg, to 1 km                      median   0.17 ms   p95   0.24 ms
+    all round, fine, to 5 km (observation)         median   4.86 ms   p95   5.14 ms
+    all round, fine, half-pixel step, to 5 km      median   9.72 ms   p95  10.25 ms
+    all round, fine, to 10 km                      median  16.18 ms   p95  17.06 ms
+    going flood to 5 km                            median   5.88 ms   p95   8.30 ms
+    cover at the point + month visibility + light  median   0.00 ms   p95   0.01 ms
+    highest ground within 3 km                     median   0.06 ms   p95   0.10 ms
+  Lahore centre (plain)
+    wedge 90 deg, 1 deg, to 500 m (rifle)          median   0.06 ms   p95   0.08 ms
+    wedge 90 deg, 1 deg, to 2 km (tank)            median   0.21 ms   p95   0.30 ms
+    wedge 90 deg, fine, to 3 km (ATGM)             median   0.54 ms   p95   0.71 ms
+    all round, 2 deg, to 1 km                      median   0.21 ms   p95   0.31 ms
+    all round, fine, to 5 km (observation)         median   6.36 ms   p95   6.76 ms
+    all round, fine, half-pixel step, to 5 km      median  11.22 ms   p95  11.84 ms
+    all round, fine, to 10 km                      median  19.72 ms   p95  20.69 ms
+    going flood to 5 km                            median   7.17 ms   p95   8.01 ms
+    cover at the point + month visibility + light  median   0.00 ms   p95   0.01 ms
+    highest ground within 3 km                     median   0.06 ms   p95   0.09 ms
+  cold: 6 km mosaic of 2 + 2 layers: 2 x 3 tiles x 4 layers read and PNG-decoded in 24 ms (node, no worker; the app's tile cache has most of these already)
+  PASS  a 90 degree wedge to 2 km fits a mouse move (under 2 ms median)   0.21 ms
+  PASS  the full 5 km all-round view fits a Detail refresh (under 15 ms median)   4.86 ms
+
+E. Cross-check against an independent implementation (Python, probes every sixth of a pixel, same tiles, bare DEM)
+  step 1 px: 2640 samples on 24 rays: 2622 agree; engine says seen where the reference says hidden 18, engine hidden where reference seen 0
+        the 18 engine-seen / reference-hidden samples lie at 64-3462 m (median 1302 m)
+  step 0.5 px: 5280 samples on 24 rays: 5258 agree; engine says seen where the reference says hidden 22, engine hidden where reference seen 0
+        the 22 engine-seen / reference-hidden samples lie at 95-3462 m (median 1128 m)
+  PASS  step 1 px agrees with the independent check on 98 % or more of the samples   99.32 %
+  PASS  step 0.5 px agrees on 99.5 % or more   99.58 %
+
+37 of 37 checks passed.

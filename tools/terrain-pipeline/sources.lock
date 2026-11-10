@@ -172,6 +172,28 @@ sources:
         url: https://geodata.ucdavis.edu/climate/worldclim/2_1/base/wc2.1_5m_wind.zip      # 82 MB
     sha256: 6a7f3d5a23d91765fa99ad614364776a96beda666e2771c3727431294d150807
 
+  # ── visibility (2026-11-10): how far the weather lets a soldier see, by month (OCOKA Observation) ────────────────
+  # One CSV per station per year, so fetch.py's one-file-per-entry model does not fit: scripts/fetch_gsod.py reads
+  # isd-history.csv, picks the stations inside the data extent + 1 degree that reported across 2023, and fetches
+  # 2016-2025 (the latest ten years; NCEI's 2025 record stops on 2025-08-24). Owner's rule: latest data, every source
+  # named with its location and date. GSOD 2026 does not exist yet (HTTP 404, 2026-11-10).
+  - id: gsod
+    name: NOAA NCEI Global Summary of the Day (GSOD), daily station records (visibility, fog and weather flags)
+    version: "GSOD 'access' CSVs (derived from the Integrated Surface Database); readme dated 2020-10-28"
+    dataDate: "2016-2025 (2025 to 2025-08-24: the end of NCEI's published record; daily means per station-day, GMT days)"
+    released: "continuously updated by NCEI; read 2026-11-10 (2024 files last modified 2025-01-21; station list isd-history.csv)"
+    licence: "NCEI GSOD readme: 'free and unrestricted use in research, education, and other non-commercial activities. However, for non-U.S. locations' data, the data or any derived product shall not be provided to other users or be used for the re-export of commercial services.' Data exchanged under WMO Resolution 40 (Cg-XII); a country may restrict its re-export."
+    attribution: "NOAA National Centers for Environmental Information, Global Surface Summary of the Day (GSOD), from the Integrated Surface Database"
+    restriction: "Non-commercial use only. The visibility layer (visibility/) is derived from non-U.S. stations: do not provide it to other users and do not use it in a commercial service. Leave it out of a bundle that goes to another party."
+    landing: https://www.ncei.noaa.gov/data/global-summary-of-the-day/        # the web accessible folder named in the readme; readme at doc/readme.txt
+    files:
+      - name: isd-history.csv
+        url: https://www.ncei.noaa.gov/pub/data/noaa/isd-history.csv      # station list, 2.9 MB (2026-11-10)
+      - name: "{year}/{USAF}{WBAN}.csv"
+        url: https://www.ncei.noaa.gov/data/global-summary-of-the-day/access/{year}/{USAF}{WBAN}.csv      # one file per station and year, about 80 KB each
+    fetched_by: scripts/fetch_gsod.py        # stations from isd-history.csv, 2016-2025, written to work/raw/gsod/<year>/ (404 = the station did not report that year)
+    sha256: 7b2e381088e375844227b0bc7b5601d13477e64320d532621e6d3a9d9f8ee95e   # aggregate over the 1795 files (see work/raw/checksums.json); fetched 2026-11-10, 121.1 MB
+
   # WorldPop (updated 2026-11-04, population count at 100 m since 2026-11-05). Owner's rule: where WorldPop offers two
   # choices take the LATEST and the COARSER one, so 2026 (the current year; 2027-2030 are projections) and 1 km. The
   # owner chose 100 m for the population count itself (2026-11-05): settlements and villages need it. Age groups stay

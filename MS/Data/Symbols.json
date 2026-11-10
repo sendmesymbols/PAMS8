@@ -821,6 +821,7 @@
         "Grp": ["Land", "Comm"]
     },
     "10110208": {
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "National Guard",
@@ -872,6 +873,7 @@
     },
     "10110210": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mujahid",
@@ -898,6 +900,7 @@
     },
     "10110211": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Services Group",
@@ -1050,6 +1053,7 @@
     },
     "10110217": {
         "Mover": "b_heavy",
+        "Rng": {"ind": [1500, 20579, 20579], "b": "D", "s": "IBB p120 (122 mm MBRL 20579)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Multi-Barrel Rocket Launcher",
@@ -1076,6 +1080,7 @@
     },
     "10110218": {
         "Mover": "b_heavy",
+        "Rng": {"ind": [1500, 20579, 20579], "b": "D", "s": "IBB p120 (122 mm MBRL 20579)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Multi Barrel Rocket Launcher (Self Propelled)",
@@ -1355,6 +1360,7 @@
     },
     "10110220": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Services Group Light Commnado",
@@ -1681,6 +1687,7 @@
     },
     "10120400": {
         "Mover": "a_tracked",
+        "Rng": {"at": [100, 3000, 3000], "nv": {"ti": 3750}, "b": "D", "s": "IBB pp68-70 (Baktar Shikan 100-3000 m); IBB p295 (TOW 3000-4000); thermal sight 3750 m: IBB Annex D App 2"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank - Anti Armor - Armr",
@@ -1707,6 +1714,7 @@
     },
     "10120402": {
         "Mover": "b_truck",
+        "Rng": {"at": [100, 3000, 3000], "nv": {"ti": 3750}, "b": "D", "s": "IBB pp68-70 (Baktar Shikan 100-3000 m); IBB p295 (TOW 3000-4000); thermal sight 3750 m: IBB Annex D App 2"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank - Anti Armor - Motorized",
@@ -1733,6 +1741,7 @@
     },
     "10120410": {
         "Mover": "foot",
+        "Rng": {"at": [0, 275, 500], "b": "D", "s": "IC s46.6b-c (RPG-7 / Energa)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - LAT/Light Anti Tank",
@@ -1759,6 +1768,7 @@
     },
     "10120411": {
         "Mover": "foot",
+        "Rng": {"at": [100, 3000, 3000], "nv": {"ti": 3750}, "b": "D", "s": "IBB pp68-70 (Baktar Shikan 100-3000 m); IBB p295 (TOW 3000-4000); thermal sight 3750 m: IBB Annex D App 2"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Hy Anti Tank/HAT",
@@ -1785,6 +1795,7 @@
     },
     "10120500": {
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 1600, 2000], "at": [0, 1600, 2000], "nv": {"moon": 800, "star": 800}, "nvObs": {"moon": 800, "star": 800}, "b": "T", "s": "eff: IBB p214 (effective 1600 m by registration); max T; night: IBB Annex D App 3 (gunner/commander 800)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Armr",
@@ -2251,6 +2262,7 @@
     },
     "10121100": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf",
@@ -2276,6 +2288,7 @@
         "Grp": ["Land", "Infantry"]
     },
     "10121101": {
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Amphibious",
@@ -2302,6 +2315,7 @@
     },
     "10121102": {
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - MIB",
@@ -2328,6 +2342,7 @@
     },
     "10121103": {
         "Mover": "a_wheeled",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Main Gun Sys",
@@ -2354,6 +2369,7 @@
     },
     "10121104": {
         "Mover": "b_truck",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Motorized",
@@ -2380,6 +2396,7 @@
     },
     "10121105": {
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 1000, 2000], "b": "T", "s": "dir: IFV cannon / 12.7 mm class, typical"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Fighting Veh",
@@ -2406,6 +2423,7 @@
     },
     "10121106": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Inf - Mtn",
@@ -2484,6 +2502,7 @@
     },
     "10121800": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Ops Forces (SOF)",
@@ -2510,6 +2529,7 @@
     },
     "10121801": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Special Ops Forces (SOF) - Ground",
@@ -2535,6 +2555,7 @@
         "Grp": ["Land", "Infantry" ]
     },
     "10121806": {
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Para Mil Forces",
@@ -2586,6 +2607,7 @@
     },
     "10121808": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Assam Rifles",
@@ -2612,6 +2634,7 @@
     },
     "10121809": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Rashtriya Rifles",
@@ -2638,6 +2661,7 @@
     },
     "10121810": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Border Security Forces",
@@ -2664,6 +2688,7 @@
     },
     "10121811": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Sashastra Seema Bal",
@@ -2690,6 +2715,7 @@
     },
     "10121812": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Indo Tibetan Border Police",
@@ -2716,6 +2742,7 @@
     },
     "10121813": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Territorial Army",
@@ -2742,6 +2769,7 @@
     },
     "10121814": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Central Reserver Police Force",
@@ -2820,6 +2848,7 @@
         "Grp": ["Land","Air Defense" ]
     },
     "10130101": {
+        "Rng": {"ad": [0, 3000, 4000], "b": "C", "s": "WeaponEqptV3 (35 mm 4000, 37 mm 3500); eff T"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD - Main Gun",
@@ -2845,6 +2874,7 @@
         "Grp": ["Land","Air Defense" ]
     },
     "10130102": {
+        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD - Msl",
@@ -2945,6 +2975,7 @@
         "Grp": ["Land","Air Defense" ]
     },
     "10130115": {
+        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "ESHORAD",
@@ -3221,6 +3252,7 @@
     },
     "10130300": {
         "Mover": "towed",
+        "Rng": {"ind": [1500, 11274, 14596], "b": "E", "s": "max: IBB p120 (105 mm how 11274, 155 mm how 14596); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Fd Arty",
@@ -3247,6 +3279,7 @@
     },
     "10130301": {
         "Mover": "a_tracked",
+        "Rng": {"ind": [1500, 11274, 14596], "b": "E", "s": "max: IBB p120 (105 mm how 11274, 155 mm how 14596); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Fd Arty Self-propelled",
@@ -3298,6 +3331,7 @@
     },
     "10130303": {
         "Mover": "pack",
+        "Rng": {"ind": [1000, 10000, 10000], "b": "C", "s": "WeaponEqptV3 (105 mm pack how 10000); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mtn Arty",
@@ -3348,6 +3382,7 @@
         "Grp": ["Land","Artillery" ]
     },
     "10130800": {
+        "Rng": {"ind": [100, 4550, 4550], "b": "D", "s": "IBB pp56-57 (81 mm, M57D: bands 100-4550 m; min 550 m on the lowest charge of the bomb)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mor",
@@ -3424,6 +3459,7 @@
     },
     "10140104": {
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 800, 1500], "b": "T", "s": "T (recce vehicle, 12.7 mm / cannon)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Recce Armr",
@@ -4301,6 +4337,7 @@
     },
     "15110100": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 300, 500], "b": "D", "s": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Rifle",
@@ -4353,6 +4390,7 @@
     },
     "15110200": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 800, 1200], "nv": {"moon": 450, "star": 300}, "b": "T", "s": "dir: T (GPMG on bipod); night: IBB Annex D App 2 (PVS-4 on MG1A3)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG",
@@ -4379,6 +4417,7 @@
     },
     "15110201": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 600, 900], "nv": {"moon": 450, "star": 300}, "b": "T", "s": "dir: T (light MG, bipod); night: IBB Annex D App 2"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Light",
@@ -4405,6 +4444,7 @@
     },
     "15110202": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 1000, 1800], "nv": {"moon": 450, "star": 300}, "b": "T", "s": "dir: T (GPMG, tripod); night: IBB Annex D App 2"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Med",
@@ -4431,6 +4471,7 @@
     },
     "15110203": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 1500, 2000], "b": "T", "s": "dir: T (12.7 mm HMG); IC s60.6 (long range, bunker busting)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "MG - Hy",
@@ -4457,6 +4498,7 @@
     },
     "15110300": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 350, 400], "b": "T", "s": "dir: T (40 mm under-barrel)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher",
@@ -4483,6 +4525,7 @@
     },
     "15110301": {
         "Mover": "foot",
+        "Rng": {"dir": [30, 350, 400], "b": "T", "s": "dir: T (40 mm under-barrel)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Light)",
@@ -4509,6 +4552,7 @@
     },
     "15110302": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 1500, 1700], "b": "C", "s": "dir: WeaponEqptV3 AGS-17 / AGS-30 1700 m; eff T"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Medium)",
@@ -4535,6 +4579,7 @@
     },
     "15110303": {
         "Mover": "foot",
+        "Rng": {"dir": [0, 800, 1750], "at": [0, 0, 600], "b": "D", "s": "IC s60.8, s77.4 (GLHMG: emplacements 800, troops 1750, damages armour to 600)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Grenade Launcher (Heavy)",
@@ -4560,6 +4605,7 @@
     },
     "15110500": {
         "Mover": "towed",
+        "Rng": {"ad": [0, 2000, 3500], "b": "C", "s": "WeaponEqptV3 AD gun variants 2000-4750 m; eff T"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun",
@@ -4586,6 +4632,7 @@
     },
     "15110501": {
         "Mover": "towed",
+        "Rng": {"ad": [0, 1500, 2300], "b": "C", "s": "WeaponEqptV3 (Lt AD 14.5 mm 2300, twin 20 mm 2000); eff T"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Light",
@@ -4612,6 +4659,7 @@
     },
     "15110502": {
         "Mover": "towed",
+        "Rng": {"ad": [0, 2500, 3500], "b": "C", "s": "WeaponEqptV3 (Lt AD 37 mm 3500); eff T"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Med",
@@ -4638,6 +4686,7 @@
     },
     "15110503": {
         "Mover": "towed",
+        "Rng": {"ad": [0, 4000, 6000], "b": "C", "s": "WeaponEqptV3 (Med AD 57 mm 6000); eff T"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Gun - Hy",
@@ -4664,6 +4713,7 @@
     },
     "15110504": {
         "Mover": "towed",
+        "Rng": {"ad": [0, 3000, 4000], "b": "C", "s": "WeaponEqptV3 (RCG 35 mm 4000); eff T"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "35 MM Oerlikon Gun",
@@ -4689,6 +4739,7 @@
         "Grp": ["Land Eqpt","Air Defense Gun"]
     },
     "15110505": {
+        "Rng": {"ad": [0, 1500, 3000], "b": "E", "s": "E (close-in weapon system)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Close in Weapon System",
@@ -4715,6 +4766,7 @@
     },
     "15110600": {
         "Mover": "towed",
+        "Rng": {"at": [0, 1000, 2000], "b": "E", "s": "E (towed anti-tank gun; IBB p259 names 85 mm cannons in direct fire)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun",
@@ -4741,6 +4793,7 @@
     },
     "15110601": {
         "Mover": "towed",
+        "Rng": {"at": [0, 800, 1500], "b": "E", "s": "E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Light",
@@ -4767,6 +4820,7 @@
     },
     "15110602": {
         "Mover": "towed",
+        "Rng": {"at": [0, 1000, 2000], "b": "E", "s": "E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Med",
@@ -4793,6 +4847,7 @@
     },
     "15110603": {
         "Mover": "towed",
+        "Rng": {"at": [0, 1500, 2500], "b": "E", "s": "E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Gun - Hy",
@@ -4818,6 +4873,7 @@
         "Grp": ["Land Eqpt","Anti Tank Gun" ]
     },
     "15110800": {
+        "Rng": {"at": [0, 1189, 2000], "ind": [0, 0, 7600], "nv": {"moon": 1000, "star": 600}, "b": "D", "s": "IBB p38 (2000 m direct, 7600 m indirect, spotter best 1189 m); night: IBB Annex D App 2 (AN/TVS-5A)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Recoilless Gun",
@@ -4843,6 +4899,7 @@
         "Grp": ["Land Eqpt","Recoilless Gun" ]
     },
     "15110801": {
+        "Rng": {"at": [0, 400, 600], "b": "D", "s": "IC s46.6g (75 mm RR 400-600 m)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Recoilless Gun - Light",
@@ -4893,6 +4950,7 @@
         "Grp": ["Land Eqpt","Recoilless Gun" ]
     },
     "15110803": {
+        "Rng": {"at": [0, 1189, 2000], "ind": [0, 0, 7600], "nv": {"moon": 1000, "star": 600}, "b": "D", "s": "IBB p38 (2000 m direct, 7600 m indirect, spotter best 1189 m); night: IBB Annex D App 2 (AN/TVS-5A)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Recoilless Gun - Hy",
@@ -4919,6 +4977,7 @@
     },
     "15110900": {
         "Mover": "towed",
+        "Rng": {"ind": [1500, 11274, 11274], "b": "E", "s": "max: IBB p120 (105 mm how 11274); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer",
@@ -4945,6 +5004,7 @@
     },
     "15110901": {
         "Mover": "towed",
+        "Rng": {"ind": [1500, 11274, 11274], "b": "E", "s": "max: IBB p120 (105 mm how 11274; 25 pdr 12253); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Light",
@@ -4971,6 +5031,7 @@
     },
     "15110902": {
         "Mover": "towed",
+        "Rng": {"ind": [2000, 14596, 14596], "b": "E", "s": "max: IBB p120 (155 mm how 14596); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Med",
@@ -4997,6 +5058,7 @@
     },
     "15110903": {
         "Mover": "towed",
+        "Rng": {"ind": [3000, 16925, 16925], "b": "E", "s": "max: IBB p120 (8 inch how 16925); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Howitzer - Heavy",
@@ -5023,6 +5085,7 @@
     },
     "15110904": {
         "Mover": "towed",
+        "Rng": {"ind": [1500, 12253, 12253], "b": "E", "s": "max: IBB p120 (25 pdr 12253); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Light",
@@ -5049,6 +5112,7 @@
     },
     "15110905": {
         "Mover": "towed",
+        "Rng": {"ind": [3000, 23514, 23514], "b": "E", "s": "max: IBB p120 (155 mm gun 23514; 5.5 inch 16551); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Med",
@@ -5076,6 +5140,7 @@
 
     "15110906": {
         "Mover": "towed",
+        "Rng": {"ind": [5000, 27478, 27478], "b": "E", "s": "max: IBB p120 (130 mm gun 27478); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Arty Gun - Heavy",
@@ -5101,6 +5166,7 @@
         "Grp": ["Land Eqpt","Artillery Gun" ]
     },
     "15111100": {
+        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher",
@@ -5126,6 +5192,7 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111101": {
+        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Short Range",
@@ -5153,6 +5220,7 @@
     "15111102": {
         "VehCat": "B",
         "Mover": "b_heavy",
+        "Rng": {"ad": [200, 5000, 9000], "b": "E", "s": "WeaponEqptV3 light SAMs 5000-9000 m; eff E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Light(TLAR)",
@@ -5180,6 +5248,7 @@
     "15111103": {
         "VehCat": "B",
         "Mover": "b_heavy",
+        "Rng": {"ad": [200, 5000, 9000], "b": "E", "s": "WeaponEqptV3 light SAMs 5000-9000 m; eff E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Light(TELAR)",
@@ -5205,6 +5274,7 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111104": {
+        "Rng": {"ad": [1000, 15000, 25000], "b": "E", "s": "WeaponEqptV3 (Spyder 15000, Akash 25000); eff E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl LauncheMsl Launcher - Med Range",
@@ -5232,6 +5302,7 @@
     "15111105": {
         "VehCat": "B",
         "Mover": "b_heavy",
+        "Rng": {"ad": [1000, 15000, 25000], "b": "E", "s": "WeaponEqptV3 (Spyder 15000, Akash 25000); eff E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Med(TLAR)",
@@ -5259,6 +5330,7 @@
     "15111106": {
         "VehCat": "B",
         "Mover": "b_heavy",
+        "Rng": {"ad": [1000, 15000, 25000], "b": "E", "s": "WeaponEqptV3 (Spyder 15000, Akash 25000); eff E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "AD Msl Launcher - Med(TELAR)",
@@ -5413,6 +5485,7 @@
         "Grp": ["Land Eqpt","Air Defense Missile Launcher" ]
     },
     "15111110": {
+        "Rng": {"ad": [50, 2800, 5900], "b": "D", "s": "IBB p82 (Stinger: head-on 2800, tail-on 4200 m; max altitude 2300 m); p81 (Anza Mk-I over 4 km, up to 5.9 km)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Surface to Air Missile",
@@ -5550,6 +5623,7 @@
     },
 
     "15111200": {
+        "Rng": {"at": [100, 3000, 3000], "nv": {"ti": 3750}, "b": "D", "s": "IBB pp68-70 (Baktar Shikan 100-3000 m); IBB p295 (TOW 3000-4000); thermal sight 3750 m: IBB Annex D App 2"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Msl Launcher",
@@ -5575,6 +5649,7 @@
         "Grp": ["Land Eqpt","Anti Tank Missile Launcher" ]
     },
     "15111400": {
+        "Rng": {"ind": [100, 4550, 4550], "b": "D", "s": "IBB pp56-57 (81 mm, M57D: bands 100-4550 m; min 550 m on the lowest charge of the bomb)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mor - Land Eqpt",
@@ -5600,6 +5675,7 @@
         "Grp": ["Land Eqpt","Mortar" ]
     },
     "15111401": {
+        "Rng": {"ind": [100, 1800, 1800], "b": "T", "s": "T (60 mm; WeaponEqptV3 1280-1614); IC s60.3 (60 mm has a limited range)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mor Light - Land Eqpt",
@@ -5625,6 +5701,7 @@
         "Grp": ["Land Eqpt","Mortar" ]
     },
     "15111402": {
+        "Rng": {"ind": [100, 4550, 4550], "b": "D", "s": "IBB pp56-57 (81 mm, M57D: bands 100-4550 m; min 550 m on the lowest charge of the bomb)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mor Med - Land Eqpt",
@@ -5650,6 +5727,7 @@
         "Grp": ["Land Eqpt","Mortar" ]
     },
     "15111403": {
+        "Rng": {"ind": [200, 5700, 6602], "b": "D", "s": "IBB p120 (120 mm: POF 5700, Brandt 6602); min E"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Mor Hy - Land Eqpt",
@@ -5675,6 +5753,7 @@
         "Grp": ["Land Eqpt","Mortar" ]
     },
     "15111600": {
+        "Rng": {"ind": [1500, 20579, 20579], "b": "D", "s": "IBB p120 (122 mm MBRL 20579)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Multiple Rocket Launcher",
@@ -5725,6 +5804,7 @@
         "Grp": ["Land Eqpt","Multiple Rocket Launcher" ]
     },
     "15111602": {
+        "Rng": {"ind": [1500, 20579, 20579], "b": "D", "s": "IBB p120 (122 mm MBRL 20579)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Multiple Rocket Launcher - Med",
@@ -5803,6 +5883,7 @@
     },
 
     "15111700": {
+        "Rng": {"at": [0, 275, 500], "b": "D", "s": "eff: IC s46.6b (RPG-7 destroys a tank at 180-275 m); max: WeaponEqptV3 500"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Rocket Launcher",
@@ -5828,6 +5909,7 @@
         "Grp": ["Land Eqpt","Anti Tank Rocket Launcher" ]
     },
     "15111701": {
+        "Rng": {"at": [0, 90, 120], "b": "D", "s": "IC s46.6c (Energa 70-90 m moving, 90-120 m stationary tank)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Rocket Launcher - Light",
@@ -5853,6 +5935,7 @@
         "Grp": ["Land Eqpt","Anti Tank Rocket Launcher" ]
     },
     "15111702": {
+        "Rng": {"at": [0, 275, 500], "b": "D", "s": "eff: IC s46.6b (RPG-7); max: WeaponEqptV3 500"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Rocket Launcher - Med",
@@ -5878,6 +5961,7 @@
         "Grp": ["Land Eqpt","Anti Tank Rocket Launcher" ]
     },
     "15111703": {
+        "Rng": {"at": [0, 500, 1000], "b": "C", "s": "WeaponEqptV3 (84 mm RL 1000); eff T"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Anti Tank Rocket Launcher - Hy",
@@ -6032,6 +6116,7 @@
     "15120103": {
         "VehCat": "A",
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 800, 1500], "b": "T", "s": "T (APC with 12.7 mm)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "APC",
@@ -6059,6 +6144,7 @@
     "15120200": {
         "VehCat": "A",
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 1600, 2000], "at": [0, 1600, 2000], "nv": {"moon": 800, "star": 800}, "nvObs": {"moon": 800, "star": 800}, "b": "T", "s": "eff: IBB p214 (effective 1600 m by registration); max T; night: IBB Annex D App 3 (gunner/commander 800)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank",
@@ -6086,6 +6172,7 @@
     "15120201": {
         "VehCat": "A",
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 1000, 1500], "at": [0, 1000, 1500], "b": "E", "s": "E (light tank)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Light",
@@ -6113,6 +6200,7 @@
     "15120202": {
         "VehCat": "A",
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 1600, 2000], "at": [0, 1600, 2000], "nv": {"moon": 800, "star": 800}, "nvObs": {"moon": 800, "star": 800}, "b": "T", "s": "eff: IBB p214 (effective 1600 m by registration); max T; night: IBB Annex D App 3 (gunner/commander 800)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Med",
@@ -6140,6 +6228,7 @@
     "15120203": {
         "VehCat": "A",
         "Mover": "a_tracked",
+        "Rng": {"dir": [0, 2000, 3000], "at": [0, 2000, 3000], "nv": {"moon": 800, "star": 800}, "nvObs": {"moon": 1400, "star": 1000}, "b": "T", "s": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Tank - Hy",
@@ -6716,6 +6805,7 @@
         "Grp": ["Land Eqpt","IED" ]
     },
     "15220300": {
+        "Rng": {"obs": {"radar": 20000, "radarInf": 3000}, "b": "D", "s": "IC s68 (battlefield surveillance radar 20 km but cut by built-up, vegetation, dunes, raised ground; infantry radars 2-3 km)"},
         "Class": "UEISymbol",
         "Description": "",
         "Name": "Sensor Radar",

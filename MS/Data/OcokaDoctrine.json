@@ -1,0 +1,294 @@
+{
+  "format": "pams-ocoka-doctrine",
+  "version": 1,
+  "built": "2026-11-10",
+  "note": "Figures for the OCOKA lens of the Ground Guide. Per-weapon ranges live in Symbols.json (the `Rng` field of each entry); this file holds everything that is not one symbol's own figure. Every figure has a basis: D = read from a pamphlet in Material/ (cited), C = from the existing catalogue (WeaponEqptV3.json), T = typical public figure (mine, to confirm), E = my estimate or proposal (to confirm). The planner corrects the T and E figures; they are not doctrine.",
+  "handling": "The D figures are numbers read from Pakistan Army pamphlets (IC, IBB). Keep this file under the same handling terms as those pamphlets before it goes outside the owner's own systems.",
+  "sources": {
+    "IC": { "title": "The Rifle Company, Platoon and Section in Battle", "file": "Material/IC.pdf", "date": "amended February 2009", "cite": "section numbers, e.g. s77.2 = Section 77 para 2" },
+    "IBB": { "title": "Infantry Battalion in Battle, AP 8360 E", "file": "Material/IBB.pdf", "date": "scan of 2015", "cite": "printed page numbers of the pamphlet (PDF page = printed page + 20)" },
+    "FM533": { "title": "FM 5-33 Terrain Analysis (US Army)", "file": "Material/fm5-33(90).pdf", "date": "11 July 1990, change 1 of 8 September 1992" },
+    "NPS": { "title": "OCOKA Military Terrain Analysis, Vicksburg National Military Park Cultural Landscape Report (US National Park Service)", "file": "Material/225224696-5-OCOKA-Military-Terrain-Analysis.pdf" },
+    "WE3": { "title": "WeaponEqptV3.json variant ranges", "file": "MS/Data/WeaponEqptV3.json" }
+  },
+  "basisCodes": { "D": "doctrine, cited", "C": "existing catalogue", "T": "typical public figure, to confirm", "E": "my estimate or proposal, to confirm" },
+
+  "groundAppreciation": {
+    "note": "The pamphlets' own headings for appreciating ground (IC s23.1), set against OCOKA. The lens should use these words on the card. Two items have no OCOKA letter: cover from NVDs and surveillance radars, and dead ground as a thing of its own.",
+    "headings": [
+      { "id": "fire", "ic": "Fire position", "ocoka": "O: fields of fire", "bundle": "elevation, landform, class, building height" },
+      { "id": "obsn", "ic": "Observation positions", "ocoka": "O: observation", "bundle": "elevation, landform, class, building height; ITG candidate fields vs, rr, iso" },
+      { "id": "cfire", "ic": "Cover from fire", "ocoka": "C: cover", "bundle": "cc layer low nibble (cover), banks, bund and cutting classes" },
+      { "id": "cview", "ic": "Cover from view", "ocoka": "C: concealment", "bundle": "cc layer high nibble (concealment), class, season" },
+      { "id": "cnvd", "ic": "Cover from NVDs and surveillance radars", "ocoka": "(none)", "bundle": "viewshed from the observer, light level, visibility grid" },
+      { "id": "obst", "ic": "Obstacles", "ocoka": "O: obstacles", "bundle": "class, wet, soil strength (rci_dry / rci_wet), banks, route (bridges, fords)" },
+      { "id": "appr", "ic": "Approaches", "ocoka": "A: avenues of approach", "bundle": "dist_* going per mover, route, network, frontage table" }
+    ],
+    "coverTypes": {
+      "src": "IC s23.2",
+      "basis": "D",
+      "rows": [
+        { "type": "Undulating ground", "view": "yes", "fire": "yes", "nvd": "yes", "note": "least obvious cover; gives no ranging mark" },
+        { "type": "Stream beds and ditches", "view": "yes", "fire": "often", "nvd": "-", "note": "the enemy watches them; may be mined" },
+        { "type": "Bushes", "view": "yes", "fire": "no", "nvd": "-", "note": "good ranging marks in open country" },
+        { "type": "Standing crops", "view": "yes", "fire": "no", "nvd": "-", "note": "movement through them can be seen" },
+        { "type": "Woods and thick vegetation", "view": "yes", "fire": "some", "nvd": "yes", "note": "from air and ground observation; shells burst in the branches" },
+        { "type": "Buildings and walls", "view": "yes", "fire": "small arms and splinters", "nvd": "-", "note": "isolated ones are ranging marks" }
+      ]
+    },
+    "deadGround": { "src": "IC s23.3", "basis": "D", "rule": "Ground a soldier cannot see from his position. It is dead only in relation to one observer. Troops in it are safe from observed fire, not from indirect fire, and the enemy often plans fire on it." }
+  },
+
+  "fieldOfFire": {
+    "basis": "D",
+    "minimumPrimaryTaskM": { "value": 200, "src": "IBB p279 (s53.11); plus the area under low wire between that distance and the trenches" },
+    "minimumAcceptableM": { "value": 100, "src": "IC s72 (Terrain)" },
+    "desirableAutomaticM": { "value": [270, 500], "src": "IC s72 (Terrain)" },
+    "platoonPositionM": { "value": 400, "src": "IC s77.2; IBB p297 (position sited for a field of fire up to 400 m)" },
+    "rule": "Cover and concealment are never given up for fields of fire (IC s72; IBB p279).",
+    "grade": { "good": ">= 270 m", "marginal": "100-270 m", "poor": "< 100 m", "basis": "E (grades built from the figures above)" }
+  },
+
+  "countryClasses": {
+    "note": "How the pamphlet itself classes country by the length of field of fire and observation. The lens can derive the same class from the viewshed at a point.",
+    "basis": "D",
+    "rows": [
+      { "id": "open", "limitM": null, "src": "IBB p145", "use": "armour and infantry can both lead; open tankable country" },
+      { "id": "close", "limitM": [400, 500], "src": "IBB p145", "use": "field of fire and observation 400-500 m or less; infantry lead; short-range anti-tank weapons can be used by the enemy" },
+      { "id": "veryClose", "limitM": [100, 200], "src": "IBB p146", "use": "100-200 m or less because of built-up area, jungle or mountains; the going may still be good" }
+    ]
+  },
+
+  "observation": {
+    "eyeHeightM": { "standing": 1.6, "kneeling": 1.1, "prone": 0.4, "vehicleCommander": 2.4, "tankCommander": 2.6, "observationPost": 3.0, "basis": "E" },
+    "dayRangeM": { "nakedEye": 1500, "binocular": 4000, "opticalOP": 6000, "basis": "E", "note": "detection of a man-sized target in good visibility; never more than the visibility limit below" },
+    "nightDevices": {
+      "src": "IBB Annex D App 2-3, pp405-407; pp408-409 (sights under development)",
+      "basis": "D",
+      "rows": [
+        { "device": "AN/PVS-4 (image intensifier), with MG1A3", "moonM": 450, "starM": 300, "note": "also fits G3 and RPG-7" },
+        { "device": "AN/TVS-5A (image intensifier), with 106 mm RR", "moonM": 1000, "starM": 600 },
+        { "device": "AN/TAS-4A thermal, with AN/UAS-12A, TOW / Green Arrow", "tiM": 3750 },
+        { "device": "AN/TAS-6 thermal, with AN/UAS-11 night vision sight, tripod", "tiM": 3000, "note": "reconnaissance, patrolling, surveillance" },
+        { "device": "AN/PVS-5A goggles", "m": [0.25, 250], "note": "night driving, sentry duty, low-flying helicopter detection" },
+        { "device": "Night vision binocular GP/NVB4A", "m": [800, 1000], "note": "from pp408-409" },
+        { "device": "Artillery observer with night observation devices", "m": 1200, "src": "IBB p200 (s44.2d)" },
+        { "device": "Tank, driver / gunner / commander", "rows": [
+          { "tank": "T-59 M Type-II (infra-red)", "driverM": 200, "gunnerM": 800, "commanderM": 800 },
+          { "tank": "T-69 II M, T-69 II MP, T-85 II AP (image intensifier)", "driverM": 75, "gunnerM": 800, "commanderM": 800 },
+          { "tank": "T-80 UD (image intensifier)", "driverM": [150, 300], "gunnerM": [600, 800], "commanderMoonM": [1200, 1400], "commanderStarM": [800, 1000] }
+        ] },
+        { "device": "Tank thermal sight (being developed)", "detectM": 2500, "engageM": 1800, "src": "IBB p408" },
+        { "device": "BMP-I / II sight (planned)", "detectM": 1500, "engageM": 1000, "src": "IBB p408" },
+        { "device": "Passive night observation device, thermal (proposed)", "m": [2500, 3000], "src": "IBB p408" }
+      ]
+    },
+    "radar": { "src": "IC s68", "basis": "D", "battlefieldSurveillanceM": 20000, "infantryRadarM": [2000, 3000], "note": "The 20 km figure is cut back by built-up areas, jungle and vegetation, dunes and raised ground." },
+    "nightFiring": { "src": "IBB p214 (s44)", "basis": "D", "tankMainGunWithNVDM": 800, "tankByRegistrationM": 1600 }
+  },
+
+  "light": {
+    "basis": "E",
+    "note": "Calculated from the date, time and place; needs no data. Doctrine names two night levels, moonlight and starlight (IBB Annex D), and says the phase of the moon matters (IBB p201).",
+    "day": "sun altitude >= -0.83 degrees",
+    "twilight": "sun altitude -12 to -0.83 degrees",
+    "moonlight": "night, moon altitude >= 5 degrees and illuminated fraction >= 0.25",
+    "starlight": "night, otherwise"
+  },
+
+  "visibilityRules": {
+    "basis": "E",
+    "note": "Doctrine says rain, dust, mist, haze and fog reduce the effectiveness of night vision devices (IBB p201) but gives no figures; the caps below are my proposal. The grid is NOAA GSOD, 2016-2025, 174 stations, on the climate grid (5 arc-minutes); read it as what the nearest airport sees. GSOD gives a DAILY MEAN view, so it understates short fog episodes; haze is a proxy (a view of 3 km or less on a day with no fog, rain, snow, hail or thunder flag, so it also catches dust and smoke). An ordinary day on the plains has a mean view of 4-5 km, which is why the proxy uses 3 km, not 5.",
+    "grid": {
+      "file": "terrain-bundle/visibility/visibility.json (+ .bin)",
+      "layers": ["vis_mean_NN: mean view, 0.1 km, capped at 16 km", "lt2km_NN: % of days with a view under 2 km", "haze_NN: % of days, proxy above", "fog_NN: % of days with the fog flag", "dist: km to the nearest usable station"],
+      "trust": "dist over 100 km: say so on the card; Gilgit-Baltistan and the far south-west of Balochistan are 150 km or more from a usable station (Skardu 153 km, Gilgit 187 km)"
+    },
+    "rangeLimit": "visual detection range = min(device range, meteorological visibility)",
+    "assumedView": { "fogDayKm": 0.5, "hazeDayKm": 2.0, "otherwise": "vis_mean of the month", "basis": "E" },
+    "nvdCap": {
+      "imageIntensifier": "min(device range, 0.5 x view)",
+      "thermal": "no cap in haze or dust; 0.5 x view on a fog day",
+      "note": "On an ordinary 4-5 km day the cap does not bite (devices reach 0.3-1 km); it does in fog and thick haze. Example: fog day, view 0.5 km, image intensifier cut to about 250 m."
+    },
+    "cardWording": "In <month> at <place>: fog on N % of days, view 3 km or less on M %, mean view X km; the nearest station is D km away."
+  },
+
+  "standoff": {
+    "basis": "D",
+    "rows": [
+      { "what": "Forming-up place from the objective, to stay out of enemy NVD detection", "m": [1000, 1200], "src": "IBB p201" },
+      { "what": "Tanks of the base of fire held out of the enemy's NVD / anti-tank weapon range", "m": [2500, 3000], "src": "IBB p214" },
+      { "what": "Observed enemy defensive fire at night with NVDs", "m": 1000, "src": "IBB p200" },
+      { "what": "Mask position, weapons placed ahead of the main position for more range by day", "m": [300, 500], "src": "IBB p340 (s63.2)" },
+      { "what": "Safe distance of own troops from 105 mm / medium (130 mm, 155 mm) artillery", "m": [200, 400], "src": "IC s106.7" },
+      { "what": "Recoilless rifle back blast danger zone", "ft": "100 behind the breech, 175 each side, 200 more not to face it", "src": "IBB p39" },
+      { "what": "Baktar Shikan back blast", "m": 40, "src": "IBB p69" }
+    ]
+  },
+
+  "echelonOrganic": {
+    "note": "Which weapon channels an echelon holds, so one 'Inf' symbol can be read at the right size. Figures per weapon are in Symbols.json. Counts are not given here.",
+    "basis": "D",
+    "rows": [
+      { "echelon": "13", "name": "Section", "weapons": ["rifle", "light machine gun", "RPG-7 / Energa"], "src": "IC s2-s19" },
+      { "echelon": "14", "name": "Platoon", "weapons": ["as section"], "src": "IC" },
+      { "echelon": "15", "name": "Company", "weapons": ["2 x 106 mm RR", "2 x 60 mm mortar", "1 x 40 mm GLHMG"], "src": "IBB p37-38 (s7.1, one weapon section per rifle company)" },
+      { "echelon": "16", "name": "Battalion", "weapons": ["81 mm mortar platoon", "Baktar Shikan (ATGM) platoon", "12.7 mm AA MG", "Stinger / Anza (offensive formations only)", "assault pioneer platoon"], "src": "IBB pp7-8 (scale of weapons), p80 (Stinger)" }
+    ]
+  },
+
+  "frontage": {
+    "note": "Doctrinal frontages and depths read from the pamphlets, to sit beside the table in GroundGuideFootprint.ts. Diagram figures marked 'x' in Annex V are printed with a superscript x whose meaning the page does not state; both values are kept. Annex U is a diagram with several options and some labels are ambiguous.",
+    "basis": "D",
+    "rows": [
+      { "unit": "Section", "frontageM": 90, "gapM": 90, "src": "IBB Annex U, p479 (extended frontages)" },
+      { "unit": "Section", "frontageM": 100, "gapM": 150, "flankM": 50, "src": "IBB Annex U App 5, p480" },
+      { "unit": "Platoon locality", "frontageM": 600, "gapM": 300, "flankM": 250, "src": "IBB Annex U App 5, p480" },
+      { "unit": "Company", "frontageM": 2000, "depthM": [600, 800], "src": "IBB Annex U App 5, p480" },
+      { "unit": "Company locality", "frontageM": 1370, "depthM": [200, 300], "src": "IBB Annex U, p479 (platoon posts 450 m apart)" },
+      { "unit": "Company, battalion two up", "frontageM": 1500, "gapM": 500, "flankM": 500, "src": "IBB Annex U App 6, p481" },
+      { "unit": "Battalion, two companies up", "frontageM": 4500, "depthM": [3000, 4000], "src": "IBB Annex U App 6, p481" },
+      { "unit": "Battalion, three companies up", "frontageM": 6500, "depthM": [2500, 3000], "src": "IBB Annex U App 6, p481" },
+      { "unit": "Battalion along an anti-tank ditch", "frontageM": [2750, 4115], "frontageXM": [3000, 4500], "depthM": [1850, 2757], "depthXM": [2000, 3000], "companyM": 1200, "gapM": 450, "gapXM": 500, "maskPositionM": [900, 1500], "src": "IBB Annex V App 9, p485" },
+      { "unit": "Battalion, normal terrain", "frontageM": 3000, "depthM": 2000, "src": "IC s113 (capabilities of the infantry battalion, defence)" },
+      { "unit": "Battalion, obstacle-oriented defence", "frontageM": 6000, "depthM": 3000, "src": "IC s113 (same)" },
+      { "unit": "Mountain infantry battalion, defence", "frontageM": [6000, 8000], "src": "IC s113 (modified battalions)" },
+      { "unit": "Battalion, set-piece attack in plains", "frontageM": 400, "depthM": [1000, 1500], "src": "IC s113 (same)" },
+      { "unit": "Infantry division, defence", "frontageM": [20000, 30000], "frontageObstacleM": [60000, 80000], "src": "IC s113 (infantry and mountain divisions)" }
+    ],
+    "rules": [
+      { "rule": "The frontage of a company, platoon or section cannot be extended; a battalion's frontage grows by widening the gaps.", "src": "IC s84.6b" },
+      { "rule": "Platoon and section frontages must stay within what a commander controls by word of mouth. Gaps are covered by fire, minefields and link patrols.", "src": "IC s72" },
+      { "rule": "In built-up areas a platoon's frontage should never exceed 100 m, ideally one house.", "src": "IC s55" }
+    ]
+  },
+
+  "obstacles": {
+    "note": "The pamphlets' own figures for the water and earth obstacles that the bundle carries as classes canal (20), distributary (21), drain (22), bund (25), embankment (24). Feet converted at 0.3048.",
+    "basis": "D",
+    "rows": [
+      { "type": "Link canal", "widthM": [90, 125], "depthM": [3, 5], "waterLevelM": [2, 4], "bankHeightM": [1, 2], "bankWidthM": 3, "note": "in-cut, below ground; usually not used for irrigation", "src": "IC s85.3a" },
+      { "type": "Irrigation canal", "widthM": [60, 90], "bankHeightM": [1, 3], "bankWidthM": [3, 5], "note": "in-filled, raised above the ground", "src": "IC s85.3b" },
+      { "type": "Combined canal", "widthM": [60, 90], "depthM": [3, 5], "bankHeightM": [2, 3], "bankWidthM": 3, "note": "home banks near the border raised a further 1-2 m astride the main enemy approaches", "src": "IC s85.3c" },
+      { "type": "Irrigation canal, head", "widthM": [61, 91], "note": "200-300 ft at the head, narrowing to the tail; at least one bank has a service track and bund; seepage makes marshy patches", "src": "IBB Annex P, p464 (s3)" },
+      { "type": "Feeder canal", "depthM": [2.4, 3.0], "note": "over 2000 cusecs", "src": "IBB Annex P, p464 (s5)" },
+      { "type": "Drain", "depthM": [1.8, 4.6], "note": "mostly dry; poor going in the wet season", "src": "IBB Annex P, p465 (s7)" },
+      { "type": "Ditch", "widthM": 24, "widthRangeM": [6, 30], "depthM": [2, 3], "bundHeightM": [2, 3], "bundWidthM": [1, 2], "note": "only the home bank is high (the bund); effective anti-tank obstacle at 24 m or more if kept up", "src": "IC s85.4" },
+      { "type": "Anti-tank ditch", "widthM": [6.1, 15.2], "depthM": [1.5, 1.8], "bundHeightM": [1.5, 3.0], "note": "far bank at ground level; the spoil raises the home bank", "src": "IBB Annex P, p465 (s8)" },
+      { "type": "Defence drain", "widthM": [24, 30], "depthM": [2.4, 3.0], "bundHeightM": [3.4, 4.6], "note": "dual purpose; home bank raised for observation and fire; tracks behind it", "src": "IBB Annex P, p465 (s9)" },
+      { "type": "Undammed river, dry season", "wetSpanM": 152, "note": "over 500 ft wet span; sandy bed, marshy ground each side; flood bunds give observation", "src": "IBB Annex P, p463 (s2)" },
+      { "type": "Dammed river, dry season", "note": "water belt negligible; crossable at most places; the flow can be raised from the dams", "src": "IBB Annex P, p463 (s1)" }
+    ],
+    "rules": [
+      { "rule": "The enemy's amphibious, fording and bridging means have reduced the obstacle value of canals. Brick-lined canals with water 1-1.5 m below the bank still trouble tanks; banks as deep as 6-9 m may have to be cut.", "src": "IC s85.3d-e" },
+      { "rule": "An enemy minefield on a water obstacle is generally 600-900 m deep.", "src": "IC s70" },
+      { "rule": "Protective minefields are laid close to the forward defended localities and covered by fire, normally up to 250-300 m deep.", "src": "IC s107" }
+    ],
+    "notInBundle": "Ditch Cum Bund (DCB) lines and anti-tank ditches are not in the NCGDB feed (only the bund class is). The lens reads them from the symbols on the map: AT Ditch, Obstacle Line, minefields, wire, and the DCB Facility."
+  },
+
+  "reverseSlope": {
+    "src": "IBB pp357-359 (s69)",
+    "basis": "D",
+    "uses": ["forward slope untenable or lost", "better fields of fire on the reverse slope", "avoid a dangerous salient or re-entrant", "possession of the forward slope is not essential for observation", "deception and surprise"],
+    "needs": "control of the crest by fire or occupation; flanking features that can make the crest and forward slope untenable",
+    "limits": "hard to keep observation; direct-fire range is short; obstacles on the forward slope cannot be covered by direct fire; guard against being seen from a distant feature or the flank",
+    "note": "Dunes in desert and tops in mountains lend themselves to it."
+  },
+
+  "surfaceBlockers": {
+    "note": "Heights above the DSM that a 30 m elevation cannot show, as possible blockers of a line of sight, and the share of cells of that class that carry them (a 30 m cell of 'built-up' is partly street). The lens decides per patch by a fixed hash (grainPx = the patch size in 33 m cells: 4 for fields, about 130 m), so the result is the same every time and patchy like real ground, not salt and pepper. Use the pessimistic end for fields of fire and observation (they may be blocked) and say 'may be seen' for concealment. The share of cropland that is tall comes from cropCalendar; the share of built-up cells from the building-density layer (builtShareByDensity).",
+    "basis": "E",
+    "builtShareByDensity": [0, 0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 0.95],
+    "builtShareNote": "index = bld layer density class (0 none, 1 scattered, 2 sparse, 3 open, 4 medium, 5 dense, 6 very dense, 7 reserved); used when the bld tile is loaded, else 0.5",
+    "rows": [
+      { "class": 3, "name": "Built-up area", "heightM": [3, 8], "share": "bld", "note": "the part of a town the elevation loses: streets and roofs averaged into one height" },
+      { "class": 1, "name": "Tree cover", "heightM": [0, 4], "share": 0.7, "grainPx": 2, "note": "the DSM holds part of the canopy" },
+      { "class": 31, "name": "Forest (enclosed)", "heightM": [0, 6], "share": 1, "note": "the DSM holds part of the canopy" },
+      { "class": 25, "name": "Bund (1-2 m)", "heightM": [1, 2], "share": 1, "src": "classes.yaml" },
+      { "class": 24, "name": "Embankment / bund over 2 m", "heightM": [2, 4], "share": 1 },
+      { "class": 49, "name": "Wall / fence", "heightM": [1.5, 2.5], "share": 1 },
+      { "class": 29, "name": "Walled orchard", "heightM": [3, 6], "share": 1 },
+      { "class": 30, "name": "Orchard / garden", "heightM": [3, 5], "share": 0.6, "grainPx": 2 },
+      { "class": 32, "name": "Graveyard (walls)", "heightM": [1.5, 2.5], "share": 0.5 },
+      { "class": 28, "name": "Railway", "heightM": [1, 3], "share": 0.5 },
+      { "class": "2, 23", "name": "Cropland, irrigated cropland", "heightM": [0, 2], "share": "crop", "grainPx": 4, "note": "tall crops only (1.5 m or more): the share is the area share of the crops that are tall in the month" },
+      { "class": 26, "name": "Cutting", "heightM": [-3, -1], "share": 0, "note": "below ground: cover, not a blocker" }
+    ]
+  },
+
+  "cropCalendar": {
+    "basis": "E",
+    "note": "PROPOSAL, from general knowledge of the crops of the irrigated plains; to be replaced by a published crop calendar (FAO GIEWS country calendar, Sacks et al. 2010) or the owner's own. tall = tall enough to hide a standing man (about 1.5 m or more); hides = hides a crouching or prone man (about 0.8 m or more). Never raise concealment from this table alone: use it to LOWER the concealment of cropland in months when little is tall.",
+    "zone": "irrigated plains of Punjab and Sindh",
+    "crops": [
+      { "crop": "Wheat", "share": 0.45, "hides": [2, 3, 4], "tall": [], "note": "sown Nov-Dec, harvested Apr-May" },
+      { "crop": "Mustard / rapeseed", "share": 0.02, "hides": [1, 2, 3], "tall": [1, 2, 3] },
+      { "crop": "Sugarcane", "share": 0.08, "hides": [5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3], "tall": [6, 7, 8, 9, 10, 11, 12, 1, 2], "note": "planted Feb-Mar or Sep-Oct, cut Nov-Mar" },
+      { "crop": "Maize", "share": 0.08, "hides": [5, 6, 7, 8, 9, 10], "tall": [6, 7, 8, 9] },
+      { "crop": "Cotton", "share": 0.12, "hides": [7, 8, 9, 10, 11], "tall": [] },
+      { "crop": "Rice", "share": 0.15, "hides": [8, 9, 10], "tall": [], "note": "flooded Jun-Oct: also wet going" }
+    ],
+    "shareOfCropland": "share = my guess of the crop's share of cropland area on the irrigated plains (about 10 % is short or fallow); replace with the owner's crop mix or a mapped crop type"
+  },
+
+  "threatSets": {
+    "note": "What 'the enemy' brings when the planner picks a type of threat on the threat axis. Weapons are Symbols.json keys, so their ranges are the ones in the `Rng` field. The lens uses `max` (what can reach you).",
+    "basis": "E",
+    "default": "mixed",
+    "sets": {
+      "armour": { "label": "Armour", "keys": ["15120203", "15120202", "15111200", "15120103"] },
+      "infantry": { "label": "Infantry", "keys": ["15110100", "15110202", "15111700", "15110303"] },
+      "artillery": { "label": "Artillery", "keys": ["15110902", "15110905", "15111403", "15111600"] },
+      "mixed": { "label": "Combined arms", "keys": ["15120203", "15111200", "15110100", "15110202", "15111700", "15110902", "15111403"] }
+    }
+  },
+
+  "effects": {
+    "note": "The judgement rules behind the OCOKA card: what each aspect means for the task, the test the lens computes, and where the rule comes from. The thresholds are the doctrine figures above; where a rule combines them the basis is E. The card gives a reason and a nearest better place, never a score.",
+    "rows": [
+      { "id": "obsn.wide", "aspect": "O", "for": "defence", "test": "share of ground seen from 2 m above the point within 5 km >= 30 percent (the same test as the ITG reason O)", "src": "IBB p282 s54.3 (maximum observation while denying it to the enemy); rules.json grotbc.itg.reasons.O", "basis": "E" },
+      { "id": "obsn.exposed", "aspect": "O", "for": "attack", "test": "the same viewshed read the other way: the point may be seen from the enemy's ground and from the high ground round it", "src": "IC s23.1", "basis": "E" },
+      { "id": "fof.primary", "aspect": "O", "for": "defence", "test": "clear line of sight toward the threat of 200 m or more (minimum for a primary task), 270-500 m desirable, below 100 m poor", "src": "IBB p279 s53.11; IC s72", "basis": "D" },
+      { "id": "fof.weapon", "aspect": "O", "for": "defence", "test": "clear sight against the weapon's own `eff` range from Symbols.json: say how much of the weapon's range the ground wastes", "src": "IBB p38 (RR 2000 m direct) read with IBB p145-146 (country classes)", "basis": "E" },
+      { "id": "fof.dead", "aspect": "O", "for": "both", "test": "dead ground inside the weapon's eff range in front of the position; it must be covered by another weapon or by obstacles and patrols", "src": "IC s23.3; IBB p40 s8.2c (dead ground of one rifle covered by another)", "basis": "D" },
+      { "id": "cover.order", "aspect": "C", "for": "defence", "test": "never trade cover and concealment for fields of fire: warn when fields of fire are good and concealment or cover is poor", "src": "IC s72; IBB p279", "basis": "D" },
+      { "id": "cover.nvd", "aspect": "C", "for": "both", "test": "masked from the enemy observer by undulating ground, woods or buildings; check against NVD range for the light and the visibility of the month", "src": "IC s23.1e, s23.2a, s23.2e; IBB p201", "basis": "D" },
+      { "id": "cover.indirect", "aspect": "C", "for": "both", "test": "cover from indirect fire: troops in dead ground are safe from observed fire, not from indirect fire; the enemy plans fire on dead ground", "src": "IC s23.3", "basis": "D" },
+      { "id": "obst.front", "aspect": "O", "for": "defence", "test": "an obstacle (canal, ditch, wet or soft ground, wire, minefield) in front of the position, inside the weapon's eff range and in clear sight, so it is covered by fire", "src": "IC s72, s107 (obstacles covered by fire; protective minefield 250-300 m deep)", "basis": "D" },
+      { "id": "obst.value", "aspect": "O", "for": "both", "test": "an obstacle slows or channels, it does not stop: name the crossings (bridges, fords, cuts in the bank, banks 6-9 m deep that can be cut) and the enemy's bridging means", "src": "IC s85.3d-e", "basis": "D" },
+      { "id": "obst.classes", "aspect": "O", "for": "both", "test": "classify the ground as unrestricted / restricted / severely restricted from GO / SLOW-GO / NO-GO for the mover, dry and after rain", "src": "NPS (existing and reinforcing obstacles; go / slow-go / no-go); FM533 ch 6", "basis": "D" },
+      { "id": "key.itg", "aspect": "K", "for": "both", "test": "ITG candidates within reach, ranked by the reasons H O R P C J, with what each controls; designation (ITG, MITG) is the commander's", "src": "NPS (key and decisive terrain); rules.json grotbc.itg", "basis": "D" },
+      { "id": "key.mask", "aspect": "K", "for": "defence", "test": "ground 300-500 m ahead that gives extra range by day (mask position) and is out of the enemy's observation", "src": "IBB p340 s63.2", "basis": "D" },
+      { "id": "avenue.corridor", "aspect": "A", "for": "both", "test": "a corridor of GO ground at least as wide as the echelon's frontage (frontage table), with the width, the NO-GO crossings and the tankable bridges on it", "src": "FM533 ch 6 (avenue of approach: ease of movement plus dispersion for a force large enough); IBB Annex U", "basis": "D" },
+      { "id": "avenue.armour", "aspect": "A", "for": "defence", "test": "where armour can come (tankable GO or SLOW-GO ground, class 60+ routes), the layout is built on tank-defeating defences first: anti-tank weapons and obstacles have priority", "src": "IBB p282 s54.3", "basis": "D" },
+      { "id": "avenue.standoff", "aspect": "A", "for": "attack", "test": "forming-up place and base of fire at least 1000-1200 m from the objective to stay out of enemy NVD range; tank base of fire inside the 800 m night firing range", "src": "IBB p201, p214", "basis": "D" },
+      { "id": "avenue.closeCountry", "aspect": "A", "for": "attack", "test": "country class from the viewshed: close (400-500 m or less) or very close (100-200 m or less) means the infantry leads and the enemy can use short-range anti-tank weapons", "src": "IBB p145-146", "basis": "D" },
+      { "id": "reverse.slope", "aspect": "O", "for": "defence", "test": "a crest between the position and the enemy that the defender can control by fire from flanking features; say what is lost: observation and direct-fire range", "src": "IBB pp357-359 s69", "basis": "D" },
+      { "id": "weather.month", "aspect": "O", "for": "both", "test": "how often the month is foggy, hazy or dusty at the place (NOAA GSOD grid) and what that does to observation and to night vision devices", "src": "IBB p201; NOAA GSOD", "basis": "E" }
+    ]
+  },
+
+  "threatAxis": {
+    "basis": "E",
+    "note": "Where the enemy is: an option the planner repositions on the map, not read from enemy symbols (user, 2026-11-10). By default the threat comes from the front.",
+    "default": "front",
+    "modes": {
+      "front": "the threat bearing is the unit's front: groundGuide.footprint.bearingDeg (0 = north today), so the frontage and the threat agree",
+      "fixed": "a bearing set by dragging the handle on the map (stored apart from the footprint facing)",
+      "allRound": "all-round: judge every direction and report the worst, as the footprint's worst-of-4 / circle modes do"
+    },
+    "sectorDeg": { "narrow": 60, "normal": 90, "wide": 180 },
+    "handle": "a draggable arrow on the map at the symbol or at the area's centre; dragging its tip turns the bearing, dragging its body moves the origin; follows the symbol unless it has been moved",
+    "persist": "with the plan, like the Gr Scope target",
+    "keepsToGrotbc": "the GROTBC verdict and enforce mode do not read the threat axis"
+  },
+  "policy": {
+    "ownFireUses": "eff",
+    "threatUses": "max",
+    "wording": "Say 'may be seen from' and 'check on the ground', never 'hidden' or 'safe', from elevation alone (30 m cells show tree tops and roofs, not 1-2 m bunds).",
+    "enforce": "Enforce mode stays on the GROTBC GO / NO-GO rule in the OCOKA lens. An OCOKA verdict is a judgement call and never blocks a placement.",
+    "keys": "GROTBC keeps its keys (G R O T B C K D S P H V and Esc). OCOKA uses others."
+  }
+}

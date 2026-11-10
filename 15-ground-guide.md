@@ -954,6 +954,49 @@ finest zoom with every section on; `guide.sectionsText(point)` → Copy as Text 
 routing network). Test panel: Ground Guide → Ground, Roads, Buildings & Weather → *Log ground at centre*, and *Log*
 beside *Density circle* for the road density alone.
 
+### OCOKA lens: the data (not built yet)
+
+The planned OCOKA lens (a second reading of the same bundle, switched from GROTBC inside the Ground Guide) has its data
+ready; no lens code exists yet. `MS/Engines/OCOKA/Ocoka.ts` is a separate, older avenue finder and is unchanged.
+
+- **`Rng` in `MS/Data/Symbols.json`** (90 entries: small arms, MGs, grenade launchers, AD guns and missiles, anti-tank guns,
+  recoilless rifles, howitzers, mortars, rocket launchers, anti-tank rockets and missiles, tanks, APC, infantry / armour /
+  anti-tank / artillery / mortar / AD units, sensor radar). Read it with `SymbolMetadataService.getByKey(key)?.Rng`.
+  `dir`, `at`, `ind`, `ad` are `[min, eff, max]` metres (direct fire vs troops, vs armour, indirect, vs aircraft); `nv` is the
+  weapon's night-sight range `{ moon, star, ti }`, `nvObs` the crew's best night observation range, `obs` a sensor's reach.
+  `eff` is the figure to plan own fire on, `max` what to assume can reach you. `b` is the basis of the weakest figure:
+  **D** read from a pamphlet in `Material/` (IC, IBB), **C** from `WeaponEqptV3.json`, **T** a typical public figure,
+  **E** my estimate; `s` says where each figure comes from. T and E are for the planner to correct, they are not doctrine.
+- **`MS/Data/OcokaDoctrine.json`**: everything that is not one symbol's own range: the pamphlets' ground-appreciation headings
+  (fire position, observation, cover from fire, cover from view, cover from NVDs and surveillance radars, obstacles,
+  approaches), field-of-fire minima (100 / 200 m, 270-500 m desirable), country classes by field of fire (close 400-500 m, very
+  close 100-200 m), night-vision ranges, stand-offs, frontages and depths, canal / ditch / anti-tank ditch dimensions,
+  reverse slope, surface blockers, a crop calendar (a proposal), threat sets, the threat-axis option and 19 judgement rules.
+  The D figures come from Pakistan Army pamphlets: the file carries a handling note, keep it under the same terms.
+- **Not in the bundle:** Ditch Cum Bund lines and anti-tank ditches (the NCGDB feed has only the bund class), enemy-placed
+  obstacles, and the enemy's direction. The lens reads obstacle symbols from the map and the planner sets the threat axis.
+- **Visibility grid** (`visibility/visibility.json` + `.bin` in the bundle, manifest `grotbc.visibility`, source `gsod`):
+  NOAA NCEI Global Summary of the Day, 2016-2025 (2025 stops on 24 Aug), 174 stations, on the climate grid (5 arc-minutes,
+  `int16`, 49 layers). Per month `vis_mean_NN` (0.1 km, capped at 16 km), `lt2km_NN` (% of days under 2 km), `haze_NN` (% of
+  days with a view of 3 km or less and no fog / rain / snow / hail / thunder flag: a proxy that also catches dust and smoke),
+  `fog_NN` (% of days with the fog flag), plus `dist` (km to the nearest usable station, read it: over 100 km is a guess,
+  and Gilgit-Baltistan and the far south-west of Balochistan are over 150 km). GSOD gives a daily mean view, so short fog
+  episodes are understated. Daylight and moonlight are calculated, not stored. **Licence:** NCEI allows non-commercial use
+  and says that for non-U.S. locations the data or any derived product shall not be provided to other users or used for
+  the re-export of commercial services: keep this layer inside the already restricted bundle, and leave it out of a bundle
+  that goes to another party (`package.py --visibility <missing folder>`, or delete `work/visibility`). Rebuild, from
+  `tools/terrain-pipeline`: `scripts/fetch_gsod.py --years 2016-2025 --workers 3`, then `scripts/visibility.py`, then
+  `scripts/add_visibility_to_bundle.py --bundle ../../MS/Data/terrain-bundle --backup work/backup/manifest_20261110.json`.
+- **Test program** (`tools/ocoka-test/`, see its README): the sight engine, going flood, cover, visibility and light on the
+  bundle, with 37 checks (`node tools/ocoka-test/run.mjs`) and an interactive page. Result of 2026-11-10: a 90 degree wedge
+  to 2 km costs 0.2 ms (0.3-0.5 ms in the browser), the all-round 5 km view 5-6 ms; 99.3 % agreement with an independent
+  line-of-sight check; and the bare elevation is not enough (towns, crops and bunds change what is seen from 37 % to 0 %), so
+  the lens reports a range and says "may be seen".
+- **Ranges that differ from the doctrine** in `WeaponEqptV3.json` (left unchanged): G-3 274 m (doctrine 300 m effective,
+  400-500 m confident), 106 mm RR 1300-1400 m (2000 m direct, 7600 m indirect), GLHMG 600 m (800 m on emplacements, 1750 m on
+  troops), RPG-7 500 m (180-275 m to destroy a tank), 81 mm mortar 4100-4200 m (4550 m), 120 mm mortar 6747 m (5700 m POF,
+  6602 m Brandt), 105 mm how 11000 m (11274 m), 130 mm gun 27150 m (27478 m).
+
 ### When the terrain data is unavailable
 
 `guide.status` is `{ state, error, retryInMs }` with `state` one of `disabled`, `no-bundle-url`,

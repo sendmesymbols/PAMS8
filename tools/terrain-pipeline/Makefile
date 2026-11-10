@@ -121,6 +121,17 @@ $(W)/climate/.done: $(W)/raw/.done
 	$(PY) $(S)/climate.py --grid $(W)/grid/grid.json --raw $(W)/raw --out $(W)/climate
 	@touch $@
 
+# GSOD station records (network; fetch.py skips sources that carry fetched_by) and the visibility grid built from them
+gsod: $(W)/raw/gsod/.done
+$(W)/raw/gsod/.done: $(W)/raw/.done
+	$(PY) $(S)/fetch_gsod.py --out $(W)/raw --years 2016-2025 --workers 3
+	@touch $@
+
+visibility: $(W)/visibility/.done
+$(W)/visibility/.done: $(W)/raw/gsod/.done $(W)/climate/.done
+	$(PY) $(S)/visibility.py --raw $(W)/raw --climate $(W)/climate --lock sources.lock --out $(W)/visibility
+	@touch $@
+
 population: $(W)/population/.done
 $(W)/population/.done: $(W)/raw/.done
 	$(PY) $(S)/population.py --raw $(W)/raw --lock sources.lock --out $(W)/population
@@ -135,7 +146,7 @@ $(W)/profiles/.done: $(W)/classify/.done rules.yaml classes.yaml
 
 # 6 ---------------------------------------------------------------- XYZ PNG tiles
 tile: $(W)/tile/.done
-$(W)/tile/.done: $(W)/profiles/.done $(W)/terrain/.done $(W)/climate/.done $(W)/population/.done $(W)/buildings/.done $(W)/network/.done $(W)/settlements/.done $(W)/ground/.done $(W)/kmz/.done
+$(W)/tile/.done: $(W)/profiles/.done $(W)/terrain/.done $(W)/climate/.done $(W)/visibility/.done $(W)/population/.done $(W)/buildings/.done $(W)/network/.done $(W)/settlements/.done $(W)/ground/.done $(W)/kmz/.done
 	rm -rf $(OUT_DIR)
 	$(PY) $(S)/tile.py --grid $(W)/grid --class-tif $(W)/classify/class.tif \
 	    --profiles $(W)/profiles --grotbc $(W)/grotbc --terrain $(W)/terrain --buildings $(W)/buildings --out $(OUT_DIR) --workers $(strip $(WORKERS))
@@ -149,7 +160,7 @@ validate: $(W)/tile/.done
 package: validate
 	$(PY) $(S)/package.py --bundle $(OUT_DIR) --grid $(W)/grid/grid.json \
 	    --rules-json $(W)/profiles/rules.json --rules rules.yaml --lock sources.lock \
-	    --checksums $(W)/raw/checksums.json --grotbc-vector $(W)/grotbc/vector --climate $(W)/climate --population $(W)/population --network $(W)/network --settlements $(W)/settlements --zip out/terrain-bundle.zip
+	    --checksums $(W)/raw/checksums.json --grotbc-vector $(W)/grotbc/vector --climate $(W)/climate --visibility $(W)/visibility --population $(W)/population --network $(W)/network --settlements $(W)/settlements --zip out/terrain-bundle.zip
 
 # steps 5-8 only (rules/classes changed; class.tif unchanged)
 rebuild-rules: clean-profiles clean-tile package
@@ -168,6 +179,7 @@ clean-grotbc:   ; rm -rf $(W)/grotbc
 clean-classify: ; rm -rf $(W)/classify
 clean-terrain:  ; rm -rf $(W)/terrain
 clean-climate:  ; rm -rf $(W)/climate
+clean-visibility: ; rm -rf $(W)/visibility
 clean-population: ; rm -rf $(W)/population
 clean-network:  ; rm -rf $(W)/network
 clean-buildings: ; rm -rf $(W)/buildings
