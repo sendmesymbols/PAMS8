@@ -122,7 +122,7 @@ def cond_code(text: str) -> int:
 def read_osm(gdb: str):
     import pyogrio.raw as raw
     import shapely
-    cols = ["ID", "OSM_NAME", "CLAZZ", "SOURCE", "TARGET", "KM", "KMH", "REV_COST"]
+    cols = ["ID", "OSM_ID", "OSM_NAME", "CLAZZ", "SOURCE", "TARGET", "KM", "KMH", "REV_COST"]
     meta, fid, geom, data = raw.read(gdb, layer="pkroads", columns=cols, return_fids=True)
     d = dict(zip(meta["fields"], data))
     order = np.argsort(fid, kind="stable")
@@ -167,6 +167,43 @@ def read_ncgdb(gdb: str, tk: dict, msr_cfg: dict):
                          cond=cond_code(grotbc._s(row.get("CONDITION"))), slides=0))
     log.info("NCGDB roads: %d Pakmap + %d topographic lines", n1, len(lines) - n1)
     return np.array(lines, dtype=object), recs
+
+
+# 2026-11-10: HeiGIT "Planet Road Surface, Width, and Passability" (PlanetScope 2020 and 2024, arterial OSM roads:
+# motorway, trunk, primary, secondary and their links), joined on the OSM way id. Packed into the edge's `pad`
+# (GeoCore requires the field's name and ignores its value):
+#   bits 0-1 surface 2024 (0 not covered, 1 paved, 2 unpaved, 3 not classified)
+#   bits 2-3 width class (0 none, 1 < 3.5 m light vehicles only, 2 3.5-5.5 m single lane heavy, 3 > 5.5 m two lanes)
+#   bit 4    paved between 2020 and 2024 (was unpaved in 2020)
+#   bits 5-7 humanitarian passability score 1 (best) .. 6 (worst), 0 none
+# It never raises what the NCGDB says of a road: the card shows it beside the NCGDB record, and only as a caution.
+DEFAULT_PLANET = r"D:\Imagery\Misc\Planet Road Surface, Width, and Passability Data\heigit_PK_planet_roadsurface_lines.gpkg"
+HG_SURF = {"paved": 1, "unpaved": 2, "unknown": 3}
+
+
+def read_planet(path: str | None) -> dict[int, int]:
+    """OSM way id -> packed HeiGIT byte (see above); {} when the file is not there."""
+    import pyogrio.raw as raw
+    if not path or not Path(path).exists():
+        log.warning("HeiGIT Planet roads not found (%s): edges carry no satellite surface / width", path)
+        return {}
+    cols = ["osm_id", "DL_road_class_2024", "DL_road_class_2020", "rw_class", "Passability_Numerical_Risk_Score"]
+    meta, _f, _g, data = raw.read(path, columns=cols, read_geometry=False)
+    d = dict(zip(meta["fields"], data))
+    out: dict[int, int] = {}
+    for i in range(len(d["osm_id"])):
+        m = re.search(r"(\d+)$", str(d["osm_id"][i] or ""))
+        if not m:
+            continue
+        s24 = HG_SURF.get(str(d["DL_road_class_2024"][i] or "").lower(), 0)
+        s20 = str(d["DL_road_class_2020"][i] or "").lower()
+        wc, hp = d["rw_class"][i], d["Passability_Numerical_Risk_Score"][i]
+        wc = int(wc) if wc is not None and np.isfinite(wc) and 1 <= wc <= 3 else 0
+        hp = int(hp) if hp is not None and np.isfinite(hp) and 1 <= hp <= 6 else 0
+        newly = int(s24 == 1 and s20 == "unpaved")
+        out[int(m.group(1))] = s24 | (wc << 2) | (newly << 4) | (hp << 5)
+    log.info("HeiGIT Planet roads: %d OSM ways", len(out))
+    return out
 
 
 def bridge_points(gdb: str):
@@ -421,6 +458,15 @@ def build(args) -> int:
     e["flags"], e["kind"], e["load"], e["tier"], e["xing"] = flags.astype(np.uint16), kind, load, tier, xcode
     e["close"], e["cond"], e["slides"], e["width"], e["srcKind"], e["name"], e["rno"] = close, cond, slides, width, srck, nm, rn
 
+    # HeiGIT satellite surface / width / passability by OSM way id (into `pad`, see read_planet)
+    planet = read_planet(getattr(args, "planet", DEFAULT_PLANET))
+    if planet:
+        way = d["OSM_ID"].astype(np.int64)
+        e["pad"] = np.fromiter((planet.get(int(w), 0) for w in way), dtype=np.uint16, count=n)
+        hit = e["pad"] > 0
+        log.info("HeiGIT Planet roads: %d edges (%.0f km) carry satellite surface / width", int(hit.sum()),
+                 float(e["km"][hit].sum()))
+
     # bridge names: nearest NCGDB bridge point within 30 m of a bridged edge
     bpts, bnames = bridge_points(str(gdb))
     if len(bpts):
@@ -544,6 +590,7 @@ def write_gg_roads(out: Path) -> None:
       magic "GGR1" | count u32 | npts u32
       edge u32[count] | name u32[count] | rno u32[count] | start u32[count+1]   (start: first point of each edge)
       flags u16[count] | xy u16[2*npts] | clazz u8[count] | load u8[count] | xing u8[count]
+      [hg u8[count]]   (2026-11-10, optional: the HeiGIT satellite byte of `pad`; a reader that stops at xing still works)
     xy spans the tile plus half a tile each side (edges overhang the tile they are filed in):
       x = tileMinX - size/2 + xy/65535 * 2*size,  y = tileMaxY + size/2 - xy/65535 * 2*size   (Web Mercator)."""
     e = np.fromfile(out / "edges.bin", dtype=EDGE_DTYPE)
@@ -595,6 +642,7 @@ def write_gg_roads(out: Path) -> None:
             (first[s:t + 1] - first[s]).astype("<u4").tobytes(),
             r["flags"].astype("<u2").tobytes(), q.tobytes(),
             r["clazz"].astype("u1").tobytes(), r["load"].astype("u1").tobytes(), r["xing"].astype("u1").tobytes(),
+            (r["pad"] & 0xFF).astype("u1").tobytes(),
         ])
         f = root / str(x) / f"{y}.bin"
         f.parent.mkdir(parents=True, exist_ok=True)
@@ -661,7 +709,8 @@ def header(e, ids, names, glon, rules, args, version: str, out: Path) -> None:
     doc = {
         "format": "pams-road-network", "version": FORMAT_VERSION, "dataVersion": version,
         "source": {"graph": str(args.network), "graphLayer": "pkroads", "key": "oid = pkroads OBJECTID; edges are ordered by it",
-                   "attributes": "NCGDB Roads_updated_2016_Pakmap and Road lines, conflated per edge; class raster for crossings"},
+                   "attributes": "NCGDB Roads_updated_2016_Pakmap and Road lines, conflated per edge; class raster for crossings",
+                   "satellite": f"HeiGIT Planet road surface / width / passability by OSM way id ({getattr(args, 'planet', DEFAULT_PLANET)})"},
         "files": {"nodes": "nodes.bin", "edges": "edges.bin", "geom": "geom.bin", "names": "names.json",
                   "tiles": "tiles/{z}/{x}/{y}.json", "routes": "routes.json"},
         "tiles": {"z": TILE_Z, "quant": QUANT, "cols": ["edge", "clazz", "flags", "load", "xing", "name", "rno", "xy"],
@@ -680,9 +729,17 @@ def header(e, ids, names, glon, rules, args, version: str, out: Path) -> None:
                            "match": "% of the edge's samples on an aligned NCGDB road within matchM",
                            "srcKind": "codebooks.srcKind", "name/rno/xname": "index into names.json (road name, road number, bridge name)",
                            "kmh": "graph free-flow speed (OSM class default), not a march rate",
-                           "g0/gn": "first index and count of intermediate vertices in geom.bin"}},
+                           "g0/gn": "first index and count of intermediate vertices in geom.bin",
+                           "pad": "HeiGIT Planet road surface / width / passability (PlanetScope 2020 and 2024, arterial "
+                                  "roads, by OSM way id): bits 0-1 surface 2024 (codebooks.hgSurface), bits 2-3 width "
+                                  "class (codebooks.hgWidth), bit 4 paved 2020-2024, bits 5-7 passability score 1 best "
+                                  "to 6 worst (0 none). A caution beside the NCGDB record, never a raise; the GGR1 "
+                                  "tiles carry its low byte after xing"}},
         "codebooks": {"clazz": {str(k): v for k, v in CLAZZ.items()}, "crossing": {str(k): v for k, v in CROSSING.items()},
-                      "condition": {str(k): v for k, v in COND.items() if v}, "srcKind": {str(k): v for k, v in SRC_KIND.items()}},
+                      "condition": {str(k): v for k, v in COND.items() if v}, "srcKind": {str(k): v for k, v in SRC_KIND.items()},
+                      "hgSurface": {"0": "not covered", "1": "paved", "2": "unpaved", "3": "not classified"},
+                      "hgWidth": {"0": "none", "1": "under 3.5 m: light vehicles only", "2": "3.5-5.5 m: one lane of heavy trucks",
+                                  "3": "over 5.5 m: two lanes of heavy trucks"}},
         "rules": {"tankable": rules.get("tankable"), "msr": rules.get("msr"), "tanks": rules.get("tanks"),
                   "snowClosure": "a closure recorded only as 'Snow' is taken as December to March"},
         "conflation": {"sampleM": SAMPLE_M, "matchM": MATCH_M, "angleDeg": ANGLE_DEG, "minShare": MIN_SHARE,
@@ -691,7 +748,11 @@ def header(e, ids, names, glon, rules, args, version: str, out: Path) -> None:
                   "names": len(names) - 1, "matchedKmPct": round(100 * float(km[bit("matched")].sum() / km.sum()), 1),
                   "msrKm": round(float(km[bit("msr")].sum())), "tankableKm": round(float(km[bit("tankable")].sum())),
                   "closedSeasonallyKm": round(float(km[bit("closedSeasonally")].sum())),
-                  "crossings": {CROSSING[k]: int((e["xing"] == k).sum()) for k in CROSSING if k}, "byClazz": by},
+                  "crossings": {CROSSING[k]: int((e["xing"] == k).sum()) for k in CROSSING if k}, "byClazz": by,
+                  "satellite": {"edges": int((e["pad"] > 0).sum()), "km": round(float(km[e["pad"] > 0].sum())),
+                                "unpaved2024Km": round(float(km[(e["pad"] & 3) == 2].sum())),
+                                "narrowKm": round(float(km[((e["pad"] >> 2) & 3) == 1].sum())),
+                                "pavedSince2020Km": round(float(km[((e["pad"] >> 4) & 1) == 1].sum()))}},
         "licence": "ODbL-1.0 (© OpenStreetMap contributors) for the graph; NCGDB-derived attributes are restricted",
     }
     dump_json(out / "network.json", doc)
@@ -705,6 +766,7 @@ def header(e, ids, names, glon, rules, args, version: str, out: Path) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--network", default=DEFAULT_NETWORK, help="the network geodatabase GeoCore serves (pkroads)")
+    ap.add_argument("--planet", default=DEFAULT_PLANET, help="HeiGIT Planet road surface / width / passability (gpkg)")
     ap.add_argument("--ncgdb", help="NCGDB .gdb folder (default: classes.yaml, then $NCGDB_PATH)")
     ap.add_argument("--grid", type=Path, default=Path("work/grid/grid.json"))
     ap.add_argument("--class-tif", type=Path, default=Path("work/classify/class.tif"))

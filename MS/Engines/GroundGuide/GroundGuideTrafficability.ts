@@ -166,9 +166,16 @@ function preferMsr(list: FeatureRoadHit[]): FeatureRoadHit | undefined {
  */
 export function pickRoad(profile: GroundGuideProfile, step: GoingStep | null, wet: boolean, roads: FeatureRoadHit[], radiusM: number): TrafficRoad | null {
   const none = (what: string): TrafficRoad => ({ caption: 'Rd', text: `No ${what} within ${fmtDistance(radiusM)}`, distanceM: null, compass: null, main: null, alt: null });
+  // HeiGIT satellite (2024) cautions for vehicles only: never a raise, only "unpaved" / "narrow" beside the map's class.
+  const onFoot = profile === 'dismounted' || profile === 'pack';
+  const sat = (a: Record<string, unknown>): string => {
+    if (onFoot) return '';
+    const p = [a.sf === 'unpaved' ? 'Unpaved by Sat 2024' : null, a.wc === 1 ? 'Under 3.5 m by Sat' : null].filter(Boolean);
+    return p.length ? ` · ${p.join(', ')}` : '';
+  };
   const line = (h: FeatureRoadHit, extra: string, tag: string | null): TrafficRoad => ({
     caption: 'Rd',
-    text: `${h.attrs.m ? 'MSR ' : ''}${roadName(h.attrs)}${extra} · ${where(h)}`,
+    text: `${h.attrs.m ? 'MSR ' : ''}${roadName(h.attrs)}${extra}${sat(h.attrs)} · ${where(h)}`,
     distanceM: h.distanceM,
     compass: h.compass,
     main: roadRef(h, tag),

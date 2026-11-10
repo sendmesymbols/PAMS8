@@ -2492,6 +2492,16 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     for (const l of lines) EngineLogger.success('Ground Guide', l);
     showToast('Ground at the map centre written to the Engine Log', 'success');
   });
+  // OCOKA at the map centre (guide.ocokaText): observation, fields of fire, obstacle, key ground, ways out, weather.
+  document.getElementById('ground-guide-ocoka-log')?.addEventListener('click', async () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    const centre = appConfig.activeView?.center;
+    if (!guide?.ocokaText || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const lines: string[] | null = await guide.ocokaText(centre);
+    if (!lines?.length) return void showToast('No elevation here (outside the bundle, or an older bundle)', 'no-targets');
+    for (const l of lines) EngineLogger.success('Ground Guide', l);
+    showToast('OCOKA at the map centre written to the Engine Log', 'success');
+  });
   // R road network density at the map centre (guide.roadDensityAround), as the Ground Brief's Copy as Text gives it.
   document.getElementById('ground-guide-road-density-log')?.addEventListener('click', async () => {
     const guide = (window as any).symbolEngine?.groundGuide;

@@ -15,7 +15,7 @@
 import { fmtDistance } from './GroundGuideEvaluator';
 import { registerBriefSection } from './GroundGuideBrief';
 import { buildingsProtected, buildingsWhere, crestText, dunesText, groundChips, groundRelief, obstaclesGap, obstaclesTiles, roadsShield, roadsVerdict, weatherIcons, weatherYear as weatherYearStrip } from './GroundGuideSectionsStyles';
-import type { BuildingsReading, GroundGuideSections, GroundReading, ObstacleHit, ObstaclesReading, RoadRecord, RoadsReading, SectionPlace, WeatherReading } from './GroundGuideSections';
+import type { BuildingsReading, CrossingPlace, GroundGuideSections, GroundReading, ObstacleHit, ObstaclesReading, RoadRecord, RoadsReading, SatelliteRoad, SectionPlace, WeatherReading } from './GroundGuideSections';
 import type { GroundGuideVerdict } from './GroundGuideTypes';
 import { roadDensityText, type RoadDensityReading } from './GroundGuideRoadDensity';
 import { chipsNode, densityBrief, densityCardBlock, densityOneLine, densityRows, type RoadDensityLead } from './GroundGuideRoadDensityView';
@@ -267,6 +267,38 @@ function recordText(rec: RoadRecord): string {
     `condition ${rec.condition ?? rt?.condition ?? 'not recorded'}`,
     rec.closed || rt?.closed ? `closed: ${rec.closed ?? rt?.closed}` : 'no closure recorded',
     rec.landslides ? `${rec.landslides} landslide site${rec.landslides > 1 ? 's' : ''}` : null,
+    rec.bridges ? `${rec.bridges} Br${rec.bridges > 1 ? 's' : ''} on this section` : null,
+  ].filter(Boolean).join(' · ');
+}
+
+/**
+ * "Suspension Br 1.2 km NE · Check before vehicles cross" / "Ferry 3 km E · 2 boats · Nov to Apr" /
+ * "Causeway 800 m S · Under water in floods · at map label, ±500 m". Type, boats and season come from the sheet.
+ */
+function crossingText(c: CrossingPlace): string {
+  return [
+    `${nameOf(c)} ${at(c)}`,
+    c.status,
+    c.boats ? `${c.boats} boat${c.boats > 1 ? 's' : ''}` : null,
+    c.season && !(c.caution ?? '').includes(c.season.replace('-', ' to ')) ? `in use ${c.season.replace('-', ' to ')}` : null,
+    c.caution && c.caution !== c.status ? c.caution : null,
+    c.approx ? 'at map label, ±500 m' : null,
+  ].filter(Boolean).join(' · ');
+}
+
+const SAT_WIDTH = ['', 'under 3.5 m: light veh only', '3.5 to 5.5 m: one lane heavy', 'over 5.5 m: two lanes heavy'];
+
+/**
+ * The satellite's surface and width for the nearest arterial road (HeiGIT, PlanetScope 2024). Shown beside the
+ * map's record, never instead of it: a disagreement is said, and the narrow / unpaved readings read as cautions.
+ */
+function satelliteText(s: SatelliteRoad): string {
+  return [
+    s.surface === 'unclassified' ? 'surface not classified' : s.surface ? (s.surface === 'paved' ? 'Paved' : 'Unpaved: SLOW-GO after rain') : null,
+    s.pavedSince2020 ? 'paved since 2020' : null,
+    s.widthClass ? SAT_WIDTH[s.widthClass] : null,
+    s.differs,
+    `${s.name ? `${s.name}, ` : ''}${fmtDistance(s.distanceM)} ${s.compass}`,
   ].filter(Boolean).join(' · ');
 }
 
@@ -301,14 +333,15 @@ export function roadsRows(r: RoadsReading): Array<[string, Node | string | null]
     [r.route?.on ? 'Here' : 'Nearest', r.route ? routeNode(r.route) : 'No Rd or Tr within 500 m'],
     ['Rd', r.record ? namedRoad(r.record) : null],
     ['Recorded', r.record ? recordText(r.record) : null],
-    ['Crossing', r.crossing ? `${nameOf(r.crossing)} ${at(r.crossing)}` : null],
+    ['Sat 2024', r.satellite ? satelliteText(r.satellite) : null],
+    ['Crossing', r.crossing ? crossingText(r.crossing) : null],
     ['Choke', (r.chokepoints ?? []).length ? `${r.chokepoints.map((c) => `${nameOf(c)} ${at(c)}`).join(' · ')} (on an MSR)` : null],
     ['Rail', r.rail ? `${nameOf(r.rail)} ${at(r.rail)}` : null],
     ['Rail Xing', railCrossingsText(r)],
     ['Transport', transportText(r)],
     ['Junction', [r.junction ? `${nameOf(r.junction)} ${at(r.junction)}${r.junction.ways ? ` (${r.junction.ways}-way, on highways)` : ''}` : null, r.namedJunction ? `${nameOf(r.namedJunction)} ${at(r.namedJunction)}` : null].filter(Boolean).join(' · ') || null],
     ['Fuel', r.fuel ? `${nameOf(r.fuel)} ${at(r.fuel)}` : null],
-    ['Culvert', r.culvert ? `${r.culvert.label} ${at(r.culvert)}` : null],
+    ['Culvert', r.culvert ? `${r.culvert.label} ${at(r.culvert)}${r.culvert.caution ? ` · ${r.culvert.caution}` : ''}` : null],
     ['KM', [kmText(r.kmRoad, 'Rd'), kmText(r.kmRail, 'railway')].filter(Boolean).join(' · ') || null],
     ['Air', r.air ? `${nameOf(r.air)} ${at(r.air)}${r.airRunway ? ` · runway ${r.airRunway}` : ''}` : null],
   ];

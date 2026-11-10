@@ -41,7 +41,7 @@
 <main>
   <div id="mapwrap">
     <canvas id="map" width="900" height="900"></canvas>
-    <div id="legend">green = may be seen &nbsp; red = dead ground inside the weapon's range, toward the threat &nbsp; white ring = effective range</div>
+    <div id="legend">green = may be seen (stronger = surer) &nbsp; red = dead ground &nbsp; amber = screened (crops, buildings, trees) &nbsp; ring = effective range</div>
   </div>
   <div>
     <div class="panel controls">
@@ -57,8 +57,8 @@
       <label>Observer
         <select id="eye"><option value="1.6|1.7">standing man (eye 1.6 m)</option><option value="0.5|1.7">prone man (eye 0.5 m)</option><option value="2.4|2.4">vehicle commander (2.4 m)</option><option value="3.0|1.7">observation post (3 m)</option></select>
       </label>
-      <label>Ground blockers (towns, crops, bunds)
-        <select id="mode"><option value="mid">middle heights (central case)</option><option value="none">none: bare DEM (upper bound)</option><option value="max">tallest (lower bound)</option></select>
+      <label>What stands on the ground
+        <select id="mode"><option value="on">counted (buildings, crops, trees, bunds)</option><option value="none">ignored: the ground alone</option></select>
       </label>
       <label>Month (crops, visibility)
         <select id="month"></select>

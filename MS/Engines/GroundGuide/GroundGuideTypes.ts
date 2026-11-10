@@ -11,6 +11,7 @@ import type { CoverRules, GroundGuideCover, GroundGuideCoverOptions } from './Gr
 import type { GroundGuideSections, GroundGuideSectionsOptions } from './GroundGuideSections';
 import type { RoadDensityRules } from './GroundGuideRoadDensity';
 import type { GroundGuideSpeed, GroundGuideSpeedOptions } from './GroundGuideSpeed';
+import type { OcokaFire, OcokaObservation, OcokaObstacleFront, OcokaWeapon, VisibilityReading, WayState } from './GroundGuideOcoka';
 
 /**
  * Mobility class (mode) a symbol is evaluated as. `exempt` = never terrain-bound. The first five are in
@@ -280,6 +281,63 @@ export interface GroundGuideOptions {
   speed: GroundGuideSpeedOptions;
   /** The Gr Scope rail (V): a side window docked at the edge of the map with the ground round the symbol. */
   scope: GroundGuideScopeOptions;
+  /** The OCOKA lens: the same bundle read as Observation and Fields of Fire, Cover, Obstacles, Key Gr and Avenues. */
+  ocoka: GroundGuideOcokaOptions;
+}
+
+/** Which reading the cards give: the ground by factor (GROTBC) or what it does to a force on a task (OCOKA). */
+export type GroundGuideLens = 'grotbc' | 'ocoka';
+/**
+ * Where the threat is, for fields of fire, the obstacle in front and the dead ground. `front`: the unit's front
+ * (`footprint.bearingDeg`). `bearing`: `ocoka.bearingDeg` (the [ and ] keys turn it). `point`: toward `ocoka.at`, a
+ * place on the map (drag the threat marker to it). `allRound`: every direction.
+ */
+export type OcokaThreatMode = 'front' | 'bearing' | 'point' | 'allRound';
+export type OcokaEye = 'auto' | 'standing' | 'prone' | 'vehicle' | 'post';
+
+/**
+ * The OCOKA lens (user, 2026-11-10): the cursor card, the Ground Detail's tabs and the Copy as Text switch from
+ * GROTBC to OCOKA and back (F, or `setLens`). Read from the same terrain bundle in the browser; figures and rules
+ * are in MS/Data/OcokaDoctrine.json and the `Rng` field of MS/Data/Symbols.json. Enforce mode stays on the GROTBC
+ * GO / NO-GO rule in both lenses: an OCOKA reading is a judgement and never blocks a placement.
+ */
+export interface GroundGuideOcokaOptions {
+  lens: GroundGuideLens;
+  /** F switches the lens; 1 to 5 open the OCOKA tabs (the GROTBC letters keep their keys); [ and ] turn the threat. */
+  keys: boolean;
+  threat: OcokaThreatMode;
+  /** Threat bearing for `threat: 'bearing'`, degrees clockwise from north. */
+  bearingDeg: number;
+  /** Width of the arc judged toward the threat, degrees (30 to 180). */
+  sectorDeg: number;
+  /** The threat point for `threat: 'point'`, [longitude, latitude]; null falls back to the front. */
+  at: [number, number] | null;
+  /** Show the threat marker on the map while the lens is OCOKA: drag it to set the threat point, double-click it for the front. */
+  marker: boolean;
+  /** Radius of the observation reading, km (1 to 10). */
+  radiusKm: number;
+  /**
+   * What is drawn on the map while placing in the OCOKA lens (2026-11-11): the fire fan toward the threat with dead
+   * (red) and screened (amber) ground; the threat's own view when it is a place (violet) and whether it sees the
+   * position; lines of sight to the ITG candidates; the avenues of approach from the threat with their
+   * chokepoints; a better position nearby for the same weapon, which J takes.
+   */
+  mapFan: boolean;
+  mapEnemy: boolean;
+  mapSight: boolean;
+  mapAvenues: boolean;
+  mapBetter: boolean;
+  /**
+   * What the map overlay (`overlay.enabled`) paints while the lens is OCOKA (2026-11-11). `threat`: all the ground the
+   * threat may see from its place, out to `radiusKm` (violet; needs the threat as a place). `view`: all the ground
+   * that may be seen from the position being placed (light blue), once the cursor rests. `going`: the GROTBC paint (the
+   * obstacles: O of OCOKA). `auto`: `threat` when the threat is a place, else `view`.
+   */
+  overlay: 'auto' | 'view' | 'threat' | 'going';
+  /** Eye height: `auto` takes a vehicle commander's for tracked vehicles and a standing man's otherwise. */
+  eye: OcokaEye;
+  /** Count what stands on the ground (buildings, crops, trees, bunds, walls); off judges on the ground alone. */
+  surface: boolean;
 }
 
 /**
@@ -764,6 +822,143 @@ export interface GroundGuideVerdict {
   sections?: GroundGuideSections | null;
   /** Set while drawing when `speed.enabled` and the symbol moves on the ground: how fast it goes here and on the road. */
   speed?: GroundGuideSpeed | null;
+  /** Set while drawing: which lens the cards show. */
+  lens?: GroundGuideLens;
+  /** Set while drawing with the OCOKA lens on and the bundle's elevation loaded: the OCOKA reading at the point. */
+  ocoka?: GroundGuideOcoka | null;
+}
+
+/** An ITG candidate as the OCOKA lens reads it: where it is and whether it and the point are in view of each other. */
+export interface OcokaKeyGround {
+  name: string | null;
+  kindLabel: string;
+  level: 1 | 2;
+  distanceM: number;
+  bearingDeg: number;
+  compass: string;
+  /** Its height above the point, metres (null when the bundle has no height for it). */
+  higherM: number | null;
+  /** The chance that a man on it and the point see each other, 0 to 1 (null: outside the ground read, or not loaded). */
+  seenP: number | null;
+  at: MercXY;
+}
+
+/** The quick map products of the OCOKA lens, in Web Mercator: rings are closed and clockwise. */
+export interface OcokaMapSight {
+  /** The fire fan toward the threat out to the weapon's range: its outline, and the dead and screened ground inside it. */
+  fan: { outline: MercXY[]; dead: MercXY[][]; screened: MercXY[][]; rangeM: number };
+  /** Lines of sight from the position: the chance the far end is seen, and where the line is lost when it probably is not. */
+  lines: Array<{ kind: 'itg'; to: MercXY; p: number; blockAt: MercXY | null }>;
+  /** The threat as a place: the chance it sees the position, where its line is lost, and the ground between that it sees. */
+  enemy: { at: MercXY; seesP: number; distM: number; blockAt: MercXY | null; blockAtM: number | null; coveredPct: number; outline: MercXY[]; seen: MercXY[][] } | null;
+}
+
+export interface OcokaAvenue {
+  /** From the threat's end to the position. */
+  path: MercXY[];
+  lengthM: number;
+  /** Share of it on GO ground, %. */
+  goPct: number;
+  /** The narrowest passable ground along it, metres, and whether the formation's frontage fits everywhere. */
+  minWidthM: number;
+  fits: boolean;
+  chokes: Array<{ at: MercXY; widthM: number; label: string; fromPosnM: number }>;
+}
+
+/** The lens's map overlay: the ground that may be seen all round from one spot (the threat's place, or the position). */
+export interface OcokaMapOverlay {
+  kind: 'threat' | 'view';
+  at: MercXY;
+  radiusM: number;
+  outline: MercXY[];
+  /** The ground seen with an even chance or better, as rings (Web Mercator, closed, clockwise). */
+  seen: MercXY[][];
+  /** Share of the ground inside the radius that may be seen, %. */
+  seenPct: number;
+}
+
+/** The slower map products: avenues of approach for a formation of `frontageM`, and a better position nearby. */
+export interface OcokaMapPlan {
+  frontageM: number;
+  /** Where the avenues start: the threat's place, or (`fromAssumed`) a start out on its bearing when it is only a direction. */
+  from: MercXY | null;
+  fromAssumed: boolean;
+  avenues: OcokaAvenue[];
+  /** No way in for the mode: what stops it. */
+  noAvenue: string | null;
+  better: { at: MercXY; distanceM: number; bearingDeg: number; compass: string; grade: 'good' | 'marginal' | 'poor'; hereGrade: 'good' | 'marginal' | 'poor'; seenPct: number; hereSeenPct: number; clearM: number; higherM: number } | null;
+}
+
+/** The viewshed behind the Detail's picture: per ray and step the chance of being seen (0-250, 255 no data). */
+export interface OcokaPicture {
+  rays: number;
+  steps: number;
+  bearings: Float32Array;
+  p: Uint8Array;
+  pTerrain: Uint8Array;
+  radiusM: number;
+  stepM: number;
+}
+
+/**
+ * The OCOKA reading at a point (GroundGuideOcoka.ts does the sums, MS/Data/OcokaDoctrine.json holds the figures).
+ * Everything about sight is a chance, not a fact: the cards say "may be seen" and "check on the ground".
+ */
+export interface GroundGuideOcoka {
+  /** A tile it needs is still loading: the figures may change. */
+  pending: boolean;
+  at: MercXY;
+  lngLat: [number, number];
+  elevationM: number;
+  threat: { mode: OcokaThreatMode; bearingDeg: number; sectorDeg: number; compass: string; allRound: boolean };
+  /** The weapon fields of fire are judged for: the symbol's own `Rng`, or small arms when it has none. */
+  weapon: OcokaWeapon & { label: string };
+  eyeM: number;
+  eyeLabel: string;
+  month: number;
+  radiusM: number;
+  /** What stands on the ground was counted (`ocoka.surface`). */
+  surface: boolean;
+  obs: OcokaObservation;
+  /** Null for a weapon that needs no line of sight of its own (mortars, guns, air defence). */
+  fire: OcokaFire | null;
+  obstacle: OcokaObstacleFront & { nogoLabel: string | null; cautionLabel: string | null; rangeM: number };
+  ways: {
+    radiusM: number;
+    total: number;
+    go: number;
+    slow: number;
+    blocked: number;
+    /** North first, clockwise. */
+    state: WayState[];
+    distM: number[];
+    /** What stops the stopped ways: the ground, how many of the directions, and the arc they cover ("W-NW"). */
+    stops: Array<{ label: string; sectors: number; arc: string }>;
+  };
+  key: {
+    /** The point against the highest ground within `withinM`: metres above it (negative: below), and where that ground is. */
+    aboveMaxM: number;
+    maxM: number;
+    distM: number;
+    compass: string;
+    withinM: number;
+    highest: boolean;
+    candidates: OcokaKeyGround[];
+    candidatesPending: boolean;
+  };
+  /** Share of cropland whose crop hides a standing / crouching man this month, % (OcokaDoctrine.json cropCalendar). */
+  crop: { tallPct: number; hidesPct: number };
+  /** The month's visibility (NOAA GSOD grid in the bundle); null when the bundle has none or it has not loaded. */
+  weather: VisibilityReading | null;
+  /** The light the reading is for (`speed.light`), and for night whether the coming night is moonlit. */
+  light: { night: boolean; level: 'day' | 'moonlight' | 'starlight'; moonlitShare: number | null; moonIllum: number | null };
+  /** The weapon's night sight on an ordinary day of the month, a haze day and a fog day; null when it has none. */
+  nightSight: { deviceM: number; ordinaryM: number; hazeDayM: number; fogDayM: number; thermal: boolean } | null;
+  /** Set while the Ground Detail is open: the viewshed for its picture. */
+  picture: OcokaPicture | null;
+  /** Set once the map products for this spot are worked out (a moment after the cursor rests). */
+  sight?: OcokaMapSight | null;
+  plan?: OcokaMapPlan | null;
 }
 
 /** One symbol judged by `auditPlacements()` / `explain()`. */
@@ -964,6 +1159,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54 },
+  ocoka: { lens: 'grotbc', keys: true, threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapAvenues: true, mapBetter: true, overlay: 'auto', eye: 'auto', surface: true },
 };
 
 /** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */

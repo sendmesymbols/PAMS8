@@ -15,6 +15,7 @@
  * layout reads and the card can flip to stay on screen.
  */
 
+import { ocokaCardRows, ocokaChip } from './GroundGuideOcokaView';
 import { monthName } from './GroundGuideBrief';
 import { COVER_FIELD_LABEL, COVER_KIND, COVER_WORD } from './GroundGuideCover';
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
@@ -818,6 +819,20 @@ function hintParts(v: GroundGuideVerdict, tone: Tone): Array<Node | string> {
         // With the way out beside it the share is shortened, so the chip stays one short line.
         if (pct > 0 && v.verdict !== 'in') figure = way ? `${pct}% in` : `${pct}% Inside`;
     }
+    // The OCOKA lens: the GO / NO-GO word stays (it is the rule, and the one enforce applies). On usable ground the
+    // figure beside it is the fields of fire for the weapon, and the pointer is to the better position (J takes it);
+    // on NO-GO ground the way out to clear ground comes first, as in GROTBC.
+    const oc = v.lens === 'ocoka' && (tone === 'go' || tone === 'marg' || tone === 'slow') ? ocokaChip(v) : null;
+    if (oc) {
+      figure = oc.figure;
+      if (oc.better) {
+        const f = document.createDocumentFragment();
+        const p = pointerArrow(oc.better.bearingDeg);
+        if (p) f.append(p);
+        f.append(`Better Posn ${fmtDistance(oc.better.distanceM)} ${oc.better.compass}`);
+        way = f;
+      }
+    }
   }
   const parts: Array<Node | string> = [toneIcon(tone, 16), el('span', 'ms-ggb-hw', word)];
   for (const fig of [figure, way]) {
@@ -1050,7 +1065,7 @@ export class GroundGuideBadge {
     else if (pct > 0) bar.append(el('span', 'ms-ggb-pill', `${pct}% Inside`));
     const pills = el('div', 'ms-ggb-pills'); // the full card's T decorator may add a rain pill
 
-    const rows = this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills, tone) : this._minimalRows(v, pct, tone);
+    const rows = v.lens === 'ocoka' ? this._ocokaRows(v) : this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills, tone) : this._minimalRows(v, pct, tone);
     if (pills.childElementCount) bar.append(pills);
     const body = this._body!;
     body.replaceChildren(...rows);
@@ -1089,6 +1104,21 @@ export class GroundGuideBadge {
     this._w = el0.offsetWidth;
     this._h = el0.offsetHeight;
     this._place();
+  }
+
+  /**
+   * The OCOKA lens (`ocoka.lens`): the verdict bar stays, since it is the GROTBC rule and the one enforce mode
+   * applies; the body is who it is for, where the threat is, then a row a letter (GroundGuideOcokaView).
+   */
+  private _ocokaRows(v: GroundGuideVerdict): HTMLElement[] {
+    if (v.verdict === 'unknown') return [];
+    const rows: HTMLElement[] = [modeLine(v), ...ocokaCardRows(v)];
+    if (this._notice) rows.push(el('div', 'ms-ggb-note ms-ggb-warn', this._notice));
+    const strip = enforceStrip(v);
+    if (strip) rows.push(strip);
+    const foot = this._foot(v);
+    if (foot) rows.push(foot);
+    return rows;
   }
 
   /**

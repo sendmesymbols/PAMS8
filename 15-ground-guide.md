@@ -203,6 +203,8 @@ fit a shorter map, and **never scrolls**. While both are open the Ground Detail 
 - **Legend**: under the map only, one line per letter, each giving the nearest or biggest of each thing in view
   (`N-5 MSR Cl 70 383 m N`, `Jhelum 190k 2.3 km N`, `NO-GO Gr at the symbol`, the going shares). **Each line is that
   layer's switch**: click it to hide or show the layer (remembered).
+- **In the OCOKA lens** (F; 2026-11-11) the same rail reads the same spot as OCOKA, see *OCOKA lens* below. Its foot
+  shows **F** with the lens it switches to.
 - API: `guide.showScope(open?)` (no argument toggles, as V does), `guide.isScopeOpen`, `guide.setScopeTarget(graphic |
   null)`; event `ground-guide-scope` `{ open }`.
 
@@ -954,10 +956,223 @@ finest zoom with every section on; `guide.sectionsText(point)` → Copy as Text 
 routing network). Test panel: Ground Guide → Ground, Roads, Buildings & Weather → *Log ground at centre*, and *Log*
 beside *Density circle* for the road density alone.
 
-### OCOKA lens: the data (not built yet)
+#### Crossings from the sheet, bridges per section, satellite road (R; added 2026-11-10)
 
-The planned OCOKA lens (a second reading of the same bundle, switched from GROTBC inside the Ground Guide) has its data
-ready; no lens code exists yet. `MS/Engines/OCOKA/Ocoka.ts` is a separate, older avenue finder and is unchanged.
+The 1:50k crossing layers record only the symbol (bridge, foot bridge, ferry, ford). The pipeline
+(`grotbc.py crossing_labels`) now adds what the crossing's own name and the sheet's text beside it say:
+
+| Attr | Meaning | From |
+| --- | --- | --- |
+| `bt` | type words: temporary, suspension, cantilever, wooden, rope, iron, masonry, natural, snow, boats, overhead, underpass, railway, foot, viaduct, causeway | name ("Wooden bridge", "FB", "Causeway") and the sheet's text ("Temporary wooden foot bridge", "Bridge of boats") |
+| `bs` | `u/c` (under construction) or `disused` | text |
+| `su` | months in use as written ("Oct-Apr"): ferries, fords, bridges of boats | text |
+| `bo` | boats of a ferry | text ("Ferry (2 boats)") |
+| `lb` | 1 = the crossing is placed at the label: no symbol of that kind within 1.5 km, so it is a few hundred metres out | text |
+| `nb` (road lines) | bridges recorded on the road section (`NO_OF_BRS`, 7,085 sections) | Pakmap roads |
+
+A label is tied to the nearest crossing **of a fitting kind** within 600 m (labels sit ~400 m from their symbol on the
+sheets); when two are about as near it is tied only if one is of the label's own kind ("Foot bridge" → the foot bridge),
+else it is left alone. A label with nothing fitting within 1.5 km becomes its own crossing (`lb` 1); between 600 m and
+1.5 km nothing is guessed. Canal names that contain "ford" / "br" (Fordwah, 8-BR minor, Chak 17-8 BR) and hotels are
+skipped. A culvert named "Foot bridge" keeps its name but takes no type. Build of 2026-11-10 (v2k): 692 types from
+own names; of the sheet's ~4,000 crossing labels 1,731 tied (55 of them by kind), 486 ambiguous (left), 655 too far to
+tie (left), 933 new at the label (mostly foot bridges and causeways). In the bundle: 2,208 crossings with a type,
+282 ferries with boats, 27 with months, 8 with a status; 7,637 road lines with `nb`.
+Number-only names ("25", "1") stay in the data as they are; the card never shows a number as a name.
+
+**Satellite road (HeiGIT Planet, PlanetScope 2020 / 2024).** `network.py` joins the HeiGIT arterial roads on the OSM
+way id (97.8 % of its 40,107 ways are in the routing graph; 81–93 % of motorway to secondary km covered) and packs
+surface 2024, width class (< 3.5 m light vehicles only, 3.5–5.5 m one lane heavy, > 5.5 m two lanes heavy), paved
+since 2020 and the passability score into the edge's `pad` (GeoCore requires the field name and ignores the value)
+and a last `hg` array of the GGR1 tiles. **It never raises a road**: the map's record and class stay what decides.
+Build v2k: 186,234 edges (67,246 km) carry it; 4,389 km unpaved in 2024, 1,488 km under 3.5 m, 7,467 km paved since
+2020 (`network.json stats.satellite`).
+
+**On the card** (`GroundGuideSections.ts` / `GroundGuideSectionsView.ts`, `GroundGuideTrafficability.ts`):
+
+- R **Crossing** row: the type as the sheet gives it, then boats, season, status and what it means for vehicles,
+  safety first: "Suspension Br 1.2 km NE · Check before vehicles cross", "Ferry 3 km E · 2 boats · in use Nov to Apr",
+  "Causeway 800 m S · Under water in floods · at map label, ±500 m", "Br 2 km N · U/C · Not open: under construction".
+  Foot, rope and railway bridges say "Foot only" / "Trains and foot only". Chokepoints and Culvert use the same label.
+- R **Recorded** row: "... · 7 Brs on this section" when `nb` is recorded.
+- R **Sat 2024** row: "Unpaved: SLOW-GO after rain · under 3.5 m: light veh only · N-55, 120 m E"; when the satellite and
+  the map's route layer disagree under the point it says "map says metalled: check on the ground" and picks neither.
+- T **road line**, vehicle modes: "· Unpaved by Sat 2024" / "· Under 3.5 m by Sat" after the road's class.
+
+Licence: the HeiGIT Planet data is **non-commercial**, with PlanetScope derivatives; redistribution is subject to
+Planet Labs terms (sources.lock `heigit_planet_roads` restriction, LICENSES sharing note).
+
+**`D:\Imagery\Misc` review (2026-11-10).** Gauged before ingesting; only the Planet roads went in.
+
+| Folder | What / date | Verdict |
+| --- | --- | --- |
+| Planet Road Surface, Width, and Passability | HeiGIT, PlanetScope 2020–2024, 40,107 arterial ways; publisher 89.2 % accurate; agrees with all 11,644 OSM-paved ways it classified | **Ingested** (network `pad`, cautions only) |
+| Road Surface Data | HeiGIT Mapillary street photos, HDX snapshot 2024-11-07; predictions on only 21,712 of 1.42 M ways, photos 2013–2024; disagrees with OSM on 8 % of paved and 36 % of unpaved (publisher: over-predicts unpaved) | Not ingested: sparse, older, overlaps Planet |
+| Airports, Buildings, Education, Financial, Health, POI, Populated Places, Railways, Roads, Sea Ports, Waterways | HOT exports of OSM, Geofabrik 2026-10-12 (STAC metadata); the pipeline's OSM extract is 2026-10-28 | Not ingested: same source, older; take any theme from the 2026-10-28 extract |
+| Subnational Administrative Boundaries | OCHA COD-AB (WFP), boundaries 2022-09, reviewed 2024-09; 7 / 160 / 577 units; AJK and GB only for Kashmir | Not ingested: the bundle keeps the official Survey of Pakistan boundary |
+| Trees | CTrees above-ground biomass 2025, 100 m, int16 × 10 Mg/ha | Not ingested: biomass, not canopy cover or height; would only be a hint (same open decision as the canopy height model) |
+| Rainfall, Rainfall for Pakistan, NVDI | WFP CHIRPS rainfall and MODIS NDVI by province / division, dekadal, to 2026-10-21 / 10-11 | Not ingested: area averages that go stale; the climate layer is finer |
+| Copernicus Vegetation Index Anomaly | JRC GDO fAPAR anomaly, dekadal 2026, 1/12° (~9 km) | Not ingested: too coarse |
+| Waterways (PDF, saved Wikipedia page) | Reference documents; the saved page's `.php` files are its scripts and styles | Reference only |
+| Bridges Big Dataset | `Unconfirmed 632191.crdownload`, an unfinished browser download (2.87 GB, last written 23:01 on 2026-11-10): a zip `pakistan_bridge_dataset/images/{train,test}/<hash>.png`, so far only image chips (a training set for finding bridges in imagery), no coordinates or classes seen yet | Not gauged: wait for the download to finish, then look for labels / coordinates |
+
+Duplicates: `Railways of Pakistan` holds a copy of the waterways export (`hotosm_pak_waterways_osm_shp.zip` and its
+metadata are byte-identical to the ones in `Waterways of Pakistan`; its waterways KML holds the same 45,776 features).
+Within each HOT folder the GeoJSON, KML, SHP and GPKG zips hold the same features (counts match; the buildings SHP has
+one feature fewer than the GPKG). `Rainfall/pak-rainfall-subnat-5ytd.csv` and `NVDI/pak-ndvi-subnat-5ytd.csv` are the
+last five years of the `-full` files, and `Rainfall for Pakistan` is the same WFP figures in the HDX HAPI layout.
+
+### OCOKA lens (F)
+
+A second reading of the same terrain bundle (user, 2026-11-10). GROTBC describes the ground by factor; OCOKA judges what it
+does to a force on a task: **O**bservation and Fields of Fire, **C**over and Concealment, **O**bstacles, **K**ey Ground,
+**A**venues. `groundGuide.ocoka.lens` (`grotbc` | `ocoka`) switches the cursor card, the Ground Detail's tabs and Copy as
+Text (the OCOKA brief, below), the Gr Scope rail, the H chip and the map overlay (all below).
+`MS/Engines/OCOKA/Ocoka.ts` is a separate, older avenue finder and is unchanged.
+
+**Keys.** GROTBC keeps its keys. **F** switches the lens while drawing. **1 2 3 4 5** open the OCOKA tabs (Obsn & Fd of Fire,
+Cover, Obs, Key Gr, Avenues), switching to the OCOKA lens; a GROTBC letter (G R O T B C) always opens its GROTBC tab,
+switching back. K (Legend), D, Esc, V, S, P, H work in both. **[** and **]** turn the threat by 15 degrees (Shift: 45).
+**J** takes the better position the map shows (below), the way S takes clear ground.
+
+**Enforce mode** stays on the GROTBC GO / NO-GO rule in both lenses. An OCOKA reading is a judgement and never blocks a
+placement; the card's verdict bar is the GROTBC verdict in both.
+
+**The threat** (`ocoka.threat`): `front` (the default) is the unit's front, `footprint.bearingDeg`; `bearing` uses
+`ocoka.bearingDeg`; `point` judges toward `ocoka.at` (a place on the map) from wherever the symbol is; `allRound` every
+direction. It is NOT read from enemy symbols. The yellow **Threat marker** (`GroundGuideThreat.ts`, a DOM handle over the
+view) shows it: docked at the top of the map it gives the bearing; dragged onto the map it sets `point`; a double-click
+returns it to the front. `ocoka.sectorDeg` (30 to 180) is the arc judged.
+
+**How sight is judged** (`GroundGuideOcoka.ts`, pure, no imports; `GroundGuideOcokaRead.ts` assembles the reading). A 30 m
+elevation cannot show towns, crops, bunds or walls and is itself good to about a metre, so a point is seen with a
+*chance*: the share of the target that clears the terrain horizon (soft over 1 m), times the chance that nothing mapped
+stands in the line. Buildings come from the bundle's building layer (density, footprint, height), tall crops from the
+month's crop mix, trees, bunds, walls and orchards from their ground class (`OcokaDoctrine.json` `surfaceBlockers`,
+`cropCalendar`: proposals to correct). Nothing is random. Three figures are given: on the ground alone (the upper bound),
+expected, and sure (80 % or more). `ocoka.surface: false` judges on the ground alone. The cards say "may be seen" and
+"check on the ground".
+
+| Row / tab | What it gives |
+| --- | --- |
+| Obsn | Country by how far the view reaches (open; close 400-500 m or less; very close 100-200 m or less: the pamphlets' limits), share of the ground within `ocoka.radiusKm` that may be seen, the highest ground looking down on the point and from what share of the directions. |
+| Fd of Fire | For the symbol's weapon (`Rng`: direct fire at a standing man, or anti-armour at a vehicle; small arms 300 m when it has none; indirect and air-defence weapons "need an observer"). Good / Marginal / Poor on two tests, the lower stands: the clear distance to the first dead or screened ground (270 m good, 100 m marginal, 200 m the minimum for a primary task) and the share of the weapon's range that is seen (50 % / 20 %). Dead ground (terrain) is told apart from screened ground (crops, buildings, trees). The Detail adds the viewshed picture and the seen share by range band. |
+| Cover | The C letter's own four-way reading, plus the month's crops. |
+| Obs | The nearest NO-GO ground for the mode toward the threat, whether it is in view from the point (covered by fire), how much of the arc it lies across, the nearest SLOW-GO. Obstacles laid by troops are not read. |
+| Key Gr | The point against the highest ground within 3 km, and the ITG candidates within the radius with whether each and the point may see each other. |
+| Avenues | Straight ways out to 2 km in 24 directions for the mode: GO, SLOW-GO (half the way or more), or stopped by NO-GO, and what stops them. Then the avenues of approach from the threat, with their chokepoints for the formation's frontage (On the map, below). |
+| Threat | Only with the threat as a place: whether it is likely to see the position, where its line is lost, and how much of the ground between is out of its view. |
+| Better Posn | Only when a clearly better position for the same weapon lies within 300 m: where, its grade against the point's, and J to take it. |
+
+The O tab also gives the month's visibility (below) and the light: `speed.light: night` reads the coming night as
+moonlight or starlight from the date and place, and the weapon's night sight reach on an ordinary, a haze and a fog day.
+
+**On the map** (2026-11-11; `GroundGuideOcokaMap.ts`, layer `ms-ground-guide-ocoka`, draped on the ground; geometry from
+`ocokaSight()` / `ocokaPlan()` in `GroundGuideOcokaRead.ts`). While a symbol is being placed in the OCOKA lens the reading
+is drawn where it applies, each product with its own switch:
+
+| Product | Switch | What is drawn |
+| --- | --- | --- |
+| Fire fan | `ocoka.mapFan` | The arc toward the threat out to the weapon's range (yellow outline). Inside it **dead ground is red** (the terrain hides it) and **screened ground amber** (crops, buildings, trees probably hide it); ground left clear is ground that may be seen. |
+| Lines of sight | `ocoka.mapSight` | From the position to each ITG candidate: green when it is probably in view, amber dashed when it may be, red with a cross where the line is lost. |
+| Threat's view | `ocoka.mapEnemy` | Only when the threat is a place (the marker dragged onto the map): a 40 degree wedge from it toward the position, the ground it may see in violet, and its line to the position, with a cross where that line is lost. Its eye is a vehicle commander's (2.4 m): the higher eye sees more, so the threat is never understated. |
+| Avenues | `ocoka.mapAvenues` | The cheapest way in for the mode from the threat's place (or, with only a direction, from a start up to 5 km out on that bearing: the card says "from NE", not "from the Threat marker"). SLOW-GO ground costs three times GO, ground narrower than the frontage up to four times more, NO-GO is never crossed. Width is twice the distance to the nearest NO-GO ground. A second avenue is drawn (dashed) when it shares less than 60 % with the first and costs at most 2.2 times as much. **Chokepoints** (diamonds) are where the passable ground is narrower than the frontage: "Gap in Permanent water 85 m", or the bridge or ford itself. |
+| Better position | `ocoka.mapBetter` | A green ring and a line to it when a position within 300 m (12 bearings every 60 m, on ground the mode can use) has clearly better fields of fire toward the same threat for the same weapon: a better grade, or 15 points more of the range seen. **J** places the symbol there (`guide.takeBetter()`), refused if the GROTBC rule does not accept that ground. |
+
+The frontage is the echelon's (`footprint.*`, section to brigade); a symbol without one is judged at 100 m. The fan, the
+lines and the threat's view follow the cursor (at most every 60 ms); the avenues and the better position are worked out
+once the cursor has rested for 220 ms. All of it is the same chance as the cards: a clear patch in the fan *may* be seen,
+"unlikely to see" is not "cannot see". Check on the ground.
+
+**The H chip** (2026-11-11; `ocokaChip()` in `GroundGuideOcokaView.ts`, `hintParts()` in `GroundGuideBadge.ts`). The chip keeps
+its GO / SLOW-GO / NO-GO word and colour in both lenses: it is the rule, and the one enforce mode applies. In the OCOKA
+lens, on ground the mode can use, the figure beside the word is the fields of fire for the weapon (`Fd of Fire Poor`; the
+country when the weapon needs an observer), with `· Threat sees` when the threat's place probably sees the spot, and the
+pointer is to the better position (`Better Posn 240 m N`, which J takes). On NO-GO ground the chip is as in GROTBC: the
+share inside and the way to clear ground come first.
+
+**The map overlay** (2026-11-11; `ocoka.overlay`, with `overlay.enabled`; `ocokaViewshed()` in `GroundGuideOcokaRead.ts`, drawn
+by `GroundGuideOcokaMap.showOverlay()`). While the lens is OCOKA the overlay paints what can be seen instead of the going:
+
+| `ocoka.overlay` | What is painted |
+| --- | --- |
+| `auto` (default) | `threat` when the threat is a place, else `view`. |
+| `threat` | **All the ground the threat may see** from the marker's place out to `ocoka.radiusKm`, in violet, inside a dashed circle. What is not painted is out of its view: covered ground, and covered approaches where it joins up. Read for a vehicle commander's eye (2.4 m, never understated) looking for the mode's unit (a vehicle for tracked and amphibious modes, else a standing man). It does not follow the cursor and shows whether or not a symbol is being placed; it is worked out again only for a new place, radius, month or tile. Nothing is painted when the threat is only a direction. With it on, the threat's 40 degree wedge toward the position is not drawn (its line to the position still is). |
+| `view` | **All the ground that may be seen from the position** being placed, in light blue (green is lost on green hills), out to the same radius, for the unit's own eye and a standing man. Gone while the cursor moves, drawn where it rests (220 ms), cleared when nothing is being placed. |
+| `going` | The GROTBC paint of GO / Marginal / SLOW-GO / NO-GO ground (the obstacles, the second O of OCOKA). |
+
+Ground is painted where it is seen with an even chance or better, in slices a ray wide (rays half a degree apart or
+finer). Cost: about 11 ms for the view from the position (once per rest); the threat's view is the same sum, once per
+change. Like every sight product of the lens it is a chance from 30 m elevation and the map: unpainted ground is
+*unlikely* to be seen, not safe. The Detail's Threat's View tile names the violet; there is no separate key on the map.
+
+**The OCOKA brief** (2026-11-11; `ocokaText()` in `GroundGuideOcokaView.ts`). The Ground Brief became the Ground Detail
+on 2026-11-06 and its export is **Copy as Text**. In the OCOKA lens that button now gives the reading in full, laid out
+like the GROTBC text (a heading a letter, its lines indented), for orders:
+
+- the head: position and height, month and light, the GROTBC verdict, the threat (and how far off when it is a place),
+  the weapon with the kind of figure behind its range (doctrine, catalogue, typical, estimate), the target and the eye,
+  the frontage;
+- **O Obsn** (country, view, the three seen figures, what overlooks the position, the position's own screen),
+  **O Fd of Fire** (grade and what holds it down, clear distance with the worst fifth and the best, seen / dead /
+  screened, the seen share by range band, the two tests it is judged on and whether the 200 m minimum is met),
+  **O Light** (the night and the night sight on an ordinary, a haze and a fog day);
+- **C Cover** (the four fields, the ground class, the month's crops), **O Obs** (the nearest NO-GO toward the threat,
+  covered by fire or not, how much of the arc it lies across, the nearest SLOW-GO), **K Key Gr** (the highest ground and
+  every ITG candidate with its height and the chance it is in view);
+- **A Avenues**: every avenue from the threat (length, share on GO ground, narrowest, whether the frontage fits) with
+  **every chokepoint** and its distance from the position, then the straight ways out and what stops them;
+- **Threat's View** and **Better Posn** when there are any, the latter with the warning that cover there is not
+  compared; **W Visibility** for the month with the distance to the station behind it.
+
+`await guide.ocokaText(point, { sidc, profile, radiusKm, threatDeg, frontageM })` returns the same lines to a host for
+any point (a placed symbol's geometry included), with the avenues, the threat's view and the better position worked
+out (`frontageM` 100 m when not given). About 50 lines; 130 ms for the call with the tiles already in memory.
+
+**In the Gr Scope rail** (V; 2026-11-11; `GroundGuideScopeOcoka.ts` turns the products into the rail's frame,
+`GroundGuideScope.ts` draws them, `ocokaScopeText()` in `GroundGuideOcokaView.ts` gives the words). With the lens on
+OCOKA the rail reads the same spot as before (the symbol being placed, else the selected symbol, the one just placed,
+the map centre), so **a symbol already on the map gets its fan, its dead ground and the avenues to it without being
+placed again**: select it. What changes on the rail:
+
+- **The bar keeps the GROTBC verdict** (colour and title): an OCOKA reading is never a GO / NO-GO.
+- **Under it** a third line: the OCOKA tag, the threat (`Threat NE 67° (marker) · 90° arc`) and the weapon with its range.
+- **The answer**: the fields of fire for the weapon in their grade's colour (`Fd of Fire Poor · clear 191 m`; the country
+  and the view when the weapon needs an observer), then the better position (`Better Posn 240 m N: Fd of Fire Marginal`,
+  with **J** while placing a point), then whether the threat is likely to see the spot.
+- **The map** holds the weapon's fan: a spot with no echelon gets the closest level that still holds the range (300 m
+  small arms: the Pl's 720 m map; a tank's 2 km: the Bn's 3.6 km), an echelon keeps its own level, widened if the fan
+  needs it. The going is not coloured (that is T's): plain ground with NO-GO in blue-grey. On it the fan with dead (red)
+  and screened (amber) ground, the lines of sight to the ITG candidates, the threat's view in violet and its line to
+  the spot, the avenues (the second dashed) with a diamond at each chokepoint, the better position as a green ring,
+  and the threat as a yellow marker, or a yellow pointer at the edge with its distance when it is off the map. The
+  frontage, the rings and the clear ground are drawn as in GROTBC.
+- **The legend** has a line for **O C O K A**, each its layer's switch (remembered apart from the GROTBC switches):
+  **O** seen / dead / screened shares of the weapon's range and the country (the fan); **C** the cover letter's two
+  fields and the month's crops (trees and built-up ground on the map); **O** the nearest NO-GO toward the threat and
+  whether it is covered by fire (NO-GO ground and water); **K** the highest ground and the nearest ITG candidate with
+  whether it is in view (hills, ITG diamonds, ridgelines, the lines of sight); **A** the avenue's length and where it
+  narrows for the frontage (avenues, chokepoints, the threat and its view, the main roads drawn thin).
+- For a spot that is not being placed the fan and the threat's view are worked out at once and the avenues a quarter of
+  a second after the spot has come to rest (the map centre moves with every pan). The map centre is not a position: no
+  better position is offered for it. A redraw of the rail costs about 13 to 21 ms in the OCOKA lens against 17 to 20 ms
+  in GROTBC.
+
+**Cost** (measured 2026-11-10 and 11): the reading takes about 1.5 ms per mouse move; in the app a move costs about 5 to 6 ms
+with the OCOKA lens against 4 ms with GROTBC (card redraw included). The fan, lines and threat's view cost about 6 ms a
+draw (7 ms at the 90th percentile), the avenues and better position about 18 ms once per rest (threat 6 km off, card
+redraw included). The viewshed picture (6 to 8 ms) is only traced while the Detail shows tab 1. A reading is kept per 30 m
+cell.
+
+**API.** `guide.lens`, `guide.setLens('ocoka' | 'grotbc')`, `guide.setThreat({ threat, bearingDeg, at, sectorDeg })`,
+`guide.turnThreat(deg)`, `await guide.ocokaAround(pointOrLngLat, { sidc, profile, radiusKm, threatDeg, picture, map, frontageM })` →
+`GroundGuideOcoka | null` (waits for the tiles; `map: true` adds `sight` and `plan`, the map products as Web Mercator
+geometry, for a host that draws them itself), `await guide.ocokaText(point, opts)` → the OCOKA brief's lines,
+`guide.takeBetter()` (J), `guide.setRangeLookup(fn)` for a host with its own catalogue. Events `ground-guide-lens`
+`{ lens }` and `ground-guide-better` `{ at, distanceM, compass, grade, from }`; `v.lens` and `v.ocoka` (with `sight` / `plan`
+once worked out) on a live verdict. Test panel: Ground Guide → OCOKA Lens (F) → *Log OCOKA at centre*.
+
+The data behind it:
 
 - **`Rng` in `MS/Data/Symbols.json`** (90 entries: small arms, MGs, grenade launchers, AD guns and missiles, anti-tank guns,
   recoilless rifles, howitzers, mortars, rocket launchers, anti-tank rockets and missiles, tanks, APC, infantry / armour /
@@ -987,11 +1202,9 @@ ready; no lens code exists yet. `MS/Engines/OCOKA/Ocoka.ts` is a separate, older
   that goes to another party (`package.py --visibility <missing folder>`, or delete `work/visibility`). Rebuild, from
   `tools/terrain-pipeline`: `scripts/fetch_gsod.py --years 2016-2025 --workers 3`, then `scripts/visibility.py`, then
   `scripts/add_visibility_to_bundle.py --bundle ../../MS/Data/terrain-bundle --backup work/backup/manifest_20261110.json`.
-- **Test program** (`tools/ocoka-test/`, see its README): the sight engine, going flood, cover, visibility and light on the
-  bundle, with 37 checks (`node tools/ocoka-test/run.mjs`) and an interactive page. Result of 2026-11-10: a 90 degree wedge
-  to 2 km costs 0.2 ms (0.3-0.5 ms in the browser), the all-round 5 km view 5-6 ms; 99.3 % agreement with an independent
-  line-of-sight check; and the bare elevation is not enough (towns, crops and bunds change what is seen from 37 % to 0 %), so
-  the lens reports a range and says "may be seen".
+- **Test program** (`tools/ocoka-test/`, see its README): runs the library's own engine (`GroundGuideOcoka.ts`) in Node, with
+  33 checks (`node tools/ocoka-test/run.mjs`): synthetic cases with a known answer, sun and moon, nine real sites, cost, and
+  an independent line-of-sight check (99.3 % agreement); plus an interactive page.
 - **Ranges that differ from the doctrine** in `WeaponEqptV3.json` (left unchanged): G-3 274 m (doctrine 300 m effective,
   400-500 m confident), 106 mm RR 1300-1400 m (2000 m direct, 7600 m indirect), GLHMG 600 m (800 m on emplacements, 1750 m on
   troops), RPG-7 500 m (180-275 m to destroy a tank), 81 mm mortar 4100-4200 m (4550 m), 120 mm mortar 6747 m (5700 m POF,

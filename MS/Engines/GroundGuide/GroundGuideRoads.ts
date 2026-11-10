@@ -12,7 +12,8 @@
  * search to the few edges near the cursor.
  *
  * Answers in the shape GroundGuideFeatures.roadsNear does (attributes n, r, t, c, k, m, plus aw, x, e, src), so
- * `pickRoad` reads either source.
+ * `pickRoad` reads either source. Since 2026-11-10 an arterial road also carries the HeiGIT satellite reading
+ * (PlanetScope 2024): sf surface, wc width class 1-3, np paved since 2020, hp passability 1-6.
  */
 
 import type { FeatureRoadHit } from './GroundGuideFeatures';
@@ -37,6 +38,8 @@ const CLAZZ: Record<number, string> = {
 };
 /** Classes that are fair-weather whatever the flags say: tracks and paths. */
 const UNMETALLED = new Set([63, 71, 81, 91]);
+/** HeiGIT satellite surface code (network.json codebooks.hgSurface). */
+const SAT_SURFACE: Array<string | undefined> = [undefined, 'paved', 'unpaved', 'unclassified'];
 
 /** network.json `groundGuide`. */
 export interface GroundGuideRoadsMeta {
@@ -69,6 +72,12 @@ interface RoadTile {
   clazz: Uint8Array;
   load: Uint8Array;
   xing: Uint8Array;
+  /**
+   * HeiGIT satellite byte (network.py read_planet; null in a bundle built before 2026-11-10): bits 0-1 surface 2024
+   * (1 paved, 2 unpaved, 3 not classified), bits 2-3 width class (1 under 3.5 m, 2 3.5-5.5 m, 3 over 5.5 m), bit 4
+   * paved between 2020 and 2024, bits 5-7 passability score 1 (best) to 6.
+   */
+  hg: Uint8Array | null;
   /** Web Mercator x, y of every point. */
   xy: Float64Array;
   /** minx, miny, maxx, maxy per edge. */
@@ -174,8 +183,11 @@ export class GroundGuideRoads {
         const prev = best.get(id);
         if (prev && prev.distanceM <= distanceM) continue;
         const bearingDeg = ((Math.atan2(bx - at[0], by - at[1]) * 180) / Math.PI + 360) % 360;
+        const hg = t.hg ? t.hg[i] : 0;
         best.set(id, {
           attrs: {
+            // HeiGIT satellite (2024): sf surface, wc width class, np paved since 2020, hp passability 1-6
+            ...(hg ? { sf: SAT_SURFACE[hg & 3], wc: (hg >> 2) & 3 || undefined, np: (hg >> 4) & 1 ? 1 : undefined, hp: hg >> 5 || undefined } : {}),
             n: name || undefined,
             r: rno || undefined,
             t: CLAZZ[clazz] ?? 'road',
@@ -321,6 +333,7 @@ export class GroundGuideRoads {
     const edge = u32(n), name = u32(n), rno = u32(n), start = u32(n + 1);
     const flags = u16(n), q = u16(npts * 2);
     const clazz = u8(n), load = u8(n), xing = u8(n);
+    const hg = buf.byteLength - o >= n ? u8(n) : null;
     const span = 2 * this._size;
     const ox = -ORIGIN + tx * this._size - this._size / 2;
     const oy = ORIGIN - ty * this._size + this._size / 2;
@@ -342,6 +355,6 @@ export class GroundGuideRoads {
       }
       box.set([x0, y0, x1, y1], i * 4);
     }
-    return { n, edge, name, rno, start, flags, clazz, load, xing, xy, box };
+    return { n, edge, name, rno, start, flags, clazz, load, xing, hg, xy, box };
   }
 }

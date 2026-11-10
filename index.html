@@ -3406,6 +3406,44 @@
               <label>Map centre</label>
               <button type="button" id="ground-guide-sections-log" title="Write the G, R, B and W sections at the map centre to the Engine Log (as Copy as Text would).">Log ground at centre</button>
             </div>
+            <div class="sub-feature-label">OCOKA Lens (F)</div>
+            <div class="setting-row">
+              <label>Lens</label>
+              <select id="setting-groundGuideOcokaLens" style="width: 150px" title="Which reading the cursor card, the Ground Detail and Copy as Text give. F switches while drawing; 1 to 5 open the OCOKA tabs, the GROTBC letters keep their keys.">
+                <option value="grotbc" selected>GROTBC</option>
+                <option value="ocoka">OCOKA</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Threat is</label>
+              <select id="setting-groundGuideOcokaThreat" style="width: 150px" title="Where the threat is, for fields of fire, the obstacle in front and the dead ground. Drag the yellow Threat marker onto the map to make it a place; double-click it for the front.">
+                <option value="front" selected>At the front</option>
+                <option value="bearing">Set bearing</option>
+                <option value="point">At the marker</option>
+                <option value="allRound">All round</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Threat bearing</label>
+              <input type="number" id="setting-groundGuideOcokaBearing" min="0" max="359" step="5" value="0" style="width: 70px" title="Bearing to the threat, degrees clockwise from north, for 'Set bearing'. [ and ] turn it while drawing." />
+            </div>
+            <div class="setting-row">
+              <label>Count buildings, crops, trees</label>
+              <input type="checkbox" id="setting-groundGuideOcokaSurface" checked title="Count what stands on the ground as a chance that a line of sight is blocked. Off judges on the 30 m elevation alone (an upper bound)." />
+            </div>
+            <div class="setting-row">
+              <label>Map overlay paints</label>
+              <select id="setting-groundGuideOcokaOverlay" style="width: 150px" title="With the map overlay on, what it paints while the lens is OCOKA: all the ground the threat may see from the marker (violet), all the ground that may be seen from the symbol being placed (light blue, once the cursor rests), or the going as in GROTBC.">
+                <option value="auto" selected>Auto</option>
+                <option value="threat">Threat's view</option>
+                <option value="view">View from the Posn</option>
+                <option value="going">Going (GROTBC)</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Map centre</label>
+              <button type="button" id="ground-guide-ocoka-log" title="Write the OCOKA reading at the map centre to the Engine Log (as Copy as Text gives it in the OCOKA lens).">Log OCOKA at centre</button>
+            </div>
             <div class="sub-feature-label">Cover &amp; Concealment (C)</div>
             <div class="setting-row">
               <label>Card style</label>
@@ -4792,6 +4830,11 @@
         'setting-groundGuideSecRoadDensityKm': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityKm'], value: Number(v) }),
         'setting-groundGuideSecRoadDensityStyle': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityStyle'], value: v }),
         'setting-groundGuideSecRoadDensityLead': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityLead'], value: v }),
+        'setting-groundGuideOcokaLens': (v) => ({ path: ['groundGuide', 'ocoka', 'lens'], value: v }),
+        'setting-groundGuideOcokaThreat': (v) => ({ path: ['groundGuide', 'ocoka', 'threat'], value: v }),
+        'setting-groundGuideOcokaBearing': (v) => ({ path: ['groundGuide', 'ocoka', 'bearingDeg'], value: Number(v) || 0 }),
+        'setting-groundGuideOcokaSurface': (v) => ({ path: ['groundGuide', 'ocoka', 'surface'], value: v }),
+        'setting-groundGuideOcokaOverlay': (v) => ({ path: ['groundGuide', 'ocoka', 'overlay'], value: v }),
         'setting-groundGuideCoverWhere': (v) => ({ path: ['groundGuide', 'cover', 'where'], value: v }),
         'setting-groundGuideCoverRadius': (v) => ({ path: ['groundGuide', 'cover', 'radiusM'], value: Number(v) }),
         'setting-groundGuideCoverFocus': (v) => ({ path: ['groundGuide', 'cover', 'focus'], value: v }),

@@ -185,6 +185,20 @@ MS/
   the symbol being placed (else the selected symbol, the one just placed, the map centre) with range rings, the frontage
   for the echelon, clear ground and the GROTBC layers from the bundle, thinned per echelon; its legend lines are the
   layer switches. `guide.showScope()`, `guide.setScopeTarget(graphic)`.
+  **F** switches the cards to the **OCOKA lens** (`groundGuide.ocoka.*`; `GroundGuideOcoka.ts` pure engine, `GroundGuideOcokaRead.ts`,
+  `GroundGuideOcokaView.ts`, `GroundGuideThreat.ts`): the same bundle read as Obsn & Fd of Fire, Cover, Obs, Key Gr and Avenues,
+  tabs 1 to 5 (the GROTBC letters keep their keys), toward a threat that is the unit's front by default or a marker dragged on the
+  map (never enemy symbols). Sight is a chance (30 m elevation plus building density, crops by month, trees, bunds), weapon ranges
+  come from `Rng` in `Symbols.json`, figures and rules from `MS/Data/OcokaDoctrine.json` (pamphlet figures and marked proposals),
+  the month's visibility from the bundle's NOAA grid; enforce mode stays on the GROTBC rule. While placing, the lens draws on the
+  map (`GroundGuideOcokaMap.ts`, `ocoka.map*`): the fire fan with dead (red) and screened (amber) ground, lines of sight to the ITG
+  candidates, the threat's own view when it is a place, the avenues of approach with chokepoints for the frontage, and a better
+  position nearby that **J** takes (`guide.takeBetter()`). The Gr Scope rail follows the lens (`GroundGuideScopeOcoka.ts`): in OCOKA it shows the
+  same products for the symbol being placed, the selected symbol or the map centre, with an O C O K A legend of switches. The H chip adds the
+  fields of fire and the better position; the map overlay (`ocoka.overlay`) paints all the threat may see (violet) or the view from
+  the position (light blue) instead of the going. Copy as Text gives the OCOKA brief in full
+  (`guide.ocokaText()` for hosts). `guide.ocokaAround()` (`map: true` returns the geometry);
+  `node tools/ocoka-test/run.mjs` runs the engine's 44 checks.
   See `15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.

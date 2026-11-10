@@ -8,6 +8,11 @@
  * ground S would move it to, and a bird's-eye view of the GROTBC things round the spot (GroundGuideScopeScene). Under
  * the map only its legend, one line per letter, each line also that layer's switch. No Inter Gap marks (user).
  *
+ * In the OCOKA lens (F; user, 2026-11-11) the same rail reads the same spot as OCOKA: the map shows the fire fan with
+ * its dead and screened ground, the lines of sight to the ITG candidates, the threat's view, the avenues of approach
+ * with their chokepoints and the better position; the legend has a line for O, C, O, K and A, each its switch. The
+ * bar keeps the GROTBC verdict: an OCOKA reading is a judgement and never a GO / NO-GO.
+ *
  * The guide decides what it reads (the symbol being placed, the selected symbol, the one just placed, the map centre)
  * and hands a `ScopeFrame`; this file only draws it. Text goes in through `textContent`; the map is one SVG string of
  * fixed markup whose only text (names from the bundle, distances) goes through `esc`.
@@ -18,6 +23,8 @@ import { plainLabel, titleOf } from './GroundGuideBadge';
 import { seasonIcon } from './GroundGuideGoingView';
 import { modeIcon } from './GroundGuideLegend';
 import { arrowCompass, ensureNorthCss, pointerArrow, setNorthVar } from './GroundGuideNorth';
+import type { OcokaScopeIcon, OcokaScopeText, OcokaTab } from './GroundGuideOcokaView';
+import type { ScopeOcokaScene, XY } from './GroundGuideScopeOcoka';
 import {
   GOING_GO,
   GOING_MARG,
@@ -58,6 +65,17 @@ const LETTERS: Array<[ScopeLetter, string]> = [
   ['C', 'Cover'],
 ];
 
+/** The OCOKA lens's legend lines: the tab, the letter on its badge, its name. */
+const OCOKA_ROWS: Array<[OcokaTab, string, string]> = [
+  ['OO', 'O', 'Obsn & Fd of Fire'],
+  ['OC', 'C', 'Cover'],
+  ['OX', 'O', 'Obs'],
+  ['OK', 'K', 'Key Gr'],
+  ['OA', 'A', 'Avenues & Threat'],
+];
+/** The OCOKA products, in the colours the main map draws them in. */
+const OCC = { seen: '#3ee07a', dead: '#e5484d', screened: '#ee8a1f', threat: '#ffd23f', enemy: '#a78bfa', avenue: '#ff5a60', better: '#5fe39a' } as const;
+
 /** What the rail is reading. */
 export type ScopeSource = 'drawing' | 'selected' | 'placed' | 'centre';
 
@@ -82,8 +100,11 @@ export interface ScopeFrame {
   echelon: ScopeEchelon | null;
   /** Season, month and light the going is read for ("Dry · Nov · Day"). */
   when: { season: 'dry' | 'wet'; text: string } | null;
-  /** S moves the symbol (drawing a point, with a keyboard); D opens the Ground Detail. */
-  keys: { snap: boolean; detail: boolean };
+  /** The lens the rail reads in. In OCOKA `ocoka` holds its products and words; null when there is no reading here. */
+  lens: 'grotbc' | 'ocoka';
+  ocoka: { scene: ScopeOcokaScene; text: OcokaScopeText } | null;
+  /** S moves the symbol (drawing a point, with a keyboard); D opens the Ground Detail; J takes the better position; F switches the lens. */
+  keys: { snap: boolean; detail: boolean; better: boolean; lens: boolean };
   /** The line or area being judged, ground metres east / north of the spot, one array per part; null for a point. */
   outline: Float64Array[] | null;
   closed: boolean;
@@ -124,6 +145,9 @@ const CSS = `
 .ms-ggsc-mode b{color:${TEXT.main};font-weight:${FW.semi};overflow:hidden;text-overflow:ellipsis}
 .ms-ggsc-when{margin-left:auto;display:inline-flex;align-items:center;gap:4px;flex:none}
 .ms-ggsc-when svg{width:14px;height:14px;color:${TEXT.label}}
+.ms-ggsc-tag{flex:none;padding:0 6px;border-radius:8px;background:#8ec1ea;color:#14181d;font-weight:${FW.bold};letter-spacing:.4px}
+.ms-ggsc-thr{flex:none;color:${OCC.threat}}
+.ms-ggsc-wpn{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ms-ggsc-ans{flex:none;padding:6px 12px 7px}
 .ms-ggsc-lead{font-size:${FS.value}px;font-weight:${FW.bold};line-height:1.3;color:${TEXT.strong}}
 .ms-ggsc-act{display:flex;align-items:center;flex-wrap:wrap;gap:3px 7px;margin-top:3px;font-size:${FS.body}px;font-weight:${FW.semi};line-height:1.3}
@@ -225,6 +249,27 @@ const IC = {
   nullah: tiny(`<rect x="2" y="2" width="18" height="10" rx="2" fill="${M.plain.ground}"/><path d="M4 2 L14 12 M10 2 L20 12" stroke="rgb(${M.nullah.join(',')})" stroke-width="1.4"/>`),
 };
 const swatch = (col: string): string => tiny(`<rect x="2" y="2" width="14" height="10" rx="2" fill="${col}" stroke="${CAS}" stroke-width=".8"/>`, 18);
+/** Legend icons of the OCOKA lens: fixed markup. */
+const OIC: Record<OcokaScopeIcon | 'threat' | 'better', string> = {
+  fan: tiny(`<path d="M11 13 L3 3 A13 13 0 0 1 19 3Z" fill="rgba(62,224,122,.14)" stroke="${OCC.threat}" stroke-width="1.4" stroke-linejoin="round"/>`),
+  seen: swatch(OCC.seen),
+  dead: swatch(OCC.dead),
+  screened: swatch(OCC.screened),
+  cover: IC.trees,
+  crop: tiny(`<path d="M5 13V5M11 13V2M17 13V6" stroke="#d9c23e" stroke-width="1.8" stroke-linecap="round"/>`),
+  obs: swatch(M.plain.nogo),
+  hill: IC.hill,
+  itg: IC.itg,
+  avenue: tiny(`<path d="M1 7H21" stroke="${CAS}" stroke-width="5.5"/><path d="M1 7H21" stroke="${OCC.avenue}" stroke-width="3"/>`),
+  choke: tiny(`<rect x="6.5" y="2.5" width="9" height="9" transform="rotate(45 11 7)" fill="${OCC.screened}" stroke="${CAS}" stroke-width="1.2"/>`),
+  ways: IC.minor,
+  threat: tiny(`<circle cx="11" cy="7" r="5.5" fill="${OCC.threat}" stroke="${CAS}" stroke-width="1.2"/><path d="M11 3.5 L14 9 H8Z" fill="${CAS}"/>`),
+  better: tiny(`<circle cx="11" cy="7" r="5" fill="none" stroke="${OCC.better}" stroke-width="2"/><circle cx="11" cy="7" r="1.6" fill="${OCC.better}"/>`),
+};
+/** A tone of the OCOKA words as a text colour on the dark rail. */
+function toneText(t: string | null): string {
+  return t === 'go' || t === 'c3' ? TONE.go.text : t === 'marg' || t === 'c2' ? TONE.marg.text : t === 'slow' || t === 'c1' ? TONE.slow.text : t === 'nogo' ? TONE.nogo.text : t === 'warn' ? TEXT.warn : TEXT.strong;
+}
 const CELL_COLORS = ['', M.cell.go, M.cell.marg, M.cell.slow, M.cell.nogo];
 
 /** One legend item: an icon, a bold name, then a soft rest ("383 m N"). */
@@ -248,14 +293,17 @@ function halo(x: number, y: number, txt: string, anchor: string, col: string, si
 interface Store {
   shown: boolean;
   layers: Record<ScopeLetter, boolean>;
+  /** The OCOKA lens's own switches. */
+  ocoka: Record<OcokaTab, boolean>;
 }
 
 function loadStore(): Store {
-  const s: Store = { shown: false, layers: { G: true, R: true, O: true, T: true, B: true, C: true } };
+  const s: Store = { shown: false, layers: { G: true, R: true, O: true, T: true, B: true, C: true }, ocoka: { OO: true, OC: true, OX: true, OK: true, OA: true } };
   try {
     const v = JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}');
     if (typeof v.shown === 'boolean') s.shown = v.shown;
     for (const [k] of LETTERS) if (typeof v.layers?.[k] === 'boolean') s.layers[k] = v.layers[k];
+    for (const [k] of OCOKA_ROWS) if (typeof v.ocoka?.[k] === 'boolean') s.ocoka[k] = v.ocoka[k];
   } catch {
     /* private window or blocked storage: the defaults */
   }
@@ -411,9 +459,10 @@ export class GroundGuideScope {
       e.stopPropagation();
       const b = (e.target as HTMLElement).closest('button') as HTMLButtonElement | null;
       if (!b || !root.contains(b)) return;
-      const layer = b.dataset.layer as ScopeLetter | undefined;
+      const layer = b.dataset.layer;
       if (layer) {
-        this._store.layers[layer] = !this._store.layers[layer];
+        if (layer in this._store.ocoka) this._store.ocoka[layer as OcokaTab] = !this._store.ocoka[layer as OcokaTab];
+        else this._store.layers[layer as ScopeLetter] = !this._store.layers[layer as ScopeLetter];
         this._save();
         this._h.redraw();
         if (this._frame) this.render(this._frame);
@@ -511,6 +560,13 @@ export class GroundGuideScope {
     } else if (f.outline) shape = f.closed ? 'Area as drawn' : 'Line as drawn';
     else shape = f.source === 'centre' ? 'Place or select a symbol for its verdict' : 'Point symbol';
     m.append(l1, el('div', undefined, `${src} · ${shape}`));
+    if (f.lens === 'ocoka') {
+      const l3 = el('div');
+      l3.append(el('span', 'ms-ggsc-tag', 'OCOKA'));
+      if (f.ocoka) l3.append(el('span', 'ms-ggsc-thr', f.ocoka.text.threat), el('span', 'ms-ggsc-wpn', f.ocoka.text.weapon));
+      else l3.append(el('span', 'ms-ggsc-wpn', f.loading ? 'Reading the elevation here…' : 'No reading for this symbol'));
+      m.append(l3);
+    }
     return m;
   }
 
@@ -520,6 +576,10 @@ export class GroundGuideScope {
     const lead = el('div', 'ms-ggsc-lead');
     const act = el('div', 'ms-ggsc-act');
     a.append(lead, act);
+    if (f.lens === 'ocoka' && v?.verdict !== 'off') {
+      this._ocokaAnswer(f, a, lead, act);
+      return a;
+    }
     if (!v) {
       lead.textContent = 'Gr round the map centre';
       act.append(el('span', 'ms-soft', `For ${f.profileLabel}; no verdict without a symbol`));
@@ -577,8 +637,10 @@ export class GroundGuideScope {
     const ft = el('div', 'ms-ggsc-foot');
     ft.append(el('span', 'ms-ggsc-kc', 'V'), 'Hide');
     if (f.keys.snap && f.verdict?.clear?.distanceM != null) ft.append(el('span', 'ms-ggsc-kc', 'S'), 'Quick Fix');
+    if (f.lens === 'ocoka' && f.keys.better && f.ocoka?.text.better) ft.append(el('span', 'ms-ggsc-kc', 'J'), 'Better');
     if (f.keys.detail) ft.append(el('span', 'ms-ggsc-kc', 'D'), 'Detail');
-    ft.append(el('span', 'ms-ggsc-adv', 'Check on the ground'));
+    if (f.keys.lens) ft.append(el('span', 'ms-ggsc-kc', 'F'), f.lens === 'ocoka' ? 'GROTBC' : 'OCOKA');
+    ft.append(el('span', 'ms-ggsc-adv', ft.querySelectorAll('.ms-ggsc-kc').length >= 4 ? 'Check on Gr' : 'Check on the ground'));
     return ft;
   }
 
@@ -591,7 +653,11 @@ export class GroundGuideScope {
   }
 
   private _mapSvg(f: ScopeFrame): string {
-    const L = this._store.layers;
+    // In the OCOKA lens its five switches stand in for the letters: Key Gr draws what G draws, Avenues the main
+    // roads, Obs the water, Cover the trees and the built-up ground; the going is never coloured (that is T's).
+    const ok = f.lens === 'ocoka';
+    const K = this._store.ocoka;
+    const L = ok ? { G: K.OK, R: K.OA, O: K.OX, T: false, B: false, C: K.OC } : this._store.layers;
     const sc = f.scene;
     const lv = sc.level.lv;
     const R = sc.level.radiusM;
@@ -615,10 +681,15 @@ export class GroundGuideScope {
     const turn = f.northDeg ? ` transform="rotate(${f.northDeg.toFixed(2)} ${c} ${c})"` : '';
     const img = (key: string, draw: (cv: HTMLCanvasElement) => void) =>
       `<image href="${this._image(sc, key, draw)}" x="${o0}" y="${o0}" width="${W}" height="${W}" preserveAspectRatio="none" style="image-rendering:pixelated"${turn}/>`;
-    s += img(L.T ? 'T' : 'P', (cv) => paintGoing(cv, sc.going, L.T));
+    if (ok && !L.O) s += img('N', (cv) => paintGoing(cv, sc.going, false, false));
+    else s += img(L.T ? 'T' : 'P', (cv) => paintGoing(cv, sc.going, L.T));
     s += `<rect width="${S}" height="${S}" fill="rgba(14,17,21,${L.T ? 0.16 : 0.05})"/>`;
     if (L.C) s += img('C', (cv) => paintOver(cv, sc.over, 'C'));
-    if (L.B) s += img('B', (cv) => paintOver(cv, sc.over, 'B'));
+    if (L.B || (ok && L.C)) s += img('B', (cv) => paintOver(cv, sc.over, 'B'));
+
+    // OCOKA: the fan and the threat's view lie on the ground, under every line.
+    const oc = ok ? (f.ocoka?.scene ?? null) : null;
+    if (oc) s += this._ocokaAreas(oc, K, X, Y);
 
     // Lines: water and wires under the roads, minor roads first.
     const zw = lv >= 3 ? 0.8 : 1;
@@ -651,7 +722,12 @@ export class GroundGuideScope {
       for (const l of by('power')) s += stroke(l.pts, M.power, 1.1, '6 3', 1.6);
     }
     if (L.G) for (const l of by('ridge')) s += stroke(l.pts, M.ridge, 1.3, '1.5 3');
-    if (L.R) {
+    if (L.R && ok) {
+      // Only the roads an avenue would follow, drawn thin under it.
+      for (const l of by('all')) s += stroke(l.pts, ROAD.allWeather, 1.5 * zw, '', 1.4);
+      for (const l of by('rail')) s += stroke(l.pts, CAS, 3 * zw) + stroke(l.pts, M.rail, 1.6 * zw, '6 5');
+      for (const l of by('msr')) s += stroke(l.pts, ROAD.msr, 2.2 * zw, '', 2);
+    } else if (L.R) {
       for (const l of by('track')) s += stroke(l.pts, ROAD.track, 1.2, '4 3', 1.4);
       for (const l of by('minor')) s += stroke(l.pts, M.minor, 1.3 * zw, '', 1.4);
       for (const l of by('fair')) s += stroke(l.pts, ROAD.fairWeather, 1.8 * zw, '', 1.6);
@@ -695,6 +771,9 @@ export class GroundGuideScope {
         s += stroke(pts, CAS, 5.5) + stroke(pts, '#ffffff', 2.2);
       }
     }
+
+    // OCOKA: the avenues, the lines of sight, the threat and the better position, over the ground and the frontage.
+    if (oc) s += this._ocokaLines(oc, K, X, Y, c, S, stroke, mark, labels);
 
     // Point marks.
     const P = (p: ScopePoint): [number, number] => [X(p.x, p.y), Y(p.x, p.y)];
@@ -772,7 +851,7 @@ export class GroundGuideScope {
         }
       }
     }
-    if (L.R) {
+    if (L.R && !ok) {
       const seen = new Set<string>();
       for (const l of [...by('msr'), ...by('all')]) {
         const n = typeof l.a.n === 'string' ? l.a.n.trim() : '';
@@ -880,9 +959,13 @@ export class GroundGuideScope {
       s.append(i.firstChild!, word);
       key.append(s);
     };
-    if (f.source === 'centre') k(tiny(`<path d="M5 7H9M13 7H17M11 1V5M11 9V13" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`), 'Map centre');
+    // The OCOKA lens keys only its own marks (the symbol, the frontage and the rings are the same in both lenses): one line.
+    const own = f.lens !== 'ocoka';
+    if (!own) {
+      /* keyed below */
+    } else if (f.source === 'centre') k(tiny(`<path d="M5 7H9M13 7H17M11 1V5M11 9V13" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`), 'Map centre');
     else k(tiny(`<path d="M11 1 L16 13 L11 10 L6 13Z" fill="#fff" stroke="${CAS}" stroke-width="1.1" stroke-linejoin="round"/>`), 'Symbol');
-    if (e) {
+    if (e && own) {
       k(
         e.depthM > 0
           ? tiny(`<rect x="2" y="3" width="18" height="9" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M2 3H11" stroke="#fff" stroke-width="3.2"/><path d="M11 3H20" stroke="${M.frontNogo}" stroke-width="3.2"/>`)
@@ -890,8 +973,36 @@ export class GroundGuideScope {
         e.depthM > 0 ? 'Posn' : 'Frontage',
       );
     }
-    k(tiny(`<circle cx="11" cy="7" r="5.5" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.1"/>`), 'Rings');
-    if (f.clearAt) k(tiny(`<path d="M1 7H21" stroke="${M.clear}" stroke-width="3" stroke-dasharray="5 3"/>`), 'Clear Gr');
+    if (own) k(tiny(`<circle cx="11" cy="7" r="5.5" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.1"/>`), 'Rings');
+    const clearKey = () => k(tiny(`<path d="M1 7H21" stroke="${M.clear}" stroke-width="3" stroke-dasharray="5 3"/>`), 'Clear Gr');
+    if (f.clearAt && own) clearKey();
+    if (f.lens === 'ocoka') {
+      const o = f.ocoka?.scene;
+      if (o?.fan) k(OIC.fan, 'Fan');
+      if (o && !o.threat.allRound) k(OIC.threat, 'Threat');
+      if (o?.enemy) k(swatch(OCC.enemy), 'Its view');
+      if (o?.better) k(OIC.better, 'Better Posn');
+      if (f.clearAt) clearKey();
+      key.style.flexWrap = 'nowrap'; // one line: the five rows under it need the room
+      key.style.overflow = 'hidden';
+      leg.append(key);
+      for (const [tab, letter, name] of OCOKA_ROWS) {
+        const on = this._store.ocoka[tab];
+        const b = el('button', 'ms-ggsc-row');
+        b.type = 'button';
+        b.setAttribute('role', 'switch');
+        b.setAttribute('aria-checked', String(on));
+        b.dataset.layer = tab;
+        b.title = `${name}: click to ${on ? 'hide' : 'show'} on the map`;
+        const c = el('span', 'ms-ggsc-c');
+        const items = f.ocoka?.text.rows[tab] ?? [];
+        if (items.length) c.append(...items.map((i) => item(OIC[i.icon as OcokaScopeIcon], i.bold, i.rest ?? '')));
+        else c.append(el('em', undefined, name));
+        b.append(el('span', 'ms-ggsc-l', letter), c);
+        leg.append(b);
+      }
+      return leg;
+    }
     leg.append(key);
     const rows = this._rows(f);
     for (const [letter, name] of LETTERS) {
@@ -1033,6 +1144,155 @@ export class GroundGuideScope {
     return { G: g.slice(0, 2), R: r.slice(0, 2), O: o.slice(0, 2), T: t, B: bb.slice(0, 2), C: cc };
   }
 
+  // ── the OCOKA lens ─────────────────────────────────────────────────────────
+
+  /** The answer in the OCOKA lens: the fields of fire for the weapon, then the better position and what the threat sees. */
+  private _ocokaAnswer(f: ScopeFrame, a: HTMLElement, lead: HTMLElement, act: HTMLElement): void {
+    const o = f.ocoka;
+    if (!o) {
+      lead.textContent = f.loading ? 'Reading the elevation here…' : 'No OCOKA reading here';
+      if (!f.loading) act.append(el('span', 'ms-soft', f.verdict?.verdict === 'exempt' ? 'The symbol is not terrain-bound' : 'No elevation in the bundle at this spot'));
+      return;
+    }
+    const t = o.text;
+    lead.textContent = t.lead;
+    lead.style.color = toneText(t.leadTone);
+    if (t.better && o.scene.better) {
+      act.style.color = OCC.better;
+      const p = pointerArrow(o.scene.better.compass);
+      if (p) act.append(p);
+      act.append(el('span', undefined, t.better));
+      if (f.keys.better) act.append(el('span', 'ms-ggsc-kc', 'J'), el('span', 'ms-soft', 'takes it'));
+      arrowCompass(act);
+    }
+    if (t.enemy) {
+      // Under the better position when there is one: whether the threat is likely to see this spot.
+      const e = t.better ? el('div', 'ms-ggsc-act') : act;
+      e.style.color = toneText(t.enemy.tone);
+      e.append(el('span', undefined, t.enemy.text));
+      if (e !== act) a.append(e);
+    } else if (!t.better && o.scene.avenues === null && !o.scene.threat.allRound) act.append(el('span', 'ms-soft', 'Working out the avenues…'));
+  }
+
+  /** The OCOKA products that lie on the ground: the threat's view (violet), the fan and its dead (red) and screened (amber) ground. */
+  private _ocokaAreas(o: ScopeOcokaScene, K: Record<OcokaTab, boolean>, X: (x: number, y: number) => number, Y: (x: number, y: number) => number): string {
+    const d = (ring: Float64Array): string => {
+      let out = '';
+      for (let i = 0; i + 1 < ring.length; i += 2) out += `${i ? 'L' : 'M'}${X(ring[i], ring[i + 1]).toFixed(1)} ${Y(ring[i], ring[i + 1]).toFixed(1)}`;
+      return out ? `${out}Z` : '';
+    };
+    const all = (rings: Float64Array[]): string => rings.map(d).join('');
+    let s = '';
+    if (K.OA && o.enemy) {
+      const seen = all(o.enemy.seen);
+      if (seen) s += `<path d="${seen}" fill="${OCC.enemy}" fill-opacity=".36"/>`;
+      s += `<path d="${d(o.enemy.outline)}" fill="none" stroke="${OCC.enemy}" stroke-width="1.2" stroke-dasharray="5 4" opacity=".9"/>`;
+    }
+    if (K.OO && o.fan) {
+      const outline = d(o.fan.outline);
+      const scr = all(o.fan.screened);
+      const dead = all(o.fan.dead);
+      s += `<path d="${outline}" fill="${OCC.seen}" fill-opacity=".12"/>`;
+      if (scr) s += `<path d="${scr}" fill="${OCC.screened}" fill-opacity=".55"/>`;
+      if (dead) s += `<path d="${dead}" fill="${OCC.dead}" fill-opacity=".58"/>`;
+      s += `<path d="${outline}" fill="none" stroke="${CAS}" stroke-width="3.4" opacity=".6" stroke-linejoin="round"/><path d="${outline}" fill="none" stroke="${OCC.threat}" stroke-width="1.6" stroke-linejoin="round"/>`;
+    }
+    return s;
+  }
+
+  /** The OCOKA products drawn over the ground: avenues and chokepoints, lines of sight, the better position and the threat. */
+  private _ocokaLines(
+    o: ScopeOcokaScene,
+    K: Record<OcokaTab, boolean>,
+    X: (x: number, y: number) => number,
+    Y: (x: number, y: number) => number,
+    c: number,
+    S: number,
+    stroke: (pts: Float64Array, col: string, w: number, dash?: string, casing?: number) => string,
+    mark: (x: number, y: number, r: number) => void,
+    labels: Array<[number, number, string, string, number]>,
+  ): string {
+    let s = '';
+    const px = (p: XY): XY => [X(p[0], p[1]), Y(p[0], p[1])];
+    const inMap = (x: number, y: number) => x > 6 && x < S - 6 && y > 6 && y < S - 6;
+    const seg = (a: XY, b: XY, col: string, w: number, dash = ''): string => stroke(Float64Array.from([a[0], a[1], b[0], b[1]]), col, w, dash, 1.6);
+    const cross = (p: XY, col: string): string => {
+      const [x, y] = px(p);
+      if (!inMap(x, y)) return '';
+      return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" stroke-linecap="round"><path d="M-4 -4L4 4M4 -4L-4 4" stroke="${CAS}" stroke-width="4.4"/><path d="M-4 -4L4 4M4 -4L-4 4" stroke="${col}" stroke-width="2"/></g>`;
+    };
+    if (K.OA) {
+      // Avenues: the second dashed, under the first; a diamond where the frontage does not fit.
+      const av = o.avenues ?? [];
+      for (let i = av.length - 1; i >= 0; i--) s += stroke(av[i].path, OCC.avenue, i ? 2.2 : 3.2, i ? '7 5' : '', 2.4);
+      av.forEach((a, i) => {
+        a.chokes.forEach((ch, j) => {
+          const [x, y] = px(ch.at);
+          if (!inMap(x, y)) return;
+          s += `<rect x="${(x - 4.6).toFixed(1)}" y="${(y - 4.6).toFixed(1)}" width="9.2" height="9.2" transform="rotate(45 ${x.toFixed(1)} ${y.toFixed(1)})" fill="${OCC.screened}" stroke="${CAS}" stroke-width="1.6"/>`;
+          mark(x, y, 7);
+          if (i === 0 && j === 0) labels.push([x, y, `Narrows to ${fmtDistance(ch.widthM)}`, '#ffd9a8', FS.meta]);
+        });
+      });
+      if (o.from && o.fromAssumed) {
+        // A threat with a direction but no place: where the avenue was started from.
+        const [x, y] = px(o.from);
+        if (inMap(x, y)) s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="none" stroke="${CAS}" stroke-width="3.8"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="none" stroke="${OCC.avenue}" stroke-width="1.8"/>`;
+      }
+      // The threat's line to the spot: solid when it probably sees it, else broken, with a cross where it is lost.
+      if (o.enemy) {
+        const sees = o.enemy.seesP >= 0.5;
+        s += seg(o.enemy.at, o.at, OCC.enemy, sees ? 2.6 : 1.8, sees ? '' : o.enemy.seesP >= 0.2 ? '7 4' : '3 4');
+        if (!sees && o.enemy.lostAt) s += cross(o.enemy.lostAt, OCC.enemy);
+      }
+    }
+    if (K.OK) {
+      // Lines of sight to the ITG candidates: green in view, amber may be, red lost (a cross where).
+      for (const l of o.lines) {
+        const col = l.p >= 0.5 ? OCC.seen : l.p >= 0.2 ? OCC.screened : OCC.dead;
+        s += seg(o.at, l.to, col, l.p >= 0.5 ? 2 : 1.6, l.p >= 0.5 ? '' : l.p >= 0.2 ? '7 4' : '3 4');
+        if (l.p < 0.5 && l.lostAt) s += cross(l.lostAt, col);
+      }
+    }
+    // The better position (always, as the clear ground is): a green ring and a broken line to it.
+    if (o.better) {
+      const [x, y] = px(o.better.at);
+      if (inMap(x, y)) {
+        const cx = x.toFixed(1);
+        const cy = y.toFixed(1);
+        s += seg(o.at, o.better.at, OCC.better, 2, '5 3');
+        s += `<circle cx="${cx}" cy="${cy}" r="7" fill="rgba(95,227,154,.18)" stroke="${CAS}" stroke-width="4.4"/><circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="${OCC.better}" stroke-width="2.2"/><circle cx="${cx}" cy="${cy}" r="2" fill="${OCC.better}"/>`;
+        mark(x, y, 9);
+        labels.push([x, y, `Better Posn ${fmtDistance(o.better.distanceM)}`, OCC.better, FS.meta]);
+      }
+    }
+    // The threat: its marker where it stands, or a pointer at the edge of the map the way it lies.
+    if (K.OA && !o.threat.allRound) {
+      const t = (o.threat.bearingDeg * Math.PI) / 180;
+      const far: XY = o.threat.at ?? [o.at[0] + Math.sin(t) * 1e6, o.at[1] + Math.cos(t) * 1e6];
+      const [sx, sy] = px(far);
+      const name = o.threat.at && o.threat.distM !== null ? `Threat ${fmtDistance(o.threat.distM)}` : 'Threat';
+      if (o.threat.at && sx > 12 && sx < S - 12 && sy > 12 && sy < S - 12) {
+        const [ax, ay] = px(o.at);
+        const deg = ((Math.atan2(ax - sx, -(ay - sy)) * 180) / Math.PI).toFixed(1);
+        s += `<g transform="translate(${sx.toFixed(1)} ${sy.toFixed(1)})"><circle r="8.5" fill="${OCC.threat}" stroke="${CAS}" stroke-width="1.8"/><path d="M0 -5.5 L4.2 3.6 H-4.2Z" fill="${CAS}" transform="rotate(${deg})"/></g>`;
+        mark(sx, sy, 10);
+        labels.push([sx, sy, name, OCC.threat, FS.meta]);
+      } else {
+        const ang = Math.atan2(sx - c, -(sy - c)); // screen bearing of the threat, radians clockwise from up
+        const sa = Math.abs(Math.sin(ang));
+        const ca = Math.abs(Math.cos(ang));
+        const t0 = Math.min(sa > 1e-6 ? (c - 12) / sa : 1e9, ca > 1e-6 ? (c - 12) / ca : 1e9);
+        const ex = c + Math.sin(ang) * t0;
+        const ey = c - Math.cos(ang) * t0;
+        s += `<g transform="translate(${ex.toFixed(1)} ${ey.toFixed(1)}) rotate(${((ang * 180) / Math.PI).toFixed(1)})"><path d="M0 -9 L7 5 L-7 5Z" fill="${OCC.threat}" stroke="${CAS}" stroke-width="1.4"/></g>`;
+        mark(ex, ey, 8);
+        labels.push([ex, ey, name, OCC.threat, FS.meta]);
+      }
+    }
+    return s;
+  }
+
   private _image(sc: ScopeScene, key: string, draw: (cv: HTMLCanvasElement) => void): string {
     let m = IMAGES.get(sc);
     if (!m) IMAGES.set(sc, (m = new Map()));
@@ -1068,13 +1328,13 @@ function nearestOn(pts: Float64Array): { x: number; y: number; d: number; b: num
 }
 
 /** Going cells, one canvas pixel each; with T off, plain ground with NO-GO kept in the neutral obstacle colour. */
-function paintGoing(cv: HTMLCanvasElement, going: Uint8Array, T: boolean): void {
+function paintGoing(cv: HTMLCanvasElement, going: Uint8Array, T: boolean, nogo = true): void {
   const N = SCOPE_N;
   cv.width = N;
   cv.height = N;
   const x = cv.getContext('2d');
   if (!x) return;
-  const plain = ['', M.plain.ground, M.plain.ground, M.plain.ground, M.plain.nogo];
+  const plain = ['', M.plain.ground, M.plain.ground, M.plain.ground, nogo ? M.plain.nogo : M.plain.ground];
   for (let i = 0; i < going.length; i++) {
     const g = going[i];
     x.fillStyle = g ? (T ? CELL_COLORS[g] : plain[g]) : M.cell.none;

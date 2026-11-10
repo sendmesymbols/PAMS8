@@ -54,13 +54,16 @@ const LEVEL_OF_ECHELON: Readonly<Record<string, number>> = { '13': 0, '14': 1, '
 /**
  * The level for an echelon code (null: a point with no frontage, or the map centre), widened when the shape being
  * judged reaches `needM` ground metres from the spot (a line or area): the first level that holds it, past the
- * widest a multiple of it.
+ * widest a multiple of it. With `fit`, a spot without an echelon gets the closest level that holds `needM` (the
+ * weapon's fan in the OCOKA lens) instead of the Coy's.
  */
-export function scopeLevel(code: string | null, needM = 0): ScopeLevel {
-  const l = LEVELS[code !== null && code in LEVEL_OF_ECHELON ? LEVEL_OF_ECHELON[code] : 2];
+export function scopeLevel(code: string | null, needM = 0, fit = false): ScopeLevel {
+  // `fit` (the OCOKA lens, a spot with no echelon): the closest level that still holds `needM`, never the Section's.
+  const none = fit && needM > 0 ? Math.max(1, LEVELS.findIndex((x) => x.radiusM >= needM)) : 2;
+  const l = LEVELS[code !== null && code in LEVEL_OF_ECHELON ? LEVEL_OF_ECHELON[code] : none];
   if (!(needM > l.radiusM)) return l;
-  const fit = LEVELS.find((x) => x.radiusM >= needM);
-  if (fit) return fit;
+  const holds = LEVELS.find((x) => x.radiusM >= needM);
+  if (holds) return holds;
   const f = Math.ceil(needM / LEVELS[4].radiusM);
   return { lv: 4, radiusM: 10000 * f, rings: [3000 * f, 6000 * f, 9000 * f], barM: 2000 * f };
 }

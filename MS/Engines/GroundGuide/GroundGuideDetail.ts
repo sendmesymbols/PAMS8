@@ -51,7 +51,7 @@ import {
   roseText,
   shelterLine,
 } from './GroundGuideCoverView';
-import { detailSummary, letterAnswer } from './GroundGuideDetailSummary';
+import { detailSummary, letterAnswer, summaryStrip } from './GroundGuideDetailSummary';
 import { ensureTokensCss } from './GroundGuideTokens';
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
 import { ensureGoingCss, exitStripSection, goingCanvas, mapShares, orientRoses, ribbon, roseFigure, roseLegend, seasonIcon } from './GroundGuideGoingView';
@@ -106,10 +106,14 @@ import {
   speedWhen,
 } from './GroundGuideSpeedView';
 import { blockGauge, blockTiles, blockWayOut, ensureTrafficCss, roadBlock, viewOf } from './GroundGuideTrafficView';
-import type { GroundGuideVerdict } from './GroundGuideTypes';
+import type { GroundGuideLens, GroundGuideVerdict } from './GroundGuideTypes';
+import { OCOKA_TABS, OCOKA_TAB_KEY, OCOKA_TAB_LABEL, ensureOcokaCss, isOcokaTab, ocokaAnswer, ocokaFacts, ocokaText, ocokaTiles, type OcokaTab } from './GroundGuideOcokaView';
 
-export type DetailTab = GrotbcLetter | 'L';
+export type DetailTab = GrotbcLetter | 'L' | OcokaTab;
 export const DETAIL_TABS: readonly DetailTab[] = ['G', 'R', 'O', 'T', 'B', 'C', 'L'];
+/** The tabs of the OCOKA lens (keys 1 to 5), then the Legend. */
+export const DETAIL_TABS_OCOKA: readonly DetailTab[] = [...OCOKA_TABS, 'L'];
+const tabsOf = (lens: GroundGuideLens): readonly DetailTab[] => (lens === 'ocoka' ? DETAIL_TABS_OCOKA : DETAIL_TABS);
 /** Map layer switches the Legend tab offers. */
 export type DetailToggle = 'overlay' | 'boundary' | 'people' | 'indicators' | 'footprint';
 
@@ -135,9 +139,9 @@ export interface DetailHandlers {
 
 const STYLE_ID = 'ms-ground-guide-detail-style';
 const TAB_KEY = 'ms-ground-guide-detail-tab';
-const TAB_LABEL: Record<DetailTab, string> = { G: 'Gr', R: 'Rds & Rail', O: 'Obs', T: 'Trafficability', B: 'BUAs', C: 'Cover', L: 'Legend' };
+const TAB_LABEL: Record<DetailTab, string> = { G: 'Gr', R: 'Rds & Rail', O: 'Obs', T: 'Trafficability', B: 'BUAs', C: 'Cover', L: 'Legend', ...OCOKA_TAB_LABEL };
 /** The key that opens each tab: the letter itself, except the Legend (K: L is Lasso Select in the app). */
-export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T: 'T', B: 'B', C: 'C', L: 'K' };
+export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T: 'T', B: 'B', C: 'C', L: 'K', ...OCOKA_TAB_KEY };
 /** Where the Detail's height is remembered (item 14), and the three stops it snaps to, as a share of the window. */
 const HEIGHT_KEY = 'ms-ground-guide-detail-height';
 const HEIGHT_STOPS = [0.4, 0.5, 0.6] as const;
@@ -435,14 +439,15 @@ function readHeight(): number {
   return HEIGHT_DEFAULT;
 }
 
-function readTab(): DetailTab {
+function readTab(lens: GroundGuideLens = 'grotbc'): DetailTab {
+  const tabs = tabsOf(lens);
   try {
-    const t = localStorage.getItem(TAB_KEY);
-    if (t && (DETAIL_TABS as readonly string[]).includes(t)) return t as DetailTab;
+    const t = localStorage.getItem(lens === 'ocoka' ? `${TAB_KEY}-ocoka` : TAB_KEY);
+    if (t && (tabs as readonly string[]).includes(t)) return t as DetailTab;
   } catch {
     /* storage blocked */
   }
-  return 'G';
+  return tabs[0];
 }
 
 /** True when any part of the verdict is still waiting on tiles or features. */
@@ -512,6 +517,9 @@ export class GroundGuideDetail {
   private _copy: HTMLButtonElement | null = null;
   private _copyTimer: ReturnType<typeof setTimeout> | null = null;
   private _tab: DetailTab = readTab();
+  private _lens: GroundGuideLens = 'grotbc';
+  private _tabBar: HTMLElement | null = null;
+  private _keysEl: HTMLElement | null = null;
   private _v: GroundGuideVerdict | null = null;
   private _legend: { state: LegendState; info: DetailLegendInfo } | null = null;
   private _keyP: HTMLElement | null = null;
@@ -527,6 +535,68 @@ export class GroundGuideDetail {
 
   get tab(): DetailTab {
     return this._tab;
+  }
+
+  get lens(): GroundGuideLens {
+    return this._lens;
+  }
+
+  /**
+   * Switch the card between the GROTBC tabs (G R O T B C) and the OCOKA tabs (1 to 5); the Legend stays. Each lens
+   * remembers its own tab. The card is rebuilt in place when it is open.
+   */
+  setLens(lens: GroundGuideLens): void {
+    if (lens === this._lens) return;
+    this._lens = lens;
+    this._tab = readTab(lens);
+    if (!this._el) return;
+    this._buildTabs();
+    this._renderMeta(this._v);
+    if (this.isShown) this._renderTab(true);
+  }
+
+  /** The tab buttons and the key line of the footer, for the lens in force. */
+  private _buildTabs(): void {
+    const tabs = this._tabBar;
+    if (!tabs) return;
+    tabs.replaceChildren();
+    this._tabs.clear();
+    this._ans.clear();
+    for (const t of tabsOf(this._lens)) {
+      // Two lines (item 8): the short name over the tab's own answer, a dot and a word (filled in by _renderMeta).
+      const b = el('button', 'ms-ggd-tab', undefined) as HTMLButtonElement;
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(t === this._tab));
+      b.title = `${TAB_LABEL[t]} (${TAB_KEY_OF[t]})`;
+      b.setAttribute('aria-label', TAB_LABEL[t]);
+      const tt = el('span', 'ms-ggd-tt');
+      const ans = el('span', 'ms-ggd-ta');
+      ans.textContent = ' ';
+      tt.append(el('span', 'ms-ggd-tl', TAB_LABEL[t]), ans);
+      b.append(el('span', 'ms-ggd-k', TAB_KEY_OF[t]), tt);
+      b.addEventListener('click', () => this.setTab(t));
+      tabs.append(b);
+      this._tabs.set(t, b);
+      this._ans.set(t, ans);
+    }
+    const keys = this._keysEl;
+    if (!keys) return;
+    keys.replaceChildren();
+    const ocoka = this._lens === 'ocoka';
+    const rows: Array<[string, string]> = [
+      ['D', 'open / close'],
+      [ocoka ? '1 2 3 4 5' : 'G R O T B C', 'tabs, again for the next page, with Shift back'],
+      ['K', 'legend'],
+      ['F', ocoka ? 'GROTBC' : 'OCOKA'],
+      ...(ocoka ? ([['[ ]', 'turn the threat'], ['J', 'better Posn']] as Array<[string, string]>) : []),
+      ['V', 'Gr Scope'],
+      ['Esc', 'close'],
+    ];
+    for (const [k, t] of rows) {
+      for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
+      keys.append(`${t} `);
+    }
   }
 
   /**
@@ -566,7 +636,7 @@ export class GroundGuideDetail {
     const changed = tab !== this._tab;
     this._tab = tab;
     try {
-      localStorage.setItem(TAB_KEY, tab);
+      localStorage.setItem(this._lens === 'ocoka' ? `${TAB_KEY}-ocoka` : TAB_KEY, tab);
     } catch {
       /* storage blocked: the choice lasts for this page */
     }
@@ -686,24 +756,7 @@ export class GroundGuideDetail {
     const head = el('div', 'ms-ggd-h');
     const tabs = el('div', 'ms-ggd-tabs');
     tabs.setAttribute('role', 'tablist');
-    for (const t of DETAIL_TABS) {
-      // Two lines (item 8): the short name over the tab's own answer, a dot and a word (filled in by _renderMeta).
-      const b = el('button', 'ms-ggd-tab', undefined) as HTMLButtonElement;
-      b.type = 'button';
-      b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', String(t === this._tab));
-      b.title = `${TAB_LABEL[t]} (${TAB_KEY_OF[t]})`;
-      b.setAttribute('aria-label', TAB_LABEL[t]);
-      const tt = el('span', 'ms-ggd-tt');
-      const ans = el('span', 'ms-ggd-ta');
-      ans.textContent = ' ';
-      tt.append(el('span', 'ms-ggd-tl', TAB_LABEL[t]), ans);
-      b.append(el('span', 'ms-ggd-k', TAB_KEY_OF[t]), tt);
-      b.addEventListener('click', () => this.setTab(t));
-      tabs.append(b);
-      this._tabs.set(t, b);
-      this._ans.set(t, ans);
-    }
+    this._tabBar = tabs;
     const copy = el('button', 'ms-ggd-btn', 'Copy as Text') as HTMLButtonElement;
     copy.type = 'button';
     copy.title = 'Copy every section as plain text, for orders';
@@ -728,10 +781,8 @@ export class GroundGuideDetail {
     band.append(clip);
     const foot = el('div', 'ms-ggd-f');
     const keys = el('span');
-    for (const [k, t] of [['D', 'open / close'], ['G R O T B C', 'tabs, again for the next page, with Shift back'], ['K', 'legend'], ['V', 'Gr Scope'], ['Esc', 'close']] as const) {
-      for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
-      keys.append(`${t} `);
-    }
+    this._keysEl = keys;
+    this._buildTabs();
     const page = el('span', 'ms-ggd-page');
     page.hidden = true;
     page.setAttribute('aria-live', 'polite');
@@ -865,7 +916,7 @@ export class GroundGuideDetail {
   /** Every letter tab's answer (item 8) and the line saying who the ground is judged for (item 9). */
   private _renderMeta(v: GroundGuideVerdict | null): void {
     for (const [t, line] of this._ans) {
-      const a = t === 'L' ? null : letterAnswer(t, v);
+      const a = t === 'L' ? null : isOcokaTab(t) ? ocokaAnswer(t, v) : letterAnswer(t, v);
       if (!a) {
         line.replaceChildren(' ');
         line.title = '';
@@ -893,7 +944,7 @@ export class GroundGuideDetail {
     const sum = this._sum;
     if (!sum) return;
     const v = this._v;
-    const strip = tab === 'L' ? null : detailSummary(tab, v);
+    const strip = tab === 'L' ? null : isOcokaTab(tab) ? summaryStrip(ocokaAnswer(tab, v), ocokaFacts(tab, v)) : detailSummary(tab, v);
     if (!strip || !v) {
       sum.replaceChildren();
       sum.hidden = true;
@@ -932,7 +983,7 @@ export class GroundGuideDetail {
     this._renderSummary(tab);
     let tiles: HTMLElement[] = [];
     try {
-      tiles = tab === 'L' ? this._renderL() : this._renderLetter(tab);
+      tiles = tab === 'L' ? this._renderL() : isOcokaTab(tab) ? this._renderOcoka(tab) : this._renderLetter(tab);
     } catch (err) {
       tiles = [empty('This tab could not be drawn. The Engine Log has the error.')];
       console.error('[Ground Guide] detail tab', tab, err);
@@ -954,7 +1005,8 @@ export class GroundGuideDetail {
     const flow = this._flow;
     if (!flow) return;
     for (const b of flow.querySelectorAll<HTMLElement>(':scope > .ms-ggb-sec > .ms-ggb-cap > span:first-child')) {
-      if (b.textContent === tab && b.childElementCount === 0) b.remove();
+      // In an OCOKA tab a GROTBC letter on a borrowed tile would read as another tab's key: every letter badge goes.
+      if (b.childElementCount === 0 && (b.textContent === tab || (isOcokaTab(tab) && (b.textContent ?? '').length === 1))) b.remove();
     }
   }
 
@@ -1180,6 +1232,28 @@ export class GroundGuideDetail {
     const next = el('span');
     next.append(el('b', undefined, `Page ${this._page + 1} of ${this._pages}`), ' ', el('span', 'ms-ggd-k', key), more ? 'next page' : 'back to page 1', ' Shift + ', el('span', 'ms-ggd-k', key), 'back');
     p.replaceChildren(dots, next);
+  }
+
+  /**
+   * An OCOKA tab: the lens's own tiles first, then the GROTBC tiles that answer the same letter (Cover's four ways,
+   * the obstacle dial, the ITG candidates), so nothing the other lens knows is lost by switching.
+   */
+  private _renderOcoka(tab: OcokaTab): HTMLElement[] {
+    const v = this._v;
+    if (!v || v.verdict === 'off' || v.verdict === 'exempt') return [];
+    if (v.verdict === 'unknown') return [empty(v.waiting ? 'Loading the terrain tiles under the cursor.' : v.message)];
+    if (!v.ocoka) return [empty('No elevation loaded here yet. Move the cursor over the map, or wait for the tiles.')];
+    ensureOcokaCss();
+    const own = ocokaTiles(tab, v);
+    switch (tab) {
+      case 'OC': return [...this._renderC(v), ...own];
+      case 'OX': return [...own, ...this._renderO(v)];
+      case 'OK': {
+        const itg = itgSection(v);
+        return itg ? [...own, itg] : own;
+      }
+      default: return own;
+    }
   }
 
   private _renderLetter(tab: GrotbcLetter): HTMLElement[] {
@@ -1489,7 +1563,7 @@ export class GroundGuideDetail {
     const v = this._v;
     const btn = this._copy;
     if (!v || !btn) return;
-    const text = briefText(v);
+    const text = this._lens === 'ocoka' ? ocokaText(v).join('\n') : briefText(v);
     const done = (ok: boolean) => {
       btn.textContent = ok ? 'Copied' : 'Copy failed';
       if (this._copyTimer !== null) clearTimeout(this._copyTimer);

@@ -98,8 +98,16 @@ import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
 import { checkSpacing, echelonCodeOf, frontBlocks, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
 import { GroundGuideIndicators } from './GroundGuideIndicators';
+import { mPerPx, mercToPx, weaponOf, type OcokaGrid } from './GroundGuideOcoka';
+import { GroundGuideOcokaMap } from './GroundGuideOcokaMap';
+import { DEFAULT_FRONTAGE_M, OCOKA_EYES, OCOKA_THREATS, OcokaLive, OcokaVisibility, ocokaPlan, ocokaSight, ocokaViewshed, readOcoka, type OcokaMapArgs } from './GroundGuideOcokaRead';
+import { OCOKA_TABS, isOcokaTab, ocokaKey, ocokaScopeText, ocokaText } from './GroundGuideOcokaView';
+import { GroundGuideThreat } from './GroundGuideThreat';
+import { catalogKey } from './GroundGuideSpeed';
+import type { GroundGuideLens, GroundGuideOcoka, OcokaMapPlan, OcokaMapSight, OcokaThreatMode } from './GroundGuideTypes';
 import { GroundGuideScope, type ScopeFrame, type ScopeSource } from './GroundGuideScope';
 import { buildScopeScene, overCodes, scopeHalf, scopeLevel } from './GroundGuideScopeScene';
+import { scopeOcokaScene } from './GroundGuideScopeOcoka';
 import { GroundGuideLegend, type LegendState } from './GroundGuideLegend';
 import { createOverlayLayer, OVERLAY_COLORS, OVERLAY_LEGEND, type OverlayRenderingSource } from './GroundGuideOverlay';
 import { verdictTone } from './GroundGuideTokens';
@@ -154,6 +162,11 @@ import {
 } from './TerrainTileCache';
 
 const ENGINE = 'Ground Guide';
+/** A symbol's weapon ranges from the catalogue: the `Rng` field of MS/Data/Symbols.json (see OcokaDoctrine.json for its basis codes). */
+const DEFAULT_RANGE_LOOKUP = (key: string): { rng: unknown; name?: string | null } | null => {
+  const s = SymbolMetadataService.getByKey(key);
+  return s ? { rng: s.Rng ?? null, name: typeof s.Name === 'string' ? s.Name : null } : null;
+};
 const NULL_SAMPLE: TerrainSample = { classCode: null, distanceM: null };
 /** Layers whose point symbols count as neighbours for the intergap check. */
 const NEIGHBOUR_LAYER_IDS = SYMBOL_LAYER_IDS;
@@ -293,6 +306,9 @@ export default class GroundGuide {
       },
     },
     toggle: (key, on) => this._toggleLayer(key, on),
+    tab: (t) => {
+      if (isOcokaTab(t)) this._refreshLive(); // the viewshed picture is only traced for the tab that draws it
+    },
     opacity: (v) => {
       this.setOptions({ overlay: { ...this._opts.overlay, opacity: v } });
       setSetting(['groundGuide', 'overlay', 'opacity'], v);
@@ -301,6 +317,37 @@ export default class GroundGuide {
   });
   /** True while the Ground Detail is open (`isDetailOpen`; the older name `isBriefOpen` still works). */
   private _briefOpen = false;
+  /** OCOKA lens: the ground the live reading runs on, the last reading, the month's visibility grid, the threat marker. */
+  private _ocokaLive = new OcokaLive();
+  /** The lens's map overlay: the threat's own grid of tiles, what was last drawn from it, and the spot the view from the position was drawn for. */
+  private _ocokaOverLive = new OcokaLive();
+  private _ocokaOverGrid: OcokaGrid | null = null;
+  private _ocokaOverSig = '';
+  private _ocokaOverTimer: ReturnType<typeof setTimeout> | null = null;
+  private _ocokaViewKey = '';
+  private _ocokaTick = 0;
+  private _lastOcoka: GroundGuideOcoka | null = null;
+  private _visibility: OcokaVisibility | null = null;
+  private _rangeLookup: (key: string) => { rng: unknown; name?: string | null } | null | undefined = DEFAULT_RANGE_LOOKUP;
+  private _threatHandle: { remove(): void } | null = null;
+  /** OCOKA on the map: the layer, what the last live reading ran on, and the products worked out for it. */
+  private _ocokaMap = new GroundGuideOcokaMap(() => this._getView?.());
+  private _ocokaRead: { key: string; grid: OcokaGrid; ox: number; oy: number } | null = null;
+  private _ocokaCtx: { key: string; grid: OcokaGrid; ox: number; oy: number; at: MercXY; lngLat: [number, number]; profile: GroundGuideProfile; reading: GroundGuideOcoka; frontageM: number } | null = null;
+  private _ocokaSightKey = '';
+  private _ocokaSight: OcokaMapSight | null = null;
+  private _ocokaPlanKey = '';
+  private _ocokaPlan: OcokaMapPlan | null = null;
+  private _ocokaDrawnKey = '';
+  private _ocokaSightTimer: ReturnType<typeof setTimeout> | null = null;
+  private _ocokaPlanTimer: ReturnType<typeof setTimeout> | null = null;
+  private _threat = new GroundGuideThreat({
+    container: () => ((this._getView?.() as any)?.container as HTMLElement | null | undefined) ?? null,
+    toScreen: (ll) => this._lngLatToScreen(ll),
+    toMap: (x, y) => this._screenToLngLat(x, y),
+    moved: (ll) => this.setThreat({ threat: 'point', at: [Number(ll[0].toFixed(6)), Number(ll[1].toFixed(6))] }),
+    reset: () => this.setThreat({ threat: 'front' }),
+  });
   private _source: OverlayRenderingSource | null = null;
   private _overlay: any = null;
   private _overlayMap: any = null;
@@ -395,6 +442,11 @@ export default class GroundGuide {
   private _scopeOver: Uint8Array | null = null;
   /** What the rail last drew, and a count of tile arrivals, so an unchanged frame is not drawn again. */
   private _scopeKey = '';
+  /** The rail in the OCOKA lens, reading a symbol that is not being placed: its grid, its products, and the plan once the spot has rested. */
+  private _scopeOcokaRd: { key: string; grid: OcokaGrid; ox: number; oy: number } | null = null;
+  private _scopeOcokaMade: { key: string; sight: OcokaMapSight; plan: OcokaMapPlan | null } | null = null;
+  private _scopePlanKey = '';
+  private _scopePlanTimer: ReturnType<typeof setTimeout> | null = null;
   private _scopeTick = 0;
   private _north = 0;
   private _lastClient: { x: number; y: number } | null = null;
@@ -529,6 +581,9 @@ export default class GroundGuide {
       }
       const cm = manifest.grotbc?.climate;
       this._climate = cm ? new ClimateGrid(`${base}/${cm.index}`, `${base}/${cm.data}`, () => this._onTilesChanged(false)) : null;
+      const vm = (manifest.grotbc as any)?.visibility;
+      this._visibility = typeof vm?.index === 'string' && typeof vm?.data === 'string' ? new OcokaVisibility(`${base}/${vm.index}`, `${base}/${vm.data}`, () => this._onTilesChanged(false)) : null;
+      this._ocokaLive.clear();
       const pm = manifest.grotbc?.population;
       this._population = pm ? new PopulationGrid(base, pm, () => this._onPopulationReady()) : null;
       this._loadPopulation();
@@ -822,6 +877,34 @@ export default class GroundGuide {
       flag('scope.tab', so.tab, (b) => (next.scope.tab = b));
       num('scope.topPx', so.topPx, 0, 400, (n) => (next.scope.topPx = n), true);
     }
+    const oc = patch.ocoka;
+    next.ocoka = { ...prev.ocoka };
+    if (oc && typeof oc === 'object') {
+      pick('ocoka.lens', oc.lens, ['grotbc', 'ocoka'] as const, (x) => (next.ocoka.lens = x));
+      flag('ocoka.keys', oc.keys, (b) => (next.ocoka.keys = b));
+      pick('ocoka.threat', oc.threat, OCOKA_THREATS, (x) => (next.ocoka.threat = x));
+      if (oc.bearingDeg !== undefined) {
+        if (typeof oc.bearingDeg === 'number' && Number.isFinite(oc.bearingDeg)) next.ocoka.bearingDeg = ((oc.bearingDeg % 360) + 360) % 360;
+        else bad('ocoka.bearingDeg', oc.bearingDeg, 'must be a number of degrees');
+      }
+      num('ocoka.sectorDeg', oc.sectorDeg, 30, 180, (n) => (next.ocoka.sectorDeg = n));
+      if (oc.at !== undefined) {
+        const a = oc.at as unknown;
+        if (a === null) next.ocoka.at = null;
+        else if (Array.isArray(a) && a.length === 2 && a.every((n) => typeof n === 'number' && Number.isFinite(n)) && Math.abs(a[0]) <= 180 && Math.abs(a[1]) <= 90) next.ocoka.at = [a[0], a[1]];
+        else bad('ocoka.at', a, 'must be [longitude, latitude] or null');
+      }
+      flag('ocoka.marker', oc.marker, (b) => (next.ocoka.marker = b));
+      num('ocoka.radiusKm', oc.radiusKm, 1, 10, (n) => (next.ocoka.radiusKm = n));
+      pick('ocoka.eye', oc.eye, OCOKA_EYES, (x) => (next.ocoka.eye = x));
+      flag('ocoka.surface', oc.surface, (b) => (next.ocoka.surface = b));
+      flag('ocoka.mapFan', oc.mapFan, (b) => (next.ocoka.mapFan = b));
+      flag('ocoka.mapEnemy', oc.mapEnemy, (b) => (next.ocoka.mapEnemy = b));
+      flag('ocoka.mapSight', oc.mapSight, (b) => (next.ocoka.mapSight = b));
+      flag('ocoka.mapAvenues', oc.mapAvenues, (b) => (next.ocoka.mapAvenues = b));
+      flag('ocoka.mapBetter', oc.mapBetter, (b) => (next.ocoka.mapBetter = b));
+      pick('ocoka.overlay', oc.overlay, ['auto', 'view', 'threat', 'going'] as const, (x) => (next.ocoka.overlay = x));
+    }
     this._reportIssues(issues);
     this._opts = next;
     setDistanceUnits(next.units);
@@ -835,6 +918,18 @@ export default class GroundGuide {
     if (!next.footprint.outline || !next.footprint.enabled) this._indicators.hideFootprint();
     this._badge.setCard(next.card);
     if (!next.card.briefKey && this._briefOpen) this._toggleBrief(false);
+    if (JSON.stringify(next.ocoka) !== JSON.stringify(prev.ocoka) || next.footprint.bearingDeg !== prev.footprint.bearingDeg || next.mode !== prev.mode) {
+      if (next.ocoka.lens !== prev.ocoka.lens) {
+        this._detail.setLens(next.ocoka.lens);
+        this._emit('ground-guide-lens', { lens: next.ocoka.lens });
+      }
+      this._syncThreat();
+      this._ocokaDrawnKey = '';
+      if (next.ocoka.lens !== 'ocoka' || next.mode === 'off') this._ocokaMapClear();
+      this._syncOverlay(); // the going paint gives way to the lens's own overlay, and comes back
+      this._refreshLive();
+      this._scopeSoon(0, true); // the rail reads in the same lens, toward the same threat
+    }
     if (JSON.stringify(next.going) !== JSON.stringify(prev.going) || JSON.stringify(next.card) !== JSON.stringify(prev.card)) {
       this._refreshLive();
     }
@@ -1115,8 +1210,23 @@ export default class GroundGuide {
     const k = 1 / Math.max(Math.cos(lat), 1e-6); // Web Mercator metres per ground metre here
 
     const effSidc = sidc ?? (source === 'drawing' ? this._activeSidc : null);
+    // The mode (as the audit does: a mode set by hand when the symbol was placed is kept).
+    let profile: GroundGuideProfile;
+    if (graphic) {
+      const stamp = readStamp(graphic);
+      profile = stamp?.profileOverride && this.profileChoices.includes(stamp.profile) ? stamp.profile : resolveProfile(sidc, this._rules);
+    } else profile = v ? v.profile : this._legendProfile();
+    // The OCOKA lens: the reading first, as the map must hold the weapon's fan. A symbol being placed brings its own
+    // (with the map products); any other spot is read here from the tiles in memory.
+    const lensOcoka = this._opts.ocoka.lens === 'ocoka';
+    let ocoka: GroundGuideOcoka | null = null;
+    if (lensOcoka) {
+      ocoka = source === 'drawing' ? (v?.ocoka ?? null) : this._scopeOcokaRead(centre, profile, effSidc);
+      if (ocoka) needM = Math.max(needM, ocoka.obstacle.rangeM * 1.06);
+    }
+    const ocokaPart = !lensOcoka ? '' : !ocoka ? 'o-' : `o${source === 'drawing' ? '' : (this._scopeOcokaRd?.key ?? '')}|${ocokaKey(ocoka)}|${ocoka.sight ? 1 : 0}${ocoka.plan ? 1 : 0}|${this._scopePlanKey}`;
     const code = isPoint ? echelonCodeOf(effSidc) : null;
-    const level = scopeLevel(code, needM);
+    const level = scopeLevel(code, needM, !!ocoka && isPoint);
     const north = this._north;
     const half = scopeHalf(level.radiusM, north);
     const m = this._manifest;
@@ -1127,14 +1237,11 @@ export default class GroundGuide {
 
     // The frame key: an unchanged spot, verdict, rotation and data are not drawn again.
     const vKey = v ? `${v.verdict}|${v.message}|${Math.round(v.fraction * 100)}|${v.clear?.distanceM ?? ''}|${v.loading ? 1 : 0}|${v.footprint?.front?.map((b) => Math.round(b.nogo * 9)).join('') ?? ''}` : '';
-    const key = [source, Math.round(centre[0] / cellMerc), Math.round(centre[1] / cellMerc), level.radiusM, Math.round(north), z, vKey, this._scopeTick, graphic?.attributes?.id ?? '', effSidc ?? ''].join('|');
+    const key = [source, Math.round(centre[0] / cellMerc), Math.round(centre[1] / cellMerc), level.radiusM, Math.round(north), z, vKey, this._scopeTick, graphic?.attributes?.id ?? '', effSidc ?? '', ocokaPart].join('|');
     if (key === this._scopeKey) return;
 
-    // A placed symbol is judged now (as the audit does: a mode set by hand when it was placed is kept).
-    let profile: GroundGuideProfile;
+    // A placed symbol is judged now.
     if (graphic) {
-      const stamp = readStamp(graphic);
-      profile = stamp?.profileOverride && this.profileChoices.includes(stamp.profile) ? stamp.profile : resolveProfile(sidc, this._rules);
       v = this.evaluateGeometry(geometry, sidc, { profile, self: graphic });
       const inNoGo = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
       if (isPoint && inNoGo && !v.loading) {
@@ -1146,7 +1253,20 @@ export default class GroundGuide {
           v.clear = { at: f.at, distanceM: Math.hypot(dx, dy) / k, bearingDeg: b, compass: COMPASS[Math.round(b / 45) % 8], verdict: f.verdict, searchedM: f.searchedM };
         } else if (!f.loading) v.clear = { at: null, distanceM: null, bearingDeg: null, compass: null, verdict: null, searchedM: f.searchedM };
       }
-    } else profile = v ? v.profile : this._legendProfile();
+    }
+    if (ocoka && source !== 'drawing') {
+      // The cover letter's own reading for the C line, and the map products for this spot and frontage.
+      if (v && !v.cover) {
+        try {
+          v.cover = this._coverNear(geometry, v);
+        } catch {
+          /* the rail does without the cover line */
+        }
+      }
+      ocoka = this._scopeOcokaProducts(ocoka, centre, profile, v?.footprint?.frontageM || DEFAULT_FRONTAGE_M);
+      // The map centre is not a position: no better one is offered for it.
+      if (source === 'centre' && ocoka.plan?.better) ocoka = { ...ocoka, plan: { ...ocoka.plan, better: null } };
+    }
     const compiled = this._profile(profile);
 
     // The tiles the map needs (deduplicated by the cache), then the grids from what is in memory.
@@ -1189,14 +1309,176 @@ export default class GroundGuide {
       profileLabel: this._rules?.profiles?.[profile]?.label ?? profile,
       echelon: fp ? { name: fp.echelon, frontageM: fp.frontageM, depthM: fp.depthM, facingDeg: fp.facing === 'circle' ? null : fp.facingDeg } : null,
       when: { season, text: `${season === 'wet' ? 'After rain' : 'Dry'} · ${monthName(month)} · ${light === 'night' ? 'Night' : 'Day'}` },
-      keys: { snap: source === 'drawing' && !!v?.snappable, detail: this._opts.card.briefKey && !this._touchInput },
+      lens: lensOcoka ? 'ocoka' : 'grotbc',
+      ocoka: ocoka ? { scene: scopeOcokaScene(ocoka, centre, this._threatMerc()), text: ocokaScopeText(ocoka, v) } : null,
+      keys: {
+        snap: source === 'drawing' && !!v?.snappable,
+        detail: this._opts.card.briefKey && !this._touchInput,
+        better: source === 'drawing' && isPoint && !this._touchInput,
+        lens: this._opts.ocoka.keys && !this._touchInput,
+      },
       outline: isPoint ? null : shape.parts.map((part) => Float64Array.from(part.flatMap((p) => local(p)))),
       closed: geometry.type === 'polygon',
       clearAt: v?.clear?.at && isPoint ? local(v.clear.at) : null,
-      loading: ctx.waiting || feats.pending,
+      loading: ctx.waiting || feats.pending || !!ocoka?.pending,
     };
     this._scopeKey = frame.loading ? '' : key; // still loading: the next tile draws it again
     this._scope.render(frame);
+  }
+
+  // ── OCOKA map overlay ────────────────────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * What the map overlay paints while the lens is OCOKA (`ocoka.overlay`, with `overlay.enabled`): `threat` all the
+   * ground the threat may see from its place, `view` all the ground that may be seen from the position being placed,
+   * `going` the GROTBC paint. Null: the overlay is off, the lens is GROTBC, or `threat` was asked for and the threat is
+   * not a place.
+   */
+  private _ocokaOverlayKind(): 'threat' | 'view' | 'going' | null {
+    const o = this._opts.ocoka;
+    if (!(this._enabled && this._manifest !== null && this._opts.mode !== 'off' && this._opts.overlay.enabled && o.lens === 'ocoka')) return null;
+    if (o.overlay === 'going') return 'going';
+    if (o.overlay === 'view') return 'view';
+    const place = o.threat === 'point' && !!o.at;
+    return place ? 'threat' : o.overlay === 'threat' ? null : 'view';
+  }
+
+  /** Work the lens's overlay out again soon: a new lens, threat place, option, view or tile. */
+  private _ocokaOverlaySoon(ms = 150): void {
+    if (this._ocokaOverTimer !== null) clearTimeout(this._ocokaOverTimer);
+    this._ocokaOverTimer = setTimeout(() => {
+      this._ocokaOverTimer = null;
+      try {
+        this._ocokaOverlayDraw();
+      } catch (err) {
+        console.error('[Ground Guide] OCOKA overlay', err);
+      }
+    }, ms);
+  }
+
+  /**
+   * The threat's view: all the ground it may see from its place out to `ocoka.radiusKm`, read from its own grid of
+   * tiles (asked for here), for a vehicle commander's eye (2.4 m: never understated) looking for the mode's unit. It
+   * does not follow the cursor: it is worked out again only for a new place, option or tile. The view from the
+   * position is drawn by `_ocokaDraw` once the cursor rests; here it is only cleared when nothing is being placed.
+   */
+  private _ocokaOverlayDraw(): void {
+    const kind = this._ocokaOverlayKind();
+    if (kind !== 'threat') {
+      this._ocokaOverSig = '';
+      this._ocokaOverGrid = null;
+      // The threat's view goes at once when it is no longer asked for; the view from the position goes when nothing is
+      // being placed (`_ocokaDraw` draws it again where the cursor rests).
+      if (kind !== 'view' || !this._ocokaCtx || this._ocokaMap.overlayKind === 'threat') {
+        this._ocokaViewKey = '';
+        this._ocokaMap.showOverlay(null);
+        this._ocokaDrawnKey = ''; // the threat's wedge toward the position is drawn again
+      }
+      return;
+    }
+    const at = this._threatMerc();
+    const m = this._manifest;
+    const cache = this._cache;
+    const L = this._sectionLayers();
+    if (!at || !m || !cache || !L.elevHi || !L.elevLo) return this._ocokaMap.showOverlay(null);
+    const o = this._opts.ocoka;
+    const profile = this._legendProfile();
+    const z = m.zoom.max;
+    const ts = m.tileSize;
+    const lat = mercatorToLngLat(at[0], at[1])[1];
+    const radiusM = o.radiusKm * 1000;
+    const reach = (radiusM + 600) * Math.cosh(at[1] / 6378137);
+    const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, ts);
+    const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, ts);
+    const n = 2 ** z;
+    const layers = { cls: this._layerNames(profile).cls, elevHi: L.elevHi, elevLo: L.elevLo, bld: L.bld };
+    for (let ty = Math.max(0, a.ty); ty <= Math.min(n - 1, b.ty); ty++) {
+      for (let tx = Math.max(0, a.tx); tx <= Math.min(n - 1, b.tx); tx++) {
+        for (const layer of [layers.cls, layers.elevHi, layers.elevLo, layers.bld]) if (layer) cache.request(layer, z, tx, ty);
+      }
+    }
+    const [cx, cy] = mercToPx(at[0], at[1], z, ts);
+    const peek = (layer: string, x: number, y: number) => (x < 0 || y < 0 || x >= n || y >= n ? null : cache.peek(layer, z, x, y));
+    const grid = this._ocokaOverLive.grid(peek, layers, z, ts, lat, cx, cy, radiusM / mPerPx(lat, z, ts) + 4, this._ocokaTick);
+    const month = resolveMonth(this._opts.going.month);
+    const own = profile === 'tracked' || profile === 'amphibious' ? 2.4 : 1.7;
+    const sig = [at[0], at[1], radiusM, month, o.surface, own].join('|');
+    if (grid === this._ocokaOverGrid && sig === this._ocokaOverSig) return; // the same ground, place and options
+    this._ocokaOverGrid = grid;
+    this._ocokaOverSig = sig;
+    this._ocokaViewKey = '';
+    this._ocokaMap.showOverlay(ocokaViewshed({ grid, ox: cx - grid.px0, oy: cy - grid.py0, at, kind: 'threat', eyeM: 2.4, targetM: own, radiusM, month, surface: o.surface }));
+  }
+
+  /** The threat's place in Web Mercator, when it is one (`ocoka.threat: point`). */
+  private _threatMerc(): MercXY | null {
+    const o = this._opts.ocoka;
+    return o.threat === 'point' && o.at ? (lngLatToMercator(o.at[0], o.at[1]) as MercXY) : null;
+  }
+
+  /**
+   * The OCOKA reading for the rail at a spot that is not being placed (a selected or placed symbol, the map centre):
+   * asks for the tiles it needs (as far as the threat's place, up to 10 km) and reads from those in memory. Null until
+   * the elevation is there, or for a symbol that is not terrain-bound.
+   */
+  private _scopeOcokaRead(at: MercXY, profile: GroundGuideProfile, sidc: string | null): GroundGuideOcoka | null {
+    const m = this._manifest;
+    const L = this._sectionLayers();
+    this._scopeOcokaRd = null;
+    if (!m || !this._cache || !L.elevHi || !L.elevLo || profile === 'exempt') return null;
+    const z = m.zoom.max;
+    const k = Math.cosh(at[1] / 6378137); // Web Mercator metres per ground metre here
+    let reachM = this._opts.ocoka.radiusKm * 1000;
+    const t = this._threatMerc();
+    if (t) {
+      const d = Math.hypot(t[0] - at[0], t[1] - at[1]) / k;
+      if (d <= 10000) reachM = Math.max(reachM, d + 600);
+    }
+    const reach = (reachM + 600) * k;
+    const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, m.tileSize);
+    const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, m.tileSize);
+    const n = 2 ** z;
+    const layers = [this._layerNames(profile).cls, L.elevHi, L.elevLo, L.bld].filter((x): x is string => !!x);
+    for (let ty = Math.max(0, a.ty); ty <= Math.min(n - 1, b.ty); ty++) {
+      for (let tx = Math.max(0, a.tx); tx <= Math.min(n - 1, b.tx); tx++) {
+        for (const layer of layers) this._cache.request(layer, z, tx, ty);
+      }
+    }
+    this._visibility?.get(); // starts the month's visibility grid if it is not in memory
+    const r = this._readOcoka(at, profile, sidc, false);
+    const rd = this._ocokaRead;
+    if (r && rd) this._scopeOcokaRd = { key: rd.key, grid: rd.grid, ox: rd.ox, oy: rd.oy };
+    return r;
+  }
+
+  /**
+   * The rail's reading with its map products: the fan, the lines of sight and the threat's view at once; the avenues
+   * and the better position once the spot has rested for a quarter of a second (the map centre moves with every pan).
+   */
+  private _scopeOcokaProducts(r: GroundGuideOcoka, at: MercXY, profile: GroundGuideProfile, frontageM: number): GroundGuideOcoka {
+    const rd = this._scopeOcokaRd;
+    if (!rd) return r;
+    const key = `${rd.key}|${frontageM}`;
+    try {
+      let made = this._scopeOcokaMade;
+      const args = (): OcokaMapArgs => this._ocokaArgs({ grid: rd.grid, ox: rd.ox, oy: rd.oy, at, lngLat: r.lngLat, profile, reading: r, frontageM });
+      if (!made || made.key !== key) made = this._scopeOcokaMade = { key, sight: ocokaSight(args()), plan: null };
+      if (!made.plan && !r.pending) {
+        if (this._scopePlanKey === key) made.plan = ocokaPlan(args());
+        else {
+          if (this._scopePlanTimer !== null) clearTimeout(this._scopePlanTimer);
+          this._scopePlanTimer = setTimeout(() => {
+            this._scopePlanTimer = null;
+            this._scopePlanKey = key; // the next draw works the plan out for this spot
+            this._scopeSoon(0);
+          }, 240);
+        }
+      }
+      return { ...r, sight: made.sight, plan: made.plan };
+    } catch (err) {
+      console.error('[Ground Guide] Gr Scope OCOKA products', err);
+      return r;
+    }
   }
 
   /** Verdict for the live cursor position, flagged when the snap key could improve it. */
@@ -1224,6 +1506,9 @@ export default class GroundGuide {
     v.population = this._populationNear(geometry, v);
     v.cover = this._coverNear(geometry, v);
     v.sections = this._sectionsNear(geometry, v);
+    v.lens = this._opts.ocoka.lens;
+    v.ocoka = v.lens === 'ocoka' ? this._ocokaNear(geometry, sidc, v) : null;
+    if (!v.ocoka) this._ocokaMapClear();
     this._legend.setKeys(v.profileKey, v.snappable);
     this._detail.setKeys(v.profileKey, v.snappable);
     if (v.verdict !== 'unknown' && v.verdict !== 'off' && v.verdict !== 'exempt') {
@@ -1264,6 +1549,7 @@ export default class GroundGuide {
     this._badge.setKeepClear(null);
     this._indicators.hide();
     this._indicators.hideFootprint();
+    this._ocokaMapClear();
     this._legend.hideHint('exempt');
     this._detachPointer();
     this._lastDetail = null;
@@ -2007,6 +2293,11 @@ export default class GroundGuide {
     this._boundary.onViewChanged(); // leave the old map; _syncOverlay() re-attaches it to the new one
     this._syncOverlay(); // moves the overlay (and the boundary) onto the new view's map
     this._indicators.onViewChanged(); // re-attaches to the new map on the next show
+    this._ocokaMap.onViewChanged();
+    this._ocokaOverGrid = null; // the lens's overlay is drawn again on the new view's map
+    this._ocokaViewKey = '';
+    this._ocokaOverlaySoon(0);
+    this._ocokaDrawnKey = '';
     this._removePopulationLayer(); // and the People layer and its key go to the new view
     this._syncPopulationLayer();
     this._syncScope(); // the rail docks to the new view's container
@@ -2015,6 +2306,10 @@ export default class GroundGuide {
   destroy(): void {
     this.disable();
     this._indicators.destroy();
+    this._ocokaMapClear();
+    if (this._ocokaOverTimer !== null) clearTimeout(this._ocokaOverTimer);
+    this._ocokaOverTimer = null;
+    this._ocokaMap.destroy();
     this._boundary.reset();
     this._configToken++;
     this._clearRetry();
@@ -2039,6 +2334,8 @@ export default class GroundGuide {
     this._legend.destroy();
     if (this._scopeTimer !== null) clearTimeout(this._scopeTimer);
     this._scopeTimer = null;
+    if (this._scopePlanTimer !== null) clearTimeout(this._scopePlanTimer);
+    this._scopePlanTimer = null;
     this._scope.destroy();
     this._scopeUiPad(); // the rail is gone: the host's UI padding goes back
     this._scopeSelected = null;
@@ -3224,6 +3521,359 @@ export default class GroundGuide {
     if (d && this.isActive) this._apply(this._judgeLive(d.geometry, d.sidc));
   }
 
+
+  // ── OCOKA lens ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+  /** Which lens the cards show: `grotbc` (the ground by factor) or `ocoka` (what it does to a force on a task). */
+  get lens(): GroundGuideLens {
+    return this._opts.ocoka.lens;
+  }
+
+  /**
+   * Switch the cursor card, the Ground Detail's tabs and Copy as Text between GROTBC and OCOKA (F does this). The
+   * choice is kept in the settings. Enforce mode stays on the GROTBC GO / NO-GO rule in both.
+   */
+  setLens(lens: GroundGuideLens): void {
+    if (lens !== 'grotbc' && lens !== 'ocoka') return;
+    if (lens === this._opts.ocoka.lens) return;
+    this.setOptions({ ocoka: { ...this._opts.ocoka, lens } });
+    setSetting(['groundGuide', 'ocoka', 'lens'], lens);
+  }
+
+  /**
+   * Where the threat is, for the OCOKA lens: `{ threat: 'front' | 'bearing' | 'point' | 'allRound', bearingDeg, at:
+   * [longitude, latitude], sectorDeg }`, any of them. `front` is the unit's front (`footprint.bearingDeg`), the default;
+   * dragging the threat marker on the map sets `point`. Kept in the settings.
+   */
+  setThreat(t: { threat?: OcokaThreatMode; bearingDeg?: number; at?: [number, number] | null; sectorDeg?: number }): void {
+    const o = { ...this._opts.ocoka };
+    if (t.threat !== undefined) o.threat = t.threat;
+    if (t.bearingDeg !== undefined) o.bearingDeg = t.bearingDeg;
+    if (t.at !== undefined) o.at = t.at;
+    if (t.sectorDeg !== undefined) o.sectorDeg = t.sectorDeg;
+    this.setOptions({ ocoka: o });
+    const now = this._opts.ocoka;
+    for (const k of ['threat', 'bearingDeg', 'at', 'sectorDeg'] as const) if (t[k] !== undefined) setSetting(['groundGuide', 'ocoka', k], now[k]);
+  }
+
+  /** Turn the threat by `deg` (the [ and ] keys) from the bearing in force, which becomes a set bearing. */
+  turnThreat(deg: number): void {
+    const o = this._opts.ocoka;
+    const from = o.threat === 'bearing' ? o.bearingDeg : o.threat === 'point' && this._lastOcoka ? this._lastOcoka.threat.bearingDeg : this._opts.footprint.bearingDeg;
+    this.setThreat({ threat: 'bearing', bearingDeg: Math.round((((from + deg) % 360) + 360) % 360) });
+  }
+
+  /** Where a symbol's weapon ranges come from (default: the `Rng` field of MS/Data/Symbols.json); a host with its own catalogue sets its own. */
+  setRangeLookup(fn: ((catalogKey: string) => { rng: unknown; name?: string | null } | null | undefined) | null): void {
+    this._rangeLookup = fn ?? DEFAULT_RANGE_LOOKUP;
+    this._refreshLive();
+  }
+
+  /**
+   * The OCOKA reading at a map point (`[lng, lat]`, an ArcGIS point or any geometry): observation and fields of fire
+   * toward the threat, the obstacle in front and whether fire covers it, the highest ground and the ITG candidates in
+   * view, the straight ways out, the month's visibility and the light. Waits for the tiles. `sidc` picks the weapon
+   * (its `Rng`) and the mode; `threatDeg` overrides the threat for this reading. Null when the guide is off or the
+   * bundle has no elevation there. Sight is a chance, not a fact: say "may be seen" and check on the ground.
+   */
+  async ocokaAround(
+    point: any,
+    opts: { sidc?: string | null; profile?: GroundGuideProfile; radiusKm?: number; threatDeg?: number; picture?: boolean; map?: boolean; frontageM?: number } = {},
+  ): Promise<GroundGuideOcoka | null> {
+    const ll = this._lngLatOf(point);
+    const m = this._manifest;
+    const L = this._sectionLayers();
+    if (!ll || !this._cache || !m || !L.elevHi || !L.elevLo) return null;
+    const z = m.zoom.max;
+    const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
+    const sidc = opts.sidc ?? this._activeSidc;
+    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : null) ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    const radiusKm = Math.min(10, Math.max(1, opts.radiusKm ?? this._opts.ocoka.radiusKm));
+    const reach = (radiusKm * 1000 + 600) / Math.cos((ll[1] * Math.PI) / 180);
+    const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, m.tileSize);
+    const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, m.tileSize);
+    for (let ty = a.ty; ty <= b.ty; ty++) {
+      for (let tx = a.tx; tx <= b.tx; tx++) {
+        for (const layer of [this._layerNames(profile).cls, L.elevHi, L.elevLo, L.bld]) if (layer) this._cache.request(layer, z, tx, ty);
+      }
+    }
+    this._visibility?.get(); // starts the month's visibility grid if it is not in memory
+    await Promise.all([this._tilesSettled(10000), this._features?.whenReady(at, radiusKm * 1000)]);
+    for (let i = 0; i < 20 && this._visibility && this._visibility.state === 'loading'; i++) await new Promise((r) => setTimeout(r, 150));
+    this._ocokaTick++;
+    const over = { radiusKm, ...(opts.threatDeg !== undefined ? { threat: 'bearing' as const, bearingDeg: opts.threatDeg } : {}) };
+    const r = this._readOcoka(at, profile, sidc, opts.picture === true, over);
+    const rd = this._ocokaRead;
+    if (r && rd && opts.map) {
+      // `map: true`: the fan, the threat's view, the lines of sight, the avenues and the better position, as geometry.
+      const args = this._ocokaArgs({ grid: rd.grid, ox: rd.ox, oy: rd.oy, at, lngLat: [ll[0], ll[1]], profile, reading: r, frontageM: opts.frontageM ?? DEFAULT_FRONTAGE_M }, { ...this._opts.ocoka, ...over });
+      return { ...r, sight: ocokaSight(args), plan: ocokaPlan(args) };
+    }
+    return r;
+  }
+
+  /**
+   * The OCOKA brief as plain lines (what Copy as Text gives in the OCOKA lens), for a point as `ocokaAround` takes it:
+   * every letter in full, with the avenues from the threat, their chokepoints for `frontageM` (100 m when not given),
+   * the threat's view and the better position.
+   */
+  async ocokaText(point: any, opts: { sidc?: string | null; profile?: GroundGuideProfile; radiusKm?: number; threatDeg?: number; frontageM?: number } = {}): Promise<string[] | null> {
+    const o = await this.ocokaAround(point, { ...opts, map: true });
+    if (!o) return null;
+    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : null) ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    const cover = await this.coverAround(point, { profile }).catch(() => null); // C is the cover letter's own reading
+    return ocokaText({ ...this._blank('ok', profile, ''), ocoka: o, cover, lens: 'ocoka' });
+  }
+
+  /** The live reading at the point being placed (the cursor, for lines and areas), while the lens is OCOKA. */
+  private _ocokaNear(geometry: any, sidc: string | null, v: GroundGuideVerdict): GroundGuideOcoka | null {
+    if (v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt') return null;
+    const at = geometry?.type === 'point' ? toMercatorShape(geometry)?.parts[0]?.[0] : this._pointerMerc();
+    if (!at) return null;
+    // The viewshed picture costs 6 to 8 ms: only while the Detail shows the tab that draws it.
+    const r = this._readOcoka([at[0], at[1]], v.profile, sidc, this._briefOpen && this._detail.tab === 'OO');
+    const rd = this._ocokaRead;
+    if (!r || !rd) return r;
+    this._lastOcoka = r;
+    // The map products belong to this spot, this threat and this frontage: shown once they are worked out.
+    const frontageM = v.footprint?.frontageM || DEFAULT_FRONTAGE_M;
+    const key = `${rd.key}|${frontageM}`;
+    this._ocokaCtx = { key, grid: rd.grid, ox: rd.ox, oy: rd.oy, at: [at[0], at[1]], lngLat: r.lngLat, profile: v.profile, reading: r, frontageM };
+    r.sight = this._ocokaSightKey === key ? this._ocokaSight : null;
+    r.plan = this._ocokaPlanKey === key ? this._ocokaPlan : null;
+    this._ocokaMapSoon();
+    return r;
+  }
+
+  /** Read OCOKA at a point from the tiles in memory (shared by the live card and `ocokaAround`). A reading is kept per 30 m cell. */
+  private _readOcoka(at: MercXY, profile: GroundGuideProfile, sidc: string | null | undefined, picture: boolean, over: Partial<GroundGuideOptions['ocoka']> = {}): GroundGuideOcoka | null {
+    const m = this._manifest;
+    const cache = this._cache;
+    const L = this._sectionLayers();
+    if (!m || !cache || !L.elevHi || !L.elevLo || profile === 'exempt') return null;
+    const o = { ...this._opts.ocoka, ...over };
+    const z = m.zoom.max;
+    const ts = m.tileSize;
+    const [lon, lat] = mercatorToLngLat(at[0], at[1]);
+    const [cx, cy] = mercToPx(at[0], at[1], z, ts);
+    const n = 2 ** z;
+    const peek = (layer: string, x: number, y: number) => (x < 0 || y < 0 || x >= n || y >= n ? null : cache.peek(layer, z, x, y));
+    let reachM = o.radiusKm * 1000;
+    if (o.threat === 'point' && o.at) {
+      // The threat's place inside the ground read (up to 10 km off), for its own view and the avenues from it.
+      const t = lngLatToMercator(o.at[0], o.at[1]);
+      const d = Math.hypot(t[0] - at[0], t[1] - at[1]) * Math.cos((lat * Math.PI) / 180);
+      if (d <= 10000) reachM = Math.max(reachM, d + 600);
+    }
+    const grid = this._ocokaLive.grid(peek, { cls: this._layerNames(profile).cls, elevHi: L.elevHi, elevLo: L.elevLo, bld: L.bld }, z, ts, lat, cx, cy, reachM / mPerPx(lat, z, ts) + 4, this._ocokaTick);
+    const catKey = catalogKey(sidc);
+    const month = resolveMonth(this._opts.going.month);
+    const night = this._opts.speed.light === 'night';
+    const front = this._opts.footprint.bearingDeg;
+    const key = [Math.floor(cx), Math.floor(cy), profile, catKey ?? '', o.threat, o.bearingDeg, o.sectorDeg, o.at ? o.at.join(',') : '', front, o.radiusKm, o.eye, o.surface, month, night, picture, this._visibility?.state ?? ''].join('|');
+    this._ocokaRead = { key, grid, ox: cx - grid.px0, oy: cy - grid.py0 };
+    const hit = this._ocokaLive.recall(key);
+    if (hit) return hit;
+    const found = catKey ? this._rangeLookup(catKey) : null;
+    const weapon = weaponOf(found?.rng);
+    const cands = this._opts.itg.enabled && this._features ? this._features.candidatesNear(at, o.radiusKm * 1000, 4, 1) : { list: [], pending: false };
+    const r = readOcoka({
+      grid,
+      ox: cx - grid.px0,
+      oy: cy - grid.py0,
+      at,
+      lngLat: [lon, lat],
+      profile,
+      going: this._profile(profile),
+      classLabel: (c) => plainLabel(this._rules?.classes?.[String(c)]?.label ?? '') || `Class ${c}`,
+      weapon,
+      weaponLabel: weapon.fromSymbol ? (found?.name ?? 'Weapon') : 'Small Arms',
+      opts: o,
+      frontDeg: front,
+      threatAt: o.at ? (lngLatToMercator(o.at[0], o.at[1]) as MercXY) : null,
+      month,
+      night,
+      candidates: cands.list,
+      candidatesPending: cands.pending,
+      visibility: this._visibility?.get() ?? null,
+      picture,
+    });
+    if (r && !r.pending) this._ocokaLive.remember(key, r);
+    return r;
+  }
+
+  // ── OCOKA map products ───────────────────────────────────────────────────────────────────────────────────────────
+
+  private _ocokaArgs(c: { grid: OcokaGrid; ox: number; oy: number; at: MercXY; lngLat: [number, number]; profile: GroundGuideProfile; reading: GroundGuideOcoka; frontageM: number }, o = this._opts.ocoka): OcokaMapArgs {
+    return {
+      grid: c.grid,
+      ox: c.ox,
+      oy: c.oy,
+      at: c.at,
+      lngLat: c.lngLat,
+      profile: c.profile,
+      going: this._profile(c.profile),
+      classLabel: (cls) => plainLabel(this._rules?.classes?.[String(cls)]?.label ?? '') || `Class ${cls}`,
+      reading: c.reading,
+      opts: o,
+      threatAt: o.at ? (lngLatToMercator(o.at[0], o.at[1]) as MercXY) : null,
+      frontageM: c.frontageM,
+    };
+  }
+
+  /**
+   * Draw the OCOKA products on the map soon: the fan, the lines of sight and the threat's view follow the cursor (at
+   * most every 60 ms); the avenues and the better position are worked out once the cursor has rested for 220 ms.
+   */
+  private _ocokaMapSoon(): void {
+    const o = this._opts.ocoka;
+    const c = this._ocokaCtx;
+    const viewOver = this._ocokaOverlayKind() === 'view';
+    if (!c || !(o.mapFan || o.mapEnemy || o.mapSight || o.mapAvenues || o.mapBetter || viewOver)) return this._ocokaMapClear();
+    if (this._ocokaSightTimer === null) {
+      this._ocokaSightTimer = setTimeout(() => {
+        this._ocokaSightTimer = null;
+        this._ocokaDraw(false);
+      }, 60);
+    }
+    if (this._ocokaPlanTimer !== null) clearTimeout(this._ocokaPlanTimer);
+    this._ocokaPlanTimer =
+      (c.key !== this._ocokaPlanKey && (o.mapAvenues || o.mapBetter)) || (viewOver && c.key !== this._ocokaViewKey)
+        ? setTimeout(() => {
+            this._ocokaPlanTimer = null;
+            this._ocokaDraw(true);
+          }, 220)
+        : null;
+  }
+
+  private _ocokaDraw(withPlan: boolean): void {
+    const c = this._ocokaCtx;
+    const o = this._opts.ocoka;
+    if (!c || !this.isActive || o.lens !== 'ocoka' || !this._lastDetail) return this._ocokaMapClear();
+    let refresh = false;
+    try {
+      const args = this._ocokaArgs(c);
+      if (this._ocokaSightKey !== c.key) {
+        this._ocokaSight = ocokaSight(args);
+        this._ocokaSightKey = c.key;
+        refresh = !!this._ocokaSight.enemy; // the card says whether the threat sees the position
+      }
+      if (withPlan && this._ocokaPlanKey !== c.key && (o.mapAvenues || o.mapBetter)) {
+        this._ocokaPlan = ocokaPlan(args);
+        this._ocokaPlanKey = c.key;
+        refresh = true;
+      }
+      // The overlay's view from the position: gone while the cursor moves, drawn again where it rests.
+      if (this._ocokaOverlayKind() === 'view' && this._ocokaViewKey !== c.key) {
+        if (withPlan) {
+          this._ocokaViewKey = c.key;
+          const r = c.reading;
+          this._ocokaMap.showOverlay(ocokaViewshed({ grid: c.grid, ox: c.ox, oy: c.oy, at: c.at, kind: 'view', eyeM: r.eyeM, targetM: 1.7, radiusM: r.radiusM, month: r.month, surface: r.surface }));
+        } else if (this._ocokaViewKey !== '') {
+          this._ocokaViewKey = '';
+          this._ocokaMap.showOverlay(null);
+        }
+      }
+    } catch (err) {
+      console.error('[Ground Guide] OCOKA map products', err);
+      return;
+    }
+    const plan = this._ocokaPlanKey === c.key ? this._ocokaPlan : null;
+    const drawn = `${c.key}|${plan ? 1 : 0}|${o.mapFan}${o.mapEnemy}${o.mapSight}${o.mapAvenues}${o.mapBetter}|${this._ocokaMap.overlayKind ?? ''}`;
+    if (drawn !== this._ocokaDrawnKey) {
+      this._ocokaDrawnKey = drawn;
+      this._ocokaMap.show(c.at, this._ocokaSight, plan, { fan: o.mapFan, enemy: o.mapEnemy, sight: o.mapSight, avenues: o.mapAvenues, better: o.mapBetter });
+    }
+    if (refresh) this._refreshLive(); // the cards name what the map now shows
+  }
+
+  private _ocokaMapClear(): void {
+    if (this._ocokaSightTimer !== null) clearTimeout(this._ocokaSightTimer);
+    if (this._ocokaPlanTimer !== null) clearTimeout(this._ocokaPlanTimer);
+    this._ocokaSightTimer = this._ocokaPlanTimer = null;
+    this._ocokaCtx = null;
+    this._ocokaDrawnKey = '';
+    this._ocokaMap.hide();
+    if (this._ocokaViewKey !== '') {
+      // Nothing is being placed: the view from the position goes with it (the threat's view stays).
+      this._ocokaViewKey = '';
+      if (this._ocokaOverlayKind() !== 'threat') this._ocokaMap.showOverlay(null);
+    }
+  }
+
+  /**
+   * J in the OCOKA lens: place the symbol at the better position the map shows (the green ring), the way S places it on
+   * usable ground. False when there is none, or it is not on ground the GROTBC rule accepts.
+   */
+  takeBetter(): boolean {
+    const d = this._lastDetail;
+    const c = this._ocokaCtx;
+    const b = c && this._ocokaPlanKey === c.key ? this._ocokaPlan?.better : null;
+    const no = (msg: string): boolean => {
+      this._badge.flash(msg);
+      return false;
+    };
+    if (!this.isActive || !d || d.geometry?.type !== 'point' || !b) return no('No better Posn to take here');
+    const view: any = this._getView?.();
+    const target = this._withMerc(d.geometry, b.at);
+    const v = target ? this.evaluateGeometry(target, d.sidc) : null;
+    if (!target || !v || this._snapRank(v) < 0) return no('The better Posn is not on usable Gr');
+    const px = this._settleOnScreen(view, target, d.sidc);
+    if (!px) return no('Cannot place the symbol there on this view');
+    EngineLogger.success(ENGINE, `Moved ${fmtDistance(b.distanceM)} ${b.compass} to better fields of fire (${b.hereGrade} to ${b.grade})`);
+    this._emit('ground-guide-better', { at: b.at, distanceM: b.distanceM, compass: b.compass, grade: b.grade, from: b.hereGrade });
+    // The armed symbol's own click handler finishes the draw at this spot, as for the S quick fix.
+    this._clickAt(view, px.x, px.y);
+    return true;
+  }
+
+  /** Show, hide and place the threat marker: on while the guide is on with a bundle, the lens is OCOKA and `ocoka.marker` is set. */
+  private _syncThreat(): void {
+    const o = this._opts.ocoka;
+    if (!(this._enabled && this._manifest !== null && this._opts.mode !== 'off' && o.lens === 'ocoka' && o.marker)) {
+      this._threat.hide();
+      return;
+    }
+    const pt = o.threat === 'point' && !!o.at;
+    let bearing = o.threat === 'bearing' ? o.bearingDeg : this._opts.footprint.bearingDeg;
+    if (pt) {
+      // Docked because its place is off the view, the arrow points from the middle of the view to the place.
+      const view: any = this._getView?.();
+      const c = view?.center ? toMercatorShape(view.center)?.parts[0]?.[0] : null;
+      const t = lngLatToMercator(o.at![0], o.at![1]);
+      if (c) bearing = ((Math.atan2(t[0] - c[0], t[1] - c[1]) * 180) / Math.PI + 360) % 360;
+    }
+    this._threat.show({ mode: o.threat === 'point' && !pt ? 'front' : o.threat, bearingDeg: bearing, at: o.at }, this._north);
+  }
+
+  private _lngLatToScreen(ll: [number, number]): { x: number; y: number } | null {
+    const view: any = this._getView?.();
+    const c = view?.center;
+    if (!c || typeof c.clone !== 'function' || typeof view.toScreen !== 'function') return null;
+    const xy = fromMercatorXY(c, lngLatToMercator(ll[0], ll[1]));
+    if (!xy) return null;
+    try {
+      const g = c.clone();
+      g.x = xy[0];
+      g.y = xy[1];
+      const s = view.toScreen(g);
+      return s && Number.isFinite(s.x) && Number.isFinite(s.y) ? { x: s.x, y: s.y } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private _screenToLngLat(x: number, y: number): [number, number] | null {
+    const view: any = this._getView?.();
+    try {
+      const mp = view?.toMap?.({ x, y });
+      const p = mp ? toMercatorShape(mp)?.parts[0]?.[0] : null;
+      return p ? mercatorToLngLat(p[0], p[1]) : null;
+    } catch {
+      return null;
+    }
+  }
+
   /** The bundle's soil layer names, or null when it has none (older bundle). */
   private _goingLayers(): { soil: string; dry: string; wet: string; wetLayer: string | null } | null {
     const l = this._manifest?.layers;
@@ -4000,6 +4650,7 @@ export default class GroundGuide {
       speedKey(v.speed),
       coverKey(v.cover),
       sectionsKey(v.sections),
+      v.lens ?? '', ocokaKey(v.ocoka),
       // The frontage strip (shown only while some of it is in NO-GO): the same share can sit at the other end.
       v.fraction > 0 ? (v.footprint?.front?.map((b) => `${Math.round(b.nogo * 5)}${b.rest?.[0] ?? 'u'}`).join('') ?? '') : '',
     ].join('|');
@@ -4033,6 +4684,8 @@ export default class GroundGuide {
   }
 
   private _onTilesChanged(terrain = true): void {
+    this._ocokaTick++; // a tile the OCOKA grid was missing may have arrived
+    if (this._ocokaOverlayKind() === 'threat') this._ocokaOverlaySoon(300);
     if (this._scope.isShown) {
       this._scopeTick++; // the rail's map may have been waiting on it
       this._scopeSoon();
@@ -4181,11 +4834,18 @@ export default class GroundGuide {
       (north: number) => {
         this._badge.setNorth(north);
         this._detail.setNorth(north);
+        this._threat.setNorth(north);
         this._north = north;
         this._scopeSoon(); // the rail's map turns with the view
       },
       { initial: true },
     );
+    // The threat marker rides on its place as the map moves.
+    this._threatHandle = reactiveUtils.watch(
+      () => [view.extent, view.type === '3d' ? view.camera : null],
+      () => this._threat.reflow(),
+    );
+    this._syncThreat();
     this._syncScope();
   }
 
@@ -4209,6 +4869,9 @@ export default class GroundGuide {
     this._stationaryHandle = null;
     this._northHandle?.remove();
     this._northHandle = null;
+    this._threatHandle?.remove();
+    this._threatHandle = null;
+    this._threat.destroy(); // it lives in the view's container: a new view gets a new one
   }
 
   /** The key handler lives as long as the guide is enabled (D and K work before a draw); the pointer handler only while drawing. */
@@ -4258,9 +4921,34 @@ export default class GroundGuide {
     if (e.type !== 'keydown') return;
     const k = e.key.toLowerCase();
     const tabKey = k === 'g' || k === 'r' || k === 'o' || k === 't' || k === 'b' || k === 'c' || k === 'k'; // K = the Legend tab (L is Lasso Select)
-    if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'v' && k !== 'escape' && !tabKey) || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    // The OCOKA lens (2026-11-10): F switches the lens, 1 to 5 open its tabs, [ and ] turn the threat. The GROTBC
+    // letters keep their keys (the user's rule), so a letter always means its GROTBC tab and a digit its OCOKA tab.
+    const oDigit = /^Digit[1-5]$/.test(e.code) ? Number(e.code.slice(5)) : 0;
+    const oTurn = e.code === 'BracketRight' ? 1 : e.code === 'BracketLeft' ? -1 : 0;
+    const oKey = this._opts.ocoka.keys && (k === 'f' || k === 'j' || oDigit > 0 || oTurn !== 0);
+    if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'v' && k !== 'escape' && !tabKey && !oKey) || e.ctrlKey || e.metaKey || e.altKey || (e.repeat && oTurn === 0)) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (oKey) {
+      if (!this.isActive || this._activeProfile === 'exempt') return;
+      e.preventDefault();
+      if (k === 'f') {
+        this.setLens(this._opts.ocoka.lens === 'ocoka' ? 'grotbc' : 'ocoka');
+        this._badge.flash(this._opts.ocoka.lens === 'ocoka' ? 'OCOKA lens. F for GROTBC.' : 'GROTBC lens. F for OCOKA.', 1800);
+      } else if (k === 'j') {
+        if (this._opts.ocoka.lens === 'ocoka') this.takeBetter();
+      } else if (oTurn !== 0) {
+        if (this._opts.ocoka.lens === 'ocoka') this.turnThreat(oTurn * (e.shiftKey ? 45 : 15));
+      } else if (this._opts.card.briefKey) {
+        this.setLens('ocoka');
+        const tab = OCOKA_TABS[oDigit - 1];
+        if (this._briefOpen && this._detail.tab === tab) {
+          if (e.shiftKey) this._detail.prevPage();
+          else this._detail.nextPage();
+        } else this._toggleBrief(true, tab);
+      }
+      return;
+    }
     if (k === 'v') {
       // V shows or hides the Gr Scope rail at any time the guide is on, drawing or not (user, 2026-11-08). Plain V is
       // free in the app; Ctrl+V stays paste (modifiers return above).
@@ -4289,6 +4977,7 @@ export default class GroundGuide {
       e.preventDefault();
       if (k === 'd') this._toggleBrief(!this._briefOpen);
       else {
+        if (k !== 'k' && this._opts.ocoka.lens === 'ocoka') this.setLens('grotbc'); // a letter is always its GROTBC tab
         const tab = (k === 'k' ? 'L' : k.toUpperCase()) as DetailTab;
         if (this._briefOpen && this._detail.tab === tab) {
           if (e.shiftKey) this._detail.prevPage();
@@ -4375,7 +5064,10 @@ export default class GroundGuide {
   /** Add / update / remove the overlay layer (and its key and the boundary outline) to match the options. Safe to call at any time. */
   private _syncOverlay(refresh = false): void {
     this._syncBoundary();
-    const want = this._enabled && this._manifest !== null && this._rules !== null && this._opts.overlay.enabled;
+    // In the OCOKA lens the overlay paints what can be seen (`ocoka.overlay`), unless it is set to keep the going.
+    const lensOwn = this._opts.ocoka.lens === 'ocoka' && this._opts.mode !== 'off' && this._opts.ocoka.overlay !== 'going';
+    this._ocokaOverlaySoon(0);
+    const want = this._enabled && this._manifest !== null && this._rules !== null && this._opts.overlay.enabled && !lensOwn;
     if (!want) {
       this._removeOverlay();
       this._syncLegend();

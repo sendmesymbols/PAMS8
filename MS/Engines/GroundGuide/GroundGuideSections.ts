@@ -231,6 +231,40 @@ export interface SectionPlace {
   compass: string;
 }
 
+/**
+ * A crossing with what its own name and the 1:50k sheet's text beside it say (pipeline grotbc.py crossing_labels,
+ * 2026-11-10): the label is built from the type words ("Temporary wooden foot Br", "Causeway", "Br of boats").
+ */
+export interface CrossingPlace extends SectionPlace {
+  /** Type words (`bt`): temporary, suspension, wooden, rope, foot, causeway, boats, railway, ... */
+  types: string[];
+  /** "U/C" (under construction) or "Disused", as the sheet writes it. */
+  status: string | null;
+  /** Months it is in use as the sheet writes them ("Oct-Apr"): ferries, fords, bridges of boats. */
+  season: string | null;
+  /** Boats of a ferry. */
+  boats: number | null;
+  /** Placed at the sheet's label (no symbol near it): a few hundred metres out. */
+  approx: boolean;
+  /** What it means for vehicles, safety first ("Foot only", "Check before vehicles cross"); null when nothing. */
+  caution: string | null;
+}
+
+/** HeiGIT Planet road surface / width (PlanetScope 2024) on the arterial road nearest the point. */
+export interface SatelliteRoad {
+  surface: 'paved' | 'unpaved' | 'unclassified' | null;
+  /** 1 under 3.5 m (light vehicles only), 2 3.5-5.5 m (one lane of heavy trucks), 3 over 5.5 m (two lanes). */
+  widthClass: 0 | 1 | 2 | 3;
+  pavedSince2020: boolean;
+  /** Humanitarian passability score, 1 (best) to 6 (worst); null when none. */
+  passability: number | null;
+  /** The satellite and the 1:50k map disagree about the surface: say so, never pick the better one. */
+  differs: string | null;
+  name: string | null;
+  distanceM: number;
+  compass: string;
+}
+
 export interface GroundReading {
   terrain: { code: number; label: string } | null;
   /** The nearest different terrain type along eight rays to the radius. */
@@ -334,7 +368,8 @@ export interface RoadsReading {
   } | null;
   /** The route checked against the mode with rules.json (null when no rule applies to the mode). */
   check: { level: 'ok' | 'warn' | 'stop' | 'unknown'; text: string } | null;
-  crossing: SectionPlace | null;
+  /** The nearest crossing (bridge, ford, ferry, causeway), with its type, season and boats from the sheet. */
+  crossing: CrossingPlace | null;
   rail: SectionPlace | null;
   /**
    * The nearest ways across or under a railway: a level crossing (where vehicles cross the line), a railway bridge
@@ -344,7 +379,7 @@ export interface RoadsReading {
   /** The nearest bus stand and toll plaza (transport hubs). */
   transport: SectionPlace[];
   /** Chokepoints on an MSR (features flagged `ig` C) within 10 km, nearest first, up to two. */
-  chokepoints: SectionPlace[];
+  chokepoints: Array<SectionPlace | CrossingPlace>;
   /** The nearest junction of main roads (`ways` = ways out along highways, `mx`) and the nearest named junction. */
   junction: (SectionPlace & { ways: number | null }) | null;
   namedJunction: SectionPlace | null;
@@ -353,8 +388,8 @@ export interface RoadsReading {
   /** The nearest road and railway km stones within 2 km, with the km they read (chainage). */
   kmRoad: (SectionPlace & { km: number | null }) | null;
   kmRail: (SectionPlace & { km: number | null }) | null;
-  /** The nearest culvert. */
-  culvert: SectionPlace | null;
+  /** The nearest culvert ("Causeway" when the sheet says so). */
+  culvert: CrossingPlace | null;
   /** The runway of the nearest air site when recorded: size (`rw`) and direction (`rd`). */
   airRunway: string | null;
   air: SectionPlace | null;
@@ -362,6 +397,8 @@ export interface RoadsReading {
   density: RoadDensityReading | null;
   /** What the NCGDB records on the nearest road (within 500 m), and its named route. */
   record: RoadRecord | null;
+  /** HeiGIT satellite surface / width of the nearest arterial road within 500 m (null when none is covered). */
+  satellite: SatelliteRoad | null;
 }
 
 export interface RoadRecord {
@@ -370,6 +407,8 @@ export interface RoadRecord {
   /** Load code as recorded: class, A / F (all- / fair-weather), lanes ("40A1"). */
   loadCode: string | null;
   widthM: number | null;
+  /** Bridges recorded on this road section (NO_OF_BRS), null when none is recorded. */
+  bridges: number | null;
   /** Recorded condition, or null when none is recorded (about 4 % of roads have one). */
   condition: string | null;
   /** Seasonal / temporary closure as recorded, or null when none is recorded. */
@@ -502,6 +541,67 @@ function compassOf(deg: number): string {
 function place(h: FeatureHit, label?: string): SectionPlace {
   const t = typeof h.attrs.t === 'string' && h.attrs.t.trim() ? h.attrs.t.trim() : null;
   return { label: label ?? (t ? t.charAt(0).toUpperCase() + t.slice(1) : h.kindLabel), name: h.name, distanceM: h.distanceM, compass: h.compass };
+}
+
+/** Type words (`bt`) shown before "Br", in the pipeline's order. */
+const BR_WORDS: Record<string, string> = {
+  temporary: 'Temporary', suspension: 'Suspension', cantilever: 'Cantilever', wooden: 'Wooden', rope: 'Rope', iron: 'Iron',
+  masonry: 'Masonry', natural: 'Natural', snow: 'Snow', overhead: 'Overhead', underpass: 'Underpass', railway: 'Railway', foot: 'Foot',
+};
+/** Type words that say a bridge may not carry what its road carries: the card asks for a check, safety first. */
+const BR_WEAK = new Set(['temporary', 'suspension', 'cantilever', 'wooden', 'rope', 'natural', 'snow', 'boats']);
+
+/** A crossing as the sheet describes it: "Temporary wooden foot Br", "Causeway", "Br of boats", else the kind's label. */
+function crossingPlace(h: FeatureHit): CrossingPlace {
+  const a = h.attrs;
+  const types = typeof a.bt === 'string' ? a.bt.split(/\s+/).filter(Boolean) : [];
+  const has = (w: string) => types.includes(w);
+  let label = h.kindLabel;
+  if (has('causeway')) label = 'Causeway';
+  else if (has('viaduct')) label = 'Viaduct';
+  else if (has('boats')) label = 'Br of boats';
+  else if (types.length) {
+    const words = types.filter((w) => BR_WORDS[w]).map((w) => BR_WORDS[w]);
+    if (words.length) label = `${words[0]}${words.slice(1).map((w) => ` ${w.toLowerCase()}`).join('')} Br`;
+  }
+  const bs = text(a.bs);
+  const status = bs === 'u/c' ? 'U/C' : bs === 'disused' ? 'Disused' : null;
+  const season = text(a.su);
+  const boats = num(a.bo);
+  let caution: string | null = null;
+  if (status === 'U/C') caution = 'Not open: under construction';
+  else if (status === 'Disused') caution = 'Disused: check before use';
+  else if (has('railway')) caution = 'Trains and foot only';
+  else if (has('foot') || has('rope') || h.kind === 'foot_bridge') caution = 'Foot only';
+  else if (has('causeway')) caution = 'Under water in floods';
+  else if (types.some((w) => BR_WEAK.has(w))) caution = 'Check before vehicles cross';
+  if (season && !caution) caution = `Only ${season.replace('-', ' to ')}`;
+  return { ...place(h, label), types, status, season, boats, approx: a.lb === 1, caution };
+}
+
+/** HeiGIT satellite surface / width on the nearest covered road within 500 m (GroundGuideRoads attrs sf, wc, np, hp). */
+function satelliteRoad(a: SectionArgs, routeType: number | null): SatelliteRoad | null {
+  const hit = a.roadNet?.roadsNear?.(a.at, 500).list.find((h) => typeof h.attrs.sf === 'string' || typeof h.attrs.wc === 'number');
+  if (!hit) return null;
+  const at = hit.attrs;
+  const surface = at.sf === 'paved' || at.sf === 'unpaved' || at.sf === 'unclassified' ? at.sf : null;
+  const wc = num(at.wc);
+  // The map (the route layer under the point) and the satellite disagree: say so, take neither as the better.
+  const mapMetalled = routeType !== null && hit.distanceM <= 60 ? METALLED_TYPES.has(routeType) : null;
+  const differs =
+    surface === 'unpaved' && mapMetalled === true ? 'map says metalled: check on the ground'
+    : surface === 'paved' && mapMetalled === false ? 'map says unmetalled: check on the ground'
+    : null;
+  return {
+    surface,
+    widthClass: wc === 1 || wc === 2 || wc === 3 ? wc : 0,
+    pavedSince2020: at.np === 1,
+    passability: num(at.hp),
+    differs,
+    name: text(at.r) ?? text(at.n),
+    distanceM: hit.distanceM,
+    compass: hit.compass,
+  };
 }
 
 function elevAt(read: Read, L: SectionsLayers, x: number, y: number): number | null | undefined {
@@ -930,6 +1030,7 @@ function roadRecord(a: SectionArgs): RoadRecord | null {
     number,
     loadCode: text(at.c),
     widthM: num(at.w),
+    bridges: num(at.nb),
     condition: text(at.cn),
     closed: text(at.x),
     landslides: num(at.sl),
@@ -1012,7 +1113,7 @@ function readRoads(a: SectionArgs): RoadsReading {
       if (best) route = decode(best.v, best.d, best.b);
     }
   }
-  let crossing: SectionPlace | null = null;
+  let crossing: CrossingPlace | null = null;
   let rail: SectionPlace | null = null;
   let air: SectionPlace | null = null;
   let airRunway: string | null = null;
@@ -1051,15 +1152,17 @@ function readRoads(a: SectionArgs): RoadsReading {
     }
   }
   railCrossings.sort((p, q) => p.distanceM - q.distanceM);
-  const chokepoints: SectionPlace[] = [];
+  const chokepoints: RoadsReading['chokepoints'] = [];
   let junction: RoadsReading['junction'] = null;
   let namedJunction: SectionPlace | null = null;
   let fuel: SectionPlace | null = null;
   let kmRoad: RoadsReading['kmRoad'] = null;
   let kmRail: RoadsReading['kmRail'] = null;
-  let culvert: SectionPlace | null = null;
+  let culvert: CrossingPlace | null = null;
   if (a.features) {
-    for (const h of a.features.nearestOfKinds(at, 10000, KINDS.choke, 2, (x) => String(x.attrs.ig ?? '').includes('C')).list) chokepoints.push(place(h, h.kindLabel));
+    for (const h of a.features.nearestOfKinds(at, 10000, KINDS.choke, 2, (x) => String(x.attrs.ig ?? '').includes('C')).list) {
+      chokepoints.push(KINDS.crossing.has(h.kind) ? crossingPlace(h) : place(h, h.kindLabel));
+    }
     const j = a.features.nearestOfKinds(at, 10000, KINDS.mainJunction, 1).list[0];
     if (j) junction = { ...place(j, 'Junction of main Rds'), ways: num(j.attrs.mx) };
     const nj = a.features.nearestOfKinds(at, Math.max(a.radiusM, 5000), KINDS.namedJunction, 1).list[0];
@@ -1069,11 +1172,11 @@ function readRoads(a: SectionArgs): RoadsReading {
     kmRoad = kmStone(a.features.nearestOfKinds(at, 2000, KINDS.kmRoad, 20).list, 'Rd km stone');
     kmRail = kmStone(a.features.nearestOfKinds(at, 2000, KINDS.kmRail, 20).list, 'Railway km stone');
     const cu = a.features.nearestOfKinds(at, a.radiusM, KINDS.culvert, 1).list[0];
-    if (cu) culvert = { ...place(cu, cu.kindLabel), name: null };
+    if (cu) culvert = { ...crossingPlace(cu), name: null };
   }
   if (a.features) {
     const c = a.features.nearestOfKinds(at, a.radiusM, KINDS.crossing, 1).list[0];
-    if (c) crossing = place(c, c.kindLabel);
+    if (c) crossing = crossingPlace(c);
     const st = a.features.nearestOfKinds(at, Math.max(a.radiusM, 10000), KINDS.rail, 1).list[0];
     const ln = a.features.linesNear(at, a.radiusM, KINDS.railLines).list[0];
     const r = [st, ln].filter((x): x is FeatureHit => !!x).sort((p, q) => p.distanceM - q.distanceM)[0];
@@ -1088,7 +1191,8 @@ function readRoads(a: SectionArgs): RoadsReading {
     const res = a.roadNet.densityAround(at, Math.max(500, a.opts.roadDensityKm * 1000));
     density = roadDensityReading(res.totals, res.pending, a.rules?.roadDensity);
   }
-  return { route, check: route ? routeCheck(a.profile, route, a.rules) : null, crossing, rail, railCrossings, transport, chokepoints, junction, namedJunction, fuel, kmRoad, kmRail, culvert, airRunway, air, density, record: roadRecord(a) };
+  const satellite = satelliteRoad(a, route?.on ? route.type : null);
+  return { route, check: route ? routeCheck(a.profile, route, a.rules) : null, crossing, rail, railCrossings, transport, chokepoints, junction, namedJunction, fuel, kmRoad, kmRail, culvert, airRunway, air, density, record: roadRecord(a), satellite };
 }
 
 // ── O ────────────────────────────────────────────────────────────────────────
@@ -1373,7 +1477,11 @@ export interface SectionArgs {
     route(numberOrName: string | null | undefined): PlaceRoute | null;
   } | null;
   /** The routing network for road density (GroundGuideRoads), or null when the bundle has none. */
-  roadNet: { densityAround(at: MercXY, radiusM: number): { totals: RoadDensityTotals; pending: boolean } } | null;
+  roadNet: {
+    densityAround(at: MercXY, radiusM: number): { totals: RoadDensityTotals; pending: boolean };
+    /** The routing network's roads near the point (GroundGuideRoads), for the satellite surface / width. */
+    roadsNear?(at: MercXY, radiusM: number): { list: FeatureRoadHit[]; pending: boolean };
+  } | null;
   waterKinds: string[];
   climate: ClimateNormals | null;
   month: number;

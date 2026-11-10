@@ -316,6 +316,21 @@ sources:
     fetched_by: local geodatabase, read by scripts/network.py
     sha256: not hashed (1.3 GB folder); identify by edge count and file dates
 
+  # ── D:/Imagery/Misc, gauged 2026-11-10 (only this one ingested; see 15-ground-guide.md "Misc data review") ──────
+  - id: heigit_planet_roads
+    name: HeiGIT — Pakistan Planet Road Surface, Width, and Passability Data (PlanetScope deep learning on OSM arterial roads)
+    version: "HDX pakistan-planet-road-surface-data, modified 2026-03-02; 40,107 OSM ways (motorway, trunk, primary, secondary + links), 69,651 km"
+    dataDate: "PlanetScope imagery 2020-06-01 to 2024-12-31 (surface 2020 and 2024; width and passability from 2024)"
+    released: "2026-03-02 (HDX modified; added 2025-11-18)"
+    licence: "Non-commercial use only; contains derivatives of PlanetScope imagery; redistribution subject to Planet Labs PBC licensing terms"
+    restriction: "non-commercial; do not pass on outside the owner's organisation without checking Planet Labs terms"
+    attribution: "HeiGIT (Heidelberg Institute for Geoinformation Technology), Planet Road Surface, Width, and Passability Data; contains PlanetScope derivatives © Planet Labs PBC; road geometry © OpenStreetMap contributors"
+    landing: https://data.humdata.org/dataset/pakistan-planet-road-surface-data
+    location: "D:/Imagery/Misc/Planet Road Surface, Width, and Passability Data/heigit_PK_planet_roadsurface_lines.gpkg"
+    accuracy: "publisher: surface model 89.2 % accurate (OSM surface tags 64.7 %); checked here: agrees with all 11,644 OSM-paved ways it classified; width classes 1 < 3.5 m, 2 3.5-5.5 m, 3 > 5.5 m"
+    fetched_by: local file (downloaded by the owner from HDX), read by scripts/network.py (joined on the OSM way id)
+    sha256: 791e1c135cf9879c99e9f18298ce7de025a780d689bf90a50689b9710d22d944
+
   # ── formation overlays supplied by the owner (2026-11-09); RESTRICTED, read by scripts/kmz.py ───────────────
   - id: kmz_7div_1006
     name: Formation overlay — Depl 7 Div 15 Oct 2026 (1006)

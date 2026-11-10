@@ -9,6 +9,7 @@ import Point from '@arcgis/core/geometry/Point';
 
 import GraphicsLayerManager from './GraphicsLayerManager';
 import { menuIcon } from './MenuIcons';
+import { isMinefieldTextureGraphic } from '../Support/MinefieldTextureFill3D';
 import MeasurementEngine from '../Engines/MeasurementEngine';
 import WeaponEffectEngine from '../Engines/Analysis/WeaponEffectEngine';
 import LOSEngine from '../Engines/Analysis/LOSEngine';
@@ -1478,17 +1479,25 @@ class ContextMenuManager extends Evented {
       this.hideMenu();
 
       // Resolve target layer IDs to GraphicsLayer references for efficient hitTest filtering
-      const targetLayers = (this.options.targetLayerIds ?? [])
+      const targetLayerIds = this.options.targetLayerIds ?? [];
+      const targetLayers = targetLayerIds
         .map(id => this.layerManager?.getLayer(id))
-        .filter((l): l is GraphicsLayer => l !== undefined);
+        .filter((l): l is GraphicsLayer => l != null);
+      // Target layers were asked for but none exist yet: there is no symbol to
+      // right-click. Never fall back to hit-testing every layer on the map
+      // (basemap, analysis overlays, Ground Guide…) — that opened the symbol
+      // menu over empty map.
+      if (targetLayerIds.length > 0 && targetLayers.length === 0) return;
       const hitOptions = targetLayers.length ? { include: targetLayers } : undefined;
 
       this.view!.hitTest(event, hitOptions).then((response) => {
-        const graphicHit = response.results?.find((result) => {
-          if (!result.graphic) return false;
+        let symbolGraphic: Graphic | null = null;
+        response.results?.find((result) => {
+          const graphic = this.resolveSymbolGraphic((result as any).graphic);
+          if (!graphic) return false;
 
           const graphicType =
-            result.graphic.attributes?.graphicType || result.graphic.attributes?.type;
+            graphic.attributes?.graphicType || graphic.attributes?.type;
 
           if (
             this.options.targetGraphicTypes &&
@@ -1502,18 +1511,46 @@ class ContextMenuManager extends Evented {
             }
           }
 
+          symbolGraphic = graphic;
           return true;
         });
 
-        if (graphicHit) {
-          const graphic = graphicHit.graphic;
+        // Only a right-click on a placed symbol opens the menu; empty map,
+        // draw previews and helper graphics get nothing.
+        if (symbolGraphic) {
           this.clickPoint = this.view!.toMap({ x: event.x, y: event.y });
-          this.showMenuAt(event.x, event.y, graphic);
+          this.showMenuAt(event.x, event.y, symbolGraphic);
         }
       });
     });
 
     // Note: menu dismissal on left-click is handled in the pointer-down handler above
+  }
+
+  /**
+   * The placed symbol a hit graphic belongs to, or null when the hit is not a
+   * symbol. Every placed symbol (UEISymbol, TacticalPoint, the line / area /
+   * freehand classes in MS/Symbols) carries `drawEssentials` — stamped by
+   * SymbolEngine.drawSymEnd and kept through paste, plan load, undo and collab
+   * (same test as MapSync._isShareable). A symbol class's in-progress preview
+   * and other helper graphics on the symbol layers do not, so they never get
+   * the menu. A minefield's 3D texture mesh stands in for its parent polygon.
+   */
+  private resolveSymbolGraphic(graphic: Graphic | null | undefined): Graphic | null {
+    if (!graphic) return null;
+    if (isMinefieldTextureGraphic(graphic)) {
+      const parentId = graphic.attributes?.parentId;
+      if (parentId == null) return null;
+      const parent = (graphic.layer as GraphicsLayer | null)?.graphics?.find(
+        (g) => !isMinefieldTextureGraphic(g) && g.attributes?.id === parentId,
+      );
+      return parent && this.isPlacedSymbol(parent) ? parent : null;
+    }
+    return this.isPlacedSymbol(graphic) ? graphic : null;
+  }
+
+  private isPlacedSymbol(graphic: Graphic): boolean {
+    return !!(graphic.attributes?.drawEssentials || (graphic as any).drawEssentials);
   }
 
   /**

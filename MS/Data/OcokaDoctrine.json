@@ -46,7 +46,13 @@
     "desirableAutomaticM": { "value": [270, 500], "src": "IC s72 (Terrain)" },
     "platoonPositionM": { "value": 400, "src": "IC s77.2; IBB p297 (position sited for a field of fire up to 400 m)" },
     "rule": "Cover and concealment are never given up for fields of fire (IC s72; IBB p279).",
-    "grade": { "good": ">= 270 m", "marginal": "100-270 m", "poor": "< 100 m", "basis": "E (grades built from the figures above)" }
+    "grade": {
+      "basis": "E (built from the figures above)",
+      "note": "Two tests, the lower one stands: the clear distance to the first dead or screened ground toward the threat (median over the arc), and how much of the ground inside the weapon's effective range is seen. A weapon with a short range is asked for no more clear ground than 0.9 of its range.",
+      "good": { "clearM": 270, "seenPct": 50 },
+      "marginal": { "clearM": 100, "seenPct": 20 },
+      "primaryTaskM": 200
+    }
   },
 
   "countryClasses": {
@@ -198,23 +204,28 @@
   },
 
   "surfaceBlockers": {
-    "note": "Heights above the DSM that a 30 m elevation cannot show, as possible blockers of a line of sight, and the share of cells of that class that carry them (a 30 m cell of 'built-up' is partly street). The lens decides per patch by a fixed hash (grainPx = the patch size in 33 m cells: 4 for fields, about 130 m), so the result is the same every time and patchy like real ground, not salt and pepper. Use the pessimistic end for fields of fire and observation (they may be blocked) and say 'may be seen' for concealment. The share of cropland that is tall comes from cropCalendar; the share of built-up cells from the building-density layer (builtShareByDensity).",
+    "note": "What stands in a line of sight that a 30 m elevation model cannot show. aboveDsmM = its height above the model (the model already holds part of a canopy or a roof line); share = the chance that a line through one patch of it is blocked; ownShare = the chance that a man standing in it is hidden by it (the same as share when not given); grainM = the size of one patch of it (a field, a clump), so that a line crossing several cells of one patch counts it once. The lens works out the CHANCE that a line is clear: nothing is random and nothing is certain, so the cards say 'may be seen' and 'check on the ground'. Buildings use the bundle's building layer instead of a class (built). Tall crops use cropCalendar.",
     "basis": "E",
-    "builtShareByDensity": [0, 0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 0.95],
-    "builtShareNote": "index = bld layer density class (0 none, 1 scattered, 2 sparse, 3 open, 4 medium, 5 dense, 6 very dense, 7 reserved); used when the bld tile is loaded, else 0.5",
+    "built": {
+      "note": "By the building layer's classes (rules.json grotbc.layers.bld). A line of length L through buildings scattered at density n, each w wide, meets one with chance 1 - exp(-n w L).",
+      "densityPerKm2": [0, 15, 60, 200, 600, 2000, 4500, 4500],
+      "widthBySizeM": [8, 5, 8, 13, 25, 40, 40, 40],
+      "aboveDsmByHeightM": [2.5, 3, 5, 8],
+      "heightNote": "height classes: not known or under 3 m, 3-6 m, 6-12 m, 12 m and over; about half the building height is taken to stand above the 30 m model"
+    },
     "rows": [
-      { "class": 3, "name": "Built-up area", "heightM": [3, 8], "share": "bld", "note": "the part of a town the elevation loses: streets and roofs averaged into one height" },
-      { "class": 1, "name": "Tree cover", "heightM": [0, 4], "share": 0.7, "grainPx": 2, "note": "the DSM holds part of the canopy" },
-      { "class": 31, "name": "Forest (enclosed)", "heightM": [0, 6], "share": 1, "note": "the DSM holds part of the canopy" },
-      { "class": 25, "name": "Bund (1-2 m)", "heightM": [1, 2], "share": 1, "src": "classes.yaml" },
-      { "class": 24, "name": "Embankment / bund over 2 m", "heightM": [2, 4], "share": 1 },
-      { "class": 49, "name": "Wall / fence", "heightM": [1.5, 2.5], "share": 1 },
-      { "class": 29, "name": "Walled orchard", "heightM": [3, 6], "share": 1 },
-      { "class": 30, "name": "Orchard / garden", "heightM": [3, 5], "share": 0.6, "grainPx": 2 },
-      { "class": 32, "name": "Graveyard (walls)", "heightM": [1.5, 2.5], "share": 0.5 },
-      { "class": 28, "name": "Railway", "heightM": [1, 3], "share": 0.5 },
-      { "class": "2, 23", "name": "Cropland, irrigated cropland", "heightM": [0, 2], "share": "crop", "grainPx": 4, "note": "tall crops only (1.5 m or more): the share is the area share of the crops that are tall in the month" },
-      { "class": 26, "name": "Cutting", "heightM": [-3, -1], "share": 0, "note": "below ground: cover, not a blocker" }
+      { "class": 3, "name": "Built-up area (only when the bundle has no building layer)", "aboveDsmM": 4, "share": 0.5, "grainM": 33, "withoutBuildingLayer": true },
+      { "class": 1, "name": "Tree cover", "aboveDsmM": 3, "share": 0.5, "grainM": 100, "ownShare": 0.2, "note": "tree lines and clumps: a line through one is half screened; a man under the canopy is mostly in view" },
+      { "class": 31, "name": "Forest (enclosed)", "aboveDsmM": 4, "share": 0.95, "grainM": 100, "ownShare": 0.7, "note": "the model holds part of the canopy" },
+      { "class": 7, "name": "Mangrove", "aboveDsmM": 3, "share": 0.9, "grainM": 100, "ownShare": 0.8 },
+      { "class": 25, "name": "Bund (1-2 m)", "aboveDsmM": 1.5, "share": 1, "grainM": 33, "src": "classes.yaml" },
+      { "class": 24, "name": "Embankment / bund over 2 m", "aboveDsmM": 3, "share": 1, "grainM": 33 },
+      { "class": 49, "name": "Wall / fence", "aboveDsmM": 2, "share": 1, "grainM": 33 },
+      { "class": 29, "name": "Walled orchard", "aboveDsmM": 4, "share": 1, "grainM": 60, "ownShare": 0.6 },
+      { "class": 30, "name": "Orchard / garden", "aboveDsmM": 4, "share": 0.6, "grainM": 60, "ownShare": 0.5 },
+      { "class": 32, "name": "Graveyard (walls)", "aboveDsmM": 2, "share": 0.5, "grainM": 33 },
+      { "class": 28, "name": "Railway (embankment)", "aboveDsmM": 1.5, "share": 0.5, "grainM": 33 },
+      { "class": "2, 23, 48", "name": "Cropland, irrigated cropland", "aboveDsmM": 2, "share": "crop", "grainM": 130, "note": "tall crops only (1.5 m or more): the share is the area share of the crops that are tall in the month (cropCalendar); a field is about 130 m across" }
     ]
   },
 

@@ -1,51 +1,41 @@
 {
- "when": "2026-11-10T15:32:06.930Z",
+ "when": "2026-11-10T20:27:01.636Z",
  "node": "v24.18.0",
  "results": [
   {
-   "name": "flat plain: every ray clear to 5 km",
+   "name": "flat plain: every ray clear to 5 km and all of it seen",
    "ok": true,
-   "detail": "min clear 5000 m"
+   "detail": "min clear 4968 m, 100.0 % seen"
   },
   {
-   "name": "flat plain: 100 % of the ground seen",
+   "name": "20 m ridge 1 km north: sight to the north ends at the ridge, the other three run clear",
    "ok": true,
-   "detail": "100.0 %"
+   "detail": "north clear 994 m"
   },
   {
-   "name": "20 m ridge 1 km north: sight to the north ends at the ridge",
+   "name": "20 m ridge: the dead ground behind it is not seen",
    "ok": true,
-   "detail": "clear 994 m"
+   "detail": "62.7 % seen"
   },
   {
-   "name": "20 m ridge: nothing hides the other three directions",
-   "ok": true,
-   "detail": ""
-  },
-  {
-   "name": "20 m ridge: less than the whole ground is seen",
-   "ok": true,
-   "detail": "62.7 %"
-  },
-  {
-   "name": "earth curvature: first hidden near the radio-horizon sum for eye 2 m + target 1.7 m",
+   "name": "earth curvature: a 1.7 m target drops out of sight of a 2 m eye at the horizon sum",
    "ok": true,
    "detail": "10395 m, expected 10402 m"
   },
   {
    "name": "mutual visibility: A sees B exactly when B sees A",
    "ok": true,
-   "detail": "600/600 pairs agree (453 of them see each other)"
+   "detail": "600/600 pairs agree (453 see each other)"
   },
   {
-   "name": "noise floor: a 0.8 m step hides a prone man with no floor, not with a 1 m floor",
+   "name": "a bump that hides a prone man by half a metre: surely hidden with a fine tolerance, in doubt with 1 m",
    "ok": true,
-   "detail": ""
+   "detail": "chance seen 0.0 % at 5 cm, 15.2 % at 1 m"
   },
   {
-   "name": "a bund (class 25, 1-2 m) hides a prone man behind it, the bare DEM does not",
+   "name": "a bund 400 m out: a prone man 300 m behind it is hidden from a standing man; the bare elevation says he is seen",
    "ok": true,
-   "detail": "with 306 m, without 3000 m"
+   "detail": "with 0.0 %, without 100.0 %"
   },
   {
    "name": "crop mix: a share of the cropland is tall in August, none in April",
@@ -53,129 +43,174 @@
    "detail": "August 16.0 %, April 0.0 %"
   },
   {
-   "name": "a cropland plain: the view reaches farther in April (nothing tall) than in August (16 % tall) and August is not a blank wall (median of 40 positions)",
+   "name": "a cropland plain: the view reaches the edge in April and a few hundred metres in August (16 % tall)",
    "ok": true,
-   "detail": "April reach 4992 m, August reach 467 m (close), August 4.3 % of the ground seen"
+   "detail": "April 4992 m, August 287 m (close); August: 3.3 % expected, 100.0 % on the ground alone"
   },
   {
-   "name": "a medium-density town is very close or close country",
-   "ok": true,
-   "detail": "veryClose, reach median 0 m, 0.0 % seen"
-  },
-  {
-   "name": "canal across the east: the flood stops short of it",
-   "ok": true,
-   "detail": "east sector reaches 547 m"
-  },
-  {
-   "name": "canal with a gap: the flood goes through it",
-   "ok": true,
-   "detail": "east sector reaches 2981 m"
-  },
-  {
-   "name": "sun at the March equinox: noon altitude 90 - latitude",
-   "ok": true,
-   "detail": "58.3 deg, expected 58.5"
-  },
-  {
-   "name": "sun at the June solstice: 90 - latitude + 23.4",
-   "ok": true,
-   "detail": "81.9 deg, expected 81.9"
-  },
-  {
-   "name": "sun at the December solstice: 90 - latitude - 23.4",
-   "ok": true,
-   "detail": "35.0 deg, expected 35.0"
-  },
-  {
-   "name": "new moon of 9 Nov 2026 is nearly dark",
-   "ok": true,
-   "detail": "illuminated 0.2 %"
-  },
-  {
-   "name": "full moon of 24 Nov 2026 is nearly full",
-   "ok": true,
-   "detail": "illuminated 99.8 %"
-  },
-  {
-   "name": "first quarter of 17 Nov 2026 is about half",
-   "ok": true,
-   "detail": "illuminated 51.0 %"
-  },
-  {
-   "name": "Lahore noon is day",
-   "ok": true,
-   "detail": "day"
-  },
-  {
-   "name": "Lahore 03:00 on 11 Nov (new moon) is starlight",
-   "ok": true,
-   "detail": "starlight, moon 2.7 % lit, -63.4 deg"
-  },
-  {
-   "name": "around the full moon of 24 Nov there is moonlight at night",
+   "name": "the same point gives the same answer twice (nothing is random)",
    "ok": true,
    "detail": ""
   },
   {
-   "name": "crest sees more than the valley floor",
+   "name": "a medium-density town: close or very close country, with a view of a street length, not zero",
    "ok": true,
-   "detail": "17 % against 3 %"
+   "detail": "veryClose, reach 144 m, 1.1 % expected against 100.0 % on the ground alone"
   },
   {
-   "name": "the crest stands higher in its surroundings than the valley floor",
+   "name": "a canal across the east: the flood stops at it and the straight way east is stopped by it",
    "ok": true,
-   "detail": "-94 m against -183 m from the highest ground within 3 km"
+   "detail": "flood 547 m, way east nogo at 573 m; 15 GO, 9 stopped"
   },
   {
-   "name": "a summit is not called close country: the view reaches far even though the slope below it is dead ground",
+   "name": "the same canal with a gap: the flood goes through",
    "ok": true,
-   "detail": "reach median 3621 m, clear median 32 m"
+   "detail": "east reaches 2981 m"
   },
   {
-   "name": "on open or mountain ground the tallest blockers still leave a view (3 % or more of the ground seen)",
+   "name": "a canal one pixel wide running diagonally: no ray slips between its cells",
    "ok": true,
-   "detail": "Margalla crest 17 %, Cholistan flat 22 %, Skardu valley 15 %"
+   "detail": "way NE nogo at 650 m; 61/61 sight rays meet it"
   },
   {
-   "name": "the three cases keep their order (DEM >= middle >= tallest) at every site",
+   "name": "fan runs: seen up to the ridge, then dead ground, nothing screened",
+   "ok": true,
+   "detail": "seen 0-1013, dead 1013-2500"
+  },
+  {
+   "name": "a sight line over the ridge is lost at the ridge",
+   "ok": true,
+   "detail": "chance 0 %, lost 994 m out"
+  },
+  {
+   "name": "avenue: it reaches the position through the only gap in the canal",
+   "ok": true,
+   "detail": "crosses at row 552 (gap at 552), 3809 m against 1500 m direct"
+  },
+  {
+   "name": "avenue: the gap is reported as a chokepoint narrower than a 300 m frontage, squeezed by the canal",
+   "ok": true,
+   "detail": "width 153 m at 1960 m from the start, class 20"
+  },
+  {
+   "name": "avenue: a 60 m column fits through the same gap",
+   "ok": true,
+   "detail": "narrowest 76 m"
+  },
+  {
+   "name": "avenue: a canal with no gap leaves no avenue",
    "ok": true,
    "detail": ""
   },
   {
-   "name": "the valley floor is overlooked by high ground (15 m or more above it in view)",
+   "name": "avenue: it does not cut the corner of a canal one pixel wide running diagonally",
    "ok": true,
-   "detail": "+659 m"
+   "detail": ""
+  },
+  {
+   "name": "avenue: it goes round a small block of SLOW-GO ground",
+   "ok": true,
+   "detail": "100 % on GO ground, 1909 m against 1529 m direct"
+  },
+  {
+   "name": "avenue: with two gaps a second avenue takes the other gap",
+   "ok": true,
+   "detail": "overlap 29 %, lengths 3675 m and 4879 m"
+  },
+  {
+   "name": "better position: it finds the rise in front, with better fields of fire than the point",
+   "ok": true,
+   "detail": "180 m at 0 deg, 14 m higher: poor (11 % seen) becomes good (100 %)"
+  },
+  {
+   "name": "better position: on a flat plain there is none to offer",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "sun at noon: 90 - latitude at the equinox, +/- 23.4 at the solstices",
+   "ok": true,
+   "detail": "58.3 / 81.9 / 35.0 deg, expected 58.5 / 81.9 / 35.0"
+  },
+  {
+   "name": "moon of November 2026: new on the 9th, first quarter on the 17th, full on the 24th",
+   "ok": true,
+   "detail": "lit 0.2 % / 51.0 % / 99.8 %"
+  },
+  {
+   "name": "Lahore noon is day; 03:00 on 11 November (new moon) is starlight",
+   "ok": true,
+   "detail": "day, starlight"
+  },
+  {
+   "name": "the night of the new moon is a starlight night, the night of the full moon a moonlight night",
+   "ok": true,
+   "detail": "moonlit share of the dark hours 0 % / 100 %"
+  },
+  {
+   "name": "the crest sees more than the valley floor",
+   "ok": true,
+   "detail": "17 % against 2 %"
+  },
+  {
+   "name": "the crest is open country with poor fields of fire (the slope below a summit is dead ground)",
+   "ok": true,
+   "detail": "reach 4002 m, clear 32 m, dead ground 98 %"
+  },
+  {
+   "name": "the valley floor is overlooked from most directions",
+   "ok": true,
+   "detail": "61 % of the arc"
   },
   {
    "name": "Cholistan is open country",
    "ok": true,
-   "detail": "reach median 3705 m"
+   "detail": "reach 3368 m"
   },
   {
-   "name": "Lahore centre is close or very close country (with the blockers)",
+   "name": "Lahore centre: the ground alone says open, the buildings make it close or very close country",
    "ok": true,
-   "detail": "veryClose, reach median 33 m"
+   "detail": "18 % alone, 0.1 % expected, reach 65 m (veryClose)"
   },
   {
-   "name": "the DEM alone calls Lahore centre more open than the blockers do (the DSM smooths the town)",
+   "name": "dense towns are very close country: the view ends within a block",
    "ok": true,
-   "detail": "reach median 4462 m against 33 m"
+   "detail": "Lahore centre 65 m, Karachi 35 m, Quetta 33 m"
   },
   {
-   "name": "canal bank: a NO-GO class (canal) is the nearest obstacle toward it",
+   "name": "farmland: less is seen in August (tall crops) than in November",
    "ok": true,
-   "detail": "class 20 at 65 m"
+   "detail": "August 4.5 % (reach 263 m), November 10.3 % (reach 788 m)"
   },
   {
-   "name": "a 90 degree wedge to 2 km fits a mouse move (under 2 ms median)",
+   "name": "expected never exceeds what the ground alone allows, and sure never exceeds expected",
    "ok": true,
-   "detail": "0.21 ms"
+   "detail": ""
   },
   {
-   "name": "the full 5 km all-round view fits a Detail refresh (under 15 ms median)",
+   "name": "seen + dead + screened ground inside the range make 100 %",
    "ok": true,
-   "detail": "4.86 ms"
+   "detail": ""
+  },
+  {
+   "name": "canal bank: the canal is the nearest NO-GO toward it, inside rifle range",
+   "ok": true,
+   "detail": "class 20 at 65 m, chance seen 63 %"
+  },
+  {
+   "name": "the grade follows the weapon: a tank asks for more than a rifle on the same ground",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "everything the cursor card needs fits a mouse move (under 4 ms in Node)",
+   "ok": true,
+   "detail": "1.22 ms hills, 1.65 ms town"
+  },
+  {
+   "name": "the fine picture fits a Detail refresh (under 20 ms)",
+   "ok": true,
+   "detail": "5.5 ms"
   },
   {
    "name": "step 1 px agrees with the independent check on 98 % or more of the samples",
@@ -257,163 +292,379 @@
    "lon": 73.0747,
    "lat": 33.7901,
    "elevM": 1435,
-   "want": "wide view, not overlooked",
    "threat": 0,
-   "modes": {
-    "none": {
-     "seenPct": 21.6,
-     "clearMedianM": 64,
-     "reachMedianM": 4097,
+   "rifle": {
+    "obs": {
+     "seenPct": 16.78775571638064,
+     "terrainPct": 18.664055522840115,
+     "surePct": 14.36296738724628,
+     "reachMedianM": 4002.09423828125,
+     "clearMedianM": 31.762653350830078,
      "country": "open",
      "overlook": {
-      "riseM": 153.3970947265625,
+      "riseM": 140.49977111816406,
       "distM": 3620.9423828125,
-      "bearingDeg": 57.14863586425781
+      "bearingDeg": 58
      },
-     "rifle": {
-      "p20M": 31.762653350830078,
-      "medianM": 31.762653350830078,
-      "maxM": 95.28795623779297,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 90.62295938357059,
-      "seenEffPct": 9.377040616429412,
-      "usesPctOfEff": 10.58755111694336
-     },
-     "tank": {
-      "p20M": 31.762653350830078,
-      "medianM": 31.762653350830078,
-      "maxM": 95.28795623779297,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 90.62295938357059,
-      "seenEffPct": 9.377040616429412,
-      "usesPctOfEff": 1.588132667541504
-     },
-     "obst": {
-      "nogoM": 63.525306701660156,
-      "nogoClass": 9,
-      "covered": false,
-      "cautionM": 31.762653350830078,
-      "cautionClass": 10,
-      "blockedPct": 100
-     },
-     "rays": 989,
-     "samples": 155273
+     "overlookArcPct": 5.555555555555555,
+     "ownScreenPct": 20.000000298023224
     },
-    "mid": {
-     "seenPct": 19.4,
-     "clearMedianM": 32,
-     "reachMedianM": 3907,
-     "country": "open",
-     "overlook": {
-      "riseM": 153.3970947265625,
-      "distM": 3620.9423828125,
-      "bearingDeg": 57.14863586425781
-     },
-     "rifle": {
-      "p20M": 31.762653350830078,
-      "medianM": 31.762653350830078,
-      "maxM": 31.762653350830078,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 92.20974271908058,
-      "seenEffPct": 7.79025728091942,
-      "usesPctOfEff": 10.58755111694336
-     },
-     "tank": {
-      "p20M": 31.762653350830078,
-      "medianM": 31.762653350830078,
-      "maxM": 31.762653350830078,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 92.20974271908058,
-      "seenEffPct": 7.79025728091942,
-      "usesPctOfEff": 1.588132667541504
-     },
-     "obst": {
-      "nogoM": 63.525306701660156,
-      "nogoClass": 9,
-      "covered": false,
-      "cautionM": 31.762653350830078,
-      "cautionClass": 10,
-      "blockedPct": 100
-     },
-     "rays": 989,
-     "samples": 155273
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 31.762653350830078,
+     "clearP20M": 31.762653350830078,
+     "clearMaxM": 31.762653350830078,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 2.22240048227139,
+     "deadPct": 97.61198420719703,
+     "screenedPct": 0.16561531053158454,
+     "usesPctOfEff": 10.58755111694336,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 16.668043245688956,
+       "terrainPct": 17.910158055306734
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 0,
+       "terrainPct": 0
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 2.191277201700528,
+       "terrainPct": 3.9832717343773507
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
     },
-    "max": {
-     "seenPct": 16.6,
-     "clearMedianM": 32,
-     "reachMedianM": 3621,
-     "country": "open",
-     "overlook": {
-      "riseM": 147.47706604003906,
-      "distM": 3557.4169921875,
-      "bearingDeg": 56.42062759399414
+    "obst": {
+     "nogoM": 63.525306701660156,
+     "nogoClass": 9,
+     "seenP": 0,
+     "inRange": true,
+     "covered": false,
+     "blockedInRangePct": 100,
+     "acrossPct": 100,
+     "cautionM": 31.762653350830078,
+     "cautionClass": 10
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo"
+     ],
+     "distM": {
+      "0": 63.525306701660156,
+      "1": 95.28795623779297,
+      "2": 127.05061340332031,
+      "3": 349.3891906738281,
+      "4": 889.354248046875,
+      "5": 349.3891906738281,
+      "6": 317.62652587890625,
+      "7": 95.28795623779297,
+      "8": 95.28795623779297,
+      "9": 95.28795623779297,
+      "10": 222.33856201171875,
+      "11": 381.1518249511719,
+      "12": 730.541015625,
+      "13": 381.1518249511719,
+      "14": 317.62652587890625,
+      "15": 1206.9808349609375,
+      "16": 190.57591247558594,
+      "17": 127.05061340332031,
+      "18": 127.05061340332031,
+      "19": 127.05061340332031,
+      "20": 127.05061340332031,
+      "21": 95.28795623779297,
+      "22": 63.525306701660156,
+      "23": 63.525306701660156
      },
-     "rifle": {
-      "p20M": 31.762653350830078,
-      "medianM": 31.762653350830078,
-      "maxM": 31.762653350830078,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 94.84785163902312,
-      "seenEffPct": 5.152148360976881,
-      "usesPctOfEff": 10.58755111694336
+     "stopClass": {
+      "0": 9,
+      "1": 9,
+      "2": 9,
+      "3": 9,
+      "4": 9,
+      "5": 9,
+      "6": 9,
+      "7": 9,
+      "8": 9,
+      "9": 9,
+      "10": 9,
+      "11": 9,
+      "12": 9,
+      "13": 9,
+      "14": 9,
+      "15": 9,
+      "16": 9,
+      "17": 9,
+      "18": 9,
+      "19": 9,
+      "20": 9,
+      "21": 9,
+      "22": 9,
+      "23": 9
      },
-     "tank": {
-      "p20M": 31.762653350830078,
-      "medianM": 31.762653350830078,
-      "maxM": 31.762653350830078,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 94.84785163902312,
-      "seenEffPct": 5.152148360976881,
-      "usesPctOfEff": 1.588132667541504
-     },
-     "obst": {
-      "nogoM": 63.525306701660156,
-      "nogoClass": 9,
-      "covered": false,
-      "cautionM": 31.762653350830078,
-      "cautionClass": 10,
-      "blockedPct": 100
-     },
-     "rays": 989,
-     "samples": 155273
+     "go": 0,
+     "slow": 0,
+     "blocked": 24,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -94,
+     "maxM": 1529,
+     "distM": 2475.4499905338575,
+     "bearingDeg": 56.513831184487
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
     }
    },
-   "goReach": {
-    "reachPct": 45,
-    "waysOut": 24
-   },
-   "dominance": {
-    "aboveMaxM": -94,
-    "maxM": 1529
-   },
-   "cover": {
-    "classCode": 1,
-    "className": "Tree cover",
-    "split": [
-     1,
-     1,
-     3,
-     3
-    ],
-    "cc": {
-     "concealment": 3,
-     "cover": 1
+   "tank": {
+    "obs": {
+     "seenPct": 17.168949718477506,
+     "terrainPct": 19.036931129196507,
+     "surePct": 14.675167886537407,
+     "reachMedianM": 4002.09423828125,
+     "clearMedianM": 31.762653350830078,
+     "country": "open",
+     "overlook": {
+      "riseM": 140.49977111816406,
+      "distM": 3620.9423828125,
+      "bearingDeg": 58
+     },
+     "overlookArcPct": 5.555555555555555,
+     "ownScreenPct": 20.000000298023224
     },
-    "note": null
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 31.762653350830078,
+     "clearP20M": 31.762653350830078,
+     "clearMaxM": 63.525306701660156,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 3.5408630714698015,
+     "deadPct": 95.44694517928177,
+     "screenedPct": 1.0121917492484294,
+     "usesPctOfEff": 1.588132667541504,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 17.268655216437597,
+       "terrainPct": 18.726690693359135
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 0,
+       "terrainPct": 0
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 2.017010385848512,
+       "terrainPct": 3.511743828552927
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 12.17610931946153,
+       "terrainPct": 14.97616154399636
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 1.7847059189126324,
+       "terrainPct": 2.381623514790517
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": 63.525306701660156,
+     "nogoClass": 9,
+     "seenP": 0,
+     "inRange": true,
+     "covered": false,
+     "blockedInRangePct": 100,
+     "acrossPct": 100,
+     "cautionM": 31.762653350830078,
+     "cautionClass": 10
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo"
+     ],
+     "distM": {
+      "0": 63.525306701660156,
+      "1": 95.28795623779297,
+      "2": 127.05061340332031,
+      "3": 349.3891906738281,
+      "4": 889.354248046875,
+      "5": 349.3891906738281,
+      "6": 317.62652587890625,
+      "7": 95.28795623779297,
+      "8": 95.28795623779297,
+      "9": 95.28795623779297,
+      "10": 222.33856201171875,
+      "11": 381.1518249511719,
+      "12": 730.541015625,
+      "13": 381.1518249511719,
+      "14": 317.62652587890625,
+      "15": 1206.9808349609375,
+      "16": 190.57591247558594,
+      "17": 127.05061340332031,
+      "18": 127.05061340332031,
+      "19": 127.05061340332031,
+      "20": 127.05061340332031,
+      "21": 95.28795623779297,
+      "22": 63.525306701660156,
+      "23": 63.525306701660156
+     },
+     "stopClass": {
+      "0": 9,
+      "1": 9,
+      "2": 9,
+      "3": 9,
+      "4": 9,
+      "5": 9,
+      "6": 9,
+      "7": 9,
+      "8": 9,
+      "9": 9,
+      "10": 9,
+      "11": 9,
+      "12": 9,
+      "13": 9,
+      "14": 9,
+      "15": 9,
+      "16": 9,
+      "17": 9,
+      "18": 9,
+      "19": 9,
+      "20": 9,
+      "21": 9,
+      "22": 9,
+      "23": 9
+     },
+     "go": 0,
+     "slow": 0,
+     "blocked": 24,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -94,
+     "maxM": 1529,
+     "distM": 2475.4499905338575,
+     "bearingDeg": 56.513831184487
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
    },
-   "visibility": {
+   "augSeenPct": 16.785022750248526,
+   "augReachM": 4002.09423828125,
+   "vis": {
     "fogPct": 4,
     "hazePct": 39,
     "lt2kmPct": 33,
@@ -426,163 +677,379 @@
    "lon": 73.1118,
    "lat": 33.7313,
    "elevM": 566,
-   "want": "short view, overlooked by the hills",
    "threat": 0,
-   "modes": {
-    "none": {
-     "seenPct": 8.8,
-     "clearMedianM": 191,
-     "reachMedianM": 477,
-     "country": "close",
-     "overlook": {
-      "riseM": 682.1099853515625,
-      "distM": 4990.158203125,
-      "bearingDeg": 12.024291038513184
-     },
-     "rifle": {
-      "p20M": 158.9222412109375,
-      "medianM": 190.70669555664062,
-      "maxM": 1779.9290771484375,
-      "ge200Pct": 28.34008097165992,
-      "ge270Pct": 28.34008097165992,
-      "grade": "marginal",
-      "deadPct": 67.82029515476034,
-      "seenEffPct": 32.179704845239655,
-      "usesPctOfEff": 63.56889851888021
-     },
-     "tank": {
-      "p20M": 158.9222412109375,
-      "medianM": 190.70669555664062,
-      "maxM": 1779.9290771484375,
-      "ge200Pct": 28.34008097165992,
-      "ge270Pct": 28.34008097165992,
-      "grade": "marginal",
-      "deadPct": 67.82029515476034,
-      "seenEffPct": 32.179704845239655,
-      "usesPctOfEff": 9.53533477783203
-     },
-     "obst": {
-      "nogoM": 858.1801147460938,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 31.784448623657227,
-      "cautionClass": 3,
-      "blockedPct": 27.125506072874494
-     },
-     "rays": 988,
-     "samples": 155116
-    },
-    "mid": {
-     "seenPct": 4.8,
-     "clearMedianM": 64,
-     "reachMedianM": 127,
+   "rifle": {
+    "obs": {
+     "seenPct": 1.8414381067918117,
+     "terrainPct": 7.26770187272445,
+     "surePct": 0.25473229047399615,
+     "reachMedianM": 127.1377944946289,
+     "clearMedianM": 127.1377944946289,
      "country": "veryClose",
      "overlook": {
-      "riseM": 682.1099853515625,
+      "riseM": 681.53173828125,
       "distM": 4990.158203125,
-      "bearingDeg": 12.024291038513184
+      "bearingDeg": 12
      },
-     "rifle": {
-      "p20M": 31.784448623657227,
-      "medianM": 63.56889724731445,
-      "maxM": 635.68896484375,
-      "ge200Pct": 16.59919028340081,
-      "ge270Pct": 8.097165991902834,
-      "grade": "poor",
-      "deadPct": 93.47002742588481,
-      "seenEffPct": 6.529972574115192,
-      "usesPctOfEff": 21.189632415771484
-     },
-     "tank": {
-      "p20M": 31.784448623657227,
-      "medianM": 63.56889724731445,
-      "maxM": 635.68896484375,
-      "ge200Pct": 16.59919028340081,
-      "ge270Pct": 8.097165991902834,
-      "grade": "poor",
-      "deadPct": 93.47002742588481,
-      "seenEffPct": 6.529972574115192,
-      "usesPctOfEff": 3.1784448623657227
-     },
-     "obst": {
-      "nogoM": 858.1801147460938,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 31.784448623657227,
-      "cautionClass": 3,
-      "blockedPct": 27.125506072874494
-     },
-     "rays": 988,
-     "samples": 155116
+     "overlookArcPct": 61.111111111111114,
+     "ownScreenPct": 0.4999999888241291
     },
-    "max": {
-     "seenPct": 3.2,
-     "clearMedianM": 32,
-     "reachMedianM": 32,
-     "country": "veryClose",
-     "overlook": {
-      "riseM": 659.4387817382812,
-      "distM": 4990.158203125,
-      "bearingDeg": 331.9433288574219
+    "fire": {
+     "grade": "marginal",
+     "limitedBy": "clear",
+     "clearMedianM": 127.1377944946289,
+     "clearP20M": 127.1377944946289,
+     "clearMaxM": 300,
+     "ge200Pct": 22.580645161290324,
+     "ge270Pct": 16.129032258064516,
+     "primaryOk": false,
+     "seenPct": 37.746526840779154,
+     "deadPct": 56.28359285884256,
+     "screenedPct": 5.969880300378284,
+     "usesPctOfEff": 42.37926483154297,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 95.04183888327232,
+       "terrainPct": 99.99999999999999
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 28.931863849532235,
+       "terrainPct": 35.05739322923311
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 12.287976812464098,
+       "terrainPct": 24.31983259517861
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": null,
+     "nogoClass": 0,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 0,
+     "cautionM": 31.784448623657227,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "slow",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "slow",
+      "go",
+      "go",
+      "go",
+      "go",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "slow"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 1462.0845947265625,
+      "2": 1303.162353515625,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 1684.5758056640625,
+      "11": 1779.9290771484375,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
      },
-     "rifle": {
-      "p20M": 31.784448623657227,
-      "medianM": 63.56889724731445,
-      "maxM": 635.68896484375,
-      "ge200Pct": 16.59919028340081,
-      "ge270Pct": 8.097165991902834,
-      "grade": "poor",
-      "deadPct": 94.03813503983284,
-      "seenEffPct": 5.961864960167162,
-      "usesPctOfEff": 21.189632415771484
+     "stopClass": {
+      "0": 0,
+      "1": 41,
+      "2": 4,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 6,
+      "11": 6,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
      },
-     "tank": {
-      "p20M": 31.784448623657227,
-      "medianM": 63.56889724731445,
-      "maxM": 635.68896484375,
-      "ge200Pct": 16.59919028340081,
-      "ge270Pct": 8.097165991902834,
-      "grade": "poor",
-      "deadPct": 94.03813503983284,
-      "seenEffPct": 5.961864960167162,
-      "usesPctOfEff": 3.1784448623657227
-     },
-     "obst": {
-      "nogoM": 858.1801147460938,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 31.784448623657227,
-      "cautionClass": 3,
-      "blockedPct": 27.125506072874494
-     },
-     "rays": 988,
-     "samples": 155116
+     "go": 13,
+     "slow": 7,
+     "blocked": 4,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -197,
+     "maxM": 763,
+     "distM": 2968.912484677587,
+     "bearingDeg": 344.47588900324575
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
     }
    },
-   "goReach": {
-    "reachPct": 82,
-    "waysOut": 24
-   },
-   "dominance": {
-    "aboveMaxM": -183,
-    "maxM": 749
-   },
-   "cover": {
-    "classCode": 0,
-    "className": "Open land",
-    "split": [
-     0,
-     0,
-     0,
-     0
-    ],
-    "cc": {
-     "concealment": 0,
-     "cover": 0
+   "tank": {
+    "obs": {
+     "seenPct": 1.9286110244130379,
+     "terrainPct": 7.56261982824404,
+     "surePct": 0.261092756313564,
+     "reachMedianM": 127.1377944946289,
+     "clearMedianM": 127.1377944946289,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 681.53173828125,
+      "distM": 4990.158203125,
+      "bearingDeg": 12
+     },
+     "overlookArcPct": 62.77777777777778,
+     "ownScreenPct": 0.4999999888241291
     },
-    "note": null
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "coverage",
+     "clearMedianM": 158.9222412109375,
+     "clearP20M": 127.1377944946289,
+     "clearMaxM": 476.7667236328125,
+     "ge200Pct": 24,
+     "ge270Pct": 24,
+     "primaryOk": false,
+     "seenPct": 3.506413811613421,
+     "deadPct": 89.03175856937739,
+     "screenedPct": 7.461827619009191,
+     "usesPctOfEff": 7.946112060546875,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 95.04387197759323,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 35.44882334667688,
+       "terrainPct": 43.675827522252355
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 15.970861210382843,
+       "terrainPct": 31.454375339933712
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 0.9757133728492758,
+       "terrainPct": 4.969111400787048
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 1.761032283147589,
+       "terrainPct": 9.292660542609262
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": 858.1801147460938,
+     "nogoClass": 4,
+     "seenP": 0,
+     "inRange": true,
+     "covered": false,
+     "blockedInRangePct": 28,
+     "acrossPct": 28,
+     "cautionM": 31.784448623657227,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "slow",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "slow",
+      "go",
+      "go",
+      "go",
+      "go",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "slow"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 1462.0845947265625,
+      "2": 1303.162353515625,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 1684.5758056640625,
+      "11": 1779.9290771484375,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
+     },
+     "stopClass": {
+      "0": 0,
+      "1": 41,
+      "2": 4,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 6,
+      "11": 6,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
+     },
+     "go": 13,
+     "slow": 7,
+     "blocked": 4,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -197,
+     "maxM": 763,
+     "distM": 2968.912484677587,
+     "bearingDeg": 344.47588900324575
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
    },
-   "visibility": {
+   "augSeenPct": 1.819321926722459,
+   "augReachM": 127.1377944946289,
+   "vis": {
     "fogPct": 5,
     "hazePct": 54,
     "lt2kmPct": 46,
@@ -595,163 +1062,379 @@
    "lon": 71.9,
    "lat": 28.2,
    "elevM": 120,
-   "want": "open country, long clear sight",
    "threat": 0,
-   "modes": {
-    "none": {
-     "seenPct": 22.2,
-     "clearMedianM": 707,
-     "reachMedianM": 3705,
+   "rifle": {
+    "obs": {
+     "seenPct": 16.327885415116395,
+     "terrainPct": 16.327885415116395,
+     "surePct": 13.942096019031675,
+     "reachMedianM": 3368.2109375,
+     "clearMedianM": 572.5958251953125,
      "country": "open",
      "overlook": {
-      "riseM": 25.054161071777344,
-      "distM": 3940.806640625,
-      "bearingDeg": 193.3118896484375
+      "riseM": 23.402597427368164,
+      "distM": 4008.1708984375,
+      "bearingDeg": 194
      },
-     "rifle": {
-      "p20M": 538.9137573242188,
-      "medianM": 572.5958251953125,
-      "maxM": 1414.6485595703125,
-      "ge200Pct": 100,
-      "ge270Pct": 100,
-      "grade": "good",
-      "deadPct": 57.081545064377686,
-      "seenEffPct": 42.918454935622314,
-      "usesPctOfEff": 100
-     },
-     "tank": {
-      "p20M": 538.9137573242188,
-      "medianM": 572.5958251953125,
-      "maxM": 1414.6485595703125,
-      "ge200Pct": 100,
-      "ge270Pct": 100,
-      "grade": "good",
-      "deadPct": 57.081545064377686,
-      "seenEffPct": 42.918454935622314,
-      "usesPctOfEff": 28.629791259765625
-     },
-     "obst": {
-      "nogoM": 5000,
-      "nogoClass": 0,
-      "covered": false,
-      "cautionM": 4580.7666015625,
-      "cautionClass": 5,
-      "blockedPct": 0
-     },
-     "rays": 933,
-     "samples": 138084
+     "overlookArcPct": 10,
+     "ownScreenPct": 0
     },
-    "mid": {
-     "seenPct": 22.2,
-     "clearMedianM": 707,
-     "reachMedianM": 3705,
-     "country": "open",
-     "overlook": {
-      "riseM": 25.054161071777344,
-      "distM": 3940.806640625,
-      "bearingDeg": 193.3118896484375
-     },
-     "rifle": {
-      "p20M": 538.9137573242188,
-      "medianM": 572.5958251953125,
-      "maxM": 1414.6485595703125,
-      "ge200Pct": 100,
-      "ge270Pct": 100,
-      "grade": "good",
-      "deadPct": 57.081545064377686,
-      "seenEffPct": 42.918454935622314,
-      "usesPctOfEff": 100
-     },
-     "tank": {
-      "p20M": 538.9137573242188,
-      "medianM": 572.5958251953125,
-      "maxM": 1414.6485595703125,
-      "ge200Pct": 100,
-      "ge270Pct": 100,
-      "grade": "good",
-      "deadPct": 57.081545064377686,
-      "seenEffPct": 42.918454935622314,
-      "usesPctOfEff": 28.629791259765625
-     },
-     "obst": {
-      "nogoM": 5000,
-      "nogoClass": 0,
-      "covered": false,
-      "cautionM": 4580.7666015625,
-      "cautionClass": 5,
-      "blockedPct": 0
-     },
-     "rays": 933,
-     "samples": 138084
+    "fire": {
+     "grade": "good",
+     "limitedBy": null,
+     "clearMedianM": 300,
+     "clearP20M": 300,
+     "clearMaxM": 300,
+     "ge200Pct": 100,
+     "ge270Pct": 100,
+     "primaryOk": true,
+     "seenPct": 100,
+     "deadPct": 0,
+     "screenedPct": 0,
+     "usesPctOfEff": 100,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 100,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 100,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 85.57235881922118,
+       "terrainPct": 85.57235881922118
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
     },
-    "max": {
-     "seenPct": 22.2,
-     "clearMedianM": 707,
-     "reachMedianM": 3705,
-     "country": "open",
-     "overlook": {
-      "riseM": 25.054161071777344,
-      "distM": 3940.806640625,
-      "bearingDeg": 193.3118896484375
+    "obst": {
+     "nogoM": null,
+     "nogoClass": 0,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 0,
+     "cautionM": null,
+     "cautionClass": 0
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
      },
-     "rifle": {
-      "p20M": 538.9137573242188,
-      "medianM": 572.5958251953125,
-      "maxM": 1414.6485595703125,
-      "ge200Pct": 100,
-      "ge270Pct": 100,
-      "grade": "good",
-      "deadPct": 57.081545064377686,
-      "seenEffPct": 42.918454935622314,
-      "usesPctOfEff": 100
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
      },
-     "tank": {
-      "p20M": 538.9137573242188,
-      "medianM": 572.5958251953125,
-      "maxM": 1414.6485595703125,
-      "ge200Pct": 100,
-      "ge270Pct": 100,
-      "grade": "good",
-      "deadPct": 57.081545064377686,
-      "seenEffPct": 42.918454935622314,
-      "usesPctOfEff": 28.629791259765625
-     },
-     "obst": {
-      "nogoM": 5000,
-      "nogoClass": 0,
-      "covered": false,
-      "cautionM": 4580.7666015625,
-      "cautionClass": 5,
-      "blockedPct": 0
-     },
-     "rays": 933,
-     "samples": 138084
+     "go": 24,
+     "slow": 0,
+     "blocked": 0,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -18.554082841120305,
+     "maxM": 139,
+     "distM": 1388.7489081907825,
+     "bearingDeg": 247.16634582208246
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
     }
    },
-   "goReach": {
-    "reachPct": 100,
-    "waysOut": 24
-   },
-   "dominance": {
-    "aboveMaxM": -18.554082841120305,
-    "maxM": 139
-   },
-   "cover": {
-    "classCode": 13,
-    "className": "Sand",
-    "split": [
-     0,
-     0,
-     0,
-     0
-    ],
-    "cc": {
-     "concealment": 0,
-     "cover": 0
+   "tank": {
+    "obs": {
+     "seenPct": 19.03317367084474,
+     "terrainPct": 19.03317367084474,
+     "surePct": 16.785476200461417,
+     "reachMedianM": 3435.574951171875,
+     "clearMedianM": 639.9600830078125,
+     "country": "open",
+     "overlook": {
+      "riseM": 23.402597427368164,
+      "distM": 4008.1708984375,
+      "bearingDeg": 194
+     },
+     "overlookArcPct": 10,
+     "ownScreenPct": 0
     },
-    "note": null
+    "fire": {
+     "grade": "marginal",
+     "limitedBy": "coverage",
+     "clearMedianM": 572.5958251953125,
+     "clearP20M": 538.9137573242188,
+     "clearMaxM": 1414.6485595703125,
+     "ge200Pct": 100,
+     "ge270Pct": 100,
+     "primaryOk": true,
+     "seenPct": 22.574668318409778,
+     "deadPct": 77.42533168159022,
+     "screenedPct": 0,
+     "usesPctOfEff": 28.629791259765625,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 100,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 99.99999999999999,
+       "terrainPct": 99.99999999999999
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 89.90770943177698,
+       "terrainPct": 89.90770943177698
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 28.1978338550684,
+       "terrainPct": 28.1978338550684
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 13.397881366632962,
+       "terrainPct": 13.397881366632962
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": null,
+     "nogoClass": 0,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 0,
+     "cautionM": null,
+     "cautionClass": 0
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
+     },
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
+     },
+     "go": 24,
+     "slow": 0,
+     "blocked": 0,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -18.554082841120305,
+     "maxM": 139,
+     "distM": 1388.7489081907825,
+     "bearingDeg": 247.16634582208246
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
    },
-   "visibility": {
+   "augSeenPct": 16.327885415116395,
+   "augReachM": 3368.2109375,
+   "vis": {
     "fogPct": 35,
     "hazePct": 40,
     "lt2kmPct": 54,
@@ -764,159 +1447,379 @@
    "lon": 74.3436,
    "lat": 31.5497,
    "elevM": 224,
-   "want": "very close country",
    "threat": 0,
-   "modes": {
-    "none": {
-     "seenPct": 37.2,
-     "clearMedianM": 326,
-     "reachMedianM": 4462,
-     "country": "open",
-     "overlook": {
-      "riseM": 23.26249122619629,
-      "distM": 3940.885986328125,
-      "bearingDeg": 324.9326477050781
-     },
-     "rifle": {
-      "p20M": 32.569305419921875,
-      "medianM": 195.41583251953125,
-      "maxM": 1237.6336669921875,
-      "ge200Pct": 24.481327800829874,
-      "ge270Pct": 17.842323651452283,
-      "grade": "marginal",
-      "deadPct": 48.61574042582137,
-      "seenEffPct": 51.38425957417863,
-      "usesPctOfEff": 65.13861083984375
-     },
-     "tank": {
-      "p20M": 32.569305419921875,
-      "medianM": 195.41583251953125,
-      "maxM": 1237.6336669921875,
-      "ge200Pct": 24.481327800829874,
-      "ge270Pct": 17.842323651452283,
-      "grade": "marginal",
-      "deadPct": 48.61574042582137,
-      "seenEffPct": 51.38425957417863,
-      "usesPctOfEff": 9.770791625976562
-     },
-     "obst": {
-      "nogoM": 2084.435546875,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 227.98513793945312,
-      "cautionClass": 3,
-      "blockedPct": 0
-     },
-     "rays": 965,
-     "samples": 147645
-    },
-    "mid": {
-     "seenPct": 0.5,
-     "clearMedianM": 65,
-     "reachMedianM": 326,
-     "country": "close",
-     "overlook": {
-      "riseM": 19.661855697631836,
-      "distM": 4266.5791015625,
-      "bearingDeg": 326.05181884765625
-     },
-     "rifle": {
-      "p20M": 32.569305419921875,
-      "medianM": 32.569305419921875,
-      "maxM": 195.41583251953125,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 90.98020542820217,
-      "seenEffPct": 9.019794571797831,
-      "usesPctOfEff": 10.856435139973959
-     },
-     "tank": {
-      "p20M": 32.569305419921875,
-      "medianM": 32.569305419921875,
-      "maxM": 195.41583251953125,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 90.98020542820217,
-      "seenEffPct": 9.019794571797831,
-      "usesPctOfEff": 1.6284652709960938
-     },
-     "obst": {
-      "nogoM": 2084.435546875,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 227.98513793945312,
-      "cautionClass": 3,
-      "blockedPct": 0
-     },
-     "rays": 965,
-     "samples": 147645
-    },
-    "max": {
-     "seenPct": 0,
-     "clearMedianM": 33,
-     "reachMedianM": 33,
+   "rifle": {
+    "obs": {
+     "seenPct": 0.10675249800991679,
+     "terrainPct": 17.831152095695607,
+     "surePct": 0.013769817362872,
+     "reachMedianM": 65.13861083984375,
+     "clearMedianM": 65.13861083984375,
      "country": "veryClose",
-     "overlook": null,
-     "rifle": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 0,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 100,
-      "seenEffPct": 0,
-      "usesPctOfEff": 0
+     "overlook": {
+      "riseM": 19.460172653198242,
+      "distM": 4266.5791015625,
+      "bearingDeg": 326
      },
-     "tank": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 0,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 100,
-      "seenEffPct": 0,
-      "usesPctOfEff": 0
+     "overlookArcPct": 0.5555555555555556,
+     "ownScreenPct": 20.000000298023224
+    },
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 32.569305419921875,
+     "clearP20M": 32.569305419921875,
+     "clearMaxM": 97.70791625976562,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 19.370801648361212,
+     "deadPct": 50.824260841770744,
+     "screenedPct": 29.804937509868044,
+     "usesPctOfEff": 10.856435139973959,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 26.16879952310864,
+       "terrainPct": 44.1941393162192
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 18.3249559901455,
+       "terrainPct": 49.94213904072709
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 3.7956822549536713,
+       "terrainPct": 45.653877045904686
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": null,
+     "nogoClass": 0,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 0,
+     "cautionM": 227.98513793945312,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "go",
+      "slow",
+      "nogo",
+      "slow",
+      "slow",
+      "nogo",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "slow"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 1139.9256591796875,
+      "7": 2000,
+      "8": 2000,
+      "9": 846.8019409179688,
+      "10": 911.9405517578125,
+      "11": 1074.787109375,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
      },
-     "obst": {
-      "nogoM": 2084.435546875,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 227.98513793945312,
-      "cautionClass": 3,
-      "blockedPct": 0
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 20,
+      "7": 0,
+      "8": 0,
+      "9": 41,
+      "10": 20,
+      "11": 20,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
      },
-     "rays": 965,
-     "samples": 147645
+     "go": 6,
+     "slow": 14,
+     "blocked": 4,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -8.42577950994604,
+     "maxM": 232,
+     "distM": 2873.676092038286,
+     "bearingDeg": 35.31121343963321
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
     }
    },
-   "goReach": {
-    "reachPct": 99,
-    "waysOut": 24
-   },
-   "dominance": {
-    "aboveMaxM": -8.42577950994604,
-    "maxM": 232
-   },
-   "cover": {
-    "classCode": 1,
-    "className": "Tree cover",
-    "split": [
-     1,
-     1,
-     3,
-     3
-    ],
-    "cc": {
-     "concealment": 3,
-     "cover": 1
+   "tank": {
+    "obs": {
+     "seenPct": 0.12066793572549876,
+     "terrainPct": 24.26977788509643,
+     "surePct": 0.014665798621008825,
+     "reachMedianM": 97.70791625976562,
+     "clearMedianM": 65.13861083984375,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 19.460172653198242,
+      "distM": 4266.5791015625,
+      "bearingDeg": 326
+     },
+     "overlookArcPct": 0.5555555555555556,
+     "ownScreenPct": 20.000000298023224
     },
-    "note": null
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 32.569305419921875,
+     "clearP20M": 32.569305419921875,
+     "clearMaxM": 162.84652709960938,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 0.8938226224497186,
+     "deadPct": 65.94209607670209,
+     "screenedPct": 33.164081300848196,
+     "usesPctOfEff": 1.6284652709960938,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 28.543673413532254,
+       "terrainPct": 48.59489222887068
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 21.05070598106134,
+       "terrainPct": 57.77535946115725
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 4.52663438041516,
+       "terrainPct": 53.12455759685586
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 0.42870160669757446,
+       "terrainPct": 33.89588873048743
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 0.001109607600465046,
+       "terrainPct": 31.696774637390202
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": null,
+     "nogoClass": 0,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 0,
+     "cautionM": 227.98513793945312,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "go",
+      "slow",
+      "nogo",
+      "slow",
+      "slow",
+      "nogo",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "slow"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 1139.9256591796875,
+      "7": 2000,
+      "8": 2000,
+      "9": 846.8019409179688,
+      "10": 911.9405517578125,
+      "11": 1074.787109375,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
+     },
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 20,
+      "7": 0,
+      "8": 0,
+      "9": 41,
+      "10": 20,
+      "11": 20,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
+     },
+     "go": 6,
+     "slow": 14,
+     "blocked": 4,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -8.42577950994604,
+     "maxM": 232,
+     "distM": 2873.676092038286,
+     "bearingDeg": 35.31121343963321
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
    },
-   "visibility": {
+   "augSeenPct": 0.10673351189632391,
+   "augReachM": 65.13861083984375,
+   "vis": {
     "fogPct": 35,
     "hazePct": 20,
     "lt2kmPct": 26,
@@ -929,155 +1832,379 @@
    "lon": 74.3541,
    "lat": 31.548,
    "elevM": 220,
-   "want": "a canal in front, covered by fire?",
    "threat": 307,
-   "modes": {
-    "none": {
-     "seenPct": 17.3,
-     "clearMedianM": 684,
-     "reachMedianM": 2671,
-     "country": "open",
+   "rifle": {
+    "obs": {
+     "seenPct": 0.10590568190983649,
+     "terrainPct": 6.156033593183211,
+     "surePct": 0.007120693539264737,
+     "reachMedianM": 65.13982391357422,
+     "clearMedianM": 65.13982391357422,
+     "country": "veryClose",
      "overlook": {
-      "riseM": 26.69013786315918,
+      "riseM": 25.66214942932129,
       "distM": 4722.63720703125,
-      "bearingDeg": 316.3523254394531
+      "bearingDeg": 316
      },
-     "rifle": {
-      "p20M": 227.9893798828125,
-      "medianM": 325.6991271972656,
-      "maxM": 944.5274047851562,
-      "ge200Pct": 80.91286307053942,
-      "ge270Pct": 75.51867219917013,
-      "grade": "good",
-      "deadPct": 54.44527583157608,
-      "seenEffPct": 45.55472416842392,
-      "usesPctOfEff": 100
-     },
-     "tank": {
-      "p20M": 227.9893798828125,
-      "medianM": 325.6991271972656,
-      "maxM": 944.5274047851562,
-      "ge200Pct": 80.91286307053942,
-      "ge270Pct": 75.51867219917013,
-      "grade": "good",
-      "deadPct": 54.44527583157608,
-      "seenEffPct": 45.55472416842392,
-      "usesPctOfEff": 16.28495635986328
-     },
-     "obst": {
-      "nogoM": 65.13982391357422,
-      "nogoClass": 20,
-      "covered": true,
-      "cautionM": 32.56991195678711,
-      "cautionClass": 3,
-      "blockedPct": 100
-     },
-     "rays": 965,
-     "samples": 147645
+     "overlookArcPct": 0.5555555555555556,
+     "ownScreenPct": 10.14000028371811
     },
-    "mid": {
-     "seenPct": 0.1,
-     "clearMedianM": 0,
-     "reachMedianM": 0,
-     "country": "veryClose",
-     "overlook": null,
-     "rifle": {
-      "p20M": 130.27964782714844,
-      "medianM": 162.8495635986328,
-      "maxM": 423.4088439941406,
-      "ge200Pct": 18.25726141078838,
-      "ge270Pct": 9.54356846473029,
-      "grade": "marginal",
-      "deadPct": 88.95993469831984,
-      "seenEffPct": 11.040065301680158,
-      "usesPctOfEff": 54.28318786621094
-     },
-     "tank": {
-      "p20M": 130.27964782714844,
-      "medianM": 162.8495635986328,
-      "maxM": 423.4088439941406,
-      "ge200Pct": 18.25726141078838,
-      "ge270Pct": 9.54356846473029,
-      "grade": "marginal",
-      "deadPct": 88.95993469831984,
-      "seenEffPct": 11.040065301680158,
-      "usesPctOfEff": 8.14247817993164
-     },
-     "obst": {
-      "nogoM": 65.13982391357422,
-      "nogoClass": 20,
-      "covered": true,
-      "cautionM": 32.56991195678711,
-      "cautionClass": 3,
-      "blockedPct": 100
-     },
-     "rays": 965,
-     "samples": 147645
+    "fire": {
+     "grade": "marginal",
+     "limitedBy": "clear",
+     "clearMedianM": 162.8495635986328,
+     "clearP20M": 97.70973205566406,
+     "clearMaxM": 260.5592956542969,
+     "ge200Pct": 3.3333333333333335,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 29.695651421155013,
+     "deadPct": 39.75399700194749,
+     "screenedPct": 30.550351576897498,
+     "usesPctOfEff": 54.28318786621094,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 72.51503163695537,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 23.108055315803615,
+       "terrainPct": 54.13000391358548
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 2.6970284391039345,
+       "terrainPct": 30.6037878038672
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
     },
-    "max": {
-     "seenPct": 0.1,
-     "clearMedianM": 0,
-     "reachMedianM": 0,
-     "country": "veryClose",
-     "overlook": null,
-     "rifle": {
-      "p20M": 130.27964782714844,
-      "medianM": 130.27964782714844,
-      "maxM": 325.6991271972656,
-      "ge200Pct": 18.25726141078838,
-      "ge270Pct": 8.71369294605809,
-      "grade": "marginal",
-      "deadPct": 91.36793415413918,
-      "seenEffPct": 8.632065845860822,
-      "usesPctOfEff": 43.42654927571615
+    "obst": {
+     "nogoM": 65.13982391357422,
+     "nogoClass": 20,
+     "seenP": 0.6263287663459778,
+     "inRange": true,
+     "covered": true,
+     "blockedInRangePct": 100,
+     "acrossPct": 100,
+     "cautionM": 32.56991195678711,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "nogo",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo"
+     ],
+     "distM": {
+      "0": 130.27964782714844,
+      "1": 162.8495635986328,
+      "2": 553.6884765625,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 1628.49560546875,
+      "16": 130.27964782714844,
+      "17": 130.27964782714844,
+      "18": 97.70973205566406,
+      "19": 97.70973205566406,
+      "20": 65.13982391357422,
+      "21": 65.13982391357422,
+      "22": 65.13982391357422,
+      "23": 65.13982391357422
      },
-     "tank": {
-      "p20M": 130.27964782714844,
-      "medianM": 130.27964782714844,
-      "maxM": 325.6991271972656,
-      "ge200Pct": 18.25726141078838,
-      "ge270Pct": 8.71369294605809,
-      "grade": "marginal",
-      "deadPct": 91.36793415413918,
-      "seenEffPct": 8.632065845860822,
-      "usesPctOfEff": 6.5139823913574215
+     "stopClass": {
+      "0": 20,
+      "1": 20,
+      "2": 41,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 20,
+      "16": 20,
+      "17": 20,
+      "18": 20,
+      "19": 20,
+      "20": 20,
+      "21": 20,
+      "22": 20,
+      "23": 20
      },
-     "obst": {
-      "nogoM": 65.13982391357422,
-      "nogoClass": 20,
-      "covered": true,
-      "cautionM": 32.56991195678711,
-      "cautionClass": 3,
-      "blockedPct": 100
-     },
-     "rays": 965,
-     "samples": 147645
+     "go": 0,
+     "slow": 12,
+     "blocked": 12,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -11.990506666479632,
+     "maxM": 232,
+     "distM": 2630.91510976916,
+     "bearingDeg": 15.068488159492233
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
     }
    },
-   "goReach": {
-    "reachPct": 99,
-    "waysOut": 24
-   },
-   "dominance": {
-    "aboveMaxM": -11.990506666479632,
-    "maxM": 232
-   },
-   "cover": {
-    "classCode": 3,
-    "className": "Built-up area",
-    "split": [
-     3,
-     2,
-     3,
-     3
-    ],
-    "cc": {
-     "concealment": 3,
-     "cover": 3
+   "tank": {
+    "obs": {
+     "seenPct": 0.11835959166931344,
+     "terrainPct": 9.030433936490027,
+     "surePct": 0.007120693539264737,
+     "reachMedianM": 65.13982391357422,
+     "clearMedianM": 65.13982391357422,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 25.66214942932129,
+      "distM": 4722.63720703125,
+      "bearingDeg": 316
+     },
+     "overlookArcPct": 0.5555555555555556,
+     "ownScreenPct": 10.14000028371811
     },
-    "note": null
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "coverage",
+     "clearMedianM": 162.8495635986328,
+     "clearP20M": 97.70973205566406,
+     "clearMaxM": 260.5592956542969,
+     "ge200Pct": 7.216494845360825,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 1.2519771911004618,
+     "deadPct": 84.8072710241019,
+     "screenedPct": 13.940751784797644,
+     "usesPctOfEff": 8.14247817993164,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 72.69662656369795,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 29.053119298917853,
+       "terrainPct": 69.35951645067583
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 4.087022197818253,
+       "terrainPct": 46.44936145828081
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 0.9323481242002135,
+       "terrainPct": 37.44494330684612
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 0.00642364407312671,
+       "terrainPct": 6.004905016130531
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": 65.13982391357422,
+     "nogoClass": 20,
+     "seenP": 0.6263287663459778,
+     "inRange": true,
+     "covered": true,
+     "blockedInRangePct": 100,
+     "acrossPct": 100,
+     "cautionM": 32.56991195678711,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "nogo",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo"
+     ],
+     "distM": {
+      "0": 130.27964782714844,
+      "1": 162.8495635986328,
+      "2": 553.6884765625,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 1628.49560546875,
+      "16": 130.27964782714844,
+      "17": 130.27964782714844,
+      "18": 97.70973205566406,
+      "19": 97.70973205566406,
+      "20": 65.13982391357422,
+      "21": 65.13982391357422,
+      "22": 65.13982391357422,
+      "23": 65.13982391357422
+     },
+     "stopClass": {
+      "0": 20,
+      "1": 20,
+      "2": 41,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 20,
+      "16": 20,
+      "17": 20,
+      "18": 20,
+      "19": 20,
+      "20": 20,
+      "21": 20,
+      "22": 20,
+      "23": 20
+     },
+     "go": 0,
+     "slow": 12,
+     "blocked": 12,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -11.990506666479632,
+     "maxM": 232,
+     "distM": 2630.91510976916,
+     "bearingDeg": 15.068488159492233
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
    },
-   "visibility": {
+   "augSeenPct": 0.10588658822594604,
+   "augReachM": 65.13982391357422,
+   "vis": {
     "fogPct": 35,
     "hazePct": 20,
     "lt2kmPct": 26,
@@ -1086,167 +2213,760 @@
    }
   },
   {
+   "id": "Punjab farmland",
+   "lon": 72.9872,
+   "lat": 30.7789,
+   "elevM": 165,
+   "threat": 0,
+   "rifle": {
+    "obs": {
+     "seenPct": 10.264279458780699,
+     "terrainPct": 48.12367424323548,
+     "surePct": 0.672849055873089,
+     "reachMedianM": 788.04931640625,
+     "clearMedianM": 755.2139282226562,
+     "country": "open",
+     "overlook": null,
+     "overlookArcPct": 0,
+     "ownScreenPct": 7.999999821186066
+    },
+    "fire": {
+     "grade": "good",
+     "limitedBy": null,
+     "clearMedianM": 300,
+     "clearP20M": 300,
+     "clearMaxM": 300,
+     "ge200Pct": 100,
+     "ge270Pct": 100,
+     "primaryOk": true,
+     "seenPct": 75.56952877628179,
+     "deadPct": 0.057149843576484095,
+     "screenedPct": 24.37332138014173,
+     "usesPctOfEff": 100,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 83.53315036747094,
+       "terrainPct": 99.99999999999999
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 74.34435501952379,
+       "terrainPct": 99.93405787292946
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 64.42064938096749,
+       "terrainPct": 99.18601824569402
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": 164.17694091796875,
+     "nogoClass": 4,
+     "seenP": 0.8456720113754272,
+     "inRange": true,
+     "covered": true,
+     "blockedInRangePct": 13.333333333333334,
+     "acrossPct": 23.333333333333332,
+     "cautionM": 197.0123291015625,
+     "cautionClass": 5
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "go",
+      "go",
+      "go",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 262.68310546875,
+      "4": 65.6707763671875,
+      "5": 98.50616455078125,
+      "6": 98.50616455078125,
+      "7": 886.5554809570312,
+      "8": 131.341552734375,
+      "9": 197.0123291015625,
+      "10": 295.51849365234375,
+      "11": 1510.4278564453125,
+      "12": 1740.275634765625,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
+     },
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 4,
+      "4": 4,
+      "5": 4,
+      "6": 4,
+      "7": 4,
+      "8": 4,
+      "9": 4,
+      "10": 4,
+      "11": 4,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
+     },
+     "go": 14,
+     "slow": 0,
+     "blocked": 10,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -7,
+     "maxM": 172,
+     "distM": 2943.4870357692844,
+     "bearingDeg": 38.65980825409008
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
+    }
+   },
+   "tank": {
+    "obs": {
+     "seenPct": 12.040536688452319,
+     "terrainPct": 62.55129567093965,
+     "surePct": 1.249474447245039,
+     "reachMedianM": 820.8847045898438,
+     "clearMedianM": 788.04931640625,
+     "country": "open",
+     "overlook": null,
+     "overlookArcPct": 0,
+     "ownScreenPct": 7.999999821186066
+    },
+    "fire": {
+     "grade": "marginal",
+     "limitedBy": "coverage",
+     "clearMedianM": 820.8847045898438,
+     "clearP20M": 820.8847045898438,
+     "clearMaxM": 1773.1109619140625,
+     "ge200Pct": 100,
+     "ge270Pct": 100,
+     "primaryOk": true,
+     "seenPct": 37.20759060297535,
+     "deadPct": 2.641157979457435,
+     "screenedPct": 60.15125141756722,
+     "usesPctOfEff": 41.04423522949219,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 83.53315036747007,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 74.67949417424123,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 65.1605217475756,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 52.841541514271896,
+       "terrainPct": 99.95269465896789
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 29.985752792808956,
+       "terrainPct": 96.46929573323614
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": 164.17694091796875,
+     "nogoClass": 4,
+     "seenP": 0.8456720113754272,
+     "inRange": true,
+     "covered": true,
+     "blockedInRangePct": 22.68041237113402,
+     "acrossPct": 22.68041237113402,
+     "cautionM": 197.0123291015625,
+     "cautionClass": 5
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "go",
+      "go",
+      "go",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go",
+      "go"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 262.68310546875,
+      "4": 65.6707763671875,
+      "5": 98.50616455078125,
+      "6": 98.50616455078125,
+      "7": 886.5554809570312,
+      "8": 131.341552734375,
+      "9": 197.0123291015625,
+      "10": 295.51849365234375,
+      "11": 1510.4278564453125,
+      "12": 1740.275634765625,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
+     },
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 4,
+      "4": 4,
+      "5": 4,
+      "6": 4,
+      "7": 4,
+      "8": 4,
+      "9": 4,
+      "10": 4,
+      "11": 4,
+      "12": 4,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
+     },
+     "go": 14,
+     "slow": 0,
+     "blocked": 10,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -7,
+     "maxM": 172,
+     "distM": 2943.4870357692844,
+     "bearingDeg": 38.65980825409008
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
+   },
+   "augSeenPct": 4.536755295394256,
+   "augReachM": 262.68310546875,
+   "vis": {
+    "fogPct": 36,
+    "hazePct": 22,
+    "lt2kmPct": 37,
+    "meanViewKm": 2.5,
+    "stationKm": 73
+   }
+  },
+  {
    "id": "Skardu valley",
    "lon": 75.63,
    "lat": 35.3,
    "elevM": 2240,
-   "want": "mountain valley, overlooked",
    "threat": 0,
-   "modes": {
-    "none": {
-     "seenPct": 33.2,
-     "clearMedianM": 281,
-     "reachMedianM": 3369,
+   "rifle": {
+    "obs": {
+     "seenPct": 16.24183732067701,
+     "terrainPct": 30.121068355225308,
+     "surePct": 15.553053750798297,
+     "reachMedianM": 1310.0457763671875,
+     "clearMedianM": 0,
      "country": "open",
      "overlook": {
-      "riseM": 1372.6995849609375,
-      "distM": 4990.650390625,
-      "bearingDeg": 196.62364196777344
+      "riseM": 1357.756103515625,
+      "distM": 4865.88427734375,
+      "bearingDeg": 196
      },
-     "rifle": {
-      "p20M": 124.76626586914062,
-      "medianM": 155.95782470703125,
-      "maxM": 249.53253173828125,
-      "ge200Pct": 22.709163346613547,
-      "ge270Pct": 0,
-      "grade": "marginal",
-      "deadPct": 67.26220119521912,
-      "seenEffPct": 32.73779880478088,
-      "usesPctOfEff": 51.985941569010414
-     },
-     "tank": {
-      "p20M": 124.76626586914062,
-      "medianM": 155.95782470703125,
-      "maxM": 249.53253173828125,
-      "ge200Pct": 22.709163346613547,
-      "ge270Pct": 0,
-      "grade": "marginal",
-      "deadPct": 67.26220119521912,
-      "seenEffPct": 32.73779880478088,
-      "usesPctOfEff": 7.797891235351562
-     },
-     "obst": {
-      "nogoM": 467.8735046386719,
-      "nogoClass": 9,
-      "covered": false,
-      "cautionM": 31.191566467285156,
-      "cautionClass": 3,
-      "blockedPct": 100
-     },
-     "rays": 1007,
-     "samples": 161120
+     "overlookArcPct": 67.77777777777777,
+     "ownScreenPct": 76.05000138282776
     },
-    "mid": {
-     "seenPct": 20.8,
-     "clearMedianM": 31,
-     "reachMedianM": 1404,
-     "country": "open",
-     "overlook": {
-      "riseM": 1372.6995849609375,
-      "distM": 4990.650390625,
-      "bearingDeg": 196.62364196777344
-     },
-     "rifle": {
-      "p20M": 0,
-      "medianM": 62.38313293457031,
-      "maxM": 124.76626586914062,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 80.01120517928287,
-      "seenEffPct": 19.988794820717132,
-      "usesPctOfEff": 20.79437764485677
-     },
-     "tank": {
-      "p20M": 0,
-      "medianM": 62.38313293457031,
-      "maxM": 124.76626586914062,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 80.01120517928287,
-      "seenEffPct": 19.988794820717132,
-      "usesPctOfEff": 3.1191566467285154
-     },
-     "obst": {
-      "nogoM": 467.8735046386719,
-      "nogoClass": 9,
-      "covered": false,
-      "cautionM": 31.191566467285156,
-      "cautionClass": 3,
-      "blockedPct": 100
-     },
-     "rays": 1007,
-     "samples": 161120
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 0,
+     "clearP20M": 0,
+     "clearMaxM": 31.191566467285156,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 0.9604694462438061,
+     "deadPct": 76.873026932313,
+     "screenedPct": 22.166503621443198,
+     "usesPctOfEff": 0,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 7.1576092774940285,
+       "terrainPct": 90.89677000327207
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 0.00706261505133417,
+       "terrainPct": 12.70084986297905
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 7.479379262312023,
+       "terrainPct": 22.460374043071894
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
     },
-    "max": {
-     "seenPct": 14.8,
-     "clearMedianM": 31,
-     "reachMedianM": 1310,
-     "country": "open",
-     "overlook": {
-      "riseM": 1372.6995849609375,
-      "distM": 4990.650390625,
-      "bearingDeg": 196.62364196777344
+    "obst": {
+     "nogoM": 467.8735046386719,
+     "nogoClass": 9,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 67.74193548387096,
+     "cautionM": 31.191566467285156,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "go",
+      "nogo",
+      "nogo",
+      "nogo"
+     ],
+     "distM": {
+      "0": 561.4481811523438,
+      "1": 499.0650634765625,
+      "2": 530.2566528320312,
+      "3": 655.0228881835938,
+      "4": 873.3638305664062,
+      "5": 1091.704833984375,
+      "6": 1621.96142578125,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 717.406005859375,
+      "15": 467.8735046386719,
+      "16": 405.4903564453125,
+      "17": 436.6819152832031,
+      "18": 467.8735046386719,
+      "19": 530.2566528320312,
+      "20": 2000,
+      "21": 1372.428955078125,
+      "22": 904.555419921875,
+      "23": 655.0228881835938
      },
-     "rifle": {
-      "p20M": 0,
-      "medianM": 62.38313293457031,
-      "maxM": 124.76626586914062,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 83.1050796812749,
-      "seenEffPct": 16.8949203187251,
-      "usesPctOfEff": 20.79437764485677
+     "stopClass": {
+      "0": 9,
+      "1": 9,
+      "2": 9,
+      "3": 9,
+      "4": 9,
+      "5": 4,
+      "6": 4,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 4,
+      "15": 4,
+      "16": 4,
+      "17": 4,
+      "18": 4,
+      "19": 4,
+      "20": 0,
+      "21": 9,
+      "22": 9,
+      "23": 9
      },
-     "tank": {
-      "p20M": 0,
-      "medianM": 62.38313293457031,
-      "maxM": 124.76626586914062,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 83.1050796812749,
-      "seenEffPct": 16.8949203187251,
-      "usesPctOfEff": 3.1191566467285154
-     },
-     "obst": {
-      "nogoM": 467.8735046386719,
-      "nogoClass": 9,
-      "covered": false,
-      "cautionM": 31.191566467285156,
-      "cautionClass": 3,
-      "blockedPct": 100
-     },
-     "rays": 1007,
-     "samples": 161120
+     "go": 1,
+     "slow": 7,
+     "blocked": 16,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -450.7298476398273,
+     "maxM": 2691,
+     "distM": 1187.739448458668,
+     "bearingDeg": 346.3286928678042
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
     }
    },
-   "goReach": {
-    "reachPct": 48,
-    "waysOut": 18
-   },
-   "dominance": {
-    "aboveMaxM": -450.7298476398273,
-    "maxM": 2691
-   },
-   "cover": {
-    "classCode": 37,
-    "className": "Metalled road, class not recorded",
-    "split": [
-     0,
-     0,
-     0,
-     0
-    ],
-    "cc": {
-     "concealment": 3,
-     "cover": 3
+   "tank": {
+    "obs": {
+     "seenPct": 18.20290784328362,
+     "terrainPct": 31.618978875033424,
+     "surePct": 17.028208882516697,
+     "reachMedianM": 1310.0457763671875,
+     "clearMedianM": 0,
+     "country": "open",
+     "overlook": {
+      "riseM": 1357.756103515625,
+      "distM": 4865.88427734375,
+      "bearingDeg": 196
+     },
+     "overlookArcPct": 67.77777777777777,
+     "ownScreenPct": 76.05000138282776
     },
-    "note": null
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 0,
+     "clearP20M": 0,
+     "clearMaxM": 31.191566467285156,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 14.492853252721275,
+     "deadPct": 80.79624290629654,
+     "screenedPct": 4.7109038409821835,
+     "usesPctOfEff": 0,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 7.116286086080717,
+       "terrainPct": 97.0529756264561
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 0.007791763578316842,
+       "terrainPct": 17.25764417733315
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 7.685634285916081,
+       "terrainPct": 23.185512086777656
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 56.66906353604077,
+       "terrainPct": 70.0431586961664
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 6.336065801098614,
+       "terrainPct": 7.507708257565616
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": 467.8735046386719,
+     "nogoClass": 9,
+     "seenP": 0,
+     "inRange": true,
+     "covered": false,
+     "blockedInRangePct": 100,
+     "acrossPct": 100,
+     "cautionM": 31.191566467285156,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "nogo",
+      "go",
+      "nogo",
+      "nogo",
+      "nogo"
+     ],
+     "distM": {
+      "0": 561.4481811523438,
+      "1": 499.0650634765625,
+      "2": 530.2566528320312,
+      "3": 655.0228881835938,
+      "4": 873.3638305664062,
+      "5": 1091.704833984375,
+      "6": 1621.96142578125,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 717.406005859375,
+      "15": 467.8735046386719,
+      "16": 405.4903564453125,
+      "17": 436.6819152832031,
+      "18": 467.8735046386719,
+      "19": 530.2566528320312,
+      "20": 2000,
+      "21": 1372.428955078125,
+      "22": 904.555419921875,
+      "23": 655.0228881835938
+     },
+     "stopClass": {
+      "0": 9,
+      "1": 9,
+      "2": 9,
+      "3": 9,
+      "4": 9,
+      "5": 4,
+      "6": 4,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 4,
+      "15": 4,
+      "16": 4,
+      "17": 4,
+      "18": 4,
+      "19": 4,
+      "20": 0,
+      "21": 9,
+      "22": 9,
+      "23": 9
+     },
+     "go": 1,
+     "slow": 7,
+     "blocked": 16,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -450.7298476398273,
+     "maxM": 2691,
+     "distM": 1187.739448458668,
+     "bearingDeg": 346.3286928678042
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
    },
-   "visibility": {
+   "augSeenPct": 16.235033624771127,
+   "augReachM": 1310.0457763671875,
+   "vis": {
     "fogPct": 2,
     "hazePct": 33,
     "lt2kmPct": 33,
@@ -1259,163 +2979,379 @@
    "lon": 67,
    "lat": 30.19,
    "elevM": 1673,
-   "want": "valley floor ringed by hills",
    "threat": 0,
-   "modes": {
-    "none": {
-     "seenPct": 49.5,
-     "clearMedianM": 958,
-     "reachMedianM": 4988,
-     "country": "open",
-     "overlook": {
-      "riseM": 622.8455810546875,
-      "distM": 4756.990234375,
-      "bearingDeg": 113.56466674804688
-     },
-     "rifle": {
-      "p20M": 891.9356689453125,
-      "medianM": 991.0396118164062,
-      "maxM": 2345.46044921875,
-      "ge200Pct": 100,
-      "ge270Pct": 100,
-      "grade": "good",
-      "deadPct": 20.112517580872012,
-      "seenEffPct": 79.88748241912799,
-      "usesPctOfEff": 100
-     },
-     "tank": {
-      "p20M": 891.9356689453125,
-      "medianM": 991.0396118164062,
-      "maxM": 2345.46044921875,
-      "ge200Pct": 100,
-      "ge270Pct": 100,
-      "grade": "good",
-      "deadPct": 20.112517580872012,
-      "seenEffPct": 79.88748241912799,
-      "usesPctOfEff": 49.551980590820314
-     },
-     "obst": {
-      "nogoM": 1420.4901123046875,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 33.03465270996094,
-      "cautionClass": 3,
-      "blockedPct": 29.957805907172997
-     },
-     "rays": 951,
-     "samples": 143601
-    },
-    "mid": {
-     "seenPct": 2.1,
-     "clearMedianM": 66,
-     "reachMedianM": 99,
+   "rifle": {
+    "obs": {
+     "seenPct": 1.4447459837654273,
+     "terrainPct": 34.58130963359965,
+     "surePct": 1.3900991483369187,
+     "reachMedianM": 33.03465270996094,
+     "clearMedianM": 33.03465270996094,
      "country": "veryClose",
      "overlook": {
-      "riseM": 622.8455810546875,
-      "distM": 4756.990234375,
-      "bearingDeg": 113.56466674804688
+      "riseM": 611.8858032226562,
+      "distM": 4723.95556640625,
+      "bearingDeg": 114
      },
-     "rifle": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 198.20791625976562,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 97.9887482419128,
-      "seenEffPct": 2.011251758087198,
-      "usesPctOfEff": 0
-     },
-     "tank": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 198.20791625976562,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 97.9887482419128,
-      "seenEffPct": 2.011251758087198,
-      "usesPctOfEff": 0
-     },
-     "obst": {
-      "nogoM": 1420.4901123046875,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 33.03465270996094,
-      "cautionClass": 3,
-      "blockedPct": 29.957805907172997
-     },
-     "rays": 951,
-     "samples": 143601
+     "overlookArcPct": 50,
+     "ownScreenPct": 51.92000009119511
     },
-    "max": {
-     "seenPct": 1.4,
-     "clearMedianM": 33,
-     "reachMedianM": 33,
-     "country": "veryClose",
-     "overlook": {
-      "riseM": 622.8455810546875,
-      "distM": 4756.990234375,
-      "bearingDeg": 113.56466674804688
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 33.03465270996094,
+     "clearP20M": 33.03465270996094,
+     "clearMaxM": 33.03465270996094,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 12.843835764172155,
+     "deadPct": 0,
+     "screenedPct": 87.15616423582784,
+     "usesPctOfEff": 11.011550903320312,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 33.071645379116774,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 9.731861121742797,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 1.6931878996763228,
+       "terrainPct": 99.07289032488461
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": null,
+     "nogoClass": 0,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 0,
+     "cautionM": 33.03465270996094,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
      },
-     "rifle": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 99.10395812988281,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 99.0506329113924,
-      "seenEffPct": 0.9493670886076018,
-      "usesPctOfEff": 0
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
      },
-     "tank": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 99.10395812988281,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 99.0506329113924,
-      "seenEffPct": 0.9493670886076018,
-      "usesPctOfEff": 0
-     },
-     "obst": {
-      "nogoM": 1420.4901123046875,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 33.03465270996094,
-      "cautionClass": 3,
-      "blockedPct": 29.957805907172997
-     },
-     "rays": 951,
-     "samples": 143601
+     "go": 0,
+     "slow": 24,
+     "blocked": 0,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -175.85555555555038,
+     "maxM": 1849,
+     "distM": 2969.4460363303047,
+     "bearingDeg": 122.27564431457762
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
     }
    },
-   "goReach": {
-    "reachPct": 95,
-    "waysOut": 24
-   },
-   "dominance": {
-    "aboveMaxM": -202.85555555555038,
-    "maxM": 1876
-   },
-   "cover": {
-    "classCode": 28,
-    "className": "Railway",
-    "split": [
-     1,
-     0,
-     0,
-     0
-    ],
-    "cc": {
-     "concealment": 3,
-     "cover": 3
+   "tank": {
+    "obs": {
+     "seenPct": 1.4788634371473204,
+     "terrainPct": 38.790788450615736,
+     "surePct": 1.4259227095400493,
+     "reachMedianM": 33.03465270996094,
+     "clearMedianM": 33.03465270996094,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 611.8858032226562,
+      "distM": 4723.95556640625,
+      "bearingDeg": 114
+     },
+     "overlookArcPct": 52.77777777777778,
+     "ownScreenPct": 51.92000009119511
     },
-    "note": null
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 33.03465270996094,
+     "clearP20M": 33.03465270996094,
+     "clearMaxM": 33.03465270996094,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 0.45332140031610635,
+     "deadPct": 41.73141805504752,
+     "screenedPct": 57.815260544636374,
+     "usesPctOfEff": 1.6517326354980468,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 33.549344096794094,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 9.872196167865326,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 1.7624702165448503,
+       "terrainPct": 99.90256231593979
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 0.07199563826285081,
+       "terrainPct": 81.63211690235518
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 0.00001688401359847788,
+       "terrainPct": 48.017536372247335
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": 1420.4901123046875,
+     "nogoClass": 4,
+     "seenP": 0,
+     "inRange": true,
+     "covered": false,
+     "blockedInRangePct": 34.375,
+     "acrossPct": 34.375,
+     "cautionM": 33.03465270996094,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
+     },
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
+     },
+     "go": 0,
+     "slow": 24,
+     "blocked": 0,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -175.85555555555038,
+     "maxM": 1849,
+     "distM": 2969.4460363303047,
+     "bearingDeg": 122.27564431457762
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
    },
-   "visibility": {
+   "augSeenPct": 1.4447459837654273,
+   "augReachM": 33.03465270996094,
+   "vis": {
     "fogPct": 0,
     "hazePct": 5,
     "lt2kmPct": 1,
@@ -1428,155 +3364,379 @@
    "lon": 67.01,
    "lat": 24.86,
    "elevM": 10,
-   "want": "built-up coastal plain",
    "threat": 0,
-   "modes": {
-    "none": {
-     "seenPct": 2.4,
-     "clearMedianM": 312,
-     "reachMedianM": 694,
-     "country": "open",
+   "rifle": {
+    "obs": {
+     "seenPct": 0.02795062728562923,
+     "terrainPct": 1.520363190102011,
+     "surePct": 0.0015432098695185462,
+     "reachMedianM": 34.677101135253906,
+     "clearMedianM": 34.677101135253906,
+     "country": "veryClose",
      "overlook": {
-      "riseM": 26.969383239746094,
-      "distM": 1837.8863525390625,
-      "bearingDeg": 257.4834289550781
+      "riseM": 25.12428092956543,
+      "distM": 1907.240478515625,
+      "bearingDeg": 258
      },
-     "rifle": {
-      "p20M": 416.1252136230469,
-      "medianM": 554.8336181640625,
-      "maxM": 1040.31298828125,
-      "ge200Pct": 100,
-      "ge270Pct": 96.0352422907489,
-      "grade": "good",
-      "deadPct": 59.6723085246155,
-      "seenEffPct": 40.3276914753845,
-      "usesPctOfEff": 100
-     },
-     "tank": {
-      "p20M": 416.1252136230469,
-      "medianM": 554.8336181640625,
-      "maxM": 1040.31298828125,
-      "ge200Pct": 100,
-      "ge270Pct": 96.0352422907489,
-      "grade": "good",
-      "deadPct": 59.6723085246155,
-      "seenEffPct": 40.3276914753845,
-      "usesPctOfEff": 27.741680908203126
-     },
-     "obst": {
-      "nogoM": 2045.9488525390625,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 34.677101135253906,
-      "cautionClass": 3,
-      "blockedPct": 0
-     },
-     "rays": 906,
-     "samples": 130464
+     "overlookArcPct": 3.888888888888889,
+     "ownScreenPct": 37.5
     },
-    "mid": {
-     "seenPct": 0,
-     "clearMedianM": 35,
-     "reachMedianM": 35,
-     "country": "veryClose",
-     "overlook": null,
-     "rifle": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 173.385498046875,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 98.89481412783059,
-      "seenEffPct": 1.1051858721694146,
-      "usesPctOfEff": 0
-     },
-     "tank": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 173.385498046875,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 98.89481412783059,
-      "seenEffPct": 1.1051858721694146,
-      "usesPctOfEff": 0
-     },
-     "obst": {
-      "nogoM": 2045.9488525390625,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 34.677101135253906,
-      "cautionClass": 3,
-      "blockedPct": 0
-     },
-     "rays": 906,
-     "samples": 130464
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 34.677101135253906,
+     "clearP20M": 34.677101135253906,
+     "clearMaxM": 34.677101135253906,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 13.665958616471514,
+     "deadPct": 9.870305745820392,
+     "screenedPct": 76.4637356377081,
+     "usesPctOfEff": 11.559033711751303,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 53.010318374926776,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 10.089197949028561,
+       "terrainPct": 89.23239376648621
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 0.1947216221224155,
+       "terrainPct": 65.53179396515581
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": null,
+       "terrainPct": null
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
     },
-    "max": {
-     "seenPct": 0,
-     "clearMedianM": 35,
-     "reachMedianM": 35,
-     "country": "veryClose",
-     "overlook": null,
-     "rifle": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 173.385498046875,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 98.9257284179612,
-      "seenEffPct": 1.0742715820388042,
-      "usesPctOfEff": 0
+    "obst": {
+     "nogoM": null,
+     "nogoClass": 0,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 0,
+     "cautionM": 34.677101135253906,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
      },
-     "tank": {
-      "p20M": 0,
-      "medianM": 0,
-      "maxM": 173.385498046875,
-      "ge200Pct": 0,
-      "ge270Pct": 0,
-      "grade": "poor",
-      "deadPct": 98.9257284179612,
-      "seenEffPct": 1.0742715820388042,
-      "usesPctOfEff": 0
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
      },
-     "obst": {
-      "nogoM": 2045.9488525390625,
-      "nogoClass": 4,
-      "covered": false,
-      "cautionM": 34.677101135253906,
-      "cautionClass": 3,
-      "blockedPct": 0
-     },
-     "rays": 906,
-     "samples": 130464
+     "go": 0,
+     "slow": 24,
+     "blocked": 0,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -29.014098034877243,
+     "maxM": 39,
+     "distM": 1816.828543782398,
+     "bearingDeg": 256.7594800848128
+    },
+    "weapon": {
+     "channel": "dir",
+     "minM": 0,
+     "effM": 300,
+     "maxM": 500,
+     "targetM": 1.7,
+     "target": "man",
+     "basis": "D",
+     "source": "dir: IC s77.2 (killing 300, confident 300-400); IBB p297 (confident 400-500)",
+     "nv": null,
+     "fromSymbol": true
     }
    },
-   "goReach": {
-    "reachPct": 79,
-    "waysOut": 24
-   },
-   "dominance": {
-    "aboveMaxM": -29.014098034877243,
-    "maxM": 39
-   },
-   "cover": {
-    "classCode": 3,
-    "className": "Built-up area",
-    "split": [
-     3,
-     2,
-     3,
-     3
-    ],
-    "cc": {
-     "concealment": 3,
-     "cover": 3
+   "tank": {
+    "obs": {
+     "seenPct": 0.029268576189395934,
+     "terrainPct": 1.8281818823963887,
+     "surePct": 0.0015432098695185462,
+     "reachMedianM": 34.677101135253906,
+     "clearMedianM": 34.677101135253906,
+     "country": "veryClose",
+     "overlook": {
+      "riseM": 25.12428092956543,
+      "distM": 1907.240478515625,
+      "bearingDeg": 258
+     },
+     "overlookArcPct": 3.888888888888889,
+     "ownScreenPct": 37.5
     },
-    "note": null
+    "fire": {
+     "grade": "poor",
+     "limitedBy": "clear",
+     "clearMedianM": 34.677101135253906,
+     "clearP20M": 34.677101135253906,
+     "clearMaxM": 34.677101135253906,
+     "ge200Pct": 0,
+     "ge270Pct": 0,
+     "primaryOk": false,
+     "seenPct": 0.3238808333048624,
+     "deadPct": 83.69225632342028,
+     "screenedPct": 15.983862843274856,
+     "usesPctOfEff": 1.7338550567626954,
+     "bands": [
+      {
+       "fromM": 0,
+       "toM": 100,
+       "seenPct": 52.81861542176767,
+       "terrainPct": 100
+      },
+      {
+       "fromM": 100,
+       "toM": 300,
+       "seenPct": 10.609339141058861,
+       "terrainPct": 95.33016890981197
+      },
+      {
+       "fromM": 300,
+       "toM": 600,
+       "seenPct": 0.2284150928214436,
+       "terrainPct": 76.9673941959414
+      },
+      {
+       "fromM": 600,
+       "toM": 1000,
+       "seenPct": 0.0003448864862649993,
+       "terrainPct": 44.19650111866525
+      },
+      {
+       "fromM": 1000,
+       "toM": 2000,
+       "seenPct": 2.389861677183043e-10,
+       "terrainPct": 2.66552171210766
+      },
+      {
+       "fromM": 2000,
+       "toM": null,
+       "seenPct": null,
+       "terrainPct": null
+      }
+     ]
+    },
+    "obst": {
+     "nogoM": null,
+     "nogoClass": 0,
+     "seenP": 0,
+     "inRange": false,
+     "covered": false,
+     "blockedInRangePct": 0,
+     "acrossPct": 0,
+     "cautionM": 34.677101135253906,
+     "cautionClass": 3
+    },
+    "ways": {
+     "sectors": 24,
+     "state": [
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow",
+      "slow"
+     ],
+     "distM": {
+      "0": 2000,
+      "1": 2000,
+      "2": 2000,
+      "3": 2000,
+      "4": 2000,
+      "5": 2000,
+      "6": 2000,
+      "7": 2000,
+      "8": 2000,
+      "9": 2000,
+      "10": 2000,
+      "11": 2000,
+      "12": 2000,
+      "13": 2000,
+      "14": 2000,
+      "15": 2000,
+      "16": 2000,
+      "17": 2000,
+      "18": 2000,
+      "19": 2000,
+      "20": 2000,
+      "21": 2000,
+      "22": 2000,
+      "23": 2000
+     },
+     "stopClass": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 0,
+      "15": 0,
+      "16": 0,
+      "17": 0,
+      "18": 0,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
+     },
+     "go": 0,
+     "slow": 24,
+     "blocked": 0,
+     "radiusM": 2000
+    },
+    "dom": {
+     "aboveMaxM": -29.014098034877243,
+     "maxM": 39,
+     "distM": 1816.828543782398,
+     "bearingDeg": 256.7594800848128
+    },
+    "weapon": {
+     "channel": "at",
+     "minM": 0,
+     "effM": 2000,
+     "maxM": 3000,
+     "targetM": 2.4,
+     "target": "vehicle",
+     "basis": "T",
+     "source": "ranges T (125 mm class); night: IBB Annex D App 3 (T-80 UD gunner 600-800, commander moon 1200-1400 / star 800-1000)",
+     "nv": {
+      "moon": 800,
+      "star": 800
+     },
+     "fromSymbol": true
+    }
    },
-   "visibility": {
+   "augSeenPct": 0.02795062728562923,
+   "augReachM": 34.677101135253906,
+   "vis": {
     "fogPct": 4,
     "hazePct": 6,
     "lt2kmPct": 2,
@@ -1587,109 +3747,107 @@
  ],
  "timing": {
   "Margalla crest": {
-   "wedge 90 deg, 1 deg, to 500 m (rifle)": {
-    "median": 0.04989999999997963,
-    "p95": 0.07960000000002765,
-    "mean": 0.058133500000008095
+   "fire wedge 90 deg to 600 m (rifle)": {
+    "median": 0.02509999999995216,
+    "p95": 0.037599999999997635
    },
-   "wedge 90 deg, 1 deg, to 2 km (tank)": {
-    "median": 0.1587000000001808,
-    "p95": 0.2255999999999858,
-    "mean": 0.17113899999999943
+   "fire wedge 90 deg to 2 km (tank)": {
+    "median": 0.22550000000001091,
+    "p95": 0.2968999999999369
    },
-   "wedge 90 deg, fine, to 3 km (ATGM)": {
-    "median": 0.4151999999999134,
-    "p95": 0.5468000000000757,
-    "mean": 0.43542449999999233
+   "observation all round, 2 deg, to 5 km": {
+    "median": 0.9430999999999585,
+    "p95": 1.1458000000000084
    },
-   "all round, 2 deg, to 1 km": {
-    "median": 0.16779999999994288,
-    "p95": 0.2402999999999338,
-    "mean": 0.17954800000000204
-   },
-   "all round, fine, to 5 km (observation)": {
-    "median": 4.86429999999973,
-    "p95": 5.14240000000018,
-    "mean": 4.876510999999996
-   },
-   "all round, fine, half-pixel step, to 5 km": {
-    "median": 9.716400000000249,
-    "p95": 10.248700000000099,
-    "mean": 9.733229500000004
-   },
-   "all round, fine, to 10 km": {
-    "median": 16.175900000000183,
-    "p95": 17.058399999999892,
-    "mean": 16.202331999999966
-   },
-   "going flood to 5 km": {
-    "median": 5.877800000000207,
-    "p95": 8.298300000000381,
-    "mean": 6.196785999999934
-   },
-   "cover at the point + month visibility + light": {
-    "median": 0.0042000000012194505,
-    "p95": 0.008899999998902786,
-    "mean": 0.005022500000013679
+   "straight ways out, 24 sectors to 2 km": {
+    "median": 0.003100000000017644,
+    "p95": 0.005899999999996908
    },
    "highest ground within 3 km": {
-    "median": 0.06270000000040454,
-    "p95": 0.10180000000036671,
-    "mean": 0.07110700000002908
-   }
+    "median": 0.032500000000027285,
+    "p95": 0.03390000000001692
+   },
+   "sight to 3 ITG candidates 3 km away": {
+    "median": 0.02039999999999509,
+    "p95": 0.02800000000002001
+   },
+   "picture: all round, fine, to 5 km, with the trace": {
+    "median": 5.542699999999968,
+    "p95": 6.018500000000017
+   },
+   "going flood to 5 km (ways round)": {
+    "median": 2.467300000000023,
+    "p95": 3.983699999999999
+   },
+   "sight tables for a month": {
+    "median": 0.005300000000033833,
+    "p95": 0.008000000000038199
+   },
+   "map: avenue from 4 km east, 300 m frontage": {
+    "median": 2.865400000000136,
+    "p95": 3.062199999999848
+   },
+   "map: better position within 300 m": {
+    "median": 0.9380000000001019,
+    "p95": 1.0383999999999105
+   },
+   "map: fan runs of the tank wedge": {
+    "median": 0.2439999999999145,
+    "p95": 0.2899999999999636
+   },
+   "perMove": 1.2246000000000095
   },
   "Lahore centre": {
-   "wedge 90 deg, 1 deg, to 500 m (rifle)": {
-    "median": 0.058099999998376006,
-    "p95": 0.07709999999860884,
-    "mean": 0.06197050000000672
+   "fire wedge 90 deg to 600 m (rifle)": {
+    "median": 0.028199999999969805,
+    "p95": 0.034199999999827924
    },
-   "wedge 90 deg, 1 deg, to 2 km (tank)": {
-    "median": 0.21389999999883003,
-    "p95": 0.30370000000039,
-    "mean": 0.22437950000006823
+   "fire wedge 90 deg to 2 km (tank)": {
+    "median": 0.28350000000000364,
+    "p95": 0.32389999999986685
    },
-   "wedge 90 deg, fine, to 3 km (ATGM)": {
-    "median": 0.5414999999993597,
-    "p95": 0.7106999999996333,
-    "mean": 0.5697285000000102
+   "observation all round, 2 deg, to 5 km": {
+    "median": 1.3023000000000593,
+    "p95": 1.4676999999999225
    },
-   "all round, 2 deg, to 1 km": {
-    "median": 0.2147000000004482,
-    "p95": 0.3117000000002008,
-    "mean": 0.2300814999999693
-   },
-   "all round, fine, to 5 km (observation)": {
-    "median": 6.359099999999671,
-    "p95": 6.762700000001132,
-    "mean": 6.3889405000000075
-   },
-   "all round, fine, half-pixel step, to 5 km": {
-    "median": 11.221700000000055,
-    "p95": 11.835000000000946,
-    "mean": 11.26036499999992
-   },
-   "all round, fine, to 10 km": {
-    "median": 19.72479999999996,
-    "p95": 20.69290000000001,
-    "mean": 19.750550500000116
-   },
-   "going flood to 5 km": {
-    "median": 7.171800000000076,
-    "p95": 8.013500000000931,
-    "mean": 7.44011750000016
-   },
-   "cover at the point + month visibility + light": {
-    "median": 0.004700000001321314,
-    "p95": 0.006299999997281702,
-    "mean": 0.005697999999974854
+   "straight ways out, 24 sectors to 2 km": {
+    "median": 0.014599999999973079,
+    "p95": 0.015599999999949432
    },
    "highest ground within 3 km": {
-    "median": 0.059900000000197906,
-    "p95": 0.09100000000034925,
-    "mean": 0.06426999999992404
-   }
+    "median": 0.03099999999994907,
+    "p95": 0.03199999999992542
+   },
+   "sight to 3 ITG candidates 3 km away": {
+    "median": 0.01569999999992433,
+    "p95": 0.01869999999985339
+   },
+   "picture: all round, fine, to 5 km, with the trace": {
+    "median": 7.072499999999991,
+    "p95": 7.2555999999999585
+   },
+   "going flood to 5 km (ways round)": {
+    "median": 2.623399999999947,
+    "p95": 3.6159999999999854
+   },
+   "sight tables for a month": {
+    "median": 0.0052999999998064595,
+    "p95": 0.015000000000327418
+   },
+   "map: avenue from 4 km east, 300 m frontage": {
+    "median": 1.827600000000075,
+    "p95": 2.0297999999997955
+   },
+   "map: better position within 300 m": {
+    "median": 2.9082000000003063,
+    "p95": 3.0351000000000568
+   },
+   "map: fan runs of the tank wedge": {
+    "median": 0.31739999999990687,
+    "p95": 0.37550000000010186
+   },
+   "perMove": 1.6470999999999094
   },
-  "coldMosaicMs": 23.639400000000023
+  "buildGridMs": 1.4372000000003027
  }
 }

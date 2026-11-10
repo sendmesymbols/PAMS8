@@ -1,7 +1,7 @@
 // run.mjs -- OCOKA lens test program, command-line half.
 //   node tools/ocoka-test/run.mjs [--quick]
-// Node 24 runs the TypeScript core directly. Needs MS/Data/terrain-bundle (tiles, rules.json, visibility/).
-// Writes tools/ocoka-test/last-run.json and prints a report. Exit code 1 when a check fails.
+// Node 24 runs the library's own engine (MS/Engines/GroundGuide/GroundGuideOcoka.ts) directly.
+// Needs MS/Data/terrain-bundle (tiles, rules.json, visibility/). Writes last-run.txt / last-run.json. Exit code 1 when a check fails.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { spawnSync } from 'node:child_process';
@@ -14,7 +14,7 @@ const repo = resolve(here, '../..');
 const bundle = resolve(repo, 'MS/Data/terrain-bundle');
 const quick = process.argv.includes('--quick');
 
-// ------------------------------------------------------------------------------------------------ PNG (8-bit gray) + sources
+// ------------------------------------------------------------------------------------------------ PNG (8-bit gray) + source
 function decodePng(buf) {
   let p = 8, w = 0, h = 0, bitDepth = 0, color = 0;
   const idat = [];
@@ -41,12 +41,10 @@ function decodePng(buf) {
   return out;
 }
 const tileCache = new Map();
-let tileReads = 0;
 const fsSource = async (layer, x, y) => {
   const key = `${layer}/${x}/${y}`;
   if (tileCache.has(key)) return tileCache.get(key);
   const f = `${bundle}/${layer}/${core.Z}/${x}/${y}.png`;
-  tileReads++;
   const t = existsSync(f) ? decodePng(readFileSync(f)) : null;
   tileCache.set(key, t);
   return t;
@@ -59,7 +57,8 @@ const symbols = JSON.parse(readFileSync(resolve(repo, 'MS/Data/Symbols.json'), '
 const visHead = JSON.parse(readFileSync(`${bundle}/visibility/visibility.json`, 'utf8'));
 const visBin = readFileSync(`${bundle}/visibility/visibility.bin`);
 const vis = core.parseVisibility(visHead, visBin.buffer.slice(visBin.byteOffset, visBin.byteOffset + visBin.byteLength));
-const rng = (key) => symbols[key].Rng;
+const weapon = (key) => core.weaponOf(symbols[key].Rng);
+const fireRule = { ...doctrine.fieldOfFire.grade };
 
 // ------------------------------------------------------------------------------------------------ reporting
 const results = [];
@@ -78,294 +77,338 @@ function bench(fn, n) {
   const t = [];
   for (let i = 0; i < n; i++) { const a = performance.now(); fn(); t.push(performance.now() - a); }
   t.sort((a, b) => a - b);
-  return { median: t[n >> 1], p95: t[Math.floor(n * 0.95)], mean: t.reduce((a, b) => a + b, 0) / n };
+  return { median: t[n >> 1], p95: t[Math.floor(n * 0.95)] };
 }
 
-// ------------------------------------------------------------------------------------------------ synthetic mosaics
-function synth(w, h, lat, elevFn, classFn) {
-  const res = core.mPerPx(lat);
-  const elev = new Float32Array(w * h), cls = new Uint8Array(w * h), cc = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { elev[y * w + x] = elevFn(x, y, res); cls[y * w + x] = classFn ? classFn(x, y) : 0; }
-  return { tx0: 0, ty0: 0, nx: w / 256, ny: h / 256, w, h, px0: 0, py0: 0, lat, res, layers: { class: cls, cc }, elev };
+// ------------------------------------------------------------------------------------------------ synthetic grids
+function synth(w, h, lat, elevFn, classFn, bldFn) {
+  const res = core.mPerPx(lat, core.Z);
+  const elev = new Float32Array(w * h), cls = new Uint8Array(w * h), bld = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { elev[y * w + x] = elevFn(x, y, res); cls[y * w + x] = classFn ? classFn(x, y) : 0; bld[y * w + x] = bldFn ? bldFn(x, y) : 0; }
+  return { z: core.Z, ts: 256, tx0: 0, ty0: 0, nx: w / 256, ny: h / 256, w, h, px0: 0, py0: 0, res, elev, cls, bld, pending: false };
 }
-const noBlk = core.blockerTable(doctrine, 'none', 11);
-const baseOpts = (o = {}) => ({ eyeM: 2, targetM: 1.7, radiusM: 5000, noiseM: 0, k: 0.13, blk: noBlk, effM: 2000, ...o });
+const opts = (o = {}) => ({ eyeM: 2, targetM: 1.7, radiusM: 5000, effM: 2000, tolM: 1, tables: null, ...o });
 
 say('OCOKA lens test program');
-say(`bundle ${bundle}`);
+say(`engine MS/Engines/GroundGuide/GroundGuideOcoka.ts   bundle ${bundle}`);
 say(`node ${process.version}${quick ? '  (--quick)' : ''}`);
 
 // ================================================================================================ A. synthetic geometry
-say('\nA. Synthetic geometry (the sight engine against cases with a known answer)');
+say('\nA. Synthetic cases with a known answer');
 {
-  const W = 1024;
-  const cx = 512.5, cy = 512.5;
-  // A1 flat plain
-  let m = synth(W, W, 0, () => 100);
-  let r = core.analyseRays(m, cx, cy, core.bearingsFor(5), baseOpts());
-  check('flat plain: every ray clear to 5 km', Math.min(...r.clear) >= 4900, `min clear ${f0(Math.min(...r.clear))} m`);
-  const ob = core.observationOf(r);
-  check('flat plain: 100 % of the ground seen', ob.seenPct > 99.5, `${f1(ob.seenPct)} %`);
-  // A2 ridge 1 km north
-  const res0 = core.mPerPx(0);
-  m = synth(W, W, 0, (x, y) => 100 + 20 * Math.exp(-(((cy - 1000 / res0) - y) ** 2) / (2 * (60 / res0) ** 2)));
-  r = core.analyseRays(m, cx, cy, Float32Array.from([0, 90, 180, 270]), baseOpts());
-  check('20 m ridge 1 km north: sight to the north ends at the ridge', r.clear[0] > 800 && r.clear[0] < 1100, `clear ${f0(r.clear[0])} m`);
-  check('20 m ridge: nothing hides the other three directions', r.clear[1] >= 4900 && r.clear[2] >= 4900 && r.clear[3] >= 4900);
-  const ob2 = core.observationOf(core.analyseRays(m, cx, cy, core.bearingsFor(5), baseOpts()));
-  check('20 m ridge: less than the whole ground is seen', ob2.seenPct < 95 && ob2.seenPct > 60, `${f1(ob2.seenPct)} %`);
-  // A3 curvature
-  m = synth(W, W, 0, () => 0);
-  r = core.analyseRays(m, cx, cy, Float32Array.from([0]), baseOpts({ radiusM: 14000, eyeM: 2, targetM: 1.7 }));
+  const W = 1024, cx = 512.5, cy = 512.5;
+  const res0 = core.mPerPx(0, core.Z);
+  let g = synth(W, W, 0, () => 100);
+  let r = core.analyseSight(g, cx, cy, core.bearingsFor(5), opts());
+  check('flat plain: every ray clear to 5 km and all of it seen', Math.min(...r.clear) >= 4900 && core.observationOf(r).seenPct > 99.5, `min clear ${f0(Math.min(...r.clear))} m, ${f1(core.observationOf(r).seenPct)} % seen`);
+
+  g = synth(W, W, 0, (x, y) => 100 + 20 * Math.exp(-(((cy - 1000 / res0) - y) ** 2) / (2 * (60 / res0) ** 2)));
+  r = core.analyseSight(g, cx, cy, Float32Array.from([0, 90, 180, 270]), opts());
+  check('20 m ridge 1 km north: sight to the north ends at the ridge, the other three run clear', r.clear[0] > 800 && r.clear[0] < 1100 && r.clear[1] >= 4900 && r.clear[2] >= 4900 && r.clear[3] >= 4900, `north clear ${f0(r.clear[0])} m`);
+  const ob = core.observationOf(core.analyseSight(g, cx, cy, core.bearingsFor(5), opts()));
+  check('20 m ridge: the dead ground behind it is not seen', ob.seenPct < 95 && ob.seenPct > 60, `${f1(ob.seenPct)} % seen`);
+
+  g = synth(W, W, 0, () => 0);
+  r = core.analyseSight(g, cx, cy, Float32Array.from([0]), opts({ radiusM: 14000, tolM: 0.05 }));
   const Reff = 6371008.8 / (1 - 0.13);
   const expect = Math.sqrt(2 * Reff * 2) + Math.sqrt(2 * Reff * 1.7);
-  check('earth curvature: first hidden near the radio-horizon sum for eye 2 m + target 1.7 m', Math.abs(r.clear[0] - expect) < 120, `${f0(r.clear[0])} m, expected ${f0(expect)} m`);
-  // A4 mutual visibility (A sees B iff B sees A), random smooth terrain, exact sample alignment on the east axis
+  check('earth curvature: a 1.7 m target drops out of sight of a 2 m eye at the horizon sum', Math.abs(r.clear[0] - expect) < 150, `${f0(r.clear[0])} m, expected ${f0(expect)} m`);
+
+  // A sees B exactly when B sees A (ground alone, equal heights): 600 random pairs on rolling ground
   let seed = 12345;
   const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
   const terms = Array.from({ length: 12 }, () => ({ ax: rnd() * 0.02 + 0.003, ay: rnd() * 0.02 + 0.003, p: rnd() * 6.28, q: rnd() * 6.28, a: rnd() * 14 }));
-  m = synth(W, W, 20, (x, y) => 300 + terms.reduce((s, t) => s + t.a * Math.sin(x * t.ax + t.p) * Math.cos(y * t.ay + t.q), 0));
+  g = synth(W, W, 20, (x, y) => 300 + terms.reduce((s, t) => s + t.a * Math.sin(x * t.ax + t.p) * Math.cos(y * t.ay + t.q), 0));
   let pairs = 0, agree = 0, seen = 0;
   for (let i = 0; i < 600; i++) {
     const ax = 200 + Math.floor(rnd() * 300) + 0.5, ay = 200 + Math.floor(rnd() * 600) + 0.5, s = 5 + Math.floor(rnd() * 150);
-    const o1 = baseOpts({ radiusM: (s + 1) * m.res, eyeM: 2, targetM: 2, trace: new Uint8Array(s + 2) });
-    core.analyseRays(m, ax, ay, Float32Array.from([90]), o1);
-    const o2 = baseOpts({ radiusM: (s + 1) * m.res, eyeM: 2, targetM: 2, trace: new Uint8Array(s + 2) });
-    core.analyseRays(m, ax + s, ay, Float32Array.from([270]), o2);
-    const ab = o1.trace[s - 1], ba = o2.trace[s - 1];
-    pairs++; if (ab === ba) agree++; if (ab === 1) seen++;
+    const o = opts({ eyeM: 2, targetM: 2, tolM: 0.001 });
+    const ab = core.sightTo(g, ax, ay, ax + s, ay, o), ba = core.sightTo(g, ax + s, ay, ax, ay, o);
+    pairs++;
+    if ((ab.p >= 0.5) === (ba.p >= 0.5)) agree++;
+    if (ab.p >= 0.5) seen++;
   }
-  check('mutual visibility: A sees B exactly when B sees A', agree === pairs, `${agree}/${pairs} pairs agree (${seen} of them see each other)`);
-  // A5 noise floor
-  m = synth(W, W, 0, (x, y) => 100 + (Math.abs(y - (cy - 600 / res0)) < 2 ? 0.8 : 0));
-  const hidden = (noise) => core.analyseRays(m, cx, cy, Float32Array.from([0]), baseOpts({ radiusM: 4000, noiseM: noise, targetM: 0.4 })).clear[0] < 3900;
-  check('noise floor: a 0.8 m step hides a prone man with no floor, not with a 1 m floor', hidden(0) && !hidden(1.0));
-  // A6 class blocker
-  const cls = (x, y) => (Math.abs(y - (cy - 400 / res0)) < 2 ? 25 : 0);
-  m = synth(W, W, 0, () => 100, cls);
-  const blk = core.blockerTable(doctrine, 'max', 11);
-  const withB = core.analyseRays(m, cx, cy, Float32Array.from([0]), baseOpts({ blk, radiusM: 3000, targetM: 0.4 })).clear[0];
-  const without = core.analyseRays(m, cx, cy, Float32Array.from([0]), baseOpts({ radiusM: 3000, targetM: 0.4 })).clear[0];
-  check('a bund (class 25, 1-2 m) hides a prone man behind it, the bare DEM does not', withB < 500 && without >= 2900, `with ${f0(withB)} m, without ${f0(without)} m`);
-  // A7a patchy blockers: tall crops by the month's crop mix, built-up by building density
-  const tallAug = core.cropTallShare(doctrine, 8), tallApr = core.cropTallShare(doctrine, 4);
-  check('crop mix: a share of the cropland is tall in August, none in April', tallAug > 0.1 && tallAug < 0.3 && tallApr === 0, `August ${f1(tallAug * 100)} %, April ${f1(tallApr * 100)} %`);
+  check('mutual visibility: A sees B exactly when B sees A', agree === pairs, `${agree}/${pairs} pairs agree (${seen} see each other)`);
+
+  // tolerance: a bump smaller than the tolerance leaves a doubt, not a verdict
+  // eye 2 m, a 1.7 m bump at 600 m: with the earth's curve the line over it passes about half a metre above a prone man 3 km out
+  g = synth(W, W, 0, (x, y) => 100 + (Math.abs(y - (cy - 600 / res0)) < 2 ? 1.7 : 0));
+  const far = (tol) => core.sightTo(g, cx, cy, cx, cy - 3000 / res0, opts({ targetM: 0.4, tolM: tol })).p;
+  check('a bump that hides a prone man by half a metre: surely hidden with a fine tolerance, in doubt with 1 m', far(0.05) === 0 && far(1) > 0.05 && far(1) < 0.5, `chance seen ${f1(far(0.05) * 100)} % at 5 cm, ${f1(far(1) * 100)} % at 1 m`);
+
+  // what the elevation cannot show
+  const T0 = core.sightTables(doctrine, 11, res0);
+  g = synth(W, W, 0, () => 100, (x, y) => (Math.abs(y - (cy - 400 / res0)) < 2 ? 25 : 0));
+  const behind = (tables) => core.sightTo(g, cx, cy, cx, cy - 700 / res0, opts({ eyeM: 1.6, targetM: 0.4, tolM: 0.2, tables })).p;
+  check('a bund 400 m out: a prone man 300 m behind it is hidden from a standing man; the bare elevation says he is seen', behind(T0) < 0.05 && behind(null) > 0.95, `with ${f1(behind(T0) * 100)} %, without ${f1(behind(null) * 100)} %`);
+
+  const aug = core.cropShares(doctrine, 8), apr = core.cropShares(doctrine, 4);
+  check('crop mix: a share of the cropland is tall in August, none in April', aug.tall > 0.1 && aug.tall < 0.3 && apr.tall === 0, `August ${f1(aug.tall * 100)} %, April ${f1(apr.tall * 100)} %`);
+  const res20 = core.mPerPx(20, core.Z);
   const field = synth(W, W, 20, () => 200, () => 2);
-  // one observer standing inside a tall patch sees nothing, which is right: so take the median over 40 observer positions
-  const obsIn = (month) => {
-    const reach = [], seen = [];
-    for (let i = 0; i < 40; i++) {
-      const o = core.observationOf(core.analyseRays(field, 200.5 + (i % 8) * 70, 200.5 + Math.floor(i / 8) * 90, core.bearingsFor(3), baseOpts({ eyeM: 1.6, blk: core.blockerTable(doctrine, 'max', month) })));
-      reach.push(o.reachMedianM); seen.push(o.seenPct);
-    }
-    reach.sort((x, y) => x - y); seen.sort((x, y) => x - y);
-    return { reachMedianM: reach[20], seenPct: seen[20], country: reach[20] <= 200 ? 'veryClose' : reach[20] <= 500 ? 'close' : 'open' };
-  };
-  const oAug = obsIn(8), oApr = obsIn(4);
-  check('a cropland plain: the view reaches farther in April (nothing tall) than in August (16 % tall) and August is not a blank wall (median of 40 positions)', oApr.reachMedianM > oAug.reachMedianM && oAug.reachMedianM > 100, `April reach ${f0(oApr.reachMedianM)} m, August reach ${f0(oAug.reachMedianM)} m (${oAug.country}), August ${f1(oAug.seenPct)} % of the ground seen`);
-  const town = synth(W, W, 20, () => 200, () => 3);
-  town.layers.bld = new Uint8Array(W * W).fill(4);         // building density class 4 (300-1000 per km2)
-  const rTown = core.observationOf(core.analyseRays(town, cx, cy, core.bearingsFor(2), baseOpts({ eyeM: 1.6, radiusM: 3000, blk: core.blockerTable(doctrine, 'max', 11) })));
-  check('a medium-density town is very close or close country', rTown.country !== 'open', `${rTown.country}, reach median ${f0(rTown.reachMedianM)} m, ${f1(rTown.seenPct)} % seen`);
-  // A7 going flood: a canal line stops the flood, a gap lets it through
+  const obsIn = (month) => core.observationOf(core.analyseSight(field, cx, cy, core.bearingsFor(2), opts({ eyeM: 1.6, tables: core.sightTables(doctrine, month, res20) })));
+  const oAug = obsIn(8), oApr = obsIn(4), oAug2 = obsIn(8);
+  check('a cropland plain: the view reaches the edge in April and a few hundred metres in August (16 % tall)', oApr.reachMedianM > 4900 && oAug.reachMedianM > 200 && oAug.reachMedianM < 1500, `April ${f0(oApr.reachMedianM)} m, August ${f0(oAug.reachMedianM)} m (${oAug.country}); August: ${f1(oAug.seenPct)} % expected, ${f1(oAug.terrainPct)} % on the ground alone`);
+  check('the same point gives the same answer twice (nothing is random)', oAug.seenPct === oAug2.seenPct && oAug.reachMedianM === oAug2.reachMedianM);
+  const town = synth(W, W, 20, () => 200, () => 3, () => 4 | (2 << 3) | (1 << 6));   // 300-1,000 buildings per km2, houses of 40-100 m2, 3-6 m high
+  const oTown = core.observationOf(core.analyseSight(town, cx, cy, core.bearingsFor(2), opts({ eyeM: 1.6, radiusM: 3000, tables: core.sightTables(doctrine, 11, res20) })));
+  check('a medium-density town: close or very close country, with a view of a street length, not zero', oTown.country !== 'open' && oTown.reachMedianM > 60, `${oTown.country}, reach ${f0(oTown.reachMedianM)} m, ${f1(oTown.seenPct)} % expected against ${f1(oTown.terrainPct)} % on the ground alone`);
+
+  // going
   const going = core.goingTable(rules, 'tracked');
-  const wall = (x, y) => (Math.abs(x - (cx + 600 / res0)) < 2 ? 20 : 0);
-  m = synth(W, W, 0, () => 100, wall);
-  let gr = core.goReach(m, cx, cy, going, 3000, 2500);
-  check('canal across the east: the flood stops short of it', gr.sectorM[6] < 700, `east sector reaches ${f0(gr.sectorM[6])} m`);
-  const gap = (x, y) => (Math.abs(x - (cx + 600 / res0)) < 2 && Math.abs(y - cy) > 20 ? 20 : 0);
-  m = synth(W, W, 0, () => 100, gap);
-  gr = core.goReach(m, cx, cy, going, 3000, 2500);
-  check('canal with a gap: the flood goes through it', gr.sectorM[6] > 2000, `east sector reaches ${f0(gr.sectorM[6])} m`);
+  g = synth(W, W, 0, () => 100, (x) => (Math.abs(x - (cx + 600 / res0)) < 2 ? 20 : 0));
+  let gr = core.goReach(g, cx, cy, going, 3000);
+  let ways = core.waysOut(g, cx, cy, going, 2000);
+  check('a canal across the east: the flood stops at it and the straight way east is stopped by it', gr.directM[6] < 700 && ways.state[6] === 'nogo' && ways.stopClass[6] === 20, `flood ${f0(gr.directM[6])} m, way east ${ways.state[6]} at ${f0(ways.distM[6])} m; ${ways.go} GO, ${ways.blocked} stopped`);
+  g = synth(W, W, 0, () => 100, (x, y) => (Math.abs(x - (cx + 600 / res0)) < 2 && Math.abs(y - cy) > 20 ? 20 : 0));
+  gr = core.goReach(g, cx, cy, going, 3000);
+  check('the same canal with a gap: the flood goes through', gr.directM[6] > 2000, `east reaches ${f0(gr.directM[6])} m`);
+  // a canal one pixel wide running diagonally (NW-SE) across the north-east: its cells touch only at their corners
+  g = synth(W, W, 0, () => 100, (x, y) => (x - Math.floor(cx) - (y - Math.floor(cy)) === 24 ? 20 : 0));
+  ways = core.waysOut(g, cx, cy, going, 2000);
+  const sight = core.analyseSight(g, cx, cy, core.bearingsFor(1, 45, 60), opts({ going, radiusM: 2000 }));
+  check('a canal one pixel wide running diagonally: no ray slips between its cells', ways.state[3] === 'nogo' && Array.from(sight.nogoClass).every((c) => c === 20), `way NE ${ways.state[3]} at ${f0(ways.distM[3])} m; ${Array.from(sight.nogoClass).filter((c) => c === 20).length}/${sight.n} sight rays meet it`);
 }
 
-// ================================================================================================ B. sun and moon
-say('\nB. Light (sun and moon, calculated from date, time and place)');
+// ================================================================================================ A2. map products
+say('\nA2. Map products: fan runs, where a sight line is lost, avenues and chokepoints, a better position');
+{
+  const W = 1024, cx = 512.5, cy = 512.5;
+  const res0 = core.mPerPx(0, core.Z);
+  const going = core.goingTable(rules, 'tracked');
+  // a 20 m ridge 1 km north
+  let g = synth(W, W, 0, (x, y) => 100 + 20 * Math.exp(-(((cy - 1000 / res0) - y) ** 2) / (2 * (60 / res0) ** 2)));
+  const steps = Math.floor(3000 / res0);
+  const tr = new Uint8Array(steps), tt = new Uint8Array(steps);
+  core.analyseSight(g, cx, cy, Float32Array.from([0]), opts({ radiusM: 3000, trace: tr, traceTerrain: tt }));
+  const runs = core.sightRuns(tr, tt, 1, steps, res0, 2500);
+  const dead = runs.find((r) => r.state === 1);
+  check('fan runs: seen up to the ridge, then dead ground, nothing screened', runs[0].state === 0 && !!dead && dead.fromM > 850 && dead.fromM < 1150 && !runs.some((r) => r.state === 2) && runs[runs.length - 1].toM <= 2500, `${runs.map((r) => `${['seen', 'dead', 'screened'][r.state]} ${f0(r.fromM)}-${f0(r.toM)}`).join(', ')}`);
+  const st = core.sightTo(g, cx, cy, cx, cy - 3000 / res0, opts());
+  check('a sight line over the ridge is lost at the ridge', st.p < 0.2 && st.blockAtM > 850 && st.blockAtM < 1150, `chance ${f0(st.p * 100)} %, lost ${f0(st.blockAtM)} m out`);
+
+  // avenues: a canal across the east with one gap of 3 cells, 40 cells south of the direct line
+  const wallX = Math.floor(cx + 600 / res0);
+  const gapY = Math.floor(cy) + 40;
+  g = synth(W, W, 0, () => 100, (x, y) => (x === wallX && Math.abs(y - gapY) > 1 ? 20 : 0));
+  const sx = cx + 1500 / res0;
+  let av = core.findAvenue(g, sx, cy, cx, cy, { going, frontageM: 300 });
+  const through = [];
+  for (let k = 0; k < av.path.length; k += 2) if (Math.floor(av.path[k]) === wallX) through.push(Math.floor(av.path[k + 1]));
+  check('avenue: it reaches the position through the only gap in the canal', av.reached && through.length === 1 && Math.abs(through[0] - gapY) <= 1, `crosses at row ${through[0]} (gap at ${gapY}), ${f0(av.lengthM)} m against ${f0(1500)} m direct`);
+  check('avenue: the gap is reported as a chokepoint narrower than a 300 m frontage, squeezed by the canal', !av.fits && av.chokes.length >= 1 && av.chokes[0].widthM < 200 && av.chokes[0].nogoClass === 20 && Math.abs(Math.floor(av.chokes[0].x) - wallX) <= 1, `width ${f0(av.chokes[0]?.widthM)} m at ${f0(av.chokes[0]?.atM)} m from the start, class ${av.chokes[0]?.nogoClass}`);
+  av = core.findAvenue(g, sx, cy, cx, cy, { going, frontageM: 60 });
+  check('avenue: a 60 m column fits through the same gap', av.reached && av.fits, `narrowest ${f0(av.minWidthM)} m`);
+  g = synth(W, W, 0, () => 100, (x) => (x === wallX ? 20 : 0));
+  check('avenue: a canal with no gap leaves no avenue', !core.findAvenue(g, sx, cy, cx, cy, { going, frontageM: 300 }).reached);
+  g = synth(W, W, 0, () => 100, (x, y) => (x - Math.floor(cx) - (y - Math.floor(cy)) === 24 ? 20 : 0));
+  check('avenue: it does not cut the corner of a canal one pixel wide running diagonally', !core.findAvenue(g, cx + 30, cy - 30, cx, cy, { going, frontageM: 100 }).reached);
+  // SLOW-GO ground across the direct line: the avenue goes round it when that is cheaper
+  g = synth(W, W, 0, () => 100, (x, y) => (Math.abs(x - (cx + 20)) < 8 && Math.abs(y - cy) < 12 ? 3 : 0));
+  av = core.findAvenue(g, cx + 40, cy, cx, cy, { going, frontageM: 60 });
+  check('avenue: it goes round a small block of SLOW-GO ground', av.reached && av.goPct > 95 && av.lengthM > 40 * res0, `${f0(av.goPct)} % on GO ground, ${f0(av.lengthM)} m against ${f0(40 * res0)} m direct`);
+  // a second avenue away from the first
+  g = synth(W, W, 0, () => 100, (x, y) => (x === wallX && Math.abs(y - gapY) > 1 && Math.abs(y - (Math.floor(cy) - 60)) > 1 ? 20 : 0));
+  const first = core.findAvenue(g, sx, cy, cx, cy, { going, frontageM: 100 });
+  const mask = core.avenueMask(g, first, 6);
+  const second = core.findAvenue(g, sx, cy, cx, cy, { going, frontageM: 100, avoid: mask, avoidCost: 4 });
+  check('avenue: with two gaps a second avenue takes the other gap', first.reached && second.reached && core.avenueOverlap(g, second, mask) < 0.6, `overlap ${f0(core.avenueOverlap(g, second, mask) * 100)} %, lengths ${f0(first.lengthM)} m and ${f0(second.lengthM)} m`);
+
+  // a better position: the point sits 180 m behind a 15 m rise that hides the ground to the north
+  const res20 = core.mPerPx(20, core.Z);
+  g = synth(W, W, 20, (x, y) => 100 + 15 * Math.exp(-(((cy - 180 / res20) - y) ** 2) / (2 * (50 / res20) ** 2)));
+  const bp = core.betterPosition(g, cx, cy, { eyeM: 1.6, targetM: 1.7, radiusM: 600, effM: 600, tolM: 1, tables: null, going, threatDeg: 0, sectorDeg: 90, searchM: 300 });
+  check('better position: it finds the rise in front, with better fields of fire than the point', !!bp && core.bearingDiff(bp.bearingDeg, 0) <= 30 && bp.distanceM >= 120 && bp.distanceM <= 300 && bp.higherM > 5 && { good: 2, marginal: 1, poor: 0 }[bp.fire.grade] > { good: 2, marginal: 1, poor: 0 }[bp.here.grade], bp ? `${f0(bp.distanceM)} m at ${f0(bp.bearingDeg)} deg, ${f0(bp.higherM)} m higher: ${bp.here.grade} (${f0(bp.here.seenPct)} % seen) becomes ${bp.fire.grade} (${f0(bp.fire.seenPct)} %)` : 'none found');
+  g = synth(W, W, 20, () => 100);
+  check('better position: on a flat plain there is none to offer', core.betterPosition(g, cx, cy, { eyeM: 1.6, targetM: 1.7, radiusM: 600, effM: 600, tolM: 1, tables: null, going, threatDeg: 0, sectorDeg: 90, searchM: 300 }) === null);
+}
+
+// ================================================================================================ B. light
+say('\nB. Light (sun and moon from date, time and place)');
 {
   const lat = 31.55, lon = 74.35;
   const maxAlt = (y, mo, d) => { let b = -90; for (let h = 0; h < 24; h += 0.05) b = Math.max(b, core.sunAltitude(new Date(Date.UTC(y, mo - 1, d, 0, 0) + h * 3600000), lat, lon)); return b; };
   const eq = maxAlt(2026, 3, 20), su = maxAlt(2026, 6, 21), wi = maxAlt(2026, 12, 21);
-  check('sun at the March equinox: noon altitude 90 - latitude', Math.abs(eq - (90 - lat)) < 1, `${f1(eq)} deg, expected ${f1(90 - lat)}`);
-  check('sun at the June solstice: 90 - latitude + 23.4', Math.abs(su - (90 - lat + 23.44)) < 1, `${f1(su)} deg, expected ${f1(90 - lat + 23.44)}`);
-  check('sun at the December solstice: 90 - latitude - 23.4', Math.abs(wi - (90 - lat - 23.44)) < 1, `${f1(wi)} deg, expected ${f1(90 - lat - 23.44)}`);
+  check('sun at noon: 90 - latitude at the equinox, +/- 23.4 at the solstices', Math.abs(eq - (90 - lat)) < 1 && Math.abs(su - (90 - lat + 23.44)) < 1 && Math.abs(wi - (90 - lat - 23.44)) < 1, `${f1(eq)} / ${f1(su)} / ${f1(wi)} deg, expected ${f1(90 - lat)} / ${f1(90 - lat + 23.44)} / ${f1(90 - lat - 23.44)}`);
   const nm = core.moonState(new Date(Date.UTC(2026, 10, 9, 7, 0)), lat, lon), fm = core.moonState(new Date(Date.UTC(2026, 10, 24, 15, 0)), lat, lon), fq = core.moonState(new Date(Date.UTC(2026, 10, 17, 14, 0)), lat, lon);
-  check('new moon of 9 Nov 2026 is nearly dark', nm.illum < 0.03, `illuminated ${f1(nm.illum * 100)} %`);
-  check('full moon of 24 Nov 2026 is nearly full', fm.illum > 0.97, `illuminated ${f1(fm.illum * 100)} %`);
-  check('first quarter of 17 Nov 2026 is about half', fq.illum > 0.4 && fq.illum < 0.6, `illuminated ${f1(fq.illum * 100)} %`);
+  check('moon of November 2026: new on the 9th, first quarter on the 17th, full on the 24th', nm.illum < 0.03 && fq.illum > 0.4 && fq.illum < 0.6 && fm.illum > 0.97, `lit ${f1(nm.illum * 100)} % / ${f1(fq.illum * 100)} % / ${f1(fm.illum * 100)} %`);
   const noon = core.lightAt(new Date(Date.UTC(2026, 10, 10, 7, 0)), lat, lon), night = core.lightAt(new Date(Date.UTC(2026, 10, 10, 22, 0)), lat, lon);
-  check('Lahore noon is day', noon.level === 'day', noon.level);
-  check('Lahore 03:00 on 11 Nov (new moon) is starlight', night.level === 'starlight', `${night.level}, moon ${f1(night.moonIllum * 100)} % lit, ${f1(night.moonAltDeg)} deg`);
-  let moonlit = false;
-  for (let h = 0; h < 24 && !moonlit; h += 0.25) moonlit = core.lightAt(new Date(Date.UTC(2026, 10, 24, 12, 0) + h * 3600000), lat, lon).level === 'moonlight';
-  check('around the full moon of 24 Nov there is moonlight at night', moonlit);
+  check('Lahore noon is day; 03:00 on 11 November (new moon) is starlight', noon.level === 'day' && night.level === 'starlight', `${noon.level}, ${night.level}`);
+  const nNew = core.nightOf(new Date(Date.UTC(2026, 10, 9, 12, 0)), lat, lon), nFull = core.nightOf(new Date(Date.UTC(2026, 10, 24, 12, 0)), lat, lon);
+  check('the night of the new moon is a starlight night, the night of the full moon a moonlight night', nNew.level === 'starlight' && nFull.level === 'moonlight', `moonlit share of the dark hours ${f0(nNew.moonlitShare * 100)} % / ${f0(nFull.moonlitShare * 100)} %`);
 }
 
 // ================================================================================================ C. real sites
-say('\nC. Real sites on the bundle (what the lens would say, with the DEM alone and with the doctrine blockers)');
-const sites = [];
-async function pickInTile(tx, ty, better, layers = ['class']) {
-  const m = await core.loadMosaic(fsSource, ...core.pxToLonLat(tx * 256 + 128, ty * 256 + 128), 200, layers);
-  const cls = m.layers['class'];
+say('\nC. Real sites on the bundle');
+async function pickInTile(tx, ty, better) {
+  const g = await core.loadGrid(fsSource, ...core.pxToLonLat(tx * 256 + 128, ty * 256 + 128, core.Z), 200);
   let best = -1, bv = null;
-  for (let y = 20; y < m.h - 20; y++) for (let x = 20; x < m.w - 20; x++) {
-    const i = y * m.w + x, e = m.elev[i];
+  for (let y = 20; y < g.h - 20; y++) for (let x = 20; x < g.w - 20; x++) {
+    const i = y * g.w + x, e = g.elev[i];
     if (e !== e) continue;
-    const v = better(e, cls[i], x, y, m);
+    const v = better(e, g.cls[i]);
     if (v !== null && (bv === null || v > bv)) { bv = v; best = i; }
   }
-  const x = best % m.w, y = (best - x) / m.w;
-  return core.pxToLonLat(m.px0 + x + 0.5, m.py0 + y + 0.5);
+  const x = best % g.w, y = (best - x) / g.w;
+  return core.pxToLonLat(g.px0 + x + 0.5, g.py0 + y + 0.5, core.Z);
 }
-const [mgLon, mgLat] = await pickInTile(2879, 1639, (e) => e);                                  // highest ground of the Margalla tile
-const [vlLon, vlLat] = await pickInTile(2879, 1639, (e, c) => (c === 0 || c === 2 || c === 12 ? -e : null));   // lowest open / cropland there
-const lahCell = await core.loadMosaic(fsSource, 74.35, 31.55, 600, ['class', 'cc']);
+const [mgLon, mgLat] = await pickInTile(2879, 1639, (e) => e);
+const [vlLon, vlLat] = await pickInTile(2879, 1639, (e, c) => (c === 0 || c === 2 || c === 12 ? -e : null));
+// open farmland: the cell with the most cropland and the fewest buildings within 2 km, somewhere in a block of the Punjab plain
+let farmLon = 0, farmLat = 0;
+{
+  const g = await core.loadGrid(fsSource, 72.9, 30.9, 9000);
+  const W2 = g.w, win = 60;
+  const crop = new Float64Array(W2 * g.h), built = new Float64Array(W2 * g.h), tree = new Float64Array(W2 * g.h);
+  for (let y = 0; y < g.h; y++) { let rc = 0, rb = 0, rt = 0; for (let x = 0; x < W2; x++) { const c = g.cls[y * W2 + x]; rc += c === 2 || c === 23 ? 1 : 0; rb += g.bld[y * W2 + x] ? 1 : 0; rt += c === 1 || c === 30 || c === 31 ? 1 : 0; crop[y * W2 + x] = rc + (y ? crop[(y - 1) * W2 + x] : 0); built[y * W2 + x] = rb + (y ? built[(y - 1) * W2 + x] : 0); tree[y * W2 + x] = rt + (y ? tree[(y - 1) * W2 + x] : 0); } }
+  const box = (a, x, y) => a[(y + win) * W2 + x + win] - a[(y - win - 1) * W2 + x + win] - a[(y + win) * W2 + x - win - 1] + a[(y - win - 1) * W2 + x - win - 1];
+  let best = -1e9, bx = 0, byy = 0;
+  for (let y = win + 2; y < g.h - win - 2; y += 4) for (let x = win + 2; x < W2 - win - 2; x += 4) { const c = g.cls[y * W2 + x]; if (c !== 2 && c !== 23) continue; const v = box(crop, x, y) - 3 * box(built, x, y) - 3 * box(tree, x, y); if (v > best) { best = v; bx = x; byy = y; } }
+  [farmLon, farmLat] = core.pxToLonLat(g.px0 + bx + 0.5, g.py0 + byy + 0.5, core.Z);
+}
+const lahore = await core.loadGrid(fsSource, 74.35, 31.55, 600);
 let canalAt = null;
 {
-  const [ox, oy] = core.mosaicXY(lahCell, 74.35, 31.55);
-  const cls = lahCell.layers['class'];
+  const [ox, oy] = core.gridXY(lahore, 74.35, 31.55);
   let bd = 1e9;
-  for (let y = 0; y < lahCell.h; y++) for (let x = 0; x < lahCell.w; x++) if (cls[y * lahCell.w + x] === 20) { const d = Math.hypot(x - ox, y - oy); if (d < bd) { bd = d; canalAt = [x, y]; } }
+  for (let y = 0; y < lahore.h; y++) for (let x = 0; x < lahore.w; x++) if (lahore.cls[y * lahore.w + x] === 20) { const d = Math.hypot(x - ox, y - oy); if (d < bd) { bd = d; canalAt = [x, y]; } }
 }
-sites.push({ id: 'Margalla crest', lon: mgLon, lat: mgLat, want: 'wide view, not overlooked' });
-sites.push({ id: 'Islamabad valley floor', lon: vlLon, lat: vlLat, want: 'short view, overlooked by the hills' });
-sites.push({ id: 'Cholistan flat', lon: 71.9, lat: 28.2, want: 'open country, long clear sight' });
-sites.push({ id: 'Lahore centre', lon: 74.3436, lat: 31.5497, want: 'very close country' });
-{
-  const [cLon, cLat] = core.pxToLonLat(lahCell.px0 + canalAt[0] + 0.5, lahCell.py0 + canalAt[1] + 0.5);
-  sites.push({ id: 'Lahore canal bank', lon: cLon + 0.0012, lat: cLat, want: 'a canal in front, covered by fire?', threat: 'canal' });
-}
-sites.push({ id: 'Skardu valley', lon: 75.63, lat: 35.3, want: 'mountain valley, overlooked' });
-sites.push({ id: 'Quetta', lon: 67.0, lat: 30.19, want: 'valley floor ringed by hills' });
-sites.push({ id: 'Karachi', lon: 67.01, lat: 24.86, want: 'built-up coastal plain' });
-
-const siteOut = [];
-const weaponKeys = [['rifle', '15110100', 'dir'], ['tank', '15120203', 'at']];
-for (const s of sites) {
-  const m = await core.loadMosaic(fsSource, s.lon, s.lat, 6000, ['class', 'cc', 'bld']);
-  const [ox, oy] = core.mosaicXY(m, s.lon, s.lat);
-  const step = core.raysFor(5000, m.res);
-  const all = core.bearingsFor(step);
+const [cLon, cLat] = core.pxToLonLat(lahore.px0 + canalAt[0] + 0.5, lahore.py0 + canalAt[1] + 0.5, core.Z);
+const sites = [
+  { id: 'Margalla crest', lon: mgLon, lat: mgLat },
+  { id: 'Islamabad valley floor', lon: vlLon, lat: vlLat },
+  { id: 'Cholistan flat', lon: 71.9, lat: 28.2 },
+  { id: 'Lahore centre', lon: 74.3436, lat: 31.5497 },
+  { id: 'Lahore canal bank', lon: cLon + 0.0012, lat: cLat, threat: 'canal' },
+  { id: 'Punjab farmland', lon: farmLon, lat: farmLat },
+  { id: 'Skardu valley', lon: 75.63, lat: 35.3 },
+  { id: 'Quetta', lon: 67.0, lat: 30.19 },
+  { id: 'Karachi', lon: 67.01, lat: 24.86 },
+];
+const RADIUS = 5000;
+function readSite(g, ox, oy, s, month, wkey, threat, quickRays = true) {
   const going = core.goingTable(rules, 'tracked');
+  const T = core.sightTables(doctrine, month, g.res);
+  const wp = weapon(wkey);
+  const base = { eyeM: 1.6, targetM: wp.targetM, tolM: 1, tables: T, going };
+  const all = core.analyseSight(g, ox, oy, core.bearingsFor(quickRays ? 2 : core.fineStep(RADIUS, g.res)), { ...base, radiusM: RADIUS, effM: wp.effM });
+  const bands = core.newBands([0, 100, 300, 600, 1000, 2000]);
+  const wedgeR = Math.min(RADIUS, Math.max(wp.effM, 600));
+  const wedge = core.analyseSight(g, ox, oy, core.bearingsFor(core.fineStep(wedgeR, g.res), threat, 90), { ...base, radiusM: wedgeR, effM: wp.effM, bands });
+  return { obs: core.observationOf(all), fire: core.fireOf(wedge, wp.effM, bands, fireRule), obst: core.obstacleFrontOf(wedge, wp.effM), ways: core.waysOut(g, ox, oy, going, 2000), dom: core.dominanceOf(g, ox, oy, 3000), weapon: wp };
+}
+const siteOut = [];
+for (const s of sites) {
+  const g = await core.loadGrid(fsSource, s.lon, s.lat, RADIUS + 1000);
+  const [ox, oy] = core.gridXY(g, s.lon, s.lat);
   let threat = 0;
   if (s.threat === 'canal') {
-    const cls = m.layers['class'];
     let bd = 1e9, cx = 0, cy = 0;
-    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) if (cls[y * m.w + x] === 20) { const d = Math.hypot(x - ox, y - oy); if (d < bd) { bd = d; cx = x; cy = y; } }
+    for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (g.cls[y * g.w + x] === 20) { const d = Math.hypot(x - ox, y - oy); if (d < bd) { bd = d; cx = x; cy = y; } }
     threat = ((Math.atan2(cx - ox, -(cy - oy)) * 180) / Math.PI + 360) % 360;
   }
-  const row = { id: s.id, lon: +s.lon.toFixed(4), lat: +s.lat.toFixed(4), elevM: null, want: s.want, threat: +threat.toFixed(0), modes: {} };
-  const sec = { centreDeg: threat, halfDeg: 45 };
-  for (const mode of ['none', 'mid', 'max']) {
-    const blk = core.blockerTable(doctrine, mode, 11);
-    const r = core.analyseRays(m, ox, oy, all, { eyeM: 1.6, targetM: 1.7, radiusM: 5000, noiseM: 1.0, k: 0.13, blk, going, effM: 2000 });
-    const o = core.observationOf(r);
-    const fofR = core.fieldOfFireOf(r, sec, rng('15110100').dir[1]);
-    const fofT = core.fieldOfFireOf(r, sec, rng('15120203').at[1]);
-    const ob = core.obstacleFrontOf(r, sec, rng('15120203').at[1]);
-    row.elevM = Math.round(r.elev0);
-    row.modes[mode] = { seenPct: +o.seenPct.toFixed(1), clearMedianM: Math.round(o.clearMedianM), reachMedianM: Math.round(o.reachMedianM), country: o.country, overlook: o.overlook, rifle: fofR, tank: fofT, obst: ob, rays: r.n, samples: r.samples };
-  }
-  const gr = core.goReach(m, ox, oy, going, 5000, 2000);
-  const dom = core.dominanceOf(m, ox, oy, 3000);
-  row.goReach = { reachPct: +gr.reachPct.toFixed(0), waysOut: gr.waysOut };
-  row.dominance = dom;
-  row.cover = core.coverAt(m, ox, oy, rules, doctrine, 11);
-  row.visibility = core.visibilityAt(vis, s.lon, s.lat, 12);
-  siteOut.push(row);
+  const rifle = readSite(g, ox, oy, s, 11, '15110100', threat), tank = readSite(g, ox, oy, s, 11, '15120203', threat);
+  const aug = readSite(g, ox, oy, s, 8, '15110100', threat);
+  siteOut.push({ id: s.id, lon: +s.lon.toFixed(4), lat: +s.lat.toFixed(4), elevM: Math.round(core.elevAt(g, ox, oy)), threat: Math.round(threat), rifle, tank, augSeenPct: aug.obs.seenPct, augReachM: aug.obs.reachMedianM, vis: core.visibilityAt(vis, s.lon, s.lat, 12) });
 }
-say('  Each figure is given for the bare DEM (upper bound) / the middle blocker heights (central case) / the tallest blockers (lower bound).');
-say('  site                       elev | % of ground seen    | median reach m        | country                      | rifle: dead ground %     | tank FoF (mid) | overlooked by (mid) | above highest in 3 km | ways out');
+say('  Seen % = of the ground within 5 km: on the ground alone / expected / sure.  November, standing man (eye 1.6 m), threat to the north (canal bank: toward the canal).');
+say('  site                    elev | seen % alone/exp/sure | reach m | country    | rifle 300 m: grade, clear m, seen/dead/screened % | tank 2 km: grade, clear m, seen/dead/screened % | overlooked           | ways out GO/SLOW/stopped');
 for (const r of siteOut) {
-  const a = r.modes.none, c = r.modes.mid, b = r.modes.max;
-  const tri = (k, w) => [a, c, b].map((x) => f0(x[k]).padStart(w)).join(' / ');
-  say(`  ${r.id.padEnd(26)} ${String(r.elevM).padStart(4)} | ${tri('seenPct', 3)}      | ${tri('reachMedianM', 5)} | ${(a.country + ' / ' + c.country + ' / ' + b.country).padEnd(28)} | ${[a, c, b].map((x) => f0(x.rifle.deadPct).padStart(3)).join(' / ')} (rifle ${rng('15110100').dir[1]} m) | ${c.tank.grade.padEnd(8)} | ${c.overlook ? '+' + f0(c.overlook.riseM) + ' m at ' + f0(c.overlook.distM) + ' m' : 'no'} | ${f0(r.dominance.aboveMaxM)} m | ${r.goReach.waysOut}/24 direct`);
+  const o = r.rifle.obs, fr = r.rifle.fire, ft = r.tank.fire, w = r.rifle.ways;
+  const fire = (f) => `${f.grade.padEnd(8)} ${f0(f.clearMedianM).padStart(4)}  ${f0(f.seenPct).padStart(3)}/${f0(f.deadPct).padStart(3)}/${f0(f.screenedPct).padStart(3)}`;
+  say(`  ${r.id.padEnd(23)} ${String(r.elevM).padStart(4)} | ${f0(o.terrainPct).padStart(3)} / ${f0(o.seenPct).padStart(3)} / ${f0(o.surePct).padStart(3)}       | ${f0(o.reachMedianM).padStart(5)}   | ${o.country.padEnd(10)} | ${fire(fr)}                    | ${fire(ft)}                  | ${(o.overlook ? `+${f0(o.overlook.riseM)} m at ${f0(o.overlook.distM)} m, ${f0(o.overlookArcPct)} % of arc` : 'no').padEnd(20)} | ${w.go}/${w.slow}/${w.blocked}`);
 }
 const by = Object.fromEntries(siteOut.map((r) => [r.id, r]));
-say('  plausibility checks');
-check('crest sees more than the valley floor', by['Margalla crest'].modes.max.seenPct > by['Islamabad valley floor'].modes.max.seenPct, `${f0(by['Margalla crest'].modes.max.seenPct)} % against ${f0(by['Islamabad valley floor'].modes.max.seenPct)} %`);
-check('the crest stands higher in its surroundings than the valley floor', by['Margalla crest'].dominance.aboveMaxM > by['Islamabad valley floor'].dominance.aboveMaxM + 50, `${f0(by['Margalla crest'].dominance.aboveMaxM)} m against ${f0(by['Islamabad valley floor'].dominance.aboveMaxM)} m from the highest ground within 3 km`);
-check('a summit is not called close country: the view reaches far even though the slope below it is dead ground', by['Margalla crest'].modes.max.country === 'open', `reach median ${f0(by['Margalla crest'].modes.max.reachMedianM)} m, clear median ${f0(by['Margalla crest'].modes.max.clearMedianM)} m`);
-const openSites = siteOut.filter((r) => /Margalla|Cholistan|Skardu/.test(r.id));
-check('on open or mountain ground the tallest blockers still leave a view (3 % or more of the ground seen)', openSites.every((r) => r.modes.max.seenPct >= 3), openSites.map((r) => `${r.id} ${f0(r.modes.max.seenPct)} %`).join(', '));
-check('the three cases keep their order (DEM >= middle >= tallest) at every site', siteOut.every((r) => r.modes.none.seenPct >= r.modes.mid.seenPct - 0.5 && r.modes.mid.seenPct >= r.modes.max.seenPct - 0.5));
-check('the valley floor is overlooked by high ground (15 m or more above it in view)', !!by['Islamabad valley floor'].modes.max.overlook, by['Islamabad valley floor'].modes.max.overlook ? `+${f0(by['Islamabad valley floor'].modes.max.overlook.riseM)} m` : 'none');
-check('Cholistan is open country', by['Cholistan flat'].modes.max.country === 'open', `reach median ${f0(by['Cholistan flat'].modes.max.reachMedianM)} m`);
-check('Lahore centre is close or very close country (with the blockers)', by['Lahore centre'].modes.max.country !== 'open', `${by['Lahore centre'].modes.max.country}, reach median ${f0(by['Lahore centre'].modes.max.reachMedianM)} m`);
-check('the DEM alone calls Lahore centre more open than the blockers do (the DSM smooths the town)', by['Lahore centre'].modes.none.reachMedianM > by['Lahore centre'].modes.max.reachMedianM, `reach median ${f0(by['Lahore centre'].modes.none.reachMedianM)} m against ${f0(by['Lahore centre'].modes.max.reachMedianM)} m`);
-check('canal bank: a NO-GO class (canal) is the nearest obstacle toward it', [4, 20, 21].includes(by['Lahore canal bank'].modes.none.obst.nogoClass), `class ${by['Lahore canal bank'].modes.none.obst.nogoClass} at ${f0(by['Lahore canal bank'].modes.none.obst.nogoM)} m`);
+say('  plausibility');
+check('the crest sees more than the valley floor', by['Margalla crest'].rifle.obs.seenPct > by['Islamabad valley floor'].rifle.obs.seenPct, `${f0(by['Margalla crest'].rifle.obs.seenPct)} % against ${f0(by['Islamabad valley floor'].rifle.obs.seenPct)} %`);
+check('the crest is open country with poor fields of fire (the slope below a summit is dead ground)', by['Margalla crest'].rifle.obs.country === 'open' && by['Margalla crest'].rifle.fire.grade === 'poor', `reach ${f0(by['Margalla crest'].rifle.obs.reachMedianM)} m, clear ${f0(by['Margalla crest'].rifle.fire.clearMedianM)} m, dead ground ${f0(by['Margalla crest'].rifle.fire.deadPct)} %`);
+check('the valley floor is overlooked from most directions', by['Islamabad valley floor'].rifle.obs.overlookArcPct > 40 && !!by['Islamabad valley floor'].rifle.obs.overlook, `${f0(by['Islamabad valley floor'].rifle.obs.overlookArcPct)} % of the arc`);
+check('Cholistan is open country', by['Cholistan flat'].rifle.obs.country === 'open', `reach ${f0(by['Cholistan flat'].rifle.obs.reachMedianM)} m`);
+check('Lahore centre: the ground alone says open, the buildings make it close or very close country', by['Lahore centre'].rifle.obs.terrainPct > 3 * by['Lahore centre'].rifle.obs.seenPct && by['Lahore centre'].rifle.obs.country !== 'open', `${f0(by['Lahore centre'].rifle.obs.terrainPct)} % alone, ${f1(by['Lahore centre'].rifle.obs.seenPct)} % expected, reach ${f0(by['Lahore centre'].rifle.obs.reachMedianM)} m (${by['Lahore centre'].rifle.obs.country})`);
+check('dense towns are very close country: the view ends within a block', ['Lahore centre', 'Karachi', 'Quetta'].every((k) => by[k].rifle.obs.country === 'veryClose'), ['Lahore centre', 'Karachi', 'Quetta'].map((k) => `${k} ${f0(by[k].rifle.obs.reachMedianM)} m`).join(', '));
+check('farmland: less is seen in August (tall crops) than in November', by['Punjab farmland'].augSeenPct < by['Punjab farmland'].rifle.obs.seenPct, `August ${f1(by['Punjab farmland'].augSeenPct)} % (reach ${f0(by['Punjab farmland'].augReachM)} m), November ${f1(by['Punjab farmland'].rifle.obs.seenPct)} % (reach ${f0(by['Punjab farmland'].rifle.obs.reachMedianM)} m)`);
+check('expected never exceeds what the ground alone allows, and sure never exceeds expected', siteOut.every((r) => r.rifle.obs.seenPct <= r.rifle.obs.terrainPct + 0.01 && r.rifle.obs.surePct <= r.rifle.obs.seenPct + 5));
+check('seen + dead + screened ground inside the range make 100 %', siteOut.every((r) => Math.abs(r.tank.fire.seenPct + r.tank.fire.deadPct + r.tank.fire.screenedPct - 100) < 0.5));
+check('canal bank: the canal is the nearest NO-GO toward it, inside rifle range', [4, 20, 21].includes(by['Lahore canal bank'].rifle.obst.nogoClass) && by['Lahore canal bank'].rifle.obst.inRange, `class ${by['Lahore canal bank'].rifle.obst.nogoClass} at ${f0(by['Lahore canal bank'].rifle.obst.nogoM)} m, chance seen ${f0(by['Lahore canal bank'].rifle.obst.seenP * 100)} %`);
+check('the grade follows the weapon: a tank asks for more than a rifle on the same ground', siteOut.every((r) => ({ good: 2, marginal: 1, poor: 0 })[r.tank.fire.grade] <= ({ good: 2, marginal: 1, poor: 0 })[r.rifle.fire.grade] || r.tank.fire.clearMedianM > r.rifle.fire.clearMedianM));
 
 // ================================================================================================ D. cost
-say('\nD. Cost per call (Node 24 / V8, tiles already in memory; the browser main thread is within a factor of two of this)');
+say('\nD. Cost per call (Node 24 / V8, tiles in memory; the browser is within a factor of two)');
 const timing = {};
-for (const where of [{ id: 'Margalla crest', mode: 'hills' }, { id: 'Lahore centre', mode: 'plain' }]) {
-  const s = sites.find((x) => x.id === where.id);
-  const m = await core.loadMosaic(fsSource, s.lon, s.lat, 11000, ['class', 'cc', 'bld']);
-  const [ox, oy] = core.mosaicXY(m, s.lon, s.lat);
-  const blk = core.blockerTable(doctrine, 'max', 11), going = core.goingTable(rules, 'tracked');
-  const o = (radiusM, effM) => ({ eyeM: 1.6, targetM: 1.7, radiusM, noiseM: 1.0, k: 0.13, blk, going, effM });
+for (const id of ['Margalla crest', 'Lahore centre']) {
+  const s = sites.find((x) => x.id === id);
+  const g = await core.loadGrid(fsSource, s.lon, s.lat, 11000);
+  const [ox, oy] = core.gridXY(g, s.lon, s.lat);
+  const going = core.goingTable(rules, 'tracked'), T = core.sightTables(doctrine, 11, g.res);
+  const o = (radiusM, effM) => ({ eyeM: 1.6, targetM: 1.7, radiusM, effM, tolM: 1, tables: T, going });
   const n = quick ? 60 : 200;
   const cases = [
-    ['wedge 90 deg, 1 deg, to 500 m (rifle)', () => core.analyseRays(m, ox, oy, core.bearingsFor(1, 0, 90), o(500, 300))],
-    ['wedge 90 deg, 1 deg, to 2 km (tank)', () => core.analyseRays(m, ox, oy, core.bearingsFor(1, 0, 90), o(2000, 2000))],
-    ['wedge 90 deg, fine, to 3 km (ATGM)', () => core.analyseRays(m, ox, oy, core.bearingsFor(core.raysFor(3000, m.res), 0, 90), o(3000, 3000))],
-    ['all round, 2 deg, to 1 km', () => core.analyseRays(m, ox, oy, core.bearingsFor(2), o(1000, 300))],
-    ['all round, fine, to 5 km (observation)', () => core.analyseRays(m, ox, oy, core.bearingsFor(core.raysFor(5000, m.res)), o(5000, 2000))],
-    ['all round, fine, half-pixel step, to 5 km', () => core.analyseRays(m, ox, oy, core.bearingsFor(core.raysFor(5000, m.res)), { ...o(5000, 2000), stepPx: 0.5 })],
-    ['all round, fine, to 10 km', () => core.analyseRays(m, ox, oy, core.bearingsFor(core.raysFor(10000, m.res)), o(10000, 2000))],
-    ['going flood to 5 km', () => core.goReach(m, ox, oy, going, 5000, 2000)],
-    ['cover at the point + month visibility + light', () => { core.coverAt(m, ox, oy, rules, doctrine, 11); core.visibilityAt(vis, s.lon, s.lat, 12); core.lightAt(new Date(), s.lat, s.lon); }],
-    ['highest ground within 3 km', () => core.dominanceOf(m, ox, oy, 3000)],
+    ['fire wedge 90 deg to 600 m (rifle)', () => core.analyseSight(g, ox, oy, core.bearingsFor(core.fineStep(600, g.res), 0, 90), { ...o(600, 300), bands: core.newBands([0, 100, 300, 600]) })],
+    ['fire wedge 90 deg to 2 km (tank)', () => core.analyseSight(g, ox, oy, core.bearingsFor(core.fineStep(2000, g.res), 0, 90), { ...o(2000, 2000), bands: core.newBands([0, 100, 300, 600, 1000, 2000]) })],
+    ['observation all round, 2 deg, to 5 km', () => core.analyseSight(g, ox, oy, core.bearingsFor(2), o(5000, 2000))],
+    ['straight ways out, 24 sectors to 2 km', () => core.waysOut(g, ox, oy, going, 2000)],
+    ['highest ground within 3 km', () => core.dominanceOf(g, ox, oy, 3000)],
+    ['sight to 3 ITG candidates 3 km away', () => { for (const b of [0, 120, 240]) core.sightTo(g, ox, oy, ox + Math.sin(b) * 3000 / g.res, oy - Math.cos(b) * 3000 / g.res, o(3000, 0)); }],
+    ['picture: all round, fine, to 5 km, with the trace', () => { const b = core.bearingsFor(core.fineStep(5000, g.res)); core.analyseSight(g, ox, oy, b, { ...o(5000, 2000), trace: new Uint8Array(b.length * Math.floor(5000 / g.res)) }); }],
+    ['going flood to 5 km (ways round)', () => core.goReach(g, ox, oy, going, 5000)],
+    ['sight tables for a month', () => core.sightTables(doctrine, 8, g.res)],
+    ['map: avenue from 4 km east, 300 m frontage', () => core.findAvenue(g, ox + 4000 / g.res, oy, ox, oy, { going, frontageM: 300 })],
+    ['map: better position within 300 m', () => core.betterPosition(g, ox, oy, { ...o(2000, 2000), threatDeg: 0, sectorDeg: 90, searchM: 300 })],
+    ['map: fan runs of the tank wedge', () => { const bb = core.bearingsFor(core.fineStep(2000, g.res), 0, 90); const st2 = Math.floor(2000 / g.res); const t1 = new Uint8Array(bb.length * st2), t2 = new Uint8Array(bb.length * st2); core.analyseSight(g, ox, oy, bb, { ...o(2000, 2000), trace: t1, traceTerrain: t2 }); core.sightRuns(t1, t2, bb.length, st2, g.res, 2000); }],
   ];
-  say(`  ${where.id} (${where.mode})`);
-  timing[where.id] = {};
+  say(`  ${id}`);
+  timing[id] = {};
+  let move = 0;
   for (const [name, fn] of cases) {
     const b = bench(fn, n);
-    timing[where.id][name] = b;
+    timing[id][name] = b;
+    if (cases.indexOf(cases.find((c) => c[0] === name)) < 6 && name !== 'fire wedge 90 deg to 600 m (rifle)') move += b.median;
     say(`    ${name.padEnd(46)} median ${b.median.toFixed(2).padStart(6)} ms   p95 ${b.p95.toFixed(2).padStart(6)} ms`);
   }
+  timing[id].perMove = move;
+  say(`    = every mouse move (tank wedge + observation + ways + highest ground + 3 sight lines): ${move.toFixed(2)} ms`);
 }
 {
   const s = sites.find((x) => x.id === 'Lahore centre');
-  tileCache.clear();
-  const t0 = performance.now();
-  const m = await core.loadMosaic(fsSource, s.lon, s.lat, 6000, ['class', 'cc']);
-  const t1 = performance.now();
-  say(`  cold: 6 km mosaic of 2 + 2 layers: ${m.nx} x ${m.ny} tiles x ${tileReads ? 4 : 0} layers read and PNG-decoded in ${(t1 - t0).toFixed(0)} ms (node, no worker; the app's tile cache has most of these already)`);
-  timing.coldMosaicMs = t1 - t0;
+  const peekAll = new Map(tileCache);
+  const [cx, cy] = core.lonLatToPx(s.lon, s.lat, core.Z);
+  const rp = 6000 / core.mPerPx(s.lat, core.Z);
+  const b = bench(() => core.buildGrid((l, x, y) => peekAll.get(`${l}/${x}/${y}`) ?? null, core.LAYERS, core.Z, 256, s.lat, cx, cy, rp), quick ? 20 : 60);
+  timing.buildGridMs = b.median;
+  say(`  laying the tiles for a 6 km circle side by side (once per few km of cursor travel): median ${b.median.toFixed(1)} ms`);
 }
-const wedgeCase = timing['Lahore centre']['wedge 90 deg, 1 deg, to 2 km (tank)'];
-check('a 90 degree wedge to 2 km fits a mouse move (under 2 ms median)', wedgeCase.median < 2, `${wedgeCase.median.toFixed(2)} ms`);
-const full5 = timing['Margalla crest']['all round, fine, to 5 km (observation)'];
-check('the full 5 km all-round view fits a Detail refresh (under 15 ms median)', full5.median < 15, `${full5.median.toFixed(2)} ms`);
+check('everything the cursor card needs fits a mouse move (under 4 ms in Node)', timing['Margalla crest'].perMove < 4 && timing['Lahore centre'].perMove < 4, `${timing['Margalla crest'].perMove.toFixed(2)} ms hills, ${timing['Lahore centre'].perMove.toFixed(2)} ms town`);
+check('the fine picture fits a Detail refresh (under 20 ms)', timing['Margalla crest']['picture: all round, fine, to 5 km, with the trace'].median < 20, `${timing['Margalla crest']['picture: all round, fine, to 5 km, with the trace'].median.toFixed(1)} ms`);
 
 // ================================================================================================ E. independent cross-check
-say('\nE. Cross-check against an independent implementation (Python, probes every sixth of a pixel, same tiles, bare DEM)');
+say('\nE. Cross-check against an independent implementation (Python, probes every sixth of a pixel, same tiles, ground alone)');
 {
   const s0 = sites.find((x) => x.id === 'Margalla crest');
-  const m = await core.loadMosaic(fsSource, s0.lon, s0.lat, 4000, ['class']);
-  const [ox, oy] = core.mosaicXY(m, s0.lon, s0.lat);
+  const g = await core.loadGrid(fsSource, s0.lon, s0.lat, 4000);
+  const [ox, oy] = core.gridXY(g, s0.lon, s0.lat);
   const py = resolve(repo, 'tools/terrain-pipeline/.venv/Scripts/python.exe');
   const cross = {};
   for (const stepPx of [1, 0.5]) {
     const bear = core.bearingsFor(15), radiusM = 3500;
-    const steps = Math.floor(radiusM / (m.res * stepPx));
+    const steps = Math.max(1, Math.floor(radiusM / (g.res * stepPx)));
     const trace = new Uint8Array(bear.length * steps);
-    core.analyseRays(m, ox, oy, bear, { eyeM: 1.6, targetM: 1.7, radiusM, noiseM: 0, k: 0.13, blk: noBlk, effM: 1000, stepPx, trace });
-    writeFileSync(resolve(here, 'crosscheck-input.json'), JSON.stringify({ bundle, tx0: m.tx0, ty0: m.ty0, nx: m.nx, ny: m.ny, ox, oy, res: m.res, eyeM: 1.6, targetM: 1.7, k: 0.13, steps, stepPx, bearings: Array.from(bear), trace: Array.from(trace) }));
+    core.analyseSight(g, ox, oy, bear, { eyeM: 1.6, targetM: 1.7, radiusM, effM: 1000, tolM: 0.001, tables: null, stepPx, trace });
+    const flags = Array.from(trace, (v) => (v === 255 ? 2 : v >= 125 ? 1 : 0));
+    writeFileSync(resolve(here, 'crosscheck-input.json'), JSON.stringify({ bundle, tx0: g.tx0, ty0: g.ty0, nx: g.nx, ny: g.ny, ox, oy, res: g.res, eyeM: 1.6, targetM: 1.7, k: 0.13, steps, stepPx, bearings: Array.from(bear), trace: flags }));
     if (!existsSync(py)) { say('  (pipeline Python not found: skipped)'); break; }
     const p = spawnSync(py, [resolve(here, 'crosscheck.py'), resolve(here, 'crosscheck-input.json')], { encoding: 'utf8' });
     if (p.status !== 0) { check('Python cross-check ran', false, (p.stderr || '').slice(-300)); break; }
     const j = JSON.parse(p.stdout);
     cross[stepPx] = j;
-    say(`  step ${stepPx} px: ${j.samples} samples on ${bear.length} rays: ${j.agree} agree; engine says seen where the reference says hidden ${j.tsSeenRefHidden}, engine hidden where reference seen ${j.tsHiddenRefSeen}`);
-    if (j.missDistM.length) say(`        the ${j.missDistM.length} engine-seen / reference-hidden samples lie at ${j.missDistM[0]}-${j.missDistM[j.missDistM.length - 1]} m (median ${j.missDistM[j.missDistM.length >> 1]} m)`);
+    say(`  step ${stepPx} px: ${j.samples} samples on ${bear.length} rays: ${j.agree} agree; engine seen / reference hidden ${j.tsSeenRefHidden}, engine hidden / reference seen ${j.tsHiddenRefSeen}`);
   }
   if (cross[1]) check('step 1 px agrees with the independent check on 98 % or more of the samples', cross[1].agreePct >= 98, `${cross[1].agreePct.toFixed(2)} %`);
   if (cross[0.5]) check('step 0.5 px agrees on 99.5 % or more', cross[0.5].agreePct >= 99.5, `${cross[0.5].agreePct.toFixed(2)} %`);
   results.push({ name: 'crosscheck', detail: cross });
 }
 
-say(`\n${results.filter((r) => r.ok !== undefined).length - failures} of ${results.filter((r) => r.ok !== undefined).length} checks passed${failures ? `, ${failures} FAILED` : ''}.`);
+const total = results.filter((r) => r.ok !== undefined).length;
+say(`\n${total - failures} of ${total} checks passed${failures ? `, ${failures} FAILED` : ''}.`);
 writeFileSync(resolve(here, 'last-run.json'), JSON.stringify({ when: new Date().toISOString(), node: process.version, results, sites: siteOut, timing }, null, 1));
 writeFileSync(resolve(here, 'last-run.txt'), out.join('\n') + '\n');
 process.exit(failures ? 1 : 0);

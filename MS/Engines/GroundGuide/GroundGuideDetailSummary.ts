@@ -33,7 +33,7 @@ import type { GoingStep, GroundGuideVerdict } from './GroundGuideTypes';
 /** Colour of a dot or word: a going step, Marginal, a cover level, or a plain caution. */
 export type Tone = GoingStep | 'marg' | 'c0' | 'c1' | 'c2' | 'c3' | 'warn';
 
-interface Fact {
+export interface Fact {
   k: string;
   v: string;
   sub?: string | null;
@@ -435,7 +435,12 @@ export function detailSummary(tab: GrotbcLetter, v: GroundGuideVerdict | null): 
   } catch (err) {
     console.error('[Ground Guide] detail summary', tab, err);
   }
-  const ans = letterAnswer(tab, v);
+  return summaryStrip(letterAnswer(tab, v), facts);
+}
+
+/** The strip itself: an answer block, then the facts (the OCOKA lens builds its own answers and facts and draws them with this). */
+export function summaryStrip(ans: LetterAnswer | null, facts: Fact[]): HTMLElement | null {
+  facts = facts.filter((f) => f.v).slice(0, MAX_FACTS);
   if (!facts.length && !ans) return null;
   const strip = el('div', 'ms-ggd-sum-row');
   if (ans) strip.append(answerBlock(ans));

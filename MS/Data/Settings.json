@@ -764,6 +764,24 @@
       "side": "right",
       "tab": true,
       "topPx": 54
+    },
+    "ocoka": {
+      "lens": "grotbc",
+      "keys": true,
+      "threat": "front",
+      "bearingDeg": 0,
+      "sectorDeg": 90,
+      "at": null,
+      "marker": true,
+      "radiusKm": 5,
+      "eye": "auto",
+      "surface": true,
+      "mapFan": true,
+      "mapEnemy": true,
+      "mapSight": true,
+      "mapAvenues": true,
+      "mapBetter": true,
+      "overlay": "auto"
     }
   },
   "stylus": {

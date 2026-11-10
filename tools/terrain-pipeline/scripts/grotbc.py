@@ -257,11 +257,13 @@ def pakmap_road(row: dict, tk: dict, msr_cfg: dict) -> tuple[str, int, bool, dic
     cond = _s(row.get("CONDITION"))
     cond = cond if cond.lower() not in ("", "none", "nan") else ""
     slides = _clean(row.get("NO_OF_SLID"))
+    bridges = parse_count(row.get("NO_OF_BRS"))          # 2026-11-10: bridges recorded on this road section (7,085 sections)
     attrs = {k: v for k, v in (("n", _s(row.get("NAME"))), ("r", _s(row.get("ROAD_NO"))), ("t", kind),
                                ("c", _s(row.get("CLASSIFICA")).upper()), ("w", width), ("k", tier),
                                ("d", 1 if defence else 0), ("m", 1 if msr else 0),
                                ("x", closed), ("cn", cond[:24]),
-                               ("sl", slides if isinstance(slides, int) else None)) if v not in ("", None, 0)}
+                               ("sl", slides if isinstance(slides, int) else None),
+                               ("nb", bridges if bridges and bridges < 1000 else None)) if v not in ("", None, 0)}
     return kind, tier, msr, attrs
 
 
@@ -806,6 +808,14 @@ class TileWriter:
                            "sd": "dune field: star-dune symbols in the cell", "ds": "dune field: other dune symbols in the cell",
                            "v": "power line voltage (kV)",
                            "wd": "map wind arrow: axis, degrees clockwise from north (0-179); which end the wind blows from is not recorded",
+                           "nb": "bridges recorded on the road section (NCGDB NO_OF_BRS)",
+                           "bt": "crossing type words from its name and the sheet's text beside it: temporary, suspension, "
+                                 "cantilever, wooden, rope, iron, masonry, natural, snow, boats, overhead, underpass, foot, "
+                                 "viaduct, causeway",
+                           "bs": "crossing status from the sheet's text: u/c (under construction) or disused",
+                           "su": "months the crossing is in use as the sheet writes them (ferry, ford, bridge of boats), e.g. Oct-Apr",
+                           "bo": "boats of a ferry, as the sheet writes it",
+                           "lb": "1 = crossing placed at the sheet's label (no symbol near it): a few hundred metres out",
                            **GROUND_ATTRS},
                  "kinds": {str(k): {"key": v[0], "label": v[1], "grotbc": v[2], "count": self.counts.get(k, 0)}
                            for k, v in sorted(KINDS.items())},
@@ -1316,6 +1326,187 @@ def annotation_notes(g: str, tw: "TileWriter", aoi) -> None:
     log.info("features: Annotation_ -> %s", ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
 
 
+# 2026-11-10: what the sheet's text (Annotation_) and a crossing's own name say about the crossing. The crossing layers
+# record only the symbol (bridge, foot bridge, ferry, ford); the sheet adds the kind of bridge ("Suspension bridge",
+# "Temporary wooden foot bridge"), causeways, the boats of a ferry and the months a ferry, ford or bridge of boats is
+# in use. Canal names that contain "ford" / "br" (Fordwah, 8-BR minor, Chak 17-8 BR) and hotels are not crossings.
+XING_SKIP = (r"\bford ?wah\b|\bfeeder\b|\bford distributary\b|\bchak \d+(-\d+)? (ford|br)\b|\b\d+[- ]?br\b|"
+             r"\bbr (minor|disty)\b|\bp r\b|\bf c post\b|\bhotel\b|^br$|^bridges$")
+XING_CATS = [            # first match wins: (category, pattern)
+    ("boats", r"\bbridge of boats\b|\bboats? bridge\b|\bferry bridge\b"),
+    ("ferry", r"\bferry\b"),
+    ("causeway", r"\bcauseway\b"),
+    ("viaduct", r"\bviaduct\b"),
+    ("ford", r"\bford\b"),
+    ("bridge", r"\bbr[ie]?dge?s?\b|\bbidge\b|\bflyover\b|\bf\.b\b|^fb$|\bsuspension\b"),
+]
+XING_TOKENS = [          # the words kept in `bt`, in this order
+    ("temporary", r"\btemp[oa]?r[a]?a?ry\b|\btemarary\b"),
+    ("suspension", r"\bs[au]s?pe[nm]s+[io]+ns?\b|\bsuspention\b"),
+    ("cantilever", r"\bc[oa]n?ti?l?[ei]?ver\b"),
+    ("wooden", r"\bwoo?d(en|an|ed)?\b|\bwodden\b|\blog\b"),
+    ("rope", r"\brope\b|\bcradle\b"),
+    ("iron", r"\biron\b"),
+    ("masonry", r"\bm[ae]sonry\b"),
+    ("natural", r"\bnatural\b"),
+    ("snow", r"\bsnow\b"),
+    ("boats", r"\bbridge of boats\b|\bboats? bridge\b|\bferry bridge\b"),
+    ("overhead", r"\bover ?head\b|\bo\.? ?h\b|\bflyover\b"),
+    ("underpass", r"\bunder ?pass\b"),
+    ("railway", r"\brailway\b|\brly\b"),
+    ("foot", r"\bfoot\b|\bf\.b\b|^fb$"),
+    ("viaduct", r"\bviaduct\b"),
+    ("causeway", r"\bcauseway\b"),
+]
+XING_STATUS = [("u/c", r"under ?construction|underconstruction"), ("disused", r"\bdisused\b")]
+_MONTH = r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
+XING_SEASON = re.compile(_MONTH + r"\s*(?:to|-|–)\s*" + _MONTH)
+XING_BOATS = re.compile(r"\b(\d+|one|two|three|four|i)\s*\(?\s*boa?o?ts?\b")
+XING_WORDS = {"bridge", "bridges", "brdge", "bidge", "br", "ferry", "ford", "causeway", "viaduct", "the", "and", "&", "of",
+              "to", "stream", "fb", "f.b", "boat", "boats", "boots", "boot", "rs", "fall", "falls", "metre", "metres",
+              "meteres", "m", "country", "road", "rd", "railway", "rly"}
+# where a label may sit from its symbol (ground m): labels are set beside the symbol, median ~400 m on the sheets
+XING_MATCH_M, XING_FAR_M = 600.0, 1500.0
+XING_COMPAT = {
+    "ferry": ("ferry", "boat_bridge"), "boats": ("boat_bridge", "ferry", "bridge"), "ford": ("ford",),
+    "causeway": ("bridge", "culvert", "ford", "bridge_iron"), "viaduct": ("viaduct", "bridge"),
+    "foot": ("foot_bridge", "bridge", "bridge_iron"),
+    "bridge": ("bridge", "bridge_iron", "foot_bridge", "boat_bridge", "viaduct"),
+}
+XING_NEW_KIND = {"ferry": "ferry", "boats": "boat_bridge", "ford": "ford", "causeway": "ford", "viaduct": "viaduct",
+                 "foot": "foot_bridge", "bridge": "bridge"}
+XING_KINDS = ("bridge", "bridge_iron", "foot_bridge", "boat_bridge", "viaduct", "ferry", "ford", "culvert")
+
+
+def parse_crossing_text(raw: str, default_cat: str | None = None) -> dict | None:
+    """'Temporary wooden foot bridge' -> {cat, bt, bs, su, bo, name}; None when the text is not about a crossing.
+    `default_cat` reads a crossing's own name ("Railway", "Wooden") that does not say "bridge"."""
+    t = re.sub(r"\s+", " ", raw or "").strip().lower()
+    if len(t) < 2 or len(t) > 60 or re.search(XING_SKIP, t):
+        return None
+    cat = next((c for c, p in XING_CATS if re.search(p, t)), None)
+    if cat is None and default_cat and any(re.search(p, t) for _k, p in XING_TOKENS + XING_STATUS):
+        cat = default_cat
+    if cat is None:
+        return None
+    toks = [k for k, p in XING_TOKENS if re.search(p, t)]
+    if cat == "bridge" and "foot" in toks and not any(k in toks for k in ("suspension", "iron", "cantilever")):
+        cat = "foot"
+    out = {"cat": cat, "bt": " ".join(toks) or None,
+           "bs": next((s for s, p in XING_STATUS if re.search(p, t)), None)}
+    m = XING_SEASON.search(t)
+    out["su"] = f"{m.group(1).title()}-{m.group(2).title()}" if m else None
+    b = XING_BOATS.search(t)
+    if b:
+        v = b.group(1)
+        out["bo"] = int(v) if v.isdigit() else {"one": 1, "i": 1, "two": 2, "three": 3, "four": 4}[v]
+    # a proper name is what is left once the crossing words, seasons and boats are taken out ("Jinnah bridge")
+    rest = XING_SEASON.sub(" ", t)
+    rest = XING_BOATS.sub(" ", rest)
+    for _k, p in XING_TOKENS + XING_STATUS:
+        rest = re.sub(p, " ", rest)
+    words = [w for w in re.findall(r"[a-z][a-z.']*", rest) if w not in XING_WORDS]
+    # the name as written outside brackets ("Jinnah bridge", "Iqbal Shahid (Suspension Bridge)" -> "Iqbal Shahid"),
+    # else the bracketed one ("Viaduct (Guru Nanak)" -> "Guru Nanak")
+    outside = re.sub(r"\([^)]*\)?", " ", raw)
+    proper_out = [w for w in re.findall(r"[a-z][a-z.']*", outside.lower())
+                  if w not in XING_WORDS and not any(re.fullmatch(p, w) for _k, p in XING_TOKENS)]
+    inside = " ".join(re.findall(r"\(([^)]*)\)?", raw))
+    clean = re.sub(r"\s+", " ", outside if proper_out else inside).strip(" ().")
+    out["name"] = clean[:1].upper() + clean[1:] if words and clean else None
+    return out
+
+
+def crossing_labels(g: str, tw: "TileWriter", aoi) -> None:
+    """Type, status, season and boats of the crossings, from their own names and from the sheet's text beside them.
+    A label is tied to the nearest crossing of a fitting kind within XING_MATCH_M (ground) when no second one of a
+    fitting kind is about as near; a label with no fitting crossing within XING_FAR_M becomes a crossing of its own
+    at the label (`lb` = 1: placed at the label, a few hundred metres out); anything between is left alone rather
+    than guessed. Attributes: bt (type words), bs (u/c, disused), su (months in use), bo (boats of a ferry)."""
+    import shapely
+    from scipy.spatial import cKDTree
+
+    def merge(a: dict, p: dict, name_ok: bool) -> None:
+        if p.get("bt"):
+            have = (a.get("bt") or "").split()
+            a["bt"] = " ".join(k for k, _p in XING_TOKENS if k in have or k in p["bt"].split())
+        for k in ("bs", "su", "bo"):
+            if p.get(k) and not a.get(k):
+                a[k] = p[k]
+        if name_ok and p.get("name") and not a.get("n"):
+            a["n"] = p["name"]
+
+    # 1. the crossings' own names ("Wooden bridge", "Ferry (1 boat)", "FB", "Causeway")
+    own = 0
+    for kind in XING_KINDS:
+        for a in tw.refs.get(kind, []):
+            n = a.get("n")
+            if isinstance(n, str):
+                p = parse_crossing_text(n, "bridge")
+                if p and kind == "culvert" and p.get("bt") != "causeway":
+                    continue        # a culvert symbol named "Foot bridge" / "Iron bridge": the name stays, the type is not guessed
+                if p and (p.get("bt") or p.get("su") or p.get("bo") or p.get("bs")):
+                    merge(a, p, False)
+                    own += 1
+    # 2. the sheet's text beside them
+    pts, refs, kinds = [], [], []
+    for kind in XING_KINDS:
+        for (x, y), a in zip(tw.xy.get(kind, []), tw.refs.get(kind, [])):
+            pts.append((x, y))
+            refs.append(a)
+            kinds.append(kind)
+    tree = cKDTree(np.asarray(pts)) if pts else None
+    kinds_a = np.asarray(kinds)
+    gs, f = _read(g, "Annotation_", ["TextString"])
+    ok = ~shapely.is_missing(gs)
+    cen = np.full((len(gs), 2), np.nan)
+    cen[ok] = shapely.get_coordinates(shapely.centroid(gs[ok]))
+    keep = ok & _in_aoi(np.nan_to_num(cen), aoi)
+    stats: dict[str, int] = defaultdict(int)
+    added: dict = defaultdict(list)
+    for i in np.nonzero(keep)[0]:
+        p = parse_crossing_text(_s(f["TextString"][i]))
+        if p is None:
+            continue
+        x, y = cen[i]
+        sc = _ground_scale(y)
+        cands = []
+        if tree is not None:
+            idx = tree.query_ball_point((x, y), XING_FAR_M * sc)
+            compat = XING_COMPAT[p["cat"]]
+            cands = sorted((float(np.hypot(pts[j][0] - x, pts[j][1] - y)) / sc, j) for j in idx if kinds_a[j] in compat)
+        if cands and cands[0][0] <= XING_MATCH_M:
+            d1 = cands[0][0]
+            pick = cands[0][1]
+            if len(cands) > 1 and cands[1][0] <= XING_MATCH_M and cands[1][0] < max(1.5 * d1, d1 + 150.0):
+                # two about as near: the label's own kind settles it when only one of that kind is in reach
+                # ("Foot bridge" beside a foot bridge and a road bridge)
+                first = [j for d, j in cands if d <= XING_MATCH_M and kinds_a[j] == compat[0]]
+                if len(first) != 1:
+                    stats["ambiguous"] += 1
+                    continue
+                pick = first[0]
+                stats["tied by kind"] += 1
+            merge(refs[pick], p, True)
+            stats["tied"] += 1
+            continue
+        if cands:
+            stats["too far to tie"] += 1
+            continue
+        key = (p["cat"], p.get("bt"), p.get("name"))
+        r = 1000.0 * sc
+        if any((px - x) ** 2 + (py - y) ** 2 <= r * r for px, py in added[key]):
+            stats["repeat"] += 1
+            continue
+        added[key].append((x, y))
+        a = {k: p.get(k) for k in ("bt", "bs", "su", "bo")}
+        a["n"], a["lb"] = p.get("name"), 1
+        tw.point(XING_NEW_KIND[p["cat"]], x, y, a)
+        stats["new at label"] += 1
+    log.info("features: crossing types from own names %d; sheet text: %s", own,
+             ", ".join(f"{k} {v}" for k, v in sorted(stats.items())))
+
+
 def extra_ncgdb_points(g: str, tw: "TileWriter", aoi, settle: list) -> None:
     """Dam reservoirs (Reservoir_Pakmap) onto the lakes, the 74 strategic dams / headworks (HeadWorks_Pak) that
     HeadWorks_Pakmap lacks, and administrative seats (Places 1-3: province, district, tehsil HQ) onto the places."""
@@ -1543,11 +1734,12 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
     wind_arrows(g, tw, aoi)
     annotation_notes(g, tw, aoi)
     osm_features(OSM_PBF, tw, aoi)
+    crossing_labels(g, tw, aoi)          # after every crossing source is in (NCGDB points and lines, OSM fords)
 
     # named lines: main roads (with load class and MSR), railways, canals, rivers
     tol = 15.0
     pcols = ["TYPE", "CLASSIFICA", "DEFENCE_RD", "WIDTH_M", "CATEGORY", "SURFACE", "NAME", "ROAD_NO",
-             "CONDITION", "CLOSED_DUE", "NO_OF_SLID"]
+             "CONDITION", "CLOSED_DUE", "NO_OF_SLID", "NO_OF_BRS"]
     routes = RouteIndex()
     gs, f = _read(g, "Roads_updated_2016_Pakmap", pcols)
     n0 = 0
