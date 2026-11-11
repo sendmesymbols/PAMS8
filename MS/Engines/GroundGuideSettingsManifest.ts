@@ -448,6 +448,143 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     help: 'Space left free at the top of the map for the toolbar, so the rail does not cover it. The rail is scaled down to fit the height that is left.',
     keywords: ['scope', 'rail', 'top', 'toolbar', 'offset', 'margin'],
   },
+  // ── Gr Scope AOR scale (Shift+V): the area of ops read as an appreciation's Gr and Weather ──
+  {
+    path: ['groundGuide', 'aor', 'scale'],
+    label: 'Gr Scope scale',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'enum',
+    options: [
+      { value: 'spot', label: 'Spot: the ground round one symbol' },
+      { value: 'aor', label: 'AOR: the area of ops as an appreciation' },
+    ],
+    help: 'Shift+V switches the Gr Scope rail between Spot (the ground round the symbol) and AOR: the approaches the threat may use, ranked; the lines of def that cut across them, lettered W X Y front to rear and Z through the MITG, with their roles (screen, FDLs, depth, strong point) and the frontage between the bdys; bridges to prepare for demolition; the MSR and laterals; NO-GO and SLOW-GO in the Vs72 marking. A plan to check on the ground, never a fact. D opens the approach sheets (AprDf\'s twelve sub-heads) with Copy as Text.',
+    keywords: ['aor', 'area of ops', 'appreciation', 'approaches', 'avenues', 'lines of defence', 'mitg', 'sand model', 'shift v', 'scope'],
+  },
+  {
+    path: ['groundGuide', 'aor', '__toggle'],
+    label: 'Gr Scope scale',
+    buttonLabel: 'Switch Spot / AOR (⇧V)',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'action',
+    help: 'The same as pressing Shift+V: shows the rail if it was hidden.',
+    keywords: ['aor', 'scope', 'scale', 'switch', 'shift v'],
+    onClick: () => {
+      const gg = (window as any).symbolEngine?.groundGuide;
+      if (gg?.setScopeScale) gg.setScopeScale();
+      else console.warn('GroundGuide not ready yet — turn on the Ground Guide first');
+    },
+  },
+  {
+    path: ['groundGuide', 'aor', 'layout'],
+    label: 'AOR layout',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'enum',
+    options: [
+      { value: 'deductions', label: 'A: deductions under the map' },
+      { value: 'model', label: 'B: sand model (names on a taller map)' },
+      { value: 'appreciation', label: 'C: appreciation tables' },
+    ],
+    help: 'How the rail lays the AOR out. Also switched on the fly from the A B C buttons in the rail\'s foot.',
+    keywords: ['aor', 'layout', 'deductions', 'sand model', 'appreciation', 'a b c'],
+  },
+  {
+    path: ['groundGuide', 'aor', 'style'],
+    label: 'AOR map colours',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'enum',
+    options: [
+      { value: 'trace', label: 'Trace: Vs72 marking (green natural, black artificial)' },
+      { value: 'dark', label: 'Dark: the Spot rail\'s colours' },
+    ],
+    help: 'NO-GO is crisscross and SLOW-GO parallel lines in both; Trace draws them green (natural) and black (built-up, walled orchards, restricted ground) on a talc-trace colour. Also switched from the rail\'s foot.',
+    keywords: ['aor', 'trace', 'dark', 'colours', 'marking', 'vs72'],
+  },
+  {
+    path: ['groundGuide', 'aor', 'orient'],
+    label: 'AOR map orientation',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'enum',
+    options: [
+      { value: 'north', label: 'North up (turns with the view)' },
+      { value: 'threat', label: 'Threat up (as a sand model facing the enemy)' },
+    ],
+    help: 'Threat up turns the map so the side the approaches come from is at the top. Also switched from the N↑ / T↑ buttons in the rail\'s foot.',
+    keywords: ['aor', 'orientation', 'north', 'threat', 'rotate'],
+  },
+  {
+    path: ['groundGuide', 'aor', 'source'],
+    label: 'AOR from',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'enum',
+    options: [
+      { value: 'echelon', label: 'Echelon frame facing the threat' },
+      { value: 'boundaries', label: 'Boundary symbols either side of the MITG' },
+      { value: 'box', label: 'A box dragged on the map' },
+    ],
+    help: 'Where the AOR\'s outline comes from. Bdys: the nearest Boundary symbol on each side of the MITG (cut to the echelon\'s depth). Box: drag one on the map (Draw in the rail). A missing box or pair of bdys falls back to the echelon frame and the rail says so. The MITG is a VG (Vital Gr) symbol on the map, else the selected or placed symbol, else the map centre.',
+    keywords: ['aor', 'boundary', 'bdys', 'box', 'echelon', 'frame', 'mitg', 'vital ground'],
+  },
+  {
+    path: ['groundGuide', 'aor', '__box'],
+    label: 'AOR box',
+    buttonLabel: 'Drag a box on the map',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'action',
+    help: 'The next drag on the map draws the AOR box instead of panning (Esc cancels).',
+    keywords: ['aor', 'box', 'draw', 'drag'],
+    onClick: () => {
+      const gg = (window as any).symbolEngine?.groundGuide;
+      if (gg?.drawAorBox) gg.drawAorBox();
+      else console.warn('GroundGuide not ready yet — turn on the Ground Guide first');
+    },
+  },
+  {
+    path: ['groundGuide', 'aor', 'echelon'],
+    label: 'AOR echelon',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'enum',
+    options: [
+      { value: 'auto', label: 'From the symbol (else Bn)' },
+      { value: 'coy', label: 'Coy' },
+      { value: 'bn', label: 'Bn' },
+      { value: 'bde', label: 'Bde' },
+    ],
+    help: 'Sets the echelon frame (Coy 2 x 4 km, Bn 7 x 12 km, Bde 14 x 18 km forward of the MITG: a proposal), the threat\'s corridor two up and the frontage the FDLs are tested against (Bn 6.5 km three coys up, IBB).',
+    keywords: ['aor', 'echelon', 'coy', 'bn', 'bde', 'frontage'],
+  },
+  {
+    path: ['groundGuide', 'aor', 'leadKm'],
+    label: 'Threat starts forward of the AOR (km)',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'number',
+    advanced: true,
+    min: 0,
+    max: 30,
+    step: 1,
+    help: 'Where the approaches start when the threat is not a place on the map. Drag the threat marker to a place to set it instead.',
+    keywords: ['aor', 'threat', 'start', 'lead', 'forward'],
+  },
+  {
+    path: ['groundGuide', 'aor', 'corridorM'],
+    label: 'Threat corridor width (m, 0 = two up)',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'number',
+    advanced: true,
+    min: 0,
+    max: 10000,
+    step: 250,
+    help: 'Width the threat force needs on an approach; ground narrower costs more and is a chokepoint. 0 takes two echelons up from the AOR (Coy 1 km, Bn 2 km, Bde 4 km: a proposal).',
+    keywords: ['aor', 'corridor', 'width', 'mobility corridor'],
+  },
+  {
+    path: ['groundGuide', 'aor', 'keys'],
+    label: 'Shift+V and D for the AOR',
+    group: 'Gr Scope · AOR (⇧V)',
+    type: 'boolean',
+    help: 'Shift+V switches the rail\'s scale; D opens the approach sheets while the AOR scale shows (the GROTBC letters still open the Ground Detail).',
+    keywords: ['aor', 'keys', 'shift v', 'd'],
+  },
   // ── OCOKA lens (F): the same bundle read as Obsn & Fd of Fire, Cover, Obs, Key Gr, Avenues ──
   {
     path: ['groundGuide', 'ocoka', 'lens'],

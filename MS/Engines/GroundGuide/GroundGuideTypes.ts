@@ -283,6 +283,43 @@ export interface GroundGuideOptions {
   scope: GroundGuideScopeOptions;
   /** The OCOKA lens: the same bundle read as Observation and Fields of Fire, Cover, Obstacles, Key Gr and Avenues. */
   ocoka: GroundGuideOcokaOptions;
+  /** The Gr Scope rail's AOR scale (Shift+V): the area of ops read as an appreciation's Gr and Weather. */
+  aor: GroundGuideAorOptions;
+}
+
+/**
+ * The AOR scale of the Gr Scope rail (user, 2026-11-11; mockup ground-guide-aor-options.html): Shift+V switches the
+ * rail between Spot (the ground round one symbol) and AOR (the area of ops: approaches ranked, lines of def lettered
+ * W X Y Z with their roles, the MITG, bridges to prepare for demolition, MSR and laterals, NO-GO / SLOW-GO in Vs72's
+ * marking). Every view option is kept and switched on the fly from the rail's foot, the settings or the API.
+ */
+export interface GroundGuideAorOptions {
+  /** Shift+V switches the rail's scale; D opens the approach sheets while the AOR scale shows. */
+  keys: boolean;
+  /** The scale the rail shows. */
+  scale: 'spot' | 'aor';
+  /** A: deductions under the map; B: sand model (names on a taller map); C: appreciation tables. */
+  layout: 'deductions' | 'model' | 'appreciation';
+  /** Trace: Vs72's green / black marking on a talc-trace colour. Dark: the Spot rail's colours. */
+  style: 'trace' | 'dark';
+  /** North up (turns with the view, as the Spot rail) or threat up (the approaches come from the top). */
+  orient: 'north' | 'threat';
+  /**
+   * Where the AOR's outline comes from: `boundaries` the Boundary symbols either side of the MITG, `box` a box dragged on
+   * the map (`box`), `echelon` the echelon's frontage and depth facing the threat. A missing box or pair of bdys falls
+   * back to the echelon frame, and the rail says so.
+   */
+  source: 'boundaries' | 'box' | 'echelon';
+  /** The dragged box, [west, south, east, north] in degrees; null until one is drawn. */
+  box: [number, number, number, number] | null;
+  /** The echelon the AOR is for: `auto` from the symbol read (Coy / Bn / Bde), else Bn. Sets the frame, the threat's corridor (two up) and the frontage test. */
+  echelon: 'auto' | 'coy' | 'bn' | 'bde';
+  /** How far forward of the AOR the threat's approaches start when the threat is not a place on the map, km. */
+  leadKm: number;
+  /** Width the threat's corridor needs, m; 0 = two echelons up from the AOR's (Coy 1 km, Bn 2 km, Bde 4 km: a proposal). */
+  corridorM: number;
+  /** The mover the going is read for (the threat's armour by default). */
+  profile: GroundGuideProfile;
 }
 
 /** Which reading the cards give: the ground by factor (GROTBC) or what it does to a force on a task (OCOKA). */
@@ -1160,6 +1197,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54 },
   ocoka: { lens: 'grotbc', keys: true, threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapAvenues: true, mapBetter: true, overlay: 'auto', eye: 'auto', surface: true },
+  aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 
 /** Tile layer names for a profile under a manifest (`dist` is null when the bundle has no layer for it). */

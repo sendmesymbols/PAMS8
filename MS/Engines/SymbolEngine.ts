@@ -118,6 +118,12 @@ import KeyboardShortcutManager from './KeyboardShortcutManager';
 import StylusDrawController from './Stylus/StylusDrawController';
 import GroundGuide from './GroundGuide/GroundGuide';
 import type { GroundGuideItgCandidate } from './GroundGuide/GroundGuideTypes';
+import MovementGuide from './MovementGuide/MovementGuide';
+import './MovementGuideSettingsWidget';
+import PlatoonGuide from './PlatoonGuide/PlatoonGuide';
+import './PlatoonGuideSettingsWidget';
+import NightMarch from './NightMarch/NightMarch';
+import './NightMarchSettingsWidget';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
 // imported. One side-effect import per engine keeps the wiring discoverable.
@@ -190,6 +196,12 @@ class SymbolEngine implements Evented {
   private _measurementEngine?: MeasurementEngine;
   private _proximityEngine: ProximityEngine | null = null;
   private _groundGuide: GroundGuide | null = null;
+  /** Safety of the move (routes, lanes, cordons); null until `features.movementGuide` is on. */
+  private _movementGuide: MovementGuide | null = null;
+  /** The Ground card at a point for Team to Coy (and the patrol route card); null until `features.platoonGuide` is on. */
+  private _platoonGuide: PlatoonGuide | null = null;
+  /** The night march chart (route SP to FUP, FUP layout, timings); null until `features.nightMarch` is on. */
+  private _nightMarch: NightMarch | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
@@ -434,6 +446,13 @@ class SymbolEngine implements Evented {
     // Conditionally load GroundGuide (terrain advice while drawing; needs a terrain bundle)
     this._initGroundGuide();
 
+    // Conditionally load the Movement Guide (safety of the move; needs the terrain bundle; off by default)
+    this._initMovementGuide();
+
+    // Conditionally load the Platoon Guide (Ground card at a point, patrol route card; needs the terrain bundle; off by default)
+    this._initPlatoonGuide();
+    this._initNightMarch();
+
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
 
@@ -610,6 +629,8 @@ class SymbolEngine implements Evented {
 
       // Terrain advice — synchronous tile reads, no I/O on this path
       this._groundGuide?.onDrawProgress(event.detail);
+      // Platoon Guide: the Ground card at a Team / Sec / Pl / Coy being placed (quick reads per move, full at rest)
+      this._platoonGuide?.onDrawProgress(event.detail);
 
       // Feed drawing progress into the measurement engine
       const detail = event.detail;
@@ -653,6 +674,7 @@ class SymbolEngine implements Evented {
       // Deactivate drawing cue overlays when drawing ends
       this._drawingCueEngine?.deactivate();
       this._groundGuide?.deactivate();
+      this._platoonGuide?.deactivate();
     }) as EventListener);
 
     console.log('SymbolEngine global event listeners set up');
@@ -707,6 +729,9 @@ class SymbolEngine implements Evented {
     this._measurementEngine?.destroy();
     this._proximityEngine?.disable();
     this._groundGuide?.destroy();
+    this._movementGuide?.destroy();
+    this._platoonGuide?.destroy();
+    this._nightMarch?.destroy();
     this._drawingCueEngine?.disable();
     this._mgrsEngine?.destroy();
     this._editEngine?.deactivate();
@@ -770,6 +795,9 @@ class SymbolEngine implements Evented {
     this._proximityEngine?.onViewChanged(newView);
     // Re-bind Ground Guide (viewport prefetch + cursor tracking) to the new view
     this._groundGuide?.onViewChanged();
+    this._movementGuide?.onViewChanged();
+    this._platoonGuide?.onViewChanged();
+    this._nightMarch?.onViewChanged();
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
     // Re-attach MGRS engine to the new view
@@ -932,6 +960,125 @@ class SymbolEngine implements Evented {
     this._registerGroundGuideMenu();
     this._wireGroundGuideRouter();
     console.info('[SymbolEngine] GroundGuide loaded');
+  }
+
+  /**
+   * Create the Movement Guide and enable it. Gated by `features.movementGuide` (off by default): while it is off
+   * nothing is created and the terrain bundle is never looked for; drawing works the same either way.
+   */
+  private _initMovementGuide(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.movementGuide !== true) {
+      console.info('[SymbolEngine] MovementGuide disabled via Settings.json');
+      return;
+    }
+    if (!this._movementGuide) {
+      const mg = new MovementGuide(() => this._getView());
+      this._movementGuide = mg;
+      mg.setOptions((settingsData as any).movementGuide ?? {});
+      // The threat place is the Ground Guide's threat marker (OCOKA lens) when one is set; never read from symbols.
+      mg.setThreatSource(() => {
+        const o: any = this._groundGuide?.options?.ocoka ?? (settingsData as any).groundGuide?.ocoka;
+        return o?.threat === 'point' && Array.isArray(o.at) ? [o.at[0], o.at[1]] : null;
+      });
+      mg.setCatalogNames((key) => SymbolMetadataService.getByKey(key)?.Name ?? null);
+      // "Create on map": a card's plan becomes ordinary symbols (saved, edited, undone like any other).
+      mg.setCreator((items) => items.map((it) => this.loadSymbolFromJSON({ type: 'pams8-symbol', id: this.generateUUID(), ...it })).filter((g): g is Graphic => !!g));
+      const selMg = this._selectionEngine;
+      if (selMg) mg.setSelectionSource(() => (selMg.count === 1 ? selMg.selectedGraphics[0] : null));
+      this._registerMovementGuideMenu();
+      this.emitEvent('movementGuideReady', { engine: mg });
+    }
+    this._movementGuide.enable();
+    console.info('[SymbolEngine] MovementGuide loaded');
+  }
+
+  /**
+   * Create the Platoon Guide and enable it. Gated by `features.platoonGuide` (off by default): while it is off nothing
+   * is created and the terrain bundle is never looked for; drawing works the same either way.
+   */
+  private _initPlatoonGuide(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.platoonGuide !== true) {
+      console.info('[SymbolEngine] PlatoonGuide disabled via Settings.json');
+      return;
+    }
+    if (!this._platoonGuide) {
+      const pg = new PlatoonGuide(() => this._getView());
+      this._platoonGuide = pg;
+      pg.setOptions((settingsData as any).platoonGuide ?? {});
+      // The threat place is the Ground Guide's threat marker (OCOKA lens) when one is set; never read from symbols.
+      pg.setThreatSource(() => {
+        const o: any = this._groundGuide?.options?.ocoka ?? (settingsData as any).groundGuide?.ocoka;
+        return o?.threat === 'point' && Array.isArray(o.at) ? [o.at[0], o.at[1]] : null;
+      });
+      // While a symbol is placed the Ground Guide's card owns the cursor: the Pl cursor card stays hidden then.
+      pg.setCursorOwner(() => this._groundGuide?.isActive === true);
+      // The one selected symbol: a Team to Coy land unit gets the Ground card, a line the patrol route card.
+      const sel = this._selectionEngine;
+      if (sel) sel.on('selectionChange', ({ selected }: { selected: Graphic[] }) => this._platoonGuide?.setTarget(selected.length === 1 ? selected[0] : null));
+      this._registerPlatoonGuideMenu();
+      this.emitEvent('platoonGuideReady', { engine: pg });
+    }
+    this._platoonGuide.enable();
+    console.info('[SymbolEngine] PlatoonGuide loaded');
+  }
+
+  /**
+   * Create the Night March and enable it. Gated by `features.nightMarch` (off by default): while it is off nothing is
+   * created. Its terrain read is optional (`nightMarch.useTerrain`); without the bundle it works from the geometry.
+   */
+  private _initNightMarch(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.nightMarch !== true) return;
+    if (!this._nightMarch) {
+      const nm = new NightMarch(() => this._getView());
+      this._nightMarch = nm;
+      nm.setOptions((settingsData as any).nightMarch ?? {});
+      // Right-click "Night March: Chart…" on a placed line: the line is the route, its last point the FUP.
+      this._contextMenuManager.addDynamicItemProvider((graphic: Graphic): ContextMenuItem[] => {
+        const n = this._nightMarch;
+        if (!n?.canUse(graphic) || !graphic?.attributes?.id) return [];
+        return [{ id: 'night-march-chart', label: 'Night March: Chart…', icon: '🌙', action: (g: Graphic) => void n.useGraphic(g) }];
+      });
+      this.emitEvent('nightMarchReady', { engine: nm });
+    }
+    this._nightMarch.enable();
+    console.info('[SymbolEngine] NightMarch loaded');
+  }
+
+  private _platoonGuideMenuRegistered = false;
+
+  /** Right-click "Pl Guide: Gr Card…" on a placed point, "Pl Guide: Patrol Card…" on a placed line. */
+  private _registerPlatoonGuideMenu(): void {
+    if (this._platoonGuideMenuRegistered) return;
+    this._platoonGuideMenuRegistered = true;
+    this._contextMenuManager.addDynamicItemProvider((graphic: Graphic): ContextMenuItem[] => {
+      const pg = this._platoonGuide;
+      if (!pg?.canAnalyse(graphic) || !graphic?.attributes?.id) return [];
+      const line = graphic.geometry?.type === 'polyline';
+      return [{ id: line ? 'platoon-guide-patrol' : 'platoon-guide-card', label: line ? 'Pl Guide: Patrol Card…' : 'Pl Guide: Gr Card…', icon: '🪖', action: (g: Graphic) => void pg.analyse(g) }];
+    });
+  }
+
+  private _movementGuideMenuRegistered = false;
+
+  /** Right-click "Mov Safety…" on a placed line, area or point while the Movement Guide is active. */
+  private _registerMovementGuideMenu(): void {
+    if (this._movementGuideMenuRegistered) return;
+    this._movementGuideMenuRegistered = true;
+    this._contextMenuManager.addDynamicItemProvider((graphic: Graphic): ContextMenuItem[] => {
+      const mg = this._movementGuide;
+      if (!mg?.canAnalyse(graphic) || !graphic?.attributes?.id) return [];
+      const t = graphic.geometry?.type;
+      const items: ContextMenuItem[] = [];
+      // A placed line or area can be handed to the Mov Guide cards as their route / area (nothing is read on its own).
+      if (t === 'polyline') items.push({ id: 'movement-guide-route', label: 'Mov Guide: Use as Route…', icon: '🛣', action: (g: Graphic) => void mg.useGraphic(g, 'picket') });
+      if (t === 'polygon' || t === 'point') items.push({ id: 'movement-guide-cordon', label: 'Mov Guide: Cordon…', icon: '⭕', action: (g: Graphic) => void mg.useGraphic(g, 'cordon') });
+      // The Water card: a point is the bank it stands on; an AT Ditch / DCB / Obstacle Line is the obstacle; any other line an axis.
+      if (t === 'point' || t === 'polyline') items.push({ id: 'movement-guide-water', label: 'Mov Guide: Water Obs…', icon: '🌊', action: (g: Graphic) => void mg.useGraphic(g, 'water') });
+      return items;
+    });
   }
 
   /**
@@ -1985,6 +2132,56 @@ class SymbolEngine implements Evented {
     return this._groundGuide;
   }
 
+  /** Access the Movement Guide — safety of the move for routes, lanes and cordons. Null until
+   *  `features.movementGuide` is turned on. */
+  public get movementGuide(): MovementGuide | null {
+    return this._movementGuide;
+  }
+
+  /** Access the Platoon Guide — the Ground card at a point and the patrol route card. Null until
+   *  `features.platoonGuide` is turned on. */
+  public get platoonGuide(): PlatoonGuide | null {
+    return this._platoonGuide;
+  }
+
+  /** Access the Night March chart — bearings and paced legs SP to FUP, FUP marking layout, timings back from H. Null
+   *  until `features.nightMarch` is turned on. */
+  public get nightMarch(): NightMarch | null {
+    return this._nightMarch;
+  }
+
+  /** Switch the Night March on or off (the `features.nightMarch` setting). Returns the state it is in now. */
+  public toggleNightMarch(on?: boolean): boolean {
+    const next = on ?? !(this._nightMarch?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'nightMarch'], next);
+    setSetting(['features', 'nightMarch'], next);
+    EngineLogger.success('Symbol Engine', `Night March ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
+  /** Switch the Platoon Guide on or off (the `features.platoonGuide` setting). Returns the state it is in now. */
+  public togglePlatoonGuide(on?: boolean): boolean {
+    const next = on ?? !(this._platoonGuide?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'platoonGuide'], next);
+    setSetting(['features', 'platoonGuide'], next);
+    EngineLogger.success('Symbol Engine', `Platoon Guide ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
+  /** Switch the Movement Guide on or off (the `features.movementGuide` setting). Returns the state it is in now. */
+  public toggleMovementGuide(on?: boolean): boolean {
+    // On with its cards closed: a click opens the cards rather than switching it off.
+    if (on === undefined && this._movementGuide?.isEnabled && !this._movementGuide.isOpen) {
+      this._movementGuide.showCards(true);
+      return true;
+    }
+    const next = on ?? !(this._movementGuide?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'movementGuide'], next);
+    setSetting(['features', 'movementGuide'], next);
+    EngineLogger.success('Symbol Engine', `Movement Guide ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
   /**
    * Switch the Ground Guide on or off (Ctrl+G): the same as the `features.groundGuide` setting, applied here and
    * published on the settings bus so the Settings panel, the ⚙ widget and a host's own button stay in step. A toast
@@ -2322,6 +2519,24 @@ class SymbolEngine implements Evented {
         } else {
           this._groundGuide?.disable();
         }
+      } else if (feature === 'movementGuide') {
+        if (value) {
+          this._initMovementGuide(true);
+        } else {
+          this._movementGuide?.disable();
+        }
+      } else if (feature === 'nightMarch') {
+        if (value) {
+          this._initNightMarch(true);
+        } else {
+          this._nightMarch?.disable();
+        }
+      } else if (feature === 'platoonGuide') {
+        if (value) {
+          this._initPlatoonGuide(true);
+        } else {
+          this._platoonGuide?.disable();
+        }
       } else if (feature === 'contextMenu') {
         value
           ? this._contextMenuManager.enable()
@@ -2404,6 +2619,18 @@ class SymbolEngine implements Evented {
 
     if (fullPath.startsWith('groundGuide.') && this._groundGuide) {
       this._groundGuide.setOptions((settingsData as any).groundGuide ?? {});
+    }
+
+    if (fullPath.startsWith('movementGuide.') && this._movementGuide) {
+      this._movementGuide.setOptions((settingsData as any).movementGuide ?? {});
+    }
+
+    if (fullPath.startsWith('nightMarch.') && this._nightMarch) {
+      this._nightMarch.setOptions((settingsData as any).nightMarch ?? {});
+    }
+
+    if (fullPath.startsWith('platoonGuide.') && this._platoonGuide) {
+      this._platoonGuide.setOptions((settingsData as any).platoonGuide ?? {});
     }
 
     if (fullPath === 'features.analysisEngines') {
@@ -2784,6 +3011,7 @@ class SymbolEngine implements Evented {
     this._proximityEngine?.deactivate();
     this._drawingCueEngine?.deactivate();
     this._groundGuide?.deactivate();
+    this._platoonGuide?.deactivate();
   }
 
   /** Stop continuous creation mode and revert to single. No-op if already single. */
@@ -3000,10 +3228,12 @@ class SymbolEngine implements Evented {
         sketchVM.destroy();
         this._proximityEngine?.deactivate();
         this._groundGuide?.deactivate();
+        this._platoonGuide?.deactivate();
       }
       if (event.state === 'cancel') {
         this._proximityEngine?.deactivate();
         this._groundGuide?.deactivate();
+        this._platoonGuide?.deactivate();
       }
     });
   }
@@ -3319,6 +3549,7 @@ class SymbolEngine implements Evented {
       // Resolve the symbol's mobility profile and warm the terrain tiles so the
       // very first cursor move already has data (no-op when the guide is off).
       if (!isPassive) this._groundGuide?.prepareFor(amplifier.SIDC);
+      if (!isPassive) this._platoonGuide?.prepareFor(amplifier.SIDC);
 
       const reqSID = this.sidc.getSID();
       const coSIDC = this.sidc.getSIDC();

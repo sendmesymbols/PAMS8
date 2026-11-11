@@ -318,6 +318,10 @@ import DrawingCueEngine from '@lib/Engines/DrawingCueEngine';
 import EngineLogger, { type EngineLogEntry } from '../MS/Support/EngineLogger';
 import { roadDensityText } from '../MS/Engines/GroundGuide/GroundGuideRoadDensity';
 import { openGroundGuideSettings } from '../MS/Engines/GroundGuideSettingsWidget';
+import { openMovementGuideSettings } from '../MS/Engines/MovementGuideSettingsWidget';
+import { openPlatoonGuideSettings } from '../MS/Engines/PlatoonGuideSettingsWidget';
+import { openNightMarchSettings } from '../MS/Engines/NightMarchSettingsWidget';
+import { setSetting as setPlSetting } from '../MS/Support/SettingsBus';
 document.addEventListener('engine-log', (e: Event) => {
   const { engine, type, formatted } = (e as CustomEvent<EngineLogEntry>).detail;
   if (type === 'error') {
@@ -2280,6 +2284,130 @@ function buildDockFreehandStyle(container: HTMLElement): void {
   new MutationObserver(syncFace).observe(document.body, { childList: true });
 })();
 
+// ── Movement Guide toggle + settings gear (top bar) ──────────────────────
+// Platoon Guide: the button flips features.platoonGuide through symbolEngine.togglePlatoonGuide(); ⌖ flips
+// platoonGuide.hover on the settings bus; the gear opens the same settings as Ctrl+K → Platoon Guide.
+(function initPlatoonGuideToggle() {
+  const btn = document.getElementById('platoonGuideBtn');
+  const hover = document.getElementById('platoonGuideHoverBtn');
+  const gear = document.getElementById('platoonGuideSettingsBtn');
+  if (!btn) return;
+  const syncFace = () => {
+    const pg = (window as any).symbolEngine?.platoonGuide;
+    const on = !!pg?.isEnabled;
+    btn.classList.toggle('ms-btn-active', on);
+    btn.setAttribute('aria-pressed', String(on));
+    const h = on && !!pg?.options?.hover;
+    hover?.classList.toggle('ms-btn-active', h);
+    hover?.setAttribute('aria-pressed', String(h));
+  };
+  btn.addEventListener('click', () => {
+    (window as any).symbolEngine?.togglePlatoonGuide?.();
+    syncFace();
+  });
+  hover?.addEventListener('click', () => {
+    const se = (window as any).symbolEngine;
+    if (!se?.platoonGuide?.isEnabled) se?.togglePlatoonGuide?.(true);
+    const next = !(se?.platoonGuide?.options?.hover ?? false);
+    setPlSetting(['platoonGuide', 'hover'], next);
+    setTimeout(syncFace, 0);
+  });
+  window.addEventListener('settingsChanged', (e: any) => {
+    const p = e.detail?.fullPath ?? '';
+    if (p === 'features.platoonGuide' || p === 'platoonGuide.hover') setTimeout(syncFace, 0);
+  });
+  setTimeout(syncFace, 500);
+  if (gear) {
+    const isOpen = () => !!document.getElementById('platoon-guide-settings');
+    gear.addEventListener('click', () => {
+      if (isOpen()) openPlatoonGuideSettings().close();
+      else {
+        const r = gear.getBoundingClientRect();
+        openPlatoonGuideSettings({ anchor: { x: r.right - 340, y: r.bottom + 6 } });
+      }
+      gear.setAttribute('aria-expanded', String(isOpen()));
+    });
+    new MutationObserver(() => gear.setAttribute('aria-expanded', String(isOpen()))).observe(document.body, { childList: true });
+  }
+})();
+
+// Night March: 🌙 turns features.nightMarch on and starts a route (off when it is on and nothing is being drawn); ✎ draws
+// a new route; the gear opens the same settings as Ctrl+K → Night March.
+(function initNightMarchToggle() {
+  const btn = document.getElementById('nightMarchBtn');
+  const draw = document.getElementById('nightMarchDrawBtn');
+  const gear = document.getElementById('nightMarchSettingsBtn');
+  if (!btn) return;
+  const syncFace = () => {
+    const on = !!(window as any).symbolEngine?.nightMarch?.isEnabled;
+    btn.classList.toggle('ms-btn-active', on);
+    btn.setAttribute('aria-pressed', String(on));
+  };
+  const startRoute = () => {
+    const se = (window as any).symbolEngine;
+    if (!se?.nightMarch?.isEnabled) se?.toggleNightMarch?.(true);
+    se?.nightMarch?.startDraw?.();
+    syncFace();
+  };
+  btn.addEventListener('click', () => {
+    const se = (window as any).symbolEngine;
+    if (se?.nightMarch?.isEnabled) {
+      se.toggleNightMarch(false);
+      syncFace();
+    } else startRoute();
+  });
+  draw?.addEventListener('click', startRoute);
+  window.addEventListener('settingsChanged', (e: any) => {
+    if ((e.detail?.fullPath ?? '') === 'features.nightMarch') setTimeout(syncFace, 0);
+  });
+  setTimeout(syncFace, 500);
+  if (gear) {
+    const isOpen = () => !!document.getElementById('night-march-settings');
+    gear.addEventListener('click', () => {
+      if (isOpen()) openNightMarchSettings().close();
+      else {
+        const r = gear.getBoundingClientRect();
+        openNightMarchSettings({ anchor: { x: r.right - 340, y: r.bottom + 6 } });
+      }
+      gear.setAttribute('aria-expanded', String(isOpen()));
+    });
+    new MutationObserver(() => gear.setAttribute('aria-expanded', String(isOpen()))).observe(document.body, { childList: true });
+  }
+})();
+
+// The button flips features.movementGuide through symbolEngine.toggleMovementGuide() (which publishes it on the
+// settings bus); the face follows settings changed from Ctrl+K. The gear opens the Movement Guide settings widget.
+(function initMovementGuideToggle() {
+  const btn = document.getElementById('movementGuideBtn');
+  const gear = document.getElementById('movementGuideSettingsBtn');
+  if (!btn) return;
+  const syncFace = () => {
+    const on = !!(window as any).symbolEngine?.movementGuide?.isEnabled;
+    btn.classList.toggle('ms-btn-active', on);
+    btn.setAttribute('aria-pressed', String(on));
+  };
+  btn.addEventListener('click', () => {
+    (window as any).symbolEngine?.toggleMovementGuide?.();
+    syncFace();
+  });
+  window.addEventListener('settingsChanged', (e: any) => {
+    if (e.detail?.fullPath === 'features.movementGuide') setTimeout(syncFace, 0);
+  });
+  setTimeout(syncFace, 500);
+  if (gear) {
+    const isOpen = () => !!document.getElementById('movement-guide-settings');
+    gear.addEventListener('click', () => {
+      if (isOpen()) openMovementGuideSettings().close();
+      else {
+        const r = gear.getBoundingClientRect();
+        openMovementGuideSettings({ anchor: { x: r.right - 340, y: r.bottom + 6 } });
+      }
+      gear.setAttribute('aria-expanded', String(isOpen()));
+    });
+    new MutationObserver(() => gear.setAttribute('aria-expanded', String(isOpen()))).observe(document.body, { childList: true });
+  }
+})();
+
 // Clear All — removes every symbol/graphic. Irreversible (also wipes the undo
 // history), so confirm before wiping the map.
 document.getElementById('clearAllBtn')?.addEventListener('click', () => {
@@ -2439,6 +2567,23 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     const guide = (window as any).symbolEngine?.groundGuide;
     if (guide?.isActive) guide.showScope();
     else showToast('Turn on the Ground Guide first', 'no-targets');
+  });
+  // Gr Scope AOR scale: Shift+V, the AOR box, and the reading as text.
+  document.getElementById('ground-guide-aor')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (guide?.isActive) guide.setScopeScale();
+    else showToast('Turn on the Ground Guide first', 'no-targets');
+  });
+  document.getElementById('ground-guide-aor-box')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (guide?.isActive) guide.drawAorBox();
+    else showToast('Turn on the Ground Guide first', 'no-targets');
+  });
+  document.getElementById('ground-guide-aor-log')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    const text = guide?.aorText?.();
+    if (text) console.log(text);
+    else showToast(guide?.isActive ? 'No AOR reading yet: switch the rail to AOR (Shift+V)' : 'Turn on the Ground Guide first', 'no-targets');
   });
   // Important Tactical Ground (G): candidates round the map centre, and designating the best one as MITG.
   const itgAtCentre = async (): Promise<any[] | null> => {

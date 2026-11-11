@@ -25,6 +25,7 @@ import { modeIcon } from './GroundGuideLegend';
 import { arrowCompass, ensureNorthCss, pointerArrow, setNorthVar } from './GroundGuideNorth';
 import type { OcokaScopeIcon, OcokaScopeText, OcokaTab } from './GroundGuideOcokaView';
 import type { ScopeOcokaScene, XY } from './GroundGuideScopeOcoka';
+import { AOR_LAYERS, aorRailParts, type AorFrame, type AorLayer } from './GroundGuideScopeAor';
 import {
   GOING_GO,
   GOING_MARG,
@@ -119,6 +120,11 @@ export interface ScopeHandlers {
   toggle(open: boolean): void;
   /** A layer was switched from the legend: draw again. */
   redraw(): void;
+  /**
+   * A control of the AOR scale was used: `scale` (back to Spot), `layout:…`, `style:…`, `orient:…`, `src:…`, `box`
+   * (draw the AOR box), `sheet` (the approach sheets).
+   */
+  aor?(act: string): void;
   /** Docked again (shown, hidden, the map resized): what it covers may have changed. */
   moved?(): void;
 }
@@ -295,15 +301,23 @@ interface Store {
   layers: Record<ScopeLetter, boolean>;
   /** The OCOKA lens's own switches. */
   ocoka: Record<OcokaTab, boolean>;
+  /** The AOR scale's layer switches (its lines under the map). */
+  aor: Record<AorLayer, boolean>;
 }
 
 function loadStore(): Store {
-  const s: Store = { shown: false, layers: { G: true, R: true, O: true, T: true, B: true, C: true }, ocoka: { OO: true, OC: true, OX: true, OK: true, OA: true } };
+  const s: Store = {
+    shown: false,
+    layers: { G: true, R: true, O: true, T: true, B: true, C: true },
+    ocoka: { OO: true, OC: true, OX: true, OK: true, OA: true },
+    aor: { going: true, apch: true, line: true, itg: true, dml: true, msr: true },
+  };
   try {
     const v = JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}');
     if (typeof v.shown === 'boolean') s.shown = v.shown;
     for (const [k] of LETTERS) if (typeof v.layers?.[k] === 'boolean') s.layers[k] = v.layers[k];
     for (const [k] of OCOKA_ROWS) if (typeof v.ocoka?.[k] === 'boolean') s.ocoka[k] = v.ocoka[k];
+    for (const k of AOR_LAYERS) if (typeof v.aor?.[k] === 'boolean') s.aor[k] = v.aor[k];
   } catch {
     /* private window or blocked storage: the defaults */
   }
@@ -321,6 +335,8 @@ export class GroundGuideScope {
   private _side: 'right' | 'left' = 'right';
   private _tabOn = true;
   private _frame: ScopeFrame | null = null;
+  /** The AOR scale's last frame (null while the rail shows the Spot scale). */
+  private _aor: AorFrame | null = null;
   private _container: HTMLElement | null = null;
   private _pad = { top: 0, right: 0, bottom: 0, left: 0 };
   /** Room kept free above the rail at the top of the map (a host toolbar), px. */
@@ -406,10 +422,33 @@ export class GroundGuideScope {
     if (open) this._ensure();
     this._place();
     if (open && this._frame) this.render(this._frame);
+    else if (open && this._aor) this.renderAor(this._aor);
+  }
+
+  /** The AOR scale's layer switches, as the user left them. */
+  get aorLayers(): Readonly<Record<AorLayer, boolean>> {
+    return this._store.aor;
+  }
+
+  /**
+   * Draw the rail in its AOR scale (Shift+V): the area of ops read as an appreciation's Gr and Weather. The same frame,
+   * docking and keys as the Spot scale; its own parts (GroundGuideScopeAor).
+   */
+  renderAor(f: AorFrame): void {
+    this._aor = f;
+    this._frame = null;
+    if (!this._enabled || !this._store.shown) return;
+    const root = this._ensure();
+    root.style.setProperty('--ggsc-c', SURFACE.head);
+    root.style.setProperty('--ggsc-fg', TEXT.main);
+    const focus = (document.activeElement as HTMLElement | null)?.closest?.('.ms-ggsc') ? ((document.activeElement as HTMLElement).dataset.aorAct ?? (document.activeElement as HTMLElement).dataset.aorLayer) : undefined;
+    root.replaceChildren(...aorRailParts({ ...f, layers: { ...this._store.aor } }));
+    if (focus) (root.querySelector(`[data-aor-act="${focus}"],[data-aor-layer="${focus}"]`) as HTMLElement | null)?.focus();
   }
 
   render(f: ScopeFrame): void {
     this._frame = f;
+    this._aor = null;
     if (!this._enabled || !this._store.shown) return;
     const root = this._ensure();
     const v = f.verdict;
@@ -435,6 +474,7 @@ export class GroundGuideScope {
     this._root = null;
     this._tab = null;
     this._frame = null;
+    this._aor = null;
     this._enabled = false;
   }
 
@@ -459,6 +499,17 @@ export class GroundGuideScope {
       e.stopPropagation();
       const b = (e.target as HTMLElement).closest('button') as HTMLButtonElement | null;
       if (!b || !root.contains(b)) return;
+      const aorLayer = b.dataset.aorLayer as AorLayer | undefined;
+      if (aorLayer && aorLayer in this._store.aor) {
+        this._store.aor[aorLayer] = !this._store.aor[aorLayer];
+        this._save();
+        if (this._aor) this.renderAor(this._aor);
+        return;
+      }
+      if (b.dataset.aorAct) {
+        this._h.aor?.(b.dataset.aorAct);
+        return;
+      }
       const layer = b.dataset.layer;
       if (layer) {
         if (layer in this._store.ocoka) this._store.ocoka[layer as OcokaTab] = !this._store.ocoka[layer as OcokaTab];

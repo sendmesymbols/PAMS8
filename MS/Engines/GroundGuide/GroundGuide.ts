@@ -40,7 +40,7 @@ import { compileProfile, evaluateSamples, fmtDistance, setDistanceUnits, titleCa
 import { GroundGuideAuditPanel, type AuditPanelHandlers } from './GroundGuideAuditPanel';
 import { GroundGuideBadge, plainLabel } from './GroundGuideBadge';
 import { GroundGuideBoundary } from './GroundGuideBoundary';
-import { GroundGuideFeatures } from './GroundGuideFeatures';
+import { GroundGuideFeatures, tidyName } from './GroundGuideFeatures';
 import { GroundGuideRoads } from './GroundGuideRoads';
 import { roadDensityReading, type RoadDensityReading } from './GroundGuideRoadDensity';
 import { ROAD_DENSITY_LEADS, ROAD_DENSITY_STYLES } from './GroundGuideRoadDensityView';
@@ -106,6 +106,9 @@ import { GroundGuideThreat } from './GroundGuideThreat';
 import { catalogKey } from './GroundGuideSpeed';
 import type { GroundGuideLens, GroundGuideOcoka, OcokaMapPlan, OcokaMapSight, OcokaThreatMode } from './GroundGuideTypes';
 import { GroundGuideScope, type ScopeFrame, type ScopeSource } from './GroundGuideScope';
+import { aorInputKey, buildAorGrid, readAor, type AorClassTables, type AorInput, type AorReading, type AorSide } from './GroundGuideAor';
+import { aorText, type AorFrame } from './GroundGuideScopeAor';
+import { GroundGuideAorSheet } from './GroundGuideAorSheet';
 import { buildScopeScene, overCodes, scopeHalf, scopeLevel } from './GroundGuideScopeScene';
 import { scopeOcokaScene } from './GroundGuideScopeOcoka';
 import { GroundGuideLegend, type LegendState } from './GroundGuideLegend';
@@ -136,6 +139,7 @@ import {
   type GroundGuideNearest,
   type GroundGuideOptionIssue,
   type GroundGuideOptions,
+  type GroundGuideAorOptions,
   type GroundGuidePopulation,
   type GroundGuidePopulationCardStyle,
   type GroundGuidePopulationReading,
@@ -162,6 +166,12 @@ import {
 } from './TerrainTileCache';
 
 const ENGINE = 'Ground Guide';
+/**
+ * The AOR scale's echelon frame (when there are no bdys or box): width across the front, how far it reaches toward the
+ * threat and behind the MITG, metres. A proposal (basis E): the Bn's width is IBB's three coys up with room on the
+ * flanks; the user corrects.
+ */
+const AOR_FRAME = { coy: { w: 2000, fwd: 4000, rear: 800 }, bn: { w: 7000, fwd: 12000, rear: 3000 }, bde: { w: 14000, fwd: 18000, rear: 6000 } } as const;
 /** A symbol's weapon ranges from the catalogue: the `Rng` field of MS/Data/Symbols.json (see OcokaDoctrine.json for its basis codes). */
 const DEFAULT_RANGE_LOOKUP = (key: string): { rng: unknown; name?: string | null } | null => {
   const s = SymbolMetadataService.getByKey(key);
@@ -428,8 +438,26 @@ export default class GroundGuide {
       this._detail.setInset(ins.side, ins.px);
       this._badge.reflow();
       this._scopeUiPad();
+      if (this._aorSheet.isOpen && this._aorLast?.reading) this._aorSheet.update(this._aorLast.reading, this._aorLast, this._scope.rect, this._opts.scope.side);
     },
+    aor: (act) => this._aorAction(act),
   });
+  /** D in the AOR scale: the approach sheets beside the rail. */
+  private _aorSheet = new GroundGuideAorSheet(() => undefined);
+  /** The bundle's borders (boundaries.geojson: WB, LOC, international), Web Mercator; null until read, [] when the bundle has none. */
+  private _aorBorders: Array<{ name: string; xy: Float64Array }> | null = null;
+  private _aorBordersUrl = '';
+  /** The AOR reading for the inputs in `key`, and the class tables it reads with. */
+  private _aorMade: { key: string; reading: AorReading } | null = null;
+  private _aorTables: { rules: unknown; t: AorClassTables } | null = null;
+  private _aorWork: ReturnType<typeof setTimeout> | null = null;
+  private _aorWorkKey = '';
+  /** The MITG set through `setAorAnchor()`, Web Mercator; null lets the rail choose. */
+  private _aorAnchor: MercXY | null = null;
+  /** The last AOR frame drawn on the rail (for the sheets and Copy as Text). */
+  private _aorLast: AorFrame | null = null;
+  /** A box being dragged for the AOR (armed from the rail or `drawAorBox()`). */
+  private _aorBoxDrag: { handle: any; keyH: (e: KeyboardEvent) => void; div: HTMLDivElement | null; start: { x: number; y: number } | null } | null = null;
   /** The view's `ui.padding` before the rail widened it, to put back when the rail goes. */
   private _scopeUi: { view: any; orig: { top: number; right: number; bottom: number; left: number } } | null = null;
   private _scopeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -905,6 +933,30 @@ export default class GroundGuide {
       flag('ocoka.mapBetter', oc.mapBetter, (b) => (next.ocoka.mapBetter = b));
       pick('ocoka.overlay', oc.overlay, ['auto', 'view', 'threat', 'going'] as const, (x) => (next.ocoka.overlay = x));
     }
+    const ao = patch.aor;
+    next.aor = { ...prev.aor };
+    if (ao && typeof ao === 'object') {
+      flag('aor.keys', ao.keys, (b) => (next.aor.keys = b));
+      pick('aor.scale', ao.scale, ['spot', 'aor'] as const, (x) => (next.aor.scale = x));
+      pick('aor.layout', ao.layout, ['deductions', 'model', 'appreciation'] as const, (x) => (next.aor.layout = x));
+      pick('aor.style', ao.style, ['trace', 'dark'] as const, (x) => (next.aor.style = x));
+      pick('aor.orient', ao.orient, ['north', 'threat'] as const, (x) => (next.aor.orient = x));
+      pick('aor.source', ao.source, ['boundaries', 'box', 'echelon'] as const, (x) => (next.aor.source = x));
+      pick('aor.echelon', ao.echelon, ['auto', 'coy', 'bn', 'bde'] as const, (x) => (next.aor.echelon = x));
+      num('aor.leadKm', ao.leadKm, 0, 30, (n) => (next.aor.leadKm = n));
+      num('aor.corridorM', ao.corridorM, 0, 10000, (n) => (next.aor.corridorM = n), true);
+      if (ao.box !== undefined) {
+        const b = ao.box as unknown;
+        if (b === null) next.aor.box = null;
+        else if (Array.isArray(b) && b.length === 4 && b.every((n) => typeof n === 'number' && Number.isFinite(n)) && b[0] < b[2] && b[1] < b[3]) next.aor.box = [b[0], b[1], b[2], b[3]];
+        else bad('aor.box', b, 'must be [west, south, east, north] in degrees, or null');
+      }
+      if (ao.profile !== undefined) {
+        if (typeof ao.profile === 'string' && this._rules?.profiles?.[ao.profile] && ao.profile !== 'exempt') next.aor.profile = ao.profile as GroundGuideProfile;
+        else if (!this._rules && typeof ao.profile === 'string') next.aor.profile = ao.profile as GroundGuideProfile;
+        else bad('aor.profile', ao.profile, 'must be a mode of the bundle (tracked, wheeled, dismounted...)');
+      }
+    }
     this._reportIssues(issues);
     this._opts = next;
     setDistanceUnits(next.units);
@@ -953,6 +1005,14 @@ export default class GroundGuide {
     }
     if (JSON.stringify(next.scope) !== JSON.stringify(prev.scope)) this._syncScope();
     else if (next.units !== prev.units || next.nearThresholdM !== prev.nearThresholdM) this._scopeSoon(0, true);
+    if (JSON.stringify(next.aor) !== JSON.stringify(prev.aor)) {
+      if (next.aor.scale !== prev.aor.scale) {
+        this._syncThreat(); // the threat marker shows in the AOR scale too
+        if (next.aor.scale !== 'aor') this._aorSheet.close();
+        this._emit('ground-guide-scope', { open: this._scope.isShown, scale: next.aor.scale });
+      }
+      this._scopeSoon(0, true);
+    }
     if (next.bundleUrl !== prev.bundleUrl && this._enabled) {
       this._retryAttempt = 0;
       void this.configure();
@@ -1084,7 +1144,9 @@ export default class GroundGuide {
     this._scope.setShown(open);
     this._syncScope();
     if (open) this._scopeSoon(0, true);
-    this._emit('ground-guide-scope', { open: this._scope.isShown });
+    else this._aorSheet.close();
+    this._syncThreat();
+    this._emit('ground-guide-scope', { open: this._scope.isShown, scale: this._opts.aor.scale });
   }
 
   /**
@@ -1164,6 +1226,7 @@ export default class GroundGuide {
   /** Work out what the rail reads and draw it. */
   private _scopeRender(): void {
     if (!this._scope.isShown || !this.isActive || !this._manifest || !this._cache) return;
+    if (this._opts.aor.scale === 'aor') return this._aorRender();
     const view: any = this._getView?.();
     // What it reads: the symbol being placed, the selected symbol, the one just placed, the map centre.
     let source: ScopeSource;
@@ -1479,6 +1542,465 @@ export default class GroundGuide {
       console.error('[Ground Guide] Gr Scope OCOKA products', err);
       return r;
     }
+  }
+
+  // ── Gr Scope rail: the AOR scale (Shift+V) ───────────────────────────────────────────────────────────────────────────
+
+  /** The rail's scale: `spot` (the ground round one symbol) or `aor` (the area of ops read as an appreciation). */
+  get scopeScale(): 'spot' | 'aor' {
+    return this._opts.aor.scale;
+  }
+
+  /** Switch the rail between Spot and AOR (Shift+V; no argument toggles). The rail is shown if it was hidden. Kept in the settings. */
+  setScopeScale(scale: 'spot' | 'aor' = this._opts.aor.scale === 'aor' ? 'spot' : 'aor'): void {
+    this.setAor({ scale });
+    if (!this._scope.wanted) this.showScope(true);
+  }
+
+  /**
+   * Set any of the AOR scale's options (layout, style, orient, source, box, echelon, leadKm, corridorM, profile, keys,
+   * scale) at once; they are kept in the settings, and the rail redraws at once.
+   */
+  setAor(patch: Partial<GroundGuideAorOptions>): void {
+    this.setOptions({ aor: { ...this._opts.aor, ...patch } });
+    const now = this._opts.aor;
+    for (const k of Object.keys(patch) as Array<keyof GroundGuideAorOptions>) setSetting(['groundGuide', 'aor', k], now[k] as any);
+  }
+
+  /** The MITG the AOR is read for, overriding the rail's choice (a VG symbol, the selected or placed symbol, the map centre); null gives the choice back. */
+  setAorAnchor(point: any | null): void {
+    const ll = point === null ? null : this._lngLatOf(point);
+    this._aorAnchor = ll ? (lngLatToMercator(ll[0], ll[1]) as MercXY) : null;
+    this._scopeSoon(0, true);
+  }
+
+  /** The last AOR reading the rail drew (null before one), for hosts. Ground metres east / north of the MITG; see GroundGuideAor.ts. */
+  aorReading(): AorReading | null {
+    return this._aorLast?.reading ?? null;
+  }
+
+  /** The AOR reading as the appreciation paragraph (AprDf numbering), as Copy as Text gives it; null before a reading. */
+  aorText(): string | null {
+    const f = this._aorLast;
+    return f?.reading ? aorText(f.reading, f) : null;
+  }
+
+  /** Arm a box for the AOR: the next drag on the map draws it (the map does not pan); Esc cancels. Sets `aor.source: box`. */
+  drawAorBox(): void {
+    const view: any = this._getView?.();
+    if (!view?.on || !view.container) return;
+    this._aorBoxCancel();
+    const div = document.createElement('div');
+    div.style.cssText = 'position:absolute;display:none;border:2px dashed #1f4fb3;background:rgba(31,79,179,.10);pointer-events:none;z-index:40;box-sizing:border-box';
+    const host: HTMLElement = view.container;
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    host.appendChild(div);
+    const st: { handle: any; keyH: (e: KeyboardEvent) => void; div: HTMLDivElement | null; start: { x: number; y: number } | null } = { handle: null, keyH: () => undefined, div, start: null };
+    st.handle = view.on('drag', (e: any) => {
+      e.stopPropagation();
+      if (e.action === 'start') {
+        st.start = { x: e.x, y: e.y };
+        div.style.display = 'block';
+      }
+      if (!st.start) return;
+      const x0 = Math.min(st.start.x, e.x), y0 = Math.min(st.start.y, e.y);
+      div.style.left = `${x0}px`;
+      div.style.top = `${y0}px`;
+      div.style.width = `${Math.abs(e.x - st.start.x)}px`;
+      div.style.height = `${Math.abs(e.y - st.start.y)}px`;
+      if (e.action !== 'end') return;
+      const a = view.toMap?.({ x: st.start.x, y: st.start.y });
+      const b = view.toMap?.({ x: e.x, y: e.y });
+      this._aorBoxCancel();
+      if (!a || !b || typeof a.longitude !== 'number' || typeof b.longitude !== 'number') return;
+      const box: [number, number, number, number] = [Math.min(a.longitude, b.longitude), Math.min(a.latitude, b.latitude), Math.max(a.longitude, b.longitude), Math.max(a.latitude, b.latitude)];
+      if (box[2] - box[0] < 0.005 || box[3] - box[1] < 0.005) return this._badge.flash('Box too small for an AOR: drag again (Draw in the rail).', 2400);
+      this.setAor({ source: 'box', box });
+    });
+    st.keyH = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        this._aorBoxCancel();
+      }
+    };
+    document.addEventListener('keydown', st.keyH, true);
+    this._aorBoxDrag = st;
+    this._badge.flash('Drag on the map for the AOR box. Esc cancels.', 2600);
+  }
+
+  private _aorBoxCancel(): void {
+    const st = this._aorBoxDrag;
+    if (!st) return;
+    try {
+      st.handle?.remove?.();
+    } catch {
+      /* the view is gone */
+    }
+    document.removeEventListener('keydown', st.keyH, true);
+    st.div?.remove();
+    this._aorBoxDrag = null;
+  }
+
+  /** A control of the rail's AOR scale. */
+  private _aorAction(act: string): void {
+    const [k, v] = act.split(':');
+    if (k === 'scale') return this.setScopeScale('spot');
+    if (k === 'layout') return this.setAor({ layout: v as GroundGuideAorOptions['layout'] });
+    if (k === 'style') return this.setAor({ style: v as GroundGuideAorOptions['style'] });
+    if (k === 'orient') return this.setAor({ orient: v as GroundGuideAorOptions['orient'] });
+    if (k === 'src') {
+      this.setAor({ source: v as GroundGuideAorOptions['source'] });
+      if (v === 'box' && !this._opts.aor.box) this.drawAorBox();
+      return;
+    }
+    if (k === 'box') return this.drawAorBox();
+    if (k === 'sheet') this._toggleAorSheet(!this._aorSheet.isOpen, 'confirm');
+  }
+
+  /** D in the AOR scale: the approach sheets beside the rail. */
+  private _toggleAorSheet(open: boolean, tab?: string): void {
+    const f = this._aorLast;
+    if (!open || !f?.reading) return this._aorSheet.close();
+    this._aorSheet.open(f.reading, f, this._scope.rect, this._opts.scope.side, tab);
+  }
+
+  /** Per class code, how the AOR reads it, for a mode (built once per bundle and mode). */
+  private _aorClassTables(profile: GroundGuideProfile, going: CompiledProfile): AorClassTables {
+    const memo = this._aorTables;
+    if (memo && memo.rules === this._rules && (memo as any).profile === profile) return memo.t;
+    const kind = new Uint8Array(256), rank = new Uint8Array(256), cover = new Uint8Array(256), country = new Uint8Array(256);
+    const classes = (this._rules?.classes ?? {}) as Record<string, any>;
+    for (let c = 0; c < 256; c++) {
+      if (c === 255) continue;
+      const def = classes[String(c)];
+      const name = String((def && typeof def === 'object' ? def.name : def) ?? '').toLowerCase();
+      const linear = /^(canal|distributary|drain|embankment|bund|cutting|railway|wire|road_|bridge_|rail_bridge|foot_bridge|ford|stream_|nullah|irrigated_wire|wall_fence|level_crossing)/.test(name);
+      const artificial = /^(built_up|restricted|walled_orchard|orchard|graveyard|irrigated_cropland|cropland|industrial|airfield)/.test(name);
+      if (linear) kind[c] = 9;
+      else if (going.nogo[c]) kind[c] = artificial ? 2 : 1;
+      else if (going.caution[c]) kind[c] = artificial ? 4 : 3;
+      rank[c] = /^(bridge_|rail_bridge|foot_bridge|ford|level_crossing)/.test(name) ? 4 : going.nogo[c] ? 3 : going.caution[c] ? 2 : 1;
+      cover[c] = name === 'built_up' ? 1 : /tree|forest|orchard/.test(name) ? 2 : 0;
+      country[c] = /steep|moderate_slope|escarp|sloping/.test(name) ? 1 : /bare_desert|^sand|dunes|salt|rocky/.test(name) ? 2 : /^water_|wetland|riverbed|mangrove/.test(name) ? 3 : name === 'built_up' ? 4 : /canal|distributary|drain|irrigated/.test(name) ? 5 : name === 'cropland' ? 6 : 0;
+    }
+    const t: AorClassTables = { kind, rank, cover, country };
+    this._aorTables = Object.assign({ rules: this._rules as unknown, t }, { profile });
+    return t;
+  }
+
+  /** The bundle's borders (boundaries.geojson), read once per bundle; [] when it has none. Null while it loads. */
+  private _aorBorderLines(): Array<{ name: string; xy: Float64Array }> | null {
+    const url = this._opts.bundleUrl ? `${this._opts.bundleUrl}/boundaries.geojson` : '';
+    if (!url) return [];
+    if (this._aorBordersUrl === url) return this._aorBorders;
+    this._aorBordersUrl = url;
+    this._aorBorders = null;
+    void fetch(url, { cache: 'force-cache' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((fc) => {
+        if (this._aorBordersUrl !== url) return;
+        const out: Array<{ name: string; xy: Float64Array }> = [];
+        for (const f of fc?.features ?? []) {
+          const kind = String(f?.properties?.kind ?? '');
+          if (!kind || /province|corps/i.test(kind)) continue;
+          const g = f.geometry;
+          const parts: number[][][] = g?.type === 'LineString' ? [g.coordinates] : g?.type === 'MultiLineString' ? g.coordinates : [];
+          const name = String(f.properties?.name || (/line of control/i.test(kind) ? 'LOC' : 'Border'));
+          for (const part of parts) {
+            if (!Array.isArray(part) || part.length < 2) continue;
+            const xy = new Float64Array(part.length * 2);
+            part.forEach((c, i) => {
+              const m = lngLatToMercator(c[0], c[1]);
+              xy[i * 2] = m[0];
+              xy[i * 2 + 1] = m[1];
+            });
+            out.push({ name: name.replace(/\s*Border$/i, ' border'), xy });
+          }
+        }
+        this._aorBorders = out;
+        this._scopeSoon(0, true);
+      })
+      .catch(() => {
+        if (this._aorBordersUrl === url) this._aorBorders = [];
+      });
+    return null;
+  }
+
+  /** The VG (Vital Gr, MITG) symbol nearest the view's centre, Web Mercator; null when there is none on the map. */
+  private _aorVitalGround(near: MercXY): { at: MercXY; name: string | null } | null {
+    let best: { at: MercXY; name: string | null } | null = null, bd = Infinity;
+    for (const g of this._placedGraphics()) {
+      const s = normaliseSidc(graphicSidc(g));
+      if (!s || s.length !== 20 || s.substring(4, 6) !== '25' || s.substring(10, 16) !== '242301') continue;
+      const shape = toMercatorShape(g.geometry);
+      const pts = shape?.parts.flat() ?? [];
+      if (!pts.length) continue;
+      const c: MercXY = [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+      const d = Math.hypot(c[0] - near[0], c[1] - near[1]);
+      if (d < bd) {
+        bd = d;
+        const de = g.attributes?.drawEssentials;
+        const nm = de?.AMPLIFIER?.UNIQUE_DESIG || de?.AMPLIFIER?.T || null;
+        best = { at: c, name: typeof nm === 'string' && nm.trim() ? nm.trim() : null };
+      }
+    }
+    return best;
+  }
+
+  /**
+   * The AOR's outline in Web Mercator for the source asked for, with the source used and why it fell back: Boundary
+   * symbols either side of the MITG, the dragged box, or the echelon's frame facing the threat.
+   */
+  private _aorOutline(at: MercXY, faceDeg: number, ech: 'coy' | 'bn' | 'bde'): { ring: MercXY[]; used: GroundGuideAorOptions['source']; note: string | null } {
+    const o = this._opts.aor;
+    const k = Math.cosh(at[1] / 6378137);
+    const th = (faceDeg * Math.PI) / 180;
+    const F: MercXY = [Math.sin(th), Math.cos(th)], R: MercXY = [Math.cos(th), -Math.sin(th)];
+    const toM = (u: number, v: number): MercXY => [at[0] + (u * F[0] + v * R[0]) * k, at[1] + (u * F[1] + v * R[1]) * k];
+    const uv = (p: MercXY): [number, number] => {
+      const dx = (p[0] - at[0]) / k, dy = (p[1] - at[1]) / k;
+      return [dx * F[0] + dy * F[1], dx * R[0] + dy * R[1]];
+    };
+    const fr = AOR_FRAME[ech];
+    const frame = (): MercXY[] => [toM(-fr.rear, -fr.w / 2), toM(fr.fwd, -fr.w / 2), toM(fr.fwd, fr.w / 2), toM(-fr.rear, fr.w / 2)];
+    if (o.source === 'box') {
+      if (!o.box) return { ring: frame(), used: 'echelon', note: 'No box yet: Draw' };
+      const [w, s, e, n] = o.box;
+      return { ring: [lngLatToMercator(w, s), lngLatToMercator(w, n), lngLatToMercator(e, n), lngLatToMercator(e, s)] as MercXY[], used: 'box', note: null };
+    }
+    if (o.source === 'boundaries') {
+      // Boundary lines (2525D set 25, entity 110100) within reach; the nearest on each side of the axis.
+      let left: Array<[number, number]> | null = null, right: Array<[number, number]> | null = null, ld = Infinity, rd = Infinity;
+      for (const g of this._placedGraphics()) {
+        const s = normaliseSidc(graphicSidc(g));
+        if (!s || s.length !== 20 || s.substring(4, 6) !== '25' || s.substring(10, 16) !== '110100') continue;
+        const shape = toMercatorShape(g.geometry);
+        if (!shape) continue;
+        const pts: Array<[number, number]> = [];
+        for (const part of shape.parts)
+          for (let i = 0; i + 1 < part.length; i++) {
+            const a = uv(part[i]), b = uv(part[i + 1]);
+            const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 200));
+            for (let j = 0; j <= n; j++) pts.push([a[0] + ((b[0] - a[0]) * j) / n, a[1] + ((b[1] - a[1]) * j) / n]);
+          }
+        const inside = pts.filter((p) => p[0] >= -fr.rear && p[0] <= fr.fwd);
+        if (inside.length < 2) continue;
+        const near = inside.reduce((m, p) => (Math.abs(p[1]) < Math.abs(m[1]) ? p : m));
+        if (Math.abs(near[1]) > 15000) continue;
+        if (near[1] < 0 && -near[1] < ld) ((ld = -near[1]), (left = inside));
+        if (near[1] > 0 && near[1] < rd) ((rd = near[1]), (right = inside));
+      }
+      if (!left || !right) return { ring: frame(), used: 'echelon', note: 'Bdys: need one each side' };
+      const L2 = [...left].sort((a, b) => a[0] - b[0]);
+      const R2 = [...right].sort((a, b) => b[0] - a[0]);
+      return { ring: [...L2, ...R2].map((p) => toM(p[0], p[1])), used: 'boundaries', note: null };
+    }
+    return { ring: frame(), used: 'echelon', note: null };
+  }
+
+  /** Read and draw the rail's AOR scale: the anchor and threat, the outline, the grid and features, then the reading (worked out once per AOR, off the frame). */
+  private _aorRender(): void {
+    const m = this._manifest, cache = this._cache;
+    if (!m || !cache) return;
+    const view: any = this._getView?.();
+    const o = this._opts.aor;
+    // The MITG: set by the API, else a VG symbol on the map, else the selected or placed symbol, else the map centre.
+    const centreShape = view?.center ? toMercatorShape(view.center) : null;
+    const vc = centreShape?.parts[0]?.[0] ?? null;
+    let anchor: MercXY | null = this._aorAnchor;
+    let anchorName: string | null = null;
+    let sidc: string | null = null;
+    if (!anchor && vc) {
+      const vg = this._aorVitalGround(vc);
+      if (vg) ((anchor = vg.at), (anchorName = vg.name));
+    }
+    const g0 = !anchor ? (this._scopeSelected?.geometry ? this._scopeSelected : this._scopePlaced?.graphic?.geometry ? this._scopePlaced.graphic : null) : null;
+    if (g0) {
+      const pts = toMercatorShape(g0.geometry)?.parts.flat() ?? [];
+      if (pts.length) anchor = [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+      sidc = graphicSidc(g0);
+    }
+    if (!anchor) anchor = vc;
+    if (!anchor) return;
+    // Snap to 250 m so a small pan of the map centre does not read a new AOR.
+    const kA = Math.cosh(anchor[1] / 6378137);
+    const snap = 250 * kA;
+    if (!this._aorAnchor && !g0) anchor = [Math.round(anchor[0] / snap) * snap, Math.round(anchor[1] / snap) * snap];
+    const code = echelonCodeOf(sidc);
+    const ech: 'coy' | 'bn' | 'bde' = o.echelon !== 'auto' ? o.echelon : !code ? 'bn' : Number(code) <= 15 ? 'coy' : Number(code) <= 17 ? 'bn' : 'bde';
+    // The threat: a place on the map, else a bearing (set, or the unit's front).
+    const oc = this._opts.ocoka;
+    const tAt = this._threatMerc();
+    let face = oc.threat === 'bearing' ? oc.bearingDeg : this._opts.footprint.bearingDeg;
+    if (tAt) face = ((Math.atan2(tAt[0] - anchor[0], tAt[1] - anchor[1]) * 180) / Math.PI + 360) % 360;
+    const { ring, used, note } = this._aorOutline(anchor, face, ech);
+    // Where the approaches start: forward of the AOR's front, across its width (or round the threat's place).
+    const th = (face * Math.PI) / 180;
+    const F: MercXY = [Math.sin(th), Math.cos(th)], R: MercXY = [Math.cos(th), -Math.sin(th)];
+    const uv = (p: MercXY): [number, number] => {
+      const dx = (p[0] - anchor![0]) / kA, dy = (p[1] - anchor![1]) / kA;
+      return [dx * F[0] + dy * F[1], dx * R[0] + dy * R[1]];
+    };
+    const toM = (u: number, v: number): MercXY => [anchor![0] + (u * F[0] + v * R[0]) * kA, anchor![1] + (u * F[1] + v * R[1]) * kA];
+    let uFront = -Infinity, vMin = Infinity, vMax = -Infinity;
+    for (const p of ring) {
+      const [u, v] = uv(p);
+      uFront = Math.max(uFront, u);
+      vMin = Math.min(vMin, v);
+      vMax = Math.max(vMax, v);
+    }
+    const wv = Math.max(600, vMax - vMin);
+    let origins: AorInput['origins'];
+    if (tAt) {
+      const [ut, vt] = uv(tAt);
+      const u0 = Math.max(uFront + 1000, ut);
+      const vc2 = Math.min(vMax, Math.max(vMin, vt));
+      origins = (['Lt', 'Cen', 'Rt'] as AorSide[]).map((side, i) => ({ side, at: toM(u0, vc2 + ((i - 1) * wv) / 3) }));
+    } else {
+      const u0 = uFront + o.leadKm * 1000;
+      origins = (['Lt', 'Cen', 'Rt'] as AorSide[]).map((side, i) => ({ side, at: toM(u0, vMin + (wv * (1 + 2 * i)) / 6) }));
+    }
+    const corridorM = o.corridorM || { coy: 1000, bn: 2000, bde: 4000 }[ech];
+    const frontLimit = { coy: { m: 2000, label: 'a Coy' }, bn: { m: 6500, label: 'Bn 3 coys up' }, bde: { m: 12000, label: 'a Bde' } }[ech];
+    const profile = (this._rules?.profiles?.[o.profile] ? o.profile : 'tracked') as GroundGuideProfile;
+    const month = resolveMonth(this._opts.going.month);
+    const frame: AorFrame = {
+      reading: null,
+      layout: o.layout,
+      style: o.style,
+      orient: o.orient,
+      layers: { ...this._scope.aorLayers },
+      northDeg: this._north,
+      source: o.source,
+      used,
+      note,
+      echelon: { coy: 'Coy', bn: 'Bn', bde: 'Bde' }[ech],
+      profileLabel: this._rules?.profiles?.[profile]?.label?.replace(/ Vehicle$/, '') ?? profile,
+      when: monthName(month),
+      season: 'dry',
+      month: monthName(month),
+      loading: true,
+      keys: { detail: o.keys && !this._touchInput },
+    };
+    const mitg = { at: anchor, name: anchorName };
+    const key = `${aorInputKey({ outline: ring, faceDeg: face, mitg, origins, corridorM, source: used })}|${profile}|${this._opts.bundleUrl}`;
+    const made = this._aorMade;
+    if (made && made.key === key && !made.reading.pending) {
+      frame.reading = made.reading;
+      frame.loading = false;
+      return this._aorShow(frame);
+    }
+    // The grid: the bundle's finest class tiles over the AOR and the starts, a cell of 1 to 4 tile pixels (a canal stays a line).
+    const going = this._profile(profile);
+    const tables = this._aorClassTables(profile, going);
+    const z = m.zoom.max, ts = m.tileSize;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of [...ring, ...origins.map((q) => q.at), anchor]) {
+      const [px, py] = mercToPx(p[0], p[1], z, ts);
+      x0 = Math.min(x0, px);
+      y0 = Math.min(y0, py);
+      x1 = Math.max(x1, px);
+      y1 = Math.max(y1, py);
+    }
+    const lat = mercatorToLngLat(anchor[0], anchor[1])[1];
+    const padPx = 2000 / mPerPx(lat, z, ts);
+    x0 -= padPx;
+    y0 -= padPx;
+    x1 += padPx;
+    y1 += padPx;
+    const f = Math.max(1, Math.ceil(Math.max(x1 - x0, y1 - y0) / 480));
+    const { cls } = this._layerNames(profile);
+    const n = 2 ** z;
+    for (let ty = Math.max(0, Math.floor(y0 / ts)); ty <= Math.min(n - 1, Math.floor(y1 / ts)); ty++)
+      for (let tx = Math.max(0, Math.floor(x0 / ts)); tx <= Math.min(n - 1, Math.floor(x1 / ts)); tx++) cache.request(cls, z, tx, ty);
+    const grid = buildAorGrid((layer, x, y) => cache.peek(layer, z, x, y), cls, z, ts, lat, x0, y0, x1, y1, f, tables.rank);
+    // Features over the same ground, and the borders.
+    const cMerc: MercXY = [(ring.reduce((a, p) => a + p[0], 0) + anchor[0]) / (ring.length + 1), (ring.reduce((a, p) => a + p[1], 0) + anchor[1]) / (ring.length + 1)];
+    let radiusM = 0;
+    for (const p of [...ring, ...origins.map((q) => q.at)]) radiusM = Math.max(radiusM, Math.hypot(p[0] - cMerc[0], p[1] - cMerc[1]) / kA);
+    radiusM += 2500;
+    const feats = this._features?.sceneNear(cMerc, radiusM) ?? { points: [], lines: [], pending: false };
+    const borders = this._aorBorderLines();
+    if (grid.g.pending || feats.pending || borders === null) {
+      // Still on its way: the last reading of this AOR, else "reading".
+      if (made && made.key === key) frame.reading = made.reading;
+      return this._aorShow(frame);
+    }
+    if (this._aorWorkKey === key && this._aorWork !== null) return this._aorShow(frame); // already being worked out
+    const PLACE = new Set(['city', 'district_hq', 'town', 'village_imp', 'village']);
+    const BRIDGE = new Set(['bridge', 'bridge_iron', 'boat_bridge', 'viaduct']);
+    const places: AorInput['places'] = [];
+    const bridges: AorInput['bridges'] = [];
+    const itg: AorInput['itg'] = [];
+    for (const p of feats.points) {
+      if (PLACE.has(p.key)) {
+        const name = tidyName(p.a.n);
+        const ppl = Number(p.a.wp ?? p.a.p);
+        if (name) places.push({ name, at: [p.x, p.y], people: Number.isFinite(ppl) ? ppl : 0 });
+      } else if (BRIDGE.has(p.key)) bridges.push({ at: [p.x, p.y], classed: p.a.c !== undefined && p.a.c !== null && p.a.c !== '' });
+      if ((p.a.it === 1 || p.a.it === 2) && typeof p.a.ig === 'string') itg.push({ at: [p.x, p.y], reason: p.a.ig });
+    }
+    const lines: AorInput['lines'] = feats.lines.filter((l) => l.key === 'road' || l.key === 'canal' || l.key === 'river' || l.key === 'railway' || l.key === 'ridgeline').map((l) => ({ name: tidyName(l.a.n), key: l.key, xy: l.xy, a: l.a }));
+    // Borders: only the stretch near the AOR.
+    const bx0 = cMerc[0] - radiusM * kA, bx1 = cMerc[0] + radiusM * kA, by0 = cMerc[1] - radiusM * kA, by1 = cMerc[1] + radiusM * kA;
+    const near: AorInput['borders'] = [];
+    for (const b of borders) {
+      let run: number[] = [];
+      const flush = () => {
+        if (run.length >= 4) near.push({ name: b.name, xy: Float64Array.from(run) });
+        run = [];
+      };
+      for (let i = 0; i + 1 < b.xy.length; i += 2) {
+        const x = b.xy[i], y = b.xy[i + 1];
+        if (x >= bx0 && x <= bx1 && y >= by0 && y <= by1) run.push(x, y);
+        else flush();
+      }
+      flush();
+    }
+    const input: AorInput = {
+      grid,
+      going,
+      tables,
+      outline: ring,
+      source: used,
+      faceDeg: face,
+      mitg,
+      origins,
+      originsAssumed: !tAt,
+      corridorM,
+      frontLimit,
+      borders: near,
+      places,
+      lines,
+      bridges,
+      itg,
+    };
+    // Worked out off the frame: "reading" shows first, then the answer.
+    this._aorWorkKey = key;
+    if (this._aorWork !== null) clearTimeout(this._aorWork);
+    this._aorWork = setTimeout(() => {
+      this._aorWork = null;
+      try {
+        const reading = readAor(input);
+        this._aorMade = { key, reading };
+        EngineLogger.success(ENGINE, `Gr Scope AOR: ${reading.apchs.length} apchs, ${reading.lines.length} lines, ${reading.ms} ms`);
+        this._emit('ground-guide-aor', { reading });
+      } catch (err) {
+        console.error('[Ground Guide] AOR reading', err);
+        this._aorMade = null;
+      }
+      this._aorWorkKey = '';
+      this._scopeSoon(0, true);
+    }, 260);
+    if (made && made.key === key) frame.reading = made.reading;
+    this._aorShow(frame);
+  }
+
+  private _aorShow(frame: AorFrame): void {
+    this._aorLast = frame;
+    this._scope.renderAor(frame);
+    if (this._aorSheet.isOpen) this._aorSheet.update(frame.reading, frame, this._scope.rect, this._opts.scope.side);
   }
 
   /** Verdict for the live cursor position, flagged when the snap key could improve it. */
@@ -2340,6 +2862,12 @@ export default class GroundGuide {
     this._scopeUiPad(); // the rail is gone: the host's UI padding goes back
     this._scopeSelected = null;
     this._scopePlaced = null;
+    if (this._aorWork !== null) clearTimeout(this._aorWork);
+    this._aorWork = null;
+    this._aorBoxCancel();
+    this._aorSheet.destroy();
+    this._aorMade = null;
+    this._aorLast = null;
   }
 
   // ── Queries ──────────────────────────────────────────────────────────────
@@ -3830,7 +4358,9 @@ export default class GroundGuide {
   /** Show, hide and place the threat marker: on while the guide is on with a bundle, the lens is OCOKA and `ocoka.marker` is set. */
   private _syncThreat(): void {
     const o = this._opts.ocoka;
-    if (!(this._enabled && this._manifest !== null && this._opts.mode !== 'off' && o.lens === 'ocoka' && o.marker)) {
+    // The marker shows in the OCOKA lens, and while the rail reads an AOR (the approaches come from the threat's side).
+    const aor = this._opts.aor.scale === 'aor' && this._scope.isShown;
+    if (!(this._enabled && this._manifest !== null && this._opts.mode !== 'off' && (o.lens === 'ocoka' || aor) && o.marker)) {
       this._threat.hide();
       return;
     }
@@ -4954,7 +5484,26 @@ export default class GroundGuide {
       // free in the app; Ctrl+V stays paste (modifiers return above).
       if (!this._opts.scope.enabled || !this.isActive) return;
       e.preventDefault();
+      if (e.shiftKey && this._opts.aor.keys) {
+        // Shift+V switches the rail between Spot and AOR (user, 2026-11-11), showing it if it was hidden.
+        this.setScopeScale();
+        this._badge.flash(this._opts.aor.scale === 'aor' ? 'Gr Scope: AOR. Shift+V for Spot, D for the apch sheets.' : 'Gr Scope: Spot. Shift+V for AOR.', 1800);
+        return;
+      }
       this.showScope(!this._scope.wanted);
+      return;
+    }
+    if (k === 'escape' && this._aorSheet.isOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      this._aorSheet.close();
+      return;
+    }
+    if (k === 'd' && this._opts.aor.keys && this._opts.aor.scale === 'aor' && this._scope.isShown) {
+      // D in the AOR scale opens the approach sheets beside the rail (the letters still open the Ground Detail's tabs).
+      e.preventDefault();
+      this._toggleAorSheet(!this._aorSheet.isOpen);
       return;
     }
     if (k === 'escape') {

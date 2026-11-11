@@ -1,5 +1,7 @@
-1. Mobility (the base for everything else)
+**1. Mobility (the base for everything else)**
+
    Product	Decision it settles	Built from
+
    Combined obstacle overlay per mover and season	Where armour, wheels and foot can and cannot go, dry and after rain	class, dist_*, rci_dry/wet, wet
    Mobility corridors sized by echelon	Whether a coy, bn or bde frontage fits through this ground, and where it narrows	dist_* + frontage table
    Load-class route from A to B	Which route carries Al-Khalid or a transporter, and which bridges block it	network (load, width, crossings)

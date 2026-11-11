@@ -1,0 +1,71 @@
+{
+  "name": "Night march chart rules",
+  "version": 1,
+  "note": "Figures the Night March chart (MS/Engines/NightMarch) reads: the approach by night from the start point (SP) to the forming-up place (FUP), its legs on compass bearings and counted paces, the FUP and start line (SL) marking layout and the timings back from H hour. Each block carries a basis: R = a rule written in OCOKA_Roadmap.md from the Pakistan Army pamphlets (IC / IBB; cite the page before relying on it), E = an estimate or proposal by the developer, to be corrected by the user. Distances in ground metres, times in minutes. The legs' times by ground and slope, their landmarks and the skylines come from the Platoon Guide's patrol route card (PlatoonDoctrine.json `patrol`), so those rules live in one place.",
+  "basisCodes": {
+    "R": "rule from OCOKA_Roadmap.md (pamphlet figure, page to be cited)",
+    "E": "estimate / proposal, for the user to correct"
+  },
+  "pace": {
+    "basis": "R",
+    "rule": "120 paces = 100 m.",
+    "pacesPer100m": 120,
+    "beadM": 100,
+    "note": "Each bead or knot on the pace cord is 100 m. Every man's pace is his own: check it on the night ground before the march."
+  },
+  "legs": {
+    "basis": "E",
+    "rule": "Legs end on features recognisable at night (R); a long leg without a check is where a column drifts off its bearing (E).",
+    "legMaxM": 1000,
+    "checkEveryM": 650,
+    "minLegM": 50,
+    "landmarkM": 150,
+    "driftDegPer1000m": 3,
+    "note": "Drift: a compass march by night holds its bearing to about 3 degrees; over 1000 m that is about 50 m off. Check points every 650 m (the patrol bound)."
+  },
+  "speed": {
+    "basis": "R",
+    "rule": "March table: plains 4 / 3 km/h day / night, desert 3 / 2.5, mountain ascent 2 / 1; halts 15-20 min after 2 h.",
+    "nightKmh": { "plains": 3, "desert": 2.5, "mountain": 1 },
+    "haltEveryMin": 120,
+    "haltMin": 15,
+    "spareFactor": 0.15,
+    "spareNote": "E: 15% added to the march time for checks, drift and a column closing up; leave earlier rather than late."
+  },
+  "fup": {
+    "basis": "R",
+    "rule": "FUP and start line: unobserved, home side of the minefield, no change of direction inside; start line a linear feature square to the axis, never behind an obstacle. Night attack: FUP at least 1000-1200 m from the objective in plains; tank FUP 2500-3000 m.",
+    "minM": 1000,
+    "wantM": 1200,
+    "tankMinM": 2500,
+    "tankWantM": 3000,
+    "approachMaxDeg": 60,
+    "slFeatureM": 60,
+    "slFeatureMaxDeg": 20,
+    "slFeatureKinds": ["road", "track", "rail", "railway", "bund", "embankment", "wall_fence", "power_line"],
+    "slObstacleM": 300
+  },
+  "sights": {
+    "basis": "R",
+    "rule": "Enemy night sights reach 1000-1200 m, thermal 3000-4000 m.",
+    "nightM": 1200,
+    "thermalM": 4000,
+    "thermalNearM": 3000
+  },
+  "layout": {
+    "basis": "E",
+    "note": "FUP size and the places in it: a proposal (two up, one or two back), to be corrected. Front = the start line's length.",
+    "platoon": { "frontM": 100, "depthM": 60, "fupMin": 10, "slots": [["1 Sec", 0, 0], ["2 Sec", 1, 0], ["3 Sec", 0.5, 1], ["Pl HQ", 0.5, 0.55]] },
+    "company": { "frontM": 200, "depthM": 120, "fupMin": 20, "slots": [["1 Pl", 0, 0], ["2 Pl", 1, 0], ["3 Pl", 0.5, 1], ["Coy HQ", 0.5, 0.55]] },
+    "battalion": { "frontM": 450, "depthM": 300, "fupMin": 30, "slots": [["A Coy", 0, 0], ["B Coy", 1, 0], ["C Coy", 0, 1], ["D Coy", 1, 1], ["Tac HQ", 0.5, 0.5]] }
+  },
+  "marking": {
+    "basis": "E",
+    "note": "How the marking party lays the route and the FUP: a proposal. Lights shaded so they show only to the rear (own side).",
+    "routeLightM": 200,
+    "axisTapeM": 100,
+    "tapeRollM": 100,
+    "lightsAt": ["each turn", "every routeLightM in the open", "the FUP entry", "both ends of the SL", "the FUP's rear corners", "the far end of the axis tape"],
+    "guidesAt": ["the SP", "each turn", "the FUP entry", "each sub-unit's place in the FUP"]
+  }
+}

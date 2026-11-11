@@ -789,7 +789,9 @@ class TileWriter:
                  "attrs": {"n": "name", "e": "elevation (m)", "p": "population", "d": "district", "h": "tehsil",
                            "c": "load class code / country / category", "r": "road number", "t": "type",
                            "w": "width (m)", "k": "load-class tier (route codebook)", "m": "main supply route",
-                           "dp": "depth (m)", "b": "bank height (m)", "g": "gauge", "s": "surface / structure / size",
+                           "dp": "depth (m)", "b": "bank height (m)",
+                           "bl": "left bank height (m), looking along the line as drawn",
+                           "br": "right bank height (m), looking along the line as drawn", "g": "gauge", "s": "surface / structure / size",
                            "rw": "runway size", "rd": "runway direction", "rv": "river", "f": "formation",
                            "x": "seasonal / temporary closure as recorded (e.g. Jun-Oct, Snow)", "cn": "recorded road condition",
                            "sl": "landslide sites on the road segment", f"wp": f"estimated population (WorldPop {WORLDPOP_YEAR}, share nearest this place)",
@@ -1766,10 +1768,13 @@ def features(gdb: Path, grid: dict, rules: dict, out: Path) -> None:
     for i, geom in enumerate(gs):
         if geom is None:
             continue
-        bank = max([b for b in (parse_width_m(f["RIGHTBANKH"][i]), parse_width_m(f["LEFTBANKHT"][i])) if b] or [0]) or None
+        # 2026-11-11: both banks kept (the water obstacle classifier needs home vs far bank); b stays the higher one.
+        # Right / left as the sheet records them, i.e. looking along the line as drawn (downstream on the NCGDB).
+        br, bl = parse_width_m(f["RIGHTBANKH"][i]), parse_width_m(f["LEFTBANKHT"][i])
+        bank = max([b for b in (br, bl) if b] or [0]) or None
         tw.line("canal", shapely.simplify(geom, tol), {"n": _clean(f["NAME"][i]), "t": _clean(f["TYPE_OF_CA"][i]),
                                                         "w": parse_width_m(f["WIDTH_M"][i]), "dp": parse_width_m(f["DEPTH_M"][i]),
-                                                        "b": bank, "s": _clean(f["CATEGORY"][i])})
+                                                        "b": bank, "bl": bl, "br": br, "s": _clean(f["CATEGORY"][i])})
     gs, f = _read(g, "RiverLine_Pakmap", ["NAME", "TYPE_OF_RI", "CONDITION", "WIDTH_m"])
     for i, geom in enumerate(gs):
         if geom is None or not _clean(f["NAME"][i]):

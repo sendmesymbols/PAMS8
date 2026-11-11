@@ -210,6 +210,46 @@ export class GroundGuideRoads {
   }
 
   /**
+   * The edges (their full line, Web Mercator x, y pairs) whose box comes within `radiusM` of a point, with the same
+   * attributes `roadsNear` gives; one entry per edge, not merged. For readers that walk the roads themselves (the
+   * Platoon Guide's danger scan on the roads round a point, 2026-11-11). Reads only tiles in memory.
+   */
+  edgesNear(at: MercXY, radiusM: number): { list: Array<{ xy: Float64Array; attrs: Record<string, unknown> }>; pending: boolean } {
+    const pending = !this.request(at, radiusM);
+    const lat = 2 * Math.atan(Math.exp(at[1] / EARTH_R)) - Math.PI / 2;
+    const r = radiusM / Math.max(Math.cos(lat), 0.2);
+    const names = this._names ?? [];
+    const seen = new Set<number>();
+    const list: Array<{ xy: Float64Array; attrs: Record<string, unknown> }> = [];
+    for (const [x, y] of this._tilesAround(at, radiusM)) {
+      const t = this._tiles.get(`${x}/${y}`);
+      if (!t) continue;
+      const { box, xy, start } = t;
+      for (let i = 0; i < t.n; i++) {
+        const b = i * 4;
+        if (box[b] > at[0] + r || box[b + 2] < at[0] - r || box[b + 1] > at[1] + r || box[b + 3] < at[1] - r) continue;
+        if (seen.has(t.edge[i])) continue;
+        seen.add(t.edge[i]);
+        const clazz = t.clazz[i], load = t.load[i], f = t.flags[i];
+        list.push({
+          xy: xy.slice(2 * start[i], 2 * start[i + 1]),
+          attrs: {
+            n: names[t.name[i]] || undefined,
+            r: names[t.rno[i]] || undefined,
+            t: CLAZZ[clazz] ?? 'road',
+            c: load ? String(load) : undefined,
+            aw: !(f & F_FAIR) && !UNMETALLED.has(clazz),
+            m: f & F_MSR ? 1 : 0,
+            e: t.edge[i],
+            src: 'network',
+          },
+        });
+      }
+    }
+    return { list, pending };
+  }
+
+  /**
    * Road network density within `radiusM` of a point (GROTBC R, Road Connectivity): kilometres of road and track
    * inside the circle, split all-weather / fair-weather, MSR and tankable, and the ways out (where roads cross the
    * circle). Each edge is clipped to the circle exactly. Counts the roads these tiles hold: residential, service and

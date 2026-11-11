@@ -66,6 +66,7 @@ export interface KeyboardShortcutDeps {
  *
  * Ground Guide keys, handled by GroundGuide itself while the guide is on (not routed here):
  *   V           Gr Scope rail: show / hide the side window with the ground round the symbol (any time)
+ *   Shift+V     Gr Scope rail: Spot / AOR scale (the area of ops as an appreciation); D its approach sheets
  *   D           Ground Detail; G R O T B C its tabs, K its Legend, Esc closes it
  *   S P H       While drawing: Quick Fix to clear ground, change the mode, shrink the cursor card to a chip
  */

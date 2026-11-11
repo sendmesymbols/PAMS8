@@ -1279,6 +1279,101 @@ The data behind it:
   troops), RPG-7 500 m (180-275 m to destroy a tank), 81 mm mortar 4100-4200 m (4550 m), 120 mm mortar 6747 m (5700 m POF,
   6602 m Brandt), 105 mm how 11000 m (11274 m), 130 mm gun 27150 m (27478 m).
 
+### Gr Scope AOR scale (Shift+V)
+
+User, 2026-11-11 (from the mockup `ground-guide-aor-options.html`, "add all with the user able to switch it on the fly").
+**Shift+V** switches the Gr Scope rail between **Spot** (the rail above: the ground round one symbol) and **AOR**: the area
+of ops read as the *Gr and Weather* factor of a defence appreciation, in the headings of `Material/AprDf.pdf` and the
+marking of `Material/Vs72.docx`. It is a plan to check on the ground, never a fact: what the bundle cannot know is left
+blank (`____`) or listed under Confirm on Gr.
+
+**What it reads.**
+- **The MITG:** a VG (Vital Gr, `designateGround(..., 'MITG')`) symbol on the map, else the selected or placed symbol, else
+  the map centre (snapped to 250 m). `guide.setAorAnchor(point | null)` overrides it.
+- **The threat:** the OCOKA threat. A place (the threat marker, which also shows in the AOR scale), else a bearing, else the
+  unit's front.
+- **The outline** (`aor.source`):
+  - `boundaries`: the nearest Boundary symbol (2525D set 25, entity 110100) on each side of the MITG, cut to the echelon's
+    depth.
+  - `box`: a box dragged on the map (Draw in the rail, `guide.drawAorBox()`). The drag does not pan; Esc cancels.
+  - `echelon`: a frame facing the threat: Coy 2 x 4 km, Bn 7 x 12 km, Bde 14 x 18 km forward of the MITG (a proposal).
+
+  A missing box or pair of bdys falls back to the frame, and the rail says so.
+
+**What it gives** (`GroundGuideAor.ts`, pure):
+- **Three approaches** (Lt, Cen, Rt as the defender faces the threat), from starts forward of the AOR (`aor.leadKm`, or
+  round the threat's place) to the MITG.
+  - The search is the OCOKA lens's own: NO-GO is never crossed, SLOW-GO is dearer, and ground narrower than the threat's
+    corridor is dearer still. The corridor is two echelons up (`aor.corridorM`; 0 gives Coy 1 km, Bn 2 km, Bde 4 km).
+  - It runs on the finest class tiles at 1 to 4 pixels a cell. A cell takes its highest-rank class, so a canal stays a line
+    and a bridge stays a gap in it.
+  - Each approach gets: where it crosses the border (`boundaries.geojson`: WB, LOC, international) and what it is near
+    there; the places it passes through; the water it crosses, with the nearest bridge; the roads along it; and the BUA
+    and tree share of a 1 km band.
+  - Its capacity is the gap across it between NO-GO areas big enough to matter (a quarter of the corridor, squared).
+    Canals and streams are crossings, not narrowings.
+  - Rank: shortest past the border and least friction first.
+- **Lines of def:**
+  - W, X and Y are cuts square to the axis where a BUA is astride each approach. They are scored on a water line or ridge
+    across two approaches, a metalled lateral, and a forward bonus.
+  - Z is the cut through the MITG.
+  - Roles: FDLs on the first line with a BUA or obstacle on every approach, a screen in front, depth 2 km or more behind,
+    and the strong point on Z.
+  - The FDLs' frontage between the bdys is tested against IBB's Bn three coys up (6.5 km; Coy 2 km, Bde 12 km). In the
+    echelon frame the rail says the frame sets it.
+- **MITG:** the road through it, and the MSR within 1.5 km.
+- **Demolition:** bridges within 1 km of where an approach crosses water. None carries a load class in this bundle.
+- **Laterals:** metalled roads of class 30 and up that touch two approaches.
+- **Going:** GO / SLOW-GO / NO-GO shares in the AOR, NO-GO areas in it and beyond it, and the country (Canal plains, Plains,
+  Riverine, Desert, Mountains, Built-up), from the class shares.
+
+**The rail.** Every option of the mockup is kept. They switch on the fly from the rail's foot, and also from the settings,
+Ctrl+K and the API.
+- **A Deductions:** six lines under the map (Going, Apchs, Lines, MITG, Dml, MSR), each line its layer's switch.
+- **B Sand model:** a 397 x 520 map with names and roles on it, and three lines.
+- **C Appreciation:** a small map and AprDf's tables.
+- **Trace or Dark.** Trace is Vs72's marking on a talc colour: NO-GO crisscross, SLOW-GO parallel lines, green natural,
+  black artificial.
+- **N↑ or T↑:** north up (turns with the view) or threat up (as a sand model faces the enemy).
+
+The mode line switches the source (Bdys / Box / Ech, with Draw for the box). Lines are cut at the bdys and lettered front to
+rear. The reading is worked out once per AOR, 260 ms after the map rests. At Phillora a Bn AOR takes about 0.45 s: cells
+77 ms, approaches 300 ms, lines 26 ms (`reading.msParts`).
+
+**D** (with the AOR scale shown) opens the approach sheets beside the rail (`GroundGuideAorSheet.ts`):
+- one tab per approach, under AprDf's twelve sub-heads (Obsn points to the OCOKA lens);
+- ITGs & Ded: the MITG, the ITGs on the FDLs and depth, the priority of approaches and of combinations, the lines with their
+  roles, DP 1, the frontage and the prelim dml;
+- Confirm.
+
+**Copy as Text** gives the paragraph in AprDf's numbering: 6 Apchs, 7 ITGs, 8 Obs, 11 Deductions. The GROTBC letters still
+open the Ground Detail, and Esc closes the sheets first.
+
+**API.**
+- `guide.scopeScale`, `setScopeScale('spot' | 'aor')`, `setAor(patch)`, `setAorAnchor(point | null)`, `drawAorBox()`,
+  `aorReading()`, `aorText()`.
+- Event `ground-guide-aor` `{ reading }`. `ground-guide-scope` carries `scale`.
+
+**Settings** (`groundGuide.aor`):
+- `keys`, `scale`;
+- `layout` (`deductions` | `model` | `appreciation`), `style` (`trace` | `dark`), `orient` (`north` | `threat`);
+- `source` (`echelon` | `boundaries` | `box`), `box` ([w, s, e, n]), `echelon` (`auto` | `coy` | `bn` | `bde`);
+- `leadKm`, `corridorM`, `profile` (the threat's mover, `tracked`).
+
+The layer switches are kept in the rail's own store (`ms-gg-scope`).
+
+**Checked at Phillora** (Vs72's own ground), with the threat placed near Arnia and the Bn frame:
+- the Cen approach starts at Arnia;
+- the Lt approach runs through Khokhar, Budhe and Saidanwali to Phillaurah;
+- bias Lt;
+- MSR Sialkot – Nainkot 70A1, 0.9 km off; the road through the MITG is Chawinda – Sabaz Pir 30A1;
+- none of the 47 bridges in the AOR has a class.
+
+**Open:**
+- DCB is not in the bundle (Vs72's lines W and X follow it).
+- The frame sizes and corridor widths are proposals.
+- Not checked in 3D with a rotated view, or against a second exercise.
+
 ### When the terrain data is unavailable
 
 `guide.status` is `{ state, error, retryInMs }` with `state` one of `disabled`, `no-bundle-url`,
@@ -1321,7 +1416,8 @@ resets the schedule.
 
 `scope`: the Gr Scope rail. `enabled` (V shows and hides it; off: no rail, no V key), `side` (the edge of the map it
 docks to), `tab` (the `V · Gr Scope` tab at that edge while it is hidden), `topPx` (room left free above it for the
-host's toolbar; it also docks inside any `view.padding` the host sets).
+host's toolbar; it also docks inside any `view.padding` the host sets). `aor`: the rail's AOR scale (Shift+V); see
+"Gr Scope AOR scale" above.
 
 `groundGuide.*` is read live: changing `bundleUrl` reloads the bundle, the rest applies on the next mouse move.
 
@@ -1338,7 +1434,7 @@ every panel stays in step), with a toast at the foot of the screen that says the
 is ready, loading or unavailable.
 
 **Keys** while the guide is on (handled by the guide itself, listed in the harness's Show Shortcuts and the Legend tab):
-**V** Gr Scope rail (any time) · **D** Ground Detail, **G R O T B C** its tabs, **K** its Legend, **Esc** closes it ·
+**V** Gr Scope rail (any time) · **Shift+V** its Spot / AOR scale (in AOR, **D** the approach sheets) · **D** Ground Detail, **G R O T B C** its tabs, **K** its Legend, **Esc** closes it ·
 while drawing **S** Quick Fix, **P** change the mode, **H** shrink the cursor card to a chip, **Shift**-click to place
 against an Enforce refusal.
 

@@ -422,7 +422,10 @@
     "exportTools": true,
     "screenAnchor": false,
     "collab": false,
-    "groundGuide": false
+    "groundGuide": false,
+    "platoonGuide": false,
+    "movementGuide": false,
+    "nightMarch": false
   },
   "collab": {
     "transport": "sse",
@@ -782,7 +785,63 @@
       "mapAvenues": true,
       "mapBetter": true,
       "overlay": "auto"
+    },
+    "aor": {
+      "keys": true,
+      "scale": "spot",
+      "layout": "deductions",
+      "style": "trace",
+      "orient": "north",
+      "source": "echelon",
+      "box": null,
+      "echelon": "auto",
+      "leadKm": 4,
+      "corridorM": 0,
+      "profile": "tracked"
     }
+  },
+  "platoonGuide": {
+    "bundleUrl": "/terrain-bundle",
+    "hover": false,
+    "onSymbols": true,
+    "map": true,
+    "mapSight": true,
+    "card": true,
+    "keys": true,
+    "echelon": "platoon",
+    "eye": "standing",
+    "mover": "wheeled",
+    "threat": "groundGuide",
+    "cacheTiles": 256,
+    "useWorker": true
+  },
+  "movementGuide": {
+    "bundleUrl": "/terrain-bundle",
+    "map": true,
+    "threat": "groundGuide",
+    "cursor": true,
+    "keys": true,
+    "cacheTiles": 384,
+    "useWorker": true
+  },
+  "nightMarch": {
+    "bundleUrl": "/terrain-bundle",
+    "useTerrain": true,
+    "card": true,
+    "hover": true,
+    "keys": true,
+    "map": true,
+    "rings": true,
+    "labels": true,
+    "echelon": "company",
+    "units": "deg",
+    "gmaDeg": null,
+    "hHour": "",
+    "terrain": "plains",
+    "tanks": false,
+    "style": "chart",
+    "cacheTiles": 256,
+    "useWorker": true
   },
   "stylus": {
     "mode": "auto",

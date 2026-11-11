@@ -185,6 +185,14 @@ MS/
   the symbol being placed (else the selected symbol, the one just placed, the map centre) with range rings, the frontage
   for the echelon, clear ground and the GROTBC layers from the bundle, thinned per echelon; its legend lines are the
   layer switches. `guide.showScope()`, `guide.setScopeTarget(graphic)`.
+  **Shift+V** switches the rail to its **AOR scale** (`groundGuide.aor.*`; `GroundGuideAor.ts` pure engine,
+  `GroundGuideScopeAor.ts` rail view, `GroundGuideAorSheet.ts` D sheets): the area of ops read as an appreciation's Gr and
+  Weather (AprDf headings, Vs72 marking). It gives three approaches ranked (the OCOKA `findAvenue` on a class grid that keeps
+  canals and bridges), lines of def W X Y and Z through the MITG with roles and the frontage test, the MITG, bridges to
+  demolish, the MSR and laterals, and NO-GO / SLOW-GO only. The AOR comes from Bdy symbols, a dragged box or the echelon
+  frame; the MITG is a VG symbol, else the selected symbol or the map centre. Layout A/B/C, Trace/Dark and North/Threat up
+  switch on the fly from the rail's foot. `guide.setScopeScale()`, `setAor()`, `aorReading()`, `aorText()`. Mockup:
+  `ground-guide-aor-options.html`.
   **F** switches the cards to the **OCOKA lens** (`groundGuide.ocoka.*`; `GroundGuideOcoka.ts` pure engine, `GroundGuideOcokaRead.ts`,
   `GroundGuideOcokaView.ts`, `GroundGuideThreat.ts`): the same bundle read as Obsn & Fd of Fire, Cover, Obs, Key Gr and Avenues,
   tabs 1 to 5 (the GROTBC letters keep their keys), toward a threat that is the unit's front by default or a marker dragged on the
@@ -201,6 +209,42 @@ MS/
   `node tools/ocoka-test/run.mjs` runs the engine's 44 checks.
   See `15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
+- **MovementGuide** (`Engines/MovementGuide/`) — optional, off by default (`features.movementGuide`; top-bar Mov Guide).
+  Nine cards, NOT tied to symbols: Cordon (click a town / draw area: platoon sectors, rooftop + side-road posts, road
+  blocks, people inside), Picket (route picketing both sides / piqueting fewest posts, up-by times, check posts, clear
+  first, casevac), Convoy (packets, SP/RP times, bounds at safe halts), Mines, Patrol (A* route out + different route in,
+  night march chart via PlatoonGuide `patrolCard`), Ambush (sites + line/L/V layout), Rd Block (+ flanking positions),
+  Infil (lanes through unseen ground + anti-infiltration posts), Water (key 9: the water obstacle as IBB Annex P types
+  it, home vs far bank, tank / wheels / foot check, crossings, recce list; point / axis / reach; pure engine
+  `MovementGuideWater.ts`, `node tools/movement-test/water.mjs`; a 350 px cursor card over water in three styles cycled
+  with Q, and lenses Type / Section / Banks / Going / Crossings / Recce / Reach walked with 9 again; W is the Night March's). Own draw tool (`MovementGuideDraw.ts`); "Create on Map"
+  makes ordinary symbols via `loadSymbolFromJSON`; Copy as Text per card. Pure engines `MovementGuideScan.ts` +
+  `MovementGuidePlans.ts` (Node: `node tools/movement-test/run.mjs`, `plans.mjs`), bundle reader `MovementGuideProbe.ts`,
+  figures `MS/Data/MovementDoctrine.json`. See `MS/Docs/17-movement-guide.md`.
+- **PlatoonGuide** (`Engines/PlatoonGuide/`) — optional, off by default (`features.platoonGuide`). The field soldier's
+  Ground card at a point (OCOKA_Roadmap.md ch. 8) for Team / Sec / Pl / Coy, read under the cursor (`platoonGuide.hover`,
+  ⌖ button), while such a land unit is placed, on the selected one, or right-click "Pl Guide: Gr Card…"; a selected
+  line gets the patrol route card (`patrolCard()`). Shown like the Ground Guide's cards: a 350 px **cursor card**
+  (`PlatoonGuideCard.ts`: going on foot in the verdict ladder; the **bubble radar** (`PlatoonGuideRadar.ts`: sight to
+  true scale, way-out arcs on the rim, glyphs for water / dangers / casevac / help / BUA / PB / OP, log band beyond the
+  bubble) beside stat tiles; a danger strip with severity meter and glyph chips; a people strip with spark bars; hidden
+  while the Ground Guide's card owns the cursor) and the **Pl Detail** docked at the foot (`PlatoonGuideDetail.ts`: tabs Here /
+  See / Danger / People / Help / Stop / Patrol, each with its answer; answer strip; tiles in columns that page, never
+  scroll; **A** opens it and walks pages then tabs, Shift+A back, Esc closes). Colours and sizes from
+  GroundGuideTokens.ts, arrows and roses turn with the map (GroundGuideNorth). Bubble by echelon 300 m / 500 m / 1 km /
+  2 km; quick reads per move, full at rest (350 ms). Map layer `ms-platoon-guide`. Pure engine `PlatoonGuideRead.ts`
+  (`node tools/platoon-test/run.mjs`, 54 checks), bundle reader `PlatoonGuideProbe.ts`, figures
+  `MS/Data/PlatoonDoctrine.json` (R / E basis). The Movement Guide's Patrol card calls `patrolCard`: keep `PlProbe`,
+  `plRulesFrom`, `PatrolCard`, `PlLeg`, `PlFootSpeeds` and `patrolCard` stable.
+- **NightMarch** (`Engines/NightMarch/`) — optional, off by default (`features.nightMarch`; info bar 🌙 Nt March / ✎ / ⚙).
+  The night march chart (OCOKA_Roadmap.md ch. 2): draw SP → turns → double-click FUP → click Obj; legs with grid /
+  magnetic (`nightMarch.gmaDeg`) / mils bearings, paces (120 = 100 m), time by night, landmarks, check points on long legs;
+  FUP + SL laid square to the axis with places, lamps, guides and marking stores; timings back from H (`nightMarch.hHour`);
+  enemy night-sight / thermal rings round the Obj. Cursor card while drawing (`NightMarchCard.ts`: dial with drift cone, pace
+  cord, Obj ruler) and on a finished route; chart docked at the foot (`NightMarchChartView.ts`) in six styles Chart / Strip /
+  Cards / Trace / FUP / Clock, **W** walks pages then styles, Shift+W back, Esc closes. Terrain optional (`nightMarch.useTerrain`:
+  reuses `patrolCard` + the Movement Guide scan; off = geometry on open ground). Pure engine `NightMarchRead.ts`
+  (`node tools/nightmarch-test/run.mjs`, 52 checks), figures `MS/Data/NightMarchDoctrine.json` (R / E). See `MS/Docs/18-night-march.md`.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.
 - **DeclutterEngine** (+ Cluster/Ladder/Disperse/LabelPlacer) — zoom-aware hiding,
   cluster badges, flag-halyard ladders, radial disperse, and Maplex-style label placement.

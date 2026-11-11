@@ -1,0 +1,151 @@
+{
+  "name": "Platoon Guide rules",
+  "version": 1,
+  "note": "Figures the Platoon Guide (MS/Engines/PlatoonGuide) reads: what a section, platoon or company commander needs at a point and on a patrol route. Each block carries a basis: R = a rule written in OCOKA_Roadmap.md from the Pakistan Army pamphlets (IC / IBB; cite the page before relying on it), E = an estimate or proposal by the developer, to be corrected by the user. Distances in ground metres. The dangers on roads (vulnerable points, likely ambush and mine / IED sites, road blocks, overlooked stretches) come from MS/Data/MovementDoctrine.json through the Movement Guide's scan, so those rules live in one place.",
+  "basisCodes": {
+    "R": "rule from OCOKA_Roadmap.md (pamphlet figure, page to be cited)",
+    "E": "estimate / proposal, for the user to correct"
+  },
+  "bubble": {
+    "basis": "E",
+    "note": "How far round the point each echelon looks (dangers, people, help, where to stop).",
+    "radiusM": { "team": 300, "section": 500, "platoon": 1000, "company": 2000, "default": 1000 },
+    "sightMaxM": 1500,
+    "sightStepM": 50,
+    "sightBearings": 36,
+    "eyeM": { "prone": 0.5, "kneeling": 1.0, "standing": 1.6, "rooftop": 6 },
+    "manM": 1.7,
+    "seenP": 0.5
+  },
+  "here": {
+    "basis": "E",
+    "coverSearchM": 600,
+    "coverStepM": 30,
+    "coverBearings": 16,
+    "wayOutM": 300,
+    "wayOutStepM": 15,
+    "wayOutNote": "15 m steps so a canal or drain about 20 m wide is never stepped over",
+    "roadSearchM": 5000
+  },
+  "water": {
+    "basis": "E",
+    "radiusKm": 5,
+    "perennial": ["well_lined", "well_unlined", "well", "spring", "karez", "tank_perennial", "hand_pump", "tank_overhead"],
+    "powered": ["tube_well"],
+    "seasonal": ["tank_seasonal"],
+    "lineKinds": ["river", "canal"],
+    "brackishKm": 2,
+    "noteKind": "note_water"
+  },
+  "hls": {
+    "basis": "E",
+    "note": "A landing point needs this much clear ground (the hls profile's distance to NO-GO): about a medium helicopter's rotor disc plus margin.",
+    "recordedKm": 40,
+    "recorded": ["helipad", "landing_strip", "landing_ground", "airfield", "air_base", "airport", "road_runway"],
+    "clearM": 40,
+    "searchM": 2000,
+    "wireM": 500,
+    "wireKinds": ["mast", "wind_tower", "telecom_booster", "chimney"],
+    "wireLines": ["power_line"]
+  },
+  "medical": {
+    "basis": "E",
+    "radiusKm": 60,
+    "kinds": { "hospital": "Hospital", "bhu": "Basic health unit", "dispensary": "Dispensary" },
+    "roadFactor": 1.4,
+    "roadKmh": 40,
+    "note": "Drive time = straight line x roadFactor at roadKmh: an estimate until the route is solved."
+  },
+  "where": {
+    "basis": "E",
+    "kmStoneKm": 3,
+    "kmKinds": ["km_road", "km_rail", "km_canal"],
+    "placeKm": 10,
+    "placeKinds": ["city", "district_hq", "town", "village_imp", "village", "locality"]
+  },
+  "see": {
+    "basis": "E",
+    "deadNearM": 300,
+    "overlookRiseM": 5,
+    "overlookMaxM": 800,
+    "overlookStepM": 100,
+    "rooftopsM": 300,
+    "rooftopHeightMin": 2,
+    "rooftopDensityMin": 3,
+    "refKinds": ["watch_tower", "mast", "wind_tower", "chimney", "tank_overhead", "telecom_booster", "tomb", "fort", "peak", "hill", "knoll", "trig_station", "bridge", "rail_station", "kiln", "mosque", "eidgah", "temple", "church", "rest_house", "grid_station"],
+    "refTallM": 5,
+    "refMinM": 100,
+    "refMax": 6,
+    "rangeRingsM": [100, 200, 300, 500, 800],
+    "resectionKinds": ["trig_station", "peak", "hill", "mast", "watch_tower", "chimney", "tank_overhead", "fort", "wind_tower", "telecom_booster"],
+    "resectionMinM": 300,
+    "resectionMaxM": 5000,
+    "resectionMinAngleDeg": 30
+  },
+  "danger": {
+    "basis": "R",
+    "rule": "Likely mine / IED sites: culverts, bridges, crossroads, turning places, places where vehicles slow. Likely ambush sites: defile or bend, vehicles cannot leave the road, covered fire positions beside it, away from reinforcements. Read on every road and track inside the bubble by the Movement Guide's route scan (MovementDoctrine.json).",
+    "roadKmMax": 30,
+    "kinds": ["mine", "ambush", "vp", "block", "overlooked", "rooftops"],
+    "minScore": 40,
+    "maxPerKind": 6,
+    "mergeM": 150,
+    "approachM": 150,
+    "approachClasses": [17, 47, 46, 24, 25, 20, 21, 22, 29, 30, 31, 49, 1],
+    "hazardKm": 2,
+    "hazardKinds": ["firing_range", "air_target", "mine", "mine_shaft", "quarry", "deserted_site", "cave", "oil_gas_well", "oil_tank", "grid_station", "crevasse", "ice_pinnacles", "earth_slide"],
+    "lineHazardM": 200,
+    "lineHazardKinds": ["power_line", "pipeline"],
+    "borderKm": 20,
+    "borderNearKm": 5,
+    "monsoonMonths": [6, 7, 8, 9]
+  },
+  "people": {
+    "basis": "E",
+    "sensitiveKinds": ["mosque", "eidgah", "school", "hospital", "bhu", "dispensary", "tomb", "temple", "church", "graveyard_pt"],
+    "crowdKinds": ["market", "bus_stand", "rail_station", "stadium", "petrol_pump", "mill", "industrial_area"],
+    "listMax": 6,
+    "buaKm": 10,
+    "buaKinds": ["city", "district_hq", "town", "village_imp", "village"]
+  },
+  "help": {
+    "basis": "E",
+    "radiusKm": 30,
+    "kinds": ["post", "watch_tower", "fort", "border_post", "cantonment", "police_station"],
+    "supplyKinds": ["petrol_pump", "rest_house"],
+    "relayKm": 3,
+    "valleyRiseM": 100
+  },
+  "stop": {
+    "basis": "R",
+    "rule": "Patrol base / harbour: concealed, not overlooked, off tracks and away from villages, water within reach, more than one way out, not in a nullah or flood ground in the monsoon, not on a skyline.",
+    "gridM": 100,
+    "minConcealment": 2,
+    "villageM": 1000,
+    "roadM": 300,
+    "waterKm": 2,
+    "waysOutMin": 2,
+    "maxCandidates": 600,
+    "opCandidates": 12,
+    "opRadiusM": 1000,
+    "opRiseM": 5,
+    "opNote": "An OP is proposed only on ground at least opRiseM above the bubble's mean height; ranked by the share of the ground within 1 km it sees plus half a point per metre of height."
+  },
+  "patrol": {
+    "basis": "R",
+    "rule": "Legs end on features recognisable at night; bounds 550-750 m apart; final meeting point 400-500 m from the objective; night routes avoid wood edges, villages, tracks and skylines; route out differs from route in; 120 paces = 100 m.",
+    "pacesPer100m": 120,
+    "boundM": 650,
+    "fmpM": 450,
+    "legFeatureM": 150,
+    "legFeatureKinds": ["bridge", "foot_bridge", "culvert", "tomb", "mosque", "watch_tower", "mast", "tank_overhead", "well_lined", "spring", "kiln", "trig_station", "peak", "hill", "knoll", "main_junction", "road_junction", "rail_station", "graveyard_pt", "km_road"],
+    "stationM": 50,
+    "classGround": {
+      "0": "open", "1": "forest", "2": "crops", "3": "built", "5": "marsh", "6": "marsh", "7": "marsh", "8": "snow",
+      "9": "rocky", "10": "rocky", "12": "desert", "13": "sand", "14": "dunes", "15": "rocky", "16": "salt", "17": "riverbed",
+      "18": "open", "19": "open", "23": "irrigated", "24": "crossing", "25": "open", "26": "rocky", "27": "rocky", "29": "walled",
+      "30": "orchard", "31": "forest", "32": "open", "33": "open", "45": "crossing", "46": "crossing", "47": "riverbed", "48": "irrigated", "49": "walled"
+    },
+    "roadClasses": [34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 50]
+  }
+}
