@@ -64,9 +64,15 @@ def ncgdb_source(ncgdb: dict, classes: Path) -> dict:
             "restricted": True, "rulesSha256": ncgdb["rules_sha256"]}
 
 
+def in_bundle(s: dict) -> bool:
+    """sources.lock entries with `stage: candidate` are being measured (check points), not built into the bundle:
+    they are not listed in its manifest or LICENSES until they pass and a product reads them."""
+    return s.get("stage", "used") != "candidate"
+
+
 def sources_block(lock: dict, checks: dict, ncgdb: dict | None = None) -> list[dict]:
     out = []
-    for s in lock["sources"]:
+    for s in filter(in_bundle, lock["sources"]):
         rec = checks.get(s["id"], {})
         ref = source_ref(lock, s["id"])
         out.append({"id": s["id"], "name": s["name"], "version": str(s.get("version", "")),
@@ -100,7 +106,7 @@ SHARING_NOTE = [
 
 def licenses_text(lock: dict, built: str, ncgdb: dict | None = None) -> str:
     lines = [f"PAMS terrain bundle — data sources and licences (built {built})", ""]
-    for s in lock["sources"]:
+    for s in filter(in_bundle, lock["sources"]):
         lines += [f"{s['name']}  [{s.get('version', '')}]",
                   f"  data date   : {s.get('dataDate', '')}",
                   f"  released    : {s.get('released', '')}",

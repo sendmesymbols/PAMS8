@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gr Check Points</title>
+<!-- Copied next to points.js and chips/ by scripts/imagery_checkpoints.py. Opens from disk (file://): no server, nothing
+     leaves this machine. The imagery is restricted: never publish this folder. -->
+<style>
+  :root { --bg: #14171a; --fg: #e8eaed; --muted: #9aa0a6; --line: #30353a; --pick: #f6c343; --on: #2b6b3f; --btn: #22272c; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, Segoe UI, sans-serif; }
+  header { display: flex; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header b { font-size: 15px; }
+  header .sp { flex: 1; }
+  input[type=text] { background: var(--btn); color: var(--fg); border: 1px solid var(--line); padding: 4px 6px; width: 120px; }
+  button { background: var(--btn); color: var(--fg); border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; border-radius: 4px; }
+  button:hover { border-color: var(--muted); }
+  button.on { background: var(--on); border-color: #4caf50; }
+  button.guess { outline: 2px dashed var(--pick); outline-offset: 1px; }
+  .hint { color: var(--pick); font-size: 12px; margin: 0 0 10px; }
+  main { display: grid; grid-template-columns: auto 1fr; gap: 14px; padding: 12px 14px; }
+  .chips { display: flex; gap: 10px; }
+  .chips figure { margin: 0; }
+  .chips img { width: 480px; height: 480px; image-rendering: auto; border: 1px solid var(--line); display: block; }
+  .chips figcaption { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .q { margin-bottom: 14px; }
+  .q h3 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .q .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .q kbd { color: var(--pick); font-size: 11px; margin-right: 4px; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .bar { height: 6px; background: var(--btn); border-radius: 3px; overflow: hidden; margin-top: 4px; width: 220px; }
+  .bar i { display: block; height: 100%; background: #4caf50; }
+  @media (max-width: 1500px) { main { grid-template-columns: 1fr; } .chips img { width: 360px; height: 360px; } }
+</style>
+</head>
+<body>
+<header>
+  <b>Gr Check Points</b>
+  <span id="pos" class="meta"></span>
+  <div><div class="bar"><i id="bar"></i></div><span id="done" class="meta"></span></div>
+  <span class="sp"></span>
+  <label class="meta">Labeller <input id="who" type="text" placeholder="name / initials"></label>
+  <button id="prev" title="Left arrow">◀ Back</button>
+  <button id="next" title="Right arrow (Enter accepts the guesses, then goes on)">Next ▶</button>
+  <button id="skip" title="Next point not yet labelled">Next unlabelled</button>
+  <button id="exp">Export labels</button>
+  <label class="meta"><button id="impb" type="button">Import</button><input id="imp" type="file" accept=".json" hidden></label>
+</header>
+<main>
+  <div class="chips">
+    <figure><img id="near" alt="Cell at about 0.5 m"><figcaption>120 m square: label the <b>yellow box</b> (one 38 m bundle cell)</figcaption></figure>
+    <figure><img id="ctx" alt="Surroundings at about 2 m"><figcaption>480 m round it, for context</figcaption></figure>
+  </div>
+  <div id="qs"></div>
+</main>
+<script src="points.js"></script>
+<!-- optional: a first guess per point (scripts/imagery_prefill.py); shown dashed, counted only once confirmed -->
+<script src="prefill.js" onerror="window.PREFILL = {}"></script>
+<script>
+(() => {
+  const KEY = 'pams-gr-checkpoints-v1';
+  const doc = window.CHECKPOINTS || { points: [] };
+  const P = doc.points;
+  const G = window.PREFILL || {};
+  const Q = [
+    { k: 'cover', t: 'Mostly in the yellow box', o: [['tree', 'Trees', '1'], ['shrub', 'Shrub / bush', '2'], ['crop', 'Crop / field', '3'], ['open', 'Grass / open', '4'], ['bare', 'Bare / sand', '5'], ['rock', 'Rock / scree', '6'], ['built', 'Buildings', '7'], ['water', 'Water / wet', '8']] },
+    { k: 'canopy', t: 'Tree crowns covering the box', o: [['0', 'None', 'q'], ['lt10', 'Under 10 %', 'w'], ['10-30', '10 to 30 %', 'e'], ['30-60', '30 to 60 %', 'r'], ['gt60', 'Over 60 %', 't']] },
+    { k: 'way', t: 'Road or track through the box', o: [['none', 'None', 'a'], ['path', 'Footpath / Tr', 's'], ['unmetalled', 'Unmetalled Rd', 'd'], ['metalled', 'Metalled Rd', 'f']] },
+    { k: 'image', t: 'Image', o: [['ok', 'Can tell', 'z'], ['cant', "Can't tell (cloud, blur, blank)", 'x']] },
+  ];
+  let L = {};
+  try { L = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { L = {}; }
+  let who = ''; try { who = localStorage.getItem(KEY + ':who') || ''; } catch (e) {}
+  let i = 0;
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(L)); } catch (e) {} };
+  const $ = (id) => document.getElementById(id);
+  $('who').value = who;
+  $('who').addEventListener('input', (e) => { who = e.target.value.trim(); try { localStorage.setItem(KEY + ':who', who); } catch (x) {} });
+  const complete = (l) => l && l.image === 'cant' || (l && l.cover && l.canopy && l.way);
+  function render() {
+    const p = P[i];
+    if (!p) { $('qs').textContent = 'No points: run imagery_checkpoints.py first.'; return; }
+    $('near').src = `chips/${p.id}_n.jpg`;
+    $('ctx').src = `chips/${p.id}_c.jpg`;
+    const n = P.filter((x) => complete(L[x.id])).length;
+    $('pos').textContent = `${p.id} · ${i + 1} of ${P.length} · sheet ${p.sheet} (${p.year})`;
+    $('done').textContent = `${n} confirmed`;
+    $('bar').style.width = `${(100 * n) / Math.max(1, P.length)}%`;
+    const l = L[p.id] || {};
+    const g = G[p.id] || {};
+    const box = $('qs');
+    box.textContent = '';
+    if (G[p.id] && !complete(l)) {
+      const h = document.createElement('p'); h.className = 'hint';
+      h.textContent = `Dashed = a guess (${g.by || 'pre-filled'}). Enter accepts the guesses still open; a key changes one.`;
+      const acc = document.createElement('button'); acc.textContent = 'Accept guesses ⏎'; acc.style.marginLeft = '8px';
+      acc.addEventListener('click', accept);
+      h.append(acc); box.append(h);
+    }
+    for (const q of Q) {
+      const d = document.createElement('div'); d.className = 'q';
+      const h = document.createElement('h3'); h.textContent = q.t; d.append(h);
+      const row = document.createElement('div'); row.className = 'row';
+      for (const [v, lbl, key] of q.o) {
+        const b = document.createElement('button');
+        const kb = document.createElement('kbd'); kb.textContent = key.toUpperCase();
+        b.append(kb, lbl);
+        if (l[q.k] === v) b.className = 'on';
+        else if (l[q.k] === undefined && !complete(l) && g[q.k] === v) b.className = 'guess';
+        b.addEventListener('click', () => pick(q.k, v));
+        row.append(b);
+      }
+      d.append(row); box.append(d);
+    }
+    const m = document.createElement('div'); m.className = 'meta';
+    m.textContent = l.at ? `Saved ${new Date(l.at).toLocaleString()}${l.who ? ` by ${l.who}` : ''}` : 'Not labelled yet';
+    box.append(m);
+  }
+  function pick(k, v) {
+    const p = P[i];
+    const l = L[p.id] = { ...(L[p.id] || {}), [k]: v, at: Date.now(), who };
+    if (l.guessKept) l.guessKept = l.guessKept.filter((x) => x !== k);
+    save();
+    if (complete(l) && (k === 'way' || (k === 'image' && v === 'cant'))) { if (i < P.length - 1) i++; }
+    render();
+  }
+  /** Enter: take the guess for every question still open on this point, then go on. */
+  function accept() {
+    const p = P[i];
+    const g = G[p.id];
+    const l = { ...(L[p.id] || {}) };
+    if (g && !complete(l)) {
+      const kept = [];
+      for (const k of ['cover', 'canopy', 'way', 'image']) {
+        if (l[k] === undefined && g[k] !== undefined) { l[k] = g[k]; kept.push(k); }
+      }
+      if (kept.length) { L[p.id] = { ...l, guessKept: [...(l.guessKept || []), ...kept], at: Date.now(), who }; save(); }
+    }
+    if (complete(L[p.id]) && i < P.length - 1) i++;
+    render();
+  }
+  const keys = {};
+  for (const q of Q) for (const [v, , key] of q.o) keys[key] = [q.k, v];
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    const kk = e.key.toLowerCase();
+    if (keys[kk]) { pick(...keys[kk]); e.preventDefault(); }
+    else if (e.key === 'Enter') { accept(); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { if (i < P.length - 1) { i++; render(); } }
+    else if (e.key === 'ArrowLeft') { if (i > 0) { i--; render(); } }
+  });
+  $('prev').onclick = () => { if (i > 0) { i--; render(); } };
+  $('next').onclick = () => { if (i < P.length - 1) { i++; render(); } };
+  $('skip').onclick = () => { const j = P.findIndex((x, n) => n > i && !complete(L[x.id])); const k = j >= 0 ? j : P.findIndex((x) => !complete(L[x.id])); if (k >= 0) { i = k; render(); } };
+  $('exp').onclick = () => {
+    const done = Object.fromEntries(Object.entries(L).filter(([, l]) => complete(l)));
+    const blob = new Blob([JSON.stringify({ exported: new Date().toISOString(), pointsBuilt: doc.built,
+      prefill: Object.keys(G).length ? (Object.values(G)[0].by || 'yes') : null, labels: done }, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'labels.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  $('impb').onclick = () => $('imp').click();
+  $('imp').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const j = JSON.parse(await f.text()); Object.assign(L, j.labels || j); save(); render(); } catch (x) { alert('Not a labels file'); }
+  };
+  const first = P.findIndex((x) => !complete(L[x.id]));
+  i = first >= 0 ? first : 0;
+  render();
+})();
+</script>
+</body>
+</html>

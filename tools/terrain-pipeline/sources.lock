@@ -293,16 +293,19 @@ sources:
 
   # ── local sources supplied by the owner (2026-11-04); not downloaded by fetch.py ───────────────────────────
   - id: geonames_pk
-    name: GeoNames — Pakistan country dump (PK.txt)
-    version: "local copy D:/Imagery/PK.txt, 229,944 rows, modified 2025-12-22"
-    dataDate: "2025-12-22 (dump date)"
-    released: "2025-12-22"
+    name: GeoNames — Pakistan country dump (D:/Imagery/PK.txt)
+    # 2026-11-11: PK.txt now also holds 809 rows from the 7 Div overlays (scripts/pk_kmz.py, 2026-11-09; ids >= 900000000,
+    # which grotbc.py skips, so the bundle takes them from kmz.py instead). The untouched dump is
+    # D:/Imagery/PK.before-kmz-20261109.txt (sha256 b421cdf09fc3442b94c2926c174499f99834900997143d98b8a7d639ba61de29).
+    version: "local copy D:/Imagery/PK.txt, 230,753 rows: the GeoNames dump of 2025-12-22 (229,944 rows) + 809 7 Div overlay rows added 2026-11-09 (ids >= 900000000, not read into the bundle)"
+    dataDate: "2025-12-22 (dump date); overlay rows 2026-10-15 and 2025-09-09"
+    released: "2025-12-22 (GeoNames); file modified 2026-11-09 (overlay rows)"
     licence: CC-BY-4.0
     attribution: "GeoNames (www.geonames.org), CC BY 4.0"
     landing: https://download.geonames.org/export/dump/
     location: D:/Imagery/PK.txt        # from https://download.geonames.org/export/dump/PK.zip
-    fetched_by: local file, read by scripts/grotbc.py (GEONAMES)
-    sha256: b421cdf09fc3442b94c2926c174499f99834900997143d98b8a7d639ba61de29
+    fetched_by: local file, read by scripts/grotbc.py (GEONAMES); overlay rows written by scripts/pk_kmz.py
+    sha256: 313c267d48aa1b12dcf15e82ac2ffb8a3b7799a381857cdf1196e9b7aeeced25
 
   - id: osm_network
     name: OpenStreetMap road graph — Network.gdb pkroads (osm2po-style, with an ArcGIS network dataset)
@@ -315,6 +318,65 @@ sources:
     location: D:/Imagery/Routing/Network.gdb
     fetched_by: local geodatabase, read by scripts/network.py
     sha256: not hashed (1.3 GB folder); identify by edge count and file dates
+
+  # ── candidates being measured at the imagery check points (stage: candidate = not built into the bundle, not
+  #    listed in its manifest / LICENSES; package.py in_bundle). Started 2026-11-11; see 15-ground-guide.md
+  #    "Imagery and check points". A candidate becomes `stage: used` only after the check points show it is right. ──
+  - id: imagery_477
+    stage: candidate
+    measured: "2026-11-11: used as the truth at 636 check points (work/imagery/accuracy.md); 92 % of the answers were pre-filled guesses accepted by the owner"
+    name: Owner's 0.25 m colour imagery — Survey of Pakistan 15′ sheets (E:/Data From 477)
+    version: "1,937 sheet GeoTIFFs (RGB, JPEG, overviews), 1,777 unique sheets after 158 copies dropped (30 exact copies, 119 same-year alternates, 9 older years); 2 unreadable (39A15 corrupt, 43M9 broken pyramids); 253 ArcGIS mosaic-dataset overview copies not read; index work/imagery/index.json"
+    dataDate: "imagery year per sheet from the file name: 2023 (848 sheets), 2024 (693), 2025 (85), 2022 (78), 2012-2021 (73)"
+    released: "files written Jul-Sep 2025 (pyramids built 2025-07-26 onward)"
+    licence: restricted (supplied by the owner)
+    restriction: "never published or sent online; only layers derived from it, and only with the owner's permission"
+    attribution: "Own imagery (Data From 477)"
+    location: "E:/Data From 477"
+    fetched_by: local folder, read by scripts/imagery_index.py and scripts/imagery_checkpoints.py
+    sha256: "not hashed (5.1 TB); identify by work/imagery/index.json (size, raster header and read check per file)"
+
+  - id: ctrees_agb
+    stage: candidate
+    measured: "2026-11-11, 592 check points: >= 10 Mg/ha finds 62 % of cells with tree crowns but 60 % of its 'tree' cells have under 10 % crowns. Not to be used."
+    name: CTrees — Pakistan Aboveground Biomass (annual, 100 m)
+    version: "HDX pak-ctrees-aboveground-biomass, modified 2026-10-22; int16 x 10 Mg/ha"
+    dataDate: "2025"
+    released: "2026-10-22 (HDX modified; added 2026-10-04)"
+    licence: CC-BY-4.0
+    attribution: "CTrees, Aboveground Biomass 2025"
+    landing: https://data.humdata.org/dataset/pak-ctrees-aboveground-biomass
+    location: "D:/Imagery/Misc/Trees/pak_ctrees_aboveground_biomass.tif"
+    fetched_by: local file (downloaded by the owner from HDX), read by scripts/imagery_checkpoints.py
+    sha256: 44ce658b4cac0a4dc57b78403bc036d29472eb5424f301ace3cbb044cdbd3dfb
+
+  - id: chm_meta_wri_v2
+    stage: candidate
+    measured: "2026-11-11, 631 check points: graded, share of the cell >= 3 m 60+ -> 92 % of cells have crowns >= 10 %, 30-59 -> 81 %, 10-29 -> 67 %, 1-9 -> 47 %, 0 -> 14 %; >= 10 % finds 49 %, false trees 25 %. Best single tree source: proposed as a graded hint (never raising concealment)."
+    name: Meta / WRI global canopy height map v2 (DINOv3, 1.2 m)
+    version: "s3 dataforgood-fb-data forests/v2/global/dinov3_global_chm_v2_ml3 (tiles.geojson 2026-03-03); read by window, nothing downloaded in bulk"
+    dataDate: "imagery date per patch (metadata/<tile>.geojson acq_date): 2018-2019 at the first Pakistan check points"
+    released: "2026-02-11 (bucket) / 2026-03-03 (tile index)"
+    licence: CC-BY-4.0
+    attribution: "Meta and World Resources Institute, High Resolution Canopy Height Maps v2"
+    landing: https://registry.opendata.aws/dataforgood-fb-forestsv2/
+    location: "https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/"
+    fetched_by: HTTP range reads by scripts/imagery_checkpoints.py
+    sha256: "not hashed (remote, read by window)"
+
+  - id: chm_meta_wri_v1
+    stage: candidate
+    measured: "2026-11-11, 631 check points: >= 10 % finds 39 %, false trees 21 %; v2 finds more. Kept only for comparison."
+    name: Meta / WRI global canopy height map v1 (1.2 m), kept only to compare with v2
+    version: "s3 dataforgood-fb-data forests/v1/alsgedi_global_v6_float"
+    dataDate: "imagery about 2009-2020 (CHM_acquisition_date.tif; 2017 and 2019 at the pilot windows)"
+    released: "2024"
+    licence: CC-BY-4.0
+    attribution: "Meta and World Resources Institute, High Resolution Canopy Height Maps (Tolan et al. 2024)"
+    landing: https://registry.opendata.aws/dataforgood-fb-forests/
+    location: "https://dataforgood-fb-data.s3.amazonaws.com/forests/v1/alsgedi_global_v6_float/"
+    fetched_by: HTTP range reads by scripts/imagery_checkpoints.py
+    sha256: "not hashed (remote, read by window)"
 
   # ── D:/Imagery/Misc, gauged 2026-11-10 (only this one ingested; see 15-ground-guide.md "Misc data review") ──────
   - id: heigit_planet_roads

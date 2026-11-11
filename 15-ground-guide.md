@@ -1014,13 +1014,82 @@ Planet Labs terms (sources.lock `heigit_planet_roads` restriction, LICENSES shar
 | Rainfall, Rainfall for Pakistan, NVDI | WFP CHIRPS rainfall and MODIS NDVI by province / division, dekadal, to 2026-10-21 / 10-11 | Not ingested: area averages that go stale; the climate layer is finer |
 | Copernicus Vegetation Index Anomaly | JRC GDO fAPAR anomaly, dekadal 2026, 1/12° (~9 km) | Not ingested: too coarse |
 | Waterways (PDF, saved Wikipedia page) | Reference documents; the saved page's `.php` files are its scripts and styles | Reference only |
-| Bridges Big Dataset | `Unconfirmed 632191.crdownload`, an unfinished browser download (2.87 GB, last written 23:01 on 2026-11-10): a zip `pakistan_bridge_dataset/images/{train,test}/<hash>.png`, so far only image chips (a training set for finding bridges in imagery), no coordinates or classes seen yet | Not gauged: wait for the download to finish, then look for labels / coordinates |
+| Bridges Big Dataset | `pakistan_bridge_dataset.zip` (7.44 GB, finished 2026-11-11 00:52; zip entries dated 2024-09-04 and 2025-07-02): a YOLO oriented-box training set, 5,181 PNG chips of 1000 × 1000 px (train 3,627 / val 1,036 / test 518) with one label file each, **one class ("bridge")**, 1.09 boxes per image. The PNGs carry no coordinates (no geotransform, no text chunks) and the labels no type or load class. No byte-identical images, but 1,079 label files are identical across splits and their images differ only in colour (mean pixel difference 5–29 against 54 for unrelated chips): the same scenes recoloured in train and test. Two `labels/*.cache` files are Python pickles (not opened) | Not ingested: nothing to place on the map. **Removed 2026-11-11** at the owner's request (sent to the Recycle Bin) |
 
 Duplicates: `Railways of Pakistan` holds a copy of the waterways export (`hotosm_pak_waterways_osm_shp.zip` and its
 metadata are byte-identical to the ones in `Waterways of Pakistan`; its waterways KML holds the same 45,776 features).
 Within each HOT folder the GeoJSON, KML, SHP and GPKG zips hold the same features (counts match; the buildings SHP has
 one feature fewer than the GPKG). `Rainfall/pak-rainfall-subnat-5ytd.csv` and `NVDI/pak-ndvi-subnat-5ytd.csv` are the
 last five years of the `-full` files, and `Rainfall for Pakistan` is the same WFP figures in the HDX HAPI layout.
+
+Rebuild order: a `grotbc.py --only features` rebuild must be followed by `ground.py`, then **`kmz.py --bundle`**, or the
+7 Div overlay items are lost. The v2k build (2026-11-10, `work/run_v2k.sh`) missed it; v2l (2026-11-11,
+`work/run_v2l.sh`) repackaged and put them back (1,157 points, 1,005 lines), and wrote `work/changed_20261111.txt`, the
+bundle files written since before v2k, for the other machine. `sources.lock geonames_pk` now records `D:/Imagery/PK.txt`
+as it is (230,753 rows: the 2025-12-22 dump plus the 809 overlay rows of `pk_kmz.py`, which grotbc skips).
+
+#### Imagery and check points (started 2026-11-11)
+
+The owner's 0.25 m imagery (`E:\Data From 477`, restricted) is not built into the bundle: it is the **truth** the
+candidate sources are measured against first. Nothing from it or from a candidate goes into the bundle until the check
+points show where it is right (safety first: a source that sees trees that are not there would overstate concealment).
+Steps (`make imagery-index imagery-checkpoints`, then people label, then `make imagery-accuracy LABELS=...`):
+
+1. **Index** (`scripts/imagery_index.py` → `work/imagery/index.json`, `latest.json`, `footprints.gpkg`, `summary.txt`):
+   1,937 sheet GeoTIFFs read (header plus the coarsest overview, about 2 minutes); 253 ArcGIS mosaic-dataset overview
+   copies (`*_DataSet`, `*.Overviews`) skipped. **1,777 unique sheets** after 158 copies dropped: 30 exact copies (the
+   same file in a province folder and the Eastern 80 km folder), 119 same-year alternates (kept the one with less empty
+   area), 9 older years (the newest kept). Imagery years: 2023 848 sheets, 2024 693, 2025 85, 2022 78, 2012–2021 73.
+   Mostly 0.24–0.27 m; 41 at 0.30 m, 25 at 0.47–0.59 m, 6 at 0.13 m. Problems found: `Balochistan\39A15-24(2024).tif`
+   corrupt; `Gilgit Baltistan\43M9-25(2021).tif` has a broken pyramid file (an `.autolock` beside it: the build was
+   cut short), so it is not read; 4 Eastern sheets are in Web Mercator (handled); 5 Balochistan sheets (31J16, 31O13,
+   35B3, 35B5, 35B6) have no CRS tag but a geotransform in degrees (taken as WGS84, flagged); 30 files have malformed
+   names (`40L13-25(2023.tif`, `44I10-(2024)z20.tif`, `35B6-25N2023).tif`, `.38O8-24(2023).tif`), all read; 11 chosen
+   sheets are more than 20 % empty. The `.xml` sidecars hold only the 2025 pyramid-build date; the year in the file name
+   is the only imagery date.
+2. **Check points** (`scripts/imagery_checkpoints.py` → `work/imagery/checkpoints/`): 640 random points, 80 in each of
+   eight kinds of ground (about 75 kept after chips that are more than 30 % empty are dropped) by the bundle's class layer (trees, crop, open, desert, rock / hill, built-up, water, mapped
+   tracks), one per sheet and kind, in the latest sheet. Each has two chips (the 38 m bundle cell at ~0.5 m in a 120 m
+   square, and 480 m round it at ~2 m) and what every source says there: the bundle's class, `cc` and route layers;
+   ESA WorldCover 2021; CTrees biomass 2025; Meta / WRI canopy height **v2** (2026, imagery dated per patch, 2018–2019
+   at the first Pakistan points) and v1 to compare.
+3. **Labels**: `work/imagery/checkpoints/label.html` opens from disk (or the dev server); it shows only the chips, never
+   what the sources say, so the labels are not led by them. Per point: what mostly covers the cell, tree crowns in it
+   (none, under 10, 10–30, 30–60, over 60 %), any road or track, or "can't tell". Keys 1–8, Q–T, A–F, Z / X; it saves
+   in the browser; Export writes `labels.json` (complete points only). About 1–2 s a point. Several people can label;
+   points they disagree on are listed, not averaged.
+   **Pre-fill (owner's choice, 2026-11-11):** every point carries a first guess made by looking at its chip
+   (`guesses.txt` → `scripts/imagery_prefill.py` → `prefill.js`; 636 guesses: bare 175, crop 122, built-up 80, trees 70,
+   shrub 67, open 49, rock 41, water 31, one "can't tell" for a cloud). The page shows a guess dashed, never as an
+   answer: **Enter** accepts the guesses still open on the point, a key replaces one. Each label records the answers that
+   were a guess accepted unchanged (`guessKept`), and `imagery_accuracy.py` reports that share beside the scores,
+   because a pre-fill can lead people to agree with it. The guesses belong to this `points.json` (seed 20261111).
+4. **Scores** (`scripts/imagery_accuracy.py` → `work/imagery/accuracy.md`): per source and kind of ground, how often it
+   agrees; for trees, the share of real trees found and the share of **false trees** (the error that would overstate
+   concealment); for roads and tracks, mapped-and-seen, mapped-but-not-seen, seen-but-not-mapped.
+
+**Results (2026-11-11, 631 labelled points, `work/imagery/accuracy.md`).** The owner confirmed all 636 points (5
+"can't tell"); 1,750 of 1,893 answers were the pre-filled guess accepted, 131 were changed (mostly "no track" →
+"footpath / Tr", 62). So the scores compare each source with what the guesser and the owner both read in the 2023–25
+imagery, not with an independent survey.
+
+| Question | Finding |
+| --- | --- |
+| Tree crowns on 10 % or more of the cell (C) | Bundle tree class finds 29 % of such cells; 27 % of its tree cells have fewer. WorldCover finds 52 % (26 % false), canopy map v2 49 % (25 % false), v1 39 % (21 % false), CTrees 62 % but **60 % false** (not to be used). Canopy map v2 is graded: share of the cell 3 m or taller 60 % + → 92 % of cells have crowns, 30–59 % → 81 %, 10–29 % → 67 %, 1–9 % → 47 %, 0 → 14 %. Where the bundle says trees but WorldCover and v2 both say none, 6 of 7 cells had none. The `cc` layer does not follow crowns (cc 50–74 has crowns in 42 % of cells, cc 25–49 in 46 %). |
+| Cover (G) | Bundle class agrees 48.5 %, WorldCover 57.7 %. `sand` cells are mostly shrub (21 of 33), `open_land` is a mix (bare 19, shrub 18, rock 13, open 9), `wetland` mostly dry (9 of 11), a third of `water_permanent` dry (9 of 27), `tree_cover` half crop fields with tree lines (23 of 73). |
+| Roads and tracks (R) | A mapped route in the cell was seen in 49 of 91 cells; 37 more were seen one cell away from a mapped route (positions off by about a cell). 112 cells had a road or track mapped nowhere near: 97 footpaths / tracks, 10 unmetalled, 5 metalled. |
+
+Proposed from these (not built until the owner chooses): C1 canopy map v2 as a graded "tree crowns" hint on the card
+with the measured odds and "check on the ground", never raising concealment; C2 "trees may be gone" where the bundle
+says trees and both other sources say none (lowers what the card may overstate; small sample); G1 a shrub class from
+WorldCover instead of `open_land` / `sand` where it sees shrub (needs a class and rules change, full rebuild); R1 a
+track finder trained on the imagery (days of work and GPU time). CTrees is dropped.
+
+Sources are tagged in `sources.lock` with `stage: candidate` (`imagery_477`, `ctrees_agb`, `chm_meta_wri_v2`,
+`chm_meta_wri_v1`): dated and located, but left out of the bundle's manifest and LICENSES (`package.py in_bundle`) until
+one passes and a product reads it. Then the regeneration: a tree / shrub layer folded into `cc` (C, aerial
+concealment, as a hint unless the scores say otherwise), land-cover fixes (false cropland in the desert), and track
+positions (R), followed by the usual partial rebuild and `kmz.py`.
 
 ### OCOKA lens (F)
 

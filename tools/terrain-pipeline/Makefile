@@ -28,7 +28,8 @@ OFFICIAL     = $(W)/boundary/pakistan_official.geojson
 BOUNDARY_ARG = $(if $(strip $(BOUNDARY)),--boundary $(strip $(BOUNDARY)) --boundary-source custom,$(if $(wildcard $(OFFICIAL)),--boundary $(OFFICIAL) --boundary-source official,--boundary-source osm))
 
 .PHONY: bundle fetch boundary grid derive grotbc classify ground profiles tile validate package rebuild-rules \
-        synth-check clean clean-out clean-work $(addprefix clean-,fetch boundary grid derive grotbc classify ground kmz profiles tile)
+        synth-check clean clean-out clean-work $(addprefix clean-,fetch boundary grid derive grotbc classify ground kmz profiles tile) \
+        imagery-index imagery-checkpoints imagery-prefill imagery-accuracy
 
 bundle: package
 
@@ -164,6 +165,24 @@ package: validate
 
 # steps 5-8 only (rules/classes changed; class.tif unchanged)
 rebuild-rules: clean-profiles clean-tile package
+
+# ---------------------------------------------------------------- imagery check points (2026-11-11; not part of `bundle`)
+# The owner's 0.25 m imagery (RESTRICTED, stays under work/) is the truth the candidate sources are measured against
+# before any of them is taken into the bundle: index the sheets, cut chips at stratified points, people label them on
+# work/imagery/checkpoints/label.html, then score every source. LABELS = the exported labels.json file(s).
+IMAGERY ?= E:/Data From 477
+LABELS  ?= work/imagery/checkpoints/labels.json
+imagery-index: $(W)/imagery/latest.json
+$(W)/imagery/latest.json:
+	$(PY) $(S)/imagery_index.py --root "$(IMAGERY)" --out $(W)/imagery
+imagery-checkpoints: $(W)/imagery/checkpoints/points.json
+$(W)/imagery/checkpoints/points.json: $(W)/imagery/latest.json $(W)/classify/.done
+	$(PY) $(S)/imagery_checkpoints.py --work $(W) --out $(W)/imagery/checkpoints --per-stratum 80 --workers 12
+# optional first guesses (guesses.txt, made by looking at the chips) shown dashed on the page for people to confirm
+imagery-prefill: $(W)/imagery/checkpoints/points.json
+	$(PY) $(S)/imagery_prefill.py --dir $(W)/imagery/checkpoints
+imagery-accuracy: $(W)/imagery/checkpoints/points.json
+	$(PY) $(S)/imagery_accuracy.py $(LABELS) --points $(W)/imagery/checkpoints/points.json --out $(W)/imagery
 
 # validate the synthetic bundle written by `node tools/terrain-synth.mjs`
 synth-check:
