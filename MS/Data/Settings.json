@@ -770,6 +770,7 @@
     },
     "extended": {
       "keys": true,
+      "lasts": "symbol",
       "threat": "front",
       "bearingDeg": 0,
       "sectorDeg": 90,

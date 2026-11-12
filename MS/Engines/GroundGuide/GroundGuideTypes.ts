@@ -343,6 +343,13 @@ export type OcokaEye = 'auto' | 'standing' | 'prone' | 'vehicle' | 'post';
 export interface GroundGuideExtendedOptions {
   /** F turns the Extended View on and off; with it on, 1 2 3 open its tabs, [ and ] turn the threat, J takes the better Posn. */
   keys: boolean;
+  /**
+   * How long F keeps it on (user, 2026-11-12: "intuitive, save the computer, less annoying"). `symbol` (default): while
+   * the same kind of symbol is placed (stamping several Pls); arming a different kind or cancelling the draw (Esc) closes
+   * it. `once`: for one placement. `kept`: until F. Shift+F keeps it on whatever this says. It always goes off with the
+   * guide, and it rests (reads nothing) while a line or area is drawn.
+   */
+  lasts: 'symbol' | 'once' | 'kept';
   threat: OcokaThreatMode;
   /** Threat bearing for `threat: 'bearing'`, degrees clockwise from north. */
   bearingDeg: number;
@@ -862,6 +869,10 @@ export interface GroundGuideVerdict {
   speed?: GroundGuideSpeed | null;
   /** Set while drawing: the Extended View is on (true) or off (false); null when its keys are off or there is no keyboard. */
   extended?: boolean | null;
+  /** The Extended View stays on for every symbol (Shift+F, or `extended.lasts: kept`) rather than closing on a new one. */
+  extKept?: boolean;
+  /** Why the Extended View reads nothing for this draw although it is on (a line or an area); null when it reads. */
+  extRest?: string | null;
   /** Set while drawing with the Extended View on and the bundle's elevation loaded: its reading at the point. */
   ext?: GroundGuideOcoka | null;
 }
@@ -1200,7 +1211,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54 },
-  extended: { keys: true, threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, overlay: 'auto', eye: 'auto', surface: true },
+  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, overlay: 'auto', eye: 'auto', surface: true },
   aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 

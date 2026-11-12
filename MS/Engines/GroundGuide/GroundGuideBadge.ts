@@ -1160,8 +1160,12 @@ export class GroundGuideBadge {
     }
     if (foot && ext) {
       const xf = el('span', v.extended ? 'ms-ggb-xf ms-on' : 'ms-ggb-xf');
-      xf.title = v.extended ? 'Extended View on: 1 2 3 open its tabs in the Detail, [ ] turn the threat. F closes it.' : `Extended View: ${EXT_OFFER}`;
-      xf.append(keycap('F'), 'Ext View');
+      xf.title = !v.extended
+        ? `Extended View: ${EXT_OFFER}. F for this symbol, Shift+F to keep it on`
+        : v.extKept
+          ? 'Extended View kept on for every symbol: 1 2 3 open its tabs, [ ] turn the threat. F closes it.'
+          : 'Extended View on for this kind of symbol: a new symbol or Esc closes it. 1 2 3 open its tabs. Shift+F keeps it on, F closes it.';
+      xf.append(keycap('F'), v.extended && v.extKept ? 'Ext View · Kept' : 'Ext View');
       foot.append(xf);
       const b = v.extended ? v.ext?.plan?.better : null;
       if (b) {

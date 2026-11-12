@@ -328,6 +328,11 @@ export function extCardRows(v: GroundGuideVerdict): HTMLElement[] {
   const head = el('div', 'ms-gx-bh');
   head.append(el('span', 'ms-gx-tag', 'Ext View'));
   box.append(head);
+  if (v.extRest) {
+    // A line or an area: nothing is read, and one line says so (it comes back with the next point symbol).
+    head.append(el('span', 'ms-gx-wpn', `${v.extRest} · back with a point symbol`));
+    return [box];
+  }
   if (!o) {
     head.append(el('span', undefined, 'Reading the elevation here…'));
     return [box];

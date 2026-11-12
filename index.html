@@ -3442,6 +3442,14 @@
               <button type="button" id="ground-guide-extended-toggle" title="The same as F: adds Obsn &amp; Fd of Fire, Key Gr and Approaches (Detail tabs 1 2 3), the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. Not kept: turning the Ground Guide off clears it.">Turn on / off (F)</button>
             </div>
             <div class="setting-row">
+              <label>F lasts</label>
+              <select id="setting-groundGuideExtLasts" style="width: 150px" title="How long F keeps the Extended View on. This kind of symbol: a different symbol or Esc closes it. One placement: placing it closes it too. Until F: kept for every symbol. Shift+F keeps it on whatever this says.">
+                <option value="symbol" selected>This kind of symbol</option>
+                <option value="once">One placement</option>
+                <option value="kept">Until F</option>
+              </select>
+            </div>
+            <div class="setting-row">
               <label>Threat is</label>
               <select id="setting-groundGuideExtThreat" style="width: 150px" title="Where the threat is, for fields of fire, the obstacle in front, the dead ground, Key Gr and the approaches. Drag the yellow Threat marker onto the map to make it a place; double-click it for the front.">
                 <option value="front" selected>At the front</option>
@@ -4857,6 +4865,7 @@
         'setting-groundGuideSecRoadDensityKm': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityKm'], value: Number(v) }),
         'setting-groundGuideSecRoadDensityStyle': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityStyle'], value: v }),
         'setting-groundGuideSecRoadDensityLead': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityLead'], value: v }),
+        'setting-groundGuideExtLasts': (v) => ({ path: ['groundGuide', 'extended', 'lasts'], value: v }),
         'setting-groundGuideExtThreat': (v) => ({ path: ['groundGuide', 'extended', 'threat'], value: v }),
         'setting-groundGuideExtBearing': (v) => ({ path: ['groundGuide', 'extended', 'bearingDeg'], value: Number(v) || 0 }),
         'setting-groundGuideExtSurface': (v) => ({ path: ['groundGuide', 'extended', 'surface'], value: v }),
@@ -6450,7 +6459,8 @@
               'V - Gr Scope rail: show / hide the side map of the ground round the symbol\n' +
               'Shift+V - Gr Scope: Spot / AOR (approaches, lines of def, MITG); D the apch sheets\n' +
               'D - Ground Detail (G R O T B C tabs, K Legend, Esc closes)\n' +
-              'F - Extended View on / off: Obsn & Fd of Fire, Key Gr, Approaches (Detail tabs 1 2 3), threat marker, fire fan, approaches and better Posn on the map; [ ] turn the threat, J takes the better Posn\n' +
+              'F - Extended View on / off for the symbol being placed (a new symbol or Esc closes it): Obsn & Fd of Fire, Key Gr, Approaches (Detail tabs 1 2 3), threat marker, fire fan, approaches and better Posn on the map; [ ] turn the threat, J takes the better Posn\n' +
+              'Shift+F - Keep the Extended View on for every symbol (F closes it)\n' +
               'S - Quick Fix: move the point to clear ground (while drawing)\n' +
               'P - Change the mode the ground is judged for (while drawing)\n' +
               'H - Shrink the cursor card to a chip (while drawing)',

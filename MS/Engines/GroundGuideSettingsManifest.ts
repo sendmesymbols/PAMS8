@@ -601,6 +601,19 @@ export const groundGuideSettingsManifest: SettingDescriptor[] = [
     },
   },
   {
+    path: ['groundGuide', 'extended', 'lasts'],
+    label: 'F lasts',
+    group: 'Extended View (F)',
+    type: 'enum',
+    options: [
+      { value: 'symbol', label: 'While placing that kind of symbol (default)' },
+      { value: 'once', label: 'For one placement' },
+      { value: 'kept', label: 'Until F (kept on)' },
+    ],
+    help: 'How long F keeps the Extended View on, so its sums only run when they are wanted. While placing that kind of symbol: it stays for the next Pl of the same kind (continuous placing included); arming a different symbol or cancelling the draw (Esc) closes it, with a word on the card. For one placement: placing the symbol closes it too. Until F: it stays for every symbol. Shift+F keeps it on whatever this says. It always goes off with the Ground Guide, and it rests (reads nothing) while a line or area is drawn.',
+    keywords: ['extended', 'lasts', 'keep', 'auto off', 'close', 'shift f', 'sticky'],
+  },
+  {
     path: ['groundGuide', 'extended', 'threat'],
     label: 'Threat is',
     group: 'Extended View (F)',

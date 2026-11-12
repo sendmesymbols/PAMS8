@@ -172,6 +172,11 @@ const ENGINE = 'Ground Guide';
  * flanks; the user corrects.
  */
 const AOR_FRAME = { coy: { w: 2000, fwd: 4000, rear: 800 }, bn: { w: 7000, fwd: 12000, rear: 3000 }, bde: { w: 14000, fwd: 18000, rear: 6000 } } as const;
+/** The kind of symbol the Extended View follows: its catalogue key (symbol set + entity), so a Pl and a Coy of tanks are one kind. */
+function extKindOf(sidc: string | null | undefined): string | null {
+  return catalogKey(sidc) ?? (sidc ? String(sidc) : null);
+}
+
 /** A symbol's weapon ranges from the catalogue: the `Rng` field of MS/Data/Symbols.json (see OcokaDoctrine.json for its basis codes). */
 const DEFAULT_RANGE_LOOKUP = (key: string): { rng: unknown; name?: string | null } | null => {
   const s = SymbolMetadataService.getByKey(key);
@@ -333,6 +338,13 @@ export default class GroundGuide {
    * and it goes off with the guide (`disable`), so nothing below is worked out unless it was asked for.
    */
   private _ext = false;
+  /** Kept on for every symbol (Shift+F) rather than closing on a new kind of symbol or a cancelled draw. */
+  private _extKept = false;
+  /** The kind of symbol it was opened for (catalogue key); null until one is armed. A different kind closes it. */
+  private _extKind: string | null = null;
+  /** This draw ended in a placement (`afterPlace`), not a cancel. */
+  private _placedThisDraw = false;
+  private _extCancelTimer: ReturnType<typeof setTimeout> | null = null;
   /** Extended View: the ground the live reading runs on, the last reading, the month's visibility grid, the threat marker. */
   private _extLive = new OcokaLive();
   /** Its map overlay: the threat's own grid of tiles, what was last drawn from it, and the spot the view from the position was drawn for. */
@@ -915,6 +927,7 @@ export default class GroundGuide {
     next.extended = { ...prev.extended };
     if (oc && typeof oc === 'object') {
       flag('extended.keys', oc.keys, (b) => (next.extended.keys = b));
+      pick('extended.lasts', oc.lasts, ['symbol', 'once', 'kept'] as const, (x) => (next.extended.lasts = x));
       pick('extended.threat', oc.threat, OCOKA_THREATS, (x) => (next.extended.threat = x));
       if (oc.bearingDeg !== undefined) {
         if (typeof oc.bearingDeg === 'number' && Number.isFinite(oc.bearingDeg)) next.extended.bearingDeg = ((oc.bearingDeg % 360) + 360) % 360;
@@ -1066,7 +1079,7 @@ export default class GroundGuide {
     if (!this._enabled) return;
     this._enabled = false;
     this._clearRetry();
-    this._setExt(false, false); // leaving the Ground Guide closes the Extended View (user, 2026-11-12)
+    this._setExt(false, false, false, 'guide'); // leaving the Ground Guide closes the Extended View (user, 2026-11-12)
     this._syncThreat();
     this.deactivate();
     this._detachKeys();
@@ -1093,6 +1106,8 @@ export default class GroundGuide {
       return;
     }
     this._activeSidc = sidc ?? null;
+    this._placedThisDraw = false;
+    this._extOnArm(this._activeSidc);
     this._nbr = null; // the symbols already placed may have changed since the last draw
     this._profileOverride = null; // a hand-picked unit type lasts for one draw
     this._activeProfile = this._profileFor(this._activeSidc);
@@ -1278,7 +1293,7 @@ export default class GroundGuide {
     } else profile = v ? v.profile : this._legendProfile();
     // The Extended View: the reading first, as the map must hold the weapon's fan. A symbol being placed brings its own
     // (with the map products); any other spot is read here from the tiles in memory. Off: nothing is read.
-    const extOn = this._ext;
+    const extOn = this._ext && (isPoint || source === 'centre'); // it rests on a line or area
     let ext: GroundGuideOcoka | null = null;
     if (extOn) {
       ext = source === 'drawing' ? (v?.ext ?? null) : this._scopeExtRead(centre, profile, effSidc);
@@ -2026,7 +2041,10 @@ export default class GroundGuide {
     v.cover = this._coverNear(geometry, v);
     v.sections = this._sectionsNear(geometry, v);
     v.extended = keys && this._opts.extended.keys ? this._ext : null;
-    v.ext = this._ext ? this._extNear(geometry, sidc, v) : null;
+    v.extKept = this._ext && this._keptNow();
+    // It reads a point symbol (a unit or a weapon where it stands): a line or an area is drawn with it resting.
+    v.extRest = this._ext && geometry?.type !== 'point' ? 'Rests on lines and areas' : null;
+    v.ext = this._ext && !v.extRest ? this._extNear(geometry, sidc, v) : null;
     if (!v.ext) this._extMapClear();
     this._legend.setKeys(v.profileKey, v.snappable);
     this._detail.setKeys(v.profileKey, v.snappable);
@@ -2064,6 +2082,7 @@ export default class GroundGuide {
 
   /** Draw ended or was cancelled — hide feedback and stop tracking the cursor. */
   deactivate(): void {
+    this._extOnDrawEnd();
     this._badge.hide();
     this._badge.setKeepClear(null);
     this._indicators.hide();
@@ -2197,6 +2216,7 @@ export default class GroundGuide {
    * few seconds. Never runs while drawing; nothing happens without a server.
    */
   afterPlace(graphic: any): void {
+    this._placedThisDraw = true; // the Extended View stays for the next of the same kind (extended.lasts: symbol)
     // The Gr Scope rail stays on the symbol just placed until the map is panned (or another is placed or selected).
     if (graphic?.geometry) {
       const c = (this._getView?.() as any)?.center;
@@ -2828,6 +2848,8 @@ export default class GroundGuide {
     this._extMapClear();
     if (this._extOverTimer !== null) clearTimeout(this._extOverTimer);
     this._extOverTimer = null;
+    if (this._extCancelTimer !== null) clearTimeout(this._extCancelTimer);
+    this._extCancelTimer = null;
     this._extMap.destroy();
     this._boundary.reset();
     this._configToken++;
@@ -4054,28 +4076,49 @@ export default class GroundGuide {
     return this._ext;
   }
 
+  /** The Extended View is kept on for every symbol (Shift+F, or `extended.lasts: kept`) rather than closing on a new one. */
+  get extendedKept(): boolean {
+    return this._ext && this._keptNow();
+  }
+
   /**
    * Turn the Extended View on or off (F does this; so does the Detail's F tab). On: Obsn & Fd of Fire, Key Gr and
    * Approaches join the Ground Detail before the Legend, O and C gain a tile on the threat's side, the cursor card a
    * short block, the map the threat marker, the fire fan, lines of sight, the approaches and the better position, the
    * Gr Scope rail its Extended mode. Off: all of it goes and none of it is worked out. Not kept in the settings: it
    * starts off and goes off with the guide. Enforce mode stays on the GROTBC GO / NO-GO rule either way.
+   * How long it lasts (`extended.lasts`, default `symbol`): while the same kind of symbol is placed; arming a
+   * different kind or cancelling the draw closes it. `keep: true` (Shift+F) keeps it on for every symbol until F.
    */
-  setExtended(on: boolean): void {
-    this._setExt(!!on, true);
+  setExtended(on: boolean, opts: { keep?: boolean } = {}): void {
+    this._setExt(!!on, true, opts.keep === true);
   }
 
-  /** Turn the Extended View over; returns the new state. */
+  /** Turn the Extended View over (F); returns the new state. */
   toggleExtended(): boolean {
     this._setExt(!this._ext, true);
     return this._ext;
   }
 
-  private _setExt(on: boolean, refresh: boolean): void {
-    if (on === this._ext) return;
+  /** It stays on for every symbol: by Shift+F, or by the setting. */
+  private _keptNow(): boolean {
+    return this._extKept || this._opts.extended.lasts === 'kept';
+  }
+
+  /** `keep` (Shift+F) also works while it is already on: it then stays for every symbol. `why` goes on the event. */
+  private _setExt(on: boolean, refresh: boolean, keep = false, why: 'key' | 'symbol' | 'cancel' | 'placed' | 'guide' = 'key'): void {
+    if (this._extCancelTimer !== null) clearTimeout(this._extCancelTimer);
+    this._extCancelTimer = null;
     if (on && (!this._enabled || !this._opts.extended.keys)) return;
-    this._ext = on;
-    this._detail.setExtended(on);
+    if (on === this._ext) {
+      if (!on || !keep || this._extKept) return;
+      this._extKept = true; // already on: Shift+F keeps it
+    } else {
+      this._ext = on;
+      this._extKept = on && keep;
+      this._extKind = on ? extKindOf(this._activeSidc) : null;
+    }
+    this._detail.setExtended(on, on && this._keptNow());
     if (!on) {
       this._extMapClear();
       this._extLive.clear();
@@ -4083,8 +4126,54 @@ export default class GroundGuide {
       this._scopeExtRd = null;
       this._scopeExtMade = null;
     }
-    this._emit('ground-guide-extended', { on });
+    this._emit('ground-guide-extended', { on, kept: on && this._keptNow(), why });
     if (refresh) this._extChanged();
+  }
+
+  /**
+   * A symbol was armed. The Extended View follows the kind of symbol it was opened for (`extended.lasts: symbol`):
+   * the same kind again (the next Pl of a Coy, continuous placing) keeps it; a different kind closes it, said on the card.
+   * Opened with nothing armed (reading the rail), it takes the first kind armed.
+   */
+  private _extOnArm(sidc: string | null): void {
+    if (this._extCancelTimer !== null) {
+      // A cancel followed at once by a new arm (a re-pick in the palette): judged by the kind, as any arm is.
+      clearTimeout(this._extCancelTimer);
+      this._extCancelTimer = null;
+    }
+    if (!this._ext || this._keptNow()) return;
+    const kind = extKindOf(sidc);
+    if (this._extKind === null) this._extKind = kind;
+    else if (kind !== this._extKind) {
+      this._setExt(false, true, false, 'symbol');
+      this._badge.flash('Ext View closed: a new symbol. F opens it again; Shift+F keeps it on.', 3000);
+    }
+  }
+
+  /**
+   * A draw ended. Placed: it stays for the next of the same kind (with `extended.lasts: once` it closes). Cancelled
+   * (Esc, or the draw dropped): it closes, unless a symbol is armed again at once (a re-pick in the palette), which
+   * `_extOnArm` then judges by its kind.
+   */
+  private _extOnDrawEnd(): void {
+    const drawing = this._lastDetail !== null;
+    const placed = this._placedThisDraw;
+    this._placedThisDraw = false;
+    if (!this._ext || this._keptNow() || !drawing) return;
+    if (placed) {
+      if (this._opts.extended.lasts === 'once') {
+        this._setExt(false, true, false, 'placed');
+        this.announce('Ext View closed after the placement. F opens it for the next one.', 2600);
+      }
+      return;
+    }
+    if (this._extCancelTimer !== null) clearTimeout(this._extCancelTimer);
+    this._extCancelTimer = setTimeout(() => {
+      this._extCancelTimer = null;
+      if (!this._ext || this._keptNow() || this._lastDetail !== null || this._activeSidc !== null) return;
+      this._setExt(false, true, false, 'cancel');
+      this.announce('Ext View closed with the draw. F opens it again.', 2600);
+    }, 400);
   }
 
   /** The Extended View, its threat or its options changed: the marker, the map products, the overlay, the cards and the rail follow. */
@@ -5494,9 +5583,20 @@ export default class GroundGuide {
       if (!this.isActive || (k !== 'f' && this._activeProfile === 'exempt')) return;
       e.preventDefault();
       if (k === 'f') {
-        const on = this.toggleExtended();
-        const msg = on ? 'Extended View on: 1 2 3 tabs, [ ] threat, J better Posn. F again to close.' : 'Extended View off.';
-        if (this._lastDetail) this._badge.flash(msg, 2200);
+        // F: on for the symbol being placed (and the next of its kind), or off. Shift+F: on and kept for every symbol.
+        let msg: string;
+        if (e.shiftKey) {
+          this._setExt(true, true, true);
+          msg = 'Ext View kept on for every symbol. F closes it.';
+        } else {
+          const on = this.toggleExtended();
+          msg = !on
+            ? 'Ext View off.'
+            : this._keptNow()
+              ? 'Ext View on (kept). 1 2 3 tabs, J better Posn. F closes it.'
+              : 'Ext View on for this symbol: 1 2 3 tabs, J better Posn. A new symbol or Esc closes it; Shift+F keeps it.';
+        }
+        if (this._lastDetail) this._badge.flash(msg, 2600);
         else this.announce(msg, 2600);
       } else if (k === 'j') {
         this.takeBetter();

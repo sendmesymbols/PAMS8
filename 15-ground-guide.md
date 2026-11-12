@@ -1099,6 +1099,19 @@ and off at any time the guide is on (drawing or not); it is **not kept** in the 
 Ground Guide off (Ctrl+G, or `features.groundGuide`) clears it. **Nothing in it is worked out while it is off**: no sight
 reading, no fan, no approaches, no better position, no threat marker.
 
+**How long it lasts** (user, 2026-11-12: "intuitive, save the computer, be less annoying"; `extended.lasts`):
+
+| | |
+| --- | --- |
+| **F** (`lasts: symbol`, the default) | On for the symbol being placed **and the next of its kind** (same catalogue entry: a Pl and a Coy of tanks are one kind, so stamping several, or continuous placing, keeps it). It closes itself when you **arm a different kind of symbol** (the card says *Ext View closed: a new symbol*), when you **cancel the draw** (Esc; a re-pick in the palette within 0.4 s is judged as a new arm instead), on **F**, and with the guide. Pressed with nothing being placed (reading the rail) it takes the first kind armed after. |
+| `lasts: once` | As above, and placing the symbol closes it too. |
+| `lasts: kept` | On until F or the guide goes off, for every symbol. |
+| **Shift+F** | Kept on for every symbol until F, whatever `lasts` says (the card's foot reads *F Ext View · Kept*). |
+| Lines and areas | It **rests**: nothing is read and nothing drawn while a line or area is drawn (the card says *Rests on lines and areas*), and it comes back with the next point symbol. The rail rests too on a selected line or area. |
+
+The card's foot always shows where it stands (F plain: off; lit: on for this kind; *· Kept*), and the Detail's footer gives
+the way out (F close, ⇧F keep it on).
+
 With it on:
 
 - **The Ground Detail** gains three tabs **before the Legend**: **1 Obsn & Fd of Fire**, **2 Key Gr**, **3 Approaches**
@@ -1117,7 +1130,7 @@ With it on:
 - **The H chip** gives the fields of fire and points to the better position; **Copy as Text** adds the Extended View's
   lines under the GROTBC brief.
 
-**Keys.** GROTBC keeps its keys. **F** on / off. With it on: **1 2 3** open its tabs (again for the next page, Shift
+**Keys.** GROTBC keeps its keys. **F** on / off (for this kind of symbol, above), **Shift+F** on and kept. With it on: **1 2 3** open its tabs (again for the next page, Shift
 back), **[** and **]** turn the threat by 15 degrees (Shift: 45), **J** takes the better position the map shows, the way S
 takes clear ground. With it off the digits, brackets and J are left to the app. `extended.keys: false` takes F away.
 
@@ -1231,12 +1244,12 @@ draw (7 ms at the 90th percentile), the approaches and better position about 18 
 redraw included). The viewshed picture (6 to 8 ms) is only traced while the Detail shows tab 1. A reading is kept per 30 m
 cell. With the Extended View off none of it runs.
 
-**API.** `guide.extended`, `guide.setExtended(on)`, `guide.toggleExtended()`, `guide.setThreat({ threat, bearingDeg, at,
+**API.** `guide.extended`, `guide.extendedKept`, `guide.setExtended(on, { keep })`, `guide.toggleExtended()`, `guide.setThreat({ threat, bearingDeg, at,
 sectorDeg })`, `guide.turnThreat(deg)`, `await guide.extendedAround(pointOrLngLat, { sidc, profile, radiusKm, threatDeg,
 picture, map, frontageM })` → `GroundGuideOcoka | null` (waits for the tiles; `map: true` adds `sight` and `plan`, the map
 products as Web Mercator geometry, for a host that draws them itself), `await guide.extendedText(point, opts)` → the
 Extended View's lines, `guide.takeBetter()` (J), `guide.setRangeLookup(fn)` for a host with its own catalogue. Events
-`ground-guide-extended` `{ on }` and `ground-guide-better` `{ at, distanceM, compass, grade, from }`; `v.extended` (on /
+`ground-guide-extended` `{ on, kept, why }` (why: `key`, `symbol`, `cancel`, `placed`, `guide`) and `ground-guide-better` `{ at, distanceM, compass, grade, from }`; `v.extended` (on /
 off; null without its keys) and `v.ext` (the reading, with `sight` / `plan` once worked out) on a live verdict. Settings:
 `groundGuide.extended.*` (Ctrl+K group *Extended View (F)*). Test panel: Ground Guide → Extended View (F) → *Turn on / off*,
 *Log Ext View at centre*.

@@ -526,8 +526,9 @@ export class GroundGuideDetail {
   private _copy: HTMLButtonElement | null = null;
   private _copyTimer: ReturnType<typeof setTimeout> | null = null;
   private _tab: DetailTab = readTab();
-  /** The Extended View is on: its three tabs show before the Legend. */
+  /** The Extended View is on: its three tabs show before the Legend; kept on for every symbol (Shift+F). */
   private _ext = false;
+  private _kept = false;
   /** The last tab that is not one of the Extended View's: where the card goes back to when F closes it. */
   private _plain: DetailTab = this._tab;
   private _tabBar: HTMLElement | null = null;
@@ -558,8 +559,14 @@ export class GroundGuideDetail {
    * or lose their tile on the threat's side. Off while one of its tabs is open: back to the tab before it. The card is
    * rebuilt in place when it is open.
    */
-  setExtended(on: boolean): void {
-    if (on === this._ext) return;
+  setExtended(on: boolean, kept = false): void {
+    if (on === this._ext && (kept && on) === this._kept) return;
+    this._kept = kept && on;
+    if (on === this._ext) {
+      this._buildTabs(); // only kept changed: the footer says so
+      this._renderMeta(this._v);
+      return;
+    }
     this._ext = on;
     const back = !on && isExtTab(this._tab);
     if (back) this._tab = this._plain;
@@ -603,7 +610,8 @@ export class GroundGuideDetail {
       ['D', 'open / close'],
       [ext ? 'G R O T B C 1 2 3' : 'G R O T B C', 'tabs, again for the next page, with Shift back'],
       ['K', 'legend'],
-      ['F', ext ? 'close Ext View' : 'Ext View'],
+      ['F', !ext ? 'Ext View' : this._kept ? 'close Ext View (kept on)' : 'close Ext View'],
+      ...(ext && !this._kept ? ([['⇧F', 'keep it on']] as Array<[string, string]>) : []),
       ...(ext ? ([['[ ]', 'turn the threat'], ['J', 'better Posn']] as Array<[string, string]>) : []),
       ['V', 'Gr Scope'],
       ['Esc', 'close'],
@@ -621,7 +629,7 @@ export class GroundGuideDetail {
   private _extTab(): HTMLButtonElement {
     const b = el('button', 'ms-ggd-tab ms-ggd-xf') as HTMLButtonElement;
     b.type = 'button';
-    b.title = `Extended View (F): adds ${EXT_OFFER}`;
+    b.title = `Extended View (F): adds ${EXT_OFFER}, for the symbol being placed and the next of its kind (a new symbol or Esc closes it). Shift+F keeps it on for every symbol.`;
     b.setAttribute('aria-label', `Extended View, F: adds ${EXT_OFFER}`);
     const tt = el('span', 'ms-ggd-tt');
     tt.append(el('span', 'ms-ggd-tl', 'Ext View'), el('span', 'ms-ggd-ta', 'Fd of Fire · Key Gr · Apch'));
@@ -1271,6 +1279,7 @@ export class GroundGuideDetail {
     const v = this._v;
     if (!v || v.verdict === 'off' || v.verdict === 'exempt') return [];
     if (v.verdict === 'unknown') return [empty(v.waiting ? 'Loading the terrain tiles under the cursor.' : v.message)];
+    if (v.extRest) return [empty('The Extended View reads a point symbol (a unit or a weapon where it stands): it rests while a line or an area is drawn, and comes back with the next point symbol.')];
     if (!v.ext) return [empty('No elevation loaded here yet. Move the cursor over the map, or wait for the tiles.')];
     return extTiles(tab, v);
   }
@@ -1571,7 +1580,8 @@ export class GroundGuideDetail {
       legendKeyRow('H', 'Hint', 'Shrinks the cursor card to GO / SLOW-GO / NO-GO; again for the card'),
       legendKeyRow('G', 'Tabs', 'G R O T B C, one letter a tab; again for the next page (back to the first after the last), Shift + letter goes back'),
       legendKeyRow('K', 'Legend', 'This tab (L is Lasso Select)'),
-      legendKeyRow('F', 'Ext View', `Adds ${EXT_OFFER}: tabs 1 2 3 before this one, a tile in O and C, the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. F again, or turning the guide off, clears it all`),
+      legendKeyRow('F', 'Ext View', `Adds ${EXT_OFFER}: tabs 1 2 3 before this one, a tile in O and C, the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. It lasts while you place that kind of symbol: a different symbol, Esc or F closes it, and so does turning the guide off. It rests on lines and areas`),
+      legendKeyRow('⇧F', 'Keep On', 'Shift+F keeps the Ext View on for every symbol until F'),
       legendKeyRow('1', 'Ext Tabs', '1 Obsn & Fd of Fire, 2 Key Gr, 3 Approaches (with the Ext View on)'),
       legendKeyRow('J', 'Better Posn', 'Places the symbol at the better Posn the map shows (Ext View)'),
       legendKeyRow('[', 'Threat', '[ and ] turn the threat 15° (Shift 45°); drag the yellow marker to make it a place (Ext View)'),
