@@ -1,8 +1,8 @@
 /**
  * GroundGuideScopeOcoka.ts
  *
- * What the Gr Scope rail draws in the OCOKA lens (user, 2026-11-11: "Do Gr Scope next"): the lens's map products for
- * one spot, turned from Web Mercator into the rail's own frame, ground metres east / north of the spot it is centred
+ * What the Gr Scope rail draws in the Extended View (F; the OCOKA lens until 2026-11-12; user, 2026-11-11: "Do Gr
+ * Scope next"): the map products for one spot, turned from Web Mercator into the rail's own frame, ground metres east / north of the spot it is centred
  * on. Pure: no DOM, no view, no I/O. The products themselves are worked out by `ocokaSight()` and `ocokaPlan()`
  * (GroundGuideOcokaRead); this file only moves them.
  */

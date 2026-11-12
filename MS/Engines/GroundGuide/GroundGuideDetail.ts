@@ -6,6 +6,9 @@
  * docked legend and the layers and data behind the advice live while the card is open. It took the place of the
  * vertical Ground Brief on 2026-11-06, so that everything the engine reads is in view at once instead of a column
  * to scroll; the cursor card keeps the verdict, Why, Inside, Nearest and the Inter Gap Rule.
+ * With the Extended View on (F, 2026-11-12) three more tabs come before the Legend, 1 Obsn & Fd of Fire, 2 Key Gr and
+ * 3 Approaches (GroundGuideExtendedView), and O and C gain a tile on the threat's side; while it is off a dashed F tab
+ * in their place says what F adds.
  *
  * The card never scrolls (user, 2026-11-07: the tabs are switched by key while the mouse is busy placing the symbol,
  * so there is no hand free to scroll). It reads in two parts:
@@ -106,14 +109,14 @@ import {
   speedWhen,
 } from './GroundGuideSpeedView';
 import { blockGauge, blockTiles, blockWayOut, ensureTrafficCss, roadBlock, viewOf } from './GroundGuideTrafficView';
-import type { GroundGuideLens, GroundGuideVerdict } from './GroundGuideTypes';
-import { OCOKA_TABS, OCOKA_TAB_KEY, OCOKA_TAB_LABEL, ensureOcokaCss, isOcokaTab, ocokaAnswer, ocokaFacts, ocokaText, ocokaTiles, type OcokaTab } from './GroundGuideOcokaView';
+import type { GroundGuideVerdict } from './GroundGuideTypes';
+import { EXT_OFFER, EXT_TABS, EXT_TAB_KEY, EXT_TAB_LABEL, extAnswer, extFacts, extLetterTiles, extTiles, extendedText, isExtTab, type ExtTab } from './GroundGuideExtendedView';
 
-export type DetailTab = GrotbcLetter | 'L' | OcokaTab;
+export type DetailTab = GrotbcLetter | 'L' | ExtTab;
 export const DETAIL_TABS: readonly DetailTab[] = ['G', 'R', 'O', 'T', 'B', 'C', 'L'];
-/** The tabs of the OCOKA lens (keys 1 to 5), then the Legend. */
-export const DETAIL_TABS_OCOKA: readonly DetailTab[] = [...OCOKA_TABS, 'L'];
-const tabsOf = (lens: GroundGuideLens): readonly DetailTab[] => (lens === 'ocoka' ? DETAIL_TABS_OCOKA : DETAIL_TABS);
+/** With the Extended View on (F): its three tabs (keys 1 2 3) come before the Legend. */
+export const DETAIL_TABS_EXT: readonly DetailTab[] = ['G', 'R', 'O', 'T', 'B', 'C', ...EXT_TABS, 'L'];
+const tabsOf = (ext: boolean): readonly DetailTab[] => (ext ? DETAIL_TABS_EXT : DETAIL_TABS);
 /** Map layer switches the Legend tab offers. */
 export type DetailToggle = 'overlay' | 'boundary' | 'people' | 'indicators' | 'footprint';
 
@@ -133,15 +136,17 @@ export interface DetailHandlers {
   opacity(v: number): void;
   /** The tab changed (by click or key). */
   tab?(tab: DetailTab): void;
+  /** The F tab was clicked: turn the Extended View on (or off). */
+  extended?(on: boolean): void;
   /** The card's height changed (the grip, or the window): the cursor card re-checks where it may go. */
   resized?(): void;
 }
 
 const STYLE_ID = 'ms-ground-guide-detail-style';
 const TAB_KEY = 'ms-ground-guide-detail-tab';
-const TAB_LABEL: Record<DetailTab, string> = { G: 'Gr', R: 'Rds & Rail', O: 'Obs', T: 'Trafficability', B: 'BUAs', C: 'Cover', L: 'Legend', ...OCOKA_TAB_LABEL };
+const TAB_LABEL: Record<DetailTab, string> = { G: 'Gr', R: 'Rds & Rail', O: 'Obs', T: 'Trafficability', B: 'BUAs', C: 'Cover', L: 'Legend', ...EXT_TAB_LABEL };
 /** The key that opens each tab: the letter itself, except the Legend (K: L is Lasso Select in the app). */
-export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T: 'T', B: 'B', C: 'C', L: 'K', ...OCOKA_TAB_KEY };
+export const TAB_KEY_OF: Record<DetailTab, string> = { G: 'G', R: 'R', O: 'O', T: 'T', B: 'B', C: 'C', L: 'K', ...EXT_TAB_KEY };
 /** Where the Detail's height is remembered (item 14), and the three stops it snaps to, as a share of the window. */
 const HEIGHT_KEY = 'ms-ground-guide-detail-height';
 const HEIGHT_STOPS = [0.4, 0.5, 0.6] as const;
@@ -232,6 +237,10 @@ const CSS = `
 .ms-ggd-tab[aria-selected="true"]{background:#e4e8ec;border-color:#e4e8ec;color:#14181d}
 .ms-ggd-tab[aria-selected="true"] .ms-ggd-k{background:#fff;border-color:#9aa5b1;color:#14181d}
 .ms-ggd-tt{display:flex;flex-direction:column;min-width:0}
+/* The Extended View (F): off, one dashed tab says what F adds; on, its three tabs carry a blue top edge. */
+.ms-ggd-tab.ms-ggd-xf{border:1px dashed #6f8da8;color:#c3d6e8}
+.ms-ggd-tab.ms-ggd-xf .ms-ggd-k{border-color:#8ec1ea;color:#8ec1ea}
+.ms-ggd-tab.ms-ggd-xt{box-shadow:inset 0 2px 0 #8ec1ea}
 .ms-ggd-tl{white-space:nowrap}
 .ms-ggd-ta{display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;font-weight:600;color:#c3cbd3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ms-ggd-ta>span:last-child{overflow:hidden;text-overflow:ellipsis}
@@ -439,10 +448,10 @@ function readHeight(): number {
   return HEIGHT_DEFAULT;
 }
 
-function readTab(lens: GroundGuideLens = 'grotbc'): DetailTab {
-  const tabs = tabsOf(lens);
+function readTab(ext = false): DetailTab {
+  const tabs = tabsOf(ext);
   try {
-    const t = localStorage.getItem(lens === 'ocoka' ? `${TAB_KEY}-ocoka` : TAB_KEY);
+    const t = localStorage.getItem(TAB_KEY);
     if (t && (tabs as readonly string[]).includes(t)) return t as DetailTab;
   } catch {
     /* storage blocked */
@@ -517,7 +526,10 @@ export class GroundGuideDetail {
   private _copy: HTMLButtonElement | null = null;
   private _copyTimer: ReturnType<typeof setTimeout> | null = null;
   private _tab: DetailTab = readTab();
-  private _lens: GroundGuideLens = 'grotbc';
+  /** The Extended View is on: its three tabs show before the Legend. */
+  private _ext = false;
+  /** The last tab that is not one of the Extended View's: where the card goes back to when F closes it. */
+  private _plain: DetailTab = this._tab;
   private _tabBar: HTMLElement | null = null;
   private _keysEl: HTMLElement | null = null;
   private _v: GroundGuideVerdict | null = null;
@@ -537,34 +549,37 @@ export class GroundGuideDetail {
     return this._tab;
   }
 
-  get lens(): GroundGuideLens {
-    return this._lens;
+  get extended(): boolean {
+    return this._ext;
   }
 
   /**
-   * Switch the card between the GROTBC tabs (G R O T B C) and the OCOKA tabs (1 to 5); the Legend stays. Each lens
-   * remembers its own tab. The card is rebuilt in place when it is open.
+   * The Extended View was turned on or off (F): its three tabs come or go before the Legend, and the O and C tabs gain
+   * or lose their tile on the threat's side. Off while one of its tabs is open: back to the tab before it. The card is
+   * rebuilt in place when it is open.
    */
-  setLens(lens: GroundGuideLens): void {
-    if (lens === this._lens) return;
-    this._lens = lens;
-    this._tab = readTab(lens);
+  setExtended(on: boolean): void {
+    if (on === this._ext) return;
+    this._ext = on;
+    const back = !on && isExtTab(this._tab);
+    if (back) this._tab = this._plain;
     if (!this._el) return;
     this._buildTabs();
     this._renderMeta(this._v);
-    if (this.isShown) this._renderTab(true);
+    if (this.isShown) this._renderTab(back);
   }
 
-  /** The tab buttons and the key line of the footer, for the lens in force. */
+  /** The tab buttons and the key line of the footer, with or without the Extended View's tabs. */
   private _buildTabs(): void {
     const tabs = this._tabBar;
     if (!tabs) return;
     tabs.replaceChildren();
     this._tabs.clear();
     this._ans.clear();
-    for (const t of tabsOf(this._lens)) {
+    for (const t of tabsOf(this._ext)) {
+      if (t === 'L' && !this._ext && this._h.extended) tabs.append(this._extTab());
       // Two lines (item 8): the short name over the tab's own answer, a dot and a word (filled in by _renderMeta).
-      const b = el('button', 'ms-ggd-tab', undefined) as HTMLButtonElement;
+      const b = el('button', isExtTab(t) ? 'ms-ggd-tab ms-ggd-xt' : 'ms-ggd-tab', undefined) as HTMLButtonElement;
       b.type = 'button';
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', String(t === this._tab));
@@ -583,13 +598,13 @@ export class GroundGuideDetail {
     const keys = this._keysEl;
     if (!keys) return;
     keys.replaceChildren();
-    const ocoka = this._lens === 'ocoka';
+    const ext = this._ext;
     const rows: Array<[string, string]> = [
       ['D', 'open / close'],
-      [ocoka ? '1 2 3 4 5' : 'G R O T B C', 'tabs, again for the next page, with Shift back'],
+      [ext ? 'G R O T B C 1 2 3' : 'G R O T B C', 'tabs, again for the next page, with Shift back'],
       ['K', 'legend'],
-      ['F', ocoka ? 'GROTBC' : 'OCOKA'],
-      ...(ocoka ? ([['[ ]', 'turn the threat'], ['J', 'better Posn']] as Array<[string, string]>) : []),
+      ['F', ext ? 'close Ext View' : 'Ext View'],
+      ...(ext ? ([['[ ]', 'turn the threat'], ['J', 'better Posn']] as Array<[string, string]>) : []),
       ['V', 'Gr Scope'],
       ['Esc', 'close'],
     ];
@@ -597,6 +612,22 @@ export class GroundGuideDetail {
       for (const kk of k.split(' ')) keys.append(el('span', 'ms-ggd-k', kk));
       keys.append(`${t} `);
     }
+  }
+
+  /**
+   * The F tab, shown while the Extended View is off: it says what F adds and turns it on when clicked (the key is the
+   * way while placing: the mouse is busy).
+   */
+  private _extTab(): HTMLButtonElement {
+    const b = el('button', 'ms-ggd-tab ms-ggd-xf') as HTMLButtonElement;
+    b.type = 'button';
+    b.title = `Extended View (F): adds ${EXT_OFFER}`;
+    b.setAttribute('aria-label', `Extended View, F: adds ${EXT_OFFER}`);
+    const tt = el('span', 'ms-ggd-tt');
+    tt.append(el('span', 'ms-ggd-tl', 'Ext View'), el('span', 'ms-ggd-ta', 'Fd of Fire · Key Gr · Apch'));
+    b.append(el('span', 'ms-ggd-k', 'F'), tt);
+    b.addEventListener('click', () => this._h.extended?.(true));
+    return b;
   }
 
   /**
@@ -633,10 +664,12 @@ export class GroundGuideDetail {
 
   /** Switch tabs (the card is shown if it was hidden and there is something to show). */
   setTab(tab: DetailTab): void {
+    if (isExtTab(tab) && !this._ext) return; // the Extended View's tabs only while it is on
     const changed = tab !== this._tab;
     this._tab = tab;
+    if (!isExtTab(tab)) this._plain = tab;
     try {
-      localStorage.setItem(this._lens === 'ocoka' ? `${TAB_KEY}-ocoka` : TAB_KEY, tab);
+      localStorage.setItem(TAB_KEY, tab);
     } catch {
       /* storage blocked: the choice lasts for this page */
     }
@@ -916,7 +949,7 @@ export class GroundGuideDetail {
   /** Every letter tab's answer (item 8) and the line saying who the ground is judged for (item 9). */
   private _renderMeta(v: GroundGuideVerdict | null): void {
     for (const [t, line] of this._ans) {
-      const a = t === 'L' ? null : isOcokaTab(t) ? ocokaAnswer(t, v) : letterAnswer(t, v);
+      const a = t === 'L' ? null : isExtTab(t) ? extAnswer(t, v) : letterAnswer(t, v);
       if (!a) {
         line.replaceChildren(' ');
         line.title = '';
@@ -944,7 +977,7 @@ export class GroundGuideDetail {
     const sum = this._sum;
     if (!sum) return;
     const v = this._v;
-    const strip = tab === 'L' ? null : isOcokaTab(tab) ? summaryStrip(ocokaAnswer(tab, v), ocokaFacts(tab, v)) : detailSummary(tab, v);
+    const strip = tab === 'L' ? null : isExtTab(tab) ? summaryStrip(extAnswer(tab, v), extFacts(tab, v)) : detailSummary(tab, v);
     if (!strip || !v) {
       sum.replaceChildren();
       sum.hidden = true;
@@ -983,7 +1016,7 @@ export class GroundGuideDetail {
     this._renderSummary(tab);
     let tiles: HTMLElement[] = [];
     try {
-      tiles = tab === 'L' ? this._renderL() : isOcokaTab(tab) ? this._renderOcoka(tab) : this._renderLetter(tab);
+      tiles = tab === 'L' ? this._renderL() : isExtTab(tab) ? this._renderExt(tab) : this._renderLetter(tab);
     } catch (err) {
       tiles = [empty('This tab could not be drawn. The Engine Log has the error.')];
       console.error('[Ground Guide] detail tab', tab, err);
@@ -1005,8 +1038,7 @@ export class GroundGuideDetail {
     const flow = this._flow;
     if (!flow) return;
     for (const b of flow.querySelectorAll<HTMLElement>(':scope > .ms-ggb-sec > .ms-ggb-cap > span:first-child')) {
-      // In an OCOKA tab a GROTBC letter on a borrowed tile would read as another tab's key: every letter badge goes.
-      if (b.childElementCount === 0 && (b.textContent === tab || (isOcokaTab(tab) && (b.textContent ?? '').length === 1))) b.remove();
+      if (b.childElementCount === 0 && b.textContent === tab) b.remove();
     }
   }
 
@@ -1184,12 +1216,12 @@ export class GroundGuideDetail {
   }
 
   /**
-   * Split a list tile (caption over a label / value list, maybe a line after it) into pieces no taller than `h`, row
-   * by row: the first keeps the caption, the others carry it again with "continued". The pieces are left in the flow
-   * in order, the line after the list at the end of the last.
+   * Split a list tile (caption over a label / value list, or a `.ms-ggd-split` list of cards, maybe a line after it)
+   * into pieces no taller than `h`, row by row: the first keeps the caption, the others carry it again with
+   * "continued". The pieces are left in the flow in order, the line after the list at the end of the last.
    */
   private _splitList(t: HTMLElement, h: number): HTMLElement[] {
-    const list = t.querySelector<HTMLElement>(':scope > .ms-gs-kv');
+    const list = t.querySelector<HTMLElement>(':scope > .ms-gs-kv, :scope > .ms-ggd-split');
     const cap = t.querySelector<HTMLElement>(':scope > .ms-ggb-cap');
     if (!list || !cap || list.childElementCount < 2) return [t];
     const after: Element[] = [];
@@ -1234,26 +1266,13 @@ export class GroundGuideDetail {
     p.replaceChildren(dots, next);
   }
 
-  /**
-   * An OCOKA tab: the lens's own tiles first, then the GROTBC tiles that answer the same letter (Cover's four ways,
-   * the obstacle dial, the ITG candidates), so nothing the other lens knows is lost by switching.
-   */
-  private _renderOcoka(tab: OcokaTab): HTMLElement[] {
+  /** An Extended View tab (1 Obsn & Fd of Fire, 2 Key Gr, 3 Approaches). */
+  private _renderExt(tab: ExtTab): HTMLElement[] {
     const v = this._v;
     if (!v || v.verdict === 'off' || v.verdict === 'exempt') return [];
     if (v.verdict === 'unknown') return [empty(v.waiting ? 'Loading the terrain tiles under the cursor.' : v.message)];
-    if (!v.ocoka) return [empty('No elevation loaded here yet. Move the cursor over the map, or wait for the tiles.')];
-    ensureOcokaCss();
-    const own = ocokaTiles(tab, v);
-    switch (tab) {
-      case 'OC': return [...this._renderC(v), ...own];
-      case 'OX': return [...own, ...this._renderO(v)];
-      case 'OK': {
-        const itg = itgSection(v);
-        return itg ? [...own, itg] : own;
-      }
-      default: return own;
-    }
+    if (!v.ext) return [empty('No elevation loaded here yet. Move the cursor over the map, or wait for the tiles.')];
+    return extTiles(tab, v);
   }
 
   private _renderLetter(tab: GrotbcLetter): HTMLElement[] {
@@ -1263,10 +1282,10 @@ export class GroundGuideDetail {
     switch (tab) {
       case 'G': return this._renderG(v);
       case 'R': return this._renderR(v);
-      case 'O': return this._renderO(v);
+      case 'O': return [...this._renderO(v), ...extLetterTiles('O', v)]; // the Extended View adds the threat's side
       case 'T': return this._renderT(v);
       case 'B': return this._renderB(v);
-      default: return this._renderC(v);
+      default: return [...this._renderC(v), ...extLetterTiles('C', v)];
     }
   }
 
@@ -1552,7 +1571,11 @@ export class GroundGuideDetail {
       legendKeyRow('H', 'Hint', 'Shrinks the cursor card to GO / SLOW-GO / NO-GO; again for the card'),
       legendKeyRow('G', 'Tabs', 'G R O T B C, one letter a tab; again for the next page (back to the first after the last), Shift + letter goes back'),
       legendKeyRow('K', 'Legend', 'This tab (L is Lasso Select)'),
-      legendKeyRow('V', 'Gr Scope', 'Shows or hides the side rail: the map round the symbol with range rings and the GROTBC layers'),
+      legendKeyRow('F', 'Ext View', `Adds ${EXT_OFFER}: tabs 1 2 3 before this one, a tile in O and C, the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. F again, or turning the guide off, clears it all`),
+      legendKeyRow('1', 'Ext Tabs', '1 Obsn & Fd of Fire, 2 Key Gr, 3 Approaches (with the Ext View on)'),
+      legendKeyRow('J', 'Better Posn', 'Places the symbol at the better Posn the map shows (Ext View)'),
+      legendKeyRow('[', 'Threat', '[ and ] turn the threat 15° (Shift 45°); drag the yellow marker to make it a place (Ext View)'),
+      legendKeyRow('V', 'Gr Scope', 'Shows or hides the side rail: the map round the symbol with range rings and the GROTBC layers (with F, the Ext View)'),
       legendKeyRow('Esc', 'Close', 'Closes this card; a second Esc cancels the draw'),
     );
     out.push(tile('L', 'Keys', keys));
@@ -1563,7 +1586,8 @@ export class GroundGuideDetail {
     const v = this._v;
     const btn = this._copy;
     if (!v || !btn) return;
-    const text = this._lens === 'ocoka' ? ocokaText(v).join('\n') : briefText(v);
+    // With the Extended View on, its lines follow the GROTBC brief.
+    const text = v.ext ? `${briefText(v)}\n\n${extendedText(v).join('\n')}` : briefText(v);
     const done = (ok: boolean) => {
       btn.textContent = ok ? 'Copied' : 'Copy failed';
       if (this._copyTimer !== null) clearTimeout(this._copyTimer);

@@ -976,9 +976,9 @@ class SymbolEngine implements Evented {
       const mg = new MovementGuide(() => this._getView());
       this._movementGuide = mg;
       mg.setOptions((settingsData as any).movementGuide ?? {});
-      // The threat place is the Ground Guide's threat marker (OCOKA lens) when one is set; never read from symbols.
+      // The threat place is the Ground Guide's threat marker (Extended View, F) when one is set; never read from symbols.
       mg.setThreatSource(() => {
-        const o: any = this._groundGuide?.options?.ocoka ?? (settingsData as any).groundGuide?.ocoka;
+        const o: any = this._groundGuide?.options?.extended ?? (settingsData as any).groundGuide?.extended;
         return o?.threat === 'point' && Array.isArray(o.at) ? [o.at[0], o.at[1]] : null;
       });
       mg.setCatalogNames((key) => SymbolMetadataService.getByKey(key)?.Name ?? null);
@@ -1007,9 +1007,9 @@ class SymbolEngine implements Evented {
       const pg = new PlatoonGuide(() => this._getView());
       this._platoonGuide = pg;
       pg.setOptions((settingsData as any).platoonGuide ?? {});
-      // The threat place is the Ground Guide's threat marker (OCOKA lens) when one is set; never read from symbols.
+      // The threat place is the Ground Guide's threat marker (Extended View, F) when one is set; never read from symbols.
       pg.setThreatSource(() => {
-        const o: any = this._groundGuide?.options?.ocoka ?? (settingsData as any).groundGuide?.ocoka;
+        const o: any = this._groundGuide?.options?.extended ?? (settingsData as any).groundGuide?.extended;
         return o?.threat === 'point' && Array.isArray(o.at) ? [o.at[0], o.at[1]] : null;
       });
       // While a symbol is placed the Ground Guide's card owns the cursor: the Pl cursor card stays hidden then.

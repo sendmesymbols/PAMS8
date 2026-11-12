@@ -768,8 +768,7 @@
       "tab": true,
       "topPx": 54
     },
-    "ocoka": {
-      "lens": "grotbc",
+    "extended": {
       "keys": true,
       "threat": "front",
       "bearingDeg": 0,
@@ -782,7 +781,7 @@
       "mapFan": true,
       "mapEnemy": true,
       "mapSight": true,
-      "mapAvenues": true,
+      "mapApproaches": true,
       "mapBetter": true,
       "overlay": "auto"
     },

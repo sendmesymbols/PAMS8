@@ -203,8 +203,8 @@ fit a shorter map, and **never scrolls**. While both are open the Ground Detail 
 - **Legend**: under the map only, one line per letter, each giving the nearest or biggest of each thing in view
   (`N-5 MSR Cl 70 383 m N`, `Jhelum 190k 2.3 km N`, `NO-GO Gr at the symbol`, the going shares). **Each line is that
   layer's switch**: click it to hide or show the layer (remembered).
-- **In the OCOKA lens** (F; 2026-11-11) the same rail reads the same spot as OCOKA, see *OCOKA lens* below. Its foot
-  shows **F** with the lens it switches to.
+- **With the Extended View on** (F; 2026-11-12) the same rail reads the same spot in its Extended mode, see *Extended
+  View* below. Its foot shows **F Ext View** (off) or **F Close Ext** (on).
 - API: `guide.showScope(open?)` (no argument toggles, as V does), `guide.isScopeOpen`, `guide.setScopeTarget(graphic |
   null)`; event `ground-guide-scope` `{ open }`.
 
@@ -1091,121 +1091,119 @@ one passes and a product reads it. Then the regeneration: a tree / shrub layer f
 concealment, as a hint unless the scores say otherwise), land-cover fixes (false cropland in the desert), and track
 positions (R), followed by the usual partial rebuild and `kmz.py`.
 
-### OCOKA lens (F)
+### Extended View (F)
 
-A second reading of the same terrain bundle (user, 2026-11-10). GROTBC describes the ground by factor; OCOKA judges what it
-does to a force on a task: **O**bservation and Fields of Fire, **C**over and Concealment, **O**bstacles, **K**ey Ground,
-**A**venues. `groundGuide.ocoka.lens` (`grotbc` | `ocoka`) switches the cursor card, the Ground Detail's tabs and Copy as
-Text (the OCOKA brief, below), the Gr Scope rail, the H chip and the map overlay (all below).
-`MS/Engines/OCOKA/Ocoka.ts` is a separate, older avenue finder and is unchanged.
+User, 2026-11-12: the separate OCOKA lens of 2026-11-10 is gone and its name with it. GROTBC stays the one picture; much
+of what the lens gave was already in it, so the rest is **added** to it while **F** is on. F turns the Extended View on
+and off at any time the guide is on (drawing or not); it is **not kept** in the settings: it starts off, and turning the
+Ground Guide off (Ctrl+G, or `features.groundGuide`) clears it. **Nothing in it is worked out while it is off**: no sight
+reading, no fan, no approaches, no better position, no threat marker.
 
-**Keys.** GROTBC keeps its keys. **F** switches the lens while drawing. **1 2 3 4 5** open the OCOKA tabs (Obsn & Fd of Fire,
-Cover, Obs, Key Gr, Avenues), switching to the OCOKA lens; a GROTBC letter (G R O T B C) always opens its GROTBC tab,
-switching back. K (Legend), D, Esc, V, S, P, H work in both. **[** and **]** turn the threat by 15 degrees (Shift: 45).
-**J** takes the better position the map shows (below), the way S takes clear ground.
+With it on:
 
-**Enforce mode** stays on the GROTBC GO / NO-GO rule in both lenses. An OCOKA reading is a judgement and never blocks a
-placement; the card's verdict bar is the GROTBC verdict in both.
+- **The Ground Detail** gains three tabs **before the Legend**: **1 Obsn & Fd of Fire**, **2 Key Gr**, **3 Approaches**
+  (their tab buttons carry a blue top edge). **O** gains a tile *Obs Toward the Threat* (the nearest NO-GO toward the
+  threat, whether fire covers it, how much of the arc it lies across, the nearest SLOW-GO) and **C** a tile *Concealment
+  in Crops* (the month's crop mix); both captions carry an *F · Ext View* tag. While it is off a dashed **F Ext View** tab
+  stands where the three will be, saying what it adds, and a click on it turns it on. F off on one of its tabs goes back
+  to the tab before it.
+- **The cursor card** keeps its GROTBC rows and gains one short block: the threat and the weapon, then *Fd of Fire*
+  (with *Threat sees / may see* when the threat's place probably sees the spot), the lead *Key Gr*, and the first
+  *Apch*. The foot always shows **F Ext View** (lit while on); **J Better 240 m N** joins it once a better position is
+  worked out.
+- **The map** gets the yellow threat marker, the fire fan, the lines of sight, the threat's view, the approaches and the
+  better position (*On the map*, below), and the overlay paints what can be seen (`extended.overlay`).
+- **The Gr Scope rail** (V) reads in its Extended mode (below); its foot shows **F Ext View** off, **F Close Ext** on.
+- **The H chip** gives the fields of fire and points to the better position; **Copy as Text** adds the Extended View's
+  lines under the GROTBC brief.
 
-**The threat** (`ocoka.threat`): `front` (the default) is the unit's front, `footprint.bearingDeg`; `bearing` uses
-`ocoka.bearingDeg`; `point` judges toward `ocoka.at` (a place on the map) from wherever the symbol is; `allRound` every
-direction. It is NOT read from enemy symbols. The yellow **Threat marker** (`GroundGuideThreat.ts`, a DOM handle over the
-view) shows it: docked at the top of the map it gives the bearing; dragged onto the map it sets `point`; a double-click
-returns it to the front. `ocoka.sectorDeg` (30 to 180) is the arc judged.
+**Keys.** GROTBC keeps its keys. **F** on / off. With it on: **1 2 3** open its tabs (again for the next page, Shift
+back), **[** and **]** turn the threat by 15 degrees (Shift: 45), **J** takes the better position the map shows, the way S
+takes clear ground. With it off the digits, brackets and J are left to the app. `extended.keys: false` takes F away.
 
-**How sight is judged** (`GroundGuideOcoka.ts`, pure, no imports; `GroundGuideOcokaRead.ts` assembles the reading). A 30 m
-elevation cannot show towns, crops, bunds or walls and is itself good to about a metre, so a point is seen with a
-*chance*: the share of the target that clears the terrain horizon (soft over 1 m), times the chance that nothing mapped
-stands in the line. Buildings come from the bundle's building layer (density, footprint, height), tall crops from the
-month's crop mix, trees, bunds, walls and orchards from their ground class (`OcokaDoctrine.json` `surfaceBlockers`,
-`cropCalendar`: proposals to correct). Nothing is random. Three figures are given: on the ground alone (the upper bound),
-expected, and sure (80 % or more). `ocoka.surface: false` judges on the ground alone. The cards say "may be seen" and
-"check on the ground".
+**Enforce mode** stays on the GROTBC GO / NO-GO rule. An Extended View reading is a judgement and never blocks a
+placement; the card's verdict bar is the GROTBC verdict.
 
-| Row / tab | What it gives |
+**The threat** (`extended.threat`): `front` (the default) is the unit's front, `footprint.bearingDeg`; `bearing` uses
+`extended.bearingDeg`; `point` judges toward `extended.at` (a place on the map) from wherever the symbol is; `allRound`
+every direction. It is NOT read from enemy symbols. The yellow **Threat marker** (`GroundGuideThreat.ts`, a DOM handle
+over the view, shown only with the Extended View on or the rail at its AOR scale) shows it: docked at the top of the map
+it gives the bearing; dragged onto the map it sets `point`; a double-click returns it to the front. `extended.sectorDeg`
+(30 to 180) is the arc judged. The threat's place is kept in the settings (the Movement and Platoon Guides read it).
+
+**How sight is judged** (`GroundGuideOcoka.ts`, the OCOKA engine: pure, no imports; `GroundGuideOcokaRead.ts` assembles the
+reading; the code keeps the doctrine's name, the screen does not). A 30 m elevation cannot show towns, crops, bunds or
+walls and is itself good to about a metre, so a point is seen with a *chance*: the share of the target that clears the
+terrain horizon (soft over 1 m), times the chance that nothing mapped stands in the line. Buildings come from the bundle's
+building layer (density, footprint, height), tall crops from the month's crop mix, trees, bunds, walls and orchards from
+their ground class (`OcokaDoctrine.json` `surfaceBlockers`, `cropCalendar`: proposals to correct). Nothing is random.
+Three figures are given: on the ground alone (the upper bound), expected, and sure (80 % or more). `extended.surface:
+false` judges on the ground alone. The cards say "may be seen" and "check on the ground".
+
+| Tab | What it gives |
 | --- | --- |
-| Obsn | Country by how far the view reaches (open; close 400-500 m or less; very close 100-200 m or less: the pamphlets' limits), share of the ground within `ocoka.radiusKm` that may be seen, the highest ground looking down on the point and from what share of the directions. |
-| Fd of Fire | For the symbol's weapon (`Rng`: direct fire at a standing man, or anti-armour at a vehicle; small arms 300 m when it has none; indirect and air-defence weapons "need an observer"). Good / Marginal / Poor on two tests, the lower stands: the clear distance to the first dead or screened ground (270 m good, 100 m marginal, 200 m the minimum for a primary task) and the share of the weapon's range that is seen (50 % / 20 %). Dead ground (terrain) is told apart from screened ground (crops, buildings, trees). The Detail adds the viewshed picture and the seen share by range band. |
-| Cover | The C letter's own four-way reading, plus the month's crops. |
-| Obs | The nearest NO-GO ground for the mode toward the threat, whether it is in view from the point (covered by fire), how much of the arc it lies across, the nearest SLOW-GO. Obstacles laid by troops are not read. |
-| Key Gr | The point against the highest ground within 3 km, and the ITG candidates within the radius with whether each and the point may see each other. |
-| Avenues | Straight ways out to 2 km in 24 directions for the mode: GO, SLOW-GO (half the way or more), or stopped by NO-GO, and what stops them. Then the avenues of approach from the threat, with their chokepoints for the formation's frontage (On the map, below). |
-| Threat | Only with the threat as a place: whether it is likely to see the position, where its line is lost, and how much of the ground between is out of its view. |
-| Better Posn | Only when a clearly better position for the same weapon lies within 300 m: where, its grade against the point's, and J to take it. |
+| 1 Obsn & Fd of Fire | For the symbol's weapon (`Rng`: direct fire at a standing man, or anti-armour at a vehicle; small arms 300 m when it has none; indirect and air-defence weapons "need an observer"). Good / Marginal / Poor on two tests, the lower stands: the clear distance to the first dead or screened ground (270 m good, 100 m marginal, 200 m the minimum for a primary task) and the share of the weapon's range that is seen (50 % / 20 %). Dead ground (terrain) is told apart from screened ground (crops, buildings, trees). Tiles: the viewshed picture, the seen share by range band, the threat's view, the better position, Obsn (country by how far the view reaches, share of the ground within `extended.radiusKm` that may be seen, what overlooks the point and from what share of the directions), weather and light (the month's visibility; `speed.light: night` reads the coming night as moonlight or starlight and the weapon's night sight on an ordinary, a haze and a fog day). |
+| 2 Key Gr | The ITG candidates within the radius **ranked** (`rankKeyGround`): strong candidates, ground higher than the Posn, ground within 1 km of an approach (*Overlooks Apch 1 · 526 m*) or its narrows (*Covers the narrows*), ground toward the threat and ground in view of the Posn rank higher, nearer ground a little; the bundle's dominance and MSR-in-view add a little. The weights are a proposal. The answer names the **lead candidate** with why it leads; tiles: a round **Key Gr map** (north up, turned with the map, scaled just past the farthest candidate: the Posn, rings, the threat's arc, the approaches with chokepoints, a line of sight to each candidate coloured by the chance, the highest Gr ▲, the candidates numbered by rank), the **ranked list** (the lead as a card with its reasons as chips and the bundle's measures, the others two lines each), and **Heights Against the Posn** (the Posn on the middle line, the highest Gr and each candidate above or below it). Candidates only: the commander designates ITG / MITG (`designateGround`). |
+| 3 Approaches | The approaches from the threat, with their chokepoints for the formation's frontage (On the map, below), then the straight ways out to 2 km in 24 directions for the mode: GO, SLOW-GO (half the way or more), or stopped by NO-GO, and what stops them. |
 
-The O tab also gives the month's visibility (below) and the light: `speed.light: night` reads the coming night as
-moonlight or starlight from the date and place, and the weapon's night sight reach on an ordinary, a haze and a fog day.
-
-**On the map** (2026-11-11; `GroundGuideOcokaMap.ts`, layer `ms-ground-guide-ocoka`, draped on the ground; geometry from
-`ocokaSight()` / `ocokaPlan()` in `GroundGuideOcokaRead.ts`). While a symbol is being placed in the OCOKA lens the reading
-is drawn where it applies, each product with its own switch:
+**On the map** (2026-11-11; `GroundGuideOcokaMap.ts`, layer `ms-ground-guide-ocoka` titled *Ground Guide Extended View*,
+draped on the ground; geometry from `ocokaSight()` / `ocokaPlan()` in `GroundGuideOcokaRead.ts`). While a symbol is being
+placed with the Extended View on, the reading is drawn where it applies, each product with its own switch:
 
 | Product | Switch | What is drawn |
 | --- | --- | --- |
-| Fire fan | `ocoka.mapFan` | The arc toward the threat out to the weapon's range (yellow outline). Inside it **dead ground is red** (the terrain hides it) and **screened ground amber** (crops, buildings, trees probably hide it); ground left clear is ground that may be seen. |
-| Lines of sight | `ocoka.mapSight` | From the position to each ITG candidate: green when it is probably in view, amber dashed when it may be, red with a cross where the line is lost. |
-| Threat's view | `ocoka.mapEnemy` | Only when the threat is a place (the marker dragged onto the map): a 40 degree wedge from it toward the position, the ground it may see in violet, and its line to the position, with a cross where that line is lost. Its eye is a vehicle commander's (2.4 m): the higher eye sees more, so the threat is never understated. |
-| Avenues | `ocoka.mapAvenues` | The cheapest way in for the mode from the threat's place (or, with only a direction, from a start up to 5 km out on that bearing: the card says "from NE", not "from the Threat marker"). SLOW-GO ground costs three times GO, ground narrower than the frontage up to four times more, NO-GO is never crossed. Width is twice the distance to the nearest NO-GO ground. A second avenue is drawn (dashed) when it shares less than 60 % with the first and costs at most 2.2 times as much. **Chokepoints** (diamonds) are where the passable ground is narrower than the frontage: "Gap in Permanent water 85 m", or the bridge or ford itself. |
-| Better position | `ocoka.mapBetter` | A green ring and a line to it when a position within 300 m (12 bearings every 60 m, on ground the mode can use) has clearly better fields of fire toward the same threat for the same weapon: a better grade, or 15 points more of the range seen. **J** places the symbol there (`guide.takeBetter()`), refused if the GROTBC rule does not accept that ground. |
+| Fire fan | `extended.mapFan` | The arc toward the threat out to the weapon's range (yellow outline). Inside it **dead ground is red** (the terrain hides it) and **screened ground amber** (crops, buildings, trees probably hide it); ground left clear is ground that may be seen. |
+| Lines of sight | `extended.mapSight` | From the position to each ITG candidate: green when it is probably in view, amber dashed when it may be, red with a cross where the line is lost. |
+| Threat's view | `extended.mapEnemy` | Only when the threat is a place (the marker dragged onto the map): a 40 degree wedge from it toward the position, the ground it may see in violet, and its line to the position, with a cross where that line is lost. Its eye is a vehicle commander's (2.4 m): the higher eye sees more, so the threat is never understated. |
+| Approaches | `extended.mapApproaches` | The cheapest way in for the mode from the threat's place (or, with only a direction, from a start up to 5 km out on that bearing: the card says "From N", not "From marker"). SLOW-GO ground costs three times GO, ground narrower than the frontage up to four times more, NO-GO is never crossed. Width is twice the distance to the nearest NO-GO ground. A second approach is drawn (dashed) when it shares less than 60 % with the first and costs at most 2.2 times as much. **Chokepoints** (diamonds) are where the passable ground is narrower than the frontage: "Gap in Permanent water 85 m", or the bridge or ford itself. |
+| Better position | `extended.mapBetter` | A green ring and a line to it when a position within 300 m (12 bearings every 60 m, on ground the mode can use) has clearly better fields of fire toward the same threat for the same weapon: a better grade, or 15 points more of the range seen. **J** places the symbol there (`guide.takeBetter()`), refused if the GROTBC rule does not accept that ground. |
 
 The frontage is the echelon's (`footprint.*`, section to brigade); a symbol without one is judged at 100 m. The fan, the
-lines and the threat's view follow the cursor (at most every 60 ms); the avenues and the better position are worked out
-once the cursor has rested for 220 ms. All of it is the same chance as the cards: a clear patch in the fan *may* be seen,
-"unlikely to see" is not "cannot see". Check on the ground.
+lines and the threat's view follow the cursor (at most every 60 ms); the approaches and the better position are worked
+out once the cursor has rested for 220 ms. All of it is the same chance as the cards: a clear patch in the fan *may* be
+seen, "unlikely to see" is not "cannot see". Check on the ground.
 
-**The H chip** (2026-11-11; `ocokaChip()` in `GroundGuideOcokaView.ts`, `hintParts()` in `GroundGuideBadge.ts`). The chip keeps
-its GO / SLOW-GO / NO-GO word and colour in both lenses: it is the rule, and the one enforce mode applies. In the OCOKA
-lens, on ground the mode can use, the figure beside the word is the fields of fire for the weapon (`Fd of Fire Poor`; the
-country when the weapon needs an observer), with `· Threat sees` when the threat's place probably sees the spot, and the
-pointer is to the better position (`Better Posn 240 m N`, which J takes). On NO-GO ground the chip is as in GROTBC: the
-share inside and the way to clear ground come first.
+**The H chip** (`extChip()` in `GroundGuideExtendedView.ts`, `hintParts()` in `GroundGuideBadge.ts`). The chip keeps its
+GO / SLOW-GO / NO-GO word and colour: it is the rule, and the one enforce mode applies. With the Extended View on, on
+ground the mode can use, the figure beside the word is the fields of fire for the weapon (`Fd of Fire Poor`; the country
+when the weapon needs an observer), with `· Threat sees` when the threat's place probably sees the spot, and the pointer
+is to the better position (`Better Posn 240 m N`, which J takes). On NO-GO ground the share inside and the way to clear
+ground come first, as with it off.
 
-**The map overlay** (2026-11-11; `ocoka.overlay`, with `overlay.enabled`; `ocokaViewshed()` in `GroundGuideOcokaRead.ts`, drawn
-by `GroundGuideOcokaMap.showOverlay()`). While the lens is OCOKA the overlay paints what can be seen instead of the going:
+**The map overlay** (`extended.overlay`, with `overlay.enabled`; `ocokaViewshed()` in `GroundGuideOcokaRead.ts`, drawn by
+`GroundGuideOcokaMap.showOverlay()`). With the Extended View on, the overlay paints what can be seen instead of the going:
 
-| `ocoka.overlay` | What is painted |
+| `extended.overlay` | What is painted |
 | --- | --- |
 | `auto` (default) | `threat` when the threat is a place, else `view`. |
-| `threat` | **All the ground the threat may see** from the marker's place out to `ocoka.radiusKm`, in violet, inside a dashed circle. What is not painted is out of its view: covered ground, and covered approaches where it joins up. Read for a vehicle commander's eye (2.4 m, never understated) looking for the mode's unit (a vehicle for tracked and amphibious modes, else a standing man). It does not follow the cursor and shows whether or not a symbol is being placed; it is worked out again only for a new place, radius, month or tile. Nothing is painted when the threat is only a direction. With it on, the threat's 40 degree wedge toward the position is not drawn (its line to the position still is). |
+| `threat` | **All the ground the threat may see** from the marker's place out to `extended.radiusKm`, in violet, inside a dashed circle. What is not painted is out of its view: covered ground, and covered approaches where it joins up. Read for a vehicle commander's eye (2.4 m, never understated) looking for the mode's unit (a vehicle for tracked and amphibious modes, else a standing man). It does not follow the cursor and shows whether or not a symbol is being placed; it is worked out again only for a new place, radius, month or tile. Nothing is painted when the threat is only a direction. With it on, the threat's 40 degree wedge toward the position is not drawn (its line to the position still is). |
 | `view` | **All the ground that may be seen from the position** being placed, in light blue (green is lost on green hills), out to the same radius, for the unit's own eye and a standing man. Gone while the cursor moves, drawn where it rests (220 ms), cleared when nothing is being placed. |
-| `going` | The GROTBC paint of GO / Marginal / SLOW-GO / NO-GO ground (the obstacles, the second O of OCOKA). |
+| `going` | The GROTBC paint of GO / Marginal / SLOW-GO / NO-GO ground, as with the Extended View off. |
 
 Ground is painted where it is seen with an even chance or better, in slices a ray wide (rays half a degree apart or
 finer). Cost: about 11 ms for the view from the position (once per rest); the threat's view is the same sum, once per
-change. Like every sight product of the lens it is a chance from 30 m elevation and the map: unpainted ground is
-*unlikely* to be seen, not safe. The Detail's Threat's View tile names the violet; there is no separate key on the map.
+change. Unpainted ground is *unlikely* to be seen, not safe. The Detail's Threat's View tile names the violet.
 
-**The OCOKA brief** (2026-11-11; `ocokaText()` in `GroundGuideOcokaView.ts`). The Ground Brief became the Ground Detail
-on 2026-11-06 and its export is **Copy as Text**. In the OCOKA lens that button now gives the reading in full, laid out
-like the GROTBC text (a heading a letter, its lines indented), for orders:
+**Copy as Text** (`extendedText()` in `GroundGuideExtendedView.ts`). With the Extended View on, the Detail's Copy as Text
+gives the GROTBC brief, then the Extended View's lines for orders: the head (position and height, month and light, the
+GROTBC verdict, the threat and how far off it is when it is a place, the weapon with the kind of figure behind its range:
+doctrine, catalogue, typical, estimate; the target, the eye, the frontage); **1 Obsn & Fd of Fire** (country, view, the
+three seen figures, what overlooks the position, grade and what holds it down, clear distance, seen / dead / screened,
+the seen share by range band, the two tests, the night and the night sight, the month's visibility); **Threat's View**
+and **Better Posn** when there are any (the latter with the warning that cover there is not compared); **Obs Toward the
+Threat**; **Concealment in Crops**; **2 Key Gr** (the highest ground, every candidate in rank order with why);
+**3 Approaches** (every approach with every chokepoint and its distance from the position, then the straight ways out).
+`await guide.extendedText(point, { sidc, profile, radiusKm, threatDeg, frontageM })` returns the same lines to a host for
+any point (works with F off too), with the approaches, the threat's view and the better position worked out
+(`frontageM` 100 m when not given).
 
-- the head: position and height, month and light, the GROTBC verdict, the threat (and how far off when it is a place),
-  the weapon with the kind of figure behind its range (doctrine, catalogue, typical, estimate), the target and the eye,
-  the frontage;
-- **O Obsn** (country, view, the three seen figures, what overlooks the position, the position's own screen),
-  **O Fd of Fire** (grade and what holds it down, clear distance with the worst fifth and the best, seen / dead /
-  screened, the seen share by range band, the two tests it is judged on and whether the 200 m minimum is met),
-  **O Light** (the night and the night sight on an ordinary, a haze and a fog day);
-- **C Cover** (the four fields, the ground class, the month's crops), **O Obs** (the nearest NO-GO toward the threat,
-  covered by fire or not, how much of the arc it lies across, the nearest SLOW-GO), **K Key Gr** (the highest ground and
-  every ITG candidate with its height and the chance it is in view);
-- **A Avenues**: every avenue from the threat (length, share on GO ground, narrowest, whether the frontage fits) with
-  **every chokepoint** and its distance from the position, then the straight ways out and what stops them;
-- **Threat's View** and **Better Posn** when there are any, the latter with the warning that cover there is not
-  compared; **W Visibility** for the month with the distance to the station behind it.
+**In the Gr Scope rail** (V; `GroundGuideScopeOcoka.ts` turns the products into the rail's frame, `GroundGuideScope.ts`
+draws them, `extScopeText()` gives the words). With the Extended View on, the rail reads the same spot as before (the
+symbol being placed, else the selected symbol, the one just placed, the map centre), so **a symbol already on the map
+gets its fan, its dead ground and the approaches to it without being placed again**: select it. What changes on the rail:
 
-`await guide.ocokaText(point, { sidc, profile, radiusKm, threatDeg, frontageM })` returns the same lines to a host for
-any point (a placed symbol's geometry included), with the avenues, the threat's view and the better position worked
-out (`frontageM` 100 m when not given). About 50 lines; 130 ms for the call with the tiles already in memory.
-
-**In the Gr Scope rail** (V; 2026-11-11; `GroundGuideScopeOcoka.ts` turns the products into the rail's frame,
-`GroundGuideScope.ts` draws them, `ocokaScopeText()` in `GroundGuideOcokaView.ts` gives the words). With the lens on
-OCOKA the rail reads the same spot as before (the symbol being placed, else the selected symbol, the one just placed,
-the map centre), so **a symbol already on the map gets its fan, its dead ground and the avenues to it without being
-placed again**: select it. What changes on the rail:
-
-- **The bar keeps the GROTBC verdict** (colour and title): an OCOKA reading is never a GO / NO-GO.
-- **Under it** a third line: the OCOKA tag, the threat (`Threat NE 67° (marker) · 90° arc`) and the weapon with its range.
+- **The bar keeps the GROTBC verdict** (colour and title): an Extended View reading is never a GO / NO-GO.
+- **Under it** a third line: the *Ext View* tag, the threat (`Threat NE 67° (marker) · 90° arc`) and the weapon with its range.
 - **The answer**: the fields of fire for the weapon in their grade's colour (`Fd of Fire Poor · clear 191 m`; the country
   and the view when the weapon needs an observer), then the better position (`Better Posn 240 m N: Fd of Fire Marginal`,
   with **J** while placing a point), then whether the threat is likely to see the spot.
@@ -1213,33 +1211,35 @@ placed again**: select it. What changes on the rail:
   small arms: the Pl's 720 m map; a tank's 2 km: the Bn's 3.6 km), an echelon keeps its own level, widened if the fan
   needs it. The going is not coloured (that is T's): plain ground with NO-GO in blue-grey. On it the fan with dead (red)
   and screened (amber) ground, the lines of sight to the ITG candidates, the threat's view in violet and its line to
-  the spot, the avenues (the second dashed) with a diamond at each chokepoint, the better position as a green ring,
+  the spot, the approaches (the second dashed) with a diamond at each chokepoint, the better position as a green ring,
   and the threat as a yellow marker, or a yellow pointer at the edge with its distance when it is off the map. The
   frontage, the rings and the clear ground are drawn as in GROTBC.
-- **The legend** has a line for **O C O K A**, each its layer's switch (remembered apart from the GROTBC switches):
-  **O** seen / dead / screened shares of the weapon's range and the country (the fan); **C** the cover letter's two
-  fields and the month's crops (trees and built-up ground on the map); **O** the nearest NO-GO toward the threat and
-  whether it is covered by fire (NO-GO ground and water); **K** the highest ground and the nearest ITG candidate with
-  whether it is in view (hills, ITG diamonds, ridgelines, the lines of sight); **A** the avenue's length and where it
-  narrows for the frontage (avenues, chokepoints, the threat and its view, the main roads drawn thin).
-- For a spot that is not being placed the fan and the threat's view are worked out at once and the avenues a quarter of
-  a second after the spot has come to rest (the map centre moves with every pan). The map centre is not a position: no
-  better position is offered for it. A redraw of the rail costs about 13 to 21 ms in the OCOKA lens against 17 to 20 ms
-  in GROTBC.
+- **The legend** has five lines, each its layer's switch (remembered apart from the GROTBC switches), badged with the key
+  that opens the matching Detail tab: **1** seen / dead / screened shares of the weapon's range and the country (the
+  fan); **C** the cover letter's two fields and the month's crops (trees and built-up ground on the map); **O** the
+  nearest NO-GO toward the threat and whether it is covered by fire (NO-GO ground and water); **2** the lead Key Gr and
+  the highest ground (hills, ITG diamonds, ridgelines, the lines of sight); **3** the approach's length and where it
+  narrows for the frontage (approaches, chokepoints, the threat and its view, the main roads drawn thin).
+- For a spot that is not being placed the fan and the threat's view are worked out at once and the approaches a quarter
+  of a second after the spot has come to rest (the map centre moves with every pan). The map centre is not a position:
+  no better position is offered for it. A redraw of the rail costs about 13 to 21 ms with the Extended View against 17
+  to 20 ms without.
 
 **Cost** (measured 2026-11-10 and 11): the reading takes about 1.5 ms per mouse move; in the app a move costs about 5 to 6 ms
-with the OCOKA lens against 4 ms with GROTBC (card redraw included). The fan, lines and threat's view cost about 6 ms a
-draw (7 ms at the 90th percentile), the avenues and better position about 18 ms once per rest (threat 6 km off, card
+with the Extended View against 4 ms without (card redraw included). The fan, lines and threat's view cost about 6 ms a
+draw (7 ms at the 90th percentile), the approaches and better position about 18 ms once per rest (threat 6 km off, card
 redraw included). The viewshed picture (6 to 8 ms) is only traced while the Detail shows tab 1. A reading is kept per 30 m
-cell.
+cell. With the Extended View off none of it runs.
 
-**API.** `guide.lens`, `guide.setLens('ocoka' | 'grotbc')`, `guide.setThreat({ threat, bearingDeg, at, sectorDeg })`,
-`guide.turnThreat(deg)`, `await guide.ocokaAround(pointOrLngLat, { sidc, profile, radiusKm, threatDeg, picture, map, frontageM })` →
-`GroundGuideOcoka | null` (waits for the tiles; `map: true` adds `sight` and `plan`, the map products as Web Mercator
-geometry, for a host that draws them itself), `await guide.ocokaText(point, opts)` → the OCOKA brief's lines,
-`guide.takeBetter()` (J), `guide.setRangeLookup(fn)` for a host with its own catalogue. Events `ground-guide-lens`
-`{ lens }` and `ground-guide-better` `{ at, distanceM, compass, grade, from }`; `v.lens` and `v.ocoka` (with `sight` / `plan`
-once worked out) on a live verdict. Test panel: Ground Guide → OCOKA Lens (F) → *Log OCOKA at centre*.
+**API.** `guide.extended`, `guide.setExtended(on)`, `guide.toggleExtended()`, `guide.setThreat({ threat, bearingDeg, at,
+sectorDeg })`, `guide.turnThreat(deg)`, `await guide.extendedAround(pointOrLngLat, { sidc, profile, radiusKm, threatDeg,
+picture, map, frontageM })` → `GroundGuideOcoka | null` (waits for the tiles; `map: true` adds `sight` and `plan`, the map
+products as Web Mercator geometry, for a host that draws them itself), `await guide.extendedText(point, opts)` → the
+Extended View's lines, `guide.takeBetter()` (J), `guide.setRangeLookup(fn)` for a host with its own catalogue. Events
+`ground-guide-extended` `{ on }` and `ground-guide-better` `{ at, distanceM, compass, grade, from }`; `v.extended` (on /
+off; null without its keys) and `v.ext` (the reading, with `sight` / `plan` once worked out) on a live verdict. Settings:
+`groundGuide.extended.*` (Ctrl+K group *Extended View (F)*). Test panel: Ground Guide → Extended View (F) → *Turn on / off*,
+*Log Ext View at centre*.
 
 The data behind it:
 
@@ -1258,7 +1258,7 @@ The data behind it:
   reverse slope, surface blockers, a crop calendar (a proposal), threat sets, the threat-axis option and 19 judgement rules.
   The D figures come from Pakistan Army pamphlets: the file carries a handling note, keep it under the same terms.
 - **Not in the bundle:** Ditch Cum Bund lines and anti-tank ditches (the NCGDB feed has only the bund class), enemy-placed
-  obstacles, and the enemy's direction. The lens reads obstacle symbols from the map and the planner sets the threat axis.
+  obstacles, and the enemy's direction. The Extended View reads obstacle symbols from the map and the planner sets the threat axis.
 - **Visibility grid** (`visibility/visibility.json` + `.bin` in the bundle, manifest `grotbc.visibility`, source `gsod`):
   NOAA NCEI Global Summary of the Day, 2016-2025 (2025 stops on 24 Aug), 174 stations, on the climate grid (5 arc-minutes,
   `int16`, 49 layers). Per month `vis_mean_NN` (0.1 km, capped at 16 km), `lt2km_NN` (% of days under 2 km), `haze_NN` (% of
@@ -1290,7 +1290,7 @@ blank (`____`) or listed under Confirm on Gr.
 **What it reads.**
 - **The MITG:** a VG (Vital Gr, `designateGround(..., 'MITG')`) symbol on the map, else the selected or placed symbol, else
   the map centre (snapped to 250 m). `guide.setAorAnchor(point | null)` overrides it.
-- **The threat:** the OCOKA threat. A place (the threat marker, which also shows in the AOR scale), else a bearing, else the
+- **The threat:** the Extended View's threat. A place (the threat marker, which also shows in the AOR scale), else a bearing, else the
   unit's front.
 - **The outline** (`aor.source`):
   - `boundaries`: the nearest Boundary symbol (2525D set 25, entity 110100) on each side of the MITG, cut to the echelon's
@@ -1303,7 +1303,7 @@ blank (`____`) or listed under Confirm on Gr.
 **What it gives** (`GroundGuideAor.ts`, pure):
 - **Three approaches** (Lt, Cen, Rt as the defender faces the threat), from starts forward of the AOR (`aor.leadKm`, or
   round the threat's place) to the MITG.
-  - The search is the OCOKA lens's own: NO-GO is never crossed, SLOW-GO is dearer, and ground narrower than the threat's
+  - The search is the Extended View's own: NO-GO is never crossed, SLOW-GO is dearer, and ground narrower than the threat's
     corridor is dearer still. The corridor is two echelons up (`aor.corridorM`; 0 gives Coy 1 km, Bn 2 km, Bde 4 km).
   - It runs on the finest class tiles at 1 to 4 pixels a cell. A cell takes its highest-rank class, so a canal stays a line
     and a bridge stays a gap in it.
@@ -1341,7 +1341,7 @@ rear. The reading is worked out once per AOR, 260 ms after the map rests. At Phi
 77 ms, approaches 300 ms, lines 26 ms (`reading.msParts`).
 
 **D** (with the AOR scale shown) opens the approach sheets beside the rail (`GroundGuideAorSheet.ts`):
-- one tab per approach, under AprDf's twelve sub-heads (Obsn points to the OCOKA lens);
+- one tab per approach, under AprDf's twelve sub-heads (Obsn points to the Extended View, F then 1);
 - ITGs & Ded: the MITG, the ITGs on the FDLs and depth, the priority of approaches and of combinations, the lines with their
   roles, DP 1, the frontage and the prelim dml;
 - Confirm.

@@ -15,7 +15,7 @@
  * layout reads and the card can flip to stay on screen.
  */
 
-import { ocokaCardRows, ocokaChip } from './GroundGuideOcokaView';
+import { EXT_OFFER, extCardRows, extChip } from './GroundGuideExtendedView';
 import { monthName } from './GroundGuideBrief';
 import { COVER_FIELD_LABEL, COVER_KIND, COVER_WORD } from './GroundGuideCover';
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
@@ -150,6 +150,10 @@ ${toneCss}
 .ms-ggb-strong{color:#f2b84b;font-weight:600}
 .ms-ground-guide-badge .ms-gv-foot{padding:7px 12px;font-size:12px;color:#c3cbd3;border-top:1px solid rgba(255,255,255,.14)}
 .ms-ggb-qf{display:inline-flex;align-items:center;gap:5px;color:#9fe3bb;font-weight:600}
+.ms-ggb-xf{display:inline-flex;align-items:center;gap:5px;color:#c3d6e8;white-space:nowrap}
+.ms-ggb-xf .ms-ggb-kbd{color:#8ec1ea;border-color:#6f8da8}
+.ms-ggb-xf.ms-on{color:#8ec1ea;font-weight:600}
+.ms-ggb-xf.ms-on .ms-ggb-kbd{color:#14181d;background:#8ec1ea;border-color:#8ec1ea}
 .ms-ggb-pills{display:flex;gap:4px;margin-left:auto}
 .ms-ggb-pills>span{font-size:12px;font-weight:600}
 .ms-ggb-mode+.ms-ggb-row,.ms-ggb-other+.ms-ggb-row{border-top:0}
@@ -819,10 +823,10 @@ function hintParts(v: GroundGuideVerdict, tone: Tone): Array<Node | string> {
         // With the way out beside it the share is shortened, so the chip stays one short line.
         if (pct > 0 && v.verdict !== 'in') figure = way ? `${pct}% in` : `${pct}% Inside`;
     }
-    // The OCOKA lens: the GO / NO-GO word stays (it is the rule, and the one enforce applies). On usable ground the
+    // The Extended View: the GO / NO-GO word stays (it is the rule, and the one enforce applies). On usable ground the
     // figure beside it is the fields of fire for the weapon, and the pointer is to the better position (J takes it);
-    // on NO-GO ground the way out to clear ground comes first, as in GROTBC.
-    const oc = v.lens === 'ocoka' && (tone === 'go' || tone === 'marg' || tone === 'slow') ? ocokaChip(v) : null;
+    // on NO-GO ground the way out to clear ground comes first, as without it.
+    const oc = v.ext && (tone === 'go' || tone === 'marg' || tone === 'slow') ? extChip(v) : null;
     if (oc) {
       figure = oc.figure;
       if (oc.better) {
@@ -1065,7 +1069,7 @@ export class GroundGuideBadge {
     else if (pct > 0) bar.append(el('span', 'ms-ggb-pill', `${pct}% Inside`));
     const pills = el('div', 'ms-ggb-pills'); // the full card's T decorator may add a rain pill
 
-    const rows = v.lens === 'ocoka' ? this._ocokaRows(v) : this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills, tone) : this._minimalRows(v, pct, tone);
+    const rows = this._card.cursor === 'full' ? this._fullRows(v, pct, bar, pills, tone) : this._minimalRows(v, pct, tone);
     if (pills.childElementCount) bar.append(pills);
     const body = this._body!;
     body.replaceChildren(...rows);
@@ -1107,21 +1111,6 @@ export class GroundGuideBadge {
   }
 
   /**
-   * The OCOKA lens (`ocoka.lens`): the verdict bar stays, since it is the GROTBC rule and the one enforce mode
-   * applies; the body is who it is for, where the threat is, then a row a letter (GroundGuideOcokaView).
-   */
-  private _ocokaRows(v: GroundGuideVerdict): HTMLElement[] {
-    if (v.verdict === 'unknown') return [];
-    const rows: HTMLElement[] = [modeLine(v), ...ocokaCardRows(v)];
-    if (this._notice) rows.push(el('div', 'ms-ggb-note ms-ggb-warn', this._notice));
-    const strip = enforceStrip(v);
-    if (strip) rows.push(strip);
-    const foot = this._foot(v);
-    if (foot) rows.push(foot);
-    return rows;
-  }
-
-  /**
    * The minimal cursor card (`card.cursor: minimal`): Why with the going scale, Inside, Nearest with its compass and
    * the Inter Gap Rule, then the enforce strip. Everything else waits in the Ground Detail, which the foot cue names.
    */
@@ -1144,6 +1133,8 @@ export class GroundGuideBadge {
             (r): r is HTMLElement => r !== null,
           );
     if (v.loading && !checking) rows.push(el('div', 'ms-ggb-note ms-ggb-soft', 'Still loading terrain data'));
+    // The Extended View (F): its short block under the GROTBC rows, which stay as they are.
+    if (v.extended && v.verdict !== 'unknown' && !checking) rows.push(...extCardRows(v));
     if (this._notice) rows.push(el('div', 'ms-ggb-note ms-ggb-warn', this._notice));
     const strip = v.verdict === 'unknown' ? null : enforceStrip(v);
     if (strip) rows.push(strip);
@@ -1153,17 +1144,33 @@ export class GroundGuideBadge {
   }
 
   /**
-   * The card's last line (item 6): "D Detail · H Hint" and nothing else, at full strength; the tab letters live on the
-   * Detail's tabs. When S can move the point to usable ground, "S Quick Fix" joins it, lit.
+   * The card's last line (item 6): "D Detail · H Hint", at full strength; the tab letters live on the Detail's tabs.
+   * When S can move the point to usable ground, "S Quick Fix" joins it, lit. F says the Extended View is there (lit
+   * while it is on, its title saying what it adds), and with it on J offers the better Posn once one is worked out.
    */
   private _foot(v: GroundGuideVerdict): HTMLElement | null {
-    const foot = v.briefKey ? detailCue(true) : v.snappable ? el('div', 'ms-gv-foot') : null;
+    const ext = v.extended === true || v.extended === false;
+    const foot = v.briefKey ? detailCue(true) : v.snappable || ext ? el('div', 'ms-gv-foot') : null;
     if (foot && v.snappable) {
       const qf = el('span', 'ms-ggb-qf');
       const k = keycap('S');
       k.classList.add('ms-lit');
       qf.append(k, 'Quick Fix');
       foot.append(qf);
+    }
+    if (foot && ext) {
+      const xf = el('span', v.extended ? 'ms-ggb-xf ms-on' : 'ms-ggb-xf');
+      xf.title = v.extended ? 'Extended View on: 1 2 3 open its tabs in the Detail, [ ] turn the threat. F closes it.' : `Extended View: ${EXT_OFFER}`;
+      xf.append(keycap('F'), 'Ext View');
+      foot.append(xf);
+      const b = v.extended ? v.ext?.plan?.better : null;
+      if (b) {
+        const jb = el('span', 'ms-ggb-qf');
+        const k = keycap('J');
+        k.classList.add('ms-lit');
+        jb.append(k, `Better ${fmtDistance(b.distanceM)} ${b.compass}`);
+        foot.append(jb);
+      }
     }
     return foot;
   }
@@ -1194,6 +1201,7 @@ export class GroundGuideBadge {
     if (cover && v.cover?.where !== 'afterWhy') rows.push(cover); // GROTBC order: C comes last, after B
     if (sx.w) rows.push(sx.w);
     if (v.loading) rows.push(el('div', 'ms-ggb-sec ms-ggb-soft', 'Still loading terrain data'));
+    if (v.extended && v.verdict !== 'unknown') rows.push(...extCardRows(v)); // the Extended View (F)
     if (this._notice) rows.push(el('div', 'ms-ggb-sec ms-ggb-warn', this._notice));
     const civilStrip = v.verdict === 'unknown' ? null : populationFlagStrip(v.population);
     if (civilStrip) {

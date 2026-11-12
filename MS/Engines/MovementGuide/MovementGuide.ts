@@ -239,7 +239,7 @@ export interface MovementGuideOptions {
   map: boolean;
   cacheTiles: number;
   useWorker: boolean;
-  /** Where the threat is: the Ground Guide's threat marker (OCOKA lens), or none. */
+  /** Where the threat is: the Ground Guide's threat marker (Extended View), or none. */
   threat: 'groundGuide' | 'none';
   /** The cursor card beside the mouse while the Mov Detail is open. */
   cursor: boolean;
@@ -1212,7 +1212,7 @@ export default class MovementGuide {
   /**
    * N opens / closes the Mov Detail; while it is open, 1-8 switch its cards and the same number again turns the
    * band's page (Shift turns back; past the last page it starts again); Esc closes it (a draw in progress takes Esc
-   * first). Digits are the Mov Guide's only while its card is open, so the Ground Guide's OCOKA 1-5 work otherwise.
+   * first). Digits are the Mov Guide's only while its card is open, so the Ground Guide's Extended View 1-3 work otherwise.
    */
   private _attachKeys(): void {
     if (this._keyHandler || !this._opts.keys) return;

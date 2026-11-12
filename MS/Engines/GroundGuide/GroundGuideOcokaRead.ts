@@ -51,7 +51,7 @@ import {
   type TilePeek,
   type VisibilityGrid,
 } from './GroundGuideOcoka';
-import type { GroundGuideItgCandidate, GroundGuideOcoka, GroundGuideOcokaOptions, MercXY, OcokaEye, OcokaKeyGround, OcokaMapOverlay, OcokaMapPlan, OcokaMapSight, OcokaThreatMode } from './GroundGuideTypes';
+import type { GroundGuideItgCandidate, GroundGuideOcoka, GroundGuideExtendedOptions, MercXY, OcokaEye, OcokaKeyGround, OcokaMapOverlay, OcokaMapPlan, OcokaMapSight, OcokaThreatMode } from './GroundGuideTypes';
 
 export const OCOKA_DOCTRINE: any = DOCTRINE;
 export const OCOKA_THREATS: readonly OcokaThreatMode[] = ['front', 'bearing', 'point', 'allRound'];
@@ -75,7 +75,7 @@ export function eyeFor(eye: OcokaEye, profile: string): { m: number; label: stri
 }
 
 /** The threat's bearing and arc from the options, the unit's front and the point (grid bearing in Web Mercator). */
-export function resolveThreat(o: GroundGuideOcokaOptions, frontDeg: number, at: MercXY, threatAt: MercXY | null): GroundGuideOcoka['threat'] {
+export function resolveThreat(o: GroundGuideExtendedOptions, frontDeg: number, at: MercXY, threatAt: MercXY | null): GroundGuideOcoka['threat'] {
   let mode = o.threat;
   let b = frontDeg;
   if (mode === 'point') {
@@ -128,7 +128,7 @@ export interface OcokaReadArgs {
   classLabel: (cls: number) => string;
   weapon: OcokaWeapon;
   weaponLabel: string;
-  opts: GroundGuideOcokaOptions;
+  opts: GroundGuideExtendedOptions;
   /** The unit's front (`footprint.bearingDeg`), and the threat point in Web Mercator when there is one. */
   frontDeg: number;
   threatAt: MercXY | null;
@@ -201,6 +201,7 @@ export function readOcoka(a: OcokaReadArgs): GroundGuideOcoka | null {
       higherM: typeof c.elevationM === 'number' ? c.elevationM - elev0 : null,
       seenP: s ? s.p : null,
       at: c.at,
+      itg: c,
     });
   }
 
@@ -335,7 +336,7 @@ export interface OcokaMapArgs {
   going: Going;
   classLabel: (cls: number) => string;
   reading: GroundGuideOcoka;
-  opts: GroundGuideOcokaOptions;
+  opts: GroundGuideExtendedOptions;
   threatAt: MercXY | null;
   frontageM: number;
   doctrine?: any;
@@ -553,7 +554,7 @@ export interface OcokaViewshedArgs {
 }
 
 /**
- * The lens's map overlay: the ground that may be seen all round from one spot out to `radiusM` (an even chance or
+ * The Extended View's map overlay: the ground that may be seen all round from one spot out to `radiusM` (an even chance or
  * better), as rings a ray wide. From the threat's place it shows what the threat overlooks, and so the ground that is
  * out of its view; from the position, the position's own view. Rays are half a degree apart or finer.
  */

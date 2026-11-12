@@ -15,7 +15,7 @@
  *
  * Pure: no DOM and no ArcGIS. It reads a class grid of the bundle (built here from tiles the guide hands it) and the
  * feature lines and points the guide gathers, all in Web Mercator; it works in ground metres east / north of the MITG.
- * The search for an approach is the OCOKA lens's own (`findAvenue`: NO-GO never crossed, SLOW-GO dearer, ground
+ * The search for an approach is the Extended View's own (`findAvenue`: NO-GO never crossed, SLOW-GO dearer, ground
  * narrower than the corridor dearer still).
  */
 

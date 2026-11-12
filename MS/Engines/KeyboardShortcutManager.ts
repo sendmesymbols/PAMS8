@@ -68,6 +68,8 @@ export interface KeyboardShortcutDeps {
  *   V           Gr Scope rail: show / hide the side window with the ground round the symbol (any time)
  *   Shift+V     Gr Scope rail: Spot / AOR scale (the area of ops as an appreciation); D its approach sheets
  *   D           Ground Detail; G R O T B C its tabs, K its Legend, Esc closes it
+ *   F           Extended View on / off (any time): Detail tabs 1 2 3 (Obsn & Fd of Fire, Key Gr, Approaches),
+ *               the threat marker and the map products; with it on [ ] turn the threat, J takes the better Posn
  *   S P H       While drawing: Quick Fix to clear ground, change the mode, shrink the cursor card to a chip
  */
 export default class KeyboardShortcutManager {

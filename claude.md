@@ -187,26 +187,30 @@ MS/
   layer switches. `guide.showScope()`, `guide.setScopeTarget(graphic)`.
   **Shift+V** switches the rail to its **AOR scale** (`groundGuide.aor.*`; `GroundGuideAor.ts` pure engine,
   `GroundGuideScopeAor.ts` rail view, `GroundGuideAorSheet.ts` D sheets): the area of ops read as an appreciation's Gr and
-  Weather (AprDf headings, Vs72 marking). It gives three approaches ranked (the OCOKA `findAvenue` on a class grid that keeps
+  Weather (AprDf headings, Vs72 marking). It gives three approaches ranked (the Extended View's `findAvenue` on a class grid that keeps
   canals and bridges), lines of def W X Y and Z through the MITG with roles and the frontage test, the MITG, bridges to
   demolish, the MSR and laterals, and NO-GO / SLOW-GO only. The AOR comes from Bdy symbols, a dragged box or the echelon
   frame; the MITG is a VG symbol, else the selected symbol or the map centre. Layout A/B/C, Trace/Dark and North/Threat up
   switch on the fly from the rail's foot. `guide.setScopeScale()`, `setAor()`, `aorReading()`, `aorText()`. Mockup:
   `ground-guide-aor-options.html`.
-  **F** switches the cards to the **OCOKA lens** (`groundGuide.ocoka.*`; `GroundGuideOcoka.ts` pure engine, `GroundGuideOcokaRead.ts`,
-  `GroundGuideOcokaView.ts`, `GroundGuideThreat.ts`): the same bundle read as Obsn & Fd of Fire, Cover, Obs, Key Gr and Avenues,
-  tabs 1 to 5 (the GROTBC letters keep their keys), toward a threat that is the unit's front by default or a marker dragged on the
-  map (never enemy symbols). Sight is a chance (30 m elevation plus building density, crops by month, trees, bunds), weapon ranges
-  come from `Rng` in `Symbols.json`, figures and rules from `MS/Data/OcokaDoctrine.json` (pamphlet figures and marked proposals),
-  the month's visibility from the bundle's NOAA grid; enforce mode stays on the GROTBC rule. While placing, the lens draws on the
-  map (`GroundGuideOcokaMap.ts`, `ocoka.map*`): the fire fan with dead (red) and screened (amber) ground, lines of sight to the ITG
-  candidates, the threat's own view when it is a place, the avenues of approach with chokepoints for the frontage, and a better
-  position nearby that **J** takes (`guide.takeBetter()`). The Gr Scope rail follows the lens (`GroundGuideScopeOcoka.ts`): in OCOKA it shows the
-  same products for the symbol being placed, the selected symbol or the map centre, with an O C O K A legend of switches. The H chip adds the
-  fields of fire and the better position; the map overlay (`ocoka.overlay`) paints all the threat may see (violet) or the view from
-  the position (light blue) instead of the going. Copy as Text gives the OCOKA brief in full
-  (`guide.ocokaText()` for hosts). `guide.ocokaAround()` (`map: true` returns the geometry);
-  `node tools/ocoka-test/run.mjs` runs the engine's 44 checks.
+  **F** turns the **Extended View** on and off (user, 2026-11-12; it replaced the separate OCOKA lens, and the name OCOKA is
+  not shown any more). It is NOT kept in the settings: it starts off, F or turning the guide off clears it, and nothing in it
+  is worked out while it is off. On, it adds to GROTBC (`groundGuide.extended.*`; `GroundGuideExtendedView.ts` the cards,
+  `GroundGuideOcoka.ts` the pure engine, `GroundGuideOcokaRead.ts`, `GroundGuideThreat.ts`): Detail tabs **1 Obsn & Fd of
+  Fire**, **2 Key Gr** (ITG candidates ranked: strong, higher, on an approach, toward the threat, in view; a round Key Gr map,
+  the lead as a card, a height ladder), **3 Approaches**, all before the Legend (off: a dashed F tab says what it adds); a
+  tile on the threat's side in O and C; a short block on the cursor card and F / J on its foot; the threat marker (the unit's
+  front by default or dragged on the map, never enemy symbols; [ ] turn it). Sight is a chance (30 m elevation plus building
+  density, crops by month, trees, bunds), weapon ranges come from `Rng` in `Symbols.json`, figures and rules from
+  `MS/Data/OcokaDoctrine.json` (pamphlet figures and marked proposals), the month's visibility from the bundle's NOAA grid;
+  enforce mode stays on the GROTBC rule. While placing, it draws on the map (`GroundGuideOcokaMap.ts`, `extended.map*`): the
+  fire fan with dead (red) and screened (amber) ground, lines of sight to the ITG candidates, the threat's own view when it is
+  a place, the approaches with chokepoints for the frontage, and a better position nearby that **J** takes
+  (`guide.takeBetter()`). The Gr Scope rail gets its Extended mode (`GroundGuideScopeOcoka.ts`; legend rows 1 C O 2 3). The H
+  chip adds the fields of fire and the better position; the map overlay (`extended.overlay`) paints all the threat may see
+  (violet) or the view from the position (light blue) instead of the going. Copy as Text adds its lines under the GROTBC brief
+  (`guide.extendedText()` for hosts). `guide.setExtended()`, `toggleExtended()`, `extendedAround()` (`map: true` returns the
+  geometry); `node tools/ocoka-test/run.mjs` runs the engine's 44 checks.
   See `15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MovementGuide** (`Engines/MovementGuide/`) — optional, off by default (`features.movementGuide`; top-bar Mov Guide).

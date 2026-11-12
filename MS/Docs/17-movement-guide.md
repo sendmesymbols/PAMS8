@@ -40,7 +40,7 @@ The grip on its top edge sets its height (kept for next time).
 | the same number again | next page (Shift: back; past the last page it starts again) |
 | **Esc** | close (a draw in progress takes Esc first) |
 
-Digits belong to the Mov Guide only while its card is open, so the Ground Guide's OCOKA 1-5 work otherwise.
+Digits belong to the Mov Guide only while its card is open, so the Ground Guide's Extended View 1-3 work otherwise.
 `movementGuide.keys` switches the keys off.
 
 Each card opens its band with a picture: the cordon as a **ring of platoon sectors** coloured by company with road
@@ -65,7 +65,7 @@ cards say "No terrain data" with Try Again; drawing symbols works as usual (`cla
 
 | Setting | Default | |
 | --- | --- | --- |
-| `movementGuide.threat` | `groundGuide` | The Ground Guide OCOKA threat marker; enemy symbols are never read. |
+| `movementGuide.threat` | `groundGuide` | The Ground Guide's threat marker (Extended View, F); enemy symbols are never read. |
 | `movementGuide.map` | `true` | Draw the open card's plan. |
 | `movementGuide.bundleUrl` | `/terrain-bundle` | |
 | `movementGuide.useWorker`, `cacheTiles` | `true`, 384 | |
@@ -115,7 +115,7 @@ within 400 m and parallel (twin), the river in the list of dammed rivers or a da
 25 km, else the class. Anti-tank ditches, defence drains and double ditches are not in the bundle: they come from the
 symbol, or the Type setting on the card.
 
-**Home and far.** Away from the OCOKA threat marker when one is set, else the side clicked (the axis's start);
+**Home and far.** Away from the Ground Guide's threat marker when one is set, else the side clicked (the axis's start);
 ⇄ Swap Home turns it. A click on the water leaves it to be set (it says so, and it is on the recce list).
 
 **Sources and safety.** Every figure says where it comes from: Sheet, Sheet reach, Map class, Est. 30 m (with +2 m on

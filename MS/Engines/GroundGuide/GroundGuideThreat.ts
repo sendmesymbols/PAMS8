@@ -1,12 +1,12 @@
 /**
  * GroundGuideThreat.ts
  *
- * The threat marker of the OCOKA lens (user, 2026-11-10: "some sort of option which can be repositioned on map, front
- * by default, not enemy symbols"). A small handle over the map that says where the threat is:
+ * The threat marker of the Extended View (F; user, 2026-11-10: "some sort of option which can be repositioned on map,
+ * front by default, not enemy symbols"). A small handle over the map that says where the threat is:
  *   - docked at the top of the map it shows the threat's bearing: the unit's front (the default), a bearing turned
  *     with [ and ], or "all round";
  *   - dragged onto the map it becomes a place, and the threat is then judged toward that place from wherever the
- *     symbol is put (`ocoka.threat: 'point'`, `ocoka.at`);
+ *     symbol is put (`extended.threat: 'point'`, `extended.at`);
  *   - a double-click puts it back to the front.
  * A DOM element over the view, not a map graphic, so it can be dragged while a draw tool owns the map's pointer
  * events. The guide tells it where its place is on screen (`reflow`) when the view moves.

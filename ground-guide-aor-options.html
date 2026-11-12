@@ -583,7 +583,7 @@ function drawSheet(){
   document.querySelectorAll('#aptabs button').forEach(function(b){ b.addEventListener('click', function(){ SHEET = b.dataset.s; drawSheet(); }); });
   var a = BY[SHEET];
   document.getElementById('sheet').innerHTML = '<table class="t">' + sheetRows(a).map(function(r, i){
-    return '<tr><td class="k">(' + (i+1) + ') ' + esc(r[0]) + '</td><td>' + (r[1] == null ? '<span class="blank">____ ' + (r[0] === 'Obsn' ? '(the OCOKA sight model fills this in the build; not run for the mockup)' : '(nothing recorded: flat ground; planner to fill)') + '</span>' : esc(r[1])) + '</td></tr>';
+    return '<tr><td class="k">(' + (i+1) + ') ' + esc(r[0]) + '</td><td>' + (r[1] == null ? '<span class="blank">____ ' + (r[0] === 'Obsn' ? '(the Extended View's sight model fills this in the build; not run for the mockup)' : '(nothing recorded: flat ground; planner to fill)') + '</span>' : esc(r[1])) + '</td></tr>';
   }).join('') + '</table>';
 }
 

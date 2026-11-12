@@ -1,8 +1,8 @@
 /**
  * GroundGuideOcokaMap.ts
  *
- * Draws the OCOKA lens's products on the map while a symbol is being placed (user, 2026-11-11: "show line of sight and
- * all you said above on the map"):
+ * Draws the Extended View's products (F) on the map while a symbol is being placed (user, 2026-11-11: "show line of
+ * sight and all you said above on the map"):
  *   - the fire fan toward the threat out to the weapon's range (yellow outline), with DEAD ground red (the terrain
  *     hides it) and SCREENED ground amber (crops, buildings or trees stand in the line);
  *   - the threat's own view when the threat is a place: the ground it sees between itself and the position (violet),
@@ -11,8 +11,8 @@
  *   - the avenues of approach from the threat to the position (red, the second one dashed) with a diamond on each
  *     chokepoint;
  *   - a better position nearby (green ring, joined to the position by a green dash), which J takes.
- * With the map overlay on it also paints the lens's overlay (`ocoka.overlay`), which stays whether or not a symbol is
- * being placed: all the ground the threat may see from its place (violet), or all the ground that may be seen from the
+ * With the map overlay on it also paints the Extended View's overlay (`extended.overlay`), which stays whether or not
+ * a symbol is being placed: all the ground the threat may see from its place (violet), or all the ground that may be seen from the
  * position (light blue).
  * No text is drawn on the map (the cards name everything). Like GroundGuideIndicators, the graphics are made once on one
  * ground-draped layer and only have their geometry swapped, and markers are PictureMarkerSymbols on Point graphics so
@@ -175,7 +175,7 @@ export class GroundGuideOcokaMap {
   }
 
   /**
-   * The lens's overlay: all the ground the threat may see from its place (violet), or all the ground that may be seen
+   * The Extended View's overlay: all the ground the threat may see from its place (violet), or all the ground that may be seen
    * from the position (light blue). Null clears it. It is drawn under the placing products and stays while they come
    * and go.
    */
@@ -255,7 +255,7 @@ export class GroundGuideOcokaMap {
 
   private _ensure(map: any): void {
     if (!this._layer) {
-      this._layer = new GraphicsLayer({ id: LAYER_ID, title: 'Ground Guide OCOKA', listMode: 'hide', elevationInfo: { mode: 'on-the-ground' } });
+      this._layer = new GraphicsLayer({ id: LAYER_ID, title: 'Ground Guide Extended View', listMode: 'hide', elevationInfo: { mode: 'on-the-ground' } });
       const fill = (c: RGB, a: number, outline: [RGB, number, number, ('solid' | 'dash')?] | null): SimpleFillSymbol =>
         new SimpleFillSymbol({ color: [...c, a], outline: outline ? new SimpleLineSymbol({ color: [...outline[0], outline[1]], width: outline[2], style: outline[3] ?? 'solid' }) : (null as any) });
       const line = (c: RGB, a: number, width: number, style: 'solid' | 'dash' | 'short-dash' = 'solid'): SimpleLineSymbol => new SimpleLineSymbol({ color: [...c, a], width, style, cap: 'round', join: 'round' });

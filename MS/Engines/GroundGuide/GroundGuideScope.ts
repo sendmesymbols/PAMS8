@@ -8,10 +8,11 @@
  * ground S would move it to, and a bird's-eye view of the GROTBC things round the spot (GroundGuideScopeScene). Under
  * the map only its legend, one line per letter, each line also that layer's switch. No Inter Gap marks (user).
  *
- * In the OCOKA lens (F; user, 2026-11-11) the same rail reads the same spot as OCOKA: the map shows the fire fan with
- * its dead and screened ground, the lines of sight to the ITG candidates, the threat's view, the avenues of approach
- * with their chokepoints and the better position; the legend has a line for O, C, O, K and A, each its switch. The
- * bar keeps the GROTBC verdict: an OCOKA reading is a judgement and never a GO / NO-GO.
+ * With the Extended View on (F; user, 2026-11-11, renamed from the OCOKA lens 2026-11-12) the same rail reads the same
+ * spot in its Extended mode: the map shows the fire fan with its dead and screened ground, the lines of sight to the
+ * ITG candidates, the threat's view, the approaches with their chokepoints and the better position; the legend has a
+ * line for 1 Obsn & Fd of Fire, C Cover, O Obs, 2 Key Gr and 3 Approaches (the keys of the Detail's tabs), each its
+ * switch. The bar keeps the GROTBC verdict: an Extended View reading is a judgement and never a GO / NO-GO.
  *
  * The guide decides what it reads (the symbol being placed, the selected symbol, the one just placed, the map centre)
  * and hands a `ScopeFrame`; this file only draws it. Text goes in through `textContent`; the map is one SVG string of
@@ -23,7 +24,7 @@ import { plainLabel, titleOf } from './GroundGuideBadge';
 import { seasonIcon } from './GroundGuideGoingView';
 import { modeIcon } from './GroundGuideLegend';
 import { arrowCompass, ensureNorthCss, pointerArrow, setNorthVar } from './GroundGuideNorth';
-import type { OcokaScopeIcon, OcokaScopeText, OcokaTab } from './GroundGuideOcokaView';
+import type { ExtRow, ExtScopeIcon, ExtScopeText } from './GroundGuideExtendedView';
 import type { ScopeOcokaScene, XY } from './GroundGuideScopeOcoka';
 import { AOR_LAYERS, aorRailParts, type AorFrame, type AorLayer } from './GroundGuideScopeAor';
 import {
@@ -66,15 +67,15 @@ const LETTERS: Array<[ScopeLetter, string]> = [
   ['C', 'Cover'],
 ];
 
-/** The OCOKA lens's legend lines: the tab, the letter on its badge, its name. */
-const OCOKA_ROWS: Array<[OcokaTab, string, string]> = [
-  ['OO', 'O', 'Obsn & Fd of Fire'],
-  ['OC', 'C', 'Cover'],
-  ['OX', 'O', 'Obs'],
-  ['OK', 'K', 'Key Gr'],
-  ['OA', 'A', 'Avenues & Threat'],
+/** The Extended mode's legend lines: the switch, the key on its badge (the Detail tab it opens), its name. */
+const EXT_ROWS: Array<[ExtRow, string, string]> = [
+  ['XF', '1', 'Obsn & Fd of Fire'],
+  ['XC', 'C', 'Cover'],
+  ['XO', 'O', 'Obs'],
+  ['XK', '2', 'Key Gr'],
+  ['XA', '3', 'Approaches & Threat'],
 ];
-/** The OCOKA products, in the colours the main map draws them in. */
+/** The Extended View's products, in the colours the main map draws them in. */
 const OCC = { seen: '#3ee07a', dead: '#e5484d', screened: '#ee8a1f', threat: '#ffd23f', enemy: '#a78bfa', avenue: '#ff5a60', better: '#5fe39a' } as const;
 
 /** What the rail is reading. */
@@ -101,11 +102,11 @@ export interface ScopeFrame {
   echelon: ScopeEchelon | null;
   /** Season, month and light the going is read for ("Dry · Nov · Day"). */
   when: { season: 'dry' | 'wet'; text: string } | null;
-  /** The lens the rail reads in. In OCOKA `ocoka` holds its products and words; null when there is no reading here. */
-  lens: 'grotbc' | 'ocoka';
-  ocoka: { scene: ScopeOcokaScene; text: OcokaScopeText } | null;
-  /** S moves the symbol (drawing a point, with a keyboard); D opens the Ground Detail; J takes the better position; F switches the lens. */
-  keys: { snap: boolean; detail: boolean; better: boolean; lens: boolean };
+  /** The Extended View is on: the rail reads in its Extended mode, and `ext` holds its products and words (null: no reading here). */
+  extended: boolean;
+  ext: { scene: ScopeOcokaScene; text: ExtScopeText } | null;
+  /** S moves the symbol (drawing a point, with a keyboard); D opens the Ground Detail; J takes the better position; F turns the Extended View. */
+  keys: { snap: boolean; detail: boolean; better: boolean; ext: boolean };
   /** The line or area being judged, ground metres east / north of the spot, one array per part; null for a point. */
   outline: Float64Array[] | null;
   closed: boolean;
@@ -179,6 +180,7 @@ const CSS = `
 .ms-ggsc-foot{flex:none;display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-top:1px solid ${LINE.hair};font-size:${FS.meta}px;color:${TEXT.label};white-space:nowrap}
 .ms-ggsc-foot .ms-ggsc-kc{margin-left:4px}
 .ms-ggsc-foot .ms-ggsc-kc:first-child{margin-left:0}
+.ms-ggsc-foot .ms-ggsc-kc.ms-ggsc-kx{background:#8ec1ea;border-color:#8ec1ea;color:#14181d}
 .ms-ggsc-adv{margin-left:auto;color:${TEXT.warn}}
 .ms-ggsc-tab{position:fixed;z-index:2147482700;padding:10px 6px;border:1px solid #39434f;background:${SURFACE.head};color:#e1e6eb;font:${FW.semi} ${FS.meta}px/1 ${FONT};
   writing-mode:vertical-rl;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)}
@@ -255,8 +257,8 @@ const IC = {
   nullah: tiny(`<rect x="2" y="2" width="18" height="10" rx="2" fill="${M.plain.ground}"/><path d="M4 2 L14 12 M10 2 L20 12" stroke="rgb(${M.nullah.join(',')})" stroke-width="1.4"/>`),
 };
 const swatch = (col: string): string => tiny(`<rect x="2" y="2" width="14" height="10" rx="2" fill="${col}" stroke="${CAS}" stroke-width=".8"/>`, 18);
-/** Legend icons of the OCOKA lens: fixed markup. */
-const OIC: Record<OcokaScopeIcon | 'threat' | 'better', string> = {
+/** Legend icons of the Extended mode: fixed markup. */
+const OIC: Record<ExtScopeIcon | 'threat' | 'better', string> = {
   fan: tiny(`<path d="M11 13 L3 3 A13 13 0 0 1 19 3Z" fill="rgba(62,224,122,.14)" stroke="${OCC.threat}" stroke-width="1.4" stroke-linejoin="round"/>`),
   seen: swatch(OCC.seen),
   dead: swatch(OCC.dead),
@@ -272,7 +274,7 @@ const OIC: Record<OcokaScopeIcon | 'threat' | 'better', string> = {
   threat: tiny(`<circle cx="11" cy="7" r="5.5" fill="${OCC.threat}" stroke="${CAS}" stroke-width="1.2"/><path d="M11 3.5 L14 9 H8Z" fill="${CAS}"/>`),
   better: tiny(`<circle cx="11" cy="7" r="5" fill="none" stroke="${OCC.better}" stroke-width="2"/><circle cx="11" cy="7" r="1.6" fill="${OCC.better}"/>`),
 };
-/** A tone of the OCOKA words as a text colour on the dark rail. */
+/** A tone of the Extended View's words as a text colour on the dark rail. */
 function toneText(t: string | null): string {
   return t === 'go' || t === 'c3' ? TONE.go.text : t === 'marg' || t === 'c2' ? TONE.marg.text : t === 'slow' || t === 'c1' ? TONE.slow.text : t === 'nogo' ? TONE.nogo.text : t === 'warn' ? TEXT.warn : TEXT.strong;
 }
@@ -299,8 +301,8 @@ function halo(x: number, y: number, txt: string, anchor: string, col: string, si
 interface Store {
   shown: boolean;
   layers: Record<ScopeLetter, boolean>;
-  /** The OCOKA lens's own switches. */
-  ocoka: Record<OcokaTab, boolean>;
+  /** The Extended mode's own switches. */
+  ext: Record<ExtRow, boolean>;
   /** The AOR scale's layer switches (its lines under the map). */
   aor: Record<AorLayer, boolean>;
 }
@@ -309,14 +311,14 @@ function loadStore(): Store {
   const s: Store = {
     shown: false,
     layers: { G: true, R: true, O: true, T: true, B: true, C: true },
-    ocoka: { OO: true, OC: true, OX: true, OK: true, OA: true },
+    ext: { XF: true, XC: true, XO: true, XK: true, XA: true },
     aor: { going: true, apch: true, line: true, itg: true, dml: true, msr: true },
   };
   try {
     const v = JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}');
     if (typeof v.shown === 'boolean') s.shown = v.shown;
     for (const [k] of LETTERS) if (typeof v.layers?.[k] === 'boolean') s.layers[k] = v.layers[k];
-    for (const [k] of OCOKA_ROWS) if (typeof v.ocoka?.[k] === 'boolean') s.ocoka[k] = v.ocoka[k];
+    for (const [k] of EXT_ROWS) if (typeof v.ext?.[k] === 'boolean') s.ext[k] = v.ext[k];
     for (const k of AOR_LAYERS) if (typeof v.aor?.[k] === 'boolean') s.aor[k] = v.aor[k];
   } catch {
     /* private window or blocked storage: the defaults */
@@ -512,7 +514,7 @@ export class GroundGuideScope {
       }
       const layer = b.dataset.layer;
       if (layer) {
-        if (layer in this._store.ocoka) this._store.ocoka[layer as OcokaTab] = !this._store.ocoka[layer as OcokaTab];
+        if (layer in this._store.ext) this._store.ext[layer as ExtRow] = !this._store.ext[layer as ExtRow];
         else this._store.layers[layer as ScopeLetter] = !this._store.layers[layer as ScopeLetter];
         this._save();
         this._h.redraw();
@@ -611,10 +613,10 @@ export class GroundGuideScope {
     } else if (f.outline) shape = f.closed ? 'Area as drawn' : 'Line as drawn';
     else shape = f.source === 'centre' ? 'Place or select a symbol for its verdict' : 'Point symbol';
     m.append(l1, el('div', undefined, `${src} · ${shape}`));
-    if (f.lens === 'ocoka') {
+    if (f.extended) {
       const l3 = el('div');
-      l3.append(el('span', 'ms-ggsc-tag', 'OCOKA'));
-      if (f.ocoka) l3.append(el('span', 'ms-ggsc-thr', f.ocoka.text.threat), el('span', 'ms-ggsc-wpn', f.ocoka.text.weapon));
+      l3.append(el('span', 'ms-ggsc-tag', 'Ext View'));
+      if (f.ext) l3.append(el('span', 'ms-ggsc-thr', f.ext.text.threat), el('span', 'ms-ggsc-wpn', f.ext.text.weapon));
       else l3.append(el('span', 'ms-ggsc-wpn', f.loading ? 'Reading the elevation here…' : 'No reading for this symbol'));
       m.append(l3);
     }
@@ -627,8 +629,8 @@ export class GroundGuideScope {
     const lead = el('div', 'ms-ggsc-lead');
     const act = el('div', 'ms-ggsc-act');
     a.append(lead, act);
-    if (f.lens === 'ocoka' && v?.verdict !== 'off') {
-      this._ocokaAnswer(f, a, lead, act);
+    if (f.extended && v?.verdict !== 'off') {
+      this._extAnswer(f, a, lead, act);
       return a;
     }
     if (!v) {
@@ -688,9 +690,14 @@ export class GroundGuideScope {
     const ft = el('div', 'ms-ggsc-foot');
     ft.append(el('span', 'ms-ggsc-kc', 'V'), 'Hide');
     if (f.keys.snap && f.verdict?.clear?.distanceM != null) ft.append(el('span', 'ms-ggsc-kc', 'S'), 'Quick Fix');
-    if (f.lens === 'ocoka' && f.keys.better && f.ocoka?.text.better) ft.append(el('span', 'ms-ggsc-kc', 'J'), 'Better');
+    if (f.extended && f.keys.better && f.ext?.text.better) ft.append(el('span', 'ms-ggsc-kc', 'J'), 'Better');
     if (f.keys.detail) ft.append(el('span', 'ms-ggsc-kc', 'D'), 'Detail');
-    if (f.keys.lens) ft.append(el('span', 'ms-ggsc-kc', 'F'), f.lens === 'ocoka' ? 'GROTBC' : 'OCOKA');
+    if (f.keys.ext) {
+      // F: what it adds while off (fire fan, approaches, Key Gr, the threat), how to leave while on.
+      const k = el('span', f.extended ? 'ms-ggsc-kc ms-ggsc-kx' : 'ms-ggsc-kc', 'F');
+      k.title = f.extended ? 'Close the Extended View' : 'Extended View: fire fan, Key Gr, approaches and the threat on this map';
+      ft.append(k, f.extended ? 'Close Ext' : 'Ext View');
+    }
     ft.append(el('span', 'ms-ggsc-adv', ft.querySelectorAll('.ms-ggsc-kc').length >= 4 ? 'Check on Gr' : 'Check on the ground'));
     return ft;
   }
@@ -704,11 +711,11 @@ export class GroundGuideScope {
   }
 
   private _mapSvg(f: ScopeFrame): string {
-    // In the OCOKA lens its five switches stand in for the letters: Key Gr draws what G draws, Avenues the main
+    // In the Extended mode its five switches stand in for the letters: Key Gr draws what G draws, Approaches the main
     // roads, Obs the water, Cover the trees and the built-up ground; the going is never coloured (that is T's).
-    const ok = f.lens === 'ocoka';
-    const K = this._store.ocoka;
-    const L = ok ? { G: K.OK, R: K.OA, O: K.OX, T: false, B: false, C: K.OC } : this._store.layers;
+    const ok = f.extended;
+    const K = this._store.ext;
+    const L = ok ? { G: K.XK, R: K.XA, O: K.XO, T: false, B: false, C: K.XC } : this._store.layers;
     const sc = f.scene;
     const lv = sc.level.lv;
     const R = sc.level.radiusM;
@@ -738,9 +745,9 @@ export class GroundGuideScope {
     if (L.C) s += img('C', (cv) => paintOver(cv, sc.over, 'C'));
     if (L.B || (ok && L.C)) s += img('B', (cv) => paintOver(cv, sc.over, 'B'));
 
-    // OCOKA: the fan and the threat's view lie on the ground, under every line.
-    const oc = ok ? (f.ocoka?.scene ?? null) : null;
-    if (oc) s += this._ocokaAreas(oc, K, X, Y);
+    // Extended View: the fan and the threat's view lie on the ground, under every line.
+    const oc = ok ? (f.ext?.scene ?? null) : null;
+    if (oc) s += this._extAreas(oc, K, X, Y);
 
     // Lines: water and wires under the roads, minor roads first.
     const zw = lv >= 3 ? 0.8 : 1;
@@ -823,8 +830,8 @@ export class GroundGuideScope {
       }
     }
 
-    // OCOKA: the avenues, the lines of sight, the threat and the better position, over the ground and the frontage.
-    if (oc) s += this._ocokaLines(oc, K, X, Y, c, S, stroke, mark, labels);
+    // Extended View: the approaches, the lines of sight, the threat and the better position, over the ground and the frontage.
+    if (oc) s += this._extLines(oc, K, X, Y, c, S, stroke, mark, labels);
 
     // Point marks.
     const P = (p: ScopePoint): [number, number] => [X(p.x, p.y), Y(p.x, p.y)];
@@ -1010,8 +1017,8 @@ export class GroundGuideScope {
       s.append(i.firstChild!, word);
       key.append(s);
     };
-    // The OCOKA lens keys only its own marks (the symbol, the frontage and the rings are the same in both lenses): one line.
-    const own = f.lens !== 'ocoka';
+    // The Extended mode keys only its own marks (the symbol, the frontage and the rings are the same in both): one line.
+    const own = !f.extended;
     if (!own) {
       /* keyed below */
     } else if (f.source === 'centre') k(tiny(`<path d="M5 7H9M13 7H17M11 1V5M11 9V13" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`), 'Map centre');
@@ -1027,8 +1034,8 @@ export class GroundGuideScope {
     if (own) k(tiny(`<circle cx="11" cy="7" r="5.5" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.1"/>`), 'Rings');
     const clearKey = () => k(tiny(`<path d="M1 7H21" stroke="${M.clear}" stroke-width="3" stroke-dasharray="5 3"/>`), 'Clear Gr');
     if (f.clearAt && own) clearKey();
-    if (f.lens === 'ocoka') {
-      const o = f.ocoka?.scene;
+    if (f.extended) {
+      const o = f.ext?.scene;
       if (o?.fan) k(OIC.fan, 'Fan');
       if (o && !o.threat.allRound) k(OIC.threat, 'Threat');
       if (o?.enemy) k(swatch(OCC.enemy), 'Its view');
@@ -1037,8 +1044,8 @@ export class GroundGuideScope {
       key.style.flexWrap = 'nowrap'; // one line: the five rows under it need the room
       key.style.overflow = 'hidden';
       leg.append(key);
-      for (const [tab, letter, name] of OCOKA_ROWS) {
-        const on = this._store.ocoka[tab];
+      for (const [tab, letter, name] of EXT_ROWS) {
+        const on = this._store.ext[tab];
         const b = el('button', 'ms-ggsc-row');
         b.type = 'button';
         b.setAttribute('role', 'switch');
@@ -1046,8 +1053,8 @@ export class GroundGuideScope {
         b.dataset.layer = tab;
         b.title = `${name}: click to ${on ? 'hide' : 'show'} on the map`;
         const c = el('span', 'ms-ggsc-c');
-        const items = f.ocoka?.text.rows[tab] ?? [];
-        if (items.length) c.append(...items.map((i) => item(OIC[i.icon as OcokaScopeIcon], i.bold, i.rest ?? '')));
+        const items = f.ext?.text.rows[tab] ?? [];
+        if (items.length) c.append(...items.map((i) => item(OIC[i.icon as ExtScopeIcon], i.bold, i.rest ?? '')));
         else c.append(el('em', undefined, name));
         b.append(el('span', 'ms-ggsc-l', letter), c);
         leg.append(b);
@@ -1195,13 +1202,13 @@ export class GroundGuideScope {
     return { G: g.slice(0, 2), R: r.slice(0, 2), O: o.slice(0, 2), T: t, B: bb.slice(0, 2), C: cc };
   }
 
-  // ── the OCOKA lens ─────────────────────────────────────────────────────────
+  // ── the Extended View ─────────────────────────────────────────────────────────
 
-  /** The answer in the OCOKA lens: the fields of fire for the weapon, then the better position and what the threat sees. */
-  private _ocokaAnswer(f: ScopeFrame, a: HTMLElement, lead: HTMLElement, act: HTMLElement): void {
-    const o = f.ocoka;
+  /** The answer in the Extended mode: the fields of fire for the weapon, then the better position and what the threat sees. */
+  private _extAnswer(f: ScopeFrame, a: HTMLElement, lead: HTMLElement, act: HTMLElement): void {
+    const o = f.ext;
     if (!o) {
-      lead.textContent = f.loading ? 'Reading the elevation here…' : 'No OCOKA reading here';
+      lead.textContent = f.loading ? 'Reading the elevation here…' : 'No Ext View reading here';
       if (!f.loading) act.append(el('span', 'ms-soft', f.verdict?.verdict === 'exempt' ? 'The symbol is not terrain-bound' : 'No elevation in the bundle at this spot'));
       return;
     }
@@ -1222,11 +1229,11 @@ export class GroundGuideScope {
       e.style.color = toneText(t.enemy.tone);
       e.append(el('span', undefined, t.enemy.text));
       if (e !== act) a.append(e);
-    } else if (!t.better && o.scene.avenues === null && !o.scene.threat.allRound) act.append(el('span', 'ms-soft', 'Working out the avenues…'));
+    } else if (!t.better && o.scene.avenues === null && !o.scene.threat.allRound) act.append(el('span', 'ms-soft', 'Working out the approaches…'));
   }
 
-  /** The OCOKA products that lie on the ground: the threat's view (violet), the fan and its dead (red) and screened (amber) ground. */
-  private _ocokaAreas(o: ScopeOcokaScene, K: Record<OcokaTab, boolean>, X: (x: number, y: number) => number, Y: (x: number, y: number) => number): string {
+  /** The Extended View's products that lie on the ground: the threat's view (violet), the fan and its dead (red) and screened (amber) ground. */
+  private _extAreas(o: ScopeOcokaScene, K: Record<ExtRow, boolean>, X: (x: number, y: number) => number, Y: (x: number, y: number) => number): string {
     const d = (ring: Float64Array): string => {
       let out = '';
       for (let i = 0; i + 1 < ring.length; i += 2) out += `${i ? 'L' : 'M'}${X(ring[i], ring[i + 1]).toFixed(1)} ${Y(ring[i], ring[i + 1]).toFixed(1)}`;
@@ -1234,12 +1241,12 @@ export class GroundGuideScope {
     };
     const all = (rings: Float64Array[]): string => rings.map(d).join('');
     let s = '';
-    if (K.OA && o.enemy) {
+    if (K.XA && o.enemy) {
       const seen = all(o.enemy.seen);
       if (seen) s += `<path d="${seen}" fill="${OCC.enemy}" fill-opacity=".36"/>`;
       s += `<path d="${d(o.enemy.outline)}" fill="none" stroke="${OCC.enemy}" stroke-width="1.2" stroke-dasharray="5 4" opacity=".9"/>`;
     }
-    if (K.OO && o.fan) {
+    if (K.XF && o.fan) {
       const outline = d(o.fan.outline);
       const scr = all(o.fan.screened);
       const dead = all(o.fan.dead);
@@ -1251,10 +1258,10 @@ export class GroundGuideScope {
     return s;
   }
 
-  /** The OCOKA products drawn over the ground: avenues and chokepoints, lines of sight, the better position and the threat. */
-  private _ocokaLines(
+  /** The Extended View's products drawn over the ground: approaches and chokepoints, lines of sight, the better position and the threat. */
+  private _extLines(
     o: ScopeOcokaScene,
-    K: Record<OcokaTab, boolean>,
+    K: Record<ExtRow, boolean>,
     X: (x: number, y: number) => number,
     Y: (x: number, y: number) => number,
     c: number,
@@ -1272,8 +1279,8 @@ export class GroundGuideScope {
       if (!inMap(x, y)) return '';
       return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" stroke-linecap="round"><path d="M-4 -4L4 4M4 -4L-4 4" stroke="${CAS}" stroke-width="4.4"/><path d="M-4 -4L4 4M4 -4L-4 4" stroke="${col}" stroke-width="2"/></g>`;
     };
-    if (K.OA) {
-      // Avenues: the second dashed, under the first; a diamond where the frontage does not fit.
+    if (K.XA) {
+      // Approaches: the second dashed, under the first; a diamond where the frontage does not fit.
       const av = o.avenues ?? [];
       for (let i = av.length - 1; i >= 0; i--) s += stroke(av[i].path, OCC.avenue, i ? 2.2 : 3.2, i ? '7 5' : '', 2.4);
       av.forEach((a, i) => {
@@ -1286,7 +1293,7 @@ export class GroundGuideScope {
         });
       });
       if (o.from && o.fromAssumed) {
-        // A threat with a direction but no place: where the avenue was started from.
+        // A threat with a direction but no place: where the approach was started from.
         const [x, y] = px(o.from);
         if (inMap(x, y)) s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="none" stroke="${CAS}" stroke-width="3.8"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="none" stroke="${OCC.avenue}" stroke-width="1.8"/>`;
       }
@@ -1297,7 +1304,7 @@ export class GroundGuideScope {
         if (!sees && o.enemy.lostAt) s += cross(o.enemy.lostAt, OCC.enemy);
       }
     }
-    if (K.OK) {
+    if (K.XK) {
       // Lines of sight to the ITG candidates: green in view, amber may be, red lost (a cross where).
       for (const l of o.lines) {
         const col = l.p >= 0.5 ? OCC.seen : l.p >= 0.2 ? OCC.screened : OCC.dead;
@@ -1318,7 +1325,7 @@ export class GroundGuideScope {
       }
     }
     // The threat: its marker where it stands, or a pointer at the edge of the map the way it lies.
-    if (K.OA && !o.threat.allRound) {
+    if (K.XA && !o.threat.allRound) {
       const t = (o.threat.bearingDeg * Math.PI) / 180;
       const far: XY = o.threat.at ?? [o.at[0] + Math.sin(t) * 1e6, o.at[1] + Math.cos(t) * 1e6];
       const [sx, sy] = px(far);

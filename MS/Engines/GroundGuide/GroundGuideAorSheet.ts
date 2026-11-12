@@ -155,7 +155,7 @@ export class GroundGuideAorSheet {
       body.append(d);
     };
     const a = r.apchs.find((x) => x.side === this._tab);
-    if (a) aorSheetRows(r, a).forEach(([k, v], i) => add(`(${i + 1}) ${k}`, k === 'Obsn' && v === null ? 'From the OCOKA lens: F, then D on the approach (not read at the AOR scale).' : v, k === 'Obsn' && v === null ? 'ms-ggas-blank' : undefined));
+    if (a) aorSheetRows(r, a).forEach(([k, v], i) => add(`(${i + 1}) ${k}`, k === 'Obsn' && v === null ? 'From the Extended View: F, then 1 on the approach (not read at the AOR scale).' : v, k === 'Obsn' && v === null ? 'ms-ggas-blank' : undefined));
     else if (this._tab === 'itg') {
       add('MITG', `${r.mitg.name}: ${r.apchs.length} apchs end there${r.thruRoad ? `; Rd ${aorName(r.thruRoad.name)} ${r.thruRoad.cls ?? ''} runs through it` : ''}${r.msr ? `; MSR ${aorName(r.msr.name)} ${r.msr.cls ?? ''} ${(r.msr.distM / 1000).toFixed(1)} km away` : ''}.`);
       add('Effs if lost', null);

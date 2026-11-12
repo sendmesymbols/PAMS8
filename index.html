@@ -2701,7 +2701,7 @@
           </div>
           <div class="setting-row">
             <label>Shortcuts</label>
-            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off), V (Gr Scope rail, while the Ground Guide is on), Shift+V (the rail's AOR scale)." />
+            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off), V (Gr Scope rail, while the Ground Guide is on), Shift+V (the rail's AOR scale), F (the Ground Guide's Extended View: then 1 2 3 its tabs, J better Posn, [ ] threat)." />
           </div>
           <div class="setting-row">
             <label>Copy/Paste</label>
@@ -3436,17 +3436,14 @@
               <label>Map centre</label>
               <button type="button" id="ground-guide-sections-log" title="Write the G, R, B and W sections at the map centre to the Engine Log (as Copy as Text would).">Log ground at centre</button>
             </div>
-            <div class="sub-feature-label">OCOKA Lens (F)</div>
+            <div class="sub-feature-label">Extended View (F)</div>
             <div class="setting-row">
-              <label>Lens</label>
-              <select id="setting-groundGuideOcokaLens" style="width: 150px" title="Which reading the cursor card, the Ground Detail and Copy as Text give. F switches while drawing; 1 to 5 open the OCOKA tabs, the GROTBC letters keep their keys.">
-                <option value="grotbc" selected>GROTBC</option>
-                <option value="ocoka">OCOKA</option>
-              </select>
+              <label>Extended View</label>
+              <button type="button" id="ground-guide-extended-toggle" title="The same as F: adds Obsn &amp; Fd of Fire, Key Gr and Approaches (Detail tabs 1 2 3), the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. Not kept: turning the Ground Guide off clears it.">Turn on / off (F)</button>
             </div>
             <div class="setting-row">
               <label>Threat is</label>
-              <select id="setting-groundGuideOcokaThreat" style="width: 150px" title="Where the threat is, for fields of fire, the obstacle in front and the dead ground. Drag the yellow Threat marker onto the map to make it a place; double-click it for the front.">
+              <select id="setting-groundGuideExtThreat" style="width: 150px" title="Where the threat is, for fields of fire, the obstacle in front, the dead ground, Key Gr and the approaches. Drag the yellow Threat marker onto the map to make it a place; double-click it for the front.">
                 <option value="front" selected>At the front</option>
                 <option value="bearing">Set bearing</option>
                 <option value="point">At the marker</option>
@@ -3455,24 +3452,24 @@
             </div>
             <div class="setting-row">
               <label>Threat bearing</label>
-              <input type="number" id="setting-groundGuideOcokaBearing" min="0" max="359" step="5" value="0" style="width: 70px" title="Bearing to the threat, degrees clockwise from north, for 'Set bearing'. [ and ] turn it while drawing." />
+              <input type="number" id="setting-groundGuideExtBearing" min="0" max="359" step="5" value="0" style="width: 70px" title="Bearing to the threat, degrees clockwise from north, for 'Set bearing'. [ and ] turn it while the Extended View is on." />
             </div>
             <div class="setting-row">
               <label>Count buildings, crops, trees</label>
-              <input type="checkbox" id="setting-groundGuideOcokaSurface" checked title="Count what stands on the ground as a chance that a line of sight is blocked. Off judges on the 30 m elevation alone (an upper bound)." />
+              <input type="checkbox" id="setting-groundGuideExtSurface" checked title="Count what stands on the ground as a chance that a line of sight is blocked. Off judges on the 30 m elevation alone (an upper bound)." />
             </div>
             <div class="setting-row">
               <label>Map overlay paints</label>
-              <select id="setting-groundGuideOcokaOverlay" style="width: 150px" title="With the map overlay on, what it paints while the lens is OCOKA: all the ground the threat may see from the marker (violet), all the ground that may be seen from the symbol being placed (light blue, once the cursor rests), or the going as in GROTBC.">
+              <select id="setting-groundGuideExtOverlay" style="width: 150px" title="With the map overlay on, what it paints while the Extended View is on: all the ground the threat may see from the marker (violet), all the ground that may be seen from the symbol being placed (light blue, once the cursor rests), or the going as with it off.">
                 <option value="auto" selected>Auto</option>
                 <option value="threat">Threat's view</option>
                 <option value="view">View from the Posn</option>
-                <option value="going">Going (GROTBC)</option>
+                <option value="going">Going</option>
               </select>
             </div>
             <div class="setting-row">
               <label>Map centre</label>
-              <button type="button" id="ground-guide-ocoka-log" title="Write the OCOKA reading at the map centre to the Engine Log (as Copy as Text gives it in the OCOKA lens).">Log OCOKA at centre</button>
+              <button type="button" id="ground-guide-extended-log" title="Write the Extended View at the map centre to the Engine Log (the lines Copy as Text adds while F is on).">Log Ext View at centre</button>
             </div>
             <div class="sub-feature-label">Cover &amp; Concealment (C)</div>
             <div class="setting-row">
@@ -4510,7 +4507,7 @@
           <div class="ms-section-title">Keyboard Shortcuts</div>
           <button class="ms-btn" id="api-shortcut-info">Show Shortcuts</button>
           <div class="ms-status" id="api-shortcut-status">
-            L:Lasso M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center Ctrl+G:Ground Guide V:Gr Scope ⇧V:AOR
+            L:Lasso M:Move E:Edit Esc:Cancel Del:Delete I:Info C:Center Ctrl+G:Ground Guide V:Gr Scope ⇧V:AOR F:Ext View
           </div>
         </div>
         <div class="api-section">
@@ -4860,11 +4857,10 @@
         'setting-groundGuideSecRoadDensityKm': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityKm'], value: Number(v) }),
         'setting-groundGuideSecRoadDensityStyle': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityStyle'], value: v }),
         'setting-groundGuideSecRoadDensityLead': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityLead'], value: v }),
-        'setting-groundGuideOcokaLens': (v) => ({ path: ['groundGuide', 'ocoka', 'lens'], value: v }),
-        'setting-groundGuideOcokaThreat': (v) => ({ path: ['groundGuide', 'ocoka', 'threat'], value: v }),
-        'setting-groundGuideOcokaBearing': (v) => ({ path: ['groundGuide', 'ocoka', 'bearingDeg'], value: Number(v) || 0 }),
-        'setting-groundGuideOcokaSurface': (v) => ({ path: ['groundGuide', 'ocoka', 'surface'], value: v }),
-        'setting-groundGuideOcokaOverlay': (v) => ({ path: ['groundGuide', 'ocoka', 'overlay'], value: v }),
+        'setting-groundGuideExtThreat': (v) => ({ path: ['groundGuide', 'extended', 'threat'], value: v }),
+        'setting-groundGuideExtBearing': (v) => ({ path: ['groundGuide', 'extended', 'bearingDeg'], value: Number(v) || 0 }),
+        'setting-groundGuideExtSurface': (v) => ({ path: ['groundGuide', 'extended', 'surface'], value: v }),
+        'setting-groundGuideExtOverlay': (v) => ({ path: ['groundGuide', 'extended', 'overlay'], value: v }),
         'setting-groundGuideCoverWhere': (v) => ({ path: ['groundGuide', 'cover', 'where'], value: v }),
         'setting-groundGuideCoverRadius': (v) => ({ path: ['groundGuide', 'cover', 'radiusM'], value: Number(v) }),
         'setting-groundGuideCoverFocus': (v) => ({ path: ['groundGuide', 'cover', 'focus'], value: v }),
@@ -6454,6 +6450,7 @@
               'V - Gr Scope rail: show / hide the side map of the ground round the symbol\n' +
               'Shift+V - Gr Scope: Spot / AOR (approaches, lines of def, MITG); D the apch sheets\n' +
               'D - Ground Detail (G R O T B C tabs, K Legend, Esc closes)\n' +
+              'F - Extended View on / off: Obsn & Fd of Fire, Key Gr, Approaches (Detail tabs 1 2 3), threat marker, fire fan, approaches and better Posn on the map; [ ] turn the threat, J takes the better Posn\n' +
               'S - Quick Fix: move the point to clear ground (while drawing)\n' +
               'P - Change the mode the ground is judged for (while drawing)\n' +
               'H - Shrink the cursor card to a chip (while drawing)',

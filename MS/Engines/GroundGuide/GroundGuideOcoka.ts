@@ -1,8 +1,8 @@
 /**
  * GroundGuideOcoka.ts
  *
- * The calculations of the Ground Guide's OCOKA lens: what may be seen from a point (Observation), how far a weapon has a
- * clear field of fire and how much dead ground lies inside its range (Fields of fire), the obstacle in front and whether
+ * The calculations of the Ground Guide's Extended View (F; built as the OCOKA lens, renamed 2026-11-12): what may be
+ * seen from a point (Observation), how far a weapon has a clear field of fire and how much dead ground lies inside its range (Fields of fire), the obstacle in front and whether
  * fire covers it (Obstacles), the highest ground and what overlooks the point (Key terrain), which ways lead out
  * (Avenues), the month's visibility and the light. Cover and concealment come from GroundGuideCover.
  *

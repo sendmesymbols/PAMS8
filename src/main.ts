@@ -2637,15 +2637,21 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     for (const l of lines) EngineLogger.success('Ground Guide', l);
     showToast('Ground at the map centre written to the Engine Log', 'success');
   });
-  // OCOKA at the map centre (guide.ocokaText): observation, fields of fire, obstacle, key ground, ways out, weather.
-  document.getElementById('ground-guide-ocoka-log')?.addEventListener('click', async () => {
+  // Extended View (F): the same as the key. Its lines at the map centre (guide.extendedText): Obsn & Fd of Fire, the
+  // threat's view, the better Posn, the obstacle toward the threat, crops, Key Gr ranked, the approaches.
+  document.getElementById('ground-guide-extended-toggle')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (!guide?.isActive) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    showToast(guide.toggleExtended() ? 'Extended View on (F)' : 'Extended View off', 'success');
+  });
+  document.getElementById('ground-guide-extended-log')?.addEventListener('click', async () => {
     const guide = (window as any).symbolEngine?.groundGuide;
     const centre = appConfig.activeView?.center;
-    if (!guide?.ocokaText || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
-    const lines: string[] | null = await guide.ocokaText(centre);
+    if (!guide?.extendedText || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const lines: string[] | null = await guide.extendedText(centre);
     if (!lines?.length) return void showToast('No elevation here (outside the bundle, or an older bundle)', 'no-targets');
     for (const l of lines) EngineLogger.success('Ground Guide', l);
-    showToast('OCOKA at the map centre written to the Engine Log', 'success');
+    showToast('Extended View at the map centre written to the Engine Log', 'success');
   });
   // R road network density at the map centre (guide.roadDensityAround), as the Ground Brief's Copy as Text gives it.
   document.getElementById('ground-guide-road-density-log')?.addEventListener('click', async () => {
