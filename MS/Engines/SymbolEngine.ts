@@ -124,6 +124,8 @@ import PlatoonGuide from './PlatoonGuide/PlatoonGuide';
 import './PlatoonGuideSettingsWidget';
 import NightMarch from './NightMarch/NightMarch';
 import './NightMarchSettingsWidget';
+import MovePlanner from './MovePlanner/MovePlanner';
+import './MovePlannerSettingsWidget';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
 // imported. One side-effect import per engine keeps the wiring discoverable.
@@ -202,6 +204,8 @@ class SymbolEngine implements Evented {
   private _platoonGuide: PlatoonGuide | null = null;
   /** The night march chart (route SP to FUP, FUP layout, timings); null until `features.nightMarch` is on. */
   private _nightMarch: NightMarch | null = null;
+  /** The Move Planner (Rd Mov, Mov & Assy, DI Mov, Rly Mov, En Mov); null until `features.movePlanner` is on. */
+  private _movePlanner: MovePlanner | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
@@ -452,6 +456,7 @@ class SymbolEngine implements Evented {
     // Conditionally load the Platoon Guide (Ground card at a point, patrol route card; needs the terrain bundle; off by default)
     this._initPlatoonGuide();
     this._initNightMarch();
+    this._initMovePlanner();
 
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
@@ -732,6 +737,7 @@ class SymbolEngine implements Evented {
     this._movementGuide?.destroy();
     this._platoonGuide?.destroy();
     this._nightMarch?.destroy();
+    this._movePlanner?.destroy();
     this._drawingCueEngine?.disable();
     this._mgrsEngine?.destroy();
     this._editEngine?.deactivate();
@@ -798,6 +804,7 @@ class SymbolEngine implements Evented {
     this._movementGuide?.onViewChanged();
     this._platoonGuide?.onViewChanged();
     this._nightMarch?.onViewChanged();
+    this._movePlanner?.onViewChanged();
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
     // Re-attach MGRS engine to the new view
@@ -954,6 +961,13 @@ class SymbolEngine implements Evented {
         sel.on('selectionChange', ({ selected }: { selected: Graphic[] }) => this._groundGuide?.setScopeTarget(selected.length === 1 ? selected[0] : null));
         if (sel.count === 1) this._groundGuide.setScopeTarget(sel.selectedGraphics[0]);
       }
+      // IPB Create on Map (Extended View tab 3): the set made before goes and the new one comes, as one undo step.
+      this._groundGuide.setCreator((items, label, removeIds) =>
+        this.runUndoGroup(label, () => {
+          if (removeIds.length) this.removeGraphicsById(removeIds, label);
+          return items.map((it) => this.loadSymbolFromJSON({ type: 'pams8-symbol', id: this.generateUUID(), ...it }));
+        }),
+      );
       this.emitEvent('groundGuideReady', { engine: this._groundGuide });
     }
     this._groundGuide.enable();
@@ -1045,6 +1059,41 @@ class SymbolEngine implements Evented {
     }
     this._nightMarch.enable();
     console.info('[SymbolEngine] NightMarch loaded');
+  }
+
+  /**
+   * Create the Move Planner and enable it. Gated by `features.movePlanner` (off by default): while it is off nothing is
+   * created. It reads no terrain data; "+ Route on Rds" uses the road network engine only when that is on and up.
+   */
+  private _initMovePlanner(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.movePlanner !== true) return;
+    if (!this._movePlanner) {
+      const mp = new MovePlanner(() => this._getView(), {
+        roadNetwork: () => this._roadNetworkEngine,
+        selected: () => this._selectionEngine?.selectedGraphics ?? [],
+        describe: (g: Graphic) => {
+          try {
+            const st = this.getSymbolState(g);
+            const name = st.amplifier?.UNIQUE_DESIG || st.options?.uniqueDesignation || st.symbolName || '';
+            return { name: String(name), sidc: String(st.sidc ?? '') };
+          } catch {
+            return null;
+          }
+        },
+      });
+      this._movePlanner = mp;
+      mp.setOptions((settingsData as any).movePlanner ?? {});
+      // Right-click "Mov Plan: Use as Route…" on a placed line.
+      this._contextMenuManager.addDynamicItemProvider((graphic: Graphic): ContextMenuItem[] => {
+        const m = this._movePlanner;
+        if (!m?.canUse(graphic) || !graphic?.attributes?.id) return [];
+        return [{ id: 'move-planner-route', label: 'Mov Plan: Use as Route…', icon: '🚚', action: (g: Graphic) => void (m.useGraphic(g) && m.openPanel(true, 'setup')) }];
+      });
+      this.emitEvent('movePlannerReady', { engine: mp });
+    }
+    this._movePlanner.enable();
+    console.info('[SymbolEngine] MovePlanner loaded');
   }
 
   private _platoonGuideMenuRegistered = false;
@@ -2150,6 +2199,20 @@ class SymbolEngine implements Evented {
     return this._nightMarch;
   }
 
+  /** Access the Move Planner — Rd Mov, Mov & Assy, DI Mov, Rly Mov, En Mov. Null until `features.movePlanner` is on. */
+  public get movePlanner(): MovePlanner | null {
+    return this._movePlanner;
+  }
+
+  /** Switch the Move Planner on or off (the `features.movePlanner` setting). Returns the state it is in now. */
+  public toggleMovePlanner(on?: boolean): boolean {
+    const next = on ?? !(this._movePlanner?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'movePlanner'], next);
+    setSetting(['features', 'movePlanner'], next);
+    EngineLogger.success('Symbol Engine', `Move Planner ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
   /** Switch the Night March on or off (the `features.nightMarch` setting). Returns the state it is in now. */
   public toggleNightMarch(on?: boolean): boolean {
     const next = on ?? !(this._nightMarch?.isEnabled ?? false);
@@ -2531,6 +2594,12 @@ class SymbolEngine implements Evented {
         } else {
           this._nightMarch?.disable();
         }
+      } else if (feature === 'movePlanner') {
+        if (value) {
+          this._initMovePlanner(true);
+        } else {
+          this._movePlanner?.disable();
+        }
       } else if (feature === 'platoonGuide') {
         if (value) {
           this._initPlatoonGuide(true);
@@ -2627,6 +2696,10 @@ class SymbolEngine implements Evented {
 
     if (fullPath.startsWith('nightMarch.') && this._nightMarch) {
       this._nightMarch.setOptions((settingsData as any).nightMarch ?? {});
+    }
+
+    if (fullPath.startsWith('movePlanner.') && this._movePlanner) {
+      this._movePlanner.setOptions((settingsData as any).movePlanner ?? {});
     }
 
     if (fullPath.startsWith('platoonGuide.') && this._platoonGuide) {

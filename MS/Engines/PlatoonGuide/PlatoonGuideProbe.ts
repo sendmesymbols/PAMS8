@@ -436,7 +436,7 @@ export class PlatoonGuideProbe implements PlProbe {
     const [lng, lat] = plLngLat(at);
     const r = p.around(lng, lat, 2);
     if (!r) return null;
-    return { perKm2At: this.people(at[0], at[1]), rings: r.rings.filter((x) => x.km <= 3), ages: r.ages, pending: false };
+    return { perKm2At: this.people(at[0], at[1]), rings: r.rings.filter((x) => x.km <= 3), ages: r.ages, sectors: r.sectors ?? null, grid: r.grid ?? null, bands: r.bands ?? null, pending: false };
   }
 
   /** The 1:50k sheet the point falls on. */

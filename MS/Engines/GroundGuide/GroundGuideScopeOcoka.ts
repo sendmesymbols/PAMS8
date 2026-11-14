@@ -31,6 +31,18 @@ export interface ScopeOcokaScene {
   fromAssumed: boolean;
   /** A better position nearby for the same weapon. */
   better: { at: XY; distanceM: number; compass: string } | null;
+  /** The IPB avenues over the area read (`extended.ipb.apchs`): drawn instead of the single approach; null when off or not worked out. */
+  ipb: {
+    side: 'enemy' | 'own';
+    aas: Array<{ id: string; viable: boolean; main: boolean; line: Float64Array; fill: Float64Array; stroke: Float64Array; inner: Float64Array | null }>;
+    mcs: Float64Array[];
+    narrows: Array<{ at: XY; widthM: number; kind: 'crossing' | 'slow' | 'narrow' }>;
+    crossovers: Array<{ from: XY; to: XY }>;
+    /** Decision support (extended.ipb.decision): TAIs and decision points. */
+    dec: { tais: XY[]; dps: Array<{ at: XY; n: number; catk: boolean }> } | null;
+    /** Air (extended.ipb.air): the air avenues, LZ / DZ squares, AD sites. */
+    air: { side: 'enemy' | 'own'; routes: Array<{ id: string; rank: number; line: Float64Array }>; zones: Array<{ id: string; kind: 'lz' | 'dz'; rank: number; ring: Float64Array }>; ad: Array<{ id: string; at: XY }> } | null;
+  } | null;
 }
 
 /**
@@ -63,5 +75,23 @@ export function scopeOcokaScene(o: GroundGuideOcoka, centre: MercXY, threatAt: M
     from: p?.from ? xy(p.from) : null,
     fromAssumed: p?.fromAssumed ?? false,
     better: p?.better ? { at: xy(p.better.at), distanceM: p.better.distanceM, compass: p.better.compass } : null,
+    ipb: o.ipbApch
+      ? {
+          side: o.ipbApch.side,
+          aas: o.ipbApch.aas.map((a) => ({ id: a.id, viable: a.viable, main: a.main, line: flat(a.line), fill: flat(a.arrow.fill), stroke: flat(a.arrow.stroke), inner: a.arrow.inner.length ? flat(a.arrow.inner) : null })),
+          mcs: o.ipbApch.mcs.filter((m) => m.aa).map((m) => flat(m.line)),
+          narrows: o.ipbApch.aas.flatMap((a) => a.narrows.map((n) => ({ at: xy(n.at), widthM: n.widthM, kind: n.kind }))),
+          crossovers: o.ipbApch.crossovers.map((x) => ({ from: xy(x.from), to: xy(x.to) })),
+          dec: o.ipbApch.decision ? { tais: o.ipbApch.decision.tais.map((t) => xy(t.at)), dps: o.ipbApch.decision.dps.map((d) => ({ at: xy(d.at), n: d.n, catk: d.kind === 'catk' })) } : null,
+          air: o.ipbApch.air
+            ? {
+                side: o.ipbApch.air.side,
+                routes: o.ipbApch.air.routes.map((r) => ({ id: r.id, rank: r.rank, line: flat(r.line) })),
+                zones: [...o.ipbApch.air.lzs.slice(0, 3), ...o.ipbApch.air.dzs.slice(0, 1)].map((z) => ({ id: z.id, kind: z.kind, rank: z.rank, ring: flat(z.ring) })),
+                ad: o.ipbApch.air.ad.map((a) => ({ id: a.id, at: xy(a.at) })),
+              }
+            : null,
+        }
+      : null,
   };
 }

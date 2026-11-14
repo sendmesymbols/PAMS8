@@ -242,6 +242,10 @@ check('border within reach (~4 km)', D.border && Math.abs(D.border.km - 4) < 0.2
 const hb = full.stop.harbour;
 const hl = hb ? local(hb.x, hb.y) : null;
 check('patrol base in the orchard', !!hl && hl.e >= ORCH.e0 && hl.e <= ORCH.e1 && hl.n >= ORCH.n0 && hl.n <= ORCH.n1, hl ? `${Math.round(hl.e)}, ${Math.round(hl.n)}` : 'none');
+const STP = full.stop;
+check('stop: every site read is ruled out once or passes', STP.tests.reduce((a, t) => a + t.out, 0) + STP.passed === STP.checked && STP.grid.cells.length === STP.checked, `${STP.checked} read, ${STP.passed} passed`);
+check('stop: the best site is the harbour, with its facts', !!hb && STP.sites.length >= 1 && STP.sites[0].x === hb.x && STP.sites[0].waysDirs.length === 8 && STP.sites[0].conceal >= 2);
+check('stop: OP view in 24 directions', !STP.op || (STP.opView?.length === 24 && STP.opView.every((v) => v >= 0 && v <= 1)));
 const op = full.stop.op;
 // The domed top hides its own slopes, so the forward slope (the military crest) may see more than the top itself.
 check('OP on the hill (top or forward slope)', !!op && M.groundDist([op.x, op.y], at(HILL.e, HILL.n)) < HILL.r, op ? `${Math.round(local(op.x, op.y).e)}, ${Math.round(local(op.x, op.y).n)}` : 'none');

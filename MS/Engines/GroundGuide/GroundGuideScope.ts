@@ -74,6 +74,8 @@ const EXT_ROWS: Array<[ExtRow, string, string]> = [
   ['XO', 'O', 'Obs'],
   ['XK', '2', 'Key Gr'],
   ['XA', '3', 'Approaches & Threat'],
+  ['XH', '4', 'Air'],
+  ['XD', '5', 'Decision'],
 ];
 /** The Extended View's products, in the colours the main map draws them in. */
 const OCC = { seen: '#3ee07a', dead: '#e5484d', screened: '#ee8a1f', threat: '#ffd23f', enemy: '#a78bfa', avenue: '#ff5a60', better: '#5fe39a' } as const;
@@ -311,7 +313,7 @@ function loadStore(): Store {
   const s: Store = {
     shown: false,
     layers: { G: true, R: true, O: true, T: true, B: true, C: true },
-    ext: { XF: true, XC: true, XO: true, XK: true, XA: true },
+    ext: { XF: true, XC: true, XO: true, XK: true, XA: true, XH: true, XD: true },
     aor: { going: true, apch: true, line: true, itg: true, dml: true, msr: true },
   };
   try {
@@ -1279,7 +1281,89 @@ export class GroundGuideScope {
       if (!inMap(x, y)) return '';
       return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" stroke-linecap="round"><path d="M-4 -4L4 4M4 -4L-4 4" stroke="${CAS}" stroke-width="4.4"/><path d="M-4 -4L4 4M4 -4L-4 4" stroke="${col}" stroke-width="2"/></g>`;
     };
-    if (K.XA) {
+    if (K.XA && o.ipb) {
+      // The IPB avenues: the MS attack arrows (best going solid with the inner line, others dashed), corridors, narrows.
+      const col = o.ipb.side === 'enemy' ? OCC.avenue : '#8ec1ea';
+      const ring = (f: Float64Array): string => {
+        let d = '';
+        for (let i = 0; i + 1 < f.length; i += 2) d += `${i ? 'L' : 'M'}${X(f[i], f[i + 1]).toFixed(1)} ${Y(f[i], f[i + 1]).toFixed(1)}`;
+        return d ? `${d}Z` : '';
+      };
+      for (const a of [...o.ipb.aas].reverse()) {
+        if (!a.viable || a.stroke.length < 4) {
+          s += stroke(a.line, '#aab2ba', 1.6, '5 4', 1.4);
+          continue;
+        }
+        s += `<path d="${ring(a.fill)}" fill="${col}" fill-opacity="${a.main ? 0.2 : 0.12}"/>`;
+        s += stroke(a.stroke, col, a.main ? 2.6 : 1.9, a.main ? '' : '7 4', 2.2);
+        if (a.inner) s += stroke(a.inner, col, 1.8, '', 1.4);
+        // Its letter a third of the way, when on the map.
+        const k = Math.floor(a.line.length / 2 / 3) * 2;
+        const [lx, ly] = px([a.line[k], a.line[k + 1]]);
+        if (inMap(lx, ly)) labels.push([lx, ly, `Apch ${a.id}`, col, FS.meta]);
+      }
+      for (const m of o.ipb.mcs) s += stroke(m, '#ffffff', 1, '1.5 3.5', 0);
+      for (const x of o.ipb.crossovers) s += seg(x.from, x.to, '#e9edf1', 1.6, '5 3');
+      let first = true;
+      for (const n of o.ipb.narrows) {
+        const [x, y] = px(n.at);
+        if (!inMap(x, y)) continue;
+        s += `<rect x="${(x - 4.6).toFixed(1)}" y="${(y - 4.6).toFixed(1)}" width="9.2" height="9.2" transform="rotate(45 ${x.toFixed(1)} ${y.toFixed(1)})" fill="${OCC.screened}" stroke="${CAS}" stroke-width="1.6"/>`;
+        mark(x, y, 7);
+        if (first) labels.push([x, y, `${n.kind === 'crossing' ? 'Br' : 'Narrows'} ${fmtDistance(n.widthM)}`, '#ffd9a8', FS.meta]);
+        first = false;
+      }
+    }
+    if (K.XH && o.ipb?.air) {
+      // Air: the air avenues (magenta for the enemy's, sky blue for own) with a chevron at the end, LZ / DZ squares, AD sites.
+      const air = o.ipb.air;
+      const col = air.side === 'enemy' ? '#ff7ad9' : '#7fd6ff';
+      for (const z of air.zones) {
+        let d = '';
+        for (let i = 0; i + 1 < z.ring.length; i += 2) d += `${i ? 'L' : 'M'}${X(z.ring[i], z.ring[i + 1]).toFixed(1)} ${Y(z.ring[i], z.ring[i + 1]).toFixed(1)}`;
+        if (!d) continue;
+        s += `<path d="${d}Z" fill="${col}" fill-opacity="${z.rank === 1 ? 0.35 : 0.18}" stroke="${col}" stroke-width="1.4"${z.kind === 'dz' ? ' stroke-dasharray="3 2"' : ''}/>`;
+        const [x, y] = px([z.ring[0], z.ring[1]]);
+        if (z.rank === 1 && inMap(x, y)) labels.push([x, y, z.id, col, FS.meta]);
+      }
+      for (const r of [...air.routes].reverse()) {
+        s += stroke(r.line, col, r.rank === 1 ? 2.4 : 1.6, r.rank === 1 ? '' : '6 4', 2);
+        const n = r.line.length;
+        if (n >= 4) {
+          const [bx, by] = px([r.line[n - 2], r.line[n - 1]]);
+          const [ax, ay] = px([r.line[Math.max(0, n - 6)], r.line[Math.max(1, n - 5)]]);
+          const ang = Math.atan2(by - ay, bx - ax);
+          if (inMap(bx, by)) s += `<path d="M${(bx - 7 * Math.cos(ang - 0.5)).toFixed(1)} ${(by - 7 * Math.sin(ang - 0.5)).toFixed(1)}L${bx.toFixed(1)} ${by.toFixed(1)}L${(bx - 7 * Math.cos(ang + 0.5)).toFixed(1)} ${(by - 7 * Math.sin(ang + 0.5)).toFixed(1)}" fill="none" stroke="${col}" stroke-width="${r.rank === 1 ? 2.4 : 1.6}"/>`;
+        }
+        const k = Math.floor(n / 2 / 2) * 2;
+        const [lx, ly] = px([r.line[k], r.line[k + 1]]);
+        if (r.rank === 1 && inMap(lx, ly)) labels.push([lx, ly, `Air ${r.id}`, col, FS.meta]);
+      }
+      for (const a of air.ad) {
+        const [x, y] = px(a.at);
+        if (!inMap(x, y)) continue;
+        s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="#14181d" stroke="#b8f070" stroke-width="1.5"/><path d="M${(x - 3.5).toFixed(1)} ${(y + 1.8).toFixed(1)}h7M${(x - 2.6).toFixed(1)} ${(y + 1.8).toFixed(1)}a2.6 2.6 0 0 1 5.2 0" fill="none" stroke="#b8f070" stroke-width="1.3"/>`;
+        mark(x, y, 8);
+      }
+    }
+    if (K.XD && o.ipb?.dec) {
+      // Decision support: TAIs as gold boxes, decision points as numbered stars (gold to interdict, blue counter-attack).
+      for (const t of o.ipb.dec.tais) {
+        const [x, y] = px(t);
+        if (!inMap(x, y)) continue;
+        s += `<rect x="${(x - 5).toFixed(1)}" y="${(y - 4).toFixed(1)}" width="10" height="8" fill="rgba(255,210,122,.2)" stroke="${CAS}" stroke-width="3.2"/><rect x="${(x - 5).toFixed(1)}" y="${(y - 4).toFixed(1)}" width="10" height="8" fill="none" stroke="#ffd27a" stroke-width="1.6"/>`;
+        mark(x, y, 7);
+      }
+      for (const d of o.ipb.dec.dps) {
+        const [x, y] = px(d.at);
+        if (!inMap(x, y)) continue;
+        const col = d.catk ? '#8ec1ea' : '#ffd27a';
+        s += `<path d="M${x.toFixed(1)} ${(y - 8).toFixed(1)}l2.4 5.4h5.9l-4.7 3.6 1.8 5.8-5.4-3.4-5.4 3.4 1.8-5.8-4.7-3.6h5.9z" fill="#14181d" stroke="${col}" stroke-width="1.6"/>`;
+        mark(x, y, 9);
+        labels.push([x, y, `DP ${d.n}`, col, FS.meta]);
+      }
+    }
+    if (K.XA && !o.ipb) {
       // Approaches: the second dashed, under the first; a diamond where the frontage does not fit.
       const av = o.avenues ?? [];
       for (let i = av.length - 1; i >= 0; i--) s += stroke(av[i].path, OCC.avenue, i ? 2.2 : 3.2, i ? '7 5' : '', 2.4);
@@ -1297,6 +1381,8 @@ export class GroundGuideScope {
         const [x, y] = px(o.from);
         if (inMap(x, y)) s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="none" stroke="${CAS}" stroke-width="3.8"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="none" stroke="${OCC.avenue}" stroke-width="1.8"/>`;
       }
+    }
+    if (K.XA) {
       // The threat's line to the spot: solid when it probably sees it, else broken, with a cross where it is lost.
       if (o.enemy) {
         const sees = o.enemy.seesP >= 0.5;

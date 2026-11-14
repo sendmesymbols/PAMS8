@@ -69,9 +69,14 @@ export interface KeyboardShortcutDeps {
  *   Shift+V     Gr Scope rail: Spot / AOR scale (the area of ops as an appreciation); D its approach sheets
  *   D           Ground Detail; G R O T B C its tabs, K its Legend, Esc closes it
  *   F           Extended View on / off (any time): Detail tabs 1 2 3 (Obsn & Fd of Fire, Key Gr, Approaches),
- *               the threat marker and the map products; with it on [ ] turn the threat, J takes the better Posn.
+ *               the threat marker and the map products; with it on [ ] turn the threat, J takes the better Posn,
+ *               X the en's options against you / yours against the threat.
  *               It lasts for that kind of symbol: a different symbol or Esc closes it. Shift+F keeps it on
  *   S P H       While drawing: Quick Fix to clear ground, change the mode, shrink the cursor card to a chip
+ *
+ * Platoon Guide keys, handled by PlatoonGuide itself while the guide is on (not routed here):
+ *   A           Pin the reading at the cursor and open the Pl Detail; again: next tab (Shift+A back)
+ *   Escape      Fold the Pl Detail to its answer bar and let the pin go (before Escape reaches this manager)
  */
 export default class KeyboardShortcutManager {
   private _handler: ((e: KeyboardEvent) => void) | null = null;

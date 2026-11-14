@@ -19,7 +19,7 @@
       "name": "Bn Attk",
       "category": "attack",
       "file": "Plans/Own/Bn Attk.json",
-      "description": "10 FF attack: FUP, SL1 / SL2, Ph 1 / Ph 2, three Sp Attk axes and coy battle positions (about 6 x 14 km)"
+      "description": "10 FF attack, own and en sides: FUP, SL1 / SL2, Ph 1 / Ph 2, three Sp Attk axes, BOF, and the en Coy locality with three Pl posns (about 6 x 14 km)"
     },
     {
       "id": "own-bde-def",
@@ -29,11 +29,25 @@
       "description": "103 Bde defence: battle positions, C Pen posns, counter-attack objectives, Fd Arty and Bde Res (about 4 x 4 km)"
     },
     {
+      "id": "own-div-def",
+      "name": "Div Def",
+      "category": "defence",
+      "file": "Plans/Own/Div Def.json",
+      "description": "31 Div obstacle defence on the IB (Demo 2): IB and Bdys, SZ, Def Plan, ESP, Arty Sp and Log Sp overlays (about 85 km front, 50 km deep)"
+    },
+    {
+      "id": "own-bde-def-12",
+      "name": "Bde Def (12 Bde)",
+      "category": "defence",
+      "file": "Plans/Own/Bde Def 12 Bde.json",
+      "description": "12 Bde, centre sector of the Demo 2 Div Def: three Bns up, minefields, D2 / D3 depth posns and CA objs, guns, BAA (about 27 km front)"
+    },
+    {
       "id": "own-bn-def",
       "name": "Bn Def",
       "category": "defence",
       "file": "Plans/Own/Bn Def.json",
-      "description": "1 PR Def Plan: phase lines, start lines, Sp Attk axes and coy battle positions (about 6 x 15 km)"
+      "description": "1 PR Def Plan, own and en sides: own A Coy locality with three Pl posns, and the en 10 Maratha Bn attack on it (FUP, SL1 / SL2, Ph 1 / Ph 2, three Sp Attk axes, BOF) (about 6 x 15 km)"
     },
     {
       "id": "en-log-1",

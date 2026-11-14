@@ -1,0 +1,281 @@
+{
+  "format": "pams-ipb-doctrine",
+  "version": 1,
+  "built": "2026-11-14",
+  "note": "Figures for the IPB pages of the Ground Guide's Extended View (IPB_Plan.md). Every figure has a basis: D = read from a pamphlet or manual (cited), T = typical public figure (to confirm), E = my estimate or proposal (to confirm), U = the user's decision. Figures are implemented exactly as written in the source, conflicts noted, never 'corrected' (user, 2026-11-14).",
+  "handling": "The D figures are numbers read from restricted Pakistan Army pamphlets (C&SC Quetta IPB book; Desert Warfare; Mountain Warfare; Operations of War Vol I and II; Infantry Battalion in Battle; The Rifle Company, Platoon and Section in Battle). Keep this file under the same handling terms as those pamphlets before it goes outside the owner's own systems.",
+  "sources": {
+    "IPB": { "title": "Intelligence Preparation of the Battle Field (IPB), Command and Staff College Quetta", "file": "Material/Literature/1. Books/11. Intelligence Preparation of the Battlefield.pdf", "cite": "printed page, e.g. p 10" },
+    "ATP": { "title": "ATP 2-01.3 Intelligence Preparation of the Battlefield (March 2019, C1 January 2021)", "file": "Material/atp2-01-3.pdf", "cite": "printed page, e.g. 4-9" },
+    "FM34130": { "title": "FM 34-130 Intelligence Preparation of the Battlefield (1994), Appendix B", "cite": "figure, e.g. B-6" },
+    "IC": { "title": "The Rifle Company, Platoon and Section in Battle", "file": "Material/IC.pdf", "cite": "section.para, e.g. s15.12" },
+    "IBB": { "title": "Infantry Battalion in Battle, AP 8360 E", "file": "Material/IBB.pdf", "cite": "printed page (PDF page = printed + 20)" },
+    "DW": { "title": "Desert Warfare (GSP-1972, 2002)", "file": "Material/Literature/1. Books/7. Desert Warfare.pdf", "cite": "printed page" },
+    "MW": { "title": "Mountain Warfare (GSP-1973, 2003)", "file": "Material/Literature/1. Books/8. Mountain Warfare.pdf", "cite": "printed page" },
+    "OOW1": { "title": "Operations of War Vol I Defence (AP 2302 E, 2015)", "file": "Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf", "cite": "printed page" },
+    "OOW2": { "title": "Operations of War Vol II Offensive Operations (AP 2303 E, 2015)", "file": "Material/Literature/1. Books/3. Operations of War (Volume-II) Offensive Operations.pdf", "cite": "printed page" }
+  },
+  "basisCodes": { "D": "doctrine, cited", "T": "typical public figure, to confirm", "E": "my estimate or proposal, to confirm", "U": "the user's decision" },
+
+  "decisions": {
+    "basis": "U",
+    "date": "2026-11-14",
+    "goingRule": "The IPB coding uses the IPB book's criteria only; GROTBC keeps its own card and enforce rule. A criterion the bundle cannot test is reported as not assessed, never filled in from GROTBC.",
+    "proformaGroups": "Two groups of A B C D with blank, user-named headings (the book leaves them blank, p 21).",
+    "communications": "Row h of the proforma is two lines: Rds & LOC, and Sigs.",
+    "mcWidthsAllForces": "The corridor widths and spacing serve all forces: ATP Table 4-2 gives the same figures for a mechanized force.",
+    "goSlope": "GO slope is 'less than 30 degrees' as written (IPB p 11); SLOW-GO 30-45 % and NO-GO 45 % or more uphill, in percent as written. Where they overlap uphill the stricter class wins.",
+    "avlbSpan": "Not known: a setting, default 18 m (basis T).",
+    "attack": "Frontal attack is dangerous with small chances of success; a flanking attack that chokes the enemy MSR is encouraged; Left or Right by weighing the factors."
+  },
+
+  "coding": {
+    "note": "The IPB combined obstacle overlay (IPB pp 6-12). Classes not absolute; they apply to manoeuvre in combat formation, not movement through an area (that is the road network, p 9). NO-GO does not mean impassable: speed is substantially reduced unless considerable effort is made (p 9).",
+    "classes": { "go": "GO (favourable)", "slow": "SLOW-GO (marginal)", "nogo": "NO-GO (unfavourable)", "na": "Not assessed (the bundle cannot test a criterion that applies here)", "nc": "Not classed by the book" },
+    "precedence": { "basis": "U", "rule": "A cell takes the worst class any tested criterion gives it (NO-GO > SLOW-GO > GO). Not assessed is shown where a criterion that applies locally could not be tested and no tested criterion gives NO-GO. Not classed is shown where the book gives no class and nothing else classes the cell." },
+    "movers": {
+      "basis": "E",
+      "note": "The book marks some criteria 'armoured forces only' or 'mechanized forces only'; the rest apply to every unit. Mapping from Ground Guide profiles is my proposal.",
+      "armour": ["tracked"],
+      "mech": ["wheeled", "amphibious", "roadbound"],
+      "dismounted": ["dismounted", "pack", "oversnow", "generic", "gun", "ad", "signals", "hls", "vessel", "rail"]
+    },
+    "slope": {
+      "basis": "D", "src": "IPB pp 10-11",
+      "nogoUphillPct": 45, "slowUphillPct": [30, 45], "goDeg": 30,
+      "directional": "NO-GO and SLOW-GO are uphill along the direction of movement; GO is less than 30 degrees (written in degrees). Downhill 30 degrees or more is not classed by the book.",
+      "baselineM": { "value": 60, "basis": "E", "note": "Slope measured over 60 m (two 30 m cells) to smooth the elevation's noise." },
+      "noDirection": { "basis": "E", "rule": "With an all-round threat the steepest slope at the cell is treated as uphill (never understated)." }
+    },
+    "relief": {
+      "basis": "D", "src": "IPB pp 10-11",
+      "goMPerKm": [0, 100], "slowMPerKm": [100, 200], "nogoMPerKm": [200, 400],
+      "above": "Over 400 m per km is not classed by the book (the slope test usually classes it).",
+      "windowM": { "value": 1000, "basis": "E", "note": "Elevation range inside a 1 km window centred on the cell." }
+    },
+    "bua": {
+      "basis": "D", "src": "IPB p 9", "movers": ["armour"],
+      "nogoWiderThanM": 500,
+      "bypass": "Built-up areas that cannot be easily bypassed on both sides are NO-GO.",
+      "bypassTest": { "basis": "E", "rule": "Both flanks, measured square to the direction of movement within 500 m of the built-up area, are mostly water, wetland or built-up: no easy bypass." },
+      "classes": { "basis": "E", "value": [3] }
+    },
+    "hydrology": {
+      "basis": "D", "src": "IPB pp 9-11",
+      "nogo": "Rivers, streams, lakes, swamps and bogs that cannot be forded or spanned by an AVLB and are not frozen. Hard vertical banks higher than 4 ft (1.22 m) stop tanks, as will streams with velocities more than 5 ft/s (1.52 m/s) and depths greater than 4 ft (1.22 m). (As written: velocity AND depth; FM 34-130 B-6 lists them separately.)",
+      "slow": "Rivers, streams, lakes and flooded areas that can be forded or spanned in several places; velocity under 5 ft/s and depth under 4 ft. Ice 31.5 in carries tanks, 20 in howitzers.",
+      "go": "Rivers and streams that can be forded anywhere along their length or are 5 ft (1.5 m) or less wide; depth under 2 ft (0.61 m). Ice at least 4 in is GO for dismounted infantry.",
+      "avlbSpanM": { "value": 18, "basis": "T", "src": "M60 AVLB bridge 18.28 m (open sources); Pakistani in-service span not published", "note": "Confirm with engineers." },
+      "bankHeightM": { "value": 1.22, "basis": "D", "src": "IPB p 9" },
+      "notRecorded": "The bundle records no water depth, current or bank height per cell: those parts are not assessed.",
+      "widthTest": { "basis": "E", "rule": "Width = the narrowest run of water cells through the cell (across the water, four directions, diagonals weighted, up to 40 cells) x cell size. Wider than the AVLB span: NO-GO; the bridge and ford cells themselves are crossings. A run of one cell (a line feature: canal, distributary, drain, stream) has no measurable width: not assessed." },
+      "waterClasses": { "basis": "E", "value": [4, 6, 7, 20, 21, 22, 46] },
+      "seasonalClasses": { "basis": "E", "value": [5], "rule": "Seasonal water: depth not recorded, not assessed." },
+      "crossingClasses": { "basis": "E", "value": [39, 40, 41, 42, 43, 44, 45], "rule": "A bridge or ford cell is a crossing: SLOW-GO for the hydrology criterion (the load class is read on the GROTBC card)." }
+    },
+    "vegetation": {
+      "basis": "D", "src": "IPB pp 10-11",
+      "nogo": { "movers": ["armour"], "text": "Trees 6 to 8 in thick at less than 20 ft intervals." },
+      "slow": { "movers": ["mech"], "text": "Trees '2 -' in thick at less than 20 ft intervals (the page drops the upper figure; FM 34-130 B-6 has 2 to 6 in)." },
+      "go": "Trees less than 2 in thick or more than 20 ft apart.",
+      "notRecorded": "The bundle records no trunk thickness or spacing: not assessed for armour and mechanized forces.",
+      "classes": { "basis": "E", "value": [1, 29, 30, 31] },
+      "negatedByRoads": { "basis": "D", "src": "IPB pp 11-12", "rule": "Roads negate vegetation unless obstacles are employed." }
+    },
+    "roads": {
+      "basis": "D", "src": "IPB pp 10-12", "movers": ["armour"],
+      "rule": "Except in open areas. NO-GO: one track per km and no hard-surface roads. SLOW-GO: one hard-surface road, or two tracks, or one road and one track per km. GO: two or more hard-surface roads per km. Slope has priority over roads and tracks.",
+      "perKm": { "basis": "E", "rule": "Road length inside a 1 km window divided by the window's side: the number of roads crossing a 1 km front, read as the book's 'per kilometer'." },
+      "hardClasses": { "basis": "E", "value": [34, 35, 36, 37] },
+      "trackClasses": { "basis": "E", "value": [38] },
+      "closeClasses": { "basis": "E", "value": [1, 29, 30, 31], "note": "Close country where the rule applies: trees and orchards (the book ties the rule to vegetation: 'This negates vegetation'). Built-up areas are judged by the BUA rule only." }
+    },
+    "manMade": { "basis": "D", "src": "IPB p 10", "text": "Minefields, tank ditches, trees blown down and barriers (may be directional).", "fromSymbols": "Read from obstacle symbols on the map; ditch-cum-bund and AT ditches are not in the bundle." },
+    "waterTable": { "basis": "D", "src": "IPB pp 10-12", "nogoFt": 5, "slowFt": [5, 10], "goFt": 10, "notRecorded": "Not in the bundle: not assessed anywhere." },
+    "season": {
+      "note": "Rules from the terrain pamphlets. Whether they join the coding or stay as notes is a switch (ipb.season: coding | notes) until the user decides.",
+      "rann": { "basis": "D", "src": "DW p 4", "text": "The Rann of Kutch is impassable from June to November.", "months": [6, 7, 8, 9, 10, 11], "classes": { "basis": "E", "value": [16, 6] }, "box": { "basis": "E", "value": [68.0, 22.8, 71.6, 24.8], "note": "lon / lat box round the Rann." } },
+      "snowClosure": { "basis": "D", "src": "MW p 259", "text": "Virtually all areas above 2500 m get blocked for 6-9 months.", "aboveM": 2500, "months": { "basis": "E", "value": [11, 12, 1, 2, 3, 4], "note": "Six winter months, the lower end of 6-9." } },
+      "snowSlopes": { "basis": "D", "src": "MW p 281", "text": "Snow slides most dangerous on slopes over 35 degrees; deep new snow slides on slopes steeper than 25 degrees for two or three days after a fall.", "dangerDeg": 35, "freshSnowDeg": 25, "applies": { "basis": "E", "rule": "Snow / ice class, or above 2000 m in the winter months." } }
+    }
+  },
+
+  "corridors": {
+    "basis": "D", "src": "IPB pp 7, 12, 16; ATP Table 4-2 p 4-9; FM 34-130 B-17, B-18",
+    "levels": "Mobility corridors are considered two levels down; avenues of approach one level down (IPB p 7). A viable avenue contains at least two mobility corridors.",
+    "widthM": { "div": 6000, "bde": 3000, "bn": 1500, "coy": 500 },
+    "maxSpacingM": { "divApchOfBdeMc": 10000, "bdeApchOfBnMc": 6000, "bnApchOfCoyMc": 2000 },
+    "directionToleranceDeg": { "basis": "U", "rule": "The threat marker's arc: half of extended.sectorDeg either side of the direction of attack." },
+    "drawing": "Avenues are drawn through the area of interest regardless of boundaries, objectives, FDLs, line of advance or contact; they may start or end abruptly; never extended through ground with no corridors (IPB p 16).",
+    "hqRows": {
+      "basis": "D", "src": "IPB p 7, p 12; ATP Table 4-2",
+      "bde": { "label": "Bde HQ", "aaFor": "Bn", "mcFor": "Coy", "mcWidth": "coy", "spacing": "bnApchOfCoyMc" },
+      "div": { "label": "Div HQ", "aaFor": "Bde", "mcFor": "Bn", "mcWidth": "bn", "spacing": "bdeApchOfBnMc" },
+      "bnNote": "Neither the book nor ATP 2-01.3 has a row for a Bn HQ (Coy avenues of Pl corridors): a Bn or smaller symbol reads with the Bde HQ row over its own (Bn) area, and says so."
+    },
+    "frames": {
+      "basis": "E",
+      "note": "The area read: the HQ's frame facing the threat from the spot (frontage w, forward toward the threat fwd, behind rear), plus a lead beyond it toward the threat. Bn and Bde as the AOR scale's echelon frames; the Div frame is my proposal (no source gives one).",
+      "bn": { "w": 7000, "fwd": 12000, "rear": 3000, "lead": 3000 },
+      "bde": { "w": 14000, "fwd": 18000, "rear": 6000, "lead": 4000 },
+      "div": { "w": 30000, "fwd": 30000, "rear": 10000, "lead": 8000 }
+    },
+    "method": {
+      "basis": "E",
+      "obstacles": "NO-GO, SLOW-GO, not classed and not assessed ground narrow a corridor; water lines whose width is not recorded and crossings are crossed. Patches under a quarter of the corridor width squared are left out (a corridor is relatively free of obstacles).",
+      "ways": "One least-cost field from the start edge (GO 1, SLOW-GO and not assessed 3, NO-GO never crossed, ground nearer an obstacle than half a corridor width up to 3 times dearer); the cheapest way back from each strip of the end edge (strips two spacings wide); a way within half the spacing of one kept for 60 % of its length is the same avenue.",
+      "viable": "An avenue: two corridor widths fit side by side in the free width over 60 % of its length (book p 12: two or more corridors). One corridor width over 60 %: a lone corridor. Less: no corridor. Less than one corridor width: a narrows.",
+      "ranking": "Until the proforma (Phase 4): 15 x share of the area run + 0.3 x GO % + 6 x corridors side by side (up to 3) - 5 per narrows - 6 per narrows under half a corridor width - 10 when stopped + 25 x cheapest cost / its cost. Higher is better going for the user of the avenue."
+    }
+  },
+
+  "air": {
+    "note": "Air avenues of approach, LZ / DZ and AD sites (IPB s2 para 1 pp 5-6, Fig 1 p 8; IPB_Plan.md §6.4). The book gives the factors, not the figures: flight heights and LZ sizes are public US figures (basis T) until Army Aviation gives the Pakistani ones.",
+    "factors": { "basis": "D", "src": "IPB pp 5-6", "text": "Low-level and NOE flight. Sufficient air space; concealment from ground observation; easily recognised features (rivers, roads; linear features parallel to the flight best; terrain corridors give navigation and defilade); length of the flight path (shortest preferred, longer for deception); vertical obstructions (water towers, power lines). Identify LZ / DZ and AD sites giving long-range, flank or bottom shots on the air avenue." },
+    "bands": {
+      "basis": "T", "src": "FM 3-04.203 Fundamentals of Flight (terrain flight modes), via open summaries", "note": "Height above the highest obstacle (AHO). Confirm with Army Aviation.",
+      "noe": { "label": "NOE", "minM": 0, "maxM": 8, "text": "Nap of the earth: as low as vegetation and obstacles permit, up to 25 ft AHO; speed and heading vary." },
+      "contour": { "label": "Contour", "minM": 8, "maxM": 24, "text": "Contour: follows the ground at 25-80 ft AHO; speed fairly constant, height varies." },
+      "low": { "label": "Low level", "minM": 24, "maxM": 61, "text": "Low level: constant height and speed, 80-200 ft AHO." }
+    },
+    "landingPoints": {
+      "basis": "T", "src": "FM 3-21.38 Pathfinder Operations ch 6 (landing point sizes), via open copies",
+      "sizeM": { "1": 25, "2": 35, "3": 50, "4": 80, "5": 100, "6": 125 },
+      "examples": { "1": "light observation (OH-58 class)", "2": "utility / attack (UH-1, AH-1, Bell 412 class)", "3": "UH-60 / AH-64 class", "4": "cargo (CH-47, Mi-17 class)", "5": "day sling loads; unknown aircraft", "6": "large cargo, night sling loads" },
+      "defaultClass": { "value": 4, "basis": "E", "note": "Mi-17 class, the Army's main lift helicopter (open sources)." },
+      "points": { "value": 4, "basis": "E", "note": "Landing points in one LZ; laid in a square, one point diameter apart." }
+    },
+    "slope": {
+      "basis": "T", "src": "FM 3-21.38 (via ArcGIS HLZ slope guide)", "okDeg": 7, "cautionDeg": 15,
+      "text": "Up to 7 degrees: land. 7-15 degrees: land upslope or hover, the landing points checked on the ground. Over 15 degrees: no landing.",
+      "mountains": { "basis": "D", "src": "MW p 256", "okDeg": 4, "text": "Helipads in mountains: slope 4 degrees or less for repeated use; emergency 4-10 degrees (observation / utility), 4-20 degrees (cargo)." },
+      "mountainTest": { "basis": "E", "rule": "Elevation range within 1 km of the LZ of 200 m or more (the book's NO-GO relief, IPB p 10): the mountain rule applies." },
+      "measure": { "basis": "E", "rule": "Slope from the 30 m elevation over 60 m; the LZ's slope is the 90th percentile of its cells (the 30 m elevation is noisy)." }
+    },
+    "approach": { "basis": "T", "src": "FM 3-21.38 (obstacle clearance ratio)", "ratio": 10, "text": "10 to 1: an obstacle h metres high must be 10 h metres from the LZ's edge on the approach and departure; one clear direction at least, two opposite ones best (wind not known)." },
+    "dz": {
+      "basis": "T", "src": "DAFMAN 13-217 Drop Zone and Landing Zone Operations (personnel DZ minimum, one jumper)", "widthM": 550, "lengthM": 550,
+      "note": "600 x 600 yd for one jumper; a stick needs a longer DZ (the per-jumper increment is not confirmed). MW p 258: DZs scarce in mountains (level, free of rocks and trees)."
+    },
+    "clear": {
+      "basis": "E", "note": "Ground classes a helicopter can land on, and those that only allow it with care (my reading of the class list; confirm).",
+      "landClasses": [0, 2, 12, 16, 17, 18, 23, 38],
+      "cautionClasses": { "value": [8, 13, 15, 19], "why": { "8": "snow: whiteout", "13": "sand: brownout", "15": "rocky ground", "19": "sloping ground 7-15 degrees" } },
+      "clearShare": { "value": 0.9, "basis": "E", "note": "Share of a DZ that must be clear (a few small obstacles are accepted); an LZ must be clear throughout." }
+    },
+    "obstructions": {
+      "basis": "E", "note": "Heights assumed where the bundle records none (metres above the ground). The book names water towers and power lines (IPB p 6).",
+      "points": { "mast": 40, "wind_tower": 30, "chimney": 40, "tank_overhead": 20, "watch_tower": 15 },
+      "lines": { "power_line": 20 },
+      "classes": { "1": 12, "29": 10, "30": 10, "31": 15, "3": 8, "33": 20, "48": 20, "24": 3 },
+      "nearM": { "value": 300, "basis": "E", "note": "An air avenue passing within this distance of a point obstruction is counted against it." }
+    },
+    "existing": { "basis": "D", "src": "IPB_Plan §6.4 (existing helipads first)", "kinds": ["helipad", "airfield", "air_base", "landing_strip", "airport", "landing_ground", "runway", "road_runway"] },
+    "ad": {
+      "basis": "T", "src": "Open figures for MANPADS (Anza Mk II, RBS 70 class) and 35 mm AD guns",
+      "rangeM": 5000,
+      "note": "Effective range of short-range AD against helicopters; confirm with AD.",
+      "shots": { "basis": "D", "src": "IPB p 6, Fig 1", "text": "Long-range (down the avenue), flank (beside it) and bottom (below where it crosses a ridge) shots." },
+      "rules": { "basis": "E", "longDeg": 30, "flankDeg": [60, 120], "flankWithinFrac": 0.6, "longBeyondFrac": 0.4, "bottomBelowM": 20, "note": "Long-range: the aircraft flies within 30 degrees of straight at the site, beyond 40 % of the range. Flank: 60-120 degrees across, within 60 % of the range. Bottom: the site 20 m or more below the avenue where the avenue crosses a crest." },
+      "priority": { "basis": "D", "src": "OOW1 p 27; DW pp 62-72; MW p 247", "text": "AD priority: HQs, armour concentrations, gun areas, reserves, vital bridges (OoW I); in the desert reserves, HQs, gun areas, logistics, assault engineers, MSR bottlenecks; in mountains canalised run-ins covered from dominating features, defiles." }
+    },
+    "heliborne": {
+      "basis": "D", "src": "OOW1 pp 61-63; MW p 258",
+      "text": "The enemy's para and heliborne forces seize dominating ground and defile crossings, attack depth localities, HQs and reserves; OPs over likely landing areas (OoW I p 63). In mountains: hill tops, nodal points, defiles, choke points (MW p 258).",
+      "opWithinM": { "value": 3000, "basis": "E", "note": "An OP for an enemy LZ: the highest own-side ground within 3 km that sees it." }
+    },
+    "cost": {
+      "basis": "E", "note": "My weights for the least-cost air avenue on a 150 m grid (length 1 per cell).",
+      "cellM": 150, "seen": 4, "obstruction": 2, "wire": 2, "bua": 1, "noData": 1, "valley": 0.85, "parallel": 0.85, "valleyDepthM": 15, "parallelDeg": 30,
+      "observerReachM": 6000, "landedM": 4, "alternates": 3, "detour": 1.6, "overlap": 0.6
+    }
+  },
+
+  "rates": {
+    "basis": "D", "src": "IPB p 18",
+    "footKmh": { "go": [4, 3.2], "slow": [2.4, 1.6], "nogo": [1.0, [0.1, 0.5]] },
+    "vehicleKmh": { "go": [24, 24], "slow": [16, 8], "nogo": [1.0, [0.1, 0.5]] },
+    "note": "Day, night. Vehicles at night: GO with lights or passive, SLOW-GO blacked out.",
+    "footByTerrain": { "basis": "D", "src": "IBB p 18", "plains": [4, 3], "desertFirm": [3, 2.5], "desertLoose": [2.5, 2], "mountainDescent": [3, 2], "mountainAscent": [2, 1] },
+    "mountain": { "basis": "D", "src": "MW p 81", "dayKmh": 3, "nightKmh": [0.5, 1], "addMinPer300mAscent": [30, 60], "addMinPer600mDescent": [30, 60], "groundDistance": "map distance + 1/3" }
+  },
+
+  "decisionPoints": {
+    "interdict": { "basis": "D", "src": "IPB p 30", "rule": "The decision must be made while the enemy is at least 2 hours from the TAI.", "leadH": 2 },
+    "counterAttack": { "basis": "D", "src": "OOW1 p 54", "rule": "The counter-attack must go in while the depth localities are still intact; its timing depends on the counter-attack force's mobility.", "coyMin": { "value": 30, "basis": "D", "src": "IBB (counter-penetration: company counter-attack in 30 min, battalion in 1 h; OCOKA_Roadmap.md)" }, "bnMin": { "value": 60, "basis": "D", "src": "IBB" } },
+    "reserves": { "basis": "D", "src": "DW p 27", "text": "Reserves committed within 2-6 hours." },
+    "areaOfInterest": { "basis": "D", "src": "OOW2 pp 5-6", "tactical": { "influenceKm": 30, "interestDays": 2, "interestKm": 100 }, "operational": { "influenceKm": [30, 80], "interestDays": 3, "interestKm": [100, 250] } }
+  },
+
+  "ownAttack": {
+    "basis": "U", "rule": "Frontal attack is dangerous with small chances of success: discarded, shown for reference only. A flanking attack that chokes the enemy MSR is encouraged. Left or Right by weighing the factors.",
+    "frontDiscarded": { "basis": "D", "src": "IC s15.12 b", "text": "The company would normally have come under effective enemy fire from the front, so this approach may be safely discarded; the ground is divided into left and right approaches." },
+    "factors": [
+      { "id": "msr", "label": "Choke en MSR", "weight": 3, "basis": "U" },
+      { "id": "fupCover", "label": "FUP: cover", "weight": 2, "basis": "D", "src": "IC s15.12 b(1)" },
+      { "id": "fupObstacles", "label": "Obstacles FUP to objective", "weight": 2, "basis": "D", "src": "IC s15.12 b(1)" },
+      { "id": "fupDistance", "label": "Distance FUP to objective", "weight": 1, "basis": "D", "src": "IC s15.12 b(1)" },
+      { "id": "route", "label": "Route to FUP: obstacles, en interference", "weight": 2, "basis": "D", "src": "IC s15.12 b(2)" },
+      { "id": "fireBase", "label": "Fire base: cover, range, direction against the axis", "weight": 2, "basis": "D", "src": "IC s15.12 b(3)" },
+      { "id": "going", "label": "Going", "weight": 1, "basis": "E" },
+      { "id": "surprise", "label": "Surprise", "weight": 1, "basis": "D", "src": "OOW2 s6" }
+    ],
+    "weightsNote": { "basis": "E", "note": "Default weights are my proposal; the user sets them 0-3." },
+    "timeAndSpace": { "basis": "D", "src": "IC s15.12 c", "unforeseenMin": [5, 10], "inFupMin": 2 }
+  },
+
+  "formsOfManoeuvre": {
+    "basis": "D", "src": "OOW2 s6 pp 19-21; DW pp 39-42; MW p 79",
+    "envelopment": "Auxiliary manoeuvre draws the defender; main strength on the assailable flank. Without one, create inner flanks after a frontal penetration.",
+    "doubleEnvelopment": "Both flanks at once; needs adequate troops and precise co-ordination.",
+    "verticalEnvelopment": "By air into the rear and flanks.",
+    "turningMovement": "Threat to a significant objective deep in the defender's rear; needs relative mobility on an assailable flank; preceded by a fixing manoeuvre.",
+    "penetration": "Wedge through the front; the most commonly applied form where there are no assailable flanks; must lead to break-out; enabled by an auxiliary manoeuvre.",
+    "mountains": "Envelopment with frontal fixation preferred; frontal only if unavoidable, at night or in poor visibility (MW p 79)."
+  },
+
+  "proforma": {
+    "basis": "D", "src": "IPB p 21",
+    "rows": ["a Observation & fire", "b Cover & concealment", "c Obstacles / vertical", "d Important tactical ground", "e Manoeuvre space", "f Ease of movement", "g NBC effects", "h Communications", "j Surveillance", "k Unconventional warfare", "l Others"],
+    "note": "Plus for advantage, minus for disadvantage; add up. The weights cannot be quantified: totals are only a rough guide (note 2).",
+    "atpCriteria": { "basis": "D", "src": "ATP 4-8", "value": ["access to key terrain and adjacent AAs", "degree of canalization and ease of movement", "sustainability (LOC support)", "access to the objective"] }
+  },
+
+  "weather": {
+    "basis": "D", "src": "IPB Annex A pp 19-20",
+    "note": "Favourable (GO) / marginal (SLOW-GO); worse than marginal is unfavourable.",
+    "rows": [
+      { "mission": "Mnvr - mob, tracked, day", "element": "visibility", "go": "> 1.5 km", "marginal": "0.8-1.5 km" },
+      { "mission": "Mnvr - mob, tracked, day", "element": "rainfall", "go": "< 0.1 in/hr", "marginal": "0.1-0.5 in/hr" },
+      { "mission": "Mnvr - mob, tracked, day", "element": "snow depth", "go": "< 12 in", "marginal": "12-20 in" },
+      { "mission": "Mnvr - mob, tracked, night (PVS-5)", "element": "visibility", "go": "> 0.2 km", "marginal": "0.1-0.2 km" },
+      { "mission": "Mnvr - mob, dismounted", "element": "visibility", "go": "> 0.3 km", "marginal": "0.1-0.3 km" },
+      { "mission": "Mnvr - mob, dismounted", "element": "snow depth", "go": "< 3 in", "marginal": "3-6 in" },
+      { "mission": "Mnvr - mob, dismounted", "element": "temperature", "go": "< 32 °C", "marginal": "> 32 °C" },
+      { "mission": "Mnvr - mob, dismounted", "element": "wind chill", "go": "> 0 °C", "marginal": "0 to -30 °C" },
+      { "mission": "Mnvr - weapon positioning (A tk direct fire)", "element": "visibility", "go": "> 3.0 km", "marginal": "0.5-3.0 km" },
+      { "mission": "Mnvr - weapon positioning (A tk direct fire)", "element": "temperature", "go": "> -18 °C", "marginal": "< -18 °C" },
+      { "mission": "Fire Sp (155 mm)", "element": "visibility", "go": "> 5.0 km", "marginal": "1.5-5.0 km" },
+      { "mission": "Fire Sp (155 mm)", "element": "ceiling", "go": "> 800 ft", "marginal": "500-800 ft" },
+      { "mission": "Fire Sp (155 mm)", "element": "surface wind", "go": "< 35 kt", "marginal": "35-50 kt" },
+      { "mission": "Fire Sp (155 mm)", "element": "snow depth", "go": "< 4.0 in", "marginal": "4.0-6.0 in" },
+      { "mission": "Fire Sp (CAS)", "element": "visibility", "go": "> 8.0 km", "marginal": "5.0-8.0 km" },
+      { "mission": "Fire Sp (CAS)", "element": "ceiling", "go": "> 3,000 ft", "marginal": "500-3,000 ft" },
+      { "mission": "Int (fixed wing visual recce)", "element": "visibility", "go": "> 5.0 km", "marginal": "3.0-5.0 km" },
+      { "mission": "Int (fixed wing visual recce)", "element": "ceiling", "go": "< 3/8 clouds", "marginal": "3/8-5/8 clouds" },
+      { "mission": "AD", "element": "visibility", "go": "> 5.0 km", "marginal": "3.0-5.0 km" },
+      { "mission": "AD", "element": "ceiling", "go": "> 5,000 ft", "marginal": "3,000-5,000 ft" },
+      { "mission": "AD", "element": "rainfall", "go": "< 0.5 in/hr", "marginal": "0.5-1.0 in/hr" },
+      { "mission": "NBC (chemical, arty delivered, smoke)", "element": "wind below 16 m", "go": "< 5 kt", "marginal": "5-7 kt" },
+      { "mission": "NBC (chemical, arty delivered, smoke)", "element": "stability", "go": "stable", "marginal": "neutral" },
+      { "mission": "NBC (chemical, arty delivered, smoke)", "element": "temperature", "go": "> 21 °C", "marginal": "4-21 °C" },
+      { "mission": "NBC (chemical, arty delivered, smoke)", "element": "humidity", "go": "> 60 %", "marginal": "40-60 %" },
+      { "mission": "Airborne", "element": "visibility", "go": "> 5.0 km", "marginal": "1.0-5.0 km" },
+      { "mission": "Airborne", "element": "ceiling", "go": "> 500 ft", "marginal": "300-500 ft" },
+      { "mission": "Airborne", "element": "surface wind", "go": "< 10 kt", "marginal": "10-13 kt" },
+      { "mission": "Avn (rotary wing)", "element": "visibility", "go": "> 1.5 km", "marginal": "0.4-1.5 km" },
+      { "mission": "Avn (rotary wing)", "element": "ceiling", "go": "> 500 ft", "marginal": "300-500 ft" },
+      { "mission": "Avn (rotary wing)", "element": "surface wind", "go": "< 20 kt", "marginal": "20-30 kt" }
+    ]
+  }
+}

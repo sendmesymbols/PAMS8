@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Platoon Guide views</title>
+<style>
+:root{--bg:#111418;--card:#1b1f25;--strip:#20262e;--raised:#222830;--head:#262d36;--ring:#14181d;--text:#f1f3f6;--strong:#fff;--label:#c3cbd3;--soft:#b8c1ca;--warn:#ffd27a;
+  --hair:rgba(255,255,255,.14);--accent:#8ec1ea;--go:#2fa862;--slow:#ee8a1f;--nogo:#e5484d;--txgo:#74dca3;--txslow:#ffb46b;--txnogo:#ff8a8d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.5 system-ui,Segoe UI,Arial,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px}
+h2{font-size:20px;margin:40px 0 8px}
+p{margin:6px 0}
+.lead{color:var(--label);max-width:860px}
+.prob{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin:18px 0 6px}
+.prob div{background:var(--card);border:1px solid var(--hair);border-left:3px solid var(--nogo);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--label)}
+.prob b{display:block;color:var(--strong);font-size:15px;margin-bottom:3px}
+.opt{margin:26px 0 0;background:var(--card);border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.opt.pick{border-color:var(--go);box-shadow:0 0 0 1px var(--go)}
+.oh{display:flex;align-items:baseline;gap:6px 12px;padding:12px 16px;background:var(--head);flex-wrap:wrap}
+.num{font:750 13px/1 system-ui,Segoe UI,Arial,sans-serif;color:#14181d;background:#e4e8ec;border-radius:6px;padding:4px 8px}
+.opt.pick .num{background:var(--go);color:#fff}
+.ot{font-size:18px;font-weight:700;color:var(--strong)}
+.os{color:var(--label);font-size:14px}
+.tag{margin-left:auto;font-size:13px;font-weight:700}
+.tag.g{color:var(--txgo)}.tag.r{color:var(--txnogo)}
+.ob{display:grid;grid-template-columns:minmax(0,1fr) 310px}
+@media (max-width:920px){.ob{grid-template-columns:1fr}.ob .tx{border-left:0;border-top:1px solid var(--hair)}}
+.ob svg{display:block;width:100%;height:auto;background:#2b3427}
+.tx{padding:14px 16px;border-left:1px solid var(--hair);font-size:14px}
+.tx h4{margin:0 0 4px;font-size:13px;color:var(--label);font-weight:600}
+.tx ul{margin:0 0 12px;padding-left:18px}
+.tx li{margin:3px 0}
+.plus::marker{content:"+  ";color:var(--txgo);font-weight:700}
+.minus::marker{content:"–  ";color:var(--txslow);font-weight:700}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:4px;font:750 12px/1 system-ui,Segoe UI,Arial,sans-serif;
+  color:#e8ebee;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px;vertical-align:1px}
+table{border-collapse:collapse;width:100%;font-size:14px;margin-top:10px;background:var(--card);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--hair);vertical-align:top}
+th{color:var(--label);font-weight:600;background:var(--head)}
+td b{color:var(--strong)}
+.g{color:var(--txgo)}.s{color:var(--txslow)}.r{color:var(--txnogo)}
+.keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:10px}
+.keys div{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:12px 14px;font-size:14px}
+.keys div p{margin:5px 0}
+.decide{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:12px 16px 12px 34px;margin-top:10px}
+.decide li{margin:6px 0}
+.wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Platoon Guide: views that leave the map clear</h1>
+<p class="lead">Mockups only, nothing built. Same ground in every picture: a Pl being placed near a Rd, a likely mine / IED site at a culvert 340 m NE, an ambush site 600 m E, a canal 280 m S and a village 700 m SE. The dashed ring is the 500 m bubble and the lettered markers are what the map layer draws today.</p>
+
+<div class="prob">
+  <div><b>The card sits on the ground you are placing on</b>About 350 × 450 px, 18 px from the pointer. It flips to stay on screen, so it usually lands right over the Rd, mine site and ambush site it is warning about.</div>
+  <div><b>The reading follows the mouse to the tabs</b>The reading is for the point under the pointer. When you move down to click a tab, the pointer crosses the map, so the reading has already moved to the map's lower edge before you get there.</div>
+  <div><b>A turns pages before tabs</b><span class="kbd">A</span> turns every page of Here and See before it reaches Danger. The open Pl Detail is 46% of the screen height, so you can't place in the lower half while it is open.</div>
+</div>
+
+<div id="opts"></div>
+
+<h2>Side by side</h2>
+<div class="wrap">
+<table>
+<tr><th>View</th><th>Covers (1600 × 900 map)</th><th>Works with the mouse busy</th><th>Reaches every tab</th><th>Build</th></tr>
+<tr><td><b>0 Today</b></td><td class="r">~11% at the pointer, +50% with the Detail open</td><td class="s">Reading only</td><td class="r">No: the reading moves off the point</td><td>—</td></tr>
+<tr><td><b>1 Halo</b></td><td class="g">~3%, thin ring around the symbol</td><td class="g">Yes, glance only</td><td>No (it's a summary)</td><td>M: new DOM ring, reuses the radar's maths</td></tr>
+<tr><td><b>2 Answer bar</b></td><td class="g">~6%, at the map's edge</td><td class="g">Yes, all answers at once</td><td class="g">The answer to every tab, no switching</td><td>S: the Detail's tab row on its own</td></tr>
+<tr><td><b>3 Pin and read</b></td><td>Only while you read</td><td class="g">Yes: A pins, then the mouse is free</td><td class="g">Yes: click or A</td><td>S: freeze the subject + pin marker</td></tr>
+<tr><td><b>4 Side rail</b></td><td class="s">~18%, but off to the side</td><td class="g">Yes</td><td class="s">No (a fixed card)</td><td>M: rail docking, clash with the Gr Scope rail</td></tr>
+<tr><td><b>5 Chip</b></td><td class="g">~0.6%</td><td class="g">Yes</td><td class="r">No</td><td>S: like the Ground Guide's H chip</td></tr>
+</table>
+</div>
+
+<h2>Keys (proposal)</h2>
+<div class="keys">
+  <div><p><b>A</b> while placing or hovering: <b>pin</b> the reading at the pointer and open the Pl Detail on Here. A pin goes on the map, and the reading no longer follows the mouse.</p>
+  <p><b>A</b> again: <b>next tab</b>, not next page. <b>Shift+A</b>: previous tab. A tab that runs long turns its pages with the wheel over the Detail, or a ‹ › at its foot.</p></div>
+  <div><p><b>Esc</b>: close the Detail and unpin, so the reading follows the pointer again. Placing the symbol also unpins, and its Detail opens for the placed symbol as it does today.</p>
+  <p>No digit keys: 1 2 3 already open the Ground Guide's Extended View tabs, and 9 is the Mov Guide's water card.</p></div>
+</div>
+
+<h2 id="decide">Decide</h2>
+<ol class="decide">
+  <li>Which views to build: my pick is <b>1 + 2 + 3</b> together, with <b>5 Chip</b> as a switch for whoever wants even less.</li>
+  <li>Should the old cursor card stay as a switch (<code>platoonGuide.card: 'card'</code>) or go?</li>
+  <li>Answer bar at the <b>foot</b> or the <b>top</b> of the map? The Ground Detail and Night March chart also dock at the foot.</li>
+  <li><b>A</b> as pin + next tab, as above, or a separate pin key?</li>
+</ol>
+</main>
+
+<script>
+const W = 960, H = 540, CX = 440, CY = 290;
+const C = { go:'#2fa862', slow:'#ee8a1f', nogo:'#e5484d', chk:'#7f8893', water:'#4fb3ff', mine:'#e5484d', ambush:'#e5484d', hls:'#d48bff', hospital:'#ff5c63',
+  help:'#5aa9ff', bua:'#e2c79a', pb:'#4ade80', op:'#a5b4fc', card:'#1b1f25', head:'#262d36', strip:'#20262e', label:'#c3cbd3', hair:'rgba(255,255,255,.14)' };
+
+/* ── the shared ground ─────────────────────────────────────────────────────── */
+function ground() {
+  let s = '<g transform="rotate(-7 480 270)">';
+  const cols = ['#4b5a3a', '#586741', '#636e48', '#55603e', '#686846', '#485637', '#5d6a43'];
+  let seed = 11; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let y = -90; y < H + 90; y += 56) for (let x = -90; x < W + 90; x += 72) {
+    const c = cols[Math.floor(rnd() * cols.length)], a = rnd() * 8 - 4, b = rnd() * 8 - 4;
+    s += `<polygon points="${x + a},${y + b} ${x + 72},${y + b * .5} ${x + 72 + a * .5},${y + 56} ${x},${y + 56 + b}" fill="${c}" stroke="#3a462f" stroke-width="1.3"/>`;
+  }
+  s += '</g>';
+  // hills: NW (OP) and the ridge NE that looks down on the point
+  for (const [x, y, n, rx, ry] of [[205, 118, 5, 22, 14], [790, 105, 6, 26, 16]])
+    for (let i = n; i >= 1; i--) s += `<ellipse cx="${x}" cy="${y}" rx="${rx * i}" ry="${ry * i}" fill="none" stroke="#b39a6c" stroke-opacity=".55" stroke-width="${i === n ? 1.6 : 1}"/>`;
+  // orchards
+  for (const [x, y] of [[330, 360], [350, 372], [318, 378], [700, 330], [716, 342], [688, 346], [150, 250], [166, 262], [140, 268]])
+    s += `<circle cx="${x}" cy="${y}" r="9" fill="#2f4a2a" stroke="#22351f"/>`;
+  // nala and canal
+  s += `<path d="M468,30 C488,110 508,170 521,209 S548,300 560,392" fill="none" stroke="#7aa5c2" stroke-width="2.6"/>`;
+  s += `<path d="M0,402 C200,392 380,404 560,390 S860,374 960,368" fill="none" stroke="#2c6fa6" stroke-width="9"/>`;
+  s += `<path d="M0,402 C200,392 380,404 560,390 S860,374 960,368" fill="none" stroke="#4f9be0" stroke-width="4.5"/>`;
+  // roads
+  const rd = (d, w) => `<path d="${d}" fill="none" stroke="#2a2a28" stroke-width="${w + 3}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#ddd6c5" stroke-width="${w}" stroke-linecap="round"/>`;
+  s += rd('M0,334 C120,324 220,306 300,280 S430,226 521,209 S700,170 960,116', 4.5);
+  s += rd('M521,209 C580,236 630,252 642,282 S652,380 612,452', 3.5);
+  s += `<path d="M300,280 C318,206 336,150 354,105" fill="none" stroke="#c9c1ae" stroke-width="2" stroke-dasharray="6 4"/>`;
+  // village (BUA) SE
+  seed = 5;
+  for (let i = 0; i < 18; i++) { const x = 580 + rnd() * 70, y = 432 + rnd() * 52; s += `<rect x="${x}" y="${y}" width="${7 + rnd() * 7}" height="${6 + rnd() * 6}" fill="#cdb48a" stroke="#5b4a32" stroke-width="1"/>`; }
+  s += `<text x="615" y="508" fill="#f1e6cf" font-size="12" font-weight="600" text-anchor="middle" paint-order="stroke" stroke="#1b1f25" stroke-width="3">Dhok Kalan</text>`;
+  return s;
+}
+/* What the map layer draws today: the bubble, dead / screened ground and the lettered markers. */
+function products(dim = 1) {
+  let s = `<g opacity="${dim}">`;
+  s += `<path d="M530,180 C570,175 600,200 610,240 C580,250 545,236 530,180Z" fill="rgba(229,57,53,.30)" stroke="rgba(229,57,53,.6)" stroke-width="1"/>`;
+  s += `<path d="M300,345 C330,340 365,350 372,385 C345,392 310,384 300,345Z" fill="rgba(255,179,0,.26)" stroke="rgba(255,179,0,.6)" stroke-width="1"/>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="170" fill="none" stroke="#eceff1" stroke-opacity=".75" stroke-width="1.6" stroke-dasharray="7 6"/>`;
+  for (const [x, y, t, c] of [[521, 209, 'M', C.mine], [642, 280, 'A', C.ambush], [440, 392, 'W', C.water], [289, 317, 'H', C.hls], [354, 105, 'PB', C.pb], [205, 112, 'OP', C.op]]) {
+    const w = t.length > 1 ? 24 : 18;
+    s += `<rect x="${x - w / 2}" y="${y - 9}" width="${w}" height="18" rx="4" fill="${c}" stroke="#14181d" stroke-width="1.5"/><text x="${x}" y="${y + 4.5}" fill="#14181d" font-size="12" font-weight="800" text-anchor="middle">${t}</text>`;
+  }
+  return s + '</g>';
+}
+/* The friendly infantry platoon under the pointer. */
+function unit(x = CX, y = CY, op = 1) {
+  return `<g opacity="${op}"><rect x="${x - 24}" y="${y - 16}" width="48" height="32" fill="#80e0ff" stroke="#000" stroke-width="2"/>
+    <path d="M${x - 24},${y - 16} L${x + 24},${y + 16} M${x + 24},${y - 16} L${x - 24},${y + 16}" stroke="#000" stroke-width="1.8"/>
+    <circle cx="${x - 9}" cy="${y - 23}" r="2.6"/><circle cx="${x}" cy="${y - 23}" r="2.6"/><circle cx="${x + 9}" cy="${y - 23}" r="2.6"/></g>`;
+}
+function pointer(x, y) {
+  return `<path d="M${x},${y} l0,19 l5,-5 l4,9 l3.5,-1.6 l-4,-8.6 l7,0 Z" fill="#fff" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/>`;
+}
+/* Radar glyphs, the same shapes as PlatoonGuideRadar. */
+function glyph(k, x, y, s = 1) {
+  const c = C[k] || '#fff', t = `translate(${x} ${y}) scale(${s})`;
+  switch (k) {
+    case 'water': return `<path transform="${t}" d="M0,-7 C4,-2 6,1 6,3.5 A6,6 0 0 1 -6,3.5 C-6,1 -4,-2 0,-7Z" fill="${c}"/>`;
+    case 'mine': return `<path transform="${t}" d="M0,-7 L7,0 L0,7 L-7,0Z" fill="${c}" stroke="#fff" stroke-width="1"/>`;
+    case 'ambush': return `<path transform="${t}" d="M0,-7 L7,6 L-7,6Z" fill="${c}" stroke="#fff" stroke-width="1"/>`;
+    case 'hls': return `<text transform="${t}" y="5" fill="${c}" font-size="15" font-weight="900" text-anchor="middle">H</text>`;
+    case 'hospital': return `<path transform="${t}" d="M-2.2,-7h4.4v4.8h4.8v4.4h-4.8v4.8h-4.4v-4.8h-4.8v-4.4h4.8Z" fill="${c}"/>`;
+    case 'help': return `<rect transform="${t}" x="-5.5" y="-5.5" width="11" height="11" fill="${c}" stroke="#fff" stroke-width="1"/>`;
+    case 'bua': return `<path transform="${t}" d="M-6,6 V-1 L0,-7 L6,-1 V6Z" fill="${c}"/>`;
+    case 'pb': return `<path transform="${t}" d="M0,-7.5 L2.2,-2.4 L7.4,-2.3 L3.4,1.1 L4.7,6.6 L0,3.6 L-4.7,6.6 L-3.4,1.1 L-7.4,-2.3 L-2.2,-2.4Z" fill="${c}"/>`;
+    case 'op': return `<path transform="${t}" d="M-7,0 Q0,-7 7,0 Q0,7 -7,0Z" fill="none" stroke="${c}" stroke-width="2"/><circle transform="${t}" r="2.4" fill="${c}"/>`;
+  }
+  return '';
+}
+function pill(x, y, text, o = {}) {
+  const fs = o.fs || 12, w = Math.round(text.length * fs * .56 + 14), h = fs + 10;
+  const x0 = o.anchor === 'end' ? x - w : o.anchor === 'middle' ? x - w / 2 : x;
+  return `<rect x="${x0}" y="${y - h / 2}" width="${w}" height="${h}" rx="${h / 2}" fill="${o.fill || '#14181d'}" stroke="${o.stroke || 'rgba(255,255,255,.25)'}" stroke-width="${o.sw || 1}"/>` +
+    `<text x="${x0 + w / 2}" y="${y + fs * .36}" fill="${o.color || '#f1f3f6'}" font-size="${fs}" font-weight="${o.weight || 700}" text-anchor="middle">${text}</text>`;
+}
+const rad = (deg) => (deg - 90) * Math.PI / 180;
+const at = (r, deg, x = CX, y = CY) => [x + r * Math.cos(rad(deg)), y + r * Math.sin(rad(deg))];
+function arc(r, a0, a1, color, w, x = CX, y = CY) {
+  const [x0, y0] = at(r, a0, x, y), [x1, y1] = at(r, a1, x, y);
+  return `<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="butt"/>`;
+}
+const FOOT = ['go', 'slow', 'nogo', 'go', 'slow', 'go', 'go', 'go'];
+const VEH = ['go', 'nogo', 'nogo', 'go', 'nogo', 'slow', 'go', 'slow'];
+
+/* A small version of today's card (verdict bar, radar, tiles, danger, people). */
+function miniCard(x, y, w, h, opts = {}) {
+  let s = `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${C.card}" stroke="${C.go}" stroke-width="1.6"/>`;
+  s += `<path d="M${x},${y + 10} a10,10 0 0 1 10,-10 h${w - 20} a10,10 0 0 1 10,10 v22 h-${w}Z" fill="#18733f"/>`;
+  s += `<text x="${x + 12}" y="${y + 21}" fill="#fff" font-size="14" font-weight="750">✓ GO on foot</text>`;
+  s += pill(x + w - 10, y + 16, 'Pl · 500 m', { anchor: 'end', fill: 'rgba(255,255,255,.18)', stroke: 'none', fs: 10 });
+  s += `<rect x="${x + 1}" y="${y + 32}" width="${w - 2}" height="18" fill="${C.strip}"/><text x="${x + 12}" y="${y + 45}" fill="${C.label}" font-size="10">cursor · Standing · Veh NO-GO · Cultivated · Day</text>`;
+  const rr = opts.r || 50, rcx = x + 12 + rr, rcy = y + 60 + rr;
+  s += `<circle cx="${rcx}" cy="${rcy}" r="${rr}" fill="#14181d" stroke="#5d6772"/><circle cx="${rcx}" cy="${rcy}" r="${rr * .62}" fill="rgba(47,168,98,.12)" stroke="#8a96a3" stroke-dasharray="3 3"/>`;
+  FOOT.forEach((g, i) => { s += arc(rr - 3, i * 45 - 19, i * 45 + 19, C[g], 4, rcx, rcy); });
+  for (const [k, d, f] of [['mine', 45, .5], ['ambush', 85, .75], ['water', 185, .45], ['hls', 262, .6], ['bua', 135, .9], ['pb', 338, .8], ['help', 5, .95], ['hospital', 305, .95]]) { const [gx, gy] = at(rr * f * .9, d, rcx, rcy); s += glyph(k, gx, gy, .75); }
+  const tx = rcx + rr + 10, tw = x + w - 10 - tx;
+  [['Water', '280 m S'], ['Way out', '5/8'], ['Casevac', 'HLS 450 m W'], ['Help', 'Police 3.1 km N']].forEach(([k, v], i) => {
+    const ty = y + 58 + i * 27;
+    s += `<rect x="${tx}" y="${ty}" width="${tw}" height="24" rx="5" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.08)"/><text x="${tx + 7}" y="${ty + 10}" fill="${C.label}" font-size="8.5">${k}</text><text x="${tx + 7}" y="${ty + 20.5}" fill="#fff" font-size="10.5" font-weight="750">${v}</text>`;
+  });
+  let yy = y + 60 + rr * 2 + 10;
+  s += `<line x1="${x}" x2="${x + w}" y1="${yy}" y2="${yy}" stroke="${C.hair}"/>`;
+  s += `<text x="${x + 12}" y="${yy + 18}" fill="${C.label}" font-size="10">Danger</text><text x="${x + 58}" y="${yy + 18}" fill="#ff8a8d" font-size="12.5" font-weight="750">Mine / IED 340 m NE</text>`;
+  s += `<defs><linearGradient id="mg${x}" x1="0" x2="1"><stop offset="0" stop-color="#2fa862"/><stop offset=".4" stop-color="#f1d646"/><stop offset=".62" stop-color="#ee8a1f"/><stop offset="1" stop-color="#e5484d"/></linearGradient></defs>`;
+  s += `<rect x="${x + 58}" y="${yy + 26}" width="${w - 72}" height="5" rx="2.5" fill="url(#mg${x})"/><rect x="${x + 58 + (w - 72) * .78}" y="${yy + 22}" width="3" height="13" fill="#fff"/>`;
+  yy += 46;
+  if (yy + 40 < y + h) {
+    s += `<line x1="${x}" x2="${x + w}" y1="${yy}" y2="${yy}" stroke="${C.hair}"/><text x="${x + 12}" y="${yy + 18}" fill="${C.label}" font-size="10">People</text><text x="${x + 58}" y="${yy + 18}" fill="#fff" font-size="12.5" font-weight="750">2,400 within 1 km</text>`;
+    [6, 10, 15, 19, 13].forEach((hh, i) => { s += `<rect x="${x + 58 + i * 22}" y="${yy + 42 - hh}" width="16" height="${hh}" rx="2" fill="#c3a374"/>`; });
+  }
+  if (opts.foot !== false && yy + 66 < y + h) s += `<text x="${x + 12}" y="${y + h - 10}" fill="${C.label}" font-size="10">[A] Pl Detail: sight, range card, dangers, where to stop</text>`;
+  return s + '</g>';
+}
+
+/* The halo: the radar turned inside out, so the pointer is its centre and the map shows through. */
+function halo(opts = {}) {
+  let s = '';
+  s += `<circle cx="${CX}" cy="${CY}" r="66" fill="none" stroke="#14181d" stroke-opacity=".55" stroke-width="12"/>`;
+  FOOT.forEach((g, i) => { s += arc(66, i * 45 - 19, i * 45 + 19, C[g], 7); });
+  VEH.forEach((g, i) => { s += arc(57, i * 45 - 17, i * 45 + 17, C[g], 2.5); });
+  const items = [
+    ['help', 5, '3.1 km', 'start', 14, -4], ['pb', 338, '600 m', 'end', -14, 0], ['hospital', 305, '11 km', 'end', -15, 0], ['hls', 262, '450 m', 'end', -15, 0],
+    ['water', 185, '280 m', 'start', 15, 0], ['bua', 135, '700 m', 'start', 15, 2], ['ambush', 85, '600 m', 'start', 15, 0], ['mine', 45, '340 m', 'start', 17, 6]];
+  for (const [k, d, txt, anchor, dx, dy] of items) {
+    const lead = k === 'mine', [gx, gy] = at(lead ? 92 : 88, d);
+    s += `<circle cx="${gx}" cy="${gy}" r="${lead ? 14 : 11.5}" fill="#14181d" stroke="${lead ? C.nogo : 'rgba(255,255,255,.35)'}" stroke-width="${lead ? 2.4 : 1.2}"/>` + glyph(k, gx, gy, lead ? 1.05 : .9);
+    s += pill(gx + dx, gy + dy, txt, { anchor, fs: 11.5, color: lead ? '#ff8a8d' : '#f1f3f6', stroke: lead ? C.nogo : 'rgba(255,255,255,.25)' });
+  }
+  if (opts.verdict !== false) s += pill(CX, CY - 132, '✓ GO on foot · Pl 500 m', { anchor: 'middle', fs: 13, fill: '#18733f', stroke: '#14181d', sw: 1.5, color: '#fff' });
+  return s;
+}
+
+/* The Pl Detail folded to its tab row: every tab's answer on one line. */
+function answerBar(y = 480, opts = {}) {
+  const x = 6, w = 948, h = 54;
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${C.card}" stroke="#5a6470"/>`;
+  s += `<text x="${x + 14}" y="${y + 23}" fill="#fff" font-size="13" font-weight="750">Pl Guide</text><text x="${x + 14}" y="${y + 41}" fill="${C.label}" font-size="11.5">${opts.who || 'Pl · placing'}</text>`;
+  const cells = [['Here', 'GO on foot', C.go], ['See', '29% seen', '#c084fc'], ['Danger', 'Mine 340 m NE', C.nogo], ['People', '2,400 in 1 km', C.bua], ['Help', 'Police 3.1 km N', C.help], ['Stop', 'PB 600 m N', C.pb]];
+  const cx0 = x + 104, cw = 130;
+  cells.forEach(([k, v, c], i) => {
+    const cx = cx0 + i * cw, sel = opts.sel === k;
+    if (sel) s += `<rect x="${cx - 6}" y="${y + 6}" width="${cw - 4}" height="${h - 12}" rx="7" fill="#e4e8ec"/>`;
+    else if (i) s += `<line x1="${cx - 6}" x2="${cx - 6}" y1="${y + 12}" y2="${y + h - 12}" stroke="${C.hair}"/>`;
+    s += `<text x="${cx + 4}" y="${y + 23}" fill="${sel ? '#14181d' : '#fff'}" font-size="13" font-weight="700">${k}</text>`;
+    s += `<circle cx="${cx + 8}" cy="${y + 37}" r="4" fill="${c}"/><text x="${cx + 16}" y="${y + 41}" fill="${sel ? '#3d4650' : (k === 'Danger' ? '#ff8a8d' : C.label)}" font-size="11.5" font-weight="${k === 'Danger' || k === 'Here' ? 700 : 500}">${v}</text>`;
+  });
+  const kx = cx0 + cells.length * cw + 2;
+  s += `<rect x="${kx}" y="${y + 17}" width="20" height="20" rx="4" fill="#2b313a" stroke="#545e6b"/><text x="${kx + 10}" y="${y + 31}" fill="#e8ebee" font-size="12" font-weight="750" text-anchor="middle">A</text>`;
+  s += `<text x="${kx + 27}" y="${y + 31}" fill="${C.label}" font-size="11.5">${opts.keyText || 'Pin'}</text>`;
+  return s;
+}
+
+/* The Pl Detail open on Danger, with the point pinned. */
+function pinnedDetail() {
+  const x = 6, y = 312, w = 948, h = 222;
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="11" fill="${C.card}" stroke="#5a6470"/>`;
+  s += `<path d="M${x},${y + 11} a11,11 0 0 1 11,-11 h${w - 22} a11,11 0 0 1 11,11 v43 h-${w}Z" fill="${C.head}"/>`;
+  const tabs = [['Here', 'GO on foot', C.go], ['See', '29% seen', '#c084fc'], ['Danger', '4 · Mine 340 m', C.nogo], ['People', '2,400 / 1 km', C.bua], ['Help', 'Police 3.1 km', C.help], ['Stop', 'PB 600 m', C.pb]];
+  tabs.forEach(([k, v, c], i) => {
+    const tx = x + 12 + i * 112, sel = k === 'Danger';
+    if (sel) s += `<rect x="${tx}" y="${y + 6}" width="106" height="42" rx="7" fill="#e4e8ec"/>`;
+    s += `<text x="${tx + 9}" y="${y + 23}" fill="${sel ? '#14181d' : '#d5dbe1'}" font-size="13" font-weight="650">${k}</text><circle cx="${tx + 13}" cy="${y + 37}" r="4" fill="${c}"/><text x="${tx + 21}" y="${y + 41}" fill="${sel ? '#3d4650' : C.label}" font-size="11">${v}</text>`;
+  });
+  s += pill(x + w - 14, y + 27, '📍 Pinned · A next tab · Esc unpin', { anchor: 'end', fs: 11.5, fill: '#3b3220', stroke: '#ffd27a', color: '#ffd27a' });
+  // answer strip
+  s += `<rect x="${x + 1}" y="${y + 54}" width="${w - 2}" height="56" fill="${C.strip}"/>`;
+  s += `<rect x="${x + 14}" y="${y + 62}" width="280" height="40" rx="8" fill="rgba(229,72,77,.12)" stroke="rgba(229,72,77,.55)"/><text x="${x + 26}" y="${y + 77}" fill="${C.label}" font-size="10.5">Lead danger</text><text x="${x + 26}" y="${y + 95}" fill="#fff" font-size="15" font-weight="750">Likely mine / IED 340 m NE</text>`;
+  [['Ambush', '600 m E'], ['Overlooked', 'ridge 1.1 km NE'], ['Rds read', '3.4 km'], ['Basis', 'Gr pattern, not intelligence']].forEach(([k, v], i) => {
+    const fx = x + 316 + i * 150;
+    s += `<text x="${fx}" y="${y + 77}" fill="${C.label}" font-size="10.5">${k}</text><text x="${fx}" y="${y + 95}" fill="#f4f6f8" font-size="13" font-weight="750">${v}</text>`;
+  });
+  // band: a danger rose and a list
+  const rx = x + 90, ry = y + 166, rr = 46;
+  s += `<circle cx="${rx}" cy="${ry}" r="${rr}" fill="#14181d" stroke="#5d6772"/><circle cx="${rx}" cy="${ry}" r="${rr * .6}" fill="none" stroke="#8a96a3" stroke-dasharray="3 3"/>`;
+  for (const [k, d, f] of [['mine', 45, .55], ['ambush', 85, .85], ['mine', 120, .7], ['ambush', 20, .9]]) { const [gx, gy] = at(rr * f, d, rx, ry); s += glyph(k, gx, gy, .8); }
+  s += `<circle cx="${rx}" cy="${ry}" r="3" fill="#fff"/>`;
+  [['mine', 'Likely mine / IED · culvert on the Rd', '340 m NE', 82], ['ambush', 'Likely ambush · bend with cover', '600 m E', 64], ['mine', 'Likely mine / IED · Rd junction', '820 m ESE', 55], ['ambush', 'Likely ambush · cutting', '1.3 km NNE', 51]].forEach(([k, t, d, sc], i) => {
+    const ly = y + 132 + i * 22;
+    s += glyph(k, x + 170, ly - 4, .7) + `<text x="${x + 184}" y="${ly}" fill="#fff" font-size="12.5" font-weight="600">${t}</text><text x="${x + 460}" y="${ly}" fill="${C.label}" font-size="12.5">${d}</text><text x="${x + 560}" y="${ly}" fill="${sc >= 70 ? '#ff8a8d' : '#ffb46b'}" font-size="12" font-weight="700">score ${sc}</text>`;
+  });
+  s += `<text x="${x + 660}" y="${y + 140}" fill="${C.label}" font-size="12">Checks on the Gr</text>`;
+  ['Search the culvert before the Pl crosses', 'Picket the bend 600 m E', 'No incident history in the data'].forEach((t, i) => { s += `<text x="${x + 660}" y="${y + 160 + i * 20}" fill="#f1f3f6" font-size="12">• ${t}</text>`; });
+  return s;
+}
+
+/* A side rail, docked at the right edge like the Gr Scope rail. */
+function rail() {
+  return `<rect x="694" y="0" width="266" height="540" fill="rgba(17,20,24,.35)"/>` + miniCard(702, 8, 250, 400, { r: 52 }) +
+    `<rect x="702" y="416" width="250" height="116" rx="10" fill="${C.card}" stroke="#5a6470"/><text x="714" y="438" fill="${C.label}" font-size="11">Stop</text><text x="714" y="456" fill="#fff" font-size="12.5" font-weight="700">PB 600 m N · OP 900 m NW</text>` +
+    `<text x="714" y="480" fill="${C.label}" font-size="11">See</text><text x="714" y="498" fill="#fff" font-size="12.5" font-weight="700">29% seen · 2 Gr overlook</text><text x="714" y="522" fill="${C.label}" font-size="11">[A] Pl Detail</text>`;
+}
+
+/* One line beside the pointer, like the Ground Guide's H chip. */
+function chip() {
+  const x = CX + 34, y = CY - 62, w = 318, h = 30;
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${C.card}" stroke="#14181d" stroke-width="1.5"/>`;
+  s += `<path d="M${x},${y + 8} a8,8 0 0 1 8,-8 h96 v${h} h-96 a8,8 0 0 1 -8,-8Z" fill="#18733f"/><text x="${x + 10}" y="${y + 20}" fill="#fff" font-size="13" font-weight="750">✓ GO on foot</text>`;
+  s += glyph('mine', x + 118, y + 15, .8) + `<text x="${x + 128}" y="${y + 20}" fill="#ff8a8d" font-size="12.5" font-weight="700">Mine 340 m NE</text>`;
+  s += glyph('water', x + 236, y + 15, .8) + `<text x="${x + 246}" y="${y + 20}" fill="#f1f3f6" font-size="12.5" font-weight="600">280 m S</text>`;
+  s += `<text x="${x + w - 10}" y="${y + 20}" fill="${C.label}" font-size="11" font-weight="700" text-anchor="end">A</text>`;
+  return s;
+}
+
+function scene(over, opts = {}) {
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Segoe UI,Arial,sans-serif" role="img" aria-label="${opts.label || ''}">${ground()}${products(opts.dim ?? 1)}${opts.noUnit ? '' : unit()}${opts.noPointer ? '' : pointer(CX + 3, CY + 3)}${over}</svg>`;
+}
+
+/* Today: the card flips up over the ground and hides the very sites it warns about. */
+function today() {
+  const x = CX + 13, y = 6, w = 262, h = 338;
+  return miniCard(x, y, w, h) +
+    `<g fill="none" stroke="#ff8a8d" stroke-width="2" stroke-dasharray="4 3"><rect x="510" y="198" width="22" height="22" rx="4"/><rect x="631" y="269" width="22" height="22" rx="4"/></g>` +
+    pill(728, 238, 'M and A are under the card', { fs: 11.5, fill: '#3a1517', stroke: '#e5484d', color: '#ff8a8d' }) +
+    `<rect x="6" y="${540 - 278}" width="948" height="272" rx="11" fill="none" stroke="#ffd27a" stroke-width="1.6" stroke-dasharray="8 6"/>` +
+    pill(20, 540 - 260, 'Pl Detail when open: 46% of the height', { fs: 11.5, fill: '#3b3220', stroke: '#ffd27a', color: '#ffd27a' });
+}
+
+const OPTS = [
+  { n: '0', t: 'Today', s: 'cursor card + Pl Detail at the foot', tag: ['r', 'the problem'], svg: scene(today(), { label: 'Today' }),
+    good: ['Everything in one place, nicely drawn'],
+    bad: ['Covers the Rd, the mine site and the ambush site it reports', 'The radar repeats the map right next to the map', 'Tabs can only be reached by moving the mouse, and moving it changes the reading'] },
+  { n: '1', t: 'Halo', s: 'the pointer is the radar\'s centre', tag: ['g', 'glance while placing'], svg: scene(halo(), { label: 'Halo', dim: .55 }),
+    what: 'A thin ring around the symbol. Its outer arcs are the way out on foot and the inner arcs for vehicles. Answer glyphs sit on the ring in the direction they really lie, with their distance, even when they are off the screen (hospital 11 km, Police 3.1 km). The lead danger gets a red ring. The verdict is a small pill above.',
+    good: ['Nothing covers the ground under or around the symbol', 'Direction is read straight off the map, so no turning a mini-radar in your head', 'Turns with the map (GroundGuideNorth), like the radar'],
+    bad: ['Only a summary: no range card, no lists', 'Busy if more than ~8 glyphs; keep the 5 answers + lead danger'] },
+  { n: '2', t: 'Answer bar', s: 'the Pl Detail folded to its tab row', tag: ['g', 'every answer, no switching'], svg: scene(answerBar(), { label: 'Answer bar' }),
+    what: 'The Detail\'s tab row on its own, docked at the map\'s edge: every tab shows its answer (Here, See, Danger, People, Help, Stop) at once, live as the pointer moves. You don\'t need to switch tabs while placing, because every answer is already there.',
+    good: ['Fixes "tabs can\'t be switched": all six answers are always on screen', 'Small: one 54 px strip at the edge, off the ground', 'Cheap: the tab row and its answers already exist in PlatoonGuideDetail'],
+    bad: ['The eye travels to the edge to read it', 'Words only, no pictures (they stay in the Detail)'] },
+  { n: '3', t: 'Pin and read', s: 'A freezes the reading, the mouse is free', tag: ['g', 'full read without losing the point'], svg: scene(pinnedDetail() + `<path d="M${CX},${CY} L${CX},${CY - 34}" stroke="#ffd27a" stroke-width="2"/><circle cx="${CX}" cy="${CY - 40}" r="8" fill="#ffd27a" stroke="#14181d" stroke-width="1.5"/><path d="M${CX},${CY} L${CX + 420},312" stroke="#ffd27a" stroke-width="1.4" stroke-dasharray="5 4" fill="none"/>` + pointer(270, 330), { label: 'Pin and read', noPointer: true }),
+    what: 'Press A while placing. The reading freezes at the point, a pin drops there, and the Detail opens. Now the mouse can go and click any tab, because the reading stays at the pin. A walks the tabs (not pages), and Esc or placing the symbol unpins.',
+    good: ['The full Detail is usable mid-placement, with mouse or keys', 'The Detail can be shorter: it opens only when asked', 'Small change: freeze the subject in PlatoonGuide._queue while pinned'],
+    bad: ['One more state to learn (the pin pill says how to leave it)'] },
+  { n: '4', t: 'Side rail', s: 'today\'s card docked at the edge, not on the pointer', tag: ['', ''], svg: scene(rail(), { label: 'Side rail' }),
+    what: 'The same card, docked at an edge like the Gr Scope rail, updating live.',
+    good: ['Keeps today\'s pictures as they are', 'Never covers the point'],
+    bad: ['Takes ~18% of the width all the time', 'Same edge as the Gr Scope rail: they would need to share it or split sides', 'Tabs are still out of reach while placing'] },
+  { n: '5', t: 'Chip', s: 'one line beside the pointer', tag: ['', ''], svg: scene(chip(), { label: 'Chip' }),
+    what: 'The verdict, the lead danger and the nearest water on one line, like the Ground Guide\'s H chip.',
+    good: ['Smallest of all', 'Matches the Ground Guide (H)'],
+    bad: ['Three facts only', 'Still on the pointer, though small'] },
+  { n: '★', t: 'My pick: 1 + 2 + 3', s: 'halo at the symbol, answers at the edge, A to read in full', tag: ['g', 'recommended'], pick: true,
+    svg: scene(halo() + answerBar(480), { label: 'Recommended', dim: .55 }),
+    what: 'While placing: the halo gives direction and distance right at the symbol, and the answer bar gives every tab\'s answer in words. To read more without losing the point, press A to pin it and open the Detail on the tab you want. After the click, the placed symbol\'s Detail opens as it does today.',
+    good: ['No box on the ground at any time', 'Every answer visible while placing; full detail one key away', 'Reuses the radar maths, the Detail\'s tab row and the existing map markers'],
+    bad: ['Two small things on screen instead of one card', 'The old card becomes a switch or goes'] },
+];
+
+document.getElementById('opts').innerHTML = OPTS.map((o) => `
+<section class="opt${o.pick ? ' pick' : ''}">
+  <div class="oh"><span class="num">${o.n}</span><span class="ot">${o.t}</span><span class="os">${o.s}</span>${o.tag[1] ? `<span class="tag ${o.tag[0]}">${o.tag[1]}</span>` : ''}</div>
+  <div class="ob">${o.svg}<div class="tx">${o.what ? `<h4>What it is</h4><p style="margin:0 0 12px">${o.what}</p>` : ''}
+    <h4>Good</h4><ul>${o.good.map((g) => `<li class="plus">${g}</li>`).join('')}</ul>
+    <h4>Costs</h4><ul>${o.bad.map((g) => `<li class="minus">${g}</li>`).join('')}</ul></div></div>
+</section>`).join('');
+</script>
+</body>
+</html>

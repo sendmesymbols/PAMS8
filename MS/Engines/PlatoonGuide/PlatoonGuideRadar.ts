@@ -42,7 +42,53 @@ export const GLYPH_COLOR = {
   bua: '#e2c79a',
   harbour: '#4ade80',
   op: '#a5b4fc',
+  cover: '#c4a484',
+  km: '#f5f5f5',
+  relay: '#8c9eff',
 } as const;
+
+export type GlyphKind = keyof typeof GLYPH_COLOR;
+
+/** The short word under a glyph on the map and beside it in the halo (user, 2026-11-13: "2-3 chars can tell users about
+ *  it on map"), and what it stands for in the keys. */
+export const GLYPH_CODE: Record<GlyphKind, string> = {
+  water: 'Wtr',
+  mine: 'IED',
+  ambush: 'Amb',
+  vp: 'VP',
+  block: 'RB',
+  overlook: 'HG',
+  hls: 'HLS',
+  hospital: 'Hosp',
+  help: 'Help',
+  bua: 'BUA',
+  harbour: 'PB',
+  op: 'OP',
+  cover: 'Cov',
+  km: 'KM',
+  relay: 'RL',
+};
+export const GLYPH_WORD: Record<GlyphKind, string> = {
+  water: 'water',
+  mine: 'likely mine / IED',
+  ambush: 'likely ambush',
+  vp: 'vulnerable point',
+  block: 'likely Rd block',
+  overlook: 'high Gr looking down',
+  hls: 'landing Gr',
+  hospital: 'hospital, BHU',
+  help: 'help: post, police, fort',
+  bua: 'nearest BUA',
+  harbour: 'patrol base',
+  op: 'OP site',
+  cover: 'better cover',
+  km: 'KM stone',
+  relay: 'relay Gr',
+};
+/** The short word for a place of help, by its kind (Pol police station, BOP border post, Cantt cantonment...). */
+export function helpCode(kind: string | undefined): string {
+  return ({ police_station: 'Pol', post: 'Post', border_post: 'BOP', fort: 'Fort', cantonment: 'Cantt', watch_tower: 'Twr' } as Record<string, string>)[kind ?? ''] ?? 'Help';
+}
 
 function add(parent: Element, tag: string, attrs: Record<string, string | number>, text?: string): SVGElement {
   const e = document.createElementNS(SVG_NS, tag);
@@ -104,11 +150,33 @@ export function glyph(g: Element, kind: keyof typeof GLYPH_COLOR, x: number, y: 
       add(g, 'rect', { x: x - s * 1.1, y: y - s * 1.1, width: s * 2.2, height: s * 2.2, rx: 1.5, fill: '#ffffff', ...stroke, ...up });
       add(g, 'path', { d: `M${x} ${y - s * 0.7}V${y + s * 0.7}M${x - s * 0.7} ${y}H${x + s * 0.7}`, stroke: col, 'stroke-width': 2, 'stroke-linecap': 'round', ...up });
       break;
-    case 'help':
-      add(g, 'rect', { x: x - s, y: y - s, width: s * 2, height: s * 2, rx: 2.2, fill: col, ...stroke, ...up });
+    case 'help': {
+      // A lifebuoy: the help sign everyone reads.
+      const rr = s * 0.82, w = s * 0.62, c = 2 * Math.PI * rr;
+      add(g, 'circle', { cx: x, cy: y, r: rr + w / 2 + 0.6, fill: SURFACE.ring });
+      add(g, 'circle', { cx: x, cy: y, r: rr, fill: 'none', stroke: '#ffffff', 'stroke-width': w });
+      add(g, 'circle', { cx: x, cy: y, r: rr, fill: 'none', stroke: col, 'stroke-width': w, 'stroke-dasharray': `${(c / 8).toFixed(2)} ${(c / 8).toFixed(2)}`, transform: `rotate(-22.5 ${x} ${y})` });
       break;
+    }
     case 'bua':
-      add(g, 'path', { d: `M${x - s} ${y + s * 0.9}V${y - s * 0.1}L${x} ${y - s * 1.1}L${x + s} ${y - s * 0.1}V${y + s * 0.9}Z`, fill: col, ...stroke, ...up });
+      // A small building: walls, a pitched roof and a door.
+      add(g, 'path', { d: `M${x - s} ${y + s * 0.95}V${y - s * 0.05}L${x} ${y - s * 1.1}L${x + s} ${y - s * 0.05}V${y + s * 0.95}Z`, fill: col, ...stroke, ...up });
+      add(g, 'rect', { x: x - s * 0.24, y: y + s * 0.3, width: s * 0.48, height: s * 0.65, fill: SURFACE.ring, ...up });
+      break;
+    case 'cover':
+      // A bank or wall to get behind: a mound on its base line.
+      add(g, 'path', { d: `M${x - s * 1.2} ${y + s * 0.7}C${x - s * 0.8} ${y - s * 1.1} ${x + s * 0.8} ${y - s * 1.1} ${x + s * 1.2} ${y + s * 0.7}Z`, fill: col, ...stroke, ...up });
+      break;
+    case 'km':
+      // A KM stone: white, round topped, its top band coloured.
+      add(g, 'path', { d: `M${x - s * 0.8} ${y + s}V${y - s * 0.2}A${s * 0.8} ${s * 0.8} 0 0 1 ${x + s * 0.8} ${y - s * 0.2}V${y + s}Z`, fill: col, ...stroke, ...up });
+      add(g, 'path', { d: `M${x - s * 0.8} ${y - s * 0.2}A${s * 0.8} ${s * 0.8} 0 0 1 ${x + s * 0.8} ${y - s * 0.2}Z`, fill: '#ffb300', ...up });
+      break;
+    case 'relay':
+      // A mast with its waves.
+      add(g, 'path', { d: `M${x} ${y - s * 0.5}L${x - s * 0.6} ${y + s * 1.05}M${x} ${y - s * 0.5}L${x + s * 0.6} ${y + s * 1.05}M${x - s * 0.35} ${y + s * 0.4}H${x + s * 0.35}`, stroke: col, 'stroke-width': 1.5, 'stroke-linecap': 'round', fill: 'none', ...up });
+      add(g, 'path', { d: `M${x - s * 0.75} ${y - s * 1.05}A${s} ${s} 0 0 0 ${x - s * 0.75} ${y + s * 0.05}M${x + s * 0.75} ${y - s * 1.05}A${s} ${s} 0 0 1 ${x + s * 0.75} ${y + s * 0.05}`, stroke: col, 'stroke-width': 1.3, 'stroke-linecap': 'round', fill: 'none', ...up });
+      add(g, 'circle', { cx: x, cy: y - s * 0.55, r: s * 0.26, fill: col, ...up });
       break;
     case 'harbour': {
       const pts: string[] = [];
@@ -232,19 +300,8 @@ export function plRadar(r: PlReading, o: RadarOpts): SVGSVGElement {
   return svg;
 }
 
-/** The radar's key, as [colour, word, shape] for the HTML key under it. */
-export const RADAR_KEY: Array<[keyof typeof GLYPH_COLOR, string]> = [
-  ['water', 'water'],
-  ['mine', 'mine / IED'],
-  ['ambush', 'ambush'],
-  ['vp', 'VP'],
-  ['overlook', 'looks down'],
-  ['hls', 'HLS'],
-  ['hospital', 'hospital'],
-  ['help', 'help'],
-  ['bua', 'BUA'],
-  ['harbour', 'PB'],
-];
+/** The radar's glyphs, in the order of its key (each with its map word, GLYPH_CODE, and meaning, GLYPH_WORD). */
+export const RADAR_KEY: GlyphKind[] = ['water', 'mine', 'ambush', 'vp', 'overlook', 'hls', 'hospital', 'help', 'bua', 'harbour', 'op'];
 
 /** One small glyph as its own SVG (for keys and stat tiles). */
 export function glyphIcon(kind: keyof typeof GLYPH_COLOR, px = 14): SVGSVGElement {

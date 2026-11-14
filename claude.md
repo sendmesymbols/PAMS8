@@ -195,7 +195,9 @@ MS/
   `ground-guide-aor-options.html`.
   **F** turns the **Extended View** on and off (user, 2026-11-12; it replaced the separate OCOKA lens, and the name OCOKA is
   not shown any more). It is NOT kept in the settings: it starts off, F or turning the guide off clears it, and nothing in it
-  is worked out while it is off. On, it adds to GROTBC (`groundGuide.extended.*`; `GroundGuideExtendedView.ts` the cards,
+  is worked out while it is off. F lasts for the kind of symbol it was opened on (`extended.lasts: symbol`): arming a
+  different kind or cancelling the draw closes it (`once` / `kept` also offered); Shift+F keeps it on for every symbol; it
+  rests (reads nothing) while a line or area is drawn. On, it adds to GROTBC (`groundGuide.extended.*`; `GroundGuideExtendedView.ts` the cards,
   `GroundGuideOcoka.ts` the pure engine, `GroundGuideOcokaRead.ts`, `GroundGuideThreat.ts`): Detail tabs **1 Obsn & Fd of
   Fire**, **2 Key Gr** (ITG candidates ranked: strong, higher, on an approach, toward the threat, in view; a round Key Gr map,
   the lead as a card, a height ladder), **3 Approaches**, all before the Legend (off: a dashed F tab says what it adds); a
@@ -211,6 +213,53 @@ MS/
   (violet) or the view from the position (light blue) instead of the going. Copy as Text adds its lines under the GROTBC brief
   (`guide.extendedText()` for hosts). `guide.setExtended()`, `toggleExtended()`, `extendedAround()` (`map: true` returns the
   geometry); `node tools/ocoka-test/run.mjs` runs the engine's 44 checks.
+  The overlay's **`ipb`** choice (`extended.overlay: ipb`, `extended.ipb.*`; `IPB_Plan.md` Phase 1) codes GO / SLOW-GO / NO-GO
+  by the C&SC IPB book's criteria only (slope uphill along the movement, relief per km, BUA width / bypass, water vs the AVLB
+  span, vegetation, roads in close country, season rules), never filled from GROTBC: what the bundle cannot tell is "not
+  assessed". Book's marking (crosshatch / parallel lines) as one MediaLayer `ms-ground-guide-ipb`; only while F is on.
+  Pure engine `GroundGuideIpb.ts`, painter `GroundGuideIpbMap.ts`, figures `MS/Data/IpbDoctrine.json` (D / T / E / U, page
+  cited); `guide.ipbCodingAround()`, `ipbReasonAt()`; `node tools/ipb-test/run.mjs` runs its 40 checks.
+  With F on, **`extended.ipb.apchs`** (Phase 2) reads the HQ's area facing the threat (Bde HQ: Bn avenues of Coy 500 m
+  corridors, 2 km apart, 14 x 28 km; Div HQ: Bde of Bn 1.5 km, 6 km, 30 x 48 km; a Bn reads with the Bde row) for mobility
+  corridors and avenues of approach: least-cost ways from strips of the area, an avenue = two corridors side by side,
+  narrows, crossovers; drawn as the MS attack arrows (layer `ms-ground-guide-ipb-apch`), in tab 3 (replacing the single
+  path), on the rail. Pure engine `GroundGuideIpbCorridors.ts`, map `GroundGuideIpbApchMap.ts`, tab 3
+  `GroundGuideIpbApchView.ts`; `guide.ipbApproaches()`, `ipbApproachesAround()`; `node tools/ipb-test/corridors.mjs` (22 checks).
+  Tab 3's **Create on Map** (Phase 3; `guide.createIpbOverlay('coo' | 'corridors' | 'apchs' | 'all')`) writes them as
+  ordinary symbols via `loadSymbolFromJSON` (SymbolEngine passes `setCreator`, run as one undo step; making it again
+  replaces the last set): No Go / Slow Go areas traced from the coding (`GroundGuideIpbShapes.ts`, `node
+  tools/ipb-test/shapes.mjs` 11 checks), Mob Corridors lines, Main Attk / Sp Attk arrows (or Avenue of Apchs, `ipb.createAs`).
+  Arrow heads keep their shape (`arrowHeadFrac` / `arrowTail`, also passed as HEAD_RATIO / TAIL_FACTOR to the MS symbols).
+  Phase 4: **fire corridors** (`ipb.fire`, `GroundGuideIpbFire.ts`): the other side's Posns on the map (catalogue `Rng`) over
+  each avenue: under fire / screened / dead / out of range, gaps, killing area candidates; tab 1 tiles, map colouring and
+  range rings (`ipb.mapFire`), rail line 1. **Proforma** (`ipb.proforma`, `GroundGuideIpbProforma.ts`, book p 21): rows a-l,
+  this side's avenues and the other side's over the same area, suggested signs (median), user signs by click; tab 3.
+  `node tools/ipb-test/fire.mjs` (21 checks).
+  Phase 5: **decision support** (`ipb.decision`, `GroundGuideIpbDecision.ts`): the enemy's time along each avenue at the
+  book's rates (p 18; earliest day + unassessed as GO, latest night + SLOW-GO; from the Threat marker's place), NAIs,
+  TAIs (crossings, narrows under a corridor), DPs 2 h before each TAI (p 30, + `ipb.reactionH`) and a counter-attack DP
+  before the depth localities; new tab **5 Decision** (time ladder, decision support picture, decisions, event matrix),
+  map stars (`ipb.mapDecision`), rail line 5, Create on Map NAI / TAI / Decision Pt; **Annex A** weather (`annexA`: GSOD
+  visibility, WorldClim temperature / wind; tiles Wx for Fire in tab 1, Wx for Mnvr in tab 3). `node
+  tools/ipb-test/decision.mjs` (23 checks).
+  Phase 6: **air** (`ipb.air`, `GroundGuideIpbAir.ts`; tab **4 Air** `GroundGuideIpbAirView.ts`): least-cost low-level air
+  avenues (seen from the other side's Posns at the top of the band, masts, power lines, valleys, features along the flight),
+  LZ (landing points of `lzClass` x `lzPoints`, slope 7° / 4° in mountains, 10 : 1 approach, existing helipads first) and DZ
+  ranked, OPs over the enemy's LZs, AD sites for long-range / flank / bottom shots, flight profile, Wx for Air; map
+  (`ipb.mapAir`), rail line 4, Create on Map 'air' (LLTR, LZ, DZ, SHORAD EZ, OP); figures `IpbDoctrine.json air` (US T
+  figures to confirm); `guide.ipbAir()`; `node tools/ipb-test/air.mjs` (29 checks).
+  Phase 7: **situation templates** (`ipb.template` auto | id | off, `GroundGuideIpbTemplate.ts`, tab 5 page 2
+  `GroundGuideIpbTemplateView.ts`): a doctrinal template from `MS/Data/IpbTemplates.json` (IDP Bde CC, DSF Div BG, Strike
+  Corps bridgehead, Mtn Div attack, Inf Bde / Inf Div defence; KYE-2019, OoW, DW, IBB figures with pages; Fig 6 / 7 readings
+  unconfirmed) laid along the avenues, each element judged on its mover's IPB coding (tanks off NO-GO, guns off hills),
+  moved to the nearest usable ground, known enemy symbols never moved; template phases; map (`ipb.mapTemplate`), rail row,
+  Create on Map 'template'; `node tools/ipb-test/template.mjs` (27 checks).
+  **X** (with F on) or the *Whose options* switch at the left of the Ground Detail's key bar turns the reading between the
+  en's options against you (`readFor: defence`) and yours against the threat (`attack`). A mode key (F, Shift+F, X, [ ], J,
+  V, Shift+V, H, P) shows the **key notice** at the foot of the screen for 5 s: the mode now and the keys that work in it
+  (`card.keyNotice`, `GroundGuideKeyNotice.ts`). Map labels are drawn at 50 % opacity (`LABEL_OPACITY`). With F on, dropping the symbol (or Esc) takes every Extended View product
+  off the map until the next draw (a selected symbol still shows its reading). Every line, circle and area on both Extended View layers
+  carries a small label (`ipb.labels`), decluttered per zoom; the threat marker docks on the threat's side clear of host bars.
   See `15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a
   synthetic dev bundle.
 - **MovementGuide** (`Engines/MovementGuide/`) — optional, off by default (`features.movementGuide`; top-bar Mov Guide).
@@ -228,16 +277,25 @@ MS/
 - **PlatoonGuide** (`Engines/PlatoonGuide/`) — optional, off by default (`features.platoonGuide`). The field soldier's
   Ground card at a point (OCOKA_Roadmap.md ch. 8) for Team / Sec / Pl / Coy, read under the cursor (`platoonGuide.hover`,
   ⌖ button), while such a land unit is placed, on the selected one, or right-click "Pl Guide: Gr Card…"; a selected
-  line gets the patrol route card (`patrolCard()`). Shown like the Ground Guide's cards: a 350 px **cursor card**
-  (`PlatoonGuideCard.ts`: going on foot in the verdict ladder; the **bubble radar** (`PlatoonGuideRadar.ts`: sight to
-  true scale, way-out arcs on the rim, glyphs for water / dangers / casevac / help / BUA / PB / OP, log band beyond the
-  bubble) beside stat tiles; a danger strip with severity meter and glyph chips; a people strip with spark bars; hidden
-  while the Ground Guide's card owns the cursor) and the **Pl Detail** docked at the foot (`PlatoonGuideDetail.ts`: tabs Here /
-  See / Danger / People / Help / Stop / Patrol, each with its answer; answer strip; tiles in columns that page, never
-  scroll; **A** opens it and walks pages then tabs, Shift+A back, Esc closes). Colours and sizes from
+  line gets the patrol route card (`patrolCard()`). Nothing covers the ground (user, 2026-11-13; views 1 2 3 of
+  `platoon-guide-view-options.html`): the **halo** round the cursor (`PlatoonGuideHalo.ts`, `platoonGuide.cursor: halo`:
+  way out on foot / veh as a ring, the answers in the direction they lie with a short word and distance (Wtr 340 m), the
+  verdict above; on the map the same icons carry the same word under them (`GLYPH_CODE`: Wtr, IED, Amb, HLS, Hosp, Pol /
+  Post / BOP / Fort / Cantt, BUA, PB, OP...; help is a lifebuoy, BUA a building) and the search radius is a dotted ring
+  with its distance; the old
+  350 px card `PlatoonGuideCard.ts` with the **bubble radar** `PlatoonGuideRadar.ts` is `cursor: card`; neither shows while
+  the Ground Guide's card owns the cursor); the **answer bar** (`bar`): the **Pl Detail** (`PlatoonGuideDetail.ts`) folded
+  to its tab row at the foot, every tab's answer at once; a tab click opens the Detail on it, each tab led by its big
+  picture (Here: the radar, See: what you see, Danger: on the Rds round you, Help: nearest help, People: where the people
+  are, a population-grid map with ring counts; Stop: where to stop, the bubble on its grid with each site coloured by the
+  test that ruled it out, the PB, next best sites and the OP with its view; People also has rings to scale, a direction
+  rose, density by distance and an ages waffle; Stop a PB checklist, the rule-out funnel and the OP's view rose; keys one
+  item to a line), answer strip, tiles in columns that page (wheel or ‹ ›), never scroll; the **pin**: **A**, or the pointer
+  onto the bar, holds the reading where the cursor last rested (a pin on the map) so the mouse can leave the map; A again
+  walks the tabs, Shift+A back, Esc folds the Detail and lets the pin go, placing the symbol lets it go. Colours and sizes from
   GroundGuideTokens.ts, arrows and roses turn with the map (GroundGuideNorth). Bubble by echelon 300 m / 500 m / 1 km /
   2 km; quick reads per move, full at rest (350 ms). Map layer `ms-platoon-guide`. Pure engine `PlatoonGuideRead.ts`
-  (`node tools/platoon-test/run.mjs`, 54 checks), bundle reader `PlatoonGuideProbe.ts`, figures
+  (`node tools/platoon-test/run.mjs`, 57 checks), bundle reader `PlatoonGuideProbe.ts`, figures
   `MS/Data/PlatoonDoctrine.json` (R / E basis). The Movement Guide's Patrol card calls `patrolCard`: keep `PlProbe`,
   `plRulesFrom`, `PatrolCard`, `PlLeg`, `PlFootSpeeds` and `patrolCard` stable.
 - **NightMarch** (`Engines/NightMarch/`) — optional, off by default (`features.nightMarch`; info bar 🌙 Nt March / ✎ / ⚙).
@@ -249,6 +307,20 @@ MS/
   Cards / Trace / FUP / Clock, **W** walks pages then styles, Shift+W back, Esc closes. Terrain optional (`nightMarch.useTerrain`:
   reuses `patrolCard` + the Movement Guide scan; off = geometry on open ground). Pure engine `NightMarchRead.ts`
   (`node tools/nightmarch-test/run.mjs`, 52 checks), figures `MS/Data/NightMarchDoctrine.json` (R / E). See `MS/Docs/18-night-march.md`.
+- **MovePlanner** (`Engines/MovePlanner/`) — optional, off by default (`features.movePlanner`; info bar 🚚 Mov Plan / ⚙).
+  The old Mov Plan app (`Material/movplan`: Rd Mov, Mov & Assy, DI Mov = de-induction, Rly Mov, En Mov) rebuilt as one
+  panel docked at the foot (**U** open / close, **Shift+U** next view, Esc): kinds as tabs, each with its own plan (JSON;
+  kept in the browser, Save / Open). Road kinds: serials on routes (solved on the road network when up, else as clicked;
+  drawn; a placed line; right-click "Mov Plan: Use as Route…"), TPP = vehs x 60 / flow + 2 min per 25 vehs, halts by
+  running time or at 10 to odd hours, close-up halt at last light, harbours when the Day / Ni window closes, crossings and
+  shared road resolved by strict priority corps > group > unit > OOM (lower waits until the other clears + 1 min, fed
+  forward); views Mov Table, Graph (time-distance bands, night shaded), Matrix / block timings / assy area size, Flow
+  (planning table), DI Progress and Reports (arm-wise, priority-wise, HMT). Rail: vehicles onto wagons by the rolling-stock
+  table, trains within 72 C units / 2,000 t / 18 double MBFRs, night timetable (placed 45 min after last light, 90 min
+  gap), stock required. Enemy: trains by formation type, queues at shared stations, induction matrix. Timeline puts columns
+  on the map. Pure engines `MoveTime` / `MoveGeo` / `MoveRoad` / `MoveRail` / `MoveEnemy` / `MoveReports` /
+  `MovePlannerModel` (`node tools/moveplan-test/run.mjs`, 70 checks); rules in `MS/Data/MoveDoctrine.json` (R = SO's Hbk Sec 9 /
+  Staff Duties Vol II, O = old code, E = proposal). No terrain bundle. See `MS/Docs/19-move-planner.md`.
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.
 - **DeclutterEngine** (+ Cluster/Ladder/Disperse/LabelPlacer) — zoom-aware hiding,
   cluster badges, flag-halyard ladders, radial disperse, and Maplex-style label placement.

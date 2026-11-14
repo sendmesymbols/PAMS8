@@ -425,7 +425,8 @@
     "groundGuide": false,
     "platoonGuide": false,
     "movementGuide": false,
-    "nightMarch": false
+    "nightMarch": false,
+    "movePlanner": false
   },
   "collab": {
     "transport": "sse",
@@ -702,7 +703,8 @@
       "modeMatrix": false,
       "seasonRibbon": false,
       "goingMap": false,
-      "briefKey": true
+      "briefKey": true,
+      "keyNotice": true
     },
     "population": {
       "enabled": true,
@@ -784,7 +786,35 @@
       "mapSight": true,
       "mapApproaches": true,
       "mapBetter": true,
-      "overlay": "auto"
+      "overlay": "auto",
+      "ipb": {
+        "readFor": "defence",
+        "mover": "auto",
+        "season": "coding",
+        "avlbSpanM": 18,
+        "paint": "hatch",
+        "apchs": true,
+        "hq": "auto",
+        "mapCorridors": true,
+        "labels": "auto",
+        "createAs": "attack",
+        "fire": true,
+        "mapFire": true,
+        "proforma": true,
+        "pfHead1": "",
+        "pfHead2": "",
+        "decision": true,
+        "mapDecision": true,
+        "reactionH": 0,
+        "hHour": "",
+        "air": true,
+        "mapAir": true,
+        "airBand": "contour",
+        "lzClass": 4,
+        "lzPoints": 4,
+        "template": "auto",
+        "mapTemplate": true
+      }
     },
     "aor": {
       "keys": true,
@@ -807,6 +837,9 @@
     "map": true,
     "mapSight": true,
     "card": true,
+    "cursor": "halo",
+    "haloRadius": 64,
+    "bar": true,
     "keys": true,
     "echelon": "platoon",
     "eye": "standing",
@@ -842,6 +875,17 @@
     "style": "chart",
     "cacheTiles": 256,
     "useWorker": true
+  },
+  "movePlanner": {
+    "keys": true,
+    "map": true,
+    "labels": true,
+    "halts": true,
+    "remember": true,
+    "kind": "road",
+    "utcOffsetMin": 300,
+    "useNetwork": true,
+    "routeMlc": null
   },
   "stylus": {
     "mode": "auto",

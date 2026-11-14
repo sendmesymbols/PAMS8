@@ -16,6 +16,9 @@ import { fmtDistance, titleCase } from './GroundGuideEvaluator';
 import { COVER_FIELD_LABEL, COVER_WORD, type CoverField } from './GroundGuideCover';
 import type { Fact, LetterAnswer, Tone } from './GroundGuideDetailSummary';
 import { itgTraitLines } from './GroundGuideFeatures';
+import { apchAnswer, apchFacts, apchScopeRows, apchText, apchTiles, decisionAnswer, decisionFacts, decisionScopeRows, decisionText, decisionTiles, fireFacts, fireScopeRows, fireText, fireTiles } from './GroundGuideIpbApchView';
+import { airAnswer, airFacts, airScopeRows, airText, airTiles } from './GroundGuideIpbAirView';
+import { templateScopeRows, templateText, templateTiles } from './GroundGuideIpbTemplateView';
 import { compassBearing, registerCanvas } from './GroundGuideNorth';
 import { bearingDiff, compass8, type WayState } from './GroundGuideOcoka';
 import { OCOKA_DOCTRINE } from './GroundGuideOcokaRead';
@@ -25,18 +28,19 @@ import type { GroundGuideOcoka, GroundGuideVerdict, MercXY, OcokaKeyGround } fro
 // ── tabs and keys ────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** The Extended View's tabs of the Ground Detail, in order (they sit before the Legend), and their keys. */
-export type ExtTab = 'XF' | 'XK' | 'XA';
-export const EXT_TABS: readonly ExtTab[] = ['XF', 'XK', 'XA'];
-export const EXT_TAB_LABEL: Record<ExtTab, string> = { XF: 'Obsn & Fd of Fire', XK: 'Key Gr', XA: 'Approaches' };
-export const EXT_TAB_KEY: Record<ExtTab, string> = { XF: '1', XK: '2', XA: '3' };
+export type ExtTab = 'XF' | 'XK' | 'XA' | 'XH' | 'XD';
+export const EXT_TABS: readonly ExtTab[] = ['XF', 'XK', 'XA', 'XH', 'XD'];
+export const EXT_TAB_LABEL: Record<ExtTab, string> = { XF: 'Obsn & Fd of Fire', XK: 'Key Gr', XA: 'Approaches', XH: 'Air', XD: 'Decision' };
+/** Tab 4 is Air (the air avenues, LZ / DZ, AD sites; IPB_Plan.md Phase 6), Decision 5. */
+export const EXT_TAB_KEY: Record<ExtTab, string> = { XF: '1', XK: '2', XA: '3', XH: '4', XD: '5' };
 export function isExtTab(t: string): t is ExtTab {
   return (EXT_TABS as readonly string[]).includes(t);
 }
 /** What F adds, said where the key is shown (cursor card, Detail, rail, Legend). */
-export const EXT_OFFER = 'Obsn & Fd of Fire, Key Gr, Approaches, the threat';
+export const EXT_OFFER = 'Obsn & Fd of Fire, Key Gr, Approaches, Air, Decision, the threat';
 
 /** The Gr Scope rail's switches in the Extended View: the three tabs, and the C and O layers the products sit on. */
-export type ExtRow = 'XF' | 'XC' | 'XO' | 'XK' | 'XA';
+export type ExtRow = 'XF' | 'XC' | 'XO' | 'XK' | 'XA' | 'XH' | 'XD';
 
 const STYLE_ID = 'ms-ground-guide-ext-style';
 const SEEN = '#3ee07a';
@@ -338,6 +342,8 @@ export function extCardRows(v: GroundGuideVerdict): HTMLElement[] {
     return [box];
   }
   head.append(el('span', 'ms-gx-thr', o.threat.allRound ? 'Threat all round' : `Threat ${o.threat.compass} ${o.threat.bearingDeg}°`), el('span', 'ms-gx-wpn', weaponText(o)));
+  // Whose options the IPB reading shows (X turns it over).
+  if (o.ipbApch) head.append(el('span', 'ms-gx-thr', o.ipbApch.side === 'enemy' ? "· En's options" : '· Your options'));
   if (o.pending) head.append(el('span', 'ms-gx-wpn', '· loading'));
   const line = (cap: string, tone: Tone | null, ...parts: Array<string | HTMLElement>): void => {
     const val = el('div', 'ms-gx-bv');
@@ -403,7 +409,12 @@ export function extAnswer(tab: ExtTab, v: GroundGuideVerdict | null): LetterAnsw
         tab: `${fmtDistance(lead.c.distanceM)} ${lead.c.compass}`,
       };
     }
+    case 'XH':
+      return airAnswer(o);
+    case 'XD':
+      return decisionAnswer(o);
     default: {
+      if (o.ipbApch !== undefined) return apchAnswer(o); // the IPB avenues over the area read (extended.ipb.apchs)
       const p = o.plan;
       if (o.threat.allRound || !p) {
         const w = waysLine(o);
@@ -430,7 +441,7 @@ export function extFacts(tab: ExtTab, v: GroundGuideVerdict | null): Fact[] {
   switch (tab) {
     case 'XF': {
       const f = o.fire;
-      const out: Fact[] = [];
+      const out: Fact[] = [...fireFacts(o)];
       if (f) {
         out.push({ k: `Seen in ${fmtDistance(o.obstacle.rangeM)}`, v: pc(f.seenPct), sub: `${pc(f.deadPct)} dead Gr · ${pc(f.screenedPct)} screened` });
         out.push({ k: 'Primary Task (200 m)', v: f.primaryOk ? 'Met' : 'Not met', tone: f.primaryOk ? 'go' : 'slow', sub: `${pc(f.ge270Pct)} of the arc has 270 m or more` });
@@ -457,10 +468,19 @@ export function extFacts(tab: ExtTab, v: GroundGuideVerdict | null): Fact[] {
       } else out.push({ k: 'Candidates', v: k.candidatesPending ? '…' : 'None', sub: `within ${fmtDistance(o.radiusM)}` });
       return out;
     }
+    case 'XH':
+      return airFacts(o);
+    case 'XD':
+      return decisionFacts(o);
     default: {
       const p = o.plan;
       const w = o.ways;
       const out: Fact[] = [];
+      if (o.ipbApch !== undefined) {
+        out.push(...apchFacts(o));
+        if (out.length < 6) out.push({ k: 'Ways Out GO', v: `${w.go} of ${w.total}`, tone: w.go * 2 >= w.total ? 'go' : 'slow', sub: `${w.slow} SLOW-GO · ${w.blocked} stopped` });
+        return out;
+      }
       if (p && !o.threat.allRound) {
         p.avenues.forEach((a, i) => out.push({ k: `Apch ${i + 1}`, v: fmtDistance(a.lengthM), sub: `${pc(a.goPct)} GO · narrowest ${fmtDistance(a.minWidthM)}`, tone: a.fits ? 'warn' : null }));
         const chokes = p.avenues.reduce((n, a) => n + a.chokes.length, 0);
@@ -757,6 +777,7 @@ export function extTiles(tab: ExtTab, v: GroundGuideVerdict): HTMLElement[] {
   const out: HTMLElement[] = [];
   switch (tab) {
     case 'XF': {
+      out.push(...fireTiles(o));
       const cv = viewshed(o);
       if (cv) {
         const box = el('div', 'ms-gx-pic');
@@ -848,9 +869,14 @@ export function extTiles(tab: ExtTab, v: GroundGuideVerdict): HTMLElement[] {
       if (hl) out.push(tile('Heights Against the Posn', hl, note(o.key.highest ? `The Posn is the highest Gr within ${fmtDistance(o.key.withinM)}.` : `The highest Gr within ${fmtDistance(o.key.withinM)} is ${Math.round(-o.key.aboveMaxM)} m above the Posn.`)));
       return out;
     }
+    case 'XH':
+      return airTiles(o);
+    case 'XD':
+      return [...decisionTiles(o), ...templateTiles(o)];
     default: {
       const p = o.plan;
-      if (p && !o.threat.allRound) {
+      if (o.ipbApch !== undefined) out.push(...apchTiles(o));
+      else if (p && !o.threat.allRound) {
         const rows: Array<[string, string | null]> = [];
         p.avenues.forEach((a, i) => {
           rows.push([`Apch ${i + 1}`, `${fmtDistance(a.lengthM)}, ${pc(a.goPct)} on GO Gr; narrowest ${fmtDistance(a.minWidthM)}${a.fits ? `: a ${fmtDistance(p.frontageM)} frontage fits` : ''}`]);
@@ -951,6 +977,7 @@ export function extendedText(v: GroundGuideVerdict): string[] {
   const ns = o.nightSight;
   const wx = o.weather;
   sec('1 Obsn & Fd of Fire', [
+    ...fireText(o),
     `${COUNTRY[ob.country]} country: view ${reachText(o)} (the middle of all directions); ${fmtDistance(ob.clearMedianM)} to the first dead or screened Gr.`,
     `${pc(ob.seenPct)} of the Gr within ${fmtDistance(o.radiusM)} may be seen (${pc(ob.terrainPct)} on the Gr alone, ${pc(ob.surePct)} sure).`,
     ob.overlook
@@ -1006,7 +1033,8 @@ export function extendedText(v: GroundGuideVerdict): string[] {
   ]);
 
   const av: string[] = [];
-  if (!o.threat.allRound) {
+  if (o.ipbApch !== undefined) av.push(...apchText(o));
+  else if (!o.threat.allRound) {
     if (p) {
       const from = p.fromAssumed ? `from ${o.threat.compass} (the threat has a direction, no place: the start is assumed)` : 'from the Threat marker';
       p.avenues.forEach((a, i) => {
@@ -1019,6 +1047,10 @@ export function extendedText(v: GroundGuideVerdict): string[] {
   const ws = o.ways;
   av.push(`Straight ways out to ${fmtDistance(ws.radiusM)}: ${ws.go} GO, ${ws.slow} SLOW-GO, ${ws.blocked} stopped, of ${ws.total}.${ws.stops.length ? ` ${ws.stops.map((s) => `Stopped ${s.arc} by ${s.label}`).join('; ')}.` : ''}`);
   sec('3 Approaches', av);
+  const al = airText(o);
+  if (al.length) sec('4 Air', al);
+  const dl = [...decisionText(o), ...templateText(o)];
+  if (dl.length) sec('5 Decision', dl);
 
   L.push('Sight is a chance read from 30 m elevation and the map (buildings, crops, trees): check on the ground.');
   return L;
@@ -1048,8 +1080,11 @@ export interface ExtScopeText {
 
 export function extScopeText(o: GroundGuideOcoka, v: GroundGuideVerdict | null): ExtScopeText {
   const f = o.fire;
-  const rows: Record<ExtRow, ExtScopeItem[]> = { XF: [], XC: [], XO: [], XK: [], XA: [] };
+  const rows: Record<ExtRow, ExtScopeItem[]> = { XF: [], XC: [], XO: [], XK: [], XA: [], XH: [], XD: [] };
+  rows.XH.push(...airScopeRows(o));
+  rows.XD.push(...decisionScopeRows(o), ...templateScopeRows(o));
 
+  rows.XF.push(...fireScopeRows(o));
   if (f) rows.XF.push({ icon: 'seen', bold: `Seen ${pc(f.seenPct)}`, rest: `of ${fmtDistance(o.obstacle.rangeM)}` }, { icon: 'dead', bold: `Dead Gr ${pc(f.deadPct)}` }, { icon: 'screened', bold: `Screened ${pc(f.screenedPct)}` });
   else rows.XF.push({ icon: 'fan', bold: 'Needs an Observer', rest: 'indirect / air defence' });
   rows.XF.push({ icon: 'fan', bold: `${COUNTRY[o.obs.country]} Country`, rest: `view ${reachText(o)}` });
@@ -1069,7 +1104,8 @@ export function extScopeText(o: GroundGuideOcoka, v: GroundGuideVerdict | null):
 
   const p = o.plan;
   const ap = approachLine(o);
-  if (p && p.avenues.length && !o.threat.allRound) {
+  if (o.ipbApch !== undefined) rows.XA.push(...apchScopeRows(o));
+  else if (p && p.avenues.length && !o.threat.allRound) {
     const a = p.avenues[0];
     rows.XA.push({ icon: 'avenue', bold: `Apch ${fmtDistance(a.lengthM)}`, rest: `${p.fromAssumed ? `from ${o.threat.compass}` : 'from the Threat'}${p.avenues.length > 1 ? `, +${p.avenues.length - 1} more` : ''}` });
     const ch = a.chokes[0];

@@ -321,6 +321,7 @@ import { openGroundGuideSettings } from '../MS/Engines/GroundGuideSettingsWidget
 import { openMovementGuideSettings } from '../MS/Engines/MovementGuideSettingsWidget';
 import { openPlatoonGuideSettings } from '../MS/Engines/PlatoonGuideSettingsWidget';
 import { openNightMarchSettings } from '../MS/Engines/NightMarchSettingsWidget';
+import { openMovePlannerSettings } from '../MS/Engines/MovePlannerSettingsWidget';
 import { setSetting as setPlSetting } from '../MS/Support/SettingsBus';
 document.addEventListener('engine-log', (e: Event) => {
   const { engine, type, formatted } = (e as CustomEvent<EngineLogEntry>).detail;
@@ -2375,6 +2376,41 @@ function buildDockFreehandStyle(container: HTMLElement): void {
   }
 })();
 
+// Move Planner: 🚚 turns features.movePlanner on and opens the Mov Plan panel (when on: opens / closes the panel; off from the
+// panel's own gear or Ctrl+K); the gear opens the same settings as Ctrl+K → Move Planner.
+(function initMovePlannerToggle() {
+  const btn = document.getElementById('movePlannerBtn');
+  const gear = document.getElementById('movePlannerSettingsBtn');
+  if (!btn) return;
+  const syncFace = () => {
+    const on = !!(window as any).symbolEngine?.movePlanner?.isEnabled;
+    btn.classList.toggle('ms-btn-active', on);
+    btn.setAttribute('aria-pressed', String(on));
+  };
+  btn.addEventListener('click', () => {
+    const se = (window as any).symbolEngine;
+    if (!se?.movePlanner?.isEnabled) se?.toggleMovePlanner?.(true);
+    se?.movePlanner?.togglePanel?.();
+    syncFace();
+  });
+  window.addEventListener('settingsChanged', (e: any) => {
+    if ((e.detail?.fullPath ?? '') === 'features.movePlanner') setTimeout(syncFace, 0);
+  });
+  setTimeout(syncFace, 500);
+  if (gear) {
+    const isOpen = () => !!document.getElementById('move-planner-settings');
+    gear.addEventListener('click', () => {
+      if (isOpen()) openMovePlannerSettings().close();
+      else {
+        const r = gear.getBoundingClientRect();
+        openMovePlannerSettings({ anchor: { x: r.right - 340, y: r.bottom + 6 } });
+      }
+      gear.setAttribute('aria-expanded', String(isOpen()));
+    });
+    new MutationObserver(() => gear.setAttribute('aria-expanded', String(isOpen()))).observe(document.body, { childList: true });
+  }
+})();
+
 // The button flips features.movementGuide through symbolEngine.toggleMovementGuide() (which publishes it on the
 // settings bus); the face follows settings changed from Ctrl+K. The gear opens the Movement Guide settings widget.
 (function initMovementGuideToggle() {
@@ -2652,6 +2688,53 @@ function updateStylusPerSymbolUI(cls: string | null): void {
     if (!lines?.length) return void showToast('No elevation here (outside the bundle, or an older bundle)', 'no-targets');
     for (const l of lines) EngineLogger.success('Ground Guide', l);
     showToast('Extended View at the map centre written to the Engine Log', 'success');
+  });
+  // IPB coding round the map centre (guide.ipbCodingAround): the IPB book's GO / SLOW-GO / NO-GO, its reasons and what is not assessed.
+  document.getElementById('ground-guide-ipb-log')?.addEventListener('click', async () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    const centre = appConfig.activeView?.center;
+    if (!guide?.ipbCodingAround || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const r = await guide.ipbCodingAround(centre);
+    if (!r) return void showToast('No elevation here (outside the bundle, or an older bundle)', 'no-targets');
+    EngineLogger.success('Ground Guide', `${r.summary} · ${Math.round(r.ms)} ms`);
+    for (const t of r.stats.notAssessed) EngineLogger.success('Ground Guide', `Not assessed: ${t}`);
+    for (const x of r.reasons) EngineLogger.success('Ground Guide', `At the centre: ${x.text}`);
+    showToast('IPB coding at the map centre written to the Engine Log', 'success');
+  });
+  // IPB corridors and avenues round the map centre (guide.ipbApproachesAround), for the HQ row in force.
+  document.getElementById('ground-guide-ipb-apch-log')?.addEventListener('click', async () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    const centre = appConfig.activeView?.center;
+    if (!guide?.ipbApproachesAround || !centre) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const v = await guide.ipbApproachesAround(centre);
+    if (!v) return void showToast('No elevation here (outside the bundle, or an older bundle)', 'no-targets');
+    EngineLogger.success('Ground Guide', `IPB ${v.side === 'enemy' ? 'en' : 'own'} Apchs for a ${v.aaFor} (${v.hqLabel}: ${v.mcFor} corridors ${v.mcWidthM} m, ${v.spacingM / 1000} km apart), area ${v.frameKm[0]} x ${v.frameKm[1]} km · ${Math.round(v.ms.coding + v.ms.corridors)} ms`);
+    for (const a of v.aas) EngineLogger.success('Ground Guide', `${a.viable ? `Apch ${a.id}` : `Lone ${a.id}1`}: ${a.why.join(', ')}; ${(a.lengthM / 1000).toFixed(1)} km${a.narrows.length ? `; narrows ${a.narrows.map((n: any) => `${n.kind} ${Math.round(n.widthM)} m at ${(n.alongM / 1000).toFixed(1)} km`).join(', ')}` : ''}`);
+    for (const x of v.crossovers) EngineLogger.success('Ground Guide', `Crossover ${x.id}: ${x.a} to ${x.b} at ${(x.alongM / 1000).toFixed(1)} km`);
+    for (const n of v.notes) EngineLogger.success('Ground Guide', n);
+    showToast(`IPB Apchs at the map centre: ${v.aas.filter((a: any) => a.viable).length} written to the Engine Log`, 'success');
+  });
+  // IPB Create on Map (guide.createIpbOverlay): the reading shown as ordinary symbols, one undo step.
+  document.getElementById('ground-guide-ipb-create')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (!guide?.createIpbOverlay) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const r = guide.createIpbOverlay('all');
+    if (!r.made) return void showToast('No IPB reading yet: turn the Extended View on (F) and let the area be read', 'no-targets');
+    showToast(`Created ${r.made} IPB symbols (COO ${r.by.coo ?? 0}, corridors ${r.by.corridors ?? 0}, avenues ${r.by.apchs ?? 0})${r.replaced ? `, ${r.replaced} replaced` : ''}`, 'success');
+  });
+  document.getElementById('ground-guide-ipb-tpl-create')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (!guide?.createIpbOverlay) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const r = guide.createIpbOverlay('template');
+    if (!r.made) return void showToast('No IPB template yet: turn the Extended View on (F), with extended.ipb.template on', 'no-targets');
+    showToast(`Created ${r.made} template symbols${r.replaced ? `, ${r.replaced} replaced` : ''}`, 'success');
+  });
+  document.getElementById('ground-guide-ipb-air-create')?.addEventListener('click', () => {
+    const guide = (window as any).symbolEngine?.groundGuide;
+    if (!guide?.createIpbOverlay) return void showToast('Turn on the Ground Guide first', 'no-targets');
+    const r = guide.createIpbOverlay('air');
+    if (!r.made) return void showToast('No IPB air reading yet: turn the Extended View on (F), with extended.ipb.air on', 'no-targets');
+    showToast(`Created ${r.made} IPB air symbols${r.replaced ? `, ${r.replaced} replaced` : ''}`, 'success');
   });
   // R road network density at the map centre (guide.roadDensityAround), as the Ground Brief's Copy as Text gives it.
   document.getElementById('ground-guide-road-density-log')?.addEventListener('click', async () => {

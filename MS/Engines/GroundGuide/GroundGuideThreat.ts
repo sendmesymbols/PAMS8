@@ -3,8 +3,10 @@
  *
  * The threat marker of the Extended View (F; user, 2026-11-10: "some sort of option which can be repositioned on map,
  * front by default, not enemy symbols"). A small handle over the map that says where the threat is:
- *   - docked at the top of the map it shows the threat's bearing: the unit's front (the default), a bearing turned
- *     with [ and ], or "all round";
+ *   - docked at the edge of the map on the threat's side it shows the threat's bearing: the unit's front (the default),
+ *     a bearing turned with [ and ], or "all round". It docks clear of whatever the host lays over the map there (a top
+ *     bar, a side panel, the Gr Scope rail): it walks in from the edge until the map's own surface is under it
+ *     (user, 2026-11-14: the marker was hidden under the app's top bar);
  *   - dragged onto the map it becomes a place, and the threat is then judged toward that place from wherever the
  *     symbol is put (`extended.threat: 'point'`, `extended.at`);
  *   - a double-click puts it back to the front.
@@ -51,8 +53,14 @@ export class GroundGuideThreat {
   private _state: ThreatState | null = null;
   private _north = 0;
   private _drag: { dx: number; dy: number; x0: number; y0: number; moved: boolean } | null = null;
-  /** Where the docked marker sits, from the top of the map, px. */
+  /** Where the docked marker sits, from the top of the map, px, when no clear place is found toward the threat. */
   topPx = 70;
+  /** The last docked place worked out, and what it was worked out for (size, bearing on screen, marker width). */
+  private _dockKey = '';
+  private _dockAt: [number, number] | null = null;
+  private _dockTime = 0;
+  /** While shown, the dock is checked every second: a host panel may have opened over it. */
+  private _timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly _host: ThreatHost) {}
 
@@ -69,10 +77,13 @@ export class GroundGuideThreat {
     el0.style.display = 'flex';
     this._paint();
     this.reflow();
+    if (this._timer === null) this._timer = setInterval(() => this.reflow(), 1000);
   }
 
   hide(): void {
     if (this._el) this._el.style.display = 'none';
+    if (this._timer !== null) clearInterval(this._timer);
+    this._timer = null;
   }
 
   setNorth(northDeg: number): void {
@@ -92,20 +103,73 @@ export class GroundGuideThreat {
     let x = w / 2;
     let y = this.topPx;
     let off = false;
+    let docked = true;
     if (s.mode === 'point' && s.at) {
       const p = this._host.toScreen(s.at);
-      if (p && p.x >= 0 && p.y >= 0 && p.x <= w && p.y <= h) [x, y] = [p.x, p.y];
-      else off = true; // the place is off the view: stay docked and point at it
+      if (p && p.x >= 0 && p.y >= 0 && p.x <= w && p.y <= h) {
+        [x, y] = [p.x, p.y];
+        docked = false;
+      } else off = true; // the place is off the view: stay docked and point at it
     }
+    if (docked) [x, y] = this._dock(c, w, h, s.mode === 'allRound' ? 0 : s.bearingDeg);
     el0.style.left = `${Math.round(x)}px`;
     el0.style.top = `${Math.round(y)}px`;
     el0.classList.toggle('ms-pt', s.mode === 'point' && !!s.at && !off);
   }
 
   destroy(): void {
+    if (this._timer !== null) clearInterval(this._timer);
+    this._timer = null;
     this._el?.remove();
     this._el = null;
     this._state = null;
+    this._dockKey = '';
+    this._dockAt = null;
+  }
+
+  /**
+   * Where the docked marker goes: on the line from the middle of the map toward the threat (as it lies on screen), as near
+   * the edge as the map's own surface shows under the whole marker. Worked out again when the size or the bearing changes,
+   * and at most every 0.8 s otherwise (a host panel may open or close).
+   */
+  private _dock(c: HTMLElement, w: number, h: number, bearingDeg: number): [number, number] {
+    const el0 = this._el!;
+    const mw = el0.offsetWidth || 140;
+    const mh = el0.offsetHeight || 28;
+    const scr = (((bearingDeg + this._north) % 360) + 360) % 360;
+    const key = `${w}|${h}|${Math.round(scr)}|${mw}|${mh}`;
+    const now = performance.now();
+    if (this._dockAt && key === this._dockKey && now - this._dockTime < 800) return this._dockAt;
+    const surface = c.querySelector('.esri-view-surface') ?? c;
+    const cr = c.getBoundingClientRect();
+    const b = (scr * Math.PI) / 180;
+    const dx = Math.sin(b);
+    const dy = -Math.cos(b);
+    const mx = w / 2 - mw / 2 - 10;
+    const my = h / 2 - mh / 2 - 10;
+    const tEdge = Math.max(0, Math.min(Math.abs(dx) > 1e-6 ? mx / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-6 ? my / Math.abs(dy) : Infinity));
+    const free = (px: number, py: number): boolean => {
+      for (const e of document.elementsFromPoint(cr.left + px, cr.top + py)) {
+        if (e === el0 || el0.contains(e)) continue;
+        return e === surface || surface.contains(e);
+      }
+      return false;
+    };
+    let at: [number, number] | null = null;
+    for (let t = tEdge; t >= 0; t -= 8) {
+      const x = w / 2 + dx * t;
+      const y = h / 2 + dy * t;
+      const ex = mw / 2 + 4; // a few px clear of the bar or panel beside it
+      const ey = mh / 2 + 4;
+      if (free(x, y) && free(x - ex, y - ey) && free(x + ex, y - ey) && free(x - ex, y + ey) && free(x + ex, y + ey)) {
+        at = [x, y];
+        break;
+      }
+    }
+    this._dockAt = at ?? [w / 2, this.topPx];
+    this._dockKey = key;
+    this._dockTime = now;
+    return this._dockAt;
   }
 
   private _paint(): void {

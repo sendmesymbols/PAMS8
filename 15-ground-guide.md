@@ -1123,7 +1123,8 @@ With it on:
 - **The cursor card** keeps its GROTBC rows and gains one short block: the threat and the weapon, then *Fd of Fire*
   (with *Threat sees / may see* when the threat's place probably sees the spot), the lead *Key Gr*, and the first
   *Apch*. The foot always shows **F Ext View** (lit while on); **J Better 240 m N** joins it once a better position is
-  worked out.
+  worked out, and **X Yours** / **X En's** says what X turns the IPB reading to (the block's head says *En's options* or
+  *Your options*).
 - **The map** gets the yellow threat marker, the fire fan, the lines of sight, the threat's view, the approaches and the
   better position (*On the map*, below), and the overlay paints what can be seen (`extended.overlay`).
 - **The Gr Scope rail** (V) reads in its Extended mode (below); its foot shows **F Ext View** off, **F Close Ext** on.
@@ -1132,7 +1133,42 @@ With it on:
 
 **Keys.** GROTBC keeps its keys. **F** on / off (for this kind of symbol, above), **Shift+F** on and kept. With it on: **1 2 3** open its tabs (again for the next page, Shift
 back), **[** and **]** turn the threat by 15 degrees (Shift: 45), **J** takes the better position the map shows, the way S
-takes clear ground. With it off the digits, brackets and J are left to the app. `extended.keys: false` takes F away.
+takes clear ground, **X** turns the IPB reading over (below). With it off the digits, brackets, J and X are left to the
+app (plain X is free on the map; E stays the app's Edit Control Points). `extended.keys: false` takes F away.
+
+**Whose options** (2026-11-14; user: "is it showing me the options available to enemy for the symbol being drawn? ... what
+if I want to see my options against threat?"). By default (`ipb.readFor: defence`) the IPB reading shows **the enemy's
+options against you**: his avenues toward the position (red), your fire on them, decision support, his air avenues and the
+LZs he may use, and his attack template. **X**, or the switch at the left of the Ground Detail's key bar (**X** *En's
+options* / *Your options*, the side shown lit), turns it to **your options against the threat** (`attack`): your avenues
+toward it (blue), his fire on them, your air, his defence template. The choice is kept in the settings;
+`guide.setReadFor('defence' | 'attack')`, `guide.toggleReadFor(to?)`. (It first sat as a tile at the top of tab 3; the user
+moved it to the key bar to save space, 2026-11-14.)
+
+**Key notice** (`card.keyNotice`, on; 2026-11-14, user: "X key and all the available keys, we can give user a notification
+bottom center on the screen about modes, keys and what will they do, 5 seconds"). When a key changes a mode, a card at the
+foot of the screen, in the middle, says the mode now and what it shows, then the keys that work in it and what each does,
+for 5 s; the next key replaces it. **F** / **Shift+F** (*Ext View on · this symbol* / *every symbol* / *off*, with 1-5, X, [ ],
+J, F, Shift+F), **X** (*En's options against you* / *Your options against the threat*, with 3 Apchs, 1 fire, 4 air, 5
+decision), **[ ]** (*Threat N 15°*), **J** (*Placed at the better Posn 180 m NE*, or amber *No better Posn to take here*),
+**V** / **Shift+V** (the Gr Scope rail and its scale), **H** (the chip) and **P** (the mode judged). It never takes a click
+and docks clear of the host's bars and the Ground Detail: from 56 px over the bottom edge it walks up until the map shows
+under the whole card (above the Detail when that is open). `GroundGuideKeyNotice.ts`. Off: the cursor card's flash and the
+one-line chip as before.
+
+**After the placement** (2026-11-14; user: "when I drop symbol, approaches and other F elements on map, should vanish
+away"). The drop (or Esc) takes every Extended View product off the map: the fan, lines of sight, approaches and better
+position, the IPB avenues with their fire, decision support, air and template, and the overlay's paint (the going paint
+comes back if it is on). Nothing of it is drawn again while nothing is being placed, whatever the map does. F itself stays
+on for the next of the same kind (`extended.lasts`), the readings stay worked out, and the next draw's first move on the
+map brings them back at once. The threat marker stays at the map's edge, to set the threat before the next draw. Selecting
+a point symbol with F on still shows its reading on it until the selection is cleared. (Earlier the same day the placed
+symbol held the products still; the user asked for them to go.)
+
+**Echelon changed mid-draw** (2026-11-14; user: "if you change its echelon, it still says same echelon in detail"). A
+re-arm while placing (the dock's Echelon, Identity or a parameter) is judged again at once with the new symbol (the card,
+the Detail's *For ... · Bn · from the symbol*, the frontage), not when the cursor next moves. Tab 3 names the symbol's
+echelon beside the HQ row it reads with (*Bde HQ (your Pl)*; a Pl, Coy and Bn read with the Bde HQ row, book p 7).
 
 **Enforce mode** stays on the GROTBC GO / NO-GO rule. An Extended View reading is a judgement and never blocks a
 placement; the card's verdict bar is the GROTBC verdict.
@@ -1140,8 +1176,11 @@ placement; the card's verdict bar is the GROTBC verdict.
 **The threat** (`extended.threat`): `front` (the default) is the unit's front, `footprint.bearingDeg`; `bearing` uses
 `extended.bearingDeg`; `point` judges toward `extended.at` (a place on the map) from wherever the symbol is; `allRound`
 every direction. It is NOT read from enemy symbols. The yellow **Threat marker** (`GroundGuideThreat.ts`, a DOM handle
-over the view, shown only with the Extended View on or the rail at its AOR scale) shows it: docked at the top of the map
-it gives the bearing; dragged onto the map it sets `point`; a double-click returns it to the front. `extended.sectorDeg`
+over the view, shown only with the Extended View on or the rail at its AOR scale) shows it: docked at the edge of the map
+on the threat's side (north at the top, east at the right...) it gives the bearing; dragged onto the map it sets `point`; a
+double-click returns it to the front. It docks clear of whatever the host lays over the map there (a top bar, the symbol
+dock, the Gr Scope rail, the Engine Log): from the edge it walks in until the map's own surface shows under the whole marker
+(`document.elementsFromPoint`), checked again every second while shown (2026-11-14: it was hidden under the app's top bar). `extended.sectorDeg`
 (30 to 180) is the arc judged. The threat's place is kept in the settings (the Movement and Platoon Guides read it).
 
 **How sight is judged** (`GroundGuideOcoka.ts`, the OCOKA engine: pure, no imports; `GroundGuideOcokaRead.ts` assembles the
@@ -1192,10 +1231,400 @@ ground come first, as with it off.
 | `threat` | **All the ground the threat may see** from the marker's place out to `extended.radiusKm`, in violet, inside a dashed circle. What is not painted is out of its view: covered ground, and covered approaches where it joins up. Read for a vehicle commander's eye (2.4 m, never understated) looking for the mode's unit (a vehicle for tracked and amphibious modes, else a standing man). It does not follow the cursor and shows whether or not a symbol is being placed; it is worked out again only for a new place, radius, month or tile. Nothing is painted when the threat is only a direction. With it on, the threat's 40 degree wedge toward the position is not drawn (its line to the position still is). |
 | `view` | **All the ground that may be seen from the position** being placed, in light blue (green is lost on green hills), out to the same radius, for the unit's own eye and a standing man. Gone while the cursor moves, drawn where it rests (220 ms), cleared when nothing is being placed. |
 | `going` | The GROTBC paint of GO / Marginal / SLOW-GO / NO-GO ground, as with the Extended View off. |
+| `ipb` | **The IPB coding**: GO / SLOW-GO / NO-GO by the C&SC IPB book's criteria only, marked as the book marks it (see *IPB coding* below). |
 
 Ground is painted where it is seen with an even chance or better, in slices a ray wide (rays half a degree apart or
 finer). Cost: about 11 ms for the view from the position (once per rest); the threat's view is the same sum, once per
 change. Unpainted ground is *unlikely* to be seen, not safe. The Detail's Threat's View tile names the violet.
+
+**IPB coding** (`extended.overlay: ipb`; added 2026-11-14, Phase 1 of `IPB_Plan.md`). The combined obstacle overlay of the
+C&SC Quetta *Intelligence Preparation of the Battlefield* book, coded from the bundle by the book's criteria and nothing
+else. GROTBC's going is never used to fill a gap (user decision 1): what the bundle cannot tell is **not assessed**, said
+so, and never painted as GO. Pure engine `GroundGuideIpb.ts` (no imports, runs in Node), painted by `GroundGuideIpbMap.ts`,
+figures in `MS/Data/IpbDoctrine.json` (basis D = the book or a Pakistani pamphlet with its page, T = typical public figure,
+E = my rule to read the bundle, U = user decision; the file carries a handling note, keep it under the same terms).
+
+| Criterion | What makes it NO-GO / SLOW-GO | Who it applies to |
+| --- | --- | --- |
+| Slope (IPB pp 10-11) | Uphill along the movement over 60 m: 45 % or more NO-GO, 30-45 % SLOW-GO; GO is under 30° (written in degrees, decision 5). Downhill 30° or more is not classed by the book. With an all-round threat the steepest slope counts. | all |
+| Relief (pp 10-11) | Height range in a 1 km window: 100-200 m per km SLOW-GO, 200-400 m NO-GO; over 400 m not classed. | all |
+| Built-up area (p 9) | Wider than 500 m square to the movement, or no easy bypass on either flank (7 samples 250 m beyond each edge mostly water, wetland or BUA): NO-GO. | armour |
+| Water (pp 9-11) | Narrowest width across the water wider than the AVLB span (`ipb.avlbSpanM`, 18 m, basis T, decision 6): NO-GO; narrower: SLOW-GO with bank height not assessed; bridge / ford cells SLOW-GO; seasonal water and one-cell lines (canals, drains) not assessed. | all |
+| Vegetation (pp 10-11) | Trees and orchards are not assessed (trunk thickness and spacing are not in the bundle) unless the roads settle it: roads negate vegetation (pp 11-12). | armour, mech |
+| Roads in close country (pp 10-12) | Per km of window side: 2 hard Rds or more GO, 1 hard Rd or 2 Trs SLOW-GO, fewer NO-GO. | armour |
+| Man-made obstacles (p 9) | Polygons and lines passed in (`obstacles`); not yet read from map symbols. | all |
+| Season (Desert / Mountain Warfare) | Rann of Kutch June-November, above 2500 m in winter (Nov-Apr), snow slopes over 35°: NO-GO (`ipb.season: coding`) or a note only (`notes`). | all |
+
+Precedence (p 10): the worst class any tested criterion gives. A cell that tests GO but carries a not-assessed part is
+not assessed; one with a not-classed slope or relief is not classed. The water table is never in the bundle, so it is
+always on the not-assessed list.
+
+**Marking** (`ipb.paint`). `hatch` (default) is the book's (p 7): **crosshatch** on light red for NO-GO, **parallel lines** on
+light orange for SLOW-GO, grey **dots** for not assessed (also over SLOW-GO cells with a not-assessed part), short violet
+**dashes** for not classed, GO left clear. `soft` is a plain tint, `atp` ATP 2-01.3's green (restricted / severely
+restricted). One georeferenced picture (an ArcGIS `MediaLayer`, id `ms-ground-guide-ipb`, at the bottom of the operational
+layers under every symbol), the same in 2D and 3D; at most 2048 px a side.
+
+**What is read and when.** Only with the Extended View on (F): it is worked out round the spot being placed, else the map
+centre, out to `extended.radiusKm` plus a 1.2 km margin, again only when the centre moves a third of the radius, the tiles
+or the settings change; the last coding is reused for the same key. F off (or the guide off) removes the layer and drops
+the coding. Direction of movement (`ipb.readFor`): `defence` (default) codes the ground for the enemy coming toward you
+(threat bearing + 180°), `attack` for your own move toward the threat; an all-round threat has no direction. Mover
+(`ipb.mover`): `auto` reads for armour in defence (the worst case the book's armour criteria guard against) and the
+symbol's own mover in attack; or `armour` / `mech` / `dismounted`.
+
+**Cost**: about 40 ms for a 4 km radius at Phillora (Node and browser agree: NO-GO 3 %, SLOW-GO under 1 %, GO 96 %, not
+assessed under 1 %, decided mostly by BUA, water and roads); 65 ms in the app for a 5 km radius (310 cells wide); 700 x 700
+cells about 60 ms.
+
+**API.** `await guide.ipbCodingAround(pointOrLngLat, { radiusKm, mover, readFor, month, season, avlbSpanM, threatDeg })` →
+`{ summary, stats, reasons, mover, moveDeg, ms }` for a host (works with F off too; waits for the tiles);
+`guide.ipbReasonAt(pointOrLngLat)` → the reasons at a cell of the coding on the map, each with the book's page
+(`BUA 710 m wide: NO-GO for armour (over 500 m, IPB p 9)`). Event `ground-guide-ipb` `{ summary, stats, ms, mover, moveDeg }`.
+Settings `groundGuide.extended.ipb.*` (Ctrl+K *Extended View (F)*). Test panel: Ground Guide → *IPB coding* in the overlay
+list, *Log IPB coding at centre*. Checks: `node tools/ipb-test/run.mjs` (40: one synthetic case per criterion, precedence,
+reasons, cost, and the real area at Phillora; `--no-real` skips the bundle).
+
+**Not yet** (after Phase 7 in `IPB_Plan.md`): the rail's wider IPB map, man-made obstacles from map symbols, the COA 1 /
+COA 2 split, linear NAIs, own attack Left or Right (§5a v2.1), the Forms of Manoeuvre tile.
+
+**IPB avenues of approach** (`extended.ipb.apchs`, on by default; added 2026-11-14, Phase 2 of `IPB_Plan.md`). With the
+Extended View on, the HQ's area facing the threat is coded by the book (as above) and read for **mobility corridors two
+levels down and avenues of approach one level down** (book p 7), drawn on the map as the MS attack arrows, in tab 3 and on
+the rail. Pure engine `GroundGuideIpbCorridors.ts` (no DOM; `findCorridors`, `attackArrow`, `simplifyLine`), map
+`GroundGuideIpbApchMap.ts` (layer `ms-ground-guide-ipb-apch`, just above the coding, under every symbol), tab 3
+`GroundGuideIpbApchView.ts`, figures and rules in `IpbDoctrine.json` `corridors` (`hqRows`, `frames`, `method`).
+
+| HQ (`ipb.hq`, `auto` from the symbol's echelon) | Avenues for | Corridors (width) | Corridors of one avenue at most | Area read |
+| --- | --- | --- | --- | --- |
+| Bn and smaller (no row in the book or ATP: the Bde row, said on the card) | Bn | Coy (500 m) | 2 km | 7 x 18 km |
+| Bde (and no symbol) | Bn | Coy (500 m) | 2 km | 14 x 28 km |
+| Div and above | Bde | Bn (1.5 km) | 6 km | 30 x 48 km |
+
+Widths and spacing: book p 12 and ATP 2-01.3 Table 4-2 (basis D). The area is the HQ's frame facing the threat from the
+spot (the symbol being placed, else the rail's spot, else the map centre), with a lead beyond it toward the threat; Bn and
+Bde as the AOR scale's frames, the Div frame a proposal (E). Its anchor snaps to a quarter of its frontage, so a new area
+is read only when the spot moves that far, or the threat, HQ, month or options change. An all-round threat has no
+direction: the card says so and nothing is drawn.
+
+How it is read (`IpbDoctrine.json corridors.method`, basis E unless said):
+1. **Obstacles**: NO-GO, SLOW-GO, not classed and not assessed ground narrow a corridor; water lines whose width is not
+   recorded and crossings are crossed, not narrowings (as on the AOR scale). Patches under a quarter of the corridor width
+   squared are left out (a corridor is relatively free of obstacles, not empty of them).
+2. **Free width**: the run of ground free of the obstacles kept, across the axis, at each 30 m sample (60 m for a Div HQ;
+   there a crossing in the block wins, then any NO-GO, so a river is never lost between samples).
+3. **The ways**: one least-cost field from the start edge (GO 1, SLOW-GO and not assessed 3, NO-GO never crossed, ground
+   nearer an obstacle than half a corridor width up to 3 times dearer); the cheapest way back from each strip of the end
+   edge (strips two spacings wide; the strip's middle where costs are all but equal). In open ground they run straight and
+   apart; where the ground canalises they meet at the same gaps and bridges, and a way within half the spacing of one kept
+   for 60 % of its length is the same avenue. A way that cannot reach the end edge stops where it was stopped.
+4. **Corridors along each way**: an **avenue** holds two corridor widths side by side over 60 % of its length (book p 12:
+   a viable avenue has two or more corridors); one width: a **lone corridor** (grey, not an avenue); less: none. Where less
+   than one width fits is a **narrows**, at its narrowest (a crossing wins; stretches under a corridor width apart are
+   one): crossing (the bridge or ford's own width), SLOW-GO, or a gap between obstacles.
+5. **Crossover**: neighbouring avenues joined across by one free run, the deepest such stretch; none when they are
+   joined nearly all the way (one open area).
+6. **Ranking** (until the proforma, Phase 4): share of the area run, GO %, corridors side by side, narrows, being stopped,
+   cost against the cheapest. The best is drawn as the main attack (solid, the inner line in its head, `25151403`
+   shape), the others as supporting attacks (dashed); red for the enemy's (`ipb.readFor: defence`), blue for own (`attack`).
+   Lettered A, B, C by rank; corridors A1, A2 left to right as the mover sees.
+
+**Tab 3** (replaces the single approach path while `ipb.apchs` is on; off brings it back): the answer (`En Apchs for a Bn ·
+Bde HQ`, the count, the best going), facts (narrowest, crossings, corridors, area read, water lines, crossover), and the
+tiles *Gr Overlay, Mob Corridors & Apchs* (the area north up, the coding under the arrows, corridors, narrows,
+crossovers, the spot and the threat's side), *Width Along Each Apch* (free width down the area against one and two
+corridor widths, narrows as amber dots), *Apchs* (a card each: role, room, GO, length, chips, narrows; crossovers),
+*Read As* (HQ row, widths and spacing with their source, area, mover, coding, the Bn note), then *Straight Ways Out*.
+**Rail**: line 3 says the best avenue and the narrowest narrows; its map draws the arrows, corridors and narrows at the
+spot's scale (the threat's line to the spot stays). **Copy as Text**: the avenues paragraph under 3 Approaches.
+**Map switches** (declutter): `ipb.mapCorridors` (the corridors inside each avenue), `ipb.labels`.
+
+**Labels on the map** (`ipb.labels`, for both Extended View layers; 2026-11-14, user: "label every line and circle on map
+with little label"): `auto` puts a short label on every line, circle and area: *Area read · Bde HQ (your Pl) · 14 x 28
+km*, *En Apch A (best)*, *Mob Cor A1*, *Narrows 290 m* / *Crossing 64 m*, *Crossover A-B*, each Posn's *range 1.8 km* ring,
+the longest *Under fire* / *Screened* / *Dead Gr* / *Out of range* stretch of each avenue, *NAI n*, *TAI n*, *DP n*, *En Air
+Apch n*, *LZ n* / *DZ n*, *AD n reach 5.0 km*, *OP over LZ n*, the template's *En ...* elements, *Moved 1.8 km* and
+*Doctrine's place*; on the placing layer *Fd of fire 300 m*, *Dead Gr*, *Screened*, *Threat's view · n % seen*, *LOS ITG n:
+in view / may be seen / no LOS*, *Threat may see you / no LOS to you*, *Apch n · n % GO*, *Choke n m*, *Better Posn n m (J)*
+and the overlay's share seen. `all` adds times, widths, lengths and the obstructions; `off` none. Labels are decluttered for
+the zoom (`declutter()` in `GroundGuideIpbApchMap.ts`): taken by rank (avenues and the better Posn first, objectives,
+narrows and DPs next, out of range and doctrine's places last), a label that would overlap one already placed is left out,
+and a new zoom step draws them again, so zooming in shows more. Every label is drawn at 50 % opacity, pill and text together
+(`LABEL_OPACITY` in `GroundGuideIpbApchMap.ts`; user, 2026-11-14: "dim the labels on map 50% opaque"), so the ground,
+avenues and rings under them still show. With `extended.overlay: ipb` the painted coding is the whole area read (the
+same coding the avenues were found on). The single path's red line is not drawn while the avenues are on.
+
+**Cost**: a Bde area (14 x 28 km) about 130 ms coding + 100 to 280 ms corridors; a Div area (30 x 48 km) about 200 to 380 ms
+coding + 150 to 180 ms corridors (Node and browser), on the main thread once per area, never per mouse move, nothing with
+F off. **API**: `guide.ipbApproaches()` (the reading shown, or null), `await guide.ipbApproachesAround(pointOrLngLat, { sidc,
+hq, readFor, threatDeg, mover, month })` (any point, works with F off, waits for the tiles), event `ground-guide-ipb-apchs`
+`{ side, hq, aaFor, mcFor, avenues, notes, ms }`. Settings `groundGuide.extended.ipb.{apchs, hq, mapCorridors, labels}`.
+Test panel: *Log IPB Apchs at centre*. Checks: `node tools/ipb-test/corridors.mjs` (22: open plain, a river with one
+bridge and with none, gaps of 3 km / 650 m / 300 m, small patches, a SLOW-GO band, a wall with an opening (crossover), a
+water line, the arrow, cost, and real areas at Phillora (Bde) and Demo 2 (Div)).
+
+**Validation so far** (2026-11-14): Phillora, Bde HQ, threat E: four avenues in open plain, straight, one with narrows at
+Sohdhereki. Demo 2 (610 Corps, `Material/plans/overlays`), Div HQ, threat NE (their enemy avenues head about 235°): their
+NO-GO towns and canal belts sit on ours; our southern avenue runs beside their southern enemy avenue; their northern chain
+of enemy avenues is not found (our northern strip's way repeats the central one); their three corridor lines run across
+the enemy's axis and do not compare. A known limit: where the data has few crossings on a NO-GO canal, every way
+funnels to them.
+
+**IPB Create on Map** (added 2026-11-14, Phase 3 of `IPB_Plan.md` §6.8). Tab 3's *Create on Map* tile (and
+`guide.createIpbOverlay(kind)`) writes the reading shown as ordinary symbols through `SymbolEngine.loadSymbolFromJSON`:
+saved with the plan, exported to GeoJSON and PowerPoint, edited and selected like any other.
+
+| Button / `kind` | Symbols | Source |
+| --- | --- | --- |
+| COO (`coo`) | **No Go Area** `25120203` and **Slow Go Area** `25120202`, sharp-edged polygons (`DRAW_TYPE: 2`), friend | The coding of the area read, as outlines (`GroundGuideIpbShapes.ts`) |
+| Mob Corridors (`corridors`) | **Mob Corridors** `25110101` with the corridor unit's echelon (Coy `15`, Bn `16`), no label | The corridors drawn inside each avenue, and lone corridors |
+| En / Own Apchs (`apchs`) | **Main Attk** `25151403` for the best going, **Sp Attk** `25151404` for the others, as drawn (`TAIL_FACTOR` from the drawn width, `HEAD_RATIO` 0.15), lettered A, B... ; or the **Avenue of Apchs** `25120204` with `ipb.createAs: avenue` | The viable avenues |
+| All three (`all`) | All of the above | |
+
+The enemy's corridors and avenues are hostile (red), own and the COO friend. The COO outlines (`ipbAreas`): the class's
+cells inside the area read (bridges and fords are passages, never SLOW-GO areas), patches a cell apart joined, patches
+smaller than a quarter of the corridor width squared left out (as for the corridors), at most 80 NO-GO and 60 SLOW-GO
+areas, largest first; each patch's outer edge traced along the cell edges (cells touching at a corner stay one patch;
+holes are not drawn) and simplified to at most 40 corners. Lines are cut to 6 or 7 points for the symbols. Making a
+product again **replaces** the set made before (when still on the map), and each Create on Map, removal included, is **one
+undo step** (`SymbolEngine.runUndoGroup`; Ctrl+Z). Narrows and crossovers have no symbol and are not written. The plan
+saves overlays per layer, so the old system's overlay names (COO, En AAs) are not kept; the undo label and the Engine Log
+name the set. Event `ground-guide-ipb-created` `{ kind, made, by, replaced }`; `guide.ipbSymbols(kind)` gives the items
+without making them. Setting `extended.ipb.createAs`. Test panel: *Create IPB on Map (all)*. Checks:
+`node tools/ipb-test/shapes.mjs` (11: a square, two touching at a corner, a ring, a small patch, a gap of one cell, a
+bridge in SLOW-GO, the frame cut, a round lake, ring simplifying, cost). Verified in the app (3D): 78 symbols for a Bde
+area in 0.22 s (63 No Go, 3 Slow Go, 8 corridors, 1 Main Attk, 3 Sp Attk), one undo step, replace, undo and redo, plan and
+GeoJSON export of every one.
+
+**Arrow heads** (user, 2026-11-14: "the arrow head of the Approach symbol is stretched and looks ugly"). The head no longer
+takes a fixed 15 % of the arrow's length (MainAttack.ts's `HEAD_RATIO` default, a needle on a 20-30 km avenue): its length
+is 2.5 times its half-width (head about 1.25 times as long as it is wide), its half-width 1.9 times the shaft's at the neck,
+kept between 2.5 % and 15 % of the length (`arrowHeadFrac(tail)` in `GroundGuideIpbCorridors.ts`). An arrow is drawn at
+least 8 % of its length wide at the back, no wider than 1.2 spacings (`arrowTail`); the corridors inside keep their own
+width; the centre line's bends are rounded (Chaikin) before the outline is built. Create on Map passes the same
+`TAIL_FACTOR` and `HEAD_RATIO` to the MS symbols, so a written Main Attk / Sp Attk looks as drawn.
+
+**IPB fire corridors** (`extended.ipb.fire`, on; added 2026-11-14, Phase 4 of `IPB_Plan.md` §6.3). With the avenues read,
+how much of each the **other side's Posns on the map** cover with direct fire: own Posns on the enemy's avenues (defence),
+the enemy's on own avenues (attack). Pure engine `GroundGuideIpbFire.ts` (`fireCoverage`).
+- **Posns**: land units and equipment (symbol sets 10, 15) of that side inside the area read (1 km margin), at most 16;
+  for own Posns also the symbol being placed. Range from the catalogue's `Rng`: anti-armour against an armoured or
+  mechanized mover, else direct fire (small arms 300 m when none); observation reach `Rng.obs`, else 3 km (E). Eye 2.4 m for
+  equipment and anti-armour, else 1.6 m; target 2.4 m (a vehicle), 1.7 m for a dismounted mover.
+- **Coverage**: each Posn casts one fan (all round, rays no coarser than its range allows) out to its reach, traced once
+  with the Extended View's sight (30 m elevation plus buildings, crops and trees as a chance). Each avenue is sampled every
+  100 m: **under fire** (inside a weapon's effective range, an even chance or better of being seen), **screened** (the ground
+  shows it, something on it blocks), **dead** (the ground hides it), **out of range**; **may be watched** within any reach.
+- **Gaps**: runs of one kind not under fire, 300 m or more (pieces under 200 m join the run before), named by where they
+  lie: where to put mines, a direct-fire task or an OP.
+- **Nearest** (2026-11-14; user: "Coverage Along Each Apch is always out of range? is it a bug?"): how close the nearest
+  Posn comes to each avenue's centre line, and which. Not a bug: while placing a lone Pl the only own Posn is the symbol
+  itself (Infantry, 300 m), and the Bde HQ's avenues it reads with pass hundreds of metres to kilometres away, so the
+  whole avenue is honestly out of range. An avenue wholly out of range now says why instead of naming the gap: the
+  ribbon *out of range: 737 m from This Posn, reach 300 m*, the fact *out of reach: This Posn 300 m, nearest Apch A 737 m
+  away*, the tile's note (the only own Posn is this symbol; place own Posns, ATGMs and tanks along the avenues), and Copy
+  as Text. A Posn whose catalogue entry has no `Rng` is marked as small arms (300 m) there.
+- **Killing area candidates** (OoW Vol I pp 42-45): narrows under fire, then covered stretches of 1 km or more, at most
+  three per avenue; the commander designates engagement areas.
+- **Tab 1** opens with *Fire Corridors & Killing Areas* (the area, the avenues coloured by fire, the Posns' range rings, the
+  candidates numbered), *Coverage Along Each Apch* (a ribbon per avenue, its worst gap named) and *Killing Area
+  Candidates*; with no Posns a tile says so. A fact *Apchs Under Fire* (A 64% · B 48%). The Posn's own tiles follow.
+- **Map** (`ipb.mapFire`): each avenue coloured along its centre (green under fire, red dead, amber screened, out of range
+  thin and faint) and each Posn's effective range as a dashed yellow ring. **Rail** line 1: the least covered avenue and its
+  gap. **Copy as Text**: the fire paragraph under 1 Obsn & Fd of Fire.
+- **Cost**: about 20 ms for 4 Posns over 3 avenues in the app; 10 Posns over 3 avenues 20 ms in Node. Worked out again only
+  when the area, the Posns (their places and ranges) or the spot (100 m) change; nothing with F off.
+
+**IPB proforma** (`extended.ipb.proforma`, on; Phase 4, `IPB_Plan.md` §6.5; book p 21). In tab 3 after the avenue cards:
+two groups, the side read first (its avenues A to D) and the **other side's avenues over the same area** second (read a
+moment later: its own coding and corridors, about half a second); headings `ipb.pfHead1` / `pfHead2` (the book leaves them
+blank; blank = En / Own by the side). Pure engine `GroundGuideIpbProforma.ts` (`proforma`, `PF_ROWS`).
+
+| Row | Measured on each avenue | Better for its user |
+| --- | --- | --- |
+| a Obsn & fire | share under the other side's direct fire (the fire corridors) | less |
+| b Cover & concealment | trees, orchards and built-up ground in a band one avenue wide | more |
+| c Obstacles / vertical | narrows plus water lines crossed | fewer |
+| d Important tactical Gr | ITG candidates within 1 km | you judge (who holds them) |
+| e Manoeuvre space | corridors side by side, then the median free width | more |
+| f Ease of movement | GO share (the shorter wins a tie) | more |
+| g NBC effects | (not in the reading) | you judge |
+| h Rds & LOC | share with a metalled road within 300 m | more |
+| h Sigs | share of 3 km legs a 3 m mast sees along (on the ground alone) | more |
+| j Surveillance | share the other side may watch from its Posns | less |
+| k Unconventional warfare | built-up share of the band | you judge |
+| l Others | | you judge |
+
+Suggested signs (E): within the group, at or better than the median +, worse −; all equal, one avenue, or no data
+(no Posns of the other side): ?. The user's click cycles the sign: +, −, ?, back to the suggestion (solid border: yours,
+dashed: suggested; kept until the area changes). Totals are + less −, the lead named in the caption, with the book's note 2
+(the weights cannot be quantified: a rough guide). The table fits one Detail column (short row labels, the full label and
+what was measured on hover). Copy as Text gives every row with its measure. The avenues keep their letters (by the going);
+the proforma does not re-letter them.
+
+Checks: `node tools/ipb-test/fire.mjs` (21: coverage on a plain against the range, out-of-range gaps, dead ground behind a
+ridge, screening by a wood, the nearest Posn (308 m with a 300 m reach out of range all along, 250 m in range, none),
+watch beyond range, killing areas, cost, and the proforma's signs, user signs, one avenue, no
+Posns, two groups). Verified in the app (3D): four own Posns, three enemy avenues, the map colouring and rings, tab 1's
+tiles, the proforma with both groups and a flipped sign, rail line 1, Copy as Text.
+
+**IPB rates, event template and decision support** (`extended.ipb.decision`, on; added 2026-11-14, Phase 5 of
+`IPB_Plan.md` §6.6, §6.7). Pure engine `GroundGuideIpbDecision.ts` (`decide`, `decRatesFrom`, `hPlus`, `annexA`).
+- **Time along each avenue** at the book's rates (p 18; `IpbDoctrine.json rates`): vehicles (armour, mech) GO 24 / 24,
+  SLOW-GO 16 / 8, NO-GO 1 / 0.1 km/h day / night; foot 4 / 3.2, 2.4 / 1.6, 1 / 0.1. The going under the centre line every
+  100 m from the coding. From the enemy's start: the **Threat marker's place** (the way in to each avenue at GO), else the
+  area's edge (times as H+ from his arrival). Two times everywhere, so the defender never counts on him being slower:
+  **earliest** at day rates with ground the book could not assess taken as GO, **latest** at night rates with it as SLOW-GO.
+- **NAIs** (event template, pp 23-28): where each avenue enters the area, its narrows and crossings, and where avenues meet
+  (crossover), numbered by the earliest time, each with what shows there and its earliest and latest time.
+- **TAIs** (pp 28-29): on the avenues, crossings (denied, he needs bridging) and narrows under a corridor's width
+  (blocked, he cannot pass deployed); two per avenue at most, numbered by time.
+- **Decision points**: for each TAI where he is still 2 h short of it at his earliest (p 30; `IpbDoctrine
+  decisionPoints.interdict.leadH`) plus the own action's time (`ipb.reactionH`); a **counter-attack DP** per avenue where he
+  is the counter-attack's time short of the depth localities (the rearmost own Posn within 3 km of the avenue): Coy 30 min
+  for a Bn reading, Bn 1 h for a Bde HQ, none for a Div HQ (OoW Vol I p 54: it goes in while the depth still holds). A DP
+  that falls before he enters the area lies **beyond it**, on the way in from the Threat marker (or at the edge), with its
+  distance: a matter for the higher HQ's NAIs; one before he starts is "before H, on the plan". With H hour set
+  (`ipb.hHour`, "HH:MM") DPs get clock times. Own avenues (Read for: Attack) get the times only.
+- **Tab 5 Decision** (key **5**; 4 is kept for Air): the answer (the first DP, when and where), facts (TAIs, the
+  counter-attack DP, NAIs, rates, times from), and tiles *Time Ladder* (each avenue's earliest solid and latest dashed down
+  its length, the area read shaded, night shaded with H hour, NAI rings, TAI squares, DP stars), *Decision Support · In the
+  Area* (avenues, NAIs, TAIs, DPs; one beyond the area with its distance), *Decisions* (DP, when and where, the decision
+  falling due: a suggestion, the commander's), *Event Matrix* (NAI, avenue, what shows, earliest, latest), *Rates & Times*,
+  *Create on Map* (NAIs; TAIs & DPs; both).
+- **Map** (`ipb.mapDecision`): NAIs as dashed rings, TAIs as gold boxes along the avenue, DPs as numbered stars (gold to
+  interdict, blue for the counter-attack); a DP beyond the area labelled with its distance. **Rail** line 5: the first DP
+  and TAI; its map draws the TAIs and DPs. **Copy as Text**: the 5 Decision paragraph (times, NAIs, TAIs, DPs).
+- **Create on Map** (`createIpbOverlay('event' | 'dst' | 'decision')`): Named Area of Interest `25120200` (round areas),
+  Tgt Area of Interest `25120201` (boxes along the avenue), Decision Pt `25130700` (points), friend, numbered; one undo step.
+
+**Annex A weather** (book pp 19-20; `annexA`). For the area's middle and the month: visibility from the bundle's GSOD grid
+(monthly mean, % of days under 2 km, fog; coded on the mean, the shares said beside it), temperature (heat limits on the
+mean maximum, cold on the mean minimum, NBC on the mean), wind chill (at the mean minimum and wind), surface wind and wind
+below 16 m (the monthly mean, not gusts) from WorldClim; rainfall rate and snow depth are not in the bundle (the month's
+rain is said); ceiling, cloud, humidity and stability: "get from Met". Tiles *Wx for Fire* in tab 1 (anti-tank, fire
+support, recce rows) and *Wx for Mnvr* in tab 3 (tracked, dismounted, NBC rows); read again when a weather grid arrives.
+
+Checks: `node tools/ipb-test/decision.mjs` (23: the book's rates, GO / SLOW-GO / unassessed stretches, the threat's lead,
+NAIs, TAIs, a DP beyond the area, one before H, the reaction time, the counter-attack DP, foot rates, and Annex A rows).
+Verified in the app (3D): threat placed 19 km out, three avenues, 7 NAIs, 2 TAIs, 4 DPs (two before H, two counter-attack),
+key 5, every tab 5 tile, the map stars, rail line 5, Create on Map (9 NAIs, 2 TAIs, 4 DPs, one undo step), Annex A with the
+November visibility (mean 3.5 km, 15 % of days under 2 km) once the grid arrived.
+
+**IPB air avenues, LZ / DZ and AD sites** (`extended.ipb.air`, on; added 2026-11-14, Phase 6 of `IPB_Plan.md` §6.4; book
+s2 para 1 pp 5-6, Fig 1 p 8). With the avenues read, the same area is read for low-level flight. Pure engine
+`GroundGuideIpbAir.ts` (`airIpb`, `airRulesFrom`; no DOM), tab 4 `GroundGuideIpbAirView.ts`, drawn in the avenues' layer
+(`ms-ground-guide-ipb-apch`). Figures in `IpbDoctrine.json air`: the book's factors (D), flight heights FM 3-04.203, landing
+point sizes, slope and the 10 : 1 approach FM 3-21.38, personnel DZ DAFMAN 13-217, AD reach for MANPADS / 35 mm (all T: US
+public figures until Army Aviation and AD give ours), mountain helipads 4° (D, MW p 256), the enemy's heliborne use and OPs
+over landing areas (D, OoW Vol I pp 61-63, MW p 258), the cost weights (E).
+
+- **Whose.** Defence (Read for): the enemy's air avenues into own depth, his likely LZs behind the spot (from 1 km forward
+  of it to the rear edge), watched by own Posns (and the symbol being placed); own AD sites from 6 km forward of the spot.
+  Own attack: own air avenues to the objective (the Threat marker's place, else the middle of the enemy's side), LZs from
+  2 km beyond the spot, watched by the enemy's Posns and the Threat marker; the enemy's likely AD sites beyond the spot.
+- **Air avenues.** Least cost on a 150 m grid from the area's start edge to LZ 1, 2 and 3 (else the objective): each cell
+  costs its length, + 4 x the chance the other side sees an aircraft at the **top** of the band (`analyseSight` fans from
+  each eye, 6 km; never understated), + 2 within 300 m of a mast, wind tower, chimney, overhead tank or watch tower (feature
+  heights where recorded, else 40 / 30 / 40 / 20 / 15 m, E), + 2 on a power line (feature line or the power line corridor
+  class), + 1 x the built-up share, + 1 where the elevation is missing; x 0.85 in a valley (15 m below the ground 1 km
+  round) and x 0.85 along a river, canal, railway or numbered / MSR road within 30° of the flight. A way that shares more
+  than 60 % of its length (within 500 m) with one kept is worked again round it; none longer than 1.6 x the best. Each has
+  its length, % in view, the features followed (1 km or more, by name), valleys, wires crossed, obstructions near, BUA.
+- **Flight profile** of each: ground, the highest obstacle beside it (trees 10-15 m, BUA 8 m, power line corridors 20 m,
+  E), the band above it, red where in view, crests.
+- **LZ.** `ipb.lzPoints` landing points of size `ipb.lzClass` (FM 3-21.38: 25 / 35 / 50 / 80 / 100 / 125 m; default 4 of
+  size 4 = Mi-17 class, a 160 m square) on ground a helicopter can land on (open, crops, bare, salt pan, dry bed, gentle
+  slope, irrigated crops, tracks; snow, sand, rock and 7-15° ground with a caution), slope the 90th percentile of the 30 m
+  cells: 7° (4° where the ground 1 km round rises 200 m or more, MW p 256), up to 15° with a caution; at least one of 8
+  directions clear by **10 : 1** (an obstacle h high at least 10 h from the edge, measured from the square's edge and taken
+  half a cell short). No room for all the points: single landing points, said so. Existing helipads, airfields, air bases,
+  landing strips and grounds, airports, runways and road runways in the zone come first (placed on the site, cautioned: size
+  and state not recorded). Ranked by concealment (the chance the other side sees a landed helicopter, 4 m, crops, trees and
+  buildings as a chance: In view 0.5 or more, May be seen 0.2, Hidden), nearness to the objective, slope, approaches; a slope
+  over the limit always ranks below those within it. 1.2 km apart, five kept. For the enemy's LZs, an **OP** over each: the
+  highest ground within 3 km that sees it (terrain and solid obstacles, so never overstated).
+- **DZ.** 550 m square (one jumper, T), 90 % clear, no water, the same slope rule; three, 1.5 km apart.
+- **AD sites.** Every 500 m on the defender's side, scored on the ground's line of sight (trees and buildings solid) to an
+  aircraft at the **bottom** of the band (5 m at least: AD coverage never overstated) within 5 km, every 400 m of each air
+  avenue: seen length, **long-range** (the flight within 30° of straight at the site, beyond 40 % of the range), **flank**
+  (60-120° across, within 60 %), **bottom** (the site 20 m or more below a crest the flight crosses). Four kept, 1.5 km
+  apart.
+- **Tab 4 Air** (key 4; Decision moved to 5 when the tab was planned): the answer (Air 1 → LZ n, length, % in view), facts;
+  tiles *Air Apchs, LZ / DZ, AD Sites* (the area with the coding, air avenues, LZ / DZ squares, AD reach, OPs, masts),
+  *Flight Profile*, *Air Apchs Ranked*, *LZ Ranked* (with cautions, clear approach directions, the OP), *DZ Ranked*, *AD
+  Sites*, *Wx for Air* (Annex A airborne, rotary wing and AD rows), *Read As*, *Create on Map*. Rail line 4 (`XH`): the
+  leading air avenue and AD 1. Copy as Text: section *4 Air*.
+- **Map** (`ipb.mapAir`): air avenues magenta (enemy) or sky blue (own), long dashes with a chevron at the end, LZ / DZ
+  squares (DZ dashed), AD sites as the AD dome with a dotted 5 km ring, OPs over the enemy's LZs (top three) with a line to
+  each, masts and towers as small spikes; labels Air n, LZ / DZ n, AD n.
+- **Create on Map** (tab 4, `guide.createIpbOverlay('air')`, Test panel *Create IPB Air on Map*): air avenues as Low Level
+  Transit Routes (25170200, 600 m wide, E), LZ (25242304) and DZ (25060000) squares, the AD sites' reach as SHORAD engagement
+  zones (25171900), OPs (25160100) over the enemy's LZs; the air avenues and LZs in the reading side's colour, AD and OPs in
+  the other side's; one undo step, made again replaces.
+- **Settings**: `air`, `mapAir`, `airBand` (`noe` 0-8 m, `contour` 8-24 m default, `low` 24-61 m above obstacles), `lzClass`
+  (1-6), `lzPoints` (1-12). API `guide.ipbAir()`.
+- **Not read yet**: air space control measures on the map (ROZ, gun-target lines), wind (both approach directions are
+  listed), the enemy's air defence from map symbols.
+
+Cost: 50-350 ms per area (one eye or none: about 120 ms; the Threat marker as an eye with a Bde area: 355 ms), with the
+fire, once per area or Posn change; nothing while F is off. Checks: `node tools/ipb-test/air.mjs` (29: an LZ on a plain,
+its size, the way to it, no eyes, a DZ, a ridge that hides the flight, a mast avoided, a canal followed, a power line
+counted, LZ on a terrace in a 10° slope, slope cautions and ranking, 10 : 1 in a clearing (500 m passes, 240 m only a single
+point, 150 m none), mountains 4°, an existing helipad first, the OP over an enemy LZ, AD seen length and shots, AD only on
+the defender's side, a bottom shot below a ridge, in view / hidden behind a hill, a Bde area in time, alternatives).
+Verified in the app: Phillora (defence and own attack, 2D and 3D: three air avenues along the Degh Nala, five LZs, three
+DZs, four AD sites on own side), Muzaffarabad (valleys 47-67 %, bottom shots, single landing points with the 4° rule), tab 4
+both pages, rail line 4, Create on Map (3 routes, 5 LZ, 3 DZ, 4 SHORAD zones, 4 OPs; one undo), F off clears it.
+
+**IPB situation templates** (`extended.ipb.template`, `auto`; added 2026-11-14, Phase 7 of `IPB_Plan.md` §6.7; book s3 para 2
+pp 22-23, 32). A doctrinal template (the enemy's deployment without terrain or weather) laid along the avenues of the area
+read and checked on the ground: "the possible absurdities of tanks in swamps and artillery on hilltops ... do not adjust
+known positions" (p 23). Pure engine `GroundGuideIpbTemplate.ts` (`layTemplate`, `pickTemplate`), tab 5 page 2
+`GroundGuideIpbTemplateView.ts`, drawn in the avenues' layer. Library `MS/Data/IpbTemplates.json` (figures only, with
+pages; a handling note: KYE-2019 is SECRET):
+
+| Template | Fits (Auto) | Elements | Sources |
+| --- | --- | --- | --- |
+| `idp-bde` IDP op, Bde CC | Defence, Bde HQ | Obj 1 the position, Obj 2 the depth, FUP 1.1 km short (IBB p 203), two assault Bn gps 600 m either side, armour regt gp 3 km back, Sp Attk Bn gp on Apch 2, follow-up Bn gp 4.5 km, assy area 7 km (IBB p 173: 1-5 mi), Fd Regt 9 km and 2 km off the axis, the crossing site | KYE p 69, p 216; IBB pp 173, 203; OoW II s6 |
+| `dsf-div` DSF op, Div-size BG | Defence, Div HQ | Bde CCs on Apch 1 and 2, Armd Bde, reserve Bde CC, two assy areas, Div Arty, objectives, crossing | KYE pp 68, 74, 216 |
+| `strike-bh` Strike Corps bridgehead | named only | Br H 1 and 2 at the first crossing of Apch 1 and 2 (6 x 8 km boxes, NO-GO share said), RAPID and Inf Div 4 km short, Armd Div 20 km short | OoW II s14; DW pp 10-13; KYE pp 91-92; Fig 7 (unconfirmed) |
+| `mtn-attk` Mtn Div attack | Defence, ground within 5 km rising 400 m or more | Bde on the main axis, Bde outflanking on Apch 2, Mtn Arty | KYE p 217; MW pp 79-84 |
+| `def-bde` Inf Bde defence on an obstacle | Own attack, Bde HQ | two forward Coy localities on the FDL (the first crossing of the leading own avenue beyond the spot, else the Threat marker, else a third of the way out), main def Bn 4 km beyond, depth Bn 7 km, C Pen / C Attk armour 9 km, Fd Regt 11 km | Fig 6 (unconfirmed); KYE pp 216-217, 361 |
+| `def-div` Inf Div / RAPID(D) defence | Own attack, Div HQ | forward Bdes on Apch 1 and 2, depth Bde 10 km, armour reserve 15 km, Div Arty 18 km | KYE pp 216-217; Fig 6 (unconfirmed) |
+
+- **Judging**: armour and mech on the IPB coding for that mover, dismounted on the dismounted coding (each worked out once
+  per area for the template's movers), guns on the mech coding and never high on a hill (in the upper 40 % of ground that
+  rises 30 m or more within 1 km, E). More than a quarter of the footprint NO-GO: moved to the nearest usable ground within
+  3 km (rings outward). An enemy land unit already on the map within 1.5 km takes the place of an element of its kind
+  (armour for tanks, mech or armour for mech, inf or mech for inf, guns for guns) and is never moved. Outside the area read:
+  placed, not judged. Objectives and crossings fixed. A missing Apch 2: placed beside Apch 1, said so; no avenue at all:
+  laid along the threat's direction, said so.
+- **Tab 5 page 2**: *Situation Template* (the area, avenues, doctrine's place as a hollow ring, the ground's as the enemy's
+  diamond with A / M / I / G, a dashed line between, objectives, assy areas, FUP, bridgeheads), *Template Check* (each
+  element: fixed / ok / moved / known / outside / no Gr / no place, with why; hover for its basis and source), *Template
+  Phases* (Indian offensive: mobilisation from M (KYE pp 342-343), Pivot Corps DSF / IDP and Proactive Ops 8-12 IBGs, SZ
+  24-48 h, two lodgements and an 8 x 6 km bridgehead in one night, break-out at first light, advance 24-30 / 25 / 8-10 km a
+  day, 72 h self-contained, 7-10 days; Indian defence: mobilisation, aggressive domination, hold, reserves 4-6 h), *Templates*
+  (Auto, each template, Off; kept in the settings), *Create on Map*. Rail line 5 gets a row *Tpl <name>: n moved*. Copy as
+  Text: in *5 Decision*.
+- **Map** (`ipb.mapTemplate`): the elements as the enemy's diamonds ringed amber when moved, blue when known, a dashed line
+  from doctrine's place; objectives and assy areas as dashed rings, the FUP as a line square to the avenue, bridgehead boxes;
+  labels for objectives and moved / known elements (all with labels `all`).
+- **Create on Map** (`guide.createIpbOverlay('template')`, Test panel *Create IPB Template on Map*): hostile Obj Areas
+  (25151700), FUP (25140302) square to the avenue, Assy Areas (25150200), Bridgehead Lines (25141400) round the boxes, units as
+  their symbols with the echelon (Inf 10121100, MIB 10121102, Armr 10120500, Fd Arty 10130301); one undo step, made again
+  replaces.
+- **Unconfirmed**: the Fig 6 and Fig 7 readings (figure images, no text layer) are marked `confirmed: false` in the library
+  and said in the Templates tile until the user confirms them. Templates are rough approximations, not fact (p 32).
+
+Checks: `node tools/ipb-test/template.mjs` (27: doctrinal places on open ground, the FUP distance, the assault Bn gps either
+side, the Sp Attk on Apch 2, fixed objectives, no crossing, tanks out of a swamp to GO with the inf left where it is, guns
+off a hill, a known symbol kept and only for its kind, a missing Apch 2, the crossing site, a 6 x 8 km bridgehead with its
+NO-GO share, the break-out force outside the area, a defence template beyond the FDL, the Auto picks, unconfirmed flags,
+sources, time). Verified in the app: Phillora (all fit), Lahore (the armour regt moved 1.8 km NW off 63 % NO-GO built-up
+ground; tab 5 page 2 in 3D; Create on Map 10 symbols in 2D, one undo), Muzaffarabad (the Mtn Div template, the guns moved
+750 m off 96 % NO-GO slopes).
 
 **Copy as Text** (`extendedText()` in `GroundGuideExtendedView.ts`). With the Extended View on, the Detail's Copy as Text
 gives the GROTBC brief, then the Extended View's lines for orders: the head (position and height, month and light, the
@@ -1448,6 +1877,7 @@ is ready, loading or unavailable.
 
 **Keys** while the guide is on (handled by the guide itself, listed in the harness's Show Shortcuts and the Legend tab):
 **V** Gr Scope rail (any time) · **Shift+V** its Spot / AOR scale (in AOR, **D** the approach sheets) · **D** Ground Detail, **G R O T B C** its tabs, **K** its Legend, **Esc** closes it ·
+**F** Extended View (with it on: **1-5** its tabs, **[ ]** turn the threat, **J** better Posn, **X** the en's / your options) ·
 while drawing **S** Quick Fix, **P** change the mode, **H** shrink the cursor card to a chip, **Shift**-click to place
 against an Enforce refusal.
 

@@ -1,0 +1,259 @@
+{
+  "version": 1,
+  "status": "Rules from the old Mov Plan code (O) checked against the SO's Handbook 2019 Sec 9 and Staff Duties in the Field Vol II Section 43/44 (R); figures marked E are proposals for the rule owner to correct.",
+  "updated": "2026-11-13",
+  "basisKey": {
+    "R": "Rule or figure from the SO's Handbook (2019) Sec 9 Mov or Staff Duties in the Field Vol II (Rd Mov / Rail Mov)",
+    "O": "Rule or default of the old Mov Plan code (Material/movplan: Rd Mov, Mov & Assy, DI Mov, Rly Mov, En Mov)",
+    "E": "Estimate / proposal to correct"
+  },
+  "sources": [
+    { "name": "SO's Handbook (2019) Sec 9 Mov: Rd Mov Calcs (901-902), Specimen Mov Tables (903-905), Planning Table (906-907), Mov Schedule (908), Mov Planning Graph (909), Mov Planning Data, Rail (910-913), Mil Load Cl (916)", "dataDate": "2019" },
+    { "name": "Staff Duties in the Field Vol II Operations: Road Movement (14.1401-14.1428), Rail Movement (14.1439-14.1448), Annex D to Chapter 7 (induction matrix), Mov Plan Appx I to Annex A to Section 6 (rail data, trains req)", "dataDate": "in Material/Literature" },
+    { "name": "Old Mov Plan code: dimov, enmov, movassy, railmov, rdmov (Material/movplan); rules extracted 2026-11-13", "dataDate": "legacy" }
+  ],
+
+  "light": {
+    "basis": "O",
+    "rule": "First light / last light at the SP on the day of the move. The old code used sunrise / sunset (sun 0.833 degrees below the horizon) in Pakistan time (UTC+5). Civil twilight (6 degrees) and nautical (12 degrees) are offered.",
+    "sunAltDeg": { "sun": -0.833, "civil": -6, "nautical": -12 },
+    "default": "sun",
+    "utcOffsetMin": 300,
+    "note": "Fixes: the old day/night test compared hours and minutes separately (no time counted as day); here day = first light <= time < last light, in minutes."
+  },
+
+  "road": {
+    "tpp": {
+      "basis": "R",
+      "rule": "TPP (min) = vehs x 60 / flow + 2 min per 25 vehs or part thereof (extra time allowance within a serial); flow (vph) = density (vpkm) x average speed (kmph). Total TPP of a column of several serials = sum of TPPs + gaps.",
+      "extraMin": 2,
+      "extraPerVehs": 25,
+      "extra": "part",
+      "extraOptions": { "part": "2 min per 25 vehs or part thereof (SD Vol II 14.1402; graph example 318 vehs = 26 min)", "prorata": "2 / 25 min per vehicle (old code: N x 2/25)" },
+      "round": "ceil"
+    },
+    "columnLength": { "basis": "R", "rule": "Length of column (approx) = TPP x average speed (same unit of time)." },
+    "densityChange": { "basis": "R", "rule": "Time of halt for changing to night density = Day TPP - Ni TPP + halt required for the tail. The head halts at last light while the column closes up." },
+    "speeds": {
+      "basis": "R",
+      "rule": "Average speeds, standard planning figures (kmph, day / night). Commanders may change them for the road and the operation.",
+      "exclTanks": { "good": [40, 30], "hilly": [30, 20], "bad": [30, 20] },
+      "allTypes": { "good": [25, 20], "bad": [20, 15], "hilly": [20, 15] },
+      "labels": { "good": "Good Rds", "hilly": "Winding / Hilly Rds, Good Surface", "bad": "Bad Rds" },
+      "allTypesNote": "Columns including all types of vehicles (tanks, transporters etc). Hilly for all types is not in the table: the bad-road figure is used (E)."
+    },
+    "density": {
+      "basis": "O",
+      "rule": "Vehicles per km by day and by night. Specimen mov tables: day 20, night 30 vpkm (R).",
+      "byKind": {
+        "road": { "day": 20, "night": 40, "both": 25 },
+        "assy": { "day": 20, "night": 40 },
+        "di": { "day": 25, "night": 40 },
+        "enemy": { "day": 20, "night": 30 }
+      },
+      "specimen": { "day": 20, "night": 30 }
+    },
+    "speedByKind": {
+      "basis": "O",
+      "assy": [25, 20],
+      "di": [40, 20],
+      "road": null,
+      "note": "Rd Mov used the slowest vehicle's speed for day and night; here the R table by road and column type gives it."
+    },
+    "halts": {
+      "basis": "R",
+      "rule": "Short halts when ordered: 10 min every 2 hours, normally ten minutes after each 110 minutes running. All columns following the same itinerary stop at the same time (clock mode). Long halts are specifically ordered (cover from air, refuelling): the old code made every third short halt a 30 min long halt (O).",
+      "short": { "runMin": 110, "haltMin": 10 },
+      "long": { "every": 3, "haltMin": 30, "basis": "O" },
+      "clock": { "rule": "Specimen mov table: halts for 10 mins at 10 mins to each odd hour.", "firstAtMin": 50, "everyMin": 120, "haltMin": 10 },
+      "harbourMin": 120,
+      "harbourRule": "Harbour: a concealed area where a unit parks for any period above two hours; below that it is a halting place (R)."
+    },
+    "windows": {
+      "basis": "O",
+      "rule": "Mov type: Ni (last light to first light), Day (first light to last light), Day & Ni (no break). The old Mov & Assy presets were clock times Ni 1800-0500, Day 0500-1800; here the light at the SP is used unless times are given. A column that cannot reach its next halt before the window closes harbours there until the window opens again (old Rd Mov / Mov & Assy).",
+      "clockPresets": { "night": ["18:00", "05:00"], "day": ["05:00", "18:00"] }
+    },
+    "crossing": {
+      "basis": "O",
+      "rule": "Where routes cross or join, the serial of lower priority waits until the other has cleared the point plus 1 min (DI Mov). Priority: corps, then group, then unit, then order of march (the old test needed all three at once; fixed to a strict order). A wait is fed forward: every later point is checked again.",
+      "bufferMin": 1,
+      "joinTolM": 40,
+      "twoWay": true,
+      "twoWayRule": "Serials meeting head-on on a two-way road do not conflict (E); set one-way to make them conflict."
+    },
+    "startDefaults": { "basis": "O", "time": "18:00", "gapMin": 30, "gapRule": "Mov & Assy pre-filled 30 min delay for each further column (from the group start)." },
+    "packet": { "basis": "R", "rule": "Packet: a small group of about four to six vehicles, each not less than 70 m apart.", "vehs": [4, 6], "minGapM": 70 },
+    "space": {
+      "basis": "R",
+      "rule": "An armd div (about 13,128 pers, 576 A and 2,077 B and C vehs) on two axes occupies 144 km by day and 64 km by night on each axis; an armd bde gp needs 12 to 16 map squares for assembly, an armd div 100 to 130.",
+      "assyKm2": {
+        "armd_div": [100, 130],
+        "armd_bde": [12, 16],
+        "inf_div": [80, 110],
+        "inf_bde": [10, 14],
+        "bn": [2, 4],
+        "estimates": "inf_div, inf_bde and bn are E (scaled by vehicles from the armd figures)."
+      }
+    },
+    "di": {
+      "basis": "O",
+      "rule": "De-induction: each unit moves from its peace location (DL) to the SP in its concentration time (summer / winter), then by its route SP to FP. Vehicles = own (integral) + bus + truck (HMT, hired mechanical transport) by arm.",
+      "hmtDefault": { "own": 10, "bus": 7, "trk": 10 },
+      "hmtDefaultNote": "The old form showed 10 / 7 / 10 for every arm (the real per-arm defaults sat in a missing file).",
+      "arms": {
+        "inf": { "label": "Inf", "entity": ["1211"] },
+        "armr": { "label": "Armr", "entity": ["1205", "1206"] },
+        "arty": { "label": "Arty", "entity": ["1303", "1308"] },
+        "ad": { "label": "AD", "entity": ["1301"] },
+        "engrs": { "label": "Engrs", "entity": ["1407"] },
+        "sigs": { "label": "Sigs", "entity": ["1110"] },
+        "eme": { "label": "EME", "entity": ["1636", "1638"] },
+        "asc": { "label": "ASC", "entity": ["1634", "1640", "1641"] },
+        "med": { "label": "Med", "entity": ["1613"] },
+        "hq": { "label": "HQ", "entity": ["1100", "1101"] },
+        "misc": { "label": "Misc", "entity": [] }
+      },
+      "armsBasis": "E: arm by the first four digits of the 2525D entity code."
+    },
+    "mlc": {
+      "basis": "R",
+      "rule": "Military load class (SO's Handbook 916). The heaviest vehicle sets the route's load class.",
+      "items": [
+        { "k": "tank", "label": "Tks", "cl": 50, "note": "T-59 is 40" },
+        { "k": "arv", "label": "ARVs / Dozers", "cl": 50 },
+        { "k": "gun_med_sp", "label": "Gun Med (SP)", "cl": 26 },
+        { "k": "gun_fd_sp", "label": "Gun Fd (SP)", "cl": 20 },
+        { "k": "tptr", "label": "Tk Tptr", "cl": 18 },
+        { "k": "tptr_tk", "label": "Tk Tptr carrying Tk", "cl": 80 },
+        { "k": "gun_tower", "label": "Gun Towers", "cl": 26 },
+        { "k": "trk_tractor_5", "label": "Trk Tractor 5 ton", "cl": 25 },
+        { "k": "trk_10", "label": "Trk 10 ton Cargo", "cl": 24 },
+        { "k": "rec_med", "label": "Rec Veh Med", "cl": 12 },
+        { "k": "trk_25_tlr", "label": "Trk 2.5 ton with Tlr", "cl": 13 },
+        { "k": "trk_25", "label": "Trk 2.5 / 3 ton", "cl": 9 },
+        { "k": "trk_1", "label": "Trk 3/4 / 1 ton", "cl": 5 },
+        { "k": "jeep", "label": "Trk 1/4 ton", "cl": 2 },
+        { "k": "dozer_wh", "label": "Wh Dozer / Grader", "cl": 18 },
+        { "k": "tptr_tractor", "label": "Tptr with Tractor Full Tr", "cl": 40 }
+      ]
+    }
+  },
+
+  "vehicles": {
+    "basis": "E",
+    "rule": "Kinds of vehicle the planner counts: speed group (tracked or not), load class (R table), and how each goes by rail (R rolling-stock capacities). The mapping of a vehicle to a kind is a proposal.",
+    "kinds": {
+      "tank_t": { "label": "Tank, T-series (Al-Khalid, Al-Zarrar, T-80UD, T-85)", "cat": "A", "tracked": true, "mlc": 50, "rail": [["MBFR", 2], ["MBFU", 1]] },
+      "tank_m": { "label": "Tank, M-series", "cat": "A", "tracked": true, "mlc": 50, "rail": [["MBFR", 1], ["MBFU", 1]] },
+      "apc": { "label": "APC / IFV (tracked)", "cat": "A", "tracked": true, "mlc": 13, "rail": [["BKF", 2], ["KF", 1]] },
+      "sp_gun": { "label": "SP Gun (Med / Fd)", "cat": "A", "tracked": true, "mlc": 26, "rail": [["MBFR", 1], ["MBFU", 1]] },
+      "ad_sp": { "label": "AD Gun (SP)", "cat": "A", "tracked": true, "mlc": 20, "rail": [["MBFR", 2]] },
+      "arv": { "label": "ARV / Tk Dozer", "cat": "A", "tracked": true, "mlc": 50, "rail": [["MBFR", 1], ["MBFU", 1]] },
+      "avlb": { "label": "AVLB / Br Layer Tk", "cat": "A", "tracked": true, "mlc": 50, "rail": [["MBFR", 0.5]], "railNote": "One AVLB needs two MBFRs (R)." },
+      "jeep": { "label": "Jeep / Trk 1/4 ton (no tlr)", "cat": "B", "tracked": false, "mlc": 2, "rail": [["KF", 2], ["BKF", 2]] },
+      "jeep_tlr": { "label": "Jeep with Tlr", "cat": "B", "tracked": false, "mlc": 3, "rail": [["BKF", 2], ["KF", 1]] },
+      "trk_1": { "label": "Trk 3/4 / 1 ton (Dodge)", "cat": "B", "tracked": false, "mlc": 5, "rail": [["KF", 1], ["BKF", 1]] },
+      "trk_25": { "label": "Trk 2.5 / 3 ton", "cat": "B", "tracked": false, "mlc": 9, "rail": [["BKF", 1]] },
+      "trk_heavy": { "label": "Trk 5-10 ton / Gun Tower", "cat": "B", "tracked": false, "mlc": 25, "rail": [["BKF", 1]], "railNote": "Not in the rolling-stock table: one per BKF (E)." },
+      "gun_towed": { "label": "Med Gun with Tractor", "cat": "B", "tracked": false, "mlc": 26, "rail": [["BKF", 1]] },
+      "lt_gun": { "label": "Lt Gun 14.5 / 37 mm", "cat": "B", "tracked": false, "mlc": 3, "rail": [["KF", 1]] },
+      "bus": { "label": "Bus (HMT)", "cat": "B", "tracked": false, "mlc": 13, "rail": [["BKF", 1]], "railNote": "E: goes by road as a rule." },
+      "tptr": { "label": "Tk Transporter", "cat": "B", "tracked": false, "mlc": 18, "rail": [["MBFU", 1]], "railNote": "E: goes by road as a rule." },
+      "grader": { "label": "Grader / Wh Dozer", "cat": "C", "tracked": false, "mlc": 18, "rail": [["BKF", 1]] },
+      "crane": { "label": "Crane / Tractor (C Veh)", "cat": "C", "tracked": true, "mlc": 18, "rail": [["MBFU", 1]] }
+    }
+  },
+
+  "rail": {
+    "basis": "R",
+    "speeds": { "main": 32, "branch": 24, "rule": "Main line 20 mph / 32 kmph; branch line 15 mph / 24 kmph." },
+    "intervals": {
+      "stationMin": 90,
+      "runningMin": 30,
+      "rule": "1 hr 30 min between trains leaving or arriving at the same station (marshalling, loading / unloading, clearance); running trains on the same line at least 30 min apart. When the time between trains is less than that needed to entrain, use several stations or sidings (SD)."
+    },
+    "placing": { "afterLastLightMin": 45, "rule": "Rolling stock cannot be placed at the siding earlier than 45 min after last light (security)." },
+    "mobRamp": { "dayMin": 30, "niMin": 45, "rule": "One per A vehicle train, carried in a KF; a crew of 15 assembles or dismantles it in 30 min by day, 45 by night; loading or unloading on a live line takes 30 / 45 min longer than on a loop line." },
+    "train": {
+      "maxC": 72,
+      "usableC": 64,
+      "maxTons": 2000,
+      "tonsInclEngines": false,
+      "maxMbfrDouble": 18,
+      "rule": "Length not over 72 C units excluding engines (C unit about 18 ft; longer trains do not fit sidings and loops); weight within 2,000 tons; usable C units about 64-65; a purely tank train cannot take more than 18 MBFRs double loaded.",
+      "weightNote": "The Handbook gives 2,000 tons without saying whether engines count; Staff Duties says including engines, which would allow only 17 double-loaded MBFRs against its own 18. Engines are left out so the 18 holds (tonsInclEngines false); set it true to include them.",
+      "oldCode": "O: total C under 70 including the fixed stock (61 usable), no weight limit."
+    },
+    "stock": {
+      "MBFR": { "label": "MBFR (Flat for Tr Vehs)", "c": 3, "tons": [64, 96], "cap": "2 T-series tks / 1 M-series tk / 1 SP gun / 2 AD SP guns / 1 dozer / 1 ARV; AVLB needs 2" },
+      "MBFU": { "label": "MBFU (Well Type Flat)", "c": 3, "tons": [64, 64], "cap": "1 crane / tractor / dozer / ARV / any tk" },
+      "BKF": { "label": "BKF (Long Open Wagon)", "c": 2, "tons": [40, 40], "cap": "2 APCs / 2 jeeps with tlrs / 1 trk 2.5 ton / 1 grader / 1 med gun with tractor" },
+      "KF": { "label": "KF (Short Open Wagon)", "c": 1, "tons": [30, 30], "cap": "1 APC / 2 jeeps without tlrs or 1 with tlr / dodge / one 14.5 or 37 mm gun" },
+      "C": { "label": "C (Covered Wagon)", "c": 1, "tons": [32, 32], "cap": "20 tons of stores", "storesTons": 20 },
+      "TLR": { "label": "TLR / SLR (Passenger Coach)", "c": 3, "tons": [32, 32], "cap": "60-75 passengers (SD); 30 passengers and 3.5 tons baggage (Hbk)", "pax": 60 },
+      "Brake": { "label": "Brake Van", "c": 1, "tons": [10, 10], "cap": "conductor guard" },
+      "Engine": { "label": "Engine", "c": 0, "tons": [100, 100], "cap": "-" }
+    },
+    "essential": {
+      "basis": "R",
+      "rule": "Standard components of a vehicle train: engines two (the second for emergency unloading over a mob ramp), one TLR / SLR for crews and baggage, a KF for the mob ramp and two KFs for AD (2 x 12.7 AA MG, one at each end), a kitchen van or covered wagon, a brake van. Old code: 8 C units and 364 tons (O, same list).",
+      "items": [
+        { "role": "Engine", "stock": "Engine" },
+        { "role": "Brake Van", "stock": "Brake" },
+        { "role": "AD", "stock": "KF" },
+        { "role": "Kitchen", "stock": "C" },
+        { "role": "Stores / Crews", "stock": "TLR" },
+        { "role": "Mob Ramp", "stock": "KF" },
+        { "role": "AD", "stock": "KF" },
+        { "role": "Engine", "stock": "Engine" }
+      ]
+    },
+    "marshalling": {
+      "basis": "R",
+      "departure": ["Engine", "Brake", "AD", "Kitchen", "Stores", "BKF/KF", "MBFR/MBFU", "Mob Ramp", "AD", "Engine"],
+      "rule": "Tanks face forward for quick unloading over a mob ramp without shunting; tanks cannot go over BKFs / KFs but B vehs can drive over MBFRs / MBFUs; vehicles cannot be loaded or unloaded in reverse."
+    },
+    "timesMin": {
+      "basis": "E",
+      "rule": "Times per train the old En Mov form asked for but never used; now used. Loading and unloading are per train at a station with end ramps; loading + marshalling fit the 1 h 30 min gap between trains at a station (R), so one siding gives a train every 90 min.",
+      "loading": 60,
+      "unloading": 60,
+      "marshalling": 30,
+      "sidings": 1,
+      "transShipment": 0,
+      "gaugeChange": 0,
+      "unforeseen": 30,
+      "crossings": 0
+    },
+    "halts": { "basis": "O", "rule": "En Mov: a halt every 8 h of running for 60 min (crew, water).", "everyMin": 480, "haltMin": 60 },
+    "trainsPerFmn": {
+      "basis": "R",
+      "armd_div": { "whole": 55, "bVehsByRoad": 25, "rule": "An armd div needs 25 trains when B vehs fully loaded move by road, 55 when the whole div moves by rail." }
+    },
+    "circuity": { "basis": "E", "factor": 1.25, "rule": "Without a rail route, the distance between stations is the straight line x 1.25." }
+  },
+
+  "enemy": {
+    "basis": "E",
+    "rule": "Enemy formations move by rail from their peace stations to detraining stations near the border, or by road. Trains per formation are planning estimates (the old file with them is missing) except the armd div (R).",
+    "trainsByType": {
+      "armd_div": { "label": "Armd Div", "trains": 55, "basis": "R" },
+      "mech_div": { "label": "Mech / RAPID Div", "trains": 48 },
+      "inf_div": { "label": "Inf Div", "trains": 36 },
+      "mtn_div": { "label": "Mtn Div", "trains": 24 },
+      "arty_div": { "label": "Arty Div", "trains": 30 },
+      "armd_bde": { "label": "Armd Bde", "trains": 16 },
+      "mech_bde": { "label": "Mech Bde", "trains": 12 },
+      "inf_bde": { "label": "Inf Bde", "trains": 7 },
+      "arty_bde": { "label": "Arty Bde", "trains": 9 },
+      "ad_bde": { "label": "AD Bde", "trains": 6 },
+      "engr_bde": { "label": "Engr Bde", "trains": 6 },
+      "armd_regt": { "label": "Armd Regt", "trains": 4 },
+      "inf_bn": { "label": "Inf Bn", "trains": 1 }
+    },
+    "byRoad": { "speed": [40, 30], "density": [20, 30], "vehsByType": { "armd_div": 2653, "inf_div": 2600, "inf_bde": 450, "armd_bde": 700 }, "vehsBasis": "armd div R (576 A + 2,077 B and C); the rest E" },
+    "readyAfterMin": 180,
+    "readyRule": "E: a formation counts as inducted (available in the zone) 3 h after its last train detrains or its tail closes in."
+  }
+}

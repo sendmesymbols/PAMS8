@@ -98,13 +98,26 @@ import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
 import { checkSpacing, echelonCodeOf, frontBlocks, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
 import { GroundGuideIndicators } from './GroundGuideIndicators';
-import { mPerPx, mercToPx, weaponOf, type OcokaGrid } from './GroundGuideOcoka';
+import { buildGridRect, mPerPx, mercToPx, pxToMerc, sightTables, sightTo, visibilityAt, weaponOf, type OcokaGrid } from './GroundGuideOcoka';
+import { IPB, codeIpb, ipbMoverOf, ipbReasonsAt, ipbRulesFrom, ipbSummaryText, type IpbCoding, type IpbMover, type IpbReason, type IpbStats } from './GroundGuideIpb';
+import { annexA, decide, decRatesFrom, type DecAaIn, type DecCls } from './GroundGuideIpbDecision';
+import { GroundGuideIpbMap } from './GroundGuideIpbMap';
+import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, simplifyLine, type IpbFrame } from './GroundGuideIpbCorridors';
+import { ipbAreas } from './GroundGuideIpbShapes';
+import { fireCoverage } from './GroundGuideIpbFire';
+import { pfKey, proforma, type PfGroupIn, type PfMeasures, type PfSign } from './GroundGuideIpbProforma';
+import { GroundGuideIpbApchMap } from './GroundGuideIpbApchMap';
+import { airIpb, airRulesFrom, type AirExisting, type AirLine, type AirLz, type AirObstruction } from './GroundGuideIpbAir';
+import { layTemplate, pickTemplate, templatesFrom, tplRulesFrom, type TplAa, type TplMover } from './GroundGuideIpbTemplate';
+import IPB_DOCTRINE from '../../Data/IpbDoctrine.json';
+import IPB_TEMPLATES from '../../Data/IpbTemplates.json';
 import { GroundGuideOcokaMap } from './GroundGuideOcokaMap';
-import { DEFAULT_FRONTAGE_M, OCOKA_EYES, OCOKA_THREATS, OcokaLive, OcokaVisibility, ocokaPlan, ocokaSight, ocokaViewshed, readOcoka, type OcokaMapArgs } from './GroundGuideOcokaRead';
-import { EXT_TABS, extKey, extScopeText, extendedText, isExtTab } from './GroundGuideExtendedView';
+import { DEFAULT_FRONTAGE_M, OCOKA_DOCTRINE, OCOKA_EYES, OCOKA_THREATS, OcokaLive, OcokaVisibility, ocokaPlan, ocokaSight, ocokaViewshed, readOcoka, resolveThreat, type OcokaMapArgs } from './GroundGuideOcokaRead';
+import { EXT_TABS, EXT_TAB_KEY, extKey, extScopeText, extendedText, isExtTab } from './GroundGuideExtendedView';
 import { GroundGuideThreat } from './GroundGuideThreat';
+import { GroundGuideKeyNotice, type KeyNoticeContent, type KeyNoticeKey } from './GroundGuideKeyNotice';
 import { catalogKey } from './GroundGuideSpeed';
-import type { GroundGuideOcoka, OcokaMapPlan, OcokaMapSight, OcokaThreatMode } from './GroundGuideTypes';
+import type { GroundGuideOcoka, IpbApchAa, IpbAirView, IpbAirZone, IpbApchView, IpbDecisionView, IpbFireView, IpbTemplateView, IpbWxView, OcokaMapPlan, OcokaMapSight, OcokaThreatMode } from './GroundGuideTypes';
 import { GroundGuideScope, type ScopeFrame, type ScopeSource } from './GroundGuideScope';
 import { aorInputKey, buildAorGrid, readAor, type AorClassTables, type AorInput, type AorReading, type AorSide } from './GroundGuideAor';
 import { aorText, type AorFrame } from './GroundGuideScopeAor';
@@ -269,6 +282,9 @@ function severity(v: GroundGuideVerdict): number {
 }
 
 /** SIDC of an already-placed graphic. */
+/** 2525D echelon codes (SIDC digits 9-10) in the short forms the cards use. */
+const ECH_SHORT: Record<string, string> = { '11': 'Team', '12': 'Sqd', '13': 'Sec', '14': 'Pl', '15': 'Coy', '16': 'Bn', '17': 'Regt', '18': 'Bde', '21': 'Div', '22': 'Corps', '23': 'Army', '24': 'Army Gp', '25': 'Theatre', '26': 'Comd' };
+
 function graphicSidc(g: any): string | null {
   const a = g?.attributes;
   return a?.drawEssentials?.SIDC || a?.drawEssentials?.AMPLIFIER?.SIDC || a?.sidc || a?.SIDC || null;
@@ -325,6 +341,8 @@ export default class GroundGuide {
       if (isExtTab(t)) this._refreshLive(); // the viewshed picture is only traced for the tab that draws it
     },
     extended: (on) => this.setExtended(on), // the Detail's F tab
+    // Whose options, in the Detail's key bar (user, 2026-11-14: moved there from tab 3 to save space).
+    readFor: { get: () => this._opts.extended.ipb.readFor, set: (r) => this.toggleReadFor(r) },
     opacity: (v) => {
       this.setOptions({ overlay: { ...this._opts.overlay, opacity: v } });
       setSetting(['groundGuide', 'overlay', 'opacity'], v);
@@ -333,6 +351,8 @@ export default class GroundGuide {
   });
   /** True while the Ground Detail is open (`isDetailOpen`; the older name `isBriefOpen` still works). */
   private _briefOpen = false;
+  /** The key notice at the foot of the screen (`card.keyNotice`): a key's new mode, and the keys that work in it. */
+  private _keyNotice = new GroundGuideKeyNotice();
   /**
    * The Extended View (F, user 2026-11-12): on or off. Never kept in the settings: it starts off, F turns it on and off,
    * and it goes off with the guide (`disable`), so nothing below is worked out unless it was asked for.
@@ -344,6 +364,15 @@ export default class GroundGuide {
   private _extKind: string | null = null;
   /** This draw ended in a placement (`afterPlace`), not a cancel. */
   private _placedThisDraw = false;
+  /**
+   * The symbol the Extended View holds on while nothing is being placed: one selected (SymbolEngine passes the selection).
+   * A drop no longer holds it (user, 2026-11-14: "when I drop symbol, approaches and other F elements on map, should
+   * vanish away"): the products leave the map with the draw and come back with the next one. Its map products and the IPB
+   * reading stay still on it until the next draw moves on the map, another symbol is selected or F closes.
+   */
+  private _extPin: { graphic: any; at: MercXY; sidc: string | null; profile: GroundGuideProfile; frontageM: number } | null = null;
+  private _extPinTries = 0;
+  private _extPinTimer: ReturnType<typeof setTimeout> | null = null;
   private _extCancelTimer: ReturnType<typeof setTimeout> | null = null;
   /** Extended View: the ground the live reading runs on, the last reading, the month's visibility grid, the threat marker. */
   private _extLive = new OcokaLive();
@@ -360,6 +389,50 @@ export default class GroundGuide {
   private _threatHandle: { remove(): void } | null = null;
   /** The Extended View on the map: the layer, what the last live reading ran on, and the products worked out for it. */
   private _extMap = new GroundGuideOcokaMap(() => this._getView?.());
+  /** The IPB coding on the map (extended.overlay: ipb), its own grid of tiles, rules and the last coding. */
+  private _ipbMap = new GroundGuideIpbMap(() => this._getView?.());
+  private _ipbLive = new OcokaLive();
+  private _ipbRules = ipbRulesFrom(IPB_DOCTRINE);
+  private _ipbLast: { key: string; grid: OcokaGrid; coding: IpbCoding; centre: MercXY } | null = null;
+  /**
+   * The IPB avenues of approach over the area read (extended.ipb.apchs, IPB_Plan.md §6.2): where they are wanted (the spot
+   * and its symbol), the reading with the coding it was made from, and the timer that works it out once per area.
+   */
+  private _apchMap = new GroundGuideIpbApchMap(() => this._getView?.());
+  private _apchWant: { at: MercXY; sidc: string | null } | null = null;
+  private _apch: { key: string; view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null; extent: [number, number, number, number] | null; cframe: IpbFrame | null; cargs?: any } | null = null;
+  /**
+   * Create on Map (IPB_Plan.md §6.8): SymbolEngine passes how to make symbols (loadSymbolFromJSON) and remove the set
+   * made before, as one undo step; the ids made per product, so making it again replaces it.
+   */
+  private _creator: ((items: any[], label: string, removeIds: string[]) => any[]) | null = null;
+  private _ipbMade: Record<'coo' | 'corridors' | 'apchs' | 'event' | 'dst' | 'air' | 'template', string[]> = { coo: [], corridors: [], apchs: [], event: [], dst: [], air: [], template: [] };
+  private _airRules = airRulesFrom(IPB_DOCTRINE);
+  /** The air reading ran while feature tiles were still loading: run it again when they arrive. */
+  private _airFeaturesPending = false;
+  private _tplRules = tplRulesFrom(IPB_TEMPLATES);
+  /** IPB codings for the template's other movers over the area read (worked out once per area). */
+  private _tplCodes: { key: string; codes: Partial<Record<'armour' | 'mech' | 'dismounted', Uint8Array>> } | null = null;
+  /**
+   * Fire on the avenues and the proforma (extended.ipb.fire / proforma): the timers, the key of what was worked out, the
+   * other side's reading over the same area (the proforma's second group), the groups' measures and the user's signs.
+   */
+  private _fireTimer: ReturnType<typeof setTimeout> | null = null;
+  private _otherTimer: ReturnType<typeof setTimeout> | null = null;
+  private _fireKey = '';
+  private _apchOther: { area: string; view: IpbApchView; grid: OcokaGrid } | null = null;
+  private _pfInputs: PfGroupIn[] = [];
+  private _pfPending = false;
+  private _pfUser: Record<string, PfSign> = {};
+  private _pfArea = '';
+  private readonly _ipbCreateH = (e: Event): void => {
+    const root = this._detail.element;
+    if (!root || !(e.target instanceof Node) || !root.contains(e.target)) return; // another host's card
+    const kind = (e as CustomEvent).detail?.kind;
+    if (kind === 'coo' || kind === 'corridors' || kind === 'apchs' || kind === 'event' || kind === 'dst' || kind === 'all' || kind === 'decision' || kind === 'air' || kind === 'template') this.createIpbOverlay(kind);
+  };
+  private _apchTimer: ReturnType<typeof setTimeout> | null = null;
+  private _apchWaiting = false;
   private _extRead: { key: string; grid: OcokaGrid; ox: number; oy: number } | null = null;
   private _extCtx: { key: string; grid: OcokaGrid; ox: number; oy: number; at: MercXY; lngLat: [number, number]; profile: GroundGuideProfile; reading: GroundGuideOcoka; frontageM: number } | null = null;
   private _extSightKey = '';
@@ -924,7 +997,7 @@ export default class GroundGuide {
       num('scope.topPx', so.topPx, 0, 400, (n) => (next.scope.topPx = n), true);
     }
     const oc = patch.extended;
-    next.extended = { ...prev.extended };
+    next.extended = { ...prev.extended, ipb: { ...DEFAULT_GROUND_GUIDE_OPTIONS.extended.ipb, ...(prev.extended.ipb ?? {}) } };
     if (oc && typeof oc === 'object') {
       flag('extended.keys', oc.keys, (b) => (next.extended.keys = b));
       pick('extended.lasts', oc.lasts, ['symbol', 'once', 'kept'] as const, (x) => (next.extended.lasts = x));
@@ -949,7 +1022,47 @@ export default class GroundGuide {
       flag('extended.mapSight', oc.mapSight, (b) => (next.extended.mapSight = b));
       flag('extended.mapApproaches', oc.mapApproaches, (b) => (next.extended.mapApproaches = b));
       flag('extended.mapBetter', oc.mapBetter, (b) => (next.extended.mapBetter = b));
-      pick('extended.overlay', oc.overlay, ['auto', 'view', 'threat', 'going'] as const, (x) => (next.extended.overlay = x));
+      pick('extended.overlay', oc.overlay, ['auto', 'view', 'threat', 'going', 'ipb'] as const, (x) => (next.extended.overlay = x));
+      const ip = oc.ipb;
+      if (ip && typeof ip === 'object') {
+        pick('extended.ipb.readFor', ip.readFor, ['defence', 'attack'] as const, (x) => (next.extended.ipb.readFor = x));
+        pick('extended.ipb.mover', ip.mover, ['auto', 'armour', 'mech', 'dismounted'] as const, (x) => (next.extended.ipb.mover = x));
+        pick('extended.ipb.season', ip.season, ['coding', 'notes'] as const, (x) => (next.extended.ipb.season = x));
+        num('extended.ipb.avlbSpanM', ip.avlbSpanM, 3, 60, (n) => (next.extended.ipb.avlbSpanM = n));
+        pick('extended.ipb.paint', ip.paint, ['hatch', 'soft', 'atp'] as const, (x) => (next.extended.ipb.paint = x));
+        flag('extended.ipb.apchs', ip.apchs, (b) => (next.extended.ipb.apchs = b));
+        pick('extended.ipb.hq', ip.hq, ['auto', 'bde', 'div'] as const, (x) => (next.extended.ipb.hq = x));
+        flag('extended.ipb.mapCorridors', ip.mapCorridors, (b) => (next.extended.ipb.mapCorridors = b));
+        pick('extended.ipb.labels', ip.labels, ['auto', 'all', 'off'] as const, (x) => (next.extended.ipb.labels = x));
+        pick('extended.ipb.createAs', ip.createAs, ['attack', 'avenue'] as const, (x) => (next.extended.ipb.createAs = x));
+        flag('extended.ipb.fire', ip.fire, (b) => (next.extended.ipb.fire = b));
+        flag('extended.ipb.mapFire', ip.mapFire, (b) => (next.extended.ipb.mapFire = b));
+        flag('extended.ipb.proforma', ip.proforma, (b) => (next.extended.ipb.proforma = b));
+        flag('extended.ipb.decision', ip.decision, (b) => (next.extended.ipb.decision = b));
+        flag('extended.ipb.mapDecision', ip.mapDecision, (b) => (next.extended.ipb.mapDecision = b));
+        num('extended.ipb.reactionH', ip.reactionH, 0, 12, (n) => (next.extended.ipb.reactionH = n));
+        flag('extended.ipb.air', ip.air, (b) => (next.extended.ipb.air = b));
+        flag('extended.ipb.mapAir', ip.mapAir, (b) => (next.extended.ipb.mapAir = b));
+        pick('extended.ipb.airBand', ip.airBand, ['noe', 'contour', 'low'] as const, (x) => (next.extended.ipb.airBand = x));
+        num('extended.ipb.lzClass', ip.lzClass, 1, 6, (n) => (next.extended.ipb.lzClass = Math.round(n)));
+        num('extended.ipb.lzPoints', ip.lzPoints, 1, 12, (n) => (next.extended.ipb.lzPoints = Math.round(n)));
+        if (ip.template !== undefined) {
+          const ids = ['auto', 'off', ...templatesFrom(IPB_TEMPLATES).map((t) => t.id)];
+          if (typeof ip.template === 'string' && ids.includes(ip.template)) next.extended.ipb.template = ip.template;
+          else bad('extended.ipb.template', ip.template, `must be one of ${ids.join(', ')}`);
+        }
+        flag('extended.ipb.mapTemplate', ip.mapTemplate, (b) => (next.extended.ipb.mapTemplate = b));
+        if (ip.hHour !== undefined) {
+          if (typeof ip.hHour === 'string' && (ip.hHour.trim() === '' || /^([01]?\d|2[0-3]):([0-5]\d)$/.test(ip.hHour.trim()))) next.extended.ipb.hHour = ip.hHour.trim();
+          else bad('extended.ipb.hHour', ip.hHour, 'must be HH:MM (24 h) or empty');
+        }
+        for (const k of ['pfHead1', 'pfHead2'] as const) {
+          const h = (ip as any)[k];
+          if (h === undefined) continue;
+          if (typeof h === 'string') next.extended.ipb[k] = h.slice(0, 24);
+          else bad(`extended.ipb.${k}`, h, 'must be a heading (text)');
+        }
+      }
     }
     const ao = patch.aor;
     next.aor = { ...prev.aor };
@@ -1065,6 +1178,9 @@ export default class GroundGuide {
     this._enabled = true;
     this._retryAttempt = 0;
     this._attachKeys();
+    document.addEventListener('ms-gg-ipb-create', this._ipbCreateH);
+    document.addEventListener('ms-gg-ipb-tpl', this._tplPickH);
+    document.addEventListener('ms-gg-ipb-pf', this._pfClickH);
     this._emitState('enabled');
     if (this._manifest) {
       this._firstUseHint();
@@ -1079,6 +1195,9 @@ export default class GroundGuide {
     if (!this._enabled) return;
     this._enabled = false;
     this._clearRetry();
+    document.removeEventListener('ms-gg-ipb-create', this._ipbCreateH);
+    document.removeEventListener('ms-gg-ipb-tpl', this._tplPickH);
+    document.removeEventListener('ms-gg-ipb-pf', this._pfClickH);
     this._setExt(false, false, false, 'guide'); // leaving the Ground Guide closes the Extended View (user, 2026-11-12)
     this._syncThreat();
     this.deactivate();
@@ -1092,6 +1211,7 @@ export default class GroundGuide {
     this._removePopulationLayer();
     this._legend.hide();
     this._legend.hideHint();
+    this._keyNotice.hide();
     this._boundary.hide();
     this._syncScope();
     this._emitState('disabled');
@@ -1121,6 +1241,15 @@ export default class GroundGuide {
     this._attachPointer();
     this._prefetch();
     this._syncOverlay();
+    // A re-arm mid-draw (the dock's echelon, identity or a parameter changed while placing): judged again at once with the
+    // new symbol, not when the cursor next moves (user, 2026-11-14: the Detail still gave the old echelon).
+    const live = this._lastDetail;
+    if (live && this._activeSidc && live.sidc !== this._activeSidc && this._activeProfile !== 'exempt') {
+      this._lastDetail = { geometry: live.geometry, sidc: this._activeSidc };
+      this._lastKey = '';
+      this._lastBadgeKey = '';
+      this._apply(this._judgeLive(live.geometry, this._activeSidc));
+    }
   }
 
   /** Hot path. Called for every onDrawProgress of the engine's own view. */
@@ -1128,6 +1257,8 @@ export default class GroundGuide {
     if (!this.isActive) return;
     const geometry = detail?.currentGeometry;
     if (!geometry) return;
+    if (this._extPin) this._extPinRelease(); // a new draw on the map: the Extended View follows the cursor again
+    const first = this._lastDetail === null;
     const de = detail.currentDrawEssentials;
     const sidc: string | null = de?.SIDC || de?.AMPLIFIER?.SIDC || this._activeSidc;
     if (!this._pointerHandler) this._attachPointer();
@@ -1138,6 +1269,19 @@ export default class GroundGuide {
     this._lastDetail = { geometry, sidc };
     this._warmAround(geometry, this._profileFor(sidc));
     this._apply(this._judgeLive(geometry, sidc));
+    if (first && this._ext) {
+      // The draw's first move on the map: the Extended View's products come back (they left with the last drop).
+      this._syncOverlay();
+      this._apchDraw();
+    }
+  }
+
+  /**
+   * The Extended View draws on the map only while a symbol is being placed (the cursor on the map) or a selected symbol
+   * holds it (user, 2026-11-14: "when I drop symbol, approaches and other F elements on map, should vanish away").
+   */
+  private _extHere(): boolean {
+    return this._lastDetail !== null || this._extPin !== null;
   }
 
   // ── Gr Scope rail (V) ────────────────────────────────────────────────────
@@ -1169,6 +1313,10 @@ export default class GroundGuide {
     const g = graphic?.geometry ? graphic : null;
     if (g === this._scopeSelected) return;
     this._scopeSelected = g;
+    // With the Extended View on, selecting a point symbol moves its reading to that symbol (and holds it there);
+    // clearing the selection takes it off the map.
+    if (g && this._ext && !this._lastDetail && g.geometry?.type === 'point') this._extPinTo(g);
+    else if (!g && this._extPin && !this._lastDetail) this._extOffMap();
     this._scopeSoon(0);
   }
 
@@ -1409,10 +1557,11 @@ export default class GroundGuide {
    * placed, `going` the GROTBC paint. Null: the overlay is off, the Extended View is off, or `threat` was asked for and
    * the threat is not a place.
    */
-  private _extOverlayKind(): 'threat' | 'view' | 'going' | null {
+  private _extOverlayKind(): 'threat' | 'view' | 'going' | 'ipb' | null {
     const o = this._opts.extended;
     if (!(this._enabled && this._manifest !== null && this._opts.mode !== 'off' && this._opts.overlay.enabled && this._ext)) return null;
     if (o.overlay === 'going') return 'going';
+    if (o.overlay === 'ipb') return 'ipb';
     if (o.overlay === 'view') return 'view';
     const place = o.threat === 'point' && !!o.at;
     return place ? 'threat' : o.overlay === 'threat' ? null : 'view';
@@ -1439,6 +1588,27 @@ export default class GroundGuide {
    */
   private _extOverlayDraw(): void {
     const kind = this._extOverlayKind();
+    if (kind !== null && kind !== 'going' && !this._extHere()) {
+      // Nothing being placed or held: the Extended View's paint is off the map (the GROTBC paint is back, _syncOverlay).
+      this._extOverSig = '';
+      this._extOverGrid = null;
+      this._extViewKey = '';
+      this._extMap.showOverlay(null);
+      this._ipbMap.clear();
+      this._ipbLast = null;
+      return;
+    }
+    if (kind === 'ipb') {
+      this._extOverSig = '';
+      this._extOverGrid = null;
+      this._extViewKey = '';
+      this._extMap.showOverlay(null);
+      this._ipbDraw();
+      return;
+    }
+    // Not the IPB coding: it goes (and nothing of it is worked out) the moment it is not asked for, or F is off.
+    this._ipbMap.clear();
+    this._ipbLast = null;
     if (kind !== 'threat') {
       this._extOverSig = '';
       this._extOverGrid = null;
@@ -1482,7 +1652,1459 @@ export default class GroundGuide {
     this._extOverGrid = grid;
     this._extOverSig = sig;
     this._extViewKey = '';
+    this._extMap.setOverlayLabels(o.ipb.labels !== 'off');
     this._extMap.showOverlay(ocokaViewshed({ grid, ox: cx - grid.px0, oy: cy - grid.py0, at, kind: 'threat', eyeM: 2.4, targetM: own, radiusM, month, surface: o.surface }));
+  }
+
+  /**
+   * The IPB combined obstacle overlay (extended.overlay: ipb; IPB_Plan.md §6.1): the ground within the observation radius
+   * of the symbol being placed (else the map centre) coded GO / SLOW-GO / NO-GO by the IPB book's criteria, with "not
+   * assessed" where the bundle cannot test one. The centre snaps to a third of the radius, so it is worked out once per
+   * area, not per mouse move; only while the Extended View is on.
+   */
+  private _ipbDraw(): void {
+    const m = this._manifest;
+    const cache = this._cache;
+    const L = this._sectionLayers();
+    const view: any = this._getView?.();
+    if (!m || !cache || !L.elevHi || !L.elevLo) return this._ipbMap.clear();
+    // The avenues read a whole area: paint its coding (the same one they were found on) rather than the circle round the spot.
+    const ap = this._apchOn() ? this._apch : null;
+    if (ap?.coding && ap.grid && ap.extent) {
+      const k2 = `apch|${ap.key}|${this._opts.extended.ipb.paint}`;
+      if (this._ipbMap.shownKey === k2) return;
+      this._ipbMap.show(ap.coding, ap.extent, this._opts.extended.ipb.paint, k2);
+      this._ipbLast = { key: k2, grid: ap.grid, coding: ap.coding, centre: ap.view.anchor };
+      this._emit('ground-guide-ipb', { summary: ipbSummaryText(ap.coding), stats: ap.coding.stats, ms: ap.coding.ms, mover: ap.coding.mover, moveDeg: ap.coding.moveDeg });
+      return;
+    }
+    const spot = this._extCtx?.at ?? null;
+    const vc = view?.center && Number.isFinite(view.center.x) ? ([view.center.x, view.center.y] as MercXY) : null;
+    const at0 = spot ?? vc;
+    if (!at0) return this._ipbMap.clear();
+    const o = this._opts.extended;
+    const lat0 = mercatorToLngLat(at0[0], at0[1])[1];
+    const radiusM = o.radiusKm * 1000;
+    const snap = radiusM / 3 / Math.cos((lat0 * Math.PI) / 180); // Mercator metres
+    const centre: MercXY = [Math.round(at0[0] / snap) * snap, Math.round(at0[1] / snap) * snap];
+    const r = this._ipbCode(centre, {});
+    if (!r) return this._ipbMap.clear();
+    const { coding, grid, key, extent } = r;
+    if (this._ipbMap.shownKey === key) return;
+    this._ipbMap.show(coding, extent, o.ipb.paint, key);
+    this._ipbLast = { key, grid, coding, centre };
+    this._emit('ground-guide-ipb', { summary: ipbSummaryText(coding), stats: coding.stats, ms: coding.ms, mover: coding.mover, moveDeg: coding.moveDeg });
+  }
+
+  /** Code the IPB overlay round a centre from the tiles in memory (asks for the missing ones). Null when the bundle cannot. */
+  private _ipbCode(
+    centre: MercXY,
+    over: { radiusKm?: number; mover?: IpbMover; readFor?: 'defence' | 'attack'; month?: number; season?: 'coding' | 'notes'; avlbSpanM?: number; threatDeg?: number },
+  ): { coding: IpbCoding; grid: OcokaGrid; key: string; extent: [number, number, number, number] } | null {
+    const m = this._manifest;
+    const cache = this._cache;
+    const L = this._sectionLayers();
+    if (!m || !cache || !L.elevHi || !L.elevLo) return null;
+    const o = this._opts.extended;
+    const ip = o.ipb;
+    const z = m.zoom.max;
+    const ts = m.tileSize;
+    const [lon, lat] = mercatorToLngLat(centre[0], centre[1]);
+    const radiusM = Math.min(10, Math.max(1, over.radiusKm ?? o.radiusKm)) * 1000;
+    const profile = this._legendProfile();
+    const layers = { cls: this._layerNames(profile).cls, elevHi: L.elevHi, elevLo: L.elevLo, bld: null };
+    const reach = (radiusM + 1200) / Math.cos((lat * Math.PI) / 180);
+    const a = mercatorToTilePixel(centre[0] - reach, centre[1] + reach, z, ts);
+    const b = mercatorToTilePixel(centre[0] + reach, centre[1] - reach, z, ts);
+    const n = 2 ** z;
+    for (let ty = Math.max(0, a.ty); ty <= Math.min(n - 1, b.ty); ty++)
+      for (let tx = Math.max(0, a.tx); tx <= Math.min(n - 1, b.tx); tx++) for (const layer of [layers.cls, layers.elevHi, layers.elevLo]) cache.request(layer, z, tx, ty);
+    const [cx, cy] = mercToPx(centre[0], centre[1], z, ts);
+    const peek = (layer: string, x: number, y: number) => (x < 0 || y < 0 || x >= n || y >= n ? null : cache.peek(layer, z, x, y));
+    const res = mPerPx(lat, z, ts);
+    const rPx = radiusM / res;
+    // A margin of 1.2 km round the area so the 1 km windows (relief, roads) and the BUA bypass rows see past its edge.
+    const grid = this._ipbLive.grid(peek, layers, z, ts, lat, cx, cy, rPx + 1200 / res + 2, this._extTick);
+    // The direction of movement: the enemy's toward the area (from the threat) for defence, own toward the threat for attack.
+    const thr = over.threatDeg !== undefined ? { allRound: false, bearingDeg: over.threatDeg } : resolveThreat(o, this._opts.footprint.bearingDeg, centre, this._threatMerc());
+    const readFor = over.readFor ?? ip.readFor;
+    const moveDeg = thr.allRound ? null : readFor === 'defence' ? (thr.bearingDeg + 180) % 360 : thr.bearingDeg;
+    const mover: IpbMover = over.mover ?? (ip.mover !== 'auto' ? ip.mover : readFor === 'defence' ? 'armour' : ipbMoverOf(this._activeProfile ?? this._lastArmedProfile ?? 'dismounted', this._ipbRules));
+    const month = over.month ?? resolveMonth(this._opts.going.month);
+    const season = over.season ?? ip.season;
+    const avlbSpanM = over.avlbSpanM ?? ip.avlbSpanM;
+    const box: [number, number, number, number] = [Math.round(cx - grid.px0 - rPx), Math.round(cy - grid.py0 - rPx), Math.round(cx - grid.px0 + rPx), Math.round(cy - grid.py0 + rPx)];
+    const key = [Math.round(centre[0]), Math.round(centre[1]), radiusM, grid.px0, grid.py0, grid.w, grid.h, grid.pending ? this._extTick : 'done', moveDeg ?? 'all', mover, month, season, avlbSpanM, ip.paint].join('|');
+    if (this._ipbLast?.key === key && this._ipbLast.grid === grid) {
+      const c = this._ipbLast.coding;
+      return { coding: c, grid, key, extent: this._ipbExtent(grid, c, z, ts) };
+    }
+    const coding = codeIpb({ grid, rules: this._ipbRules, mover, moveDeg, month, lonLat: [lon, lat], avlbSpanM, season, box });
+    return { coding, grid, key, extent: this._ipbExtent(grid, coding, z, ts) };
+  }
+
+  /** The coding's cells edge to edge in Web Mercator: [xmin, ymin, xmax, ymax]. */
+  private _ipbExtent(grid: OcokaGrid, c: IpbCoding, z: number, ts: number): [number, number, number, number] {
+    const tl = pxToMerc(grid.px0 + c.x0, grid.py0 + c.y0, z, ts);
+    const br = pxToMerc(grid.px0 + c.x0 + c.w, grid.py0 + c.y0 + c.h, z, ts);
+    return [tl[0], br[1], br[0], tl[1]];
+  }
+
+  /**
+   * The IPB coding round a point for a host (works with F off too): the area's shares, what decided them, what the
+   * bundle cannot tell, and the reasons at the point itself. Waits for the tiles.
+   */
+  async ipbCodingAround(
+    point: any,
+    opts: { radiusKm?: number; mover?: IpbMover; readFor?: 'defence' | 'attack'; month?: number; season?: 'coding' | 'notes'; avlbSpanM?: number; threatDeg?: number } = {},
+  ): Promise<{ summary: string; stats: IpbStats; reasons: IpbReason[]; mover: IpbMover; moveDeg: number | null; ms: number } | null> {
+    const ll = this._lngLatOf(point);
+    if (!ll || !this._cache || !this._manifest) return null;
+    const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
+    this._ipbCode(at, opts); // asks for the tiles
+    await this._tilesSettled(10000);
+    this._extTick++;
+    const r = this._ipbCode(at, opts);
+    if (!r) return null;
+    const z = this._manifest.zoom.max;
+    const [px, py] = mercToPx(at[0], at[1], z, this._manifest.tileSize);
+    const c = r.coding;
+    const reasons = ipbReasonsAt(c, this._ipbRules, Math.floor(px - r.grid.px0 - c.x0), Math.floor(py - r.grid.py0 - c.y0));
+    return { summary: ipbSummaryText(c), stats: c.stats, reasons, mover: c.mover, moveDeg: c.moveDeg, ms: c.ms };
+  }
+
+  /** Why the IPB overlay on the map codes the ground at a point as it does (null when it is not shown or the point is outside). */
+  ipbReasonAt(point: any): IpbReason[] | null {
+    const last = this._ipbLast;
+    const ll = this._lngLatOf(point);
+    if (!last || !ll || !this._manifest) return null;
+    const at = lngLatToMercator(ll[0], ll[1]);
+    const [px, py] = mercToPx(at[0], at[1], this._manifest.zoom.max, this._manifest.tileSize);
+    const c = last.coding;
+    const bx = Math.floor(px - last.grid.px0 - c.x0);
+    const by = Math.floor(py - last.grid.py0 - c.y0);
+    if (bx < 0 || by < 0 || bx >= c.w || by >= c.h) return null;
+    return ipbReasonsAt(c, this._ipbRules, bx, by);
+  }
+
+  // ── IPB avenues of approach (extended.ipb.apchs; IPB_Plan.md §6.2) ───────────────────────────────────────────────────
+
+  /** Worked out only while the Extended View is on, the guide active and the product on. */
+  private _apchOn(): boolean {
+    return this._ext && this._enabled && this._manifest !== null && this._opts.mode !== 'off' && this._opts.extended.ipb.apchs;
+  }
+
+  /** The HQ row that reads for a symbol (book p 7): Bn and smaller with the Bde HQ row over the Bn area (no Bn row in the book). */
+  private _apchHq(sidc: string | null, over?: 'bde' | 'div'): { hq: 'bde' | 'div'; frame: 'bn' | 'bde' | 'div'; note: string | null } {
+    const want = over ?? this._opts.extended.ipb.hq;
+    if (want !== 'auto') return { hq: want, frame: want, note: null };
+    const code = echelonCodeOf(sidc);
+    const n = code ? Number(code) : NaN;
+    if (!Number.isFinite(n)) return { hq: 'bde', frame: 'bde', note: null };
+    if (n <= 16) return { hq: 'bde', frame: 'bn', note: 'No Bn HQ row in the book or ATP: the Bde HQ row over the Bn area' };
+    if (n <= 18) return { hq: 'bde', frame: 'bde', note: null };
+    return { hq: 'div', frame: 'div', note: null };
+  }
+
+  /**
+   * The area read for a spot: the HQ's frame facing the threat, its anchor snapped to a quarter of its frontage (so a
+   * new area is read only when the spot moves that far), and the key of everything the reading depends on.
+   */
+  private _apchFrame(at: MercXY, sidc: string | null, over: { hq?: 'bde' | 'div'; readFor?: 'defence' | 'attack'; threatDeg?: number; mover?: IpbMover; month?: number } = {}) {
+    const o = this._opts.extended;
+    const ip = o.ipb;
+    const D: any = IPB_DOCTRINE;
+    const { hq, frame: fk, note } = this._apchHq(sidc, over.hq);
+    const row = D.corridors.hqRows[hq];
+    const F = D.corridors.frames[fk];
+    const mcWidthM: number = D.corridors.widthM[row.mcWidth];
+    const spacingM: number = D.corridors.maxSpacingM[row.spacing];
+    const thr = over.threatDeg !== undefined ? { allRound: false, bearingDeg: over.threatDeg } : resolveThreat(o, this._opts.footprint.bearingDeg, at, this._threatMerc());
+    const readFor = over.readFor ?? ip.readFor;
+    const side: 'enemy' | 'own' = readFor === 'defence' ? 'enemy' : 'own';
+    const mover: IpbMover = over.mover ?? (ip.mover !== 'auto' ? ip.mover : readFor === 'defence' ? 'armour' : ipbMoverOf(this._activeProfile ?? this._lastArmedProfile ?? 'dismounted', this._ipbRules));
+    const month = over.month ?? resolveMonth(this._opts.going.month);
+    const k = Math.cosh(at[1] / 6378137); // Web Mercator metres per ground metre here
+    const snap = (F.w / 4) * k;
+    const anchor: MercXY = [Math.round(at[0] / snap) * snap, Math.round(at[1] / snap) * snap];
+    const tb = (thr.bearingDeg * Math.PI) / 180;
+    const T: MercXY = [Math.sin(tb), Math.cos(tb)];
+    const axisDeg = side === 'enemy' ? (thr.bearingDeg + 180) % 360 : thr.bearingDeg;
+    const ab = (axisDeg * Math.PI) / 180;
+    const A: MercXY = [Math.sin(ab), Math.cos(ab)];
+    const Rr: MercXY = [Math.cos(ab), -Math.sin(ab)];
+    const lengthM = F.fwd + F.lead + F.rear;
+    const start: MercXY = side === 'enemy' ? [anchor[0] + T[0] * (F.fwd + F.lead) * k, anchor[1] + T[1] * (F.fwd + F.lead) * k] : [anchor[0] - T[0] * F.rear * k, anchor[1] - T[1] * F.rear * k];
+    const pt = (aM: number, qM: number): MercXY => [start[0] + (A[0] * aM + Rr[0] * qM) * k, start[1] + (A[1] * aM + Rr[1] * qM) * k];
+    const corners: MercXY[] = [pt(0, -F.w / 2), pt(0, F.w / 2), pt(lengthM, F.w / 2), pt(lengthM, -F.w / 2)];
+    const tAt = this._threatMerc();
+    const ech = echelonCodeOf(sidc);
+    const key = [hq, fk, side, Math.round(anchor[0]), Math.round(anchor[1]), thr.allRound ? 'all' : Math.round(thr.bearingDeg), o.sectorDeg, mover, month, ip.season, ip.avlbSpanM, this._opts.bundleUrl, ech ?? ''].join('|');
+    return { hq, fk, note, row, F, mcWidthM, spacingM, thr, side, mover, month, anchor, start, axisDeg, lengthM, corners, k, key, ech: ech ? (ECH_SHORT[ech] ?? null) : null, threatAssumed: !(o.threat === 'point' && tAt) && over.threatDeg === undefined };
+  }
+
+  /**
+   * The reading for a spot from the tiles in memory (asks for the missing ones): the frame coded by the book's criteria,
+   * the corridors and avenues in it, in Web Mercator. 'pending' while a tile is on its way; null when the bundle cannot.
+   */
+  private _apchCompute(at: MercXY, sidc: string | null, over: Parameters<GroundGuide['_apchFrame']>[2] = {}): { key: string; view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null; extent: [number, number, number, number] | null; cframe: IpbFrame | null; cargs?: any } | 'pending' | null {
+    const m = this._manifest;
+    const cache = this._cache;
+    const L = this._sectionLayers();
+    if (!m || !cache || !L.elevHi || !L.elevLo) return null;
+    const fr = this._apchFrame(at, sidc, over);
+    const base = {
+      key: fr.key,
+      side: fr.side,
+      hq: fr.hq,
+      hqLabel: fr.row.label,
+      hqNote: fr.note,
+      forEch: fr.ech,
+      aaFor: fr.row.aaFor,
+      mcFor: fr.row.mcFor,
+      mcWidthM: fr.mcWidthM,
+      spacingM: fr.spacingM,
+      mover: fr.mover,
+      axisDeg: fr.axisDeg,
+      frame: fr.corners,
+      frameKm: [fr.F.w / 1000, fr.lengthM / 1000] as [number, number],
+      anchor: fr.anchor,
+      threatAssumed: fr.threatAssumed,
+    };
+    if (fr.thr.allRound) {
+      const view: IpbApchView = { ...base, frame: [], aas: [], mcs: [], crossovers: [], notes: ['All round threat: the avenues need a direction. [ ] turn the threat, or drag the Threat marker.'], ways: [], codingText: '', ms: { coding: 0, corridors: 0 } };
+      return { key: fr.key, view, coding: null, grid: null, extent: null, cframe: null };
+    }
+    const z = m.zoom.max;
+    const ts = m.tileSize;
+    const lat = mercatorToLngLat(fr.anchor[0], fr.anchor[1])[1];
+    const res = mPerPx(lat, z, ts);
+    const padPx = (fr.mcWidthM + 1200) / res + 4;
+    const pxs = fr.corners.map((p) => mercToPx(p[0], p[1], z, ts));
+    const x0 = Math.min(...pxs.map((p) => p[0])) - padPx, x1 = Math.max(...pxs.map((p) => p[0])) + padPx;
+    const y0 = Math.min(...pxs.map((p) => p[1])) - padPx, y1 = Math.max(...pxs.map((p) => p[1])) + padPx;
+    const profile = this._legendProfile();
+    // Buildings too when the fire on the avenues is read: sight counts them as a chance (as the Extended View does).
+    const withBld = this._opts.extended.ipb.fire && !!L.bld;
+    const layers = { cls: this._layerNames(profile).cls, elevHi: L.elevHi, elevLo: L.elevLo, bld: withBld ? L.bld : null };
+    const n = 2 ** z;
+    const want = [layers.cls, layers.elevHi, layers.elevLo, ...(layers.bld ? [layers.bld] : [])];
+    for (let ty = Math.max(0, Math.floor(y0 / ts)); ty <= Math.min(n - 1, Math.floor(y1 / ts)); ty++)
+      for (let tx = Math.max(0, Math.floor(x0 / ts)); tx <= Math.min(n - 1, Math.floor(x1 / ts)); tx++) for (const layer of want) cache.request(layer, z, tx, ty);
+    const peek = (layer: string, x: number, y: number) => (x < 0 || y < 0 || x >= n || y >= n ? null : cache.peek(layer, z, x, y));
+    const grid = buildGridRect(peek, layers, z, ts, lat, x0, y0, x1, y1);
+    if (grid.pending) return 'pending';
+    const ip = this._opts.extended.ipb;
+    const [lon] = mercatorToLngLat(fr.anchor[0], fr.anchor[1]);
+    // The coding's arguments are kept: the situation template codes the same box again for its other movers.
+    const cargs = { grid, rules: this._ipbRules, moveDeg: fr.axisDeg, month: fr.month, lonLat: [lon, lat] as [number, number], avlbSpanM: ip.avlbSpanM, season: ip.season, box: [Math.floor(x0 - grid.px0), Math.floor(y0 - grid.py0), Math.ceil(x1 - grid.px0), Math.ceil(y1 - grid.py0)] as [number, number, number, number] };
+    const coding = codeIpb({ ...cargs, mover: fr.mover });
+    const [sx, sy] = mercToPx(fr.start[0], fr.start[1], z, ts);
+    const cframe: IpbFrame = { sx: sx - grid.px0 - coding.x0, sy: sy - grid.py0 - coding.y0, axisDeg: fr.axisDeg, lengthM: fr.lengthM, widthM: fr.F.w };
+    const r = findCorridors({
+      coding,
+      frame: cframe,
+      mcWidthM: fr.mcWidthM,
+      spacingM: fr.spacingM,
+      sectorDeg: this._opts.extended.sectorDeg,
+    });
+    const toM = (x: number, y: number): MercXY => pxToMerc(grid.px0 + coding.x0 + x, grid.py0 + coding.y0 + y, z, ts);
+    const pairs = (f: Float32Array): MercXY[] => {
+      const out: MercXY[] = [];
+      for (let i = 0; i + 1 < f.length; i += 2) out.push(toM(f[i], f[i + 1]));
+      return out;
+    };
+    const tol = 2 * res * fr.k;
+    const firstViable = r.aas.find((a) => a.viable)?.id ?? null;
+    const step = Math.max(1, Math.round(250 / r.stepM));
+    const aas: IpbApchAa[] = r.aas.map((a) => {
+      const line = simplifyLine(pairs(a.line), tol);
+      let len = 0;
+      for (let i = 1; i < line.length; i++) len += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1]);
+      const main = a.viable && a.id === firstViable;
+      const arrow = a.viable && len > 0 ? attackArrow(line, arrowTail(a.lengthM, a.drawWidthM, fr.spacingM), main) : { fill: [], stroke: [], inner: [] };
+      const widthM: number[] = [], alongM: number[] = [];
+      for (let i = 0; i < a.widthM.length; i += step) {
+        widthM.push(Math.round(a.widthM[i]));
+        alongM.push(Math.round(a.alongM[i]));
+      }
+      return {
+        id: a.id,
+        rank: a.rank,
+        viable: a.viable,
+        main,
+        open: a.open,
+        line,
+        arrow,
+        widthM,
+        alongM,
+        lengthM: a.lengthM,
+        startM: a.startM,
+        endM: a.endM,
+        stopped: a.stopped,
+        coverPct: a.coverPct,
+        twoPct: a.twoPct,
+        onePct: a.onePct,
+        goPct: a.goPct,
+        medianWidthM: a.medianWidthM,
+        minWidthM: a.minWidthM,
+        narrows: a.narrows.map((q) => ({ at: toM(q.x, q.y), alongM: q.alongM, widthM: q.widthM, kind: q.kind })),
+        waterLines: a.waterLines,
+        why: a.why,
+        sideM: a.sideM,
+        mcs: a.mcs,
+      };
+    });
+    const view: IpbApchView = {
+      ...base,
+      aas,
+      mcs: r.mcs.map((q) => ({ id: q.id, aa: q.aa, line: simplifyLine(pairs(q.line), tol) })),
+      crossovers: r.crossovers.map((x) => ({ id: x.id, a: x.a, b: x.b, from: toM(x.from[0], x.from[1]), to: toM(x.to[0], x.to[1]), alongM: x.alongM, depthM: x.depthM })),
+      notes: [...r.notes, ...(fr.note ? [fr.note] : [])],
+      ways: r.ways,
+      codingText: ipbSummaryText(coding),
+      ms: { coding: coding.ms, corridors: r.ms },
+    };
+    const extent = this._ipbExtent(grid, coding, z, ts);
+    view.raster = this._apchRaster(coding, extent);
+    return { key: fr.key, view, coding, grid, extent, cframe, cargs };
+  }
+
+  /** Where the avenues are wanted (the spot read, its symbol): worked out again only when that changes the area or its key. */
+  private _apchAsk(at: MercXY, sidc: string | null): void {
+    if (!this._apchOn()) return;
+    this._apchWant = { at, sidc };
+    if (this._apch && this._apch.key === this._apchFrame(at, sidc).key && !this._apchWaiting) {
+      this._apchDraw(); // the same area (back on the map after a drop: its show key keeps it from redrawing otherwise)
+      this._ipbFireSoon(350); // only the fire again if the Posns or the spot moved (its key decides)
+      return;
+    }
+    this._apchSoon(300);
+  }
+
+  private _apchSoon(ms: number): void {
+    if (this._apchTimer !== null) clearTimeout(this._apchTimer);
+    this._apchTimer = setTimeout(() => {
+      this._apchTimer = null;
+      try {
+        this._apchRead();
+      } catch (err) {
+        console.error('[Ground Guide] IPB avenues', err);
+      }
+    }, ms);
+  }
+
+  /** Work the avenues out for the spot wanted (else the map centre) and draw them; once per area. */
+  private _apchRead(): void {
+    if (!this._apchOn()) return this._apchClear();
+    const view: any = this._getView?.();
+    const want = this._apchWant ?? (view?.center && Number.isFinite(view.center.x) ? { at: [view.center.x, view.center.y] as MercXY, sidc: null } : null);
+    if (!want) return;
+    const key = this._apchFrame(want.at, want.sidc).key;
+    if (this._apch && this._apch.key === key) {
+      this._apchWaiting = false;
+      return this._apchDraw();
+    }
+    const t0 = performance.now();
+    const r = this._apchCompute(want.at, want.sidc);
+    if (r === 'pending') {
+      this._apchWaiting = true; // tiles on their way: read again when they arrive (the last area stays drawn meanwhile)
+      return;
+    }
+    this._apchWaiting = false;
+    if (!r) return this._apchClear();
+    this._apch = { key: r.key, view: r.view, coding: r.coding, grid: r.grid, extent: r.extent, cframe: r.cframe, cargs: r.cargs };
+    this._tplCodes = null;
+    const v = r.view;
+    const viable = v.aas.filter((a) => a.viable);
+    if (v.aas.length || v.notes.length) {
+      EngineLogger.success(
+        ENGINE,
+        `IPB ${v.side === 'enemy' ? 'en' : 'own'} Apchs for a ${v.aaFor} (${v.hqLabel}, ${v.frameKm[0]} x ${v.frameKm[1]} km): ${viable.length ? viable.map((a) => `${a.id} ${Math.round(a.goPct)} % GO${a.narrows.length ? `, ${a.narrows.length} narrows` : ''}`).join('; ') : v.notes[0] ?? 'none'} · ${Math.round(performance.now() - t0)} ms`,
+      );
+    }
+    this._emit('ground-guide-ipb-apchs', { side: v.side, hq: v.hq, aaFor: v.aaFor, mcFor: v.mcFor, avenues: v.aas.map((a) => ({ id: a.id, viable: a.viable, goPct: a.goPct, narrows: a.narrows.length, lengthM: a.lengthM })), notes: v.notes, ms: v.ms });
+    this._apchDraw();
+    this._fireKey = '';
+    this._ipbFireSoon(30); // fire on the avenues and the proforma follow the new area
+    if (this._extOverlayKind() === 'ipb') this._extOverlaySoon(0); // the coding now paints the whole area read
+    this._refreshLive();
+    this._scopeSoon(0, true);
+  }
+
+  private _apchDraw(): void {
+    const a = this._apch;
+    if (!a || !this._apchOn() || !this._extHere()) return this._apchMap.clear(); // on the map only while placing (or held)
+    const ip = this._opts.extended.ipb;
+    this._apchMap.show(a.view, { corridors: ip.mapCorridors, labels: ip.labels, fire: ip.fire && ip.mapFire, decision: ip.decision && ip.mapDecision, air: ip.air && ip.mapAir, template: ip.template !== 'off' && ip.mapTemplate }, `${a.key}|${ip.mapCorridors}|${ip.labels}|${ip.fire && ip.mapFire ? this._fireKey : ''}|${a.view.fire ? 1 : 0}|${ip.decision && ip.mapDecision ? this._fireKey : ''}|${a.view.decision ? 1 : 0}|${ip.air && ip.mapAir ? this._fireKey : ''}|${a.view.air ? 1 : 0}|${ip.template !== 'off' && ip.mapTemplate ? this._fireKey : ''}|${a.view.template ? 1 : 0}`);
+  }
+
+  private _apchClear(): void {
+    if (this._apchTimer !== null) clearTimeout(this._apchTimer);
+    this._apchTimer = null;
+    this._apch = null;
+    this._apchWant = null;
+    this._apchWaiting = false;
+    this._apchMap.clear();
+    if (this._fireTimer !== null) clearTimeout(this._fireTimer);
+    if (this._otherTimer !== null) clearTimeout(this._otherTimer);
+    this._fireTimer = this._otherTimer = null;
+    this._fireKey = '';
+    this._apchOther = null;
+    this._pfInputs = [];
+    this._tplCodes = null;
+  }
+
+  /** The reading the cards show: undefined when the product is off, null while it is worked out. */
+  private _apchViewNow(): IpbApchView | null | undefined {
+    return this._apchOn() ? (this._apch?.view ?? null) : undefined;
+  }
+
+  /** The coding as a small picture for the Detail (worst class wins in each pixel), with its extent. */
+  private _apchRaster(c: IpbCoding, extent: [number, number, number, number]): { url: string; extent: [number, number, number, number] } | null {
+    if (typeof document === 'undefined' || !c.w || !c.h) return null;
+    const f = Math.max(1, Math.ceil(Math.max(c.w, c.h) / 380));
+    const w = Math.ceil(c.w / f), h = Math.ceil(c.h / f);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const img = ctx.createImageData(w, h);
+    // Rank: NO-GO 4 > SLOW-GO 3 > not classed 2 > not assessed 1 > GO / no data 0.
+    const RANK = [0, 3, 4, 1, 2];
+    const COL: Array<[number, number, number, number]> = [[0, 0, 0, 0], [195, 203, 211, 70], [185, 162, 232, 90], [238, 138, 31, 110], [229, 72, 77, 150]];
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        let best = 0;
+        for (let v = 0; v < f && y * f + v < c.h; v++)
+          for (let u = 0; u < f && x * f + u < c.w; u++) {
+            const code = c.code[(y * f + v) * c.w + x * f + u];
+            const r = code < RANK.length ? RANK[code] : 0;
+            if (r > best) best = r;
+          }
+        const col = COL[best], o = (y * w + x) * 4;
+        img.data[o] = col[0];
+        img.data[o + 1] = col[1];
+        img.data[o + 2] = col[2];
+        img.data[o + 3] = col[3];
+      }
+    ctx.putImageData(img, 0, 0);
+    try {
+      return { url: canvas.toDataURL('image/png'), extent };
+    } catch {
+      return null;
+    }
+  }
+
+  /** The IPB air avenues, LZ / DZ and AD sites over the area read now (Extended View on, `extended.ipb.air`), or null. */
+  ipbAir(): IpbAirView | null {
+    return this._apchOn() && this._opts.extended.ipb.air ? (this._apch?.view.air ?? null) : null;
+  }
+
+  /** The IPB avenues of approach over the area read now (Extended View on, `extended.ipb.apchs`), or null. */
+  ipbApproaches(): IpbApchView | null {
+    return this._apchViewNow() ?? null;
+  }
+
+  /**
+   * The IPB corridors and avenues for a host at any point (works with F off too): the HQ's area facing the threat,
+   * coded by the book, with its avenues, corridors, narrows and crossovers in Web Mercator. Waits for the tiles.
+   */
+  async ipbApproachesAround(point: any, opts: { sidc?: string | null; hq?: 'bde' | 'div'; readFor?: 'defence' | 'attack'; threatDeg?: number; mover?: IpbMover; month?: number } = {}): Promise<IpbApchView | null> {
+    const ll = this._lngLatOf(point);
+    if (!ll || !this._cache || !this._manifest) return null;
+    const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
+    const over = { hq: opts.hq, readFor: opts.readFor, threatDeg: opts.threatDeg, mover: opts.mover, month: opts.month };
+    let r = this._apchCompute(at, opts.sidc ?? null, over);
+    for (let i = 0; r === 'pending' && i < 3; i++) {
+      await this._tilesSettled(10000);
+      r = this._apchCompute(at, opts.sidc ?? null, over);
+    }
+    return r && r !== 'pending' ? r.view : null;
+  }
+
+  /** How Create on Map makes symbols (SymbolEngine passes loadSymbolFromJSON, run with the removal as one undo step). */
+  setCreator(fn: ((items: any[], label: string, removeIds: string[]) => any[]) | null): void {
+    this._creator = fn;
+  }
+
+  /**
+   * The symbols Create on Map writes for one product of the reading shown (IPB_Plan.md §6.8): `coo` the NO-GO and SLOW-GO
+   * areas of the area read (No Go Area 25120203 / Slow Go Area 25120202, sharp-edged polygons), `corridors` the mobility
+   * corridors (Mob Corridors 25110101 with the corridor unit's echelon), `apchs` the avenues (Main Attk 25151403 for the
+   * best going, Sp Attk 25151404 for the others, as drawn; or the Avenue of Apchs 25120204 with `ipb.createAs: avenue`).
+   * The enemy's in red (hostile), own and the coding in blue (friend). Items are what SymbolEngine.loadSymbolFromJSON takes.
+   */
+  ipbSymbols(kind: 'coo' | 'corridors' | 'apchs' | 'event' | 'dst' | 'air' | 'template'): any[] {
+    const a = this._apch;
+    if (!a || !a.view.aas.length) return [];
+    const v = a.view;
+    const ip = this._opts.extended.ipb;
+    const mp = (p: MercXY) => ({ x: p[0], y: p[1], spatialReference: { wkid: 102100 } });
+    const sidc = (key: string, identity: string, echelon = '00') => `100${identity}${key.slice(0, 2)}00${echelon}${key.slice(2)}0000`;
+    const side = v.side === 'enemy' ? '6' : '3';
+    // A line for a symbol: at most `max` points, simplified within a growing tolerance (50 m first).
+    const fewer = (pts: MercXY[], max: number): MercXY[] => {
+      let tol = 50 * Math.cosh((pts[0]?.[1] ?? 0) / 6378137);
+      let out = simplifyLine(pts, tol);
+      while (out.length > max && tol < 1e6) {
+        tol *= 1.6;
+        out = simplifyLine(pts, tol);
+      }
+      return out;
+    };
+    const items: any[] = [];
+    if (kind === 'template') {
+      // The situation template's elements where the ground lets them be, all as the enemy's (hostile): objectives as Obj
+      // Areas (25151700), the FUP as a line square to the avenue (25140302), assembly areas (25150200), bridgeheads as a
+      // Bridgehead Line round the box (25141400), units as their unit symbols with the echelon. Crossings: no symbol.
+      const tv = v.template;
+      if (!tv) return [];
+      const k0 = Math.cosh(v.anchor[1] / 6378137);
+      const ring = (c: MercXY, r: number, n = 16): MercXY[] => Array.from({ length: n }, (_, i) => [c[0] + Math.sin((i / n) * Math.PI * 2) * r, c[1] + Math.cos((i / n) * Math.PI * 2) * r] as MercXY);
+      for (const e of tv.elements) {
+        if (!e.key || e.status === 'none') continue;
+        const r = e.footM * k0;
+        if (e.key === '25151700' || e.key === '25150200') {
+          const s = sidc(e.key, '6');
+          items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: e.label }, drawEssentials: { SYM_GEO_TYPE: 'Area', DRAW_TYPE: 1, CTRL_PTS: ring(e.at, r).map(mp) } });
+        } else if (e.key === '25140302') {
+          const b = (e.dirDeg * Math.PI) / 180;
+          const q: MercXY = [Math.cos(b), -Math.sin(b)];
+          const s = sidc(e.key, '6');
+          items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: e.label }, drawEssentials: { SYM_GEO_TYPE: 'Line', CTRL_PTS: [[e.at[0] - q[0] * r, e.at[1] - q[1] * r] as MercXY, [e.at[0] + q[0] * r, e.at[1] + q[1] * r] as MercXY].map(mp) } });
+        } else if (e.key === '25141400' && e.box && e.box.length === 4) {
+          const s = sidc(e.key, '6');
+          items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: e.label }, drawEssentials: { SYM_GEO_TYPE: 'Line', CTRL_PTS: [e.box[0], e.box[3], e.box[2], e.box[1]].map(mp) } });
+        } else if (!e.key.startsWith('25')) {
+          const s = `1006${e.key.slice(0, 2)}00${e.ech ?? '00'}${e.key.slice(2)}0000`;
+          items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: e.label }, drawEssentials: { SYM_GEO_TYPE: 'FPoint', GEOM: mp(e.at) } });
+        }
+      }
+      return items;
+    }
+    if (kind === 'air') {
+      // Air avenues as Low Level Transit Routes (25170200, 600 m wide), LZ (25242304) and DZ (25060000) squares, the AD
+      // sites' reach as SHORAD engagement zones (25171900), OPs over the enemy's LZs (25160100). The air avenues and their
+      // LZ / DZ are the reading side's colour; the AD against them and the OPs are the other side's.
+      const av = v.air;
+      if (!av) return [];
+      const k0 = Math.cosh(v.anchor[1] / 6378137);
+      const other = side === '6' ? '3' : '6';
+      for (const r of av.routes) {
+        if (r.line.length < 2) continue;
+        const pts = fewer(r.line, 8);
+        const p0 = pts[0], p1 = pts[1];
+        const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+        const nx = -(p1[1] - p0[1]) / len, ny = (p1[0] - p0[0]) / len;
+        const half = 300 * k0;
+        const s = sidc('25170200', side);
+        items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: `Air ${r.id}` }, drawEssentials: { SYM_GEO_TYPE: 'Line', CTRL_PTS: pts.slice(1).map(mp), BASE_LN_PTS: { startPt: mp([p0[0] + nx * half, p0[1] + ny * half]), midPt: mp(p0), endPt: mp([p0[0] - nx * half, p0[1] - ny * half]) } } });
+      }
+      for (const z of [...av.lzs, ...av.dzs]) {
+        const s = sidc(z.kind === 'lz' ? '25242304' : '25060000', side);
+        items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: z.id }, drawEssentials: { SYM_GEO_TYPE: 'Area', DRAW_TYPE: 2, CTRL_PTS: z.ring.map(mp) } });
+      }
+      for (const d of av.ad) {
+        const ring: MercXY[] = [];
+        const r = av.adRangeM * k0;
+        for (let i = 0; i < 24; i++) ring.push([d.at[0] + Math.sin((i * Math.PI) / 12) * r, d.at[1] + Math.cos((i * Math.PI) / 12) * r]);
+        const s = sidc('25171900', other);
+        items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: d.id }, drawEssentials: { SYM_GEO_TYPE: 'Area', DRAW_TYPE: 2, CTRL_PTS: ring.map(mp) } });
+      }
+      for (const z of av.lzs) {
+        if (!z.op) continue;
+        const s = sidc('25160100', other);
+        items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: `OP ${z.id}` }, drawEssentials: { SYM_GEO_TYPE: 'Point', GEOM: mp(z.op.at) } });
+      }
+      return items;
+    }
+    if (kind === 'event' || kind === 'dst') {
+      // NAIs (25120200) as round areas, TAIs (25120201) as boxes along the avenue, DPs (25130700) as points: own measures.
+      const dv = v.decision;
+      if (!dv) return [];
+      const k0 = Math.cosh(v.anchor[1] / 6378137);
+      if (kind === 'event') {
+        const r = Math.max(300, v.mcWidthM / 2) * k0;
+        for (const n of dv.nais) {
+          const ring: MercXY[] = [];
+          for (let i = 0; i < 8; i++) ring.push([n.at[0] + Math.sin((i * Math.PI) / 4) * r, n.at[1] + Math.cos((i * Math.PI) / 4) * r]);
+          const s = sidc('25120200', '3');
+          items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: String(n.n) }, drawEssentials: { SYM_GEO_TYPE: 'Area', DRAW_TYPE: 1, CTRL_PTS: ring.map(mp) } });
+        }
+        return items;
+      }
+      for (const t of dv.tais) {
+        const b = (t.dirDeg * Math.PI) / 180;
+        const L = Math.max(600, v.mcWidthM * 1.4) * k0, W = Math.max(400, v.mcWidthM) * k0;
+        const f: MercXY = [Math.sin(b), Math.cos(b)], q: MercXY = [Math.cos(b), -Math.sin(b)];
+        const c = (u: number, w: number): MercXY => [t.at[0] + f[0] * u + q[0] * w, t.at[1] + f[1] * u + q[1] * w];
+        const s = sidc('25120201', '3');
+        items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: String(t.n) }, drawEssentials: { SYM_GEO_TYPE: 'Area', DRAW_TYPE: 2, CTRL_PTS: [c(-L / 2, -W / 2), c(L / 2, -W / 2), c(L / 2, W / 2), c(-L / 2, W / 2)].map(mp) } });
+      }
+      // DPs on the ground read; one beyond the area goes where the map shows it (on the way in from the threat, or the edge).
+      for (const d of dv.dps) {
+        const s = sidc('25130700', '3');
+        items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: String(d.n) }, drawEssentials: { SYM_GEO_TYPE: 'Point', GEOM: mp(d.at) } });
+      }
+      return items;
+    }
+    if (kind === 'coo') {
+      if (!a.coding || !a.grid || !a.cframe || !this._manifest) return [];
+      const c = a.coding, g = a.grid, z = this._manifest.zoom.max, ts = this._manifest.tileSize;
+      const toM = (x: number, y: number): MercXY => pxToMerc(g.px0 + c.x0 + x, g.py0 + c.y0 + y, z, ts);
+      // Patches smaller than a quarter of the corridor width squared do not shape the level read (as for the corridors).
+      const minAreaM2 = (v.mcWidthM / 2) ** 2;
+      for (const [cls, key] of [['nogo', '25120203'], ['slow', '25120202']] as const) {
+        for (const ar of ipbAreas(c, { cls, frame: a.cframe, minAreaM2, maxAreas: cls === 'nogo' ? 80 : 60, maxVerts: 40 })) {
+          const s = sidc(key, '3');
+          items.push({ sidc: s, amplifier: { SIDC: s }, drawEssentials: { SYM_GEO_TYPE: 'Area', DRAW_TYPE: 2, CTRL_PTS: ar.ring.map(([x, y]) => mp(toM(x, y))) } });
+        }
+      }
+      return items;
+    }
+    if (kind === 'corridors') {
+      const ech = v.mcFor === 'Bn' ? '16' : v.mcFor === 'Bde' ? '18' : '15';
+      for (const m of v.mcs) {
+        if (m.line.length < 2) continue;
+        const s = sidc('25110101', side, ech);
+        // No label: the corridors' echelon marks say their level, and A1, A2... would pile up on the avenues' letters.
+        items.push({ sidc: s, amplifier: { SIDC: s }, drawEssentials: { SYM_GEO_TYPE: 'Line', ECHELON: ech, CTRL_PTS: fewer(m.line, 6).map(mp) } });
+      }
+      return items;
+    }
+    for (const x of v.aas) {
+      if (!x.viable || x.line.length < 2) continue;
+      const key = ip.createAs === 'avenue' ? '25120204' : x.main ? '25151403' : '25151404';
+      const geo = key === '25151404' ? 'Line' : 'Area';
+      // The width drawn on the map (corridors side by side), as MainAttack.ts reads TAIL_FACTOR.
+      const width = v.mcWidthM * (x.open ? 3 : 2.2);
+      const tail = arrowTail(x.lengthM, width, v.spacingM);
+      const s = sidc(key, side);
+      // The head in proportion to its width, as on the map (a fixed 15 % stretches a long arrow's head into a needle).
+      items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: x.id }, drawEssentials: { SYM_GEO_TYPE: geo, TAIL_FACTOR: Number(tail.toFixed(4)), HEAD_RATIO: Number(arrowHeadFrac(tail).toFixed(4)), CTRL_PTS: fewer(x.line, 7).map(mp) } });
+    }
+    return items;
+  }
+
+  /**
+   * Create on Map: write the reading shown as ordinary symbols (saved with the plan, exported, edited and undone like any
+   * other). Making a product again replaces the set made before (if still on the map), all as one undo step. Returns how
+   * many were made per product; nothing when the Extended View has no reading yet.
+   */
+  createIpbOverlay(kind: 'coo' | 'corridors' | 'apchs' | 'event' | 'dst' | 'decision' | 'air' | 'template' | 'all' = 'all'): { made: number; replaced: number; by: Record<string, number> } {
+    const none = { made: 0, replaced: 0, by: {} as Record<string, number> };
+    if (!this._creator) return none;
+    if (!this._apch || !this._apchOn()) {
+      this._badge.flash('Create on Map: turn the Extended View on (F) and let the area be read first', 3000);
+      return none;
+    }
+    const kinds: Array<'coo' | 'corridors' | 'apchs' | 'event' | 'dst' | 'air' | 'template'> = kind === 'all' ? ['coo', 'corridors', 'apchs'] : kind === 'decision' ? ['event', 'dst'] : [kind];
+    const items: any[] = [];
+    const by: Record<string, number> = {};
+    const removeIds: string[] = [];
+    const slices: Array<{ k: 'coo' | 'corridors' | 'apchs' | 'event' | 'dst' | 'air' | 'template'; from: number; to: number }> = [];
+    for (const k of kinds) {
+      const list = this.ipbSymbols(k);
+      slices.push({ k, from: items.length, to: items.length + list.length });
+      items.push(...list);
+      by[k] = list.length;
+      removeIds.push(...this._ipbMade[k]);
+    }
+    if (!items.length) {
+      this._badge.flash('Create on Map: nothing to write for this area', 2500);
+      return none;
+    }
+    const NAME = { coo: 'COO', corridors: 'Mob Corridors', apchs: `${this._apch.view.side === 'enemy' ? 'En' : 'Own'} Apchs`, event: 'NAIs', dst: 'TAIs, DPs', air: 'Air', template: 'Template' };
+    const label = `IPB: ${kinds.map((k) => NAME[k]).join(', ')}`;
+    let made: any[] = [];
+    try {
+      made = this._creator(items, label, removeIds);
+    } catch (err) {
+      console.error('[Ground Guide] Create on Map', err);
+    }
+    for (const sl of slices) this._ipbMade[sl.k] = made.slice(sl.from, sl.to).filter(Boolean).map((g: any) => g?.attributes?.id).filter((id: any): id is string => typeof id === 'string');
+    const n = made.filter(Boolean).length;
+    EngineLogger.success(ENGINE, `${label}: ${n} symbol${n === 1 ? '' : 's'} created${removeIds.length ? `, ${removeIds.length} made before replaced` : ''} (one undo step)`);
+    this._badge.flash(`Created ${n} symbol${n === 1 ? '' : 's'} (${kinds.map((k) => `${NAME[k]} ${by[k]}`).join(', ')}). Ctrl+Z undoes them.`, 3500);
+    this._emit('ground-guide-ipb-created', { kind, made: n, by, replaced: removeIds.length });
+    return { made: n, replaced: removeIds.length, by };
+  }
+
+  // ── IPB fire corridors and proforma (extended.ipb.fire / proforma; IPB_Plan.md §6.3, §6.5) ─────────────────────────
+
+  private _ipbFireOn(): boolean {
+    const ip = this._opts.extended.ipb;
+    return this._apchOn() && (ip.fire || ip.proforma || ip.decision || ip.air || ip.template !== 'off');
+  }
+
+  /** Work the fire on the avenues and the proforma out soon (after a new area, a moved spot or a changed symbol). */
+  private _ipbFireSoon(ms: number): void {
+    if (!this._ipbFireOn() || !this._apch) return;
+    if (this._fireTimer !== null) clearTimeout(this._fireTimer);
+    this._fireTimer = setTimeout(() => {
+      this._fireTimer = null;
+      try {
+        this._ipbFireRun();
+      } catch (err) {
+        console.error('[Ground Guide] IPB fire / proforma', err);
+      }
+    }, ms);
+  }
+
+  /**
+   * The Posns of one side inside the area read (with a 1 km margin): land units and equipment on the map with their
+   * ranges from the catalogue (`Rng`: anti-armour against an armoured mover, else direct fire; small arms 300 m when
+   * none), and, for own Posns, the symbol being placed. At most 16, nearest the area's middle first.
+   */
+  private _ipbPosns(v: IpbApchView, side: 'own' | 'enemy'): Array<{ at: MercXY; label: string; effM: number; obsM: number; eyeM: number; spot: boolean; assumed: boolean }> {
+    const want = side === 'own' ? ['2', '3'] : ['5', '6'];
+    const k = Math.cosh(v.anchor[1] / 6378137);
+    const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
+    const pad = 1000 * k;
+    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const armour = v.mover !== 'dismounted';
+    const out: Array<{ at: MercXY; label: string; effM: number; obsM: number; eyeM: number; spot: boolean; assumed: boolean }> = [];
+    const rngOf = (rng: any): { effM: number; obsM: number; vehicle: boolean; assumed: boolean } => {
+      const at3 = Array.isArray(rng?.at) && rng.at[1] > 0 ? Number(rng.at[1]) : null;
+      const dir3 = Array.isArray(rng?.dir) && rng.dir[1] > 0 ? Number(rng.dir[1]) : null;
+      const w = weaponOf(rng);
+      const effM = (armour ? (at3 ?? dir3) : (dir3 ?? at3)) ?? w.effM;
+      return { effM, obsM: Math.max(effM, Number(rng?.obs) || Number(rng?.nvObs) || 3000), vehicle: armour && at3 !== null, assumed: at3 === null && dir3 === null && !w.fromSymbol };
+    };
+    for (const g of this._placedGraphics()) {
+      if (g.geometry?.type !== 'point') continue;
+      const s = normaliseSidc(graphicSidc(g));
+      if (!s || s.length !== 20 || !want.includes(s[3])) continue;
+      const set = s.substring(4, 6);
+      if (set !== '10' && set !== '15') continue;
+      const at = toMercatorShape(g.geometry)?.parts[0]?.[0];
+      if (!at || at[0] < x0 || at[0] > x1 || at[1] < y0 || at[1] > y1) continue;
+      const ck = catalogKey(s);
+      const found = ck ? this._rangeLookup(ck) : null;
+      const r = rngOf(found?.rng);
+      out.push({ at: [at[0], at[1]], label: found?.name ?? g.attributes?.drawEssentials?.SYM_NAME ?? 'Posn', effM: r.effM, obsM: r.obsM, eyeM: set === '15' || r.vehicle ? 2.4 : 1.6, spot: false, assumed: r.assumed });
+    }
+    // The symbol being placed is one of own Posns (snapped to 100 m, so a small move does not work it all out again).
+    const c = this._extCtx;
+    if (side === 'own' && c && this._lastDetail?.sidc) {
+      const ck = catalogKey(this._lastDetail.sidc);
+      const r = rngOf(ck ? this._rangeLookup(ck)?.rng : null);
+      const sn = 100 * k;
+      out.push({ at: [Math.round(c.at[0] / sn) * sn, Math.round(c.at[1] / sn) * sn], label: 'This Posn', effM: r.effM, obsM: r.obsM, eyeM: c.reading.eyeM, spot: true, assumed: r.assumed });
+    }
+    return out.sort((p, q) => Math.hypot(p.at[0] - cx, p.at[1] - cy) - Math.hypot(q.at[0] - cx, q.at[1] - cy)).slice(0, 16);
+  }
+
+  /** The fire on one reading's avenues from the other side's Posns. */
+  private _ipbFireFor(a: { view: IpbApchView; grid: OcokaGrid }, posnSide: 'own' | 'enemy'): IpbFireView | null {
+    const m = this._manifest;
+    if (!m) return null;
+    const g = a.grid, v = a.view;
+    const z = m.zoom.max, ts = m.tileSize;
+    const toPx = (p: MercXY): [number, number] => {
+      const [px, py] = mercToPx(p[0], p[1], z, ts);
+      return [px - g.px0, py - g.py0];
+    };
+    const toM = (x: number, y: number): MercXY => pxToMerc(x + g.px0, y + g.py0, z, ts);
+    const posns = this._ipbPosns(v, posnSide).filter((p) => {
+      const [x, y] = toPx(p.at);
+      return x >= 2 && y >= 2 && x < g.w - 2 && y < g.h - 2;
+    });
+    const lines = v.aas.map((aa) => {
+      const pts = aa.line.map(toPx);
+      const alongM = [aa.startM];
+      for (let i = 1; i < pts.length; i++) alongM.push(alongM[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) * g.res);
+      return { id: aa.id, pts, alongM, narrows: aa.narrows.map((n) => ({ ...(() => { const [x, y] = toPx(n.at); return { x, y }; })(), alongM: n.alongM, widthM: n.widthM, kind: n.kind })) };
+    });
+    const month = resolveMonth(this._opts.going.month);
+    const r = fireCoverage({ grid: g, posns: posns.map((p) => ({ ...(() => { const [x, y] = toPx(p.at); return { x, y }; })(), eyeM: p.eyeM, effM: p.effM, obsM: p.obsM, label: p.label })), lines, tables: sightTables(OCOKA_DOCTRINE, month, g.res), targetM: v.mover === 'dismounted' ? 1.7 : 2.4 });
+    return {
+      posns: posns.map((p) => ({ at: p.at, label: p.label, effM: p.effM, obsM: p.obsM, spot: p.spot, assumed: p.assumed })),
+      lines: r.lines.map((c) => {
+        const segs: IpbFireView['lines'][number]['segs'] = [];
+        for (const s of c.samples) {
+          const last = segs[segs.length - 1];
+          const at = toM(s.x, s.y);
+          if (last && last.state === s.state) {
+            last.toM = s.alongM;
+            last.line.push(at);
+          } else {
+            if (last) last.line.push(at); // the stretches join without a gap
+            segs.push({ state: s.state, fromM: s.alongM, toM: s.alongM, line: [at] });
+          }
+        }
+        const aa = v.aas.find((x) => x.id === c.id);
+        return { id: c.id, coveredPct: c.coveredPct, screenedPct: c.screenedPct, deadPct: c.deadPct, outPct: c.outPct, seenPct: c.seenPct, gaps: c.gaps, segs, startM: aa?.startM ?? 0, endM: aa?.endM ?? 0, nearestM: c.nearestM, nearestPosn: c.nearestPosn };
+      }),
+      killing: r.killing.map((k2) => ({ on: k2.on, at: toM(k2.x, k2.y), alongM: k2.alongM, kind: k2.kind, widthM: k2.widthM, lengthM: k2.lengthM, text: k2.text })),
+      posnSide,
+      ms: r.ms,
+    };
+  }
+
+  /** What the proforma's rows measure on each avenue of a reading (IpbProforma.ts `PfMeasures`). */
+  private _pfMeasuresFor(a: { view: IpbApchView; grid: OcokaGrid }, fire: IpbFireView | null): PfGroupIn['aas'] {
+    const m = this._manifest;
+    if (!m) return [];
+    const g = a.grid, v = a.view;
+    const z = m.zoom.max, ts = m.tileSize;
+    const D: any = IPB_DOCTRINE;
+    const TREES = new Set<number>(D.coding?.vegetation?.classes?.value ?? [1, 29, 30, 31]);
+    const BUA = new Set<number>(D.coding?.bua?.classes?.value ?? [3]);
+    const HARD = new Set<number>(D.coding?.roads?.hardClasses?.value ?? [34, 35, 36, 37]);
+    const toPx = (p: MercXY): [number, number] => {
+      const [px, py] = mercToPx(p[0], p[1], z, ts);
+      return [px - g.px0, py - g.py0];
+    };
+    const clsAt = (x: number, y: number): number => {
+      const xi = Math.floor(x), yi = Math.floor(y);
+      return xi < 0 || yi < 0 || xi >= g.w || yi >= g.h ? 255 : g.cls[yi * g.w + xi];
+    };
+    // ITG candidates over the whole area, once.
+    const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
+    const centre: MercXY = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+    const kc = Math.cosh(centre[1] / 6378137);
+    const radiusM = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 / kc;
+    const cands = this._features ? this._features.candidatesNear(centre, radiusM, 60, 1) : null;
+    return v.aas.map((aa) => {
+      // Samples every 200 m along the centre line, with the line's direction.
+      const pts = aa.line.map(toPx);
+      const S: Array<{ x: number; y: number; dx: number; dy: number }> = [];
+      const step = 200 / g.res;
+      for (let i = 1; i < pts.length; i++) {
+        const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+        const len = Math.hypot(x1 - x0, y1 - y0);
+        if (!len) continue;
+        for (let t = 0; t < len; t += step) S.push({ x: x0 + ((x1 - x0) * t) / len, y: y0 + ((y1 - y0) * t) / len, dx: (x1 - x0) / len, dy: (y1 - y0) / len });
+      }
+      // Cover and built-up ground across a band one avenue wide; a metalled road within 300 m.
+      const half = ((aa.viable ? (aa.open ? 3 : 2.2) : 1) * v.mcWidthM) / 2 / g.res;
+      const roadR = 300 / g.res;
+      let all = 0, cover = 0, bua = 0, road = 0;
+      for (const s of S) {
+        let hasRoad = false;
+        for (let q = -Math.max(half, roadR); q <= Math.max(half, roadR); q += 2) {
+          const c = clsAt(s.x - s.dy * q, s.y + s.dx * q);
+          if (c === 255) continue;
+          if (Math.abs(q) <= half) {
+            all++;
+            if (TREES.has(c) || BUA.has(c)) cover++;
+            if (BUA.has(c)) bua++;
+          }
+          if (Math.abs(q) <= roadR && HARD.has(c)) hasRoad = true;
+        }
+        if (hasRoad) road++;
+      }
+      // Radio: 3 m masts 3 km apart along it, on the ground alone.
+      let legs = 0, clear = 0;
+      const legN = Math.max(1, Math.round(3000 / 200));
+      for (let i = 0; i + legN < S.length; i += legN) {
+        const p = S[i], q = S[i + legN];
+        const r = sightTo(g, p.x, p.y, q.x, q.y, { eyeM: 3, targetM: 3, tolM: 1, tables: null, going: null, effM: 0, radiusM: 0 });
+        if (!r) continue;
+        legs++;
+        if (r.pTerrain >= 0.5) clear++;
+      }
+      let itg: number | null = null;
+      if (cands && !cands.pending) {
+        const near = 1000 / g.res;
+        itg = cands.list.filter((c) => {
+          const [cx2, cy2] = toPx(c.at);
+          return S.some((s) => Math.hypot(s.x - cx2, s.y - cy2) <= near);
+        }).length;
+      }
+      const f = fire?.posns.length ? fire.lines.find((l) => l.id === aa.id) : null;
+      const measures: PfMeasures = {
+        coveredPct: f ? f.coveredPct : null,
+        coverPct: all ? (100 * cover) / all : 0,
+        obstacles: aa.narrows.length + aa.waterLines,
+        itg,
+        rooms: aa.viable ? (aa.open ? 3 : 2) : 1,
+        medianWidthM: aa.medianWidthM,
+        goPct: aa.goPct,
+        lengthM: aa.lengthM,
+        roadPct: S.length ? (100 * road) / S.length : 0,
+        sigsPct: legs ? (100 * clear) / legs : null,
+        seenPct: f ? f.seenPct : null,
+        buaPct: all ? (100 * bua) / all : 0,
+      };
+      return { id: aa.id, m: measures };
+    });
+  }
+
+  /** The proforma from the groups worked out so far and the user's signs. */
+  private _pfBuild(): void {
+    const a = this._apch;
+    if (!a) return;
+    const ip = this._opts.extended.ipb;
+    if (!ip.proforma || !this._pfInputs.length) {
+      a.view.proforma = undefined;
+      return;
+    }
+    const heads = [ip.pfHead1, ip.pfHead2];
+    const groups = this._pfInputs.map((g, i) => ({ ...g, head: heads[i]?.trim() || (g.side === 'enemy' ? 'En' : 'Own') }));
+    const r = proforma(groups, this._pfUser);
+    a.view.proforma = { ...r, pending: this._pfPending };
+  }
+
+  /** Fire on the avenues, then the proforma with this side's avenues; the other side's follow a moment later. */
+  private _ipbFireRun(): void {
+    const a = this._apch;
+    if (!a || !a.grid || !this._ipbFireOn()) return;
+    const ip = this._opts.extended.ipb;
+    const v = a.view;
+    const defender: 'own' | 'enemy' = v.side === 'enemy' ? 'own' : 'enemy';
+    const posns = this._ipbPosns(v, defender);
+    const tAt = this._opts.extended.threat === 'point' ? this._threatMerc() : null;
+    const key = `${a.key}|${posns.map((p) => `${Math.round(p.at[0])},${Math.round(p.at[1])},${p.effM}`).join(';')}|${ip.fire}${ip.proforma}${ip.decision}|${ip.reactionH}|${ip.hHour}|${ip.air}${ip.airBand}${ip.lzClass}${ip.lzPoints}|${ip.template}|${tAt ? `${Math.round(tAt[0] / 100)},${Math.round(tAt[1] / 100)}` : ''}`;
+    if (key === this._fireKey) return;
+    this._fireKey = key;
+    if (this._pfArea !== a.key) {
+      // A new area: the user's signs and the other side's reading belong to the old one.
+      this._pfArea = a.key;
+      this._pfUser = {};
+      this._apchOther = null;
+    }
+    const fire = this._ipbFireFor({ view: v, grid: a.grid }, defender);
+    v.fire = ip.fire ? fire : undefined;
+    v.decision = ip.decision ? this._ipbDecisionFor(a) : undefined;
+    v.wx = this._ipbWxFor(v);
+    v.air = ip.air ? this._ipbAirFor(a) : undefined;
+    v.template = ip.template !== 'off' ? this._ipbTemplateFor(a) : undefined;
+    if (ip.proforma) {
+      this._pfInputs = [{ head: '', side: v.side, aas: this._pfMeasuresFor({ view: v, grid: a.grid }, fire) }];
+      this._pfPending = true;
+      this._pfBuild();
+      // The other side's avenues over the same area, a moment later (another coding and reading, about half a second).
+      if (this._otherTimer !== null) clearTimeout(this._otherTimer);
+      this._otherTimer = setTimeout(() => {
+        this._otherTimer = null;
+        try {
+          this._ipbOtherRun();
+        } catch (err) {
+          console.error('[Ground Guide] IPB proforma, the other side', err);
+        }
+      }, 60);
+    }
+    this._ipbFireShown();
+  }
+
+  private _ipbOtherRun(): void {
+    const a = this._apch;
+    if (!a || !this._ipbFireOn() || !this._opts.extended.ipb.proforma) return;
+    const want = this._apchWant;
+    const at = want?.at ?? a.view.anchor;
+    const other: 'defence' | 'attack' = a.view.side === 'enemy' ? 'attack' : 'defence';
+    if (!this._apchOther || this._apchOther.area !== a.key) {
+      const r = this._apchCompute(at, want?.sidc ?? null, { readFor: other });
+      if (r === 'pending') {
+        this._otherTimer = setTimeout(() => this._ipbOtherRun(), 400);
+        return;
+      }
+      this._apchOther = r && r.grid ? { area: a.key, view: r.view, grid: r.grid } : null;
+    }
+    const o = this._apchOther;
+    if (o) {
+      const fire2 = this._ipbFireFor(o, o.view.side === 'enemy' ? 'own' : 'enemy');
+      this._pfInputs = [this._pfInputs[0], { head: '', side: o.view.side, aas: this._pfMeasuresFor(o, fire2) }].filter(Boolean);
+    }
+    this._pfPending = false;
+    this._pfBuild();
+    this._ipbFireShown();
+  }
+
+  /** Show what changed: the cards, the rail, the map. */
+  private _ipbFireShown(): void {
+    this._apchDraw();
+    this._refreshLive();
+    this._scopeSoon(0, true);
+  }
+
+  /** A proforma cell was clicked: the suggested sign, then +, −, ?, and back to the suggested one. */
+  private readonly _pfClickH = (e: Event): void => {
+    const root = this._detail.element;
+    if (!root || !(e.target instanceof Node) || !root.contains(e.target)) return;
+    const d = (e as CustomEvent).detail;
+    if (!d || typeof d.id !== 'string' || typeof d.row !== 'string' || typeof d.g !== 'number') return;
+    const k = pfKey(d.g, d.id, d.row);
+    const cur = this._pfUser[k];
+    const next: PfSign | undefined = cur === undefined ? '+' : cur === '+' ? '−' : cur === '−' ? '?' : undefined;
+    if (next === undefined) delete this._pfUser[k];
+    else this._pfUser[k] = next;
+    this._pfBuild();
+    this._refreshLive();
+  };
+
+  // ── IPB rates, event template, decision support, Annex A (extended.ipb.decision; IPB_Plan.md §6.6, §6.7) ─────────────
+
+  /** An avenue's centre line with the distance along it, and the book's going under it every 100 m (from the coding). */
+  private _aaAlong(a: { coding: IpbCoding | null; grid: OcokaGrid | null }, aa: IpbApchAa): { pts: Array<{ at: MercXY; alongM: number }>; going: DecAaIn['going'] } {
+    const pts: Array<{ at: MercXY; alongM: number }> = [];
+    let along = aa.startM;
+    aa.line.forEach((p, i) => {
+      if (i) {
+        const q = aa.line[i - 1];
+        along += Math.hypot(p[0] - q[0], p[1] - q[1]) / Math.cosh(((p[1] + q[1]) / 2) / 6378137);
+      }
+      pts.push({ at: p, alongM: along });
+    });
+    // The line's length may differ a little from the avenue's own figures: scale to its end.
+    const last = pts[pts.length - 1]?.alongM ?? aa.endM;
+    const k = last > aa.startM ? (aa.endM - aa.startM) / (last - aa.startM) : 1;
+    for (const p of pts) p.alongM = aa.startM + (p.alongM - aa.startM) * k;
+    const going: DecAaIn['going'] = [];
+    const c = a.coding, g = a.grid, m = this._manifest;
+    if (!c || !g || !m) return { pts, going: [{ fromM: aa.startM, toM: aa.endM, cls: 'na' }] };
+    const z = m.zoom.max, ts = m.tileSize;
+    for (let s = aa.startM; s < aa.endM; s += 100) {
+      const at = this._alongAt(pts, s + 50);
+      const [px, py] = mercToPx(at[0], at[1], z, ts);
+      const x = Math.floor(px - g.px0 - c.x0), y = Math.floor(py - g.py0 - c.y0);
+      const code = x >= 0 && y >= 0 && x < c.w && y < c.h ? c.code[y * c.w + x] : IPB.NODATA;
+      const cls: DecCls = code === IPB.GO ? 'go' : code === IPB.SLOW || code === IPB.NC ? 'slow' : code === IPB.NOGO ? 'nogo' : 'na';
+      const prev = going[going.length - 1];
+      if (prev && prev.cls === cls) prev.toM = Math.min(aa.endM, s + 100);
+      else going.push({ fromM: s, toM: Math.min(aa.endM, s + 100), cls });
+    }
+    return { pts, going };
+  }
+
+  /** The point at a distance along a line (clamped to its ends). */
+  private _alongAt(pts: Array<{ at: MercXY; alongM: number }>, alongM: number): MercXY {
+    if (!pts.length) return [0, 0];
+    if (alongM <= pts[0].alongM) return pts[0].at;
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].alongM >= alongM) {
+        const a = pts[i - 1], b = pts[i];
+        const t = (alongM - a.alongM) / Math.max(1e-6, b.alongM - a.alongM);
+        return [a.at[0] + (b.at[0] - a.at[0]) * t, a.at[1] + (b.at[1] - a.at[1]) * t];
+      }
+    }
+    return pts[pts.length - 1].at;
+  }
+
+  /** Rates along each avenue, the event template and decision support for a reading (the enemy's avenues). */
+  private _ipbDecisionFor(a: { view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null }): IpbDecisionView {
+    const v = a.view;
+    const ip = this._opts.extended.ipb;
+    const D: any = IPB_DOCTRINE;
+    const rates = decRatesFrom(D, v.mover);
+    const tAt = this._opts.extended.threat === 'point' ? this._threatMerc() : null;
+    const along = new Map<string, ReturnType<GroundGuide['_aaAlong']>>();
+    for (const aa of v.aas) along.set(aa.id, this._aaAlong(a, aa));
+    // Own depth: the rearmost own Posn beside each avenue (within 3 km of its line), not the symbol being placed.
+    const own = v.side === 'enemy' ? this._ipbPosns(v, 'own').filter((p) => !p.spot) : [];
+    const depthOf = (id: string): number | null => {
+      const L = along.get(id)!.pts;
+      let best: number | null = null;
+      for (const p of own) {
+        let bd = Infinity, ba = 0;
+        for (const q of L) {
+          const d = Math.hypot(q.at[0] - p.at[0], q.at[1] - p.at[1]) / Math.cosh(q.at[1] / 6378137);
+          if (d < bd) ((bd = d), (ba = q.alongM));
+        }
+        if (bd <= 3000 && (best === null || ba > best)) best = ba;
+      }
+      return best;
+    };
+    const leadM: Record<string, number> = {};
+    for (const aa of v.aas) {
+      const p0 = aa.line[0];
+      leadM[aa.id] = tAt && p0 ? Math.hypot(p0[0] - tAt[0], p0[1] - tAt[1]) / Math.cosh(p0[1] / 6378137) : 0;
+    }
+    const catk = v.side !== 'enemy' ? null : v.hqNote ? { label: 'Coy', min: Number(D.decisionPoints?.counterAttack?.coyMin?.value ?? 30) } : v.hq === 'bde' ? { label: 'Bn', min: Number(D.decisionPoints?.counterAttack?.bnMin?.value ?? 60) } : null;
+    const r = decide({
+      aas: v.aas.map((aa) => ({ id: aa.id, viable: aa.viable, main: aa.main, startM: aa.startM, endM: aa.endM, going: along.get(aa.id)!.going, narrows: aa.narrows.map((n) => ({ alongM: n.alongM, widthM: n.widthM, kind: n.kind })), depthM: depthOf(aa.id) })),
+      crossovers: v.crossovers.map((x) => ({ id: x.id, a: x.a, b: x.b, alongM: x.alongM })),
+      rates,
+      leadM,
+      leadH: Number(D.decisionPoints?.interdict?.leadH ?? 2),
+      reactionH: ip.reactionH,
+      mcWidthM: v.mcWidthM,
+      catkMin: catk?.min ?? null,
+      catkLabel: catk?.label ?? '',
+    });
+    const enemy = v.side === 'enemy';
+    const dirAt = (pts: Array<{ at: MercXY; alongM: number }>, m: number): number => {
+      const a0 = this._alongAt(pts, m - 150), b0 = this._alongAt(pts, m + 150);
+      return ((Math.atan2(b0[0] - a0[0], b0[1] - a0[1]) * 180) / Math.PI + 360) % 360;
+    };
+    const dpAt = (aaId: string, alongM: number): { at: MercXY; inArea: boolean } => {
+      const aa = v.aas.find((x) => x.id === aaId)!;
+      const pts = along.get(aaId)!.pts;
+      if (alongM >= aa.startM) return { at: this._alongAt(pts, alongM), inArea: true };
+      const p0 = pts[0].at;
+      if (!tAt) return { at: p0, inArea: false };
+      const k = Math.cosh(p0[1] / 6378137);
+      const d = Math.min(aa.startM - alongM, leadM[aaId]) * k;
+      const len = Math.hypot(tAt[0] - p0[0], tAt[1] - p0[1]) || 1;
+      return { at: [p0[0] + ((tAt[0] - p0[0]) / len) * d, p0[1] + ((tAt[1] - p0[1]) / len) * d], inArea: false };
+    };
+    const hh = /^([01]?\d|2[0-3]):([0-5]\d)$/.test(ip.hHour.trim()) ? ip.hHour.trim() : null;
+    return {
+      rates: { mover: v.mover, go: rates.go, slow: rates.slow, nogo: rates.nogo },
+      fromThreat: !!tAt,
+      hHour: hh,
+      profiles: r.profiles.map((p) => {
+        const aa = v.aas.find((x) => x.id === p.aa)!;
+        return { aa: p.aa, viable: aa.viable, main: aa.main, pts: p.pts, startAlongM: aa.startM - (leadM[p.aa] ?? 0), startH: p.startH, endH: p.endH };
+      }),
+      nais: enemy ? r.nais.map((n) => ({ ...n, at: this._alongAt(along.get(n.aa)!.pts, n.alongM) })) : [],
+      tais: enemy ? r.tais.map((t) => ({ ...t, at: this._alongAt(along.get(t.aa)!.pts, t.alongM), dirDeg: dirAt(along.get(t.aa)!.pts, t.alongM) })) : [],
+      dps: enemy ? r.dps.map((d) => ({ ...d, ...dpAt(d.aa, d.alongM) })) : [],
+      catk,
+      notes: enemy ? r.notes : ['Decision support reads the enemy\'s avenues: set Read for to Defence. The times over own avenues are shown.'],
+    };
+  }
+
+  /** Enemy land units already on the map inside the area read, by the kind of mover their symbol says (a template's known positions). */
+  private _ipbKnownEnemy(v: IpbApchView): Array<{ at: MercXY; mover: TplMover | 'other'; label: string }> {
+    const k = Math.cosh(v.anchor[1] / 6378137);
+    const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
+    const pad = 3000 * k;
+    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+    const out: Array<{ at: MercXY; mover: TplMover | 'other'; label: string }> = [];
+    for (const g of this._placedGraphics()) {
+      if (g.geometry?.type !== 'point') continue;
+      const s = normaliseSidc(graphicSidc(g));
+      if (!s || s.length !== 20 || !['5', '6'].includes(s[3])) continue;
+      const set = s.substring(4, 6);
+      if (set !== '10' && set !== '15') continue;
+      const at = toMercatorShape(g.geometry)?.parts[0]?.[0];
+      if (!at || at[0] < x0 || at[0] > x1 || at[1] < y0 || at[1] > y1) continue;
+      const ent = s.substring(10, 16);
+      const mover: TplMover | 'other' = ent.startsWith('1205') ? 'armour' : ent === '121102' || ent === '121104' || ent.startsWith('1212') ? 'mech' : ent.startsWith('1211') ? 'dismounted' : ent.startsWith('1303') || ent.startsWith('1304') ? 'gun' : 'other';
+      const ck = catalogKey(s);
+      out.push({ at: [at[0], at[1]], mover, label: (ck ? this._rangeLookup(ck)?.name : null) ?? g.attributes?.drawEssentials?.SYM_NAME ?? 'En' });
+    }
+    return out;
+  }
+
+  /**
+   * The situation template over a reading (IPB_Plan.md §6.7; book pp 22-23): the doctrinal template for the reading laid
+   * along its avenues, each element judged on its mover's IPB coding (the other movers' codings worked out once per area),
+   * moved to the nearest usable ground, known enemy symbols kept where they are; with the template phases and the library.
+   */
+  private _ipbTemplateFor(a: { key: string; view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null; cargs?: any }): IpbTemplateView | null {
+    const m = this._manifest;
+    const g = a.grid, c = a.coding, v = a.view;
+    if (!m || !g || !c || v.frame.length !== 4) return null;
+    const ip = this._opts.extended.ipb;
+    const z = m.zoom.max, ts = m.tileSize;
+    const toPx = (p: MercXY): [number, number] => {
+      const [px, py] = mercToPx(p[0], p[1], z, ts);
+      return [px - g.px0 - c.x0, py - g.py0 - c.y0];
+    };
+    const toM = (x: number, y: number): MercXY => pxToMerc(x + g.px0 + c.x0, y + g.py0 + c.y0, z, ts);
+    const readFor: 'defence' | 'attack' = v.side === 'enemy' ? 'defence' : 'attack';
+    // Mountains when the ground within 5 km of the position rises 400 m or more (IpbTemplates.json mountainTest, E).
+    let mountain = false;
+    {
+      const [sx, sy] = toPx(v.anchor);
+      const r = 5000 / g.res;
+      let lo = Infinity, hi = -Infinity;
+      const st = Math.max(1, Math.floor(r / 25));
+      for (let y = Math.max(0, Math.floor(sy - r)); y < Math.min(c.h, sy + r); y += st)
+        for (let x = Math.max(0, Math.floor(sx - r)); x < Math.min(c.w, sx + r); x += st) {
+          if ((x - sx) ** 2 + (y - sy) ** 2 > r * r) continue;
+          const e = g.elev[(y + c.y0) * g.w + x + c.x0];
+          if (e === e) ((lo = Math.min(lo, e)), (hi = Math.max(hi, e)));
+        }
+      mountain = hi - lo >= Number((IPB_TEMPLATES as any).mountainTest?.riseM ?? 400);
+    }
+    const spec = pickTemplate(IPB_TEMPLATES, { readFor, hq: v.hq, mountain, want: ip.template });
+    if (!spec) return null;
+    // Codings: the reading's own, the others once per area.
+    const movers = new Set<'armour' | 'mech' | 'dismounted'>();
+    for (const e of spec.elements) if (e.mover) movers.add(e.mover === 'gun' ? 'mech' : e.mover);
+    if (!this._tplCodes || this._tplCodes.key !== a.key) this._tplCodes = { key: a.key, codes: {} };
+    const codes = this._tplCodes.codes;
+    codes[v.mover] = c.code;
+    for (const mv of movers) {
+      if (codes[mv] || !a.cargs) continue;
+      try {
+        const cc = codeIpb({ ...a.cargs, mover: mv });
+        if (cc.w === c.w && cc.h === c.h) codes[mv] = cc.code;
+      } catch (err) {
+        console.error('[Ground Guide] IPB template coding', mv, err);
+      }
+    }
+    // Avenues in the coding's pixels.
+    const aas: TplAa[] = v.aas.map((aa) => {
+      const pts = aa.line.map(toPx);
+      const alongM = [aa.startM];
+      for (let i = 1; i < pts.length; i++) alongM.push(alongM[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) * g.res);
+      return { id: aa.id, rank: aa.rank, viable: aa.viable, pts, alongM, narrows: aa.narrows.map((n) => { const [x, y] = toPx(n.at); return { x, y, alongM: n.alongM, kind: n.kind }; }) };
+    });
+    const c2 = v.frame[2], c3 = v.frame[3];
+    const endMid: MercXY = [(c2[0] + c3[0]) / 2, (c2[1] + c3[1]) / 2];
+    const [ax, ay] = toPx(v.anchor);
+    // No avenue (mountains, close country): the template is laid along the threat's direction through the area.
+    const axisOnly = !aas.length;
+    if (axisOnly) {
+      const s0: MercXY = [(v.frame[0][0] + v.frame[1][0]) / 2, (v.frame[0][1] + v.frame[1][1]) / 2];
+      const p0 = toPx(s0), p1 = toPx(endMid);
+      aas.push({ id: 'axis', rank: 1, viable: false, pts: [p0, p1], alongM: [0, Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) * g.res], narrows: [] });
+    }
+    let objective: { x: number; y: number }, depth: { x: number; y: number }, fdl: { x: number; y: number } | null = null;
+    if (readFor === 'defence') {
+      // The enemy's immediate objective: the position; the subsequent: own depth toward the area's rear edge.
+      objective = { x: ax, y: ay };
+      const [ex, ey] = toPx(endMid);
+      depth = { x: ax + (ex - ax) * 0.6, y: ay + (ey - ay) * 0.6 };
+    } else {
+      // The enemy's defence: its FDL on the first water crossing of the leading own avenue beyond the spot, else the
+      // Threat marker's place, else a third of the way from the spot to the far edge.
+      const tAt = this._threatMerc();
+      const [ex, ey] = toPx(endMid);
+      const lead = aas.find((q) => q.viable) ?? aas[0];
+      const aAlong = (() => {
+        if (!lead) return 0;
+        let best = Infinity, bm = 0;
+        lead.pts.forEach((p, i) => {
+          const d = Math.hypot(p[0] - ax, p[1] - ay);
+          if (d < best) ((best = d), (bm = lead.alongM[i]));
+        });
+        return bm;
+      })();
+      const cross = lead?.narrows.filter((n) => n.kind === 'crossing' && n.alongM > aAlong + 1000).sort((p, q) => p.alongM - q.alongM)[0];
+      const tp = tAt ? toPx(tAt) : null;
+      const inBox = (p: [number, number] | null): p is [number, number] => !!p && p[0] >= 0 && p[1] >= 0 && p[0] < c.w && p[1] < c.h;
+      if (cross) fdl = { x: cross.x, y: cross.y };
+      else if (inBox(tp)) fdl = { x: tp[0], y: tp[1] };
+      else fdl = { x: ax + (ex - ax) / 3, y: ay + (ey - ay) / 3 };
+      objective = inBox(tp) ? { x: tp[0], y: tp[1] } : fdl;
+      depth = { x: fdl.x + (ex - fdl.x) * 0.6, y: fdl.y + (ey - fdl.y) * 0.6 };
+    }
+    const known = this._ipbKnownEnemy(v).map((q) => {
+      const [x, y] = toPx(q.at);
+      return { x, y, mover: q.mover, label: q.label };
+    });
+    const r = layTemplate({ grid: g, ox: c.x0, oy: c.y0, w: c.w, h: c.h, codes, aas, objective, depth, fdl, known, template: spec, rules: this._tplRules, res: g.res });
+    const T: any = IPB_TEMPLATES;
+    const confirmed = !(spec.basis === 'D?' || spec.elements.some((e) => e.basis === 'D?') || /Fig [67]/.test(spec.src));
+    const ph = spec.kind === 'attack' ? T.phases?.offensive : T.phases?.defensive;
+    return {
+      id: spec.id,
+      label: spec.label,
+      kind: spec.kind,
+      text: spec.text,
+      src: spec.src,
+      confirmed,
+      elements: r.elements.map((e) => ({
+        id: e.id,
+        label: e.label,
+        role: e.role,
+        mover: e.mover,
+        key: e.key,
+        ech: e.ech,
+        footM: e.footM,
+        basis: e.basis,
+        src: e.src,
+        doc: e.doc ? toM(e.doc[0], e.doc[1]) : null,
+        at: toM(e.x, e.y),
+        dirDeg: e.dirDeg,
+        status: e.status,
+        movedM: e.movedM,
+        nogoPct: e.nogoPct,
+        why: e.why,
+        ...(e.box ? { box: e.box.map(([x, y]) => toM(x, y)) } : {}),
+      })),
+      moved: r.moved,
+      known: r.known,
+      outside: r.outside,
+      phases: { label: String(ph?.label ?? 'Template phases'), rows: Array.isArray(ph?.rows) ? ph.rows : [] },
+      library: templatesFrom(T).map((t) => ({ id: t.id, label: t.label, kind: t.kind, fits: `${t.fits?.readFor === 'defence' ? 'Defence' : 'Own attack'} · ${t.fits?.hq === 'div' ? 'Div HQ' : 'Bde HQ'}${t.fits?.terrain ? ` · ${t.fits.terrain}` : ''}`, basis: t.basis, chosen: t.id === spec.id })),
+      auto: ip.template === 'auto',
+      notes: [...(axisOnly ? ["No avenue in the area read: the template is laid along the threat's direction."] : []), ...r.notes],
+      ms: r.ms,
+    };
+  }
+
+  /** A template was picked in the Detail's library (or Auto / Off): kept in the settings, the reading follows. */
+  private readonly _tplPickH = (e: Event): void => {
+    const root = this._detail.element;
+    if (!root || !(e.target instanceof Node) || !root.contains(e.target)) return;
+    const id = (e as CustomEvent).detail?.id;
+    if (typeof id !== 'string') return;
+    const ids = ['auto', 'off', ...templatesFrom(IPB_TEMPLATES).map((t) => t.id)];
+    if (!ids.includes(id)) return;
+    this.setOptions({ extended: { ...this._opts.extended, ipb: { ...this._opts.extended.ipb, template: id } } });
+    setSetting(['groundGuide', 'extended', 'ipb', 'template'], id);
+    this._fireKey = '';
+    this._ipbFireSoon(0);
+  };
+
+  /**
+   * Air avenues, LZ / DZ and AD sites over a reading's area (IPB_Plan.md §6.4; GroundGuideIpbAir.ts), in Web Mercator.
+   * The enemy's (defence): into own depth behind the spot, watched by own Posns. Own (attack): to the objective (the
+   * Threat marker's place, else the middle of the enemy's side), watched by the enemy's Posns and the Threat marker.
+   */
+  private _ipbAirFor(a: { view: IpbApchView; grid: OcokaGrid | null }): IpbAirView | null {
+    const m = this._manifest;
+    const g = a.grid, v = a.view;
+    if (!m || !g || v.frame.length !== 4) return null;
+    const ip = this._opts.extended.ipb;
+    const R = this._airRules;
+    const z = m.zoom.max, ts = m.tileSize;
+    const toPx = (p: MercXY): [number, number] => {
+      const [px, py] = mercToPx(p[0], p[1], z, ts);
+      return [px - g.px0, py - g.py0];
+    };
+    const toM = (x: number, y: number): MercXY => pxToMerc(x + g.px0, y + g.py0, z, ts);
+    const k = Math.cosh(v.anchor[1] / 6378137);
+    const [c0, c1] = v.frame;
+    const startMid: MercXY = [(c0[0] + c1[0]) / 2, (c0[1] + c1[1]) / 2];
+    const [sx, sy] = toPx(startMid);
+    const lengthM = v.frameKm[1] * 1000, widthM = v.frameKm[0] * 1000;
+    const ab = (v.axisDeg * Math.PI) / 180;
+    const anchorAlong = ((v.anchor[0] - startMid[0]) * Math.sin(ab) + (v.anchor[1] - startMid[1]) * Math.cos(ab)) / k;
+    const enemy = v.side === 'enemy';
+    // The other side's eyes.
+    const observers = this._ipbPosns(v, enemy ? 'own' : 'enemy').map((p) => {
+      const [x, y] = toPx(p.at);
+      return { x, y, eyeM: p.eyeM, reachM: Math.max(p.obsM, 5000), label: p.label };
+    });
+    const tAt = this._threatMerc();
+    if (!enemy && tAt) {
+      const [x, y] = toPx(tAt);
+      observers.push({ x, y, eyeM: 2, reachM: 6000, label: 'Threat' });
+    }
+    // Features over the area: vertical obstructions, lines to fly along or wires to cross, existing helipads and airfields.
+    const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
+    const centre: MercXY = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+    const radiusM = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 / k + 500;
+    const F = this._features;
+    const sc = F ? F.sceneNear(centre, radiusM) : null;
+    this._airFeaturesPending = !!sc?.pending;
+    const obstructions: AirObstruction[] = [], existing: AirExisting[] = [], lines: AirLine[] = [];
+    const exKinds = new Set(R.existingKinds);
+    const inG = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < g.w && y < g.h;
+    for (const p of sc?.points ?? []) {
+      const [x, y] = toPx([p.x, p.y]);
+      if (!inG(x, y)) continue;
+      const label = F!.kindLabel(p.key);
+      if (R.pointH[p.key] !== undefined) {
+        const hm = Number(p.a.hm);
+        obstructions.push({ x, y, kind: p.key, label, heightM: Number.isFinite(hm) && hm > 0 ? hm : null });
+      } else if (exKinds.has(p.key)) existing.push({ x, y, kind: p.key, label, name: tidyName(p.a.n, label) });
+    }
+    const NAV = new Set(['river', 'canal', 'railway']);
+    for (const l of sc?.lines ?? []) {
+      const wire = R.lineH[l.key] !== undefined;
+      const road = l.key === 'road' && !!(l.a.r || l.a.m);
+      if (!wire && !road && !NAV.has(l.key)) continue;
+      const pts: Array<[number, number]> = [];
+      for (let i = 0; i + 1 < l.xy.length; i += 2) pts.push(toPx([l.xy[i], l.xy[i + 1]]));
+      if (pts.length < 2 || !pts.some(([x, y]) => inG(x, y))) continue;
+      lines.push({ kind: l.key, name: tidyName(l.a.n, F!.kindLabel(l.key)) ?? (l.a.r ? String(l.a.r) : null), pts });
+    }
+    const lzZone = enemy ? { fromM: Math.max(0, anchorAlong - 1000), toM: lengthM } : { fromM: Math.min(lengthM - 1500, anchorAlong + 2000), toM: lengthM };
+    let objective: { x: number; y: number };
+    if (enemy) {
+      const [x, y] = toPx(v.anchor);
+      objective = { x, y };
+    } else if (tAt) {
+      const [x, y] = toPx(tAt);
+      objective = { x, y };
+    } else {
+      const al = (anchorAlong + lengthM) / 2;
+      const [x, y] = toPx([startMid[0] + Math.sin(ab) * al * k, startMid[1] + Math.cos(ab) * al * k]);
+      objective = { x, y };
+    }
+    const month = resolveMonth(this._opts.going.month);
+    const r = airIpb({
+      grid: g,
+      rules: R,
+      frame: { sx, sy, axisDeg: v.axisDeg, lengthM, widthM },
+      band: ip.airBand,
+      lzClass: ip.lzClass,
+      lzPoints: ip.lzPoints,
+      observers,
+      obstructions,
+      lines,
+      existing,
+      lzZone,
+      // AD against the air avenues sits on the defender's side: own ground from 6 km forward of the spot (the enemy's air
+      // avenues), the enemy's ground from 1 km beyond it (own air avenues).
+      adZone: enemy ? { fromM: Math.max(0, anchorAlong - 6000), toM: lengthM } : { fromM: Math.min(lengthM - 1000, anchorAlong + 1000), toM: lengthM },
+      objective,
+      tables: sightTables(OCOKA_DOCTRINE, month, g.res),
+      enemyLz: enemy,
+    });
+    const zone = (q: AirLz): IpbAirZone => {
+      const hw = q.sideM / 2 / g.res, hl = q.lengthM / 2 / g.res;
+      return {
+        id: q.id,
+        kind: q.kind,
+        rank: q.rank,
+        at: toM(q.x, q.y),
+        ring: [toM(q.x - hw, q.y - hl), toM(q.x + hw, q.y - hl), toM(q.x + hw, q.y + hl), toM(q.x - hw, q.y + hl)],
+        sideM: q.sideM,
+        lengthM: q.lengthM,
+        points: q.points,
+        slopeDeg: q.slopeDeg,
+        mountain: q.mountain,
+        caution: q.caution,
+        seenP: q.seenP,
+        distObjM: q.distObjM,
+        approaches: q.approaches,
+        existing: q.existing,
+        why: q.why,
+        op: q.op ? { at: toM(q.op.x, q.op.y), distM: q.op.distM, riseM: q.op.riseM } : null,
+      };
+    };
+    const inFrameM = (p: MercXY): boolean => {
+      const dx = (p[0] - startMid[0]) / k, dy = (p[1] - startMid[1]) / k;
+      const al = dx * Math.sin(ab) + dy * Math.cos(ab), ac = dx * Math.cos(ab) - dy * Math.sin(ab);
+      return al >= 0 && al <= lengthM && Math.abs(ac) <= widthM / 2;
+    };
+    const notes: string[] = [];
+    if (!F) notes.push('The bundle has no features: no masts, power lines, rivers or existing helipads read.');
+    else if (sc?.pending) notes.push('Feature tiles still loading: obstructions and existing helipads may be missing (read again when they arrive).');
+    const band = R.bands[ip.airBand];
+    return {
+      side: v.side,
+      band: ip.airBand,
+      bandLabel: band.label,
+      bandM: r.bandM,
+      lzClass: ip.lzClass,
+      lzPoints: r.lzPoints,
+      lpM: R.lpSizeM[ip.lzClass] ?? 80,
+      lzSideM: r.lzSideM,
+      adRangeM: R.adRangeM,
+      routes: r.routes.map((q) => ({ id: q.id, rank: q.rank, line: q.pts.map(([x, y]) => toM(x, y)), to: q.to, lengthM: q.lengthM, seenPct: q.seenPct, valleyPct: q.valleyPct, parallelPct: q.parallelPct, buaPct: q.buaPct, follows: q.follows, wires: q.wires, obstructionsNear: q.obstructionsNear, why: q.why, profile: q.profile })),
+      lzs: r.lzs.map(zone),
+      dzs: r.dzs.map(zone),
+      ad: r.ad.map((q) => ({ id: q.id, rank: q.rank, at: toM(q.x, q.y), seenM: q.seenM, longM: q.longM, flankM: q.flankM, bottom: q.bottom, kinds: q.kinds, routes: q.routes, why: q.why })),
+      obstructions: obstructions
+        .map((o) => ({ at: toM(o.x, o.y), kind: o.kind, label: o.label, heightM: o.heightM ?? R.pointH[o.kind] ?? 20 }))
+        .filter((o) => inFrameM(o.at))
+        .slice(0, 300),
+      observers: r.observers,
+      notes: [...notes, ...r.notes],
+      ms: r.ms,
+    };
+  }
+
+  /** Annex A for the area's middle and the month, from the bundle's visibility and climate grids. */
+  private _ipbWxFor(v: IpbApchView): IpbWxView | null {
+    const xs = v.frame.map((p) => p[0]), ys = v.frame.map((p) => p[1]);
+    if (!xs.length) return null;
+    const [lon, lat] = mercatorToLngLat((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
+    const month = resolveMonth(this._opts.going.month);
+    const vg = this._visibility?.get() ?? null;
+    const vr = vg ? visibilityAt(vg, lon, lat, month) : null;
+    const cl = this._climate?.normalsAt(lon, lat) ?? null;
+    const rows = annexA((IPB_DOCTRINE as any).weather?.rows ?? [], {
+      month,
+      vis: vr ? { meanViewKm: vr.meanViewKm, lt2kmPct: vr.lt2kmPct, fogPct: vr.fogPct, stationKm: vr.stationKm } : null,
+      clim: cl ? { tmin: cl.tmin, tmax: cl.tmax, wind: cl.wind, prec: cl.prec } : null,
+    });
+    return { month, rows, stationKm: vr?.stationKm ?? null };
   }
 
   /** The threat's place in Web Mercator, when it is one (`extended.threat: point`). */
@@ -1523,6 +3145,7 @@ export default class GroundGuide {
     const r = this._readExt(at, profile, sidc, false);
     const rd = this._extRead;
     if (r && rd) this._scopeExtRd = { key: rd.key, grid: rd.grid, ox: rd.ox, oy: rd.oy };
+    if (!this._extCtx) this._apchAsk(at, sidc ?? null); // nothing placed: the avenues read round the rail's spot
     return r;
   }
 
@@ -1549,7 +3172,7 @@ export default class GroundGuide {
           }, 240);
         }
       }
-      return { ...r, sight: made.sight, plan: made.plan };
+      return { ...r, sight: made.sight, plan: made.plan, ipbApch: this._apchViewNow() };
     } catch (err) {
       console.error('[Ground Guide] Gr Scope Extended View products', err);
       return r;
@@ -2091,6 +3714,7 @@ export default class GroundGuide {
     this._legend.hideHint('exempt');
     this._detachPointer();
     this._lastDetail = null;
+    this._extOffMap(); // dropped (or cancelled): the Extended View's products leave the map until the next draw
     this._lastSnappable = false;
     this._touchInput = false;
     this._nbr = null;
@@ -2216,7 +3840,8 @@ export default class GroundGuide {
    * few seconds. Never runs while drawing; nothing happens without a server.
    */
   afterPlace(graphic: any): void {
-    this._placedThisDraw = true; // the Extended View stays for the next of the same kind (extended.lasts: symbol)
+    this._placedThisDraw = true; // the Extended View stays on for the next of the same kind (extended.lasts: symbol)
+    if (this._extPin) this._extOffMap(); // nothing of it stays on the map after the drop
     // The Gr Scope rail stays on the symbol just placed until the map is panned (or another is placed or selected).
     if (graphic?.geometry) {
       const c = (this._getView?.() as any)?.center;
@@ -2833,6 +4458,10 @@ export default class GroundGuide {
     this._syncOverlay(); // moves the overlay (and the boundary) onto the new view's map
     this._indicators.onViewChanged(); // re-attaches to the new map on the next show
     this._extMap.onViewChanged();
+    this._ipbMap.onViewChanged();
+    this._apchMap.onViewChanged();
+    this._apchDraw(); // the same avenues on the new view's map
+    this._ipbLast = null;
     this._extOverGrid = null; // the Extended View's overlay is drawn again on the new view's map
     this._extViewKey = '';
     this._extOverlaySoon(0);
@@ -2851,6 +4480,10 @@ export default class GroundGuide {
     if (this._extCancelTimer !== null) clearTimeout(this._extCancelTimer);
     this._extCancelTimer = null;
     this._extMap.destroy();
+    this._ipbMap.destroy();
+    this._apchClear();
+    this._apchMap.destroy();
+    this._ipbLast = null;
     this._boundary.reset();
     this._configToken++;
     this._clearRetry();
@@ -2873,6 +4506,7 @@ export default class GroundGuide {
     this._detail.destroy();
     this._auditPanel.destroy();
     this._legend.destroy();
+    this._keyNotice.destroy();
     if (this._scopeTimer !== null) clearTimeout(this._scopeTimer);
     this._scopeTimer = null;
     if (this._scopePlanTimer !== null) clearTimeout(this._scopePlanTimer);
@@ -4120,7 +5754,9 @@ export default class GroundGuide {
     }
     this._detail.setExtended(on, on && this._keptNow());
     if (!on) {
+      this._extPinRelease();
       this._extMapClear();
+      this._apchClear();
       this._extLive.clear();
       this._lastExt = null;
       this._scopeExtRd = null;
@@ -4178,12 +5814,180 @@ export default class GroundGuide {
 
   /** The Extended View, its threat or its options changed: the marker, the map products, the overlay, the cards and the rail follow. */
   private _extChanged(): void {
+    this._detail.refreshKeys(); // the key bar's Whose Options and the Ext View keys
     this._syncThreat();
     this._extDrawnKey = '';
     if (!this._ext || this._opts.mode === 'off') this._extMapClear();
+    // The IPB avenues: gone with F (or the product); else read again if the threat, HQ, month or options moved the area.
+    if (!this._apchOn()) this._apchClear();
+    else this._apchSoon(150);
     this._syncOverlay(); // the going paint gives way to the Extended View's own overlay, and comes back
+    if (this._extPin && !this._lastDetail) this._extPinShow(); // the symbol held: read again toward the new threat / side
     this._refreshLive();
     this._scopeSoon(0, true); // the rail reads in the same view, toward the same threat
+  }
+
+  /** The symbol a reading holds on: where it is, its SIDC, its mode (a mode set by hand when placed is kept), its frontage. */
+  private _pinOf(graphic: any): GroundGuide['_extPin'] {
+    const at = graphic?.geometry ? (toMercatorShape(graphic.geometry)?.parts[0]?.[0] as MercXY | undefined) : undefined;
+    if (!at) return null;
+    const sidc = graphicSidc(graphic);
+    const stamp = readStamp(graphic);
+    const profile: GroundGuideProfile = stamp?.profileOverride && this.profileChoices.includes(stamp.profile) ? stamp.profile : resolveProfile(sidc, this._rules);
+    if (profile === 'exempt') return null;
+    return { graphic, at: [at[0], at[1]], sidc, profile, frontageM: stamp?.frontageM || DEFAULT_FRONTAGE_M };
+  }
+
+  /** Hold the Extended View on a symbol (the one selected) and draw its products there. */
+  private _extPinTo(graphic: any): void {
+    const p = this._pinOf(graphic);
+    if (!p) return;
+    this._extPin = p;
+    this._extPinTries = 0;
+    this._extPinShow();
+    this._syncOverlay();
+  }
+
+  private _extPinRelease(): void {
+    this._extPin = null;
+    if (this._extPinTimer !== null) clearTimeout(this._extPinTimer);
+    this._extPinTimer = null;
+  }
+
+  /**
+   * Take every Extended View product off the map (the drop, Esc, a cleared selection): the fan, the lines of sight, the
+   * approaches and the better Posn, the IPB avenues with their fire, decision, air and template, and its overlay paint.
+   * The Extended View itself stays on (`extended.lasts`) and the readings stay worked out, so the next draw in the same
+   * area shows them again at once. The threat marker stays at the map's edge to set the threat before the next draw.
+   */
+  private _extOffMap(): void {
+    this._extPinRelease();
+    this._extMapClear();
+    this._apchMap.clear();
+    if (this._ext) this._syncOverlay(); // the overlay paint goes (and the GROTBC paint comes back, if it is on)
+  }
+
+  /**
+   * Draw the Extended View's products for the symbol held (`_extPin`): read from the tiles in memory (asking for the
+   * missing ones and trying again while they come), the fan, the lines of sight and the better Posn on it, and the IPB
+   * reading round it. Nothing here follows the mouse or the map centre.
+   */
+  private _extPinShow(): void {
+    const p = this._extPin;
+    if (this._lastDetail) return; // a draw is on: the cursor leads
+    if (!p || !this._ext || !this.isActive || this._opts.mode === 'off') {
+      this._extPinRelease();
+      return;
+    }
+    if (this._extPinTimer !== null) clearTimeout(this._extPinTimer);
+    this._extPinTimer = null;
+    const r = this._scopeExtRead(p.at, p.profile, p.sidc);
+    const rd = this._extRead;
+    if (!r || !rd || r.pending) {
+      if (this._extPinTries++ < 25) {
+        this._extPinTimer = setTimeout(() => {
+          this._extPinTimer = null;
+          this._extPinShow();
+        }, 300);
+      }
+      if (!r || !rd) return;
+    }
+    this._lastExt = r;
+    this._extCtx = { key: `${rd.key}|${p.frontageM}`, grid: rd.grid, ox: rd.ox, oy: rd.oy, at: p.at, lngLat: r.lngLat, profile: p.profile, reading: r, frontageM: p.frontageM };
+    this._apchAsk(p.at, p.sidc);
+    if (this._extOverlayKind() === 'ipb') this._extOverlaySoon(250);
+    this._extMapSoon();
+  }
+
+  /**
+   * Whose options the IPB reading shows (X while F is on; the switch in the Ground Detail's key bar). `defence`: the enemy's
+   * avenues against the position, own fire on them, decision support, the enemy's air and his attack template.
+   * `attack`: own avenues toward the threat, the enemy's fire on them, own air, his defence template. Kept in the settings.
+   */
+  setReadFor(readFor: 'defence' | 'attack'): void {
+    if ((readFor !== 'defence' && readFor !== 'attack') || this._opts.extended.ipb.readFor === readFor) return;
+    this.setOptions({ extended: { ...this._opts.extended, ipb: { ...this._opts.extended.ipb, readFor } } });
+    setSetting(['groundGuide', 'extended', 'ipb', 'readFor'], readFor);
+  }
+
+  /**
+   * X (or the Detail's key bar): the other side's options, or `to`. Returns the reading now and says it in the key notice
+   * at the foot of the screen (on the card or the chip when the notice is off).
+   */
+  toggleReadFor(to?: 'defence' | 'attack'): 'defence' | 'attack' {
+    const next = to ?? (this._opts.extended.ipb.readFor === 'defence' ? 'attack' : 'defence');
+    this.setReadFor(next);
+    const msg = next === 'defence' ? "En's options against you: his Apchs, your fire on them. X for yours." : "Your options against the threat: your Apchs, his fire on them. X for the en's.";
+    this._notice(this._whoseNotice(), msg);
+    return next;
+  }
+
+  // ── The key notice (card.keyNotice; user, 2026-11-14) ─────────────────────────────────────────────────────────────
+
+  /**
+   * Say a key's new mode and the keys that work in it at the foot of the screen for 5 s (the key notice), or, with the
+   * notice off, `plain` on the cursor card while placing, else in the one-line chip (null: nothing).
+   */
+  private _notice(c: KeyNoticeContent, plain: string | null, ms = 2800): void {
+    if (this._opts.card.keyNotice) {
+      this._legend.hideHint('announce'); // the same place: one at a time
+      this._keyNotice.show(c, 5000);
+      return;
+    }
+    if (!plain) return;
+    if (this._lastDetail) this._badge.flash(plain, ms);
+    else this.announce(plain, ms);
+  }
+
+  /** The Extended View's keys while it is on, and what each does now. */
+  private _extKeys(): KeyNoticeKey[] {
+    const d = this._opts.extended.ipb.readFor === 'defence';
+    return [
+      ['1–5', 'its tabs'],
+      ['X', d ? 'your options' : "the en's options"],
+      ['[ ]', 'turn the threat'],
+      ['J', 'better Posn'],
+      ['F', 'close'],
+      ...(this._keptNow() ? [] : ([['⇧F', 'keep on for every symbol']] as KeyNoticeKey[])),
+    ];
+  }
+
+  /** Whose options the IPB reading shows now (X), what that brings and the keys to see it. */
+  private _whoseNotice(): KeyNoticeContent {
+    const d = this._opts.extended.ipb.readFor === 'defence';
+    return {
+      mode: d ? "En's options against you" : 'Your options against the threat',
+      text: d ? 'His Apchs at you (red), your fire on them, his air, his attack template.' : 'Your Apchs at him (blue), his fire on them, your air, his defence template.',
+      keys: [
+        ['X', d ? 'your options' : "the en's options"],
+        ['3', 'Apchs'],
+        ['1', 'fire on them'],
+        ['4', 'air'],
+        ['5', 'decision'],
+        ['[ ]', 'turn the threat'],
+      ],
+    };
+  }
+
+  /** F / Shift+F: the Extended View now. */
+  private _extNotice(): KeyNoticeContent {
+    if (!this._ext) return { mode: 'Ext View off', text: 'GROTBC only; nothing more is worked out.', keys: [['F', 'on for this symbol'], ['⇧F', 'on for every symbol'], ['D', 'Gr Detail'], ['V', 'Gr Scope']] };
+    const d = this._opts.extended.ipb.readFor === 'defence';
+    return {
+      mode: this._keptNow() ? 'Ext View on · every symbol' : 'Ext View on · this symbol',
+      text: `${d ? "The en's options against you" : 'Your options against the threat'}: fields of fire, Key Gr, Apchs, air, decision.`,
+      keys: this._extKeys(),
+    };
+  }
+
+  /** [ ]: the threat now. */
+  private _threatNotice(): KeyNoticeContent {
+    const deg = Math.round(this._opts.extended.bearingDeg);
+    return {
+      mode: `Threat ${COMPASS[Math.round(deg / 45) % 8]} ${deg}°`,
+      text: "The fire fan, the Apchs and the threat's view turn with it. Drag the Threat marker to a place; double-click it for the unit's front.",
+      keys: [['[ ]', 'turn 15°'], ['⇧[ ⇧]', 'turn 45°'], ['X', this._opts.extended.ipb.readFor === 'defence' ? 'your options' : "the en's options"], ['F', 'close']],
+    };
   }
 
   /**
@@ -4286,8 +6090,11 @@ export default class GroundGuide {
     const frontageM = v.footprint?.frontageM || DEFAULT_FRONTAGE_M;
     const key = `${rd.key}|${frontageM}`;
     this._extCtx = { key, grid: rd.grid, ox: rd.ox, oy: rd.oy, at: [at[0], at[1]], lngLat: r.lngLat, profile: v.profile, reading: r, frontageM };
+    if (this._extOverlayKind() === 'ipb') this._extOverlaySoon(250); // the IPB area follows the spot once the cursor rests
+    this._apchAsk([at[0], at[1]], sidc); // the avenues' area follows the spot, once per area
     r.sight = this._extSightKey === key ? this._extSight : null;
     r.plan = this._extPlanKey === key ? this._extPlan : null;
+    r.ipbApch = this._apchViewNow();
     this._extMapSoon();
     return r;
   }
@@ -4396,7 +6203,7 @@ export default class GroundGuide {
   private _extDraw(withPlan: boolean): void {
     const c = this._extCtx;
     const o = this._opts.extended;
-    if (!c || !this.isActive || !this._ext || !this._lastDetail) return this._extMapClear();
+    if (!c || !this.isActive || !this._ext || (!this._lastDetail && !this._extPin)) return this._extMapClear();
     let refresh = false;
     try {
       const args = this._extArgs(c);
@@ -4415,6 +6222,7 @@ export default class GroundGuide {
         if (withPlan) {
           this._extViewKey = c.key;
           const r = c.reading;
+          this._extMap.setOverlayLabels(o.ipb.labels !== 'off');
           this._extMap.showOverlay(ocokaViewshed({ grid: c.grid, ox: c.ox, oy: c.oy, at: c.at, kind: 'view', eyeM: r.eyeM, targetM: 1.7, radiusM: r.radiusM, month: r.month, surface: r.surface }));
         } else if (this._extViewKey !== '') {
           this._extViewKey = '';
@@ -4426,10 +6234,11 @@ export default class GroundGuide {
       return;
     }
     const plan = this._extPlanKey === c.key ? this._extPlan : null;
-    const drawn = `${c.key}|${plan ? 1 : 0}|${o.mapFan}${o.mapEnemy}${o.mapSight}${o.mapApproaches}${o.mapBetter}|${this._extMap.overlayKind ?? ''}`;
+    const drawn = `${c.key}|${plan ? 1 : 0}|${o.mapFan}${o.mapEnemy}${o.mapSight}${o.mapApproaches}${o.mapBetter}${this._apchOn()}|${this._extMap.overlayKind ?? ''}|${o.ipb.labels}`;
     if (drawn !== this._extDrawnKey) {
       this._extDrawnKey = drawn;
-      this._extMap.show(c.at, this._extSight, plan, { fan: o.mapFan, enemy: o.mapEnemy, sight: o.mapSight, avenues: o.mapApproaches, better: o.mapBetter });
+      // The single approach path gives way to the IPB avenues when they are on (tab 3 says which is shown).
+      this._extMap.show(c.at, this._extSight, plan, { fan: o.mapFan, enemy: o.mapEnemy, sight: o.mapSight, avenues: o.mapApproaches && !this._apchOn(), better: o.mapBetter, labels: o.ipb.labels !== 'off' });
     }
     if (refresh) this._refreshLive(); // the cards name what the map now shows
   }
@@ -4457,7 +6266,7 @@ export default class GroundGuide {
     const c = this._extCtx;
     const b = c && this._extPlanKey === c.key ? this._extPlan?.better : null;
     const no = (msg: string): boolean => {
-      this._badge.flash(msg);
+      this._notice({ mode: msg, warn: true, text: 'J takes the better Posn when the map shows one.', keys: this._ext ? this._extKeys() : [['F', 'Ext View']] }, msg, 2600);
       return false;
     };
     if (!this.isActive || !d || d.geometry?.type !== 'point' || !b) return no('No better Posn to take here');
@@ -4468,6 +6277,7 @@ export default class GroundGuide {
     const px = this._settleOnScreen(view, target, d.sidc);
     if (!px) return no('Cannot place the symbol there on this view');
     EngineLogger.success(ENGINE, `Moved ${fmtDistance(b.distanceM)} ${b.compass} to better fields of fire (${b.hereGrade} to ${b.grade})`);
+    this._notice({ mode: 'Placed at the better Posn', text: `${fmtDistance(b.distanceM)} ${b.compass}: fields of fire ${b.hereGrade} to ${b.grade}. Ctrl+Z undoes the placement.`, keys: this._extKeys() }, null);
     this._emit('ground-guide-better', { at: b.at, distanceM: b.distanceM, compass: b.compass, grade: b.grade, from: b.hereGrade });
     // The armed symbol's own click handler finishes the draw at this spot, as for the S quick fix.
     this._clickAt(view, px.x, px.y);
@@ -5334,7 +7144,24 @@ export default class GroundGuide {
 
   private _onTilesChanged(terrain = true): void {
     this._extTick++; // a tile the Extended View's grid was missing may have arrived
-    if (this._extOverlayKind() === 'threat') this._extOverlaySoon(300);
+    const extKind = this._extOverlayKind();
+    if (extKind === 'threat' || extKind === 'ipb') this._extOverlaySoon(300);
+    if (this._apchWaiting) this._apchSoon(250);
+    // Feature tiles the air reading wanted have arrived: read the air again (obstructions, lines, existing helipads).
+    if (!terrain && this._airFeaturesPending && this._apch) {
+      this._airFeaturesPending = false;
+      this._fireKey = '';
+      this._ipbFireSoon(300);
+    }
+    // The weather grids load on first use: Annex A is read again when one arrives (a lookup, no tiles).
+    const av = this._apch?.view;
+    if (av?.wx && av.wx.rows.some((r) => r.status === 'na' && /no (visibility|climate) data/.test(r.value))) {
+      const wx = this._ipbWxFor(av);
+      if (wx && wx.rows.filter((r) => r.status === 'na').length < av.wx.rows.filter((r) => r.status === 'na').length) {
+        av.wx = wx;
+        this._refreshLive();
+      }
+    }
     if (this._scope.isShown) {
       this._scopeTick++; // the rail's map may have been waiting on it
       this._scopeSoon();
@@ -5472,6 +7299,10 @@ export default class GroundGuide {
         if (stationary) {
           this._prefetch();
           this._checkOverlaySeason();
+          if (this._extOverlayKind() === 'ipb') this._extOverlaySoon(250); // a new area once the map rests
+          // Nothing placed and no rail reading a spot: the avenues read round the map centre once it rests.
+          if (this._apchOn() && !this._extCtx && !this._scope.wanted && view.center) this._apchAsk([view.center.x, view.center.y], null);
+          if (this._apch && this._apchOn()) this._apchDraw(); // the labels are decluttered for the new zoom
           this._scopeAfterPan(view);
         }
       },
@@ -5504,7 +7335,7 @@ export default class GroundGuide {
    */
   private _scopeAfterPan(view: any): void {
     const p = this._scopePlaced;
-    if (p?.centre && view?.center) {
+    if (p?.centre && view?.center && this._extPin?.graphic !== p.graphic) {
       const now = toMercatorShape(view.center)?.parts[0]?.[0];
       const res = this._viewResolution();
       const w = (view.width ?? 0) * (res ?? 0);
@@ -5573,9 +7404,9 @@ export default class GroundGuide {
     // The Extended View (user, 2026-11-12): F turns it on and off at any time the guide is on; while it is on, 1 2 3 open
     // its tabs, [ and ] turn the threat and J takes the better Posn. The GROTBC letters keep their keys (the user's
     // rule). With it off the digits, brackets and J are left alone for the app.
-    const oDigit = /^Digit[1-3]$/.test(e.code) ? Number(e.code.slice(5)) : 0;
+    const oDigit = /^Digit\d$/.test(e.code) && EXT_TABS.some((t) => EXT_TAB_KEY[t] === e.code.slice(5)) ? Number(e.code.slice(5)) : 0;
     const oTurn = e.code === 'BracketRight' ? 1 : e.code === 'BracketLeft' ? -1 : 0;
-    const oKey = this._opts.extended.keys && (k === 'f' || (this._ext && (k === 'j' || oDigit > 0 || oTurn !== 0)));
+    const oKey = this._opts.extended.keys && (k === 'f' || (this._ext && (k === 'j' || k === 'x' || oDigit > 0 || oTurn !== 0)));
     if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'v' && k !== 'escape' && !tabKey && !oKey) || e.ctrlKey || e.metaKey || e.altKey || (e.repeat && oTurn === 0)) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -5593,17 +7424,19 @@ export default class GroundGuide {
           msg = !on
             ? 'Ext View off.'
             : this._keptNow()
-              ? 'Ext View on (kept). 1 2 3 tabs, J better Posn. F closes it.'
-              : 'Ext View on for this symbol: 1 2 3 tabs, J better Posn. A new symbol or Esc closes it; Shift+F keeps it.';
+              ? `Ext View on (kept): ${this._opts.extended.ipb.readFor === 'defence' ? "en's options" : 'your options'}, X the other side. 1 2 3 4 5 tabs, J better Posn. F closes it.`
+              : `Ext View on for this symbol: ${this._opts.extended.ipb.readFor === 'defence' ? "en's options" : 'your options'}, X the other side. 1 2 3 4 5 tabs, J better Posn. Shift+F keeps it.`;
         }
-        if (this._lastDetail) this._badge.flash(msg, 2600);
-        else this.announce(msg, 2600);
+        this._notice(this._extNotice(), msg, 2600);
       } else if (k === 'j') {
         this.takeBetter();
+      } else if (k === 'x') {
+        this.toggleReadFor(); // X: the enemy's options against you, or yours against the threat
       } else if (oTurn !== 0) {
         this.turnThreat(oTurn * (e.shiftKey ? 45 : 15));
+        this._notice(this._threatNotice(), null);
       } else if (this._opts.card.briefKey) {
-        const tab = EXT_TABS[oDigit - 1];
+        const tab = EXT_TABS.find((t) => EXT_TAB_KEY[t] === String(oDigit)) ?? EXT_TABS[0];
         if (this._briefOpen && this._detail.tab === tab) {
           if (e.shiftKey) this._detail.prevPage();
           else this._detail.nextPage();
@@ -5619,10 +7452,27 @@ export default class GroundGuide {
       if (e.shiftKey && this._opts.aor.keys) {
         // Shift+V switches the rail between Spot and AOR (user, 2026-11-11), showing it if it was hidden.
         this.setScopeScale();
-        this._badge.flash(this._opts.aor.scale === 'aor' ? 'Gr Scope: AOR. Shift+V for Spot, D for the apch sheets.' : 'Gr Scope: Spot. Shift+V for AOR.', 1800);
+        const aor = this._opts.aor.scale === 'aor';
+        this._notice(
+          {
+            mode: `Gr Scope: ${aor ? 'AOR' : 'Spot'}`,
+            text: aor ? 'The area of ops read as Gr and Weather: approaches, lines of def, the MITG, the MSR.' : 'The ground round the symbol, with range rings and the frontage.',
+            keys: [['⇧V', aor ? 'Spot scale' : 'AOR scale'], ...(aor ? ([['D', 'Apch sheets']] as KeyNoticeKey[]) : []), ['V', 'hide the rail']],
+          },
+          aor ? 'Gr Scope: AOR. Shift+V for Spot, D for the apch sheets.' : 'Gr Scope: Spot. Shift+V for AOR.',
+          1800,
+        );
         return;
       }
       this.showScope(!this._scope.wanted);
+      const shown = this._scope.wanted;
+      const aor = this._opts.aor.scale === 'aor';
+      this._notice(
+        shown
+          ? { mode: 'Gr Scope shown', text: aor ? 'The rail reads the area of ops (AOR scale).' : 'The rail shows the ground round the symbol; its legend lines are the layer switches.', keys: [['V', 'hide'], ['⇧V', aor ? 'Spot scale' : 'AOR scale'], ...(aor ? ([['D', 'Apch sheets']] as KeyNoticeKey[]) : [])] }
+          : { mode: 'Gr Scope hidden', keys: [['V', 'show'], ['⇧V', 'show at the AOR scale']] },
+        null,
+      );
       return;
     }
     if (k === 'escape' && this._aorSheet.isOpen) {
@@ -5671,13 +7521,21 @@ export default class GroundGuide {
       // brings the card back (user, 2026-11-07). Only while drawing, like P: H is free for anything else otherwise.
       if (!this.isActive || !this._lastDetail || this._activeProfile === 'exempt') return;
       e.preventDefault();
-      this._badge.toggleHint();
+      const chip = this._badge.toggleHint();
+      this._notice(
+        chip
+          ? { mode: 'Card as a chip', text: 'GO / SLOW-GO / NO-GO only, so the map under the symbol shows.', keys: [['H', 'card back'], ['D', 'Gr Detail'], ['S', 'clear Gr']] }
+          : { mode: 'Card back', keys: [['H', 'chip only'], ['D', 'Gr Detail'], ['S', 'clear Gr']] },
+        null,
+      );
       return;
     }
     if (k === 'p') {
       if (!this._opts.profileKey || !this._lastDetail || this._activeProfile === 'exempt') return;
       e.preventDefault();
-      this.cycleProfile();
+      const over = this.cycleProfile();
+      const now = over ?? resolveProfile(this._activeSidc, this._rules);
+      this._notice({ mode: `Judged for ${this._rules?.profiles?.[now]?.label ?? now}`, text: over ? 'Set by hand for this symbol.' : "The symbol's own mode.", keys: [['P', 'next mode'], ['S', 'clear Gr for it']] }, null);
       return;
     }
     if (!this._opts.snapKey || !this._lastSnappable || !this._lastDetail) return;
@@ -5745,7 +7603,7 @@ export default class GroundGuide {
   private _syncOverlay(refresh = false): void {
     this._syncBoundary();
     // With the Extended View on the overlay paints what can be seen (`extended.overlay`), unless it is set to keep the going.
-    const lensOwn = this._ext && this._opts.mode !== 'off' && this._opts.extended.overlay !== 'going';
+    const lensOwn = this._ext && this._extHere() && this._opts.mode !== 'off' && this._opts.extended.overlay !== 'going';
     this._extOverlaySoon(0);
     const want = this._enabled && this._manifest !== null && this._rules !== null && this._opts.overlay.enabled && !lensOwn;
     if (!want) {

@@ -345,7 +345,8 @@
         color: var(--ms-accent) !important;
       }
       #movementGuideBtn.ms-btn-active,
-      #nightMarchBtn.ms-btn-active {
+      #nightMarchBtn.ms-btn-active,
+      #movePlannerBtn.ms-btn-active {
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
       }
@@ -2071,7 +2072,7 @@
         </div>
         <!-- Platoon Guide on/off (features.platoonGuide), hover (platoonGuide.hover) and its settings; wired in src/main.ts. -->
         <div class="infobar-split">
-          <button class="ms-btn infobar-btn" id="platoonGuideBtn" aria-pressed="false" title="Platoon Guide — the Ground card at a point for Team to Coy: going, cover, water, way out, landing site and hospital; what you see and what is dead ground; likely mine / IED and ambush sites round you; people and BUA; help; where to stop. Place or select a Team / Sec / Pl / Coy, turn on Hover (⌖) for the cursor card, or select a line for the patrol route card. A opens the Pl Detail and walks its tabs; Esc closes it."><span class="infobar-icon">🪖</span>Pl Guide</button>
+          <button class="ms-btn infobar-btn" id="platoonGuideBtn" aria-pressed="false" title="Platoon Guide — the Ground card at a point for Team to Coy: going, cover, water, way out, landing site and hospital; what you see and what is dead ground; likely mine / IED and ambush sites round you; people and BUA; help; where to stop. Place or select a Team / Sec / Pl / Coy, turn on Hover (⌖) for the halo round the cursor, or select a line for the patrol route card. The answer bar at the foot shows every tab's answer; click a tab to open it. A pins the reading and opens the Pl Detail, A again walks its tabs; Esc folds it."><span class="infobar-icon">🪖</span>Pl Guide</button>
           <button class="ms-btn infobar-btn infobar-gear" id="platoonGuideHoverBtn" aria-pressed="false" aria-label="Platoon Guide: read where the mouse is" title="Hover: read the point under the cursor without drawing (platoonGuide.hover)."><span class="infobar-icon">⌖</span></button>
           <button class="ms-btn infobar-btn infobar-gear" id="platoonGuideSettingsBtn" aria-label="Platoon Guide settings" aria-expanded="false" title="Platoon Guide settings. Same settings as Ctrl+K → Platoon Guide."><span class="infobar-icon">⚙</span></button>
         </div>
@@ -2080,6 +2081,11 @@
           <button class="ms-btn infobar-btn" id="nightMarchBtn" aria-pressed="false" title="Night March — bearings and paced legs from the SP to the FUP (120 paces = 100 m), time by night, the landmark each leg ends on, the FUP and start line marking layout, marking stores and timings back from H. Turns it on and starts a route: click the SP and each turn, double-click the FUP, then click the Obj (Esc for none). W opens the chart at the foot of the map and walks its styles; Esc closes it."><span class="infobar-icon">🌙</span>Nt March</button>
           <button class="ms-btn infobar-btn infobar-gear" id="nightMarchDrawBtn" aria-label="Night March: draw a new route" title="Draw a new route (SP, turns, double-click the FUP, click the Obj)."><span class="infobar-icon">✎</span></button>
           <button class="ms-btn infobar-btn infobar-gear" id="nightMarchSettingsBtn" aria-label="Night March settings" aria-expanded="false" title="Night March settings: echelon, GMA, H hour, mils, tanks, chart style. Same settings as Ctrl+K → Night March."><span class="infobar-icon">⚙</span></button>
+        </div>
+        <!-- Move Planner on/off (features.movePlanner) + the Mov Plan panel, and its settings; wired in src/main.ts. -->
+        <div class="infobar-split">
+          <button class="ms-btn infobar-btn" id="movePlannerBtn" aria-pressed="false" title="Move Planner — Rd Mov, Mov &amp; Assy, DI Mov (de-induction), Rly Mov and En Mov: serials and routes, TPP, halts and harbours, crossings by priority, the mov table and graph, trains within 72 C units and 2,000 tons, the enemy's induction matrix. Turns it on and opens the Mov Plan panel; U opens / closes it, Shift+U walks its views."><span class="infobar-icon">🚚</span>Mov Plan</button>
+          <button class="ms-btn infobar-btn infobar-gear" id="movePlannerSettingsBtn" aria-label="Move Planner settings" aria-expanded="false" title="Move Planner settings: the kind it opens on, time zone, road network, load class, map. Same settings as Ctrl+K → Move Planner."><span class="infobar-icon">⚙</span></button>
         </div>
         <!-- Movement Guide on/off (features.movementGuide) and its settings; wired in src/main.ts. -->
         <div class="infobar-split">
@@ -2701,7 +2707,7 @@
           </div>
           <div class="setting-row">
             <label>Shortcuts</label>
-            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off), V (Gr Scope rail, while the Ground Guide is on), Shift+V (the rail's AOR scale), F (the Ground Guide's Extended View: then 1 2 3 its tabs, J better Posn, [ ] threat)." />
+            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off), V (Gr Scope rail, while the Ground Guide is on), Shift+V (the rail's AOR scale), F (the Ground Guide's Extended View: then 1 2 3 4 5 its tabs, J better Posn, [ ] threat, X the en's / your options)." />
           </div>
           <div class="setting-row">
             <label>Copy/Paste</label>
@@ -3442,6 +3448,13 @@
               <button type="button" id="ground-guide-extended-toggle" title="The same as F: adds Obsn &amp; Fd of Fire, Key Gr and Approaches (Detail tabs 1 2 3), the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. Not kept: turning the Ground Guide off clears it.">Turn on / off (F)</button>
             </div>
             <div class="setting-row">
+              <label>Whose options</label>
+              <select id="setting-groundGuideExtReadFor" style="width: 150px" title="The same as X with the Extended View on, or the switch in the Ground Detail's key bar. En's options: his avenues toward you, your fire on them, decision support, his air and attack template. Yours: your avenues toward the threat, his fire on them, your air, his defence template.">
+                <option value="defence" selected>En's options vs you</option>
+                <option value="attack">Yours vs the threat</option>
+              </select>
+            </div>
+            <div class="setting-row">
               <label>F lasts</label>
               <select id="setting-groundGuideExtLasts" style="width: 150px" title="How long F keeps the Extended View on. This kind of symbol: a different symbol or Esc closes it. One placement: placing it closes it too. Until F: kept for every symbol. Shift+F keeps it on whatever this says.">
                 <option value="symbol" selected>This kind of symbol</option>
@@ -3473,11 +3486,17 @@
                 <option value="threat">Threat's view</option>
                 <option value="view">View from the Posn</option>
                 <option value="going">Going</option>
+                <option value="ipb">IPB coding</option>
               </select>
             </div>
             <div class="setting-row">
               <label>Map centre</label>
               <button type="button" id="ground-guide-extended-log" title="Write the Extended View at the map centre to the Engine Log (the lines Copy as Text adds while F is on).">Log Ext View at centre</button>
+              <button type="button" id="ground-guide-ipb-log" title="Write the IPB coding round the map centre to the Engine Log: GO / SLOW-GO / NO-GO by the IPB book, what decided it, what the bundle cannot tell, and the reasons at the centre.">Log IPB coding at centre</button>
+              <button type="button" id="ground-guide-ipb-apch-log" title="Write the IPB corridors and avenues of approach for the area round the map centre to the Engine Log: each avenue, its corridors, narrows and crossovers, for the HQ row in force (works with F off).">Log IPB Apchs at centre</button>
+              <button type="button" id="ground-guide-ipb-create" title="Create on Map: write the IPB reading shown (Extended View on) as ordinary symbols: the COO (No Go / Slow Go areas), the Mob Corridors and the avenues, as one undo step.">Create IPB on Map (all)</button>
+              <button type="button" id="ground-guide-ipb-air-create" title="Create on Map: write the IPB air reading shown (Extended View on, tab 4): air avenues as Low Level Transit Routes, LZ and DZ squares, the AD sites' reach as SHORAD engagement zones, OPs over the enemy's LZs, as one undo step.">Create IPB Air on Map</button>
+              <button type="button" id="ground-guide-ipb-tpl-create" title="Create on Map: write the IPB situation template shown (Extended View on, tab 5 page 2) as the enemy's symbols where the ground lets them be: objectives, FUP, assembly areas, bridgeheads, units; one undo step.">Create IPB Template on Map</button>
             </div>
             <div class="sub-feature-label">Cover &amp; Concealment (C)</div>
             <div class="setting-row">
@@ -4866,6 +4885,7 @@
         'setting-groundGuideSecRoadDensityStyle': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityStyle'], value: v }),
         'setting-groundGuideSecRoadDensityLead': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityLead'], value: v }),
         'setting-groundGuideExtLasts': (v) => ({ path: ['groundGuide', 'extended', 'lasts'], value: v }),
+        'setting-groundGuideExtReadFor': (v) => ({ path: ['groundGuide', 'extended', 'ipb', 'readFor'], value: v }),
         'setting-groundGuideExtThreat': (v) => ({ path: ['groundGuide', 'extended', 'threat'], value: v }),
         'setting-groundGuideExtBearing': (v) => ({ path: ['groundGuide', 'extended', 'bearingDeg'], value: Number(v) || 0 }),
         'setting-groundGuideExtSurface': (v) => ({ path: ['groundGuide', 'extended', 'surface'], value: v }),
@@ -6459,11 +6479,14 @@
               'V - Gr Scope rail: show / hide the side map of the ground round the symbol\n' +
               'Shift+V - Gr Scope: Spot / AOR (approaches, lines of def, MITG); D the apch sheets\n' +
               'D - Ground Detail (G R O T B C tabs, K Legend, Esc closes)\n' +
-              'F - Extended View on / off for the symbol being placed (a new symbol or Esc closes it): Obsn & Fd of Fire, Key Gr, Approaches (Detail tabs 1 2 3), threat marker, fire fan, approaches and better Posn on the map; [ ] turn the threat, J takes the better Posn\n' +
+              'F - Extended View on / off for the symbol being placed (a new symbol or Esc closes it): Obsn & Fd of Fire, Key Gr, Approaches (Detail tabs 1 2 3), threat marker, fire fan, approaches and better Posn on the map; [ ] turn the threat, J takes the better Posn, X shows the enemy options against you or yours against the threat\n' +
               'Shift+F - Keep the Extended View on for every symbol (F closes it)\n' +
               'S - Quick Fix: move the point to clear ground (while drawing)\n' +
               'P - Change the mode the ground is judged for (while drawing)\n' +
-              'H - Shrink the cursor card to a chip (while drawing)',
+              'H - Shrink the cursor card to a chip (while drawing)\n' +
+              '\nPl Guide (while it is on):\n' +
+              'A - Pin the reading at the cursor (a pin marks it) and open the Pl Detail; A again: next tab, Shift+A: back\n' +
+              'Esc - Fold the Pl Detail to its answer bar and let the pin go (placing the symbol lets it go too)',
           );
         });
 

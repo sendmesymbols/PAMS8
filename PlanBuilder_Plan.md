@@ -55,8 +55,14 @@ each piece sits where it does, and gives a list of what to confirm on the ground
 
 ### Gaps found
 
-1. **`Plans/Own/Bn Def.json` is an attack plan.** Its overlay type is "Bn Attk Plan", and it holds FUP, SL and Sp Attk
-   in the same counts as `Bn Attk.json`. A real Bn Def sample is needed (user to supply).
+1. **Samples.** `Plans/Own/Bn Def.json` **is** a Bn Def down to Coy level, with both sides on one overlay (corrected
+   14 Nov 2026; I had first read it as an attack plan):
+   - **own** (identity 3): an A Coy locality with three Pl posns;
+   - **enemy** (identity 6): 10 Maratha's Bn attack on that locality (FUP, SL1 / SL2, Ph 1 / Ph 2, Atk 1–3, BOF,
+     ATGM, MG, mortar, tank).
+
+   `Bn Attk.json` is the mirror: own 10 FF attacks an en Coy locality. The Demo 2 overlays (§16) add a real
+   **Div Def** and **Bde Def (12 Bde)**. Measured figures are in §16.6.
 2. **Missing symbols** (see §9): FDL, Gun Area, LOE, FPF, Security Zone (area), Mask Posn.
 3. **No enemy doctrinal template yet** (roadmap ch. 8): assembly area 2–3 km from contact, 100 m in 4 min against
    prepared defences, lanes 400–500 m apart, night attack frontages.
@@ -284,6 +290,7 @@ Every result lists its assumptions ("En from NE, assumed; Bn strength").
 | Wide front, no obstacle, three approaches with tank going | Three up, less depth |
 | Front on a canal or ditch | Canal layout: three up on the higher bank (IBB Annex V App 9: Bn 2750–4115 m, Coy 1200 m, gap 450 m, mask posns 900–1500 m) |
 | No clear front (desert, isolated hill) | All round |
+| Div on an obstacle along the IB (Demo 2, basis O) | Bdes three up on the obstacle; Div depth on a D line of planned Bn posns; a quiet sector held by one Bn + paramilitary troops + a dummy |
 | Forward slope overlooked, crest controllable | Rev slope (`OcokaDoctrine.reverseSlope`) |
 
 The hint only orders the list. The score card decides the ranking.
@@ -514,7 +521,7 @@ Each phase ships on its own, and the earlier phases work without the bundle.
 
 | # | Phase | Contents | Done when |
 |---|---|---|---|
-| 0 | Groundwork | `PlanDoctrine.json` (frontage, standoff, DF minimums, fire lift, alternates, layout hints, score weights, all with `src` and basis); recipe schema + validator; settings + Ctrl+K widget; missing symbols (§12); real Bn Def sample from you | Recipes load and validate in Node; symbols draw in 2D and 3D |
+| 0 | Groundwork | `PlanDoctrine.json` (frontage, standoff, DF minimums, fire lift, alternates, layout hints, score weights, all with `src` and basis); recipe schema + validator; settings + Ctrl+K widget; missing symbols (§12); ORBAT / TO&E files (§17) | Recipes load and validate in Node; symbols draw in 2D and 3D |
 | 1 | Geometric recipes | Bn Def two up / three up / one up / all round, Coy Def, Bn Attk frontal; wizard steps 1, 3, 4, 5 in geometric mode; Create on Map; Copy as Text | Works with `useTerrain: false` and the bundle absent; no network requests (checked in the browser) |
 | 2 | Terrain fit | PlanBuilderProbe; enemy and Obj inputs (§6); approaches step; snapping to ITG, high ground and obstacles; all terrain rules with reasons and data dates | Fit verified on screen at two real places (plain + canal); Node checks for every rule |
 | 3 | Auto + Compare | Score card, ranking, side-by-side preview, J for next best | Auto picks differ sensibly between a narrow-front and a wide-front test place |
@@ -541,11 +548,13 @@ Each phase ships on its own, and the earlier phases work without the bundle.
 
 1. **Enemy symbols as threat input:** opt-in, or markers only (§6).
 2. **Name and key:** "Plan Builder" and a free key.
-3. **E-basis figures to set:** alternate spacing per weapon, security zone depth per echelon, score weights, layout hints.
-4. **First echelon and operation:** I'd start with Bn Def (needs your real sample) and Bn Attk.
-5. **Recipe authoring:** JSON only at first. A later option is "save my plan as a recipe", which turns a drawn plan's
+3. **E-basis figures:** first values are now in §16.4, judged from Demo 2. They are yours to correct.
+4. **First echelon and operation:** Bn Def (down to Pl), Bde Def and Div Def all have real samples now (§16).
+   I'd start with Bn Def / Coy Def.
+5. **Unit compositions (ORBAT / TO&E)** from you, to drive the slots, weapons and manpower (§17).
+6. **Recipe authoring:** JSON only at first. A later option is "save my plan as a recipe", which turns a drawn plan's
    offsets into slots with geometry rules.
-6. **Alternates on Create on Map:** created hidden (Show alternates off) or visible.
+7. **Alternates on Create on Map:** created hidden (Show alternates off) or visible.
 
 ---
 
@@ -558,3 +567,203 @@ Each phase ships on its own, and the earlier phases work without the bundle.
 | Doctrine figures differ between pamphlets | Keep both values with sources, as `OcokaDoctrine.frontage` does; the user picks |
 | 30 m elevation misses ditches, bunds, walls | Sight is a probability; obstacles come from vector classes, not elevation alone; say so in reasons |
 | Sample plans not representative | Real samples from you per operation before tuning Auto |
+
+---
+
+## 16. Figures judged from the Demo 2 overlays (13 Nov 2026)
+
+Source: `Material/plans/overlays/`, 11 overlays of one plan, **"Demo 2" (610 Corps)**. Basis code **O** = measured from
+this plan. Distances are measured from the own-side IB trace, in plains (Kasur–Okara belt, facing east).
+
+### 16.1 What each overlay is
+
+| File | Overlay | Echelon (judged) | Side | Contents |
+|---|---|---|---|---|
+| `ipb.json` | 1-IPB | Div | ground | NO-GO / SLOW-GO, Bde and Div mobility corridors, 4 decision points |
+| `ib-and-bdry.json` | 2-IB and Bdry | Corps / Div / Bde | own | IB, Bde bdys 10 / 11, Div bdy 31, Corps bdy, Div Line of No Pen, Corps and Army Lines of Denial, VG-1 / VG-2 |
+| `sz.json` | 3-SZ | Div | own | 3 Covering Tps zones (BG2, BG3, one unnamed), Armd / Mech Bn battle groups |
+| `en-cap.json` | 4-En Cap | En Div / Bde | enemy | 10 avenues, en phase lines, en Div / Bde, attack arrow |
+| `def-plan.json` | 5-Def Plan | Div | own | 8 FDL Bn localities, 1 dummy, Rangers, D1–D5 and C1–C3 (planned), Coy strong pts, Bde HQs, Res, CA objs, DCB, DAA |
+| `esp.json` | 6-ESP | Div | own | Minefields per Bn front, an 80 km belt, all-round fields round strong pts, water points |
+| `arty-sp-plan.json` | 7-Arty Sp Plan | Div | own | 9 battery posns now + 6 planned further back, arcs of fire |
+| `log-sp-plan.json` | 8-Log Sp Plan | Div | own | 3 BAAs, EME, medical, ordnance |
+| `en-def-plan.json` | 9-En Def Plan | En Div | enemy | En Bn localities, C Pen posns, strong pts, Res, DCB |
+| `…merged-overlays.json` | Merged | Div | both | **An older version** (Mar 2020) with different labels. Not mixed with the numbered set |
+| `…def-plan-2-intl-border-and-bdry.json` | Def Plan 2 IB and Bdy | Div / Corps | own | IB, Div Line of No Pen, Corps / Army Lines of Denial, VG |
+
+### 16.2 Cautions in the data (the builder and Check my plan must allow for them)
+
+- **The echelon field is not reliable.** For example:
+  - 25 AK is tagged Bde (18) in Merged but Bn in Def Plan;
+  - 13 NLI is tagged Coy (15) in Merged;
+  - 36 Sind has no echelon;
+  - two "Coy" C Pen posns are the same size as the Bn ones;
+  - the overlays' `echLvl` is empty.
+
+  Judge echelon from the **label and size** first and the SIDC second, and show any disagreement.
+- **Non-standard SIDC identities:** 8 is used for Rangers, and 7 / 8 / 9 / 10 / 16 for freehand colours. 2525D allows
+  only 0–6.
+- **Planned status (SIDC digit 7 = 1)** marks positions to be occupied later: D-line and C-line Bns, the gun areas
+  further back, and three outlines drawn over FDL Bns. This matches the plan's use of dashed outlines for alternates and
+  depth positions (§8.2).
+- **Hidden meanings:**
+  - The HQ/TF digit **1 = dummy**: "12 F" is a dummy Coy position.
+  - **Names are reused**: D1–D4 are both depth Bn posns and the CA objs they counter-attack, and en C Pen posns are
+    also D1–D5.
+- **The merged overlay is a different version** from the numbered ones (12 FF / 12 F, 21 NLI / 21 Ranger, D1–D6,
+  13 Baloch). Never merge the two.
+
+### 16.3 Measured (basis O): obstacle-based Div defence on the IB, plains
+
+| Item | Measured | Pamphlet check |
+|---|---|---|
+| Div frontage at the FDL | ≈ 85 km | IC s113: Inf Div 20–30 km, on an obstacle 60–80 km. Demo 2 is at or past the top end |
+| Bde sectors at the FDL | 24 / 27 / 38 km (N / centre / S) | — |
+| Bns up per Bde | Centre: 3 up. South: 3 up + 1 (–) 5 km back. North: 1 Bn + Rangers + a dummy Coy | Depth is held by the Div (D line), not a Bn back in each Bde |
+| Bn locality, frontage × depth | 6.6–8.4 km (one 10.7) × 2.5–4.0 km, median ≈ 7.4 × 2.7 | IC s113 Bn obstacle-oriented 6000 × 3000 ✓ |
+| Gap between Bn localities | 0.8–1.9 km, median ≈ 1.35 (one 4.1 km in the south) | Every gap has a minefield in front |
+| FDL front edge from the IB | 9.4–14 km (N, centre); 15.6–19 km (S) | — |
+| **Security zone (Div)** | IB → FDL 9.4–19 km. Covering Tps zones 6.5–10.5 km from the IB, 1–4 km ahead of the FDL minefields. 3 Armd / Mech battle groups across the front, each 20–28 km wide | — |
+| Minefield in front of a Bn | Near edge 0.22–0.55 km from the locality (median ≈ 0.43); 0.5–2.1 km deep (median ≈ 0.86); about the Bn's frontage long | Inside the locality's MG range (`Rng` MG 800–1200) ✓ |
+| Coy strong pts in depth | 2.6–3.2 × 2.0–2.9 km, 18–26 km from the IB (5–10 km behind the FDL); all-round minefield 0.3–0.43 km out | — |
+| Bde HQ | 6–8 km behind the FDL front edge | — |
+| Bde Res | 4–15 km behind the FDL front edge | — |
+| Div Res | ≈ 21 km behind the FDL front edge (33 km from the IB) | — |
+| Div Line of No Pen + DCB | ≈ 20.5 km from the IB; DCB on it | — |
+| D line (depth Bns, planned) | 21.6–29 km from the IB (one at 36), just behind the Line of No Pen; 5–10 km edge to edge behind the FDL | — |
+| Counter-attack | CA objs D1–D4 sit on the FDL localities; counter-attacks run 8–15 km from the D line | — |
+| Corps Line of Denial / C line | ≈ 45 km; C1–C3 posns 49–53 km from the IB | — |
+| Army Line of Denial | ≈ 88 km | — |
+| Gun posns (now) | 14–22 km from the IB = 2–5 km behind the FDL front edge; arcs reach 14–20 km past the IB (155 mm class) | Covers the en Bn localities (11–18 km) and part of their C Pen posns (19–25 km) |
+| Gun posns (planned) | 32–46 km from the IB, 17–20 km behind the present ones; arcs cover the ground in front of the D line | These are **depth gun areas for the D-line battle**, not alternates after shelling |
+| BAA | 3.8 × 2.6 km, one per Bde, 11–17 km behind the FDL | — |
+| DAA / Div log | 6–11 × 6–7 km, ≈ 43 km from the IB, just in front of the Corps Line of Denial | — |
+| Enemy defence (mirror) | Bn localities 11–18 km from the IB; C Pen posns 19–25 km (6–8 km behind their FDL); Res 21–24.5 km | Gives the enemy template a depth figure |
+| Enemy avenues | 10 axes, each 5–16 km, plus Bde / Div mobility corridors in the IPB | — |
+
+### 16.4 The open figures
+
+The overlays do not show alternates after shelling, Bn or Bde security zones, or how the planners weighed one thing
+against another. Where Demo 2 shows nothing, the figure below is my proposal (**E**), with the reason. You correct them.
+
+**Alternate spacing** (main → alternate, centre to centre):
+
+| Element | Figure | Basis / reason |
+|---|---|---|
+| ATGM detachment | 800–1000 m | D (roadmap, IBB) |
+| Section / Pl post | 150–300 m, inside the Coy locality | E: clear of the sheaf of one medium battery on the post (about 200 m wide) |
+| Coy locality | 500–1000 m, inside the Bn locality | E: Demo 2 Bn localities are 2.5–4 km deep, which leaves room |
+| Mortar (81 / 120 mm) | 300–500 m | E |
+| Gun battery | 1–2 km, inside the gun area | E. Demo 2's planned gun areas 17–20 km back are depth positions; the recipe keeps both kinds |
+| Bn (Div defence) | Uses the **D line** (5–10 km behind, planned status) rather than a nearby alternate | O |
+
+**Security zone depth by echelon:**
+
+| Echelon | Figure | Basis |
+|---|---|---|
+| Div, obstacle defence on the IB | IB → FDL 10–19 km; covering Tps 1–4 km ahead of the FDL minefields | O |
+| Bde, when it alone provides its security | 3–5 km ahead of the FDL | E (about a third of the Div figure; to be checked against a Bde sample) |
+| Bn | Standing patrols 1000–1500 m; LPs 300–400 m | D (IBB) |
+| Coy | LPs 300–400 m | D (IBB) |
+
+**Score weights** (E, judged from what Demo 2 spends its effort on):
+
+| Check | Weight | Why |
+|---|---|---|
+| Approaches covered | 0.25 | Arcs and localities face all 10 en avenues |
+| Depth and counter-attack | 0.20 | Four layers (FDL → strong pts / Bde Res → D line → C line); a CA obj on every FDL Bn |
+| Obstacle tie-in | 0.15 | A minefield 0.2–0.55 km in front of every FDL Bn; DCB on the Line of No Pen |
+| Gaps | 0.15 | Bn gaps 0.8–1.9 km, each closed by a minefield |
+| Flanks | 0.10 | — |
+| Exposure | 0.10 | — |
+| Alternates | 0.05 | Demo 2 relies on the D line rather than close alternates |
+
+**Layout hint added to §7.3** (basis O): in an obstacle-based Div defence on the IB, Bdes go **three up on the obstacle**,
+and the Div holds depth on the D line with planned Bn posns. A Bde with a narrow or quiet front holds it with one Bn,
+paramilitary troops and a dummy position.
+
+### 16.5 Samples added to the Deployment Builder
+
+| Entry | File | What |
+|---|---|---|
+| Div Def | `Plans/Own/Div Def.json` | The own overlays 2, 3, 5, 6, 7, 8 as separate overlays (126 symbols). IPB and the enemy overlays are left out: IPB is tied to its own ground, and the enemy overlays are not own deployment |
+| Bde Def (12 Bde) | `Plans/Own/Bde Def 12 Bde.json` | The centre sector between Bdy 10 and Bdy 11 (34 symbols). The 80 km minefield belt and the Div VG are left out, and the IB is cut to the sector |
+
+Both load in the Deployment Builder, and the Bde Def was placed on the map in the browser (13 Nov 2026).
+
+### 16.6 Bn Def sample, Coy level (`Plans/Own/Bn Def.json`, 1 PR, both sides; basis O)
+
+| Item | Measured |
+|---|---|
+| Own Coy locality (A Coy) | 2.3 km E-W × 3.2 km N-S |
+| Pl posns (3) | 0.6–0.85 × 1.2 km each, all inside the Coy locality |
+| Gap between Pl posns | 0.24–0.43 km |
+| En FUP → own Coy locality | 3.4 km (IBB tank FUP 2500–3000 m; the en attack is armour-supported) |
+| En SL1 / SL2 | 2.4 km / 0.6 km (two phases) |
+| En BOF | 1.1 km; ATGM 0.8 km, HMG 1.0 km, mortar 1.2 km, tank 1.4 km from the locality |
+| En Ph 1 / Ph 2 | Drawn round the own locality (the en objectives) |
+| En axes | Three Sp Attk axes, one ending inside each Pl posn |
+
+So the sample gives both recipes: a Coy Def (three Pls) and the en Bn attack template laid against it. Read as a
+"Check my plan" case, the defender can see the en FUP 3.4 km out, the BOF at 1.1 km and the three axes, and the checks
+can be tested against them.
+
+---
+
+## 17. Unit compositions (ORBAT / TO&E): what they add and the format wanted
+
+Today a recipe has to guess what an echelon holds. `OcokaDoctrine.echelonOrganic` names the weapons but gives no counts,
+and `OrganizationV3.json` holds only symbol entries.
+
+### 17.1 What they add
+
+| Plan Builder part | What the ORBAT drives |
+|---|---|
+| Slots | How many sub-units a recipe lays out (4 rifle Coys? 3 Pls + a weapons section?), so two up / three up / one up come from the unit itself, not a fixed recipe |
+| Variations | Inf (standard, mech, mtn, light / cdo), Armd (regt, recce, tank type), AD (gun, msl): each has its own recipe family |
+| Fire | Weapon counts × `Rng` → range fans, mutual support, gap cover, AT layout (e.g. 6 ATGM → 3 pairs 400–500 m apart), mortar and DF task counts |
+| Manpower | Cordon (15 per 100 m), picketing, wire and mine laying labour, digging hours, posts that can be manned at once |
+| Vehicles | Assembly area and harbour size, march tables (Move Planner already counts vehicles), what can cross a class 40 bridge |
+| AD | Fire units → coverage circles, how many vulnerable points can be covered |
+| Armour | Tanks in the reserve → counter-attack force ratio against the en template |
+| Force ratios | Own ORBAT against the en template (KYE 2019): ≥ 3 : 1 at the point of attack, flagged when short |
+| Echelon checks | The expected size per echelon fixes the unreliable echelon tags in old plans (§16.2) |
+| Command | Who is under whom (under command / in support / attached) → which slot belongs to whose recipe, and what a Bde can give a Bn |
+
+### 17.2 Format wanted (one file per unit type and variant)
+
+```json
+{
+  "id": "inf-bn-std",
+  "name": "Inf Bn (standard)",
+  "echelon": "16",
+  "sidc": "10031000161211000000",
+  "variantOf": null,
+  "manpower": { "offr": 0, "jco": 0, "or": 0 },
+  "subunits": [
+    { "role": "rifleCoy", "unit": "inf-coy-std", "count": 4 },
+    { "role": "supportCoy", "unit": "inf-sp-coy", "count": 1 },
+    { "role": "hqCoy", "unit": "inf-hq-coy", "count": 1 }
+  ],
+  "weapons": [ { "key": "15110202", "name": "GPMG", "count": 0, "heldBy": "rifleCoy" } ],
+  "vehicles": [ { "key": "…", "name": "…", "count": 0, "vehCat": "B" } ],
+  "attachments": [ { "unit": "armr-sqn", "relation": "underCommand", "when": "defence" } ],
+  "terrain": ["plains", "desert"],
+  "source": "TO&E reference + date"
+}
+```
+
+- `weapons[].key` and `vehicles[].key` point at Symbols.json entries, so ranges (`Rng`), movers and `VehCat` come along.
+- **Counts down to Pl / section** for Inf, **troop** for Armd, **fire unit** for AD.
+- **Typical attachments per operation** (a Bn in defence gets a tank troop and an ATGM section, etc.), if there is a
+  standard.
+- **The en side** comes from the same format filled from KYE 2019.
+
+### 17.3 Handling
+
+These files are likely classified. They stay local:
+- `MS/Data/Orbat/`, **git-ignored like the terrain bundle**, unless you say otherwise;
+- never sent anywhere;
+- loaded only when `planBuilder.orbat` is on.
+
+When they are absent, the recipes fall back to the doctrinal defaults with "ORBAT not loaded".

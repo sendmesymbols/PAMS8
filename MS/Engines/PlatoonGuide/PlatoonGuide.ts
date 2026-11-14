@@ -12,11 +12,17 @@
  *   line   select a line, right-click it, or call `patrolAround()`: the patrol route card (legs, bearings, paces,
  *          time, dead and exposed stretches, skylines, obstacles crossed, villages passed).
  *
- * Shown like the Ground Guide (user, same day: "make it platoonguide like cards"): a cursor card that follows the
- * pointer while hovering or placing (PlatoonGuideCard; not while the Ground Guide's own card is on the cursor), and the
- * Pl Detail docked at the foot of the map (PlatoonGuideDetail), opened and walked with A (next page, then tab;
- * Shift+A back), closed with Esc. A selected symbol or a right-click opens the Pl Detail straight away. The map layer
- * draws the same products.
+ * Shown so the ground stays clear (user, 2026-11-13: "its mouse move card is blocking the view ... tabs can not be
+ * switched, mouse is already committed in symbol drawing"; views 1 2 3 of platoon-guide-view-options.html picked):
+ *   - the halo round the pointer (PlatoonGuideHalo): way out as a ring, the answers in the direction they lie, the
+ *     verdict above; the old cursor card (PlatoonGuideCard) stays as `cursor: 'card'`. Neither shows while the Ground
+ *     Guide's own card is on the cursor;
+ *   - the answer bar: the Pl Detail folded to its tab row at the foot, every tab's answer at once (`bar`); a click on a
+ *     tab opens the Pl Detail on it, with the tab's big picture (PlatoonGuideDetail);
+ *   - the pin: A, or the pointer coming onto the bar, holds the reading at the point (the last place the cursor rested),
+ *     so the mouse can leave the map without the reading following it; a pin marks the point on the map. A walks the
+ *     tabs, Shift+A back; Esc folds the Detail and lets the pin go; placing the symbol lets it go too.
+ * A selected symbol or a right-click opens the Pl Detail straight away. The map layer draws the same products.
  *
  * On every mouse move only the quick reads run (Here, People, Help); once the cursor rests (350 ms) the full reading
  * runs (sight, dangers on roads, where to stop). The dangers on roads are the Movement Guide's route scan
@@ -36,6 +42,7 @@ import { RouteScanner, rulesFrom } from '../MovementGuide/MovementGuideScan';
 import { PlatoonGuideProbe } from './PlatoonGuideProbe';
 import { PlatoonGuideMap } from './PlatoonGuideMap';
 import { PlatoonGuideCard } from './PlatoonGuideCard';
+import { PlatoonGuideHalo } from './PlatoonGuideHalo';
 import { PlatoonGuideDetail, type PlTab } from './PlatoonGuideDetail';
 import { patrolCard, plLngLat, plRulesFrom, readPoint, type MercXY, type PatrolCard, type PlEchelon, type PlEye, type PlFootSpeeds, type PlReading, type ScanFn } from './PlatoonGuideRead';
 import { briefLines, ECHELON_WORD, mgrsOf, type PlatoonBrief } from './PlatoonGuideText';
@@ -53,9 +60,15 @@ export interface PlatoonGuideOptions {
   map: boolean;
   /** Paint the dead / screened ground on the map (the Pl Detail's sketch always shows it). */
   mapSight: boolean;
-  /** The cursor card while hovering or placing. */
+  /** Something at the cursor while hovering or placing (the halo or the card, `cursor`). */
   card: boolean;
-  /** A opens and walks the Pl Detail, Esc closes it. */
+  /** What sits at the cursor: the halo round the symbol (default) or the old card beside it. */
+  cursor: 'halo' | 'card';
+  /** The halo's way-out ring, px from the pointer (kept outside the symbol). */
+  haloRadius: number;
+  /** The answer bar: the Pl Detail folded to its tab row at the foot of the map. */
+  bar: boolean;
+  /** A pins the reading and opens / walks the Pl Detail, Esc folds it. */
   keys: boolean;
   /** The bubble when no symbol gives one. */
   echelon: Exclude<PlEchelon, 'default'>;
@@ -74,6 +87,9 @@ export const DEFAULT_PLATOON_GUIDE_OPTIONS: PlatoonGuideOptions = {
   map: true,
   mapSight: true,
   card: true,
+  cursor: 'halo',
+  haloRadius: 64,
+  bar: true,
   keys: true,
   echelon: 'platoon',
   eye: 'standing',
@@ -133,7 +149,18 @@ export default class PlatoonGuide {
   private _probe: PlatoonGuideProbe | null = null;
   private _map = new PlatoonGuideMap(() => this._getView());
   private _card = new PlatoonGuideCard();
-  private _detail = new PlatoonGuideDetail({ close: () => this._detail.close(), goTo: (x, y) => this._goTo(x, y) });
+  private _halo = new PlatoonGuideHalo();
+  private _detail = new PlatoonGuideDetail({
+    close: () => this._fold(),
+    goTo: (x, y) => this._goTo(x, y),
+    openTab: (t) => this._openTab(t),
+    enter: () => this._onEnterDetail(),
+    hideBar: () => {
+      this._barHidden = true;
+      this._unpin();
+      this._detail.close();
+    },
+  });
   private _configToken = 0;
   private _threatSource: (() => [number, number] | null) | null = null;
   /** True while another card owns the cursor (the Ground Guide's, while a symbol is placed): ours stays hidden then. */
@@ -143,7 +170,7 @@ export default class PlatoonGuide {
   private _drawing = false;
   private _hoverHandle: { remove(): void } | null = null;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
-  private _ptr: { el: HTMLElement; move: (e: PointerEvent) => void; leave: () => void } | null = null;
+  private _ptr: { el: HTMLElement; move: (e: PointerEvent) => void; leave: () => void; enter: () => void } | null = null;
   private _raf = 0;
   private _pendingAt: { at: MercXY; echelon: Exclude<PlEchelon, 'default'>; what: string; origin: Origin } | null = null;
   private _restTimer: ReturnType<typeof setTimeout> | null = null;
@@ -152,6 +179,15 @@ export default class PlatoonGuide {
   private _reruns = 0;
   private _rerunFor: Subject | null = null;
   private _wanted = true;
+  /** The reading held at a point: by A or a tab click ('key', held until Esc), or by the pointer on the bar ('bar',
+   *  let go when the pointer comes back to the map while the Detail is folded). */
+  private _pin: { subject: Subject; how: 'key' | 'bar' } | null = null;
+  /** The last full reading at the cursor (where it rested): what the bar pins, not the map's edge the pointer crossed. */
+  private _restSubject: Subject | null = null;
+  /** Where the symbol being placed is now (kept while pinned, for the reading of the placed symbol). */
+  private _lastDraw: Subject | null = null;
+  /** × on the bar: no bar until a reading is asked for again (A, a placed or selected symbol). */
+  private _barHidden = false;
 
   constructor(private readonly _getView: () => any) {}
 
@@ -177,12 +213,18 @@ export default class PlatoonGuide {
   get isDetailOpen(): boolean {
     return this._detail.isOpen;
   }
+  /** The reading is pinned at a point. */
+  get isPinned(): boolean {
+    return !!this._pin;
+  }
 
   setOptions(patch: Partial<PlatoonGuideOptions> & { panel?: boolean } | null | undefined): void {
     if (!patch || typeof patch !== 'object') return;
     const prev = this._opts;
     const next: PlatoonGuideOptions = { ...prev };
-    for (const k of ['hover', 'onSymbols', 'map', 'mapSight', 'card', 'keys', 'useWorker'] as const) if (typeof patch[k] === 'boolean') next[k] = patch[k] as boolean;
+    for (const k of ['hover', 'onSymbols', 'map', 'mapSight', 'card', 'bar', 'keys', 'useWorker'] as const) if (typeof patch[k] === 'boolean') next[k] = patch[k] as boolean;
+    if (patch.cursor === 'halo' || patch.cursor === 'card') next.cursor = patch.cursor;
+    if (typeof patch.haloRadius === 'number' && Number.isFinite(patch.haloRadius)) next.haloRadius = Math.max(36, Math.min(160, Math.round(patch.haloRadius)));
     if (typeof patch.panel === 'boolean' && typeof patch.card !== 'boolean') next.card = patch.panel; // the docked panel's old switch
     if (typeof patch.bundleUrl === 'string') next.bundleUrl = patch.bundleUrl.trim().replace(/\/+$/, '');
     if (patch.echelon && ['team', 'section', 'platoon', 'company'].includes(patch.echelon)) next.echelon = patch.echelon;
@@ -199,9 +241,12 @@ export default class PlatoonGuide {
     this._syncHover();
     this._syncKeys();
     if (!next.map) this._map.clear();
-    if (!next.card) this._card.hide();
+    if (!next.card || next.cursor !== 'card') this._card.hide();
+    if (!next.card || next.cursor !== 'halo') this._halo.hide();
+    if (!next.bar) this._detail.showBar(false);
+    else if (!prev.bar && !this._barHidden) this._detail.showBar(true);
     if (next.mover !== prev.mover) this._roadScanner.clear();
-    const changed = (['echelon', 'eye', 'mover', 'threat', 'map', 'mapSight', 'card'] as const).some((k) => next[k] !== prev[k]);
+    const changed = (['echelon', 'eye', 'mover', 'threat', 'map', 'mapSight', 'card', 'cursor', 'haloRadius'] as const).some((k) => next[k] !== prev[k]);
     if (this._shown && changed) {
       const s = this._shown.subject;
       this._run(s.kind === 'point' && s.origin === 'cursor' ? { ...s, echelon: next.echelon, what: this._whatFor(next.echelon, 'cursor') } : s, true);
@@ -237,8 +282,12 @@ export default class PlatoonGuide {
     this._footScanner.clear();
     this._map.destroy();
     this._card.destroy();
+    this._halo.destroy();
     this._detail.destroy();
     this._shown = null;
+    this._pin = null;
+    this._restSubject = null;
+    this._lastDraw = null;
     this._drawEchelon = null;
     this._drawing = false;
     this._state = 'off';
@@ -280,6 +329,8 @@ export default class PlatoonGuide {
       this._shown = null;
       this._map.clear();
       this._card.hide();
+      this._halo.hide();
+      this._pin = null;
       this._detail.close();
       EngineLogger.error(ENGINE, `Terrain bundle unavailable (${this._opts.bundleUrl || 'no URL'}): ${this._error}. Platoon Guide idle.`);
       return false;
@@ -296,8 +347,11 @@ export default class PlatoonGuide {
   prepareFor(sidc: string | null | undefined): void {
     this._drawEchelon = this.isActive && this._opts.onSymbols ? echelonOfSidc(sidc) : null;
     this._drawing = true;
+    this._lastDraw = null;
+    this._unpin();
     this._cancelQueued();
     this._card.hide();
+    this._halo.hide();
   }
 
   /** Hot path: every draw progress of the engine's own view. */
@@ -306,24 +360,33 @@ export default class PlatoonGuide {
     const g = detail?.currentGeometry;
     const at = g?.type === 'point' ? toMerc(g) : null;
     if (!at) return;
+    this._lastDraw = { kind: 'point', at, echelon: this._drawEchelon, what: this._whatFor(this._drawEchelon, 'being placed'), origin: 'draw' };
     this._queue(at, this._drawEchelon, this._whatFor(this._drawEchelon, 'being placed'), 'draw');
   }
 
-  /** The draw ended or was cancelled: read the last point in full; the cursor card goes (A opens the Pl Detail). */
+  /** The draw ended or was cancelled: read the last point in full (where the symbol went, not a pin); the halo goes. */
   deactivate(): void {
     this._drawing = false;
     const e = this._drawEchelon;
     this._drawEchelon = null;
     this._cancelQueued();
     this._card.hide();
+    this._halo.hide();
+    const wasPinned = !!this._pin;
+    this._unpin();
+    const s = this._lastDraw ?? (this._shown?.subject.origin === 'draw' ? this._shown.subject : null);
+    this._lastDraw = null;
     if (!e) return;
-    const s = this._shown?.subject;
-    if (s && this.isActive && s.origin === 'draw') this._run({ ...s, what: this._whatFor(e, 'placed'), origin: 'select' }, true, false);
+    if (s && this.isActive) {
+      this._barHidden = false;
+      this._run({ ...s, what: this._whatFor(e, 'placed'), origin: 'select' }, true, false);
+    } else if (wasPinned && this._shown) this._present(this._shown.brief, this._shown.subject, false);
   }
 
   /** The one selected symbol: a land unit (Team to Coy) gets the Pl Detail, a line the patrol route card. */
   setTarget(graphic: any | null): void {
     if (!this.isActive || !graphic || this._drawing || !this._opts.onSymbols) return;
+    this._unpin();
     const geom = graphic.geometry;
     if (geom?.type === 'polyline') {
       this.analyse(graphic);
@@ -345,9 +408,12 @@ export default class PlatoonGuide {
     if (!this.isActive) return null;
     const geom = target?.geometry ?? target;
     this._wanted = true;
+    this._barHidden = false;
+    this._unpin();
     // A cursor read still queued (hover) must not replace what was asked for.
     this._cancelQueued();
     this._card.hide();
+    this._halo.hide();
     const path = pathOf(geom);
     if (path) return this._run({ kind: 'patrol', path, echelon: this._opts.echelon, what: 'Patrol route', origin: 'select' }, true, true);
     if (geom?.type !== 'point') return null;
@@ -379,11 +445,21 @@ export default class PlatoonGuide {
     this.setOptions({ hover: on });
   }
 
-  /** Open the Pl Detail (on a tab), or close it. */
+  /** Open the Pl Detail (on a tab), or fold it to the bar (closed when the bar is off). */
   openDetail(open = true, tab?: PlTab): void {
-    if (!open) return this._detail.close();
+    if (!open) return this._fold();
+    this._barHidden = false;
     if (this._shown) this._detail.update(this._shown.brief, this._north());
     this._detail.open(tab);
+  }
+
+  /** Hold the reading at the point the cursor is on (or last rested on), so the mouse can go to the Pl Detail. */
+  pin(): boolean {
+    return this._pinAt('key');
+  }
+  /** Let the pin go: the reading follows the cursor again. */
+  unpin(): void {
+    this._unpin();
   }
 
   reportText(): string {
@@ -395,6 +471,8 @@ export default class PlatoonGuide {
     this._wanted = open;
     if (!open) {
       this._card.hide();
+      this._halo.hide();
+      this._unpin();
       this._detail.close();
       this._map.clear();
       return;
@@ -406,6 +484,7 @@ export default class PlatoonGuide {
     this._map.destroy();
     this._map = new PlatoonGuideMap(() => this._getView());
     this._card.hide();
+    this._halo.hide();
     this._hoverHandle?.remove();
     this._hoverHandle = null;
     this._detachPointer();
@@ -429,7 +508,10 @@ export default class PlatoonGuide {
     if (!want) {
       if (this._hoverHandle) {
         this._cancelQueued();
-        if (!this._drawing) this._card.hide();
+        if (!this._drawing) {
+          this._card.hide();
+          this._halo.hide();
+        }
       }
       this._hoverHandle?.remove();
       this._hoverHandle = null;
@@ -446,27 +528,38 @@ export default class PlatoonGuide {
     });
   }
 
-  /** The cursor card follows the pointer over the map; it goes when the pointer leaves the map. */
+  /** The halo / card follow the pointer over the map and go when it leaves; coming back lets a bar pin go. */
   private _attachPointer(): void {
     if (this._ptr) return;
     const el = this._getView?.()?.container as HTMLElement | null | undefined;
     if (!el) return;
-    const move = (e: PointerEvent) => this._card.moveTo(e.clientX, e.clientY);
+    const move = (e: PointerEvent) => {
+      this._card.moveTo(e.clientX, e.clientY);
+      this._halo.moveTo(e.clientX, e.clientY);
+    };
     const leave = () => {
-      if (!this._drawing) this._card.hide();
+      if (!this._drawing) {
+        this._card.hide();
+        this._halo.hide();
+      }
+    };
+    const enter = () => {
+      if (this._pin?.how === 'bar' && !this._detail.isOpen) this._unpin();
     };
     el.addEventListener('pointermove', move, { passive: true });
     el.addEventListener('pointerleave', leave);
-    this._ptr = { el, move, leave };
+    el.addEventListener('pointerenter', enter);
+    this._ptr = { el, move, leave, enter };
   }
   private _detachPointer(): void {
     if (!this._ptr) return;
     this._ptr.el.removeEventListener('pointermove', this._ptr.move);
     this._ptr.el.removeEventListener('pointerleave', this._ptr.leave);
+    this._ptr.el.removeEventListener('pointerenter', this._ptr.enter);
     this._ptr = null;
   }
 
-  /** A opens the Pl Detail and walks it (next page, then the next tab; Shift+A back); Esc closes it first. */
+  /** A pins the reading and opens the Pl Detail, then walks its tabs (Shift+A back); Esc folds it and lets the pin go. */
   private _syncKeys(): void {
     const want = this.isActive && this._opts.keys;
     if (!want) return this._detachKeys();
@@ -477,17 +570,18 @@ export default class PlatoonGuide {
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
       const k = e.key.toLowerCase();
       if (k === 'escape') {
-        if (!this._detail.isOpen) return;
+        if (!this._detail.isOpen && !this._pin) return;
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        this._detail.close();
+        this._fold();
         return;
       }
       if (k !== 'a' || e.repeat) return;
       e.preventDefault();
-      if (!this._detail.isOpen) this.openDetail(true);
-      else this._detail.step(e.shiftKey ? -1 : 1);
+      if (this._detail.isOpen) return this._detail.step(e.shiftKey ? -1 : 1);
+      this._pinAt('key');
+      this.openDetail(true);
     };
     window.addEventListener('keydown', this._keyHandler, true);
   }
@@ -498,6 +592,7 @@ export default class PlatoonGuide {
 
   /** Coalesce to one quick read per frame, and a full read once the cursor rests. */
   private _queue(at: MercXY, echelon: Exclude<PlEchelon, 'default'>, what: string, origin: Origin): void {
+    if (this._pin) return; // the reading is held at the pin
     this._pendingAt = { at, echelon, what, origin };
     if (!this._raf) {
       this._raf = requestAnimationFrame(() => {
@@ -603,6 +698,8 @@ export default class PlatoonGuide {
   /** Read and show. `open`: open the Pl Detail (a selected symbol, a right-click); otherwise it keeps its state. */
   private _run(s: Subject, full: boolean, open = false): PlatoonBrief | null {
     if (!this.isActive) return null;
+    const atCursor = s.origin === 'cursor' || s.origin === 'draw';
+    if (this._pin && atCursor && s !== this._pin.subject) return null;
     let b: PlatoonBrief | null = null;
     try {
       b = this._read(s, full);
@@ -611,6 +708,7 @@ export default class PlatoonGuide {
       return null;
     }
     if (!b) return null;
+    if (full && atCursor && !this._pin) this._restSubject = s;
     this._shown = { subject: s, full, brief: b };
     this._present(b, s, open);
     return b;
@@ -626,7 +724,9 @@ export default class PlatoonGuide {
     }
     if (b && show) {
       this._cancelQueued();
+      this._unpin();
       this._card.hide();
+      this._halo.hide();
       this._shown = { subject: s, full: true, brief: b };
       this._wanted = true;
       this._present(b, s, true);
@@ -637,14 +737,77 @@ export default class PlatoonGuide {
   private _present(b: PlatoonBrief, s: Subject, open: boolean): void {
     if (!this._enabled || !this._wanted) return;
     const north = this._north();
-    if (this._opts.map) this._map.show({ reading: b.reading, patrol: b.patrol && s.path ? { card: b.patrol, path: s.path } : null, sight: this._opts.mapSight });
-    // The cursor card: only for a reading at the cursor, and never over the Ground Guide's own card while placing.
-    const onCursor = s.origin === 'cursor' || s.origin === 'draw';
+    const pinned = !!this._pin && s === this._pin.subject;
+    if (this._opts.map) this._map.show({ reading: b.reading, patrol: b.patrol && s.path ? { card: b.patrol, path: s.path } : null, sight: this._opts.mapSight, pin: pinned });
+    // At the cursor: the halo (or the card), only for a reading at the cursor and not pinned, never over the Ground
+    // Guide's own card while placing.
+    const onCursor = (s.origin === 'cursor' || s.origin === 'draw') && !pinned;
     const owned = s.origin === 'draw' && (this._cursorOwner?.() ?? false);
-    if (this._opts.card && onCursor && !owned && b.reading) this._card.update(b, north, this._opts.keys);
-    else if (!onCursor) this._card.hide();
+    const want = this._opts.card && onCursor && !owned && !!b.reading;
+    if (want && this._opts.cursor === 'halo') {
+      this._halo.update(b, north, { radius: this._opts.haloRadius, keys: this._opts.keys });
+      this._card.hide();
+    } else if (want) {
+      this._card.update(b, north, this._opts.keys);
+      this._halo.hide();
+    } else if (!onCursor || owned || !this._opts.card) {
+      this._card.hide();
+      this._halo.hide();
+    }
     this._detail.update(b, north);
     if (open) this._detail.open(b.patrol && !b.reading ? 'patrol' : undefined);
+    else if (this._opts.bar && !this._barHidden && !this._detail.isOpen) this._detail.showBar(true);
+  }
+
+  // ── pin, bar ───────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  /** Hold the reading. 'bar' takes the last place the cursor rested (the pointer crossed the map to get to the bar). */
+  private _pinAt(how: 'key' | 'bar'): boolean {
+    if (this._pin) {
+      if (how === 'key') this._pin.how = 'key';
+      return true;
+    }
+    const cur = this._shown?.subject;
+    if (!cur || (cur.origin !== 'cursor' && cur.origin !== 'draw') || cur.kind !== 'point') return false;
+    const base = how === 'bar' && this._restSubject ? this._restSubject : cur;
+    this._cancelQueued();
+    const subject: Subject = { ...base, what: this._whatFor(base.echelon, 'pinned') };
+    this._pin = { subject, how };
+    this._card.hide();
+    this._halo.hide();
+    this._detail.setPinned(true);
+    this._run(subject, true);
+    return true;
+  }
+
+  private _unpin(): void {
+    if (!this._pin) return;
+    const s = this._shown;
+    const wasShown = s?.subject === this._pin.subject;
+    this._pin = null;
+    this._detail.setPinned(false);
+    // Take the pin off the map now; the next pointer move reads the cursor again.
+    if (wasShown && s && this._opts.map) this._map.show({ reading: s.brief.reading, patrol: null, sight: this._opts.mapSight, pin: false });
+  }
+
+  /** Esc, × or ▾: the Detail folds to the bar (closed when the bar is off) and the pin goes. */
+  private _fold(): void {
+    this._unpin();
+    if (this._opts.bar && !this._barHidden) this._detail.fold();
+    else this._detail.close();
+  }
+
+  /** A tab clicked (on the bar or the open Detail): hold the reading and open the Detail on it. */
+  private _openTab(t: PlTab): void {
+    this._pinAt('key');
+    this._barHidden = false;
+    if (this._shown) this._detail.update(this._shown.brief, this._north());
+    this._detail.open(t);
+  }
+
+  /** The pointer came onto the bar or the Detail: the reading must not follow it, so hold it where the cursor rested. */
+  private _onEnterDetail(): void {
+    if (!this._pin) this._pinAt('bar');
   }
 
   /** Data arrived: read again what is on screen if it met data still loading (at most MAX_RERUNS times). */

@@ -114,7 +114,7 @@ import { EXT_OFFER, EXT_TABS, EXT_TAB_KEY, EXT_TAB_LABEL, extAnswer, extFacts, e
 
 export type DetailTab = GrotbcLetter | 'L' | ExtTab;
 export const DETAIL_TABS: readonly DetailTab[] = ['G', 'R', 'O', 'T', 'B', 'C', 'L'];
-/** With the Extended View on (F): its three tabs (keys 1 2 3) come before the Legend. */
+/** With the Extended View on (F): its tabs (keys 1 2 3 4 5) come before the Legend. */
 export const DETAIL_TABS_EXT: readonly DetailTab[] = ['G', 'R', 'O', 'T', 'B', 'C', ...EXT_TABS, 'L'];
 const tabsOf = (ext: boolean): readonly DetailTab[] => (ext ? DETAIL_TABS_EXT : DETAIL_TABS);
 /** Map layer switches the Legend tab offers. */
@@ -140,6 +140,11 @@ export interface DetailHandlers {
   extended?(on: boolean): void;
   /** The card's height changed (the grip, or the window): the cursor card re-checks where it may go. */
   resized?(): void;
+  /**
+   * Whose options the IPB reading shows (the en's against you, or yours against the threat): read for the key bar's
+   * switch, set when it is clicked (user, 2026-11-14: moved to the key bar from tab 3 to save space).
+   */
+  readFor?: { get(): 'defence' | 'attack'; set(r: 'defence' | 'attack'): void };
 }
 
 const STYLE_ID = 'ms-ground-guide-detail-style';
@@ -339,6 +344,13 @@ const CSS = `
 .ms-ggd-f{flex:none;padding:6px 14px 7px;font-size:12px;color:#c3cbd3;border-top:1px solid rgba(255,255,255,.1);display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center}
 .ms-ggd-f .ms-ggd-k{margin-right:4px}
 .ms-ggd-f>span{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 0}
+/* Whose options in the key bar: X and a two-way switch, the side shown lit. */
+.ms-ggd-who{display:inline-flex;align-items:center;margin-right:12px}
+.ms-ggd-who>button{font:inherit;font-size:12px;padding:2px 9px;border:1px solid #4a535e;background:#20262e;color:#c3cbd3;cursor:pointer}
+.ms-ggd-who>button:first-of-type{border-radius:999px 0 0 999px}
+.ms-ggd-who>button:last-of-type{border-radius:0 999px 999px 0;border-left:0}
+.ms-ggd-who>button[aria-pressed="true"]{background:#2b4258;border-color:#8ec1ea;color:#fff;font-weight:600}
+.ms-ggd-who>button:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
 .ms-ggd-page{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:#e1e6eb}
 .ms-ggd-page[hidden]{display:none}
 .ms-ggd-page b{color:#ffd27a;font-weight:600}
@@ -542,6 +554,11 @@ export class GroundGuideDetail {
 
   constructor(private readonly _h: DetailHandlers) {}
 
+  /** The card's root element (null until first shown): a tile's own buttons send their events up through it. */
+  get element(): HTMLElement | null {
+    return this._el;
+  }
+
   get isShown(): boolean {
     return !!this._el && this._el.classList.contains('ms-open');
   }
@@ -576,6 +593,11 @@ export class GroundGuideDetail {
     if (this.isShown) this._renderTab(back);
   }
 
+  /** The key bar again (whose options changed, or the Extended View's keys). */
+  refreshKeys(): void {
+    this._buildKeys();
+  }
+
   /** The tab buttons and the key line of the footer, with or without the Extended View's tabs. */
   private _buildTabs(): void {
     const tabs = this._tabBar;
@@ -602,13 +624,43 @@ export class GroundGuideDetail {
       this._tabs.set(t, b);
       this._ans.set(t, ans);
     }
+    this._buildKeys();
+  }
+
+  /**
+   * The key line of the footer. With the Extended View on it leads with Whose Options: X and a two-way switch (the en's
+   * options against you / yours against the threat), the side shown lit; a click sets it, as X does.
+   */
+  private _buildKeys(): void {
     const keys = this._keysEl;
     if (!keys) return;
     keys.replaceChildren();
     const ext = this._ext;
+    const rf = this._h.readFor;
+    if (ext && rf) {
+      const now = rf.get();
+      const who = el('span', 'ms-ggd-who');
+      who.setAttribute('role', 'group');
+      who.setAttribute('aria-label', 'Whose options (X)');
+      who.title = "Whose options the IPB reading shows: the en's Apchs at you, your fire on them, his air and attack template; or your Apchs at him, his fire on them, your air, his defence template. X does the same.";
+      who.append(el('span', 'ms-ggd-k', 'X'));
+      const btn = (r: 'defence' | 'attack', text: string): void => {
+        const b = el('button', undefined, text) as HTMLButtonElement;
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(now === r));
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (rf.get() !== r) rf.set(r);
+        });
+        who.append(b);
+      };
+      btn('defence', "En's options");
+      btn('attack', 'Your options');
+      keys.append(who);
+    }
     const rows: Array<[string, string]> = [
       ['D', 'open / close'],
-      [ext ? 'G R O T B C 1 2 3' : 'G R O T B C', 'tabs, again for the next page, with Shift back'],
+      [ext ? `G R O T B C ${EXT_TABS.map((t) => EXT_TAB_KEY[t]).join(' ')}` : 'G R O T B C', 'tabs, again for the next page, with Shift back'],
       ['K', 'legend'],
       ['F', !ext ? 'Ext View' : this._kept ? 'close Ext View (kept on)' : 'close Ext View'],
       ...(ext && !this._kept ? ([['⇧F', 'keep it on']] as Array<[string, string]>) : []),
@@ -1580,10 +1632,11 @@ export class GroundGuideDetail {
       legendKeyRow('H', 'Hint', 'Shrinks the cursor card to GO / SLOW-GO / NO-GO; again for the card'),
       legendKeyRow('G', 'Tabs', 'G R O T B C, one letter a tab; again for the next page (back to the first after the last), Shift + letter goes back'),
       legendKeyRow('K', 'Legend', 'This tab (L is Lasso Select)'),
-      legendKeyRow('F', 'Ext View', `Adds ${EXT_OFFER}: tabs 1 2 3 before this one, a tile in O and C, the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. It lasts while you place that kind of symbol: a different symbol, Esc or F closes it, and so does turning the guide off. It rests on lines and areas`),
+      legendKeyRow('F', 'Ext View', `Adds ${EXT_OFFER}: tabs 1 2 3 4 5 before this one, a tile in O and C, the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. It lasts while you place that kind of symbol: a different symbol, Esc or F closes it, and so does turning the guide off. It rests on lines and areas`),
       legendKeyRow('⇧F', 'Keep On', 'Shift+F keeps the Ext View on for every symbol until F'),
       legendKeyRow('1', 'Ext Tabs', '1 Obsn & Fd of Fire, 2 Key Gr, 3 Approaches (with the Ext View on)'),
       legendKeyRow('J', 'Better Posn', 'Places the symbol at the better Posn the map shows (Ext View)'),
+      legendKeyRow('X', 'Whose Options', "The en's options against you (his Apchs, your fire on them, his air, his template), or yours against the threat; also the switch at the left of the key bar at the foot of this card (Ext View)"),
       legendKeyRow('[', 'Threat', '[ and ] turn the threat 15° (Shift 45°); drag the yellow marker to make it a place (Ext View)'),
       legendKeyRow('V', 'Gr Scope', 'Shows or hides the side rail: the map round the symbol with range rings and the GROTBC layers (with F, the Ext View)'),
       legendKeyRow('Esc', 'Close', 'Closes this card; a second Esc cancels the draw'),

@@ -340,6 +340,326 @@ export type OcokaEye = 'auto' | 'standing' | 'prone' | 'vehicle' | 'post';
  * MS/Data/OcokaDoctrine.json and the `Rng` field of MS/Data/Symbols.json. Enforce mode stays on the GROTBC GO / NO-GO
  * rule: an Extended View reading is a judgement and never blocks a placement. These options shape it.
  */
+/**
+ * The IPB combined obstacle overlay of the Extended View (2026-11-14; IPB_Plan.md §6.1, MS/Data/IpbDoctrine.json).
+ * GO / SLOW-GO / NO-GO by the IPB book's criteria only, with "not assessed" where the bundle cannot test a criterion.
+ */
+export interface GroundGuideIpbOptions {
+  /** Whose movement is read: the enemy's toward the position (`defence`, from the threat) or own toward the enemy (`attack`). */
+  readFor: 'defence' | 'attack';
+  /** The book's kind of force. `auto`: armour for the enemy (defence); the symbol's own for an attack. */
+  mover: 'auto' | 'armour' | 'mech' | 'dismounted';
+  /** The terrain pamphlets' season rules (Rann June-November, above 2500 m in winter, snow slopes): in the coding or as notes. */
+  season: 'coding' | 'notes';
+  /** AVLB span, m: a gap wider than this cannot be spanned (18 m typical; confirm with engineers). */
+  avlbSpanM: number;
+  /** Paint: the book's Trace hatch (crosshatch NO-GO, lines SLOW-GO), a soft tint, or ATP 2-01.3's green. */
+  paint: 'hatch' | 'soft' | 'atp';
+  /**
+   * Mobility corridors and avenues of approach (IPB_Plan.md §6.2; 2026-11-14): read over the HQ's area facing the threat,
+   * drawn on the map as the MS attack arrows, in tab 3 and on the rail. Off: not worked out, tab 3 keeps the single
+   * approach path.
+   */
+  apchs: boolean;
+  /** The HQ that reads (book p 7: corridors two levels down, avenues one): `auto` from the symbol's echelon (Bn and below read with the Bde HQ row). */
+  hq: 'auto' | 'bde' | 'div';
+  /** The corridors drawn inside each avenue on the map. */
+  mapCorridors: boolean;
+  /**
+   * Labels on the Extended View's map (user, 2026-11-14: "label every line and circle"): `auto` a short label on every
+   * line, circle and area (what it is and its key figure), `all` adds the details (widths, times, heights, obstructions),
+   * `off` none.
+   */
+  labels: 'auto' | 'all' | 'off';
+  /** Create on Map writes the avenues as the MS attack arrows (Main Attk / Sp Attk, as drawn) or as the IPB Avenue of Apchs symbol. */
+  createAs: 'attack' | 'avenue';
+  /**
+   * Observation and fire corridors (IPB_Plan.md §6.3; Phase 4): how much of each avenue the other side's Posns on the map
+   * cover with direct fire and may watch, the gaps, killing area candidates; tab 1, the rail's line 1, the map.
+   */
+  fire: boolean;
+  /** The fire on the avenues on the map: coloured along each avenue (under fire, dead, screened, out of range) and the Posns' ranges. */
+  mapFire: boolean;
+  /** The proforma for the relative merits of avenues (book p 21) in tab 3: this side's avenues, then the other side's. */
+  proforma: boolean;
+  /** The proforma's two group headings (the book leaves them blank); empty: En / Own by the side. */
+  pfHead1: string;
+  pfHead2: string;
+  /**
+   * Rates, the event template and decision support (IPB_Plan.md §6.6, §6.7; Phase 5): the enemy's time along each avenue at
+   * the book's rates, NAIs, TAIs and decision points (2 h before each TAI; the counter-attack while the depth holds); tab 5
+   * Decision, the rail's line 5, the map, Create on Map.
+   */
+  decision: boolean;
+  /** NAIs, TAIs and decision points on the map. */
+  mapDecision: boolean;
+  /** Hours the own action takes on top of the book's 2 h lead for a decision point (p 30), 0 to 12. */
+  reactionH: number;
+  /** H hour as "HH:MM" (the enemy's start), for clock times and night on the time ladder; empty: times as H+. */
+  hHour: string;
+  /**
+   * Air avenues of approach, LZ / DZ and AD sites (IPB_Plan.md §6.4; Phase 6): least-cost low-level ways over the area
+   * read, LZs and DZs ranked, AD sites for long-range, flank and bottom shots; tab 4 Air, the rail's line 4, the map,
+   * Create on Map. Off: not worked out.
+   */
+  air: boolean;
+  /** Air avenues, LZ / DZ, AD sites and their ranges on the map. */
+  mapAir: boolean;
+  /** Flight band of the air avenues (FM 3-04.203, T): NOE to 25 ft, contour 25-80 ft, low level 80-200 ft above the highest obstacle. */
+  airBand: 'noe' | 'contour' | 'low';
+  /** Landing point size class 1-6 (FM 3-21.38, T: 25 / 35 / 50 / 80 / 100 / 125 m; 4 = Mi-17 class). */
+  lzClass: number;
+  /** Landing points in one LZ (laid in a square, one diameter apart). */
+  lzPoints: number;
+  /**
+   * Situation template (IPB_Plan.md §6.7; Phase 7): a doctrinal template from `IpbTemplates.json` laid along the avenues
+   * and checked on each element's own ground (book pp 22-23). `auto` picks by Read for and the HQ row (a mountain one in
+   * mountains); a template id names one; `off`: not worked out. Tab 5 page 2, the map, Create on Map.
+   */
+  template: string;
+  /** The template's elements on the map (where doctrine puts them, where the ground lets them be). */
+  mapTemplate: boolean;
+}
+
+/** Rates, event template and decision support over the IPB avenues (extended.ipb.decision), Web Mercator. */
+export interface IpbDecisionView {
+  rates: { mover: 'armour' | 'mech' | 'dismounted'; go: [number, number]; slow: [number, number]; nogo: [number, number] };
+  /** Times count from the threat marker's place (true) or from the area's edge (false). */
+  fromThreat: boolean;
+  hHour: string | null;
+  profiles: Array<{ aa: string; viable: boolean; main: boolean; pts: Array<[number, number, number]>; startAlongM: number; startH: [number, number]; endH: [number, number] }>;
+  nais: Array<{ id: string; n: number; aa: string; at: MercXY; alongM: number; kind: 'entry' | 'crossing' | 'narrows' | 'slow' | 'crossover'; shows: string; earliestH: number; latestH: number; tai: string | null; widthM: number | null }>;
+  tais: Array<{ id: string; n: number; aa: string; at: MercXY; dirDeg: number; alongM: number; why: string; earliestH: number; latestH: number; nai: string }>;
+  /** `alongM` from the avenue's frame (below its start: on the way in from the enemy). */
+  dps: Array<{ id: string; n: number; kind: 'interdict' | 'catk'; aa: string; tai: string | null; at: MercXY; alongM: number; inArea: boolean; beyondM: number; beforeH: boolean; earliestH: number; decision: string }>;
+  catk: { label: string; min: number } | null;
+  notes: string[];
+}
+
+/** Air avenues, LZ / DZ and AD sites over the IPB area read (extended.ipb.air; GroundGuideIpbAir.ts), Web Mercator. */
+export interface IpbAirView {
+  /** Whose air avenues: the enemy's into own depth (defence reading) or own to the objective (attack). */
+  side: 'enemy' | 'own';
+  band: 'noe' | 'contour' | 'low';
+  bandLabel: string;
+  /** The band's height above the highest obstacle, metres. */
+  bandM: [number, number];
+  lzClass: number;
+  lzPoints: number;
+  /** Landing point diameter and the LZ's side, metres. */
+  lpM: number;
+  lzSideM: number;
+  adRangeM: number;
+  routes: Array<{
+    id: string;
+    rank: number;
+    line: MercXY[];
+    to: string;
+    lengthM: number;
+    seenPct: number;
+    valleyPct: number;
+    parallelPct: number;
+    buaPct: number;
+    follows: Array<{ kind: string; name: string | null; lengthM: number }>;
+    wires: number;
+    obstructionsNear: Array<{ kind: string; label: string; heightM: number }>;
+    why: string;
+    profile: Array<{ alongM: number; groundM: number; topM: number; seen: boolean; crest: boolean }>;
+  }>;
+  lzs: IpbAirZone[];
+  dzs: IpbAirZone[];
+  ad: Array<{ id: string; rank: number; at: MercXY; seenM: number; longM: number; flankM: number; bottom: number; kinds: Array<'long' | 'flank' | 'bottom'>; routes: string[]; why: string }>;
+  /** Vertical obstructions in the area (masts, towers, chimneys, overhead tanks), for the map and the picture. */
+  obstructions: Array<{ at: MercXY; kind: string; label: string; heightM: number }>;
+  /** The other side's eyes judged (0: concealment not judged). */
+  observers: number;
+  notes: string[];
+  ms: number;
+}
+/** An LZ or DZ: its square (corners), what it is and why it ranks. */
+export interface IpbAirZone {
+  id: string;
+  kind: 'lz' | 'dz';
+  rank: number;
+  at: MercXY;
+  ring: MercXY[];
+  sideM: number;
+  lengthM: number;
+  points: number;
+  slopeDeg: number;
+  mountain: boolean;
+  caution: string[];
+  seenP: number | null;
+  distObjM: number | null;
+  approaches: number[];
+  existing: string | null;
+  why: string;
+  /** For the enemy's LZ: an OP over it. */
+  op: { at: MercXY; distM: number; riseM: number } | null;
+}
+
+/** A situation template laid on the area read (extended.ipb.template; GroundGuideIpbTemplate.ts), Web Mercator. */
+export interface IpbTemplateView {
+  id: string;
+  label: string;
+  kind: 'attack' | 'defence';
+  text: string;
+  src: string;
+  /** False when any figure of it is a reading of the book's Fig 6 / 7 the user has not confirmed. */
+  confirmed: boolean;
+  elements: Array<{
+    id: string;
+    label: string;
+    role: string;
+    mover: 'armour' | 'mech' | 'dismounted' | 'gun' | null;
+    key: string | null;
+    ech: string | null;
+    footM: number;
+    basis: string;
+    src: string | null;
+    /** Where doctrine puts it; where it ends up. */
+    doc: MercXY | null;
+    at: MercXY;
+    dirDeg: number;
+    status: 'fixed' | 'ok' | 'moved' | 'known' | 'outside' | 'nowhere' | 'none';
+    movedM: number;
+    nogoPct: number;
+    why: string;
+    box?: MercXY[];
+  }>;
+  moved: number;
+  known: number;
+  outside: number;
+  phases: { label: string; rows: Array<{ id: string; phase: string; time: string; src: string; basis: string }> };
+  library: Array<{ id: string; label: string; kind: 'attack' | 'defence'; fits: string; basis: string; chosen: boolean }>;
+  auto: boolean;
+  notes: string[];
+  ms: number;
+}
+
+/** Annex A weather critical values for the month and place (book pp 19-20), coded from the bundle's grids. */
+export interface IpbWxView {
+  month: number;
+  rows: Array<{ mission: string; element: string; go: string; marginal: string; status: 'go' | 'marg' | 'unfav' | 'met' | 'na'; value: string }>;
+  stationKm: number | null;
+}
+
+/** Fire on the IPB avenues from the other side's Posns (extended.ipb.fire), Web Mercator. */
+export interface IpbFireView {
+  /** `assumed`: no range in the catalogue (`Rng`), so small arms' 300 m. */
+  posns: Array<{ at: MercXY; label: string; effM: number; obsM: number; spot: boolean; assumed?: boolean }>;
+  lines: Array<{
+    id: string;
+    coveredPct: number;
+    screenedPct: number;
+    deadPct: number;
+    outPct: number;
+    seenPct: number;
+    gaps: Array<{ fromM: number; toM: number; kind: 'd' | 's' | 'o' }>;
+    /** Stretches by state along the avenue, for the map and the ribbons: c under fire, s screened, d dead, o out of range. */
+    segs: Array<{ state: 'c' | 's' | 'd' | 'o'; fromM: number; toM: number; line: MercXY[] }>;
+    startM: number;
+    endM: number;
+    /** The closest any Posn comes to the avenue, metres, and which (index into `posns`): why it is out of range. */
+    nearestM?: number | null;
+    nearestPosn?: number;
+  }>;
+  killing: Array<{ on: string; at: MercXY; alongM: number; kind: 'narrows' | 'stretch'; widthM: number | null; lengthM: number; text: string }>;
+  /** Whose Posns: own (defending against the enemy's avenues) or the enemy's. */
+  posnSide: 'own' | 'enemy';
+  ms: number;
+}
+
+/** The proforma (extended.ipb.proforma): the engine's result, for the tab 3 table and Copy as Text. */
+export interface IpbProformaView {
+  groups: Array<{ head: string; side: 'enemy' | 'own'; ids: string[] }>;
+  rows: Array<{ key: string; short: string; label: string; basis: string; why: string; cells: Array<Array<{ id: string; sign: '+' | '−' | '?'; suggested: '+' | '−' | '?'; user: boolean; value: string }>> }>;
+  totals: number[][];
+  lead: Array<{ id: string; total: number } | null>;
+  note: string;
+  /** The second group is still being worked out. */
+  pending: boolean;
+}
+
+/** One avenue of approach (or lone corridor) of an IPB reading, Web Mercator. */
+export interface IpbApchAa {
+  id: string;
+  rank: number;
+  /** False: a lone corridor, not an avenue. */
+  viable: boolean;
+  /** Drawn as the main attack (the best going of the viable avenues): the inner line in its head. */
+  main: boolean;
+  open: boolean;
+  /** Centre line (simplified), and the arrow drawn round it: fill ring, stroke (back left open), inner line. */
+  line: MercXY[];
+  arrow: { fill: MercXY[]; stroke: MercXY[]; inner: MercXY[] };
+  /** Free width across along it (every ~250 m), metres, and the distance from the area's start edge. */
+  widthM: number[];
+  alongM: number[];
+  lengthM: number;
+  startM: number;
+  endM: number;
+  stopped: boolean;
+  coverPct: number;
+  twoPct: number;
+  onePct: number;
+  goPct: number;
+  medianWidthM: number;
+  minWidthM: number;
+  narrows: Array<{ at: MercXY; alongM: number; widthM: number; kind: 'crossing' | 'slow' | 'narrow' }>;
+  waterLines: number;
+  why: string[];
+  /** Mean place across the area, metres (negative: left as the mover sees). */
+  sideM: number;
+  mcs: string[];
+}
+
+/** The IPB mobility corridors and avenues of approach over the area read (Extended View, `extended.ipb.apchs`). */
+export interface IpbApchView {
+  key: string;
+  /** Whose avenues: the enemy's toward the position (defence) or own toward the threat (attack). */
+  side: 'enemy' | 'own';
+  /** The HQ row used, what the avenues and corridors are for, and why (a Bn HQ has no row in the book). */
+  hq: 'bde' | 'div';
+  hqLabel: string;
+  hqNote: string | null;
+  /** The echelon of the symbol read (Pl, Coy, Bn...), shown beside the HQ row it reads with; null without one. */
+  forEch?: string | null;
+  aaFor: string;
+  mcFor: string;
+  mcWidthM: number;
+  spacingM: number;
+  mover: 'armour' | 'mech' | 'dismounted';
+  /** The direction of movement (grid bearing) and the area read: its corners (start-left, start-right, end-right, end-left). */
+  axisDeg: number;
+  frame: MercXY[];
+  frameKm: [number, number];
+  anchor: MercXY;
+  /** The threat is only a direction: the avenues start at the area's edge on its bearing. */
+  threatAssumed: boolean;
+  aas: IpbApchAa[];
+  mcs: Array<{ id: string; aa: string | null; line: MercXY[] }>;
+  crossovers: Array<{ id: string; a: string; b: string; from: MercXY; to: MercXY; alongM: number; depthM: number }>;
+  notes: string[];
+  ways: string[];
+  codingText: string;
+  /** The area's coding as a small picture for the Detail (a PNG data URL) and its extent [xmin, ymin, xmax, ymax]. */
+  raster?: { url: string; extent: [number, number, number, number] } | null;
+  /** Fire on the avenues (extended.ipb.fire): undefined while off or not worked out yet. */
+  fire?: IpbFireView | null;
+  /** The proforma (extended.ipb.proforma): undefined while off or not worked out yet. */
+  proforma?: IpbProformaView | null;
+  /** Rates, event template and decision support (extended.ipb.decision): undefined while off or not worked out yet. */
+  decision?: IpbDecisionView | null;
+  /** Annex A weather for the month and place (with the fire or the decision on). */
+  wx?: IpbWxView | null;
+  /** Air avenues, LZ / DZ, AD sites (extended.ipb.air): undefined while off or not worked out yet. */
+  air?: IpbAirView | null;
+  /** The situation template (extended.ipb.template): undefined while off or not worked out yet. */
+  template?: IpbTemplateView | null;
+  ms: { coding: number; corridors: number };
+}
+
 export interface GroundGuideExtendedOptions {
   /** F turns the Extended View on and off; with it on, 1 2 3 open its tabs, [ and ] turn the threat, J takes the better Posn. */
   keys: boolean;
@@ -376,9 +696,13 @@ export interface GroundGuideExtendedOptions {
    * What the map overlay (`overlay.enabled`) paints while the Extended View is on (2026-11-11). `threat`: all the
    * ground the threat may see from its place, out to `radiusKm` (violet; needs the threat as a place). `view`: all the
    * ground that may be seen from the position being placed (light blue), once the cursor rests. `going`: the GROTBC
-   * paint, as with the Extended View off. `auto`: `threat` when the threat is a place, else `view`.
+   * paint, as with the Extended View off. `auto`: `threat` when the threat is a place, else `view`. `ipb` (2026-11-14):
+   * the IPB combined obstacle overlay, coded by the IPB book's criteria (`ipb`), round the symbol being placed or the map
+   * centre (GroundGuideIpb.ts).
    */
-  overlay: 'auto' | 'view' | 'threat' | 'going';
+  overlay: 'auto' | 'view' | 'threat' | 'going' | 'ipb';
+  /** The IPB coding (IPB_Plan.md §6.1): worked out only while the Extended View is on and the overlay paints `ipb`. */
+  ipb: GroundGuideIpbOptions;
   /** Eye height: `auto` takes a vehicle commander's for tracked vehicles and a standing man's otherwise. */
   eye: OcokaEye;
   /** Count what stands on the ground (buildings, crops, trees, bunds, walls); off judges on the ground alone. */
@@ -451,6 +775,11 @@ export interface GroundGuideCardOptions {
   goingMap: boolean;
   /** D: the D key opens the Ground Detail (a tab a letter: G R O T B C, and K the Legend); a letter opens it on that tab. */
   briefKey: boolean;
+  /**
+   * The key notice (user, 2026-11-14): when a key changes a mode (F, Shift+F, X, [ ], J, V, Shift+V, H, P), a card at
+   * the foot of the screen says the mode now and the keys that work in it, for 5 s. Off: the card's flash and the chip.
+   */
+  keyNotice: boolean;
 }
 
 export type GoingStep = 'go' | 'slow' | 'nogo';
@@ -899,7 +1228,7 @@ export interface OcokaMapSight {
   /** The fire fan toward the threat out to the weapon's range: its outline, and the dead and screened ground inside it. */
   fan: { outline: MercXY[]; dead: MercXY[][]; screened: MercXY[][]; rangeM: number };
   /** Lines of sight from the position: the chance the far end is seen, and where the line is lost when it probably is not. */
-  lines: Array<{ kind: 'itg'; to: MercXY; p: number; blockAt: MercXY | null }>;
+  lines: Array<{ kind: 'itg'; /** The candidate's rank (ITG n in tab 2). */ n?: number; to: MercXY; p: number; blockAt: MercXY | null }>;
   /** The threat as a place: the chance it sees the position, where its line is lost, and the ground between that it sees. */
   enemy: { at: MercXY; seesP: number; distM: number; blockAt: MercXY | null; blockAtM: number | null; coveredPct: number; outline: MercXY[]; seen: MercXY[][] } | null;
 }
@@ -1011,6 +1340,8 @@ export interface GroundGuideOcoka {
   /** Set once the map products for this spot are worked out (a moment after the cursor rests). */
   sight?: OcokaMapSight | null;
   plan?: OcokaMapPlan | null;
+  /** The IPB avenues over the area read: undefined when `extended.ipb.apchs` is off, null while being worked out. */
+  ipbApch?: IpbApchView | null;
 }
 
 /** One symbol judged by `auditPlacements()` / `explain()`. */
@@ -1201,6 +1532,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
     seasonRibbon: false,
     goingMap: false,
     briefKey: true,
+    keyNotice: true,
   },
   population: { enabled: true, card: 'scale', flag: true, radiusKm: 5, layer: false, layerOpacity: 0.7 },
   traffic: {
@@ -1211,7 +1543,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54 },
-  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, overlay: 'auto', eye: 'auto', surface: true },
+  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, overlay: 'auto', ipb: { readFor: 'defence', mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true }, eye: 'auto', surface: true },
   aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 

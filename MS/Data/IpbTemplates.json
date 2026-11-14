@@ -1,0 +1,173 @@
+{
+  "format": "pams-ipb-templates",
+  "version": 1,
+  "built": "2026-11-14",
+  "note": "Doctrinal templates for the IPB pages of the Ground Guide's Extended View (IPB_Plan.md §6.7, Phase 7; book s3 para 2 pp 22-32). A doctrinal template shows the enemy's deployment without terrain or weather (book p 22); laid along an avenue on the area read it becomes a situation template: each element is checked on its own mover's ground, moved to the nearest usable ground, and known positions are never moved (book p 23). Templates are rough approximations, not fact; over-reliance invites deception (book p 32). Basis: D = read from the source (cited), D? = read from a figure image, not yet confirmed by the user, T = typical public figure, E = my estimate or placement (to confirm), U = the user's decision.",
+  "handling": "Figures read from KYE-2019 (SECRET) and from restricted Pakistan Army pamphlets (C&SC IPB book; Desert Warfare; Operations of War Vol I and II; Infantry Battalion in Battle). No text is copied, only figures and short rules with their pages. Keep this file under the same handling terms before it goes outside the owner's own systems.",
+  "sources": {
+    "IPB": "Intelligence Preparation of the Battle Field, C&SC Quetta (printed page; Figs 6-10 pp 25-31)",
+    "KYE": "Know Your Enemy 2019 (Sixth Edition), MI Dte (PDF page)",
+    "DW": "Desert Warfare (GSP-1972, 2002) (printed page)",
+    "OOW1": "Operations of War Vol I Defence (AP 2302 E, 2015) (printed page)",
+    "OOW2": "Operations of War Vol II Offensive Operations (AP 2303 E, 2015) (section / printed page)",
+    "IBB": "Infantry Battalion in Battle, AP 8360 E (printed page)",
+    "MW": "Mountain Warfare (GSP-1973, 2003) (printed page)"
+  },
+  "confirmations": {
+    "fig6": { "confirmed": false, "reading": "Indian Army Inf Div defence of a DCB: frontage about 80 km; depth bands to 20-25 km; troops about 33 % forward on the DCB (6 Coys), 50 % in the main defences, 17 % in depth / reserve (2 Coys); reserve committed in 4-6 h.", "note": "Read from the figure image (no text layer); the user has not confirmed it yet (IPB_Plan.md Phase 7)." },
+    "fig7": { "confirmed": false, "reading": "Indian strike corps attack: frontage about 100 km; two bridgeheads (a RAPID and an Inf Div) about 12 km wide each; the Armd Div and its logistics 50-60 km back; break-out shown as D-1 on the figure (as read).", "note": "Read from the figure image (no text layer); the user has not confirmed it yet." }
+  },
+
+  "mountainTest": { "basis": "E", "riseM": 400, "withinM": 5000, "rule": "The mountain template is picked (Auto) when the ground within 5 km of the position rises 400 m or more." },
+
+  "movers": {
+    "note": "How each kind of element is judged: armour and mech on the IPB coding for that mover; dismounted on the dismounted coding; guns on the mech coding and never on a hilltop (book p 23: 'artillery on hilltops'); fixed elements (objectives, crossings) are not moved.",
+    "unusableShare": { "value": 0.25, "basis": "E", "note": "An element whose footprint is more than a quarter NO-GO for its mover is moved." },
+    "hilltop": { "basis": "E", "upper": 0.4, "riseM": 30, "rule": "A gun area is on a hill when it stands in the upper 40 % of the ground 1 km round, where that ground rises 30 m or more: moved to lower ground out of view." },
+    "searchM": { "value": 3000, "basis": "E", "note": "The nearest usable ground is looked for within 3 km; beyond that the element is marked 'no usable ground'." },
+    "knownM": { "value": 1500, "basis": "E", "note": "An enemy symbol already on the map within 1.5 km of an element of its kind takes that element's place and is never moved (book p 23)." }
+  },
+
+  "templates": [
+    {
+      "id": "idp-bde",
+      "label": "IDP op · Bde CC",
+      "side": "enemy",
+      "kind": "attack",
+      "fits": { "readFor": "defence", "hq": "bde" },
+      "basis": "D",
+      "src": "KYE p 69 (IDP ops: Bde / Bde(+) Combat Command, a mech / armd regt gp as a Combat Gp, to capture small localities, fix and degrade tac reserves, give launch pads); KYE p 216 (Inf Div: Bde gp offensive to 25 km depth); IBB pp 173, 203; OOW2 s6 para 15",
+      "text": "A Bde-size Combat Command attacks the position on the leading avenue (two Bn gps abreast from the FUP, a Combat Gp of armour behind), a supporting Bn gp on the second avenue, a follow-up Bn gp, the assembly area and the field guns further back. Objectives: the position (immediate) and the depth (subsequent): units above Bn get both (book p 23).",
+      "elements": [
+        { "id": "obj1", "label": "Obj 1 (immediate)", "role": "objective", "mover": null, "place": { "at": "objective" }, "footM": 600, "key": "25151700", "basis": "D", "src": "IPB p 23" },
+        { "id": "obj2", "label": "Obj 2 (subsequent)", "role": "objective", "mover": null, "place": { "at": "depth" }, "footM": 800, "key": "25151700", "basis": "D", "src": "IPB p 23" },
+        { "id": "fup", "label": "FUP", "role": "fup", "mover": "dismounted", "place": { "aa": 1, "fromObjM": 1100 }, "footM": 400, "key": "25140302", "basis": "D", "src": "IBB p 203: FUP 1000-1200 m from the objective in plains (night)" },
+        { "id": "a1", "label": "Aslt Bn Gp 1", "role": "assault", "mover": "dismounted", "place": { "aa": 1, "fromObjM": 1100, "acrossM": -600 }, "footM": 450, "key": "10121100", "ech": "16", "basis": "E", "src": "Two Bn gps abreast on the avenue's two corridors (placement mine)" },
+        { "id": "a2", "label": "Aslt Bn Gp 2", "role": "assault", "mover": "dismounted", "place": { "aa": 1, "fromObjM": 1100, "acrossM": 600 }, "footM": 450, "key": "10121100", "ech": "16", "basis": "E" },
+        { "id": "cg", "label": "Armr Regt Gp (CG)", "role": "armour", "mover": "armour", "place": { "aa": 1, "fromObjM": 3000 }, "footM": 600, "key": "10120500", "ech": "16", "basis": "D", "src": "KYE p 69 (Combat Gp); IBB p 173: the tank FUP further back, out of the defender's tank / AT range (3 km: E)" },
+        { "id": "sp", "label": "Sp Attk Bn Gp", "role": "support", "mover": "dismounted", "place": { "aa": 2, "fromObjM": 1100 }, "footM": 450, "key": "10121100", "ech": "16", "basis": "E" },
+        { "id": "fu", "label": "Follow-up Bn Gp", "role": "followup", "mover": "mech", "place": { "aa": 1, "fromObjM": 4500 }, "footM": 600, "key": "10121102", "ech": "16", "basis": "D", "src": "OOW2 s6 para 15: assault, follow-up, reserve echelons (distance mine, E)" },
+        { "id": "assy", "label": "Assy Area", "role": "assy", "mover": "mech", "place": { "aa": 1, "fromObjM": 7000 }, "footM": 1000, "key": "25150200", "basis": "D", "src": "IBB p 173: assembly area 1-5 miles from the enemy, free from observation and harassing fire (7 km: E)" },
+        { "id": "guns", "label": "Fd Regt (gun area)", "role": "guns", "mover": "gun", "place": { "aa": 1, "fromObjM": 9000, "acrossM": 2000 }, "footM": 600, "key": "10130301", "ech": "16", "basis": "E", "src": "Within field gun range of the objective, off the axis" },
+        { "id": "xing", "label": "Crossing site", "role": "crossing", "mover": null, "place": { "aa": 1, "at": "firstCrossing" }, "footM": 300, "key": null, "basis": "E", "src": "Where the leading avenue crosses water (an engineer task, a TAI: IPB p 28)" }
+      ]
+    },
+    {
+      "id": "dsf-div",
+      "label": "DSF op · Div-size BG",
+      "side": "enemy",
+      "kind": "attack",
+      "fits": { "readFor": "defence", "hq": "div" },
+      "basis": "D",
+      "src": "KYE p 68 (DSF ops by Div-size BGs: an Armd Div with an Inf Bde, or an Inf Div with an Armd Bde, to secure launch pads for the Strike Corps); KYE p 74 (IBGs of 4-6 Bns with armour, artillery and aviation); KYE p 216 (Inf Div: up to two axes, a force to threaten the rear / flanks)",
+      "text": "A Div-size battle group (or an IBG) attacks on up to two axes: a Bde CC on each of the two leading avenues, a reserve Bde CC behind the main one, the divisional guns, an assembly area per Bde. Objectives: the launch pad (the position) and the depth.",
+      "elements": [
+        { "id": "obj1", "label": "Obj 1 (launch pad)", "role": "objective", "mover": null, "place": { "at": "objective" }, "footM": 1500, "key": "25151700", "basis": "D", "src": "KYE p 68; IPB p 23" },
+        { "id": "obj2", "label": "Obj 2 (subsequent)", "role": "objective", "mover": null, "place": { "at": "depth" }, "footM": 2000, "key": "25151700", "basis": "D", "src": "IPB p 23" },
+        { "id": "cc1", "label": "Bde CC 1", "role": "assault", "mover": "mech", "place": { "aa": 1, "fromObjM": 3000 }, "footM": 1500, "key": "10121102", "ech": "18", "basis": "D", "src": "KYE p 68 (Bde CCs on up to two axes); distance mine" },
+        { "id": "cc2", "label": "Bde CC 2", "role": "assault", "mover": "mech", "place": { "aa": 2, "fromObjM": 3000 }, "footM": 1500, "key": "10121102", "ech": "18", "basis": "D", "src": "KYE p 216: up to two axes" },
+        { "id": "armd", "label": "Armd Bde", "role": "armour", "mover": "armour", "place": { "aa": 1, "fromObjM": 8000 }, "footM": 2000, "key": "10120500", "ech": "18", "basis": "D", "src": "KYE p 68: Inf Div with an Armd Bde" },
+        { "id": "res", "label": "Res Bde CC", "role": "followup", "mover": "mech", "place": { "aa": 1, "fromObjM": 14000 }, "footM": 2000, "key": "10121102", "ech": "18", "basis": "E" },
+        { "id": "assy1", "label": "Assy Area 1", "role": "assy", "mover": "mech", "place": { "aa": 1, "fromObjM": 18000 }, "footM": 2500, "key": "25150200", "basis": "E" },
+        { "id": "assy2", "label": "Assy Area 2", "role": "assy", "mover": "mech", "place": { "aa": 2, "fromObjM": 18000 }, "footM": 2500, "key": "25150200", "basis": "E" },
+        { "id": "guns", "label": "Div Arty (gun area)", "role": "guns", "mover": "gun", "place": { "aa": 1, "fromObjM": 16000, "acrossM": 4000 }, "footM": 1500, "key": "10130301", "ech": "18", "basis": "E" },
+        { "id": "xing", "label": "Crossing site", "role": "crossing", "mover": null, "place": { "aa": 1, "at": "firstCrossing" }, "footM": 600, "key": null, "basis": "E" }
+      ]
+    },
+    {
+      "id": "strike-bh",
+      "label": "Strike Corps bridgehead",
+      "side": "enemy",
+      "kind": "attack",
+      "fits": { "readFor": "defence", "hq": "div" },
+      "basis": "D",
+      "src": "OOW2 s14 pp 49-56 (bridgehead 8 x 6 km; bridgehead and induction in one night, break-out at first light); DW pp 10-13 (two lodgements off the main axis in weakly held areas; break-out around first light); IPB Fig 7 (D?: two bridgeheads about 12 km wide, the Armd Div 50-60 km back); KYE pp 91-92 (the Armd Div breaks out of a bridgehead secured by other formations, not used in the first periods)",
+      "text": "Two bridgeheads across the water obstacle on the two leading avenues (the RAPID / Inf Div making them), each about 8 km deep and 6 km wide, the Armd Div waiting well back to break out at first light.",
+      "elements": [
+        { "id": "bh1", "label": "Br H 1", "role": "bridgehead", "mover": "mech", "place": { "aa": 1, "at": "firstCrossing", "boxM": [6000, 8000] }, "footM": 3000, "key": "25141400", "basis": "D", "src": "OOW2 s14: bridgehead 8 x 6 km" },
+        { "id": "bh2", "label": "Br H 2", "role": "bridgehead", "mover": "mech", "place": { "aa": 2, "at": "firstCrossing", "boxM": [6000, 8000] }, "footM": 3000, "key": "25141400", "basis": "D", "src": "DW pp 10-13: two lodgements" },
+        { "id": "rapid", "label": "RAPID (Br H force)", "role": "assault", "mover": "mech", "place": { "aa": 1, "fromCrossingM": -4000 }, "footM": 2500, "key": "10121102", "ech": "21", "basis": "D?", "src": "IPB Fig 7 (as read)" },
+        { "id": "infdiv", "label": "Inf Div (Br H force)", "role": "assault", "mover": "dismounted", "place": { "aa": 2, "fromCrossingM": -4000 }, "footM": 2500, "key": "10121100", "ech": "21", "basis": "D?", "src": "IPB Fig 7 (as read)" },
+        { "id": "armd", "label": "Armd Div (break-out)", "role": "armour", "mover": "armour", "place": { "aa": 1, "fromCrossingM": -20000 }, "footM": 4000, "key": "10120500", "ech": "21", "basis": "D?", "src": "IPB Fig 7: 50-60 km back (as read; placed at the area's edge when farther)" }
+      ]
+    },
+    {
+      "id": "mtn-attk",
+      "label": "Mtn Div attack",
+      "side": "enemy",
+      "kind": "attack",
+      "fits": { "readFor": "defence", "hq": "bde", "terrain": "mountain" },
+      "basis": "D",
+      "src": "KYE p 217 (one Bde deliberate attack at a time on the main axis, one Bde on an outflanking move on a mule track; a Bn gp on man pack up to 48 h); MW pp 79-84 (envelopment with frontal fixation, night attacks)",
+      "text": "One Bde attacks along the main valley axis while a Bde (or Bn gp) outflanks along the second avenue to fall on the flank or rear of the position.",
+      "elements": [
+        { "id": "obj1", "label": "Obj 1", "role": "objective", "mover": null, "place": { "at": "objective" }, "footM": 600, "key": "25151700", "basis": "D", "src": "IPB p 23" },
+        { "id": "main", "label": "Bde (main axis)", "role": "assault", "mover": "dismounted", "place": { "aa": 1, "fromObjM": 2000 }, "footM": 800, "key": "10121100", "ech": "18", "basis": "D", "src": "KYE p 217" },
+        { "id": "flank", "label": "Bde (outflanking)", "role": "support", "mover": "dismounted", "place": { "aa": 2, "fromObjM": 2500 }, "footM": 800, "key": "10121100", "ech": "18", "basis": "D", "src": "KYE p 217: on a mule track" },
+        { "id": "guns", "label": "Mtn Arty", "role": "guns", "mover": "gun", "place": { "aa": 1, "fromObjM": 7000, "acrossM": 1500 }, "footM": 500, "key": "10130300", "ech": "17", "basis": "E" }
+      ]
+    },
+    {
+      "id": "def-bde",
+      "label": "Defence · Inf Bde (on an obstacle)",
+      "side": "enemy",
+      "kind": "defence",
+      "fits": { "readFor": "attack", "hq": "bde" },
+      "basis": "D?",
+      "src": "IPB Fig 6 (D?: about 33 % forward on the DCB, 50 % in the main defences, 17 % in depth; reserve in 4-6 h); KYE p 216 (Inf Div sector 20-30 km wide, 8-15 km deep in open country; a counter-penetration and counter-attack force on an armour regt); KYE p 361 (BSF platoons and companies on the DCB in less threatened sectors)",
+      "text": "The enemy's forward localities on the first obstacle the own avenue meets (a third of the force), the main defences 3-5 km behind (half), the depth and the armour counter-attack force behind them, the guns further back.",
+      "elements": [
+        { "id": "fwd1", "label": "Fwd Coy locality", "role": "locality", "mover": "dismounted", "place": { "aa": 1, "fromFdlM": 0, "acrossM": -800 }, "footM": 300, "key": "10121100", "ech": "15", "basis": "D?", "src": "IPB Fig 6: forward localities on the DCB" },
+        { "id": "fwd2", "label": "Fwd Coy locality", "role": "locality", "mover": "dismounted", "place": { "aa": 1, "fromFdlM": 0, "acrossM": 800 }, "footM": 300, "key": "10121100", "ech": "15", "basis": "D?" },
+        { "id": "main", "label": "Main def Bn", "role": "locality", "mover": "dismounted", "place": { "aa": 1, "fromFdlM": 4000 }, "footM": 600, "key": "10121100", "ech": "16", "basis": "E", "src": "Half the force in the main defences (Fig 6, as read); distance mine" },
+        { "id": "depth", "label": "Depth Bn", "role": "locality", "mover": "dismounted", "place": { "aa": 1, "fromFdlM": 7000, "acrossM": 1000 }, "footM": 600, "key": "10121100", "ech": "16", "basis": "E" },
+        { "id": "catk", "label": "C Pen / C Attk force", "role": "armour", "mover": "armour", "place": { "aa": 1, "fromFdlM": 9000 }, "footM": 800, "key": "10120500", "ech": "16", "basis": "D", "src": "KYE p 217: a force based on an armour regt and mech inf" },
+        { "id": "guns", "label": "Fd Regt (gun area)", "role": "guns", "mover": "gun", "place": { "aa": 1, "fromFdlM": 11000, "acrossM": -2000 }, "footM": 600, "key": "10130301", "ech": "16", "basis": "E" }
+      ]
+    },
+    {
+      "id": "def-div",
+      "label": "Defence · Inf Div / RAPID(D)",
+      "side": "enemy",
+      "kind": "defence",
+      "fits": { "readFor": "attack", "hq": "div" },
+      "basis": "D",
+      "src": "KYE p 216 (Inf Div: 20-30 km wide, 8-15 km deep, compact; wider on a DCB or canal); KYE p 217 (RAPID(D): 40-60 km by 20-30 km, spoiling attacks, counter-penetration and counter-attacks with its own resources); IPB Fig 6 (D?: depth to 20-25 km, reserve 4-6 h)",
+      "text": "Forward Bdes on the first obstacle across the own avenues, a depth Bde, the armour reserve for counter-attack, the divisional guns.",
+      "elements": [
+        { "id": "fwd1", "label": "Fwd Bde", "role": "locality", "mover": "dismounted", "place": { "aa": 1, "fromFdlM": 0 }, "footM": 1500, "key": "10121100", "ech": "18", "basis": "D", "src": "KYE p 216" },
+        { "id": "fwd2", "label": "Fwd Bde", "role": "locality", "mover": "dismounted", "place": { "aa": 2, "fromFdlM": 0 }, "footM": 1500, "key": "10121100", "ech": "18", "basis": "D", "src": "KYE p 216" },
+        { "id": "depth", "label": "Depth Bde", "role": "locality", "mover": "dismounted", "place": { "aa": 1, "fromFdlM": 10000 }, "footM": 2000, "key": "10121100", "ech": "18", "basis": "D", "src": "KYE p 216: 8-15 km deep" },
+        { "id": "res", "label": "Armd Res (C Attk)", "role": "armour", "mover": "armour", "place": { "aa": 1, "fromFdlM": 15000 }, "footM": 2000, "key": "10120500", "ech": "18", "basis": "D", "src": "KYE p 217; IPB Fig 6 (reserve 4-6 h, as read)" },
+        { "id": "guns", "label": "Div Arty", "role": "guns", "mover": "gun", "place": { "aa": 1, "fromFdlM": 18000, "acrossM": -3000 }, "footM": 1500, "key": "10130301", "ech": "18", "basis": "E" }
+      ]
+    }
+  ],
+
+  "phases": {
+    "offensive": {
+      "label": "Indian offensive · template phases",
+      "basis": "D",
+      "rows": [
+        { "id": "mob", "phase": "Mobilisation (from M)", "time": "Pivot Corps main body M+6 h; DSF / IBG crash gp effective M+9 h, main body M+13-15 h; Strike Corps road colm M+6, tank transporters M+14, rail M+24 h", "src": "KYE pp 342-343", "basis": "D" },
+        { "id": "warning", "phase": "Warning before M", "time": "6 h to 15 days (zero, short or adequate warning)", "src": "KYE pp 342-343", "basis": "D" },
+        { "id": "pivot", "phase": "Pivot Corps ops", "time": "DSF ops by Div-size BGs and IDP ops by Bde CCs secure launch pads while the Strike Corps mobilises; Proactive Ops by 8-12 IBGs on less prepared positions", "src": "KYE pp 68-69; OOW1 Annex E pp 106-111", "basis": "D" },
+        { "id": "sz", "phase": "Security Zone battle", "time": "Cleared by an armd div on multiple axes in 24-48 h", "src": "DW pp 10-13", "basis": "D" },
+        { "id": "breakin", "phase": "Break-in, bridgehead", "time": "Two lodgements off the main axis in weakly held areas; bridgehead 8 x 6 km; bridgehead, build-up and induction in one night", "src": "DW pp 10-13; OOW2 s14", "basis": "D" },
+        { "id": "breakout", "phase": "Break-out", "time": "Around first light, possibly linking with heliborne forces; main defences reached D-day or D+1", "src": "DW pp 10-13; OOW2 s14", "basis": "D" },
+        { "id": "advance", "phase": "Advance", "time": "Armd Div 24-30 km a day contested; Inf Div 25 km a day against light opposition (50 km in 5 days); Mtn Div 8-10 km a day", "src": "KYE pp 92, 216-217", "basis": "D" },
+        { "id": "sustain", "phase": "Sustainment", "time": "Strike Corps self-contained for 72 h; logistics critical 48 h after break-out; whole operation 7-10 days", "src": "KYE p 309; DW pp 10-13", "basis": "D" }
+      ]
+    },
+    "defensive": {
+      "label": "Indian defence · template phases",
+      "basis": "D",
+      "rows": [
+        { "id": "mob", "phase": "Mobilisation", "time": "Defensive formations: crash gp M+2 h, main body M+6 h (two of four gps already in the ops area)", "src": "KYE pp 342-343", "basis": "D" },
+        { "id": "ada", "phase": "Aggressive domination", "time": "Raids, ambushes, capture of unoccupied advance positions and BOPs, surveillance screens across the border", "src": "KYE p 69", "basis": "D" },
+        { "id": "hold", "phase": "Hold", "time": "High-threat areas held in strength, minimum force in medium-threat areas, low-threat areas by the BSF", "src": "KYE p 68", "basis": "D" },
+        { "id": "res", "phase": "Reserves", "time": "Committed in 4-6 h (Fig 6, as read); RAPID(D) restores an adverse situation with its own counter-attacks", "src": "IPB Fig 6 (D?); KYE p 217", "basis": "D?" }
+      ]
+    }
+  }
+}

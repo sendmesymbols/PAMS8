@@ -403,12 +403,12 @@ export function ocokaSight(a: OcokaMapArgs): OcokaMapSight {
 
   // Lines of sight from the position.
   const lines: OcokaMapSight['lines'] = [];
-  for (const c of r.key.candidates) {
+  r.key.candidates.forEach((c, i) => {
     const [gx, gy] = gridPx(g, c.at);
-    if (!inGrid(g, gx, gy)) continue;
+    if (!inGrid(g, gx, gy)) return;
     const s = sightTo(g, a.ox, a.oy, gx, gy, { ...base, targetM: 1.7, radiusM: 0 });
-    if (s) lines.push({ kind: 'itg', to: c.at, p: s.p, blockAt: s.blockAtM !== null ? offset(a.at, cosLat, s.bearingDeg, s.blockAtM) : null });
-  }
+    if (s) lines.push({ kind: 'itg', n: i + 1, to: c.at, p: s.p, blockAt: s.blockAtM !== null ? offset(a.at, cosLat, s.bearingDeg, s.blockAtM) : null });
+  });
 
   // The threat as a place: does it see the position, and what does it see of the ground between?
   let enemy: OcokaMapSight['enemy'] = null;

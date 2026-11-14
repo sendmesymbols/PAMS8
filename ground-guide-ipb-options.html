@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ground Guide · Extended View with IPB (planned pages)</title>
+<!--
+  Mockup of the planned Extended View pages (IPB_Plan.md), second version (14 Nov 2026): refinements from the IPB book,
+  ATP 2-01.3, Infantry Bn in Battle, Desert Warfare, Mountain Warfare, Operations of War Vol I and II, plus declutter
+  controls. Synthetic ground: layout only. Doctrine figures are restricted: keep this file under the same handling terms.
+  Colours and sizes follow MS/Engines/GroundGuide/GroundGuideTokens.ts.
+-->
+<style>
+:root{
+  --ring:#14181d;--card:#1b1f25;--strip:#20262e;--raised:#222830;--head:#262d36;
+  --strong:#fff;--main:#f1f3f6;--label:#c3cbd3;--soft:#b8c1ca;--warn:#ffd27a;
+  --hair:rgba(255,255,255,.14);--softline:rgba(255,255,255,.1);--accent:#8ec1ea;
+  --go:#2fa862;--slow:#ee8a1f;--nogo:#e5484d;--marg:#f1d646;--apch:#ff5a60;--threat:#ffd23f;--itg:#b892ff;
+}
+*{box-sizing:border-box}
+html,body{background:#0f1215}
+body{margin:0;color:var(--main);font:400 13.5px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+.page{max-width:1320px;margin:0 auto;padding:28px 24px 90px}
+h1{font-size:26px;font-weight:750;margin:0 0 6px;color:#fff}
+h2{font-size:19px;font-weight:750;margin:44px 0 6px;color:#fff}
+h3{font-size:15.5px;font-weight:600;margin:22px 0 8px;color:#e8ebee}
+p{margin:6px 0;max-width:1000px;color:var(--label)}
+p b,li b{color:#fff;font-weight:600}
+ul.tight{margin:6px 0 0 18px;padding:0;color:var(--label)}
+ul.tight li{margin:3px 0}
+.lede{font-size:15.5px;color:#d5dbe1}
+.note{display:inline-flex;gap:8px;align-items:center;margin-top:10px;padding:7px 12px;border-radius:8px;background:rgba(255,210,122,.08);border:1px solid rgba(255,210,122,.35);color:var(--warn);font-size:12.5px}
+.panel{background:var(--card);border:1px solid #3a424c;border-radius:12px;padding:14px 16px}
+table.plain{border-collapse:collapse;width:100%;font-size:13px}
+table.plain th{font-size:12px;font-weight:600;color:var(--label);text-align:left;padding:7px 10px;border-bottom:1px solid var(--hair)}
+table.plain td{padding:7px 10px;border-bottom:1px solid var(--softline);vertical-align:top;color:#e3e7eb}
+table.plain td:first-child{white-space:nowrap;color:#fff;font-weight:600}
+.picks{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px;align-items:center}
+.picks button,.seg button{font:600 12.5px/1 system-ui,Segoe UI,Arial,sans-serif;color:#d5dbe1;background:#1d232a;border:1px solid #3d4651;border-radius:8px;padding:7px 11px;cursor:pointer}
+.picks button:hover,.seg button:hover{background:#262d36;color:#fff}
+.picks button[aria-pressed="true"],.seg button[aria-pressed="true"]{background:#e4e8ec;color:#14181d;border-color:#e4e8ec}
+.picks .lbl{font-size:12px;color:var(--label);min-width:120px}
+.rec{font-size:11.5px;font-weight:750;color:#74dca3;margin-left:6px}
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px}
+.flow div{background:#1b2027;border:1px solid #333c46;border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--label)}
+.flow div b{display:block;color:#fff;font-size:13.5px;margin-bottom:3px}
+.prod{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.prod label{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:9px;background:#1b2027;border:1px solid #39424c;color:#e8ebee;font-size:13px;cursor:pointer;user-select:none}
+.prod label.off{color:#8f99a4;border-style:dashed}
+.prod small{color:var(--label);font-size:12px}
+.sw{width:30px;height:17px;border-radius:999px;background:#4a535e;position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#c3cbd3;transition:left .12s}
+.on .sw{background:#4f7fa8}
+.on .sw::after{left:15px;background:#fff}
+.ggd{margin-top:12px;border-radius:12px;background:var(--card);border:1px solid #5a6470;box-shadow:0 10px 30px rgba(0,0,0,.45);overflow:hidden}
+.ggd-h{display:flex;align-items:center;gap:6px 10px;padding:8px 10px 7px;background:var(--head);flex-wrap:wrap}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;border-radius:8px;border:1px solid transparent;color:#d5dbe1;font:600 13.5px/1.2 system-ui,Segoe UI,Arial,sans-serif;white-space:nowrap}
+.tab .k,.foot .k,.kk{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:4px;font:750 12px/1 system-ui;color:#e8ebee;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px}
+.tab .tt{display:flex;flex-direction:column}
+.tab .ta{font-size:12px;font-weight:600;color:var(--label);display:flex;gap:5px;align-items:center}
+.tab.xt{box-shadow:inset 0 2px 0 var(--accent)}
+.tab.sel{background:#e4e8ec;color:#14181d}
+.tab.sel .k{background:#fff;border-color:#9aa5b1;color:#14181d}
+.tab.sel .ta{color:#3d4650}
+.tab.offp{opacity:.4}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+.hsp{flex:1}
+.btn{font:400 13px/1 system-ui;color:#e1e6eb;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:6px;height:28px;padding:0 10px;display:inline-flex;align-items:center}
+.mode{display:flex;flex-wrap:wrap;align-items:center;gap:3px 16px;padding:6px 16px;background:var(--strip);border-top:1px solid var(--softline);font-size:13.5px;color:var(--label)}
+.mode b{color:#fff;font-weight:600}
+.mode .ext{color:var(--accent);font-weight:600}
+.mode .when{margin-left:auto}
+.sum{display:flex;align-items:stretch;padding:10px 16px 11px;background:var(--strip);border-top:1px solid var(--softline);border-bottom:1px solid var(--hair)}
+.ans{flex:1.6 1 300px;max-width:470px;margin-right:14px;padding:8px 14px 9px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.18)}
+.ans.t-warn{background:rgba(255,210,122,.08);border-color:rgba(255,210,122,.45)}
+.ans.t-go{background:rgba(47,168,98,.12);border-color:rgba(47,168,98,.5)}
+.ans.t-slow{background:rgba(238,138,31,.12);border-color:rgba(238,138,31,.55)}
+.ans-l{font-size:12px;color:var(--label)}
+.ans-v{font-size:22px;font-weight:750;line-height:1.2;color:#fff;margin-top:1px}
+.ans-v small{font-size:13.5px;font-weight:600;color:var(--label)}
+.ans-s{font-size:12px;color:var(--label);margin-top:2px}
+.fact{flex:1 1 130px;max-width:270px;padding:0 14px;border-left:1px solid var(--hair)}
+.fk{font-size:12px;color:var(--label);line-height:1.3}
+.fv{margin-top:3px;font:750 15.5px/1.25 system-ui;color:#f4f6f8}
+.fv .s{font-weight:600;font-size:13px;color:var(--label)}
+.band{display:flex;gap:16px;padding:14px 16px 12px;height:378px;align-items:stretch}
+.tile{flex:none;display:flex;flex-direction:column;min-width:0}
+.cap{font-size:12px;font-weight:600;color:var(--label);margin-bottom:6px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.cap .tag{font-size:11.5px;font-weight:600;padding:0 7px;border-radius:999px}
+.tag.new{color:#bfe0ff;border:1px solid #5aa0d6}
+.tag.aug{color:#bfe6cb;border:1px solid #7ea38a}
+.tag.kept{color:#c3cbd3;border:1px solid #5d6772}
+.tag.mov{color:#d9ccf5;border:1px solid #8a7aa8}
+.eye{margin-left:auto;border:0;background:transparent;color:#9aa3ad;cursor:pointer;font-size:12px;padding:0 2px;line-height:1}
+.eye:hover{color:#fff}
+.pic{border-radius:9px;overflow:hidden;background:#14181d;border:1px solid rgba(255,255,255,.12)}
+.key{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:12px;color:var(--label)}
+.key i{display:inline-block;width:12px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tnote{font-size:12px;color:var(--soft);margin-top:6px;line-height:1.4}
+.rows{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:5px 0;border-bottom:1px solid var(--softline);font-size:13px}
+.row:last-child{border-bottom:0}
+.row .rk{color:var(--label)}
+.rows.narrow .row{grid-template-columns:52px 1fr;gap:8px;padding:4px 0}
+.foot{display:flex;gap:14px;align-items:center;padding:7px 16px;background:var(--strip);border-top:1px solid var(--softline);font-size:12px;color:var(--label);flex-wrap:wrap}
+.foot .k{margin-right:5px}
+.pagehint{margin-left:auto;color:#d5dbe1}
+.hidchip{display:inline-flex;gap:6px;align-items:center;padding:2px 8px;border-radius:999px;border:1px dashed #6b7480;color:#d5dbe1;cursor:pointer;font-size:12px}
+.hidchip:hover{border-color:#c3cbd3}
+.empty{display:grid;place-items:center;flex:1;color:#9aa3ad;font-size:13px;border:1px dashed #3d4651;border-radius:10px;padding:10px}
+table.pf{border-collapse:collapse;font-size:12px;width:100%}
+table.pf th{font-weight:600;color:var(--label);padding:1px 4px;text-align:center;font-size:12px}
+table.pf th.g{border-bottom:1px solid var(--hair)}
+table.pf td{padding:.5px 4px;text-align:center;border-bottom:1px solid var(--softline);line-height:16px}
+table.pf td.f{text-align:left;color:#e8ebee;white-space:nowrap;padding-right:8px}
+table.pf td.n{text-align:left;color:var(--soft);white-space:nowrap}
+table.pf tr.tot td{border-top:1px solid var(--hair);border-bottom:0;font-weight:750;color:#fff;padding-top:5px;white-space:nowrap}
+.sg{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font:750 12.5px/1 system-ui}
+.sg.p{background:rgba(142,193,234,.22);color:#cfe7fb;border:1.5px solid #8ec1ea}
+.sg.m{color:#d5dbe1;border:1.5px solid #7f8893}
+.sg.sug{border-style:dashed}
+.sg.u{border:1.5px dotted #5d6772;color:#7f8893;font-size:11px}
+.gh{display:inline-block;min-width:44px;padding:1px 6px;border-radius:5px;border:1px dashed #5d6772;color:var(--soft);font-size:11.5px;font-weight:600}
+.lg{display:grid;grid-template-columns:20px 1fr auto;gap:0 9px;align-items:center;font-size:12.5px;line-height:1.3}
+.lg .ic{width:16px;height:16px;border-radius:4px}
+.lg .nm{color:#eef1f4}
+.lg .vv{color:var(--label);text-align:right;white-space:nowrap}
+.lg .sub{grid-column:2 / 4;color:var(--soft);font-size:12px;margin:0 0 4px;line-height:1.25}
+.wx{display:grid;grid-template-columns:104px 1fr 40px;gap:4px 8px;align-items:center;font-size:12.5px}
+.wx .m{color:#eef1f4;line-height:1.15}
+.wx .m small{display:block;color:var(--soft);font-size:11.5px}
+.wbar{display:flex;height:12px;border-radius:3px;overflow:hidden;background:#2a3038}
+.wbar span{display:block;height:100%}
+.wx .v{color:var(--label);font-size:12px;text-align:right}
+.met{font-size:11.5px;font-weight:600;color:#c3cbd3;border:1px dashed #6b7480;border-radius:999px;padding:0 7px;justify-self:start}
+table.dt{border-collapse:collapse;width:100%;font-size:12.5px}
+table.dt th{font-weight:600;color:var(--label);text-align:left;padding:4px 6px;border-bottom:1px solid var(--hair);font-size:12px}
+table.dt td{padding:5px 6px;border-bottom:1px solid var(--softline);vertical-align:top;color:#eef1f4}
+table.dt td.dp{font-weight:750;color:var(--warn);white-space:nowrap}
+table.dt tr.coa td{color:#bfe0ff;font-weight:600;border-bottom:1px solid var(--hair);padding-top:7px}
+.issue{display:grid;grid-template-columns:22px 1fr;gap:3px 9px;padding:6px 0;border-bottom:1px solid var(--softline);font-size:12.5px}
+.issue:last-child{border-bottom:0}
+.issue .ii{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font:750 12px/1 system-ui;color:#14181d}
+.issue b{color:#fff;font-weight:600}
+.issue span{color:var(--soft)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.chip{font-size:11.5px;font-weight:600;padding:0 7px;border-radius:999px;border:1px solid #545e6b;color:#d5dbe1;white-space:nowrap}
+.chip.ok{border-color:#3f7f57;color:#9fe0b8}
+.chip.no{border-color:#8a4a4d;color:#ffb0b3}
+.chip.key{border-color:#7b5fc0;color:#d9ccf5}
+.apc{border:1px solid #39424c;border-radius:9px;padding:6px 10px;margin-bottom:7px;background:#1d2229}
+.apc .h{display:flex;align-items:center;gap:8px;font-weight:750;color:#fff;font-size:13.5px;flex-wrap:wrap}
+.apc .h small{font-weight:600;color:var(--label);font-size:12px}
+.apc .t{font-size:12px;color:var(--soft);margin-top:2px}
+.tag2{font-size:11px;font-weight:750;padding:1px 6px;border-radius:4px}
+.tag2.ml{background:#5a1d22;color:#ffd0d1;border:1px solid #ff5a60}
+.tag2.md{background:#3a2a12;color:#ffd59a;border:1px solid #ee8a1f}
+.fmrow{display:grid;grid-template-columns:96px 1fr;gap:8px;padding:4px 0;border-bottom:1px solid var(--softline);font-size:12.5px}
+.fmrow b{color:#fff;font-weight:600}
+.fmrow .y{color:#9fe0b8;font-weight:600}
+.fmrow .n{color:#9aa3ad;font-weight:600}
+.fmrow .q{color:#ffd59a;font-weight:600}
+table.wt{border-collapse:collapse;width:100%;font-size:12px}
+table.wt th{font-weight:600;color:var(--label);padding:2px 4px;text-align:center;border-bottom:1px solid var(--hair)}
+table.wt th:first-child,table.wt td:first-child{text-align:left}
+table.wt td{padding:2px 4px;text-align:center;border-bottom:1px solid var(--softline);color:#e8ebee}
+table.wt td.src{color:var(--soft);font-size:11.5px;white-space:nowrap}
+table.wt .ref{color:#7f8893}
+table.wt tr.tot td{border-top:1px solid var(--hair);border-bottom:0;font-weight:750;color:#fff}
+table.wt .best{color:#9fe0b8;font-weight:750}
+.wbtn{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:4px;border:1px solid #545e6b;background:#20262e;color:#d5dbe1;font:700 11px/1 system-ui;cursor:pointer;padding:0}
+.wbtn:hover{background:#2b313a;color:#fff}
+.wv{display:inline-block;min-width:12px;font-weight:750;color:#fff}
+.sc{display:inline-block;min-width:18px;padding:0 3px;border-radius:4px;font-weight:700}
+.bar2{height:8px;border-radius:3px;background:#2a3038;overflow:hidden;margin-top:4px}
+.bar2 span{display:block;height:100%}
+.mapwrap{display:grid;grid-template-columns:270px 1fr;gap:14px;margin-top:10px;align-items:start}
+.lp{background:var(--card);border:1px solid #3a424c;border-radius:12px;padding:10px 10px 12px}
+.lp h4{margin:8px 4px 6px;font-size:12px;font-weight:750;color:var(--label)}
+.lp .grp{margin:8px 4px 2px;font-size:12px;font-weight:750;color:#9fc7e6}
+.lr{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:4px 6px;border-radius:7px;cursor:pointer;font-size:12.5px;color:#e8ebee;user-select:none}
+.lr:hover{background:rgba(255,255,255,.05)}
+.lr.off{color:#8f99a4}
+.lr .ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lr.dis{opacity:.4;cursor:not-allowed}
+.seg{display:flex;gap:4px;flex-wrap:wrap;margin:2px 4px}
+.seg button{padding:5px 8px;font-size:12px;border-radius:7px}
+.scene{border-radius:12px;overflow:hidden;border:1px solid #3a424c;background:#14181d}
+.scene svg{display:block;width:100%;height:auto}
+.legendline{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:12px;color:var(--label)}
+.legendline i{display:inline-block;width:18px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.side{display:flex;gap:18px;align-items:flex-start;margin-top:12px;flex-wrap:wrap}
+.rail{width:400px;height:836px;flex:none;border-radius:12px;background:var(--card);border:1px solid #5a6470;box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
+.rail-bar{padding:10px 14px 9px;background:#18733f;color:#fff}
+.rail-bar .t{font:750 18px/1.2 system-ui}
+.rail-bar .s{font-size:12.5px;margin-top:2px}
+.rail-l{padding:6px 14px;background:var(--strip);border-bottom:1px solid var(--softline);font-size:12.5px;color:var(--label)}
+.rail-l b{color:#fff;font-weight:600}
+.rail-l .x{color:var(--accent);font-weight:600}
+.rail-a{padding:9px 14px 8px;border-bottom:1px solid var(--softline)}
+.rail-a .big{font:750 15.5px/1.3 system-ui;color:#fff}
+.rail-a .sm{font-size:12.5px;color:var(--label);margin-top:2px}
+.rail-map{padding:10px 10px 6px}
+.rail-leg{padding:2px 12px 4px;display:flex;flex-direction:column;gap:1px}
+.rr{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;padding:4px 6px;border-radius:7px;cursor:pointer;font-size:12.5px;color:#e8ebee;user-select:none}
+.rr:hover{background:rgba(255,255,255,.05)}
+.rr .kv{display:grid;place-items:center;height:22px;border-radius:5px;background:rgba(0,0,0,.25);border:1px solid #545e6b;font:750 12px/1 system-ui}
+.rr .ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr .ln small{color:var(--label);font-size:12px}
+.rr.off{color:#8f99a4}
+.rail-tools{display:flex;gap:6px;flex-wrap:wrap;padding:2px 12px 8px}
+.rail-foot{margin-top:auto;display:flex;gap:10px;flex-wrap:wrap;padding:8px 14px;background:var(--strip);border-top:1px solid var(--softline);font-size:12px;color:var(--label)}
+.rail-foot .kk{margin-right:4px}
+.lit{background:#8ec1ea!important;color:#14181d!important;border-color:#8ec1ea!important}
+.cc{width:320px;border-radius:10px;background:var(--card);border:1px solid #5a6470;box-shadow:0 8px 24px rgba(0,0,0,.45);overflow:hidden;flex:none}
+.cc-bar{background:#18733f;padding:8px 12px;font:750 15.5px/1.2 system-ui;color:#fff}
+.cc-r{display:grid;grid-template-columns:92px 1fr;gap:8px;padding:5px 12px;border-bottom:1px solid var(--softline);font-size:13px}
+.cc-r .k{color:var(--label)}
+.cc-x{border-top:2px solid var(--accent);background:#1f252d}
+.cc-x .cc-r .k{color:#a9cbe8}
+.cc-foot{display:flex;gap:10px;padding:6px 12px;font-size:12px;color:var(--label);background:var(--strip)}
+.cc-foot .kk{margin-right:4px}
+@media (max-width:1100px){.mapwrap{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Extended View with IPB: the planned pages (v2)</h1>
+<p class="lede">Everything lives in the Extended View and is worked out only while F is on. Version 2 adds what the six books
+gave: forms of manoeuvre, types of attack, terrain-aware approaches, killing areas, two decision-point rules and sourced
+enemy templates. It also adds the controls that keep the view uncluttered.</p>
+<div class="note">⚠ Synthetic ground and illustrative figures: layout and pictures only. Doctrine figures are the books'; restricted handling applies.</div>
+
+<div class="panel" style="margin-top:14px">
+<b style="color:#fff">New in v2</b>
+<ul class="tight">
+  <li><b>Declutter:</b> the map starts <b>Minimal</b> (approaches, narrows, own Posns, threat). One-click presets, grouped layer switches, <b>focus</b> on one Apch, labels Auto / All / Off, an eye on every tile, and product switches: a product switched off is <b>not worked out at all</b>.</li>
+  <li><b>Apchs drawn as the MS attack arrows:</b> MainAttack for the most likely, SupportingAttack for the others. Wide at the back, open back, inner line on the main attack.</li>
+  <li><b>Forms of Manoeuvre</b> tile: open-flank test → penetration / envelopment / double / turning / vertical / infiltration; <b>most likely and most dangerous</b>.</li>
+  <li><b>Attack type and timing</b> from the ground and the sun and moon; <b>approach type</b> by terrain; capacity and ATP criteria per Apch.</li>
+  <li><b>Killing areas</b>, obstacle effects (block, fix, turn), counter-attack route, <b>DP 3 for the counter-attack</b> (launch while the depth localities hold), time phase lines, enemy heliborne LZs, season rules.</li>
+  <li><b>Own attack: Left or Right</b> (v2.1): frontal discarded as dangerous; the flank that <b>chokes the en MSR</b> is preferred; Left vs Right weighed on IC s15.12's factors plus the MSR choke, with your weights.</li>
+  <li>The threat is the existing <b>threat marker</b>: placed on the map it is the en's start; docked it is the direction of attack; its arc is the corridor tolerance.</li>
+</ul>
+</div>
+
+<h2>1 · Decide what is worked out and shown</h2>
+<p>Products are switches. Off means not worked out (no cost), and its tiles, map layers and rail line go. Kept per user.</p>
+<div class="prod" id="prodBar"></div>
+<h3>When it is worked out</h3>
+<div class="flow">
+  <div><b>Every mouse move</b>The spot, as today: fan, dead / screened Gr, lines of sight. ~6 ms measured.</div>
+  <div><b>Cursor rests 220 ms</b>Better Posn; which Apch the spot sits on; how much of each Apch it covers. ~20 ms (est.).</div>
+  <div><b>Once per area</b>Leaving the area read, or a threat, echelon or month change: coding, corridors, Apchs, manoeuvre, times, NAI / TAI / DP. Worker, cached. ~150–300 ms (est.).</div>
+  <div><b>Only when shown</b>Fire corridors from every Posn, air, template check: only while their tab, rail line or layer is open.</div>
+  <div><b>F off</b>Everything stops; caches and map graphics dropped. 0 ms.</div>
+</div>
+
+<h2>2 · The tabs</h2>
+<p>Each tile has an eye (⊘ hide); hidden tiles become chips in the foot and the rest close up, so fewer pages to turn.
+Example: a <b>Bde HQ</b> being placed, threat marker dragged 12.7 km E, November, day.</p>
+<div class="picks" id="pickLayout"><span class="lbl">Tab layout</span>
+  <button data-v="A" aria-pressed="true">A · Five tabs<span class="rec">recommended</span></button>
+  <button data-v="B" aria-pressed="false">B · Four tabs</button>
+</div>
+<div id="tabs"></div>
+
+<h2>3 · On the map while F is on</h2>
+<p>Starts at <b>Minimal</b>. Pick a preset, then add or remove single layers. Focus fades every other Apch.</p>
+<div class="mapwrap">
+  <div class="lp" id="layerPanel"></div>
+  <div><div class="scene" id="scene"></div><div class="legendline" id="sceneLegend"></div></div>
+</div>
+
+<h2>4 · Gr Scope rail (V) and the cursor card</h2>
+<p>The rail's lines are its switches (click them); its foot has labels and focus. The cursor card stays short: two Ext lines.</p>
+<div class="side">
+  <div class="rail" id="rail"></div>
+  <div style="flex:1;min-width:300px">
+    <div class="cc">
+      <div class="cc-bar">✓ Suitable Posn</div>
+      <div class="cc-r"><span class="k">Why</span><span>GO · open fields, firm</span></div>
+      <div class="cc-r"><span class="k">Inside</span><span>All GO</span></div>
+      <div class="cc-r"><span class="k">Nearest</span><span>Canal 5.8 km E · BUA 1.9 km S</span></div>
+      <div class="cc-r"><span class="k">Inter Gap Rule</span><span>3 km to 2 Bn: fits</span></div>
+      <div class="cc-x">
+        <div class="cc-r"><span class="k">Threat</span><span>E 090° (marker) · 12.7 km</span></div>
+        <div class="cc-r"><span class="k">Fd of Fire</span><span>Good · clear 410 m</span></div>
+        <div class="cc-r"><span class="k">En likely</span><span><b style="color:#fff">Penetration on B</b> · A fixes</span></div>
+        <div class="cc-r"><span class="k">Decide</span><span><b style="color:var(--warn)">DP 3 CATK H+2:17</b> · DP 1 H+0:27</span></div>
+      </div>
+      <div class="cc-foot"><span><span class="kk">D</span>Detail</span><span><span class="kk lit">F</span>Ext View</span><span><span class="kk">J</span>Better 240 m N</span></div>
+    </div>
+    <h3>What you pick</h3>
+    <table class="plain">
+      <tr><th>Choice</th><th>Options (all kept as switches; defaults set at the end)</th></tr>
+      <tr><td>Tab layout</td><td>A five tabs (recommended) · B four tabs</td></tr>
+      <tr><td>Apch style</td><td>Attack arrows (recommended) · corridor lanes · both</td></tr>
+      <tr><td>Overlay paint</td><td>Trace hatch red / orange (recommended) · soft tint · ATP green</td></tr>
+      <tr><td>Season rules</td><td>In the coding · as notes beside it (your call: authentic, but from other pamphlets)</td></tr>
+      <tr><td>Start preset</td><td>Minimal (recommended) · Approaches · Manoeuvre · Defence · Decision · Air · All</td></tr>
+      <tr><td>Labels</td><td>Auto (recommended: decision items only) · All · Off</td></tr>
+      <tr><td>DST picture</td><td>Time ladder (recommended) · strip per Apch</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<script>
+'use strict';
+// ===== Synthetic ground (km; x east 0..18, y south 0..14; north up). Layout only. =====
+const W = 18, H = 14;
+const RIVER = [[2.6,0],[3.1,2],[2.45,3.9],[3.0,6],[2.2,8.5],[2.9,11],[2.5,14]];
+const CANAL = [[10.2,0],[10.35,3.4],[10.45,6.6],[10.55,10.2],[10.65,14]];
+const DISTY = [[10.5,8.05],[9.0,8.1],[7.6,8.2],[6.0,8.3]];
+const NULLAH = [[11.9,9.45],[12.4,9.18],[14.0,9.2],[16.0,9.12],[18,9.2]];
+const BR = { B1:[10.35,3.4], B2:[10.45,6.6], B3:[10.55,10.2], RS:[2.45,3.9], RM:[2.36,7.37] };
+const MSR = [[0,7.4],[2.36,7.37],[4.2,7.2],[7.5,6.85],[10.45,6.6],[12.4,7.15],[13.2,7.6],[14.4,7.45],[16.2,7.75],[18,7.4]];
+const RD_N = [[0,3.0],[2.45,3.9],[5.0,3.45],[7.2,3.2],[10.35,3.4],[11.6,4.6],[12.3,5.9],[12.9,7.2]];
+const RD_S = [[4.2,7.2],[5.2,8.6],[6.5,10.4],[8.6,10.3],[10.55,10.2],[12.6,9.75],[15.5,9.55],[18,9.65]];
+const TRACKS = [[[7.2,3.2],[7.6,1.0],[8.4,0]],[[8.6,10.3],[9.0,12.8],[9.2,14]],[[4.0,11.5],[5.2,8.6]],[[14.4,7.45],[15.2,6.6],[16.4,6.4]]];
+const POWER = [[0,10.6],[3.4,12.5],[6.2,14]];
+const TOWNS = [
+  { n:'Kotli', x:13.2, y:7.6, poly:[[12.62,7.2],[13.4,7.12],[13.82,7.4],[13.78,8.0],[13.1,8.08],[12.66,7.82]], big:true },
+  { n:'Dhok Saidan', x:6.5, y:10.4, poly:[[6.2,10.12],[6.78,10.08],[6.86,10.6],[6.3,10.7]], big:true },
+  { n:'Mirpur', x:7.2, y:3.2, poly:[[7.02,3.05],[7.4,3.02],[7.42,3.36],[7.05,3.38]] },
+  { n:'Bhaini', x:16.2, y:7.9, poly:[[16.06,7.78],[16.36,7.78],[16.34,8.04],[16.08,8.04]] },
+  { n:'Chak 12', x:4.0, y:11.5, poly:[[3.86,11.38],[4.15,11.38],[4.14,11.62],[3.87,11.62]] },
+];
+const FOREST = [[4.2,12.2],[5.0,11.85],[6.1,12.1],[6.35,12.8],[5.6,13.35],[4.5,13.2]];
+const MARSH = { cx:15.2, cy:11.75, rx:2.0, ry:1.2 };
+const POSN = [4.6, 6.6], THREAT = [17.3, 8.0];
+const UNITS = [ { n:'1 Bn', x:9.3, y:5.6, k:'inf', e:'II', r:3.0 }, { n:'Tk Sqn', x:8.7, y:7.7, k:'arm', e:'I', r:2.4 }, { n:'2 Bn', x:9.6, y:9.25, k:'inf', e:'II', r:3.0 } ];
+const ITGS = [ { n:'Spur 412', x:13.3, y:4.3, r:1 }, { n:'Br B3', x:10.9, y:10.55, r:2 }, { n:'Kotli', x:13.2, y:7.55, r:3 }, { n:'Pt 268', x:8.0, y:5.25, r:4 } ];
+const MC = {
+  A1:{ a:'A', p:[[18,5.45],[15.8,5.4],[14.0,5.55],[12.4,5.8],[11.2,6.3],[10.45,6.6]], w:[0.9,0.72,0.62,0.8,0.7,0.3] },
+  A2:{ a:'A', p:[[18,6.75],[15.6,6.75],[14.0,6.72],[12.3,6.75],[11.1,6.64],[10.45,6.6]], w:[1.0,0.9,0.7,0.55,0.8,0.3] },
+  AW:{ a:'A', p:[[10.45,6.6],[9.0,6.75],[7.4,6.9],[6.2,7.0]], w:[0.3,1.1,1.3,1.2] },
+  B1:{ a:'B', p:[[18,8.6],[15.6,8.6],[13.6,8.55],[12.2,8.75],[11.2,9.6],[10.55,10.2]], w:[0.9,0.8,0.54,0.7,0.6,0.3] },
+  B2:{ a:'B', p:[[18,9.75],[15.6,9.75],[13.4,9.8],[11.9,10.0],[11.0,10.15],[10.55,10.2]], w:[1.0,1.0,0.95,0.8,0.6,0.3] },
+  BW:{ a:'B', p:[[10.55,10.2],[9.4,10.05],[8.2,9.7],[7.3,9.35]], w:[0.3,0.9,1.0,0.9] },
+  C1:{ a:'C', p:[[18,0.55],[15,0.5],[12.5,0.5],[10.5,0.55]], w:[0.8,0.7,0.6,0.5] },
+};
+const X1 = [[8.7,6.85],[8.45,7.8],[8.4,8.9],[8.6,9.8]];
+const APCH = {
+  B:{ side:'en', main:true, name:'Apch B', p:[[18,9.18],[15.6,9.18],[13.4,9.2],[11.7,9.7],[10.55,10.2],[9.2,10.0],[7.9,9.55]] },
+  A:{ side:'en', main:false, name:'Apch A', p:[[18,6.1],[15.6,6.05],[13.8,6.2],[11.8,6.45],[10.45,6.6],[8.8,6.8],[7.0,7.0]] },
+  OA:{ side:'own', main:true, name:'Own A', p:[[5.6,8.4],[8.0,8.7],[9.7,9.75],[10.55,10.2],[12.4,9.3],[14.6,8.95],[16.8,8.9]] },
+  OB:{ side:'own', main:false, name:'Own B', p:[[5.4,6.3],[7.6,6.4],[9.4,6.55],[10.45,6.6],[12.2,6.5],[14.4,6.35],[16.6,6.4]] },
+};
+const NARROWS = [ { x:14.0, y:5.55, t:'620 m' }, { x:12.3, y:6.75, t:'550 m' }, { x:13.6, y:8.55, t:'540 m' }, { x:10.45, y:6.6, t:'Br B2' }, { x:10.55, y:10.2, t:'Br B3' }, { x:10.35, y:3.4, t:'Br B1' } ];
+const ENV_N = [[13.4,6.05],[12.3,5.15],[11.4,4.3],[10.35,3.4],[8.9,3.55],[7.9,4.5],[7.2,5.7]];
+const INFIL = [[17.6,10.55],[15.2,10.25],[13.2,10.45],[11.7,10.9],[10.62,11.8]];
+const LZ = [ { n:'LZ 1', x:5.7, y:9.1, w:0.31, h:0.21 }, { n:'LZ 2', x:6.9, y:4.25, w:0.22, h:0.16 } ];
+const ENLZ = [ { n:'En LZ? 1', x:6.2, y:5.35 }, { n:'En LZ? 2', x:7.6, y:11.3 } ];
+const DZ = { x:1.25, y:5.3, w:1.2, h:0.8 };
+const MASTS = [ { x:3.3, y:1.75, t:'Mast 60 m' }, { x:8.6, y:5.0, t:'Mast 45 m' }, { x:7.35, y:3.0, t:'Water tank 25 m' } ];
+const AIR = { own1:[[0,0.9],[2.2,1.4],[2.95,3.0],[2.6,4.6],[2.95,6.2],[2.5,8.0],[3.7,8.85],[5.7,9.1]], own2:[[0,13.4],[2.4,11.8],[4.2,10.3],[5.7,9.1]], en1:[[18,0.4],[15,0.48],[12.4,0.6],[10.6,1.25],[9.0,2.4],[7.6,3.0]] };
+const AD = [ { n:'AD 1', x:11.7, y:2.05, b:20 }, { n:'AD 2', x:8.1, y:4.25, b:60 } ];
+const NAI = [ { n:'NAI 2', x:14.3, y:6.15, rx:0.95, ry:0.45 }, { n:'NAI 3', x:12.05, y:9.45, rx:0.62, ry:0.4 } ];
+const TAI = [ { n:'TAI 1', x:10.45, y:6.6 }, { n:'TAI 2', x:10.55, y:10.2 } ];
+const TPL = [ { x:15.4, t:'H+2:18' }, { x:13.2, t:'H+2:24' } ];
+const EA = [ { n:'EA 1', poly:[[12.05,8.25],[13.65,8.22],[13.8,9.05],[12.15,9.12]] }, { n:'EA 2', poly:[[10.95,6.08],[12.15,6.02],[12.3,6.98],[11.02,7.02]] } ];
+const CATK = [[8.7,7.95],[9.1,8.9],[9.75,9.75]];
+// Own attack on the en at Kotli (threat side): Rt (S) flank to choke the en MSR at the Bhaini junction; Lt (N) via Br B1; frontal for reference only.
+const OWN_RT = [[9.6,10.0],[10.55,10.2],[12.2,10.4],[14.4,10.05],[15.7,9.3],[16.15,8.15]];
+const OWN_LT = [[9.0,5.0],[9.6,3.9],[10.35,3.4],[11.6,4.6],[12.4,5.6],[13.9,5.75],[15.0,6.6],[15.6,7.3]];
+const OWN_FR = [[8.6,6.8],[10.45,6.6],[12.0,7.0],[12.7,7.35]];
+const CHOKE = [16.2,7.75], EN_POS = [13.2,7.6], FUP_RT = [15.75,9.75], FUP_LT = [13.6,5.85], FB_RT = [14.55,10.15], FB_LT = [12.6,4.85];
+
+// ===== Relief (one blob, shared) =====
+const gss = (x, y, cx, cy, sx, sy) => Math.exp(-0.5 * (((x - cx) / sx) ** 2 + ((y - cy) / sy) ** 2));
+function segDist(px, py, a, b) { const dx = b[0]-a[0], dy = b[1]-a[1]; const t = Math.max(0, Math.min(1, ((px-a[0])*dx + (py-a[1])*dy) / (dx*dx + dy*dy || 1))); return Math.hypot(px - (a[0]+t*dx), py - (a[1]+t*dy)); }
+function lineDist(px, py, pts) { let d = 1e9; for (let i = 1; i < pts.length; i++) d = Math.min(d, segDist(px, py, pts[i-1], pts[i])); return d; }
+function elev(x, y) {
+  let h = 226 + 3.5*Math.sin(x*1.3 + y*0.7) + 2.6*Math.sin(x*0.55 - y*1.9) + 1.8*Math.sin(x*2.7 + y*2.1) + 1.1*Math.sin(x*5.1 - y*3.7);
+  h += 190*gss(x,y,15,3.0,1.25,1.0) + 95*gss(x,y,13.3,4.3,0.55,0.45) + 70*gss(x,y,16.7,1.6,0.8,0.65) + 40*gss(x,y,17.4,4.2,0.7,0.8);
+  h += 16*gss(x,y,14.6,6.15,1.1,0.22) + 6*gss(x,y,8.0,5.25,0.6,0.5);
+  return h - 11*Math.exp(-0.5*(lineDist(x,y,RIVER)/0.5)**2);
+}
+let RELIEF = '';
+function buildRelief() {
+  const cw = 720, ch = 560, c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(cw, ch), d = img.data, sx = W / cw, sy = H / ch, e = 0.03;
+  for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
+    const x = (i + .5) * sx, y = (j + .5) * sy, z = elev(x, y);
+    const nx = -(elev(x + e, y) - elev(x - e, y)) / (2 * e * 1000) * 4, ny = -(elev(x, y + e) - elev(x, y - e)) / (2 * e * 1000) * 4, nl = Math.hypot(nx, ny, 1);
+    const sh = Math.max(0, (nx * -0.55 + ny * -0.55 + 0.63) / nl), hk = Math.min(1, Math.max(0, (z - 226) / 210));
+    const k = 0.55 + 0.62 * sh + 0.03 * Math.sin(x * 31 + Math.sin(y * 7) * 3) * Math.sin(y * 27), o = (j * cw + i) * 4;
+    d[o] = (63 + 30 * hk) * k; d[o + 1] = (69 + 20 * hk) * k; d[o + 2] = (58 + 10 * hk) * k; d[o + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  return new Promise((res) => c.toBlob((b) => { RELIEF = b ? URL.createObjectURL(b) : c.toDataURL('image/jpeg', 0.86); res(); }, 'image/jpeg', 0.86));
+}
+
+// ===== SVG helpers (km units, strokes in screen px) =====
+let UID = 0;
+const P = (pts) => pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(3) + ' ' + p[1].toFixed(3)).join(' ');
+const PC = (pts) => P(pts) + ' Z';
+function catmull(pts, ws, k = 8) {
+  const out = [], ow = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    for (let s = 0; s < k; s++) {
+      const t = s / k, t2 = t * t, t3 = t2 * t, f = (a, b, c, d) => 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+      if (ws) ow.push(ws[i] + (ws[i + 1] - ws[i]) * t);
+    }
+  }
+  out.push(pts[pts.length - 1]); if (ws) ow.push(ws[ws.length - 1]);
+  return ws ? [out, ow] : out;
+}
+function offsets(pts, ws) {
+  const n = pts.length, Lf = [], Rt = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+    let dx = b[0] - a[0], dy = b[1] - a[1]; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+    const w = ws[i] / 2; Lf.push([pts[i][0] - dy * w, pts[i][1] + dx * w]); Rt.push([pts[i][0] + dy * w, pts[i][1] - dx * w]);
+  }
+  return [Lf, Rt];
+}
+function ribbon(pts0, ws0) { const [pts, ws] = catmull(pts0, ws0, 10); const [Lf, Rt] = offsets(pts, ws); return PC([...Lf, ...Rt.reverse()]); }
+const smoothD = (pts) => P(catmull(pts, null, 8));
+/* The MS MainAttack / SupportingAttack shape (MainAttack.ts createComplexArrow): half-width = tail × (length still to
+   go + total ÷ 2.4), so the back is widest; the head takes the last 15 %; the back is left unstroked (open back); the
+   main attack has an inner line in its head. */
+function attackArrow(pts0, o) {
+  const pts = catmull(pts0, null, 10), n = pts.length, cum = [0];
+  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const Lt = cum[n - 1], tail = o.tail || 0.05, headAt = Lt * 0.85;
+  let j = n - 1; while (j > 0 && cum[j] > headAt) j--;
+  const body = pts.slice(0, j + 1), ws = body.map((_, i) => 2 * tail * ((Lt - cum[i]) + Lt / 2.4));
+  const [Lf, Rt] = offsets(body, ws), tip = pts[n - 1], neck = body[body.length - 1];
+  let dx = tip[0] - neck[0], dy = tip[1] - neck[1]; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+  const hw = ws[ws.length - 1] * 1.05, hl = [neck[0] - dy * hw, neck[1] + dx * hw], hr = [neck[0] + dy * hw, neck[1] - dx * hw];
+  const outline = [...Lf, hl, tip, hr, ...Rt.slice().reverse()];
+  let inner = '';
+  if (o.main) { const iw = hw * 0.55; inner = P([[neck[0] - dy * iw, neck[1] + dx * iw], [neck[0] + dx * d * 0.55, neck[1] + dy * d * 0.55], [neck[0] + dy * iw, neck[1] - dx * iw]]); }
+  return { fill: PC(outline), stroke: P(outline), inner };
+}
+function sector(cx, cy, r, b0, b1) {
+  const pt = (b) => [cx + r * Math.sin(b * Math.PI / 180), cy - r * Math.cos(b * Math.PI / 180)], a = pt(b0), b = pt(b1);
+  return `M${cx} ${cy} L${a[0].toFixed(3)} ${a[1].toFixed(3)} A${r} ${r} 0 ${b1 - b0 > 180 ? 1 : 0} 1 ${b[0].toFixed(3)} ${b[1].toFixed(3)} Z`;
+}
+const ns = 'vector-effect="non-scaling-stroke"';
+function txt(x, y, s, px, o = {}) {
+  return `<text x="${x}" y="${y}" font-size="${(o.fs || 11.5) / px}" font-weight="${o.wt || 600}" text-anchor="${o.anchor || 'middle'}" fill="${o.fill || '#f1f3f6'}" stroke="#0b0d10" stroke-width="${3 / px}" paint-order="stroke" stroke-linejoin="round" font-family="system-ui,Segoe UI,Arial,sans-serif">${s}</text>`;
+}
+const glyph = (x, y, px, inner) => `<g transform="translate(${x} ${y}) scale(${1 / px})">${inner}</g>`;
+function unitGlyph(k, e, placing) {
+  let mark = '';
+  if (k === 'inf') mark = '<path d="M-13 -8.5 L13 8.5 M-13 8.5 L13 -8.5" stroke="#cfe7fb" stroke-width="1.3"/>';
+  if (k === 'arm') mark = '<ellipse rx="8" ry="4.6" fill="none" stroke="#cfe7fb" stroke-width="1.4"/>';
+  if (k === 'hq') mark = '<text y="4.5" font-size="11" font-weight="750" text-anchor="middle" fill="#cfe7fb" font-family="system-ui">HQ</text>';
+  return `<rect x="-14" y="-9.5" width="28" height="19" rx="1.5" fill="#1d3f66" stroke="#8ec1ea" stroke-width="1.7" ${placing ? 'stroke-dasharray="4 3"' : ''}/>${mark}<text y="-13" font-size="10.5" font-weight="750" text-anchor="middle" fill="#cfe7fb" stroke="#0b0d10" stroke-width="2.5" paint-order="stroke" font-family="system-ui">${e}</text>`;
+}
+const STAR = (n, col = '#ffd27a') => `<path d="M0 -10 L2.9 -3.1 L10 -3.1 L4.3 1.4 L6.4 8.4 L0 4.2 L-6.4 8.4 L-4.3 1.4 L-10 -3.1 L-2.9 -3.1 Z" fill="#14181d" stroke="${col}" stroke-width="1.8"/><text y="3.2" font-size="9.5" font-weight="750" text-anchor="middle" fill="${col}" font-family="system-ui">${n}</text>`;
+function defs(id, px) {
+  const s = 7 / px, s2 = 6 / px, lw = 1.15 / px;
+  const hatch = (nm, col, bg, cross) => `<pattern id="${id}${nm}" patternUnits="userSpaceOnUse" width="${s}" height="${s}" patternTransform="rotate(45)"><rect width="${s}" height="${s}" fill="${bg}"/><path d="M0 0 V${s}${cross ? ` M0 0 H${s}` : ''}" stroke="${col}" stroke-opacity=".78" stroke-width="${lw}"/></pattern>`;
+  return `<defs>${hatch('ng', '#ff8a8d', 'rgba(185,43,49,.24)', true)}${hatch('sg', '#ffb46b', 'rgba(238,138,31,.05)', false)}${hatch('ang', '#7fd08a', 'rgba(60,140,70,.2)', true)}${hatch('asg', '#7fd08a', 'rgba(60,140,70,.05)', false)}
+  <pattern id="${id}na" patternUnits="userSpaceOnUse" width="${s2}" height="${s2}"><rect width="${s2}" height="${s2}" fill="rgba(195,203,211,.06)"/><circle cx="${s2 / 2}" cy="${s2 / 2}" r="${0.9 / px}" fill="#c3cbd3" fill-opacity=".75"/></pattern>
+  <pattern id="${id}nc" patternUnits="userSpaceOnUse" width="${s}" height="${s}" patternTransform="rotate(-30)"><path d="M0 ${s / 2} H${s * 0.55}" stroke="#b9a2e8" stroke-opacity=".8" stroke-width="${lw}"/></pattern>
+  <pattern id="${id}mh" patternUnits="userSpaceOnUse" width="${s2}" height="${s2}"><path d="M${s2 * .2} ${s2 * .6} h${s2 * .6}" stroke="#7fb3d8" stroke-opacity=".6" stroke-width="${lw}"/></pattern>
+  <clipPath id="${id}cl"><rect width="${W}" height="${H}"/></clipPath></defs>`;
+}
+const ell = (cx, cy, rx, ry, a) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ${a}/>`;
+const bandAlong = (pts, w, a) => `<path d="${smoothD(pts)}" fill="none" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" ${a}/>`;
+
+// ===== Layers. o.labels: 'auto' (decision items only) | 'all' | 'off'; o.focus: Apch key or '' =====
+const LAB = (o, lvl) => o.labels === 'all' || (o.labels === 'auto' && lvl === 'key');
+const dimOf = (o, k) => (o.focus && k && k !== o.focus ? 0.22 : 1);
+const L = {};
+L.base = (id, px, o) => {
+  let s = `<image href="${RELIEF}" width="${W}" height="${H}" preserveAspectRatio="none"/><rect width="${W}" height="${H}" fill="#0f1418" fill-opacity="${o.dim ? 0.38 : 0.14}"/>`;
+  [[15,3.0,1.15,0.92],[15,3.0,1.7,1.38],[15,3.0,2.2,1.8],[13.3,4.3,0.38,0.3],[16.7,1.6,0.55,0.45]].forEach(c => { s += ell(c[0], c[1], c[2], c[3], `fill="none" stroke="#c9a36b" stroke-opacity=".3" stroke-width="1" ${ns}`); });
+  s += `<path d="${PC(FOREST)}" fill="rgb(16,40,26)" fill-opacity=".72" stroke="#3d6b4c" stroke-opacity=".6" stroke-width="1" ${ns}/>`;
+  s += ell(MARSH.cx, MARSH.cy, MARSH.rx, MARSH.ry, `fill="url(#${id}mh)" stroke="#5f8fb0" stroke-opacity=".5" stroke-width="1" ${ns}`);
+  s += `<path d="${smoothD(RIVER)}" fill="none" stroke="#0b0d10" stroke-width="5.5" stroke-opacity=".7" stroke-linecap="round" ${ns}/><path d="${smoothD(RIVER)}" fill="none" stroke="#4f8fc0" stroke-width="3.6" stroke-linecap="round" ${ns}/>`;
+  s += `<path d="${P(CANAL)}" fill="none" stroke="#0b0d10" stroke-width="4.5" stroke-opacity=".7" ${ns}/><path d="${P(CANAL)}" fill="none" stroke="#5aa0d6" stroke-width="2.6" ${ns}/>`;
+  s += `<path d="${smoothD(DISTY)}" fill="none" stroke="#5aa0d6" stroke-width="1.5" ${ns}/><path d="${smoothD(NULLAH)}" fill="none" stroke="#7fb3d8" stroke-width="1.4" stroke-dasharray="5 3" ${ns}/>`;
+  TRACKS.forEach(t => { s += `<path d="${smoothD(t)}" fill="none" stroke="#9aa3ad" stroke-width="1.2" stroke-dasharray="4 3" stroke-opacity=".85" ${ns}/>`; });
+  [RD_N, RD_S].forEach(r => { s += `<path d="${smoothD(r)}" fill="none" stroke="#0b0d10" stroke-width="3.6" stroke-opacity=".75" ${ns}/><path d="${smoothD(r)}" fill="none" stroke="#8cc4ff" stroke-width="1.7" ${ns}/>`; });
+  s += `<path d="${smoothD(MSR)}" fill="none" stroke="#0b0d10" stroke-width="4.6" ${ns}/><path d="${smoothD(MSR)}" fill="none" stroke="#fff" stroke-width="2.4" ${ns}/>`;
+  TOWNS.forEach(t => { s += `<path d="${PC(t.poly)}" fill="rgb(236,232,222)" fill-opacity=".62" stroke="#0b0d10" stroke-opacity=".6" stroke-width="1" ${ns}/>`; });
+  Object.values(BR).forEach(b => { s += glyph(b[0], b[1], px, `<path d="M-6 -4 L-3 -2 L3 -2 L6 -4 M-6 4 L-3 2 L3 2 L6 4" stroke="#fff" stroke-width="1.6" fill="none"/>`); });
+  if (LAB(o, 'minor')) {
+    TOWNS.forEach(t => { s += txt(t.x, t.y + (t.big ? 0.75 : 0.42), t.n, px, { fs: 11, fill: '#ece8de' }); });
+    s += txt(2.0, 2.4, 'R Sohan', px, { fs: 11, fill: '#9fc7e6' }) + txt(10.95, 1.9, 'Canal', px, { fs: 11, fill: '#9fc7e6', anchor: 'start' });
+    s += txt(15.0, 3.15, 'Hills 416', px, { fs: 11, fill: '#d9c19a' }) + txt(15.2, 11.8, 'Marsh', px, { fs: 11, fill: '#a7cde6' });
+  }
+  return s;
+};
+L.coo = (id, px, o) => {
+  const atp = o.paint === 'atp', soft = o.paint === 'soft';
+  const NG = soft ? `fill="rgba(229,72,77,.3)" stroke="#ff8a8d" stroke-opacity=".55"` : `fill="url(#${id}${atp ? 'ang' : 'ng'})" stroke="${atp ? '#7fd08a' : '#ff8a8d'}" stroke-opacity=".7"`;
+  const SG = soft ? `fill="rgba(238,138,31,.2)" stroke="#ffb46b" stroke-opacity=".5"` : `fill="url(#${id}${atp ? 'asg' : 'sg'})" stroke="${atp ? '#7fd08a' : '#ffb46b'}" stroke-opacity=".65"`;
+  const ngS = soft ? 'rgba(229,72,77,.5)' : `url(#${id}${atp ? 'ang' : 'ng'})`, sgS = soft ? 'rgba(238,138,31,.45)' : `url(#${id}${atp ? 'asg' : 'sg'})`;
+  let s = ell(15, 3.0, 2.05, 1.72, `${SG} stroke-width="1" ${ns}`) + ell(14.6, 6.15, 1.25, 0.22, `${SG} stroke-width="1" ${ns}`);
+  s += bandAlong(NULLAH, 0.14, `stroke="${sgS}"`) + bandAlong(DISTY, 0.12, `stroke="${sgS}"`);
+  [[15, 3.0, 1.15, 0.95], [13.3, 4.3, 0.45, 0.36], [16.7, 1.6, 0.6, 0.5]].forEach(e => { s += ell(e[0], e[1], e[2], e[3], `${NG} stroke-width="1" ${ns}`); });
+  s += ell(MARSH.cx, MARSH.cy, MARSH.rx, MARSH.ry, `${NG} stroke-width="1" ${ns}`);
+  TOWNS.filter(t => t.big).forEach(t => { s += `<path d="${PC(t.poly)}" ${NG} stroke-width="1.2" ${ns}/>`; });
+  s += bandAlong(CANAL, 0.16, `stroke="${ngS}"`) + bandAlong(RIVER, 0.2, `stroke="${ngS}"`);
+  Object.values(BR).forEach(b => { s += ell(b[0], b[1], 0.12, 0.12, `fill="#1a1f25" fill-opacity=".9"`); });
+  return s + ell(3.0, 6.0, 0.15, 0.15, `${SG} stroke-width="1" ${ns}`);
+};
+L.marks = (id, px, o) => {
+  let s = `<path d="${PC(FOREST)}" fill="url(#${id}na)" stroke="#c3cbd3" stroke-opacity=".55" stroke-dasharray="3 3" stroke-width="1" ${ns}/>`;
+  s += ell(13.75, 2.6, 0.24, 0.55, `fill="url(#${id}nc)" stroke="#b9a2e8" stroke-opacity=".6" stroke-dasharray="2 3" stroke-width="1" ${ns}`);
+  if (LAB(o, 'minor')) s += txt(5.25, 12.25, '? not assessed', px, { fs: 10.5, fill: '#dfe4e9' }) + txt(13.1, 1.75, 'not classed', px, { fs: 10.5, fill: '#d9ccf5' });
+  return s;
+};
+L.mc = (id, px, o) => {
+  if (o.side === 'own') return '';
+  let s = '';
+  Object.values(MC).forEach(m => {
+    const lone = m.a === 'C', op = dimOf(o, lone ? '' : m.a);
+    s += `<g opacity="${op}"><path d="${ribbon(m.p, m.w)}" fill="${lone ? 'rgba(195,203,211,.1)' : 'rgba(255,255,255,.1)'}" stroke="${lone ? '#9aa3ad' : '#e9edf1'}" stroke-opacity=".55" stroke-dasharray="4 3" stroke-width="1" ${ns}/><path d="${smoothD(m.p)}" fill="none" stroke="${lone ? '#9aa3ad' : '#fff'}" stroke-opacity=".75" stroke-width="1.2" stroke-dasharray="1 4" stroke-linecap="round" ${ns}/></g>`;
+  });
+  s += `<path d="${smoothD(X1)}" fill="none" stroke="#e9edf1" stroke-opacity=".8" stroke-width="1.6" stroke-dasharray="6 4" ${ns}/>`;
+  if (LAB(o, 'minor')) { [['A1', 16.9, 5.0], ['A2', 16.9, 7.25], ['B1', 16.9, 8.18], ['B2', 16.9, 10.38]].forEach(([t, x, y]) => { s += txt(x, y, t, px, { fs: 11 }); }); s += txt(16.0, 1.15, 'C1 · lone corridor, not an Apch', px, { fs: 10.5, fill: '#c3cbd3' }) + txt(8.05, 8.95, 'X1', px, { fs: 11, anchor: 'end' }); }
+  return s;
+};
+L.apch = (id, px, o) => {
+  let s = '';
+  Object.entries(APCH).forEach(([k, a]) => {
+    if (!(o.side === 'both' || a.side === o.side)) return;
+    const col = a.side === 'own' ? '#8ec1ea' : '#ff5a60', op = dimOf(o, k);
+    if (o.apch !== 'lanes') {
+      const ar = attackArrow(a.p, { main: a.main, tail: 0.05 });
+      s += `<g opacity="${op}"><path d="${ar.fill}" fill="${col}" fill-opacity="${o.apch === 'both' ? 0.13 : 0.2}"/><path d="${ar.stroke}" fill="none" stroke="${col}" stroke-width="${a.main ? 2.2 : 1.6}" stroke-linejoin="round" ${a.main ? '' : 'stroke-dasharray="7 4"'} ${ns}/>${ar.inner ? `<path d="${ar.inner}" fill="none" stroke="${col}" stroke-width="1.6" ${ns}/>` : ''}</g>`;
+    } else s += `<path d="${smoothD(a.p)}" fill="none" stroke="${col}" stroke-width="3" stroke-opacity="${0.9 * op}" stroke-linecap="round" ${ns}/>`;
+    if (o.labels !== 'off') { const lp = a.p[1]; s += `<g opacity="${op}">` + glyph(lp[0], lp[1], px, `<rect x="-29" y="-10" width="58" height="20" rx="10" fill="${a.side === 'own' ? '#1d3f66' : '#5a1d22'}" stroke="${col}" stroke-width="1.3"/><text y="4.4" font-size="12" font-weight="750" text-anchor="middle" fill="#fff" font-family="system-ui">${a.name}</text>`) + '</g>'; }
+  });
+  return s;
+};
+L.narrows = (id, px, o) => {
+  let s = '';
+  NARROWS.forEach(c => { s += glyph(c.x, c.y, px, `<path d="M0 -6.5 L6.5 0 L0 6.5 L-6.5 0 Z" fill="#ffb02e" stroke="#0b0d10" stroke-width="1.4"/>`); if (LAB(o, 'key')) s += txt(c.x, c.y - 0.2, c.t, px, { fs: 10.5, fill: '#ffd59a' }); });
+  return s;
+};
+L.fman = (id, px, o) => {
+  let s = glyph(10.55, 10.2, px, `<path d="M-2 -16 V16" stroke="#ff5a60" stroke-width="3.2"/><path d="M16 0 H-18 M-11 -6 L-18 0 L-11 6" fill="none" stroke="#ff5a60" stroke-width="2.4"/><text x="-12" y="-9" font-size="12" font-weight="750" fill="#ffd0d1" stroke="#0b0d10" stroke-width="2.5" paint-order="stroke" font-family="system-ui">P</text>`);
+  s += `<path d="${smoothD([[9.6,10.05],[9.25,9.4],[9.0,8.7]])}" fill="none" stroke="#ff8a8d" stroke-width="1.8" stroke-dasharray="4 3" ${ns}/><path d="${smoothD([[9.6,10.15],[9.3,10.8],[9.15,11.5]])}" fill="none" stroke="#ff8a8d" stroke-width="1.8" stroke-dasharray="4 3" ${ns}/>`;
+  const env = attackArrow(ENV_N, { main: false, tail: 0.035 });
+  s += `<path d="${env.fill}" fill="#ee8a1f" fill-opacity=".08"/><path d="${env.stroke}" fill="none" stroke="#ffb46b" stroke-width="1.8" stroke-dasharray="3 4" ${ns}/>`;
+  s += `<path d="${smoothD(INFIL)}" fill="none" stroke="#ff8a8d" stroke-width="1.6" stroke-dasharray="2 5" stroke-linecap="round" ${ns}/>`;
+  if (LAB(o, 'key')) s += txt(10.0, 11.0, 'Penetration (most likely)', px, { fs: 11, fill: '#ffd0d1', anchor: 'end' }) + txt(9.6, 3.0, 'Envelopment via Br B1 (most dangerous)', px, { fs: 11, fill: '#ffd59a' });
+  if (LAB(o, 'minor')) s += txt(14.4, 10.75, 'Infil lane · nullah bed · one night', px, { fs: 10.5, fill: '#ffb0b3' }) + txt(8.75, 8.55, 'inner flanks', px, { fs: 10.5, fill: '#ffb0b3', anchor: 'end' });
+  return s;
+};
+L.obsfx = (id, px, o) => {
+  let s = glyph(13.6, 8.55, px, `<path d="M0 -16 V16 M0 0 H18" stroke="#8ec1ea" stroke-width="2.6"/>`);
+  s += glyph(14.0, 6.05, px, `<path d="M18 0 L8 -5 L2 5 L-6 -5 L-12 4 L-18 0" fill="none" stroke="#8ec1ea" stroke-width="2.2"/>`);
+  s += glyph(11.75, 6.55, px, `<path d="M14 -6 Q-2 -8 -6 8" fill="none" stroke="#8ec1ea" stroke-width="2.2"/><path d="M-11 4 L-6 9 L-1 3" fill="none" stroke="#8ec1ea" stroke-width="2"/>`);
+  if (LAB(o, 'key')) s += txt(13.6, 8.0, 'Block', px, { fs: 10.5, fill: '#bfe0ff' }) + txt(14.0, 5.75, 'Fix', px, { fs: 10.5, fill: '#bfe0ff' }) + txt(12.15, 6.05, 'Turn', px, { fs: 10.5, fill: '#bfe0ff' });
+  return s;
+};
+L.fire = (id, px, o) => {
+  let s = `<g clip-path="url(#${id}cl)">`;
+  UNITS.forEach(u => { s += `<path d="${sector(u.x, u.y, u.r, 48, 132)}" fill="#ffd23f" fill-opacity=".06" stroke="#ffd23f" stroke-opacity=".75" stroke-width="1.2" ${ns}/>`; });
+  s += `<path d="${PC(catmull([[13.85,7.25],[14.5,7.12],[15.15,7.3],[15.3,7.75],[14.6,8.0],[13.9,7.95],[13.85,7.25]], null, 6))}" fill="#e5484d" fill-opacity=".36" stroke="#ff8a8d" stroke-opacity=".5" stroke-width="1" ${ns}/>`;
+  s += `<path d="${PC(catmull([[11.9,5.35],[12.3,5.2],[12.55,5.45],[12.3,5.8],[11.95,5.75],[11.9,5.35]], null, 6))}" fill="#e5484d" fill-opacity=".36" stroke="#ff8a8d" stroke-opacity=".5" stroke-width="1" ${ns}/>`;
+  return s + ell(11.3, 7.62, 0.38, 0.24, `fill="#ee8a1f" fill-opacity=".3" stroke="#ffb46b" stroke-opacity=".5" stroke-width="1" ${ns}`) + '</g>';
+};
+L.ea = (id, px, o) => {
+  let s = '';
+  EA.forEach(e => { s += `<path d="${PC(e.poly)}" fill="#8ec1ea" fill-opacity=".1" stroke="#8ec1ea" stroke-width="1.8" ${ns}/>`; if (o.labels !== 'off') { const c = e.poly.reduce((a, p) => [a[0] + p[0] / 4, a[1] + p[1] / 4], [0, 0]); s += txt(c[0], c[1] + 0.08, e.n, px, { fs: 11.5, fill: '#cfe7fb', wt: 750 }); } });
+  return s;
+};
+L.itg = (id, px, o) => {
+  let s = '';
+  ITGS.forEach(g => { s += glyph(g.x, g.y, px, `<path d="M0 -7.5 L7.5 0 L0 7.5 L-7.5 0 Z" fill="#b892ff" stroke="#0b0d10" stroke-width="1.3"/><text y="3.8" font-size="10" font-weight="750" text-anchor="middle" fill="#14181d" font-family="system-ui">${g.r}</text>`); if (o.labels !== 'off') s += txt(g.x + 0.28, g.y - 0.18, g.n, px, { fs: 10.5, fill: '#d9ccf5', anchor: 'start' }); });
+  return s;
+};
+L.air = (id, px, o) => {
+  let s = `<path d="${P(POWER)}" fill="none" stroke="#d6c27a" stroke-width="1.6" stroke-dasharray="7 3" ${ns}/>`;
+  POWER.forEach(p => { s += glyph(p[0], p[1], px, `<path d="M-4 0 H4 M0 -5 V5" stroke="#d6c27a" stroke-width="1.6"/>`); });
+  MASTS.forEach(m => { s += glyph(m.x, m.y, px, `<path d="M0 -8 L5 5 H-5 Z" fill="#d6c27a" stroke="#0b0d10" stroke-width="1.2"/>`); if (LAB(o, 'minor')) s += txt(m.x + 0.22, m.y + 0.05, m.t, px, { fs: 10.5, fill: '#efe0a8', anchor: 'start' }); });
+  const own = (pts, dash) => `<path d="${smoothD(pts)}" fill="none" stroke="#0b0d10" stroke-width="6.5" stroke-opacity=".55" stroke-linecap="round" ${ns}/><path d="${smoothD(pts)}" fill="none" stroke="#8ec1ea" stroke-width="3.4" stroke-linecap="round" ${dash ? 'stroke-dasharray="8 6"' : ''} ${ns}/>`;
+  s += own(AIR.own1, false) + own(AIR.own2, true) + `<path d="${smoothD(AIR.en1)}" fill="none" stroke="#ff5a60" stroke-width="2.6" stroke-dasharray="2 5" stroke-linecap="round" ${ns}/>`;
+  AD.forEach(a => { s += `<path d="${sector(a.x, a.y, 2.2, a.b - 50, a.b + 50)}" fill="#8ec1ea" fill-opacity=".07" stroke="#8ec1ea" stroke-opacity=".6" stroke-width="1" stroke-dasharray="3 3" ${ns}/>` + glyph(a.x, a.y, px, `<rect x="-11" y="-8" width="22" height="16" rx="1.5" fill="#1d3f66" stroke="#8ec1ea" stroke-width="1.6"/><path d="M-7 5 Q0 -9 7 5" fill="none" stroke="#cfe7fb" stroke-width="1.4"/>`); });
+  LZ.forEach(z => { s += `<rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" fill="#8ec1ea" fill-opacity=".18" stroke="#fff" stroke-width="1.6" ${ns}/>`; if (o.labels !== 'off') s += txt(z.x, z.y - z.h / 2 - 0.12, z.n, px, { fs: 11 }); });
+  s += `<rect x="${DZ.x - DZ.w / 2}" y="${DZ.y - DZ.h / 2}" width="${DZ.w}" height="${DZ.h}" fill="#8ec1ea" fill-opacity=".1" stroke="#fff" stroke-dasharray="5 3" stroke-width="1.4" ${ns}/>` + (o.labels !== 'off' ? txt(DZ.x, DZ.y + 0.06, 'DZ 1', px, { fs: 11 }) : '');
+  if (LAB(o, 'key')) s += txt(1.1, 1.0, 'Air Apch 1', px, { fs: 11, fill: '#bfe0ff', anchor: 'start' }) + txt(14.8, 0.95, 'En air Apch', px, { fs: 11, fill: '#ffb0b3' });
+  return s;
+};
+L.enlz = (id, px, o) => {
+  let s = '';
+  ENLZ.forEach(z => { s += `<rect x="${z.x - 0.2}" y="${z.y - 0.14}" width="0.4" height="0.28" fill="#ff5a60" fill-opacity=".1" stroke="#ff8a8d" stroke-width="1.6" stroke-dasharray="4 3" ${ns}/>`; if (o.labels !== 'off') s += txt(z.x, z.y - 0.24, z.n, px, { fs: 10.5, fill: '#ffb0b3' }); });
+  return s;
+};
+L.dst = (id, px, o) => {
+  let s = '';
+  NAI.forEach(n => { s += ell(n.x, n.y, n.rx, n.ry, `fill="#c3cbd3" fill-opacity=".06" stroke="#e8ebee" stroke-width="1.4" stroke-dasharray="6 4" ${ns}`); if (o.labels !== 'off') s += txt(n.x, n.y - n.ry - 0.1, n.n, px, { fs: 11, fill: '#e8ebee' }); });
+  TAI.forEach(t => { s += `<rect x="${t.x - 0.45}" y="${t.y - 0.32}" width="0.9" height="0.64" rx="0.06" fill="#ffd27a" fill-opacity=".1" stroke="#ffd27a" stroke-width="1.8" ${ns}/>`; if (o.labels !== 'off') s += txt(t.x, t.y + 0.62, t.n, px, { fs: 11, fill: '#ffd27a' }); });
+  [[17.55, 6.1, 1, 'DP 1 → 43 km E'], [17.55, 9.18, 2, 'DP 2 → 44 km E']].forEach(([x, y, n, t]) => { s += glyph(x, y, px, STAR(n)); if (o.labels !== 'off') s += txt(x - 0.3, y + 0.55, t, px, { fs: 10.5, fill: '#ffd27a', anchor: 'end' }); });
+  s += glyph(15.4, 9.75, px, STAR(3, '#8ec1ea'));
+  if (o.labels !== 'off') s += txt(15.4, 10.33, 'DP 3 · CATK', px, { fs: 10.5, fill: '#bfe0ff' });
+  return s;
+};
+L.tpl = (id, px, o) => {
+  let s = '';
+  TPL.forEach(t => { s += `<path d="M${t.x} 7.95 V10.45" stroke="#e8ebee" stroke-width="1.3" stroke-dasharray="8 3 2 3" ${ns}/>`; if (o.labels !== 'off') s += txt(t.x, 10.68, 'TPL ' + t.t, px, { fs: 10.5, fill: '#e8ebee' }); });
+  return s;
+};
+L.ca = (id, px, o) => {
+  const ar = attackArrow(CATK, { main: false, tail: 0.06 });
+  return `<path d="${ar.fill}" fill="#8ec1ea" fill-opacity=".14"/><path d="${ar.stroke}" fill="none" stroke="#8ec1ea" stroke-width="1.8" stroke-dasharray="6 3" ${ns}/>` + (o.labels !== 'off' ? txt(8.55, 9.05, 'CATK', px, { fs: 11, fill: '#bfe0ff', anchor: 'end' }) : '');
+};
+L.units = (id, px, o) => {
+  let s = '';
+  UNITS.forEach(u => { s += glyph(u.x, u.y, px, unitGlyph(u.k, u.e)); if (LAB(o, 'minor')) s += txt(u.x, u.y + 0.48, u.n, px, { fs: 10.5, fill: '#cfe7fb' }); });
+  s += glyph(POSN[0], POSN[1], px, unitGlyph('hq', 'X', true));
+  return s + (o.labels !== 'off' ? txt(POSN[0], POSN[1] + 0.5, 'Bde HQ (placing)', px, { fs: 10.5, fill: '#cfe7fb' }) : '');
+};
+L.ownatk = (id, px, o) => {
+  const fr = attackArrow(OWN_FR, { main: false, tail: 0.03 }), lt = attackArrow(OWN_LT, { main: false, tail: 0.035 }), rt = attackArrow(OWN_RT, { main: true, tail: 0.04 });
+  let s = `<path d="${fr.fill}" fill="#9aa3ad" fill-opacity=".06"/><path d="${fr.stroke}" fill="none" stroke="#9aa3ad" stroke-width="1.4" stroke-dasharray="3 4" ${ns}/>`;
+  s += glyph(12.25, 7.05, px, `<path d="M-8 -8 L8 8 M-8 8 L8 -8" stroke="#ff8a8d" stroke-width="3"/>`);
+  s += `<path d="${lt.fill}" fill="#8ec1ea" fill-opacity=".1"/><path d="${lt.stroke}" fill="none" stroke="#8ec1ea" stroke-width="1.6" stroke-dasharray="7 4" ${ns}/>`;
+  s += `<path d="${rt.fill}" fill="#8ec1ea" fill-opacity=".2"/><path d="${rt.stroke}" fill="none" stroke="#8ec1ea" stroke-width="2.4" ${ns}/><path d="${rt.inner}" fill="none" stroke="#8ec1ea" stroke-width="1.6" ${ns}/>`;
+  s += glyph(EN_POS[0], EN_POS[1] - 0.05, px, `<path d="M0 -12 L12 0 L0 12 L-12 0 Z" fill="#5a1d22" stroke="#ff5a60" stroke-width="1.8"/><text y="-15" font-size="10.5" font-weight="750" text-anchor="middle" fill="#ffd0d1" stroke="#0b0d10" stroke-width="2.5" paint-order="stroke" font-family="system-ui">II</text>`);
+  s += glyph(CHOKE[0], CHOKE[1], px, `<circle r="11" fill="#14181d" stroke="#ffd27a" stroke-width="2"/><path d="M-6 -6 L6 6 M-6 6 L6 -6" stroke="#ffd27a" stroke-width="2.2"/>`);
+  [FUP_RT, FUP_LT].forEach(q => { s += glyph(q[0], q[1], px, `<rect x="-15" y="-8" width="30" height="16" rx="5" fill="#1d3f66" stroke="#8ec1ea" stroke-width="1.4"/><text y="4" font-size="10" font-weight="750" text-anchor="middle" fill="#cfe7fb" font-family="system-ui">FUP</text>`); });
+  [FB_RT, FB_LT].forEach(q => { s += glyph(q[0], q[1], px, `<path d="M-10 6 V-2 H10 V6 M-6 -2 L-9 -9 M6 -2 L9 -9" fill="none" stroke="#8ec1ea" stroke-width="1.8"/><text y="16" font-size="10" font-weight="750" text-anchor="middle" fill="#cfe7fb" stroke="#0b0d10" stroke-width="2.5" paint-order="stroke" font-family="system-ui">FB</text>`); });
+  if (o.labels !== 'off') {
+    s += txt(13.4, 10.95, 'Rt (S) flank · choke MSR', px, { fs: 11, fill: '#cfe7fb' }) + txt(12.0, 4.0, 'Lt (N) via Br B1', px, { fs: 11, fill: '#bfe0ff' });
+    s += txt(11.3, 7.62, '✗ Frontal', px, { fs: 11, fill: '#ff8a8d', anchor: 'end' }) + txt(CHOKE[0] - 0.3, CHOKE[1] - 0.3, 'Choke en MSR', px, { fs: 11, fill: '#ffd27a', anchor: 'end' });
+  }
+  return s;
+};
+// The existing threat marker, placed on the map (the .ms-pt look of GroundGuideThreat.ts: red-edged pill).
+L.threat = (id, px) => glyph(THREAT[0], THREAT[1], px, `<rect x="-38" y="-12" width="76" height="24" rx="12" fill="#3a1416" stroke="#ff6b6f" stroke-width="1.5"/><path d="M-26 5 L-20 -6 L-14 5 Z" fill="#ffd0d1"/><text x="6" y="4.5" font-size="12" font-weight="600" text-anchor="middle" fill="#ffd0d1" font-family="system-ui">Threat</text>`);
+const ORDER = ['coo', 'marks', 'fire', 'ea', 'mc', 'apch', 'fman', 'ownatk', 'obsfx', 'narrows', 'tpl', 'ca', 'itg', 'air', 'enlz', 'dst', 'units'];
+function scene(o) {
+  const id = 's' + (UID++), vb = o.vb || [0, 0, W, H], px = o.wpx / vb[2], hpx = Math.round(o.wpx * vb[3] / vb[2]);
+  let s = `<svg viewBox="${vb.join(' ')}" width="${o.wpx}" height="${hpx}" xmlns="http://www.w3.org/2000/svg">${defs(id, px)}<g clip-path="url(#${id}cl)">${L.base(id, px, o)}`;
+  ORDER.forEach(k => { if (o.layers.includes(k)) s += L[k](id, px, o); });
+  s += L.threat(id, px);
+  s += glyph(vb[0] + vb[2] - 22 / px, vb[1] + 24 / px, px, `<circle r="12" fill="#14181d" fill-opacity=".8" stroke="#5d6772"/><path d="M0 -8 L4 4 L0 1.5 L-4 4 Z" fill="#fff"/><text y="-14.5" font-size="10" font-weight="750" text-anchor="middle" fill="#fff" stroke="#0b0d10" stroke-width="2.5" paint-order="stroke" font-family="system-ui">N</text>`);
+  const bx = vb[0] + 12 / px, by = vb[1] + vb[3] - 14 / px, km = vb[2] > 10 ? 2 : 1;
+  return s + `<path d="M${bx} ${by} h${km}" stroke="#fff" stroke-width="2.4" ${ns}/>` + txt(bx + km / 2, by - 6 / px, `${km} km`, px, { fs: 10.5 }) + '</g></svg>';
+}
+
+// ===== Charts =====
+function widthChart() {
+  const Wd = 380, Hd = 214, l = 40, r = 14, t = 14, b = 34, xs = (Wd - l - r) / 8, ys = (Hd - t - b) / 1.2, X = (k) => l + k * xs, Y = (w) => t + (1.2 - w) * ys;
+  const prof = { A1: [[0,.9],[1,.82],[2,.72],[3,.66],[4,.62],[4.6,.7],[5.6,.8],[6.8,.72],[7.6,.66]], A2: [[0,1],[1.2,.95],[2.4,.9],[3.6,.75],[4.6,.68],[5.7,.55],[6.6,.7],[7.6,.8]], B1: [[0,.9],[1.2,.85],[2.4,.8],[3.4,.62],[4.4,.54],[5.4,.7],[6.6,.66],[7.6,.6]], B2: [[0,1],[1.4,1],[2.6,.98],[4,.95],[5.2,.85],[6.4,.78],[7.6,.68]] };
+  const sty = { A1: ['#ff8a8d', ''], A2: ['#ff5a60', ''], B1: ['#ffc3c5', '6 4'], B2: ['#e9aab6', '6 4'] };
+  let s = `<svg width="${Wd}" height="${Hd}" viewBox="0 0 ${Wd} ${Hd}"><rect x="${l}" y="${t}" width="${Wd - l - r}" height="${Hd - t - b}" fill="#171b20" rx="4"/>`;
+  [0, .5, 1].forEach(w => { s += `<path d="M${l} ${Y(w)} H${Wd - r}" stroke="rgba(255,255,255,.08)"/><text x="${l - 6}" y="${Y(w) + 4}" font-size="11" fill="#c3cbd3" text-anchor="end">${w ? w + ' km' : '0'}</text>`; });
+  [0, 2, 4, 6, 8].forEach(k => { s += `<text x="${X(k)}" y="${Hd - b + 15}" font-size="11" fill="#c3cbd3" text-anchor="middle">${k}</text>`; });
+  s += `<text x="${(l + Wd - r) / 2}" y="${Hd - 4}" font-size="11" fill="#c3cbd3" text-anchor="middle">km from the area's E edge → canal</text>`;
+  s += `<rect x="${l}" y="${Y(.5)}" width="${Wd - l - r}" height="${Y(0) - Y(.5)}" fill="rgba(229,72,77,.07)"/><path d="M${l} ${Y(.5)} H${Wd - r}" stroke="#8ec1ea" stroke-width="1.6" stroke-dasharray="6 4"/><text x="${l + 6}" y="${Y(.5) + 15}" font-size="11" fill="#bfe0ff">Coy Mob Corridor 500 m · book p 12, ATP T4-2</text>`;
+  Object.entries(prof).forEach(([k, pts]) => {
+    s += `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${sty[k][0]}" stroke-width="2.2" ${sty[k][1] ? `stroke-dasharray="${sty[k][1]}"` : ''}/>`;
+    const lo = pts.reduce((a, p) => p[1] < a[1] ? p : a); s += `<circle cx="${X(lo[0])}" cy="${Y(lo[1])}" r="3.6" fill="#ffb02e" stroke="#0b0d10" stroke-width="1.2"/><text x="${X(0) + 4}" y="${Y(pts[0][1]) - 5}" font-size="11" font-weight="700" fill="${sty[k][0]}">${k}</text>`;
+  });
+  return s + `<path d="M${X(7.85)} ${t + 4} V${Hd - b}" stroke="#9fc7e6" stroke-width="2"/><text x="${X(7.85) - 4}" y="${t + 14}" font-size="10.5" fill="#9fc7e6" text-anchor="end">canal · Br B2, B3</text></svg>`;
+}
+function coverageRibbons() {
+  const Wd = 320, row = 46, l = 66, r = 10, km = 8, segs = { A: [[0,2.1,'o'],[2.1,3.3,'d'],[3.3,3.9,'s'],[3.9,8,'c']], B: [[0,1.8,'o'],[1.8,4.2,'c'],[4.2,4.9,'s'],[4.9,5.6,'d'],[5.6,8,'c']] };
+  const col = { c: '#2fa862', d: '#e5484d', s: '#ee8a1f', o: '#2a3038' }, pct = { A: 64, B: 48 };
+  let s = `<svg width="${Wd}" height="${row * 2 + 34}" viewBox="0 0 ${Wd} ${row * 2 + 34}">`;
+  ['A', 'B'].forEach((k, i) => {
+    const y = 10 + i * row, X = (v) => l + v * (Wd - l - r) / km;
+    s += `<text x="0" y="${y + 14}" font-size="13" font-weight="750" fill="#fff">Apch ${k}</text><text x="0" y="${y + 30}" font-size="11.5" fill="#c3cbd3">${pct[k]} % under fire</text>`;
+    segs[k].forEach(([a, b, c]) => { s += `<rect x="${X(a)}" y="${y + 4}" width="${X(b) - X(a) - 1}" height="18" rx="2" fill="${col[c]}" fill-opacity="${c === 'o' ? 1 : .8}"/>`; });
+    const g = segs[k].find(q => q[2] === 'd'); s += `<text x="${(X(g[0]) + X(g[1])) / 2}" y="${y + 36}" font-size="10.5" fill="#ff8a8d" text-anchor="middle">gap ${g[0]}–${g[1]} km</text>`;
+  });
+  [0, 2, 4, 6, 8].forEach(v => { s += `<text x="${l + v * (Wd - l - r) / km}" y="${row * 2 + 22}" font-size="10.5" fill="#9aa3ad" text-anchor="middle">${v}</text>`; });
+  return s + `<text x="${Wd - r}" y="${row * 2 + 33}" font-size="10.5" fill="#9aa3ad" text-anchor="end">km from E edge → canal</text></svg>`;
+}
+const wxRows = (rows) => '<div class="wx">' + rows.map(r => `<div class="m">${r.m}<small>${r.e}</small></div>` + (r.met ? `<span class="met">${r.met}</span><span></span>` : `<div class="wbar"><span style="width:${r.g}%;background:#2fa862"></span><span style="width:${r.mg}%;background:#f1d646"></span><span style="width:${100 - r.g - r.mg}%;background:#e5484d"></span></div><span class="v">${r.g} %</span>`)).join('') + '</div>';
+function flightProfile() {
+  const Wd = 340, Hd = 214, l = 40, r = 12, t = 16, b = 34, km = 9.4, X = (v) => l + v * (Wd - l - r) / km, Y = (m) => t + (330 - m) * (Hd - t - b) / 130;
+  const g = []; for (let k = 0; k <= km; k += 0.2) g.push([k, 214 + 6 * Math.sin(k * 1.4) + 4 * Math.sin(k * 3.1) + (k > 7.2 ? (k - 7.2) * 6 : 0)]);
+  const path = (pts) => pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join(' ');
+  let s = `<svg width="${Wd}" height="${Hd}" viewBox="0 0 ${Wd} ${Hd}"><rect x="${l}" y="${t}" width="${Wd - l - r}" height="${Hd - t - b}" fill="#171b20" rx="4"/><rect x="${X(7.6)}" y="${t}" width="${X(km) - X(7.6)}" height="${Hd - t - b}" fill="rgba(167,139,250,.14)"/><text x="${X(8.5)}" y="${t + 13}" font-size="10.5" fill="#d9ccf5" text-anchor="middle">may be seen</text>`;
+  s += `<path d="${path(g.map(q => [q[0], q[1] + 45]).concat(g.slice().reverse().map(q => [q[0], q[1] + 15])))} Z" fill="rgba(142,193,234,.22)" stroke="#8ec1ea" stroke-opacity=".5"/><path d="${path(g)} L${X(km)} ${Y(200)} L${X(0)} ${Y(200)} Z" fill="#3f4636"/>`;
+  s += `<path d="M${X(2.3)} ${Y(219)} V${Y(279)}" stroke="#d6c27a" stroke-width="3"/><text x="${X(2.3) + 7}" y="${Y(276)}" font-size="10.5" fill="#efe0a8">Mast 60 m, 300 m off track</text>`;
+  [200, 250, 300].forEach(m => { s += `<text x="${l - 6}" y="${Y(m) + 4}" font-size="11" fill="#c3cbd3" text-anchor="end">${m}</text>`; });
+  [0, 2, 4, 6, 8].forEach(v => { s += `<text x="${X(v)}" y="${Hd - b + 15}" font-size="11" fill="#c3cbd3" text-anchor="middle">${v}</text>`; });
+  return s + `<text x="${(l + Wd - r) / 2}" y="${Hd - 4}" font-size="11" fill="#c3cbd3" text-anchor="middle">km along Air Apch 1 · m above sea level</text><text x="${X(0.3)}" y="${Y(268)}" font-size="10.5" fill="#bfe0ff">flight band 15–45 m above Gr</text></svg>`;
+}
+function enemyRun(segs, night) { const v = (c) => c === 'GO' ? 24 : (night ? 8 : 16); let t = 0, d = 0; const pts = [[0, 0]]; segs.forEach(s => { t += s[1] / v(s[0]); d += s[1]; pts.push([t, d]); }); return { pts, T: t, D: d }; }
+const SEG_A = [['GO', 34], ['SLOW', 8], ['GO', 9], ['SLOW', 1], ['GO', 2.4]];
+const SEG_B = [['GO', 40], ['SLOW', 6], ['GO', 8.5], ['SLOW', 1.2], ['GO', 1.6]];
+const hhmm = (h) => { const m = Math.round(h * 60); return `H+${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+function posAt(run, t) { const p = run.pts; for (let i = 1; i < p.length; i++) if (t <= p[i][0]) { const f = (t - p[i - 1][0]) / (p[i][0] - p[i - 1][0]); return p[i - 1][1] + f * (p[i][1] - p[i - 1][1]); } return run.D; }
+function dstNumbers(night) {
+  const A = enemyRun(SEG_A, night), B = enemyRun(SEG_B, night), dpA = Math.max(0, A.T - 2), dpB = Math.max(0, B.T - 2);
+  // DP 3: the counter-attack must go in while 2 Bn's depth localities hold (Vol I p 54). En reaches them ~15 min after
+  // Br B3 (estimate); a Coy-size counter-attack needs 30 min from the decision (IBB figure in OCOKA_Roadmap).
+  const depth = B.T + 0.25, dpCA = depth - 0.5;
+  return { A, B, dpA, dpB, kmA: A.D - posAt(A, dpA), kmB: B.D - posAt(B, dpB), depth, dpCA };
+}
+function timeLadder(night) {
+  const N = dstNumbers(night), Wd = 560, Hd = 268, l = 46, r = 16, t = 16, b = 36, Tmax = Math.ceil(Math.max(N.A.T, N.B.T) + 0.6), X = (h) => l + h * (Wd - l - r) / Tmax, Y = (km) => t + km * (Hd - t - b) / 64, toPosn = { A: 5.85, B: 6.95 };
+  let s = `<svg width="${Wd}" height="${Hd}" viewBox="0 0 ${Wd} ${Hd}"><rect x="${l}" y="${t}" width="${Wd - l - r}" height="${Hd - t - b}" fill="#171b20" rx="4"/>`;
+  for (let h = 0; h <= Tmax; h += 0.5) s += `<path d="M${X(h)} ${t} V${Hd - b}" stroke="rgba(255,255,255,${h % 1 ? .04 : .09})"/>` + (h % 1 ? '' : `<text x="${X(h)}" y="${Hd - b + 15}" font-size="11" fill="#c3cbd3" text-anchor="middle">H+${h}</text>`);
+  [0, 20, 40, 60].forEach(k => { s += `<text x="${l - 6}" y="${Y(k) + 4}" font-size="11" fill="#c3cbd3" text-anchor="end">${k}</text>`; });
+  s += `<text x="${l - 34}" y="${t + 8}" font-size="10.5" fill="#9aa3ad">km out</text><text x="${(l + Wd - r) / 2}" y="${Hd - 5}" font-size="11" fill="#c3cbd3" text-anchor="middle">time from the en leaving its assy area (threat marker) · book rates, ${night ? 'night' : 'day'}</text>`;
+  s += `<rect x="${l}" y="${Y(0)}" width="${Wd - l - r}" height="${Y(14) - Y(0)}" fill="rgba(142,193,234,.06)"/><text x="${Wd - r - 6}" y="${Y(14) - 5}" font-size="10.5" fill="#9fc3e0" text-anchor="end">area read</text>`;
+  const hl = (km, c, lab, dash) => `<path d="M${l} ${Y(km)} H${Wd - r}" stroke="${c}" stroke-width="1.3" ${dash ? 'stroke-dasharray="5 4"' : ''}/><text x="${l + 6}" y="${Y(km) - 4}" font-size="10.5" fill="${c}">${lab}</text>`;
+  s += hl(toPosn.A, '#ffd27a', 'TAI 1 Br B2 · TAI 2 Br B3', false) + hl(toPosn.A + 20.4, '#e8ebee', 'NAI 1 / 4 border crossings', true);
+  const line = (run, off, col, dash) => `<path d="${run.pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(run.D + off - p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${col}" stroke-width="2.6" ${dash ? 'stroke-dasharray="7 4"' : ''}/>`;
+  s += line(N.A, toPosn.A, '#ff8a8d', true) + line(N.B, toPosn.B, '#ff5a60', false);
+  const dp = (run, off, tdp, n, col, dy, lab) => { const y = Y(run.D + off - posAt(run, tdp)), x = X(tdp); return (lab ? `<path d="M${x} ${y} L${X(run.T)} ${y}" stroke="${col}" stroke-dasharray="3 3"/><text x="${(x + X(run.T)) / 2}" y="${y + dy}" font-size="10.5" fill="${col}" text-anchor="middle">${lab}</text>` : '') + `<g transform="translate(${x} ${y})">${STAR(n, col)}</g>`; };
+  s += dp(N.A, toPosn.A, N.dpA, 1, '#ffd27a', -6, '2 h') + dp(N.B, toPosn.B, N.dpB, 2, '#ffd27a', 14, '2 h') + dp(N.B, toPosn.B, N.dpCA, 3, '#8ec1ea', 0, '');
+  s += `<text x="${X(N.dpCA) - 13}" y="${Y(N.B.D + toPosn.B - posAt(N.B, N.dpCA)) + 4}" font-size="10.5" fill="#bfe0ff" text-anchor="end">DP 3 CATK ${hhmm(N.dpCA)}</text>`;
+  return s + `<text x="${X(N.B.pts[1][0]) + 4}" y="${Y(N.B.D + toPosn.B - N.B.pts[1][1]) - 6}" font-size="11" font-weight="700" fill="#ff8a8d">Apch B (main)</text></svg>`;
+}
+function timeStrips(night) {
+  const N = dstNumbers(night), Wd = 560, l = 64, r = 14, Tmax = Math.ceil(Math.max(N.A.T, N.B.T) + 0.6), X = (h) => l + h * (Wd - l - r) / Tmax;
+  let s = `<svg width="${Wd}" height="268" viewBox="0 0 ${Wd} 268">`;
+  [['B', N.B, SEG_B, [[N.dpB, 'DP 2'], [N.dpCA, 'DP 3']]], ['A', N.A, SEG_A, [[N.dpA, 'DP 1']]]].forEach(([k, run, segs, dps], i) => {
+    const y = 40 + i * 96;
+    s += `<text x="0" y="${y + 15}" font-size="13" font-weight="750" fill="#fff">Apch ${k}</text>`;
+    run.pts.slice(1).forEach((p, j) => { const a = run.pts[j][0]; s += `<rect x="${X(a)}" y="${y}" width="${X(p[0]) - X(a) - 1}" height="22" rx="3" fill="${segs[j][0] === 'GO' ? '#2fa862' : '#ee8a1f'}" fill-opacity=".75"/>`; });
+    dps.forEach(([td, lab], q) => { s += `<path d="M${X(td)} ${y - 8} V${y + 30}" stroke="${lab === 'DP 3' ? '#8ec1ea' : '#ffd27a'}" stroke-width="2"/><text x="${X(td)}" y="${y - 12 - q * 12}" font-size="11" font-weight="700" fill="${lab === 'DP 3' ? '#bfe0ff' : '#ffd27a'}" text-anchor="middle">${lab} ${hhmm(td)}</text>`; });
+    s += `<path d="M${X(run.T)} ${y - 8} V${y + 30}" stroke="#ffd27a" stroke-width="2" stroke-dasharray="3 2"/><text x="${X(run.T)}" y="${y + 44}" font-size="11" fill="#ffd27a" text-anchor="middle">TAI ${k === 'B' ? 2 : 1} ${hhmm(run.T)}</text>`;
+  });
+  for (let h = 0; h <= Tmax; h++) s += `<text x="${X(h)}" y="262" font-size="11" fill="#c3cbd3" text-anchor="middle">H+${h}</text>`;
+  return s + '</svg>';
+}
+function phaseBar() {
+  const ph = [['SZ battle', '24–48 h', 2.2, '#3a4552'], ['Break-in', 'one night', 1.2, '#5a1d22'], ['Build-up', 'same night', 0.9, '#4a2a2a'], ['Break-out', 'first light', 1.1, '#6a2a1f'], ['Advance', 'logs +48 h', 1.6, '#3a2a12']];
+  const Wd = 390, tot = ph.reduce((a, p) => a + p[2], 0); let x = 0, s = `<svg width="${Wd}" height="92" viewBox="0 0 ${Wd} 92">`;
+  ph.forEach(p => { const w = p[2] / tot * Wd; s += `<rect x="${x}" y="8" width="${w - 2}" height="34" rx="4" fill="${p[3]}" stroke="rgba(255,255,255,.18)"/><text x="${x + 5}" y="23" font-size="11" font-weight="700" fill="#fff">${p[0]}</text><text x="${x + 5}" y="37" font-size="10.5" fill="#d5dbe1">${p[1]}</text>`; x += w; });
+  const mx = (2.2 + 0.6) / tot * Wd;
+  return s + `<path d="M${mx} 46 V58" stroke="#ffd27a" stroke-width="2"/><text x="${mx}" y="72" font-size="11" fill="#ffd27a" text-anchor="middle">this reading: break-in on Apch B</text><text x="0" y="88" font-size="10.5" fill="#9aa3ad">Desert Warfare pp 10–13 · OoW Vol II s14 (bridgehead 8 × 6 km)</text></svg>`;
+}
+
+// ===== Products, tiles, Detail =====
+const PROD = { fire: { on: true, n: 'Fire corridors', s: 'fans, coverage, killing areas' }, apch: { on: true, n: 'Apchs', s: 'coding, corridors, arrows, proforma' }, man: { on: true, n: 'Manoeuvre', s: 'forms, attack type, obstacle effects' }, air: { on: true, n: 'Air', s: 'air Apchs, LZ / DZ, AD, en heliborne' }, dec: { on: true, n: 'Decision', s: 'NAI, TAI, DP, templates' } };
+const HIDDEN = new Set();
+let LAYOUT = 'A', DST_STYLE = 'ladder', DST_NIGHT = false;
+const TABS_G = [['G', 'Gr', 'go', 'Plains'], ['R', 'Rds', 'go', 'MSR 0.4 km'], ['O', 'Obs', 'slow', 'Canal 5.8 km'], ['T', 'Trafficability', 'go', 'GO dry'], ['B', 'BUA', 'go', '1.9 km S'], ['C', 'Cover', 'slow', 'Fair']];
+const toneDot = { go: '#2fa862', slow: '#ee8a1f' };
+const extTabs = () => LAYOUT === 'A'
+  ? [['1', 'Obsn & Fire', 'EA 1, EA 2', 'fire'], ['2', 'Key Gr', 'Br B3 decisive?', null], ['3', 'Apchs', 'B likely · penetration', 'apch'], ['4', 'Air', 'LZ 1 · 2 en LZs', 'air'], ['5', 'Decision', 'DP 3 CATK H+2:17', 'dec']]
+  : [['1', 'Obsn & Fire', 'EA 1, EA 2', 'fire'], ['2', 'Apchs & Key Gr', 'B likely · penetration', 'apch'], ['3', 'Air', 'LZ 1 · 2 en LZs', 'air'], ['4', 'Decision', 'DP 3 CATK H+2:17', 'dec']];
+const tabHtml = (k, n, a, o = {}) => `<span class="tab ${o.x ? 'xt' : ''} ${o.sel ? 'sel' : ''} ${o.off ? 'offp' : ''}"><span class="k">${k}</span><span class="tt"><span>${n}</span><span class="ta">${o.tone ? `<span class="dot" style="background:${toneDot[o.tone]}"></span>` : ''}<span>${a}</span></span></span></span>`;
+const tabRow = (sel) => TABS_G.map(t => tabHtml(t[0], t[1], t[3], { tone: t[2] })).join('') + extTabs().map(t => { const off = t[3] && !PROD[t[3]].on; return tabHtml(t[0], t[1], off ? 'off' : t[2], { x: true, sel: t[1] === sel, off }); }).join('') + tabHtml('K', 'Legend', 'Layers');
+const rows = (rs, cls = '') => `<div class="rows ${cls}">${rs.map(r => `<div class="row"><span class="rk">${r[0]}</span><span class="rv">${r[1]}</span></div>`).join('')}</div>`;
+const keyline = (ks) => `<div class="key">${ks.map(k => `<span><i style="background:${k[0]};${k[2] || ''}"></i>${k[1]}</span>`).join('')}</div>`;
+const tile = (id, w, cap, tag, body, note) => ({ id, w, cap, html: `<div class="tile" style="width:${w}px"><div class="cap">${cap}${tag ? `<span class="tag ${tag[0]}">${tag[1]}</span>` : ''}<button class="eye" data-hide="${id}" title="Hide this tile">⊘ hide</button></div>${body}${note ? `<div class="tnote">${note}</div>` : ''}</div>` });
+function detail(o) {
+  const shown = o.tiles.filter(t => !HIDDEN.has(t.id)), hidden = o.tiles.filter(t => HIDDEN.has(t.id));
+  const band = shown.length ? shown.map(t => t.html).join('') : '<div class="empty">All tiles on this page are hidden: click a chip below to bring one back.</div>';
+  return `<h3>${o.title}</h3>${o.intro ? `<p>${o.intro}</p>` : ''}<div class="ggd">
+    <div class="ggd-h"><div class="tabs">${tabRow(o.sel)}</div><span class="hsp"></span><span class="btn">Copy as Text</span><span class="btn">✕</span></div>
+    <div class="mode"><span>▣ <b>Bde HQ</b> · read as a Bde HQ: <b>Bn Apchs</b> of <b>Coy Mob Corridors</b></span><span class="ext">F · Ext View</span><span>Read for: <b>Defence</b> · Own attack</span><span>Threat <b>placed</b>, E 090° · 12.7 km · arc 90°</span><span class="when">Plains · Nov · Day</span></div>
+    <div class="sum"><div class="ans ${o.tone ? 't-' + o.tone : ''}"><div class="ans-l">${o.ansL}</div><div class="ans-v">${o.ansV}</div><div class="ans-s">${o.ansS}</div></div>${o.facts.map(f => `<div class="fact"><div class="fk">${f[0]}</div><div class="fv">${f[1]}</div></div>`).join('')}</div>
+    <div class="band">${band}</div>
+    <div class="foot"><span><span class="k">${o.key}</span>${o.keyNote || 'next page'}</span><span><span class="k">F</span>close Ext View</span><span><span class="k">[</span><span class="k">]</span>turn threat</span>${hidden.length ? `<span>Hidden:</span>${hidden.map(t => `<span class="hidchip" data-show="${t.id}">${t.cap} ↺</span>`).join('')}` : ''}<span class="pagehint">${o.page || 'page 1 of 2'}</span></div></div>`;
+}
+// Own attack, Left or Right (IC s15.12 quick appreciation + the user's doctrine: flank, choke the en MSR; frontal discarded).
+const WF = [
+  { f: 'Choke en MSR', src: 'your doctrine', w: 3, lt: [3, 'reaches MSR E of Kotli via the ridge gap'], rt: [5, 'cuts MSR at Bhaini jn, 2.2 km behind Kotli'], fr: [1, 'runs into Kotli'] },
+  { f: 'FUP: cover', src: 'IC s15.12 b(1)', w: 2, lt: [2, 'open, Spur 412 overlooks'], rt: [4, 'crops, nullah bank'], fr: [1, 'open, in en view'] },
+  { f: 'Obstacles FUP → obj', src: 'IC s15.12 b(1)', w: 2, lt: [3, 'broken Gr, SLOW-GO'], rt: [3, 'nullah, fordable in places'], fr: [1, 'Kotli BUA, NO-GO (armour)'] },
+  { f: 'Distance FUP → obj', src: 'IC s15.12 b(1)', w: 1, lt: [4, '1.9 km'], rt: [4, '1.8 km'], fr: [3, '2.4 km'] },
+  { f: 'Route to FUP', src: 'IC s15.12 b(2)', w: 2, lt: [2, 'single Br B1, ridge gap under Spur'], rt: [3, 'Br B3, 1.3 km along EA 1 edge'], fr: [1, 'Br B2 under direct fire'] },
+  { f: 'Fire base: range, angle', src: 'IC s15.12 b(3)', w: 2, lt: [3, '1.6 km, 50° to the axis'], rt: [4, '1.4 km, 70° to the axis'], fr: [2, 'fire along the axis'] },
+  { f: 'Going', src: 'IPB coding', w: 1, lt: [3, '62 % GO'], rt: [4, '81 % GO'], fr: [2, 'BUA, canal Br'] },
+  { f: 'Surprise', src: 'OoW II s6', w: 1, lt: [3, 'obvious via Br B1'], rt: [4, 'night move along the nullah'], fr: [1, 'expected'] },
+];
+function wtotals() { const max = WF.reduce((a, r) => a + r.w * 5, 0) || 1; const t = (k) => Math.round(100 * WF.reduce((a, r) => a + r.w * r[k][0], 0) / max); return { lt: t('lt'), rt: t('rt'), fr: t('fr') }; }
+function weighTable() {
+  const T = wtotals(), best = T.rt >= T.lt ? 'rt' : 'lt', col = (v) => v >= 4 ? '#9fe0b8' : v <= 2 ? '#ffb0b3' : '#e8ebee';
+  const cell = (r, k) => `<span class="sc" style="color:${k === 'fr' ? '#7f8893' : col(r[k][0])}" title="${r[k][1]}">${r[k][0]}</span>`;
+  return `<table class="wt"><tr><th>Factor</th><th>Weight</th><th>Lt (N)</th><th>Rt (S)</th><th class="ref">Frontal</th><th>Source</th></tr>${WF.map((r, i) => `<tr><td>${r.f}</td><td><button class="wbtn" data-w="${i}" data-d="-1">−</button> <span class="wv">${r.w}</span> <button class="wbtn" data-w="${i}" data-d="1">+</button></td><td>${cell(r, 'lt')}</td><td>${cell(r, 'rt')}</td><td class="ref">${cell(r, 'fr')}</td><td class="src">${r.src}</td></tr>`).join('')}<tr class="tot"><td>Weighed score</td><td></td><td class="${best === 'lt' ? 'best' : ''}">${T.lt} %</td><td class="${best === 'rt' ? 'best' : ''}">${T.rt} %</td><td class="ref">${T.fr} %</td><td class="src">ref. only</td></tr></table><div class="bar2"><span style="width:${Math.max(T.rt, T.lt)}%;background:#8ec1ea"></span></div>`;
+}
+const PU = '<span class="sg p sug">+</span>', MU = '<span class="sg m sug">−</span>', PS = '<span class="sg p">+</span>', UQ = '<span class="sg u">?</span>';
+function tabsHtml() {
+  const k = (n) => LAYOUT === 'A' ? n : ({ 3: '2', 4: '3', 5: '4' }[n] || n);
+  const apName = LAYOUT === 'A' ? 'Apchs' : 'Apchs & Key Gr', N = dstNumbers(DST_NIGHT);
+  const off = (p, name) => `<h3>${name}</h3><div class="ggd"><div class="ggd-h"><div class="tabs">${tabRow('')}</div></div><div class="band" style="height:auto;min-height:70px"><div class="empty">${PROD[p].n} is switched off: not worked out, no tiles, no map layers. Switch it on in section 1.</div></div></div>`;
+  let s = '';
+  s += !PROD.fire.on ? off('fire', '1 · Obsn & Fire') : detail({
+    title: '1 · Obsn & Fire', sel: 'Obsn & Fire', key: '1',
+    intro: 'Fire corridors from every own Posn over the Apchs, and the <b>killing areas</b> they make (Vol I pp 42–45: obstacles canalise the en under observation and fire, with no cover for him). The existing tiles (What May Be Seen, Fd of Fire by Range, Threat\'s View, Better Posn, Obsn) are on page 2.',
+    tone: 'go', ansL: 'Killing areas on the en Apchs', ansV: 'EA 1 on B <small>· EA 2 on A</small>', ansS: 'Apch A 64 % under fire, B 48 %. Gaps: dead Gr behind Kotli (A) and S of the B1 narrows.',
+    facts: [['EA 1', 'B1 narrows <span class="s">540 m · 2 Bn + Tk Sqn</span>'], ['Gap in fire', 'A: 2.1–3.3 km <span class="s">behind Kotli</span>'], ['Identify', 'Tank model 1 km <span class="s">4 km binos</span>'], ['This Posn', 'Fd of Fire Good <span class="s">J better 240 m N</span>']],
+    tiles: [
+      tile('t1map', 340, 'Fire Corridors & Killing Areas', ['new', 'new'], `<div class="pic">${scene({ wpx: 338, layers: ['apch', 'fire', 'ea', 'units'], apch: 'arrows', side: 'en', dim: true, labels: 'auto' })}</div>`),
+      tile('t1cov', 320, 'Coverage Along Each Apch', ['new', 'new'], coverageRibbons() + keyline([['#2fa862', 'under fire'], ['#e5484d', 'dead Gr'], ['#ee8a1f', 'screened'], ['#2a3038', 'out of range']]), 'A gap is where to put mines, a DF task or an OP.'),
+      tile('t1ea', 250, 'Killing Area Candidates', ['new', 'Vol I p 42'], rows([['EA 1', 'B1 narrows S of Kotli · 540 m · 2 Bn ATGM 3 km and Tk Sqn · no cover for the en'], ['EA 2', 'Br B2 approach · canalised by the canal · 1 Bn'], ['Not', 'ridge gap: dead Gr, out of range']], 'narrow'), 'Obstacles must not mask own fire or block own counter-attack routes.'),
+      tile('t1wx', 250, 'Wx for Fire · Nov', ['mov', 'Annex A'], wxRows([{ m: 'A tk direct fire', e: 'view > 3 km', g: 54, mg: 32 }, { m: 'Fire Sp 155 mm', e: 'view > 5 km', g: 41, mg: 38 }, { m: 'Ceiling', e: '> 800 ft', met: 'Met' }, { m: 'CAS', e: 'view > 8 km', g: 22, mg: 40 }]) + keyline([['#2fa862', 'GO'], ['#f1d646', 'marginal'], ['#e5484d', 'unfav.']])),
+    ]});
+  if (LAYOUT === 'A') s += detail({
+    title: '2 · Key Gr', sel: 'Key Gr', key: '2', page: 'page 1 of 1',
+    intro: 'Kept, with the books\' distinctions: <b>key</b> Gr (marked advantage), <b>decisive</b> Gr (mandatory, the commander designates: ATP 4-11), <b>vital</b> Gr held so it cannot be bypassed (Vol I p 16), and key Gr by terrain (plains: bridges and crossings; desert: comm centres and water; mountains: heights over the valley, pass shoulders).',
+    tone: 'warn', ansL: 'Lead candidate', ansV: 'Br B3 <small>· decisive if B is the main effort</small>', ansS: 'The only crossing on Apch B: holding it denies the penetration. The commander designates.',
+    facts: [['Highest Gr', 'Spur 412 <span class="s">overlooks Apch A</span>'], ['Vital Gr?', 'MSR Br on R Sohan <span class="s">turning objective</span>'], ['Counter-pen', 'Pt 268 <span class="s">flank of 1 Bn</span>'], ['Terrain', 'Plains <span class="s">crossings rank higher</span>']],
+    tiles: [
+      tile('t2map', 340, 'Key Gr · Area', ['kept', 'kept'], `<div class="pic">${scene({ wpx: 338, layers: ['apch', 'itg', 'narrows', 'units'], apch: 'arrows', side: 'en', dim: true, labels: 'auto' })}</div>`),
+      tile('t2list', 350, 'Ranked · 4 Candidates', ['aug', 'chips'], `<div class="apc"><div class="h">1 Br B3 <span class="chip key">decisive?</span></div><div class="chips"><span class="chip">On Apch B</span><span class="chip">Covers TAI 2</span><span class="chip">only crossing on B</span></div></div><div class="apc"><div class="h">2 Spur 412 <small>+186 m</small></div><div class="chips"><span class="chip">Overlooks Apch A</span><span class="chip">Overlooks NAI 2</span><span class="chip no">en side</span></div></div><div class="apc"><div class="h">3 Kotli <small>BUA 1.2 km</small></div><div class="chips"><span class="chip">Astride A and B</span><span class="chip">screens EA 1</span></div></div><div class="apc"><div class="h">4 Pt 268 <small>+42 m</small></div><div class="chips"><span class="chip ok">counter-penetration site</span><span class="chip">sees Br B2</span></div></div>`),
+      tile('t2vg', 250, 'Vital & Decisive Gr', ['new', 'ATP 4-11'], rows([['Decisive', 'the commander designates (VG symbol)'], ['Vital', 'held so the en cannot bypass it; deny the features that protect it'], ['Lines', 'Line of No Penetration / Denial: one line here (canal)']], 'narrow')),
+      tile('t2cp', 240, 'Counter-penetration Sites', ['new', 'Vol I p 52'], rows([['Pt 268', 'flank of 1 Bn, sees Br B2 · prepare now, occupy when B2 is threatened'], ['Dhok S.', 'BUA astride BW, 2.9 km behind Br B3']], 'narrow')),
+    ]});
+  const pfRow = (f, a, b, c, d, n) => `<tr><td class="f">${f}</td>${[a, b, c, d].map(x => `<td>${x}</td>`).join('')}<td class="n">${n || ''}</td></tr>`;
+  const proforma = `<table class="pf"><tr><th></th><th colspan="2" class="g"><span class="gh">En</span></th><th colspan="2" class="g"><span class="gh">Own</span></th><th></th></tr><tr><th></th><th>A</th><th>B</th><th>A</th><th>B</th><th style="text-align:left">Why</th></tr>
+    ${pfRow('a Obsn & fire', MU, PU, PU, MU, 'A 64 % under our fire')}${pfRow('b Cover & concealment', PU, MU, MU, PU, 'crops, Kotli on A')}${pfRow('c Obstacles / vertical', MU, MU, PU, MU, 'canal: 1 Br each')}${pfRow('d Important tactical Gr', MU, PU, PU, MU, 'Spur 412 overlooks A')}${pfRow('e Manoeuvre space', PU, PS, MU, PU, '2 corridors each')}${pfRow('f Ease of movement', PU, MU, PU, MU, 'A 78 % GO')}${pfRow('g NBC effects', UQ, UQ, UQ, UQ, 'you judge')}${pfRow('h Rds & LOC', PU, MU, PU, MU, 'MSR along A')}${pfRow('h Sigs', MU, PU, PU, PU, 'ridge masks A')}${pfRow('j Surveillance', MU, PU, PU, MU, 'A seen from Spur')}${pfRow('k Unconventional warfare', UQ, UQ, UQ, UQ, 'you judge')}${pfRow('l Others', '', '', '', '', '')}<tr class="tot"><td class="f">Total (rough guide)</td><td>−2</td><td>+1</td><td>+4</td><td>−2</td><td class="n">p 21 note 2</td></tr></table>`;
+  if (!PROD.apch.on) s += off('apch', `${k('3')} · ${apName}`); else {
+    s += detail({
+      title: `${k('3')} · ${apName}`, sel: apName, key: k('3'), page: `page 1 of ${PROD.man.on ? 4 : 2}`,
+      intro: 'The book\'s coding with the Mob Corridors and the Apchs drawn as the <b>MS attack arrows</b>: MainAttack (inner line) for the most likely, SupportingAttack (dashed) for the others. Width against the doctrine; proforma with suggested signs.',
+      tone: 'warn', ansL: 'En Apchs for a Bn · from the threat marker', ansV: '2 Apchs <small>· B suits the en better (+1 vs −2)</small>', ansS: 'A: A1 + A2 (1.2 km apart). B: B1 + B2. C1 is a lone corridor: not an Apch. Plains: corridors between BUAs and the canal.',
+      facts: [['Narrowest', '540 m <span class="s">B1, S of Kotli · Coy fits</span>'], ['Crossings', 'Br B2, B3 <span class="s">canal 30 m > AVLB 18 m</span>'], ['Capacity', 'each carries a Bn <span class="s">a Bde only in column</span>'], ['Time to TAI', 'B 2 h 32 · A 2 h 27 <span class="s">day</span>']],
+      tiles: [
+        tile('t3map', 392, 'Gr Overlay, Mob Corridors & Apchs', ['new', 'replaces'], `<div class="pic">${scene({ wpx: 390, layers: ['coo', 'marks', 'mc', 'apch', 'narrows', 'units'], apch: 'both', side: 'en', paint: SC.paint, labels: 'auto' })}</div>` + keyline([['', 'NO-GO', 'background:repeating-linear-gradient(45deg,#ff8a8d 0 1.5px,rgba(185,43,49,.35) 1.5px 6px)'], ['', 'SLOW-GO', 'background:repeating-linear-gradient(45deg,#ffb46b 0 1.5px,rgba(238,138,31,.15) 1.5px 6px)'], ['#ffffff33', 'Mob Corridor'], ['#ff5a6055', 'Apch'], ['#ffb02e', 'narrows']])),
+        tile('t3w', 386, 'Width Along Each Mob Corridor', ['new', 'new'], widthChart(), 'Under the blue line a Coy cannot pass deployed. Amber dots: narrowest points.'),
+        tile('t3pf', 410, 'Proforma · Relative Merits of Apchs', ['new', 'book p 21'], proforma, 'Dashed: suggested · solid: yours · ?: you judge. Click to flip.'),
+      ]});
+    if (PROD.man.on) s += detail({
+      title: `${k('3')} again · page 2 · Manoeuvre and attack`, sel: apName, key: k('3'), page: 'page 2 of 4',
+      intro: '<b>Forms of manoeuvre</b> the ground allows (OoW II s6, Desert pp 39–42, Mountain p 79) by the <b>open-flank test</b>, with the most likely and the most dangerous (ATP 6-7). Each Apch\'s type, capacity and the ATP criteria. <b>Attack type and timing</b> from the ground, the sun and the moon.',
+      tone: 'warn', ansL: 'En most likely · most dangerous', ansV: 'Penetration on B <small>· envelopment via Br B1</small>', ansS: 'Both own flanks rest on the canal; the S end on the marsh. The only way round is Br B1 in the N: possible, but it needs Apch A first.',
+      facts: [['Main · aux', 'B main · A fixes <span class="s">auxiliary manoeuvre</span>'], ['Break-in', 'Br B3 <span class="s">then inner flanks</span>'], ['Vertical', 'possible <span class="s">2 en LZs behind FDLs</span>'], ['Attack type', 'armour heavy <span class="s">open, 78 % GO</span>']],
+      tiles: [
+        tile('t3fm', 340, 'Forms of Manoeuvre · En', ['new', 'OoW II s6'], `<div class="pic">${scene({ wpx: 338, vb: [6.2, 2.6, 11.8, 9.6], layers: ['coo', 'apch', 'fman', 'units'], apch: 'arrows', side: 'en', paint: SC.paint, labels: 'auto', dim: true })}</div>`),
+        tile('t3ft', 290, 'Open-flank Test', ['new', 'new'], `<div class="fmrow"><b>N flank</b><span>canal; <span class="q">open via Br B1</span>, 2.3 km N of 1 Bn</span></div><div class="fmrow"><b>S flank</b><span class="n">closed: canal + marsh to the edge</span></div><div class="fmrow"><b>Penetration</b><span class="y">likely · most common here</span></div><div class="fmrow"><b>Envelopment</b><span class="q">N only, via Br B1 · most dangerous</span></div><div class="fmrow"><b>Double env.</b><span class="n">no: S flank closed</span></div><div class="fmrow"><b>Turning</b><span class="q">via Br B1 to MSR Br, R Sohan (8 km)</span></div><div class="fmrow"><b>Vertical</b><span class="y">possible · En LZ? 1, 2</span></div><div class="fmrow"><b>Infiltration</b><span class="q">nullah bed, 7 km: one night</span></div>`),
+        tile('t3ac', 260, 'Apchs at a Glance', ['new', 'ATP 4-8'], `<div class="apc"><div class="h">Apch B <span class="tag2 ml">most likely</span></div><div class="t">Plains corridor · carries a Bn · 2 Coy corridors</div><div class="chips"><span class="chip ok">ease of movement</span><span class="chip ok">adjacent Apch (X1)</span><span class="chip no">canalised 540 m</span><span class="chip no">1 bridge</span></div></div><div class="apc"><div class="h">Apch A <span class="tag2 md">fixes · danger via B1</span></div><div class="t">Plains corridor · carries a Bn · MSR along it</div><div class="chips"><span class="chip ok">LOC support</span><span class="chip ok">78 % GO</span><span class="chip no">64 % under fire</span><span class="chip no">Spur overlooks</span></div></div>`),
+        tile('t3at', 220, 'Attack Type & Timing · 14 Nov', ['new', 'OoW II p 22'], rows([['Dawn', 'SL at first light 06:21: whole night to form up'], ['Dusk', 'SL at last light 17:39: whole night to reorganise'], ['Night', 'moon 31 %: frontage and depth halve; FUP 1000–1200 m'], ['Type', 'armour heavy suits the open Gr; infantry leads where fields of fire < 400–500 m']], 'narrow'), 'Sun and moon for the date and place (illustrative here).'),
+      ]});
+    if (PROD.man.on) { const T = wtotals(), best = T.rt >= T.lt ? 'Right (S)' : 'Left (N)'; s += detail({
+      title: `${k('3')} again · page 3 · Own attack: Left or Right`, sel: apName, key: k('3'), page: 'page 3 of 4',
+      intro: 'When the reading is for an <b>own attack</b> (Read for: Own attack in the mode line, or an attack symbol being placed). Your doctrine: <b>frontal attack is dangerous with small chances of success; a flanking attack that chokes the en MSR is encouraged; Left or Right by weighing the factors</b>. The factors are IC s15.12\'s quick appreciation (the front "may be safely discarded"; FUP, route to FUP, fire base, time and space) plus your MSR choke. The weights are yours: + / −.',
+      tone: 'go', ansL: 'Own attack on the en at Kotli', ansV: `${best} flank <small>· ${Math.max(T.rt, T.lt)} % vs ${Math.min(T.rt, T.lt)} % · frontal ${T.fr} %</small>`, ansS: 'Right: through Br B3 and along the nullah by night, FUP S of the MSR, then north to cut the en MSR at the Bhaini junction, 2.2 km behind Kotli.',
+      facts: [['Frontal', 'discarded <span class="s">IC s15.12 · your doctrine</span>'], ['Choke en MSR', 'Bhaini jn <span class="s">2.2 km behind Kotli</span>'], ['Fire base (Rt)', '1.4 km <span class="s">70° to the axis</span>'], ['H hour', 'Rt 15:50 · Lt 16:00 <span class="s">time now 14:00</span>']],
+      tiles: [
+        tile('t3oa', 300, 'Own Attack · Lt, Rt, Frontal', ['new', 'new'], `<div class="pic">${scene({ wpx: 298, vb: [8.2, 2.6, 9.6, 9.2], layers: ['coo', 'ownatk', 'units'], paint: SC.paint, labels: 'auto', dim: true })}</div>`),
+        tile('t3wt', 420, 'Left or Right · Weighed', ['new', 'IC s15.12'], weighTable(), 'Scores 1–5 from the reading (hover for the reason); frontal shown for reference only.'),
+        tile('t3ts', 210, 'Time & Space · H Hour', ['new', 'IC s15.12 c'], rows([['Rt', 'to FUP 6.4 km, 96 min · unforeseen 10 · in FUP 2 → H 15:50'], ['Lt', 'to FUP 7.1 km, 107 min · unforeseen 10 · in FUP 2 → H 16:00'], ['Rate', 'foot 4 km/h (plains, IBB)']], 'narrow')),
+        tile('t3fo', 210, 'Forms for an Own Attack', ['new', 'OoW II s6'], `<div class="fmrow"><b>1</b><span class="y">Rt flank, choke MSR</span></div><div class="fmrow"><b>2</b><span>Lt flank via Br B1</span></div><div class="fmrow"><b>3</b><span>Turning: en MSR Br E of the area</span></div><div class="fmrow"><b>4</b><span class="q">Penetration: only with preponderance</span></div><div class="fmrow"><b>✗</b><span style="color:#ff8a8d;font-weight:600">Frontal: dangerous, small chance</span></div>`),
+      ]}); }
+    s += detail({
+      title: `${k('3')} again · page ${PROD.man.on ? 4 : 2} · Why it is coded so`, sel: apName, key: k('3'), page: `page ${PROD.man.on ? '4 of 4' : '2 of 2'}`, keyNote: 'back to page 1',
+      intro: 'The reasons behind every patch (the book\'s 8 criteria), the <b>season rules</b> from the terrain pamphlets (in the coding or as notes: your pick), weather for movement, and travel time with <b>foot rates by terrain</b>.',
+      tone: 'warn', ansL: 'Why the Gr is coded as it is', ansV: '18 % NO-GO <small>· 9 % SLOW-GO · 4 % not assessed</small>', ansS: 'Water table: not in the bundle. Season rules: none in force on plains in November.',
+      facts: [['At this Posn', 'GO <span class="s">every tested criterion</span>'], ['Directional', 'ridge flanks <span class="s">SLOW-GO going W</span>'], ['Season', 'none here <span class="s">Rann Jun–Nov · > 2500 m</span>'], ['AVLB', '18 m <span class="s">typical, confirm</span>']],
+      tiles: [
+        tile('t3lg', 390, 'Why NO-GO / SLOW-GO · 8 Criteria + Season', ['new', 'book p 9–12'], `<div class="lg">
+          <i class="ic" style="background:#b92b31"></i><span class="nm">BUAs (armour)</span><span class="vv">2 NO-GO</span><span class="sub">Kotli 1.2 km, Dhok Saidan 650 m: over 500 m</span>
+          <i class="ic" style="background:#b92b31"></i><span class="nm">Hydrology</span><span class="vv">canal, river, marsh</span><span class="sub">Canal 30 m &gt; AVLB 18 m · nullah fordable in places: SLOW-GO</span>
+          <i class="ic" style="background:#ee8a1f"></i><span class="nm">Slopes (uphill)</span><span class="vv">ridge 30–52 %</span><span class="sub">Downhill 30° or more: not classed by the book</span>
+          <i class="ic" style="background:#ee8a1f"></i><span class="nm">Relief per km</span><span class="vv">120–180 m</span><span class="sub">Hills 416 flanks, broken Gr</span>
+          <i class="ic" style="background:#7f8893"></i><span class="nm">Vegetation · water table</span><span class="vv">not assessed</span><span class="sub">Trunk / spacing not recorded · water table not in the bundle</span>
+          <i class="ic" style="background:#b92b31"></i><span class="nm">Man-made obstacles</span><span class="vv">0 on the map</span><span class="sub">Read from symbols you draw</span>
+          <i class="ic" style="background:#2fa862"></i><span class="nm">Rds &amp; Trs (armour)</span><span class="vv">GO</span><span class="sub">Open country: rule not applied</span>
+          <i class="ic" style="background:#9fc7e6"></i><span class="nm">Season (pamphlets)</span><span class="vv">none here</span><span class="sub">Rann Jun–Nov NO-GO (Desert p 4) · &gt; 2500 m blocked 6–9 months; snow slopes &gt; 35°, &gt; 25° after snow (Mountain)</span></div>`),
+        tile('t3wx', 300, 'Wx for Mnvr · Nov', ['mov', 'Annex A'], wxRows([{ m: 'Tr veh, day', e: 'view > 1.5 km', g: 78, mg: 8 }, { m: 'Tr veh, night (NVG)', e: 'view > 0.2 km', g: 92, mg: 3 }, { m: 'Dismounted', e: 'view > 0.3 km', g: 90, mg: 4 }, { m: 'Rain rate', e: '< 0.1 in/hr', met: 'Met' }, { m: 'Temp', e: '< 32 °C', g: 100, mg: 0 }]) + keyline([['#2fa862', 'GO'], ['#f1d646', 'marginal'], ['#e5484d', 'unfav.']]), 'Fog bites in November (19 % of days).'),
+        tile('t3tm', 270, 'Time Over Each Apch', ['new', 'book p 18 · IBB p 18'], rows([['Apch B', '57 km · 2 h 32 day · 2 h 59 night'], ['Apch A', '54 km · 2 h 27 day · 3 h 01 night'], ['Vehicles', 'GO 24 · SLOW-GO 16 / 8 · NO-GO 1 km/h'], ['Foot here', 'plains 4 / 3 km/h (IBB)'], ['Desert', 'firm 3 / 2.5 · loose 2.5 / 2'], ['Mountain', '3 km/h + 30–60 min per 300 m up']])),
+        tile('t3wo', 180, 'Straight Ways Out', ['kept', 'smaller'], `<svg width="170" height="160" viewBox="-100 -100 200 200">${Array.from({ length: 24 }, (_, i) => { const a = i * 15 * Math.PI / 180, c = (i >= 4 && i <= 7) ? '#ee8a1f' : (i === 18 ? '#e5484d' : '#2fa862'), r = (i >= 4 && i <= 7) ? 62 : (i === 18 ? 40 : 82); return `<path d="M0 0 L${(r * Math.sin(a - .11)).toFixed(1)} ${(-r * Math.cos(a - .11)).toFixed(1)} A${r} ${r} 0 0 1 ${(r * Math.sin(a + .11)).toFixed(1)} ${(-r * Math.cos(a + .11)).toFixed(1)} Z" fill="${c}" fill-opacity=".8"/>`; }).join('')}<circle r="86" fill="none" stroke="#5d6772"/></svg>`, 'GO 19 · SLOW-GO 4 · stopped 1.'),
+      ]});
+  }
+  s += !PROD.air.on ? off('air', `${k('4')} · Air`) : detail({
+    title: `${k('4')} · Air`, sel: 'Air', key: k('4'), page: 'page 1 of 1',
+    intro: 'Own air Apchs and LZ / DZ (IPB book p 5–6), AD sites with long-range, flank or bottom shots, and the <b>enemy\'s heliborne threat</b>: likely LZs behind our FDLs (Vol I pp 61–63: dominating Gr, defile crossings, depth localities of canal battalions, blocking reserves), with OPs over them. Mountains: helipads ≤ 4° (Mountain p 256); desert: dhars make strips (Desert p 66).',
+    tone: 'go', ansL: 'Own air Apch to LZ 1', ansV: 'Air Apch 1 <small>· river valley, 9.4 km</small>', ansS: 'Hidden from the threat for 81 % of the route; no wires crossed.',
+    facts: [['LZ 1', '2.6 km S <span class="s">310 × 210 m</span>'], ['En LZs?', '2 behind FDLs <span class="s">put OPs over them</span>'], ['Wires', 'Apch 2 crosses a power line'], ['Wx · Avn', 'GO 78 % <span class="s">of Nov days</span>']],
+    tiles: [
+      tile('t4map', 340, 'Air Apchs, LZ / DZ, AD, En LZs', ['new', 'new'], `<div class="pic">${scene({ wpx: 338, layers: ['air', 'enlz', 'units'], dim: true, labels: 'auto' })}</div>` + keyline([['#8ec1ea', 'own air Apch'], ['#ff5a60', 'en air Apch / LZ'], ['#d6c27a', 'wires, masts']])),
+      tile('t4fp', 340, 'Flight Profile · Air Apch 1', ['new', 'new'], flightProfile(), 'Flight height to be sourced (FM 3-04).'),
+      tile('t4lz', 270, 'LZ / DZ · Ranked', ['new', 'new'], rows([['LZ 1', '310 × 210 m · clear · seen 4 %'], ['LZ 2', '220 × 160 m · mast 45 m at 400 m'], ['DZ 1', '1.2 × 0.8 km · W of the river'], ['En LZ 1', 'open Gr 1.8 km behind 1 Bn: blocks reserves on the MSR'], ['En LZ 2', 'near Dhok Saidan: depth of 2 Bn']], 'narrow')),
+      tile('t4wx', 230, 'Wx for Air · Nov', ['mov', 'Annex A'], wxRows([{ m: 'Avn (rotary)', e: 'view > 1.5 km', g: 78, mg: 8 }, { m: 'Airborne', e: 'view > 5 km', g: 41, mg: 45 }, { m: 'AD', e: 'view > 5 km', g: 41, mg: 21 }, { m: 'Ceiling', e: '> 500 ft', met: 'Met' }])),
+    ]});
+  if (!PROD.dec.on) s += off('dec', `${k('5')} · Decision`); else {
+    s += detail({
+      title: `${k('5')} · Decision`, sel: 'Decision', key: k('5'),
+      intro: 'Two decision-point rules: <b>interdict</b>: decide while the en is 2 h from the TAI (IPB book p 30); <b>counter-attack</b>: launch while the depth localities still hold (Vol I p 54), so decide a counter-attack\'s move time before the en reaches them. <b>Most likely and most dangerous</b> COAs side by side; time phase lines on the map.',
+      tone: 'warn', ansL: 'Decide by', ansV: `DP 3 CATK ${hhmm(N.dpCA)} <small>· DP 1 ${hhmm(N.dpA)} · DP 2 ${hhmm(N.dpB)}</small>`, ansS: `DP 3 lies in the area (en at TPL H+2:18 on B). DPs 1 and 2 lie ${Math.round(N.kmA)}–${Math.round(N.kmB)} km out on the en side: eyes there are Div / Corps NAIs.`,
+      facts: [['TAI 2', `Br B3 <span class="s">en there ${hhmm(N.B.T)}</span>`], ['Depth', `2 Bn localities <span class="s">${hhmm(N.depth)}</span>`], ['Most dangerous', 'Env. via Br B1 <span class="s">DP 4 at NAI 2</span>'], ['Template', 'break-in phase <span class="s">page 2</span>']],
+      tiles: [
+        tile('t5tl', 566, DST_STYLE === 'ladder' ? 'Time Ladder · En Along Each Apch' : 'Strip per Apch', ['new', 'new'], (DST_STYLE === 'ladder' ? timeLadder(DST_NIGHT) : timeStrips(DST_NIGHT)) + `<div class="picks" id="dstPicks" style="margin-top:6px"><button data-v="ladder" aria-pressed="${DST_STYLE === 'ladder'}">Time ladder</button><button data-v="strips" aria-pressed="${DST_STYLE === 'strips'}">Strip per Apch</button><button data-n="0" aria-pressed="${!DST_NIGHT}">Day</button><button data-n="1" aria-pressed="${DST_NIGHT}">Night</button></div>`),
+        tile('t5map', 300, 'Decision Support · In the Area', ['new', 'new'], `<div class="pic">${scene({ wpx: 298, vb: [7.5, 3.6, 10.5, 8.2], layers: ['apch', 'dst', 'tpl', 'ca', 'units'], apch: 'arrows', side: 'en', dim: true, labels: 'auto' })}</div>`, 'Stars at the edge point to DPs beyond the area.'),
+        tile('t5dt', 330, 'Decisions', ['new', 'new'], `<table class="dt"><tr><th>DP</th><th>When · where</th><th>Decision (yours)</th></tr><tr class="coa"><td colspan="3">COA 1 · most likely · penetration on B</td></tr><tr><td class="dp">DP 3</td><td>${hhmm(N.dpCA)} · en at TPL H+2:18</td><td>Launch the CATK (Tk Sqn, 30 min)</td></tr><tr><td class="dp">DP 2</td><td>${hhmm(N.dpB)} · ${Math.round(N.kmB)} km out</td><td>Fire on TAI 2 / prepare Br B3?</td></tr><tr class="coa"><td colspan="3">COA 2 · most dangerous · envelopment via Br B1</td></tr><tr><td class="dp">DP 4</td><td>en turns N at NAI 2</td><td>Move 1 Bn's depth Coy to Br B1?</td></tr></table>`, 'A DP says where and when a decision falls due; the decision is the commander\'s.'),
+      ]});
+    s += detail({
+      title: `${k('5')} again · page 2 · Templates and events`, sel: 'Decision', key: k('5'), page: 'page 2 of 2', keyNote: 'back to page 1',
+      intro: 'The enemy template now comes from the books with its phases and timings; the situation-template check judges each template symbol on its own mover\'s Gr; the event matrix lists what each NAI shows and which COA it confirms (ATP 6-22).',
+      tone: 'slow', ansL: 'Template · Indian strike corps, break-in', ansV: '3 issues <small>· 9 symbols fit</small>', ansS: 'Lodgements off the main axis in weakly held stretches (Desert p 11); tanks built into the infantry bridgehead, not in the assault across water (Vol I p 83).',
+      facts: [['Phase', 'break-in <span class="s">one night</span>'], ['Bridgehead', '8 × 6 km <span class="s">OoW II s14</span>'], ['Proactive Ops', '8–12 IBGs <span class="s">Vol I Annex E</span>'], ['Over-reliance', 'invites deception <span class="s">IPB p 32</span>']],
+      tiles: [
+        tile('t5ph', 400, 'Template Phases', ['new', 'sourced'], phaseBar() + rows([['Library', 'Desert (SZ 24–48 h, 2 lodgements, 7–10 days) · OoW II strike corps cycle · Vol I Proactive Ops · Mountain "selective punishment" · IPB Figs 6, 7']], 'narrow')),
+        tile('t5ck', 380, 'Situation Template Check', ['new', 'new'], `<div class="issue"><span class="ii" style="background:#e5484d">!</span><div><b>Tk Sqn 2 in the marsh</b> (NO-GO, tracked)<br><span>nearest GO 600 m N, on B2</span></div></div><div class="issue"><span class="ii" style="background:#ee8a1f">!</span><div><b>Med Bty on the ridge flank</b> (slope 38 % uphill)<br><span>gun area 900 m E on level Gr</span></div></div><div class="issue"><span class="ii" style="background:#ee8a1f">!</span><div><b>Bn 2 astride the nullah</b><br><span>shift 400 m S</span></div></div><div class="issue"><span class="ii" style="background:#2fa862;color:#fff">✓</span><div><b>9 symbols fit</b> · known Posns not moved</div></div>`),
+        tile('t5em', 370, 'Event Matrix · Day', ['new', 'ATP 6-22'], `<table class="dt"><tr><th>NAI</th><th>What shows</th><th>Earliest</th><th>COA</th></tr><tr><td>1 / 4</td><td>Armour crossing the border on A / B</td><td>H+1:25 / 1:40</td><td>1 or 2</td></tr><tr><td>2</td><td>Columns turning N at the ridge gap</td><td>H+2:17</td><td>2</td></tr><tr><td>3</td><td>Bridging stores at the nullah</td><td>H+2:24</td><td>1</td></tr></table>`, 'NAIs sit where the en will be, not on a feature (ATP 1-10).'),
+      ]});
+  }
+  return s;
+}
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = tabsHtml();
+  document.querySelectorAll('[data-hide]').forEach(b => b.onclick = () => { HIDDEN.add(b.dataset.hide); renderTabs(); });
+  document.querySelectorAll('[data-show]').forEach(b => b.onclick = () => { HIDDEN.delete(b.dataset.show); renderTabs(); });
+  document.querySelectorAll('#dstPicks button').forEach(b => b.onclick = () => { if (b.dataset.v) DST_STYLE = b.dataset.v; if (b.dataset.n) DST_NIGHT = b.dataset.n === '1'; renderTabs(); });
+  document.querySelectorAll('.wbtn').forEach(b => b.onclick = () => { const r = WF[+b.dataset.w]; r.w = Math.max(0, Math.min(3, r.w + +b.dataset.d)); renderTabs(); });
+}
+function renderProducts() {
+  const el = document.getElementById('prodBar');
+  el.innerHTML = Object.entries(PROD).map(([k, p]) => `<label class="${p.on ? 'on' : 'off'}" data-p="${k}"><span class="sw"></span><span>${p.n}<br><small>${p.s}</small></span></label>`).join('');
+  el.querySelectorAll('label').forEach(l => l.onclick = () => { PROD[l.dataset.p].on = !PROD[l.dataset.p].on; renderProducts(); renderTabs(); renderLayers(); renderScene(); renderRail(); });
+}
+
+// ===== The big map + layer panel (declutter) =====
+const LAYERS = [
+  ['Ground', 'coo', 'Gr overlay (book coding)', 'apch'], ['Ground', 'marks', 'Not assessed / not classed', 'apch'],
+  ['Approaches', 'apch', 'Apchs (attack arrows)', 'apch'], ['Approaches', 'mc', 'Mob Corridors, crossover', 'apch'], ['Approaches', 'narrows', 'Narrows & crossings', 'apch'],
+  ['Manoeuvre', 'fman', 'Forms of manoeuvre (en)', 'man'], ['Manoeuvre', 'ownatk', 'Own attack: Lt / Rt / frontal', 'man'], ['Manoeuvre', 'obsfx', 'Obstacle effects', 'man'],
+  ['Fire', 'fire', 'Fire fans, dead / screened', 'fire'], ['Fire', 'ea', 'Killing areas', 'fire'],
+  ['Key Gr', 'itg', 'Key Gr candidates', null],
+  ['Air', 'air', 'Air Apchs, LZ / DZ, AD', 'air'], ['Air', 'enlz', 'En heliborne LZs', 'air'],
+  ['Decision', 'dst', 'NAI · TAI · DP', 'dec'], ['Decision', 'tpl', 'Time phase lines', 'dec'], ['Decision', 'ca', 'Counter-attack route', 'dec'],
+  ['Own', 'units', 'Own Posns', null],
+];
+const PRESETS = { Minimal: ['apch', 'narrows', 'units'], Approaches: ['coo', 'marks', 'mc', 'apch', 'narrows', 'units'], Manoeuvre: ['coo', 'apch', 'fman', 'obsfx', 'units'], 'Own attack': ['coo', 'ownatk', 'itg', 'units'], Defence: ['apch', 'fire', 'ea', 'itg', 'obsfx', 'ca', 'units'], Decision: ['apch', 'dst', 'tpl', 'ca', 'units'], Air: ['air', 'enlz', 'units'], All: LAYERS.map(l => l[1]) };
+const SC = { layers: PRESETS.Minimal.slice(), preset: 'Minimal', apch: 'arrows', paint: 'hatch', side: 'en', labels: 'auto', focus: '' };
+const layerOn = (k) => { const l = LAYERS.find(x => x[1] === k); return !l || !l[3] || PROD[l[3]].on; };
+function renderLayers() {
+  const seg = (key, opts) => `<div class="seg" data-seg="${key}">${opts.map(([v, t]) => `<button data-v="${v}" aria-pressed="${SC[key] === v}">${t}</button>`).join('')}</div>`;
+  let s = `<h4>PRESETS</h4><div class="seg" id="presetSeg">${Object.keys(PRESETS).map(p => `<button data-p="${p}" aria-pressed="${SC.preset === p}">${p}</button>`).join('')}</div>`, g = '';
+  LAYERS.forEach(([grp, k, n]) => { if (grp !== g) { s += `<div class="grp">${grp}</div>`; g = grp; } const dis = !layerOn(k); s += `<div class="lr ${SC.layers.includes(k) && !dis ? 'on' : 'off'} ${dis ? 'dis' : ''}" data-k="${k}" title="${dis ? 'Product switched off' : ''}"><span class="ln">${n}</span><span class="sw"></span></div>`; });
+  s += `<h4>LABELS</h4>${seg('labels', [['auto', 'Auto'], ['all', 'All'], ['off', 'Off']])}<h4>FOCUS</h4>${seg('focus', [['', 'None'], ['A', 'Apch A'], ['B', 'Apch B']])}`;
+  s += `<h4>APCHS SHOWN</h4>${seg('side', [['en', 'En'], ['own', 'Own'], ['both', 'Both']])}<h4>APCH STYLE</h4>${seg('apch', [['arrows', 'Arrows'], ['lanes', 'Lanes'], ['both', 'Both']])}<h4>OVERLAY PAINT</h4>${seg('paint', [['hatch', 'Hatch'], ['soft', 'Soft'], ['atp', 'ATP green']])}`;
+  const el = document.getElementById('layerPanel'); el.innerHTML = s;
+  el.querySelectorAll('#presetSeg button').forEach(b => b.onclick = () => { SC.preset = b.dataset.p; SC.layers = PRESETS[b.dataset.p].slice(); renderLayers(); renderScene(); });
+  el.querySelectorAll('.lr').forEach(r => r.onclick = () => { if (r.classList.contains('dis')) return; const kk = r.dataset.k; SC.layers = SC.layers.includes(kk) ? SC.layers.filter(x => x !== kk) : SC.layers.concat(kk); SC.preset = ''; renderLayers(); renderScene(); });
+  el.querySelectorAll('[data-seg]').forEach(sg => sg.querySelectorAll('button').forEach(b => b.onclick = () => { SC[sg.dataset.seg] = b.dataset.v; renderLayers(); renderScene(); if (sg.dataset.seg === 'paint') renderTabs(); }));
+}
+function renderScene() {
+  const el = document.getElementById('scene'), w = Math.max(600, Math.min(1010, el.clientWidth || 1010));
+  el.innerHTML = scene({ wpx: w, layers: SC.layers.filter(layerOn), apch: SC.apch, paint: SC.paint, side: SC.side, labels: SC.labels, focus: SC.focus });
+  const svg = el.querySelector('svg'); svg.setAttribute('width', '100%'); svg.removeAttribute('height');
+  const all = [['background:repeating-linear-gradient(45deg,#ff8a8d 0 1.5px,rgba(185,43,49,.35) 1.5px 6px)', 'NO-GO', 'coo'], ['background:repeating-linear-gradient(45deg,#ffb46b 0 1.5px,rgba(238,138,31,.15) 1.5px 6px)', 'SLOW-GO', 'coo'], ['background:radial-gradient(#c3cbd3 1px,transparent 1.3px) 0 0/5px 5px;border:1px dashed #c3cbd3', 'not assessed', 'marks'],
+    ['background:rgba(255,90,96,.35);border:1px solid #ff5a60', 'En Apch (main: solid + inner line · sp attk: dashed)', 'apch'], ['background:rgba(255,255,255,.18);border:1px dashed #e9edf1', 'Mob Corridor', 'mc'], ['background:#ffb02e;transform:rotate(45deg);width:10px;height:10px', 'narrows / crossing', 'narrows'],
+    ['border-top:2.5px solid #ff5a60', 'Penetrate (P) · inner flanks', 'fman'], ['border:1.5px dashed #ffb46b', 'most dangerous envelopment', 'fman'], ['border-top:2.5px solid #8ec1ea', 'Block · Fix · Turn', 'obsfx'], ['background:rgba(142,193,234,.3);border:1.5px solid #8ec1ea', 'own attack (main: Rt) · FUP · FB', 'ownatk'], ['border:2px solid #ffd27a;border-radius:50%', 'choke en MSR', 'ownatk'],
+    ['background:rgba(255,210,63,.15);border:1px solid #ffd23f', 'fire fan', 'fire'], ['background:rgba(142,193,234,.18);border:1.5px solid #8ec1ea', 'killing area (EA)', 'ea'], ['background:#b892ff;transform:rotate(45deg);width:10px;height:10px', 'Key Gr', 'itg'],
+    ['background:#8ec1ea', 'own air Apch', 'air'], ['border:1.5px dashed #ff8a8d', 'En LZ?', 'enlz'], ['border:1.5px dashed #e8ebee;border-radius:50%', 'NAI', 'dst'], ['border:1.8px solid #ffd27a', 'TAI', 'dst'], ['border-top:2px dashed #e8ebee', 'time phase line', 'tpl'], ['border:1.5px dashed #8ec1ea', 'CATK route', 'ca']];
+  document.getElementById('sceneLegend').innerHTML = all.filter(l => SC.layers.includes(l[2]) && layerOn(l[2])).map(l => `<span><i style="${l[0]}"></i>${l[1]}</span>`).join('') + '<span><i style="background:#3a1416;border:1.5px solid #ff6b6f;border-radius:6px"></i>threat marker (placed)</span>';
+}
+
+// ===== The rail =====
+const RL = { 1: false, 2: false, 3: true, M: false, 4: false, 5: true };
+let RLAB = 'auto', RFOC = '';
+function renderRail() {
+  const layers = ['units', 'apch', 'narrows'];
+  if (RL[1] && PROD.fire.on) layers.push('fire', 'ea'); if (RL[2]) layers.push('itg'); if (RL[3] && PROD.apch.on) layers.push('coo', 'mc'); if (RL.M && PROD.man.on) layers.push('fman', 'obsfx'); if (RL[4] && PROD.air.on) layers.push('air', 'enlz'); if (RL[5] && PROD.dec.on) layers.push('dst', 'tpl', 'ca');
+  const rr = (k, n, sub, p) => { const dis = p && !PROD[p].on; return `<div class="rr ${RL[k] && !dis ? 'on' : 'off'}" data-k="${k}" style="${dis ? 'opacity:.4' : ''}"><span class="kv">${k}</span><span class="ln">${n} <small>${dis ? 'switched off' : sub}</small></span><span class="sw"></span></div>`; };
+  document.getElementById('rail').innerHTML = `
+    <div class="rail-bar"><div class="t">✓ Suitable Posn</div><div class="s">Bde HQ · GO · open fields, firm</div></div>
+    <div class="rail-l"><span class="x">Ext View</span> · Threat <b>placed</b>, E 090° · arc 90° · Bde HQ: Bn Apchs</div>
+    <div class="rail-a"><div class="big">En likely: penetration on B · A fixes</div><div class="sm">Decide: <b style="color:var(--warn)">DP 3 CATK H+2:17</b> · most dangerous: envelopment via Br B1</div></div>
+    <div class="rail-map"><div class="pic">${scene({ wpx: 378, layers, apch: 'arrows', side: 'en', paint: 'hatch', dim: true, labels: RLAB, focus: RFOC })}</div></div>
+    <div class="rail-leg">${rr(1, 'Fire & killing areas', 'EA 1, EA 2', 'fire')}${rr(2, 'Key Gr', 'Br B3 decisive?', null)}${rr(3, 'Gr overlay & corridors', 'A, B · C1 lone', 'apch')}${rr('M', 'Manoeuvre', 'penetration · env. via B1', 'man')}${rr(4, 'Air', 'LZ 1 · 2 en LZs', 'air')}${rr(5, 'NAI · TAI · DP', 'DP 3 H+2:17', 'dec')}</div>
+    <div class="rail-tools"><div class="seg" id="rlab"><button data-v="auto" aria-pressed="${RLAB === 'auto'}">Labels Auto</button><button data-v="all" aria-pressed="${RLAB === 'all'}">All</button><button data-v="off" aria-pressed="${RLAB === 'off'}">Off</button></div><div class="seg" id="rfoc"><button data-v="" aria-pressed="${RFOC === ''}">Focus —</button><button data-v="A" aria-pressed="${RFOC === 'A'}">A</button><button data-v="B" aria-pressed="${RFOC === 'B'}">B</button></div></div>
+    <div class="rail-foot"><span><span class="kk">V</span>close</span><span><span class="kk lit">F</span>Close Ext</span><span><span class="kk">1–5</span>open tab</span><span><span class="kk">J</span>Better</span></div>`;
+  document.querySelectorAll('#rail .rr').forEach(e => e.onclick = () => { RL[e.dataset.k] = !RL[e.dataset.k]; renderRail(); });
+  document.querySelectorAll('#rlab button').forEach(b => b.onclick = () => { RLAB = b.dataset.v; renderRail(); });
+  document.querySelectorAll('#rfoc button').forEach(b => b.onclick = () => { RFOC = b.dataset.v; renderRail(); });
+}
+document.querySelectorAll('#pickLayout button').forEach(b => b.onclick = () => { document.querySelectorAll('#pickLayout button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); LAYOUT = b.dataset.v; renderTabs(); });
+buildRelief().then(() => { renderProducts(); renderTabs(); renderLayers(); renderScene(); renderRail(); });
+window.addEventListener('resize', () => { clearTimeout(window.__rs); window.__rs = setTimeout(renderScene, 150); });
+</script>
+</body>
+</html>

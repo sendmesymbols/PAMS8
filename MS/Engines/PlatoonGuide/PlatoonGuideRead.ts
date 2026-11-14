@@ -160,7 +160,19 @@ export interface PlPeopleIn {
   perKm2At: number | null;
   rings: Array<{ km: number; people: number }>;
   ages: { males15_49: number; under15: number; over65: number } | null;
+  /** People within 2 km by direction, N NE E SE S SW W NW. */
+  sectors?: number[] | null;
+  /** People per km² on a square grid centred on the point's cell (north row first; -1 = no data). */
+  grid?: PlPeopleGrid | null;
+  /** People per km² by distance band out to 10 km. */
+  bands?: Array<{ fromKm: number; toKm: number; perKm2: number }> | null;
   pending?: boolean;
+}
+
+export interface PlPeopleGrid {
+  size: number;
+  cellKm: number;
+  perKm2: number[];
 }
 
 export interface PlContext {
@@ -240,6 +252,10 @@ export interface PlPeople {
   huts: { perKm2: number; temporary: boolean } | null;
   sensitive: { counts: Array<{ label: string; n: number }>; nearest: PlSpot[] };
   crowd: PlSpot[];
+  /** People within 2 km by direction (N first), when the population grid is loaded. */
+  sectors: number[] | null;
+  grid: PlPeopleGrid | null;
+  bands: Array<{ fromKm: number; toKm: number; perKm2: number }> | null;
 }
 
 export interface PlHelp {
@@ -249,6 +265,25 @@ export interface PlHelp {
   radioShadow: boolean;
 }
 
+/** A patrol base site that passed every test, with its facts as numbers (for the Stop tab's pictures). */
+export interface PlStopSite {
+  x: number;
+  y: number;
+  distM: number;
+  bearingDeg: number;
+  dir: string;
+  score: number;
+  /** Concealment and cover, 0 none .. 3 good. */
+  conceal: number;
+  cover: number;
+  /** Ways out on foot, of eight, and which (N first). */
+  ways: number;
+  waysDirs: boolean[];
+  waterM: number;
+  /** The nearest BUA within reach (null: none within the BUA test's distance and the bubble). */
+  buaM: number | null;
+}
+
 export interface PlStop {
   harbour: PlSpot | null;
   /** Why the harbour site is the best one found, and what it could not check. */
@@ -256,6 +291,22 @@ export interface PlStop {
   op: PlSpot | null;
   /** Why the OP site was chosen, or why none was. */
   opWhy: string;
+  /** The tests every site went through, in order, each with the sites it ruled out (a site counts once: the first test
+   *  it failed). */
+  tests: Array<{ key: string; label: string; out: number }>;
+  /** Sites read on the grid, and how many passed every test. */
+  checked: number;
+  passed: number;
+  /** The grid read: each site as [metres east, metres north of the point, index of the first test failed or -1 passed]. */
+  grid: { stepM: number; cells: Array<[number, number, number]> };
+  /** The best sites at least 250 m apart, best first (the first is the harbour). */
+  sites: PlStopSite[];
+  /** The OP: the share of the ground it sees in each of 24 directions (15° apart, N first) out to 1 km. */
+  opView: number[] | null;
+  /** The OP's height above the bubble's mean height, m; with no OP, the highest ground's. */
+  opRiseM: number | null;
+  /** The rule figures the tests used (PlatoonDoctrine.json stop). */
+  rules: { villageM: number; roadM: number; waterKm: number; opRiseM: number };
 }
 
 export interface PlReading {
@@ -843,6 +894,9 @@ function readPeople(probe: PlProbe, R: Rules, ctx: PlContext, radiusM: number): 
       nearest: sens.slice(0, P.listMax).map((f) => spotOf(at, f)),
     },
     crowd,
+    sectors: pin?.sectors && pin.sectors.length === 8 ? pin.sectors : null,
+    grid: pin?.grid ?? null,
+    bands: pin?.bands ?? null,
   };
 }
 
@@ -898,57 +952,87 @@ function readRelay(probe: PlProbe, R: Rules, ctx: PlContext): { relay: PlSpot | 
 
 // ── 6 stop ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+/** A distance in rule words (300 m, 1 km). */
+const mWord = (m: number): string => (m >= 1000 ? `${+(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`);
+
 function readStop(probe: PlProbe, R: Rules, ctx: PlContext, radiusM: number): PlStop {
   const S = R.stop;
   const at = ctx.at;
   const s = plScale(at[1]);
-  const step = S.gridM;
+  // The grid spacing: the rule's 100 m, opened out when the bubble holds more sites than the cap, so the whole bubble is
+  // read (a company's 2 km bubble at 100 m is ~1,250 sites; scanning row by row to the cap left its north half unread).
+  const step = Math.max(S.gridM, Math.ceil((radiusM * Math.sqrt(Math.PI / Math.max(50, S.maxCandidates))) / 10) * 10);
   const monsoon = (R.danger.monsoonMonths as number[]).includes(ctx.month);
   const W = R.water;
   const waters = probe.features(at[0], at[1], radiusM + S.waterKm * 1000, new Set<string>([...W.perennial, ...W.powered, ...W.seasonal]));
   const villages = probe.features(at[0], at[1], radiusM + S.villageM, new Set<string>(R.people.buaKinds));
   const roadCls = new Set<number>(R.patrol.roadClasses);
-  let best: { p: MercXY; score: number; why: string[] } | null = null;
+  // The tests in the order they run; a site is ruled out by the first it fails.
+  const tests: Array<{ key: string; label: string; out: number }> = [
+    { key: 'nogo', label: 'NO-GO Gr', out: 0 },
+    { key: 'road', label: 'on a Rd / Tr', out: 0 },
+    { key: 'bua', label: 'in a BUA', out: 0 },
+    { key: 'conceal', label: 'concealment below fair', out: 0 },
+    { key: 'flood', label: 'flood Gr', out: 0 },
+    { key: 'crest', label: 'on a crest', out: 0 },
+    { key: 'nearBua', label: `BUA within ${mWord(S.villageM)}`, out: 0 },
+    { key: 'nearRd', label: `Rd / Tr within ${mWord(S.roadM)}`, out: 0 },
+    { key: 'ways', label: 'one way out', out: 0 },
+    { key: 'water', label: `no water within ${S.waterKm} km`, out: 0 },
+  ];
+  const T = Object.fromEntries(tests.map((t, i) => [t.key, i])) as Record<string, number>;
+  const cells: Array<[number, number, number]> = [];
+  const passed: PlStopSite[] = [];
   let n = 0;
-  // Why sites failed, so "none found" can say which test ruled the ground out.
-  const fails: Record<string, number> = {};
-  const fail = (k: string) => {
-    fails[k] = (fails[k] ?? 0) + 1;
-  };
   const half = Math.floor(radiusM / step);
   for (let iy = -half; iy <= half && n < S.maxCandidates; iy++) {
     for (let ix = -half; ix <= half && n < S.maxCandidates; ix++) {
-      const p: MercXY = [at[0] + (ix * step) / s, at[1] + (iy * step) / s];
+      const dx = ix * step, dy = iy * step;
+      const p: MercXY = [at[0] + dx / s, at[1] + dy / s];
       if (plDist(at, p) > radiusM) continue;
       n++;
+      const fail = (k: string): void => {
+        tests[T[k]].out++;
+        cells.push([dx, dy, T[k]]);
+      };
       const c = probe.cls(p[0], p[1]);
-      if (c === null || ctx.foot.nogo.has(c) || roadCls.has(c) || c === 3) {
-        fail('NO-GO, Rd or BUA');
+      if (c === null || ctx.foot.nogo.has(c)) {
+        fail('nogo');
+        continue;
+      }
+      if (roadCls.has(c)) {
+        fail('road');
+        continue;
+      }
+      if (c === 3) {
+        fail('bua');
         continue;
       }
       const cc = probe.raster('cc', p[0], p[1]);
       if (cc === null || cc >> 4 < S.minConcealment) {
-        fail('concealment below fair');
+        fail('conceal');
         continue;
       }
       const wet = probe.raster('wet', p[0], p[1]);
       if ((wet !== null && wet > 0 && (monsoon || wet >= 3)) || (monsoon && (c === 17 || c === 47))) {
-        fail('flood Gr');
+        fail('flood');
         continue;
       }
       if (probe.raster('landform', p[0], p[1]) === 6) {
-        fail('on a crest');
+        fail('crest');
         continue;
       }
-      if (villages.some((v) => plDist(p, [v.x, v.y]) < S.villageM)) {
-        fail(`BUA within ${S.villageM} m`);
+      let buaM = Infinity;
+      for (const v of villages) buaM = Math.min(buaM, plDist(p, [v.x, v.y]));
+      if (buaM < S.villageM) {
+        fail('nearBua');
         continue;
       }
       if (probe.roads(p[0], p[1], S.roadM).length) {
-        fail(`Rd within ${S.roadM} m`);
+        fail('nearRd');
         continue;
       }
-      let ways = 0;
+      const waysDirs: boolean[] = [];
       for (let k = 0; k < 8; k++) {
         let ok = true;
         for (let r = 50; r <= 150; r += 50) {
@@ -959,31 +1043,43 @@ function readStop(probe: PlProbe, R: Rules, ctx: PlContext, radiusM: number): Pl
             break;
           }
         }
-        if (ok) ways++;
+        waysDirs.push(ok);
       }
+      const ways = waysDirs.filter(Boolean).length;
       if (ways < S.waysOutMin) {
-        fail('one way out');
+        fail('ways');
         continue;
       }
       let wd = Infinity;
       for (const w of waters) wd = Math.min(wd, plDist(p, [w.x, w.y]));
       if (wd > S.waterKm * 1000) {
-        fail(`no water within ${S.waterKm} km`);
+        fail('water');
         continue;
       }
+      cells.push([dx, dy, -1]);
       const score = (cc >> 4) * 20 + (cc & 15) * 10 + Math.min(ways, 4) * 5 - wd / 200 - plDist(at, p) / 200;
-      if (!best || score > best.score) {
-        const why = [
-          `${['no', 'poor', 'fair', 'good'][cc >> 4]} concealment, ${['no', 'poor', 'fair', 'good'][cc & 15]} cover`,
-          `${ways} ways out on foot`,
-          `water ${Math.round(wd)} m`,
-          `no BUA within ${S.villageM} m, no Rd / Tr within ${S.roadM} m`,
-        ];
-        best = { p, score, why };
-      }
+      const b = plBearing(at, p);
+      passed.push({ x: p[0], y: p[1], distM: plDist(at, p), bearingDeg: b, dir: plCompass(b), score, conceal: cc >> 4, cover: cc & 15, ways, waysDirs, waterM: wd, buaM: Number.isFinite(buaM) ? buaM : null });
     }
   }
-  const harbour = best ? spotAt(at, best.p[0], best.p[1], 'harbour', 'Patrol base / harbour', null, { score: best.score, why: best.why.join('; ') }) : null;
+  passed.sort((a, b) => b.score - a.score);
+  // The best sites, each at least 250 m from a better one (alternatives a commander can walk to, not the same field).
+  const sites: PlStopSite[] = [];
+  for (const q of passed) {
+    if (sites.length >= 4) break;
+    if (sites.every((o) => plDist([o.x, o.y], [q.x, q.y]) >= 250)) sites.push(q);
+  }
+  const best = sites[0] ?? null;
+  const LV = ['no', 'poor', 'fair', 'good'];
+  const bestWhy = best
+    ? [
+        `${LV[best.conceal]} concealment, ${LV[best.cover]} cover`,
+        `${best.ways} ways out on foot`,
+        `water ${Math.round(best.waterM)} m`,
+        `no BUA within ${S.villageM} m, no Rd / Tr within ${S.roadM} m`,
+      ]
+    : [];
+  const harbour = best ? spotAt(at, best.x, best.y, 'harbour', 'Patrol base / harbour', null, { score: best.score, why: bestWhy.join('; ') }) : null;
 
   // OP: the highest ground in reach with the widest view.
   const tops: Array<{ p: MercXY; e: number }> = [];
@@ -1011,35 +1107,53 @@ function readStop(probe: PlProbe, R: Rules, ctx: PlContext, radiusM: number): Pl
   }
   let op: PlSpot | null = null;
   let opScore = -Infinity;
+  let opView: number[] | null = null;
+  let opRiseM: number | null = null;
   for (const t of picks) {
     let seen = 0, all = 0;
+    const view: number[] = [];
     for (let i = 0; i < 24; i++) {
+      let ds = 0, da = 0;
       for (let r = 100; r <= 1000; r += 150) {
         const q = plOffset(t.p, i * 15, r);
         const v = probe.sight(t.p[0], t.p[1], 1.6, q[0], q[1], R.bubble.manM);
         if (v === null) continue;
-        all++;
-        if (v >= R.bubble.seenP) seen++;
+        da++;
+        if (v >= R.bubble.seenP) ds++;
       }
+      all += da;
+      seen += ds;
+      view.push(da ? ds / da : 0);
     }
     const pctSeen = all ? Math.round((100 * seen) / all) : 0;
     const score = pctSeen + 0.5 * (t.e - mean);
     if (score > opScore) {
       opScore = score;
       const up = Math.round(t.e - mean);
+      opView = view;
+      opRiseM = up;
       op = spotAt(at, t.p[0], t.p[1], 'op', 'OP site', null, { why: `sees about ${pctSeen}% of the ground within 1 km${up > 0 ? `, ${up} m above the Gr round it` : ''}`, score: pctSeen });
     }
   }
   return {
     harbour,
     harbourWhy: best
-      ? [...best.why, 'not overlooked: check on the ground']
+      ? [...bestWhy, 'not overlooked: check on the ground']
       : [
           'No site in the bubble meets every test: widen the search or relax a test on the ground',
-          `Ruled out most by: ${Object.entries(fails).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} (${Math.round((100 * v) / Math.max(1, n))}%)`).join(', ') || 'no data'}`,
+          `Ruled out most by: ${[...tests].filter((t) => t.out > 0).sort((a, b) => b.out - a.out).slice(0, 3).map((t) => `${t.label} (${Math.round((100 * t.out) / Math.max(1, n))}%)`).join(', ') || 'no data'}`,
         ],
     op,
     opWhy: op ? op.why ?? '' : `No Gr ${S.opRiseM ?? 5} m above the rest within ${Math.round(opR)} m: an OP here needs a tower, a roof or a tree`,
+    tests,
+    checked: n,
+    passed: passed.length,
+    grid: { stepM: step, cells },
+    sites,
+    opView,
+    // With no OP: how far the highest ground stands above the rest (short of the rise an OP needs).
+    opRiseM: op ? opRiseM : tops.length ? Math.round(tops[0].e - mean) : null,
+    rules: { villageM: S.villageM, roadM: S.roadM, waterKm: S.waterKm, opRiseM: S.opRiseM ?? 5 },
   };
 }
 

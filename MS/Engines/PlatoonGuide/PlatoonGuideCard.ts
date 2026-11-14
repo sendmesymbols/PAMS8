@@ -335,7 +335,7 @@ export class PlatoonGuideCard {
     const e = this._el;
     if (!e) return;
     const vw = window.innerWidth, vh = window.innerHeight;
-    const detail = document.querySelector<HTMLElement>('.ms-pld.ms-open');
+    const detail = document.querySelector<HTMLElement>('.ms-pld.ms-open, .ms-pld.ms-bar');
     const bottom = detail ? Math.max(EDGE, vh - detail.offsetHeight - 10 - EDGE) : vh - EDGE;
     // No room above the open Pl Detail: the card steps aside (the Detail is reading the same point and says it all).
     if (detail && bottom - EDGE < this._h) {

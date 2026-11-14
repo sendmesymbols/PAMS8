@@ -14,7 +14,10 @@
  * With the map overlay on it also paints the Extended View's overlay (`extended.overlay`), which stays whether or not
  * a symbol is being placed: all the ground the threat may see from its place (violet), or all the ground that may be seen from the
  * position (light blue).
- * No text is drawn on the map (the cards name everything). Like GroundGuideIndicators, the graphics are made once on one
+ * Every line, area and ring carries a small label (user, 2026-11-14: "label every line and circle on map with little
+ * label"; `extended.ipb.labels` off hides them): Fd of fire and its range, Dead Gr, Screened, the threat's view, each line
+ * of sight (ITG n in view / may be seen / no LOS), the threat's line to the position, the approaches with their GO share,
+ * each chokepoint's width, the better position and how far, the overlay's share seen. Like GroundGuideIndicators, the graphics are made once on one
  * ground-draped layer and only have their geometry swapped, and markers are PictureMarkerSymbols on Point graphics so
  * they also show in a SceneView.
  */
@@ -29,6 +32,7 @@ import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import Utils from '../../Support/utils';
+import { along, declutter, dist, mapRes, pill } from './GroundGuideIpbApchMap';
 import type { MercXY, OcokaMapOverlay, OcokaMapPlan, OcokaMapSight } from './GroundGuideTypes';
 
 const LAYER_ID = 'ms-ground-guide-ocoka';
@@ -49,7 +53,33 @@ export interface OcokaMapShow {
   sight: boolean;
   avenues: boolean;
   better: boolean;
+  /** A small label on every line, area and ring. */
+  labels?: boolean;
 }
+/** A label to place: where, what, its colour, px up. */
+interface MapLabel {
+  at: MercXY;
+  text: string;
+  col: RGB;
+  yoffset: number;
+  /** Rank for the declutter, 0 first. */
+  prio: number;
+}
+/** The area of a ring (Web Mercator square metres), for picking the largest patch to label. */
+function ringArea(r: MercXY[]): number {
+  let a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]);
+  return Math.abs(a / 2);
+}
+/** The middle of a ring (the mean of its corners: the slices drawn are small and convex). */
+function ringMid(r: MercXY[]): MercXY {
+  let x = 0, y = 0;
+  const n = Math.max(1, r.length - 1);
+  for (let i = 0; i < n; i++) ((x += r[i][0]), (y += r[i][1]));
+  return [x / n, y / n];
+}
+/** The largest of a set of rings, or null. */
+const largest = (list: MercXY[][] | null | undefined): MercXY[] | null => (list && list.length ? list.reduce((a, b) => (ringArea(b) > ringArea(a) ? b : a)) : null);
 
 type Convert = (p: MercXY) => [number, number] | null;
 const svg = (body: string, size = 22): string => Utils.svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 22 22">${body}</svg>`);
@@ -70,8 +100,10 @@ export class GroundGuideOcokaMap {
   private _layer: GraphicsLayer | null = null;
   private _map: any = null;
   private _g: Record<string, Graphic> = {};
-  private _pools: Record<string, Graphic[]> = { cross: [], choke: [], end: [] };
+  private _pools: Record<string, Graphic[]> = { cross: [], choke: [], end: [], label: [] };
   private _syms: Record<string, PictureMarkerSymbol> = {};
+  /** Label symbols by text and colour (the texts repeat as the cursor moves). */
+  private _labelSyms = new Map<string, { sym: PictureMarkerSymbol; w: number; h: number }>();
   private _shown = false;
   /** The overlay's own graphics, apart from the placing products: `hide()` leaves them. */
   private _ov: Record<string, Graphic> = {};
@@ -171,6 +203,30 @@ export class GroundGuideOcokaMap {
     const bc = better ? conv(better.at) : null;
     bm.geometry = bc ? new Point({ x: bc[0], y: bc[1], spatialReference: sr }) : null;
     bm.visible = !!bc;
+
+    // Labels: what each line, area and ring is, with its key figure.
+    const L: MapLabel[] = [];
+    if (on.labels !== false) {
+      if (fan && fan.outline.length > 2) L.push({ at: fan.outline[Math.floor(fan.outline.length / 2)], text: `Fd of fire ${dist(fan.rangeM)}`, col: THREAT, yoffset: 10, prio: 1 });
+      const d = largest(fan?.dead);
+      if (d) L.push({ at: ringMid(d), text: 'Dead Gr', col: DEAD, yoffset: 0, prio: 3 });
+      const sc = largest(fan?.screened);
+      if (sc) L.push({ at: ringMid(sc), text: 'Screened', col: SCREENED, yoffset: 0, prio: 3 });
+      if (wedge && wedge.outline.length > 2) L.push({ at: wedge.outline[Math.floor(wedge.outline.length / 2)], text: `Threat's view · ${Math.round(wedge.coveredPct)} % seen`, col: ENEMY, yoffset: 10, prio: 2 });
+      if (on.sight) {
+        (sight?.lines ?? []).forEach((l, i) => {
+          const word = l.p >= 0.5 ? 'in view' : l.p >= 0.2 ? 'may be seen' : 'no LOS';
+          L.push({ at: along([from, l.to], 0.55), text: `LOS ITG ${l.n ?? i + 1}: ${word}`, col: l.p >= 0.5 ? SEEN : l.p >= 0.2 ? SCREENED : DEAD, yoffset: 0, prio: 2 });
+        });
+      }
+      if (enemy) L.push({ at: along([enemy.at, from], 0.5), text: `Threat ${enemy.seesP >= 0.5 ? 'may see you' : 'no LOS to you'} · ${dist(enemy.distM)}`, col: ENEMY, yoffset: 0, prio: 1 });
+      avs.forEach((a, i) => {
+        if (a.path.length >= 2) L.push({ at: along(a.path, 0.4), text: `Apch ${i + 1} · ${Math.round(a.goPct)} % GO`, col: AVENUE, yoffset: 0, prio: 1 });
+        for (const c of a.chokes) L.push({ at: c.at, text: `Choke ${Math.round(c.widthM)} m`, col: SCREENED, yoffset: 13, prio: 3 });
+      });
+      if (better) L.push({ at: better.at, text: `Better Posn ${dist(better.distanceM)} (J)`, col: BETTER, yoffset: 15, prio: 0 });
+    }
+    this._placeLabels(L, sr, conv, mapRes(view, from));
     this._shown = true;
   }
 
@@ -200,9 +256,24 @@ export class GroundGuideOcokaMap {
     set(mine[0], o.seen);
     set(mine[1], [o.outline]);
     this._ovKind = o.kind;
+    const lg = this._ov.ovLabel;
+    const top = o.outline.length ? o.outline.reduce((a, b) => (b[1] > a[1] ? b : a)) : null;
+    const tc = top ? conv(top) : null;
+    if (lg && tc && this._ovLabels) {
+      lg.symbol = this._labelSym(`${o.kind === 'threat' ? "Threat's view all round" : 'View from the Posn'} · ${Math.round(o.seenPct)} % seen`, o.kind === 'threat' ? ENEMY : VIEW, 10).sym;
+      lg.geometry = new Point({ x: tc[0], y: tc[1], spatialReference: sr });
+      lg.visible = true;
+    } else if (lg) lg.visible = false;
     if (o.kind === 'threat') {
       for (const k of ['enemyArea', 'enemySeen']) if (this._g[k]?.visible) this._g[k].visible = false;
     }
+  }
+
+  /** Labels on the overlay (the placing products take theirs from `show`). */
+  private _ovLabels = true;
+  setOverlayLabels(on: boolean): void {
+    this._ovLabels = on;
+    if (!on && this._ov.ovLabel) this._ov.ovLabel.visible = false;
   }
 
   hide(): void {
@@ -224,7 +295,8 @@ export class GroundGuideOcokaMap {
     this._g = {};
     this._ov = {};
     this._ovKind = null;
-    this._pools = { cross: [], choke: [], end: [] };
+    this._pools = { cross: [], choke: [], end: [], label: [] };
+    this._labelSyms.clear();
     this._shown = false;
   }
 
@@ -273,6 +345,7 @@ export class GroundGuideOcokaMap {
         ov('viewArea', fill(VIEW, 0, [VIEW, 0.85, 1.2, 'dash'])),
         ov('threatSeen', fill(ENEMY, 0.32, null)),
         ov('threatArea', fill(ENEMY, 0, [ENEMY, 0.85, 1.2, 'dash'])),
+        ov('ovLabel', new PictureMarkerSymbol({ url: betterUrl(), width: 1, height: 1 })),
         make('enemySeen', fill(ENEMY, 0.26, null)),
         make('enemyArea', fill(ENEMY, 0, [ENEMY, 0.9, 1.4, 'dash'])),
         make('fan', fill(SEEN, 0.1, [THREAT, 0.95, 1.6])),
@@ -306,6 +379,44 @@ export class GroundGuideOcokaMap {
       }
     }
     this._map = null;
+  }
+
+  /** A label's symbol, made once per text and colour (a bounded cache). */
+  private _labelSym(text: string, col: RGB, yoffset: number): { sym: PictureMarkerSymbol; w: number; h: number } {
+    const key = `${text}|${col.join(',')}|${yoffset}`;
+    let hit = this._labelSyms.get(key);
+    if (!hit) {
+      if (this._labelSyms.size > 400) this._labelSyms.clear();
+      const p = pill(text, col, '#14181d', true);
+      hit = { sym: new PictureMarkerSymbol({ url: p.url, width: p.w * 0.75, height: p.h * 0.75, yoffset }), w: p.w, h: p.h };
+      this._labelSyms.set(key, hit);
+    }
+    return hit;
+  }
+
+  /** Put the labels that fit at this zoom (most important first) on pooled Point graphics and hide the rest of the pool. */
+  private _placeLabels(list: MapLabel[], sr: any, conv: Convert, res: number): void {
+    const pool = this._pools.label;
+    const sized = list.map((l) => {
+      const s = this._labelSym(l.text, l.col, l.yoffset);
+      return { ...l, w: s.w, h: s.h, yoffset: (l.yoffset * 4) / 3, pt: l.yoffset };
+    });
+    const fit = declutter(sized, res).map((l) => ({ ...l, yoffset: l.pt }));
+    const items = fit.map((l) => ({ l, c: conv(l.at) })).filter((x): x is { l: (typeof fit)[number]; c: [number, number] } => x.c !== null);
+    for (let i = pool.length; i < items.length; i++) {
+      const g = new Graphic({ symbol: this._labelSym(items[i].l.text, items[i].l.col, items[i].l.yoffset).sym, visible: false });
+      this._layer!.graphics.add(g);
+      pool.push(g);
+    }
+    for (let i = 0; i < pool.length; i++) {
+      const g = pool[i];
+      if (i < items.length) {
+        const { l, c } = items[i];
+        g.symbol = this._labelSym(l.text, l.col, l.yoffset).sym;
+        g.geometry = new Point({ x: c[0], y: c[1], spatialReference: sr });
+        g.visible = true;
+      } else if (g.visible) g.visible = false;
+    }
   }
 
   /** Put one pooled Point graphic on each place and hide the rest of the pool (a pool only grows). */

@@ -125,6 +125,31 @@ export function buildGrid(peek: TilePeek, L: OcokaLayers, z: number, ts: number,
   return { z, ts, tx0, ty0, nx, ny, w, h, px0: tx0 * ts, py0: ty0 * ts, res: mPerPx(lat, z, ts), elev, cls: lay(L.cls, 255), bld: L.bld ? lay(L.bld, 0) : null, pending };
 }
 
+/** The grid over a box of world pixels (the tiles it touches), for an area that is not round (the IPB frame). */
+export function buildGridRect(peek: TilePeek, L: OcokaLayers, z: number, ts: number, lat: number, x0: number, y0: number, x1: number, y1: number): OcokaGrid {
+  const tx0 = Math.floor(x0 / ts), tx1 = Math.floor(x1 / ts), ty0 = Math.floor(y0 / ts), ty1 = Math.floor(y1 / ts);
+  const nx = tx1 - tx0 + 1, ny = ty1 - ty0 + 1;
+  const w = nx * ts, h = ny * ts;
+  let pending = false;
+  const lay = (layer: string, fill: number): Uint8Array => {
+    const out = new Uint8Array(w * h);
+    if (fill) out.fill(fill);
+    for (let ty = 0; ty < ny; ty++)
+      for (let tx = 0; tx < nx; tx++) {
+        const t = peek(layer, tx0 + tx, ty0 + ty);
+        if (t === undefined) pending = true;
+        if (!t) continue;
+        for (let row = 0; row < ts; row++) out.set(t.subarray(row * ts, row * ts + ts), (ty * ts + row) * w + tx * ts);
+      }
+    return out;
+  };
+  const hi = lay(L.elevHi, 255);
+  const lo = lay(L.elevLo, 0);
+  const elev = new Float32Array(w * h);
+  for (let i = 0; i < elev.length; i++) elev[i] = hi[i] === 255 ? NaN : hi[i] * 256 + lo[i] - 500;
+  return { z, ts, tx0, ty0, nx, ny, w, h, px0: tx0 * ts, py0: ty0 * ts, res: mPerPx(lat, z, ts), elev, cls: lay(L.cls, 255), bld: L.bld ? lay(L.bld, 0) : null, pending };
+}
+
 /** True when a circle of `radiusPx` round the world pixel lies inside the grid. */
 export function gridHolds(g: OcokaGrid, cx: number, cy: number, radiusPx: number): boolean {
   return cx - radiusPx >= g.px0 && cy - radiusPx >= g.py0 && cx + radiusPx < g.px0 + g.w && cy + radiusPx < g.py0 + g.h;

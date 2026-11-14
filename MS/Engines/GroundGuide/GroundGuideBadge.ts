@@ -1175,6 +1175,14 @@ export class GroundGuideBadge {
         jb.append(k, `Better ${fmtDistance(b.distanceM)} ${b.compass}`);
         foot.append(jb);
       }
+      // X turns the IPB reading over: the enemy's options against you, or yours against the threat.
+      const side = v.extended ? v.ext?.ipbApch?.side : undefined;
+      if (side) {
+        const xs = el('span', 'ms-ggb-xf');
+        xs.title = side === 'enemy' ? "Showing the en's options against you. X for your options against the threat." : "Showing your options against the threat. X for the en's options against you.";
+        xs.append(keycap('X'), side === 'enemy' ? 'Yours' : "En's");
+        foot.append(xs);
+      }
     }
     return foot;
   }
