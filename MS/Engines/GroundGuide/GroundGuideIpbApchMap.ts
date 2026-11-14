@@ -39,6 +39,12 @@ const CROSS: RGB = [233, 237, 241];
 const rgb = (c: RGB): string => `rgb(${c[0]},${c[1]},${c[2]})`;
 type Convert = (p: MercXY) => [number, number] | null;
 
+/** An FUP: a ring in the side's colour with a dark edge, open in the middle (where the approach turns into the assault). */
+const fupUrl = (c: RGB): string =>
+  Utils.svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5" fill="none" stroke="#14181d" stroke-width="4.5"/><circle cx="10" cy="10" r="6.5" fill="none" stroke="${rgb(c)}" stroke-width="2.2"/></svg>`);
+/** An MSR choke the turning approach blocks: a ring in the side's colour crossed out (a block). */
+const chokeUrl = (c: RGB): string =>
+  Utils.svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="#14181d" stroke="${rgb(c)}" stroke-width="2.4"/><path d="M7.5 7.5 L16.5 16.5 M16.5 7.5 L7.5 16.5" stroke="${rgb(c)}" stroke-width="2.4" stroke-linecap="round"/></svg>`);
 /** A narrows: an amber diamond with a dark edge. */
 const diamondUrl = (): string =>
   Utils.svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><path d="M11 2 L20 11 L11 20 L2 11 Z" fill="${rgb(NARROWS)}" stroke="#14181d" stroke-width="2" stroke-linejoin="round"/></svg>`);
@@ -383,11 +389,40 @@ export class GroundGuideIpbApchMap {
     }
     const dia = new PictureMarkerSymbol({ url: diamondUrl(), width: 15, height: 15 });
     for (const a of v.aas) for (const n of a.narrows) marker(n.at, dia);
+    // The objective the approaches end on: its frontage x depth box (a line for a Pl or Sec), and each approach's FUP.
+    const ob = v.objective;
+    if (ob && ob.ring.length === 4) {
+      const flat = ob.depthM < 1;
+      const edge = flat ? [ob.ring[0], ob.ring[1]] : [...ob.ring, ob.ring[0]];
+      line(edge, [20, 24, 29], 0.6, flat ? 6 : 4);
+      line(edge, [255, 255, 255], 0.95, flat ? 3 : 1.8, flat ? 'solid' : 'dash');
+      if (labels) {
+        const topP = ob.ring.reduce((a, b) => (b[1] > a[1] ? b : a));
+        const size = `${dist(ob.frontageM)}${ob.depthM >= 1 ? ` x ${dist(ob.depthM)}` : ''}`;
+        tag(topP, `Obj: ${ob.label} · ${size}${ob.assumed ? ' (taken)' : ''}`, [233, 237, 241], '#2a3038', 12, true, 0);
+      }
+      // The MSR behind it and the choke the turning approach blocks.
+      const tn = ob.turn;
+      if (tn) {
+        if (tn.road.length >= 2) {
+          line(tn.road, [20, 24, 29], 0.6, 5);
+          line(tn.road, [255, 255, 255], 0.9, 2, 'dash');
+        }
+        marker(tn.at, new PictureMarkerSymbol({ url: chokeUrl(col), width: 18, height: 18 }));
+        if (labels) tag(tn.at, `${v.side === 'own' ? 'En' : 'Your'} MSR choke · ${tn.label}${all ? ` · ${dist(tn.behindM)} behind` : ''}`, col, dark, 15, true, 1);
+      }
+      const fs = new PictureMarkerSymbol({ url: fupUrl(col), width: 15, height: 15 });
+      for (const a of v.aas) {
+        if (!a.fupAt) continue;
+        marker(a.fupAt, fs);
+        if (labels) tag(a.fupAt, `FUP ${a.id}${all ? ` · ${dist(ob.fupM)} short` : ''}`, col, dark, -14, true, 2);
+      }
+    }
     // Labels.
     if (labels) {
       for (const a of v.aas) {
         if (!a.line.length) continue;
-        tag(along(a.line, 0.3), a.viable ? `${sideWord} Apch ${a.id}${a.main ? ' (best)' : ''}` : `Cor ${a.id} (lone)`, a.viable ? col : LONE, a.viable ? dark : '#2a3038', 0, false, a.viable ? 0 : 3);
+        tag(a.splitAt ? along(a.line.slice(a.splitAt), 0.5) : along(a.line, a.onto ? 0.45 : 0.3), a.viable ? `${sideWord} Apch ${a.id}${a.ontoLabel ? ` · ${a.ontoLabel}` : ''}${a.main ? ' (best)' : ''}` : `Cor ${a.id} (lone)`, a.viable ? col : LONE, a.viable ? dark : '#2a3038', 0, false, a.viable ? 0 : 3);
       }
       if (on.corridors) for (const m of v.mcs) if (m.aa && m.line.length >= 2) tag(along(m.line, 0.62), `Mob Cor ${m.id}${all ? ` · ${dist(v.mcWidthM)}` : ''}`, MC, '#2a3038', 0, true, 5);
       for (const a of v.aas)

@@ -112,12 +112,25 @@ const colourOf = (v: IpbApchView, a: IpbApchAa): string => (!a.viable ? LONE : (
 const narrowsWord = (n: IpbApchAa['narrows'][number]): string => (n.kind === 'crossing' ? `Br / ford ${fmtDistance(n.widthM)}` : n.kind === 'slow' ? `SLOW-GO ${fmtDistance(n.widthM)}` : `Gap ${fmtDistance(n.widthM)}`);
 /** What an avenue is, in a line. */
 function aaLine(v: IpbApchView, a: IpbApchAa): string {
+  if (a.onto) {
+    const room = a.twoPct >= 60 ? (a.open ? `room for 3+ ${v.mcFor} corridors` : `2 ${v.mcFor} corridors side by side`) : a.onePct >= 60 ? `1 ${v.mcFor} corridor: tight` : `narrower than a ${v.mcFor} corridor`;
+    if (a.onto === 'turn') return `${room} · ${pc(a.goPct)} GO · ${km(a.lengthM)} round the Obj to ${v.objective?.turn?.label ?? 'the MSR choke'}`;
+    return `${room} · ${pc(a.goPct)} GO · ${km(a.lengthM)} to the Obj, FUP ${km(v.objective?.fupM ?? 0)} short${a.assaultNogoPct ? ` · assault ${pc(a.assaultNogoPct)} NO-GO` : ''}`;
+  }
   const room = !a.viable ? `1 ${v.mcFor} corridor (lone)` : a.open ? `room for 3+ ${v.mcFor} corridors` : `2 ${v.mcFor} corridors side by side`;
   return `${room} · ${pc(a.goPct)} GO · ${km(a.lengthM)}${a.stopped ? ` · stops ${km(a.endM)} in` : ''}`;
 }
-/** Its role in a word: the best going (drawn as the main attack), a supporting one, or a lone corridor. */
+/** Its role in a word: the best going (drawn as the main attack), a supporting one, or a lone corridor; onto the Obj, how it comes on. */
 function aaRole(a: IpbApchAa): string {
+  if (a.onto) return `${a.ontoLabel ?? a.onto}${a.main ? ' · best' : ''}`;
   return !a.viable ? 'lone corridor' : a.main ? 'best going' : 'supporting';
+}
+/** Where the approaches end, in a line (the Read As row, the answer's sub-line, Copy as Text). */
+function endLine(v: IpbApchView): string {
+  const o = v.objective;
+  if (!o || v.apchEnd === 'through') return "Through the area read (the book's avenues, regardless of objectives; Y for onto the Obj)";
+  const size = `${fmtDistance(o.frontageM)} frontage${o.depthM >= 1 ? ` x ${fmtDistance(o.depthM)}` : ''}`;
+  return `Onto the Obj, ${o.label}: ${size}${o.assumed ? ' (taken, no echelon)' : ' (by echelon)'}; frontal, Lt and Rt flanking, each from an FUP ${km(o.fupM)} short${o.turn ? `; turning round it to ${o.turn.label}, ${km(o.turn.behindM)} behind` : ''}${o.from ? `, setting out from ${o.source === 'posn' ? 'the Threat marker' : 'your symbol'}` : ''}${v.apchEnd === 'both' ? '; with the avenues through the area' : ''}`;
 }
 
 // ── answer, facts ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -126,7 +139,8 @@ function aaRole(a: IpbApchAa): string {
 export function apchAnswer(o: GroundGuideOcoka): LetterAnswer {
   const v = o.ipbApch;
   if (!v) return { label: 'Apchs (IPB) over the area read', parts: [{ text: 'Working Out…' }], sub: 'The area round the spot is coded by the book and its corridors traced, once per area.', tone: null, tab: '…' };
-  const label = `${sideWord(v)} Apchs for a ${v.aaFor} · ${v.hqLabel}${v.forEch ? ` (your ${v.forEch})` : ''}`;
+  const onto = v.apchEnd !== 'through' && !!v.objective;
+  const label = `${sideWord(v)} Apchs ${onto ? `onto ${v.objective!.label}` : `for a ${v.aaFor}`} · ${v.hqLabel}${v.forEch ? ` (your ${v.forEch})` : ''}`;
   const vi = viableOf(v);
   if (!v.aas.length || !vi.length) {
     const lone = loneOf(v);
@@ -272,11 +286,12 @@ function aaCards(v: IpbApchView): HTMLElement {
     const id = el('span', 'ms-gia-id', a.viable ? a.id : `${a.id}1`);
     id.style.background = a.viable ? (v.side === 'enemy' ? '#5a1d22' : '#1d3f66') : '#2a3038';
     id.style.border = `1.5px solid ${colourOf(v, a)}`;
-    h.append(id, el('span', undefined, a.viable ? `Apch ${a.id}` : `Lone corridor ${a.id}1`), el('span', 'ms-gia-tag', aaRole(a)));
+    h.append(id, el('span', undefined, a.viable ? `Apch ${a.id}${a.onto ? ` · ${a.ontoLabel ?? a.onto}` : ''}` : `Lone corridor ${a.id}1`), el('span', 'ms-gia-tag', a.onto ? (a.main ? 'best' : a.onto === 'frontal' ? 'frontal' : a.onto === 'turn' ? 'turning' : 'flank') : aaRole(a)));
     card.append(h, el('div', 'ms-gia-t', aaLine(v, a)));
     const chips = el('div', 'ms-gia-chips');
     const chip = (text: string, ok: boolean | null) => chips.append(el('span', `ms-gia-chip${ok === true ? ' ms-ok' : ok === false ? ' ms-no' : ''}`, text));
-    chip(a.stopped ? `stops ${pc(a.coverPct)} in` : 'runs the whole area', !a.stopped);
+    if (a.onto) chip(a.onto === 'frontal' ? (v.side === 'own' ? 'frontal: dangerous' : 'frontal: most of your fire') : a.onto === 'turn' ? (v.side === 'own' ? 'turning: blocks his MSR' : 'turning: cuts your MSR') : 'from a flank', a.onto !== 'frontal');
+    else chip(a.stopped ? `stops ${pc(a.coverPct)} in` : 'runs the whole area', !a.stopped);
     chip(`median ${km(a.medianWidthM)} wide`, a.medianWidthM >= 2 * v.mcWidthM);
     chip(a.narrows.length ? `${a.narrows.length} narrows` : 'no narrows', a.narrows.length === 0);
     if (a.waterLines) chip(`${a.waterLines} water line${a.waterLines > 1 ? 's' : ''}`, null);
@@ -314,7 +329,16 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
     k(`background:${NARROWS};transform:rotate(45deg);width:9px;height:9px`, 'narrows');
     out.push(tile(`Gr Overlay, Mob Corridors & Apchs · ${v.frameKm[0]} x ${v.frameKm[1]} km`, areaPicture(o, v), key));
     out.push(tile('Width Along Each Apch', widthChart(v), note(`Under the blue line a ${v.mcFor} cannot pass deployed; above the dotted one two corridors fit side by side. Amber dots: narrows.`)));
-    const cards = tile(`Apchs · ${viableOf(v).length} for a ${v.aaFor}${loneOf(v).length ? ` · ${loneOf(v).length} lone` : ''}`, aaCards(v), note('Ranked on the going until the proforma: how far through the area, GO, room, narrows, cost (a proposal). The commander judges the most likely and most dangerous.'));
+    const ontoOn = v.apchEnd !== 'through' && !!v.objective;
+    const cards = tile(
+      ontoOn ? `Apchs · ${viableOf(v).length} onto ${v.objective!.label}` : `Apchs · ${viableOf(v).length} for a ${v.aaFor}${loneOf(v).length ? ` · ${loneOf(v).length} lone` : ''}`,
+      aaCards(v),
+      note(
+        ontoOn
+          ? `Each ends on the Obj's frontage (${fmtDistance(v.objective!.frontageM)} by echelon), not its middle, from an FUP ${km(v.objective!.fupM)} short (IBB pp 173-174). Flanks first, then the going and cost (a proposal): a frontal attack is dangerous with a small chance of success (OoW Vol II s6). Y for the avenues through the area.`
+          : 'Ranked on the going until the proforma: how far through the area, GO, room, narrows, cost (a proposal). The commander judges the most likely and most dangerous.',
+      ),
+    );
     cards.classList.add('ms-ggd-brk');
     out.push(cards);
     const pf = proformaTile(v);
@@ -326,6 +350,7 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
   if (wxm) out.push(wxm);
   const rows: Array<[string, string]> = [
     ['Whose', v.side === 'enemy' ? "The en's options against you (X for yours)" : "Your options against the threat (X for the en's)"],
+    ['Apchs end', endLine(v)],
     ['Read as', `${v.hqLabel}${v.forEch ? ` for your ${v.forEch}` : ''}: ${v.aaFor} Apchs of ${v.mcFor} corridors (book p 7)`],
     ['Corridor', `${fmtDistance(v.mcWidthM)} wide; corridors of one Apch at most ${km(v.spacingM)} apart (book p 12, ATP T4-2)`],
     ['Area', `${v.frameKm[0]} x ${v.frameKm[1]} km facing the threat${v.threatAssumed ? ' (a direction only: drag the Threat marker for a place)' : ''}`],
@@ -650,7 +675,7 @@ export function decisionAnswer(o: GroundGuideOcoka): LetterAnswer {
   if (!v || !dv) return { label: 'Decision support over the area read', parts: [{ text: v === undefined ? 'Apchs Off' : 'Working Out…' }], sub: 'NAIs, TAIs and decision points follow the avenues.', tone: null, tab: '…' };
   if (v.side !== 'enemy') {
     const best = [...dv.profiles].filter((p) => p.viable).sort((p, q) => p.endH[0] - q.endH[0])[0];
-    return { label: 'Time over own Apchs · book rates', parts: [{ text: best ? `${best.aa} ${hPlus(best.endH[0])}` : 'None' }, { text: 'to cross the area', small: true }], sub: dv.notes[0] ?? null, tone: null, tab: best ? hPlus(best.endH[0]) : 'None' };
+    return { label: 'Time over own Apchs · IPB', parts: [{ text: best ? `${best.aa} ${hPlus(best.endH[0])}` : 'None' }, { text: 'to cross the area', small: true }], sub: dv.notes[0] ?? null, tone: null, tab: best ? hPlus(best.endH[0]) : 'None' };
   }
   const d = dv.dps[0];
   const t = dv.tais[0];
@@ -712,7 +737,7 @@ function timeLadder(v: IpbApchView, dv: IpbDecisionView, wpx = 420): SVGSVGEleme
   const kmStep = aMax - aMin > 60000 ? 20000 : aMax - aMin > 25000 ? 10000 : 5000;
   for (let m = Math.ceil(aMin / kmStep) * kmStep; m <= aMax; m += kmStep) svgEl('text', { x: l - 5, y: (Y(m) + 4).toFixed(1), 'font-size': 10.5, fill: '#c3cbd3', 'text-anchor': 'end', 'font-family': FONT }, svg, `${Math.round(m / 1000)}`);
   svgEl('text', { x: 2, y: t + 8, 'font-size': 10, fill: '#9aa3ad', 'font-family': FONT }, svg, 'km');
-  svgEl('text', { x: (l + wpx - r) / 2, y: H - 4, 'font-size': 10.5, fill: '#c3cbd3', 'text-anchor': 'middle', 'font-family': FONT }, svg, `hours from ${dv.fromThreat ? 'the en leaving the Threat marker' : 'the en reaching the area'} · book rates`);
+  svgEl('text', { x: (l + wpx - r) / 2, y: H - 4, 'font-size': 10.5, fill: '#c3cbd3', 'text-anchor': 'middle', 'font-family': FONT }, svg, `hours from ${dv.fromThreat ? 'the en leaving the Threat marker' : 'the en reaching the area'} · IPB`);
   for (const p of [...dv.profiles].reverse()) {
     const aa = v.aas.find((x) => x.id === p.aa);
     const col = aa ? colourOf(v, aa) : LONE;
@@ -890,6 +915,7 @@ export function apchText(o: GroundGuideOcoka): string[] {
   if (!v) return ['IPB avenues: being worked out over the area read.'];
   const L: string[] = [];
   L.push(`IPB ${v.side === 'enemy' ? 'enemy' : 'own'} avenues for a ${v.aaFor} (${v.hqLabel}: ${v.mcFor} corridors ${fmtDistance(v.mcWidthM)}, at most ${km(v.spacingM)} apart; book pp 7, 12; ATP T4-2). Area ${v.frameKm[0]} x ${v.frameKm[1]} km, ${v.mover}, moving ${Math.round(v.axisDeg)}°.`);
+  L.push(`Apchs end: ${endLine(v)}.`);
   for (const a of v.aas) {
     L.push(`${a.viable ? `Apch ${a.id}` : `Lone corridor ${a.id}1`} (${aaRole(a)}): ${aaLine(v, a)}; median ${km(a.medianWidthM)} wide.`);
     for (const n of a.narrows) L.push(`  Narrows: ${narrowsWord(n)}, ${km(n.alongM)} in.`);

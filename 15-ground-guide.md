@@ -1145,6 +1145,53 @@ toward it (blue), his fire on them, your air, his defence template. The choice i
 `guide.setReadFor('defence' | 'attack')`, `guide.toggleReadFor(to?)`. (It first sat as a tile at the top of tab 3; the user
 moved it to the key bar to save space, 2026-11-14.)
 
+**Where the approaches end** (`extended.ipb.apchEnd`, **Y** with F on, Shift+Y back, or the *Y Onto Obj / Through / Both*
+switch in the Ground Detail's key bar; 2026-11-14, user: "Why its always passing the target it is attacking on?", then
+"make new one as default, keep in mind that it does not need to end up on symbol, every symbol have echelon and each echelon
+have frontage"). The C&SC IPB book draws avenues through the area of interest regardless of objectives, so the book's
+avenues ran past the Posn to the far edge of the area read. Now:
+- `objective` (default): **approaches onto the objective's frontage**. The objective is a frontage x depth box by its
+  echelon (the footprint table, `footprint.size`; rules.json `echelons` overrides): in the en's options your symbol (Pl
+  450-600 m, Coy 1.2-1.5 km x 600-800 m...); in yours the Threat marker when it is a place (its size taken as your
+  echelon's, marked *taken*), else the nearest en symbol ahead in the area read (its own echelon). Without an echelon in the
+  table the corridor width is taken. Three ways in, each ending on the middle of an edge, not on the symbol: **frontal**
+  (square on the front), **left** and **right flank** (onto each end of the frontage), each from an **FUP** `ipb.fupM`
+  short (1,100 m; IBB pp 173-174: 1,000-1,200 m by night), then a straight assault. The ground round the objective out to
+  0.85 FUP distances is kept out of the approach, and a flank approach keeps to its own side for the last stretch (at least
+  3 km, twice the FUP distance), so it swings round instead of skirting the front (OoW Vol II s6). Ranked flanks first
+  (user: frontal attack is dangerous with a small chance of success; your own frontal one says so), then going, room,
+  narrows, cost and an assault across NO-GO. In the en's options he sets out from the Threat marker when it is a place in
+  the area, else from the area's edge; in yours you set out across your symbol's frontage. They often share the best ground
+  most of the way: the best keeps its whole arrow, the others are drawn from where they branch off (`splitAt`). Labels say
+  how each comes on (*En Apch A · onto your Rt flank*, *Own Apch B · Lt flanking*), the box is labelled *Obj: your Pl ·
+  530 m* and each FUP *FUP A*. Fire, decision support, the template, the proforma and Create on Map then work on these
+  approaches (distances run along the way from where it sets out). With no objective (your options, no place, no en symbol
+  ahead) the book's avenues are shown with a note saying how to give one.
+- **Turning approach** (`ipb.turn`, on; 2026-11-15, user: "add the MSR choke turning approach too"): a fourth approach goes
+  round the objective, clear of its ground (up to twice the FUP distance), to a **choke on the MSR behind it** to block it
+  (OoW Vol II s6 turning movement; IBB S35 p 140: block well in the en rear; user: flanking that chokes the en MSR is
+  encouraged), ranked first. The MSR is the bundle's road network (`GroundGuideRoads.edgesIn`, the network's MSR flag) 0.5 to
+  8 km behind the objective and within 6 km of its line; without one the main tankable road (said *no MSR on record*); without
+  a network a bridge or ford of the coding (*no MSR in the area read*). On it, by worth: a bridge or ford (the coding's
+  crossing), a defile (NO-GO within 200 m both sides, a proposal), a junction with another metalled road, else the MSR
+  itself; 1.5 to 5 km behind preferred, near the objective's line. The area read is lengthened behind the objective to hold
+  8 km of its rear (in steps of a quarter of its width). In the en's options it is his way round you onto **your** MSR
+  (*En Apch A · Turning: onto your MSR*); in yours *Turning: block his MSR*. The map draws the stretch of MSR and the choke
+  (a crossed ring, *Your MSR choke · Br on MSR Daska - Pasrur*). Verified at Sialkot (Pl, threat N): the bridge on MSR
+  Daska - Pasrur 3.9 km behind, the turning approach ranked first, ending 19 m from it.
+- `through`: the book's avenues through the whole area read (they may pass the Posn: a bypass into depth is an option too).
+- `both`: the book's avenues and the approaches onto the objective; the approaches take the next letters.
+Engine: step 7 / section 9 of `GroundGuideIpbCorridors.ts` (`objective` argument, `onto` result), the same sampled coding
+and cost; one more least-cost field per approach, each stopping once its FUP is reached (about 100 ms in the app for a Bde
+frame). The coding is kept per area (two areas: this side's and the other side's for the proforma), so moving the cursor
+only traces the approaches again. `guide.cycleApchEnd(1 | -1 | 'objective' | 'through' | 'both')`. Checks: `node
+tools/ipb-test/corridors.mjs` (43: 18 for the approaches, three for the turning one (ends on the choke and ranks first,
+goes round at least 1.2 km clear, a choke right behind the objective is refused with a reason), and three found, flanks ranked first, ends on the front edge and each
+end of the frontage, FUPs placed, keep-out respected, last 3 km on its side, distances along the way, the book's avenues
+unchanged, a lake off a flank, setting out from a place, no room at the area's edge, a Bde frame in time). Verified in the
+app (3D, Pl, threat N): Rt flank on the main trunk, Lt flank branching 4.5 km out, frontal 1.7 km out; your options against a
+Threat marker place.
+
 **Key notice** (`card.keyNotice`, on; 2026-11-14, user: "X key and all the available keys, we can give user a notification
 bottom center on the screen about modes, keys and what will they do, 5 seconds"). When a key changes a mode, a card at the
 foot of the screen, in the middle, says the mode now and what it shows, then the keys that work in it and what each does,
@@ -1877,7 +1924,7 @@ is ready, loading or unavailable.
 
 **Keys** while the guide is on (handled by the guide itself, listed in the harness's Show Shortcuts and the Legend tab):
 **V** Gr Scope rail (any time) · **Shift+V** its Spot / AOR scale (in AOR, **D** the approach sheets) · **D** Ground Detail, **G R O T B C** its tabs, **K** its Legend, **Esc** closes it ·
-**F** Extended View (with it on: **1-5** its tabs, **[ ]** turn the threat, **J** better Posn, **X** the en's / your options) ·
+**F** Extended View (with it on: **1-5** its tabs, **[ ]** turn the threat, **J** better Posn, **X** the en's / your options, **Y** where the Apchs end) ·
 while drawing **S** Quick Fix, **P** change the mode, **H** shrink the cursor card to a chip, **Shift**-click to place
 against an Enforce refusal.
 

@@ -2707,7 +2707,7 @@
           </div>
           <div class="setting-row">
             <label>Shortcuts</label>
-            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off), V (Gr Scope rail, while the Ground Guide is on), Shift+V (the rail's AOR scale), F (the Ground Guide's Extended View: then 1 2 3 4 5 its tabs, J better Posn, [ ] threat, X the en's / your options)." />
+            <input type="checkbox" id="setting-shortcuts" checked title="Enable keyboard shortcuts: M (measure), L (lasso select), E (edit), Esc (cancel), Del (delete), I (info), C (center), Ctrl+G (Ground Guide on / off), V (Gr Scope rail, while the Ground Guide is on), Shift+V (the rail's AOR scale), F (the Ground Guide's Extended View: then 1 2 3 4 5 its tabs, J better Posn, [ ] threat, X the en's / your options, Y where the Apchs end)." />
           </div>
           <div class="setting-row">
             <label>Copy/Paste</label>
@@ -3452,6 +3452,14 @@
               <select id="setting-groundGuideExtReadFor" style="width: 150px" title="The same as X with the Extended View on, or the switch in the Ground Detail's key bar. En's options: his avenues toward you, your fire on them, decision support, his air and attack template. Yours: your avenues toward the threat, his fire on them, your air, his defence template.">
                 <option value="defence" selected>En's options vs you</option>
                 <option value="attack">Yours vs the threat</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Apchs end</label>
+              <select id="setting-groundGuideExtApchEnd" style="width: 150px" title="The same as Y with the Extended View on (Shift+Y back). Onto the Obj: its frontage by echelon; frontal, Lt and Rt flanking, each from an FUP short of it, flanks first. Through the area: the book's avenues through the whole area read, regardless of objectives (they may pass the Posn). Both together.">
+                <option value="objective" selected>Onto the Obj</option>
+                <option value="through">Through the area</option>
+                <option value="both">Both</option>
               </select>
             </div>
             <div class="setting-row">
@@ -4886,6 +4894,7 @@
         'setting-groundGuideSecRoadDensityLead': (v) => ({ path: ['groundGuide', 'sections', 'roadDensityLead'], value: v }),
         'setting-groundGuideExtLasts': (v) => ({ path: ['groundGuide', 'extended', 'lasts'], value: v }),
         'setting-groundGuideExtReadFor': (v) => ({ path: ['groundGuide', 'extended', 'ipb', 'readFor'], value: v }),
+        'setting-groundGuideExtApchEnd': (v) => ({ path: ['groundGuide', 'extended', 'ipb', 'apchEnd'], value: v }),
         'setting-groundGuideExtThreat': (v) => ({ path: ['groundGuide', 'extended', 'threat'], value: v }),
         'setting-groundGuideExtBearing': (v) => ({ path: ['groundGuide', 'extended', 'bearingDeg'], value: Number(v) || 0 }),
         'setting-groundGuideExtSurface': (v) => ({ path: ['groundGuide', 'extended', 'surface'], value: v }),
@@ -6479,7 +6488,7 @@
               'V - Gr Scope rail: show / hide the side map of the ground round the symbol\n' +
               'Shift+V - Gr Scope: Spot / AOR (approaches, lines of def, MITG); D the apch sheets\n' +
               'D - Ground Detail (G R O T B C tabs, K Legend, Esc closes)\n' +
-              'F - Extended View on / off for the symbol being placed (a new symbol or Esc closes it): Obsn & Fd of Fire, Key Gr, Approaches (Detail tabs 1 2 3), threat marker, fire fan, approaches and better Posn on the map; [ ] turn the threat, J takes the better Posn, X shows the enemy options against you or yours against the threat\n' +
+              'F - Extended View on / off for the symbol being placed (a new symbol or Esc closes it): Obsn & Fd of Fire, Key Gr, Approaches (Detail tabs 1 2 3), threat marker, fire fan, approaches and better Posn on the map; [ ] turn the threat, J takes the better Posn, X shows the enemy options against you or yours against the threat, Y walks where the approaches end (onto the Obj frontage, through the area, both; Shift+Y back)\n' +
               'Shift+F - Keep the Extended View on for every symbol (F closes it)\n' +
               'S - Quick Fix: move the point to clear ground (while drawing)\n' +
               'P - Change the mode the ground is judged for (while drawing)\n' +

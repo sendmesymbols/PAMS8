@@ -41,6 +41,20 @@ const UNMETALLED = new Set([63, 71, 81, 91]);
 /** HeiGIT satellite surface code (network.json codebooks.hgSurface). */
 const SAT_SURFACE: Array<string | undefined> = [undefined, 'paved', 'unpaved', 'unclassified'];
 
+/** One edge of the network (a stretch between junctions) as a polyline, for `edgesIn`. */
+export interface RoadEdge {
+  pts: MercXY[];
+  id: number;
+  msr: boolean;
+  tankable: boolean;
+  metalled: boolean;
+  /** OSM class name: motorway, trunk, primary... */
+  t: string;
+  name: string;
+  rno: string;
+  load: number;
+}
+
 /** network.json `groundGuide`. */
 export interface GroundGuideRoadsMeta {
   tiles: string;
@@ -136,6 +150,45 @@ export class GroundGuideRoads {
       if (!this._pending.has(key)) this._pending.set(key, this._load(x, y, key));
     }
     return ready;
+  }
+
+  /**
+   * The edges inside a box (Web Mercator [xmin, ymin, xmax, ymax]) from the tiles in memory, asking for the missing
+   * ones, as polylines with what they are: MSR, tankable, metalled, the class, number, name and load class. `pending`
+   * while a tile is on its way. For the Extended View's turning approach (the MSR's choke behind the objective).
+   */
+  edgesIn(box: [number, number, number, number], keep?: (e: RoadEdge) => boolean): { list: RoadEdge[]; pending: boolean } {
+    const at: MercXY = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
+    const lat = 2 * Math.atan(Math.exp(at[1] / EARTH_R)) - Math.PI / 2;
+    const radiusM = (Math.hypot(box[2] - box[0], box[3] - box[1]) / 2) * Math.max(Math.cos(lat), 0.2);
+    const pending = !this.request(at, radiusM);
+    const names = this._names ?? [];
+    const list: RoadEdge[] = [];
+    for (const [x, y] of this._tilesAround(at, radiusM)) {
+      const t = this._tiles.get(`${x}/${y}`);
+      if (!t) continue;
+      for (let i = 0; i < t.n; i++) {
+        const b = i * 4;
+        if (t.box[b] > box[2] || t.box[b + 2] < box[0] || t.box[b + 1] > box[3] || t.box[b + 3] < box[1]) continue;
+        const pts: MercXY[] = [];
+        for (let q = t.start[i]; q < t.start[i + 1]; q++) pts.push([t.xy[2 * q], t.xy[2 * q + 1]]);
+        if (pts.length < 2) continue;
+        const f = t.flags[i], clazz = t.clazz[i];
+        const e: RoadEdge = {
+          pts,
+          id: t.edge[i],
+          msr: !!(f & F_MSR),
+          tankable: !!(f & F_TANKABLE),
+          metalled: !(f & F_FAIR) && !UNMETALLED.has(clazz),
+          t: CLAZZ[clazz] ?? 'road',
+          name: names[t.name[i]] ?? '',
+          rno: names[t.rno[i]] ?? '',
+          load: t.load[i],
+        };
+        if (!keep || keep(e)) list.push(e);
+      }
+    }
+    return { list, pending };
   }
 
   /** As `request`, resolving once the tiles have arrived (or failed). */

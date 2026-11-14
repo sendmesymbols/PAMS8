@@ -759,11 +759,36 @@ and `OrganizationV3.json` holds only symbol entries.
   standard.
 - **The en side** comes from the same format filled from KYE 2019.
 
-### 17.3 Handling
+### 17.3 Built (14 Nov 2026): `MS/Data/Orbat/`
 
-These files are likely classified. They stay local:
-- `MS/Data/Orbat/`, **git-ignored like the terrain bundle**, unless you say otherwise;
-- never sent anywhere;
-- loaded only when `planBuilder.orbat` is on.
+Extracted from **SO's Handbook (2019)** (RESTD), Secs 1–7, 10 and 13. Figures are as printed, with page numbers.
 
-When they are absent, the recipes fall back to the doctrinal defaults with "ORBAT not loaded".
+**Files:**
+- **Per arm:** `inf.json`, `armr.json`, `arty.json`, `ad.json`, `engr.json`, `sig.json`, `avn.json`, `log.json`
+  (own side), and `en.json` (Sec 13 Threat, enemy side).
+- **`weapons.json`:** 198 weapons and platforms. Each keeps its printed ranges and adds `planRangeM` (min / eff / max /
+  ceiling, the lowest printed figure where the book gives several) and `symbolKeys` (the Symbols.json equipment entry
+  judged by type and calibre).
+- **`index.json`:** the file list, echelon codes and counts.
+
+**Units:** 429 in all (353 own, 76 enemy). Each unit has:
+- id, name, arm, type, subtype, `echelon` (2525D code), `symbolKey` (Symbols.json land-unit entry);
+- `strength` (offr / jco / sldr / sw / att … / total);
+- `children` (count × role → unit id), which records who is under whom;
+- `weapons` (count, name, `weapon` link with `weaponMatch` exact / alias / contains);
+- `equipment`, `vehicles`, and notes.
+
+**Planning tables:** `engrData` (bridges, rafts, minelaying rates, breaching, inundation), `logData` (lift, ammo / POL /
+rations / water loads, casualty rates, DAA), `sigData`, `threatData`.
+
+**Kept as printed:** where the book's totals and parts disagree, the printed figure stays and a note or `uncertain`
+says so.
+
+**Checker:** `node tools/orbat-test/run.mjs` checks ids, child links, echelon order, weapon and symbol links, and that
+any strength that doesn't add up carries a note. Result: 2310 checks, 0 failed.
+
+**Handling:** `MS/Data/` is tracked by git, so these RESTD files go into the repo with the code unless they are
+git-ignored. **Your decision is pending.**
+
+When the files are absent or `planBuilder.orbat` is off, the recipes fall back to the doctrinal defaults with
+"ORBAT not loaded".

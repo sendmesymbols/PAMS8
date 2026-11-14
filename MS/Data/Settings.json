@@ -789,6 +789,9 @@
       "overlay": "auto",
       "ipb": {
         "readFor": "defence",
+        "apchEnd": "objective",
+        "fupM": 1100,
+        "turn": true,
         "mover": "auto",
         "season": "coding",
         "avlbSpanM": 18,

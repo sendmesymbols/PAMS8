@@ -96,13 +96,13 @@ import { BLD_HEIGHT, KINDS as SECTION_KINDS, SECTIONS_STYLES, G_STYLES, R_STYLES
 import { sectionsText } from './GroundGuideSectionsView';
 import { GroundGuidePlaceData } from './GroundGuidePlaceData';
 import { normaliseSidc } from './GroundGuideProfiles';
-import { checkSpacing, echelonCodeOf, frontBlocks, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
+import { checkSpacing, echelonCodeOf, footprintDims, frontBlocks, planFootprint, sideOf, type FootprintCandidate, type FootprintPlan } from './GroundGuideFootprint';
 import { GroundGuideIndicators } from './GroundGuideIndicators';
 import { buildGridRect, mPerPx, mercToPx, pxToMerc, sightTables, sightTo, visibilityAt, weaponOf, type OcokaGrid } from './GroundGuideOcoka';
-import { IPB, codeIpb, ipbMoverOf, ipbReasonsAt, ipbRulesFrom, ipbSummaryText, type IpbCoding, type IpbMover, type IpbReason, type IpbStats } from './GroundGuideIpb';
+import { IPB, WHY, codeIpb, ipbMoverOf, ipbReasonsAt, ipbRulesFrom, ipbSummaryText, type IpbCoding, type IpbMover, type IpbReason, type IpbStats } from './GroundGuideIpb';
 import { annexA, decide, decRatesFrom, type DecAaIn, type DecCls } from './GroundGuideIpbDecision';
 import { GroundGuideIpbMap } from './GroundGuideIpbMap';
-import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, simplifyLine, type IpbFrame } from './GroundGuideIpbCorridors';
+import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, simplifyLine, type IpbAa, type IpbFrame } from './GroundGuideIpbCorridors';
 import { ipbAreas } from './GroundGuideIpbShapes';
 import { fireCoverage } from './GroundGuideIpbFire';
 import { pfKey, proforma, type PfGroupIn, type PfMeasures, type PfSign } from './GroundGuideIpbProforma';
@@ -343,6 +343,8 @@ export default class GroundGuide {
     extended: (on) => this.setExtended(on), // the Detail's F tab
     // Whose options, in the Detail's key bar (user, 2026-11-14: moved there from tab 3 to save space).
     readFor: { get: () => this._opts.extended.ipb.readFor, set: (r) => this.toggleReadFor(r) },
+    // Where the approaches end, beside it (Y).
+    apchEnd: { get: () => this._opts.extended.ipb.apchEnd, set: (e) => this.cycleApchEnd(e) },
     opacity: (v) => {
       this.setOptions({ overlay: { ...this._opts.overlay, opacity: v } });
       setSetting(['groundGuide', 'overlay', 'opacity'], v);
@@ -400,7 +402,9 @@ export default class GroundGuide {
    */
   private _apchMap = new GroundGuideIpbApchMap(() => this._getView?.());
   private _apchWant: { at: MercXY; sidc: string | null } | null = null;
-  private _apch: { key: string; view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null; extent: [number, number, number, number] | null; cframe: IpbFrame | null; cargs?: any } | null = null;
+  private _apch: { key: string; codeKey?: string; view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null; extent: [number, number, number, number] | null; cframe: IpbFrame | null; cargs?: any } | null = null;
+  /** The last area's grid and coding: when only the objective moves, the approaches are traced again on them. */
+  private _apchCodeCache = new Map<string, { grid: OcokaGrid; coding: IpbCoding; cargs: any; extent?: [number, number, number, number] | null; raster?: IpbApchView['raster'] }>();
   /**
    * Create on Map (IPB_Plan.md §6.8): SymbolEngine passes how to make symbols (loadSymbolFromJSON) and remove the set
    * made before, as one undo step; the ids made per product, so making it again replaces it.
@@ -410,6 +414,8 @@ export default class GroundGuide {
   private _airRules = airRulesFrom(IPB_DOCTRINE);
   /** The air reading ran while feature tiles were still loading: run it again when they arrive. */
   private _airFeaturesPending = false;
+  /** The turning approach wanted an MSR whose road tiles were still on their way: read the avenues again when they come. */
+  private _turnPending = false;
   private _tplRules = tplRulesFrom(IPB_TEMPLATES);
   /** IPB codings for the template's other movers over the area read (worked out once per area). */
   private _tplCodes: { key: string; codes: Partial<Record<'armour' | 'mech' | 'dismounted', Uint8Array>> } | null = null;
@@ -1026,6 +1032,9 @@ export default class GroundGuide {
       const ip = oc.ipb;
       if (ip && typeof ip === 'object') {
         pick('extended.ipb.readFor', ip.readFor, ['defence', 'attack'] as const, (x) => (next.extended.ipb.readFor = x));
+        pick('extended.ipb.apchEnd', ip.apchEnd, ['objective', 'through', 'both'] as const, (x) => (next.extended.ipb.apchEnd = x));
+        num('extended.ipb.fupM', ip.fupM, 200, 5000, (n) => (next.extended.ipb.fupM = n));
+        flag('extended.ipb.turn', ip.turn, (b) => (next.extended.ipb.turn = b));
         pick('extended.ipb.mover', ip.mover, ['auto', 'armour', 'mech', 'dismounted'] as const, (x) => (next.extended.ipb.mover = x));
         pick('extended.ipb.season', ip.season, ['coding', 'notes'] as const, (x) => (next.extended.ipb.season = x));
         num('extended.ipb.avlbSpanM', ip.avlbSpanM, 3, 60, (n) => (next.extended.ipb.avlbSpanM = n));
@@ -1833,21 +1842,229 @@ export default class GroundGuide {
     const ab = (axisDeg * Math.PI) / 180;
     const A: MercXY = [Math.sin(ab), Math.cos(ab)];
     const Rr: MercXY = [Math.cos(ab), -Math.sin(ab)];
-    const lengthM = F.fwd + F.lead + F.rear;
+    let lengthM = F.fwd + F.lead + F.rear;
     const start: MercXY = side === 'enemy' ? [anchor[0] + T[0] * (F.fwd + F.lead) * k, anchor[1] + T[1] * (F.fwd + F.lead) * k] : [anchor[0] - T[0] * F.rear * k, anchor[1] - T[1] * F.rear * k];
     const pt = (aM: number, qM: number): MercXY => [start[0] + (A[0] * aM + Rr[0] * qM) * k, start[1] + (A[1] * aM + Rr[1] * qM) * k];
+    const toFrame = (p: MercXY): [number, number] => {
+      const dx = (p[0] - start[0]) / k, dy = (p[1] - start[1]) / k;
+      return [dx * A[0] + dy * A[1], dx * Rr[0] + dy * Rr[1]];
+    };
+    const fromFrame = (aM: number, qM: number): MercXY => pt(aM, qM);
+    const obj = ip.apchEnd === 'through' || thr.allRound ? null : this._apchObjective(at, sidc, side, toFrame, lengthM, F.w, mcWidthM, k);
+    // The turning approach needs the ground behind the objective (its MSR, up to 8 km): the area read runs that far,
+    // grown in steps of a quarter of its width so the coding is not worked out again for every small move.
+    if (obj && ip.turn) {
+      const need = toFrame(obj.at)[0] + obj.depthM / 2 + 8500;
+      if (need > lengthM) lengthM = Math.ceil(need / (F.w / 4)) * (F.w / 4);
+    }
     const corners: MercXY[] = [pt(0, -F.w / 2), pt(0, F.w / 2), pt(lengthM, F.w / 2), pt(lengthM, -F.w / 2)];
     const tAt = this._threatMerc();
     const ech = echelonCodeOf(sidc);
-    const key = [hq, fk, side, Math.round(anchor[0]), Math.round(anchor[1]), thr.allRound ? 'all' : Math.round(thr.bearingDeg), o.sectorDeg, mover, month, ip.season, ip.avlbSpanM, this._opts.bundleUrl, ech ?? ''].join('|');
-    return { hq, fk, note, row, F, mcWidthM, spacingM, thr, side, mover, month, anchor, start, axisDeg, lengthM, corners, k, key, ech: ech ? (ECH_SHORT[ech] ?? null) : null, threatAssumed: !(o.threat === 'point' && tAt) && over.threatDeg === undefined };
+    // The area and its coding (worked out once per area); the objective below changes only the approaches onto it.
+    const codeKey = [hq, fk, side, Math.round(anchor[0]), Math.round(anchor[1]), Math.round(lengthM), thr.allRound ? 'all' : Math.round(thr.bearingDeg), o.sectorDeg, mover, month, ip.season, ip.avlbSpanM, this._opts.bundleUrl].join('|');
+    const r10 = (p: MercXY | null | undefined): string => (p ? `${Math.round(p[0] / 10)},${Math.round(p[1] / 10)}` : '');
+    const objKey = obj ? [r10(obj.at), Math.round(obj.frontageM), Math.round(obj.depthM), r10(obj.from?.at), Math.round(obj.from?.halfWidthM ?? 0), ip.fupM, ip.turn ? 't' : ''].join(',') : '';
+    const key = [codeKey, ech ?? '', ip.apchEnd, objKey].join('|');
+    return { hq, fk, note, row, F, mcWidthM, spacingM, thr, side, mover, month, anchor, start, axisDeg, lengthM, corners, k, key, codeKey, obj, toFrame, fromFrame, ech: ech ? (ECH_SHORT[ech] ?? null) : null, threatAssumed: !(o.threat === 'point' && tAt) && over.threatDeg === undefined };
+  }
+
+  /**
+   * The choke on the MSR behind the objective, for the turning approach (`extended.ipb.turn`; user, 2026-11-15: "add the
+   * MSR choke turning approach too"; OoW Vol II s6, IBB S35 p 140: block well in the en rear). The MSR is the network's
+   * MSR edges 0.5 to 8 km behind the objective (inside the area read) and within 6 km of its line (else the main tankable road, said so). On it,
+   * by worth: a bridge or ford (the coding's crossing), a defile (NO-GO within 200 m both sides, a proposal), a junction
+   * with another metalled road, else the MSR itself; 1.5 to 5 km behind is preferred, near the objective's line. Null:
+   * no road network, no MSR or main road behind it (the bridges of the coding are then used, if any), or tiles on their way.
+   */
+  private _msrChoke(
+    fr: ReturnType<GroundGuide['_apchFrame']>,
+    ob: NonNullable<ReturnType<GroundGuide['_apchFrame']>['obj']>,
+    grid: OcokaGrid,
+    coding: IpbCoding,
+    z: number,
+    ts: number,
+  ): { at: MercXY; kind: 'bridge' | 'defile' | 'junction' | 'road'; label: string; road: MercXY[]; msr: boolean; behindM: number } | null {
+    const [oa, oq] = fr.toFrame(ob.at);
+    // Behind the objective and inside the area read (the approaches are traced there): to its far edge at most.
+    const back0 = oa + ob.depthM / 2 + 500, back1 = Math.min(oa + ob.depthM / 2 + 8000, fr.lengthM - 250), half = 6000;
+    if (back1 <= back0) return null;
+    const halfW = fr.F.w / 2 - 250;
+    const corners = [fr.fromFrame(back0, oq - half), fr.fromFrame(back0, oq + half), fr.fromFrame(back1, oq + half), fr.fromFrame(back1, oq - half)];
+    const box: [number, number, number, number] = [Math.min(...corners.map((p) => p[0])), Math.min(...corners.map((p) => p[1])), Math.max(...corners.map((p) => p[0])), Math.max(...corners.map((p) => p[1]))];
+    const inWin = (p: MercXY): [number, number] | null => {
+      const [a, q] = fr.toFrame(p);
+      return a >= back0 && a <= back1 && Math.abs(q - oq) <= half && Math.abs(q) <= halfW ? [a, q] : null;
+    };
+    const cell = (p: MercXY): [number, number] => {
+      const [px, py] = mercToPx(p[0], p[1], z, ts);
+      return [Math.floor(px - grid.px0 - coding.x0), Math.floor(py - grid.py0 - coding.y0)];
+    };
+    const at = (x: number, y: number): number => (x < 0 || y < 0 || x >= coding.w || y >= coding.h ? -1 : y * coding.w + x);
+    const crossingNear = (x: number, y: number): boolean => {
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const q = at(x + dx, y + dy); if (q >= 0 && coding.why[q] & WHY.CROSSING) return true; }
+      return false;
+    };
+    // NO-GO within 200 m on both sides of the road: a defile (proposal, basis E).
+    const defileAt = (p: MercXY, dir: [number, number]): boolean => {
+      const L = Math.hypot(dir[0], dir[1]) || 1;
+      const nx = -dir[1] / L, ny = dir[0] / L;
+      const side = (sg: number): boolean => {
+        for (let m = coding.res; m <= 200; m += coding.res) {
+          const [x, y] = cell([p[0] + sg * nx * m * fr.k, p[1] + sg * ny * m * fr.k]);
+          const q = at(x, y);
+          if (q >= 0 && coding.code[q] === IPB.NOGO && !(coding.why[q] & WHY.CROSSING)) return true;
+        }
+        return false;
+      };
+      return side(1) && side(-1);
+    };
+    const roads = this._roads;
+    type Cand = { at: MercXY; kind: 'bridge' | 'defile' | 'junction' | 'road'; edge: { pts: MercXY[]; rno: string; name: string; t: string } | null; msr: boolean; a: number; q: number };
+    const cands: Cand[] = [];
+    let msrFound = false;
+    if (roads) {
+      const all = roads.edgesIn(box);
+      if (all.pending && !all.list.length) {
+        this._turnPending = true;
+        return null;
+      }
+      if (all.pending) this._turnPending = true;
+      let main = all.list.filter((e) => e.msr && e.pts.some((p) => inWin(p)));
+      msrFound = main.length > 0;
+      if (!main.length) main = all.list.filter((e) => e.tankable && e.metalled && /motorway|trunk|primary/.test(e.t) && e.pts.some((p) => inWin(p)));
+      // Where other metalled roads meet it: its edges' ends shared with another road's ends.
+      const ends = new Map<string, number>();
+      const keyOf = (p: MercXY): string => `${Math.round(p[0] / 20)},${Math.round(p[1] / 20)}`;
+      for (const e of all.list) if (e.metalled) for (const p of [e.pts[0], e.pts[e.pts.length - 1]]) ends.set(keyOf(p), (ends.get(keyOf(p)) ?? 0) + 1);
+      const stepM = 60 * fr.k;
+      for (const e of main) {
+        for (let i = 1; i < e.pts.length; i++) {
+          const p0 = e.pts[i - 1], p1 = e.pts[i];
+          const dir: [number, number] = [p1[0] - p0[0], p1[1] - p0[1]];
+          const n = Math.max(1, Math.ceil(Math.hypot(dir[0], dir[1]) / stepM));
+          for (let k2 = 0; k2 <= n; k2++) {
+            const p: MercXY = [p0[0] + (dir[0] * k2) / n, p0[1] + (dir[1] * k2) / n];
+            const w = inWin(p);
+            if (!w) continue;
+            const [x, y] = cell(p);
+            const kind = crossingNear(x, y) ? 'bridge' : defileAt(p, dir) ? 'defile' : 'road';
+            cands.push({ at: p, kind, edge: e, msr: e.msr, a: w[0], q: w[1] });
+          }
+        }
+        for (const p of [e.pts[0], e.pts[e.pts.length - 1]]) {
+          const w = inWin(p);
+          if (w && (ends.get(keyOf(p)) ?? 0) >= 3) cands.push({ at: p, kind: 'junction', edge: e, msr: e.msr, a: w[0], q: w[1] });
+        }
+      }
+    }
+    if (!cands.length) {
+      // No road network or no main road behind it: a bridge or ford of the coding behind the objective (not an MSR on record).
+      const [x0, y0] = cell(corners[0]), [x1, y1] = cell(corners[2]);
+      for (let y = Math.max(0, Math.min(y0, y1)); y <= Math.min(coding.h - 1, Math.max(y0, y1)); y += 2)
+        for (let x = Math.max(0, Math.min(x0, x1)); x <= Math.min(coding.w - 1, Math.max(x0, x1)); x += 2) {
+          if (!(coding.why[y * coding.w + x] & WHY.CROSSING)) continue;
+          const p = pxToMerc(x + grid.px0 + coding.x0 + 0.5, y + grid.py0 + coding.y0 + 0.5, z, ts) as MercXY;
+          const w = inWin(p);
+          if (w) cands.push({ at: p, kind: 'bridge', edge: null, msr: false, a: w[0], q: w[1] });
+        }
+    }
+    if (!cands.length) return null;
+    const worth = { bridge: 30, defile: 22, junction: 12, road: 0 } as const;
+    const score = (c: Cand): number => {
+      const behind = c.a - (oa + ob.depthM / 2);
+      const depth = behind < 1500 ? (1500 - behind) / 100 : behind > 5000 ? (behind - 5000) / 250 : 0;
+      return worth[c.kind] - depth - Math.abs(c.q - oq) / 400 + (c.msr ? 8 : 0);
+    };
+    const best = cands.reduce((p, q) => (score(q) > score(p) ? q : p));
+    const roadName = best.edge ? best.edge.rno || best.edge.name || (best.msr ? 'the MSR' : `the ${best.edge.t} Rd`) : 'a Rd';
+    const what = { bridge: best.edge ? 'Br' : 'Br / ford', defile: 'Defile', junction: 'Rd junction', road: '' }[best.kind];
+    const label = best.kind === 'road' ? `${best.msr ? 'MSR' : 'main Rd'} ${roadName === 'the MSR' ? '' : roadName}`.trim() : `${what} on ${best.msr ? (roadName === 'the MSR' ? 'the MSR' : `MSR ${roadName}`) : roadName}`;
+    return {
+      at: best.at,
+      kind: best.kind,
+      label: !best.edge ? 'Br / ford (no MSR in the area read)' : msrFound ? label : `${label} (no MSR on record)`,
+      road: best.edge ? best.edge.pts.filter((p) => inWin(p)) : [],
+      msr: best.msr,
+      behindM: best.a - (oa + ob.depthM / 2),
+    };
+  }
+
+  /** A symbol's frontage and depth by its echelon (the footprint table, rules.json overrides); `fallbackM` without one. */
+  private _echDims(sidc: string | null, fallbackM: number): { frontageM: number; depthM: number; name: string; assumed: boolean } {
+    const code = echelonCodeOf(sidc);
+    const d = code ? footprintDims(code, this._opts.footprint.size, this._rules) : null;
+    if (d) return { frontageM: d.frontageM, depthM: d.depthM, name: ECH_SHORT[code!] ?? d.name, assumed: false };
+    return { frontageM: fallbackM, depthM: 0, name: code ? (ECH_SHORT[code] ?? 'Posn') : 'Posn', assumed: true };
+  }
+
+  /**
+   * Where the approaches end (`extended.ipb.apchEnd`; user, 2026-11-14: "it does not need to end up on symbol, every
+   * symbol have echelon and each echelon have frontage"): the objective's frontage x depth by its echelon, facing the
+   * movement. The en's options (defence): your position (the symbol, its echelon), the en setting out from the Threat
+   * marker when it is a place in the area, else from the area's edge. Your options (attack): the Threat marker when it is
+   * a place, else the nearest en symbol ahead in the area (its own echelon; the marker's size is taken as your echelon's),
+   * you setting out from the symbol across its frontage. Null when there is none (the book's avenues are shown).
+   */
+  private _apchObjective(
+    at: MercXY,
+    sidc: string | null,
+    side: 'enemy' | 'own',
+    toFrame: (p: MercXY) => [number, number],
+    lengthM: number,
+    widthM: number,
+    mcWidthM: number,
+    k: number,
+  ): { at: MercXY; frontageM: number; depthM: number; label: string; source: 'posn' | 'threat' | 'symbol'; assumed: boolean; from: { at: MercXY; halfWidthM: number } | null } | null {
+    const own = this._echDims(sidc, mcWidthM);
+    const snapTo = (p: MercXY, m: number): MercXY => {
+      const sn = Math.max(50, m) * k;
+      return [Math.round(p[0] / sn) * sn, Math.round(p[1] / sn) * sn];
+    };
+    const inArea = (p: MercXY, pad = 0): boolean => {
+      const [al, ac] = toFrame(p);
+      return al >= -pad && al <= lengthM + pad && Math.abs(ac) <= widthM / 2 + pad;
+    };
+    const tAt = this._opts.extended.threat === 'point' ? this._threatMerc() : null;
+    if (side === 'enemy') {
+      return {
+        at: snapTo(at, own.frontageM / 4),
+        frontageM: own.frontageM,
+        depthM: own.depthM,
+        label: `your ${own.name}`,
+        source: 'posn',
+        assumed: own.assumed,
+        from: tAt && inArea(tAt) ? { at: snapTo(tAt, 100), halfWidthM: mcWidthM } : null,
+      };
+    }
+    const from = { at: snapTo(at, own.frontageM / 4), halfWidthM: Math.max(mcWidthM, own.frontageM) / 2 };
+    if (tAt && inArea(tAt)) return { at: snapTo(tAt, 50), frontageM: own.frontageM, depthM: own.depthM, label: 'the Threat marker', source: 'threat', assumed: true, from };
+    // The nearest en symbol ahead of the spot in the area read.
+    const spotAl = toFrame(at)[0];
+    let best: { at: MercXY; sidc: string; label: string; d: number } | null = null;
+    for (const g of this._placedGraphics()) {
+      if (g.geometry?.type !== 'point') continue;
+      const gs = normaliseSidc(graphicSidc(g));
+      if (!gs || gs.length !== 20 || (gs[3] !== '5' && gs[3] !== '6')) continue;
+      const set = gs.substring(4, 6);
+      if (set !== '10' && set !== '15') continue;
+      const p = toMercatorShape(g.geometry)?.parts[0]?.[0] as MercXY | undefined;
+      if (!p || !inArea(p) || toFrame(p)[0] <= spotAl) continue;
+      const d = Math.hypot(p[0] - at[0], p[1] - at[1]);
+      if (!best || d < best.d) {
+        const ck = catalogKey(gs);
+        best = { at: [p[0], p[1]], sidc: gs, label: (ck ? this._rangeLookup(ck)?.name : null) ?? g.attributes?.drawEssentials?.SYM_NAME ?? 'En Posn', d };
+      }
+    }
+    if (!best) return null;
+    const en = this._echDims(best.sidc, own.frontageM);
+    return { at: best.at, frontageM: en.frontageM, depthM: en.depthM, label: `en ${en.assumed ? best.label : en.name}`, source: 'symbol', assumed: en.assumed, from };
   }
 
   /**
    * The reading for a spot from the tiles in memory (asks for the missing ones): the frame coded by the book's criteria,
    * the corridors and avenues in it, in Web Mercator. 'pending' while a tile is on its way; null when the bundle cannot.
    */
-  private _apchCompute(at: MercXY, sidc: string | null, over: Parameters<GroundGuide['_apchFrame']>[2] = {}): { key: string; view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null; extent: [number, number, number, number] | null; cframe: IpbFrame | null; cargs?: any } | 'pending' | null {
+  private _apchCompute(at: MercXY, sidc: string | null, over: Parameters<GroundGuide['_apchFrame']>[2] = {}): { key: string; codeKey?: string; view: IpbApchView; coding: IpbCoding | null; grid: OcokaGrid | null; extent: [number, number, number, number] | null; cframe: IpbFrame | null; cargs?: any } | 'pending' | null {
     const m = this._manifest;
     const cache = this._cache;
     const L = this._sectionLayers();
@@ -1892,21 +2109,41 @@ export default class GroundGuide {
     for (let ty = Math.max(0, Math.floor(y0 / ts)); ty <= Math.min(n - 1, Math.floor(y1 / ts)); ty++)
       for (let tx = Math.max(0, Math.floor(x0 / ts)); tx <= Math.min(n - 1, Math.floor(x1 / ts)); tx++) for (const layer of want) cache.request(layer, z, tx, ty);
     const peek = (layer: string, x: number, y: number) => (x < 0 || y < 0 || x >= n || y >= n ? null : cache.peek(layer, z, x, y));
-    const grid = buildGridRect(peek, layers, z, ts, lat, x0, y0, x1, y1);
-    if (grid.pending) return 'pending';
     const ip = this._opts.extended.ipb;
-    const [lon] = mercatorToLngLat(fr.anchor[0], fr.anchor[1]);
-    // The coding's arguments are kept: the situation template codes the same box again for its other movers.
-    const cargs = { grid, rules: this._ipbRules, moveDeg: fr.axisDeg, month: fr.month, lonLat: [lon, lat] as [number, number], avlbSpanM: ip.avlbSpanM, season: ip.season, box: [Math.floor(x0 - grid.px0), Math.floor(y0 - grid.py0), Math.ceil(x1 - grid.px0), Math.ceil(y1 - grid.py0)] as [number, number, number, number] };
-    const coding = codeIpb({ ...cargs, mover: fr.mover });
+    // The same area as the last reading (only the objective moved): its grid and coding again, not worked out anew.
+    // Two kept: this side's area and the other side's (the proforma reads both).
+    const cc = this._apchCodeCache.get(fr.codeKey);
+    let grid: OcokaGrid, coding: IpbCoding, cargs: any;
+    if (cc) ({ grid, coding, cargs } = cc);
+    else {
+      grid = buildGridRect(peek, layers, z, ts, lat, x0, y0, x1, y1);
+      if (grid.pending) return 'pending';
+      const [lon] = mercatorToLngLat(fr.anchor[0], fr.anchor[1]);
+      // The coding's arguments are kept: the situation template codes the same box again for its other movers.
+      cargs = { grid, rules: this._ipbRules, moveDeg: fr.axisDeg, month: fr.month, lonLat: [lon, lat] as [number, number], avlbSpanM: ip.avlbSpanM, season: ip.season, box: [Math.floor(x0 - grid.px0), Math.floor(y0 - grid.py0), Math.ceil(x1 - grid.px0), Math.ceil(y1 - grid.py0)] as [number, number, number, number] };
+      coding = codeIpb({ ...cargs, mover: fr.mover });
+      this._apchCodeCache.set(fr.codeKey, { grid, coding, cargs });
+      while (this._apchCodeCache.size > 2) this._apchCodeCache.delete(this._apchCodeCache.keys().next().value!);
+    }
     const [sx, sy] = mercToPx(fr.start[0], fr.start[1], z, ts);
     const cframe: IpbFrame = { sx: sx - grid.px0 - coding.x0, sy: sy - grid.py0 - coding.y0, axisDeg: fr.axisDeg, lengthM: fr.lengthM, widthM: fr.F.w };
+    const ob = fr.obj;
+    const choke = ob && ip.turn && ip.apchEnd !== 'through' ? this._msrChoke(fr, ob, grid, coding, z, ts) : null;
+    const objective = ob
+      ? (() => {
+          const [oa, oq] = fr.toFrame(ob.at);
+          const from = ob.from ? (() => { const [fa, fq] = fr.toFrame(ob.from.at); return { alongM: fa, acrossM: fq, halfWidthM: ob.from.halfWidthM }; })() : null;
+          const turn = choke ? (() => { const [ta, tq] = fr.toFrame(choke.at); return { alongM: ta, acrossM: tq }; })() : null;
+          return { alongM: oa, acrossM: oq, frontageM: ob.frontageM, depthM: ob.depthM, fupM: ip.fupM, from, turn };
+        })()
+      : undefined;
     const r = findCorridors({
       coding,
       frame: cframe,
       mcWidthM: fr.mcWidthM,
       spacingM: fr.spacingM,
       sectorDeg: this._opts.extended.sectorDeg,
+      objective,
     });
     const toM = (x: number, y: number): MercXY => pxToMerc(grid.px0 + coding.x0 + x, grid.py0 + coding.y0 + y, z, ts);
     const pairs = (f: Float32Array): MercXY[] => {
@@ -1917,11 +2154,10 @@ export default class GroundGuide {
     const tol = 2 * res * fr.k;
     const firstViable = r.aas.find((a) => a.viable)?.id ?? null;
     const step = Math.max(1, Math.round(250 / r.stepM));
-    const aas: IpbApchAa[] = r.aas.map((a) => {
+    const toView = (a: IpbAa, main: boolean): IpbApchAa => {
       const line = simplifyLine(pairs(a.line), tol);
       let len = 0;
       for (let i = 1; i < line.length; i++) len += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1]);
-      const main = a.viable && a.id === firstViable;
       const arrow = a.viable && len > 0 ? attackArrow(line, arrowTail(a.lengthM, a.drawWidthM, fr.spacingM), main) : { fill: [], stroke: [], inner: [] };
       const widthM: number[] = [], alongM: number[] = [];
       for (let i = 0; i < a.widthM.length; i += step) {
@@ -1953,21 +2189,83 @@ export default class GroundGuide {
         why: a.why,
         sideM: a.sideM,
         mcs: a.mcs,
+        ...(a.onto
+          ? { onto: a.onto, ontoLabel: ontoLabel(a.onto), fupAt: a.fup ? toM(a.fup[0], a.fup[1]) : undefined, hitAt: a.hit ? toM(a.hit[0], a.hit[1]) : undefined, assaultM: a.assaultM, assaultNogoPct: a.assaultNogoPct }
+          : {}),
       };
+    };
+    // How each approach comes onto the objective, in the reader's words: the en's onto your flanks, yours onto his.
+    const ontoLabel = (k: 'frontal' | 'left' | 'right' | 'turn'): string =>
+      k === 'turn'
+        ? fr.side === 'own' ? 'Turning: block his MSR' : 'Turning: onto your MSR'
+        : fr.side === 'own' ? (k === 'frontal' ? 'Frontal' : k === 'left' ? 'Lt flanking' : 'Rt flanking') : k === 'frontal' ? 'Frontal onto you' : k === 'left' ? 'onto your Rt flank' : 'onto your Lt flank';
+    const book = r.aas.map((a) => toView(a, a.viable && a.id === firstViable));
+    const onto = r.onto.map((a, i) => {
+      const v = toView(a, i === 0);
+      // Own frontal attack (user, 2026-11-14): dangerous, a small chance of success; only if unavoidable.
+      if (a.onto === 'frontal') v.why = [fr.side === 'own' ? 'dangerous, small chance of success: only if unavoidable' : 'the most fire from you', ...v.why];
+      if (a.onto === 'turn' && choke) v.why = [`to ${choke.label}, ${fmtDistance(choke.behindM)} behind the Obj`, ...v.why];
+      return v;
     });
+    // The approaches often share the best ground most of the way and part near the objective: the best one keeps its
+    // whole arrow, each other one is drawn from where it leaves those ranked above it (the trunk is drawn once).
+    const tolM = fr.mcWidthM * fr.k;
+    const segD = (p: MercXY, a: MercXY, b: MercXY): number => {
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+      return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+    };
+    const nearLine = (p: MercXY, L: MercXY[]): number => {
+      let m = Infinity;
+      for (let i = 1; i < L.length; i++) m = Math.min(m, segD(p, L[i - 1], L[i]));
+      return m;
+    };
+    onto.forEach((v, i) => {
+      if (!i || v.line.length < 3) return;
+      let split = 0;
+      while (split < v.line.length - 2 && onto.slice(0, i).some((u) => nearLine(v.line[split], u.line) <= tolM)) split++;
+      if (!split) return;
+      const part = v.line.slice(split);
+      let len = 0;
+      for (let k2 = 1; k2 < part.length; k2++) len += Math.hypot(part[k2][0] - part[k2 - 1][0], part[k2][1] - part[k2 - 1][1]);
+      v.splitAt = split;
+      v.arrow = attackArrow(part, arrowTail(len / fr.k, r.onto[i].drawWidthM, fr.spacingM), v.main);
+    });
+    const end = ip.apchEnd;
+    const LET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let aas: IpbApchAa[];
+    const notes = [...r.notes, ...(fr.note ? [fr.note] : [])];
+    if (end === 'through' || !ob) {
+      aas = book;
+      if (end !== 'through' && !ob && !fr.thr.allRound) notes.unshift(fr.side === 'own' ? 'No Obj in the area read: drag the Threat marker onto the en Posn, or place an en symbol ahead. Showing the Apchs through the area.' : 'No Obj: showing the Apchs through the area.');
+    } else if (end === 'objective') {
+      aas = onto.length ? onto : book;
+      notes.unshift(...r.ontoNotes);
+    } else {
+      // Both: the book's avenues keep their letters, the approaches onto the objective take the next ones.
+      aas = [...book, ...onto.map((v, i) => ({ ...v, id: LET[book.length + i] ?? `Z${i}` }))];
+      notes.unshift(...r.ontoNotes);
+    }
+    const objRing = ob && r.objective ? r.objective.map(([x, y]) => toM(x, y)) : null;
     const view: IpbApchView = {
       ...base,
       aas,
-      mcs: r.mcs.map((q) => ({ id: q.id, aa: q.aa, line: simplifyLine(pairs(q.line), tol) })),
-      crossovers: r.crossovers.map((x) => ({ id: x.id, a: x.a, b: x.b, from: toM(x.from[0], x.from[1]), to: toM(x.to[0], x.to[1]), alongM: x.alongM, depthM: x.depthM })),
-      notes: [...r.notes, ...(fr.note ? [fr.note] : [])],
+      mcs: end === 'objective' && onto.length ? [] : r.mcs.map((q) => ({ id: q.id, aa: q.aa, line: simplifyLine(pairs(q.line), tol) })),
+      crossovers: end === 'objective' && onto.length ? [] : r.crossovers.map((x) => ({ id: x.id, a: x.a, b: x.b, from: toM(x.from[0], x.from[1]), to: toM(x.to[0], x.to[1]), alongM: x.alongM, depthM: x.depthM })),
+      notes,
       ways: r.ways,
       codingText: ipbSummaryText(coding),
       ms: { coding: coding.ms, corridors: r.ms },
+      apchEnd: end,
+      objective: ob && objRing ? { at: ob.at, ring: objRing, frontageM: ob.frontageM, depthM: ob.depthM, label: ob.label, source: ob.source, assumed: ob.assumed, fupM: ip.fupM, from: ob.from?.at ?? null, turn: choke } : null,
     };
-    const extent = this._ipbExtent(grid, coding, z, ts);
-    view.raster = this._apchRaster(coding, extent);
-    return { key: fr.key, view, coding, grid, extent, cframe, cargs };
+    // The coding's picture belongs to the area too.
+    const cc2 = this._apchCodeCache.get(fr.codeKey);
+    const same = !!cc2;
+    const extent = same && cc2!.extent ? cc2!.extent : this._ipbExtent(grid, coding, z, ts);
+    view.raster = same && cc2!.raster !== undefined ? cc2!.raster : this._apchRaster(coding, extent);
+    if (same) ((cc2!.extent = extent), (cc2!.raster = view.raster));
+    return { key: fr.key, codeKey: fr.codeKey, view, coding, grid, extent, cframe, cargs };
   }
 
   /** Where the avenues are wanted (the spot read, its symbol): worked out again only when that changes the area or its key. */
@@ -2013,8 +2311,7 @@ export default class GroundGuide {
     }
     this._apchWaiting = false;
     if (!r) return this._apchClear();
-    this._apch = { key: r.key, view: r.view, coding: r.coding, grid: r.grid, extent: r.extent, cframe: r.cframe, cargs: r.cargs };
-    this._tplCodes = null;
+    this._apch = { key: r.key, codeKey: r.codeKey, view: r.view, coding: r.coding, grid: r.grid, extent: r.extent, cframe: r.cframe, cargs: r.cargs };
     const v = r.view;
     const viable = v.aas.filter((a) => a.viable);
     if (v.aas.length || v.notes.length) {
@@ -2051,6 +2348,7 @@ export default class GroundGuide {
     this._fireTimer = this._otherTimer = null;
     this._fireKey = '';
     this._apchOther = null;
+    this._apchCodeCache.clear();
     this._pfInputs = [];
     this._tplCodes = null;
   }
@@ -2820,7 +3118,9 @@ export default class GroundGuide {
     // Codings: the reading's own, the others once per area.
     const movers = new Set<'armour' | 'mech' | 'dismounted'>();
     for (const e of spec.elements) if (e.mover) movers.add(e.mover === 'gun' ? 'mech' : e.mover);
-    if (!this._tplCodes || this._tplCodes.key !== a.key) this._tplCodes = { key: a.key, codes: {} };
+    // The other movers' codings belong to the area (they do not change when only the objective moves).
+    const tk = (a as { codeKey?: string }).codeKey ?? a.key;
+    if (!this._tplCodes || this._tplCodes.key !== tk) this._tplCodes = { key: tk, codes: {} };
     const codes = this._tplCodes.codes;
     codes[v.mover] = c.code;
     for (const mv of movers) {
@@ -5922,6 +6222,46 @@ export default class GroundGuide {
     return next;
   }
 
+  /**
+   * Where the approaches end (Y while F is on, Shift+Y back; the switch in the Ground Detail's key bar): `objective` onto
+   * the objective's frontage, `through` the book's avenues through the area, `both`. A step (1 / -1) walks them; a value
+   * sets it. Kept in the settings; said in the key notice.
+   */
+  cycleApchEnd(to: 1 | -1 | 'objective' | 'through' | 'both' = 1): 'objective' | 'through' | 'both' {
+    const order = ['objective', 'through', 'both'] as const;
+    const cur = this._opts.extended.ipb.apchEnd;
+    const next = typeof to === 'string' ? to : order[(order.indexOf(cur) + to + order.length) % order.length];
+    if (next !== cur) {
+      this.setOptions({ extended: { ...this._opts.extended, ipb: { ...this._opts.extended.ipb, apchEnd: next } } });
+      setSetting(['groundGuide', 'extended', 'ipb', 'apchEnd'], next);
+    }
+    const plain = next === 'objective' ? 'Apchs onto the Obj: frontal, Lt and Rt flanking from an FUP. Y for through the area.' : next === 'through' ? "Apchs through the area (the book's avenues). Y for both." : 'Apchs onto the Obj and through the area. Y for onto the Obj.';
+    this._notice(this._apchEndNotice(), plain);
+    return next;
+  }
+
+  /** Y: where the approaches end now, what that shows, and the keys. */
+  private _apchEndNotice(): KeyNoticeContent {
+    const ip = this._opts.extended.ipb;
+    const own = ip.readFor === 'attack';
+    // The objective as the next reading will have it (the reading itself follows a moment later).
+    const w = this._apchWant;
+    const o = ip.apchEnd !== 'through' && w ? this._apchFrame(w.at, w.sidc).obj : this._apch?.view?.objective;
+    const fup = ip.fupM >= 1000 ? `${(ip.fupM / 1000).toFixed(1)} km` : `${Math.round(ip.fupM)} m`;
+    const frontage = (m: number): string => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`);
+    const obj = o ? `${o.label}, ${frontage(o.frontageM)} frontage${o.assumed ? ' (taken)' : ''}` : own ? 'the Threat marker or the en symbol ahead' : "your symbol's frontage by its echelon";
+    const next: Record<string, string> = { objective: 'through the area', through: 'both', both: 'onto the Obj' };
+    const what: Record<string, { mode: string; text: string }> = {
+      objective: {
+        mode: 'Apchs onto the Obj',
+        text: `They end on ${obj}, not on its middle: frontal, Lt and Rt flanking, each from an FUP ${fup} short, then the assault${ip.turn ? `, and a turning one round it to the ${own ? 'en' : 'your'} MSR choke behind it` : ''}. ${ip.turn ? 'Turning and flanks first' : 'Flanks first'}${own ? '; frontal is dangerous, only if unavoidable' : ''}.`,
+      },
+      through: { mode: 'Apchs through the area', text: "The book's avenues: through the whole area read, regardless of objectives, so they may pass the Posn (a bypass is an option too)." },
+      both: { mode: 'Apchs: onto the Obj and through the area', text: `The book's avenues and the approaches onto ${obj} together; the approaches take the next letters.` },
+    };
+    return { ...what[ip.apchEnd], keys: [['Y', next[ip.apchEnd]], ['⇧Y', 'back'], ['X', own ? "the en's options" : 'your options'], ['3', 'Apchs'], ['[ ]', 'turn the threat']] };
+  }
+
   // ── The key notice (card.keyNotice; user, 2026-11-14) ─────────────────────────────────────────────────────────────
 
   /**
@@ -5945,6 +6285,7 @@ export default class GroundGuide {
     return [
       ['1–5', 'its tabs'],
       ['X', d ? 'your options' : "the en's options"],
+      ['Y', { objective: 'Apchs through the area', through: 'both', both: 'onto the Obj' }[this._opts.extended.ipb.apchEnd]],
       ['[ ]', 'turn the threat'],
       ['J', 'better Posn'],
       ['F', 'close'],
@@ -7147,6 +7488,12 @@ export default class GroundGuide {
     const extKind = this._extOverlayKind();
     if (extKind === 'threat' || extKind === 'ipb') this._extOverlaySoon(300);
     if (this._apchWaiting) this._apchSoon(250);
+    // Road tiles the MSR choke wanted have arrived: the approaches again (the area's coding is kept).
+    if (!terrain && this._turnPending && this._apch) {
+      this._turnPending = false;
+      this._apch = { ...this._apch, key: `${this._apch.key}|roads` };
+      this._apchSoon(300);
+    }
     // Feature tiles the air reading wanted have arrived: read the air again (obstructions, lines, existing helipads).
     if (!terrain && this._airFeaturesPending && this._apch) {
       this._airFeaturesPending = false;
@@ -7406,7 +7753,7 @@ export default class GroundGuide {
     // rule). With it off the digits, brackets and J are left alone for the app.
     const oDigit = /^Digit\d$/.test(e.code) && EXT_TABS.some((t) => EXT_TAB_KEY[t] === e.code.slice(5)) ? Number(e.code.slice(5)) : 0;
     const oTurn = e.code === 'BracketRight' ? 1 : e.code === 'BracketLeft' ? -1 : 0;
-    const oKey = this._opts.extended.keys && (k === 'f' || (this._ext && (k === 'j' || k === 'x' || oDigit > 0 || oTurn !== 0)));
+    const oKey = this._opts.extended.keys && (k === 'f' || (this._ext && (k === 'j' || k === 'x' || k === 'y' || oDigit > 0 || oTurn !== 0)));
     if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'v' && k !== 'escape' && !tabKey && !oKey) || e.ctrlKey || e.metaKey || e.altKey || (e.repeat && oTurn === 0)) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -7432,6 +7779,8 @@ export default class GroundGuide {
         this.takeBetter();
       } else if (k === 'x') {
         this.toggleReadFor(); // X: the enemy's options against you, or yours against the threat
+      } else if (k === 'y') {
+        this.cycleApchEnd(e.shiftKey ? -1 : 1); // Y: the approaches onto the objective, through the area, both (Shift back)
       } else if (oTurn !== 0) {
         this.turnThreat(oTurn * (e.shiftKey ? 45 : 15));
         this._notice(this._threatNotice(), null);

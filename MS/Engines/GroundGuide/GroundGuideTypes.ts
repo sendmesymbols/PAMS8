@@ -361,6 +361,19 @@ export interface GroundGuideIpbOptions {
    * approach path.
    */
   apchs: boolean;
+  /**
+   * Where the approaches end (Y with F on; user, 2026-11-14): `objective` (default) onto the objective's frontage by its
+   * echelon (frontal, Lt and Rt flanking, each from an FUP `fupM` short; flanks first), `through` the book's avenues
+   * through the whole area regardless of objectives (they may pass the Posn), `both` together.
+   */
+  apchEnd: 'objective' | 'through' | 'both';
+  /** The FUP's distance short of the objective, m (IBB pp 173-174: 1,000-1,200 m by night). */
+  fupM: number;
+  /**
+   * A turning approach as well (user, 2026-11-15): round the objective to a choke on the MSR behind it (a bridge, a
+   * defile, a junction) to block it; ranked first. Needs the bundle's road network for the MSR (else a bridge of the coding).
+   */
+  turn: boolean;
   /** The HQ that reads (book p 7: corridors two levels down, avenues one): `auto` from the symbol's echelon (Bn and below read with the Bde HQ row). */
   hq: 'auto' | 'bde' | 'div';
   /** The corridors drawn inside each avenue on the map. */
@@ -612,6 +625,16 @@ export interface IpbApchAa {
   /** Mean place across the area, metres (negative: left as the mover sees). */
   sideM: number;
   mcs: string[];
+  /** An approach onto the objective: which way it comes on, in the reader's words, its FUP and where it meets the objective. */
+  onto?: 'frontal' | 'left' | 'right' | 'turn';
+  ontoLabel?: string;
+  /** Where it leaves the approaches ranked above it (an index into `line`): its arrow and label start there. */
+  splitAt?: number;
+  fupAt?: MercXY;
+  hitAt?: MercXY;
+  /** The assault from the FUP, metres, and how much of it is NO-GO, %. */
+  assaultM?: number;
+  assaultNogoPct?: number;
 }
 
 /** The IPB mobility corridors and avenues of approach over the area read (Extended View, `extended.ipb.apchs`). */
@@ -658,6 +681,25 @@ export interface IpbApchView {
   /** The situation template (extended.ipb.template): undefined while off or not worked out yet. */
   template?: IpbTemplateView | null;
   ms: { coding: number; corridors: number };
+  /** Where the approaches end (extended.ipb.apchEnd), and the objective they end on (null: the book's avenues only). */
+  apchEnd?: 'objective' | 'through' | 'both';
+  objective?: {
+    at: MercXY;
+    /** Its frontage x depth box, facing the movement. */
+    ring: MercXY[];
+    frontageM: number;
+    depthM: number;
+    /** "your Pl", "en Coy", "the Threat marker". */
+    label: string;
+    source: 'posn' | 'threat' | 'symbol';
+    /** The frontage was taken, not read from its echelon (no echelon, or the Threat marker: taken as your echelon's). */
+    assumed: boolean;
+    fupM: number;
+    /** Where the mover sets out (the Threat marker, or your symbol), null: the area's edge. */
+    from: MercXY | null;
+    /** The MSR choke behind it the turning approach blocks: where, what, the stretch of road, how far behind. */
+    turn?: { at: MercXY; kind: 'bridge' | 'defile' | 'junction' | 'road'; label: string; road: MercXY[]; msr: boolean; behindM: number } | null;
+  } | null;
 }
 
 export interface GroundGuideExtendedOptions {
@@ -1543,7 +1585,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54 },
-  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, overlay: 'auto', ipb: { readFor: 'defence', mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true }, eye: 'auto', surface: true },
+  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true }, eye: 'auto', surface: true },
   aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 

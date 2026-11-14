@@ -26,6 +26,19 @@
  *   6. Avenues are ranked on the going until the proforma (Phase 4): cost, how far through the area they run, GO share,
  *      room (corridors side by side), narrows (proposal, basis E). Lettered A, B, C by rank; corridors A1, A2 left to
  *      right as the mover sees.
+ *   7. Approaches onto an objective (`objective`; user, 2026-11-14: "it does not need to end up on symbol, every symbol
+ *      have echelon and each echelon have frontage"): the book's avenues run through the whole area regardless of
+ *      objectives, so they pass the position. With an objective (its frontage x depth box, facing the start edge), a
+ *      second field is laid from where the mover sets out (a place, else the start edge) with the objective and the ground
+ *      round it out to almost the FUP distance kept out, and three ways are traced: frontal (to an FUP that far in front
+ *      of the front edge), left and right flank (to an FUP that far off each flank, level with the objective's middle),
+ *      each then a straight assault to the middle of that edge (IBB pp 173-174: FUP 1,000-1,200 m short, start line
+ *      square to the objective; axes converging on it). Flanks rank above frontal (user: frontal attack is dangerous, a
+ *      flanking attack is encouraged; OoW Vol II s6). Their distances run along the way from where it sets out.
+ *      With `objective.turn` (a choke on the MSR behind the objective: a bridge, a defile, a junction), a fourth, turning
+ *      approach goes round the objective, out of its ground (up to twice the FUP distance clear), to that choke to block
+ *      the MSR (OoW Vol II s6: a turning movement threatens a significant objective in the defender's rear; user: a
+ *      flanking attack that chokes the en MSR is encouraged). It ranks first when it is found.
  */
 
 import { IPB, WHY, type IpbCoding } from './GroundGuideIpb';
@@ -52,7 +65,28 @@ export interface IpbCorridorArgs {
   sectorDeg: number;
   /** Strips cut across the end edge (default the frame's width over two spacings, 1 to 6). */
   strips?: number;
+  /**
+   * The objective the approaches end on: the middle of its box along and across the axis (metres from the start edge's
+   * middle; across positive to the right of the movement), its frontage (across) and depth (along), and the FUP
+   * distance. `from`: where the mover sets out (a frontage across the axis at a place), else the whole start edge.
+   */
+  objective?: {
+    alongM: number;
+    acrossM: number;
+    frontageM: number;
+    depthM: number;
+    fupM: number;
+    from?: { alongM: number; acrossM: number; halfWidthM: number } | null;
+    /** A choke on the MSR behind the objective (along / across as above): the turning approach blocks it. */
+    turn?: { alongM: number; acrossM: number } | null;
+  };
 }
+
+/**
+ * Which way an approach comes onto the objective: square on its front, onto its left or right flank as the mover sees,
+ * or turning round it to a choke on the MSR behind it.
+ */
+export type IpbOntoKind = 'frontal' | 'left' | 'right' | 'turn';
 
 export type IpbNarrowsKind = 'crossing' | 'slow' | 'narrow';
 export interface IpbNarrows {
@@ -113,6 +147,13 @@ export interface IpbAa {
   why: string[];
   /** Mean place across the frame, metres (negative: left of the movement). */
   sideM: number;
+  /** Set on an approach onto the objective: which way it comes on, its FUP and where it meets the objective (coding cells). */
+  onto?: IpbOntoKind;
+  fup?: [number, number];
+  hit?: [number, number];
+  /** The assault from the FUP to the objective's edge, metres, and how much of it is NO-GO, %. */
+  assaultM?: number;
+  assaultNogoPct?: number;
 }
 
 export interface IpbCrossover {
@@ -141,6 +182,10 @@ export interface IpbCorridors {
   notes: string[];
   /** Why each strip's way was kept or left out (for the Engine Log and the checks). */
   ways: string[];
+  /** Approaches onto the objective (best first), empty without one; the objective's corners (coding cells) and notes. */
+  onto: IpbAa[];
+  objective: Array<[number, number]> | null;
+  ontoNotes: string[];
   ms: number;
 }
 
@@ -318,9 +363,13 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     if (clear < halfMc) m *= 1 + 2 * (1 - clear / halfMc);
     cost[q] = m;
   }
-  const G = new Float32Array(N).fill(Infinity);
-  const P = new Int32Array(N).fill(-1);
-  {
+  /**
+   * One least-cost field over `cst` from the `src` samples (8 neighbours, never slipping between two NO-GO corners).
+   * `until`: stop once all of these samples are settled (the rest of the field is not needed).
+   */
+  const field = (cst: Float32Array, src: number[], until?: number[]): { G: Float32Array; P: Int32Array } => {
+    const G = new Float32Array(N).fill(Infinity);
+    const P = new Int32Array(N).fill(-1);
     const heap: number[] = [];
     const key = new Float32Array(N);
     const push = (q: number, g: number): void => {
@@ -354,26 +403,28 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       }
       return top;
     };
-    for (let j = 0; j < NC; j++) {
-      if (cost[j] === Infinity) continue;
-      G[j] = 0;
-      push(j, 0);
+    for (const q of src) {
+      if (cst[q] === Infinity) continue;
+      G[q] = 0;
+      push(q, 0);
     }
     const done = new Uint8Array(N);
     const DI = [0, 0, 1, -1, 1, 1, -1, -1], DJ = [1, -1, 0, 0, 1, -1, 1, -1];
+    const want = until ? new Set(until.filter((q) => cst[q] !== Infinity)) : null;
     while (heap.length) {
       const q = pop();
       if (done[q]) continue;
       done[q] = 1;
+      if (want && want.delete(q) && !want.size) break;
       const i = (q / NC) | 0, j = q - i * NC;
-      const cq = cost[q];
+      const cq = cst[q];
       for (let k = 0; k < 8; k++) {
         const ii = i + DI[k], jj = j + DJ[k];
         if (ii < 0 || jj < 0 || ii >= NR || jj >= NC) continue;
         const qq = ii * NC + jj;
-        if (done[qq] || cost[qq] === Infinity) continue;
-        if (k >= 4 && cost[i * NC + jj] === Infinity && cost[ii * NC + j] === Infinity) continue; // no slipping between two NO-GO corners
-        const g = G[q] + (k < 4 ? 1 : Math.SQRT2) * s * 0.5 * (cq + cost[qq]);
+        if (done[qq] || cst[qq] === Infinity) continue;
+        if (k >= 4 && cst[i * NC + jj] === Infinity && cst[ii * NC + j] === Infinity) continue; // no slipping between two NO-GO corners
+        const g = G[q] + (k < 4 ? 1 : Math.SQRT2) * s * 0.5 * (cq + cst[qq]);
         if (g < G[qq]) {
           G[qq] = g;
           P[qq] = q;
@@ -381,7 +432,11 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
         }
       }
     }
-  }
+    return { G, P };
+  };
+  const startRow: number[] = [];
+  for (let j = 0; j < NC; j++) startRow.push(j);
+  const { G, P } = field(cost, startRow);
 
   // 5. The cheapest way back from each strip of the end edge (or from the farthest row reached in the strip).
   const K = Math.max(1, Math.min(6, a.strips ?? Math.round(fr.widthM / (2 * a.spacingM))));
@@ -474,10 +529,11 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     return { widthM: (r - l + 1) * s, kind: cross ? 'crossing' : slow > go ? 'slow' : 'narrow' };
   };
   const capM = Math.max(4 * mcW, 3 * a.spacingM);
-  interface Draft { w: Way; ii: number[]; jj: number[]; js: number[]; widthM: number[]; fit: number[]; twoPct: number; onePct: number; goPct: number; medW: number; minW: number; narrows: Array<{ i: number; j: number; widthM: number; kind: IpbNarrowsKind }>; lines: number; cover: number; sideJ: number; viable: boolean; open: boolean; score: number; why: string[] }
+  interface Draft { w: Way; ii: number[]; jj: number[]; js: number[]; widthM: number[]; fit: number[]; twoPct: number; onePct: number; goPct: number; medW: number; minW: number; narrows: Array<{ i: number; j: number; k: number; widthM: number; kind: IpbNarrowsKind }>; lines: number; cover: number; sideJ: number; viable: boolean; open: boolean; score: number; why: string[]; medFit: number; tight: number }
   const drafts: Draft[] = [];
   const notes: string[] = [];
-  for (const w of ways) {
+  /** Along a way: corridors side by side, narrows, measures. `keep`: kept even when narrower than a corridor (an approach). */
+  const measure = (w: Way, keep: boolean): Draft | null => {
     const ii = w.cells.map((q) => (q / NC) | 0);
     const jj = w.cells.map((q, k) => q - ii[k] * NC);
     const widthM = w.cells.map((q) => (block[q] ? 0 : runW[q] * s));
@@ -486,8 +542,8 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     const twoPct = (100 * fit.filter((v) => v >= 2).length) / n;
     const onePct = (100 * fit.filter((v) => v >= 1).length) / n;
     const viable = twoPct >= 60;
-    wayNotes.push(`way at ${sideKm(w)} km: two side by side ${Math.round(twoPct)} %, one ${Math.round(onePct)} %${w.stopped ? ', stopped' : ''}${!viable && onePct < 60 ? ': no corridor' : viable ? ': avenue' : ': lone corridor'}`);
-    if (!viable && onePct < 60) continue; // narrower than a corridor most of the way: no corridor here
+    if (!keep) wayNotes.push(`way at ${sideKm(w)} km: two side by side ${Math.round(twoPct)} %, one ${Math.round(onePct)} %${w.stopped ? ', stopped' : ''}${!viable && onePct < 60 ? ': no corridor' : viable ? ': avenue' : ': lone corridor'}`);
+    if (!viable && onePct < 60 && !keep) return null; // narrower than a corridor most of the way: no corridor here
     // Narrows: stretches where less than one corridor fits, at their narrowest.
     const narrows: Draft['narrows'] = [];
     let run: { k: number; w: number } | null = null;
@@ -495,7 +551,7 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       if (!run) return;
       const q = w.cells[run.k];
       const pr = block[q] || kind[q] === K_CROSS ? passRun(ii[run.k], jj[run.k]) : { widthM: widthM[run.k], kind: 'narrow' as IpbNarrowsKind };
-      narrows.push({ i: ii[run.k], j: jj[run.k], widthM: Math.max(s, pr.widthM), kind: kind[q] === K_CROSS ? 'crossing' : pr.kind });
+      narrows.push({ i: ii[run.k], j: jj[run.k], k: run.k, widthM: Math.max(s, pr.widthM), kind: kind[q] === K_CROSS ? 'crossing' : pr.kind });
       run = null;
     };
     // Stretches less than a corridor width apart are one narrows (reported at the narrowest; a crossing wins).
@@ -543,8 +599,7 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     const sideJ = jj.reduce((t, v) => t + v, 0) / n;
     const medFit = fit.slice().sort((p, q) => p - q)[Math.floor(n / 2)];
     const tight = narrows.filter((q) => q.widthM < halfMc).length;
-    drafts.push({ w, ii, jj, js, widthM, fit, twoPct, onePct, goPct, medW, minW, narrows, lines, cover, sideJ, viable, open: medFit >= 3, score: 0, why: [] });
-    const d = drafts[drafts.length - 1];
+    const d: Draft = { w, ii, jj, js, widthM, fit, twoPct, onePct, goPct, medW, minW, narrows, lines, cover, sideJ, viable, open: medFit >= 3, score: 0, why: [], medFit, tight };
     d.score = 15 * cover + 0.3 * goPct + 6 * medFit - 5 * narrows.length - 6 * tight - (w.stopped ? 10 : 0);
     d.why = [
       w.stopped ? `stops after ${Math.round(cover * 100)} % of the area` : 'runs the whole area',
@@ -552,6 +607,11 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       `${Math.round(goPct)} % GO`,
       narrows.length ? `${narrows.length} narrows` : 'no narrows',
     ];
+    return d;
+  };
+  for (const w of ways) {
+    const d = measure(w, false);
+    if (d) drafts.push(d);
   }
   // The cheaper way also counts: a share of the score from its cost against the cheapest.
   const gMin = Math.min(...drafts.map((d) => d.w.g / Math.max(1, d.w.cells.length)));
@@ -647,10 +707,194 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
     }
   }
 
+  // 9. Approaches onto the objective (see the header, step 7).
+  const onto: IpbAa[] = [];
+  const ontoNotes: string[] = [];
+  let objective: Array<[number, number]> | null = null;
+  if (a.objective) {
+    const o = a.objective;
+    const W2 = Math.max(0, o.frontageM) / 2, D2 = Math.max(0, o.depthM) / 2;
+    const fupM = Math.max(s * 2, o.fupM);
+    objective = [at(o.alongM - D2, o.acrossM - W2), at(o.alongM - D2, o.acrossM + W2), at(o.alongM + D2, o.acrossM + W2), at(o.alongM + D2, o.acrossM - W2)];
+    const rowOf = (aM: number): number => Math.round(aM / s - 0.5);
+    const colOf = (qM: number): number => Math.round((qM + halfW) / s - 0.5 + NM);
+    const inGrid = (i: number, j: number): boolean => i >= 0 && j >= 0 && i < NR && j < NC;
+    // The objective and the ground round it out to almost the FUP distance are kept out of the approach (the assault
+    // from the FUP is the only way in), so a flank approach swings wide instead of skirting the front.
+    const keepM = 0.85 * fupM;
+    const cost2 = cost.slice();
+    const ki0 = rowOf(o.alongM - D2 - keepM), ki1 = rowOf(o.alongM + D2 + keepM);
+    const kj0 = colOf(o.acrossM - W2 - keepM), kj1 = colOf(o.acrossM + W2 + keepM);
+    for (let i = Math.max(0, ki0); i <= Math.min(NR - 1, ki1); i++) for (let j = Math.max(0, kj0); j <= Math.min(NC - 1, kj1); j++) cost2[i * NC + j] = Infinity;
+    const src: number[] = [];
+    if (o.from) {
+      const fi = rowOf(o.from.alongM);
+      const fj0 = colOf(o.from.acrossM - o.from.halfWidthM), fj1 = colOf(o.from.acrossM + o.from.halfWidthM);
+      for (let i = fi - 1; i <= fi + 1; i++) for (let j = Math.min(fj0, fj1); j <= Math.max(fj0, fj1); j++) if (inGrid(i, j) && cost2[i * NC + j] !== Infinity) src.push(i * NC + j);
+    }
+    if (!src.length) for (let j = 0; j < NC; j++) if (cost2[j] !== Infinity) src.push(j);
+    const word: Record<IpbOntoKind, string> = { frontal: 'Frontal', left: 'Left flank', right: 'Right flank', turn: 'Turning' };
+    // A flank approach keeps to its own side for the last stretch before the objective (at least 3 km, twice the FUP
+    // distance): out of the objective's front, the way an envelopment goes round (OoW Vol II s6). Before that it may
+    // share the best ground with the others.
+    const sideM = Math.min(mcW / 2, fupM / 2);
+    const bandM = Math.max(3000, 2 * fupM);
+    const sided = (kind: 'left' | 'right'): Float32Array => {
+      const c3 = cost2.slice();
+      const i0 = Math.max(0, rowOf(o.alongM - D2 - bandM)), i1 = Math.min(NR - 1, rowOf(o.alongM + D2 + keepM));
+      const jEdge = kind === 'left' ? colOf(o.acrossM - W2 - sideM) : colOf(o.acrossM + W2 + sideM);
+      for (let i = i0; i <= i1; i++)
+        for (let j = 0; j < NC; j++) if (kind === 'left' ? j > jEdge : j < jEdge) c3[i * NC + j] = Infinity;
+      return c3;
+    };
+    const targets: Array<{ kind: IpbOntoKind; fup: [number, number]; hit: [number, number] }> = [
+      { kind: 'frontal', fup: [o.alongM - D2 - fupM, o.acrossM], hit: [o.alongM - D2, o.acrossM] },
+      { kind: 'left', fup: [o.alongM, o.acrossM - W2 - fupM], hit: [o.alongM, o.acrossM - W2] },
+      { kind: 'right', fup: [o.alongM, o.acrossM + W2 + fupM], hit: [o.alongM, o.acrossM + W2] },
+    ];
+    // The turning approach: round the objective, clear of its ground, to the MSR choke behind it.
+    let turnCost: Float32Array | null = null;
+    if (o.turn) {
+      const da = Math.max(0, Math.abs(o.turn.alongM - o.alongM) - D2), dq = Math.max(0, Math.abs(o.turn.acrossM - o.acrossM) - W2);
+      const clearM = Math.min(2 * fupM, Math.hypot(da, dq) - mcW);
+      if (!inGrid(rowOf(o.turn.alongM), colOf(o.turn.acrossM))) ontoNotes.push('Turning: the MSR choke lies outside the area read');
+      else if (clearM < 300) ontoNotes.push('Turning: the MSR choke lies too close to the Obj to go round to it');
+      else {
+        turnCost = cost.slice();
+        const c = Math.max(keepM, clearM);
+        const ti0 = rowOf(o.alongM - D2 - c), ti1 = rowOf(o.alongM + D2 + c), tj0 = colOf(o.acrossM - W2 - c), tj1 = colOf(o.acrossM + W2 + c);
+        for (let i = Math.max(0, ti0); i <= Math.min(NR - 1, ti1); i++) for (let j = Math.max(0, tj0); j <= Math.min(NC - 1, tj1); j++) turnCost[i * NC + j] = Infinity;
+        targets.push({ kind: 'turn', fup: [o.turn.alongM, o.turn.acrossM], hit: [o.turn.alongM, o.turn.acrossM] });
+      }
+    }
+    interface OntoDraft { d: Draft; t: (typeof targets)[number]; fupQ: number; fupK: number; hitQ: number; assaultM: number; nogoPct: number; g: number }
+    const ods: OntoDraft[] = [];
+    for (const t of targets) {
+      const fi = rowOf(t.fup[0]), fj = colOf(t.fup[1]);
+      const turning = t.kind === 'turn';
+      // The FUP: the reachable sample nearest the place, within half the FUP distance (moving it costs); for the turning
+      // approach the choke itself, within half a corridor.
+      const rr = Math.max(1, Math.round((turning ? mcW / 2 : 0.5 * fupM) / s));
+      const win: number[] = [];
+      for (let di = -rr; di <= rr; di++) for (let dj = -rr; dj <= rr; dj++) if (inGrid(fi + di, fj + dj) && di * di + dj * dj <= rr * rr) win.push((fi + di) * NC + fj + dj);
+      const { G: G2, P: P2 } = field(turning ? turnCost! : t.kind === 'frontal' ? cost2 : sided(t.kind as 'left' | 'right'), src, win);
+      let best = -1, bv = Infinity;
+      for (let di = -rr; di <= rr; di++)
+        for (let dj = -rr; dj <= rr; dj++) {
+          const i = fi + di, j = fj + dj;
+          if (!inGrid(i, j) || di * di + dj * dj > rr * rr) continue;
+          const q = i * NC + j;
+          if (G2[q] === Infinity) continue;
+          const v = G2[q] + Math.hypot(di, dj) * s * 6;
+          if (v < bv) ((bv = v), (best = q));
+        }
+      if (best < 0) {
+        ontoNotes.push(`${word[t.kind]}: ${turning ? 'no way round the Obj to the MSR choke' : inGrid(fi, fj) ? `no way to an FUP ${Math.round(fupM)} m short` : 'no room for its FUP in the area read'}`);
+        continue;
+      }
+      const cells: number[] = [];
+      for (let q = best; q >= 0; q = P2[q]) cells.push(q);
+      cells.reverse();
+      const fupK = cells.length - 1;
+      if (turning) {
+        // No assault: the way ends astride the MSR at the choke.
+        if (cells.length < 2) continue;
+        const d = measure({ cells, g: G2[best], stopped: false }, true);
+        if (d) ods.push({ d, t, fupQ: best, fupK, hitQ: best, assaultM: 0, nogoPct: 0, g: G2[best] });
+        continue;
+      }
+      // The assault: straight from the FUP to the middle of the objective's edge.
+      const bi = (best / NC) | 0, bj = best - bi * NC;
+      const hi = Math.min(NR - 1, Math.max(0, rowOf(t.hit[0]))), hj = Math.min(NC - 1, Math.max(0, colOf(t.hit[1])));
+      const steps = Math.max(Math.abs(hi - bi), Math.abs(hj - bj));
+      let nogo = 0;
+      for (let k = 1; k <= steps; k++) {
+        const q = Math.round(bi + ((hi - bi) * k) / steps) * NC + Math.round(bj + ((hj - bj) * k) / steps);
+        if (q !== cells[cells.length - 1]) cells.push(q);
+        if (!passes(kind[q])) nogo++;
+      }
+      if (cells.length < 2) continue;
+      const d = measure({ cells, g: G2[best], stopped: false }, true);
+      if (!d) continue;
+      ods.push({ d, t, fupQ: best, fupK, hitQ: hi * NC + hj, assaultM: Math.hypot(hi - bi, hj - bj) * s, nogoPct: steps ? (100 * nogo) / steps : 0, g: G2[best] });
+    }
+    // Ranked on the going and the cost; a flank above the frontal one (user: frontal is dangerous, flanking encouraged).
+    const gm = Math.min(...ods.map((x) => x.g / Math.max(1, x.d.w.cells.length)));
+    for (const x of ods) {
+      const d = x.d;
+      d.score = 0.3 * d.goPct + 6 * d.medFit - 5 * d.narrows.length - 6 * d.tight + 25 * (gm / Math.max(1e-6, x.g / Math.max(1, d.w.cells.length))) + (x.t.kind === 'frontal' ? -25 : x.t.kind === 'turn' ? 30 : 15) - (x.nogoPct > 30 ? 10 : 0);
+    }
+    ods.sort((p, q) => q.d.score - p.d.score);
+    const SMo = Math.max(2, Math.round((0.6 * mcW) / s));
+    ods.forEach((x, r) => {
+      const d = x.d;
+      const n = d.ii.length;
+      // The way to the FUP smoothed both ways (an approach turns), its ends kept where they are; the assault stays straight.
+      const fk = Math.min(n - 1, x.fupK);
+      const si = [...smooth(d.ii.slice(0, fk + 1), SMo), ...d.ii.slice(fk + 1)];
+      const sj = [...smooth(d.jj.slice(0, fk + 1), SMo), ...d.jj.slice(fk + 1)];
+      si[0] = d.ii[0];
+      sj[0] = d.jj[0];
+      si[fk] = d.ii[fk];
+      sj[fk] = d.jj[fk];
+      const pts = si.map((i, k) => toCell(i, sj[k]));
+      const cum = [0];
+      for (let k = 1; k < n; k++) cum.push(cum[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]) * res);
+      const line = new Float32Array(n * 2);
+      pts.forEach((pt, k) => ((line[k * 2] = pt[0]), (line[k * 2 + 1] = pt[1])));
+      const id = LET[r] ?? `Z${r}`;
+      const fq = x.fupQ, fiq = (fq / NC) | 0;
+      const hiq = (x.hitQ / NC) | 0;
+      onto.push({
+        id,
+        rank: r + 1,
+        viable: true,
+        mcs: [],
+        open: d.open,
+        line,
+        widthM: Float32Array.from(d.widthM.map((v) => Math.min(capM, v))),
+        alongM: Float32Array.from(cum),
+        startM: 0,
+        endM: cum[n - 1],
+        lengthM: cum[n - 1],
+        stopped: false,
+        coverPct: 100,
+        twoPct: d.twoPct,
+        onePct: d.onePct,
+        goPct: d.goPct,
+        drawWidthM: mcW * (d.viable ? 2.2 : 1),
+        medianWidthM: d.medW,
+        minWidthM: d.minW,
+        narrows: d.narrows
+          .map((q) => {
+            const [nx, ny] = toCell(q.i, q.j);
+            return { x: nx, y: ny, alongM: cum[q.k] ?? 0, widthM: q.widthM, kind: q.kind, on: id };
+          })
+          .sort((p, q) => p.widthM - q.widthM),
+        waterLines: d.lines,
+        score: d.score,
+        why: [
+          d.viable ? (d.medFit >= 3 ? 'room for 3+ corridors' : '2 corridors side by side') : d.onePct >= 60 ? '1 corridor: tight' : 'narrower than a corridor',
+          `${Math.round(d.goPct)} % GO`,
+          d.narrows.length ? `${d.narrows.length} narrows` : 'no narrows',
+          ...(x.t.kind === 'turn' ? ['round the Obj to block its MSR'] : [`FUP ${Math.round(fupM)} m short`]),
+          ...(x.nogoPct > 0 ? [`assault ${Math.round(x.nogoPct)} % NO-GO`] : []),
+        ],
+        sideM: (d.sideJ - NM + 0.5) * s - halfW,
+        onto: x.t.kind,
+        fup: x.t.kind === 'turn' ? undefined : toCell(fiq, fq - fiq * NC),
+        hit: toCell(hiq, x.hitQ - hiq * NC),
+        assaultM: x.assaultM,
+        assaultNogoPct: x.nogoPct,
+      });
+    });
+    if (!onto.length) ontoNotes.push('No approach onto the Obj for this mover');
+  }
+
   if (!ways.length) notes.push('No way through the area for this mover');
   else if (!aas.length) notes.push(`No corridor ${Math.round(mcW)} m wide runs through the area`);
   else if (!aas.some((x) => x.viable)) notes.push('Lone corridors only: none holds two corridors side by side');
-  return { aas, mcs, crossovers, mcWidthM: mcW, spacingM: a.spacingM, stepM: s, corners, notes, ways: wayNotes, ms: now() - t0 };
+  return { aas, mcs, crossovers, mcWidthM: mcW, spacingM: a.spacingM, stepM: s, corners, notes, ways: wayNotes, onto, objective, ontoNotes, ms: now() - t0 };
 }
 
 /** How wide the head is against the neck (MainAttack's barbs stand well out from the shaft). */

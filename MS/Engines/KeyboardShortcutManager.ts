@@ -70,7 +70,8 @@ export interface KeyboardShortcutDeps {
  *   D           Ground Detail; G R O T B C its tabs, K its Legend, Esc closes it
  *   F           Extended View on / off (any time): Detail tabs 1 2 3 (Obsn & Fd of Fire, Key Gr, Approaches),
  *               the threat marker and the map products; with it on [ ] turn the threat, J takes the better Posn,
- *               X the en's options against you / yours against the threat.
+ *               X the en's options against you / yours against the threat, Y where the approaches end (onto the
+ *               objective's frontage / through the area / both; Shift+Y back).
  *               It lasts for that kind of symbol: a different symbol or Esc closes it. Shift+F keeps it on
  *   S P H       While drawing: Quick Fix to clear ground, change the mode, shrink the cursor card to a chip
  *

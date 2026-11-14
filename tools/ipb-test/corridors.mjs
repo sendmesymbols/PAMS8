@@ -135,6 +135,82 @@ for (const [gapM, want] of [[3000, 'avenue'], [650, 'lone'], [300, 'none']]) {
   check('simplify keeps the corner and drops the near-straight point', simp.length === 4);
 }
 
+// 10 Approaches onto an objective (user, 2026-11-14): a Pl's 500 m frontage 8 km in, square to the movement, FUP 1.1 km.
+{
+  const obj = { alongM: 8000, acrossM: 0, frontageM: 500, depthM: 0, fupM: 1100 };
+  const runO = (c, o = {}) => findCorridors({ coding: c, frame, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, objective: { ...obj, ...o } });
+  const r = runO(coding());
+  const by = Object.fromEntries(r.onto.map((a) => [a.onto, a]));
+  const last = (a) => [a.line[a.line.length - 2], a.line[a.line.length - 1]];
+  const ox = X(8000), oy = 150, half = 250 / RES, fup = 1100 / RES;
+  check('onto, open plain: a frontal, a left and a right flank approach', !!by.frontal && !!by.left && !!by.right, r.onto.map((a) => `${a.id} ${a.onto}`).join(', '));
+  check('onto: the flanks rank above the frontal one', r.onto[r.onto.length - 1]?.onto === 'frontal' && r.onto[0].onto !== 'frontal');
+  const [fx, fy] = last(by.frontal), [lx, ly] = last(by.left), [rx, ry] = last(by.right);
+  check('onto: frontal ends on the middle of the front edge', Math.abs(fx - ox) <= 1.5 && Math.abs(fy - oy) <= 1.5, `end ${fx.toFixed(1)}, ${fy.toFixed(1)}`);
+  check('onto: left flank ends on the left end of the frontage (north, moving east)', Math.abs(lx - ox) <= 1.5 && Math.abs(ly - (oy - half)) <= 1.5, `end ${lx.toFixed(1)}, ${ly.toFixed(1)}`);
+  check('onto: right flank ends on the right end of the frontage', Math.abs(rx - ox) <= 1.5 && Math.abs(ry - (oy + half)) <= 1.5, `end ${rx.toFixed(1)}, ${ry.toFixed(1)}`);
+  check('onto: each FUP lies the FUP distance out (in front, off each flank)', Math.abs(by.frontal.fup[0] - (ox - fup)) <= 2 && Math.abs(by.left.fup[1] - (oy - half - fup)) <= 2 && Math.abs(by.right.fup[1] - (oy + half + fup)) <= 2, `F ${by.frontal.fup.map((v) => v.toFixed(0))} L ${by.left.fup.map((v) => v.toFixed(0))} R ${by.right.fup.map((v) => v.toFixed(0))}`);
+  // Before its FUP a flank approach keeps out of the ground round the objective (it swings wide, it does not skirt the front).
+  const keep = (0.8 * 1100) / RES;
+  const intrude = (a) => {
+    let hit = 0;
+    const n = a.line.length / 2;
+    for (let k = 0; k < n; k++) {
+      const x = a.line[k * 2], y = a.line[k * 2 + 1];
+      if (Math.hypot(x - a.fup[0], y - a.fup[1]) < 0.75) break; // the assault starts here (the FUP is kept exact)
+      if (Math.abs(x - ox) < keep && Math.abs(y - oy) < half + keep) hit++;
+    }
+    return hit;
+  };
+  check('onto: before the FUP no approach enters the ground round the objective', intrude(by.left) === 0 && intrude(by.right) === 0 && intrude(by.frontal) === 0, `L ${intrude(by.left)} R ${intrude(by.right)} F ${intrude(by.frontal)}`);
+  // In the last 3 km before the objective a flank approach stays on its own side (out of the objective's front).
+  const wrongSide = (a, sign) => {
+    let bad = 0;
+    for (let k = 0; k < a.line.length / 2; k++) {
+      const x = a.line[k * 2], y = a.line[k * 2 + 1];
+      if (x >= ox - 3000 / RES && x <= ox && sign * (y - oy) < half) bad++;
+    }
+    return bad;
+  };
+  check('onto: the last 3 km of each flank approach keep to its side', wrongSide(by.left, -1) === 0 && wrongSide(by.right, 1) === 0, `L ${wrongSide(by.left, -1)} R ${wrongSide(by.right, 1)}`);
+  // The turning approach: round the objective, clear of its ground, to a choke on its MSR 2 km behind it; ranked first.
+  const rt = runO(coding(), { turn: { alongM: 10000, acrossM: 0 } });
+  const T = rt.onto.find((a) => a.onto === 'turn');
+  const tEnd = T ? [T.line[T.line.length - 2], T.line[T.line.length - 1]] : null;
+  check('onto: a turning approach ends on the MSR choke behind the objective, ranked first', !!T && Math.abs(tEnd[0] - X(10000)) <= 9 && Math.abs(tEnd[1] - oy) <= 9 && rt.onto[0].onto === 'turn' && !T.fup, T ? `${rt.onto.map((a) => a.onto).join(' > ')} · end ${tEnd.map((v) => v.toFixed(0))}` : rt.ontoNotes.join('; '));
+  // It keeps clear of the objective: 1.5 km here (2 km behind it, less half a corridor).
+  let near = Infinity;
+  if (T) for (let k = 0; k < T.line.length / 2; k++) near = Math.min(near, Math.hypot(Math.max(0, Math.abs(T.line[k * 2] - ox)), Math.max(0, Math.abs(T.line[k * 2 + 1] - oy) - half)) * RES);
+  check('onto: the turning approach goes round the objective, at least 1.2 km clear', near >= 1200, `${near.toFixed(0)} m`);
+  const rc = runO(coding(), { turn: { alongM: 8600, acrossM: 0 } });
+  check('onto: a choke right behind the objective: no turning approach, said why', !rc.onto.some((a) => a.onto === 'turn') && rc.ontoNotes.some((t) => /too close/.test(t)), rc.ontoNotes.join('; '));
+  // The cost of the approaches on a Bde frame (14 x 28 km at 30 m), an objective 22 km in.
+  {
+    const BW = 520, BH = 1000;
+    const big = { x0: 0, y0: 0, w: BW, h: BH, res: RES, code: new Uint8Array(BW * BH).fill(IPB.GO), why: new Uint16Array(BW * BH), waterW: new Uint16Array(BW * BH) };
+    const t = performance.now();
+    const rb = findCorridors({ coding: big, frame: { sx: 260, sy: 990, axisDeg: 0, lengthM: 28000, widthM: 14000 }, mcWidthM: 500, spacingM: 2000, sectorDeg: 90, objective: { alongM: 22000, acrossM: 0, frontageM: 525, depthM: 0, fupM: 1100 } });
+    const ms = performance.now() - t;
+    check('onto: a Bde frame with its three approaches in under 1.2 s', ms < 1200 && rb.onto.length === 3, `${ms.toFixed(0)} ms`);
+  }
+  check('onto: distances run along the way from where it sets out', by.left.startM === 0 && Math.abs(by.left.endM - by.left.lengthM) < 1 && by.left.alongM.every((v, k, arr) => !k || v >= arr[k - 1]), `${(by.left.lengthM / 1000).toFixed(1)} km`);
+  const plain = run(coding());
+  check('onto: the book avenues are the same with or without an objective', plain.aas.length === r.aas.length && plain.aas.every((a, k) => a.id === r.aas[k].id && Math.abs(a.lengthM - r.aas[k].lengthM) < 1));
+  check('onto: the objective box is returned', Array.isArray(r.objective) && r.objective.length === 4);
+  // A lake off the right flank: its FUP moves out beyond the lake and the assault crosses NO-GO (ranked down, said why).
+  const lake = coding(({ set }) => { for (let y = 158; y < 200; y++) for (let x = X(6000); x < X(10000); x++) set(x, y, IPB.NOGO, WHY.WATER, 600); });
+  const rl = runO(lake);
+  const R = rl.onto.find((a) => a.onto === 'right');
+  check('onto: a lake off the right flank: the right approach assaults across NO-GO (or has no FUP), ranked last of the flanks', !R || (R.assaultNogoPct > 50 && R.why.some((w) => /NO-GO/.test(w)) && rl.onto.findIndex((a) => a.onto === 'left') < rl.onto.indexOf(R)), R ? `assault ${R.assaultNogoPct.toFixed(0)} % NO-GO · ${rl.onto.map((a) => a.onto).join(' > ')}` : rl.ontoNotes.join('; '));
+  // Setting out from a place (own attack from the symbol): every approach starts there.
+  const rf = runO(coding(), { from: { alongM: 1000, acrossM: -2000, halfWidthM: 250 } });
+  const starts = rf.onto.map((a) => [a.line[0], a.line[1]]);
+  check('onto: from a place, every approach starts there', rf.onto.length === 3 && starts.every(([x, y]) => Math.abs(x - X(1000)) <= 2 && Math.abs(y - (150 - 2000 / RES)) <= 10), starts.map(([x, y]) => `${x.toFixed(0)},${y.toFixed(0)}`).join(' '));
+  // No room for a flank FUP: an objective at the frame's edge.
+  const re = runO(coding(), { acrossM: 3500 });
+  check('onto: an objective at the edge of the area: the outer flank says there is no room for its FUP', re.ontoNotes.some((t) => /Right flank/.test(t)) && !re.onto.some((a) => a.onto === 'right'), re.ontoNotes.join('; '));
+}
+
 // 9 Cost: a Bde frame (14 x 28 km at 30 m) on synthetic ground.
 {
   const BW = 940, BH = 520;

@@ -55,6 +55,9 @@ MS/
 │   ├── Symbols.json            # Symbol metadata (Class, Name, SymGeoType, ...)
 │   ├── Settings.json           # Default settings tree (features, measurement, declutter, ...)
 │   ├── Templates.json / *V3.json # Symbol templates & catalogs
+│   ├── Orbat/                  # Unit compositions from SO's Handbook 2019 (RESTD): own + en units, strength,
+│   │                          #   children (who is under whom), weapons → weapons.json (printed ranges + planRangeM),
+│   │                          #   symbol keys; `node tools/orbat-test/run.mjs` checks it
 │   └── ...
 ├── Engines/                    # Core + feature engines (see below)
 │   ├── SymbolEngine.ts         # Central mediator / public API surface
@@ -224,7 +227,13 @@ MS/
   corridors and avenues of approach: least-cost ways from strips of the area, an avenue = two corridors side by side,
   narrows, crossovers; drawn as the MS attack arrows (layer `ms-ground-guide-ipb-apch`), in tab 3 (replacing the single
   path), on the rail. Pure engine `GroundGuideIpbCorridors.ts`, map `GroundGuideIpbApchMap.ts`, tab 3
-  `GroundGuideIpbApchView.ts`; `guide.ipbApproaches()`, `ipbApproachesAround()`; `node tools/ipb-test/corridors.mjs` (22 checks).
+  `GroundGuideIpbApchView.ts`; `guide.ipbApproaches()`, `ipbApproachesAround()`; `node tools/ipb-test/corridors.mjs` (43 checks).
+  **Y** (`ipb.apchEnd`: `objective` default / `through` / `both`): approaches onto the objective's frontage by its echelon
+  (your symbol in the en's options; the Threat marker place or the nearest en symbol ahead in yours), frontal and Lt / Rt
+  flanking from an FUP `ipb.fupM` (1,100 m) short, flanks first, the last 3 km on their side, and (`ipb.turn`) a turning
+  approach round the objective to a choke on the MSR behind it (road network MSR flag, `GroundGuideRoads.edgesIn`; bridge >
+  defile > junction), ranked first; or the book's avenues through the area (they may pass the Posn); fire, decision,
+  template and proforma follow them.
   Tab 3's **Create on Map** (Phase 3; `guide.createIpbOverlay('coo' | 'corridors' | 'apchs' | 'all')`) writes them as
   ordinary symbols via `loadSymbolFromJSON` (SymbolEngine passes `setCreator`, run as one undo step; making it again
   replaces the last set): No Go / Slow Go areas traced from the coding (`GroundGuideIpbShapes.ts`, `node

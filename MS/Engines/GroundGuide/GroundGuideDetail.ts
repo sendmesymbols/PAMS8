@@ -145,6 +145,8 @@ export interface DetailHandlers {
    * switch, set when it is clicked (user, 2026-11-14: moved to the key bar from tab 3 to save space).
    */
   readFor?: { get(): 'defence' | 'attack'; set(r: 'defence' | 'attack'): void };
+  /** Where the approaches end (Y): onto the objective, through the area, both. */
+  apchEnd?: { get(): 'objective' | 'through' | 'both'; set(e: 'objective' | 'through' | 'both'): void };
 }
 
 const STYLE_ID = 'ms-ground-guide-detail-style';
@@ -348,7 +350,8 @@ const CSS = `
 .ms-ggd-who{display:inline-flex;align-items:center;margin-right:12px}
 .ms-ggd-who>button{font:inherit;font-size:12px;padding:2px 9px;border:1px solid #4a535e;background:#20262e;color:#c3cbd3;cursor:pointer}
 .ms-ggd-who>button:first-of-type{border-radius:999px 0 0 999px}
-.ms-ggd-who>button:last-of-type{border-radius:0 999px 999px 0;border-left:0}
+.ms-ggd-who>button+button{border-left:0}
+.ms-ggd-who>button:last-of-type{border-radius:0 999px 999px 0}
 .ms-ggd-who>button[aria-pressed="true"]{background:#2b4258;border-color:#8ec1ea;color:#fff;font-weight:600}
 .ms-ggd-who>button:focus-visible{outline:2px solid #8ec1ea;outline-offset:1px}
 .ms-ggd-page{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:#e1e6eb}
@@ -657,6 +660,26 @@ export class GroundGuideDetail {
       btn('defence', "En's options");
       btn('attack', 'Your options');
       keys.append(who);
+    }
+    const ae = this._h.apchEnd;
+    if (ext && ae) {
+      const now = ae.get();
+      const sw = el('span', 'ms-ggd-who');
+      sw.setAttribute('role', 'group');
+      sw.setAttribute('aria-label', 'Where the approaches end (Y)');
+      sw.title = "Where the approaches end. Onto the Obj: its frontage by echelon, frontal and Lt / Rt flanking, each from an FUP short of it. Through: the book's avenues through the whole area read, regardless of objectives. Both together. Y does the same (Shift+Y back).";
+      sw.append(el('span', 'ms-ggd-k', 'Y'));
+      for (const [v, text] of [['objective', 'Onto Obj'], ['through', 'Through'], ['both', 'Both']] as const) {
+        const b = el('button', undefined, text) as HTMLButtonElement;
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(now === v));
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (ae.get() !== v) ae.set(v);
+        });
+        sw.append(b);
+      }
+      keys.append(sw);
     }
     const rows: Array<[string, string]> = [
       ['D', 'open / close'],
@@ -1636,6 +1659,7 @@ export class GroundGuideDetail {
       legendKeyRow('⇧F', 'Keep On', 'Shift+F keeps the Ext View on for every symbol until F'),
       legendKeyRow('1', 'Ext Tabs', '1 Obsn & Fd of Fire, 2 Key Gr, 3 Approaches (with the Ext View on)'),
       legendKeyRow('J', 'Better Posn', 'Places the symbol at the better Posn the map shows (Ext View)'),
+      legendKeyRow('Y', 'Apchs End', "Onto the Obj (its frontage by echelon: frontal, Lt and Rt flanking from an FUP), through the area (the book's avenues) or both; Shift+Y back; also the switch in the key bar (Ext View)"),
       legendKeyRow('X', 'Whose Options', "The en's options against you (his Apchs, your fire on them, his air, his template), or yours against the threat; also the switch at the left of the key bar at the foot of this card (Ext View)"),
       legendKeyRow('[', 'Threat', '[ and ] turn the threat 15° (Shift 45°); drag the yellow marker to make it a place (Ext View)'),
       legendKeyRow('V', 'Gr Scope', 'Shows or hides the side rail: the map round the symbol with range rings and the GROTBC layers (with F, the Ext View)'),
