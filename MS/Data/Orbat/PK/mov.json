@@ -1,0 +1,493 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Movement (Traffic Control)",
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "section": "Sec 9 - Mov",
+  "pages": "913-916",
+  "handling": "RESTD"
+ },
+ "side": "own",
+ "basis": "R = as printed in the book. Only the org / equipment content of Sec 9 is taken (Reg HQ and Sec Con composn p 914, TC layout and comm p 915, Mil Load Cl p 916, armd div size p 913 para 13); the mov planning pages are listed in otherPages. Fields marked uncertain / judged / *Note carry the reader's doubts.",
+ "pageNote": "PDF page = printed page - 899 (PDF 1 = p 900).",
+ "units": [
+  {
+   "id": "mov-tc-two-routes",
+   "name": "TC layout (two routes)",
+   "arm": "mov",
+   "type": "tc",
+   "subtype": "two-route",
+   "echelon": "15",
+   "echelonJudged": true,
+   "page": "914-915",
+   "children": [
+    {
+     "role": "Reg HQ",
+     "unit": "mov-reg-hq",
+     "count": 1
+    },
+    {
+     "role": "Sec Con",
+     "unit": "mov-sec-con",
+     "count": 4,
+     "note": "Four drawn on p 915, two beside each route (Red Route, Green Route); the fourth box is printed \"SEC 787\" (misprint for SEC CON, a PK 787 beside it)."
+    },
+    {
+     "role": "TP",
+     "count": 10,
+     "note": "Traffic posts as drawn on p 915: five along each route, each with a PRC 77 on the MP Net (dotted) and joined along the route by fd cable laid by Div Sigs (dashed). Who mans a TP and its strength are not printed.",
+     "equipment": [
+      {
+       "name": "AN/PRC-77",
+       "count": 1,
+       "cat": "radio",
+       "net": "MP Net",
+       "note": "Each TP; printed \"PRC 77\"."
+      }
+     ]
+    }
+   ],
+   "notes": [
+    "Sets drawn on p 915 (on the nodes below, not repeated here): 6x PK 787 (2 at Reg HQ, 1 with each of the 4 Sec Cons) and 14x PRC 77 (1 at each of the 10 TPs, 1 next to each Sec Con). \"PK 787\" is kept as printed (p 510 also names a \"VRC 787\"; the set tables p 516-518 list only the PK/PRC-786 HF set).",
+    "Diagrammatic Layout and Comm - TC (p 915): Reg HQ between the Red Route and the Green Route (SP at the foot, Rel P at the head of each route). Reg HQ works the Comd Voice Net on a PK 787; a second PK 787 at Reg HQ is joined to the Sec Cons' PK 787s; Sec Cons and TPs work the MP Net on PRC 77.",
+    "Legend p 915: solid line = PTCL or Corps Sigs circuits; dashed line = fd cable laid by Div Sigs; dotted line = MP Net. Printed note: \"Two circuits by PTCL or laid by Corps\".",
+    "A diagram for a two-route mov, not an establishment: the numbers of Sec Cons, TPs and sets are as drawn. TC = traffic control (the book does not spell it out).",
+    "No Mov / TC unit symbol in Symbols.json; a TP can be shown with the tactical point 25321400 Traffic Con Post (TCP)."
+   ],
+   "side": "own"
+  },
+  {
+   "id": "mov-reg-hq",
+   "name": "Reg HQ",
+   "arm": "mov",
+   "type": "hq",
+   "subtype": "reg-hq",
+   "echelon": "15",
+   "echelonJudged": true,
+   "page": "914",
+   "strength": {
+    "offr": 3,
+    "sldr": 17,
+    "total": 20
+   },
+   "strengthNote": "p 914 lists appointments only and prints no total: 20 is the reader's sum. Offr = Offr (Maj), Asst (Capt) and Sig Offr; the other 17 are Clks, Orderlies, Radio Ops, DRs, Dvrs and Cook.",
+   "appointments": [
+    {
+     "appt": "Offr",
+     "rank": "Maj",
+     "count": 1
+    },
+    {
+     "appt": "Asst",
+     "rank": "Capt",
+     "count": 1
+    },
+    {
+     "appt": "Sig Offr",
+     "count": 1
+    },
+    {
+     "appt": "Clks",
+     "count": 2
+    },
+    {
+     "appt": "Orderlies",
+     "count": 2
+    },
+    {
+     "appt": "Radio Ops",
+     "count": 2
+    },
+    {
+     "appt": "DRs",
+     "count": 6
+    },
+    {
+     "appt": "Dvrs",
+     "count": 4
+    },
+    {
+     "appt": "Cook",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 ton",
+     "count": 1
+    },
+    {
+     "name": "Trk 3/4/1 ton",
+     "count": 2
+    },
+    {
+     "name": "Wrls Veh",
+     "count": 1
+    },
+    {
+     "name": "MC",
+     "count": 6
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Maps",
+     "qty": "not stated",
+     "note": "p 914, no quantity printed."
+    },
+    {
+     "name": "Hurricane lamps and torches",
+     "qty": "not stated",
+     "note": "p 914, no quantity printed."
+    },
+    {
+     "name": "Radio Sets",
+     "qty": "not stated",
+     "note": "p 914, no quantity printed. Counts as drawn on p 915 are in the radio items below."
+    },
+    {
+     "name": "Sta and msg pads",
+     "qty": "not stated",
+     "note": "p 914, no quantity printed."
+    },
+    {
+     "name": "Mov tables, tel nos and freqs",
+     "qty": "not stated",
+     "note": "p 914, no quantity printed."
+    },
+    {
+     "name": "PK 787",
+     "count": 2,
+     "cat": "radio",
+     "note": "As drawn on p 915: one on the Comd Voice Net, one joined to the Sec Cons' PK 787s."
+    }
+   ],
+   "notes": [
+    "\"Suggested Composn of Reg HQ and Sec Con\" (p 914). Reg HQ and Sec Con are not spelt out in the book."
+   ],
+   "side": "own"
+  },
+  {
+   "id": "mov-sec-con",
+   "name": "Sec Con",
+   "arm": "mov",
+   "type": "det",
+   "subtype": "sec-con",
+   "echelon": "14",
+   "echelonJudged": true,
+   "page": "914",
+   "strength": {
+    "offr": 1,
+    "sldr": 11,
+    "total": 12
+   },
+   "strengthNote": "p 914 lists appointments only and prints no total: 12 is the reader's sum. Offr = Offr (Capt); the Asst (NCO) is counted with the 11 sldrs.",
+   "appointments": [
+    {
+     "appt": "Offr",
+     "rank": "Capt",
+     "count": 1,
+     "note": "printed \"Off r (Capt)\""
+    },
+    {
+     "appt": "Asst",
+     "rank": "NCO",
+     "count": 1
+    },
+    {
+     "appt": "Radio Ops",
+     "count": 3
+    },
+    {
+     "appt": "Clk",
+     "count": 1
+    },
+    {
+     "appt": "DRs",
+     "count": 3
+    },
+    {
+     "appt": "Dvrs",
+     "count": 2
+    },
+    {
+     "appt": "Cook",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 3/4/1 ton",
+     "count": 1,
+     "note": "printed \"Trk 314 /1 ton\" (misprint for 3/4)"
+    },
+    {
+     "name": "Trk 2.5 ton",
+     "count": 1,
+     "note": "printed \"Trk 2.5 ton-1 - 1\""
+    },
+    {
+     "name": "MC",
+     "count": 3
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Maps",
+     "qty": "not stated",
+     "note": "p 914: \"Eqpt Same as Reg HQ\"; no quantity printed."
+    },
+    {
+     "name": "Hurricane lamps and torches",
+     "qty": "not stated",
+     "note": "p 914: \"Eqpt Same as Reg HQ\"; no quantity printed."
+    },
+    {
+     "name": "Radio Sets",
+     "qty": "not stated",
+     "note": "p 914: \"Eqpt Same as Reg HQ\"; no quantity printed. Counts as drawn on p 915 are in the radio items below."
+    },
+    {
+     "name": "Sta and msg pads",
+     "qty": "not stated",
+     "note": "p 914: \"Eqpt Same as Reg HQ\"; no quantity printed."
+    },
+    {
+     "name": "Mov tables, tel nos and freqs",
+     "qty": "not stated",
+     "note": "p 914: \"Eqpt Same as Reg HQ\"; no quantity printed."
+    },
+    {
+     "name": "PK 787",
+     "count": 1,
+     "cat": "radio",
+     "note": "As drawn on p 915: one PK 787 beside each Sec Con, joined to Reg HQ."
+    },
+    {
+     "name": "AN/PRC-77",
+     "count": 1,
+     "cat": "radio",
+     "net": "MP Net",
+     "note": "Judged: p 915 draws a PRC 77 next to each Sec Con as the hub of the dotted MP Net to its TPs; the diagram does not say who mans it."
+    }
+   ],
+   "notes": [
+    "p 914 prints the heading \"Vehs1\" (a stray 1; no footnote on the page).",
+    "Four Sec Cons on the TC layout p 915, two per route."
+   ],
+   "side": "own"
+  }
+ ],
+ "movData": [
+  {
+   "title": "Mil Load Cl",
+   "page": "916",
+   "columns": [
+    "Cat",
+    "Veh",
+    "Cl"
+   ],
+   "rows": [
+    {
+     "Cat": "A Vehs",
+     "Veh": "Tks*",
+     "Cl": 50
+    },
+    {
+     "Cat": "A Vehs",
+     "Veh": "ARVs/Dozers",
+     "Cl": 50
+    },
+    {
+     "Cat": "A Vehs",
+     "Veh": "Gun Med(SP)",
+     "Cl": 26
+    },
+    {
+     "Cat": "A Vehs",
+     "Veh": "Gun Fd(SP)",
+     "Cl": 20
+    },
+    {
+     "Cat": "A Vehs",
+     "Veh": "Tk tptr",
+     "Cl": 18
+    },
+    {
+     "Cat": "A Vehs",
+     "Veh": "Tk tptr carrying tk",
+     "Cl": 80
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Gun towers",
+     "Cl": 26
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk tractor 5 ton",
+     "Cl": 25
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk tractor 12 ton",
+     "Cl": 24
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk 10 ton cargo",
+     "Cl": 24
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Rec veh med 6x6 with suspended cas",
+     "Cl": 24
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk 5 ton wrecker",
+     "Cl": 20
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Rec veh med",
+     "Cl": 12
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk dump 10/25 15/25 ton",
+     "Cl": 13
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk 2.5 ton with tlr",
+     "Cl": 13
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk 2.5 ton/3 ton",
+     "Cl": 9
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk 3/4 ton/1 ton",
+     "Cl": 5
+    },
+    {
+     "Cat": "B Vehs",
+     "Veh": "Trk 1/4 ton",
+     "Cl": 2
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Tractor full tr size II",
+     "Cl": 18
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Wh dozer",
+     "Cl": 18
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Grader",
+     "Cl": 18
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Med wh tractor",
+     "Cl": 13
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Tractor full tr size IV",
+     "Cl": 12
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Back hoe",
+     "Cl": 12
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "FE Loader",
+     "Cl": 12
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Lt wh tractor",
+     "Cl": 12
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Lt tr tractor",
+     "Cl": 10
+    },
+    {
+     "Cat": "C Vehs",
+     "Veh": "Tptr with tractor full tr (one size II or two size IV)",
+     "Cl": 40
+    }
+   ],
+   "note": "* Tk T-59 load cl is 40. C Vehs classes are printed with a leading dash (\"- 18\"), read as the class."
+  },
+  {
+   "title": "Armd Div size used for mov planning",
+   "page": "913",
+   "columns": [
+    "Item",
+    "Figure"
+   ],
+   "rows": [
+    {
+     "Item": "Pers",
+     "Figure": "approx 13128"
+    },
+    {
+     "Item": "A vehs",
+     "Figure": "576"
+    },
+    {
+     "Item": "B and C vehs",
+     "Figure": "2077"
+    }
+   ],
+   "note": "Mov Planning Data para 13 (\"Space\"): \"An armd div having approx 13128 pers, 576 A vehs and 2077 B and C vehs ...\". Only this sentence is taken; the space and mov figures that follow are mov planning data."
+  }
+ ],
+ "otherPages": [
+  {
+   "page": "900",
+   "what": "Contents"
+  },
+  {
+   "page": "901-902",
+   "what": "Rd Mov Calcs: average speeds (day / ni, good / hilly / bad rds), flow, TPP and TPP factor, time to complete a mov, length of colm, time of halt for changing to ni density. Mov planning formulas, not ORBAT: not taken."
+  },
+  {
+   "page": "903",
+   "what": "Specimen - Mov Table No 1 (staff form with a worked example): not taken."
+  },
+  {
+   "page": "904-905",
+   "what": "Specimen - Mov Table No 2 (staff form with a worked example): not taken."
+  },
+  {
+   "page": "906-907",
+   "what": "Planning Table - Route X-Y-Z (worked example of flow by hour): not taken."
+  },
+  {
+   "page": "908",
+   "what": "Specimen - Mov Schedule - Route X-Y-Z (worked example): not taken."
+  },
+  {
+   "page": "909",
+   "what": "Mov Planning Graph with its TPP time allowance table (vehs -> mins) and use of graph: not taken."
+  },
+  {
+   "page": "910-913",
+   "what": "Mov Planning Data: rail mov (train speeds, placing of rolling stock, intervals, train composn by length / wt, rolling stock C units / loaded wts / capacity, std components of a veh train incl 2x KF each with 2x12.7 AA MG, marshalling, mob ramp with a crew of 15 from the passenger unit, AD protection by Train AD Protection Coy under GHQ), sidings, no of trains for an armd div, rd space, assy space, rd mov distances. Mov planning data, not ORBAT: not taken, except p 913 para 13 armd div size (movData)."
+  }
+ ]
+}

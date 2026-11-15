@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plan Builder Mockup</title>
+<!--
+  PAMS8 Plan Builder as a Build tab of the Deployment Mgr: mockup for approval (15 Nov 2026). NOT BUILT. See PlanBuilder_Plan.md.
+  The ground is invented (a canal with two bridges, a marsh, a ridge, woods, a village, open fields); 1 px = 10 m on the map.
+  Units and weapons: Std Inf Bn and Rifle Coy from MS/Data/Orbat/PK (SO's Handbook 2019 p 606-611).
+  The checks below are worked out live from that invented ground (point in polygon, distance to the approaches and the canal),
+  so moving the plan really changes them; the bands and score weights are mockup figures (E), not doctrine.
+  One self-contained file: no network, no build.
+-->
+<style>
+:root{--bg:#0f1318;--panel:#171c22;--panel2:#1c2229;--line:#2a323b;--line2:#39434f;--tx:#e8ebee;--soft:#a3acb6;--acc:#8ec1ea;--acc-ink:#0d1620;
+--go:#2fa862;--goT:#74dca3;--am:#ee8a1f;--amT:#ffb46b;--no:#e5484d;--noT:#ff8a8d;--na:#7f8893;--naT:#c3cbd3;--own:#4f9dff;--en:#ff6b6f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14px/1.5 system-ui,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.pg{max-width:1440px;margin:0 auto;padding:0 16px 80px}
+h1{font-size:27px;line-height:1.15;margin:26px 0 6px}
+h2{font-size:20px;margin:40px 0 6px;padding-top:14px;border-top:1px solid var(--line)}
+h3{font-size:13px;margin:12px 0 6px;color:var(--soft);text-transform:uppercase;letter-spacing:.04em}
+p{margin:6px 0 10px;max-width:84ch}
+.lede{color:#c8cfd6;font-size:15px}
+.bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);font-size:13px;color:var(--soft)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;color:var(--tx);background:var(--panel2);border:0;border-left:1px solid var(--line2);padding:5px 10px;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);font-weight:650}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.work{display:grid;grid-template-columns:minmax(0,1fr) 430px;gap:16px;align-items:start;margin-top:14px}
+@media (max-width:1100px){.work{grid-template-columns:1fr}}
+.mapwrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:#3f4537;user-select:none}
+.mapwrap svg{display:block;width:100%;height:auto;touch-action:none}
+.mapwrap.placing svg{cursor:crosshair}
+.banner{position:absolute;left:10px;top:10px;padding:5px 10px;border-radius:6px;background:rgba(20,24,29,.9);border:1px solid var(--line2);font-size:12.5px;color:var(--naT);max-width:70%}
+.scale{position:absolute;right:12px;bottom:10px;font-size:12px;color:#e8ebee;text-shadow:0 1px 2px #000}
+.card{position:absolute;z-index:5;pointer-events:none;min-width:210px;max-width:280px;padding:8px 10px;border-radius:9px;background:rgba(18,22,27,.94);border:1px solid var(--line2);box-shadow:0 6px 18px rgba(0,0,0,.4);font-size:12.5px;line-height:1.4}
+.card b{font-weight:650}.card .rk2{display:grid;grid-template-columns:70px 1fr 26px;gap:6px;align-items:center;margin:2px 0}
+.card .rk2 i{display:block;height:6px;border-radius:3px;background:#8ec1ea}
+.card .rk2.top{color:#fff;font-weight:650}.card .rk2.top i{background:#74dca3}
+.card .foot{margin-top:5px;color:var(--soft);font-size:11.5px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--soft);margin:8px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{display:inline-block;width:14px;height:10px;border-radius:2px}
+/* Deployment Mgr panel (the real one: ms-header DEP / Deployment Mgr, ? ▼ ✕) */
+.dm{background:var(--panel);border:1px solid var(--line2);border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.dm-head{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#141920;border-bottom:1px solid var(--line)}
+.dm-icon{font:750 10.5px/1 system-ui;padding:5px 6px;border-radius:5px;background:#24303c;color:var(--acc)}
+.dm-title{font-weight:650;flex:1}
+.dm-state{font-size:11.5px;padding:2px 8px;border-radius:10px;background:#24303c;color:var(--naT)}
+.dm-state.run{background:rgba(142,193,234,.18);color:var(--acc)}
+.dm-hb{width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);background:var(--panel2);color:var(--soft);font-size:11px;display:grid;place-items:center}
+.tabs{display:flex;border-bottom:1px solid var(--line);background:#141920}
+.tabs button{font:inherit;font-size:13.5px;color:var(--soft);background:none;border:0;padding:8px 16px;cursor:pointer;position:relative}
+.tabs button[aria-selected="true"]{color:var(--tx);box-shadow:inset 0 -3px 0 var(--acc)}
+.tabs .new{font-size:10px;font-weight:750;color:var(--acc-ink);background:var(--acc);border-radius:6px;padding:0 5px;margin-left:6px;vertical-align:1px}
+.steps{display:flex;border-bottom:1px solid var(--line)}
+.steps button{flex:1;font:inherit;font-size:12px;color:var(--soft);background:var(--panel2);border:0;border-right:1px solid var(--line);padding:6px 2px;cursor:pointer;line-height:1.15}
+.steps button:last-child{border-right:0}
+.steps button b{display:block;font-size:14px;color:var(--tx)}
+.steps button[aria-pressed="true"]{background:var(--panel);color:var(--tx);box-shadow:inset 0 -3px 0 var(--acc)}
+.dm-body{padding:12px 14px 14px;min-height:600px}
+.status{font-size:12.5px;color:var(--warn,#ffd27a);min-height:18px;margin:0 0 8px}
+.ans{padding:8px 11px;border-radius:8px;background:#20262e;border-left:4px solid var(--acc);margin:0 0 10px;font-size:13.5px}
+.ans b{font-weight:650}
+table.t{border-collapse:collapse;width:100%;font-size:12.5px}
+table.t th,table.t td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+table.t th{color:var(--soft);font-weight:600;font-size:11.5px}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11.5px;font-weight:650;white-space:nowrap}
+.p-go{background:rgba(47,168,98,.18);color:var(--goT)}.p-am{background:rgba(238,138,31,.18);color:var(--amT)}
+.p-no{background:rgba(229,72,77,.2);color:var(--noT)}.p-na{background:rgba(127,136,147,.22);color:var(--naT)}
+.row{display:grid;grid-template-columns:92px 1fr;gap:6px;align-items:start;margin:5px 0}
+.row>span{color:var(--soft);font-size:12.5px;padding-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font:inherit;font-size:12.5px;padding:2px 9px;border-radius:14px;border:1px solid var(--line2);background:var(--panel2);color:var(--tx);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--acc);color:var(--acc);font-weight:650}
+.chip.later{color:#77818c;border-style:dashed}
+.rank{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0 10px}
+.rk{border:1px solid var(--line2);border-radius:9px;padding:6px;background:var(--panel2);cursor:pointer;text-align:left;font:inherit;color:var(--tx)}
+.rk[aria-pressed="true"]{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.rk .n{font-size:11.5px;color:var(--soft)}.rk .s{font-size:20px;font-weight:750;line-height:1.1}
+.rk .f{font-size:11px;color:var(--soft)}
+.rank.stale .rk{opacity:.5}
+.slot{display:flex;gap:8px;align-items:flex-start;padding:5px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.slot:hover{background:#1f252c}.slot[aria-selected="true"]{background:#222a33}
+.dot{flex:none;width:11px;height:11px;border-radius:50%;margin-top:4px}
+.slot .why{color:var(--soft);font-size:12px}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:5px;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px;font:750 12px/1 system-ui;color:#e8ebee}
+.btn{font:inherit;font-size:13px;padding:6px 12px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2);color:var(--tx);cursor:pointer;margin:3px 6px 3px 0}
+.btn.pri{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:650}
+.btn.danger{border-color:#7a2f33;color:var(--noT)}
+.btn[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}
+.live{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.live div{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--soft)}
+.live b{display:block;color:var(--tx);font-size:13.5px}
+pre.txt{background:#0b0e12;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:11.5px/1.5 ui-monospace,Consolas,monospace;color:#dfe5ea;white-space:pre-wrap;max-height:280px;overflow:auto}
+.muted{color:var(--soft)}
+.plist .cat{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);margin:10px 0 4px}
+.plist .it{padding:5px 8px;border-radius:7px;cursor:pointer;font-size:13px}
+.plist .it:hover{background:#1f252c}.plist .it[aria-selected="true"]{background:#24303c}
+.plist .it.built{border-left:3px solid var(--acc)}
+.notes ul{margin:0;padding-left:18px;color:#c3cbd3;font-size:13.5px;max-width:92ch}.notes li{margin:4px 0}
+.ask{list-style:none;padding:0;max-width:940px;counter-reset:q}
+.ask li{counter-increment:q;position:relative;padding:8px 0 8px 32px;border-bottom:1px solid var(--line);color:#c3cbd3}
+.ask li::before{content:counter(q);position:absolute;left:0;top:8px;width:22px;height:22px;border-radius:50%;background:#2b313a;color:var(--tx);display:grid;place-items:center;font:650 12px/1 system-ui}
+table.mx{border-collapse:collapse;font-size:13px;margin-top:8px}
+table.mx th,table.mx td{border:1px solid var(--line);padding:5px 10px;text-align:center}
+table.mx th{color:var(--soft);font-weight:600}table.mx td:first-child,table.mx th:first-child{text-align:left}
+.s-now{background:rgba(47,168,98,.18);color:var(--goT);font-weight:650}.s-next{background:rgba(142,193,234,.14);color:var(--acc)}
+.s-then{background:rgba(142,193,234,.07);color:#b5cde0}.s-later{color:#8b95a0}.s-frame{color:#8b95a0;font-style:italic}
+</style>
+</head>
+<body>
+<div class="pg">
+<h1>Plan Builder: the Build tab of the Deployment Mgr</h1>
+<p class="lede">The Deployment Mgr gets a second tab. <b>Samples</b> is today's list of ready plans. <b>Build</b> makes a doctrinal baseline from the task, the unit's ORBAT and the ground. Press <b>Place on Map</b> and the plan follows the cursor like a sample does today. <b>While the mouse moves</b> it is a quick ghost. <b>When the mouse stops</b> it fits itself to the ground: positions slide out of NO-GO, dots turn green, amber or red, and Auto ranks the layouts. <b>Click</b> drops it. <b>Nothing here is built</b>; the ground is invented, but the checks are worked out live from it.</p>
+
+<div class="bar" role="toolbar" aria-label="Mockup controls">
+  <span>Terrain data</span>
+  <span class="seg" id="segTerrain"><button data-v="on" aria-pressed="true">On</button><button data-v="off">Off (bundle off / missing)</button></span>
+  <button class="btn" id="btnReset" style="margin:0">Reset the mock</button>
+  <span>Try: Build → 3 Place → <b>Place on Map ↗</b>, then move the mouse over the map and stop; drag the red <b>Threat</b> marker.</span>
+</div>
+
+<div class="work">
+  <div>
+    <div class="mapwrap" id="mapwrap">
+      <svg id="map" viewBox="0 0 1300 860" role="img" aria-label="The plan on the ground, enemy to the north">
+        <g id="gGround"></g><g id="gApch"></g><g id="gPlan"></g><g id="gThreat"></g>
+      </svg>
+      <div class="banner" id="banner"></div>
+      <div class="card" id="card" hidden></div>
+      <div class="scale">▬▬ 1 km · north up</div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="dm" aria-label="Deployment Mgr panel">
+    <div class="dm-head">
+      <span class="dm-icon">DEP</span><span class="dm-title">Deployment Mgr</span>
+      <span class="dm-state" id="dmState">Ready</span>
+      <span class="dm-hb">?</span><span class="dm-hb">▼</span><span class="dm-hb">✕</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="samples" aria-selected="false">Samples</button>
+      <button role="tab" data-tab="build" aria-selected="true">Build<span class="new">NEW</span></button>
+    </div>
+    <div class="steps" id="steps">
+      <button data-s="1"><b>1</b>Task</button><button data-s="2"><b>2</b>Enemy</button><button data-s="3"><b>3</b>Place</button><button data-s="4"><b>4</b>Check</button><button data-s="5"><b>5</b>Create</button>
+    </div>
+    <div class="dm-body" id="body"></div>
+  </div>
+</div>
+
+<h2>What it deploys</h2>
+<p>The unit picked from the ORBAT decides what is placed: its sub-units, weapons and their ranges. In this mock <b>Coy Def</b> and <b>Bn Def</b> work; the other cells show the order proposed for building them. Div is a frame only (Bde sectors, D line, gun and admin areas), not every Bn.</p>
+<table class="mx" id="matrix"></table>
+
+<h2>What to look at</h2>
+<div class="notes"><ul>
+  <li><b>Moving vs resting.</b> While the mouse moves, the ghost is dashed and blue: placed by doctrinal spacing only, nothing checked. Stop for 0.35 s and it fits: a position in the marsh or the canal slides out (a thin line shows from where), the dots colour, and the card at the cursor ranks Two up / Three up / One up / All round on that spot.</li>
+  <li><b>Auto</b> (step 1 Layout) changes the shape of the ghost itself when you stop: it draws whichever layout scores best on that ground.</li>
+  <li><b>The plan faces the threat.</b> Drag the red Threat marker (top of the map) east: the plan turns, A3 becomes the main approach, and the ranking changes. Step 2 can set it to face north as drawn.</li>
+  <li><b>Echelon.</b> Step 1 → Coy shows a Rifle Coy (three Pls, 60 mm Mor, GLHMG) at true size; Bn shows the Std Inf Bn (four Rifle Coys, BS ATGM, 81 mm Mor). <b>+ Pl posns</b> draws the Pls inside each Coy.</li>
+  <li><b>Step 4 Check</b> after the drop: the score card, every position with its reasons, <span class="kbd">J</span> for the next best spot of the selected one, what-ifs (shelling, the en switching approach) and the trigger table.</li>
+  <li><b>Terrain data → Off</b>: the ghost still follows the cursor and drops, laid by geometry only. Approaches, Auto, sliding and ground checks are hidden; dots are grey "not checked", never green.</li>
+  <li><b>Step 5 → Save as sample</b> puts the built plan into the Samples tab, where it places like any other sample.</li>
+</ul></div>
+
+<h2>Questions for you</h2>
+<ol class="ask">
+  <li>Fit and Adjust are now one step (<b>4 Check</b>), shown as soon as the plan is dropped. Is that right?</li>
+  <li>Quick ghost while moving, full fit after 0.35 s at rest (as the Platoon Guide does). Keep, or fit only on click?</li>
+  <li>The cursor card ranks all four layouts. Keep it, or show only the best and its worst check?</li>
+  <li>Coy size: doctrine 1500 × 600–800 m (used here) or your 1 PR sample's 2.3 × 3.2 km? Or offer both?</li>
+  <li>Should the Samples tab also get the ground checks (place a sample, see its dots), or stay as it is today?</li>
+  <li>The score weights and the bands marked E in the checks (Fd of fire to the obstacle 250–700 m, gap ≤ 600 m, Bn depth ≥ 2.5 km): keep for now, or change?</li>
+</ol>
+</div>
+
+<script>
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const COL = { go: '#2fa862', am: '#ee8a1f', no: '#e5484d', na: '#7f8893', quick: '#8ec1ea' };
+const WORD = { go: 'Pass', am: 'Warn', no: 'Fail', na: 'Not checked' };
+const RANKV = { no: 3, am: 2, na: 1, go: 0 };
+const fmt = (px) => { const m = Math.round(px * 10 / 10) * 10; return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`; };
+const worst = (list) => list.reduce((w, [st]) => (RANKV[st] > RANKV[w] ? st : w), 'go');
+
+// ── Invented ground (world px, 1 px = 10 m) ───────────────────────────────────────────────────────────────────
+const canalY = (x) => 190 + 12 * Math.sin(x / 180);
+const MARSH = [[40, 222], [400, 226], [420, 300], [380, 420], [200, 450], [40, 410]];
+const WOODS = [[330, 450], [600, 440], [640, 560], [560, 640], [340, 630], [300, 540]];
+const SLOW = [[1010, 222], [1300, 222], [1300, 760], [1000, 760]];
+const BUA = [[870, 440], [970, 440], [970, 520], [870, 520]];
+const RIDGE = { x0: 430, x1: 980, crest: 255 };
+const APCH = [
+  { id: 'A1', name: 'Rd axis via E br', pts: [[780, 10], [780, 190], [800, 330], [840, 450]], w: 70, width: '1.5 km', going: 'GO / GO on the Rd', obs: 'E br (load class not recorded: check)' },
+  { id: 'A2', name: 'W br, marsh narrows', pts: [[470, 10], [470, 190], [485, 330], [500, 450]], w: 46, width: '0.6 km at the narrows', going: 'GO / SLOW-GO', obs: 'W br, marsh edge' },
+  { id: 'A3', name: 'E flank, open fields', pts: [[1250, 20], [1180, 200], [1150, 420], [1080, 600]], w: 60, width: '1.2 km', going: 'GO / SLOW-GO', obs: 'Ford (check after rain)' },
+];
+const KGS = [
+  { id: 'K1', at: [788, 228], poly: [[748, 206], [830, 206], [836, 252], [752, 252]] },
+  { id: 'K2', at: [478, 226], poly: [[442, 206], [512, 206], [516, 248], [446, 248]] },
+];
+function inPoly(p, poly) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > p.y) !== (yj > p.y) && p.x < ((xj - xi) * (p.y - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+function distSeg(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+  const t = L ? Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.y - a[1]) * dy) / L)) : 0;
+  return Math.hypot(p.x - (a[0] + t * dx), p.y - (a[1] + t * dy));
+}
+const distPoly = (p, pts) => { let d = Infinity; for (let i = 1; i < pts.length; i++) d = Math.min(d, distSeg(p, pts[i - 1], pts[i])); return d; };
+function ground(p) {
+  const cy = canalY(p.x);
+  const dyR = p.y - RIDGE.crest, onR = p.x >= RIDGE.x0 && p.x <= RIDGE.x1;
+  return {
+    out: p.x < 5 || p.x > 1295 || p.y < 5 || p.y > 855, water: Math.abs(p.y - cy) < 10, en: p.y < cy - 10,
+    marsh: inPoly(p, MARSH), woods: inPoly(p, WOODS), slow: inPoly(p, SLOW), bua: inPoly(p, BUA), toCanal: p.y - cy,
+    ridge: !onR ? null : Math.abs(dyR) <= 30 ? 'crest' : dyR > 30 && dyR <= 170 ? 'rev' : dyR < -30 && dyR >= -70 ? 'fwd' : null,
+  };
+}
+
+// ── Units and layouts (local px: x right, y back; the front is -y; 1 px = 10 m) ───────────────────────────
+// Coy 150 x 70 (IBB Annex U: 1500 x 600-800 m); Pl 50 x 28. Bands marked E are mockup proposals.
+const P = (id, role, k, x, y, w, h) => ({ id, role, k, x, y, w, h });
+const ECH = {
+  coy: {
+    name: 'Coy Def', unit: 'Rifle Coy (Std Inf Bn)', sub: 'Pl', astride: 25, reach: 46, reachW: 'LMG 457 m', approachNear: 220,
+    gapMax: 45, depthWant: 60, flank: 30, slideMax: 40, altScale: 0.4,
+    orbat: [['Rifle Pl', '3', '→ the three posns'], ['LMG (MG1A3)', '18', '457 m'], ['RL', '3', '500 m (RPG-7)'], ['60 mm Mor', '2', '1,476 m'], ['GLHMG', '1', '600–1,750 m']],
+    strength: '141 all ranks (chart 130)', page: '606, 608',
+    layouts: {
+      two: { name: 'Two up, one back', slots: [P('1 Pl', 'Fwd Lt', 'fwd', -40, -25, 50, 28), P('2 Pl', 'Fwd Rt', 'fwd', 40, -25, 50, 28), P('3 Pl', 'Depth', 'res', 0, 35, 50, 28)], hq: [0, 6], mor: [32, 58] },
+      three: { name: 'Three up', slots: [P('1 Pl', 'Fwd Lt', 'fwd', -62, -15, 50, 28), P('2 Pl', 'Fwd centre', 'fwd', 0, -15, 50, 28), P('3 Pl', 'Fwd Rt', 'fwd', 62, -15, 50, 28)], hq: [0, 30], mor: [0, 52] },
+      one: { name: 'One up, two back', slots: [P('2 Pl', 'Fwd', 'fwd', 0, -35, 50, 28), P('1 Pl', 'Depth Lt', 'depth', -45, 22, 50, 28), P('3 Pl', 'Depth Rt', 'res', 45, 22, 50, 28)], hq: [0, 22], mor: [0, 56] },
+      round: { name: 'All round', slots: [P('1 Pl', 'Front', 'fwd', 0, -40, 50, 28), P('2 Pl', 'Rt rear', 'round', 42, 25, 50, 28), P('3 Pl', 'Lt rear', 'round', -42, 25, 50, 28)], hq: [0, 4], mor: [0, 48] },
+    },
+  },
+  bn: {
+    name: 'Bn Def', unit: 'Std Inf Bn', sub: 'Coy', astride: 45, reach: 110, reachW: 'RR 1,189 m', approachNear: 420,
+    gapMax: 60, depthWant: 250, flank: 80, slideMax: 70, altScale: 1,
+    orbat: [['Rifle Coy', '4', '→ the four localities'], ['BS ATGM', '4', '100–3,000 m'], ['106 mm RR', '8', '1,189 m'], ['81 mm Mor', '6', '3,749 m'], ['60 mm Mor', '16', '1,476 m'], ['MG1A3 (LMG / MG)', '60 / 14', '457 m'], ['GLHMG', '4', '600–1,750 m']],
+    strength: '809 all ranks (chart 774)', page: '606–611',
+    layouts: {
+      two: { name: 'Two up, two back', slots: [P('A Coy', 'Fwd Lt', 'fwd', -115, -90, 150, 70), P('B Coy', 'Fwd Rt', 'fwd', 115, -90, 150, 70), P('C Coy', 'Depth', 'depth', 0, 35, 150, 70), P('D Coy', 'Res / C Pen', 'res', -10, 145, 140, 60)], hq: [125, 60], mor: [110, 175], atgm: [[-35, -115], [35, -115]] },
+      three: { name: 'Three up, one back', slots: [P('A Coy', 'Fwd Lt', 'fwd', -200, -60, 150, 70), P('B Coy', 'Fwd centre', 'fwd', 0, -60, 150, 70), P('C Coy', 'Fwd Rt', 'fwd', 200, -60, 150, 70), P('D Coy', 'Depth / Res', 'res', 0, 90, 150, 70)], hq: [125, 105], mor: [-120, 140], atgm: [[-100, -80], [100, -80]] },
+      one: { name: 'One up, three back', slots: [P('B Coy', 'Fwd', 'fwd', 0, -110, 180, 70), P('A Coy', 'Depth Lt', 'depth', -160, 15, 150, 70), P('C Coy', 'Depth Rt', 'depth', 160, 15, 150, 70), P('D Coy', 'Res / C Pen', 'res', 0, 125, 140, 60)], hq: [0, 15], mor: [0, 190], atgm: [[-120, -110], [120, -110]] },
+      round: { name: 'All round', slots: [P('A Coy', 'North', 'fwd', 0, -130, 140, 60), P('B Coy', 'East', 'round', 165, 0, 70, 130), P('C Coy', 'South', 'round', 0, 130, 140, 60), P('D Coy', 'West', 'round', -165, 0, 70, 130)], hq: [0, 0], mor: [45, 45], atgm: [[-60, -70], [60, -70]] },
+    },
+  },
+};
+const LAYOUT_KEYS = ['two', 'three', 'one', 'round'];
+const SAMPLES = [
+  ['Attack', ['Div Attk', 'Bde Attk', 'Bn Attk']], ['Defence', ['Bde Def', 'Div Def', 'Bde Def (12 Bde)', 'Bn Def']],
+  ['Logistic', ['Logistic Plan']], ['Exercises', ['Ambush Exercise', 'Logistic Convoy', 'Route Planning']],
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────────────────────────────────
+const START = () => ({
+  terrain: 'on', tab: 'build', step: 1, ech: 'bn', layout: 'two', detail: 'coy', face: 'threat',
+  phase: 'placed', anchor: { x: 620, y: 345 }, prevAnchor: null, threat: { x: 630, y: 62 },
+  mainOverride: null, ignored: new Set(), sel: null, alt: false, shell: null, whatIf: null, nudge: {},
+  fit: null, ranks: null, rest: true, built: [], sample: 'Bn Def', msg: '', cursorClient: null, drops: 1,
+});
+let S = START();
+const E = () => ECH[S.ech];
+const terr = () => S.terrain === 'on';
+const thetaFor = (A) => (S.face === 'north' ? 0 : Math.atan2(S.threat.x - A.x, -(S.threat.y - A.y)));
+const toWorld = (A, th, lx, ly) => { const c = Math.cos(th), s = Math.sin(th); return { x: A.x + lx * c - ly * s, y: A.y + lx * s + ly * c }; };
+const activeApch = () => APCH.filter((a) => !S.ignored.has(a.id));
+function mainId() {
+  if (S.mainOverride && !S.ignored.has(S.mainOverride)) return S.mainOverride;
+  let best = null;
+  for (const a of activeApch()) { const d = Math.hypot(a.pts[0][0] - S.threat.x, a.pts[0][1] - S.threat.y); if (!best || d < best.d) best = { id: a.id, d }; }
+  return best?.id;
+}
+const minutes = (px) => Math.round((px / 100) * 15 + 5);   // on foot under fire: 15 min per km + 5 to settle (E)
+
+// ── The fit ───────────────────────────────────────────────────────────────────────────────────────────────
+const cornersOf = (s, A, th) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => toWorld(A, th, s.lx + (a * s.w) / 2, s.ly + (b * s.h) / 2));
+const overlapL = (a, b, pad = 4) => Math.abs(a.lx - b.lx) < (a.w + b.w) / 2 + pad && Math.abs(a.ly - b.ly) < (a.h + b.h) / 2 + pad;
+function groundCheck(s, p, corners) {
+  const g = ground(p);
+  if (g.out) return ['no', 'off the map'];
+  if (g.en) return ['no', 'beyond the canal, on the en side'];
+  if (g.water) return ['no', 'in the canal'];
+  if (g.marsh) return ['no', 'in the marsh (NO-GO)'];
+  if (corners.some((q) => { const h = ground(q); return h.marsh || h.water || h.en; })) return ['am', 'edge in the marsh / canal: tighten or move'];
+  if (g.bua) return ['am', 'in the BUA: short Fd of fire'];
+  if (s.k === 'fwd') {
+    if (g.ridge === 'crest') return ['go', 'on the ridge crest, +12 m'];
+    if (g.slow) return ['am', 'open fields: little cover'];
+    if (g.woods) return ['am', 'in the woods: Fd of fire blocked'];
+    return ['go', 'firm ground'];
+  }
+  if (g.woods) return ['go', 'in the woods: hidden from the canal'];
+  if (g.ridge === 'rev') return ['go', 'reverse slope: not seen from the canal'];
+  if (g.toCanal < 70 || g.ridge === 'fwd' || g.ridge === 'crest') return ['am', 'seen from the canal'];
+  if (g.slow) return ['am', 'open fields: seen from the air'];
+  return ['go', 'firm ground, out of direct view'];
+}
+function approachCheck(p) {
+  let best = null;
+  for (const a of activeApch()) { const d = distPoly(p, a.pts); if (!best || d < best.d) best = { a, d }; }
+  if (!best) return ['na', 'no approach marked'];
+  if (best.d <= E().astride) return ['go', `astride ${best.a.id}`];
+  if (best.d <= E().reach) return ['go', `covers ${best.a.id} at ${fmt(best.d)}`];
+  return ['am', `nearest approach ${best.a.id} ${fmt(best.d)} off: beyond ${E().reachW}`];
+}
+function canalCheck(p) {
+  if (S.threat.y > canalY(S.threat.x)) return null;   // the canal is not between this posn and the threat
+  const d = ground(p).toCanal;
+  if (d < 0) return null;
+  if (d < 25) return ['am', `only ${fmt(d)} from the canal: too close`];
+  if (d <= 70) return ['go', `Fd of fire ${fmt(d)} to the canal (wants 250–700 m, E)`];
+  return ['am', `canal ${fmt(d)} off: beyond MG 457 m`];
+}
+function findSpot(s, slots, A, th, maxR, wantGo) {
+  for (let r = 8; r <= maxR; r += 8) {
+    for (let k = 0; k < 16; k++) {
+      const c = { ...s, lx: s.lx + r * Math.cos((k * Math.PI) / 8), ly: s.ly + r * Math.sin((k * Math.PI) / 8) };
+      if (slots.some((o) => o !== s && overlapL(c, o))) continue;
+      const st = groundCheck(s, toWorld(A, th, c.lx, c.ly), cornersOf(c, A, th))[0];
+      if (wantGo ? st === 'go' : st !== 'no') return { x: c.lx, y: c.ly };
+    }
+  }
+  return null;
+}
+function altFor(s, slots, alts, A, th) {
+  const f = E().altScale;
+  const tries = [[75, 0], [70, -60], [70, 60], [40, -110], [40, 110], [95, 0], [60, -150], [60, 150], [130, 110], [130, -110], [150, 0]];
+  for (const [b, sd] of tries) {
+    const a = { id: `Alt ${s.id.split(' ')[0]}`, w: s.w * 0.75, h: s.h * 0.72, lx: s.lx + sd * f, ly: s.ly + b * f };
+    if (slots.some((o) => overlapL(a, o)) || alts.some((o) => overlapL(a, o))) continue;
+    const p = toWorld(A, th, a.lx, a.ly);
+    if (terr()) { const g = ground(p); if (g.out || g.en || g.water || g.marsh || g.bua) continue; }
+    a.p = p; a.min = minutes(Math.hypot(a.lx - s.lx, a.ly - s.ly)); a.of = s.id;
+    return a;
+  }
+  return null;
+}
+function evaluate(key, A, full) {
+  const ech = E(), L = ech.layouts[key], th = thetaFor(A), t = terr();
+  const W = (lx, ly) => toWorld(A, th, lx, ly);
+  const slots = L.slots.map((s) => { const n = S.nudge[S.ech + key + s.id]; return { ...s, lx: s.x + (n?.x ?? 0), ly: s.y + (n?.y ?? 0), slid: 0, nudged: !!n }; });
+  for (const s of slots) s.p = W(s.lx, s.ly);
+  const res = { key, A, th, L, slots, rows: [], score: null, quick: !full, alts: [] };
+  if (!full) return res;
+  if (t) for (const s of slots) {
+    if (groundCheck(s, s.p, cornersOf(s, A, th))[0] !== 'no') continue;
+    const spot = findSpot(s, slots, A, th, ech.slideMax, false);
+    if (spot) { s.ox = s.lx; s.oy = s.ly; s.slid = Math.hypot(spot.x - s.lx, spot.y - s.ly); s.lx = spot.x; s.ly = spot.y; s.p = W(s.lx, s.ly); }
+  }
+  const fwd = slots.filter((s) => s.k === 'fwd'), cover = slots.filter((s) => s.k === 'fwd' || s.k === 'round');
+  for (const s of slots) {
+    s.checks = [];
+    if (t) {
+      s.checks.push(groundCheck(s, s.p, cornersOf(s, A, th)));
+      if (s.slid) s.checks.push(['am', `slid ${fmt(s.slid)} out of NO-GO: confirm on the ground`]);
+      if (s.k === 'fwd' || s.k === 'round') s.checks.push(approachCheck(s.p));
+      if (s.k === 'fwd') { const c = canalCheck(s.p); if (c) s.checks.push(c); }
+    } else s.checks.push(['na', 'ground not checked (terrain data off)']);
+    if (s.k === 'res' && fwd.length) {
+      // C Pen posns: just behind each forward posn (400 m at Bn, 150 m at Coy); reserve on foot 12 min per km + 5 (E)
+      const back = S.ech === 'bn' ? 40 : 15;
+      const far = fwd.reduce((m, f) => Math.max(m, Math.hypot(f.lx - s.lx, f.ly + f.h / 2 + back - s.ly)), 0);
+      const min = Math.round((far / 100) * 12 + 5);
+      s.checks.push([min <= 30 ? 'go' : 'am', `reaches the C Pen posns in ${min} min (wants ≤ 30, E)`]);
+    }
+    s.st = t ? worst(s.checks) : 'na';
+  }
+  // the plan's rows
+  const rows = res.rows;
+  if (t) {
+    const near = activeApch().filter((a) => distPoly(A, a.pts) <= ech.approachNear);
+    const unc = near.filter((a) => !cover.some((s) => distPoly(s.p, a.pts) <= ech.reach));
+    const st = unc.some((a) => a.id === mainId()) ? 'no' : unc.length ? 'am' : 'go';
+    rows.push(['Approaches covered', st, !near.length ? `none within ${fmt(ech.approachNear)}` : unc.length ? `${unc.map((a) => a.id + (a.id === mainId() ? ' (main)' : '')).join(', ')} not under direct fire` : `${near.map((a) => a.id).join(', ')} under direct fire`]);
+  } else rows.push(['Approaches covered', 'na', 'needs terrain data']);
+  const away = slots.filter((s) => s.k === 'round' && s.ly > 0);
+  rows.push(['Facing the threat', away.length ? 'am' : 'go', away.length ? `${away.map((s) => s.id).join(', ')} faces away from the threat (all round)` : 'every posn faces the threat or backs those that do']);
+  const front = [...fwd].sort((a, b) => a.lx - b.lx);
+  let gmax = 0; for (let i = 1; i < front.length; i++) gmax = Math.max(gmax, front[i].lx - front[i - 1].lx - (front[i].w + front[i - 1].w) / 2);
+  rows.push(['Gaps', gmax > ech.gapMax ? 'am' : 'go', front.length < 2 ? 'one posn forward' : `widest ${fmt(gmax)} (wants ≤ ${fmt(ech.gapMax)}, E)`]);
+  const top = Math.min(...slots.map((s) => s.ly - s.h / 2)), bot = Math.max(...slots.map((s) => s.ly + s.h / 2));
+  rows.push(['Depth', bot - top >= ech.depthWant ? 'go' : 'am', `${fmt(bot - top)} (wants ≥ ${fmt(ech.depthWant)}, E)`]);
+  if (t) {
+    const fy = fwd.length ? Math.min(...fwd.map((s) => s.ly)) : 0;
+    const xs = slots.map((s) => [s.lx - s.w / 2, s.lx + s.w / 2]).flat();
+    const side = (lx) => { const g = ground(W(lx, fy)); return g.marsh ? 'the marsh' : g.water || g.en ? 'the canal' : g.bua ? 'the BUA' : null; };
+    const l = side(Math.min(...xs) - ech.flank), r = side(Math.max(...xs) + ech.flank);
+    rows.push(['Flanks', l && r ? 'go' : 'am', `Lt ${l ? 'on ' + l : 'open'} · Rt ${r ? 'on ' + r : 'open'}`]);
+    const seen = slots.filter((s) => /seen|open fields/.test(s.checks[0][1]) && s.checks[0][0] !== 'go');
+    rows.push(['Exposure', seen.length ? 'am' : 'go', seen.length ? `${seen.map((s) => s.id).join(', ')} seen` : 'depth out of view']);
+    if (S.ech === 'bn') {
+      const unk = KGS.filter((k) => distPoly(A, [k.at, k.at]) < 380 && !fwd.some((s) => Math.hypot(s.p.x - k.at[0], s.p.y - k.at[1]) <= 130));
+      rows.push(['Killing Gr', unk.length ? 'am' : 'go', unk.length ? `${unk.map((k) => k.id).join(', ')} beyond 1.3 km of a fwd Coy` : 'both bridge exits under fire']);
+    }
+  } else { rows.push(['Flanks', 'na', 'needs terrain data']); rows.push(['Exposure', 'na', 'needs terrain data']); }
+  for (const s of fwd) { const a = altFor(s, slots, res.alts, A, th); if (a) res.alts.push(a); }
+  rows.push(['Alternates', res.alts.length === fwd.length ? 'go' : 'am', `${res.alts.length} of ${fwd.length} fwd posns have one`]);
+  if (t) {
+    let sc = 100;
+    for (const s of slots) sc -= s.st === 'no' ? 14 : s.st === 'am' ? 4 : 0;
+    for (const [, st] of rows) sc -= st === 'no' ? 16 : st === 'am' ? 6 : 0;
+    res.score = Math.max(5, Math.min(99, sc));
+  }
+  const all = slots.flatMap((s) => s.checks.map(([st, txt]) => [st, `${s.id}: ${txt}`])).concat(rows.map(([n, st, txt]) => [st, `${n}: ${txt}`]));
+  res.worst = all.find(([st]) => st === 'no') ?? all.find(([st]) => st === 'am') ?? null;
+  res.fails = all.filter(([st]) => st === 'no').length; res.warns = all.filter(([st]) => st === 'am').length;
+  return res;
+}
+function refit(full) {
+  const A = S.anchor;
+  if (!full) {
+    const key = S.layout === 'auto' ? (S.ranks?.[0]?.key ?? 'two') : S.layout;
+    S.fit = evaluate(key, A, false); S.rest = false; return;
+  }
+  if (terr()) {
+    S.ranks = LAYOUT_KEYS.map((k) => evaluate(k, A, true)).sort((a, b) => b.score - a.score);
+    S.fit = S.layout === 'auto' ? S.ranks[0] : S.ranks.find((r) => r.key === S.layout);
+  } else { S.ranks = null; S.fit = evaluate(S.layout === 'auto' ? 'two' : S.layout, A, true); }
+  S.rest = true;
+}
+
+// ── Drawing ───────────────────────────────────────────────────────────────────────────────────────────────
+function el(tag, attrs, parent, text) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; parent?.appendChild(e); return e; }
+function label(g, x, y, t, o = {}) { return el('text', { x, y, 'text-anchor': o.anchor ?? 'middle', 'font-size': o.size ?? 12, 'font-weight': o.weight ?? 650, fill: o.fill ?? '#fff', stroke: '#14181d', 'stroke-width': 3, 'paint-order': 'stroke', 'font-family': 'system-ui,Segoe UI,Arial', 'pointer-events': 'none' }, g, t); }
+const pts = (arr) => arr.map((p) => p.join(',')).join(' ');
+const pathOf = (arr) => 'M' + arr.map((p) => p.join(' ')).join(' L');
+
+function renderGround() {
+  const svg = $('map'), g = $('gGround'); g.textContent = '';
+  svg.querySelector('defs')?.remove();
+  const defs = el('defs', {}); svg.insertBefore(defs, svg.firstChild);
+  const h = el('pattern', { id: 'hatch', width: 8, height: 8, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
+  el('rect', { width: 8, height: 8, fill: '#55697a' }, h); el('line', { x1: 0, y1: 0, x2: 0, y2: 8, stroke: '#2b3640', 'stroke-width': 3 }, h);
+  const sg = el('pattern', { id: 'slow', width: 12, height: 12, patternUnits: 'userSpaceOnUse' }, defs);
+  el('rect', { width: 12, height: 12, fill: 'rgba(238,138,31,.08)' }, sg); el('circle', { cx: 6, cy: 6, r: 1.3, fill: 'rgba(238,138,31,.55)' }, sg);
+  const mf = el('pattern', { id: 'mines', width: 12, height: 12, patternUnits: 'userSpaceOnUse' }, defs);
+  el('rect', { width: 12, height: 12, fill: 'rgba(79,157,255,.12)' }, mf); el('circle', { cx: 6, cy: 6, r: 2.2, fill: 'none', stroke: '#4f9dff', 'stroke-width': 1.2 }, mf);
+  const tr = el('pattern', { id: 'trees', width: 14, height: 14, patternUnits: 'userSpaceOnUse' }, defs);
+  el('rect', { width: 14, height: 14, fill: '#3d5236' }, tr); el('circle', { cx: 7, cy: 7, r: 3.5, fill: '#4f6b44' }, tr);
+  for (const [id, c] of [['arr', '#ff6b6f'], ['arrO', '#8ec1ea']]) { const m = el('marker', { id, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, defs); el('path', { d: 'M0,0 L10,5 L0,10 z', fill: c }, m); }
+
+  el('rect', { width: 1300, height: 860, fill: terr() ? '#4b5240' : '#3a3f37' }, g);
+  if (!terr()) {
+    const gr = el('g', { stroke: 'rgba(255,255,255,.08)' }, g);
+    for (let x = 0; x <= 1300; x += 100) el('line', { x1: x, y1: 0, x2: x, y2: 860 }, gr);
+    for (let y = 0; y <= 860; y += 100) el('line', { x1: 0, y1: y, x2: 1300, y2: y }, gr);
+    return;
+  }
+  el('polygon', { points: pts(SLOW), fill: 'url(#slow)' }, g); label(g, 1150, 740, 'Open fields: SLOW-GO wet', { size: 11, fill: '#ffc98f' });
+  el('polygon', { points: pts(WOODS), fill: 'url(#trees)', stroke: '#2e3f29' }, g); label(g, 455, 600, 'Woods', { size: 11, fill: '#cfe3c3' });
+  el('polygon', { points: pts(MARSH), fill: 'url(#hatch)', stroke: '#2b3640' }, g); label(g, 210, 330, 'Marsh: NO-GO', { size: 11.5, fill: '#dbe3ea' });
+  for (let i = 0; i < 4; i++) el('path', { d: `M${RIDGE.x0 + i * 10} ${RIDGE.crest + 40 - i * 13} C ${600} ${RIDGE.crest - 4 - i * 13}, ${820} ${RIDGE.crest - 4 - i * 13}, ${RIDGE.x1 - i * 10} ${RIDGE.crest + 40 - i * 13}`, fill: 'none', stroke: '#c9a36b', 'stroke-width': 1.2, opacity: 0.75 }, g);
+  label(g, RIDGE.x0 + 30, RIDGE.crest + 62, 'Ridge (+12 m)', { size: 11, fill: '#e9d3a9', anchor: 'start' });
+  el('polygon', { points: pts(BUA), fill: '#d8c6a8', opacity: 0.85 }, g); label(g, 920, 485, 'BUA', { size: 11, fill: '#14181d' });
+  let d = 'M0 ' + canalY(0); for (let x = 10; x <= 1300; x += 10) d += ` L${x} ${canalY(x).toFixed(1)}`;
+  el('path', { d, fill: 'none', stroke: '#4f8fc0', 'stroke-width': 9 }, g); label(g, 70, 178, 'Canal 80 m', { size: 11, fill: '#bfe0ff' });
+  const road = [[780, 0], [780, 190], [800, 330], [840, 450], [900, 520], [930, 860]];
+  el('path', { d: pathOf(road), fill: 'none', stroke: '#14181d', 'stroke-width': 6 }, g); el('path', { d: pathOf(road), fill: 'none', stroke: '#fff', 'stroke-width': 3 }, g);
+  el('path', { d: pathOf([[470, 0], [470, 190], [485, 330], [500, 450], [520, 860]]), fill: 'none', stroke: '#9aa3ad', 'stroke-width': 2, 'stroke-dasharray': '6 4' }, g);
+  for (const x of [470, 780]) el('rect', { x: x - 9, y: canalY(x) - 7, width: 18, height: 14, fill: '#e8ebee', stroke: '#14181d', 'stroke-width': 2 }, g);
+  label(g, 1000, 110, 'EN SIDE', { size: 13, fill: 'rgba(255,180,180,.55)' });
+}
+
+function renderApproaches() {
+  const g = $('gApch'); g.textContent = '';
+  if (!terr()) return;
+  const main = mainId();
+  for (const a of APCH) {
+    const ign = S.ignored.has(a.id), isMain = a.id === main;
+    const op = ign ? 0.25 : 1;
+    el('path', { d: pathOf(a.pts), fill: 'none', stroke: isMain ? 'rgba(255,107,111,.28)' : 'rgba(255,107,111,.14)', 'stroke-width': a.w, 'stroke-linecap': 'round', opacity: op }, g);
+    el('path', { d: pathOf(a.pts), fill: 'none', stroke: '#ff6b6f', 'stroke-width': isMain ? 3 : 2, 'stroke-dasharray': isMain ? '' : '8 6', 'marker-end': 'url(#arr)', opacity: op }, g);
+    label(g, a.pts[0][0] + (a.id === 'A3' ? -10 : 34), 40, a.id + (isMain ? ' main' : ign ? ' (ignored)' : ''), { fill: '#ffb3b5', anchor: a.id === 'A3' ? 'end' : 'middle' });
+  }
+}
+
+function renderThreat() {
+  const g = $('gThreat'); g.textContent = '';
+  const { x, y } = S.threat;
+  const tm = el('g', { id: 'threatMk', transform: `translate(${x} ${y})`, style: 'cursor:grab' }, g);
+  el('rect', { x: -48, y: -13, width: 96, height: 26, rx: 13, fill: '#3a1416', stroke: '#ff6b6f', 'stroke-width': 1.8 }, tm);
+  label(tm, 0, 4, '⚑ Threat', { size: 12.5, fill: '#ffd0d1' });
+}
+
+function rectL(g, s, stroke, fill, dash, extra = {}) {
+  return el('rect', { x: s.lx - s.w / 2, y: s.ly - s.h / 2, width: s.w, height: s.h, rx: Math.min(14, s.h / 3), fill, stroke, 'stroke-width': extra.sw ?? 2.5, 'stroke-dasharray': dash ?? '', ...extra.attrs }, g);
+}
+function renderPlan() {
+  const g = $('gPlan'); g.textContent = '';
+  const f = S.fit; if (!f || S.phase === 'idle') return;
+  const ech = E(), quick = f.quick, placing = S.phase === 'placing';
+  const rg = el('g', { transform: `translate(${f.A.x} ${f.A.y}) rotate(${(f.th * 180) / Math.PI})`, opacity: placing ? (quick ? 0.7 : 0.9) : 1 }, g);
+  const fwd = f.slots.filter((s) => s.k === 'fwd');
+  const fy = fwd.length ? Math.min(...fwd.map((s) => s.ly - s.h / 2)) : -50;
+  const xs = fwd.flatMap((s) => [s.lx - s.w / 2, s.lx + s.w / 2]);
+  const line = quick ? '#8ec1ea' : '#c3cbd3';
+  // obstacles in front (Bn: AT minefield 200 m deep 150 m fwd; both: wire 40 m fwd), LPs, standing ptl
+  if (S.ech === 'bn' && f.key !== 'round' && xs.length) el('rect', { x: Math.min(...xs), y: fy - 17, width: Math.max(...xs) - Math.min(...xs), height: 10, fill: 'url(#mines)', stroke: '#4f9dff', 'stroke-width': 1.2, opacity: quick ? 0.5 : 0.9 }, rg);
+  for (const s of fwd) {
+    el('path', { d: `M${s.lx - s.w / 2 + 6} ${s.ly - s.h / 2 - 4} L${s.lx + s.w / 2 - 6} ${s.ly - s.h / 2 - 4}`, stroke: line, 'stroke-width': 1.5, 'stroke-dasharray': '2 3' }, rg);
+    const lpY = s.ly - s.h / 2 - (S.ech === 'bn' ? 28 : 16);
+    el('path', { d: `M${s.lx - 6} ${lpY + 5} l6 -11 l6 11 z`, fill: '#4f9dff', stroke: '#14181d' }, rg);
+  }
+  if (S.ech === 'bn') {
+    el('path', { d: `M-7 ${fy - 150} l7 -13 l7 13 z`, fill: 'none', stroke: '#4f9dff', 'stroke-width': 2 }, rg);
+    for (const [x, y] of ech.layouts[f.key].atgm) {
+      if (!quick) el('path', { d: `M${x} ${y} L${x - 110} ${y - 290} A 310 310 0 0 1 ${x + 110} ${y - 290} Z`, fill: 'rgba(142,193,234,.05)', stroke: 'rgba(142,193,234,.3)' }, rg);
+      el('rect', { x: x - 6, y: y - 6, width: 12, height: 12, fill: '#8ec1ea', stroke: '#14181d' }, rg);
+    }
+  }
+  // positions (slid ones show where they came from)
+  for (const s of f.slots) {
+    if (s.slid) {
+      rectL(rg, { ...s, lx: s.ox, ly: s.oy }, '#ff8a8d', 'none', '3 4', { sw: 1.2 });
+      el('path', { d: `M${s.ox} ${s.oy} L${s.lx} ${s.ly}`, stroke: '#ff8a8d', 'stroke-width': 1.2, 'marker-end': 'url(#arrO)' }, rg);
+    }
+    const st = quick ? 'quick' : s.st;
+    const r = rectL(rg, s, quick ? '#8ec1ea' : COL[st], quick ? 'rgba(142,193,234,.10)' : 'rgba(79,157,255,.17)', quick ? '7 5' : '', { sw: S.sel === s.id && !placing ? 4 : 2.5, attrs: { 'data-id': s.id } });
+    r.style.cursor = placing ? 'crosshair' : 'pointer';
+    if (S.ech === 'bn' && S.detail === 'pl') {
+      for (const [dx, dy] of [[-0.24, -0.18], [0.24, -0.18], [0, 0.22]]) {
+        const pw = s.w > s.h ? s.w * 0.36 : s.w * 0.7, ph = s.w > s.h ? s.h * 0.34 : s.h * 0.24;
+        const vx = s.w > s.h ? dx * s.w : dy * s.w * 0.9, vy = s.w > s.h ? dy * s.h : dx * s.h * 1.2;
+        el('rect', { x: s.lx + vx - pw / 2, y: s.ly + vy - ph / 2, width: pw, height: ph, rx: 4, fill: 'none', stroke: 'rgba(255,255,255,.55)', 'stroke-width': 1, 'pointer-events': 'none' }, rg);
+      }
+    }
+  }
+  // alternates, shelling, what-if sup posn
+  if (!quick && (S.alt || S.shell)) for (const a of f.alts) {
+    if (S.shell && !S.alt && a.of !== S.shell) continue;
+    const src = f.slots.find((s) => s.id === a.of);
+    rectL(rg, a, '#4f9dff', 'rgba(79,157,255,.05)', '8 5', { sw: 2 });
+    el('path', { d: `M${src.lx} ${src.ly} L${a.lx} ${a.ly}`, stroke: '#8ec1ea', 'stroke-width': 1.8, 'stroke-dasharray': '3 4', 'marker-end': 'url(#arrO)' }, rg);
+  }
+  if (!quick && S.shell) { const c = f.slots.find((s) => s.id === S.shell); if (c) for (let i = 0; i < 6; i++) el('circle', { cx: c.lx - c.w / 3 + ((i * 23) % (c.w * 0.66)), cy: c.ly - c.h / 4 + ((i * 17) % (c.h / 2)), r: S.ech === 'bn' ? 9 : 4, fill: 'rgba(255,210,122,.25)', stroke: '#ffd27a' }, rg); }
+  // HQ + mortars (local)
+  const L = ech.layouts[f.key];
+  const hs = S.ech === 'bn' ? 1 : 0.5;
+  el('rect', { x: L.hq[0] - 11 * hs, y: L.hq[1] - 7 * hs, width: 22 * hs, height: 14 * hs, fill: '#4f9dff', stroke: '#14181d' }, rg);
+  el('circle', { cx: L.mor[0], cy: L.mor[1], r: S.ech === 'bn' ? 7 : 5, fill: '#4f9dff', stroke: '#14181d' }, rg);
+  // world-space: killing grounds, DF tgts, upright labels
+  if (S.ech === 'bn' && terr() && !quick) for (const k of KGS) {
+    const cov = fwd.some((s) => Math.hypot(s.p.x - k.at[0], s.p.y - k.at[1]) <= 130);
+    el('polygon', { points: pts(k.poly), fill: cov ? 'rgba(229,72,77,.14)' : 'rgba(229,72,77,.04)', stroke: '#e5484d', 'stroke-width': 1.4, 'stroke-dasharray': cov ? '4 3' : '2 4' }, g);
+    label(g, k.at[0], k.at[1] + 4, cov ? k.id : `${k.id}?`, { size: 10.5, fill: '#ffb3b5' });
+  }
+  if (!quick) {
+    const tgts = S.ech === 'bn' ? [[toWorld(f.A, f.th, 0, fy - 90), 'T4']] : [[toWorld(f.A, f.th, 0, fy - 45), 'T1']];
+    if (S.ech === 'bn' && terr()) tgts.push([{ x: 780, y: canalY(780) }, 'T1'], [{ x: 470, y: canalY(470) }, 'T2']);
+    for (const [p, n] of tgts) { el('path', { d: `M${p.x - 7} ${p.y} h14 M${p.x} ${p.y - 7} v14`, stroke: '#ffd27a', 'stroke-width': 2.5 }, g); label(g, p.x + 12, p.y - 6, n, { size: 10.5, fill: '#ffd27a', anchor: 'start' }); }
+  }
+  for (const s of f.slots) {
+    label(g, s.p.x, s.p.y + 4, s.id, { size: S.ech === 'bn' ? 12.5 : 10, fill: quick ? '#dcecf8' : '#fff' });
+    if (!quick) { const c = toWorld(f.A, f.th, s.lx + s.w / 2 - 7, s.ly - s.h / 2 + 7); el('circle', { cx: c.x, cy: c.y, r: S.ech === 'bn' ? 6 : 4.5, fill: COL[s.st], stroke: '#14181d', 'stroke-width': 1.5, 'pointer-events': 'none' }, g); }
+  }
+  if (!quick && (S.alt || S.shell)) for (const a of f.alts) {
+    if (S.shell && !S.alt && a.of !== S.shell) continue;
+    label(g, a.p.x, a.p.y + 4, a.id, { size: S.ech === 'bn' ? 11 : 9, fill: '#bcd7ff' });
+    const src = f.slots.find((s) => s.id === a.of);
+    label(g, (src.p.x + a.p.x) / 2 + 10, (src.p.y + a.p.y) / 2, `${a.min} min`, { size: 10.5, fill: '#cfe6f7', anchor: 'start' });
+  }
+  if (!quick && S.whatIf) { const w = whatIf(f); if (w?.sup) {
+    el('rect', { x: w.sup.x - 45, y: w.sup.y - 22, width: 90, height: 44, rx: 12, fill: 'rgba(79,157,255,.05)', stroke: '#4f9dff', 'stroke-width': 2, 'stroke-dasharray': '8 5' }, g);
+    label(g, w.sup.x, w.sup.y + 4, 'Sup posn', { size: 11, fill: '#bcd7ff' });
+    el('path', { d: `M${w.from.p.x} ${w.from.p.y} L${w.sup.x} ${w.sup.y}`, stroke: '#8ec1ea', 'stroke-width': 1.8, 'stroke-dasharray': '3 4', 'marker-end': 'url(#arrO)' }, g);
+    label(g, (w.from.p.x + w.sup.x) / 2 + 8, (w.from.p.y + w.sup.y) / 2, `${w.min} min`, { size: 10.5, fill: '#cfe6f7', anchor: 'start' });
+  } }
+}
+
+// What-if: the en uses another approach. Who covers it, else the reserve moves to a supplementary posn.
+function whatIf(f) {
+  const a = APCH.find((x) => x.id === S.whatIf); if (!a) return null;
+  const off = distPoly(f.A, a.pts);
+  if (off > E().approachNear) return { a, far: off };
+  const cov = f.slots.filter((s) => s.k === 'fwd' || s.k === 'round').map((s) => ({ s, d: distPoly(s.p, a.pts) })).sort((x, y) => x.d - y.d)[0];
+  if (cov && cov.d <= E().reach) return { a, by: cov.s, d: cov.d };
+  let best = null;
+  for (let i = 1; i < a.pts.length; i++) for (let t = 0; t <= 1; t += 0.1) {
+    const q = { x: a.pts[i - 1][0] + t * (a.pts[i][0] - a.pts[i - 1][0]), y: a.pts[i - 1][1] + t * (a.pts[i][1] - a.pts[i - 1][1]) };
+    if (q.y < canalY(q.x) + 15) continue;
+    const d = Math.hypot(q.x - f.A.x, q.y - f.A.y); if (!best || d < best.d) best = { q, d };
+  }
+  if (!best) return { a };
+  const k = Math.min(1, (S.ech === 'bn' ? 55 : 25) / best.d);
+  let sup = { x: best.q.x + (f.A.x - best.q.x) * k, y: best.q.y + (f.A.y - best.q.y) * k };
+  if (terr()) { const g = ground(sup); if (g.bua || g.marsh) sup = { x: sup.x + (f.A.x - sup.x) * 0.4, y: sup.y + (f.A.y - sup.y) * 0.4 }; }
+  const from = f.slots.find((s) => s.k === 'res') ?? f.slots[f.slots.length - 1];
+  return { a, sup, from, min: minutes(Math.hypot(sup.x - from.p.x, sup.y - from.p.y)) };
+}
+
+// ── Cursor card, banner, legend ───────────────────────────────────────────────────────────────────────────
+function renderCard() {
+  const c = $('card');
+  if (S.phase !== 'placing' || !S.cursorClient || !S.fit) { c.hidden = true; return; }
+  const f = S.fit, L = E().layouts[f.key];
+  let html = `<b>${E().name} · ${L.name}${S.layout === 'auto' ? ' (Auto)' : ''}</b>`;
+  if (f.quick) html += `<div class="muted">moving: quick ghost, nothing checked</div>`;
+  else if (!terr()) html += `<div class="muted">geometry only: ground not checked</div>`;
+  else {
+    const max = S.ranks[0].score;
+    html += S.ranks.map((r, i) => `<div class="rk2 ${i === 0 ? 'top' : ''}"><span>${E().layouts[r.key].name.split(',')[0]}</span><i style="width:${Math.round((r.score / 100) * 100)}%"></i><span>${r.score}</span></div>`).join('');
+    if (f.worst) html += `<div style="margin-top:4px"><span class="pill p-${f.worst[0]}">${WORD[f.worst[0]]}</span> ${esc(f.worst[1])}</div>`;
+    void max;
+  }
+  html += `<div class="foot">Click: place · Esc: cancel</div>`;
+  c.innerHTML = html; c.hidden = false;
+  const wr = $('mapwrap').getBoundingClientRect();
+  let x = S.cursorClient.x - wr.left + 22, y = S.cursorClient.y - wr.top + 22;
+  if (x + 290 > wr.width) x -= 330; if (y + c.offsetHeight + 10 > wr.height) y -= c.offsetHeight + 44;
+  c.style.left = x + 'px'; c.style.top = y + 'px';
+}
+function renderBanner() {
+  const f = S.fit, L = f ? E().layouts[f.key] : null;
+  const st = S.phase === 'placing' ? (S.rest ? 'placing · fitted at rest' : 'placing · quick ghost') : S.phase === 'placed' ? 'placed' : 'nothing placed';
+  $('banner').textContent = `${E().name} · ${L ? L.name : ''} · ${st}${terr() ? '' : ' · terrain data off: geometry only'}`;
+  $('legend').innerHTML = [
+    ['#2fa862', 'pass'], ['#ee8a1f', 'warn'], ['#e5484d', 'fail'], ['#7f8893', 'not checked'], ['#8ec1ea', 'quick ghost (moving)'],
+    ['rgba(255,107,111,.5)', 'en approach'], ['rgba(229,72,77,.3)', 'killing Gr'], ['rgba(79,157,255,.35)', 'minefield'], ['#ffd27a', 'DF Tgt'],
+  ].map(([c, t]) => `<span><i class="sw" style="background:${c}"></i>${t}</span>`).join('') + '<span>red dashed + arrow = slid out of NO-GO</span>';
+  const ds = $('dmState'); ds.textContent = S.phase === 'placing' ? 'Placing' : S.phase === 'placed' ? 'Placed' : 'Ready'; ds.className = 'dm-state' + (S.phase === 'placing' ? ' run' : '');
+}
+
+// ── Panel ─────────────────────────────────────────────────────────────────────────────────────────────────
+const pill = (st) => `<span class="pill p-${st}">${WORD[st]}</span>`;
+const chip = (on, label, data, later) => `<button class="chip${later ? ' later' : ''}" aria-pressed="${on}" ${data}${later ? ` title="${esc(later)}"` : ''}>${label}</button>`;
+const OPS = [['def', 'Defence'], ['attk', 'Attack', 'Next: Pl / Coy / Bn'], ['amb', 'Ambush', 'Next: Sec / Pl / Coy'], ['ptl', 'Patrol', 'Next: Sec / Pl'], ['recce', 'Recce', 'Next: Pl / Coy screen'], ['xing', 'Crossing / Br head', 'Later: Bde / Div']];
+const ECHS = [['sec', 'Sec', 'Defence: not planned (a Sec holds a trench, not a posn)'], ['pl', 'Pl', 'Next: Pl Def'], ['coy', 'Coy'], ['bn', 'Bn'], ['bde', 'Bde', 'Then: Bns as boxes in sectors'], ['div', 'Div', 'Frame only, later']];
+const STEPS = {
+  1: () => {
+    const ech = E();
+    const units = S.ech === 'bn' ? [['Std Inf Bn', true], ['Mtn Inf Bn', 'Next'], ['MIB', 'Next'], ['Armd Regt', 'Later']] : [['Rifle Coy (Std Inf Bn)', true], ['Rifle Coy (Mtn)', 'Next']];
+    return `<div class="ans"><b>${ech.name}</b> · ${ech.unit} · ${ech.strength}</div>
+      <div class="row"><span>Operation</span><div class="chips">${OPS.map(([k, n, l]) => chip(k === 'def', n, `data-op="${k}"`, l)).join('')}</div></div>
+      <div class="row"><span>Echelon</span><div class="chips">${ECHS.map(([k, n, l]) => chip(k === S.ech, n, `data-ech="${k}"`, l)).join('')}</div></div>
+      <div class="row"><span>Unit (ORBAT)</span><div class="chips">${units.map(([n, ok]) => chip(ok === true, esc(n), 'data-unit', ok === true ? null : ok)).join('')}</div></div>
+      <div class="row"><span>Layout</span><div class="chips">${[...LAYOUT_KEYS, 'auto'].map((k) => k === 'auto' ? chip(S.layout === 'auto', 'Auto', 'data-lay="auto"', terr() ? null : 'Needs terrain data') : chip(S.layout === k, ech.layouts[k].name.split(',')[0], `data-lay="${k}"`)).join('')}</div></div>
+      ${S.ech === 'bn' ? `<div class="row"><span>Draw</span><div class="chips">${chip(S.detail === 'coy', 'Coy posns', 'data-det="coy"')}${chip(S.detail === 'pl', '+ Pl posns', 'data-det="pl"')}</div></div>` : ''}
+      ${S.msg ? `<div class="status">${esc(S.msg)}</div>` : ''}
+      <h3>From the ORBAT (SO's Hbk 2019 p ${ech.page})</h3>
+      <table class="t"><tr><th>Holds</th><th>No</th><th>Plan range</th></tr>${ech.orbat.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join('')}</table>
+      <p class="muted" style="font-size:12px">The ranges set the checks: forward posns must reach an approach with ${ech.reachW}; the alternates, reserve and Sup posns are timed on foot.</p>`;
+  },
+  2: () => {
+    const head = `<div class="ans"><b>Drag the red ⚑ Threat marker</b> on the map: the plan turns to face it. ${terr() ? `<b>${mainId() ?? '—'}</b> is the main approach.` : ''}</div>
+      <div class="row"><span>Face</span><div class="chips">${chip(S.face === 'threat', 'The threat marker', 'data-face="threat"')}${chip(S.face === 'north', 'As drawn (N)', 'data-face="north"')}${chip(false, 'Click a bearing', 'data-face="brg"', 'As the Samples tab: click the centre, then aim')}</div></div>
+      <div class="row"><span>Or from</span><div class="chips">${chip(false, 'Draw the en start area', 'data-x', 'Mockup: not wired')}${chip(false, 'AOR (Bdy symbols)', 'data-x', 'Mockup: not wired')}${chip(false, 'En symbols (opt-in)', 'data-x', 'Mockup: not wired')}</div></div>`;
+    if (!terr()) return head + `<p class="muted">Approaches need terrain data. Turn the terrain bundle on (Settings → Ground Guide) to see approaches, chokepoints and Auto.</p>`;
+    const A = S.anchor;
+    return head + `<table class="t"><tr><th></th><th>Approach</th><th>Width</th><th>Dry / wet</th><th>From the plan</th></tr>
+      ${APCH.map((a) => { const m = a.id === mainId(), ig = S.ignored.has(a.id); return `<tr><td><b>${a.id}</b></td><td>${a.name}<div class="muted">${a.obs}</div></td><td>${a.width}</td><td>${a.going}</td><td>${fmt(distPoly(A, a.pts))}</td></tr>
+        <tr><td></td><td colspan="4"><div class="chips" style="margin:0 0 4px">${chip(m && !ig, 'Main', `data-apm="${a.id}"`)}${chip(!m && !ig, 'Secondary', `data-aps="${a.id}"`)}${chip(ig, 'Ignore', `data-api="${a.id}"`)}</div></td></tr>`; }).join('')}</table>
+      <p class="muted" style="font-size:12px">Main = nearest the threat marker unless you pick one. Ignored approaches drop out of the checks.</p>`;
+  },
+  3: () => {
+    const placing = S.phase === 'placing';
+    const ranks = terr() && S.ranks ? `<h3>Auto: layouts on this spot ${S.rest ? '' : '(last rest)'}</h3><div class="rank ${S.rest ? '' : 'stale'}">${S.ranks.map((r, i) => `<button class="rk" data-pv="${r.key}" aria-pressed="${S.fit?.key === r.key}"><div class="n">${i + 1}. ${E().layouts[r.key].name.split(',')[0]}</div><div class="s">${r.score}</div><div class="f">${r.fails} fail · ${r.warns} warn</div></button>`).join('')}</div>` : `<p class="muted">${terr() ? '' : 'Auto ranking needs terrain data.'}</p>`;
+    return `<div class="ans">${placing ? '<b>Move the mouse over the map.</b> Moving: quick ghost. Stop: it fits to the ground. Click: place. Esc: cancel.' : S.phase === 'placed' ? '<b>Placed.</b> Pick it up to move it, or go to 4 Check.' : '<b>Press Place on Map</b>, then move over the map.'}</div>
+      <div class="ms-btn-row">${placing ? '<button class="btn danger" data-cancel>Cancel placement</button>' : `<button class="btn pri" data-place>${S.phase === 'placed' ? 'Pick up and move ↗' : 'Place on Map ↗'}</button>`}</div>
+      <div class="live"><div>While moving<b>Quick ghost</b>doctrinal spacing, every frame</div><div>At rest 0.35 s<b>${terr() ? 'Full fit' : 'Geometry only'}</b>${terr() ? 'slide, checks, ranking' : 'no ground checks'}</div></div>
+      ${ranks}
+      <h3>Placement options</h3>
+      <div class="row"><span>Keep placing</span><div class="chips">${chip(false, 'Keep placing copies', 'data-x', 'As the Samples tab')}</div></div>
+      <div class="row"><span>Spread</span><div class="chips">${chip(true, '100 %', 'data-x')}${chip(false, 'Tighten to the ground', 'data-x', 'Mockup: not wired')}</div></div>
+      ${S.phase === 'placed' ? `<h3>Last placement</h3><div class="muted" style="font-size:12.5px">${E().name}, ${E().layouts[S.fit.key].name} · drop ${S.drops}</div><button class="btn" data-place>Reposition</button><button class="btn danger" data-remove>Remove</button>` : ''}`;
+  },
+  4: () => {
+    const f = S.fit;
+    if (!f || S.phase === 'idle') return '<div class="ans">Place a plan first (3 Place).</div>';
+    if (f.quick) return '<div class="ans">Stop the mouse to see the checks.</div>';
+    const sel = f.slots.find((s) => s.id === S.sel) ?? f.slots[0];
+    const w = S.whatIf ? whatIf(f) : null;
+    const fwd = f.slots.filter((s) => s.k === 'fwd');
+    return `<div class="ans"><b>${f.L.name}</b>${terr() ? ` scores <b>${f.score}</b> here` : ' laid by geometry; ground not checked'}.</div>${S.msg ? `<div class="status">${esc(S.msg)}</div>` : ''}
+      <table class="t">${f.rows.map(([n, st, t]) => `<tr><td>${n}</td><td>${esc(t)}</td><td>${pill(st)}</td></tr>`).join('')}</table>
+      <h3>Positions</h3>
+      ${f.slots.map((s) => `<div class="slot" data-sel="${s.id}" aria-selected="${sel.id === s.id}"><i class="dot" style="background:${COL[s.st]}"></i><div><b>${s.id}</b> · ${s.role}<div class="why">${esc((s.checks.find(([st]) => st === s.st) ?? s.checks[0])[1])}</div></div></div>`).join('')}
+      <h3>${sel.id}</h3>
+      <table class="t">${sel.checks.map(([st, t]) => `<tr><td>${esc(t)}</td><td>${pill(st)}</td></tr>`).join('')}</table>
+      <div style="margin-top:6px">${terr() ? `<button class="btn" data-j><span class="kbd">J</span> next best spot</button>` : ''}<span class="muted" style="font-size:12px">Click a posn on the map or in the list.</span></div>
+      <h3>What-if</h3>
+      <button class="btn" aria-pressed="${S.alt}" data-alt>Alternates</button>${fwd.slice(0, 2).map((s) => `<button class="btn" aria-pressed="${S.shell === s.id}" data-shell="${s.id}">${s.id} shelled</button>`).join('')}${terr() ? APCH.filter((a) => a.id !== mainId()).map((a) => `<button class="btn" aria-pressed="${S.whatIf === a.id}" data-wi="${a.id}">En uses ${a.id}</button>`).join('') : ''}
+      ${w ? `<div class="status">${w.far ? `${w.a.id} passes ${fmt(w.far)} from the ${S.ech === 'bn' ? 'Bn' : 'Coy'}: outside its area. Report it to the next higher HQ; an OP watches it.` : w.by ? `${w.by.id} covers ${w.a.id} from where it is (${fmt(w.d)}).` : w.sup ? `Nobody covers ${w.a.id}: ${w.from.id} moves to a Sup posn, ${w.min} min.` : ''}</div>` : ''}
+      <h3>Trigger table</h3>
+      <table class="t"><tr><th>Trigger</th><th>Who: from → to</th><th>Time</th></tr>
+        ${f.alts.map((a) => `<tr><td>Heavy shelling on ${a.of}</td><td>${a.of} → ${a.id}</td><td>${terr() ? a.min + ' min' : '—'}</td></tr>`).join('')}
+        ${terr() ? APCH.filter((a) => a.id !== mainId() && !S.ignored.has(a.id)).map((a) => { const sv = S.whatIf; S.whatIf = a.id; const x = whatIf(f); S.whatIf = sv; return `<tr><td>En on ${a.id}</td><td>${x?.far ? 'Outside the area: report, OP watches' : x?.by ? `${x.by.id} holds, covers it` : x?.sup ? `${x.from.id} → Sup posn` : '—'}</td><td>${x?.sup ? x.min + ' min' : '—'}</td></tr>`; }).join('') : ''}
+      </table>`;
+  },
+  5: () => {
+    const f = S.fit;
+    if (!f || S.phase === 'idle') return '<div class="ans">Place a plan first (3 Place).</div>';
+    const fwd = f.slots.filter((s) => s.k === 'fwd'), bn = S.ech === 'bn';
+    return `<div class="ans"><b>Ready to create</b> as ordinary symbols, one undo step (the Samples tab's Last placement works on it).</div>
+      <table class="t"><tr><th>Symbols</th><th>No</th></tr>
+        <tr><td>Battle Posn (${E().sub} posns)</td><td>${f.slots.length}${bn && S.detail === 'pl' ? ` + ${f.slots.length * 3} Pl` : ''}</td></tr>
+        <tr><td>Alt posns (planned, dashed)</td><td>${S.alt ? f.alts.length : '0 (hidden)'}</td></tr>
+        <tr><td>${bn ? 'Killing Gr, AT minefield, wire' : 'Wire'}</td><td>${bn ? `${terr() ? 2 : 0}, ${f.key === 'round' ? 0 : 1}, ${fwd.length}` : fwd.length}</td></tr>
+        <tr><td>LP${bn ? ', standing ptl' : ''}</td><td>${fwd.length}${bn ? ', 1' : ''}</td></tr>
+        <tr><td>DF Tgts, ${bn ? 'ATGM, Mor, Bn HQ' : 'Mor, Coy HQ'}</td><td>${bn ? (terr() ? 3 : 1) + ', 2, 1, 1' : '1, 1, 1'}</td></tr>
+      </table>
+      <button class="btn pri" data-create>Create on Map</button><button class="btn" data-save>Save as sample</button><button class="btn" data-copy>Copy as Text</button>
+      ${S.msg ? `<div class="status">${esc(S.msg)}</div>` : ''}
+      <pre class="txt">${esc(planText(f))}</pre>`;
+  },
+};
+function planText(f) {
+  const t = terr();
+  return `${E().name.toUpperCase()}: ${f.L.name.toUpperCase()} (baseline, ${t ? 'terrain checked' : 'GEOMETRY ONLY'})
+Unit: ${E().unit}, ${E().strength}. Threat: ${S.face === 'north' ? 'N (as drawn)' : 'at the threat marker'}${t ? `, ${mainId()} main` : ' (assumed)'}.
+${f.slots.map((s) => `${s.id.padEnd(6)} ${s.role.padEnd(12)} ${WORD[s.st].padEnd(11)} ${(s.checks.find(([st]) => st === s.st) ?? s.checks[0])[1]}`).join('\n')}
+${t ? `Score ${f.score}: ${f.fails} fail, ${f.warns} warn.` : 'Ground not checked.'}
+CONFIRM ON THE GROUND:
+${f.slots.filter((s) => s.slid).map((s) => ` - ${s.id}: slid ${fmt(s.slid)} out of NO-GO; walk it`).join('\n')}${f.slots.some((s) => s.slid) ? '\n' : ''} - E br load class (not recorded)
+ - Fd of fire from each fwd posn to the canal
+ - Alt posns dug, routes walked, times checked
+Data: ${t ? 'terrain bundle; ' : ''}ORBAT SO's Hbk 2019; frontages IBB Annex U.`;
+}
+function renderPanel() {
+  for (const b of document.querySelectorAll('.tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === S.tab));
+  $('steps').hidden = S.tab !== 'build';
+  for (const b of $('steps').children) b.setAttribute('aria-pressed', String(Number(b.dataset.s) === S.step));
+  const body = $('body');
+  if (S.tab === 'samples') {
+    const all = SAMPLES.map(([c, l]) => [c, l.map((n) => ({ n }))]);
+    if (S.built.length) all.unshift(['Built here', S.built.map((n) => ({ n, built: true }))]);
+    body.innerHTML = `<div class="ans">Today's tab, unchanged: pick a ready plan and <b>Place on Map</b>; its ghost follows the cursor and is placed as drawn.</div>
+      <input class="chip" style="width:100%;border-radius:7px;padding:5px 9px;cursor:text" placeholder="Search plans…" disabled>
+      <div class="plist">${all.map(([c, l]) => `<div class="cat">${c}</div>${l.map((p) => `<div class="it ${p.built ? 'built' : ''}" data-sm="${esc(p.n)}" aria-selected="${S.sample === p.n}">${esc(p.n)}${p.built ? ' <span class="muted">· from Build</span>' : ''}</div>`).join('')}`).join('')}</div>
+      <h3>Selected plan</h3><div><b>${esc(S.sample)}</b></div>
+      <button class="btn pri" data-x>Place on Map ↗</button>
+      <p class="muted" style="font-size:12px">Question 5: should a sample also get the dots and checks when placed?</p>`;
+  } else body.innerHTML = STEPS[S.step]();
+  bindPanel();
+}
+function bindPanel() {
+  const B = $('body'), on = (sel, fn) => B.querySelectorAll(sel).forEach((b) => (b.onclick = () => fn(b)));
+  on('[data-op]', (b) => { S.msg = b.dataset.op === 'def' ? '' : `${b.textContent}: ${b.title}. This mock shows Defence only.`; renderPanel(); });
+  on('[data-ech]', (b) => { const k = b.dataset.ech; if (!ECH[k]) { S.msg = `${b.textContent}: ${b.title}.`; renderPanel(); return; } S.ech = k; S.msg = ''; S.sel = null; S.shell = null; refit(true); renderAll(); });
+  on('[data-unit]', (b) => { S.msg = b.title ? `${b.textContent}: ${b.title} (needs its own recipe).` : ''; renderPanel(); });
+  on('[data-lay]', (b) => { if (b.dataset.lay === 'auto' && !terr()) return; S.layout = b.dataset.lay; refit(true); renderAll(); });
+  on('[data-det]', (b) => { S.detail = b.dataset.det; renderAll(); });
+  on('[data-face]', (b) => { if (b.dataset.face === 'brg') return; S.face = b.dataset.face; refit(true); renderAll(); });
+  on('[data-apm]', (b) => { S.mainOverride = b.dataset.apm; S.ignored.delete(b.dataset.apm); refit(true); renderAll(); });
+  on('[data-aps]', (b) => { const id = b.dataset.aps; S.ignored.delete(id); if (S.mainOverride === id || mainId() === id) S.mainOverride = APCH.find((a) => a.id !== id && !S.ignored.has(a.id))?.id ?? null; refit(true); renderAll(); });
+  on('[data-api]', (b) => { S.ignored.add(b.dataset.api); if (S.mainOverride === b.dataset.api) S.mainOverride = null; refit(true); renderAll(); });
+  on('[data-place]', () => { S.prevAnchor = S.phase === 'placed' ? { ...S.anchor } : null; S.phase = 'placing'; S.sel = null; S.step = 3; renderAll(); });
+  on('[data-cancel]', cancelPlacing);
+  on('[data-remove]', () => { S.phase = 'idle'; S.fit = null; renderAll(); });
+  on('[data-pv]', (b) => { S.layout = b.dataset.pv; refit(true); renderAll(); });
+  on('[data-sel]', (b) => { S.sel = b.dataset.sel; renderAll(); });
+  on('[data-j]', () => takeBetter());
+  on('[data-alt]', () => { S.alt = !S.alt; renderAll(); });
+  on('[data-shell]', (b) => { S.shell = S.shell === b.dataset.shell ? null : b.dataset.shell; renderAll(); });
+  on('[data-wi]', (b) => { S.whatIf = S.whatIf === b.dataset.wi ? null : b.dataset.wi; renderAll(); });
+  on('[data-create]', () => { S.msg = `Would create the plan as ordinary symbols in one undo step (Ctrl+Z takes it back).`; renderPanel(); });
+  on('[data-copy]', () => { S.msg = 'Copied (mock: the text below).'; renderPanel(); });
+  on('[data-save]', () => { const n = `${E().name} (${E().layouts[S.fit.key].name.split(',')[0]}, built)`; if (!S.built.includes(n)) S.built.push(n); S.sample = n; S.msg = ''; S.tab = 'samples'; renderPanel(); });
+  on('[data-sm]', (b) => { S.sample = b.dataset.sm; renderPanel(); });
+}
+function takeBetter() {
+  const f = S.fit; if (!f || f.quick || !terr()) return;
+  const s = f.slots.find((x) => x.id === S.sel) ?? f.slots.find((x) => x.st !== 'go'); if (!s) return;
+  // J: the nearest spot where the whole posn passes (ground, approach, Fd of fire), else the one with fewest warnings
+  const judge = (c) => {
+    const p = toWorld(f.A, f.th, c.lx, c.ly), list = [groundCheck(s, p, cornersOf(c, f.A, f.th))];
+    if (s.k === 'fwd' || s.k === 'round') list.push(approachCheck(p));
+    if (s.k === 'fwd') { const k = canalCheck(p); if (k) list.push(k); }
+    return list.reduce((n, [st]) => n + (st === 'no' ? 100 : st === 'am' ? 1 : 0), 0);
+  };
+  const now = judge(s);
+  let spot = null, bestN = now;
+  for (let r = 8; r <= E().slideMax * 1.5 && bestN > 0; r += 8) for (let k = 0; k < 16; k++) {
+    const c = { ...s, lx: s.lx + r * Math.cos((k * Math.PI) / 8), ly: s.ly + r * Math.sin((k * Math.PI) / 8) };
+    if (f.slots.some((o) => o.id !== s.id && overlapL(c, o))) continue;
+    const n = judge(c); if (n < bestN) { bestN = n; spot = { x: c.lx, y: c.ly }; }
+  }
+  if (!spot) { S.msg = `${s.id}: nothing better within ${fmt(E().slideMax * 1.5)}.`; renderPanel(); return; }
+  S.msg = `${s.id} moved ${fmt(Math.hypot(spot.x - s.lx, spot.y - s.ly))} by J.`;
+  const key = S.ech + f.key + s.id, base = E().layouts[f.key].slots.find((x) => x.id === s.id);
+  S.nudge[key] = { x: spot.x - base.x, y: spot.y - base.y }; S.sel = s.id; refit(true); renderAll();
+}
+function setZoom() {   // Coy: zoom in 2x round the ridge, as the map would be at that echelon
+  const coy = S.ech === 'coy';
+  $('map').setAttribute('viewBox', coy ? '330 150 650 430' : '0 0 1300 860');
+  document.querySelector('.scale').textContent = coy ? '▬▬ 500 m · north up · zoomed in for a Coy' : '▬▬ 1 km · north up';
+}
+function renderAll() { setZoom(); renderApproaches(); renderPlan(); renderThreat(); renderBanner(); renderCard(); renderPanel(); $('mapwrap').classList.toggle('placing', S.phase === 'placing'); }
+
+// ── Mouse: quick ghost every frame while moving, full fit 350 ms after the cursor stops ─────────────────
+const svg = $('map');
+const toSvg = (e) => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const p = pt.matrixTransform(svg.getScreenCTM().inverse()); return { x: p.x, y: p.y }; };
+let raf = null, restTimer = null, dragT = false, pending = null;
+function onMove(e) {
+  const p = toSvg(e);
+  if (dragT) {
+    S.threat = { x: Math.max(50, Math.min(1250, p.x)), y: Math.max(15, Math.min(845, p.y)) };
+    if (!raf) raf = requestAnimationFrame(() => { raf = null; if (S.phase !== 'idle') refit(true); renderAll(); });
+    return;
+  }
+  if (S.phase !== 'placing') return;
+  pending = p; S.cursorClient = { x: e.clientX, y: e.clientY };
+  if (!raf) raf = requestAnimationFrame(() => { raf = null; if (S.phase !== 'placing') return; S.anchor = pending; refit(false); renderPlan(); renderBanner(); renderCard(); if (S.step === 3) renderPanel(); });
+  clearTimeout(restTimer);
+  restTimer = setTimeout(() => {
+    if (S.phase !== 'placing') return;
+    if (raf) { cancelAnimationFrame(raf); raf = null; }   // a late quick frame must not overwrite the fit
+    S.anchor = pending; refit(true); renderPlan(); renderBanner(); renderCard(); renderPanel();
+  }, 350);
+}
+svg.addEventListener('pointermove', onMove);
+svg.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#threatMk')) { dragT = true; svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
+  if (S.phase === 'placing') {
+    clearTimeout(restTimer); if (raf) { cancelAnimationFrame(raf); raf = null; } S.anchor = toSvg(e); refit(true); S.phase = 'placed'; S.drops++; S.step = 4; S.cursorClient = null; renderAll(); return;
+  }
+  const id = e.target.getAttribute?.('data-id');
+  if (id && S.phase === 'placed') { S.sel = id; S.tab = 'build'; S.step = 4; renderAll(); }
+});
+svg.addEventListener('pointerup', (e) => { if (dragT) { dragT = false; svg.releasePointerCapture(e.pointerId); } });
+svg.addEventListener('pointerleave', () => { if (S.phase === 'placing') { S.cursorClient = null; renderCard(); } });
+function cancelPlacing() {
+  clearTimeout(restTimer);
+  if (S.prevAnchor) { S.anchor = S.prevAnchor; S.phase = 'placed'; refit(true); } else { S.phase = 'idle'; S.fit = null; }
+  S.cursorClient = null; renderAll();
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && S.phase === 'placing') cancelPlacing();
+  if ((e.key === 'j' || e.key === 'J') && S.phase === 'placed') takeBetter();
+});
+
+// ── Page controls, the matrix ─────────────────────────────────────────────────────────────────────────────
+function bindSeg(id, fn) { for (const b of $(id).children) b.onclick = () => { for (const x of $(id).children) x.setAttribute('aria-pressed', String(x === b)); fn(b.dataset.v); }; }
+bindSeg('segTerrain', (v) => { S.terrain = v; if (v === 'off' && S.layout === 'auto') S.layout = 'two'; renderGround(); if (S.phase !== 'idle') refit(true); renderAll(); });
+$('btnReset').onclick = () => { S = START(); for (const x of $('segTerrain').children) x.setAttribute('aria-pressed', String(x.dataset.v === 'on')); renderGround(); refit(true); renderAll(); };
+for (const b of document.querySelectorAll('.tabs button')) b.onclick = () => { S.tab = b.dataset.tab; S.msg = ''; renderPanel(); };
+for (const b of $('steps').children) b.onclick = () => { S.step = Number(b.dataset.s); S.msg = ''; renderPanel(); };
+(function matrix() {
+  const C = { now: ['s-now', 'In this mock'], next: ['s-next', 'Next'], then: ['s-then', 'Then'], later: ['s-later', 'Later'], frame: ['s-frame', 'Frame, later'], no: ['', '—'] };
+  const rows = [
+    ['Defence', ['no', 'next', 'now', 'now', 'then', 'frame']],
+    ['Attack (frontal, Lt / Rt flanking, FUP, SL)', ['no', 'next', 'next', 'next', 'then', 'frame']],
+    ['Ambush (line / L / V)', ['next', 'next', 'next', 'no', 'no', 'no']],
+    ['Patrol', ['next', 'next', 'no', 'no', 'no', 'no']],
+    ['Recce / screen, OP', ['no', 'next', 'next', 'no', 'no', 'no']],
+    ['Water crossing / bridgehead', ['no', 'no', 'no', 'no', 'later', 'later']],
+  ];
+  $('matrix').innerHTML = `<tr><th>Operation</th>${['Sec', 'Pl', 'Coy', 'Bn', 'Bde', 'Div'].map((e) => `<th>${e}</th>`).join('')}</tr>` +
+    rows.map(([n, cells]) => `<tr><td>${n}</td>${cells.map((c) => `<td class="${C[c][0]}">${C[c][1]}</td>`).join('')}</tr>`).join('') +
+    `<tr><td class="muted">Units (ORBAT)</td><td colspan="6" class="muted" style="text-align:left">Inf (Std, Mtn, MIB) first; Armd Regt and battle groups after. Arty, AD, Engrs, Log come in as supporting slots: gun areas, AD sites, obstacles, admin area.</td></tr>`;
+})();
+renderGround(); refit(true); renderAll();
+</script>
+</body>
+</html>

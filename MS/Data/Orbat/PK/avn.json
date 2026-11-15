@@ -1,0 +1,1018 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Aviation",
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "section": "Sec 7 - Avn",
+  "pages": "700-715",
+  "handling": "RESTD"
+ },
+ "side": "own",
+ "basis": "R = as printed in the book. Fields marked uncertain / judged / *Note carry the reader's doubts; printed totals are kept even where parts do not add up.",
+ "notes": [
+  "Book pages 700-715 = PDF pages 1-16 of 'Sec 7 - Avn.pdf' (book page - 699).",
+  "The orgs mentioned exist on gr; however, owing to the ongoing restructuring of Army Avn, these orgs are subj to minor changes (p 701).",
+  "Org charts give no manpower figures. Aircraft counts printed inside a flt box are read as per flt (e.g. '3 x Cbt Flt / 3x Attk Hel / 2 x Scout Hel').",
+  "Re-checked against the book on 15 Nov 2026, every page looked at as an image: the org charts (pp 701-705) print no personnel figure, no armament and no vehicles for any HQ, sqn, flt, coy or pl; only aircraft by kind and number. Aircraft are kept in equipment (kind helicopter / fixed-wing).",
+  "Unit-level equipment lists each holder (heldBy, 'each ...' = per flt). The same aircraft are also on the Sqn HQ / flt box nodes (children[].equipment, or the linked flt unit). aircraftTotals gives the sqn totals worked out from the chart (not printed).",
+  "The charts name aircraft only by kind (Attk Hel, Scout Hel, LOH, Utility Hel, Air Aslt Hel, Cargo Hel, FW ac); the book does not say which type equips which sqn. avnData lists the Army Avn types by their printed possible roles."
+ ],
+ "units": [
+  {
+   "id": "avn-hq-army-avn-comd",
+   "name": "HQ Army Avn Comd",
+   "arm": "avn",
+   "type": "hq",
+   "subtype": "army-avn-comd",
+   "echelon": "21",
+   "page": "701",
+   "staff": [
+    "GOC",
+    "ADC",
+    "COS",
+    "GS Branch: COL GS; GSO-1 (OPS), GSO-1 (AM), GSO-1 (TRG), GSO-1 (SIGS); GSO-2 (OPS), GSO-2 (AM), GSO-2 (TRG), GSO-2 (COMM)",
+    "Administration Branch: AA&QMG, DAQMG, DAAG; ADMS (FLT SURG); ADOS, ATO",
+    "FS / EQPT / EVAL Branch: COL FS / EVAL; GSO-1 (FS), GSO-2 (FS), GSO-2 (EVAL)",
+    "Fleet Mgmt Branch: BRIG FM; Dir FM; ADEME SM-I (American) with DADEME Cbt and DADEME Utility / LOH; ADEME SM-II (French) with DADEME; ADEME SM-III (Russian/FW) with DADEME FW and DADEME (Russian); ADEME SM-IV (Avionics, GSE) with DAD S&T (POL) and DADEME GSE, Avionics, Optronics, TO&E; DADEME (Tech Trg & Coordination)"
+   ],
+   "notes": [
+    "The orgs mentioned exist on gr; however, owing to the ongoing restructuring of Army Avn, these orgs are subj to minor changes."
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-gp",
+   "name": "Army Avn Gp",
+   "arm": "avn",
+   "type": "gp",
+   "echelon": "18",
+   "page": "702",
+   "children": [
+    {
+     "role": "HQ Army Avn Gp",
+     "unit": "avn-hq-army-avn-gp",
+     "count": 1
+    },
+    {
+     "role": "Cbt / Air Aslt / Cargo Avn Sqn",
+     "count": 2,
+     "countMax": 3,
+     "note": "Each Avn Gp may have 2-3 Cbt/Air Aslt/Cargo Avn Sqns (avn-sqn-cbt / avn-sqn-air-aslt / avn-sqn-cargo)"
+    },
+    {
+     "role": "FAAR Coy",
+     "unit": "avn-coy-faar",
+     "count": 1
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "notes": [
+    "Built from the note on p 702: Each Avn Gp may have 2-3 Cbt/Air Aslt/Cargo Avn Sqns and one FAAR Coy."
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-hq-army-avn-gp",
+   "name": "HQ Army Avn Gp",
+   "arm": "avn",
+   "type": "hq",
+   "subtype": "avn-gp",
+   "echelon": "18",
+   "page": "702",
+   "staff": [
+    "Comd",
+    "Dy Comd",
+    "GS Branch: GSO 1 (Ops & Trg), GSO 1 (Flt Safety), GSO 2 (Ops & Trg), GSO 2 (Air Mov)",
+    "AQ Branch: AA&QMG, DAA&QMG/SC (Q)*",
+    "Sys Manager (Rep of Fleet Mgmt Branch, HQ Army Avn Comd)"
+   ],
+   "children": [
+    {
+     "role": "FAAR Coy",
+     "unit": "avn-coy-faar",
+     "count": 1,
+     "note": "shown under Comd on the HQ chart"
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "notes": [
+    "*DAA&QMG is auth in all Avn Gps less Cbt Gp, where SC (Q) is auth, instead."
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-sqn-cbt",
+   "name": "Cbt Avn Sqn",
+   "arm": "avn",
+   "type": "sqn",
+   "subtype": "cbt",
+   "echelon": "15",
+   "page": "703, 715",
+   "children": [
+    {
+     "role": "Sqn HQ",
+     "count": 1,
+     "note": "1 x Attk Hel (GS Res)*, 1 x Scout Hel",
+     "equipment": [
+      {
+       "name": "Attk Hel",
+       "kind": "helicopter",
+       "count": 1,
+       "note": "GS Res; *Not to be incorporated in planning"
+      },
+      {
+       "name": "Scout Hel",
+       "kind": "helicopter",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Cbt Flt",
+     "unit": "avn-flt-cbt",
+     "count": 3
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att"
+    },
+    {
+     "role": "Utility Flt",
+     "count": 1,
+     "relation": "att",
+     "note": "No aircraft printed in the box."
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Attk Hel",
+     "kind": "helicopter",
+     "count": 1,
+     "heldBy": "Sqn HQ",
+     "note": "GS Res; *Not to be incorporated in planning"
+    },
+    {
+     "name": "Scout Hel",
+     "kind": "helicopter",
+     "count": 1,
+     "heldBy": "Sqn HQ"
+    },
+    {
+     "name": "Attk Hel",
+     "kind": "helicopter",
+     "count": 3,
+     "heldBy": "each Cbt Flt"
+    },
+    {
+     "name": "Scout Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "heldBy": "each Cbt Flt"
+    }
+   ],
+   "aircraftTotals": [
+    {
+     "name": "Attk Hel",
+     "kind": "helicopter",
+     "count": 10,
+     "note": "Sqn HQ 1 (GS Res, not to be incorporated in planning) + 3 Cbt Flts x 3; 9 for planning"
+    },
+    {
+     "name": "Scout Hel",
+     "kind": "helicopter",
+     "count": 7,
+     "note": "Sqn HQ 1 + 3 Cbt Flts x 2"
+    }
+   ],
+   "notes": [
+    "Engagement tech of cbt avn (p 715), with A / B / C Teams (one flt each) and a FAARP: Max Destruction - all 3 flts up on the tgt; Phased Emp - 2 flts up (A and B Teams), C Team at the FAARP, teams rotating; Cont Emp - 1 flt up (A Team), B Team moving, C Team at the FAARP.",
+    "p 715 draws each team (one Cbt Flt) as 3 hels."
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-flt-cbt",
+   "name": "Cbt Flt",
+   "arm": "avn",
+   "type": "flt",
+   "subtype": "cbt",
+   "echelon": "14",
+   "page": "703",
+   "equipment": [
+    {
+     "name": "Attk Hel",
+     "kind": "helicopter",
+     "count": 3
+    },
+    {
+     "name": "Scout Hel",
+     "kind": "helicopter",
+     "count": 2
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-sqn-air-aslt",
+   "name": "Air Aslt Sqn (Previously Utility Sqn)",
+   "arm": "avn",
+   "type": "sqn",
+   "subtype": "air-aslt",
+   "echelon": "15",
+   "page": "703",
+   "children": [
+    {
+     "role": "Sqn HQ",
+     "count": 1,
+     "note": "2x LOH",
+     "equipment": [
+      {
+       "name": "LOH",
+       "kind": "helicopter",
+       "count": 2
+      }
+     ]
+    },
+    {
+     "role": "Air Aslt Flt",
+     "unit": "avn-flt-air-aslt",
+     "count": 2
+    },
+    {
+     "role": "Cargo Sp Flt",
+     "unit": "avn-flt-cargo",
+     "count": 1
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 2,
+     "heldBy": "Sqn HQ"
+    },
+    {
+     "name": "Air Aslt Hel",
+     "kind": "helicopter",
+     "count": 6,
+     "heldBy": "each Air Aslt Flt"
+    },
+    {
+     "name": "Cargo Hel",
+     "kind": "helicopter",
+     "count": 5,
+     "heldBy": "Cargo Sp Flt"
+    }
+   ],
+   "aircraftTotals": [
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 2,
+     "note": "Sqn HQ"
+    },
+    {
+     "name": "Air Aslt Hel",
+     "kind": "helicopter",
+     "count": 12,
+     "note": "2 Air Aslt Flts x 6"
+    },
+    {
+     "name": "Cargo Hel",
+     "kind": "helicopter",
+     "count": 5,
+     "note": "1 Cargo Sp Flt"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-flt-air-aslt",
+   "name": "Air Aslt Flt",
+   "arm": "avn",
+   "type": "flt",
+   "subtype": "air-aslt",
+   "echelon": "14",
+   "page": "703",
+   "equipment": [
+    {
+     "name": "Air Aslt Hel",
+     "kind": "helicopter",
+     "count": 6
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-sqn-cargo",
+   "name": "Cargo Sqn",
+   "arm": "avn",
+   "type": "sqn",
+   "subtype": "cargo",
+   "echelon": "15",
+   "page": "704",
+   "children": [
+    {
+     "role": "Sqn HQ",
+     "count": 1,
+     "note": "No aircraft printed in the Sqn HQ box."
+    },
+    {
+     "role": "Cargo Flt",
+     "unit": "avn-flt-cargo",
+     "count": 3
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Cargo Hel",
+     "kind": "helicopter",
+     "count": 5,
+     "heldBy": "each Cargo Flt"
+    }
+   ],
+   "aircraftTotals": [
+    {
+     "name": "Cargo Hel",
+     "kind": "helicopter",
+     "count": 15,
+     "note": "3 Cargo Flts x 5"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-flt-cargo",
+   "name": "Cargo Flt",
+   "arm": "avn",
+   "type": "flt",
+   "subtype": "cargo",
+   "echelon": "14",
+   "page": "703-704",
+   "equipment": [
+    {
+     "name": "Cargo Hel",
+     "kind": "helicopter",
+     "count": 5
+    }
+   ],
+   "notes": [
+    "Also the Cargo Sp Flt of the Air Aslt Sqn (5 x Cargo Hel)."
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-sqn-qrs",
+   "name": "Quick Reaction Sqn (QRS)",
+   "arm": "avn",
+   "type": "sqn",
+   "subtype": "quick-reaction",
+   "echelon": "15",
+   "page": "704",
+   "children": [
+    {
+     "role": "Sqn HQ",
+     "count": 1,
+     "note": "2 x Utility Hel",
+     "equipment": [
+      {
+       "name": "Utility Hel",
+       "kind": "helicopter",
+       "count": 2
+      }
+     ]
+    },
+    {
+     "role": "Cargo Flt",
+     "unit": "avn-flt-cargo",
+     "count": 3
+    },
+    {
+     "role": "Cbt Flt",
+     "count": 1,
+     "relation": "not yet incorporated",
+     "note": "*Not yet incorporated.",
+     "equipment": [
+      {
+       "name": "Attk Hel",
+       "kind": "helicopter",
+       "count": 3,
+       "note": "*Not yet incorporated"
+      },
+      {
+       "name": "LOH/Scout Hel",
+       "kind": "helicopter",
+       "count": 2,
+       "note": "*Not yet incorporated"
+      }
+     ]
+    },
+    {
+     "role": "FAAR Pl",
+     "unit": "avn-pl-faar",
+     "count": 1,
+     "relation": "not yet incorporated"
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Utility Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "heldBy": "Sqn HQ"
+    },
+    {
+     "name": "Cargo Hel",
+     "kind": "helicopter",
+     "count": 5,
+     "heldBy": "each Cargo Flt"
+    },
+    {
+     "name": "Attk Hel",
+     "kind": "helicopter",
+     "count": 3,
+     "heldBy": "Cbt Flt",
+     "note": "*Not yet incorporated"
+    },
+    {
+     "name": "LOH/Scout Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "heldBy": "Cbt Flt",
+     "note": "*Not yet incorporated"
+    }
+   ],
+   "aircraftTotals": [
+    {
+     "name": "Utility Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "note": "Sqn HQ"
+    },
+    {
+     "name": "Cargo Hel",
+     "kind": "helicopter",
+     "count": 15,
+     "note": "3 Cargo Flts x 5"
+    },
+    {
+     "name": "Attk Hel",
+     "kind": "helicopter",
+     "count": 3,
+     "note": "Cbt Flt, not yet incorporated"
+    },
+    {
+     "name": "LOH/Scout Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "note": "Cbt Flt, not yet incorporated"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-sqn-comp",
+   "name": "Comp Avn Sqn",
+   "arm": "avn",
+   "type": "sqn",
+   "subtype": "comp",
+   "echelon": "15",
+   "page": "705",
+   "children": [
+    {
+     "role": "Sqn HQ",
+     "count": 1,
+     "note": "1x LOH, 2x Utility Hel",
+     "equipment": [
+      {
+       "name": "LOH",
+       "kind": "helicopter",
+       "count": 1
+      },
+      {
+       "name": "Utility Hel",
+       "kind": "helicopter",
+       "count": 2
+      }
+     ]
+    },
+    {
+     "role": "Comp Flt",
+     "unit": "avn-flt-comp",
+     "count": 3
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 1,
+     "heldBy": "Sqn HQ"
+    },
+    {
+     "name": "Utility Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "heldBy": "Sqn HQ"
+    },
+    {
+     "name": "FW ac",
+     "kind": "fixed-wing",
+     "count": 4,
+     "heldBy": "each Comp Flt"
+    },
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 1,
+     "heldBy": "each Comp Flt"
+    }
+   ],
+   "aircraftTotals": [
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 4,
+     "note": "Sqn HQ 1 + 3 Comp Flts x 1"
+    },
+    {
+     "name": "Utility Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "note": "Sqn HQ"
+    },
+    {
+     "name": "FW ac",
+     "kind": "fixed-wing",
+     "count": 12,
+     "note": "3 Comp Flts x 4"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-sqn-comp-lt",
+   "name": "Lt Comp Avn Sqn",
+   "arm": "avn",
+   "type": "sqn",
+   "subtype": "comp-lt",
+   "echelon": "15",
+   "page": "705",
+   "children": [
+    {
+     "role": "Sqn HQ",
+     "count": 1,
+     "note": "1x LOH, 2x Utility Hel",
+     "equipment": [
+      {
+       "name": "LOH",
+       "kind": "helicopter",
+       "count": 1
+      },
+      {
+       "name": "Utility Hel",
+       "kind": "helicopter",
+       "count": 2
+      }
+     ]
+    },
+    {
+     "role": "Comp Flt",
+     "unit": "avn-flt-comp",
+     "count": 2
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 1,
+     "heldBy": "Sqn HQ"
+    },
+    {
+     "name": "Utility Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "heldBy": "Sqn HQ"
+    },
+    {
+     "name": "FW ac",
+     "kind": "fixed-wing",
+     "count": 4,
+     "heldBy": "each Comp Flt"
+    },
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 1,
+     "heldBy": "each Comp Flt"
+    }
+   ],
+   "aircraftTotals": [
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 3,
+     "note": "Sqn HQ 1 + 2 Comp Flts x 1"
+    },
+    {
+     "name": "Utility Hel",
+     "kind": "helicopter",
+     "count": 2,
+     "note": "Sqn HQ"
+    },
+    {
+     "name": "FW ac",
+     "kind": "fixed-wing",
+     "count": 8,
+     "note": "2 Comp Flts x 4"
+    }
+   ],
+   "notes": [
+    "* Lt Comp Avn Sqn has 2 x Comp Flts (otherwise as Comp Avn Sqn).",
+    "One chart (p 705) serves both: Comp / Lt Comp Avn Sqn; the Lt sqn differs only in the number of Comp Flts."
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-flt-comp",
+   "name": "Comp Flt",
+   "arm": "avn",
+   "type": "flt",
+   "subtype": "comp",
+   "echelon": "14",
+   "page": "705",
+   "equipment": [
+    {
+     "name": "FW ac",
+     "kind": "fixed-wing",
+     "count": 4
+    },
+    {
+     "name": "LOH",
+     "kind": "helicopter",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-coy-faar",
+   "name": "FAAR Coy",
+   "arm": "avn",
+   "type": "coy",
+   "subtype": "faar",
+   "echelon": "15",
+   "page": "702, 705",
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "note": "No composition printed."
+    },
+    {
+     "role": "Pl",
+     "unit": "avn-pl-faar",
+     "count": 2
+    }
+   ],
+   "notes": [
+    "FAAR Coy is capable of providing 2 x FAARP (Fwd Area Arming and Refueling Pts) at one time."
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  },
+  {
+   "id": "avn-pl-faar",
+   "name": "FAAR Pl",
+   "arm": "avn",
+   "type": "pl",
+   "subtype": "faar",
+   "echelon": "14",
+   "page": "704-705",
+   "notes": [
+    "No composition printed."
+   ],
+   "side": "own",
+   "symbolKey": "10120600"
+  }
+ ],
+ "otherPages": [
+  "706-712 Army Avn Fixed Wing Ac, Army Avn Hels, Armed / Unarmed Hels - Performance Data/Emp: on the 31 weapons.json entries (section Sec 7 - Avn), re-checked figure by figure on 15 Nov 2026, no differences; types by possible role in avnData",
+  "713 Reqs of Helipads: in avnData (req a-k, reception a-e, marking of wires: orange streamers at 5 Ms interval)",
+  "714 Load/Cas Evac Cap - Army Avn Hels: in avnData and on the 7 hel entries in weapons.json (loadCasEvac)",
+  "715 Engagement Tech of Cbt Avn (diagram): in avnData and summarised in avn-sqn-cbt notes"
+ ],
+ "dataNotes": [
+  "p 708: The lift cap of all hels can be enhanced if fuel is reduced; however, the endurance and range would reduce proportionately. External load means the max lift cap of the hel using sling; in such case the internal load would be compromised.",
+  "pp 710, 712: Ref to C&SC Basic Book on Avn for performance data/emp of other imp armed / unarmed hels. Auth (unarmed hels): Jane's All the Worlds Aircraft.",
+  "Speeds: Army Avn Fixed Wing Ac and Army Avn Hels tables give normal cruising speed (cruiseSpeedKmph); the armed / unarmed performance tables give max speed (maxSpeedKmph). Ceilings: H = Hovering, S = Svc."
+ ],
+ "avnData": [
+  {
+   "title": "Army Avn types by possible role",
+   "page": "706-708",
+   "note": "As printed in the 'Possible Roles' column of the Army Avn Fixed Wing Ac (p 706) and Army Avn Hels (pp 707-708) tables; weapon = id in weapons.json. The book does not tie a type to a sqn.",
+   "rows": [
+    {
+     "role": "Attk / A tk",
+     "weapons": [
+      "bell-ah-if-cobra"
+     ]
+    },
+    {
+     "role": "Air Aslt",
+     "weapons": [
+      "bell-412"
+     ]
+    },
+    {
+     "role": "Cargo (C)",
+     "weapons": [
+      "bell-412",
+      "sa-330l-puma",
+      "mi-17"
+     ]
+    },
+    {
+     "role": "Cas Evac (CE)",
+     "weapons": [
+      "jet-ranger-bell-206",
+      "sa-319b-allouette-iii",
+      "sa-315b-lama",
+      "bell-412",
+      "sa-330l-puma",
+      "mi-17",
+      "uh-ih-ab-205-huey"
+     ]
+    },
+    {
+     "role": "Obsn (O) / Recce (R)",
+     "weapons": [
+      "th-300c-schweitzer",
+      "jet-ranger-bell-206",
+      "sa-319b-allouette-iii",
+      "sa-315b-lama",
+      "ecureuil-a5-350-b3",
+      "uh-ih-ab-205-huey",
+      "saab-mfi-17"
+     ]
+    },
+    {
+     "role": "Liaison (L)",
+     "weapons": [
+      "jet-ranger-bell-206",
+      "sa-319b-allouette-iii",
+      "sa-315b-lama",
+      "ecureuil-a5-350-b3",
+      "uh-ih-ab-205-huey",
+      "saab-mfi-17",
+      "y-12",
+      "cessna-citation-v",
+      "king-air-b-350",
+      "b-200-beach-craft"
+     ]
+    },
+    {
+     "role": "Trg (T)",
+     "weapons": [
+      "th-300c-schweitzer",
+      "saab-mfi-17"
+     ]
+    },
+    {
+     "role": "Tpt (T)",
+     "weapons": [
+      "y-12",
+      "king-air-b-350",
+      "b-200-beach-craft"
+     ]
+    },
+    {
+     "role": "FAC (AB) / Aerial arty shoots (AS)",
+     "weapons": [
+      "saab-mfi-17"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Reqs of Helipads",
+   "page": "713",
+   "req": [
+    "a. Should preferably have a two-sided apch.",
+    "b. No obs (trees, wires, bldgs etc) on apch within 100 Ms of touch down pt.",
+    "c. Should be sel over firm gr, preferably grassy, free of small stones, loose brush and dust.",
+    "d. Should be prominently mk by lime or orange coloured ltr H.",
+    "e. Should display a prominent windsock of orange colour, loc well clear of the helipad and to one side of final apch.",
+    "f. Med cover (MO and amb etc).",
+    "g. Fire fighting eqpt.",
+    "h. Security gd.",
+    "j. Tel comm with the nearest unit/HQ.",
+    "k. WS for comm with the hel."
+   ],
+   "reception": [
+    "a. Helipad reqs are complete.",
+    "b. Placing of fuel (if req) at least two hrs before ETA.",
+    "c. Tpt for air crew, if req, to go for msn briefing, food, rest etc.",
+    "d. Gr party to ensure that no loose item is lying close by, which is liable to be blown off due to rotor wash.",
+    "e. Normal SOP for protection/security and comm are ensured."
+   ],
+   "markingOfWires": "All wires strung close to the helipad will be marked by orange streamers placed at 5 Ms interval. Pilots will ensure that all such obs are mk on their maps.",
+   "figures": {
+    "obsFreeApchM": 100,
+    "fuelPlacedHrsBeforeEta": 2,
+    "wireStreamerIntervalM": 5
+   }
+  },
+  {
+   "title": "Load/Cas Evac Cap - Army Avn Hels",
+   "page": "714",
+   "columns": [
+    "Ser",
+    "Hel",
+    "Internal Load (KG)",
+    "Sling (KG)",
+    "Hoist (KG)",
+    "Cas Sitting",
+    "Cas Lying",
+    "Svc Ceiling (M)"
+   ],
+   "rows": [
+    {
+     "Ser": "1",
+     "Hel": "Alouette - III",
+     "Internal Load (KG)": 950,
+     "Sling (KG)": 1150,
+     "Hoist (KG)": 185,
+     "Cas Sitting": 4,
+     "Cas Lying": 2,
+     "Svc Ceiling (M)": 6500,
+     "weapon": "sa-319b-allouette-iii"
+    },
+    {
+     "Ser": "2",
+     "Hel": "Lama",
+     "Internal Load (KG)": 950,
+     "Sling (KG)": 1130,
+     "Hoist (KG)": 160,
+     "Cas Sitting": 2,
+     "Cas Lying": 1,
+     "Svc Ceiling (M)": 7000,
+     "weapon": "sa-315b-lama"
+    },
+    {
+     "Ser": "3",
+     "Hel": "Ecureuil",
+     "Internal Load (KG)": 300,
+     "Sling (KG)": 1100,
+     "Hoist (KG)": null,
+     "Cas Sitting": 3,
+     "Cas Lying": 2,
+     "Svc Ceiling (M)": 7500,
+     "weapon": "ecureuil-a5-350-b3"
+    },
+    {
+     "Ser": "4",
+     "Hel": "UH - 1H",
+     "Internal Load (KG)": 1350,
+     "Sling (KG)": 1800,
+     "Hoist (KG)": 270,
+     "Cas Sitting": 10,
+     "Cas Lying": 6,
+     "Svc Ceiling (M)": 6000,
+     "weapon": "uh-ih-ab-205-huey"
+    },
+    {
+     "Ser": "5",
+     "Hel": "Bell 412",
+     "Internal Load (KG)": 1350,
+     "Sling (KG)": 2000,
+     "Hoist (KG)": 270,
+     "Cas Sitting": 10,
+     "Cas Lying": 6,
+     "Svc Ceiling (M)": 6000,
+     "weapon": "bell-412"
+    },
+    {
+     "Ser": "6",
+     "Hel": "Puma",
+     "Internal Load (KG)": 1625,
+     "Sling (KG)": 3200,
+     "Hoist (KG)": 260,
+     "Cas Sitting": 12,
+     "Cas Lying": 6,
+     "Svc Ceiling (M)": 5000,
+     "weapon": "sa-330l-puma"
+    },
+    {
+     "Ser": "7",
+     "Hel": "MI - 17",
+     "Internal Load (KG)": 4000,
+     "Sling (KG)": 3000,
+     "Hoist (KG)": 300,
+     "Cas Sitting": 24,
+     "Cas Lying": 12,
+     "Svc Ceiling (M)": 6000,
+     "weapon": "mi-17"
+    }
+   ],
+   "notes": [
+    "Load carrying capacity depending upon temp and ht.",
+    "Ecureuil hoist printed '-'.",
+    "Also on each hel entry in weapons.json (loadCasEvac)."
+   ]
+  },
+  {
+   "title": "Engagement Tech of Cbt Avn",
+   "page": "715",
+   "rows": [
+    {
+     "tech": "Max Destruction",
+     "fltsUp": 3,
+     "onTgt": [
+      "A Team",
+      "B Team",
+      "C Team"
+     ],
+     "atFaarp": []
+    },
+    {
+     "tech": "Phased Emp",
+     "fltsUp": 2,
+     "onTgt": [
+      "A Team",
+      "B Team"
+     ],
+     "atFaarp": [
+      "C Team"
+     ],
+     "note": "A Team and B Team each loop back to the FAARP in turn (arrows)."
+    },
+    {
+     "tech": "Cont Emp",
+     "fltsUp": 1,
+     "onTgt": [
+      "A Team"
+     ],
+     "moving": [
+      "B Team"
+     ],
+     "atFaarp": [
+      "C Team"
+     ],
+     "note": "B Team moves up to relieve A Team; A Team returns to the FAARP."
+    }
+   ],
+   "note": "Each team = one Cbt Flt, drawn as 3 hels; TGT on the right, FAARP on the left."
+  }
+ ]
+}

@@ -1,0 +1,3255 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Armour",
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "section": "Sec 1 - Armr",
+  "pages": "100-130",
+  "handling": "RESTD"
+ },
+ "side": "own",
+ "basis": "R = as printed in the book. Fields marked uncertain / judged / *Note carry the reader's doubts; printed totals are kept even where parts do not add up.",
+ "notes": [
+  "Book pages 100-130 = PDF pages 1-31 of 'Sec 1 - Armr.pdf' (PDF page = printed page - 99).",
+  "Re-checked against the book on 15 Nov 2026: every page looked at as an image. The org charts of this section print no personnel figure in any box (figures are only in the 'Summary of Pers and Vehs' tables), so no chartStrength is set.",
+  "vehicles lists hold the summary-table categories first (Whs = wheeled, Trs = tracked, 'Total less Tlrs', Tlrs; marked summary: true), then the types printed in the chart or the table notes. Types are part of the categories: do not add both.",
+  "Radio sets (equipment items with kind: 'radio') are counted from the radio comm diagrams (pp 111-112): sets drawn per station, one tk / recce sqn drawn and A, B, C Sqns taken as the same. The book adds: VRC 889 instead of VRC 80/81 A in tks; VRC 4622 instead of VRC 79 in jeeps.",
+  "exclPers = personnel the printed total leaves out (SWs, NCs(U)/civs); attPers = attached personnel listed in the notes; warIncrement = war-increment personnel / transport printed under the table.",
+  "Section-wide tables (ammo scales, planning data, T-80 UD / Al-Zarrar planning parameters and 1st / 2nd line tpt, inf/tk coop radio links, CCO layout) are in armrData."
+ ],
+ "units": [
+  {
+   "id": "armr-div-armd",
+   "name": "Armd Div",
+   "arm": "armr",
+   "type": "div",
+   "subtype": "armd",
+   "echelon": "21",
+   "page": "101, 103, 120",
+   "strength": {
+    "total": 13128
+   },
+   "strengthNote": "Page 120 (Planning Data): an armd div has approx 13128 pers, 576 A vehs and 2077 B and C vehs. strength.total is this approx planning figure (p 120), not a TO&E table total.",
+   "vehicles": [
+    {
+     "name": "A vehs",
+     "count": 576,
+     "note": "approx (planning data p 120)"
+    },
+    {
+     "name": "B and C vehs",
+     "count": 2077,
+     "note": "approx (planning data p 120)"
+    }
+   ],
+   "children": [
+    {
+     "role": "Div HQ (incl HQ Sqn)",
+     "unit": "armr-hq-armd-div",
+     "count": 1
+    },
+    {
+     "role": "Armd Bde (incl HQ Sqn)",
+     "count": 2,
+     "note": "Chart: '3 x Armd Bdes incl HQ Sqn' = 2x Armd Bdes (a) + 1x Lt Armd Bde. Note a: 'Twelve ACTs and one tcl are integral.' Bde composition not given in this section.",
+     "equipment": [
+      {
+       "name": "ACT",
+       "count": 12,
+       "note": "Note a: 'Twelve ACTs and one tcl are integral.' ACT / tcl are not expanded in the book; whether per bde or for both bdes is not stated (read as per bde).",
+       "uncertain": true
+      },
+      {
+       "name": "tcl",
+       "count": 1,
+       "note": "Note a, as printed",
+       "uncertain": true
+      }
+     ]
+    },
+    {
+     "role": "Lt Armd Bde",
+     "count": 1
+    },
+    {
+     "role": "Armr Regt",
+     "unit": "armr-regt",
+     "count": 5,
+     "note": "Chart: Armr - 5 x Armd Regts"
+    },
+    {
+     "role": "Recce Regt",
+     "unit": "armr-recce-regt",
+     "count": 1,
+     "note": "Div Recce Regt; stays out of Div Log comd (page 103)"
+    },
+    {
+     "role": "MIB",
+     "count": 3,
+     "note": "Inf - 3 x MIBs",
+     "unit": "inf-bn-mib"
+    },
+    {
+     "role": "HQ Div Arty (incl HQ Bty)",
+     "count": 1,
+     "relation": "Aux HQ (page 103)",
+     "unit": "arty-hq-armd-div-arty",
+     "note": "Sec 2 (p 203) gives the whole Armd Div Arty as arty-armd-div-arty (HQ + 3 x Med Regt (SP) + 1 x Med Regt (Towed))."
+    },
+    {
+     "role": "Med (SP) Regt",
+     "count": 3,
+     "relation": "under HQ Div Arty",
+     "unit": "arty-regt-med-sp"
+    },
+    {
+     "role": "Med (Towed) Regt",
+     "count": 1,
+     "relation": "under HQ Div Arty",
+     "unit": "arty-regt-med"
+    },
+    {
+     "role": "AD Bde",
+     "unit": "ad-bde-armd-div",
+     "count": 1,
+     "relation": "Aux HQ (page 103)",
+     "note": "Chart: AD Bde - 2x Lt AD (SP) Regts; defined in ad.json (page 307)"
+    },
+    {
+     "role": "Aslt Engr Bn",
+     "count": 1,
+     "unit": "engr-bn-aslt"
+    },
+    {
+     "role": "Sigs Bn",
+     "count": 1,
+     "note": "Marked (b) on chart; see notes on letter offset",
+     "unit": "sig-bn-armd-div"
+    },
+    {
+     "role": "HQ Div Log",
+     "unit": "armr-hq-div-log-armd-div",
+     "count": 1,
+     "relation": "Aux HQ; all Div Tp units except Div Recce Regt, Engrs Bn and Sig Bn are placed UC Comd Div Log (page 103)"
+    },
+    {
+     "role": "MP Unit (Pro)",
+     "count": 1
+    },
+    {
+     "role": "FS Sec",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Armd Div has three Aux HQs, i.e. HQ Div Arty, HQ AD Bde and HQ Div Log (page 103).",
+    "Chart footnote letters run (a)-(e) but the notes are a-d: by content, note a = Armd Bdes (Twelve ACTs and one tcl are integral), note b = Ord Bn (CO Ord Bn also acts as ADOS with 2IC as DADOS; chart mark (c)), note c = S&T coys (one S&T coy has three pls, other two have four pls each; Fd sup pl integral; chart mark (d)), note d = FTC (1 x FTC is under suspended animation; chart mark (e)). Chart mark (b) on Sigs Bn has no matching note.",
+    "Page 120 planning data: rd space 90 miles/144 kms by day and 40 miles/64 kms by ni on each of two rd axes; armd bde gp needs 12-16 map sqs and armd div 100-130 map sqs for assy; 25 trains (B vehs by rd) or 55 trains (whole div by rail); max 25 miles/40 kms in 24 hrs on two axes travelling 10 hrs at ni; daily log 696/174 ammo, 312/78 POL, 32/8 rats, total 1040/260 (tons / 2.5 ton trk with 1.5 ton tlr)."
+   ],
+   "side": "own",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "armr-hq-armd-div",
+   "name": "HQ Armd Div",
+   "arm": "armr",
+   "type": "hq",
+   "subtype": "armd-div",
+   "echelon": "21",
+   "page": "102-103",
+   "strength": {
+    "offr": 21,
+    "jco": 9,
+    "sldr": 176,
+    "total": 206
+   },
+   "strengthNote": "Total 206 (a): incl 5 sldrs att from EME but excl 5 SWs and 4 NCs(U)/civs. War Increment: incl 5 offrs (one GSO-2 Air, 3 LOs and a fd cashier), 8 sldrs and 1 NCs(U)/civ; 3 trks 1/4 ton, 1 trk 3/4 ton and 3 tlrs 1/4 ton.",
+   "exclPers": {
+    "sw": 5,
+    "ncuCiv": 4,
+    "note": "(a) Total 206 incl 5 sldrs att from EME but excl 5 SWs and 4 NCs(U)/civs."
+   },
+   "warIncrement": {
+    "offr": 5,
+    "sldr": 8,
+    "ncuCiv": 1,
+    "note": "Incl 5 offrs (one GSO-2 Air, 3 LOs and a fd cashier), 8 sldrs and 1 NCs(U)/civ.",
+    "vehicles": [
+     {
+      "name": "Trk 1/4 ton",
+      "count": 3
+     },
+     {
+      "name": "Trk 3/4 ton",
+      "count": 1
+     },
+     {
+      "name": "Tlr 1/4 ton",
+      "count": 3
+     }
+    ]
+   },
+   "children": [
+    {
+     "role": "Div HQ (staff)",
+     "count": 1,
+     "strength": {
+      "offr": 17,
+      "jco": 4,
+      "sldr": 33,
+      "total": 54
+     }
+    },
+    {
+     "role": "HQ Sqn",
+     "unit": "armr-hq-sqn-armd-div",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Whs",
+     "count": 40,
+     "summary": true
+    },
+    {
+     "name": "Trs",
+     "count": 20,
+     "note": "(e) Incl 2 x tks, 3 x APCs, 5 x ARVs, 4 x Dozers and 6 x BLTs",
+     "summary": true
+    },
+    {
+     "name": "Total less Tlrs",
+     "count": 60,
+     "summary": true
+    },
+    {
+     "name": "Tlrs",
+     "count": 17,
+     "note": "(b) 17 tlrs incl 3x1/4 ton, 2x3/4 ton, 10x1.5 ton and 2x w/tlrs 400 gals",
+     "summary": true
+    },
+    {
+     "name": "Tks",
+     "count": 2,
+     "note": "part of Trs 20 (e)"
+    },
+    {
+     "name": "APC",
+     "count": 3,
+     "note": "part of Trs 20 (e)"
+    },
+    {
+     "name": "ARV",
+     "count": 5,
+     "note": "part of Trs 20 (e)"
+    },
+    {
+     "name": "Dozer",
+     "count": 4,
+     "note": "part of Trs 20 (e)"
+    },
+    {
+     "name": "BLT",
+     "count": 6,
+     "note": "part of Trs 20 (e)"
+    },
+    {
+     "name": "Tlr 1/4 ton",
+     "count": 3,
+     "note": "part of Tlrs 17 (b)"
+    },
+    {
+     "name": "Tlr 3/4 ton",
+     "count": 2,
+     "note": "part of Tlrs 17 (b)"
+    },
+    {
+     "name": "Tlr 1.5 ton",
+     "count": 10,
+     "note": "part of Tlrs 17 (b)"
+    },
+    {
+     "name": "Water tlr 400 gals",
+     "count": 2,
+     "note": "part of Tlrs 17 (b)"
+    }
+   ],
+   "appointments": [
+    {
+     "appt": "GOC",
+     "count": 1
+    },
+    {
+     "appt": "ADC",
+     "count": 1
+    },
+    {
+     "appt": "Brig/Col Staff",
+     "rank": "Brig/Col",
+     "count": 1
+    },
+    {
+     "appt": "GSO-1",
+     "branch": "GS",
+     "count": 1
+    },
+    {
+     "appt": "GSO-2 (Ops)",
+     "branch": "GS",
+     "count": 1
+    },
+    {
+     "appt": "GSO-2 (Ops/Trg)",
+     "branch": "GS",
+     "count": 1
+    },
+    {
+     "appt": "GSO-2 (Int)",
+     "branch": "GS",
+     "count": 1
+    },
+    {
+     "appt": "GSO-2 (Edn)",
+     "branch": "GS",
+     "count": 1,
+     "note": "* In HRDC"
+    },
+    {
+     "appt": "GSO-2 (RA)",
+     "branch": "GS",
+     "count": 1
+    },
+    {
+     "appt": "AA&QMG",
+     "branch": "AQ",
+     "count": 1
+    },
+    {
+     "appt": "DAAD",
+     "branch": "AQ",
+     "count": 1
+    },
+    {
+     "appt": "DAA&QMG",
+     "branch": "AQ",
+     "count": 1
+    },
+    {
+     "appt": "GSO-2 Air",
+     "count": 1,
+     "note": "War Increment"
+    },
+    {
+     "appt": "LO",
+     "count": 3,
+     "note": "War Increment"
+    },
+    {
+     "appt": "Fd Cashier",
+     "count": 1,
+     "note": "War Increment"
+    }
+   ],
+   "notes": [
+    "Staff: GOC, ADC, Brig/Col Staff; GS Branch: GSO-1, GSO-2 (Ops), GSO-2 (Ops/Trg), GSO-2 (Int), *GSO-2 (Edn) (* In HRDC), GSO-2 (RA); AQ Branch: AA&QMG, DAAD, DAA&QMG.",
+    "HQ Div Log is comd by Brig/Col and has two SOs, i.e. GSO-2 (Plans) and DAA&QMG (page 103)."
+   ],
+   "side": "own",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "armr-hq-sqn-armd-div",
+   "name": "HQ Sqn (HQ Armd Div)",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "102",
+   "strengthNote": "No HQ Sqn total is printed; its three rows add to offr 4, JCO 5, sldr 143, total 152 (p 102).",
+   "children": [
+    {
+     "role": "SHQ & Adm Tp",
+     "count": 1,
+     "strength": {
+      "offr": 4,
+      "jco": 3,
+      "sldr": 108,
+      "total": 115
+     },
+     "vehicles": [
+      {
+       "name": "Whs",
+       "count": 37,
+       "summary": true
+      },
+      {
+       "name": "Trs",
+       "count": 9,
+       "summary": true
+      },
+      {
+       "name": "Total less Tlrs",
+       "count": 46,
+       "summary": true
+      },
+      {
+       "name": "Tlrs",
+       "count": 17,
+       "summary": true
+      }
+     ]
+    },
+    {
+     "role": "AFV Tp",
+     "count": 1,
+     "strength": {
+      "jco": 1,
+      "sldr": 7,
+      "total": 8
+     },
+     "note": "Chart: '2 x Tks'. The table prints 11 Trs against this tp; the HQ's Trs types (e) would fit 2 tks + 5 ARVs + 4 dozers = 11 here and 3 APCs + 6 BLTs = 9 in SHQ & Adm Tp (inference, not printed).",
+     "vehicles": [
+      {
+       "name": "Tks",
+       "count": 2,
+       "note": "chart '2 x Tks'"
+      },
+      {
+       "name": "Trs",
+       "count": 11,
+       "summary": true
+      },
+      {
+       "name": "Total less Tlrs",
+       "count": 11,
+       "summary": true
+      }
+     ]
+    },
+    {
+     "role": "Def Tp",
+     "count": 1,
+     "strength": {
+      "jco": 1,
+      "sldr": 28,
+      "total": 29
+     },
+     "vehicles": [
+      {
+       "name": "Whs",
+       "count": 3,
+       "summary": true
+      },
+      {
+       "name": "Total less Tlrs",
+       "count": 3,
+       "summary": true
+      }
+     ]
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "armr-hq-div-log-armd-div",
+   "name": "HQ Div Log Armd Div",
+   "arm": "log",
+   "type": "hq",
+   "subtype": "div-log",
+   "echelon": "18",
+   "page": "101, 103-104",
+   "children": [
+    {
+     "role": "Ord Unit",
+     "unit": "log-ord-bn-armd-div",
+     "count": 1,
+     "note": "Chart: 'Ord Unit' with 3x Ord Coys (called 'Ord Bn' on p 101)."
+    },
+    {
+     "role": "S&T Bn (ASC)",
+     "unit": "log-st-bn-armd-div",
+     "count": 1,
+     "note": "Chart: S&T Bn = Tk Tptr Coy + 3 x Armd S&T Coy (note c: one S&T coy has three pls, the other two four pls each; Fd sup pl integral)."
+    },
+    {
+     "role": "Med Bn",
+     "unit": "log-med-bn-armd-div",
+     "count": 1
+    },
+    {
+     "role": "EME Bn",
+     "unit": "log-eme-bn-armd-div-old",
+     "count": 1,
+     "note": "Chart (pp 101, 104): EME Bn = 3 x Armd Wksp Coy, Rec Coy, Radar Repair Sec, which is the Armd Div EME Bn of Sec 10 p 1037 (log-eme-bn-armd-div-old). Sec 10 p 1041 gives a reorganised 'EME Bn Armd Div (Org)' (log-eme-bn-armd-div) without the Radar Repair Sec."
+    }
+   ],
+   "notes": [
+    "Comd by Brig/Col; two SOs: GSO-2 (Plans) and DAA&QMG (page 103).",
+    "All Div Tp units except Div Recce Regt, Engrs Bn and Sig Bn are placed UC Comd Div Log (page 103).",
+    "Echelon 18 is judgement: a Brig/Col-comd aux HQ."
+   ],
+   "side": "own",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "log-ord-bn-armd-div",
+   "name": "Ord Bn (Armd Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "ord",
+   "echelon": "16",
+   "page": "101, 104",
+   "children": [
+    {
+     "role": "Ord Coy",
+     "count": 3
+    }
+   ],
+   "notes": [
+    "Called 'Ord Bn' on page 101 and 'Ord Unit' on page 104.",
+    "CO Ord Bn also acts as ADOS with 2IC as DADOS (page 101)."
+   ],
+   "side": "own",
+   "symbolKey": "10110212"
+  },
+  {
+   "id": "log-med-bn-armd-div",
+   "name": "Med Bn (Armd Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "med",
+   "echelon": "16",
+   "page": "101, 104",
+   "children": [
+    {
+     "role": "ADS",
+     "count": 5,
+     "unit": "log-ads"
+    },
+    {
+     "role": "FTC",
+     "count": 2,
+     "note": "1 x FTC is under suspended animation (page 101)",
+     "unit": "log-ftc"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10161300",
+   "notes": [
+    "Sec 10 (pp 1023-1024) gives the strength of the Inf/Armd Div Med Bn as log-med-bn-div (4 + 1 ADS, 2 FTC)."
+   ]
+  },
+  {
+   "id": "armr-iabg",
+   "name": "IABG",
+   "arm": "armr",
+   "type": "bde",
+   "subtype": "iabg",
+   "echelon": "18",
+   "page": "105",
+   "children": [
+    {
+     "role": "Bde HQ (incl HQ Sqn)",
+     "unit": "armr-hq-iabg",
+     "count": 1
+    },
+    {
+     "role": "Armd Regt",
+     "unit": "armr-regt",
+     "count": 3,
+     "note": "(a) Two armr regts are held on gr instead of three."
+    },
+    {
+     "role": "MIB",
+     "count": 1,
+     "unit": "inf-bn-mib"
+    },
+    {
+     "role": "Med Regt (SP)",
+     "count": 1,
+     "unit": "arty-regt-med-sp"
+    },
+    {
+     "role": "Lt AD (SP) Regt",
+     "unit": "ad-regt-lt-gm-sp",
+     "count": 1,
+     "note": "Page 311 note 3: 1xLt AD (SP) Regt is auth to each IABG; defined in ad.json"
+    },
+    {
+     "role": "Indep Mech Coy Engrs",
+     "count": 1,
+     "unit": "engr-imce"
+    },
+    {
+     "role": "Sig Coy",
+     "count": 1
+    },
+    {
+     "role": "Lt S&T Bn",
+     "count": 1,
+     "unit": "log-lt-st-bn-iabg",
+     "note": "Sec 10 p 1016; a revised Lt S&T Bn IABG is at p 1017 (log-lt-st-bn-iabg-rev)."
+    },
+    {
+     "role": "Fd Amb",
+     "count": 1
+    },
+    {
+     "role": "Ord Unit",
+     "count": 1,
+     "note": "(b) Comd by a Maj, who is also adviser to Comd on Log matters.",
+     "unit": "log-ord-unit-iabg"
+    },
+    {
+     "role": "Armd Wksp Coy",
+     "count": 1,
+     "unit": "log-indep-armd-wksp-coy",
+     "note": "Judged: the chart's 'Armd Wksp Coy' linked to Sec 10's Indep Armd Wksp Coy (p 1038)."
+    },
+    {
+     "role": "Pro Det",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120500",
+   "notes": [
+    "Sec 10 p 1065 (Maj Planning Factors for Large Fmns) gives an IABG as 5160 pers, 290 A vehs and 781 B&C vehs (1071 vehs), 60-70 map sqs, and one sec line lift of ammo / POL / one day rats as 91 / 44 / 3 veh loads of 2.5 ton trk with 1.5 ton tlr (total 138)."
+   ]
+  },
+  {
+   "id": "armr-hq-iabg",
+   "name": "HQ IABG",
+   "arm": "armr",
+   "type": "hq",
+   "subtype": "iabg",
+   "echelon": "18",
+   "page": "106",
+   "strength": {
+    "offr": 10,
+    "jco": 5,
+    "sldr": 124,
+    "total": 139
+   },
+   "strengthNote": "Incl att. Sldrs (b): incl 6 sldrs att and excl SWs. War Increment: incl 3 offrs (2 LOs and one fd cashier), 5 sldrs and one civ clk; 2 trks 1/4 ton and 1 trk 3/4 ton.",
+   "warIncrement": {
+    "offr": 3,
+    "sldr": 5,
+    "civ": 1,
+    "note": "Incl 3 offrs (2 LOs and one fd cashier), 5 sldrs and one civ clk.",
+    "vehicles": [
+     {
+      "name": "Trk 1/4 ton",
+      "count": 2
+     },
+     {
+      "name": "Trk 3/4 ton",
+      "count": 1
+     }
+    ]
+   },
+   "children": [
+    {
+     "role": "Bde HQ (staff)",
+     "count": 1,
+     "strength": {
+      "offr": 7,
+      "jco": 1,
+      "sldr": 15,
+      "total": 23
+     }
+    },
+    {
+     "role": "HQ Sqn",
+     "count": 1,
+     "children": [
+      {
+       "role": "SHQ & Adm Tp",
+       "count": 1,
+       "strength": {
+        "offr": 3,
+        "jco": 2,
+        "sldr": 91,
+        "total": 96
+       },
+       "vehicles": [
+        {
+         "name": "Whs",
+         "count": 24,
+         "summary": true
+        },
+        {
+         "name": "Trs",
+         "count": 3,
+         "note": "(a) APCs",
+         "summary": true
+        },
+        {
+         "name": "Total less Tlrs",
+         "count": 27,
+         "summary": true
+        },
+        {
+         "name": "Tlrs",
+         "count": 18,
+         "summary": true
+        },
+        {
+         "name": "APC",
+         "count": 3,
+         "note": "(a) the 3 Trs"
+        }
+       ]
+      },
+      {
+       "role": "AFV Tp",
+       "count": 1,
+       "strength": {
+        "jco": 1,
+        "sldr": 7,
+        "total": 8
+       },
+       "vehicles": [
+        {
+         "name": "Tks",
+         "count": 2,
+         "note": "chart '2x Tks'; the table prints '-' for this tp's vehs"
+        }
+       ]
+      },
+      {
+       "role": "Br Tp",
+       "count": 1,
+       "strength": {
+        "jco": 1,
+        "sldr": 11,
+        "total": 12
+       },
+       "vehicles": [
+        {
+         "name": "BLT",
+         "count": 3,
+         "note": "chart '3x BLTs'"
+        },
+        {
+         "name": "Trs",
+         "count": 3,
+         "summary": true
+        },
+        {
+         "name": "Total less Tlrs",
+         "count": 3,
+         "summary": true
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Whs",
+     "count": 24,
+     "summary": true
+    },
+    {
+     "name": "Trs",
+     "count": 6,
+     "summary": true
+    },
+    {
+     "name": "Total less Tlrs",
+     "count": 30,
+     "summary": true
+    },
+    {
+     "name": "Tlrs",
+     "count": 18,
+     "summary": true
+    },
+    {
+     "name": "Tks",
+     "count": 2,
+     "note": "AFV Tp"
+    },
+    {
+     "name": "BLT",
+     "count": 3,
+     "note": "Br Tp"
+    },
+    {
+     "name": "APC",
+     "count": 3,
+     "note": "SHQ & Adm Tp Trs (a)"
+    }
+   ],
+   "appointments": [
+    {
+     "appt": "Comd",
+     "count": 1
+    },
+    {
+     "appt": "BM",
+     "count": 1
+    },
+    {
+     "appt": "GSO-3 (Ops)",
+     "count": 1
+    },
+    {
+     "appt": "GSO-3 (Int)",
+     "count": 1
+    },
+    {
+     "appt": "DAA&QMG",
+     "count": 1
+    },
+    {
+     "appt": "SC (A/Q)",
+     "count": 1
+    },
+    {
+     "appt": "LO",
+     "count": 2,
+     "note": "*War increments"
+    }
+   ],
+   "notes": [
+    "Staff: Comd; BM with GSO-3 (Ops), GSO-3 (Int); DAA&QMG with SC (A/Q); *LOs (2) as war increments."
+   ],
+   "side": "own",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "armr-regt",
+   "name": "Armr Regt",
+   "arm": "armr",
+   "type": "regt",
+   "subtype": "tk",
+   "echelon": "16",
+   "page": "107-108, 111, 115-120",
+   "strength": {
+    "offr": 27,
+    "jco": 26,
+    "sldr": 413,
+    "total": 466
+   },
+   "strengthNote": "Unit total 466 (a) excl 10 SWs and 6 NCs(U)/civs. Grand total incl att (LAD, Sig Pl, AEC/AMC pers): offr 28, JCO 28, sldr 476, total 531 as printed (the row sums to 532). Addl att pers: JCO AEC 1, Nursing Asst 1. Excl fol war increment: MO 1, Barbers 5, Dhobies 5, Eqpt Boot Repairer 1.",
+   "strengthInclAtt": {
+    "offr": 28,
+    "jco": 28,
+    "sldr": 476,
+    "total": 531
+   },
+   "exclPers": {
+    "sw": 10,
+    "ncuCiv": 6,
+    "note": "(a) Excl 10 SWs 6 NCs(U)/civs."
+   },
+   "attPers": [
+    {
+     "appt": "JCO AEC",
+     "count": 1
+    },
+    {
+     "appt": "Nursing Asst",
+     "count": 1
+    }
+   ],
+   "warIncrement": {
+    "note": "(f) Excl fol War Increment",
+    "items": [
+     {
+      "appt": "MO",
+      "count": 1
+     },
+     {
+      "appt": "Barbers",
+      "count": 5
+     },
+     {
+      "appt": "Dhobies",
+      "count": 5
+     },
+     {
+      "appt": "Eqpt Boot Repairer",
+      "count": 1
+     }
+    ]
+   },
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1,
+     "strength": {
+      "offr": 7,
+      "jco": 2,
+      "sldr": 25,
+      "total": 34
+     },
+     "vehicles": [
+      {
+       "name": "Tks",
+       "count": 2
+      },
+      {
+       "name": "APC/Trk 1 ton",
+       "count": 1
+      },
+      {
+       "name": "Trk 1/4 ton",
+       "count": 3
+      },
+      {
+       "name": "Trk 1 ton/3/4 ton",
+       "count": 1
+      },
+      {
+       "name": "Whs",
+       "count": 4,
+       "summary": true
+      },
+      {
+       "name": "Trs",
+       "count": 3,
+       "summary": true
+      },
+      {
+       "name": "Total less Tlrs",
+       "count": 7,
+       "summary": true
+      },
+      {
+       "name": "Tlrs",
+       "count": 1,
+       "summary": true
+      }
+     ]
+    },
+    {
+     "role": "Tk Sqn (A, B, C Sqn)",
+     "unit": "armr-sqn-tk",
+     "count": 3
+    },
+    {
+     "role": "HQ Sqn",
+     "unit": "armr-sqn-hq",
+     "count": 1
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "relation": "att",
+     "strength": {
+      "sldr": 7,
+      "total": 7
+     },
+     "unit": "sig-armd-regt-sig-pl",
+     "vehicles": [
+      {
+       "name": "Whs",
+       "count": 2,
+       "summary": true
+      },
+      {
+       "name": "Total less Tlrs",
+       "count": 2,
+       "summary": true
+      }
+     ],
+     "note": "Sec 1 p 108 prints the Sig Pl (Att) as 7 sldrs; Sec 5 (pp 505-506, sig-armd-regt-sig-pl) gives 6. The strength here is as printed on p 108."
+    },
+    {
+     "role": "LAD (EME)",
+     "count": 1,
+     "relation": "att",
+     "strength": {
+      "offr": 1,
+      "jco": 1,
+      "sldr": 55,
+      "total": 57
+     },
+     "vehicles": [
+      {
+       "name": "Whs",
+       "count": 8,
+       "summary": true
+      },
+      {
+       "name": "Total less Tlrs",
+       "count": 8,
+       "summary": true
+      },
+      {
+       "name": "Tlrs",
+       "count": 5,
+       "note": "(d)",
+       "summary": true
+      },
+      {
+       "name": "Tlr 1.5 ton",
+       "count": 3,
+       "note": "(d)"
+      },
+      {
+       "name": "Tlr 1/4 ton",
+       "count": 1,
+       "note": "(d)"
+      },
+      {
+       "name": "Water tlr",
+       "count": 1,
+       "note": "(d)"
+      }
+     ]
+    },
+    {
+     "role": "AEC/AMC Pers",
+     "count": 1,
+     "relation": "att",
+     "strength": {
+      "jco": 1,
+      "sldr": 1,
+      "total": 2
+     },
+     "note": "(e) Addl Att Pers: JCO AEC 1, Nursing Asst 1."
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Tk main gun",
+     "count": 44,
+     "heldBy": "RHQ 2, each Tk Sqn 14",
+     "note": "44 Med Tks in F Ech (pages 115, 117); gun calibre depends on tk type, see weapons array"
+    },
+    {
+     "name": "BS",
+     "count": 6,
+     "heldBy": "Recce Tp",
+     "weapon": "bs",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG1A3",
+     "count": 6,
+     "heldBy": "Recce Tp",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Tks",
+     "count": 44,
+     "note": "Pages 115/117: 2 RHQ (1 CO, 1 Bty Comd), 14 per tk sqn (1 Sqn Comd, 1 FOO, 4 tps of 3 tks each)"
+    },
+    {
+     "name": "ARV",
+     "count": 3,
+     "note": "Adm Tp, HQ Sqn"
+    },
+    {
+     "name": "APC",
+     "count": 4,
+     "note": "Trs (b) incl 4 APCs"
+    },
+    {
+     "name": "Whs",
+     "count": 65,
+     "note": "$ Excl 2 x bicycles. Grand total incl att: 75",
+     "summary": true
+    },
+    {
+     "name": "Trs",
+     "count": 51,
+     "note": "(b) Incl 4 APCs",
+     "summary": true
+    },
+    {
+     "name": "Total less Tlrs",
+     "count": 116,
+     "note": "* Excl 1 x trk 2.5 ton auth addl to T Series tk regts and 1 x trk 1.5 ton auth in event of war in lieu of MC to all armd regts. Grand total incl att: 126",
+     "summary": true
+    },
+    {
+     "name": "Tlrs",
+     "count": 39,
+     "note": "(c) 1 ton 25, 1/4 ton 9, Water 5. Grand total incl att: 44",
+     "summary": true
+    },
+    {
+     "name": "Tlr 1 ton",
+     "count": 25,
+     "note": "(c) part of Tlrs 39"
+    },
+    {
+     "name": "Tlr 1/4 ton",
+     "count": 9,
+     "note": "(c) part of Tlrs 39"
+    },
+    {
+     "name": "Water tlr",
+     "count": 5,
+     "note": "(c) part of Tlrs 39"
+    }
+   ],
+   "vehiclesInclAtt": {
+    "whs": 75,
+    "trs": 51,
+    "totalLessTlrs": 126,
+    "tlrs": 44,
+    "note": "Grand Total incl LAD, Sig Pl and AEC/AMC pers (p 108)."
+   },
+   "equipment": [
+    {
+     "name": "VRC 81",
+     "count": 19,
+     "kind": "radio",
+     "heldBy": "Regt CV 1, Spare CV 1, CO tk 1, BC tk 1; each tk sqn 5 (Sqn CV, Sqn Comd tk, FOO tk, ARV, Dozer)"
+    },
+    {
+     "name": "VRC 81A",
+     "count": 25,
+     "kind": "radio",
+     "heldBy": "Regt CV 1, Spare CV 1, CO tk 1, BC tk 1 (printed 'VRC 81, 81U'); each tk sqn 7 (Sqn CV, Sqn Comd, FOO, 4 Tp Ldrs)"
+    },
+    {
+     "name": "VRC 80",
+     "count": 36,
+     "kind": "radio",
+     "heldBy": "each tk sqn 12 (4 Tp Ldrs + 8 tks)"
+    },
+    {
+     "name": "VRC 787",
+     "count": 3,
+     "kind": "radio",
+     "heldBy": "Regt CV 1 (Div Comd Net), Spare CV 1, CO Rover 1"
+    },
+    {
+     "name": "VRC 79",
+     "count": 32,
+     "kind": "radio",
+     "heldBy": "RHQ 13 (OC LAD, RSO/DR, RMO, LO, QM 1 each; CO Rover 2; A1 Ech Comd 1, A2 Ech Comd 1, 2IC 2, MTO 1, Leaguer Dodge 1); Recce Tp 10; each tk sqn 3 (Sqn Comd Rover 2, STO 1)",
+     "note": "Recce Tp MG det jeeps read as VRC 79 (blurred; may read 78)"
+    },
+    {
+     "name": "PRC 77",
+     "count": 9,
+     "kind": "radio",
+     "heldBy": "Recce Tp 6 (RR dets); each tk sqn 1 (Amb)"
+    },
+    {
+     "name": "Mob Ramp (Long, 20 ft)",
+     "count": 1,
+     "note": "p 120: wt 1-1.5 ton; assy 30 mins to 1 hr (incl time of assy on rly tr)"
+    },
+    {
+     "name": "Mob Ramp (Short, 10 ft)",
+     "count": 1,
+     "note": "p 120: one Mob Ramp of each type is auth to an armr regt"
+    }
+   ],
+   "echelons": {
+    "armdFmns": {
+     "title": "Suggested Composn of Echs - Armr Regts in Armd Fmns",
+     "page": "115-116",
+     "F": {
+      "printedTotal": 81,
+      "rows": [
+       {
+        "count": 44,
+        "veh": "Med Tks",
+        "use": "2 RHQ (1 CO, 1 Bty Comd); 14 per tk sqn (1 Sqn Comd, 1 FOO, 4 tps of 3 tks each)"
+       },
+       {
+        "count": 3,
+        "veh": "ARVs/Tractors T59",
+        "use": "1 per sqn"
+       },
+       {
+        "count": 4,
+        "veh": "APCs/Trks 1 ton",
+        "use": "1 RHQ (CV); 1 per tk sqn (Sqn Rear Link)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo 1 ton/3/4 ton",
+        "use": "RHQ (Tac Office)"
+       },
+       {
+        "count": 8,
+        "veh": "Trks Cargo 1/4 ton (4x4)",
+        "use": "Recce Tp (1 Tp Ldr, 1 Tp 2IC, 6 MGs)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo 1 ton/3/4 ton",
+        "use": "Recce Tp Ammo"
+       },
+       {
+        "count": 4,
+        "veh": "Trks Utility 1/4 ton (4x4)",
+        "use": "RHQ (CO, 2IC MTO, DR, LO)"
+       },
+       {
+        "count": 3,
+        "veh": "Trks Utility 1/4 ton (4x4)",
+        "use": "1 per tk sqn (Sqn Comd's Rover)"
+       },
+       {
+        "count": 3,
+        "veh": "Trks Utility 1/4 ton (4x4)",
+        "use": "1 per tk Sqn (STOs)"
+       },
+       {
+        "count": 3,
+        "veh": "Trks Amb 1/4 ton (4x4)",
+        "use": "1 per tk Sqn"
+       },
+       {
+        "count": 1,
+        "veh": "APC/Trk 1 ton",
+        "use": "Spare Rear Link/Adm Voice (Sig Pl)"
+       },
+       {
+        "count": 6,
+        "veh": "APC",
+        "use": "6 BS Wpn"
+       }
+      ]
+     },
+     "A1": {
+      "printedTotal": 19,
+      "note": "The rows add to 18; printed total 19.",
+      "rows": [
+       {
+        "count": 1,
+        "veh": "Trk Utility 1/4 ton (4x4)",
+        "use": "Ech Comd (2IC)"
+       },
+       {
+        "count": 8,
+        "veh": "Trks Cargo 2.5 ton (6x6) with tlr 1.5 ton",
+        "use": "Ammo"
+       },
+       {
+        "count": 4,
+        "veh": "Trks Cargo 2.5 ton (6x6) with tlrs 1.5 ton",
+        "use": "POL"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Amb 1/4 ton",
+        "use": "RAP/MO (May be mov to F Ech near RHQ in certain conditions)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo (PW) 1 ton with tlr 1.5 ton",
+        "use": "RP, Leaguer Party with stores"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo (PW) 1 ton",
+        "use": "LAD (Spanner Ptl)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 2.5 ton with tlr 1.5 ton",
+        "use": "Regt Tech/Sig Stores"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Utility 1 ton 3/4 ton DR",
+        "use": "Sig Stores (Sig Pl)"
+       }
+      ]
+     },
+     "A2": {
+      "printedTotal": 27,
+      "rows": [
+       {
+        "count": 2,
+        "veh": "Trks Utility 1/4 ton (4x4)",
+        "use": "Ech Comd (OC HQ Sqn), QM"
+       },
+       {
+        "count": 8,
+        "veh": "Trks Cargo 2.5 ton (6x6) with tlrs 1.5 ton",
+        "use": "Ammo"
+       },
+       {
+        "count": 3,
+        "veh": "Trks Cargo 25 ton with tlrs 1.5 ton",
+        "use": "POL (printed '25 ton', read 2.5 ton)"
+       },
+       {
+        "count": 4,
+        "veh": "Trks Cargo 2.5 ton (6x6) with w/tlr 250/400 gals",
+        "use": "Sqn Cook House (1 per Sqn)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 2.5 ton with w/tlr 250/400 gals",
+        "use": "Offrs Mess"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo 2.5 ton (6x6) with tlr 1.5 ton",
+        "use": "Regt Q Stores, Rats and Tentage"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Utility 2.5 ton (6x6) with tlr 1.5 ton",
+        "use": "Regt and Sqn Offices"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo 1/4 ton (4x4)",
+        "use": "OC LAD (May mov in A1 ech)"
+       },
+       {
+        "count": 2,
+        "veh": "Trks Cargo 2.5 ton (6x6) with tlrs 1.5 ton",
+        "use": "LAD Stores"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo 2.5 ton (6x6) with w/tlr 250/400 gals",
+        "use": "LAD Cook House"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo 2.5 ton (4x4) with tlr 1.5 ton",
+        "use": "LAD Baggage"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Cargo 1 ton (PW)",
+        "use": "LAD (Spanner Ptl)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Wrecker Med 5 ton",
+        "use": "LAD"
+       }
+      ]
+     },
+     "notes": [
+      "a. The above echs incl 1 DR Jeep auth in war only, 1 addl trk 2.5 ton auth to T Series regts, 2 vehs of the Sig Pl and 8 vehs of LAD.",
+      "b. Ratio of ammo and POL vehs may be changed to meet the reqs of prevalent ops.",
+      "c. If considered nec, a B ech can also be created by removing some vehs from the A2 ech.",
+      "c. (lettered c twice) The distr of above vehs is based on the current TO&E."
+     ]
+    },
+    "infFmns": {
+     "title": "Suggested Composn of Echs - Armr Regts in Inf Fmns",
+     "page": "117-118",
+     "F": {
+      "printedTotal": 81,
+      "rows": [
+       {
+        "count": 44,
+        "veh": "Med Tks",
+        "use": "2 RHQ (1 CO, Bty Comd); 14 per tk sqn (1 Sqn Comd, 1 FOO, 4 tps of 3 tks each)"
+       },
+       {
+        "count": 3,
+        "veh": "ARVs",
+        "use": "1 per sqn"
+       },
+       {
+        "count": 4,
+        "veh": "APCs/Trks 1 ton",
+        "use": "1 RHQ (CV); 1 per tk sqn (Sqn Rear Link)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 1 ton/3/4 ton",
+        "use": "RHQ (Tac Office)"
+       },
+       {
+        "count": 14,
+        "veh": "Trks 1/4 ton",
+        "use": "Recce Tp (1 Tp Ldr, 1 Tp 2IC, 6 MGs, 6 x BS)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 1 ton/3/4 ton",
+        "use": "Recce Tp Ammo"
+       },
+       {
+        "count": 4,
+        "veh": "Trks 1/4 ton",
+        "use": "RHQ (CO, 2IC, DR, LO)"
+       },
+       {
+        "count": 3,
+        "veh": "Trks 1/4 ton",
+        "use": "1 per tk sqn (Sqn Comd's Rover)"
+       },
+       {
+        "count": 3,
+        "veh": "Trks 1/4 ton",
+        "use": "STOs"
+       },
+       {
+        "count": 3,
+        "veh": "Trks 1/4 ton",
+        "use": "Sqn Amb (1 per tk Sqn)"
+       },
+       {
+        "count": 1,
+        "veh": "APC/Trk 1 ton",
+        "use": "Adm Voice/Spare Rear Link (att from Sig Bn)"
+       }
+      ]
+     },
+     "A": {
+      "printedTotal": 17,
+      "rows": [
+       {
+        "count": 2,
+        "veh": "Trks 1/4 ton",
+        "use": "Ech Comd (2IC HQ Sqn) and MTO"
+       },
+       {
+        "count": 6,
+        "veh": "Trks 2.5 ton with tlrs 1.5 ton",
+        "use": "Ammo"
+       },
+       {
+        "count": 4,
+        "veh": "Trks 2.5 ton with tlrs 1.5 ton",
+        "use": "POL"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Amb 1/4 ton",
+        "use": "RAP/MO (May be kept in F Ech)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 1 ton/3/4 ton",
+        "use": "RP, Leaguer Party with stores"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 1 ton/3/4 ton",
+        "use": "LAD (Spanner Ptl)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 1 ton/3/4 ton",
+        "use": "Wrls Stores (Sig Pl)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 2.5 ton",
+        "use": "Regt Tech/Sig Stores"
+       }
+      ]
+     },
+     "B": {
+      "printedTotal": 29,
+      "rows": [
+       {
+        "count": 2,
+        "veh": "Trks 1/4 ton",
+        "use": "Ech Comd (OC HQ Sqn) and QM"
+       },
+       {
+        "count": 5,
+        "veh": "Trks 2.5 ton with tlrs 1.5 ton",
+        "use": "Ammo"
+       },
+       {
+        "count": 4,
+        "veh": "Trks 2.5 ton with tlr 1.5 ton",
+        "use": "POL"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 2.5 ton with tlr 1.5 ton",
+        "use": "Regt Q Stores, Rats and Tentage"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 2.5 ton with tlr 1.5 ton",
+        "use": "Regt and Sqn Offices"
+       },
+       {
+        "count": 4,
+        "veh": "Trks 2.5 ton with w/tlrs 250/400 gals",
+        "use": "Sqn Cook House (1 per sqn)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 2.5 ton with w/tlr 250/400 gals",
+        "use": "Offrs Mess"
+       },
+       {
+        "count": 4,
+        "veh": "Trks 2.5 ton with tlrs 1.5 ton",
+        "use": "Sqn Baggage and Tentage (1 per sqn)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 1/4 ton",
+        "use": "OC LAD"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 2.5 ton with w/tlr 250/400 gals",
+        "use": "LAD Cook House"
+       },
+       {
+        "count": 3,
+        "veh": "Trks 2.5 ton with tlrs 1.5 ton",
+        "use": "LAD Stores/Baggage"
+       },
+       {
+        "count": 1,
+        "veh": "Trk 1 ton/3/4 ton",
+        "use": "LAD (Spanner Ptl)"
+       },
+       {
+        "count": 1,
+        "veh": "Trk Wrecker Med 5 ton",
+        "use": "LAD"
+       }
+      ]
+     },
+     "notes": [
+      "a. The above echs incl 1 DR Jeep auth in war only, 1 addl trk 2.5 ton auth to T Series regts, 2 vehs of the Sig Pl and 8 vehs of LAD.",
+      "b. Ratio of ammo and POL vehs may be changed to meet the reqs of prevalent ops.",
+      "c. The distr of above vehs is based on the current TO&E."
+     ]
+    }
+   },
+   "notes": [
+    "The book gives one Armr Regt org for all tk types; ammo scales differ by tk type (page 119, see weapons array).",
+    "@ In Armr Regts of Armd Div, IABG and Mech Bde 46 whs and 9x Trs are held instead (HQ Sqn: 52 whs, 3 trs).",
+    "* One MC DR in lieu of one trk 1/4 ton during peace time (Adm Tp).",
+    "One Mob Ramp of each type (Long 20 ft, Short 10 ft; 1-1.5 ton; assy 30 mins to 1 hr) is auth to an armr regt (page 120).",
+    "Carrying capacity (page 120): normally one inf coy to one armr sqn; an armd sqn may carry up to two coys for short dists.",
+    "Echelons (pp 115-118) are in echelons: armd fmns F 81 / A1 19 / A2 27, inf fmns F 81 / A 17 / B 29 vehs.",
+    "Radio comm (p 111): Regt CV (VRC 81, VRC 81A, VRC 787 on Div Comd Net) works A, B, C Sqns; each Sqn CV (VRC 81, VRC 81A) works its 4 Tp Ldrs (VRC 80, 81A), whose 2 tks each have VRC 80. Set counts are in equipment."
+   ],
+   "side": "own",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "armr-sqn-tk",
+   "name": "Tk Sqn (Armr Regt)",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "tk",
+   "echelon": "15",
+   "page": "107-108, 111",
+   "strength": {
+    "offr": 6,
+    "jco": 6,
+    "sldr": 80,
+    "total": 92
+   },
+   "children": [
+    {
+     "role": "SHQ",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "Tks",
+       "count": 2
+      },
+      {
+       "name": "Trk 1/4 ton",
+       "count": 2
+      },
+      {
+       "name": "Trk Amb 1/4 ton",
+       "count": 1
+      },
+      {
+       "name": "APC/Trk 1 ton",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "AFV Tp",
+     "unit": "armr-tp-afv",
+     "count": 4
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Tks",
+     "count": 14,
+     "note": "SHQ 2 + 4 tps x 3 (page 115: 1 Sqn Comd, 1 FOO, 4 tps of 3 tks each)"
+    },
+    {
+     "name": "Whs",
+     "count": 3,
+     "summary": true
+    },
+    {
+     "name": "Trs",
+     "count": 15,
+     "summary": true
+    },
+    {
+     "name": "Total less Tlrs",
+     "count": 18,
+     "summary": true
+    },
+    {
+     "name": "Tlrs",
+     "count": 1,
+     "summary": true
+    }
+   ],
+   "equipment": [
+    {
+     "name": "VRC 81",
+     "count": 5,
+     "kind": "radio",
+     "heldBy": "Sqn CV 1, Sqn Comd tk 1, FOO tk 1, ARV 1, Dozer 1",
+     "note": "ARV and Dozer are drawn on the sqn net though the sqn TO&E holds neither (ARVs: 3 in the HQ Sqn Adm Tp, 1 per sqn)"
+    },
+    {
+     "name": "VRC 81A",
+     "count": 7,
+     "kind": "radio",
+     "heldBy": "Sqn CV 1, Sqn Comd tk 1, FOO tk 1, 4 Tp Ldrs 1 each"
+    },
+    {
+     "name": "VRC 80",
+     "count": 12,
+     "kind": "radio",
+     "heldBy": "4 Tp Ldrs 1 each, 8 tp tks 1 each"
+    },
+    {
+     "name": "VRC 79",
+     "count": 3,
+     "kind": "radio",
+     "heldBy": "Sqn Comd Rover 2, STO 1"
+    },
+    {
+     "name": "PRC 77",
+     "count": 1,
+     "kind": "radio",
+     "heldBy": "Amb",
+     "note": "marked '*' on the diagram; footnote reads '*With Sqn' (blurred)"
+    }
+   ],
+   "notes": [
+    "Suggested distr of an inf coy on a sqn of 14 tks (page 120): no inf on ldg tk tp; SHQ carries coy HQ; 3 tk tps carry an inf pl each, one sec per tk with pl HQ on tp ldr's tk."
+   ],
+   "side": "own",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "armr-tp-afv",
+   "name": "AFV Tp",
+   "arm": "armr",
+   "type": "tp",
+   "subtype": "tk",
+   "echelon": "14",
+   "page": "107, 109",
+   "vehicles": [
+    {
+     "name": "Tks",
+     "count": 3
+    }
+   ],
+   "notes": [
+    "Same 3-tk tp in the Tk Sqn (page 107) and the Recce Sqn (page 109)."
+   ],
+   "side": "own",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "armr-sqn-hq",
+   "name": "HQ Sqn (Armr Regt)",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "107-108",
+   "strength": {
+    "offr": 2,
+    "jco": 6,
+    "sldr": 148,
+    "total": 156
+   },
+   "children": [
+    {
+     "role": "SHQ",
+     "count": 1
+    },
+    {
+     "role": "Recce Tp",
+     "unit": "armr-tp-recce",
+     "count": 1
+    },
+    {
+     "role": "Adm Tp",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "ARV",
+       "count": 3
+      },
+      {
+       "name": "Trk cargo 2.5 ton",
+       "count": 31
+      },
+      {
+       "name": "Trk 1 ton/3/4 ton",
+       "count": 1,
+       "note": "printed '1 Trk ton/ 3/4 ton'"
+      },
+      {
+       "name": "Trk 1/4 ton",
+       "count": 3,
+       "note": "* One MC DR in lieu of one trk 1/4 ton during peace time"
+      },
+      {
+       "name": "Trk Amb 1/4 ton",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Whs",
+     "count": 52,
+     "note": "@ 46 whs in Armr Regts of Armd Div, IABG and Mech Bde",
+     "summary": true
+    },
+    {
+     "name": "Trs",
+     "count": 3,
+     "note": "@ 9 trs in Armr Regts of Armd Div, IABG and Mech Bde",
+     "summary": true
+    },
+    {
+     "name": "Total less Tlrs",
+     "count": 55,
+     "summary": true
+    },
+    {
+     "name": "Tlrs",
+     "count": 35,
+     "summary": true
+    },
+    {
+     "name": "ARV",
+     "count": 3
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120500",
+   "notes": [
+    "Chart wheeled vehs add to 53 (Recce Tp 2 + 1 + 14, Adm Tp 36) or 51 if the 14 Recce Tp trks include the 2 Tp HQ trks (they do: pp 111, 117); printed Whs 52."
+   ]
+  },
+  {
+   "id": "armr-tp-recce",
+   "name": "Recce Tp (Armr Regt)",
+   "arm": "armr",
+   "type": "tp",
+   "subtype": "recce",
+   "echelon": "14",
+   "page": "107, 111, 115, 117",
+   "children": [
+    {
+     "role": "Sec",
+     "count": 3,
+     "weapons": [
+      {
+       "name": "BS",
+       "count": 2,
+       "weapon": "bs",
+       "weaponMatch": "alias",
+       "note": "derived: 6 BS printed under the three secs"
+      },
+      {
+       "name": "MG1A3",
+       "count": 2,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias",
+       "note": "derived: 6 MG1A3 printed under the three secs"
+      }
+     ],
+     "vehicles": [
+      {
+       "name": "Trk 1/4 ton",
+       "count": 4,
+       "note": "derived: the radio diagram (p 111) draws each sec as 4 jeeps (2 RR dets, MG sec comd, MG det); 3 x 4 + Tp Ldr + Tp 2IC = 14"
+      }
+     ],
+     "equipment": [
+      {
+       "name": "PRC 77",
+       "count": 2,
+       "kind": "radio",
+       "heldBy": "RR dets"
+      },
+      {
+       "name": "VRC 79",
+       "count": 2,
+       "kind": "radio",
+       "heldBy": "MG sec comd, MG det",
+       "note": "MG det set read as VRC 79 (blurred; may read 78)"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "BS",
+     "count": 6,
+     "heldBy": "Secs",
+     "note": "Printed below the secs; page 117 lists Recce Tp as 1 Tp Ldr, 1 Tp 2IC, 6 MGs, 6 x BS, so 6 is the tp total",
+     "weapon": "bs",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG1A3",
+     "count": 6,
+     "heldBy": "Secs",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 ton",
+     "count": 2,
+     "note": "Tp HQ (Tp Ldr, Tp 2IC); included in the 14 below"
+    },
+    {
+     "name": "Trk 1 ton/3/4 ton",
+     "count": 1,
+     "note": "Recce Tp ammo (page 115)"
+    },
+    {
+     "name": "Trk 1/4 ton",
+     "count": 14,
+     "note": "Printed under the secs, but it is the tp total: p 117 F Ech (1 Tp Ldr, 1 Tp 2IC, 6 MGs, 6 x BS) and the p 111 radio diagram (Tp Ldr, Tp 2IC + 3 secs x 4 jeeps) both give 14 incl the 2 Tp HQ trks. In armd fmns 6 of them are replaced by 6 APCs for the BS (p 115: 8 trks + 6 APC)."
+    }
+   ],
+   "equipment": [
+    {
+     "name": "VRC 79",
+     "count": 10,
+     "kind": "radio",
+     "heldBy": "Tp Ldr 2, Tp 2IC 2, each sec 2",
+     "note": "MG det sets read as VRC 79 (blurred; may read 78)"
+    },
+    {
+     "name": "PRC 77",
+     "count": 6,
+     "kind": "radio",
+     "heldBy": "each sec 2 (RR dets)"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140104"
+  },
+  {
+   "id": "armr-recce-regt",
+   "name": "Recce Regt",
+   "arm": "armr",
+   "type": "regt",
+   "subtype": "recce",
+   "echelon": "16",
+   "page": "109-110, 112",
+   "strength": {
+    "offr": 23,
+    "jco": 29,
+    "sldr": 535,
+    "total": 588
+   },
+   "strengthNote": "Excl att. Sldrs (a): excl 12 SWs and 5 NCs(U)/civs. Total 588 as printed; offr+JCO+sldr = 587 because the HQ Sqn row prints 2/6/124 = 133 (sums to 132). (b) Units equipped with T series tks are auth one addl 2.5 ton trk with tlr and one dvr. Att pers: JCO AEC 1, Nursing Asst 1. War Increment: MO 1, Dhobies 6, Barbers 6, Tailor 1, Eqpt/Boot Repairer 1.",
+   "exclPers": {
+    "sw": 12,
+    "ncuCiv": 5,
+    "note": "(a) Excl 12 SWs and 5 NCs(U)/civs."
+   },
+   "attPers": [
+    {
+     "appt": "JCO AEC",
+     "count": 1
+    },
+    {
+     "appt": "Nursing Asst",
+     "count": 1
+    }
+   ],
+   "warIncrement": {
+    "items": [
+     {
+      "appt": "MO",
+      "count": 1
+     },
+     {
+      "appt": "Dhobies",
+      "count": 6
+     },
+     {
+      "appt": "Barbers",
+      "count": 6
+     },
+     {
+      "appt": "Tailor",
+      "count": 1
+     },
+     {
+      "appt": "Eqpt/Boot Repairer",
+      "count": 1
+     }
+    ]
+   },
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1,
+     "strength": {
+      "offr": 6,
+      "jco": 2,
+      "sldr": 24,
+      "total": 32
+     },
+     "vehicles": [
+      {
+       "name": "Tks",
+       "count": 2
+      },
+      {
+       "name": "Trk 1/4 ton",
+       "count": 2
+      },
+      {
+       "name": "Trk 1 ton",
+       "count": 1
+      },
+      {
+       "name": "APC/Trk 1 ton",
+       "count": 2
+      },
+      {
+       "name": "Whs",
+       "count": 3,
+       "summary": true
+      },
+      {
+       "name": "Trs",
+       "count": 4,
+       "summary": true
+      },
+      {
+       "name": "Total excl Tlrs",
+       "count": 7,
+       "summary": true
+      },
+      {
+       "name": "Tlrs",
+       "count": 1,
+       "summary": true
+      }
+     ]
+    },
+    {
+     "role": "HQ Sqn",
+     "unit": "armr-recce-sqn-hq",
+     "count": 1
+    },
+    {
+     "role": "Recce Sqn (A, B, C Sqn)",
+     "unit": "armr-recce-sqn",
+     "count": 3
+    },
+    {
+     "role": "Wksp/LAD",
+     "count": 1,
+     "relation": "att",
+     "note": "* Recce Regt Wksp for Corps Recce Regt and LAD for Armd Div Recce Regt"
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Tk main gun",
+     "count": 35,
+     "heldBy": "RHQ 2, each Recce Sqn 11 (SHQ 2 + 3 AFV Tps x 3)",
+     "note": "derived from the chart (p 109); no regt tk total is printed"
+    },
+    {
+     "name": "BS (APC Mtd)",
+     "count": 3,
+     "heldBy": "A Tk Tp, HQ Sqn",
+     "weapon": "bs",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG",
+     "count": 3,
+     "heldBy": "A Tk Tp, HQ Sqn",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Whs",
+     "count": 62,
+     "summary": true
+    },
+    {
+     "name": "Trs",
+     "count": 73,
+     "note": "(c) Incl 35 APCs or 1 ton trks in lieu",
+     "summary": true
+    },
+    {
+     "name": "Total excl Tlrs",
+     "count": 135,
+     "summary": true
+    },
+    {
+     "name": "Tlrs",
+     "count": 35,
+     "note": "(d) 1.5 ton 15, 1/4 ton 15, Water 250/400 gals 5",
+     "summary": true
+    },
+    {
+     "name": "APC",
+     "count": 35,
+     "note": "(c) part of Trs 73: 35 APCs or 1 ton trks in lieu"
+    },
+    {
+     "name": "Tlr 1.5 ton",
+     "count": 15,
+     "note": "(d) part of Tlrs 35"
+    },
+    {
+     "name": "Tlr 1/4 ton",
+     "count": 15,
+     "note": "(d) part of Tlrs 35"
+    },
+    {
+     "name": "Water tlr 250/400 gals",
+     "count": 5,
+     "note": "(d) part of Tlrs 35"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "VRC 81",
+     "count": 16,
+     "kind": "radio",
+     "heldBy": "Regt CV 1, Spare CV/Step Up 1, CO tk 1, BC tk 1; each recce sqn 4 (Sqn Comd tk, FOO tk, ARV, Dozer)"
+    },
+    {
+     "name": "VRC 81A",
+     "count": 25,
+     "kind": "radio",
+     "heldBy": "Regt CV 1, Spare CV/Step Up 1, CO tk 1, BC tk 1; each recce sqn 7 (Sqn Comd tk, FOO tk, 3 AFV Tp Ldrs, 2 Rifle Tp Ldrs)"
+    },
+    {
+     "name": "VRC 80",
+     "count": 51,
+     "kind": "radio",
+     "heldBy": "each recce sqn 17 (3 AFV Tps x 3, 2 Rifle Tps x 4 APCs)"
+    },
+    {
+     "name": "VRC 787",
+     "count": 12,
+     "kind": "radio",
+     "heldBy": "Regt CV 2 (Div Comd Net), CO Rover 2, 2IC 1, IC Tp 4; each recce sqn 1 (Sqn Comd Rover)",
+     "note": "CO Rover read '2xVRC 787' (drawn as two overlapping jeeps; doubtful)"
+    },
+    {
+     "name": "VRC 79",
+     "count": 47,
+     "kind": "radio",
+     "heldBy": "RHQ / HQ Sqn 22 (CO Rover 2, 2IC 2, OC LAD, MTO, RSO, QM, LO 1 each, Leaguer Dodge 1, A1 Ech 2, A2 Ech 4 (3 SJCOs, 2IC A2 Ech), IC Tp 6); A Tk Tp 7; each recce sqn 6 (Sqn CV 2, Sqn Comd Rover 2, Amb 1, STO 1)"
+    },
+    {
+     "name": "PRC 77",
+     "count": 27,
+     "kind": "radio",
+     "heldBy": "A Tk Tp 3 (RR jeeps); each recce sqn 8 (2 Rifle Tps x 4 APCs)"
+    }
+   ],
+   "notes": [
+    "Recce Regt of Armd Div is an option to estb the CCO (page 130).",
+    "Radio comm (p 112): Regt CV (VRC 81, VRC 81A, 2 x VRC 787) works A, B, C Sqns and the Div Comd Net; Sqn CV (2 x VRC 79 as printed) works the AFV and Rifle Tp Ldrs. Set counts are in equipment (A Tk Tp: only the 3rd sec is drawn).",
+    "Wksp/LAD and Sig Pl (Att) print no figures (the table is excl att)."
+   ],
+   "side": "own",
+   "symbolKey": "10140104"
+  },
+  {
+   "id": "armr-recce-sqn-hq",
+   "name": "HQ Sqn (Recce Regt)",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "109-110",
+   "strength": {
+    "offr": 2,
+    "jco": 6,
+    "sldr": 124,
+    "total": 133
+   },
+   "strengthNote": "Printed total 133; offr+JCO+sldr = 132.",
+   "uncertain": true,
+   "note": "Row total does not equal its parts (132 vs 133).",
+   "children": [
+    {
+     "role": "SHQ",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "Trk 1/4 ton",
+       "count": 2
+      },
+      {
+       "name": "Trk 1 ton",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Intercom Tp",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "Trk 1/4 ton",
+       "count": 6
+      }
+     ],
+     "equipment": [
+      {
+       "name": "VRC 787",
+       "count": 4,
+       "kind": "radio",
+       "heldBy": "4 of the 6 jeeps",
+       "note": "IC Tp on the p 112 radio diagram"
+      },
+      {
+       "name": "VRC 79",
+       "count": 6,
+       "kind": "radio",
+       "heldBy": "1 per jeep"
+      }
+     ]
+    },
+    {
+     "role": "A Tk Tp",
+     "unit": "armr-recce-tp-atk",
+     "count": 1
+    },
+    {
+     "role": "Adm Tp",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "Trk 1/4 ton",
+       "count": 2
+      },
+      {
+       "name": "Trk 1 ton",
+       "count": 1
+      },
+      {
+       "name": "Trk 2.5 ton",
+       "count": 8
+      },
+      {
+       "name": "Trk 1/4 ton Amb",
+       "count": 1,
+       "note": "printed '1 Trk 1/4 tom Amb'"
+      },
+      {
+       "name": "ARV",
+       "count": 3
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Whs",
+     "count": 32,
+     "summary": true
+    },
+    {
+     "name": "Trs",
+     "count": 12,
+     "summary": true
+    },
+    {
+     "name": "Total excl Tlrs",
+     "count": 44,
+     "summary": true
+    },
+    {
+     "name": "Tlrs",
+     "count": 19,
+     "summary": true
+    },
+    {
+     "name": "ARV",
+     "count": 3
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140104",
+   "notes": [
+    "Chart vehs do not reach the table: chart wheeled vehs add to 27 (SHQ 3, Intercom Tp 6, A Tk Tp 6, Adm Tp 12) against Whs 32; chart tracked vehs are 3 ARVs + 3 BS (APC mtd) = 6 against Trs 12. Note (c) (35 APCs in the regt) less RHQ 2 and 3 sqns x 8 leaves 9 APCs here (inference)."
+   ]
+  },
+  {
+   "id": "armr-recce-tp-atk",
+   "name": "A Tk Tp (Recce Regt)",
+   "arm": "armr",
+   "type": "tp",
+   "subtype": "atk",
+   "echelon": "14",
+   "page": "109, 112",
+   "children": [
+    {
+     "role": "Sec",
+     "count": 3
+    }
+   ],
+   "weapons": [
+    {
+     "name": "BS (APC Mtd)",
+     "count": 3,
+     "heldBy": "Secs",
+     "note": "Printed below the secs: 3 BS (APC Mtd), 3 MGs, 3 Trks 1/4 ton - read as the tp total (one per sec)",
+     "weapon": "bs",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG",
+     "count": 3,
+     "heldBy": "Secs",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 ton",
+     "count": 2,
+     "note": "Tp HQ"
+    },
+    {
+     "name": "Trk 1 ton",
+     "count": 1,
+     "note": "Tp HQ"
+    },
+    {
+     "name": "Trk 1/4 ton",
+     "count": 3,
+     "note": "Secs"
+    },
+    {
+     "name": "APC",
+     "count": 3,
+     "note": "derived: '3 BS (APC Mtd)'"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "VRC 79",
+     "count": 7,
+     "kind": "radio",
+     "heldBy": "A Tk Tp Ldr 2, A Tk Tp JCO 2, MG jeeps 3"
+    },
+    {
+     "name": "PRC 77",
+     "count": 3,
+     "kind": "radio",
+     "heldBy": "RR jeeps 3"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140104",
+   "notes": [
+    "Radio diagram (p 112) draws one sec ('3 Sec') as 3 RR jeeps (PRC 77) and 3 MG jeeps (VRC 79), with arrows to 1 Sec and 2 Sec; the org chart (p 109) prints 3 BS (APC Mtd), 3 MGs and 3 Trks 1/4 ton for the secs together. Set counts are as drawn, not multiplied by 3."
+   ]
+  },
+  {
+   "id": "armr-recce-sqn",
+   "name": "Recce Sqn",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "recce",
+   "echelon": "15",
+   "page": "109-110, 112",
+   "strength": {
+    "offr": 5,
+    "jco": 7,
+    "sldr": 129,
+    "total": 141
+   },
+   "children": [
+    {
+     "role": "SHQ",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "Tks",
+       "count": 2
+      },
+      {
+       "name": "Trk 1/4 ton",
+       "count": 2
+      },
+      {
+       "name": "Trk 1/4 ton Amb",
+       "count": 1
+      },
+      {
+       "name": "Trk 1 ton",
+       "count": 2
+      }
+     ]
+    },
+    {
+     "role": "AFV Tp",
+     "unit": "armr-tp-afv",
+     "count": 3
+    },
+    {
+     "role": "Rifle Tp",
+     "count": 2,
+     "note": "Printed: '2x Rifle Tp 4 APCs/Trk 1 ton'. Read as 4 per tp: the radio diagram (p 112) draws 4 APCs in each Rifle Tp (Tp Ldr + 3), and note (c) 35 APCs = RHQ 2 + HQ Sqn 9 + 3 sqns x 8.",
+     "vehicles": [
+      {
+       "name": "APC/Trk 1 ton",
+       "count": 4,
+       "note": "per tp"
+      }
+     ],
+     "equipment": [
+      {
+       "name": "PRC 77",
+       "count": 4,
+       "kind": "radio",
+       "heldBy": "1 per APC"
+      },
+      {
+       "name": "VRC 80",
+       "count": 4,
+       "kind": "radio",
+       "heldBy": "1 per APC"
+      },
+      {
+       "name": "VRC 81A",
+       "count": 1,
+       "kind": "radio",
+       "heldBy": "Tp Ldr"
+      }
+     ]
+    },
+    {
+     "role": "Adm Tp",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "Tk Dozer",
+       "count": 1
+      },
+      {
+       "name": "Trk 2.5 ton",
+       "count": 4
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Tks (SHQ)",
+     "count": 2,
+     "note": "Plus 3 Tks in each of the 3 AFV Tps: 11 tks in the sqn (derived; no sqn total printed)"
+    },
+    {
+     "name": "Tk Dozer",
+     "count": 1,
+     "note": "Adm Tp"
+    },
+    {
+     "name": "Whs",
+     "count": 9,
+     "summary": true
+    },
+    {
+     "name": "Trs",
+     "count": 19,
+     "summary": true
+    },
+    {
+     "name": "Total excl Tlrs",
+     "count": 28,
+     "summary": true
+    },
+    {
+     "name": "Tlrs",
+     "count": 5,
+     "summary": true
+    }
+   ],
+   "equipment": [
+    {
+     "name": "VRC 81",
+     "count": 4,
+     "kind": "radio",
+     "heldBy": "Sqn Comd tk 1, FOO tk 1, ARV 1, Dozer 1"
+    },
+    {
+     "name": "VRC 81A",
+     "count": 7,
+     "kind": "radio",
+     "heldBy": "Sqn Comd tk 1, FOO tk 1, 3 AFV Tp Ldrs, 2 Rifle Tp Ldrs"
+    },
+    {
+     "name": "VRC 80",
+     "count": 17,
+     "kind": "radio",
+     "heldBy": "3 AFV Tps x 3, 2 Rifle Tps x 4"
+    },
+    {
+     "name": "VRC 79",
+     "count": 6,
+     "kind": "radio",
+     "heldBy": "Sqn CV 2 (printed '2xVRC 79'), Sqn Comd Rover 2, Amb 1, STO 1"
+    },
+    {
+     "name": "VRC 787",
+     "count": 1,
+     "kind": "radio",
+     "heldBy": "Sqn Comd Rover"
+    },
+    {
+     "name": "PRC 77",
+     "count": 8,
+     "kind": "radio",
+     "heldBy": "2 Rifle Tps x 4 APCs"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140104",
+   "notes": [
+    "Trs 19 as printed; the chart gives 2 + 9 tks, 8 APCs and 1 tk dozer = 20, so 19 fits only if the dozer is not counted among Trs."
+   ]
+  }
+ ],
+ "otherPages": [
+  {
+   "page": "111",
+   "title": "Radio Comm - Armr Regt",
+   "note": "Radio net diagram (rotated page). Sets counted per station into equipment (kind radio) on armr-regt, armr-sqn-tk, armr-tp-recce; substitutions in armrData. VRC 889 instead of VRC 80/81 A in tks, VRC 4622 instead of VRC 79 in jeeps."
+  },
+  {
+   "page": "112",
+   "title": "Radio Comm - Recce Regt",
+   "note": "Radio net diagram. Sets counted into equipment (kind radio) on armr-recce-regt, armr-recce-sqn (incl Rifle Tp), armr-recce-sqn-hq (IC Tp), armr-recce-tp-atk; it also settles 4 APCs per Rifle Tp."
+  },
+  {
+   "page": "113",
+   "title": "Radio Comm - Inf/Tk Coop Bn/Regt Lvl",
+   "note": "Inf/tk coop radio links at Bn/Regt lvl: stations and sets in armrData."
+  },
+  {
+   "page": "114",
+   "title": "Inf/Tk Coop - Bn/Sqn Lvl",
+   "note": "Inf/tk coop radio links at Bn/Sqn lvl: stations and sets in armrData."
+  },
+  {
+   "page": "115-116",
+   "title": "Suggested Composn of Echs - Armr Regts in Armd Fmns",
+   "note": "Full tables in armr-regt.echelons.armdFmns (F 81, A1 19 printed / rows add to 18, A2 27)."
+  },
+  {
+   "page": "117-118",
+   "title": "Suggested Composn of Echs - Armr Regts in Inf Fmns",
+   "note": "Full tables in armr-regt.echelons.infFmns (F 81, A 17, B 29)."
+  },
+  {
+   "page": "119",
+   "title": "Current AFV Ammo Scales",
+   "note": "Table in armrData (Current AFV Ammo Scales) and on each tank entry in weapons.json (ammoScale). Sec line approx half of first line."
+  },
+  {
+   "page": "120",
+   "title": "Planning Data - Space/Mov/Log",
+   "note": "Structured in armrData (Planning Data); also on armr-div-armd (strength / vehicles), armr-regt (mob ramps) and armr-sqn-tk notes."
+  },
+  {
+   "page": "121-124",
+   "title": "Comparative Data Current Main Battle Tks",
+   "note": "On the 12 tank entries in weapons.json (section 'Sec 1 - Armr'), re-checked; the two notes (Mole Plough, APFSDS (DU)) in armrData."
+  },
+  {
+   "page": "124-126",
+   "title": "Essential Data - Tk Al Zarrar",
+   "note": "On the weapons.json entry 125-mm-tk-al-zarrar, re-checked."
+  },
+  {
+   "page": "127-128",
+   "title": "Planning Parameters Tk T-80 UD",
+   "note": "Rail mov and POL on the T-80 UD weapons.json entry; 1st / 2nd line tpt tables and the T-80 UD vs T-59 comparison now in armrData (Planning Parameters (Tk T-80 UD))."
+  },
+  {
+   "page": "129",
+   "title": "Planning Parameters Tk Al-Zarrar",
+   "note": "Rail mov and POL on the Al-Zarrar weapons.json entry; tpt table in armrData (Planning Parameters - Tk Al Zarrar): 1st line ammo/POL Armr Regt 24/18, Recce Regt 18/-, 5xArmr Regt 120/90; 2nd line 12/10, 9/-, 60/50; Tpt S&T Bn (2nd line) 5xArmr Regt 60, Recce Regt 18."
+  },
+  {
+   "page": "130",
+   "title": "Suggested Layout of CCO",
+   "note": "In armrData (Suggested Layout of CCO): dists VMA-VWA 10-12 kms, VWA-Xings 3-4, Xings-DA 2-3, DA-FUP 1-1.5 (*Regt/Bde RLGs resp); options MIB of fol-up Armd Bde, LAT Bn of Inf Div (F in Z), LAT Bn of Inf Div (Aslt), Recce Regt of Armd Div."
+  }
+ ],
+ "armrData": [
+  {
+   "title": "Current AFV Ammo Scales",
+   "page": "119",
+   "columns": [
+    "Ser",
+    "Type of Tk",
+    "With Tk APFSDS/DU",
+    "With Tk HEAT",
+    "With Tk HE",
+    "With Tk Total",
+    "Unit Res (Per Tk) APFSDS/DU",
+    "Unit Res HEAT",
+    "Unit Res HE",
+    "Unit Res Total",
+    "First Line",
+    "Sec Line"
+   ],
+   "rows": [
+    {
+     "Ser": "1",
+     "Type of Tk": "105mm Tk T-69 IIM/IIMP",
+     "With Tk APFSDS/DU": 20,
+     "With Tk HEAT": 14,
+     "With Tk HE": 10,
+     "With Tk Total": 44,
+     "Unit Res (Per Tk) APFSDS/DU": 10,
+     "Unit Res HEAT": 7,
+     "Unit Res HE": 5,
+     "Unit Res Total": 22,
+     "First Line": 66,
+     "Sec Line": 33
+    },
+    {
+     "Ser": "2",
+     "Type of Tk": "125mm Tk Al-Khalid",
+     "With Tk APFSDS/DU": 20,
+     "With Tk HEAT": 8,
+     "With Tk HE": 12,
+     "With Tk Total": 40,
+     "Unit Res (Per Tk) APFSDS/DU": 10,
+     "Unit Res HEAT": 4,
+     "Unit Res HE": 6,
+     "Unit Res Total": 20,
+     "First Line": 60,
+     "Sec Line": 30
+    },
+    {
+     "Ser": "3",
+     "Type of Tk": "125 mm Tk Al-Zarrar",
+     "With Tk APFSDS/DU": 17,
+     "With Tk HEAT": 9,
+     "With Tk HE": 8,
+     "With Tk Total": 34,
+     "Unit Res (Per Tk) APFSDS/DU": 13,
+     "Unit Res HEAT": 6,
+     "Unit Res HE": 7,
+     "Unit Res Total": 26,
+     "First Line": 60,
+     "Sec Line": 30
+    },
+    {
+     "Ser": "4",
+     "Type of Tk": "105 mm Tk T-59 M",
+     "With Tk APFSDS/DU": 17,
+     "With Tk HEAT": 7,
+     "With Tk HE": 10,
+     "With Tk Total": 34,
+     "Unit Res (Per Tk) APFSDS/DU": 13,
+     "Unit Res HEAT": 6,
+     "Unit Res HE": 7,
+     "Unit Res Total": 26,
+     "First Line": 60,
+     "Sec Line": 30
+    },
+    {
+     "Ser": "5",
+     "Type of Tk": "125 mm Tk T-85 IIAP",
+     "With Tk APFSDS/DU": 20,
+     "With Tk HEAT": 8,
+     "With Tk HE": 12,
+     "With Tk Total": 40,
+     "Unit Res (Per Tk) APFSDS/DU": 10,
+     "Unit Res HEAT": 4,
+     "Unit Res HE": 6,
+     "Unit Res Total": 20,
+     "First Line": 60,
+     "Sec Line": 30
+    },
+    {
+     "Ser": "6",
+     "Type of Tk": "125 mm Tk T-80 UD",
+     "With Tk APFSDS/DU": 22,
+     "With Tk HEAT": 10,
+     "With Tk HE": 13,
+     "With Tk Total": 45,
+     "Unit Res (Per Tk) APFSDS/DU": 11,
+     "Unit Res HEAT": 5,
+     "Unit Res HE": 7,
+     "Unit Res Total": 23,
+     "First Line": 68,
+     "Sec Line": 35
+    }
+   ],
+   "weapons": [
+    "105mm-tk-t-69-iim-iimp",
+    "125mm-tk-al-khalid",
+    "125-mm-tk-al-zarrar",
+    "105-mm-tk-t-59-m",
+    "125-mm-tk-t-85-iiap",
+    "125-mm-tk-t-80-ud"
+   ],
+   "notes": [
+    "a. Tks can be loaded with various combs of ammo depending on op reqs.",
+    "b. Sec line scale is approx half of first line. Its breakdown by types will be in the same proportion as for first line.",
+    "Also on each tank entry in weapons.json (ammoScale)."
+   ]
+  },
+  {
+   "title": "Planning Data - Space/Mov/Log",
+   "page": "120",
+   "armdDiv": {
+    "pers": 13128,
+    "aVehs": 576,
+    "bAndCVehs": 2077,
+    "note": "approx"
+   },
+   "space": {
+    "rdSpacePerAxisOnTwoAxes": {
+     "day": "90 miles/144 kms",
+     "ni": "40 miles/64 kms"
+    },
+    "assyMapSqs": {
+     "armdBdeGp": "12-16",
+     "armdDiv": "100-130"
+    }
+   },
+   "mov": {
+    "trainsBVehsByRd": 25,
+    "trainsWholeDivByRail": 55,
+    "rdMov": "Max 25 miles/40 kms in 24 hrs on two rd axes, travelling 10 hrs at ni"
+   },
+   "dailyLog": {
+    "unit": "tons / tpt (2.5 ton trk with 1.5 ton tlr)",
+    "rows": [
+     {
+      "item": "Ammo",
+      "tons": 696,
+      "tpt": 174
+     },
+     {
+      "item": "POL",
+      "tons": 312,
+      "tpt": 78
+     },
+     {
+      "item": "Rats",
+      "tons": 32,
+      "tpt": 8
+     },
+     {
+      "item": "Total",
+      "tons": 1040,
+      "tpt": 260
+     }
+    ]
+   },
+   "carryingCapacity": [
+    "a. Normal. One Inf coy to one Armr sqn.",
+    "b. For Short Mov. An Armd Sqn may carry upto two coys mtd for short dists.",
+    "c. During tac mov coys should not be broken up to avoid loss of con.",
+    "d. Suggested Distr of Coy on a Sqn (14 x Tks): (1) No inf on ldg Tk Tp. (2) SHQ carries coy HQ. (3) 3 x Tk Tps carry an inf pl each i.e. one sec per tk with pl HQ on tp ldr's tk."
+   ],
+   "mobRamp": {
+    "length": "Long (20 ft) and Short (10 ft)",
+    "wt": "1-1.5 Ton",
+    "assyTime": "30 Mins to 1 Hr (incl time of assy on rly tr)",
+    "auth": "One Mob Ramp of each type is auth to an armr regt"
+   }
+  },
+  {
+   "title": "Comparative Data Current Main Battle Tks",
+   "page": "121-124",
+   "note": "Characteristics of the 12 tanks are on their weapons.json entries (section 'Sec 1 - Armr'); re-checked figure by figure on 15 Nov 2026, no differences found.",
+   "weapons": [
+    "m1a2",
+    "t-72",
+    "t-55",
+    "vijayanta",
+    "merkava-mk2",
+    "125-mm-tk-t-85-iiap",
+    "mbt-90",
+    "105mm-tk-t-69-iim-iimp",
+    "105-mm-tk-t-59-m",
+    "leopard-ii",
+    "125mm-tk-al-khalid",
+    "125-mm-tk-t-80-ud"
+   ],
+   "notes": [
+    "1. Pakistan Army is eff using Mole Plough to create the M fd gap with utmost speed. The device is being locally mfr in Pakistan and is fitted in front of the tk like a plough blade, which digs out the mines in front of it. It is simpler and cheaper than the roller type devices. Inf Safe Lanes (ISLs) are made by clearing M fd about 80-100 Ms in about 15 mins. Each tk can provide two ISLs.",
+    "2. APFSDS (DU) is one of the latest anti tk ammo with enhanced pen power. It has uranium coating on the tip, which provides addl str and ability to withstand more temp."
+   ],
+   "mineClearing": {
+    "device": "Mole Plough (tk mtd)",
+    "islLengthM": "80-100",
+    "timeMins": 15,
+    "islsPerTk": 2
+   }
+  },
+  {
+   "title": "Essential Data - Tk Al Zarrar",
+   "page": "124-126",
+   "note": "On the weapons.json entry 125-mm-tk-al-zarrar (D&M, Gnry, Wrls).",
+   "weapons": [
+    "125-mm-tk-al-zarrar"
+   ]
+  },
+  {
+   "title": "Planning Parameters (Tk T-80 UD)",
+   "page": "127-128",
+   "weapons": [
+    "125-mm-tk-t-80-ud"
+   ],
+   "railMov": "One tk T 80 UD will req ONE MBFR.",
+   "tpt": [
+    {
+     "para": "2a",
+     "title": "2 1/2 Ton Trk with 1 1/2 Ton Tlr",
+     "columns": [
+      "Unit",
+      "1st Line Ammo",
+      "1st Line POL",
+      "2nd Line Ammo",
+      "2nd Line POL"
+     ],
+     "rows": [
+      {
+       "Unit": "Armr Regt",
+       "1st Line Ammo": 22,
+       "1st Line POL": 22,
+       "2nd Line Ammo": 29,
+       "2nd Line POL": 12
+      },
+      {
+       "Unit": "Recce Regt",
+       "1st Line Ammo": 19,
+       "1st Line POL": 11,
+       "2nd Line Ammo": 25,
+       "2nd Line POL": 11
+      },
+      {
+       "Unit": "5xArmd Regts",
+       "1st Line Ammo": 110,
+       "1st Line POL": 110,
+       "2nd Line Ammo": 145,
+       "2nd Line POL": 60
+      }
+     ],
+     "note": "1st line POL 22 (Armr Regt) and 110 (5xArmd Regts) as printed; the comparison in para 3a gives 12 and 60."
+    },
+    {
+     "para": "2b",
+     "title": "2 1/2 Ton Trk with 1 1/2 Ton Tlr (as printed; para 2c(2) and 3b show this table is for trks WITHOUT tlr)",
+     "columns": [
+      "Unit",
+      "1st Line Ammo",
+      "1st Line POL",
+      "2nd Line Ammo",
+      "2nd Line POL"
+     ],
+     "rows": [
+      {
+       "Unit": "Armd Regt",
+       "1st Line Ammo": 32,
+       "1st Line POL": 18,
+       "2nd Line Ammo": 41,
+       "2nd Line POL": 18
+      },
+      {
+       "Unit": "Recce Regt",
+       "1st Line Ammo": 27,
+       "1st Line POL": 11,
+       "2nd Line Ammo": 25,
+       "2nd Line POL": 11
+      },
+      {
+       "Unit": "5xArmd Regts",
+       "1st Line Ammo": 160,
+       "1st Line POL": 90,
+       "2nd Line Ammo": 205,
+       "2nd Line POL": 90
+      }
+     ],
+     "uncertain": true
+    },
+    {
+     "para": "2c",
+     "title": "Tpt S&T Bn (2nd Line)",
+     "columns": [
+      "Item",
+      "5xArmr Regts Ammo",
+      "5xArmr Regts POL",
+      "Recce Regt Ammo",
+      "Recce Regt POL",
+      "Total Ammo",
+      "Total POL"
+     ],
+     "rows": [
+      {
+       "Item": "2 1/2 Ton Trks with 1 1/2 tlr",
+       "5xArmr Regts Ammo": 145,
+       "5xArmr Regts POL": 60,
+       "Recce Regt Ammo": 25,
+       "Recce Regt POL": 11,
+       "Total Ammo": 170,
+       "Total POL": 90
+      },
+      {
+       "Item": "2 1/2 Ton Trks without tlr",
+       "5xArmr Regts Ammo": 205,
+       "5xArmr Regts POL": 90,
+       "Recce Regt Ammo": 36,
+       "Recce Regt POL": 16,
+       "Total Ammo": 241,
+       "Total POL": 106
+      }
+     ],
+     "note": "Printed total POL 90 for trks with tlr does not add (60 + 11 = 71); 'Recce Tegt' as printed. Recce Regt without tlr 36/16 here, 25/11 in para 2b."
+    }
+   ],
+   "comparison": [
+    {
+     "para": "3a",
+     "title": "1st Line - 2 1/2 Ton Trk with 1 1/2 Ton Tlr",
+     "columns": [
+      "Unit",
+      "T-80 UD Ammo",
+      "T-80 UD POL",
+      "T-59 Ammo",
+      "T-59 POL",
+      "Addl Req Ammo",
+      "Addl Req POL",
+      "Total Addl"
+     ],
+     "rows": [
+      {
+       "Unit": "Armr Regt",
+       "T-80 UD Ammo": 22,
+       "T-80 UD POL": 12,
+       "T-59 Ammo": 16,
+       "T-59 POL": 7,
+       "Addl Req Ammo": 6,
+       "Addl Req POL": 5,
+       "Total Addl": 11
+      },
+      {
+       "Unit": "Recce Regt",
+       "T-80 UD Ammo": 19,
+       "T-80 UD POL": 11,
+       "T-59 Ammo": 7,
+       "T-59 POL": 6,
+       "Addl Req Ammo": 18,
+       "Addl Req POL": 7,
+       "Total Addl": 12
+      },
+      {
+       "Unit": "5xArmr Regt",
+       "T-80 UD Ammo": 110,
+       "T-80 UD POL": 60,
+       "T-59 Ammo": 80,
+       "T-59 POL": 35,
+       "Addl Req Ammo": 30,
+       "Addl Req POL": 25,
+       "Total Addl": 55
+      }
+     ],
+     "note": "Recce Regt row as printed: the differences would be 12 / 5 (total 17), the book prints 18 / 7 / 12."
+    },
+    {
+     "para": "3b",
+     "title": "1st Line - 2 1/2 Ton Trk without Tlrs",
+     "columns": [
+      "Unit",
+      "T-80 UD Ammo",
+      "T-80 UD POL",
+      "T-59 Ammo",
+      "T-59 POL"
+     ],
+     "rows": [
+      {
+       "Unit": "Armr Regt",
+       "T-80 UD Ammo": 32,
+       "T-80 UD POL": 18,
+       "T-59 Ammo": 24,
+       "T-59 POL": 11
+      },
+      {
+       "Unit": "Recce Regt",
+       "T-80 UD Ammo": 27,
+       "T-80 UD POL": 17,
+       "T-59 Ammo": 21,
+       "T-59 POL": 6
+      }
+     ],
+     "note": "Recce Regt T-80 UD POL 17 here, 11 in para 2b."
+    },
+    {
+     "para": "4",
+     "title": "2nd Line (S&T Bn with Tlrs)",
+     "columns": [
+      "Unit",
+      "T-80 UD Ammo",
+      "T-80 UD POL",
+      "T-59 Ammo",
+      "T-59 POL",
+      "Addl Req Ammo",
+      "Addl Req POL",
+      "Total Addl"
+     ],
+     "rows": [
+      {
+       "Unit": "Armd Regt",
+       "T-80 UD Ammo": 29,
+       "T-80 UD POL": 12,
+       "T-59 Ammo": 24,
+       "T-59 POL": 7,
+       "Addl Req Ammo": 5,
+       "Addl Req POL": 5,
+       "Total Addl": 10
+      },
+      {
+       "Unit": "Recce Regts",
+       "T-80 UD Ammo": 25,
+       "T-80 UD POL": 11,
+       "T-59 Ammo": 7,
+       "T-59 POL": 6,
+       "Addl Req Ammo": 18,
+       "Addl Req POL": 5,
+       "Total Addl": 23
+      },
+      {
+       "Unit": "5xArmr Regts",
+       "T-80 UD Ammo": 145,
+       "T-80 UD POL": 60,
+       "T-59 Ammo": 120,
+       "T-59 POL": 35,
+       "Addl Req Ammo": 25,
+       "Addl Req POL": 25,
+       "Total Addl": 50
+      }
+     ]
+    }
+   ],
+   "polCalc": [
+    "Power & Stabiliser 'ON' - 8 Lits per km",
+    "Power & Stabiliser 'ON' - 47 Lits per hr",
+    "Power & Stabiliser 'OFF' - 23 Lits per hr",
+    "Tr Running in Semi Desert - 6 lits per km",
+    "Tr Running in Desert - 9.6 lits per km"
+   ],
+   "note": "Figures are numbers of trucks (2.5 ton) for the 1st / 2nd line lift of ammo and POL."
+  },
+  {
+   "title": "Planning Parameters - Tk Al Zarrar",
+   "page": "129",
+   "weapons": [
+    "125-mm-tk-al-zarrar"
+   ],
+   "railMov": "One tk Al-Zarrar will req one MBFR.",
+   "tpt": [
+    {
+     "para": "2a",
+     "title": "2 1/2 Ton Trks with 1 1/2 Tlr",
+     "columns": [
+      "Unit",
+      "1st Line Ammo",
+      "1st Line POL",
+      "2nd Line Ammo",
+      "2nd Line POL"
+     ],
+     "rows": [
+      {
+       "Unit": "Armr Regt",
+       "1st Line Ammo": 24,
+       "1st Line POL": 18,
+       "2nd Line Ammo": 12,
+       "2nd Line POL": 10
+      },
+      {
+       "Unit": "Recce Regt",
+       "1st Line Ammo": 18,
+       "1st Line POL": null,
+       "2nd Line Ammo": 9,
+       "2nd Line POL": null
+      },
+      {
+       "Unit": "5xArmr Regt",
+       "1st Line Ammo": 120,
+       "1st Line POL": 90,
+       "2nd Line Ammo": 60,
+       "2nd Line POL": 50
+      }
+     ],
+     "note": "Recce Regt POL printed '-'."
+    },
+    {
+     "para": "2b",
+     "title": "Tpt S&T Bn (2nd Line) - 2 1/2 Ton Trks with 1 1/2 Tlr",
+     "columns": [
+      "5xArmr Regt",
+      "Recce Regt"
+     ],
+     "rows": [
+      {
+       "5xArmr Regt": 60,
+       "Recce Regt": 18
+      }
+     ]
+    }
+   ],
+   "polCalc": [
+    "Power and Stabilizer 'ON' - 5 Lits per km",
+    "Power and Stabilizer 'Static' - 27 Lits per hr",
+    "Power and Stabilizer 'Off' - 5 Lits per km"
+   ]
+  },
+  {
+   "title": "Radio Comm - Armr Regt / Recce Regt (set substitutions)",
+   "page": "111-114",
+   "notes": [
+    "VRC 889 instead of VRC 80/81 A in tks.",
+    "VRC 4622 instead of VRC 79 in jeeps.",
+    "Set counts drawn on pp 111-112 are on armr-regt, armr-sqn-tk, armr-tp-recce, armr-recce-regt, armr-recce-sqn, armr-recce-sqn-hq (IC Tp), armr-recce-tp-atk (equipment, kind radio)."
+   ]
+  },
+  {
+   "title": "Radio Comm - Inf/Tk Coop Bn/Regt Lvl",
+   "page": "113",
+   "stations": [
+    {
+     "side": "armr",
+     "station": "RHQ - CO tk",
+     "sets": [
+      "VRC 81",
+      "VRC 81A"
+     ]
+    },
+    {
+     "side": "armr",
+     "station": "RHQ - CV (APC)",
+     "sets": [
+      "VRC 81",
+      "VRC 787"
+     ],
+     "note": "rear link"
+    },
+    {
+     "side": "armr",
+     "station": "BC tk",
+     "sets": [
+      "VRC 81",
+      "VRC 81A"
+     ]
+    },
+    {
+     "side": "armr",
+     "station": "B Sqn (Sqn Comd tk)",
+     "sets": [
+      "VRC 81",
+      "VRC 81A"
+     ],
+     "note": "also works A Sqn, C Sqn; 1, 2, 4 Tp"
+    },
+    {
+     "side": "armr",
+     "station": "3 Tp Ldr tk",
+     "sets": [
+      "VRC 81"
+     ]
+    },
+    {
+     "side": "armr",
+     "station": "3 Tp tks (2)",
+     "sets": [
+      "VRC 80"
+     ]
+    },
+    {
+     "side": "inf",
+     "station": "Bn HQ",
+     "sets": [
+      "VRC 78",
+      "VRC 787"
+     ],
+     "note": "rear link; works A, C, D Coy"
+    },
+    {
+     "side": "inf",
+     "station": "B Coy",
+     "sets": [
+      "PRC 77"
+     ]
+    },
+    {
+     "side": "inf",
+     "station": "Pl",
+     "sets": [
+      "PRC 77"
+     ]
+    },
+    {
+     "side": "inf",
+     "station": "2 Sec",
+     "sets": [
+      "PRC 77"
+     ],
+     "note": "also 1 Sec, 3 Sec"
+    }
+   ],
+   "infTkCoopLinks": [
+    "RHQ (CO) - Inf Bn HQ",
+    "B Sqn - B Coy"
+   ]
+  },
+  {
+   "title": "Radio Comm - Inf/Tk Coop Bn/Sqn Lvl",
+   "page": "114",
+   "stations": [
+    {
+     "side": "armr",
+     "station": "A Sqn (Sqn Comd tk)",
+     "sets": [
+      "VRC 81",
+      "VRC 81A"
+     ],
+     "note": "to Armd Regt HQ; works 1, 2, 4 Tp"
+    },
+    {
+     "side": "armr",
+     "station": "CO tk",
+     "sets": [
+      "VRC 81",
+      "VRC 81A"
+     ]
+    },
+    {
+     "side": "armr",
+     "station": "3 Tp Ldr tk",
+     "sets": [
+      "VRC 81"
+     ]
+    },
+    {
+     "side": "armr",
+     "station": "3 Tp tks (2)",
+     "sets": [
+      "VRC 80"
+     ]
+    },
+    {
+     "side": "inf",
+     "station": "Inf Bn HQ",
+     "sets": [
+      "VRC 78",
+      "VRC 787"
+     ],
+     "note": "rear link; works A, C, D Coy"
+    },
+    {
+     "side": "inf",
+     "station": "B Coy",
+     "sets": [
+      "PRC 77",
+      "PRC 77"
+     ]
+    },
+    {
+     "side": "inf",
+     "station": "1, 2, 3 Pl",
+     "sets": [
+      "PRC 77"
+     ]
+    }
+   ],
+   "infTkCoopLinks": [
+    "A Sqn - Inf Bn HQ",
+    "3 Tp - B Coy"
+   ]
+  },
+  {
+   "title": "Suggested Layout of CCO",
+   "page": "130",
+   "distsKm": [
+    {
+     "from": "VMA",
+     "to": "VWA",
+     "km": "10-12"
+    },
+    {
+     "from": "VWA",
+     "to": "Xings",
+     "km": "3-4"
+    },
+    {
+     "from": "Xings",
+     "to": "DA",
+     "km": "2-3"
+    },
+    {
+     "from": "DA",
+     "to": "FUP",
+     "km": "1-1.5",
+     "note": "*Resp for mov from DA to FUP is of respective Regt/Bde RLGs."
+    }
+   ],
+   "optionsForEstb": [
+    "(1) Preferably the MIB of fol-up Armd Bde.",
+    "(2) LAT Bn of Inf Div (F in Z).",
+    "(3) LAT Bn of Inf Div (Aslt).",
+    "(4) Recce Regt of Armd Div."
+   ],
+   "layout": "Diagram: four crossing sites (CL 50) over a canal / ditch; on each axis VMA - TP - VWA - TP - ACCO / LCO - TP - ADCO at the crossing - DA - TP; SCCO and Sec TC between axes; HQ CCO with Reg Con at the rear; DCO on the far bank."
+  }
+ ]
+}

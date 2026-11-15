@@ -1,0 +1,5908 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Engineers",
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "section": "Sec 4 - Engrs",
+  "pages": "400-454",
+  "handling": "RESTD"
+ },
+ "side": "own",
+ "basis": "R = as printed in the book. Fields marked uncertain / judged / *Note carry the reader's doubts; printed totals are kept even where parts do not add up.",
+ "units": [
+  {
+   "id": "engr-bn-offn-inf-div",
+   "name": "Offn Inf Div Engr Bn",
+   "arm": "engr",
+   "type": "bn",
+   "subtype": "offn-inf-div",
+   "echelon": "16",
+   "page": "402-403",
+   "strength": {
+    "offr": 20,
+    "jco": 19,
+    "sldr": 698,
+    "sw": 18,
+    "ncu": 4,
+    "total": 760
+   },
+   "strengthNote": "Printed: Offrs 20, JCOs 19, Sldrs (incl Clks/SMT) 698, SWs 18, NCsU 4; Att Offr (AMC) +1 War Increment, Sldrs (AMC) +4 War Increment; Total 760 + 5 (War Increment). The printed categories add to 759, one short of the printed 760. Chart (p 402): Engr Bn (760) = Bn HQ 60 + 3 Fd Coy x 175 + Engr Sp Coy 175; Sig Pl and LAD shown without strength and not counted in 760.",
+   "warIncrement": {
+    "offrAMC": 1,
+    "sldrsAMC": 4,
+    "total": 5
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 60
+     },
+     "chartStrength": 60,
+     "equipment": [
+      {
+       "name": "PK 786",
+       "count": 2,
+       "cat": "radio",
+       "note": "Bn HQ, p 454 (one at Bn HQ as control of the Bn net, one drawn below it with tick marks; role not stated)"
+      },
+      {
+       "name": "PK 786",
+       "count": 1,
+       "cat": "radio",
+       "note": "CO's Rover, p 454"
+      },
+      {
+       "name": "PRC 77",
+       "count": 4,
+       "cat": "radio",
+       "note": "Bn HQ, p 454 (drawn with tick marks; nets not stated)"
+      }
+     ]
+    },
+    {
+     "role": "Fd Coy",
+     "unit": "engr-fd-coy",
+     "count": 3
+    },
+    {
+     "role": "Engr Sp Coy",
+     "unit": "engr-sp-coy-offn",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "PK 786",
+       "count": 1,
+       "cat": "radio",
+       "note": "Engr Sp Coy on the Bn net, p 454"
+      }
+     ]
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "note": "no strength printed; outside the printed bn figure (the boxes under the bn add up to it without this one); drawn on its own branch, att judged",
+     "relation": "att"
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "note": "no strength printed; outside the printed bn figure (the boxes under the bn add up to it without this one); drawn on its own branch, att judged",
+     "relation": "att"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "TAMs",
+     "count": 5,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "MICLIC",
+     "count": 5,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "MML",
+     "count": 6,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "AM 50/HMB",
+     "count": 1,
+     "cat": "imp-eqpt",
+     "note": "1 Set (54 M)"
+    },
+    {
+     "name": "Tk Access",
+     "count": 2,
+     "cat": "imp-eqpt",
+     "note": "2 Sets (41 M each)"
+    },
+    {
+     "name": "Aslt Tr Way",
+     "count": 4,
+     "cat": "imp-eqpt",
+     "note": "4 Sets (46 M each)"
+    },
+    {
+     "name": "Wh Dozer",
+     "count": 3,
+     "cat": "plant"
+    },
+    {
+     "name": "Dozer Size II",
+     "count": 6,
+     "cat": "plant"
+    },
+    {
+     "name": "Grader",
+     "count": 3,
+     "cat": "plant"
+    },
+    {
+     "name": "FE Loader",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Crane 20 Ton",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Bucket with Backhoe",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "PK 786",
+     "count": 7,
+     "cat": "radio",
+     "note": "Radio Comm Diagram - Engr Bn Army / Corps / Inf Div, p 454 (one diagram for all three)"
+    },
+    {
+     "name": "PRC/77",
+     "count": 22,
+     "cat": "radio",
+     "note": "Radio Comm Diagram - Engr Bn Army / Corps / Inf Div, p 454"
+    }
+   ],
+   "plantTotal": 17,
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Jeep with Tlr",
+     "count": 12,
+     "cat": "tpt"
+    },
+    {
+     "name": "Pickup",
+     "count": 20,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton with Tlr",
+     "count": 29,
+     "cat": "tpt"
+    },
+    {
+     "name": "Amb",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 5 Ton Styre Veh (Aslt Tr Way)",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk 10 Ton (Tk Access)",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Fuel Bowzer",
+     "count": 1,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trestle Br Veh",
+     "count": 5,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk Med / Wrecker",
+     "count": 1,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk Tractor 5 Ton",
+     "count": 6,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Dump Trk",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Compressor",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Undercarriage T-55 for TAM",
+     "count": 5,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 12,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 20,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Cargo",
+     "count": 29,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Water 250/400 Gals",
+     "count": 6,
+     "cat": "tlr"
+    },
+    {
+     "name": "Semi Tlr 25 Ton",
+     "count": 4,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 77,
+    "specVehs": 32,
+    "tlrs": 71
+   },
+   "notes": [
+    "Std modifications to Engr Bns (Mod A fd increment, Mod B offn role, C/D/E mtn, F desert, G corps/army) on pp 424-425: see engrData.",
+    "MML (Mech Minelayer): p 439 says an Engr Bn is auth 9 MML; this chart (p 402) shows MML 6.",
+    "Weapons: no unit weapons are printed in Sec 4; Mod A (Fd Increment for War only, p 424) adds Pistol (with ammo) 1 at Bn HQ and Rifles (with ammo) 4, one per Fd Coy (engrData, Modifications)."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 760
+  },
+  {
+   "id": "engr-fd-coy",
+   "name": "Fd Coy",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "fd",
+   "echelon": "15",
+   "page": "402, 404",
+   "strength": {
+    "total": 175
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 31
+     },
+     "chartStrength": 31,
+     "equipment": [
+      {
+       "name": "PK 786",
+       "count": 1,
+       "cat": "radio",
+       "note": "Fd Coy on the Bn net, p 454"
+      },
+      {
+       "name": "PRC 77",
+       "count": 2,
+       "cat": "radio",
+       "note": "Coy HQ, p 454 (one is control of the Fd Pls and Rover, one drawn with tick marks)"
+      },
+      {
+       "name": "PRC 77",
+       "count": 1,
+       "cat": "radio",
+       "note": "Rover, p 454"
+      }
+     ]
+    },
+    {
+     "role": "Fd Pl",
+     "unit": "engr-fd-pl",
+     "count": 3,
+     "equipment": [
+      {
+       "name": "PRC 77",
+       "count": 1,
+       "cat": "radio",
+       "note": "each Fd Pl, p 454 (drawn for one Fd Coy, applies to all three in the Engr Bn Army / Corps / Inf Div)"
+      }
+     ]
+    }
+   ],
+   "notes": [
+    "Same Fd Coy in Offn Inf Div Engr Bn (p 402) and Def Inf Div/Corps Engr Bn (p 404). 31 + 3 x 48 = 175.",
+    "Radio sets on the boxes are from the Radio Comm Diagram - Engr Bn Army / Corps / Inf Div (p 454): per Fd Coy PK 786 x 1 + PRC 77 x 6 (Coy HQ 2, Rover 1, Fd Pls 3). Bn total 7 PK 786 / 22 PRC 77 = Bn HQ 2 + CO's Rover 1 + 3 Fd Coy x 1 + Sp Coy 1 PK 786; Bn HQ 4 + 3 x 6 PRC 77."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 175
+  },
+  {
+   "id": "engr-fd-pl",
+   "name": "Fd Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "fd",
+   "echelon": "14",
+   "page": "402, 404, 406, 420, 422",
+   "strength": {
+    "total": 48
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Sec",
+     "unit": "engr-fd-sec",
+     "count": 4
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 48
+  },
+  {
+   "id": "engr-fd-sec",
+   "name": "Sec (Fd Pl)",
+   "arm": "engr",
+   "type": "sec",
+   "subtype": "fd",
+   "echelon": "13",
+   "page": "402, 404, 406, 420, 422",
+   "strength": {
+    "total": 10
+   },
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 10
+  },
+  {
+   "id": "engr-sp-coy-offn",
+   "name": "Engr Sp Coy (Offn Inf Div Engr Bn)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "engr-sp",
+   "echelon": "15",
+   "page": "402",
+   "strength": {
+    "total": 175
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 28
+     },
+     "chartStrength": 28
+    },
+    {
+     "role": "Plant Pl",
+     "count": 2,
+     "strength": {
+      "total": 36
+     },
+     "note": "strength each; chart shows the box doubled",
+     "chartStrength": 36,
+     "equipment": [
+      {
+       "name": "Wh Dozer",
+       "count": 3,
+       "cat": "plant",
+       "note": "both Plant Pls together; p 402 Plant list, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      },
+      {
+       "name": "Dozer Size II",
+       "count": 6,
+       "cat": "plant",
+       "note": "both Plant Pls together; p 402 Plant list, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      },
+      {
+       "name": "Grader",
+       "count": 3,
+       "cat": "plant",
+       "note": "both Plant Pls together; p 402 Plant list, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      },
+      {
+       "name": "FE Loader",
+       "count": 1,
+       "cat": "plant",
+       "note": "both Plant Pls together; p 402 Plant list, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      },
+      {
+       "name": "Crane 20 Ton",
+       "count": 2,
+       "cat": "plant",
+       "note": "both Plant Pls together; p 402 Plant list, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      },
+      {
+       "name": "Bucket with Backhoe",
+       "count": 2,
+       "cat": "plant",
+       "note": "both Plant Pls together; p 402 Plant list, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      }
+     ]
+    },
+    {
+     "role": "Br, Expd & Store Pl",
+     "unit": "engr-br-expd-store-pl",
+     "count": 1
+    },
+    {
+     "role": "MW Pl",
+     "unit": "engr-mw-pl-offn",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "28 + 2 x 36 + 41 + 34 = 175."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 175
+  },
+  {
+   "id": "engr-br-expd-store-pl",
+   "name": "Br, Expd & Store Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "br-expd-store",
+   "echelon": "14",
+   "page": "402",
+   "strength": {
+    "total": 41
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Trestle Br Sec",
+     "count": 1,
+     "strength": {
+      "total": 17
+     },
+     "chartStrength": 17,
+     "vehicles": [
+      {
+       "name": "Trestle Br Veh",
+       "count": 5,
+       "cat": "spec-veh",
+       "note": "p 402 Spec Vehs, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      }
+     ],
+     "equipment": [
+      {
+       "name": "AM 50/HMB",
+       "count": 1,
+       "cat": "imp-eqpt",
+       "note": "1 Set (54 M), p 402 Imp Eqpt, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them (AM-50 is a trestle br layer, p 410)"
+      }
+     ]
+    },
+    {
+     "role": "Expd Sec",
+     "count": 1,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16,
+     "equipment": [
+      {
+       "name": "Tk Access",
+       "count": 2,
+       "cat": "imp-eqpt",
+       "note": "2 Sets (41 M each), p 402 Imp Eqpt, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them (rd expedients, p 437)"
+      },
+      {
+       "name": "Aslt Tr Way",
+       "count": 4,
+       "cat": "imp-eqpt",
+       "note": "4 Sets (46 M each), p 402 Imp Eqpt, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      }
+     ],
+     "vehicles": [
+      {
+       "name": "Trk 10 Ton (Tk Access)",
+       "count": 2,
+       "cat": "spec-veh",
+       "note": "p 402 Spec Vehs, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      },
+      {
+       "name": "Trk 5 Ton Styre Veh (Aslt Tr Way)",
+       "count": 4,
+       "cat": "spec-veh",
+       "note": "p 402 Spec Vehs, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      }
+     ]
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 41
+  },
+  {
+   "id": "engr-mw-pl-offn",
+   "name": "MW Pl (Offn Inf Div Engr Bn)",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "mw",
+   "echelon": "14",
+   "page": "402",
+   "strength": {
+    "total": 34
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    },
+    {
+     "role": "TAM Sec",
+     "count": 1,
+     "strength": {
+      "total": 15
+     },
+     "chartStrength": 15,
+     "equipment": [
+      {
+       "name": "TAMs",
+       "count": 5,
+       "cat": "imp-eqpt",
+       "note": "p 402 Imp Eqpt, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      }
+     ],
+     "vehicles": [
+      {
+       "name": "Undercarriage T-55 for TAM",
+       "count": 5,
+       "cat": "spec-veh",
+       "note": "p 402 Spec Vehs, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      }
+     ]
+    },
+    {
+     "role": "MICLIC Sec",
+     "count": 1,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10,
+     "equipment": [
+      {
+       "name": "MICLIC",
+       "count": 5,
+       "cat": "imp-eqpt",
+       "note": "p 402 Imp Eqpt, placed on this box by its name (judged): the chart page prints the list beside the boxes, not in them"
+      }
+     ]
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 34,
+   "equipment": [
+    {
+     "name": "MML",
+     "count": 6,
+     "cat": "imp-eqpt",
+     "note": "p 402 Imp Eqpt, printed beside the MW Pl (judged); p 439 says an Engr Bn is auth 9 MML"
+    }
+   ]
+  },
+  {
+   "id": "engr-bn-def-inf-div-corps",
+   "name": "Def Inf Div/Corps Engr Bn",
+   "arm": "engr",
+   "type": "bn",
+   "subtype": "def-inf-div-corps",
+   "echelon": "16",
+   "page": "404-405",
+   "strength": {
+    "offr": 18,
+    "jco": 20,
+    "sldr": 680,
+    "sw": 17,
+    "ncu": 4,
+    "att": 2,
+    "total": 740
+   },
+   "strengthNote": "Printed (p 405): Offrs 18, JCOs 20 (3*), Sldrs (Incl Clks/SMT) 680 (138*), SWs 17 (3*), NCsU 4, Att Offr (AMC) 1 (1*), Sldrs (AMC) 1 (4*), Total 740 (149*); * War Increment. Printed categories add to 741, one more than the printed 740. Chart (p 404): Engr Bn (740) = Bn HQ 60 + 3 Fd Coy x 175 + Engr Sp Coy 155; Sig Pl (no strength) and LAD (21) not counted in 740.",
+   "warIncrement": {
+    "jco": 3,
+    "sldr": 138,
+    "sw": 3,
+    "offrAMC": 1,
+    "sldrsAMC": 4,
+    "total": 149
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 60
+     },
+     "chartStrength": 60,
+     "equipment": [
+      {
+       "name": "PK 786",
+       "count": 2,
+       "cat": "radio",
+       "note": "Bn HQ, p 454 (one at Bn HQ as control of the Bn net, one drawn below it with tick marks; role not stated)"
+      },
+      {
+       "name": "PK 786",
+       "count": 1,
+       "cat": "radio",
+       "note": "CO's Rover, p 454"
+      },
+      {
+       "name": "PRC 77",
+       "count": 4,
+       "cat": "radio",
+       "note": "Bn HQ, p 454 (drawn with tick marks; nets not stated)"
+      }
+     ]
+    },
+    {
+     "role": "Fd Coy",
+     "unit": "engr-fd-coy",
+     "count": 3
+    },
+    {
+     "role": "Engr Sp Coy",
+     "unit": "engr-sp-coy-def",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "PK 786",
+       "count": 1,
+       "cat": "radio",
+       "note": "Engr Sp Coy on the Bn net, p 454"
+      }
+     ]
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "note": "no strength printed; outside the printed bn figure (the boxes under the bn add up to it without this one); drawn on its own branch, att judged",
+     "relation": "att"
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21,
+     "relation": "att",
+     "note": "outside the printed bn figure (the boxes under the bn add up to it without this one); drawn on its own branch, att judged"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "MML",
+     "count": 9,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "Wh Dozer",
+     "count": 3,
+     "cat": "plant"
+    },
+    {
+     "name": "Dozer Size II",
+     "count": 6,
+     "cat": "plant"
+    },
+    {
+     "name": "Grader",
+     "count": 3,
+     "cat": "plant"
+    },
+    {
+     "name": "FE Loader",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Crane 20 Ton",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Bucket with Backhoe",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Excavator",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "PK 786",
+     "count": 7,
+     "cat": "radio",
+     "note": "Radio Comm Diagram - Engr Bn Army / Corps / Inf Div, p 454 (one diagram for all three)"
+    },
+    {
+     "name": "PRC/77",
+     "count": 22,
+     "cat": "radio",
+     "note": "Radio Comm Diagram - Engr Bn Army / Corps / Inf Div, p 454"
+    }
+   ],
+   "plantTotal": 17,
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Jeep with Tlr",
+     "count": 11,
+     "cat": "tpt"
+    },
+    {
+     "name": "Pickup",
+     "count": 20,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton with Tlr",
+     "count": 25,
+     "cat": "tpt"
+    },
+    {
+     "name": "Amb",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 5 Ton (MML)",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Fuel Bowzer",
+     "count": 1,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk Med / Wrecker",
+     "count": 1,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk Tractor 5 Ton",
+     "count": 6,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Dump Trk",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Compressor",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 11,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 20,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Cargo",
+     "count": 25,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Water 250/400 Gals",
+     "count": 6,
+     "cat": "tlr"
+    },
+    {
+     "name": "Semi Tlr 25 Ton",
+     "count": 4,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 81,
+    "specVehs": 16,
+    "tlrs": 66
+   },
+   "notes": [
+    "Title on p 405: 'Engr Bn Def Div/Corps'.",
+    "p 439: an Engr Bn is auth 9 MML; a Fd Coy with a set of 6 MMLs, remaining 3 in res.",
+    "Weapons: no unit weapons are printed in Sec 4; Mod A (Fd Increment for War only, p 424) adds Pistol (with ammo) 1 at Bn HQ and Rifles (with ammo) 4, one per Fd Coy (engrData, Modifications)."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 740
+  },
+  {
+   "id": "engr-sp-coy-def",
+   "name": "Engr Sp Coy (Def Inf Div/Corps Engr Bn)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "engr-sp",
+   "echelon": "15",
+   "page": "404",
+   "strength": {
+    "total": 155
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 28
+     },
+     "chartStrength": 28
+    },
+    {
+     "role": "Plant Pl",
+     "count": 2,
+     "strength": {
+      "total": 36
+     },
+     "note": "strength each; chart shows the box doubled",
+     "chartStrength": 36,
+     "equipment": [
+      {
+       "name": "Wh Dozer",
+       "count": 3,
+       "cat": "plant",
+       "note": "both Plant Pls together; Plant list printed under the Plant Pl boxes, p 404"
+      },
+      {
+       "name": "Dozer Size II",
+       "count": 6,
+       "cat": "plant",
+       "note": "both Plant Pls together; Plant list printed under the Plant Pl boxes, p 404"
+      },
+      {
+       "name": "Grader",
+       "count": 3,
+       "cat": "plant",
+       "note": "both Plant Pls together; Plant list printed under the Plant Pl boxes, p 404"
+      },
+      {
+       "name": "FE Loader",
+       "count": 1,
+       "cat": "plant",
+       "note": "both Plant Pls together; Plant list printed under the Plant Pl boxes, p 404"
+      },
+      {
+       "name": "Crane 20 Ton",
+       "count": 1,
+       "cat": "plant",
+       "note": "both Plant Pls together; Plant list printed under the Plant Pl boxes, p 404"
+      },
+      {
+       "name": "Bucket with Backhoe",
+       "count": 2,
+       "cat": "plant",
+       "note": "both Plant Pls together; Plant list printed under the Plant Pl boxes, p 404"
+      },
+      {
+       "name": "Excavator",
+       "count": 1,
+       "cat": "plant",
+       "note": "both Plant Pls together; Plant list printed under the Plant Pl boxes, p 404"
+      }
+     ]
+    },
+    {
+     "role": "Expd & Store Pl",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21,
+     "equipment": [
+      {
+       "name": "MML",
+       "count": 9,
+       "cat": "imp-eqpt",
+       "note": "'Imp Eqpt MML - 9' printed under the Expd & Store Pl box, p 404"
+      }
+     ]
+    },
+    {
+     "role": "MW Pl",
+     "count": 1,
+     "strength": {
+      "total": 34
+     },
+     "note": "composition not shown on p 404",
+     "chartStrength": 34
+    }
+   ],
+   "notes": [
+    "28 + 2 x 36 + 21 + 34 = 155."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 155
+  },
+  {
+   "id": "engr-bn-mech",
+   "name": "Mech Engr Bn",
+   "arm": "engr",
+   "type": "bn",
+   "subtype": "mech",
+   "echelon": "16",
+   "page": "406-407",
+   "strength": {
+    "offr": 10,
+    "jco": 8,
+    "sldr": 413,
+    "sw": 10,
+    "ncu": 3,
+    "att": 1,
+    "total": 445
+   },
+   "strengthNote": "Printed (p 407): Offrs 10, JCOs 8, Sldrs (incl Clk/SMT) 413, SWs 10, NCsU 3; Att Offr (AMC) (+1*), Sldrs (AMC) 1 (+3*); Total 445 (+4*), * War Increment. Chart (p 406): Mech Engr Bn (445) = Bn HQ 45 + 2 Mech Fd Coy x 200; LAD (21) not counted.",
+   "warIncrement": {
+    "offrAMC": 1,
+    "sldrsAMC": 3,
+    "total": 4
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 45
+     },
+     "chartStrength": 45
+    },
+    {
+     "role": "Mech Fd Coy",
+     "unit": "engr-mech-fd-coy",
+     "count": 2
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21,
+     "relation": "att",
+     "note": "outside the printed bn figure (the boxes under the bn add up to it without this one); drawn on its own branch, att judged"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "EMP",
+     "count": 12,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "AVLB",
+     "count": 6,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "MML",
+     "count": 4,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "Tk Access",
+     "count": 4,
+     "cat": "imp-eqpt",
+     "note": "4 (41 M each)"
+    },
+    {
+     "name": "Aslt Tr Way",
+     "count": 4,
+     "cat": "imp-eqpt",
+     "note": "4 (46 M each)"
+    },
+    {
+     "name": "Wh Dozer",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Dozer Size II",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Grader",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Crane 20 Ton",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Wh Tractor (with Bucket & Backhoe)",
+     "count": 2,
+     "cat": "plant"
+    }
+   ],
+   "plantTotal": 10,
+   "vehicles": [
+    {
+     "name": "Bicycle",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "MC",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton 4x4 GS",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 3/4 Ton 4x4/1 Ton",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton",
+     "count": 15,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Amb 1/2 Ton",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Styre Veh (Aslt Tr Way)",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk 5 Ton",
+     "count": 14,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk 10 Ton (Tk Access)",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Undercarriage M-47 for AVLB",
+     "count": 6,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Undercarriage T-55 for EMP",
+     "count": 12,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk Tractor 5 Ton",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "APCs",
+     "count": 17,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 6,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 9,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Cargo",
+     "count": 9,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh (Water 250 / 400 Gals)",
+     "count": 6,
+     "cat": "tlr"
+    },
+    {
+     "name": "Semi Tlr 25 Ton",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 37,
+    "specVehs": 63,
+    "tlrs": 32
+   },
+   "notes": [
+    "The book does not name the parent fmn of the Mech Engr Bn on these pages."
+   ],
+   "side": "own",
+   "symbolKey": "10140701",
+   "chartStrength": 445
+  },
+  {
+   "id": "engr-mech-fd-coy",
+   "name": "Mech Fd Coy",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "mech-fd",
+   "echelon": "15",
+   "page": "406",
+   "strength": {
+    "total": 200
+   },
+   "children": [
+    {
+     "role": "HQ Coy",
+     "count": 1,
+     "strength": {
+      "total": 36
+     },
+     "note": "printed 'HQ COY (36)'; the coy's HQ",
+     "chartStrength": 36
+    },
+    {
+     "role": "Fd Pl",
+     "unit": "engr-fd-pl",
+     "count": 2
+    },
+    {
+     "role": "Cbt Sp Pl",
+     "unit": "engr-cbt-sp-pl",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "36 + 2 x 48 + 68 = 200."
+   ],
+   "side": "own",
+   "symbolKey": "10140701",
+   "chartStrength": 200
+  },
+  {
+   "id": "engr-cbt-sp-pl",
+   "name": "Cbt Sp Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "cbt-sp",
+   "echelon": "14",
+   "page": "406, 422",
+   "strength": {
+    "total": 68
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    },
+    {
+     "role": "Plant Sec",
+     "count": 1,
+     "strength": {
+      "total": 18
+     },
+     "chartStrength": 18,
+     "equipment": [
+      {
+       "name": "Wh Dozer",
+       "count": 1,
+       "cat": "plant",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      },
+      {
+       "name": "Dozer Size II",
+       "count": 1,
+       "cat": "plant",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      },
+      {
+       "name": "Grader",
+       "count": 1,
+       "cat": "plant",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      },
+      {
+       "name": "Crane 20 Ton",
+       "count": 1,
+       "cat": "plant",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      },
+      {
+       "name": "Wh Tractor with Bucket and Backhoe",
+       "count": 1,
+       "cat": "plant",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      }
+     ]
+    },
+    {
+     "role": "Br/Expd Sec",
+     "count": 1,
+     "strength": {
+      "total": 23
+     },
+     "chartStrength": 23,
+     "equipment": [
+      {
+       "name": "AVLB",
+       "count": 3,
+       "cat": "imp-eqpt",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      },
+      {
+       "name": "Tk Access",
+       "count": 2,
+       "cat": "imp-eqpt",
+       "note": "2 Sets (41 M each); judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      },
+      {
+       "name": "Aslt Tr Way",
+       "count": 2,
+       "cat": "imp-eqpt",
+       "note": "2 Sets (46 M each); judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      }
+     ],
+     "vehicles": [
+      {
+       "name": "Undercarriage M-47 for AVLB",
+       "count": 3,
+       "cat": "spec-veh",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      },
+      {
+       "name": "Styer Veh (Aslt Tr Way)",
+       "count": 2,
+       "cat": "spec-veh",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many"
+      },
+      {
+       "name": "Trk 10 Ton (Tk Access)",
+       "count": 2,
+       "cat": "spec-veh",
+       "note": "judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many (the IMCE chart page p 422 prints Trestle Br Veh 2 here)"
+      }
+     ]
+    },
+    {
+     "role": "MW Sec",
+     "unit": "engr-mw-sec-mech",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 68,
+   "notes": [
+    "Eqpt on the Plant Sec, Br/Expd Sec and MW Sec is judged from the IMCE lists (p 422-423, one Cbt Sp Pl); the Mech Engr Bn (p 406-407) holds exactly twice as much for its two Cbt Sp Pls (MML 4 there has no counterpart in the IMCE)."
+   ]
+  },
+  {
+   "id": "engr-mw-sec-mech",
+   "name": "MW Sec (Cbt Sp Pl)",
+   "arm": "engr",
+   "type": "sec",
+   "subtype": "mw",
+   "echelon": "13",
+   "page": "406, 422",
+   "strength": {
+    "total": 18
+   },
+   "children": [
+    {
+     "role": "EMP Det",
+     "count": 2,
+     "strength": {
+      "total": 9
+     },
+     "note": "strength each; chart shows the box doubled",
+     "chartStrength": 9
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140701",
+   "chartStrength": 18,
+   "equipment": [
+    {
+     "name": "EMP",
+     "count": 6,
+     "cat": "imp-eqpt",
+     "note": "for its two EMP Dets together (split not printed); judged: IMCE (p 422-423) has one Cbt Sp Pl and lists these; the Mech Engr Bn (p 406-407, two Cbt Sp Pls) lists twice as many (Mech Bn: EMP 12, Undercarriage T-55 for EMP 12)"
+    }
+   ]
+  },
+  {
+   "id": "engr-bn-aslt",
+   "name": "Aslt Engr Bn",
+   "arm": "engr",
+   "type": "bn",
+   "subtype": "aslt",
+   "echelon": "16",
+   "page": "408-411",
+   "strength": {
+    "offr": 25,
+    "jco": 25,
+    "sldr": 744,
+    "sw": 16,
+    "ncu": 5,
+    "att": 5,
+    "total": 820
+   },
+   "strengthNote": "Printed (p 410): Offrs 25, JCOs 25, Sldrs (incl Clk / SMT) 744 (+28*), SWs 16, NCsU 5; Att Offr (AMC) (+1*), Khateeb (RT) 1, Edn JCO 1, Sldrs (Sig) 2, Hav N/Asst (AMC) 1 (+6*); Total 820 (+35*), * War Increment. Chart (p 408): 820 = Bn HQ 74 + 3 Aslt Engr Coy x 138 + Aslt Br Coy 173 + MW Coy 159; Att (Lt Wksp Coy 40, Sig Pl) not counted.",
+   "warIncrement": {
+    "sldr": 28,
+    "offrAMC": 1,
+    "havNAsstAMC": 6,
+    "total": 35
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 74
+     },
+     "chartStrength": 74
+    },
+    {
+     "role": "Aslt Engr Coy",
+     "unit": "engr-aslt-engr-coy",
+     "count": 3
+    },
+    {
+     "role": "Aslt Br Coy",
+     "unit": "engr-aslt-br-coy-aslt-bn",
+     "count": 1
+    },
+    {
+     "role": "MW Coy",
+     "unit": "engr-mw-coy-aslt",
+     "count": 1
+    },
+    {
+     "role": "Att",
+     "count": 1,
+     "relation": "att",
+     "note": "box 'ATT' on p 408 (no figure); its elms are outside the printed 820",
+     "children": [
+      {
+       "role": "Lt Wksp Coy",
+       "count": 1,
+       "strength": {
+        "total": 40
+       },
+       "chartStrength": 40
+      },
+      {
+       "role": "Sig Pl",
+       "count": 1,
+       "note": "no strength printed"
+      }
+     ]
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Aslt Tr Way Cl 30 (Sets)",
+     "count": 12,
+     "cat": "misc-eqpt",
+     "note": "12 (46 M each)"
+    },
+    {
+     "name": "Tk Access Cl 60 (Sets)",
+     "count": 12,
+     "cat": "misc-eqpt",
+     "note": "12 (41 M each)"
+    },
+    {
+     "name": "RDMS",
+     "count": 4,
+     "cat": "misc-eqpt"
+    },
+    {
+     "name": "TAMs",
+     "count": 15,
+     "cat": "misc-eqpt",
+     "note": "15 (5 / Sec)"
+    },
+    {
+     "name": "EMP",
+     "count": 3,
+     "cat": "misc-eqpt"
+    },
+    {
+     "name": "AVLB",
+     "count": 9,
+     "cat": "misc-eqpt"
+    },
+    {
+     "name": "AM 50 / HMB (Sets)",
+     "count": 3,
+     "cat": "misc-eqpt"
+    },
+    {
+     "name": "Mot Saw",
+     "count": 6,
+     "cat": "misc-eqpt",
+     "note": "p 411"
+    },
+    {
+     "name": "Smk Generator",
+     "count": 6,
+     "cat": "misc-eqpt",
+     "note": "p 411"
+    },
+    {
+     "name": "Lane Marking Sets",
+     "count": 9,
+     "cat": "misc-eqpt",
+     "note": "p 411"
+    },
+    {
+     "name": "Generator Sets",
+     "count": 5,
+     "cat": "misc-eqpt",
+     "note": "p 411"
+    },
+    {
+     "name": "Powered Earth Auger",
+     "count": 9,
+     "cat": "misc-eqpt",
+     "note": "p 411"
+    },
+    {
+     "name": "Wh Dozer",
+     "count": 3,
+     "cat": "plant"
+    },
+    {
+     "name": "Grader",
+     "count": 3,
+     "cat": "plant"
+    },
+    {
+     "name": "Crane 20 Ton",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Tractor Size II",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Mil Bulldozer",
+     "count": 6,
+     "cat": "plant"
+    }
+   ],
+   "plantTotal": 16,
+   "miscEqptTotalP411": 59,
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton 4x4 GS",
+     "count": 37,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 3/4 Ton 4x4/1 Ton",
+     "count": 25,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton",
+     "count": 37,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Amb 1/2 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "APC",
+     "count": 20,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Undercarriage T-55 For TAM",
+     "count": 15,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "FWMP",
+     "count": 6,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Undercarriage M-47 for AVLB",
+     "count": 9,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "ARV T 69 11 MP",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "RDMS Type-84",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Styer Veh (Aslt Tr Way)",
+     "count": 12,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk 10 Ton (Tk Access)",
+     "count": 24,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Br Layer Trestle Br AM-50",
+     "count": 12,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 3,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk Tractor 5 Ton with Semi Tlr",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Ammo Carr RDMS (5 Ton)",
+     "count": 20,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 37,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 25,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh",
+     "count": 31,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh (Water 250/400 Gals)",
+     "count": 6,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 107,
+    "specVehs": 131,
+    "tlrs": 32
+   },
+   "uncertain": true,
+   "notes": [
+    "Printed Spec Vehs total 131, but the listed items add to 129.",
+    "Printed Tlrs total 32, but the listed items add to 99.",
+    "Misc Eqpt is printed twice: p 409 (Aslt Tr Way Cl 30 12 Sets (46 M each), Tk Access Cl 60 12 Sets (41 M each), RDMS 4, TAMs 15 (5 / Sec), EMP 3, AVLB 9, AM 50 / HMB (Sets) 3) and p 411 (Mot Saw 6, Aslt Tr Way Cl 30 (Sets) 12, Tk Access Cl 60 (Sets) 12, Smk Generator 6, Lane Marking Sets 9, Generator Sets 5, Powered Earth Auger 9, Total 59). The Tr Way / Tk Access sets common to both are listed once here.",
+    "p 451: Engr Width Mine Plough (EWMP) is also auth to the Aslt Engr Bn (under trials); FWMP in Spec Vehs.",
+    "Weapons: the section prints no small arms for Engr units. The only weapons printed are Mod A (Fd Increment for War only, p 424: Pistol 1 at Bn HQ, Rifles 4 one per Fd Coy, see engrData) and the RDMS (p 440)."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 820,
+   "weapons": [
+    {
+     "name": "RDMS Type-84",
+     "count": 4,
+     "weapon": "rdms-type-84",
+     "weaponMatch": "exact",
+     "note": "Spec Vehs p 410 (Misc Eqpt RDMS 4, p 409); fires 122 mm mine rkts, and HE rkts (p 440). Weapon id is added in weapons-patch-engr.json, not yet in weapons.json"
+    }
+   ]
+  },
+  {
+   "id": "engr-aslt-engr-coy",
+   "name": "Aslt Engr Coy",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "aslt-engr",
+   "echelon": "15",
+   "page": "408",
+   "strength": {
+    "total": 138
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 34
+     },
+     "chartStrength": 34
+    },
+    {
+     "role": "Aslt Engr Pl",
+     "unit": "engr-aslt-engr-pl",
+     "count": 2
+    },
+    {
+     "role": "Aslt Fd Pl",
+     "unit": "engr-aslt-fd-pl",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "34 + 2 x 33 + 38 = 138."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 138
+  },
+  {
+   "id": "engr-aslt-engr-pl",
+   "name": "Aslt Engr Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "aslt-engr",
+   "echelon": "14",
+   "page": "408",
+   "strength": {
+    "total": 33
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12
+    },
+    {
+     "role": "AVLB Sec",
+     "count": 1,
+     "strength": {
+      "total": 4
+     },
+     "chartStrength": 4
+    },
+    {
+     "role": "Tr Const Sec",
+     "count": 1,
+     "strength": {
+      "total": 11
+     },
+     "chartStrength": 11
+    },
+    {
+     "role": "Mine Breaching Sec",
+     "count": 1,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 33,
+   "notes": [
+    "AVLB Sec (4): the bn holds AVLB 9 (p 409); how many sit in this sec is not printed (see AVLB Pl)."
+   ]
+  },
+  {
+   "id": "engr-aslt-fd-pl",
+   "name": "Aslt Fd Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "aslt-fd",
+   "echelon": "14",
+   "page": "408",
+   "strength": {
+    "total": 38
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Fd Sec",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "note": "strength each",
+     "chartStrength": 10
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 38
+  },
+  {
+   "id": "engr-aslt-br-coy-aslt-bn",
+   "name": "Aslt Br Coy (Aslt Engr Bn)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "aslt-br",
+   "echelon": "15",
+   "page": "408",
+   "strength": {
+    "total": 173
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 37
+     },
+     "chartStrength": 37
+    },
+    {
+     "role": "Plant Pl",
+     "count": 1,
+     "strength": {
+      "total": 22
+     },
+     "chartStrength": 22
+    },
+    {
+     "role": "Exp Pl",
+     "unit": "engr-exp-pl-aslt",
+     "count": 1
+    },
+    {
+     "role": "AVLB Pl",
+     "unit": "engr-avlb-pl",
+     "count": 1
+    },
+    {
+     "role": "Mech Br Pl",
+     "unit": "engr-mech-br-pl",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 173
+  },
+  {
+   "id": "engr-exp-pl-aslt",
+   "name": "Exp Pl (Aslt Br Coy)",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "expd",
+   "echelon": "14",
+   "page": "408",
+   "strength": {
+    "total": 44
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7
+    },
+    {
+     "role": "Lt Sec",
+     "count": 1,
+     "strength": {
+      "total": 17
+     },
+     "chartStrength": 17
+    },
+    {
+     "role": "Hy Sec",
+     "count": 1,
+     "strength": {
+      "total": 20
+     },
+     "chartStrength": 20
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 44
+  },
+  {
+   "id": "engr-avlb-pl",
+   "name": "AVLB Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "avlb",
+   "echelon": "14",
+   "page": "408",
+   "strength": {
+    "total": 25
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10
+    },
+    {
+     "role": "AVLB Sec",
+     "count": 3,
+     "strength": {
+      "total": 5
+     },
+     "note": "strength each",
+     "chartStrength": 5
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 25,
+   "notes": [
+    "AVLB 9 (p 409) are held in the bn; the chart has AVLB Secs here (3) and one in each of the six Aslt Engr Pls; the split is not printed (one per sec would give 3 + 6 = 9)."
+   ]
+  },
+  {
+   "id": "engr-mech-br-pl",
+   "name": "Mech Br Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "mech-br",
+   "echelon": "14",
+   "page": "408",
+   "strength": {
+    "total": 45
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    },
+    {
+     "role": "Mech Sec",
+     "count": 3,
+     "strength": {
+      "total": 12
+     },
+     "note": "strength each",
+     "chartStrength": 12
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140701",
+   "chartStrength": 45,
+   "notes": [
+    "The bn holds AM 50 / HMB 3 sets and Br Layer Trestle Br AM-50 x 12 (p 409-410); one set per Mech Sec would fit but is not printed."
+   ]
+  },
+  {
+   "id": "engr-mw-coy-aslt",
+   "name": "MW Coy (Aslt Engr Bn)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "mw",
+   "echelon": "15",
+   "page": "408",
+   "strength": {
+    "total": 159
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 42
+     },
+     "chartStrength": 42
+    },
+    {
+     "role": "RDMS Pl",
+     "unit": "engr-rdms-pl-aslt",
+     "count": 1
+    },
+    {
+     "role": "TAM Pl",
+     "unit": "engr-tam-pl",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 159
+  },
+  {
+   "id": "engr-rdms-pl-aslt",
+   "name": "RDMS Pl (Aslt Engr Bn)",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "rdms",
+   "echelon": "14",
+   "page": "408",
+   "strength": {
+    "total": 60
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10
+    },
+    {
+     "role": "Sec",
+     "count": 2,
+     "strength": {
+      "total": 25
+     },
+     "note": "strength each",
+     "chartStrength": 25
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 60,
+   "equipment": [
+    {
+     "name": "RDMS",
+     "count": 4,
+     "cat": "misc-eqpt",
+     "note": "p 409 Misc Eqpt RDMS 4 (RDMS Type-84 x 4 in Spec Vehs p 410); placed on the only RDMS Pl of the bn (judged); split between its two Secs not printed"
+    }
+   ]
+  },
+  {
+   "id": "engr-tam-pl",
+   "name": "TAM Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "tam",
+   "echelon": "14",
+   "page": "408",
+   "strength": {
+    "total": 57
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 16
+     },
+     "note": "strength each",
+     "chartStrength": 16,
+     "equipment": [
+      {
+       "name": "TAMs",
+       "count": 5,
+       "cat": "misc-eqpt",
+       "note": "printed 'TAMs 15 (5 / Sec)', p 409"
+      }
+     ]
+    }
+   ],
+   "notes": [
+    "TAMs 15 (5 / Sec) per p 409."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 57
+  },
+  {
+   "id": "engr-bn-br",
+   "name": "Br Bn Engrs",
+   "arm": "engr",
+   "type": "bn",
+   "subtype": "br",
+   "echelon": "16",
+   "page": "412-413",
+   "strength": {
+    "offr": 12,
+    "jco": 9,
+    "sldr": 10,
+    "sw": 9,
+    "ncu": 3,
+    "att": 1,
+    "total": 444
+   },
+   "strengthNote": "Printed (p 413): Offrs 12, JCOs 9, Sldrs (incl Clk/SMT) 10, SWs 9, NCsU 3, Att 1 (4 incl 1xMO*), Total 444 (4*), * War Increment. Chart (p 412): Br Bn (444) = Bn HQ 44 + 2 Aslt Br Coy x 200; LAD (29) not counted.",
+   "warIncrement": {
+    "att": 4,
+    "total": 4,
+    "note": "4 incl 1 x MO"
+   },
+   "uncertain": true,
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 44
+     },
+     "chartStrength": 44
+    },
+    {
+     "role": "Aslt Br Coy",
+     "unit": "engr-aslt-br-coy-br-bn",
+     "count": 2
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "strength": {
+      "total": 29
+     },
+     "chartStrength": 29,
+     "relation": "att",
+     "note": "outside the printed bn figure (the boxes under the bn add up to it without this one); drawn on its own branch, att judged"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Ribbon Br",
+     "count": 2,
+     "cat": "imp-eqpt",
+     "note": "2 Sets (100 M)"
+    },
+    {
+     "name": "AM 50 / HMB",
+     "count": 4,
+     "cat": "imp-eqpt",
+     "note": "4 Sets (52 M each)"
+    },
+    {
+     "name": "Aslt Tr Way",
+     "count": 12,
+     "cat": "imp-eqpt",
+     "note": "12 Sets (46 M each)"
+    },
+    {
+     "name": "Tk Access",
+     "count": 12,
+     "cat": "imp-eqpt",
+     "note": "12 Sets (41 M each)"
+    },
+    {
+     "name": "Dozer Size II",
+     "count": 2,
+     "cat": "plant"
+    },
+    {
+     "name": "Crane 20 Ton",
+     "count": 2,
+     "cat": "plant"
+    }
+   ],
+   "plantTotal": 4,
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton Jeep",
+     "count": 15,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton",
+     "count": 16,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton Dodge",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Amb",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 5 Ton (GS)",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Flat Body Trk",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Styer Vehs (Aslt Tr Way)",
+     "count": 6,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trestle Br Veh",
+     "count": 20,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Ribbon Br Carr",
+     "count": 40,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk 10 Ton (Tk Access)",
+     "count": 12,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 15,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 7,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Cargo",
+     "count": 13,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh (Water 250/400 Gals)",
+     "count": 3,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 47,
+    "specVehs": 84,
+    "tlrs": 38
+   },
+   "notes": [
+    "Sldrs printed as 10 on p 413 (checked at 300 dpi); with the other printed figures this cannot reach the printed total 444 (12+9+10+9+3+1 = 44). The printed total implies 410 Sldrs (444 - 34); the Sldrs figure is evidently misprinted, not corrected here.",
+    "AM 50 / HMB set length printed here as 52 M each (elsewhere AM-50 set 54 M, HMB four spans 52.5 M).",
+    "Box-level split of the bridging eqpt is not printed: the bn holds Ribbon Br 2 Sets (100 M), Ribbon Br Carr 40, Trestle Br Veh 20, AM 50 / HMB 4 Sets, Aslt Tr Way 12 Sets, Tk Access 12 Sets for its two Aslt Br Coys (each Ribbon Br Pl 95, 2 Trestle Br Pls 22, Expd Pl 29)."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 444
+  },
+  {
+   "id": "engr-aslt-br-coy-br-bn",
+   "name": "Aslt Br Coy (Br Bn)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "aslt-br",
+   "echelon": "15",
+   "page": "412",
+   "strength": {
+    "total": 200
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 32
+     },
+     "chartStrength": 32
+    },
+    {
+     "role": "Ribbon Br Pl",
+     "count": 1,
+     "strength": {
+      "total": 95
+     },
+     "chartStrength": 95
+    },
+    {
+     "role": "Trestle Br Pl",
+     "count": 2,
+     "strength": {
+      "total": 22
+     },
+     "note": "strength each; chart shows the box doubled",
+     "chartStrength": 22
+    },
+    {
+     "role": "Expd Pl",
+     "count": 1,
+     "strength": {
+      "total": 29
+     },
+     "chartStrength": 29
+    }
+   ],
+   "notes": [
+    "32 + 95 + 2 x 22 + 29 = 200."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 200
+  },
+  {
+   "id": "engr-coy-comp-br",
+   "name": "Comp Br Coy Engrs",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "comp-br",
+   "echelon": "15",
+   "page": "414-415",
+   "strength": {
+    "offr": 3,
+    "jco": 4,
+    "sldr": 179,
+    "sw": 4,
+    "ncu": 1,
+    "att": 16,
+    "total": 207
+   },
+   "strengthNote": "Printed (p 415): Offrs 3, JCOs 4, Sldrs (incl Clk/SMT) 179, SWs 4, NCsU 1, Att 16 (1xN/Asst*), Total 207 (1*), * War Increment. Chart: 207 = Coy HQ 49 + 2 HPB Pl x 54 + Comp Br Pl 50.",
+   "warIncrement": {
+    "nAsst": 1,
+    "total": 1
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 49
+     },
+     "chartStrength": 49
+    },
+    {
+     "role": "HPB Pl",
+     "count": 2,
+     "strength": {
+      "total": 54
+     },
+     "note": "strength each; 1x Set each",
+     "chartStrength": 54,
+     "equipment": [
+      {
+       "name": "HPB",
+       "count": 1,
+       "cat": "imp-eqpt",
+       "note": "'1x SET' printed in each HPB Pl box (HPB set 85 M, p 414)"
+      }
+     ]
+    },
+    {
+     "role": "Comp Br Pl",
+     "unit": "engr-comp-br-pl",
+     "count": 1
+    }
+   ],
+   "equipment": [
+    {
+     "name": "MGB",
+     "count": 2,
+     "cat": "imp-eqpt",
+     "note": "2 Sets (31 M each)"
+    },
+    {
+     "name": "HPB",
+     "count": 4,
+     "cat": "imp-eqpt",
+     "note": "4 Sets (85 M each)"
+    },
+    {
+     "name": "M -2",
+     "count": 2,
+     "cat": "imp-eqpt",
+     "note": "2 Sets (85 M each)"
+    },
+    {
+     "name": "Wh Dozer",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Crane",
+     "count": 3,
+     "cat": "plant"
+    }
+   ],
+   "plantTotal": 4,
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton Jeep",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton",
+     "count": 21,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton Dodge",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Amb",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "HPB Carr",
+     "count": 100,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Accessory Lorry",
+     "count": 36,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tug Lorry",
+     "count": 16,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 5,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 4,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Cargo",
+     "count": 18,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh (Water 250/400 Gals)",
+     "count": 3,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 31,
+    "specVehs": 152,
+    "tlrs": 30
+   },
+   "notes": [
+    "Tpt fractions (Trk 1/4 Ton Jeep, Trk 3/4 Ton Dodge) checked on the page image (p 415); the text layer lost the fraction glyphs.",
+    "Box sets (p 414): '1x SET' in each HPB Pl; Comp Br Pl secs BB 1x, MGB 1x, M2 2x, HPB 2x SET. HPB 1 + 1 + 2 = 4 sets and M-2 2 sets match the Imp Eqpt list; MGB: list 2 sets, one shown in a box; BB set not in the list."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 207
+  },
+  {
+   "id": "engr-comp-br-pl",
+   "name": "Comp Br Pl",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "comp-br",
+   "echelon": "14",
+   "page": "414",
+   "strength": {
+    "total": 50
+   },
+   "children": [
+    {
+     "role": "BB Sec",
+     "count": 1,
+     "note": "1x Set",
+     "equipment": [
+      {
+       "name": "BB",
+       "count": 1,
+       "cat": "imp-eqpt",
+       "note": "'1x SET' printed in the box; BB (Bailey Br) is not in the coy's Imp Eqpt list"
+      }
+     ]
+    },
+    {
+     "role": "MGB Sec",
+     "count": 1,
+     "note": "1x Set",
+     "equipment": [
+      {
+       "name": "MGB",
+       "count": 1,
+       "cat": "imp-eqpt",
+       "note": "'1x SET' printed in the box (MGB set 31 M); the coy holds 2 MGB sets, the second is not shown in a box"
+      }
+     ]
+    },
+    {
+     "role": "M2 Sec",
+     "count": 1,
+     "note": "2x Set",
+     "equipment": [
+      {
+       "name": "M -2",
+       "count": 2,
+       "cat": "imp-eqpt",
+       "note": "'2x SET' printed in the box (M-2 set 85 M)"
+      }
+     ]
+    },
+    {
+     "role": "HPB Sec",
+     "count": 1,
+     "note": "2x Set",
+     "equipment": [
+      {
+       "name": "HPB",
+       "count": 2,
+       "cat": "imp-eqpt",
+       "note": "'2x SET' printed in the box; with 1 set in each HPB Pl = the coy's 4 HPB sets"
+      }
+     ]
+    },
+    {
+     "role": "Raft Sec",
+     "count": 1
+    },
+    {
+     "role": "Expd Sec",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Sec strengths not printed."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 50
+  },
+  {
+   "id": "engr-coy-rdms",
+   "name": "RDMS Coy",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "rdms",
+   "echelon": "15",
+   "page": "416-417",
+   "strength": {
+    "offr": 4,
+    "jco": 4,
+    "sldr": 88,
+    "sw": 2,
+    "att": 7,
+    "total": 105
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 27
+     },
+     "chartStrength": 27
+    },
+    {
+     "role": "RDMS Pl",
+     "unit": "engr-rdms-pl",
+     "count": 2
+    },
+    {
+     "role": "Ammo Pl",
+     "unit": "engr-ammo-pl-rdms",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton Jeep",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton Dodge",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Amb",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 9 Ton (Dongfong)",
+     "count": 4,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk 5 Ton (Ammo Carr)",
+     "count": 24,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 4,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Cargo",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh (Water 250/400 Gals)",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 12,
+    "specVehs": 28,
+    "tlrs": 10
+   },
+   "notes": [
+    "27 + 2 x 29 + 20 = 105.",
+    "RDMS (Chinese, Type-84 in Aslt Engr Bn) data p 440: 24 tubes; rgs 3.5, 4.3, 5.4, 7 km; 8 ATMs or 128 APMs per rkt; one salvo 192 ATMs or 3072 APMs."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 105
+  },
+  {
+   "id": "engr-rdms-pl",
+   "name": "RDMS Pl (RDMS Coy)",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "rdms",
+   "echelon": "14",
+   "page": "416",
+   "strength": {
+    "total": 29
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    },
+    {
+     "role": "RDMS Sec",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12
+    },
+    {
+     "role": "Ammo Sec",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 29
+  },
+  {
+   "id": "engr-ammo-pl-rdms",
+   "name": "Ammo Pl (RDMS Coy)",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "ammo",
+   "echelon": "14",
+   "page": "416",
+   "strength": {
+    "total": 20
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 4
+     },
+     "chartStrength": 4
+    },
+    {
+     "role": "Ammo Sec",
+     "count": 2,
+     "strength": {
+      "total": 8
+     },
+     "note": "strength each",
+     "chartStrength": 8
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 20
+  },
+  {
+   "id": "engr-s-and-e-unit",
+   "name": "S & E Unit",
+   "arm": "engr",
+   "type": "unit",
+   "subtype": "search-and-eod",
+   "echelon": "15",
+   "page": "418-419",
+   "strength": {
+    "total": 211
+   },
+   "children": [
+    {
+     "role": "Unit HQ",
+     "count": 1,
+     "strength": {
+      "total": 27
+     },
+     "chartStrength": 27
+    },
+    {
+     "role": "Basic Search Pl",
+     "unit": "engr-basic-search-pl",
+     "count": 3
+    },
+    {
+     "role": "Adv Search Sec",
+     "unit": "engr-adv-search-sec",
+     "count": 1
+    },
+    {
+     "role": "EOD Pl",
+     "unit": "engr-eod-pl",
+     "count": 1
+    },
+    {
+     "role": "Tech Sp Team",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "note": "Ord (3), Sig (3), EME (5), MAC (1)",
+     "chartStrength": 12,
+     "children": [
+      {
+       "role": "Ord",
+       "count": 1,
+       "strength": {
+        "total": 3
+       },
+       "note": "printed inside the box 'Tech Sp Team (12)'"
+      },
+      {
+       "role": "Sig",
+       "count": 1,
+       "strength": {
+        "total": 3
+       },
+       "note": "printed inside the box 'Tech Sp Team (12)'"
+      },
+      {
+       "role": "EME",
+       "count": 1,
+       "strength": {
+        "total": 5
+       },
+       "note": "printed inside the box 'Tech Sp Team (12)'"
+      },
+      {
+       "role": "MAC",
+       "count": 1,
+       "strength": {
+        "total": 1
+       },
+       "note": "printed inside the box 'Tech Sp Team (12)'"
+      }
+     ]
+    }
+   ],
+   "equipment": [
+    {
+     "name": "IED Detector (Adams)",
+     "count": 76,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "Comd Wire & Cable Detector",
+     "count": 20,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "Hand Held Expl Detector (FIDO)",
+     "count": 8,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "Hand Held Metal Detector",
+     "count": 26,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "GPRS Mine Hounds VMR3",
+     "count": 9,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "Search & Recce Sult-5 with cooling suit",
+     "count": 3,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "Spec Ops Search Kit",
+     "count": 3,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "Hook & Line Kit",
+     "count": 50,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "Rd Expl Test kit",
+     "count": 8,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "GPS Garmin Etrex",
+     "count": 5,
+     "cat": "search-eqpt"
+    },
+    {
+     "name": "Mini Robot",
+     "count": 3,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "IED Disrupter (RE-70)",
+     "count": 25,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "Needle Disrupter",
+     "count": 6,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "Pig Stick Disrupter",
+     "count": 6,
+     "cat": "eod-eqpt",
+     "note": "row printed with two Auth cells, 6 and 22; the second has no nomenclature"
+    },
+    {
+     "name": "Hot Rod Disrupter",
+     "count": 8,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "Mini Electronic Exlp w/BtyCh",
+     "count": 22,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "Lt Wt EOD Resp Back Pack",
+     "count": 22,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "EOD Suit",
+     "count": 6,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "EOD Manipulator",
+     "count": 2,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "Bomb Sup Bin",
+     "count": 7,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "Bomb Blanket",
+     "count": 25,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "Ultrasonic Dist Meter (LEIA Dist)",
+     "count": 23,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "Water Distuptor",
+     "count": 130,
+     "cat": "eod-eqpt"
+    },
+    {
+     "name": "VehMtd Jammer SAMA",
+     "count": 5,
+     "cat": "ew-eqpt"
+    },
+    {
+     "name": "VehMtd Jammer NRTC",
+     "count": 17,
+     "cat": "ew-eqpt"
+    },
+    {
+     "name": "Man pack Jammer SAMA",
+     "count": 8,
+     "cat": "ew-eqpt"
+    },
+    {
+     "name": "BPJs",
+     "count": 126,
+     "cat": "ew-eqpt"
+    },
+    {
+     "name": "FPJ with Protection",
+     "count": 111,
+     "cat": "ew-eqpt"
+    }
+   ],
+   "capabilities": [
+    "Provide 15 x Basic Search teams",
+    "Provided 3 x Adv Search Team",
+    "Provide 3 x Basic EOD Teams",
+    "Provide 3 x Adv EOD Teams",
+    "Op emp of Canine Pls placed UC",
+    "Preserve and tpt collected evidence from op area to CIED Fd Cell (Lvl 1 Exploitation Facility)"
+   ],
+   "uncertain": true,
+   "notes": [
+    "27 + 117 + 19 + 36 + 12 = 211.",
+    "Echelon 15 chosen by size (211); the book calls it a 'Unit' with a 'Unit HQ'.",
+    "Eqpt list p 419 'State of S & E Eqpt' (A/U Nos, Auth). Pig Stick Disrupter row carries a second Auth cell 22 with no nomenclature.",
+    "Tech Sp Team (12) prints its make-up in the box: Ord (3), Sig (3), EME (5), MAC (1) -> children of that box."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 211
+  },
+  {
+   "id": "engr-basic-search-pl",
+   "name": "Basic Search Pl (S & E Unit)",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "search",
+   "echelon": "14",
+   "page": "418",
+   "strength": {
+    "total": 39
+   },
+   "strengthNote": "Chart box '3 x Basic Search Pls 39 (117)': 39 each, 117 for three. Below it, Pl HQ (21) and 15 x Basic Search Teams (96) are figures for all three pls (21 + 96 = 117).",
+   "childrenOfAllThreePls": [
+    {
+     "role": "Pl HQ",
+     "count": 3,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21,
+     "note": "one box 'Pl HQ (21)' under '3 x Basic Search Pls': 21 for the three Pl HQs"
+    },
+    {
+     "role": "Basic Search Team",
+     "count": 15,
+     "strength": {
+      "total": 96
+     },
+     "chartStrength": 96,
+     "note": "one box '15 x Basic Search Teams (96)': 15 teams and 96 all ranks across the three pls"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 39,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7,
+     "note": "21 / 3: the chart prints one box 'Pl HQ (21)' for the three pls"
+    },
+    {
+     "role": "Basic Search Team",
+     "count": 5,
+     "note": "5 teams and 32 all ranks per pl (15 teams / 96 for the three pls); the size of one team is not printed (96 / 15 = 6.4), so no figure per team"
+    }
+   ]
+  },
+  {
+   "id": "engr-adv-search-sec",
+   "name": "Adv Search Sec (S & E Unit)",
+   "arm": "engr",
+   "type": "sec",
+   "subtype": "adv-search",
+   "echelon": "13",
+   "page": "418",
+   "strength": {
+    "total": 19
+   },
+   "children": [
+    {
+     "role": "Sec HQ (printed 'Sec JQ')",
+     "count": 1,
+     "strength": {
+      "total": 4
+     },
+     "chartStrength": 4,
+     "note": "box printed 'Sec JQ (4)'"
+    },
+    {
+     "role": "Adv Search Team",
+     "count": 3,
+     "strength": {
+      "total": 5
+     },
+     "note": "one box printed '3 x Adv Search Teams (15)': 15 for the three teams, 5 each",
+     "chartStrength": 5
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 19
+  },
+  {
+   "id": "engr-eod-pl",
+   "name": "EOD Pl (S & E Unit)",
+   "arm": "engr",
+   "type": "pl",
+   "subtype": "eod",
+   "echelon": "14",
+   "page": "418",
+   "strength": {
+    "total": 36
+   },
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6
+    },
+    {
+     "role": "Basic EOD Team",
+     "count": 3,
+     "strength": {
+      "total": 5
+     },
+     "note": "one box printed '3 x Basic EOD Teams (15)': 15 for the three teams, 5 each",
+     "chartStrength": 5
+    },
+    {
+     "role": "Adv EOD Team",
+     "count": 3,
+     "strength": {
+      "total": 5
+     },
+     "note": "one box printed '3 x Adv EOD Teams (15)': 15 for the three teams, 5 each",
+     "chartStrength": 5
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 36
+  },
+  {
+   "id": "engr-ifce",
+   "name": "Indep Fd Coy Engrs (IFCE)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "indep-fd",
+   "echelon": "15",
+   "page": "420-421",
+   "strength": {
+    "offr": 3,
+    "jco": 5,
+    "sldr": 175,
+    "sw": 4,
+    "ncu": 1,
+    "att": 7,
+    "total": 195
+   },
+   "strengthNote": "Printed (p 421): Offrs 3, JCOs 5, Sldrs (incl Clk/SMT) 175, SWs 4, NCsU 1; Att Hav N/Asst (AMC) 1 (+1*), Hav Armr (EME) 1, Hav/NK VM (EME) 1, Cfn C Vehs/VM (EME) 2, Cfn Elec Vehs (EME) 2; Total 195 (+1*), * War Increment.",
+   "warIncrement": {
+    "havNAsstAMC": 1,
+    "total": 1
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 51
+     },
+     "chartStrength": 51
+    },
+    {
+     "role": "Fd Pl",
+     "unit": "engr-fd-pl",
+     "count": 3
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Wh Dozer",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Dozer Size II",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Compressor",
+     "count": 1,
+     "cat": "plant"
+    }
+   ],
+   "plantTotal": 3,
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Jeep with Tlr",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Pickup",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Amb",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Tractor 5 Ton",
+     "count": 1,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Cargo",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh (Water 250/400 Gals)",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Semi Tlr 25 Ton",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 14,
+    "specVehs": 1,
+    "tlrs": 7
+   },
+   "notes": [
+    "51 + 3 x 48 = 195.",
+    "Chart page (p 420) lists Plant Wh Dozer 1, Dozer Size II 1, Total 2; p 421 adds Compressor 1, Total 3."
+   ],
+   "side": "own",
+   "symbolKey": "10140700",
+   "chartStrength": 195
+  },
+  {
+   "id": "engr-imce",
+   "name": "Indep Mech Coy Engrs (IMCE)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "indep-mech",
+   "echelon": "15",
+   "page": "422-423",
+   "strength": {
+    "offr": 3,
+    "jco": 4,
+    "sldr": 196,
+    "sw": 5,
+    "ncu": 1,
+    "att": 12,
+    "total": 221
+   },
+   "strengthNote": "Printed (p 423): Offrs 3, JCOs 4, Sldrs (Incl Clk/SMT) 196, SWs 5, NCsU 1; Att Hav N/Asst (AMC) 1 (1*), Hav Armr (EME) 2, Hav/Nk VM (EME) 2, Cfn C Vehs/VM (EME) 4, Cfn Elec Vehs (EME) 3; Total 221 (+1*), * War Increment.",
+   "warIncrement": {
+    "havNAsstAMC": 1,
+    "total": 1
+   },
+   "children": [
+    {
+     "role": "HQ (printed 'BN HQ')",
+     "count": 1,
+     "strength": {
+      "total": 57
+     },
+     "chartStrength": 57
+    },
+    {
+     "role": "Fd Pl",
+     "unit": "engr-fd-pl",
+     "count": 2
+    },
+    {
+     "role": "Cbt Sp Pl",
+     "unit": "engr-cbt-sp-pl",
+     "count": 1
+    }
+   ],
+   "equipment": [
+    {
+     "name": "EMP",
+     "count": 6,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "AVLB",
+     "count": 3,
+     "cat": "imp-eqpt"
+    },
+    {
+     "name": "Tk Access",
+     "count": 2,
+     "cat": "imp-eqpt",
+     "note": "2 Sets (41 M each)"
+    },
+    {
+     "name": "Aslt Tr Way",
+     "count": 2,
+     "cat": "imp-eqpt",
+     "note": "2 Sets (46 M each)"
+    },
+    {
+     "name": "Wh Dozer",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Dozer Size II",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Grader",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Crane 20 Ton",
+     "count": 1,
+     "cat": "plant"
+    },
+    {
+     "name": "Wh Tractor with Bucket and Backhoe",
+     "count": 1,
+     "cat": "plant"
+    }
+   ],
+   "plantTotal": 5,
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton 4x4 GS",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 3/4 Ton",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3 / 2-1/2 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Amb 1/2 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Styer Veh (Aslt Tr Way)",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk 10 Ton (Tk Access)",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 2,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Undercarriage M-47 for AVLB",
+     "count": 3,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "EMP",
+     "count": 6,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Trk Tractor 5 Ton",
+     "count": 1,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "APC",
+     "count": 8,
+     "cat": "spec-veh"
+    },
+    {
+     "name": "Tlr 1/4 Ton 2 Wh",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton / 1 Ton",
+     "count": 4,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh Cargo",
+     "count": 5,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton 2 Wh (Water 250/400 Gals)",
+     "count": 3,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "tpt": 15,
+    "specVehs": 24,
+    "tlrs": 15
+   },
+   "notes": [
+    "57 + 2 x 48 + 68 = 221.",
+    "Chart page (p 422) lists Spec Vehs Styer Vehs (Aslt Tr Way) 2, Trestle Br Veh 2, Undercarriage M-47 for AVLB 3, EMP 6, APC 8; the str page (p 423) has Trk 10 Ton (Tk Access) 2 in place of Trestle Br Veh and adds Water Bowzer 2, Trk Tractor 5 Ton 1 (total 24).",
+    "The chart page (p 422) lists EMP 6, AVLB 3, Tk Access 2 Sets (41 M each) and Aslt Tr Way 2 Sets (46 M each) as items f-j under 'Plant'; kept here as imp-eqpt."
+   ],
+   "side": "own",
+   "symbolKey": "10140701",
+   "chartStrength": 221
+  },
+  {
+   "id": "engr-army-svy-gp",
+   "name": "Army Svy Gp",
+   "arm": "engr",
+   "type": "gp",
+   "subtype": "svy",
+   "echelon": "18",
+   "page": "426",
+   "children": [
+    {
+     "role": "Gp HQ",
+     "count": 1
+    },
+    {
+     "role": "Log & Sp Coy",
+     "unit": "engr-svy-log-sp-coy",
+     "count": 1
+    },
+    {
+     "role": "Tfc Svy Unit",
+     "unit": "engr-tfc-svy-unit",
+     "count": 1
+    },
+    {
+     "role": "Topo Svy Unit",
+     "unit": "engr-topo-svy-unit",
+     "count": 1
+    },
+    {
+     "role": "Photogrammetric Unit",
+     "unit": "engr-photogrammetric-unit",
+     "count": 1
+    },
+    {
+     "role": "Cartographic & Reproduction Unit",
+     "unit": "engr-carto-repro-unit",
+     "count": 1
+    },
+    {
+     "role": "Map Storage & Distr Coy",
+     "unit": "engr-map-storage-distr-coy",
+     "count": 1
+    },
+    {
+     "role": "Sig Sec",
+     "count": 1
+    },
+    {
+     "role": "LAD EME",
+     "count": 1
+    }
+   ],
+   "uncertain": true,
+   "notes": [
+    "Outline only (p 426): no strengths or eqpt printed.",
+    "Echelon 18 from the name 'Gp'; size not printed.",
+    "Chart lines below the top row cross each other; traced at 220 dpi (p 426) and nested per sub-unit; only the Topo Svy Unit -> Research & Data Management Cell line stays doubtful."
+   ],
+   "side": "own",
+   "symbolKey": "10140700"
+  },
+  {
+   "id": "engr-svy-log-sp-coy",
+   "name": "Log & Sp Coy (Army Svy Gp)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "log-sp",
+   "echelon": "15",
+   "page": "426",
+   "children": [
+    {
+     "role": "Adm Pl",
+     "count": 1
+    },
+    {
+     "role": "MT Pl",
+     "count": 1
+    },
+    {
+     "role": "Tech Store Pl",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10140700"
+  },
+  {
+   "id": "engr-tfc-svy-unit",
+   "name": "Tfc Svy Unit (Army Svy Gp)",
+   "arm": "engr",
+   "type": "unit",
+   "subtype": "tfc-svy",
+   "page": "426",
+   "children": [
+    {
+     "role": "Fd Tfc Coy",
+     "count": 1,
+     "children": [
+      {
+       "role": "Tfc Team",
+       "count": 3,
+       "note": "printed '3xTfc Team'"
+      }
+     ]
+    },
+    {
+     "role": "Fd Tfc Coy",
+     "count": 1,
+     "note": "no teams drawn under the second Fd Tfc Coy"
+    },
+    {
+     "role": "PL & Remote Sensing Cell",
+     "count": 1,
+     "children": [
+      {
+       "role": "PL & Remote Sensing Sec",
+       "count": 2,
+       "note": "printed '2xPL & Remote Sensing Sec'"
+      }
+     ]
+    }
+   ],
+   "notes": [
+    "Lines traced at 220 dpi: Tfc Svy Unit -> Fd Tfc Coy, Fd Tfc Coy, PL & Remote Sensing Cell; 3xTfc Team under the first Fd Tfc Coy; 2xPL & Remote Sensing Sec under the cell. No strengths printed."
+   ],
+   "echelon": "15",
+   "echelonJudged": true,
+   "side": "own",
+   "symbolKey": "10140700"
+  },
+  {
+   "id": "engr-topo-svy-unit",
+   "name": "Topo Svy Unit (Army Svy Gp)",
+   "arm": "engr",
+   "type": "unit",
+   "subtype": "topo-svy",
+   "page": "426",
+   "children": [
+    {
+     "role": "Fd Svy Coy",
+     "count": 1,
+     "children": [
+      {
+       "role": "Fd Svy Team",
+       "count": 3,
+       "note": "printed '3xFd Svy Team'"
+      }
+     ]
+    },
+    {
+     "role": "Fd Svy Coy",
+     "count": 1,
+     "note": "no teams drawn under the second Fd Svy Coy"
+    },
+    {
+     "role": "Geodetic Svy Coy",
+     "count": 1,
+     "children": [
+      {
+       "role": "Geodetic Svy Team",
+       "count": 2,
+       "note": "printed '2xGeodetic Svy Team'"
+      }
+     ]
+    },
+    {
+     "role": "Svy Trg Cell",
+     "count": 1
+    },
+    {
+     "role": "Research & Data Management Cell",
+     "count": 1,
+     "note": "the line from Topo Svy Unit runs down past the coys' bar to this cell (it crosses the Photogrammetric lines; read at 220 dpi)",
+     "uncertain": true
+    }
+   ],
+   "uncertain": true,
+   "notes": [
+    "Lines traced at 220 dpi: Topo Svy Unit -> 2 Fd Svy Coy (3xFd Svy Team under the first), Geodetic Svy Coy (2xGeodetic Svy Team), Svy Trg Cell, Research & Data Management Cell (doubtful: crossing lines). No strengths printed."
+   ],
+   "echelon": "15",
+   "echelonJudged": true,
+   "side": "own",
+   "symbolKey": "10140700"
+  },
+  {
+   "id": "engr-photogrammetric-unit",
+   "name": "Photogrammetric Unit (Army Svy Gp)",
+   "arm": "engr",
+   "type": "unit",
+   "subtype": "photogrammetric",
+   "page": "426",
+   "children": [
+    {
+     "role": "Photo Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "Stereo Plotting Cell",
+       "count": 1
+      },
+      {
+       "role": "Photo Lab Cell",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "EDP Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "PL & Remote Sensing Cell",
+       "count": 1
+      },
+      {
+       "role": "Computer Cell",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Digital Wing",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Lines traced at 220 dpi: Photogrammetric Unit -> Photo Wing (Stereo Plotting Cell, Photo Lab Cell), EDP Wing (PL & Remote Sensing Cell, Computer Cell), Digital Wing. No strengths printed."
+   ],
+   "echelon": "15",
+   "echelonJudged": true,
+   "side": "own",
+   "symbolKey": "10140700"
+  },
+  {
+   "id": "engr-carto-repro-unit",
+   "name": "Cartographic & Reproduction Unit (Army Svy Gp)",
+   "arm": "engr",
+   "type": "unit",
+   "subtype": "carto-repro",
+   "page": "426",
+   "children": [
+    {
+     "role": "Carto Coy",
+     "count": 1
+    },
+    {
+     "role": "Reproduction Coy",
+     "count": 1
+    },
+    {
+     "role": "Quality Con Cell",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Lines traced at 220 dpi: Cartographic & Reproduction Unit -> Carto Coy, Reproduction Coy, Quality Con Cell. No strengths printed."
+   ],
+   "echelon": "15",
+   "echelonJudged": true,
+   "side": "own",
+   "symbolKey": "10140700"
+  },
+  {
+   "id": "engr-map-storage-distr-coy",
+   "name": "Map Storage & Distr Coy (Army Svy Gp)",
+   "arm": "engr",
+   "type": "coy",
+   "subtype": "map-storage-distr",
+   "echelon": "15",
+   "page": "426",
+   "children": [
+    {
+     "role": "Map Storage Pl",
+     "count": 1
+    },
+    {
+     "role": "Data Management Cell",
+     "count": 1
+    },
+    {
+     "role": "Map Distr Pl",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Lines traced at 220 dpi: Map Storage & Distr Coy -> Map Storage Pl, Data Management Cell, Map Distr Pl. No strengths printed."
+   ],
+   "side": "own",
+   "symbolKey": "10140700"
+  }
+ ],
+ "engrData": [
+  {
+   "title": "Modifications - Engr Bn Inf Div / Corps / Army",
+   "page": "424-425",
+   "note": "'Some relevant aspects of various std modifications to an Engr Bn are given below for use by Staff Course students only.'",
+   "rows": [
+    {
+     "Modification": "A",
+     "For": "Fd Increment for War only",
+     "Detail": "Offr AMC (Att) - 1 (Bn HQ); Nk AMC - 4 (One per Fd Coy); Sldrs - 18 (Bn HQ - 2, each coy - 4); Pistol (with ammo) - 1 (Bn HQ); Rifles (with ammo) - 4 (One per Fd Coy)",
+     "pers": [
+      {
+       "appt": "Offr AMC (Att)",
+       "count": 1,
+       "heldBy": "Bn HQ"
+      },
+      {
+       "appt": "Nk AMC",
+       "count": 4,
+       "heldBy": "One per Fd Coy"
+      },
+      {
+       "appt": "Sldrs",
+       "count": 18,
+       "heldBy": "Bn HQ 2, each coy 4"
+      }
+     ],
+     "weapons": [
+      {
+       "name": "Pistol (with ammo)",
+       "count": 1,
+       "heldBy": "Bn HQ",
+       "note": "type not printed"
+      },
+      {
+       "name": "Rifles (with ammo)",
+       "count": 4,
+       "heldBy": "One per Fd Coy",
+       "note": "type not printed"
+      }
+     ]
+    },
+    {
+     "Modification": "B",
+     "For": "Engr Bns of Fmns with Offn Role",
+     "Detail": "One addl water bowzer trk mtd (2500-3000 lits) in lieu of compressor air trk mtd",
+     "equipment": [
+      {
+       "name": "Water bowzer trk mtd (2500-3000 lits)",
+       "count": 1,
+       "note": "addl, in lieu of compressor air trk mtd"
+      }
+     ]
+    },
+    {
+     "Modification": "C, D & E",
+     "For": "Engr Bns of Fmns in Mtn/Semi Mtn Areas",
+     "Detail": "(1) 4 trks flat body 25 ton instead of 4 trks tractors 5 ton with 25 ton tlrs low bed. (2) 4 trks dump 2.5 ton instead of 4 trks dump 10/15 to 15 / 20 tons. (3) 6 lt ft suspension brs. (4) 6 aerial ropeways. (5) 10 collapsible water tks (250-500 gals). (6) 4 addl pers per fd coy.",
+     "equipment": [
+      {
+       "name": "Trks flat body 25 ton",
+       "count": 4,
+       "note": "instead of 4 trks tractors 5 ton with 25 ton tlrs low bed"
+      },
+      {
+       "name": "Trks dump 2.5 ton",
+       "count": 4,
+       "note": "instead of 4 trks dump 10/15 to 15 / 20 tons"
+      },
+      {
+       "name": "Lt ft suspension brs",
+       "count": 6
+      },
+      {
+       "name": "Aerial ropeways",
+       "count": 6
+      },
+      {
+       "name": "Collapsible water tks (250-500 gals)",
+       "count": 10
+      }
+     ],
+     "pers": [
+      {
+       "appt": "Addl pers",
+       "count": 4,
+       "heldBy": "per Fd Coy"
+      }
+     ]
+    },
+    {
+     "Modification": "F",
+     "For": "Engr Bns of Desert Fmns",
+     "Detail": "(1) Addl Vehs/Eqpt: (a) Tractors with trollies - 2 per Fd Coy; (b) 4 Desalination plants (600 gals / hr) - 1 per Fd Coy; (c) 40 Collapsible water tks (250 - 500 gals) - 10 per Fd / Engr Sp Coy; (d) Grader rd mot - 1 per Engr Bn; (e) Wh dozer / bucket and back - hoe - 2 per Engr Bn. (2) 2 Size II / cbt / mil dozers instead of 4 size II dozers.",
+     "equipment": [
+      {
+       "name": "Tractors with trollies",
+       "qty": "2 per Fd Coy"
+      },
+      {
+       "name": "Desalination plants (600 gals / hr)",
+       "count": 4,
+       "note": "1 per Fd Coy"
+      },
+      {
+       "name": "Collapsible water tks (250 - 500 gals)",
+       "count": 40,
+       "note": "10 per Fd / Engr Sp Coy"
+      },
+      {
+       "name": "Grader rd mot",
+       "count": 1,
+       "note": "1 per Engr Bn"
+      },
+      {
+       "name": "Wh dozer / bucket and back - hoe",
+       "count": 2,
+       "note": "2 per Engr Bn"
+      },
+      {
+       "name": "Size II / cbt / mil dozers",
+       "count": 2,
+       "note": "instead of 4 size II dozers"
+      }
+     ]
+    },
+    {
+     "Modification": "G",
+     "For": "Engr Bns of Corps/Army",
+     "Detail": "One vibratory Rd Roller auth per Engr Bn for compaction of op trs, fwd landing strips/helipads (In addn to the other modifications, as applicable, as per nature of terrain/emp).",
+     "equipment": [
+      {
+       "name": "Vibratory Rd Roller",
+       "count": 1,
+       "note": "per Engr Bn"
+      }
+     ]
+    }
+   ],
+   "structuredNote": "pers / weapons / equipment arrays on the rows repeat the printed Detail in structured form."
+  },
+  {
+   "title": "Brs in Pakistan Army - Planning Data",
+   "page": "427-429",
+   "columns": [
+    "Ser",
+    "Type",
+    "Load Cl",
+    "Span (M)",
+    "Tpt Req per Set (Vehs)",
+    "Const Party (excl apchs)",
+    "Day",
+    "Moon Lt",
+    "Dark Ni"
+   ],
+   "note": "Day / Moon Lt / Dark Ni = Planning Time for Const (Hrs - Mins). * Tfc 300 / 150 vph; ** Tfc 300 / 250 vph.",
+   "rows": [
+    {
+     "Ser": "1",
+     "Type": "M2 Br*",
+     "Load Cl": "9",
+     "Span (M)": "a. 30.5",
+     "Tpt Req per Set (Vehs)": "12 x 2.5 ton vehs plus 8 x 1.5 ton tlr or 20 x 2.5 ton vehs for 85.35 Ms Set",
+     "Const Party (excl apchs)": "2 pls",
+     "Day": "1-20",
+     "Moon Lt": "1-45",
+     "Dark Ni": "2 (a)"
+    },
+    {
+     "Ser": "1",
+     "Type": "M2 Br*",
+     "Load Cl": "9",
+     "Span (M)": "b. 85.35",
+     "Const Party (excl apchs)": "3 pls",
+     "Day": "3",
+     "Moon Lt": "3-45",
+     "Dark Ni": "4"
+    },
+    {
+     "Ser": "1",
+     "Type": "M2 Br*",
+     "Load Cl": "9",
+     "Span (M)": "c. 17 0.7",
+     "Const Party (excl apchs)": "3 pls",
+     "Day": "4-15",
+     "Moon Lt": "5",
+     "Dark Ni": "6",
+     "uncertain": true,
+     "note": "span printed '17 0.7' (probably 170.7)"
+    },
+    {
+     "Ser": "2",
+     "Type": "Ribbon Br (USA)",
+     "Load Cl": "60",
+     "Span (M)": "100",
+     "Tpt Req per Set (Vehs)": "28 x 5 ton vehs",
+     "Const Party (excl apchs)": "1.5 pl",
+     "Day": "1",
+     "Moon Lt": "1-15",
+     "Dark Ni": "1-30 (b)"
+    },
+    {
+     "Ser": "3",
+     "Type": "Ribbon Br (Chinese)",
+     "Load Cl": "60",
+     "Span (M)": "100",
+     "Tpt Req per Set (Vehs)": "21 x 8 ton vehs",
+     "Const Party (excl apchs)": "1.5 pl",
+     "Day": "0-18",
+     "Moon Lt": "0-27",
+     "Dark Ni": "0-36 (c)"
+    },
+    {
+     "Ser": "3",
+     "Type": "Ribbon Br (Chinese)",
+     "Load Cl": "20",
+     "Span (M)": "200",
+     "Tpt Req per Set (Vehs)": "21 x 8 ton vehs",
+     "Const Party (excl apchs)": "1.5 p.",
+     "Day": "0-30",
+     "Moon Lt": "0-45",
+     "Dark Ni": "1-0 (d)"
+    },
+    {
+     "Ser": "4",
+     "Type": "Hollow Plate Br*",
+     "Load Cl": "50",
+     "Span (M)": "a. 63",
+     "Const Party (excl apchs)": "1 coy",
+     "Day": "2-30",
+     "Moon Lt": "3",
+     "Dark Ni": "3-30"
+    },
+    {
+     "Ser": "4",
+     "Type": "Hollow Plate Br*",
+     "Load Cl": "50",
+     "Span (M)": "b. 85.35",
+     "Tpt Req per Set (Vehs)": "67 x 3 ton vehs plus (crane for unloading not req if 50 vehs equipped with tipping device).",
+     "Const Party (excl apchs)": "1 coy",
+     "Day": "3-30",
+     "Moon Lt": "5",
+     "Dark Ni": "6"
+    },
+    {
+     "Ser": "4",
+     "Type": "Hollow Plate Br*",
+     "Load Cl": "50",
+     "Span (M)": "c. 105",
+     "Tpt Req per Set (Vehs)": "One set = 280 ft.",
+     "Const Party (excl apchs)": "1 coy",
+     "Day": "4-30",
+     "Moon Lt": "6-30",
+     "Dark Ni": "8-30",
+     "note": "const party / times printed one line below the 105 span"
+    },
+    {
+     "Ser": "5",
+     "Type": "BB (PAK) DS",
+     "group": "Fixed Brs",
+     "Load Cl": "50",
+     "Span (M)": "18.3",
+     "Tpt Req per Set (Vehs)": "15 x 3 ton vehs",
+     "Const Party (excl apchs)": "1 pl",
+     "Day": "6-0",
+     "Moon Lt": "8-0",
+     "Dark Ni": "9-0(e)"
+    },
+    {
+     "Ser": "5",
+     "Type": "BB (PAK) DS",
+     "group": "Fixed Brs",
+     "Load Cl": "50",
+     "Span (M)": "33.5",
+     "Tpt Req per Set (Vehs)": "21 x 3 ton vehs",
+     "Const Party (excl apchs)": "1 coy",
+     "Day": "9-0",
+     "Moon Lt": "13-0",
+     "Dark Ni": "18-0"
+    },
+    {
+     "Ser": "5",
+     "Type": "BB (PAK) DT",
+     "group": "Fixed Brs",
+     "Load Cl": "50",
+     "Span (M)": "48.8",
+     "Tpt Req per Set (Vehs)": "33 x 3 ton vehs",
+     "Const Party (excl apchs)": "1 coy",
+     "Day": "13-0",
+     "Moon Lt": "18-0",
+     "Dark Ni": "24-0"
+    },
+    {
+     "Ser": "6",
+     "Type": "M4 T6 without trestle",
+     "group": "Fixed Brs",
+     "Load Cl": "40",
+     "Span (M)": "13.72",
+     "Tpt Req per Set (Vehs)": "5 x 3 ton vehs",
+     "Const Party (excl apchs)": "1 pl",
+     "Day": "0-22",
+     "Moon Lt": "030",
+     "Dark Ni": "0-38 (f)"
+    },
+    {
+     "Ser": "7",
+     "Type": "MGB without** rft kit (one set 31.1 Ms)",
+     "group": "Fixed Brs",
+     "Load Cl": "60",
+     "Span (M)": "31.1",
+     "Tpt Req per Set (Vehs)": "12 x 3 ton vehs for a set",
+     "Const Party (excl apchs)": "1 pl",
+     "Day": "1-30",
+     "Moon Lt": "1-45",
+     "Dark Ni": "2-00"
+    },
+    {
+     "Ser": "7",
+     "Type": "MGB without** rft kit (one set 31.1 Ms)",
+     "group": "Fixed Brs",
+     "Load Cl": "50",
+     "Span (M)": "34.7",
+     "Const Party (excl apchs)": "1 pl",
+     "Day": "1-45",
+     "Moon Lt": "2-40",
+     "Dark Ni": "2-30"
+    },
+    {
+     "Ser": "8",
+     "Type": "Hy Mech Br (HMB) Chinese One Span",
+     "group": "Fixed Brs",
+     "Load Cl": "50",
+     "Span (M)": "10.5",
+     "Tpt Req per Set (Vehs)": "5 x 8 ton vehs for One set (52.5 M)",
+     "Const Party (excl apchs)": "7 men",
+     "Day": "0-08",
+     "Moon Lt": "0-10",
+     "Dark Ni": "0-12"
+    },
+    {
+     "Ser": "8",
+     "Type": "Hy Mech Br (HMB) Four Spans",
+     "group": "Fixed Brs",
+     "Load Cl": "50",
+     "Span (M)": "52.5",
+     "Tpt Req per Set (Vehs)": "One set (52.5 M)",
+     "Const Party (excl apchs)": "13 men",
+     "Day": "1-0",
+     "Moon Lt": "1-15",
+     "Dark Ni": "1-30"
+    },
+    {
+     "Ser": "9",
+     "Type": "AM-50 (Czech) Four Spans One set-54 Ms",
+     "group": "Fixed Brs",
+     "Load Cl": "50",
+     "Span (M)": "54",
+     "Tpt Req per Set (Vehs)": "4 x 8 ton vehs for One set",
+     "Const Party (excl apchs)": "13 men",
+     "Day": "1-45",
+     "Moon Lt": "1-0",
+     "Dark Ni": "1-15 (h)"
+    }
+   ],
+   "remarks": [
+    "(a) These timings do not incl time for const or improvement of apchs and exits.",
+    "(b) 14 Interior Bays, 6 Ramp Bays and 8 Br Erection Boat Tptrs.",
+    "(c) 14 Interior Bays, 6 Ramp Bays and 5 Br Erection Boat Tptrs.",
+    "(d) A set (100 M) can be split into two halves.",
+    "(e) Two cranes req.",
+    "(f) Risk Xing Cl 50 & one crane req.",
+    "(g) Trestle Ht. Max 3.2 M and min 2.2 M.",
+    "(h) Trestle Ht. Max 6.05 M and min 2.0 M."
+   ]
+  },
+  {
+   "title": "Eqpt Rafts",
+   "page": "430-431",
+   "columns": [
+    "Ser",
+    "Type",
+    "Means",
+    "Op by",
+    "Crew",
+    "Typical pay load",
+    "Carriage (Vehs)",
+    "Const Party",
+    "Day",
+    "Moon lt",
+    "Dark ni",
+    "75 M",
+    "150 M",
+    "300 M"
+   ],
+   "note": "Op by / Crew = Propulsion. Day / Moon lt / Dark ni = Planning Data for Const (excl apchs), Const Time (Mins as printed). 75 / 150 / 300 M = Rd trips per hr during ni*. * Assume nav lts at ni. For day lt op the figs will be doubled.",
+   "rows": [
+    {
+     "Ser": "1a",
+     "Type": "ISRs: 3 Pontoons (cl 8)",
+     "Means": "OBM 2x25 HP",
+     "Op by": "Inf",
+     "Crew": "11",
+     "Typical pay load": "3/4 ton",
+     "Carriage (Vehs)": "1x2.5 ton with tlr",
+     "Const Party": "1 pl",
+     "Day": "10",
+     "Moon lt": "17",
+     "Dark ni": "20",
+     "75 M": "5",
+     "150 M": "3",
+     "300 M": "2 (a)"
+    },
+    {
+     "Ser": "1b",
+     "Type": "ISRs: 5 Pontoons (cl 10)",
+     "Means": "OBM 2/3x25 HP",
+     "Op by": "Engrs",
+     "Crew": "11",
+     "Typical pay load": "2.5 ton",
+     "Carriage (Vehs)": "2x2.5 ton with 1 tlr",
+     "Const Party": "1 pl",
+     "Day": "15",
+     "Moon lt": "25",
+     "Dark ni": "30",
+     "75 M": "5",
+     "150 M": "3",
+     "300 M": "2 (b)"
+    },
+    {
+     "Ser": "1c",
+     "Type": "ISRs: 7 Pontoons (cl 13)",
+     "Means": "OBM 2/4x25 HP",
+     "Op by": "Engrs",
+     "Crew": "11",
+     "Typical pay load": "2.5 ton with tlr",
+     "Carriage (Vehs)": "2x2.5 ton with two tlrs",
+     "Const Party": "1 pl",
+     "Day": "20",
+     "Moon lt": "33",
+     "Dark ni": "40",
+     "75 M": "5",
+     "150 M": "3",
+     "300 M": "2 (c)"
+    },
+    {
+     "Ser": "2",
+     "Type": "Hollow Plate Rafts Types A and B cl 50",
+     "Means": "2 Boats erection",
+     "Op by": "Engrs",
+     "Crew": "1 JCO 3 NCOs 24 Sldrs",
+     "Typical pay load": "Cl 50 Single or total 40 tons",
+     "Carriage (Vehs)": "13x3 ton with one crane for const",
+     "Const Party": "1 pl",
+     "Day": "1.25",
+     "Moon lt": "2",
+     "Dark ni": "2.5",
+     "75 M": "4",
+     "150 M": "3",
+     "300 M": "2 (d)"
+    },
+    {
+     "Ser": "3a",
+     "Type": "Ribbon Raft (USA): 4 Bays",
+     "Means": "2 Boats erection",
+     "Op by": "Engrs",
+     "Crew": "-",
+     "Typical pay load": "-",
+     "Carriage (Vehs)": "-",
+     "Const Party": "1 pl",
+     "Day": "12",
+     "Moon lt": "20",
+     "Dark ni": "25",
+     "75 M": "4",
+     "150 M": "2",
+     "300 M": "2"
+    },
+    {
+     "Ser": "3b",
+     "Type": "Ribbon Raft (USA): 5 Bays",
+     "Means": "2 Boats erection",
+     "Op by": "Engrs",
+     "Crew": "-",
+     "Typical pay load": "-",
+     "Carriage (Vehs)": "-",
+     "Const Party": "1 pl",
+     "Day": "15",
+     "Moon lt": "25",
+     "Dark ni": "30",
+     "75 M": "4",
+     "150 M": "2",
+     "300 M": "2"
+    },
+    {
+     "Ser": "4a",
+     "Type": "Ribbon Raft (Chinese): 2 Bays (cl 40)",
+     "Means": "-",
+     "Op by": "Engrs",
+     "Crew": "6 Sldrs",
+     "Typical pay load": "-",
+     "Carriage (Vehs)": "-",
+     "Const Party": "1 pl",
+     "Day": "8",
+     "Moon lt": "12",
+     "Dark ni": "16",
+     "75 M": "5",
+     "150 M": "4",
+     "300 M": "3 (e)"
+    },
+    {
+     "Ser": "4b",
+     "Type": "Ribbon Raft (Chinese): 3 Bays (cl 60)",
+     "Means": "-",
+     "Op by": "Engrs",
+     "Crew": "9 Sldrs",
+     "Typical pay load": "-",
+     "Carriage (Vehs)": "-",
+     "Const Party": "1 pl",
+     "Day": "10",
+     "Moon lt": "15",
+     "Dark ni": "20",
+     "75 M": "5",
+     "150 M": "4",
+     "300 M": "3"
+    },
+    {
+     "Ser": "4c",
+     "Type": "Ribbon Raft (Chinese): 6 Bays (cl 110, 5 Interior + 1 Ramp)",
+     "Means": "-",
+     "Op by": "Engrs",
+     "Crew": "18 Sldrs",
+     "Typical pay load": "-",
+     "Carriage (Vehs)": "-",
+     "Const Party": "1 pl",
+     "Day": "13",
+     "Moon lt": "20",
+     "Dark ni": "26",
+     "75 M": "5",
+     "150 M": "4",
+     "300 M": "3"
+    }
+   ],
+   "remarks": [
+    "(a) Max current 8 ft / sec.",
+    "(b) Max current 8 ft / sec. 3 OBM req for currents 7 ft per sec and above.",
+    "(c) Max current 8 ft / sec. 4 OMB req for currents 7 ft per sec and above.",
+    "(d) Max current 7 ft / sec. (Crane for unloading not req if the vehs equipped with tipping device).",
+    "(e) 2 and 3 Bays (Interior). Details are tentative and will be cfm."
+   ]
+  },
+  {
+   "title": "Br Layers - Planning Data",
+   "page": "432",
+   "columns": [
+    "Ser",
+    "Type",
+    "Cl",
+    "Deck Width (M)",
+    "Deck Span (M)",
+    "Const Time Hrs-Mins",
+    "Const Party"
+   ],
+   "rows": [
+    {
+     "Ser": "1",
+     "Type": "AVLB ASTRA A-26",
+     "Cl": "55",
+     "Deck Width (M)": "4.11",
+     "Deck Span (M)": "19.81",
+     "Const Time Hrs-Mins": "0.3",
+     "Const Party": "2"
+    },
+    {
+     "Ser": "2",
+     "Type": "AVLB MTU-20",
+     "Cl": "60",
+     "Deck Width (M)": "4.11",
+     "Deck Span (M)": "19.81",
+     "Const Time Hrs-Mins": "0-3",
+     "Const Party": "3"
+    },
+    {
+     "Ser": "3",
+     "Type": "VLTB KMM",
+     "Cl": "24",
+     "Deck Width (M)": "3.96",
+     "Deck Span (M)": "17.01",
+     "Const Time Hrs-Mins": "0-10",
+     "Const Party": "2"
+    },
+    {
+     "Ser": "4",
+     "Type": "VLTB TMM-3",
+     "Cl": "60",
+     "Deck Width (M)": "4.11",
+     "Deck Span (M)": "10.36",
+     "Const Time Hrs-Mins": "0-12",
+     "Const Party": "2"
+    },
+    {
+     "Ser": "5",
+     "Type": "AVLB Chieftain",
+     "Cl": "60",
+     "Deck Width (M)": "4.11",
+     "Deck Span (M)": "19.81",
+     "Const Time Hrs-Mins": "0-3",
+     "Const Party": "2"
+    },
+    {
+     "Ser": "6",
+     "Type": "Short Span AVLB (Pak, M-47)",
+     "Cl": "60",
+     "Deck Width (M)": "4.00",
+     "Deck Span (M)": "13.72",
+     "Const Time Hrs-Mins": "0-3",
+     "Const Party": "2"
+    },
+    {
+     "Ser": "7",
+     "Type": "Med span AVLB (Pak, T-59)",
+     "Cl": "60",
+     "Deck Width (M)": "4.00",
+     "Deck Span (M)": "18",
+     "Const Time Hrs-Mins": "0-3",
+     "Const Party": "2"
+    },
+    {
+     "Ser": "8",
+     "Type": "AVLB Tandem Launch*",
+     "Cl": "60",
+     "Deck Width (M)": "4.00",
+     "Deck Span (M)": "27.5",
+     "Const Time Hrs-Mins": "0-30",
+     "Const Party": "4"
+    },
+    {
+     "Ser": "9",
+     "Type": "AVLB M1A1 (US)",
+     "Cl": "65",
+     "Deck Width (M)": "4.2",
+     "Deck Span (M)": "30.0",
+     "Const Time Hrs-Mins": "0-5",
+     "Const Party": "2"
+    }
+   ],
+   "remarks": [
+    "* Comb erection of sers 6 and 7. Trestle ht 3.35 M. Const party of one sec is req."
+   ]
+  },
+  {
+   "title": "Recce / Aslt Boats",
+   "page": "433",
+   "columns": [
+    "Ser",
+    "Eqpt",
+    "Use",
+    "Description",
+    "Wt (kg)",
+    "Carrying Party",
+    "Capacity",
+    "Notes"
+   ],
+   "rows": [
+    {
+     "Ser": "1",
+     "Eqpt": "Recce Boat Pneumatic",
+     "Use": "Recce",
+     "Description": "Neoprene coated, pneumatic, length 2.38 M, width 2.36 M, depth 0.36 M",
+     "Wt (kg)": "11.34",
+     "Carrying Party": "2 Men",
+     "Capacity": "3 men, if current is upto 1.24 m/sec",
+     "Notes": "1"
+    },
+    {
+     "Ser": "2",
+     "Eqpt": "Aslt Boat Pneumatic",
+     "Use": "Aslt",
+     "Description": "Nylon canvas, coated with abrasion proof rubber",
+     "Wt (kg)": "130",
+     "Carrying Party": "4-6 Men",
+     "Capacity": "13 fully equipped men",
+     "Notes": "2 to 4"
+    },
+    {
+     "Ser": "3",
+     "Eqpt": "Aslt Boat M 2",
+     "Use": "Aslt Xing",
+     "Description": "Plywood bonded, length 4.06 M, width 1.75 M, depth 0.63 M",
+     "Wt (kg)": "185.87",
+     "Carrying Party": "8-10 Men",
+     "Capacity": "13 fully equipped men",
+     "Notes": "2&5"
+    }
+   ],
+   "remarks": [
+    "1. Breath or pump inflated.",
+    "2. Crew: 2 engrs pers.",
+    "3. Powered by 25 HP OBM.",
+    "4. 48 boats are loaded in 1 x 2.5 ton trk.",
+    "5. Pump inflated.",
+    "6. Crew: Engrs pers."
+   ]
+  },
+  {
+   "title": "Br / Causeway - Expedients - Planning Data",
+   "page": "434",
+   "columns": [
+    "Ser",
+    "Type of Causeway",
+    "Load Cl",
+    "Approx Length (m)",
+    "Const Party",
+    "Lorry Load For 12 Ms",
+    "Time Hrs - Mins",
+    "Notes"
+   ],
+   "rows": [
+    {
+     "Ser": "1",
+     "Type of Causeway": "FBE Trestle Causeway (Std)",
+     "Load Cl": "9",
+     "Approx Length (m)": "9",
+     "Const Party": "1 sec",
+     "Lorry Load For 12 Ms": "1 x 2.5 ton",
+     "Time Hrs - Mins": "0-15",
+     "Notes": ""
+    },
+    {
+     "Ser": "2",
+     "Type of Causeway": "FBE Crib Causeway (Std)",
+     "Load Cl": "9",
+     "Approx Length (m)": "6",
+     "Const Party": "1 sec",
+     "Lorry Load For 12 Ms": "1 x 2.5 ton",
+     "Time Hrs - Mins": "0-10",
+     "Notes": ""
+    },
+    {
+     "Ser": "3",
+     "Type of Causeway": "FBE Tubular Causeway (Modified)",
+     "Load Cl": "9",
+     "Approx Length (m)": "6",
+     "Const Party": "1 sec",
+     "Lorry Load For 12 Ms": "1 x 2.5 ton",
+     "Time Hrs - Mins": "0-08",
+     "Notes": "4"
+    },
+    {
+     "Ser": "4",
+     "Type of Causeway": "PSP Bow Arch Culvert (Modified)",
+     "Load Cl": "5",
+     "Approx Length (m)": "2.5",
+     "Const Party": "4 secs",
+     "Lorry Load For 12 Ms": "1 x 3/4 ton",
+     "Time Hrs - Mins": "0-02",
+     "Notes": "1 & 3"
+    },
+    {
+     "Ser": "5",
+     "Type of Causeway": "Reinforced Crib Causeway (Modified)",
+     "Load Cl": "40",
+     "Approx Length (m)": "6",
+     "Const Party": "1 sec",
+     "Lorry Load For 12 Ms": "2 x 2.5 ton",
+     "Time Hrs - Mins": "0-10",
+     "Notes": ""
+    },
+    {
+     "Ser": "6",
+     "Type of Causeway": "Bailey Stringer Rib Causeway (Std)",
+     "Load Cl": "9/40",
+     "Approx Length (m)": "6",
+     "Const Party": "2 secs",
+     "Lorry Load For 12 Ms": "2 x 2.5 ton",
+     "Time Hrs - Mins": "0-35",
+     "Notes": "2"
+    },
+    {
+     "Ser": "7",
+     "Type of Causeway": "Bailey Stringer Pedestal Causeway (Std)",
+     "Load Cl": "40/70",
+     "Approx Length (m)": "6",
+     "Const Party": "2 secs",
+     "Lorry Load For 12 Ms": "2 x 2.5 ton",
+     "Time Hrs - Mins": "0-35",
+     "Notes": ""
+    }
+   ],
+   "remarks": [
+    "1. Two pairs of wh trks 3.05 Ms each",
+    "2. 6.08 Ms double bay.",
+    "3. Cannot be multiplied in span.",
+    "4. With FBE modified trestle or crib pier."
+   ]
+  },
+  {
+   "title": "Some Contemporary Brs in Use with Other Armies",
+   "page": "435-436",
+   "columns": [
+    "Ser",
+    "Type",
+    "Load Cl",
+    "Span (ft)",
+    "Tpt Req for One Set",
+    "Const Party",
+    "Day",
+    "Moon lt",
+    "Dark Ni",
+    "Remarks"
+   ],
+   "note": "Day / Moon lt / Dark Ni = Planning Time for Const Excl Apchs and Exits. Span column is headed '(ft)' although the type names give set lengths in M.",
+   "rows": [
+    {
+     "Ser": "1",
+     "group": "Floating Brs",
+     "Type": "Kruppman (Indian - 86.12 M / Set)",
+     "Load Cl": "60",
+     "Span (ft)": "86.12",
+     "Tpt Req for One Set": "35 x 3 ton for one set",
+     "Const Party": "1 Fd Coy",
+     "Day": "3-00",
+     "Moon lt": "4",
+     "Dark Ni": "4-30",
+     "note": "spans 86.12 / 122 / 457.20 printed stacked in one cell; paired in order with the three const party / time lines (judged)"
+    },
+    {
+     "Ser": "1",
+     "group": "Floating Brs",
+     "Type": "Kruppman (Indian - 86.12 M / Set)",
+     "Load Cl": "60",
+     "Span (ft)": "122",
+     "Const Party": "2 Fd Coy",
+     "Day": "5-00",
+     "Moon lt": "-",
+     "Dark Ni": "-",
+     "note": "spans 86.12 / 122 / 457.20 printed stacked in one cell; paired in order with the three const party / time lines (judged)"
+    },
+    {
+     "Ser": "1",
+     "group": "Floating Brs",
+     "Type": "Kruppman (Indian - 86.12 M / Set)",
+     "Load Cl": "60",
+     "Span (ft)": "457.20",
+     "Const Party": "2 Fd Coy",
+     "Day": "7-00",
+     "Moon lt": "-",
+     "Dark Ni": "-",
+     "note": "spans 86.12 / 122 / 457.20 printed stacked in one cell; paired in order with the three const party / time lines (judged)"
+    },
+    {
+     "Ser": "2",
+     "group": "Floating Brs",
+     "Type": "PMP (Russian - 230.43 M / Set)",
+     "Load Cl": "60",
+     "Span (ft)": "115",
+     "Tpt Req for One Set": "33 vehs for one set",
+     "Const Party": "-",
+     "Day": "0-15",
+     "Moon lt": "0-25",
+     "Dark Ni": "0-45",
+     "Remarks": "Approx figs. Full data to be cfm."
+    },
+    {
+     "Ser": "2",
+     "group": "Floating Brs",
+     "Type": "PMP (Russian - 230.43 M / Set)",
+     "Load Cl": "60",
+     "Span (ft)": "230.43",
+     "Const Party": "-",
+     "Day": "0-25",
+     "Moon lt": "0-40",
+     "Dark Ni": "1-00",
+     "Remarks": "Approx figs. Full data to be cfm."
+    },
+    {
+     "Ser": "3",
+     "group": "Floating Brs",
+     "Type": "PMP (Indian - 230.43 M / Set)",
+     "Load Cl": "60",
+     "Span (ft)": "230.43",
+     "Tpt Req for One Set": "38 x 3 ton for one set",
+     "Const Party": "2 Fd Coys",
+     "Day": "0-30",
+     "Moon lt": "0-40",
+     "Dark Ni": "0-50"
+    },
+    {
+     "Ser": "4",
+     "Type": "AM-50 (Czech - 54 M / Set)",
+     "Load Cl": "50",
+     "Span (ft)": "54",
+     "Tpt Req for One Set": "4 x 8 ton vehs",
+     "Const Party": "13 men",
+     "Day": "0-45",
+     "Moon lt": "1-0",
+     "Dark Ni": "1-15",
+     "Remarks": "a. Trestle Ht Max - 6.05 M. Min - 2.0 M."
+    },
+    {
+     "Ser": "5",
+     "Type": "TMM (Indian - 42 M / Set, having 4 Spans)",
+     "Load Cl": "60",
+     "Span (ft)": "42",
+     "Tpt Req for One Set": "4 x 5 ton vehs",
+     "Const Party": "9 men",
+     "Day": "1-14",
+     "Moon lt": "-",
+     "Dark Ni": "-",
+     "Remarks": "b. Trestle Ht Max - 3.2 M. Min - 1.7 M."
+    },
+    {
+     "Ser": "6",
+     "Type": "AM-50 (Indian - 54 M / Set, having 4 Spans)",
+     "Load Cl": "50",
+     "Span (ft)": "54",
+     "Tpt Req for One Set": "4 x 8 ton vehs",
+     "Const Party": "- (c)",
+     "Day": "0-45",
+     "Moon lt": "1-0",
+     "Dark Ni": "1-15",
+     "Remarks": "c. Data not aval. d. Trestle Ht Max - 5.1 M. Min - 1.7 M."
+    },
+    {
+     "Ser": "7",
+     "Type": "KMM (Russian)",
+     "Load Cl": "24",
+     "Span (ft)": "66 (max)",
+     "Tpt Req for One Set": "4 x 3 ton vehs",
+     "Const Party": "9 men",
+     "Day": "1-14",
+     "Moon lt": "-",
+     "Dark Ni": "-",
+     "Remarks": "Each span is 6.6 M."
+    }
+   ]
+  },
+  {
+   "title": "Rd Expedients - Planning Data",
+   "page": "437-438",
+   "columns": [
+    "Ser",
+    "Expedient",
+    "Width (M)",
+    "Length (M)",
+    "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms",
+    "Const Party Sec",
+    "Const Party Pl",
+    "Day",
+    "Moon",
+    "Dark",
+    "Notes"
+   ],
+   "note": "Day / Moon / Dark = Time for 91 Ms* (7&8) Hrs - Mins. * Recce and svy 15 mins / 91 Ms and setting out 6 mins / 91 Ms to be added against all types of expedients (notes 7 & 8).",
+   "rows": [
+    {
+     "Ser": "1",
+     "Expedient": "Aslt Trway Cl 30",
+     "Width (M)": "3.45",
+     "Length (M)": "46",
+     "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms": "2 x 3 ton and 2 x 5 ton",
+     "Const Party Sec": "1/2",
+     "Const Party Pl": "-",
+     "Day": "0-7",
+     "Moon": "2-20",
+     "Dark": "2-55",
+     "Notes": "2 & 6"
+    },
+    {
+     "Ser": "2",
+     "Expedient": "Somerfield Tr",
+     "Width (M)": "3.25",
+     "Length (M)": "23",
+     "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms": "2/3",
+     "Const Party Sec": "1",
+     "Const Party Pl": "-",
+     "Day": "1-30",
+     "Moon": "2-20",
+     "Dark": "2-55",
+     "Notes": "1, 4 & 5"
+    },
+    {
+     "Ser": "3",
+     "Expedient": "PSP",
+     "Width (M)": "3.08",
+     "Length (M)": "3",
+     "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms": "3",
+     "Const Party Sec": "1",
+     "Const Party Pl": "-",
+     "Day": "3-15",
+     "Moon": "5-0",
+     "Dark": "6-15",
+     "Notes": "1"
+    },
+    {
+     "Ser": "4",
+     "Expedient": "Coir Mating",
+     "Width (M)": "1.83",
+     "Length (M)": "22.25",
+     "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms": "1/2",
+     "Const Party Sec": "1",
+     "Const Party Pl": "-",
+     "Day": "0-25",
+     "Moon": "0-30",
+     "Dark": "0-50",
+     "Notes": "1 & 3"
+    },
+    {
+     "Ser": "5",
+     "Expedient": "Timber Corduroy Rd Mat",
+     "Width (M)": "1.07",
+     "Length (M)": "3.05",
+     "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms": "15",
+     "Const Party Sec": "1",
+     "Const Party Pl": "-",
+     "Day": "1-40",
+     "Moon": "2-10",
+     "Dark": "3-0",
+     "Notes": "1 & 6"
+    },
+    {
+     "Ser": "6",
+     "Expedient": "Brushwood or Sarkanda",
+     "Width (M)": "3.65",
+     "Length (M)": "91.44",
+     "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms": "5",
+     "Const Party Sec": "-",
+     "Const Party Pl": "1",
+     "Day": "1-30",
+     "Moon": "2.0",
+     "Dark": "3-0",
+     "Notes": "1"
+    },
+    {
+     "Ser": "7",
+     "Expedient": "Tk Access Cl 60",
+     "Width (M)": "4.57",
+     "Length (M)": "41",
+     "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms": "5",
+     "Const Party Sec": "-",
+     "Const Party Pl": "1",
+     "Day": "1-30",
+     "Moon": "2-0",
+     "Dark": "3-0",
+     "Notes": "-"
+    },
+    {
+     "Ser": "8",
+     "Expedient": "PSP Mats (Pre-assembled)",
+     "Width (M)": "2.29",
+     "Length (M)": "3.05",
+     "Tpt 3 ton trk for 100 yds (paces) or 91.5 Ms": "1",
+     "Const Party Sec": "1",
+     "Const Party Pl": "-",
+     "Day": "0-30",
+     "Moon": "0-45",
+     "Dark": "1-0",
+     "Notes": "1"
+    }
+   ],
+   "remarks": [
+    "1. Usually for lt tfc cl 9.",
+    "2. Laid from a spec veh.",
+    "3. Underlay for Sommerfeld Tr.",
+    "4. Twin flex board sandwiched b/w two layers of Somerfield Tr is also possible.",
+    "5. Underlay for hessian or coir matting.",
+    "6. Pre-assembled.",
+    "7. Recce and svy 15 mins / 91 Ms*",
+    "8. Setting out 6 mins / 91 Ms.*"
+   ]
+  },
+  {
+   "title": "Mine Laying - Planning Data: Manual Method (Engr Pl output per hr)",
+   "page": "439",
+   "note": "Tps working without en interference in good gr, and with carriage not exceeding 200 yds or 100 Ms, can lay per hr. Day output multiplied by 2/3 for moon lt ni and 1/2 for dark ni; moon lt figs rounded to multiples of 5. Inf Pl: half the above output. An engr pl assisted by an inf pl: 1.5 times the above output.",
+   "columns": [
+    "Condition",
+    "Cluster",
+    "Day",
+    "Moon Lt",
+    "Ni",
+    "Max in 24 hrs"
+   ],
+   "rows": [
+    {
+     "Condition": "Engr Pl",
+     "Cluster": "A tk clusters",
+     "Day": 260,
+     "Moon Lt": 175,
+     "Ni": 130,
+     "Max in 24 hrs": 1300
+    },
+    {
+     "Condition": "Engr Pl",
+     "Cluster": "A pers clusters",
+     "Day": 130,
+     "Moon Lt": 85,
+     "Ni": 65,
+     "Max in 24 hrs": 650
+    },
+    {
+     "Condition": "Engr Pl",
+     "Cluster": "Mixed clusters",
+     "Day": 130,
+     "Moon Lt": 87,
+     "Ni": 65,
+     "Max in 24 hrs": 780
+    },
+    {
+     "Condition": "Engr Pl with 10% trip wires (-15%) and 10% Anti-Lift switches (-10%)",
+     "Cluster": "A tk clusters",
+     "Day": 230,
+     "Moon Lt": 155,
+     "Ni": 115,
+     "Max in 24 hrs": 1150
+    },
+    {
+     "Condition": "Engr Pl with 10% trip wires (-15%) and 10% Anti-Lift switches (-10%)",
+     "Cluster": "A pers clusters",
+     "Day": 110,
+     "Moon Lt": 75,
+     "Ni": 55,
+     "Max in 24 hrs": 550
+    },
+    {
+     "Condition": "Engr Pl with 10% trip wires (-15%) and 10% Anti-Lift switches (-10%)",
+     "Cluster": "Mixed clusters",
+     "Day": 100,
+     "Moon Lt": 65,
+     "Ni": 50,
+     "Max in 24 hrs": 500
+    }
+   ],
+   "remarks": [
+    "Fd Coy. Under avg conditions, if the M fd is mixed, a Fd Coy can lay about 2000 yds (or 1800 Ms mixed M fd). These figs are without the use of trip wires/anti lift devices. With 10% trip wires and 10% Anti-Lift switches, a frontage of 1500 yds/1350 Ms can be laid. Density will be 1 ATM and 1 APM per M of frontage.",
+    "Mech Minelaying: An Engr Bn is auth 9 Mech Minelayers (MML). A Fd Coy with a set of 6 MMLs can lay 9000 Ms of ATMs in 24 hrs (working for 8-10 hrs) in ideal conditions. The remaining 3 MMLs are in res. Trials are underway and these figs are subj to change."
+   ]
+  },
+  {
+   "title": "Mine Laying - Loading Data",
+   "page": "440",
+   "columns": [
+    "Ser",
+    "Item",
+    "2.5 ton trk without tlr",
+    "2.5 ton trk with 1.5 ton tlr"
+   ],
+   "note": "* Packed in boxes, crates discarded",
+   "rows": [
+    {
+     "Ser": "1",
+     "Item": "Mine A pers M2A4",
+     "2.5 ton trk without tlr": "600",
+     "2.5 ton trk with 1.5 ton tlr": "1060"
+    },
+    {
+     "Ser": "2",
+     "Item": "Mine A pers PlMK2",
+     "2.5 ton trk without tlr": "9000",
+     "2.5 ton trk with 1.5 ton tlr": "14400"
+    },
+    {
+     "Ser": "3",
+     "Item": "Mine A tk M1(P)",
+     "2.5 ton trk without tlr": "462",
+     "2.5 ton trk with 1.5 ton tlr": "738"
+    },
+    {
+     "Ser": "4",
+     "Item": "Mine A tk M1-102 (Swedish) in crates",
+     "2.5 ton trk without tlr": "190 / 235*",
+     "2.5 ton trk with 1.5 ton tlr": "300 / 375*"
+    },
+    {
+     "Ser": "5",
+     "Item": "Mine A tk SH-55 (Italian)",
+     "2.5 ton trk without tlr": "275",
+     "2.5 ton trk with 1.5 ton tlr": "435"
+    },
+    {
+     "Ser": "6",
+     "Item": "Mine A tk M3 (Belgian)",
+     "2.5 ton trk without tlr": "320",
+     "2.5 ton trk with 1.5 ton tlr": "510"
+    },
+    {
+     "Ser": "7",
+     "Item": "Mine A tk NDP2MK1",
+     "2.5 ton trk without tlr": "280",
+     "2.5 ton trk with 1.5 ton tlr": "448"
+    },
+    {
+     "Ser": "8",
+     "Item": "Perimeter Fence Stores (yds)",
+     "2.5 ton trk without tlr": "2340",
+     "2.5 ton trk with 1.5 ton tlr": "3350"
+    }
+   ]
+  },
+  {
+   "title": "Rkt Del Mine Sys (RDMS)",
+   "page": "440",
+   "note": "The Chinese RDMS is used for rapid laying of ATMs and APMs. HE rkts of 122 mm cal can be fired with this sys.",
+   "rows": [
+    {
+     "Item": "Total no of tubes",
+     "Value": "24"
+    },
+    {
+     "Item": "Rgs",
+     "Value": "3.5, 4.3, 5.4 and 7 km"
+    },
+    {
+     "Item": "No of Mines in a Rkt",
+     "Value": "8 ATMs or 128 APMs"
+    },
+    {
+     "Item": "Type of ATMs",
+     "Value": "Contact/Non-Contact Belly Attk"
+    },
+    {
+     "Item": "Self Destruct Time",
+     "Value": "4.5-72hrs"
+    },
+    {
+     "Item": "Cap",
+     "Value": "By firing one salvo, 192 ATMs or 3072 APMs can be laid in an area of 650 Ms 650 Ms.",
+     "note": "printed '650 Ms 650 Ms' (an 'x' appears to be missing)"
+    }
+   ]
+  },
+  {
+   "title": "Mine Dispensing System (MDS) GBL 131 - Tech Data, Caps and Emp Drill",
+   "page": "441-442",
+   "note": "MDS dev by M/S NORINCO (Chinese). Versions GBL 130, 131 (wh) and GBL 132 (tr). GBL-131 is a 10 ton wh MDS with 8 launchers containing 36 tubes each; total cap 288 rkts in a salvo. Mines packed in rkts as A tk, A pers or mixed; SD time and density adjustable in the fd. FL uses Veh Based Mine Scattering Sys (VBMSS) mtd on T-815 Tatra: dispenses 500-600 mines at 10 kmph, 70-100 M from line of run of veh.",
+   "rows": [
+    {
+     "Group": "Specifications",
+     "Item": "Max speed",
+     "Value": "81 km/hr"
+    },
+    {
+     "Group": "Specifications",
+     "Item": "Cruising rg",
+     "Value": "603 kms"
+    },
+    {
+     "Group": "Specifications",
+     "Item": "Crew",
+     "Value": "3 pers"
+    },
+    {
+     "Group": "Specifications",
+     "Item": "Del",
+     "Value": "40 - 150 m"
+    },
+    {
+     "Group": "Specifications",
+     "Item": "Self-dest",
+     "Value": "1 - 72 hrs (adjustable)"
+    },
+    {
+     "Group": "Specifications",
+     "Item": "Del / launch mode",
+     "Value": "1 - 288 rds"
+    },
+    {
+     "Group": "Specifications",
+     "Item": "No of launchers",
+     "Value": "8 launchers"
+    },
+    {
+     "Group": "Specifications",
+     "Item": "No of rds",
+     "Value": "288"
+    },
+    {
+     "Group": "Mines on Each Chassis",
+     "Item": "ATM GLD224",
+     "Value": "1440"
+    },
+    {
+     "Group": "Mines on Each Chassis",
+     "Item": "APM GLD125",
+     "Value": "4320"
+    },
+    {
+     "Group": "Mines on Each Chassis",
+     "Item": "APM GLD115",
+     "Value": "12960"
+    },
+    {
+     "Group": "Caps of MDS",
+     "Item": "Mine types",
+     "Value": "Can lay either ATMs, APMs or mixed M fd."
+    },
+    {
+     "Group": "Caps of MDS",
+     "Item": "Loading",
+     "Value": "Can be loaded by 8 x persons in 40 mins and prep for fire in 30 mins."
+    },
+    {
+     "Group": "Caps of MDS",
+     "Item": "Density",
+     "Value": "0.2 to 1 for ATM and 0.12 to 0.6 for APM"
+    },
+    {
+     "Group": "Caps of MDS",
+     "Item": "Frontage",
+     "Value": "1500 to 7200 m depending upon the density of M fd"
+    },
+    {
+     "Group": "Caps of MDS",
+     "Item": "Time gap",
+     "Value": "1 sec, 2 secs or 5 secs"
+    },
+    {
+     "Group": "Emp Drill",
+     "Item": "Delivery",
+     "Value": "Instead of rows, MDS dels mines in strips; each strip provides an avg depth of 300 m; avg depth of M fd 600 m while emp 1 x MDS; A tk, A pers or mixed M fds can be laid with density ranging from 0.2 to 1; preferably 1 x strip if depth 600 m, addl strips if depth inc beyond 600 m."
+    },
+    {
+     "Group": "Std drill for pl task (proposed)",
+     "Item": "Single strip laying; Avg frontage covered",
+     "Value": "5 km"
+    },
+    {
+     "Group": "Std drill for pl task (proposed)",
+     "Item": "Speed of dispensing",
+     "Value": "9 kmph"
+    },
+    {
+     "Group": "Std drill for pl task (proposed)",
+     "Item": "Effort req",
+     "Value": "1 x Pl ni"
+    },
+    {
+     "Group": "Std drill for pl task (proposed)",
+     "Item": "No of strips",
+     "Value": "1 x Mix strip"
+    },
+    {
+     "Group": "Std drill for pl task (proposed)",
+     "Item": "Density of M Fd",
+     "Value": "ATM - 0.8; APM - 0.6"
+    },
+    {
+     "Group": "Std drill for pl task (proposed)",
+     "Item": "Avg Depth",
+     "Value": "600 m"
+    },
+    {
+     "Group": "Std drill for pl task (proposed)",
+     "Item": "Avg Frontage per Salvo",
+     "Value": "1500 m"
+    },
+    {
+     "Group": "Timings",
+     "Item": "Loading time (1 x Salvo)",
+     "Value": "72 mins (2 mins/rkt)"
+    },
+    {
+     "Group": "Timings",
+     "Item": "Setting / prep for fire",
+     "Value": "20 mins"
+    },
+    {
+     "Group": "Timings",
+     "Item": "Dispensing time",
+     "Value": "10 mins (2 sec/rkt)"
+    },
+    {
+     "Group": "Timings",
+     "Item": "Unforeseen",
+     "Value": "10 - 5 mins"
+    },
+    {
+     "Group": "Timings",
+     "Item": "Time for firing 1 x Salvo",
+     "Value": "114 -117 mins"
+    },
+    {
+     "Group": "Timings",
+     "Item": "No of salvos / ni",
+     "Value": "3"
+    },
+    {
+     "Group": "Auth of 1st & 2nd Line MDS Rkts / MDS / Coy",
+     "Item": "1st Line",
+     "Value": "3 x Salvos (288 x rkts)"
+    },
+    {
+     "Group": "Auth of 1st & 2nd Line MDS Rkts / MDS / Coy",
+     "Item": "2nd Line",
+     "Value": "3 x Salvos (288 x rkts)"
+    }
+   ]
+  },
+  {
+   "title": "MDS - Frontage Covered With 1 x Salvo",
+   "page": "443",
+   "columns": [
+    "Ser",
+    "Density",
+    "Frontage Covered (m)"
+   ],
+   "rows": [
+    {
+     "Ser": "(1)",
+     "Density": "0.2",
+     "Frontage Covered (m)": 7200
+    },
+    {
+     "Ser": "(2)",
+     "Density": "0.3",
+     "Frontage Covered (m)": 4800
+    },
+    {
+     "Ser": "(3)",
+     "Density": "0.4",
+     "Frontage Covered (m)": 3456
+    },
+    {
+     "Ser": "(4)",
+     "Density": "0.5",
+     "Frontage Covered (m)": 2880
+    },
+    {
+     "Ser": "(5)",
+     "Density": "0.6",
+     "Frontage Covered (m)": 2390
+    },
+    {
+     "Ser": "(6)",
+     "Density": "0.7",
+     "Frontage Covered (m)": 2044
+    },
+    {
+     "Ser": "(7)",
+     "Density": "0.8",
+     "Frontage Covered (m)": 1814
+    },
+    {
+     "Ser": "(8)",
+     "Density": "0.9",
+     "Frontage Covered (m)": 1613
+    },
+    {
+     "Ser": "(9)",
+     "Density": "1",
+     "Frontage Covered (m)": 1500
+    }
+   ]
+  },
+  {
+   "title": "MDS - Ammo Calc to Cover the Frontage with Varying Densities",
+   "page": "443",
+   "columns": [
+    "Density A Tk",
+    "Density A Pers",
+    "Frontage (Km)",
+    "No of Mines A Tk",
+    "No of Mines A Pers",
+    "No of Salvos",
+    "Tpt Req for Ammo"
+   ],
+   "rows": [
+    {
+     "Density A Tk": "0.8",
+     "Density A Pers": "0.6",
+     "Frontage (Km)": "5",
+     "No of Mines A Tk": "3600",
+     "No of Mines A Pers": "2700",
+     "No of Salvos": "3",
+     "Tpt Req for Ammo": "2 x 5 Ton trks"
+    }
+   ]
+  },
+  {
+   "title": "Mine Dispensing System - Rg - Density Chart",
+   "page": "444",
+   "note": "Dispersion 0.2 ~1. Veh speed (km/hr) rows by time gap. Frontage at density 1 printed 1440 here (1500 in the p 443 table).",
+   "columns": [
+    "A Tk density",
+    "Mixed ATM",
+    "Mixed APM",
+    "Space interval under eqpt depl (m)",
+    "The frontage of M fd (m)",
+    "Veh speed (km/hr) Time gap = 1s",
+    "Veh speed (km/hr) Time gap = 2s",
+    "Veh speed (km/hr) Time gap = 5s"
+   ],
+   "rows": [
+    {
+     "A Tk density": "0.2",
+     "Mixed ATM": "0.16",
+     "Mixed APM": "0.12",
+     "Space interval under eqpt depl (m)": "25",
+     "The frontage of M fd (m)": "7200",
+     "Veh speed (km/hr) Time gap = 1s": "90",
+     "Veh speed (km/hr) Time gap = 2s": "45",
+     "Veh speed (km/hr) Time gap = 5s": "18"
+    },
+    {
+     "A Tk density": "0.3",
+     "Mixed ATM": "0.24",
+     "Mixed APM": "0.18",
+     "Space interval under eqpt depl (m)": "16.7",
+     "The frontage of M fd (m)": "4800",
+     "Veh speed (km/hr) Time gap = 1s": "60",
+     "Veh speed (km/hr) Time gap = 2s": "30",
+     "Veh speed (km/hr) Time gap = 5s": "12"
+    },
+    {
+     "A Tk density": "0.4",
+     "Mixed ATM": "0.32",
+     "Mixed APM": "0.24",
+     "Space interval under eqpt depl (m)": "12",
+     "The frontage of M fd (m)": "3456",
+     "Veh speed (km/hr) Time gap = 1s": "43.2",
+     "Veh speed (km/hr) Time gap = 2s": "21.6",
+     "Veh speed (km/hr) Time gap = 5s": "8.6"
+    },
+    {
+     "A Tk density": "0.5",
+     "Mixed ATM": "0.4",
+     "Mixed APM": "0.3",
+     "Space interval under eqpt depl (m)": "10",
+     "The frontage of M fd (m)": "2880",
+     "Veh speed (km/hr) Time gap = 1s": "36",
+     "Veh speed (km/hr) Time gap = 2s": "18",
+     "Veh speed (km/hr) Time gap = 5s": "6.1"
+    },
+    {
+     "A Tk density": "0.6",
+     "Mixed ATM": "0.48",
+     "Mixed APM": "0.36",
+     "Space interval under eqpt depl (m)": "8.3",
+     "The frontage of M fd (m)": "2390",
+     "Veh speed (km/hr) Time gap = 1s": "29.9",
+     "Veh speed (km/hr) Time gap = 2s": "15",
+     "Veh speed (km/hr) Time gap = 5s": "5.6"
+    },
+    {
+     "A Tk density": "0.7",
+     "Mixed ATM": "0.56",
+     "Mixed APM": "0.42",
+     "Space interval under eqpt depl (m)": "7.1",
+     "The frontage of M fd (m)": "2044",
+     "Veh speed (km/hr) Time gap = 1s": "25.6",
+     "Veh speed (km/hr) Time gap = 2s": "12.8",
+     "Veh speed (km/hr) Time gap = 5s": "5.1"
+    },
+    {
+     "A Tk density": "0.8",
+     "Mixed ATM": "0.64",
+     "Mixed APM": "0.48",
+     "Space interval under eqpt depl (m)": "6.3",
+     "The frontage of M fd (m)": "1814",
+     "Veh speed (km/hr) Time gap = 1s": "22.6",
+     "Veh speed (km/hr) Time gap = 2s": "11.3",
+     "Veh speed (km/hr) Time gap = 5s": "5"
+    },
+    {
+     "A Tk density": "0.9",
+     "Mixed ATM": "0.72",
+     "Mixed APM": "0.54",
+     "Space interval under eqpt depl (m)": "5.6",
+     "The frontage of M fd (m)": "1613",
+     "Veh speed (km/hr) Time gap = 1s": "20",
+     "Veh speed (km/hr) Time gap = 2s": "10",
+     "Veh speed (km/hr) Time gap = 5s": "4"
+    },
+    {
+     "A Tk density": "1",
+     "Mixed ATM": "0.8",
+     "Mixed APM": "0.6",
+     "Space interval under eqpt depl (m)": "5",
+     "The frontage of M fd (m)": "1440",
+     "Veh speed (km/hr) Time gap = 1s": "18",
+     "Veh speed (km/hr) Time gap = 2s": "9",
+     "Veh speed (km/hr) Time gap = 5s": "3.6"
+    }
+   ]
+  },
+  {
+   "title": "M Fd Record (specimen form) - Dirs for Completing and Sketching",
+   "page": "445-446",
+   "note": "p 445 is a specimen 'M FD RECORD' (SECRET when completed), filled in as an example (a Fd Coy, Minefield EF 163, map sheet 44 L/15, 1:50,000; names left out here). Its figures are an example, not planning data. The contents page lists it at 444.",
+   "formFields": [
+    "Laying Unit",
+    "Completion Date Time",
+    "Officer in Charge",
+    "Minefield Number",
+    "Land Mks (No, Coordinates, description)",
+    "Intermediate Markers (No, Description)",
+    "Description of Boundary Fence",
+    "No of Strips",
+    "Description of Strip Marker",
+    "Lanes (No, Width, How Marked, Mines if laid by Type / No)",
+    "Map Sheet (Name, Sheet, Scale)",
+    "Notes (Lane Entrance, Lane Exit)",
+    "Recorder",
+    "Anti-Tank Mines by Type (Total less IOE, IOE, Strips A-E), Total A tk mines, Booby trapped",
+    "A pers mines by Type, Total A pers mines",
+    "Laid by Hand or Mechanically",
+    "Sketch (Enemy, Magnetic North, Scale in Paces)"
+   ],
+   "specimen": {
+    "note": "as printed in the example; the A tk figures add up (102 + 114 + 121 = 337, booby trapped 16 + 12 = 28), the A pers ones do not (IOE 57 + 12 = 69 vs total 66; Type No 1 Mk 1 total 818 vs strip A 261)",
+    "atkMines": {
+     "type": "MIP",
+     "totalLessIOE": 337,
+     "IOE": 23,
+     "strips": {
+      "A": 102,
+      "B": 114,
+      "C": 121
+     },
+     "boobyTrapped": {
+      "total": 28,
+      "IOE": 10,
+      "A": 16,
+      "B": 12
+     }
+    },
+    "apersMines": {
+     "Type No 1 Mk 1": {
+      "total": 818,
+      "IOE": 57,
+      "A": 261
+     },
+     "Type M2A4": {
+      "total": "-",
+      "IOE": 12,
+      "A": 45
+     },
+     "totalApers": {
+      "total": 375,
+      "IOE": 66,
+      "A": 306
+     }
+    },
+    "lanes": [
+     {
+      "No": 1,
+      "Width": "8 yds",
+      "HowMarked": "Sig cable picketed with gr along CL"
+     }
+    ],
+    "strips": 3,
+    "stripMarker": "Wooden Stakes Driven Flush",
+    "boundaryFence": "Std",
+    "laid": "Hand"
+   },
+   "rules": [
+    "1. All spaces on the form must always be filled in.",
+    "2. If the time is short, the form must be completed down.",
+    "3. Max length of a M fd to be recorded on one form is approx 600 yds.",
+    "4. When an existing M fd is changed, a new form will be submitted showing the entire M fd after changes.",
+    "5. When laid mech, rows will be lettered commencing from the en side of the M fd.",
+    "6. Nuisance M fds will be lettered serially and recorded in the strip table of the Form.",
+    "7. When, as above, ltrs ref to rows laid mech or to nuisance M fd sers, the recorder will amend the 'STRIP' or 'NUISANCE M FD', as appropriate.",
+    "8. Any addl info nec may be shown on sketch, or on space provided for notes.",
+    "9. Sketch must always show: a. the scale, normally 1 in equals 50 paces or larger; b. all landmks and intmed markers if used, a min of two landmks; c. bgs (mag) and paced dists from landmks to intmed markers, to strip markers at beginning and end of rear strip, to lane entrances, to fence, and for each straight line sec of lanes; d. mag north and dir of en; e. approx trace of protective fence; f. length and depth of M fd.",
+    "10. If ordered: bg and dist for each straight line sec of the strips; bg and dist b/w the starting and finishing pts of the strips; addl info as considered nec."
+   ]
+  },
+  {
+   "title": "M Fd Eff Graph",
+   "page": "447",
+   "note": "Based on World War II Statistics. Minefield eff (percentage) against mines per yd of front; A tk scale 0-3, A pers scale 0-18 (*blast type, without trip wires). Values below are read off the curves at the grid lines (read at 400 dpi, about +/- 2 %), not printed figures.",
+   "uncertain": true,
+   "columns": [
+    "Mines per Yd of Front (A tk)",
+    "Mines per Yd of Front (A pers)",
+    "A Tk Mk 7 eff %",
+    "A Tk Mk 5 eff %",
+    "A Pers No 6 eff %"
+   ],
+   "rows": [
+    {
+     "Mines per Yd of Front (A tk)": 0.5,
+     "Mines per Yd of Front (A pers)": 3,
+     "A Tk Mk 7 eff %": 48,
+     "A Tk Mk 5 eff %": 36,
+     "A Pers No 6 eff %": 10
+    },
+    {
+     "Mines per Yd of Front (A tk)": 1,
+     "Mines per Yd of Front (A pers)": 6,
+     "A Tk Mk 7 eff %": 68,
+     "A Tk Mk 5 eff %": 60,
+     "A Pers No 6 eff %": 20
+    },
+    {
+     "Mines per Yd of Front (A tk)": 1.5,
+     "Mines per Yd of Front (A pers)": 9,
+     "A Tk Mk 7 eff %": 80,
+     "A Tk Mk 5 eff %": 72,
+     "A Pers No 6 eff %": 30
+    },
+    {
+     "Mines per Yd of Front (A tk)": 2,
+     "Mines per Yd of Front (A pers)": 12,
+     "A Tk Mk 7 eff %": 88,
+     "A Tk Mk 5 eff %": 80,
+     "A Pers No 6 eff %": 40
+    },
+    {
+     "Mines per Yd of Front (A tk)": 2.5,
+     "Mines per Yd of Front (A pers)": 15,
+     "A Tk Mk 7 eff %": null,
+     "A Tk Mk 5 eff %": null,
+     "A Pers No 6 eff %": 49
+    },
+    {
+     "Mines per Yd of Front (A tk)": 3,
+     "Mines per Yd of Front (A pers)": 18,
+     "A Tk Mk 7 eff %": null,
+     "A Tk Mk 5 eff %": null,
+     "A Pers No 6 eff %": 53
+    }
+   ],
+   "curveEnds": "A Tk Mk 7 ends at about 2.2 per yd (about 93 %); A Tk Mk 5 at about 2.1 per yd (about 82 %); A Pers No 6 at 18 per yd (about 53 %).",
+   "remarks": [
+    "1. The normal density of one Mk 5 A tk cluster per yd of front is 60% eff.",
+    "2. The figs for APMs are for blast type mines. The fragmentation mine is four times as eff but is much slower to lay.",
+    "3. The rate of cas for APMs will inc considerably if trip wires are used.",
+    "4. Mk 5 ATMs can be planted in pairs, one on top of the other."
+   ]
+  },
+  {
+   "title": "Tac M Fd Reports",
+   "page": "448-449",
+   "columns": [
+    "Ser",
+    "Type of Report",
+    "By whom and when Initiated",
+    "To whom Fwd",
+    "Details to be Incl"
+   ],
+   "rows": [
+    {
+     "Ser": "1",
+     "Type of Report": "Intention",
+     "By whom and when Initiated": "Unit or fmn comd on deciding to lay M fd",
+     "To whom Fwd": "Next higher fmn",
+     "Details to be Incl": [
+      "Gen Area of proposed M fd (by GRs).",
+      "Nos and width of lanes and gaps.",
+      "Est nos and types of mines.",
+      "Est starting date and time.",
+      "Est completion date and time."
+     ]
+    },
+    {
+     "Ser": "2",
+     "Type of Report": "Siting",
+     "By whom and when Initiated": "a. Laying unit on completion of recce and final siting (only if materially diff from intention report)",
+     "To whom Fwd": "Fmn ordering laying",
+     "Details to be Incl": [
+      "Bdrys of M fd (by GRs).",
+      "No, width and approx posn of lanes and gaps.",
+      "Est nos and types of mines.",
+      "Est starting date and time.",
+      "Est completion date and time."
+     ]
+    },
+    {
+     "Ser": "3",
+     "Type of Report": "Start of laying",
+     "By whom and when Initiated": "a. Laying unit when laying starts. b. Fmn ordering laying.",
+     "To whom Fwd": "a. Fmn ordering laying. b. Next higher fmn.",
+     "Details to be Incl": [
+      "Time laying started.",
+      "Est time of completion.",
+      "Nos and types of mines being laid.",
+      "Any change in the details given in the siting report (Ser 2) whether as a result of orders or not."
+     ]
+    },
+    {
+     "Ser": "4",
+     "Type of Report": "Completion",
+     "By whom and when Initiated": "a. Laying unit when laying completed. b. Fmn ordering laying.",
+     "To whom Fwd": "a. Fmn ordering laying. b. Next higher fmn.",
+     "Details to be Incl": [
+      "A trace on the largest scale map in use, showing perimeter wire.",
+      "Total nos and types actually laid.",
+      "Full details of M fd lanes, gaps and how they are mk."
+     ]
+    }
+   ],
+   "remarks": [
+    "1. The reports at ser 1, 2 and 3 above will be sent by wrls in code or by DR as quickly as possible.",
+    "2. The completion report will normally be sent by hand.",
+    "3. There is no spec form."
+   ]
+  },
+  {
+   "title": "M Fd Breaching - Hand Breaching",
+   "page": "450",
+   "columns": [
+    "Depth (Yds)",
+    "Engrs Pl (s)",
+    "Day Hrs",
+    "Day Mins",
+    "Moon lt Hrs",
+    "Moon lt Mins",
+    "Dark ni Hrs",
+    "Dark ni Mins"
+   ],
+   "rows": [
+    {
+     "Depth (Yds)": "180",
+     "Engrs Pl (s)": "1",
+     "Day Hrs": "3",
+     "Day Mins": "40.5",
+     "Moon lt Hrs": "4",
+     "Moon lt Mins": "05",
+     "Dark ni Hrs": "4",
+     "Dark ni Mins": "54"
+    },
+    {
+     "Depth (Yds)": "240",
+     "Engrs Pl (s)": "1 1/2",
+     "Day Hrs": "3",
+     "Day Mins": "49.5",
+     "Moon lt Hrs": "4",
+     "Moon lt Mins": "15",
+     "Dark ni Hrs": "5",
+     "Dark ni Mins": "06"
+    },
+    {
+     "Depth (Yds)": "300",
+     "Engrs Pl (s)": "1 1/2",
+     "Day Hrs": "3",
+     "Day Mins": "58.5",
+     "Moon lt Hrs": "4",
+     "Moon lt Mins": "25",
+     "Dark ni Hrs": "5",
+     "Dark ni Mins": "18"
+    },
+    {
+     "Depth (Yds)": "360",
+     "Engrs Pl (s)": "2",
+     "Day Hrs": "4",
+     "Day Mins": "97.5",
+     "Moon lt Hrs": "4",
+     "Moon lt Mins": "35",
+     "Dark ni Hrs": "5",
+     "Dark ni Mins": "30",
+     "uncertain": true,
+     "note": "Day Mins printed 97.5 (the series suggests 07.5)"
+    },
+    {
+     "Depth (Yds)": "420",
+     "Engrs Pl (s)": "2 1/2",
+     "Day Hrs": "4",
+     "Day Mins": "16.5",
+     "Moon lt Hrs": "4",
+     "Moon lt Mins": "45",
+     "Dark ni Hrs": "5",
+     "Dark ni Mins": "42"
+    },
+    {
+     "Depth (Yds)": "480",
+     "Engrs Pl (s)": "2 1/2",
+     "Day Hrs": "4",
+     "Day Mins": "25.5",
+     "Moon lt Hrs": "4",
+     "Moon lt Mins": "55",
+     "Dark ni Hrs": "5",
+     "Dark ni Mins": "54"
+    },
+    {
+     "Depth (Yds)": "540",
+     "Engrs Pl (s)": "3",
+     "Day Hrs": "4",
+     "Day Mins": "34.4",
+     "Moon lt Hrs": "5",
+     "Moon lt Mins": "05",
+     "Dark ni Hrs": "6",
+     "Dark ni Mins": "6",
+     "note": "Day Mins printed 34.4 (series step is 9 mins: 34.5)"
+    },
+    {
+     "Depth (Yds)": "600",
+     "Engrs Pl (s)": "3 1/2",
+     "Day Hrs": "4",
+     "Day Mins": "43.5",
+     "Moon lt Hrs": "5",
+     "Moon lt Mins": "15",
+     "Dark ni Hrs": "6",
+     "Dark ni Mins": "18"
+    },
+    {
+     "Depth (Yds)": "660",
+     "Engrs Pl (s)": "3 1/2",
+     "Day Hrs": "4",
+     "Day Mins": "52.5",
+     "Moon lt Hrs": "5",
+     "Moon lt Mins": "25",
+     "Dark ni Hrs": "6",
+     "Dark ni Mins": "30"
+    },
+    {
+     "Depth (Yds)": "720",
+     "Engrs Pl (s)": "4",
+     "Day Hrs": "5",
+     "Day Mins": "01.5",
+     "Moon lt Hrs": "5",
+     "Moon lt Mins": "35",
+     "Dark ni Hrs": "6",
+     "Dark ni Mins": "42"
+    },
+    {
+     "Depth (Yds)": "780",
+     "Engrs Pl (s)": "4 1/2",
+     "Day Hrs": "5",
+     "Day Mins": "10.5",
+     "Moon lt Hrs": "5",
+     "Moon lt Mins": "45",
+     "Dark ni Hrs": "6",
+     "Dark ni Mins": "54"
+    },
+    {
+     "Depth (Yds)": "840",
+     "Engrs Pl (s)": "4 1/2",
+     "Day Hrs": "5",
+     "Day Mins": "19.5",
+     "Moon lt Hrs": "5",
+     "Moon lt Mins": "55",
+     "Dark ni Hrs": "7",
+     "Dark ni Mins": "06"
+    },
+    {
+     "Depth (Yds)": "900",
+     "Engrs Pl (s)": "5",
+     "Day Hrs": "5",
+     "Day Mins": "28.5",
+     "Moon lt Hrs": "6",
+     "Moon lt Mins": "05",
+     "Dark ni Hrs": "7",
+     "Dark ni Mins": "18"
+    }
+   ],
+   "remarks": [
+    "a. 30 mins each for safe lane mk and pulling of mines has been incl.",
+    "b. These timings are based on the use of anti-mine shoes. There is no en interference.",
+    "c. Every 180 yds length reqs one pl; fractional lengths of 60 to 120 yds req half a pl.",
+    "d. The formula for pl timings is (D-180)/6 + 185 mins.",
+    "Rd Clearance: Verges and Berms - as for breaching. Carriageway, Engr pl by day: 1 mile per hr where searching is nec but mines are not found; 250 yds per hr where mines are found."
+   ]
+  },
+  {
+   "title": "M Fd Breaching - Mech Breaching (TAM)",
+   "page": "451",
+   "note": "Using one tp of 5 TAMs fitted with front troll assys only (incl one TAM in res). Timings for moonlit ni; add 20% for dark ni and deduct 10% for day lt op.",
+   "columns": [
+    "Lane Depth (Ms)",
+    "Width (Ms)",
+    "Tps (Pls)",
+    "Timings (Hrs)",
+    "Remarks"
+   ],
+   "rows": [
+    {
+     "Lane Depth (Ms)": "a. 600",
+     "printed cells left to right": [
+      "5",
+      "1",
+      "(1) 2"
+     ],
+     "uncertain": true,
+     "note": "Header 'Lane / Depth (Ms)', 'Tps (Pls) / Width (Ms)', 'Timings (Hrs)', 'Remarks'; the cells under them read 600 | 5 | 1 | (1) 2. Column placement of '1', '(1)' and '2' is unclear in print. Likely reading (not confirmed): Width 5 M, Tps (Pls) 1, Timings 2 hrs (600 M) / 3 hrs (900 M), '(1)' a remark ref; the breakdown below totals 150 mins."
+    },
+    {
+     "Lane Depth (Ms)": "b. 900",
+     "printed cells left to right": [
+      "5",
+      "1",
+      "(1) 3"
+     ],
+     "uncertain": true,
+     "note": "Cells read 900 | 5 | 1 | (1) 3; placement unclear as above. Likely reading (not confirmed): Width 5 M, Tps (Pls) 1, Timings 2 hrs (600 M) / 3 hrs (900 M), '(1)' a remark ref; the breakdown below totals 150 mins."
+    }
+   ],
+   "remarks": [
+    "Breakdown of time: Setting out time 40 mins; Breaching 30 mins; Filling craters etc 30 mins; Marking of lane 20 mins; Assy of TAM 30 mins; Total 150 mins.",
+    "Parties: Comd JCO; Unloading Party 2; Connecting Party 4 (one crane used); Setting Out Party 1+ 4; Mine Blasting Party 1x NCO per TAM; Prep/Clearance of Lane 1+ 1 (One Dozer size II used); Expedients Laying Sec 1+ 10; Safe Lane Marking Party 1+ 2 + 24.",
+    "Engr Width Mine Plough (EWMP): like the TAM, auth to the Aslt Engr Bn; under eval/trials, planning data to be made aval subsequently."
+   ]
+  },
+  {
+   "title": "Inundation - Approx Time Calc",
+   "page": "452-453",
+   "note": "Const of one compartment assumptions: length 1000 yds; 4 Size II Dozers; output of Size II Dozer 40 cu yds (150 ft Haul) per Hr; 4 Pls; reasonably lvl gr; assumed cross sec of dyke (drawing) 4 ft top, 18 ft base, 3.5 ft high. Filling assumptions: length 1000 yds, avg depth of water 2 ft. For total time req for eff inundation, add the timings of paras 1 to 3, plus time for planning, designing and unforeseen delays.",
+   "rows": [
+    {
+     "Table": "Const of One Compartment",
+     "Depth of Inundation Belt (Yds)": "1000",
+     "Time Req (Days)": "14"
+    },
+    {
+     "Table": "Const of One Compartment",
+     "Depth of Inundation Belt (Yds)": "500",
+     "Time Req (Days)": "10"
+    },
+    {
+     "Table": "Const of One Compartment",
+     "Depth of Inundation Belt (Yds)": "300",
+     "Time Req (Days)": "8"
+    },
+    {
+     "Table": "Filling of One Compartment",
+     "Depth of Inundation Belt (Yds)": "1000",
+     "Time Req (Hrs) 150 Cusecs": "34",
+     "Time Req (Hrs) 100 Cusecs": "50",
+     "Time Req (Hrs) 50 Cusecs": "100"
+    },
+    {
+     "Table": "Filling of One Compartment",
+     "Depth of Inundation Belt (Yds)": "500",
+     "Time Req (Hrs) 150 Cusecs": "17",
+     "Time Req (Hrs) 100 Cusecs": "25",
+     "Time Req (Hrs) 50 Cusecs": "50"
+    },
+    {
+     "Table": "Filling of One Compartment",
+     "Depth of Inundation Belt (Yds)": "300",
+     "Time Req (Hrs) 150 Cusecs": "10",
+     "Time Req (Hrs) 100 Cusecs": "15",
+     "Time Req (Hrs) 50 Cusecs": "30"
+    },
+    {
+     "Table": "Saturation of Soils",
+     "Soil Cls": "Sandy Soils",
+     "Soil Textural Cl": "1. Sand, 2. Loamy Sand",
+     "Permeability Rate (ft per day)": "10 to 20"
+    },
+    {
+     "Table": "Saturation of Soils",
+     "Soil Cls": "Sandy Soils",
+     "Soil Textural Cl": "3. Sandy Loam, 4. Fine Sandy Loam",
+     "Permeability Rate (ft per day)": "5 to 10"
+    },
+    {
+     "Table": "Saturation of Soils",
+     "Soil Cls": "Loamy Soils",
+     "Soil Textural Cl": "5. Very Fine Sandy Loam, 6. Loam, 7. Silt Loam",
+     "Permeability Rate (ft per day)": "1.5 to 5 (printed beside 5) and 5 to 10 (printed beside 7)",
+     "uncertain": true,
+     "note": "two rates printed in this group; grouping lines unclear"
+    },
+    {
+     "Table": "Saturation of Soils",
+     "Soil Cls": "Loamy Soils",
+     "Soil Textural Cl": "8. Clay Loam",
+     "Permeability Rate (ft per day)": "0.5 to 1.5"
+    },
+    {
+     "Table": "Saturation of Soils",
+     "Soil Cls": "Loamy Soils",
+     "Soil Textural Cl": "9. Sandy Clay Loam, 10. Silty Clay Loam",
+     "Permeability Rate (ft per day)": "0.1 to 0.5",
+     "note": "'Loamy Soils' is printed against rows 5-10 (the dotted group line runs only after 7 and after 10); 'Clayey Soils' against 11-13"
+    },
+    {
+     "Table": "Saturation of Soils",
+     "Soil Cls": "Clayey Soils",
+     "Soil Textural Cl": "11. Sandy Clay, 12. Silty Clay, 13. Clay",
+     "Permeability Rate (ft per day)": "Less than 0.1"
+    }
+   ],
+   "remarks": [
+    "Const notes: (1) For subsequent multiples of 1000 yds length deduct approx 1/2 to 1 day to cater for each common dyke between two adjacent compartments (e.g. 5 addl compartments deduct 5x1/2=2 1/2 days). (2) For tilling, add approx one to two tractor days for each 1000 yds compartment. (3) Time req for const/repair of distys/minors is not incl.",
+    "Filling note: Approx time can be calc for various multiples of 1000 yds length.",
+    "Saturation notes: 1. Eff bog will be created if soil is saturated to a depth of 2 to 3 ft. 2. Soils liable to be saturated to a depth of 2 to 3 ft in 2 to 4 days are suitable for inundation. 3. Loss of water through percolation should be excessive. 4. After saturation about six ins of water level will be maint above inundated surface throughout."
+   ]
+  },
+  {
+   "title": "Radio Comm Diagram - Engr Bn Army / Corps / Inf Div",
+   "page": "454",
+   "note": "Fd Pls (3) and a Rover on PRC 77 to the Fd Coy; Fd Coys (3), Engr Sp Coy and CO's Rover on PK 786 to Bn HQ.",
+   "rows": [
+    {
+     "Set": "PK 786",
+     "Summary": 7
+    },
+    {
+     "Set": "PRC/77",
+     "Summary": 22
+    }
+   ],
+   "stations": [
+    {
+     "station": "Bn HQ",
+     "set": "PK 786",
+     "count": 2,
+     "note": "one as control of the Bn net, one drawn below with tick marks"
+    },
+    {
+     "station": "Bn HQ",
+     "set": "PRC 77",
+     "count": 4,
+     "note": "drawn with tick marks"
+    },
+    {
+     "station": "CO's Rover",
+     "set": "PK 786",
+     "count": 1
+    },
+    {
+     "station": "Engr Sp Coy",
+     "set": "PK 786",
+     "count": 1
+    },
+    {
+     "station": "Fd Coy (each of 3)",
+     "set": "PK 786",
+     "count": 1,
+     "note": "on the Bn net"
+    },
+    {
+     "station": "Fd Coy HQ (each of 3)",
+     "set": "PRC 77",
+     "count": 2,
+     "note": "one as control of the coy net, one drawn with tick marks"
+    },
+    {
+     "station": "Fd Pl (3 per Fd Coy)",
+     "set": "PRC 77",
+     "count": 1,
+     "note": "each"
+    },
+    {
+     "station": "Fd Coy Rover (each of 3)",
+     "set": "PRC 77",
+     "count": 1
+    }
+   ],
+   "stationsNote": "One Fd Coy is drawn in full (p 454); the summary PK 786 7 = 2 + 1 + 1 + 3 x 1 and PRC/77 22 = 4 + 3 x (2 + 3 + 1) confirms it applies to all three."
+  }
+ ],
+ "otherPages": [
+  {
+   "page": "400-401",
+   "what": "Contents (no figures; lists M fd Record at 444, it is on 445-446)"
+  },
+  {
+   "page": "445-446",
+   "what": "M Fd Record (specimen form, filled example) and directions for completing / sketching (contents lists it at 444)",
+   "extracted": "engrData 'M Fd Record (specimen form) - Dirs for Completing and Sketching': form fields, the specimen's mine table (example only, names left out) and the directions 1-10"
+  },
+  {
+   "page": "447",
+   "what": "M Fd Eff Graph (Based on World War II Statistics; graph of mines per yd of front; notes only: Mk 5 A tk cluster per yd 60% eff, frag APM four times as eff, trip wires raise cas)",
+   "extracted": "engrData 'M Fd Eff Graph': curve readings at the grid lines (approx, uncertain) and notes 1-4"
+  },
+  {
+   "page": "448-449",
+   "what": "Tac M Fd Reports (Intention, Siting, Start of laying, Completion: by whom, to whom, details)",
+   "extracted": "engrData 'Tac M Fd Reports': the four reports (by whom, to whom, details) and notes 1-3"
+  }
+ ],
+ "recheck": {
+  "date": "2026-11-15",
+  "by": "engr re-check against the page images (PDF page = printed - 399)",
+  "note": "chartStrength = figure printed in the chart box; box-level eqpt marked judged where the book prints the list beside the boxes"
+ }
+}

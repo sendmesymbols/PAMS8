@@ -1,0 +1,9570 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Infantry",
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "section": "Sec 6 - Inf",
+  "pages": "600-654",
+  "handling": "RESTD"
+ },
+ "side": "own",
+ "basis": "R = as printed in the book. Fields marked uncertain / judged / *Note carry the reader's doubts; printed totals are kept even where parts do not add up. Re-checked against the book on 15 Nov 2026: chartStrength = the figure printed in a chart box (units and inline children); weapons / vehicles printed in or under a box sit on that box node; an inline child may carry seeUnit (the matching unit defined in this or another file, a cross-reference only, not part of the hierarchy) and nested children for the sub-boxes this chart prints; a child weapon count is per box unless its note says it covers all the boxes of that child.",
+ "pageNote": "Pages cited are the numbers printed on each page (PDF page = printed page - 599). The CONTENTS numbers run one ahead of the printed numbers from Lt Cdo Bn (623) and from Mjd Bn (639) onwards (e.g. Chars of Inf Wpns listed at 648, printed 647-649).",
+ "units": [
+  {
+   "id": "inf-div",
+   "name": "Inf Div",
+   "arm": "inf",
+   "type": "div",
+   "subtype": "inf",
+   "echelon": "21",
+   "page": "601",
+   "children": [
+    {
+     "role": "Div HQ",
+     "count": 1,
+     "unit": "inf-div-hq"
+    },
+    {
+     "role": "Inf Bde",
+     "unit": "inf-bde",
+     "count": 3,
+     "note": "Chart: 3x Inf Bde -> Bde HQ, 3x Inf Bn -> Bn HQ, 4x Rifle Coy, Cbt Sp Coy"
+    },
+    {
+     "role": "HQ Div Arty",
+     "count": 1,
+     "seeUnit": "arty-inf-div-arty",
+     "note": "arty.json defines Inf Div Arty (p 202) as 2x Fd Regt, 2x Med Regt, MAS Bty; this chart prints 3x Fd Regt, Med Regt, Mor Bty, MAS Bty.",
+     "children": [
+      {
+       "role": "Fd Regt",
+       "count": 3,
+       "seeUnit": "arty-regt-fd",
+       "children": [
+        {
+         "role": "Fd Bty",
+         "count": 3,
+         "unit": "arty-bty-fd",
+         "weapons": [
+          {
+           "name": "Guns",
+           "count": 6,
+           "note": "printed '(6 guns each)' under '3x Fd Bty'"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "role": "Med Regt",
+       "count": 1,
+       "seeUnit": "arty-regt-med",
+       "children": [
+        {
+         "role": "Med Bty",
+         "count": 3,
+         "unit": "arty-bty-med",
+         "weapons": [
+          {
+           "name": "Guns",
+           "count": 6,
+           "note": "printed '(6 guns each)' under '3x Med Bty'"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "role": "Mor Bty",
+       "count": 1
+      },
+      {
+       "role": "MAS Bty",
+       "count": 1,
+       "unit": "arty-bty-mas"
+      }
+     ]
+    },
+    {
+     "role": "Armr Regt",
+     "count": 1,
+     "seeUnit": "armr-regt",
+     "vehicles": [
+      {
+       "name": "trs (tracked vehs)",
+       "count": 50,
+       "note": "printed '(a) (50 trs)'; RHQ 2 tks + 3x14 tks + 3 dozers + 3 ARVs = 50. Note (a): Incls 3 x dozers and 3 x ARVs (54 trs if 4 x APCs are issued instead of 4 x 3/4 ton/1 ton vehs)."
+      },
+      {
+       "name": "Dozers",
+       "count": 3,
+       "note": "note (a)"
+      },
+      {
+       "name": "ARVs",
+       "count": 3,
+       "note": "note (a)"
+      }
+     ],
+     "children": [
+      {
+       "role": "RHQ",
+       "count": 1,
+       "vehicles": [
+        {
+         "name": "Tks",
+         "count": 2,
+         "note": "printed 'RHQ (2 tks)'"
+        }
+       ]
+      },
+      {
+       "role": "HQ Sqn",
+       "count": 1,
+       "unit": "armr-sqn-hq"
+      },
+      {
+       "role": "Tk Sqn",
+       "count": 3,
+       "unit": "armr-sqn-tk",
+       "vehicles": [
+        {
+         "name": "Tks",
+         "count": 14,
+         "note": "printed '(14 tks each)'"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "role": "Engr Bn",
+     "count": 1,
+     "seeUnit": "engr-bn-offn-inf-div",
+     "note": "Offn or def type not stated on the div chart (engr.json: engr-bn-offn-inf-div or engr-bn-def-inf-div-corps).",
+     "children": [
+      {
+       "role": "Bn HQ",
+       "count": 1
+      },
+      {
+       "role": "Fd Coy",
+       "count": 3,
+       "unit": "engr-fd-coy"
+      },
+      {
+       "role": "Engr Sp Coy",
+       "count": 1
+      },
+      {
+       "role": "Br Elm",
+       "count": 1,
+       "note": "Note (b): Br elm may be altd to a div as and when req."
+      }
+     ]
+    },
+    {
+     "role": "Sig Bn",
+     "count": 1,
+     "seeUnit": "sig-bn-inf-div",
+     "children": [
+      {
+       "role": "Bn HQ",
+       "count": 1,
+       "unit": "sig-inf-div-bn-hq"
+      },
+      {
+       "role": "HQ Coy",
+       "count": 1,
+       "unit": "sig-inf-div-hq-coy"
+      },
+      {
+       "role": "Op Coy (1 Coy)",
+       "count": 1,
+       "unit": "sig-inf-div-op-coy"
+      },
+      {
+       "role": "Radio Coy (2 Coy)",
+       "count": 1,
+       "unit": "sig-inf-div-radio-coy"
+      },
+      {
+       "role": "RR and Line Coy (3 Coy)",
+       "count": 1,
+       "unit": "sig-inf-div-rr-line-coy"
+      },
+      {
+       "role": "Bde Sig Coy",
+       "count": 3,
+       "unit": "sig-inf-bde-sig-coy"
+      },
+      {
+       "role": "Arty Sig Coy (4 Coy)",
+       "count": 1,
+       "unit": "sig-inf-div-arty-sig-coy"
+      }
+     ]
+    },
+    {
+     "role": "LAT Bn",
+     "count": 1,
+     "note": "Variant (APC or Jeep borne) not stated on the div chart; see inf-bn-lat-apc / inf-bn-lat-jeep.",
+     "children": [
+      {
+       "role": "Bn HQ",
+       "count": 1
+      },
+      {
+       "role": "LAT Coy",
+       "count": 3
+      },
+      {
+       "role": "Adm Pl",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "HQ Div Log",
+     "unit": "log-hq-div-log-inf-div",
+     "count": 1,
+     "note": "Div chart under HQ Div Log: S&T Bn (Bn HQ, 3x S&T Coy, Tk Tptr Sec), Med Bn (Bn HQ, 3x Fd Amb, MDU), EME Bn (Bn HQ, Radar Repair Sec, 3x Inf Wksp Coy), Ord Unit. Page 603 shows Med Bn as 5 x ADS, 2 x FTC."
+    },
+    {
+     "role": "MP Unit",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Ops Wing",
+       "count": 1
+      },
+      {
+       "role": "Adm Wing",
+       "count": 1
+      },
+      {
+       "role": "Sec",
+       "count": 6
+      }
+     ]
+    },
+    {
+     "role": "FS Sec",
+     "count": 1
+    },
+    {
+     "role": "Postal Unit",
+     "count": 1,
+     "note": "Note (c): When raised."
+    }
+   ],
+   "notes": [
+    "Chart connector lines are crowded; parent of each element read from the chart layout and the names (e.g. 3x LAT Coy + Adm Pl under LAT Bn, Radar Repair Sec + 3x Inf Wksp Coy under EME Bn).",
+    "Notes (a) (b) (c) of the chart are kept on the Armr Regt, Br Elm and Postal Unit nodes."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-div-hq",
+   "name": "HQ Inf Div",
+   "arm": "inf",
+   "type": "hq",
+   "subtype": "inf-div",
+   "echelon": "21",
+   "page": "602",
+   "children": [
+    {
+     "role": "HQ Coy",
+     "unit": "inf-div-hq-coy",
+     "count": 1
+    }
+   ],
+   "appointments": [
+    {
+     "appt": "Comd",
+     "count": 1
+    },
+    {
+     "appt": "SM",
+     "count": 1,
+     "under": "Comd"
+    },
+    {
+     "appt": "ADC",
+     "count": 1,
+     "under": "Comd"
+    },
+    {
+     "appt": "Col Staff",
+     "count": 1,
+     "under": "Comd"
+    },
+    {
+     "appt": "GSO-1",
+     "count": 1,
+     "branch": "GS Branch",
+     "under": "Col Staff"
+    },
+    {
+     "appt": "GSO-2 (Int)",
+     "count": 1,
+     "branch": "GS Branch",
+     "under": "GSO-1"
+    },
+    {
+     "appt": "GSO-3 (Int & Psy Ops)",
+     "count": 1,
+     "branch": "GS Branch",
+     "under": "GSO-2 (Int)"
+    },
+    {
+     "appt": "GSO-2 (Ops)",
+     "count": 1,
+     "branch": "GS Branch",
+     "under": "GSO-1"
+    },
+    {
+     "appt": "GSO-2 (Trg)",
+     "count": 1,
+     "branch": "GS Branch",
+     "under": "GSO-1"
+    },
+    {
+     "appt": "AA&QMG",
+     "count": 1,
+     "branch": "AQ Branch",
+     "under": "Col Staff"
+    },
+    {
+     "appt": "DAAG",
+     "count": 1,
+     "branch": "AQ Branch",
+     "under": "AA&QMG"
+    },
+    {
+     "appt": "DQ-1 (Adm)",
+     "count": 1,
+     "branch": "AQ Branch",
+     "under": "AA&QMG"
+    },
+    {
+     "appt": "DQ-2 (Qtg)",
+     "count": 1,
+     "branch": "AQ Branch",
+     "under": "AA&QMG"
+    }
+   ],
+   "notes": [
+    "No strengths or ranks printed; appointments as drawn (HQ Coy hangs under AA&QMG on the chart)."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-div-hq-coy",
+   "name": "HQ Coy (HQ Inf Div)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "602",
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1
+    },
+    {
+     "role": "DG Pl",
+     "count": 1,
+     "children": [
+      {
+       "role": "Sec",
+       "count": 3,
+       "weapons": [
+        {
+         "name": "LMG",
+         "count": 2,
+         "weapon": "mg-1a3",
+         "weaponMatch": "alias"
+        }
+       ],
+       "uncertain": true,
+       "note": "'(2xLMG)' is printed under the first of the three Secs only; taken as per Sec (as '3x Sec (10) 2x LMG' elsewhere), but it may be the first Sec alone."
+      }
+     ]
+    },
+    {
+     "role": "MT Pl",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "log-hq-div-log-inf-div",
+   "name": "HQ Div Log Inf Div",
+   "arm": "log",
+   "type": "hq",
+   "subtype": "div-log",
+   "echelon": "18",
+   "page": "603",
+   "children": [
+    {
+     "role": "S&T Bn",
+     "count": 1,
+     "seeUnit": "log-st-bn-inf-div",
+     "children": [
+      {
+       "role": "Bn HQ",
+       "count": 1
+      },
+      {
+       "role": "S&T Coy",
+       "count": 3
+      },
+      {
+       "role": "TkTptr Sec",
+       "count": 1,
+       "unit": "log-tk-tptr-sec"
+      }
+     ]
+    },
+    {
+     "role": "Med Bn",
+     "count": 1,
+     "seeUnit": "log-med-bn-div",
+     "note": "Div chart p 601 shows the Med Bn as Bn HQ, 3x Fd Amb, MDU instead.",
+     "children": [
+      {
+       "role": "Bn HQ",
+       "count": 1
+      },
+      {
+       "role": "ADS",
+       "count": 5,
+       "unit": "log-ads"
+      },
+      {
+       "role": "FTC",
+       "count": 2,
+       "unit": "log-ftc"
+      }
+     ]
+    },
+    {
+     "role": "EME Bn",
+     "count": 1,
+     "seeUnit": "log-eme-bn-inf-div-old",
+     "note": "log.json has two EME Bn orgs (Inf Div EME Bn p 1036 with 4x Inf Wksp Coy; EME Bn Inf Div (Org) p 1040); this chart prints 3x Inf Wksp Coy.",
+     "children": [
+      {
+       "role": "Bn HQ",
+       "count": 1
+      },
+      {
+       "role": "Radar Repair Sec",
+       "count": 1
+      },
+      {
+       "role": "Inf Wksp Coy",
+       "count": 3
+      }
+     ]
+    },
+    {
+     "role": "Ord Unit",
+     "count": 1,
+     "seeUnit": "log-ord-unit-div",
+     "children": [
+      {
+       "role": "Ord Coy",
+       "count": 3,
+       "note": "printed '3x Ord Coys'"
+      }
+     ]
+    }
+   ],
+   "notes": [
+    "Echelon 18 is a judgement (HQ Div Log is a bde-level aux HQ); not printed."
+   ],
+   "side": "own",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "inf-bde-iibg",
+   "name": "IIBG",
+   "arm": "inf",
+   "type": "bde",
+   "subtype": "indep-inf-bde-gp",
+   "echelon": "18",
+   "page": "604",
+   "children": [
+    {
+     "role": "Bde HQ",
+     "unit": "inf-bde-hq",
+     "count": 1
+    },
+    {
+     "role": "Inf Bn",
+     "unit": "inf-bn-std",
+     "count": 3
+    },
+    {
+     "role": "Fd Regt",
+     "count": 1,
+     "unit": "arty-regt-fd"
+    },
+    {
+     "role": "Fd Coy Engrs",
+     "count": 1,
+     "seeUnit": "engr-fd-coy"
+    },
+    {
+     "role": "Sig Coy",
+     "count": 1,
+     "unit": "sig-inf-bde-sig-coy"
+    },
+    {
+     "role": "Indep S&T Coy",
+     "count": 1
+    },
+    {
+     "role": "Fd Amb",
+     "count": 1
+    },
+    {
+     "role": "Inf Wksp Coy",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Inf Bn type not stated on the chart; linked to Std Inf Bn as the default."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-bde",
+   "name": "Inf Bde (integral to a div)",
+   "arm": "inf",
+   "type": "bde",
+   "subtype": "inf",
+   "echelon": "18",
+   "page": "604",
+   "children": [
+    {
+     "role": "Bde HQ",
+     "unit": "inf-bde-hq",
+     "count": 1
+    },
+    {
+     "role": "Inf Bn",
+     "unit": "inf-bn-std",
+     "count": 3
+    },
+    {
+     "role": "Sig Coy",
+     "count": 1,
+     "unit": "sig-inf-bde-sig-coy"
+    }
+   ],
+   "notes": [
+    "Note p 604: Inf bde integral to a div has only 3 x inf bn and a sig coy."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-bde-mech-indep",
+   "name": "Indep Mech Inf Bde Gp",
+   "arm": "inf",
+   "type": "bde",
+   "subtype": "indep-mech-inf-bde-gp",
+   "echelon": "18",
+   "page": "604",
+   "children": [
+    {
+     "role": "Bde HQ",
+     "count": 1,
+     "note": "Org on lines of an Indep Armd Bde Gp",
+     "seeUnit": "armr-hq-iabg"
+    },
+    {
+     "role": "MIB",
+     "unit": "inf-bn-mib",
+     "count": 2
+    },
+    {
+     "role": "Armd Regt",
+     "count": 1,
+     "unit": "armr-regt"
+    },
+    {
+     "role": "Med Regt (SP)",
+     "count": 1,
+     "unit": "arty-regt-med-sp"
+    },
+    {
+     "role": "GM Regt",
+     "count": 1
+    },
+    {
+     "role": "Indep Fd Coy Engrs",
+     "count": 1,
+     "unit": "engr-ifce"
+    },
+    {
+     "role": "Indep Mech Bde Sig Coy",
+     "count": 1
+    },
+    {
+     "role": "Lt S&T Bn",
+     "count": 1,
+     "seeUnit": "log-lt-st-bn-iabg"
+    },
+    {
+     "role": "Indep Fd Amb",
+     "count": 1
+    },
+    {
+     "role": "Ord Coy",
+     "count": 1
+    },
+    {
+     "role": "Indep Mech Bde Wksp Coy",
+     "count": 1,
+     "note": "printed 'Indep Mech Bde Wkps Coy'"
+    },
+    {
+     "role": "MP Unit",
+     "count": 1,
+     "children": [
+      {
+       "role": "Sec",
+       "count": 3,
+       "note": "printed '3xSec'"
+      }
+     ]
+    }
+   ],
+   "notes": [
+    "The Bde HQ is org on lines of an Indep Armd Bde Gp.",
+    "The org of Bde units is std."
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-bde-hq",
+   "name": "HQ Inf Bde",
+   "arm": "inf",
+   "type": "hq",
+   "subtype": "inf-bde",
+   "echelon": "18",
+   "page": "605",
+   "strength": {
+    "offr": 5,
+    "jco": 2,
+    "sldr": 63,
+    "sw": 2,
+    "total": 72
+   },
+   "warIncrement": {
+    "offr": 1,
+    "sldr": 2,
+    "total": 3,
+    "note": "SC (S&T) is a War Increment appointment",
+    "vehicles": [
+     {
+      "name": "Jeep 3/4 ton",
+      "count": 1,
+      "note": "printed in the War Increment column beside Trk 1/4 ton"
+     }
+    ]
+   },
+   "appointments": [
+    {
+     "appt": "Comd",
+     "count": 1
+    },
+    {
+     "appt": "BM",
+     "count": 1,
+     "under": "Comd"
+    },
+    {
+     "appt": "GSO-3 (Int & Psy Ops)",
+     "count": 1,
+     "under": "BM"
+    },
+    {
+     "appt": "JCO Pl Comd (GD Pl)",
+     "count": 1,
+     "under": "BM"
+    },
+    {
+     "appt": "DAA&QMG",
+     "count": 1,
+     "under": "Comd"
+    },
+    {
+     "appt": "SC (A/Q)",
+     "count": 1,
+     "under": "DAA&QMG"
+    },
+    {
+     "appt": "SC (S&T)",
+     "count": 1,
+     "under": "DAA&QMG",
+     "warIncrement": true,
+     "note": "printed 'SC (S&T)*', *War Increment"
+    }
+   ],
+   "children": [
+    {
+     "role": "GD Pl",
+     "count": 1,
+     "note": "JCO Pl Comd; under the BM",
+     "children": [
+      {
+       "role": "GD Sec",
+       "count": 1
+      },
+      {
+       "role": "Adm Sec",
+       "count": 1
+      },
+      {
+       "role": "Int Sec",
+       "count": 1
+      },
+      {
+       "role": "MT Sec",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol",
+     "count": 5,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MP5A2",
+     "count": 16,
+     "weapon": "smg-mp-5-a2-mp-5-a-3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "SMG Chinese",
+     "count": 11,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Rifle G-3",
+     "count": 34,
+     "weapon": "rifle-g-3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LMG",
+     "count": 2,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG",
+     "count": 2,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Gren Arges",
+     "count": 55
+    },
+    {
+     "name": "Gren WP",
+     "count": 45
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Staff Car",
+     "count": 1
+    },
+    {
+     "name": "Trk 1/4 ton",
+     "count": 3
+    },
+    {
+     "name": "Trk 3/4 ton",
+     "count": 2
+    },
+    {
+     "name": "Trk 2.5 ton 3 ton",
+     "count": 2
+    },
+    {
+     "name": "Total Vehs",
+     "count": 8
+    },
+    {
+     "name": "Tlr 1/4 ton",
+     "count": 3
+    },
+    {
+     "name": "Tlr 1.5 ton GS",
+     "count": 1
+    },
+    {
+     "name": "Tlr Water 400/250 Gals",
+     "count": 1
+    },
+    {
+     "name": "Tlr 3/4 ton",
+     "count": 2
+    },
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "Total Tlrs",
+     "count": 9,
+     "note": "as printed, the MCs are counted in Total Tlrs"
+    }
+   ],
+   "notes": [
+    "Appointments: Comd; BM with GSO-3 (Int & Psy Ops) and GD Pl; DAA&QMG with SC (A/Q) and SC (S&T)* (*War Increment)."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-bn-std",
+   "name": "Std Inf Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "std",
+   "echelon": "16",
+   "page": "606-611",
+   "strength": {
+    "offr": 26,
+    "jco": 24,
+    "sldr": 727,
+    "sw": 20,
+    "att": 12,
+    "total": 809
+   },
+   "chartStrength": 774,
+   "strengthNote": "Summary table (p 608-609) Total Bn 809. Chart title 'ORG - STD INF BN (774)' (= 50 + 4x130 + 142 + 62). Note p 609: Total 842 all ranks (incl Fd Increment 33); incl Religious Teacher 843. The table's sub-unit rows do not add up to its Total Bn row (rows give total 784, JCOs 23, Sldrs 705, SWs 19, Att 11); the Cdo Pl (20) of the chart has no row in the table.",
+   "fdIncrement": {
+    "sldr": 28,
+    "att": 5,
+    "total": 33
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "unit": "inf-bn-std-hq",
+     "count": 1
+    },
+    {
+     "role": "Rifle Coy",
+     "unit": "inf-coy-std-rifle",
+     "count": 4
+    },
+    {
+     "role": "Cbt Sp Coy",
+     "unit": "inf-coy-std-cbt-sp",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "unit": "inf-pl-std-adm",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "BS Wpn Sys",
+     "count": 4,
+     "note": "@ 8xBS auth in offn fmns",
+     "weapon": "bs",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "106 mm RR",
+     "count": 8,
+     "weapon": "106mm-rr",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "RPG 7",
+     "count": 12,
+     "weapon": "rpg-7",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "GL HMG",
+     "count": 4,
+     "heldBy": "Rifle Coy Wpn Sec (GLHMG Det, 1 per coy)",
+     "weapon": "glhmg",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "81 mm Mor",
+     "count": 6,
+     "heldBy": "Mor Pl (2x Sec, 3x 81mm Mor each)",
+     "weapon": "81mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "60 mm Mor",
+     "count": 16,
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "7.62 MGIA3 (LMG)",
+     "count": 60,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "7.62 MGIA3 (MG)",
+     "count": 14,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias",
+     "note": "p 650 @: Incl 2xaddl MGIA3 with 2 mounts auth in Adm Pl"
+    },
+    {
+     "name": "Anza/Stinger Launcher",
+     "count": 4,
+     "note": "*(offn fmn only)",
+     "weapon": "stinger",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "12.7 mm AAMG",
+     "count": 2
+    },
+    {
+     "name": "Pistol/MP5",
+     "count": 59,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607",
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Rifle 7.62mm G/G3A3",
+     "count": 392,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607",
+     "weapon": "rifle-g-3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "SMG/MP5",
+     "count": 260,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607",
+     "weapon": "smg-mp-5-a2-mp-5-a-3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Sniper rifle with telescope and accessories (Hy Cal)",
+     "count": 4,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607"
+    },
+    {
+     "name": ".50 Spotting Rifle",
+     "count": 8,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607"
+    },
+    {
+     "name": "Gren Arges",
+     "count": 789,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607; printed 'Gren Arges*' (no key to * on the page)"
+    },
+    {
+     "name": "Gren No 80 WP",
+     "count": 72,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607; remark '2 per rifle see' (sec)"
+    },
+    {
+     "name": "75 mm Super Energa Gren HEAT",
+     "count": 288,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607; remark '8 per rifle sec'",
+     "weapon": "energa-gren",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "Pencil Shooting/ Piston Flare Sig",
+     "count": 19,
+     "note": "No of Wpns column of the first line ammo table (p 650-651); not in the summary p 607"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "WS AN/PRC-77",
+     "count": 46
+    },
+    {
+     "name": "Walkie Talkie",
+     "count": 57
+    },
+    {
+     "name": "Tel Sets",
+     "count": 44
+    },
+    {
+     "name": "Wire WD-1/TT",
+     "qty": "90 Kms"
+    },
+    {
+     "name": "Flame Throwers",
+     "count": 4
+    },
+    {
+     "name": "Mine Detectors",
+     "count": 4
+    },
+    {
+     "name": "Anti Mine Shoes",
+     "count": 25
+    },
+    {
+     "name": "Pl EW System (PEWS)",
+     "count": 12
+    },
+    {
+     "name": "GSRs",
+     "count": 2
+    },
+    {
+     "name": "LRF/AR 3",
+     "count": 10
+    },
+    {
+     "name": "Calculators",
+     "count": 4
+    },
+    {
+     "name": "NVBs",
+     "count": 42
+    },
+    {
+     "name": "NVGs",
+     "count": 70
+    },
+    {
+     "name": "NVDs/NODs",
+     "count": 97
+    },
+    {
+     "name": "NBC Eqpt",
+     "qty": "One per indl"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 43
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 13
+    },
+    {
+     "name": "1 1/2 Ton",
+     "count": 8
+    },
+    {
+     "name": "Total",
+     "count": 64
+    },
+    {
+     "name": "Tlrs",
+     "count": 35
+    },
+    {
+     "name": "MC",
+     "count": 2,
+     "note": "besides the vehs above"
+    },
+    {
+     "name": "Bicycle",
+     "count": 3,
+     "note": "besides the vehs above"
+    },
+    {
+     "name": "1 1/2 ton Mob Fd Kitchen (MFK)",
+     "count": 5,
+     "note": "besides the vehs above"
+    }
+   ],
+   "tptEchelons": {
+    "page": "610-611",
+    "title": "Suggested Distr of Bn Tpt into Echs",
+    "F": {
+     "MC": 2,
+     "1/4 Ton": 38,
+     "3/4 Ton": 7,
+     "2 1/2 Ton": 0,
+     "Tlr": 21,
+     "items": "Bn HQ: CO, 2IC, DR (2 MC); Cbt Sp Coy: Coy Comd, Sig Pl (Sig offr and line laying party), ATGM Pl (9x 1/4 ton), Mor Pl (Pl Comd and Mor dets), Pnr Pl; Rifle Coys: Coy Comd, RRs (12x 1/4 ton), GLHMG, Res Ammo and Reorg stores, 60 mm Mor Ammo",
+     "remark": "Cbt Sp Coy Comd may Comd F Ech",
+     "rows": [
+      {
+       "sub": "Bn HQ",
+       "item": "CO",
+       "1/4 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Bn HQ",
+       "item": "2IC",
+       "1/4 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Bn HQ",
+       "item": "DR",
+       "MC": 2
+      },
+      {
+       "sub": "Cbt Sp Coy",
+       "item": "Coy Comd",
+       "1/4 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Cbt Sp Coy",
+       "item": "Sig Pl",
+       "1/4 Ton": 1,
+       "Tlr": 1,
+       "remark": "Sig offr and line laying party"
+      },
+      {
+       "sub": "Cbt Sp Coy",
+       "item": "ATGM Pl",
+       "1/4 Ton": 9,
+       "Tlr": 1
+      },
+      {
+       "sub": "Cbt Sp Coy",
+       "item": "Mor Pl",
+       "1/4 Ton": 1,
+       "3/4 Ton": 2,
+       "Tlr": 3,
+       "remark": "Pl Comd and Mor dets"
+      },
+      {
+       "sub": "Cbt Sp Coy",
+       "item": "Pnr Pl",
+       "3/4 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Rifle Coys",
+       "item": "Coy Comd",
+       "1/4 Ton": 4,
+       "Tlr": 4
+      },
+      {
+       "sub": "Rifle Coys",
+       "item": "RRs",
+       "1/4 Ton": 12
+      },
+      {
+       "sub": "Rifle Coys",
+       "item": "GLHMG",
+       "1/4 Ton": 4,
+       "Tlr": 4
+      },
+      {
+       "sub": "Rifle Coys",
+       "item": "Res Ammo and Reorg stores",
+       "3/4 Ton": 4,
+       "Tlr": 4
+      },
+      {
+       "sub": "Rifle Coys",
+       "item": "60 mm Mor Ammo",
+       "1/4 Ton": 4
+      }
+     ]
+    },
+    "A": {
+     "MC": 0,
+     "1/4 Ton": 4,
+     "3/4 Ton": 5,
+     "2 1/2 Ton": 1,
+     "Tlr": 5,
+     "items": "Bn HQ: Adjt (A office), Radar, RAP (Amb); Cbt Spt Coy: Sig Stores, Mor Res Ammo, Pnr pl Stores; Adm Pl: MTO and URO, Bn's res ammo",
+     "rows": [
+      {
+       "sub": "Bn HQ",
+       "item": "Adjt",
+       "3/4 Ton": 1,
+       "Tlr": 1,
+       "remark": "A office"
+      },
+      {
+       "sub": "Bn HQ",
+       "item": "Radar",
+       "1/4 Ton": 2
+      },
+      {
+       "sub": "Bn HQ",
+       "item": "RAP",
+       "1/4 Ton": 1,
+       "remark": "Amb"
+      },
+      {
+       "sub": "Cbt Spt Coy",
+       "item": "Sig Stores",
+       "3/4 Ton": 2
+      },
+      {
+       "sub": "Cbt Spt Coy",
+       "item": "Mor Res Ammo",
+       "3/4 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Cbt Spt Coy",
+       "item": "Pnr pl Stores",
+       "3/4 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Adm Pl",
+       "item": "MTO and URO",
+       "1/4 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Adm Pl",
+       "item": "Bn's res ammo",
+       "2 1/2 Ton": 1,
+       "Tlr": 1
+      }
+     ]
+    },
+    "B": {
+     "MC": 0,
+     "1/4 Ton": 1,
+     "3/4 Ton": 1,
+     "2 1/2 Ton": 7,
+     "Tlr": 9,
+     "items": "Bn HQ Offr's Mess (water tlr); Cbt Sp Coy, Rifle Coys (4) and Adm Pl cooking and beddings; QM; QM Stores (water tlr)",
+     "rows": [
+      {
+       "sub": "Bn HQ",
+       "item": "Offr's Mess",
+       "2 1/2 Ton": 1,
+       "Tlr": 1,
+       "remark": "Water tlr"
+      },
+      {
+       "sub": "Cbt Sp Coy",
+       "item": "Cooking and beddings",
+       "2 1/2 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Rifle Coys",
+       "item": "Cooking and beddings",
+       "2 1/2 Ton": 4,
+       "Tlr": 4
+      },
+      {
+       "sub": "Adm Pl",
+       "item": "QM",
+       "1/4 Ton": 1,
+       "Tlr": 1
+      },
+      {
+       "sub": "Adm Pl",
+       "item": "QM Stores",
+       "3/4 Ton": 1,
+       "Tlr": 1,
+       "remark": "Water tlr"
+      },
+      {
+       "sub": "Adm Pl",
+       "item": "Cooking and beddings",
+       "2 1/2 Ton": 1,
+       "Tlr": 1
+      }
+     ]
+    },
+    "grandTotal": {
+     "MC": 2,
+     "1/4 Ton": 43,
+     "3/4 Ton": 13,
+     "2 1/2 Ton": 8,
+     "Tlr": 35
+    },
+    "note": "'-' printed for zero cells (omitted in rows). Every ech's rows add up to its printed Total. Columns MC, 1/4 Ton, 3/4 Ton, 2 1/2 Ton, Tlr (the summary p 608 heads the third column 1 1/2 Ton)."
+   },
+   "radioSets": {
+    "page": "646",
+    "title": "Suggested Layout Radio Comm - Inf Bn",
+    "nets": [
+     {
+      "net": "Bn net (Adjt control)",
+      "sets": [
+       {
+        "station": "Adjt",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "Mor Pl",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "ATGM Pl",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "Cbt Sp Coy",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "Adm Sec (QM)",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "4x Rifle Coys",
+        "set": "PRC-77",
+        "count": 4,
+        "note": "one set drawn, labelled 4xRifle Coys"
+       },
+       {
+        "station": "Rover (CO)",
+        "set": "PRC-77",
+        "count": 1,
+        "note": "printed 'Rover (Co)'"
+       }
+      ]
+     },
+     {
+      "net": "Mor Pl net",
+      "sets": [
+       {
+        "station": "Res",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "MPO",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "MOP",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "OP",
+        "set": "PRC-77",
+        "count": 2
+       }
+      ]
+     },
+     {
+      "net": "ATGM Pl net",
+      "sets": [
+       {
+        "station": "ATGM Det",
+        "set": "PRC-77",
+        "count": 4
+       }
+      ]
+     },
+     {
+      "net": "Cbt Sp Coy",
+      "sets": [
+       {
+        "station": "unlabelled set joined to the Cbt Sp Coy station",
+        "set": "PRC-77",
+        "count": 1
+       }
+      ]
+     },
+     {
+      "net": "Rifle Coy net (drawn once; read as one per coy)",
+      "perCoy": true,
+      "coys": 4,
+      "sets": [
+       {
+        "station": "Rifle Coy Comd",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "Res",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "PL",
+        "set": "PRC-77",
+        "count": 3
+       }
+      ]
+     },
+     {
+      "net": "Pool Res",
+      "sets": [
+       {
+        "station": "unlabelled",
+        "set": "PRC-77",
+        "count": 3
+       },
+       {
+        "station": "Pnr Pl",
+        "set": "PRC-77",
+        "count": 1
+       },
+       {
+        "station": "F/A Echs",
+        "set": "PRC-77",
+        "count": 1
+       }
+      ]
+     },
+     {
+      "net": "Bde (vehicle station)",
+      "sets": [
+       {
+        "station": "Bde",
+        "set": "VRC-79",
+        "count": 1
+       },
+       {
+        "station": "Bde",
+        "set": "PK 786",
+        "count": 1
+       }
+      ]
+     }
+    ],
+    "totals": {
+     "PRC-77": 45,
+     "VRC-79": 1,
+     "PK 786": 1
+    },
+    "note": "Counted from the diagram: 27 PRC-77 drawn; with 4 sets for the 4xRifle Coys station and the Rifle Coy net read as one per coy, 45. The summary p 607 gives WS AN/PRC-77 46. The diagram is cut at its right edge on the Pool Res row, so one more set may be off the page."
+   },
+   "ammoScale": {
+    "page": "650-651",
+    "title": "Inf Bn Wpns and their First Line Ammo Scale",
+    "columns": "wpns = No of Wpns; pouchScale / pouchAmount = First Line Ammo, Pouch (On Wpn), rds per wpn and for the bn; resScale / resAmount = First Line Ammo, Res; total = Total Bn (Pouch + Res). Omitted = printed -.",
+    "rows": [
+     {
+      "ser": 1,
+      "name": "Pistol/MP5",
+      "wpns": 59,
+      "pouchScale": 12,
+      "pouchAmount": 708,
+      "total": 708,
+      "weapon": "walther-9-mm",
+      "weaponMatch": "alias"
+     },
+     {
+      "ser": 2,
+      "name": "Rifle 7.62mm G/G3A3",
+      "wpns": 392,
+      "pouchScale": 60,
+      "pouchAmount": 23520,
+      "resScale": 60,
+      "resAmount": 23520,
+      "total": 47040,
+      "weapon": "rifle-g-3",
+      "weaponMatch": "alias"
+     },
+     {
+      "ser": 3,
+      "name": "Sniper rifle with telescope and accessories (Hy Cal)",
+      "wpns": 4,
+      "pouchScale": 60,
+      "pouchAmount": 240,
+      "resScale": 30,
+      "resAmount": 120,
+      "total": 360
+     },
+     {
+      "ser": 4,
+      "name": "SMG/MP5",
+      "wpns": 260,
+      "pouchScale": 72,
+      "pouchAmount": 18720,
+      "resScale": 36,
+      "resAmount": 9360,
+      "total": 28080,
+      "weapon": "smg-mp-5-a2-mp-5-a-3",
+      "weaponMatch": "alias"
+     },
+     {
+      "ser": 5,
+      "name": "7.62mm MGIA3 (MG Role)",
+      "wpns": 14,
+      "pouchScale": 4000,
+      "pouchAmount": 56000,
+      "resScale": 2500,
+      "resAmount": 35000,
+      "total": 91000,
+      "weapon": "mg-1a3",
+      "weaponMatch": "alias",
+      "note": "@ Incl 2xaddl MGIA3 with 2 mounts auth in Adm Pl."
+     },
+     {
+      "ser": 6,
+      "name": "7.62mm MGIA3 (LMG Role)",
+      "wpns": 60,
+      "pouchScale": 500,
+      "pouchAmount": 30000,
+      "resScale": 500,
+      "resAmount": 30000,
+      "total": 60000,
+      "weapon": "mg-1a3",
+      "weaponMatch": "alias",
+      "note": "Remark printed on this row: 'Manpower for same will be found from within the existing auth.' (it may continue the @ remark of ser 5)."
+     },
+     {
+      "ser": 7,
+      "name": "Rocket Launcher RPG-7",
+      "wpns": 12,
+      "pouchScale": 6,
+      "pouchAmount": 72,
+      "resScale": 3,
+      "resAmount": 36,
+      "total": 108,
+      "weapon": "rpg-7",
+      "weaponMatch": "contains"
+     },
+     {
+      "ser": 8,
+      "name": "106 mm RR",
+      "wpns": 8,
+      "pouchScale": 10,
+      "pouchAmount": 80,
+      "resScale": 8,
+      "resAmount": 64,
+      "total": 144,
+      "weapon": "106mm-rr",
+      "weaponMatch": "alias"
+     },
+     {
+      "ser": 9,
+      "name": "GLHMG 40 mm",
+      "wpns": 4,
+      "weapon": "glhmg",
+      "weaponMatch": "contains",
+      "note": "Scale of GLHMG will be specified separately. Printed '40 mm' here; Chars of Inf Wpns p 649 gives the GLHMG as 35 mm."
+     },
+     {
+      "ser": 10,
+      "name": "Bakhtar Shikan Wpn System",
+      "wpns": 4,
+      "pouchScale": 8,
+      "pouchAmount": 32,
+      "total": 32,
+      "weapon": "bs",
+      "weaponMatch": "alias"
+     },
+     {
+      "ser": 11,
+      "name": ".50 Spotting Rifle",
+      "wpns": 8,
+      "pouchScale": 40,
+      "pouchAmount": 320,
+      "resScale": 35,
+      "resAmount": 280,
+      "total": 600
+     },
+     {
+      "ser": 12,
+      "name": "Gren Arges",
+      "wpns": 789,
+      "pouchAmount": 789,
+      "total": 789,
+      "note": "printed 'Gren Arges*'; no key to * on the page"
+     },
+     {
+      "ser": 13,
+      "name": "Gren No 80 WP",
+      "wpns": 72,
+      "pouchAmount": 72,
+      "total": 72,
+      "note": "remark '2 per rifle see' (sec: 72 = 2 x 36 rifle secs)"
+     },
+     {
+      "ser": 14,
+      "name": "60 mm Mor",
+      "wpns": 16,
+      "pouchScale": 30,
+      "pouchAmount": 480,
+      "resScale": 30,
+      "resAmount": 480,
+      "total": 960,
+      "weapon": "60-mm-mor",
+      "weaponMatch": "alias",
+      "note": "scales printed '30(m)'; no key to (m) on the page"
+     },
+     {
+      "ser": 15,
+      "name": "75 mm Super Energa Gren HEAT",
+      "wpns": 288,
+      "pouchAmount": 288,
+      "total": 288,
+      "weapon": "energa-gren",
+      "weaponMatch": "contains",
+      "note": "remark '8 per rifle sec'"
+     },
+     {
+      "ser": 16,
+      "name": "81 mm Mor",
+      "wpns": 6,
+      "pouchScale": 60,
+      "pouchAmount": 360,
+      "resScale": 60,
+      "resAmount": 360,
+      "total": 720,
+      "weapon": "81mm-mor",
+      "weaponMatch": "alias",
+      "note": "scales printed '60(n)'; no key to (n) on the page"
+     },
+     {
+      "ser": 17,
+      "name": "Pencil Shooting/ Piston Flare Sig",
+      "wpns": 19,
+      "pouchScale": 17,
+      "pouchAmount": 323,
+      "resScale": 4,
+      "resAmount": 76,
+      "total": 399,
+      "note": "scales printed '17(o)' and '4 (o)'; no key to (o) on the page"
+     },
+     {
+      "ser": 18,
+      "name": "Anza/Stinger Launcher",
+      "wpns": 4,
+      "pouchScale": 10,
+      "pouchAmount": 40,
+      "total": 40,
+      "weapon": "stinger",
+      "weaponMatch": "alias",
+      "note": "(Offn fmns only)"
+     },
+     {
+      "ser": 19,
+      "name": "12.7 mm AA MG With Mount",
+      "wpns": 2,
+      "pouchScale": 700,
+      "pouchAmount": 1400,
+      "resScale": 700,
+      "resAmount": 1400,
+      "total": 2800
+     }
+    ],
+    "note": "Wpn numbers are those of the Std Inf Bn (RPG-7 12, 106 mm RR 8, GLHMG 4, BS 4, 60 mm Mor 16, 81 mm Mor 6, MGIA3 14 + 60 as in the summary p 607). Every Amount = No of Wpns x Scale."
+   },
+   "notes": [
+    "Vehicle columns in the summary table are 1/4 Ton, 3/4 Ton and 1 1/2 Ton (p 608).",
+    "Radio layout (p 646) in radioSets; first line ammo scale (p 650-651) in ammoScale."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-bn-std-hq",
+   "name": "Bn HQ (Std Inf Bn)",
+   "arm": "inf",
+   "type": "hq",
+   "subtype": "std-bn",
+   "echelon": "16",
+   "page": "606, 608-609",
+   "strength": {
+    "offr": 4,
+    "jco": 1,
+    "sldr": 41,
+    "sw": 3,
+    "att": 1,
+    "total": 50
+   },
+   "chartStrength": 50,
+   "strengthNote": "Chart Bn HQ (50). SWs: Masalchi 1, Waiters 2; Att: Nursing Hav (AMC) 1. The chart prints only Int & Surv Sec (6) and 2x B fd Surv Radar beside the Bn HQ (50); the rest is not broken down, so the boxes do not add up to 50.",
+   "fdIncrement": {
+    "sldr": 11,
+    "att": 1,
+    "total": 12,
+    "note": "Sldrs: Protection Sec 10 and Barber 1; Att: MO (AMC)"
+   },
+   "children": [
+    {
+     "role": "Int & Surv Sec",
+     "count": 1,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6
+    }
+   ],
+   "equipment": [
+    {
+     "name": "B fd Surv Radar",
+     "count": 2
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 50,
+     "note": "printed 50; the row total (7) and column total (43) imply 5",
+     "uncertain": true
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 1,
+     "note": "footnote c on this figure: Incl 1 Amb and 2 Jeep Radar"
+    },
+    {
+     "name": "1 1/2 Ton",
+     "count": 1
+    },
+    {
+     "name": "Total",
+     "count": 7
+    },
+    {
+     "name": "Tlrs",
+     "count": 4,
+     "note": "Incl 1 Water tlr"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-coy-std-rifle",
+   "name": "Rifle Coy (Std Inf Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "std-rifle",
+   "echelon": "15",
+   "page": "606, 608",
+   "strength": {
+    "offr": 4,
+    "jco": 4,
+    "sldr": 133,
+    "total": 141
+   },
+   "chartStrength": 130,
+   "strengthNote": "Summary table 141 (= 16 + 3x36 + 17); chart 'Rifle Coy (130)' (= 17 + 3x35 + 8).",
+   "fdIncrement": {
+    "sldr": 1,
+    "att": 1,
+    "total": 2,
+    "note": "Barber; Nursing Nk (AMC)"
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "jco": 1,
+      "sldr": 14,
+      "total": 16
+     },
+     "chartStrength": 17,
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 1
+      },
+      {
+       "name": "3/4 Ton",
+       "count": 1
+      },
+      {
+       "name": "1 1/2 Ton",
+       "count": 1
+      },
+      {
+       "name": "Total",
+       "count": 3
+      },
+      {
+       "name": "Tlrs",
+       "count": 2
+      }
+     ],
+     "note": "table 16 (p 608); chart Coy HQ (17): the figures differ"
+    },
+    {
+     "role": "Rifle Pl",
+     "unit": "inf-pl-std-rifle",
+     "count": 3
+    },
+    {
+     "role": "Wpn Sec",
+     "unit": "inf-sec-std-wpn",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 6
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 1
+    },
+    {
+     "name": "1 1/2 Ton",
+     "count": 1
+    },
+    {
+     "name": "Total",
+     "count": 8
+    },
+    {
+     "name": "Tlrs",
+     "count": 4
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-pl-std-rifle",
+   "name": "Rifle Pl (Std Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "std-rifle",
+   "echelon": "14",
+   "page": "606, 608",
+   "strength": {
+    "offr": 1,
+    "jco": 1,
+    "sldr": 34,
+    "total": 36
+   },
+   "chartStrength": 35,
+   "strengthNote": "Summary table 36; chart '3x Rifle Pl (35)' (= 5 + 3x10).",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 5
+     },
+     "chartStrength": 5,
+     "weapons": [
+      {
+       "name": "RL",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Sec",
+     "unit": "inf-sec-std-rifle",
+     "count": 3
+    }
+   ],
+   "weapons": [
+    {
+     "name": "RL",
+     "count": 1,
+     "heldBy": "Pl HQ"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-sec-std-rifle",
+   "name": "Rifle Sec (Std Inf Bn)",
+   "arm": "inf",
+   "type": "sec",
+   "subtype": "std-rifle",
+   "echelon": "13",
+   "page": "606",
+   "strength": {
+    "total": 10
+   },
+   "chartStrength": 10,
+   "weapons": [
+    {
+     "name": "LMG",
+     "count": 2,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-sec-std-wpn",
+   "name": "Wpn Sec (Std Inf Bn Rifle Coy)",
+   "arm": "inf",
+   "type": "sec",
+   "subtype": "std-wpn",
+   "echelon": "13",
+   "page": "606, 608",
+   "strength": {
+    "sldr": 17,
+    "total": 17
+   },
+   "chartStrength": 8,
+   "strengthNote": "Summary table 17; chart 'Wpn Sec (8)' (= Mor Det 5 + GLHMG Det 3).",
+   "children": [
+    {
+     "role": "Mor Det",
+     "count": 1,
+     "strength": {
+      "total": 5
+     },
+     "chartStrength": 5,
+     "weapons": [
+      {
+       "name": "60mm Mor",
+       "count": 2,
+       "weapon": "60-mm-mor",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "GLHMG Det",
+     "count": 1,
+     "strength": {
+      "total": 3
+     },
+     "chartStrength": 3,
+     "weapons": [
+      {
+       "name": "GLHMG",
+       "count": 1,
+       "weapon": "glhmg",
+       "weaponMatch": "alias"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "60mm Mor",
+     "count": 2,
+     "heldBy": "Mor Det",
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "GLHMG",
+     "count": 1,
+     "heldBy": "GLHMG Det",
+     "weapon": "glhmg",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 5
+    },
+    {
+     "name": "Total",
+     "count": 5
+    },
+    {
+     "name": "Tlrs",
+     "count": 2
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-coy-std-cbt-sp",
+   "name": "Cbt Sp Coy (Std Inf Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "std-cbt-sp",
+   "echelon": "15",
+   "page": "606, 608-609",
+   "strength": {
+    "offr": 4,
+    "jco": 4,
+    "sldr": 108,
+    "att": 2,
+    "total": 118
+   },
+   "chartStrength": 142,
+   "strengthNote": "Summary table 118 (its rows add to 117); chart 'Cbt Sp Coy (142)' (= 11 + 20 + 36 + 33 + 19 + 23).",
+   "fdIncrement": {
+    "sldr": 2,
+    "total": 2,
+    "note": "Barbers"
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "jco": 1,
+      "sldr": 11,
+      "total": 13
+     },
+     "chartStrength": 11,
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 1
+      },
+      {
+       "name": "1 1/2 Ton",
+       "count": 1
+      },
+      {
+       "name": "Total",
+       "count": 2
+      },
+      {
+       "name": "Tlrs",
+       "count": 2
+      }
+     ],
+     "note": "table 13 (p 608); chart Coy HQ (11): the figures differ"
+    },
+    {
+     "role": "Cdo Pl",
+     "unit": "inf-pl-std-cdo",
+     "count": 1
+    },
+    {
+     "role": "ATGM Pl",
+     "unit": "inf-pl-std-atgm",
+     "count": 1
+    },
+    {
+     "role": "Mor Pl",
+     "unit": "inf-pl-std-mor",
+     "count": 1
+    },
+    {
+     "role": "Sig Pl",
+     "unit": "inf-pl-std-sig",
+     "count": 1
+    },
+    {
+     "role": "Pnr Pl",
+     "unit": "inf-pl-std-pnr",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 12
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 7
+    },
+    {
+     "name": "1 1/2 Ton",
+     "count": 1
+    },
+    {
+     "name": "Total",
+     "count": 20
+    },
+    {
+     "name": "Tlrs",
+     "count": 10
+    }
+   ],
+   "notes": [
+    "Table row printed 'Cbts Sp Coy'."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-pl-std-cdo",
+   "name": "Cdo Pl (Std Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "cdo",
+   "echelon": "14",
+   "page": "606",
+   "strength": {
+    "total": 20
+   },
+   "chartStrength": 20,
+   "notes": [
+    "Composition not given; no row in the summary table."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-pl-std-atgm",
+   "name": "ATGM Pl (Std Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "atgm",
+   "echelon": "14",
+   "page": "606, 608",
+   "strength": {
+    "offr": 1,
+    "sldr": 19,
+    "total": 20
+   },
+   "chartStrength": 36,
+   "strengthNote": "Summary table 20; chart label 'ATGM Pl (36)' but its own boxes (Pl HQ 4 + 2x Sec 8) do not add up to it (= 20); 36 is the figure that makes the Cbt Sp Coy (142) add up.",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 4
+     },
+     "chartStrength": 4
+    },
+    {
+     "role": "Sec",
+     "count": 2,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8,
+     "children": [
+      {
+       "role": "Det",
+       "count": 2,
+       "strength": {
+        "total": 4
+       },
+       "chartStrength": 4,
+       "weapons": [
+        {
+         "name": "Med Range ATGM Launcher",
+         "count": 1,
+         "weapon": "bs",
+         "weaponMatch": "alias",
+         "note": "bn summary p 607: BS Wpn Sys 4"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Med Range ATGM Launcher",
+     "note": "1x per Det, 2 Det per Sec, 2 Sec (chart) = 4, which is the BS Wpn Sys 4 of the bn summary p 607",
+     "count": 4,
+     "weapon": "bs",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 9
+    },
+    {
+     "name": "Total",
+     "count": 9
+    },
+    {
+     "name": "Tlrs",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-pl-std-mor",
+   "name": "Mor Pl (Std Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mor",
+   "echelon": "14",
+   "page": "606, 608",
+   "strength": {
+    "offr": 1,
+    "jco": 1,
+    "sldr": 35,
+    "total": 37
+   },
+   "chartStrength": 33,
+   "strengthNote": "Summary table 37; chart 'Mor Pl (33)' (= 13 + 2x10).",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13
+    },
+    {
+     "role": "Sec",
+     "count": 2,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10,
+     "weapons": [
+      {
+       "name": "81mm Mor",
+       "count": 3,
+       "weapon": "81mm-mor",
+       "weaponMatch": "alias"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "81mm Mor",
+     "count": 6,
+     "heldBy": "2x Sec, 3 each",
+     "weapon": "81mm-mor",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 1
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 3
+    },
+    {
+     "name": "Total",
+     "count": 4
+    },
+    {
+     "name": "Tlrs",
+     "count": 4
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-pl-std-sig",
+   "name": "Sig Pl (Std Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "sig",
+   "echelon": "14",
+   "page": "606, 608",
+   "strength": {
+    "offr": 1,
+    "jco": 1,
+    "sldr": 21,
+    "total": 22
+   },
+   "chartStrength": 19,
+   "strengthNote": "Summary table row 1 + 1 + 21 printed with total 22; chart 'Sig Pl (19)'.",
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 1
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 3
+    },
+    {
+     "name": "Tlrs",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-pl-std-pnr",
+   "name": "Pnr Pl (Std Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "pnr",
+   "echelon": "14",
+   "page": "606, 608",
+   "strength": {
+    "jco": 1,
+    "sldr": 22,
+    "att": 2,
+    "total": 25
+   },
+   "chartStrength": 23,
+   "strengthNote": "Summary table 25 (Att e: Hav Engr (Pl 2IC) & Nk Engrs (sec comd)); chart 'Pnr Pl (23)'.",
+   "equipment": [
+    {
+     "name": "Liquid Expl",
+     "count": 12
+    },
+    {
+     "name": "Mine Detector",
+     "count": 4
+    },
+    {
+     "name": "Flame Thrower",
+     "count": 4
+    },
+    {
+     "name": "Digging Aids"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "3/4 Ton",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 2
+    },
+    {
+     "name": "Tlrs",
+     "count": 2
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-pl-std-adm",
+   "name": "Adm Pl (Std Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "adm",
+   "echelon": "14",
+   "page": "606, 609",
+   "strength": {
+    "offr": 2,
+    "jco": 2,
+    "sldr": 24,
+    "sw": 16,
+    "att": 8,
+    "total": 52
+   },
+   "chartStrength": 62,
+   "strengthNote": "Summary table 52 (SWs f: Sweepers; Att g: Armourers 3, VMs 3, Elecs 2 (EME)); chart 'Adm Pl (62)' (Adm Sec 29 + Tpt Sec 33).",
+   "fdIncrement": {
+    "sldr": 11,
+    "total": 11,
+    "note": "Dhobies 8, Barber 1, Boot Repairer 1, Tailor 1"
+   },
+   "children": [
+    {
+     "role": "Adm Sec",
+     "count": 1,
+     "strength": {
+      "total": 29
+     },
+     "chartStrength": 29,
+     "weapons": [
+      {
+       "name": "MG",
+       "count": 2,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias",
+       "note": "p 650 @: 2x addl MGIA3 with 2 mounts auth in Adm Pl"
+      }
+     ]
+    },
+    {
+     "role": "Tpt Sec",
+     "count": 1,
+     "strength": {
+      "total": 33
+     },
+     "chartStrength": 33
+    }
+   ],
+   "weapons": [
+    {
+     "name": "MG",
+     "count": 2,
+     "heldBy": "Adm Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 2
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 1
+    },
+    {
+     "name": "1 1/2 Ton",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 5
+    },
+    {
+     "name": "Tlrs",
+     "count": 5,
+     "note": "Incl 1 Water tlr"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-bn-mtn",
+   "name": "Mtn Inf Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "mtn",
+   "echelon": "16",
+   "page": "612-614",
+   "strength": {
+    "offr": 16,
+    "jco": 24,
+    "sldr": 717,
+    "sw": 20,
+    "att": 15,
+    "total": 792
+   },
+   "strengthNote": "Total Bn 792 (= 55 + 4x142 + 169). Note: Total 802 (incl War Increment 10), incl Religious Teacher 803.",
+   "warIncrement": {
+    "sldr": 10,
+    "total": 10,
+    "note": "Hav (Protection Sec) 1, Seps (Protection Sec) 9"
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "offr": 4,
+      "jco": 2,
+      "sldr": 38,
+      "sw": 4,
+      "att": 7,
+      "total": 55
+     },
+     "chartStrength": 55,
+     "note": "SWs a: Masalchi/Waiter 1 (printed 4a); Att b: Edn JCO AEC 1, MO 1, Nursing Hav AMC 1, Nursing Nks AMC 4"
+    },
+    {
+     "role": "Rifle Coy",
+     "unit": "inf-coy-mtn-rifle",
+     "count": 4
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "inf-coy-mtn-hq",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 4,
+     "note": "Incl one amb"
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 7
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 13
+    },
+    {
+     "name": "Tlr",
+     "count": 1
+    },
+    {
+     "name": "Bicycle",
+     "count": 2,
+     "note": "besides these vehs"
+    }
+   ],
+   "notes": [
+    "All bn vehicles are held in the Adm Pl (HQ Coy).",
+    "No bn-level weapons or equipment are printed for the Mtn Inf Bn; the chart boxes carry RL, LMG, 60 mm Mor, 75 mm RR, 81 mm Mor and MG."
+   ],
+   "side": "own",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "inf-coy-mtn-rifle",
+   "name": "Rifle Coy (Mtn Inf Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "mtn-rifle",
+   "echelon": "15",
+   "page": "612-613",
+   "strength": {
+    "offr": 2,
+    "jco": 4,
+    "sldr": 136,
+    "total": 142
+   },
+   "chartStrength": 142,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "offr": 2,
+      "jco": 1,
+      "sldr": 17,
+      "total": 20
+     },
+     "chartStrength": 20,
+     "note": "table row printed 'a. HQ Coy' under Rifle Coy; chart Coy HQ (20)"
+    },
+    {
+     "role": "Pl",
+     "unit": "inf-pl-mtn-rifle",
+     "count": 3
+    },
+    {
+     "role": "Wpn Sec",
+     "unit": "inf-sec-mtn-wpn",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "inf-pl-mtn-rifle",
+   "name": "Pl (Mtn Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mtn-rifle",
+   "echelon": "14",
+   "page": "612-613",
+   "strength": {
+    "jco": 1,
+    "sldr": 36,
+    "total": 37
+   },
+   "chartStrength": 37,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7,
+     "weapons": [
+      {
+       "name": "RL",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10,
+     "weapons": [
+      {
+       "name": "LMG",
+       "count": 2,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ],
+     "note": "'Sec Sec Sec (10) 2xLMG' on the chart: figure and LMGs printed once under the third Sec, taken as per Sec (7 + 3x10 = 37)"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "RL",
+     "count": 1,
+     "heldBy": "Pl HQ"
+    },
+    {
+     "name": "LMG",
+     "note": "2xLMG per Sec x 3 Secs (chart)",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias",
+     "count": 6
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "inf-sec-mtn-wpn",
+   "name": "Wpn Sec (Mtn Inf Bn Rifle Coy)",
+   "arm": "inf",
+   "type": "sec",
+   "subtype": "mtn-wpn",
+   "echelon": "13",
+   "page": "612-613",
+   "strength": {
+    "sldr": 11,
+    "total": 11
+   },
+   "chartStrength": 11,
+   "children": [
+    {
+     "role": "Mor Sec",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7,
+     "weapons": [
+      {
+       "name": "60mm Mor",
+       "count": 2,
+       "weapon": "60-mm-mor",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "RR Sec",
+     "count": 1,
+     "strength": {
+      "total": 4
+     },
+     "chartStrength": 4,
+     "weapons": [
+      {
+       "name": "75mm RR",
+       "count": 1,
+       "weapon": "75mm-rr",
+       "weaponMatch": "alias"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "60mm Mor",
+     "count": 2,
+     "heldBy": "Mor Sec",
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "75mm RR",
+     "count": 1,
+     "heldBy": "RR Sec",
+     "weapon": "75mm-rr",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "inf-coy-mtn-hq",
+   "name": "HQ Coy (Mtn Inf Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "mtn-hq",
+   "echelon": "15",
+   "page": "612, 614",
+   "strength": {
+    "offr": 4,
+    "jco": 6,
+    "sldr": 135,
+    "sw": 16,
+    "att": 8,
+    "total": 169
+   },
+   "chartStrength": 169,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "jco": 1,
+      "sldr": 11,
+      "total": 13
+     },
+     "chartStrength": 13
+    },
+    {
+     "role": "Mor Pl",
+     "unit": "inf-pl-mtn-mor",
+     "count": 1
+    },
+    {
+     "role": "Aslt Pnr Pl",
+     "unit": "inf-pl-mtn-aslt-pnr",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "unit": "inf-pl-mtn-adm",
+     "count": 1
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "jco": 1,
+      "sldr": 18,
+      "total": 20
+     },
+     "chartStrength": 20
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 4
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 7
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 13
+    },
+    {
+     "name": "Tlr",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "inf-pl-mtn-mor",
+   "name": "Mor Pl (Mtn Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mor",
+   "echelon": "14",
+   "page": "612, 614",
+   "strength": {
+    "offr": 1,
+    "jco": 1,
+    "sldr": 37,
+    "total": 39
+   },
+   "chartStrength": 39,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13
+    },
+    {
+     "role": "Sec",
+     "count": 2,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13,
+     "weapons": [
+      {
+       "name": "81mm Mor",
+       "count": 4,
+       "weapon": "81mm-mor",
+       "weaponMatch": "alias",
+       "uncertain": true,
+       "note": "'4x81mm Mor' printed under the first of the 2 Secs: 4 per Sec (8 in the Pl) or 4 in the Pl"
+      }
+     ],
+     "note": "'Sec (13) 4x81mm Mor' printed under the first Sec"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "81mm Mor",
+     "count": 4,
+     "note": "'4x81mm Mor' printed under the first of 2 Secs: unclear whether 4 per Sec or 4 in the Pl",
+     "uncertain": true,
+     "weapon": "81mm-mor",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "inf-pl-mtn-aslt-pnr",
+   "name": "Aslt Pnr Pl (Mtn Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "aslt-pnr",
+   "echelon": "14",
+   "page": "612, 614",
+   "strength": {
+    "jco": 1,
+    "sldr": 18,
+    "att": 2,
+    "total": 21
+   },
+   "chartStrength": 21,
+   "strengthNote": "Table row printed '1 18 - 2c 21' one column to the left; read as JCO 1, Sldrs 18, Att 2 (c: Hav Engrs 1, Nk Engrs 1), total 21, which matches the HQ Coy totals.",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 3
+     },
+     "chartStrength": 3
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6,
+     "note": "(6) printed under the first Sec"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "inf-pl-mtn-adm",
+   "name": "Adm Pl (Mtn Inf Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "adm",
+   "echelon": "14",
+   "page": "612, 614",
+   "strength": {
+    "offr": 1,
+    "jco": 2,
+    "sldr": 51,
+    "sw": 16,
+    "att": 6,
+    "total": 76
+   },
+   "chartStrength": 76,
+   "strengthNote": "SWs d: Sweepers; Att e: Armourer, VMs and elecs.",
+   "children": [
+    {
+     "role": "Adm Sec",
+     "count": 1,
+     "strength": {
+      "total": 56
+     },
+     "chartStrength": 56,
+     "weapons": [
+      {
+       "name": "MG",
+       "count": 2,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "Tpt Sec",
+     "count": 1,
+     "strength": {
+      "total": 20
+     },
+     "chartStrength": 20
+    }
+   ],
+   "weapons": [
+    {
+     "name": "MG",
+     "count": 2,
+     "heldBy": "Adm Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 4,
+     "note": "Incl one amb"
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 7
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 13
+    },
+    {
+     "name": "Tlr",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "inf-bn-mib",
+   "name": "MIB",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "mech",
+   "echelon": "16",
+   "page": "615-617",
+   "strength": {
+    "offr": 17,
+    "jco": 26,
+    "sldr": 703,
+    "total": 792
+   },
+   "chartStrength": 792,
+   "strengthNote": "Title 'MECH INF BN (MIB- 792)'; chart 792 = 39 + 4x155 + 90 + 43 (Att 37 not included). Summary table Total 792a (a: Excl 17 SWs, 1 NC (U), 1 Nursing NCO, Sig Pl and LAD Pers). The table rows (Bn HQ 34, Rifle Coy 155, Cbt Sp Coy 90; no Adm Pl row) do not add up to its totals, and its Total row Offrs 17 + JCOs 26 + Sldrs 703 = 746, not 792.",
+   "warIncrement": {
+    "total": 21,
+    "note": "MO 1, Nursing Orderlies 4, Sldrs 16"
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "offr": 4,
+      "jco": 2,
+      "sldr": 28,
+      "total": 34
+     },
+     "chartStrength": 39,
+     "vehicles": [
+      {
+       "name": "Whs",
+       "count": 4
+      },
+      {
+       "name": "APCs",
+       "count": 3
+      },
+      {
+       "name": "Total Vehs excl Tlrs",
+       "count": 7
+      },
+      {
+       "name": "Tlrs",
+       "count": 4
+      }
+     ],
+     "note": "table 34 (p 616); chart Bn HQ (39): the figures differ"
+    },
+    {
+     "role": "Mech Inf Coy",
+     "unit": "inf-coy-mib-rifle",
+     "count": 4
+    },
+    {
+     "role": "Cbt Sp Coy",
+     "unit": "inf-coy-mib-cbt-sp",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 43
+     },
+     "chartStrength": 43,
+     "children": [
+      {
+       "role": "Adm Sec",
+       "count": 1,
+       "strength": {
+        "total": 33
+       },
+       "chartStrength": 33
+      },
+      {
+       "role": "MT Sec",
+       "count": 1,
+       "strength": {
+        "total": 10
+       },
+       "chartStrength": 10
+      }
+     ]
+    },
+    {
+     "role": "Att",
+     "count": 1,
+     "strength": {
+      "total": 37
+     },
+     "chartStrength": 37,
+     "relation": "att",
+     "children": [
+      {
+       "role": "Sig Sec",
+       "count": 1,
+       "seeUnit": "sig-mib-sig-pl"
+      },
+      {
+       "role": "LAD EME",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Whs",
+     "count": 80
+    },
+    {
+     "name": "APCs",
+     "count": 60
+    },
+    {
+     "name": "ARVs",
+     "count": 4
+    },
+    {
+     "name": "Total Vehs excl Tlrs",
+     "count": 144
+    },
+    {
+     "name": "Tlrs",
+     "count": 51
+    },
+    {
+     "name": "Trk 1/4 ton",
+     "count": 52,
+     "note": "incl 5 x amb"
+    },
+    {
+     "name": "Trk 3/4 ton",
+     "count": 5
+    },
+    {
+     "name": "Trk 2.5 ton",
+     "count": 23
+    },
+    {
+     "name": "MC",
+     "count": 2,
+     "note": "excl from the 80"
+    },
+    {
+     "name": "Bicycle",
+     "count": 2,
+     "note": "excl from the 80"
+    },
+    {
+     "name": "Tlr 1/4 ton",
+     "count": 23
+    },
+    {
+     "name": "Tlr 3/4 /1 ton",
+     "count": 5
+    },
+    {
+     "name": "Tlr 1.5 ton",
+     "count": 17
+    },
+    {
+     "name": "Tlr water 250/400 gals",
+     "count": 6
+    }
+   ],
+   "notes": [
+    "Vehicle rows: ARVs Rifle Coy 1 and Cbt Sp Coy 1 give 5 for 4 coys, printed total 4; Total Vehs rows (7 + 4x29 + 22 = 145) printed 144.",
+    "No bn-level weapons are printed for the MIB."
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-coy-mib-rifle",
+   "name": "Mech Inf Coy (MIB)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "mech-rifle",
+   "echelon": "15",
+   "page": "615-616",
+   "strength": {
+    "offr": 2,
+    "jco": 5,
+    "sldr": 148,
+    "total": 155
+   },
+   "chartStrength": 155,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 19
+     },
+     "chartStrength": 19
+    },
+    {
+     "role": "Rifle Pl",
+     "unit": "inf-pl-mib-rifle",
+     "count": 3
+    },
+    {
+     "role": "CMT",
+     "count": 1,
+     "strength": {
+      "total": 4
+     },
+     "chartStrength": 4
+    },
+    {
+     "role": "Sp Pl",
+     "unit": "inf-pl-mib-sp",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Whs",
+     "count": 15
+    },
+    {
+     "name": "APCs",
+     "count": 13
+    },
+    {
+     "name": "ARVs",
+     "count": 1
+    },
+    {
+     "name": "Total Vehs excl Tlrs",
+     "count": 29
+    },
+    {
+     "name": "Tlrs",
+     "count": 8
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-pl-mib-rifle",
+   "name": "Rifle Pl (MIB)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mech-rifle",
+   "echelon": "14",
+   "page": "615",
+   "strength": {
+    "total": 38
+   },
+   "chartStrength": 38,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10,
+     "vehicles": [
+      {
+       "name": "APC",
+       "count": 1,
+       "note": "printed '3x Sec (10) (1 APC)'"
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "APC",
+     "count": 3,
+     "note": "1 APC per Sec"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-pl-mib-sp",
+   "name": "Sp Pl (MIB Coy)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mech-sp",
+   "echelon": "14",
+   "page": "615",
+   "strength": {
+    "total": 18
+   },
+   "chartStrength": 18,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 2
+     },
+     "chartStrength": 2
+    },
+    {
+     "role": "MG Sec",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7
+    },
+    {
+     "role": "A/ Tk Sec",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-coy-mib-cbt-sp",
+   "name": "Cbt Sp Coy (MIB)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "mech-cbt-sp",
+   "echelon": "15",
+   "page": "615-616",
+   "strength": {
+    "offr": 4,
+    "jco": 6,
+    "sldr": 80,
+    "total": 90
+   },
+   "chartStrength": 90,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 14
+     },
+     "chartStrength": 14
+    },
+    {
+     "role": "ATGM Pl",
+     "unit": "inf-pl-mib-atgm",
+     "count": 1
+    },
+    {
+     "role": "Mor Pl",
+     "unit": "inf-pl-mib-mor",
+     "count": 1
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 17
+     },
+     "chartStrength": 17
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Whs",
+     "count": 16
+    },
+    {
+     "name": "APCs",
+     "count": 5
+    },
+    {
+     "name": "ARVs",
+     "count": 1
+    },
+    {
+     "name": "Total Vehs excl Tlrs",
+     "count": 22
+    },
+    {
+     "name": "Tlrs",
+     "count": 15
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-pl-mib-atgm",
+   "name": "ATGM Pl (MIB)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mech-atgm",
+   "echelon": "14",
+   "page": "615",
+   "strength": {
+    "total": 22
+   },
+   "chartStrength": 22,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6
+    },
+    {
+     "role": "Sec",
+     "count": 2,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8,
+     "vehicles": [
+      {
+       "name": "APC",
+       "count": 2,
+       "note": "for the 2 Secs together"
+      }
+     ],
+     "weapons": [
+      {
+       "name": "ATGM",
+       "count": 2,
+       "note": "for the 2 Secs together"
+      }
+     ],
+     "note": "'2 SEC(8) (2 APC,2 ATGM)': the APCs and ATGMs are printed once for the 2 Secs together"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "ATGM",
+     "count": 2,
+     "heldBy": "2 Secs"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "APC",
+     "count": 2,
+     "note": "held by the 2 Secs"
+    }
+   ],
+   "notes": [
+    "'(2 APC, 2 ATGM)' is printed once under '2 SEC'; reading it as the Pl's total fits the Cbt Sp Coy total of 5 APCs."
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-pl-mib-mor",
+   "name": "Mor Pl (MIB)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mech-mor",
+   "echelon": "14",
+   "page": "615",
+   "strength": {
+    "total": 37
+   },
+   "chartStrength": 37,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13,
+     "vehicles": [
+      {
+       "name": "APC",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Sec",
+     "count": 2,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12,
+     "vehicles": [
+      {
+       "name": "APC",
+       "count": 2,
+       "note": "for the 2 Secs together"
+      }
+     ],
+     "note": "'2 SEC(12) 2 APC': the APCs are printed once for the 2 Secs together"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "APC",
+     "count": 3,
+     "note": "Pl HQ 1 + 2 Secs 2; with the ATGM Pl 2 = the Cbt Sp Coy APCs 5 (p 616)"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-bn-abib",
+   "name": "ABIB",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "abib",
+   "echelon": "16",
+   "page": "618-620",
+   "strength": {
+    "offr": 26,
+    "jco": 24,
+    "sldr": 702,
+    "clk": 15,
+    "att": 4,
+    "sw": 16,
+    "ncU": 14,
+    "total": 801
+   },
+   "chartStrength": 801,
+   "strengthNote": "Total Mil 771; Grand Total (All Ranks) 801 (incl SWs 16, NCsU 14); chart title ORG - ABIB (801). Chart boxes 50 + 4x153 + 97 + 44 = 803 do not add up to the printed 801.",
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 50
+     },
+     "chartStrength": 50
+    },
+    {
+     "role": "Coy",
+     "unit": "inf-coy-abib",
+     "count": 4
+    },
+    {
+     "role": "Cbt Sp Coy",
+     "unit": "inf-coy-abib-cbt-sp",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 44
+     },
+     "chartStrength": 44,
+     "note": "a third branch under Adm Pl is drawn with no label; Adm Sec 34 + Tpt Sec 8 = 42 do not add up to the printed 44",
+     "children": [
+      {
+       "role": "Adm Sec",
+       "count": 1,
+       "strength": {
+        "total": 34
+       },
+       "chartStrength": 34
+      },
+      {
+       "role": "Tpt Sec",
+       "count": 1,
+       "strength": {
+        "total": 8
+       },
+       "chartStrength": 8
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol",
+     "count": 66,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "G3A3",
+     "count": 471,
+     "weapon": "rifle-g-3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "SMG / MP5A2",
+     "count": 172,
+     "weapon": "smg-mp-5-a2-mp-5-a-3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG1A3",
+     "count": 72,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "RPG - 7",
+     "count": 12,
+     "weapon": "rpg-7",
+     "weaponMatch": "exact"
+    },
+    {
+     "name": "106 mm RR",
+     "count": 6,
+     "weapon": "106mm-rr",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "BS Wpn Sys",
+     "count": 6,
+     "weapon": "bs",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "12.7 mm AA gun",
+     "count": 54
+    },
+    {
+     "name": "Sniper Rifle Hy Cal",
+     "count": 4
+    },
+    {
+     "name": "60 mm Mor",
+     "count": 24,
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "81 mm Mor",
+     "count": 19,
+     "weapon": "81mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Anza Mk II",
+     "count": 16,
+     "weapon": "anza-mk-ii",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Total",
+     "count": 922
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "APCs",
+     "count": 54
+    },
+    {
+     "name": "ARVs",
+     "count": 4
+    },
+    {
+     "name": "RR Jeep and Ammo Jeep (6+3)",
+     "count": 9
+    },
+    {
+     "name": "Trk 1/4 Ton Jeep Radar",
+     "count": 4
+    },
+    {
+     "name": "Trk 1/4 To GS Jeep",
+     "count": 12
+    },
+    {
+     "name": "Ambulance",
+     "count": 5
+    },
+    {
+     "name": "Trk 3/4 Ton Dodge",
+     "count": 10
+    },
+    {
+     "name": "Trk 2.5 ton",
+     "count": 20
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 4
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 11
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 10
+    },
+    {
+     "name": "Tlr 1 - 1.5 Ton",
+     "count": 13
+    },
+    {
+     "name": "Water Tlr 1 - 1.5 ton (250- 400 Gals)",
+     "count": 2
+    },
+    {
+     "name": "MFK",
+     "count": 5
+    },
+    {
+     "name": "MC (100-125 CC)",
+     "count": 2
+    },
+    {
+     "name": "Total (less tlrs, MFK & MC)",
+     "count": 122
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-coy-abib",
+   "name": "Coy (ABIB)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "abib-rifle",
+   "echelon": "15",
+   "page": "618",
+   "strength": {
+    "total": 153
+   },
+   "chartStrength": 153,
+   "strengthNote": "Chart parts (16 + 3x38 + Wpn Sec 8 + CMT 3 = 141; with RR Det 9 + Mor Det 5 for the Wpn Sec, 147) do not reach the printed 153.",
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16
+    },
+    {
+     "role": "Rifle Pl",
+     "unit": "inf-pl-abib-rifle",
+     "count": 3
+    },
+    {
+     "role": "Wpn Sec",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8,
+     "note": "RR Det (9) + Mor Det (5) = 14 do not add up to the printed Wpn Sec (8)",
+     "children": [
+      {
+       "role": "RR Det",
+       "count": 1,
+       "strength": {
+        "total": 9
+       },
+       "chartStrength": 9
+      },
+      {
+       "role": "Mor Det",
+       "count": 1,
+       "strength": {
+        "total": 5
+       },
+       "chartStrength": 5
+      }
+     ]
+    },
+    {
+     "role": "CMT",
+     "count": 1,
+     "strength": {
+      "total": 3
+     },
+     "chartStrength": 3
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-pl-abib-rifle",
+   "name": "Rifle Pl (ABIB)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "abib-rifle",
+   "echelon": "14",
+   "page": "618",
+   "strength": {
+    "total": 38
+   },
+   "chartStrength": 38,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-coy-abib-cbt-sp",
+   "name": "Cbt Sp Coy (ABIB)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "abib-cbt-sp",
+   "echelon": "15",
+   "page": "618",
+   "strength": {
+    "total": 97
+   },
+   "chartStrength": 97,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13
+    },
+    {
+     "role": "ATGM Pl",
+     "count": 1,
+     "strength": {
+      "total": 20
+     },
+     "chartStrength": 20,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 4
+       },
+       "chartStrength": 4
+      },
+      {
+       "role": "Sec",
+       "count": 2,
+       "strength": {
+        "total": 8
+       },
+       "chartStrength": 8
+      }
+     ]
+    },
+    {
+     "role": "Mor Pl",
+     "count": 1,
+     "strength": {
+      "total": 38
+     },
+     "chartStrength": 38
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 18
+     },
+     "chartStrength": 18
+    },
+    {
+     "role": "Aslt Pnr Det",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "inf-bn-air-aslt",
+   "name": "Air Aslt Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "air-aslt",
+   "echelon": "16",
+   "page": "621-622",
+   "strength": {
+    "offr": 24,
+    "jco": 24,
+    "sldr": 677,
+    "clk": 14,
+    "att": 16,
+    "sw": 16,
+    "civGrd": 4,
+    "total": 775
+   },
+   "chartStrength": 775,
+   "strengthNote": "Total Mil 755; Grand Total (All Ranks) 775 (incl SWs 16, Civ Grd I & II Staff 4); chart ORG - AIR ASLT BN (775) = 45 + 4x147 + 98 + 44.",
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 45
+     },
+     "chartStrength": 45
+    },
+    {
+     "role": "STC",
+     "unit": "inf-coy-air-aslt-stc",
+     "count": 4
+    },
+    {
+     "role": "Cbt Sp Coy",
+     "unit": "inf-coy-air-aslt-cbt-sp",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 44
+     },
+     "chartStrength": 44,
+     "note": "a third branch under Adm Pl is drawn with no label",
+     "children": [
+      {
+       "role": "Adm Sec",
+       "count": 1,
+       "strength": {
+        "total": 32
+       },
+       "chartStrength": 32
+      },
+      {
+       "role": "Tpt Sec",
+       "count": 1,
+       "strength": {
+        "total": 12
+       },
+       "chartStrength": 12,
+       "note": "printed 'Tpt sec (12)'"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol",
+     "count": 78,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "60 mm Mor",
+     "count": 8,
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "RL",
+     "count": 36
+    },
+    {
+     "name": "SMG Chinese",
+     "count": 561,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Sniper rifle (Styre)",
+     "count": 36
+    },
+    {
+     "name": "GLHMG",
+     "count": 4,
+     "weapon": "glhmg",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LMG Chinese",
+     "count": 76
+    },
+    {
+     "name": "M-16 Rifles",
+     "count": 20
+    },
+    {
+     "name": "BSWS",
+     "count": 4,
+     "weapon": "bs",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "81 mm Mor",
+     "count": 4,
+     "weapon": "81mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Range Master Hy Sniper Rifle",
+     "count": 4
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 To GS Jeep",
+     "count": 22
+    },
+    {
+     "name": "Trk 1/4 Ton Jeep GLHMG",
+     "count": 4
+    },
+    {
+     "name": "Trk 1/4 Ton Jeep 60 mm Mor",
+     "count": 4
+    },
+    {
+     "name": "Trk 1/4 Ton Jeep BSWS",
+     "count": 8
+    },
+    {
+     "name": "Trk 3/4 Ton Dodge D/ Cabin",
+     "count": 45
+    },
+    {
+     "name": "Ambulance",
+     "count": 1
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 12
+    },
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 13
+    },
+    {
+     "name": "Tlr 1-1.5 Ton",
+     "count": 6
+    },
+    {
+     "name": "Water Tlr (25-400 gals)",
+     "count": 6,
+     "note": "printed '25-400'"
+    },
+    {
+     "name": "Total (less MC& tlrs)",
+     "count": 96
+    }
+   ],
+   "notes": [
+    "STC not expanded in the book."
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-coy-air-aslt-stc",
+   "name": "STC (Air Aslt Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "air-aslt-stc",
+   "echelon": "15",
+   "page": "621",
+   "strength": {
+    "total": 147
+   },
+   "chartStrength": 147,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16
+    },
+    {
+     "role": "Pl",
+     "unit": "inf-pl-air-aslt",
+     "count": 3
+    },
+    {
+     "role": "Sp Sec",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13,
+     "note": "dets named by their wpn; no wpn counts printed",
+     "children": [
+      {
+       "role": "60 mm Mor",
+       "count": 1,
+       "strength": {
+        "total": 5
+       },
+       "chartStrength": 5
+      },
+      {
+       "role": "GLHMG",
+       "count": 1,
+       "strength": {
+        "total": 3
+       },
+       "chartStrength": 3
+      },
+      {
+       "role": "LMG",
+       "count": 1,
+       "strength": {
+        "total": 2
+       },
+       "chartStrength": 2
+      },
+      {
+       "role": "Hy Sniper",
+       "count": 1,
+       "strength": {
+        "total": 3
+       },
+       "chartStrength": 3
+      }
+     ]
+    },
+    {
+     "role": "MT Sec",
+     "count": 1,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-pl-air-aslt",
+   "name": "Pl (Air Aslt Bn STC)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "air-aslt",
+   "echelon": "14",
+   "page": "621",
+   "strength": {
+    "total": 34
+   },
+   "chartStrength": 34,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 4
+     },
+     "chartStrength": 4
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-coy-air-aslt-cbt-sp",
+   "name": "Cbt Sp Coy (Air Aslt Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "air-aslt-cbt-sp",
+   "echelon": "15",
+   "page": "621",
+   "strength": {
+    "total": 98
+   },
+   "chartStrength": 98,
+   "strengthNote": "Boxes 13 + 20 + 17 + 18 + 29 = 97 do not add up to the printed 98.",
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13
+    },
+    {
+     "role": "ATGM Pl",
+     "count": 1,
+     "strength": {
+      "total": 20
+     },
+     "chartStrength": 20,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 4
+       },
+       "chartStrength": 4
+      },
+      {
+       "role": "Sec",
+       "count": 2,
+       "strength": {
+        "total": 8
+       },
+       "chartStrength": 8,
+       "children": [
+        {
+         "role": "Det",
+         "count": 2,
+         "strength": {
+          "total": 4
+         },
+         "chartStrength": 4,
+         "note": "printed '2x Dets (4)'"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 17
+     },
+     "chartStrength": 17,
+     "note": "Pl HQ 3 + Wrls Party 3 + Line Party 8 + Tel Exch Party 2 = 16 do not add up to the printed 17",
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 3
+       },
+       "chartStrength": 3
+      },
+      {
+       "role": "Wrls Party",
+       "count": 1,
+       "strength": {
+        "total": 3
+       },
+       "chartStrength": 3
+      },
+      {
+       "role": "Line Party",
+       "count": 1,
+       "strength": {
+        "total": 8
+       },
+       "chartStrength": 8,
+       "children": [
+        {
+         "role": "Line Party A",
+         "count": 1,
+         "strength": {
+          "total": 4
+         },
+         "chartStrength": 4
+        },
+        {
+         "role": "Line Party B",
+         "count": 1,
+         "strength": {
+          "total": 4
+         },
+         "chartStrength": 4
+        }
+       ]
+      },
+      {
+       "role": "Tel Exch Party",
+       "count": 1,
+       "strength": {
+        "total": 2
+       },
+       "chartStrength": 2
+      }
+     ]
+    },
+    {
+     "role": "Aslt Pnr Pl",
+     "count": 1,
+     "strength": {
+      "total": 18
+     },
+     "chartStrength": 18
+    },
+    {
+     "role": "Mor Pl",
+     "count": 1,
+     "strength": {
+      "total": 29
+     },
+     "chartStrength": 29
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "inf-bn-lt-cdo",
+   "name": "Lt Cdo Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "lt-cdo",
+   "echelon": "16",
+   "page": "623-624",
+   "strength": {
+    "offr": 18,
+    "jco": 19,
+    "sldr": 502,
+    "clk": 13,
+    "att": 15,
+    "sw": 12,
+    "civGrd": 4,
+    "total": 583
+   },
+   "chartStrength": 583,
+   "strengthNote": "Total Mil 567; Grand Total (All Ranks) 583; chart ORG - LT CDO BN (583) = 46 + 3x130 + 147.",
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 46
+     },
+     "chartStrength": 46
+    },
+    {
+     "role": "Lt Cdo Coy",
+     "unit": "inf-coy-lt-cdo",
+     "count": 3
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "inf-coy-lt-cdo-hq",
+     "count": 1
+    },
+    {
+     "role": "Att",
+     "count": 1,
+     "relation": "att",
+     "note": "no figure on the chart"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Hy Sniper Rifle (HSRs)",
+     "count": 3,
+     "note": "printed 'Hy Sniper Rifle (HSRs0'"
+    },
+    {
+     "name": "60 mm Mor",
+     "count": 9,
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "RPG - 7",
+     "count": 30,
+     "weapon": "rpg-7",
+     "weaponMatch": "exact"
+    },
+    {
+     "name": "SMG Chinese",
+     "count": 451,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Sniper rifle (Styre)",
+     "count": 14
+    },
+    {
+     "name": "Pistol 9 mm",
+     "count": 140,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "GLHMG",
+     "count": 3,
+     "weapon": "glhmg",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LMG Chinese",
+     "count": 57
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 To GS Jeep",
+     "count": 17
+    },
+    {
+     "name": "Trk 1/4 Ton Jeepp GLHMG",
+     "count": 3
+    },
+    {
+     "name": "Trk 3/4 Ton Dodge",
+     "count": 38
+    },
+    {
+     "name": "Ambulance",
+     "count": 3
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 8
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 7
+    },
+    {
+     "name": "Tlr 1 - 1.5 Ton",
+     "count": 5
+    },
+    {
+     "name": "Water Tlr 1 - 1.5 ton (250- 400 Gals)",
+     "count": 2
+    },
+    {
+     "name": "MFK",
+     "count": 3
+    },
+    {
+     "name": "MC (100-125 CC)",
+     "count": 10
+    }
+   ],
+   "notes": [
+    "No vehicle or weapon totals printed."
+   ],
+   "side": "own",
+   "symbolKey": "10110220"
+  },
+  {
+   "id": "inf-coy-lt-cdo",
+   "name": "Lt Cdo Coy",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "lt-cdo",
+   "echelon": "15",
+   "page": "623",
+   "strength": {
+    "total": 130
+   },
+   "chartStrength": 130,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 15
+     },
+     "chartStrength": 15
+    },
+    {
+     "role": "Pl",
+     "unit": "inf-pl-lt-cdo",
+     "count": 3
+    },
+    {
+     "role": "Sp Pl",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13,
+     "note": "dets named by their wpn; no wpn counts printed",
+     "children": [
+      {
+       "role": "60 mm Mor sec",
+       "count": 1,
+       "strength": {
+        "total": 7
+       },
+       "chartStrength": 7
+      },
+      {
+       "role": "LD Det",
+       "count": 1,
+       "strength": {
+        "total": 2
+       },
+       "chartStrength": 2
+      },
+      {
+       "role": "GLHMG",
+       "count": 1,
+       "strength": {
+        "total": 4
+       },
+       "chartStrength": 4
+      }
+     ]
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110220"
+  },
+  {
+   "id": "inf-pl-lt-cdo",
+   "name": "Pl (Lt Cdo Coy)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "lt-cdo",
+   "echelon": "14",
+   "page": "623",
+   "strength": {
+    "total": 34
+   },
+   "chartStrength": 34,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 4
+     },
+     "chartStrength": 4
+    },
+    {
+     "role": "Cbt Team",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10,
+     "note": "printed '3x Cbt Teams (10)'"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110220"
+  },
+  {
+   "id": "inf-coy-lt-cdo-hq",
+   "name": "HQ Coy (Lt Cdo Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "lt-cdo-hq",
+   "echelon": "15",
+   "page": "623",
+   "strength": {
+    "total": 147
+   },
+   "chartStrength": 147,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12
+    },
+    {
+     "role": "Anti T Pl",
+     "count": 1,
+     "strength": {
+      "total": 46
+     },
+     "chartStrength": 46,
+     "note": "printed 'Anti T Pl (46)' (T in bold)",
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 6
+       },
+       "chartStrength": 6
+      },
+      {
+       "role": "Sniper Sec",
+       "count": 1,
+       "strength": {
+        "total": 10
+       },
+       "chartStrength": 10
+      },
+      {
+       "role": "Aslt Sec",
+       "count": 3,
+       "strength": {
+        "total": 10
+       },
+       "chartStrength": 10,
+       "note": "box printed '3 x Aslt Sec (30)': 30 is for the three secs together (6 + 10 + 30 = 46), 10 each"
+      }
+     ]
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 89
+     },
+     "chartStrength": 89,
+     "children": [
+      {
+       "role": "Adm Sec",
+       "count": 1,
+       "strength": {
+        "total": 32
+       },
+       "chartStrength": 32
+      },
+      {
+       "role": "Sig Pl",
+       "count": 1,
+       "strength": {
+        "total": 9
+       },
+       "chartStrength": 9
+      },
+      {
+       "role": "Tpt Sec",
+       "count": 1,
+       "strength": {
+        "total": 48
+       },
+       "chartStrength": 48
+      }
+     ]
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110220"
+  },
+  {
+   "id": "inf-pl-lat-sp",
+   "name": "Sp Pl (LAT / HAT Bn Coy)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "atk-sp",
+   "echelon": "14",
+   "page": "625, 630, 631",
+   "strength": {
+    "total": 60
+   },
+   "chartStrength": 60,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "GLHMG Sec",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12,
+     "weapons": [
+      {
+       "name": "GLHMG",
+       "count": 3,
+       "weapon": "glhmg",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "MG Sec",
+     "count": 1,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16,
+     "weapons": [
+      {
+       "name": "MGIA3",
+       "count": 4,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "LMG Sec",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12,
+     "weapons": [
+      {
+       "name": "MGIA3 (LMG)",
+       "count": 4,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "AA HMG Sec",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12,
+     "weapons": [
+      {
+       "name": "12.7mm AA MG",
+       "count": 3
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "GLHMG",
+     "count": 3,
+     "heldBy": "GLHMG Sec",
+     "weapon": "glhmg",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MGIA3",
+     "count": 4,
+     "heldBy": "MG Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MGIA3 (LMG)",
+     "count": 4,
+     "heldBy": "LMG Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "12.7mm AA MG",
+     "count": 3,
+     "heldBy": "AA HMG Sec"
+    }
+   ],
+   "notes": [
+    "Sp pl is Jeep mtd. (printed for the APC-borne LAT Bn and the HAT Bn)",
+    "Same chart in LAT Bn (APC borne) p 625, LAT Bn (Jeep borne) p 630 and HAT Bn p 631."
+   ],
+   "side": "own",
+   "symbolKey": "10120410"
+  },
+  {
+   "id": "inf-bn-lat-apc",
+   "name": "LAT Bn (APC borne)",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "lat-apc",
+   "echelon": "16",
+   "page": "625-627",
+   "strength": {
+    "offr": 21,
+    "jco": 26,
+    "sldr": 527,
+    "sw": 13,
+    "civ": 4,
+    "att": 4,
+    "total": 595
+   },
+   "chartStrength": 595,
+   "strengthNote": "Title LT A TK (LAT) BN (595) = 61 + 3x161 + 51; Att Pers: Offrs -, Sldrs 4.",
+   "warIncrement": {
+    "sldr": 28,
+    "att": 5,
+    "total": 33,
+    "note": "Att Pers: Offrs 1, Sldrs 4"
+   },
+   "fdIncrement": {
+    "offr": 3,
+    "sldr": 58,
+    "total": 61
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 61
+     },
+     "chartStrength": 61,
+     "vehicles": [
+      {
+       "name": "APC",
+       "count": 1,
+       "note": "printed '(1xAPC)' under Bn HQ (61)"
+      }
+     ]
+    },
+    {
+     "role": "LAT Coy",
+     "unit": "inf-coy-lat-apc",
+     "count": 3
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 51
+     },
+     "chartStrength": 51,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 5
+       },
+       "chartStrength": 5
+      },
+      {
+       "role": "Adm Sec",
+       "count": 1,
+       "strength": {
+        "total": 32
+       },
+       "chartStrength": 32
+      },
+      {
+       "role": "Tpt Sec",
+       "count": 1,
+       "strength": {
+        "total": 14
+       },
+       "chartStrength": 14
+      }
+     ]
+    },
+    {
+     "role": "Att",
+     "count": 1,
+     "relation": "att",
+     "children": [
+      {
+       "role": "Sig Sec",
+       "count": 1,
+       "strength": {
+        "total": 8
+       },
+       "chartStrength": 8
+      },
+      {
+       "role": "LAD EME",
+       "count": 1,
+       "strength": {
+        "total": 25
+       },
+       "chartStrength": 25
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol 9mm",
+     "count": 37,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Rifle 7.62mm G3A3",
+     "count": 163,
+     "weapon": "rifle-g-3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "SMG Chinese",
+     "count": 336,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LMG 7.62mm MG3A3",
+     "count": 12,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG 7.62mm MG3A3",
+     "count": 12,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "40mm (GL HMG)",
+     "count": 9,
+     "weapon": "glhmg",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "AA Gun 12.7mm",
+     "count": 9
+    },
+    {
+     "name": "AA MG Cal 12.7mm",
+     "count": 43,
+     "note": "AA Role Mtd on APC/ARVs"
+    },
+    {
+     "name": "ATGM Wpn Sys complete with accessories",
+     "count": 36,
+     "weapon": "bs",
+     "weaponMatch": "alias",
+     "note": "BS (the bn holds 36 APC (BS Carrier))"
+    },
+    {
+     "name": "Gren Arges",
+     "count": 577
+    },
+    {
+     "name": "Gren No-80 (WP)",
+     "count": 60
+    },
+    {
+     "name": "Pencil Shooting/ Pistol Flare Sig",
+     "count": 15
+    },
+    {
+     "name": "Total (less Grens)",
+     "count": 672
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 4x4 Ton GS",
+     "count": 17
+    },
+    {
+     "name": "Trk 1/4 Ton (Support Pl)",
+     "count": 33
+    },
+    {
+     "name": "Trk 3/4 Ton 4x4 (Amb)",
+     "count": 4
+    },
+    {
+     "name": "Trk 1 - 1.5 Ton Dodge",
+     "count": 27
+    },
+    {
+     "name": "Trk 2.5 - 5 Ton",
+     "count": 15
+    },
+    {
+     "name": "APC (BS Carrier)",
+     "count": 36
+    },
+    {
+     "name": "APC (Comd APC)",
+     "count": 4
+    },
+    {
+     "name": "ARVs",
+     "count": 3
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 17
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 18
+    },
+    {
+     "name": "Tlr Cargo 1 - 1.5 Ton",
+     "count": 11
+    },
+    {
+     "name": "Water Tlr 1 - 1.5 Ton (250-400 Gals)",
+     "count": 4
+    },
+    {
+     "name": "MC (100 - 125 CC)",
+     "count": 1
+    },
+    {
+     "name": "Bicycle",
+     "count": 2
+    },
+    {
+     "name": "Total (less Tlrs, MC & Bicycle)",
+     "count": 139
+    }
+   ],
+   "majEqpt": [
+    {
+     "name": "Wpn APC/ITVs",
+     "count": 36
+    },
+    {
+     "name": "ATGM Wpn Sys",
+     "count": 36
+    },
+    {
+     "name": "Tp carrying APCs",
+     "count": 4
+    }
+   ],
+   "notes": [
+    "Note on chart: Sp pl is Jeep mtd."
+   ],
+   "side": "own",
+   "symbolKey": "10120410"
+  },
+  {
+   "id": "inf-coy-lat-apc",
+   "name": "LAT Coy (APC borne)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "lat-apc",
+   "echelon": "15",
+   "page": "625",
+   "strength": {
+    "total": 161
+   },
+   "chartStrength": 161,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 37
+     },
+     "chartStrength": 37,
+     "note": "printed 'HQ Coy(37)'"
+    },
+    {
+     "role": "Sp Pl",
+     "unit": "inf-pl-lat-sp",
+     "count": 1
+    },
+    {
+     "role": "ATGM Pl",
+     "unit": "inf-pl-lat-apc-atgm",
+     "count": 2
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120410"
+  },
+  {
+   "id": "inf-pl-lat-apc-atgm",
+   "name": "ATGM Pl (LAT Bn, APC borne)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "lat-apc-atgm",
+   "echelon": "14",
+   "page": "625",
+   "strength": {
+    "total": 32
+   },
+   "chartStrength": 32,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 5
+     },
+     "chartStrength": 5,
+     "note": "Printed '3xSecs (5)' with 'Det' and 'Det (8) 2 Launchers 2 APCs' beneath; 8 + 3x8 = 32 fits the Pl total (as in the HAT Bn chart, 3x Det (8)), so '(5)' is unexplained",
+     "uncertain": true,
+     "children": [
+      {
+       "role": "Det",
+       "count": 2,
+       "strength": {
+        "total": 8
+       },
+       "chartStrength": 8,
+       "uncertain": true,
+       "note": "printed 'Det' and 'Det (8) 2 Launchers 2 APCs': figure and eqpt printed under the second Det only; 2 x 8 does not add up to the Sec's (5)",
+       "weapons": [
+        {
+         "name": "Launchers",
+         "count": 2,
+         "weapon": "bs",
+         "weaponMatch": "alias",
+         "note": "ATGM (BS) launchers"
+        }
+       ],
+       "vehicles": [
+        {
+         "name": "APCs",
+         "count": 2
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": [
+    "Bn Maj Eqpt 36 ATGM Wpn Sys / 36 Wpn APCs = 2 launchers and 2 APCs per Sec/Det."
+   ],
+   "side": "own",
+   "symbolKey": "10120410",
+   "strengthNote": "Chart boxes Pl HQ 8 + 3x Sec (5) = 23 do not add up to the printed 32; 8 + 3x8 = 32 fits if '(8)' is each Sec's figure (as in the HAT Bn chart, 3x Det (8))."
+  },
+  {
+   "id": "inf-bn-lat-jeep",
+   "name": "LAT Bn (Jeep borne)",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "lat-jeep",
+   "echelon": "16",
+   "page": "628-630",
+   "strength": {
+    "offr": 21,
+    "jco": 26,
+    "sldr": 551,
+    "sw": 13,
+    "civ": 4,
+    "att": 4,
+    "total": 619
+   },
+   "chartStrength": 619,
+   "strengthNote": "Title LT A TK (LAT) BN (619) (JEEP BORNE) = 60 + 3x169 + 52; Att Pers: Offrs -, Sldrs 4.",
+   "warIncrement": {
+    "sldr": 28,
+    "att": 5,
+    "total": 33,
+    "note": "Att Pers: Offrs 1, Sldrs 4"
+   },
+   "fdIncrement": {
+    "offr": 3,
+    "sldr": 58,
+    "total": 61
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 60
+     },
+     "chartStrength": 60,
+     "vehicles": [
+      {
+       "name": "APC",
+       "count": 1,
+       "note": "printed '(1xAPC)' under Bn HQ (60)"
+      }
+     ]
+    },
+    {
+     "role": "LAT Coy",
+     "unit": "inf-coy-lat-jeep",
+     "count": 3
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 52
+     },
+     "chartStrength": 52,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 6
+       },
+       "chartStrength": 6
+      },
+      {
+       "role": "Adm Sec",
+       "count": 1,
+       "strength": {
+        "total": 32
+       },
+       "chartStrength": 32
+      },
+      {
+       "role": "Tpt Sec",
+       "count": 1,
+       "strength": {
+        "total": 14
+       },
+       "chartStrength": 14
+      }
+     ]
+    },
+    {
+     "role": "Att",
+     "count": 1,
+     "relation": "att",
+     "children": [
+      {
+       "role": "Sig Sec",
+       "count": 1,
+       "strength": {
+        "total": 8
+       },
+       "chartStrength": 8,
+       "note": "printed '(Att-8)'"
+      },
+      {
+       "role": "LAD EME",
+       "count": 1,
+       "strength": {
+        "total": 23
+       },
+       "chartStrength": 23,
+       "note": "printed '(Att-23)'"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol 9mm",
+     "count": 37,
+     "note": "War Increment 1, Fd Increment 3",
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias",
+     "warIncrement": 1,
+     "fdIncrement": 3
+    },
+    {
+     "name": "Rifle 7.62mm G3A3",
+     "count": 189,
+     "note": "War Increment 32, Fd Increment 58",
+     "weapon": "rifle-g-3",
+     "weaponMatch": "alias",
+     "warIncrement": 32,
+     "fdIncrement": 58
+    },
+    {
+     "name": "SMG Chinese",
+     "count": 334,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LMG 7.62mm MG3A3",
+     "count": 12,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG 7.62mm MG3A3",
+     "count": 12,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "40mm (GL HMG)",
+     "count": 9,
+     "weapon": "glhmg",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "AA Gun 12.7mm",
+     "count": 9
+    },
+    {
+     "name": "ATGM Wpn Sys complete with accessories",
+     "count": 36,
+     "weapon": "bs",
+     "weaponMatch": "alias",
+     "note": "BS (the bn holds 36 Jeep (BS Carrier))"
+    },
+    {
+     "name": "Gren Arges",
+     "count": 600,
+     "note": "War Increment 33, Fd Increment 61",
+     "warIncrement": 33,
+     "fdIncrement": 61
+    },
+    {
+     "name": "Gren No-80 (WP)",
+     "count": 60
+    },
+    {
+     "name": "Pencil Shooting/ Pistol Flare Sig",
+     "count": 15
+    },
+    {
+     "name": "Total (less Grens)",
+     "count": 651,
+     "note": "the listed items add to 653"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 4x4 Ton GS",
+     "count": 17
+    },
+    {
+     "name": "Trk 1/4 Ton (Sp Pl for GL HMG)",
+     "count": 33
+    },
+    {
+     "name": "Trk 1/4 Ton (Amb)",
+     "count": 4
+    },
+    {
+     "name": "Trk 1 - 1.5 Ton Dodge GS",
+     "count": 18
+    },
+    {
+     "name": "Trk 1 - 1.5 Ton Dodge for 12.7mm AA",
+     "count": 9
+    },
+    {
+     "name": "Trk 2.5 - 5 Ton",
+     "count": 15
+    },
+    {
+     "name": "Jeep (BS Carrier)",
+     "count": 36
+    },
+    {
+     "name": "Jeep (Ammo) Carrier for BS",
+     "count": 36
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 17
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 18
+    },
+    {
+     "name": "Tlr Cargo 1 - 1.5 Ton",
+     "count": 11
+    },
+    {
+     "name": "Water Tlr 1 - 1.5 Ton (250-400 Gals)",
+     "count": 4
+    },
+    {
+     "name": "MC (100 - 125 CC)",
+     "count": 2
+    },
+    {
+     "name": "Bicycle",
+     "count": 2
+    },
+    {
+     "name": "Total (less Tlrs, MC & Bicycle)",
+     "count": 168
+    }
+   ],
+   "majEqpt": [
+    {
+     "name": "Wpn & ammo Jeeps",
+     "qty": "36 each"
+    },
+    {
+     "name": "ATGM Wpn Sys",
+     "count": 36
+    },
+    {
+     "name": "Comd APCs",
+     "count": 4
+    }
+   ],
+   "notes": [
+    "The Pers serials are lettered h-n on p 628 (as printed); 'b.' appears twice in Tpt."
+   ],
+   "side": "own",
+   "symbolKey": "10120410"
+  },
+  {
+   "id": "inf-coy-lat-jeep",
+   "name": "LAT Coy (Jeep borne)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "lat-jeep",
+   "echelon": "15",
+   "page": "630",
+   "strength": {
+    "total": 169
+   },
+   "chartStrength": 169,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 33
+     },
+     "chartStrength": 33,
+     "note": "printed 'HQ Coy(33)'"
+    },
+    {
+     "role": "Sp Pl",
+     "unit": "inf-pl-lat-sp",
+     "count": 1
+    },
+    {
+     "role": "ATGM Pl",
+     "unit": "inf-pl-lat-jeep-atgm",
+     "count": 2
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120410"
+  },
+  {
+   "id": "inf-pl-lat-jeep-atgm",
+   "name": "ATGM Pl (LAT Bn, Jeep borne)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "lat-jeep-atgm",
+   "echelon": "14",
+   "page": "630",
+   "strength": {
+    "total": 38
+   },
+   "chartStrength": 38,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10,
+     "note": "printed '3 Sec (10)' with '2 x Det (6)' beneath; 2 x 6 does not add up to the Sec's 10",
+     "children": [
+      {
+       "role": "Det",
+       "count": 2,
+       "strength": {
+        "total": 6
+       },
+       "chartStrength": 6
+      }
+     ]
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120410"
+  },
+  {
+   "id": "inf-bn-hat",
+   "name": "HAT Bn (APC/ITV borne)",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "hat-apc",
+   "echelon": "16",
+   "page": "631-633",
+   "strength": {
+    "offr": 21,
+    "jco": 35,
+    "sldr": 517,
+    "sw": 12,
+    "civ": 4,
+    "att": 4,
+    "total": 593
+   },
+   "chartStrength": 593,
+   "strengthNote": "Title HY A TK (HAT) BN (593) = 61 + 3x161 + 49; Att Pers 0 offrs, 4 sldrs.",
+   "warIncrement": {
+    "offr": 1,
+    "sldr": 28,
+    "att": 4,
+    "total": 33
+   },
+   "fdIncrement": {
+    "jco": 3,
+    "sldr": 58,
+    "total": 61
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 61
+     },
+     "chartStrength": 61
+    },
+    {
+     "role": "HAT Coy",
+     "unit": "inf-coy-hat-bn",
+     "count": 3
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 49
+     },
+     "chartStrength": 49,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 6
+       },
+       "chartStrength": 6
+      },
+      {
+       "role": "Adm Sec",
+       "count": 1,
+       "strength": {
+        "total": 29
+       },
+       "chartStrength": 29
+      },
+      {
+       "role": "Tpt Sec",
+       "count": 1,
+       "strength": {
+        "total": 14
+       },
+       "chartStrength": 14
+      }
+     ]
+    },
+    {
+     "role": "Att",
+     "count": 1,
+     "relation": "att",
+     "children": [
+      {
+       "role": "Sig Sec",
+       "count": 1,
+       "strength": {
+        "total": 8
+       },
+       "chartStrength": 8
+      },
+      {
+       "role": "LAD EME",
+       "count": 1,
+       "strength": {
+        "total": 27
+       },
+       "chartStrength": 27
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol 9mm",
+     "count": 37,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Rifle 7.62mm G3A3",
+     "count": 163,
+     "weapon": "rifle-g-3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "SMG Chinese",
+     "count": 335,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LMG 7.62mm MG3A3",
+     "count": 12,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG 7.62mm MG3A3",
+     "count": 12,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "40mm (GL HMG)",
+     "count": 9,
+     "weapon": "glhmg",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "12.7mm AAMG",
+     "count": 9
+    },
+    {
+     "name": "AAMG Cal 12.7mm",
+     "count": 43,
+     "note": "AA Role Mtd on APC/ARVs"
+    },
+    {
+     "name": "ATGM Wpn Sys complete with accessories",
+     "count": 36,
+     "weapon": "tow-atgm",
+     "weaponMatch": "alias",
+     "note": "TOW (Maj Eqpt: TOW Wpns 36)"
+    },
+    {
+     "name": "Gren Arges",
+     "count": 577
+    },
+    {
+     "name": "Gren No-80 (WP)",
+     "count": 60
+    },
+    {
+     "name": "Pencil Shooting / Pistol Flare Sig",
+     "count": 15
+    },
+    {
+     "name": "Total (less Grens)",
+     "count": 671
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton 4x4 GS",
+     "count": 17
+    },
+    {
+     "name": "Trk 1/4 Ton (Sp Pl)",
+     "count": 33
+    },
+    {
+     "name": "Trk 1/4 Ton (TOW)",
+     "count": 2
+    },
+    {
+     "name": "Trk 3/4 Ton 4x4 (Amb)",
+     "count": 4
+    },
+    {
+     "name": "Trk 1 - 1.5 Ton Dodge",
+     "count": 27
+    },
+    {
+     "name": "Trk 2.5 - 5 Ton",
+     "count": 15
+    },
+    {
+     "name": "APC (TOW Carrier)",
+     "count": 36
+    },
+    {
+     "name": "APC (Comd APC)",
+     "count": 4
+    },
+    {
+     "name": "ARVs",
+     "count": 3
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 17
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 18
+    },
+    {
+     "name": "Tlr Cargo 1 - 1.5 Ton",
+     "count": 11
+    },
+    {
+     "name": "Water Tlr 1 - 1.5 Ton (250-400 Gals)",
+     "count": 4
+    },
+    {
+     "name": "MC (100 - 125 CC)",
+     "count": 1
+    },
+    {
+     "name": "Bicycle",
+     "count": 2
+    },
+    {
+     "name": "Total (less Tlrs, MC & Bicycle)",
+     "count": 141
+    }
+   ],
+   "majEqpt": [
+    {
+     "name": "Wpn APC/ITVs",
+     "count": 36
+    },
+    {
+     "name": "TOW Wpns",
+     "count": 36,
+     "weapon": "tow-atgm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Tp carrying APCs",
+     "count": 4
+    }
+   ],
+   "notes": [
+    "Note on chart: Sp pl is Jeep mtd.",
+    "Pers serials printed o-t."
+   ],
+   "side": "own",
+   "symbolKey": "10120411"
+  },
+  {
+   "id": "inf-coy-hat-bn",
+   "name": "HAT Coy (HAT Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "hat",
+   "echelon": "15",
+   "page": "631",
+   "strength": {
+    "total": 161
+   },
+   "chartStrength": 161,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 37
+     },
+     "chartStrength": 37,
+     "note": "printed 'Coy HQ 37' (no brackets)"
+    },
+    {
+     "role": "Sp Pl",
+     "unit": "inf-pl-lat-sp",
+     "count": 1
+    },
+    {
+     "role": "ATGM Pl",
+     "unit": "inf-pl-hat-atgm",
+     "count": 2
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120411"
+  },
+  {
+   "id": "inf-pl-hat-atgm",
+   "name": "ATGM Pl (HAT Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "hat-atgm",
+   "echelon": "14",
+   "page": "631",
+   "strength": {
+    "total": 32
+   },
+   "chartStrength": 32,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Det",
+     "count": 3,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8,
+     "vehicles": [
+      {
+       "name": "APC",
+       "count": 2
+      }
+     ],
+     "weapons": [
+      {
+       "name": "TOW Launcher",
+       "count": 2,
+       "weapon": "tow-atgm",
+       "weaponMatch": "alias"
+      }
+     ],
+     "note": "'2 Launchers 2 APCs' printed once under each Pl's three Dets; taken as per Det (36 TOW in the bn = 6 Pls x 3 Dets x 2)"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "TOW Launcher",
+     "count": 6,
+     "note": "2 per Det",
+     "weapon": "tow-atgm",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "APC",
+     "count": 6,
+     "note": "2 per Det"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120411"
+  },
+  {
+   "id": "inf-coy-hat",
+   "name": "HAT Coy",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "hat-indep",
+   "echelon": "15",
+   "page": "634",
+   "strength": {
+    "total": 183
+   },
+   "chartStrength": 183,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 69
+     },
+     "chartStrength": 69,
+     "vehicles": [
+      {
+       "name": "APC",
+       "count": 1,
+       "note": "printed '(1xAPC)' under COY HQ (69)"
+      }
+     ]
+    },
+    {
+     "role": "Sp Pl",
+     "unit": "inf-pl-hat-coy-sp",
+     "count": 1
+    },
+    {
+     "role": "HAT Pl",
+     "unit": "inf-pl-hat-coy",
+     "count": 2
+    }
+   ],
+   "majEqpt": [
+    {
+     "name": "TOW wpns",
+     "count": 12,
+     "weapon": "tow-atgm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Wpn carrier APCs",
+     "count": 12
+    },
+    {
+     "name": "Comd APC",
+     "count": 1
+    },
+    {
+     "name": "ARV",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Printed title '(HAT) COY (183)'."
+   ],
+   "side": "own",
+   "symbolKey": "10120411"
+  },
+  {
+   "id": "inf-pl-hat-coy-sp",
+   "name": "Sp Pl (HAT Coy)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "atk-sp",
+   "echelon": "14",
+   "page": "634",
+   "strength": {
+    "total": 50
+   },
+   "chartStrength": 50,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "GLHMG Sec",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9,
+     "weapons": [
+      {
+       "name": "GLHMG",
+       "count": 3,
+       "weapon": "glhmg",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "MG Sec",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12,
+     "weapons": [
+      {
+       "name": "MGIA3",
+       "count": 4,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "LMG Sec",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12,
+     "weapons": [
+      {
+       "name": "MGIA3 (LMG)",
+       "count": 4,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "AA HMG Sec",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9,
+     "weapons": [
+      {
+       "name": "12.7mm AA MG",
+       "count": 3
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "GLHMG",
+     "count": 3,
+     "weapon": "glhmg",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MGIA3",
+     "count": 4,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MGIA3 (LMG)",
+     "count": 4,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "12.7mm AA MG",
+     "count": 3
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120411"
+  },
+  {
+   "id": "inf-pl-hat-coy",
+   "name": "HAT Pl (HAT Coy)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "hat",
+   "echelon": "14",
+   "page": "634",
+   "strength": {
+    "total": 32
+   },
+   "chartStrength": 32,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8,
+     "children": [
+      {
+       "role": "Det",
+       "count": 2,
+       "strength": {
+        "total": 4
+       },
+       "chartStrength": 4
+      }
+     ]
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10120411"
+  },
+  {
+   "id": "inf-bn-ssg",
+   "name": "SSG Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "ssg",
+   "echelon": "16",
+   "page": "635",
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "count": 1,
+     "children": [
+      {
+       "role": "Adm Pl",
+       "count": 1
+      },
+      {
+       "role": "MT Pl",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Cdo Coy",
+     "unit": "inf-coy-ssg-cdo",
+     "count": 4
+    }
+   ],
+   "notes": [
+    "No strengths printed.",
+    "One of the four Cdo Coys is printed 'Cdb Coy' (typo)."
+   ],
+   "side": "own",
+   "symbolKey": "10110211"
+  },
+  {
+   "id": "inf-coy-ssg-cdo",
+   "name": "Cdo Coy (SSG Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "ssg-cdo",
+   "echelon": "15",
+   "page": "635",
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1
+    },
+    {
+     "role": "Cdo Pl",
+     "unit": "inf-pl-ssg-cdo",
+     "count": 3
+    },
+    {
+     "role": "MT Sec",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110220"
+  },
+  {
+   "id": "inf-pl-ssg-cdo",
+   "name": "Cdo Pl (SSG Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "ssg-cdo",
+   "echelon": "14",
+   "page": "635",
+   "children": [
+    {
+     "role": "Cdo Team",
+     "count": 3
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110220"
+  },
+  {
+   "id": "inf-bn-ssg-mtn",
+   "name": "SSG (Spec Forces Bn, Mtn)",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "ssg-sf-mtn",
+   "echelon": "16",
+   "page": "636-638",
+   "strengthNote": "No bn total printed; chart parts 33 + 3x128 + 128 + 87 = 632.",
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 33
+     },
+     "chartStrength": 33,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 17
+      },
+      {
+       "name": "SMG 7.62 mm Chinese",
+       "count": 15,
+       "weapon": "smg-7-62-mm",
+       "weaponMatch": "contains"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 17,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 17
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 34
+      }
+     ]
+    },
+    {
+     "role": "Cdo Coy",
+     "unit": "inf-coy-ssg-mtn-sf",
+     "count": 3,
+     "note": "chart '3x Cdo Coys (128'; table '3 x SF Coys'"
+    },
+    {
+     "role": "SOC",
+     "unit": "inf-coy-ssg-mtn-soc",
+     "count": 1,
+     "note": "table 'SCO (Spec Ops Coy)'"
+    },
+    {
+     "role": "SP Coy",
+     "unit": "inf-coy-ssg-mtn-sp",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Aslt Rifle M4 5.56MM",
+     "count": 455
+    },
+    {
+     "name": "SMG 7.62mm Chinese (Pool Wpns)",
+     "count": 97,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "SMG 7.62 mm Chinese",
+     "count": 48,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "UBGL M-203",
+     "count": 48
+    },
+    {
+     "name": "M-249 LMG",
+     "count": 48
+    },
+    {
+     "name": "LMG Chinese 7.62 mm (Pool Wpns)",
+     "count": 12
+    },
+    {
+     "name": "RPG-7",
+     "count": 24,
+     "weapon": "rpg-7",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LSR 7.62mm",
+     "count": 24
+    },
+    {
+     "name": "HSR 127",
+     "count": 8
+    },
+    {
+     "name": "Pistol 9mm",
+     "count": 563,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Cdo Knife",
+     "count": 563
+    },
+    {
+     "name": "Grenade Hand No 36 M HE",
+     "count": 1126
+    },
+    {
+     "name": "SAM",
+     "count": 3
+    },
+    {
+     "name": "A/Tk Wpn",
+     "count": 3
+    },
+    {
+     "name": "Corner Shot",
+     "count": 4
+    },
+    {
+     "name": "Taser Gun",
+     "count": 4
+    },
+    {
+     "name": "Mor",
+     "count": 4
+    },
+    {
+     "name": "Shot Gun 12 Bore",
+     "count": 18
+    },
+    {
+     "name": "Pencil Shooting",
+     "count": 24
+    }
+   ],
+   "weaponTable": {
+    "page": "637-638",
+    "columns": [
+     "Bn HQ",
+     "SP Coy: Coy HQ",
+     "SP Coy: Adm",
+     "SP Coy: MT",
+     "SP Coy: Hy Sniper",
+     "SP Coy: Exp / Dml Team",
+     "SP Coy: SAM Sec",
+     "SP Coy: Total HQ Coy",
+     "SCO: Coy HQ",
+     "SCO: 6x SF Teams",
+     "SCO: Int & Tech Sec",
+     "SCO: MT Sec",
+     "SCO: Total",
+     "3x SF Coys: Coy HQ",
+     "3x SF Coys: 6x Teams",
+     "3x SF Coys: MT Sec",
+     "3x SF Coys: A/Tk Sec",
+     "3x SF Coys: Total 1x Coy",
+     "Total 3x Coys",
+     "Total Bn"
+    ],
+    "rows": [
+     {
+      "ser": 1,
+      "name": "Aslt Rifle M4 5.56MM",
+      "values": [
+       17,
+       6,
+       6,
+       16,
+       8,
+       8,
+       6,
+       50,
+       7,
+       72,
+       5,
+       13,
+       97,
+       7,
+       72,
+       5,
+       13,
+       97,
+       291,
+       455
+      ],
+      "note": "3x SF Coys: MT Sec 5 / A/Tk Sec 13 here, but the Pistol, Cdo Knife and Grenade rows give MT 13 / A/Tk 5 (chart: A/Tk Sec 5, MT Sec 13)"
+     },
+     {
+      "ser": 2,
+      "name": "SMG 7.62mm Chinese (Pool Wpns)",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       7,
+       72,
+       5,
+       13,
+       97,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       97
+      ]
+     },
+     {
+      "ser": 3,
+      "name": "SMG 7.62 mm Chinese",
+      "values": [
+       15,
+       5,
+       4,
+       0,
+       0,
+       0,
+       0,
+       9,
+       6,
+       0,
+       0,
+       0,
+       6,
+       6,
+       0,
+       0,
+       0,
+       0,
+       18,
+       48
+      ],
+      "note": "SF Coy HQ 6 but Total 1x Coy 0; Total 3x Coys 18 (= 3 x 6)"
+     },
+     {
+      "ser": 4,
+      "name": "UBGL M-203",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       12,
+       0,
+       0,
+       12,
+       0,
+       12,
+       0,
+       0,
+       12,
+       36,
+       48
+      ]
+     },
+     {
+      "ser": 5,
+      "name": "M-249 LMG",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       12,
+       0,
+       0,
+       12,
+       0,
+       12,
+       0,
+       0,
+       12,
+       36,
+       48
+      ]
+     },
+     {
+      "ser": 6,
+      "name": "LMG Chinese 7.62 mm (Pool Wpns)",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       12,
+       0,
+       0,
+       12,
+       0,
+       12,
+       0,
+       0,
+       12,
+       0,
+       12
+      ],
+      "note": "SF Coy Total 1x Coy 12 but Total 3x Coys 0; Total Bn 12 (= the SCO only)"
+     },
+     {
+      "ser": 7,
+      "name": "RPG-7",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       6,
+       0,
+       0,
+       6,
+       0,
+       6,
+       0,
+       0,
+       6,
+       18,
+       24
+      ]
+     },
+     {
+      "ser": 8,
+      "name": "LSR 7.62mm",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       6,
+       0,
+       0,
+       6,
+       0,
+       6,
+       0,
+       0,
+       6,
+       18,
+       24
+      ]
+     },
+     {
+      "ser": 9,
+      "name": "HSR 127",
+      "values": [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       8,
+       8,
+       0,
+       0,
+       0,
+       8,
+       8,
+       0,
+       0,
+       0,
+       0,
+       0,
+       8
+      ],
+      "note": "row printed shifted: blank (null) under Bn HQ and the six SP Coy columns, 8 under SP Total HQ Coy, SCO Coy HQ, SCO Total, SF Coy HQ and Total Bn; Total Bn is 8 only. The SP Coy's Hy Sniper Team (16) has 8 M4, so it most likely holds the 8 HSR"
+     },
+     {
+      "ser": 10,
+      "name": "Pistol 9mm",
+      "values": [
+       17,
+       6,
+       6,
+       16,
+       16,
+       8,
+       6,
+       58,
+       8,
+       96,
+       5,
+       13,
+       122,
+       8,
+       96,
+       13,
+       5,
+       122,
+       366,
+       563
+      ]
+     },
+     {
+      "ser": 11,
+      "name": "Cdo Knife",
+      "values": [
+       17,
+       6,
+       6,
+       16,
+       16,
+       8,
+       6,
+       58,
+       8,
+       96,
+       5,
+       13,
+       122,
+       8,
+       96,
+       13,
+       5,
+       122,
+       366,
+       563
+      ]
+     },
+     {
+      "ser": 12,
+      "name": "Grenade Hand No 36 M HE",
+      "values": [
+       34,
+       12,
+       12,
+       32,
+       32,
+       16,
+       12,
+       116,
+       16,
+       192,
+       10,
+       26,
+       244,
+       16,
+       192,
+       26,
+       10,
+       244,
+       732,
+       1126
+      ]
+     },
+     {
+      "ser": 13,
+      "name": "SAM",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       3,
+       3,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       3
+      ]
+     },
+     {
+      "ser": 14,
+      "name": "A/Tk Wpn",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       1,
+       1,
+       3,
+       3
+      ]
+     },
+     {
+      "ser": 15,
+      "name": "Corner Shot",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       4,
+       0,
+       0,
+       4,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       4
+      ]
+     },
+     {
+      "ser": 16,
+      "name": "Taser Gun",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       4,
+       0,
+       0,
+       4,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       4
+      ]
+     },
+     {
+      "ser": 17,
+      "name": "Mor",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       1,
+       1,
+       0,
+       0,
+       0,
+       1,
+       3,
+       4
+      ]
+     },
+     {
+      "ser": 18,
+      "name": "Shot Gun 12 Bore",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       18,
+       0,
+       0,
+       18,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       18
+      ]
+     },
+     {
+      "ser": 19,
+      "name": "Pencil Shooting",
+      "values": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       6,
+       0,
+       0,
+       6,
+       0,
+       6,
+       0,
+       0,
+       6,
+       18,
+       24
+      ]
+     }
+    ],
+    "note": "The full table as printed, column by column. The SCO column 6x SF Teams covers the 4x SF Team and 2x Sp R Teams of the chart."
+   },
+   "notes": [
+    "Total Bn column of the table (p 637-638); the full table is in weaponTable and each box carries its own column.",
+    "Table oddities: HSR 127 row is shifted (8 under Total HQ Coy, SCO Coy HQ and SCO Total, Bn 8); LMG Chinese (Pool) gives 12 per SF Coy but 0 for Total 3x Coys; SMG 7.62 mm Chinese gives SF Coy HQ 6 but Total 1x Coy 0 (Total 3x Coys 18); in the SF Coy columns the Aslt Rifle row has MT Sec 5 / A/Tk Sec 13, the Pistol row MT 13 / A/Tk 5 (chart: A/Tk Sec 5, MT Sec 13)."
+   ],
+   "side": "own",
+   "symbolKey": "10110211"
+  },
+  {
+   "id": "inf-coy-ssg-mtn-sf",
+   "name": "Cdo (SF) Coy (SSG Spec Forces Bn, Mtn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "ssg-sf",
+   "echelon": "15",
+   "page": "636-638",
+   "strength": {
+    "total": 128
+   },
+   "chartStrength": 128,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 14
+     },
+     "chartStrength": 14,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 7
+      },
+      {
+       "name": "SMG 7.62 mm Chinese",
+       "count": 6,
+       "weapon": "smg-7-62-mm",
+       "weaponMatch": "contains",
+       "note": "SF Coy HQ 6 but Total 1x Coy printed 0; Total 3x Coys 18 (= 3 x 6)"
+      },
+      {
+       "name": "HSR 127",
+       "count": 8,
+       "uncertain": true,
+       "note": "HSR row printed shifted: 8 under SF Coy HQ but 0 in Total 1x Coy and Total 3x Coys; Total Bn is 8 only"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 8,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 8
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 16
+      },
+      {
+       "name": "Mor",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "SF Team",
+     "count": 6,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 72,
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "UBGL M-203",
+       "count": 12,
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "M-249 LMG",
+       "count": 12,
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "LMG Chinese 7.62 mm (Pool Wpns)",
+       "count": 12,
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "RPG-7",
+       "count": 6,
+       "weapon": "rpg-7",
+       "weaponMatch": "alias",
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "LSR 7.62mm",
+       "count": 6,
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 96,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias",
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 96,
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 192,
+       "note": "for the 6 teams together"
+      },
+      {
+       "name": "Pencil Shooting",
+       "count": 6,
+       "note": "for the 6 teams together"
+      }
+     ],
+     "note": "printed '6x SF Teams (16' (cut off); weapons are the table's '6x Teams' column, for the six teams together"
+    },
+    {
+     "role": "A/Tk Sec",
+     "count": 1,
+     "strength": {
+      "total": 5
+     },
+     "chartStrength": 5,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 13,
+       "uncertain": true,
+       "note": "as printed; the M4 row gives MT Sec 5 / A/Tk Sec 13, the other rows MT 13 / A/Tk 5 (chart: A/Tk Sec (5), MT Sec (13)), so the M4 figures may be swapped"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 5,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 5
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 10
+      },
+      {
+       "name": "A/Tk Wpn",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "MT Sec",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 5,
+       "uncertain": true,
+       "note": "as printed; the M4 row gives MT Sec 5 / A/Tk Sec 13, the other rows MT 13 / A/Tk 5 (chart: A/Tk Sec (5), MT Sec (13)), so the M4 figures may be swapped"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 13,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 13
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 26
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Aslt Rifle M4 5.56MM",
+     "count": 97
+    },
+    {
+     "name": "SMG 7.62 mm Chinese",
+     "count": 0,
+     "note": "SF Coy HQ column 6; Total 3x Coys 18",
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "UBGL M-203",
+     "count": 12
+    },
+    {
+     "name": "M-249 LMG",
+     "count": 12
+    },
+    {
+     "name": "LMG Chinese 7.62 mm (Pool Wpns)",
+     "count": 12
+    },
+    {
+     "name": "RPG-7",
+     "count": 6,
+     "weapon": "rpg-7",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LSR 7.62mm",
+     "count": 6
+    },
+    {
+     "name": "Pistol 9mm",
+     "count": 122,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Cdo Knife",
+     "count": 122
+    },
+    {
+     "name": "Grenade Hand No 36 M HE",
+     "count": 244
+    },
+    {
+     "name": "A/Tk Wpn",
+     "count": 1
+    },
+    {
+     "name": "Mor",
+     "count": 1
+    },
+    {
+     "name": "Pencil Shooting",
+     "count": 6
+    }
+   ],
+   "notes": [
+    "Weapons from the table on p 637-638, 'Total 1x Coy' column."
+   ],
+   "side": "own",
+   "symbolKey": "10110220"
+  },
+  {
+   "id": "inf-coy-ssg-mtn-soc",
+   "name": "SOC (SSG Spec Forces Bn, Mtn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "ssg-spec-ops",
+   "echelon": "15",
+   "page": "636-638",
+   "strength": {
+    "total": 128
+   },
+   "chartStrength": 128,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 14
+     },
+     "chartStrength": 14,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 7
+      },
+      {
+       "name": "SMG 7.62mm Chinese (Pool Wpns)",
+       "count": 7,
+       "weapon": "smg-7-62-mm",
+       "weaponMatch": "contains"
+      },
+      {
+       "name": "SMG 7.62 mm Chinese",
+       "count": 6,
+       "weapon": "smg-7-62-mm",
+       "weaponMatch": "contains"
+      },
+      {
+       "name": "HSR 127",
+       "count": 8,
+       "uncertain": true,
+       "note": "HSR row printed shifted; Total Bn is 8 only, most likely the SP Coy Hy Sniper Team"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 8,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 8
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 16
+      },
+      {
+       "name": "Mor",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "MT Sec",
+     "count": 1,
+     "strength": {
+      "total": 13
+     },
+     "chartStrength": 13,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 13
+      },
+      {
+       "name": "SMG 7.62mm Chinese (Pool Wpns)",
+       "count": 13,
+       "weapon": "smg-7-62-mm",
+       "weaponMatch": "contains"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 13,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 13
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 26
+      }
+     ]
+    },
+    {
+     "role": "Int and Tech Sec",
+     "count": 1,
+     "strength": {
+      "total": 5
+     },
+     "chartStrength": 5,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 5
+      },
+      {
+       "name": "SMG 7.62mm Chinese (Pool Wpns)",
+       "count": 5,
+       "weapon": "smg-7-62-mm",
+       "weaponMatch": "contains"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 5,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 5
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 10
+      }
+     ]
+    },
+    {
+     "role": "SF Team",
+     "count": 4,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16,
+     "note": "printed '4 x SF Team (16 each)'; the table's '6x SF Teams' column covers these 4 and the 2 Sp R Teams (see the unit note)"
+    },
+    {
+     "role": "Sp R Team",
+     "count": 2,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16,
+     "note": "printed '2x Sp R Teams (16' (cut off)"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Aslt Rifle M4 5.56MM",
+     "count": 97
+    },
+    {
+     "name": "SMG 7.62mm Chinese (Pool Wpns)",
+     "count": 97,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "SMG 7.62 mm Chinese",
+     "count": 6,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "UBGL M-203",
+     "count": 12
+    },
+    {
+     "name": "M-249 LMG",
+     "count": 12
+    },
+    {
+     "name": "LMG Chinese 7.62 mm (Pool Wpns)",
+     "count": 12
+    },
+    {
+     "name": "RPG-7",
+     "count": 6,
+     "weapon": "rpg-7",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "LSR 7.62mm",
+     "count": 6
+    },
+    {
+     "name": "HSR 127",
+     "count": 8,
+     "note": "HSR row printed shifted (8 under SCO Coy HQ and SCO Total); Total Bn is 8 only, so this is most likely the SP Coy Hy Sniper Team figure",
+     "uncertain": true
+    },
+    {
+     "name": "Pistol 9mm",
+     "count": 122,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Cdo Knife",
+     "count": 122
+    },
+    {
+     "name": "Grenade Hand No 36 M HE",
+     "count": 244
+    },
+    {
+     "name": "Corner Shot",
+     "count": 4
+    },
+    {
+     "name": "Taser Gun",
+     "count": 4
+    },
+    {
+     "name": "Mor",
+     "count": 1
+    },
+    {
+     "name": "Shot Gun 12 Bore",
+     "count": 18
+    },
+    {
+     "name": "Pencil Shooting",
+     "count": 6
+    }
+   ],
+   "notes": [
+    "Weapons from the table on p 637-638, SCO 'Total' column (table columns: Coy HQ, 6x SF Teams, Int & Tech Sec, MT Sec).",
+    "Table column 'SCO: 6x SF Teams' (4x SF Team + 2x Sp R Teams together): Aslt Rifle M4 5.56MM 72, SMG 7.62mm Chinese (Pool Wpns) 72, UBGL M-203 12, M-249 LMG 12, LMG Chinese 7.62 mm (Pool Wpns) 12, RPG-7 6, LSR 7.62mm 6, Pistol 9mm 96, Cdo Knife 96, Grenade Hand No 36 M HE 192, Corner Shot 4, Taser Gun 4, Shot Gun 12 Bore 18, Pencil Shooting 6."
+   ],
+   "side": "own",
+   "symbolKey": "10110211"
+  },
+  {
+   "id": "inf-coy-ssg-mtn-sp",
+   "name": "SP Coy (SSG Spec Forces Bn, Mtn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "ssg-sp",
+   "echelon": "15",
+   "page": "636-638",
+   "strength": {
+    "total": 87
+   },
+   "chartStrength": 87,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 11
+     },
+     "chartStrength": 11,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 6
+      },
+      {
+       "name": "SMG 7.62 mm Chinese",
+       "count": 5,
+       "weapon": "smg-7-62-mm",
+       "weaponMatch": "contains"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 6,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 6
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 12
+      }
+     ]
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 30
+     },
+     "chartStrength": 30,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 6
+      },
+      {
+       "name": "SMG 7.62 mm Chinese",
+       "count": 4,
+       "weapon": "smg-7-62-mm",
+       "weaponMatch": "contains"
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 6,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 6
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 12
+      }
+     ],
+     "note": "printed 'AdmPl (30)'; table column 'Adm'"
+    },
+    {
+     "role": "MT Pl",
+     "count": 1,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 16
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 16,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 16
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 32
+      }
+     ],
+     "note": "table column 'MT'"
+    },
+    {
+     "role": "SAM Sec",
+     "count": 1,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 6
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 6,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 6
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 12
+      },
+      {
+       "name": "SAM",
+       "count": 3
+      }
+     ]
+    },
+    {
+     "role": "Hy Sniper Team",
+     "count": 1,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 8
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 16,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 16
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 32
+      },
+      {
+       "name": "HSR 127",
+       "count": 8,
+       "uncertain": true,
+       "note": "HSR row printed shifted (blank in this column, 8 under Total HQ Coy); the team has 16 pers and 8 M4, so the 8 HSR are read as held here"
+      }
+     ]
+    },
+    {
+     "role": "Expl Team",
+     "count": 1,
+     "strength": {
+      "total": 8
+     },
+     "chartStrength": 8,
+     "weapons": [
+      {
+       "name": "Aslt Rifle M4 5.56MM",
+       "count": 8
+      },
+      {
+       "name": "Pistol 9mm",
+       "count": 8,
+       "weapon": "walther-9-mm",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "Cdo Knife",
+       "count": 8
+      },
+      {
+       "name": "Grenade Hand No 36 M HE",
+       "count": 16
+      }
+     ],
+     "note": "table 'Exp / Dml Team'"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Aslt Rifle M4 5.56MM",
+     "count": 50
+    },
+    {
+     "name": "SMG 7.62 mm Chinese",
+     "count": 9,
+     "weapon": "smg-7-62-mm",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "HSR 127",
+     "count": 8,
+     "note": "HSR row printed shifted: 8 under Total HQ Coy only; read as the Hy Sniper Team",
+     "uncertain": true,
+     "heldBy": "Hy Sniper Team (reading)"
+    },
+    {
+     "name": "Pistol 9mm",
+     "count": 58,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Cdo Knife",
+     "count": 58
+    },
+    {
+     "name": "Grenade Hand No 36 M HE",
+     "count": 116
+    },
+    {
+     "name": "SAM",
+     "count": 3,
+     "heldBy": "SAM Sec"
+    }
+   ],
+   "notes": [
+    "Weapons from the table on p 637-638, 'Total HQ Coy' column of the SP Coy group."
+   ],
+   "side": "own",
+   "symbolKey": "10110211"
+  },
+  {
+   "id": "inf-bn-mjd",
+   "name": "Mjd Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "mjd",
+   "echelon": "16",
+   "page": "639-640",
+   "strength": {
+    "offr": 13,
+    "jco": 26,
+    "sldr": 612,
+    "sw": 15,
+    "total": 666
+   },
+   "strengthNote": "Grand Total 672 incl War Increment 6 (Mjd). Army Nucleus Staff: Offrs 2, JCOs 8, Sldrs 59, SWs 12, Total 81; Mjd: Offrs 11, JCOs 18, Sldrs 553, SWs 3, Total 585. Chart parts 30 + 4x120 + 155 = 665.",
+   "warIncrement": {
+    "total": 6,
+    "note": "Mjd; Army Nucleus Staff Nil"
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 30
+     },
+     "chartStrength": 30,
+     "note": "printed 'BN HQ 30 (28)'"
+    },
+    {
+     "role": "Rifle Coy",
+     "unit": "inf-coy-mjd-rifle",
+     "count": 4
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "inf-coy-mjd-hq",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol",
+     "count": 42,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Rifle",
+     "count": 387
+    },
+    {
+     "name": "SMG",
+     "count": 189
+    },
+    {
+     "name": "LMG",
+     "count": 36,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG",
+     "count": 8,
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "106/75 mm RR",
+     "count": 8
+    },
+    {
+     "name": "RL/PRG 7",
+     "count": 4,
+     "weapon": "rpg-7",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "2 in/60 mm Mor",
+     "count": 12,
+     "weapon": "60-mm-mor",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "3 in/81 mm Mor",
+     "count": 6,
+     "weapon": "81mm-mor",
+     "weaponMatch": "contains"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 ton Jeep GS/Pick Up",
+     "count": 4
+    },
+    {
+     "name": "1/4 ton Jeep RR",
+     "count": 12
+    },
+    {
+     "name": "1/4 ton Amb",
+     "count": 1
+    },
+    {
+     "name": "3/4 ton trk/equivalent civ tpt",
+     "count": 9
+    },
+    {
+     "name": "3 ton trk/civ load carr",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 2,
+     "note": "printed 'Total : - 2 (15)'; the std items add to 28 (the '2' may be a cut-off 28)",
+     "uncertain": true
+    },
+    {
+     "name": "Tlr 1/4 ton",
+     "count": 2
+    },
+    {
+     "name": "Tlr 3/4 ton",
+     "count": 2
+    },
+    {
+     "name": "Tlr water 250 gals",
+     "count": 2
+    }
+   ],
+   "notes": [
+    "Figs in brackets on p 639-640 are the mtn mjd bn variations; figures printed only in brackets on the chart (Pl 34, Pl HQ 7, Sec 9, HQ Coy's Coy HQ 11, RR Pl HQ 4, RR Sec 9, Def&Pnr Pl 21 with Pl HQ 3 and 3x Sec 6) are taken as common to both, which the std sub-unit totals confirm.",
+    "Std mjd bn has four RR secs whereas mtn mjd bn has two RR secs.",
+    "Mjd trg bns are auth a total of 181 all ranks activated on permanent basis: 2 offrs, 7 JCOs, 52 Sldrs and 4 SWs from reg army and 10 offrs, 19 JCOs, 84 Sldrs and 3 NCs (U) from Mjd."
+   ],
+   "side": "own",
+   "symbolKey": "10110210"
+  },
+  {
+   "id": "inf-bn-mjd-mtn",
+   "name": "Mtn Mjd Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "mjd-mtn",
+   "echelon": "16",
+   "page": "639-640",
+   "strength": {
+    "offr": 13,
+    "jco": 26,
+    "sldr": 618,
+    "sw": 15,
+    "total": 672
+   },
+   "strengthNote": "Bracketed figures. Grand Total 672 (War Increment Nil). Army Nucleus Staff: Sldrs 50, Total 72; Mjd: Sldrs 568, Total 600. Chart parts 28 + 4x123 + 145 = 665.",
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 28
+     },
+     "chartStrength": 28,
+     "note": "printed 'BN HQ 30 (28)'"
+    },
+    {
+     "role": "Rifle Coy",
+     "unit": "inf-coy-mjd-mtn-rifle",
+     "count": 4
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "inf-coy-mjd-mtn-hq",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol",
+     "count": 50,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Rifle",
+     "count": 389
+    },
+    {
+     "name": "SMG",
+     "count": 173
+    },
+    {
+     "name": "LMG",
+     "count": 36,
+     "note": "no bracketed variation printed",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG",
+     "count": 8,
+     "note": "no bracketed variation printed",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "106/75 mm RR",
+     "count": 4
+    },
+    {
+     "name": "RL/PRG 7",
+     "count": 12,
+     "weapon": "rpg-7",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "2 in/60 mm Mor",
+     "count": 12,
+     "weapon": "60-mm-mor",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "3 in/81 mm Mor",
+     "count": 8,
+     "weapon": "81mm-mor",
+     "weaponMatch": "contains"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 ton Jeep GS/Pick Up",
+     "count": 3
+    },
+    {
+     "name": "1/4 ton Jeep RR",
+     "count": 6
+    },
+    {
+     "name": "1/4 ton Amb",
+     "count": 1,
+     "note": "no bracketed variation printed"
+    },
+    {
+     "name": "3/4 ton trk/equivalent civ tpt",
+     "count": 4
+    },
+    {
+     "name": "3 ton trk/civ load carr",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 15,
+     "note": "printed (15) = 3 + 6 + 4 + 2, i.e. without the 1/4 ton Amb"
+    },
+    {
+     "name": "Tlr 1/4 ton",
+     "count": 2,
+     "note": "no bracketed variation printed (taken as common, like LMG / MG)"
+    },
+    {
+     "name": "Tlr 3/4 ton",
+     "count": 2,
+     "note": "no bracketed variation printed (taken as common, like LMG / MG)"
+    },
+    {
+     "name": "Tlr water 250 gals",
+     "count": 2
+    }
+   ],
+   "variantOf": "inf-bn-mjd",
+   "notes": [
+    "Figs in brackets on p 639-640 are the mtn mjd bn variations; figures printed only in brackets on the chart (Pl 34, Pl HQ 7, Sec 9, HQ Coy's Coy HQ 11, RR Pl HQ 4, RR Sec 9, Def&Pnr Pl 21 with Pl HQ 3 and 3x Sec 6) are taken as common to both, which the std sub-unit totals confirm."
+   ],
+   "side": "own",
+   "symbolKey": "10110210"
+  },
+  {
+   "id": "inf-coy-mjd-rifle",
+   "name": "Rifle Coy (Mjd Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "mjd-rifle",
+   "echelon": "15",
+   "page": "639",
+   "strength": {
+    "total": 120
+   },
+   "chartStrength": 120,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 18
+     },
+     "chartStrength": 18,
+     "note": "printed 'Coy HQ 18 (21)'"
+    },
+    {
+     "role": "Pl",
+     "unit": "inf-pl-mjd-rifle",
+     "count": 3
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110210"
+  },
+  {
+   "id": "inf-coy-mjd-mtn-rifle",
+   "name": "Rifle Coy (Mtn Mjd Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "mjd-mtn-rifle",
+   "echelon": "15",
+   "page": "639",
+   "strength": {
+    "total": 123
+   },
+   "chartStrength": 123,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21,
+     "note": "printed 'Coy HQ 18 (21)'"
+    },
+    {
+     "role": "Pl",
+     "unit": "inf-pl-mjd-rifle",
+     "count": 3
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110210"
+  },
+  {
+   "id": "inf-pl-mjd-rifle",
+   "name": "Pl (Mjd Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mjd-rifle",
+   "echelon": "14",
+   "page": "639",
+   "strength": {
+    "total": 34
+   },
+   "chartStrength": 34,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    }
+   ],
+   "notes": [
+    "Figures printed in brackets only; same Pl fits both std (120) and mtn (123) coy totals."
+   ],
+   "side": "own",
+   "symbolKey": "10110210"
+  },
+  {
+   "id": "inf-coy-mjd-hq",
+   "name": "HQ Coy (Mjd Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "mjd-hq",
+   "echelon": "15",
+   "page": "639",
+   "strength": {
+    "total": 155
+   },
+   "chartStrength": 155,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 11
+     },
+     "chartStrength": 11
+    },
+    {
+     "role": "RR Pl",
+     "count": 1,
+     "strength": {
+      "total": 40
+     },
+     "chartStrength": 40,
+     "note": "std mjd bn has four RR secs",
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 4
+       },
+       "chartStrength": 4
+      },
+      {
+       "role": "RR Sec",
+       "count": 4,
+       "strength": {
+        "total": 9
+       },
+       "chartStrength": 9
+      }
+     ]
+    },
+    {
+     "role": "Mor Pl",
+     "count": 1,
+     "strength": {
+      "total": 34
+     },
+     "chartStrength": 34,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 14
+       },
+       "chartStrength": 14
+      },
+      {
+       "role": "Sec",
+       "count": 2,
+       "strength": {
+        "total": 10
+       },
+       "chartStrength": 10
+      }
+     ]
+    },
+    {
+     "role": "Def&Pnr Pl",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 3
+       },
+       "chartStrength": 3
+      },
+      {
+       "role": "Sec",
+       "count": 3,
+       "strength": {
+        "total": 6
+       },
+       "chartStrength": 6
+      }
+     ]
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 19
+     },
+     "chartStrength": 19,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 5
+       },
+       "chartStrength": 5
+      },
+      {
+       "role": "Radio Sec",
+       "count": 1,
+       "strength": {
+        "total": 2
+       },
+       "chartStrength": 2
+      },
+      {
+       "role": "Wire sec",
+       "count": 1,
+       "strength": {
+        "total": 10
+       },
+       "chartStrength": 10
+      },
+      {
+       "role": "Swbd Sec",
+       "count": 1,
+       "strength": {
+        "total": 2
+       },
+       "chartStrength": 2
+      }
+     ]
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 30
+     },
+     "chartStrength": 30
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110210"
+  },
+  {
+   "id": "inf-coy-mjd-mtn-hq",
+   "name": "HQ Coy (Mtn Mjd Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "mjd-mtn-hq",
+   "echelon": "15",
+   "page": "639",
+   "strength": {
+    "total": 145
+   },
+   "chartStrength": 145,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 11
+     },
+     "chartStrength": 11
+    },
+    {
+     "role": "RR Pl",
+     "count": 1,
+     "strength": {
+      "total": 22
+     },
+     "chartStrength": 22,
+     "note": "mtn mjd bn has two RR secs",
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 4
+       },
+       "chartStrength": 4
+      },
+      {
+       "role": "RR Sec",
+       "count": 2,
+       "strength": {
+        "total": 9
+       },
+       "chartStrength": 9
+      }
+     ]
+    },
+    {
+     "role": "Mor Pl",
+     "count": 1,
+     "strength": {
+      "total": 38
+     },
+     "chartStrength": 38,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 12
+       },
+       "chartStrength": 12
+      },
+      {
+       "role": "Sec",
+       "count": 2,
+       "strength": {
+        "total": 13
+       },
+       "chartStrength": 13
+      }
+     ]
+    },
+    {
+     "role": "Def&Pnr Pl",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21,
+     "children": [
+      {
+       "role": "Pl HQ",
+       "count": 1,
+       "strength": {
+        "total": 3
+       },
+       "chartStrength": 3
+      },
+      {
+       "role": "Sec",
+       "count": 3,
+       "strength": {
+        "total": 6
+       },
+       "chartStrength": 6
+      }
+     ]
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 18
+     },
+     "chartStrength": 18,
+     "note": "breakdown printed for the std Sig Pl only"
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 35
+     },
+     "chartStrength": 35
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110210"
+  },
+  {
+   "id": "inf-fc-corps",
+   "name": "FC Corps",
+   "arm": "inf",
+   "type": "corps",
+   "subtype": "fc",
+   "echelon": "18",
+   "page": "641",
+   "strength": {
+    "total": 3374
+   },
+   "chartStrength": 3374,
+   "children": [
+    {
+     "role": "Corps HQ",
+     "count": 1,
+     "strength": {
+      "total": 26
+     },
+     "chartStrength": 26
+    },
+    {
+     "role": "Rifle Wing",
+     "unit": "inf-wing-fc",
+     "count": 3,
+     "note": "printed '3/4 Rifle Wings'",
+     "countMax": 4
+    },
+    {
+     "role": "MI Pl",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "Horses",
+       "count": 48,
+       "note": "printed 'MI PL 48 Horses' (animals, mounted inf)"
+      }
+     ]
+    },
+    {
+     "role": "Sp Wing",
+     "unit": "inf-wing-fc-sp",
+     "count": 1
+    },
+    {
+     "role": "HQ Wing",
+     "unit": "inf-wing-fc-hq",
+     "count": 1
+    },
+    {
+     "role": "Adm Wing",
+     "unit": "inf-wing-fc-adm",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Echelon 18 is a judgement: named 'Corps' but 3374 strong with 3/4 wings (bde size).",
+    "Contents lists it at p 642; printed page number is 641 (the contents numbers run one ahead from Mjd Bn on)."
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-wing-fc-sp",
+   "name": "Sp Wing (FC Corps)",
+   "arm": "inf",
+   "type": "wing",
+   "subtype": "fc-sp",
+   "echelon": "16",
+   "page": "641",
+   "strength": {
+    "total": 113
+   },
+   "chartStrength": 113,
+   "children": [
+    {
+     "role": "HQ",
+     "count": 1,
+     "strength": {
+      "total": 3
+     },
+     "chartStrength": 3
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 31
+     },
+     "chartStrength": 31
+    },
+    {
+     "role": "Pnr Pl",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21
+    },
+    {
+     "role": "Atk Pl",
+     "count": 1,
+     "strength": {
+      "total": 23
+     },
+     "chartStrength": 23,
+     "weapons": [
+      {
+       "name": "75 mm RR",
+       "count": 6,
+       "weapon": "75mm-rr",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "Wksp",
+     "count": 1,
+     "strength": {
+      "total": 35
+     },
+     "chartStrength": 35
+    }
+   ],
+   "weapons": [
+    {
+     "name": "75 mm RR",
+     "count": 6,
+     "heldBy": "Atk Pl",
+     "weapon": "75mm-rr",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-wing-fc-hq",
+   "name": "HQ Wing (FC Corps)",
+   "arm": "inf",
+   "type": "wing",
+   "subtype": "fc-hq",
+   "echelon": "16",
+   "page": "641",
+   "strength": {
+    "total": 41
+   },
+   "chartStrength": 41,
+   "children": [
+    {
+     "role": "HQ",
+     "count": 1,
+     "strength": {
+      "total": 3
+     },
+     "chartStrength": 3
+    },
+    {
+     "role": "RP",
+     "count": 1,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6
+    },
+    {
+     "role": "Int/Edn",
+     "count": 1,
+     "strength": {
+      "total": 5
+     },
+     "chartStrength": 5
+    },
+    {
+     "role": "WT/Drill",
+     "count": 1,
+     "strength": {
+      "total": 11
+     },
+     "chartStrength": 11
+    },
+    {
+     "role": "Med",
+     "count": 1,
+     "strength": {
+      "total": 5
+     },
+     "chartStrength": 5
+    },
+    {
+     "role": "Mess",
+     "count": 1,
+     "strength": {
+      "total": 11
+     },
+     "chartStrength": 11
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-wing-fc-adm",
+   "name": "Adm Wing (FC Corps)",
+   "arm": "inf",
+   "type": "wing",
+   "subtype": "fc-adm",
+   "echelon": "16",
+   "page": "641",
+   "strength": {
+    "total": 108
+   },
+   "chartStrength": 108,
+   "children": [
+    {
+     "role": "HQ",
+     "count": 1,
+     "strength": {
+      "total": 2
+     },
+     "chartStrength": 2
+    },
+    {
+     "role": "Tpt Pl",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21
+    },
+    {
+     "role": "GD Pl",
+     "count": 1,
+     "strength": {
+      "total": 41
+     },
+     "chartStrength": 41
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 44
+     },
+     "chartStrength": 44
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-wing-fc",
+   "name": "FC Wing",
+   "arm": "inf",
+   "type": "wing",
+   "subtype": "fc",
+   "echelon": "16",
+   "page": "642-643",
+   "strength": {
+    "total": 730
+   },
+   "chartStrength": 730,
+   "children": [
+    {
+     "role": "Wing HQ",
+     "count": 1,
+     "strength": {
+      "total": 31
+     },
+     "chartStrength": 31
+    },
+    {
+     "role": "Rifle Coy",
+     "unit": "inf-coy-fc-rifle",
+     "count": 4
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "inf-coy-fc-hq",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Pistol",
+     "count": 34,
+     "weapon": "walther-9-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "Pistol Sig",
+     "count": 17
+    },
+    {
+     "name": "Sten/SMG",
+     "count": 73
+    },
+    {
+     "name": "Rifles",
+     "count": 482
+    },
+    {
+     "name": "LMGs",
+     "count": 36
+    },
+    {
+     "name": "MGs",
+     "count": 8
+    },
+    {
+     "name": "60 mm Mors",
+     "count": 8,
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "40 mm RL",
+     "count": 12
+    },
+    {
+     "name": "3\"/82 mm Mors",
+     "count": 6,
+     "weapon": "82mm-mor",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "Total",
+     "count": 676
+    }
+   ],
+   "equipment": [
+    {
+     "name": "HF Radio Set - 130",
+     "count": 28
+    },
+    {
+     "name": "Charging Sets 0/400",
+     "count": 5
+    },
+    {
+     "name": "Charging Engine",
+     "count": 1
+    },
+    {
+     "name": "Exch 10 Lines",
+     "count": 5
+    },
+    {
+     "name": "Fd Tel",
+     "count": 15
+    },
+    {
+     "name": "Cable (Miles)",
+     "count": 4
+    },
+    {
+     "name": "Solar Bty Charger",
+     "count": 28
+    },
+    {
+     "name": "Test Eqpt",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 84,
+     "note": "the listed items add to 88"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Jeep",
+     "count": 2
+    },
+    {
+     "name": "Jeep Amb",
+     "count": 1
+    },
+    {
+     "name": "1 Ton dodge",
+     "count": 3
+    },
+    {
+     "name": "2 1/2 Ton Dodge",
+     "count": 5
+    },
+    {
+     "name": "Water/Tlr/Bowzer",
+     "count": 2
+    },
+    {
+     "name": "Total",
+     "count": 13
+    }
+   ],
+   "ranks": {
+    "Lt Col/Maj": 1,
+    "Maj": 1,
+    "Capt": 3,
+    "SM": 1,
+    "Sub": 13,
+    "N/Sub": 15,
+    "Hav": 47,
+    "Nk": 86,
+    "L/Nk": 116,
+    "Sep": 396,
+    "SWs": 41,
+    "Head Clk": 1,
+    "Senior Clk": 3,
+    "Junior Clk": 5,
+    "RT": 1,
+    "Total": 730
+   },
+   "notes": [
+    "Contents lists FC Wing at p 643; chart printed on p 642, summary on p 643."
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-coy-fc-rifle",
+   "name": "Rifle Coy (FC Wing)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "fc-rifle",
+   "echelon": "15",
+   "page": "642",
+   "strength": {
+    "total": 132
+   },
+   "chartStrength": 132,
+   "children": [
+    {
+     "role": "Rifle Pl",
+     "unit": "inf-pl-fc-rifle",
+     "count": 3
+    },
+    {
+     "role": "MG Sec",
+     "count": 1,
+     "weapons": [
+      {
+       "name": "MG",
+       "count": 2,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "Mor Sec",
+     "count": 1,
+     "weapons": [
+      {
+       "name": "60 mm Mor",
+       "count": 2,
+       "weapon": "60-mm-mor",
+       "weaponMatch": "alias"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "MG",
+     "count": 2,
+     "heldBy": "MG Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "60 mm Mor",
+     "count": 2,
+     "heldBy": "Mor Sec",
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    }
+   ],
+   "notes": [
+    "No Coy HQ shown on the FC Wing chart (the Rangers Wing chart shows Coy HQ (14))."
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-pl-fc-rifle",
+   "name": "Rifle Pl (FC Wing)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "fc-rifle",
+   "echelon": "14",
+   "page": "642",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "weapons": [
+      {
+       "name": "LMG",
+       "count": 1,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "LMG",
+     "count": 3,
+     "note": "1 per Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121806",
+   "notes": [
+    "No Pl or Sec figure printed on the FC Wing chart (the Rangers Wing chart prints Rifle Pl (37), 3x Sec (10))."
+   ]
+  },
+  {
+   "id": "inf-coy-fc-hq",
+   "name": "HQ Coy (FC Wing)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "fc-hq",
+   "echelon": "15",
+   "page": "642",
+   "strength": {
+    "total": 171
+   },
+   "chartStrength": 171,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6
+    },
+    {
+     "role": "Mor Pl",
+     "count": 1,
+     "strength": {
+      "total": 30
+     },
+     "chartStrength": 30,
+     "weapons": [
+      {
+       "name": "82 mm Mor",
+       "count": 6,
+       "weapon": "82mm-mor",
+       "weaponMatch": "exact"
+      }
+     ]
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 43
+     },
+     "chartStrength": 43
+    },
+    {
+     "role": "MT Pl",
+     "count": 1,
+     "strength": {
+      "total": 24
+     },
+     "chartStrength": 24
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 59
+     },
+     "chartStrength": 59
+    },
+    {
+     "role": "AT Sec",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    }
+   ],
+   "weapons": [
+    {
+     "name": "82 mm Mor",
+     "count": 6,
+     "heldBy": "Mor Pl",
+     "weapon": "82mm-mor",
+     "weaponMatch": "exact"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-wing-rangers",
+   "name": "Rangers Wing",
+   "arm": "inf",
+   "type": "wing",
+   "subtype": "rangers",
+   "echelon": "16",
+   "page": "644",
+   "strength": {
+    "total": 730
+   },
+   "chartStrength": 730,
+   "children": [
+    {
+     "role": "Wing HQ",
+     "count": 1,
+     "strength": {
+      "total": 31
+     },
+     "chartStrength": 31
+    },
+    {
+     "role": "Rifle Coy",
+     "unit": "inf-coy-rangers-rifle",
+     "count": 4
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "inf-coy-rangers-hq",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Contents lists it at p 645; printed page 644."
+   ],
+   "side": "own",
+   "symbolKey": "10110222"
+  },
+  {
+   "id": "inf-coy-rangers-rifle",
+   "name": "Rifle Coy (Rangers Wing)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "rangers-rifle",
+   "echelon": "15",
+   "page": "644",
+   "strength": {
+    "total": 132
+   },
+   "chartStrength": 132,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 14
+     },
+     "chartStrength": 14
+    },
+    {
+     "role": "Rifle Pl",
+     "unit": "inf-pl-rangers-rifle",
+     "count": 3
+    },
+    {
+     "role": "MG Sec",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7,
+     "weapons": [
+      {
+       "name": "MG",
+       "count": 2,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "60 mm Mor",
+       "count": 2,
+       "weapon": "60-mm-mor",
+       "weaponMatch": "alias"
+      }
+     ],
+     "note": "printed 'MG Sec (7) (2 x MGs) (2 x 60 mm)'"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "MG",
+     "count": 2,
+     "heldBy": "MG Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "60 mm Mor",
+     "count": 2,
+     "heldBy": "MG Sec",
+     "note": "printed '(2 x 60 mm)' under MG Sec",
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110222"
+  },
+  {
+   "id": "inf-pl-rangers-rifle",
+   "name": "Rifle Pl (Rangers Wing)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "rangers-rifle",
+   "echelon": "14",
+   "page": "644",
+   "strength": {
+    "total": 37
+   },
+   "chartStrength": 37,
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7
+    },
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10,
+     "weapons": [
+      {
+       "name": "LMG",
+       "count": 1,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "LMG",
+     "count": 3,
+     "note": "1 per Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110222"
+  },
+  {
+   "id": "inf-coy-rangers-hq",
+   "name": "HQ Coy (Rangers Wing)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "rangers-hq",
+   "echelon": "15",
+   "page": "644",
+   "strength": {
+    "total": 171
+   },
+   "chartStrength": 171,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 6
+     },
+     "chartStrength": 6
+    },
+    {
+     "role": "Mor Pl",
+     "count": 1,
+     "strength": {
+      "total": 30
+     },
+     "chartStrength": 30,
+     "weapons": [
+      {
+       "name": "82 mm Mor",
+       "count": 6,
+       "weapon": "82mm-mor",
+       "weaponMatch": "exact"
+      }
+     ]
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 43
+     },
+     "chartStrength": 43
+    },
+    {
+     "role": "MT Pl",
+     "count": 1,
+     "strength": {
+      "total": 24
+     },
+     "chartStrength": 24
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 59
+     },
+     "chartStrength": 59
+    },
+    {
+     "role": "AT Sec",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    }
+   ],
+   "weapons": [
+    {
+     "name": "82 mm Mor",
+     "count": 6,
+     "heldBy": "Mor Pl",
+     "weapon": "82mm-mor",
+     "weaponMatch": "exact"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110222"
+  },
+  {
+   "id": "inf-bn-coast-guards",
+   "name": "Coast Guards Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "coast-guards",
+   "echelon": "16",
+   "page": "645",
+   "strengthNote": "No total printed; chart parts 36 + 4x133 + 216 (HQ Coy parts) + 14 = 798.",
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "total": 36
+     },
+     "chartStrength": 36
+    },
+    {
+     "role": "Rifle Coy",
+     "unit": "inf-coy-cg-rifle",
+     "count": 4,
+     "note": "(133) printed for three of the four Rifle Coys"
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "inf-coy-cg-hq",
+     "count": 1
+    },
+    {
+     "role": "Wksp Sec",
+     "count": 1,
+     "strength": {
+      "total": 14
+     },
+     "chartStrength": 14
+    }
+   ],
+   "notes": [
+    "Contents lists it at p 646; printed page 645."
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-coy-cg-rifle",
+   "name": "Rifle Coy (Coast Guards Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "cg-rifle",
+   "echelon": "15",
+   "page": "645",
+   "strength": {
+    "total": 133
+   },
+   "chartStrength": 133,
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 15
+     },
+     "chartStrength": 15
+    },
+    {
+     "role": "Pl",
+     "unit": "inf-pl-cg-rifle",
+     "count": 3
+    },
+    {
+     "role": "MG Sec",
+     "count": 1,
+     "strength": {
+      "total": 7
+     },
+     "chartStrength": 7,
+     "equipment": [
+      {
+       "name": "W/SET",
+       "count": 1
+      }
+     ],
+     "weapons": [
+      {
+       "name": "MG",
+       "count": 2,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias"
+      }
+     ],
+     "note": "under 'MG SEC (7)' the chart lists '3 X ASLT BOAT WITH OBM', 'MG - 2 (PER MG SEC)', 'W/SET - 1', 'LMG - 1 (per sec)'; the boats are kept on the coy"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "60 mm Mor",
+     "count": 2,
+     "note": "per coy",
+     "weapon": "60-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "MG",
+     "count": 2,
+     "heldBy": "MG Sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Aslt Boat with OBM",
+     "count": 3,
+     "note": "'3 X ASLT BOAT WITH OBM' printed under MG SEC (7)"
+    },
+    {
+     "name": "W/SET",
+     "count": 1,
+     "note": "MG Sec"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  },
+  {
+   "id": "inf-pl-cg-rifle",
+   "name": "Pl (Coast Guards Bn)",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "cg-rifle",
+   "echelon": "14",
+   "page": "645",
+   "strength": {
+    "total": 37
+   },
+   "chartStrength": 37,
+   "children": [
+    {
+     "role": "Sec",
+     "count": 3,
+     "strength": {
+      "total": 10
+     },
+     "chartStrength": 10,
+     "weapons": [
+      {
+       "name": "LMG",
+       "count": 1,
+       "weapon": "mg-1a3",
+       "weaponMatch": "alias",
+       "note": "printed 'LMG - 1 (per sec)' in the list under MG SEC (7)"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "40 mm RL",
+     "count": 1
+    },
+    {
+     "name": "LMG",
+     "count": 3,
+     "note": "1 per sec",
+     "weapon": "mg-1a3",
+     "weaponMatch": "alias"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "W/SET",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121806",
+   "notes": [
+    "No Pl HQ box printed: the 3 Secs (30) do not add up to the Pl's 37. '40 mm RL - 1' and 'W/SET - 1' are printed under the first PL (37)."
+   ]
+  },
+  {
+   "id": "inf-coy-cg-hq",
+   "name": "HQ Coy (Coast Guards Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "cg-hq",
+   "echelon": "15",
+   "page": "645",
+   "strengthNote": "No total printed; parts 16 + 30 + 49 + 53 + 59 + 9 = 216.",
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1,
+     "strength": {
+      "total": 16
+     },
+     "chartStrength": 16,
+     "note": "printed 'HQ COY Coy HQ (16)'"
+    },
+    {
+     "role": "Mor Pl",
+     "count": 1,
+     "strength": {
+      "total": 30
+     },
+     "chartStrength": 30,
+     "weapons": [
+      {
+       "name": "3\"/81 mm Mor",
+       "count": 8,
+       "weapon": "81mm-mor",
+       "weaponMatch": "contains"
+      }
+     ]
+    },
+    {
+     "role": "MT Pl",
+     "count": 1,
+     "strength": {
+      "total": 49
+     },
+     "chartStrength": 49
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "strength": {
+      "total": 53
+     },
+     "chartStrength": 53,
+     "equipment": [
+      {
+       "name": "W/SET",
+       "count": 28
+      }
+     ]
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1,
+     "strength": {
+      "total": 59
+     },
+     "chartStrength": 59
+    },
+    {
+     "role": "AT Pl",
+     "count": 1,
+     "strength": {
+      "total": 9
+     },
+     "chartStrength": 9
+    }
+   ],
+   "weapons": [
+    {
+     "name": "3\"/81 mm Mor",
+     "count": 8,
+     "heldBy": "Mor Pl",
+     "weapon": "81mm-mor",
+     "weaponMatch": "contains"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "W/SET",
+     "count": 28,
+     "heldBy": "Sig Pl"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10121806"
+  }
+ ],
+ "infData": {
+  "defBrick": {
+   "page": "652",
+   "title": "Def Brick",
+   "scope": "A std def brick catering for low wire fence, cat wire fence and defs",
+   "items": [
+    {
+     "ser": "a",
+     "name": "Ballies 8-12 ft",
+     "count": 1500,
+     "unit": "nos"
+    },
+    {
+     "ser": "b",
+     "name": "Cam net 14x14 ft",
+     "count": 50,
+     "unit": "nos"
+    },
+    {
+     "ser": "c",
+     "name": "Pkt angle 2 ft",
+     "count": 400,
+     "unit": "nos"
+    },
+    {
+     "ser": "d",
+     "name": "Pkt angle 6 ft",
+     "count": 1000,
+     "unit": "nos"
+    },
+    {
+     "ser": "e",
+     "name": "Sand bags",
+     "count": 11500,
+     "unit": "nos"
+    },
+    {
+     "ser": "f",
+     "name": "Wire barbed",
+     "count": 30,
+     "unit": "cwt"
+    },
+    {
+     "ser": "g",
+     "name": "Wire Concertina",
+     "count": 180,
+     "unit": "coils"
+    },
+    {
+     "ser": "h",
+     "name": "CGI Sheets",
+     "count": 1400,
+     "unit": "nos"
+    },
+    {
+     "ser": "j",
+     "name": "Flare Trip Wire",
+     "count": 40,
+     "unit": "nos"
+    },
+    {
+     "ser": "k",
+     "name": "Cloth Hessian",
+     "count": 150,
+     "unit": "yards",
+     "note": "150 yards (137 Ms)"
+    },
+    {
+     "ser": "l",
+     "name": "Nail Mixed",
+     "count": 328,
+     "unit": "lbs",
+     "note": "printed 'Nail Mixed 328 lbs'"
+    }
+   ],
+   "transport": {
+    "vehicles": "2.5 ton trks with tlrs",
+    "count": 41,
+    "wireObsVehs": 9,
+    "otherStoresVehs": 32,
+    "note": "A std brick can be carried in 41x2.5 ton tkrs with tlrs. 9 vehs carry wire obs and remaining 32 vehs carry the rest of the stores."
+   },
+   "normalAuthScale": [
+    {
+     "holder": "Inf bn",
+     "count": 1
+    },
+    {
+     "holder": "Inf bde HQ",
+     "count": 1
+    },
+    {
+     "holder": "Indep inf bde HQ",
+     "count": 2
+    },
+    {
+     "holder": "Div HQ",
+     "count": 4
+    },
+    {
+     "holder": "Corps HQ",
+     "count": 7
+    }
+   ]
+  },
+  "mtnTime": {
+   "page": "653-654",
+   "title": "Formula for Working out Time in Mtns",
+   "general": "Dists in mtns are measured in term of time rather than dist; due attn must be paid to the addl time req for ascent and descent.",
+   "routeRules": [
+    "The route should not fol/cross a cliff, bluff or a re-entrant.",
+    "It should preferably be along the ridge lines, valleys and the ascent/descent should be along gradual slopes or existing trs."
+   ],
+   "constants": {
+    "travelMph": {
+     "day": 2,
+     "night": 1,
+     "note": "Travelling Time for a Marching Colm in Mtns"
+    },
+    "ascentDescent": {
+     "day": {
+      "ascent": {
+       "minutes": 30,
+       "perFt": 1000
+      },
+      "descent": {
+       "minutes": 30,
+       "perFt": 1500
+      }
+     },
+     "night": {
+      "ascent": {
+       "minutes": 60,
+       "perFt": 1000
+      },
+      "descent": {
+       "minutes": 60,
+       "perFt": 1500
+      }
+     },
+     "printed": "Day: Ascent 30 Mins for 1000 ft, Descent 30 Mins for 1500 ft; Ni: Ascent 1 Hr for 1000 ft, Descent 1 Hr for 1500 ft"
+    }
+   },
+   "considerations": [
+    "Total dist to be traveled.",
+    "Total descent.",
+    "Total ascent."
+   ],
+   "formula": [
+    {
+     "ser": 1,
+     "what": "Travelling time during day",
+     "expr": "Total dist / 2"
+    },
+    {
+     "ser": 2,
+     "what": "Travelling time during ni",
+     "expr": "Total dist / 1"
+    },
+    {
+     "ser": 3,
+     "what": "Time req for descent during day",
+     "expr": "Total descent / 1500"
+    },
+    {
+     "ser": 4,
+     "what": "Time req for descent at ni",
+     "expr": "Total descent x2 / 1500"
+    },
+    {
+     "ser": 5,
+     "what": "Time req for ascent during day",
+     "expr": "Total ascent / 1000"
+    },
+    {
+     "ser": 6,
+     "what": "Time req for ascent during ni",
+     "expr": "Total ascent x2 / 1000"
+    },
+    {
+     "ser": 7,
+     "what": "Total time req during day",
+     "expr": "(1)+(3)+(5)"
+    },
+    {
+     "ser": 8,
+     "what": "Total time req during ni",
+     "expr": "(2)+(4)+(6)"
+    }
+   ],
+   "note": "As printed, the formula and the constants disagree: (3) and (5) give 1 hr per 1500 ft descent / 1000 ft ascent by day (if the result is in hours) where the constants say 30 mins, and (4) and (6) give 2 hrs at ni where the constants say 1 hr. Units (miles / ft / hours) are not stated in the formula."
+  }
+ },
+ "otherPages": [
+  {
+   "title": "Suggested Distr of Bn Tpt into Echs",
+   "page": "610-611",
+   "note": "Captured in inf-bn-std.tptEchelons: F / A / B rows per item and totals"
+  },
+  {
+   "title": "Suggested Layout Radio Comm - Inf Bn",
+   "page": "646",
+   "contentsPage": "647",
+   "note": "Captured in inf-bn-std.radioSets (sets per net and station)"
+  },
+  {
+   "title": "Chars of Inf Wpns",
+   "page": "647-649",
+   "contentsPage": "648",
+   "note": "In weapons.json (section 'Sec 6 - Inf'); re-checked row by row on 15 Nov 2026"
+  },
+  {
+   "title": "Inf Bn Wpns and their First Line Ammo Scale",
+   "page": "650-651",
+   "contentsPage": "651",
+   "note": "Captured in inf-bn-std.ammoScale (19 rows); personal wpn numbers added to inf-bn-std.weapons"
+  },
+  {
+   "title": "Def Brick",
+   "page": "652",
+   "contentsPage": "653",
+   "note": "Captured in infData.defBrick"
+  },
+  {
+   "title": "Formula for Working out Time in Mtns",
+   "page": "653-654",
+   "contentsPage": "654",
+   "note": "Captured in infData.mtnTime"
+  }
+ ]
+}

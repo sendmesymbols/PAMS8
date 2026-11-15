@@ -1,0 +1,5547 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Threat (enemy)",
+ "source": "SO's Handbook (2019), Sec 13 - Threat, book pages 1300-1381 (PDF pages 1-82; PDF page = book page - 1299)",
+ "side": "en",
+ "basis": "R = as printed in the book. Fields marked uncertain / judged / *Note carry the reader's doubts; printed totals are kept even where parts do not add up.",
+ "units": [
+  {
+   "id": "en-armd-div",
+   "name": "Armd Div",
+   "arm": "armr",
+   "type": "div",
+   "subtype": "armd",
+   "echelon": "21",
+   "page": "1301",
+   "strength": {
+    "offr": 778,
+    "jco": 1203,
+    "sldr": 16813,
+    "total": 18794
+   },
+   "children": [
+    {
+     "role": "HQ Sqn",
+     "count": 1
+    },
+    {
+     "role": "LRW",
+     "count": 1
+    },
+    {
+     "role": "Indep Recce Sqn",
+     "unit": "en-indep-recce-sqn",
+     "count": 1
+    },
+    {
+     "role": "Armd Bde (1)",
+     "unit": "en-armd-div-armd-bde-1",
+     "count": 1
+    },
+    {
+     "role": "Armd Bde (2)",
+     "unit": "en-armd-div-armd-bde-2",
+     "count": 1
+    },
+    {
+     "role": "HQ Arty Bde",
+     "unit": "en-armd-div-arty",
+     "count": 1
+    },
+    {
+     "role": "HQ (I) Mech AD Bde",
+     "unit": "en-mech-ad-bde",
+     "count": 1
+    },
+    {
+     "role": "Recce and Obsn Flt",
+     "count": 1,
+     "relation": "att",
+     "note": "1301: drawn on its own line from the Div HQ bar, between Armd Bde (2) and HQ Arty Bde (as the Inf / Mtn Div charts draw Recce Obsn Flt (from Corps))."
+    },
+    {
+     "role": "Engr Regt",
+     "count": 1
+    },
+    {
+     "role": "Sig Regt",
+     "count": 1
+    },
+    {
+     "role": "ASC Bn",
+     "unit": "en-asc-bn-armd-div",
+     "count": 1,
+     "relation": "under ASC"
+    },
+    {
+     "role": "Type 'C' Indep Tk Tptr Coy",
+     "unit": "en-asc-tk-tptr-coy-armd-div",
+     "count": 2,
+     "relation": "under ASC",
+     "note": "1369 draws the same 2 coys under the ASC Bn (en-asc-bn-armd-div); count them once in a roll-up."
+    },
+    {
+     "role": "Fd Amb",
+     "unit": "en-fd-amb-armd-div",
+     "count": 2,
+     "relation": "under Med"
+    },
+    {
+     "role": "DOU",
+     "unit": "en-dou-armd-div",
+     "count": 1,
+     "relation": "under AOC"
+    },
+    {
+     "role": "EME Bn",
+     "unit": "en-eme-bn-armd-div",
+     "count": 1,
+     "relation": "under EME"
+    },
+    {
+     "role": "FS Sec",
+     "count": 1,
+     "relation": "under Int"
+    },
+    {
+     "role": "Pro Unit (HQ & 6 Unit Secs)",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Unit Sec",
+       "count": 6
+      }
+     ]
+    },
+    {
+     "role": "Div PU (5 x FPOs)",
+     "count": 1,
+     "children": [
+      {
+       "role": "FPO",
+       "count": 5
+      }
+     ]
+    },
+    {
+     "role": "GL Sec Type C",
+     "count": 4
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Med Guns",
+     "count": 72
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Car 500 Kg",
+     "count": 581
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 508
+    },
+    {
+     "name": "5/3 Ton",
+     "count": 1366
+    },
+    {
+     "name": "Other Vehs",
+     "count": 764
+    },
+    {
+     "name": "A Vehs",
+     "count": 891
+    },
+    {
+     "name": "Total",
+     "count": 4110
+    },
+    {
+     "name": "Tk Tptrs",
+     "count": 144
+    }
+   ],
+   "notes": [
+    "Veh total 4110 printed as '(incl A Vehs less MC/Tlrs)'; it equals the sum of the five lines.",
+    "Tk Tptrs 144 printed under Maj Wpns.",
+    "Recce and Obsn Flt (att) hangs from the Div HQ bar, not from the Arty Bde (re-checked 1301)."
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-armd-div-armd-bde-1",
+   "name": "Armd Bde (1)",
+   "arm": "armr",
+   "type": "bde",
+   "subtype": "armd",
+   "echelon": "18",
+   "page": "1301",
+   "children": [
+    {
+     "role": "Armr Regt",
+     "unit": "en-armd-regt",
+     "count": 2
+    },
+    {
+     "role": "Mech Bn",
+     "unit": "en-mech-inf-bn",
+     "count": 2
+    }
+   ],
+   "notes": [
+    "Printed '(Armr Regt 2, Mech Bn 2)'."
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-armd-div-armd-bde-2",
+   "name": "Armd Bde (2)",
+   "arm": "armr",
+   "type": "bde",
+   "subtype": "armd",
+   "echelon": "18",
+   "page": "1301",
+   "children": [
+    {
+     "role": "Armr Regt",
+     "unit": "en-armd-regt",
+     "count": 2
+    },
+    {
+     "role": "Mech Bn",
+     "unit": "en-mech-inf-bn",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Printed '(Armr Regt 2 & Mech Bn 1)'."
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-mech-ad-bde",
+   "name": "HQ (I) Mech AD Bde",
+   "arm": "ad",
+   "type": "bde",
+   "subtype": "mech",
+   "echelon": "18",
+   "page": "1301",
+   "children": [
+    {
+     "role": "AD Regt (SP)",
+     "count": 1
+    },
+    {
+     "role": "Lt AD Regt (SP)",
+     "count": 1
+    },
+    {
+     "role": "AD Msl Regt (SP)",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "en-armd-div-arty",
+   "name": "Armd Div Arty (Arty Bde)",
+   "arm": "arty",
+   "type": "bde",
+   "subtype": "armd-div",
+   "echelon": "18",
+   "page": "1301, 1308",
+   "children": [
+    {
+     "role": "Sig Coy",
+     "count": 1
+    },
+    {
+     "role": "Met Sec",
+     "count": 1
+    },
+    {
+     "role": "Svy Sec",
+     "count": 1
+    },
+    {
+     "role": "Med Regt (SP)",
+     "count": 4
+    },
+    {
+     "role": "Air OP",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "notes": [
+    "1308 shows Air OP (Att) under the Arty Bde. On 1301 the Arty Bde line goes down to the 4 x Med Regts (SP); the Recce and Obsn Flt (att) on 1301 hangs from the Div HQ bar (moved to en-armd-div)."
+   ],
+   "side": "en",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "en-rapid-strike",
+   "name": "RAPID (Strike)",
+   "arm": "inf",
+   "type": "div",
+   "subtype": "rapid-strike",
+   "echelon": "21",
+   "page": "1302",
+   "children": [
+    {
+     "role": "Int and FS Sec",
+     "count": 1
+    },
+    {
+     "role": "Def and Emp Coy",
+     "count": 1
+    },
+    {
+     "role": "Armd Bde",
+     "unit": "en-rapid-strike-armd-bde",
+     "count": 1
+    },
+    {
+     "role": "Inf Bde",
+     "unit": "en-rapid-inf-bde",
+     "count": 2
+    },
+    {
+     "role": "Arty Bde",
+     "unit": "en-rapid-strike-arty-bde",
+     "count": 1
+    },
+    {
+     "role": "Engr Regt (incl NBC Pl)",
+     "count": 1
+    },
+    {
+     "role": "Sigs Regt",
+     "count": 1
+    },
+    {
+     "role": "ASC Bn",
+     "count": 1,
+     "note": "One box printed 'ASC Bn Indep Tk Tptr pl'"
+    },
+    {
+     "role": "Indep Tk Tptr Pl",
+     "count": 1,
+     "note": "One box printed 'ASC Bn Indep Tk Tptr pl'"
+    },
+    {
+     "role": "Fd Amb",
+     "count": 2
+    },
+    {
+     "role": "DOU",
+     "count": 1
+    },
+    {
+     "role": "EME Bn",
+     "count": 1
+    },
+    {
+     "role": "Provost, Postal & GL Sec",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Tks",
+     "count": 90,
+     "weapon": "en-t-72-tk",
+     "weaponMatch": "alias",
+     "note": "chart: 2 x Armd Regt of 45 x T-72 each"
+    },
+    {
+     "name": "BMPs",
+     "count": 104
+    },
+    {
+     "name": "Fd Guns",
+     "count": 36,
+     "weapon": "en-105-mm-ifg-lfg",
+     "weaponMatch": "alias",
+     "note": "chart: 2 x Fd Regt of 18 x 105 mm How"
+    },
+    {
+     "name": "Med Guns",
+     "count": 36
+    },
+    {
+     "name": "AD Guns",
+     "count": 8
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "A Veh",
+     "count": 273
+    },
+    {
+     "name": "B Veh",
+     "count": 2101
+    }
+   ],
+   "notes": [
+    "No pers summary printed.",
+    "Tks 90 = 2 x 45 T-72; BMPs 104 = 2 x 52 (both match the chart)."
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-rapid-strike-armd-bde",
+   "name": "Armd Bde (RAPID Strike)",
+   "arm": "armr",
+   "type": "bde",
+   "subtype": "armd",
+   "echelon": "18",
+   "page": "1302",
+   "children": [
+    {
+     "role": "Armd Regt (45 x T-72 tk each)",
+     "unit": "en-armd-regt",
+     "count": 2,
+     "weapons": [
+      {
+       "name": "T-72 Tk",
+       "count": 45,
+       "note": "per regt; printed '2 x Armd Regt (45x T-72 tk Each)'",
+       "weapon": "en-t-72-tk",
+       "weaponMatch": "exact"
+      }
+     ]
+    },
+    {
+     "role": "MIB (52 x BMP)",
+     "unit": "en-mech-inf-bn",
+     "count": 2,
+     "weapons": [
+      {
+       "name": "BMP",
+       "count": 52,
+       "note": "per bn; printed '2xMIB (52xBMP)' (summary BMPs 104 = 2 x 52)"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "T-72 Tk",
+     "count": 90,
+     "heldBy": "Armd Regts",
+     "weapon": "en-t-72-tk",
+     "weaponMatch": "exact"
+    },
+    {
+     "name": "BMP",
+     "count": 104,
+     "heldBy": "MIBs"
+    }
+   ],
+   "notes": [
+    "Weapon counts here are 2 x the per-regt / per-bn figures printed in the chart."
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-rapid-inf-bde",
+   "name": "Inf Bde (RAPID)",
+   "arm": "inf",
+   "type": "bde",
+   "subtype": "rapid",
+   "echelon": "18",
+   "page": "1302",
+   "children": [
+    {
+     "role": "Inf Bn",
+     "unit": "en-inf-bn",
+     "count": 3
+    }
+   ],
+   "notes": [
+    "Printed '3 x Inf Bns each' (RAPID Strike); RAPID (Def) shows 'Inf 2xBdes' without composition."
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-rapid-strike-arty-bde",
+   "name": "Arty Bde (RAPID Strike)",
+   "arm": "arty",
+   "type": "bde",
+   "subtype": "rapid-strike",
+   "echelon": "18",
+   "page": "1302",
+   "children": [
+    {
+     "role": "Med Regt (18 x 155 mm FH 77B Gun / 130 mm Gun)",
+     "unit": "en-med-regt",
+     "count": 2,
+     "weapons": [
+      {
+       "name": "155 mm FH 77B Gun / 130 mm Gun",
+       "count": 18,
+       "note": "per regt (summary Med Guns 36 = 2 x 18)"
+      }
+     ]
+    },
+    {
+     "role": "Fd Regt (18 x 105 mm How)",
+     "unit": "en-fd-regt",
+     "count": 2,
+     "weapons": [
+      {
+       "name": "105 mm How",
+       "count": 18,
+       "note": "per regt (summary Fd Guns 36 = 2 x 18); 1309 / 1307 call the Fd Regt gun 105 mm IFG MK 1",
+       "weapon": "en-105-mm-ifg-lfg",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "AD Bty",
+     "count": 1
+    },
+    {
+     "role": "SATA Regt",
+     "count": 1
+    },
+    {
+     "role": "Air Op Flt",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "155 mm FH 77B / 130 mm Gun",
+     "count": 36,
+     "heldBy": "2 x Med Regt"
+    },
+    {
+     "name": "105 mm How",
+     "count": 36,
+     "heldBy": "2 x Fd Regt",
+     "weapon": "en-105-mm-ifg-lfg",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "en-rapid-def",
+   "name": "RAPID (Def)",
+   "arm": "inf",
+   "type": "div",
+   "subtype": "rapid-def",
+   "echelon": "21",
+   "page": "1303",
+   "strength": {
+    "total": 15870
+   },
+   "strengthNote": "Printed 'Manpower - 15870'.",
+   "children": [
+    {
+     "role": "Int & Fd Security",
+     "count": 1
+    },
+    {
+     "role": "Def & Emp Coy",
+     "count": 1
+    },
+    {
+     "role": "Armd Bde",
+     "unit": "en-rapid-def-armd-bde",
+     "count": 1
+    },
+    {
+     "role": "Inf Bde",
+     "unit": "en-rapid-inf-bde",
+     "count": 2,
+     "note": "Printed 'Inf 2xBdes' with no composition; linked to the RAPID (Strike) bde (3 x Inf Bns each), which is an assumption."
+    },
+    {
+     "role": "Arty Bde",
+     "unit": "en-rapid-def-arty-bde",
+     "count": 1
+    },
+    {
+     "role": "Engrs Regt (Incl NBC Pl)",
+     "count": 1
+    },
+    {
+     "role": "Sig Regt",
+     "count": 1
+    },
+    {
+     "role": "ASC Bn",
+     "count": 1
+    },
+    {
+     "role": "Fd Amb",
+     "count": 1
+    },
+    {
+     "role": "Ord",
+     "count": 1
+    },
+    {
+     "role": "EME Bn",
+     "unit": "en-rapid-def-eme-bn",
+     "count": 1
+    },
+    {
+     "role": "Provost",
+     "count": 1
+    },
+    {
+     "role": "Postal",
+     "count": 1
+    },
+    {
+     "role": "GL Sec",
+     "count": 3
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Tks",
+     "count": 90
+    },
+    {
+     "name": "BRDM-II",
+     "count": 24,
+     "note": "printed 'BRDM-11'",
+     "weapon": "en-brdm-ii",
+     "weaponMatch": "exact"
+    },
+    {
+     "name": "BMP",
+     "count": 79
+    },
+    {
+     "name": "Fd Gun",
+     "count": 36
+    },
+    {
+     "name": "Med Gun",
+     "count": 18
+    },
+    {
+     "name": "MBRL",
+     "count": 6
+    },
+    {
+     "name": "AD Guns",
+     "count": 8
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "A Veh",
+     "count": 212
+    },
+    {
+     "name": "B Veh",
+     "count": 2440
+    },
+    {
+     "name": "Total",
+     "count": 2626
+    }
+   ],
+   "uncertain": true,
+   "note": "Printed veh total 2626 but A 212 + B 2440 = 2652. BMP 79 printed, chart gives Mech Inf Bn 52 + R&S Bn 28 BMP-1 = 80.",
+   "notes": [
+    "MBRL 6 in the summary; no MBRL unit drawn in the chart."
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-rapid-def-armd-bde",
+   "name": "Armd Bde (RAPID Def)",
+   "arm": "armr",
+   "type": "bde",
+   "subtype": "armd",
+   "echelon": "18",
+   "page": "1303",
+   "children": [
+    {
+     "role": "Armd Regt (45 x Tks each)",
+     "unit": "en-armd-regt",
+     "count": 2,
+     "weapons": [
+      {
+       "name": "Tks",
+       "count": 45,
+       "note": "per regt; printed '2xArmd Regts (45xTks each)'"
+      }
+     ]
+    },
+    {
+     "role": "Mech Inf Bn (52 BMP)",
+     "unit": "en-mech-inf-bn",
+     "count": 1,
+     "weapons": [
+      {
+       "name": "BMP",
+       "count": 52
+      }
+     ]
+    },
+    {
+     "role": "R&S Bn",
+     "unit": "en-rs-bn",
+     "count": 1,
+     "weapons": [
+      {
+       "name": "BMP-1",
+       "count": 28,
+       "weapon": "en-bmp-i",
+       "weaponMatch": "alias"
+      },
+      {
+       "name": "BRDM-2",
+       "count": 24,
+       "weapon": "en-brdm-ii",
+       "weaponMatch": "alias"
+      }
+     ]
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-rs-bn",
+   "name": "R&S Bn",
+   "arm": "armr",
+   "type": "bn",
+   "subtype": "recce-surv",
+   "echelon": "16",
+   "page": "1303, 1331",
+   "vehicles": [
+    {
+     "name": "BMP-1",
+     "count": 28
+    },
+    {
+     "name": "BRDM-2",
+     "count": 24
+    }
+   ],
+   "notes": [
+    "Composition not given; only 28 x BMP-1, 24 x BRDM-2 printed.",
+    "1331: Malutka (Sagger) ATGM held by 'MIB and R&S bn'."
+   ],
+   "side": "en",
+   "symbolKey": "10140104"
+  },
+  {
+   "id": "en-rapid-def-arty-bde",
+   "name": "Arty Bde (RAPID Def)",
+   "arm": "arty",
+   "type": "bde",
+   "subtype": "rapid-def",
+   "echelon": "18",
+   "page": "1303",
+   "children": [
+    {
+     "role": "Med Regt",
+     "unit": "en-med-regt",
+     "count": 1
+    },
+    {
+     "role": "Fd Regt",
+     "unit": "en-fd-regt",
+     "count": 2
+    },
+    {
+     "role": "Comp Regt",
+     "count": 1
+    },
+    {
+     "role": "AD Bty",
+     "count": 1
+    },
+    {
+     "role": "SATA Regt",
+     "count": 1
+    },
+    {
+     "role": "AOP Flt",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "en-rapid-def-eme-bn",
+   "name": "EME Bn (RAPID Def)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "eme",
+   "echelon": "16",
+   "page": "1303",
+   "children": [
+    {
+     "role": "HQ Coy",
+     "count": 1
+    },
+    {
+     "role": "Armd Wksp Coy",
+     "count": 1
+    },
+    {
+     "role": "Fd Wksp Coy",
+     "count": 2
+    }
+   ],
+   "uncertain": true,
+   "note": "The line to HQ Coy / Armd Wksp Coy / 2 x Fd Wksp Coy drops from the right end of the top bar (Provost column); read as the EME Bn's coys.",
+   "side": "en",
+   "symbolKey": "10161100"
+  },
+  {
+   "id": "en-inf-div",
+   "name": "Inf Div",
+   "arm": "inf",
+   "type": "div",
+   "subtype": "inf",
+   "echelon": "21",
+   "page": "1304",
+   "strength": {
+    "offr": 559,
+    "jco": 841,
+    "sldr": 14282,
+    "total": 15682
+   },
+   "children": [
+    {
+     "role": "Def & Emp Coy",
+     "count": 1
+    },
+    {
+     "role": "FS Sec",
+     "count": 1
+    },
+    {
+     "role": "Inf Bde",
+     "count": 3
+    },
+    {
+     "role": "Armd Regt",
+     "unit": "en-armd-regt",
+     "count": 1
+    },
+    {
+     "role": "Arty Bde",
+     "unit": "en-inf-div-arty",
+     "count": 1
+    },
+    {
+     "role": "Engrs Regt",
+     "count": 1
+    },
+    {
+     "role": "Sig Regt",
+     "count": 1
+    },
+    {
+     "role": "ASC Bn",
+     "unit": "en-asc-bn-inf-div",
+     "count": 1,
+     "relation": "under ASC Regt"
+    },
+    {
+     "role": "Indep Tk Tptr Pl",
+     "unit": "en-asc-indep-tk-tptr-pl-inf-div",
+     "count": 1,
+     "relation": "under ASC Regt",
+     "note": "1370 draws the same pl under the ASC Bn (en-asc-bn-inf-div); count it once in a roll-up."
+    },
+    {
+     "role": "Fd Amb",
+     "unit": "en-fd-amb-inf-div",
+     "count": 2,
+     "relation": "under AMC"
+    },
+    {
+     "role": "DOU",
+     "unit": "en-dou-inf-div",
+     "count": 1
+    },
+    {
+     "role": "EME",
+     "unit": "en-eme-bn-inf-div",
+     "count": 1
+    },
+    {
+     "role": "PRO",
+     "count": 1
+    },
+    {
+     "role": "Postal",
+     "count": 1
+    },
+    {
+     "role": "GL Sec",
+     "count": 1
+    },
+    {
+     "role": "Recce Obsn Flt",
+     "count": 1,
+     "relation": "from Corps"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "105 mm",
+     "count": 54,
+     "weapon": "en-105-mm-ifg-lfg",
+     "weaponMatch": "alias",
+     "note": "1309: 105 mm IFG MK 1 (3 x Fd Regt of 18)"
+    },
+    {
+     "name": "120 mm",
+     "count": 12,
+     "weapon": "en-120-mm-mor",
+     "weaponMatch": "alias",
+     "note": "1309: 120 mm Mor (Brandt), Lt Regt"
+    },
+    {
+     "name": "130 mm",
+     "count": 18,
+     "weapon": "en-130-mm-m-46",
+     "weaponMatch": "alias",
+     "note": "1309: Med Regt 18 x 5.5 in / 130 mm / 155 mm"
+    },
+    {
+     "name": "106 mm Rcl",
+     "count": 72,
+     "weapon": "en-106-mm-rr",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "500 kg",
+     "count": 372
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 491
+    },
+    {
+     "name": "5 Ton",
+     "count": 643
+    },
+    {
+     "name": "A Vehs",
+     "count": 58
+    },
+    {
+     "name": "Total less A vehs",
+     "count": 1984
+    }
+   ],
+   "uncertain": true,
+   "note": "Printed 'Total less A vehs 1984' but 372 + 491 + 643 = 1506 (other vehs not itemised).",
+   "notes": [
+    "Inf Bde composition not given for the Inf Div."
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-div-arty",
+   "name": "Inf Div Arty (Arty Bde)",
+   "arm": "arty",
+   "type": "bde",
+   "subtype": "inf-div",
+   "echelon": "18",
+   "page": "1304, 1309",
+   "children": [
+    {
+     "role": "Bde HQ",
+     "count": 1
+    },
+    {
+     "role": "Adm Tp",
+     "count": 1
+    },
+    {
+     "role": "CB Tp",
+     "count": 1
+    },
+    {
+     "role": "Svy Tp",
+     "count": 1
+    },
+    {
+     "role": "Met Sec",
+     "count": 1
+    },
+    {
+     "role": "AOP Flt",
+     "count": 1,
+     "relation": "att"
+    },
+    {
+     "role": "Fd Regt (18 x 105 mm IFG MK 1)",
+     "unit": "en-fd-regt",
+     "count": 3,
+     "weapons": [
+      {
+       "name": "105 mm IFG MK 1",
+       "count": 18,
+       "note": "per regt",
+       "weapon": "en-105-mm-ifg-lfg",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "Lt Regt (12 x 120 mm Mor)",
+     "unit": "en-lt-regt",
+     "count": 1,
+     "weapons": [
+      {
+       "name": "120 mm Mor",
+       "count": 12,
+       "weapon": "en-120-mm-mor",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "Med Regt (18 x 5.5 in / 130 mm / 155 mm Gun FH 77B)",
+     "unit": "en-med-regt",
+     "count": 1,
+     "weapons": [
+      {
+       "name": "5.5 in / 130 mm / 155 mm Gun FH 77B",
+       "count": 18,
+       "note": "one of the three types (as printed)"
+      }
+     ]
+    },
+    {
+     "role": "SATA Bty",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "105 mm FG MKI",
+     "count": 54,
+     "weapon": "en-105-mm-ifg-lfg",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "5.5 in/130 mm/155 mm Gun FH 77B",
+     "count": 18,
+     "note": "printed 'PH 77B'"
+    },
+    {
+     "name": "120 mm Mor (Brandt)",
+     "count": 12,
+     "weapon": "en-120-mm-mor",
+     "weaponMatch": "alias"
+    }
+   ],
+   "notes": [
+    "1304 chart shows Fd Regts (3), Lt Regt, Med Regt, Div SATA Bty under Arty Bde."
+   ],
+   "side": "en",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "en-fd-regt",
+   "name": "Fd Regt",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "fd",
+   "echelon": "16",
+   "page": "1302, 1307, 1309",
+   "weapons": [
+    {
+     "name": "105 mm IFG MK 1",
+     "count": 18,
+     "weapon": "en-105-mm-ifg-lfg",
+     "weaponMatch": "alias"
+    }
+   ],
+   "notes": [
+    "Printed '18x105mm IFG MK 1' (1309), '18x105 mm IFG MKl' (1307), '18 x 105 mm How' (1302). Sub-units not given."
+   ],
+   "side": "en",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "en-med-regt",
+   "name": "Med Regt",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "med",
+   "echelon": "16",
+   "page": "1302, 1309",
+   "weapons": [
+    {
+     "name": "5.5 in / 130 mm / 155 mm Gun FH 77B",
+     "count": 18
+    }
+   ],
+   "notes": [
+    "1309: '18x5.5 in/ 130 mm/ 155 mm Gun FH 77B'; 1302: '18 x 155 mm FH 77B Gun 130 mm Gun'. Sub-units not given."
+   ],
+   "side": "en",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "en-lt-regt",
+   "name": "Lt Regt",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "lt-mor",
+   "echelon": "16",
+   "page": "1309",
+   "weapons": [
+    {
+     "name": "120 mm Mor",
+     "count": 12,
+     "weapon": "en-120-mm-mor",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10130800"
+  },
+  {
+   "id": "en-mtn-div",
+   "name": "Mtn Div",
+   "arm": "inf",
+   "type": "div",
+   "subtype": "mtn",
+   "echelon": "21",
+   "page": "1305",
+   "strength": {
+    "offr": 684,
+    "jco": 846,
+    "sldr": 15256,
+    "total": 16786
+   },
+   "children": [
+    {
+     "role": "Def and Emp Coy",
+     "count": 1
+    },
+    {
+     "role": "FS Sec",
+     "count": 1
+    },
+    {
+     "role": "Mtn Bde",
+     "count": 3
+    },
+    {
+     "role": "RVC",
+     "count": 1
+    },
+    {
+     "role": "Mob Vet Sec",
+     "count": 2,
+     "relation": "under RVC"
+    },
+    {
+     "role": "Arty Bde",
+     "unit": "en-mtn-div-arty",
+     "count": 1
+    },
+    {
+     "role": "Engr Regt",
+     "count": 1
+    },
+    {
+     "role": "Sig Regt",
+     "count": 1
+    },
+    {
+     "role": "ASC Regt",
+     "unit": "en-asc-bn-mtn-div",
+     "count": 1
+    },
+    {
+     "role": "AT Coy (288 GS mules)",
+     "unit": "en-at-coy",
+     "count": 1,
+     "relation": "under ASC Regt",
+     "note": "1371 draws the AT Coy (GS Mules) under the ASC Bn (en-asc-bn-mtn-div) as well; count it once in a roll-up.",
+     "equipment": [
+      {
+       "name": "GS Mules",
+       "count": 288
+      }
+     ]
+    },
+    {
+     "role": "AT Coy (MA mules, if att)",
+     "count": 1,
+     "relation": "under ASC Regt; if att",
+     "equipment": [
+      {
+       "name": "MA Mules",
+       "note": "number not printed"
+      }
+     ]
+    },
+    {
+     "role": "Fd Amb",
+     "unit": "en-fd-amb-mtn-div",
+     "count": 2,
+     "relation": "under AMC"
+    },
+    {
+     "role": "DOU",
+     "unit": "en-dou-mtn-div",
+     "count": 1
+    },
+    {
+     "role": "EME Bn",
+     "unit": "en-eme-mtn-div",
+     "count": 1
+    },
+    {
+     "role": "Div PU",
+     "count": 1,
+     "note": "Printed 'Div PU' in the top row between EME Bn and Postal; a second 'Div PU' hangs under Postal. No Provost box is printed, so this one may be the Div Provost Unit.",
+     "uncertain": true
+    },
+    {
+     "role": "Postal",
+     "count": 1,
+     "children": [
+      {
+       "role": "Div PU",
+       "count": 1,
+       "note": "Div Postal Unit; drawn on the line beside Postal"
+      }
+     ]
+    },
+    {
+     "role": "GL Sec Type C",
+     "count": 3
+    },
+    {
+     "role": "Recce Obsn Flt",
+     "count": 1,
+     "relation": "from Corps"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "75/24 Pack How",
+     "count": 54,
+     "weapon": "en-75-24-mm-how",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "120 mm",
+     "count": 12,
+     "weapon": "en-120-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "57 mm",
+     "count": 36,
+     "weapon": "en-57-mm-rr",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "5.5\"",
+     "count": 18
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Jeeps",
+     "count": 301
+    },
+    {
+     "name": "1 Ton",
+     "count": 449
+    },
+    {
+     "name": "3 Ton",
+     "count": 397
+    },
+    {
+     "name": "Others",
+     "count": 226
+    },
+    {
+     "name": "Total",
+     "count": 1373
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Animals",
+     "count": 547,
+     "note": "incl animals of AT Coy (MA) when att"
+    }
+   ],
+   "notes": [
+    "Mtn Bde composition not given.",
+    "57 mm (36) listed under Guns; the 57 mm RR is described on 1336."
+   ],
+   "side": "en",
+   "symbolKey": "10121106"
+  },
+  {
+   "id": "en-mtn-div-arty",
+   "name": "Arty Bde (Mtn Div)",
+   "arm": "arty",
+   "type": "bde",
+   "subtype": "mtn-div",
+   "echelon": "18",
+   "page": "1305",
+   "children": [
+    {
+     "role": "Fd Regt",
+     "count": 3
+    },
+    {
+     "role": "Lt Regt",
+     "unit": "en-lt-regt",
+     "count": 1
+    },
+    {
+     "role": "Med Regt",
+     "unit": "en-med-regt",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Gun types per regt not printed; div summary: 75/24 Pack How 54, 120 mm 12, 5.5\" 18."
+   ],
+   "side": "en",
+   "symbolKey": "10130303"
+  },
+  {
+   "id": "en-iab",
+   "name": "IAB (Indep Armd Bde)",
+   "arm": "armr",
+   "type": "bde",
+   "subtype": "indep-armd",
+   "echelon": "18",
+   "page": "1306",
+   "strength": {
+    "offr": 215,
+    "jco": 332,
+    "sldr": 5053,
+    "total": 5601
+   },
+   "children": [
+    {
+     "role": "HQ Sqn",
+     "unit": "en-iab-hq-sqn",
+     "count": 1
+    },
+    {
+     "role": "Armr Regt",
+     "unit": "en-armd-regt",
+     "count": 3
+    },
+    {
+     "role": "MIB Inf Bn",
+     "unit": "en-mech-inf-bn",
+     "count": 1
+    },
+    {
+     "role": "Med Regt",
+     "unit": "en-med-regt",
+     "count": 1,
+     "relation": "under Arty"
+    },
+    {
+     "role": "Indep Fd Coy (Mod B)",
+     "count": 1,
+     "relation": "under Engrs Regt"
+    },
+    {
+     "role": "Armd Bde Sig Coy",
+     "count": 1,
+     "relation": "under Sigs"
+    },
+    {
+     "role": "ASC Elm",
+     "unit": "en-asc-elm-iab",
+     "count": 1,
+     "relation": "Coy ASC (Tk Tptr) Type A + Indep Comp Pl, under ASC"
+    },
+    {
+     "role": "Fd Amb",
+     "unit": "en-fd-amb-iab",
+     "count": 1,
+     "relation": "under AMC"
+    },
+    {
+     "role": "Indep Armd Bde Ord Unit",
+     "unit": "en-iab-ord-unit",
+     "count": 1,
+     "relation": "under AOC"
+    },
+    {
+     "role": "Indep Armd Wksp",
+     "count": 1,
+     "relation": "under EME"
+    },
+    {
+     "role": "Armd Bde Pro Unit (HQ & 2 Secs)",
+     "count": 1,
+     "relation": "under Pro",
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Sec",
+       "count": 2
+      }
+     ]
+    },
+    {
+     "role": "FPO (Mod A)",
+     "count": 1,
+     "relation": "under Postal"
+    },
+    {
+     "role": "GL Sec (Type C)",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Car 500 Kg",
+     "count": 174
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 118
+    },
+    {
+     "name": "5 Ton",
+     "count": 276
+    },
+    {
+     "name": "A Vehs",
+     "count": 340
+    },
+    {
+     "name": "Other Vehs",
+     "count": 185
+    },
+    {
+     "name": "Total",
+     "count": 753
+    }
+   ],
+   "uncertain": true,
+   "note": "Pers 215 + 332 + 5053 = 5600, printed total 5601. Veh total 753 = all lines less A Vehs (340).",
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-iab-hq-sqn",
+   "name": "HQ Sqn (IAB)",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "1306",
+   "children": [
+    {
+     "role": "Fighting Tp",
+     "count": 1
+    },
+    {
+     "role": "Br Tp (6 x BLTs)",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "BLT",
+       "count": 6
+      }
+     ]
+    },
+    {
+     "role": "Office & Recce Tp",
+     "count": 1
+    },
+    {
+     "role": "Adm Tp",
+     "count": 1
+    },
+    {
+     "role": "LRW",
+     "count": 1
+    }
+   ],
+   "equipment": [
+    {
+     "name": "BLT",
+     "count": 6,
+     "note": "in Br Tp"
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-iib",
+   "name": "IIB (Indep Inf Bde)",
+   "arm": "inf",
+   "type": "bde",
+   "subtype": "indep-inf",
+   "echelon": "18",
+   "page": "1307",
+   "strength": {
+    "offr": 140,
+    "jco": 214,
+    "sldr": 3950,
+    "total": 4304
+   },
+   "children": [
+    {
+     "role": "Bde HQ",
+     "count": 1
+    },
+    {
+     "role": "Def & Emp Pl",
+     "count": 1
+    },
+    {
+     "role": "Inf Bn",
+     "unit": "en-inf-bn",
+     "count": 3
+    },
+    {
+     "role": "Fd Regt (18 x 105 mm IFG MKI)",
+     "unit": "en-fd-regt",
+     "count": 1,
+     "weapons": [
+      {
+       "name": "105 mm IFG MKI",
+       "count": 18,
+       "weapon": "en-105-mm-ifg-lfg",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "Indep Fd Coy Engrs",
+     "count": 1
+    },
+    {
+     "role": "Indep Inf Bde Sig Coy",
+     "count": 1
+    },
+    {
+     "role": "ASC Coy (Comp)",
+     "unit": "en-asc-coy-comp-iib",
+     "count": 1
+    },
+    {
+     "role": "Med Fd Amb",
+     "unit": "en-fd-amb-iib",
+     "count": 1
+    },
+    {
+     "role": "Indep Inf Bde Ord Maint Coy",
+     "count": 1
+    },
+    {
+     "role": "Indep Inf Fd Wksp Coy",
+     "count": 1
+    },
+    {
+     "role": "Int & FS Pl",
+     "count": 1
+    },
+    {
+     "role": "Pro Sec",
+     "count": 1
+    },
+    {
+     "role": "Postal Unit",
+     "count": 1
+    },
+    {
+     "role": "GL Sec",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "ATGM Launchers",
+     "count": 24
+    },
+    {
+     "name": "105 mm IFG",
+     "count": 18,
+     "weapon": "en-105-mm-ifg-lfg",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Vehs all types",
+     "count": 483
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-armd-regt",
+   "name": "Armd Regt",
+   "arm": "armr",
+   "type": "regt",
+   "subtype": "armd",
+   "echelon": "16",
+   "page": "1310",
+   "strength": {
+    "offr": 29,
+    "jco": 41,
+    "sldr": 535,
+    "total": 605
+   },
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1
+    },
+    {
+     "role": "HQ Sqn",
+     "unit": "en-armd-regt-hq-sqn",
+     "count": 1
+    },
+    {
+     "role": "AFV Sqn",
+     "unit": "en-armd-regt-afv-sqn",
+     "count": 3
+    },
+    {
+     "role": "Lt Repair Wksp",
+     "count": 1
+    },
+    {
+     "role": "Sig Sec",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Tks",
+     "count": 45
+    },
+    {
+     "name": "APCs",
+     "count": 6
+    },
+    {
+     "name": "ARVs",
+     "count": 3
+    },
+    {
+     "name": "Car 500 kg",
+     "count": 28
+    },
+    {
+     "name": "2.5 Ton (incl W/tlrs)",
+     "count": 12
+    },
+    {
+     "name": "5 Ton",
+     "count": 37
+    },
+    {
+     "name": "Other Vehs",
+     "count": 5
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-armd-regt-hq-sqn",
+   "name": "HQ Sqn (Armd Regt)",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "1310",
+   "children": [
+    {
+     "role": "Inter Com Tp",
+     "count": 1
+    },
+    {
+     "role": "Recce Tp",
+     "unit": "en-armd-regt-recce-tp",
+     "count": 1
+    },
+    {
+     "role": "Adm Tp",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-armd-regt-recce-tp",
+   "name": "Recce Tp (Armd Regt)",
+   "arm": "armr",
+   "type": "tp",
+   "subtype": "recce",
+   "echelon": "14",
+   "page": "1310",
+   "children": [
+    {
+     "role": "Sec",
+     "count": 3
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10140104"
+  },
+  {
+   "id": "en-armd-regt-afv-sqn",
+   "name": "AFV Sqn",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "afv",
+   "echelon": "15",
+   "page": "1310",
+   "children": [
+    {
+     "role": "Adm Tp",
+     "count": 1
+    },
+    {
+     "role": "AFV Tp",
+     "count": 4
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10120500"
+  },
+  {
+   "id": "en-indep-recce-sqn",
+   "name": "Indep Recce Sqn",
+   "arm": "armr",
+   "type": "sqn",
+   "subtype": "indep-recce",
+   "echelon": "15",
+   "page": "1311",
+   "strength": {
+    "offr": 6,
+    "jco": 13,
+    "sldr": 142,
+    "total": 161
+   },
+   "children": [
+    {
+     "role": "Sqn HQ",
+     "count": 1
+    },
+    {
+     "role": "Adm Tp",
+     "count": 1
+    },
+    {
+     "role": "Tk Tp",
+     "count": 4,
+     "note": "printed '4 x Tk / Tp'"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Tks",
+     "count": 18
+    },
+    {
+     "name": "ARVs",
+     "count": 1
+    },
+    {
+     "name": "Car 500 kg",
+     "count": 2
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 5
+    },
+    {
+     "name": "5 Ton Lorry",
+     "count": 8
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10140104"
+  },
+  {
+   "id": "en-mech-inf-bn",
+   "name": "Mech Inf Bn (MIB)",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "mech",
+   "echelon": "16",
+   "page": "1302, 1303",
+   "vehicles": [
+    {
+     "name": "BMP",
+     "count": 52
+    }
+   ],
+   "notes": [
+    "Only '52 x BMP' printed (RAPID charts). Called Mech Bn (1301), MIB (1302, 1306), Mech Inf Bn (1303).",
+    "1334 Fagot / 1333 Konkurs: 4 msls per BMP, 208 per regt."
+   ],
+   "side": "en",
+   "symbolKey": "10121102"
+  },
+  {
+   "id": "en-inf-bn",
+   "name": "Std Inf Bn",
+   "arm": "inf",
+   "type": "bn",
+   "subtype": "std",
+   "echelon": "16",
+   "page": "1312",
+   "strength": {
+    "offr": 22,
+    "jco": 42,
+    "sldr": 794,
+    "total": 858
+   },
+   "strengthNote": "Offrs 22 (incl 1 att), JCOs 42 (incl 1 att), OR 794 (incl 12 att), Total 858 (incl 14 att).",
+   "children": [
+    {
+     "role": "HQ",
+     "count": 1
+    },
+    {
+     "role": "Int & Surv Sec",
+     "count": 1
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1
+    },
+    {
+     "role": "RP Sec",
+     "count": 1
+    },
+    {
+     "role": "Coy",
+     "unit": "en-inf-coy",
+     "count": 4
+    },
+    {
+     "role": "SP Coy",
+     "unit": "en-inf-sp-coy",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "en-inf-hq-coy",
+     "count": 1
+    },
+    {
+     "role": "Ghatak Pl",
+     "unit": "en-inf-ghatak-pl",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "BFSR",
+     "count": 4,
+     "note": "Battle Field Surveillance Radar (printed under Wpns)"
+    },
+    {
+     "name": "7.62 MMG",
+     "count": 8
+    },
+    {
+     "name": "2 inch Mor",
+     "count": 12,
+     "weapon": "en-2in-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "84 mm RL",
+     "count": 36,
+     "weapon": "en-rl-84-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "81 mm Mor",
+     "count": 6,
+     "heldBy": "Mor Pl",
+     "weapon": "en-81-mm-mor",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "ATGM",
+     "count": 8
+    },
+    {
+     "name": "Flame Thrower",
+     "count": 3
+    },
+    {
+     "name": "BSFR",
+     "count": 4,
+     "note": "printed as a second line; possibly BFSR repeated"
+    },
+    {
+     "name": "LMG",
+     "count": 40
+    }
+   ],
+   "notes": [
+    "Sig Pl appears both under Bn HQ and in SP Coy as printed."
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-coy",
+   "name": "Rifle Coy (Std Inf Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "std",
+   "echelon": "15",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1
+    },
+    {
+     "role": "MMG Sec",
+     "count": 1
+    },
+    {
+     "role": "AGL Sec",
+     "count": 1
+    },
+    {
+     "role": "Rifle Pl",
+     "unit": "en-inf-rifle-pl",
+     "count": 3
+    }
+   ],
+   "uncertain": true,
+   "note": "MMG Sec, AGL Sec and 3x Rifle Pls hang from a line running from Coy HQ; read as the coy's sub-units.",
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-rifle-pl",
+   "name": "Rifle Pl",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "std",
+   "echelon": "14",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Sec",
+     "unit": "en-inf-rifle-sec",
+     "count": 3
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-rifle-sec",
+   "name": "Rifle Sec",
+   "arm": "inf",
+   "type": "sec",
+   "subtype": "std",
+   "echelon": "12",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Sp Gp",
+     "count": 1
+    },
+    {
+     "role": "Aslt Gp",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-sp-coy",
+   "name": "SP Coy",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "sp",
+   "echelon": "15",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Mor Pl",
+     "unit": "en-inf-mor-pl",
+     "count": 1
+    },
+    {
+     "role": "A Tk Pl",
+     "unit": "en-inf-atk-pl",
+     "count": 1
+    },
+    {
+     "role": "Aslt Pl",
+     "count": 1
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1
+    },
+    {
+     "role": "Recce & Surv Pl",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-mor-pl",
+   "name": "Mor Pl",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "mor",
+   "echelon": "14",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1
+    },
+    {
+     "role": "Sec",
+     "unit": "en-inf-mor-sec",
+     "count": 2
+    }
+   ],
+   "weapons": [
+    {
+     "name": "81 mm Mor",
+     "count": 6,
+     "weapon": "en-81-mm-mor",
+     "weaponMatch": "alias"
+    }
+   ],
+   "notes": [
+    "81 mm Mor 6 from the bn summary (2 Secs x 3 Dets)."
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-mor-sec",
+   "name": "Mor Sec",
+   "arm": "inf",
+   "type": "sec",
+   "subtype": "mor",
+   "echelon": "13",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Det",
+     "count": 3
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-atk-pl",
+   "name": "A Tk Pl",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "atk",
+   "echelon": "14",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1
+    },
+    {
+     "role": "Det",
+     "count": 4
+    }
+   ],
+   "notes": [
+    "Bn summary lists ATGM 8; per-det holding not printed."
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-hq-coy",
+   "name": "HQ Coy (Std Inf Bn)",
+   "arm": "inf",
+   "type": "coy",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Tpt Pl",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1
+    },
+    {
+     "role": "Med Sec",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-inf-ghatak-pl",
+   "name": "Ghatak Pl",
+   "arm": "inf",
+   "type": "pl",
+   "subtype": "ghatak",
+   "echelon": "14",
+   "page": "1312",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1
+    },
+    {
+     "role": "Sec",
+     "count": 2
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10121100"
+  },
+  {
+   "id": "en-area-hq",
+   "name": "Area HQ",
+   "arm": "log",
+   "type": "hq",
+   "subtype": "area",
+   "echelon": "21",
+   "page": "1359, 1365",
+   "notes": [
+    "1365 (Anx A): appointments structured in appointments / children; ranks only where printed.",
+    "1359: eight Areas in the IA, each comd by a Maj Gen; static units."
+   ],
+   "side": "en",
+   "symbolKey": "10163600",
+   "appointments": [
+    {
+     "appt": "GOC",
+     "rank": "Maj Gen",
+     "count": 1
+    },
+    {
+     "appt": "Dy GOC",
+     "rank": "Brig",
+     "count": 1
+    },
+    {
+     "appt": "ADC",
+     "rank": "Capt",
+     "count": 1
+    }
+   ],
+   "children": [
+    {
+     "role": "GS Branch",
+     "count": 1,
+     "appointments": [
+      {
+       "appt": "Col GS",
+       "count": 1
+      },
+      {
+       "appt": "GSO-1",
+       "count": 1
+      },
+      {
+       "appt": "GSO-3 (Ops)",
+       "count": 1
+      },
+      {
+       "appt": "GSO-3 (Int)",
+       "count": 1
+      }
+     ],
+     "children": [
+      {
+       "role": "Sigs",
+       "count": 1,
+       "appointments": [
+        {
+         "appt": "GSO-1",
+         "rank": "Col/Lt Col",
+         "count": 1
+        },
+        {
+         "appt": "SO-3",
+         "rank": "Capt",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "role": "Edn",
+       "count": 1,
+       "appointments": [
+        {
+         "appt": "SO-2",
+         "rank": "Maj",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "role": "FSO",
+       "count": 1,
+       "appointments": [
+        {
+         "appt": "FSO",
+         "rank": "Maj",
+         "count": 1
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "role": "AQ Branch",
+     "count": 1,
+     "appointments": [
+      {
+       "appt": "Col Adm",
+       "count": 1
+      }
+     ],
+     "children": [
+      {
+       "role": "A Branch",
+       "count": 1,
+       "appointments": [
+        {
+         "appt": "AAG",
+         "count": 1
+        },
+        {
+         "appt": "DAAG",
+         "count": 1
+        },
+        {
+         "appt": "SC",
+         "count": 3
+        }
+       ],
+       "children": [
+        {
+         "role": "A Services",
+         "count": 1,
+         "children": [
+          {
+           "role": "Med",
+           "count": 1,
+           "appointments": [
+            {
+             "appt": "ADMS",
+             "rank": "Brig",
+             "count": 1
+            },
+            {
+             "appt": "DADMS",
+             "count": 1
+            },
+            {
+             "appt": "DADH",
+             "count": 1
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "role": "Q Branch",
+       "count": 1,
+       "appointments": [
+        {
+         "appt": "AQMG",
+         "count": 1
+        },
+        {
+         "appt": "DAQMG",
+         "count": 1
+        },
+        {
+         "appt": "SCO",
+         "count": 2
+        }
+       ],
+       "children": [
+        {
+         "role": "Q Services",
+         "count": 1,
+         "children": [
+          {
+           "role": "S&T",
+           "count": 1,
+           "appointments": [
+            {
+             "appt": "DDS&T",
+             "count": 1
+            },
+            {
+             "appt": "ADS&T",
+             "count": 1
+            },
+            {
+             "appt": "DADS-2",
+             "count": 1
+            },
+            {
+             "appt": "DADT",
+             "count": 1
+            },
+            {
+             "appt": "DADS",
+             "count": 1
+            },
+            {
+             "appt": "SC",
+             "count": 1
+            }
+           ]
+          },
+          {
+           "role": "Ord",
+           "count": 1,
+           "appointments": [
+            {
+             "appt": "ADOS",
+             "count": 1
+            },
+            {
+             "appt": "SC",
+             "count": 1
+            }
+           ]
+          },
+          {
+           "role": "EME",
+           "count": 1,
+           "appointments": [
+            {
+             "appt": "CEME",
+             "count": 1
+            },
+            {
+             "appt": "DADEME",
+             "count": 1
+            },
+            {
+             "appt": "SC",
+             "count": 2
+            },
+            {
+             "appt": "Asst Inspector of Armt",
+             "rank": "Capt",
+             "count": 1
+            }
+           ]
+          },
+          {
+           "role": "ARV",
+           "count": 1,
+           "appointments": [
+            {
+             "appt": "DADRVS",
+             "count": 1
+            }
+           ],
+           "note": "printed 'ARV' (remount and veterinary)"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "role": "Local Adm",
+       "count": 1,
+       "appointments": [
+        {
+         "appt": "Adm Offrs",
+         "rank": "Capt/Maj",
+         "note": "number not printed"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "en-sub-area-hq",
+   "name": "Sub Area HQ",
+   "arm": "log",
+   "type": "hq",
+   "subtype": "sub-area",
+   "echelon": "18",
+   "page": "1359, 1366",
+   "notes": [
+    "1366 (Anx B): appointments structured in appointments / children; ranks only where printed.",
+    "1359: twenty one Sub Areas incl one indep in the IA (1367: 60 (I) Sub Area)."
+   ],
+   "side": "en",
+   "symbolKey": "10163600",
+   "appointments": [
+    {
+     "appt": "Comd",
+     "rank": "Brig",
+     "count": 1
+    }
+   ],
+   "children": [
+    {
+     "role": "GS Branch",
+     "count": 1,
+     "appointments": [
+      {
+       "appt": "GSO-1",
+       "count": 1
+      },
+      {
+       "appt": "GSO-2",
+       "count": 1
+      },
+      {
+       "appt": "GSO-3",
+       "count": 2
+      },
+      {
+       "appt": "Edn Offr",
+       "rank": "Capt",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "AQ Branch",
+     "count": 1,
+     "appointments": [
+      {
+       "appt": "Col Adm",
+       "count": 1
+      },
+      {
+       "appt": "AQMG",
+       "count": 1
+      }
+     ],
+     "children": [
+      {
+       "role": "A Branch",
+       "count": 1,
+       "appointments": [
+        {
+         "appt": "AAG",
+         "count": 1
+        },
+        {
+         "appt": "SC",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "role": "Q Branch",
+       "count": 1,
+       "appointments": [
+        {
+         "appt": "DAQMG",
+         "count": 1
+        },
+        {
+         "appt": "SC",
+         "count": 1
+        }
+       ],
+       "children": [
+        {
+         "role": "Q Services",
+         "count": 1,
+         "children": [
+          {
+           "role": "S&T",
+           "count": 1,
+           "appointments": [
+            {
+             "appt": "ADS&T",
+             "count": 1
+            },
+            {
+             "appt": "SC",
+             "count": 1
+            }
+           ]
+          },
+          {
+           "role": "Ord",
+           "count": 1,
+           "appointments": [
+            {
+             "appt": "DADOS",
+             "count": 1,
+             "note": "only for Indep Sub Areas (printed *)"
+            },
+            {
+             "appt": "Ord Offr",
+             "rank": "Capt",
+             "count": 1
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "en-asc-bn-armd-div",
+   "name": "ASC Bn (Armd Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "asc",
+   "echelon": "16",
+   "page": "1369",
+   "strength": {
+    "offr": 25,
+    "jco": 40,
+    "sldr": 726,
+    "total": 791
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "QM Pl",
+       "count": 1
+      },
+      {
+       "role": "Bn HQ Pers",
+       "count": 1
+      },
+      {
+       "role": "Bn HQ Tpt",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "A Coy (MT)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "5/7.5 Ton Pl",
+       "note": "printed '5/7.5 Ton'; number of pls not printed"
+      }
+     ]
+    },
+    {
+     "role": "B Coy (MT)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "5/7.5 Ton Pl",
+       "note": "printed '5/7.5 Ton'; number of pls not printed"
+      }
+     ]
+    },
+    {
+     "role": "C Coy (MT)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "5/7.5 Ton Pl",
+       "note": "printed '5/7.5 Ton'; number of pls not printed"
+      }
+     ]
+    },
+    {
+     "role": "D Coy (Sup)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "Comp Pl",
+       "count": 4
+      }
+     ]
+    },
+    {
+     "role": "Tk Tptr Coy",
+     "unit": "en-asc-tk-tptr-coy-armd-div",
+     "count": 2
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 18
+    },
+    {
+     "name": "500 Kg",
+     "count": 22
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 9
+    },
+    {
+     "name": "5 Ton",
+     "count": 320,
+     "note": "Incl one Lt Rec and One office veh. (20 x Buses)"
+    }
+   ],
+   "notes": [
+    "Not stated whether the ASC Bn column includes the Tk Tptr Coys (shown in a separate column)."
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-tk-tptr-coy-armd-div",
+   "name": "Tk Tptr Coy (Armd Div)",
+   "arm": "log",
+   "type": "coy",
+   "subtype": "tk-tptr",
+   "echelon": "15",
+   "page": "1301, 1369",
+   "strength": {
+    "offr": 6,
+    "jco": 10,
+    "sldr": 317,
+    "total": 332
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1
+    },
+    {
+     "role": "Tk Tptr Pl",
+     "count": 4
+    },
+    {
+     "role": "Tpt Wksp Sec (Type C)",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 10
+    },
+    {
+     "name": "500 Kg",
+     "count": 5
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 5
+    },
+    {
+     "name": "5 Ton",
+     "count": 5
+    }
+   ],
+   "uncertain": true,
+   "note": "6 + 10 + 317 = 333, printed total 332. Tk tptr count per coy not printed (Armd Div summary: Tk Tptrs 144).",
+   "notes": [
+    "1301 calls them '2 x Type C Indep Tk Tptr Coys'."
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-bn-inf-div",
+   "name": "ASC Bn (Inf Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "asc",
+   "echelon": "16",
+   "page": "1370",
+   "strength": {
+    "offr": 22,
+    "jco": 35,
+    "sldr": 573,
+    "total": 630
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "count": 1,
+     "children": [
+      {
+       "role": "QM Pl",
+       "count": 1
+      },
+      {
+       "role": "Bn HQ Tpt",
+       "count": 1
+      },
+      {
+       "role": "Bn HQ Pers",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "A Coy (MT)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "5/7.5 Ton Pl",
+       "note": "printed '5/7.5 Ton Pls'; number not printed"
+      }
+     ]
+    },
+    {
+     "role": "B Coy (MT)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "5/7.5 Ton Pl",
+       "note": "printed '5/7.5 Ton Pls'; number not printed"
+      }
+     ]
+    },
+    {
+     "role": "C Coy (Sups)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "Comp Pl",
+       "count": 4
+      }
+     ]
+    },
+    {
+     "role": "Indep Tk Tptr Pl",
+     "unit": "en-asc-indep-tk-tptr-pl-inf-div",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 13
+    },
+    {
+     "name": "500 kg",
+     "count": 18
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 16
+    },
+    {
+     "name": "5 Ton",
+     "count": 184,
+     "note": "incl 16 x Buses"
+    },
+    {
+     "name": "Amb",
+     "count": 1
+    },
+    {
+     "name": "Total",
+     "count": 304
+    }
+   ],
+   "uncertain": true,
+   "note": "Printed tpt total 304; the itemised lines sum to 232.",
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-indep-tk-tptr-pl-inf-div",
+   "name": "Indep Tk Tptr Pl (Inf Div)",
+   "arm": "log",
+   "type": "pl",
+   "subtype": "tk-tptr",
+   "echelon": "14",
+   "page": "1370",
+   "strength": {
+    "offr": 1,
+    "jco": 2,
+    "sldr": 61,
+    "total": 64
+   },
+   "children": [
+    {
+     "role": "Pl",
+     "count": 4,
+     "note": "printed '(4 x Pls)'"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "500 kg",
+     "count": 1
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 1
+    },
+    {
+     "name": "5 Ton",
+     "count": 1
+    },
+    {
+     "name": "Tk tptr",
+     "count": 17,
+     "note": "17 Tractors 8x8 Hy MAZ/KOLOS TATRA"
+    },
+    {
+     "name": "Total",
+     "count": 23
+    }
+   ],
+   "uncertain": true,
+   "note": "Printed tpt total 23; the itemised lines sum to 22.",
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-bn-mtn-div",
+   "name": "ASC Bn (Mtn Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "asc-mtn",
+   "echelon": "16",
+   "page": "1305, 1371",
+   "strength": {
+    "offr": 20,
+    "jco": 35,
+    "sldr": 499,
+    "total": 554
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "QM Pl",
+       "count": 1
+      },
+      {
+       "role": "Bn HQ Pers",
+       "count": 1
+      },
+      {
+       "role": "Bn HQ Tpt",
+       "count": 1
+      },
+      {
+       "role": "LRW",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "A Coy (MT)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "5/7.5 Ton Pl",
+       "count": 3,
+       "note": "printed '3 x 5/7.5 Ton'"
+      }
+     ]
+    },
+    {
+     "role": "B Coy (MT)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "5/7.5 Ton Pl",
+       "count": 2
+      },
+      {
+       "role": "2.5 Ton Pl",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "C Coy (Sup)",
+     "count": 1,
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "Comp Pl",
+       "count": 4
+      }
+     ]
+    },
+    {
+     "role": "AT Coy (GS Mules)",
+     "count": 1,
+     "relation": "when att",
+     "unit": "en-at-coy",
+     "note": "Coy HQ, 3 x Tps; same coy as the AT Bn's AT Coy (288 GS mules, 1305)"
+    },
+    {
+     "role": "AT Coy (MA Mules)",
+     "count": 1,
+     "relation": "when att",
+     "children": [
+      {
+       "role": "Coy HQ",
+       "count": 1
+      },
+      {
+       "role": "Tp",
+       "count": 2
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 8
+    },
+    {
+     "name": "500 Kg",
+     "count": 15
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 31
+    },
+    {
+     "name": "5 ton",
+     "count": 129,
+     "note": "incl 10 x Buses (40 str) and 1 x rec veh"
+    },
+    {
+     "name": "Tlrs",
+     "count": 174
+    },
+    {
+     "name": "Total",
+     "count": 218
+    }
+   ],
+   "uncertain": true,
+   "note": "Printed tpt total 218; lines sum to 183 without Tlrs, 357 with. 'When att' brace is printed under both AT Coys' troops; 1305 shows the GS mule AT Coy (288 GS mules) as integral and only the MA mule coy 'if att'.",
+   "notes": [
+    "1305 calls it 'ASC Regt'."
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-elm-iab",
+   "name": "ASC Elm (IAB)",
+   "arm": "log",
+   "type": "coy",
+   "subtype": "asc-elm",
+   "echelon": "15",
+   "page": "1306, 1372",
+   "children": [
+    {
+     "role": "Comp Pl",
+     "unit": "en-asc-comp-pl-iab",
+     "count": 1
+    },
+    {
+     "role": "ASC Coy Tk Tptr (Type A)",
+     "unit": "en-asc-tk-tptr-coy-iab",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "No combined total printed."
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-comp-pl-iab",
+   "name": "Comp Pl (IAB ASC Elm)",
+   "arm": "log",
+   "type": "pl",
+   "subtype": "comp",
+   "echelon": "14",
+   "page": "1372",
+   "strength": {
+    "offr": 1,
+    "jco": 2,
+    "sldr": 29,
+    "total": 32
+   },
+   "vehicles": [
+    {
+     "name": "500 Kg",
+     "count": 1
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 1
+    },
+    {
+     "name": "Total",
+     "count": 3
+    }
+   ],
+   "uncertain": true,
+   "note": "Printed tpt total 3; itemised lines sum to 2.",
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-tk-tptr-coy-iab",
+   "name": "ASC Coy Tk Tptr (Type A) (IAB)",
+   "arm": "log",
+   "type": "coy",
+   "subtype": "tk-tptr",
+   "echelon": "15",
+   "page": "1372",
+   "strength": {
+    "offr": 4,
+    "jco": 6,
+    "sldr": 171,
+    "total": 181
+   },
+   "children": [
+    {
+     "role": "Pl",
+     "count": 2
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 5
+    },
+    {
+     "name": "500 Kg",
+     "count": 3
+    },
+    {
+     "name": "2.5 Ton",
+     "count": 3
+    },
+    {
+     "name": "5 Ton",
+     "count": 3
+    },
+    {
+     "name": "Tk tptr",
+     "count": 36
+    },
+    {
+     "name": "Total",
+     "count": 50
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-coy-comp-iib",
+   "name": "ASC Coy (Comp) (IIB)",
+   "arm": "log",
+   "type": "coy",
+   "subtype": "comp",
+   "echelon": "15",
+   "page": "1373",
+   "strength": {
+    "offr": 5,
+    "jco": 8,
+    "sldr": 162,
+    "total": 175
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1
+    },
+    {
+     "role": "Comp Pl",
+     "count": 1
+    },
+    {
+     "role": "MT Pl",
+     "count": 2
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Carbine",
+     "count": 109
+    },
+    {
+     "name": "Rifle",
+     "count": 50
+    },
+    {
+     "name": "LMG",
+     "count": 6
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 3
+    },
+    {
+     "name": "Jeep",
+     "count": 4
+    },
+    {
+     "name": "1 Ton",
+     "count": 4
+    },
+    {
+     "name": "3 Ton",
+     "count": 63
+    },
+    {
+     "name": "Tlrs",
+     "count": 8
+    },
+    {
+     "name": "Total",
+     "count": 74
+    }
+   ],
+   "notes": [
+    "Printed tpt total excludes Tlrs."
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-asc-coy-comp-para-bde",
+   "name": "ASC Coy (Comp) (Para Bde)",
+   "arm": "log",
+   "type": "coy",
+   "subtype": "comp",
+   "echelon": "15",
+   "page": "1373",
+   "strength": {
+    "offr": 5,
+    "jco": 9,
+    "sldr": 175,
+    "total": 189
+   },
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1
+    },
+    {
+     "role": "Comp Pl",
+     "count": 1
+    },
+    {
+     "role": "MT Pl",
+     "count": 2
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Carbine",
+     "count": 109
+    },
+    {
+     "name": "Rifle",
+     "count": 50
+    },
+    {
+     "name": "LMG",
+     "count": 6
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 3
+    },
+    {
+     "name": "Jeep",
+     "count": 4
+    },
+    {
+     "name": "1 Ton",
+     "count": 4
+    },
+    {
+     "name": "3 Ton",
+     "count": 4
+    },
+    {
+     "name": "Tlrs",
+     "count": 8
+    },
+    {
+     "name": "Total",
+     "count": 15
+    }
+   ],
+   "notes": [
+    "Printed tpt total excludes Tlrs.",
+    "Only org of the Para Bde in this section (no Para Bde chart)."
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-at-bn",
+   "name": "AT Bn ASC",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "animal-tpt",
+   "echelon": "16",
+   "page": "1374",
+   "strength": {
+    "offr": 14,
+    "jco": 30,
+    "sldr": 727,
+    "total": 771
+   },
+   "children": [
+    {
+     "role": "Bn HQ",
+     "count": 1
+    },
+    {
+     "role": "AT Coy",
+     "unit": "en-at-coy",
+     "count": 3
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Carbine Machine",
+     "count": 546
+    },
+    {
+     "name": "Rifles",
+     "count": 223
+    },
+    {
+     "name": "LMG",
+     "count": 4
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "Jeep",
+     "count": 4
+    },
+    {
+     "name": "Lorry 3 ton 4x4 GS",
+     "count": 4
+    },
+    {
+     "name": "Truck 1 ton 4x4 GS",
+     "count": 4
+    },
+    {
+     "name": "Tlr",
+     "count": 4
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Rides Cl 'A'",
+     "count": 4
+    },
+    {
+     "name": "Rides Cl 'B'",
+     "count": 13
+    },
+    {
+     "name": "Mules",
+     "count": 864
+    },
+    {
+     "name": "Carts At",
+     "count": 22
+    }
+   ],
+   "uncertain": true,
+   "note": "A '1 1/2 Tp Mules' label is bracketed beside the first AT Coy; its meaning is not explained.",
+   "notes": [
+    "Mules 864 = 3 coys x 3 tps x 2 half tps x 2 double secs x 2 secs x 12 mules (matches the chart)."
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-at-coy",
+   "name": "AT Coy",
+   "arm": "log",
+   "type": "coy",
+   "subtype": "animal-tpt",
+   "echelon": "15",
+   "page": "1305, 1374",
+   "children": [
+    {
+     "role": "Coy HQ",
+     "count": 1
+    },
+    {
+     "role": "Tp",
+     "unit": "en-at-tp",
+     "count": 3
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Mules",
+     "count": 288,
+     "note": "1305: 'AT Coy (288 GS mules)'"
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-at-tp",
+   "name": "AT Tp",
+   "arm": "log",
+   "type": "tp",
+   "subtype": "animal-tpt",
+   "echelon": "14",
+   "page": "1374",
+   "children": [
+    {
+     "role": "Half Tp",
+     "unit": "en-at-half-tp",
+     "count": 2
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-at-half-tp",
+   "name": "AT Half Tp",
+   "arm": "log",
+   "type": "tp",
+   "subtype": "half-tp",
+   "echelon": "13",
+   "page": "1374",
+   "children": [
+    {
+     "role": "Double Sec",
+     "unit": "en-at-double-sec",
+     "count": 2
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-at-double-sec",
+   "name": "AT Double Sec",
+   "arm": "log",
+   "type": "sec",
+   "subtype": "double-sec",
+   "echelon": "12",
+   "page": "1374",
+   "children": [
+    {
+     "role": "Sec",
+     "unit": "en-at-sec",
+     "count": 2
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-at-sec",
+   "name": "AT Sec",
+   "arm": "log",
+   "type": "sec",
+   "subtype": "animal-tpt",
+   "echelon": "12",
+   "page": "1374",
+   "equipment": [
+    {
+     "name": "Mules",
+     "count": 12,
+     "note": "Incl 1 x Spare"
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10163600"
+  },
+  {
+   "id": "en-fd-amb-armd-div",
+   "name": "Fd Amb (Armd Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "fd-amb",
+   "echelon": "16",
+   "page": "1375",
+   "strength": {
+    "offr": 28,
+    "jco": 27,
+    "sldr": 482,
+    "total": 537
+   },
+   "strengthNote": "Total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Adm Pl",
+     "unit": "en-fd-amb-adm-pl",
+     "count": 1
+    },
+    {
+     "role": "Med Pl",
+     "unit": "en-fd-amb-med-pl",
+     "count": 2
+    },
+    {
+     "role": "Tech Sp Pl",
+     "unit": "en-fd-amb-tech-sp-pl",
+     "count": 1
+    },
+    {
+     "role": "Dental Pl",
+     "unit": "en-fd-amb-dental-pl",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Carbine",
+     "count": 154
+    },
+    {
+     "name": "Rifle",
+     "count": 242
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 4
+    },
+    {
+     "name": "Jeep",
+     "count": 6
+    },
+    {
+     "name": "1 Ton",
+     "count": 10
+    },
+    {
+     "name": "1 Ton Lorry",
+     "count": 16
+    },
+    {
+     "name": "Other Vehs",
+     "count": 38,
+     "note": "printed '38*'; no footnote for the asterisk"
+    }
+   ],
+   "notes": [
+    "Echelon 16: a bn-sized med unit (no echelon printed)."
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-fd-amb-inf-div",
+   "name": "Fd Amb (Inf Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "fd-amb",
+   "echelon": "16",
+   "page": "1375",
+   "strength": {
+    "offr": 26,
+    "jco": 25,
+    "sldr": 411,
+    "total": 462
+   },
+   "strengthNote": "Total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Adm Pl",
+     "unit": "en-fd-amb-adm-pl",
+     "count": 1
+    },
+    {
+     "role": "Med Pl",
+     "unit": "en-fd-amb-med-pl",
+     "count": 2
+    },
+    {
+     "role": "Tech Sp Pl",
+     "unit": "en-fd-amb-tech-sp-pl",
+     "count": 1
+    },
+    {
+     "role": "Dental Pl",
+     "unit": "en-fd-amb-dental-pl",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Carbine",
+     "count": 154
+    },
+    {
+     "name": "Rifle",
+     "count": 242
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 4
+    },
+    {
+     "name": "Jeep",
+     "count": 6
+    },
+    {
+     "name": "1 Ton",
+     "count": 10
+    },
+    {
+     "name": "1 Ton Lorry",
+     "count": 4
+    },
+    {
+     "name": "Other Vehs",
+     "count": 38,
+     "note": "printed '38*'; no footnote for the asterisk"
+    }
+   ],
+   "notes": [
+    "Echelon 16: a bn-sized med unit (no echelon printed)."
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-fd-amb-mtn-div",
+   "name": "Fd Amb (Mtn Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "fd-amb",
+   "echelon": "16",
+   "page": "1375",
+   "strength": {
+    "offr": 28,
+    "jco": 27,
+    "sldr": 419,
+    "total": 474
+   },
+   "strengthNote": "Total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Adm Pl",
+     "unit": "en-fd-amb-adm-pl",
+     "count": 1
+    },
+    {
+     "role": "Med Pl",
+     "unit": "en-fd-amb-med-pl",
+     "count": 2
+    },
+    {
+     "role": "Tech Sp Pl",
+     "unit": "en-fd-amb-tech-sp-pl",
+     "count": 1
+    },
+    {
+     "role": "Dental Pl",
+     "unit": "en-fd-amb-dental-pl",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Carbine",
+     "count": 154
+    },
+    {
+     "name": "Rifle",
+     "count": 242
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Jeep",
+     "count": 2
+    },
+    {
+     "name": "1 Ton",
+     "count": 4
+    },
+    {
+     "name": "1 Ton Lorry",
+     "count": 10
+    },
+    {
+     "name": "Other Vehs",
+     "count": 4
+    }
+   ],
+   "notes": [
+    "Echelon 16: a bn-sized med unit (no echelon printed)."
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-fd-amb-iab",
+   "name": "Fd Amb (IAB)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "fd-amb",
+   "echelon": "16",
+   "page": "1375",
+   "strength": {
+    "offr": 11,
+    "jco": 10,
+    "sldr": 201,
+    "total": 222
+   },
+   "strengthNote": "Total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Adm Pl",
+     "unit": "en-fd-amb-adm-pl",
+     "count": 1
+    },
+    {
+     "role": "Med Pl",
+     "unit": "en-fd-amb-med-pl",
+     "count": 2
+    },
+    {
+     "role": "Tech Sp Pl",
+     "unit": "en-fd-amb-tech-sp-pl",
+     "count": 1
+    },
+    {
+     "role": "Dental Pl",
+     "unit": "en-fd-amb-dental-pl",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Carbine",
+     "count": 77
+    },
+    {
+     "name": "Rifle",
+     "count": 121
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "Jeep",
+     "count": 3
+    },
+    {
+     "name": "1 Ton",
+     "count": 5
+    },
+    {
+     "name": "1 Ton Lorry",
+     "count": 8
+    },
+    {
+     "name": "Other Vehs",
+     "count": 19
+    }
+   ],
+   "notes": [
+    "Echelon 16: a bn-sized med unit (no echelon printed)."
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-fd-amb-iib",
+   "name": "Fd Amb (IIB)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "fd-amb",
+   "echelon": "16",
+   "page": "1375",
+   "strength": {
+    "offr": 14,
+    "jco": 12,
+    "sldr": 211,
+    "total": 237
+   },
+   "strengthNote": "Total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Adm Pl",
+     "unit": "en-fd-amb-adm-pl",
+     "count": 1
+    },
+    {
+     "role": "Med Pl",
+     "unit": "en-fd-amb-med-pl",
+     "count": 2
+    },
+    {
+     "role": "Tech Sp Pl",
+     "unit": "en-fd-amb-tech-sp-pl",
+     "count": 1
+    },
+    {
+     "role": "Dental Pl",
+     "unit": "en-fd-amb-dental-pl",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Carbine",
+     "count": 77
+    },
+    {
+     "name": "Rifle",
+     "count": 121
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "Jeep",
+     "count": 3
+    },
+    {
+     "name": "1 Ton",
+     "count": 5
+    },
+    {
+     "name": "1 Ton Lorry",
+     "count": 2
+    },
+    {
+     "name": "Other Vehs",
+     "count": 19
+    }
+   ],
+   "notes": [
+    "Echelon 16: a bn-sized med unit (no echelon printed)."
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-fd-amb-adm-pl",
+   "name": "Adm Pl (Fd Amb)",
+   "arm": "log",
+   "type": "pl",
+   "subtype": "adm",
+   "echelon": "14",
+   "page": "1375",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1
+    },
+    {
+     "role": "QM Sec",
+     "count": 1
+    },
+    {
+     "role": "Tpt Sec",
+     "count": 1
+    },
+    {
+     "role": "Med Store Sec",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-fd-amb-med-pl",
+   "name": "Med Pl (Fd Amb)",
+   "arm": "log",
+   "type": "pl",
+   "subtype": "med",
+   "echelon": "14",
+   "page": "1375",
+   "children": [
+    {
+     "role": "Pl HQ & Adm Sec",
+     "count": 1
+    },
+    {
+     "role": "Sec",
+     "count": 3
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-fd-amb-tech-sp-pl",
+   "name": "Tech Sp Pl (Fd Amb)",
+   "arm": "log",
+   "type": "pl",
+   "subtype": "tech-sp",
+   "echelon": "14",
+   "page": "1375",
+   "children": [
+    {
+     "role": "Surg Team",
+     "count": 1
+    },
+    {
+     "role": "X-Ray Sec",
+     "count": 1
+    },
+    {
+     "role": "Lab Sec",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-fd-amb-dental-pl",
+   "name": "Dental Pl (Fd Amb)",
+   "arm": "log",
+   "type": "pl",
+   "subtype": "dental",
+   "echelon": "14",
+   "page": "1375",
+   "children": [
+    {
+     "role": "Pl HQ",
+     "count": 1
+    },
+    {
+     "role": "Sec",
+     "count": 4
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10161300"
+  },
+  {
+   "id": "en-dou-armd-div",
+   "name": "Div Ord Unit (Armd Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "dou",
+   "echelon": "16",
+   "page": "1376",
+   "strength": {
+    "offr": 12,
+    "jcoOr": 184,
+    "total": 196
+   },
+   "strengthNote": "Printed as Offrs and JCO/OR only; total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Comd (Col)",
+     "count": 1
+    },
+    {
+     "role": "HQ Cen Registery Stat Sec",
+     "count": 1
+    },
+    {
+     "role": "HQ & Inventory Mgmt gp",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Stocking Wing",
+       "count": 1,
+       "children": [
+        {
+         "role": "GS&C Pl",
+         "count": 1
+        },
+        {
+         "role": "MT & Tech Store Pl",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "role": "Indent Validation & Progressing Sec",
+       "count": 1
+      },
+      {
+       "role": "Provision Accts and Procurement Sec",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Stocking Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Adm and Mob Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Ammo Tech Svcs",
+       "count": 1
+      },
+      {
+       "role": "Conditioning & Advisory",
+       "count": 1
+      },
+      {
+       "role": "Stock Mov Sec",
+       "count": 1
+      },
+      {
+       "role": "Adm Sec",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Bicycle",
+     "count": 6
+    },
+    {
+     "name": "MC",
+     "count": 3
+    },
+    {
+     "name": "Vehs",
+     "count": 52
+    },
+    {
+     "name": "Crane",
+     "count": 1
+    },
+    {
+     "name": "Tlrs",
+     "count": 7
+    }
+   ],
+   "notes": [
+    "Pages 1376 (Armd Div) and 1377 (Inf Div) print the same chart and the same three-column table (Inf Div / Inf Div (Desert) / Armd Div)."
+   ],
+   "side": "en",
+   "symbolKey": "10110212",
+   "appointments": [
+    {
+     "appt": "Comd",
+     "rank": "Col",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "en-dou-inf-div",
+   "name": "Div Ord Unit (Inf Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "dou",
+   "echelon": "16",
+   "page": "1376, 1377",
+   "strength": {
+    "offr": 13,
+    "jcoOr": 145,
+    "total": 158
+   },
+   "strengthNote": "Printed as Offrs and JCO/OR only; total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Comd (Col)",
+     "count": 1
+    },
+    {
+     "role": "HQ Cen Registery Stat Sec",
+     "count": 1
+    },
+    {
+     "role": "HQ & Inventory Mgmt gp",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Stocking Wing",
+       "count": 1,
+       "children": [
+        {
+         "role": "GS&C Pl",
+         "count": 1
+        },
+        {
+         "role": "MT & Tech Store Pl",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "role": "Indent Validation & Progressing Sec",
+       "count": 1
+      },
+      {
+       "role": "Provision Accts and Procurement Sec",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Stocking Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Adm and Mob Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Ammo Tech Svcs",
+       "count": 1
+      },
+      {
+       "role": "Conditioning & Advisory",
+       "count": 1
+      },
+      {
+       "role": "Stock Mov Sec",
+       "count": 1
+      },
+      {
+       "role": "Adm Sec",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Bicycle",
+     "count": 4
+    },
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "Vehs",
+     "count": 13
+    },
+    {
+     "name": "Crane",
+     "count": 1
+    },
+    {
+     "name": "Tlrs",
+     "count": 6
+    }
+   ],
+   "notes": [
+    "Pages 1376 (Armd Div) and 1377 (Inf Div) print the same chart and the same three-column table (Inf Div / Inf Div (Desert) / Armd Div)."
+   ],
+   "side": "en",
+   "symbolKey": "10110212",
+   "appointments": [
+    {
+     "appt": "Comd",
+     "rank": "Col",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "en-dou-inf-div-desert",
+   "name": "Div Ord Unit (Inf Div (Desert))",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "dou",
+   "echelon": "16",
+   "page": "1376, 1377",
+   "strength": {
+    "offr": 12,
+    "jcoOr": 158,
+    "total": 170
+   },
+   "strengthNote": "Printed as Offrs and JCO/OR only; total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Comd (Col)",
+     "count": 1
+    },
+    {
+     "role": "HQ Cen Registery Stat Sec",
+     "count": 1
+    },
+    {
+     "role": "HQ & Inventory Mgmt gp",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Stocking Wing",
+       "count": 1,
+       "children": [
+        {
+         "role": "GS&C Pl",
+         "count": 1
+        },
+        {
+         "role": "MT & Tech Store Pl",
+         "count": 1
+        }
+       ]
+      },
+      {
+       "role": "Indent Validation & Progressing Sec",
+       "count": 1
+      },
+      {
+       "role": "Provision Accts and Procurement Sec",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Stocking Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Adm and Mob Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Ammo Tech Svcs",
+       "count": 1
+      },
+      {
+       "role": "Conditioning & Advisory",
+       "count": 1
+      },
+      {
+       "role": "Stock Mov Sec",
+       "count": 1
+      },
+      {
+       "role": "Adm Sec",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Bicycle",
+     "count": 2
+    },
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "Vehs",
+     "count": 14
+    },
+    {
+     "name": "Crane",
+     "count": 1
+    },
+    {
+     "name": "Tlrs",
+     "count": 6
+    }
+   ],
+   "notes": [
+    "Pages 1376 (Armd Div) and 1377 (Inf Div) print the same chart and the same three-column table (Inf Div / Inf Div (Desert) / Armd Div)."
+   ],
+   "side": "en",
+   "symbolKey": "10110212",
+   "appointments": [
+    {
+     "appt": "Comd",
+     "rank": "Col",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "en-dou-mtn-div",
+   "name": "Div Ord Unit (Mtn Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "dou",
+   "echelon": "16",
+   "page": "1378",
+   "strength": {
+    "offr": 14,
+    "jcoOr": 189,
+    "total": 203
+   },
+   "strengthNote": "Printed as Offrs and JCOs/OR only; total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "Comd (Lt Col)",
+     "count": 1
+    },
+    {
+     "role": "HQ & Inventory Control Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Indent Validation Progressing",
+       "count": 1
+      },
+      {
+       "role": "Provision Accts & Procurements",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Stocking Wing",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Gen Stores & Clo Sec",
+       "count": 1
+      },
+      {
+       "role": "MT Stores Sec",
+       "count": 1
+      },
+      {
+       "role": "Tech Stores Sec",
+       "count": 1
+      },
+      {
+       "role": "Ammo Stocks & Svcs",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Adm & Svcs",
+     "count": 1,
+     "children": [
+      {
+       "role": "HQ",
+       "count": 1
+      },
+      {
+       "role": "Conditioning & Advisory",
+       "count": 1
+      },
+      {
+       "role": "Stock Mov",
+       "count": 1
+      },
+      {
+       "role": "Adm Svcs",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Bicycle",
+     "count": 2
+    },
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "Vehs",
+     "count": 10
+    },
+    {
+     "name": "Tlrs",
+     "count": 6
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10110212",
+   "appointments": [
+    {
+     "appt": "Comd",
+     "rank": "Lt Col",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "en-iab-ord-unit",
+   "name": "IAB Ord Unit",
+   "arm": "log",
+   "type": "coy",
+   "subtype": "ord",
+   "echelon": "15",
+   "page": "1379",
+   "strength": {
+    "offr": 5,
+    "jcoOr": 75,
+    "total": 80
+   },
+   "strengthNote": "Printed as Offrs and JCOs/OR only; total = sum of the printed parts (no total printed).",
+   "children": [
+    {
+     "role": "OC",
+     "count": 1
+    },
+    {
+     "role": "Adm & Services Wing",
+     "count": 1
+    },
+    {
+     "role": "Inventory & Stock Control Wing",
+     "count": 1
+    },
+    {
+     "role": "Conditioning & Advisory",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 2
+    },
+    {
+     "name": "Jeep",
+     "count": 3
+    },
+    {
+     "name": "Tlrs Misc",
+     "count": 5
+    },
+    {
+     "name": "Trk 1 ton",
+     "count": 2
+    },
+    {
+     "name": "Crane Mobile 6 ton",
+     "count": 1
+    }
+   ],
+   "side": "en",
+   "symbolKey": "10110212",
+   "appointments": [
+    {
+     "appt": "OC",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "en-eme-bn-armd-div",
+   "name": "EME Bn (Armd Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "eme",
+   "echelon": "16",
+   "page": "1380",
+   "children": [
+    {
+     "role": "CO (Col)",
+     "count": 1
+    },
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "strength": {
+      "offr": 7,
+      "jco": 21,
+      "sldr": 51,
+      "total": 79
+     },
+     "note": "Offrs 7, JCOs 21, OR 51 printed beside Bn HQ; total = sum of the printed parts (no total printed)"
+    },
+    {
+     "role": "Armd Wksp",
+     "count": 2,
+     "strength": {
+      "offr": 7,
+      "jco": 3,
+      "sldr": 296,
+      "total": 306
+     },
+     "note": "Offrs 7, JCOs 3, OR 296 printed under 'Armd Wksp (2)'; read as per wksp (not stated); total = sum of the printed parts (no total printed)"
+    },
+    {
+     "role": "Armd Wksp with Med A",
+     "count": 1,
+     "strength": {
+      "offr": 7,
+      "jco": 3,
+      "sldr": 236,
+      "total": 246
+     },
+     "note": "total = sum of the printed parts (no total printed)"
+    },
+    {
+     "role": "Armd Wksp Arty Bde",
+     "count": 1,
+     "strength": {
+      "offr": 6,
+      "jco": 3,
+      "sldr": 283,
+      "total": 292
+     },
+     "note": "total = sum of the printed parts (no total printed)"
+    },
+    {
+     "role": "Armd Wksp AD",
+     "unit": "en-armd-wksp-ad",
+     "count": 1
+    },
+    {
+     "role": "Armd Wksp Div Tps",
+     "count": 1,
+     "strength": {
+      "offr": 7,
+      "jco": 5,
+      "sldr": 316,
+      "total": 328
+     },
+     "note": "total = sum of the printed parts (no total printed)"
+    },
+    {
+     "role": "Tk Tptr Wksp",
+     "count": 1,
+     "strength": {
+      "offr": 3,
+      "jco": 1,
+      "sldr": 121,
+      "total": 125
+     },
+     "note": "total = sum of the printed parts (no total printed)"
+    }
+   ],
+   "uncertain": true,
+   "note": "Scanned page; 'Armd Wksp (2)' figures (7 / 3 / 296) not stated as per wksp or for both. No bn total printed.",
+   "side": "en",
+   "symbolKey": "10161100",
+   "appointments": [
+    {
+     "appt": "CO",
+     "rank": "Col",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "en-armd-wksp-ad",
+   "name": "Armd Wksp AD",
+   "arm": "log",
+   "type": "coy",
+   "subtype": "eme-wksp",
+   "echelon": "15",
+   "page": "1380",
+   "children": [
+    {
+     "role": "HQ",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "jco": 2,
+      "sldr": 14,
+      "total": 17
+     },
+     "note": "total = sum of the printed parts (no total printed)"
+    },
+    {
+     "role": "AD Regt Wksp (SP)",
+     "count": 2,
+     "strength": {
+      "offr": 4,
+      "jco": 1,
+      "sldr": 226,
+      "total": 231
+     },
+     "note": "Printed under '2 x AD Regt Wksp (SP)'; read as per wksp (not stated); total = sum of the printed parts (no total printed)"
+    }
+   ],
+   "notes": [
+    "'2 x AD Regt Wksp (SP)' figures read as per wksp (not stated)."
+   ],
+   "side": "en",
+   "symbolKey": "10161100"
+  },
+  {
+   "id": "en-eme-bn-inf-div",
+   "name": "EME Bn (Inf Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "eme",
+   "echelon": "16",
+   "page": "1381",
+   "strength": {
+    "offr": 33,
+    "jco": 8,
+    "jcoHmt": 48,
+    "sldr": 686,
+    "total": 775
+   },
+   "strengthNote": "Totals are the 'EME set up in an Inf Div' table (Offrs 33, JCOs 8, JCO/HMT 48, OR 686, Total 775).",
+   "children": [
+    {
+     "role": "CEME (Col)",
+     "count": 1
+    },
+    {
+     "role": "Bn HQ",
+     "count": 1,
+     "note": "Printed 'Offr incl med Offr - 4', 'OR incl ERE - 18'; no JCO line printed; total = sum of the printed parts (no total printed)",
+     "strength": {
+      "offr": 4,
+      "sldr": 18,
+      "total": 22
+     }
+    },
+    {
+     "role": "EMAE",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "jco": 0,
+      "sldr": 4,
+      "total": 5
+     },
+     "note": "total = sum of the printed parts (no total printed)"
+    },
+    {
+     "role": "Planning Repair & Inspection Sec",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "jco": 0,
+      "sldr": 7,
+      "total": 8
+     },
+     "note": "total = sum of the printed parts (no total printed)"
+    },
+    {
+     "role": "Inf Bde Wksp Coy",
+     "count": 1
+    },
+    {
+     "role": "Arty Bde Wksp Coy",
+     "count": 1
+    },
+    {
+     "role": "Comp Wksp Coy",
+     "count": 3
+    },
+    {
+     "role": "Div Tps Wksp Coy",
+     "count": 1
+    },
+    {
+     "role": "'A' Veh Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 8
+    },
+    {
+     "name": "Vehs",
+     "count": 91,
+     "note": "Incl rec vehs"
+    },
+    {
+     "name": "Tlrs",
+     "count": 70
+    },
+    {
+     "name": "Lt Rec",
+     "count": 14
+    },
+    {
+     "name": "Med Rec",
+     "count": 2
+    },
+    {
+     "name": "Hy Rec",
+     "count": 1
+    },
+    {
+     "name": "Mech Eqpt",
+     "count": 1
+    }
+   ],
+   "uncertain": true,
+   "note": "Div Tps Wksp Coy and 'A' Veh Pl are drawn below 'Comp Wksp Coy (3)'; whether they are part of it is unclear. JCOs printed 'Nil' for EMAE and the Planning Sec.",
+   "side": "en",
+   "symbolKey": "10161100",
+   "appointments": [
+    {
+     "appt": "CEME",
+     "rank": "Col",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "en-eme-mtn-div",
+   "name": "EME Set Up (Mtn Div)",
+   "arm": "log",
+   "type": "bn",
+   "subtype": "eme",
+   "echelon": "16",
+   "page": "1305, 1381",
+   "strength": {
+    "offr": 30,
+    "jco": 7,
+    "jcoHmt": 39,
+    "sldr": 531,
+    "total": 607
+   },
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 7
+    },
+    {
+     "name": "Vehs",
+     "count": 77,
+     "note": "Incl rec vehs"
+    },
+    {
+     "name": "Tlrs",
+     "count": 64
+    },
+    {
+     "name": "Lt Rec",
+     "count": 13
+    },
+    {
+     "name": "Med Rec",
+     "count": 2
+    },
+    {
+     "name": "Mech Eqpt",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "From the 'EME set up in an Inf and Mtn Div' table on 1381; no Mtn Div EME chart. Hy Rec printed '-'."
+   ],
+   "side": "en",
+   "symbolKey": "10161100"
+  }
+ ],
+ "threatData": [
+  {
+   "title": "Arty Ammo Scale",
+   "page": "1326",
+   "columns": [
+    "Wpn / Ammo",
+    "1st Line",
+    "2nd Line",
+    "Total",
+    "Remarks"
+   ],
+   "rows": [
+    [
+     "120 mm Brandt Mor: M-44",
+     60,
+     68,
+     128,
+     ""
+    ],
+    [
+     "120 mm Brandt Mor: PEPA/LP",
+     26,
+     10,
+     36,
+     ""
+    ],
+    [
+     "120 mm Brandt Mor: Smk White",
+     4,
+     4,
+     8,
+     ""
+    ],
+    [
+     "120 mm Brandt Mor: Smk Coloured (Red and Blue)",
+     4,
+     4,
+     8,
+     ""
+    ],
+    [
+     "120 mm Brandt Mor: Total",
+     94,
+     86,
+     190,
+     ""
+    ],
+    [
+     "75/24 mm How: HE",
+     100,
+     50,
+     150,
+     ""
+    ],
+    [
+     "75/24 mm How: Smk White",
+     18,
+     6,
+     24,
+     ""
+    ],
+    [
+     "75/24 mm How: Smk Coloured",
+     6,
+     3,
+     9,
+     ""
+    ],
+    [
+     "75/24 mm How: HEAT/HESH",
+     4,
+     2,
+     6,
+     ""
+    ],
+    [
+     "75/24 mm How: Start Shell",
+     12,
+     6,
+     18,
+     ""
+    ],
+    [
+     "75/24 mm How: Total",
+     140,
+     67,
+     207,
+     ""
+    ],
+    [
+     "76 mm How: HE",
+     100,
+     50,
+     150,
+     ""
+    ],
+    [
+     "76 mm How: Smk White",
+     18,
+     6,
+     24,
+     ""
+    ],
+    [
+     "76 mm How: HEAT",
+     4,
+     2,
+     6,
+     ""
+    ],
+    [
+     "76 mm How: Total",
+     122,
+     58,
+     180,
+     ""
+    ],
+    [
+     "105 mm How Abbot: HE",
+     100,
+     50,
+     150,
+     "Only 36 rds carried on the SP gun"
+    ],
+    [
+     "105 mm How Abbot: Smk White",
+     10,
+     4,
+     14,
+     ""
+    ],
+    [
+     "105 mm How Abbot: Smk Coloured",
+     4,
+     2,
+     6,
+     ""
+    ],
+    [
+     "105 mm How Abbot: III",
+     12,
+     6,
+     18,
+     ""
+    ],
+    [
+     "105 mm How Abbot: HESH",
+     6,
+     2,
+     8,
+     ""
+    ],
+    [
+     "105 mm How Abbot: Total",
+     132,
+     64,
+     196,
+     ""
+    ],
+    [
+     "130 mm Gun: HE",
+     90,
+     45,
+     135,
+     ""
+    ],
+    [
+     "7.2\" How: HE",
+     54,
+     36,
+     90,
+     "50% will be reduced"
+    ]
+   ],
+   "note": "All printed totals check against their lines. 'Only 36 rds carried on the SP gun' is printed against the whole 105 mm How Abbot block (kept on its HE row); '50% will be reduced' against 7.2\" How HE."
+  },
+  {
+   "title": "Log Sys - Sys of Maint in War",
+   "page": "1353-1354",
+   "text": "LS commodities: food (sup); fuel, oil and lubricants; ammo; tpt (MT and AT); med; stores; reports; rec; mail; TC; care and maint of AT. Resp: ASC - food sup, fuel, ammo, AT; A Ord Corps - gen stores and clo, tech stores, amt, MT, ammo (stocking and conditioning), collection and back loading of sal; AMC - health, treatment and evac of wounded; EME - repair of vehs, amt and tech eqpt, rec and back loading of unsvc vehs; Army Postal Svc - mail; Remount and Vet Corps - care of animals; CMP - TC, con of stragglers, maint of discp."
+  },
+  {
+   "title": "Foxland Army's Log Sys",
+   "page": "1355-1358",
+   "rows": [
+    [
+     "Gen",
+     "Log sys geared to sp a maj offn deep inside en territory and at the same time the def ops in other secs; replenishment oriented to rapid build up and diversion of sup from one sec to another"
+    ],
+    [
+     "Log policy",
+     "Res of stocks / replenishment to sp sustained ops for 6 months (indigenous production cap and import arrangements can ensure high intensity ops for this pd)"
+    ],
+    [
+     "GS Res: Army HQ Cen Res",
+     "Ammo, vehs, POL and vital items of eqpt req for op ctgys; held for a specified force in Army HQ Res Deps"
+    ],
+    [
+     "GS Res: Comd Cen Res",
+     "Items at the disposal of Comds held in the Comd Deps; a part loc in Corps Deps"
+    ],
+    [
+     "GS Res: Corps / Fmn / Unit GS Res",
+     "Items placed at the disposal of Corps / Fmns / Units"
+    ],
+    [
+     "Maint Res",
+     "Stores in holding units or instls in Corps / Div AOO to meet normal maint req for a specified pd"
+    ],
+    [
+     "Fwd Res",
+     "Certain secs stocked in adv with all req items for a specific pd, in addn to res held in diff adm echs"
+    ],
+    [
+     "WWR: Ord Stores (less POL and Ammo)",
+     "From previous consumption (gen stores and clo) and contact rate cas (arms, eqpt, vehs etc) during active hostilities"
+    ],
+    [
+     "WWR: Br Eqpt",
+     "Worked out in ft per km for intended AOO"
+    ],
+    [
+     "WWR: Ammo",
+     "Intense and normal rates of exp in def and offn ops; 2 to 3 days 'intense' rate = one 'Sec Line' scale; normal rate about half of intense; one Sec Line = three days WWR"
+    ],
+    [
+     "WWR: POL",
+     "Scale fixed for terrain and L of C; Army HQ Cen Res based on 'Contact and Quiet' rates"
+    ],
+    [
+     "WWR: Rat",
+     "Calc for each day on the auth str of the Armed Forces plus addl manpower (civ dvrs etc) under comd"
+    ],
+    [
+     "WWR: Med Stores",
+     "Calc from previous req during active hostilities"
+    ],
+    [
+     "First / Sec Line scales (ammo)",
+     "First Line = on wpn scale + unit res, approx two Sec Lines; Sec Line designed to fight one action"
+    ],
+    [
+     "Holding in peace",
+     "Unit holds its First Line scale; Sec Line scale and WWR held by the dependent deps"
+    ],
+    [
+     "Divs",
+     "Draw Sec Line scales from Fd Ammo Dep (FAD) during the wng pd; in div the Sec Line scale and a portion of WWR held by the Div Ord Unit"
+    ],
+    [
+     "Dep WWR",
+     "A dep may hold 30 days WWR = roughly 8 to 9 'Sec Line' lifts for the dependent str; a unit unlikely to fight more than nine maj actions in a month; not applicable for arty: for arty ammo one Sec Line = 2 days WWR"
+    ],
+    [
+     "Loc of stocks: Army HQ Res Deps",
+     "7-10 days stock for a specified force"
+    ],
+    [
+     "Loc of stocks: Comd Res Deps",
+     "10-15 days stock for entire force under comd"
+    ],
+    [
+     "Loc of stocks: Holding agencies in Corps Areas",
+     "50-60% of total res; of this 30% in rd H deps, rest fwd in CZ and units"
+    ],
+    [
+     "AMA",
+     "Concept not fol in Indian Army; loc of maj Comd Deps at times ref to as AMA"
+    ],
+    [
+     "Comd tps / units",
+     "Draw maint req dir from the nearest dep"
+    ],
+    [
+     "CMA",
+     "Estb at the rd H, does not mov; Adv Maint Area estb as fwd as possible before a maj attk or adv"
+    ],
+    [
+     "DAA (def)",
+     "4000-5500 tps and 900-2000 vehs (F and A ech tpt not req in fwd areas loc in the DAA)"
+    ],
+    [
+     "DAA (offn)",
+     "Tps more or less the same; tpt 4000-5000 vehs"
+    ],
+    [
+     "DAA size / loc",
+     "Approx 20 to 25 map sqs on 1:50,000; gen within one ni turn rd dist from CMA; not gen mov more than once in 72 hrs; entire DAA needs 2/3 nis to shift (lack of tpt)"
+    ],
+    [
+     "DMA",
+     "Estb when CMA is more than one ni turn rd dist from the div AOO; svcs hold ltd stocks on gr; temp only"
+    ],
+    [
+     "First Line Tpt",
+     "Auth to units"
+    ],
+    [
+     "Sec Line Tpt",
+     "Auth to ASC bns of the fmn: 120 x 3 ton and 60 x 1 ton vehs (less HQ and Sup coy); no auth of tlrs"
+    ],
+    [
+     "Third Line Tpt",
+     "All tpt behind the div rear bdry, held by GT coy; at times altd to supplement First and Sec Line tpt"
+    ]
+   ],
+   "columns": [
+    "Item",
+    "Figure / rule"
+   ]
+  },
+  {
+   "title": "Log Areas / Instls",
+   "page": "1359-1364",
+   "rows": [
+    [
+     "Areas",
+     "Formed on a regional basis, each comd by a Maj Gen; comd, con and adm of static units in their jurisdiction (op units altd at times); eight Areas in the IA (Anx A, 1365)"
+    ],
+    [
+     "Sub Areas",
+     "Areas sub divided into Sub Areas, altd to Corps as req; twenty one incl one indep (Anx B, 1366; set up Anx C, 1367)"
+    ],
+    [
+     "Base Instls",
+     "In peace Adv Base Sup Deps and Comd Ord Deps hold and sup the demand of the army; nucleus of a main base in war"
+    ],
+    [
+     "Comd Instls",
+     "Within the geo bdrys of the Comd; hold stocks for the force in the area; may form part of the Maint Base when hostilities open"
+    ],
+    [
+     "Sta Instls",
+     "Peace time reqs only"
+    ],
+    [
+     "Concept of maint",
+     "Comm Z and Cbt Z; Cbt Z org into Maint Areas and Adm Areas"
+    ],
+    [
+     "Base",
+     "The cty with its raw material, def and civ industries, harbour, rlys, power, tpt and comm; con by Army HQ through the Regional Comd"
+    ],
+    [
+     "Adv Base",
+     "Formed only when it is impractical to maint the forces dir from the base (turn rd time, interruption in the Comm Z)"
+    ],
+    [
+     "Comm Z",
+     "Whole geo area behind the Cbt Z rear bdry; sub divided into Areas and Sub Areas"
+    ],
+    [
+     "Cbt Z",
+     "Area fwd of Comm Z; tps maint through Maint Areas and Adm Areas"
+    ],
+    [
+     "Maint Areas",
+     "Temp; named after the fmn that estb them: Army Maint Area (AMA), Corps Maint Area (CMA), Div Maint Area (DMA), B ech Main Area (BMA)"
+    ],
+    [
+     "Adm Areas",
+     "Where adm units are loc for maint of the fighting fmns; hold no stocks in excess of fmn sec line holding: Army / Corps / Div Adm Area"
+    ],
+    [
+     "Chain of replenishment",
+     "Base -> Army Maint Area (through Comm Z) -> Corps Maint Area -> Div Maint Area -> fighting tps"
+    ],
+    [
+     "Comm Z resp",
+     "HQ Comm Z and sub HQs: Gen Adm - Army HQ (con of mov of men, material, rlys, res, rd tpt, labour); Local Adm - Local Comd (discp, accn, camps, tfc con, local protection)"
+    ],
+    [
+     "Comm Z org",
+     "HQ Base Area (region of the Adv Base; may be a HQ Base Sub Area only); HQ Comm Area (part or whole of the Comm Z excl the base area, split into sub areas as req); Gar (protection of a particular pt or instl)"
+    ],
+    [
+     "Comm Z comd and con",
+     "Comd of Comm Z dir resp to Comd HQ; tech con of deps / instls with the head of svc at Comd HQ"
+    ],
+    [
+     "HQ Comm Z loc",
+     "Focal pts of adm activity; proximity to Comd HQ; layout of sig, rd, rly and air comm"
+    ],
+    [
+     "Comm Z units aval for almt",
+     "ASC: Sup, Tpt, Pet, Air Sp Units; Ord: Ord, Veh, Ammo, Sal, Misc Deps; EME: Comm Z Rec Coy, Fd and Adv Base Repair Wksp, Adv Base Wksp Cl B; Med: Fd Hosp, Fd Health Org, Staging Secs, Base Hosp, Fd Med Store Dept (FMSD), Corps Dental Units, Comd Hosp, Gen Hosp"
+    ],
+    [
+     "Sp to other svcs",
+     "Adm sp to the other two Svcs and to Dte Gen Border Security; on outbreak of hostilities para mil forces (Assam Rifles, BSF, Central Res Police, State Police etc) placed under op con of the Army get adm sp under Army arrangements"
+    ],
+    [
+     "Air sup",
+     "Con by Regional Comds; Army and Air Comds jointly lay down policy and pri"
+    ],
+    [
+     "Maint of L of C",
+     "Fighting fmns up to Corps maint and protect L of C in the Cbt Z; Areas / Sub Areas (adm con of Comd HQ) in the Comm Z; rlys by fourteen Rly Engr Gps (Territorial Army), financed jointly by the Mins of Rlys and Def"
+    ]
+   ],
+   "columns": [
+    "Item",
+    "Figure / rule"
+   ]
+  },
+  {
+   "title": "GS Res (Stocking Policy / War Stamina)",
+   "page": "1362",
+   "columns": [
+    "Item",
+    "GS Res"
+   ],
+   "rows": [
+    [
+     "Sup",
+     "180 days"
+    ],
+    [
+     "POL",
+     "180 days for indigenous items and 180 days for imported items"
+    ],
+    [
+     "Ammo",
+     "10 months (being reviewed for reduction)"
+    ],
+    [
+     "Vehs and Eqpt",
+     "Varying percentages of the UE for various types of vehs and eqpt"
+    ],
+    [
+     "Med Stores",
+     "180 days (distr in the next table)"
+    ]
+   ],
+   "note": "Rationale: expected duration of war 3 months and 1-2 month res."
+  },
+  {
+   "title": "Med Stores - distr of stocks",
+   "page": "1362",
+   "columns": [
+    "Where",
+    "Stock"
+   ],
+   "rows": [
+    [
+     "In Kashmir fmns",
+     "6 months for holding and 3 months for addl induction"
+    ],
+    [
+     "Outside Kashmir: under con of Comds",
+     "30 days"
+    ],
+    [
+     "Outside Kashmir: in adv composite depl under con Army HQ",
+     "30 days for all fmns incl induction into Kashmir"
+    ],
+    [
+     "Outside Kashmir: in feeder bases under con Army HQ",
+     "60 days less Army fmns depl in Kashmir"
+    ],
+    [
+     "Outside Kashmir: dumping",
+     "6 months for holding fmns in Kashmir"
+    ]
+   ]
+  },
+  {
+   "title": "Stocks Holding (guide-lines)",
+   "page": "1363",
+   "columns": [
+    "Maint Area",
+    "Item",
+    "Normal",
+    "Max"
+   ],
+   "rows": [
+    [
+     "Army Maint Area",
+     "Ammo",
+     "5-10 days",
+     "10 days"
+    ],
+    [
+     "Army Maint Area",
+     "POL",
+     "250-300 kms",
+     "500-550 kms"
+    ],
+    [
+     "Army Maint Area",
+     "Sup",
+     "5 days",
+     "10 days"
+    ],
+    [
+     "Corps Maint Area",
+     "Ammo",
+     "2-5 days",
+     "5 days"
+    ],
+    [
+     "Corps Maint Area",
+     "POL",
+     "150 kms",
+     "250 kms"
+    ],
+    [
+     "Corps Maint Area",
+     "Sup",
+     "2 days",
+     "5 days"
+    ],
+    [
+     "Corps Maint Area",
+     "Ord",
+     "Sel items for specific ops",
+     ""
+    ],
+    [
+     "Div Maint Area",
+     "Sup",
+     "15 days",
+     ""
+    ],
+    [
+     "Div Maint Area",
+     "POL",
+     "50 Km",
+     ""
+    ],
+    [
+     "Div Maint Area",
+     "Ammo",
+     "3x2nd Line",
+     ""
+    ],
+    [
+     "Div Maint Area",
+     "Med, Ord & Engr",
+     "15 days",
+     ""
+    ],
+    [
+     "Div Maint Area",
+     "Def Store",
+     "4 bricks",
+     ""
+    ]
+   ],
+   "note": "Holding is likely to vary with the op reqs; these are the guide-lines. Div Maint Area prints one figure only (put under Normal)."
+  },
+  {
+   "title": "Set Up of Static Fmns",
+   "page": "1367",
+   "rows": [
+    [
+     "Northern Comd",
+     "21 Sub Area, 31 Sub Area, 71 Sub Area"
+    ],
+    [
+     "Western Comd",
+     "Dehli Area; Punjab, Haryana & Himachal Pradesh Area (Ambala Sub Area, Jullunder Sub Area)"
+    ],
+    [
+     "Southern Comd",
+     "Andhra Pradesh, Tamil Nadu, Karnataka & Kerala Area (Karnataka Sub Area, Andhra Sub Area, Tamil Nadu & Kerala Sub Area); Maharashtara & Gujrat Area (Mumbai Sub Area, Pune Sub Area); 60 (I) Sub Area"
+    ],
+    [
+     "Central Comd",
+     "Uttar Pradesh Area (Meerut, Lucknow, Dehradun Sub Areas); Madhya Pradesh, Bihar & Orisa Area (Madhya Pradesh, Bihar & Orisa, Allahabad Sub Areas)"
+    ],
+    [
+     "Eastern Comd",
+     "Bengal Area (Calcutta Sub Area, North Bengal Sub Area); 101 Area (41 Sub Area, 51 Sub Area)"
+    ]
+   ],
+   "note": "Scanned chart; links read from the lines. 71 Sub Area drawn under Northern Comd; the Karnataka / Andhra / Tamil Nadu & Kerala Sub Areas hang from the Southern Comd's southern Area. Counted on the chart: 8 Areas and 21 Sub Areas (60 (I) Sub Area is the indep one), matching 1359.",
+   "counts": {
+    "comds": 5,
+    "areas": 8,
+    "subAreas": 21,
+    "indepSubAreas": 1
+   }
+  },
+  {
+   "title": "Sups (supply chain)",
+   "page": "1368",
+   "text": "Commodities: 1. Dry Rations (and tinned substitutes); 2. Fresh Rations (including meat); 3. Forage; 4. Hygiene & Sanitation Chemicals. Links read from the arrows of the chart (rows).",
+   "columns": [
+    "From",
+    "To",
+    "Note"
+   ],
+   "rows": [
+    [
+     "Supplying agencies (Support Area, entire country): private sector (factories, mills), public sector (factories, cooperatives)",
+     "Rail Head Sup Dep (RHSD)",
+     "Dry rations & tinned substitutes; store holding"
+    ],
+    [
+     "RHSD",
+     "Indep Comp Pl",
+     "Maintenance Area (Army Maint Area, Corps Maint Area, Comm Zone Area)"
+    ],
+    [
+     "Contractors (Fresh)",
+     "Sup Coy or Pl",
+     "Maintenance Area"
+    ],
+    [
+     "Contractors (Fresh)",
+     "Indep Comp Pl",
+     "Maintenance Area"
+    ],
+    [
+     "Sup Coy or Pl",
+     "Corps Troops Units / Static Units",
+     ""
+    ],
+    [
+     "Indep Comp Pl",
+     "Distribution",
+     ""
+    ],
+    [
+     "RHSD",
+     "Field Supply Depot (FSD)",
+     "Divisional Sector (stock holding and distribution); FSD = store holding"
+    ],
+    [
+     "RHSD",
+     "Sup Pl (Indep)",
+     "Divisional Sector"
+    ],
+    [
+     "RHSD",
+     "Sup Pl Div ASC Bn",
+     "Divisional Sector"
+    ],
+    [
+     "FSD",
+     "Comp Pl Div ASC Bn",
+     "-> units"
+    ],
+    [
+     "Sup Pl (Indep)",
+     "Comp Pl Div ASC Bn",
+     "-> units"
+    ],
+    [
+     "Sup Pl Div ASC Bn",
+     "Comp Pl ASC Bn",
+     "-> units; Sup Pl Div ASC Bn also issues direct to units"
+    ],
+    [
+     "Contractors (Fresh)",
+     "Sup Pl Div ASC Bn",
+     "Divisional Sector"
+    ]
+   ]
+  }
+ ],
+ "otherPages": [
+  {
+   "page": "1300",
+   "content": "Contents"
+  },
+  {
+   "page": "1313-1352",
+   "content": "Wpn sys and chars (armr, BMPs / ICVs, arty, AD, inf, engrs eqpt, SSMs, hels, ac): in weapons.json (section 'Sec 13 - Threat', 103 entries); re-checked row by row 15 Nov 2026, corrections in the weapons patch"
+  },
+  {
+   "page": "1326",
+   "content": "Arty ammo scale (1st / 2nd line): threatData 'Arty Ammo Scale'"
+  },
+  {
+   "page": "1353-1364",
+   "content": "Log Sys text: all figures in threatData ('Log Sys - Sys of Maint in War', \"Foxland Army's Log Sys\", 'Log Areas / Instls', 'GS Res (Stocking Policy / War Stamina)', 'Med Stores - distr of stocks', 'Stocks Holding (guide-lines)')"
+  },
+  {
+   "page": "1365",
+   "content": "Area HQ outline (Anx A): unit en-area-hq, appointments structured (appointments + branch children)"
+  },
+  {
+   "page": "1366",
+   "content": "Sub Area HQ outline (Anx B): unit en-sub-area-hq, appointments structured"
+  },
+  {
+   "page": "1367",
+   "content": "Set up of static fmns (Anx C): threatData 'Set Up of Static Fmns'"
+  },
+  {
+   "page": "1368",
+   "content": "Sups chain chart: threatData 'Sups (supply chain)' (rows = arrows)"
+  },
+  {
+   "page": "1377",
+   "content": "Div Ord Unit (Inf Div): same chart and table as 1376"
+  }
+ ],
+ "notTreated": [
+  "No para / special forces, avn unit, IBG, arty regt or AD unit org charts in this section; Para Bde appears only as an ASC Coy (Comp) variant (1373). (Re-checked 15 Nov 2026: true.)",
+  "No doctrine pages on frontages, rates of advance or deployment patterns in this section. (Re-checked: true.)",
+  "No box in the Sec 13 org charts prints a single personnel figure, so no chartStrength is set; the only per-box figures are the Offrs / JCOs / OR lines of the EME Bn charts (1380, 1381), held in strength.",
+  "Compositions not printed: Inf Bde (Inf Div), Mtn Bde, Armd Bde of the IAB / Inf Div, Engr / Sig Regts, Mech AD Bde regts, Fd / Med / Lt Regt sub-units, Mech Inf Bn (only 52 x BMP), R&S Bn (only 28 x BMP-1, 24 x BRDM-2); bde / regt / div sub-units carry no strength where none is printed."
+ ]
+}

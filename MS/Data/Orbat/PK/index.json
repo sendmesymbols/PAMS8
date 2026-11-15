@@ -1,0 +1,105 @@
+{
+ "format": "pams8-orbat-index",
+ "version": 1,
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "folder": "Material/Literature/1. Books/SO's Handbook (2019)",
+  "handling": "RESTD",
+  "extracted": "2026-11-14",
+  "rechecked": "2026-11-15"
+ },
+ "echelons": {
+  "11": "Team / crew",
+  "12": "Squad",
+  "13": "Section",
+  "14": "Platoon / det / troop",
+  "15": "Company / battery / squadron",
+  "16": "Battalion / regiment (bn-sized)",
+  "17": "Regiment group",
+  "18": "Brigade / group",
+  "21": "Division",
+  "22": "Corps",
+  "23": "Army"
+ },
+ "files": [
+  {
+   "file": "inf.json",
+   "title": "Infantry",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "units": 91
+  },
+  {
+   "file": "armr.json",
+   "title": "Armour",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "units": 17
+  },
+  {
+   "file": "arty.json",
+   "title": "Artillery",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "units": 30
+  },
+  {
+   "file": "ad.json",
+   "title": "Air Defence",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "units": 30
+  },
+  {
+   "file": "engr.json",
+   "title": "Engineers",
+   "side": "own",
+   "section": "Sec 4 - Engrs",
+   "units": 44
+  },
+  {
+   "file": "sig.json",
+   "title": "Signals",
+   "side": "own",
+   "section": "Sec 5 - Sigs",
+   "units": 32
+  },
+  {
+   "file": "avn.json",
+   "title": "Aviation",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "units": 15
+  },
+  {
+   "file": "log.json",
+   "title": "Logistic services",
+   "side": "own",
+   "section": "Sec 10 - Log Svc Units",
+   "units": 96
+  },
+  {
+   "file": "mov.json",
+   "title": "Movement (Traffic Control)",
+   "side": "own",
+   "section": "Sec 9 - Mov",
+   "units": 3
+  },
+  {
+   "file": "en.json",
+   "title": "Threat (enemy)",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "units": 76
+  }
+ ],
+ "weapons": {
+  "file": "weapons.json",
+  "count": 200
+ },
+ "counts": {
+  "units": 434,
+  "own": 358,
+  "en": 76
+ }
+}

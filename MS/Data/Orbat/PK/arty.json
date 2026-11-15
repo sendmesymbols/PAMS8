@@ -1,0 +1,3356 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Artillery",
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "section": "Sec 2 - Arty",
+  "pages": "200-227",
+  "handling": "RESTD"
+ },
+ "side": "own",
+ "basis": "R = as printed in the book. Fields marked uncertain / judged / *Note carry the reader's doubts; printed totals are kept even where parts do not add up.",
+ "notes": [
+  "Book pages 200-227 = PDF pages 1-28 of 'Sec 2 - Arty.pdf' (book page - 199).",
+  "Planning range = 90 percent of max range (p 212 note).",
+  "Unit strengths come from 'Summary of Pers and Vehs (Incl Att) - Arty Units' (pp 223-224) where the org chart gives none.",
+  "Re-checked against the page images on 15 Nov 2026: chartStrength (box figures), echelons (pp 216-218), ammoScale (pp 213-214), RHQ / war increment vehicles (pp 223-224) and artyData added."
+ ],
+ "units": [
+  {
+   "id": "arty-div",
+   "name": "Arty Div",
+   "arm": "arty",
+   "type": "div",
+   "echelon": "21",
+   "page": "201",
+   "children": [
+    {
+     "role": "Div HQ",
+     "unit": "arty-hq-div",
+     "count": 1
+    },
+    {
+     "role": "Arty Bde",
+     "unit": "arty-bde",
+     "count": 2,
+     "countMax": 4,
+     "note": "two to four"
+    },
+    {
+     "role": "MLRS Regt",
+     "unit": "arty-regt-mlrs",
+     "count": 1
+    },
+    {
+     "role": "Loc Regt (Incl RPV Tp)",
+     "unit": "arty-regt-loc",
+     "count": 1
+    },
+    {
+     "role": "Sig Bn",
+     "count": 1
+    },
+    {
+     "role": "EME Bn",
+     "count": 1
+    },
+    {
+     "role": "Ord Coy",
+     "count": 1
+    },
+    {
+     "role": "MP Unit",
+     "count": 1
+    },
+    {
+     "role": "FS Sec",
+     "count": 1
+    },
+    {
+     "role": "GD Coy",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "No and type of arty units may vary; each bde may have 2 to 3 hy (SP) regts and 1 MLRS regt."
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-hq-div",
+   "name": "HQ Arty Div",
+   "arm": "arty",
+   "type": "hq",
+   "echelon": "21",
+   "page": "201",
+   "staff": [
+    "GOC",
+    "ADC",
+    "Col Staff",
+    "GS Branch: GSO 1 (Ops), GSO 2 (Ops), GSO 3 (Ops), GSO 2 (Int), GSO 2 (Edn)",
+    "Intd Branch: GSO 1 (Intd), GSO 2 (Intd)",
+    "AQ Branch: AA&QMG, DAAG, DAQMG, SC(A/Q)",
+    "Def Coy: OC (Maj)"
+   ],
+   "children": [
+    {
+     "role": "Def Coy",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-inf-div-arty",
+   "name": "Inf Div Arty",
+   "arm": "arty",
+   "type": "div-arty",
+   "subtype": "inf-div",
+   "echelon": "18",
+   "page": "202",
+   "children": [
+    {
+     "role": "HQ Div Arty",
+     "unit": "arty-hq-inf-div-arty",
+     "count": 1
+    },
+    {
+     "role": "Fd Regt",
+     "unit": "arty-regt-fd",
+     "count": 2
+    },
+    {
+     "role": "Med Regt",
+     "unit": "arty-regt-med",
+     "count": 2
+    },
+    {
+     "role": "MAS Bty",
+     "unit": "arty-bty-mas",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "105 mm How / 122 mm How / 122 mm How - D 30",
+     "count": 36,
+     "heldBy": "Fd Regts",
+     "weapon": "105-mm-how",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "155 mm How / 130 mm Gun",
+     "count": 36,
+     "heldBy": "Med Regts",
+     "weapon": "155-mm-how",
+     "weaponMatch": "contains"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Electronic Met Sta",
+     "count": 1
+    }
+   ],
+   "deplTimeHrs": {
+    "day": "4-8",
+    "night": "8-12",
+    "page": "227",
+    "note": "Div Arty; excl time for mov and day lt recce for ni depl"
+   },
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-hq-inf-div-arty",
+   "name": "HQ Arty Inf Div",
+   "arm": "arty",
+   "type": "hq",
+   "subtype": "inf-div-arty",
+   "echelon": "18",
+   "page": "202",
+   "staff": [
+    "C Arty (Brig)",
+    "BM",
+    "GSO 3 (Ops)",
+    "*GSO 3 (Int)",
+    "DAA&QMG",
+    "GSO 2 (ICB)",
+    "*GSO 3 (ICB)"
+   ],
+   "notes": [
+    "* Part of TO&E, but not present on gr."
+   ],
+   "side": "own",
+   "symbolKey": "10130300",
+   "echelons": [
+    {
+     "page": "216",
+     "ser": 1,
+     "printedAs": "HQ Arty Inf Div (incl Sig Coy)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 18,
+       "A": 0,
+       "B": 0,
+       "total": 18,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 10,
+       "A": 1,
+       "B": 0,
+       "total": 11,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "2.5 ton",
+       "F": 3,
+       "A": 3,
+       "B": 0,
+       "total": 6,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "arty-armd-div-arty",
+   "name": "Armd Div Arty",
+   "arm": "arty",
+   "type": "div-arty",
+   "subtype": "armd-div",
+   "echelon": "18",
+   "page": "203",
+   "children": [
+    {
+     "role": "HQ Armd Div Arty (Incl Svy and Met Elms)",
+     "unit": "arty-hq-armd-div-arty",
+     "count": 1
+    },
+    {
+     "role": "Med Regt (SP)",
+     "unit": "arty-regt-med-sp",
+     "count": 3
+    },
+    {
+     "role": "Med Regt (Towed)",
+     "unit": "arty-regt-med",
+     "count": 1,
+     "relation": "part of TO&E, but not present on gr",
+     "note": "6x155 mm How (Towed) per bty"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "155 mm How (SP) M109A2/A5",
+     "count": 54,
+     "heldBy": "Med Regts (SP)",
+     "weapon": "155-mm-how-sp-m109-a2-a5",
+     "weaponMatch": "exact"
+    },
+    {
+     "name": "155 mm How (Towed) M198",
+     "count": 18,
+     "heldBy": "Med Regt (Towed)",
+     "weapon": "155-mm-how-towed-m198",
+     "weaponMatch": "exact"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Electronic Met Sta",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "* Part of TO&E, but not present on gr. Only 3 x (SP) med regts are part of armd div arty.",
+    "* in some fmns HQ Arty Mech Div are auth."
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-hq-armd-div-arty",
+   "name": "HQ Arty Armd Div",
+   "arm": "arty",
+   "type": "hq",
+   "subtype": "armd-div-arty",
+   "echelon": "18",
+   "page": "203",
+   "staff": [
+    "C Arty (Brig)",
+    "BM",
+    "GSO 3 (Ops)",
+    "**GSO 3 (Int)",
+    "DAA&QMG",
+    "HQ Bty (Maj)"
+   ],
+   "children": [
+    {
+     "role": "HQ Bty",
+     "unit": "arty-bty-hq-armd-div-arty",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "** Part of TO&E, but not present on gr."
+   ],
+   "side": "own",
+   "symbolKey": "10130300",
+   "echelons": [
+    {
+     "page": "216",
+     "ser": 2,
+     "printedAs": "HQ Arty Armd Div (Incl HQ Bty and Sig Coy)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 18,
+       "A": 6,
+       "B": 0,
+       "total": 24,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 11,
+       "A": 3,
+       "B": 0,
+       "total": 14,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "2.5 ton",
+       "F": 4,
+       "A": 7,
+       "B": 0,
+       "total": 11,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Shop Van",
+       "F": 0,
+       "A": 0,
+       "B": 1,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "arty-bty-hq-armd-div-arty",
+   "name": "HQ Bty (HQ Arty Armd Div)",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "203",
+   "children": [
+    {
+     "role": "Svy Tp",
+     "count": 1
+    },
+    {
+     "role": "Met Sec",
+     "count": 1
+    },
+    {
+     "role": "HQ and Adm Tp",
+     "count": 1
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-bde",
+   "name": "Arty Bde",
+   "arm": "arty",
+   "type": "bde",
+   "echelon": "18",
+   "page": "204",
+   "children": [
+    {
+     "role": "HQ Arty Bde",
+     "unit": "arty-hq-bde",
+     "count": 1
+    },
+    {
+     "role": "Med Regt (Towed)",
+     "unit": "arty-regt-med",
+     "count": 1
+    },
+    {
+     "role": "Hy Regt (Towed/SP)",
+     "unit": "arty-regt-hy-8in",
+     "count": 1
+    },
+    {
+     "role": "Hy Regt (Towed)",
+     "unit": "arty-regt-hy-155gun",
+     "count": 1
+    },
+    {
+     "role": "MBRL Bty",
+     "unit": "arty-bty-mbrl",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "155 mm How / 130 mm Gun",
+     "count": 18,
+     "heldBy": "Med Regt (Towed)",
+     "weapon": "155-mm-how",
+     "weaponMatch": "contains"
+    },
+    {
+     "name": "8 in How (SP)/Towed",
+     "count": 12,
+     "heldBy": "Hy Regt (Towed/SP)"
+    },
+    {
+     "name": "155 mm gun",
+     "count": 12,
+     "heldBy": "Hy Regt (Towed)",
+     "weapon": "155-mm-gun",
+     "weaponMatch": "exact"
+    },
+    {
+     "name": "122 mm MBRL",
+     "count": 6,
+     "heldBy": "MBRL Bty",
+     "weapon": "122-mm-mbrl",
+     "weaponMatch": "alias"
+    }
+   ],
+   "notes": [
+    "As per auth, arty bde is suppose to have 2 x (SP) hy regts, 1 x MAS tp, 1 x wksp and 1 x sig coy, whereas on gr, 2 x arty bdes i.e. 41 & 43 have 1 x (SP) hy regt and 1 x Med Regt and 42 Arty Bde has 2 x (SP) hy regts only.",
+    "All Hy towed regts have been disbanded and converted into med regts. However, hy (SP) regts are still on the inventory of arty.",
+    "MBRL btys after pooling up have been converted into MBRL regts and given to def corps arty."
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-hq-bde",
+   "name": "HQ Arty Bde",
+   "arm": "arty",
+   "type": "hq",
+   "subtype": "arty-bde",
+   "echelon": "18",
+   "page": "204",
+   "staff": [
+    "COMD (Brig)",
+    "BM",
+    "GSO 3 (Ops)",
+    "**GSO 3 (Int)",
+    "DAA&QMG"
+   ],
+   "notes": [
+    "** Part of TO&E, but not present on gr."
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-corps-arty",
+   "name": "Corps Arty",
+   "arm": "arty",
+   "type": "corps-arty",
+   "echelon": "18",
+   "page": "204-205",
+   "children": [
+    {
+     "role": "HQ Corps Arty",
+     "unit": "arty-hq-corps-arty",
+     "count": 1
+    },
+    {
+     "role": "Loc Regt",
+     "unit": "arty-regt-loc",
+     "count": 1,
+     "relation": "def corps"
+    },
+    {
+     "role": "MBRL Regt",
+     "count": 1,
+     "relation": "def corps",
+     "note": "MBRL btys after pooling up converted into MBRL regts and given to def corps arty (p 204); no org given"
+    },
+    {
+     "role": "MLRS Bty",
+     "unit": "arty-bty-mlrs",
+     "count": 1,
+     "relation": "def corps (by 2015)"
+    },
+    {
+     "role": "Med Regt",
+     "unit": "arty-regt-med",
+     "count": 2,
+     "relation": "offn corps"
+    }
+   ],
+   "notes": [
+    "Built from the *** note under HQ Corps Arty (p 205): Corps arty of def corps have a loc regt and a MBRL regt. By 2015, each def corps arty will have a bty of MLRS. As far as offn Corps arty is concerned, it is auth 2 x med regts.",
+    "The book gives no chart for Corps Arty itself; only HQ Corps Arty is in the CONTENTS."
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-hq-corps-arty",
+   "name": "HQ Corps Arty",
+   "arm": "arty",
+   "type": "hq",
+   "subtype": "corps-arty",
+   "echelon": "18",
+   "page": "204-205",
+   "staff": [
+    "CC Arty (Brig)*",
+    "GSO 1 (Ops)",
+    "GSO 2 (Ops)",
+    "GSO 3 (Ops)",
+    "AA&QMG",
+    "SC (A/Q)",
+    "GSO 1 (ICB)",
+    "GSO 3 (ICB)"
+   ],
+   "notes": [
+    "#HQ Corps Arty of sel fmns have been upgraded where CC Arty is a Maj Gen, and the HQ is auth an ADC and Col Staff as well. This arrangement lasted only once i.e. from 1998-2000. The same prac has been discont since then.",
+    "*** Corps arty of def corps have a loc regt and a MBRL regt. By 2015, each def corps arty will have a bty of MLRS. As far as offn Corps arty is concerned, it is auth 2 x med regts."
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-regt-fd",
+   "name": "Fd Regt",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "fd",
+   "echelon": "16",
+   "page": "202, 213, 223",
+   "strength": {
+    "offr": 27,
+    "jco": 25,
+    "sldr": 417,
+    "sw": 16,
+    "att": 2,
+    "total": 474
+   },
+   "strengthNote": "Totals as printed (p 223, incl att and war increment). Printed parts: RHQ 6/3/75/7/2*/95, Fd Bty 6/3/110/3/-/122, War increment 1(Att)/-/12/-/-/13. The printed RHQ total (95) and the regt offr total (27) only add up if RHQ has 8 offrs; the JCO total (25) does not match the parts (3 + 3x3 = 12).",
+   "uncertain": true,
+   "note": "Printed Fd Regt offr and JCO totals do not match their parts; see strengthNote. Tlrs: RHQ 16 + 3 x Bty 24 = 88, but the printed total is 40 (= 16 + 24): the Bty row figure 24 may be the three btys together (8 each).",
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1,
+     "strength": {
+      "offr": 6,
+      "jco": 3,
+      "sldr": 75,
+      "sw": 7,
+      "att": 2,
+      "total": 95
+     },
+     "note": "Att 2* = Edn JCO and Nursing Asst; printed parts sum to 93, printed total 95 (an RHQ of 8 offrs, as in the Med and Hy regts, would give 95 and the regt offr total 27).",
+     "uncertain": true,
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 6
+      },
+      {
+       "name": "3/4 Ton",
+       "count": 6
+      },
+      {
+       "name": "2.5/5 Ton",
+       "count": 5
+      },
+      {
+       "name": "MC",
+       "count": 1
+      },
+      {
+       "name": "Total less MC",
+       "count": 17
+      },
+      {
+       "name": "Tlrs all types",
+       "count": 16
+      }
+     ]
+    },
+    {
+     "role": "Bty",
+     "unit": "arty-bty-fd",
+     "count": 3
+    },
+    {
+     "role": "HQ Bty",
+     "count": 1,
+     "note": "Chart box (p 202). The p 223 summary has no HQ Bty row; its pers / vehs are taken to be within RHQ."
+    },
+    {
+     "role": "War increment",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "sldr": 12,
+      "total": 13
+     },
+     "note": "1 offr (Att) @ = MO; ** = 1 x 1/4 ton Jeep Amb",
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 1,
+       "note": "** Jeep Amb"
+      },
+      {
+       "name": "Total less MC",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "105/122 mm How",
+     "count": 18,
+     "heldBy": "3 x Bty (6 Guns each)",
+     "note": "p 213: 18x105/122mm Hows; or 18 x 122 mm How D-30",
+     "weapon": "122-mm-how",
+     "weaponMatch": "contains"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 19
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 21
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 35
+    },
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Total less MC",
+     "count": 75
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 40
+    }
+   ],
+   "echelons": [
+    {
+     "page": "216",
+     "ser": 3,
+     "printedAs": "Fd regt-105 mm How (Incl Sig Sec and LAD)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 21,
+       "A": 1,
+       "B": 1,
+       "total": 23,
+       "recceNormal": 7,
+       "recceMin": 3
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 21,
+       "A": 2,
+       "B": 1,
+       "total": 24,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb"
+      },
+      {
+       "type": "2.5 ton",
+       "F": 29,
+       "A": 7,
+       "B": 6,
+       "total": 42,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Wrecker",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "variant": "105 mm How"
+    },
+    {
+     "page": "216",
+     "ser": 4,
+     "printedAs": "Fd Regt-122mm How (Incl Sig sec and (LAD))",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 17,
+       "A": 1,
+       "B": 1,
+       "total": 19,
+       "recceNormal": 7,
+       "recceMin": 3
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 21,
+       "A": 1,
+       "B": 2,
+       "total": 24,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb"
+      },
+      {
+       "type": "2.5 ton",
+       "F": 30,
+       "A": 7,
+       "B": 6,
+       "total": 43,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton wrecker",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "variant": "122 mm How"
+    },
+    {
+     "page": "216",
+     "ser": 5,
+     "printedAs": "122mmD30",
+     "vehs": [],
+     "variant": "122 mm How D-30",
+     "note": "Row prints only '9 Ton' (type of veh) with '-' in every column; presumably the gun tower for the D-30."
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "213",
+     "ser": 1,
+     "unit": "Fd/Mtn Regt",
+     "weapons": "18x105/122mm Hows/12x105 mm Pack Hows",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 100,
+      "Smk": 12,
+      "Ill": 4,
+      "HEAT/AP": 4,
+      "Total": 120
+     },
+     "secondLine": {
+      "HE": 50,
+      "Smk": 6,
+      "Misc": 4,
+      "Total": 60
+     },
+     "notes": [
+      "a. 1st line Smk incl 2 rds coloured Smk",
+      "b. 2nd line Misc = 2xHEAT and 2xIll rd"
+     ]
+    },
+    {
+     "page": "213",
+     "ser": 2,
+     "unit": "Fd",
+     "weapons": "18 x 122 mm How D-30",
+     "per": "rpg",
+     "firstLine": {
+      "HE (Normal)": 80,
+      "HE (Base Bleed)": 20,
+      "Smk": 12,
+      "Ill": 4,
+      "HEAT/AP": 4,
+      "Total": 120
+     },
+     "secondLine": {
+      "HE": 60
+     },
+     "note": "2nd line Smk / Misc / Total printed '-'"
+    }
+   ],
+   "deplTimeHrs": {
+    "day": "1-2",
+    "night": "2-3",
+    "page": "227"
+   },
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-bty-fd",
+   "name": "Fd Bty",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "fd",
+   "echelon": "15",
+   "page": "202, 223",
+   "strength": {
+    "offr": 6,
+    "jco": 3,
+    "sldr": 110,
+    "sw": 3,
+    "total": 122
+   },
+   "weapons": [
+    {
+     "name": "105/122 mm How",
+     "count": 6,
+     "note": "chart: Bty (6 Guns)",
+     "weapon": "122-mm-how",
+     "weaponMatch": "contains"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 4
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 5
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 10
+    },
+    {
+     "name": "Total less MC",
+     "count": 19
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 24,
+     "note": "printed 24; the regt total (40 = RHQ 16 + 24) suggests 24 is for all three btys"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130300",
+   "strengthNote": "Fd Bty row of 'Summary of Pers and Vehs' (p 223), one bty."
+  },
+  {
+   "id": "arty-regt-med",
+   "name": "Med Regt",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "med-towed",
+   "echelon": "16",
+   "page": "202, 204, 213, 224",
+   "strength": {
+    "offr": 27,
+    "jco": 12,
+    "sldr": 469,
+    "sw": 17,
+    "att": 2,
+    "total": 527
+   },
+   "strengthNote": "p 224, incl att and war increment; parts add up to the totals.",
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1,
+     "strength": {
+      "offr": 8,
+      "jco": 3,
+      "sldr": 76,
+      "sw": 8,
+      "att": 2,
+      "total": 97
+     },
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 6
+      },
+      {
+       "name": "3/4 Ton",
+       "count": 4
+      },
+      {
+       "name": "2.5/5 Ton",
+       "count": 6
+      },
+      {
+       "name": "MC",
+       "count": 1
+      },
+      {
+       "name": "Total less MC",
+       "count": 16
+      },
+      {
+       "name": "Tlrs all types",
+       "count": 9
+      }
+     ]
+    },
+    {
+     "role": "Med Bty",
+     "unit": "arty-bty-med",
+     "count": 3
+    },
+    {
+     "role": "HQ Bty",
+     "count": 1,
+     "note": "Chart box (pp 202, 204). The p 224 summary has no HQ Bty row; its pers / vehs are taken to be within RHQ."
+    },
+    {
+     "role": "War Increment",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "sldr": 12,
+      "total": 13
+     },
+     "note": "1 offr (Att) = MO; 1 x 1/4 ton Jeep Amb",
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 1,
+       "note": "** Jeep Amb"
+      },
+      {
+       "name": "Total less MC",
+       "count": 1,
+       "note": "printed in the 'Tlrs all types' column; the regt totals (Total less MC, Tlrs) only add up with it read as Total less MC"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "155 mm How / 130 mm Gun",
+     "count": 18,
+     "heldBy": "3 x Bty (6 Guns each)",
+     "note": "p 204: 6x155 mm How or 6x130 mm Gun per bty; p 213: 18x155 mm Hows (Shining Barrel / M198 Towed) or 18x130mm Guns",
+     "weapon": "155-mm-how",
+     "weaponMatch": "contains"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 19
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 19
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 18
+    },
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Tractor 13 ton / Dozer / 18 Ton / 5 ton",
+     "count": 21
+    },
+    {
+     "name": "Total less MC",
+     "count": 77
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 39
+    }
+   ],
+   "echelons": [
+    {
+     "page": "216",
+     "ser": 6,
+     "printedAs": "Med Regt-130 mm Gun (Incl Sig Sec and LAD)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 18,
+       "A": 1,
+       "B": 1,
+       "total": 20,
+       "recceNormal": 7,
+       "recceMin": 3
+      },
+      {
+       "type": "1 ton/1.5 ton",
+       "F": 20,
+       "A": 1,
+       "B": 2,
+       "total": 23,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb"
+      },
+      {
+       "type": "2.5 ton/3 ton",
+       "F": 24,
+       "A": 9,
+       "B": 6,
+       "total": 39,
+       "recceNormal": 0,
+       "recceMin": 0,
+       "mark": "**",
+       "markNote": "Six with winch"
+      },
+      {
+       "type": "Karaz 214-B Gun Tower",
+       "F": 21,
+       "A": 0,
+       "B": 0,
+       "total": 21,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "variant": "130 mm Gun",
+     "uncertain": true,
+     "note": "Type column also lists '5 ton Wrecker' but only four rows of figures are printed; the wrecker has none (the 21 is read as the Karaz gun towers)."
+    },
+    {
+     "page": "216",
+     "ser": 7,
+     "printedAs": "Med Regt-155 mm How (Incl Sig Sec and (LAD))",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 21,
+       "A": 1,
+       "B": 1,
+       "total": 23,
+       "recceNormal": 7,
+       "recceMin": 3
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 22,
+       "A": 1,
+       "B": 2,
+       "total": 25,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb",
+       "note": "total printed 25 without *"
+      },
+      {
+       "type": "2.5 ton",
+       "F": 1,
+       "A": 9,
+       "B": 6,
+       "total": 16,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Ammo Veh",
+       "F": 9,
+       "A": 0,
+       "B": 0,
+       "total": 9,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Wrecker",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "13 ton Gun Tower",
+       "F": 21,
+       "A": 0,
+       "B": 0,
+       "total": 21,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "variant": "155 mm How"
+    },
+    {
+     "page": "217",
+     "ser": 9,
+     "printedAs": "Med Regt 155 mm How M198 (Incl Sig Sec and LAD)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 19,
+       "A": 1,
+       "B": 1,
+       "total": 21,
+       "recceNormal": 7,
+       "recceMin": 3
+      },
+      {
+       "type": "3/4 ton/1 ton",
+       "F": 21,
+       "A": 1,
+       "B": 2,
+       "total": 24,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb"
+      },
+      {
+       "type": "5 ton/7 ton",
+       "F": 1,
+       "A": 7,
+       "B": 4,
+       "total": 12,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Ammo Veh",
+       "F": 18,
+       "A": 0,
+       "B": 0,
+       "total": 18,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "9 ton Gun Tower",
+       "F": 21,
+       "A": 0,
+       "B": 0,
+       "total": 21,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Dozer",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Wrecker",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "variant": "155 mm How M198"
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "213",
+     "ser": 3,
+     "unit": "Med Regt",
+     "weapons": "18x155 mm Hows Shining Barrel",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 62,
+      "Smk": 4,
+      "Ill": 4,
+      "Total": 70
+     },
+     "secondLine": {
+      "HE": 33,
+      "Misc": 2,
+      "Total": 35
+     },
+     "notes": [
+      "c. 2nd line Misc = Ill rds"
+     ]
+    },
+    {
+     "page": "213-214",
+     "ser": 3,
+     "unit": "Med Regt",
+     "weapons": "18 x 155mm How (Towed) M198",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 80,
+      "Smk": 6,
+      "Ill": 2,
+      "HEAT/AP": 2,
+      "Total": 90
+     },
+     "secondLine": {
+      "HE": 40,
+      "Smk": 3,
+      "Misc": 2,
+      "Total": 45
+     },
+     "authFirstLine": {
+      "HE": 60,
+      "ICM": 10,
+      "RAP": 20,
+      "Smk": 6,
+      "Ill": 4,
+      "Total": 100
+     },
+     "notes": [
+      "@ (on the 1st line total 90) Auth 1st line is as fols: HE-60, ICM-10, RAP-20, Smk-6, Ill-4. Total 100."
+     ]
+    },
+    {
+     "page": "213",
+     "ser": 3,
+     "unit": "Med Regt",
+     "weapons": "18x130mm Guns",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 80,
+      "Ill": 10,
+      "HEAT/AP": 10,
+      "Total": 100
+     },
+     "secondLine": {
+      "HE": 40,
+      "Misc": 10,
+      "Total": 50
+     },
+     "note": "1st line Smk cell blank"
+    }
+   ],
+   "deplTimeHrs": {
+    "day": "1-2",
+    "night": "2-3",
+    "page": "227"
+   },
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-bty-med",
+   "name": "Med Bty",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "med-towed",
+   "echelon": "15",
+   "page": "202, 204, 224",
+   "strength": {
+    "offr": 6,
+    "jco": 3,
+    "sldr": 127,
+    "sw": 3,
+    "total": 139
+   },
+   "weapons": [
+    {
+     "name": "155 mm How / 130 mm Gun",
+     "count": 6,
+     "note": "6x155 mm How or 6x130 mm Gun",
+     "weapon": "155-mm-how",
+     "weaponMatch": "contains"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 4
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 5
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 4
+    },
+    {
+     "name": "Tractor 13 ton / Dozer / 18 Ton / 5 ton",
+     "count": 7
+    },
+    {
+     "name": "Total less MC",
+     "count": 20
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 10
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-regt-med-sp",
+   "name": "Med Regt (SP)",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "med-sp",
+   "echelon": "16",
+   "page": "203, 213",
+   "children": [
+    {
+     "role": "Bty",
+     "unit": "arty-bty-med-sp",
+     "count": 3
+    },
+    {
+     "role": "HQ Bty",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "155 mm How (SP) M109A2/A5",
+     "count": 18,
+     "heldBy": "3 x Bty",
+     "note": "p 213: 18 x 155mm How (SP) M109 A2/A5",
+     "weapon": "155-mm-how-sp-m109-a2-a5",
+     "weaponMatch": "exact"
+    }
+   ],
+   "echelons": [
+    {
+     "page": "217",
+     "ser": 8,
+     "printedAs": "Med Regt 155 mm How (SP) M109A2/A5 (Incl Sig Sec and LAD)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 26,
+       "A": 1,
+       "B": 1,
+       "total": 28,
+       "recceNormal": 7,
+       "recceMin": 3
+      },
+      {
+       "type": "3/4/1 ton",
+       "F": 14,
+       "A": 1,
+       "B": 2,
+       "total": 17,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb"
+      },
+      {
+       "type": "2.5 ton/3 ton",
+       "F": 6,
+       "A": 9,
+       "B": 6,
+       "total": 21,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Ammo veh",
+       "F": 18,
+       "A": 0,
+       "B": 0,
+       "total": 18,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "CP veh APC/2.5 ton",
+       "F": 4,
+       "A": 0,
+       "B": 0,
+       "total": 4,
+       "recceNormal": 4,
+       "recceMin": 4
+      },
+      {
+       "type": "ARV",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Dozer",
+       "F": 0,
+       "A": 0,
+       "B": 1,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "M 109 A2 (SP) Gun",
+       "F": 18,
+       "A": 0,
+       "B": 0,
+       "total": 18,
+       "recceNormal": 4,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Wrecker",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ]
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "213-214",
+     "ser": 3,
+     "unit": "Med Regt",
+     "weapons": "18 x 155mm How (SP) M109 A2/A5",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 90,
+      "Smk": 6,
+      "Ill": 4,
+      "Total": 100
+     },
+     "secondLine": {
+      "HE": 40,
+      "Misc": 10,
+      "Total": 50
+     },
+     "authFirstLine": {
+      "HE": 70,
+      "ICM": 14,
+      "RAP": 22,
+      "Smk": 6,
+      "Ill": 4,
+      "Total": 120
+     },
+     "notes": [
+      "# (on the 1st line total 100) Auth 1st line is as fols: HE-70, ICM-14, RAP-22, Smk-6, Ill-4. Total 120 (items as printed sum to 116)."
+     ]
+    }
+   ],
+   "deplTimeHrs": {
+    "day": "1-2",
+    "night": "2-3",
+    "page": "227"
+   },
+   "side": "own",
+   "symbolKey": "10130301"
+  },
+  {
+   "id": "arty-bty-med-sp",
+   "name": "Med Bty (SP)",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "med-sp",
+   "echelon": "15",
+   "page": "203",
+   "weapons": [
+    {
+     "name": "155 mm How (SP)",
+     "count": 6,
+     "note": "Maj Eqpt p 203: 155 mm How (SP) M109A2/A5",
+     "weapon": "155-mm-how-sp-m109-a2-a5",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130301"
+  },
+  {
+   "id": "arty-regt-hy-8in",
+   "name": "Hy Regt (Towed/SP)",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "hy-8in-how",
+   "echelon": "16",
+   "page": "204, 214, 224",
+   "strength": {
+    "offr": 27,
+    "jco": 12,
+    "sldr": 453,
+    "sw": 16,
+    "att": 2,
+    "total": 510
+   },
+   "strengthNote": "p 224 gives one 'Hy Regt' figure, not split by eqpt; parts add up. RHQ 8/3/69/7/2*/89, Hy Bty 6/3/124/3/-/136 (x3), War Increment 1(Att)/-/12/-/-/13.",
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1,
+     "strength": {
+      "offr": 8,
+      "jco": 3,
+      "sldr": 69,
+      "sw": 7,
+      "att": 2,
+      "total": 89
+     },
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 6
+      },
+      {
+       "name": "3/4 Ton",
+       "count": 4
+      },
+      {
+       "name": "2.5/5 Ton",
+       "count": 5
+      },
+      {
+       "name": "Total less MC",
+       "count": 15
+      },
+      {
+       "name": "Tlrs all types",
+       "count": 13
+      }
+     ]
+    },
+    {
+     "role": "Bty",
+     "unit": "arty-bty-hy-8in",
+     "count": 3
+    },
+    {
+     "role": "HQ Bty",
+     "count": 1,
+     "note": "Chart box (p 204). The p 224 summary has no HQ Bty row; its pers / vehs are taken to be within RHQ."
+    },
+    {
+     "role": "War Increment",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "sldr": 12,
+      "total": 13
+     },
+     "note": "1 offr (Att) @ = MO; ** = 1 x 1/4 ton Jeep Amb",
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 1,
+       "note": "** Jeep Amb"
+      },
+      {
+       "name": "Total less MC",
+       "count": 1,
+       "note": "printed in the 'Tlrs all types' column; the regt totals (Total less MC, Tlrs) only add up with it read as Total less MC"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "8 in How (SP)/Towed",
+     "count": 12,
+     "heldBy": "3 x Bty (4x8 in How)"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 19
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 19
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 11
+    },
+    {
+     "name": "Tractor 13 ton / Dozer / 18 Ton / 5 ton",
+     "count": 33
+    },
+    {
+     "name": "Total less MC",
+     "count": 82
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 37
+    }
+   ],
+   "echelons": [
+    {
+     "page": "217",
+     "ser": 10,
+     "printedAs": "Hy Regt 155 mm Gun/8 inch How (Incl Sig Sec and LAD)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 18,
+       "A": 1,
+       "B": 1,
+       "total": 20,
+       "recceNormal": 9,
+       "recceMin": 4
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 19,
+       "A": 1,
+       "B": 2,
+       "total": 22,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb"
+      },
+      {
+       "type": "2.5 ton",
+       "F": 1,
+       "A": 7,
+       "B": 6,
+       "total": 14,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Ammo Veh",
+       "F": 15,
+       "A": 0,
+       "B": 0,
+       "total": 15,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Wrecker",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "18 ton Gun Tower",
+       "F": 15,
+       "A": 0,
+       "B": 0,
+       "total": 15,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Dozer",
+       "F": 0,
+       "A": 3,
+       "B": 0,
+       "total": 3,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "variant": "towed (155 mm Gun / 8 in How)"
+    },
+    {
+     "page": "217-218",
+     "ser": 11,
+     "printedAs": "Hy Regt-8 inch How (SP) M110A2",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 11,
+       "A": 1,
+       "B": 1,
+       "total": 13,
+       "recceNormal": 5,
+       "recceMin": 1
+      },
+      {
+       "type": "3/4 ton/1 ton",
+       "F": 17,
+       "A": 1,
+       "B": 3,
+       "total": 21,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb"
+      },
+      {
+       "type": "2.5 ton",
+       "F": 2,
+       "A": 7,
+       "B": 6,
+       "total": 15,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Ammo Veh M992 (SP) or 5 ton",
+       "F": 21,
+       "A": 0,
+       "B": 0,
+       "total": 21,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "CP Veh APC 3/4 ton",
+       "F": 3,
+       "A": 0,
+       "B": 0,
+       "total": 3,
+       "recceNormal": 3,
+       "recceMin": 3
+      },
+      {
+       "type": "CP Veh APC/2.5 ton",
+       "F": 1,
+       "A": 0,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 1,
+       "recceMin": 1
+      },
+      {
+       "type": "Tac Veh APC/1/4 ton",
+       "F": 7,
+       "A": 0,
+       "B": 0,
+       "total": 7,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "ARV",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Dozer",
+       "F": 0,
+       "A": 3,
+       "B": 0,
+       "total": 3,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "APC/2.5 ton",
+       "F": 12,
+       "A": 0,
+       "B": 0,
+       "total": 12,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Tk Tptr",
+       "F": 0,
+       "A": 4,
+       "B": 0,
+       "total": 4,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "M 110 A2 (SP) Gun",
+       "F": 12,
+       "A": 0,
+       "B": 0,
+       "total": 12,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Pet Bowzer on 2.5 ton",
+       "F": 0,
+       "A": 0,
+       "B": 3,
+       "total": 3,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "variant": "8 in How (SP) M110A2",
+     "uncertain": true,
+     "note": "Type column also prints 'CP Veh APC/3/4 ton' with no figures on its line, just above 'CP Veh APC 3/4 ton' (3); read as one row."
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "214",
+     "ser": 4,
+     "unit": "Hy Regt",
+     "weapons": "12x8 inch Hows (SP)/Towed",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 60,
+      "Total": 60
+     },
+     "secondLine": {
+      "HE": 30,
+      "Total": 30
+     }
+    }
+   ],
+   "deplTimeHrs": {
+    "day": "2-3",
+    "night": "3-5",
+    "page": "227"
+   },
+   "notes": [
+    "Hy (SP) regts are still on the inventory of arty; all hy towed regts disbanded and converted into med regts (p 204)."
+   ],
+   "side": "own",
+   "symbolKey": "10130301"
+  },
+  {
+   "id": "arty-bty-hy-8in",
+   "name": "Hy Bty (8 in How)",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "hy-8in-how",
+   "echelon": "15",
+   "page": "204, 224",
+   "strength": {
+    "offr": 6,
+    "jco": 3,
+    "sldr": 124,
+    "sw": 3,
+    "total": 136
+   },
+   "strengthNote": "Hy Bty row of p 224 (not split by eqpt).",
+   "weapons": [
+    {
+     "name": "8 in How",
+     "count": 4
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 4
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 5
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 2
+    },
+    {
+     "name": "Tractor 13 ton / Dozer / 18 Ton / 5 ton",
+     "count": 11
+    },
+    {
+     "name": "Total less MC",
+     "count": 22
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 8
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-regt-hy-155gun",
+   "name": "Hy Regt (Towed)",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "hy-155-gun",
+   "echelon": "16",
+   "page": "204, 214, 224",
+   "strength": {
+    "offr": 27,
+    "jco": 12,
+    "sldr": 453,
+    "sw": 16,
+    "att": 2,
+    "total": 510
+   },
+   "strengthNote": "p 224 gives one 'Hy Regt' figure, not split by eqpt; parts add up. Vehicles are the same p 224 Hy Regt row.",
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1,
+     "strength": {
+      "offr": 8,
+      "jco": 3,
+      "sldr": 69,
+      "sw": 7,
+      "att": 2,
+      "total": 89
+     },
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 6
+      },
+      {
+       "name": "3/4 Ton",
+       "count": 4
+      },
+      {
+       "name": "2.5/5 Ton",
+       "count": 5
+      },
+      {
+       "name": "Total less MC",
+       "count": 15
+      },
+      {
+       "name": "Tlrs all types",
+       "count": 13
+      }
+     ]
+    },
+    {
+     "role": "Bty",
+     "unit": "arty-bty-hy-155gun",
+     "count": 3
+    },
+    {
+     "role": "HQ Bty",
+     "count": 1,
+     "note": "Chart box (p 204). The p 224 summary has no HQ Bty row; its pers / vehs are taken to be within RHQ."
+    },
+    {
+     "role": "War Increment",
+     "count": 1,
+     "strength": {
+      "offr": 1,
+      "sldr": 12,
+      "total": 13
+     },
+     "note": "1 offr (Att) @ = MO; ** = 1 x 1/4 ton Jeep Amb",
+     "vehicles": [
+      {
+       "name": "1/4 Ton",
+       "count": 1,
+       "note": "** Jeep Amb"
+      },
+      {
+       "name": "Total less MC",
+       "count": 1,
+       "note": "printed in the 'Tlrs all types' column; the regt totals (Total less MC, Tlrs) only add up with it read as Total less MC"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "155 mm Gun",
+     "count": 12,
+     "heldBy": "3 x Bty (4x155 mm Gun)",
+     "weapon": "155-mm-gun",
+     "weaponMatch": "exact"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 19
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 19
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 11
+    },
+    {
+     "name": "Tractor 13 ton / Dozer / 18 Ton / 5 ton",
+     "count": 33
+    },
+    {
+     "name": "Total less MC",
+     "count": 82
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 37
+    }
+   ],
+   "echelons": [
+    {
+     "page": "217",
+     "ser": 10,
+     "printedAs": "Hy Regt 155 mm Gun/8 inch How (Incl Sig Sec and LAD)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 18,
+       "A": 1,
+       "B": 1,
+       "total": 20,
+       "recceNormal": 9,
+       "recceMin": 4
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 19,
+       "A": 1,
+       "B": 2,
+       "total": 22,
+       "recceNormal": 5,
+       "recceMin": 4,
+       "mark": "*",
+       "markNote": "Incl one amb"
+      },
+      {
+       "type": "2.5 ton",
+       "F": 1,
+       "A": 7,
+       "B": 6,
+       "total": 14,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Ammo Veh",
+       "F": 15,
+       "A": 0,
+       "B": 0,
+       "total": 15,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "5 ton Wrecker",
+       "F": 0,
+       "A": 1,
+       "B": 0,
+       "total": 1,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "18 ton Gun Tower",
+       "F": 15,
+       "A": 0,
+       "B": 0,
+       "total": 15,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Dozer",
+       "F": 0,
+       "A": 3,
+       "B": 0,
+       "total": 3,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "variant": "towed (155 mm Gun / 8 in How)"
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "214",
+     "ser": 4,
+     "unit": "Hy Regt",
+     "weapons": "12x155 mm Guns",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 80,
+      "Smk": 6,
+      "Ill": 2,
+      "HEAT/AP": 2,
+      "Total": 90
+     },
+     "secondLine": {
+      "HE": 40,
+      "Smk": 3,
+      "Misc": 2,
+      "Total": 45
+     }
+    }
+   ],
+   "deplTimeHrs": {
+    "day": "2-3",
+    "night": "3-5",
+    "page": "227"
+   },
+   "notes": [
+    "All Hy towed regts have been disbanded and converted into med regts (p 204)."
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-bty-hy-155gun",
+   "name": "Hy Bty (155 mm Gun)",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "hy-155-gun",
+   "echelon": "15",
+   "page": "204, 224",
+   "strength": {
+    "offr": 6,
+    "jco": 3,
+    "sldr": 124,
+    "sw": 3,
+    "total": 136
+   },
+   "strengthNote": "Hy Bty row of p 224 (not split by eqpt); vehicles from the same row.",
+   "weapons": [
+    {
+     "name": "155 mm Gun",
+     "count": 4,
+     "weapon": "155-mm-gun",
+     "weaponMatch": "exact"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 4
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 5
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 2
+    },
+    {
+     "name": "Tractor 13 ton / Dozer / 18 Ton / 5 ton",
+     "count": 11
+    },
+    {
+     "name": "Total less MC",
+     "count": 22
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 8
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130300"
+  },
+  {
+   "id": "arty-bty-mbrl",
+   "name": "MBRL Bty",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "mbrl-122",
+   "echelon": "15",
+   "page": "204, 214, 224",
+   "strength": {
+    "offr": 6,
+    "jco": 4,
+    "sldr": 220,
+    "sw": 6,
+    "att": 12,
+    "total": 248
+   },
+   "strengthNote": "Incl War Increment (4 sldrs). Normal Estb 6/4/216/6/12/244. Att = EME, AMC, Sigs and AEC pers.",
+   "children": [
+    {
+     "role": "Sec",
+     "unit": "arty-sec-mbrl",
+     "count": 3
+    },
+    {
+     "role": "Ammo Sec",
+     "count": 1
+    },
+    {
+     "role": "Svy Sec",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "122 mm MBRL",
+     "count": 6,
+     "heldBy": "3 x Sec (2 each)",
+     "weapon": "122-mm-mbrl",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "1/4 Ton",
+     "count": 6
+    },
+    {
+     "name": "3/4 Ton",
+     "count": 8
+    },
+    {
+     "name": "2.5/5 Ton",
+     "count": 21
+    },
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Total less MC",
+     "count": 35
+    },
+    {
+     "name": "Tlrs all types",
+     "count": 11
+    }
+   ],
+   "echelons": [
+    {
+     "page": "218",
+     "ser": 13,
+     "printedAs": "MBRL Bty",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 4,
+       "A": 1,
+       "B": 1,
+       "total": 6,
+       "recceNormal": 2,
+       "recceMin": 1
+      },
+      {
+       "type": "3/4 ton 1 ton",
+       "F": 7,
+       "A": 1,
+       "B": 0,
+       "total": 8,
+       "recceNormal": 2,
+       "recceMin": 2
+      },
+      {
+       "type": "2.5 ton 3 ton",
+       "F": 0,
+       "A": 1,
+       "B": 2,
+       "total": 3,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "4 ton/5 ton ZIL/URAL",
+       "F": 6,
+       "A": 0,
+       "B": 0,
+       "total": 6,
+       "recceNormal": 0,
+       "recceMin": 0
+      },
+      {
+       "type": "Veh for MBRL 5 ton",
+       "F": 12,
+       "A": 0,
+       "B": 0,
+       "total": 12,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "uncertain": true,
+     "note": "Type column reads '2.5 ton 3 ton 4 ton/5 ton ZIL/URAL Veh for MBRL 5 ton' against three rows of figures (3, 6, 12); split here as 2.5/3 ton = 3, 4/5 ton ZIL/URAL = 6 (the launchers are mtd on 4/5 ton, p 212), Veh for MBRL 5 ton = 12. Total 35 = p 224 'Total less MC'."
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "214",
+     "ser": 5,
+     "unit": "122mm MBRL Bty",
+     "weapons": "6x122 mm MBRL",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 60,
+      "Total": 60
+     },
+     "secondLine": {
+      "HE": 30,
+      "Total": 30
+     },
+     "notes": [
+      "d. 2 rds per tube"
+     ]
+    }
+   ],
+   "notes": [
+    "MBRL btys after pooling up have been converted into MBRL regts and given to def corps arty (p 204)."
+   ],
+   "side": "own",
+   "symbolKey": "10110217"
+  },
+  {
+   "id": "arty-sec-mbrl",
+   "name": "MBRL Sec",
+   "arm": "arty",
+   "type": "sec",
+   "subtype": "mbrl-122",
+   "echelon": "13",
+   "page": "204",
+   "weapons": [
+    {
+     "name": "122 mm MBRL",
+     "count": 2,
+     "weapon": "122-mm-mbrl",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110217"
+  },
+  {
+   "id": "arty-regt-mtn",
+   "name": "Mtn Regt",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "mtn",
+   "echelon": "16",
+   "page": "205, 213",
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1
+    },
+    {
+     "role": "Mtn Bty (AT)",
+     "unit": "arty-bty-mtn",
+     "count": 1
+    },
+    {
+     "role": "Mtn Bty (AT/MT)",
+     "unit": "arty-bty-mtn",
+     "count": 1
+    },
+    {
+     "role": "Mtn Bty (MT)",
+     "unit": "arty-bty-mtn",
+     "count": 1
+    },
+    {
+     "role": "HQ Bty",
+     "count": 1
+    }
+   ],
+   "weapons": [
+    {
+     "name": "105 mm Pack How",
+     "count": 12,
+     "heldBy": "3 x Mtn Bty (4 each)",
+     "note": "p 213: 12x105 mm Pack Hows",
+     "weapon": "105-mm-pack-how",
+     "weaponMatch": "exact"
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "213",
+     "ser": 1,
+     "unit": "Fd/Mtn Regt",
+     "weapons": "18x105/122mm Hows/12x105 mm Pack Hows",
+     "per": "rpg",
+     "firstLine": {
+      "HE": 100,
+      "Smk": 12,
+      "Ill": 4,
+      "HEAT/AP": 4,
+      "Total": 120
+     },
+     "secondLine": {
+      "HE": 50,
+      "Smk": 6,
+      "Misc": 4,
+      "Total": 60
+     },
+     "notes": [
+      "a. 1st line Smk incl 2 rds coloured Smk",
+      "b. 2nd line Misc = 2xHEAT and 2xIll rd"
+     ]
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130303"
+  },
+  {
+   "id": "arty-bty-mtn",
+   "name": "Mtn Bty",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "mtn",
+   "echelon": "15",
+   "page": "205",
+   "weapons": [
+    {
+     "name": "105 mm Pack How",
+     "count": 4,
+     "weapon": "105-mm-pack-how",
+     "weaponMatch": "exact"
+    }
+   ],
+   "notes": [
+    "Batteries are marked (AT), (AT/MT) and (MT) on the chart (animal / mechanical transport)."
+   ],
+   "side": "own",
+   "symbolKey": "10130303"
+  },
+  {
+   "id": "arty-regt-loc",
+   "name": "Loc Regt (Corps Arty)",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "loc",
+   "echelon": "16",
+   "page": "205, 225-227",
+   "children": [
+    {
+     "role": "RHC",
+     "count": 1,
+     "note": "printed 'RHC' (RHQ)"
+    },
+    {
+     "role": "HQ Bty",
+     "count": 1,
+     "children": [
+      {
+       "role": "Svy Tp",
+       "count": 1
+      },
+      {
+       "role": "Met Sec",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Loc Bty",
+     "unit": "arty-bty-loc",
+     "count": 2
+    }
+   ],
+   "notes": [
+    "SLC-2 radars have been inducted/ are in the process of induction to replace existing ANTPQ-36 radars.",
+    "Under CC Arty (CONTENTS). In Arty Div: Loc Regt (Incl RPV Tp) (p 201).",
+    "Depl timings (p 227): Long Sound Rg Base day 6-8 hrs / ni 8-12; Short Sound Rg Base 2-4 / 4-6; Radar 2-3 / 3-5; Met Sec 1 / 2. Excl time for mov and day lt recce for ni depl.",
+    "Met (p 225): about 30 mins to set up electronic eqpt and begin obsns, then 30 mins (either method) to formulate met msgs.",
+    "Svy (p 225): regt svy sec 60 to 90 mins by day to bring a regt depl in one sq (1000x1000 ms) on one grid; normal svy by day one hr per 1000 ms; div svy 6 to 8 hrs of day (adjacent gun areas); by ni time gen doubled.",
+    "Svy (p 225): a long base of 4 OPs ranges in depth up to ltds of vis and in width 6000 to 10,000 ms, 4 to 6 hrs to depl; a short base of 2 OPs depl in one hr, covers only 1000 ms width.",
+    "Planning data for loc elms (met, svy, sound rg, radar; pp 225-226) is in artyData."
+   ],
+   "side": "own",
+   "symbolKey": "10110216",
+   "echelons": [
+    {
+     "page": "218",
+     "ser": 12,
+     "printedAs": "Loc Regt",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 55,
+       "A": 0,
+       "B": 0,
+       "total": 55,
+       "recceNormal": 10,
+       "recceMin": 5
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 32,
+       "A": 1,
+       "B": 2,
+       "total": 35,
+       "recceNormal": 8,
+       "recceMin": 6
+      },
+      {
+       "type": "2.5 ton",
+       "F": 25,
+       "A": 12,
+       "B": 11,
+       "total": 48,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ],
+     "uncertain": true,
+     "note": "Narrow columns wrap two figures over two lines: A ech of 2.5 ton printed '1'/'2' (= 12, so that 25 + 12 + 11 = 48); recce normal printed '1', '0', '8', '-', read as 10 (1/4 ton), 8 (1 ton) and - (2.5 ton)."
+    }
+   ]
+  },
+  {
+   "id": "arty-bty-loc",
+   "name": "Loc Bty",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "loc",
+   "echelon": "15",
+   "page": "205",
+   "uncertain": true,
+   "note": "The chart draws Sound Rg Tp and Radar Tp under one of the two Loc Btys only; whether both btys have them is not stated.",
+   "children": [
+    {
+     "role": "Sound Rg Tp",
+     "count": 1,
+     "note": "1xLong Sound Rg Base or 2xShort Sound Rg Bases",
+     "equipment": [
+      {
+       "name": "Long Sound Rg Base",
+       "count": 1,
+       "note": "or 2 x Short Sound Rg Bases"
+      }
+     ]
+    },
+    {
+     "role": "Radar Tp",
+     "count": 1,
+     "note": "2xRadars",
+     "equipment": [
+      {
+       "name": "Wpn Loc Radar",
+       "count": 2,
+       "note": "ANTPQ-36 being replaced by SLC-2"
+      }
+     ]
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Wpn Loc Radar",
+     "count": 2,
+     "note": "held by the Radar Tp; ANTPQ-36 being replaced by SLC-2"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10110216"
+  },
+  {
+   "id": "arty-regt-mlrs",
+   "name": "MLRS Regt",
+   "arm": "arty",
+   "type": "regt",
+   "subtype": "mlrs-a100",
+   "echelon": "16",
+   "page": "206-207",
+   "strength": {
+    "offr": 27,
+    "jco": 30,
+    "sldr": 486,
+    "sw": 12,
+    "att": 6,
+    "civ": 3,
+    "total": 564
+   },
+   "strengthNote": "Manpower table p 206. The printed Att column total 9 = 3 x 1 Dozer Op + 3 att + 3 civ (HQ Coy '3 + 3 (civ)'); split here as att 6, civ 3. Column totals add up to 564; the printed HQ Coy (incl RHQ) total 112 is one more than its parts (6+6+90+3+3+3 civ = 111), and 3 x 151 + 112 = 565, not 564.",
+   "children": [
+    {
+     "role": "RHQ",
+     "count": 1,
+     "vehicles": [
+      {
+       "name": "Comd Veh",
+       "count": 1
+      }
+     ],
+     "note": "Chart box with no figure; its pers are within the table row 'HQ Coy (incl RHQ)' (HQ Bty, 112)."
+    },
+    {
+     "role": "Bty",
+     "unit": "arty-bty-mlrs",
+     "count": 3,
+     "chartStrength": 151
+    },
+    {
+     "role": "HQ Bty",
+     "count": 1,
+     "strength": {
+      "offr": 6,
+      "jco": 6,
+      "sldr": 90,
+      "sw": 3,
+      "att": 3,
+      "civ": 3,
+      "total": 112
+     },
+     "chartStrength": 112,
+     "note": "Chart box 'HQ Bty (112)'; table row 'HQ Coy (incl RHQ)': att '3 + 3 (civ)'; printed total 112, parts sum to 111",
+     "uncertain": true
+    }
+   ],
+   "weapons": [
+    {
+     "name": "A100-IA MLRS (MLV)",
+     "count": 18,
+     "heldBy": "3 x Bty (6 x Launchers per bty)",
+     "note": "Org: 6 launchers per bty x 3 btys",
+     "weapon": "300-mm-mlrs-a-100-a100-ia",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MLV",
+     "count": 18,
+     "derived": true
+    },
+    {
+     "name": "MTV",
+     "count": 18,
+     "derived": true
+    },
+    {
+     "name": "Comd Veh",
+     "count": 4,
+     "derived": true
+    },
+    {
+     "name": "Med Veh",
+     "count": 3,
+     "derived": true
+    },
+    {
+     "name": "Maint veh",
+     "count": 3,
+     "derived": true
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "214",
+     "ser": 6,
+     "unit": "MLRS A-100",
+     "weapons": "12 x Launchers (10 tubes per launcher)",
+     "per": "rkts",
+     "firstLine": {
+      "HE": 108,
+      "Total": 108
+     },
+     "secondLine": {
+      "HE": 54,
+      "Total": 54
+     },
+     "notes": [
+      "1st line printed 108 x rkts (3 per tube)",
+      "360 anti tk/ anti per bomblets in each rkt. Area coverage of each rkt is 400x400 ms."
+     ]
+    }
+   ],
+   "notes": [
+    "10x Msls tubes per MLV veh. Two types of Rkts: A100-111 (40-80 Km), A100-311 (40-120 Km). Origin China.",
+    "State of MLRS (p 207): 6 x A100-311 and 6 x A100-111 MLVs (12, not 18); 120 x Fitted and 120 x Spare Tubes are auth / held.",
+    "State of 1st and 2nd line ammo (p 207): A100-311 Full Functional Cbt Rkts, 1st line, 2 rkt per tube, 360 rkts; A100-111 A Rkts, 2nd line, 2 rkt per tube, 360 rkts.",
+    "Ammo scale (p 214): MLRS A-100, 12 x Launchers (10 tubes per launcher): 1st line 108 rkts (3 per tube), 2nd line 54."
+   ],
+   "side": "own",
+   "symbolKey": "10110217",
+   "vehiclesNote": "Derived from p 206: 15x vehs per bty (6x MLV, 6x MTVs, 1x Comd Veh, 1x Med Veh, 1x maint veh) x 3 btys + 1x Comd Veh in RHQ = 46.",
+   "heldState": {
+    "page": "207",
+    "title": "State of MLRS",
+    "rows": [
+     {
+      "nomen": "Trk 45 ton 8 x 8 MLV A100-311 (with 120 Km range)",
+      "wpns": 6,
+      "tubes": "@60",
+      "weapon": "300-mm-mlrs-a-100-a100-ia"
+     },
+     {
+      "nomen": "Trk 45 ton 8 x 8 MLV A100-111 (with 80 Km range)",
+      "wpns": 6,
+      "tubes": "@60",
+      "weapon": "300-mm-mlrs-a-100-a100-ia"
+     }
+    ],
+    "remark": "@ 120 x Fitted and 120 x Spare Tubes are auth / held.",
+    "note": "Held 12 MLVs against the 18 of the org (3 btys x 6). Moved here from weapons[] so the org launchers are not counted twice."
+   },
+   "ammoState": {
+    "page": "207",
+    "title": "State of 1st and 2nd line - Arty Ammo",
+    "rows": [
+     {
+      "ammo": "A100-311 Full Functional Cbt Rkts",
+      "scale": "1st line",
+      "auth": "2 rkt per tube",
+      "rkts": 360
+     },
+     {
+      "ammo": "A100-111 A Rkts",
+      "scale": "2nd line",
+      "auth": "2 rkt per tube",
+      "rkts": 360,
+      "uncertain": true,
+      "note": "The 'A100-111 A Rkts' line has no figures of its own; the 2nd line row below it is marked ditto (\")."
+     }
+    ]
+   }
+  },
+  {
+   "id": "arty-bty-mlrs",
+   "name": "MLRS Bty",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "mlrs-a100",
+   "echelon": "15",
+   "page": "206",
+   "strength": {
+    "offr": 7,
+    "jco": 8,
+    "sldr": 132,
+    "sw": 3,
+    "att": 1,
+    "total": 151
+   },
+   "chartStrength": 151,
+   "strengthNote": "'MLRS Coy' row; att = 1 x Dozer Op.",
+   "weapons": [
+    {
+     "name": "A100-IA MLRS (MLV)",
+     "count": 6,
+     "note": "10 tubes per MLV",
+     "weapon": "300-mm-mlrs-a-100-a100-ia",
+     "weaponMatch": "alias"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MLV",
+     "count": 6
+    },
+    {
+     "name": "MTV",
+     "count": 6
+    },
+    {
+     "name": "Comd Veh",
+     "count": 1
+    },
+    {
+     "name": "Med Veh",
+     "count": 1
+    },
+    {
+     "name": "Maint veh",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "15x vehs per bty."
+   ],
+   "side": "own",
+   "symbolKey": "10110217"
+  },
+  {
+   "id": "arty-bty-mas",
+   "name": "MAS Bty",
+   "arm": "arty",
+   "type": "bty",
+   "subtype": "met-and-svy",
+   "echelon": "15",
+   "page": "202, 208",
+   "children": [
+    {
+     "role": "Bty HQ",
+     "count": 1,
+     "note": "p 202 chart only"
+    },
+    {
+     "role": "Met Sec",
+     "count": 1,
+     "note": "p 202 chart: Met Tp",
+     "children": [
+      {
+       "role": "Visual Sec",
+       "count": 1
+      },
+      {
+       "role": "Elec Sec",
+       "count": 1,
+       "note": "p 202: Electronic Sec"
+      }
+     ],
+     "equipment": [
+      {
+       "name": "Marvin Set MW-12",
+       "count": 1
+      },
+      {
+       "name": "Teodolite ML-474",
+       "count": 1
+      },
+      {
+       "name": "Generator Set PE-75",
+       "count": 1
+      },
+      {
+       "name": "Generator Set 12.5 KV",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Svy Tp",
+     "count": 1,
+     "children": [
+      {
+       "role": "PAD",
+       "count": 1
+      },
+      {
+       "role": "Svy Info",
+       "count": 1
+      },
+      {
+       "role": "Svy Sec \"A\"",
+       "count": 1
+      },
+      {
+       "role": "Svy Sec \"B\"",
+       "count": 1
+      }
+     ],
+     "equipment": [
+      {
+       "name": "Pads AN/USQ-70",
+       "count": 1
+      },
+      {
+       "name": "Theodolite Wild T-2",
+       "count": 7
+      },
+      {
+       "name": "Distomat DI-3000 S",
+       "count": 2
+      },
+      {
+       "name": "LEICA TPS-1201 (R-3000) (Theodolite)",
+       "count": 2
+      },
+      {
+       "name": "Arty Firing Data Computing Device",
+       "count": 9
+      }
+     ]
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Pads AN/USQ-70",
+     "count": 1,
+     "heldBy": "Svy Tp (Svy Eqpt, UE)"
+    },
+    {
+     "name": "Theodolite Wild T-2",
+     "count": 7,
+     "heldBy": "Svy Tp (Svy Eqpt, UE)"
+    },
+    {
+     "name": "Distomat DI-3000 S",
+     "count": 2,
+     "heldBy": "Svy Tp (Svy Eqpt, UE)"
+    },
+    {
+     "name": "LEICA TPS-1201 (R-3000) (Theodolite)",
+     "count": 2,
+     "heldBy": "Svy Tp (Svy Eqpt, UE)"
+    },
+    {
+     "name": "Arty Firing Data Computing Device",
+     "count": 9,
+     "heldBy": "Svy Tp (Svy Eqpt, UE)"
+    },
+    {
+     "name": "Marvin Set MW-12",
+     "count": 1,
+     "heldBy": "Met Sec (Met Eqpt, UE)"
+    },
+    {
+     "name": "Teodolite ML-474",
+     "count": 1,
+     "heldBy": "Met Sec (Met Eqpt, UE)"
+    },
+    {
+     "name": "Generator Set PE-75",
+     "count": 1,
+     "heldBy": "Met Sec (Met Eqpt, UE)"
+    },
+    {
+     "name": "Generator Set 12.5 KV",
+     "count": 1,
+     "heldBy": "Met Sec (Met Eqpt, UE)"
+    }
+   ],
+   "deplTimeHrs": {
+    "day": "1",
+    "night": "2",
+    "page": "227",
+    "note": "Met Sec"
+   },
+   "side": "own",
+   "symbolKey": "10130300",
+   "echelons": [
+    {
+     "page": "218",
+     "ser": 14,
+     "printedAs": "Met and Svy Bty (Incl Sig Sec)",
+     "vehs": [
+      {
+       "type": "1/4 ton",
+       "F": 18,
+       "A": 0,
+       "B": 0,
+       "total": 18,
+       "recceNormal": 5,
+       "recceMin": 4
+      },
+      {
+       "type": "1 ton/3/4 ton",
+       "F": 9,
+       "A": 0,
+       "B": 0,
+       "total": 9,
+       "recceNormal": 4,
+       "recceMin": 2
+      },
+      {
+       "type": "2.5 ton",
+       "F": 14,
+       "A": 2,
+       "B": 0,
+       "total": 16,
+       "recceNormal": 0,
+       "recceMin": 0
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "artyData": [
+  {
+   "title": "Composn of Echs - Arty Units",
+   "page": "216-218",
+   "note": "Vehicles by F / A / B ech and recce parties (normal / min) per HQ / unit type. The rows are on the units as echelons[] (F, A, B, total, recceNormal, recceMin; a dash is 0).",
+   "columns": {
+    "c": "Type of Vehs",
+    "d": "F ech",
+    "e": "A ech",
+    "f": "B ech",
+    "g": "Total",
+    "h": "Recce Parties - Normal",
+    "j": "Recce Parties - Min"
+   },
+   "footnotes": [
+    "* Incl one amb",
+    "** Six with winch",
+    "*** One without winch (no row carries ***)"
+   ],
+   "notes": [
+    "1. The above figs are for use in C&SC exs only.",
+    "2. Colms d and e incl recce parties.",
+    "3. F echs incl OP party vehs.",
+    "4. War increment are incl in the above figs."
+   ],
+   "rows": [
+    {
+     "ser": 1,
+     "hqUnit": "HQ Arty Inf Div (incl Sig Coy)",
+     "unitId": "arty-hq-inf-div-arty"
+    },
+    {
+     "ser": 2,
+     "hqUnit": "HQ Arty Armd Div (Incl HQ Bty and Sig Coy)",
+     "unitId": "arty-hq-armd-div-arty"
+    },
+    {
+     "ser": 3,
+     "hqUnit": "Fd regt-105 mm How (Incl Sig Sec and LAD)",
+     "unitId": "arty-regt-fd"
+    },
+    {
+     "ser": 4,
+     "hqUnit": "Fd Regt-122mm How (Incl Sig sec and (LAD))",
+     "unitId": "arty-regt-fd"
+    },
+    {
+     "ser": 5,
+     "hqUnit": "122mmD30 (9 Ton)",
+     "unitId": "arty-regt-fd"
+    },
+    {
+     "ser": 6,
+     "hqUnit": "Med Regt-130 mm Gun (Incl Sig Sec and LAD)",
+     "unitId": "arty-regt-med"
+    },
+    {
+     "ser": 7,
+     "hqUnit": "Med Regt-155 mm How (Incl Sig Sec and (LAD))",
+     "unitId": "arty-regt-med"
+    },
+    {
+     "ser": 8,
+     "hqUnit": "Med Regt 155 mm How (SP) M109A2/A5 (Incl Sig Sec and LAD)",
+     "unitId": "arty-regt-med-sp"
+    },
+    {
+     "ser": 9,
+     "hqUnit": "Med Regt 155 mm How M198 (Incl Sig Sec and LAD)",
+     "unitId": "arty-regt-med"
+    },
+    {
+     "ser": 10,
+     "hqUnit": "Hy Regt 155 mm Gun/8 inch How (Incl Sig Sec and LAD)",
+     "unitId": [
+      "arty-regt-hy-155gun",
+      "arty-regt-hy-8in"
+     ]
+    },
+    {
+     "ser": 11,
+     "hqUnit": "Hy Regt-8 inch How (SP) M110A2",
+     "unitId": "arty-regt-hy-8in"
+    },
+    {
+     "ser": 12,
+     "hqUnit": "Loc Regt",
+     "unitId": "arty-regt-loc"
+    },
+    {
+     "ser": 13,
+     "hqUnit": "MBRL Bty",
+     "unitId": "arty-bty-mbrl"
+    },
+    {
+     "ser": 14,
+     "hqUnit": "Met and Svy Bty (Incl Sig Sec)",
+     "unitId": "arty-bty-mas"
+    }
+   ]
+  },
+  {
+   "title": "Specimen FSP issued with a Bde OO - notes",
+   "page": "219-222",
+   "note": "Specimen task table (Anx B to 4 Bde OO 1, form PAFB 6047; originator CO 57 (Fd Regt); fire plan HIT HARD in sp of 4 Bde, sers 1-30 by phase, tgt nos U1300-U4204) is a worked example and is not extracted. Its notes carry the planning rules and are kept here.",
+   "rows": [
+    {
+     "note": "(a)",
+     "text": "FSP incl tasks for arty, air and inf wpns; forms part of bde OO so that all are info. Div OO does not normally contain consolidated div FSP. Div Fire Plan is a part of the Div Arty OO."
+    },
+    {
+     "note": "(b)",
+     "text": "PAFB 6047 is the form used."
+    },
+    {
+     "note": "(c)",
+     "text": "FSP is made by the sp arm comd. The originator is the arty comd."
+    },
+    {
+     "note": "(d)",
+     "text": "H hr is essential. It may be given later or FSP kept on call."
+    },
+    {
+     "note": "(e)",
+     "text": "Each tgt is a separate serial even if they are being engaged at the same time. This helps in modifications."
+    },
+    {
+     "note": "(f)",
+     "text": "For this op, two bdes are attacking simultaneously; 4 Bde has been altd two fd regts, one med regt and one mor bty, out of which 4 Fd is in DS and 83 Med is at pri call to GSO 2 (ICB)."
+    },
+    {
+     "note": "(g)",
+     "text": "FSP is made by phs and not by units. Ph 1 is normally a timed progm; subsequent phs may be On Call."
+    },
+    {
+     "note": "(h)",
+     "text": "When tgt list is not issued separately this may show tgt GR, ht and description. GR must be given; description is optional."
+    },
+    {
+     "note": "(j)",
+     "text": "Air strikes if aval should be used before start of arty progm."
+    },
+    {
+     "note": "(k)",
+     "text": "Prep bombardment is not always nec."
+    },
+    {
+     "note": "(l)",
+     "text": "One min gap should be given b/w different sers if rate of fire is higher than normal.",
+     "figure": "1 min gap"
+    },
+    {
+     "note": "(m)",
+     "text": "Two btys of 57 Fd Regt which are DS fd btys of 1 and 2 Baloch (attacking bns) have to remain aval for engagement of impromptu tgts by FOOs and have been superimposed throughout."
+    },
+    {
+     "note": "(n)",
+     "text": "83 Med is at pri call to GSO2 (ICB), hence all its btys have been superimposed throughout."
+    },
+    {
+     "note": "(o)",
+     "text": "Only those tgts should be neut which can eff interfere with own aslt tps. A tgt should not normally be within 300 ms of another tgt. Meds and mors should be kept on flanks or in depth, whenever possible, to avoid their lifting earlier than fd guns.",
+     "figure": "300 m between tgts"
+    },
+    {
+     "note": "(p)",
+     "text": "Tgts which may interfere with aslt may be kept on call."
+    },
+    {
+     "note": "(q)",
+     "text": "No ltd is laid on the no of DFs sel but gen 12 to 16 per bn front covering likely apchs are enough.",
+     "figure": "12-16 DFs per bn front"
+    },
+    {
+     "note": "(r)",
+     "text": "No ltd is laid on the no of DFs sel but gen 6 to 8 per bn front covering likely apchs are enough.",
+     "figure": "6-8 DFs per bn front",
+     "uncertain": true,
+     "note2": "(q) and (r) are printed with the same wording but different figures; the book does not say what distinguishes them."
+    }
+   ]
+  },
+  {
+   "title": "Planning Data - Loc Elms",
+   "page": "225-226",
+   "rows": [
+    {
+     "para": 1,
+     "topic": "Met",
+     "text": "Depending upon the eqpt met msgs are prep either by electronic method or by vis method."
+    },
+    {
+     "para": 2,
+     "topic": "Met",
+     "text": "Electronic method is more accurate but is costly."
+    },
+    {
+     "para": 3,
+     "topic": "Met",
+     "text": "Vis method provides adequate accuracy and is cheap."
+    },
+    {
+     "para": 4,
+     "topic": "Met",
+     "text": "Normally it takes 30 mins with electronic method to set up the eqpt and begin obsns. Subsequently 30 mins are req in both the cases to formulate the met msgs.",
+     "figures": {
+      "setUpElectronicMin": 30,
+      "formulateMsgMin": 30
+     }
+    },
+    {
+     "para": 5,
+     "topic": "Svy",
+     "text": "A regt svy sec normally takes 60 to 90 mins during day to bring the regt, depl in one sq (1000x1000 ms), on one grid. Normal svy during day takes one hr for every one thousand ms.",
+     "figures": {
+      "regtOnOneGridMin": "60-90",
+      "normalSvyHrPer1000m": 1
+     }
+    },
+    {
+     "para": 6,
+     "topic": "Svy",
+     "text": "A div svy normally takes 6 to 8 hrs of day. It brings the div arty on one grid provided the units are depl in adjacent gun areas. Time will inc proportionately if the gun areas are dispersed.",
+     "figures": {
+      "divSvyHrs": "6-8"
+     }
+    },
+    {
+     "para": 7,
+     "topic": "Svy",
+     "text": "During ni, time taken for svy is gen doubled."
+    },
+    {
+     "para": 8,
+     "topic": "Svy",
+     "text": "A long base of 4 OPs can range in depth upto ltds of vis and in width from 6000 ms to 10,000 ms. It takes 4 to 6 hrs to depl excl the traveling time to the dep area.",
+     "figures": {
+      "ops": 4,
+      "widthM": "6000-10000",
+      "deplHrs": "4-6"
+     }
+    },
+    {
+     "para": 9,
+     "topic": "Svy",
+     "text": "A short base of 2 OPs can be depl in one hr but covers a dist of only 1000 ms in width and is, therefore, resorted to only under exceptional circumstances.",
+     "figures": {
+      "ops": 2,
+      "widthM": 1000,
+      "deplHrs": 1
+     }
+    },
+    {
+     "para": 10,
+     "topic": "Sound Rg",
+     "text": "This method affords loc of hostile guns to an accuracy of 100 yds or 92 ms. Mtn terrain, very fast wind, B fd noises and simultaneous firing by a large no of en guns reduce its eff considerably.",
+     "figures": {
+      "accuracyM": 92
+     }
+    },
+    {
+     "para": 11,
+     "topic": "Sound Rg",
+     "text": "A std long base stretches over a dist of 6752 ms and takes 6 to 8 hrs to depl excl travelling time to the depl area.",
+     "figures": {
+      "baseM": 6752,
+      "deplHrs": "6-8"
+     }
+    },
+    {
+     "para": 12,
+     "topic": "Sound Rg",
+     "text": "A std short base extends over a dist of 2026 ms and takes 2 to 4 hrs to depl excl the travelling time to the depl area.",
+     "figures": {
+      "baseM": 2026,
+      "deplHrs": "2-4"
+     }
+    },
+    {
+     "para": 13,
+     "topic": "Sound Rg",
+     "text": "The farthest ltd of sound rg is governed by the intensity of sound produced by the en gun. The accuracy, however, deteriorates at extreme ranges. 100 Ms accuracy is obtained upto a depth of 10128 ms with a std long base and upto 5064 ms with a std short base.",
+     "figures": {
+      "longBase100mAccuracyDepthM": 10128,
+      "shortBase100mAccuracyDepthM": 5064
+     }
+    },
+    {
+     "para": 14,
+     "topic": "Radar",
+     "text": "The present eqpt can loc arty guns/mors/msls up to the range of 50 kms with an accuracy of 10 ms or 1 percent of the accuracy of the loc wpn, which ever is greater. It is virtually unjammable and can simultaneously loc 99 tgts. It is less affected by adverse weather conditions.",
+     "figures": {
+      "rangeKm": 50,
+      "accuracyM": 10,
+      "simultaneousTgts": 99
+     }
+    }
+   ]
+  },
+  {
+   "title": "Depl Timings",
+   "page": "227",
+   "note": "Timings for depl of gun/loc units would vary according to the terrain, gr, weather conditions and prevailing op environment. The timings excl time for mov and day lt recce for ni depl. Also on the units as deplTimeHrs.",
+   "rows": [
+    {
+     "ser": "a",
+     "unit": "Fd/Med Regt",
+     "dayHrs": "1-2",
+     "niHrs": "2-3",
+     "unitIds": [
+      "arty-regt-fd",
+      "arty-regt-med",
+      "arty-regt-med-sp"
+     ]
+    },
+    {
+     "ser": "b",
+     "unit": "Hy Regt",
+     "dayHrs": "2-3",
+     "niHrs": "3-5",
+     "unitIds": [
+      "arty-regt-hy-8in",
+      "arty-regt-hy-155gun"
+     ]
+    },
+    {
+     "ser": "c",
+     "unit": "Div Arty",
+     "dayHrs": "4-8",
+     "niHrs": "8-12",
+     "unitIds": [
+      "arty-inf-div-arty"
+     ]
+    },
+    {
+     "ser": "d",
+     "unit": "Long Sound Rg Base",
+     "dayHrs": "6-8",
+     "niHrs": "8-12"
+    },
+    {
+     "ser": "e",
+     "unit": "Short Sound Rg Base",
+     "dayHrs": "2-4",
+     "niHrs": "4-6"
+    },
+    {
+     "ser": "f",
+     "unit": "Radar",
+     "dayHrs": "2-3",
+     "niHrs": "3-5"
+    },
+    {
+     "ser": "g",
+     "unit": "Met Sec",
+     "dayHrs": "1",
+     "niHrs": "2",
+     "unitIds": [
+      "arty-bty-mas"
+     ]
+    }
+   ]
+  }
+ ],
+ "otherPages": [
+  "209-212 Details of Eqpt, 213-214 Scales of Arty Ammo, 215 Frontages & Safe Dists: weapon characteristics in weapons.json (Sec 2 entries); the ammo scales also on the units as ammoScale (re-checked 15 Nov 2026).",
+  "216-218 Composn of Echs - Arty Units (C&SC exs only): extracted from the page images on 15 Nov 2026 - vehs by F / A / B ech and recce parties on the units as echelons[]; column key, footnotes and notes in artyData.",
+  "219-222 Specimen FSP issued with a Bde OO: the task table is a worked example (staff form) and is not extracted; its notes (a)-(r), which carry planning rules (300 m between tgts, 12-16 / 6-8 DFs per bn front, 1 min gap), are in artyData.",
+  "225-226 Planning Data - Loc Elms: in full in artyData (paras 1-14); radar / sound rg also in weapons.json.",
+  "227 Depl Timings (put on units as deplTimeHrs: Fd/Med Regt 1-2 / 2-3, Hy Regt 2-3 / 3-5, Div Arty 4-8 / 8-12, Long Sound Rg Base 6-8 / 8-12, Short 2-4 / 4-6, Radar 2-3 / 3-5, Met Sec 1 / 2 hrs day / ni); also in artyData."
+ ]
+}

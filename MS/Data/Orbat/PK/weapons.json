@@ -1,0 +1,5997 @@
+{
+ "format": "pams8-orbat-weapons",
+ "version": 1,
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "handling": "RESTD"
+ },
+ "note": "rangeM / rangeYds / rangeKm are as printed. planRangeM is derived for planning: min / eff / max / ceiling in metres, the lowest printed figure where the book gives several (never overstate). planRangeM.plan (where present) is the planning range the book gives: Sec 2 own guns, mors and rkts 90 percent of max range (p 212 note); Sec 13 the printed Planning figure (Catapult, Bhim). symbolKeys = the Symbols.json equipment entry judged to match by type and calibre; Symbols.json Rng is NOT changed by this file.",
+ "weapons": [
+  {
+   "id": "revolver-38",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "Revolver .38",
+   "type": "pistol",
+   "calibre": ".38 in",
+   "weightPrinted": "1-11 1/2 (0.8)",
+   "weightKg": 0.8,
+   "rof": {
+    "maxEff": 12,
+    "sustained": 12
+   },
+   "rangeYds": {
+    "eff": 25
+   },
+   "rangeM": {
+    "eff": 22.8
+   },
+   "page": "647",
+   "note": "Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 23
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "walther-9-mm",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "Walther 9 mm",
+   "type": "pistol",
+   "calibre": "9mm",
+   "weightPrinted": "1-11 1/2 (0.8)",
+   "weightKg": 0.8,
+   "rof": {
+    "maxEff": 24,
+    "sustained": 8
+   },
+   "rangeYds": {
+    "eff": 50
+   },
+   "rangeM": {
+    "eff": 45.7
+   },
+   "page": "647",
+   "note": "Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 46
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "rifle-g-3",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "Rifle G-3",
+   "type": "rifle",
+   "calibre": "7.62mm",
+   "weightPrinted": "9.036 (4)",
+   "weightKg": 4,
+   "rof": {
+    "maxEff": 40,
+    "sustained": 10,
+    "cyclic": "550-650"
+   },
+   "rangeYds": {
+    "eff": 300
+   },
+   "rangeM": {
+    "eff": 274.3
+   },
+   "page": "647",
+   "note": "Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 274
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "smg-mp-5-a2-mp-5-a-3",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "SMG MP 5 A2/MP 5 A 3",
+   "type": "smg",
+   "calibre": "9mm",
+   "weightPrinted": "5.4(2.45)/ 5.6 (2.55)",
+   "rof": {
+    "cyclic": 800
+   },
+   "rangeYds": {
+    "eff": 75
+   },
+   "rangeM": {
+    "eff": 68
+   },
+   "page": "647",
+   "note": "Weight 2.45 kg (MP5 A2) / 2.55 kg (MP5 A3) Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 68
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "smg-7-62-mm",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "SMG 7.62 mm",
+   "type": "smg",
+   "calibre": "7.62mm",
+   "weightPrinted": "8-6 (3.8)",
+   "weightKg": 3.8,
+   "rof": {
+    "maxEff": 60,
+    "sustained": 30,
+    "cyclic": 600
+   },
+   "rangeYds": {
+    "eff": 300
+   },
+   "rangeM": {
+    "eff": 274.3
+   },
+   "page": "647",
+   "note": "Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 274
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "mg-1a3",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "MG 1A3",
+   "type": "mg",
+   "calibre": "7.62mm",
+   "weightPrinted": "24 (10.8)",
+   "weightKg": 10.8,
+   "rof": {
+    "maxEff": 100,
+    "sustained": 50,
+    "cyclic": "11-1300"
+   },
+   "rangeYds": {
+    "eff": 500,
+    "maxMgRole": 2400
+   },
+   "rangeM": {
+    "eff": 457.25,
+    "maxMgRole": 2194
+   },
+   "page": "648",
+   "note": "Remarks: Max range in MG role: 2400 yards (2194 M). Cyclic printed '11-1300'. Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 457
+   },
+   "symbolKeys": [
+    "15110202"
+   ]
+  },
+  {
+   "id": "3-5-in-rl",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "3.5 in RL",
+   "type": "rl",
+   "calibre": "3.5 in",
+   "weightPrinted": "13-0 (5.8)",
+   "weightKg": 5.8,
+   "projWeightPrinted": "9-0 (40",
+   "rof": {
+    "maxEff": "2-3 rkts"
+   },
+   "rangeYds": {
+    "eff": 300
+   },
+   "rangeM": {
+    "eff": 274.3
+   },
+   "page": "648",
+   "note": "Pen: Armr - 11 ins (27.9 cm); Masonary - 24 ins (60.9 cm). Rocket weight printed '9-0 (40' (cut off). Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 274
+   },
+   "symbolKeys": [
+    "15111702"
+   ]
+  },
+  {
+   "id": "rpg-7",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "RPG-7",
+   "type": "rpg",
+   "calibre": "40mm (Proj 85mm)",
+   "weightPrinted": "(6.3) With telescope sight",
+   "weightKg": 6.3,
+   "projWeightKg": 2.25,
+   "rof": {
+    "maxEff": "4-6"
+   },
+   "rangeM": {
+    "effStatic": 500,
+    "effMoving": 300
+   },
+   "uncertain": true,
+   "page": "648",
+   "note": "Printed '500-Static Tgt 300-Mov Tgt' with no unit, in the column headed Eff Rg Yds (Ms); taken as metres. Pen: Armr - 40.14 cm; Masonary - 60.96 cm.",
+   "planRangeM": {
+    "eff": 500
+   },
+   "symbolKeys": [
+    "15111702"
+   ]
+  },
+  {
+   "id": "106mm-rr",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "106mm RR",
+   "type": "rr",
+   "calibre": "106mm",
+   "weightPrinted": "460-0 (208.6)",
+   "weightKg": 208.6,
+   "projWeightPrinted": "37-0(16.7)",
+   "projWeightKg": 16.7,
+   "rof": {
+    "sustained": 1
+   },
+   "rangeYds": {
+    "eff": 1300,
+    "indirect": 8400
+   },
+   "rangeM": {
+    "eff": 1188.7,
+    "indirect": 7680
+   },
+   "page": "648",
+   "note": "Armr pen - 16.20 ins (40.6-50.8 cm). Indir fire range - 8400 yds (7680 M). Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 1189
+   },
+   "symbolKeys": [
+    "15110803"
+   ]
+  },
+  {
+   "id": "75mm-rr",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "75mm RR",
+   "type": "rr",
+   "calibre": "75mm",
+   "weightPrinted": "191.5 (86.8)",
+   "weightKg": 86.8,
+   "projWeightPrinted": "HE: 21-0 (9.5); HEAT: 14-0 (6.3)",
+   "rof": {
+    "sustained": 1
+   },
+   "rangeYds": {
+    "eff": 656
+   },
+   "rangeM": {
+    "eff": 600
+   },
+   "page": "648",
+   "note": "Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "eff": 600
+   },
+   "symbolKeys": [
+    "15110801"
+   ]
+  },
+  {
+   "id": "60-mm-mor",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "60 mm Mor",
+   "type": "mortar",
+   "calibre": "60.75 mm",
+   "weightPrinted": "27 1/2 (12.4)",
+   "weightKg": 12.4,
+   "projWeightPrinted": "2.72 (1.2)",
+   "projWeightKg": 1.2,
+   "rof": {
+    "maxEff": "15.20"
+   },
+   "rangeYds": {
+    "max": 1614
+   },
+   "rangeM": {
+    "max": 1475.8
+   },
+   "page": "649",
+   "note": "Range printed '1614 (1475.8) with max charge'. ROF printed '15.20'. Serial 11 is missing in the table (10 -> 12). Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "max": 1476
+   },
+   "symbolKeys": [
+    "15111402"
+   ]
+  },
+  {
+   "id": "3-in-mor",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "3 in Mor",
+   "type": "mortar",
+   "calibre": "3.02 ins",
+   "weightPrinted": "147-0 (66.6)",
+   "weightKg": 66.6,
+   "projWeightPrinted": "7-0 (3.1); 10-0 (4.5); 15-0(6.*)",
+   "rangeYds": {
+    "bomb7lb": 3900,
+    "bomb10lb": 2800,
+    "bomb15lb": 1500
+   },
+   "rangeM": {
+    "bomb7lb": 3566.1,
+    "bomb10lb": 2560.3,
+    "bomb15lb": 1371.6
+   },
+   "uncertain": true,
+   "page": "649",
+   "note": "Three ranges printed 3900 (3566 1), 2800 (2560.3), 1500 (1371.6) on the same lines as the three bomb weights 7-0, 10-0, 15-0 lbs; pairing by line. Third bomb weight printed '15-0(6.*)'. Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "max": 1372
+   },
+   "symbolKeys": [
+    "15111402"
+   ]
+  },
+  {
+   "id": "81mm-mor",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "81mm Mor",
+   "type": "mortar",
+   "calibre": "81mm",
+   "weightPrinted": "135-6 (61.4)",
+   "weightKg": 61.4,
+   "projWeightPrinted": "7-0 (3.1)",
+   "projWeightKg": 3.1,
+   "rof": {
+    "slow": 2,
+    "normal": 4,
+    "rapid": 6,
+    "intense": 8
+   },
+   "rangeYds": {
+    "min": 105,
+    "max": 4100
+   },
+   "rangeM": {
+    "min": 96,
+    "max": 3749
+   },
+   "page": "649",
+   "note": "ROF printed across the 81mm and 82mm rows: Slow: 2, Normal: 4 (81mm row), Rapid: 6, Intense: 8 (82mm row). Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "min": 96,
+    "max": 3749
+   },
+   "symbolKeys": [
+    "15111402"
+   ]
+  },
+  {
+   "id": "82mm-mor",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "82mm Mor",
+   "type": "mortar",
+   "calibre": "82mm",
+   "weightPrinted": "117-8 (53.2)",
+   "weightKg": 53.2,
+   "projWeightPrinted": "6-13(3)",
+   "projWeightKg": 3,
+   "rof": {
+    "rapid": 6,
+    "intense": 8
+   },
+   "uncertain": true,
+   "page": "649",
+   "note": "No range printed. ROF 'Rapid: 6 / Intense: 8' is on this row but continues the 81mm 'Slow: 2 / Normal: 4' listing.",
+   "symbolKeys": [
+    "15111402"
+   ]
+  },
+  {
+   "id": "tow-atgm",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "TOW ATGM",
+   "type": "atgm",
+   "calibre": "152mm",
+   "weightKg": 102,
+   "projWeightKg": 18,
+   "rof": {
+    "maxEff": 3
+   },
+   "rangeM": {
+    "min": 65,
+    "max": 3000,
+    "maxTow2": 3750
+   },
+   "page": "649",
+   "note": "Max: (TOW) 3000 ms, (TOW 2) 3750 ms; Min: (65 ms). Armr pen 500 mm. Weights printed in brackets (kg).",
+   "planRangeM": {
+    "min": 65,
+    "max": 3000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "bs",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "BS",
+   "type": "atgm",
+   "calibre": "120mm",
+   "weightKg": 88,
+   "projWeightKg": 11.2,
+   "rof": {
+    "maxEff": 3
+   },
+   "rangeM": {
+    "min": 100,
+    "max": 3000
+   },
+   "page": "649",
+   "note": "Bakhtar Shikan. Range printed in brackets only: Max: (3000), Min: (100); brackets are the metres column.",
+   "planRangeM": {
+    "min": 100,
+    "max": 3000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "glhmg",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "GLHMG",
+   "type": "glhmg",
+   "calibre": "35 mm",
+   "weightPrinted": "12-15 kgs",
+   "rof": {
+    "maxEff": 480,
+    "sustained": 480
+   },
+   "rangeM": {
+    "min": 600,
+    "max": 1750
+   },
+   "page": "649",
+   "note": "Range printed '600 - 1750 ms'. Armr pen 35-80 mm. Elsewhere in Sec 6 the GLHMG is printed as 40 mm: Inf Bn first line ammo scale p 651 (GLHMG 40 mm) and the LAT / HAT Bn summaries p 626, 628, 633 (40mm (GL HMG)); the chars table p 649 gives 35 mm.",
+   "planRangeM": {
+    "min": 600,
+    "max": 1750
+   },
+   "symbolKeys": [
+    "15110303"
+   ]
+  },
+  {
+   "id": "energa-gren",
+   "side": "own",
+   "section": "Sec 6 - Inf",
+   "name": "Energa Gren",
+   "type": "rifle-gren",
+   "weightPrinted": "1.5 (0.6)",
+   "weightKg": 0.6,
+   "rangeYds": {
+    "min": 230,
+    "max": 330
+   },
+   "rangeM": {
+    "min": 210.3,
+    "max": 301.7
+   },
+   "page": "649",
+   "note": "230-330 (210.3-301.7) depending upon the cart used. Eff Rg column is headed 'Eff Rg Yds (Ms)': yards with metres in brackets.",
+   "planRangeM": {
+    "min": 210,
+    "max": 302
+   },
+   "symbolKeys": [
+    "15110301"
+   ]
+  },
+  {
+   "id": "105mm-tk-t-69-iim-iimp",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "105mm Tk T-69 IIM/IIMP",
+   "type": "tank-gun",
+   "calibre": "105 mm",
+   "page": "119, 123-124",
+   "ammoScale": {
+    "withTk": {
+     "APFSDS/DU": 20,
+     "HEAT": 14,
+     "HE": 10,
+     "total": 44
+    },
+    "unitResPerTk": {
+     "APFSDS/DU": 10,
+     "HEAT": 7,
+     "HE": 5,
+     "total": 22
+    },
+    "firstLine": 66,
+    "secLine": 33
+   },
+   "crew": 4,
+   "characteristics": {
+    "ctyOfOrigin": "China",
+    "cbtWtTons": 37.37,
+    "widthM": 3.29,
+    "powerToWtHpPerTon": 15.5,
+    "grPressureKgCm2": 0.82,
+    "grClearanceCm": 42.5,
+    "maxRdSpeedKmh": "32-35",
+    "maxXCtySpeedKmh": "22-27",
+    "fuelCapacityLits": 935,
+    "opRangeKm": 530,
+    "maxSlopePct": 60,
+    "verticalObsM": 0.8,
+    "ditchXingM": 2.7,
+    "fordingWithPrepM": "NA",
+    "hastyFordingM": 1.4,
+    "nbc": "Yes",
+    "typesOfAmmo": "APFSDS-T, HEAT-T, HESH-T",
+    "maxMainGunRds": 44,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 12.7",
+    "niVision": "II",
+    "lrf": "Yes"
+   },
+   "note": "Comparative data column is headed 'T69 MII' (page 123); ammo scale row is '105mm Tk T-69 IIM/IIMP' (page 119).",
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "125mm-tk-al-khalid",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "125mm Tk Al-Khalid",
+   "type": "tank-gun",
+   "calibre": "125 mm (SB)",
+   "page": "119, 123-124",
+   "ammoScale": {
+    "withTk": {
+     "APFSDS/DU": 20,
+     "HEAT": 8,
+     "HE": 12,
+     "total": 40
+    },
+    "unitResPerTk": {
+     "APFSDS/DU": 10,
+     "HEAT": 4,
+     "HE": 6,
+     "total": 20
+    },
+    "firstLine": 60,
+    "secLine": 30
+   },
+   "crew": 3,
+   "characteristics": {
+    "ctyOfOrigin": "China / Pakistan",
+    "cbtWtTons": 46,
+    "widthM": 2.4,
+    "powerToWtHpPerTon": 26,
+    "maxRdSpeedKmh": 70,
+    "opRangeKm": 400,
+    "nbc": "Yes",
+    "typesOfAmmo": "APFSDS / DU, HEAT, HE",
+    "maxMainGunRds": 40,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 12.7",
+    "niVision": "TI",
+    "lrf": "Yes"
+   },
+   "note": "Other characteristics printed as '-'. Width 2.40 m as printed.",
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "125-mm-tk-al-zarrar",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "125 mm Tk Al-Zarrar",
+   "type": "tank-gun",
+   "calibre": "125 mm Smooth Bore",
+   "page": "119, 124-126, 129",
+   "rangeM": {
+    "eff": "2500-3000",
+    "max": 12220
+   },
+   "crew": 4,
+   "ammoScale": {
+    "withTk": {
+     "APFSDS/DU": 17,
+     "HEAT": 9,
+     "HE": 8,
+     "total": 34
+    },
+    "unitResPerTk": {
+     "APFSDS/DU": 13,
+     "HEAT": 6,
+     "HE": 7,
+     "total": 26
+    },
+    "firstLine": 60,
+    "secLine": 30
+   },
+   "characteristics": {
+    "engineHp": 730,
+    "fuelCap": "833 Lits D-20",
+    "cruisingRgKm": 185,
+    "cbtWtTons": 39.2,
+    "transmission": "Hydraulic - Manual",
+    "steeringMech": "Hydraulic - Stick",
+    "tr": "Rubber Block",
+    "coaxMg": "7.62 mm",
+    "aaMg": "12.7 mm",
+    "loadingSys": "Semi Auto Loading",
+    "ammoStowage": {
+     "mainGun": "28 (AP-12, HE-9, HEAT-7)",
+     "coaxMg": "2250 Rds (9x Boxes)",
+     "aaMg": "500 Rds (5x Boxes)"
+    },
+    "opModes": "IS Mode - FCS; SFCS Mode - Manual",
+    "sights": {
+     "gnrIS": "Day Op",
+     "gnrTI": "Ni Op: Detection 6500 m, Recognition 4500 m, Identification 3000 m, Eff Rg 2500-3000 m",
+     "dvr": "II (700 m)",
+     "comd": "Day Sight"
+    },
+    "mainGunStab": "Bi - Axis Stab",
+    "protection": "Passive - ERA Plates",
+    "nav": "GPS per Tk; Sun Compass (One per tp)",
+    "wrlsSet": "Freq Hopping 9600 Series",
+    "commRgKm": {
+     "max": 35,
+     "min": 5
+    },
+    "railMov": "One tk req one MBFR",
+    "pol": {
+     "powerStabOn": "5 Lits per km",
+     "powerStabStatic": "27 Lits per hr",
+     "powerStabOff": "5 Lits per km"
+    }
+   },
+   "note": "Essential data pages 124-126; planning parameters page 129. Main gun stowage 28 rds (page 125) differs from 'ammo with tk' 34 in the ammo scale (page 119); both as printed.",
+   "planRangeM": {
+    "eff": 2500,
+    "max": 12220
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "105-mm-tk-t-59-m",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "105 mm Tk T-59 M",
+   "type": "tank-gun",
+   "calibre": "105 mm",
+   "page": "119, 123-124",
+   "ammoScale": {
+    "withTk": {
+     "APFSDS/DU": 17,
+     "HEAT": 7,
+     "HE": 10,
+     "total": 34
+    },
+    "unitResPerTk": {
+     "APFSDS/DU": 13,
+     "HEAT": 6,
+     "HE": 7,
+     "total": 26
+    },
+    "firstLine": 60,
+    "secLine": 30
+   },
+   "crew": 4,
+   "characteristics": {
+    "ctyOfOrigin": "China",
+    "cbtWtTons": 36,
+    "widthM": 3.27,
+    "powerToWtHpPerTon": 14.44,
+    "grPressureKgCm2": 0.8,
+    "grClearanceCm": 42.5,
+    "maxRdSpeedKmh": 51,
+    "maxXCtySpeedKmh": 25,
+    "fuelCapacityLits": 812,
+    "opRangeKm": 440,
+    "maxSlopePct": 60,
+    "verticalObsM": 0.8,
+    "ditchXingM": 2.5,
+    "fordingWithPrepM": "NA",
+    "hastyFordingM": 1.4,
+    "nbc": "Yes",
+    "typesOfAmmo": "HE, APCT APSDS, APDS, HEAT",
+    "maxMainGunRds": 38,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 12.7",
+    "niVision": "II",
+    "lrf": "Yes"
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "125-mm-tk-t-85-iiap",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "125 mm Tk T-85 IIAP",
+   "type": "tank-gun",
+   "calibre": "125 (SB)",
+   "page": "119, 121-122",
+   "ammoScale": {
+    "withTk": {
+     "APFSDS/DU": 20,
+     "HEAT": 8,
+     "HE": 12,
+     "total": 40
+    },
+    "unitResPerTk": {
+     "APFSDS/DU": 10,
+     "HEAT": 4,
+     "HE": 6,
+     "total": 20
+    },
+    "firstLine": 60,
+    "secLine": 30
+   },
+   "crew": 3,
+   "characteristics": {
+    "ctyOfOrigin": "China",
+    "cbtWtTons": 41,
+    "widthM": 3.49,
+    "powerToWtHpPerTon": 17.8,
+    "grPressureKgCm2": 0.84,
+    "grClearanceCm": 0.48,
+    "maxRdSpeedKmh": 57,
+    "maxXCtySpeedKmh": 32,
+    "fuelCapacityLits": 1710,
+    "opRangeKm": 690,
+    "maxSlopePct": "32%",
+    "verticalObsM": 0.8,
+    "ditchXingM": 2.7,
+    "fordingWithPrepM": 5,
+    "hastyFordingM": 1.4,
+    "nbc": "Yes",
+    "typesOfAmmo": "APFSDS, HEAT, HE",
+    "maxMainGunRds": 40,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 12.7 mm",
+    "niVision": "Yes (11)",
+    "lrf": "Yes"
+   },
+   "note": "Gr clearance printed 0.480 cm and max slope 32% - both as printed, probably misprints.",
+   "uncertain": true,
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "125-mm-tk-t-80-ud",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "125 mm Tk T-80 UD",
+   "type": "tank-gun",
+   "calibre": "125 (SB)",
+   "page": "119, 123-124, 127-128",
+   "ammoScale": {
+    "withTk": {
+     "APFSDS/DU": 22,
+     "HEAT": 10,
+     "HE": 13,
+     "total": 45
+    },
+    "unitResPerTk": {
+     "APFSDS/DU": 11,
+     "HEAT": 5,
+     "HE": 7,
+     "total": 23
+    },
+    "firstLine": 68,
+    "secLine": 35
+   },
+   "crew": 3,
+   "characteristics": {
+    "ctyOfOrigin": "Ukraine",
+    "cbtWtTons": 46,
+    "widthM": 3.57,
+    "powerToWtHpPerTon": 27,
+    "grPressureKgCm2": 0.81,
+    "grClearanceCm": 48,
+    "maxRdSpeedKmh": 70,
+    "maxXCtySpeedKmh": 35,
+    "fuelCapacityLits": 1700,
+    "opRangeKm": "360-450",
+    "maxSlopePct": 63,
+    "verticalObsM": "1.2 M",
+    "ditchXingM": 2.8,
+    "fordingWithPrepM": 5,
+    "hastyFordingM": 1.8,
+    "nbc": "Yes",
+    "typesOfAmmo": "APFSDS, HEAT, HE",
+    "maxMainGunRds": 45,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 12.7",
+    "niVision": "TI",
+    "lrf": "Yes",
+    "railMov": "One tk req ONE MBFR",
+    "pol": {
+     "powerStabOnPerKm": "8 Lits per km",
+     "powerStabOnPerHr": "47 Lits per hr",
+     "powerStabOff": "23 Lits per hr",
+     "semiDesert": "6 lits per km",
+     "desert": "9.6 lits per km"
+    }
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "m1a2",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "M1A2",
+   "type": "tank-gun",
+   "calibre": "120 mm",
+   "crew": 4,
+   "page": "121-122",
+   "characteristics": {
+    "ctyOfOrigin": "USA",
+    "cbtWtTons": 69.5,
+    "widthM": 3.65,
+    "powerToWtHpPerTon": 27,
+    "grPressureKgCm2": 0.96,
+    "grClearanceCm": 48,
+    "maxRdSpeedKmh": 72,
+    "maxXCtySpeedKmh": 48,
+    "fuelCapacityLits": 1907,
+    "opRangeKm": 465,
+    "maxSlopePct": 60,
+    "verticalObsM": 1.07,
+    "ditchXingM": 2.75,
+    "fordingWithPrepM": 2.38,
+    "hastyFordingM": 1.22,
+    "nbc": "Yes",
+    "typesOfAmmo": "APFSDS-T (DU), HEAT-T",
+    "maxMainGunRds": 40,
+    "coaxMg": "2xMGs 7.62",
+    "aaArmt": "MG 12.7",
+    "niVision": "TI",
+    "lrf": "Yes"
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "t-72",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "T-72",
+   "type": "tank-gun",
+   "calibre": "125 mm",
+   "crew": 3,
+   "page": "121-122",
+   "characteristics": {
+    "ctyOfOrigin": "Russia",
+    "cbtWtTons": 44.5,
+    "widthM": 3.58,
+    "powerToWtHpPerTon": 19,
+    "grPressureKgCm2": 0.83,
+    "grClearanceCm": 42,
+    "maxRdSpeedKmh": 60,
+    "maxXCtySpeedKmh": 45,
+    "fuelCapacityLits": 1000,
+    "opRangeKm": "450-700",
+    "maxSlopePct": 60,
+    "verticalObsM": 0.8,
+    "ditchXingM": 2.8,
+    "fordingWithPrepM": 5.5,
+    "hastyFordingM": 1.3,
+    "nbc": "Yes",
+    "typesOfAmmo": "HE-FRAG FS, HEAT-FS, APFSDS",
+    "maxMainGunRds": 40,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 12.7",
+    "niVision": "TI",
+    "lrf": "Yes"
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "t-55",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "T-55",
+   "type": "tank-gun",
+   "calibre": "100 mm",
+   "crew": 4,
+   "page": "121-122",
+   "characteristics": {
+    "ctyOfOrigin": "Russia",
+    "cbtWtTons": 36,
+    "widthM": 3.28,
+    "powerToWtHpPerTon": 16.11,
+    "grPressureKgCm2": 0.81,
+    "grClearanceCm": 43,
+    "maxRdSpeedKmh": 50,
+    "maxXCtySpeedKmh": 35,
+    "fuelCapacityLits": 960,
+    "opRangeKm": "330-510",
+    "maxSlopePct": 58,
+    "verticalObsM": 0.83,
+    "ditchXingM": 2.7,
+    "fordingWithPrepM": 1.4,
+    "hastyFordingM": 1.4,
+    "nbc": "Yes",
+    "typesOfAmmo": "APHE, HVAP, HE, HEAT",
+    "maxMainGunRds": 43,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "No",
+    "niVision": "IR",
+    "lrf": "No"
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "vijayanta",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "Vijayanta",
+   "type": "tank-gun",
+   "calibre": "105 mm",
+   "crew": 4,
+   "page": "121-122",
+   "characteristics": {
+    "ctyOfOrigin": "India",
+    "cbtWtTons": 40,
+    "widthM": 3.168,
+    "powerToWtHpPerTon": 18.4,
+    "grPressureKgCm2": 12.8,
+    "grClearanceCm": 41,
+    "maxRdSpeedKmh": 48,
+    "maxXCtySpeedKmh": "NA",
+    "fuelCapacityLits": "NA",
+    "opRangeKm": 350,
+    "maxSlopePct": 60,
+    "verticalObsM": 0.9,
+    "ditchXingM": 2.44,
+    "fordingWithPrepM": 1.43,
+    "hastyFordingM": 1.43,
+    "nbc": "No",
+    "typesOfAmmo": "APFSDS, APDS, HESH, SMK",
+    "maxMainGunRds": 44,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 12.7",
+    "niVision": "No",
+    "lrf": "No"
+   },
+   "note": "Gr pressure printed 12.8 kg/cm2, probably a misprint.",
+   "uncertain": true,
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "merkava-mk2",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "Merkava Mk2",
+   "type": "tank-gun",
+   "calibre": "125 (SB)",
+   "crew": 4,
+   "page": "121-122",
+   "characteristics": {
+    "ctyOfOrigin": "Israel",
+    "cbtWtTons": 65,
+    "widthM": 3.7,
+    "powerToWtHpPerTon": 15,
+    "grPressureKgCm2": 0.9,
+    "grClearanceCm": 53,
+    "maxRdSpeedKmh": 60,
+    "maxXCtySpeedKmh": "NA",
+    "fuelCapacityLits": 900,
+    "opRangeKm": 500,
+    "maxSlopePct": 70,
+    "verticalObsM": 1.05,
+    "ditchXingM": 3.5,
+    "fordingWithPrepM": 1.38,
+    "hastyFordingM": 1.38,
+    "nbc": "Yes",
+    "typesOfAmmo": "APFSDS-T, HEAT, HESH",
+    "maxMainGunRds": 48,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "2xMGs 7.63",
+    "niVision": "Yes",
+    "lrf": "Yes"
+   },
+   "note": "Main armt printed '125 (SB)' and AA armt '2xMGs 7.63' - as printed.",
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "mbt-90",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "MBT 90",
+   "type": "tank-gun",
+   "calibre": "125 mm",
+   "crew": 3,
+   "page": "123-124",
+   "characteristics": {
+    "ctyOfOrigin": "Russia",
+    "cbtWtTons": 46.5,
+    "powerToWtHpPerTon": 18.68,
+    "grPressureKgCm2": 0.87,
+    "maxRdSpeedKmh": 65,
+    "fuelCapacityLits": 1600,
+    "opRangeKm": "550-650",
+    "maxSlopePct": 60,
+    "verticalObsM": 0.8,
+    "ditchXingM": 2.8,
+    "fordingWithPrepM": 5,
+    "hastyFordingM": "NA",
+    "nbc": "Yes",
+    "typesOfAmmo": "APFSDS, HEAT, HE, ATGM, Smk",
+    "maxMainGunRds": 43,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 12.7",
+    "niVision": "TI",
+    "lrf": "Yes"
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "leopard-ii",
+   "side": "own",
+   "section": "Sec 1 - Armr",
+   "name": "Leopard-II",
+   "type": "tank-gun",
+   "calibre": "105 mm",
+   "crew": 4,
+   "page": "123-124",
+   "characteristics": {
+    "ctyOfOrigin": "Germany",
+    "cbtWtTons": 48.98,
+    "widthM": 3.63,
+    "powerToWtHpPerTon": 15.89,
+    "grPressureKgCm2": 0.88,
+    "grClearanceCm": 41.9,
+    "maxRdSpeedKmh": 48,
+    "fuelCapacityLits": 1732,
+    "opRangeKm": 499,
+    "maxSlopePct": 60,
+    "verticalObsM": 0.915,
+    "ditchXingM": 2.59,
+    "fordingWithPrepM": 1.219,
+    "hastyFordingM": 1.29,
+    "nbc": "No",
+    "typesOfAmmo": "HEAT, APFSDS, APFSDS, APERS-THE, HE, SMK",
+    "maxMainGunRds": 54,
+    "coaxMg": "MG 7.62",
+    "aaArmt": "MG 50''/12.7",
+    "niVision": "No",
+    "lrf": "No"
+   },
+   "note": "Main armt cal printed 105 mm.",
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "105-mm-pack-how",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "105 mm Pack How",
+   "type": "how",
+   "calibre": "105 mm",
+   "rangeM": {
+    "max": 10000
+   },
+   "shellWeightLb": {
+    "HE": 33,
+    "SMK": 33,
+    "ILL": 37,
+    "HEAT": 29
+   },
+   "rof": "Intense 5, Rapid 3, Normal 2, Slow 1, Very Slow .5 rpm",
+   "rofRpm": {
+    "intense": 5,
+    "rapid": 3,
+    "normal": 2,
+    "slow": 1,
+    "verySlow": 0.5
+   },
+   "bridgeClass": 7,
+   "tasks": "CS",
+   "frontageM": 40,
+   "safeDistM": {
+    "battleRear": 200,
+    "battleFlank": 200,
+    "peaceNormal": 550,
+    "peaceReduced": 400
+   },
+   "ammoScaleRpg": {
+    "unit": "Fd/Mtn Regt (18x105/122mm Hows / 12x105 mm Pack Hows)",
+    "firstLine": {
+     "HE": 100,
+     "Smk": 12,
+     "Ill": 4,
+     "HEAT/AP": 4,
+     "Total": 120
+    },
+    "secondLine": {
+     "HE": 50,
+     "Smk": 6,
+     "Misc": 4,
+     "Total": 60
+    },
+    "note": "1st line Smk incl 2 rds coloured Smk; 2nd line Misc = 2xHEAT and 2xIll rd"
+   },
+   "page": "209, 213, 215",
+   "note": "Can be towed with trk 1 ton or broken into 14 mule loads. Frontage/safe dist row reads '105 mm How/ Pack How'.",
+   "planRangeM": {
+    "max": 10000,
+    "plan": 9000
+   },
+   "symbolKeys": [
+    "15110901"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "105-mm-how",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "105 mm How",
+   "type": "how",
+   "calibre": "105 mm",
+   "rangeM": {
+    "max": 11000
+   },
+   "shellWeightLb": {
+    "HE": 33,
+    "SMK": 33,
+    "ILL": 37,
+    "HEAT": 29
+   },
+   "rof": "Intense 5, Rapid 3, Normal 2, Slow 1, Very Slow 5 (as printed) rpm",
+   "rofRpm": {
+    "intense": 5,
+    "rapid": 3,
+    "normal": 2,
+    "slow": 1
+   },
+   "bridgeClass": 9,
+   "tasks": "CS",
+   "frontageM": 40,
+   "safeDistM": {
+    "battleRear": 200,
+    "battleFlank": 200,
+    "peaceNormal": 550,
+    "peaceReduced": 400
+   },
+   "ammoScaleRpg": {
+    "unit": "Fd/Mtn Regt (18x105/122mm Hows)",
+    "firstLine": {
+     "HE": 100,
+     "Smk": 12,
+     "Ill": 4,
+     "HEAT/AP": 4,
+     "Total": 120
+    },
+    "secondLine": {
+     "HE": 50,
+     "Smk": 6,
+     "Misc": 4,
+     "Total": 60
+    }
+   },
+   "page": "210, 213, 215",
+   "uncertain": true,
+   "note": "Very Slow rate printed as '5' (likely .5, as for the Pack How); left out of rofRpm.",
+   "planRangeM": {
+    "max": 11000,
+    "plan": 9900
+   },
+   "symbolKeys": [
+    "15110901"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "122-mm-how",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "122 mm How",
+   "type": "how",
+   "calibre": "122 mm",
+   "rangeM": {
+    "max": 11800
+   },
+   "shellWeightLb": {
+    "HE": 48,
+    "SMK": 50,
+    "ILL": 49,
+    "HEAT": 49
+   },
+   "rof": "Intense 5, Rapid 3, Normal 2, Slow 1, Very Slow 5 (as printed) rpm",
+   "rofRpm": {
+    "intense": 5,
+    "rapid": 3,
+    "normal": 2,
+    "slow": 1
+   },
+   "bridgeClass": 14,
+   "tasks": "CS",
+   "frontageM": 66,
+   "safeDistM": {
+    "battleRear": 300,
+    "battleFlank": 300,
+    "peaceNormal": 950,
+    "peaceReduced": 550
+   },
+   "ammoScaleRpg": {
+    "unit": "Fd/Mtn Regt (18x105/122mm Hows)",
+    "firstLine": {
+     "HE": 100,
+     "Smk": 12,
+     "Ill": 4,
+     "HEAT/AP": 4,
+     "Total": 120
+    },
+    "secondLine": {
+     "HE": 50,
+     "Smk": 6,
+     "Misc": 4,
+     "Total": 60
+    }
+   },
+   "page": "210, 213, 215",
+   "uncertain": true,
+   "note": "Very Slow rate printed as '5' (likely .5); left out of rofRpm.",
+   "planRangeM": {
+    "max": 11800,
+    "plan": 10620
+   },
+   "symbolKeys": [
+    "15110902"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "122-mm-how-d-30",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "122 mm How D-30",
+   "type": "how",
+   "calibre": "122 mm",
+   "rangeM": {
+    "max": 15300
+   },
+   "shellWeightLb": {
+    "HE": 21.76,
+    "ILL": 21
+   },
+   "rof": "Intense 5, Rapid 3, Normal 2, Slow 1, Very Slow .5 rpm",
+   "rofRpm": {
+    "intense": 5,
+    "rapid": 3,
+    "normal": 2,
+    "slow": 1,
+    "verySlow": 0.5
+   },
+   "bridgeClass": 10,
+   "tasks": "CS",
+   "frontageM": 55,
+   "safeDistM": {
+    "battleRear": 250,
+    "battleFlank": 250,
+    "peaceNormal": 800,
+    "peaceReduced": 400
+   },
+   "ammoScaleRpg": {
+    "unit": "Fd (18 x 122 mm How D-30)",
+    "firstLine": {
+     "HE (Normal)": 80,
+     "HE (Base Bleed)": 20,
+     "Smk": 12,
+     "Ill": 4,
+     "HEAT/AP": 4,
+     "Total": 120
+    },
+    "secondLine": {
+     "HE": 60
+    },
+    "note": "1st line HE printed as 80 (Normal) + 20 (Base Bleed); 2nd line Smk/Misc/Total printed '-'"
+   },
+   "page": "210, 213, 215",
+   "note": "Shell wt column is headed (lbs); D-30 figures printed 21.76 / 21. Comp of echs p 216 lists '122mmD30 9 Ton' (tower).",
+   "planRangeM": {
+    "max": 15300,
+    "plan": 13770
+   },
+   "symbolKeys": [
+    "15110902"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "155-mm-how",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "155 mm How",
+   "type": "how",
+   "calibre": "155 mm",
+   "rangeM": {
+    "max": 14600
+   },
+   "shellWeightLb": {
+    "HE": 95,
+    "SMK/ILL": 99
+   },
+   "rof": "Intense 2, Rapid 1.5, Normal 1, Slow 2/3, Very Slow 1/3 rpm",
+   "rofRpm": {
+    "intense": 2,
+    "rapid": 1.5,
+    "normal": 1,
+    "slow": 0.667,
+    "verySlow": 0.333
+   },
+   "bridgeClass": 24,
+   "tasks": "Gen Sp, CB",
+   "frontageM": 55,
+   "safeDistM": {
+    "battleRear": 400,
+    "battleFlank": 400,
+    "peaceNormal": 950,
+    "peaceReduced": 550
+   },
+   "ammoScaleRpg": {
+    "unit": "Med Regt (18x155 mm Hows Shining Barrel)",
+    "firstLine": {
+     "HE": 62,
+     "Smk": 4,
+     "Ill": 4,
+     "Total": 70
+    },
+    "secondLine": {
+     "HE": 33,
+     "Misc": 2,
+     "Total": 35
+    },
+    "note": "2nd line Misc = Ill rds"
+   },
+   "page": "210, 213, 215",
+   "uncertain": true,
+   "note": "Details table: '155mm How', Towed by 5 ton, Br Cl (Towed) 24. The frontage/safe dist row used here is '155 mm How M114' and the ammo row '18x155 mm Hows Shining Barrel'; matching these to this table row is by name only.",
+   "planRangeM": {
+    "max": 14600,
+    "plan": 13140
+   },
+   "symbolKeys": [
+    "15110902"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "155-mm-how-towed-m198",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "155 mm How (Towed) M198",
+   "type": "how",
+   "calibre": "155 mm",
+   "frontageM": 55,
+   "safeDistM": {
+    "battleRear": 600,
+    "battleFlank": 400,
+    "peaceNormal": 950,
+    "peaceReduced": 550
+   },
+   "ammoScaleRpg": {
+    "unit": "Med Regt (18 x 155mm How (Towed) M198)",
+    "firstLine": {
+     "HE": 80,
+     "Smk": 6,
+     "Ill": 2,
+     "HEAT/AP": 2,
+     "Total": 90
+    },
+    "secondLine": {
+     "HE": 40,
+     "Smk": 3,
+     "Misc": 2,
+     "Total": 45
+    },
+    "authFirstLine": {
+     "HE": 60,
+     "ICM": 10,
+     "RAP": 20,
+     "Smk": 6,
+     "Ill": 4,
+     "Total": 100
+    }
+   },
+   "page": "203, 213-215",
+   "note": "No range / rate given in Details of Eqpt. Frontage row '155 mm How M198/M109 A2/A5 (SP)'. Held 18 in Armd Div Arty Med Regt (Towed).",
+   "symbolKeys": [
+    "15110902"
+   ]
+  },
+  {
+   "id": "130-mm-gun",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "130 mm Gun",
+   "type": "gun",
+   "calibre": "130 mm",
+   "rangeM": {
+    "max": 27490
+   },
+   "shellWeightLb": {
+    "HE": 101
+   },
+   "rof": "Intense 2, Rapid 1.5, Normal 1, Slow 2/3, Very Slow 1/3 rpm",
+   "rofRpm": {
+    "intense": 2,
+    "rapid": 1.5,
+    "normal": 1,
+    "slow": 0.667,
+    "verySlow": 0.333
+   },
+   "bridgeClass": 20,
+   "tasks": "Gen Sp, CB",
+   "frontageM": 45,
+   "safeDistM": {
+    "battleRear": 600,
+    "battleFlank": 400,
+    "peaceNormal": 1400,
+    "peaceReduced": 550
+   },
+   "ammoScaleRpg": {
+    "unit": "Med Regt (18x130mm Guns)",
+    "firstLine": {
+     "HE": 80,
+     "Ill": 10,
+     "HEAT/AP": 10,
+     "Total": 100
+    },
+    "secondLine": {
+     "HE": 40,
+     "Misc": 10,
+     "Total": 50
+    }
+   },
+   "page": "210, 213, 215",
+   "uncertain": true,
+   "note": "Shell wt printed 101 / 74 / 75 against ammo types HE / ILL (three figures, two types). Remarks: 6x6 trk of 8 ton trk. Comp of echs p 216 lists 'Karaz 214-B Gun Tower'.",
+   "planRangeM": {
+    "max": 27490,
+    "plan": 24741
+   },
+   "symbolKeys": [
+    "15110905"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "155-mm-how-sp-m109-a2-a5",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "155 mm How (SP) M109 A2/A5",
+   "type": "how",
+   "calibre": "155 mm",
+   "rangeM": {
+    "maxA2": 16550,
+    "maxA5": 22000
+   },
+   "ammoTypes": "SMK BE, SMK WP, ILL",
+   "rof": "4 rds in first 3 mins, there after, 1 rpm",
+   "bridgeClass": 26,
+   "tasks": "Gen Sp, CB",
+   "weightKg": 24848,
+   "frontageM": 55,
+   "safeDistM": {
+    "battleRear": 600,
+    "battleFlank": 400,
+    "peaceNormal": 950,
+    "peaceReduced": 550
+   },
+   "ammoScaleRpg": {
+    "unit": "Med Regt (18 x 155mm How (SP) M109 A2/A5)",
+    "firstLine": {
+     "HE": 90,
+     "Smk": 6,
+     "Ill": 4,
+     "Total": 100
+    },
+    "secondLine": {
+     "HE": 40,
+     "Misc": 10,
+     "Total": 50
+    },
+    "authFirstLine": {
+     "HE": 70,
+     "ICM": 14,
+     "RAP": 22,
+     "Smk": 6,
+     "Ill": 4,
+     "Total": 120
+    },
+    "note": "Auth 1st line items as printed sum to 116, printed total 120"
+   },
+   "page": "210, 213, 215",
+   "planRangeM": {
+    "max": 16550,
+    "plan": 14895
+   },
+   "symbolKeys": [
+    "15110902"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "8-in-how-towed",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "8 in How (Towed)",
+   "type": "how",
+   "calibre": "8 in",
+   "rangeM": {
+    "max": 16926
+   },
+   "shellWeightLb": {
+    "HE": 200
+   },
+   "rof": "Intense 1.5, Rapid 1, Normal .5, Slow 1/3, Very Slow 1/6 rpm",
+   "rofRpm": {
+    "intense": 1.5,
+    "rapid": 1,
+    "normal": 0.5,
+    "slow": 0.333,
+    "verySlow": 0.167
+   },
+   "bridgeClass": 24,
+   "tasks": "Gen Sp, CB",
+   "frontageM": 65,
+   "safeDistM": {
+    "battleRear": 600,
+    "battleFlank": 750,
+    "peaceNormal": 1850,
+    "peaceReduced": 950
+   },
+   "ammoScaleRpg": {
+    "unit": "Hy Regt (12x8 inch Hows (SP)/Towed)",
+    "firstLine": {
+     "HE": 60,
+     "Total": 60
+    },
+    "secondLine": {
+     "HE": 30,
+     "Total": 30
+    }
+   },
+   "page": "211, 214, 215",
+   "note": "Hy eqpt (p 211): Time into action printed 'action.5 to 6 hrs' (read either as 5 to 6 hrs with a stray full stop or as .5 to 6 hrs; uncertain) according to nature of gr. Max no of rds fired consecutively without cooling is 30.",
+   "planRangeM": {
+    "max": 16926,
+    "plan": 15233
+   },
+   "symbolKeys": [
+    "15110903"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "155-mm-gun",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "155 mm Gun",
+   "type": "gun",
+   "calibre": "155 mm",
+   "rangeM": {
+    "max": 23514
+   },
+   "shellWeightLb": {
+    "HE": 95
+   },
+   "ammoTypes": "HE, AP",
+   "rof": "Intense 2, Rapid 1.5, Normal 1, Slow 2/3, Very Slow 1/3 rpm",
+   "rofRpm": {
+    "intense": 2,
+    "rapid": 1.5,
+    "normal": 1,
+    "slow": 0.667,
+    "verySlow": 0.333
+   },
+   "bridgeClass": "(Towed) 24, (SP) 30",
+   "tasks": "Gen Sp, CB",
+   "frontageM": 55,
+   "safeDistM": {
+    "battleRear": 600,
+    "battleFlank": 400,
+    "peaceNormal": 950,
+    "peaceReduced": 550
+   },
+   "ammoScaleRpg": {
+    "unit": "Hy Regt (12x155 mm Guns)",
+    "firstLine": {
+     "HE": 80,
+     "Smk": 6,
+     "Ill": 2,
+     "HEAT/AP": 2,
+     "Total": 90
+    },
+    "secondLine": {
+     "HE": 40,
+     "Smk": 3,
+     "Misc": 2,
+     "Total": 45
+    }
+   },
+   "page": "211, 214, 215",
+   "note": "Remarks column: '8 ton.' Time into action printed 'action.5 to 6 hrs' (5 to 6 hrs with a stray full stop, or .5 to 6 hrs; uncertain) according to nature of gr; max 30 rds consecutively without cooling (p 211). Br Cl column: '(Towed) 24' on the row's first line and '(SP) 30' on its second line; the 8 in How (SP) M110 A2 row below has no Br Cl of its own, so '(SP) 30' may be that eqpt's figure (no SP 155 mm Gun is listed anywhere in Sec 2).",
+   "planRangeM": {
+    "max": 23514,
+    "plan": 21162
+   },
+   "symbolKeys": [
+    "15110905"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down.",
+   "uncertain": true
+  },
+  {
+   "id": "8-in-how-sp-m110-a2",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "8 in How (SP) M110 A2",
+   "type": "how",
+   "calibre": "8 in",
+   "rangeM": {
+    "max": 20940,
+    "maxRap": 27432
+   },
+   "ammoTypes": "HE",
+   "rof": "4 rds in first 3 mins, thereafter, 1 rd per 2 mins",
+   "frontageM": 65,
+   "safeDistM": {
+    "battleRear": 600,
+    "battleFlank": 750,
+    "peaceNormal": 1850,
+    "peaceReduced": 950
+   },
+   "ammoScaleRpg": {
+    "unit": "Hy Regt (12x8 inch Hows (SP)/Towed)",
+    "firstLine": {
+     "HE": 60,
+     "Total": 60
+    },
+    "secondLine": {
+     "HE": 30,
+     "Total": 30
+    }
+   },
+   "page": "211, 214, 215",
+   "note": "27,432 m with RAP. Comp of echs (p 217) lists ammo veh M992 (SP). No Br Cl printed on its own row; the '(SP) 30' printed on the 155mm Gun row above may belong to it (uncertain). Remarks column prints '8 in How (SP)'.",
+   "planRangeM": {
+    "max": 20940,
+    "plan": 18846
+   },
+   "symbolKeys": [
+    "15110903"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "120-mm-mor",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "120 mm Mor",
+   "type": "mortar",
+   "calibre": "120 mm",
+   "rangeM": {
+    "max": 6747
+   },
+   "shellWeightLb": {
+    "HE/SMK": 29
+   },
+   "ammoTypes": "HE SMK",
+   "rof": "Intense 5, Rapid 3, Normal 2 rpm",
+   "rofRpm": {
+    "intense": 5,
+    "rapid": 3,
+    "normal": 2
+   },
+   "tasks": "Gen Sp, Ctr Mor",
+   "frontageM": 45,
+   "safeDistM": {
+    "battleRear": 550,
+    "battleFlank": 550,
+    "peaceNormal": 850,
+    "peaceReduced": 850
+   },
+   "page": "212, 215",
+   "uncertain": true,
+   "note": "Two lines printed: 6,747 m with 29 lb and 5,669 m with 38 lb; the book does not say which bomb or variant each is. Mors now held with Inf Bns.",
+   "planRangeM": {
+    "max": 6747,
+    "plan": 6072
+   },
+   "symbolKeys": [
+    "15111403"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "122-mm-mbrl",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "122 mm MBRL",
+   "type": "mbrl",
+   "calibre": "122 mm",
+   "rangeM": {
+    "max": 20580
+   },
+   "shellWeightLb": {
+    "HE": 40
+   },
+   "rof": "Loaded RL can fire a salvo of 30 rkts in 15\". Reload time is 10 mins.",
+   "bridgeClass": 18,
+   "tasks": "Gen Sp",
+   "frontageM": 50,
+   "safeDistM": {
+    "battleRear": 1000,
+    "battleFlank": 1000,
+    "peaceNormal": 2000,
+    "peaceReduced": 1000
+   },
+   "ammoScaleRpg": {
+    "unit": "122mm MBRL Bty (6x122 mm MBRL)",
+    "firstLine": {
+     "HE": 60,
+     "Total": 60
+    },
+    "secondLine": {
+     "HE": 30,
+     "Total": 30
+    },
+    "note": "2 rds per tube"
+   },
+   "page": "212, 214, 215",
+   "note": "Mtd on 4/5 ton. Can fire each rkt singly or in salvo.",
+   "planRangeM": {
+    "max": 20580,
+    "plan": 18522
+   },
+   "symbolKeys": [
+    "15111602"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "300-mm-mlrs-a-100-a100-ia",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "300 mm MLRS A-100 (A100-IA)",
+   "type": "mbrl",
+   "calibre": "300 mm",
+   "rangeM": {
+    "min": 40000,
+    "max": 120000
+   },
+   "rocketWeightKg": 200,
+   "ammoTypes": "HE, FAE, Cargo",
+   "rof": "Loaded RL can fire a salvo of 10 rkts in 60\".",
+   "tasks": "Intd",
+   "tubes": 10,
+   "frontageM": "400x400",
+   "rockets": [
+    {
+     "name": "A100-111",
+     "rangeKm": "40-80"
+    },
+    {
+     "name": "A100-311",
+     "rangeKm": "40-120"
+    }
+   ],
+   "ammoScaleRpg": {
+    "unit": "MLRS A-100 (12 x Launchers, 10 tubes per launcher)",
+    "firstLine": {
+     "HE": 108,
+     "Total": 108,
+     "note": "108 x rkts (3 per tube)"
+    },
+    "secondLine": {
+     "HE": 54,
+     "Total": 54
+    },
+    "note": "360 anti tk/anti per bomblets in each rkt. Area coverage of each rkt is 400x400 ms."
+   },
+   "page": "206-207, 212, 214, 215",
+   "note": "Origin China. Mounted on Trk 45 ton 8 x 8 (MLV). Frontage table: 400x400 for MLRS A-100, safe dists '-'.",
+   "planRangeM": {
+    "min": 40000,
+    "max": 120000,
+    "plan": 108000
+   },
+   "symbolKeys": [
+    "15111603"
+   ],
+   "planRangeNote": "planRangeM.plan = planning range, 90 percent of max range (p 212 note), rounded down."
+  },
+  {
+   "id": "wpn-loc-radar-present-eqpt",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "Wpn Loc Radar (present eqpt)",
+   "type": "radar",
+   "rangeM": {
+    "max": 50000
+   },
+   "page": "205, 226, 227",
+   "note": "Locates arty guns/mors/msls up to 50 kms with an accuracy of 10 ms or 1 percent of the accuracy of the loc wpn (as printed), whichever is greater. Virtually unjammable; can simultaneously loc 99 tgts; less affected by adverse weather. Loc Regt Radar Tp holds 2; ANTPQ-36 being replaced by SLC-2. Depl day 2-3 hrs, ni 3-5 hrs.",
+   "planRangeM": {
+    "max": 50000
+   },
+   "symbolKeys": [
+    "15220301"
+   ]
+  },
+  {
+   "id": "sound-rg-base-std-long",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "Sound Rg Base (Std Long)",
+   "type": "sound-ranging",
+   "baseLengthM": 6752,
+   "rangeM": {
+    "accurate100m": 10128
+   },
+   "page": "226, 227",
+   "note": "Locates hostile guns to 100 yds or 92 ms. 100 ms accuracy up to a depth of 10128 ms. 6 to 8 hrs to depl excl travelling time (p 226); depl timings p 227 day 6-8, ni 8-12 hrs. Mtn terrain, very fast wind, B fd noises and simultaneous firing by many en guns reduce its eff.",
+   "symbolKeys": [
+    "15220302"
+   ]
+  },
+  {
+   "id": "sound-rg-base-std-short",
+   "side": "own",
+   "section": "Sec 2 - Arty",
+   "name": "Sound Rg Base (Std Short)",
+   "type": "sound-ranging",
+   "baseLengthM": 2026,
+   "rangeM": {
+    "accurate100m": 5064
+   },
+   "page": "226, 227",
+   "note": "100 ms accuracy up to a depth of 5064 ms. 2 to 4 hrs to depl excl travelling time; depl timings p 227 day 2-4, ni 4-6 hrs.",
+   "symbolKeys": [
+    "15220302"
+   ]
+  },
+  {
+   "id": "rbs-70",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "RBS-70",
+   "type": "sam",
+   "page": "317",
+   "rangeM": {
+    "min": 300,
+    "slant": 5000,
+    "ceiling": 3000
+   },
+   "iff": "Yes",
+   "ammo": "HE (Impact/Proximity)",
+   "weight": "23.5 kgs (Complete Wpn)",
+   "traction": "Dodge/APC",
+   "brCl": "3",
+   "guidance": "Laser Beam Riding and ni cap",
+   "planRangeM": {
+    "min": 300,
+    "eff": 5000,
+    "ceiling": 3000
+   },
+   "symbolKeys": [
+    "15111101"
+   ]
+  },
+  {
+   "id": "rbs-70-bolide",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "RBS-70 BOLIDE",
+   "type": "sam",
+   "page": "317, 319",
+   "rangeM": {
+    "min": 300,
+    "slant": 8000,
+    "ceiling": 5000
+   },
+   "iff": "Yes",
+   "ammo": "HE (Impact/Proximity)",
+   "weight": "23.5 kgs (Complete Wpn)",
+   "traction": "Dodge/APC",
+   "brCl": "3",
+   "guidance": "Laser Beam Riding and ni cap",
+   "ammoScale": {
+    "unit": "RBS-70 (24 x RBS 70 BOLIDE)",
+    "firstLineMslsPerLauncher": 6,
+    "secLineMslsPerLauncher": 3
+   },
+   "note": "Page 319 sec line also prints a '3' in the AP column of the RBS-70 row - probably misaligned.",
+   "planRangeM": {
+    "min": 300,
+    "eff": 8000,
+    "ceiling": 5000
+   },
+   "symbolKeys": [
+    "15111101"
+   ]
+  },
+  {
+   "id": "stinger",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "Stinger",
+   "type": "sam",
+   "page": "317, 319",
+   "rangeM": {
+    "slant": 4000,
+    "ceiling": 3000
+   },
+   "iff": "Yes",
+   "ammo": "HE",
+   "weight": "Wpn - 15.8 kg; Msl - 12.65 kg",
+   "traction": "Man ptbl/APC",
+   "guidance": "IR Homing/Optical Aiming",
+   "ammoScale": {
+    "unit": "IR SAM (36x Stinger/Anza Mk-II/SA-16 Msl Launcher)",
+    "firstLineMslsPerLauncher": 10,
+    "secLineMslsPerLauncher": 5
+   },
+   "note": "Slant range printed '4000+'.",
+   "planRangeM": {
+    "eff": 4000,
+    "ceiling": 3000
+   },
+   "symbolKeys": [
+    "15111101"
+   ]
+  },
+  {
+   "id": "fn-6",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "FN-6",
+   "type": "sam",
+   "page": "317",
+   "rangeM": {
+    "slant": 5500,
+    "ceiling": 4000
+   },
+   "iff": "No",
+   "ammo": "HE Impact/Proximity",
+   "traction": "Man ptbl",
+   "guidance": "IR Homing/Heat Seeking",
+   "note": "Printed in km: slant 5.5 KM, alt 4 KM.",
+   "planRangeM": {
+    "eff": 5500,
+    "ceiling": 4000
+   },
+   "symbolKeys": [
+    "15111101"
+   ]
+  },
+  {
+   "id": "qw-ii",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "QW-II",
+   "type": "sam",
+   "page": "317",
+   "rangeM": {
+    "slant": 5000,
+    "ceiling": 4000
+   },
+   "iff": "No",
+   "ammo": "HE Impact",
+   "traction": "Man ptbl",
+   "guidance": "IR Homing/Heat Seeking",
+   "note": "Printed in km: slant 5 KM, alt 4 KM.",
+   "planRangeM": {
+    "eff": 5000,
+    "ceiling": 4000
+   },
+   "symbolKeys": [
+    "15111101"
+   ]
+  },
+  {
+   "id": "anza-mk-ii",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "ANZA MK-II",
+   "type": "sam",
+   "page": "317, 319",
+   "rangeM": {
+    "slant": 5000,
+    "ceiling": 4000
+   },
+   "iff": "No",
+   "ammo": "HE Impact",
+   "traction": "Man ptbl",
+   "guidance": "IR Homing/Heat Seeking",
+   "ammoScale": {
+    "unit": "IR SAM (36x Stinger/Anza Mk-II/SA-16 Msl Launcher)",
+    "firstLineMslsPerLauncher": 10,
+    "secLineMslsPerLauncher": 5
+   },
+   "note": "Printed in km: slant 5 KM, alt 4 KM. SA-16 appears only in the page 319 ammo scale (no characteristics given).",
+   "planRangeM": {
+    "eff": 5000,
+    "ceiling": 4000
+   },
+   "symbolKeys": [
+    "15111101"
+   ]
+  },
+  {
+   "id": "35-mm-oerlikon",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "35 mm Oerlikon",
+   "type": "ad-gun",
+   "calibre": "35 mm",
+   "page": "317, 319",
+   "rangeM": {
+    "slant": 4000,
+    "ceiling": 3000
+   },
+   "iff": "Yes",
+   "ammo": "HEI, SAHEI-T, HEIT, TP-I, TP",
+   "weight": "0.55 kg (ammo)",
+   "rof": "1100 rpm",
+   "traction": "2.5/3 ton",
+   "guidance": "Radar Con",
+   "ammoScale": {
+    "unit": "RCG (12x35 mm Oerlikon Gun)",
+    "firstLineRpg": {
+     "HE/HEI": 1242,
+     "HEI-T": 828,
+     "SAPHEI-T": 90
+    },
+    "secLineRpg": {
+     "HE/HEI": 621,
+     "HEI-T": 414,
+     "SRPGI-T": 45
+    }
+   },
+   "note": "Nature: RCG (radar con gun).",
+   "planRangeM": {
+    "eff": 4000,
+    "ceiling": 3000
+   },
+   "symbolKeys": [
+    "15110504"
+   ]
+  },
+  {
+   "id": "14-5-mm-quad",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "14.5 mm Quad",
+   "type": "ad-gun",
+   "calibre": "14.5 mm",
+   "page": "317, 319",
+   "rangeM": {
+    "slant": 2300,
+    "ceiling": 2000
+   },
+   "iff": "No",
+   "ammo": "API, AP I-T",
+   "weight": "0.188 kg / 0.184 kg (ammo)",
+   "rof": "550 per barrel",
+   "traction": "2.5/3 ton; Wt 2100 kg",
+   "brCl": "3/5",
+   "guidance": "Optical Aiming",
+   "ammoScale": {
+    "unit": "Janbaz AD Bty (4x14.5 mm Gun)",
+    "firstLineRpg": {
+     "API": 3200,
+     "API-T": 1600
+    },
+    "secLineRpg": {
+     "API": 1600,
+     "API-T": 800
+    }
+   },
+   "note": "Nature: MOG.",
+   "planRangeM": {
+    "eff": 2300,
+    "ceiling": 2000
+   },
+   "symbolKeys": [
+    "15110501"
+   ]
+  },
+  {
+   "id": "37-mm",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "37 mm",
+   "type": "ad-gun",
+   "calibre": "37 mm",
+   "page": "317, 319",
+   "rangeM": {
+    "slant": 3500,
+    "ceiling": 3000
+   },
+   "iff": "No",
+   "ammo": "HE-T, AP-T",
+   "weight": "1.5 kg / 1.6 kg (ammo)",
+   "rof": "160-180 per barrel",
+   "traction": "2.5/3 ton; Wt 2260 kg",
+   "brCl": "3/5",
+   "guidance": "Optical Aiming",
+   "ammoScale": {
+    "unit": "Lt AD (GM) Regt (12x37 mm Gun (Twin)); same for Lt AD (GM/SP) Regt and Janbaz AD Bty (6x 37 mm Gun)",
+    "firstLineRpg": {
+     "HE/HEI": 1092,
+     "AP": 28
+    },
+    "secLineRpg": {
+     "HE/HEI": 546,
+     "AP": 14
+    }
+   },
+   "note": "Nature: MOG. Lt AD (GM) Regt SAM launchers: 1st line 4 msls, sec line 2 msls per launcher (page 319).",
+   "planRangeM": {
+    "eff": 3500,
+    "ceiling": 3000
+   },
+   "symbolKeys": [
+    "15110502"
+   ]
+  },
+  {
+   "id": "57-mm",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "57 mm",
+   "type": "ad-gun",
+   "calibre": "57 mm",
+   "page": "317, 319",
+   "rangeM": {
+    "slant": 6000,
+    "ceiling": 5000
+   },
+   "iff": "No",
+   "ammo": "HE-T, AP-T",
+   "weight": "6.45 kg / 6.47 kg (ammo)",
+   "rof": "Auto 120; Single 50-60",
+   "traction": "5 ton; Wt 4750 kg",
+   "brCl": "8",
+   "guidance": "Radar/Computer",
+   "ammoScale": {
+    "unit": "Med AD Regt (24x57 mm Gun)",
+    "firstLineRpg": {
+     "HE/HEI": 392,
+     "AP": 8
+    },
+    "secLineRpg": {
+     "HE/HEI": 196,
+     "AP": 4
+    }
+   },
+   "note": "Nature: Med AD. Every 3rd rd of Med ammo is fitted with prox fuze (page 310).",
+   "planRangeM": {
+    "eff": 6000,
+    "ceiling": 5000
+   },
+   "symbolKeys": [
+    "15110503"
+   ]
+  },
+  {
+   "id": "type-513",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "Type 513",
+   "type": "radar",
+   "page": "318",
+   "pickUpRange": {
+    "min": "1 Km",
+    "max": "400Kms"
+   },
+   "origin": "China",
+   "rf": "86+12 mc/sec",
+   "if": "10+0.1 mc/sec",
+   "coverage": {
+    "elevation": "4o to 17o",
+    "bg": "6000 Rukhs"
+   },
+   "accuracy": {
+    "bg": "+54 Rukhs",
+    "range": "+1Km",
+    "ht": "2% of tgt ht"
+   },
+   "travellingHtM": 3.2,
+   "wtTons": 9.1,
+   "note": "The '+' signs are plus/minus in the original.",
+   "symbolKeys": [
+    "15220303"
+   ]
+  },
+  {
+   "id": "type-514",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "Type 514",
+   "type": "radar",
+   "page": "318",
+   "pickUpRange": {
+    "min": "3 Kms",
+    "max": "470Kms"
+   },
+   "origin": "China",
+   "rf": "95+15 mc/sec",
+   "if": "10 mc/sec",
+   "coverage": {
+    "elevation": "20,000Ms for 330 Kms",
+    "bg": "360o"
+   },
+   "accuracy": {
+    "bg": "+2o",
+    "range": "+1 Km"
+   },
+   "symbolKeys": [
+    "15220303"
+   ]
+  },
+  {
+   "id": "laads",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "LAADS",
+   "type": "radar",
+   "page": "318",
+   "pickUpRange": {
+    "min": "2Kms",
+    "max": "30/60 Kms"
+   },
+   "origin": "USA",
+   "rf": "L Band",
+   "coverage": {
+    "bg": "360o"
+   },
+   "accuracy": {
+    "bg": "1.50o",
+    "range": "+250Ms"
+   },
+   "travellingHtM": 1.76,
+   "travellingLengthM": 3.42,
+   "wtTons": 9.1,
+   "symbolKeys": [
+    "15220303"
+   ]
+  },
+  {
+   "id": "giraffe",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "Giraffe",
+   "type": "radar",
+   "page": "318",
+   "pickUpRange": {
+    "min": ".8/1.6 Kms",
+    "max": "20/40 Kms"
+   },
+   "origin": "Sweden",
+   "rf": "C Band",
+   "coverage": {
+    "elevation": "6000 Ms",
+    "bg": "360o"
+   },
+   "travellingHtM": 3.4,
+   "travellingLengthM": 9.4,
+   "symbolKeys": [
+    "15220303"
+   ]
+  },
+  {
+   "id": "sky-guard",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "Sky Guard",
+   "type": "radar",
+   "page": "318",
+   "pickUpRange": {
+    "max": "17Kms"
+   },
+   "origin": "Italy",
+   "rf": "X Band",
+   "coverage": {
+    "bg": "360o"
+   },
+   "wtTons": 5.5,
+   "symbolKeys": [
+    "15220303"
+   ]
+  },
+  {
+   "id": "fcs-702a",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "FCS 702A",
+   "type": "radar",
+   "page": "318",
+   "pickUpRange": {
+    "max": "50 Kms"
+   },
+   "origin": "China",
+   "rf": "C & X BAND",
+   "coverage": {
+    "elevation": "-50 to+1450 Rukhs",
+    "bg": "6000 Rukhs"
+   },
+   "accuracy": {
+    "bg": "+1.6 Rukhs",
+    "range": "+10 MS",
+    "ht": "1.8 Rukhs"
+   },
+   "travellingHtM": 3.5,
+   "travellingLengthM": 6.7,
+   "wtTons": 7.5,
+   "note": "Serial numbers on page 318 jump from 5 to 7 (no serial 6).",
+   "symbolKeys": [
+    "15220303"
+   ]
+  },
+  {
+   "id": "saab-mfi-17",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "SAAB MFI-17",
+   "type": "fixed-wing",
+   "table": "Army Avn Fixed Wing Ac",
+   "country": "Sweden/Pakistan",
+   "cruiseSpeedKmph": 200,
+   "ceilingM": {
+    "svc": 5100
+   },
+   "rangeKm": 500,
+   "load": "1 x Passenger (P) Plus 100 kgs or 1P in baggage compartment",
+   "roles": "Trg (T), Obsn (O), Recce (R), Liaison (L), FAC (AB), Aerial arty shoots (AS)",
+   "page": "706"
+  },
+  {
+   "id": "y-12",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Y-12",
+   "type": "fixed-wing",
+   "table": "Army Avn Fixed Wing Ac",
+   "country": "China",
+   "cruiseSpeedKmph": 285,
+   "ceilingM": {
+    "svc": 7000
+   },
+   "rangeKm": 1250,
+   "load": "18 P",
+   "roles": "L, Tpt (T)",
+   "page": "706"
+  },
+  {
+   "id": "cessna-citation-v",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Cessna Citation V",
+   "type": "fixed-wing",
+   "table": "Army Avn Fixed Wing Ac",
+   "country": "USA",
+   "cruiseSpeedKmph": 780,
+   "ceilingM": {
+    "svc": 13600
+   },
+   "rangeKm": 3600,
+   "load": "7 P",
+   "roles": "L (Executive Jet ac)",
+   "page": "706"
+  },
+  {
+   "id": "king-air-b-350",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "King Air B 350",
+   "type": "fixed-wing",
+   "table": "Army Avn Fixed Wing Ac",
+   "country": "USA",
+   "cruiseSpeedKmph": 480,
+   "ceilingM": {
+    "svc": 11500
+   },
+   "rangeKm": 2400,
+   "load": "13 P",
+   "roles": "L, T",
+   "page": "706"
+  },
+  {
+   "id": "b-200-beach-craft",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "B 200 Beach Craft",
+   "type": "fixed-wing",
+   "table": "Army Avn Fixed Wing Ac",
+   "country": "USA",
+   "cruiseSpeedKmph": 445,
+   "ceilingM": {
+    "svc": 10600
+   },
+   "rangeKm": 1850,
+   "load": "8 P",
+   "roles": "L, T",
+   "page": "706"
+  },
+  {
+   "id": "th-300c-schweitzer",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "TH-300C Schweitzer",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "USA",
+   "cruiseSpeedKmph": 130,
+   "ceilingM": {
+    "maxSvc": 4500
+   },
+   "rangeKm": 360,
+   "load": "1 Passenger (P)",
+   "roles": "T, O, R",
+   "page": "707"
+  },
+  {
+   "id": "jet-ranger-bell-206",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Jet Ranger Bell 206",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "USA",
+   "cruiseSpeedKmph": 200,
+   "ceilingM": {
+    "maxSvc": 6100
+   },
+   "rangeKm": 450,
+   "load": "4P or 500 kg Internal Load (IL), 1 Laying Cas (LC)",
+   "roles": "O, R, L, Cas Evac (CE)",
+   "page": "707"
+  },
+  {
+   "id": "sa-319b-allouette-iii",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "SA-319B (Allouette III)",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "France",
+   "cruiseSpeedKmph": 165,
+   "ceilingM": {
+    "maxSvc": 6500
+   },
+   "rangeKm": 340,
+   "load": "4 Cbt Tps (CT) or 400 kg IL, 2 LC, 4 Sitting Cas (SC), Max Sling Load (SL) 1150 kg",
+   "roles": "O, R, L, CE",
+   "loadCasEvac": {
+    "internalKg": 950,
+    "slingKg": 1150,
+    "hoistKg": 185,
+    "casSitting": 4,
+    "casLying": 2,
+    "svcCeilingM": 6500,
+    "page": "714",
+    "note": "Load carrying cap depending upon temp and ht; row 'Alouette - III'"
+   },
+   "page": "707, 714"
+  },
+  {
+   "id": "sa-315b-lama",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "SA-315B (Lama)",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "France",
+   "cruiseSpeedKmph": 165,
+   "ceilingM": {
+    "maxSvc": 7000
+   },
+   "rangeKm": 300,
+   "load": "4 CT or 400 kg IL, 1L Cas, 2 SC, Max SL 1150 kg",
+   "roles": "O, R, L, CE",
+   "loadCasEvac": {
+    "internalKg": 950,
+    "slingKg": 1130,
+    "hoistKg": 160,
+    "casSitting": 2,
+    "casLying": 1,
+    "svcCeilingM": 7000,
+    "page": "714",
+    "note": "Load/cas evac table gives sling 1130 kg; p 707 gives Max SL 1150 kg"
+   },
+   "page": "707, 714"
+  },
+  {
+   "id": "ecureuil-a5-350-b3",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Ecureuil A5 350 B3",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "France",
+   "cruiseSpeedKmph": 190,
+   "ceilingM": {
+    "maxSvc": 7500
+   },
+   "rangeKm": 600,
+   "load": "3P, Max SL 1100 Kg",
+   "roles": "O, R, L",
+   "loadCasEvac": {
+    "internalKg": 300,
+    "slingKg": 1100,
+    "casSitting": 3,
+    "casLying": 2,
+    "svcCeilingM": 7500,
+    "page": "714",
+    "note": "Hoist '-'"
+   },
+   "page": "707, 714"
+  },
+  {
+   "id": "bell-ah-if-cobra",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Bell AH-IF (Cobra)",
+   "type": "helicopter",
+   "subtype": "attack",
+   "table": "Army Avn Hels",
+   "country": "USA",
+   "cruiseSpeedKmph": 200,
+   "ceilingM": {
+    "maxSvc": 4800
+   },
+   "rangeKm": 480,
+   "armament": "8xTOW Msls, 76 x 2.75 in Rkt, 750 rds of 20 mm cannon",
+   "roles": "A tk, Attk",
+   "page": "707"
+  },
+  {
+   "id": "bell-412",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Bell 412",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "USA",
+   "cruiseSpeedKmph": 220,
+   "ceilingM": {
+    "maxSvc": 6000
+   },
+   "rangeKm": 670,
+   "load": "9 CT, 6 LC, 10 SC",
+   "roles": "Air Aslt, CE, Cargo (C)",
+   "loadCasEvac": {
+    "internalKg": 1350,
+    "slingKg": 2000,
+    "hoistKg": 270,
+    "casSitting": 10,
+    "casLying": 6,
+    "svcCeilingM": 6000,
+    "page": "714"
+   },
+   "page": "708, 714"
+  },
+  {
+   "id": "sa-330l-puma",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "SA-330L (Puma)",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "France",
+   "cruiseSpeedKmph": 265,
+   "ceilingM": {
+    "maxSvc": 5000
+   },
+   "rangeKm": 600,
+   "load": "16 CT, 1625 kg IL, 6 LC, 12 SC or Max SL 3200 kg with reduced endurance, Hoist 260 kg",
+   "roles": "CE, C",
+   "loadCasEvac": {
+    "internalKg": 1625,
+    "slingKg": 3200,
+    "hoistKg": 260,
+    "casSitting": 12,
+    "casLying": 6,
+    "svcCeilingM": 5000,
+    "page": "714"
+   },
+   "page": "708, 714"
+  },
+  {
+   "id": "mi-17",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "MI-17",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "Russia",
+   "cruiseSpeedKmph": 230,
+   "ceilingM": {
+    "maxSvc": 6000
+   },
+   "rangeKm": 465,
+   "load": "24 CT, 12 LC, 24 SC, IL 4000 Kg, Max SL 3000 kg with reduced endurance, Hoist 300 kg or 2 pers",
+   "roles": "CE, C",
+   "loadCasEvac": {
+    "internalKg": 4000,
+    "slingKg": 3000,
+    "hoistKg": 300,
+    "casSitting": 24,
+    "casLying": 12,
+    "svcCeilingM": 6000,
+    "page": "714"
+   },
+   "page": "708, 714"
+  },
+  {
+   "id": "uh-ih-ab-205-huey",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "UH-IH/AB 205 (Huey)",
+   "type": "helicopter",
+   "table": "Army Avn Hels",
+   "country": "USA",
+   "cruiseSpeedKmph": 165,
+   "ceilingM": {
+    "maxSvc": 6000
+   },
+   "rangeKm": 420,
+   "load": "9 CT, 6L Cas, 10 SC",
+   "roles": "L, O, R, CE",
+   "loadCasEvac": {
+    "internalKg": 1350,
+    "slingKg": 1800,
+    "hoistKg": 270,
+    "casSitting": 10,
+    "casLying": 6,
+    "svcCeilingM": 6000,
+    "page": "714",
+    "note": "row 'UH - 1H'"
+   },
+   "page": "708, 714"
+  },
+  {
+   "id": "augusta-a-129-mongoose",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Augusta A-129 (Mongoose)",
+   "type": "helicopter",
+   "subtype": "armed",
+   "table": "Armed Hels - Performance Data / Emp",
+   "country": "Italy",
+   "ceilingM": {
+    "hover": 2390,
+    "svc": 3290
+   },
+   "maxSpeedKmph": 270,
+   "rangeKm": 750,
+   "armament": "8xTOW or HOT msls",
+   "roles": "Day/ni Scout / A tk",
+   "page": "709",
+   "note": "Fiber glass blades immune to 12.7 mm/23 mm hits. IR telescopic sight with laser range finder."
+  },
+  {
+   "id": "bolkow-bo-105-pah-1-212",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Bolkow BO-105 (PAH-1) 212",
+   "type": "helicopter",
+   "subtype": "armed",
+   "table": "Armed Hels - Performance Data / Emp",
+   "country": "Germany",
+   "ceilingM": {
+    "hover": 2715,
+    "svc": 5030
+   },
+   "maxSpeedKmph": 270,
+   "rangeKm": 660,
+   "armament": "6xHOT msls",
+   "roles": "A tk",
+   "page": "709",
+   "note": "Stabilized sight on port side."
+  },
+  {
+   "id": "westland-lynx-mk-1",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Westland Lynx MK 1",
+   "type": "helicopter",
+   "subtype": "armed",
+   "table": "Armed Hels - Performance Data / Emp",
+   "country": "UK",
+   "ceilingM": {
+    "hover": 2950
+   },
+   "maxSpeedKmph": 270,
+   "rangeKm": 630,
+   "armament": "8xTOW msls",
+   "roles": "Armed Escort (AE), A tk",
+   "page": "709",
+   "note": "Auto stabilization on three axes."
+  },
+  {
+   "id": "sikorsky-s-67-black-hawk",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Sikorsky S-67 (Black Hawk)",
+   "type": "helicopter",
+   "subtype": "armed",
+   "table": "Armed Hels - Performance Data / Emp",
+   "country": "USA",
+   "ceilingM": {
+    "svc": 5180
+   },
+   "maxSpeedKmph": 310,
+   "rangeKm": 355,
+   "armament": "1x30 mm cannon, 16xTOW msls, 70 mm rkts or Side Winder AAM",
+   "roles": "AE, A tk, Aerial Cbt (AC)",
+   "page": "709",
+   "note": "Has ni vision sys."
+  },
+  {
+   "id": "hughes-ah-64a-apache",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Hughes AH-64A (Apache)",
+   "type": "helicopter",
+   "subtype": "armed",
+   "table": "Armed Hels - Performance Data / Emp",
+   "country": "USA",
+   "ceilingM": {
+    "hover": 4630,
+    "svc": 6250
+   },
+   "maxSpeedKmph": 375,
+   "rangeKm": 610,
+   "armament": "1x30mm cannon, 16xHellfire msls",
+   "roles": "AE, A tk, AC",
+   "page": "710",
+   "note": "IR Laser Range Finder and tgt designator for Hellfire msls. Can carry 76 x 25 in rkts instead of msls (as printed)."
+  },
+  {
+   "id": "mi-24-hind-mi-25-export-model",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "MI-24 (Hind) (MI-25 export model)",
+   "type": "helicopter",
+   "subtype": "armed",
+   "table": "Armed Hels - Performance Data / Emp",
+   "country": "Russia",
+   "maxSpeedKmph": 270,
+   "armament": "1x12.7 mm 4 barrel gun, 4xATGM/rkt/wpn load of 1,275 kg",
+   "roles": "AE, A tk, AC",
+   "page": "710",
+   "note": "Ceiling and range printed '-'. Equipped with ni and all weather sensors."
+  },
+  {
+   "id": "mi-28-havoc",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "MI-28 (Havoc)",
+   "type": "helicopter",
+   "subtype": "armed",
+   "table": "Armed Hels - Performance Data / Emp",
+   "country": "Russia",
+   "maxSpeedKmph": 305,
+   "rangeKm": 470,
+   "armament": "16xATGM, 57mm rkts, 30mm cannon",
+   "roles": "AE, A tk, AC, AAM",
+   "page": "710",
+   "note": "Ceiling printed '-'. Has IR Laser Range Finder and radar for msl guidance. Armr protection."
+  },
+  {
+   "id": "augusta-a-109a",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Augusta A-109A",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "Italy",
+   "capacity": "2 Crew (C) + 6 Passengers (P)",
+   "ceilingM": {
+    "hover": 3050,
+    "svc": 4570
+   },
+   "maxSpeedKmph": 310,
+   "maxPayloadKg": 1090,
+   "rangeKm": 570,
+   "roles": "Recce (R), Liaison (L), Lt Tpt (LT)",
+   "page": "711"
+  },
+  {
+   "id": "sa-319b-allouette-iii-chetak",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "SA-319B Allouette III / Chetak",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "France / India",
+   "capacity": "2C+6P",
+   "ceilingM": {
+    "hover": 5000,
+    "svc": 6500
+   },
+   "maxSpeedKmph": 220,
+   "maxPayloadKg": 1140,
+   "rangeKm": 600,
+   "roles": "R, L, LT, Cas Evac (CE)",
+   "page": "711"
+  },
+  {
+   "id": "sa-341-c-gazelle",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "SA-341 C Gazelle",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "France",
+   "capacity": "1C+5P",
+   "ceilingM": {
+    "hover": 3040,
+    "svc": 4100
+   },
+   "maxSpeedKmph": 280,
+   "maxPayloadKg": 1100,
+   "rangeKm": 710,
+   "roles": "R, L, LT, CE",
+   "page": "711"
+  },
+  {
+   "id": "sa-315-b-lama-cheetah",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "SA-315 B Lama/Cheetah",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "France / India",
+   "capacity": "3 P (incl C)",
+   "ceilingM": {
+    "hover": 7000,
+    "svc": "7,000+"
+   },
+   "maxSpeedKmph": 210,
+   "maxPayloadKg": 955,
+   "rangeKm": 510,
+   "roles": "R, L, LT, CE",
+   "page": "711"
+  },
+  {
+   "id": "sikorsky-s-70-uh-60-black-hawk",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Sikorsky S-70 UH-60 Black Hawk",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "USA",
+   "capacity": "11P",
+   "ceilingM": {
+    "svc": 5790
+   },
+   "maxSpeedKmph": 296,
+   "maxPayloadKg": 4000,
+   "rangeKm": 600,
+   "roles": "Med Tpt (MT)",
+   "page": "711"
+  },
+  {
+   "id": "boeing-vertol-model-114-ch-47c-chinook",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "Boeing Vertol Model 114 (CH-47C) Chinook",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "USA",
+   "capacity": "44 P (incl C)",
+   "ceilingM": {
+    "svc": 4570
+   },
+   "maxSpeedKmph": 305,
+   "maxPayloadKg": 11625,
+   "rangeKm": 390,
+   "roles": "Hy Tpt (HT)",
+   "page": "712"
+  },
+  {
+   "id": "mi-12-homer",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "MI-12 (Homer)",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "Russia",
+   "capacity": "50 P (incl C) or 35,400 kg",
+   "ceilingM": {
+    "svc": 3500
+   },
+   "maxSpeedKmph": 260,
+   "maxPayloadKg": 35400,
+   "rangeKm": 500,
+   "roles": "HT",
+   "page": "712"
+  },
+  {
+   "id": "mi-26-halo",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "MI-26 (Halo)",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "Russia",
+   "capacity": "100 P (incl C) or 5,000 kg",
+   "ceilingM": {
+    "svc": 1800
+   },
+   "maxSpeedKmph": 295,
+   "maxPayloadKg": 21300,
+   "rangeKm": 800,
+   "roles": "HT",
+   "page": "712",
+   "note": "Capacity '5,000 kg' and max pay load 21300 kg both as printed."
+  },
+  {
+   "id": "mi-8-hip",
+   "side": "own",
+   "section": "Sec 7 - Avn",
+   "name": "MI-8 (Hip)",
+   "type": "helicopter",
+   "subtype": "unarmed",
+   "table": "Unarmed Hels - Performance Data / Emp",
+   "country": "Russia",
+   "capacity": "28 P (incl C) or 4,000 kg",
+   "ceilingM": {
+    "svc": 4000
+   },
+   "maxSpeedKmph": 250,
+   "maxPayloadKg": 4800,
+   "rangeKm": "450/650",
+   "roles": "MT, Cargo",
+   "page": "712"
+  },
+  {
+   "id": "en-t-55-tk",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "T-55 Tk",
+   "type": "tank",
+   "calibre": "100/105 mm",
+   "crew": 4,
+   "rangeM": {
+    "mainGun": 1300
+   },
+   "page": "1313",
+   "specs": {
+    "table1313": {
+     "Country of Origin": "Russia/Poland",
+     "Crew": "4",
+     "Cbt Wt": "36.5 ton",
+     "Speed (km/ph) Rd / X cty": "58",
+     "Op Range (km)": "350/500",
+     "Fuel Capacity": "900",
+     "Fording (m)": "1.27",
+     "Gradient": "60%",
+     "Vertical Obs (m)": "0.8",
+     "Trench (m)": "2.70",
+     "Engine/(hp)": "580",
+     "Type of Armr": "Comp",
+     "Main Gun Cal (mm)": "100/105",
+     "Range (kms)": "1300",
+     "Main Gun Ammo": "43",
+     "Type of Ammo": "HE/FRAG, HEAT, AP-T HVAPT APC-T INCEDIARY AFPSDS",
+     "Coax MG (mm)": "7.62/.30",
+     "Rate of Fire (Per min)": "6 Rds",
+     "Loading": "Manual",
+     "Stabilization V/H": "Elevation",
+     "Ni Vision- Eqpt/Cap": "IR",
+     "NBC Protection": "Not Aval"
+    }
+   },
+   "note": "Main gun range printed in the 1313 table under 'Range (kms)'; the T-72 detail (1317) gives the same figure as 'Max eff range 2900 m', so read as metres.",
+   "planRangeM": {
+    "eff": 1300
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "en-vijayanta-tk",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Vijayanta Tk",
+   "type": "tank",
+   "calibre": "105 mm",
+   "crew": 4,
+   "rangeM": {
+    "mainGun": 2000
+   },
+   "page": "1313",
+   "specs": {
+    "table1313": {
+     "Country of Origin": "UK/India",
+     "Crew": "4",
+     "Cbt Wt": "39 ton",
+     "Speed (km/ph) Rd / X cty": "49",
+     "Op Range (km)": "320-412",
+     "Fuel Capacity": "1000",
+     "Fording (m)": "1.14",
+     "Gradient": "60%",
+     "Vertical Obs (m)": "0.914",
+     "Trench (m)": "2.438",
+     "Engine/(hp)": "750",
+     "Type of Armr": "Comp",
+     "Main Gun Cal (mm)": "105",
+     "Range (kms)": "2000",
+     "Main Gun Ammo": "44",
+     "Type of Ammo": "APDS-T(L-28AI), APDS-T (L-52AI) APFSDS-T DS/T, SMK/ HESH",
+     "Coax MG (mm)": "7.62/.30",
+     "Rate of Fire (Per min)": "8 Rds",
+     "Loading": "Manual",
+     "Stabilization V/H": "Yes",
+     "Ni Vision- Eqpt/Cap": "IR Sec",
+     "NBC Protection": "Not Aval"
+    }
+   },
+   "note": "Main gun range printed in the 1313 table under 'Range (kms)'; the T-72 detail (1317) gives the same figure as 'Max eff range 2900 m', so read as metres.",
+   "planRangeM": {
+    "eff": 2000
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "en-t-72-tk",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "T-72 Tk",
+   "type": "tank",
+   "calibre": "125 mm",
+   "crew": 3,
+   "rangeM": {
+    "mainGun": 2900
+   },
+   "page": "1313",
+   "specs": {
+    "table1313": {
+     "Country of Origin": "Russia",
+     "Crew": "3",
+     "Cbt Wt": "36.7 ton",
+     "Speed (km/ph) Rd / X cty": "60/30",
+     "Op Range (km)": "420-500",
+     "Fuel Capacity": "1601",
+     "Fording (m)": "1.4",
+     "Gradient": "60%",
+     "Vertical Obs (m)": "0.85",
+     "Trench (m)": "2.7",
+     "Engine/(hp)": "780",
+     "Type of Armr": "Reactive",
+     "Main Gun Cal (mm)": "125",
+     "Range (kms)": "2900",
+     "Main Gun Ammo": "44",
+     "Type of Ammo": "APFSDS,HEA,FS,HE, FRAG,PKTMG,NSVT",
+     "Coax MG (mm)": "MG 12.7",
+     "Rate of Fire (Per min)": "8 Rds",
+     "Loading": "Auto",
+     "Stabilization V/H": "Yes",
+     "Ni Vision- Eqpt/Cap": "Thermal",
+     "NBC Protection": "Yes"
+    }
+   },
+   "note": "Main gun range printed in the 1313 table under 'Range (kms)'; the T-72 detail (1317) gives the same figure as 'Max eff range 2900 m', so read as metres.",
+   "planRangeM": {
+    "eff": 2900
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "en-t-90-tk",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "T-90 Tk",
+   "type": "tank",
+   "calibre": "125 mm",
+   "crew": 3,
+   "rangeM": {
+    "mainGun": 5000
+   },
+   "page": "1313, 1314-1315",
+   "specs": {
+    "table1313": {
+     "Country of Origin": "Russia",
+     "Crew": "3",
+     "Cbt Wt": "46.5 ton",
+     "Speed (km/ph) Rd / X cty": "65/45",
+     "Op Range (km)": "550-650",
+     "Fuel Capacity": "-",
+     "Fording (m)": "-",
+     "Gradient": "-",
+     "Vertical Obs (m)": "-",
+     "Trench (m)": "2.8",
+     "Engine/(hp)": "1000",
+     "Type of Armr": "ERA",
+     "Main Gun Cal (mm)": "125",
+     "Range (kms)": "5000",
+     "Main Gun Ammo": "43",
+     "Type of Ammo": "APFSDS; HEAT; HEF",
+     "Coax MG (mm)": "7.62/12.7",
+     "Rate of Fire (Per min)": "8 rds",
+     "Loading": "Auto",
+     "Stabilization V/H": "Yes",
+     "Ni Vision- Eqpt/Cap": "Thermal",
+     "NBC Protection": "Yes"
+    },
+    "detail": {
+     "Features": "New generation armr on hull and turret; 125 mm 2A46 series main gun of T-72 and T-80, cap of firing APDS, DSDS, HEAT and HE-Frag projs and time-fuzed shrapnel projs; computerised fire con sys and LRF, Agava Gnr Thermal Sight (engage on the mov and at ni); precision laying eqpt and auto loader; glacis and turret covered by sec generation ERA bricks; Jammer Shorta-1 EOCMDAS, Dazzle painting; KMT-6 mine clearing eqpt (optional); laminated front, side and top armr behind Kontakt-5 ERA; air conditioning aval.",
+     "Length": "gun front 9.53 m (6.86 m gun rear)",
+     "Ht": "2.225 m",
+     "Clearance": "0.47 m",
+     "Wt": "46.5-50 tons",
+     "Crew": "3",
+     "Engine": "1,000 hp V-KD turbo-supercharged diesel (four stroke, V-12 piston multi-fuel; can run on T-2, TS-1, K2 and A-72 benzine)",
+     "Max rd speed": "65 km/h",
+     "Max X cty speed": "35 km/h",
+     "Range (Cruising)": "550-650 km",
+     "Trench Width": "2.8 m",
+     "Vertical Obs": "0.8 m",
+     "Max Gradient": "30 deg",
+     "Main Wpn": "125 mm 2A46 M-2 Smoothbore",
+     "Ammo Type": "APFSDS, HEAT, HEF, ATGM 9M119M Refleks-M (AT-11 Sniper-B) 12902 B 82 mm mor with 3D 17 smk grens, smk discharger",
+     "Ni Vision": "TOI-PO2T Agava-2 TI (tgt ident range 2.5 km) TPN-4-49-23 Buran-PA (tgt ident Range 1.2/1.5 km)",
+     "Fire Con": "1A45T Irtysh computerised sys with 9S515 msl guidance sys",
+     "Comd Sight": "PNK-4S sight incl TKN-4S Agat-S day/ni sight (tgt range 800 m day/700 m ni)",
+     "Gnr Cons": "IV528-1 ballistic cptr 1A43 range finder/sight iiG46 laying device DVE-BS wind guage",
+     "Radio Freq": "R-163 50U; R-163 - 50U + R-163 - 50K (T-90K)",
+     "Protection- NBC": "NBC, 3Ets",
+     "Addl Eqpt": "13 Inejauto - fire - fighting eqpt, self-dig-in blade, air conditioning, KMT-6",
+     "Fuel": "Multi-fuel diesel engine, which can also run on T-2, TS-1 kerosene and A-72 benzine."
+    }
+   },
+   "note": "Main gun range printed in the 1313 table under 'Range (kms)'; the T-72 detail (1317) gives the same figure as 'Max eff range 2900 m', so read as metres. Conflicts: X cty speed 45 (table) vs 35 km/h (detail); Cbt Wt 46.5 ton (table) vs 46.5-50 tons (detail).",
+   "planRangeM": {
+    "eff": 5000
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "en-arjun-tk",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Arjun Tk",
+   "type": "tank",
+   "calibre": "120 mm",
+   "crew": 4,
+   "rangeM": {
+    "mainGun": 2000
+   },
+   "page": "1313, 1316",
+   "specs": {
+    "table1313": {
+     "Country of Origin": "India",
+     "Crew": "4",
+     "Cbt Wt": "60 ton",
+     "Speed (km/ph) Rd / X cty": "70/40",
+     "Op Range (km)": "325-400",
+     "Fuel Capacity": "1610",
+     "Fording (m)": "1.4",
+     "Gradient": "60%",
+     "Vertical Obs (m)": "0.9",
+     "Trench (m)": "3",
+     "Engine/(hp)": "1400",
+     "Type of Armr": "Kanchan",
+     "Main Gun Cal (mm)": "120",
+     "Range (kms)": "2000",
+     "Main Gun Ammo": "39",
+     "Type of Ammo": "APFSDS,HE, HEAT HESH, SMK",
+     "Coax MG (mm)": "12.7",
+     "Rate of Fire (Per min)": "6-8 Rds",
+     "Loading": "Semi Auto",
+     "Stabilization V/H": "Yes",
+     "Ni Vision- Eqpt/Cap": "Thermal",
+     "NBC Protection": "Aval"
+    },
+    "detail": {
+     "History": "Under dev since 1974 under CVR&DE; first prototype 1984; final trial at Mahajan FFR Feb 2010, approved for induction; two armd regts equipped, order for 230 more tks placed.",
+     "Crew": "4",
+     "Armt": "1x 120 mm rifled gun; 1x7.62 mm MG (Coaxial), 1x 12.7 mm MG (AD)",
+     "Cbt wt": "58.5 TON",
+     "Power-to- wt ratio": "23.60 hp/ton",
+     "Power pack": "MTU MB 838 Ka-501 diesel dev 1381 hp at 2400 rpm coupled to a Renk RK 304 tx",
+     "Length": "10.194 m (gun front)",
+     "Width": "3.847 m",
+     "Ht": "3.03",
+     "Br cl": "Cl 55 NATO with full battle load",
+     "Cruising Range X cty": "325 km",
+     "Cruising Range Rd": "400 km",
+     "Vision Devices Comd": "Dir and indir with 360 deg fd view & dual magnification of 1.9 & 10.",
+     "Vision Devices Gnr": "Stabilised sight integrated with LRF."
+    }
+   },
+   "note": "Main gun range printed in the 1313 table under 'Range (kms)'; the T-72 detail (1317) gives the same figure as 'Max eff range 2900 m', so read as metres. Conflict: Cbt Wt 60 ton (table) vs 58.5 TON (detail).",
+   "planRangeM": {
+    "eff": 2000
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "en-t-72-ajeya-tk",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "T-72 (Ajeya) Tk",
+   "type": "tank",
+   "calibre": "125 mm",
+   "crew": 3,
+   "rangeM": {
+    "maxEff": 2900
+   },
+   "rof": "Max 8 x rds/min with auto loader",
+   "page": "1317-1318",
+   "specs": {
+    "Cty of origin": "Russia",
+    "Wt": "41 ton",
+    "Power to wt ratio": "19 HP/ton",
+    "Gr clearance": "0.47",
+    "Max speed (rd)": "60 kmph",
+    "Max speed (X cty)": "30 kmph",
+    "Fuel capacity": "1000 lits",
+    "Fording": "1.4 m",
+    "Gradient": "60%",
+    "Vertical obs": "0.85 m",
+    "Trench": "2.7 m (2.28 m Acquired docus)",
+    "Engine": "780 HP (V-12 Air Cooled, Multi Fuel Injection, with 850 HP)",
+    "Type of armr": "Sandwich",
+    "Armr thickness": "120 m",
+    "Main gun (cal)": "125 mm (smooth bore)",
+    "Main gun ammo": "45 rds",
+    "Type of ammo": "ADFSDS, HEAT, HE, FRAG, 6x ATGW",
+    "Armt": "1x 12.7 mm NSV MG with 300 rds (AA); 1x7.62 mm MG with 2000 rds (Coaxial)",
+    "Loading": "Auto",
+    "Stabilisation v/h": "Yes",
+    "Ni vision eqpt/cap": "IR (II for some of the upgrd tks)",
+    "NBC pressure": "Aval",
+    "Gr protection": "Available",
+    "Max cruising range": "without long range fuel tks: 480",
+    "Tx": "Synchromesh, hydraulically asst with 7 fwd and 1 reverse gear.",
+    "Steering": "Clutch and brakes",
+    "Suspension": "Torsion bar",
+    "Elec sys": "24 V",
+    "Gun": "+ 14 deg / 6 deg (elevation/depression)",
+    "Smk gren launcher": "8"
+   },
+   "note": "Detail page; differs from the 1313 T-72 column (wt 36.7 ton, fuel 1601, main gun ammo 44). 'Armr thickness 120 m' as printed.",
+   "planRangeM": {
+    "eff": 2900
+   },
+   "symbolKeys": [
+    "15120200"
+   ]
+  },
+  {
+   "id": "en-bmp-i",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "BMP-I",
+   "type": "icv",
+   "calibre": "73 mm",
+   "page": "1319, 1320-1321",
+   "specs": {
+    "table1319": {
+     "Origin": "Russia",
+     "Crew": "3+8",
+     "Length (mm)": "6735",
+     "Length (mm) [2nd row, evidently width]": "2940",
+     "Ht (mm)": "2068",
+     "Cbt Wt (tons)": "13.5",
+     "Clearance (m)": "0.4",
+     "Engine Model": "V-6",
+     "HP": "280",
+     "Speed (kmph) (Land/Water)": "65/7",
+     "Op Range kms": "550",
+     "Gr Pressure": "0.57",
+     "Vertical Obs": "0.8",
+     "Transmission": "5 Fwd, 1 Reverse",
+     "Elec system": "24 V",
+     "Fuel Capacity in lits": "462",
+     "Trench (m)": "2.2",
+     "Elevation": "-",
+     "Depression": "-",
+     "Traverse": "360 deg",
+     "Power to Wt Ratio": "23",
+     "Stabilization": "No",
+     "Armt (Main Gun / ATGM / Aux Gun rows)": "73 mm / 7.62 mm / Sagger",
+     "Ammo Main Gun": "40 rds",
+     "Ammo ATGM": "4 msls",
+     "Ammo Aux Gun": "2000 rds",
+     "Range Main Gun": "2000",
+     "Range ATGM": "3000"
+    },
+    "detail": {
+     "Origin": "Russia",
+     "Crew": "3+8",
+     "Cbt Wt": "12.5 tons",
+     "Length": "6.75 m",
+     "Width": "3m",
+     "Ht": "1.9 m",
+     "Gr Clearance": "0.4 m",
+     "Tr Width": "0.3 m",
+     "Tr on Gr": "3.6 m",
+     "Engine Model": "V-6",
+     "Horsepower": "280",
+     "Cylinders": "6 in line",
+     "Fuel": "Diesel",
+     "Cooling": "Water",
+     "Speed Land/Water": "60/6 kmph",
+     "Cruising Range": "500 kmph (sic)",
+     "Gr Pressure": "0.62 kg/cm2",
+     "Trench Xing": "2.5 m",
+     "Vertical Obs Xing": "0.7 m",
+     "Gradient": "30 deg",
+     "Armr Thickness": "14 mm",
+     "Passengers": "8",
+     "Main Armt": "73 mm gun, Smooth bore, Basic Load 30 rds, Elevation +20 deg, Depression -5 deg, Traverse 360 deg",
+     "Axis of Bore": "1.41 m",
+     "Sdry Armt": "7.62 mm coaxial MG, Basic Load 1000 rds",
+     "Supplementary Armt": "ATGM, Model Malutka msl, Basic Load 4 rds",
+     "Holding": "645",
+     "NVD Dvr/Comd": "IR",
+     "NVD Gnr": "II"
+    }
+   },
+   "note": "In the 1319 table the Armt rows are shifted (Main Gun / ATGM / Aux Gun print e.g. 73 mm / 7.62 mm / Sagger); read as main gun / coax / ATGM. Detail page conflicts with the table: Cbt Wt 12.5 vs 13.5 t, speed 60/6 vs 65/7, main gun basic load 30 vs 40 rds.",
+   "rangeM": {
+    "mainGun": 2000,
+    "atgm": 3000
+   },
+   "planRangeM": {
+    "eff": 2000,
+    "atgm": 3000
+   },
+   "symbolKeys": [
+    "15120103"
+   ]
+  },
+  {
+   "id": "en-bmp-ii",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "BMP-II",
+   "type": "icv",
+   "calibre": "30 mm",
+   "page": "1319, 1321",
+   "specs": {
+    "table1319": {
+     "Origin": "Russia",
+     "Crew": "3+7",
+     "Length (mm)": "6735",
+     "Length (mm) [2nd row, evidently width]": "3150",
+     "Ht (mm)": "2250",
+     "Cbt Wt (tons)": "14",
+     "Clearance (m)": "0.42",
+     "Engine Model": "5D 20",
+     "HP": "350-400",
+     "Speed (kmph) (Land/Water)": "65/7",
+     "Op Range kms": "-",
+     "Gr Pressure": "-",
+     "Vertical Obs": "0.7",
+     "Transmission": "5 Fwd, 1 Reverse",
+     "Elec system": "22-29 V",
+     "Fuel Capacity in lits": "462",
+     "Trench (m)": "2.5",
+     "Elevation": "+87 deg",
+     "Depression": "-5 deg",
+     "Traverse": "360 deg",
+     "Power to Wt Ratio": "21.4",
+     "Stabilization": "Yes",
+     "Armt (Main Gun / ATGM / Aux Gun rows)": "30 mm / 7.62 mm / Konkurs",
+     "Ammo Main Gun": "500 rds",
+     "Ammo ATGM": "4 msls",
+     "Ammo Aux Gun": "2000 rds",
+     "Range Main Gun": "1300",
+     "Range ATGM": "4000"
+    },
+    "detail": {
+     "Origin": "Russia",
+     "Crew": "3+7",
+     "Laden Wt": "14.3 tons",
+     "Overall ht": "2.4/2.24 m with turret",
+     "Gr clearance": "0.42 m",
+     "Shock absorbers": "Three on each side",
+     "Main gun cal": "30 mm canon",
+     "Depression/elevation": "-5 to +75 deg",
+     "Type of ATGM": "Konkurs and FAGGOT (from the same mount)",
+     "Hit Probability": "92 to 98%",
+     "Dvr/gnr NVDs": "New active/passive device for ni driving/firing",
+     "Comd NVD": "Day/ni periscope-binocular as fitted in T-72",
+     "Nav Eqpt": "Improved version of gyrocompass",
+     "Holding": "300"
+    }
+   },
+   "note": "In the 1319 table the Armt rows are shifted (Main Gun / ATGM / Aux Gun print e.g. 73 mm / 7.62 mm / Sagger); read as main gun / coax / ATGM.",
+   "rangeM": {
+    "mainGun": 1300,
+    "atgm": 4000
+   },
+   "planRangeM": {
+    "eff": 1300,
+    "atgm": 4000
+   },
+   "symbolKeys": [
+    "15120103"
+   ]
+  },
+  {
+   "id": "en-bmp-iii",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "BMP-III",
+   "type": "icv",
+   "calibre": "100 mm",
+   "page": "1319, 1322-1323",
+   "specs": {
+    "table1319": {
+     "Origin": "Russia /India",
+     "Crew": "3+7",
+     "Length (mm)": "7140",
+     "Length (mm) [2nd row, evidently width]": "3230",
+     "Ht (mm)": "2300",
+     "Cbt Wt (tons)": "18.7",
+     "Clearance (m)": "0.45",
+     "Engine Model": "V-10 UTD 20",
+     "HP": "500",
+     "Speed (kmph) (Land/Water)": "70/10",
+     "Op Range kms": "600",
+     "Gr Pressure": "0.62",
+     "Vertical Obs": "-",
+     "Transmission": "-",
+     "Elec system": "-",
+     "Fuel Capacity in lits": "-",
+     "Trench (m)": "2.5",
+     "Elevation": "+60 deg",
+     "Depression": "-6 deg",
+     "Traverse": "360 deg",
+     "Power to Wt Ratio": "26.7",
+     "Stabilization": "Yes",
+     "Armt (Main Gun / ATGM / Aux Gun rows)": "100 mm / 30 mm / AT-10",
+     "Ammo Main Gun": "22+18 rds",
+     "Ammo ATGM": "-",
+     "Ammo Aux Gun": "2000 rds",
+     "Range Main Gun": "2500",
+     "Range ATGM": "4000"
+    },
+    "detail": {
+     "Origin": "Russia/India",
+     "Crew/Infantrymen": "3+7",
+     "Cbt Wt": "18.71 ton",
+     "Power to Wt Ratio": "26.7 hp/ton",
+     "Dimension (L/W/H)": "7.14/3.23/2.3 m",
+     "Gr Clearance": "0.45 m",
+     "Width of Tr": "0.38",
+     "Gr Pressure": "0.62 kg/cm2",
+     "Main Engine": "V10, 4 stroke, diesel, liquid cooled, UTD-29 m",
+     "Engine Power": "368 KW (500 hp) at 2600 rpm",
+     "Transmission": "Hydro-mech, 4 fwd, 2 reverse gears",
+     "Fuel Capacity": "6901 lits",
+     "Max Speed Rd (Fwd/Reverse)": "70 kmph/20 kmph",
+     "Max Speed X Cty": "50 kmph",
+     "Swimming": "10 kmph",
+     "Cruising Range": "600 km",
+     "Gradient": "35 deg",
+     "Side Slope": "20 deg",
+     "Vertical Climbing": "0.8 m",
+     "Trench Climbing": "2.5 m",
+     "Turret Traverse": "360 deg",
+     "Elevation (Turret)": "-6 deg to + 60 deg",
+     "Main Gun": "100 mm 7A70, XMV 250 m/sec, Ammo Type HE, ATGM, 100 mm Shell, HE-F 100 mm, Ammo storage 40 rds HE-F (22 in auto loader), ROF 10 rds/min (HE-F)",
+     "ATGM": "8 AT-10 (3UBK10-3/9M117)",
+     "Auto Gun": "30 mm, No of Grooves 16, MV 980 m/sec (HEI, HE-T), 980 m/sec (AP-T), Cbt Range Max 2000 m, Ammo Types HEI, HE-T, AP-T, APDS, Ammo Storage 305(HEI,HE-T), 195 (AP-T), Rate of Fire 350-390 rds/min",
+     "Addl Armt": "Coaxial MG 1x7.62 mm PKT, Bow MG 2x7.62 mm PKT, Cbt Range - Max 1500 m, Ammo Storage 2000 cartridges in endless belt, ROF 250 rds/min",
+     "Radio Eqpt": "Transceiver 1xR-173, Receiver 1xR-173P",
+     "Addl Eqpt": "LRF 1D 16-3; Gnr's Sight 1K13-2, two plains stabilized; Comd's Sight TKN-3BM (day/ni); AA Sight PPB-2; Comb AA sight 1P3-10 with magnification of 1.2x4, fd of view 49 deg/14 deg; Directional Gyro GPK-59; Smk Gren 6x81 mm launchers",
+     "Holding": "949"
+    }
+   },
+   "note": "In the 1319 table the Armt rows are shifted (Main Gun / ATGM / Aux Gun print e.g. 73 mm / 7.62 mm / Sagger); read as main gun / coax / ATGM.",
+   "rangeM": {
+    "mainGun": 2500,
+    "atgm": 4000
+   },
+   "planRangeM": {
+    "eff": 2500,
+    "atgm": 4000
+   },
+   "symbolKeys": [
+    "15120103"
+   ]
+  },
+  {
+   "id": "en-brdm-ii",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "BRDM-II",
+   "type": "recce-veh",
+   "calibre": "14.5 mm",
+   "page": "1319, 1324",
+   "specs": {
+    "table1319": {
+     "Origin": "India",
+     "Crew": "4",
+     "Length (mm)": "5750",
+     "Length (mm) [2nd row, evidently width]": "2350",
+     "Ht (mm)": "2310",
+     "Cbt Wt (tons)": "7",
+     "Clearance (m)": "0.335",
+     "Engine Model": "V-8",
+     "HP": "-",
+     "Speed (kmph) (Land/Water)": "100/10",
+     "Op Range kms": "750",
+     "Gr Pressure": "-",
+     "Vertical Obs": "0.4",
+     "Transmission": "4 Fwd, 1 Reverse",
+     "Elec system": "24 V",
+     "Fuel Capacity in lits": "290",
+     "Trench (m)": "2.5",
+     "Elevation": "+30 deg",
+     "Depression": "-5 deg",
+     "Traverse": "360 deg",
+     "Power to Wt Ratio": "-",
+     "Stabilization": "-",
+     "Armt (Main Gun / ATGM / Aux Gun rows)": "- / 14.5mm MG / Fagot",
+     "Ammo Main Gun": "-",
+     "Ammo ATGM": "-",
+     "Ammo Aux Gun": "2000 rds",
+     "Range Main Gun": "-",
+     "Range ATGM": "-"
+    },
+    "detail": {
+     "Crew": "4",
+     "Cbt Wt": "7000 kgs",
+     "Length/Width/Ht": "5.75m/2.35 m/2.31 m",
+     "Gr Clearance": "0.335 m",
+     "Max Speed": "Rd 95 kmph, water 9 kmph",
+     "Fuel Capacity": "290 lits",
+     "Fording Cap": "Fully amph",
+     "Vertical Obs": "0.4 m/1.25 m",
+     "Armt": "1x14.5 mm MG, 1x7.62 mm MG ATGM FAGOT",
+     "Ammo Main/Coaxial": "500/2000",
+     "Turret Power Con": "Manual",
+     "Gun Elevation/Depression": "+30 deg/-5 deg",
+     "Holding": "110"
+    }
+   },
+   "note": "In the 1319 table the Armt rows are shifted (Main Gun / ATGM / Aux Gun print e.g. 73 mm / 7.62 mm / Sagger); read as main gun / coax / ATGM. Origin printed 'India' in the table."
+  },
+  {
+   "id": "en-75-24-mm-how",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "75/24 mm How",
+   "type": "how",
+   "calibre": "75 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE, SMK, HEAT, III, HESH"
+   },
+   "rangeM": {
+    "maxHE": 11014
+   },
+   "note": "Mtn arty.",
+   "planRangeM": {
+    "max": 11014
+   },
+   "symbolKeys": [
+    "15110901"
+   ]
+  },
+  {
+   "id": "en-76-mm-how",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "76 MM How",
+   "type": "how",
+   "calibre": "76 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE, HEAT, HEAP"
+   },
+   "rangeM": {
+    "maxHE": 8600
+   },
+   "note": "Mtn arty.",
+   "planRangeM": {
+    "max": 8600
+   },
+   "symbolKeys": [
+    "15110901"
+   ]
+  },
+  {
+   "id": "en-105-mm-ifg-lfg",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "105 mm IFG/LFG",
+   "type": "gun",
+   "calibre": "105 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE, HESH, III, Smk"
+   },
+   "rangeM": {
+    "maxHE": 17200
+   },
+   "note": "Fd arty.",
+   "planRangeM": {
+    "max": 17200
+   },
+   "symbolKeys": [
+    "15110904"
+   ]
+  },
+  {
+   "id": "en-105-mm-sp-gun-abbot",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "105 mm (SP) Gun (Abbot)",
+   "type": "sp-gun",
+   "calibre": "105 mm",
+   "page": "1325, 1327",
+   "specs": {
+    "Ammo": "HE, HESH, AP, Smk",
+    "Origin": "UK",
+    "Gun Det": "Max 6, Min 4",
+    "Total Wt": "17527 kg",
+    "Length": "5.77 m",
+    "Width": "3.77 m",
+    "Max Range (1327)": "14.9 kms with MK"
+   },
+   "rangeM": {
+    "maxHE": 17365
+   },
+   "note": "Fd arty. 1327 detail block lists Origin UK, Gun Det Max 6 Min 4, Total Wt 17527 kg, Length 5.77 m, Width 3.77 m, Max Range '14.9 kms with MK'; the rest of that block (fully amph, 1x14.5 mm MG, ATGM FAGOT, holding 110 ...) repeats the BRDM-II data and looks misprinted.",
+   "weightKg": 17527,
+   "planRangeM": {
+    "max": 14900
+   },
+   "symbolKeys": [
+    "15110904"
+   ],
+   "recheckNotes": [
+    "planRangeM (p 1325, 1327): JUDGEMENT. 1325 table 17,365; 1327 'Max Range 14.9 kms with MK' (the 1327 block is partly misprinted with BRDM-II data, but this line is Abbot's). Lowest printed is 14900."
+   ]
+  },
+  {
+   "id": "en-122-mm-how-d-30",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "122 mm How D-30",
+   "type": "how",
+   "calibre": "122 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE,HEAT,SMK,ILL"
+   },
+   "rangeM": {
+    "maxHE": 15300
+   },
+   "note": "Fd arty.",
+   "planRangeM": {
+    "max": 15300
+   },
+   "symbolKeys": [
+    "15110902"
+   ]
+  },
+  {
+   "id": "en-130-mm-m-46",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "130 mm (M-46)",
+   "type": "gun",
+   "calibre": "130 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE, AP, III"
+   },
+   "rangeM": {
+    "maxHE": 27490
+   },
+   "note": "Med arty.",
+   "planRangeM": {
+    "max": 27490
+   },
+   "symbolKeys": [
+    "15110905"
+   ]
+  },
+  {
+   "id": "en-130-mm-sp-gun-catapult",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "130 mm (SP) Gun (Catapult)",
+   "type": "sp-gun",
+   "calibre": "130 mm",
+   "page": "1325, 1327-1328",
+   "specs": {
+    "Ammo": "HE, AP, III",
+    "Origin": "Russia/India",
+    "Barrel Length": "6.7 m",
+    "MV": "930 m/se",
+    "Horizontal Sec": "15 deg",
+    "Vertical Sec": "2 to 56 deg",
+    "Wt": "7500 kgs",
+    "Max Rd Speed": "48 kmph",
+    "Elevation": "-2 deg to 45 deg",
+    "Cruising Range": "270 km",
+    "Ni Vision": "IR Bino",
+    "Range With Ni Vision": "50 m",
+    "Wt of the Shell": "33.4 kg (HE)",
+    "No of Rds Carried": "35",
+    "Remainder Ammo of First Line": "In 30x3 ton vehs per bty Kolos Tatra Carries 96 rds",
+    "Time for a bty to come into action": "25-35 mins",
+    "Holding": "36"
+   },
+   "rangeM": {
+    "maxHE": 30000,
+    "max1327": 27000,
+    "planning": 22000
+   },
+   "note": "Med arty. 1325 table gives max HE range 30,000 m; 1327 gives Range 27 Kms (Max) & 22 Km (Planning).",
+   "rof": "Intense-2, Rapid-1 1/2, Normal-1, Slow-2/3 & Very Slow-1/3",
+   "weightKg": 7500,
+   "planRangeM": {
+    "eff": 22000,
+    "max": 27000,
+    "plan": 22000
+   },
+   "symbolKeys": [
+    "15110905"
+   ],
+   "recheckNotes": [
+    "planRangeM (p 1325, 1327): 1325 table 30,000; 1327 '27 Kms (Max) & 22 Km (Planning)'. Lowest printed max is 27000."
+   ],
+   "planRangeNote": "planRangeM.plan = the planning range printed on p 1327 (22 Km (Planning))."
+  },
+  {
+   "id": "en-155-mm-fh-77-bofors",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "155 mm FH 77 Bofors",
+   "type": "how",
+   "calibre": "155 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE,HEER,CARGO,AP,III, Smk"
+   },
+   "rangeM": {
+    "maxHEStd": 24000,
+    "maxHERapMin": 27000,
+    "maxHERapMax": 30000
+   },
+   "note": "Med arty. Printed 'Std 24,000; RAP 27,000 to 30,000'.",
+   "planRangeM": {
+    "max": 24000
+   },
+   "symbolKeys": [
+    "15110902"
+   ]
+  },
+  {
+   "id": "en-bhim-sp-155-mm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "BHIM (SP) 155 mm",
+   "type": "sp-gun",
+   "calibre": "155 mm",
+   "page": "1328",
+   "specs": {
+    "Ammo": "HE, AP",
+    "Origin": "South Africa/India",
+    "Range Planning": "32960 M",
+    "Max Range": "41200 ERFB Charge; 42100 ERF Charge; 52500 VLAP/M53 Charge"
+   },
+   "rangeM": {
+    "planning": 32960,
+    "maxERFB": 41200,
+    "maxERF": 42100,
+    "maxVLAP": 52500
+   },
+   "rof": "6 Intense 2 Sustained",
+   "planRangeM": {
+    "eff": 32960,
+    "max": 41200,
+    "plan": 32960
+   },
+   "symbolKeys": [
+    "15110905"
+   ],
+   "recheckNotes": [
+    "planRangeM (p 1328): Max Range printed '41200 ERFB Charge; 42100 ERF Charge; 52500 VLAP/M53 Charge'; lowest is 41200."
+   ],
+   "planRangeNote": "planRangeM.plan = the Range Planning figure printed on p 1328."
+  },
+  {
+   "id": "en-7-2in-how",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "7.2\" How",
+   "type": "how",
+   "calibre": "7.2 in",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE"
+   },
+   "rangeM": {
+    "maxHE": 17975
+   },
+   "note": "Hy arty.",
+   "planRangeM": {
+    "max": 17975
+   },
+   "symbolKeys": [
+    "15110903"
+   ]
+  },
+  {
+   "id": "en-120-mm-mor",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "120 mm Mor",
+   "type": "mortar",
+   "calibre": "120 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE, Smk"
+   },
+   "rangeM": {
+    "maxHE": "6200/7270/9788"
+   },
+   "note": "Range printed '6200/7270/9788'. Ammo scale on 1326 (120 mm Brandt Mor).",
+   "planRangeM": {
+    "max": 6200
+   },
+   "symbolKeys": [
+    "15111403"
+   ]
+  },
+  {
+   "id": "en-160-mm-mor",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "160 mm Mor",
+   "type": "mortar",
+   "calibre": "160 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "HE, Smk"
+   },
+   "rangeM": {
+    "maxHE": 9500
+   },
+   "planRangeM": {
+    "max": 9500
+   },
+   "symbolKeys": [
+    "15111403"
+   ]
+  },
+  {
+   "id": "en-122-mm-bm-21-mbrl",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "122 mm BM-21 MBRL",
+   "type": "mbrl",
+   "calibre": "122 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "Being upgrd to enhance its range upto 35 kms"
+   },
+   "rangeM": {
+    "maxHE": 20400
+   },
+   "planRangeM": {
+    "max": 20400
+   },
+   "symbolKeys": [
+    "15111602"
+   ]
+  },
+  {
+   "id": "en-smerch-mlrs",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Smerch MLRS",
+   "type": "mbrl",
+   "calibre": "300 mm",
+   "page": "1325",
+   "specs": {
+    "Ammo": "300 mm cal, 12 tube wpn incorporates cbt and loaded tpt veh rkt proj"
+   },
+   "rangeM": {
+    "minKm": 20,
+    "maxKm": 70
+   },
+   "note": "Range printed '20-70 km'.",
+   "planRangeM": {
+    "min": 20000,
+    "max": 70000
+   },
+   "symbolKeys": [
+    "15111603"
+   ]
+  },
+  {
+   "id": "en-zu-23-2-schilka",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "ZU-23-2 Schilka",
+   "type": "ad-gun",
+   "page": "1329-1330",
+   "rangeM": {
+    "effAA": 2500,
+    "effHt": 2100,
+    "max": 7000
+   },
+   "rof": "800-1000 Rpm 200 Rmp (Prac)",
+   "specs": {
+    "Origin": "Russia",
+    "Tubes": "2",
+    "Op": "Mech",
+    "Elc": "-10 to +90 deg",
+    "Traverse": "360 deg",
+    "MV m/s": "970",
+    "Eff AA Range": "2500 m",
+    "Eff Ht Range": "2100 m",
+    "Max Range": "7000 m",
+    "Rate of Fire per Tube": "800-1000 Rpm 200 Rmp (Prac)",
+    "Crew": "5",
+    "Type of Ammo": "HE, AP"
+   },
+   "calibre": "23 mm",
+   "crew": 5,
+   "note": "Printed 'ZU-3-2 Schilka'.",
+   "planRangeM": {
+    "eff": 2500,
+    "max": 7000,
+    "ceiling": 2100
+   },
+   "symbolKeys": [
+    "15110501"
+   ]
+  },
+  {
+   "id": "en-zsu-23-4-schilka",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "ZSU-23-4 Schilka",
+   "type": "ad-gun",
+   "page": "1329-1330",
+   "rangeM": {
+    "effAA": 2500,
+    "effHt": 5100,
+    "max": 7000
+   },
+   "rof": "850 Rmp",
+   "specs": {
+    "Origin": "Russia",
+    "Tubes": "4",
+    "Op": "Gas, Auto",
+    "Elc": "-10 to +90 deg",
+    "Traverse": "360 deg",
+    "MV m/s": "970",
+    "Eff AA Range": "2500 m",
+    "Eff Ht Range": "5100 m",
+    "Max Range": "7000 m",
+    "Rate of Fire per Tube": "850 Rmp",
+    "Crew": "5",
+    "Type of Ammo": "HE, AP"
+   },
+   "calibre": "23 mm",
+   "crew": 5,
+   "planRangeM": {
+    "eff": 2500,
+    "max": 7000,
+    "ceiling": 5100
+   },
+   "symbolKeys": [
+    "15110501"
+   ]
+  },
+  {
+   "id": "en-40-mm-l-60-bofors",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "40 mm L-60 Bofors",
+   "type": "ad-gun",
+   "page": "1329-1330",
+   "rangeM": {
+    "effAA": 2560,
+    "effHt": 4660,
+    "max": 4750
+   },
+   "rof": "120 Rmp",
+   "specs": {
+    "Origin": "Sweden",
+    "Tubes": "1",
+    "Op": "Recoil",
+    "Elc": "-5 to +90 deg",
+    "Traverse": "360 deg",
+    "MV m/s": "823",
+    "Eff AA Range": "2560 m",
+    "Eff Ht Range": "4660 m",
+    "Max Range": "4750 m",
+    "Rate of Fire per Tube": "120 Rmp",
+    "Crew": "4-6",
+    "Type of Ammo": "HE"
+   },
+   "calibre": "40 mm",
+   "planRangeM": {
+    "eff": 2560,
+    "max": 4750,
+    "ceiling": 4660
+   },
+   "symbolKeys": [
+    "15110502"
+   ]
+  },
+  {
+   "id": "en-40-mm-l-70-bofors",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "40 mm L-70 Bofors",
+   "type": "ad-gun",
+   "page": "1329-1330",
+   "rangeM": {
+    "effAAMin": 3000,
+    "effAAMax": 4000,
+    "effHt": 2100,
+    "max": 12600
+   },
+   "rof": "300 Rmp",
+   "specs": {
+    "Origin": "Sweden/India",
+    "Tubes": "1",
+    "Op": "Powered",
+    "Elc": "-4 to +90 deg",
+    "Traverse": "360 deg",
+    "MV m/s": "1000",
+    "Eff AA Range": "3000 m-4000 m",
+    "Eff Ht Range": "2100 m",
+    "Max Range": "12600 m",
+    "Rate of Fire per Tube": "300 Rmp",
+    "Crew": "6",
+    "Type of Ammo": "HE"
+   },
+   "calibre": "40 mm",
+   "crew": 6,
+   "planRangeM": {
+    "eff": 3000,
+    "max": 12600,
+    "ceiling": 2100
+   },
+   "symbolKeys": [
+    "15110502"
+   ]
+  },
+  {
+   "id": "en-tunguska",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Tunguska",
+   "type": "ad-gun",
+   "page": "1329-1330",
+   "rangeM": {
+    "effAA": 3000,
+    "effHt": 4000,
+    "max": 2000
+   },
+   "rof": "1950-2500 Rmp",
+   "specs": {
+    "Origin": "Russia",
+    "Tubes": "2",
+    "Op": "-",
+    "Elc": "-",
+    "Traverse": "-",
+    "MV m/s": "970",
+    "Eff AA Range": "3000 m",
+    "Eff Ht Range": "4000 m",
+    "Max Range": "2000 m",
+    "Rate of Fire per Tube": "1950-2500 Rmp",
+    "Crew": "-",
+    "Type of Ammo": "HEI, API"
+   },
+   "note": "As printed, Max Range (2000 m) is less than Eff AA Range (3000 m); Elc / Traverse / Op / Crew printed '-'.",
+   "planRangeM": {
+    "eff": 2000,
+    "max": 2000,
+    "ceiling": 4000
+   },
+   "symbolKeys": [
+    "15110500"
+   ],
+   "recheckNotes": [
+    "planRangeM (p 1329): JUDGEMENT. Printed Eff AA Range 3000 m, Max Range 2000 m (book contradicts itself). max 3000 is printed nowhere; under 'never overstate' both become 2000. Leave as is if the coordinator prefers the eff figure."
+   ],
+   "uncertain": true
+  },
+  {
+   "id": "en-oerlikon-twin-20-mm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Oerlikon Twin 20 mm",
+   "type": "ad-gun",
+   "page": "1329-1330",
+   "rangeM": {
+    "effAA": 1500,
+    "effHtMin": 1500,
+    "effHtMax": 2000
+   },
+   "rof": "1000 Rmp",
+   "specs": {
+    "Origin": "Switzerland",
+    "Tubes": "2",
+    "Op": "Gas, Auto",
+    "Elc": "-5 to +85 deg",
+    "Traverse": "360 deg",
+    "MV m/s": "-",
+    "Eff AA Range": "1500 m",
+    "Eff Ht Range": "1500-2000 m",
+    "Max Range": "-",
+    "Rate of Fire per Tube": "1000 Rmp",
+    "Crew": "3",
+    "Type of Ammo": "APT, HEI-T, HEI"
+   },
+   "calibre": "20 mm",
+   "crew": 3,
+   "planRangeM": {
+    "eff": 1500,
+    "ceiling": 1500
+   },
+   "symbolKeys": [
+    "15110501"
+   ]
+  },
+  {
+   "id": "en-twin-30-mm-2s6-sp-sa-19",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Twin 30 mm 2S6 SP (SA-19)",
+   "type": "ad-gun",
+   "page": "1329-1330",
+   "rangeM": {
+    "max": 1000
+   },
+   "rof": "500 Rpm",
+   "specs": {
+    "Origin": "Russia",
+    "Tubes": "2",
+    "Op": "-",
+    "Elc": "-",
+    "Traverse": "-",
+    "MV m/s": "-",
+    "Eff AA Range": "-",
+    "Eff Ht Range": "-",
+    "Max Range": "1000 m",
+    "Rate of Fire per Tube": "500 Rpm",
+    "Crew": "4",
+    "Type of Ammo": "-"
+   },
+   "calibre": "30 mm",
+   "crew": 4,
+   "planRangeM": {
+    "max": 1000
+   },
+   "symbolKeys": [
+    "15110502"
+   ]
+  },
+  {
+   "id": "en-malutka-sagger-atgm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Malutka (Sagger) ATGM",
+   "type": "atgm",
+   "rangeM": {
+    "min": 500,
+    "max": 3000
+   },
+   "weightKg": 10.9,
+   "page": "1331, 1335, 1334",
+   "specs": {
+    "Pen": "400 mm",
+    "Origin": "USSR",
+    "Remarks (1331)": "MIB and R&S bn",
+    "Type (1335)": "First generation wire guided",
+    "Speed": "120-130 ms/sec",
+    "Hit probability": "50 to 60 cap",
+    "Ltds": "No ni firing cap high skill of pilot req DZ of 500 ms",
+    "AT-3 SAGGER (1334)": "Surface to surface guided A-tk Msl; Wire guided comd to line of sight, optical track; 2 statge solid propellant; Hollow charge; Msl length 86 cms; Msl Dia 11.9 cms; Launch wt 11.3 kgs; Range 500-3000 ms; Penetration 400 mms; Average Vel 120 ms/sec"
+   },
+   "note": "1331 table, 1335 MALUTKA and 1334 AT-3 SAGGER combined (same msl). Launch wt 11.3 kgs (1334) vs 10.9 kg (1331/1335).",
+   "planRangeM": {
+    "min": 500,
+    "max": 3000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "en-fagot-atgm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Fagot ATGM",
+   "type": "atgm",
+   "rangeM": {
+    "min": 75,
+    "max": 2000
+   },
+   "weightKg": 13,
+   "page": "1331, 1334",
+   "specs": {
+    "Pen": "500 mm",
+    "Origin": "USSR / Russia",
+    "Remarks (1331)": "Inf bn in Plains",
+    "Type": "2nd Generation wire guided",
+    "Speed": "180-120 ms/sec",
+    "Length Container": "962 mms",
+    "Msl Wt": "13 Kgs",
+    "Launcher Wt": "22 Kgs",
+    "Configuration": "Land and veh",
+    "Hit Probability": "90 Percent",
+    "Warhead Dia": "120 mms",
+    "Scale of Msl": "Per BMP - 4 (Per Regt - 208)",
+    "Holding": "960",
+    "Guidance": "Auto comd wire guided",
+    "Propulsion": "Optical tracking of tgt and IR tracking of msl",
+    "Warhead": "HEAT, piezoelectric fuze",
+    "Launching": "Gr and veh"
+   },
+   "planRangeM": {
+    "min": 75,
+    "max": 2000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "en-konkurs-atgm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Konkurs ATGM",
+   "type": "atgm",
+   "rangeM": {
+    "day": 4000,
+    "night": 2500
+   },
+   "page": "1331, 1333",
+   "specs": {
+    "Pen": "650 mm (solid armr)",
+    "Origin": "USSR / Russia",
+    "Type": "2nd Generation",
+    "Guidance": "Wire guided comd to line of sight. Optically tfr",
+    "Warhead Dia": "135 mm",
+    "Length": "1263 mms (container)",
+    "Range Day / Ni": "Day 4000 mm Ni 2500 mm (sic)",
+    "Wt Msl / Launcher": "25.16 Kg",
+    "Scale of Msls": "4 msls per BMP, 208 msls in total",
+    "Holding": "1633"
+   },
+   "note": "Printed 'Konkours' in the 1331 table; 1333 prints ranges in 'mm' (evidently m).",
+   "planRangeM": {
+    "eff": 4000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "en-ss-11-b-1-atgm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "SS 11 B-1 ATGM",
+   "type": "atgm",
+   "rangeM": {
+    "min": 500,
+    "max": 3000
+   },
+   "weightKg": 30,
+   "page": "1331-1332",
+   "specs": {
+    "Pen": "600 mm",
+    "Origin": "France (1331) / France/India (1332)",
+    "Type": "Surface to surface tac guided msl",
+    "Guidance Method": "Optically tracked and manual wire guided msl. Con of msl by varying thrust of sustainer efflux",
+    "Propulsion": "Two-stage soled propellant rkt motor",
+    "Warhead": "Various",
+    "Msl Length": "120 cm",
+    "Msl Dia": "16 cm",
+    "Span": "50 cm",
+    "Launch Wt": "30 Kg",
+    "Speed": "100 m /sec",
+    "Range (1332)": "Min - 500 Max - 300",
+    "First Rd Kill Probability": "80 present",
+    "Launching": "Gr, veh, hel",
+    "Holding": "7500"
+   },
+   "uncertain": true,
+   "note": "1331 gives Max 3000; 1332 prints 'Max - 300'.",
+   "planRangeM": {
+    "min": 500,
+    "max": 3000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "en-milan-atgm-with-mira-ni-sights",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Milan ATGM (with MIRA Ni Sights)",
+   "type": "atgm",
+   "rangeM": {
+    "min": 25,
+    "max": 2000
+   },
+   "weightKg": 12.23,
+   "page": "1331-1333",
+   "specs": {
+    "Pen (1331)": "350 mm",
+    "Armr Pen (1333)": "Up to 840 mm",
+    "Origin": "France",
+    "Type": "Surface to surface, man portable A-tk wpn",
+    "Guidance Principle": "Auto comd wire guidance",
+    "Guidance Method": "Optical track of target only automatic Infra Red track of msl and con by varying of sustainer efflux",
+    "Propulsion": "Ejector in tube (Gas Generator) solid propellant boots/sustainer motor",
+    "Warhead": "Hollow charge",
+    "Msl Length": "0.77 ms",
+    "Body Dia": "90 mm",
+    "Muzzle Vel": "210 ms/sec",
+    "Max speed": "200 ms/sec",
+    "Time of Flt": "7.3 secs to 1000 ms, 12.5 secs to 2000 ms",
+    "Con Sys": "Thrust Vector",
+    "Launcher Mount Wt": "32.5 Kgs",
+    "Hit Probability": "90-95%",
+    "Accuracy": "25 cms",
+    "Lunch Tube": "Ejected",
+    "Trajectory": "50 cms above line of sight",
+    "Launcher Dip at Launch": "Yes",
+    "Wt": "Msl and container 12 kgs. Luncher and con unit with tripod, 16.5 kgs"
+   },
+   "note": "Pen 350 mm (1331 table) vs 'Up to 840 mm' (1333).",
+   "planRangeM": {
+    "min": 25,
+    "max": 2000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "en-nag-atgm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Nag ATGM",
+   "type": "atgm",
+   "rangeM": {
+    "min": 4000,
+    "max": 6000
+   },
+   "weightKg": 42,
+   "page": "1331, 1335",
+   "specs": {
+    "Pen": "Cap of defeating NATO triple tgt at an angle of 65 deg",
+    "Origin": "India",
+    "Range (1335)": "4-6 kms",
+    "Guidance": "Initially from launcher terminal by onboard IR",
+    "Propulsion": "Solid Propellant motor",
+    "Warhead": "Tandem shaped charge"
+   },
+   "uncertain": true,
+   "note": "1331 range column prints '4000-6000' and a separate '2000' below the Nag row; meaning of the 2000 unclear.",
+   "planRangeM": {
+    "min": 4000,
+    "max": 6000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "en-at-5-spandrel-atgm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "AT-5 Spandrel ATGM",
+   "type": "atgm",
+   "rangeM": {
+    "approx": 4000
+   },
+   "page": "1335",
+   "specs": {
+    "Type": "Surface to surface guided A-tk Msl",
+    "Guidance": "Comd to line of sight, optical track",
+    "Propulsion": "Solid",
+    "Warhead": "HEAT",
+    "Launcher length": "1.2 ms",
+    "Launcher Dia": "13.5 cms",
+    "Launch wt": "10-12 kgs",
+    "Speed": "Approx 150-250 ms/sec",
+    "Pen": "500 mms"
+   },
+   "planRangeM": {
+    "eff": 4000
+   },
+   "symbolKeys": [
+    "15111200"
+   ]
+  },
+  {
+   "id": "en-106-mm-rr",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "106 mm RR",
+   "type": "rr",
+   "calibre": "106 mm",
+   "rangeM": {
+    "maxDirect": 2100,
+    "maxIndirect": 7600,
+    "eff": 1400
+   },
+   "weightKg": 219,
+   "crew": 4,
+   "page": "1336",
+   "specs": {
+    "Muzzle Vel": "502.92 ms/sec (1631 ft approx)",
+    "Ammo Wt": "HE 37 lbs approx",
+    "Steel Pen Cap": "16 to 20 inches",
+    "Traverse": "360 deg on gr, 270 deg on jeep",
+    "Elevation": "-17 deg to + 65 deg",
+    "Crew": "4 incl dvr",
+    "Ammo Scale": "48 rds on man/wpns, Unit res-48 (Ist Line) 48 (2nd Line)"
+   },
+   "planRangeM": {
+    "eff": 1400,
+    "max": 2100
+   },
+   "symbolKeys": [
+    "15110803"
+   ]
+  },
+  {
+   "id": "en-57-mm-rr",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "57 mm RR",
+   "type": "rr",
+   "calibre": "57 mm",
+   "rangeM": {
+    "eff": 4297
+   },
+   "rof": "One rd/min (Sustained), One rd after every six secs (Rapid)",
+   "page": "1336",
+   "specs": {
+    "Wt": "55 Pounds (Complete with sight)",
+    "Length of Gun": "61.60 inches",
+    "Muzzle Vel": "400 ms/sec",
+    "Max Range": "(HE and HEAT) 4900 yds",
+    "Eff Range": "4297 ms"
+   },
+   "planRangeM": {
+    "eff": 4297,
+    "max": 4480
+   },
+   "symbolKeys": [
+    "15110801"
+   ],
+   "rangeYds": {
+    "max": 4900
+   },
+   "recheckNotes": [
+    "rangeYds (p 1336): Max Range printed '(HE and HEAT) 4900 yds'; only kept in specs.",
+    "planRangeM (p 1336): 4900 yds = 4480.6 m (rounded down)."
+   ]
+  },
+  {
+   "id": "en-2in-mor",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "2\" Mor",
+   "type": "mortar",
+   "calibre": "50.8 mm",
+   "rangeM": {
+    "effMin": 182,
+    "effMax": 480
+   },
+   "page": "1337",
+   "specs": {
+    "Wt": "12 Pounds and 8 Ounces",
+    "Eff Danger Area": "7.3 ms",
+    "Safety Dist in Battle": "Overhead - 123 ms, Flank - 123 ms"
+   },
+   "planRangeM": {
+    "min": 182,
+    "eff": 480
+   },
+   "symbolKeys": [
+    "15111401"
+   ],
+   "recheckNotes": [
+    "planRangeM (p 1337): Eff Range printed '182-480 ms'; the upper figure was dropped."
+   ]
+  },
+  {
+   "id": "en-3in-mor",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "3\" Mor",
+   "type": "mortar",
+   "calibre": "76.2 mm",
+   "rangeM": {
+    "eff": 3560
+   },
+   "rof": "Normal 7 to 10 rds/min, Rapid 12 rds/min",
+   "page": "1337",
+   "specs": {
+    "Wt": "158 lbs",
+    "Eff Danger Area": "91.4 ms"
+   },
+   "planRangeM": {
+    "eff": 3560
+   },
+   "symbolKeys": [
+    "15111402"
+   ]
+  },
+  {
+   "id": "en-51-mm-mor",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "51 mm Mor",
+   "type": "mortar",
+   "calibre": "51 mm",
+   "rangeM": {
+    "min": 180,
+    "max": 850
+   },
+   "page": "1337",
+   "specs": {
+    "Killing Area": "11 ms (all rds)",
+    "Safety Dist": "135 ms",
+    "Type of Ammo": "HE (MK I and MK II)",
+    "Ammo on Wpn": "24 rd HE, 6 rd Smoke and 6 rds ill",
+    "Note": "Ill rds ill the area of 400 ms for approx 35 secs."
+   },
+   "planRangeM": {
+    "min": 180,
+    "max": 850
+   },
+   "symbolKeys": [
+    "15111401"
+   ]
+  },
+  {
+   "id": "en-60-mm-mor",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "60 mm Mor",
+   "type": "mortar",
+   "calibre": "60 mm",
+   "rangeM": {
+    "effMin": 182,
+    "effMax": 548.6
+   },
+   "page": "1337",
+   "specs": {
+    "Wt": "13 lbs (approx)",
+    "Eff Danger Area": "7.3 ms to 9.14 ms"
+   },
+   "planRangeM": {
+    "min": 182,
+    "eff": 548
+   },
+   "symbolKeys": [
+    "15111401"
+   ],
+   "recheckNotes": [
+    "planRangeM (p 1337): Eff Range printed '182 ms to 548.6 ms'; the upper figure was dropped (rounded down)."
+   ]
+  },
+  {
+   "id": "en-81-mm-mor",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "81 mm Mor",
+   "type": "mortar",
+   "calibre": "81 mm",
+   "rangeM": {
+    "eff": 4200
+   },
+   "rof": "Slow 6 to 8, Normal 9 to 11, Rapid 12 to 20 rds/min",
+   "page": "1337-1338",
+   "specs": {
+    "Wt": "157 lbs",
+    "Traverse": "360 degs",
+    "Eff Danger Area": "91 ms"
+   },
+   "planRangeM": {
+    "eff": 4200
+   },
+   "symbolKeys": [
+    "15111402"
+   ]
+  },
+  {
+   "id": "en-rl-3-5in",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "RL 3.5\"",
+   "type": "rl",
+   "calibre": "88.9 mm",
+   "rangeM": {
+    "eff": 137
+   },
+   "page": "1338",
+   "specs": {
+    "Wt": "15 lbs",
+    "Steep Penetration": "0.279 ms (11\" approx)"
+   },
+   "planRangeM": {
+    "eff": 137
+   },
+   "symbolKeys": [
+    "15111702"
+   ]
+  },
+  {
+   "id": "en-rl-84-mm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "RL 84 mm",
+   "type": "rl",
+   "calibre": "84 mm",
+   "rangeM": {
+    "heatMoving": 400,
+    "heatStationary": 500,
+    "he": 1000,
+    "smk": 1300,
+    "ill": 2100
+   },
+   "rof": "6 rds/min",
+   "page": "1338",
+   "specs": {
+    "Wt": "16.1 kgs with mount and telescopic sight",
+    "HE": "1000 ms (killing area 10 ms)",
+    "Smk": "1300 ms (400-500 ms dia for 30 secs)",
+    "Ill": "2100 mtrs (area of 400-500 mtrs dia for 30 secs)",
+    "Muzzle Vel m/sec": "HEAT 310, HE 240, Smk 240, Ill 260",
+    "Armr Penetration": "400 mms",
+    "Remarks": "Breach loaded, mech op, RR wpns."
+   },
+   "planRangeM": {
+    "eff": 400,
+    "max": 1000
+   },
+   "symbolKeys": [
+    "15111702"
+   ],
+   "recheckNotes": [
+    "planRangeM (p 1338): HEAT '400 m (mov tgts) 500 ms (stationary tgts)': lowest is 400; HE 1000 ms (Smk 1300 / Ill 2100 are not lethal ranges)."
+   ]
+  },
+  {
+   "id": "en-30-mm-auto-gren-launcher-agl-17",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "30 mm Auto Gren Launcher (AGL)-17",
+   "type": "agl",
+   "calibre": "30 mm",
+   "rangeM": {
+    "max": 1700
+   },
+   "weightKg": 18,
+   "rof": "Normal 50 grens/mins, raid - 100 grens/mins and cyclic 350 to 400 grens/mins",
+   "page": "1338-1339",
+   "specs": {
+    "Con Elevation": "67 deg",
+    "Con Depression": "14 deg",
+    "Traverse": "260 deg",
+    "Killing Area": "7 ms"
+   },
+   "planRangeM": {
+    "max": 1700
+   },
+   "symbolKeys": [
+    "15110303"
+   ]
+  },
+  {
+   "id": "en-gren-ags-17",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Gren AGS-17",
+   "type": "agl",
+   "calibre": "30 mm",
+   "page": "1345-1346",
+   "specs": {
+    "Launcher": "Auto gren launcher",
+    "Mounting": "Turret/Pintle mounted on a carriage",
+    "Range finder": "Safty range finder with digital cptr",
+    "Traverse": "360 deg",
+    "Ammo Belt": "290 Grens",
+    "Wt with Ammo": "280.5 kgs",
+    "Length": "1320 mms",
+    "Width": "510 mms",
+    "Height": "1560 mms in cbt posn, 1245 mms in traveling posn"
+   },
+   "note": "Separate entry from the AGL-17 on 1338-1339, as printed.",
+   "symbolKeys": [
+    "15110303"
+   ]
+  },
+  {
+   "id": "en-7-62-mm-5a-and-6a-mmg-mag-tk-71",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "7.62 mm 5A and 6A MMG (MAG TK 71)",
+   "type": "mg",
+   "calibre": "7.62 mm",
+   "rangeM": {
+    "max": 1800
+   },
+   "rof": "650 - 900 rds/mins",
+   "page": "1339",
+   "specs": {
+    "Use": "Designed to be used on the tks, mtd coaxially on the tk turret. MMG 6A can be used in gr role after dismounting; MMG 5A used exclusively (on tk).",
+    "Wt": "5A - 10.25 KGS, 6A - 10.50 KGS",
+    "Length": "5A - 1170 mms, 6A - 1045 mms",
+    "Ammo": "Cartridges SA ball 7.62 mm",
+    "Belt Wt": "6.80 kgs",
+    "Feeding of Cartridges": "From lt to rt",
+    "Ejection of Empty Cartridge": "Downwards",
+    "Op": "Gas op"
+   },
+   "planRangeM": {
+    "max": 1800
+   },
+   "symbolKeys": [
+    "15110202"
+   ]
+  },
+  {
+   "id": "en-7-62-mm-mag-58-mg",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "7.62 mm MAG 58 MG",
+   "type": "mg",
+   "calibre": "7.62 mm",
+   "rangeM": {
+    "max": 1800
+   },
+   "weightKg": 24.4,
+   "rof": "Normal 100, Rapid 200, Cyclic 500-1000 rds per mins",
+   "page": "1339-1340",
+   "specs": {
+    "Wt": "Tripod 10.20 kgs, Gun 14.20 kgs, Sight 102 2.50 kgs, Total Wt 24.40 Kgs",
+    "Ammo": "Cartridge SA ball 7.62 mm",
+    "Belt Capacity": "235 rds",
+    "Feeding of Cartridges": "From lt to rt",
+    "Ejection of Empty Cartridge": "Downwards",
+    "Length of svc Burst": "20 rds",
+    "Traverse": "360 deg (6400 mils)",
+    "Trajectory": "When the sight is fixed upto 600 mtrs bullets do not rise above 1.20 mtrs",
+    "Beaten Z": "500 ms 100x1 ms; 600 ms 100x1 ms; 1200 ms 65x3 ms; 1800 ms 50x 4 ms",
+    "Ni Firing": "Possible using sight unit 102 A/B"
+   },
+   "planRangeM": {
+    "max": 1800
+   },
+   "symbolKeys": [
+    "15110202"
+   ]
+  },
+  {
+   "id": "en-lmg-7-62-mm-1b",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "LMG 7.62 mm 1B",
+   "type": "lmg",
+   "calibre": "7.62 mm",
+   "rangeM": {
+    "max": 1828
+   },
+   "rof": "500 rds/mins",
+   "page": "1340-1341",
+   "specs": {
+    "Wt": "Gun 9.185 kgs, Barrel 2.721 kgs, Mag fd 1.106 kgs",
+    "Length": "1130 mms",
+    "Mounting": "Bipod/tripod",
+    "Ammo": "Ball & tracer",
+    "Firing Lever": "Fully/Semi Auto",
+    "Flash Eliminator": "Exists",
+    "Scale of Ammo": "On Man/Wpn: 1st line 700, 2nd line 600; Unit Res 500"
+   },
+   "planRangeM": {
+    "max": 1828
+   },
+   "symbolKeys": [
+    "15110201"
+   ]
+  },
+  {
+   "id": "en-7-62-mmg-mag-2a1",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "7.62 MMG (MAG) 2A1",
+   "type": "mg",
+   "calibre": "7.62 mm",
+   "rangeM": {
+    "max": 1800
+   },
+   "rof": "600-1000 rds/min",
+   "page": "1341",
+   "specs": {
+    "Gun Length": "1048 mms",
+    "Barrel Length": "545 mms",
+    "Ammo": "Cartridge SA ball",
+    "Mounting": "Tripod",
+    "Feeding": "Belt from lt to rt",
+    "Ejection": "Downward",
+    "Type of Barrel": "Hy/lt"
+   },
+   "planRangeM": {
+    "max": 1800
+   },
+   "symbolKeys": [
+    "15110202"
+   ]
+  },
+  {
+   "id": "en-rifle-7-62-mm-1a1",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Rifle 7.62 mm 1A1",
+   "type": "rifle",
+   "calibre": "7.62 mm",
+   "rangeM": {
+    "max": 560
+   },
+   "rof": "60 rds/min (semi auto)",
+   "weightKg": 4.4,
+   "page": "1341-1342",
+   "specs": {
+    "Wt Mag": "0.7 kgs",
+    "Wt Proj Gren": "0.354 kgs",
+    "Length of Barrel": "533.40 mms",
+    "Length of Rifle": "1125 (short butt) / 1140 (normal butt) / 1150 mms (long butt)",
+    "Mag": "Box type 20 rds",
+    "Mode of firing": "Semi auto",
+    "Ammo": "Cart SA ball NATO"
+   },
+   "planRangeM": {
+    "max": 560
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "en-rifle-7-62-mm-1c",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Rifle 7.62 mm 1C",
+   "type": "rifle",
+   "calibre": "7.62 mm",
+   "rangeM": {
+    "max": 400
+   },
+   "rof": "60 rds/min semi auto, 650-700 rds/min auto",
+   "weightKg": 4.5,
+   "page": "1341-1342",
+   "specs": {
+    "Length of Barrel": "458 mms",
+    "Length of Rifle (Normal butt)": "1063 mms",
+    "Mag": "Box type 20 rds",
+    "Mode of firing": "Semi/Auto",
+    "Muzzle Vel": "825 ms/sec",
+    "Ammo": "Cart SA ball M80"
+   },
+   "planRangeM": {
+    "max": 400
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "en-smg-9-mm-carbine-1a1",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "SMG 9 mm Carbine 1A1",
+   "type": "smg",
+   "calibre": "9 mm",
+   "rangeM": {
+    "max": 182.82
+   },
+   "rof": "550 rds/min",
+   "weightKg": 2.835,
+   "page": "1342",
+   "specs": {
+    "Wt with Mag Ld": "3.515 kgs",
+    "Length Butt Folded": "482.6 mms",
+    "Length Butt Extended": "685.8 mms",
+    "Barrel Length": "198.12 mms",
+    "Ammo": "Cart ball 9 mm",
+    "Mag": "Box type 34 rds"
+   },
+   "planRangeM": {
+    "max": 182
+   },
+   "symbolKeys": [
+    "15110100"
+   ],
+   "recheckNotes": [
+    "planRangeM (p 1342): Printed 182.82 ms; 183 overstates (file rule: never overstate)."
+   ]
+  },
+  {
+   "id": "en-smg-9-mm-carbine-2a1",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "SMG 9 mm Carbine 2A1",
+   "type": "smg",
+   "calibre": "9 mm",
+   "rangeM": {
+    "max": 91
+   },
+   "weightKg": 3.88,
+   "page": "1342",
+   "specs": {
+    "Wt with Mag Ld": "4.56 kgs",
+    "Length Butt Folded": "698 mms",
+    "Length Butt Extended": "902 mms",
+    "Barrel Length": "198.12 mms",
+    "Rifling": "6 grooves rt hand",
+    "Ammo": "Cart ball 9 mm",
+    "Mag": "Box type 34 rds"
+   },
+   "planRangeM": {
+    "max": 91
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "en-7-62-mm-self-loading-rifle",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "7.62 mm Self Loading Rifle",
+   "type": "rifle",
+   "calibre": "7.62 mm",
+   "weightKg": 5.1,
+   "page": "1342",
+   "specs": {
+    "Type": "Self loading lt wt",
+    "Op": "Gas",
+    "Butt Type": "Rigid",
+    "Length": "1126.5 mms",
+    "Mag": "Box Tye 20 rds",
+    "Firing": "6 Grooves (rt hand)",
+    "Firing Lever": "Single shot Semi auto"
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "en-sniper-rifle-dragonov",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Sniper Rifle (Dragonov)",
+   "type": "sniper-rifle",
+   "calibre": "7.62 mm",
+   "rangeM": {
+    "max": 800,
+    "withTelescope": 1200
+   },
+   "weightKg": 3.72,
+   "page": "1342-1343",
+   "specs": {
+    "Scale of Ammo": "On wpn: Sniper Ball 50, Steel Core 50; Unit: Sniper Ball 50, Steel Core 50",
+    "Res Mag with capacity": "10 rds"
+   },
+   "planRangeM": {
+    "max": 800
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "en-ak-rifle",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "AK Rifle",
+   "type": "rifle",
+   "calibre": "7.62 mm",
+   "rangeM": {
+    "eff": 300
+   },
+   "weightKg": 4.3,
+   "rof": "Cyclic Rate 600 rds",
+   "page": "1343",
+   "specs": {
+    "Length": "869 mms"
+   },
+   "note": "Printed 'AK Rifle (DRAGONOV)'.",
+   "planRangeM": {
+    "eff": 300
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "en-rifle-spotting-cal-0-50in-m8c",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Rifle Spotting Cal 0.50\" M8C",
+   "type": "spotting-rifle",
+   "calibre": "0.50 in",
+   "weightKg": 11.8,
+   "page": "1343",
+   "specs": {
+    "Type": "Spotting rifle 106 mm RR",
+    "Op": "Gas op semi auto",
+    "Wt with Empty Mag": "11.80 kgs",
+    "Overall Length": "1140.31 mms",
+    "Barrel Length": "812.9 mms",
+    "Mag": "Detachable 20 rds box type",
+    "Muzzle Vel": "536 ms/sec",
+    "Ammo": "Cartridge spotter tracer 0.50 M48",
+    "Mounting": "Mounted co-axially above 106 mm RR",
+    "Purpose": "Judging the range and lead"
+   }
+  },
+  {
+   "id": "en-93-mm-flame-thrower",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "93 mm Flame Thrower",
+   "type": "flame-thrower",
+   "calibre": "93 mm",
+   "rangeM": {
+    "max": 1000,
+    "sighting": 600,
+    "pointBlank3mTgt": 200,
+    "eff": 350
+   },
+   "weightKg": 11,
+   "page": "1344",
+   "specs": {
+    "Length": "940 ms (sic)",
+    "Muzzle Vel": "125 +/- 5 ms/sec",
+    "Wt of flame thrower": "11 kgs",
+    "Wt of Projectile": "4.5 kgs",
+    "Wt of Warhead": "2.1 kgs",
+    "Distr Area in Open": "50 ms",
+    "Danger Area": "20 ms from pt of burst",
+    "Temp": "In excess of 100 deg C (Pt of Expl)",
+    "Temp Range": "+/- 50 deg C (Cbt Emp)",
+    "Storage Life": "10 yrs",
+    "Back Blast": "47 ms"
+   },
+   "uncertain": true,
+   "note": "Page 1344 heads this block 'Rifle Spotting Cal 0.50\" M8C' (repeated heading); the data (93 mm, wt of flame thrower) are a flame thrower's. Name is my reading.",
+   "planRangeM": {
+    "eff": 350,
+    "max": 1000
+   }
+  },
+  {
+   "id": "en-5-56-mm-insas-aslt-rifle",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "5.56 mm INSAS Aslt Rifle",
+   "type": "rifle",
+   "calibre": "5.56 mm",
+   "weightKg": 4.1,
+   "page": "1344-1345",
+   "specs": {
+    "Op": "Single shot 3 rd burst",
+    "Feed": "Plastic box 20 rds",
+    "Wt with filled Mag": "4.1 kgs",
+    "Length Fix Butt": "945 mm",
+    "Length Folded": "750 mm",
+    "Barrel Length": "464 mm",
+    "Muzzle Vel": "915 m/sec",
+    "Bullet Mass": "4.16 gm",
+    "Cartridge Mass": "Iron beta lt",
+    "Sight": "Passive Ni"
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "en-5-56-mm-insas-lmg",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "5.56 mm INSAS LMG",
+   "type": "lmg",
+   "calibre": "5.56 mm",
+   "weightKg": 6.37,
+   "page": "1344-1345",
+   "specs": {
+    "Op": "Single shot Auto",
+    "Feed": "Plastic box 30 rds",
+    "Wt with filled Mag": "6.37 kgs",
+    "Length Fix Butt": "1050 mm",
+    "Length Folded": "890 mm",
+    "Barrel Length": "535 mm",
+    "Muzzle Vel": "915 m/sec",
+    "Bullet Mass": "4.16 gm",
+    "Cartridge Mass": "Iron beta lt",
+    "Sight": "Passive Ni"
+   },
+   "symbolKeys": [
+    "15110201"
+   ]
+  },
+  {
+   "id": "en-5-56-mm-insas-carbine",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "5.56 mm INSAS Carbine",
+   "type": "rifle",
+   "calibre": "5.56 mm",
+   "weightKg": 3.7,
+   "page": "1344-1345",
+   "specs": {
+    "Op": "Single shot Auto",
+    "Feed": "Plastic box 30 rds",
+    "Wt with filled Mag": "3.7 kgs",
+    "Length Fix Butt": "-",
+    "Length Folded": "600 mm",
+    "Barrel Length": "330 mm",
+    "Muzzle Vel": "835 m/sec",
+    "Bullet Mass": "4.16 gm",
+    "Cartridge Mass": "Iron"
+   },
+   "symbolKeys": [
+    "15110100"
+   ]
+  },
+  {
+   "id": "en-gren-no-36m-he",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Gren No 36M HE",
+   "type": "grenade",
+   "rangeM": {
+    "hand": "23-27",
+    "rifle": 182
+   },
+   "page": "1345",
+   "specs": {
+    "Type": "Anti pers ammo fragmentation",
+    "Firing": "By hand and firing by rifle 7.62 mm 1A1 fitted with proj gren 7.62 mm",
+    "No of fragments": "40-60",
+    "Killing area": "27.5 ms",
+    "Gren Body/Expl": "Cast iron segmented externally/TNT",
+    "Detonator": "4S for hand gren and 7S for rifle gern",
+    "Mass of Hand/Rifle Gren": "680 g / 802 g",
+    "Packing": "4 Steel boxes into one carriage containing 40 gerns"
+   },
+   "planRangeM": {
+    "eff": 23,
+    "max": 182
+   },
+   "recheckNotes": [
+    "planRangeM (p 1345): Range 'By hand 23-27 ms. By rifle 182 ms'; eff = lowest hand figure, max = rifle-fired."
+   ]
+  },
+  {
+   "id": "en-73-mm-a-tk-gren-ia",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "73 mm A-Tk Gren (IA)",
+   "type": "atk-grenade",
+   "calibre": "73 mm",
+   "rangeM": {
+    "eff": 45,
+    "optimum": 70
+   },
+   "weightKg": 0.8,
+   "page": "1345",
+   "specs": {
+    "Armr Pen": "280 mms"
+   },
+   "planRangeM": {
+    "eff": 45
+   },
+   "symbolKeys": [
+    "15111702"
+   ]
+  },
+  {
+   "id": "en-rpg-7-v",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "RPG 7 V",
+   "type": "rpg",
+   "calibre": "40 mm",
+   "rangeM": {
+    "max": 330
+   },
+   "weightKg": 6.3,
+   "rof": "4 to 6 rds/min",
+   "page": "1346",
+   "specs": {
+    "Wt": "6.3 kgs with telescope sight",
+    "MV (1st Stage)": "120 rds/min (sic)",
+    "MV (2nd Stage)": "300 ms/sec",
+    "Armr Pen": "280 mms",
+    "Back Blast": "30 ms",
+    "Wt of Gren": "2.2 kgs",
+    "Type of Bore": "Smooth",
+    "Loading": "Muzzle loading",
+    "Op": "Mech op, recoilless wpn"
+   },
+   "planRangeM": {
+    "max": 330
+   },
+   "symbolKeys": [
+    "15111702"
+   ]
+  },
+  {
+   "id": "en-pmp-pms-wet",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "PMP/PMS (Wet)",
+   "type": "bridge",
+   "page": "1347",
+   "specs": {
+    "Made": "Russia",
+    "Cl": "60",
+    "Const (One Set)": "30-50 mins",
+    "Length of Each Set (M)": "227",
+    "Total Length each type of Br (M)": "2270",
+    "Remarks": "Aslt Br"
+   },
+   "symbolKeys": [
+    "15130100"
+   ]
+  },
+  {
+   "id": "en-tmm-3-dry",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "TMM 3 (Dry)",
+   "type": "bridge",
+   "page": "1347",
+   "specs": {
+    "Made": "Russia",
+    "Cl": "60",
+    "Const (One Set)": "72 mins",
+    "Length of Each Set (M)": "42",
+    "Total Length each type of Br (M)": "420",
+    "Remarks": "Aslt Br"
+   },
+   "symbolKeys": [
+    "15130100"
+   ]
+  },
+  {
+   "id": "en-kruppman-br-wet",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "KRUPPMAN Br (Wet)",
+   "type": "bridge",
+   "page": "1347",
+   "specs": {
+    "Made": "India",
+    "Cl": "60",
+    "Const (One Set)": "3 hrs",
+    "Length of Each Set (M)": "8612",
+    "Total Length each type of Br (M)": "37893",
+    "Remarks": "L of C Br"
+   },
+   "symbolKeys": [
+    "15130100"
+   ]
+  },
+  {
+   "id": "en-am-50-dry",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "AM-50 (Dry)",
+   "type": "bridge",
+   "page": "1347",
+   "specs": {
+    "Made": "Czech",
+    "Cl": "50",
+    "Const (One Set)": "42 mins",
+    "Length of Each Set (M)": "54",
+    "Total Length each type of Br (M)": "1188",
+    "Remarks": "Aslt Br"
+   },
+   "symbolKeys": [
+    "15130100"
+   ]
+  },
+  {
+   "id": "en-mgb-br-dry",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MGB Br (Dry)",
+   "type": "bridge",
+   "page": "1347",
+   "specs": {
+    "Made": "UK",
+    "Cl": "60",
+    "Const (One Set)": "45 mins",
+    "Length of Each Set (M)": "31",
+    "Total Length each type of Br (M)": "620",
+    "Remarks": "L of C Br"
+   },
+   "symbolKeys": [
+    "15130100"
+   ]
+  },
+  {
+   "id": "en-blt-dry",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "BLT (Dry)",
+   "type": "bridge",
+   "page": "1347",
+   "specs": {
+    "Made": "-",
+    "Cl": "-",
+    "Const (One Set)": "-",
+    "Length of Each Set (M)": "24",
+    "Total Length each type of Br (M)": "3216",
+    "Remarks": "Aslt Br"
+   },
+   "symbolKeys": [
+    "15130100"
+   ]
+  },
+  {
+   "id": "en-sarvatra-trestle-br",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Sarvatra Trestle Br",
+   "type": "bridge",
+   "page": "1347",
+   "specs": {
+    "Made": "India",
+    "Cl": "70",
+    "Const (One Set)": "150 mins",
+    "Length of Each Set (M)": "751",
+    "Remarks": "Aslt (Dry)"
+   },
+   "uncertain": true,
+   "note": "Sarvatra 751 printed in the 'Length of Each Set' column, Sakar 46 in the 'Total Length' column; may be shifted.",
+   "symbolKeys": [
+    "15130100"
+   ]
+  },
+  {
+   "id": "en-sakar",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Sakar",
+   "type": "bridge",
+   "page": "1347",
+   "specs": {
+    "Cl": "40/70",
+    "Const (One Set)": "90 mins",
+    "Total Length each type of Br (M)": "46",
+    "Remarks": "Modular Br"
+   },
+   "uncertain": true,
+   "note": "Sarvatra 751 printed in the 'Length of Each Set' column, Sakar 46 in the 'Total Length' column; may be shifted.",
+   "symbolKeys": [
+    "15130100"
+   ]
+  },
+  {
+   "id": "en-trawl-pt-55",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Trawl PT 55",
+   "type": "mine-trawl",
+   "weightKg": 7000,
+   "page": "1348",
+   "specs": {
+    "Total wt of trawl assy": "7000 Kgs",
+    "Wt of one roller unit carriage": "2700 Kgs",
+    "Carried by": "1x10 ton or 2x5 ton or 3x3 ton trk",
+    "Fitting time": "15 Mins (Using 6ton crane)",
+    "Removal time": "5 Mins (Using 6 ton crane)",
+    "Width of trawled tread way": "8.3 Ms",
+    "Width of untrawled strip b/w tread ways": "1.73 M",
+    "Speed of trawling": "3-6 Kmph",
+    "Expl each roller can with-stand": "10",
+    "Eff against linked / double action mines": "Not eff",
+    "Eff against deep buried mines": "Not eff",
+    "Eff against tripwire": "Not eff",
+    "Max negotiable width of ditch": "3 Ms",
+    "Max negotiable ht of a hump": ".5 M"
+   },
+   "symbolKeys": [
+    "15130902"
+   ]
+  },
+  {
+   "id": "en-trawl-kmt-6",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Trawl KMT 6",
+   "type": "mine-trawl",
+   "page": "1348",
+   "specs": {
+    "Description": "Improved version of KMT-5 fitted with T-72 Tks",
+    "Clearance": "Clears a ploughed path 8 Ms wide in front of each tr; clears a route 800 Ms deep A tk m fd in 18 mins"
+   },
+   "symbolKeys": [
+    "15130902"
+   ]
+  },
+  {
+   "id": "en-prithvi-ssm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Prithvi SSM",
+   "type": "ssm",
+   "rangeM": {
+    "armyKm": 150,
+    "iafKm": 250,
+    "navyKm": 350
+   },
+   "page": "1349",
+   "specs": {
+    "Type": "SSM",
+    "Range (Km)": "150 - Army, 250 - IAF, 350 - Navy",
+    "Propulsion": "Single stage",
+    "Guidance": "Inertial Strap Down",
+    "Length": "9 Ms",
+    "Pay Load (Kg)": "1000 - Army, 500 - IAF, 250 - Navy",
+    "Warhead": "Conventional Chemical or Nuc"
+   },
+   "symbolKeys": [
+    "15111301"
+   ],
+   "planRangeM": {
+    "max": 150000
+   },
+   "recheckNotes": [
+    "planRangeM (p 1349): Range (Km) '150 - Army, 250 - IAF, 350 - Navy'; Army (lowest) 150 km."
+   ]
+  },
+  {
+   "id": "en-agni-irbm",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Agni IRBM",
+   "type": "irbm",
+   "page": "1349",
+   "specs": {
+    "Type": "IRBM",
+    "Range (Km)": "Agni-I 700-800 km; Agni-II 2500; Agni-III 3500 extendable to 5000; Agni IV 6000 km",
+    "Propulsion": "Agni-I Solid & Liquid; Agni-II Liquid",
+    "Guidance": "Inertial Strap Down",
+    "Length (M)": "Agni-I 19; Agni-II 20",
+    "Wt": "Agni-I 14.2 Ton; Agni-II 16 Ton",
+    "Pay Load (Kg)": "1000 Ton (sic)"
+   },
+   "note": "Ranges in km; not converted.",
+   "symbolKeys": [
+    "15111302"
+   ]
+  },
+  {
+   "id": "en-mi-8",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MI-8",
+   "type": "helicopter",
+   "page": "1350",
+   "specs": {
+    "Cl": "Lt Tpt",
+    "Capacity Tps": "28",
+    "Capacity Load Internal (Kg)": "4,000",
+    "Capacity Load External (Kg)": "3,000",
+    "Arms": "-",
+    "Max Speed": "260 kmph",
+    "Hover Ceiling": "1,900 m"
+   }
+  },
+  {
+   "id": "en-mi-17",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MI-17",
+   "type": "helicopter",
+   "page": "1350",
+   "specs": {
+    "Cl": "Multi Purpose",
+    "Capacity Tps": "26",
+    "Capacity Load Internal (Kg)": "4,000",
+    "Capacity Load External (Kg)": "3,000",
+    "Arms": "12.7 mm MG & Atk Msl",
+    "Max Speed": "250 kmph",
+    "Hover Ceiling": "1,760 m"
+   }
+  },
+  {
+   "id": "en-mi-25",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MI-25",
+   "type": "helicopter",
+   "page": "1350",
+   "specs": {
+    "Cl": "Gunship with Ltd Tpt Cap",
+    "Capacity Tps": "10",
+    "Capacity Load Internal (Kg)": "3,800",
+    "Capacity Load External (Kg)": "-",
+    "Arms": "128x57 mm Rkt 4 Atk/AAMs",
+    "Max Speed": "335 kmph",
+    "Hover Ceiling": "731 m"
+   }
+  },
+  {
+   "id": "en-mi-26",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MI-26",
+   "type": "helicopter",
+   "page": "1350",
+   "specs": {
+    "Cl": "Tpt",
+    "Capacity Tps": "85",
+    "Capacity Load Internal (Kg)": "20,000",
+    "Capacity Load External (Kg)": "20,000",
+    "Arms": "-",
+    "Max Speed": "295 kmph",
+    "Hover Ceiling": "599 m"
+   }
+  },
+  {
+   "id": "en-mi-35",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MI-35",
+   "type": "helicopter",
+   "page": "1350",
+   "specs": {
+    "Cl": "Attk/Utility",
+    "Capacity Tps": "10",
+    "Capacity Load Internal (Kg)": "3,800",
+    "Capacity Load External (Kg)": "-",
+    "Arms": "4 AT 6 Spiral Msls, 2x23 mm Guns & 57 mm Rkt",
+    "Max Speed": "335 kmph",
+    "Hover Ceiling": "-"
+   }
+  },
+  {
+   "id": "en-alouette-iii-chetak",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Alouette-III (Chetak)",
+   "type": "helicopter",
+   "page": "1350",
+   "specs": {
+    "Cl": "Gen Purpose",
+    "Capacity Tps": "7",
+    "Capacity Load Internal (Kg)": "990",
+    "Capacity Load External (Kg)": "750",
+    "Arms": "4 AS-11 Msls, 2x7.62 mm or 20 mm guns and 57 mm Rkts",
+    "Max Speed": "160 kmph",
+    "Hover Ceiling": "950 m"
+   }
+  },
+  {
+   "id": "en-sa-315-lama-chetak",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "SA-315 Lama (Chetak)",
+   "type": "helicopter",
+   "page": "1350",
+   "specs": {
+    "Cl": "Gen Purpose",
+    "Capacity Tps": "3-5",
+    "Capacity Load Internal (Kg)": "755",
+    "Capacity Load External (Kg)": "1,000",
+    "Arms": "2 (AS-1, Sagger Msls 2x7.62 mm MGs)",
+    "Max Speed": "190 kmph",
+    "Hover Ceiling": "5,050 m"
+   }
+  },
+  {
+   "id": "en-alh",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "ALH",
+   "type": "helicopter",
+   "page": "1350",
+   "specs": {
+    "Cl": "Muliti Purpose Trisvc (Under Trials)",
+    "Capacity Tps": "12-14",
+    "Capacity Load Internal (Kg)": "1,500",
+    "Capacity Load External (Kg)": "1,500",
+    "Arms": "20 mm Cannon, 2 AT GM, 2x68 mm Rkts Or 2 AAMs",
+    "Hover Ceiling": "3,000 m"
+   }
+  },
+  {
+   "id": "en-su-30",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "SU-30",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Multi Role",
+    "Armt": "1x130 mm Gun, Msl&IR Seeker",
+    "Speed (Mach)": "2.35",
+    "Cbt Radius (Kms)": "800/100",
+    "Max Take Off Wt (Kgs)": "33,000"
+   },
+   "note": "Values as printed (e.g. SU-30 '1x130 mm Gun', Mirage Cbt Radius '39')."
+  },
+  {
+   "id": "en-mirage-2000",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Mirage 2000",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "France",
+    "Role": "AD & Multi Role",
+    "Armt": "2x30 mm Cannon, Matra, AS",
+    "Speed (Mach)": "2.35",
+    "Cbt Radius (Kms)": "39",
+    "Max Take Off Wt (Kgs)": "16,500"
+   },
+   "note": "Values as printed (e.g. SU-30 '1x130 mm Gun', Mirage Cbt Radius '39')."
+  },
+  {
+   "id": "en-jaguar",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Jaguar",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "UK",
+    "Role": "Strike",
+    "Armt": "30 & R 550 Msls",
+    "Speed (Mach)": "1.1-1.6",
+    "Cbt Radius (Kms)": "908",
+    "Max Take Off Wt (Kgs)": "15,700"
+   }
+  },
+  {
+   "id": "en-mig-21",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MiG 21",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Interceptor/CAS",
+    "Armt": "2x230 mm Cannon, R-550 Msl",
+    "Speed (Mach)": "2.1",
+    "Cbt Radius (Kms)": "203",
+    "Max Take Off Wt (Kgs)": "8,471"
+   }
+  },
+  {
+   "id": "en-mig-21-bis",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MiG 21 BIS",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Interceptor",
+    "Armt": "K-13A, PC-2 Msl",
+    "Speed (Mach)": "2.1",
+    "Cbt Radius (Kms)": "203",
+    "Max Take Off Wt (Kgs)": "8,585"
+   }
+  },
+  {
+   "id": "en-mig-21-fl",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MiG 21 FL",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Fighter/ Interceptor",
+    "Armt": "1x23 mm Twin Barrel Cannon, R, 60 msl, Rkt, Bombs",
+    "Speed (Mach)": "2.3",
+    "Cbt Radius (Kms)": "850",
+    "Max Take Off Wt (Kgs)": "20,100"
+   }
+  },
+  {
+   "id": "en-mig-27-ml",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MiG 27 ML",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Fighter",
+    "Armt": "23 mm Cannon, Msl",
+    "Speed (Mach)": "1.6",
+    "Cbt Radius (Kms)": "390",
+    "Max Take Off Wt (Kgs)": "18,000"
+   }
+  },
+  {
+   "id": "en-mig-29",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "MiG 29",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Fighter",
+    "Armt": "30 mm Cannon, Msl",
+    "Speed (Mach)": "2.3",
+    "Cbt Radius (Kms)": "800",
+    "Max Take Off Wt (Kgs)": "18,480"
+   }
+  },
+  {
+   "id": "en-lca",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "LCA",
+   "type": "combat-aircraft",
+   "page": "1351",
+   "specs": {
+    "Origin": "India",
+    "Role": "Fighter",
+    "Armt": "23 mm Cannon, Msl",
+    "Speed (Mach)": "1.6-2",
+    "Cbt Radius (Kms)": "600",
+    "Max Take Off Wt (Kgs)": "8,500"
+   }
+  },
+  {
+   "id": "en-il-76",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "IL-76",
+   "type": "transport-aircraft",
+   "page": "1352",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Mil Tpt",
+    "Armt": "Twin 23 mm Cannon",
+    "Capacity": "225 Paratroopers or 40 tons, wh/tr veh",
+    "Max Take Off Wt (Kgs)": "170,00",
+    "Speed Kmph": "850"
+   },
+   "note": "Max take off wt printed '170,00'."
+  },
+  {
+   "id": "en-an-12",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "AN-12",
+   "type": "transport-aircraft",
+   "page": "1352",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Mil Tpt",
+    "Armt": "23 mm NR-23 Cannon",
+    "Capacity": "100 Paratroopers or 20 tons,",
+    "Max Take Off Wt (Kgs)": "61,000",
+    "Speed Kmph": "550"
+   }
+  },
+  {
+   "id": "en-an-32",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "AN-32",
+   "type": "transport-aircraft",
+   "page": "1352",
+   "specs": {
+    "Origin": "Russia",
+    "Role": "Mil Tpt",
+    "Armt": "-",
+    "Capacity": "39 Paratroopers or 6.7 tons wt",
+    "Max Take Off Wt (Kgs)": "7,000",
+    "Speed Kmph": "530"
+   }
+  },
+  {
+   "id": "en-dornier-228",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Dornier 228",
+   "type": "transport-aircraft",
+   "page": "1352",
+   "specs": {
+    "Origin": "Germany",
+    "Role": "Mil Tpt",
+    "Armt": "-",
+    "Capacity": "19 Pers or 2057 kgs",
+    "Max Take Off Wt (Kgs)": "5,980",
+    "Speed Kmph": "428"
+   }
+  },
+  {
+   "id": "en-avro-748-m",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "AVRO 748 M",
+   "type": "transport-aircraft",
+   "page": "1352",
+   "specs": {
+    "Origin": "UK",
+    "Role": "Mil Tpt",
+    "Armt": "-",
+    "Capacity": "48 Paratroopers or 6 tons",
+    "Max Take Off Wt (Kgs)": "21,092",
+    "Speed Kmph": "452"
+   }
+  },
+  {
+   "id": "en-boeing-737",
+   "side": "en",
+   "section": "Sec 13 - Threat",
+   "name": "Boeing 737",
+   "type": "transport-aircraft",
+   "page": "1352",
+   "specs": {
+    "Origin": "USA",
+    "Role": "VIP Tpt",
+    "Armt": "-",
+    "Capacity": "VIP Cabinet, upto 60 Pers",
+    "Max Take Off Wt (Kgs)": "53,070",
+    "Speed Kmph": "993"
+   }
+  },
+  {
+   "id": "sa-16",
+   "side": "own",
+   "section": "Sec 3 - AD",
+   "name": "SA-16",
+   "type": "sam",
+   "page": "319",
+   "ammoScale": {
+    "unit": "IR SAM (36x Stinger/Anza Mk-II/SA-16 Msl Launcher)",
+    "firstLineMslsPerLauncher": 10,
+    "secLineMslsPerLauncher": 5
+   },
+   "note": "Named only in the page 319 Scale of Ammo (IR SAM row, with Stinger and Anza Mk-II); Sec 3 gives no characteristics for it (not in the page 317 Details of AD Eqpt).",
+   "symbolKeys": [
+    "15111101"
+   ]
+  },
+  {
+   "id": "rdms-type-84",
+   "side": "own",
+   "section": "Sec 4 - Engrs",
+   "name": "RDMS Type-84",
+   "type": "mine-laying-rkt-sys",
+   "calibre": "122 mm",
+   "tubes": 24,
+   "rangeKm": {
+    "settings": [
+     3.5,
+     4.3,
+     5.4,
+     7
+    ]
+   },
+   "rangeM": {
+    "min": 3500,
+    "max": 7000
+   },
+   "minesPerRkt": "8 ATMs or 128 APMs",
+   "minesPerSalvo": "192 ATMs or 3072 APMs, laid in an area of 650 Ms 650 Ms (as printed; an 'x' appears to be missing)",
+   "atmType": "Contact/Non-Contact Belly Attk",
+   "selfDestruct": "4.5-72hrs",
+   "ammoTypes": "Mine rkts (ATM / APM); HE rkts of 122 mm cal can also be fired",
+   "page": "440, 409-410",
+   "note": "Chinese Rkt Del Mine Sys (p 440: 'used for rapid laying of ATMs and APMs. HE rkts of 122 mm cal can be fired with this sys'). Held by the Aslt Engr Bn: RDMS Type-84 x 4 (Spec Vehs p 410, Misc Eqpt RDMS 4 p 409). The RDMS Coy (p 416-417) does not print its launcher count. Ranges are the four printed laying ranges. No symbolKeys given: 15111602 (MRL Med) carries the 122 mm MBRL 20 km Rng in Symbols.json and would overstate; 15131001 (MML) is a mechanical layer. Lead to choose.",
+   "planRangeM": {
+    "min": 3500,
+    "max": 7000
+   }
+  }
+ ]
+}

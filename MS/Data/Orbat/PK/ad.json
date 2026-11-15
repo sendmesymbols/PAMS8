@@ -1,0 +1,2341 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Air Defence",
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "section": "Sec 3 - AD",
+  "pages": "300-321",
+  "handling": "RESTD"
+ },
+ "side": "own",
+ "basis": "R = as printed in the book. Fields marked uncertain / judged / *Note carry the reader's doubts; printed totals are kept even where parts do not add up.",
+ "keyNotes": [
+  "Book pages 300-321 = PDF pages 1-22 of 'Sec 3 - AD.pdf' (PDF page = printed - 299).",
+  "AD weapons: rangeM.slant = 'Max Eff Slant Range (Ms)' and rangeM.ceiling = 'Alt (Ms)' from page 317; rangeM.min = lower bound where printed as 300-5000.",
+  "strengthTable = page 320-321 'Summary of Pers and Vehs (incl atts) - AD Units' (peace / fd inc / total); jcoOr = JCOs/OR column; nceCiv = NCEs & Civs.",
+  "Chart manpower (pages 308-313) and the page 320-321 summary differ for every regt; both are given as printed. Since the 15 Nov 2026 re-check: strength = the page 320-321 TOTAL row (incl fd inc and atts; offr / jcoOr / nceCiv, total = Total Pers) for the five regts in it; chartStrength = the figure printed in the chart box (for a regt, its chart SUMMARY manpower). Med AD Regt and SC&R Regt are not in the summary and keep strength {total} = chart figure.",
+  "ammoScale on a unit = its row of the page 319 Scale of Ammo (per = rpg or msls per launcher); the same figures are on the weapons.json entries."
+ ],
+ "units": [
+  {
+   "id": "ad-aad-comd",
+   "name": "AAD Comd",
+   "arm": "ad",
+   "type": "comd",
+   "subtype": "aad",
+   "echelon": "22",
+   "page": "301-302",
+   "children": [
+    {
+     "role": "HQ AAD Comd",
+     "unit": "ad-hq-aad-comd",
+     "count": 1
+    },
+    {
+     "role": "AD Div",
+     "unit": "ad-aad-div",
+     "count": 2,
+     "note": "Chart page 302 shows each AD Div with 2 AD Bdes"
+    },
+    {
+     "role": "Comp Bde(s)",
+     "unit": "ad-bde-composite",
+     "uncertain": true,
+     "note": "Chart box reads 'COMP BDE(S)': number not given"
+    }
+   ],
+   "notes": [
+    "Comd is a Lt Gen (page 301); echelon 22 is judgement from that."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-hq-aad-comd",
+   "name": "HQ AAD Comd",
+   "arm": "ad",
+   "type": "hq",
+   "subtype": "aad-comd",
+   "echelon": "22",
+   "page": "301",
+   "children": [
+    {
+     "role": "Sig Det",
+     "count": 1
+    },
+    {
+     "role": "Bty HQ/Estb (Bty HQ)",
+     "count": 1,
+     "note": "Box 'Bty HQ/Estb' in the Adm Branch row; under it 'Bty HQ' with 2x GD Tps and MT Tp",
+     "children": [
+      {
+       "role": "GD Tp",
+       "count": 2,
+       "note": "box '2x GD Tps'",
+       "children": [
+        {
+         "role": "Sec",
+         "count": 2,
+         "uncertain": true,
+         "note": "boxes 'SEC - 1' and 'SEC - 2' are drawn under the one '2x GD Tps' box; whether each tp has two secs is not stated"
+        }
+       ]
+      },
+      {
+       "role": "MT Tp",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "appointments": [
+    {
+     "appt": "Comd",
+     "rank": "Lt Gen",
+     "count": 1
+    },
+    {
+     "appt": "ADC",
+     "rank": "Capt",
+     "count": 1
+    },
+    {
+     "appt": "PA Steno",
+     "rank": "JCO",
+     "count": 1,
+     "note": "printed 'PA (JCO) Steno', with the ADC"
+    },
+    {
+     "appt": "Chief of Staff",
+     "rank": "Brig",
+     "count": 1
+    },
+    {
+     "appt": "PA Steno",
+     "rank": "Hav",
+     "count": 1,
+     "note": "to Chief of Staff"
+    },
+    {
+     "appt": "Col GS",
+     "rank": "Col",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "PA",
+     "rank": "Hav",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "Plans",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "Ops",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "Trg",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "Int",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "Sig",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "Edn",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "DPC",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "GSO-1 Coord",
+     "branch": "Coord Branch",
+     "count": 1
+    },
+    {
+     "appt": "SD",
+     "branch": "Coord Branch",
+     "count": 1,
+     "uncertain": true,
+     "note": "box hangs on the Coord Branch line"
+    },
+    {
+     "appt": "Col Adm",
+     "rank": "Col",
+     "branch": "Adm Branch",
+     "count": 1,
+     "uncertain": true
+    },
+    {
+     "appt": "PA",
+     "rank": "Hav",
+     "branch": "Adm Branch",
+     "count": 1
+    },
+    {
+     "appt": "Plans/Log",
+     "branch": "Adm Branch",
+     "count": 1
+    },
+    {
+     "appt": "Adm",
+     "branch": "Adm Branch",
+     "count": 1
+    },
+    {
+     "appt": "EME",
+     "branch": "Adm Branch",
+     "count": 1
+    },
+    {
+     "appt": "Legal",
+     "branch": "Adm Branch",
+     "count": 1
+    },
+    {
+     "appt": "Bty HQ/Estb",
+     "branch": "Adm Branch",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Comd (Lt Gen) with ADC (Capt), PA (JCO) Steno; Chief of Staff (Brig) with PA (Hav) Steno.",
+    "GS Branch: Col GS (Col), PA (Hav); Plans, Ops, Trg, Int, Sig, Edn, DPC. Coord Branch: GSO-1 Coord, SD (box on the Coord Branch line). Adm Branch: Col Adm (Col), PA (Hav); Plans/Log, Adm, EME, Legal, Bty HQ/Estb."
+   ],
+   "side": "own",
+   "symbolKey": "10130100",
+   "appointmentsNote": "The appt labels under the branch boxes are set to the left of their lines; read as Col GS (GS Branch), GSO-1 Coord (Coord Branch), Col Adm (Adm Branch). The SD box sits on the Coord Branch line (the 14 Nov reading put it under Adm Branch). Plans ... DPC and Plans/Log ... Bty HQ/Estb are section boxes."
+  },
+  {
+   "id": "ad-hq-aad-div",
+   "name": "HQ AAD Div",
+   "arm": "ad",
+   "type": "hq",
+   "subtype": "aad-div",
+   "echelon": "21",
+   "page": "303",
+   "children": [
+    {
+     "role": "HQ Bty",
+     "count": 1,
+     "children": [
+      {
+       "role": "GD Tp",
+       "count": 1,
+       "children": [
+        {
+         "role": "Tp HQ",
+         "count": 1
+        },
+        {
+         "role": "Sec",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "role": "MT Tp",
+       "count": 1
+      }
+     ]
+    }
+   ],
+   "appointments": [
+    {
+     "appt": "GOC",
+     "rank": "Maj Gen",
+     "count": 1
+    },
+    {
+     "appt": "ADC",
+     "rank": "Capt",
+     "count": 1
+    },
+    {
+     "appt": "PA Steno",
+     "rank": "JCO",
+     "count": 1,
+     "note": "printed 'PA (JCO) Steno', with the ADC"
+    },
+    {
+     "appt": "Col Staff",
+     "count": 1
+    },
+    {
+     "appt": "PA Steno",
+     "rank": "Hav",
+     "count": 1,
+     "note": "to Col Staff"
+    },
+    {
+     "appt": "GSO-1",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "GSO-2 (Ops)",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "GSO-3 (Ops)",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "GSO-2 (Int)",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "GSO-3 (Int)",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "AA & QMG",
+     "branch": "AQ Branch",
+     "count": 1
+    },
+    {
+     "appt": "DAAG",
+     "branch": "AQ Branch",
+     "count": 1
+    },
+    {
+     "appt": "SC (A)",
+     "branch": "AQ Branch",
+     "count": 1
+    },
+    {
+     "appt": "DAQMG",
+     "branch": "AQ Branch",
+     "count": 1
+    },
+    {
+     "appt": "SC (Q)",
+     "branch": "AQ Branch",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "GOC (Maj Gen), Col Staff, ADC (Capt), PA (JCO) Steno, PA (Hav) Steno.",
+    "GS Branch: GSO-1; GSO-2 (Ops), GSO-2 (Int); GSO-3 (Ops), GSO-3 (Int). AQ Branch: AA & QMG; DAAG with SC (A); DAQMG with SC (Q)."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-aad-div",
+   "name": "AAD Div",
+   "arm": "ad",
+   "type": "div",
+   "subtype": "aad",
+   "echelon": "21",
+   "page": "302, 304",
+   "children": [
+    {
+     "role": "HQ",
+     "unit": "ad-hq-aad-div",
+     "count": 1
+    },
+    {
+     "role": "AD Bde",
+     "count": 2,
+     "note": "No of AD bdes/regts depends on critical assets in the AOR; type of bde not stated"
+    },
+    {
+     "role": "SC&R Regt",
+     "unit": "ad-regt-scr",
+     "count": 1
+    },
+    {
+     "role": "Div Ord Unit",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "The no of AD bdes/regts depend upon the no of critical assets falling in the AOR incl static tasks and req of AD res in the proj area of ops."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-hq-ad-bde",
+   "name": "HQ AD Bde",
+   "arm": "ad",
+   "type": "hq",
+   "subtype": "ad-bde",
+   "echelon": "18",
+   "page": "305",
+   "strength": {
+    "offr": 5,
+    "jco": 3,
+    "sldr": 41,
+    "sw": 2,
+    "ncu": 1,
+    "total": 52
+   },
+   "strengthNote": "Printed as Present+Att: Offrs 5, JCOs 2+1, Sldrs 36+5, SWs 2, NCUs 1, Total 46+6. War Increment: Sldrs 20, NCUs 20 (offrs, JCOs, SWs '-').",
+   "strengthDetail": {
+    "presentPlusAtt": {
+     "offr": "5",
+     "jco": "2+1",
+     "sldr": "36+5",
+     "sw": "2",
+     "ncu": "1",
+     "total": "46+6"
+    },
+    "warIncrement": {
+     "offr": "-",
+     "jco": "-",
+     "sldr": 20,
+     "sw": "-",
+     "ncu": 20
+    },
+    "uncertain": true,
+    "note": "As printed. The War Increment column has no total line; its second 20 sits on the NCUs line and may be the column total set one line high (then 20 sldrs only, not 20 sldrs + 20 NCUs)."
+   },
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Staff Car",
+     "count": 1
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 4,
+     "note": "with Tlr"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 2,
+     "note": "with Tlr"
+    },
+    {
+     "name": "Trk 2 1/2 Ton",
+     "count": 3
+    },
+    {
+     "name": "Tlr 1 1/2 Ton",
+     "count": 2
+    },
+    {
+     "name": "Water Tlr",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Comd; GS Branch: BM, GSO-3 (Ops); A/Q Branch: DAA&QMG."
+   ],
+   "side": "own",
+   "symbolKey": "10130100",
+   "appointments": [
+    {
+     "appt": "Comd",
+     "count": 1
+    },
+    {
+     "appt": "BM",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "GSO-3 (Ops)",
+     "branch": "GS Branch",
+     "count": 1
+    },
+    {
+     "appt": "DAA&QMG",
+     "branch": "A/Q Branch",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "ad-bde-composite",
+   "name": "Composite AD Bde",
+   "arm": "ad",
+   "type": "bde",
+   "subtype": "composite",
+   "echelon": "18",
+   "page": "306",
+   "children": [
+    {
+     "role": "HQ AD Bde",
+     "unit": "ad-hq-ad-bde",
+     "count": 1,
+     "note": "HQ AD Bde org from page 305 (not drawn on page 306)"
+    },
+    {
+     "role": "Lt AD (GM) Regt",
+     "unit": "ad-regt-lt-gm",
+     "count": 2
+    },
+    {
+     "role": "Med AD Regt",
+     "unit": "ad-regt-med",
+     "count": 1
+    },
+    {
+     "role": "RCG AD Regt",
+     "unit": "ad-regt-rcg",
+     "count": 1
+    },
+    {
+     "role": "Lt AD SAM (RBS-70) Regt",
+     "unit": "ad-regt-rbs70",
+     "count": 1
+    },
+    {
+     "role": "Inf Bn",
+     "count": 1
+    },
+    {
+     "role": "AD Bde Sig Coy",
+     "count": 1
+    },
+    {
+     "role": "AD Bde Wksp Coy",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "The no of Lt AD (GM) regts, RCG and Lt AD SAM (RBS-70) regts is not fixed. This depends upon the no of critical assets falling in the AOR incl static task."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-bde-corps",
+   "name": "Corps AD Bde",
+   "arm": "ad",
+   "type": "bde",
+   "subtype": "corps",
+   "echelon": "18",
+   "page": "306",
+   "children": [
+    {
+     "role": "HQ AD Bde",
+     "unit": "ad-hq-ad-bde",
+     "count": 1,
+     "note": "HQ AD Bde org from page 305 (not drawn on page 306)"
+    },
+    {
+     "role": "Lt AD (GM) Regt",
+     "unit": "ad-regt-lt-gm",
+     "count": 2
+    },
+    {
+     "role": "Lt AD Msl Regt",
+     "count": 1,
+     "note": "Chart box 'LT AD MSL REGT' - type of msl regt not stated (Lt AD (SAM) page 309 or RBS-70 page 312)"
+    },
+    {
+     "role": "AD Bde Sig Coy",
+     "count": 1
+    },
+    {
+     "role": "AD Bde Wksp Coy",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "The AD Bdes integral to corps have only 2-3 Lt AD Regts under comd, depending on the nature of the Corps ops / no of assets req to be def."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-bde-armd-div",
+   "name": "AD Bde (Armd Div)",
+   "arm": "ad",
+   "type": "bde",
+   "subtype": "armd-div",
+   "echelon": "18",
+   "page": "307, 311",
+   "children": [
+    {
+     "role": "HQ",
+     "unit": "ad-hq-ad-bde",
+     "count": 1
+    },
+    {
+     "role": "Lt AD (GM/SP) Regt",
+     "unit": "ad-regt-lt-gm-sp",
+     "count": 2
+    },
+    {
+     "role": "AD Bde Wksp Coy",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "2x Lt AD (SP) Regts to form an AD Bde in each Armd Div (page 311). Armd Div chart (page 101) shows it as 'AD Bde - 2xLt AD (SP) Regts'."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-regt-lt-gm",
+   "name": "Lt AD (GM) Regt",
+   "arm": "ad",
+   "type": "regt",
+   "subtype": "lt-gm",
+   "echelon": "16",
+   "page": "308, 319, 320",
+   "strength": {
+    "offr": 20,
+    "jcoOr": 463,
+    "nceCiv": 15,
+    "total": 498
+   },
+   "chartStrength": 446,
+   "strengthNote": "strength = page 320 TOTAL row (incl fd inc and atts): Total Pers 498 (Total All Ranks 483 + NCEs & Civs 15); peace 452 all ranks / 467 pers, fd inc 31. chartStrength 446 = chart summary manpower = 3 btys x 129 + RHQ Tp 59 (LAD (att) 25 not incl). Chart and summary differ; both as printed.",
+   "strengthTable": {
+    "page": "320",
+    "peace": {
+     "offr": 19,
+     "jcoOr": 433,
+     "totalAllRanks": 452,
+     "nceCiv": 15,
+     "totalPers": 467
+    },
+    "fdInc": {
+     "offr": 1,
+     "jcoOr": 30,
+     "totalAllRanks": 31,
+     "nceCiv": 0,
+     "totalPers": 31
+    },
+    "total": {
+     "offr": 20,
+     "jcoOr": 463,
+     "totalAllRanks": 483,
+     "nceCiv": 15,
+     "totalPers": 498
+    }
+   },
+   "children": [
+    {
+     "role": "Lt AD (GM) Bty",
+     "unit": "ad-bty-lt-gm",
+     "count": 3,
+     "strength": {
+      "total": 129
+     },
+     "chartStrength": 129
+    },
+    {
+     "role": "RHQ Tp",
+     "count": 1,
+     "strength": {
+      "total": 59
+     },
+     "chartStrength": 59
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att",
+     "strength": {
+      "total": 25
+     },
+     "chartStrength": 25
+    }
+   ],
+   "weapons": [
+    {
+     "name": "37 mm AD Gun",
+     "count": 12,
+     "heldBy": "Gun Tps",
+     "note": "Twin (page 319)",
+     "weapon": "37-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "SAM Launcher",
+     "count": 24,
+     "heldBy": "Msl Tps"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 9
+    },
+    {
+     "name": "Trk 3/4 Ton or 1 or 1.5 Ton",
+     "count": 51
+    },
+    {
+     "name": "Trk 2.5 or 3 Ton",
+     "count": 38
+    },
+    {
+     "name": "Trk 6/9/10 Ton",
+     "count": 1,
+     "note": "* Rec Veh"
+    },
+    {
+     "name": "Amb",
+     "count": 1
+    },
+    {
+     "name": "Tlr all type",
+     "count": 85
+    },
+    {
+     "name": "Total excl MC and Tlrs",
+     "count": 100
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "319",
+     "ser": 1,
+     "weapons": "12x37 mm Gun (Twin)",
+     "per": "rpg",
+     "firstLine": {
+      "HE/HEI": 1092,
+      "AP": 28
+     },
+     "secondLine": {
+      "HE/HEI": 546,
+      "AP": 14
+     },
+     "weapon": "37-mm"
+    },
+    {
+     "page": "319",
+     "ser": 1,
+     "weapons": "24xMsl Launcher",
+     "per": "msls per launcher",
+     "firstLine": {
+      "Msls": 4
+     },
+     "secondLine": {
+      "Msls": 2
+     }
+    }
+   ],
+   "notes": [
+    "Gun Tp will not be emp indep but will be emp with one of the msl tps as Gun Missile (GM) Tp.",
+    "1 x Msl Tp can be emp indep.",
+    "A bty can def 2 x VPs and the regt upto 6 x VPs.",
+    "Vehicles are the page 320 TOTAL row (peace = total; fd inc adds no vehs)."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-bty-lt-gm",
+   "name": "Lt AD (GM) Bty",
+   "arm": "ad",
+   "type": "bty",
+   "subtype": "lt-gm",
+   "echelon": "15",
+   "page": "308",
+   "strength": {
+    "total": 129
+   },
+   "chartStrength": 129,
+   "children": [
+    {
+     "role": "BHQ",
+     "count": 1,
+     "strength": {
+      "total": 21
+     },
+     "chartStrength": 21
+    },
+    {
+     "role": "Gun Tp",
+     "unit": "ad-tp-gun-37",
+     "count": 1,
+     "chartStrength": 30
+    },
+    {
+     "role": "Msl Tp",
+     "unit": "ad-tp-msl-lt-gm",
+     "count": 2,
+     "chartStrength": 39
+    }
+   ],
+   "notes": [
+    "A bty can def 2 x VPs."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-tp-gun-37",
+   "name": "Gun Tp (Lt AD (GM) Bty)",
+   "arm": "ad",
+   "type": "tp",
+   "subtype": "gun-37mm",
+   "echelon": "14",
+   "page": "308",
+   "strength": {
+    "total": 30
+   },
+   "chartStrength": 30,
+   "weapons": [
+    {
+     "name": "37 mm AD Gun",
+     "count": 4,
+     "weapon": "37-mm",
+     "weaponMatch": "alias"
+    }
+   ],
+   "notes": [
+    "Will not be emp indep; emp with one of the msl tps as Gun Missile (GM) Tp."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-tp-msl-lt-gm",
+   "name": "Msl Tp (Lt AD (GM) Bty)",
+   "arm": "ad",
+   "type": "tp",
+   "subtype": "msl",
+   "echelon": "14",
+   "page": "308",
+   "strength": {
+    "total": 39
+   },
+   "chartStrength": 39,
+   "weapons": [
+    {
+     "name": "SAM Launcher",
+     "count": 4
+    }
+   ],
+   "notes": [
+    "1 x Msl Tp can be emp indep."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-regt-lt-sam",
+   "name": "Lt AD (SAM) Regt",
+   "arm": "ad",
+   "type": "regt",
+   "subtype": "lt-sam",
+   "echelon": "16",
+   "page": "309, 320",
+   "strength": {
+    "offr": 20,
+    "jcoOr": 509,
+    "nceCiv": 15,
+    "total": 544
+   },
+   "chartStrength": 491,
+   "strengthNote": "strength = page 320 TOTAL row of 'Lt AD (IR SAM) Regt' (taken to be this regt; incl fd inc and atts): Total Pers 544 (Total All Ranks 529 + NCEs & Civs 15); peace 495 all ranks / 510 pers, fd inc 34. chartStrength 491 = chart summary manpower = 3 btys x 145 + RHQ Tp 56 (LAD (att) 15 not incl). Chart and summary differ; both as printed.",
+   "strengthTable": {
+    "page": "320",
+    "name": "Lt AD (IR SAM) Regt",
+    "peace": {
+     "offr": 19,
+     "jcoOr": 476,
+     "totalAllRanks": 495,
+     "nceCiv": 15,
+     "totalPers": 510
+    },
+    "fdInc": {
+     "offr": 1,
+     "jcoOr": 33,
+     "totalAllRanks": 34,
+     "totalPers": 34
+    },
+    "total": {
+     "offr": 20,
+     "jcoOr": 509,
+     "totalAllRanks": 529,
+     "nceCiv": 15,
+     "totalPers": 544
+    }
+   },
+   "children": [
+    {
+     "role": "SAM Bty",
+     "unit": "ad-bty-sam",
+     "count": 3,
+     "strength": {
+      "total": 145
+     },
+     "chartStrength": 145
+    },
+    {
+     "role": "RHQ Tp",
+     "count": 1,
+     "strength": {
+      "total": 56
+     },
+     "chartStrength": 56
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att",
+     "strength": {
+      "total": 15
+     },
+     "chartStrength": 15
+    }
+   ],
+   "weapons": [
+    {
+     "name": "Msl Launcher",
+     "count": 36,
+     "note": "IR SAM (Stinger/Anza Mk-II/SA-16, page 319 ser 6); page 320 remark: initially 24 SAM launchers are aval"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 18
+    },
+    {
+     "name": "Trk 3/4 Ton or 1 or 1.5 Ton",
+     "count": 51
+    },
+    {
+     "name": "Trk 2.5 or 3 Ton",
+     "count": 29
+    },
+    {
+     "name": "Trk 6/9/10 Ton",
+     "count": 5
+    },
+    {
+     "name": "Amb",
+     "count": 1
+    },
+    {
+     "name": "Tlr all type",
+     "count": 97
+    },
+    {
+     "name": "Total excl MC and Tlrs",
+     "count": 104
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "319",
+     "ser": 6,
+     "unit": "IR SAM",
+     "weapons": "36x Stinger/Anza Mk-II/SA-16 Msl Launcher",
+     "per": "msls per launcher",
+     "firstLine": {
+      "Msls": 10
+     },
+     "secondLine": {
+      "Msls": 5
+     },
+     "note": "row headed 'IR SAM'; matched to this regt by its 36 launchers"
+    }
+   ],
+   "notes": [
+    "A Msl tp can be emp indep.",
+    "A bty can def 3 x VPs and the regt can def upto 9 x VPs.",
+    "Page 320 remark: Initially 24 SAM Launchers are aval."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-bty-sam",
+   "name": "SAM Bty",
+   "arm": "ad",
+   "type": "bty",
+   "subtype": "sam",
+   "echelon": "15",
+   "page": "309",
+   "strength": {
+    "total": 145
+   },
+   "chartStrength": 145,
+   "children": [
+    {
+     "role": "BHQ",
+     "count": 1,
+     "strength": {
+      "total": 19
+     },
+     "chartStrength": 19
+    },
+    {
+     "role": "Msl Tp",
+     "unit": "ad-tp-msl-sam",
+     "count": 3,
+     "chartStrength": 42
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-tp-msl-sam",
+   "name": "Msl Tp (SAM Bty)",
+   "arm": "ad",
+   "type": "tp",
+   "subtype": "msl",
+   "echelon": "14",
+   "page": "309",
+   "strength": {
+    "total": 42
+   },
+   "chartStrength": 42,
+   "weapons": [
+    {
+     "name": "Msl Launcher",
+     "count": 4
+    }
+   ],
+   "notes": [
+    "A Msl tp can be emp indep."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-regt-med",
+   "name": "Med AD Regt",
+   "arm": "ad",
+   "type": "regt",
+   "subtype": "med",
+   "echelon": "16",
+   "page": "310, 319",
+   "strength": {
+    "total": 514
+   },
+   "chartStrength": 514,
+   "strengthNote": "Chart summary manpower 514 = 3 btys x 153 + RHQ Tp 55 (LAD EME (att) strength not printed). Not in the page 320-321 summary, so strength = the chart figure.",
+   "children": [
+    {
+     "role": "Med AD Bty",
+     "unit": "ad-bty-med",
+     "count": 3,
+     "strength": {
+      "total": 153
+     },
+     "chartStrength": 153
+    },
+    {
+     "role": "RHQ Tp",
+     "count": 1,
+     "strength": {
+      "total": 55
+     },
+     "chartStrength": 55
+    },
+    {
+     "role": "LAD EME",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "57 mm AD Gun",
+     "count": 24,
+     "weapon": "57-mm",
+     "weaponMatch": "alias"
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "319",
+     "ser": 5,
+     "weapons": "24x57 mm Gun",
+     "per": "rpg",
+     "firstLine": {
+      "HE/HEI": 392,
+      "AP": 8
+     },
+     "secondLine": {
+      "HE/HEI": 196,
+      "AP": 4
+     },
+     "weapon": "57-mm"
+    }
+   ],
+   "notes": [
+    "Med FU will not be depl indep but within the bty.",
+    "Med bty can engage two tgts simultaneously.",
+    "Every 3rd rd of Med Ammo will be fitted with prox fuze.",
+    "Med AD Regt can provide AD to 3 x VPs."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-bty-med",
+   "name": "Med AD Bty",
+   "arm": "ad",
+   "type": "bty",
+   "subtype": "med",
+   "echelon": "15",
+   "page": "310",
+   "strength": {
+    "total": 153
+   },
+   "chartStrength": 153,
+   "children": [
+    {
+     "role": "BHQ",
+     "count": 1,
+     "strength": {
+      "total": 39
+     },
+     "chartStrength": 39,
+     "note": "'Surv Radar' is printed beside the BHQ box; the '1x' before it is in the PDF text layer but not visible on the page",
+     "equipment": [
+      {
+       "name": "Surv Radar",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "FU",
+     "unit": "ad-fu-med",
+     "count": 2,
+     "chartStrength": 57
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Surv Radar",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Med bty can engage two tgts simultaneously."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-fu-med",
+   "name": "FU (Med AD Bty)",
+   "arm": "ad",
+   "type": "fu",
+   "subtype": "med",
+   "echelon": "14",
+   "page": "310",
+   "strength": {
+    "total": 57
+   },
+   "chartStrength": 57,
+   "weapons": [
+    {
+     "name": "57 mm AD Gun",
+     "count": 4,
+     "weapon": "57-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "12.7 mm / IR SAM",
+     "count": 2,
+     "note": "Printed '(2 x 12.7 mm / 3 x IR SAM)' for FU 1 and '(2 x 12 mm / 3 x IR SAM)' for FU 2 (12 mm taken as a misprint of 12.7 mm); read as 2 x 12.7 mm or 3 x IR SAM, '/' meaning 'or' as elsewhere in this section (37mm/40mm Gun, AD Gun / SP Guns).",
+     "uncertain": true,
+     "options": [
+      {
+       "name": "12.7 mm",
+       "count": 2
+      },
+      {
+       "name": "IR SAM",
+       "count": 3
+      }
+     ]
+    }
+   ],
+   "equipment": [
+    {
+     "name": "FCR",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "Med FU will not be depl indep but within the bty. Echelon 14 is judgement (fire unit = half bty)."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-regt-lt-gm-sp",
+   "name": "Lt AD (GM/SP) Regt",
+   "arm": "ad",
+   "type": "regt",
+   "subtype": "lt-gm-sp",
+   "echelon": "16",
+   "page": "311, 319, 321",
+   "strength": {
+    "offr": 20,
+    "jcoOr": 480,
+    "nceCiv": 14,
+    "total": 514
+   },
+   "chartStrength": 464,
+   "strengthNote": "strength = page 321 TOTAL row of 'Lt AD (SP/GM) Regt' (incl fd inc and atts): Total Pers 514 (Total All Ranks 500 + NCEs & Civs 14); peace 469 all ranks / 483 pers, fd inc 31. chartStrength 464 = chart summary manpower = 3 btys x 135 + RHQ Tp 59 (LAD (att) strength not printed). Chart and summary differ; both as printed.",
+   "strengthTable": {
+    "page": "321",
+    "name": "Lt AD (SP/GM) Regt",
+    "peace": {
+     "offr": 19,
+     "jcoOr": 450,
+     "totalAllRanks": 469,
+     "nceCiv": 14,
+     "totalPers": 483
+    },
+    "fdInc": {
+     "offr": 1,
+     "jcoOr": 30,
+     "totalAllRanks": 31,
+     "totalPers": 31
+    },
+    "total": {
+     "offr": 20,
+     "jcoOr": 480,
+     "totalAllRanks": 500,
+     "nceCiv": 14,
+     "totalPers": 514
+    }
+   },
+   "children": [
+    {
+     "role": "Lt AD (GM/SP) Bty",
+     "unit": "ad-bty-lt-gm-sp",
+     "count": 3,
+     "strength": {
+      "total": 135
+     },
+     "chartStrength": 135
+    },
+    {
+     "role": "RHQ Tp",
+     "count": 1,
+     "strength": {
+      "total": 59
+     },
+     "chartStrength": 59
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "37 mm AD Gun (AD SP Guns)",
+     "count": 12,
+     "weapon": "37-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "SAM Launcher (Shoulder Fired/Pedestal Mtd/SP)",
+     "count": 24,
+     "note": "Summary figure. The bty chart shows 4 SAM launchers + 4 RBS-70 per bty (12 + 12 = 24); the summary does not list RBS-70 separately",
+     "uncertain": true
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 1
+    },
+    {
+     "name": "Trk 3/4 Ton or 1 or 1.5 Ton",
+     "count": 9
+    },
+    {
+     "name": "Trk 2.5 or 3 Ton",
+     "count": 27
+    },
+    {
+     "name": "Trk 6/9/10 Ton",
+     "count": 38
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 5
+    },
+    {
+     "name": "Amb",
+     "count": 1
+    },
+    {
+     "name": "APC",
+     "count": 24,
+     "note": "*Presently units have 12 x APCs. 12 Dodges have been issued in lieu of remaining 12 x APC"
+    },
+    {
+     "name": "Tlr all type",
+     "count": 85
+    },
+    {
+     "name": "Total excl MC and Tlrs",
+     "count": 104
+    }
+   ],
+   "vehiclesNote": "Values placed in the page 321 columns as printed; they sum to 105, not the printed total 104 - a column may be misaligned.",
+   "ammoScale": [
+    {
+     "page": "319",
+     "ser": 2,
+     "weapons": "12x37 mm Gun (Twin)",
+     "per": "rpg",
+     "firstLine": {
+      "HE/HEI": 1092,
+      "AP": 28
+     },
+     "secondLine": {
+      "HE/HEI": 546,
+      "AP": 14
+     },
+     "weapon": "37-mm",
+     "note": "printed 'Same as above (Lt AD (GM) Regt), however SAM launchers are now APC borne'"
+    },
+    {
+     "page": "319",
+     "ser": 2,
+     "weapons": "24xMsl Launcher",
+     "per": "msls per launcher",
+     "firstLine": {
+      "Msls": 4
+     },
+     "secondLine": {
+      "Msls": 2
+     },
+     "note": "printed 'Same as above'; SAM launchers now APC borne"
+    }
+   ],
+   "uncertain": true,
+   "notes": [
+    "A Msl tp can be emp indep.",
+    "A bty can def 2 x VPs and the regt can def upto 6 x VPs.",
+    "2x Lt AD (SP) Regts to form an AD Bde in each Armd Div and 1xLt AD (SP) Regt is auth to each IABG.",
+    "SAM launchers of Lt AD (SP) Regts ex Armd Div / IABG are APC borne.",
+    "Gun Tp will not be emp indep but will be emp with one of the msl tps as Gun Missile (GM) Tp.",
+    "Ammo scale (page 319): same as Lt AD (GM) Regt, however SAM launchers are now APC borne."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-bty-lt-gm-sp",
+   "name": "Lt AD (GM/SP) Bty",
+   "arm": "ad",
+   "type": "bty",
+   "subtype": "lt-gm-sp",
+   "echelon": "15",
+   "page": "311",
+   "strength": {
+    "total": 135
+   },
+   "chartStrength": 135,
+   "children": [
+    {
+     "role": "BHQ",
+     "count": 1,
+     "strength": {
+      "total": 20
+     },
+     "chartStrength": 20
+    },
+    {
+     "role": "Gun Tp",
+     "count": 1,
+     "strength": {
+      "total": 29
+     },
+     "chartStrength": 29,
+     "note": "4 x 37 MM AD Gun / SP Guns",
+     "weapons": [
+      {
+       "name": "37 MM AD Gun / SP Guns",
+       "count": 4,
+       "weapon": "37-mm",
+       "weaponMatch": "alias"
+      }
+     ]
+    },
+    {
+     "role": "Msl Tp",
+     "count": 1,
+     "strength": {
+      "total": 43
+     },
+     "chartStrength": 43,
+     "note": "4 x SAM Launchers (Shoulder Fired / Pedestal Mtd/SP)",
+     "weapons": [
+      {
+       "name": "SAM Launchers (Shoulder Fired / Pedestal Mtd/SP)",
+       "count": 4
+      }
+     ]
+    },
+    {
+     "role": "Msl Tp RBS 70",
+     "count": 1,
+     "note": "Box prints no strength; the bty figure implies 43 (135 - BHQ 20 - Gun Tp 29 - Msl Tp 43).",
+     "weapons": [
+      {
+       "name": "RBS-70",
+       "count": 4,
+       "note": "APC Mtd",
+       "weapon": "rbs-70",
+       "weaponMatch": "alias"
+      }
+     ]
+    }
+   ],
+   "weapons": [
+    {
+     "name": "37 mm AD Gun / SP Gun",
+     "count": 4,
+     "heldBy": "Gun Tp",
+     "weapon": "37-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "SAM Launcher",
+     "count": 4,
+     "heldBy": "Msl Tp"
+    },
+    {
+     "name": "RBS-70",
+     "count": 4,
+     "heldBy": "Msl Tp RBS 70",
+     "note": "APC Mtd",
+     "weapon": "rbs-70",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-regt-rbs70",
+   "name": "Lt AD SAM (RBS-70) Regt",
+   "arm": "ad",
+   "type": "regt",
+   "subtype": "lt-sam-rbs70",
+   "echelon": "16",
+   "page": "312, 319, 321",
+   "strength": {
+    "offr": 20,
+    "jcoOr": 518,
+    "nceCiv": 14,
+    "total": 552
+   },
+   "chartStrength": 469,
+   "strengthNote": "strength = page 321 TOTAL row of 'Lt AD (RBS 70 Msl) Regt' (incl fd inc and atts): Total Pers 552 (Total All Ranks 538 + NCEs & Civs 14); peace 474 all ranks / 488 pers, fd inc 64. chartStrength 469 = chart summary manpower = 3 btys x 138 + RHQ Tp 55 (LAD (att) 25 not incl). Chart and summary differ; both as printed.",
+   "strengthTable": {
+    "page": "321",
+    "name": "Lt AD (RBS 70 Msl) Regt",
+    "peace": {
+     "offr": 19,
+     "jcoOr": 455,
+     "totalAllRanks": 474,
+     "nceCiv": 14,
+     "totalPers": 488
+    },
+    "fdInc": {
+     "offr": 1,
+     "jcoOr": 63,
+     "totalAllRanks": 64,
+     "totalPers": 64
+    },
+    "total": {
+     "offr": 20,
+     "jcoOr": 518,
+     "totalAllRanks": 538,
+     "nceCiv": 14,
+     "totalPers": 552
+    }
+   },
+   "children": [
+    {
+     "role": "RBS-70 Bty",
+     "unit": "ad-bty-rbs70",
+     "count": 3,
+     "strength": {
+      "total": 138
+     },
+     "chartStrength": 138
+    },
+    {
+     "role": "RHQ Tp",
+     "count": 1,
+     "strength": {
+      "total": 55
+     },
+     "chartStrength": 55
+    },
+    {
+     "role": "LAD",
+     "count": 1,
+     "relation": "att",
+     "strength": {
+      "total": 25
+     },
+     "chartStrength": 25
+    }
+   ],
+   "weapons": [
+    {
+     "name": "RBS-70 (SAM)",
+     "count": 24,
+     "note": "All RBS-70 are with BOLIDE config with enhanced range and are ni cap",
+     "weapon": "rbs-70-bolide",
+     "weaponMatch": "alias"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Giraffe Radar",
+     "count": 6
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 1
+    },
+    {
+     "name": "Trk 3/4 Ton or 1 or 1.5 Ton",
+     "count": 18
+    },
+    {
+     "name": "Trk 2.5 or 3 Ton",
+     "count": 49
+    },
+    {
+     "name": "Trk 6/9/10 Ton",
+     "count": 22
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 11
+    },
+    {
+     "name": "Amb",
+     "count": 1,
+     "note": "Fd inc"
+    },
+    {
+     "name": "Tlr all type",
+     "count": 97
+    },
+    {
+     "name": "Total excl MC and Tlrs",
+     "count": 101,
+     "note": "Peace 100, fd inc 1"
+    }
+   ],
+   "vehiclesNote": "Values placed in the page 321 columns as printed; they sum to 102 (peace 101), not the printed 101 (peace 100) - a column may be misaligned.",
+   "ammoScale": [
+    {
+     "page": "319",
+     "ser": 4,
+     "weapons": "24 x RBS 70 BOLIDE",
+     "per": "msls per launcher",
+     "firstLine": {
+      "Msls": 6
+     },
+     "secondLine": {
+      "Msls": 3
+     },
+     "weapon": "rbs-70-bolide",
+     "uncertain": true,
+     "note": "the sec line also prints a '3' in the AP column (probably misaligned)"
+    }
+   ],
+   "uncertain": true,
+   "notes": [
+    "A tp can be indep depl.",
+    "A bty can def 2 x VPs and the regt can def upto 6 x VPs.",
+    "All RBS-70 are with BOLIDE config with enhanced range and are ni cap."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-bty-rbs70",
+   "name": "RBS-70 Bty",
+   "arm": "ad",
+   "type": "bty",
+   "subtype": "rbs70",
+   "echelon": "15",
+   "page": "312",
+   "strength": {
+    "total": 138
+   },
+   "chartStrength": 138,
+   "children": [
+    {
+     "role": "BHQ",
+     "count": 1,
+     "strength": {
+      "total": 12
+     },
+     "chartStrength": 12
+    },
+    {
+     "role": "RBS-70 Tp",
+     "unit": "ad-tp-rbs70",
+     "count": 2,
+     "chartStrength": 63
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-tp-rbs70",
+   "name": "RBS-70 Tp",
+   "arm": "ad",
+   "type": "tp",
+   "subtype": "rbs70",
+   "echelon": "14",
+   "page": "312",
+   "strength": {
+    "total": 63
+   },
+   "chartStrength": 63,
+   "weapons": [
+    {
+     "name": "RBS-70 SAM",
+     "count": 4,
+     "weapon": "rbs-70-bolide",
+     "weaponMatch": "alias",
+     "note": "All RBS-70 are with BOLIDE config (p 312 note 3)"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Giraffe Radar",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "A tp can be indep depl."
+   ],
+   "side": "own",
+   "symbolKey": "10130102"
+  },
+  {
+   "id": "ad-regt-rcg",
+   "name": "RCG AD Regt",
+   "arm": "ad",
+   "type": "regt",
+   "subtype": "rcg",
+   "echelon": "16",
+   "page": "313, 319, 321",
+   "strength": {
+    "offr": 20,
+    "jcoOr": 397,
+    "nceCiv": 13,
+    "total": 430
+   },
+   "chartStrength": 387,
+   "strengthNote": "strength = page 321 TOTAL row of 'Lt AD (RCG) Regt' (incl fd inc and atts): Total Pers 430 (Total All Ranks 417 + NCEs & Civs 13); peace 394 all ranks / 407 pers, fd inc 23. chartStrength 387 = chart summary manpower = 3 btys x 110 + RHQ Tp 57 (LAD (EME) (att) strength not printed). Chart and summary differ; both as printed.",
+   "strengthTable": {
+    "page": "321",
+    "name": "Lt AD (RCG) Regt",
+    "peace": {
+     "offr": 19,
+     "jcoOr": 375,
+     "totalAllRanks": 394,
+     "nceCiv": 13,
+     "totalPers": 407
+    },
+    "fdInc": {
+     "offr": 1,
+     "jcoOr": 22,
+     "totalAllRanks": 23,
+     "totalPers": 23
+    },
+    "total": {
+     "offr": 20,
+     "jcoOr": 397,
+     "totalAllRanks": 417,
+     "nceCiv": 13,
+     "totalPers": 430
+    }
+   },
+   "children": [
+    {
+     "role": "RCG AD Bty",
+     "unit": "ad-bty-rcg",
+     "count": 3,
+     "strength": {
+      "total": 110
+     },
+     "chartStrength": 110
+    },
+    {
+     "role": "RHQ Tp",
+     "count": 1,
+     "strength": {
+      "total": 57
+     },
+     "chartStrength": 57
+    },
+    {
+     "role": "LAD (EME)",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "35 mm Oerlikon",
+     "count": 12,
+     "weapon": "35-mm-oerlikon",
+     "weaponMatch": "alias"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Sky Gd Radar",
+     "count": 6
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MC",
+     "count": 1
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 1
+    },
+    {
+     "name": "Trk 3/4 Ton or 1 or 1.5 Ton",
+     "count": 18
+    },
+    {
+     "name": "Trk 2.5 or 3 Ton",
+     "count": 16,
+     "note": "Peace row; the TOTAL row leaves this cell blank"
+    },
+    {
+     "name": "Trk 6/9/10 Ton",
+     "count": 24
+    },
+    {
+     "name": "Water Bowzer",
+     "count": 23
+    },
+    {
+     "name": "Amb",
+     "count": 1
+    },
+    {
+     "name": "Tractor Arty",
+     "count": 1,
+     "note": "* Tractor with front blade"
+    },
+    {
+     "name": "Tlr all type",
+     "count": 29
+    },
+    {
+     "name": "Total excl MC and Tlrs",
+     "count": 83
+    }
+   ],
+   "vehiclesNote": "Values placed in the page 321 columns as printed; they sum to 84, not the printed 83 - a column may be misaligned.",
+   "ammoScale": [
+    {
+     "page": "319",
+     "ser": 3,
+     "weapons": "12x35 mm Oerlikon Gun",
+     "per": "rpg",
+     "firstLine": {
+      "HE/HEI": 1242,
+      "HEI-T": 828,
+      "SAPHEI-T": 90
+     },
+     "secondLine": {
+      "HE/HEI": 621,
+      "HEI-T": 414,
+      "SRPGI-T": 45
+     },
+     "weapon": "35-mm-oerlikon",
+     "note": "the third 2nd line column is headed 'SRPGI-T' (1st line 'SAPHEI-T'), as printed"
+    }
+   ],
+   "uncertain": true,
+   "notes": [
+    "A tp can engage tgt indep.",
+    "A bty can def 1 x VP and regt can def 3 x VPs."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-bty-rcg",
+   "name": "RCG AD Bty",
+   "arm": "ad",
+   "type": "bty",
+   "subtype": "rcg",
+   "echelon": "15",
+   "page": "313",
+   "strength": {
+    "total": 110
+   },
+   "chartStrength": 110,
+   "strengthNote": "Printed 110, but BHQ 32 + 2 x RCG Tp 33 = 98; the difference (12) is not shown on the chart.",
+   "uncertain": true,
+   "children": [
+    {
+     "role": "BHQ",
+     "count": 1,
+     "strength": {
+      "total": 32
+     },
+     "chartStrength": 32
+    },
+    {
+     "role": "RCG Tp",
+     "unit": "ad-tp-rcg",
+     "count": 2,
+     "chartStrength": 33
+    }
+   ],
+   "notes": [
+    "A bty can def 1 x VP."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-tp-rcg",
+   "name": "RCG Tp",
+   "arm": "ad",
+   "type": "tp",
+   "subtype": "rcg",
+   "echelon": "14",
+   "page": "313",
+   "strength": {
+    "total": 33
+   },
+   "chartStrength": 33,
+   "weapons": [
+    {
+     "name": "35 mm Oerlikon",
+     "count": 2,
+     "weapon": "35-mm-oerlikon",
+     "weaponMatch": "alias"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Sky Gd Radar",
+     "count": 1
+    }
+   ],
+   "notes": [
+    "A tp can engage tgt indep."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-regt-scr",
+   "name": "SC&R Regt",
+   "arm": "ad",
+   "type": "regt",
+   "subtype": "scr",
+   "echelon": "16",
+   "page": "314, 316",
+   "strength": {
+    "total": 461
+   },
+   "chartStrength": 461,
+   "strengthNote": "461 All Ranks (Incl att pers of Sig).",
+   "children": [
+    {
+     "role": "SC&R Bty",
+     "unit": "ad-bty-scr",
+     "count": 3
+    },
+    {
+     "role": "Sig Pl",
+     "count": 1,
+     "relation": "att"
+    },
+    {
+     "role": "LAD EME",
+     "count": 1,
+     "relation": "att",
+     "note": "The chart prints 'LAD EME' under the third SC&R Bty and '(Att)' as its own box at the right"
+    }
+   ],
+   "equipment": [
+    {
+     "name": "Surv Radar/LAADS",
+     "count": 9,
+     "note": "each has 10 x PIWD for asg to AD CPs/AD Wpns (regt total of PIWDs not printed)"
+    },
+    {
+     "name": "PIWD (Ptbl integrated Wpn Display)",
+     "count": 90,
+     "derived": true,
+     "note": "derived: 9 x Surv Radars/LAADS each has 10 x PIWD for asg to AD CPs/AD Wpns"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 14
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 10
+    },
+    {
+     "name": "Trk 2.5/3 Ton",
+     "count": 21
+    },
+    {
+     "name": "Trk 6 Ton",
+     "count": 14
+    }
+   ],
+   "notes": [
+    "SC&R = Surv, Con and Reporting. LAADS = Low Alt ac Detection Sys; PIWD = Ptbl integrated Wpn Display.",
+    "A bty can depl 1 x FAADC and 3 x Surv Radars.",
+    "Regt can depl 1 x CRCP and 3 x FAADCs.",
+    "C3 org of the C&R system (page 316): ADOC - HQ AAD - SMCC - CRCP; CRCP to FAADC and AD Bde Ops Room; FAADC to Giraffe, LAADS and AD CP; LAADS to PIWDs; AD CP to Guns, SAMs, OPs."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-bty-scr",
+   "name": "SC&R Bty",
+   "arm": "ad",
+   "type": "bty",
+   "subtype": "scr",
+   "echelon": "15",
+   "page": "314",
+   "children": [
+    {
+     "role": "FAADC",
+     "count": 1
+    },
+    {
+     "role": "Surv Sec",
+     "count": 1,
+     "note": "3 x LAADS or Surv Radar",
+     "equipment": [
+      {
+       "name": "LAADS or Surv Radar",
+       "count": 3
+      }
+     ]
+    }
+   ],
+   "equipment": [
+    {
+     "name": "LAADS or Surv Radar",
+     "count": 3
+    }
+   ],
+   "notes": [
+    "A bty can depl 1 x FAADC and 3 x Surv Radars."
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-bty-janbaz",
+   "name": "Janbaz AD Bty",
+   "arm": "ad",
+   "type": "bty",
+   "subtype": "janbaz",
+   "echelon": "15",
+   "page": "315, 319",
+   "children": [
+    {
+     "role": "Bty HQ",
+     "count": 1
+    },
+    {
+     "role": "Tp",
+     "unit": "ad-tp-janbaz",
+     "count": 2
+    }
+   ],
+   "weapons": [
+    {
+     "name": "37mm/40mm Gun",
+     "count": 6,
+     "note": "3 in each tp",
+     "weapon": "37-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "14.5mm Gun (Quad/Twin)",
+     "count": 6,
+     "note": "3 in each tp (page 315). Scale of ammo (page 319) lists '6x 37 mm Gun, 4x14.5 mm Gun' for the Janbaz AD Bty",
+     "uncertain": true,
+     "weapon": "14-5-mm-quad",
+     "weaponMatch": "alias"
+    }
+   ],
+   "ammoScale": [
+    {
+     "page": "319",
+     "ser": 7,
+     "weapons": "6x 37 mm Gun",
+     "per": "rpg",
+     "firstLine": {
+      "HE/HEI": 1092,
+      "AP": 28
+     },
+     "secondLine": {
+      "HE/HEI": 546,
+      "AP": 14
+     },
+     "weapon": "37-mm"
+    },
+    {
+     "page": "319",
+     "ser": 7,
+     "weapons": "4x14.5 mm Gun",
+     "per": "rpg",
+     "firstLine": {
+      "API": 3200,
+      "API-T": 1600
+     },
+     "secondLine": {
+      "API": 1600,
+      "API-T": 800
+     },
+     "weapon": "14-5-mm-quad",
+     "note": "the org chart (p 315) gives 6 x 14.5mm Gun (3 in each tp)"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  },
+  {
+   "id": "ad-tp-janbaz",
+   "name": "Tp (Janbaz AD Bty)",
+   "arm": "ad",
+   "type": "tp",
+   "subtype": "janbaz",
+   "echelon": "14",
+   "page": "315",
+   "children": [
+    {
+     "role": "Sec",
+     "count": 3,
+     "note": "Chart draws 3 secs under the first tp only; the second tp is taken to be the same"
+    }
+   ],
+   "weapons": [
+    {
+     "name": "37mm/40mm Gun",
+     "count": 3,
+     "weapon": "37-mm",
+     "weaponMatch": "alias"
+    },
+    {
+     "name": "14.5mm Gun (Quad/Twin)",
+     "count": 3,
+     "weapon": "14-5-mm-quad",
+     "weaponMatch": "alias"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10130100"
+  }
+ ],
+ "adData": [
+  {
+   "title": "Comd, Con and Comm (C)3 Org of C&R System",
+   "page": "316",
+   "note": "Read from the diagram. Comm types by the key: two-way comm voice (solid, arrow both ends), one-way comm voice (solid, one arrow), line comm (dashed). Several links carry both a solid and a dashed line.",
+   "nodes": [
+    "ADOC",
+    "HQ AAD",
+    "SMCC",
+    "CRCP",
+    "FAADC",
+    "AD Bde Ops Room",
+    "Giraffe (2)",
+    "LAADS",
+    "PIWD (3)",
+    "AD CP",
+    "Guns",
+    "SAMs",
+    "OPs"
+   ],
+   "links": [
+    {
+     "from": "ADOC",
+     "to": "HQ AAD",
+     "comm": [
+      "two-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "ADOC",
+     "to": "SMCC",
+     "comm": [
+      "two-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "HQ AAD",
+     "to": "CRCP",
+     "comm": [
+      "two-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "SMCC",
+     "to": "CRCP",
+     "comm": [
+      "two-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "CRCP",
+     "to": "FAADC",
+     "comm": [
+      "two-way voice"
+     ]
+    },
+    {
+     "from": "CRCP",
+     "to": "AD Bde Ops Room",
+     "comm": [
+      "one-way voice"
+     ],
+     "note": "drawn as heavy grey arrows"
+    },
+    {
+     "from": "CRCP",
+     "to": "AD CP",
+     "comm": [
+      "one-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "AD Bde Ops Room",
+     "to": "FAADC",
+     "comm": [
+      "one-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "AD Bde Ops Room",
+     "to": "AD CP",
+     "comm": [
+      "line"
+     ],
+     "label": "COMD NET"
+    },
+    {
+     "from": "FAADC",
+     "to": "Giraffe (2)",
+     "comm": [
+      "one-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "FAADC",
+     "to": "LAADS",
+     "comm": [
+      "one-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "FAADC",
+     "to": "AD CP",
+     "comm": [
+      "two-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "LAADS",
+     "to": "PIWD (3)",
+     "comm": [
+      "one-way voice"
+     ]
+    },
+    {
+     "from": "AD CP",
+     "to": "Guns",
+     "comm": [
+      "one-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "AD CP",
+     "to": "SAMs",
+     "comm": [
+      "one-way voice",
+      "line"
+     ]
+    },
+    {
+     "from": "AD CP",
+     "to": "OPs",
+     "comm": [
+      "one-way voice",
+      "line"
+     ]
+    }
+   ],
+   "uncertain": true,
+   "uncertainNote": "Arrow ends are small; one line leaves CRCP upwards and ends in an arrow at the top right with no box (destination not shown)."
+  },
+  {
+   "title": "Summary of Pers and Vehs (incl atts) - AD Units",
+   "page": "320-321",
+   "note": "Re-checked cell by cell on 15 Nov 2026 (page images at 250 dpi): all figures as already recorded. Rows are on the regts as strengthTable (peace / fd inc / total pers) and vehicles (TOTAL row); strength = TOTAL row. Page 321 has no header row; its columns follow page 320.",
+   "columns": [
+    "Offrs",
+    "JCOs/ OR",
+    "Total All Ranks",
+    "NCEs & Civs",
+    "Total Pers",
+    "MC",
+    "Trk 1/4 Ton",
+    "Trk 3/4 Ton or 1 or 1.5 Ton",
+    "Trk 2.5 or 3 Ton",
+    "Trk 6/9/10 Ton",
+    "Water Bowzer",
+    "Amb",
+    "APC",
+    "Tractor Arty",
+    "Tlr all type",
+    "Total excl MC and Tlrs",
+    "Remarks"
+   ],
+   "rows": [
+    {
+     "unit": "Lt AD (GM) Regt",
+     "unitId": "ad-regt-lt-gm",
+     "remark": "* Rec Veh (the 1 in Trk 6/9/10 Ton)"
+    },
+    {
+     "unit": "Lt AD (IR SAM) Regt",
+     "unitId": "ad-regt-lt-sam",
+     "remark": "Initially 24 SAM Launchers are aval"
+    },
+    {
+     "unit": "Lt AD (RBS 70 Msl) Regt",
+     "unitId": "ad-regt-rbs70",
+     "remark": "",
+     "note": "Veh parts sum to 101 peace / 102 total against the printed 100 / 101"
+    },
+    {
+     "unit": "Lt AD (RCG) Regt",
+     "unitId": "ad-regt-rcg",
+     "remark": "Tractor with front blade (the 1* in Tractor Arty)",
+     "note": "TOTAL row leaves Trk 2.5 or 3 Ton blank (peace 16); parts sum to 84 against the printed 83"
+    },
+    {
+     "unit": "Lt AD (SP/GM) Regt",
+     "unitId": "ad-regt-lt-gm-sp",
+     "remark": "*Presently units have 12 x APCs. 12 Dodges have been issued in lieu of remaining 12 x APC",
+     "note": "Veh parts sum to 105 against the printed 104"
+    }
+   ],
+   "notIn": [
+    "Med AD Regt (ad-regt-med)",
+    "SC&R Regt (ad-regt-scr)",
+    "Janbaz AD Bty (ad-bty-janbaz)"
+   ]
+  }
+ ],
+ "otherPages": [
+  {
+   "page": "316",
+   "title": "Comd, Con and Comm (C)3 Org of C&R System",
+   "note": "Nodes and comm links in adData; summarised in ad-regt-scr notes"
+  },
+  {
+   "page": "317",
+   "title": "Details of AD Eqpt",
+   "note": "In weapons.json (Sec 3 entries); re-checked 15 Nov 2026, all figures agree"
+  },
+  {
+   "page": "318",
+   "title": "Current AD Radars",
+   "note": "In weapons.json (type-513, type-514, laads, giraffe, sky-guard, fcs-702a); re-checked 15 Nov 2026, all figures agree"
+  },
+  {
+   "page": "319",
+   "title": "Scale of Ammo",
+   "note": "On the weapons.json entries (ammoScale, re-checked 15 Nov 2026) and on the units as ammoScale (Lt AD (GM), Lt AD (GM/SP), RCG, RBS-70, Med AD, Lt AD (SAM) as IR SAM, Janbaz)"
+  },
+  {
+   "page": "320-321",
+   "title": "Summary of Pers and Vehs (incl atts) - AD Units",
+   "note": "Re-checked cell by cell 15 Nov 2026. On the regts as strength (TOTAL row), strengthTable and vehicles (Lt AD (GM), Lt AD (IR SAM), Lt AD (RBS 70 Msl), Lt AD (RCG), Lt AD (SP/GM)); column list and remarks in adData. Med AD Regt and SC&R Regt are not in it."
+  }
+ ]
+}

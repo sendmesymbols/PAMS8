@@ -1,0 +1,4046 @@
+{
+ "format": "pams8-orbat",
+ "version": 1,
+ "title": "Signals",
+ "source": {
+  "book": "SO's Handbook (2019)",
+  "section": "Sec 5 - Sigs",
+  "pages": "500-521",
+  "handling": "RESTD"
+ },
+ "side": "own",
+ "basis": "R = as printed in the book. Fields marked uncertain / judged / *Note carry the reader's doubts; printed totals are kept even where parts do not add up.",
+ "pageNote": "PDF page = printed page - 499 (PDF 1 = p 500).",
+ "units": [
+  {
+   "id": "sig-bn-corps-op",
+   "name": "Corps Sig Op Bn",
+   "arm": "sig",
+   "type": "bn",
+   "subtype": "corps-op",
+   "echelon": "16",
+   "page": "501-502",
+   "strength": {
+    "offr": 19,
+    "jco": 10,
+    "sldr": 523,
+    "sw": 15,
+    "fdIncrement": 14,
+    "total": 581
+   },
+   "strengthNote": "Summary table: Offrs 19, JCOs 10, Sldrs 523, Total 552; SWs/Civs 15, Fd Increment 14; Total 581.",
+   "children": [
+    {
+     "role": "BHQ",
+     "unit": "sig-corps-op-bn-hq",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "sig-corps-op-hq-coy",
+     "count": 1
+    },
+    {
+     "role": "Op Coy (1 Coy)",
+     "unit": "sig-corps-op-op-coy",
+     "count": 1
+    },
+    {
+     "role": "Radio Coy (2 Coy)",
+     "unit": "sig-corps-op-radio-coy",
+     "count": 1
+    },
+    {
+     "role": "Corps Arty Sig Coy (3 Coy)",
+     "unit": "sig-corps-arty-sig-coy",
+     "count": 1
+    },
+    {
+     "role": "Corps Log Sig Coy",
+     "unit": "sig-corps-log-sig-coy",
+     "count": 1
+    },
+    {
+     "role": "LAD EME",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MCs",
+     "count": 11,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton 4x4",
+     "count": 26,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton 4x4",
+     "count": 40,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton 6x6",
+     "count": 33,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 9,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 18,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 16,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 1.5 Ton 400 Gals",
+     "count": 6,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 4,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 99,
+    "tlrs": 53
+   },
+   "notes": [
+    "All printed column totals check against the sub-unit rows."
+   ],
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-op-bn-hq",
+   "name": "Bn HQ (Corps Sig Op Bn)",
+   "arm": "sig",
+   "type": "hq",
+   "subtype": "bn-hq",
+   "echelon": "16",
+   "page": "501-502",
+   "strength": {
+    "offr": 4,
+    "jco": 1,
+    "sldr": 12,
+    "total": 17
+   },
+   "strengthNote": "Summary table: Offrs 4, JCOs 1, Sldrs 12, Total 17; SWs/Civs -, Fd Increment -; Total 17.",
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton 4x4",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton 4x4",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton 6x6",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 4,
+    "tlrs": 3
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-op-hq-coy",
+   "name": "HQ Coy (Corps Sig Op Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "501-502",
+   "strength": {
+    "offr": 2,
+    "jco": 2,
+    "sldr": 29,
+    "sw": 5,
+    "fdIncrement": 4,
+    "total": 42
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 2, Sldrs 29, Total 33; SWs/Civs 5, Fd Increment 4; Total 42.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1
+    },
+    {
+     "role": "TM Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 3/4 Ton 4x4",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton 6x6",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 1.5 Ton 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 7,
+    "tlrs": 7
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-op-op-coy",
+   "name": "Op Coy (1 Coy) (Corps Sig Op Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "op",
+   "echelon": "15",
+   "page": "501-502",
+   "strength": {
+    "offr": 4,
+    "jco": 4,
+    "sldr": 150,
+    "sw": 3,
+    "fdIncrement": 4,
+    "total": 165
+   },
+   "strengthNote": "Summary table: Offrs 4, JCOs 4, Sldrs 150, Total 158; SWs/Civs 3, Fd Increment 4; Total 165.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Op Pl",
+     "count": 1
+    },
+    {
+     "role": "Crypto Pl",
+     "count": 1
+    },
+    {
+     "role": "DR Pl",
+     "count": 1
+    },
+    {
+     "role": "Swbd Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MCs",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton 4x4",
+     "count": 8,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton 4x4",
+     "count": 8,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton 6x6",
+     "count": 10,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 5,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 1.5 Ton 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 26,
+    "tlrs": 10
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-op-radio-coy",
+   "name": "Radio Coy (2 Coy) (Corps Sig Op Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "radio",
+   "echelon": "15",
+   "page": "501-502",
+   "strength": {
+    "offr": 5,
+    "jco": 1,
+    "sldr": 128,
+    "sw": 3,
+    "fdIncrement": 2,
+    "total": 139
+   },
+   "strengthNote": "Summary table: Offrs 5, JCOs 1, Sldrs 128, Total 134; SWs/Civs 3, Fd Increment 2; Total 139.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Radio Pl",
+     "count": 1
+    },
+    {
+     "role": "Corps Tps Sig Pl",
+     "count": 1,
+     "children": [
+      {
+       "role": "HAT Bn Sig Det",
+       "count": 1
+      },
+      {
+       "role": "Avn Gp Sig Det",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Corps Air Sp Sig Pl",
+     "count": 1
+    },
+    {
+     "role": "Corps Engrs Sig Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton 4x4",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton 4x4",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton 6x6",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 5,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 1.5 Ton 400 Gals",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 23,
+    "tlrs": 8
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-arty-sig-coy",
+   "name": "Corps Arty Sig Coy (3 Coy)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "arty",
+   "echelon": "15",
+   "page": "501-502",
+   "strength": {
+    "offr": 2,
+    "jco": 1,
+    "sldr": 105,
+    "sw": 2,
+    "fdIncrement": 2,
+    "total": 112
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 1, Sldrs 105, Total 108; SWs/Civs 2, Fd Increment 2; Total 112.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "HQ CAS Pl",
+     "count": 1
+    },
+    {
+     "role": "Med Regt Sig Sec",
+     "count": 3
+    },
+    {
+     "role": "LOC Regt Sig Sec",
+     "count": 1
+    },
+    {
+     "role": "MBRL Bty Sig Sec",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MCs",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton 4x4",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton 4x4",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton 6x6",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 11,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 5,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 1.5 Ton 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 17,
+    "tlrs": 19
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-log-sig-coy",
+   "name": "Corps Log Sig Coy",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "log",
+   "echelon": "15",
+   "page": "501-502",
+   "strength": {
+    "offr": 2,
+    "jco": 1,
+    "sldr": 99,
+    "sw": 2,
+    "fdIncrement": 2,
+    "total": 106
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 1, Sldrs 99, Total 102; SWs/Civs 2, Fd Increment 2; Total 106.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Radio & Op Pl",
+     "count": 1
+    },
+    {
+     "role": "Line Pl",
+     "count": 1
+    },
+    {
+     "role": "Corps Adm Area Sig Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MCs",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton 4x4",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton 4x4",
+     "count": 14,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton 6x6",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 1.5 Ton 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 22,
+    "tlrs": 6
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-bn-corps-engr",
+   "name": "Corps Sig Engr Bn",
+   "arm": "sig",
+   "type": "bn",
+   "subtype": "corps-engr",
+   "echelon": "16",
+   "page": "503-504",
+   "strength": {
+    "offr": 14,
+    "jco": 12,
+    "sldr": 329,
+    "sw": 11,
+    "fdIncrement": 11,
+    "total": 377
+   },
+   "strengthNote": "Summary table: Offrs 14, JCOs 12, Sldrs 329, Total 355; SWs/Civs 11, Fd Increment 11; Total 377.",
+   "children": [
+    {
+     "role": "BHQ",
+     "unit": "sig-corps-engr-bn-hq",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "sig-corps-engr-hq-coy",
+     "count": 1
+    },
+    {
+     "role": "No 1 Terminal Coy",
+     "unit": "sig-corps-engr-no1-terminal-coy",
+     "count": 1
+    },
+    {
+     "role": "No 2 Terminal Coy",
+     "unit": "sig-corps-engr-no2-terminal-coy",
+     "count": 1
+    },
+    {
+     "role": "NC Coy",
+     "unit": "sig-corps-engr-nc-coy",
+     "count": 1
+    },
+    {
+     "role": "LAD EME",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk Utility 1/4 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 3/4 Ton",
+     "count": 49,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 2.5 Ton",
+     "count": 36,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 5,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 4,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 32,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehs": 90,
+    "tlrs": 45
+   },
+   "notes": [
+    "All printed column totals check against the sub-unit rows."
+   ],
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-engr-bn-hq",
+   "name": "Bn HQ (Corps Sig Engr Bn)",
+   "arm": "sig",
+   "type": "hq",
+   "subtype": "bn-hq",
+   "echelon": "16",
+   "page": "503-504",
+   "strength": {
+    "offr": 4,
+    "jco": 1,
+    "sldr": 11,
+    "total": 16
+   },
+   "strengthNote": "Summary table: Offrs 4, JCOs 1, Sldrs 11, Total 16; SWs/Civs -, Fd Increment -; Total 16.",
+   "vehicles": [
+    {
+     "name": "Trk Utility 1/4 Ton",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 3/4 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 2.5 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehs": 4,
+    "tlrs": 4
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-engr-hq-coy",
+   "name": "HQ Coy (Corps Sig Engr Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "503-504",
+   "strength": {
+    "offr": 2,
+    "jco": 2,
+    "sldr": 26,
+    "sw": 4,
+    "fdIncrement": 3,
+    "total": 37
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 2, Sldrs 26, Total 30; SWs/Civs 4, Fd Increment 3; Total 37.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "TM Pl",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk Cargo 3/4 Ton",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 2.5 Ton",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehs": 9,
+    "tlrs": 9
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-engr-no1-terminal-coy",
+   "name": "No 1 Terminal Coy (Corps Sig Engr Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "terminal",
+   "echelon": "15",
+   "page": "503-504",
+   "strength": {
+    "offr": 3,
+    "jco": 1,
+    "sldr": 65,
+    "sw": 2,
+    "fdIncrement": 4,
+    "total": 75
+   },
+   "strengthNote": "Summary table: Offrs 3, JCOs 1, Sldrs 65, Total 69; SWs/Civs 2, Fd Increment 4; Total 75.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "No 1 Terminal Coy",
+     "count": 1,
+     "note": "sub-box printed 'NO 1 Terminal COY' under the coy"
+    },
+    {
+     "role": "No 2 Terminal Coy",
+     "count": 1,
+     "note": "sub-box printed 'NO 2 Terminal COY' under No 1 Terminal Coy"
+    },
+    {
+     "role": "Line Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk Utility 1/4 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 3/4 Ton",
+     "count": 12,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 2.5 Ton",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 4,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehs": 17,
+    "tlrs": 5
+   },
+   "notes": [
+    "Chart p 503: the sub-boxes under No 1 Terminal Coy are printed 'NO 1 Terminal COY' and 'NO 2 Terminal COY' (probably terminal pls); kept as printed."
+   ],
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-engr-no2-terminal-coy",
+   "name": "No 2 Terminal Coy (Corps Sig Engr Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "terminal",
+   "echelon": "15",
+   "page": "503-504",
+   "strength": {
+    "offr": 2,
+    "jco": 1,
+    "sldr": 81,
+    "sw": 2,
+    "fdIncrement": 2,
+    "total": 88
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 1, Sldrs 81, Total 84; SWs/Civs 2, Fd Increment 2; Total 88.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Aux HQ Term Pl",
+     "count": 1
+    },
+    {
+     "role": "Line Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk Utility 1/4 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 3/4 Ton",
+     "count": 13,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 2.5 Ton",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 7,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehs": 21,
+    "tlrs": 8
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-corps-engr-nc-coy",
+   "name": "NC Coy (Corps Sig Engr Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "node-centre",
+   "echelon": "15",
+   "page": "503-504",
+   "strength": {
+    "offr": 3,
+    "jco": 7,
+    "sldr": 146,
+    "sw": 3,
+    "fdIncrement": 2,
+    "total": 161
+   },
+   "strengthNote": "Summary table: Offrs 3, JCOs 7, Sldrs 146, Total 156; SWs/Civs 3, Fd Increment 2; Total 161.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "MNC Pl",
+     "count": 1
+    },
+    {
+     "role": "NC Pl",
+     "count": 1
+    },
+    {
+     "role": "SATCOMS Pl",
+     "count": 1
+    },
+    {
+     "role": "Line Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk Utility 1/4 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 3/4 Ton",
+     "count": 21,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk Cargo 2.5 Ton",
+     "count": 17,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr Cargo 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 3/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Cargo 1.5 Ton",
+     "count": 17,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehs": 39,
+    "tlrs": 19
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-bn-armd-div",
+   "name": "Armd Div Sig Bn",
+   "arm": "sig",
+   "type": "bn",
+   "subtype": "armd-div",
+   "echelon": "16",
+   "page": "505-506",
+   "strength": {
+    "offr": 23,
+    "jco": 13,
+    "sldr": 758,
+    "sw": 20,
+    "fdIncrement": 19,
+    "total": 833
+   },
+   "strengthNote": "Summary table: Offrs 23, JCOs 13, Sldrs 758, Total 794; SWs/Civs 20, Fd Increment 19; Total 833.",
+   "children": [
+    {
+     "role": "BHQ",
+     "unit": "sig-armd-div-bn-hq",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "sig-armd-div-hq-coy",
+     "count": 1
+    },
+    {
+     "role": "Op Coy (1 Coy)",
+     "unit": "sig-armd-div-op-coy",
+     "count": 1
+    },
+    {
+     "role": "Radio Coy (2 Coy)",
+     "unit": "sig-armd-div-radio-coy",
+     "count": 1
+    },
+    {
+     "role": "RR & Line Coy (3 Coy)",
+     "unit": "sig-armd-div-rr-line-coy",
+     "count": 1
+    },
+    {
+     "role": "Arty Sig Coy (4 Coy)",
+     "unit": "sig-armd-div-arty-sig-coy",
+     "count": 1
+    },
+    {
+     "role": "Armd Bde Sig Coy",
+     "unit": "sig-armd-bde-sig-coy",
+     "count": 3
+    },
+    {
+     "role": "Armd Regt Sig Pl",
+     "unit": "sig-armd-regt-sig-pl",
+     "count": 5
+    },
+    {
+     "role": "AD Bde Sig Pl",
+     "unit": "sig-ad-bde-sig-pl",
+     "count": 1
+    },
+    {
+     "role": "MIB (Armd Inf Bn) Sig Pl",
+     "unit": "sig-mib-sig-pl",
+     "count": 3,
+     "note": "chart p 505 '3x Armd Inf Bn Sig Pl'; table p 506 'MIB Sig Pl (4) Each'; printed totals add up only with 3"
+    },
+    {
+     "role": "LAD EME",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MCs",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 60,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 66,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 37,
+     "cat": "tpt"
+    },
+    {
+     "name": "APCs",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 13,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 19,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 22,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 8,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 167,
+    "tlrs": 64
+   },
+   "notes": [
+    "Printed totals check with 3 Armd Bde Sig Coys, 5 Armd Regt Sig Pls, 1 AD Bde Sig Pl and 3 MIB Sig Pls.",
+    "Typical Radio Diagram - Armd Div (p 509) shows '14xHF: 4x Armd Regt Sig Pls, 3x MIB Sig Pls'.",
+    "Arty Sig Coy children on the chart: HQ Div Arty Sig Pl and 3x Med SP Regt Sig Pl.",
+    "Radio diagrams p 509 (Armd Div) and p 510 (Armd Div Arty): every station and its sets are in sigData. Sets at a station served by a named sig sub-unit are also put on that sub-unit (equipment; marked judged where the diagram names the served unit, not the sig pl). Sets at Div HQ (net controls, rovers, Tac HQ, LOs, rear links, Utility 4xHF 2xVHF, Receiver 11xHF 2xVHF, 12x AN/PRC-113 ACT) are not tied to a coy by the book and stay in sigData only."
+   ],
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-armd-div-bn-hq",
+   "name": "Bn HQ (Armd Div Sig Bn)",
+   "arm": "sig",
+   "type": "hq",
+   "subtype": "bn-hq",
+   "echelon": "16",
+   "page": "505-506",
+   "strength": {
+    "offr": 4,
+    "jco": 1,
+    "sldr": 14,
+    "total": 19
+   },
+   "strengthNote": "Summary table: Offrs 4, JCOs 1, Sldrs 14, Total 19; SWs/Civs -, Fd Increment -; Total 19.",
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 4,
+    "tlrs": 3
+   },
+   "side": "own",
+   "symbolKey": "10111000",
+   "equipment": [
+    {
+     "name": "HF radio set",
+     "count": 1,
+     "cat": "radio",
+     "net": "Div Comd Voice",
+     "station": "CO Sig Bn",
+     "note": "Station \"CO Sig Bn\" on Div Comd Voice, p 509."
+    },
+    {
+     "name": "VHF radio set",
+     "count": 1,
+     "cat": "radio",
+     "net": "Div Comd Voice",
+     "station": "CO Sig Bn",
+     "note": "Station \"CO Sig Bn\" on Div Comd Voice, p 509."
+    }
+   ]
+  },
+  {
+   "id": "sig-armd-div-hq-coy",
+   "name": "HQ Coy (Armd Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "505-506",
+   "strength": {
+    "offr": 2,
+    "jco": 2,
+    "sldr": 29,
+    "sw": 6,
+    "fdIncrement": 19,
+    "total": 58
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 2, Sldrs 29, Total 33; SWs/Civs 6, Fd Increment 19; Total 58.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1
+    },
+    {
+     "role": "TM Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 8,
+    "tlrs": 8
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-armd-div-op-coy",
+   "name": "Op Coy (1 Coy) (Armd Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "op",
+   "echelon": "15",
+   "page": "505-506",
+   "strength": {
+    "offr": 3,
+    "jco": 3,
+    "sldr": 108,
+    "sw": 2,
+    "total": 116
+   },
+   "strengthNote": "Summary table: Offrs 3, JCOs 3, Sldrs 108, Total 114; SWs/Civs 2, Fd Increment -; Total 116.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Op Pl",
+     "count": 1,
+     "children": [
+      {
+       "role": "Sig Cen Sec",
+       "count": 1
+      },
+      {
+       "role": "Swbd Sec",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Crypto Pl",
+     "count": 1
+    },
+    {
+     "role": "DR Pl",
+     "count": 1
+    },
+    {
+     "role": "DAA Sig Pl",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 2,
+       "cat": "radio",
+       "net": "Div Adm Voice",
+       "station": "DAA",
+       "note": "Station \"DAA\" 2xHF on Div Adm Voice. Judged from the Typical Radio Comm Diagram (Provisional) p 509: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MCs",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 4,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 21,
+    "tlrs": 8
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-armd-div-radio-coy",
+   "name": "Radio Coy (2 Coy) (Armd Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "radio",
+   "echelon": "15",
+   "page": "505-506",
+   "strength": {
+    "offr": 3,
+    "sldr": 96,
+    "sw": 2,
+    "total": 101
+   },
+   "strengthNote": "Summary table: Offrs 3, JCOs -, Sldrs 96, Total 99; SWs/Civs 2, Fd Increment -; Total 101.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Radio Pl",
+     "count": 1,
+     "children": [
+      {
+       "role": "Radio Sec",
+       "count": 1
+      },
+      {
+       "role": "Monitoring Sec",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "role": "Aslt Engr Bn Sig Pl",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 2,
+       "cat": "radio",
+       "net": "Div Comd Voice",
+       "station": "Engr Bn",
+       "note": "Station \"Engr Bn\" 2XHF on Div Comd Voice. Judged from the Typical Radio Comm Diagram (Provisional) p 509: the diagram draws these sets at the station; it does not say which unit mans them."
+      },
+      {
+       "name": "VRC 787 (pool set)",
+       "count": 1,
+       "cat": "radio",
+       "heldBy": "Aslt Engr Bn",
+       "note": "p 510 note 2: \"One VRC 787 issued to Aslt Engr Bn from pool sets.\" Put on the Aslt Engr Bn Sig Pl by the reader."
+      }
+     ]
+    },
+    {
+     "role": "Recce Regt Sig Pl",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 2,
+       "cat": "radio",
+       "net": "Div Comd Voice",
+       "station": "Recce Regt",
+       "note": "Station \"Recce Regt\" 2XHF on Div Comd Voice. Judged from the Typical Radio Comm Diagram (Provisional) p 509: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "APCs",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 18,
+    "tlrs": 2
+   },
+   "side": "own",
+   "symbolKey": "10111000",
+   "notes": [
+    "p 510 note 3: Resources of Lt AD Regt sig pl now under comd no 2 coy (this coy) for provision of sig comm sp."
+   ]
+  },
+  {
+   "id": "sig-armd-div-rr-line-coy",
+   "name": "RR & Line Coy (3 Coy) (Armd Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "rr-line",
+   "echelon": "15",
+   "page": "505-506",
+   "strength": {
+    "offr": 3,
+    "jco": 2,
+    "sldr": 106,
+    "sw": 2,
+    "total": 113
+   },
+   "strengthNote": "Summary table: Offrs 3, JCOs 2, Sldrs 106, Total 111; SWs/Civs 2, Fd Increment -; Total 113.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "RR Pl",
+     "count": 1
+    },
+    {
+     "role": "Line Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 16,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 10,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 30,
+    "tlrs": 14
+   },
+   "notes": [
+    "Tlr 1.5 Ton printed '1 / 0' across two lines in its cell; read 10 (row total 14 and column total 22 agree)."
+   ],
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-armd-div-arty-sig-coy",
+   "name": "Arty Sig Coy (4 Coy) (Armd Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "arty",
+   "echelon": "15",
+   "page": "505-506",
+   "strength": {
+    "offr": 2,
+    "jco": 1,
+    "sldr": 79,
+    "sw": 2,
+    "total": 84
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 1, Sldrs 79, Total 82; SWs/Civs 2, Fd Increment -; Total 84.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "HQ Div Arty Sig Pl",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 9,
+       "cat": "radio",
+       "note": "HQ Div Arty: Arty Comd Voice control 1, Arty Adm Net control 1, rear links to HQ Corps / Div Comd / Div Adm 3, Comd's Rover 2, Utility 2. Judged from the Typical Radio Comm Diagram (Provisional) p 510: the diagram draws these sets at the station; it does not say which unit mans them."
+      },
+      {
+       "name": "VHF radio set",
+       "count": 2,
+       "cat": "radio",
+       "note": "HQ Div Arty: Air Surv Net 1, Utility 1. Judged from the Typical Radio Comm Diagram (Provisional) p 510: the diagram draws these sets at the station; it does not say which unit mans them."
+      },
+      {
+       "name": "Receiver (type not printed)",
+       "count": 3,
+       "cat": "radio",
+       "note": "HQ Div Arty receivers. Judged from the Typical Radio Comm Diagram (Provisional) p 510: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    },
+    {
+     "role": "Med SP Regt Sig Pl",
+     "count": 3,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 2,
+       "cat": "radio",
+       "note": "Each: one on Arty Comd Voice, one on Arty Adm Net (the diagram brackets 3 HF under \"SP REGTs\" on each net). Judged from the Typical Radio Comm Diagram (Provisional) p 510: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 15,
+    "tlrs": 5
+   },
+   "side": "own",
+   "symbolKey": "10111000",
+   "notes": [
+    "p 510 notes: WS on staff net provided by div HQ/users; all WS are veh mtd."
+   ]
+  },
+  {
+   "id": "sig-armd-bde-sig-coy",
+   "name": "Armd Bde Sig Coy",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "armd-bde",
+   "echelon": "15",
+   "page": "505-506",
+   "strength": {
+    "offr": 2,
+    "jco": 1,
+    "sldr": 86,
+    "sw": 2,
+    "total": 91
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 1, Sldrs 86, Total 89; SWs/Civs 2, Fd Increment -; Total 91.",
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 10,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "APCs",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 4,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 23,
+    "tlrs": 8
+   },
+   "notes": [
+    "Figures each; 3 in the Armd Div Sig Bn.",
+    "Sets drawn at the regts / coys on the Armd Bde diagram p 512 (CO / CV A and B Armd Regt, CO / CV MIB, Engr Coy, HAT Coy, OC HQ Sqn, Bde Recce Gp) are in sigData only."
+   ],
+   "side": "own",
+   "symbolKey": "10111000",
+   "equipment": [
+    {
+     "name": "HF radio set",
+     "count": 9,
+     "cat": "radio",
+     "note": "Bde HQ: bde HF net control 1, rear link to Div Comd Voice 1, Bde Adm Voice 2, box of two HF to Div Comd Voice 2, Utility 2; A 1 Ech Comd 1. Judged from the Typical Radio Comm Diagram (Provisional) p 512: the diagram draws these sets at the station; it does not say which unit mans them."
+    },
+    {
+     "name": "VHF radio set",
+     "count": 5,
+     "cat": "radio",
+     "note": "Bde HQ: Bde Comd Voice control 1, Comd Recce 2; Bde Comd Rover 1; OC Sig 1. Judged from the Typical Radio Comm Diagram (Provisional) p 512: the diagram draws these sets at the station; it does not say which unit mans them."
+    },
+    {
+     "name": "HF receiver",
+     "count": 1,
+     "cat": "radio",
+     "note": "Bde HQ receivers. Judged from the Typical Radio Comm Diagram (Provisional) p 512: the diagram draws these sets at the station; it does not say which unit mans them."
+    },
+    {
+     "name": "VHF receiver",
+     "count": 2,
+     "cat": "radio",
+     "note": "Bde HQ receivers. Judged from the Typical Radio Comm Diagram (Provisional) p 512: the diagram draws these sets at the station; it does not say which unit mans them."
+    }
+   ]
+  },
+  {
+   "id": "sig-armd-regt-sig-pl",
+   "name": "Armd Regt Sig Pl",
+   "arm": "sig",
+   "type": "pl",
+   "subtype": "armd-regt",
+   "echelon": "14",
+   "page": "505-506",
+   "strength": {
+    "sldr": 6,
+    "total": 6
+   },
+   "strengthNote": "Summary table: Offrs -, JCOs -, Sldrs 6, Total 6; SWs/Civs -, Fd Increment -; Total 6.",
+   "notes": [
+    "Figures each; 5 in the Armd Div Sig Bn (chart p 505 '5x Armd Regt Sig Pl'). No tpt.",
+    "The radio diagram p 509 counts 4x Armd Regt Sig Pls (with the Recce Regt shown on its own with 2XHF); the chart p 505 and table p 506 count 5."
+   ],
+   "side": "own",
+   "symbolKey": "10111000",
+   "equipment": [
+    {
+     "name": "HF radio set",
+     "count": 2,
+     "cat": "radio",
+     "note": "Each. Radio diagram p 509 prints \"14xHF\" for \"4x Armd Regt Sig Pls, 3x MIB Sig Pls\" together; 2 each is 14 / 7 (not printed), and the IABG diagram p 511 also gives an Armd Regt and the MIB 2x HF each."
+    }
+   ]
+  },
+  {
+   "id": "sig-ad-bde-sig-pl",
+   "name": "AD Bde Sig Pl",
+   "arm": "sig",
+   "type": "pl",
+   "subtype": "ad-bde",
+   "echelon": "14",
+   "page": "505-506",
+   "strength": {
+    "jco": 1,
+    "sldr": 17,
+    "total": 18
+   },
+   "strengthNote": "Summary table: Offrs -, JCOs 1, Sldrs 17, Total 18; SWs/Civs -, Fd Increment -; Total 18.",
+   "vehicles": [
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 2,
+     "cat": "tpt"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 2
+   },
+   "side": "own",
+   "symbolKey": "10111000",
+   "equipment": [
+    {
+     "name": "HF radio set",
+     "count": 2,
+     "cat": "radio",
+     "net": "Div Comd Voice",
+     "station": "AD Bde",
+     "note": "Station \"AD Bde\" 2XHF on Div Comd Voice. Judged from the Typical Radio Comm Diagram (Provisional) p 509: the diagram draws these sets at the station; it does not say which unit mans them."
+    },
+    {
+     "name": "HF radio set",
+     "count": 1,
+     "cat": "radio",
+     "net": "Div Adm Voice",
+     "station": "AD Bde",
+     "note": "Station \"AD Bde\" HF on Div Adm Voice. Judged from the Typical Radio Comm Diagram (Provisional) p 509: the diagram draws these sets at the station; it does not say which unit mans them."
+    }
+   ]
+  },
+  {
+   "id": "sig-mib-sig-pl",
+   "name": "MIB Sig Pl",
+   "arm": "sig",
+   "type": "pl",
+   "subtype": "mib",
+   "echelon": "14",
+   "page": "505-506",
+   "strength": {
+    "sldr": 7,
+    "total": 7
+   },
+   "strengthNote": "Summary table: Offrs -, JCOs -, Sldrs 7, Total 7; SWs/Civs -, Fd Increment -; Total 7.",
+   "notes": [
+    "Figures each. Table p 506 prints 'MIB Sig Pl (4) Each'; chart p 505 shows '3x Armd Inf Bn Sig Pl' and the printed bn totals add up with 3.",
+    "The radio diagram p 509 also counts 3x MIB Sig Pls."
+   ],
+   "uncertain": true,
+   "side": "own",
+   "symbolKey": "10111000",
+   "equipment": [
+    {
+     "name": "HF radio set",
+     "count": 2,
+     "cat": "radio",
+     "note": "Each. Radio diagram p 509 prints \"14xHF\" for \"4x Armd Regt Sig Pls, 3x MIB Sig Pls\" together; 2 each is 14 / 7 (not printed), and the IABG diagram p 511 also gives an Armd Regt and the MIB 2x HF each."
+    }
+   ]
+  },
+  {
+   "id": "sig-bn-inf-div",
+   "name": "Inf Div Sig Bn",
+   "arm": "sig",
+   "type": "bn",
+   "subtype": "inf-div",
+   "echelon": "16",
+   "page": "507-508",
+   "strength": {
+    "offr": 23,
+    "jco": 12,
+    "sldr": 654,
+    "sw": 18,
+    "fdIncrement": 18,
+    "total": 725
+   },
+   "strengthNote": "Summary table: Offrs 23, JCOs 12, Sldrs 654, Total 689; SWs/Civs 18, Fd Increment 18; Total 725.",
+   "children": [
+    {
+     "role": "BHQ",
+     "unit": "sig-inf-div-bn-hq",
+     "count": 1
+    },
+    {
+     "role": "HQ Coy",
+     "unit": "sig-inf-div-hq-coy",
+     "count": 1
+    },
+    {
+     "role": "Op Coy",
+     "unit": "sig-inf-div-op-coy",
+     "count": 1
+    },
+    {
+     "role": "Radio Coy",
+     "unit": "sig-inf-div-radio-coy",
+     "count": 1
+    },
+    {
+     "role": "RR & Line Coy",
+     "unit": "sig-inf-div-rr-line-coy",
+     "count": 1
+    },
+    {
+     "role": "Arty Sig Coy",
+     "unit": "sig-inf-div-arty-sig-coy",
+     "count": 1
+    },
+    {
+     "role": "Inf Bde Sig Coy",
+     "unit": "sig-inf-bde-sig-coy",
+     "count": 3,
+     "note": "self acct coys"
+    },
+    {
+     "role": "LAD EME",
+     "count": 1,
+     "relation": "att"
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MCs",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 63,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 53,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 38,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 21,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 29,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 23,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 8,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 154,
+    "tlrs": 83
+   },
+   "notes": [
+    "All printed column totals check (Three Bde Sig Coys counted x 3).",
+    "Radio diagrams p 513 (Inf Div) and p 514 (Inf Div Arty): every station and its sets are in sigData; sets at stations served by a named sig sub-unit are also on that sub-unit (judged). Sets at Div HQ (net controls, Tac HQ, GOC Rover, rear links, Air Request Net, Utility 2XHF VHF, Receiver 9XHF 2XVHF, 4x AN/PRC-113 ACT) stay in sigData only."
+   ],
+   "equipment": [
+    {
+     "name": "Cable WD-1/TT",
+     "qty": "150 miles (241 Kms)",
+     "cat": "cable",
+     "note": "Comm range about 15 miles (24 Kms) without repeaters (p 520)"
+    },
+    {
+     "name": "Cable S-4",
+     "qty": "30 miles (48 Kms)",
+     "cat": "cable",
+     "note": "Comm range depends upon the carr eqpt used (p 520)"
+    },
+    {
+     "name": "Lt det for laying WD-1/TT",
+     "count": 10,
+     "cat": "cable-det",
+     "note": "excl bde and arty sig coys (p 520)"
+    },
+    {
+     "name": "Lt det for laying S-4",
+     "count": 2,
+     "cat": "cable-det",
+     "note": "p 520"
+    }
+   ],
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-inf-div-bn-hq",
+   "name": "Bn HQ (Inf Div Sig Bn)",
+   "arm": "sig",
+   "type": "hq",
+   "subtype": "bn-hq",
+   "echelon": "16",
+   "page": "507-508",
+   "strength": {
+    "offr": 4,
+    "jco": 1,
+    "sldr": 13,
+    "total": 18
+   },
+   "strengthNote": "Summary table: Offrs 4, JCOs 1, Sldrs 13, Total 18; SWs/Civs -, Fd Increment -; Total 18.",
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 1,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 4,
+    "tlrs": 3
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-inf-div-hq-coy",
+   "name": "HQ Coy (Inf Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "hq",
+   "echelon": "15",
+   "page": "507-508",
+   "strength": {
+    "offr": 2,
+    "jco": 2,
+    "sldr": 24,
+    "sw": 5,
+    "fdIncrement": 18,
+    "total": 51
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 2, Sldrs 24, Total 28; SWs/Civs 5, Fd Increment 18; Total 51.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Adm Pl",
+     "count": 1
+    },
+    {
+     "role": "TM Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 2,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Gen",
+     "count": 2,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 7,
+    "tlrs": 7
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-inf-div-op-coy",
+   "name": "Op Coy (Inf Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "op",
+   "echelon": "15",
+   "page": "507-508",
+   "strength": {
+    "offr": 3,
+    "jco": 3,
+    "sldr": 104,
+    "sw": 2,
+    "total": 112
+   },
+   "strengthNote": "Summary table: Offrs 3, JCOs 3, Sldrs 104, Total 110; SWs/Civs 2, Fd Increment -; Total 112.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Op Pl",
+     "count": 1
+    },
+    {
+     "role": "Crypto Pl",
+     "count": 1
+    },
+    {
+     "role": "DR Pl",
+     "count": 1
+    },
+    {
+     "role": "DAA Sig Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "MCs",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 4,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 20,
+    "tlrs": 8
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-inf-div-radio-coy",
+   "name": "Radio Coy (Inf Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "radio",
+   "echelon": "15",
+   "page": "507-508",
+   "strength": {
+    "offr": 3,
+    "sldr": 74,
+    "sw": 1,
+    "total": 78
+   },
+   "strengthNote": "Summary table: Offrs 3, JCOs -, Sldrs 74, Total 77; SWs/Civs 1, Fd Increment -; Total 78.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "Armd Regt Sig Sec",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 1,
+       "cat": "radio",
+       "net": "Div Comd Voice",
+       "station": "Armd Regt",
+       "note": "Station \"Armd Regt\" HF on Div Comd Voice. Judged from the Typical Radio Comm Diagram (Provisional) p 513: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    },
+    {
+     "role": "Engr Bn Sig Sec",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 2,
+       "cat": "radio",
+       "net": "Div Comd Voice / CC Engr Net",
+       "station": "Engr Bn",
+       "note": "Station \"Engr Bn\" HF, HF: one on Div Comd Voice, one -> CC Engr Net. Judged from the Typical Radio Comm Diagram (Provisional) p 513: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    },
+    {
+     "role": "LAT Bn Sig Sec",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 1,
+       "cat": "radio",
+       "net": "Div Comd Voice",
+       "station": "LAT Bn",
+       "note": "Station \"LAT Bn\" HF on Div Comd Voice. Judged from the Typical Radio Comm Diagram (Provisional) p 513: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    },
+    {
+     "role": "Radio Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 8,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 4,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 17,
+    "tlrs": 3
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-inf-div-rr-line-coy",
+   "name": "RR & Line Coy (Inf Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "rr-line",
+   "echelon": "15",
+   "page": "507-508",
+   "strength": {
+    "offr": 3,
+    "jco": 2,
+    "sldr": 104,
+    "sw": 2,
+    "total": 111
+   },
+   "strengthNote": "Summary table: Offrs 3, JCOs 2, Sldrs 104, Total 109; SWs/Civs 2, Fd Increment -; Total 111.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "RR Pl",
+     "count": 1
+    },
+    {
+     "role": "Line Pl",
+     "count": 1
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 5,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 15,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 9,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 16,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 10,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 29,
+    "tlrs": 30
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-inf-div-arty-sig-coy",
+   "name": "Arty Sig Coy (Inf Div Sig Bn)",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "arty",
+   "echelon": "15",
+   "page": "507-508",
+   "strength": {
+    "offr": 2,
+    "jco": 1,
+    "sldr": 89,
+    "sw": 2,
+    "total": 94
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 1, Sldrs 89, Total 92; SWs/Civs 2, Fd Increment -; Total 94.",
+   "children": [
+    {
+     "role": "CHQ",
+     "count": 1
+    },
+    {
+     "role": "HQ Div Arty Sig Pl",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 9,
+       "cat": "radio",
+       "note": "HQ Div Arty: Comd Net (BM) control 1, CB Net control 1, rear links to Div Comd Voice / Corps Comd Voice / Corps CB Offr 3, Comd Rover 2, Utility 2. Judged from the Typical Radio Comm Diagram (Provisional) p 514: the diagram draws these sets at the station; it does not say which unit mans them."
+      },
+      {
+       "name": "VHF radio set",
+       "count": 2,
+       "cat": "radio",
+       "note": "HQ Div Arty: to Ac 1, Utility 1. Judged from the Typical Radio Comm Diagram (Provisional) p 514: the diagram draws these sets at the station; it does not say which unit mans them."
+      },
+      {
+       "name": "VHF receiver",
+       "count": 2,
+       "cat": "radio",
+       "note": "HQ Div Arty receivers. Judged from the Typical Radio Comm Diagram (Provisional) p 514: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    },
+    {
+     "role": "Fd Regt Sig Sec",
+     "count": 3,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 2,
+       "cat": "radio",
+       "note": "Each: station \"ARTY REGT\" HF, HF (one on Comd Net, one on CB Net); the diagram says Arty Regt, the chart Fd Regt. Judged from the Typical Radio Comm Diagram (Provisional) p 514: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    },
+    {
+     "role": "Med Regt Sig Sec",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 1,
+       "cat": "radio",
+       "net": "Comd Net (BM)",
+       "station": "Med Regt",
+       "note": "Station \"Med Regt\" HF on Comd Net (BM). Judged from the Typical Radio Comm Diagram (Provisional) p 514: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    },
+    {
+     "role": "MAS Bty Sig Sec",
+     "count": 1,
+     "equipment": [
+      {
+       "name": "HF radio set",
+       "count": 1,
+       "cat": "radio",
+       "net": "Comd Net (BM)",
+       "station": "MAS Bty",
+       "note": "Station \"MAS Bty\" HF on Comd Net (BM). Judged from the Typical Radio Comm Diagram (Provisional) p 514: the diagram draws these sets at the station; it does not say which unit mans them."
+      }
+     ]
+    }
+   ],
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 8,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 6,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 3,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 17,
+    "tlrs": 8
+   },
+   "side": "own",
+   "symbolKey": "10111000"
+  },
+  {
+   "id": "sig-inf-bde-sig-coy",
+   "name": "Inf Bde Sig Coy",
+   "arm": "sig",
+   "type": "coy",
+   "subtype": "inf-bde",
+   "echelon": "15",
+   "page": "507-508",
+   "strength": {
+    "offr": 2,
+    "jco": 1,
+    "sldr": 82,
+    "sw": 2,
+    "total": 87
+   },
+   "strengthNote": "Summary table: Offrs 2, JCOs 1, Sldrs 82, Total 85; SWs/Civs 2, Fd Increment -; Total 87.",
+   "vehicles": [
+    {
+     "name": "Trk 1/4 Ton",
+     "count": 10,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 3/4 Ton",
+     "count": 7,
+     "cat": "tpt"
+    },
+    {
+     "name": "Trk 2.5 Ton",
+     "count": 3,
+     "cat": "tpt"
+    },
+    {
+     "name": "Tlr 1/4 Ton",
+     "count": 4,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 3/4 Ton",
+     "count": 2,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr 1.5 Ton",
+     "count": 1,
+     "cat": "tlr"
+    },
+    {
+     "name": "Tlr Water 400 Gals",
+     "count": 1,
+     "cat": "tlr"
+    }
+   ],
+   "vehicleTotals": {
+    "vehsLessMCs": 20,
+    "tlrs": 8
+   },
+   "notes": [
+    "Figures each; three in the Inf Div Sig Bn. 'These are self acct coys.'",
+    "The bns' sets on the Inf Bde diagram p 515 (3x HF + VHF) are in sigData only."
+   ],
+   "side": "own",
+   "symbolKey": "10111000",
+   "equipment": [
+    {
+     "name": "HF radio set",
+     "count": 10,
+     "cat": "radio",
+     "note": "Bde HQ: Bde Comd Voice control 1, Comd's Rover 2, Tac HQ 2, rear links to Div Comd Voice 1 and Div Adm Voice 1, Adm Svc 1, Utility 1; Bde domestic area / rear echs 1. Judged from the Typical Radio Comm Diagram (Provisional) p 515: the diagram draws these sets at the station; it does not say which unit mans them."
+    },
+    {
+     "name": "VHF radio set",
+     "count": 3,
+     "cat": "radio",
+     "note": "Bde HQ: Bde Comd Voice control 1, Comd's Rover 1, rear link to Div Comd Voice 1. Judged from the Typical Radio Comm Diagram (Provisional) p 515: the diagram draws these sets at the station; it does not say which unit mans them."
+    },
+    {
+     "name": "HF receiver",
+     "count": 2,
+     "cat": "radio",
+     "note": "Bde HQ receivers. Judged from the Typical Radio Comm Diagram (Provisional) p 515: the diagram draws these sets at the station; it does not say which unit mans them."
+    },
+    {
+     "name": "VHF receiver",
+     "count": 1,
+     "cat": "radio",
+     "note": "Bde HQ receivers. Judged from the Typical Radio Comm Diagram (Provisional) p 515: the diagram draws these sets at the station; it does not say which unit mans them."
+    }
+   ]
+  }
+ ],
+ "sigData": [
+  {
+   "title": "Typical Radio Diagram - Armd Div (Provisional)",
+   "page": "509",
+   "columns": [
+    "Net",
+    "Station",
+    "Sets",
+    "HF",
+    "VHF",
+    "HF Rx",
+    "VHF Rx",
+    "Other",
+    "Links",
+    "Note"
+   ],
+   "rows": [
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Div HQ (net control, box \"DIV COMD VOICE\")",
+     "Sets": "VHF, HF",
+     "HF": 1,
+     "VHF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Tac HQ",
+     "Sets": "HF, HF (box)",
+     "HF": 2,
+     "Links": "one HF -> Corps Voice"
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Col Staff Rover",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "GOC Rover",
+     "Sets": "VHF, HF, HF (box)",
+     "HF": 2,
+     "VHF": 1,
+     "Links": "one HF -> Corps Voice"
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "AQ Rover",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "CO Sig Bn",
+     "Sets": "HF, VHF (box)",
+     "HF": 1,
+     "VHF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Flt Sqn Avn",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Recce Regt",
+     "Sets": "2XHF",
+     "HF": 2
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Engr Bn",
+     "Sets": "2XHF",
+     "HF": 2
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "AD Bde",
+     "Sets": "2XHF",
+     "HF": 2
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "3xLOs",
+     "Sets": "3xHF",
+     "HF": 3
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "GOC Recce",
+     "Sets": "HF, VHF, HF (box)",
+     "HF": 2,
+     "VHF": 1,
+     "Links": "one HF -> Corps Voice"
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "OC RLG",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "OC SP Gp",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "arrows only (no set drawn on this diagram)",
+     "Sets": "-",
+     "Links": "right: 3x Bde HQ, 3x Bde Comd Rovers, Div Arty HQ, Arty Comd Rover, OC HQ Sqn; left: OC HQ Sqn, GSO 1 (Ops), Col Staff, AQ, DQ, GSO2 (Ops), OC MP"
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "Div HQ (net control, \"DIV ADM VOICE\")",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "3x Commodity Pts",
+     "Sets": "HF, HF, HF",
+     "HF": 3
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "Comd Log",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "LO",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "Step Up",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "EME",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "AD Bde",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "DAA",
+     "Sets": "2xHF",
+     "HF": 2
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "arrows only (no set drawn on this diagram)",
+     "Sets": "-",
+     "Links": "Arty HQ, 3x Bde HQ"
+    },
+    {
+     "Net": "Air Surv Net",
+     "Station": "Net control (\"AIR SURV NET\")",
+     "Sets": "VHF",
+     "VHF": 1,
+     "Links": "-> Ac, -> HQ Armd Div Arty"
+    },
+    {
+     "Net": "Air Surv Net",
+     "Station": "Flt Sqn HQ",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Higher fmn",
+     "Station": "Rear link",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Corps Voice"
+    },
+    {
+     "Net": "Higher fmn",
+     "Station": "Rear link",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> ASOC"
+    },
+    {
+     "Net": "-",
+     "Station": "4x Armd Regt Sig Pls, 3x MIB Sig Pls",
+     "Sets": "14xHF",
+     "HF": 14,
+     "Note": "2 each (14 / 7); the chart and table p 505-506 count 5 Armd Regt Sig Pls"
+    },
+    {
+     "Net": "-",
+     "Station": "ACT",
+     "Sets": "12x113",
+     "Other": "12x AN/PRC-113",
+     "Note": "AN/PRC-113 Gr-Air set replacing the ACT sets (p 517 ser 10)"
+    },
+    {
+     "Net": "Utility",
+     "Station": "Utility",
+     "Sets": "4xHF, 2xVHF",
+     "HF": 4,
+     "VHF": 2
+    },
+    {
+     "Net": "Receiver",
+     "Station": "Receiver",
+     "Sets": "11xHF, 2xVHF",
+     "HF Rx": 11,
+     "VHF Rx": 2
+    }
+   ],
+   "note": "Sets are drawn as circles (HF / VHF); which set of the \"DIV COMD VOICE\" box each outstation works is not always clear and is not recorded.",
+   "setCount": {
+    "HF": 51,
+    "VHF": 10,
+    "HF Rx": 11,
+    "VHF Rx": 2,
+    "note": "Counted by the reader from the circles drawn (not printed in the book). Stations shown by an arrow only carry no set on this diagram and are not counted. \"Other\" sets are not in these sums."
+   }
+  },
+  {
+   "title": "Typical Radio Comm - Armd Div Arty (Provisional)",
+   "page": "510",
+   "columns": [
+    "Net",
+    "Station",
+    "Sets",
+    "HF",
+    "VHF",
+    "HF Rx",
+    "VHF Rx",
+    "Other",
+    "Links",
+    "Note"
+   ],
+   "rows": [
+    {
+     "Net": "Arty Comd Voice",
+     "Station": "HQ Div Arty (net control)",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Arty Comd Voice",
+     "Station": "Comd's Rover",
+     "Sets": "HF, HF (box)",
+     "HF": 2,
+     "Links": "one HF -> Div Comd Voice"
+    },
+    {
+     "Net": "Arty Comd Voice",
+     "Station": "SP Regts",
+     "Sets": "HF, HF, HF",
+     "HF": 3,
+     "Note": "one set per SP regt (3 under one bracket)"
+    },
+    {
+     "Net": "Arty Adm Net",
+     "Station": "HQ Div Arty (net control)",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Arty Adm Net",
+     "Station": "SP Regts",
+     "Sets": "HF, HF, HF",
+     "HF": 3,
+     "Note": "one set per SP regt (3 under one bracket)"
+    },
+    {
+     "Net": "Air Surv Net",
+     "Station": "HQ Div Arty",
+     "Sets": "VHF",
+     "VHF": 1,
+     "Links": "-> Ac"
+    },
+    {
+     "Net": "Higher fmn",
+     "Station": "Rear link",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> HQ Corps"
+    },
+    {
+     "Net": "Div nets",
+     "Station": "Rear link",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Div Comd"
+    },
+    {
+     "Net": "Div nets",
+     "Station": "Rear link",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Div Adm"
+    },
+    {
+     "Net": "Utility",
+     "Station": "Utility",
+     "Sets": "2xHF, VHF",
+     "HF": 2,
+     "VHF": 1
+    },
+    {
+     "Net": "Receiver",
+     "Station": "Receiver",
+     "Sets": "3",
+     "Other": "3 receivers (type not printed)"
+    }
+   ],
+   "notes": [
+    "1. WS on staff net provided by div HQ/users.",
+    "2. One VRC 787 issued to Aslt Engr Bn from pool sets.",
+    "3. Resources of Lt AD Regt sig pl now under comd no 2 coy for provision of sig comm sp.",
+    "4. All WS are veh mtd."
+   ],
+   "setCount": {
+    "HF": 15,
+    "VHF": 2,
+    "HF Rx": 0,
+    "VHF Rx": 0,
+    "note": "Counted by the reader from the circles drawn (not printed in the book). Stations shown by an arrow only carry no set on this diagram and are not counted. \"Other\" sets are not in these sums."
+   }
+  },
+  {
+   "title": "Typical Radio Comm Diagram - IABG (Provisional)",
+   "page": "511",
+   "columns": [
+    "Net",
+    "Station",
+    "Sets",
+    "HF",
+    "VHF",
+    "HF Rx",
+    "VHF Rx",
+    "Other",
+    "Links",
+    "Note"
+   ],
+   "rows": [
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Armd Regt",
+     "Sets": "2x HF, VHF, 2x HF, VHF",
+     "HF": 4,
+     "VHF": 2,
+     "Note": "one \"ARMD REGT\" bracket over two pairs of circles: probably two armd regts, 2x HF + VHF each (not printed)",
+     "uncertain": true
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "AD Regt",
+     "Sets": "2x HF, VHF",
+     "HF": 2,
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "MIB",
+     "Sets": "2x HF, VHF",
+     "HF": 2,
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Bde HQ (net control, box \"BDE COMD VOICE\")",
+     "Sets": "HF, VHF (box)",
+     "HF": 1,
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Comd A2 Ech",
+     "Sets": "VHF, HF (box)",
+     "HF": 1,
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "OC Sig Coy",
+     "Sets": "VHF, HF (box)",
+     "HF": 1,
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "BM Rover",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "S&T Bn",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Comd Rover",
+     "Sets": "HF, HF, VHF (box)",
+     "HF": 2,
+     "VHF": 1,
+     "Links": "one HF -> Corps Voice"
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Engr Coy",
+     "Sets": "HF, VHF",
+     "HF": 1,
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Comd Recce",
+     "Sets": "VHF, HF, HF (box)",
+     "HF": 2,
+     "VHF": 1,
+     "Links": "one HF -> Corps Comd Voice"
+    },
+    {
+     "Net": "Adm Net",
+     "Station": "Bde HQ (net control, \"ADM NET\")",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Regts B Ech (6 arrows)"
+    },
+    {
+     "Net": "Adm Net",
+     "Station": "BAA",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Adm Svc",
+     "Station": "Bde HQ (\"ADM SVC\")",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Adm Svc",
+     "Station": "Comd A1 Ech",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Higher fmns",
+     "Station": "Rear link",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Corps Adm Voice"
+    },
+    {
+     "Net": "Higher fmns",
+     "Station": "Rear link",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> ASOC"
+    },
+    {
+     "Net": "Higher fmns",
+     "Station": "Rear link",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Corps Comd Voice"
+    },
+    {
+     "Net": "-",
+     "Station": "ACT",
+     "Sets": "4x113",
+     "Other": "4x AN/PRC-113",
+     "Note": "AN/PRC-113 Gr-Air set replacing the ACT sets (p 517 ser 10)"
+    },
+    {
+     "Net": "Utility",
+     "Station": "Utility",
+     "Sets": "3x HF, 2xVHF",
+     "HF": 3,
+     "VHF": 2
+    },
+    {
+     "Net": "Receiver",
+     "Station": "Receiver",
+     "Sets": "4x HF, 2xVHF",
+     "HF Rx": 4,
+     "VHF Rx": 2
+    }
+   ],
+   "note": "Bands of the diagram: Regts/Bns, Bde HQ, Higher Fmns. The section has no IABG sig org chart, so these sets are not put on a unit.",
+   "setCount": {
+    "HF": 28,
+    "VHF": 12,
+    "HF Rx": 4,
+    "VHF Rx": 2,
+    "note": "Counted by the reader from the circles drawn (not printed in the book). Stations shown by an arrow only carry no set on this diagram and are not counted. \"Other\" sets are not in these sums."
+   }
+  },
+  {
+   "title": "Typical Radio Comm Diagram - Armd Bde (Provisional)",
+   "page": "512",
+   "columns": [
+    "Net",
+    "Station",
+    "Sets",
+    "HF",
+    "VHF",
+    "HF Rx",
+    "VHF Rx",
+    "Other",
+    "Links",
+    "Note"
+   ],
+   "rows": [
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Bde HQ (net control)",
+     "Sets": "VHF",
+     "VHF": 1,
+     "Note": "net name \"BDE COMD VOICE\" is in the PDF text layer under the HQ shape; not visible in the printed image"
+    },
+    {
+     "Net": "Bde HF net (name not printed)",
+     "Station": "Bde HQ",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Armd Regt A, Armd Regt B, MIB, Engr Coy (arrows); Bde Recce Gp HF"
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Bde HQ (rear link)",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Div Comd Voice"
+    },
+    {
+     "Net": "Bde Adm Voice",
+     "Station": "Bde HQ (box \"BDE ADM VOICE\")",
+     "Sets": "HF, HF (box)",
+     "HF": 2,
+     "Links": "one HF -> Div Adm Voice"
+    },
+    {
+     "Net": "Bde Adm Voice",
+     "Station": "A 1 Ech Comd",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Box of two HF fed from Bde HQ (no visible label)",
+     "Sets": "HF, HF (box)",
+     "HF": 2,
+     "Links": "-> Div Comd Voice",
+     "Note": "the PDF text layer reads \"COMD REC\" here: probably the Comd Recce HF pair",
+     "uncertain": true
+    },
+    {
+     "Net": "-",
+     "Station": "Comd Recce",
+     "Sets": "VHF, VHF (box)",
+     "VHF": 2,
+     "Links": "fed from Bde HQ"
+    },
+    {
+     "Net": "Utility",
+     "Station": "Utility",
+     "Sets": "HF, HF",
+     "HF": 2
+    },
+    {
+     "Net": "Receiver",
+     "Station": "Receiver",
+     "Sets": "HF, 2x VHF",
+     "HF Rx": 1,
+     "VHF Rx": 2
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Bde Comd Rover",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "OC Sig",
+     "Sets": "VHF",
+     "VHF": 1,
+     "Note": "printed \"OC SIG\" (first letter cut)"
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "OC HQ Sqn",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice / Bde HF net",
+     "Station": "Bde Recce Gp",
+     "Sets": "VHF, HF (box)",
+     "HF": 1,
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Engr Coy",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "HAT Coy",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "CO A Armd Regt",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "CV A Armd Regt",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "CO B Armd Regt",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "CV B Armd Regt",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "CO MIB",
+     "Sets": "VHF",
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "CV MIB",
+     "Sets": "VHF",
+     "VHF": 1
+    }
+   ],
+   "setCount": {
+    "HF": 10,
+    "VHF": 15,
+    "HF Rx": 1,
+    "VHF Rx": 2,
+    "note": "Counted by the reader from the circles drawn (not printed in the book). Stations shown by an arrow only carry no set on this diagram and are not counted. \"Other\" sets are not in these sums."
+   }
+  },
+  {
+   "title": "Typical Radio Comm Diagram - Inf Div (Provisional)",
+   "page": "513",
+   "columns": [
+    "Net",
+    "Station",
+    "Sets",
+    "HF",
+    "VHF",
+    "HF Rx",
+    "VHF Rx",
+    "Other",
+    "Links",
+    "Note"
+   ],
+   "rows": [
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Div HQ (net control, \"DIV COMD VOICE\")",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "3X Bdes",
+     "Sets": "-",
+     "Links": "arrows only (no set drawn on this diagram)"
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "LAT Bn",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "HQ Div Arty",
+     "Sets": "-",
+     "Links": "arrows only (no set drawn on this diagram)"
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Armd Regt",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Comd Voice / CC Engr Net",
+     "Station": "Engr Bn",
+     "Sets": "HF, HF (box)",
+     "HF": 2,
+     "Links": "one HF -> CC Engr Net"
+    },
+    {
+     "Net": "Div HQ",
+     "Station": "Box of three sets at Div HQ (no label)",
+     "Sets": "HF, VHF, HF (box)",
+     "HF": 2,
+     "VHF": 1,
+     "Links": "VHF joined to the Div Comd Voice HF; lower HF -> Corps Comd Voice"
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "Div HQ (net control, \"DIV ADM VOICE\")",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> BDEs (3 arrows); Adm Area HF"
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "Adm Area",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Higher fmn",
+     "Station": "Adm Area (rear link)",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> CC Log"
+    },
+    {
+     "Net": "-",
+     "Station": "Div HQ (no label)",
+     "Sets": "VHF",
+     "VHF": 1,
+     "Links": "-> Bdes/Regts/Bns band (arrow)"
+    },
+    {
+     "Net": "Higher fmn",
+     "Station": "GOC Rover",
+     "Sets": "HF, HF",
+     "HF": 2,
+     "Links": "one HF -> ASOC, the other -> Corps Comd Voice",
+     "Note": "label \"GOC ROVER\" printed between two single HF circles; which of them it names is not clear",
+     "uncertain": true
+    },
+    {
+     "Net": "Div Comd Voice / Corps Comd Voice",
+     "Station": "Tac HQ",
+     "Sets": "HF, HF, VHF (box)",
+     "HF": 2,
+     "VHF": 1,
+     "Links": "one HF -> Div Comd Voice, the other -> Corps Comd Voice"
+    },
+    {
+     "Net": "Air Request Net",
+     "Station": "Div HQ (\"AIR REQUEST NET\")",
+     "Sets": "VHF",
+     "VHF": 1,
+     "Links": "-> Flt Sqn HQ, -> HQ Div Arty"
+    },
+    {
+     "Net": "-",
+     "Station": "ACT",
+     "Sets": "4X113",
+     "Other": "4x AN/PRC-113",
+     "Note": "AN/PRC-113 Gr-Air set replacing the ACT sets (p 517 ser 10)"
+    },
+    {
+     "Net": "Utility",
+     "Station": "Utility",
+     "Sets": "2XHF, VHF",
+     "HF": 2,
+     "VHF": 1
+    },
+    {
+     "Net": "Receiver",
+     "Station": "Receiver",
+     "Sets": "9XHF, 2XVHF",
+     "HF Rx": 9,
+     "VHF Rx": 2
+    }
+   ],
+   "note": "Bands of the diagram: Bdes/Regts/Bns, Div HQ, Adm Area, Higher Fmn.",
+   "setCount": {
+    "HF": 16,
+    "VHF": 5,
+    "HF Rx": 9,
+    "VHF Rx": 2,
+    "note": "Counted by the reader from the circles drawn (not printed in the book). Stations shown by an arrow only carry no set on this diagram and are not counted. \"Other\" sets are not in these sums."
+   }
+  },
+  {
+   "title": "Typical Radio Comm - Inf Div Arty (Provisional)",
+   "page": "514",
+   "columns": [
+    "Net",
+    "Station",
+    "Sets",
+    "HF",
+    "VHF",
+    "HF Rx",
+    "VHF Rx",
+    "Other",
+    "Links",
+    "Note"
+   ],
+   "rows": [
+    {
+     "Net": "Comd Net (BM)",
+     "Station": "HQ Div Arty (net control)",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "CB Net",
+     "Station": "HQ Div Arty (net control)",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Rear link",
+     "Station": "HQ Div Arty",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Div Comd Voice"
+    },
+    {
+     "Net": "Rear link",
+     "Station": "HQ Div Arty",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Corps Comd Voice"
+    },
+    {
+     "Net": "Rear link",
+     "Station": "HQ Div Arty",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Corps CB Offr"
+    },
+    {
+     "Net": "Air",
+     "Station": "HQ Div Arty",
+     "Sets": "VHF",
+     "VHF": 1,
+     "Links": "-> Ac"
+    },
+    {
+     "Net": "Comd Net (BM)",
+     "Station": "Comd Rover",
+     "Sets": "HF, HF (box)",
+     "HF": 2,
+     "Links": "one HF -> Div Comd Voice"
+    },
+    {
+     "Net": "Comd Net (BM)",
+     "Station": "Med Regt",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Comd Net (BM)",
+     "Station": "MAS Bty",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Comd Net (BM) / CB Net",
+     "Station": "Arty Regt (3 brackets)",
+     "Sets": "HF, HF each",
+     "HF": 6,
+     "Note": "each regt: one HF on the Comd Net, one on the CB Net"
+    },
+    {
+     "Net": "Utility",
+     "Station": "Utility",
+     "Sets": "2xHF, VHF",
+     "HF": 2,
+     "VHF": 1
+    },
+    {
+     "Net": "Receiver",
+     "Station": "Receiver",
+     "Sets": "2xVHF",
+     "VHF Rx": 2
+    }
+   ],
+   "setCount": {
+    "HF": 17,
+    "VHF": 2,
+    "HF Rx": 0,
+    "VHF Rx": 2,
+    "note": "Counted by the reader from the circles drawn (not printed in the book). Stations shown by an arrow only carry no set on this diagram and are not counted. \"Other\" sets are not in these sums."
+   }
+  },
+  {
+   "title": "Typical Radio Comm Diagram - Inf Bde (Provisional)",
+   "page": "515",
+   "columns": [
+    "Net",
+    "Station",
+    "Sets",
+    "HF",
+    "VHF",
+    "HF Rx",
+    "VHF Rx",
+    "Other",
+    "Links",
+    "Note"
+   ],
+   "rows": [
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "BNs (3 boxes)",
+     "Sets": "HF, VHF (box) x3",
+     "HF": 3,
+     "VHF": 3,
+     "Note": "the HF of each box is joined to Bde Comd Voice"
+    },
+    {
+     "Net": "Bde Comd Voice",
+     "Station": "Bde HQ (net control, box \"BDE COMD VOICE\")",
+     "Sets": "HF, VHF (box)",
+     "HF": 1,
+     "VHF": 1
+    },
+    {
+     "Net": "Bde Comd Voice / Div Comd Voice",
+     "Station": "Comd's Rover",
+     "Sets": "HF, VHF, HF (box)",
+     "HF": 2,
+     "VHF": 1,
+     "Links": "one HF -> Div Comd Voice; the other HF joined to Bde Comd Voice"
+    },
+    {
+     "Net": "Bde Comd Voice / Div Comd Voice",
+     "Station": "Tac HQ",
+     "Sets": "HF, HF (box)",
+     "HF": 2,
+     "Links": "one HF joined to Bde Comd Voice; the other -> Div Comd Voice"
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Bde HQ (rear link)",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Div Comd Voice"
+    },
+    {
+     "Net": "Div Adm Voice",
+     "Station": "Bde HQ (rear link)",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> Div Adm Voice"
+    },
+    {
+     "Net": "Adm Svc",
+     "Station": "Bde HQ (\"ADM SVC\")",
+     "Sets": "HF",
+     "HF": 1,
+     "Links": "-> HF at Bde domestic area / rear echs"
+    },
+    {
+     "Net": "Adm Svc",
+     "Station": "Bde Domestic Area/Rear Echs",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Div Comd Voice",
+     "Station": "Bde HQ (rear link)",
+     "Sets": "VHF",
+     "VHF": 1,
+     "Links": "-> Div Comd Voice"
+    },
+    {
+     "Net": "Utility",
+     "Station": "Utility",
+     "Sets": "HF",
+     "HF": 1
+    },
+    {
+     "Net": "Receiver",
+     "Station": "Receiver",
+     "Sets": "2x HF, VHF",
+     "HF Rx": 2,
+     "VHF Rx": 1
+    }
+   ],
+   "note": "Bands of the diagram: BNs, Bde HQ, Bde Domestic Area/Rear Echs, Higher Fmn.",
+   "setCount": {
+    "HF": 13,
+    "VHF": 6,
+    "HF Rx": 2,
+    "VHF Rx": 1,
+    "note": "Counted by the reader from the circles drawn (not printed in the book). Stations shown by an arrow only carry no set on this diagram and are not counted. \"Other\" sets are not in these sums."
+   }
+  },
+  {
+   "title": "Radio Eqpt",
+   "page": "516-517",
+   "columns": [
+    "Ser",
+    "Type of Set Old",
+    "Type of Set New",
+    "Where used",
+    "Freq Bank in MHZ",
+    "Max Range in KMs (Voice)",
+    "Modulation System",
+    "Remarks"
+   ],
+   "rows": [
+    {
+     "Ser": "1",
+     "Type of Set Old": "AN/PRC 6 Type-702D",
+     "Type of Set New": "KD/ETC-542B",
+     "Where used": "Coy, Pl, Sec",
+     "Freq Bank in MHZ": "47-54",
+     "Max Range in KMs (Voice)": "2-3",
+     "Modulation System": "FM",
+     "Remarks": "Walki Talki Set."
+    },
+    {
+     "Ser": "2",
+     "Type of Set Old": "AN/PRC-8 9, 10",
+     "Type of Set New": "AN/PRC-77",
+     "Where used": "Armd, Arty & Inf Unit",
+     "Freq Bank in MHZ": "30-75.95",
+     "Max Range in KMs (Voice)": "8",
+     "Modulation System": "FM",
+     "Remarks": "All arms VHF set, aval in LP/HP version."
+    },
+    {
+     "Ser": "3",
+     "Type of Set Old": "AN/VRC-3, 13, 14, 14 & 16",
+     "Type of Set New": "AN/VRC-80, 81, 81A (Inf Units); VRC-12, VRC-46, VRC-64 (Armd Units)",
+     "Where used": "Inf Units / Armd Units",
+     "Freq Bank in MHZ": "30-75.95",
+     "Max Range in KMs (Voice)": "Max 30 with booster; Max upto 30",
+     "Modulation System": "FM",
+     "Remarks": "These are tk/APC/ARV sets. Replacing AN/GRC-3, 4, A-220, VRC-8, 13, 14, 15 & 16."
+    },
+    {
+     "Ser": "4",
+     "Type of Set Old": "AN/GRC-3 6, 7 & 8",
+     "Type of Set New": "AN/VRC-78/79",
+     "Where used": "Arty & Inf Units",
+     "Freq Bank in MHZ": "30-75.95",
+     "Max Range in KMs (Voice)": "Max 30 with booster",
+     "Modulation System": "FM",
+     "Remarks": "It is a vehicular compact solid state sys for tac comm."
+    },
+    {
+     "Ser": "5",
+     "Type of Set Old": "AN/VRQ-1, 2 & 3",
+     "Type of Set New": "AN/VRC-78/79",
+     "Where used": "Armd, Arty & Inf Units",
+     "Freq Bank in MHZ": "30-75.95",
+     "Max Range in KMs (Voice)": "Max 30 with booster",
+     "Modulation System": "FM",
+     "Remarks": "It is replacing AN/GRC-5, 6, 7, 8 and AN/VRC-8, 9 & 10."
+    },
+    {
+     "Ser": "6",
+     "Type of Set Old": "AN/VRC-8, 9 & 10",
+     "Type of Set New": "AN/VRC-78/79",
+     "Where used": "Armd, Arty & Inf Units",
+     "Freq Bank in MHZ": "30-75.95",
+     "Max Range in KMs (Voice)": "Max 30 with booster",
+     "Modulation System": "FM",
+     "Remarks": ""
+    },
+    {
+     "Ser": "7",
+     "Type of Set Old": "AN/GRC-9/87, AN/VRC-34, AN/GRC-19",
+     "Type of Set New": "PK/PRC-786",
+     "Where used": "Armd, Arty & Sig Units",
+     "Freq Bank in MHZ": "2-12",
+     "Max Range in KMs (Voice)": "Ranges upto 100 km are possible with wire antenna",
+     "Modulation System": "AM/SSB",
+     "Remarks": "HF, LP SSB set. Used for manpack as well as veh op."
+    },
+    {
+     "Ser": "8",
+     "Type of Set Old": "AN/GRC-26",
+     "Type of Set New": "Type-116",
+     "Where used": "Rear of Bde",
+     "Freq Bank in MHZ": "1.5-18",
+     "Max Range in KMs (Voice)": "Upto 160",
+     "Modulation System": "",
+     "Remarks": "A med power short wave set used for voice & CW comm."
+    },
+    {
+     "Ser": "9",
+     "Type of Set Old": "-",
+     "Type of Set New": "Harris 5800H",
+     "Where used": "Comd Net",
+     "Freq Bank in MHZ": "1.6-59.99 MHZ",
+     "Max Range in KMs (Voice)": "Upto 100",
+     "Modulation System": "CDMA",
+     "Remarks": "Works in HF and VHF ranges."
+    },
+    {
+     "Ser": "10",
+     "Type of Set Old": "AN/VRC-27, AN/VRC-24, 30, A43R, AN/PRC-66B",
+     "Type of Set New": "AN/PRC-113, VRC-83",
+     "Where used": "Gr-Air, VHF Comm",
+     "Freq Bank in MHZ": "116-149.975; 225-399.975",
+     "Max Range in KMs (Voice)": "Comm range depends upon ht and power output",
+     "Modulation System": "AM",
+     "Remarks": "Replacing all ACT sets."
+    }
+   ]
+  },
+  {
+   "title": "Radio Sets and Freq Ranges",
+   "page": "518",
+   "columns": [
+    "Arm",
+    "Radio Set",
+    "Freq in MHz"
+   ],
+   "note": "*WS used in MIB/LAT Bn/HAT Bn",
+   "rows": [
+    {
+     "Arm": "Armr",
+     "Radio Set": "AN/PRC-77",
+     "Freq in MHz": "30 - 75.95"
+    },
+    {
+     "Arm": "Armr",
+     "Radio Set": "AN/VRC-78/79/80/81/81A",
+     "Freq in MHz": "30 - 75.95"
+    },
+    {
+     "Arm": "Armr",
+     "Radio Set": "VRC-12, 46, 64",
+     "Freq in MHz": "30 - 75.95"
+    },
+    {
+     "Arm": "Armr",
+     "Radio Set": "PK/PRC-786",
+     "Freq in MHz": "2 - 12"
+    },
+    {
+     "Arm": "Armr",
+     "Radio Set": "LMT-3451A",
+     "Freq in MHz": "1.5 - 29.999"
+    },
+    {
+     "Arm": "Arty",
+     "Radio Set": "AN/PRC-77",
+     "Freq in MHz": "30 - 75.95"
+    },
+    {
+     "Arm": "Arty",
+     "Radio Set": "AN/VRC-78/79/80/81/81A",
+     "Freq in MHz": "30 - 75.95"
+    },
+    {
+     "Arm": "Arty",
+     "Radio Set": "PK/PRC-786",
+     "Freq in MHz": "2 - 12"
+    },
+    {
+     "Arm": "Inf",
+     "Radio Set": "KD/ETC-542B",
+     "Freq in MHz": "30 ... 47 54",
+     "uncertain": true,
+     "note": "bar printed from 30 with 47 and 54 marked on it; p 516 gives 47-54"
+    },
+    {
+     "Arm": "Inf",
+     "Radio Set": "AN/PRC-77",
+     "Freq in MHz": "30 - 75.95"
+    },
+    {
+     "Arm": "Inf",
+     "Radio Set": "AN/VRC-78/79/80/81/81A*",
+     "Freq in MHz": "30 - 75.95"
+    },
+    {
+     "Arm": "All Arms",
+     "Radio Set": "PK-786",
+     "Freq in MHz": "2 - 12"
+    }
+   ]
+  },
+  {
+   "title": "Typical Times for Estb Comm",
+   "page": "519",
+   "note": "Time for estb comm at a HQ after a mov depends upon terrain, aval of routes, stabilization of circuits and distances etc. Timings commence once the layout gp arrives in the new loc.",
+   "rows": [
+    {
+     "HQ": "Bde HQ",
+     "Time": "2 - 4 hrs"
+    },
+    {
+     "HQ": "Div HQ",
+     "Time": "6 - 8 hrs"
+    },
+    {
+     "HQ": "Corps HQ",
+     "Time": "48 - 72 hrs",
+     "note": "This time can be reduced if the HQ is mov to a loc where a Corps Main Node is already estb."
+    }
+   ]
+  },
+  {
+   "title": "Cable Resources - Inf Div Sig Bn",
+   "page": "520",
+   "rows": [
+    {
+     "Cable": "WD-1/TT",
+     "Authorization": "150 miles (241 Kms)",
+     "Comm range": "about 15 miles (24 Kms) without repeaters",
+     "Laying dets": "10 lt dets (excl bde and arty sig coys)",
+     "Laying Speed Day": "3-4 miles (4.8 - 6.4 Kms) per hr",
+     "Laying Speed Ni": "2-3 miles (3.2-4.8 Kms) per hr",
+     "Laying Cap": "15-20 miles (24-32 Kms) per 24 hrs per det"
+    },
+    {
+     "Cable": "S-4",
+     "Authorization": "30 miles (48 Kms)",
+     "Comm range": "depends upon the carr eqpt used",
+     "Laying dets": "two lt dets",
+     "Laying Speed Gr Route Day": "1 - 1.5 miles (1.6-24 Kms) per hr by day",
+     "Laying Speed Gr Route Ni": "1 miles (1.6 Kms) per hr by ni",
+     "Laying Speed Overhead Route": "1/2 to 3/4 miles (0.8 - 1.2 Km) per hr",
+     "Laying Cap Gr Routes": "10 - 12 miles (16-19.2 Kms) per 24 hrs per det",
+     "Laying Cap Overhead Routes": "5 miles (8 Kms) per 24 hrs per det",
+     "note": "'1.6-24 Kms' as printed (probably 1.6-2.4)"
+    }
+   ]
+  },
+  {
+   "title": "Appt Titles",
+   "page": "521",
+   "columns": [
+    "Appt",
+    "Titles"
+   ],
+   "rows": [
+    {
+     "Appt": "Comd",
+     "Titles": "Imam"
+    },
+    {
+     "Appt": "Dy comd or 21 C",
+     "Titles": "Wazir"
+    },
+    {
+     "Appt": "Senior coord SO (eg Col Staff)",
+     "Titles": "Markhor"
+    },
+    {
+     "Appt": "G ops staff",
+     "Titles": "Markhor Minor"
+    },
+    {
+     "Appt": "G int staff",
+     "Titles": "Chota"
+    },
+    {
+     "Appt": "Adm staff",
+     "Titles": "Nazim"
+    },
+    {
+     "Appt": "Armr",
+     "Titles": "Baktar"
+    },
+    {
+     "Appt": "Arty",
+     "Titles": "Gharbeen"
+    },
+    {
+     "Appt": "CB",
+     "Titles": "Atishbar"
+    },
+    {
+     "Appt": "Army AD",
+     "Titles": "Shikari"
+    },
+    {
+     "Appt": "Engrs",
+     "Titles": "Farhaad"
+    },
+    {
+     "Appt": "Sigs",
+     "Titles": "Kabutar"
+    },
+    {
+     "Appt": "Inf",
+     "Titles": "Cheeta"
+    },
+    {
+     "Appt": "S&T",
+     "Titles": "Salwa"
+    },
+    {
+     "Appt": "Med",
+     "Titles": "Taweez"
+    },
+    {
+     "Appt": "Ord",
+     "Titles": "Ameen"
+    },
+    {
+     "Appt": "EME",
+     "Titles": "Lohar"
+    },
+    {
+     "Appt": "Vet",
+     "Titles": "Ghora"
+    },
+    {
+     "Appt": "MP",
+     "Titles": "Zabit"
+    }
+   ]
+  }
+ ],
+ "otherPages": [
+  {
+   "page": "500",
+   "what": "Contents"
+  },
+  {
+   "page": "509",
+   "what": "Typical Radio Diagram - Armd Div (Provisional): every station and set now in sigData; sets of named sig sub-units also on sig-armd-regt-sig-pl, sig-mib-sig-pl, sig-ad-bde-sig-pl, sig-armd-div-bn-hq (CO Sig Bn), Recce Regt / Aslt Engr Bn Sig Pls and DAA Sig Pl"
+  },
+  {
+   "page": "510",
+   "what": "Typical Radio Comm - Armd Div Arty (Provisional): stations, sets and notes 1-4 in sigData; HQ Div Arty Sig Pl and Med SP Regt Sig Pls of sig-armd-div-arty-sig-coy carry their sets (judged); note 2 on the Aslt Engr Bn Sig Pl, note 3 on sig-armd-div-radio-coy"
+  },
+  {
+   "page": "511",
+   "what": "Typical Radio Comm Diagram - IABG (Provisional): stations and sets in sigData (no IABG sig unit in the section)"
+  },
+  {
+   "page": "512",
+   "what": "Typical Radio Comm Diagram - Armd Bde (Provisional): stations and sets in sigData; Bde HQ sets on sig-armd-bde-sig-coy (judged)"
+  },
+  {
+   "page": "513",
+   "what": "Typical Radio Comm Diagram - Inf Div (Provisional): stations and sets in sigData; Armd Regt / Engr Bn / LAT Bn Sig Secs of sig-inf-div-radio-coy carry their sets (judged)"
+  },
+  {
+   "page": "514",
+   "what": "Typical Radio Comm - Inf Div Arty (Provisional): stations and sets in sigData; HQ Div Arty Sig Pl, Fd / Med Regt and MAS Bty Sig Secs of sig-inf-div-arty-sig-coy carry their sets (judged)"
+  },
+  {
+   "page": "515",
+   "what": "Typical Radio Comm Diagram - Inf Bde (Provisional): stations and sets in sigData; Bde HQ sets on sig-inf-bde-sig-coy (judged)"
+  }
+ ]
+}
