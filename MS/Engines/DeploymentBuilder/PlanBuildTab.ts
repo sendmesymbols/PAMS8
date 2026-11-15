@@ -68,6 +68,8 @@ export interface BuildTabHost {
   readDrawn?(scope: 'selected' | 'last' | 'all'): DrawnRead;
   /** Move the pivot of the plan being placed (Web Mercator): J takes an ambush to its better site. False: not moved. */
   moveAnchor?(xy: XY): boolean;
+  /** A slot in the Mgr's tab bar for the Build a plan / Check my plan switch; none: the switch gets a row of its own. */
+  aside?(): HTMLElement | null;
 }
 
 /** Roles a posn can be set to in Check my plan (a click walks them). */
@@ -92,6 +94,7 @@ const TASKS: { id: string; label: string; later?: string }[] = [
   { id: 'recce', label: 'Recce' },
   { id: 'crossing', label: 'Crossing' },
 ];
+const STEPS = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
 const LAYOUT_LABEL: Record<string, string> = {
   'two-up': 'Two up', 'three-up': 'Three up', 'one-up': 'One up', 'all-round': 'All round', canal: 'Canal', 'rev-slope': 'Rev slope', frontal: 'Frontal',
   'left-flank': 'Lt flank', 'right-flank': 'Rt flank',
@@ -109,15 +112,77 @@ const baseId = (id: string) => id.replace(/-mf$/, '').replace(/-tk[cf]$/, '').re
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
+/** Line icons for the tab (a 14 px grid, drawn in currentColor). */
+const ICONS: Record<string, string> = {
+  check: '<path d="M3 7.4l2.5 2.5L11 4.4"/>',
+  warn: '<path d="M7 3.2v4.6"/><path d="M7 10.5v.1"/>',
+  x: '<path d="M4.2 4.2l5.6 5.6M9.8 4.2l-5.6 5.6"/>',
+  dash: '<path d="M4 7h6"/>',
+  aim: '<circle cx="7" cy="7" r="4.3"/><path d="M7 1.2v2.6M7 10.2v2.6M1.2 7h2.6M10.2 7h2.6"/>',
+  pin: '<path d="M7 12.6s3.9-3.5 3.9-6.6a3.9 3.9 0 0 0-7.8 0c0 3.1 3.9 6.6 3.9 6.6z"/><circle cx="7" cy="6" r="1.3"/>',
+  copy: '<rect x="4.6" y="4.6" width="7.2" height="7.2" rx="1.6"/><path d="M9.4 4.6V3.4a1.2 1.2 0 0 0-1.2-1.2H3.4a1.2 1.2 0 0 0-1.2 1.2v4.8a1.2 1.2 0 0 0 1.2 1.2h1.2"/>',
+  next: '<path d="M3 7h8M7.8 3.8L11 7l-3.2 3.2"/>',
+  scan: '<circle cx="6.2" cy="6.2" r="3.9"/><path d="M9.1 9.1l3 3"/>',
+  layers: '<path d="M7 2l5 2.6-5 2.6-5-2.6z"/><path d="M2 7.2l5 2.6 5-2.6"/><path d="M2 9.8l5 2.6 5-2.6"/>',
+};
+const icon = (k: string, cls = ''): string => `<svg class="pb-ic${cls ? ` ${cls}` : ''}" viewBox="0 0 14 14" aria-hidden="true">${ICONS[k] ?? ''}</svg>`;
+const VERDICT_ICON: Record<CheckState, string> = { pass: 'check', warn: 'warn', fail: 'x', unchecked: 'dash' };
+/** A verdict: its word and an icon besides the colour. */
+const pillHtml = (st: CheckState): string => `<span class="pb-pill pb-${st}">${icon(VERDICT_ICON[st], 'pb-ic-sm')}${WORD[st]}</span>`;
+/** Fails, then warnings, then not checked, then passes; the doctrine order kept within each. */
+const worstFirst = <T extends { st: CheckState }>(rows: T[]): T[] => (['fail', 'warn', 'unchecked', 'pass'] as CheckState[]).flatMap((s) => rows.filter((r) => r.st === s));
+interface BtnOpts { kind?: 'primary' | 'ghost'; sm?: boolean; icon?: string; after?: boolean; armed?: boolean; title?: string }
+/** A button of the tab: primary (one per screen), secondary (the default) or ghost; armed = waiting for a click on the map. */
+const btn = (label: string, data: string, o: BtnOpts = {}): string =>
+  `<button type="button" class="pb-btn${o.kind ? ` pb-btn--${o.kind}` : ''}${o.sm ? ' pb-btn--sm' : ''}${o.armed ? ' is-armed' : ''}" data-pb="${esc(data)}"${o.title ? ` title="${esc(o.title)}"` : ''}>`
+  + (o.armed ? '<i class="pb-pulse" aria-hidden="true"></i>' : o.icon && !o.after ? icon(o.icon) : '')
+  + `<span>${esc(label)}</span>${o.icon && o.after && !o.armed ? icon(o.icon) : ''}</button>`;
+/** One of a few as a segmented control. Auto, when given, leads behind a divider; the value it picked carries a dashed ring. */
+interface SegItem { on: boolean; label: string; data: string; title?: string; disabled?: boolean; picked?: boolean }
+const seg = (items: SegItem[], o: { auto?: SegItem; sm?: boolean; label?: string } = {}): string => {
+  const b = (i: SegItem) => {
+    const title = i.picked ? `Auto picked ${i.label}${i.title ? `. ${i.title}` : ''}` : i.title;
+    return `<button type="button" data-pb="${esc(i.data)}" aria-pressed="${i.on}"${i.picked ? ' class="pb-autopick"' : ''}${i.disabled ? ' aria-disabled="true"' : ''}${title ? ` title="${esc(title)}"` : ''}>${esc(i.label)}</button>`;
+  };
+  return `<div class="pb-seg${o.sm ? ' pb-seg--sm' : ''}" role="group"${o.label ? ` aria-label="${esc(o.label)}"` : ''}>`
+    + `${o.auto ? `${b(o.auto)}<span class="pb-sep" aria-hidden="true"></span>` : ''}${items.map(b).join('')}</div>`;
+};
+/** A labelled row of the tab: its label, then its controls. */
+const row = (label: string, inner: string): string => `<div class="pb-row"><span>${esc(label)}</span><div class="pb-chips">${inner}</div></div>`;
+/** "M while placing", with the key as a key. */
+const keyHint = (k: string): string => `<span class="pb-keyhint"><kbd>${esc(k)}</kbd> while placing</span>`;
+/**
+ * A unit's facts laid out (unitLine in one line is kept for Copy as Text): the name and strength, each weapon with its
+ * range ("range ?" where weapons.json has none), the source and what the extraction lacks.
+ */
+const unitFacts = (b: UnitBrief): string => {
+  const km = (m: number | null) => (m === null ? null : m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+  const wpn = (n: number, name: string, r: number | null) => `<span class="pb-wpn"><span class="n">${n}</span><span class="x">×</span>${esc(name)}`
+    + `${km(r) ? `<span class="r">${km(r)}</span>` : '<span class="q" title="No range in weapons.json">range ?</span>'}</span>`;
+  const ws = [...b.atgm, ...b.rr, ...b.mortars].map((x) => wpn(x.count, x.name.replace(/ Wpn Sys| Launcher/g, ''), x.rangeM));
+  if (b.mgCount) ws.push(wpn(b.mgCount, 'MG1A3', b.mgEffM));
+  const head = [b.strength ? `${b.strength.toLocaleString('en-GB')} all ranks` : null, `${b.coys} ${b.side === 'en' ? 'manoeuvre' : 'rifle'} Coys${b.plsPerCoy ? ` of ${b.plsPerCoy} Pls` : ''}`,
+    b.mounted ? `mounted (${b.apcs} APCs)` : null].filter(Boolean).join(' · ');
+  const notes = b.notes.filter((n) => !/no range in weapons\.json/.test(n));
+  return `<div class="pb-facts"><div><b>${esc(b.name)}</b>${esc(head)}</div>${ws.length ? `<div class="pb-wpns">${ws.join('')}</div>` : ''}`
+    + `<div class="pb-src">${esc(b.src)}${notes.length ? ` · <span class="q">${esc(notes.join('; '))}</span>` : ''}</div></div>`;
+};
 /** A check's reason in the panel: its headline, one line per item, why and the fixes when it carries them. */
 const reasonHtml = (c: Check): string => {
   const d = c.detail;
-  if (!d) return esc(c.reason);
+  if (!d) return `<div class="pb-ck-why">${esc(c.reason)}</div>`;
   const items = d.items?.length ? `<ul class="pb-det-items">${d.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
   const why = d.why && c.st !== 'pass' ? `<div class="pb-det-why"><b>Why</b> ${esc(d.why)}</div>` : '';
   const fix = d.fix?.length && c.st !== 'pass' ? `<div class="pb-det-fix"><b>Fix</b><ul>${d.fix.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
   return `<div class="pb-det-head">${esc(d.head)}</div>${items}${why}${fix}`;
 };
+/** A check as a row that leads with its verdict: the name, then the reason under it. */
+const ckRow = (st: CheckState, name: string, body: string): string => `<li class="pb-ck"><div>${pillHtml(st)}</div><div><div class="pb-ck-name">${esc(name)}</div>${body}</div></li>`;
+/** Checks as rows, the worst first. */
+const ckList = (rows: Check[]): string => `<ul class="pb-checks">${worstFirst(rows).map((c) => ckRow(c.st, c.name, reasonHtml(c))).join('')}</ul>`;
+/** A row of plain text under a check's name. */
+const whyHtml = (s: string): string => `<div class="pb-ck-why">${esc(s)}</div>`;
+let previewSeq = 0;
 /**
  * The worst check on the cursor card, kept short so the card fits beside the cursor: its short lines (at most 3), a
  * one-line why and the first 2 fixes; the rest is in the Check step. Without a detail, one line as before.
@@ -165,6 +230,10 @@ const smallLines = (s: NonNullable<FittedLayout['fit']['small']>, gma: number | 
 export class PlanBuildTab {
   private _box: HTMLElement;
   private _host: BuildTabHost;
+  /** The host's slot in its tab bar for the mode switch (null: the switch gets a row of its own). */
+  private _aside: HTMLElement | null = null;
+  /** The Bn types these layouts cannot use (not four manoeuvre Coys): folded behind "+N not offered" until opened. */
+  private _allTypes = false;
   private _settings: Record<string, any> = {};
   private _doc: DoctrineSet = { plan: planDoctrine as any, ocoka: ocokaDoctrine as any };
   private _families: Family[] = [];
@@ -262,6 +331,8 @@ export class PlanBuildTab {
     this._box = box;
     this._host = host;
     this._box.addEventListener('click', this._onClick);
+    this._aside = host.aside?.() ?? null;
+    this._aside?.addEventListener('click', this._onClick);
   }
 
   public setSettings(settings: Record<string, any>): void {
@@ -293,6 +364,9 @@ export class PlanBuildTab {
     this._destroyed = true;
     this._box.removeEventListener('click', this._onClick);
     this._box.innerHTML = '';
+    this._aside?.removeEventListener('click', this._onClick);
+    if (this._aside) this._aside.innerHTML = '';
+    this._aside = null;
     this._endPlacing();
     this._disarm();
     if (this._checkTimer) clearTimeout(this._checkTimer);
@@ -654,7 +728,8 @@ export class PlanBuildTab {
       case 'layout': this._recipeId = val; this._auto = false; this._solve(); break;
       case 'auto':
         if (!this._terrain) { this._msg = 'Auto ranks the layouts on the ground: it needs terrain data.'; break; }
-        this._auto = !this._auto; break;
+        this._auto = true; break;
+      case 'moreTypes': this._allTypes = !this._allTypes; break;
       case 'detail': this._detail = val === 'pl' ? 'pl' : 'coy'; this._solve(); break;
       case 'alt': this._alternates = (val as any) || 'hidden'; this._altFromSettings = false; this._solve(); break;
       case 'threat': this._arm(); break;
@@ -1401,56 +1476,78 @@ export class PlanBuildTab {
     this._render();
   }
 
-  /** En force (echelon) and type chips: Auto is the doctrinal default (or, in Check my plan, his symbols first). */
+  /** En force (echelon) and type: Auto (the doctrinal default, or in Check my plan his symbols first) leads; what it picked is ringed. */
   private _enemyRows(task: string, ownEch: string | null): string {
     const d = ownEch ? defaultEnemy(this._doc, ownEch, this._ground === 'auto' ? null : this._ground, task) : null;
     const typeLabel = (t: string) => String((planDoctrine as any).enemy?.types?.[t]?.label ?? t);
-    const autoEch = d ? `Auto (${echelonLabel(this._doc, d.echelon)})` : 'Auto';
-    const autoType = d ? `Auto (${typeLabel(d.type)})` : 'Auto';
     const why = task === 'attack' ? 'One level down: your 3 : 1 on him (MW p 80)' : ownEch ? 'One level up: the 3 : 1 an attacker plans for (MW p 80)' : 'From his symbols on the map, else one level up';
-    const ech = this._chip(this._enEch === 'auto', autoEch, 'enEch:auto', why) + EN_ECHELONS.map((e) => this._chip(this._enEch === e, echelonLabel(this._doc, e), `enEch:${e}`)).join('');
+    const autoE = this._enEch === 'auto', autoT = this._enType === 'auto';
+    const ech = seg(EN_ECHELONS.map((e) => ({ on: this._enEch === e, label: echelonLabel(this._doc, e), data: `enEch:${e}`, picked: autoE && d?.echelon === e })),
+      { auto: { on: autoE, label: 'Auto', data: 'enEch:auto', title: d ? `${why}: ${echelonLabel(this._doc, d.echelon)}` : why }, label: 'En force' });
     const tips: Record<EnemyType, string> = { inf: 'On foot: approaches on foot, foot rates, FUP 1000-1200 m (IBB p201)', mech: 'Tracked approaches, IPB vehicle rates, tank FUP 2500-3000 m (IBB p214)', armd: 'Tracked approaches, IPB vehicle rates, tank FUP 2500-3000 m (IBB p214)' };
-    const type = this._chip(this._enType === 'auto', autoType, 'enType:auto') + ENEMY_TYPES.map((t) => this._chip(this._enType === t, typeLabel(t), `enType:${t}`, tips[t])).join('');
-    return `<div class="pb-row"><span>${task === 'attack' ? 'Defender' : 'En force'}</span><div class="pb-chips">${ech}</div></div>
-      <div class="pb-row"><span>En type</span><div class="pb-chips">${type}</div></div>`;
+    const type = seg(ENEMY_TYPES.map((t) => ({ on: this._enType === t, label: typeLabel(t), data: `enType:${t}`, title: tips[t], picked: autoT && d?.type === t })),
+      { auto: { on: autoT, label: 'Auto', data: 'enType:auto', title: d ? `The default for his echelon: ${typeLabel(d.type)}` : 'From his symbols on the map' }, label: 'En type' });
+    return row(task === 'attack' ? 'Defender' : 'En force', ech) + row('En type', type);
   }
 
   /**
-   * The unit type for a Bn plan (ORBAT): each infantry Bn type; one with other than four manoeuvre Coys is shown
-   * but not offered (the layouts are for four). Under it, what the unit holds.
+   * The unit type for a Bn plan (ORBAT): each infantry Bn type; one with other than four manoeuvre Coys is not
+   * offered (the layouts are for four) and folds behind "+N not offered". Under it, what the unit holds.
    */
   private _unitTypeRow(recipe: Recipe): string {
     const u = this._unit(recipe);
     if (!this._orbat) return '<div class="pb-hint">ORBAT not loaded: doctrine figures only (ranges, the reserve on foot).</div>';
-    const line = u ? `<div class="pb-hint pb-unit">${esc(unitLine(u))}${u.notes.length ? ` · ${esc(u.notes.join('; '))}` : ''}</div>` : '';
-    if (recipe.echelon !== '16') return line;
+    const facts = u ? unitFacts(u) : '';
+    if (recipe.echelon !== '16') return facts;
     const need = recipe.slots.filter((s) => s.echelon === '15' && FOOTPRINT_ROLES.has(s.kind)).length || 4;
-    const chips = ownBnTypes(this._orbat).map((t) => this._chip(u?.id === t.id, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `unitType:${t.id}`,
+    const types = ownBnTypes(this._orbat);
+    const off = types.filter((t) => t.coys !== need && u?.id !== t.id);
+    const chips = types.filter((t) => this._allTypes || !off.includes(t)).map((t) => this._chip(u?.id === t.id, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `unitType:${t.id}`,
       t.coys === need ? `${t.coys} Coys` : `${t.coys} manoeuvre Coys: these layouts are for ${need}`, t.coys !== need)).join('');
-    return `<div class="pb-row"><span>Type</span><div class="pb-chips">${chips}</div></div>${line}`;
+    const more = off.length ? `<button type="button" class="pb-more" data-pb="moreTypes" aria-expanded="${this._allTypes}">${this._allTypes ? 'Hide the types not offered' : `+${off.length} not offered`}</button>` : '';
+    return `${row('Type', chips + more)}${facts}`;
   }
 
-  /** The kind of ground: Auto (read where the plan rests) or set. */
+  /** The kind of ground: Auto (read where the plan rests; what it read is ringed) or set. */
   private _groundRow(): string {
     const det = this._mode === 'check' ? this._check?.terrain : this._lastFit?.terrain;
-    const auto = det && (det.source === 'auto' || det.source === 'symbols') ? `Auto: ${terrainLabel(this._doc, det.kind)}` : 'Auto';
+    const picked = this._ground === 'auto' && det && (det.source === 'auto' || det.source === 'symbols') ? det.kind : null;
     const tip = this._terrain ? 'Read off the terrain where the plan rests: 400 m of rise within 5 km = mountains, a canal or bund in front = obstacle, dunes or sand = desert' : 'Needs terrain data: plains assumed';
-    return `<div class="pb-row"><span>Ground</span><div class="pb-chips">${this._chip(this._ground === 'auto', auto, 'ground:auto', det?.why ? `${tip}. Here: ${det.why}` : tip)}${TERRAIN_KINDS.map((k) => this._chip(this._ground === k, terrainLabel(this._doc, k), `ground:${k}`)).join('')}</div></div>`;
+    return row('Ground', seg(TERRAIN_KINDS.map((k) => ({ on: this._ground === k, label: terrainLabel(this._doc, k), data: `ground:${k}`, picked: picked === k })),
+      { auto: { on: this._ground === 'auto', label: 'Auto', data: 'ground:auto', title: det?.why ? `${tip}. Here: ${det.why}` : tip }, label: 'Ground' }));
+  }
+
+  /** Mark, move or clear the threat marker; while armed, the button says to click the map. */
+  private _threatButtons(o: { sm?: boolean; mark?: string; clear?: string; title?: string } = {}): string {
+    if (this._arming) return `${btn('Click the map where he comes from', 'threat', { armed: true, sm: o.sm })}<span class="pb-keyhint"><kbd>Esc</kbd> stops</span>`;
+    const t = this._threat;
+    return btn(t ? 'Move the threat' : o.mark ?? 'Mark the threat on the map', 'threat', { icon: 'aim', sm: o.sm, title: o.title })
+      + (t ? btn(o.clear ?? 'Clear', 'clearThreat', { kind: 'ghost', sm: o.sm }) : '');
+  }
+
+  /** The verdicts at a glance: the heading (with the score when there is one), a bar and the counts. */
+  private _tally(rows: { st: CheckState }[], title: string, score: number | null): string {
+    const n = (s: CheckState) => rows.filter((r) => r.st === s).length;
+    const order: CheckState[] = ['pass', 'warn', 'fail', 'unchecked'];
+    const words: Record<CheckState, string> = { pass: 'pass', warn: 'warn', fail: 'fail', unchecked: 'not checked' };
+    return `<div class="pb-tallyhead"><div class="pb-sum">${title}</div>${score !== null ? `<div class="pb-score">Score<b>${score}</b></div>` : ''}</div>
+      <div class="pb-tally" role="img" aria-label="${order.map((s) => `${n(s)} ${words[s]}`).join(', ')}">${order.map((s) => (n(s) ? `<span class="s-${s}" style="flex:${n(s)}"></span>` : '')).join('')}</div>
+      <div class="pb-tl">${order.filter((s) => n(s)).map((s) => `<span class="c-${s}">${icon(VERDICT_ICON[s], 'pb-ic-sm')}<b>${n(s)}</b>${words[s]}</span>`).join('')}</div>`;
   }
 
   private _checkMyPlanView(): string {
-    const t = this._threat;
-    const scope = (['selected', 'last', 'all'] as const).map((s) => this._chip(this._checkScope === s, s === 'selected' ? 'Selected symbols' : s === 'last' ? 'Last placement' : 'All on the map', `checkScope:${s}`)).join('');
+    const scope = seg((['selected', 'last', 'all'] as const).map((s) => ({ on: this._checkScope === s, label: s === 'selected' ? 'Selected symbols' : s === 'last' ? 'Last placement' : 'All on the map', data: `checkScope:${s}` })), { label: 'Read' });
     const head = `
-      <div class="pb-sum">Check a plan on the map <span class="pb-dim">read as drawn, nothing moved; the same rules the build uses</span></div>
-      <div class="pb-row"><span>Read</span><div class="pb-chips">${scope}</div></div>
+      <p class="pb-p pb-dim">Check a plan on the map: read as drawn, nothing moved; the same rules the build uses.</p>
+      ${row('Read', scope)}
       ${this._check && [...SMALL_TASKS, 'crossing'].includes(this._check.task as string) ? '' : `${this._enemyRows(this._check?.task ?? 'defence', null)}${this._groundRow()}`}
-      <div class="pb-row"><span>Threat</span><div class="pb-chips">${this._chip(!!this._arming, t ? 'Move the threat' : 'Mark the threat', 'threat', 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front')}${t ? this._chip(false, 'Clear', 'clearThreat') : ''}</div></div>
-      <div class="pb-chips" style="margin:6px 0"><button type="button" class="ms-btn ms-cta" data-pb="checkRun">Read and check</button>${this._check ? '<button type="button" class="ms-btn" data-pb="checkCopy">Copy as Text</button><button type="button" class="ms-btn" data-pb="checkClear">Clear</button>' : ''}</div>`;
+      ${row('Threat', this._threatButtons({ sm: true, mark: 'Mark the threat', title: 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front' }))}`;
     const r = this._check;
-    if (!r) return `${head}<p class="pb-p pb-dim">Select the plan's symbols (or place one from Templates), then Read and check. Own and enemy symbols are both read: the enemy's give his force, his axes and his FUP.</p>`;
-    const pill = (st: CheckState) => `<span class="pb-pill pb-${st}">${WORD[st]}</span>`;
-    const rows = `<table class="pb-t">${r.rows.map((c) => `<tr><td>${esc(c.name)}</td><td>${pill(c.st)}</td><td class="pb-why">${reasonHtml(c)}</td></tr>`).join('')}</table>`;
+    if (!r) return `${head}<div class="pb-empty">${icon('scan', 'pb-ic-lg')}<p>Select the plan's symbols (or place one from Templates), then <b>Read and check</b>.</p><p>Own and enemy symbols are both read: the enemy's give his force, his axes and his FUP.</p></div>`;
+    const pill = pillHtml;
+    const top = `${this._tally(r.rows, `${esc(r.title)} <span class="pb-dim">${esc(this._checkNote)}</span>`, null)}
+      <div class="pb-actions">${btn('Copy as Text', 'checkCopy', { sm: true, icon: 'copy' })}${btn('Clear', 'checkClear', { sm: true, kind: 'ghost' })}</div>`;
+    const rows = ckList(r.rows);
     const posns = r.task === 'defence' && r.posns.length ? `<div class="pb-sum">Posns <span class="pb-dim">(click a role to change it)</span></div><table class="pb-t">${r.posns.map((p) => {
       const s = r.slots.find((x) => x.role === p.id);
       const role = ROLE_CYCLE.includes(p.kind) || this._checkKinds[p.id]
@@ -1458,9 +1555,9 @@ export class PlanBuildTab {
         : `<span class="pb-dim" title="${esc(p.kindWhy)}">${esc(ROLE_LABEL[p.kind])}</span>`;
       return `<tr><td>${esc(p.label)}<div class="pb-dim">${esc(echelonLabel(this._doc, p.ech))}${p.planned ? ', planned' : ''}</div></td><td>${role}</td><td>${s ? pill(s.st) : ''}</td><td class="pb-why">${s ? esc(s.checks.map((c) => `${c.name}: ${c.st === 'unchecked' ? 'not checked' : c.reason}`).join(' · ')) : esc(p.kindWhy)}</td></tr>`;
     }).join('')}</table>` : '';
-    const groups = r.groups.length ? `<div class="pb-sum">Axes</div><table class="pb-t">${r.groups.map((g) => `<tr><td>${esc(g.label)} → ${esc(g.obj?.label ?? '?')}</td><td>${pill(g.st)}</td><td class="pb-why">${esc(g.rows.filter((c) => c.st !== 'pass').map((c) => `${c.name}: ${c.st === 'unchecked' ? 'not checked' : c.reason}`).join(' · ') || 'all pass')}</td></tr>`).join('')}</table>` : '';
-    return `${head}
-      <div class="pb-sum"><b>${esc(r.title)}</b> <span class="pb-dim">${esc(this._checkNote)}</span></div>
+    const groups = r.groups.length ? `<div class="pb-sum">Axes</div><ul class="pb-checks">${r.groups.map((g) => ckRow(g.st, `${g.label} → ${g.obj?.label ?? '?'}`,
+      whyHtml(g.rows.filter((c) => c.st !== 'pass').map((c) => `${c.name}: ${c.st === 'unchecked' ? 'not checked' : c.reason}`).join(' · ') || 'all pass'))).join('')}</ul>` : '';
+    return `${head}${top}
       <ul class="pb-read">${r.read.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
       ${r.unclear.length ? `<div class="pb-hint">To confirm: ${r.unclear.map(esc).join('; ')}</div>` : ''}
       ${rows}${posns}${groups}${r.whatIf?.triggers.length ? `<div class="pb-sum">Trigger table <span class="pb-dim">(own moves against the enemy's ${esc(r.whatIf.mover)})</span></div><table class="pb-t">${r.whatIf.triggers.map((t) => `<tr><td>${esc(t.trigger)}</td><td>${esc(t.who)} → ${esc(t.to)}</td><td>${t.min ?? '—'} / ${t.enemyMin ?? '—'} min</td><td>${pill(t.st)}</td></tr>`).join('')}</table>` : ''}`;
@@ -1492,31 +1589,70 @@ export class PlanBuildTab {
   }
 
   // ── view ─────────────────────────────────────────────────────────────────────────────────────────────────────
-  private _modeLine(): string {
+  /** The terrain status in the footer: a dot and a word, the bundle's dates under it, the whole line on hover. */
+  private _statusHtml(): string {
     switch (this._probeState) {
-      case 'ready': return `Terrain: fitted at rest · ${esc(this._probe?.dataLine() ?? '')}`;
-      case 'loading': return 'Terrain bundle loading…';
-      case 'missing': return 'No terrain bundle: geometry only, ground not checked';
-      default: return 'Geometry only · ground not checked';
+      case 'ready': {
+        const d = this._probe?.dataLine() ?? '';
+        return `<div class="pb-status" title="${esc(`Terrain: fitted at rest · ${d}`)}"><i></i><span class="t">Terrain ready</span><span class="d">Fitted at rest${d ? ` · ${esc(d)}` : ''}</span></div>`;
+      }
+      case 'loading': return '<div class="pb-status is-loading"><i></i><span class="t">Terrain loading…</span><span class="d">Geometry until it is in</span></div>';
+      case 'missing': return '<div class="pb-status is-off" title="No terrain bundle: geometry only, ground not checked"><i></i><span class="t">Geometry only</span><span class="d">No terrain bundle: ground not checked</span></div>';
+      default: return '<div class="pb-status is-off"><i></i><span class="t">Geometry only</span><span class="d">Ground not checked</span></div>';
     }
+  }
+
+  /** What each step holds, under its name in the stepper: the unit and layout, the enemy, the symbols, the verdicts. */
+  private _stepSubs(): string[] {
+    const res = this._result;
+    if (!res) return ['', '', '', '', ''];
+    const rec = res.recipe;
+    const fam = this._families.find((f) => f.id === this._familyId);
+    const task = `${fam?.name ?? rec.name} · ${this._auto ? 'Auto' : LAYOUT_LABEL[rec.layout] ?? rec.layout}`;
+    let enemy: string;
+    if (rec.task === 'ambush') enemy = `Target: ${MOVER_LABEL[this._mover]}`;
+    else if (rec.task === 'crossing') enemy = `${this._light === 'moon' ? 'Moonlight' : this._light === 'dark' ? 'Dark night' : 'Day'}${this._mf ? ' · his mines' : ''}`;
+    else if (SMALL_TASKS.includes(rec.task)) enemy = this._threat ? 'Threat marked' : 'Aim on the map';
+    else {
+      const e = this._enemyFor(rec, this._ground === 'auto' ? null : this._ground);
+      enemy = `${echelonLabel(this._doc, e.echelon)} · ${String((planDoctrine as any).enemy?.types?.[e.type]?.label ?? e.type)}`;
+    }
+    const n = (s: CheckState) => res.rows.filter((c) => c.st === s).length;
+    const verdicts = [n('fail') ? `<span class="t-fail">${n('fail')} fail</span>` : '', n('warn') ? `<span class="t-warn">${n('warn')} warn</span>` : ''].filter(Boolean);
+    if (!verdicts.length) verdicts.push(`${n('pass')} pass`);
+    if (n('unchecked')) verdicts.push(`${n('unchecked')} not checked`);
+    return [esc(task), esc(enemy), `${res.items.length} symbols`, verdicts.join(' · '), 'Copy as Text'];
+  }
+
+  /** The five steps: a dot, the name, what is chosen there; a track that fills up to the step open. Free to jump. */
+  private _stepper(): string {
+    const subs = this._stepSubs();
+    return `<nav class="pb-stepper" aria-label="Steps">${STEPS.map((s, i) => {
+      const n = i + 1, at = n === this._step ? ' is-cur' : n < this._step ? ' is-past' : '';
+      return `<button type="button" class="pb-st${at}" data-pb="step:${n}"${at === ' is-cur' ? ' aria-current="step"' : ''}><span class="pb-st-dot">${n}</span><span class="pb-st-name">${s}</span><span class="pb-st-sub">${subs[i]}</span></button>`;
+    }).join('')}</nav>`;
   }
 
   private _render(): void {
     if (this._destroyed) return;
-    const steps = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
-    const modes = `<div class="pb-chips pb-modes">${this._chip(this._mode === 'build', 'Build a plan', 'mode:build')}${this._chip(this._mode === 'check', 'Check my plan', 'mode:check', 'Read a plan drawn on the map and check it against the same rules')}</div>`;
-    const head = this._mode === 'check' ? modes : `${modes}<div class="pb-steps">${steps.map((s, i) => `<button type="button" class="pb-step" data-pb="step:${i + 1}" aria-pressed="${this._step === i + 1}"><b>${i + 1}</b>${s}</button>`).join('')}</div>`;
+    const modes = seg([
+      { on: this._mode === 'build', label: 'Build a plan', data: 'mode:build' },
+      { on: this._mode === 'check', label: 'Check my plan', data: 'mode:check', title: 'Read a plan drawn on the map and check it against the same rules' },
+    ], { sm: true, label: 'Mode' });
+    if (this._aside) this._aside.innerHTML = modes;
+    const head = `${this._aside ? '' : `<div class="pb-modes">${modes}</div>`}${this._mode === 'check' ? '' : this._stepper()}`;
     let body = '';
     if (this._mode === 'check') body = this._checkMyPlanView();
     else if (this._loadState === 'loading' || this._loadState === 'idle') body = '<div class="pb-note">Loading recipes…</div>';
-    else if (this._loadState === 'failed') body = `<div class="pb-note pb-bad">Recipes not loaded: ${esc(this._loadError)}</div><button type="button" class="ms-btn" data-pb="retry">Retry</button>`;
+    else if (this._loadState === 'failed') body = `<div class="pb-note pb-bad">Recipes not loaded: ${esc(this._loadError)}</div>${btn('Retry', 'retry', { sm: true })}`;
     else if (!this._result) body = '<div class="pb-note">No recipe for this choice.</div>';
     else body = [this._stepTask, this._stepEnemy, this._stepPlace, this._stepCheck, this._stepCreate][this._step - 1].call(this);
-    const msg = this._msg ? `<div class="pb-msg">${esc(this._msg)}</div>` : '';
+    const msg = this._msg ? `<div class="pb-msg" role="status">${esc(this._msg)}</div>` : '';
+    const next = this._step < STEPS.length ? btn(`Next: ${STEPS[this._step]}`, `step:${this._step + 1}`, { icon: 'next', after: true }) : '';
     const foot = this._mode === 'check'
-      ? `<div class="pb-foot"><span class="pb-mode">${this._modeLine()}</span></div>`
+      ? `<div class="pb-foot">${this._statusHtml()}${btn('Read and check', 'checkRun', { kind: 'primary', icon: 'scan' })}</div>`
       : this._result
-        ? `<div class="pb-foot"><span class="pb-mode">${this._modeLine()}</span><button type="button" class="ms-btn ms-cta pb-place" data-pb="place">Place on Map ↗</button></div>`
+        ? `<div class="pb-foot">${this._statusHtml()}${next}${btn('Place on Map', 'place', { kind: 'primary', icon: 'pin' })}</div>`
         : '';
     this._box.innerHTML = `${head}<div class="pb-body">${msg}${body}</div>${foot}`;
   }
@@ -1530,54 +1666,85 @@ export class PlanBuildTab {
     const fams = this._families.filter((f) => f.task === this._task);
     const fam = this._families.find((f) => f.id === this._familyId);
     const layouts = (fam?.recipes ?? []).map((id) => this._recipes.get(id)!).filter(Boolean);
-    const tasks = TASKS.map((t) => this._chip(t.id === this._task, t.label, `task:${t.id}`, t.later ?? '', !!t.later && !this._families.some((f) => f.task === t.id))).join('');
+    const tasks = seg(TASKS.map((t) => ({ on: t.id === this._task, label: t.label, data: `task:${t.id}`, title: t.later, disabled: !!t.later && !this._families.some((f) => f.task === t.id) })), { label: 'Operation' });
+    const units = seg(fams.map((f) => ({ on: f.id === this._familyId, label: f.name, data: `family:${f.id}` })), { label: 'Unit' });
     const isBn = res.recipe.echelon === '16' && res.recipe.task === 'defence';
-    const autoChip = layouts.length > 1
-      ? this._chip(this._auto, 'Auto', 'auto', this._terrain ? 'Fit every layout where the plan rests and take the best' : 'Ranks the layouts on the ground: needs terrain data', !this._terrain)
+    // Auto leads the layouts; the layout it took where the plan last rested is ringed
+    const picked = this._auto && this._lastFit ? baseId(this._lastFit.recipe.id) : null;
+    const auto = layouts.length > 1
+      ? { on: this._auto, label: 'Auto', data: 'auto', title: this._terrain ? 'Fit every layout where the plan rests and take the best' : 'Ranks the layouts on the ground: needs terrain data', disabled: !this._terrain }
+      : undefined;
+    const layout = seg(layouts.map((r) => ({ on: !this._auto && r.id === this._recipeId, label: LAYOUT_LABEL[r.layout] ?? r.layout, data: `layout:${r.id}`, title: r.name, picked: r.id === picked })), { auto, label: 'Layout' });
+    const attack = res.recipe.task === 'attack'
+      ? row('Time', seg([
+        { on: !this._night, label: 'Day', data: 'night:off', title: 'SL crossed between first and last light (OOW2 s6 para 17)' },
+        { on: this._night, label: 'Night', data: 'night:on', title: 'Night rates (IBB p 18), the Night March chart from the Assy Area to the FUP, his night and thermal sights' }]))
+        + row('Phases', seg([
+          { on: this._phases === 1, label: '1', data: 'phases:1', title: 'One phase: the assault Coys onto the Obj, a reserve kept' },
+          { on: this._phases === 2, label: '2', data: 'phases:2', title: 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else his high ground' }]) + keyHint('P'))
+        + (this._phases === 2 ? row('Ph 2 by', seg([
+          { on: this._coys === 2, label: 'C, D Coys', data: 'ph2Coys:2', title: 'Both follow-up Coys onto Obj 2; the BOF is the Spt Coy weapons; no Bn reserve is left: tell Bde (IBB p186 i). R flips it while placing.' },
+          { on: this._coys === 1, label: 'C Coy, D res', data: 'ph2Coys:1', title: 'C Coy onto Obj 2, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs); the BOF is the Spt Coy weapons. R flips it while placing.' }]) + keyHint('R')) : '')
+        + row('Tanks', seg([
+          { on: this._tanks === 'none', label: 'None', data: 'tanks:none', title: 'No tanks with the Bn' },
+          { on: this._tanks === 'fire', label: 'Fire sp', data: 'tanks:fire', title: 'Infantry heavy: A Sqn from FUP (Tks) 2.5-3 km out to fire posns by the BOF, there as the infantry come as close to the Obj (IBB p214)' },
+          { on: this._tanks === 'close', label: 'Close sp', data: 'tanks:close', title: 'Armour heavy: A Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, rushing it from the assault line of the infantry; a troop covering from a flank (IBB pp 186-188)' }]) + keyHint('T'))
       : '';
+    const draw = isBn ? row('Draw', seg([{ on: this._detail === 'coy', label: 'Coy posns', data: 'detail:coy' }, { on: this._detail === 'pl', label: '+ Pl posns', data: 'detail:pl' }])) : '';
+    const alts = res.recipe.alternates?.length ? row('Alternates', seg([
+      { on: this._alternates === 'hidden', label: 'Created, hidden', data: 'alt:hidden' }, { on: this._alternates === 'visible', label: 'Shown', data: 'alt:visible' }, { on: this._alternates === 'none', label: 'None', data: 'alt:none' }])) : '';
     return `
-      <div class="pb-row"><span>Operation</span><div class="pb-chips">${tasks}</div></div>
-      <div class="pb-row"><span>Unit</span><div class="pb-chips">${fams.map((f) => this._chip(f.id === this._familyId, f.name, `family:${f.id}`)).join('')}</div></div>
-      ${this._unitTypeRow(res.recipe)}
-      <div class="pb-row"><span>Layout</span><div class="pb-chips">${layouts.map((r) => this._chip(!this._auto && r.id === this._recipeId, LAYOUT_LABEL[r.layout] ?? r.layout, `layout:${r.id}`, r.name)).join('')}${autoChip}</div></div>
-      ${this._isSmall || this._isCrossing ? this._smallRows(res.recipe.task) : this._groundRow()}
-      ${res.recipe.task === 'attack' ? `<div class="pb-row"><span>Time</span><div class="pb-chips">${this._chip(!this._night, 'Day', 'night:off', 'SL crossed between first and last light (OOW2 s6 para 17)')}${this._chip(this._night, 'Night', 'night:on', 'Night rates (IBB p 18), the Night March chart from the Assy Area to the FUP, his night and thermal sights')}</div></div><div class="pb-row"><span>Phases</span><div class="pb-chips">${this._chip(this._phases === 1, '1', 'phases:1', 'One phase: the assault Coys onto the Obj, a reserve kept')}${this._chip(this._phases === 2, '2', 'phases:2', 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else his high ground')}<span class="pb-dim">P while placing</span></div></div>${this._phases === 2 ? `<div class="pb-row"><span>Ph 2 by</span><div class="pb-chips">${this._chip(this._coys === 2, 'C, D Coys', 'ph2Coys:2', 'Both follow-up Coys onto Obj 2; the BOF is the Spt Coy weapons; no Bn reserve is left: tell Bde (IBB p186 i). R flips it while placing.')}${this._chip(this._coys === 1, 'C Coy, D res', 'ph2Coys:1', 'C Coy onto Obj 2, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs); the BOF is the Spt Coy weapons. R flips it while placing.')}<span class="pb-dim">R while placing</span></div></div>` : ''}<div class="pb-row"><span>Tanks</span><div class="pb-chips">${this._chip(this._tanks === 'none', 'None', 'tanks:none', 'No tanks with the Bn')}${this._chip(this._tanks === 'fire', 'Fire sp', 'tanks:fire', 'Infantry heavy: A Sqn from FUP (Tks) 2.5-3 km out to fire posns by the BOF, there as the infantry come as close to the Obj (IBB p214)')}${this._chip(this._tanks === 'close', 'Close sp', 'tanks:close', 'Armour heavy: A Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, rushing it from the assault line of the infantry; a troop covering from a flank (IBB pp 186-188)')}<span class="pb-dim">T while placing</span></div></div>` : ''}
-      ${isBn ? `<div class="pb-row"><span>Draw</span><div class="pb-chips">${this._chip(this._detail === 'coy', 'Coy posns', 'detail:coy')}${this._chip(this._detail === 'pl', '+ Pl posns', 'detail:pl')}</div></div>` : ''}
-      ${res.recipe.alternates?.length ? `<div class="pb-row"><span>Alternates</span><div class="pb-chips">${this._chip(this._alternates === 'hidden', 'Created, hidden', 'alt:hidden')}${this._chip(this._alternates === 'visible', 'Shown', 'alt:visible')}${this._chip(this._alternates === 'none', 'None', 'alt:none')}</div></div>` : ''}
-      <div class="pb-sum"><b>${esc(this._auto ? `${fam?.name ?? ''}: Auto (best layout where it rests)` : res.recipe.name)}</b> · ${fmtM(res.frontageM)} × ${fmtM(res.depthM)} · ${res.items.length} symbols${fam?.unit ? ` · ${esc(fam.name)} (ORBAT)` : ''}</div>
-      ${this._preview(res)}
-      ${res.recipe.note ? `<div class="pb-hint">${esc(res.recipe.note)}</div>` : ''}`;
+      <div class="pb-group">${row('Operation', tasks)}${row('Unit', units)}${this._unitTypeRow(res.recipe)}</div>
+      <div class="pb-group">${row('Layout', layout)}${this._isSmall || this._isCrossing ? this._smallRows(res.recipe.task) : this._groundRow()}${attack}${draw}${alts}</div>
+      <div class="pb-plan">
+        <div class="pb-sum">${esc(this._auto ? `${fam?.name ?? ''}: Auto (best layout where it rests)` : res.recipe.name)} <span class="pb-dim">${fmtM(res.frontageM)} × ${fmtM(res.depthM)} · ${res.items.length} symbols${fam?.unit ? ` · ${esc(fam.name)} (ORBAT)` : ''}</span></div>
+        ${this._preview(res)}
+        ${res.recipe.note ? `<p class="pb-p pb-dim">${esc(res.recipe.note)}</p>` : ''}
+      </div>`;
   }
 
-  /** The Task step's own rows for an ambush (its target) and a patrol (by day or night). */
+  /** The Task step's own rows for a crossing (light, his mines), an ambush (its target) and a patrol (by day or night). */
   private _smallRows(task: string): string {
-    if (task === 'crossing') return `<div class="pb-row"><span>Light</span><div class="pb-chips">${this._chip(this._light === 'day', 'Day', 'light:day', 'Annex Q day column; a crossing by day: the far bank sees every boat')}${this._chip(this._light === 'moon', 'Moonlight', 'light:moon')}${this._chip(this._light === 'dark', 'Dark night', 'light:dark', 'Night assault preferable (IBB S46 para 18 p237)')}</div></div><div class="pb-row"><span>His mines</span><div class="pb-chips">${this._chip(!this._mf, 'None known', 'mf:off')}${this._chip(this._mf, 'Assumed (S47)', 'mf:on', 'IBB S47 para 6: 900-1000 m of mixed mines and wire in front of a defended obstacle: the FUPs drawn back behind it, a Breach lane to each crossing place, timed from Annex Q para 4')}</div></div>`;
-    if (task === 'ambush') return `<div class="pb-row"><span>Target</span><div class="pb-chips">${MOVERS.map((m) => this._chip(this._mover === m, MOVER_LABEL[m], `mover:${m}`, m === 'wheeled' ? 'Soft-skinned vehicles: a canal, embankment, cutting or close country beside the Rd holds them on it' : m === 'tracked' ? 'Tanks: only the ground NO-GO for tracks holds them on the Rd' : 'Men on foot: they leave a Rd almost anywhere')).join('')}<span class="pb-dim">M while placing</span></div></div>`;
-    if (task === 'patrol') return `<div class="pb-row"><span>Time</span><div class="pb-chips">${this._chip(!this._night, 'Day', 'night:off')}${this._chip(this._night, 'Night', 'night:on', 'Night routes also keep off wood edges (and villages, tracks, skylines: day and night); times at night rates')}</div></div>`;
+    if (task === 'crossing') return row('Light', seg([
+      { on: this._light === 'day', label: 'Day', data: 'light:day', title: 'Annex Q day column; a crossing by day: the far bank sees every boat' },
+      { on: this._light === 'moon', label: 'Moonlight', data: 'light:moon' },
+      { on: this._light === 'dark', label: 'Dark night', data: 'light:dark', title: 'Night assault preferable (IBB S46 para 18 p237)' }]))
+      + row('His mines', seg([
+        { on: !this._mf, label: 'None known', data: 'mf:off' },
+        { on: this._mf, label: 'Assumed (S47)', data: 'mf:on', title: 'IBB S47 para 6: 900-1000 m of mixed mines and wire in front of a defended obstacle: the FUPs drawn back behind it, a Breach lane to each crossing place, timed from Annex Q para 4' }]));
+    if (task === 'ambush') return row('Target', seg(MOVERS.map((m) => ({ on: this._mover === m, label: MOVER_LABEL[m], data: `mover:${m}`,
+      title: m === 'wheeled' ? 'Soft-skinned vehicles: a canal, embankment, cutting or close country beside the Rd holds them on it' : m === 'tracked' ? 'Tanks: only the ground NO-GO for tracks holds them on the Rd' : 'Men on foot: they leave a Rd almost anywhere' }))) + keyHint('M'));
+    if (task === 'patrol') return row('Time', seg([
+      { on: !this._night, label: 'Day', data: 'night:off' },
+      { on: this._night, label: 'Night', data: 'night:on', title: 'Night routes also keep off wood edges (and villages, tracks, skylines: day and night); times at night rates' }]));
     return '';
   }
 
   private _stepEnemy(): string {
     const rec = this._result!.recipe;
     const attack = rec.task === 'attack';
+    // the two clicks of a placement, as numbered steps
+    const howTo = (first: string, second: string) => `<ol class="pb-howto"><li>Press <b>Place on Map</b> and ${first}</li><li>${second}</li></ol>`;
     if (rec.task === 'crossing') {
       return `<div class="pb-sum">Where you cross</div>
-        <p class="pb-p">Place on Map, click <b>H</b> on the water where the first wave is to enter it (IBB S46 para 25 p240), then move the cursor <b>across to the far bank</b> and click. The whole plan is laid along the obstacle: the start line on the home bank, the objectives and phase lines on the far bank, square to the water where it bends.</p>
+        ${howTo('click <b>H</b> on the water where the first wave is to enter it (IBB S46 para 25 p240)', 'Move the cursor <b>across to the far bank</b> and click')}
+        <p class="pb-p">The whole plan is laid along the obstacle: the start line on the home bank, the objectives and phase lines on the far bank, square to the water where it bends.</p>
         <p class="pb-p pb-dim">${this._terrain ? 'When the mouse rests the obstacle is read (its type, width, depth, banks, the crossings on it), the bridge site moved to the narrowest, firmest place near it, the ground on the far side that sees the crossing places found (the BH line reaches out to take it), and the boats, rafts, bridge and tanks timed from IBB Annex Q for the light chosen.' : 'Without terrain data the obstacle is assumed straight and square to the aim; every ground check stays grey.'}</p>`;
     }
     if (SMALL_TASKS.includes(rec.task)) {
       const t = this._threat;
       const how = rec.task === 'ambush'
-        ? `Place on Map, click the <b>KZ on the road</b> he will use, then move the cursor <b>up the road toward where he comes from</b> and click. The stops go at each end of the KZ, Stop 1 on his side.${rec.layout === 'area' ? ' An area ambush adds an outlying ambush on his way in (up the Rd) and on his way out (down it), each at the best stretch 400-1200 m from the central KZ (IC s44 p152).' : ''}`
+        ? `${howTo('click the <b>KZ on the road</b> he will use', 'Move the cursor <b>up the road toward where he comes from</b> and click')}
+          <p class="pb-p">The stops go at each end of the KZ, Stop 1 on his side.${rec.layout === 'area' ? ' An area ambush adds an outlying ambush on his way in (up the Rd) and on his way out (down it), each at the best stretch 400-1200 m from the central KZ (IC s44 p152).' : ''}</p>`
         : rec.task === 'patrol'
-          ? 'Place on Map, click the <b>SP</b> (where the patrol leaves the own posns), then move the cursor to the <b>Obj</b> and click: the Obj, the FRV and the routes follow the cursor.'
+          ? howTo('click the <b>SP</b> (where the patrol leaves the own posns)', 'Move the cursor to the <b>Obj</b> and click: the Obj, the FRV and the routes follow the cursor')
           : rec.layout === 'screen'
-            ? 'Place on Map, click the <b>Wdr RV</b> in the main posn (where the screen withdraws to), then move the cursor out to the <b>ground in front</b> he would watch the main posn from and click: the posts go between, laterally with intervals (IC s73 p378).'
-            : 'Place on Map, click the <b>SP</b> (where the recce party leaves), then move the cursor to the <b>area to watch</b> and click: the NAI goes there, the OPs between.';
+            ? howTo('click the <b>Wdr RV</b> in the main posn (where the screen withdraws to)', 'Move the cursor out to the <b>ground in front</b> he would watch the main posn from and click: the posts go between, laterally with intervals (IC s73 p378)')
+            : howTo('click the <b>SP</b> (where the recce party leaves)', 'Move the cursor to the <b>area to watch</b> and click: the NAI goes there, the OPs between');
       const threat = rec.task === 'patrol'
-        ? `<div class="pb-chips">${this._chip(!!this._arming, t ? 'Move the threat' : 'Mark where he watches from', 'threat')}${t ? this._chip(false, 'Clear', 'clearThreat') : ''}</div><p class="pb-p pb-dim">${t ? 'The routes keep out of the view from the threat marked.' : 'No threat marked: the routes keep out of the view from the Obj.'}</p>`
+        ? `<div class="pb-actions">${this._threatButtons({ mark: 'Mark where he watches from' })}</div><p class="pb-p pb-dim">${t ? 'The routes keep out of the view from the threat marked.' : 'No threat marked: the routes keep out of the view from the Obj.'}</p>`
         : '';
-      return `<div class="pb-sum">${rec.task === 'ambush' ? 'Where he comes from' : rec.task === 'patrol' ? 'Where the patrol goes' : 'What to watch'}</div><p class="pb-p">${how}</p>${threat}
+      return `<div class="pb-sum">${rec.task === 'ambush' ? 'Where he comes from' : rec.task === 'patrol' ? 'Where the patrol goes' : 'What to watch'}</div>${how}${threat}
         <p class="pb-p pb-dim">${this._terrain
           ? (rec.task === 'ambush' ? 'When the mouse rests the road is read toward him: whether his vehicles can leave it, the bend or crest that hides the KZ, cover beside it, the KZ in view, the stops\' view, the withdrawal to the RV, posts and villages near; better sites along the road show as blue rings.'
             : rec.task === 'patrol' ? 'When the mouse rests the routes out and in are found on foot (round NO-GO, away from roads, villages and skylines), and the patrol card is read: legs, bounds, the FRV, times, the stretches seen and hidden.'
@@ -1589,20 +1756,21 @@ export class PlanBuildTab {
     const force = `
       <div class="pb-sum">${attack ? 'Who holds the objective' : 'Who attacks'}</div>
       ${this._enemyRows(rec.task, rec.echelon)}
-      ${(() => { const en = this._enUnit(rec, this._ground === 'auto' ? null : this._ground); return en ? `<div class="pb-hint pb-unit">Sec 13: ${esc(unitLine(en))}${en.notes.length ? ` · ${esc(en.notes.join('; '))}` : ''}</div>` : ''; })()}
+      ${(() => { const en = this._enUnit(rec, this._ground === 'auto' ? null : this._ground); return en ? unitFacts(en) : ''; })()}
       <p class="pb-p pb-dim">${attack
         ? 'His echelon sets the force ratio (MW p 80: more than 3 : 1).'
         : 'His echelon sizes the approaches (he attacks on the corridors of the level below him: an en Bde on 1.5 km, IPB p 7) and the force ratio; his type sets his going (Inf on foot, Mech / Armd tracked), how fast he comes and where he forms up (1-1.2 km for infantry, 2.5-3 km for tanks, IBB pp 201, 214).'}</p>`;
     if (attack) return `${force}
       <div class="pb-sum">Where you attack from</div>
-      <p class="pb-p">Place on Map, click the <b>objective</b>, then move the cursor toward <b>your own side</b> (where the attack comes from) and click: the FUP, start line and axis are laid back along that line, the BOF on the right flank.${this._terrain ? ' While you aim, rest the mouse: the FUP, the going, the start line and the BOF\'s view are read from the ground.' : ''}</p>`;
+      ${howTo('click the <b>objective</b>', 'Move the cursor toward <b>your own side</b> (where the attack comes from) and click: the FUP, start line and axis are laid back along that line, the BOF on the right flank')}
+      ${this._terrain ? '<p class="pb-p pb-dim">While you aim, rest the mouse: the FUP, the going, the start line and the BOF\'s view are read from the ground.</p>' : ''}`;
     const t = this._threat;
     return `${force}
       <div class="pb-sum">Where the enemy comes from</div>
-      <div class="pb-chips">${this._chip(!!this._arming, t ? 'Move the threat' : 'Mark the threat on the map', 'threat')}${t ? this._chip(false, 'Clear: aim by bearing', 'clearThreat') : ''}</div>
-      <p class="pb-p">${t
-        ? 'The threat is marked: the plan turns to face it as it follows the cursor, and <b>one click</b> places it.'
-        : 'No threat marked: Place on Map, click where the <b>HQ</b> goes, then click toward the <b>enemy</b>.'}</p>
+      <div class="pb-actions">${this._threatButtons({ clear: 'Clear: aim by bearing' })}</div>
+      ${t
+        ? '<p class="pb-p">The threat is marked: the plan turns to face it as it follows the cursor, and <b>one click</b> places it.</p>'
+        : `<p class="pb-p pb-dim">No threat marked:</p>${howTo('click where the <b>HQ</b> goes', 'Click toward the <b>enemy</b>')}`}
       <p class="pb-p pb-dim">${this._terrain
         ? `When the mouse rests, his approaches are found (for his going, as wide as his corridors) from ${t ? 'the threat' : 'out along the front (assumed)'} to the plan and drawn in red; each is checked for direct fire from the forward posns, and the killing ground goes on the main one.`
         : 'Without terrain data the threat is a bearing: the approaches need the terrain bundle.'}</p>`;
@@ -1613,38 +1781,44 @@ export class PlanBuildTab {
     const count = (pred: (i: SolveResult['items'][number]) => boolean) => res.items.filter(pred).length;
     const posns = count((i) => i.key === '25151200' && !i.planned);
     const alt = count((i) => !!i.planned);
+    // the mouse and the keys while placing, one to a line
+    const key = (k: string, what: string, mouse = false) => `<span>${k.split('+').map((x) => `<kbd${mouse ? ' class="m"' : ''}>${esc(x)}</kbd>`).join(' ')}</span><span>${what}</span>`;
     const how = this._isSmall || this._isCrossing
-      ? (this._terrain ? 'Click the first point, move to aim it and <b>rest</b> the mouse: it is fitted to the ground there and the card at the cursor shows the result. Click to place the fitted plan.' : 'Click the first point, then click where it is aimed.')
+      ? (this._terrain
+        ? key('Click', 'Sets the first point.', true) + key('Move', 'Aims it.', true) + key('Rest', 'It is fitted to the ground there; the card at the cursor shows the result.', true) + key('Click', 'Places the fitted plan.', true)
+        : key('Click', 'Sets the first point.', true) + key('Click', 'Where it is aimed.', true))
       : this._terrain
-        ? 'While the mouse <b>moves</b> the ghost is the quick layout; when it <b>rests</b> the plan is fitted to the ground there (posns slide out of NO-GO, the ghost and the card at the cursor show the result). Click to place the fitted plan.'
-        : 'Click to set it down, then click again to aim it.';
+        ? key('Move', 'The ghost is the quick layout.', true) + key('Rest', 'The plan is fitted to the ground there: posns slide out of NO-GO; the ghost and the card at the cursor show the result.', true) + key('Click', 'Places the fitted plan.', true)
+        : key('Click', 'Sets it down.', true) + key('Click', 'Aims it.', true);
     return `
-      <div class="pb-sum"><b>${esc(res.recipe.name)}</b>: ${res.items.length} symbols as one placement</div>
-      <table class="pb-t">
-        ${posns ? `<tr><td>Battle Posns</td><td>${posns}</td></tr>` : ''}
-        ${alt ? `<tr><td>Alternates (planned, dashed)</td><td>${alt}${this._alternates === 'hidden' ? ', hidden' : ''}</td></tr>` : ''}
-        <tr><td>Units, HQ, weapons</td><td>${count((i) => i.geo === 'FPoint')}</td></tr>
-        <tr><td>Lines (FEBA, wire, SL, LOE …)</td><td>${count((i) => i.geo === 'Line' || ['fdl', 'wire', 'sl', 'loe'].includes(i.role))}</td></tr>
-        <tr><td>Points (LP, DF Tgt, OP)</td><td>${count((i) => i.geo === 'Point')}</td></tr>
-      </table>
-      ${res.dropped.length ? `<div class="pb-hint">Not placed without the ground: ${res.dropped.map((d) => esc(d.label)).join(', ')}.</div>` : ''}
-      <p class="pb-p">Press <b>Place on Map</b>. ${how} <b>Esc</b> cancels; <b>Ctrl+Z</b> takes the whole plan back; the Templates tab's <b>Last placement</b> moves or removes it.</p>`;
+      <div class="pb-sum">${esc(res.recipe.name)} <span class="pb-dim">${res.items.length} symbols as one placement</span></div>
+      <dl class="pb-dl">
+        ${posns ? `<dt>Battle Posns</dt><dd>${posns}</dd>` : ''}
+        ${alt ? `<dt>Alternates (planned, dashed)</dt><dd>${alt}${this._alternates === 'hidden' ? '<span>hidden</span>' : ''}</dd>` : ''}
+        <dt>Units, HQ, weapons</dt><dd>${count((i) => i.geo === 'FPoint')}</dd>
+        <dt>Lines (FEBA, wire, SL, LOE …)</dt><dd>${count((i) => i.geo === 'Line' || ['fdl', 'wire', 'sl', 'loe'].includes(i.role))}</dd>
+        <dt>Points (LP, DF Tgt, OP)</dt><dd>${count((i) => i.geo === 'Point')}</dd>
+      </dl>
+      ${res.dropped.length ? `<div class="pb-callout pb-callout--warn">${icon('warn')}<span>Not placed without the ground: <b>${res.dropped.map((d) => esc(d.label)).join(', ')}</b>.</span></div>` : ''}
+      <div class="pb-sum">Press Place on Map, then</div>
+      <div class="pb-keys">${how}${key('Esc', 'Cancels.')}${key('Ctrl+Z', 'Takes the whole plan back.')}</div>
+      <p class="pb-p pb-dim">The Templates tab's <b>Last placement</b> moves or removes it.</p>`;
   }
 
   private _stepCheck(): string {
     const fam = this._families.find((f) => f.id === this._familyId);
     const toggle = (fam?.recipes.length ?? 0) > 1
-      ? `<div class="pb-chips pb-subtabs">${this._chip(this._checkView === 'plan', 'This plan', 'checkView:plan')}${this._chip(this._checkView === 'compare', 'Compare layouts', 'checkView:compare')}</div>`
+      ? `<div class="pb-subtabs">${seg([{ on: this._checkView === 'plan', label: 'This plan', data: 'checkView:plan' }, { on: this._checkView === 'compare', label: 'Compare layouts', data: 'checkView:compare' }], { sm: true })}</div>`
       : '';
     return toggle + (this._checkView === 'compare' && toggle ? this._compareView() : this._planChecks());
   }
 
   /** Every layout of the family side by side at the same spot: the score card's rows, the score, a preview each. */
   private _compareView(): string {
-    const pill = (st: CheckState | null) => (st ? `<span class="pb-pill pb-${st}">${WORD[st]}</span>` : '<span class="pb-dim">—</span>');
+    const pill = (st: CheckState | null) => (st ? pillHtml(st) : '<span class="pb-dim">—</span>');
     if (!this._terrain) return '<p class="pb-p pb-dim">Compare fits every layout to the same ground: it needs terrain data.</p>';
     const list = this._compare;
-    if (!list || !list.length) return '<p class="pb-p">Place the plan once (or rest it on the map while placing): Compare fits every layout where it was.</p><button type="button" class="ms-btn" data-pb="compareRun">Compare here</button>';
+    if (!list || !list.length) return `<div class="pb-empty">${icon('layers', 'pb-ic-lg')}<p>Compare fits every layout where the plan was.</p><p>Place the plan once, or rest it on the map while placing.</p>${btn('Compare here', 'compareRun', { sm: true })}</div>`;
     const W = ((planDoctrine as any).scoreWeights ?? {}) as Record<string, number>;
     const attack = list[0].recipe.task === 'attack';
     const fpill = (v: number) => `<span class="pb-pill pb-${v >= 0.75 ? 'pass' : v >= 0.4 ? 'warn' : 'fail'}">${Math.round(v * 100)}</span>`;
@@ -1662,19 +1836,21 @@ export class PlanBuildTab {
     return `
       <div class="pb-sum">${attack ? 'Left against right, frontal for reference' : 'Every layout fitted at the same spot'} <span class="pb-dim">(ranked: fewest fails, then warnings, then score; ${small ? 'hover a cell for its reason' : `weights E, PlanDoctrine.${attack ? 'attack.compareWeights; hover a cell for its reason' : 'scoreWeights'}`})</span></div>
       <div class="pb-cmp"><table class="pb-t"><tr><th></th>${head}</tr>${pv}${rows}${score}${fw}${use}</table></div>
-      <button type="button" class="ms-btn" data-pb="compareRun">Compare again</button>`;
+      <div class="pb-actions">${btn('Compare again', 'compareRun', { sm: true })}</div>`;
   }
 
   private _planChecks(): string {
     const res = this._result!;
-    const pill = (st: CheckState) => `<span class="pb-pill pb-${st}">${WORD[st]}</span>`;
     const fitted = (res as any).mode === 'terrain';
     const fit = this._lastFit;
+    const title = `Checks ${fitted
+      ? `<span class="pb-dim">fitted where it was placed${fit?.fit.pending ? ' (some ground was still loading)' : ''}</span>`
+      : `<span class="pb-dim">(grey: needs ${this._terrain ? 'a placement: the ground is read where the plan lands' : 'terrain data'}, never counted as a pass)</span>`}`;
     return `
-      <div class="pb-sum">Checks ${fitted ? `<span class="pb-dim">fitted where it was placed${fit?.fit.pending ? ' (some ground was still loading)' : ''}</span>` : `<span class="pb-dim">(grey: needs ${this._terrain ? 'a placement: the ground is read where the plan lands' : 'terrain data'}, never counted as a pass)</span>`}</div>
-      ${fitted && fit ? `<div class="pb-hint">Score ${fit.fit.score} · ${fit.fit.fails} fail · ${fit.fit.warns} warn${fit.fit.slides.length ? ` · ${fit.fit.slides.map((s) => slideWord(s)).join(', ')}` : ''}</div>` : ''}
-      <table class="pb-t">${res.rows.map((c: Check) => `<tr><td>${esc(c.name)}</td><td>${pill(c.st)}</td><td class="pb-why">${reasonHtml(c)}</td></tr>`).join('')}</table>
-      ${res.slots.length ? `<div class="pb-sum">Posns</div><table class="pb-t">${res.slots.map((s: SlotResult) => `<tr><td>${esc(s.label)}</td><td>${pill(s.st)}</td><td class="pb-why">${esc(s.checks.map((c) => `${c.name}: ${c.st === 'unchecked' ? 'not checked' : c.reason}`).join(' · '))}</td></tr>`).join('')}</table>` : ''}
+      ${this._tally(res.rows, title, fitted && fit ? fit.fit.score : null)}
+      ${fitted && fit && fit.fit.slides.length ? `<p class="pb-p pb-dim">${fit.fit.slides.map((s) => slideWord(s)).join(', ')}.</p>` : ''}
+      ${ckList(res.rows)}
+      ${res.slots.length ? `<div class="pb-sum">Posns</div><ul class="pb-checks">${res.slots.map((s: SlotResult) => ckRow(s.st, s.label, whyHtml(s.checks.map((c) => `${c.name}: ${c.st === 'unchecked' ? 'not checked' : c.reason}`).join(' · ')))).join('')}</ul>` : ''}
       ${this._triggerTable()}
       ${this._attackSection()}
       ${!this._lastFit?.whatIf?.triggers.length && res.alternates.length ? `<div class="pb-sum">Triggers</div><table class="pb-t">${res.alternates.map((a) => `<tr><td>Heavy shelling on ${esc(a.ofLabel)}</td><td>${esc(a.ofLabel)} → ${esc(a.label)}</td><td>${a.min} min</td></tr>`).join('')}</table>` : ''}`;
@@ -1683,9 +1859,9 @@ export class PlanBuildTab {
   private _stepCreate(): string {
     const res = this._result!;
     return `
-      <div class="pb-sum">Create on Map is <b>Place on Map</b>: ordinary symbols, one undo step, each tagged with its role.</div>
-      <button type="button" class="ms-btn" data-pb="copy">Copy as Text</button>
-      <pre class="pb-text">${esc(planText(res, this._unitLine(), this._triggerText()))}</pre>`;
+      <p class="pb-p pb-dim">Create on Map is <b>Place on Map</b>: ordinary symbols, one undo step, each tagged with its role.</p>
+      <div class="pb-code"><div class="pb-code-h"><span>Plan as text</span>${btn('Copy as Text', 'copy', { kind: 'ghost', sm: true, icon: 'copy' })}</div>
+        <pre class="pb-text">${esc(planText(res, this._unitLine(), this._triggerText()))}</pre></div>`;
   }
 
   // ── what-if: the trigger table and the routes ────────────────────────────────────────────────────────────────
@@ -1737,7 +1913,6 @@ export class PlanBuildTab {
   private _triggerTable(): string {
     const f = this._lastFit, w = f?.whatIf;
     if (!f || !w || !w.triggers.length || this._result !== f.res) return '';
-    const pill = (st: CheckState) => `<span class="pb-pill pb-${st}">${WORD[st]}</span>`;
     const route = (t: (typeof w.triggers)[number]) => {
       const r = t.route;
       if (!r) return '—';
@@ -1746,8 +1921,10 @@ export class PlanBuildTab {
     };
     return `
       <div class="pb-sum">Trigger table <span class="pb-dim">(own move on foot against the enemy's ${w.mover}${w.enemyToFdlMin !== null ? `: ${w.enemyToFdlMin} min to the FDL on the main approach` : ''}, from ${esc(enemyStartWords(w))}${w.enemyStartAssumed ? ': mark the threat where he starts for a real time' : ''})</span></div>
-      <table class="pb-t">${w.triggers.map((t) => `<tr><td>${esc(t.trigger)}</td><td>${esc(t.who)} → ${esc(t.to)}</td><td class="pb-why">${esc(route(t))}</td><td>${t.min ?? '—'} / ${t.enemyMin ?? '—'} min</td><td>${pill(t.st)}</td></tr><tr><td></td><td colspan="4" class="pb-why">${esc(t.reason)}${t.coveredBy ? `. Covered by ${esc(t.coveredBy)}` : ''}</td></tr>`).join('')}</table>
-      <div class="pb-chips" style="margin-top:6px">${this._chip(this._routesShown, this._routesShown ? 'Hide the routes' : 'Show the routes on the map', 'routes')}</div>`;
+      <ul class="pb-checks">${w.triggers.map((t) => ckRow(t.st, t.trigger,
+        `<div class="pb-det-head">${esc(t.who)} → ${esc(t.to)} · own ${t.min ?? '—'} min, his ${t.enemyMin ?? '—'} min</div>`
+        + whyHtml(`${route(t)}. ${t.reason}${t.coveredBy ? `. Covered by ${t.coveredBy}` : ''}`))).join('')}</ul>
+      <div class="pb-actions">${btn(this._routesShown ? 'Hide the routes' : 'Show the routes on the map', 'routes', { sm: true })}</div>`;
   }
 
   /** Each trigger's route as a dashed line with its time, and the move's verdict. */
@@ -1773,7 +1950,7 @@ export class PlanBuildTab {
     if (this._routesShown && this._lastFit) layer.addMany(this._routeGraphics(this._lastFit));
   }
 
-  /** The plan from above, front up (as the recipe draws it, before it is aimed). */
+  /** The plan from above, front up (as the recipe draws it, before it is aimed), centred on a 500 m grid. */
   private _preview(res: SolveResult, W = 300): string {
     const pts = res.items.flatMap((i) => i.pts);
     if (!pts.length) return '';
@@ -1782,7 +1959,11 @@ export class PlanBuildTab {
     const y0 = Math.min(...pts.map((p) => p.y)) - pad, y1 = Math.max(...pts.map((p) => p.y)) + pad;
     const H = Math.max(W * 0.4, Math.min(W * 0.87, (W * (y1 - y0)) / (x1 - x0)));
     const k = Math.min(W / (x1 - x0), H / (y1 - y0));
-    const X = (x: number) => ((x - x0) * k).toFixed(1), Y = (y: number) => (H - (y - y0) * k).toFixed(1);
+    // centred in the frame: k fits the longer side, the other gets the space left over split on both sides
+    const ox = (W - (x1 - x0) * k) / 2, oy = (H - (y1 - y0) * k) / 2;
+    const X = (x: number) => ((x - x0) * k + ox).toFixed(1), Y = (y: number) => (H - (y - y0) * k - oy).toFixed(1);
+    const g = 500 * k, gid = `pbGrid${++previewSeq}`;
+    const grid = g >= 6 ? `<defs><pattern id="${gid}" width="${g.toFixed(2)}" height="${g.toFixed(2)}" patternUnits="userSpaceOnUse"><path class="pb-pv-grid" d="M${g.toFixed(2)} 0H0V${g.toFixed(2)}"/></pattern></defs><rect width="${W}" height="${H.toFixed(1)}" fill="url(#${gid})"/>` : '';
     const shapes = res.items.map((i) => {
       // points are dots; every line and area is an outline (an Obj or minefield is never drawn filled)
       const cls = i.planned ? 'pb-pv-alt' : i.key === '25151200' ? 'pb-pv-posn' : i.geo === 'Point' || i.geo === 'FPoint' ? 'pb-pv-pt' : 'pb-pv-line';
@@ -1791,7 +1972,7 @@ export class PlanBuildTab {
       return `<path class="${cls}" d="${d}"/>`;
     }).join('');
     const sc = 1000 * k;
-    return `<svg class="pb-preview" viewBox="0 0 ${W} ${H}" role="img" aria-label="The plan from above, front up">${shapes}
+    return `<svg class="pb-preview" viewBox="0 0 ${W} ${H}" role="img" aria-label="The plan from above, front up">${grid}${shapes}
       <line class="pb-pv-scale" x1="8" y1="${H - 8}" x2="${(8 + sc).toFixed(1)}" y2="${H - 8}"/><text x="${(10 + sc).toFixed(1)}" y="${H - 5}" class="pb-pv-txt">1 km</text>
       <text x="${W - 6}" y="12" text-anchor="end" class="pb-pv-txt">${({ attack: 'Obj ↑', ambush: 'He comes ↑', patrol: 'Obj ↑', recce: 'NAI ↑', crossing: 'Far bank ↑' } as Record<string, string>)[res.recipe.task] ?? 'Front ↑'}</text></svg>`;
   }

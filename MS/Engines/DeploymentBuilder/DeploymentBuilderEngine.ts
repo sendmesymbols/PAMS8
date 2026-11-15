@@ -272,7 +272,8 @@ class DeploymentBuilderEngine {
   private _searchText: string = '';
   private _collapsedCategories: Set<string> = new Set();
   /** Restore height for un-minimize. Must match the CSS height. */
-  private _widgetHeight: string = '500px';
+  /** The window's height when not minimized: most of the screen by default (as Widgets.css), the dragged height after a resize. */
+  private _widgetHeight: string = 'min(820px, calc(100vh - 140px))';
 
   // Placement hooks (the Build tab's terrain fit) and the last ghost drawn, to draw it again after a swap
   private _placementHooks: PlacementHooks | null = null;
@@ -457,6 +458,7 @@ class DeploymentBuilderEngine {
         <div class="db-tabs" role="tablist" hidden>
           <button type="button" class="db-tab" role="tab" data-db-tab="samples" aria-selected="true">Templates</button>
           <button type="button" class="db-tab" role="tab" data-db-tab="build" aria-selected="false">Intelligent Deployment</button>
+          <div class="db-tabs-aside" hidden></div>
         </div>
         <div class="db-build" hidden></div>
         <div class="db-cols">
@@ -693,6 +695,7 @@ class DeploymentBuilderEngine {
           replace: (doc, redraw) => this.replaceSelectedPlan(doc, redraw),
           readDrawn: (scope) => this.readDrawn(scope),
           moveAnchor: (xy) => this.moveAnchor(xy),
+          aside: () => el.querySelector<HTMLElement>('.db-tabs-aside'),
         });
       } catch (err) {
         EngineLogger.error(ENGINE_NAME, `Intelligent Deployment tab failed to load: ${err instanceof Error ? err.message : String(err)}`);
@@ -736,6 +739,9 @@ class DeploymentBuilderEngine {
     const box = el.querySelector<HTMLElement>('.db-build');
     if (cols) cols.hidden = tab === 'build';
     if (box) box.hidden = tab !== 'build';
+    // the Build a plan / Check my plan switch sits in the tab bar, only beside its own tab
+    const aside = el.querySelector<HTMLElement>('.db-tabs-aside');
+    if (aside) aside.hidden = tab !== 'build' || !this._buildTab;
     if (tab === 'build') this._buildTab?.shown();
   }
 
@@ -1531,10 +1537,10 @@ class DeploymentBuilderEngine {
 
     this._setStatus(`Placed ${count} symbol${count !== 1 ? 's' : ''}`);
     this._setHeaderState(count > 0 ? 'ready' : 'warning', count > 0 ? 'Placed' : 'Empty');
-    // Placed → the widget has done its job, close it. Nothing placed → restore it
-    // so the empty-result status stays visible.
-    if (count > 0) this._closeWidget();
-    else if (this._minimized) this._minimizeWidget();
+    // The widget stays open after a placement (user, 15 Nov 2026): restore it from the
+    // minimized bar it took while placing, with the status and the last-placement card.
+    if (this._minimized) this._minimizeWidget();
+    this._syncLastPlacement();
   }
 
   /** A symbol created hidden keeps its label hidden too (the AnnotationEngine links labels by `parentId`). */

@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Intelligent Deployment UI</title>
+<!--
+  PAMS8 Deployment Mgr, Intelligent Deployment tab: visual refresh, mockup for approval (15 Nov 2026). BUILT the same
+  day (user: "Build it all"): Widgets.css "Intelligent Deployment tab" block, PlanBuildTab.ts, the .db-tabs-aside slot.
+  Left panel: the tab as it is now (the #deploymentBuilderWidget .pb-* rules of MS/Styles/Widgets.css, copied under .od).
+  Right panel: the proposal (.nw). Same steps, same words, same keys and logic: CSS plus small markup changes in
+  PlanBuildTab.ts, scoped to the tab so .ms-btn and the other widgets keep their look.
+  Content: what the live tab showed for Defence, Bn Def two up on 15 Nov 2026. The Check step uses SAMPLE fitted
+  figures so every verdict shows; they are not a real reading.
+  One self-contained file: no network, no build.
+-->
+<style>
+/* ── themes: blue = the live theme (computed 15 Nov), amber = Widgets.css :root, night vision ─────────────── */
+body.th-blue{--ms-bg:#0e111a;--ms-bg-header:rgba(40,80,140,.10);--ms-bg-input:rgba(255,255,255,.05);--ms-bg-subtle:rgba(255,255,255,.06);--ms-border:rgba(64,140,220,.35);--ms-divider:rgba(255,255,255,.07);--ms-text:#b8c5d8;--ms-text-dim:#5a6a80;--ms-text-label:#3a5070;--ms-accent:#64b4ff;--ms-accent-secondary:#64b4ff;--ms-warning:#e5a540;--ms-danger:#e24b4a}
+body.th-amber{--ms-bg:#141820;--ms-bg-header:rgba(26,32,48,.97);--ms-bg-input:rgba(0,0,0,.28);--ms-bg-subtle:rgba(255,255,255,.06);--ms-border:rgba(90,140,220,.25);--ms-divider:rgba(80,100,150,.18);--ms-text:#dce8f5;--ms-text-dim:rgba(155,180,215,.72);--ms-text-label:rgba(120,150,185,.75);--ms-accent:#EF9F27;--ms-accent-secondary:#64b4ff;--ms-warning:#e5a540;--ms-danger:#DC3C30}
+body.th-nv{--ms-bg:#0a0e15;--ms-bg-header:rgba(10,14,21,.99);--ms-bg-input:rgba(0,0,0,.5);--ms-bg-subtle:rgba(255,255,255,.06);--ms-border:rgba(0,255,0,.2);--ms-divider:rgba(0,200,0,.15);--ms-text:#90ee90;--ms-text-dim:rgba(120,180,100,.7);--ms-text-label:rgba(100,150,80,.8);--ms-accent:#00ff00;--ms-accent-secondary:#64b4ff;--ms-warning:#e5a540;--ms-danger:#DC3C30}
+:root{--ms-font:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;--ms-font-mono:'SF Mono',Consolas,Monaco,monospace;
+  /* the live text size setting: 13.5 / 15 / 11.5 / 13 */
+  --ms-fs:13.5px;--ms-fs-sm:15px;--ms-fs-xs:11.5px;--ms-fs-lg:13px;--ms-radius:9px;--ms-radius-sm:4px;--ms-transition:all .15s ease}
+
+/* ── the page around the panels ─────────────────────────────────────────────────────────────────────────── */
+*{box-sizing:border-box}
+html{background:#121519}
+body{margin:0;background:#121519;color:#d5dbe3;font:400 14px/1.55 var(--ms-font);-webkit-font-smoothing:antialiased}
+.pg{max-width:1240px;margin:0 auto;padding:0 16px 80px}
+.pg-head{padding:28px 0 8px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 32px}
+.pg-head h1{font-size:26px;line-height:1.15;margin:0 0 6px;font-weight:700;color:#eef1f5}
+.pg-head .lede{margin:0;max-width:70ch;color:#a9b3bf}
+.pg-head > div:first-child{flex:1 1 520px}
+.pg-ctl{display:flex;align-items:center;gap:10px;color:#a9b3bf;font-size:13px}
+.pg-seg{display:inline-flex;gap:2px;padding:2px;border-radius:8px;background:#1d2228;border:1px solid #2c333c}
+.pg-seg button{font:inherit;font-size:13px;color:#a9b3bf;background:none;border:0;border-radius:6px;padding:4px 11px;cursor:pointer}
+.pg-seg button:hover{color:#eef1f5;background:#262c34}
+.pg-seg button[aria-pressed="true"]{background:#2d3640;color:#eef1f5;box-shadow:inset 0 0 0 1px #4a5766}
+.cmp{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;margin:22px 0 10px}
+.cmp figure{margin:0}
+.cmp figcaption{display:flex;align-items:baseline;gap:10px;margin:0 0 8px;font-weight:650;color:#eef1f5;font-size:15px}
+.cmp figcaption span{font-weight:400;color:#8d98a5;font-size:13px}
+.pg-note{color:#8d98a5;font-size:13px;max-width:96ch;margin:6px auto 0;text-align:center}
+.pg h2{font-size:19px;margin:44px 0 6px;padding-top:16px;border-top:1px solid #262c34;color:#eef1f5}
+.pg h2 + p{margin:0 0 14px;color:#a9b3bf;max-width:80ch}
+.chg{margin:0;padding:0;list-style:none;counter-reset:c;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px 32px}
+.chg li{counter-increment:c;display:grid;grid-template-columns:28px 1fr;gap:0 10px}
+.chg li::before{content:counter(c);display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#1f252c;border:1px solid #333c46;color:#c9d1db;font-size:12px;font-weight:700;margin-top:1px}
+.chg b{color:#eef1f5;font-weight:650}
+.chg p{margin:0;color:#b4bdc8}
+.chg code{font:12px/1 var(--ms-font-mono);color:#9fb3c8;background:#1b2026;padding:2px 5px;border-radius:4px}
+.chg .w{display:block;margin-top:3px;font-size:12.5px;color:#7f8a97}
+.keep{columns:2 320px;gap:32px;color:#b4bdc8;padding-left:18px;margin:0}
+.keep li{margin:0 0 6px;break-inside:avoid}
+
+/* ── the panel shell (out of scope: same in both) ───────────────────────────────────────────────────────── */
+.mpanel{width:560px;max-width:calc(100vw - 32px);height:500px;min-height:420px;resize:vertical;overflow:hidden;display:flex;flex-direction:column;
+  background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:9px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.04);
+  font-family:var(--ms-font);color:var(--ms-text);text-align:left}
+.mhead{display:flex;align-items:center;gap:8px;height:39px;flex-shrink:0;padding:0 10px;background:var(--ms-bg-header);border-bottom:1px solid var(--ms-divider)}
+.mh-icon{font-size:9px;font-weight:800;letter-spacing:.06em;color:var(--ms-accent);border:1px solid var(--ms-border);border-radius:5px;padding:3px 4px}
+.mh-title{flex:1;font-size:16px;font-weight:700;letter-spacing:1.92px;text-transform:uppercase;color:var(--ms-accent)}
+.mh-dot{width:7px;height:7px;border-radius:50%;background:var(--ms-text-dim)}
+.mh-lbl{font-size:11px;color:var(--ms-text-dim);margin-right:4px}
+.mh-btn{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--ms-border);font-size:10px;color:var(--ms-text-dim)}
+.mtabs{display:flex;align-items:center;flex-shrink:0;border-bottom:1px solid var(--ms-divider);padding:0 8px}
+.mtab{font:inherit;font-size:var(--ms-fs-sm);color:var(--ms-text-dim);background:none;border:0;padding:7px 14px;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:default}
+.mtab.on{color:var(--ms-text);border-bottom-color:var(--ms-accent);font-weight:600}
+.db-build{display:flex;flex-direction:column;flex:1;min-height:0}
+
+/* ══ NOW: the rules from Widgets.css (#deploymentBuilderWidget → .od) ═══════════════════════════════════════ */
+.od .ms-btn{flex:1;padding:8px 5px;font-family:inherit;font-size:var(--ms-fs-xs);letter-spacing:.06em;text-transform:uppercase;font-weight:600;cursor:pointer;border-radius:var(--ms-radius-sm);border:1px solid var(--ms-border);background:var(--ms-bg-input);color:var(--ms-text-dim);transition:var(--ms-transition);white-space:nowrap}
+.od .ms-btn:hover{background:var(--ms-bg-header);color:var(--ms-text);border-color:var(--ms-accent)}
+.od .ms-btn.ms-cta{padding:10px 8px;background:var(--ms-accent);border-color:var(--ms-accent);color:var(--ms-bg);font-weight:800;letter-spacing:.1em;box-shadow:0 1px 0 rgba(0,0,0,.35)}
+.od .ms-btn.ms-cta:hover{filter:brightness(1.12);box-shadow:0 1px 0 rgba(0,0,0,.35),0 0 14px -2px var(--ms-accent)}
+.od .pb-modes{flex-shrink:0;padding:6px 12px;border-bottom:1px solid var(--ms-divider)}
+.od .pb-steps{display:flex;flex-shrink:0;border-bottom:1px solid var(--ms-divider)}
+.od .pb-step{flex:1;font:inherit;font-size:var(--ms-fs-xs);line-height:1.15;color:var(--ms-text-dim);background:var(--ms-bg-subtle);border:0;border-right:1px solid var(--ms-divider);padding:5px 2px;cursor:pointer}
+.od .pb-step:last-child{border-right:0}
+.od .pb-step b{display:block;font-size:var(--ms-fs-lg);color:var(--ms-text)}
+.od .pb-step[aria-pressed="true"]{background:transparent;color:var(--ms-text);box-shadow:inset 0 -2px 0 var(--ms-accent)}
+.od .pb-body{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;font-size:var(--ms-fs);color:var(--ms-text)}
+.od .pb-foot{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;border-top:1px solid var(--ms-divider)}
+.od .pb-foot .pb-place{width:auto;flex:none}
+.od .pb-mode{font-size:var(--ms-fs-xs);color:var(--ms-text-label)}
+.od .pb-row{display:grid;grid-template-columns:74px 1fr;gap:6px;align-items:start;margin:0 0 7px}
+.od .pb-row > span{color:var(--ms-text-label);padding-top:3px}
+.od .pb-chips{display:flex;flex-wrap:wrap;gap:4px}
+.od .pb-chip{font:inherit;font-size:var(--ms-fs);padding:2px 9px;border-radius:12px;cursor:pointer;border:1px solid var(--ms-border);background:var(--ms-bg-input);color:var(--ms-text)}
+.od .pb-chip[aria-pressed="true"]{border-color:var(--ms-accent);color:var(--ms-accent);font-weight:600}
+.od .pb-chip.pb-later{color:var(--ms-text-label);border-style:dashed;cursor:help}
+.od .pb-sum{margin:9px 0 5px;font-size:var(--ms-fs-sm)}
+.od .pb-hint,.od .pb-dim{color:var(--ms-text-dim);font-size:var(--ms-fs)}
+.od .pb-hint{margin-top:6px}
+.od .pb-p{margin:6px 0;line-height:1.45}
+.od .pb-subtabs{margin:0 0 8px}
+.od .pb-t{border-collapse:collapse;width:100%;font-size:var(--ms-fs)}
+.od .pb-t td{border-bottom:1px solid var(--ms-divider);padding:4px 5px;vertical-align:top}
+.od .pb-why{color:var(--ms-text-dim)}
+.od .pb-det-head{color:var(--ms-text)}
+.od .pb-det-items,.od .pb-det-fix ul{margin:3px 0 0;padding-left:16px}
+.od .pb-det-items li,.od .pb-det-fix li{margin:1px 0}
+.od .pb-det-why,.od .pb-det-fix{margin-top:4px}
+.od .pb-det-why b,.od .pb-det-fix b{color:var(--ms-warning);font-weight:650;margin-right:3px}
+.od .pb-pill{display:inline-block;padding:0 7px;border-radius:9px;font-size:var(--ms-fs-xs);font-weight:700;white-space:nowrap}
+.od .pb-pass{background:rgba(29,158,117,.2);color:#6fd7ad}
+.od .pb-warn{background:rgba(229,165,64,.2);color:#f2c178}
+.od .pb-fail{background:rgba(220,60,48,.22);color:#ff8f86}
+.od .pb-unchecked{background:rgba(127,136,147,.25);color:#c3cbd3}
+.od .pb-text{margin:8px 0 0;padding:8px 10px;max-height:260px;overflow:auto;white-space:pre-wrap;background:var(--ms-bg-input);border:1px solid var(--ms-divider);border-radius:var(--ms-radius-sm);font:10.5px/1.45 var(--ms-font-mono);color:var(--ms-text)}
+.od .pb-preview{display:block;width:100%;max-height:260px;margin:4px 0;background:rgba(0,0,0,.18);border-radius:var(--ms-radius-sm)}
+.od .pb-pv-posn{fill:none;stroke:var(--ms-accent-secondary);stroke-width:1.5}
+.od .pb-pv-alt{fill:none;stroke:var(--ms-accent-secondary);stroke-width:1;stroke-dasharray:4 3;opacity:.7}
+.od .pb-pv-line{fill:none;stroke:var(--ms-text-dim);stroke-width:1}
+.od .pb-pv-pt{fill:var(--ms-accent);stroke:none}
+.od .pb-pv-scale{stroke:var(--ms-text);stroke-width:1.5}
+.od .pb-pv-txt{fill:var(--ms-text-dim);font-size:9px}
+
+/* ══ PROPOSED ═══════════════════════════════════════════════════════════════════════════════════════════════
+   Every colour comes from the theme (--ms-text, --ms-accent, --ms-bg), so all four themes keep it; every size
+   from --ms-fs, so the text size setting still applies. */
+.nw{
+  --pb-ink:var(--ms-bg);
+  --pb-label:color-mix(in srgb,var(--ms-text) 76%,transparent);  /* row labels: 6.6 : 1 in the live theme (was 2.3) */
+  --pb-dim:color-mix(in srgb,var(--ms-text) 66%,transparent);    /* hints, reasons: 5.3 : 1 (was 3.4) */
+  --pb-ctl:color-mix(in srgb,var(--ms-text) 5%,transparent);
+  --pb-ctl-2:color-mix(in srgb,var(--ms-text) 10%,transparent);
+  --pb-line:color-mix(in srgb,var(--ms-text) 11%,transparent);
+  --pb-line-2:color-mix(in srgb,var(--ms-text) 21%,transparent);
+  --pb-line-3:color-mix(in srgb,var(--ms-text) 34%,transparent);
+  --pb-acc-tint:color-mix(in srgb,var(--ms-accent) 17%,transparent);
+  --pb-acc-ring:color-mix(in srgb,var(--ms-accent) 62%,transparent);
+  --pb-go:#2fa862;--pb-goT:#6fd7ad;--pb-am:#e5a540;--pb-amT:#f2c178;--pb-no:#e5484d;--pb-noT:#ff8f86;--pb-na:#7f8893;--pb-naT:#c3cbd3;
+  --pb-fs-ctl:calc(var(--ms-fs) - 1px);   /* 12.5 */
+  --pb-fs-lbl:calc(var(--ms-fs) - 1.5px); /* 12   */
+  --pb-fs-sub:calc(var(--ms-fs) - 2.5px); /* 11   */
+}
+.nw button{font:inherit}
+.nw .pb-ic{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nw .pb-ic-sm{width:11px;height:11px;stroke-width:2}
+.nw .pb-ic-lg{width:26px;height:26px;stroke-width:1.4}
+.nw :focus-visible{outline:2px solid var(--ms-accent);outline-offset:2px}
+
+/* mode switch, in the tab row */
+.nw .mtabs-aside{margin-left:auto;padding:5px 0}
+
+/* stepper */
+.nw .pb-stepper{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;flex-shrink:0;padding:6px 8px 0;border-bottom:1px solid var(--pb-line)}
+.nw .pb-st{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:20px auto;column-gap:7px;row-gap:2px;align-items:center;
+  padding:6px 6px 10px;background:none;border:0;border-radius:6px 6px 0 0;cursor:pointer;text-align:left;color:var(--pb-label);min-width:0;transition:background-color .15s}
+.nw .pb-st:hover{background:var(--pb-ctl)}
+.nw .pb-st::after{content:"";position:absolute;left:6px;right:6px;bottom:0;height:3px;border-radius:2px 2px 0 0;background:var(--pb-line);transition:background-color .2s}
+.nw .pb-st.is-past::after{background:var(--pb-acc-ring)}
+.nw .pb-st.is-cur::after{background:var(--ms-accent)}
+.nw .pb-st-dot{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;
+  border:1.5px solid var(--pb-line-2);color:var(--pb-label);transition:background-color .15s,border-color .15s,color .15s}
+.nw .pb-st:hover .pb-st-dot{border-color:var(--pb-line-3)}
+.nw .pb-st.is-past .pb-st-dot{border-color:var(--pb-acc-ring);color:var(--ms-accent)}
+.nw .pb-st.is-cur .pb-st-dot{background:var(--ms-accent);border-color:var(--ms-accent);color:var(--pb-ink)}
+.nw .pb-st-name{font-size:var(--pb-fs-ctl);font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nw .pb-st.is-cur .pb-st-name{color:var(--ms-text)}
+.nw .pb-st-sub{grid-column:1 / -1;font-size:var(--pb-fs-sub);color:var(--pb-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.nw .pb-st-sub .t-fail{color:var(--pb-noT)}
+.nw .pb-st-sub .t-warn{color:var(--pb-amT)}
+
+/* body, groups, rows */
+.nw .pb-body{flex:1;min-height:0;overflow-y:auto;padding:12px 14px 16px;font-size:var(--ms-fs);line-height:1.45;color:var(--ms-text);scrollbar-width:thin;scrollbar-color:var(--pb-line-2) transparent}
+.nw .pb-group + .pb-group{border-top:1px solid var(--pb-line);margin-top:6px;padding-top:12px}
+.nw .pb-row{display:grid;grid-template-columns:84px minmax(0,1fr);column-gap:10px;align-items:start;margin:0 0 9px}
+.nw .pb-lbl{font-size:var(--pb-fs-lbl);font-weight:600;color:var(--pb-label);line-height:32px}
+.nw .pb-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-height:32px}
+.nw .pb-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:16px 0 8px;font-size:var(--ms-fs);font-weight:650;color:var(--ms-text)}
+.nw .pb-body > .pb-h:first-child,.nw .pb-body > :first-child .pb-h:first-child{margin-top:2px}
+.nw .pb-h small{font-size:var(--pb-fs-ctl);font-weight:400;color:var(--pb-dim)}
+.nw .pb-p{margin:6px 0;max-width:65ch}
+.nw .pb-quiet{color:var(--pb-dim);font-size:var(--pb-fs-ctl)}
+.nw .pb-quiet b,.nw .pb-p b{color:var(--ms-text);font-weight:600}
+.nw .pb-keyhint{font-size:var(--pb-fs-sub);color:var(--pb-dim);white-space:nowrap}
+
+/* segmented control: one of a few */
+.nw .pb-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border-radius:8px;background:var(--pb-ctl);border:1px solid var(--pb-line)}
+.nw .pb-seg > button{position:relative;min-height:26px;padding:3px 10px;border:0;border-radius:6px;background:none;color:var(--pb-label);
+  font-size:var(--pb-fs-ctl);font-weight:550;line-height:1.3;white-space:nowrap;cursor:pointer;transition:background-color .15s,color .15s,box-shadow .15s}
+.nw .pb-seg > button:hover{background:var(--pb-ctl-2);color:var(--ms-text)}
+.nw .pb-seg > button:active{background:var(--pb-line-2)}
+.nw .pb-seg > button[aria-pressed="true"]{background:var(--pb-acc-tint);color:var(--ms-text);box-shadow:inset 0 0 0 1px var(--pb-acc-ring)}
+.nw .pb-seg > button:focus-visible{outline-offset:1px}
+.nw .pb-seg > .pb-sep{width:1px;align-self:stretch;margin:5px 3px;background:var(--pb-line-2)}
+.nw .pb-seg > button.pb-autopick::after{content:"";position:absolute;inset:2px;border:1px dashed var(--pb-acc-ring);border-radius:5px;pointer-events:none}
+.nw .pb-seg--sm > button{min-height:22px;padding:2px 9px;font-size:var(--pb-fs-lbl)}
+
+/* chips: one of many */
+.nw .pb-chipset{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.nw .pb-chip{min-height:26px;padding:3px 10px;border-radius:6px;border:1px solid var(--pb-line);background:var(--pb-ctl);color:var(--pb-label);
+  font-size:var(--pb-fs-ctl);font-weight:550;line-height:1.3;cursor:pointer;transition:background-color .15s,color .15s,border-color .15s}
+.nw .pb-chip:hover{background:var(--pb-ctl-2);color:var(--ms-text);border-color:var(--pb-line-2)}
+.nw .pb-chip[aria-pressed="true"]{background:var(--pb-acc-tint);color:var(--ms-text);border-color:var(--pb-acc-ring)}
+.nw .pb-chip[aria-disabled="true"]{border-style:dashed;background:none;color:var(--pb-dim);cursor:help}
+.nw .pb-more{background:none;border:0;padding:3px 6px;font-size:var(--pb-fs-lbl);color:var(--pb-dim);cursor:pointer;border-radius:5px;text-decoration:underline;text-decoration-color:var(--pb-line-2);text-underline-offset:3px}
+.nw .pb-more:hover{color:var(--ms-text);text-decoration-color:currentColor}
+
+/* unit and enemy facts, aligned with the options */
+.nw .pb-facts{margin:-2px 0 12px 94px;font-size:var(--pb-fs-ctl);color:var(--pb-dim);line-height:1.5}
+.nw .pb-facts b{color:var(--ms-text);font-weight:600;margin-right:6px}
+.nw .pb-wpns{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:2px}
+.nw .pb-wpn{white-space:nowrap}
+.nw .pb-wpn .n{color:var(--ms-text);font-weight:600;font-variant-numeric:tabular-nums;margin-right:3px}
+.nw .pb-wpn .x{color:var(--pb-dim);margin-right:4px}
+.nw .pb-wpn .r{color:var(--pb-label);margin-left:4px;font-variant-numeric:tabular-nums}
+.nw .pb-wpn .q{color:var(--pb-amT);margin-left:4px}
+.nw .pb-src{font-size:var(--pb-fs-sub);margin-top:2px}
+
+/* buttons: primary, secondary, ghost */
+.nw .pb-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:5px 12px;border-radius:7px;
+  border:1px solid var(--pb-line-2);background:var(--pb-ctl);color:var(--ms-text);font-size:var(--pb-fs-ctl);font-weight:600;line-height:1.2;
+  letter-spacing:0;text-transform:none;white-space:nowrap;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,filter .15s,transform .1s}
+.nw .pb-btn:hover,.nw .pb-btn.is-hover{background:var(--pb-ctl-2);border-color:var(--pb-line-3)}
+.nw .pb-btn:active,.nw .pb-btn.is-active{transform:scale(.98);background:var(--pb-line-2)}
+.nw .pb-btn.is-focus{outline:2px solid var(--ms-accent);outline-offset:2px}
+.nw .pb-btn:disabled{opacity:.42;cursor:not-allowed;transform:none}
+.nw .pb-btn--primary{background:var(--ms-accent);border-color:var(--ms-accent);color:var(--pb-ink)}
+.nw .pb-btn--primary:hover,.nw .pb-btn--primary.is-hover{background:var(--ms-accent);border-color:var(--ms-accent);filter:brightness(1.1)}
+.nw .pb-btn--primary:active,.nw .pb-btn--primary.is-active{background:var(--ms-accent);filter:brightness(.94)}
+.nw .pb-btn--ghost{background:none;border-color:transparent;color:var(--pb-label)}
+.nw .pb-btn--ghost:hover,.nw .pb-btn--ghost.is-hover{background:var(--pb-ctl-2);border-color:transparent;color:var(--ms-text)}
+.nw .pb-btn--sm{min-height:26px;padding:3px 9px;font-size:var(--pb-fs-lbl);border-radius:6px}
+.nw .pb-btn.is-armed{background:var(--pb-acc-tint);border-color:var(--pb-acc-ring);color:var(--ms-text)}
+.nw .pb-pulse{width:7px;height:7px;border-radius:50%;background:var(--ms-accent);flex:none;animation:pbPulse 1.4s cubic-bezier(.25,1,.5,1) infinite}
+@keyframes pbPulse{0%{box-shadow:0 0 0 0 var(--pb-acc-ring)}70%,100%{box-shadow:0 0 0 6px transparent}}
+@media (prefers-reduced-motion:reduce){.nw .pb-pulse{animation:none}.nw *{transition:none!important}}
+
+/* footer */
+.nw .pb-foot{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:9px 12px;border-top:1px solid var(--pb-line);background:color-mix(in srgb,var(--ms-text) 3%,transparent)}
+.nw .pb-status{flex:1;min-width:0;display:grid;grid-template-columns:8px minmax(0,1fr);column-gap:8px;align-items:center;cursor:default}
+.nw .pb-status > i{width:8px;height:8px;border-radius:50%;background:var(--pb-go)}
+.nw .pb-status.is-loading > i{background:var(--pb-am);animation:pbBlink 1.2s ease-in-out infinite}
+.nw .pb-status.is-off > i{background:none;border:1.5px solid var(--pb-na)}
+@keyframes pbBlink{50%{opacity:.35}}
+.nw .pb-status .t{font-size:var(--pb-fs-ctl);font-weight:600;color:var(--ms-text);line-height:1.25}
+.nw .pb-status .d{grid-column:2;font-size:var(--pb-fs-sub);color:var(--pb-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+
+/* verdicts */
+.nw .pb-pill{display:inline-flex;align-items:center;gap:4px;min-height:20px;padding:1px 8px 1px 6px;border-radius:10px;font-size:var(--pb-fs-sub);font-weight:650;white-space:nowrap;line-height:1.2}
+.nw .pb-pass{background:rgba(29,158,117,.2);color:var(--pb-goT)}
+.nw .pb-warn{background:rgba(229,165,64,.2);color:var(--pb-amT)}
+.nw .pb-fail{background:rgba(220,60,48,.22);color:var(--pb-noT)}
+.nw .pb-unchecked{background:rgba(127,136,147,.22);color:var(--pb-naT)}
+
+/* checks */
+.nw .pb-tallyhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:14px 0 6px}
+.nw .pb-score{font-size:var(--pb-fs-ctl);color:var(--pb-dim)}
+.nw .pb-score b{font-size:calc(var(--ms-fs) + 3px);color:var(--ms-text);font-weight:700;font-variant-numeric:tabular-nums;margin-left:4px}
+.nw .pb-tally{display:flex;gap:2px;height:6px;margin:0 0 8px}
+.nw .pb-tally > span{border-radius:3px}
+.nw .pb-tally .s-pass{background:var(--pb-go)}.nw .pb-tally .s-warn{background:var(--pb-am)}.nw .pb-tally .s-fail{background:var(--pb-no)}.nw .pb-tally .s-unchecked{background:var(--pb-na);opacity:.6}
+.nw .pb-tl{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:var(--pb-fs-ctl);color:var(--pb-dim);margin-bottom:4px}
+.nw .pb-tl span{display:inline-flex;align-items:center;gap:4px}
+.nw .pb-tl b{color:var(--ms-text);font-weight:650;font-variant-numeric:tabular-nums}
+.nw .pb-tl .c-pass{color:var(--pb-goT)}.nw .pb-tl .c-warn{color:var(--pb-amT)}.nw .pb-tl .c-fail{color:var(--pb-noT)}.nw .pb-tl .c-unchecked{color:var(--pb-naT)}
+.nw .pb-checks{list-style:none;margin:6px 0 0;padding:0}
+.nw .pb-ck{display:grid;grid-template-columns:100px minmax(0,1fr);column-gap:10px;padding:8px 0;border-top:1px solid var(--pb-line)}
+.nw .pb-ck:last-child{border-bottom:1px solid var(--pb-line)}
+.nw .pb-ck-name{font-weight:600;color:var(--ms-text);line-height:1.35}
+.nw .pb-ck-why{color:var(--pb-dim);font-size:var(--pb-fs-ctl);margin-top:2px;max-width:65ch}
+.nw .pb-det-head{color:var(--ms-text);font-size:var(--pb-fs-ctl);margin-top:2px}
+.nw .pb-det-items,.nw .pb-det-fix ul{margin:4px 0 0;padding-left:16px;font-size:var(--pb-fs-ctl);color:var(--pb-dim)}
+.nw .pb-det-items li,.nw .pb-det-fix li{margin:2px 0}
+.nw .pb-det-fix li::marker{color:var(--ms-accent)}
+.nw .pb-det-why,.nw .pb-det-fix{margin-top:6px;font-size:var(--pb-fs-ctl);color:var(--pb-dim)}
+.nw .pb-det-why b,.nw .pb-det-fix b{color:var(--pb-amT);font-weight:650;margin-right:4px}
+
+/* place: counts, a note, the keys */
+.nw .pb-dl{display:grid;grid-template-columns:minmax(0,1fr) auto;margin:4px 0 12px;max-width:380px;font-size:var(--pb-fs-ctl)}
+.nw .pb-dl dt,.nw .pb-dl dd{margin:0;padding:5px 0;border-bottom:1px solid var(--pb-line)}
+.nw .pb-dl dt{color:var(--pb-dim)}
+.nw .pb-dl dd{text-align:right;color:var(--ms-text);font-weight:600;font-variant-numeric:tabular-nums}
+.nw .pb-dl dd span{font-weight:400;color:var(--pb-dim);margin-left:4px}
+.nw .pb-callout{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:7px;font-size:var(--pb-fs-ctl);margin:10px 0}
+.nw .pb-callout .pb-ic{margin-top:2px}
+.nw .pb-callout--warn{background:color-mix(in srgb,var(--pb-am) 11%,transparent);border:1px solid color-mix(in srgb,var(--pb-am) 32%,transparent);color:var(--pb-amT)}
+.nw .pb-callout--warn b{color:var(--ms-text)}
+.nw .pb-keys{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 12px;align-items:baseline;margin:6px 0 10px;font-size:var(--pb-fs-ctl);max-width:65ch}
+.nw .pb-keys > span:nth-child(even){color:var(--pb-dim)}
+.nw .pb-keys > span:nth-child(odd){white-space:nowrap;color:var(--pb-dim)}
+.nw kbd{display:inline-block;min-width:22px;padding:1px 6px;border-radius:5px;border:1px solid var(--pb-line-2);border-bottom-width:2px;background:var(--pb-ctl);
+  font:600 var(--pb-fs-sub)/1.45 var(--ms-font);color:var(--ms-text);text-align:center}
+.nw kbd.m{border-bottom-width:1px;border-style:dashed}
+.nw .pb-howto{margin:8px 0;padding-left:20px;font-size:var(--pb-fs-ctl);color:var(--pb-dim)}
+.nw .pb-howto li{margin:3px 0;padding-left:2px}
+.nw .pb-howto li::marker{color:var(--ms-accent);font-weight:700}
+.nw .pb-howto b{color:var(--ms-text);font-weight:600}
+.nw .pb-actionline{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:4px 0 6px}
+
+/* plan preview */
+.nw .pb-plan{margin-top:6px;border-top:1px solid var(--pb-line);padding-top:4px}
+.nw .pb-preview{display:block;width:100%;max-height:240px;margin:2px 0 6px;background:rgba(0,0,0,.22);border:1px solid var(--pb-line);border-radius:8px}
+.nw .pb-pv-grid{fill:none;stroke:var(--pb-line);stroke-width:.6}
+.nw .pb-pv-posn{fill:none;stroke:var(--ms-accent-secondary);stroke-width:1.6}
+.nw .pb-pv-alt{fill:none;stroke:var(--ms-accent-secondary);stroke-width:1;stroke-dasharray:4 3;opacity:.7}
+.nw .pb-pv-line{fill:none;stroke:var(--pb-label);stroke-width:1}
+.nw .pb-pv-pt{fill:var(--ms-accent);stroke:none}
+.nw .pb-pv-scale{stroke:var(--ms-text);stroke-width:1.5}
+.nw .pb-pv-txt{fill:var(--pb-dim);font-size:9px;font-family:var(--ms-font)}
+.nw .pb-cite{margin:0;font-size:var(--pb-fs-ctl);color:var(--pb-dim);max-width:65ch}
+
+/* create: the text with its own header */
+.nw .pb-code{margin-top:10px;border:1px solid var(--pb-line);border-radius:8px;overflow:hidden}
+.nw .pb-code-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 3px 3px 10px;background:var(--pb-ctl);border-bottom:1px solid var(--pb-line);
+  font-size:var(--pb-fs-lbl);font-weight:600;color:var(--pb-label)}
+.nw .pb-code pre{margin:0;padding:10px 12px;max-height:290px;overflow:auto;white-space:pre-wrap;font:11.5px/1.6 var(--ms-font-mono);color:var(--ms-text);background:rgba(0,0,0,.18)}
+
+/* empty state */
+.nw .pb-empty{display:grid;justify-items:center;text-align:center;gap:6px;margin:18px auto 6px;padding:18px 16px;max-width:400px;border:1px dashed var(--pb-line-2);border-radius:10px;color:var(--pb-dim)}
+.nw .pb-empty p{margin:0;font-size:var(--pb-fs-ctl)}
+.nw .pb-empty p:first-of-type{color:var(--ms-text);font-size:var(--ms-fs)}
+
+/* the parts sheet */
+.parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px}
+.part{background:var(--ms-bg);border:1px solid var(--ms-border);border-radius:9px;padding:14px 16px 16px;color:var(--ms-text)}
+.part h3{margin:0 0 10px;font-size:13px;font-weight:650;color:#c9d1db}
+.part .rowx{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin:0 0 12px}
+.part .cap{display:block;font-size:11.5px;color:#7f8a97;margin-top:4px;text-align:center}
+.part .cell{display:inline-flex;flex-direction:column;align-items:center}
+.part .pb-stepper{border:1px solid var(--pb-line);border-radius:8px 8px 0 0}
+</style>
+</head>
+<body class="th-blue">
+<main class="pg">
+  <header class="pg-head">
+    <div>
+      <h1>Intelligent Deployment: a calmer, clearer tab</h1>
+      <p class="lede">Same five steps, same words, same keys and logic. CSS plus small markup changes in <code>PlanBuildTab.ts</code>, scoped to this tab so other widgets keep their look. Click anything in either panel: both follow the same step and choices. Drag a panel's bottom edge to make it taller.</p>
+    </div>
+    <div class="pg-ctl">Theme <div class="pg-seg" id="themes">
+      <button type="button" data-th="blue" aria-pressed="true">Blue (live)</button>
+      <button type="button" data-th="amber" aria-pressed="false">Amber</button>
+      <button type="button" data-th="nv" aria-pressed="false">Night vision</button>
+    </div></div>
+  </header>
+
+  <section class="cmp">
+    <figure>
+      <figcaption>Now <span>as the live tab draws it</span></figcaption>
+      <div class="mpanel od" id="pOld">
+        <div class="mhead"><span class="mh-icon">DEP</span><span class="mh-title">Deployment Mgr</span><span class="mh-dot"></span><span class="mh-lbl">Idle</span><span class="mh-btn">?</span><span class="mh-btn">▼</span><span class="mh-btn">✕</span></div>
+        <div class="mtabs"><button type="button" class="mtab">Templates</button><button type="button" class="mtab on">Intelligent Deployment</button></div>
+        <div class="db-build"></div>
+      </div>
+    </figure>
+    <figure>
+      <figcaption>Proposed <span>same content, same size</span></figcaption>
+      <div class="mpanel nw" id="pNew">
+        <div class="mhead"><span class="mh-icon">DEP</span><span class="mh-title">Deployment Mgr</span><span class="mh-dot"></span><span class="mh-lbl">Idle</span><span class="mh-btn">?</span><span class="mh-btn">▼</span><span class="mh-btn">✕</span></div>
+        <div class="mtabs"><button type="button" class="mtab">Templates</button><button type="button" class="mtab on">Intelligent Deployment</button><div class="mtabs-aside"></div></div>
+        <div class="db-build"></div>
+      </div>
+    </figure>
+  </section>
+  <p class="pg-note">Content is what the live tab showed for Defence, Bn Def two up. Other operations select but do not change the content. The Check step uses sample fitted figures so that every verdict shows.</p>
+
+  <h2>What changes</h2>
+  <p>Thirteen changes, none to the logic. Each names where it lands.</p>
+  <ol class="chg" id="chg"></ol>
+
+  <h2>The parts</h2>
+  <p>Every control the tab uses, in every state, in the theme picked above. One vocabulary: the same radius, height and selected look for segments, chips and buttons.</p>
+  <div class="parts nw" id="parts"></div>
+
+  <h2>Not changed</h2>
+  <ul class="keep">
+    <li>The five steps, their order, Build a plan and Check my plan.</li>
+    <li>Every word of doctrine, every reason, Why and Fix as the engines write them.</li>
+    <li>The keys while placing (M, P, R, T, J, Shift+J, Esc, Ctrl+Z).</li>
+    <li>The solver, the fit, the checks and the map graphics.</li>
+    <li>The panel's header, the Templates tab and every other widget: <code>.ms-btn</code> keeps its look outside this tab.</li>
+    <li>The cursor card while placing: it could follow in the same style later, not part of this.</li>
+  </ul>
+</main>
+
+<script>
+'use strict';
+// ── data (from the live tab, 15 Nov 2026) ─────────────────────────────────────────────────────────────────────
+const TASKS = [['defence', 'Defence'], ['attack', 'Attack'], ['ambush', 'Ambush'], ['patrol', 'Patrol'], ['recce', 'Recce'], ['crossing', 'Crossing']];
+const FAMS = [['bn', 'Bn Def'], ['coy', 'Coy Def']];
+const TYPES = [['std', 'Std Inf Bn', 1], ['mtn', 'Mtn Inf Bn', 1], ['mib', 'MIB (mounted)', 1], ['abib', 'ABIB (mounted)', 1], ['aa', 'Air Aslt Bn', 1],
+  ['cdo', 'Lt Cdo Bn', 0], ['lat-apc', 'LAT Bn (APC borne) (mounted)', 0], ['lat-jeep', 'LAT Bn (Jeep borne)', 0], ['hat', 'HAT Bn (APC/ITV borne) (mounted)', 0],
+  ['mjd', 'Mjd Bn', 1], ['mtn-mjd', 'Mtn Mjd Bn', 1]];
+const LAYOUTS = [['two-up', 'Two up', 'Bn Def: two up, two back'], ['three-up', 'Three up', 'Bn Def: three up'], ['one-up', 'One up', 'Bn Def: one up'], ['all-round', 'All round', 'Bn Def: all round'], ['canal', 'Canal', 'Bn Def: canal']];
+const GROUNDS = [['plains', 'Plains'], ['obstacle', 'Obstacle'], ['desert', 'Desert'], ['mountains', 'Mountains']];
+const ECH = [['15', 'Coy'], ['16', 'Bn'], ['18', 'Bde'], ['21', 'Div']];
+const ENT = [['inf', 'Inf'], ['mech', 'Mech'], ['armd', 'Armd']];
+const STEPS = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
+const WORD = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
+const ICON = { pass: 'check', warn: 'warn', fail: 'x', unchecked: 'dash' };
+const UNIT_LINE = "Std Inf Bn: 809 all ranks; 4 rifle Coys of 3 Pls; 4 BS (3.0 km); 8 106 mm RR (1.2 km); 6 81 mm Mor (3.7 km); 74 MG1A3 (457 m) (SO's Hbk 2019 p 606-611 (inf-bn-std))";
+const EN_LINE = "Sec 13: Inf Bde (RAPID): 2,574 all ranks; 12 manoeuvre Coys; 24 ATGM (?); 18 81 mm Mor (4.2 km) (SO's Hbk 2019 Sec 13 p 1302 (en-rapid-inf-bde)) · ATGM: no range in weapons.json";
+const WPN_OWN = [['4', 'BS', '3.0 km'], ['8', '106 mm RR', '1.2 km'], ['6', '81 mm Mor', '3.7 km'], ['74', 'MG1A3', '457 m']];
+const WPN_EN = [['24', 'ATGM', null], ['18', '81 mm Mor', '4.2 km']];
+const NOTE = 'Coys 1500 m wide with a 500 m gap (IBB Annex U App 6 p481): forward centres 1000 m either side of the axis.';
+const EN_P = 'His echelon sizes the approaches (he attacks on the corridors of the level below him: an en Bde on 1.5 km, IPB p 7) and the force ratio; his type sets his going (Inf on foot, Mech / Armd tracked), how fast he comes and where he forms up (1-1.2 km for infantry, 2.5-3 km for tanks, IBB pp 201, 214).';
+const EN_REST = 'When the mouse rests, his approaches are found (for his going, as wide as his corridors) from out along the front (assumed) to the plan and drawn in red; each is checked for direct fire from the forward posns, and the killing ground goes on the main one.';
+const TERRAIN_FULL = 'Terrain: fitted at rest · bundle 2026-11-11, land cover 2021, roads 2026-10-28, people 2026 (estimate)';
+// SAMPLE fitted reading (illustrative figures) so every verdict shows
+const CHECKS = [
+  { n: 'En force', st: 'pass', r: "en Inf Bde (RAPID), Mech, one level up: about 3 : 1 against the Std Inf Bn, the attack this plan is laid to hold (MW p 80)" },
+  { n: 'Terrain', st: 'pass', r: 'Plains, read where the plan rests' },
+  { n: 'Frontage', st: 'pass', r: '3.5 km held; the row allows 4.5 km (Battalion, two companies up)' },
+  { n: 'Depth', st: 'pass', r: '3.3 km; the row gives 3.0 km-4.0 km (Battalion, two companies up)' },
+  { n: 'Gaps', st: 'pass', r: 'widest 500 m; the row gives 500 m. Close it with mines, fire and patrols' },
+  { n: 'Mutual support', st: 'pass', r: "widest gap 500 m; both neighbours' MGs sweep up to 910 m (E)" },
+  { n: 'Facing the threat', st: 'pass', r: 'the forward posns face the threat' },
+  { n: 'Reserve reach', st: 'pass', r: 'D Coy to the C Pen posns in 24 min on foot (wants 30 min)' },
+  { n: 'Moves in time', st: 'warn', d: {
+    head: '1 of 2 moves has little to spare',
+    items: ['D Coy to the C Pen posn, penetration on A Coy: 31 min on foot, his Mech 34 min (little to spare)', 'D Coy to the C Pen posn, penetration on B Coy: 24 min on foot, his Mech 38 min (in time)'],
+    why: 'His Mech come at 18 km/h on GO (IPB p 18) from his FUP, and the clock starts when he moves; your Coys move on foot at 4 km/h.',
+    fix: ['Commit the reserve on the first sign of his main effort, or pre-position it at the C Pen posn', 'Mount the Bn: an MIB or ABIB type (Type) moves at vehicle speed', 'J moves the reserve nearer the main approach'] } },
+  { n: 'Alternates', st: 'pass', r: '2 placed, clear of the other posns; moves Alt A 16 min, Alt B 16 min' },
+  { n: 'Approaches covered', st: 'pass', r: '2 approaches, each under direct fire from a forward posn' },
+  { n: 'Fields of fire', st: 'warn', r: 'B Coy sees 41 % of its arc to 600 m; a tree line 300 m out screens the rest' },
+  { n: 'Flanks', st: 'fail', r: 'left flank open: no obstacle within 1 km of A Coy' },
+  { n: 'Exposure', st: 'unchecked', r: 'some ground was still loading' },
+  { n: 'Killing Gr', st: 'pass', r: 'on the main approach, 600 m in front of A and B Coys' },
+];
+const POSNS = [
+  { n: 'A Coy', st: 'fail', r: 'Flanks: left flank open · Fields of fire: 63 % of its arc' },
+  { n: 'B Coy', st: 'warn', r: 'Fields of fire: 41 % of its arc to 600 m' },
+  { n: 'C Coy', st: 'pass', r: 'Depth: covers the gap between A and B Coys' },
+  { n: 'D Coy', st: 'pass', r: 'Reserve: 24 min to the C Pen posns' },
+];
+const PV = `<path class="pb-pv-posn" d="M73.3 144.5 L92.8 138.5 L90.2 116.7 L60.4 114.3 L30.6 116.7 L28.0 138.5 L47.5 144.5"/><circle class="pb-pv-pt" cx="60.4" cy="129.4" r="3.2"/><path class="pb-pv-posn" d="M159.6 144.5 L179.0 138.5 L176.4 116.7 L146.7 114.3 L116.9 116.7 L114.3 138.5 L133.7 144.5"/><circle class="pb-pv-pt" cx="146.7" cy="129.4" r="3.2"/><path class="pb-pv-posn" d="M116.5 207.1 L135.9 201.0 L133.3 179.3 L103.5 176.9 L73.8 179.3 L71.2 201.0 L90.6 207.1"/><circle class="pb-pv-pt" cx="103.5" cy="192.0" r="3.2"/><path class="pb-pv-posn" d="M116.5 254.5 L135.9 248.5 L133.3 226.7 L103.5 224.3 L73.8 226.7 L71.2 248.5 L90.6 254.5"/><circle class="pb-pv-pt" cx="103.5" cy="239.4" r="3.2"/><path class="pb-pv-line" d="M28.0 105.7 L179.0 105.7 L179.0 94.9 L28.0 94.9 Z"/><path class="pb-pv-line" d="M34.5 112.6 L86.3 112.6"/><path class="pb-pv-line" d="M120.8 112.6 L172.6 112.6"/><path class="pb-pv-line" d="M28.0 114.3 L92.8 114.3 L114.3 114.3 L179.0 114.3"/><circle class="pb-pv-pt" cx="60.4" cy="99.2" r="2.2"/><circle class="pb-pv-pt" cx="146.7" cy="99.2" r="2.2"/><circle class="pb-pv-pt" cx="103.5" cy="60.4" r="2.2"/><circle class="pb-pv-pt" cx="94.9" cy="129.4" r="3.2"/><circle class="pb-pv-pt" cx="112.2" cy="129.4" r="3.2"/><circle class="pb-pv-pt" cx="116.5" cy="216.8" r="3.2"/><circle class="pb-pv-pt" cx="60.4" cy="90.6" r="2.2"/><circle class="pb-pv-pt" cx="146.7" cy="90.6" r="2.2"/><circle class="pb-pv-pt" cx="103.5" cy="90.6" r="2.2"/><circle class="pb-pv-pt" cx="60.4" cy="49.6" r="2.2"/><circle class="pb-pv-pt" cx="146.7" cy="49.6" r="2.2"/><circle class="pb-pv-pt" cx="6.5" cy="79.8" r="2.2"/><circle class="pb-pv-pt" cx="200.6" cy="79.8" r="2.2"/><circle class="pb-pv-pt" cx="65.8" cy="6.5" r="2.2"/><circle class="pb-pv-pt" cx="141.3" cy="6.5" r="2.2"/><circle class="pb-pv-pt" cx="103.5" cy="157.5" r="3.2"/><path class="pb-pv-alt" d="M69.5 172.3 L83.0 168.1 L81.2 152.9 L60.4 151.2 L39.6 152.9 L37.7 168.1 L51.3 172.3"/><path class="pb-pv-alt" d="M155.7 172.3 L169.3 168.1 L167.5 152.9 L146.7 151.2 L125.8 152.9 L124.0 168.1 L137.6 172.3"/><circle class="pb-pv-pt" cx="31.3" cy="120.8" r="3.2"/><circle class="pb-pv-pt" cx="50.7" cy="120.8" r="3.2"/>`;
+
+// ── state ───────────────────────────────────────────────────────────────────────────────────────────────────
+const S = { step: 1, mode: 'build', task: 'defence', fam: 'bn', type: 'std', layout: 'two-up', auto: false, ground: 'auto', detail: 'coy', alt: 'hidden',
+  enEch: 'auto', enType: 'auto', more: false, threat: 'none', scope: 'selected', checkView: 'plan', copied: false };
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const lbl = (list, id) => (list.find((x) => x[0] === id) || [])[1] || '';
+const planName = () => (S.auto ? 'Bn Def: Auto (best layout where it rests)' : (LAYOUTS.find((l) => l[0] === S.layout) || LAYOUTS[0])[2]);
+const count = (st) => CHECKS.filter((c) => c.st === st).length;
+const enEchName = () => (S.enEch === 'auto' ? 'Bde' : lbl(ECH, S.enEch));
+const enTypeName = () => (S.enType === 'auto' ? 'Mech' : lbl(ENT, S.enType));
+const planText = () => [
+  `${planName().toUpperCase()} (fitted where it was placed)`,
+  `Unit: ${UNIT_LINE}.`,
+  "Enemy: Inf Bde (RAPID): 2,574 all ranks; 12 manoeuvre Coys; 24 ATGM (?); 18 81 mm Mor (4.2 km) (SO's Hbk 2019 Sec 13 p 1302 (en-rapid-inf-bde)).",
+  'Frontage 3.5 km, depth 3.3 km.', '', 'POSNS',
+  ...POSNS.map((p, i) => `  ${p.n.padEnd(8)} ${['fwd', 'fwd', 'depth', 'res'][i].padEnd(6)} ${WORD[p.st]}`), '', 'CHECKS',
+  ...CHECKS.map((c) => `  ${c.n.padEnd(20)} ${WORD[c.st].padEnd(11)} ${c.r || c.d.head}`),
+].join('\n');
+
+// ── icons ───────────────────────────────────────────────────────────────────────────────────────────────────
+const IC = {
+  check: '<path d="M3 7.4l2.5 2.5L11 4.4"/>', warn: '<path d="M7 3.2v4.6"/><path d="M7 10.5v.1"/>', x: '<path d="M4.2 4.2l5.6 5.6M9.8 4.2l-5.6 5.6"/>', dash: '<path d="M4 7h6"/>',
+  aim: '<circle cx="7" cy="7" r="4.3"/><path d="M7 1.2v2.6M7 10.2v2.6M1.2 7h2.6M10.2 7h2.6"/>',
+  pin: '<path d="M7 12.6s3.9-3.5 3.9-6.6a3.9 3.9 0 0 0-7.8 0c0 3.1 3.9 6.6 3.9 6.6z"/><circle cx="7" cy="6" r="1.3"/>',
+  copy: '<rect x="4.6" y="4.6" width="7.2" height="7.2" rx="1.6"/><path d="M9.4 4.6V3.4a1.2 1.2 0 0 0-1.2-1.2H3.4a1.2 1.2 0 0 0-1.2 1.2v4.8a1.2 1.2 0 0 0 1.2 1.2h1.2"/>',
+  next: '<path d="M3 7h8M7.8 3.8L11 7l-3.2 3.2"/>', scan: '<circle cx="6.2" cy="6.2" r="3.9"/><path d="M9.1 9.1l3 3"/>',
+  layers: '<path d="M7 2l5 2.6-5 2.6-5-2.6z"/><path d="M2 7.2l5 2.6 5-2.6"/><path d="M2 9.8l5 2.6 5-2.6"/>',
+};
+const ic = (k, cls = '') => `<svg class="pb-ic ${cls}" viewBox="0 0 14 14" aria-hidden="true">${IC[k]}</svg>`;
+
+// ══ NOW: the markup PlanBuildTab writes today ═══════════════════════════════════════════════════════════════
+const oc = (on, label, data, title = '', dis = false) => `<button type="button" class="pb-chip${dis ? ' pb-later' : ''}" data-pb="${esc(data)}" aria-pressed="${on}"${dis ? ' aria-disabled="true"' : ''}${title ? ` title="${esc(title)}"` : ''}>${esc(label)}</button>`;
+const orow = (label, inner) => `<div class="pb-row"><span>${label}</span><div class="pb-chips">${inner}</div></div>`;
+const opill = (st) => `<span class="pb-pill pb-${st}">${WORD[st]}</span>`;
+const oPreview = () => `<svg class="pb-preview" viewBox="0 0 300 261" role="img" aria-label="The plan from above, front up">${PV}<line class="pb-pv-scale" x1="8" y1="253" x2="51.1" y2="253"/><text x="53.1" y="256" class="pb-pv-txt">1 km</text><text x="294" y="12" text-anchor="end" class="pb-pv-txt">Front ↑</text></svg>`;
+const oReason = (c) => (c.d ? `<div class="pb-det-head">${esc(c.d.head)}</div><ul class="pb-det-items">${c.d.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><div class="pb-det-why"><b>Why</b> ${esc(c.d.why)}</div><div class="pb-det-fix"><b>Fix</b><ul>${c.d.fix.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : esc(c.r));
+const enRowsOld = () => orow('En force', oc(S.enEch === 'auto', 'Auto (Bde)', 'enEch:auto', 'One level up: the 3 : 1 an attacker plans for (MW p 80)') + ECH.map(([id, l]) => oc(S.enEch === id, l, 'enEch:' + id)).join(''))
+  + orow('En type', oc(S.enType === 'auto', 'Auto (Mech)', 'enType:auto') + ENT.map(([id, l]) => oc(S.enType === id, l, 'enType:' + id)).join(''));
+const groundOld = () => orow('Ground', oc(S.ground === 'auto', 'Auto: Plains', 'ground:auto') + GROUNDS.map(([id, l]) => oc(S.ground === id, l, 'ground:' + id)).join(''));
+
+const OLD = {
+  1: () => orow('Operation', TASKS.map(([id, l]) => oc(S.task === id, l, 'task:' + id)).join(''))
+    + orow('Unit', FAMS.map(([id, l]) => oc(S.fam === id, l, 'fam:' + id)).join(''))
+    + orow('Type', TYPES.map(([id, l, ok]) => oc(S.type === id, l, 'type:' + id, ok ? '4 Coys' : '3 manoeuvre Coys: these layouts are for 4', !ok)).join(''))
+    + `<div class="pb-hint pb-unit">${esc(UNIT_LINE)}</div>`
+    + orow('Layout', LAYOUTS.map(([id, l, n]) => oc(!S.auto && S.layout === id, l, 'layout:' + id, n)).join('') + oc(S.auto, 'Auto', 'auto', 'Fit every layout where the plan rests and take the best'))
+    + groundOld()
+    + orow('Draw', oc(S.detail === 'coy', 'Coy posns', 'detail:coy') + oc(S.detail === 'pl', '+ Pl posns', 'detail:pl'))
+    + orow('Alternates', oc(S.alt === 'hidden', 'Created, hidden', 'alt:hidden') + oc(S.alt === 'visible', 'Shown', 'alt:visible') + oc(S.alt === 'none', 'None', 'alt:none'))
+    + `<div class="pb-sum"><b>${esc(planName())}</b> · 3.5 km × 3.3 km · 32 symbols · Bn Def (ORBAT)</div>${oPreview()}<div class="pb-hint">${esc(NOTE)}</div>`,
+  2: () => `<div class="pb-sum">Who attacks</div>${enRowsOld()}<div class="pb-hint pb-unit">${esc(EN_LINE)}</div><p class="pb-p pb-dim">${esc(EN_P)}</p>
+    <div class="pb-sum">Where the enemy comes from</div>
+    <div class="pb-chips">${oc(S.threat === 'arming', S.threat === 'marked' ? 'Move the threat' : 'Mark the threat on the map', 'threat')}${S.threat === 'marked' ? oc(false, 'Clear: aim by bearing', 'clearThreat') : ''}</div>
+    <p class="pb-p">${S.threat === 'marked' ? 'The threat is marked: the plan turns to face it as it follows the cursor, and <b>one click</b> places it.' : 'No threat marked: Place on Map, click where the <b>HQ</b> goes, then click toward the <b>enemy</b>.'}</p>
+    <p class="pb-p pb-dim">${esc(EN_REST)}</p>`,
+  3: () => `<div class="pb-sum"><b>${esc(planName())}</b>: 32 symbols as one placement</div>
+    <table class="pb-t"><tr><td>Battle Posns</td><td>4</td></tr><tr><td>Alternates (planned, dashed)</td><td>2, hidden</td></tr><tr><td>Units, HQ, weapons</td><td>10</td></tr><tr><td>Lines (FEBA, wire, SL, LOE …)</td><td>3</td></tr><tr><td>Points (LP, DF Tgt, OP)</td><td>12</td></tr></table>
+    <div class="pb-hint">Not placed without the ground: K1.</div>
+    <p class="pb-p">Press <b>Place on Map</b>. While the mouse <b>moves</b> the ghost is the quick layout; when it <b>rests</b> the plan is fitted to the ground there (posns slide out of NO-GO, the ghost and the card at the cursor show the result). Click to place the fitted plan. <b>Esc</b> cancels; <b>Ctrl+Z</b> takes the whole plan back; the Templates tab's <b>Last placement</b> moves or removes it.</p>`,
+  4: () => `<div class="pb-chips pb-subtabs">${oc(S.checkView === 'plan', 'This plan', 'checkView:plan')}${oc(S.checkView === 'compare', 'Compare layouts', 'checkView:compare')}</div>`
+    + (S.checkView === 'compare'
+      ? '<p class="pb-p">Place the plan once (or rest it on the map while placing): Compare fits every layout where it was.</p><button type="button" class="ms-btn" data-pb="noop">Compare here</button>'
+      : `<div class="pb-sum">Checks <span class="pb-dim">fitted where it was placed</span></div>
+        <div class="pb-hint">Score 72 · ${count('fail')} fail · ${count('warn')} warn · A Coy up 120 m to ground 8 m higher</div>
+        <table class="pb-t">${CHECKS.map((c) => `<tr><td>${esc(c.n)}</td><td>${opill(c.st)}</td><td class="pb-why">${oReason(c)}</td></tr>`).join('')}</table>
+        <div class="pb-sum">Posns</div><table class="pb-t">${POSNS.map((p) => `<tr><td>${esc(p.n)}</td><td>${opill(p.st)}</td><td class="pb-why">${esc(p.r)}</td></tr>`).join('')}</table>`),
+  5: () => `<div class="pb-sum">Create on Map is <b>Place on Map</b>: ordinary symbols, one undo step, each tagged with its role.</div>
+    <button type="button" class="ms-btn" data-pb="copy">${S.copied ? 'Copied' : 'Copy as Text'}</button><pre class="pb-text">${esc(planText())}</pre>`,
+};
+const oldCheckMode = () => `<div class="pb-sum">Check a plan on the map <span class="pb-dim">read as drawn, nothing moved; the same rules the build uses</span></div>
+  ${orow('Read', [['selected', 'Selected symbols'], ['last', 'Last placement'], ['all', 'All on the map']].map(([id, l]) => oc(S.scope === id, l, 'scope:' + id)).join(''))}
+  ${enRowsOld()}${groundOld()}
+  ${orow('Threat', oc(S.threat === 'arming', S.threat === 'marked' ? 'Move the threat' : 'Mark the threat', 'threat') + (S.threat === 'marked' ? oc(false, 'Clear', 'clearThreat') : ''))}
+  <div class="pb-chips" style="margin:6px 0"><button type="button" class="ms-btn ms-cta" data-pb="noop">Read and check</button></div>
+  <p class="pb-p pb-dim">Select the plan's symbols (or place one from Templates), then Read and check. Own and enemy symbols are both read: the enemy's give his force, his axes and his FUP.</p>`;
+
+function renderOld() {
+  const modes = `<div class="pb-chips pb-modes">${oc(S.mode === 'build', 'Build a plan', 'mode:build')}${oc(S.mode === 'check', 'Check my plan', 'mode:check', 'Read a plan drawn on the map and check it against the same rules')}</div>`;
+  if (S.mode === 'check') return `${modes}<div class="pb-body">${oldCheckMode()}</div><div class="pb-foot"><span class="pb-mode">${esc(TERRAIN_FULL)}</span></div>`;
+  const steps = `<div class="pb-steps">${STEPS.map((s, i) => `<button type="button" class="pb-step" data-pb="step:${i + 1}" aria-pressed="${S.step === i + 1}"><b>${i + 1}</b>${s}</button>`).join('')}</div>`;
+  return `${modes}${steps}<div class="pb-body">${OLD[S.step]()}</div><div class="pb-foot"><span class="pb-mode">${esc(TERRAIN_FULL)}</span><button type="button" class="ms-btn ms-cta pb-place" data-pb="noop">Place on Map ↗</button></div>`;
+}
+
+// ══ PROPOSED ════════════════════════════════════════════════════════════════════════════════════════════════
+/** One of a few: a segmented control. Auto (when the row has it) leads, set off by a divider; what Auto picked gets a dashed ring. */
+const seg = (items, cur, key, o = {}) => `<div class="pb-seg${o.sm ? ' pb-seg--sm' : ''}" role="group"${o.label ? ` aria-label="${esc(o.label)}"` : ''}>`
+  + (o.auto ? `<button type="button" data-pb="${key}:auto" aria-pressed="${cur === 'auto'}" title="${esc(o.autoTitle || '')}">Auto</button><span class="pb-sep" aria-hidden="true"></span>` : '')
+  + items.map(([id, l, t]) => `<button type="button" data-pb="${key}:${id}" aria-pressed="${cur === id}"${cur === 'auto' && o.autoPick === id ? ` class="pb-autopick" title="Auto picked ${esc(l)}"` : t ? ` title="${esc(t)}"` : ''}>${esc(l)}</button>`).join('')
+  + '</div>';
+const row = (label, inner) => `<div class="pb-row"><span class="pb-lbl">${label}</span><div class="pb-ctl">${inner}</div></div>`;
+const btn = (label, data, o = {}) => `<button type="button" class="pb-btn${o.primary ? ' pb-btn--primary' : ''}${o.ghost ? ' pb-btn--ghost' : ''}${o.sm ? ' pb-btn--sm' : ''}${o.armed ? ' is-armed' : ''}${o.cls ? ' ' + o.cls : ''}" data-pb="${data}"${o.title ? ` title="${esc(o.title)}"` : ''}${o.disabled ? ' disabled' : ''}>`
+  + (o.armed ? '<i class="pb-pulse" aria-hidden="true"></i>' : o.icon && !o.after ? ic(o.icon) : '') + `<span>${esc(label)}</span>` + (o.icon && o.after ? ic(o.icon) : '') + '</button>';
+/** Fails, then warnings, then not checked, then passes; the doctrine order kept within each. */
+const worstFirst = (rows) => ['fail', 'warn', 'unchecked', 'pass'].flatMap((st) => rows.filter((r) => r.st === st));
+const pill = (st) => `<span class="pb-pill pb-${st}">${ic(ICON[st], 'pb-ic-sm')}${WORD[st]}</span>`;
+const status = (kind = 'ready') => kind === 'ready'
+  ? `<div class="pb-status" title="${esc(TERRAIN_FULL)}"><i></i><span class="t">Terrain ready</span><span class="d">Fitted at rest · bundle 11 Nov, land cover 2021, roads 28 Oct</span></div>`
+  : kind === 'loading' ? '<div class="pb-status is-loading"><i></i><span class="t">Terrain loading…</span><span class="d">Geometry until it is in</span></div>'
+    : '<div class="pb-status is-off"><i></i><span class="t">Geometry only</span><span class="d">No terrain bundle: ground not checked</span></div>';
+
+function typeChips() {
+  const chip = ([id, l, ok]) => `<button type="button" class="pb-chip" data-pb="type:${id}" aria-pressed="${S.type === id}"${ok ? '' : ' aria-disabled="true" title="3 manoeuvre Coys: these layouts are for 4"'}>${esc(l)}</button>`;
+  const off = TYPES.filter((t) => !t[2]);
+  return `<div class="pb-chipset">${TYPES.filter((t) => t[2] || S.more).map(chip).join('')}<button type="button" class="pb-more" data-pb="more">${S.more ? 'Hide not offered' : `+${off.length} not offered`}</button></div>`;
+}
+const wpns = (list) => `<div class="pb-wpns">${list.map(([n, w, r]) => `<span class="pb-wpn"><span class="n">${n}</span><span class="x">×</span>${esc(w)}${r ? `<span class="r">${r}</span>` : '<span class="q" title="No range in weapons.json">range ?</span>'}</span>`).join('')}</div>`;
+const factsOwn = () => (S.type === 'std'
+  ? `<div class="pb-facts"><div><b>Std Inf Bn</b>809 all ranks · 4 rifle Coys of 3 Pls</div>${wpns(WPN_OWN)}<div class="pb-src">SO's Hbk 2019 p 606-611 (inf-bn-std)</div></div>`
+  : `<div class="pb-facts"><div><b>${esc(lbl(TYPES, S.type))}</b>its ORBAT figures here (this mockup carries the Std Inf Bn's only)</div></div>`);
+const factsEn = () => `<div class="pb-facts" style="margin-left:94px"><div><b>Inf Bde (RAPID)</b>2,574 all ranks · 12 manoeuvre Coys</div>${wpns(WPN_EN)}<div class="pb-src">Sec 13 · SO's Hbk 2019 p 1302 (en-rapid-inf-bde)</div></div>`;
+const nPreview = () => `<svg class="pb-preview" viewBox="0 0 300 261" role="img" aria-label="The plan from above, front up"><defs><pattern id="pbGrid" width="21.55" height="21.55" patternUnits="userSpaceOnUse"><path class="pb-pv-grid" d="M21.55 0H0V21.55"/></pattern></defs><rect width="300" height="261" fill="url(#pbGrid)"/><g transform="translate(46 0)">${PV}</g><line class="pb-pv-scale" x1="8" y1="253" x2="51.1" y2="253"/><text x="55" y="256" class="pb-pv-txt">1 km</text><text x="292" y="13" text-anchor="end" class="pb-pv-txt">Front ↑</text></svg>`;
+const enRowsNew = () => row('En force', seg(ECH, S.enEch, 'enEch', { auto: true, autoPick: '18', autoTitle: 'One level up: the 3 : 1 an attacker plans for (MW p 80)' }))
+  + row('En type', seg(ENT, S.enType, 'enType', { auto: true, autoPick: 'mech', autoTitle: 'The doctrinal default for his echelon' }));
+const groundNew = () => row('Ground', seg(GROUNDS, S.ground, 'ground', { auto: true, autoPick: 'plains', autoTitle: 'Read off the terrain where the plan rests: 400 m of rise within 5 km = mountains, a canal or bund in front = obstacle, dunes or sand = desert' }));
+const threatBtn = (short) => S.threat === 'arming'
+  ? `${btn('Click the map where he comes from', 'threat', { armed: true })}<span class="pb-keyhint"><kbd>Esc</kbd> cancels</span>`
+  : S.threat === 'marked'
+    ? `${btn('Move the threat', 'threat', { icon: 'aim', sm: short })}${btn(short ? 'Clear' : 'Clear: aim by bearing', 'clearThreat', { ghost: true, sm: short })}`
+    : btn(short ? 'Mark the threat' : 'Mark the threat on the map', 'threat', { icon: 'aim', sm: short, title: 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front' });
+
+const NEW = {
+  1: () => `<div class="pb-group">${row('Operation', seg(TASKS, S.task, 'task', { label: 'Operation' }))}${row('Unit', seg(FAMS, S.fam, 'fam'))}${row('Type', typeChips())}${factsOwn()}</div>
+    <div class="pb-group">${row('Layout', seg(LAYOUTS, S.auto ? 'auto' : S.layout, 'layout', { auto: true, autoPick: 'two-up', autoTitle: 'Fit every layout where the plan rests and take the best' }))}
+      ${groundNew()}${row('Draw', seg([['coy', 'Coy posns'], ['pl', '+ Pl posns']], S.detail, 'detail'))}
+      ${row('Alternates', seg([['hidden', 'Created, hidden'], ['visible', 'Shown'], ['none', 'None']], S.alt, 'alt'))}</div>
+    <div class="pb-plan"><div class="pb-h">${esc(planName())}<small>3.5 × 3.3 km · 32 symbols</small></div>${nPreview()}<p class="pb-cite">${esc(NOTE)}</p></div>`,
+  2: () => `<div class="pb-h">Who attacks</div>${enRowsNew()}${factsEn()}<p class="pb-p pb-quiet">${esc(EN_P)}</p>
+    <div class="pb-h">Where the enemy comes from</div>
+    <div class="pb-actionline">${threatBtn(false)}</div>
+    ${S.threat === 'marked'
+      ? '<p class="pb-p">The threat is marked: the plan turns to face it as it follows the cursor, and <b>one click</b> places it.</p>'
+      : '<ol class="pb-howto"><li>Press <b>Place on Map</b> and click where the <b>HQ</b> goes</li><li>Click toward the <b>enemy</b></li></ol>'}
+    <p class="pb-p pb-quiet">${esc(EN_REST)}</p>`,
+  3: () => `<div class="pb-h">${esc(planName())}<small>32 symbols as one placement</small></div>
+    <dl class="pb-dl"><dt>Battle Posns</dt><dd>4</dd><dt>Alternates (planned, dashed)</dt><dd>2<span>hidden</span></dd><dt>Units, HQ, weapons</dt><dd>10</dd><dt>Lines (FEBA, wire, SL, LOE …)</dt><dd>3</dd><dt>Points (LP, DF Tgt, OP)</dt><dd>12</dd></dl>
+    <div class="pb-callout pb-callout--warn">${ic('warn')}<span>Not placed without the ground: <b>K1</b>.</span></div>
+    <div class="pb-h">Press Place on Map, then</div>
+    <div class="pb-keys">
+      <span><kbd class="m">Move</kbd></span><span>The ghost is the quick layout.</span>
+      <span><kbd class="m">Rest</kbd></span><span>The plan is fitted to the ground there: posns slide out of NO-GO; the ghost and the card at the cursor show the result.</span>
+      <span><kbd class="m">Click</kbd></span><span>Places the fitted plan.</span>
+      <span><kbd>Esc</kbd></span><span>Cancels.</span>
+      <span><kbd>Ctrl</kbd> <kbd>Z</kbd></span><span>Takes the whole plan back.</span>
+    </div>
+    <p class="pb-p pb-quiet">The Templates tab's <b>Last placement</b> moves or removes it.</p>`,
+  4: () => `<div>${seg([['plan', 'This plan'], ['compare', 'Compare layouts']], S.checkView, 'checkView', { sm: true })}</div>`
+    + (S.checkView === 'compare'
+      ? `<div class="pb-empty">${ic('layers', 'pb-ic-lg')}<p>Compare fits every layout where the plan was.</p><p>Place the plan once, or rest it on the map while placing.</p>${btn('Compare here', 'noop', { sm: true })}</div>`
+      : `<div class="pb-tallyhead"><div class="pb-h" style="margin:0">Checks<small>fitted where it was placed</small></div><div class="pb-score">Score<b>72</b></div></div>
+        <div class="pb-tally" role="img" aria-label="${count('pass')} pass, ${count('warn')} warn, ${count('fail')} fail, ${count('unchecked')} not checked">${['pass', 'warn', 'fail', 'unchecked'].map((s) => (count(s) ? `<span class="s-${s}" style="flex:${count(s)}"></span>` : '')).join('')}</div>
+        <div class="pb-tl">${['pass', 'warn', 'fail', 'unchecked'].map((s) => `<span class="c-${s}">${ic(ICON[s], 'pb-ic-sm')}<b>${count(s)}</b>${WORD[s].toLowerCase()}</span>`).join('')}</div>
+        <p class="pb-p pb-quiet" style="margin:2px 0 0">A Coy moved up 120 m to ground 8 m higher.</p>
+        <ul class="pb-checks">${worstFirst(CHECKS).map((c) => `<li class="pb-ck"><div>${pill(c.st)}</div><div><div class="pb-ck-name">${esc(c.n)}</div>${c.d
+          ? `<div class="pb-det-head">${esc(c.d.head)}</div><ul class="pb-det-items">${c.d.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><div class="pb-det-why"><b>Why</b>${esc(c.d.why)}</div><div class="pb-det-fix"><b>Fix</b><ul>${c.d.fix.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`
+          : `<div class="pb-ck-why">${esc(c.r)}</div>`}</div></li>`).join('')}</ul>
+        <div class="pb-h">Posns</div>
+        <ul class="pb-checks">${POSNS.map((p) => `<li class="pb-ck"><div>${pill(p.st)}</div><div><div class="pb-ck-name">${esc(p.n)}</div><div class="pb-ck-why">${esc(p.r)}</div></div></li>`).join('')}</ul>`),
+  5: () => `<p class="pb-p pb-quiet" style="margin-top:0">Create on Map is <b>Place on Map</b>: ordinary symbols, one undo step, each tagged with its role.</p>
+    <div class="pb-code"><div class="pb-code-h"><span>Plan as text</span>${btn(S.copied ? 'Copied' : 'Copy as Text', 'copy', { icon: S.copied ? 'check' : 'copy', sm: true, ghost: true })}</div><pre>${esc(planText())}</pre></div>`,
+};
+const newCheckMode = () => `<p class="pb-p pb-quiet" style="margin-top:0">Read as drawn, nothing moved; the same rules the build uses.</p>
+  ${row('Read', seg([['selected', 'Selected symbols'], ['last', 'Last placement'], ['all', 'All on the map']], S.scope, 'scope'))}
+  ${enRowsNew()}${groundNew()}${row('Threat', threatBtn(true))}
+  <div class="pb-empty">${ic('scan', 'pb-ic-lg')}<p>Select the plan's symbols (or place one from Templates), then <b>Read and check</b>.</p><p>Own and enemy symbols are both read: the enemy's give his force, his axes and his FUP.</p></div>`;
+
+function stepper(cls = '') {
+  const subs = [`${lbl(FAMS, S.fam)} · ${S.auto ? 'Auto' : lbl(LAYOUTS, S.layout)}`, `${enEchName()} · ${enTypeName()}`, '32 symbols',
+    `<span class="t-fail">${count('fail')} fail</span> · <span class="t-warn">${count('warn')} warn</span>`, 'Copy as Text'];
+  return `<nav class="pb-stepper ${cls}" aria-label="Steps">${STEPS.map((s, i) => {
+    const n = i + 1, c = n === S.step ? 'is-cur' : n < S.step ? 'is-past' : '';
+    return `<button type="button" class="pb-st ${c}" data-pb="step:${n}"${n === S.step ? ' aria-current="step"' : ''}><span class="pb-st-dot">${n}</span><span class="pb-st-name">${s}</span><span class="pb-st-sub">${subs[i]}</span></button>`;
+  }).join('')}</nav>`;
+}
+function renderNew() {
+  if (S.mode === 'check') return `<div class="pb-body">${newCheckMode()}</div><div class="pb-foot">${status()}${btn('Read and check', 'noop', { primary: true, icon: 'scan' })}</div>`;
+  const next = S.step < 5 ? btn(`Next: ${STEPS[S.step]}`, 'next', { icon: 'next', after: true }) : '';
+  return `${stepper()}<div class="pb-body">${NEW[S.step]()}</div><div class="pb-foot">${status()}${next}${btn('Place on Map', 'noop', { primary: true, icon: 'pin' })}</div>`;
+}
+
+// ── render + clicks ─────────────────────────────────────────────────────────────────────────────────────────
+const pOld = document.getElementById('pOld'), pNew = document.getElementById('pNew');
+let lastKey = '';
+function render() {
+  const key = `${S.mode}:${S.step}:${S.checkView}`;
+  const keep = key === lastKey ? [pOld, pNew].map((p) => p.querySelector('.pb-body')?.scrollTop ?? 0) : [0, 0];
+  pOld.querySelector('.db-build').innerHTML = renderOld();
+  pNew.querySelector('.db-build').innerHTML = renderNew();
+  pNew.querySelector('.mtabs-aside').innerHTML = seg([['build', 'Build a plan'], ['check', 'Check my plan']], S.mode, 'mode', { sm: true, label: 'Mode' });
+  [pOld, pNew].forEach((p, i) => { const b = p.querySelector('.pb-body'); if (b) b.scrollTop = keep[i]; });
+  lastKey = key;
+}
+function act(k, v) {
+  switch (k) {
+    case 'step': S.step = +v; break;
+    case 'next': S.step = Math.min(5, S.step + 1); break;
+    case 'auto': S.auto = !S.auto; break;
+    case 'layout': if (v === 'auto') S.auto = true; else { S.auto = false; S.layout = v; } break;
+    case 'more': S.more = !S.more; break;
+    case 'threat': S.threat = S.threat === 'arming' ? 'marked' : 'arming'; break;
+    case 'clearThreat': S.threat = 'none'; break;
+    case 'copy': S.copied = true; setTimeout(() => { S.copied = false; render(); }, 1600); break;
+    case 'noop': return;
+    default: if (k in S) S[k] = v; else return;
+  }
+  render();
+}
+[pOld, pNew].forEach((p) => p.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pb]');
+  if (!b || b.getAttribute('aria-disabled') === 'true') return;
+  const [k, ...rest] = b.dataset.pb.split(':');
+  act(k, rest.join(':'));
+}));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.threat === 'arming') { S.threat = 'none'; render(); } });
+document.getElementById('themes').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-th]'); if (!b) return;
+  document.body.className = 'th-' + b.dataset.th;
+  document.querySelectorAll('#themes button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+});
+
+// ── what changes ────────────────────────────────────────────────────────────────────────────────────────────
+const CHANGES = [
+  ['The mode switch moves up into the tab row.', 'Build a plan | Check my plan becomes a small segmented control at the right of the Templates / Intelligent Deployment tabs. It reads as a mode, not one more option, and it frees a row for the steps.', '_render, plus a slot in the Mgr\'s tab bar'],
+  ['A stepper, not five grey boxes.', 'Numbered dots on a progress track, the current step filled. Under each name, what is chosen there: Bn Def · Two up, Bde · Mech, 32 symbols, 1 fail · 2 warn. The plan reads at a glance and the Check step warns before it is opened. Steps stay free to jump; aria-current marks the one open.', '_render'],
+  ['One-of options become segmented controls.', 'Operation, Unit, Layout, Ground, Draw, Alternates, En force, En type, Read, and the attack, ambush, patrol and crossing rows. Selected is a tinted fill with a ring and bright text, not only a blue outline: it holds in bright light and does not lean on colour alone.', 'a _seg() beside _chip()'],
+  ['Auto leads, everywhere.', 'Auto comes first in every row that has it (it was last in Layout), set off by a thin divider. What it picked carries a dashed ring instead of the words "Auto (Bde)".', '_seg()'],
+  ['Long lists fold.', 'Bn types stay chips; the four not offered (3 Coys) fold behind "+4 not offered" instead of filling two lines with faded chips.', '_unitTypeRow'],
+  ['Labels you can read.', 'Row labels and hints are drawn from the theme\'s own text colour. In the live blue theme labels go from 2.3 : 1 to 6.6 : 1 and hints from 3.4 : 1 to 5.3 : 1 (WCAG asks 4.5); Amber and Night vision rise the same way. Labels in sentence case, semi-bold.', 'Widgets.css tokens'],
+  ['Unit and enemy facts laid out.', 'The run-on line becomes the name and strength, then each weapon with its range, then the source, aligned with the options. A weapon with no range says "range ?" in amber.', '_unitTypeRow, _stepEnemy'],
+  ['Buttons.', 'Sentence case and no letter-spacing (PRODUCT.md rules out tiny tracked capitals), 32 px tall, an icon where it helps. Three kinds only: primary (filled, one per screen), secondary, ghost; with hover, focus ring, pressed, disabled and armed (a pulsing dot, no glow). Scoped to the tab.', 'Widgets.css'],
+  ['Footer.', 'Terrain status as a dot and "Terrain ready", the dates on a short second line, the full line on hover. Next: Enemy sits beside Place on Map; in Check my plan, Read and check takes the same place.', '_render, _modeLine'],
+  ['How to place, as keys.', 'The placing paragraph becomes Move, Rest, Click, Esc, Ctrl Z, each with its key. The reasoning prose stays, quieter, at most about 65 characters a line.', '_stepPlace, _stepEnemy'],
+  ['Checks: the answer first.', 'A tally bar (pass, warn, fail, not checked) and the score on top. Fails and warnings come first, the doctrine order kept within each (drop this if the order itself matters). Each row leads with its verdict, a word and an icon (✓ ! ✕ −), then the name, the reason under it. Why and Fix as now.', '_planChecks, _checkMyPlanView, reasonHtml'],
+  ['Create.', 'The text sits in a block with its own header and the Copy button in it.', '_stepCreate'],
+  ['Preview.', 'Framed, centred (it sits to the left today), with a faint 500 m grid; Front ↑ and the 1 km bar kept.', '_preview'],
+];
+document.getElementById('chg').innerHTML = CHANGES.map(([h, t, w]) => `<li><div><p><b>${esc(h)}</b> ${esc(t)}</p><span class="w">Where: <code>${esc(w)}</code></span></div></li>`).join('');
+
+// ── the parts sheet ─────────────────────────────────────────────────────────────────────────────────────────
+const cell = (html, cap) => `<span class="cell">${html}<span class="cap">${cap}</span></span>`;
+document.getElementById('parts').innerHTML = `
+  <div class="part"><h3>Buttons</h3>
+    <div class="rowx">${cell(btn('Place on Map', 'x', { primary: true, icon: 'pin' }), 'primary')}${cell(btn('Place on Map', 'x', { primary: true, icon: 'pin', cls: 'is-hover' }), 'hover')}${cell(btn('Place on Map', 'x', { primary: true, icon: 'pin', cls: 'is-focus' }), 'focus')}${cell(btn('Place on Map', 'x', { primary: true, icon: 'pin', disabled: true }), 'disabled')}</div>
+    <div class="rowx">${cell(btn('Next: Enemy', 'x', { icon: 'next', after: true }), 'secondary')}${cell(btn('Next: Enemy', 'x', { icon: 'next', after: true, cls: 'is-hover' }), 'hover')}${cell(btn('Next: Enemy', 'x', { icon: 'next', after: true, cls: 'is-active' }), 'pressed')}${cell(btn('Click the map…', 'x', { armed: true }), 'armed')}</div>
+    <div class="rowx">${cell(btn('Copy as Text', 'x', { icon: 'copy', ghost: true, sm: true }), 'ghost, small')}${cell(btn('Clear', 'x', { ghost: true, sm: true, cls: 'is-hover' }), 'ghost hover')}${cell(btn('Compare here', 'x', { sm: true }), 'secondary, small')}</div>
+  </div>
+  <div class="part"><h3>Choosing</h3>
+    <div class="rowx">${cell(seg(ECH, 'auto', 'x', { auto: true, autoPick: '18' }), 'Auto, with what it picked ringed')}</div>
+    <div class="rowx">${cell(seg(ECH, '16', 'x', { auto: true }), 'a value set by hand')}</div>
+    <div class="rowx">${cell(`<div class="pb-chipset"><button type="button" class="pb-chip" aria-pressed="false">Mtn Inf Bn</button><button type="button" class="pb-chip" aria-pressed="true">Std Inf Bn</button><button type="button" class="pb-chip" aria-disabled="true">Lt Cdo Bn</button><button type="button" class="pb-more">+4 not offered</button></div>`, 'chips: off, on, not offered, the fold')}</div>
+  </div>
+  <div class="part"><h3>Verdicts</h3>
+    <div class="rowx">${['pass', 'warn', 'fail', 'unchecked'].map((s) => pill(s)).join('')}</div>
+    <div class="pb-tally"><span class="s-pass" style="flex:11"></span><span class="s-warn" style="flex:2"></span><span class="s-fail" style="flex:1"></span><span class="s-unchecked" style="flex:1"></span></div>
+    <div class="pb-tl"><span class="c-pass">${ic('check', 'pb-ic-sm')}<b>11</b>pass</span><span class="c-warn">${ic('warn', 'pb-ic-sm')}<b>2</b>warn</span><span class="c-fail">${ic('x', 'pb-ic-sm')}<b>1</b>fail</span><span class="c-unchecked">${ic('dash', 'pb-ic-sm')}<b>1</b>not checked</span></div>
+    <div class="pb-callout pb-callout--warn">${ic('warn')}<span>Not placed without the ground: <b>K1</b>.</span></div>
+  </div>
+  <div class="part"><h3>Terrain status and keys</h3>
+    <div style="display:grid;gap:10px;margin-bottom:14px">${status('ready')}${status('loading')}${status('off')}</div>
+    <div class="rowx"><kbd>Esc</kbd><span><kbd>Ctrl</kbd> <kbd>Z</kbd></span><kbd>J</kbd><kbd class="m">Rest</kbd><kbd class="m">Click</kbd><span class="pb-keyhint"><kbd>T</kbd> while placing</span></div>
+  </div>
+  <div class="part" style="grid-column:1 / -1"><h3>Stepper (step 4 open: 1 to 3 behind it, 5 ahead)</h3>${(() => { const s = S.step; S.step = 4; const h = stepper(); S.step = s; return h; })()}</div>`;
+
+render();
+</script>
+</body>
+</html>

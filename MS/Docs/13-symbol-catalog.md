@@ -2,7 +2,7 @@
 
 > Generated from `MS/Data/Symbols.json` by `tools/genSymbolCatalog.mjs`. Do not edit by hand; run `npm run docs:catalog`.
 
-The catalog holds **1147** entries. The key is what you pass to the engine to pick a symbol.
+The catalog holds **1155** entries. The key is what you pass to the engine to pick a symbol.
 
 ## Geometry types
 
@@ -10,8 +10,8 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | --- | --- | --- |
 | `FPoint` | Framed point symbol drawn from a SIDC (units, equipment, installations); uses `options` | 568 |
 | `Point` | Tactical point symbol placed with one click; uses amplifier + drawEssentials | 407 |
-| `Area` | Tactical area graphic (polygon) | 99 |
-| `Line` | Tactical line graphic (polyline) | 73 |
+| `Area` | Tactical area graphic (polygon) | 102 |
+| `Line` | Tactical line graphic (polyline) | 78 |
 
 ## Implementation classes
 
@@ -19,6 +19,7 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | --- | --- |
 | `UEISymbol` | 568 |
 | `TacticalPoint` | 405 |
+| `Bridge` | 3 |
 | `FreehandAreaFilled` | 2 |
 | `AirspaceArea` | 2 |
 | `AutoShape` | 2 |
@@ -42,11 +43,13 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | `CounterAttkObj` | 1 |
 | `FormingUpPoint` | 1 |
 | `StartLine` | 1 |
+| `Feba` | 1 |
 | `PrincipalDirectionOfFire` | 1 |
 | `FriendlyDirOfMainAttk` | 1 |
 | `FriendlyDirOfSpAttk` | 1 |
 | `DirectionOfFeintAttack` | 1 |
 | `InfiltrationLane` | 1 |
+| `LimitOfAdvance` | 1 |
 | `BridgeHeadLine` | 1 |
 | `Ambush` | 1 |
 | `CLineOfDenial` | 1 |
@@ -110,6 +113,9 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | `ShortRangeAirDefenseEngagementZone` | 1 |
 | `WeaponFreeZone` | 1 |
 | `VulnArea` | 1 |
+| `PaaRect` | 1 |
+| `PaaCircle` | 1 |
+| `Fpf` | 1 |
 | `ZoneOfResponsibility` | 1 |
 | `KillingGr` | 1 |
 | `VitalGr` | 1 |
@@ -136,7 +142,6 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | `DecoyMinedArea` | 1 |
 | `DecoyMinedAreaFenced` | 1 |
 | `UXOArea` | 1 |
-| `Bridge` | 1 |
 | `ObstacleLine` | 1 |
 | `DitchEmpty` | 1 |
 | `DitchFilledWithWater` | 1 |
@@ -189,6 +194,7 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | `FreehandSemiCircleFilled` | 1 |
 | `CartoInformationModelSymbol` | 1 |
 | `ImpGr` | 1 |
+| `SecurityZone` | 1 |
 
 ## Field reference
 
@@ -1244,6 +1250,8 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | `25171900` | Short Range Air Defense Engagement Zone | `ShortRangeAirDefenseEngagementZone` | Control Measures / Airspace |  |
 | `25172000` | Weapon Free Zone | `WeaponFreeZone` | Control Measures / Airspace |  |
 | `25214802` | Vuln Area | `VulnArea` | Control Measures / Vuln Area | DRAW_TYPE |
+| `25240501` | PAA / Gun Area - Rectangular | `PaaRect` | Control Measures / PAA / Gun Area - Rectangular | DRAW_TYPE |
+| `25240502` | PAA / Gun Area - Circular | `PaaCircle` | Control Measures / PAA / Gun Area - Circular | DRAW_TYPE |
 | `25241901` | Zone of Responsibility | `ZoneOfResponsibility` | Control Measures / Zone of Responsibility | DRAW_TYPE |
 | `25242300` | Killing Gr | `KillingGr` | Control Measures / Killing Gr | DRAW_TYPE |
 | `25242301` | Vital Gr | `VitalGr` | Control Measures / Vital Gr | DRAW_TYPE |
@@ -1288,6 +1296,7 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | `00000140` | Freehand - Semi Circle Filled | `FreehandSemiCircleFilled` | Freehand / Shapes |  |
 | `00000150` | Carto Symbol | `CartoInformationModelSymbol` | Freehand / Shapes | DRAW_TYPE |
 | `00000160` | Imp Gr | `ImpGr` | Control Measures / Imp Gr | DRAW_TYPE |
+| `00000161` | Security Zone | `SecurityZone` | Control Measures / Security Zone | DRAW_TYPE |
 | `00000200` | Auto Shape - Area | `AutoShape` | Freehand / AutoShapes | DRAW_TYPE |
 | `00000201` | Auto Shape - Block Arrows | `AutoShape` | Freehand / AutoShapes | DRAW_TYPE |
 
@@ -1303,11 +1312,13 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | `25140301` | Counter Attk Obj | `CounterAttkObj` | Control Measures / Counter Attk Obj | DRAW_TYPE |
 | `25140302` | FUP | `FormingUpPoint` | Control Measures / FUP | DRAW_TYPE |
 | `25140303` | Start Line | `StartLine` | Control Measures / Start Line | DRAW_TYPE |
+| `25140400` | FEBA / FDL | `Feba` | Control Measures / FEBA / FDL | DRAW_TYPE |
 | `25140500` | Principal Direction of Fire | `PrincipalDirectionOfFire` | Control Measures / Principal Direction of Fire |  |
 | `25140602` | Friendly Direction of Main Attk | `FriendlyDirOfMainAttk` | Control Measures / Friendly Direction of Main Attk |  |
 | `25140603` | Friendly Direction of Sp Attk, Dir Arrow | `FriendlyDirOfSpAttk` | Control Measures / Friendly Direction of Sp Attk, Dir Arrow | DRAW_TYPE |
 | `25140605` | Direction of Feint Attack | `DirectionOfFeintAttack` | Control Measures / Direction of Feint Attack | DRAW_TYPE |
 | `25140800` | Infiltration Lane | `InfiltrationLane` | Control Measures / Infiltration Lane |  |
+| `25140900` | LOA / LOE | `LimitOfAdvance` | Control Measures / LOA / LOE | DRAW_TYPE |
 | `25141400` | Bridgehead Line | `BridgeHeadLine` | Control Measures / Bridgehead Line | DRAW_TYPE |
 | `25141700` | Ambush | `Ambush` | Control Measures / Ambush | TEETH_SIZE, TEETH_GAP |
 | `25141800` | Corps Line of Denial | `CLineOfDenial` | Control Measures / Corps Line of Denial | DRAW_TYPE |
@@ -1330,8 +1341,11 @@ The catalog holds **1147** entries. The key is what you pass to the engine to pi
 | `25170600` | Transit Corridors | `TransitCorridors` | Control Measures / UAV Route |  |
 | `25170700` | UAV Route | `UARoute` | Control Measures / UAV Route |  |
 | `25170701` | Flight Route | `FlightRoute` | Control Measures / Flight Route | DRAW_TYPE |
+| `25240703` | FPF | `Fpf` | Control Measures / FPF | DRAW_TYPE |
 | `25270504` | Turn / Obs Effect | `Turn` | Control Measures / Turn / Obs Effect |  |
 | `25271100` | Bridge - Gap | `Bridge` | Control Measures / Bridge - Gap | TAIL_FACTOR, FLAP_ANGLE |
+| `25271300` | Assault Crossing | `Bridge` | Control Measures / Assault Crossing | TAIL_FACTOR, FLAP_ANGLE |
+| `25271400` | Bridge | `Bridge` | Control Measures / Bridge | TAIL_FACTOR, FLAP_ANGLE |
 | `25290100` | Obstacle Line | `ObstacleLine` | Control Measures / Obstacle Line | DRAW_TYPE |
 | `25290201` | DCB | `DitchEmpty` | Control Measures / DCB | TEETH_SIZE, TEETH_GAP |
 | `25290202` | DCB - Filled With Water | `DitchFilledWithWater` | Control Measures / DCB - Filled With Water | TEETH_SIZE, TEETH_GAP |
