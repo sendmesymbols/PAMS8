@@ -92,6 +92,9 @@ export class MainAttack {
         // Set parameters from options
         this._headPercentage = GeoTools.setDefault(options, "HEAD_RATIO", this._headPercentage);
         this._tailFactor = GeoTools.setDefault(options, "TAIL_FACTOR", this._tailFactor);
+        // BASE_LN_PTS (a base line across the tail), when given, sets the tail's width on the ground: the TAIL_FACTOR that draws it.
+        const tfBase = GeoTools.tailFactorFromBaseLine((options as any).CTRL_PTS, (options as any).BASE_LN_PTS);
+        if (tfBase !== null) this._tailFactor = tfBase;
 
         const drawEssentials = new DrawEssentials();
         const baseLine = new BaseLine(this.view, this._lineSym as SimpleLineSymbol);

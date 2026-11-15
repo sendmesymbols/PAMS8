@@ -1,0 +1,121 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "pl-patrol",
+  "family": "pl-patrol",
+  "layout": "patrol",
+  "echelon": "14",
+  "basis": "E",
+  "task": "patrol",
+  "name": "Pl Patrol: out and back",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "Plan metres from the SP (the click), y toward the objective (the aim: the second click is the Obj). FRV 450 m short of the Obj (R: 400-500 m), check points at the bounds 550-750 m apart (R), the route in different from the route out (R). Without the terrain: straight lines, the Obj 3 km out (E) until it is aimed; with it, the routes from the Movement Guide (planPatrol: round NO-GO, away from roads, villages, wood edges by night, skylines and ground the threat sees) and the patrol card (PlatoonGuideRead.patrolCard: legs, bounds, FRV, times by day and night).",
+  "pivot": "sp",
+  "slots": [
+    {
+      "role": "sp",
+      "kind": "point",
+      "sym": "25131600",
+      "label": "SP",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "ptl",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Ptl",
+      "echelon": "13",
+      "order": 1,
+      "shape": {
+        "at": [
+          -120,
+          60
+        ]
+      }
+    },
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -3000,
+          "wM": 300,
+          "hM": 300
+        }
+      }
+    },
+    {
+      "role": "frv",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "FRV",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          -2550
+        ]
+      }
+    },
+    {
+      "role": "out",
+      "kind": "line",
+      "sym": "00000006",
+      "label": "Out",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            0
+          ],
+          [
+            120,
+            -1300
+          ],
+          [
+            0,
+            -2550
+          ]
+        ]
+      }
+    },
+    {
+      "role": "in",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "In",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -60,
+            -2850
+          ],
+          [
+            -300,
+            -1400
+          ],
+          [
+            -30,
+            -30
+          ]
+        ]
+      }
+    }
+  ]
+}

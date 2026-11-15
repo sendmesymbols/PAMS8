@@ -1,0 +1,173 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "coy-def-all-round",
+  "family": "coy-def",
+  "layout": "all-round",
+  "echelon": "15",
+  "unit": "inf-coy-std-rifle",
+  "basis": "E",
+  "name": "Coy Def: all round",
+  "frontageRow": null,
+  "subRow": "Platoon locality",
+  "slots": [
+    {
+      "role": "front",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "1 Pl",
+      "echelon": "14",
+      "order": 1,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -330
+      },
+      "rule": {
+        "side": "C"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround",
+          "behindObstacle"
+        ],
+        "fieldOfFireM": {
+          "doctrine": "checkBands.fieldOfFireToObstacleM"
+        },
+        "notIn": [
+          "noGo",
+          "water",
+          "bua"
+        ]
+      }
+    },
+    {
+      "role": "rtRear",
+      "kind": "round",
+      "sym": "25151200",
+      "label": "2 Pl",
+      "echelon": "14",
+      "order": 1,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": 520,
+        "backM": 230
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      },
+      "turnDeg": 120
+    },
+    {
+      "role": "ltRear",
+      "kind": "round",
+      "sym": "25151200",
+      "label": "3 Pl",
+      "echelon": "14",
+      "order": 1,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": -520,
+        "backM": 230
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      },
+      "turnDeg": 240
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "front",
+          "rtRear",
+          "ltRear"
+        ],
+        "edge": "outer"
+      }
+    },
+    {
+      "role": "lp",
+      "kind": "point",
+      "sym": "25160204",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "perSlot": [
+          "front",
+          "rtRear",
+          "ltRear"
+        ],
+        "ahead": {
+          "doctrine": "standoff.lpM"
+        }
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111401",
+      "label": "60 mm Mor",
+      "order": 6,
+      "rule": {
+        "centre": true
+      }
+    }
+  ],
+  "alternates": [
+    {
+      "of": "front",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.secPl"
+      }
+    }
+  ],
+  "supplementary": "none",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "alternates",
+    "mutualSupport",
+    "fieldOfFire",
+    "dfMinRange"
+  ]
+}

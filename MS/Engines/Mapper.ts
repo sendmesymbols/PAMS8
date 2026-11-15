@@ -94,6 +94,12 @@ import KillingZone from "../Symbols/KillingZone.ts"; //Fixed
 import LandingZone from "../Symbols/LandingZone.ts"; //Fixed
 import VitalGr from "../Symbols/VitalGr.ts";  //Fixed
 import ImpGr from "../Symbols/ImpGr.ts";
+import Feba from "../Symbols/Feba.ts"; // 2525D 25140400 FEBA / FDL
+import LimitOfAdvance from "../Symbols/LimitOfAdvance.ts"; // 2525D 25140900 LOA / LOE
+import Fpf from "../Symbols/Fpf.ts"; // 2525D 25240703 FPF
+import PaaRect from "../Symbols/PaaRect.ts"; // 2525D 25240501 PAA rectangular (gun area)
+import PaaCircle from "../Symbols/PaaCircle.ts"; // 2525D 25240502 PAA circular (gun area)
+import SecurityZone from "../Symbols/SecurityZone.ts"; // local 00000161 (2525D has none)
 import NoGo from "../Symbols/NoGo.ts";  //Fixed
 import FlightZone from "../Symbols/FlightZone.ts";  //Fixed
 import AirspaceArea from "../Symbols/AirspaceArea.ts";
@@ -354,6 +360,12 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "UnspecifiedWire": UnspecifiedWire,
     "VitalGr": VitalGr,
     "ImpGr": ImpGr,
+    "Feba": Feba,
+    "LimitOfAdvance": LimitOfAdvance,
+    "Fpf": Fpf,
+    "PaaRect": PaaRect,
+    "PaaCircle": PaaCircle,
+    "SecurityZone": SecurityZone,
     "Withdraw": Withdraw,
     "WithdrawUnderPressure": WithdrawUnderPressure,
     "Retire": Retire,

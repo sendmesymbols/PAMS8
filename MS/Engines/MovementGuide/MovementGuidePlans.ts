@@ -706,15 +706,39 @@ function stationAt(st: Station[], m: number): Station {
 export function ambushSites(r: RouteReading, probe: MovProbe, R: Rules, foot: GoingSets, max = 6): AmbushSite[] {
   const A = R.ambush;
   const st = r.stations;
-  const cover = new Set<number>(A.coverClasses);
   const cands: Station[] = [];
   for (const s of r.stretches) if (s.kind === 'ambush') cands.push(stationAt(st, s.chainM));
   const out: AmbushSite[] = [];
   for (const c of cands) {
     if (out.some((o) => Math.abs(o.chainM - c.chainM) < A.kzM * 2)) continue;
+    out.push(ambushSiteAt(r, c, probe, R, foot));
+  }
+  out.sort((p, q) => q.score - p.score || p.chainM - q.chainM);
+  out.forEach((s, i) => (s.rank = i + 1));
+  return out.slice(0, max);
+}
+
+/** The station of a route reading nearest a chainage (metres along the route). */
+export function stationAtChain(r: RouteReading, m: number): Station {
+  return stationAt(r.stations, m);
+}
+
+/**
+ * One ambush site scored and laid out at a station (the body of `ambushSites`, for any station: the Deployment Mgr's
+ * Intelligent Deployment scores the spot the user clicks). `shape` lays a layout the user chose in place of the one the
+ * ground suggests (`groundShape`); `exits` says which sides the vehicles cannot leave the road by.
+ */
+export function ambushSiteAt(r: RouteReading, c: Station, probe: MovProbe, R: Rules, foot: GoingSets, shape?: AmbushShape): AmbushSite & { groundShape: AmbushShape; exits: 'both' | 'one' | 'none' } {
+  const A = R.ambush;
+  const st = r.stations;
+  const cover = new Set<number>(A.coverClasses);
+  {
     const parts: AmbushSite['parts'] = [];
     const noExit = c.left === 'nogo' && c.right === 'nogo';
-    parts.push({ what: noExit ? 'Defile: the target cannot leave the Rd' : 'Target cannot leave the Rd on one side', ok: true, pts: noExit ? 25 : 15 });
+    const oneSide = !noExit && (c.left === 'nogo' || c.right === 'nogo');
+    // a station off the engine's ambush stretches may have no NO-GO beside it: the vehicles can drive out of the KZ
+    if (noExit || oneSide) parts.push({ what: noExit ? 'Defile: the target cannot leave the Rd' : 'Target cannot leave the Rd on one side', ok: true, pts: noExit ? 25 : 15 });
+    else parts.push({ what: 'The target can leave the Rd on both sides', ok: false, pts: 0 });
     const bend = st.some((q) => Math.abs(q.chainM - c.chainM) <= 200 && (q.turnDeg >= R.scan.bendDeg || q.crest));
     // Hidden from the vehicles behind: a man in the killing zone is not seen from 300 m back along the road.
     const back = stationAt(st, Math.max(0, c.chainM - A.followM));
@@ -757,7 +781,8 @@ export function ambushSites(r: RouteReading, probe: MovProbe, R: Rules, foot: Go
     const coverPts = c.coverL || c.coverR ? 10 : 0;
     parts.push({ what: coverPts ? `Cover ${coverAt.distM} m from the Rd (${word(coverAt.cls)})` : `High Gr ${Math.round(Math.max(c.riseL, c.riseR))} m above`, ok: true, pts: coverPts || 5 });
     const score = Math.min(100, parts.reduce((s, p) => s + p.pts, 0));
-    const shape: AmbushShape = c.riseL >= A.riseM && c.riseR >= A.riseM ? 'V' : bend ? 'L' : 'line';
+    const groundShape: AmbushShape = c.riseL >= A.riseM && c.riseR >= A.riseM ? 'V' : bend ? 'L' : 'line';
+    shape = shape ?? groundShape;
     const a = stationAt(st, Math.max(0, c.chainM - A.kzM / 2));
     const b = stationAt(st, Math.min(r.lengthM, c.chainM + A.kzM / 2));
     const off = Math.max(A.coverFromM, Math.min(coverAt.distM, A.fireOffsetMaxM));
@@ -769,7 +794,7 @@ export function ambushSites(r: RouteReading, probe: MovProbe, R: Rules, foot: Go
     let arm: [MercXY, MercXY] | null = null;
     if (shape === 'L') arm = [offsetPt(b.x, b.y, b.bearing + 90 * sign, off), offsetPt(b.x, b.y, b.bearing, A.kzM / 3)];
     if (shape === 'V') arm = [offsetPt(a.x, a.y, a.bearing - 90 * sign, off), offsetPt(b.x, b.y, b.bearing - 90 * sign, off)];
-    out.push({
+    return {
       rank: 0,
       chainM: c.chainM,
       x: c.x,
@@ -777,11 +802,10 @@ export function ambushSites(r: RouteReading, probe: MovProbe, R: Rules, foot: Go
       score,
       parts,
       layout: { shape, side, kz: [[a.x, a.y], [b.x, b.y]], fireLine: [fa, fb], stops, arm, meeting, meetingM, withdrawalCoverPct: covPct },
-    });
+      groundShape,
+      exits: noExit ? 'both' : oneSide ? 'one' : 'none',
+    };
   }
-  out.sort((p, q) => q.score - p.score || p.chainM - q.chainM);
-  out.forEach((s, i) => (s.rank = i + 1));
-  return out.slice(0, max);
 }
 
 // ── road block / tank ambush ─────────────────────────────────────────────────────────────────────────────────────────

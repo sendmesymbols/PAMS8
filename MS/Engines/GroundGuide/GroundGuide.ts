@@ -2443,14 +2443,39 @@ export default class GroundGuide {
     const sidc = (key: string, identity: string, echelon = '00') => `100${identity}${key.slice(0, 2)}00${echelon}${key.slice(2)}0000`;
     const side = v.side === 'enemy' ? '6' : '3';
     // A line for a symbol: at most `max` points, simplified within a growing tolerance (50 m first).
-    const fewer = (pts: MercXY[], max: number): MercXY[] => {
-      let tol = 50 * Math.cosh((pts[0]?.[1] ?? 0) / 6378137);
-      let out = simplifyLine(pts, tol);
-      while (out.length > max && tol < 1e6) {
-        tol *= 1.6;
-        out = simplifyLine(pts, tol);
+    /**
+     * Control points that keep a route's curve (user, 2026-11-15: CTRL_PTS make the curves): the MS line and arrow
+     * symbols run a curve through every control point (GSAP's bezier "thru"), so the route is sent resampled evenly
+     * along its length (one point every `stepM` metres or so, at most `max`), with every turn sharper than 30 degrees
+     * kept where it is (an FUP's turn into the assault), not thinned to a handful of points.
+     */
+    const curve = (pts: MercXY[], max = 24, stepM = 600): MercXY[] => {
+      if (pts.length < 3) return pts.slice();
+      const kk = Math.cosh((pts[0][1] + pts[pts.length - 1][1]) / 2 / 6378137);
+      const cum = [0];
+      for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+      const L = cum[cum.length - 1];
+      if (!(L > 0)) return [pts[0], pts[pts.length - 1]];
+      const step = Math.max(L / (max - 1), stepM * kk);
+      // The ends and the turns, where they are.
+      const turns: Array<[number, MercXY]> = [[0, pts[0]]];
+      for (let i = 1; i < pts.length - 1; i++) {
+        const a1 = Math.atan2(pts[i][1] - pts[i - 1][1], pts[i][0] - pts[i - 1][0]), a2 = Math.atan2(pts[i + 1][1] - pts[i][1], pts[i + 1][0] - pts[i][0]);
+        let d = Math.abs(a2 - a1);
+        if (d > Math.PI) d = 2 * Math.PI - d;
+        if (d > Math.PI / 6) turns.push([cum[i], pts[i]]);
       }
-      return out;
+      turns.push([L, pts[pts.length - 1]]);
+      // Evenly between them; one too near a turn goes (two points close together kink the curve).
+      const out: Array<[number, MercXY]> = [...turns];
+      let j = 1;
+      for (let t = step; t < L; t += step) {
+        if (turns.some(([u]) => Math.abs(u - t) < step / 3)) continue;
+        while (j < cum.length - 1 && cum[j] < t) j++;
+        const f = (t - cum[j - 1]) / Math.max(1e-9, cum[j] - cum[j - 1]);
+        out.push([t, [pts[j - 1][0] + (pts[j][0] - pts[j - 1][0]) * f, pts[j - 1][1] + (pts[j][1] - pts[j - 1][1]) * f]]);
+      }
+      return out.sort((p, q) => p[0] - q[0]).map((x) => x[1]);
     };
     const items: any[] = [];
     if (kind === 'template') {
@@ -2492,7 +2517,7 @@ export default class GroundGuide {
       const other = side === '6' ? '3' : '6';
       for (const r of av.routes) {
         if (r.line.length < 2) continue;
-        const pts = fewer(r.line, 8);
+        const pts = curve(r.line, 20);
         const p0 = pts[0], p1 = pts[1];
         const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
         const nx = -(p1[1] - p0[1]) / len, ny = (p1[0] - p0[0]) / len;
@@ -2568,7 +2593,7 @@ export default class GroundGuide {
         if (m.line.length < 2) continue;
         const s = sidc('25110101', side, ech);
         // No label: the corridors' echelon marks say their level, and A1, A2... would pile up on the avenues' letters.
-        items.push({ sidc: s, amplifier: { SIDC: s }, drawEssentials: { SYM_GEO_TYPE: 'Line', ECHELON: ech, CTRL_PTS: fewer(m.line, 6).map(mp) } });
+        items.push({ sidc: s, amplifier: { SIDC: s }, drawEssentials: { SYM_GEO_TYPE: 'Line', ECHELON: ech, CTRL_PTS: curve(m.line, 16).map(mp) } });
       }
       return items;
     }
@@ -2576,12 +2601,23 @@ export default class GroundGuide {
       if (!x.viable || x.line.length < 2) continue;
       const key = ip.createAs === 'avenue' ? '25120204' : x.main ? '25151403' : '25151404';
       const geo = key === '25151404' ? 'Line' : 'Area';
-      // The width drawn on the map (corridors side by side), as MainAttack.ts reads TAIL_FACTOR.
+      // Its width on the ground (its corridors side by side) as BASE_LN_PTS, a base line across the tail (user,
+      // 2026-11-15: BASE_LN_PTS control the width, CTRL_PTS the curve); Main Attk, Sp Attk and Avenue of Apchs turn it
+      // into their TAIL_FACTOR (GeoTools.tailFactorFromBaseLine). The route is sent whole, resampled, so the curve keeps.
       const width = v.mcWidthM * (x.open ? 3 : 2.2);
-      const tail = arrowTail(x.lengthM, width, v.spacingM);
+      const ctrl = curve(x.line, 24);
+      const p0 = ctrl[0], p1 = ctrl[1];
+      const dl = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+      const nx = -(p1[1] - p0[1]) / dl, ny = (p1[0] - p0[0]) / dl;
+      const half = (width / 2) * Math.cosh(v.anchor[1] / 6378137);
+      const base = { startPt: [p0[0] + nx * half, p0[1] + ny * half] as MercXY, midPt: p0, endPt: [p0[0] - nx * half, p0[1] - ny * half] as MercXY };
+      // The same TAIL_FACTOR the symbol will take from the base line (kept too, for a host whose symbols do not read it),
+      // and the head in proportion to it (a fixed 15 % stretches a long arrow's head into a needle).
+      let total = 0;
+      for (let i = 1; i < ctrl.length; i++) total += Math.hypot(ctrl[i][0] - ctrl[i - 1][0], ctrl[i][1] - ctrl[i - 1][1]);
+      const tail = ctrl.length === 2 ? half / total : half / (total * (1 + 1 / 2.4));
       const s = sidc(key, side);
-      // The head in proportion to its width, as on the map (a fixed 15 % stretches a long arrow's head into a needle).
-      items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: x.id }, drawEssentials: { SYM_GEO_TYPE: geo, TAIL_FACTOR: Number(tail.toFixed(4)), HEAD_RATIO: Number(arrowHeadFrac(tail).toFixed(4)), CTRL_PTS: fewer(x.line, 7).map(mp) } });
+      items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: x.id }, drawEssentials: { SYM_GEO_TYPE: geo, TAIL_FACTOR: Number(tail.toFixed(5)), HEAD_RATIO: Number(arrowHeadFrac(tail).toFixed(4)), CTRL_PTS: ctrl.map(mp), BASE_LN_PTS: { startPt: mp(base.startPt), midPt: mp(base.midPt), endPt: mp(base.endPt) } } });
     }
     return items;
   }

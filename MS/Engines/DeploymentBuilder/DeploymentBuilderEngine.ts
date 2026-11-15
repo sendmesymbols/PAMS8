@@ -111,6 +111,41 @@ export interface PlanEntry {
   pivot?: string;
   /** The plan document inline (Plan document or exercise template), for hosts that already hold it. */
   data?: any;
+  /** Source symbol ids (plnOrdrSymbolId) created hidden: a built plan's alternates when set so. */
+  hidden?: string[];
+  /** Source symbol id → recipe role, written on each placed graphic as `pbRole` (Build tab plans). */
+  roles?: Record<string, string>;
+  /** Recipe a built plan came from, written on each placed graphic as `pbRecipe`. */
+  recipe?: string;
+  /** Turn "Rotate to a bearing" on for this plan (a built plan is aimed at the threat). */
+  rotate?: boolean;
+  /** A Web Mercator point the plan turns to face while it follows the cursor (the threat): one click places it. */
+  faceAt?: { x: number; y: number };
+  /** What a built plan was fitted for (ground kind, enemy, unit, the threat), written on each graphic as `pbMeta`:
+   *  Check my plan reads the plan against the same, not a fresh guess. */
+  meta?: Record<string, unknown>;
+}
+
+/** What a placement tells the Build tab, and what it may hand back (DeploymentBuilderEngine.setPlacementHooks). */
+export interface PlacementHooks {
+  /**
+   * Each ghost frame: where the pivot is (Web Mercator), the bearing when known (radians), the phase, the screen point,
+   * and while aiming the cursor (Web Mercator): a patrol's Obj or a recce's NAI follows it.
+   */
+  onGhost?(anchor: { x: number; y: number }, bearing: number | null, phase: 'anchor' | 'bearing', screen: { x: number; y: number } | null, cursor?: { x: number; y: number } | null): void;
+  /** Just before the plan lands: a plan document to place instead (fitted to the ground there), or null. `cursor`: the aiming click. */
+  prepareCommit?(anchor: { x: number; y: number }, bearing: number, cursor?: { x: number; y: number } | null): any | null;
+  /** The placement ended (placed or cancelled). */
+  onEnd?(): void;
+}
+
+/** What the Build tab module offers the manager (PlanBuildTab.ts, loaded only while the tab is on). */
+interface BuildTabLike {
+  setSettings(settings: Record<string, any>): void;
+  shown(): void;
+  /** The map switched between 2D and 3D: move its overlay to the new view. */
+  viewChanged(): void;
+  destroy(): void;
 }
 
 /** Where the plan list and plan files come from. Hosts can supply their own (an SOP library, a server). */
@@ -125,7 +160,12 @@ export interface DeploymentHost {
   groupUndo<T>(label: string, fn: () => T): T;
   /** Remove symbols by attributes.id as one undoable step; returns how many were found. */
   removeByIds(ids: string[], label?: string): number;
+  /** The symbols selected on the map (Check my plan reads them). */
+  selected?(): Graphic[];
 }
+
+/** What Check my plan reads: plan records (drawEss as Save Plan writes it) and a line saying where they came from. */
+export interface DrawnRead { records: { id: string; drawEss: Record<string, any>; attrs: Record<string, any> }[]; note: string }
 
 export interface DeploymentBuilderOptions {
   /** A base URL (holding `Deployemets.json`) or a custom source. Default: `/MS/Data/Deployments/`. */
@@ -234,6 +274,17 @@ class DeploymentBuilderEngine {
   /** Restore height for un-minimize. Must match the CSS height. */
   private _widgetHeight: string = '500px';
 
+  // Placement hooks (the Build tab's terrain fit) and the last ghost drawn, to draw it again after a swap
+  private _placementHooks: PlacementHooks | null = null;
+  private _lastGhost: { anchor: Point; theta: number; cursor: Point | null } | null = null;
+  private _lastScreen: { x: number; y: number } | null = null;
+
+  // Build tab (features.planBuilder)
+  private _buildEnabled: boolean = false;
+  private _buildSettings: Record<string, any> = {};
+  private _buildTab: BuildTabLike | null = null;
+  private _activeTab: 'samples' | 'build' = 'samples';
+
   private constructor() {}
 
   public static getInstance(): DeploymentBuilderEngine {
@@ -277,6 +328,7 @@ class DeploymentBuilderEngine {
     view.map.add(this._ghostLayer);
     this._removePointerHandles();
     this._removeBgPopup();
+    this._buildTab?.viewChanged();
   }
 
   public enable(): void {
@@ -291,6 +343,8 @@ class DeploymentBuilderEngine {
 
   public destroy(): void {
     this.disable();
+    this._buildTab?.destroy();
+    this._buildTab = null;
     this._removeBgClickHandle();
     if (this._helpDismiss) {
       document.removeEventListener('click', this._helpDismiss);
@@ -400,6 +454,11 @@ class DeploymentBuilderEngine {
       </div>
 
       <div class="ms-body" id="db-body">
+        <div class="db-tabs" role="tablist" hidden>
+          <button type="button" class="db-tab" role="tab" data-db-tab="samples" aria-selected="true">Templates</button>
+          <button type="button" class="db-tab" role="tab" data-db-tab="build" aria-selected="false">Intelligent Deployment</button>
+        </div>
+        <div class="db-build" hidden></div>
         <div class="db-cols">
           <!-- Left: plan picker -->
           <div class="db-left">
@@ -589,6 +648,120 @@ class DeploymentBuilderEngine {
     // Last placement: pick it up again, or take it away
     el.querySelector('.db-btn-reposition')!.addEventListener('click', () => this._repositionLast());
     el.querySelector('.db-btn-remove')!.addEventListener('click', () => this._removeLast());
+
+    // Samples / Build tabs (Build only while features.planBuilder is on)
+    el.querySelectorAll<HTMLButtonElement>('.db-tab').forEach((b) => b.addEventListener('click', () => this._showTab(b.dataset.dbTab === 'build' ? 'build' : 'samples')));
+    void this._syncBuildTab();
+  }
+
+  // ── Build tab (PlanBuilder_Plan.md): baseline plans from recipes ─────────────────────────────────────────────────
+
+  /**
+   * Turn the Build tab on or off (`features.planBuilder`) and hand it its settings (`planBuilder.*`). Off: the tab is
+   * not shown and its module is not loaded. Safe to call before the widget exists.
+   */
+  public setBuild(enabled: boolean, settings: Record<string, any> = {}): void {
+    this._buildEnabled = enabled;
+    this._buildSettings = settings ?? {};
+    if (!enabled && this._activeTab === 'build') this._activeTab = 'samples';
+    void this._syncBuildTab();
+  }
+
+  private async _syncBuildTab(): Promise<void> {
+    const el = this._widget;
+    if (!el) return;
+    const tabs = el.querySelector<HTMLElement>('.db-tabs');
+    const box = el.querySelector<HTMLElement>('.db-build');
+    if (tabs) tabs.hidden = !this._buildEnabled;
+    if (!this._buildEnabled) {
+      this._buildTab?.destroy();
+      this._buildTab = null;
+      if (box) { box.innerHTML = ''; box.hidden = true; }
+      this._showTab('samples');
+      return;
+    }
+    if (!this._buildTab && box) {
+      try {
+        const { PlanBuildTab } = await import('./PlanBuildTab');
+        if (!this._buildEnabled || this._buildTab) return;
+        this._buildTab = new PlanBuildTab(box, {
+          place: (entry, doc) => this._placeBuiltPlan(entry, doc),
+          log: (msg, ok) => (ok ? EngineLogger.success(ENGINE_NAME, msg) : EngineLogger.error(ENGINE_NAME, msg)),
+          view: () => this._view,
+          container: () => this._getViewContainer(),
+          hooks: (h) => this.setPlacementHooks(h),
+          replace: (doc, redraw) => this.replaceSelectedPlan(doc, redraw),
+          readDrawn: (scope) => this.readDrawn(scope),
+          moveAnchor: (xy) => this.moveAnchor(xy),
+        });
+      } catch (err) {
+        EngineLogger.error(ENGINE_NAME, `Intelligent Deployment tab failed to load: ${err instanceof Error ? err.message : String(err)}`);
+        return;
+      }
+    }
+    this._buildTab?.setSettings(this._buildSettings);
+    this._showTab(this._activeTab);
+  }
+
+  /**
+   * The plan on the map for Check my plan: the selected symbols, the last placement, or every symbol, as plan records
+   * (the same shape the sample plans and Save Plan use). Nothing is changed.
+   */
+  public readDrawn(scope: 'selected' | 'last' | 'all'): DrawnRead {
+    const ser: any = this._serializationEngine;
+    if (!ser?.planRecordsOf) return { records: [], note: 'the plan reader is not available' };
+    if (scope === 'selected') {
+      const sel = this._host?.selected?.() ?? [];
+      return { records: ser.planRecordsOf(sel), note: sel.length ? `${sel.length} selected symbols` : 'nothing is selected' };
+    }
+    if (scope === 'last') {
+      const rec = this._lastPlacement;
+      if (!rec) return { records: [], note: 'nothing placed yet this session' };
+      const ids = new Set(rec.symbolIds.map(String));
+      const all = ser.planRecordsOf() as DrawnRead['records'];
+      const records = all.filter((r) => ids.has(String(r.attrs?.id ?? r.id)));
+      return { records, note: `the last placement, ${rec.entry.name} (${records.length} symbols)` };
+    }
+    const records = ser.planRecordsOf() as DrawnRead['records'];
+    return { records, note: `every symbol on the map (${records.length})` };
+  }
+
+  private _showTab(tab: 'samples' | 'build'): void {
+    const el = this._widget;
+    if (!el) return;
+    if (tab === 'build' && !this._buildEnabled) tab = 'samples';
+    this._activeTab = tab;
+    el.querySelectorAll<HTMLElement>('.db-tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.dbTab === tab)));
+    const cols = el.querySelector<HTMLElement>('.db-cols');
+    const box = el.querySelector<HTMLElement>('.db-build');
+    if (cols) cols.hidden = tab === 'build';
+    if (box) box.hidden = tab !== 'build';
+    if (tab === 'build') this._buildTab?.shown();
+  }
+
+  /**
+   * Place a plan the Build tab made: it becomes the selected plan, as an imported one does, and goes through the same
+   * placement (ghost on the cursor, aim, one undo step, Last placement). Built plans are aimed at the threat, so the
+   * bearing click is on for them.
+   */
+  private _placeBuiltPlan(entry: PlanEntry, doc: any): void {
+    const data = this._asPlanDocument(doc);
+    if (!data) { this._setStatus('The built plan could not be read'); return; }
+    this._selectedPlanEntry = entry;
+    this._selectedPlanData = data;
+    this._selectedPlanMetrics = this._buildPlanMetrics(data);
+    this._pivotId = this._resolvePivotId(entry.pivot, this._selectedPlanMetrics);
+    this._spread = 1;                                   // a built plan is laid at doctrinal spacing: never spread
+    const spreadEl = this._widget?.querySelector<HTMLInputElement>('.db-spread-val');
+    if (spreadEl) spreadEl.value = '100';
+    if (entry.rotate) {
+      this._rotate = true;
+      const rot = this._widget?.querySelector<HTMLInputElement>('.db-rotate');
+      if (rot) rot.checked = true;
+    }
+    this._applySelectedPlanToUI('ready');
+    this._renderPlanList();
+    this._onPlaceClicked();
   }
 
 
@@ -1182,14 +1355,18 @@ class DeploymentBuilderEngine {
       if (this._phase === 'anchor') {
         this._anchorPoint = pt;
         if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
-        if (this._rotate) {
+        const face = this._faceBearing(pt);
+        if (face !== null) {
+          // a plan that faces a set point needs no second click: it is already aimed
+          this._commitPlacement(face);
+        } else if (this._rotate) {
           this._startBearingPhase(pt);
         } else {
           // Keeping the drawn orientation needs no bearing — commit immediately
           this._commitPlacement(0);
         }
       } else if (this._phase === 'bearing' && this._anchorPoint) {
-        this._commitPlacement(this._computeBearing(this._anchorPoint, pt));
+        this._commitPlacement(this._computeBearing(this._anchorPoint, pt), pt);
       }
     });
 
@@ -1198,7 +1375,8 @@ class DeploymentBuilderEngine {
     };
     document.addEventListener('keydown', this._keyDownHandler);
 
-    this._showPlacementInstructions(this._rotate ? 'anchor' : 'anchor-asIs');
+    // a plan that faces a set point (the Build tab's threat marker) is aimed already: one click places it
+    this._showPlacementInstructions(this._rotate && !this._selectedPlanEntry?.faceAt ? 'anchor' : 'anchor-asIs');
     this._setStatus(this._rotate
       ? 'Click on map to set anchor point…'
       : 'Click on map to place — the plan keeps its drawn orientation');
@@ -1210,6 +1388,7 @@ class DeploymentBuilderEngine {
     if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
     this._pointerMoveHandle = this._view.on('pointer-move', (evt) => {
       if (this._phase !== 'anchor') return;
+      this._lastScreen = { x: evt.x, y: evt.y };
       const mapPt = this._view!.toMap({ x: evt.x, y: evt.y });
       if (mapPt) this._queueGhost(mapPt);
     });
@@ -1229,6 +1408,7 @@ class DeploymentBuilderEngine {
       const bearingDeg = this._radiansToDegrees(this._computeBearing(anchor, mapPt));
       // HUD and status are lightweight — update immediately for responsive feel
       this._showBearingHUD(evt.x, evt.y, bearingDeg);
+      this._lastScreen = { x: evt.x, y: evt.y };
       this._setStatus(`Bearing: ${Math.round(bearingDeg).toString().padStart(3, '0')}° ${this._bearingToCardinal(bearingDeg)} — click to place`);
       this._queueGhost(mapPt);
     });
@@ -1250,8 +1430,11 @@ class DeploymentBuilderEngine {
     });
   }
 
-  private _commitPlacement(bearing: number): void {
+  private _commitPlacement(bearing: number, aimedAt: Point | null = null): void {
     if (!this._anchorPoint || !this._selectedPlanData || !this._serializationEngine) return;
+    // the Build tab fits the plan to the ground at exactly this spot and bearing (and the aiming click) before it lands
+    const fitted = this._placementHooks?.prepareCommit?.(this._toProjected(this._anchorPoint), bearing, aimedAt ? this._toProjected(aimedAt) : null);
+    if (fitted) this.replaceSelectedPlan(fitted, false);
     this._phase = 'idle';
     this._showCancel(false);
     this._clearGhostGraphics();
@@ -1268,6 +1451,7 @@ class DeploymentBuilderEngine {
     const replacing = this._replacing;
     const deploymentId = `dep-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     const symbolIds: string[] = [];
+    const hiddenIds = new Set<string>();
     const engine = this._serializationEngine;
 
     // Per-symbol "Add" undo entries fold into one: a single Ctrl+Z takes the whole
@@ -1282,15 +1466,35 @@ class DeploymentBuilderEngine {
             g.attributes.deploymentId = deploymentId;
             g.attributes.deploymentName = entry?.name;
           }
+          // A built plan: its recipe role on each graphic (Check my plan finds them again), alternates hidden when set so.
+          // The loader's id is `<source id>-<placement id>`.
+          if (entry?.roles) {
+            const src = Object.keys(entry.roles).find((k) => id.startsWith(`${k}-`));
+            if (src) {
+              if (g.attributes) {
+                g.attributes.pbRole = entry.roles[src];
+                g.attributes.pbRecipe = entry.recipe;
+                g.attributes.pbPlanId = deploymentId;
+                if (entry.meta) g.attributes.pbMeta = entry.meta;
+              }
+              if (entry.hidden?.includes(src)) {
+                g.visible = false;
+                if (g.attributes?.id != null) hiddenIds.add(String(g.attributes.id));
+              }
+            }
+          }
         },
       }));
       if (n > 0 && replacing) this._host?.removeByIds(replacing.symbolIds, 'Remove deployment');
+      if (hiddenIds.size) this._hideAnnotationsOf(hiddenIds);
       return n;
     };
     const label = `${replacing ? 'Reposition' : 'Place'} ${entry?.name ?? 'deployment'}`;
     const count = this._host ? this._host.groupUndo(label, run) : run();
     this._anchorPoint = null;
     this._replacing = null;
+    this._lastGhost = null;
+    this._placementHooks?.onEnd?.();
 
     if (count > 0 && entry && this._selectedPlanData) {
       this._lastPlacement = {
@@ -1331,6 +1535,19 @@ class DeploymentBuilderEngine {
     // so the empty-result status stays visible.
     if (count > 0) this._closeWidget();
     else if (this._minimized) this._minimizeWidget();
+  }
+
+  /** A symbol created hidden keeps its label hidden too (the AnnotationEngine links labels by `parentId`). */
+  private _hideAnnotationsOf(ids: Set<string>): void {
+    const map = this._view?.map;
+    if (!map) return;
+    for (const layer of map.allLayers.toArray()) {
+      if ((layer as any).type !== 'graphics') continue;
+      for (const g of (layer as GraphicsLayer).graphics.toArray()) {
+        const pid = g.attributes?.parentId;
+        if (pid != null && ids.has(String(pid))) g.visible = false;
+      }
+    }
   }
 
   // ── Last placement ─────────────────────────────────────────────────────────
@@ -1409,6 +1626,8 @@ class DeploymentBuilderEngine {
     const ready = (this._selectedPlanMetrics?.symbolCount ?? 0) > 0;
     this._setHeaderState(ready ? 'ready' : '', ready ? 'Ready' : 'Idle');
     this._syncLastPlacement();
+    this._lastGhost = null;
+    this._placementHooks?.onEnd?.();
   }
 
   // ── View framing ───────────────────────────────────────────────────────────
@@ -1485,12 +1704,78 @@ class DeploymentBuilderEngine {
       this._ghostRafId = null;
       const cur = this._pendingGhostCursor;
       if (!cur) return;
+      // the hook runs first: the Build tab may swap the plan (back to its quick, unfitted layout) before it is drawn
       if (this._phase === 'anchor') {
-        this._renderGhost(cur, 0, null);
+        const theta = this._faceBearing(cur);
+        this._placementHooks?.onGhost?.(this._toProjected(cur), theta, 'anchor', this._lastScreen);
+        this._lastGhost = { anchor: cur, theta: theta ?? 0, cursor: null };
+        this._renderGhost(cur, theta ?? 0, null);
       } else if (this._phase === 'bearing' && this._anchorPoint) {
-        this._renderGhost(this._anchorPoint, this._computeBearing(this._anchorPoint, cur), cur);
+        const theta = this._computeBearing(this._anchorPoint, cur);
+        this._placementHooks?.onGhost?.(this._toProjected(this._anchorPoint), theta, 'bearing', this._lastScreen, this._toProjected(cur));
+        this._lastGhost = { anchor: this._anchorPoint, theta, cursor: cur };
+        this._renderGhost(this._anchorPoint, theta, cur);
       }
     });
+  }
+
+  /** A plan that faces a set point (the Build tab's threat marker) turns toward it as it moves; else null. */
+  private _faceBearing(at: Point): number | null {
+    const f = this._selectedPlanEntry?.faceAt;
+    if (!f) return null;
+    const a = this._toProjected(at);
+    if (Math.hypot(f.x - a.x, f.y - a.y) < 1) return null;
+    return Math.atan2(f.x - a.x, f.y - a.y);
+  }
+
+  // ── Placement hooks (the Build tab) ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Hooks a placement offers the Build tab: each ghost frame (where the plan's pivot is, its bearing when known, the
+   * screen point), the moment before a commit (the plan document to place instead, fitted to the ground there), and
+   * the end of the placement. Null clears them.
+   */
+  public setPlacementHooks(h: PlacementHooks | null): void {
+    this._placementHooks = h;
+  }
+
+  /**
+   * Move the pivot of the plan being placed to `xy` (Web Mercator): the Build tab's J takes an ambush to its better site.
+   * While aiming, the anchor moves and the aim follows the cursor as before; before the first click (free aim) it is as
+   * if the map were clicked there. A plan that faces a set point, or keeps its drawn orientation, is not moved (false).
+   */
+  public moveAnchor(xy: XY): boolean {
+    if (!this._view || this._phase === 'idle') return false;
+    if (this._phase === 'anchor' && (!this._rotate || this._selectedPlanEntry?.faceAt)) return false;
+    const sr = this._view.spatialReference;
+    const geo = sr?.wkid === 4326 || sr?.wkid === 4269;
+    const ll = geo ? webMercatorUtils.xyToLngLat(xy.x, xy.y) : null;
+    const pt = ll ? new Point({ x: ll[0], y: ll[1], spatialReference: sr }) : new Point({ x: xy.x, y: xy.y, spatialReference: sr ?? { wkid: 102100 } });
+    // where the mouse is: it keeps the aim (from the new anchor toward it)
+    const mouse = this._lastGhost?.cursor ?? this._lastGhost?.anchor ?? null;
+    if (this._pointerMoveHandle) { this._pointerMoveHandle.remove(); this._pointerMoveHandle = null; }
+    if (this._rightClickHandle) { this._rightClickHandle.remove(); this._rightClickHandle = null; }
+    this._anchorPoint = pt;
+    this._startBearingPhase(pt);
+    if (mouse) {
+      const a = this._toProjected(mouse);
+      if (Math.hypot(a.x - xy.x, a.y - xy.y) > 1) this._queueGhost(mouse);
+    }
+    return true;
+  }
+
+  /**
+   * Swap the plan being placed for another version of it (same symbols, moved: the terrain fit's layout), and draw the
+   * ghost again where it last was. The pivot is kept by id.
+   */
+  public replaceSelectedPlan(doc: any, redraw = true): void {
+    const data = this._asPlanDocument(doc);
+    if (!data || !this._selectedPlanEntry) return;
+    this._selectedPlanData = data;
+    this._selectedPlanMetrics = this._buildPlanMetrics(data);
+    this._pivotId = this._resolvePivotId(this._selectedPlanEntry.pivot, this._selectedPlanMetrics);
+    const g = this._lastGhost;
+    if (redraw && g && this._phase !== 'idle') this._renderGhost(g.anchor, g.theta, g.cursor);
   }
 
   /**
@@ -1694,7 +1979,7 @@ class DeploymentBuilderEngine {
       this._placementInstructions.innerHTML = `
         <span class="db-pi-step">Place plan</span>
         ${sep}
-        <span>${key('Click')} to place the plan's centre — drawn orientation kept</span>
+        <span>${key('Click')} to place the plan's centre — ${this._selectedPlanEntry?.faceAt ? 'it faces the threat marker' : 'drawn orientation kept'}</span>
         ${sep}
         <span>${key('Esc', 'danger')} cancel</span>
       `;

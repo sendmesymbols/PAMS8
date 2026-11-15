@@ -1,0 +1,194 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "pl-ambush-l",
+  "family": "pl-ambush",
+  "layout": "l",
+  "echelon": "14",
+  "basis": "E",
+  "task": "ambush",
+  "name": "Pl Ambush: L",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "Plan metres from the KZ centre (the click), y toward where the enemy comes from (the aim). KZ 150 m along the road (E, MovementDoctrine ambush.kzM), the fire group 60 m beside it in cover (30-120 m), stop groups 100 m beyond each end, the RV 800 m back (R: 750-900 m). L: at a bend; the long leg beside the KZ, the short leg (Sp Gp) at its far end firing along the road. With the terrain the layout is laid on the road the click is on, the side and the RV from the ground (MovementGuidePlans.ambushSiteAt), and checked: the vehicles cannot leave the road, hidden from the vehicles 300 m behind, covered withdrawal, no post or police within 3 km, no village within 1 km.",
+  "pivot": "kzTgt",
+  "slots": [
+    {
+      "role": "kzTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "kz",
+      "kind": "area",
+      "sym": "25242302",
+      "label": "KZ",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 0,
+          "wM": 80,
+          "hM": 150
+        }
+      }
+    },
+    {
+      "role": "amb",
+      "kind": "line",
+      "sym": "25141700",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            60,
+            -75
+          ],
+          [
+            60,
+            75
+          ],
+          [
+            95,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "role": "ambGp",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Fire Gp",
+      "echelon": "13",
+      "order": 2,
+      "shape": {
+        "at": [
+          110,
+          0
+        ]
+      }
+    },
+    {
+      "role": "amb2",
+      "kind": "line",
+      "sym": "25141700",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            60,
+            85
+          ],
+          [
+            10,
+            130
+          ],
+          [
+            45,
+            130
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "role": "amb2Gp",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Sp Gp",
+      "echelon": "12",
+      "order": 2,
+      "shape": {
+        "at": [
+          55,
+          145
+        ]
+      }
+    },
+    {
+      "role": "stop1",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Stop 1",
+      "echelon": "11",
+      "order": 2,
+      "shape": {
+        "at": [
+          30,
+          -175
+        ]
+      }
+    },
+    {
+      "role": "stop2",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Stop 2",
+      "echelon": "11",
+      "order": 2,
+      "shape": {
+        "at": [
+          30,
+          175
+        ]
+      }
+    },
+    {
+      "role": "rv",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "RV",
+      "order": 3,
+      "shape": {
+        "at": [
+          800,
+          0
+        ]
+      }
+    },
+    {
+      "role": "wdr",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            100,
+            0
+          ],
+          [
+            450,
+            0
+          ],
+          [
+            780,
+            0
+          ]
+        ]
+      }
+    }
+  ]
+}

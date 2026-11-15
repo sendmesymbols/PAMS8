@@ -238,7 +238,9 @@ MS/
   ordinary symbols via `loadSymbolFromJSON` (SymbolEngine passes `setCreator`, run as one undo step; making it again
   replaces the last set): No Go / Slow Go areas traced from the coding (`GroundGuideIpbShapes.ts`, `node
   tools/ipb-test/shapes.mjs` 11 checks), Mob Corridors lines, Main Attk / Sp Attk arrows (or Avenue of Apchs, `ipb.createAs`).
-  Arrow heads keep their shape (`arrowHeadFrac` / `arrowTail`, also passed as HEAD_RATIO / TAIL_FACTOR to the MS symbols).
+  Arrow heads keep their shape (`arrowHeadFrac` / `arrowTail`). The written symbols carry the whole route as CTRL_PTS (the
+  curve) and the width on the ground as BASE_LN_PTS; Main Attk, Sp Attk and Avenue of Apchs read BASE_LN_PTS for their tail
+  width (`GeoTools.tailFactorFromBaseLine`) and store the TAIL_FACTOR it gives.
   Phase 4: **fire corridors** (`ipb.fire`, `GroundGuideIpbFire.ts`): the other side's Posns on the map (catalogue `Rng`) over
   each avenue: under fire / screened / dead / out of range, gaps, killing area candidates; tab 1 tiles, map colouring and
   range rings (`ipb.mapFire`), rail line 1. **Proforma** (`ipb.proforma`, `GroundGuideIpbProforma.ts`, book p 21): rows a-l,
@@ -330,6 +332,85 @@ MS/
   on the map. Pure engines `MoveTime` / `MoveGeo` / `MoveRoad` / `MoveRail` / `MoveEnemy` / `MoveReports` /
   `MovePlannerModel` (`node tools/moveplan-test/run.mjs`, 70 checks); rules in `MS/Data/MoveDoctrine.json` (R = SO's Hbk Sec 9 /
   Staff Duties Vol II, O = old code, E = proposal). No terrain bundle. See `MS/Docs/19-move-planner.md`.
+- **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
+  Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
+  J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;
+  Check → Compare layouts shows every layout fitted at the same spot (`fitLayout`, `rankFits`, `nextBestSpot`).
+  Phase 4: the what-if (`PlanWhatIf.ts`, `node tools/planbuilder-test/whatif.mjs`): routes on foot round NO-GO at the IPB
+  rates to the alternates, a Sup posn per secondary approach and a C Pen posn on the main one (planned, dashed), each
+  timed against the enemy's lead element, in the trigger table (Check, Copy as Text); his times start no nearer the FDL
+  than his FUP (a threat marker inside it is his direction only) and his infantry pay the climb in the mountains (MW p 81);
+  an own move no short detour gets round takes the least-cost way on the ground, as his approach does. "Moves in time" is laid
+  out (each move with both times, Why, Fix; `Check.detail`) on the card, in the Check step and Copy as Text. Built-plan labels 7 pt
+  (`planBuilder.labelSize`). **Enemy and ground** (`PlanContext.ts`, `PlanDoctrine.enemy` / `terrain`): En force Coy / Bn /
+  Bde / Div (Auto one up in defence, 3 : 1) sizes the approaches (he attacks on the corridors of the level below, IPB p 7)
+  and the force ratio; En type Inf / Mech / Armd sets his going, rates and FUP (IBB pp 201, 214); Ground Auto / Plains /
+  Obstacle / Desert / Mountains (Auto read off the bundle where the plan rests) sets frontages (IC s113), gaps, flanks,
+  foot rates and the layout tried first. Phase 5 **Check my plan** (`PlanCheck.ts`; the tab's Build a plan / Check my
+  plan switch): reads the selected symbols, the last placement or all (`SerializationEngine.planRecordsOf`, Mgr
+  `readDrawn`), maps roles (label, SIDC, size; planned = D line; outline; front from marker > enemy symbols > arcs /
+  minefields / covering troops), runs the same rules check-only; `node tools/planbuilder-test/check.mjs` (86, on the
+  12 Bde Def test fixture, Bn Def and Div Attk samples; the 12 Bde Def is off the Templates list, in tools/planbuilder-test/fixtures). The ground shapes a built plan (user's sketch, 15 Nov): a Battle Posn's echelon
+  mark sits on its **rear** side (`BP_SHAPE`); posns move a short way up to higher ground and their curves (CTRL_PTS)
+  follow it, off NO-GO and water (`fit.highGround`, `fit.outline`); an attack axis bends round NO-GO on foot (CTRL_PTS,
+  BASE_LN_PTS width) and the assault's pace along it is timed. **ORBAT wired** (`PlanOrbat.ts`, `planBuilder.orbatUrl`): unit
+  type chips (Std / Mtn / MIB / ABIB ...; 3-Coy types not offered), ranges from the unit's weapons, its ATGM pairs sited on
+  the tank approaches + AT cover row, a mounted reserve for APC units, force ratio own Coys vs the en unit of Sec 13, the
+  minefield in time (engr p 439); `node tools/planbuilder-test/orbat.mjs` (33). **Phase 6 attack** (`PlanAttack.ts`): Bn Attk
+  right / left flank (BOF fixes the front) beside frontal (warned, ranked last unless no flank is feasible: user); finders
+  for the FUP (dead ground), SL (linear feature, clear run, beyond the last lift), BOF (sees the Obj, off the axis), Assy
+  Area (hidden, road, outside thermal sights); H-hour sum with fire lifts (IC s66); his MSR choke and weighed Lt vs Rt
+  factors (`attack.compareWeights`); Day / Night with the Night March chart.
+  **Two phases** (`PlanPhase.ts`, Task step Phases 1 / 2, `attack.phase2.*`): any Bn Attk layout gets Obj 2 behind Obj 1 (on a hostile
+  posn drawn there, else his high ground, else 1.5 km behind), the follow-up C, D Coys round Obj 1's flank (not through it) to
+  FUP 2 and onto Obj 2's flank (IBB p186), Obj 1 the firm base, the mortars stepped up, H2 timed from Obj 1 falling (Ph 2
+  timing, IBB p176 c); **Ph 2 by** chips or **R** while placing: C, D Coys (no Bn reserve: tell Bde) or C Coy with D Coy the
+  reserve; **P** while placing: one phase or two; Check my plan reads a later phase (an axis from beside another's Obj);
+  `node tools/planbuilder-test/phase2.mjs` (96). His **counter-attack** onto the last Obj (`PlanAttack.counterAttack`,
+  `attack.counter.*`, IBB p189): ways in from his depth, dead ground named (LP and DF), a DF target on each, drawn on the map;
+  `attack.mjs` (42). Save Plan keeps a built plan's roles (drawEss `PB`, `SerializationEngine.planDocument()`). **Tanks**
+  (`PlanTanks.ts`, Task step None / Fire sp / Close sp, **T** while placing, `attack.tanks.*`): FUP (Tks) 2.5-3 km out (IBB p214),
+  Close sp on its own axis converging on the Obj timed to the infantry's assault line (p187), Fire sp to fire posns by the BOF
+  (p214 option a, night range 800 / 1600 m), who leads from his fields of fire (S35 pp 145-146), tank going on tracks;
+  `node tools/planbuilder-test/tanks.mjs` (58).
+  **Phase 8 ambush, patrol, recce** (`PlanSmallOps.ts`, figures `PlanDoctrine.smallOps`, recipes `pl-ambush-*`, `pl-patrol`,
+  `pl-recce-*`; recipe `pivot`, `SMALL_TASKS`): wrapped over the Movement / Platoon Guide engines, their card APIs unchanged.
+  Ambush: click the KZ on the road, aim up it toward him; the road read toward him (`roadAround` + `RouteScanner`), the spot
+  scored and laid line / L / V (`MovementGuidePlans.ambushSiteAt`, the body of `ambushSites` for any station), better sites as
+  blue rings; Target chips / **M** while placing. Patrol: click the SP, the second click is the Obj (the Mgr hands the aim
+  point to `onGhost` / `prepareCommit`); `planPatrol` + `patrolCard` on routes straightened to night legs; FRV, bounds, the
+  route card (legs pulled onto night features, `snapLegEnds`; bearings grid, mils, magnetic with `planBuilder.gmaDeg`).
+  Recce: SP, then the NAI; OPs picked for what each adds to the view, routes in dead ground. **J** on an ambush takes the
+  KZ to the better site (Mgr `moveAnchor`), Shift+J back. **Coy Screen** (`coy-screen`, IC s73 pp 378-381: click the Wdr RV,
+  aim at the ground in front; posts on the ground that sees the main posn, no further forward than needed, laterally with
+  intervals, covered ways back, 2525D Screen) and **Pl Area Ambush** (`pl-ambush-area`, IC s44 p 152: central site plus an
+  outlying Sec ambush each way along the road). Check my plan reads a built ambush, patrol, recce, screen or crossing as
+  drawn with the build's rows (`checkSmallOp`, `checkCrossing`). `node tools/planbuilder-test/smallops.mjs` (107).
+  **Phase 7 crossing and bridgehead** (`PlanCrossing.ts`, figures `PlanDoctrine.crossing` from IBB S46-47 pp 231-246 and
+  Annex Q pp 467-468, IC s70-71 pp 355-366; recipes `bn-cross-two-up`, `bde-cross-two-up` / `-four-bn`,
+  `div-bridgehead-two-bde`): click H on the water, aim at the far bank; over the Movement Guide's Water engine (readWater /
+  readReach, unchanged) the plan is re-laid along the obstacle (`ObstacleFrame`: x along it, y across from the bund), the
+  bridge site moved to the narrowest, firmest place within 400 m, far-side ground that sees the crossing places found and
+  the BH line reaching out for it (to 1.8 km, 2.5 km with four Bns, 6 km Div), boats / rafts / bridge / tanks timed from
+  Annex Q by Light (Day / Moonlight / Dark night chips), the drift entry 2 x the width upstream. 2525D Assault Crossing
+  `25271300` and Bridge `25271400` added to Symbols.json on the Bridge class; crossing places slide 150 m to better spots;
+  the Mf chip adds his minefield 900-1000 m out with Breach lanes timed from Annex Q (`withMinefield`, `breachRow`). The
+  mirror, **canal defence** (`bn-def-canal`, IC s85 pp 449-458, IBB S57 pp 316-318): laid along the canal (`canalPrep`),
+  rows Canal / Higher bank / Bridges in sector / Marsh / Obstacle value. `node tools/planbuilder-test/crossing.mjs` (58).
+  Templates (was Samples) / Intelligent Deployment tabs in the Deployment Mgr; Intelligent Deployment = Task →
+  Enemy → Place → Check → Create. Doctrinal baseline plans (Bn / Coy Def two up, three up, one up, all round; Bn Attk
+  frontal) from recipes (`MS/Data/Deployments/Recipes/`: slots with a geometry `seed` or `shape`, `rule` and
+  `terrainRule`), figures in `MS/Data/PlanDoctrine.json` (frontages stay in `OcokaDoctrine.json`). Pure validator
+  `PlanRecipes.ts` and solver `PlanSolve.ts` in `MS/Engines/DeploymentBuilder/` (`node tools/planbuilder-test/recipes.mjs`,
+  `solve.mjs`); the tab (`PlanBuildTab.ts`, loaded only while on) hands a Plan document to the Mgr's own placement (ghost,
+  aim, one undo step); graphics carry `pbRole` / `pbRecipe` / `pbPlanId`. Without the terrain every ground check is grey,
+  never Pass. Terrain fit (`planBuilder.useTerrain`, pure `PlanFit.ts`; bundle reader `PlanGroundProbe.ts` = an own
+  MovementGuideProbe + `findAvenue`; `node tools/planbuilder-test/fit.mjs`): quick ghost while the mouse moves, after
+  `fit.restMs` at rest the fitted ghost (posns slid out of NO-GO; Auto = best layout), tank approaches from the threat
+  marker in red, a ring per posn by verdict and a card at the cursor; the click fits again and places the fitted plan; a
+  marked threat makes the plan face it and one click place it (`PlanEntry.faceAt`, Mgr `setPlacementHooks`). Coy =
+  doctrine 1500 × 600–800 m. Symbols made as in 2525D: FEBA (FDL) `25140400`, LOA (LOE) `25140900`, FPF `25240703`,
+  PAA (gun area) `25240501` / `25240502`; Security Zone local `00000161` (2525D has none); lettering is geometry (`MS/Support/StrokeFont.ts`).
 - **MGRSEngine** — on-demand MGRS grid overlay (GZD / 100k / 10k / 1k) for 2D & 3D.
 - **DeclutterEngine** (+ Cluster/Ladder/Disperse/LabelPlacer) — zoom-aware hiding,
   cluster badges, flag-halyard ladders, radial disperse, and Maplex-style label placement.

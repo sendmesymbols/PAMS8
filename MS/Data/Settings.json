@@ -426,7 +426,8 @@
     "platoonGuide": false,
     "movementGuide": false,
     "nightMarch": false,
-    "movePlanner": false
+    "movePlanner": false,
+    "planBuilder": true
   },
   "collab": {
     "transport": "sse",
@@ -889,6 +890,22 @@
     "utcOffsetMin": 300,
     "useNetwork": true,
     "routeMlc": null
+  },
+  "planBuilder": {
+    "useTerrain": true,
+    "bundleUrl": "/terrain-bundle",
+    "recipesUrl": "/MS/Data/Deployments/Recipes",
+    "orbatUrl": "/MS/Data/Orbat/PK",
+    "fit": { "atRest": true, "restMs": 350 },
+    "auto": { "enabled": true, "maxLayouts": 6 },
+    "threat": { "fromEnemySymbols": false },
+    "alternates": { "show": false, "create": "hidden" },
+    "map": { "ruleLines": "selected", "approachBands": true },
+    "card": true,
+    "labelSize": 7,
+    "gmaDeg": null,
+    "cacheTiles": 256,
+    "useWorker": true
   },
   "stylus": {
     "mode": "auto",

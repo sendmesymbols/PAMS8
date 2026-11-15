@@ -1,0 +1,123 @@
+{
+  "format": "pams8-plan-recipes-index",
+  "version": 1,
+  "note": "Recipes for the Deployment Mgr Build tab. One file per recipe; siblings in a family are the layouts Auto ranks. Validated by node tools/planbuilder-test/recipes.mjs.",
+  "families": [
+    {
+      "id": "bn-def",
+      "name": "Bn Def",
+      "task": "defence",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-def-two-up",
+        "bn-def-three-up",
+        "bn-def-one-up",
+        "bn-def-all-round",
+        "bn-def-canal"
+      ]
+    },
+    {
+      "id": "coy-def",
+      "name": "Coy Def",
+      "task": "defence",
+      "echelon": "15",
+      "unit": "inf-coy-std-rifle",
+      "recipes": [
+        "coy-def-two-up",
+        "coy-def-three-up",
+        "coy-def-one-up",
+        "coy-def-all-round"
+      ]
+    },
+    {
+      "id": "bn-attk",
+      "name": "Bn Attk",
+      "task": "attack",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-attk-right-flank",
+        "bn-attk-left-flank",
+        "bn-attk-frontal"
+      ]
+    },
+    {
+      "id": "pl-ambush",
+      "name": "Pl Ambush",
+      "task": "ambush",
+      "echelon": "14",
+      "recipes": [
+        "pl-ambush-line",
+        "pl-ambush-l",
+        "pl-ambush-v"
+      ]
+    },
+    {
+      "id": "pl-ambush-area",
+      "name": "Pl Area Ambush",
+      "task": "ambush",
+      "echelon": "14",
+      "recipes": [
+        "pl-ambush-area"
+      ]
+    },
+    {
+      "id": "pl-patrol",
+      "name": "Pl Patrol",
+      "task": "patrol",
+      "echelon": "14",
+      "recipes": [
+        "pl-patrol"
+      ]
+    },
+    {
+      "id": "pl-recce",
+      "name": "Pl Recce",
+      "task": "recce",
+      "echelon": "14",
+      "recipes": [
+        "pl-recce-two-ops",
+        "pl-recce-three-ops"
+      ]
+    },
+    {
+      "id": "coy-screen",
+      "name": "Coy Screen",
+      "task": "recce",
+      "echelon": "15",
+      "recipes": [
+        "coy-screen"
+      ]
+    },
+    {
+      "id": "bn-cross",
+      "name": "Bn Crossing",
+      "task": "crossing",
+      "echelon": "16",
+      "unit": "inf-bn-std",
+      "recipes": [
+        "bn-cross-two-up"
+      ]
+    },
+    {
+      "id": "bde-cross",
+      "name": "Bde Crossing",
+      "task": "crossing",
+      "echelon": "18",
+      "recipes": [
+        "bde-cross-two-up",
+        "bde-cross-four-bn"
+      ]
+    },
+    {
+      "id": "div-bridgehead",
+      "name": "Div Bridgehead",
+      "task": "crossing",
+      "echelon": "21",
+      "recipes": [
+        "div-bridgehead-two-bde"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,219 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "coy-def-one-up",
+  "family": "coy-def",
+  "layout": "one-up",
+  "echelon": "15",
+  "unit": "inf-coy-std-rifle",
+  "basis": "E",
+  "name": "Coy Def: one up, two back",
+  "frontageRow": "Company, battalion two up",
+  "subRow": "Platoon locality",
+  "slots": [
+    {
+      "role": "fwd",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "2 Pl",
+      "echelon": "14",
+      "order": 1,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -230
+      },
+      "rule": {
+        "side": "C"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround",
+          "behindObstacle"
+        ],
+        "fieldOfFireM": {
+          "doctrine": "checkBands.fieldOfFireToObstacleM"
+        },
+        "notIn": [
+          "noGo",
+          "water",
+          "bua"
+        ]
+      }
+    },
+    {
+      "role": "depthL",
+      "kind": "depth",
+      "sym": "25151200",
+      "label": "1 Pl",
+      "echelon": "14",
+      "order": 2,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": -450,
+        "backM": 180
+      },
+      "rule": {
+        "behind": "fwd",
+        "side": "L"
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "prefer": [
+          "reverseSlope"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "depthR",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "3 Pl",
+      "echelon": "14",
+      "order": 2,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": 450,
+        "backM": 180
+      },
+      "rule": {
+        "behind": "fwd",
+        "side": "R",
+        "gapTo": {
+          "slot": "depthL",
+          "row": "Platoon locality"
+        },
+        "reach": {
+          "slots": [
+            "fwd"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "prefer": [
+          "reverseSlope"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "wire",
+      "kind": "obstacle",
+      "sym": "25290303",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwd"
+        ],
+        "distM": {
+          "doctrine": "standoff.wireFromPostsMinM"
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwd"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "lp",
+      "kind": "point",
+      "sym": "25160204",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "perSlot": [
+          "fwd"
+        ],
+        "ahead": {
+          "doctrine": "standoff.lpM"
+        }
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111401",
+      "label": "60 mm Mor",
+      "order": 6,
+      "rule": {
+        "behind": [
+          "fwd"
+        ]
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.mortar"
+        },
+        "of": [
+          "fwd"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    }
+  ],
+  "alternates": [
+    {
+      "of": "fwd",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.secPl"
+      }
+    }
+  ],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "alternates",
+    "reserveReach",
+    "mutualSupport",
+    "fieldOfFire",
+    "dfMinRange"
+  ]
+}

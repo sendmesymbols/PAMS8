@@ -1,0 +1,158 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "pl-recce-three-ops",
+  "family": "pl-recce",
+  "layout": "three-ops",
+  "echelon": "14",
+  "basis": "E",
+  "task": "recce",
+  "name": "Pl Recce: three OPs",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "As two OPs, with a third: the NAI watched from three directions (dead ground behind a fold seen from another side). Basis E.",
+  "pivot": "sp",
+  "slots": [
+    {
+      "role": "sp",
+      "kind": "point",
+      "sym": "25131600",
+      "label": "SP",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "ptl",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Ptl",
+      "echelon": "13",
+      "order": 1,
+      "shape": {
+        "at": [
+          -120,
+          60
+        ]
+      }
+    },
+    {
+      "role": "nai",
+      "kind": "area",
+      "sym": "25120200",
+      "label": "NAI 1",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -2500,
+          "wM": 1000,
+          "hM": 700
+        }
+      }
+    },
+    {
+      "role": "op1",
+      "kind": "point",
+      "sym": "25160206",
+      "label": "OP 1",
+      "order": 2,
+      "shape": {
+        "at": [
+          -800,
+          -1200
+        ]
+      }
+    },
+    {
+      "role": "op2",
+      "kind": "point",
+      "sym": "25160206",
+      "label": "OP 2",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          -1000
+        ]
+      }
+    },
+    {
+      "role": "op3",
+      "kind": "point",
+      "sym": "25160206",
+      "label": "OP 3",
+      "order": 2,
+      "shape": {
+        "at": [
+          800,
+          -1200
+        ]
+      }
+    },
+    {
+      "role": "rt1",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -30,
+            -40
+          ],
+          [
+            -780,
+            -1160
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rt2",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -50
+          ],
+          [
+            0,
+            -960
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rt3",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            30,
+            -40
+          ],
+          [
+            780,
+            -1160
+          ]
+        ]
+      }
+    }
+  ]
+}

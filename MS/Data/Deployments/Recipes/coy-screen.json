@@ -1,0 +1,182 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "coy-screen",
+  "family": "coy-screen",
+  "layout": "screen",
+  "echelon": "15",
+  "basis": "D",
+  "task": "recce",
+  "name": "Coy Screen",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "IC s73 pp 378-381 (R): a screen is a Coy / Pl / Sec outpost laid laterally with intervals in front of (or on an exposed flank of) the main posn, only as far forward as is necessary to deny him observation and recce of the main posn and its obstacles, on his likely approaches, on defensible ground with clear observation and a covered route back. Plan metres from the RV in the main posn the screen withdraws to (the click), y toward the ground in front (the aim). Three Pl posts 300-1500 m forward across a 3 km front (E; IC p378 gives a knoll about 600 m out as an example); sections are not split (IC p380). With the terrain the posts are picked for what each adds to the view of the ground that sees the main posn, and the ways back are found in dead ground.",
+  "pivot": "rv",
+  "slots": [
+    {
+      "role": "rv",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "Wdr RV",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "nai",
+      "kind": "area",
+      "sym": "25120200",
+      "label": "Gr in front",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -2000,
+          "wM": 3000,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "op1",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "1 Pl",
+      "echelon": "14",
+      "order": 2,
+      "shape": {
+        "at": [
+          -1000,
+          -600
+        ]
+      }
+    },
+    {
+      "role": "op2",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "2 Pl",
+      "echelon": "14",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          -600
+        ]
+      }
+    },
+    {
+      "role": "op3",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "3 Pl",
+      "echelon": "14",
+      "order": 2,
+      "shape": {
+        "at": [
+          1000,
+          -600
+        ]
+      }
+    },
+    {
+      "role": "rt1",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -1000,
+            -560
+          ],
+          [
+            -500,
+            -300
+          ],
+          [
+            0,
+            -40
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rt2",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -560
+          ],
+          [
+            0,
+            -300
+          ],
+          [
+            0,
+            -40
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rt3",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            1000,
+            -560
+          ],
+          [
+            500,
+            -300
+          ],
+          [
+            0,
+            -40
+          ]
+        ]
+      }
+    },
+    {
+      "role": "scr",
+      "kind": "line",
+      "sym": "25342203",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -1000,
+            -600
+          ],
+          [
+            0,
+            -300
+          ],
+          [
+            1000,
+            -600
+          ]
+        ]
+      }
+    }
+  ]
+}

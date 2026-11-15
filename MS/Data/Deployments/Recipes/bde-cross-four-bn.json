@@ -1,0 +1,589 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bde-cross-four-bn",
+  "family": "bde-cross",
+  "layout": "four-bn",
+  "echelon": "18",
+  "basis": "D",
+  "task": "crossing",
+  "name": "Bde Assault Crossing: four Bns",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "A brigade's break-in across a water obstacle (IBB S46 paras 19-23 pp 238-239, Figs 20-22). Plan metres from H (the click on the water), y across to the far bank. Two battalions up on narrow fronts of 500-800 m (650) with 500-600 m (550) between them, their start line the water line, each crossing on two places (one per assault Coy); phase 1 (PL 1) about 300-600 m ahead of the bund (450) on 1800-2000 m (1900); four battalions: the third and fourth pass through to take the brigade phase to about 2500 m deep (para 23, Fig 22); the bridgehead (BH) 3500-4000 m (3750) wide and 2500 deep. The follow-up bridge between the leading battalions (Fig 21), bases of fire on the home bank's flanks (Fig 20), a Bn Assy Area per assault battalion and the Bde Assy Area (IC s71 para 7 pp 362-363). With the terrain the BH line reaches out to take the ground that observes the crossing places (IBB S46 para 24 c p240), up to its doctrinal depth.",
+  "pivot": "xTgt",
+  "slots": [
+    {
+      "role": "xTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "H",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -1000,
+            12
+          ],
+          [
+            1000,
+            12
+          ]
+        ]
+      }
+    },
+    {
+      "role": "xp1a",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            -775,
+            30
+          ],
+          [
+            -745,
+            30
+          ]
+        ],
+        "ctrl": [
+          -760,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "xp1b",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            -455,
+            30
+          ],
+          [
+            -425,
+            30
+          ]
+        ],
+        "ctrl": [
+          -440,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "xp2a",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            425,
+            30
+          ],
+          [
+            455,
+            30
+          ]
+        ],
+        "ctrl": [
+          440,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "xp2b",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            745,
+            30
+          ],
+          [
+            775,
+            30
+          ]
+        ],
+        "ctrl": [
+          760,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "fup1",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -925,
+            130
+          ],
+          [
+            -275,
+            290
+          ]
+        ]
+      }
+    },
+    {
+      "role": "fup2",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            275,
+            130
+          ],
+          [
+            925,
+            290
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bn1",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "1 Bn",
+      "echelon": "16",
+      "order": 2,
+      "shape": {
+        "at": [
+          -600,
+          210
+        ]
+      }
+    },
+    {
+      "role": "bn2",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "2 Bn",
+      "echelon": "16",
+      "order": 2,
+      "shape": {
+        "at": [
+          600,
+          210
+        ]
+      }
+    },
+    {
+      "role": "ax1",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -600,
+            210
+          ],
+          [
+            -600,
+            -400
+          ]
+        ],
+        "widthM": 600
+      }
+    },
+    {
+      "role": "ax2",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            600,
+            210
+          ],
+          [
+            600,
+            -400
+          ]
+        ],
+        "widthM": 600
+      }
+    },
+    {
+      "role": "obj1",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ 1",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -600,
+          "backM": -225,
+          "wM": 650,
+          "hM": 450
+        }
+      }
+    },
+    {
+      "role": "obj2",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ 2",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 600,
+          "backM": -225,
+          "wM": 650,
+          "hM": 450
+        }
+      }
+    },
+    {
+      "role": "ph1",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL 1",
+      "order": 2,
+      "drawType": 1,
+      "shape": {
+        "pts": [
+          [
+            -950,
+            -12
+          ],
+          [
+            -950,
+            -450
+          ],
+          [
+            950,
+            -450
+          ],
+          [
+            950,
+            -12
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bridge",
+      "kind": "line",
+      "sym": "25271400",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            -12,
+            30
+          ],
+          [
+            12,
+            30
+          ]
+        ],
+        "ctrl": [
+          0,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "bof1",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            -1288,
+            347
+          ],
+          [
+            -1412,
+            153
+          ]
+        ],
+        "ctrl": [
+          -1097,
+          89
+        ]
+      }
+    },
+    {
+      "role": "bof2",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            1412,
+            153
+          ],
+          [
+            1288,
+            347
+          ]
+        ],
+        "ctrl": [
+          1097,
+          89
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          1250
+        ]
+      }
+    },
+    {
+      "role": "assy1",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Bn Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -650,
+          "backM": 1250,
+          "wM": 700,
+          "hM": 400
+        }
+      }
+    },
+    {
+      "role": "assy2",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Bn Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 650,
+          "backM": 1250,
+          "wM": 700,
+          "hM": 400
+        }
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Bde Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 3000,
+          "wM": 2000,
+          "hM": 900
+        }
+      }
+    },
+    {
+      "role": "vwa",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Veh Wait",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 520,
+          "wM": 300,
+          "hM": 160
+        }
+      }
+    },
+    {
+      "role": "rp",
+      "kind": "point",
+      "sym": "25131500",
+      "label": "RP",
+      "order": 2,
+      "shape": {
+        "at": [
+          160,
+          -250
+        ]
+      }
+    },
+    {
+      "role": "bn3",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "3 Bn",
+      "echelon": "16",
+      "order": 2,
+      "shape": {
+        "at": [
+          -300,
+          1800
+        ]
+      }
+    },
+    {
+      "role": "bn4",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "4 Bn",
+      "echelon": "16",
+      "order": 2,
+      "shape": {
+        "at": [
+          300,
+          1800
+        ]
+      }
+    },
+    {
+      "role": "ax3",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -300,
+            -300
+          ],
+          [
+            -800,
+            -2150
+          ]
+        ],
+        "widthM": 600
+      }
+    },
+    {
+      "role": "ax4",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            300,
+            -300
+          ],
+          [
+            800,
+            -2150
+          ]
+        ],
+        "widthM": 600
+      }
+    },
+    {
+      "role": "obj3",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ 3",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -800,
+          "backM": -1700,
+          "wM": 1300,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "obj4",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ 4",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 800,
+          "backM": -1700,
+          "wM": 1300,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "bh",
+      "kind": "line",
+      "sym": "25141400",
+      "label": "BH",
+      "order": 2,
+      "drawType": 1,
+      "shape": {
+        "pts": [
+          [
+            -1875,
+            -12
+          ],
+          [
+            -1875,
+            -2500
+          ],
+          [
+            1875,
+            -2500
+          ],
+          [
+            1875,
+            -12
+          ]
+        ]
+      }
+    }
+  ]
+}

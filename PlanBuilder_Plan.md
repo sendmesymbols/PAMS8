@@ -92,6 +92,10 @@ each piece sits where it does, and gives a list of what to confirm on the ground
 
 ## 4. Architecture
 
+> **Changed 15 Nov 2026:** it is the Deployment Mgr's **Build** tab (§14), so the files below go in
+> `MS/Engines/DeploymentBuilder/` with a `Plan` prefix (`PlanRecipes.ts` first), not in a `PlanBuilder/` folder. The
+> settings keep the `planBuilder` name.
+
 ```
 MS/Engines/PlanBuilder/
   PlanBuilder.ts            engine: lifecycle, settings, view switch, wiring, destroy()
@@ -498,18 +502,26 @@ Drawing a symbol must not change at all, with or without the Plan Builder.
 
 ## 12. Symbols to add
 
-Before adding a local symbol, check whether 2525D already has the graphic (FPF and Limit of Advance may exist under
-fire-support / maneuver control measures and only be missing from the catalog). Local symbols follow the Imp Gr pattern
-(`00000160`, `MS/Symbols/ImpGr.ts`).
+**Built 15 Nov 2026 as in MIL-STD-2525D** (user: missing symbols are made as 2525D has them; a local symbol only where 2525D has none). Codes from the 2525D control-measure table, shapes from DISA's 2525D template drawings (Esri joint-military-symbology-xml SVGs; the JCS PDF refused the download).
 
-| Symbol | Geometry | Use |
-|---|---|---|
-| FDL | Line | Forward defended localities |
-| Gun Area | Area | Artillery deployment area |
-| LOE | Line | Limit of exploitation |
-| FPF | Line | Final protective fire in front of a locality |
-| Security Zone | Area | Covering-force / screen depth |
-| Mask Posn | Area (optional) | Battle Posn label variant may do |
+| Plan item | 2525D symbol (catalog key) | Class | Shape |
+|---|---|---|---|
+| FDL | Forward Edge of the Battle Area, FEBA (`25140400`) | `Feba` | line or curve, "FEBA" past each end |
+| LOE | Limit of Advance, LOA (`25140900`) | `LimitOfAdvance` | line or curve, "LOA" above it just inside each end |
+| FPF | Final Protective Fire (`25240703`, Fires / Linear Targets) | `Fpf` | line, a tick square to it at each end (both sides), "FPF" under the middle; T1 = target number |
+| Gun Area | Position Area for Artillery, PAA rectangular (`25240501`) / circular (`25240502`) | `PaaRect` / `PaaCircle` | rectangle (two corners) or circle (centre, edge); "PAA" in four gaps in the outline, upright; drawn as a polyline like Battle Posn |
+| Security Zone | none in 2525D: local `00000161` | `SecurityZone` | area with "SZ" inside |
+| Mask Posn | Battle Position (`25151200`) with the designation "MASK" | existing `BattlePosition` | no new symbol |
+
+Lettering is geometry (`MS/Support/StrokeFont.ts`), so it scales with the symbol and draws the same in 2D and 3D.
+Bases: `____LabelledLineBase.ts` (lines; DRAW_TYPE 1 straight, 2 curve through `CTRL_PTS`),
+`____PositionAreaArtilleryBase.ts` (PAA; also builds the shape from two quick clicks with no mouse move between them),
+`____LabelledAreaBase.ts` (Security Zone).
+
+**Curves and widths for Create on Map (Phase 1):** existing symbols take `CTRL_PTS` (the clicks; DRAW_TYPE picks
+straight, curve or smooth polygon) and, for arrows, lanes and similar, `BASE_LN_PTS` (the base line that sets the
+width; e.g. `InfiltrationLane.ts`, `SupportByFirePosition.ts`). The builder writes both, so a Battle Posn follows the
+ground as a smooth curve and an attack arrow has a real width.
 
 Also: alternate and supplementary positions through planned status (dashed) on Battle Posn (§8.2).
 
@@ -527,10 +539,311 @@ Each phase ships on its own, and the earlier phases work without the bundle.
 | 3 | Auto + Compare | Score card, ranking, side-by-side preview, J for next best | Auto picks differ sensibly between a narrow-front and a wide-front test place |
 | 4 | Alternates + what-if | Alt / Sup / C Pen positions, routes and times, what-if (flank shift, shelled, penetration), trigger table | Trigger table in Copy as Text; time to occupy compared with enemy arrival |
 | 5 | Check my plan | Role mapping, checks on drawn plans, sample plans checked | Runs on the sample Bde Def and Div Attk plans |
-| 6 | Attack in depth | Assy Area, FUP / SL finders, BOF siter, fire-lift rings, left vs right + H-hour sum, night attack via Night March | |
-| 7 | Crossing + bridgehead | §9.3 with the Water engine | |
-| 8 | Ambush / patrol / recce recipes | Wrappers over Mov Guide, Platoon Guide and Night March | Existing card APIs unchanged |
+| 6 | Attack in depth | Assy Area, FUP / SL finders, BOF siter, fire-lift rings, left vs right + H-hour sum, night attack via Night March | Built 15 Nov 2026 (attack.mjs); two phases 15 Nov 2026 (phase2.mjs) |
+| 7 | Crossing + bridgehead | §9.3 with the Water engine | Built 15 Nov 2026 (crossing.mjs) |
+| 8 | Ambush / patrol / recce recipes | Wrappers over Mov Guide, Platoon Guide and Night March | Built 15 Nov 2026 (smallops.mjs); existing card APIs unchanged |
 | 9 | Withdrawal, Bde composition, Div | §9.5 | |
+
+**Phase 0 built (15 Nov 2026):**
+
+| Piece | Where |
+|---|---|
+| Figures and rules, each with basis and source (IC pages read from the text; IBB is a scan, so its figures are marked `pageToConfirm`) | `MS/Data/PlanDoctrine.json` (frontages, fields of fire and standoffs stay in `OcokaDoctrine.json`, referred to by `from`) |
+| Recipe format, doctrine resolver, validator (pure, runs in Node and the browser) | `MS/Engines/DeploymentBuilder/PlanRecipes.ts` |
+| First recipes: Bn Def and Coy Def, each two up / three up / one up / all round; slots carry a `seed` (geometry mode) plus `rule` (no terrain) and `terrainRule` (dropped without the bundle) | `MS/Data/Deployments/Recipes/*.json` + `index.json` |
+| Checks: PlanDoctrine sources and bases, every recipe valid against Symbols.json, the ORBAT and the frontage rows, Coy posns at the doctrine size, and 13 broken recipes caught | `node tools/planbuilder-test/recipes.mjs` (62 checks) |
+| Settings `features.planBuilder` (off) + `planBuilder.*`; ⚙ / Ctrl+K "Deployment Mgr: Build" | `Settings.json`, `PlanBuilderSettingsManifest.ts` / `Widget.ts` |
+| Symbols as in 2525D (§12): FEBA `25140400`, LOA `25140900`, FPF `25240703`, PAA `25240501` / `25240502`; Security Zone local `00000161` (2525D has none); Mask Posn = Battle Posn | `MS/Symbols/`, `Symbols.json`, `Mapper.ts`; drawn in 2D and 3D |
+
+**Phase 1 built (15 Nov 2026), geometry mode:**
+
+| Piece | Where |
+|---|---|
+| Pure solver: recipe → posns at their seeds (Battle Posns drawn as curves whose open face carries the echelon), units, HQ, FEBA along the forward edges (all round: a ring), wire 40 m out, the protective minefield 200 m out and 250 m deep, LPs, standing patrol, ATGM pair in the gap, mortars, DF targets 8–12 (none nearer the FDL than 550 m, IC s111.4), alternates (planned, dashed, clear of every posn, move times); checks (frontage, depth, gaps, mutual support, facing the threat, reserve reach, alternates; the ground ones grey); Plan document; Copy as Text | `MS/Engines/DeploymentBuilder/PlanSolve.ts` |
+| Bn Attk frontal recipe: Obj, FUP 1150 m short, SL, Main Attk arrow 400 m wide (`BASE_LN_PTS`), assault Coys, BOF on the right flank, reserve, HQ, mortars, LOE (LOA); checks FUP distance, assault frontage, BOF flank and range, mortars reach the LOE, fire lift, reserve reach | `MS/Data/Deployments/Recipes/bn-attk-frontal.json`, `PlanDoctrine.attack` |
+| The Build tab: Samples / Build tabs in the Deployment Mgr; steps Task (operation, unit, layout, + Pl posns, alternates created hidden / shown / none, a preview from above), Enemy (geometry: a bearing), Place, Check, Create (Copy as Text). Place hands the plan document to the Mgr's own placement: ghost on the cursor, click the HQ (an attack: the Obj) then aim (an attack: toward the own side), one undo step, Last placement. Each graphic carries `pbRole`, `pbRecipe`, `pbPlanId`; hidden alternates hide their labels too | `PlanBuildTab.ts`, `DeploymentBuilderEngine.ts` (`setBuild`, `_placeBuiltPlan`), `Widgets.css`, `SymbolEngine.ts` (routes `features.planBuilder` / `planBuilder.*`) |
+| Checks | `node tools/planbuilder-test/solve.mjs` (199) and `recipes.mjs` (64) |
+
+Verified in the browser (2D): Bn Def two up and Bn Attk frontal built, aimed and placed (30 and 13 symbols), roles on every graphic, alternates and their labels hidden, removed with one step. In geometry mode the Build tab's only requests are the recipe files. Not yet verified: 3D placement of a built plan (the 3D scene did not draw in the test viewport).
+
+**Phase 2 built (15 Nov 2026), terrain fit:**
+
+| Piece | Where |
+|---|---|
+| Pure fit: frames (plan metres ↔ Web Mercator as the Mgr lays the plan); posns slide out of NO-GO on foot (nearest spot that does not fail, clear of the others, within `fit.slideMaxM`); per posn the ground (NO-GO / SLOW-GO / built-up share, top class), fields of fire (median clear distance over five rays across its front: IBB p279 200 m minimum, IC s72 270–500 m wanted), dead ground 300–1200 m out, overlooked from 0.5–1.5 km in front; the flanks (tracked NO-GO within 1 km, every 50 m); the tank approaches from the threat marker (or assumed 5 km out along the front) and which posns have each under direct fire (from the posn's nearest edge); the killing ground on the main approach 400–1000 m out, in reach, a chokepoint preferred; a score from `scoreWeights`. Attack: FUP hidden from the Obj, the going along the axis, the SL on a linear feature, the BOF's view of the Obj. Anything the ground cannot answer stays grey | `PlanFit.ts` |
+| Ground reader: the Movement Guide's bundle reader with an instance of its own (tiles, worker, sight), approaches by the OCOKA engine's `findAvenue` on its grid (`MovementGuideProbe.gridAt`, added) | `PlanGroundProbe.ts` |
+| The tab: Enemy step marks the threat on the map (the plan then faces it as it moves and one click places it); Auto on with the terrain; while placing, the quick ghost while the mouse moves and, after `fit.restMs` at rest, the fitted ghost (Auto: the best layout), the approaches in red with chokepoints, a ring per posn by its verdict, and a card at the cursor (ranking, worst check, slides); the click fits once more at that spot; Check and Copy as Text show the fitted checks and the bundle's data dates | `PlanBuildTab.ts`; Mgr hooks `setPlacementHooks`, `replaceSelectedPlan`, `PlanEntry.faceAt` |
+| Checks on synthetic ground (lake under a posn, a wood in front of one, a canal on a flank, a road under the SL; no data never passes) | `node tools/planbuilder-test/fit.mjs` (26) |
+
+Verified on the real bundle (2D): **canal** (BRB east of Lahore, enemy from the east): the plan faced the threat, two tank approaches 8–10 km found and both under fire, B Coy flagged half in a built-up area with about 100 m clear in front, dead ground about 78 %, placed fitted. **Plain** (near Okara, enemy from the east): Auto ranked two up 90, one up 88, all round 83, three up 82 (a posn with under 100 m clear), the killing ground placed on the main approach, a canal found on the right flank. **Attack** at the BRB: SL on a metalled road, FUP likely hidden, going clear, and the BOF failing (0 of 5 points of the Obj in view). Not yet verified: 3D, and the card and approach overlay in a full-size window (checked by script; one screenshot at the canal).
+
+**Phase 3 built (15 Nov 2026), Auto + Compare + J:**
+
+| Piece | Where |
+|---|---|
+| One layout fitted at one spot (`fitLayout`: solve, fit, solve again with the slides and the killing ground; the user's J moves laid under the fit's slides), shared by the tab and the Node checks. Auto's order `rankFits`: fewest fails, then warnings, then score, over every check the plan shows (geometry ones included), ties to the family's first layout | `PlanFit.ts` |
+| Approaches: up to three (a third kept when it is a different way); judged where the enemy closes, the FDL to 1.5 km out, from the posn's nearest edge | `PlanFit.ts`, `PlanGroundProbe.ts` |
+| HQ (the click's pivot) central between the forward posns and those behind them | `PlanSolve.ts` |
+| **J** while the plan rests: the worst posn (fail, then warn) to the best spot round it (rings of 100 m to 1.5 x the slide limit, eight ways, the whole plan fitted for each); kept only if that posn does better **and** the plan ranks better; Auto stops on the shown layout; **Shift+J** takes the last move back; moving the mouse drops J's moves | `nextBestSpot` in `PlanFit.ts`; `PlanBuildTab.ts` |
+| **Compare** (Check step, "Compare layouts"): every layout of the family fitted at the last spot, side by side: a preview each, the score-card rows (weights shown), score, fails / warns, "Use" | `PlanBuildTab.ts` |
+| `features.planBuilder` now **on** by default: the tab loads nothing (no bundle, no worker) until it is opened | `Settings.json` |
+| Checks: narrow front (lakes either side of a 3.8 km gap) → Auto two up, three up below; wide front (three approaches 3.2 km apart) → Auto three up, two up leaving one uncovered; J moves B Coy off a wood (warn → pass) and never leaves the plan worse | `node tools/planbuilder-test/fit.mjs` (37) |
+
+Verified on the real bundle near Okara: J moved B Coy 300 m and took the plan from 2 fails to none; a second J found nothing better; Shift+J restored it; Compare ranked one up 89 (0 fail, 5 warn) over two up 88 (2 fail), three up 83, all round 81.
+
+**Phase 4 built (15 Nov 2026), alternates + what-if + trigger table on the ground:**
+
+| Piece | Where |
+|---|---|
+| Routes on foot over the ground at the IPB rates (p 18: GO 4, SLOW-GO 2.4 km/h by day), a shelled move half as long again (E), + 5 min to settle; a route that would cross NO-GO goes round it (one waypoint either side, up to 1.5 km off the line, E), or is reported "no route", never drawn through; the share of it hidden from the enemy 2.5 km out on the main approach | `routeOnFoot` in `PlanWhatIf.ts` |
+| The enemy's lead tanks along the approach at the IPB vehicle rates (GO 24, SLOW-GO 16 km/h) from the threat marker (or the assumed start) to the place | `PlanWhatIf.ts` |
+| Triggers: heavy shelling on each forward posn → its alternate (an alternate on NO-GO fails); the enemy on each secondary approach → the reserve to a **Sup posn** facing it where it closes on the FDL; penetration on the main approach → the reserve to a **C Pen posn** astride it 400 m behind the FDL. Each: route, own time, the enemy's time, verdict (pass when he needs twice the move or more, warn when less, fail when he is there first: `PlanDoctrine.moves.margin`, E) and who covers meanwhile | `whatIf`, `withMoves` in `PlanWhatIf.ts` |
+| Sup and C Pen posns go into the plan as planned (dashed) Battle Posn / C Pen Posn, hidden / shown / none with the alternates; a "Moves in time" row in the checks, counted in Auto's ranking | `PlanSolve.ts` `extraPosns`, `PlanWhatIf.ts` |
+| Check step: the trigger table, "Show the routes on the map" (dashed, each with its minutes); the routes also drawn while the plan rests; Copy as Text carries the trigger table with own and enemy times | `PlanBuildTab.ts`, `planText` |
+| Labels on built plans at half size (`planBuilder.labelSize`, 7 pt, in Ctrl+K) | `PlanSolve.ts`, `PlanBuildTab.ts` |
+| Checks | `node tools/planbuilder-test/whatif.mjs` (18) |
+
+Verified on the real bundle at the BRB canal (enemy from the east, placed in **3D**): 34 symbols with the killing ground, two Sup posns and the C Pen posn; labels 7 pt; three approaches; the enemy's lead tanks at the FDL in about 37 min; the shelled moves to the alternates in time but tight (22 against 39–41 min, warn); the reserve on foot too slow for both secondary approaches (49 against 40, 59 against 47 min round NO-GO: fail) and only just in time for the C Pen posn (38 against 39). That is the trigger table doing its job: on that ground D Coy must be mounted, pre-positioned, or the Sup posns occupied before the enemy commits.
+
+**The enemy and the ground (15 Nov 2026, with Phase 5; the user: "what echelon / size of enemy ... this will change lots of things"; "what is terrain, is it catered for?"):**
+
+Before this, the enemy was only a direction (the threat marker), always tanks, and the ground was read cell by cell but its kind (plains, obstacle, desert, mountains) changed nothing. Now:
+
+| Piece | Rule (source) | Where |
+|---|---|---|
+| **En force** (step 2): Coy / Bn / Bde / Div, Auto = one level up in defence (the attacker's 3 : 1, MW p 80), one level down in attack | force ratio row: an en Bde on a Bn passes (3 : 1), an en Div on a Bn warns (more than it holds alone), less than 3 : 1 = a probe or raid; strength about three of the level below per level (E) | `PlanDoctrine.enemy`, `PlanContext.forceRow` |
+| Approaches sized to him | he attacks on the corridors of the level below him (IPB pp 7, 12: en Bn 500 m, Bde 1.5 km, Div 3 km); each approach says what it carries ("narrow: an en Bn at most"); the main approach is the first that carries his echelon; one that carries it must be under fire (fail), a narrower one wants a screen (warn); none wide enough is said | `PlanFit` (approaches), `approachCarries` |
+| **En type**: Inf / Mech / Armd (Auto Mech; Inf in the mountains, MW pp 238-239) | Inf: approaches on foot, foot rates (IPB p 18), FUP 1000-1200 m (IBB p201); Mech / Armd: tracked, vehicle rates, FUP 2500-3000 m (IBB p214); the trigger table's times and wording follow | `PlanContext`, `PlanWhatIf`, `PlanGroundProbe.avenues(…, profile)` |
+| En FUP | his likely FUP on the main approach at his FUP distance (or the one drawn): in view from a forward posn (pass) or dead ground (warn: OP / LP / standing patrol, DF target) | `PlanFit` |
+| **Ground** (step 1): Auto / Plains / Obstacle / Desert / Mountains | Auto reads it where the plan rests (E): 400 m of rise within 5 km = mountains; canal, distributary, drain, embankment or bund in front of half the front inside 1.5 km = obstacle; half the ground within 3 km bare, sand or dunes = desert | `PlanDoctrine.terrain.detect`, `PlanFit.detectTerrain` |
+| Obstacle | Bn up to 6 km (IC s113 obstacle-oriented), Bde 20-27 km (E: IC s113 Div 60-80 km over three Bdes), Div 60-80 km; a Coy is never extended (IC s84.6b); Auto tries three up first; the obstacle tie-in (each forward posn has it under its MGs, 700 m E; IBB Annex V App 9) | `frontageAllowance`, `PlanFit` |
+| Desert | large gaps accepted (OOW1 s22 p68); the tank threat from any direction, the rear too (OOW1 pp 68-69: flanks never pass); all round first; foot 3 / 2.5 km/h (IBB p 18) | `applyContext`, `PlanFit` |
+| Mountains | Bn up to 8 km (IC s113); forward posns at least 30 m above the main approach (E; MW pp 147-179 hold the dominating features); all round first; foot 3 km/h + 30-60 min per 300 m of climb (MW p 81) | `PlanFit`, `routeOnFoot` |
+| Without the bundle | Auto is plains, assumed (grey row); a set kind still changes the frontage and gaps | `PlanBuildTab._withContext` |
+
+**Phase 5 built (15 Nov 2026), Check my plan:**
+
+| Piece | Where |
+|---|---|
+| The tab's **Build a plan / Check my plan** switch. Check reads the selected symbols, the last placement or every symbol on the map (the records Save Plan writes, `SerializationEngine.planRecordsOf`; the Mgr's `readDrawn`; the host's selection), with the En force, Ground and threat marker inputs; Read and check; Copy as Text; rings by verdict, the approaches and the en FUP on the map; tiles that arrive later are read again | `PlanBuildTab.ts`, `DeploymentBuilderEngine.readDrawn`, `SerializationEngine.planRecordsOf`, `SymbolEngine` (host `selected`) |
+| Reading (16.2 cautions): side from the identity (02 / 03 own, 08 Rangers, 05 / 06 enemy; freehand left out); echelon from the label ("A Coy", "27 FF"), then the SIDC, a unit inside, the size; planned status = depth / D line; an unlabelled planned outline over a held posn left out; a dummy by the HQ / TF digit; a posn holding two or more smaller ones is the plan's outline (the Bn Def sample: A Coy holding Pls 1-3 = a Coy plan); a Reserves symbol on its own = the reserve | `PlanCheck.readSymbols`, `mapPlan` |
+| The front: the threat marker, else the enemy symbols, else what points at the enemy (arcs of fire, covering troops, protective minefields, FEBA, each from the posn held nearest it), a DCB only when nothing else is drawn: the 12 Bde sample's DCB lies in depth on the Line of No Pen | `mapPlan` |
+| Forward = nothing of its own echelon in front of it in its lane (an FDL along a canal is not straight); roles can be changed by a click | `mapPlan`, the posns table |
+| Defence checks: En force, Terrain, frontage (by echelon and ground), depth (posns held; the planned D line named apart), gaps (Coy / Bn plans: the IBB rows and mutual support; Bde / Div: accepted when a minefield or obstacle is drawn across, OOW1 p82), facing (only a posn facing otherwise than the rest is flagged: both samples mark the echelon on the rear side), posns in depth, reserve reach (mounted when armour sits in it), alternates, each posn's size; on the ground the fit in check-only mode (nothing slides), drawn en axes as his approaches, the drawn en FUP, the DCB tie-in from the symbol | `checkDefence` |
+| Attack checks, per axis (matched to the en posn at its head, the FUP at its tail, the SL across it, the BOF nearest the Obj): FUP distance, SL square to the axis and between FUP and Obj, BOF on a flank and in range of the Obj's near edge, assault width; on the ground FUP unseen, the going, SL on a linear feature, the BOF's view; force ratio; en posns not attacked | `checkAttack` |
+| The Plan Builder's tile cache at least 256: at Bde scale each posn's sight grid lies in other tiles and 64 thrashed (never loaded) | `PlanBuildTab._openProbe`, `Settings.json` |
+| Checks | `node tools/planbuilder-test/check.mjs` (71: the enemy and ground rules on synthetic ground, and the Bde Def, Bn Def and Div Attk samples) |
+
+Verified on the real bundle (2D): the **12 Bde Def** sample read as a Bde defence, 27 FF / 26 Punjab / 25 AK forward, D2 / D3 planned D line, the Reserves symbol as the reserve, the front east from the arcs, minefields and covering troops; frontage 25.6 km fails a Bde's 10-12 km on plains and passes with Ground: Obstacle (20-27 km); the one tracked approach (through the 26 Punjab - 27 FF gap) not under direct fire; fields of fire about 96 % dead ground; en FUP 2.7 km out in dead ground. The **Div Attk** sample: 23 axes, FUPs 2.3-3.9 km from the en posns, BOFs out of 106 mm range and blind to their objectives, one axis across water, force about 2.1 : 1. Not yet: the right-click "Check my plan" on a selection (§10), and 3D.
+
+**The ground shapes the plan (15 Nov 2026, the user's sketch: a Battle Posn's echelon mark on its rear, enemy ahead; "can have curves and enclose ITG, near top plateau or higher ground, can be curved to suit the terrain features"; "underlying terrain changes frontages and move and pacing"; symbols carry CTRL_PTS for curves and BASE_LN_PTS for width):**
+
+| Piece | Where |
+|---|---|
+| The echelon mark (the segment from a Battle Posn's last point back to its first) on the **rear** side of every built posn; Check my plan reads facing the same way (a posn whose mark is toward the threat is flagged) | `PlanSolve.BP_SHAPE`, `PlanCheck.mapPlan` |
+| **Higher ground:** a posn not slid out of NO-GO moves up to 400 m (Bn) / 200 m (Coy) when its high ground (the mean of its five highest samples, so a knoll inside a 1.5 km posn counts) would stand 8 m or more higher (E) | `PlanFit` step 1b, `PlanDoctrine.fit.highGround` |
+| **Curved outlines:** each point of a posn's curve moves in or out by up to a quarter: out over higher ground, in off NO-GO and water; the echelon segment stays; drawn through the posn's CTRL_PTS | `PlanFit` step 1c, `SolveOptions.outlines`, `PlanDoctrine.fit.outline` |
+| **Attack axis on the ground:** the way on foot from the axis' tail to the Obj round NO-GO (`findAvenue`); when it bends more than 100 m the arrow becomes a curve through its CTRL_PTS, its BASE_LN_PTS width square to the first leg | `PlanFit.axisOnGround`, `SolveOptions.paths` |
+| **Pace:** the assault's time along the axis over this ground (IPB p 18; desert IBB p 18; mountains MW p 81 with the climb), for the fire plan's lifts; built-up ground under a forward posn cites IC s55 (a Pl holds 100 m: the frontage shrinks) | `PlanFit.fitAttack`, `groundCheck` |
+| Force ratio counted from the ORBAT's children: Coy 1, Bn 4 rifle Coys (pp 606-611), Bde 3 Bns, Div 3 Bdes; a posn and the unit symbol in it count once | `PlanDoctrine.enemy.levels`, `PlanCheck.strengthOfSide` |
+| The front from cues measured from the centre of the posns held now (the nearest posn misread a protective minefield 200 m out); wire is not a ditch (only 252902xx / DCB facility tie a front) | `PlanCheck.mapPlan` |
+| Checks: built posn's mark on the rear; a built plan read back by Check my plan (marker and no marker); a knoll in front moves A Coy up; a lake pulls an outline in; flat ground changes nothing; an attack axis bends round a lake with its width and pace | `node tools/planbuilder-test/check.mjs` (86) |
+
+Verified on the real bundle in the Salt Range (32.72 N 72.95 E): Bn Def two up placed north; A, B and D Coy moved 400 m up onto ground 31-73 m higher, A and B Coy's outlines curved to the ground, echelon marks on the rear; read back by Check my plan as two forward, two in depth, Ground Auto = Mountains (about 490 m of rise within 5 km), the en an infantry Bde at 3 : 1, facing passed.
+
+**The ORBAT wired in (15 Nov 2026, the user: "what is the benefit of MS/Data/Orbat/PK in all this?" then "wire the ORBAT"):**
+
+| Piece | Where |
+|---|---|
+| A pure reader over the ORBAT files (fetched by the tab from `planBuilder.orbatUrl`, read from disk by Node; RESTD, never sent out): a unit's manoeuvre Coys / Sqns counted down its children (support, HQ and services left out; a child not printed judged from its role, E), Pls per Coy, all ranks, weapons with their `weapons.json` ranges, APCs; what the extraction lacks is said | `PlanOrbat.ts` (`brief`, `unitLine`) |
+| **Unit type** (Task step, Bn plans): Std Inf / Mtn Inf / MIB / ABIB / Air Aslt / Mjd ...; a type with other than 4 manoeuvre Coys (Lt Cdo, LAT, HAT) shown but not offered (the layouts are for 4); what it holds under the chips | `PlanBuildTab._unitTypeRow`, `ownBnTypes` |
+| **Ranges from the unit's own weapons**: the BOF's 106 mm RR, the 81 mm, MG mutual support (twice the MG1A3), the ATGM; a weapon the unit lacks keeps the doctrine figure | `doctrineForUnit` |
+| **ATGM pairs from the unit's launchers** (a Std Inf Bn's 4 BS = 2 pairs, an ABIB's 6 = 3): the recipe's pair in the gap, the others on the tank approaches where they close on the FDL, 450 m apart across them, an approach the posted ATGMs do not reach first, then the main one (OOW1 pp 25, 44); without the ground, on the open flanks | `PlanFit.atgmExtras`, `SolveOptions.extraPoints` |
+| **AT cover** (Mech / Armd enemy): each tank approach under ATGM fire, or only the forward Coys' RR, or nothing (fail on one that carries his main effort) | `PlanFit.atCoverRow` |
+| **Mounted reserve** (a unit with APCs: MIB 60, ABIB 54): the reserve's moves to the Sup and C Pen posns on tracked going at the IPB vehicle rates, and the geometry Reserve reach | `PlanWhatIf.routeOnFoot(…, mounted)`, `SolveOptions.mountedReserve` |
+| **Force ratio from both ORBATs**: own manoeuvre Coys against the enemy's unit from Sec 13 for his echelon and type (Bn: en Inf Bn / MIB / Armd Regt; Bde: IIB / RAPID Inf Bde / IAB; Div: Inf Div (Mtn Div in mountains) / RAPID (Def) / Armd Div); an IIB (12 Coys) on a Std Inf Bn (4) = 3 : 1; armour counted by Sqns, said to weigh more; Check my plan uses it when the enemy is not drawn | `forceFromOrbat`, `enUnitFor`, `PlanContext.forceRow`, `PlanCheck` |
+| **Mines in time**: the protective minefield along the front at the p 439 rates (an Engr Pl 780 mixed clusters in 24 h, an Inf Pl half; 1 cluster a metre, E reading of the remark): one Engr Fd Coy, and the Bn's own rifle Pls, against the 24-36 h to be ready (IBB); over it, more engineers or the MML | `minefieldRow` |
+| The level table for drawn symbols counts from the ORBAT's children (Bn 4 rifle Coys, Bde 3 Bns, Div 3 Bdes) | `PlanDoctrine.enemy.levels` |
+| Copy as Text: the unit line and the enemy's | `PlanBuildTab._unitLine` |
+| Fixed on the way: the what-if rebuilt its rows and dropped the En force / Terrain rows (and now AT cover) | `PlanWhatIf.withMoves` |
+| Checks | `node tools/planbuilder-test/orbat.mjs` (33) |
+
+Verified on the real bundle at the BRB east of Lahore (threat east): the plan placed with all 4 BS (the gap pair and the second pair on the main approach); En force the RAPID Inf Bde, 12 Coys on 4 = 3 : 1; Ground read as an obstacle (a distributary in front); AT cover pass on both approaches; mines 3.5 km in about 36 h for one Fd Coy; the reserve on foot to the C Pen posn 39 min against the enemy's 33 (fail), and as an MIB, mounted, 11 against 33 (pass).
+
+Not wired yet: the other arm files (armr, arty, engr units, AD) as own units; en weapons for his ATGM ranges (his Std Inf Bn's ATGM has no range in weapons.json); the vehicles for march tables (the Move Planner does those).
+
+**A built plan checked again reads the same (15 Nov 2026, the user: "why does the Auto plan fail when checked again?"):**
+
+Check my plan used to read a placed built plan afresh. It ignored the roles on its graphics, so the reserve read as depth and "no reserve marked". It re-read the ground's kind, which fell the other side of a margin (an obstacle 5 of 9 points in front: Obstacle once, Plains the next time). It held the planned C Pen posn to a Pl's size, sought the approaches toward a different centre, used a different foot pace for the reserve, and had no AT cover, mines or what-if. Now:
+
+| Piece | Where |
+|---|---|
+| A built plan carries `pbMeta` on its graphics (the ground kind it was fitted for and why, the enemy, the unit, the threat point) beside `pbRole` / `pbRecipe` | `PlanEntry.meta`, `PlanBuildTab._meta` |
+| Check my plan reads a built plan by its roles (the recipe's slot kinds: fwd / depth / res / round; alt, sup, cpenPosn, Pls), its recipe's echelon, its ground, enemy, unit and threat; else its own front (forward posns ahead of the depth); the planned posns are not held to a size; all round is not judged on facing | `PlanCheck.mapPlan`, `checkDefence` |
+| The approaches are sought toward the middle of the FDL (all round: the plan's middle) in both the build and the check, from the same assumed start; the C Pen posn on the main approach's line carried into the depth when it ends at the FDL | `PlanFit.fitPlan`, `PlanWhatIf.whatIf` |
+| The reserve's pace is one rule in both: cpen.footKmPerH (E), the ground's in desert and mountains, mounted at the vehicle rate | `SolveOptions.reserveKmh`, `PlanCheck` |
+| Check my plan runs the same AT cover (drawn BS), what-if and trigger table (alternates paired by letter: Alt A to A Coy) and minefield rows; the trigger table in its view and Copy as Text | `PlanCheck`, `movesRow` / `reserveMovesCheck` in `PlanWhatIf` |
+| **J and a slow reserve**: the reserve carries its own moves' verdict, and J fits each try with the what-if, so it moves the reserve nearer when it can be made in time (and the plan ranks better); where no spot is, the check says: mount it, pre-position it or occupy the C Pen posn before he commits | `PlanWhatIf.reserveMovesCheck`, `nextBestSpot(…, refit)` |
+| Checks: the same plan checked again gives the build's verdicts on 16 rows, each posn's verdict and the trigger table; J fixes a slow reserve (enemy tanks 12 km out: 2 fails to none) | `check.mjs` (97) |
+
+Verified in the app at the BRB (Auto, threat east): all 18 shared rows, every posn and the trigger table the same both ways. The Auto plan's remaining fail is real and the same both ways: the reserve on foot reaches the C Pen posn in 45 min against the enemy's 33. Auto picks the best layout; it cannot make an unmounted reserve faster than tanks.
+
+Roles and pbMeta go through Save Plan and Load Plan since 15 Nov 2026 (drawEss `PB`; see the two-phase section).
+
+**Phase 6 built (15 Nov 2026), attack in depth:**
+
+| Piece | Where |
+|---|---|
+| **Left / right flank recipes** beside frontal: the frontal assault group (FUP, SL, assault Coys, reserve, HQ, Assy Area) laid on a line 60° off (attack.flankDeg, E) onto the objective's flank, the FUP set back to 1000 m from its near edge, the LOE 600 m beyond its far edge along the assault, the BOF in front as the fixing force (OOW2 s6 para 12), the mortars central so the whole Obj and the LOE stay in reach | `Recipes/bn-attk-{right,left}-flank.json`, `index.json` (flanks first) |
+| **Form of attack** row (user, 14 Nov 2026; MW p 79): frontal warns "dangerous, small chance of success: only if unavoidable"; Auto ranks a feasible flank (no fail) before frontal whatever its warnings, then the weighed score | `PlanSolve`, `PlanFit.rankFits` |
+| **Finders** on the ground: FUP swung round the Obj (±20°, ±100 m) into ground hidden from it, kept 1000-1200 m off (IBB p173, p201); SL on a linear feature square to the axis with a clear run to the Obj (never behind an obstacle) and beyond the last fire lift (450 m + 150 m); BOF 600-1100 m from the Obj, 40-100° off the axis, where it sees most of the Obj and stands higher, laid facing it; Assy Area 1-5 miles back (IBB p173), hidden, a road within 300 m, outside his thermal sights (4 km) where hidden ground allows; the route on foot from it to the FUP round NO-GO, cut to legs within 75 m | `PlanAttack.findAttackSpots` |
+| **H-hour sum**: the approach march (day / night rates, IBB p 18, + 15 %), forming up 30 min, FUP to the SL, the assault at 4 min a 100 m (E) slowed by the SLOW-GO share of the axis, the fire lifting at 450 / 360 / 275 / 180 m (IC s66 p305), the Obj, through it, the LOE; times back from H (H = crossing the SL); without the ground, straight lines | `PlanAttack.attackTimes`, `hSumRow` |
+| **His MSR** behind the Obj (a bridge first, else a metalled road, 0.3-3 km beyond), and **left against right**: weighed factors with reasons (form, chokes his MSR, going, FUP hidden, approach hidden, BOF's view, SL, time; `attack.compareWeights`, E) as the attack's score; Compare shows them side by side | `findMsrChoke`, `attackFactors`, the tab's Compare |
+| **Night**: Day / Night in the Task step; the Night March chart from the Assy Area to the FUP (legs, grid bearings, paces, leave-by, his night and thermal sights) | `nightBrief`, `nightRow` (NightMarchRead) |
+| On the map while placing: the fire-lift rings with their minutes, the route with "leave Assy H-…", his MSR choke; the Check step's H-hour table, night legs and factors; Copy as Text | `PlanBuildTab._attackGraphics`, `_attackSection`, `_triggerText` |
+| Checks | `node tools/planbuilder-test/attack.mjs` (34) |
+
+Verified on the real bundle east of Lahore by night (objective near the border, own side west): Auto ranked left flank 90, right flank 78, frontal last; FUP in dead ground; no linear feature far enough out for the SL (taped); the BOF 600 m off at 40°, 4 of 9 Obj points in view (warn: recce a better one); the Assy Area 4.5 km back, hidden, by a road; leave it H-1 h 53, 3.4 km in 6 legs, inside his thermal sights from 990 m; the fire lifts H+22 to H+33, on the Obj H+41; the LOE ending by the bridge on his MSR.
+
+Not yet: Bde / Div attacks. (The counter-attack approaches onto the Obj, two phases and tank FUPs were done the same day: below.)
+
+**Two-phase attack built (15 Nov 2026):**
+
+Any Bn Attk layout (frontal, right or left flank) can run in two phases: the Task step's **Phases 1 / 2** chip. Phase 1 is the layout as it stands, onto Obj 1. Phase 2 follows IBB S39-S42 (read 15 Nov, pp 174-211):
+
+| Piece | Where |
+|---|---|
+| **The recipe**: Obj 2 behind Obj 1 (1.5 km centre to centre, his depth Coy, E); the follow-up C and D Coys in the reserve's place, 500-750 m behind the assault Coys (IBB p204 (7)); FUP 2, SL 2 and the phase 2 arrow round Obj 1's flank onto Obj 2 60° off his front (p186 h: a new direction, onto his flank, not through the Coys on Obj 1); the LOE 600 m beyond Obj 2; the mortars' step-up posn (planned, dashed) 300 m short of Obj 1 (p176 d); the BOF the Spt Coy's weapons; Obj 1 the firm base for phase 2 (p189 para 23) | `PlanPhase.twoPhaseRecipe`, `layPhase2` |
+| **Geometry rows**: Phases; FUP 2 600-1200 m from Obj 2 (beyond the last fire lift) and 300 m clear of Obj 1; Ph 2 fire base (Obj 1 within the 106 mm RR's reach of Obj 2, firing 30° or more across the phase 2 axis); Reserve warns: no Bn reserve left, tell Bde (p186 i); the mortars reach the LOE from their step-up posn | `PlanSolve` |
+| **On the ground**: Obj 2 on a hostile unit or posn drawn 0.9-2.5 km behind Obj 1 (within 45° of straight behind), else on his high ground there (8 m higher), else assumed (warn: draw his depth posn); the side round Obj 1 tried both ways and 15° either side: FUP 2 hidden from Obj 2 first, then the shorter way, no NO-GO on the arrow, the LOE nearer his MSR; the follow-up Coys' way laid round NO-GO and kept off Obj 1; the phase 2 arrow bent round NO-GO; Ph 2 going | `PlanPhase.findPhase2`, `goingRow`, `PlanFit.fitLayout` |
+| **H-hour sum**: Obj 1 taken (through it), the follow-up Coys leave the FUP then (IBB p204 (7); `attack.phase2.waitAt` behind = close behind the assault from H, p186 h(2)), their way to FUP 2 at the day / night rate, 15 min forming up, H2 at SL 2, the fire lifting on Obj 2 from H2, Obj 2, the LOE; **Ph 2 timing** warns when H2 comes more than 60 min after Obj 1 falls (E; p176 c: he reorganises or counter-attacks) | `PlanAttack.attackTimes`, `phase2Row` |
+| **Factors**: Phase 2 (FUP 2 hidden, the gap) weighed 0.1 (E); his MSR sought behind Obj 2 | `attackFactors`, `findMsrChoke` |
+| **Map and Check step**: the lift rings on Obj 2 timed from H2, the follow-up Coys' way (dotted) with the time they leave, H2 at SL 2; the phase 2 lines in the H-hour table and Copy as Text | `PlanBuildTab._attackGraphics`, `_attackSection`, `_triggerText` |
+| **Who follows up** (user, 15 Nov 2026: an option on a key while placing and a button beside the other options): **Ph 2 by** chips in the Task step under Phases, and **R** while placing flips them on the fly (the ghost is swapped and, at rest, fitted again on the spot; the card's foot names R). C, D Coys: both onto Obj 2, no Bn reserve (warn: tell Bde, IBB p186 i). C Coy, D res: C Coy onto Obj 2, D Coy kept as the Bn reserve (p186 h(3): commit only what the task needs; its reach timed). Either way the BOF is the Spt Coy's weapons. Default `attack.phase2.coys` (2) | `PlanPhase.twoPhaseRecipe(…, coys)` (ids `-2ph` / `-2ph1`), `PlanBuildTab._setCoys` |
+| Checks | `node tools/planbuilder-test/phase2.mjs` (82) |
+
+Fixed on the way (both from Phase 6, seen on the map): the BOF siter could put the BOF inside a wide objective (600 m from the centre of a 1500 m wide Coy locality); it now keeps 300 m outside its edge (`attack.bofOutsideObjM`, E; attack.mjs 34). His MSR bridge was searched every 100 m and a small turn of the plan could miss it; now every 30 m (`attack.msrChoke.stepM`).
+
+Verified on the real bundle east of Lahore by night (own side west), Auto with two phases: right flank first; phase 2 round Obj 1's right (the left way 3.9 km against 1.9), FUP 2 hidden from Obj 2; Obj 1 taken H+89 min, H2 H+149 min (60 min after, at the limit), on Obj 2 H+180 min; the LOE 220 m from the bridge on his MSR; the BOF 300 m outside Obj 1; Obj 2 assumed (nothing drawn behind Obj 1); no Bn reserve (warn). All three layouts fit in 64-104 ms.
+
+Figures to confirm (E): Obj 2 1.5 km behind Obj 1; phase 2 60° off his front; FUP 2 600-1200 m from Obj 2; 300 m clear of Obj 1; 15 min forming up at FUP 2; H2 within 60 min of Obj 1 falling; the default of both follow-up Coys onto Obj 2 (the user switches it per plan); the mortars 300 m short of Obj 1; the BOF 300 m outside the Obj.
+
+**Finished 15 Nov 2026 (the user: "take sensible decisions and complete it, test it"):**
+
+| Piece | Where |
+|---|---|
+| **P** while placing switches the attack between one phase and two on the fly (the ghost swapped, at rest fitted again on the spot); the card's foot names P (and R in two phases); the Phases chips do the same | `PlanBuildTab._setPhases`, `_swapPlan` |
+| **Check my plan reads a two-phase plan**: an axis that starts within 1.5 km of another axis's Obj and goes on to a deeper Obj is a later phase from it (a built plan says so by its roles, `axis2` after `axis`); it is judged as phase 2: FUP 2 600-1200 m from Obj 2, the earlier Obj as its fire base (in reach, firing 30° or more across it), **Ph 2 direction** (300 m off the earlier Obj, and turned 30° or more or in a lane of its own 300 m or more aside: IBB p186 "a new direction", read as either, E); no BOF rows on it; a **Phases** row and, for a built plan, **Reserve** (warn when every rifle Coy is committed) | `PlanCheck.checkAttack` |
+| **His counter-attack onto the last objective** (reorganisation, IBB p189 paras 22-23, p191): from his depth 4 km beyond it (straight behind and 45° either way, his front facing the own side), his least-cost ways in (tracked for armour or mech, on foot for infantry), joined ways counted once; each judged by what the objective sees of its last 400-1200 m (dead ground: an unseen run of 100 m or more, named with its distance: an LP and DF there); a DF target on each 600 m out. Replaces the solver's "not checked" **Approaches covered** row in the build and in Check my plan; drawn on the map (red dashes, "En CA from NE · dead Gr 410 m", DF crosses). Figures `attack.counter.*`, all E | `PlanAttack.counterAttack`, `PlanFit.fitLayout`, `PlanBuildTab._attackGraphics` |
+| **Save Plan keeps a built plan's roles**: `pbRole` / `pbRecipe` / `pbPlanId` / `pbMeta` go into each symbol's drawEss as `PB` (as `PINNED` does); Load Plan puts them back on the graphic and keeps them out of the symbol's own drawEssentials; `SerializationEngine.planDocument()` builds the document Save Plan downloads | `SerializationEngine` |
+| Fixed on the way: Check my plan read the frontal recipe's FUP, laid at exactly 1000 m, as 999.99 m ("inside his reach"): 1 m either way now (the build = the check) | `PlanCheck.checkAttack` |
+| Checks | `attack.mjs` (42), `phase2.mjs` (96) |
+
+Verified in the app east of Lahore by night: placed as one phase, P made it two on the spot (Rt flank 82); his counter-attack read from the NE, E and SE, each with dead ground 410-560 m out (warn, an LP and DF there); placed, Check my plan on the last placement gave the same Phases, phase 2 rows, Reserve and counter-attack verdicts; the plan document Save Plan writes carried all 20 roles, and loaded back they were the same, with Check my plan reading it as before. Fitting all three layouts with the counter-attack takes 62-77 ms.
+
+Not yet: Bde / Div attacks; three phases; a phase 2 onto an Obj 2 the user drags; Load Plan does not restore a pinned symbol's pin (the Deployment Mgr's path does; older, not touched).
+
+**Moves in time in the hills (15 Nov 2026, the user with a Bn Def two up in the hills: "why it says fail?"):**
+
+Every move failed because the threat marker sat 0.5-1 km in front of the FDL and the enemy's times were counted from it (0-6 min to the FDL), and because in the mountains the own moves paid 30-60 min per 300 m of climb (MW p 81) while the enemy's approach did not. Now:
+
+| Piece | Where |
+|---|---|
+| His times start **no nearer the FDL than his FUP** (IBB p201 infantry 1000 m, p214 tanks 2500 m, `enemy.types.*.fupFromFdlM`): a threat marker inside it gives the way he comes, his way is set back to his FUP along it; the Moves row and the trigger table say so ("his FUP 1.0 km out (the threat marker lies 450 m in front of the FDL ...)") | `PlanWhatIf.whatIf` (`enemyFromFup`), `enemyStartWords` |
+| His **infantry pay the climb** in the mountains, the same figure as the own moves (`terrain.kinds.mountain.ascentMinPer300m`, every 50 m along his way); his vehicles keep their rates as the own mounted moves do | `PlanWhatIf.enemyMinutesTo` (`EnemyTimeOpts.g`) |
+| A failed move now names its times in the Moves row ("Heavy shelling on A Coy (97 against 22 min)") | `movesRow` |
+| Checks | `whatif.mjs` (28) |
+
+Re-run on three hill sites (Kotli, Rawalakot, Murree, Bn Def two up): enemy to the FDL with the marker 1.3 km out 14-31 min (was 0-6), 5 km out 102-132 (was 56-70), no marker 183-294 (was 107-114); with the marker that near the shelled moves (28-97 min) still fail, honestly: they must start before he leaves his FUP.
+
+Then (the user: "Yes, fix it"): the own routes on foot tried only the straight line and one detour point up to 1.5 km aside, while his approach is a least-cost way, so broken hills reported "no route" where a way round exists. Now, when no short detour gets round, `routeOnFoot` takes the least-cost way on the ground (findAvenue, `moves.routeWidthM` 100 m, E) when it starts and ends where the move does and is quicker; on such a way its own points decide NO-GO, and a stretch between two of them that clips NO-GO at a bend counts as SLOW-GO. Kotli: the reserve to the C Pen posn, "no route" before, now 5.4 km round the water in 204 min (fail against an enemy 5 km out at 104 min, warn with no marker at 213): the reserve stands too far back there. `whatif.mjs` (33).
+
+**Moves in time laid out (15 Nov 2026, the user: "keep it honest but 1. format it well 2. also suggest why and how to fix"):** a check may carry `detail` (`PlanSolve.CheckDetail`: a headline, one line per item, why, fixes, and the card's short forms). "Moves in time" (the plan row and the reserve's own) fills it: each move with both times and its verdict (in time / little to spare / too late), the cause (his rate and start against the own move on foot, half as long again under shelling; no route), and fixes tied to the cause, most direct first: start the move on the first shelling (a trigger in the orders); commit or pre-position the reserve; mount the Bn (MIB / ABIB); J moves the reserve nearer; site the alternate nearer; set En type Inf if he is infantry (only while the type is the default); mark the threat where he starts; find a crossing. The cursor card shows the short form (3 moves, a one-line why, 2 fixes, "N more in the Check step") and stays on the map; the Check step and Check my plan show it in full; Copy as Text prints it under the row (`detailLines`). The verdicts are unchanged. `whatif.mjs` (41).
+
+**Tanks with the attack built (15 Nov 2026), tank FUPs for armour-heavy attacks:**
+
+IBB S44 para 16 a pp 213-216 (read 15 Nov): his ATGMs reach 1500-3500 m and stand 500-1000 m deep, so the tank FUP is 2500-3000 m out and a common FUP with the infantry is no longer feasible; S42 pp 181, 186-188; S35 para 7 b pp 144-146 (who leads).
+
+| Piece | Where |
+|---|---|
+| **Tanks** chips in the Task step (None / Fire sp / Close sp) and **T** while placing (cycles them; the ghost swapped, at rest fitted again; the card names T). Works with one or two phases (the tanks go with phase 1) | `PlanBuildTab._setTanks`, `_rcp` |
+| **The recipe**: FUP (Tks) 2750 m out on the infantry's axis line, 300 m aside away from the BOF (a place of its own, p181), A Sqn there. **Close sp** (armour heavy): the tanks' own axis converging on where the infantry enter the Obj (p186), the rear troop 1.5 km out on the BOF's flank (p188 c, p215 b). **Fire sp** (infantry heavy): the Sqn's fire posns beside the BOF, planned (p214 option a). Ids `-tkc` / `-tkf` | `PlanTanks.withTanks` |
+| **On the ground**: FUP (Tks) 2.5-3 km out and 600 m either side where a hull 2.3 m up is hidden from the Obj and tracks go; the tanks' axis bent round NO-GO on tracks; the fire posns follow the BOF and the Sqn's way to them on tracks; **Who leads** from his fields of fire along the approach (the first unseen run of 100 m: beyond 500 m the tanks may lead, 500 m or less the infantry, 200 m or less a troop at most, Close sp warns there) | `PlanTanks.findTankSpots`, `PlanFit.fitLayout` |
+| **Timing** in the H-hour sum: Close sp leaves FUP (Tks) to reach the infantry's assault line (250 m out) as they do, fires them on after the artillery lifts (p187 b(2)) and rushes to be on the Obj a minute before them; Fire sp reaches its fire posns as the infantry come as close to the Obj (H at the latest) and fires them on; night 8 km/h, day 16 (E); a note to cover their noise when they move before H (p215); **Tank fire range** at night 800 m with NVD, 1600 m registered (p214); **Tank going** on tracks | `PlanTanks.addTankTimes` |
+| Geometry rows (no ground): Tank FUP (2500-3000 m), Tanks (the role), Who leads not checked | `PlanSolve` |
+| **Check my plan**: an arrow labelled Tks, with role `tkAxis`, or from an FUP 2 km or more out with armour beside it is the tanks' axis: its FUP judged in the tank band, no SL or BOF asked of it, its going read on tracks, not taken for a phase | `PlanCheck.checkAttack`, `PlanTanks.tankGoingRow` |
+| Map: when the tanks leave FUP (Tks), their way to the fire posns, when they reach the assault line and are on the Obj | `PlanBuildTab._attackGraphics` |
+| Checks | `node tools/planbuilder-test/tanks.mjs` (58) |
+
+Verified in the app east of Lahore by night: Close sp (Auto left flank): FUP (Tks) 2.7 km out, hidden; his fields of fire end 280 m out on that axis (the infantry leads); the Sqn (-) leaves H+6, 3.2 km in 28 min, at the assault line H+34 as the infantry reach it, on the Obj H+43, the infantry H+44; Tank going 29 % SLOW-GO. T on the fly to Fire sp (Auto right flank): fields of fire 600 m (the tanks could lead); the Sqn leaves H-13, 4.3 km in 36 min, at its fire posns H+23 as the infantry come 460 m from the Obj, inside the 800 m night range. Placed, Check my plan read the tank axis as the tanks' (FUP 2.6 km in the tank band, Tank going pass).
+
+Figures to confirm (E): FUP (Tks) 300 m aside of the axis; the search 600 m either side; tanks 8 km/h by night, 16 by day; the rush 15 km/h; on the Obj 1 min before the infantry; the rush from 250 m (the farther assault line figure); the rear troop's place on the BOF's flank.
+
+Not yet: the Sqn's own harbour and its move to FUP (Tks); tanks with phase 2; ATGMs and the en AT ranges from the ORBAT for the tank FUP (the doctrine band is used); Bde / Div attacks.
+
+**Phase 8 built (15 Nov 2026), ambush, patrol and recce** (the user: "Ambush, Patrol, Recce"). Wrapped over the Movement Guide
+and Platoon Guide engines; their card APIs and outputs are unchanged (`movement-test` 31 + 38, `platoon-test` 57 still pass).
+
+| Piece | Where |
+|---|---|
+| **Recipes**: Pl Ambush line / L / V (pivot: the KZ centre, aimed up the road toward where he comes from; KZ, Ambush arc with its arrow into the KZ, Fire Gp, Stop 1 on his side, Stop 2 beyond, RV 800 m back, withdrawal); Pl Patrol (pivot: the SP, the second click is the Obj; FRV, routes out and in, check points at the bounds); Pl Recce two / three OPs (pivot: the SP, the second click is the NAI; Recce Outposts, routes). Basis E: the rules are R (OCOKA_Roadmap ch 6, IC / IBB pages to cite), the layout figures mine. New: recipe `pivot`, layouts `patrol` / `two-ops` / `three-ops`, `SMALL_TASKS` | `MS/Data/Deployments/Recipes/pl-*.json`, `PlanRecipes.ts` |
+| **Figures** (all E but the R bands): KZ on the road within 50 m of the click, none within 300 m fails; the road read 1.5 km toward him and 800 m beyond; KZ seen 80 % (50 % fails); a better site 10 points up; RV 750-900 m (R); FRV 400-500 m and bounds 550-750 m (R); seen 20 / 50 %; 60 min at the Obj; a 10 h night; OPs 600-2500 m out (best 1-2 km), within 60° of the line back, 300 m apart; NAI seen 70 % (40 % fails) | `PlanDoctrine.json` `smallOps.*` |
+| **Geometry only**: the shapes laid by the solver; the patrol's Obj and the recce's NAI follow the cursor while aiming (the Mgr now hands the aim point to the hooks); RV, FRV, OP range and OPs apart checked; every ground row grey | `PlanSmallOps.solveSmall`, `PlanSolve` (small-task branch), `DeploymentBuilderEngine` (`onGhost` / `prepareCommit` cursor) |
+| **Ambush on the ground**: the road under the click (tile pieces joined end to end, the straightest on), read toward him with the Movement Guide's scanner for the target (Target chips Wheeled / Tanks / On foot, **M** while placing); the spot scored and laid as the layout chosen (`ambushSiteAt`: the body of `ambushSites` for any station, its shape forced, the ground's shape reported); rows Road, Target held, Hidden from behind, Fire posn, KZ in view, Stops, Withdrawal, RV, Reinforcements (his QRF time), Village, Layout (the ground suits an L / V), Site (the + / - lines), Better site (up to two along the road, blue rings, 10+ points better). The KZ stays inside the fire line (60 % of its offset, 12-40 m) | `PlanSmallOps.readAmbush`, `roadAround`; `MovementGuidePlans.ambushSiteAt`, `stationAtChain` |
+| **Patrol on the ground**: `planPatrol` (round NO-GO, away from roads, villages, skylines and the view from the threat marker or else the Obj; wood edges by night: Time chips), routes straightened to legs a patrol can walk by night (60 m, at most 11), `patrolCard` on each; rows Route out (its length against the straight line, warn past 2x), Bounds (legs ending on a feature), Route in (share along the way out), FRV (hidden from the Obj), Seen, Villages, Skylines, Dangers, Obstacles, Time (out + at the Obj + back against the night); the route card in the Check step and Copy as Text | `PlanSmallOps.readPatrol` |
+| **Recce on the ground**: OP candidates every 150 m and 10° on the own side and on hills, peaks, knolls, trig points, towers; each scored on the NAI points it sees (5 x 4), height above the NAI, cover, distance; picked for what each adds to the others; routes in dead ground (`planPatrol`, the NAI as the threat); rows OPs sited, NAI seen (each OP in the detail), OP view (an OP that sees almost nothing), OP ground, OPs apart, Routes hidden, Time (each route against the straight line) | `PlanSmallOps.readRecce` |
+| **The tab**: Ambush / Patrol / Recce chips live (Crossing still later); no enemy force, ground kind or ORBAT rows for them; Enemy step says how to place each; the card's last line (target, site, better site; legs and night minutes; % of the NAI seen); map products (the road and the KZ points seen green / red, better-site rings; the patrol's stretches seen red / hidden green and dangers; the NAI points seen and each OP's share); Compare shows each layout's own rows; Check my plan says it reads defences and attacks only | `PlanBuildTab` |
+| Fixed on the way: the Freehand Dotted Arrow (`00000007`) drew as a bare point when a plan document gave it `GEOM: null` (the patrol's route in, the ambush's withdrawal; the Movement Guide's Create on Map uses it too); it now draws from the control points as the solid arrow does | `MS/Symbols/FreehandDottedArrow.ts` |
+| Checks | `node tools/planbuilder-test/smallops.mjs` (77, on the Movement Guide's synthetic world) |
+
+Verified in the app east of Lahore: **ambush** on the canal bank road by the BRB, aimed NNW: KZ on the road, the canal holding his vehicles on one side, a bend hiding it, Fire Gp in cover on the built-up side, KZ 100 % in view, RV 800 m NE, a post 0.7 km away (QRF about 6 min) and Jallo Mor within 1 km (warn), Stop 2 not seeing the road beyond its end (warn), the ground suiting an L (Compare: L 61, line and V 51), a better site 660 m toward him scoring 74. **Patrol** by night 5.4 km east: out 7.6 km in 11 legs (1.4 times straight), back 7.0 km by another way, FRV hidden 450 m short, 3 % seen, 3 canals to cross, 9 h 13 of a 10 h night. **Recce**: an NAI in the Wara villages gave 30 % seen (fail, honest: buildings), one in open crops 70 % with two OPs (OP 2 in the open: warn). Placed plans drew all their symbols, the dotted routes included.
+
+Figures to confirm (E): every `smallOps` figure but the R bands; the target's height 2.4 m and the eye 1 m; QRF 30 km/h + 5 min.
+
+Not yet: the Night March chart for the patrol (the route card is there, with mils and magnetic). Done since (see "What was left" below): Check my plan for them, the Coy screen and the area ambush, J for a better ambush site, leg ends on features.
+
+**Phase 7 built (15 Nov 2026), crossing and bridgehead** (the user: "Build Crossing"). Read for it: IBB S46 pp 231-241
+(bridgehead battle, space, break-in phases, Figs 20-22), S47 pp 242-246 (enemy defence on a major water obstacle, Fig 23),
+Annex Q pp 467-468 (engineer technical data); IC s70-71 pp 355-366. Over the Movement Guide's Water engine (readWater,
+readReach), unchanged (`water.mjs` 56 still passes).
+
+| Piece | Where |
+|---|---|
+| **Recipes** (pivot H: the click on the water where the first wave enters, IBB S46 para 25 p240; aimed across): **Bn Crossing** two up (A, B Coys on about 300 m of the bund each, IC s70 para 4c p358; Bn front 500-800 m; C Coy H+20 through to OBJ 2 600 m deep; D Coy reserve; bridge between the assault Coys; Veh Wait, RP on the far bank, checkpoint, Bn Assy: IC s71 paras 7-8 pp 362-364); **Bde Crossing** two up (two Bns on 650 m, 550 m apart, two crossing places each; PL 1 450 m beyond the bund on 1.9 km; the third Bn through to 1500 m; BH 3750 x 1650 m: IBB S46 paras 20-22 pp 238-239) and four Bns (BH 2.5 km deep, para 23 Fig 22); **Div Bridgehead** two Bdes (four FUPs, PL 1 per Bde, PL 2 7.5 x 1.65 km, BH 8 x 6 km = 48 km2, two bridges, bases of fire between and on the flanks, follow-in Bdes: paras 17-21, Fig 20) | `MS/Data/Deployments/Recipes/{bn-cross,bde-cross,div-bridgehead}-*.json`; layouts `four-bn`, `two-bde` |
+| **Symbols as in 2525D**: Assault Crossing `25271300` and Bridge `25271400` (the bracket shape of DISA's templates, Esri JMSML `svg/Appendices/ControlMeasures`, drawn by the existing Bridge class: base line along the home bank, far end on the far bank) | `Symbols.json` |
+| **Figures** (D, page cited, unless E): bridgehead bands, coy bund, the drift 2 x the width, M2 boat 12 men 10 min a round trip per 30 m and 48 a division, rafts and bridges with their build times by day / moonlight / dark night and the spans each formation holds, lanes needed after 3-3.5 h, breaching per 108 m, bridge-layer limit 24 m (80 ft), his minefield 900-1000 m; E: 16 boats a leading Bn, 96 men a Coy, the observer 2 m / target 1 m / 3 km, bank seats 10 m, a Sqn of 14 tanks, a 10 h night, the bridge search 400 m, high far bank 1.5 m | `PlanDoctrine.json` `crossing.*` |
+| **Geometry only**: Fronts, Phase 1 and Bridgehead against IBB S46 (all pass as laid); Obstacle, Crossing means, Observed fire, Bridge site, Approaches and exits grey; the recce list of IC s71 para 5 | `PlanSolve.crossingGeometryRows` |
+| **On the ground**: the obstacle at the click (type, Annex P, width, depth, current, banks with their sources); the whole plan re-laid along it (`ObstacleFrame`: x along the water, y across from the bund, lines and areas bending with it; an item wholly on one bank measured from that bank's crest); the bridge site moved to the narrowest, lowest-banked place with firm tracks within 400 m (an existing bridge there said); his observers: far-side ground within 3 km that sees the crossing places or the bridge, the BH line reaching out to take them up to its doctrinal depth (1.8 km two up, 2.5 km four Bns, 6 km Div), those left in front or on the flanks said with fixes; rows Obstacle, Far bank (high: ladders, grapnels), Season, Boats, Rafts, Bridge, Tanks across, Night, Drift, Fronts / Phase 1 / Bridgehead, Bridge site, Approaches and exits (a NO-GO strip by the bank), Crossings near, Assy areas (seen from the far bank), Observed fire. Ground still loading at the click is grey, never "no canal" | `PlanCrossing.ts` (`fitCrossing`, `ObstacleFrame`) via `PlanFit.fitLayout` |
+| **The tab**: Crossing chip live; Light chips Day / Moonlight / Dark night (the Annex Q column); the Enemy step says how to place it; card line (obstacle, bridge and tanks times, observers outside); map products (the obstacle, observers red outside / amber inside, drift entries, crossings near); Check step timeline from H and the bridge sites; Copy as Text "TIMELINE FROM H"; Compare shows the layouts' own rows; Check my plan says it does not read crossings | `PlanBuildTab.ts` |
+| Checks | `node tools/planbuilder-test/crossing.mjs` (37, on the Water engine's test canal with a far-side ridge and knoll) |
+
+Verified in the app on the BRB Link east of Lahore (H on the water, aimed east), Bde two up: the canal read (Link canal, Annex P 4, 76.2 m and 6 m deep from the sheet, banks 3-12 m); the plan laid along it, Bde and Bn Assy Areas, Veh Wait and FUPs on the west bank, OBJ 1-3, PL 1 and the BH line square to the water on the east; boats 25 min a round trip, C Coy H+0:25, the Bn across H+1:04; 86 m to bridge needs the 195 m M2 set, more than the division's 84 m (warn), open about H+6:30 on a dark night; a tank Sqn by Class 50 raft only by H+10:53, so the Night row warns; drift entries 152 m upstream; three bridges and a ford nearby listed; no far-side ground within 3 km sees over the banks. A click 600 m off the water gave the honest "no water within 400 m" Fail with its fix.
+
+Figures to confirm (E): see the table; the bridge timed from H (engineers start at once); the third Bn's crossing; the 10 h night.
+
+Not yet: Corps bridging chosen for a Div with a wider gap. Done since (below): Check my plan for a drawn crossing, the canal defence, crossing places moved, his minefield and lanes.
+
+**What was left, done 15 Nov 2026** (the user: "do what is left", after Phases 7 and 8). Read for it: IC s85 pp 449-458
+(defence along a water obstacle / canal), IBB S57 paras 25-26 pp 316-318, Fig 34; IC s73 pp 378-381 (screens); IC s44
+pp 146-158 (ambush: point and area ambush, Fig 16).
+
+| Piece | Where |
+|---|---|
+| **Crossing places moved**: each assault Coy's crossing place slides up to 150 m along the bank (E) to a narrower, firmer place with a better approach; its lanes follow | `PlanCrossing.ts` (`placeSearchM`) |
+| **His minefield, lanes, breach times**: the Mf chip lays a `-mf` variant of any crossing recipe (`withMinefield`): his minefield (Minefield `25270706`, hostile) 900-1000 m beyond the bund (IBB S47, D), lanes as Breach `25340200`; the Breach row: 108 m of lane per engineer Pl, 4 / 5 / 6 h by light, the next Pl every 100 min (IBB Annex Q, D), lanes wanted by H+3-3.5 h (D) | `PlanSolve.breachRow`, `PlanCrossing.withMinefield` |
+| **Canal defence** (`bn-def-canal`, in the Bn Def family): the mirror of the crossing. The canal read at the click (`canalPrep`, the Water engine's purpose "hold"), the Bn laid along it: two up on up to 4500 m, three up to 5000 m, Coys 1500-2000 m, 3000 m deep (D); FDLs 70 m from the centre line, mask posns 400 m ahead on his side, his-side minefield 200 m (E). Rows Canal, Higher bank (an estimate range that overlaps reads as equal, never "his higher" by a guess), Bridges in sector (strong points, ready for demolition), Marsh, Obstacle value; confirm list includes demolition and the Irrigation Dept | `PlanCrossing.canalPrep`, `PlanFit` canal path, `PlanDoctrine.canal` |
+| **Check my plan reads them**: a built ambush, patrol, recce, screen or crossing is read as drawn (nothing moved, no site searched) with the build's own rows; the same verdicts as built (proved in the Node checks); unlabelled slots named by their group (Outlying 2 fire line, Route to 1 Pl) | `PlanSmallOps.checkSmallOp`, `PlanCrossing.checkCrossing`, `PlanBuildTab._checkBuiltSmall` |
+| **J on an ambush**: J while placing takes the KZ to the best better site along the road (the blue ring), the aim kept; Shift+J takes it back. The Mgr's new `moveAnchor` (host method) moves the pivot during the aim | `DeploymentBuilderEngine.moveAnchor`, `PlanBuildTab._jumpAmbush` |
+| **Patrol legs on features**: the route's turns pulled onto a feature recognisable at night (PlatoonDoctrine `legFeatureKinds` within 150 m: bridge, tomb, mosque, junction, hill ...) when both legs to it stay off NO-GO on foot | `PlanSmallOps.snapLegEnds` |
+| **Bearings**: route cards and the attack's night legs in grid degrees and mils (6400), magnetic too when `planBuilder.gmaDeg` is set (Settings, Display; magnetic = grid - GMA) | `PlanBuildTab` `brgText` / `_brgCell`, `PlanBuilderSettingsManifest` |
+| **Coy Screen** (`coy-screen`, task recce, layout `screen`, basis D): IC s73 pp 378-381. Click the Wdr RV in the main posn, aim at the ground in front; that ground kept to the points that see the main posn (where he would watch it from); three Pl posts 300-1500 m forward across a 3 km front, picked for the view each adds, then the nearer (no further forward than necessary, p 378), then spread across the front (laterally with intervals); withdrawal routes in dead ground to the RV; the 2525D Screen `25342203` from the outer posts. Rows His viewpoints, Ground in front seen, Posts forward, Laterally, Post ground, Withdrawal, Time back; confirm: withdrawal on the order of the commander who ordered it, or on 50 % casualties / the time up if comms break (p 381), mines in front and on the flanks (p 380) | `PlanSmallOps.readScreen`, `PlanDoctrine.smallOps.screen` |
+| **Pl Area Ambush** (`pl-ambush-area`, layout `area`, basis D): IC s44 p 152, Fig 16, not laid by less than a Pl: the central site laid as the line ambush, an outlying ambush (a Sec point ambush) on his way in up the road and his way out down it, each at the best stretch 400-1200 m from the central KZ (E), read for its site score and its stretch in view; row Outlying. The IC has no Sec ambush of its own: the outlying ambushes are the Sec ambushes | `PlanSmallOps.readAmbush` (`area`), `PlanDoctrine.smallOps.ambush.outlying*` |
+| **Honest while loading**: a screen or recce with the ground still loading says "sited so far", grey, never "NO-GO fills the ground"; no post row passes with no posts to judge | `PlanSmallOps` |
+| Checks | `smallops.mjs` 107, `crossing.mjs` 58, `recipes.mjs` 24 recipes / 98, `solve.mjs` 427 |
+
+Verified in the app east of Lahore: **Coy Screen** aimed east over built-up ground: His viewpoints warns (no ground 2.3-3.3 km out sees the main posn: early warning only), the posts see 25 % of the ground in front (Fail, with its Why and Fix), the Screen symbol from 1 Pl to 3 Pl, the ways back drawn. **Pl Area Ambush** on the Khera - Barki road by the BRB: the site 30 / 100 (Fail) with a better site 850 m down the road (70); J took the KZ there (851 m), the site then 70 with one warn, the outlying ambushes 650 m up and down (51 each); Shift+J took it back; placed, Check my plan on the last placement gave the same verdicts (0 fail, 1 warn). Not checked in the app this round (Node only): the canal defence, the Mf chip, crossing places moving, Check my plan on a built crossing.
+
+Figures to confirm (E): screen front 3 km, posts 300-1500 m and 400 m apart, the near pull 25 points; outlying 400-1200 m, its KZ 80 m, site 40, seen 60 %; canal FDLs 70 m from the centre, mask posns 400 m, his-side minefield 200 m; crossing places 150 m.
 
 ### Testing
 
@@ -545,6 +858,19 @@ Each phase ships on its own, and the earlier phases work without the bundle.
 ---
 
 ## 14. Open decisions (yours)
+
+**Decided 15 Nov 2026** (after the mockup `plan-builder-options.html`):
+
+- **Where it lives:** a **Build** tab of the Deployment Mgr, beside **Samples** (today's list). Code goes in
+  `MS/Engines/DeploymentBuilder/` (new files beside the engine, not a separate `PlanBuilder/` folder). It keeps the
+  Deployment Mgr's ghost, pivot, Place, Last placement and undo; no key of its own.
+- **Fit at rest:** while the mouse moves the plan is a quick ghost at doctrinal spacing; 0.35 s after it stops the full
+  fit runs (slide out of NO-GO, checks, Auto ranking); click places. (`planBuilder.fit.restMs`.)
+- **Coy size:** the doctrine figure, **1500 × 600–800 m** (IBB Annex U App 6 p481 frontage, App 5 p480 depth), not the
+  1 PR sample's 2.3 × 3.2 km.
+- **Steps:** Task → Enemy → Place → Check → Create (Fit and Adjust merged into Check).
+- **Start:** Phase 0 now.
+- **Tab names (user, 15 Nov 2026):** the Deployment Mgr's tabs are **Templates** (was Samples: the ready plans) and **Intelligent Deployment** (was Build). Code ids stay `samples` / `build`, settings stay `planBuilder.*`.
 
 1. **Enemy symbols as threat input:** opt-in, or markers only (§6).
 2. **Name and key:** "Plan Builder" and a free key.
@@ -687,7 +1013,7 @@ paramilitary troops and a dummy position.
 | Entry | File | What |
 |---|---|---|
 | Div Def | `Plans/Own/Div Def.json` | The own overlays 2, 3, 5, 6, 7, 8 as separate overlays (126 symbols). IPB and the enemy overlays are left out: IPB is tied to its own ground, and the enemy overlays are not own deployment |
-| Bde Def (12 Bde) | `Plans/Own/Bde Def 12 Bde.json` | The centre sector between Bdy 10 and Bdy 11 (34 symbols). The 80 km minefield belt and the Div VG are left out, and the IB is cut to the sector |
+| Bde Def (12 Bde) | `tools/planbuilder-test/fixtures/Bde Def 12 Bde.json` | The centre sector between Bdy 10 and Bdy 11 (34 symbols). The 80 km minefield belt and the Div VG are left out, and the IB is cut to the sector. **Taken off the Templates list (user, 15 Nov 2026)**; kept only as the Check my plan test fixture (`check.mjs`, `orbat.mjs`) |
 
 Both load in the Deployment Builder, and the Bde Def was placed on the map in the browser (13 Nov 2026).
 

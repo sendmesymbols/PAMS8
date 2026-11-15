@@ -1,0 +1,126 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "pl-recce-two-ops",
+  "family": "pl-recce",
+  "layout": "two-ops",
+  "echelon": "14",
+  "basis": "E",
+  "task": "recce",
+  "name": "Pl Recce: two OPs",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "Plan metres from the SP (the click), y toward the area to watch (the aim: the second click is the NAI). Two OPs on the own side 1-2 km from the NAI (E), at least 300 m apart (E). With the terrain the OPs go where they see most of the NAI between them (high ground, cover), the routes to them in dead ground (planPatrol with the NAI as the threat). Basis E: figures to be set from the pamphlet.",
+  "pivot": "sp",
+  "slots": [
+    {
+      "role": "sp",
+      "kind": "point",
+      "sym": "25131600",
+      "label": "SP",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "ptl",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Ptl",
+      "echelon": "13",
+      "order": 1,
+      "shape": {
+        "at": [
+          -120,
+          60
+        ]
+      }
+    },
+    {
+      "role": "nai",
+      "kind": "area",
+      "sym": "25120200",
+      "label": "NAI 1",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -2500,
+          "wM": 1000,
+          "hM": 700
+        }
+      }
+    },
+    {
+      "role": "op1",
+      "kind": "point",
+      "sym": "25160206",
+      "label": "OP 1",
+      "order": 2,
+      "shape": {
+        "at": [
+          -500,
+          -1100
+        ]
+      }
+    },
+    {
+      "role": "op2",
+      "kind": "point",
+      "sym": "25160206",
+      "label": "OP 2",
+      "order": 2,
+      "shape": {
+        "at": [
+          500,
+          -1100
+        ]
+      }
+    },
+    {
+      "role": "rt1",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -30,
+            -40
+          ],
+          [
+            -480,
+            -1060
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rt2",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            30,
+            -40
+          ],
+          [
+            480,
+            -1060
+          ]
+        ]
+      }
+    }
+  ]
+}

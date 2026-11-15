@@ -1,0 +1,285 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-attk-frontal",
+  "family": "bn-attk",
+  "layout": "frontal",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "D",
+  "task": "attack",
+  "name": "Bn Attk: frontal, two up",
+  "frontageRow": "Battalion, set-piece attack in plains",
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "Plan metres from the FUP centre (backM negative = toward the objective). FUP 450 x 300 m (NightMarchDoctrine, Bn); the objective's near edge 1150 m ahead (attack.fupFromObjM 1000-1200); the assault 400 m wide (IC s113 set-piece row); the BOF on the right flank, firing at the objective; LOE 600 m beyond its far edge (E); the Assy Area 3 km behind the FUP (IBB p173: 1-5 miles from the enemy). Frontal: dangerous, small chance of success: only if unavoidable (user, attack.form).",
+  "slots": [
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1500,
+          "wM": {
+            "doctrine": "size.coy.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.coy.depthM"
+          }
+        }
+      }
+    },
+    {
+      "role": "objTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1500
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 3000,
+          "wM": 1000,
+          "hM": 700
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fup",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -225,
+            150
+          ],
+          [
+            225,
+            -150
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -300,
+            -200
+          ],
+          [
+            300,
+            -200
+          ]
+        ]
+      },
+      "terrainRule": {
+        "onGround": "linearFeature"
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -200
+          ],
+          [
+            0,
+            -1250
+          ]
+        ],
+        "widthM": 400
+      }
+    },
+    {
+      "role": "asltL",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 3,
+      "shape": {
+        "at": [
+          -120,
+          0
+        ]
+      }
+    },
+    {
+      "role": "asltR",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 3,
+      "shape": {
+        "at": [
+          120,
+          0
+        ]
+      }
+    },
+    {
+      "role": "bof",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            885,
+            -636
+          ],
+          [
+            1115,
+            -964
+          ]
+        ],
+        "ctrl": [
+          754,
+          -972
+        ]
+      },
+      "terrainRule": {
+        "sees": "obj",
+        "prefer": [
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "bofCoy",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "D Coy",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          1000,
+          -800
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "C Coy",
+      "echelon": "15",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          700
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          -500,
+          600
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 4,
+      "shape": {
+        "at": [
+          -300,
+          700
+        ]
+      }
+    },
+    {
+      "role": "loe",
+      "kind": "line",
+      "sym": "25140900",
+      "label": "LOE",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -750,
+            -2450
+          ],
+          [
+            750,
+            -2450
+          ]
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "fupDistance",
+    "assaultFrontage",
+    "bofFlank",
+    "bofRange",
+    "morReach",
+    "fireLift",
+    "reserveReach",
+    "approaches"
+  ]
+}

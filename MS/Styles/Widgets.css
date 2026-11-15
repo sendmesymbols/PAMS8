@@ -3064,6 +3064,81 @@
 #deploymentBuilderWidget .db-cols {
   display: flex; flex: 1; min-height: 0; overflow: hidden;
 }
+#deploymentBuilderWidget .db-cols[hidden] { display: none; }
+
+/* Samples / Build tabs (Build: PlanBuildTab.ts, only while features.planBuilder is on) */
+#deploymentBuilderWidget .db-tabs {
+  display: flex; flex-shrink: 0; border-bottom: 1px solid var(--ms-divider); padding: 0 8px;
+}
+#deploymentBuilderWidget .db-tabs[hidden] { display: none; }
+#deploymentBuilderWidget .db-tab {
+  font: inherit; font-size: var(--ms-fs-sm); color: var(--ms-text-dim); background: none; border: 0;
+  padding: 7px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+#deploymentBuilderWidget .db-tab:hover { color: var(--ms-text); }
+#deploymentBuilderWidget .db-tab[aria-selected="true"] { color: var(--ms-text); border-bottom-color: var(--ms-accent); font-weight: 600; }
+#deploymentBuilderWidget .db-build { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+#deploymentBuilderWidget .db-build[hidden] { display: none; }
+#deploymentBuilderWidget .pb-modes { flex-shrink: 0; padding: 6px 12px; border-bottom: 1px solid var(--ms-divider); }
+#deploymentBuilderWidget .pb-read { margin: 4px 0 6px; padding-left: 16px; color: var(--ms-text-dim); line-height: 1.4; }
+#deploymentBuilderWidget .pb-chip.pb-role { font-size: var(--ms-fs-xs); padding: 1px 7px; white-space: nowrap; }
+#deploymentBuilderWidget .pb-steps { display: flex; flex-shrink: 0; border-bottom: 1px solid var(--ms-divider); }
+#deploymentBuilderWidget .pb-step {
+  flex: 1; font: inherit; font-size: var(--ms-fs-xs); line-height: 1.15; color: var(--ms-text-dim);
+  background: var(--ms-bg-subtle); border: 0; border-right: 1px solid var(--ms-divider); padding: 5px 2px; cursor: pointer;
+}
+#deploymentBuilderWidget .pb-step:last-child { border-right: 0; }
+#deploymentBuilderWidget .pb-step b { display: block; font-size: var(--ms-fs-lg); color: var(--ms-text); }
+#deploymentBuilderWidget .pb-step[aria-pressed="true"] { background: transparent; color: var(--ms-text); box-shadow: inset 0 -2px 0 var(--ms-accent); }
+#deploymentBuilderWidget .pb-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px; font-size: var(--ms-fs); color: var(--ms-text); }
+#deploymentBuilderWidget .pb-foot {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 12px; border-top: 1px solid var(--ms-divider);
+}
+#deploymentBuilderWidget .pb-mode { font-size: var(--ms-fs-xs); color: var(--ms-text-label); }
+#deploymentBuilderWidget .pb-row { display: grid; grid-template-columns: 74px 1fr; gap: 6px; align-items: start; margin: 0 0 7px; }
+#deploymentBuilderWidget .pb-row > span { color: var(--ms-text-label); padding-top: 3px; }
+#deploymentBuilderWidget .pb-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+#deploymentBuilderWidget .pb-chip {
+  font: inherit; font-size: var(--ms-fs); padding: 2px 9px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--ms-border); background: var(--ms-bg-input); color: var(--ms-text);
+}
+#deploymentBuilderWidget .pb-chip[aria-pressed="true"] { border-color: var(--ms-accent); color: var(--ms-accent); font-weight: 600; }
+#deploymentBuilderWidget .pb-chip.pb-later { color: var(--ms-text-label); border-style: dashed; cursor: help; }
+#deploymentBuilderWidget .pb-sum { margin: 9px 0 5px; font-size: var(--ms-fs-sm); }
+#deploymentBuilderWidget .pb-hint, #deploymentBuilderWidget .pb-dim { color: var(--ms-text-dim); font-size: var(--ms-fs); }
+#deploymentBuilderWidget .pb-hint { margin-top: 6px; }
+#deploymentBuilderWidget .pb-p { margin: 6px 0; line-height: 1.45; }
+#deploymentBuilderWidget .pb-note { color: var(--ms-text-dim); padding: 8px 0; }
+#deploymentBuilderWidget .pb-bad { color: var(--ms-danger); }
+#deploymentBuilderWidget .pb-msg { margin: 0 0 8px; padding: 5px 8px; border-radius: var(--ms-radius-sm); background: rgba(229, 165, 64, 0.12); color: var(--ms-warning); }
+#deploymentBuilderWidget .pb-t { border-collapse: collapse; width: 100%; font-size: var(--ms-fs); }
+#deploymentBuilderWidget .pb-t td { border-bottom: 1px solid var(--ms-divider); padding: 4px 5px; vertical-align: top; }
+#deploymentBuilderWidget .pb-why { color: var(--ms-text-dim); }
+/* a laid-out check in the panel (Check.detail): headline, items, why, fixes */
+#deploymentBuilderWidget .pb-det-head { color: var(--ms-text); }
+#deploymentBuilderWidget .pb-det-items, #deploymentBuilderWidget .pb-det-fix ul { margin: 3px 0 0; padding-left: 16px; }
+#deploymentBuilderWidget .pb-det-items li, #deploymentBuilderWidget .pb-det-fix li { margin: 1px 0; }
+#deploymentBuilderWidget .pb-det-why, #deploymentBuilderWidget .pb-det-fix { margin-top: 4px; }
+#deploymentBuilderWidget .pb-det-why b, #deploymentBuilderWidget .pb-det-fix b { color: var(--ms-warning); font-weight: 650; margin-right: 3px; }
+#deploymentBuilderWidget .pb-pill { display: inline-block; padding: 0 7px; border-radius: 9px; font-size: var(--ms-fs-xs); font-weight: 700; white-space: nowrap; }
+#deploymentBuilderWidget .pb-pass { background: rgba(29, 158, 117, 0.2); color: #6fd7ad; }
+#deploymentBuilderWidget .pb-warn { background: rgba(229, 165, 64, 0.2); color: #f2c178; }
+#deploymentBuilderWidget .pb-fail { background: rgba(220, 60, 48, 0.22); color: #ff8f86; }
+#deploymentBuilderWidget .pb-unchecked { background: rgba(127, 136, 147, 0.25); color: #c3cbd3; }
+#deploymentBuilderWidget .pb-text {
+  margin: 8px 0 0; padding: 8px 10px; max-height: 260px; overflow: auto; white-space: pre-wrap;
+  background: var(--ms-bg-input); border: 1px solid var(--ms-divider); border-radius: var(--ms-radius-sm);
+  font: 10.5px/1.45 var(--ms-font-mono); color: var(--ms-text);
+}
+#deploymentBuilderWidget .pb-preview { display: block; width: 100%; max-height: 260px; margin: 4px 0; background: rgba(0, 0, 0, 0.18); border-radius: var(--ms-radius-sm); }
+#deploymentBuilderWidget .pb-pv-posn { fill: none; stroke: var(--ms-accent-secondary); stroke-width: 1.5; }
+#deploymentBuilderWidget .pb-pv-alt { fill: none; stroke: var(--ms-accent-secondary); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.7; }
+#deploymentBuilderWidget .pb-pv-line { fill: none; stroke: var(--ms-text-dim); stroke-width: 1; }
+#deploymentBuilderWidget .pb-pv-pt { fill: var(--ms-accent); stroke: none; }
+#deploymentBuilderWidget circle.pb-pv-posn, #deploymentBuilderWidget circle.pb-pv-line { fill: var(--ms-accent-secondary); }
+#deploymentBuilderWidget .pb-pv-scale { stroke: var(--ms-text); stroke-width: 1.5; }
+#deploymentBuilderWidget .pb-pv-txt { fill: var(--ms-text-dim); font-size: 9px; }
 
 /* Left column: plan picker */
 #deploymentBuilderWidget .db-left {
@@ -4984,3 +5059,36 @@ body.ms-popup-dark .esri-popup__pointer-direction {
   font-style: italic;
   padding: 0 0 4px;
 }
+
+/* Build tab: the card that follows the cursor while a built plan is placed (PlanBuildTab.ts). It sits in the map's
+   container, outside the Deployment Mgr panel, and never takes the mouse. */
+.pb-card {
+  position: absolute; z-index: 30; pointer-events: none; min-width: 210px; max-width: 290px;
+  padding: 7px 9px; border-radius: 8px; background: rgba(18, 22, 27, 0.94); border: 1px solid rgba(90, 140, 220, 0.3);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); color: #dce8f5; font: 11.5px/1.4 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+.pb-card b { font-weight: 650; }
+.pb-card .pb-card-dim { color: rgba(155, 180, 215, 0.8); font-size: 11px; }
+.pb-card .pb-card-rk { display: grid; grid-template-columns: 64px 1fr 24px; gap: 6px; align-items: center; margin: 2px 0; }
+.pb-card .pb-card-rk i { display: block; height: 5px; border-radius: 3px; background: #64b4ff; }
+.pb-card .pb-card-rk.pb-top { color: #fff; font-weight: 650; }
+.pb-card .pb-card-rk.pb-top i { background: #6fd7ad; }
+.pb-card .pb-card-w { margin-top: 4px; }
+/* a laid-out check on the card (Check.detail): the moves, why, and the fixes */
+.pb-card .pb-card-items, .pb-card .pb-card-fix ul { margin: 3px 0 0; padding-left: 15px; }
+.pb-card .pb-card-items li, .pb-card .pb-card-fix li { margin: 1px 0; }
+.pb-card .pb-card-why, .pb-card .pb-card-fix { margin-top: 4px; color: rgba(205, 220, 238, 0.92); }
+.pb-card .pb-card-why b, .pb-card .pb-card-fix b { color: #f2c178; font-weight: 650; margin-right: 3px; }
+.pb-card .pb-card-foot { margin-top: 5px; color: rgba(155, 180, 215, 0.7); font-size: 10.5px; }
+.pb-card .pb-pill { display: inline-block; padding: 0 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+.pb-card .pb-pass { background: rgba(29, 158, 117, 0.25); color: #6fd7ad; }
+.pb-card .pb-warn { background: rgba(229, 165, 64, 0.25); color: #f2c178; }
+.pb-card .pb-fail { background: rgba(220, 60, 48, 0.28); color: #ff8f86; }
+.pb-card .pb-unchecked { background: rgba(127, 136, 147, 0.3); color: #c3cbd3; }
+#deploymentBuilderWidget .pb-foot .pb-place { width: auto; flex: none; }
+/* Build tab, Check step: This plan / Compare layouts */
+#deploymentBuilderWidget .pb-subtabs { margin: 0 0 8px; }
+#deploymentBuilderWidget .pb-cmp { overflow-x: auto; }
+#deploymentBuilderWidget .pb-cmp th { font-size: var(--ms-fs); color: var(--ms-text); text-align: left; padding: 4px 5px; border-bottom: 1px solid var(--ms-divider); white-space: nowrap; }
+#deploymentBuilderWidget .pb-cmp td { white-space: nowrap; }
+#deploymentBuilderWidget .pb-cmp-pv .pb-preview { width: 110px; max-height: 96px; margin: 0; }

@@ -11,6 +11,7 @@ import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerMana
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
 import Shapes from "../Support/Shapes.ts";
+import GeoTools from "../Support/GeoTools.ts";
 import DrawSeam from "../Support/DrawSeam";
 import SymbolEvents from "../Support/SymbolEvents";
 import Polyline from '@arcgis/core/geometry/Polyline';
@@ -97,6 +98,9 @@ export class AvenueOfApchs {
         // Set arrow parameters with defaults
         this._headPercentage = this.setDefault(options, "HEAD_RATIO", 0.15);
         this._tailFactor = this.setDefault(options, "TAIL_FACTOR", 0.05);
+        // BASE_LN_PTS (a base line across the tail), when given, sets the tail's width on the ground: the TAIL_FACTOR that draws it.
+        const tfBase = GeoTools.tailFactorFromBaseLine((options as any).CTRL_PTS, (options as any).BASE_LN_PTS);
+        if (tfBase !== null) this._tailFactor = tfBase;
 
         // Set up event handlers
         this.setupEventHandlers();

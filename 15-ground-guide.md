@@ -1425,7 +1425,7 @@ saved with the plan, exported to GeoJSON and PowerPoint, edited and selected lik
 | --- | --- | --- |
 | COO (`coo`) | **No Go Area** `25120203` and **Slow Go Area** `25120202`, sharp-edged polygons (`DRAW_TYPE: 2`), friend | The coding of the area read, as outlines (`GroundGuideIpbShapes.ts`) |
 | Mob Corridors (`corridors`) | **Mob Corridors** `25110101` with the corridor unit's echelon (Coy `15`, Bn `16`), no label | The corridors drawn inside each avenue, and lone corridors |
-| En / Own Apchs (`apchs`) | **Main Attk** `25151403` for the best going, **Sp Attk** `25151404` for the others, as drawn (`TAIL_FACTOR` from the drawn width, `HEAD_RATIO` 0.15), lettered A, B... ; or the **Avenue of Apchs** `25120204` with `ipb.createAs: avenue` | The viable avenues |
+| En / Own Apchs (`apchs`) | **Main Attk** `25151403` for the best going, **Sp Attk** `25151404` for the others: the route whole as `CTRL_PTS` (the curve), its width on the ground as `BASE_LN_PTS` (a base line across the tail), `HEAD_RATIO` in proportion, lettered A, B... ; or the **Avenue of Apchs** `25120204` with `ipb.createAs: avenue` | The viable avenues |
 | All three (`all`) | All of the above | |
 
 The enemy's corridors and avenues are hostile (red), own and the COO friend. The COO outlines (`ipbAreas`): the class's
@@ -1448,8 +1448,21 @@ takes a fixed 15 % of the arrow's length (MainAttack.ts's `HEAD_RATIO` default, 
 is 2.5 times its half-width (head about 1.25 times as long as it is wide), its half-width 1.9 times the shaft's at the neck,
 kept between 2.5 % and 15 % of the length (`arrowHeadFrac(tail)` in `GroundGuideIpbCorridors.ts`). An arrow is drawn at
 least 8 % of its length wide at the back, no wider than 1.2 spacings (`arrowTail`); the corridors inside keep their own
-width; the centre line's bends are rounded (Chaikin) before the outline is built. Create on Map passes the same
-`TAIL_FACTOR` and `HEAD_RATIO` to the MS symbols, so a written Main Attk / Sp Attk looks as drawn.
+width; the centre line's bends are rounded (Chaikin) before the outline is built.
+
+**Width and curve of the symbols Create on Map writes** (2026-11-15; user: "BASE_LINE_PTS (control width) and CTRL_PTs
+(curves), they allow you to make curves in the existing symbols"). The MS line and arrow symbols run a curve through every
+control point (GSAP's bezier, type "thru"), so each route is sent whole: resampled evenly along its length (up to 24 points
+for an approach, 16 for a corridor, 20 for an air route, at least 600 m apart) with every turn sharper than 30 degrees kept
+where it is (an FUP's turn into the assault), no longer thinned to 6-8 points. The width on the ground (its corridors side by
+side) goes as `BASE_LN_PTS`, a base line across the tail. Main Attk, Sp Attk and Avenue of Apchs used to take their width
+only from `TAIL_FACTOR` (a share of the arrow's length) and ignored `BASE_LN_PTS`; they now read it when it is given
+(`GeoTools.tailFactorFromBaseLine`: half-width = `TAIL_FACTOR` x (length still to go + length / 2.4), a two-point arrow
+`TAIL_FACTOR` x its length, solved for `TAIL_FACTOR`) and store the `TAIL_FACTOR` it gives, so saving, loading and editing are
+as before; a host whose symbols do not read it still gets the same `TAIL_FACTOR`. The air route (Low Level Transit Route)
+already took its 600 m width from `BASE_LN_PTS`. Verified in the app: four approaches written with 24-25 control points,
+tails 1,498 m against 1,500 m on the ground, tips on the routes' ends; a Main Attk given `TAIL_FACTOR` 0.2 and a 3 km base
+line drew a 3,000 m tail.
 
 **IPB fire corridors** (`extended.ipb.fire`, on; added 2026-11-14, Phase 4 of `IPB_Plan.md` §6.3). With the avenues read,
 how much of each the **other side's Posns on the map** cover with direct fire: own Posns on the enemy's avenues (defence),

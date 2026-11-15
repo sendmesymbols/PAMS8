@@ -264,6 +264,15 @@ export class MovementGuideProbe implements MovProbe {
     return g;
   }
 
+  /**
+   * The sight / going grid round a point (3 x 3 tiles of the finest zoom, about 25 km), for callers that run the pure
+   * OCOKA engine on it themselves (the Deployment Mgr's Build tab finds approaches with `findAvenue`). Null without a
+   * bundle; check `pending` before trusting it.
+   */
+  gridAt(x: number, y: number): OcokaGrid | null {
+    return this._gridFor(x, y);
+  }
+
   private _tablesFor(res: number): SightTables {
     const month = new Date().getMonth() + 1;
     const key = `${month}|${res.toFixed(1)}`;

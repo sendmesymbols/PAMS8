@@ -1,0 +1,387 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-def-canal",
+  "family": "bn-def",
+  "layout": "canal",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "D",
+  "task": "defence",
+  "name": "Bn Def: on a canal, two up",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "xTgt",
+  "note": "Defence on a canal (IC s85 pp 449-458; IBB S57 paras 25-26 pp 316-318, Fig 34). Plan metres from the Bn centre, y toward the enemy; the click (the pivot) is on the canal in front of the centre. A and B Coys on the home bank (defences on the obstacle itself near the border: IC s85 para 10 b), their front edge 70 m from the water's centre (E); C and D Coys in depth about 3000 m back from the obstacle (Fig 34); counter penetration posns AA, BB, CC covering the gap between the forward Coys and the flanks, occupied when ordered (Fig 34, para 25: dashed), and the prepared alternative positions in depth (IC s85 para 12 a); mask posns for some major weapons ahead of the obstacle (IC s85 para 7; 400 m beyond it, E); minefields on the far side and in the gap on the home side (para 17 a), double concertina on both banks (para 17 b). With the terrain the plan is laid along the canal the click is on (MovementGuideWater.readWater), and the defence is checked as any other: his approaches cross the canal only at its bridges and fords.",
+  "alternates": [],
+  "supplementary": "perSecondaryApproach",
+  "slots": [
+    {
+      "role": "xTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1620
+        ]
+      }
+    },
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 1,
+      "seed": {
+        "acrossM": -1125,
+        "backM": -1200
+      },
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "behindObstacle"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 1,
+      "seed": {
+        "acrossM": 1125,
+        "backM": -1200
+      },
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround",
+          "behindObstacle"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "depth",
+      "kind": "depth",
+      "sym": "25151200",
+      "label": "C Coy",
+      "echelon": "15",
+      "order": 2,
+      "seed": {
+        "acrossM": -1125,
+        "backM": 1030
+      },
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "D Coy",
+      "echelon": "15",
+      "order": 2,
+      "seed": {
+        "acrossM": 1125,
+        "backM": 1030
+      },
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "rule": {
+        "behind": "depth",
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "vehicleAccess": true,
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "cpAA",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "AA",
+      "echelon": "15",
+      "order": 3,
+      "planned": true,
+      "seed": {
+        "acrossM": -2250,
+        "backM": -250
+      },
+      "size": {
+        "doctrine": "size.coy"
+      }
+    },
+    {
+      "role": "cpBB",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "BB",
+      "echelon": "15",
+      "order": 3,
+      "planned": true,
+      "seed": {
+        "acrossM": 0,
+        "backM": -300
+      },
+      "size": {
+        "doctrine": "size.coy"
+      }
+    },
+    {
+      "role": "cpCC",
+      "kind": "cpen",
+      "sym": "25151200",
+      "label": "CC",
+      "echelon": "15",
+      "order": 3,
+      "planned": true,
+      "seed": {
+        "acrossM": 2250,
+        "backM": -250
+      },
+      "size": {
+        "doctrine": "size.coy"
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "maskL",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "MASK",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": -1125,
+          "backM": -2020,
+          "wM": 300,
+          "hM": 150
+        }
+      }
+    },
+    {
+      "role": "maskR",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "MASK",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 1125,
+          "backM": -2020,
+          "wM": 300,
+          "hM": 150
+        }
+      }
+    },
+    {
+      "role": "mfFar",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1870,
+          "wM": 4200,
+          "hM": 200
+        }
+      }
+    },
+    {
+      "role": "mfGap",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1350,
+          "wM": 600,
+          "hM": 200
+        }
+      }
+    },
+    {
+      "role": "wireFar",
+      "kind": "obstacle",
+      "sym": "25290308",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            -2100,
+            -1690
+          ],
+          [
+            2100,
+            -1690
+          ]
+        ]
+      }
+    },
+    {
+      "role": "wireHome",
+      "kind": "obstacle",
+      "sym": "25290308",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            -1900,
+            -1565
+          ],
+          [
+            1900,
+            -1565
+          ]
+        ]
+      }
+    },
+    {
+      "role": "killingGr",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "K1",
+      "order": 4,
+      "terrainOnly": true,
+      "rule": {
+        "inRangeOf": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "atgm",
+      "kind": "point",
+      "sym": "15111200",
+      "label": "BS",
+      "order": 5,
+      "rule": {
+        "coversGap": [
+          "fwdL",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "atFramework.atgmDetSpacingM"
+        },
+        "backBlastClear": true
+      },
+      "terrainRule": {
+        "sees": "killingGr"
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 5,
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ],
+        "minRange": {
+          "doctrine": "df.closeMinFromFdlM.mortar"
+        }
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "order": 5,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.mortar"
+        },
+        "of": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.all.chokepoint"
+      }
+    }
+  ]
+}

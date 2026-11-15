@@ -1,0 +1,586 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "div-bridgehead-two-bde",
+  "family": "div-bridgehead",
+  "layout": "two-bde",
+  "echelon": "21",
+  "basis": "D",
+  "task": "crossing",
+  "name": "Div Bridgehead: two Bdes up",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "A division plus (four brigades) securing a bridgehead for an armoured division and the follow-in-zone infantry (IBB S46 paras 17-21 pp 237-238, Fig 20; OoW II s14 pp 49-56). Plan metres from H (the click on the water), y across. Two break-in brigades on the 8000 m base, each with its phase 1 (PL 1: 300-600 m ahead of the bund on 1800-2000 m) and together 7000-8000 m by 1500-1800 m on completion of the break-in (PL 2); the armoured division's bridgehead about 8 x 6 km, 48 km2 (BH). Four FUPs and crossing places, bases of fire between and on the flanks (Fig 20), a bridge per break-in brigade, the follow-in brigades behind. Night assault preferable (para 18); the bridgehead and induction in one night, break-out at first light (OoW II s14).",
+  "pivot": "xTgt",
+  "slots": [
+    {
+      "role": "xTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "H",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -4000,
+            12
+          ],
+          [
+            4000,
+            12
+          ]
+        ]
+      }
+    },
+    {
+      "role": "fup1",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -3325,
+            140
+          ],
+          [
+            -2675,
+            300
+          ]
+        ]
+      }
+    },
+    {
+      "role": "xp1",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            -3015,
+            30
+          ],
+          [
+            -2985,
+            30
+          ]
+        ],
+        "ctrl": [
+          -3000,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "fup2",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -1325,
+            140
+          ],
+          [
+            -675,
+            300
+          ]
+        ]
+      }
+    },
+    {
+      "role": "xp2",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            -1015,
+            30
+          ],
+          [
+            -985,
+            30
+          ]
+        ],
+        "ctrl": [
+          -1000,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "fup3",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            675,
+            140
+          ],
+          [
+            1325,
+            300
+          ]
+        ]
+      }
+    },
+    {
+      "role": "xp3",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            985,
+            30
+          ],
+          [
+            1015,
+            30
+          ]
+        ],
+        "ctrl": [
+          1000,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "fup4",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            2675,
+            140
+          ],
+          [
+            3325,
+            300
+          ]
+        ]
+      }
+    },
+    {
+      "role": "xp4",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            2985,
+            30
+          ],
+          [
+            3015,
+            30
+          ]
+        ],
+        "ctrl": [
+          3000,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "bde1",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "1 Bde",
+      "echelon": "18",
+      "order": 2,
+      "shape": {
+        "at": [
+          -2000,
+          1500
+        ]
+      }
+    },
+    {
+      "role": "bde2",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "2 Bde",
+      "echelon": "18",
+      "order": 2,
+      "shape": {
+        "at": [
+          2000,
+          1500
+        ]
+      }
+    },
+    {
+      "role": "ax1",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -2000,
+            400
+          ],
+          [
+            -2000,
+            -400
+          ]
+        ],
+        "widthM": 1200
+      }
+    },
+    {
+      "role": "ax2",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            2000,
+            400
+          ],
+          [
+            2000,
+            -400
+          ]
+        ],
+        "widthM": 1200
+      }
+    },
+    {
+      "role": "ph1a",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL 1",
+      "order": 2,
+      "drawType": 1,
+      "shape": {
+        "pts": [
+          [
+            -2950,
+            -12
+          ],
+          [
+            -2950,
+            -450
+          ],
+          [
+            -1050,
+            -450
+          ],
+          [
+            -1050,
+            -12
+          ]
+        ]
+      }
+    },
+    {
+      "role": "ph1b",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL 1",
+      "order": 2,
+      "drawType": 1,
+      "shape": {
+        "pts": [
+          [
+            1050,
+            -12
+          ],
+          [
+            1050,
+            -450
+          ],
+          [
+            2950,
+            -450
+          ],
+          [
+            2950,
+            -12
+          ]
+        ]
+      }
+    },
+    {
+      "role": "ph2",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "PL 2",
+      "order": 2,
+      "drawType": 1,
+      "shape": {
+        "pts": [
+          [
+            -3750,
+            -12
+          ],
+          [
+            -3750,
+            -1650
+          ],
+          [
+            3750,
+            -1650
+          ],
+          [
+            3750,
+            -12
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bh",
+      "kind": "line",
+      "sym": "25141400",
+      "label": "BH",
+      "order": 2,
+      "drawType": 1,
+      "shape": {
+        "pts": [
+          [
+            -4000,
+            -12
+          ],
+          [
+            -4000,
+            -6000
+          ],
+          [
+            4000,
+            -6000
+          ],
+          [
+            4000,
+            -12
+          ]
+        ]
+      }
+    },
+    {
+      "role": "bridge1",
+      "kind": "line",
+      "sym": "25271400",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            -2012,
+            30
+          ],
+          [
+            -1988,
+            30
+          ]
+        ],
+        "ctrl": [
+          -2000,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "bridge2",
+      "kind": "line",
+      "sym": "25271400",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            1988,
+            30
+          ],
+          [
+            2012,
+            30
+          ]
+        ],
+        "ctrl": [
+          2000,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "bof1",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            -4457,
+            407
+          ],
+          [
+            -4543,
+            193
+          ]
+        ],
+        "ctrl": [
+          -4221,
+          189
+        ]
+      }
+    },
+    {
+      "role": "bof2",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            115,
+            350
+          ],
+          [
+            -115,
+            350
+          ]
+        ],
+        "ctrl": [
+          0,
+          50
+        ]
+      }
+    },
+    {
+      "role": "bof3",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            4543,
+            193
+          ],
+          [
+            4457,
+            407
+          ]
+        ],
+        "ctrl": [
+          4221,
+          189
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Div HQ",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          3000
+        ]
+      }
+    },
+    {
+      "role": "assy1",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Bde Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -2000,
+          "backM": 3600,
+          "wM": 2000,
+          "hM": 900
+        }
+      }
+    },
+    {
+      "role": "assy2",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Bde Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 2000,
+          "backM": 3600,
+          "wM": 2000,
+          "hM": 900
+        }
+      }
+    },
+    {
+      "role": "bde3",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "3 Bde",
+      "echelon": "18",
+      "order": 2,
+      "shape": {
+        "at": [
+          -2000,
+          5500
+        ]
+      }
+    },
+    {
+      "role": "bde4",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "4 Bde",
+      "echelon": "18",
+      "order": 2,
+      "shape": {
+        "at": [
+          2000,
+          5500
+        ]
+      }
+    }
+  ]
+}

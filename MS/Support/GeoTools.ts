@@ -373,6 +373,21 @@ export class GeoTools {
     /**
      * Calculate distance between two points (simple Euclidean)
      */
+    /**
+     * The TAIL_FACTOR an attack arrow (MainAttack, SupportingAttack, AvenueOfApchs) needs for its tail to be as wide as
+     * the base line across it (BASE_LN_PTS: startPt to endPt). Those arrows draw the half-width at each vertex as
+     * TAIL_FACTOR x (the length still to go + the whole length / 2.4), a two-point arrow as TAIL_FACTOR x its length, so
+     * the base line fixes the width on the ground whatever the arrow's length. Null without a usable base line.
+     */
+    static tailFactorFromBaseLine(ctrl: PtLike[] | undefined | null, base: { startPt?: PtLike | null; endPt?: PtLike | null } | undefined | null): number | null {
+        if (!ctrl || ctrl.length < 2 || !base?.startPt || !base?.endPt) return null;
+        const half = this._2PtLen(base.startPt, base.endPt) / 2;
+        let total = 0;
+        for (let i = 1; i < ctrl.length; i++) total += this._2PtLen(ctrl[i - 1], ctrl[i]);
+        if (!(half > 0) || !(total > 0)) return null;
+        return ctrl.length === 2 ? half / total : half / (total * (1 + 1 / 2.4));
+    }
+
     static _2PtLen(pt1: PtLike, pt2: PtLike): number {
         if (pt1 !== undefined && pt2 !== undefined) {
             return Math.sqrt((pt1.x - pt2.x) * (pt1.x - pt2.x) + (pt1.y - pt2.y) * (pt1.y - pt2.y));

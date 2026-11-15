@@ -88,7 +88,8 @@ export class FreehandDottedArrow {
 
         const drawEssentials = new DrawEssentials();
 
-        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM")) {
+        // GEOM: null (a plan document's line) has no geometry to reuse: draw from the control points, as FreehandArrow does
+        if (options.hasOwnProperty("CTRL_PTS") && options.hasOwnProperty("GEOM") && options.GEOM !== null && options.GEOM !== undefined) {
             // Immediate placement with both control points and geometry
             if (options.GEOM && this.tempGraphic) {
                 try {

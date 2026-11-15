@@ -1,0 +1,245 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "coy-def-two-up",
+  "family": "coy-def",
+  "layout": "two-up",
+  "echelon": "15",
+  "unit": "inf-coy-std-rifle",
+  "basis": "D",
+  "name": "Coy Def: two up, one back",
+  "frontageRow": "Company, battalion two up",
+  "subRow": "Platoon locality",
+  "note": "Two Pls 600 m wide with a 300 m gap = 1500 m (IBB Annex U App 5 p480); third Pl behind the gap.",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "1 Pl",
+      "echelon": "14",
+      "order": 1,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": -450,
+        "backM": -200
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround",
+          "behindObstacle"
+        ],
+        "fieldOfFireM": {
+          "doctrine": "checkBands.fieldOfFireToObstacleM"
+        },
+        "notIn": [
+          "noGo",
+          "water",
+          "bua"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "2 Pl",
+      "echelon": "14",
+      "order": 1,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": 450,
+        "backM": -200
+      },
+      "rule": {
+        "side": "R",
+        "gapTo": {
+          "slot": "fwdL",
+          "row": "Platoon locality"
+        },
+        "mutualSupport": "fwdL"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround",
+          "behindObstacle"
+        ],
+        "fieldOfFireM": {
+          "doctrine": "checkBands.fieldOfFireToObstacleM"
+        },
+        "notIn": [
+          "noGo",
+          "water",
+          "bua"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "3 Pl",
+      "echelon": "14",
+      "order": 2,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 230
+      },
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ],
+        "coversGap": [
+          "fwdL",
+          "fwdR"
+        ],
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "prefer": [
+          "reverseSlope"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "wire",
+      "kind": "obstacle",
+      "sym": "25290303",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "standoff.wireFromPostsMinM"
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "lp",
+      "kind": "point",
+      "sym": "25160204",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdR"
+        ],
+        "ahead": {
+          "doctrine": "standoff.lpM"
+        }
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111401",
+      "label": "60 mm Mor",
+      "order": 6,
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ]
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.mortar"
+        },
+        "of": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    }
+  ],
+  "alternates": [
+    {
+      "of": "fwdL",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.secPl"
+      }
+    },
+    {
+      "of": "fwdR",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.secPl"
+      }
+    }
+  ],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "alternates",
+    "reserveReach",
+    "mutualSupport",
+    "fieldOfFire",
+    "dfMinRange"
+  ]
+}

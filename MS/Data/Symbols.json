@@ -427,6 +427,38 @@
         "Cat": ["nav"],
         "Grp": ["Control Measures", "Imp Gr"]
     },
+    "00000161": {
+        "Class": "SecurityZone",
+        "Description": "Security zone: covering troops and screen ahead of the FDLs. PAMS8 local symbol, not a MIL-STD-2525D code (2525D has none)",
+        "Name": "Security Zone",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["def"],
+        "Grp": ["Control Measures", "Security Zone"]
+    },
     "00000200": {
         "Class": "AutoShape",
         "Description": "",
@@ -8798,6 +8830,54 @@
         "Tools": [],
         "Grp": ["Control Measures","Bridge - Gap" ]
     },
+    "25271300": {
+        "Class": "Bridge",
+        "Description": "MIL-STD-2525D Assault Crossing (Mobility / Survivability): the bracket shape of the DISA template (Esri JMSML 25271300.svg), drawn by the Bridge class",
+        "Name": "Assault Crossing",
+        "Parameters": [{
+                "Name": "Tail Ratio",
+                "default": "0.17",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            },
+            {
+                "Name": "Flap Angle",
+                "default": "45",
+                "description": "Flap Angle",
+                "paramThumbnail": "",
+                "value": "FLAP_ANGLE"
+            }
+        ],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Grp": ["Control Measures","Assault Crossing" ]
+    },
+    "25271400": {
+        "Class": "Bridge",
+        "Description": "MIL-STD-2525D Bridge (Mobility / Survivability): the bracket shape of the DISA template (Esri JMSML 25271400.svg), drawn by the Bridge class",
+        "Name": "Bridge",
+        "Parameters": [{
+                "Name": "Tail Ratio",
+                "default": "0.17",
+                "description": "Tail Ratio",
+                "paramThumbnail": "",
+                "value": "TAIL_FACTOR"
+            },
+            {
+                "Name": "Flap Angle",
+                "default": "45",
+                "description": "Flap Angle",
+                "paramThumbnail": "",
+                "value": "FLAP_ANGLE"
+            }
+        ],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [],
+        "Grp": ["Control Measures","Bridge" ]
+    },
     "25120100": {
         "Class": "AreaOfOperations",
         "Description": "",
@@ -9814,6 +9894,60 @@
         ],
         "Cat": ["attk"],
         "Grp": ["Control Measures","Phase Line" ]
+    },
+    "25140400": {
+        "Class": "Feba",
+        "Description": "Forward Edge of the Battle Area (FEBA), MIL-STD-2525D: the line of the forward defended localities (FDL)",
+        "Name": "FEBA / FDL",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Line",
+                "description": "Use Line"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
+        "Cat": ["def"],
+        "Grp": ["Control Measures", "FEBA / FDL"]
+    },
+    "25140900": {
+        "Class": "LimitOfAdvance",
+        "Description": "Limit of Advance (LOA), MIL-STD-2525D; used for the limit of exploitation (LOE)",
+        "Name": "LOA / LOE",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Line",
+                "description": "Use Line"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
+        "Cat": ["attk"],
+        "Grp": ["Control Measures", "LOA / LOE"]
     },
     "25140301": {
         "Class": "CounterAttkObj",
@@ -11096,6 +11230,77 @@
         "Tools": [],
         "Cat": ["def"],
         "Grp": ["Control Measures","Tgt" ]
+    },
+    "25240703": {
+        "Class": "Fpf",
+        "Description": "Final Protective Fire (FPF), MIL-STD-2525D Fires Areas / Linear Targets",
+        "Name": "FPF",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Line) and 2 (Curve)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Line",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Line",
+                "description": "Use Line"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Curve",
+                "description": "Use Curve"
+            }
+        ],
+        "Cat": ["def"],
+        "Grp": ["Control Measures", "FPF"]
+    },
+    "25240501": {
+        "Class": "PaaRect",
+        "Description": "Position Area for Artillery (PAA), rectangular, MIL-STD-2525D: the gun area",
+        "Name": "PAA / Gun Area - Rectangular",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "3",
+            "description": "Possible Values 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Click two opposite corners"
+            }
+        ],
+        "Cat": ["def", "attk"],
+        "Grp": ["Control Measures", "PAA / Gun Area - Rectangular"]
+    },
+    "25240502": {
+        "Class": "PaaCircle",
+        "Description": "Position Area for Artillery (PAA), circular, MIL-STD-2525D: the gun area",
+        "Name": "PAA / Gun Area - Circular",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Circle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Circle",
+                "description": "Click the centre, then a point on the edge"
+            }
+        ],
+        "Cat": ["def", "attk"],
+        "Grp": ["Control Measures", "PAA / Gun Area - Circular"]
     },
     "25160304": {
         "Class": "TacticalPoint",

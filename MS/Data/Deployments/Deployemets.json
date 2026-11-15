@@ -36,13 +36,6 @@
       "description": "31 Div obstacle defence on the IB (Demo 2): IB and Bdys, SZ, Def Plan, ESP, Arty Sp and Log Sp overlays (about 85 km front, 50 km deep)"
     },
     {
-      "id": "own-bde-def-12",
-      "name": "Bde Def (12 Bde)",
-      "category": "defence",
-      "file": "Plans/Own/Bde Def 12 Bde.json",
-      "description": "12 Bde, centre sector of the Demo 2 Div Def: three Bns up, minefields, D2 / D3 depth posns and CA objs, guns, BAA (about 27 km front)"
-    },
-    {
       "id": "own-bn-def",
       "name": "Bn Def",
       "category": "defence",

@@ -1,0 +1,206 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "bn-def-all-round",
+  "family": "bn-def",
+  "layout": "all-round",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "E",
+  "name": "Bn Def: all round",
+  "frontageRow": null,
+  "subRow": "Company, battalion two up",
+  "note": "Isolated or no clear front. East and west Coys are turned 90 degrees to face outward.",
+  "slots": [
+    {
+      "role": "north",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -1300
+      },
+      "rule": {
+        "side": "C"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround",
+          "behindObstacle"
+        ],
+        "fieldOfFireM": {
+          "doctrine": "checkBands.fieldOfFireToObstacleM"
+        },
+        "notIn": [
+          "noGo",
+          "water",
+          "bua"
+        ]
+      }
+    },
+    {
+      "role": "east",
+      "kind": "round",
+      "sym": "25151200",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 1300,
+        "backM": 0
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      },
+      "turnDeg": 90
+    },
+    {
+      "role": "south",
+      "kind": "round",
+      "sym": "25151200",
+      "label": "C Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 1300
+      },
+      "rule": {
+        "behind": "north"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      },
+      "turnDeg": 180
+    },
+    {
+      "role": "west",
+      "kind": "round",
+      "sym": "25151200",
+      "label": "D Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -1300,
+        "backM": 0
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "prefer": [
+          "highGround"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      },
+      "turnDeg": 270
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "north",
+          "east",
+          "south",
+          "west"
+        ],
+        "edge": "outer"
+      }
+    },
+    {
+      "role": "lp",
+      "kind": "point",
+      "sym": "25160204",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "perSlot": [
+          "north",
+          "east",
+          "south",
+          "west"
+        ],
+        "ahead": {
+          "doctrine": "standoff.lpM"
+        }
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 6,
+      "rule": {
+        "centre": true
+      }
+    }
+  ],
+  "alternates": [
+    {
+      "of": "north",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.coy"
+      }
+    }
+  ],
+  "supplementary": "none",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "alternates",
+    "reserveReach",
+    "mutualSupport",
+    "fieldOfFire",
+    "backBlast",
+    "dfMinRange"
+  ]
+}

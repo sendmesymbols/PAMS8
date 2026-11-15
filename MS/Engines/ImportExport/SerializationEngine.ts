@@ -73,6 +73,29 @@ class SerializationEngine {
 
     EngineLogger.nextStep(SerializationEngine.ENGINE_NAME, 'Saving plan to file');
     try {
+      const built = this.planDocument();
+      if (!built) return;
+      this._downloadJSON(built.doc, filename ?? `pams8_plan_${Date.now()}.json`);
+      EngineLogger.success(
+        SerializationEngine.ENGINE_NAME,
+        `Plan saved — ${built.symbols} symbols across ${built.overlays} overlays`,
+      );
+    } catch (err) {
+      EngineLogger.error(
+        SerializationEngine.ENGINE_NAME,
+        `Save plan failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /**
+   * Every symbol on the map as a Plan document (what Save Plan writes), with the counts. A symbol placed by the
+   * Deployment Mgr's Intelligent Deployment keeps its plan roles (`pbRole`, `pbRecipe`, `pbPlanId`, `pbMeta`) in its
+   * drawEss as `PB`, so Check my plan reads a saved and opened plan as built (Load Plan puts them back).
+   */
+  public planDocument(): { doc: any; symbols: number; overlays: number } | null {
+    if (!this._layerManager) return null;
+    {
       const planId = Date.now();
       const plan = new Plan(Plan.createDefaultObject(planId));
       const layerIds = [
@@ -102,6 +125,10 @@ class SerializationEngine {
               drawEssObj.PIN_X_PCT = g.attributes.xPct;
               drawEssObj.PIN_Y_PCT = g.attributes.yPct;
             }
+            // a built plan's roles (Deployment Mgr, Intelligent Deployment): kept so Check my plan reads it as built
+            if (g.attributes?.pbRole) {
+              drawEssObj.PB = { role: g.attributes.pbRole, recipe: g.attributes.pbRecipe ?? null, planId: g.attributes.pbPlanId ?? null, meta: g.attributes.pbMeta ?? null };
+            }
             const symbolId = g.attributes?.id || this._generateUUID();
             symbols.push(
               Plan.createSymbol(planId, overlayId, symbolId, JSON.stringify(drawEssObj)),
@@ -128,16 +155,7 @@ class SerializationEngine {
         );
       }
 
-      this._downloadJSON(plan.toJSON(), filename ?? `pams8_plan_${Date.now()}.json`);
-      EngineLogger.success(
-        SerializationEngine.ENGINE_NAME,
-        `Plan saved — ${totalSymbols} symbols across ${overlaySeq - 1} overlays`,
-      );
-    } catch (err) {
-      EngineLogger.error(
-        SerializationEngine.ENGINE_NAME,
-        `Save plan failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      return { doc: plan.toJSON(), symbols: totalSymbols, overlays: overlaySeq - 1 };
     }
   }
 
@@ -283,6 +301,30 @@ class SerializationEngine {
       `Deployment: placed ${loaded} symbols from plan`,
     );
     return loaded;
+  }
+
+  /**
+   * Plan records for these graphics, or for every symbol on the symbol layers (hidden ones too): the drawEss Save Plan
+   * writes (lon / lat points), with the graphic's attributes. The Deployment Mgr's Check my plan reads them; nothing
+   * is changed.
+   */
+  public planRecordsOf(graphics?: Graphic[]): { id: string; drawEss: Record<string, any>; attrs: Record<string, any> }[] {
+    let list: Graphic[] = graphics ?? [];
+    if (!graphics) {
+      if (!this._layerManager) return [];
+      for (const layerId of [LAYER_NAMES.TACT, LAYER_NAMES.TACT_PT, LAYER_NAMES.FORCE, LEGACY_MIL_SYMBOLS_LAYER_ID]) {
+        const layer = this._layerManager.getOrCreateLayer(layerId) as any;
+        if (layer?.graphics?.length) list = list.concat(layer.graphics.toArray());
+      }
+    }
+    const out: { id: string; drawEss: Record<string, any>; attrs: Record<string, any> }[] = [];
+    for (const g of list) {
+      try {
+        const de = this._buildPlanDrawEss(g);
+        if (de) out.push({ id: String(g.attributes?.id ?? out.length), drawEss: de, attrs: { ...(g.attributes ?? {}), visible: g.visible } });
+      } catch { /* a graphic that cannot be written as a plan symbol is left out */ }
+    }
+    return out;
   }
 
   /** Serialize a single graphic to a plain JSON-safe PAMS8 object. */
@@ -698,13 +740,22 @@ class SerializationEngine {
     if (de.OPTIONS?.GEOM?.sp === 'WGS1SP') {
       de.OPTIONS = { ...de.OPTIONS, GEOM: this._patchPlanPoint(de.OPTIONS.GEOM) };
     }
+    // a built plan's roles (saved as PB): back on the graphic, not in the symbol's drawEssentials
+    const pb = de.PB && typeof de.PB === 'object' ? de.PB : null;
+    delete de.PB;
 
-    this._onLoadSymbol!({
+    const created = this._onLoadSymbol!({
       id: symbolId,
       sidc: amplifier?.SIDC || normalizedDrawEss?.SIDC,
       amplifier,
       drawEssentials: de,
-    });
+    }) as Graphic | null | undefined;
+    if (pb?.role && created?.attributes) {
+      created.attributes.pbRole = pb.role;
+      if (pb.recipe) created.attributes.pbRecipe = pb.recipe;
+      if (pb.planId) created.attributes.pbPlanId = pb.planId;
+      if (pb.meta) created.attributes.pbMeta = pb.meta;
+    }
   }
 
   // ── Private — Plan saving helpers ────────────────────────────────────────

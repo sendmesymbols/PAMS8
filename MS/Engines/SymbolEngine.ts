@@ -126,6 +126,7 @@ import NightMarch from './NightMarch/NightMarch';
 import './NightMarchSettingsWidget';
 import MovePlanner from './MovePlanner/MovePlanner';
 import './MovePlannerSettingsWidget';
+import './PlanBuilderSettingsWidget';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
 // imported. One side-effect import per engine keeps the wiring discoverable.
@@ -1310,9 +1311,12 @@ class SymbolEngine implements Evented {
         host: {
           groupUndo: (label, fn) => this.runUndoGroup(label, fn),
           removeByIds: (ids, label) => this.removeGraphicsById(ids, label),
+          selected: () => this._selectionEngine?.selectedGraphics ?? [],
         },
       });
       this._deploymentBuilderEngine!.enable();
+      // Build tab: only while features.planBuilder is on; its module loads when the widget first shows the tab
+      this._deploymentBuilderEngine!.setBuild(features.planBuilder === true, (settingsData as any).planBuilder ?? {});
       (window as any).deploymentBuilderEngine = this._deploymentBuilderEngine;
       this.emitEvent('deploymentBuilderEngineReady', { engine: this._deploymentBuilderEngine });
       console.info('[SymbolEngine] DeploymentBuilderEngine loaded');
@@ -2819,6 +2823,20 @@ class SymbolEngine implements Evented {
 
     if (fullPath === 'logging.enabled') {
       EngineLogger.setEnabled(!!value);
+    }
+
+    // The Deployment Mgr's Build tab (PlanBuilder_Plan.md): on / off and its settings. onSettingChanged can run before
+    // the settings tree is written, so the changed value is laid over the tree here.
+    if (fullPath === 'features.planBuilder' || fullPath.startsWith('planBuilder.')) {
+      const pb = JSON.parse(JSON.stringify((settingsData as any).planBuilder ?? {}));
+      let on = (settingsData as any).features?.planBuilder === true;
+      if (fullPath === 'features.planBuilder') on = value === true;
+      else {
+        let node = pb;
+        for (const k of path.slice(1, -1)) node = node[k] = (node[k] && typeof node[k] === 'object') ? node[k] : {};
+        node[path[path.length - 1]] = value;
+      }
+      this._deploymentBuilderEngine?.setBuild(on, pb);
     }
 
     if (fullPath === 'features.deploymentBuilder') {
