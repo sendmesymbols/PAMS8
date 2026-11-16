@@ -268,7 +268,7 @@ MS/
   **X** (with F on) or the *Whose options* switch at the left of the Ground Detail's key bar turns the reading between the
   en's options against you (`readFor: defence`) and yours against the threat (`attack`). A mode key (F, Shift+F, X, [ ], J,
   V, Shift+V, H, P) shows the **key notice** at the foot of the screen for 5 s: the mode now and the keys that work in it
-  (`card.keyNotice`, `GroundGuideKeyNotice.ts`). Map labels are drawn at 50 % opacity (`LABEL_OPACITY`). With F on, dropping the symbol (or Esc) takes every Extended View product
+  (`card.keyNotice`, `GroundGuideKeyNotice.ts`). Map labels are drawn at 85 % opacity (`LABEL_OPACITY`; 50 % was too dim). With F on, dropping the symbol (or Esc) takes every Extended View product
   off the map until the next draw (a selected symbol still shows its reading). Every line, circle and area on both Extended View layers
   carries a small label (`ipb.labels`), decluttered per zoom; the threat marker docks on the threat's side clear of host bars.
   See `15-ground-guide.md`. `node tools/terrain-synth.mjs` makes a

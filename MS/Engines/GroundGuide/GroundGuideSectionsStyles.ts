@@ -271,6 +271,8 @@ export function groundRelief(g: GroundReading): HTMLElement {
       'G',
       `Gr · ${g.terrain?.label ?? 'Relief'}`,
       real,
+      // The same slope ruler as the schematic picture, so it shows on every slope, not only off one (2026-11-16).
+      ruler(BANDS, bandIndex(g)),
       soft(
         [
           g.slopeDeg !== null ? `${g.slopeApprox ? 'About ' : ''}${Math.round(g.slopeDeg)}° slope` : null,

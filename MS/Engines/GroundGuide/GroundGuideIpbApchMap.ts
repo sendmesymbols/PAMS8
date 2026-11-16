@@ -49,10 +49,11 @@ const chokeUrl = (c: RGB): string =>
 const diamondUrl = (): string =>
   Utils.svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><path d="M11 2 L20 11 L11 20 L2 11 Z" fill="${rgb(NARROWS)}" stroke="#14181d" stroke-width="2" stroke-linejoin="round"/></svg>`);
 /**
- * The map labels' opacity, pill and text together (user, 2026-11-14: "dim the labels on map 50% opaque"), so the
- * ground, the avenues and the rings under them still show. Both Extended View layers draw their labels with `pill`.
+ * The map labels' opacity, pill and text together (user, 2026-11-14: "dim the labels on map 50% opaque"; 2026-11-16:
+ * too dim at 50 %, made less transparent), so they read clearly and the ground, the avenues and the rings under them
+ * still show faintly. Both Extended View layers draw their labels with `pill`.
  */
-export const LABEL_OPACITY = 0.5;
+export const LABEL_OPACITY = 0.85;
 
 /** A label pill: dark red (enemy) or dark blue (own) with the avenue's colour round it, at LABEL_OPACITY. */
 export function pill(text: string, col: RGB, fill: string, small = false): { url: string; w: number; h: number } {
