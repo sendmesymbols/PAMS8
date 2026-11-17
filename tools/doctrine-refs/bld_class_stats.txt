@@ -1,0 +1,22 @@
+PAMS8 building class statistics, made 2026-11-17 by tools/doctrine-refs/bld_class_stats.py from tools/terrain-pipeline/work/buildings/cells.npz (Google Open Buildings v3, imagery to 2022; GHSL GHS-BUILT-H R2023A net height 2018), 10666154 cells of about 153 m with buildings
+
+Density class (value & 7): buildings per km2 in the cells of the class, quartiles 25 / 50 / 75
+density class 1 Scattered (under 30 / km2): 0 cells, buildings per km2 nan / nan / nan
+density class 2 Sparse (30-100): 3380313 cells, buildings per km2 53 / 56 / 59
+density class 3 Open (100-300): 3859938 cells, buildings per km2 115 / 162 / 215
+density class 4 Medium (300-1,000): 2323502 cells, buildings per km2 374 / 496 / 679
+density class 5 Dense (1,000-3,000): 1014511 cells, buildings per km2 1220 / 1521 / 1977
+density class 6 Very dense (3,000+): 87890 cells, buildings per km2 3222 / 3547 / 4148
+
+Size class (value >> 3 & 7): side of a square of the mean footprint in the cells of the class, metres, quartiles 25 / 50 / 75
+size class 1 Huts / kacha (under 40 m2): 2529950 cells, side 4.5 / 5.2 / 5.8 m
+size class 2 Small houses (40-100 m2): 4973905 cells, side 7.3 / 8.1 / 9.0 m
+size class 3 Houses (100-250 m2): 2684273 cells, side 10.7 / 11.5 / 12.8 m
+size class 4 Large houses / blocks (250-1,000 m2): 423751 cells, side 16.9 / 18.6 / 21.9 m
+size class 5 Industrial / large buildings (1,000+ m2): 54275 cells, side 34.9 / 40.5 / 51.4 m
+
+Height class (value >> 6): GHSL average net building height in the cells of the class, metres, quartiles 25 / 50 / 75
+height class 0 Not known / under 3 m: 8261865 cells with a height and 1053150 with none, height 2.5 / 2.5 / 2.5 m
+height class 1 Low (3-6 m, 1-2 storeys): 765842 cells with a height, height 3.4 / 4.0 / 4.9 m
+height class 2 Medium (6-12 m, 2-4 storeys): 547099 cells with a height, height 6.9 / 7.8 / 8.9 m
+height class 3 High (12 m+, multi-storey): 38198 cells with a height, height 12.7 / 13.7 / 15.8 m
