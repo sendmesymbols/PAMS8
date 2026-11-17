@@ -126,6 +126,16 @@ import NightMarch from './NightMarch/NightMarch';
 import './NightMarchSettingsWidget';
 import MovePlanner from './MovePlanner/MovePlanner';
 import './MovePlannerSettingsWidget';
+import GunDeployment from './GunDeployment/GunDeployment';
+import './GunDeploymentSettingsWidget';
+import AdminArea from './AdminArea/AdminArea';
+import './AdminAreaSettingsWidget';
+import AoiCheck from './AoiCheck/AoiCheck';
+import './AoiCheckSettingsWidget';
+import CrossSection from './CrossSection/CrossSection';
+import './CrossSectionSettingsWidget';
+import Compare from './Compare/Compare';
+import './CompareSettingsWidget';
 import './PlanBuilderSettingsWidget';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
@@ -207,6 +217,16 @@ class SymbolEngine implements Evented {
   private _nightMarch: NightMarch | null = null;
   /** The Move Planner (Rd Mov, Mov & Assy, DI Mov, Rly Mov, En Mov); null until `features.movePlanner` is on. */
   private _movePlanner: MovePlanner | null = null;
+  /** Gun Deployment (gun areas with crest clearance); null until `features.gunDeployment` is on. */
+  private _gunDeployment: GunDeployment | null = null;
+  /** Admin Area (B Ech, BAA, DAA, RP, AP, ADS sites); null until `features.adminArea` is on. */
+  private _adminArea: AdminArea | null = null;
+  /** AOI Check (terrain data cover over an area); null until `features.aoiCheck` is on. */
+  private _aoiCheck: AoiCheck | null = null;
+  /** X-Section (terrain cross-section of a line); null until `features.crossSection` is on. */
+  private _crossSection: CrossSection | null = null;
+  /** Compare (corridors / positions side by side); null until `features.compare` is on. */
+  private _compare: Compare | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
@@ -458,6 +478,11 @@ class SymbolEngine implements Evented {
     this._initPlatoonGuide();
     this._initNightMarch();
     this._initMovePlanner();
+    this._initGunDeployment();
+    this._initAdminArea();
+    this._initAoiCheck();
+    this._initCrossSection();
+    this._initCompare();
 
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
@@ -739,6 +764,11 @@ class SymbolEngine implements Evented {
     this._platoonGuide?.destroy();
     this._nightMarch?.destroy();
     this._movePlanner?.destroy();
+    this._gunDeployment?.destroy();
+    this._adminArea?.destroy();
+    this._aoiCheck?.destroy();
+    this._crossSection?.destroy();
+    this._compare?.destroy();
     this._drawingCueEngine?.disable();
     this._mgrsEngine?.destroy();
     this._editEngine?.deactivate();
@@ -806,6 +836,11 @@ class SymbolEngine implements Evented {
     this._platoonGuide?.onViewChanged();
     this._nightMarch?.onViewChanged();
     this._movePlanner?.onViewChanged();
+    this._gunDeployment?.onViewChanged();
+    this._adminArea?.onViewChanged();
+    this._aoiCheck?.onViewChanged();
+    this._crossSection?.onViewChanged();
+    this._compare?.onViewChanged();
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
     // Re-attach MGRS engine to the new view
@@ -1095,6 +1130,141 @@ class SymbolEngine implements Evented {
     }
     this._movePlanner.enable();
     console.info('[SymbolEngine] MovePlanner loaded');
+  }
+
+  /** The Ground Guide's threat marker (Extended View) as lng / lat, when one is set as a place; never read from symbols. */
+  private _threatLngLat(): [number, number] | null {
+    const o: any = this._groundGuide?.options?.extended ?? (settingsData as any).groundGuide?.extended;
+    return o?.threat === 'point' && Array.isArray(o.at) ? [Number(o.at[0]), Number(o.at[1])] : null;
+  }
+
+  /** The own front drawn on the map: FEBA (FDL, 2525D 25 140400) and FLOT (25 140100) lines, their control points in Web Mercator. */
+  private _frontLinesMerc(): Array<Array<[number, number]>> {
+    const out: Array<Array<[number, number]>> = [];
+    const layer: any = this._layerManager?.getLayer?.(LAYER_NAMES.TACT);
+    for (const g of (layer?.graphics?.toArray?.() ?? []) as Graphic[]) {
+      const de: any = g.attributes?.drawEssentials;
+      const sidc = String(de?.AMPLIFIER?.SIDC ?? de?.SIDC ?? '');
+      if (sidc.length < 16 || sidc.slice(4, 6) !== '25' || !['140400', '140100'].includes(sidc.slice(10, 16))) continue;
+      const run: Array<[number, number]> = [];
+      for (const p of (de?.CTRL_PTS ?? []) as any[]) {
+        if (!p) continue;
+        const sr = p.spatialReference;
+        if (sr?.isWebMercator || [102100, 3857, 102113].includes(sr?.wkid)) run.push([p.x, p.y]);
+        else if (Number.isFinite(p.longitude ?? p.x) && Number.isFinite(p.latitude ?? p.y)) run.push(webMercatorUtils.lngLatToXY(p.longitude ?? p.x, p.latitude ?? p.y) as [number, number]);
+      }
+      if (run.length >= 2) out.push(run);
+    }
+    return out;
+  }
+
+  /** "Create on map" for the site finders: their items become ordinary symbols (saved, edited, undone like any other). */
+  private _siteCreator(): (items: any[]) => any[] {
+    return (items) => items.map((it) => this.loadSymbolFromJSON({ type: 'pams8-symbol', id: this.generateUUID(), ...it })).filter((g): g is Graphic => !!g);
+  }
+
+  /**
+   * Create Gun Deployment and enable it. Gated by `features.gunDeployment` (off by default): while it is off nothing is
+   * created and the terrain bundle is never looked for.
+   */
+  private _initGunDeployment(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.gunDeployment !== true) return;
+    if (!this._gunDeployment) {
+      const gd = new GunDeployment(() => this._getView(), {
+        threat: () => this._threatLngLat(),
+        frontLines: () => this._frontLinesMerc(),
+        selected: () => this._selectionEngine?.selectedGraphics ?? [],
+      });
+      this._gunDeployment = gd;
+      gd.setOptions((settingsData as any).gunDeployment ?? {});
+      gd.setCreator(this._siteCreator());
+      this.emitEvent('gunDeploymentReady', { engine: gd });
+    }
+    this._gunDeployment.enable();
+    console.info('[SymbolEngine] GunDeployment loaded');
+  }
+
+  /**
+   * Create Admin Area and enable it. Gated by `features.adminArea` (off by default): while it is off nothing is created
+   * and the terrain bundle is never looked for.
+   */
+  private _initAdminArea(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.adminArea !== true) return;
+    if (!this._adminArea) {
+      const aa = new AdminArea(() => this._getView(), {
+        threat: () => this._threatLngLat(),
+        frontLines: () => this._frontLinesMerc(),
+      });
+      this._adminArea = aa;
+      aa.setOptions((settingsData as any).adminArea ?? {});
+      aa.setCreator(this._siteCreator());
+      this.emitEvent('adminAreaReady', { engine: aa });
+    }
+    this._adminArea.enable();
+    console.info('[SymbolEngine] AdminArea loaded');
+  }
+
+  /** Create AOI Check and enable it. Gated by `features.aoiCheck` (off by default): nothing is fetched until a check is asked for. */
+  private _initAoiCheck(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.aoiCheck !== true) return;
+    if (!this._aoiCheck) {
+      const ac = new AoiCheck(() => this._getView());
+      this._aoiCheck = ac;
+      ac.setOptions((settingsData as any).aoiCheck ?? {});
+      this.emitEvent('aoiCheckReady', { engine: ac });
+    }
+    this._aoiCheck.enable();
+    console.info('[SymbolEngine] AoiCheck loaded');
+  }
+
+  private _crossSectionMenuRegistered = false;
+
+  /**
+   * Create X-Section and enable it. Gated by `features.crossSection` (off by default): while it is off nothing is created
+   * and the terrain bundle is never looked for. Right-click a placed line or area: "X-Section…".
+   */
+  private _initCrossSection(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.crossSection !== true) return;
+    if (!this._crossSection) {
+      const xs = new CrossSection(() => this._getView(), {
+        threat: () => this._threatLngLat(),
+        selected: () => this._selectionEngine?.selectedGraphics ?? [],
+      });
+      this._crossSection = xs;
+      xs.setOptions((settingsData as any).crossSection ?? {});
+      this.emitEvent('crossSectionReady', { engine: xs });
+    }
+    if (!this._crossSectionMenuRegistered) {
+      this._crossSectionMenuRegistered = true;
+      this._contextMenuManager.addDynamicItemProvider((graphic: Graphic): ContextMenuItem[] => {
+        const x = this._crossSection;
+        if (!x?.isEnabled || !x.canUse(graphic) || !graphic?.attributes?.id) return [];
+        return [{ id: 'cross-section', label: 'X-Section…', icon: '📈', action: (g: Graphic) => void x.useGraphic(g) }];
+      });
+    }
+    this._crossSection.enable();
+    console.info('[SymbolEngine] CrossSection loaded');
+  }
+
+  /** Create Compare and enable it. Gated by `features.compare` (off by default): nothing is read while it is off. */
+  private _initCompare(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.compare !== true) return;
+    if (!this._compare) {
+      const cp = new Compare(() => this._getView(), {
+        threat: () => this._threatLngLat(),
+        selected: () => this._selectionEngine?.selectedGraphics ?? [],
+      });
+      this._compare = cp;
+      cp.setOptions((settingsData as any).compare ?? {});
+      this.emitEvent('compareReady', { engine: cp });
+    }
+    this._compare.enable();
+    console.info('[SymbolEngine] Compare loaded');
   }
 
   private _platoonGuideMenuRegistered = false;
@@ -2217,6 +2387,76 @@ class SymbolEngine implements Evented {
     return next;
   }
 
+  /** Gun Deployment: gun areas for a Bty / Regt with crest clearance. Null until `features.gunDeployment` is on. */
+  public get gunDeployment(): GunDeployment | null {
+    return this._gunDeployment;
+  }
+
+  /** Switch Gun Deployment on or off (the `features.gunDeployment` setting). Returns the state it is in now. */
+  public toggleGunDeployment(on?: boolean): boolean {
+    const next = on ?? !(this._gunDeployment?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'gunDeployment'], next);
+    setSetting(['features', 'gunDeployment'], next);
+    EngineLogger.success('Symbol Engine', `Gun Deployment ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
+  /** Admin Area: sites for B Ech, BAA, DAA, RP, AP, ADS. Null until `features.adminArea` is on. */
+  public get adminArea(): AdminArea | null {
+    return this._adminArea;
+  }
+
+  /** Switch Admin Area on or off (the `features.adminArea` setting). Returns the state it is in now. */
+  public toggleAdminArea(on?: boolean): boolean {
+    const next = on ?? !(this._adminArea?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'adminArea'], next);
+    setSetting(['features', 'adminArea'], next);
+    EngineLogger.success('Symbol Engine', `Admin Area ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
+  /** AOI Check: terrain data cover, gaps and sources over an area. Null until `features.aoiCheck` is on. */
+  public get aoiCheck(): AoiCheck | null {
+    return this._aoiCheck;
+  }
+
+  /** Switch AOI Check on or off (the `features.aoiCheck` setting). Returns the state it is in now. */
+  public toggleAoiCheck(on?: boolean): boolean {
+    const next = on ?? !(this._aoiCheck?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'aoiCheck'], next);
+    setSetting(['features', 'aoiCheck'], next);
+    EngineLogger.success('Symbol Engine', `AOI Check ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
+  /** X-Section: the terrain cross-section of a line. Null until `features.crossSection` is on. */
+  public get crossSection(): CrossSection | null {
+    return this._crossSection;
+  }
+
+  /** Switch X-Section on or off (the `features.crossSection` setting). Returns the state it is in now. */
+  public toggleCrossSection(on?: boolean): boolean {
+    const next = on ?? !(this._crossSection?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'crossSection'], next);
+    setSetting(['features', 'crossSection'], next);
+    EngineLogger.success('Symbol Engine', `X-Section ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
+  /** Compare: corridors and positions read side by side. Null until `features.compare` is on. */
+  public get compare(): Compare | null {
+    return this._compare;
+  }
+
+  /** Switch Compare on or off (the `features.compare` setting). Returns the state it is in now. */
+  public toggleCompare(on?: boolean): boolean {
+    const next = on ?? !(this._compare?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'compare'], next);
+    setSetting(['features', 'compare'], next);
+    EngineLogger.success('Symbol Engine', `Compare ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
   /** Switch the Night March on or off (the `features.nightMarch` setting). Returns the state it is in now. */
   public toggleNightMarch(on?: boolean): boolean {
     const next = on ?? !(this._nightMarch?.isEnabled ?? false);
@@ -2604,6 +2844,36 @@ class SymbolEngine implements Evented {
         } else {
           this._movePlanner?.disable();
         }
+      } else if (feature === 'gunDeployment') {
+        if (value) {
+          this._initGunDeployment(true);
+        } else {
+          this._gunDeployment?.disable();
+        }
+      } else if (feature === 'adminArea') {
+        if (value) {
+          this._initAdminArea(true);
+        } else {
+          this._adminArea?.disable();
+        }
+      } else if (feature === 'aoiCheck') {
+        if (value) {
+          this._initAoiCheck(true);
+        } else {
+          this._aoiCheck?.disable();
+        }
+      } else if (feature === 'crossSection') {
+        if (value) {
+          this._initCrossSection(true);
+        } else {
+          this._crossSection?.disable();
+        }
+      } else if (feature === 'compare') {
+        if (value) {
+          this._initCompare(true);
+        } else {
+          this._compare?.disable();
+        }
       } else if (feature === 'platoonGuide') {
         if (value) {
           this._initPlatoonGuide(true);
@@ -2704,6 +2974,26 @@ class SymbolEngine implements Evented {
 
     if (fullPath.startsWith('movePlanner.') && this._movePlanner) {
       this._movePlanner.setOptions((settingsData as any).movePlanner ?? {});
+    }
+
+    if (fullPath.startsWith('gunDeployment.') && this._gunDeployment) {
+      this._gunDeployment.setOptions((settingsData as any).gunDeployment ?? {});
+    }
+
+    if (fullPath.startsWith('adminArea.') && this._adminArea) {
+      this._adminArea.setOptions((settingsData as any).adminArea ?? {});
+    }
+
+    if (fullPath.startsWith('aoiCheck.') && this._aoiCheck) {
+      this._aoiCheck.setOptions((settingsData as any).aoiCheck ?? {});
+    }
+
+    if (fullPath.startsWith('crossSection.') && this._crossSection) {
+      this._crossSection.setOptions((settingsData as any).crossSection ?? {});
+    }
+
+    if (fullPath.startsWith('compare.') && this._compare) {
+      this._compare.setOptions((settingsData as any).compare ?? {});
     }
 
     if (fullPath.startsWith('platoonGuide.') && this._platoonGuide) {

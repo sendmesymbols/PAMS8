@@ -322,6 +322,11 @@ import { openMovementGuideSettings } from '../MS/Engines/MovementGuideSettingsWi
 import { openPlatoonGuideSettings } from '../MS/Engines/PlatoonGuideSettingsWidget';
 import { openNightMarchSettings } from '../MS/Engines/NightMarchSettingsWidget';
 import { openMovePlannerSettings } from '../MS/Engines/MovePlannerSettingsWidget';
+import { openGunDeploymentSettings } from '../MS/Engines/GunDeploymentSettingsWidget';
+import { openAdminAreaSettings } from '../MS/Engines/AdminAreaSettingsWidget';
+import { openAoiCheckSettings } from '../MS/Engines/AoiCheckSettingsWidget';
+import { openCrossSectionSettings } from '../MS/Engines/CrossSectionSettingsWidget';
+import { openCompareSettings } from '../MS/Engines/CompareSettingsWidget';
 import { setSetting as setPlSetting } from '../MS/Support/SettingsBus';
 document.addEventListener('engine-log', (e: Event) => {
   const { engine, type, formatted } = (e as CustomEvent<EngineLogEntry>).detail;
@@ -2410,6 +2415,93 @@ function buildDockFreehandStyle(container: HTMLElement): void {
     new MutationObserver(() => gear.setAttribute('aria-expanded', String(isOpen()))).observe(document.body, { childList: true });
   }
 })();
+
+// Gun Deployment (🎯) and Admin Area (🏕): the button turns the feature on and opens / closes its panel (off from Ctrl+K or
+// the gear's settings); the gear opens the same settings as Ctrl+K. Both read the terrain bundle only while on.
+function initSiteFinderToggle(o: {
+  btnId: string;
+  gearId: string;
+  feature: string;
+  engine: () => any;
+  turnOn: () => void;
+  widgetId: string;
+  open: (opts?: { anchor?: { x?: number; y?: number } }) => { close(): void };
+}): void {
+  const btn = document.getElementById(o.btnId);
+  const gear = document.getElementById(o.gearId);
+  if (!btn) return;
+  const syncFace = () => {
+    const on = !!o.engine()?.isEnabled;
+    btn.classList.toggle('ms-btn-active', on);
+    btn.setAttribute('aria-pressed', String(on));
+  };
+  btn.addEventListener('click', () => {
+    if (!o.engine()?.isEnabled) o.turnOn();
+    o.engine()?.togglePanel?.();
+    syncFace();
+  });
+  window.addEventListener('settingsChanged', (e: any) => {
+    if ((e.detail?.fullPath ?? '') === `features.${o.feature}`) setTimeout(syncFace, 0);
+  });
+  setTimeout(syncFace, 500);
+  if (gear) {
+    const isOpen = () => !!document.getElementById(o.widgetId);
+    gear.addEventListener('click', () => {
+      if (isOpen()) o.open().close();
+      else {
+        const r = gear.getBoundingClientRect();
+        o.open({ anchor: { x: r.right - 340, y: r.bottom + 6 } });
+      }
+      gear.setAttribute('aria-expanded', String(isOpen()));
+    });
+    new MutationObserver(() => gear.setAttribute('aria-expanded', String(isOpen()))).observe(document.body, { childList: true });
+  }
+}
+initSiteFinderToggle({
+  btnId: 'gunDeploymentBtn',
+  gearId: 'gunDeploymentSettingsBtn',
+  feature: 'gunDeployment',
+  engine: () => (window as any).symbolEngine?.gunDeployment,
+  turnOn: () => (window as any).symbolEngine?.toggleGunDeployment?.(true),
+  widgetId: 'gun-deployment-settings',
+  open: openGunDeploymentSettings,
+});
+initSiteFinderToggle({
+  btnId: 'adminAreaBtn',
+  gearId: 'adminAreaSettingsBtn',
+  feature: 'adminArea',
+  engine: () => (window as any).symbolEngine?.adminArea,
+  turnOn: () => (window as any).symbolEngine?.toggleAdminArea?.(true),
+  widgetId: 'admin-area-settings',
+  open: openAdminAreaSettings,
+});
+initSiteFinderToggle({
+  btnId: 'aoiCheckBtn',
+  gearId: 'aoiCheckSettingsBtn',
+  feature: 'aoiCheck',
+  engine: () => (window as any).symbolEngine?.aoiCheck,
+  turnOn: () => (window as any).symbolEngine?.toggleAoiCheck?.(true),
+  widgetId: 'aoi-check-settings',
+  open: openAoiCheckSettings,
+});
+initSiteFinderToggle({
+  btnId: 'crossSectionBtn',
+  gearId: 'crossSectionSettingsBtn',
+  feature: 'crossSection',
+  engine: () => (window as any).symbolEngine?.crossSection,
+  turnOn: () => (window as any).symbolEngine?.toggleCrossSection?.(true),
+  widgetId: 'cross-section-settings',
+  open: openCrossSectionSettings,
+});
+initSiteFinderToggle({
+  btnId: 'compareBtn',
+  gearId: 'compareSettingsBtn',
+  feature: 'compare',
+  engine: () => (window as any).symbolEngine?.compare,
+  turnOn: () => (window as any).symbolEngine?.toggleCompare?.(true),
+  widgetId: 'compare-settings',
+  open: openCompareSettings,
+});
 
 // The button flips features.movementGuide through symbolEngine.toggleMovementGuide() (which publishes it on the
 // settings bus); the face follows settings changed from Ctrl+K. The gear opens the Movement Guide settings widget.

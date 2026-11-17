@@ -346,7 +346,12 @@
       }
       #movementGuideBtn.ms-btn-active,
       #nightMarchBtn.ms-btn-active,
-      #movePlannerBtn.ms-btn-active {
+      #movePlannerBtn.ms-btn-active,
+      #gunDeploymentBtn.ms-btn-active,
+      #adminAreaBtn.ms-btn-active,
+      #aoiCheckBtn.ms-btn-active,
+      #crossSectionBtn.ms-btn-active,
+      #compareBtn.ms-btn-active {
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
       }
@@ -2086,6 +2091,31 @@
         <div class="infobar-split">
           <button class="ms-btn infobar-btn" id="movePlannerBtn" aria-pressed="false" title="Move Planner — Rd Mov, Mov &amp; Assy, DI Mov (de-induction), Rly Mov and En Mov: serials and routes, TPP, halts and harbours, crossings by priority, the mov table and graph, trains within 72 C units and 2,000 tons, the enemy's induction matrix. Turns it on and opens the Mov Plan panel; U opens / closes it, Shift+U walks its views."><span class="infobar-icon">🚚</span>Mov Plan</button>
           <button class="ms-btn infobar-btn infobar-gear" id="movePlannerSettingsBtn" aria-label="Move Planner settings" aria-expanded="false" title="Move Planner settings: the kind it opens on, time zone, road network, load class, map. Same settings as Ctrl+K → Move Planner."><span class="infobar-icon">⚙</span></button>
+        </div>
+        <!-- Gun Deployment on/off (features.gunDeployment) + its panel, and its settings; wired in src/main.ts. -->
+        <div class="infobar-split">
+          <button class="ms-btn infobar-btn" id="gunDeploymentBtn" aria-pressed="false" title="Gun Deployment: gun areas for a Bty or Regt round a place you pick. Room for the guns, level and firm ground in the month, hidden from the air, a road in, the target in range, the distance behind the FDL, the crest toward the target (angle of site, clearance, the range low-angle fire clears it from) and landmarks to avoid. Turns it on and opens its panel; Create on Map makes a PAA. Needs the terrain bundle."><span class="infobar-icon">🎯</span>Gun Depl</button>
+          <button class="ms-btn infobar-btn infobar-gear" id="gunDeploymentSettingsBtn" aria-label="Gun Deployment settings" aria-expanded="false" title="Gun Deployment settings: gun, Bty / Regt, task, search radius, month, map. Same settings as Ctrl+K → Gun Deployment."><span class="infobar-icon">⚙</span></button>
+        </div>
+        <!-- Admin Area on/off (features.adminArea) + its panel, and its settings; wired in src/main.ts. -->
+        <div class="infobar-split">
+          <button class="ms-btn infobar-btn" id="adminAreaBtn" aria-pressed="false" title="Admin Area: ground for a Unit Ech, BAA, DAA, RP, Amn / Sup / POL Pt or ADS round a place you pick. Clear of the enemy guns from the threat place, the DAA distance behind the front, firm and flood-free in the month, room to disperse, hidden from the air, a road in and off the main road, away from bridges and junctions, water and pucca buildings near. Turns it on and opens its panel; Create on Map makes a 2525D support area. Needs the terrain bundle."><span class="infobar-icon">🏕</span>Admin Area</button>
+          <button class="ms-btn infobar-btn infobar-gear" id="adminAreaSettingsBtn" aria-label="Admin Area settings" aria-expanded="false" title="Admin Area settings: kind, operation, month, where his guns stand, map. Same settings as Ctrl+K → Admin Area."><span class="infobar-icon">⚙</span></button>
+        </div>
+        <!-- AOI Check on/off (features.aoiCheck) + its panel, and its settings; wired in src/main.ts. -->
+        <div class="infobar-split">
+          <button class="ms-btn infobar-btn" id="aoiCheckBtn" aria-pressed="false" title="AOI Check: before you plan, check an area against the terrain data. Cover inside the data's frame, missing tiles per layer, no-data patches, the layers and movers the bundle has, its build date, and every source with its date and licence. Gaps are painted on the map with the readings they blank. Pick an area or use this view. Turns it on and opens its panel."><span class="infobar-icon">🗺</span>AOI Check</button>
+          <button class="ms-btn infobar-btn infobar-gear" id="aoiCheckSettingsBtn" aria-label="AOI Check settings" aria-expanded="false" title="AOI Check settings: tiles per layer, map. Same settings as Ctrl+K → AOI Check."><span class="infobar-icon">⚙</span></button>
+        </div>
+        <!-- X-Section on/off (features.crossSection) + its panel, and its settings; wired in src/main.ts. -->
+        <div class="infobar-split">
+          <button class="ms-btn infobar-btn" id="crossSectionBtn" aria-pressed="false" title="X-Section: the terrain cross-section of a line. Height along it, the going for the mover in the month, obstacles crossed or followed (canals, streams, railways, roads, bridges, BUA, bunds, cliffs), steep stretches, distance markers, no-data gaps and what the threat sees. Draw a line, use the selected one, or right-click a line → X-Section…. Turns it on and starts a line."><span class="infobar-icon">📈</span>X-Section</button>
+          <button class="ms-btn infobar-btn infobar-gear" id="crossSectionSettingsBtn" aria-label="X-Section settings" aria-expanded="false" title="X-Section settings: mover, month, seen by threat, map. Same settings as Ctrl+K → X-Section."><span class="infobar-icon">⚙</span></button>
+        </div>
+        <!-- Compare on/off (features.compare) + its panel, and its settings; wired in src/main.ts. -->
+        <div class="infobar-split">
+          <button class="ms-btn infobar-btn" id="compareBtn" aria-pressed="false" title="Compare: up to four corridors (lines) or positions (areas, points) read side by side with the same mover, month and threat. Length, climb, NO-GO, SLOW-GO, crossings, bridges, BUA, seen by threat; usable Gr, tilt, firm, wet, hidden from air, cover, Rd, people. The best in each row marked, the differences written out, and how each row was worked out. Turns it on and opens its panel."><span class="infobar-icon">⚖</span>Compare</button>
+          <button class="ms-btn infobar-btn infobar-gear" id="compareSettingsBtn" aria-label="Compare settings" aria-expanded="false" title="Compare settings: mover, month, threat eye height, point radius, map. Same settings as Ctrl+K → Compare."><span class="infobar-icon">⚙</span></button>
         </div>
         <!-- Movement Guide on/off (features.movementGuide) and its settings; wired in src/main.ts. -->
         <div class="infobar-split">

@@ -21309,6 +21309,102 @@
         "Cat": ["log"],
         "Grp": [ "Control Measures","Forward Arming and Refueling Point (FARP)" ]
     },
+    "25310500": {
+        "Class": "RegimentalSupportArea",
+        "Description": "MIL-STD-2525D 25 310500 Sustainment Areas: Regimental Support Area, RSA written inside; the Admin Area finder makes a unit echelon area with it",
+        "Name": "Regimental Support Area (RSA)",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["log"],
+        "Grp": ["Control Measures", "Regimental Support Area (RSA)"]
+    },
+    "25310600": {
+        "Class": "BrigadeSupportArea",
+        "Description": "MIL-STD-2525D 25 310600 Sustainment Areas: Brigade Support Area, BSA written inside (the Bde Admin Area, BAA)",
+        "Name": "Brigade Support Area (BSA)",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["log"],
+        "Grp": ["Control Measures", "Brigade Support Area (BSA)"]
+    },
+    "25310700": {
+        "Class": "DivisionSupportArea",
+        "Description": "MIL-STD-2525D 25 310700 Sustainment Areas: Division Support Area, DSA written inside (the Div Admin Area, DAA)",
+        "Name": "Division Support Area (DSA)",
+        "Parameters": [{
+            "Name": "Draw Type",
+            "default": "1",
+            "description": "Possible Values 1 (Smooth Polygon), 2 (Polygon) and 3 (Rectangle)",
+            "paramThumbnail": "",
+            "value": "DRAW_TYPE"
+        }],
+        "SymGeoType": "Area",
+        "Thumbnail": "",
+        "Tools": [{
+                "DRAW_TYPE": "1",
+                "Name": "Smooth Polygon",
+                "description": "Use Smooth Polygon"
+            },
+            {
+                "DRAW_TYPE": "2",
+                "Name": "Polygon",
+                "description": "Draw using Polygon"
+            },
+            {
+                "DRAW_TYPE": "3",
+                "Name": "Rectangle",
+                "description": "Use Rectangle"
+            }
+        ],
+        "Cat": ["log"],
+        "Grp": ["Control Measures", "Division Support Area (DSA)"]
+    },
     "25320100": {
         "Class": "TacticalPoint",
         "Description": "A location where a patient is transferred from one ambulance to another en route to a medical treatment facility. This may be an established point in an ambulance shuttle system or it may be designated independently.",

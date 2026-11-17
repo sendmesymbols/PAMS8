@@ -427,7 +427,12 @@
     "movementGuide": false,
     "nightMarch": false,
     "movePlanner": false,
-    "planBuilder": true
+    "planBuilder": true,
+    "gunDeployment": false,
+    "adminArea": false,
+    "aoiCheck": false,
+    "crossSection": false,
+    "compare": false
   },
   "collab": {
     "transport": "sse",
@@ -890,6 +895,69 @@
     "utcOffsetMin": 300,
     "useNetwork": true,
     "routeMlc": null
+  },
+  "gunDeployment": {
+    "bundleUrl": "/terrain-bundle",
+    "cacheTiles": 384,
+    "useWorker": true,
+    "orbatUrl": "/MS/Data/Orbat/PK",
+    "weapon": "155-mm-how-sp-m109-a2-a5",
+    "unit": "bty",
+    "op": "def",
+    "radiusKm": 4,
+    "month": 0,
+    "map": true,
+    "labels": true,
+    "keys": true
+  },
+  "adminArea": {
+    "bundleUrl": "/terrain-bundle",
+    "cacheTiles": 384,
+    "useWorker": true,
+    "orbatUrl": "/MS/Data/Orbat/PK",
+    "kind": "baa",
+    "op": "def",
+    "month": 0,
+    "enemyGun": "",
+    "gunDepthKm": 0,
+    "vehicles": 0,
+    "radiusKm": 0,
+    "map": true,
+    "labels": true,
+    "keys": true
+  },
+  "aoiCheck": {
+    "bundleUrl": "/terrain-bundle",
+    "useWorker": true,
+    "maxTiles": 48,
+    "map": true,
+    "labels": true,
+    "keys": true
+  },
+  "crossSection": {
+    "bundleUrl": "/terrain-bundle",
+    "cacheTiles": 384,
+    "useWorker": true,
+    "mover": "wheeled",
+    "month": 0,
+    "seen": true,
+    "eyeM": 2,
+    "map": true,
+    "labels": true,
+    "keys": true
+  },
+  "compare": {
+    "bundleUrl": "/terrain-bundle",
+    "cacheTiles": 384,
+    "useWorker": true,
+    "mover": "tracked",
+    "month": 0,
+    "seen": true,
+    "eyeM": 2,
+    "pointRadiusM": 250,
+    "map": true,
+    "labels": true,
+    "keys": true
   },
   "planBuilder": {
     "useTerrain": true,

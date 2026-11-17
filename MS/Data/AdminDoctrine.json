@@ -1,0 +1,2135 @@
+{
+  "format": "pams-admin-doctrine",
+  "version": 1,
+  "updated": "2026-11-17",
+  "status": "Figures for the Admin Area finder (MS/Engines/AdminArea). R figures are written in the Pakistani books (page cited); U figures are US doctrine cited where they are silent; E figures are proposals for the user to correct. The New Logistic System (CSC Handout) was not read (password).",
+  "basisKey": {
+    "R": "Written in a Pakistani book (SO's Handbook 2019 Sec 10 / 13, Logistics Support in the Field, GSP Inf Div in Battle, IBB, Mech Inf Bn in Battle, SD Vol I / II), page cited",
+    "U": "US doctrine cited (ATP 4-90 2026, ATP 3-21.20 2017, FM 63-21 1990 and others listed under sources), checked against the copies kept in Material/Literature/2. Online",
+    "E": "Decision or proposal: no figure in the books or the open doctrine searched (listed under 'Looked for in'); the reason is given, with any book words it rests on as context. 'decided' = taken for the tool on the user's instruction (17 Nov 2026), to be replaced when a book figure is found",
+    "M": "Method setting of the finder: how it searches, how much data it needs before it judges, how it orders the list. Not a military rule; it never makes a site pass a check it would fail. The reason is given, and a test where one can show it",
+    "S": "A published civil standard (UN Degree of Urbanisation), page cited"
+  },
+  "sources": [
+    {
+      "id": "soh10",
+      "name": "SO's Handbook (2019) Sec 10 Log Svc Units: DAA siting, size and distance (p 1053-1057), RP (p 1058-1059, 1062), 1st line radius (p 1061), concentration areas (p 1065)",
+      "dataDate": "2019",
+      "short": "SO's Hbk 2019, Sec 10 Log Svc Units",
+      "file": "Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+    },
+    {
+      "id": "soh13",
+      "name": "SO's Handbook (2019) Sec 13 Threat: Indian artillery ranges (p 1325-1328), Indian DAA (p 1357)",
+      "dataDate": "2019",
+      "short": "SO's Hbk 2019, Sec 13 Threat",
+      "file": "Material/Literature/1. Books/SO's Handbook (2019)/Sec 13 - Threat.pdf"
+    },
+    {
+      "id": "lsf",
+      "name": "Logistics Support in the Field: commodity points (p 24-27), RP (p 27-29), ADS / FTC (p 47-49)",
+      "dataDate": "in Material/Literature",
+      "short": "Logistics Support in the Field",
+      "file": "Material/Literature/1. Books/6. Logistics Support in the Field.pdf"
+    },
+    {
+      "id": "gsp",
+      "name": "GSP-1947 Inf Div in Battle (2001): admin areas (p 181-185), DAA layout (Anx D)",
+      "dataDate": "2001",
+      "short": "GSP-1947 Inf Div in Battle",
+      "file": "Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+    },
+    {
+      "id": "mib",
+      "name": "The Mechanised Infantry Battalion in Battle: echelons (p 9), harbours (p 66-67), cover (p 188)",
+      "dataDate": "in Material/Literature",
+      "short": "Mech Inf Bn in Battle",
+      "file": "Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+    },
+    {
+      "id": "ibb",
+      "name": "Infantry Battalion in Battle (2015): B Ech control (p 9), transport (p 23, 400)",
+      "dataDate": "2015",
+      "short": "Inf Bn in Battle",
+      "file": "Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf"
+    },
+    {
+      "id": "fm490",
+      "name": "FM 4-90 Brigade Support Battalion (2010): ATHP, Class III and MTF siting (p 3-5, B-1)",
+      "location": "https://archive.org/download/MManuals/Fm4-90BrigadeSupportBattalion.pdf",
+      "dataDate": "2010 (superseded by ATP 4-90)",
+      "short": "FM 4-90 (US, 2010)",
+      "url": "https://archive.org/download/MManuals/Fm4-90BrigadeSupportBattalion.pdf",
+      "file": "Material/Literature/2. Online/FM 4-90 (2010).pdf"
+    },
+    {
+      "id": "orbat",
+      "name": "MS/Data/Orbat/PK/weapons.json (SO's Handbook 2019 Sec 13): enemy gun and mortar ranges",
+      "dataDate": "2019",
+      "short": "ORBAT weapons.json",
+      "file": "MS/Data/Orbat/PK/weapons.json"
+    },
+    {
+      "id": "sd2",
+      "short": "SD in the Field Vol II Ops",
+      "name": "Staff Duties in the Field Vol II Operations",
+      "file": "Material/Literature/1. Books/Misc/Staff Duties in the Field (Volume-II) Operations.pdf",
+      "dataDate": "in Material/Literature"
+    },
+    {
+      "id": "gloss",
+      "name": "Glossary of Military Terms and Definitions (Pakistan Army): ADS sited not within the range of enemy field artillery (p 9)",
+      "short": "Glossary of Mil Terms",
+      "dataDate": "in Material/Literature",
+      "file": "Material/Literature/1. Books/Misc/Glossary of Military Terms and Definitions.pdf"
+    },
+    {
+      "id": "ic",
+      "name": "IC (Rifle Coy, Pl and Sec in Battle): assembly areas beyond the effective range of enemy field artillery (p 307)",
+      "short": "IC (Rifle Coy, Pl and Sec in Battle)",
+      "dataDate": "in Material",
+      "file": "Material/IC.pdf"
+    },
+    {
+      "id": "mw",
+      "name": "Mountain Warfare (Pakistan Army): siting admin areas in mountains (p 264)",
+      "short": "Mountain Warfare",
+      "dataDate": "in Material/Literature",
+      "file": "Material/Literature/1. Books/8. Mountain Warfare.pdf"
+    },
+    {
+      "id": "oow1",
+      "name": "Operations of War Vol I Defence: level ground and water for a locality (p 77)",
+      "short": "OoW Vol I Defence",
+      "dataDate": "in Material/Literature",
+      "file": "Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf"
+    },
+    {
+      "id": "atp490",
+      "name": "ATP 4-90 Brigade Support Battalion (2026): BSA ideally out of range of the enemy medium artillery, site selection (p 27), LRP (p 51)",
+      "short": "ATP 4-90 (US, 2026)",
+      "dataDate": "2026",
+      "file": "Material/Literature/2. Online/ATP 4-90 (2026).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN45712-ATP_4-90-000-WEB-1.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN45712-ATP_4-90-000-WEB-1.pdf"
+    },
+    {
+      "id": "atp32120",
+      "name": "ATP 3-21.20 Infantry Battalion (2017): echelon support areas (p H-20, H-21)",
+      "short": "ATP 3-21.20 (US, 2017)",
+      "dataDate": "2017",
+      "file": "Material/Literature/2. Online/ATP 3-21.20 (2017).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/ARN6672_ATP%203-21x20%20FINAL%20WEB.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/ARN6672_ATP%203-21x20%20FINAL%20WEB.pdf"
+    },
+    {
+      "id": "atp3905",
+      "name": "ATP 3-90.5 Combined Arms Battalion (2021): combat trains outside enemy mortar range (p 6-7)",
+      "short": "ATP 3-90.5 (US, 2021)",
+      "dataDate": "2021",
+      "file": "Material/Literature/2. Online/ATP 3-90.5 (2021).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN32974-ATP_3-90.5-000-WEB-1.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN32974-ATP_3-90.5-000-WEB-1.pdf"
+    },
+    {
+      "id": "atp391",
+      "name": "ATP 3-91 Division Operations (2014): division main CP out of range of most enemy cannon and MRL (p 5-21)",
+      "short": "ATP 3-91 (US, 2014)",
+      "dataDate": "2014",
+      "file": "Material/Literature/2. Online/ATP 3-91 (2014).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/atp3_91.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/atp3_91.pdf"
+    },
+    {
+      "id": "atp435",
+      "name": "ATP 4-35 Munitions Operations (2023): ASP size (p 3-25), ATHP beside the BSA (p 4-9)",
+      "short": "ATP 4-35 (US, 2023)",
+      "dataDate": "2023",
+      "file": "Material/Literature/2. Online/ATP 4-35 (2023).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN37303-ATP_4-35-000-WEB-1.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN37303-ATP_4-35-000-WEB-1.pdf"
+    },
+    {
+      "id": "atp444",
+      "name": "ATP 4-44 Water Support Operations (2025, C1 2026): water site considerations (p 99)",
+      "short": "ATP 4-44 (US, 2025)",
+      "dataDate": "2025",
+      "file": "Material/Literature/2. Online/ATP 4-44 (2025, C1 2026).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN47037-ATP_4-44-001-WEB-1.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN47037-ATP_4-44-001-WEB-1.pdf"
+    },
+    {
+      "id": "atp33481",
+      "name": "ATP 3-34.81 Engineer Reconnaissance (2016, C1): route military load class (p 4-5)",
+      "short": "ATP 3-34.81 (US, 2016)",
+      "dataDate": "2016",
+      "file": "Material/Literature/2. Online/ATP 3-34.81 (2016, C1).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/ATP%203-34x81%20C1%20INCL%20FINAL%20WEB.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/ATP%203-34x81%20C1%20INCL%20FINAL%20WEB.pdf"
+    },
+    {
+      "id": "fm390",
+      "name": "FM 3-90 Tactics (2023): assembly area (p A-3, A-4)",
+      "short": "FM 3-90 (US, 2023)",
+      "dataDate": "2023",
+      "file": "Material/Literature/2. Online/FM 3-90 (2023).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN38160-FM_3-90-000-WEB-1.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN38160-FM_3-90-000-WEB-1.pdf"
+    },
+    {
+      "id": "fm396",
+      "name": "FM 3-96 Brigade Combat Team (2021): BSA site (p 9-38, 9-39)",
+      "short": "FM 3-96 (US, 2021)",
+      "dataDate": "2021",
+      "file": "Material/Literature/2. Online/FM 3-96 (2021).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN31505-FM_3-96-000-WEB-1.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN31505-FM_3-96-000-WEB-1.pdf"
+    },
+    {
+      "id": "fm632",
+      "name": "FM 63-2 Division Support Command (1991): BSA 25-30 km behind the FLOT (p 1-4); BSA 4-7 km and DSA 7-10 km across (p A-4)",
+      "short": "FM 63-2 (US, 1991)",
+      "dataDate": "1991",
+      "file": "Material/Literature/2. Online/FM 63-2 (1991).pdf",
+      "url": "https://archive.org/download/FM_63_2_D_S_C_A_I_M_I_D_1991/FM%2063-2%20Division%20Support%20Command%2C%20Armored%2C%20Infantry%20and%20Mechanized%20Infantry%20Divisions%20%281991%29.pdf",
+      "location": "https://archive.org/download/FM_63_2_D_S_C_A_I_M_I_D_1991/FM%2063-2%20Division%20Support%20Command%2C%20Armored%2C%20Infantry%20and%20Mechanized%20Infantry%20Divisions%20%281991%29.pdf"
+    },
+    {
+      "id": "fm6320",
+      "name": "FM 63-20 Forward Support Battalion (1990): BSA size and distance (p 2-4, 2-5, 5-7), ATP distances (p 5-7)",
+      "short": "FM 63-20 (US, 1990)",
+      "dataDate": "1990",
+      "file": "Material/Literature/2. Online/FM 63-20 (1990).pdf",
+      "url": "https://archive.org/download/FM_63_20_F_S_B_1990/FM%2063-20%20Forward%20Support%20Battalion%20%281990%29.pdf",
+      "location": "https://archive.org/download/FM_63_20_F_S_B_1990/FM%2063-20%20Forward%20Support%20Battalion%20%281990%29.pdf"
+    },
+    {
+      "id": "fm6321",
+      "name": "FM 63-21 Main Support Battalion (1990): support sites 1 to 3 km from MSRs, not astride them (p 1-4); medical facilities (p A-5)",
+      "short": "FM 63-21 (US, 1990)",
+      "dataDate": "1990",
+      "file": "Material/Literature/2. Online/FM 63-21 (1990).pdf",
+      "url": "https://archive.org/download/FM_63_21_M_S_B_1990/FM%2063-21%20Main%20Support%20Battalion%20%281990%29.pdf",
+      "location": "https://archive.org/download/FM_63_21_M_S_B_1990/FM%2063-21%20Main%20Support%20Battalion%20%281990%29.pdf"
+    },
+    {
+      "id": "fm71123",
+      "name": "FM 71-123 Combined Arms Heavy Forces (1992): BSA outside enemy medium artillery (p 2-2, 8-3), site factors (p 8-4), trains (p 8-22)",
+      "short": "FM 71-123 (US, 1992)",
+      "dataDate": "1992",
+      "file": "Material/Literature/2. Online/FM 71-123 (1992).pdf",
+      "url": "https://archive.org/download/FM_71_123_T_T_C_A_H_F_1992/FM%2071-123%20Tactics%2C%20Techniques%20for%20Combined%20Arms%20Heavy%20Forces%20%281992%29.pdf",
+      "location": "https://archive.org/download/FM_71_123_T_T_C_A_H_F_1992/FM%2071-123%20Tactics%2C%20Techniques%20for%20Combined%20Arms%20Heavy%20Forces%20%281992%29.pdf"
+    },
+    {
+      "id": "fm81004",
+      "name": "FM 8-10-4 Medical Platoon Leaders Handbook (1990): aid station site (p 5-37)",
+      "short": "FM 8-10-4 (US, 1990)",
+      "dataDate": "1990",
+      "file": "Material/Literature/2. Online/FM 8-10-4 (1990).pdf",
+      "url": "https://archive.org/download/FM_8_10_4_M_P_L_H_T_T_P_1990/FM%208-10-4%20Medical%20Platoon%20Leaders%20Handbook-Tactics%2C%20Techniques%2C%20and%20Procedures%20%281990%29.pdf",
+      "location": "https://archive.org/download/FM_8_10_4_M_P_L_H_T_T_P_1990/FM%208-10-4%20Medical%20Platoon%20Leaders%20Handbook-Tactics%2C%20Techniques%2C%20and%20Procedures%20%281990%29.pdf"
+    },
+    {
+      "id": "fm4024",
+      "name": "FM 4-02.4 Medical Platoon Leaders Handbook (2003): aid station site (p 2-28)",
+      "short": "FM 4-02.4 (US, 2003)",
+      "dataDate": "2003",
+      "file": "Material/Literature/2. Online/FM 4-02.4 (2003).pdf",
+      "url": "https://archive.org/download/FM_4-02.4_Medical_Platoon_Leaders_Handbook/FM_4-02.4_Medical_Platoon_Leaders_Handbook.pdf",
+      "location": "https://archive.org/download/FM_4-02.4_Medical_Platoon_Leaders_Handbook/FM_4-02.4_Medical_Platoon_Leaders_Handbook.pdf"
+    },
+    {
+      "id": "fm10021",
+      "name": "FM 100-2-1 The Soviet Army: Operations and Tactics (1984): artillery groups 1 to 4 km and 3 to 6 km from the FEBA (p 5-21, 5-22)",
+      "short": "FM 100-2-1 (US, 1984)",
+      "dataDate": "1984",
+      "file": "Material/Literature/2. Online/FM 100-2-1 (1984).pdf",
+      "url": "https://archive.org/download/FM_100_2_1_T_S_A_O_T_1984/FM%20100-2-1%20The%20Soviet%20Army-Operations%20and%20Tactics%20%281984%29.pdf",
+      "location": "https://archive.org/download/FM_100_2_1_T_S_A_O_T_1984/FM%20100-2-1%20The%20Soviet%20Army-Operations%20and%20Tactics%20%281984%29.pdf"
+    },
+    {
+      "id": "degurba",
+      "name": "Applying the Degree of Urbanisation: a methodological manual (EU / FAO / ILO / OECD / UN-Habitat / World Bank, 2021; endorsed by the UN Statistical Commission, 2020): density classes (p 52-53)",
+      "short": "Degree of Urbanisation (UN, 2021)",
+      "dataDate": "2021",
+      "file": "Material/Literature/2. Online/Applying the Degree of Urbanisation (2021).pdf",
+      "url": "https://unstats.un.org/unsd/statcom/52nd-session/documents/BG-4a-DEGURBA_Manual-E.pdf",
+      "location": "https://unstats.un.org/unsd/statcom/52nd-session/documents/BG-4a-DEGURBA_Manual-E.pdf"
+    }
+  ],
+  "density": {
+    "vehPerKm2": {
+      "value": 50,
+      "basis": "R",
+      "src": "SO's Hbk Sec 10 p 1054: 50 vehicles per map sq is ideal",
+      "refs": [
+        {
+          "book": "soh10",
+          "page": "1054",
+          "quote": "50 vehs to a map sq is considered to be ideal",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 55,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+          }
+        }
+      ]
+    }
+  },
+  "kinds": {
+    "ech": {
+      "label": "Unit Ech (A / B Ech harbour)",
+      "short": "Ech",
+      "frontM": {
+        "value": 400,
+        "basis": "E",
+        "src": "No size in any book (ATP 3-21.20 p H-20: it varies with the ground). Worked out: an Inf Bn B Ech of 8 vehicles and 7 trailers (IBB p 400) at the 50 vehicles per map square the SOH calls ideal (Sec 10 p 1054) needs 0.16 km2 with the trailers hitched: 400 x 400 m, well inside the 2000 x 2000 m a whole Mech Bn harbours in (MIB p 67)",
+        "refs": [
+          {
+            "book": "soh10",
+            "page": "1054",
+            "quote": "50 vehs to a map sq is considered to be ideal",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          },
+          {
+            "book": "atp32120",
+            "page": "H-20",
+            "quote": "The echelon support area's size varies with terrain and how the forward support company is organized between the field trains and combat trains.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 522,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/ATP 3-21.20 (2017).pdf"
+            }
+          },
+          {
+            "book": "mib",
+            "page": "67",
+            "quote": "A mechanised infantry battalion normally requires an area of approximately 2000 x 2000 metres.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 67,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+            }
+          }
+        ],
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ]
+      },
+      "depthM": {
+        "value": 400,
+        "basis": "E",
+        "src": "No size in any book (ATP 3-21.20 p H-20: it varies with the ground). Worked out: an Inf Bn B Ech of 8 vehicles and 7 trailers (IBB p 400) at the 50 vehicles per map square the SOH calls ideal (Sec 10 p 1054) needs 0.16 km2 with the trailers hitched: 400 x 400 m, well inside the 2000 x 2000 m a whole Mech Bn harbours in (MIB p 67)",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "soh10",
+            "page": "1054",
+            "quote": "50 vehs to a map sq is considered to be ideal",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          },
+          {
+            "book": "atp32120",
+            "page": "H-20",
+            "quote": "The echelon support area's size varies with terrain and how the forward support company is organized between the field trains and combat trains.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 522,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/ATP 3-21.20 (2017).pdf"
+            }
+          },
+          {
+            "book": "mib",
+            "page": "67",
+            "quote": "A mechanised infantry battalion normally requires an area of approximately 2000 x 2000 metres.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 67,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+            }
+          }
+        ]
+      },
+      "radiusM": 3000,
+      "beyond": {
+        "value": "field",
+        "basis": "R",
+        "src": "MIB p 66-67: harbour out of range of en field arty and observed fire; concealed from ground and air; hard standing; exits and entrances; room to disperse",
+        "refs": [
+          {
+            "book": "mib",
+            "page": "66",
+            "quote": "Be out of range of the enemy's field artillery and observed fire",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 66,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+            }
+          }
+        ]
+      },
+      "behindM": null,
+      "needs": [
+        "water"
+      ],
+      "symbol": {
+        "key": "25310500",
+        "desig": "Ech",
+        "note": "2525D Regimental Support Area, the unit-level support area (my mapping: 2525D has no echelon area)"
+      },
+      "note": "B Ech is normally under Bde or Div control and sits in the DAA (IBB p 9; SOH Sec 10 p 1053); A Ech / A2 in the BAA (MIB p 9).",
+      "refs": [
+        {
+          "book": "soh10",
+          "page": "1053",
+          "quote": "B echs of fighting units and tpt not req in the fwd area",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 54,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+          }
+        },
+        {
+          "book": "ibb",
+          "page": "23",
+          "quote": "bulk of transport will normally be located within the battalion area except B echelon vehicles",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 40,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf"
+          }
+        }
+      ]
+    },
+    "baa": {
+      "label": "Bde Admin Area (BAA)",
+      "short": "BAA",
+      "frontM": {
+        "value": 2500,
+        "basis": "E",
+        "src": "No BAA size in the Pakistani books. Worked out: in US doctrine a BSA is 4-7 km across inside a DSA of 7-10 km (FM 63-2 p A-4), a third to a half of its area; the same share of the DAA (15-20 map squares, SOH Sec 10 p 1054) is 5-10 km2. 2.5 x 2.5 km (6.25 km2) taken: in that band and below the 8-10 map squares a whole Inf Bde concentrates in (SOH Sec 10 p 1065). Enter the vehicles to size it at 50 per km2",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "fm632",
+            "page": "A-4",
+            "quote": "can be expected to occupy an area approximately 7 to 10 kilometers in diameter. The BSA can be expected to occupy an area approximately 4 to 7 kilometers in diameter.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 105,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 63-2 (1991).pdf"
+            }
+          },
+          {
+            "book": "soh10",
+            "page": "1054",
+            "quote": "the entire DAA may take 15-20 map sqs",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          },
+          {
+            "book": "soh10",
+            "page": "1065",
+            "quote": "g. Inf Bde. 8-10 Map sqs (i.e 3-4 sq miles).",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 66,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          }
+        ]
+      },
+      "depthM": {
+        "value": 2500,
+        "basis": "E",
+        "src": "No BAA size in the Pakistani books. Worked out: in US doctrine a BSA is 4-7 km across inside a DSA of 7-10 km (FM 63-2 p A-4), a third to a half of its area; the same share of the DAA (15-20 map squares, SOH Sec 10 p 1054) is 5-10 km2. 2.5 x 2.5 km (6.25 km2) taken: in that band and below the 8-10 map squares a whole Inf Bde concentrates in (SOH Sec 10 p 1065). Enter the vehicles to size it at 50 per km2",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "fm632",
+            "page": "A-4",
+            "quote": "can be expected to occupy an area approximately 7 to 10 kilometers in diameter. The BSA can be expected to occupy an area approximately 4 to 7 kilometers in diameter.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 105,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 63-2 (1991).pdf"
+            }
+          },
+          {
+            "book": "soh10",
+            "page": "1054",
+            "quote": "the entire DAA may take 15-20 map sqs",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          },
+          {
+            "book": "soh10",
+            "page": "1065",
+            "quote": "g. Inf Bde. 8-10 Map sqs (i.e 3-4 sq miles).",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 66,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          }
+        ]
+      },
+      "radiusM": 6000,
+      "beyond": {
+        "value": "medium",
+        "basis": "U",
+        "src": "ATP 4-90 p 27: ideally the BSA is out of range of the enemy medium artillery (ATP 3-21.20 p H-20 the same; FM 71-123 p 2-2: no closer than 15 km to the line of contact). The Pakistani books set field artillery as the floor for the ADS and harbours (Glossary p 9; MIB p 66); the brigade admin area, holding the brigade's stocks, takes the US rule",
+        "refs": [
+          {
+            "book": "atp490",
+            "page": "27",
+            "quote": "Ideally, the BSA is out of the range of the enemy's medium-range artillery.",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 35,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/ATP 4-90 (2026).pdf"
+            }
+          },
+          {
+            "book": "atp32120",
+            "page": "H-20",
+            "quote": "Usually the echelon support areas are on a main supply route and out of the range of the enemy`s medium artillery.",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 522,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/ATP 3-21.20 (2017).pdf"
+            }
+          },
+          {
+            "book": "mib",
+            "page": "66",
+            "quote": "Be out of range of the enemy's field artillery and observed fire",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 66,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+            }
+          },
+          {
+            "book": "fm71123",
+            "page": "2-2",
+            "quote": "They are typically outside the range of enemy medium artillery fires, generally no closer than 15 km from the line of contact.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 71-123 (1992).pdf"
+            }
+          },
+          {
+            "book": "gloss",
+            "page": "9",
+            "quote": "It is sited as far forward as possible but not within the range of enemy Field Artillery.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 9,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/Misc/Glossary of Military Terms and Definitions.pdf"
+            }
+          }
+        ]
+      },
+      "behindM": null,
+      "needs": [
+        "water"
+      ],
+      "symbol": {
+        "key": "25310600",
+        "desig": "BAA",
+        "note": "2525D Brigade Support Area"
+      },
+      "note": "The Bn combat zone runs from the FDL to the BAA (Amplification of Military Terms 2.4)."
+    },
+    "daa": {
+      "label": "Div Admin Area (DAA)",
+      "short": "DAA",
+      "frontM": {
+        "value": 4000,
+        "basis": "R",
+        "src": "SO's Hbk Sec 10 p 1054 (GSP p 205): 15-20 map sq; 4 x 4.5 km",
+        "refs": [
+          {
+            "book": "soh10",
+            "page": "1054",
+            "quote": "the entire DAA may take 15-20 map sqs",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          }
+        ]
+      },
+      "depthM": {
+        "value": 4500,
+        "basis": "R",
+        "src": "SO's Hbk Sec 10 p 1054: 15-20 map sq",
+        "refs": [
+          {
+            "book": "soh10",
+            "page": "1054",
+            "quote": "the entire DAA may take 15-20 map sqs",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          }
+        ]
+      },
+      "radiusM": 10000,
+      "beyond": {
+        "value": "medium",
+        "basis": "E",
+        "src": "No rule names enemy artillery for the DAA. It lies behind the brigade admin areas, which are beyond his medium guns (ATP 4-90 p 27; the US DSA lies behind the BSA, FM 63-2 p 1-4), and its book distances in defence (48 km) and withdrawal (33 km) are beyond every Indian medium gun. In the advance the book puts it 15-20 km back (SOH Sec 10 p 1055), inside medium range: there the row fails and says so, a risk the book accepts to keep up with the advance",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "fm632",
+            "page": "1-4",
+            "quote": "The BSA is normally between the division support area and the battalion areas.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 7,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 63-2 (1991).pdf"
+            }
+          },
+          {
+            "book": "atp391",
+            "page": "5-21",
+            "quote": "The division main command post should be out of the range of most enemy artillery cannon and multiple rocket launcher systems.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 131,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/ATP 3-91 (2014).pdf"
+            }
+          },
+          {
+            "book": "soh10",
+            "page": "1055",
+            "quote": "Should be loc well fwd to sp the adv tps.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 56,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          }
+        ]
+      },
+      "behindM": {
+        "def": {
+          "value": 48000,
+          "basis": "R",
+          "src": "SO's Hbk Sec 10 p 1055: Def 48 km from forward troops",
+          "refs": [
+            {
+              "book": "soh10",
+              "page": "1055",
+              "quote": "Def. 48 kms from fwd tps",
+              "role": "rule",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 56,
+                "on": "2026-11-17",
+                "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+              }
+            }
+          ]
+        },
+        "adv": {
+          "value": 17500,
+          "basis": "R",
+          "src": "SO's Hbk Sec 10 p 1055: Adv 15-20 km",
+          "refs": [
+            {
+              "book": "soh10",
+              "page": "1055",
+              "quote": "15 - 20 Kms. Should be loc well fwd to sp the adv tps",
+              "role": "rule",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 56,
+                "on": "2026-11-17",
+                "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+              }
+            }
+          ]
+        },
+        "wdr": {
+          "value": 33000,
+          "basis": "R",
+          "src": "SO's Hbk Sec 10 p 1055: Wdr about 33 km",
+          "refs": [
+            {
+              "book": "soh10",
+              "page": "1055",
+              "quote": "Well towards the rear say 33 kms",
+              "role": "rule",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 56,
+                "on": "2026-11-17",
+                "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+              }
+            }
+          ]
+        },
+        "tol": {
+          "value": 0.25,
+          "basis": "E",
+          "src": "No tolerance in any book; the book calls its distances guidelines that move with the operation, threat and ground (SOH Sec 10 p 1115). Within a quarter of the figure is taken as on it; further off needs work",
+          "decided": "2026-11-17",
+          "searched": [
+            "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+            "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+          ],
+          "refs": [
+            {
+              "book": "soh10",
+              "page": "1115",
+              "quote": "Log dists of 48 / 64 kms etc are guidelines only and will be dictated by type of op, disposn of forces, threat, terrain and comm infrastructure.",
+              "role": "context",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 116,
+                "on": "2026-11-17",
+                "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+              }
+            }
+          ]
+        },
+        "turnRoundM": {
+          "value": 48000,
+          "basis": "R",
+          "src": "SO's Hbk Sec 10 p 1054: within 1st line turn-round of forward units, 25-30 mi / 40-48 km",
+          "refs": [
+            {
+              "book": "soh10",
+              "page": "1054",
+              "quote": "25-30 miles/40-48 kms from the fwd units",
+              "role": "rule",
+              "checked": {
+                "status": "ok",
+                "pdfPage": 55,
+                "on": "2026-11-17",
+                "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+              }
+            }
+          ]
+        }
+      },
+      "needs": [
+        "water",
+        "buildings"
+      ],
+      "symbol": {
+        "key": "25310700",
+        "desig": "DAA",
+        "note": "2525D Division Support Area"
+      },
+      "note": "Siting (SOH Sec 10 p 1054; GSP p 183, Anx D): cover from the air and AD; no bottleneck to forward units; accommodation, power, water, storage; off the main road with separate IN and OUT; clear of transit, assembly and concentration areas."
+    },
+    "rp": {
+      "label": "Replenishment Point (RP)",
+      "short": "RP",
+      "frontM": {
+        "value": 2000,
+        "basis": "R",
+        "src": "SO's Hbk Sec 10 p 1059: 3-5 sq km (LSF p 29 prints 3-5 Kilometres); 2 x 2 km",
+        "refs": [
+          {
+            "book": "soh10",
+            "page": "1059",
+            "quote": "A RP may occupy an area extending over 3-5 sq kms",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 60,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          }
+        ]
+      },
+      "depthM": {
+        "value": 2000,
+        "basis": "R",
+        "src": "SO's Hbk Sec 10 p 1059: 3-5 sq km",
+        "refs": [
+          {
+            "book": "soh10",
+            "page": "1059",
+            "quote": "A RP may occupy an area extending over 3-5 sq kms",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 60,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          }
+        ]
+      },
+      "radiusM": 6000,
+      "beyond": {
+        "value": "medium",
+        "basis": "E",
+        "src": "No rule names enemy artillery for the RP. It is the third-line tier behind the commodity points and the DAA (LSF p 24-27), holding thousands of tons (LSF p 29), so it stays at least as far back as the DAA: beyond his medium guns. (The US logistics release point is a different, forward place.)",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "lsf",
+            "page": "29",
+            "quote": "A Replenishment Point may occupy an area extended over 3-5 Kilometres.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 32,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/6. Logistics Support in the Field.pdf"
+            }
+          },
+          {
+            "book": "lsf",
+            "page": "24",
+            "quote": "Commodity points are established by the Division Supply and Transport Battalion either within or ahead of the Division Administrative Area",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 27,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/6. Logistics Support in the Field.pdf"
+            }
+          }
+        ]
+      },
+      "behindM": null,
+      "needs": [],
+      "symbol": {
+        "key": "25321711",
+        "desig": "RP",
+        "point": true,
+        "note": "catalog Ammunition Point (2525D has no RP area)"
+      },
+      "note": "Good traffic circuits, a separate circuit per commodity, cover, wire fence, dispersal and camouflage; IN / OUT off the MSR (SOH Sec 10 p 1059, 1062). Within 64 km of the DAA (p 1058)."
+    },
+    "ap": {
+      "label": "Amn / Sup / POL Pt",
+      "short": "AP",
+      "frontM": {
+        "value": 1000,
+        "basis": "E",
+        "src": "No size in the Pakistani books: the ammunition stays on wheels (LSF p 25) and the size, in vehicles, is set in formation standing orders (LSF p 26). 1 x 1 km taken: 50 vehicles at the 50 per km2 the SOH calls ideal (Sec 10 p 1054), with room for the US distances of 180 m from other supplies and 620 m from inhabited tents (FM 63-20 p 5-7). Enter the vehicles to size it from the standing orders",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "lsf",
+            "page": "26",
+            "quote": "Size of Ammunition Point (number of vehicles) vary between formations, but standard Ammunition Points may be given in formation standing orders.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 29,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/6. Logistics Support in the Field.pdf"
+            }
+          },
+          {
+            "book": "soh10",
+            "page": "1054",
+            "quote": "50 vehs to a map sq is considered to be ideal",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          },
+          {
+            "book": "fm6320",
+            "page": "5-7",
+            "quote": "Locate the ATP at least 180 meters from other supplies and 620 meters from the nearest inhabited tent.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 67,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 63-20 (1990).pdf"
+            }
+          }
+        ]
+      },
+      "depthM": {
+        "value": 1000,
+        "basis": "E",
+        "src": "No size in the Pakistani books: the ammunition stays on wheels (LSF p 25) and the size, in vehicles, is set in formation standing orders (LSF p 26). 1 x 1 km taken: 50 vehicles at the 50 per km2 the SOH calls ideal (Sec 10 p 1054), with room for the US distances of 180 m from other supplies and 620 m from inhabited tents (FM 63-20 p 5-7). Enter the vehicles to size it from the standing orders",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "lsf",
+            "page": "26",
+            "quote": "Size of Ammunition Point (number of vehicles) vary between formations, but standard Ammunition Points may be given in formation standing orders.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 29,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/6. Logistics Support in the Field.pdf"
+            }
+          },
+          {
+            "book": "soh10",
+            "page": "1054",
+            "quote": "50 vehs to a map sq is considered to be ideal",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 55,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          },
+          {
+            "book": "fm6320",
+            "page": "5-7",
+            "quote": "Locate the ATP at least 180 meters from other supplies and 620 meters from the nearest inhabited tent.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 67,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 63-20 (1990).pdf"
+            }
+          }
+        ]
+      },
+      "radiusM": 4000,
+      "beyond": {
+        "value": "medium",
+        "basis": "E",
+        "src": "No rule names enemy artillery for the AP. Ammunition on wheels is a prime target and should not be an obvious artillery target (MIB p 111); the US ammunition point sits beside the BSA (ATP 4-35 p 4-9), which is beyond his medium guns (ATP 4-90 p 27): medium taken",
+        "refs": [
+          {
+            "book": "lsf",
+            "page": "25",
+            "quote": "the ammunition is always kept on wheels in Ammunition Point",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 28,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/6. Logistics Support in the Field.pdf"
+            }
+          },
+          {
+            "book": "mib",
+            "page": "111",
+            "quote": "Not be an obvious artillery target",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 111,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+            }
+          },
+          {
+            "book": "atp435",
+            "page": "4-9",
+            "quote": "Under most circumstances, the ATHP is a temporary operation conducted adjacent to the brigade support area",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 77,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/ATP 4-35 (2023).pdf"
+            }
+          },
+          {
+            "book": "atp490",
+            "page": "27",
+            "quote": "Ideally, the BSA is out of the range of the enemy's medium-range artillery.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 35,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/ATP 4-90 (2026).pdf"
+            }
+          }
+        ],
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ]
+      },
+      "behindM": null,
+      "needs": [],
+      "symbol": {
+        "key": "25321711",
+        "desig": "AP",
+        "point": true,
+        "note": "catalog Ammunition Point"
+      },
+      "note": "AP open 24 h, ammunition kept on wheels, a separate AP for arty ammunition (LSF p 25, GSP p 185); US ATHP near the MSR, firm ground, good drainage, one-way loop (FM 4-90 p 3-5)."
+    },
+    "ads": {
+      "label": "ADS (Med)",
+      "short": "ADS",
+      "frontM": {
+        "value": 300,
+        "basis": "E",
+        "src": "No ground size in any book: the ADS works preferably from a pucca building such as a BHU (SOH Sec 10 p 1023) and needs room to load and unload casualties, a decontamination site and a helicopter landing area beside it (FM 8-10-4 p 5-37; FM 4-02.4 p 2-28). 300 x 300 m taken for the building, the vehicle park and the landing site",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "soh10",
+            "page": "1023",
+            "quote": "preferably in a pucca bldg like Basic Health Unit (BHU)",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 24,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          },
+          {
+            "book": "fm81004",
+            "page": "5-37",
+            "quote": "The site should have adequate space for the unit's operation and expeditious loading and unloading patients, supplies, and equipment.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 115,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 8-10-4 (1990).pdf"
+            }
+          },
+          {
+            "book": "fm4024",
+            "page": "2-28",
+            "quote": "Near an open area suitable for helicopter landing.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 60,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 4-02.4 (2003).pdf"
+            }
+          }
+        ]
+      },
+      "depthM": {
+        "value": 300,
+        "basis": "E",
+        "src": "No ground size in any book: the ADS works preferably from a pucca building such as a BHU (SOH Sec 10 p 1023) and needs room to load and unload casualties, a decontamination site and a helicopter landing area beside it (FM 8-10-4 p 5-37; FM 4-02.4 p 2-28). 300 x 300 m taken for the building, the vehicle park and the landing site",
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+          "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+        ],
+        "refs": [
+          {
+            "book": "soh10",
+            "page": "1023",
+            "quote": "preferably in a pucca bldg like Basic Health Unit (BHU)",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 24,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+            }
+          },
+          {
+            "book": "fm81004",
+            "page": "5-37",
+            "quote": "The site should have adequate space for the unit's operation and expeditious loading and unloading patients, supplies, and equipment.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 115,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 8-10-4 (1990).pdf"
+            }
+          },
+          {
+            "book": "fm4024",
+            "page": "2-28",
+            "quote": "Near an open area suitable for helicopter landing.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 60,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 4-02.4 (2003).pdf"
+            }
+          }
+        ]
+      },
+      "radiusM": 3000,
+      "beyond": {
+        "value": "field",
+        "basis": "R",
+        "src": "Glossary of Military Terms p 9: the ADS is sited as far forward as possible but not within the range of enemy field artillery",
+        "refs": [
+          {
+            "book": "gloss",
+            "page": "9",
+            "quote": "It is sited as far forward as possible but not within the range of enemy Field Artillery.",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 9,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/Misc/Glossary of Military Terms and Definitions.pdf"
+            }
+          },
+          {
+            "book": "lsf",
+            "page": "49",
+            "quote": "It is established as far forward as possible",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 52,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/6. Logistics Support in the Field.pdf"
+            }
+          }
+        ]
+      },
+      "behindM": null,
+      "needs": [
+        "buildings",
+        "water",
+        "evacRoad"
+      ],
+      "symbol": {
+        "key": "10110214",
+        "desig": "ADS",
+        "note": "catalog Army Medical Corps / ADS (UEI)"
+      },
+      "note": "Preferably a pucca building (BHU, RHC, school) (SOH Sec 10 p 1023; LSF p 49); away from ATHP, Class III point, bridges and road junctions, near evacuation routes and an air-ambulance open area (FM 4-90 p B-1)."
+    }
+  },
+  "enemy": {
+    "field": {
+      "id": "en-105-mm-ifg-lfg",
+      "basis": "R",
+      "src": "SO's Hbk Sec 13 p 1325: 105 mm IFG / LFG 17,200 m, the Indian field gun",
+      "refs": [
+        {
+          "book": "soh13",
+          "page": "1325",
+          "quote": "IFG/LFG",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 26,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 13 - Threat.pdf"
+          }
+        }
+      ]
+    },
+    "medium": {
+      "id": "en-130-mm-m-46",
+      "basis": "R",
+      "src": "SO's Hbk Sec 13 p 1325: 130 mm M-46 27,490 m (KYE PDF 112: 30,689 m); Bofors FH-77B 24 km (RAP 27-30 km), Dhanush 38 km, Bhim 41.2 km can be picked",
+      "refs": [
+        {
+          "book": "soh13",
+          "page": "1325",
+          "quote": "130 mm (M-46)",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 26,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 13 - Threat.pdf"
+          }
+        }
+      ]
+    },
+    "mortar": {
+      "id": "",
+      "basis": "R",
+      "src": "SO's Hbk Sec 13 p 1325: the longest enemy mortar in weapons.json"
+    },
+    "gunDepthM": {
+      "value": 0,
+      "basis": "E",
+      "src": "No figure for Indian gun depth in KYE 2019 or SOH Sec 13. The only figures are a Soviet-model template (regimental artillery groups 1-4 km behind the FEBA, FM 100-2-1 p 5-22), a US worked example (2-5 km, ATP 2-01.3 p 3-7) and the own-gun guide of 2/3 of the range forward (SZ p 24). 0 kept until you set it: measured as if his guns stood at the threat place, never assuming more depth than known (safety first)",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "fm10021",
+          "page": "5-22",
+          "quote": "A RAG is normally deployed 1 to 4 kilometers from the FEBA",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 74,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 100-2-1 (1984).pdf"
+          }
+        }
+      ]
+    }
+  },
+  "ground": {
+    "firmProfile": "wheeled",
+    "maxSoftShare": {
+      "value": 0.2,
+      "basis": "E",
+      "src": "No share in any book; every book asks for firm standing for the vehicles (MIB p 111; ATP 3-21.20 p H-21; FM 71-123 p 8-4). Over a fifth of the area too soft for wheels leaves too little hard standing: fails",
+      "refs": [
+        {
+          "book": "mib",
+          "page": "66",
+          "quote": "Hard standing",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 66,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        },
+        {
+          "book": "mib",
+          "page": "111",
+          "quote": "Have a reasonably firm standing.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 111,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        },
+        {
+          "book": "atp32120",
+          "page": "H-21",
+          "quote": "Level, firm ground to support vehicle traffic and sustainment operations.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 523,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-21.20 (2017).pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "maxWetShare": {
+      "value": 0.05,
+      "basis": "E",
+      "src": "No share in any book; drainage is weighed in siting (SD Vol II 9.946; SD Vol II p 10.1039; FM 3-90 p A-4; FM 8-10-4 p 5-37). Stocks and vehicle parks cannot stand in water: over 5 % of the area under water or waterlogged fails (only small patches pass)",
+      "refs": [
+        {
+          "book": "sd2",
+          "page": "9.946",
+          "quote": "Soil conditions, water table and its effs on estb of log instls",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 318,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/Staff Duties in the Field (Volume-II) Operations.pdf"
+          }
+        },
+        {
+          "book": "fm390",
+          "page": "A-4",
+          "quote": "Good drainage and soil conditions that can sustain unit vehicles and individual Soldier movements.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 378,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 3-90 (2023).pdf"
+          }
+        },
+        {
+          "book": "sd2",
+          "page": "10.1039",
+          "quote": "d. Nearest water sup for drinking and washing. e. Def; ease of digging. f. Drainage.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 372,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/Staff Duties in the Field (Volume-II) Operations.pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "maxFloodShare": {
+      "value": 0.25,
+      "basis": "E",
+      "src": "No share in any book; flood-prone ground is a terrain factor to know (FM 5-33 p 1-12) and drainage is weighed (FM 3-90 p A-4). In a wet month an area a quarter flood-prone or riverbed risks the stocks: fails; in a dry month it only warns",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "fm390",
+          "page": "A-4",
+          "quote": "Good drainage and soil conditions that can sustain unit vehicles and individual Soldier movements.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 378,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 3-90 (2023).pdf"
+          }
+        }
+      ]
+    },
+    "maxNogoShare": {
+      "value": 0.3,
+      "basis": "E",
+      "src": "No share in any book; room to disperse sets the size of a site (MIB p 67; ATP 4-90 p 27; ATP 3-21.20 p H-21). Over 30 % of the area NO-GO for wheels crowds the vehicles past the 50 per km2 the SOH calls ideal (Sec 10 p 1054): needs work",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "mib",
+          "page": "67",
+          "quote": "Sufficient space for dispersion of vehicles, personnel and equipment.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 67,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        },
+        {
+          "book": "atp490",
+          "page": "27",
+          "quote": "Dispersion requirements often dictate the size of a site.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 35,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 4-90 (2026).pdf"
+          }
+        },
+        {
+          "book": "soh10",
+          "page": "1054",
+          "quote": "50 vehs to a map sq is considered to be ideal",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 55,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+          }
+        }
+      ]
+    },
+    "maxTiltDeg": {
+      "value": 7,
+      "basis": "E",
+      "src": "No slope for vehicle parks in any book, only level ground (OoW I p 77; ATP 3-21.20 p H-21); ATP 4-44 p 99 wants under 3 degrees for water bladders. 7 degrees taken for vehicles and stacks: the edge of the sloping class (7-15 degrees) in the terrain rules",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "oow1",
+          "page": "77",
+          "quote": "The existence of a sufficiently large area of reasonably level ground to accommodate the troops.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 82,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf"
+          }
+        },
+        {
+          "book": "atp444",
+          "page": "99",
+          "quote": "Site considerations for these collapsible fabric bags include level (less than 3-degree slope in 100 yards) and clear terrain.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 111,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 4-44 (2025, C1 2026).pdf"
+          }
+        }
+      ]
+    }
+  },
+  "air": {
+    "goodMean": {
+      "value": 2,
+      "basis": "E",
+      "src": "No figure in any book; concealment from air and ground observation is asked for every admin site (SOH Sec 10 p 1054; MIB p 111; FM 3-90 p A-3; FM 71-123 p 8-4). The cover / concealment layer reads 0 none, 1 poor, 2 fair, 3 good: fair or better taken as hidden",
+      "refs": [
+        {
+          "book": "soh10",
+          "page": "1054",
+          "quote": "Aval of sufficient cover from the pt of view of AD",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 55,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+          }
+        },
+        {
+          "book": "mib",
+          "page": "188",
+          "quote": "orchards, high crops and shadows of buildings should be used for protection against observation",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 188,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        },
+        {
+          "book": "mib",
+          "page": "111",
+          "quote": "Provide concealment from ground and air observation.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 111,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        },
+        {
+          "book": "fm390",
+          "page": "A-3",
+          "quote": "Concealment from air and ground observation.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 377,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 3-90 (2023).pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "poorMean": {
+      "value": 1,
+      "basis": "E",
+      "src": "Below poor (1 on the 0-3 concealment layer) the area lies in the open, against every book (MIB p 111): fails",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "mib",
+          "page": "111",
+          "quote": "Provide concealment from ground and air observation.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 111,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        }
+      ]
+    }
+  },
+  "road": {
+    "minTier": {
+      "value": 2,
+      "basis": "E",
+      "src": "No book says which class an admin area needs. SD Vol II p 10.1053 gives the classes: 10-ton trucks class 40, tanks class 50, loaded tank transporters class 80; roads must take the heaviest vehicle in all weather (ATP 4-44 p 99). Class 50 taken (all second-line transport and the heaviest single vehicles); an area that must take loaded transporters needs class 80",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "sd2",
+          "page": "10.1053",
+          "quote": "cI 40 for 10 ton trks, cI 50 for tks and cI 80 for tptrs carrying tks.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 386,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/Staff Duties in the Field (Volume-II) Operations.pdf"
+          }
+        },
+        {
+          "book": "atp444",
+          "page": "99",
+          "quote": "The load capacity of roads should be sufficient to withstand the heaviest vehicles under all weather conditions.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 111,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 4-44 (2025, C1 2026).pdf"
+          }
+        }
+      ]
+    },
+    "maxM": {
+      "value": 1000,
+      "basis": "E",
+      "src": "No distance in the Pakistani books; the area must be easily reached (LSF p 25) with good routes in and out (MIB p 111). US: support sites near the MSR, 1 to 3 km from it (FM 63-21 p 1-4). A class-50 road within 1 km taken (it may be a lateral off the MSR); further needs a track made; beyond twice that fails",
+      "refs": [
+        {
+          "book": "soh10",
+          "page": "1054",
+          "quote": "there should be no bottleneck b/w the DAA and the fwd units",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 55,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+          }
+        },
+        {
+          "book": "fm6321",
+          "page": "1-4",
+          "quote": "For planning purposes, support sites should be 1 to 3 kilometers from MSRs.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 7,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 63-21 (1990).pdf"
+          }
+        },
+        {
+          "book": "mib",
+          "page": "111",
+          "quote": "Have good route in and out.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 111,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "offMainM": {
+      "value": 1000,
+      "basis": "U",
+      "src": "FM 63-21 p 1-4: support sites are not astride the MSRs, which may become high-speed approaches for the enemy, and lie 1 to 3 km from them; 1 km, the near edge, taken (MIB p 51: keep off the main routes, his air works on them)",
+      "calc": "the near edge of 1 to 3 km",
+      "refs": [
+        {
+          "book": "fm6321",
+          "page": "1-4",
+          "quote": "However, they should not be astride the MSRs which may become high speed avenues of approach for enemy forces. For planning purposes, support sites should be 1 to 3 kilometers from MSRs.",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 7,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 63-21 (1990).pdf"
+          }
+        },
+        {
+          "book": "mib",
+          "page": "51",
+          "quote": "Keep off the main routes. (Enemy air effort is more likely to be directed on to these).",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 51,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        }
+      ]
+    },
+    "searchM": {
+      "value": 3000,
+      "basis": "M",
+      "src": "How far the finder looks for a road: past the fail distance (1 km x 2 = 2 km), so a fail is measured, not guessed"
+    }
+  },
+  "avoid": {
+    "landmarkM": {
+      "value": 500,
+      "basis": "E",
+      "src": "No distance in any book; bridges and road junctions are likely targets to keep medical and supply sites away from (FM 4-90 p B-1; FM 4-02.4 p 2-28), and junctions and landmarks are registered as targets by the enemy (IC p 62; MIB p 50). 500 m taken: the distance that takes a fire unit out of the footprint of most threat artillery (ATP 3-09.50 p 2-2, as in the gun finder), so fire on the registered point misses the area",
+      "refs": [
+        {
+          "book": "fm490",
+          "page": "B-1",
+          "quote": "bridges and road junctions",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 71,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 4-90 (2010).pdf"
+          }
+        },
+        {
+          "book": "fm490",
+          "page": "B-1",
+          "quote": "Locate the MTFs away from likely target areas (ATHP, Class III point, bridges, and road junctions)",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 71,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 4-90 (2010).pdf"
+          }
+        },
+        {
+          "book": "ic",
+          "page": "62",
+          "quote": "Halting troops near road or track junctions or other mapped features, which are always registered as, targets by the enemy.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 62,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/IC.pdf"
+          }
+        },
+        {
+          "book": "mib",
+          "page": "50",
+          "quote": "near a landmark which may be adjusted as an artillery or mortar task or which is noted on enemy range cards",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 50,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "kinds": [
+      "20",
+      "21",
+      "159",
+      "166",
+      "50"
+    ],
+    "buaShare": {
+      "value": 0.15,
+      "basis": "E",
+      "src": "No share in any book, and the books differ: towns may be chosen for their housing in mountains (MW p 264) and US doctrine counts built-up areas good sites, but trains take buildings at the edge to avoid being trapped in the centre (FM 71-123 p 8-22), and civilians are weighed (ATP 4-90 p 27). Over 15 % of the area inside a BUA puts it in the town itself: needs work",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "mw",
+          "page": "264",
+          "quote": "Towns and villages may be so located or afford such housing facilities as to warrant their selection to decrease tonnage and construction time.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 248,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+          }
+        },
+        {
+          "book": "fm71123",
+          "page": "8-22",
+          "quote": "When built-up areas are used, battalion train elements should occupy buildings near the edge of the area to avoid being trapped in the center.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 718,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 71-123 (1992).pdf"
+          }
+        }
+      ]
+    }
+  },
+  "needs": {
+    "waterM": {
+      "value": 2000,
+      "basis": "E",
+      "src": "No distance in any book; water must be near (SOH Sec 10 p 1054; OoW I p 77; MW p 264; FM 71-123 p 8-4). A water source within 2 km taken: a short water-cart run",
+      "refs": [
+        {
+          "book": "soh10",
+          "page": "1054",
+          "quote": "Func facilities like elec, water and storage accn etc",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 55,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+          }
+        },
+        {
+          "book": "oow1",
+          "page": "77",
+          "quote": "The existence and accessibility of adequate water supply for mn and animals.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 82,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf"
+          }
+        },
+        {
+          "book": "fm71123",
+          "page": "8-4",
+          "quote": "Near a water source.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 700,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 71-123 (1992).pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "waterKinds": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "7",
+      "8",
+      "9",
+      "155"
+    ],
+    "buildingsM": {
+      "value": 2000,
+      "basis": "E",
+      "src": "No distance in any book; the ADS works preferably from a pucca building (SOH Sec 10 p 1023; LSF p 49) and covered accommodation goes first to medical units and workshops (GSP p 183). A pucca building within 2 km taken",
+      "refs": [
+        {
+          "book": "soh10",
+          "page": "1023",
+          "quote": "preferably in a pucca bldg like Basic Health Unit (BHU)",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 24,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 10 - Log Svc Units.pdf"
+          }
+        },
+        {
+          "book": "lsf",
+          "page": "49",
+          "quote": "Basic Health Unit (BHU)",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 52,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/6. Logistics Support in the Field.pdf"
+          }
+        },
+        {
+          "book": "gsp",
+          "page": "183",
+          "quote": "Covered accommodation, if available, should be allotted to medical units and workshops",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 183,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/GSP - 1947 Inf Div in Battle.pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "buildingKinds": [
+      "70",
+      "71",
+      "72",
+      "147",
+      "75"
+    ],
+    "evacM": {
+      "value": 500,
+      "basis": "E",
+      "src": "No distance in any book; medical sites go near evacuation routes and an open area for air ambulances, away from likely targets (FM 4-90 p B-1; FM 63-21 p A-5; FM 8-10-4 p 5-37). An all-weather road within 500 m taken: casualties reach it by hand or stretcher jeep",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "fm490",
+          "page": "B-1",
+          "quote": "Locate the MTFs away from likely target areas (ATHP, Class III point, bridges, and road junctions) but near evacuation routes and an open area for landing air ambulances.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 71,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 4-90 (2010).pdf"
+          }
+        },
+        {
+          "book": "fm81004",
+          "page": "5-37",
+          "quote": "The site should provide adequate access to all approach and evacuation routes.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 115,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 8-10-4 (1990).pdf"
+          }
+        }
+      ]
+    }
+  },
+  "scan": {
+    "keep": 50,
+    "maxSites": 5,
+    "gunGateFrac": {
+      "value": 0.8,
+      "basis": "M",
+      "src": "Search shortcut: a place nearer the threat than 80 % of his gun's reach is not read in full; it would fail Beyond en guns anyway (that row fails anything inside his reach), so the list is the same, only quicker. Checked by tools/sitefinder-test/run.mjs"
+    },
+    "roomGateX": {
+      "value": 1.5,
+      "basis": "E",
+      "src": "No figure in any book. An area with over 1.5 x the NO-GO limit (45 %) is left out of the list: the room row only warns above the limit, but well past it even a split area cannot disperse its vehicles (MIB p 67)",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "mib",
+          "page": "67",
+          "quote": "Sufficient space for dispersion of vehicles, personnel and equipment.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 67,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        }
+      ]
+    },
+    "wetGateX": {
+      "value": 3,
+      "basis": "M",
+      "src": "Search shortcut: an area with 3 x the waterlogged limit is not read in full; it would fail Flood / drainage anyway (that row fails anything over the limit). Checked by tools/sitefinder-test/run.mjs"
+    },
+    "minKnownGate": {
+      "value": 0.5,
+      "basis": "M",
+      "src": "The room and wet shortcuts act only where the data is known on half the samples or more: a place with too little data is read in full and shown 'not read', never left out on a guess"
+    },
+    "note": "Search: places tried every third of the area's side within the kind's radius; the best `keep` read in full; at most maxSites listed, an area apart. Method settings (M): they set how many places are read and listed, not what passes."
+  },
+  "weights": {
+    "beyond": 3,
+    "behind": 2,
+    "firm": 2,
+    "wet": 3,
+    "room": 2,
+    "air": 2,
+    "road": 2,
+    "avoid": 1,
+    "water": 1,
+    "buildings": 1,
+    "people": 1
+  },
+  "checks": {
+    "note": "Working thresholds of the checks. None is in a book: each is a decision (E) with its reason and where it was looked for, or a method setting (M) where it only decides whether there is enough data to judge.",
+    "minKnownShare": {
+      "value": 0.6,
+      "basis": "M",
+      "src": "An area whose ground class is known on under 60 % of its samples is shown as 'not read', never passed: a judgement on less than about two thirds of the ground would be a guess (safety first)"
+    },
+    "firmWarnShare": {
+      "value": 0.1,
+      "basis": "E",
+      "src": "No figure in any book. Over a tenth of the area soft (under the fifth that fails) needs work: park off the soft patches, lay tracks",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "marginalWeight": {
+      "value": 0.5,
+      "basis": "E",
+      "src": "No figure in any book. SLOW-GO soil carries heavy vehicles one at a time but not a column (SD Vol II p 5.503), so it counts half as much as NO-GO soil",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ],
+      "refs": [
+        {
+          "book": "sd2",
+          "page": "5.503",
+          "quote": "The soil is not capable of sp hy wh and tr vehs except when they are mov singly.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 151,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/Staff Duties in the Field (Volume-II) Operations.pdf"
+          }
+        }
+      ]
+    },
+    "roadFailX": {
+      "value": 2,
+      "basis": "E",
+      "src": "No figure in any book. Between the limit and twice it the road is a longer haul (needs work: make a track); beyond twice the limit (2 km) the area cannot be reached easily (LSF p 25): fails",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Secs 6, 10, 11, 13; LSF; SD Vol I-II; GSP; IBB; MIB; IC; OoW I-III; DW; MW; SZ Battle; Glossary; KYE 2019",
+        "US: ATP 4-90, ATP 3-21.20, ATP 3-90.5, FM 3-96, FM 3-90, ATP 3-91, ATP 4-35, ATP 4-44, ATP 3-34.81, FM 4-0, FM 4-90 (2010), FM 63-2, FM 63-20, FM 63-21, FM 71-123, FM 8-10-4, FM 4-02.4"
+      ]
+    },
+    "peopleWarnKm2": {
+      "value": 1500,
+      "basis": "S",
+      "src": "Degree of Urbanisation (UN Statistical Commission, 2020; manual 2021 p 52): dense means at least 1,500 inhabitants per km2, the density of an urban centre (p 53). An area that dense brings civilians, movement and security problems: needs work. (Semi-dense, 300 per km2, is every village in the plains.)",
+      "refs": [
+        {
+          "book": "degurba",
+          "page": "52",
+          "quote": "dense means at least 1 500 inhabitants per km2, semi-dense means at least 300 inhabitants per km2",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 53,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/Applying the Degree of Urbanisation (2021).pdf"
+          }
+        },
+        {
+          "book": "degurba",
+          "page": "53",
+          "quote": "An urban centre consists of contiguous (using four-point contiguity) grid cells with a density of at least 1 500 inhabitants per km2.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 54,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/Applying the Degree of Urbanisation (2021).pdf"
+          }
+        }
+      ]
+    },
+    "mainRoad": {
+      "basis": "M",
+      "src": "What counts as a 'main Rd' to keep the area off, read from the road network's own classes: an MSR (1:50k map flag) or an OSM motorway, trunk or primary road (OSM's top three classes for through traffic)"
+    }
+  },
+  "order": {
+    "note": "How the list is ordered: the worst check first, then the weighted share of checks passed, then the finer reading. Method settings (M): no doctrine orders sites by a score, so the order only helps reading; every row carries its own rule, and Compare shows them side by side.",
+    "toneScore": {
+      "ok": 1,
+      "warn": 0.55,
+      "unknown": 0.4,
+      "bad": 0,
+      "basis": "M",
+      "src": "Weighted score: a check that passes counts 1, needs work 0.55, not read 0.4, fails 0"
+    },
+    "weightsNote": {
+      "basis": "M",
+      "src": "weights (below): beyond his guns and wet / flood 3; behind, firm, room, air, Rd 2; avoid, water, bldgs, people 1"
+    },
+    "pre": {
+      "room": 2,
+      "firm": 2,
+      "wet": -4,
+      "floodWet": -2,
+      "floodDry": -0.5,
+      "concealDiv": 1.5,
+      "bua": -1,
+      "basis": "M",
+      "src": "Finer reading: usable room x2, firm x2, waterlogged x-4, flood-prone x-2 in a wet month (x-0.5 dry), concealment / 1.5, BUA x-1"
+    }
+  }
+}

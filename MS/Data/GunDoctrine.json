@@ -1,0 +1,1328 @@
+{
+  "format": "pams-gun-doctrine",
+  "version": 1,
+  "updated": "2026-11-17",
+  "status": "Figures for the Gun Deployment finder (MS/Engines/GunDeployment). R figures are written in the Pakistani books (page cited); U figures are US doctrine cited where the Pakistani books are silent; E figures are proposals for the user to correct.",
+  "basisKey": {
+    "R": "Written in a Pakistani book (SO's Handbook 2019, IBB, C&SC handouts, OoW, MW, DW), page cited",
+    "U": "US doctrine cited (ATP 3-09.50 2016, ATP 3-09.70 2015, FM 3-09 2024, TC 3-09.81 2016, FM 3-09.70 2000, FM 6-50 1996, FM 3-09.21 2001; the JMRC article 2024), checked against the copies kept in Material/Literature/2. Online",
+    "E": "Decision or proposal: no figure in the books or the open doctrine searched (listed under 'Looked for in'); the reason is given, with any book words it rests on as context. 'decided' = taken for the tool on the user's instruction (17 Nov 2026), to be replaced when a book figure is found",
+    "M": "Method setting of the finder: how it searches, how much data it needs before it judges, how it orders the list. Not a military rule; it never makes a site pass a check it would fail. The reason is given, and a test where one can show it"
+  },
+  "sources": [
+    {
+      "id": "soh2",
+      "name": "SO's Handbook (2019) Sec 2 Arty: Bty 6 guns, regts (p 202-205), ranges and planning range 90 % of max (p 209-215), regt deployed in one square 1000 x 1000 m (p 225), deployment times (p 227)",
+      "dataDate": "2019",
+      "short": "SO's Hbk 2019, Sec 2 Arty",
+      "file": "Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
+    },
+    {
+      "id": "sz",
+      "name": "Concept and Conduct of Security Zone Battle (C&SC): 2/3 of the range kept toward own area (p 24)",
+      "dataDate": "in Material/Literature",
+      "short": "Security Zone Battle (C&SC)",
+      "file": "Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf"
+    },
+    {
+      "id": "ibb",
+      "name": "Infantry Battalion in Battle: deployment times (p 122, 154), withdrawal re-deployment 5000-6000 m back (p 385)",
+      "dataDate": "in Material/Literature",
+      "short": "Inf Bn in Battle",
+      "file": "Material/Literature/1. Books/1. Infantry Battalion in Battle.pdf"
+    },
+    {
+      "id": "mw",
+      "name": "Mountain Warfare: gun areas scarce, sections near hairpin bends, reverse slopes and valleys (p 240), deploy by sections (p 244), avoid terrain masking and crest clearance problems (p 92), high trajectory guns overcome crests (p 49)",
+      "dataDate": "in Material/Literature",
+      "short": "Mountain Warfare",
+      "file": "Material/Literature/1. Books/8. Mountain Warfare.pdf"
+    },
+    {
+      "id": "oow1",
+      "name": "Operations of War Vol I: desert, a number of alternative gun areas (p 70)",
+      "dataDate": "in Material/Literature",
+      "short": "OoW Vol I Defence",
+      "file": "Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf"
+    },
+    {
+      "id": "fm650",
+      "name": "FM 6-50 / MCWP 3-1.6.23 Tactics, Techniques and Procedures for the Field Artillery Cannon Battery (23 Dec 1996): siting (para 2-13, 2-14), dispersion (para 3-6, 3-20), crest clearance and minimum QE (ch 6), high angle (p 7-3), built-up areas (App F)",
+      "location": "https://webarchive.library.unt.edu/web/20130213212857/http:/armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/fm6_50.pdf",
+      "dataDate": "1996 (replaced by ATP 3-09.50, 2016)",
+      "short": "FM 6-50 (US, 1996)",
+      "url": "https://webarchive.library.unt.edu/web/20130213212857/http:/armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/fm6_50.pdf",
+      "file": "Material/Literature/2. Online/FM 6-50 (1996).pdf"
+    },
+    {
+      "id": "fm30921",
+      "name": "FM 3-09.21 TTP for the Field Artillery Battalion (22 Mar 2001): range fan mostly forward of the FLOT (para 6-18), position areas off enemy avenues (para 4-49)",
+      "location": "https://webarchive.library.unt.edu/web/20130213212857/http:/armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/fm3_09x21.pdf",
+      "dataDate": "2001",
+      "short": "FM 3-09.21 (US, 2001)",
+      "url": "https://webarchive.library.unt.edu/web/20130213212857/http:/armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/fm3_09x21.pdf",
+      "file": "Material/Literature/2. Online/FM 3-09.21 (2001).pdf"
+    },
+    {
+      "id": "jmrc",
+      "name": "JMRC Operations Group, \"Position Areas for Artillery: PAA Analysis in Severely Restricted Terrain\" (army.mil, 25 Jan 2024; text from the US Field Artillery Association copy): SP cant 90 mils (5 deg), towing an M777 10 deg, PAA sizes",
+      "location": "https://www.army.mil/article/273189",
+      "dataDate": "2024",
+      "short": "army.mil JMRC article (2024)",
+      "url": "https://www.army.mil/article/273189",
+      "file": "Material/Literature/2. Online/JMRC - PAA Analysis in Severely Restricted Terrain (2024).txt"
+    },
+    {
+      "id": "orbat",
+      "name": "MS/Data/Orbat/PK/weapons.json (SO's Handbook 2019 Sec 2 and Sec 13): own and enemy gun ranges, planRangeM.plan = 90 % of max",
+      "dataDate": "2019",
+      "short": "ORBAT weapons.json",
+      "file": "MS/Data/Orbat/PK/weapons.json"
+    },
+    {
+      "id": "ic",
+      "short": "IC (Rifle Coy, Pl and Sec in Battle)",
+      "name": "IC: Rifle Company, Platoon and Section in Battle",
+      "file": "Material/IC.pdf",
+      "dataDate": "in Material"
+    },
+    {
+      "id": "gloss",
+      "short": "Glossary of Mil Terms",
+      "name": "Glossary of Military Terms and Definitions",
+      "file": "Material/Literature/1. Books/Misc/Glossary of Military Terms and Definitions.pdf",
+      "dataDate": "in Material/Literature"
+    },
+    {
+      "id": "oow2",
+      "short": "OoW Vol II Offensive Ops",
+      "name": "Operations of War Vol II Offensive Operations",
+      "file": "Material/Literature/1. Books/3. Operations of War (Volume-II) Offensive Operations.pdf",
+      "dataDate": "in Material/Literature"
+    },
+    {
+      "id": "atp30950",
+      "name": "ATP 3-09.50 The Field Artillery Cannon Battery (May 2016): survivability moves (p 2-2), position selection (p 3-5, 3-9), howitzer spacing (p 5-3), air defence (p 5-8), minimum QE (ch 8)",
+      "short": "ATP 3-09.50 (US, 2016)",
+      "dataDate": "2016",
+      "file": "Material/Literature/2. Online/ATP 3-09.50 (2016).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/atp3_09x50.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/atp3_09x50.pdf"
+    },
+    {
+      "id": "atp30970",
+      "name": "ATP 3-09.70 Paladin Operations (2015): survivability moves 300-500 m, firing area (p 3-3), stable soil (p 3-4)",
+      "short": "ATP 3-09.70 (US, 2015)",
+      "dataDate": "2015",
+      "file": "Material/Literature/2. Online/ATP 3-09.70 (2015).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/atp3_09x70.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/atp3_09x70.pdf"
+    },
+    {
+      "id": "fm30970",
+      "name": "FM 3-09.70 TTP for M109A6 Howitzer (Paladin) Operations (2000): the battery 1 to 8 km behind the forward manoeuvre units (para 3-12, p 3-3)",
+      "short": "FM 3-09.70 (US, 2000)",
+      "dataDate": "2000",
+      "file": "Material/Literature/2. Online/FM 3-09.70 (2000).pdf",
+      "url": "https://webarchive.library.unt.edu/web/20130213212857/http://armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/fm3_09x70.pdf",
+      "location": "https://webarchive.library.unt.edu/web/20130213212857/http://armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/fm3_09x70.pdf"
+    },
+    {
+      "id": "fm309",
+      "name": "FM 3-09 Fire Support and Field Artillery Operations (2024): defence (p 6-13), offence (p 6-21), PAA sizes (p B-19)",
+      "short": "FM 3-09 (US, 2024)",
+      "dataDate": "2024",
+      "file": "Material/Literature/2. Online/FM 3-09 (2024).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN41659-FM_3-09-000-WEB-2.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/ARN41659-FM_3-09-000-WEB-2.pdf"
+    },
+    {
+      "id": "tc30981",
+      "name": "TC 3-09.81 Field Artillery Manual Cannon Gunnery (2016): piece-to-crest range (p 15-30), measuring the crest along the bore (p 15-31), intervening crests (p 15-34)",
+      "short": "TC 3-09.81 (US, 2016)",
+      "dataDate": "2016",
+      "file": "Material/Literature/2. Online/TC 3-09.81 (2016).pdf",
+      "url": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/tc3_09x81.pdf",
+      "location": "https://armypubs.army.mil/epubs/DR_pubs/DR_a/pdf/web/tc3_09x81.pdf"
+    },
+    {
+      "id": "esri",
+      "name": "Esri ArcMap help, \"Using Viewshed and Observer Points for visibility analysis\": curvature and refraction correction, refractivity coefficient 0.13 (the Gaussian coefficient, Brunner 1984)",
+      "short": "Esri ArcMap help, Viewshed",
+      "dataDate": "fetched 2026-11-17",
+      "file": "Material/Literature/2. Online/Esri ArcMap - Using Viewshed and Observer Points for visibility analysis.txt",
+      "url": "https://desktop.arcgis.com/en/arcmap/latest/tools/spatial-analyst-toolbox/using-viewshed-and-observer-points-for-visibility.htm",
+      "location": "https://desktop.arcgis.com/en/arcmap/latest/tools/spatial-analyst-toolbox/using-viewshed-and-observer-points-for-visibility.htm"
+    },
+    {
+      "id": "atp2013",
+      "name": "ATP 2-01.3 Intelligence Preparation of the Battlefield (2019): worked example, general support assets 2 to 5 km from the most forward battle positions (p 3-7)",
+      "short": "ATP 2-01.3 (US, 2019)",
+      "dataDate": "2019",
+      "file": "Material/atp2-01-3.pdf"
+    },
+    {
+      "id": "dw",
+      "name": "Desert Warfare (Pakistan Army): gun areas in desert (p 60)",
+      "short": "Desert Warfare",
+      "dataDate": "in Material/Literature",
+      "file": "Material/Literature/1. Books/7. Desert Warfare.pdf"
+    },
+    {
+      "id": "mib",
+      "name": "The Mechanised Infantry Battalion in Battle: landmarks registered by the enemy (p 50)",
+      "short": "Mech Inf Bn in Battle",
+      "dataDate": "in Material/Literature",
+      "file": "Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+    },
+    {
+      "id": "sd2",
+      "name": "Staff Duties in the Field Vol II Operations: soil that carries heavy vehicles only singly (p 5.503)",
+      "short": "SD in the Field Vol II Ops",
+      "dataDate": "in Material/Literature",
+      "file": "Material/Literature/1. Books/Misc/Staff Duties in the Field (Volume-II) Operations.pdf"
+    }
+  ],
+  "areas": {
+    "bty": {
+      "label": "Bty gun area",
+      "guns": {
+        "value": 6,
+        "basis": "R",
+        "src": "SO's Hbk Sec 2 p 202: Bty (6 Guns)",
+        "refs": [
+          {
+            "book": "soh2",
+            "page": "202",
+            "quote": "Bty (6 Guns)",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 3,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
+            }
+          }
+        ]
+      },
+      "frontM": {
+        "value": 400,
+        "basis": "U",
+        "src": "FM 6-50 para 3-6: disperse, as a minimum, over a 200 by 400 m area; howitzers no closer than 100 m apart",
+        "refs": [
+          {
+            "book": "fm650",
+            "page": "3-6",
+            "quote": "disperse, as a minimum, over a 200 by 400 meter area",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 67,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+            }
+          },
+          {
+            "book": "fm650",
+            "page": "3-6",
+            "quote": "no closer than 100 meters apart",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 67,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+            }
+          }
+        ]
+      },
+      "depthM": {
+        "value": 200,
+        "basis": "U",
+        "src": "FM 6-50 para 3-6: 200 by 400 m minimum dispersed position",
+        "refs": [
+          {
+            "book": "fm650",
+            "page": "3-6",
+            "quote": "disperse, as a minimum, over a 200 by 400 meter area",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 67,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+            }
+          }
+        ]
+      },
+      "note": "The minimum dispersed area of six guns 100 m apart. FM 6-50 App D: all guns within 200 m of the battery centre for one set of firing data."
+    },
+    "regt": {
+      "label": "Regt gun area",
+      "guns": {
+        "value": 18,
+        "basis": "R",
+        "src": "SO's Hbk Sec 2 p 202, 213: Fd / Med regt 18 guns (3 Btys)",
+        "refs": [
+          {
+            "book": "soh2",
+            "page": "213",
+            "quote": "18x105/122mm",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 14,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
+            }
+          }
+        ]
+      },
+      "frontM": {
+        "value": 1000,
+        "basis": "R",
+        "src": "SO's Hbk Sec 2 p 225: regt, depl in one sq (1000 x 1000 ms) (the survey planning case)",
+        "refs": [
+          {
+            "book": "soh2",
+            "page": "225",
+            "quote": "depl in one sq (1000x1000 ms)",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 26,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
+            }
+          }
+        ]
+      },
+      "depthM": {
+        "value": 1000,
+        "basis": "R",
+        "src": "SO's Hbk Sec 2 p 225: regt, depl in one sq (1000 x 1000 ms)",
+        "refs": [
+          {
+            "book": "soh2",
+            "page": "225",
+            "quote": "depl in one sq (1000x1000 ms)",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 26,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf"
+            }
+          }
+        ]
+      },
+      "note": "US figures are larger: towed PAA 1 km2 (FM 3-09), SP platoon about 1,500 x 3,000 m (ATP 3-09.70)."
+    }
+  },
+  "altMinM": {
+    "value": 500,
+    "basis": "U",
+    "src": "ATP 3-09.50 p 2-2: survivability moves of 300-500 m take the guns out of the target footprint of most threat artillery (ATP 3-09.70 p 3-3: these moves are normally 300-500 m); 500 m, the upper end, taken (safety first)",
+    "refs": [
+      {
+        "book": "atp30950",
+        "page": "2-2",
+        "quote": "Survivability moves of 300-500 meters remove the platoon or howitzers from the target footprint of most threat artillery systems.",
+        "role": "rule",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 22,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+        }
+      },
+      {
+        "book": "atp30970",
+        "page": "3-3",
+        "quote": "These moves are normally 300-500 meters in length.",
+        "role": "rule",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 27,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.70 (2015).pdf"
+        }
+      },
+      {
+        "book": "fm650",
+        "page": "2-8",
+        "quote": "far enough away to escape the effects of enemy indirect fire",
+        "role": "context",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 34,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+        }
+      },
+      {
+        "book": "ic",
+        "page": "367",
+        "quote": "It will normally be atleast 200-300 metres away from the original positions so that enemy artillery fire directed on the original positions does not neutralise the alternative positions.",
+        "role": "context",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 367,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/IC.pdf"
+        }
+      }
+    ],
+    "calc": "the upper end of 300-500 m"
+  },
+  "planFrac": {
+    "value": 0.9,
+    "basis": "R",
+    "src": "SO's Hbk Sec 2 p 212: Planning range - 90 percent of max range",
+    "refs": [
+      {
+        "book": "soh2",
+        "page": "212",
+        "quote": "Planning range-90 percent of max range",
+        "role": "rule",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 13,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/Literature/1. Books/SO's Handbook (2019)/Sec 2 - Arty.pdf (page number read in layout mode)"
+        }
+      }
+    ]
+  },
+  "front": {
+    "def": {
+      "minM": {
+        "value": 2000,
+        "basis": "E",
+        "src": "No figure in the Pakistani books: the guns must not be overrun early (OoW I p 70; DW p 60) yet stand well forward (SZ p 24). FM 3-09.70 p 3-3 puts SP batteries 1 to 8 km behind the forward manoeuvre units, and ATP 2-01.3 p 3-7's worked example puts general support assets 2 to 5 km back: 2 km taken in defence, inside the US band and at the lower end of the example, clear of his direct fire",
+        "refs": [
+          {
+            "book": "fm30921",
+            "page": "4-14",
+            "quote": "not on enemy AOAs",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 96,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 3-09.21 (2001).pdf"
+            }
+          },
+          {
+            "book": "oow1",
+            "page": "70",
+            "quote": "Gun positions should be so selected that they are not overrun early in the battle",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 75,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf"
+            }
+          },
+          {
+            "book": "fm30970",
+            "page": "3-3",
+            "quote": "The Paladin battery normally operates in a band of terrain 1 to 8 km behind the forward maneuver units",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 29,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 3-09.70 (2000).pdf"
+            }
+          },
+          {
+            "book": "atp2013",
+            "page": "3-7",
+            "quote": "General support assets reside about 2 to 5 kilometers from the most forward battle positions.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 45,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/atp2-01-3.pdf"
+            }
+          },
+          {
+            "book": "sz",
+            "page": "24",
+            "quote": "Their depl should be well fwd, while ensuring max protection against CB.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 24,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf"
+            }
+          }
+        ],
+        "decided": "2026-11-17",
+        "searched": [
+          "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+          "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+        ]
+      },
+      "maxFrac": {
+        "value": 0.3333,
+        "basis": "R",
+        "src": "SZ Battle handout p 24: as a guideline 2/3 range should be kept towards own area (also FM 3-09.21 para 6-18), so the guns stand at most 1/3 of the planning range behind the front",
+        "refs": [
+          {
+            "book": "sz",
+            "page": "24",
+            "quote": "2/3RD range should be kept towards own area",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 24,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf"
+            }
+          },
+          {
+            "book": "fm30921",
+            "page": "6-5",
+            "quote": "majority of the range fan",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 168,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 3-09.21 (2001).pdf"
+            }
+          }
+        ]
+      },
+      "note": "2/3 of the range forward of the front"
+    },
+    "attk": {
+      "minM": {
+        "value": 1000,
+        "basis": "U",
+        "src": "FM 3-09.70 p 3-3: the battery normally operates 1 to 8 km behind the forward manoeuvre units; 1 km, the near edge of that band, taken for the attack, where the guns go well forward (FM 3-09 p 6-21; IC p 293)",
+        "refs": [
+          {
+            "book": "fm30970",
+            "page": "3-3",
+            "quote": "The Paladin battery normally operates in a band of terrain 1 to 8 km behind the forward maneuver units",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 29,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 3-09.70 (2000).pdf"
+            }
+          },
+          {
+            "book": "ic",
+            "page": "293",
+            "quote": "Gun areas should be kept as close to the main axis as possible",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 293,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/IC.pdf"
+            }
+          },
+          {
+            "book": "fm309",
+            "page": "6-21",
+            "quote": "FA units move well forward prior to an attack, sometimes beyond the FLOT, displacing by echelon to provide continuous fires to the supported force.",
+            "role": "context",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 143,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/2. Online/FM 3-09 (2024).pdf"
+            }
+          }
+        ],
+        "calc": "the near edge of the 1 to 8 km band"
+      },
+      "maxFrac": {
+        "value": 0.3333,
+        "basis": "R",
+        "src": "SZ Battle handout p 24 (2/3 range toward the enemy); IC p 293: guns well forward before last light",
+        "refs": [
+          {
+            "book": "sz",
+            "page": "24",
+            "quote": "2/3RD range should be kept towards own area",
+            "role": "rule",
+            "checked": {
+              "status": "ok",
+              "pdfPage": 24,
+              "on": "2026-11-17",
+              "how": "pdftotext of Material/Literature/1. Books/10. Concept and Conduct of Security Zone Battle.pdf"
+            }
+          }
+        ]
+      },
+      "note": "guns well forward, near the main axis (IC p 293)"
+    }
+  },
+  "level": {
+    "okDeg": {
+      "value": 5,
+      "basis": "U",
+      "src": "JMRC (army.mil 2024): no more than 90 mils (5 degrees) of ground slope (SP)",
+      "refs": [
+        {
+          "book": "jmrc",
+          "page": "",
+          "quote": "A Paladin should not exceed 90 mils or five degrees of cant (ground slope) at any time because this prevents accurate fires.",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 1,
+            "on": "2026-11-17",
+            "how": "saved text of Material/Literature/2. Online/JMRC - PAA Analysis in Severely Restricted Terrain (2024).txt"
+          }
+        }
+      ]
+    },
+    "maxDeg": {
+      "value": 10,
+      "basis": "U",
+      "src": "JMRC (army.mil 2024): the M777 manual allows at most 10 degrees of slope for towing it; taken as the most a towed gun area may tilt",
+      "refs": [
+        {
+          "book": "jmrc",
+          "page": "",
+          "quote": "The M777 manual states that a 10⁰ slope is the maximum permissible for towing an M777.",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 1,
+            "on": "2026-11-17",
+            "how": "saved text of Material/Literature/2. Online/JMRC - PAA Analysis in Severely Restricted Terrain (2024).txt"
+          }
+        }
+      ]
+    },
+    "note": "Tilt of a plane fitted to the 30 m elevations over the whole area: a platform can still need levelling on ground that tilts less."
+  },
+  "room": {
+    "okShare": {
+      "value": 0.9,
+      "basis": "E",
+      "src": "No share in any book. ATP 3-09.50 p 5-3 wants the guns at least 100 m apart and ATP 3-09.70 p 3-3 an area open and firm enough to lay: with 90 % of the area usable the battery keeps that spacing without bunching",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ],
+      "refs": [
+        {
+          "book": "atp30950",
+          "page": "5-3",
+          "quote": "Howitzer sections should be positioned at least 100 meters apart",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 61,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        },
+        {
+          "book": "atp30970",
+          "page": "3-3",
+          "quote": "If an area is open enough for individual howitzers to establish an azimuth of fire, with consideration to site to crest, and the ground is firm enough",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 27,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.70 (2015).pdf"
+          }
+        },
+        {
+          "book": "mw",
+          "page": "240",
+          "quote": "are too small for the firing units to be deployed in their conventional layout",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 225,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+          }
+        }
+      ]
+    },
+    "minShare": {
+      "value": 0.7,
+      "basis": "E",
+      "src": "No share in any book. Below 70 % usable the guns can no longer keep 100 m apart (ATP 3-09.50 p 5-3) in their conventional layout (MW p 240): the area fails",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ],
+      "refs": [
+        {
+          "book": "atp30950",
+          "page": "5-3",
+          "quote": "Howitzer sections should be positioned at least 100 meters apart",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 61,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        },
+        {
+          "book": "mw",
+          "page": "240",
+          "quote": "are too small for the firing units to be deployed in their conventional layout",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 225,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+          }
+        }
+      ]
+    }
+  },
+  "firm": {
+    "maxSoftShare": {
+      "value": 0.2,
+      "basis": "E",
+      "src": "No share in any book; every book asks for soil firm enough for all vehicles (FM 6-50 p 2-8; ATP 3-09.50 p 3-5; DW p 60). Over a fifth of the area too soft leaves too little firm ground for the guns and their prime movers: fails",
+      "refs": [
+        {
+          "book": "fm650",
+          "page": "2-8",
+          "quote": "soil should be firm enough to support all vehicles",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 34,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+          }
+        },
+        {
+          "book": "atp30950",
+          "page": "3-5",
+          "quote": "units with medium howitzers and associated prime movers require a larger area with stable soil to support the increased weight",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 33,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        },
+        {
+          "book": "dw",
+          "page": "60",
+          "quote": "in areas of loose sand, it is difficult to move the guns",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 60,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ]
+    }
+  },
+  "air": {
+    "goodMean": {
+      "value": 2,
+      "basis": "E",
+      "src": "No figure in any book; position selection puts the emphasis on concealment (FM 6-50 p 2-8; ATP 3-09.50 p 3-5) and the best defence against air is to stay undetected (ATP 3-09.50 p 5-8). The cover / concealment layer reads 0 none, 1 poor, 2 fair, 3 good: fair or better taken as hidden",
+      "refs": [
+        {
+          "book": "fm650",
+          "page": "2-8",
+          "quote": "emphasis on concealment",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 34,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+          }
+        },
+        {
+          "book": "atp30950",
+          "page": "3-5",
+          "quote": "The position should offer effective cover and concealment with emphasis on concealment.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 33,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        },
+        {
+          "book": "atp30950",
+          "page": "5-8",
+          "quote": "The preferred defense technique against air attack is for the battery or platoon to remain undetected.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 66,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        },
+        {
+          "book": "oow1",
+          "page": "91",
+          "quote": "avoid detection of critical assets, like gun position",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 96,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ]
+    },
+    "poorMean": {
+      "value": 1,
+      "basis": "E",
+      "src": "Below poor (1 on the 0-3 concealment layer) the guns stand in the open, against ATP 3-09.50 p 5-8 (remain undetected): fails",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ],
+      "refs": [
+        {
+          "book": "atp30950",
+          "page": "5-8",
+          "quote": "The preferred defense technique against air attack is for the battery or platoon to remain undetected.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 66,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        }
+      ]
+    }
+  },
+  "access": {
+    "maxM": {
+      "value": 500,
+      "basis": "E",
+      "src": "No distance in any book; the books ask for existing roads and more than one way in and out (FM 6-50 p 2-8; ATP 3-09.50 p 3-5, 3-9) and gun areas are found near roads and tracks (MW p 240; DW p 60). 500 m taken: a short tow on track or field from the road, within the 300-500 m the guns move in any case",
+      "refs": [
+        {
+          "book": "fm650",
+          "page": "2-8",
+          "quote": "more than one entrance and exit route preferably in the rear of the position",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 34,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+          }
+        },
+        {
+          "book": "atp30950",
+          "page": "3-9",
+          "quote": "Use existing roads. Select separate entrance and exit routes.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 37,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        },
+        {
+          "book": "mw",
+          "page": "240",
+          "quote": "There is general scarcity of gun areas near the roads and tracks",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 225,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+          }
+        },
+        {
+          "book": "dw",
+          "page": "60",
+          "quote": "The paucity of suitable tracks poses serious problems in movement of guns off the main track.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 60,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/7. Desert Warfare.pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ]
+    },
+    "searchM": {
+      "value": 2000,
+      "basis": "M",
+      "src": "How far the finder looks for a road: twice the fail distance (500 m x 2 = 1,000 m), so a fail is measured, not guessed; beyond it the row says 'no road within 2 km'"
+    }
+  },
+  "avoid": {
+    "landmarkM": {
+      "value": 500,
+      "basis": "E",
+      "src": "No distance in any book; junctions, mapped features and landmarks are registered as targets by the enemy (IC p 62; MIB p 50). 500 m taken: the same distance that takes guns out of the footprint of most threat artillery (ATP 3-09.50 p 2-2), so fire on the registered point misses the guns",
+      "refs": [
+        {
+          "book": "fm30921",
+          "page": "6-22",
+          "quote": "should not stop near crossroads",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 185,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 3-09.21 (2001).pdf"
+          }
+        },
+        {
+          "book": "ic",
+          "page": "62",
+          "quote": "Halting troops near road or track junctions or other mapped features, which are always registered as, targets by the enemy.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 62,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/IC.pdf"
+          }
+        },
+        {
+          "book": "mib",
+          "page": "50",
+          "quote": "near a landmark which may be adjusted as an artillery or mortar task or which is noted on enemy range cards",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 50,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/The Mechanised Infantry Battalion in Battle.pdf"
+          }
+        },
+        {
+          "book": "atp30950",
+          "page": "2-2",
+          "quote": "Survivability moves of 300-500 meters remove the platoon or howitzers from the target footprint of most threat artillery systems.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 22,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        }
+      ],
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ]
+    },
+    "kinds": [
+      "20",
+      "21",
+      "50",
+      "159",
+      "166",
+      "60",
+      "78",
+      "79",
+      "64",
+      "66"
+    ],
+    "kindsNote": "bundle feature kinds: bridges (20, 21), railway station (50), road junctions (159, 166), towers and masts (60, 78, 79), fort (64), cantonment (66)",
+    "buaShare": {
+      "value": 0.05,
+      "basis": "U",
+      "src": "FM 6-50 App F-4: be away from the centre of the built-up area, free of civilians",
+      "refs": [
+        {
+          "book": "fm650",
+          "page": "F-2",
+          "quote": "Be away from the center of the built-up area",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 238,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+          }
+        }
+      ]
+    }
+  },
+  "crest": {
+    "method": "FM 6-50 ch 6: Min QE = the greatest sum of Angles 1-5 for every gun and charge. A1 angle of site to crest; A2 vertical clearance 5 m / PCR in km (mils); A3 comp site (TFT Table G) x (A1 + A2); A4 elevation at PCR (TFT Table F col 2); A5 2 forks at PCR (TFT Table F col 6). Each angle rounded up to the next mil; PCR to the nearest 100 m. The finder works out A1 and A2 from the 30 m elevation and A4 as an estimate; A3 and A5 need the firing tables.",
+    "searchM": {
+      "value": 8000,
+      "basis": "M",
+      "src": "How far toward the target the finder looks for the crest that sets the minimum QE (the visible crest, ATP 3-09.50 p 8-1; crests beyond it are intervening crests, checked against the trajectory, TC 3-09.81 p 15-34). At 8 km a crest must stand over 83 m above the muzzle to give even 10 mils, so a farther crest seldom sets the minimum QE",
+      "refs": [
+        {
+          "book": "atp30950",
+          "page": "8-1",
+          "quote": "determining the lowest quadrant elevation that can be safely fired from a position to ensure that projectiles clear all visible crests",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 87,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        },
+        {
+          "book": "tc30981",
+          "page": "15-34",
+          "quote": "Intervening crests are defined as any obstruction between the firing unit and the target not visible from the firing unit.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 524,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/TC 3-09.81 (2016).pdf"
+          }
+        }
+      ]
+    },
+    "minM": {
+      "value": 30,
+      "basis": "M",
+      "src": "The crest is looked for from one 30 m elevation cell in front of the guns: nearer obstacles (trees, walls, buildings at the pits) are not in the 30 m elevation and are measured at each gun, as FM 6-50 has the A1 measured at each howitzer",
+      "refs": [
+        {
+          "book": "tc30981",
+          "page": "15-30",
+          "quote": "Piece-to-crest range (PCR) is the horizontal distance between the piece and the crest, expressed to the nearest 100 meters.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 520,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/TC 3-09.81 (2016).pdf"
+          }
+        },
+        {
+          "book": "atp30950",
+          "page": "8-3",
+          "quote": "If the platoon leader determines that the high sight to crest is due to a single narrow obstruction (for example, a lone tree), that howitzer may be called out of action",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 89,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/ATP 3-09.50 (2016).pdf"
+          }
+        }
+      ]
+    },
+    "muzzleM": {
+      "value": 2,
+      "basis": "E",
+      "src": "The crest is measured along the bottom of the bore (TC 3-09.81 p 15-31), not from the ground; no book gives the bore height. 2 m taken: about the bore of a medium gun at low elevation (towed lower, SP higher). A lower bore gives a slightly higher angle to the crest: the GPO measures it at each gun (FM 6-50 A1)",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ],
+      "refs": [
+        {
+          "book": "tc30981",
+          "page": "15-31",
+          "quote": "the section chief sights along the bottom edge of the bore",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 521,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/TC 3-09.81 (2016).pdf"
+          }
+        }
+      ]
+    },
+    "clearM": {
+      "value": 5,
+      "basis": "U",
+      "src": "FM 6-50 ch 6 p 6-2: A2 vertical clearance 5 m (quick, time and unarmed VT fuzes; armed VT needs more: Table 6-1)",
+      "refs": [
+        {
+          "book": "fm650",
+          "page": "6-1",
+          "quote": "a vertical clearance of 5 meters",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 139,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+          }
+        }
+      ]
+    },
+    "refraction": {
+      "value": 0.13,
+      "basis": "M",
+      "src": "Line of sight over the curved earth with refraction: 0.13 is the standard Gaussian coefficient used for visibility (Esri, after Brunner 1984); a method setting, not a military rule",
+      "refs": [
+        {
+          "book": "esri",
+          "page": "",
+          "quote": "The default value for the refractivity coefficient (R refr ) is 0.13, which is based on the Gaussian refraction coefficient (Brunner, F. K., 1984).",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 1,
+            "on": "2026-11-17",
+            "how": "saved text of Material/Literature/2. Online/Esri ArcMap - Using Viewshed and Observer Points for visibility analysis.txt"
+          }
+        }
+      ]
+    },
+    "steepMils": {
+      "value": 300,
+      "basis": "U",
+      "src": "FM 6-50 p 6-2: if A1 + A2 exceeds 300 mils the rapid tables cannot be used; compute by hand",
+      "refs": [
+        {
+          "book": "fm650",
+          "page": "6-2",
+          "quote": "exceeds 300 mils",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 140,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+          }
+        }
+      ]
+    },
+    "highAngleMils": {
+      "value": 800,
+      "basis": "U",
+      "src": "FM 6-50 p 7-3: high angle, an angle of elevation greater than 800 mils",
+      "refs": [
+        {
+          "book": "fm650",
+          "page": "7-3",
+          "quote": "to be fired at an angle of elevation greater than 800 mils",
+          "role": "rule",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 145,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+          }
+        }
+      ]
+    },
+    "note": "Pakistani books: Glossary p 140 (crest clearance: the projectile will not strike an obstacle between the muzzle and the target); MW p 49 (high trajectory guns overcome the crest problem), p 240 (crests force guns rearward and cost range); OoW Vol II p 58 (flat-trajectory weapons).",
+    "methodRefs": [
+      {
+        "book": "fm650",
+        "page": "6-1",
+        "quote": "vertical clearance",
+        "role": "rule",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 139,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/Literature/2. Online/FM 6-50 (1996).pdf"
+        }
+      },
+      {
+        "book": "gloss",
+        "page": "140",
+        "quote": "a projectile will not strike an obstacle between the muzzle and the",
+        "role": "context",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 140,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/Literature/1. Books/Misc/Glossary of Military Terms and Definitions.pdf"
+        }
+      },
+      {
+        "book": "mw",
+        "page": "92",
+        "quote": "positioned carefully to avoid terrain masking and crest clearance problems",
+        "role": "context",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 93,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+        }
+      },
+      {
+        "book": "mw",
+        "page": "49",
+        "quote": "High trajectory guns like Bofors have overcome crest problem",
+        "role": "context",
+        "checked": {
+          "status": "ok",
+          "pdfPage": 51,
+          "on": "2026-11-17",
+          "how": "pdftotext of Material/Literature/1. Books/8. Mountain Warfare.pdf"
+        }
+      }
+    ]
+  },
+  "mountains": {
+    "note": "MW p 240: gun areas are scarce near roads; towed guns by sections near hairpin bends; light high-trajectory guns forward on reverse slopes and in valleys. MW p 244: deploy by sections in two or three places. FM 6-50 p F-1: high-angle fire may be required."
+  },
+  "desert": {
+    "note": "OoW Vol I p 70: a number of alternative gun areas; DW p 59-61: guns not to be overrun early, protect gun areas, plan successive positions in depth; guns cannot engage the reverse slopes of high steep dunes. FM 6-50 p F-5: wadis attract but flash-flood."
+  },
+  "scan": {
+    "stepM": 150,
+    "radiusM": 4000,
+    "keep": 60,
+    "maxSites": 6,
+    "note": "Search: places tried every stepM metres within the search circle; the best `keep` (by the finer reading, at least 1.5 steps or half an area apart) read in full; at most maxSites listed, altMinM apart. Method settings (M): they set how many places are read and listed, not what passes.",
+    "frontGateFrac": {
+      "value": 0.5,
+      "basis": "M",
+      "src": "Search shortcut: a place nearer the front than half the minimum is not read in full; it would fail Behind front anyway (that row fails anything under the minimum), so the list is the same, only quicker. Checked by tools/sitefinder-test/run.mjs"
+    },
+    "minKnownGate": {
+      "value": 0.5,
+      "basis": "M",
+      "src": "The room shortcut acts only where the ground class is known on half the samples or more: a place with too little data is read in full and shown 'not read', never left out on a guess"
+    }
+  },
+  "weights": {
+    "room": 3,
+    "level": 2,
+    "firm": 2,
+    "air": 2,
+    "access": 2,
+    "range": 2,
+    "front": 2,
+    "crest": 3,
+    "avoid": 1
+  },
+  "checks": {
+    "note": "Working thresholds of the checks. None is in a book: each is a decision (E) with its reason and where it was looked for, or a method setting (M) where it only decides whether there is enough data to judge.",
+    "minKnownShare": {
+      "value": 0.6,
+      "basis": "M",
+      "src": "A site whose ground class is known on under 60 % of its samples is shown as 'not read' (tiles missing or still loading), never passed: a judgement on less than about two thirds of the ground would be a guess (safety first)"
+    },
+    "firmWarnShare": {
+      "value": 0.1,
+      "basis": "E",
+      "src": "No figure in any book. Over a tenth of the area soft (under the fifth that fails) needs work: matting, a recce of the soft patches, guns kept off them",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ]
+    },
+    "marginalWeight": {
+      "value": 0.5,
+      "basis": "E",
+      "src": "No figure in any book. SLOW-GO soil carries the guns one at a time but not a column (SD Vol II p 5.503: heavy vehicles only singly), so it counts half as much as NO-GO soil",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ],
+      "refs": [
+        {
+          "book": "sd2",
+          "page": "5.503",
+          "quote": "The soil is not capable of sp hy wh and tr vehs except when they are mov singly.",
+          "role": "context",
+          "checked": {
+            "status": "ok",
+            "pdfPage": 151,
+            "on": "2026-11-17",
+            "how": "pdftotext of Material/Literature/1. Books/Misc/Staff Duties in the Field (Volume-II) Operations.pdf"
+          }
+        }
+      ]
+    },
+    "accessFailX": {
+      "value": 2,
+      "basis": "E",
+      "src": "No figure in any book. Between the limit and twice it the road is a longer tow (needs work: recce a track); beyond twice the limit (1 km) the guns cannot come and go quickly: fails",
+      "decided": "2026-11-17",
+      "searched": [
+        "Pakistani books: SOH 2019 Sec 2 Arty, IBB, IC, OoW I, DW, MW, SZ Battle, GSP, Glossary",
+        "US: FM 6-50, FM 3-09.70, ATP 3-09.50, ATP 3-09.70, TC 3-09.81, FM 3-09 (2024), ATP 3-09.23, FM 20-3"
+      ]
+    },
+    "crestMaxUnknown": {
+      "value": 0.3,
+      "basis": "M",
+      "src": "Crest: when over 30 % of the line to the target has no height, the crest is 'not read' rather than judged on the part that has; the gun position officer measures it at the guns (FM 6-50 A1)"
+    }
+  },
+  "order": {
+    "note": "How the list is ordered: the worst check first (a site that fails anything is below one that only needs work), then the weighted share of checks passed, then the finer reading. Method settings (M): no doctrine orders sites by a score, so the order only helps reading; every row carries its own rule, and Compare shows them side by side.",
+    "toneScore": {
+      "ok": 1,
+      "warn": 0.55,
+      "unknown": 0.4,
+      "bad": 0,
+      "basis": "M",
+      "src": "Weighted score: a check that passes counts 1, needs work 0.55, not read 0.4, fails 0"
+    },
+    "weightsNote": {
+      "basis": "M",
+      "src": "weights (below): room and crest 3; level, firm, air, access, range, front 2; avoid 1 - the checks a gun area cannot do without weigh most"
+    },
+    "pre": {
+      "room": 3,
+      "levelOk": 2,
+      "levelMax": 1,
+      "firm": 1.5,
+      "concealDiv": 1.5,
+      "bua": -2,
+      "wet": -3,
+      "basis": "M",
+      "src": "Finer reading (orders places with the same results, and picks which are read in full): usable room x3, level 2 / 1 / 0, firm x1.5, concealment / 1.5, BUA x-2, waterlogged x-3"
+    }
+  }
+}

@@ -332,6 +332,48 @@ MS/
   on the map. Pure engines `MoveTime` / `MoveGeo` / `MoveRoad` / `MoveRail` / `MoveEnemy` / `MoveReports` /
   `MovePlannerModel` (`node tools/moveplan-test/run.mjs`, 70 checks); rules in `MS/Data/MoveDoctrine.json` (R = SO's Hbk Sec 9 /
   Staff Duties Vol II, O = old code, E = proposal). No terrain bundle. See `MS/Docs/19-move-planner.md`.
+- **GunDeployment** (`Engines/GunDeployment/`) and **AdminArea** (`Engines/AdminArea/`) — two site finders, each optional and
+  off by default (`features.gunDeployment` / `features.adminArea`; top bar 🎯 Gun Depl / 🏕 Admin Area, each with ⚙; Ctrl+K
+  widgets; panels docked bottom left / right; built 17 Nov 2026). Pick where to look on the map; the finder lays the area
+  (Bty 400 x 200 m / Regt 1000 x 1000 m; Unit Ech, BAA, DAA, RP, Amn / Sup / POL Pt, ADS by doctrine) over a lattice of
+  places and ranks them with rows (value, tone, why, fix). Gun: room, level (plane fitted to the 30 m elevation), firm in
+  the month, hidden from air, access, range (ORBAT `weapons.json`, planning range 90 %), behind the FDL (2/3 of the range
+  forward), crest toward the target (FM 6-50 A1 / A2 from the elevation + what stands on it, A4 estimated, A3 / A5 named:
+  need firing tables; the range low-angle fire clears it from), avoid. Admin: beyond the en gun (field / medium / mortar
+  from `weapons.json` side en, his gun depth 0 by default), DAA behind the front by op (48 / 15-20 / 33 km), firm, flood /
+  drainage (wet month = 100 mm rain, climate grid), room, air, class 50 road and off the main road, avoid, water, pucca
+  building, evac road, people. Target / threat default to the Ground Guide's threat marker; the front is the FEBA / FLOT
+  drawn on the map. Create on Map: PAA circular `25240502`; 2525D Regimental / Brigade / Division Support Area
+  `25310500` / `25310600` / `25310700` (new, `____LabelledAreaBase`, no designation: it sat on the word) or the catalog
+  point. Shared `Engines/SiteScan/` (pure `SiteScan.ts`, bundle `SiteProbe.ts` = own MovementGuideProbe + climate + OCOKA
+  surface blockers, `SitePanel.ts`, `SiteMap.ts`); figures `MS/Data/GunDoctrine.json` / `AdminDoctrine.json` (R Pakistani
+  book + page, U US doctrine, E proposal); `node tools/sitefinder-test/run.mjs` (52 checks). See
+  `MS/Docs/20-gun-deployment-admin-area.md`. Every decision is justified with rule, book and page: doctrine figures carry
+  `refs` (book, printed page, words; role rule / context) checked against the PDFs by `python tools/doctrine-refs/verify.py`
+  (`--write` records `checked`); each check row carries `rules`; `site.why` says why it is chosen / below the one above;
+  `rejectedWhy` gives the places left out with their rules; **Why not here?** reads any clicked place with the same scorer
+  (`gunWhyNot` / `adminWhyNot`); Copy as Text is a decision record with numbered citations. Never cite a figure without
+  its ref or mark it E. Everything that triggers a verdict is backed: a book rule, the data it read (`SiteScan.dataCatalog`:
+  bundle layer + sources + dates, never "NCGDB"), the terrain rules (T: rules.json, soil rule, climate wet threshold), the
+  user's inputs, or a named threshold in the doctrine JSON (`checks`, `scan`, `order`); none hidden in code. Bases: R / U /
+  S (Pakistani book, US doctrine, civil standard: page + words, `calc` when worked out), M (method setting, not a military
+  rule; shortcuts proved by tests), E (decision: `decided` + `searched`, shown "Decision, no book figure"). The US manuals
+  and civil sources are kept in `Material/Literature/2. Online/` (git-ignored) so verify.py checks them locally (also .txt
+  web pages); run.mjs fails if any figure is unbacked, undecided or unchecked.
+- **AoiCheck** (`Engines/AoiCheck/`), **CrossSection** (`Engines/CrossSection/`) and **Compare** (`Engines/Compare/`) — three
+  terrain tools, each optional and off by default (`features.aoiCheck` / `crossSection` / `compare`; top bar 🗺 AOI Check,
+  📈 X-Section, ⚖ Compare, each with ⚙; Ctrl+K widgets; built 17 Nov 2026), on the shared `Engines/SiteScan/`. AOI Check:
+  pick an area or this view; fetches every manifest raster layer and each mover's dist layer tile by tile (finest zoom
+  within `maxTiles` a layer, coarser said), counts missing / failed tiles and no-data pixels, checks the z10 feature and
+  road tiles and the population / climate / visibility grids, and reports the share in the data's frame, the readings
+  each gap blanks (Gr class and heights first), movers, build stamps and every source with date and licence (never
+  "NCGDB": "1:50k map"); gap tiles painted red / amber. X-Section: a drawn / selected / right-clicked line ("X-Section…")
+  read every 30 m by `SiteLine.profileLine` (height, going for the mover in the month, obstacles crossed or along, steep
+  from rules.json slope classes, no-data gaps, seen by the threat marker), drawn by `CrossSectionChart.ts` with a hover
+  read-out and map marker; the old `RouteProfileEngine` is untouched. Compare: up to four corridors / positions (A-D) under
+  one mover, month and threat; rows with their "how", best / worst only past each row's smallest real difference,
+  differences in words, "best on" tallies, no overall score (`CompareRead.ts`). Tests `node tools/sitefinder-test/tools.mjs`
+  (40). See `MS/Docs/21-aoi-check-xsection-compare.md`.
 - **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
   Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
   J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;

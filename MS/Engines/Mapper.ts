@@ -100,6 +100,9 @@ import Fpf from "../Symbols/Fpf.ts"; // 2525D 25240703 FPF
 import PaaRect from "../Symbols/PaaRect.ts"; // 2525D 25240501 PAA rectangular (gun area)
 import PaaCircle from "../Symbols/PaaCircle.ts"; // 2525D 25240502 PAA circular (gun area)
 import SecurityZone from "../Symbols/SecurityZone.ts"; // local 00000161 (2525D has none)
+import RegimentalSupportArea from "../Symbols/RegimentalSupportArea.ts"; // 2525D 25310500
+import BrigadeSupportArea from "../Symbols/BrigadeSupportArea.ts"; // 2525D 25310600
+import DivisionSupportArea from "../Symbols/DivisionSupportArea.ts"; // 2525D 25310700
 import NoGo from "../Symbols/NoGo.ts";  //Fixed
 import FlightZone from "../Symbols/FlightZone.ts";  //Fixed
 import AirspaceArea from "../Symbols/AirspaceArea.ts";
@@ -366,6 +369,9 @@ const SYMBOL_MAP: Record<string, ISymbolConstructor> = {
     "PaaRect": PaaRect,
     "PaaCircle": PaaCircle,
     "SecurityZone": SecurityZone,
+    "RegimentalSupportArea": RegimentalSupportArea,
+    "BrigadeSupportArea": BrigadeSupportArea,
+    "DivisionSupportArea": DivisionSupportArea,
     "Withdraw": Withdraw,
     "WithdrawUnderPressure": WithdrawUnderPressure,
     "Retire": Retire,

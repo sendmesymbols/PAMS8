@@ -305,6 +305,27 @@ export class MovementGuideProbe implements MovProbe {
     return v === undefined || v === null ? null : v;
   }
 
+  /**
+   * Any manifest layer's byte by its key (`cc`, `wet`, `soil`, `rci_dry`, `rci_wet`, `bld`, `landform`, `terrain`, ...),
+   * for the site finders (Gun Deployment, Admin Area). Null when the bundle has no such layer or the tile is not in yet
+   * (then the pending flag is set). Nodata (255) is returned as it is: the caller decodes it.
+   */
+  layerAt(key: string, x: number, y: number): number | null {
+    const L = (this._manifest?.layers ?? {}) as Record<string, string>;
+    const v = this._px(L[key] ?? null, x, y);
+    return v === undefined || v === null ? null : v;
+  }
+
+  /** Metres from (x, y) to the nearest NO-GO ground for a mover (`dist_{profile}`); null when unknown. */
+  distAt(profile: string, x: number, y: number): number | null {
+    const m = this._manifest as any;
+    const tpl: string | undefined = m?.layers?.dist;
+    if (!tpl) return null;
+    const v = this._px(tpl.replace('{profile}', profile), x, y);
+    if (v === undefined || v === null || v === 255) return null;
+    return v * (Number(m.distScaleM) || 10);
+  }
+
   // ── points and lines ───────────────────────────────────────────────────────────────────────────────────────────────
 
   private _tileOf(x: number, y: number): { tx: number; ty: number; size: number } {
