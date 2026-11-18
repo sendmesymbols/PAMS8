@@ -279,6 +279,51 @@ const S = await import('../../MS/Engines/DeploymentBuilder/PlanSolve.ts');
   check('...the trigger table read again too', r.whatIf?.triggers.length === fl.whatIf.triggers.length, `${r.whatIf?.triggers.length} against ${fl.whatIf.triggers.length}`);
   check('...with the build\'s rows all there', ['Reserve reach', 'AT cover', 'Moves in time'].every((nm) => !!row(r.rows, nm)), ['Reserve reach', 'AT cover', 'Moves in time'].filter((nm) => !row(r.rows, nm)).join(', '));
 }
+// ── AT Coys grouped to the Bn (LAT, HAT): read back from what the plan was built for ────────────────────────────────
+{
+  const O = await import('../../MS/Engines/DeploymentBuilder/PlanOrbat.ts');
+  const P = 'MS/Data/Orbat/PK/';
+  const orbat = { own: O.mergeOwn(O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).units)), en: json(`${P}en.json`).units, weapons: json(`${P}weapons.json`).weapons, engrData: json(`${P}engr.json`).engrData };
+  const std = O.brief(orbat, 'inf-bn-std'), grouped = O.withAtGroup(orbat, std, 'inf-bn-lat-apc', 1);
+  const g = ground({ sight: () => 0.6 });
+  const build = (unit) => { const inp = fitIn(g, { enemy: { echelon: '18', type: 'mech', source: 'user' }, terrain: 'obstacle', unit }); return { inp, fl: W.withMoves(F.fitLayout(inp), inp) }; };
+  const b0 = build(std), b1 = build(grouped);
+  const read = (b, atGroup) => {
+    const pd = S.toPlanDocument(b.fl.raw, (pid, ov, id, de) => ({ plnOrdrSymbolPK: { plnOrdrSymbolId: id }, drawEss: JSON.stringify(de) }), (pid, id, name, seq, syms) => ({ plnOrdrSymbolSet: syms }), 1);
+    const meta = { ground: b.fl.terrain.kind, groundWhy: null, enemy: { echelon: '18', type: 'mech' }, unit: 'inf-bn-std', threat: { x: 0, y: 8000 }, atGroup };
+    const syms = K.readSymbols(K.recordsFromPlanDoc(pd.doc)).map((s) => ({ ...s, pts: s.pts.map((p) => F.toWorld(b.fl.frame, p)), pbRole: pd.roles[s.id], pbRecipe: r2.id, pbMeta: meta }));
+    return K.checkPlan(syms, doc, { ground: g, recipes: { [r2.id]: r2 }, orbat });
+  };
+  const rg = read(b1, { id: 'inf-bn-lat-apc', coys: 1 }), rn = read(b1, null);
+  check('a plan built with 1 LAT Coy has 7 extra pairs on the map (14 BS symbols) against the Std Bn\'s 1', b1.fl.raw.items.filter((i) => i.role.startsWith('atgmX')).length === 14 && b0.fl.raw.items.filter((i) => i.role.startsWith('atgmX')).length === 2);
+  check('Check my plan reads the group back: the AT cover row holds 16 ATGM (8 pairs) and names the Std Inf Bn + 1 LAT Coy', /holds 16 ATGM \(8 pairs\)/.test(row(rg.rows, 'AT cover')?.reason ?? ''), row(rg.rows, 'AT cover')?.reason);
+  check('...without the group in what it was built for, the same plan is counted at the unit\'s own 4 ATGM', /holds 4 ATGM \(2 pairs\)/.test(row(rn.rows, 'AT cover')?.reason ?? ''), row(rn.rows, 'AT cover')?.reason);
+  check('...and the force row names the unit as built (rifle Coys unchanged)', /Std Inf Bn \+ 1 LAT Coy \(APC borne\) \(4 rifle Coys\)/.test(row(rg.rows, 'En force')?.reason ?? ''), row(rg.rows, 'En force')?.reason);
+}
+// ── tank Sqns grouped to the Bn defence: read back from what the plan was built for ─────────────────────────────────
+{
+  const O = await import('../../MS/Engines/DeploymentBuilder/PlanOrbat.ts');
+  const T = await import('../../MS/Engines/DeploymentBuilder/PlanTanks.ts');
+  const P = 'MS/Data/Orbat/PK/';
+  const orbat = { own: O.mergeOwn(O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).units)), en: json(`${P}en.json`).units, weapons: json(`${P}weapons.json`).weapons, engrData: json(`${P}engr.json`).engrData };
+  const sqn = O.tankSqnOf(orbat), d1 = T.withDefTanks(r2, doc, 1, { tanks: sqn.tanks, tps: sqn.tps, tpTanks: sqn.tpTanks, regtTanks: sqn.regtTanks, src: sqn.src });
+  const g = ground({ sight: () => 0.6 });
+  const inp = fitIn(g, { recipe: d1, enemy: { echelon: '18', type: 'mech', source: 'user' }, terrain: 'obstacle', unit: O.brief(orbat, 'inf-bn-std') });
+  const fl = W.withMoves(F.fitLayout(inp), inp);
+  const pd = S.toPlanDocument(fl.raw, (pid, ov, id, de) => ({ plnOrdrSymbolPK: { plnOrdrSymbolId: id }, drawEss: JSON.stringify(de) }), (pid, id, name, seq, syms) => ({ plnOrdrSymbolSet: syms }), 1);
+  const meta = { ground: fl.terrain.kind, groundWhy: null, enemy: { echelon: '18', type: 'mech' }, unit: 'inf-bn-std', threat: { x: 0, y: 8000 }, atGroup: null, defTanks: 1 };
+  const syms = K.readSymbols(K.recordsFromPlanDoc(pd.doc)).map((s) => ({ ...s, pts: s.pts.map((p) => F.toWorld(fl.frame, p)), pbRole: pd.roles[s.id], pbRecipe: d1.id, pbMeta: meta }));
+  const r = K.checkPlan(syms, doc, { ground: g, recipes: { [d1.id]: d1 }, orbat });
+  const sqnPosn = r.posns.find((p) => p.label === 'A Sqn');
+  check('built with 1 tank Sqn: Check my plan does not take the Sqn for a posn held (not a posn, or ignored), the Coys read as before', (!sqnPosn || sqnPosn.kind === 'ignore') && r.posns.find((p) => p.label === 'A Coy')?.kind === 'fwd' && r.posns.find((p) => p.label === 'D Coy')?.kind === 'res', r.posns.map((p) => `${p.label}:${p.kind}`).join(', '));
+  check('...its Tank harbour row read from the symbol, the same verdict as the build', row(r.rows, 'Tank harbour')?.st === row(fl.res.rows, 'Tank harbour')?.st && /A Sqn: tracks go/.test(row(r.rows, 'Tank harbour')?.reason ?? ''), row(r.rows, 'Tank harbour')?.reason);
+  check('...its Tank AT cover row read the same as the build\'s: the guns on each approach from the C Pen and Sup posns', !!row(fl.res.rows, 'Tank AT cover') && row(r.rows, 'Tank AT cover')?.st === row(fl.res.rows, 'Tank AT cover')?.st && /A1 \(main\): under their guns/.test(row(r.rows, 'Tank AT cover')?.reason ?? ''), row(r.rows, 'Tank AT cover')?.reason);
+  check('...and the A Sqn\'s switch to the Sup posn is in the trigger table as the build timed it', r.whatIf?.triggers.some((t) => t.id.startsWith('tk-sup-') && t.min === fl.whatIf.triggers.find((x) => x.id === t.id)?.min), r.whatIf?.triggers.map((t) => t.id).join(' '));
+  check('...the Sqn\'s move to the C Pen posn in the trigger table, mounted, as the build timed it', r.whatIf?.triggers.some((t) => t.id === 'tk-cpen-tkSqn' && t.route?.mounted === true && t.min === fl.whatIf.triggers.find((x) => x.id === 'tk-cpen-tkSqn')?.min), r.whatIf?.triggers.map((t) => `${t.id}:${t.min}`).join(' '));
+  check('...and the force row counts the Sqn (4 Coys + 1 Tk Sqn of 14 tanks)', /4 rifle Coys \+ 1 Tk Sqn of 14 tanks/.test(row(r.rows, 'En force')?.reason ?? ''), row(r.rows, 'En force')?.reason);
+  const rn = K.checkPlan(syms.map((s) => ({ ...s, pbMeta: { ...meta, defTanks: 0 } })), doc, { ground: g, recipes: { [d1.id]: d1 }, orbat });
+  check('...with no Sqn in what it was built for the force is the Bn\'s own 4 Coys', !/Tk Sqn/.test(row(rn.rows, 'En force')?.reason ?? ''), row(rn.rows, 'En force')?.reason);
+}
 // ── an approach that ends at the FDL: the C Pen posn is still sited, on its line carried into the depth ─────────────
 {
   const g = ground();

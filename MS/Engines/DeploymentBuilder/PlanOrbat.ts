@@ -17,7 +17,7 @@ import type { Check } from './PlanSolve';
 import type { EnemyType, TerrainKind } from './PlanContext';
 
 export interface OrbatSet {
-  /** inf.json units (and any other own arm files added). */
+  /** Own units: every arm file as one list (mergeOwn over OWN_ORBAT_FILES); inf.json alone still works. */
   own: any[];
   /** en.json units. */
   en: any[];
@@ -52,8 +52,25 @@ export interface UnitBrief {
   notes: string[];
 }
 
+/** The own arm files of the ORBAT, merged in this order: inf.json must be there, the others add to it. */
+export const OWN_ORBAT_FILES = ['inf.json', 'armr.json', 'arty.json', 'ad.json', 'engr.json', 'sig.json', 'avn.json', 'log.json', 'mov.json'];
+
+/**
+ * The own units of every arm as one list, so a child kept in another arm's file is found (an Inf Bde's Sig Coy, the
+ * Indep Mech Inf Bde Gp's Armr Regt). An id met twice keeps the first; a file that is missing adds nothing.
+ */
+export function mergeOwn(lists: (any[] | null | undefined)[]): any[] {
+  const seen = new Set<string>(), out: any[] = [];
+  for (const l of lists) for (const u of l ?? []) {
+    if (!u?.id || seen.has(u.id)) continue;
+    seen.add(u.id);
+    out.push(u);
+  }
+  return out;
+}
+
 const find = (list: any[], id: string | null | undefined) => (id ? list.find((u) => u.id === id) ?? null : null);
-const NOT_MANOEUVRE = /\bhq\b|adm|cbt sp|\bsp\b|sp coy|sup|sig|wksp|tpt|amb|ord|eme|asc|engr|\bfd coy|def & emp|def and emp|\bint\b|\bfs\b|\brp\b|pro\b|med\b|mor\b|tk tptr|ghatak|\batt\b|arty|art\b|\bfd regt|med regt|\bad\b|lat\b|hat\b|r&s|recce|svy|met\b|aop|dental|surg|mule|animal|postal|\bpu\b|\bgl sec|vet|rvc/i;
+const NOT_MANOEUVRE = /\bhq\b|adm|cbt sp|\bsp\b|sp coy|sup|s ?& ?t\b|sig|wksp|tpt|amb|ord|eme|asc|engr|\bfd coy|def & emp|def and emp|\bint\b|\bfs\b|\brp\b|pro\b|med\b|mor\b|tk tptr|ghatak|\batt\b|arty|art\b|\bfd regt|med regt|\bad\b|lat\b|hat\b|r&s|recce|svy|met\b|aop|dental|surg|mule|animal|postal|\bpu\b|\bgl sec|vet|rvc/i;
 const MANOEUVRE = /inf|mech|mib|armd|armr|afv|\btk\b|tank|cdo|rifle|stc|aslt|mjd|ranger|wing|mtn|\bcoy\b|sqn/i;
 
 function weaponRange(o: OrbatSet, wid: string | null): number | null {
@@ -81,14 +98,28 @@ function weaponsOf(o: OrbatSet, list: any[], u: any, depth = 0): { id: string | 
   return [...out.values()];
 }
 
+/** A unit's APCs / ICVs: as printed for it, else its children's times their counts (a Mech Bde Gp's are its MIBs'). */
+function apcsOf(list: any[], u: any, depth = 0): number {
+  if (!u || depth > 6) return 0;
+  if (Array.isArray(u.vehicles) && u.vehicles.length) return u.vehicles.filter((v: any) => /\bapc|bmp|icv|ifv\b/i.test(String(v?.name))).reduce((a: number, v: any) => a + (Number(v.count) || 0), 0);
+  return (u.children ?? []).reduce((a: number, c: any) => a + (Number(c.count) || 1) * apcsOf(list, find(list, c.unit), depth + 1), 0);
+}
+
 /** Manoeuvre Coys / Sqns down a unit's children. A child not printed is judged from its role (E). */
 function coysOf(list: any[], u: any, depth = 0): number {
   if (!u || depth > 6) return 0;
   const text = `${u.name ?? ''} ${u.type ?? ''} ${u.subtype ?? ''}`;
   // a service or support unit is no manoeuvre unit, whatever Coys it has (an ASC Bn's transport Coys)
   if (NOT_MANOEUVRE.test(text)) return 0;
+  // asked of a unit below a Coy itself: a rifle Pl is a third of a Coy (as roleCoys), a section none
+  if (depth === 0 && Number(u.echelon) < 15) return u.echelon === '14' && MANOEUVRE.test(text) ? 1 / 3 : 0;
   if (u.echelon === '15') return MANOEUVRE.test(text) ? 1 : 0;
-  if (u.children?.length) return u.children.reduce((a: number, c: any) => a + (Number(c.count) || 1) * childCoys(list, c, depth), 0);
+  if (u.children?.length) {
+    // the Armd Div lists its Armr Regts and MIBs itself and its Armd Bdes with no contents of their own: the Bdes are made of
+    // those Regts, so counting them as 12 Coys each would count the same Sqns again
+    const listsRegts = u.echelon === '21' && u.children.some((c: any) => /armr regt/i.test(String(find(list, c.unit)?.name ?? '')));
+    return u.children.reduce((a: number, c: any) => a + (Number(c.count) || 1) * (listsRegts && !find(list, c.unit) && /armd bde/i.test(String(c.role)) ? 0 : childCoys(list, c, depth)), 0);
+  }
   if (NOT_MANOEUVRE.test(text) || !MANOEUVRE.test(text)) return 0;
   // no children printed: an infantry or mech Bn its 4 Coys, an armd Regt its 3 Sqns (E, from the printed ones)
   return roleCoys(text, u.echelon);
@@ -125,15 +156,14 @@ export function brief(o: OrbatSet, id: string | null | undefined): UnitBrief | n
   const notes: string[] = [];
   const ws = weaponsOf(o, list, u);
   const line = (w: { id: string | null; name: string; count: number }): WeaponLine => ({ ...w, rangeM: weaponRange(o, w.id) });
-  const isAtgm = (w: { id: string | null; name: string }) => /atgm|\bbs\b|baktar|tow|milan|konkurs|\bnag\b|spandrel|sagger|fagot|hj-?8|red arrow/i.test(`${w.id ?? ''} ${w.name}`);
+  const isAtgm = (w: { id: string | null; name: string }) => /atgm|\bbs\b|baktar|\btow\b|milan|konkurs|\bnag\b|spandrel|sagger|fagot|hj-?8|red arrow/i.test(`${w.id ?? ''} ${w.name}`);
   const isRr = (w: { id: string | null; name: string }) => /106\s*mm\s*rr|106mm-rr|recoilless/i.test(`${w.id ?? ''} ${w.name}`);
   const atgm = ws.filter(isAtgm).map(line), rr = ws.filter(isRr).map(line);
   const mortars = ws.filter((w) => /\bmor\b|mortar|-mor\b/i.test(`${w.id ?? ''} ${w.name}`) && !/2 ?inch|2"|60/.test(w.name)).map(line);
   const mgs = ws.filter((w) => w.id === 'mg-1a3' || /mg ?1 ?a ?3|mgia3/i.test(w.name));
   for (const a of atgm.filter((x) => x.rangeM === null)) notes.push(`${a.name}: no range in weapons.json`);
   if (!ws.length) notes.push('no weapons printed for it or its children');
-  const veh: any[] = u.vehicles ?? [];
-  const apcs = veh.filter((v) => /\bapc|bmp|icv|ifv\b/i.test(String(v.name))).reduce((a, v) => a + (Number(v.count) || 0), 0);
+  const apcs = apcsOf(list, u);
   // Pls per Coy: the first manoeuvre Coy's Pls
   let pls: number | null = null;
   const coyChild = u.echelon === '15' ? u : (u.children ?? []).map((c: any) => find(list, c.unit)).find((cu: any) => cu && cu.echelon === '15' && coysOf(list, cu) === 1);
@@ -166,10 +196,179 @@ export function enUnitFor(ech: string, type: EnemyType, kind?: TerrainKind | nul
   return T[ech]?.[type] ?? null;
 }
 
-/** Own infantry Bn types for the Task step: each with its manoeuvre Coys and whether it is mounted. */
-export function ownBnTypes(o: OrbatSet): { id: string; name: string; coys: number; mounted: boolean }[] {
-  return o.own.filter((u) => u.arm === 'inf' && u.type === 'bn' && !/coast|ssg/i.test(u.id))
-    .map((u) => { const b = brief(o, u.id)!; return { id: u.id, name: b.name, coys: b.coys, mounted: b.mounted }; });
+/** An own Bn-sized infantry type the Task step offers. */
+export interface OwnType {
+  id: string;
+  name: string;
+  /** Its manoeuvre Coys. */
+  coys: number;
+  mounted: boolean;
+  /** Its rifle Coy and that Coy's rifle Pl (ORBAT ids), for a Coy or Pl plan of this type; null: it has none (an AT Bn). */
+  coy: string | null;
+  pl: string | null;
+  plsPerCoy: number | null;
+}
+
+/** A Bn-sized type's rifle Coy and that Coy's rifle Pl, down its children; null: not printed, or it has none. */
+export function subUnitsOf(o: OrbatSet, typeId: string | null | undefined): { coy: string | null; pl: string | null } {
+  const u = find(o.own, typeId);
+  const coy = (u?.children ?? []).map((c: any) => find(o.own, c.unit)).find((cu: any) => cu && cu.echelon === '15' && coysOf(o.own, cu) === 1) ?? null;
+  const pl = (coy?.children ?? []).filter((c: any) => /\bpl\b/i.test(String(c.role)) && !NOT_MANOEUVRE.test(String(c.role)))
+    .map((c: any) => find(o.own, c.unit)).find((pu: any) => pu && pu.echelon === '14') ?? null;
+  return { coy: coy?.id ?? null, pl: pl?.id ?? null };
+}
+
+/**
+ * Own Bn-sized infantry types for the Task step: the Bns, and the FC and Rangers Wings (4 rifle Coys each, pp 642-644).
+ * Each with its manoeuvre Coys, whether it is mounted, and its rifle Coy and Pl. SSG and Coast Guards are left out; so
+ * is a wing with no rifle Coys (the FC Corps' Sp, HQ and Adm Wings).
+ */
+export function ownBnTypes(o: OrbatSet): OwnType[] {
+  return o.own.filter((u) => u.arm === 'inf' && (u.type === 'bn' || u.type === 'wing') && !/coast|ssg/i.test(u.id))
+    .map((u) => { const b = brief(o, u.id)!, s = subUnitsOf(o, u.id); return { id: u.id, name: b.name, coys: b.coys, mounted: b.mounted, coy: s.coy, pl: s.pl, plsPerCoy: b.plsPerCoy, wing: u.type === 'wing' }; })
+    .filter((t) => !t.wing || t.coys > 0)
+    .map(({ wing: _wing, ...t }) => t);
+}
+
+/** An anti-tank Bn (LAT, HAT): its ATGM Coys are grouped out to the Bns and Bdes, not laid as a Bn plan. */
+export interface AtType {
+  id: string;
+  name: string;
+  /** Its ATGM Coys, and the launchers in each (the Bn's printed total shared out). */
+  coys: number;
+  launchersPerCoy: number;
+  /** One AT Coy's name and all ranks. */
+  coyName: string;
+  coyStrength: number | null;
+}
+
+/** The AT Bns in the ORBAT: Bn-sized infantry with no rifle Coy and ATGM launchers (LAT APC, LAT Jeep, HAT). */
+export function ownAtTypes(o: OrbatSet): AtType[] {
+  const out: AtType[] = [];
+  for (const u of o.own) {
+    if (u.arm !== 'inf' || u.type !== 'bn' || /coast|ssg/i.test(u.id)) continue;
+    const b = brief(o, u.id)!;
+    const launchers = b.atgm.reduce((a, w) => a + w.count, 0);
+    if (b.coys > 0 || !launchers) continue;
+    const kids = (u.children ?? []).map((c: any) => ({ c, cu: find(o.own, c.unit) })).filter((x: any) => x.cu && x.cu.echelon === '15' && !NOT_MANOEUVRE_HQ.test(String(x.c.role)));
+    const n = kids.reduce((a: number, x: any) => a + (Number(x.c.count) || 1), 0);
+    if (!n) continue;
+    out.push({ id: u.id, name: b.name, coys: n, launchersPerCoy: Math.round(launchers / n), coyName: String(kids[0].cu.name), coyStrength: Number(kids[0].cu.strength?.total) || null });
+  }
+  return out;
+}
+const NOT_MANOEUVRE_HQ = /\bhq\b|adm|sp coy/i;
+
+/**
+ * A unit with ATGM Coys of an AT Bn grouped to it (LAT, HAT): their launchers added to its own, so the ATGM pairs sited
+ * on the tank approaches and the AT cover row count them. Its Coys, rifle Coy count and reserve are not changed.
+ */
+export function withAtGroup(o: OrbatSet, unit: UnitBrief | null, atId: string | null | undefined, coys: number): UnitBrief | null {
+  const at = atId ? ownAtTypes(o).find((t) => t.id === atId) : null;
+  const k = Math.max(0, Math.min(at?.coys ?? 0, Math.round(coys)));
+  const ab = at ? brief(o, at.id) : null;
+  if (!unit || !at || !ab || !k) return unit;
+  const line = ab.atgm[0];
+  const add: WeaponLine = { id: line?.id ?? null, name: (line?.name ?? 'ATGM').replace(/ Wpn Sys.*| Launcher.*/, ''), count: at.launchersPerCoy * k, rangeM: line?.rangeM ?? null };
+  // "LAT Coy (APC borne)" in the plural: "LAT Coys (APC borne)"
+  const coyText = k > 1 ? at.coyName.replace(/^(.*?)( \(.*\))?$/, '$1s$2') : at.coyName;
+  const notes = [...unit.notes, `${k} ${coyText} grouped to it: ${add.count} ${add.name} (the ${at.name}'s ${ab.atgm.reduce((a, w) => a + w.count, 0)} shared out over its ${at.coys} Coys)`];
+  return {
+    ...unit,
+    name: `${unit.name} + ${k} ${coyText}`,
+    strength: unit.strength !== null && at.coyStrength ? unit.strength + k * at.coyStrength : unit.strength,
+    atgm: [...unit.atgm, add],
+    src: `${unit.src}; ${ab.src}`,
+    notes,
+  };
+}
+
+/** The tank Sqn of an Armr Regt (armr.json, p 107-108, 111): what the tanks with an attack are. */
+export interface TankSqn {
+  id: string;
+  name: string;
+  /** Tanks in the Sqn (SHQ's 2 and the Tps'), the Tps and the tanks in each. */
+  tanks: number;
+  tps: number;
+  tpTanks: number;
+  /** The Armr Regt's tanks (44), when it prints them; null when the Regt is not in the list. */
+  regtTanks: number | null;
+  src: string;
+}
+
+/** The tank Sqn from the ORBAT, counted down its children and vehicles; null when the Armr files are not loaded. */
+export function tankSqnOf(o: OrbatSet, id = 'armr-sqn-tk'): TankSqn | null {
+  const u = find(o.own, id);
+  if (!u) return null;
+  const tks = (x: any): number => (x?.vehicles ?? []).filter((v: any) => /^tks?$/i.test(String(v?.name).trim())).reduce((a: number, v: any) => a + (Number(v.count) || 0), 0);
+  const tpKid = (u.children ?? []).find((c: any) => find(o.own, c.unit)?.echelon === '14');
+  const tp = tpKid ? find(o.own, tpKid.unit) : null;
+  const tanks = tks(u);
+  if (!tanks) return null;
+  const regt = find(o.own, 'armr-regt');
+  return { id: u.id, name: String(u.name), tanks, tps: tpKid ? Number(tpKid.count) || 1 : 0, tpTanks: tks(tp), regtTanks: regt ? tks(regt) || null : null, src: `SO's Hbk 2019 p ${u.page ?? '?'} (${u.id})` };
+}
+
+/** The Sqn in a line: its tanks and Tps, the Regt it comes from. */
+export function tankSqnText(s: TankSqn): string {
+  return `${s.tanks} tanks${s.tps ? ` (${s.tps} Tps of ${s.tpTanks}${s.tanks - s.tps * s.tpTanks > 0 ? `, SHQ ${s.tanks - s.tps * s.tpTanks}` : ''})` : ''}${s.regtTanks ? `, from an Armr Regt of ${s.regtTanks}` : ''}`;
+}
+
+/** Own formation types for a Div plan (Inf Div, Armd Div): manoeuvre Coys / Sqns and whether it is mounted. */
+export function ownDivTypes(o: OrbatSet): { id: string; name: string; coys: number }[] {
+  return o.own.filter((u) => u.type === 'div' && (u.arm === 'inf' || u.arm === 'armr') && Number(u.echelon) === 21)
+    .map((u) => { const b = brief(o, u.id)!; return { id: u.id, name: b.name, coys: b.coys }; })
+    .sort((a, b) => Number(b.id === 'inf-div') - Number(a.id === 'inf-div'));
+}
+
+/** Whether a type suits a plan of an echelon: a Bn plan wants `need` Coys, a Coy plan a rifle Coy of `need` Pls, a Pl plan a rifle Pl. */
+export function typeFits(t: OwnType, ech: string, need: number): boolean {
+  if (ech === '16') return t.coys === need;
+  if (ech === '15') return !!t.coy && (t.plsPerCoy ?? need) === need;
+  if (ech === '14') return !!t.pl;
+  return false;
+}
+
+/** Own Bde types for a Bde plan (Inf Bde, IIBG, Indep Mech Inf Bde Gp): manoeuvre Coys / Sqns, Bn-sized manoeuvre units, mounted or not. */
+export function ownBdeTypes(o: OrbatSet): { id: string; name: string; coys: number; bns: number; mounted: boolean }[] {
+  // the infantry Bdes and the armoured one (IABG: 3 Armr Regts and a MIB)
+  return o.own.filter((u) => (u.arm === 'inf' || u.arm === 'armr') && u.type === 'bde' && Number(u.echelon) === 18).map((u) => {
+    const b = brief(o, u.id)!;
+    const bns = (u.children ?? []).reduce((a: number, c: any) => {
+      const cu = find(o.own, c.unit);
+      return a + (cu && (cu.echelon === '16' || cu.echelon === '17') && coysOf(o.own, cu) > 0 ? Number(c.count) || 1 : 0);
+    }, 0);
+    return { id: u.id, name: b.name, coys: b.coys, bns, mounted: b.mounted };
+    // the Inf Bde (the one a Bde plan is laid for unless another is chosen) leads
+  }).sort((a, b) => Number(b.id === 'inf-bde') - Number(a.id === 'inf-bde'));
+}
+
+/**
+ * The own unit a plan is laid for. A Bn-sized type chosen (Mtn Inf Bn, MIB, a Rangers Wing ...) gives a Bn plan that
+ * unit, a Coy plan its rifle Coy and a Pl plan that Coy's rifle Pl; a Bde plan takes the Bde type chosen. Without a
+ * choice, or when the type has no such sub-unit, the recipe's or family's unit, else the standard one.
+ */
+export function unitForPlan(o: OrbatSet, ech: string, pick: { type?: string | null; bde?: string | null; div?: string | null; preferred?: string | null }): string {
+  const dflt = ownUnitFor(ech, pick.preferred);
+  if (ech === '18') return pick.bde && find(o.own, pick.bde) ? pick.bde : dflt;
+  if (ech === '21') return pick.div && find(o.own, pick.div) ? pick.div : dflt;
+  if (!pick.type || !find(o.own, pick.type)) return dflt;
+  if (ech === '16') return pick.type;
+  const s = subUnitsOf(o, pick.type);
+  return (ech === '15' ? s.coy : ech === '14' ? s.pl : null) ?? dflt;
+}
+
+/** How a unit's Coys are named: rifle for an own Bn; manoeuvre for the enemy and for a Bde or above (its count takes in armour Sqns). */
+export function coyWord(b: UnitBrief): string {
+  return b.side === 'en' || Number(b.echelon) >= 18 ? 'manoeuvre' : 'rifle';
+}
+
+/** A unit's size in words: its Coys ("4 rifle Coys of 3 Pls"), a Coy by its Pls; null for a unit below a Coy. */
+export function sizeText(b: UnitBrief): string | null {
+  const e = Number(b.echelon);
+  if (e && e < 15) return null;
+  if (e === 15) return b.plsPerCoy ? `${b.plsPerCoy} Pls` : null;
+  return `${b.coys} ${coyWord(b)} Coys${b.plsPerCoy ? ` of ${b.plsPerCoy} Pls` : ''}`;
 }
 
 /** The unit in one line: all ranks, Coys, the weapons the rules use, mounted or not, and the source. */
@@ -178,7 +377,7 @@ export function unitLine(b: UnitBrief): string {
   const w = (l: WeaponLine[]) => l.map((x) => `${x.count} ${x.name.replace(/ Wpn Sys| Launcher/g, '')} (${km(x.rangeM)})`).join(', ');
   const parts = [
     b.strength ? `${b.strength.toLocaleString('en-GB')} all ranks` : null,
-    `${b.coys} ${b.side === 'en' ? 'manoeuvre' : 'rifle'} Coys${b.plsPerCoy ? ` of ${b.plsPerCoy} Pls` : ''}`,
+    sizeText(b),
     b.atgm.length ? w(b.atgm) : null, b.rr.length ? w(b.rr) : null, b.mortars.length ? w(b.mortars) : null,
     b.mgCount ? `${b.mgCount} MG1A3 (${km(b.mgEffM)})` : null,
     b.mounted ? `mounted (${b.apcs} APCs)` : null,
@@ -202,10 +401,16 @@ export function doctrineForUnit(doc: DoctrineSet, b: UnitBrief | null): Doctrine
 }
 
 /** The force from both ORBATs: manoeuvre Coys each side and the names, for PlanContext.forceRow. */
-export function forceFromOrbat(own: UnitBrief | null, en: UnitBrief | null): { ownS?: number; enS?: number; ownName?: string; enName?: string } {
+export function forceFromOrbat(own: UnitBrief | null, en: UnitBrief | null, tanks?: TankSqn | null, nSqn = 1, tp = false): { ownS?: number; enS?: number; ownName?: string; enName?: string } {
+  // tank Sqns with the plan (the attack's one, a defence's one to three) count as one more manoeuvre unit each, tank Tps
+  // (a Coy defence) a third of one (armour weighs more: E)
+  const t = tanks && own ? Math.max(0, Math.round(nSqn)) : 0;
+  const add = tp ? t / 3 : t;
+  const what = tp ? `${t} Tk Tp${t > 1 ? 's' : ''} of ${tanks?.tpTanks ?? 3} tanks` : `${t} Tk Sqn${t > 1 ? 's' : ''} of ${tanks?.tanks} tanks`;
   return {
-    ownS: own?.coys || undefined, enS: en?.coys || undefined,
-    ownName: own ? `${own.name} (${own.coys} rifle Coys)` : undefined,
+    ownS: own?.coys ? own.coys + add : undefined, enS: en?.coys || undefined,
+    // a Coy or a Pl is named alone ("1 rifle Coys" says nothing); a Coy with tank Tps says so
+    ownName: own ? (Number(own.echelon) <= 15 ? `${own.name}${t ? ` + ${what}` : ''}` : `${own.name} (${own.coys} ${coyWord(own)} Coys${t ? ` + ${what}` : ''})`) : undefined,
     enName: en ? `${en.name} (${en.coys} manoeuvre Coys${en.strength ? `, ${en.strength.toLocaleString('en-GB')} all ranks` : ''}; ${en.src})` : undefined,
   };
 }

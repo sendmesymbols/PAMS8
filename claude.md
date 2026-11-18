@@ -396,9 +396,18 @@ MS/
   mark sits on its **rear** side (`BP_SHAPE`); posns move a short way up to higher ground and their curves (CTRL_PTS)
   follow it, off NO-GO and water (`fit.highGround`, `fit.outline`); an attack axis bends round NO-GO on foot (CTRL_PTS,
   BASE_LN_PTS width) and the assault's pace along it is timed. **ORBAT wired** (`PlanOrbat.ts`, `planBuilder.orbatUrl`): unit
-  type chips (Std / Mtn / MIB / ABIB ...; 3-Coy types not offered), ranges from the unit's weapons, its ATGM pairs sited on
+  type chips (Std / Mtn / MIB / ABIB ... and the FC / Rangers Wings; 3-Coy types not offered on a Bn plan; a Coy or Pl plan
+  takes the chosen type's rifle Coy or Pl, `unitForPlan`; a Bde plan the Inf Bde / IIBG / Indep Mech Inf Bde Gp), every own
+  arm file read as one list (`mergeOwn`, 358 units) so a child in another arm's file is found, ranges from the unit's weapons, its ATGM pairs sited on
   the tank approaches + AT cover row, a mounted reserve for APC units, force ratio own Coys vs the en unit of Sec 13, the
-  minefield in time (engr p 439); `node tools/planbuilder-test/orbat.mjs` (33). **Phase 6 attack** (`PlanAttack.ts`): Bn Attk
+  minefield in time (engr p 439); `node tools/planbuilder-test/orbat.mjs` (88). **Tanks in a Bn defence** (`PlanTanks.withDefTanks`, `Recipe.defTanks`, Tanks row 0-3 Sqns):
+  harbours beside the reserve, the Sqns the C Pen force at tank rate (`PlanWhatIf` `tk-cpen-*` triggers), Tank harbour row, counted in
+  the force, read back by Check my plan (`pbMeta.defTanks`); Tps on a Coy Def; the first unit also to the Sup posns; Tank AT cover row with
+  the gun at `atFramework.tankGunEffM` 2500 m (basis E: Sec 1, re-read unlocked on 19 Nov, prints a gun range only for the Al-Zarrar; IC s105 para 21c: tanks in defence counter-attack, AT weight only where inescapable) (`tanks.mjs` 86). The tank Sqn with an attack is the ORBAT's (`tankSqnOf`, 14 tanks, `Recipe.tankSqn`;
+  counted in the force ratio; gun ranges are printed for 1 of 13 tanks, so the doctrine's stand) and the IABG / Armd Div are Bde / Div
+  types. 3-Coy Bn Def layouts for the Lt Cdo Bn (`bn3-def-two-up`, `bn3-def-three-up`,
+  recipe `forCoys`; the tab shows the layouts for the type chosen, `_famIds`) and an **AT group** row on a Bn defence: 1-3 ATGM
+  Coys of a LAT / HAT Bn grouped to it (`withAtGroup`, `pbMeta.atGroup`, read back by Check my plan). **Phase 6 attack** (`PlanAttack.ts`): Bn Attk
   right / left flank (BOF fixes the front) beside frontal (warned, ranked last unless no flank is feasible: user); finders
   for the FUP (dead ground), SL (linear feature, clear run, beyond the last lift), BOF (sees the Obj, off the axis), Assy
   Area (hidden, road, outside thermal sights); H-hour sum with fire lifts (IC s66); his MSR choke and weighed Lt vs Rt

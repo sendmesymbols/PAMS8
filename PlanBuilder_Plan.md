@@ -666,11 +666,81 @@ Verified on the real bundle in the Salt Range (32.72 N 72.95 E): Bn Def two up p
 | The level table for drawn symbols counts from the ORBAT's children (Bn 4 rifle Coys, Bde 3 Bns, Div 3 Bdes) | `PlanDoctrine.enemy.levels` |
 | Copy as Text: the unit line and the enemy's | `PlanBuildTab._unitLine` |
 | Fixed on the way: the what-if rebuilt its rows and dropped the En force / Terrain rows (and now AT cover) | `PlanWhatIf.withMoves` |
-| Checks | `node tools/planbuilder-test/orbat.mjs` (33) |
+| Checks | `node tools/planbuilder-test/orbat.mjs` (33; 55 with step 1 below) |
 
 Verified on the real bundle at the BRB east of Lahore (threat east): the plan placed with all 4 BS (the gap pair and the second pair on the main approach); En force the RAPID Inf Bde, 12 Coys on 4 = 3 : 1; Ground read as an obstacle (a distributary in front); AT cover pass on both approaches; mines 3.5 km in about 36 h for one Fd Coy; the reserve on foot to the C Pen posn 39 min against the enemy's 33 (fail), and as an MIB, mounted, 11 against 33 (pass).
 
-Not wired yet: the other arm files (armr, arty, engr units, AD) as own units; en weapons for his ATGM ranges (his Std Inf Bn's ATGM has no range in weapons.json); the vehicles for march tables (the Move Planner does those).
+Not wired yet: the other arms as own units to lay a plan for (armr, arty, engr, AD: read since 18 Nov, see below, but no plan uses them); en weapons for his ATGM ranges (his Std Inf Bn's ATGM has no range in weapons.json); the vehicles for march tables (the Move Planner does those).
+
+**More of the ORBAT, step 1 (18 Nov 2026, the user: "What units are left? How can we include more units from the ORBAT?" then "build step 1"):**
+
+| Piece | Where |
+|---|---|
+| **Every own arm file as one list** (inf, armr, arty, ad, engr, sig, avn, log, mov: 358 units, no id twice), so a child kept in another arm's file is found: the Inf Bde's Sig Coy (2,586 all ranks, was blank), the Indep Mech Inf Bde Gp's Armr Regt (its 6 BS, 124 APCs). inf.json, en.json and weapons.json must be there; an arm file that is missing is said in the log and left out | `PlanOrbat.OWN_ORBAT_FILES`, `mergeOwn`, `PlanBuildTab._loadOrbat` |
+| **FC Wing and Rangers Wing** in the Type row (4 rifle Coys, 730 all ranks, pp 642-644). The FC Corps' Sp / HQ / Adm Wings have no rifle Coys and are left out. SSG and Coast Guards stay hidden (user's call, not yet made) | `ownBnTypes` |
+| **Coy and Pl plans follow the type**: the Type row is on Coy plans ("Coy of") and Pl plans ("Pl of") too; one choice for all three. A Mtn Inf Bn chosen gives a Bn plan that Bn, a Coy plan its rifle Coy, a Pl plan that Coy's rifle Pl, read down the ORBAT's children. A Coy Def of a MIB Coy has a mounted reserve (13 APCs: Reserve reach 6 min against 11 on foot). An AT Bn (LAT, HAT) has no rifle Coy: not offered there. A Lt Cdo Coy (3 Pls) is offered for Coy and Pl plans; on a Bn plan the 3-Coy Bn was not taken until step 2 below | `subUnitsOf`, `typeFits`, `unitForPlan`, `PlanBuildTab._unit`, `_needOf`, `_unitTypeRow` |
+| **Bde types** on a Bde plan: Inf Bde, IIBG, Indep Mech Inf Bde Gp (each 3 Bn-sized manoeuvre units). Today the only Bde plans are the crossings, whose times do not use the unit: the choice changes what the tab shows, Copy as Text and the unit Check my plan reads | `ownBdeTypes`, `_bdeId` |
+| APCs counted down the children when the unit prints no vehicles of its own (the Mech Bde Gp's are its MIBs') | `apcsOf` |
+| Fixed on the way: a towed howitzer read as an ATGM ("Towed" matched TOW); an Indep S&T Coy counted as a manoeuvre Coy (IIBG 13, now 12); a rifle Pl said to hold "12 rifle Coys" (a Pl now names no Coys, a Coy its Pls, a Bde or above "manoeuvre Coys" since armour Sqns are among them) | `brief`, `coysOf`, `sizeText`, `coyWord` |
+| Checks | `node tools/planbuilder-test/orbat.mjs` (55) |
+
+Verified in the app (dev server, terrain ready): Bn Def with the Rangers Wing (En force 3 : 1 against the RAPID Inf Bde); Coy Def as the Rangers' rifle Coy, the MIB's Mech Inf Coy (mounted) and the Lt Cdo Coy; Pl Ambush as the Mtn and Lt Cdo Pl; Bde Crossing with the three Bde types; LAT / HAT greyed on a Coy plan with the reason.
+
+**More of the ORBAT, step 2 (19 Nov 2026, the user: "build step 2"): 3-Coy Bn layouts and AT Coys grouped to a Bn:**
+
+| Piece | Where |
+|---|---|
+| **Two 3-Coy Bn Def layouts for the Lt Cdo Bn** (3 Lt Cdo Coys + an HQ Coy, p 623), in the Bn Def family beside the 4-Coy ones. **Two up, one back** (`bn3-def-two-up`): A and B forward as in the 4-Coy layout, C Coy the reserve 1350 m back; frontage 3.5 km in the two-up row's 4.5 km, depth 3.3 km in its 3.0-4.0 km, Reserve reach 30 min. **Three up, none back** (`bn3-def-three-up`): A, B, C forward (5.5 km in the 6.5 km row), no Coy left for a reserve, so the Depth row warns (700 m against 2.5-3.0 km) and there is no Reserve reach row: ask Bde for a reserve. Both basis E (the book prints these rows for four Coys; the three-Coy layouts are mine) | `Recipes/bn3-def-two-up.json`, `bn3-def-three-up.json`, `forCoys` in `PlanRecipes.Recipe` |
+| Recipe `forCoys` (3): the Coys the layout is for, checked against the slots; a family may hold a layout once for each Coy count. The tab shows the layouts for the type chosen (Lt Cdo: Auto, Two up, Three up; others: the 4-Coy set), Auto and Compare rank only those; picking a type switches the layout. A Bn type is offered where the family has a layout for its Coys: Lt Cdo on Bn Def, still not on Bn Attk or Bn Crossing (4 only) | `PlanBuildTab._famIds`, `_famNeeds`, `_needOf`, `_unitTypeRow` |
+| **AT group** (Bn Def only; row under Type): the ATGM Coys of an AT Bn (LAT APC borne, LAT Jeep borne, HAT: 3 ATGM Coys of 12 launchers each, the Bn's 36 shared over 3) grouped to the Bn, 1 to 3 of them. Their launchers join the unit's own (Std Inf Bn + 1 LAT Coy: 4 + 12 = 16 ATGM, 8 pairs, 970 all ranks): 7 pairs sited on the tank approaches where there were 1, those landing on one approach fanned out 3 pairs' width apart (E), and the AT cover row says "holds 16 ATGM (8 pairs)". The unit's rifle Coys, strength of the reserve and mounted flag are unchanged; the unit line and Copy as Text name the group | `PlanOrbat.ownAtTypes`, `withAtGroup`, `PlanFit.atgmExtras`, `PlanBuildTab._atRow`, `_atGrouped` |
+| A built plan carries the group (`pbMeta.atGroup`) and Check my plan reads it back: its AT cover counts the grouped launchers, its force row names the unit as built | `PlanBuildTab._meta`, `PlanCheck` |
+| Checks | `node tools/planbuilder-test/orbat.mjs` (73), `recipes.mjs` (113), `check.mjs` (101), `solve.mjs` (475, over 26 recipes) |
+
+Verified in the app (dev server, terrain ready): Bn Def with the Lt Cdo Bn (28 symbols two up, 34 three up; Check rows pass for frontage, depth and reserve reach), back to the Std Inf Bn (the 4-Coy layouts return); LAT Coys 1 and 2 grouped (970 and 1,131 all ranks, 12 and 24 ATGM); a HAT Coy grouped with a mech enemy (Copy as Text names it); Coy Def, Bn Attk with the Lt Cdo chosen (not offered on the attack). **Not checked in the app:** placing a plan with the group and Check my plan on it (the map did not take clicks in that run); that read-back is tested in Node (`check.mjs`).
+
+**More of the ORBAT, step 3 (19 Nov 2026, the user: "Armour next"): the tank Sqn and the armoured formations:**
+
+| Piece | Where |
+|---|---|
+| **The tank Sqn with an attack from the Armr Regt** (`armr-sqn-tk`, p 107-108, 111): 14 tanks (SHQ 2 + 4 Tps of 3), from an Armr Regt of 44. The tank recipe carries it (`Recipe.tankSqn`); the timing rows say "the Sqn of 14 tanks" (Fire sp) and "the Sqn (-), 11 of its 14 tanks," (Close sp: the Tp of 3 stays on the BOF's flank); a line under the Tanks chips and Copy as Text name it. Without the armour file the wording and figures are as before | `PlanOrbat.tankSqnOf`, `tankSqnText`, `PlanTanks.withTanks`, `addTankTimes` |
+| **Force ratio counts the Sqn** as one more manoeuvre unit (a Bn of 4 Coys on an en Coy: 4 : 1, with the Sqn 5 : 1; the unit named "4 rifle Coys + 1 Tk Sqn of 14 tanks"). Armour weighs more than a Coy: one is a floor (E) | `forceFromOrbat`, `PlanBuildTab._force` |
+| **IABG** in the Bde Type row (3 Armr Regts + a MIB, 13 manoeuvre Coys / Sqns, 107 APCs, mounted) and a **Div Type row** (Inf Div, Armd Div: 13,128 all ranks), on the crossings (a Bde or Div plan). As in step 1 the choice changes what the tab shows and the unit Check my plan reads: the crossing times take no unit | `ownBdeTypes`, `ownDivTypes`, `unitForPlan` (`div`), `_divId` |
+| Fixed on the way: the Armd Div's Coy count was 39, because its Armd Bdes, printed with no contents, were counted as 12 Coys each on top of the Regts that make them up; now 27 (5 Armr Regts x 3 Sqns + 3 MIBs x 4). The enemy's Divs are unchanged | `coysOf` |
+| Checks | `node tools/planbuilder-test/orbat.mjs` (88) |
+
+Verified in the app (dev server): Bn Attk with Close sp and Fire sp (the line under the chips, Force ratio about 5 : 1, Tank timing with the Sqn's tanks, Copy as Text); Bde Crossing with the IABG; Div Bridgehead with the Armd Div. **Data gap, not filled:** main gun ranges are printed for 1 of the 13 tank guns in `weapons.json` (the Al-Zarrar, effective 2.5-3 km); the other 12 have none, so the Tank fire range row keeps the doctrine's night 800 / 1600 m (IBB p214) and the tanks are not counted as AT weapons in the AT cover row. They have to be read from the handbook first; I did not invent them.
+
+**Armour in defence (19 Nov 2026, the user: "Armour in defence"): tank Sqns grouped to a Bn defence:**
+
+| Piece | Where |
+|---|---|
+| **Tanks row on a Bn Def** (None, 1, 2 or 3 Sqns of the Armr Regt, 14 tanks each, ORBAT): each Sqn a tank unit symbol (A, B, C Sqn) in its harbour **beside the reserve**, 1100 m off its centre, alternate sides; in a layout with no reserve (the 3-Coy three up) 500 m behind the rear edge of the forward Coys. A new recipe per choice (`-tkd1`...), the base one unchanged; works with the 3-Coy layouts too | `PlanTanks.withDefTanks`, `Recipe.defTanks`, `PlanBuildTab._tankRow`, `_rcp` |
+| **The Sqns are the C Pen force at the tank rate**: each Sqn's move to the C Pen posn on the main approach on tracks (24 km/h, tracked going) in the trigger table and the Moves in time row, timed against the enemy like the reserve's (the Sqn 11 min against the reserve Coy's 38 on foot in the test; the same 30 min wanted). A layout with no reserve gets its C Pen posn from the Sqn alone | `PlanWhatIf.whatIf` step 3 |
+| **Tank harbour row** on the ground: tracks go there (not NO-GO: fail), and it is not in his view from where he starts (a hull 2.3 m up: 50 % or more seen warns, hull down or move it). Without the ground one **Tank Sqns** row, not checked | `PlanTanks.defTankRows`, `PlanFit.fitLayout`, `PlanCheck` |
+| **The force counts each Sqn** as one more manoeuvre unit ("4 rifle Coys + 2 Tk Sqns of 14 tanks": 6 against 4); a built plan carries `pbMeta.defTanks` and Check my plan reads it back: the Sqn symbols are not taken for held posns, their harbour and C Pen move are read from the symbols, the force names them | `forceFromOrbat(…, nSqn)`, `PlanBuildTab._meta`, `PlanCheck` |
+| *(superseded the same day, see "Limits overcome" below: the tanks' guns now count as AT, at an E figure.)* | |
+
+**Armour in defence, limits overcome (19 Nov 2026, the user: "overcome limits"):**
+
+| Limit | What was done |
+|---|---|
+| Main approach only | The first tank unit (A) is also timed to the **Sup posn of each secondary approach** (trigger `tk-sup-<approach>`, "Enemy on A2 (secondary): A Sqn -> Sup 1"), on tracks, against his time there. The other units stay for the main approach. `PlanWhatIf.whatIf` step 2 |
+| Tank guns not counted as AT (ranges printed for 1 of 13 tanks) | The Al-Zarrar's printed effective range, **2500 m**, is applied to the grouped tanks as **`atFramework.tankGunEffM` (basis E)** in `PlanDoctrine.json`, with its source and a note to change it for another tank. A **Tank AT cover** row: for each approach, how far beyond the FDL its path stays within that range of the posn the tanks fire from (the C Pen posn on the main approach, the Sup posn on a secondary one); covered when 500 m or more (`atFramework.tankCoverMinM`, E). E.g. A1 1800 m, A2 800 m beyond the FDL. Warns for an approach out of reach or no posn. Check my plan reads it back. A shorter gun (300 m) leaves the approaches short and warns. **The 12 other tanks' real ranges are still not read**: see below. `PlanWhatIf.tankCoverRow` |
+| Tanks in a Coy defence | **Tank Tps** (3 tanks, the ORBAT's AFV Tp) on a Coy Def: Tanks row None / 1-3 Tps; harbours beside the reserve Pl (650 m off its centre: half its width and 350 m); the C Pen force at tank rate; Tank harbour / Tank AT cover rows; each Tp a third of a Coy in the force ("Rifle Coy + 2 Tk Tps of 3 tanks": 1.67). The count resets when the operation or unit changes (Sqns for a Bn, Tps for a Coy). `withDefTanks` (echelon 15), `Recipe.defTanksUnit`, `forceFromOrbat(…, tp)` |
+| Checks | `tanks.mjs` (86), `check.mjs` (108) |
+
+**The handbook re-read (19 Nov 2026):** the user unlocked `Sec 1 - Armr.pdf` with their password into `Material/unlocked/` (poppler `pdftocairo -upw`, typed by them; not stored). Sec 1 has text. Findings:
+- **No gun ranges to fill.** Pp 121-124 (Comparative Data Current MBTs) print, for M1A2, T-72, T-55, Vijayanta, Merkava Mk2, T-85 IIAP, MBT 90, T-69 MII, T-59 M, Leopard II, Al-Khalid and T-80 UD: calibre, ammo, rounds carried, night vision, LRF, and an *Op Range* in km (how far the tank drives), but **no gun range**. Only the Al-Zarrar's essential data (pp 124-126) prints one: eff 2500-3000 m, max 12220 m. So the gap is the book's; `weapons.json` stays as extracted and `tankGunEffM` stays E (its note now says so).
+- **No armour frontages or depths** anywhere in Sec 1 (orgs, echelons, radio, ammo, space / mov / log, the CCO layout), so an Armr Regt or Tk Sqn as the unit of a plan still has no figures from it.
+- **IC s105 para 21c (p 555), text in `Material/IC.pdf`:** tanks in defence *mount counter-attacks, counter enemy penetration, and destroy his armour by offensive action while lending weight to the AT layout only where absolutely inescapable*. That is how the Tanks row uses them (C Pen force, not posted as AT); the Tank AT cover row now cites it and says the reach is from where they go, not a post. Para 22: a Tp of tanks lifts a Pl.
+- `IBB.pdf` is scanned (no text); `Operations of War (Volume-I) Defence.pdf` is password-protected too: it may hold armour frontages in defence.
+
+Also not done: the Recce Regt / Sqn for screens; tanks as a reserve in an attack's follow-up phase.
+| Checks | `tanks.mjs` (74), `check.mjs` (106) |
+
+Verified in the app (dev server): 1, 2 Sqns on the Std Inf Bn's two up (33 and 34 symbols), the Lt Cdo Bn's three up with 2 Sqns (36), the force row naming the Sqns, Copy as Text and the Tank Sqns row; the Tanks row is absent on an attack (it has its own). **Not checked in the app:** placing the plan and the Tank harbour row on the real terrain (the map did not take clicks in that run); both are tested in Node with synthetic ground, and the placed plan's read-back in `check.mjs`.
+
+Not done for armour: tanks to the secondary approaches' Sup posns (the main approach's C Pen posn only); tanks in a Coy defence or an attack's follow-up phase as a reserve; an Armr Regt or Tk Sqn as the unit of a plan (the layouts' frontages and depths are infantry rows); the Recce Regt / Sqn for screens; the Armd Div's Bdes (two Armd Bdes and a Lt Armd Bde have no contents in `armr.json`). Not done from step 2: AT grouping on a Bde plan (the only Bde plans are crossings, which take no unit); on an attack or a Coy plan; 3-Coy layouts for Bn Attk, Bn Crossing and Coy plans; LAT / HAT Coys by Pl (a Coy is 2 ATGM Pls of 6 launchers). Left for the next steps: armour, artillery, engineers, AD and aviation as their own units in a plan. Data gaps met: 224 of 308 child links in inf.json carry a role and no unit id; 1 of 13 tank guns in weapons.json has a range; 7 of 22 AD unit weapon lines are not linked to weapons.json; the Coy count is an infantry rule (it reads the arty Mtn Regt as 3 manoeuvre Coys and the Recce Regt as 0). `tools/orbat-test/run.mjs` still looks in `MS/Data/Orbat/` and not `MS/Data/Orbat/PK/`, so it stops before checking anything (not changed here).
 
 **A built plan checked again reads the same (15 Nov 2026, the user: "why does the Auto plan fail when checked again?"):**
 

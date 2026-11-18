@@ -77,7 +77,7 @@ for (const f of files) {
   for (const i of issues.filter((i) => i.level === 'warn')) { warns++; if (!quiet) console.log(`warn  ${r.id}: ${i.msg}`); }
   check(`${r.id}: valid`, !bad.length, bad.map((i) => i.msg).join('; '));
   const fam = index.families.find((x) => x.recipes.includes(r.id));
-  check(`${r.id}: family / task / echelon / unit agree with index.json`, !!fam && fam.id === r.family && fam.task === r.task && fam.echelon === r.echelon && fam.unit === r.unit);
+  check(`${r.id}: family / task / echelon / unit agree with index.json`, !!fam && fam.id === r.family && fam.task === r.task && fam.echelon === r.echelon && (fam.unit === r.unit || (r.forCoys != null && !!r.unit)));
 }
 const famIssues = R.validateFamilies(recipes);
 check('families agree on task and echelon, no layout twice', !famIssues.length, famIssues.map((i) => i.msg).join('; '));
@@ -111,6 +111,16 @@ broken('an alternate of a missing slot', (r) => { r.alternates[0].of = 'nobody';
 broken('id not matching the file', (r) => { r.id = 'bn-def-other'; }, /does not match the file/);
 broken('a sub-unit not below the recipe', (r) => { r.slots[0].echelon = '16'; }, /not below/);
 broken('an unknown ORBAT unit', (r) => { r.unit = 'inf-bn-nope'; }, /not in the ORBAT/);
+broken('forCoys that the slots do not hold (3 for a recipe of four Coys)', (r) => { r.forCoys = 3; }, /forCoys is 3 but the recipe holds ground with 4/);
+broken('forCoys not a whole number', (r) => { r.forCoys = 2.5; }, /forCoys 2\.5 is not a whole number/);
+{
+  // a family may hold a layout once for each Coy count, not twice for the same
+  const t3 = recipes.find((r) => r.id === 'bn3-def-two-up');
+  check('3-Coy recipes: forCoys 3, the Lt Cdo Bn, two layouts (two up with a reserve, three up with none)', recipes.filter((r) => r.forCoys === 3).map((r) => r.id).sort().join() === 'bn3-def-three-up,bn3-def-two-up' && t3?.unit === 'inf-bn-lt-cdo' && t3.slots.filter((s) => s.kind === 'res').length === 1 && recipes.find((r) => r.id === 'bn3-def-three-up').slots.every((s) => s.kind !== 'res' && s.kind !== 'depth'));
+  check('families: the same layout once for each Coy count is allowed', !R.validateFamilies(recipes).length);
+  const dup = [...recipes, { ...structuredClone(t3), id: 'bn3-def-two-up-b' }];
+  check('...but the same layout twice for the same count is caught', R.validateFamilies(dup).some((i) => /same layout twice/.test(i.msg)));
+}
 
 console.log(`\n${recipes.length} recipes, ${n} checks, ${fails} failed, ${warns} warnings`);
 process.exit(fails ? 1 : 0);

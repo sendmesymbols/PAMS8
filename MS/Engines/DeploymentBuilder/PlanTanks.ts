@@ -16,7 +16,7 @@
  * Figures: PlanDoctrine `attack.tanks`, `attack.tankFupFromObjM`. No ArcGIS, no DOM.
  */
 import type { DoctrineSet, Recipe, RecipeSlot } from './PlanRecipes';
-import { doctrineAt, resolveRange } from './PlanRecipes';
+import { doctrineAt, footprints, resolveRange } from './PlanRecipes';
 import type { Check, CheckState, SolveResult, XY } from './PlanSolve';
 import { toLocal, toWorld, type FitFrame, type PlanGround } from './PlanFit';
 import { hRelText, simplify, type HSum, type HStep } from './PlanAttack';
@@ -59,7 +59,7 @@ function besideBof(bofMid: XY, objC: XY, E: XY, u: XY): XY {
  * Sqn there; Close sp adds the tanks' axis converging on the Obj and the rear troop on the BOF's flank; Fire sp adds the
  * Sqn's fire posns by the BOF (planned). New recipe (id `-tkf` / `-tkc`); the one passed in is not changed.
  */
-export function withTanks(r: Recipe, doc: DoctrineSet, mode: TankMode): Recipe {
+export function withTanks(r: Recipe, doc: DoctrineSet, mode: TankMode, sqn?: Recipe['tankSqn'] | null): Recipe {
   if (mode === 'none' || r.task !== 'attack' || r.tanks) return r;
   const out: Recipe = JSON.parse(JSON.stringify(r));
   const S = (role: string) => out.slots.find((s) => s.role === role);
@@ -90,8 +90,76 @@ export function withTanks(r: Recipe, doc: DoctrineSet, mode: TankMode): Recipe {
   out.id = `${r.id}-tk${mode === 'close' ? 'c' : 'f'}`;
   out.name = `${r.name}, tanks in ${mode === 'close' ? 'close' : 'fire'} sp`;
   out.tanks = mode;
+  if (sqn) out.tankSqn = { ...sqn };
   out.note = `${r.note ?? ''} Tanks (PlanTanks, ${mode === 'close' ? 'close sp, armour heavy' : 'fire sp, infantry heavy'}): FUP (Tks) ${fmtM(back)} from the Obj (IBB p214: out of his ATGMs' reach, no common FUP), ${fmtM(Math.abs(aside))} aside of the infantry's axis.`.trim();
   return out;
+}
+
+// ── tanks grouped to a defence ───────────────────────────────────────────────────────────────────────────────────
+
+/** The sub-unit boxes of a recipe's footprint slots as the validator reads them (plan metres, y back). */
+const footBoxes = (doc: DoctrineSet, r: Recipe) => footprints(doc, r);
+
+/**
+ * `n` tank units (1-3) grouped to a defence: Sqns to a Bn defence, Tps (3 tanks) to a Coy defence. Each harbour stands
+ * beside the reserve (half its width and 350 m off its centre: 1100 m for a Bn's Coy, 650 m for a Coy's Pl; alternate
+ * sides), or 500 m behind the rear posn where the layout holds no reserve. They are the plan's counter-penetration force
+ * at the tank rate (PlanWhatIf), counted in the force, and their guns count as AT at `atFramework.tankGunEffM` (E: the
+ * range is printed only for the Al-Zarrar). New recipe (`-tkd1`...); the one passed in is not changed.
+ */
+export function withDefTanks(r: Recipe, doc: DoctrineSet, n: number, sqn?: Recipe['tankSqn'] | null): Recipe {
+  const k = Math.max(0, Math.min(3, Math.round(n)));
+  const unitWord: 'Sqn' | 'Tp' = r.echelon === '15' ? 'Tp' : 'Sqn';
+  if (!k || r.task !== 'defence' || (r.echelon !== '16' && r.echelon !== '15') || r.defTanks) return r;
+  const out: Recipe = JSON.parse(JSON.stringify(r));
+  const fp = footBoxes(doc, r);
+  const res = fp.find((b) => b.kind === 'res');
+  const rear = fp.length ? Math.max(...fp.map((b) => b.y + b.h / 2)) : 0;
+  const back = res ? res.y : rear + 500, across0 = res ? res.x : 0, off = res ? Math.round(res.w / 2 + 350) : 900;
+  for (let i = 0; i < k; i++) {
+    const sign = i % 2 === 0 ? 1 : -1, reach = off + (res ? res.w + 100 : 1200) * Math.floor(i / 2);
+    out.slots.push({ role: i ? `tkSqn${i + 1}` : 'tkSqn', kind: 'point', sym: '10120500', label: `${'ABC'[i]} ${unitWord}`, echelon: unitWord === 'Tp' ? '14' : '15', order: 8, shape: { at: [Math.round(across0 + sign * reach), Math.round(back)] } });
+  }
+  out.id = `${r.id}-tkd${k}`;
+  out.name = `${r.name}, ${k} tank ${unitWord}${k > 1 ? 's' : ''}`;
+  out.defTanks = k;
+  out.defTanksUnit = unitWord;
+  if (sqn) out.tankSqn = { ...sqn };
+  out.note = `${r.note ?? ''} ${k} tank ${unitWord}${k > 1 ? 's' : ''} (PlanTanks.withDefTanks): harbour${k > 1 ? 's' : ''} ${res ? `beside the reserve, ${off} m off its centre` : '500 m behind the rear posn (no reserve in this layout)'}; the ${unitWord === 'Tp' ? 'Coy' : 'Bn'}'s counter-penetration force at the tank rate (E).`.trim();
+  return out;
+}
+
+/** The tank Sqns of a built defence: their items (roles tkSqn, tkSqn2 ...) in plan metres. */
+const sqnItems = (items: { role: string; label: string; pts: XY[] }[]) => items.filter((i) => /^tkSqn\d*$/.test(i.role) && i.pts.length);
+
+/**
+ * The rows for tank Sqns grouped to a defence. Without the ground one row, not checked: the harbours' ground. On the
+ * ground, each harbour: tracks go there (not NO-GO) and it is not in his view from where he starts (a hull 2.3 m up).
+ */
+export function defTankRows(items: { role: string; label: string; pts: XY[] }[], recipe: Recipe, f: FitFrame | null, g: PlanGround | null, doc: DoctrineSet, from: XY | null): Check[] {
+  const sq = sqnItems(items);
+  if (!sq.length) return [];
+  const s = recipe.tankSqn, tp = recipe.defTanksUnit === 'Tp';
+  const what = `${sq.length} tank ${tp ? 'Tp' : 'Sqn'}${sq.length > 1 ? 's' : ''}${s ? ` of ${tp ? s.tpTanks : s.tanks} tanks (ORBAT, ${s.src})` : ''}`;
+  const guns = `their guns count as AT at ${(num(doc, 'atFramework.tankGunEffM', 2500) / 1000).toFixed(1)} km (E: the range is printed only for the Al-Zarrar; Tank AT cover row)`;
+  if (!f || !g) return [{ name: tp ? 'Tank Tps' : 'Tank Sqns', st: 'unchecked', reason: `${what} beside the reserve, the ${tp ? 'Coy' : 'Bn'}'s counter-penetration force at the tank rate; the harbours' ground needs terrain data; ${guns}` }];
+  const track = g.going('tracked');
+  const W = (p: XY) => toWorld(f, p);
+  const parts: string[] = [];
+  let worst: CheckState = 'pass';
+  for (const q of sq) {
+    const c = q.pts[0], w = W(c), cls = g.cls(w.x, w.y);
+    const bad = cls !== null && (track.nogo.has(cls) || WATER.has(cls));
+    let seen: number | null = null;
+    if (from && g.sight) {
+      const ps = [P(0, 0), P(-150, 0), P(150, 0), P(0, 150), P(0, -150)].map((d) => { const b = W(P(c.x + d.x, c.y + d.y)); return g.sight!(from.x, from.y, 2, b.x, b.y, 2.3); }).filter((p): p is number => p !== null);
+      seen = ps.length >= 3 ? ps.filter((p) => p >= 0.5).length / ps.length : null;
+    }
+    const st: CheckState = cls === null ? 'unchecked' : bad ? 'fail' : seen !== null && seen >= 0.5 ? 'warn' : 'pass';
+    if (st === 'fail') worst = 'fail'; else if (st === 'warn' && worst !== 'fail') worst = 'warn'; else if (st === 'unchecked' && worst === 'pass') worst = 'unchecked';
+    parts.push(`${q.label}: ${cls === null ? 'ground not loaded' : bad ? 'NO-GO for tracks (move it by hand)' : 'tracks go'}${seen === null ? '' : seen >= 0.5 ? `, ${Math.round(seen * 100)} % likely in his view: hull down or move it` : ', hidden from his start'}`);
+  }
+  return [{ name: 'Tank harbour', st: worst, reason: `${what}: ${parts.join('; ')}; ${guns}` }];
 }
 
 // ── on the ground ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -234,7 +302,10 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
   const infAt = (m: number) => h.objAt - Math.round((m / 100) * pace);
   const rows: Check[] = [];
   const steps: HStep[] = [];
-  const minOf = (w: ReturnType<typeof trackWalk>) => Math.round(((w.goM + w.slowM * slowFactor) / 1000 / kmh) * 60);
+  // the Sqn from the ORBAT: its tanks in the timing's words (Close sp sends the Sqn less the Tp left on the BOF's flank)
+  const sq = res.recipe.tankSqn;
+  const sqnWord = !sq ? 'the Sqn' : mode === 'close' ? `the Sqn (-), ${Math.max(0, sq.tanks - sq.tpTanks)} of its ${sq.tanks} tanks,` : `the Sqn of ${sq.tanks} tanks`;
+  const minOf =(w: ReturnType<typeof trackWalk>) => Math.round(((w.goM + w.slowM * slowFactor) / 1000 / kmh) * 60);
   const goingRow = (w: ReturnType<typeof trackWalk>, what: string): Check => ({
     name: 'Tank going', st: !w.known ? 'unchecked' : w.nogo ? 'fail' : w.slowM / Math.max(1, w.goM + w.slowM) > 0.5 ? 'warn' : 'pass',
     reason: !w.known ? 'no ground data along the tanks\' way' : w.nogo ? `${what} crosses NO-GO for tracks: turn it, bridge it, or fight infantry heavy` : `${what}: ${Math.round((100 * w.slowM) / Math.max(1, w.goM + w.slowM))} % SLOW-GO for tracks`,
@@ -266,7 +337,7 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
     if (tRush > tAl) steps.push({ label: 'Tanks at the assault line, firing the infantry on', distM: 0, min: tRush - tAl, at: tAl });
     steps.push({ label: 'Tanks rush the Obj', distM: rush, min: rushMin, at: tRush });
     h.tanks = { mode, leaveAt: leave, atAt: tAl, onObjAt: onObj, lengthM: Math.round(w.goM + w.slowM) };
-    rows.push({ name: 'Tank timing', st: onObj <= h.objAt + 1 ? 'pass' : 'warn', reason: `the Sqn (-) leaves FUP (Tks) ${hRelText(leave)}, ${fmtM(w.goM + w.slowM)} in ${travel} min${night ? ' by night' : ''} to the infantry's assault line ${rush} m out as they reach it (${hRelText(tAl)}), fires them on from there and rushes the Obj, on it ${hRelText(onObj)}, the infantry ${hRelText(h.objAt)} (IBB p187: just before or with them)${leave < 0 ? '; it moves before H: cover its noise with the deception plan (IBB p215)' : ''}` });
+    rows.push({ name: 'Tank timing', st: onObj <= h.objAt + 1 ? 'pass' : 'warn', reason: `${sqnWord} leaves FUP (Tks) ${hRelText(leave)}, ${fmtM(w.goM + w.slowM)} in ${travel} min${night ? ' by night' : ''} to the infantry's assault line ${rush} m out as they reach it (${hRelText(tAl)}), fires them on from there and rushes the Obj, on it ${hRelText(onObj)}, the infantry ${hRelText(h.objAt)} (IBB p187: just before or with them)${leave < 0 ? '; it moves before H: cover its noise with the deception plan (IBB p215)' : ''}` });
     rows.push(goingRow(trackWalk(path, f, g), 'the tanks\' axis'));
   } else {
     const fire = item('tkFire');
@@ -282,7 +353,7 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
     steps.push({ label: `Tanks leave FUP (Tks) for the fire posns${night ? ' (night)' : ''}`, distM: Math.round(w.goM + w.slowM), min: travel, at: leave });
     steps.push({ label: `Tanks firing from ${fmtM(dF)} out`, distM: 0, min: Math.max(0, h.objAt - tF), at: tF });
     h.tanks = { mode, leaveAt: leave, atAt: tF, onObjAt: null, lengthM: Math.round(w.goM + w.slowM) };
-    rows.push({ name: 'Tank timing', st: 'pass', reason: `the Sqn leaves FUP (Tks) ${hRelText(leave)}, ${fmtM(w.goM + w.slowM)} in ${travel} min${night ? ' by night' : ''}, at its fire posns ${hRelText(tF)} as the infantry come ${fmtM(dF)} from the Obj (IBB p214 option a), shooting them on until they are on it ${hRelText(h.objAt)}${leave < 0 ? '; it moves before H: cover its noise with the deception plan (IBB p215)' : ''}` });
+    rows.push({ name: 'Tank timing', st: 'pass', reason: `${sqnWord} leaves FUP (Tks) ${hRelText(leave)}, ${fmtM(w.goM + w.slowM)} in ${travel} min${night ? ' by night' : ''}, at its fire posns ${hRelText(tF)} as the infantry come ${fmtM(dF)} from the Obj (IBB p214 option a), shooting them on until they are on it ${hRelText(h.objAt)}${leave < 0 ? '; it moves before H: cover its noise with the deception plan (IBB p215)' : ''}` });
     const nightM = num(doc, 'attack.tanks.nightFireM', 800), regM = num(doc, 'attack.tanks.registeredFireM', 1600);
     rows.push({
       name: 'Tank fire range', st: dF <= (night ? nightM : regM) ? 'pass' : 'warn',

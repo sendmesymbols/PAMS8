@@ -40,8 +40,8 @@ import { PlanGroundProbe } from './PlanGroundProbe';
 import { applyContext, defaultEnemy, echelonLabel, firstLayout, terrainLabel, ENEMY_TYPES, TERRAIN_KINDS, type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec } from './PlanContext';
 import { checkPlan, checkText, readSymbols, reportWorld, type CheckReport, type PosnKind } from './PlanCheck';
 import { twoPhaseRecipe } from './PlanPhase';
-import { addTankTimes, withTanks, type TankMode } from './PlanTanks';
-import { brief, doctrineForUnit, enUnitFor, forceFromOrbat, minefieldRow, ownBnTypes, ownUnitFor, unitLine, type OrbatSet, type UnitBrief } from './PlanOrbat';
+import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } from './PlanTanks';
+import { OWN_ORBAT_FILES, brief, doctrineForUnit, enUnitFor, forceFromOrbat, mergeOwn, minefieldRow, ownAtTypes, ownBdeTypes, ownBnTypes, ownDivTypes, ownUnitFor, sizeText, tankSqnOf, tankSqnText, typeFits, unitForPlan, unitLine, withAtGroup, type AtType, type OrbatSet, type OwnType, type TankSqn, type UnitBrief } from './PlanOrbat';
 import { atgmExtras } from './PlanFit';
 import { attackTimes, hRelText, hSumRow, phase2Row } from './PlanAttack';
 import { checkSmallOp, solveSmall, type Mover } from './PlanSmallOps';
@@ -108,7 +108,7 @@ const footSpeeds = (): PlFootSpeeds => {
   return { ground: f.ground ?? { open: [4, 3] }, road: f.road?.track ?? [4, 3], toblerA: Array.isArray(f.slope?.a) ? f.slope.a[0] : 3.5, toblerB: typeof f.slope?.b === 'number' ? f.slope.b : 0.05 };
 };
 /** A recipe id without the two-phase suffix (PlanPhase.twoPhaseRecipe adds -2ph). */
-const baseId = (id: string) => id.replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-2ph1?$/, '');
+const baseId = (id: string) => id.replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkdd$/, '').replace(/-2ph1?$/, '');
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
@@ -161,7 +161,7 @@ const unitFacts = (b: UnitBrief): string => {
     + `${km(r) ? `<span class="r">${km(r)}</span>` : '<span class="q" title="No range in weapons.json">range ?</span>'}</span>`;
   const ws = [...b.atgm, ...b.rr, ...b.mortars].map((x) => wpn(x.count, x.name.replace(/ Wpn Sys| Launcher/g, ''), x.rangeM));
   if (b.mgCount) ws.push(wpn(b.mgCount, 'MG1A3', b.mgEffM));
-  const head = [b.strength ? `${b.strength.toLocaleString('en-GB')} all ranks` : null, `${b.coys} ${b.side === 'en' ? 'manoeuvre' : 'rifle'} Coys${b.plsPerCoy ? ` of ${b.plsPerCoy} Pls` : ''}`,
+  const head = [b.strength ? `${b.strength.toLocaleString('en-GB')} all ranks` : null, sizeText(b),
     b.mounted ? `mounted (${b.apcs} APCs)` : null].filter(Boolean).join(' · ');
   const notes = b.notes.filter((n) => !/no range in weapons\.json/.test(n));
   return `<div class="pb-facts"><div><b>${esc(b.name)}</b>${esc(head)}</div>${ws.length ? `<div class="pb-wpns">${ws.join('')}</div>` : ''}`
@@ -232,7 +232,7 @@ export class PlanBuildTab {
   private _host: BuildTabHost;
   /** The host's slot in its tab bar for the mode switch (null: the switch gets a row of its own). */
   private _aside: HTMLElement | null = null;
-  /** The Bn types these layouts cannot use (not four manoeuvre Coys): folded behind "+N not offered" until opened. */
+  /** The types these layouts cannot use (a Bn not of four Coys, an AT Bn for a Coy plan): folded behind "+N not offered" until opened. */
   private _allTypes = false;
   private _settings: Record<string, any> = {};
   private _doc: DoctrineSet = { plan: planDoctrine as any, ocoka: ocokaDoctrine as any };
@@ -316,8 +316,26 @@ export class PlanBuildTab {
   private _cursor: XY | null = null;
   // the ORBAT (MS/Data/Orbat/PK): what the unit holds, the enemy's units, the engineer rates; null: not loaded
   private _orbat: OrbatSet | null = null;
-  /** The own unit type chosen for a Bn family (an ORBAT id); null: the family's. */
+  /**
+   * The own unit type chosen (an ORBAT Bn-sized type: Mtn Inf Bn, MIB, a Rangers Wing ...); null: the family's. A Bn plan
+   * is laid for it, a Coy plan for its rifle Coy and a Pl plan for that Coy's rifle Pl (PlanOrbat.unitForPlan).
+   */
   private _unitId: string | null = null;
+  /** The Bde type chosen for a Bde plan (Inf Bde, IIBG, Indep Mech Inf Bde Gp, IABG); null: the Inf Bde. */
+  private _bdeId: string | null = null;
+  /** The Div type chosen for a Div plan (Inf Div, Armd Div); null: the Inf Div. */
+  private _divId: string | null = null;
+  /** Tank Sqns grouped to a Bn defence (0 to 3 of an Armr Regt's Sqns): their harbours beside the reserve, the C Pen force at the tank rate. */
+  private _defTanks = 0;
+  /** The Bn-sized types the ORBAT offers, and the AT Bns whose Coys can be grouped (read once per load). */
+  private _typesCache: OwnType[] | null = null;
+  private get _types(): OwnType[] { return this._orbat ? (this._typesCache ??= ownBnTypes(this._orbat)) : []; }
+  private _atCache: AtType[] | null = null;
+  private get _atTypes(): AtType[] { return this._orbat ? (this._atCache ??= ownAtTypes(this._orbat)) : []; }
+  /** The AT Bn whose ATGM Coys are grouped to a Bn defence (an ORBAT id: LAT, HAT); null: none. */
+  private _atId: string | null = null;
+  /** How many of its Coys are grouped (1 to its 3). */
+  private _atCoys = 1;
   // Check my plan (Phase 5)
   private _mode: 'build' | 'check' = 'build';
   private _checkScope: 'selected' | 'last' | 'all' = 'selected';
@@ -418,26 +436,75 @@ export class PlanBuildTab {
     this._render();
   }
 
-  /** The ORBAT files (own infantry, enemy, weapons, engineer tables). Missing: the doctrine figures stand, said so. */
+  /**
+   * The ORBAT files: every own arm as one list (a Bde's Sig Coy or Armr Regt is in another arm's file), the enemy,
+   * the weapons, the engineer tables. inf.json, en.json and weapons.json must be there; an arm file that is missing
+   * is said and left out. No ORBAT at all: the doctrine figures stand, said so.
+   */
   private async _loadOrbat(): Promise<void> {
     const base = String(this._settings.orbatUrl || DEFAULT_ORBAT_URL).replace(/\/+$/, '');
+    this._typesCache = null;
+    this._atCache = null;
+    this._ph2.clear();
     try {
       const get = async (f: string) => { const r = await fetch(`${base}/${f}`); if (!r.ok) throw new Error(`HTTP ${r.status} for ${f}`); return r.json(); };
-      const [inf, en, weapons, engr] = await Promise.all([get('inf.json'), get('en.json'), get('weapons.json'), get('engr.json').catch(() => null)]);
-      this._orbat = { own: inf?.units ?? [], en: en?.units ?? [], weapons: weapons?.weapons ?? [], engrData: engr?.engrData ?? [] };
-      this._host.log(`Intelligent Deployment: ORBAT ${this._orbat.own.length} own and ${this._orbat.en.length} enemy units`, true);
+      const [inf, ...arms] = OWN_ORBAT_FILES;
+      const [infDoc, en, weapons, ...armDocs] = await Promise.all([get(inf), get('en.json'), get('weapons.json'), ...arms.map((f) => get(f).catch(() => null))]);
+      const missing = arms.filter((_, i) => !armDocs[i]);
+      const engr = armDocs[arms.indexOf('engr.json')];
+      this._orbat = { own: mergeOwn([infDoc?.units, ...armDocs.map((d) => d?.units)]), en: en?.units ?? [], weapons: weapons?.weapons ?? [], engrData: engr?.engrData ?? [] };
+      this._host.log(`Intelligent Deployment: ORBAT ${this._orbat.own.length} own units of ${OWN_ORBAT_FILES.length - missing.length} arms and ${this._orbat.en.length} enemy units${missing.length ? ` (not found: ${missing.join(', ')})` : ''}`, true);
     } catch (e) {
       this._orbat = null;
       this._host.log(`Intelligent Deployment: no ORBAT at ${base} (${e instanceof Error ? e.message : String(e)}): doctrine figures only`, false);
     }
   }
 
-  /** The own unit the recipe is laid for: the type chosen, else the family's, else the standard one (ORBAT). */
+  /** What a layout wants of its unit: a Bn plan its Coys (4), a Coy plan its Pls (3); 0: nothing to count. */
+  private _needOf(recipe: Recipe): number {
+    if (recipe.echelon !== '16' && recipe.echelon !== '15') return 0;
+    const sub = recipe.echelon === '16' ? '15' : '14';
+    return recipe.forCoys ?? (recipe.slots.filter((s) => s.echelon === sub && FOOTPRINT_ROLES.has(s.kind)).length || (recipe.echelon === '16' ? 4 : 3));
+  }
+
+  /**
+   * The layouts of a family the unit type can use. A Bn family holds layouts for four Coys and for three (Lt Cdo): the
+   * ones shown are for the type chosen, else for four. Other families show every layout.
+   */
+  private _famIds(fam: Family | undefined): string[] {
+    if (!fam) return [];
+    if (fam.echelon !== '16') return fam.recipes;
+    const need = (id: string) => { const r = this._recipes.get(id); return r ? this._needOf(r) : 4; };
+    const counts = new Set(fam.recipes.map(need));
+    if (counts.size < 2) return fam.recipes;
+    const t = this._unitId ? this._types.find((x) => x.id === this._unitId) : null;
+    const want = t && counts.has(t.coys) ? t.coys : need(fam.recipes.find((id) => !this._recipes.get(id)?.forCoys) ?? fam.recipes[0]);
+    return fam.recipes.filter((id) => need(id) === want);
+  }
+
+  /** The Coy counts a family's layouts are for (a Bn family: 4, and 3 where it has 3-Coy layouts). */
+  private _famNeeds(fam: Family | undefined): Set<number> {
+    return new Set((fam?.recipes ?? []).map((id) => { const r = this._recipes.get(id); return r ? this._needOf(r) : 4; }));
+  }
+
+  /**
+   * The own unit the recipe is laid for (ORBAT): the type chosen (a Bn plan the type itself, a Coy or Pl plan its rifle
+   * Coy or Pl; a Bde plan the Bde type), else the family's, else the standard one. A type these layouts cannot use
+   * (a 3-Coy Bn for a 4-Coy layout) is not taken.
+   */
   private _unit(recipe: Recipe | null | undefined): UnitBrief | null {
     if (!recipe || !this._orbat) return null;
-    const fam = this._families.find((f) => f.recipes.includes(recipe.id));
-    const id = recipe.echelon === '16' && this._unitId ? this._unitId : ownUnitFor(recipe.echelon, recipe.unit ?? fam?.unit);
-    return brief(this._orbat, id);
+    const fam = this._families.find((f) => f.recipes.includes(baseId(recipe.id)));
+    const preferred = recipe.unit ?? fam?.unit;
+    const t = this._unitId ? this._types.find((x) => x.id === this._unitId) : null;
+    const type = t && typeFits(t, recipe.echelon, this._needOf(recipe)) ? t.id : null;
+    const b = brief(this._orbat, unitForPlan(this._orbat, recipe.echelon, { type, bde: this._bdeId, div: this._divId, preferred })) ?? brief(this._orbat, ownUnitFor(recipe.echelon, preferred));
+    return this._atGrouped(recipe) ? withAtGroup(this._orbat, b, this._atId, this._atCoys) : b;
+  }
+
+  /** The AT grouping applies to a Bn defence: LAT / HAT Coys grouped to it add their ATGM pairs on the tank approaches. */
+  private _atGrouped(recipe: Recipe | null | undefined): boolean {
+    return !!this._atId && !!recipe && recipe.echelon === '16' && recipe.task === 'defence';
   }
 
   /** The enemy's unit in the ORBAT for the recipe's enemy (Sec 13). */
@@ -463,17 +530,28 @@ export class PlanBuildTab {
       if (!m) { m = withMinefield(base, this._doc); this._ph2.set(key, m); }
       return m;
     }
+    // tank Sqns grouped to a Bn defence (PlanTanks.withDefTanks), cached like the attack's variants
+    if (base?.task === 'defence' && (base.echelon === '16' || base.echelon === '15')) {
+      if (!this._defTanks || !this._tankSqn) return base;
+      const key = `${base.id}:dt${this._defTanks}`;
+      let d = this._ph2.get(key);
+      if (!d) { d = withDefTanks(base, this._doc, this._defTanks, this._tankSqn); this._ph2.set(key, d); }
+      return d;
+    }
     if (!base || base.task !== 'attack' || (this._phases !== 2 && this._tanks === 'none')) return base;
     const coys = this._coys, key = `${base.id}:${this._phases}:${coys}:${this._tanks}`;
     let t = this._ph2.get(key);
     if (!t) {
       t = this._phases === 2 ? twoPhaseRecipe(base, this._doc, undefined, coys) : base;
       // tanks with phase 1 (PlanTanks), after the second phase is laid
-      t = withTanks(t, this._doc, this._tanks);
+      t = withTanks(t, this._doc, this._tanks, this._tankSqn);
       this._ph2.set(key, t);
     }
     return t;
   }
+
+  /** The tank Sqn with an attack, from the ORBAT's Armr Regt (null: not loaded; the doctrine's Sqn without counts). */
+  private get _tankSqn(): TankSqn | null { return this._orbat ? tankSqnOf(this._orbat) : null; }
 
   private _tanksWord(m: TankMode = this._tanks): string {
     return m === 'close' ? 'tanks in close sp (armour heavy)' : m === 'fire' ? 'tanks in fire sp (infantry heavy)' : 'no tanks';
@@ -567,8 +645,9 @@ export class PlanBuildTab {
     const fams = this._families.filter((f) => f.task === this._task);
     if (!fams.some((f) => f.id === this._familyId)) this._familyId = fams[0]?.id ?? '';
     const fam = this._families.find((f) => f.id === this._familyId);
-    if (fam && !fam.recipes.includes(this._recipeId)) this._recipeId = fam.recipes[0] ?? '';
-    if (fam && fam.recipes.length < 2) this._auto = false;
+    const ids = this._famIds(fam);
+    if (fam && !ids.includes(this._recipeId)) this._recipeId = ids[0] ?? '';
+    if (fam && ids.length < 2) this._auto = false;
     this._solve();
   }
 
@@ -591,14 +670,15 @@ export class PlanBuildTab {
 
   /** Both sides' strengths from the ORBAT, for the force ratio. */
   private _force(recipe: Recipe, kind: TerrainKind | null) {
-    return forceFromOrbat(this._unit(recipe), this._enUnit(recipe, kind));
+    return forceFromOrbat(this._unit(recipe), this._enUnit(recipe, kind), recipe.tanks || recipe.defTanks ? this._tankSqn : null, recipe.defTanks ?? 1, recipe.defTanksUnit === 'Tp');
   }
 
   /** The rows the ORBAT adds to a defence: the protective minefield in time (engineer rates). */
   private _orbatRows(res: SolveResult): Check[] {
     if (!this._orbat || res.recipe.task === 'attack') return [];
     const m = minefieldRow(this._orbat, this._doc, res.frontageM, this._unit(res.recipe));
-    return m ? [m] : [];
+    // tank Sqns grouped to it: the harbours (their ground waits for the terrain fit)
+    return [...(m ? [m] : []), ...(res.recipe.defTanks ? defTankRows(res.items, res.recipe, null, null, this._doc, null) : [])];
   }
 
   /** The enemy for a recipe: the user's echelon / type over the doctrinal default (PlanContext.defaultEnemy). */
@@ -722,9 +802,9 @@ export class PlanBuildTab {
       case 'task': {
         const task = TASKS.find((x) => x.id === val);
         if (task?.later) { this._msg = `${task.label}: ${task.later}.`; break; }
-        this._task = val; this._auto = false; this._pickDefaults(); break;
+        this._task = val; this._defTanks = 0; this._auto = false; this._pickDefaults(); break;
       }
-      case 'family': this._familyId = val; this._recipeId = ''; this._auto = false; this._pickDefaults(); break;
+      case 'family': this._defTanks = 0; this._familyId = val; this._recipeId = ''; this._auto = false; this._pickDefaults(); break;
       case 'layout': this._recipeId = val; this._auto = false; this._solve(); break;
       case 'auto':
         if (!this._terrain) { this._msg = 'Auto ranks the layouts on the ground: it needs terrain data.'; break; }
@@ -761,7 +841,12 @@ export class PlanBuildTab {
       }
       case 'checkCopy': void this._copyCheck(); return;
       case 'checkClear': this._check = null; this._checkRecs = null; this._checkKinds = {}; this._clearProducts(); break;
-      case 'unitType': this._unitId = val || null; this._solve(); break;
+      case 'unitType': this._unitId = val || null; this._pickDefaults(); break;
+      case 'bdeType': this._bdeId = val || null; this._solve(); break;
+      case 'divType': this._divId = val || null; this._solve(); break;
+      case 'atType': this._atId = val || null; this._solve(); break;
+      case 'defTanks': this._defTanks = Math.max(0, Math.min(3, Number(val) || 0)); this._solve(); break;
+      case 'atCoys': this._atCoys = Math.max(1, Math.min(3, Number(val) || 1)); this._solve(); break;
       case 'retry': this._loadState = 'idle'; this.shown(); return;
       case 'place': this._place(); return;
       case 'copy': void this._copy(); return;
@@ -966,7 +1051,7 @@ export class PlanBuildTab {
   /** The recipes to fit: the chosen layout, or with Auto every layout of the family; best first (PlanFit.rankFits). */
   private _fitAll(anchor: XY, bearing: number, all = false): Fitted[] {
     const fam = this._families.find((f) => f.id === this._familyId);
-    const ids = (this._auto || all) && fam ? fam.recipes : [this._recipeId];
+    const ids = (this._auto || all) && fam ? this._famIds(fam) : [this._recipeId];
     const out: Fitted[] = [];
     for (const id of ids) {
       const recipe = this._rcp(id);
@@ -1100,6 +1185,10 @@ export class PlanBuildTab {
       ground, groundWhy,
       enemy: enemy ? { echelon: enemy.echelon, type: enemy.type } : null,
       unit, threat: this._threat && recipe.task !== 'attack' ? { ...this._threat } : null,
+      // the AT Coys grouped to it (read back by Check my plan for the ATGM pairs and AT cover)
+      atGroup: this._atGrouped(recipe) ? { id: this._atId, coys: this._atCoys } : null,
+      defTanks: recipe.defTanks ?? 0,
+      defTanksUnit: recipe.defTanksUnit ?? null,
     };
   }
 
@@ -1491,21 +1580,73 @@ export class PlanBuildTab {
   }
 
   /**
-   * The unit type for a Bn plan (ORBAT): each infantry Bn type; one with other than four manoeuvre Coys is not
-   * offered (the layouts are for four) and folds behind "+N not offered". Under it, what the unit holds.
+   * The unit type (ORBAT). A Bn plan: each infantry Bn type and the FC and Rangers Wings; a Coy or Pl plan: the same
+   * types, taken as that type's rifle Coy or Pl; a Bde plan: the Bde types. A type the layouts cannot use (a Bn of
+   * other than four Coys, an AT Bn with no rifle Coy) is not offered and folds behind "+N not offered". Under the
+   * chips, what the unit holds.
    */
   private _unitTypeRow(recipe: Recipe): string {
     const u = this._unit(recipe);
     if (!this._orbat) return '<div class="pb-hint">ORBAT not loaded: doctrine figures only (ranges, the reserve on foot).</div>';
     const facts = u ? unitFacts(u) : '';
-    if (recipe.echelon !== '16') return facts;
-    const need = recipe.slots.filter((s) => s.echelon === '15' && FOOTPRINT_ROLES.has(s.kind)).length || 4;
-    const types = ownBnTypes(this._orbat);
-    const off = types.filter((t) => t.coys !== need && u?.id !== t.id);
-    const chips = types.filter((t) => this._allTypes || !off.includes(t)).map((t) => this._chip(u?.id === t.id, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `unitType:${t.id}`,
-      t.coys === need ? `${t.coys} Coys` : `${t.coys} manoeuvre Coys: these layouts are for ${need}`, t.coys !== need)).join('');
+    const ech = recipe.echelon;
+    if (ech === '18') {
+      const chips = ownBdeTypes(this._orbat).map((t) => this._chip(u?.id === t.id, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `bdeType:${t.id}`,
+        `${t.bns} Bn-sized manoeuvre units, ${t.coys} manoeuvre Coys`)).join('');
+      return `${chips ? row('Type', chips) : ''}${facts}`;
+    }
+    if (ech === '21') {
+      const chips = ownDivTypes(this._orbat).map((t) => this._chip(u?.id === t.id, t.name, `divType:${t.id}`, `${t.coys} manoeuvre Coys / Sqns`)).join('');
+      return `${chips ? row('Type', chips) : ''}${facts}`;
+    }
+    if (ech !== '16' && ech !== '15' && ech !== '14') return facts;
+    const need = this._needOf(recipe), sub = ech === '15' ? 'Coy' : 'Pl';
+    // a Bn family with layouts for three Coys as well as four: a type fits when any layout is for its Coys
+    const needs = ech === '16' ? this._famNeeds(this._families.find((f) => f.id === this._familyId)) : new Set([need]);
+    needs.add(need);
+    const types = this._types;
+    const mine = (t: OwnType) => u?.id === (ech === '16' ? t.id : ech === '15' ? t.coy : t.pl);
+    // two types can share a sub-unit (the Mjd and Mtn Mjd Bns' Pl): the one chosen is the one lit
+    const on = types.find((t) => t.id === this._unitId && mine(t)) ?? types.find(mine);
+    const why = (t: OwnType): string => {
+      if (ech === '16') return needs.has(t.coys) ? `${t.coys} Coys` : t.coys === 0 ? 'An AT Bn: its ATGM Coys are grouped out to the Bns (the AT row)' : `${t.coys} manoeuvre Coys: these layouts are for ${[...needs].sort().join(' or ')}`;
+      if (ech === '15') return !t.coy ? 'No rifle Coy: its Coys are ATGM Coys' : t.plsPerCoy === need || t.plsPerCoy === null ? `Its rifle Coy${t.plsPerCoy ? `: ${t.plsPerCoy} Pls` : ''}` : `Its rifle Coy has ${t.plsPerCoy} Pls: these layouts are for ${need}`;
+      return t.pl ? 'Its rifle Pl' : 'No rifle Pl: its Coys are ATGM Coys';
+    };
+    const fits = (t: OwnType) => [...needs].some((n) => typeFits(t, ech, n));
+    const off = types.filter((t) => !fits(t) && t !== on);
+    const chips = types.filter((t) => this._allTypes || !off.includes(t)).map((t) => this._chip(t === on, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `unitType:${t.id}`, why(t), !fits(t))).join('');
     const more = off.length ? `<button type="button" class="pb-more" data-pb="moreTypes" aria-expanded="${this._allTypes}">${this._allTypes ? 'Hide the types not offered' : `+${off.length} not offered`}</button>` : '';
-    return `${row('Type', chips + more)}${facts}`;
+    return `${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${facts}`;
+  }
+
+  /**
+   * AT grouping (a Bn defence): the ATGM Coys of an AT Bn (LAT, HAT) grouped to the Bn. An AT Bn holds no ground of its
+   * own: its Coys are given out to the Bns and Bdes. Their launchers add pairs sited on the tank approaches, counted in
+   * the AT cover row. None, or the AT Bn and how many of its Coys.
+   */
+  private _atRow(recipe: Recipe): string {
+    if (!this._orbat || recipe.echelon !== '16' || recipe.task !== 'defence' || !this._atTypes.length) return '';
+    const none = this._chip(!this._atId, 'None', 'atType:', 'No AT Coys grouped: the unit\'s own launchers only');
+    const types = this._atTypes.map((t) => this._chip(this._atId === t.id, t.name.replace(/ Bn\b/, ''), `atType:${t.id}`,
+      `${t.coys} ATGM Coys, ${t.launchersPerCoy} launchers each (${t.launchersPerCoy / 2} pairs): the ${t.name}'s printed launchers shared over its Coys`));
+    const at = this._atTypes.find((t) => t.id === this._atId);
+    const coys = at ? seg(Array.from({ length: at.coys }, (_, i) => ({ on: this._atCoys === i + 1, label: String(i + 1), data: `atCoys:${i + 1}`, title: `${(i + 1) * at.launchersPerCoy} launchers, ${(i + 1) * at.launchersPerCoy / 2} pairs` })), { sm: true, label: 'AT Coys' }) : '';
+    return row('AT group', none + types.join('') + coys);
+  }
+
+  /**
+   * Tanks in a Bn defence: 1 to 3 Sqns of the Armr Regt grouped to it (ORBAT: 14 tanks each). Their harbours stand beside the
+   * reserve; they are the Bn's counter-penetration force at the tank rate, counted in the force. Their guns are not counted
+   * as AT weapons: main gun ranges are not printed for the tank types.
+   */
+  private _tankRow(recipe: Recipe): string {
+    const sq = this._tankSqn;
+    if (!sq || (recipe.echelon !== '16' && recipe.echelon !== '15') || recipe.task !== 'defence') return '';
+    const tp = recipe.echelon === '15', each = tp ? sq.tpTanks : sq.tanks;
+    const chips = [0, 1, 2, 3].map((n) => this._chip(this._defTanks === n, n ? `${n} ${tp ? 'Tp' : 'Sqn'}${n > 1 ? 's' : ''}` : 'None', `defTanks:${n}`,
+      n ? `${n * each} tanks: harbours beside the reserve, the C Pen force at the tank rate; their guns count as AT at 2.5 km (E: the range is printed only for the Al-Zarrar)` : `No tanks grouped to the ${tp ? 'Coy' : 'Bn'}`)).join('');
+    return row('Tanks', chips);
   }
 
   /** The kind of ground: Auto (read where the plan rests; what it read is ringed) or set. */
@@ -1582,7 +1723,8 @@ export class PlanBuildTab {
     if (u && r) {
       const kind = this._lastFit?.terrain?.kind ?? (this._ground === 'auto' ? null : this._ground);
       const en = this._enUnit(r, kind);
-      return `Unit: ${unitLine(u)}.${en ? `\nEnemy: ${unitLine(en)}.` : ''}`;
+      const sq = r.tanks ? this._tankSqn : null;
+      return `Unit: ${unitLine(u)}.${sq ? `\nTanks: A Sqn, ${tankSqnText(sq)} (${sq.src}); ${r.tanks === 'close' ? `Close sp sends ${sq.tanks - sq.tpTanks}, a Tp of ${sq.tpTanks} on the BOF's flank` : 'Fire sp'}.` : ''}${en ? `\nEnemy: ${unitLine(en)}.` : ''}`;
     }
     const fam = this._families.find((f) => f.id === this._familyId);
     return fam?.unit ? `Unit: ${fam.name} (ORBAT ${fam.unit}, not loaded).` : '';
@@ -1665,7 +1807,7 @@ export class PlanBuildTab {
     const res = this._result!;
     const fams = this._families.filter((f) => f.task === this._task);
     const fam = this._families.find((f) => f.id === this._familyId);
-    const layouts = (fam?.recipes ?? []).map((id) => this._recipes.get(id)!).filter(Boolean);
+    const layouts = this._famIds(fam).map((id) => this._recipes.get(id)!).filter(Boolean);
     const tasks = seg(TASKS.map((t) => ({ on: t.id === this._task, label: t.label, data: `task:${t.id}`, title: t.later, disabled: !!t.later && !this._families.some((f) => f.task === t.id) })), { label: 'Operation' });
     const units = seg(fams.map((f) => ({ on: f.id === this._familyId, label: f.name, data: `family:${f.id}` })), { label: 'Unit' });
     const isBn = res.recipe.echelon === '16' && res.recipe.task === 'defence';
@@ -1690,12 +1832,16 @@ export class PlanBuildTab {
           { on: this._tanks === 'fire', label: 'Fire sp', data: 'tanks:fire', title: 'Infantry heavy: A Sqn from FUP (Tks) 2.5-3 km out to fire posns by the BOF, there as the infantry come as close to the Obj (IBB p214)' },
           { on: this._tanks === 'close', label: 'Close sp', data: 'tanks:close', title: 'Armour heavy: A Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, rushing it from the assault line of the infantry; a troop covering from a flank (IBB pp 186-188)' }]) + keyHint('T'))
       : '';
+    const sq = this._tankSqn;
+    const tankFacts = res.recipe.task === 'attack' && this._tanks !== 'none' && sq
+      ? `<div class="pb-hint"><b>A Sqn</b> ${esc(tankSqnText(sq))}${this._tanks === 'close' && sq.tpTanks ? `; Close sp sends ${sq.tanks - sq.tpTanks} and leaves a Tp of ${sq.tpTanks} on the BOF's flank` : ''} · ${esc(sq.src)} · main gun ranges are not printed for the tank types (only the Al-Zarrar's), so the doctrine's night 800 / 1600 m stands</div>`
+      : '';
     const draw = isBn ? row('Draw', seg([{ on: this._detail === 'coy', label: 'Coy posns', data: 'detail:coy' }, { on: this._detail === 'pl', label: '+ Pl posns', data: 'detail:pl' }])) : '';
     const alts = res.recipe.alternates?.length ? row('Alternates', seg([
       { on: this._alternates === 'hidden', label: 'Created, hidden', data: 'alt:hidden' }, { on: this._alternates === 'visible', label: 'Shown', data: 'alt:visible' }, { on: this._alternates === 'none', label: 'None', data: 'alt:none' }])) : '';
     return `
       <div class="pb-group">${row('Operation', tasks)}${row('Unit', units)}${this._unitTypeRow(res.recipe)}</div>
-      <div class="pb-group">${row('Layout', layout)}${this._isSmall || this._isCrossing ? this._smallRows(res.recipe.task) : this._groundRow()}${attack}${draw}${alts}</div>
+      <div class="pb-group">${row('Layout', layout)}${this._isSmall || this._isCrossing ? this._smallRows(res.recipe.task) : this._groundRow()}${attack}${tankFacts}${draw}${alts}</div>
       <div class="pb-plan">
         <div class="pb-sum">${esc(this._auto ? `${fam?.name ?? ''}: Auto (best layout where it rests)` : res.recipe.name)} <span class="pb-dim">${fmtM(res.frontageM)} × ${fmtM(res.depthM)} · ${res.items.length} symbols${fam?.unit ? ` · ${esc(fam.name)} (ORBAT)` : ''}</span></div>
         ${this._preview(res)}
@@ -1807,7 +1953,7 @@ export class PlanBuildTab {
 
   private _stepCheck(): string {
     const fam = this._families.find((f) => f.id === this._familyId);
-    const toggle = (fam?.recipes.length ?? 0) > 1
+    const toggle = this._famIds(fam).length > 1
       ? `<div class="pb-subtabs">${seg([{ on: this._checkView === 'plan', label: 'This plan', data: 'checkView:plan' }, { on: this._checkView === 'compare', label: 'Compare layouts', data: 'checkView:compare' }], { sm: true })}</div>`
       : '';
     return toggle + (this._checkView === 'compare' && toggle ? this._compareView() : this._planChecks());

@@ -19,7 +19,7 @@ import { solveRecipe, BP_SHAPE } from './PlanSolve';
 import { atgmPairs, type UnitBrief } from './PlanOrbat';
 import { attackFactors, attackTimes, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
 import { findPhase2, goingRow, type Phase2Find } from './PlanPhase';
-import { addTankTimes, findTankSpots, type TankFind, type TankMode } from './PlanTanks';
+import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode } from './PlanTanks';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
 import { canalPrep, fitCrossing, type CrossingReading, type Light } from './PlanCrossing';
@@ -949,6 +949,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   merged.rows = applyContext(merged.rows, ctx.doc, recipe.echelon, recipe.task, raw.frontageM, recipe.slots.filter((s) => s.kind === 'fwd').length, enemy, terrain, inp.force);
   const at = recipe.task === 'attack' ? null : atCoverRow(raw, recipe, unit, fit.approaches, frame, ctx.doc, enemy);
   if (at) merged.rows.push(at);
+  // tank Sqns grouped to a defence: their harbours on the ground
+  if (recipe.defTanks) merged.rows.push(...defTankRows(raw.items, recipe, frame, ground, ctx.doc, fit.from ?? null));
   if (canal) { merged.rows.push(...canal.rows); fit.crossing = canal.reading ?? undefined; fit.pending = fit.pending || canal.pending; }
   // an attack: the finders' rows, the H-hour sum, his MSR choke, the night march, the factors that score it
   if (find) {
@@ -1020,12 +1022,17 @@ export function atgmExtras(res: SolveResult, recipe: Recipe, unit: UnitBrief | n
     for (const a of order) { const x = crossX(a); if (x !== null) sites.push({ x, why: a.id }); if (sites.length >= extra) break; }
   }
   // no approaches (or too few): the open flanks of the FDL, left then right
-  for (let i = 0; sites.length < extra && i < 4; i++) sites.push({ x: i % 2 === 0 ? fr.x0 + 300 : fr.x1 - 300, why: i % 2 === 0 ? 'Lt flank' : 'Rt flank' });
+  for (let i = 0; sites.length < extra && i < Math.max(4, extra); i++) sites.push({ x: i % 2 === 0 ? fr.x0 + 300 : fr.x1 - 300, why: i % 2 === 0 ? 'Lt flank' : 'Rt flank' });
   const out: { role: string; key: string; label: string; at: XY }[] = [];
+  // pairs that land on the same place (an AT Coy's six on one approach) fan out along the front, 3 pairs' width apart (E)
+  const step = half * 3, seen: number[] = [];
   sites.slice(0, extra).forEach((s, k) => {
     const y = fr.y - 150;
-    out.push({ role: `atgmX${k + 1}`, key: ATGM_KEY, label: 'BS', at: P(s.x - half, y) });
-    out.push({ role: `atgmX${k + 1}`, key: ATGM_KEY, label: 'BS', at: P(s.x + half, y) });
+    const n = seen.filter((x) => Math.abs(x - s.x) < 1).length;
+    seen.push(s.x);
+    const x = n === 0 ? s.x : s.x + (n % 2 ? 1 : -1) * Math.ceil(n / 2) * step;
+    out.push({ role: `atgmX${k + 1}`, key: ATGM_KEY, label: 'BS', at: P(x - half, y) });
+    out.push({ role: `atgmX${k + 1}`, key: ATGM_KEY, label: 'BS', at: P(x + half, y) });
   });
   return out;
 }

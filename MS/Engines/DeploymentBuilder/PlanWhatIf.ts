@@ -9,7 +9,7 @@
  * taken round it (a waypoint either side, up to `moves.detourMaxM` off the line); with none it is reported, never
  * drawn through. What the ground cannot answer (no sight data, ground still loading) stays "unchecked".
  */
-import type { DoctrineSet } from './PlanRecipes';
+import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckDetail, CheckState, XY } from './PlanSolve';
 import { addNudges, mergeChecks, toLocal, toWorld, type FitFrame, type FitLayoutInput, type FittedLayout, type PlanGround } from './PlanFit';
@@ -322,19 +322,32 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
     const turn = Math.round((Math.atan2(ahead.x - c.x, ahead.y - c.y) * 180) / Math.PI);
     const sup: SupPosn = { apch: a.id, label: `Sup ${out.sups.length + 1}`, centre: c, w, h, turnDeg: turn };
     out.sups.push(sup);
-    if (!resSlot) continue;
-    const r = routeOnFoot(ground, f, doc, resSlot.centre, c, from, false, kind, !!fl.unit?.mounted);
     const enemy = enemyMinutesTo(f, doc, a.path, a.goPct, at, en, kind, eOpts(a));
-    const v = verdict(doc, r.min, enemy, r.blocked, mover);
-    out.triggers.push({
-      id: `sup-${a.id}`, trigger: `Enemy on ${a.id} (secondary)`, who: resSlot.label, from: resSlot.label, to: sup.label, route: r, min: r.blocked ? null : r.min,
-      enemyMin: enemy, st: v.st, reason: v.reason,
-      coveredBy: a.coveredBy.length ? `${a.coveredBy.map((x) => slot(x)?.label ?? x).join(', ')} meanwhile` : 'DF on the approach meanwhile: no posn covers it yet',
-    });
+    const covered = a.coveredBy.length ? `${a.coveredBy.map((x) => slot(x)?.label ?? x).join(', ')} meanwhile` : 'DF on the approach meanwhile: no posn covers it yet';
+    if (resSlot) {
+      const r = routeOnFoot(ground, f, doc, resSlot.centre, c, from, false, kind, !!fl.unit?.mounted);
+      const v = verdict(doc, r.min, enemy, r.blocked, mover);
+      out.triggers.push({
+        id: `sup-${a.id}`, trigger: `Enemy on ${a.id} (secondary)`, who: resSlot.label, from: resSlot.label, to: sup.label, route: r, min: r.blocked ? null : r.min,
+        enemyMin: enemy, st: v.st, reason: v.reason, coveredBy: covered,
+      });
+    }
+    // the first tank unit grouped to the plan can switch to this Sup posn too (the others stay for the main approach)
+    const q = res.items.find((i) => /^tkSqn\d*$/.test(i.role) && i.pts.length);
+    if (q) {
+      const r = routeOnFoot(ground, f, doc, q.pts[0], c, from, false, kind, true);
+      const v = verdict(doc, r.min, enemy, r.blocked, mover);
+      out.triggers.push({
+        id: `tk-sup-${a.id}`, trigger: `Enemy on ${a.id} (secondary)`, who: q.label, from: q.label, to: sup.label, route: r, min: r.blocked ? null : r.min,
+        enemyMin: enemy, st: v.st, reason: v.reason, coveredBy: covered,
+      });
+    }
   }
 
-  // 3. penetration on the main approach: the reserve to a C Pen posn astride it, 400 m (Bn) behind the FDL
-  if (main && resSlot) {
+  // 3. penetration on the main approach: the reserve, and any tank Sqn grouped to the Bn (PlanTanks.withDefTanks), to a
+  // C Pen posn astride it, 400 m (Bn) behind the FDL; the Sqns go on tracks at the tank rate
+  const sqns = res.items.filter((i) => /^tkSqn\d*$/.test(i.role) && i.pts.length);
+  if (main && (resSlot || sqns.length)) {
     const behind = num(doc, fl.recipe.echelon === '16' ? 'cpen.behindFwdM.bn' : 'cpen.behindFwdM.coy', 400);
     const pts = main.path.map((p) => toLocal(f, p));
     let cp: XY | null = null, bd = Infinity;
@@ -350,21 +363,35 @@ export function whatIf(fl: FittedLayout, ground: PlanGround, doc: DoctrineSet, t
         bd = 0;
       }
     }
+    const want = num(doc, 'cpen.coyMin', 30);
     if (cp && bd < 400) {
       out.cpen = cp;
-      const r = routeOnFoot(ground, f, doc, resSlot.centre, cp, from, false, kind, !!fl.unit?.mounted);
       const enemy = enemyMinutesTo(f, doc, main.path, main.goPct, cp, en, kind, eOpts(main));
-      const v = verdict(doc, r.min, enemy, r.blocked, mover);
-      const want = num(doc, 'cpen.coyMin', 30);
-      out.triggers.push({
-        id: 'cpen-main', trigger: `Penetration on ${main.id} (main)`, who: resSlot.label, from: resSlot.label, to: 'C Pen posn', route: r, min: r.blocked ? null : r.min,
-        enemyMin: enemy, st: v.st === 'pass' && r.min > want ? 'warn' : v.st,
-        reason: `${v.reason}${r.min > want ? `; over the ${want} min a Coy C-attk wants (IBB)` : ''}`,
-        coveredBy: `${fwd.map((s) => s.label).join(', ')} hold the shoulders`,
-      });
+      if (resSlot) {
+        const r = routeOnFoot(ground, f, doc, resSlot.centre, cp, from, false, kind, !!fl.unit?.mounted);
+        const v = verdict(doc, r.min, enemy, r.blocked, mover);
+        out.triggers.push({
+          id: 'cpen-main', trigger: `Penetration on ${main.id} (main)`, who: resSlot.label, from: resSlot.label, to: 'C Pen posn', route: r, min: r.blocked ? null : r.min,
+          enemyMin: enemy, st: v.st === 'pass' && r.min > want ? 'warn' : v.st,
+          reason: `${v.reason}${r.min > want ? `; over the ${want} min a Coy C-attk wants (IBB)` : ''}`,
+          coveredBy: `${fwd.map((s) => s.label).join(', ')} hold the shoulders`,
+        });
+      }
+      for (const q of sqns) {
+        const r = routeOnFoot(ground, f, doc, q.pts[0], cp, from, false, kind, true);
+        const v = verdict(doc, r.min, enemy, r.blocked, mover);
+        out.triggers.push({
+          id: `tk-cpen-${q.role}`, trigger: `Penetration on ${main.id} (main)`, who: q.label, from: q.label, to: 'C Pen posn', route: r, min: r.blocked ? null : r.min,
+          enemyMin: enemy, st: v.st === 'pass' && r.min > want ? 'warn' : v.st,
+          reason: `${v.reason}${r.min > want ? `; over the ${want} min a C-attk wants (IBB)` : ''}`,
+          coveredBy: `${fwd.map((s) => s.label).join(', ')} hold the shoulders`,
+        });
+      }
     } else {
       // the main approach does not run through the plan's depth: say so
-      out.triggers.push({ id: 'cpen-main', trigger: `Penetration on ${main.id} (main)`, who: resSlot.label, from: resSlot.label, to: 'C Pen posn', route: null, min: null, enemyMin: null, st: 'unchecked', reason: 'the main approach does not run through the plan\'s depth here: site the C Pen posn on the ground', coveredBy: '' });
+      const none = (who: string, id: string): Trigger => ({ id, trigger: `Penetration on ${main.id} (main)`, who, from: who, to: 'C Pen posn', route: null, min: null, enemyMin: null, st: 'unchecked', reason: 'the main approach does not run through the plan\'s depth here: site the C Pen posn on the ground', coveredBy: '' });
+      if (resSlot) out.triggers.push(none(resSlot.label, 'cpen-main'));
+      for (const q of sqns) out.triggers.push(none(q.label, `tk-cpen-${q.role}`));
     }
   }
   return out;
@@ -381,7 +408,7 @@ export function enemyStartWords(w: WhatIfResult): string {
 }
 
 /** A move in words: who goes where, on what trigger. */
-const kindOfTrigger = (t: Trigger) => (t.id.startsWith('shell-') ? 'shell' : t.id.startsWith('sup-') ? 'sup' : 'cpen');
+const kindOfTrigger = (t: Trigger) => (t.id.startsWith('shell-') ? 'shell' : t.id.startsWith('sup-') || t.id.startsWith('tk-sup-') ? 'sup' : 'cpen');
 const moveWords = (t: Trigger) => kindOfTrigger(t) === 'shell' ? `${t.who} to its alternate, when shelled`
   : kindOfTrigger(t) === 'sup' ? `${t.who} to ${t.to}, ${t.trigger.replace(/^Enemy on /, 'enemy on ')}`
   : `${t.who} to the C Pen posn, ${t.trigger.replace(/^Penetration on /, 'penetration on ')}`;
@@ -422,6 +449,34 @@ function movesDetail(w: WhatIfResult, moves: Trigger[], head: string): CheckDeta
     ? `His ${w.mover} at ${e?.go ?? '-'} km/h${e && !e.tracked ? ' on foot' : ''} beat ${w.ownMounted ? 'your mounted moves' : `Coys on foot at ${w.ownGo} km/h`}${shelled ? ' under shelling' : ''}`
     : 'No way on foot round the NO-GO';
   return { head, items, why: `${sentence}.`, fix, short, whyShort };
+}
+
+/**
+ * Tank AT cover: tank units grouped to the plan (items tkSqn, tkSqn2 ...) fire their guns from the C Pen posn on the main
+ * approach and the Sup posn on a secondary one. For each approach, how far beyond the FDL its path stays within the tank
+ * gun's effective range (`atFramework.tankGunEffM`, E: printed only for the Al-Zarrar) of that posn; it counts as covered
+ * by the guns when that is `atFramework.tankCoverMinM` or more. Null: no tank unit, no approach found.
+ */
+export function tankCoverRow(res: { items: { role: string }[]; slots: { role: string; centre: XY; hM: number; turnDeg: number }[] }, recipe: Recipe, w: WhatIfResult, fit: { approaches: { id: string; main: boolean; path: XY[] }[] }, f: FitFrame, doc: DoctrineSet): Check | null {
+  if (!res.items.some((i) => /^tkSqn\d*$/.test(i.role)) || !fit.approaches.length) return null;
+  const gun = num(doc, 'atFramework.tankGunEffM', 2500), min = num(doc, 'atFramework.tankCoverMinM', 500);
+  const fwd = res.slots.filter((s) => recipe.slots.find((x) => x.role === s.role)?.kind === 'fwd' && s.turnDeg === 0);
+  const frontY = fwd.length ? Math.max(...fwd.map((s) => s.centre.y + s.hM / 2)) : 0;
+  const parts: string[] = [];
+  let worst: CheckState = 'pass';
+  for (const a of fit.approaches) {
+    const sup = w.sups.find((s) => s.apch === a.id);
+    const at = a.main ? w.cpen : sup?.centre ?? null;
+    const name = `${a.id}${a.main ? ' (main)' : ''}`;
+    if (!at) { parts.push(`${name}: no C Pen or Sup posn to fire from`); if (worst === 'pass') worst = 'warn'; continue; }
+    let reach = 0;
+    for (const p of a.path) { const l = toLocal(f, p); if (l.y >= frontY && Math.hypot(l.x - at.x, l.y - at.y) <= gun) reach = Math.max(reach, l.y - frontY); }
+    reach = Math.round(reach / 10) * 10;
+    const from = a.main ? 'the C Pen posn' : sup!.label;
+    parts.push(`${name}: ${reach >= min ? `under their guns ${reach} m beyond the FDL from ${from}` : reach > 0 ? `only ${reach} m beyond the FDL under their guns from ${from}` : `out of their gun range from ${from}`}`);
+    if (reach < min) worst = 'warn';
+  }
+  return { name: 'Tank AT cover', st: worst, reason: `${parts.join('; ')} (tank gun ${fmtM(gun)} effective, E: SO's Hbk Sec 1 prints a gun range only for the Al-Zarrar; ${fmtM(min)} beyond the FDL wanted). Tanks in defence counter-attack and counter penetration, and lend weight to the AT layout only where it is absolutely inescapable (IC s105 para 21c p 555): this is their reach once there, not a post for them` };
 }
 
 /** The plan row: how many moves are well before the enemy, which ones he wins, why and what fixes it. Null with no triggers. */
@@ -500,6 +555,9 @@ export function withMoves(fl: FittedLayout, inp: FitLayoutInput): FittedWithMove
   const rows = [...fl.res.rows];
   const mr = movesRow(w);
   if (mr) rows.push(mr);
+  // tank units grouped to it: their guns on each approach from the C Pen or Sup posn
+  const tc = fl.recipe.defTanks ? tankCoverRow(fl.raw, fl.recipe, w, fl.fit, fl.frame, inp.ctx.doc) : null;
+  if (tc) rows.push(tc);
   // the reserve carries its own moves' verdict, so J can move it nearer where it must go when it is too slow
   const resS = fl.raw.slots.find((s) => fl.recipe.slots.find((x) => x.role === s.role)?.kind === 'res');
   const rc = resS ? reserveMovesCheck(w, resS.label) : null;

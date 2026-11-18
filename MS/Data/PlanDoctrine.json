@@ -312,6 +312,8 @@
   "atFramework": {
     "atgmDetSpacingM": { "value": [400, 500], "basis": "D", "src": "IBB", "pageToConfirm": true },
     "shortRangeAtFwdM": { "value": [500, 600], "basis": "D", "src": "IBB", "pageToConfirm": true },
+    "tankGunEffM": { "value": 2500, "basis": "E", "src": "ORBAT weapons.json 125-mm-tk-al-zarrar: eff 2500-3000 m (SO's Hbk 2019 pp 124-126), the only tank gun with a printed range", "note": "Applied to the tanks of a Sqn or Tp grouped to a defence, whose type the Armr Regt chart does not fix. Re-read 19 Nov 2026 from the unlocked Sec 1 (pp 121-124, Comparative Data Current MBTs): it prints calibre, ammo, rounds carried, night vision and LRF for the other 12 tanks but no gun range, so the gap is the book's, not the extraction's. Change it here for another tank." },
+    "tankCoverMinM": { "value": 500, "basis": "E", "note": "How far beyond the FDL along an approach a tank unit's guns, from its C Pen or Sup posn, must reach for the approach to count as covered by them." },
     "backBlast": { "from": "OcokaDoctrine.standoff", "rows": ["Recoilless rifle back blast danger zone", "Baktar Shikan back blast"] }
   },
   "readyBy": {

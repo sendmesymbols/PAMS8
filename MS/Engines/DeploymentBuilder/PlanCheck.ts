@@ -24,14 +24,14 @@ import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckState, SlotResult, XY } from './PlanSolve';
 import { detailLines } from './PlanSolve';
 import { atCoverRow, detectTerrain, fitPlan, toLocal, toWorld, type FitFrame, type FitResult, type GroundAvenue, type PlanGround } from './PlanFit';
-import { movesRow, reserveMovesCheck, triggerLines, whatIf, type WhatIfResult } from './PlanWhatIf';
+import { movesRow, reserveMovesCheck, tankCoverRow, triggerLines, whatIf, type WhatIfResult } from './PlanWhatIf';
 import {
   defaultEnemy, echelonLabel, enemyProfile, footKmh, forceRow, frontageAllowance, levelOf, strengthOf, terrainLabel, terrainRow,
   type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec,
 } from './PlanContext';
-import { brief, enUnitFor, forceFromOrbat, minefieldRow, type OrbatSet } from './PlanOrbat';
+import { brief, enUnitFor, forceFromOrbat, minefieldRow, tankSqnOf, withAtGroup, type OrbatSet } from './PlanOrbat';
 import { counterAttack } from './PlanAttack';
-import { tankGoingRow } from './PlanTanks';
+import { defTankRows, tankGoingRow } from './PlanTanks';
 import type { ForceSides } from './PlanContext';
 
 // ── reading ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -291,6 +291,7 @@ export function mapPlan(syms: DrawnSymbol[], doc: DoctrineSet, opts: MapOptions 
     if (role === 'cpenPosn') return 'cpen';
     if (/Pl$/.test(role)) return 'sub';
     const k = recipe?.slots.find((s) => s.role === role)?.kind;
+    if (/^tkSqn\d*$/.test(role)) return 'ignore';       // tank Sqns grouped to the Bn: a force, not a posn held
     if (k === 'fwd' || k === 'round') return 'fwd';
     if (k === 'depth') return 'depth';
     if (k === 'res') return 'res';
@@ -576,11 +577,19 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   const builtEnemy: EnemySpec | null = me?.echelon && me?.type ? { echelon: me.echelon, type: me.type, source: 'plan', note: 'as the plan was built' } : null;
   const enemy = withOverride(opts.enemy ?? enemyFromSymbols(mp.syms, doc) ?? builtEnemy ?? defaultEnemy(doc, planEch, kind, 'defence'), opts);
   // the unit it was built for (ORBAT): its Coys and whether its reserve is mounted
-  const unitB = opts.orbat && mp.built?.meta?.unit ? brief(opts.orbat, mp.built.meta.unit) : null;
+  const unitBase = opts.orbat && mp.built?.meta?.unit ? brief(opts.orbat, mp.built.meta.unit) : null;
+  // AT Coys grouped to it when it was built (LAT, HAT): their launchers count for the ATGM pairs and AT cover
+  const atg = mp.built?.meta?.atGroup;
+  const unitB = opts.orbat && unitBase && atg?.id ? withAtGroup(opts.orbat, unitBase, String(atg.id), Number(atg.coys) || 1) : unitBase;
 
+  // tank Sqns grouped to it when it was built (PlanTanks.withDefTanks): counted in the force as in the build
+  const defTk = Number(mp.built?.meta?.defTanks) || 0;
+  const tkSqn = defTk && opts.orbat ? tankSqnOf(opts.orbat) : null;
   {
     const [enS, names] = enemyFromOrbat(mp, doc, opts, enemy, kind);
-    rows.push(forceRow(doc, 'defence', planEch, enemy, unitB?.coys || strengthOfSide(mp.syms.filter((s) => s.side === 'own'), doc) || undefined, enS, { ...names, ownName: unitB ? `${unitB.name} (${unitB.coys} rifle Coys)` : undefined }));
+    const defTp = mp.built?.meta?.defTanksUnit === 'Tp';
+    const ownF = unitB ? forceFromOrbat(unitB, null, tkSqn, defTk, defTp) : null;
+    rows.push(forceRow(doc, 'defence', planEch, enemy, (unitB?.coys ? unitB.coys + (tkSqn ? (defTp ? defTk / 3 : defTk) : 0) : 0) || strengthOfSide(mp.syms.filter((s) => s.side === 'own'), doc) || undefined, enS, { ...names, ownName: ownF?.ownName }));
   }
   rows.push(terrainRow(doc, terrain));
 
@@ -721,9 +730,12 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     rows.push(...fit.rows);
     // as the build does: AT cover from the drawn ATGMs, the what-if and its trigger table (alternates paired by letter:
     // Alt A -> A Coy), so a built plan checked again gives the build's verdicts
-    const items = mp.syms.filter((s) => s.side === 'own' && s.key === '15111200' && s.pts.length).map((s) => ({ role: 'atgm', key: s.key, pts: [toLocal(frame, s.pts[0])] }));
+    const items: any[] = mp.syms.filter((s) => s.side === 'own' && s.key === '15111200' && s.pts.length).map((s) => ({ role: 'atgm', key: s.key, pts: [toLocal(frame, s.pts[0])] }));
+    // tank Sqns grouped to it when it was built: read from their symbols, for the harbour and the C Pen moves
+    for (const s of mp.syms.filter((x) => x.side === 'own' && x.pbRole && /^tkSqn\d*$/.test(x.pbRole) && x.pts.length)) items.push({ role: s.pbRole, key: s.key, label: s.label || s.pbRole, pts: [toLocal(frame, s.pts[0])] });
     const atRow = atCoverRow({ ...res, items } as any, recipe, unitB, fit.approaches, frame, doc, enemy);
     if (atRow) rows.push(atRow);
+    if (defTk) rows.push(...defTankRows(items, { ...recipe, defTanks: defTk, defTanksUnit: mp.built?.meta?.defTanksUnit === 'Tp' ? 'Tp' : 'Sqn', tankSqn: tkSqn ?? undefined }, frame, opts.ground, doc, fit.from ?? null));
     const alternates = active.filter((p) => p.kind === 'alt' && p.c).map((a) => {
       const letter = a.label.replace(/^alt\s*/i, '').trim().split(/\s+/)[0];
       const of = fwd.find((x) => x.label.split(/\s+/)[0] === letter);
@@ -733,6 +745,8 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     whatIfRes = whatIf({ recipe, raw, res: raw, fit, frame, anchor: frame.anchor, bearing: frame.bearing, manual: {}, terrain, enemy, unit: unitB } as any, opts.ground, doc, start);
     const mr = movesRow(whatIfRes);
     if (mr) rows.push(mr);
+    const tc = defTk ? tankCoverRow(raw, recipe, whatIfRes, fit, frame, doc) : null;
+    if (tc) rows.push(tc);
     const rs = slots.find((x) => x.kind === 'res');
     const rc = rs ? reserveMovesCheck(whatIfRes, rs.label) : null;
     if (rs && rc) rs.checks.push(rc);

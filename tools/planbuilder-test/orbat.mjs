@@ -16,6 +16,7 @@ const F = await import('../../MS/Engines/DeploymentBuilder/PlanFit.ts');
 const W = await import('../../MS/Engines/DeploymentBuilder/PlanWhatIf.ts');
 const S = await import('../../MS/Engines/DeploymentBuilder/PlanSolve.ts');
 const K = await import('../../MS/Engines/DeploymentBuilder/PlanCheck.ts');
+const R = await import('../../MS/Engines/DeploymentBuilder/PlanRecipes.ts');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
@@ -126,6 +127,129 @@ const fitIn = (unit, more = {}) => ({ recipe: r2, ctx: { doc: O.doctrineForUnit(
   check('Bde Def: the assumed en Div (mech) is the RAPID (Def) of Sec 13, 34 Coys, against the Bde', /RAPID \(Def\)/.test(ef?.reason ?? '') && /34 manoeuvre Coys/.test(ef?.reason ?? ''), ef?.reason);
   const rb = K.checkPlan(K.recordsFromPlanDoc(json('MS/Data/Deployments/Plans/Own/Bn Def.json')), doc, { orbat: o });
   check('Bn Def: the enemy drawn is counted from his symbols, not the ORBAT', !/Sec 13/.test(row(rb.rows, 'En force')?.reason ?? '') && rb.enemy.source === 'symbols');
+}
+
+// ── every own arm as one list; the types offered; a Coy or Pl plan follows the type; Bde types ─────────────────────
+{
+  const lists = O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).units);
+  const all = { ...o, own: O.mergeOwn(lists) };
+  const B = (id) => O.brief(all, id);
+  check('every own arm file as one list: 358 units, no id twice (index.json counts.own)', all.own.length === 358 && all.own.length === lists.reduce((a, l) => a + l.length, 0) && json(`${P}index.json`).counts.own === 358, `${all.own.length}`);
+  const twice = O.mergeOwn([o.own, null, undefined, [{ id: 'inf-bn-std', name: 'x' }, { name: 'no id' }]]);
+  check('a missing arm file adds nothing; an id met twice keeps the first; no id: left out', twice.length === o.own.length && twice.find((u) => u.id === 'inf-bn-std').name === 'Std Inf Bn');
+  const key = (b) => JSON.stringify([b.coys, b.strength, b.plsPerCoy, b.atgm, b.rr, b.mortars, b.mgCount, b.apcs]);
+  check('the Bn types read the same from inf.json alone and from every arm', O.ownBnTypes(o).every((t) => key(O.brief(o, t.id)) === key(B(t.id))));
+  check('Inf Bde: its Sig Coy (sig.json) is found, so 2,586 all ranks (3 x 809 + HQ 72 + Sig Coy 87); 12 Coys as before', O.brief(o, 'inf-bde').strength === null && B('inf-bde').strength === 2586 && B('inf-bde').coys === 12, `${B('inf-bde').strength}`);
+  const mech = B('inf-bde-mech-indep');
+  check('Indep Mech Inf Bde Gp: its Armr Regt (armr.json) is found: 2 MIBs + 3 Sqns = 11, its 6 BS, mounted (2 x 60 APCs + the Regt\'s 4)', mech.coys === 11 && mech.atgm.some((w) => w.id === 'bs' && w.count === 6) && mech.mounted && mech.apcs === 124, `${mech.coys} ${mech.apcs}`);
+  check('IIBG: 12 Coys (its Indep S&T Coy is no manoeuvre Coy); the Fd Regt\'s guns are no ATGM', B('inf-bde-iibg').coys === 12 && B('inf-bde-iibg').atgm.every((w) => !/how|gun/i.test(w.name)), `${B('inf-bde-iibg').coys}`);
+  check('a towed howitzer is no TOW: the Hy Regt and the Armd Div Arty hold no ATGM; a TOW Launcher still is one', B('arty-regt-hy-8in').atgm.length === 0 && B('arty-armd-div-arty').atgm.length === 0 && all.own.some((u) => u.arm === 'inf' && B(u.id).atgm.some((w) => /TOW Launcher/.test(w.name))));
+
+  const types = O.ownBnTypes(all), T = (id) => types.find((t) => t.id === id);
+  check('types offered: the FC and Rangers Wings (4 rifle Coys, 730 all ranks, pp 642-644)', T('inf-wing-fc')?.coys === 4 && T('inf-wing-rangers')?.coys === 4 && B('inf-wing-rangers').strength === 730, types.map((t) => `${t.id}:${t.coys}`).join(' '));
+  check('...no Sp / HQ / Adm Wing, no SSG, no Coast Guards', !types.some((t) => /wing-fc-(sp|hq|adm)|ssg|coast/.test(t.id)) && types.length === 13, `${types.length}`);
+  check('each rifle type names its rifle Coy and Pl (Mtn, MIB, Lt Cdo, Rangers)', T('inf-bn-mtn').coy === 'inf-coy-mtn-rifle' && T('inf-bn-mtn').pl === 'inf-pl-mtn-rifle' && T('inf-bn-mib').coy === 'inf-coy-mib-rifle' && T('inf-bn-mib').pl === 'inf-pl-mib-rifle' && T('inf-bn-lt-cdo').coy === 'inf-coy-lt-cdo' && T('inf-wing-rangers').pl === 'inf-pl-rangers-rifle');
+  check('every type but the AT Bns has both; an AT Bn (LAT, HAT) has neither', types.every((t) => (/lat|hat/.test(t.id) ? !t.coy && !t.pl : !!t.coy && !!t.pl)), types.filter((t) => !t.coy || !t.pl).map((t) => t.id).join(' '));
+  check('typeFits: a Lt Cdo Bn (3 Coys) not for a 4-Coy Bn layout, but its Coy (3 Pls) for a Coy plan and its Pl for a Pl plan', !O.typeFits(T('inf-bn-lt-cdo'), '16', 4) && O.typeFits(T('inf-bn-lt-cdo'), '15', 3) && O.typeFits(T('inf-bn-lt-cdo'), '14', 0));
+  check('...a LAT Bn for none; a Std Inf Bn for all three', ['16', '15', '14'].every((e) => !O.typeFits(T('inf-bn-lat-apc'), e, e === '16' ? 4 : 3) && O.typeFits(T('inf-bn-std'), e, e === '16' ? 4 : 3)));
+  const U = (ech, pick) => O.unitForPlan(all, ech, pick);
+  check('a type chosen: the Bn plan is that Bn, the Coy plan its rifle Coy, the Pl plan that Coy\'s rifle Pl', U('16', { type: 'inf-bn-mtn' }) === 'inf-bn-mtn' && U('15', { type: 'inf-bn-mtn', preferred: 'inf-coy-std-rifle' }) === 'inf-coy-mtn-rifle' && U('14', { type: 'inf-bn-mtn' }) === 'inf-pl-mtn-rifle');
+  check('no type chosen: the recipe\'s unit, else the standard one; an AT Bn on a Coy plan: the recipe\'s', U('15', { preferred: 'inf-coy-std-rifle' }) === 'inf-coy-std-rifle' && U('14', {}) === 'inf-pl-std-rifle' && U('16', {}) === 'inf-bn-std' && U('15', { type: 'inf-bn-hat', preferred: 'inf-coy-std-rifle' }) === 'inf-coy-std-rifle' && U('14', { type: 'not-a-unit' }) === 'inf-pl-std-rifle');
+  check('a Bde plan takes the Bde type, not the Bn type; a Div plan stays the Inf Div', U('18', { type: 'inf-bn-mtn', bde: 'inf-bde-mech-indep' }) === 'inf-bde-mech-indep' && U('18', { type: 'inf-bn-mtn' }) === 'inf-bde' && U('18', { bde: 'not-a-unit' }) === 'inf-bde' && U('21', { type: 'inf-bn-mtn', bde: 'inf-bde-iibg' }) === 'inf-div');
+  const bdes = O.ownBdeTypes(all);
+  check('Bde types: Inf Bde (first), IIBG, Indep Mech Inf Bde Gp (3 Bn-sized manoeuvre units each) and the IABG (3 Armr Regts + a MIB = 4); the Mech Bde Gp and the IABG mounted', bdes.length === 4 && bdes[0].id === 'inf-bde' && ['inf-bde', 'inf-bde-iibg', 'inf-bde-mech-indep'].every((id) => bdes.find((b) => b.id === id)?.bns === 3) && bdes.find((b) => b.id === 'armr-iabg')?.bns === 4 && bdes.filter((b) => b.mounted).map((b) => b.id).sort().join() === 'armr-iabg,inf-bde-mech-indep', JSON.stringify(bdes));
+
+  const mibCoy = B(U('15', { type: 'inf-bn-mib' })), mibPl = B(U('14', { type: 'inf-bn-mib' })), stdPl = B('inf-pl-std-rifle'), stdCoy = B('inf-coy-std-rifle');
+  check('a MIB\'s Coy and Pl are mounted (13 and 3 APCs); the Std Inf Bn\'s are not', mibCoy.mounted && mibCoy.apcs === 13 && mibPl.mounted && mibPl.apcs === 3 && !stdCoy.mounted && !stdPl.mounted, `${mibCoy.apcs} ${mibPl.apcs}`);
+  check('size in words: a Bn its Coys, a Coy its Pls, a Pl nothing (it read "12 rifle Coys")', O.sizeText(B('inf-bn-std')) === '4 rifle Coys of 3 Pls' && O.sizeText(stdCoy) === '3 Pls' && O.sizeText(stdPl) === null && !/Coys/.test(O.unitLine(stdPl)), O.unitLine(stdPl));
+  check('...a Bde or above and the enemy count manoeuvre Coys (armour Sqns among them)', O.sizeText(mech) === '11 manoeuvre Coys' && /^39 manoeuvre Coys/.test(O.sizeText(B('inf-div'))) && /manoeuvre/.test(O.sizeText(B('en-iib'))) && /Std Inf Bn \(4 rifle Coys\)/.test(O.forceFromOrbat(std, null).ownName) && /\(11 manoeuvre Coys\)/.test(O.forceFromOrbat(mech, null).ownName));
+  check('a rifle Pl counts a third of a Coy, a Coy one; the Bns above them are not changed by it', stdPl.coys === 0.33 && stdCoy.coys === 1 && B('inf-bn-std').coys === 4 && B('inf-div').coys === 39);
+  // a Coy Def of a MIB: the reserve Pl moves mounted, as a Bn Def's reserve Coy does
+  const rc = json('MS/Data/Deployments/Recipes/coy-def-two-up.json');
+  const reach = (unit) => row(S.solveRecipe(rc, { doc: O.doctrineForUnit(doc, unit), symbols }, { mountedReserve: !!unit.mounted }).rows, 'Reserve reach');
+  check('Coy Def of a MIB Coy: Reserve reach says mounted; of a Std rifle Coy: on foot', /mounted/.test(reach(mibCoy)?.reason ?? '') && /on foot/.test(reach(stdCoy)?.reason ?? ''), reach(mibCoy)?.reason);
+}
+
+// ── step 2: 3-Coy Bn layouts (Lt Cdo) and AT Coys grouped to a Bn (LAT, HAT) ────────────────────────────────────────
+{
+  const all = { ...o, own: O.mergeOwn(O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).units)) };
+  const B = (id) => O.brief(all, id);
+  const ltc = B('inf-bn-lt-cdo');
+  const lay3 = (id) => json(`MS/Data/Deployments/Recipes/${id}.json`);
+  const two3 = lay3('bn3-def-two-up'), three3 = lay3('bn3-def-three-up');
+  const solve = (r, unit) => S.solveRecipe(r, { doc: O.doctrineForUnit(doc, unit), symbols }, { mountedReserve: !!unit?.mounted });
+  const r3 = solve(two3, ltc);
+  check('Lt Cdo Bn: 3 rifle Coys of 3 Pls, 583 all ranks (p 623): what the 3-Coy layouts are for', ltc.coys === 3 && ltc.plsPerCoy === 3 && ltc.strength === 583);
+  check('Bn Def two up, one back (3 Coys): A and B forward, C Coy the reserve; frontage and depth in the IBB two-up row', r3.slots.filter((s) => s.kind === 'fwd').length === 2 && r3.slots.find((s) => s.kind === 'res')?.label === 'C Coy' && row(r3.rows, 'Frontage')?.st === 'pass' && row(r3.rows, 'Depth')?.st === 'pass', `${row(r3.rows, 'Frontage')?.reason} | ${row(r3.rows, 'Depth')?.reason}`);
+  check('...the reserve reaches the C Pen posns in time, the gap is held, no Coy in depth', row(r3.rows, 'Reserve reach')?.st === 'pass' && row(r3.rows, 'Gaps')?.st === 'pass' && !r3.slots.some((s) => s.kind === 'depth'), row(r3.rows, 'Reserve reach')?.reason);
+  const t3 = solve(three3, ltc);
+  check('Bn Def three up, none back (3 Coys): 5.5 km inside the 6.5 km row; the Depth row warns (no Coy left for a reserve) and there is no Reserve reach row', row(t3.rows, 'Frontage')?.st === 'pass' && row(t3.rows, 'Depth')?.st === 'warn' && !row(t3.rows, 'Reserve reach'), `${row(t3.rows, 'Frontage')?.reason} | ${row(t3.rows, 'Depth')?.reason}`);
+  check('a 4-Coy layout of the same family is not for the Lt Cdo Bn (4 Coys wanted, 3 held)', json('MS/Data/Deployments/Recipes/bn-def-two-up.json').slots.filter((s) => s.echelon === '15' && ['fwd', 'depth', 'res', 'round'].includes(s.kind)).length === 4 && ltc.coys !== 4);
+
+  // the AT Bns
+  const ats = O.ownAtTypes(all), A = (id) => ats.find((t) => t.id === id);
+  check('AT Bns: LAT (APC borne), LAT (Jeep borne), HAT; 3 ATGM Coys of 12 launchers each (36 shared over 3)', ats.length === 3 && ats.every((t) => t.coys === 3 && t.launchersPerCoy === 12) && !!A('inf-bn-lat-apc') && !!A('inf-bn-lat-jeep') && !!A('inf-bn-hat'), JSON.stringify(ats.map((t) => `${t.id}:${t.coys}x${t.launchersPerCoy}`)));
+  check('...each names its Coy (LAT Coy, HAT Coy (HAT Bn)) and its all ranks', /LAT Coy/.test(A('inf-bn-lat-apc').coyName) && /HAT Coy/.test(A('inf-bn-hat').coyName) && A('inf-bn-lat-apc').coyStrength === 161, `${A('inf-bn-lat-apc').coyName} ${A('inf-bn-lat-apc').coyStrength}`);
+  check('no rifle Bn is an AT Bn (Lt Cdo, Std, Mtn ...)', !ats.some((t) => /std|mtn|mib|abib|lt-cdo|air-aslt|mjd/.test(t.id)));
+  const g1 = O.withAtGroup(all, std, 'inf-bn-lat-apc', 1), g3 = O.withAtGroup(all, std, 'inf-bn-hat', 3);
+  check('1 LAT Coy grouped to a Std Inf Bn: 4 + 12 = 16 ATGM launchers = 8 pairs (was 2); name and all ranks (809 + 161)', sum(g1.atgm) === 16 && O.atgmPairs(g1) === 8 && O.atgmPairs(std) === 2 && /Std Inf Bn \+ 1 LAT Coy/.test(g1.name) && g1.strength === 970, `${sum(g1.atgm)} ${g1.name} ${g1.strength}`);
+  check('3 HAT Coys: 36 more (40 = 20 pairs); its Coys, rifle Coys and mounted flag are not changed', O.atgmPairs(g3) === 20 && g3.coys === std.coys && g3.mounted === std.mounted && g3.name === 'Std Inf Bn + 3 HAT Coys (HAT Bn)' && g1.name === 'Std Inf Bn + 1 LAT Coy (APC borne)', `${sum(g3.atgm)} ${g3.name}`);
+  check('the Std Inf Bn itself is not changed (a copy)', sum(std.atgm) === 4 && !/\+/.test(std.name) && std.notes.length === 0);
+  check('no group, an unknown AT Bn, no Coys or no unit: the unit comes back as it was', O.withAtGroup(all, std, null, 2) === std && O.withAtGroup(all, std, 'inf-bn-std', 2) === std && O.withAtGroup(all, std, 'inf-bn-lat-apc', 0) === std && O.withAtGroup(all, null, 'inf-bn-lat-apc', 1) === null);
+  check('more Coys than the AT Bn has (9) are held to its 3', sum(O.withAtGroup(all, std, 'inf-bn-lat-apc', 9).atgm) === 4 + 36);
+  check('the unit line names the group and its launchers (12 ATGM at 3.0 km)', /^Std Inf Bn \+ 1 LAT Coy \(APC borne\): 970 all ranks; .*12 ATGM \(3\.0 km\)/.test(O.unitLine(g1)) && g1.notes.some((x) => /grouped to it: 12 ATGM/.test(x)), O.unitLine(g1));
+
+  // sited on the tank approaches: more pairs than the Std Bn's one extra, the AT cover row counts them
+  const fitG = (unit) => F.fitLayout({ ...fitIn(unit), unit });
+  const base = fitG(std), grp = fitG(g1);
+  const pairsOf = (fl) => new Set(fl.raw.items.filter((i) => i.role.startsWith('atgmX')).map((i) => i.role)).size;
+  check('1 LAT Coy: 6 more pairs than the Std Bn\'s one extra (7 placed), the symbols are BS', pairsOf(base) === 1 && pairsOf(grp) === 7 && grp.raw.items.filter((i) => i.role.startsWith('atgmX')).length === 14, `${pairsOf(base)} -> ${pairsOf(grp)}`);
+  const xs = grp.raw.items.filter((i) => i.role.startsWith('atgmX')).map((i) => Math.round(i.pts[0].x));
+  check('...pairs on the same approach fan out along the front (no two pairs on the same spot)', new Set(xs.map((x) => Math.round(x / 10))).size === xs.length, xs.join(' '));
+  const atg = row(grp.res.rows, 'AT cover');
+  check('AT cover names the group: 16 ATGM (8 pairs) held, both approaches under fire', /holds 16 ATGM \(8 pairs\)/.test(atg?.reason ?? '') && atg?.st === 'pass', atg?.reason);
+  // geometry mode (no ground): the flanks, as many as are needed
+  const g0 = S.solveRecipe(r2, { doc, symbols }, {});
+  const ex = F.atgmExtras(g0, r2, g1, null, null, doc);
+  check('without the ground: the 7 extra pairs stand on the flanks of the FDL, none on another\'s spot', new Set(ex.map((e) => e.role)).size === 7 && new Set(ex.map((e) => Math.round(e.at.x / 10))).size === ex.length, `${new Set(ex.map((e) => e.role)).size} pairs`);
+}
+
+// ── step 3: armour: the tank Sqn with an attack from the Armr Regt, the IABG and the Armd Div ───────────────────────
+{
+  const all = { ...o, own: O.mergeOwn(O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).units)) };
+  const B = (id) => O.brief(all, id);
+  const sq = O.tankSqnOf(all);
+  check('the tank Sqn from the ORBAT: 14 tanks (SHQ 2 + 4 Tps of 3, p 115), from an Armr Regt of 44', sq?.tanks === 14 && sq.tps === 4 && sq.tpTanks === 3 && sq.regtTanks === 44 && /p 107-108, 111/.test(sq.src), JSON.stringify(sq));
+  check('...in words', O.tankSqnText(sq) === '14 tanks (4 Tps of 3, SHQ 2), from an Armr Regt of 44', O.tankSqnText(sq));
+  check('without the armour file (inf.json alone) there is no Sqn: the tanks keep the doctrine', O.tankSqnOf(o) === null && O.tankSqnOf(all, 'armr-sqn-hq') === null);
+  check('the Armr Regt: 3 Sqns, 466 all ranks; the Recce Regt holds no manoeuvre Coys here', B('armr-regt').coys === 3 && B('armr-regt').strength === 466 && B('armr-recce-regt').coys === 0);
+
+  // the force ratio: a Sqn with the attack is one more manoeuvre unit
+  const f0 = O.forceFromOrbat(std, O.brief(o, 'en-inf-coy')), f1 = O.forceFromOrbat(std, O.brief(o, 'en-inf-coy'), sq);
+  check('a Bn (4 Coys) attacking an en Coy: 4 : 1; with the Sqn 5 : 1; the unit named with the Sqn and its tanks', f0.ownS === 4 && f1.ownS === 5 && /Std Inf Bn \(4 rifle Coys \+ 1 Tk Sqn of 14 tanks\)/.test(f1.ownName) && f0.enS === 1, f1.ownName);
+  check('no unit: no Sqn counted either', O.forceFromOrbat(null, null, sq).ownS === undefined);
+  const fa = C.forceRow(doc, 'attack', '16', { echelon: '15', type: 'inf', source: 'default' }, f1.ownS, f1.enS, f1);
+  check('Force ratio row: about 5 : 1, the Sqn named', /about 5 : 1/.test(fa.reason) && /1 Tk Sqn of 14 tanks/.test(fa.reason), fa.reason);
+
+  // the tanks' rows count the Sqn
+  const T = await import('../../MS/Engines/DeploymentBuilder/PlanTanks.ts');
+  const A = await import('../../MS/Engines/DeploymentBuilder/PlanAttack.ts');
+  const front = json('MS/Data/Deployments/Recipes/bn-attk-frontal.json');
+  const tSq = { tanks: sq.tanks, tps: sq.tps, tpTanks: sq.tpTanks, regtTanks: sq.regtTanks, src: sq.src };
+  const timing = (mode, s) => { const t = T.withTanks(front, doc, mode, s); const res = S.solveRecipe(t, { doc, symbols }, {}); const h = A.attackTimes(res, null, null, doc, 'plains', false, null); return { t, rows: T.addTankTimes(h, res, null, null, doc, false, mode, null) }; };
+  const c1 = timing('close', tSq), f1t = timing('fire', tSq), c0 = timing('close', null);
+  check('Close sp with the Sqn: the timing says "the Sqn (-), 11 of its 14 tanks," and the recipe carries the Sqn', /the Sqn \(-\), 11 of its 14 tanks, leaves FUP/.test(row(c1.rows, 'Tank timing')?.reason ?? '') && c1.t.tankSqn?.tanks === 14, row(c1.rows, 'Tank timing')?.reason);
+  check('Fire sp: "the Sqn of 14 tanks leaves FUP (Tks)"', /the Sqn of 14 tanks leaves FUP/.test(row(f1t.rows, 'Tank timing')?.reason ?? ''), row(f1t.rows, 'Tank timing')?.reason);
+  check('without the ORBAT the wording is as before ("the Sqn leaves"), and the recipe has no Sqn', /^the Sqn leaves FUP/.test(row(c0.rows, 'Tank timing')?.reason ?? '') && !c0.t.tankSqn, row(c0.rows, 'Tank timing')?.reason);
+  check('the recipe with the Sqn still validates, and the one passed in is not changed', !R.validateRecipe(c1.t, { doc, symbols }).some((i) => i.level === 'fail') && !front.tankSqn);
+
+  // formations
+  const divs = O.ownDivTypes(all);
+  check('Div types: Inf Div (first, 39 manoeuvre Coys) and the Armd Div (27: 5 Armr Regts x 3 Sqns + 3 MIBs x 4; its Armd Bdes are made of those Regts, not 12 more each)', divs.length === 2 && divs[0].id === 'inf-div' && divs[1].id === 'armr-div-armd' && divs[0].coys === 39 && divs[1].coys === 27, JSON.stringify(divs));
+  const iabg = B('armr-iabg'), U = (ech, pick) => O.unitForPlan(all, ech, pick);
+  check('IABG: 13 manoeuvre Coys / Sqns (3 Armr Regts x 3 + a MIB 4), mounted (107 APCs), named a Bde', iabg.coys === 13 && iabg.mounted && iabg.apcs === 107 && O.sizeText(iabg) === '13 manoeuvre Coys', `${iabg.coys} ${iabg.apcs}`);
+  check('a Bde plan can take the IABG; a Div plan the Armd Div; no pick: the Inf Bde, the Inf Div', U('18', { bde: 'armr-iabg' }) === 'armr-iabg' && U('21', { div: 'armr-div-armd' }) === 'armr-div-armd' && U('18', {}) === 'inf-bde' && U('21', {}) === 'inf-div' && U('21', { div: 'nope' }) === 'inf-div');
+  check('the Armd Div reads from the Armr file: 13,128 all ranks (p 101, 103, 120)', B('armr-div-armd').strength === 13128);
 }
 
 console.log(`\n${n} checks, ${fails} failed`);

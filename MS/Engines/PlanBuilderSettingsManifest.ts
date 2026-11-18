@@ -122,7 +122,7 @@ export const planBuilderSettingsManifest: SettingDescriptor[] = [
     label: 'ORBAT URL',
     group: 'Data',
     type: 'string',
-    help: 'Folder serving the ORBAT (inf.json, en.json, weapons.json, engr.json from SO\'s Hbk 2019): the unit types, their weapons and ranges, APCs, the enemy\'s units and the minelaying rates. Missing: the doctrine figures stand.',
+    help: 'Folder serving the ORBAT from SO\'s Hbk 2019: inf.json, en.json and weapons.json (needed), and the other arm files (armr, arty, ad, engr, sig, avn, log, mov) read as one list with the infantry. It gives the unit types, their weapons and ranges, APCs, the enemy\'s units and the minelaying rates. An arm file that is missing is left out; no ORBAT at all: the doctrine figures stand.',
     advanced: true,
   },
   {

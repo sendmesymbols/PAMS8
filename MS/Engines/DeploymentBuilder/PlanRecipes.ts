@@ -74,6 +74,11 @@ export interface Recipe {
   echelon: string;
   /** ORBAT unit id (MS/Data/Orbat/PK). */
   unit?: string;
+  /**
+   * The manoeuvre Coys (a Coy plan: Pls) the layout is for, when it is not the standard four (three). A family may then
+   * hold the same layout once for each count; the tab shows the layouts that match the unit type chosen.
+   */
+  forCoys?: number;
   basis: 'D' | 'O' | 'E' | 'U';
   /** OcokaDoctrine.frontage row the whole layout is held to (null: none printed, basis E). */
   frontageRow: string | null;
@@ -93,6 +98,12 @@ export interface Recipe {
   phase2Side?: 1 | -1;
   /** A tank Sqn with the attack (PlanTanks.withTanks): in the fire support role, or in close support (armour heavy). */
   tanks?: 'fire' | 'close';
+  /** Tank Sqns grouped to a Bn defence (PlanTanks.withDefTanks): their harbours beside the reserve, the C Pen force at the tank rate. */
+  defTanks?: number;
+  /** What defTanks counts: Sqns (a Bn defence) or Tps (a Coy defence). */
+  defTanksUnit?: 'Sqn' | 'Tp';
+  /** The tank Sqn with the attack, from the ORBAT (PlanOrbat.tankSqnOf): tanks, Tps, tanks a Tp; its source. */
+  tankSqn?: { tanks: number; tps: number; tpTanks: number; regtTanks: number | null; src: string };
   /** The role of the point the map click lands on (an ambush's KZ, a patrol's SP); else the HQ or the target on the Obj. */
   pivot?: string;
 }
@@ -211,6 +222,12 @@ export function validateRecipe(r: Recipe, ctx: ValidateCtx): RecipeIssue[] {
   if (!['D', 'O', 'E', 'U'].includes(r.basis)) fail(`basis "${r.basis}" is not D / O / E / U`);
   if (!r.needs || typeof r.needs.terrain !== 'boolean') fail('needs.terrain missing');
   if (r.unit && ctx.units && !ctx.units.has(r.unit)) fail(`unit ${r.unit} is not in the ORBAT`);
+  if (r.forCoys != null) {
+    const below = String(Number(r.echelon) === 16 ? 15 : 14);
+    const held = Array.isArray(r.slots) ? r.slots.filter((s) => s?.echelon === below && ['fwd', 'depth', 'res', 'round'].includes(s.kind)).length : 0;
+    if (!Number.isInteger(r.forCoys) || r.forCoys < 1) fail(`forCoys ${r.forCoys} is not a whole number from 1`);
+    else if (held !== r.forCoys) fail(`forCoys is ${r.forCoys} but the recipe holds ground with ${held} sub-units`);
+  }
   if (r.frontageRow != null && !frontageRow(doc, r.frontageRow)) fail(`frontageRow "${r.frontageRow}" is not a row of OcokaDoctrine.frontage`);
   // a crossing's frontages and depths are PlanDoctrine.crossing.bridgehead (IBB S46), not an OcokaDoctrine row
   if (r.frontageRow == null && r.basis === 'D' && r.task !== 'crossing' && r.layout !== 'canal' && !SMALL_TASKS.includes(r.task)) warn('basis D but no frontage row');
@@ -339,7 +356,8 @@ export function validateFamilies(recipes: Recipe[]): RecipeIssue[] {
       if (r.task !== t.task) out.push({ level: 'fail', recipe: r.id, msg: `family ${f}: task ${r.task} differs from ${t.id}'s ${t.task}` });
       if (r.echelon !== t.echelon) out.push({ level: 'fail', recipe: r.id, msg: `family ${f}: echelon ${r.echelon} differs from ${t.id}'s ${t.echelon}` });
     }
-    const layouts = list.map((r) => r.layout);
+    // the same layout may come once for each Coy count (a three-Coy Bn's two up beside the four-Coy one)
+    const layouts = list.map((r) => `${r.layout}/${r.forCoys ?? 'std'}`);
     if (new Set(layouts).size !== layouts.length) out.push({ level: 'fail', recipe: f, msg: `family ${f} has the same layout twice` });
   }
   return out;
