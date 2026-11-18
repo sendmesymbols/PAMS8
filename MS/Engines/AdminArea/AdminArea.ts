@@ -25,8 +25,9 @@ import DOCTRINE from '../../Data/AdminDoctrine.json';
 import { MovementGuideDraw } from '../MovementGuide/MovementGuideDraw';
 import { mgrsOf } from '../PlatoonGuide/PlatoonGuideText';
 import { SiteBundle } from '../SiteScan/SiteProbe';
-import { SiteMap, circlePts, type MapSpec } from '../SiteScan/SiteMap';
-import { SitePanel, siteHint, type PanelAction, type PanelControl, type PanelPlace, type PanelReason, type PanelSite, type PanelWhyNot } from '../SiteScan/SitePanel';
+import { SiteMap, arcPts, type MapSpec } from '../SiteScan/SiteMap';
+import { SitePanel, siteHint, copyToClipboard, type PanelAction, type PanelControl, type PanelPlace, type PanelReason, type PanelSite, type PanelWhyNot } from '../SiteScan/SitePanel';
+import { setSetting } from '../../Support/SettingsBus';
 import { MONTHS, bearingOf, dataCatalog, lngLatToMerc, mercToLngLat, seasonFor, km, metres, type Season, type Tone, type XY } from '../SiteScan/SiteScan';
 import {
   ADMIN_KINDS,
@@ -129,6 +130,8 @@ export default class AdminArea {
   private _pending = false;
   private _season: { season: Season; why: string } | null = null;
   private _sel = 0;
+  /** Which map pick is under way (its panel button is drawn pressed). */
+  private _picking: 'centre' | 'threat' | 'whyNot' | null = null;
   private _timer: ReturnType<typeof setTimeout> | null = null;
   private _creator: ((items: any[]) => any[]) | null = null;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -156,6 +159,10 @@ export default class AdminArea {
       close: () => this.openPanel(false),
       leftOut: () => (this._res?.rejectedWhy ?? []).map((r): PanelReason => ({ text: r.text, rules: r.rules })),
       whyNot: () => this._whyNotPanel(),
+      summary: () => this._summary(),
+      guide: () => this._guide(),
+      setupDone: () => !!this._centre,
+      clearAct: () => ({ id: 'clearAll', label: 'Clear', title: 'Take the picked places, the result and the drawings off', disabled: !this._centre && !this._threat && !this._whyNotAt }),
     });
   }
 
@@ -220,6 +227,12 @@ export default class AdminArea {
   }
 
   onViewChanged(): void {
+    // a pick under way is dropped with the old view: its hint pill and pressed button go with it
+    if (this._picking) {
+      this._picking = null;
+      siteHint(HINT, ICON, null);
+      this._panel.render();
+    }
     this._draw.cancel(false);
     this._map.destroy();
     if (this._enabled) this._paint();
@@ -230,6 +243,7 @@ export default class AdminArea {
     if (!open) {
       this._panel.close();
       this._draw.cancel(false);
+      this._picking = null;
       siteHint(HINT, ICON, null);
       return;
     }
@@ -401,7 +415,7 @@ export default class AdminArea {
   // ── picks ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
   pickCentre(): void {
-    this._pick('Click roughly where the admin area should go (the search circle\'s centre). Esc cancels', (p) => {
+    this._pick('centre', 'Click roughly where the admin area should go (the search circle\'s centre). Esc cancels', (p) => {
       this._centre = p;
       if (!this._threat) this._markerThreat();
     });
@@ -409,7 +423,7 @@ export default class AdminArea {
 
   /** Click any place: it is read with the same gates and checks, and the panel says why it is not in the list. */
   pickWhyNot(): void {
-    this._pick('Click the place you want explained: the same checks, and the rule that left it out. Esc cancels', (p) => {
+    this._pick('whyNot', 'Click the place you want explained: the same checks, and the rule that left it out. Esc cancels', (p) => {
       this._whyNotAt = p;
     });
   }
@@ -425,7 +439,7 @@ export default class AdminArea {
   }
 
   pickThreat(): void {
-    this._pick('Click the enemy\'s place (his forward troops). Esc cancels', (p) => {
+    this._pick('threat', 'Click the enemy\'s place (his forward troops). Esc cancels', (p) => {
       this._threat = p;
       this._threatFrom = 'pick';
     });
@@ -442,19 +456,27 @@ export default class AdminArea {
     this._schedule();
   }
 
-  private _pick(prompt: string, done: (p: XY) => void): void {
+  private _pick(what: 'centre' | 'threat' | 'whyNot', prompt: string, done: (p: XY) => void): void {
     if (!this._enabled) return;
+    // a pick under way is dropped quietly by `start`, so the new one is the only one pressed
+    this._picking = what;
     this._draw.start({
       kind: 'point',
       prompt,
       onStatus: (t) => siteHint(HINT, ICON, t),
-      onCancel: () => siteHint(HINT, ICON, null),
+      onCancel: () => {
+        this._picking = null;
+        siteHint(HINT, ICON, null);
+        this._panel.render();
+      },
       onDone: (pts) => {
+        this._picking = null;
         siteHint(HINT, ICON, null);
         if (pts[0]) done([pts[0][0], pts[0][1]]);
         this._schedule();
       },
     });
+    this._panel.render();
   }
 
   // ── output ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -489,14 +511,12 @@ export default class AdminArea {
   async copyText(): Promise<boolean> {
     const t = this.text();
     if (!t) return false;
-    try {
-      await navigator.clipboard.writeText(t);
+    if (await copyToClipboard(t)) {
       siteHint(HINT, ICON, 'Admin area sites copied as text', 1800);
       return true;
-    } catch {
-      siteHint(HINT, ICON, 'Copy failed: the browser refused the clipboard', 2200);
-      return false;
     }
+    siteHint(HINT, ICON, 'Copy failed: the browser refused the clipboard', 2200);
+    return false;
   }
 
   private _grid(p: XY): string {
@@ -523,8 +543,8 @@ export default class AdminArea {
     const g = this._gun();
     const size = adminSize({ kind: this._opts.kind, vehicles: Number(this._opts.vehicles) > 0 ? Number(this._opts.vehicles) : null } as AdminTask, this._R);
     return [
-      { key: 'kind', label: 'Kind', type: 'select', value: this._opts.kind, options: ADMIN_KINDS.map((k) => ({ value: k, label: this._R.kinds[k].label })) },
-      { key: 'op', label: 'Op', type: 'select', value: this._opts.op, options: [{ value: 'def', label: 'Def' }, { value: 'adv', label: 'Adv' }, { value: 'wdr', label: 'Wdr' }], title: 'The DAA\'s distance behind forward troops by operation (SOH Sec 10 p 1055)' },
+      { key: 'kind', label: 'Kind', type: 'select', value: this._opts.kind, wide: true, options: ADMIN_KINDS.map((k) => ({ value: k, label: this._R.kinds[k].label })) },
+      { key: 'op', label: 'Operation', type: 'select', value: this._opts.op, options: [{ value: 'def', label: 'Def' }, { value: 'adv', label: 'Adv' }, { value: 'wdr', label: 'Wdr' }], title: 'The DAA\'s distance behind forward troops by operation (SOH Sec 10 p 1055)' },
       {
         key: 'month',
         label: 'Month',
@@ -535,7 +555,8 @@ export default class AdminArea {
       },
       {
         key: 'enemyGun',
-        label: `Clear of en`,
+        label: 'Clear of enemy gun',
+        wide: true,
         type: 'select',
         value: this._opts.enemyGun || '',
         options: [
@@ -545,9 +566,9 @@ export default class AdminArea {
         ],
         title: `${K.short}: clear of his ${cls} guns (${K.beyond.basis}). ORBAT Sec 13 ranges`,
       },
-      { key: 'gunDepthKm', label: 'His guns behind', type: 'number', value: this._opts.gunDepthKm, min: 0, max: 20, step: 0.5, unit: 'km', title: 'How far behind the threat place his guns stand; 0 measures from the threat place (safe side)' },
-      { key: 'vehicles', label: 'Veh', type: 'number', value: this._opts.vehicles, min: 0, max: 5000, step: 10, title: `0 = the doctrine's area (${metres(size.frontM)} x ${metres(size.depthM)}); else sized at 50 veh per km² (SOH Sec 10 p 1054)` },
-      { key: 'radiusKm', label: 'Look', type: 'number', value: Number(this._opts.radiusKm) > 0 ? this._opts.radiusKm : this._radiusM() / 1000, min: 1, max: 30, step: 0.5, unit: 'km' },
+      { key: 'gunDepthKm', label: 'His guns behind threat', type: 'number', value: this._opts.gunDepthKm, min: 0, max: 20, step: 0.5, unit: 'km', title: 'How far behind the threat place his guns stand; 0 measures from the threat place (safe side)' },
+      { key: 'vehicles', label: 'Vehicles', type: 'number', value: this._opts.vehicles, min: 0, max: 5000, step: 10, title: `0 = the doctrine's area (${metres(size.frontM)} x ${metres(size.depthM)}); else sized at 50 veh per km² (SOH Sec 10 p 1054)` },
+      { key: 'radiusKm', label: 'Look within', type: 'number', value: Number(this._opts.radiusKm) > 0 ? this._opts.radiusKm : this._radiusM() / 1000, min: 1, max: 30, step: 0.5, unit: 'km', title: 'How far round the picked place sites are looked for' },
     ];
   }
 
@@ -565,38 +586,75 @@ export default class AdminArea {
     else if (k === 'vehicles') patch.vehicles = Math.max(0, Math.min(5000, Math.round(Number(v) || 0)));
     else if (k === 'radiusKm') patch.radiusKm = Math.max(1, Math.min(30, Number(v) || 0));
     this.setOptions(patch);
+    // The panel's settings are the same ones Ctrl+K and the gear show. Write them back, or the next change made there
+    // would put the old value back (the host re-applies the whole settings tree on every change).
+    for (const [key, val] of Object.entries(patch)) setSetting(['adminArea', key], val);
   }
 
   private _places(): PanelPlace[] {
     const f = this._front();
     return [
-      { label: 'Look round', value: this._centre ? `${this._grid(this._centre)} (${km(this._radiusM(), 1)})` : 'not picked', buttons: [{ id: 'pickCentre', label: 'Pick' }] },
+      {
+        label: 'Look round',
+        value: this._centre ? `${this._grid(this._centre)} (${km(this._radiusM(), 1)})` : 'not picked',
+        set: !!this._centre,
+        buttons: [{ id: 'pickCentre', label: this._centre ? 'Move' : 'Pick', title: 'Click the map where the admin area should go roughly', on: this._picking === 'centre' }],
+      },
       {
         label: 'Threat',
         value: this._threat ? `${this._grid(this._threat)}${this._threatFrom === 'marker' ? ' (threat marker)' : ''}` : 'none: his guns not checked',
+        set: !!this._threat,
         buttons: [
-          { id: 'pickThreat', label: 'Pick', title: 'Click the enemy\'s place (his forward troops)' },
+          { id: 'pickThreat', label: this._threat ? 'Move' : 'Pick', title: 'Click the enemy\'s place (his forward troops)', on: this._picking === 'threat' },
           ...(this._host.threat?.() ? [{ id: 'markerThreat', label: 'Marker', title: 'The Ground Guide\'s threat marker', on: this._threatFrom === 'marker' }] : []),
           ...(this._threat ? [{ id: 'clearThreat', label: '✕', title: 'No threat' }] : []),
         ],
       },
-      { label: 'Front', value: f ? f.label : 'none (draw the FDL or mark the threat)', buttons: [] },
+      { label: 'Front', value: f ? f.label : 'none (draw the FDL or mark the threat)', set: !!f, buttons: [] },
     ];
   }
 
   private _actions(): PanelAction[] {
     const has = !!this._res?.sites.length;
     return [
-      { id: 'pickCentre', label: this._centre ? 'Look elsewhere' : 'Pick area', primary: !this._centre, title: 'Click the map where the admin area should go roughly' },
-      { id: 'whyNot', label: 'Why not here?', disabled: !this._res, title: 'Click any place: it is read with the same checks, and you get the rule (book and page) that left it out or put it lower' },
-      ...(this._whyNotAt ? [{ id: 'clearWhyNot', label: '✕ Why not', title: 'Clear the "Why not here?" place' }] : []),
-      { id: 'create', label: 'Create on Map', disabled: !has, title: 'The selected site as a symbol (2525D support area or the catalog point), one undo step' },
-      { id: 'copy', label: 'Copy as Text', disabled: !has, title: 'The decision record: every site with its checks, why it is where it is, the places left out, and every rule cited with book, page and words' },
+      { id: 'pickCentre', label: this._centre ? 'Look elsewhere' : 'Pick area', primary: !this._centre, on: this._picking === 'centre', title: 'Click the map where the admin area should go roughly' },
+      { id: 'whyNot', label: 'Why not here?', disabled: !this._res, on: this._picking === 'whyNot', title: 'Click any place: it is read with the same checks, and you get the rule (book and page) that left it out or put it lower' },
+      { id: 'create', label: 'Create on Map', output: true, disabled: !has, title: 'The selected site as a symbol (2525D support area or the catalog point), one undo step' },
+      { id: 'copy', label: 'Copy as Text', output: true, disabled: !has, title: 'The decision record: every site with its checks, why it is where it is, the places left out, and every rule cited with book, page and words' },
+    ];
+  }
+
+  /** The setup in one line, for the folded setup and the folded panel. */
+  private _summary(): string {
+    const K = this._R.kinds[this._opts.kind];
+    const g = this._gun();
+    return [K.short, this._opts.op === 'adv' ? 'Adv' : this._opts.op === 'wdr' ? 'Wdr' : 'Def', g ? `clear of ${g.name} ${km(g.rangeM)}` : '', km(this._radiusM(), 1), MONTHS[this._month() - 1]].filter(Boolean).join(' · ');
+  }
+
+  /** What to do, while there is no result to show. */
+  private _guide(): string[] {
+    if (this._bundleState === 'missing') return ['The terrain bundle is not there: Admin Area reads the ground from it. Check the Terrain bundle URL in the gear settings.'];
+    return [
+      'Pick the kind of admin area and the operation.',
+      'Pick where to look: click the map roughly where the area should go.',
+      'Give the threat place (his forward troops): Pick it, or use the Ground Guide threat marker. Without one, his guns are not checked.',
+      'Draw the FDL (FEBA / FLOT line) to have the distance behind the front checked (DAA).',
     ];
   }
 
   private _act(id: string): void {
-    if (id === 'pickCentre') this.pickCentre();
+    if (id === 'clearAll') {
+      this._centre = null;
+      this._threat = null;
+      this._threatFrom = null;
+      this._whyNotAt = null;
+      this._whyNot = null;
+      this._sel = 0;
+      this._draw.cancel(false);
+      this._picking = null;
+      siteHint(HINT, ICON, null);
+      this._schedule();
+    } else if (id === 'pickCentre') this.pickCentre();
     else if (id === 'pickThreat') this.pickThreat();
     else if (id === 'markerThreat') {
       this._markerThreat();
@@ -652,6 +710,7 @@ export default class AdminArea {
       gates: w.gates.map((g) => ({ text: g.text, rules: g.rules })),
       vsBest: w.vsBest,
       rows: (w.site?.rows ?? []).map((r) => ({ label: r.label, value: r.value, tone: r.tone, why: r.why, fix: r.fix, rules: r.rules })),
+      clearAct: 'clearWhyNot',
     };
   }
 
@@ -687,12 +746,10 @@ export default class AdminArea {
       if (g) {
         const reach = g.rangeM - Math.max(0, Number(this._opts.gunDepthKm) || 0) * 1000;
         if (reach > 0) {
-          // only the part of his reach that faces the search circle, so the map stays readable
+          // only the part of his reach that faces the search circle, so the map stays readable (one arc: filtering a
+          // full circle joined its two ends with a straight line when the circle lay north of the threat)
           const toward = this._centre ? bearingOf(this._threat, this._centre) : 0;
-          const pts = circlePts(this._threat, reach, 144).filter((_, i) => {
-            const b = (i * 360) / 144;
-            return Math.abs(((b - toward + 540) % 360) - 180) <= 60;
-          });
+          const pts = arcPts(this._threat, reach, toward, 120, 48);
           spec.lines.push({ pts, rgb: [229, 72, 77], width: 1.8, dash: true, label: `${g.name} reach ${km(reach)}` });
         }
       }

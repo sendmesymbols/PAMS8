@@ -28,7 +28,7 @@ import { HttpPngTileSource, type TileSource } from '../GroundGuide/TerrainTileCa
 import { WorkerTileSource } from '../GroundGuide/WorkerTileSource';
 import { MovementGuideDraw } from '../MovementGuide/MovementGuideDraw';
 import { SiteMap, type MapSpec } from '../SiteScan/SiteMap';
-import { dockBelowBar, siteHint } from '../SiteScan/SitePanel';
+import { DOCK_EVENT, dockBelowBar, siteHint } from '../SiteScan/SitePanel';
 import {
   AOI_JUDGED,
   EXTRA_USES,
@@ -42,9 +42,11 @@ import {
   nodataInTile,
   pickZoom,
   shareInside,
+  shortSource,
   sourceName,
   tileBox,
   tileRange,
+  tileWeights,
   type AoiReport,
   type ExtraTally,
   type LayerTally,
@@ -73,36 +75,62 @@ const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 const CSS = `
-#${PANEL_ID}{position:fixed;left:10px;top:118px;z-index:2147482808;width:min(600px,calc(100vw - 20px));max-height:calc(100vh - 130px);display:none;flex-direction:column;
+#${PANEL_ID}{position:fixed;left:10px;top:118px;z-index:2147482808;width:min(440px,calc(100vw - 20px));max-height:calc(100vh - 130px);display:none;flex-direction:column;
  background:var(--gg-card);color:#f1f3f6;border:1px solid var(--gg-hair);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.5);font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif}
 #${PANEL_ID}.ms-open{display:flex}
+#${PANEL_ID}.ms-away{visibility:hidden;pointer-events:none}
 #${PANEL_ID} *{box-sizing:border-box}
 #${PANEL_ID} .ac-head{flex:none}
 #${PANEL_ID} .h{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:7px 10px;background:linear-gradient(90deg,#1d2635,var(--gg-head) 45%);border-radius:11px 11px 0 0}
-#${PANEL_ID} .t{font-weight:750;font-size:13.5px;color:#fff;flex:1}
+#${PANEL_ID} .t{font-weight:750;font-size:13.5px;color:#fff;flex:1;white-space:nowrap}
 #${PANEL_ID} button{font:500 12.5px/1 system-ui,Segoe UI,Arial,sans-serif;color:#e1e6eb;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:6px;cursor:pointer;height:27px;padding:0 9px;white-space:nowrap}
 #${PANEL_ID} button:hover{background:rgba(255,255,255,.14);color:#fff}
+#${PANEL_ID} button:focus-visible,#${PANEL_ID} summary:focus-visible{outline:2px solid var(--gg-accent);outline-offset:1px}
 #${PANEL_ID} button.pri{background:#2b5d86;border-color:#4f8ab8}
 #${PANEL_ID} button.x{width:27px;padding:0;font-size:17px}
 #${PANEL_ID} button[disabled]{opacity:.45;cursor:default}
-#${PANEL_ID} .body{flex:1 1 auto;min-height:0;overflow:auto;padding:6px 12px 10px}
-#${PANEL_ID} .ans{font-weight:700;font-size:14px;padding:6px 0}
-#${PANEL_ID} .ans.ok{color:#74dca3}#${PANEL_ID} .ans.warn{color:#ffb46b}#${PANEL_ID} .ans.bad{color:#ff8a8d}#${PANEL_ID} .ans.unknown{color:#c3cbd3}
-#${PANEL_ID} .facts{display:flex;flex-wrap:wrap;gap:4px 16px;padding:2px 0 6px;font-size:12px;color:var(--gg-label)}
-#${PANEL_ID} .facts b{color:#f4f6f8;font-weight:650}
-#${PANEL_ID} h4{margin:10px 0 4px;font-size:12.5px;color:#e4e8ec}
-#${PANEL_ID} ul{margin:0;padding-left:18px;font-size:12.5px}
-#${PANEL_ID} li{margin:2px 0}
+#${PANEL_ID} .ac-acts{display:flex;flex-wrap:wrap;gap:6px;padding:7px 10px;border-bottom:1px solid var(--gg-hair)}
+#${PANEL_ID} .ac-acts .sp{flex:1}
+#${PANEL_ID} .body{flex:1 1 auto;min-height:0;overflow:auto;padding:8px 12px 10px}
+#${PANEL_ID} .vd{display:flex;align-items:flex-start;gap:8px;font-weight:700;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid var(--gg-hair);background:var(--gg-strip)}
+#${PANEL_ID} .vd i{flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px;background:#9aa3ad}
+#${PANEL_ID} .vd.ok{color:#74dca3;border-color:rgba(47,168,98,.5)}#${PANEL_ID} .vd.ok i{background:#2fa862}
+#${PANEL_ID} .vd.warn{color:#ffb46b;border-color:rgba(238,138,31,.5)}#${PANEL_ID} .vd.warn i{background:#ee8a1f}
+#${PANEL_ID} .vd.bad{color:#ff8a8d;border-color:rgba(229,72,77,.55)}#${PANEL_ID} .vd.bad i{background:#e5484d}
+#${PANEL_ID} .vd.unknown{color:#c3cbd3}
+#${PANEL_ID} .prog{height:4px;border-radius:2px;background:rgba(255,255,255,.1);margin:6px 0 2px;overflow:hidden}
+#${PANEL_ID} .prog b{display:block;height:100%;background:#8ec1ea;transition:width .25s}
+#${PANEL_ID} .facts{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding:8px 2px 2px}
+#${PANEL_ID} .f{display:flex;flex-direction:column;min-width:0}
+#${PANEL_ID} .fk{font-size:11.5px;color:var(--gg-label)}
+#${PANEL_ID} .fv{font:700 13.5px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:#f4f6f8;font-variant-numeric:tabular-nums}
+#${PANEL_ID} .fv small{font:500 11.5px/1.25 system-ui,Segoe UI,Arial,sans-serif;color:var(--gg-label)}
+#${PANEL_ID} .fv.warn{color:#ffd09a}
+#${PANEL_ID} h4{margin:12px 0 4px;font-size:12.5px;color:#e4e8ec}
+#${PANEL_ID} ul{margin:0;padding-left:0;list-style:none;font-size:12.5px}
+#${PANEL_ID} .aff li{display:grid;grid-template-columns:44px 1fr;gap:8px;margin:3px 0;align-items:start}
+#${PANEL_ID} .aff b{font-variant-numeric:tabular-nums;text-align:right}
+#${PANEL_ID} .aff .core{color:#ff8a8d}#${PANEL_ID} .aff .oth{color:#ffd09a}
+#${PANEL_ID} .aff small{display:block;color:var(--gg-label);font-size:11.5px}
+#${PANEL_ID} .none{color:#a6ebc4;font-size:12.5px}
 #${PANEL_ID} table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12px}
 #${PANEL_ID} th{font-size:11.5px;font-weight:650;color:var(--gg-label);text-align:left;padding:2px 6px;border-bottom:1px solid var(--gg-hair)}
-#${PANEL_ID} td{padding:2px 6px;border-bottom:1px solid var(--gg-hair-soft);vertical-align:top}
+#${PANEL_ID} td{padding:3px 6px;border-bottom:1px solid var(--gg-hair-soft);vertical-align:top}
+#${PANEL_ID} td.n{white-space:nowrap}
 #${PANEL_ID} td.bad{color:#ff8a8d}#${PANEL_ID} td.warn{color:#ffd09a}#${PANEL_ID} td.ok{color:#a6ebc4}
-#${PANEL_ID} .bar{display:inline-block;height:7px;border-radius:3px;background:#2fa862;vertical-align:middle;margin-right:5px}
-#${PANEL_ID} details{margin-top:8px;font-size:12px;color:var(--gg-label)}
-#${PANEL_ID} details summary{cursor:pointer;color:#e4e8ec;font-weight:650}
+#${PANEL_ID} .bar{display:inline-block;height:6px;border-radius:3px;background:#2fa862;vertical-align:middle;margin-right:5px}
+#${PANEL_ID} .bar.warn{background:#ee8a1f}#${PANEL_ID} .bar.bad{background:#e5484d}
+#${PANEL_ID} details{margin-top:8px;font-size:12px;color:var(--gg-label);border-top:1px solid var(--gg-hair-soft);padding-top:6px}
+#${PANEL_ID} details summary{cursor:pointer;color:#e4e8ec;font-weight:650;font-size:12.5px;list-style:none}
+#${PANEL_ID} details summary::-webkit-details-marker{display:none}
+#${PANEL_ID} details summary::before{content:'▸';display:inline-block;width:14px;color:var(--gg-label)}
+#${PANEL_ID} details[open] summary::before{content:'▾'}
+#${PANEL_ID} details summary em{font-style:normal;font-weight:500;color:var(--gg-label);margin-left:6px}
+#${PANEL_ID} details > :not(summary){margin-top:5px}
 #${PANEL_ID} .tag{display:inline-block;padding:0 5px;border-radius:8px;font-size:10.5px;font-weight:650;margin-left:4px;background:rgba(229,72,77,.25);color:#ffb3b5}
 #${PANEL_ID} .tag.nc{background:rgba(238,138,31,.25);color:#ffd09a}
 #${PANEL_ID} .empty{padding:18px;color:var(--gg-label);text-align:center}
+#${PANEL_ID} .note{font-size:11.5px;color:var(--gg-label)}
 `;
 
 let cssDone = false;
@@ -138,6 +166,11 @@ export default class AoiCheck {
   private _el: HTMLElement | null = null;
   private _open = false;
   private _tiles = 0;
+  private _extrasDone = true;
+  private _openK = new Map<string, boolean>();
+  private _fit = (): void => {
+    if (this._open && this._el) dockBelowBar(this._el, { clearFoot: true });
+  };
 
   constructor(getView: () => any) {
     this._getView = getView;
@@ -179,6 +212,8 @@ export default class AoiCheck {
     if (!this._enabled) return;
     this._enabled = false;
     this._token++;
+    if (this._renderTimer) clearTimeout(this._renderTimer);
+    this._renderTimer = null;
     this._draw.cancel(false);
     this.openPanel(false);
     this._map.clear();
@@ -190,6 +225,8 @@ export default class AoiCheck {
 
   destroy(): void {
     this.disable();
+    window.removeEventListener('resize', this._fit);
+    window.removeEventListener(DOCK_EVENT, this._fit);
     this._el?.remove();
     this._el = null;
     this._map.destroy();
@@ -211,8 +248,9 @@ export default class AoiCheck {
     ensureCss();
     if (!this._el) this._build();
     this._open = true;
-    dockBelowBar(this._el!);
     this._el!.classList.add('ms-open');
+    this._el!.classList.remove('ms-away');
+    dockBelowBar(this._el!, { clearFoot: true });
     this._render();
   }
 
@@ -225,13 +263,19 @@ export default class AoiCheck {
 
   pickArea(): void {
     if (!this._enabled) return;
+    // the panel steps aside so the whole map can be drawn on (it comes back with the result, or on cancel)
+    this._el?.classList.add('ms-away');
     this._draw.start({
       kind: 'area',
       prompt: 'Draw the AOI: click its corners, double-click to finish (Esc cancels)',
       onStatus: (t) => siteHint(HINT, ICON, t),
-      onCancel: () => siteHint(HINT, ICON, null),
+      onCancel: () => {
+        siteHint(HINT, ICON, null);
+        this._el?.classList.remove('ms-away');
+      },
       onDone: (pts) => {
         siteHint(HINT, ICON, null);
+        this._el?.classList.remove('ms-away');
         if (pts.length >= 3) void this.check(pts.map((p) => [p[0], p[1]] as XY), 'drawn AOI');
       },
     });
@@ -276,9 +320,12 @@ export default class AoiCheck {
     for (let tx = tr.tx0; tx <= tr.tx1; tx++)
       for (let ty = tr.ty0; ty <= tr.ty1; ty++) if (tileTouches(tileBox(tx, ty, this._z), r)) tiles.push({ tx, ty });
     this._tiles = tiles.length;
-    this._tallies = layers.map((l) => ({ layer: l, z: this._z, total: tiles.length, loaded: 0, missing: 0, failed: 0, pending: tiles.length, gapTiles: [], inside: 0, empty: 0 }));
+    const weights = tileWeights(r, tiles, this._z);
+    const wOf = (tx: number, ty: number) => weights.get(`${tx}/${ty}`) ?? 0;
+    this._tallies = layers.map((l) => ({ layer: l, z: this._z, total: tiles.length, loaded: 0, missing: 0, failed: 0, pending: tiles.length, gapTiles: [], inside: 0, empty: 0, wTotal: 1, wMiss: 0, wEmpty: 0 }));
     this._extras = [];
-    this._report = buildReport(r, m, this._tallies, this._extras);
+    this._extrasDone = false;
+    this._report = buildReport(r, m, this._tallies, this._extras, false);
     this._paint();
     this._render();
     const base = this._base();
@@ -296,18 +343,26 @@ export default class AoiCheck {
         const j = jobs[next++];
         let data: Uint8Array | null = null;
         let failed = false;
-        try {
-          data = await src.fetchTile(j.t.layer.tileLayer, this._z, j.tx, j.ty);
-        } catch {
-          failed = true;
+        // a tile that errors (not a 404: that is "no cover") gets one more try before it counts as failed
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            data = await src.fetchTile(j.t.layer.tileLayer, this._z, j.tx, j.ty);
+            failed = false;
+            break;
+          } catch {
+            failed = true;
+            if (token !== this._token) return;
+          }
         }
         if (token !== this._token) return;
         j.t.pending--;
         if (failed) {
           j.t.failed++;
+          j.t.wMiss = (j.t.wMiss ?? 0) + wOf(j.tx, j.ty);
           j.t.gapTiles.push({ tx: j.tx, ty: j.ty, failed: true });
         } else if (!data) {
           j.t.missing++;
+          j.t.wMiss = (j.t.wMiss ?? 0) + wOf(j.tx, j.ty);
           j.t.gapTiles.push({ tx: j.tx, ty: j.ty, failed: false });
         } else {
           j.t.loaded++;
@@ -315,6 +370,7 @@ export default class AoiCheck {
             const c = nodataInTile(data, j.tx, j.ty, this._z, ts, r, j.t.layer.nodata, 8);
             j.t.inside += c.inside;
             j.t.empty += c.empty;
+            if (c.inside) j.t.wEmpty = (j.t.wEmpty ?? 0) + wOf(j.tx, j.ty) * (c.empty / c.inside);
           }
         }
         this._soon();
@@ -323,7 +379,8 @@ export default class AoiCheck {
     await Promise.all(Array.from({ length: IN_FLIGHT }, work));
     await extrasP;
     if (token !== this._token) return null;
-    this._report = buildReport(r, m, this._tallies, this._extras);
+    this._extrasDone = true;
+    this._report = buildReport(r, m, this._tallies, this._extras, true);
     this._paint();
     this._render();
     EngineLogger.success(ENGINE, `${this._ringName}: ${this._report.verdict.text}`);
@@ -374,15 +431,20 @@ export default class AoiCheck {
         return;
       }
       let have = 0;
-      for (const q of list) {
-        if (token !== this._token) return;
-        try {
-          const res = await fetch(`${base}/${tpl.replace('{z}', String(z)).replace('{x}', String(q.tx)).replace('{y}', String(q.ty))}`, { cache: 'force-cache' });
-          if (res.ok && !(res.headers.get('content-type') ?? '').includes('html')) have++;
-        } catch {
-          /* counted as absent */
+      let at = 0;
+      const lane = async () => {
+        while (at < list.length && token === this._token) {
+          const q = list[at++];
+          try {
+            const res = await fetch(`${base}/${tpl.replace('{z}', String(z)).replace('{x}', String(q.tx)).replace('{y}', String(q.ty))}`, { cache: 'force-cache' });
+            if (res.ok && !(res.headers.get('content-type') ?? '').includes('html')) have++;
+          } catch {
+            /* counted as absent */
+          }
         }
-      }
+      };
+      await Promise.all(Array.from({ length: 6 }, lane));
+      if (token !== this._token) return;
       out.push({ key, uses: EXTRA_USES[key], share: list.length ? have / list.length : null, note: `${have} of ${list.length} z${z} tiles hold data (a tile with nothing recorded in it is not written, so an absent one may only mean an empty place)` });
     };
     const grid = async (key: string, index: string | undefined) => {
@@ -418,7 +480,7 @@ export default class AoiCheck {
     this._renderTimer = setTimeout(() => {
       this._renderTimer = null;
       if (!this._ring || !this._manifest) return;
-      this._report = buildReport(this._ring, this._manifest, this._tallies, this._extras);
+      this._report = buildReport(this._ring, this._manifest, this._tallies, this._extras, this._extrasDone);
       this._paint();
       this._render();
     }, 300);
@@ -484,6 +546,15 @@ export default class AoiCheck {
       else if (a === 'again' && this._ring) void this.check(this._ring, this._ringName);
       else if (a === 'copy') void this.copyText();
     });
+    // a folded section the user opened or shut keeps that choice while tiles arrive (they are told apart by data-k)
+    el.addEventListener('click', (e) => {
+      const sum = (e.target as HTMLElement).closest('summary');
+      const d = sum?.parentElement as HTMLDetailsElement | null;
+      const k = d?.dataset?.k;
+      if (d && k) setTimeout(() => this._openK.set(k, d.open), 0);
+    });
+    window.addEventListener('resize', this._fit);
+    window.addEventListener(DOCK_EVENT, this._fit);
     document.body.appendChild(el);
     this._el = el;
   }
@@ -494,80 +565,101 @@ export default class AoiCheck {
     const bodyEl = this._el.querySelector('.body') as HTMLElement;
     const rep = this._report;
     const m = this._manifest;
+    const running = !!rep?.pending;
     const headHtml =
-      `<div class="h"><span class="t">${ICON} AOI Check</span><button data-act="pick" class="${this._ring ? '' : 'pri'}" title="Draw the AOI on the map">Pick area</button>` +
-      `<button data-act="view" title="Check the map's current extent">This view</button><button data-act="again"${this._ring ? '' : ' disabled'}>Check again</button>` +
-      `<button data-act="copy"${rep && !rep.pending ? '' : ' disabled'}>Copy as Text</button><button class="x" data-act="close" aria-label="Close" title="Close (Esc)">×</button></div>`;
+      `<div class="h"><span class="t">${ICON} AOI Check</span><button class="x" data-act="close" aria-label="Close" title="Close (Esc)">×</button></div>` +
+      `<div class="ac-acts"><button data-act="pick" class="${this._ring ? '' : 'pri'}" title="Draw the AOI on the map: click its corners, double-click to finish">Pick area</button>` +
+      `<button data-act="view" title="Check the map's current extent">This view</button><span class="sp"></span>` +
+      `<button data-act="again"${this._ring ? '' : ' disabled'} title="Run the check again on the same AOI">${running ? 'Restart' : 'Check again'}</button>` +
+      `<button data-act="copy"${rep && !rep.pending ? '' : ' disabled'} title="Copy the whole report as text">Copy as Text</button></div>`;
     if (head.innerHTML !== headHtml) head.innerHTML = headHtml;
+    const open = (k: string, def: boolean) => (this._openK.has(k) ? this._openK.get(k)! : def);
+    const det = (k: string, def: boolean, title: string, count: string, inner: string) => `<details data-k="${k}"${open(k, def) ? ' open' : ''}><summary>${title}<em>${esc(count)}</em></summary>${inner}</details>`;
     let body = '';
     if (this._metaState === 'loading') body = '<div class="empty">Opening the terrain data…</div>';
-    else if (this._metaState === 'missing') body = '<div class="empty">No terrain bundle at this address: every terrain reading is blank. Set the bundle URL in the settings.</div>';
+    else if (this._metaState === 'missing') body = '<div class="empty">No terrain bundle at this address, so every terrain reading is blank. Set the bundle URL in the settings (⚙ beside the button).</div>';
     else if (!this._ring || !rep || !m) body = '<div class="empty">Pick an area on the map, or check this view, before you plan there: what the terrain data covers, what is missing and which readings it blanks.</div>';
     else {
       const sizeKm = Math.round((2 * Math.PI * 6378137 * Math.cos((mercToLngLat(...centre(this._ring))[1] * Math.PI) / 180)) / 2 ** this._z / 100) / 10;
       const done = rep.layers.reduce((t, l) => t + (l.total - l.pending), 0), all = rep.layers.reduce((t, l) => t + l.total, 0);
-      body += `<div class="ans ${rep.verdict.tone}">${esc(rep.verdict.text)}${rep.pending ? ` (${done} of ${all} tiles)` : ''}</div>`;
+      const coarse = this._z < Number(m.zoom?.max ?? 12);
+      body += `<div class="vd ${rep.verdict.tone}" role="status"><i></i><span>${esc(rep.verdict.text)}</span></div>`;
+      if (rep.pending) body += `<div class="prog" aria-hidden="true"><b style="width:${all ? Math.round((done / all) * 100) : 0}%"></b></div><div class="note">${done} of ${all} tiles read${this._extrasDone ? '' : ', grids still being checked'}</div>`;
+      const area = `${rep.areaKm2.toFixed(rep.areaKm2 < 10 ? 1 : 0)} km²`;
+      const fact = (k: string, v: string, sub = '', tone = '') => `<div class="f"><span class="fk">${esc(k)}</span><span class="fv ${tone}">${v}${sub ? ` <small>${esc(sub)}</small>` : ''}</span></div>`;
       body +=
-        `<div class="facts"><span>AOI <b>${esc(this._ringName)}</b>, <b>${rep.areaKm2.toFixed(rep.areaKm2 < 10 ? 1 : 0)} km²</b></span>` +
-        `<span>In the data's frame <b>${rep.inFrame === null ? 'not read' : pct(rep.inFrame)}</b></span>` +
-        `<span>Checked at zoom <b>${this._z}</b> (tiles ~${sizeKm} km, ${this._tiles} a layer)${this._z < Number(m.zoom?.max ?? 12) ? ' <b style="color:#ffd09a">coarser than the readers use: a gap smaller than a tile may not show</b>' : ''}</span>` +
-        `<span>Built <b>${esc(String(m.built ?? '').slice(0, 10))}</b>, rules <b>${esc(m.rulesVersion ?? '?')}</b>, data v<b>${esc(m.dataVersion ?? '?')}</b></span></div>`;
+        `<div class="facts">` +
+        fact('AOI', esc(this._ringName), area) +
+        fact("Inside the data's frame", rep.inFrame === null ? 'not read' : pct(rep.inFrame), '', rep.inFrame !== null && rep.inFrame < 0.995 ? 'warn' : '') +
+        fact('Checked at zoom', `${this._z}`, `tiles ~${sizeKm} km, ${this._tiles} a layer`, coarse ? 'warn' : '') +
+        fact('Data built', esc(String(m.built ?? '').slice(0, 10) || '?'), `rules ${m.rulesVersion ?? '?'}, data v${m.dataVersion ?? '?'}`) +
+        `</div>`;
+      if (coarse) body += `<div class="note" style="color:#ffd09a;margin-top:4px">Coarser than the readers use: a gap smaller than a tile may not show. Raise "most tiles per layer" in the settings, or draw a smaller AOI.</div>`;
       body += '<h4>Readings affected</h4>';
+      const affLi = (a: AoiReport['affected'][number]) => `<li><b class="${a.core ? 'core' : 'oth'}">${pct(a.share)}</b><span>${esc(a.what)}<small>${esc(a.layers.join(', '))}</small></span></li>`;
+      // the worst few in full; a long tail (often the same gap seen by many layers) folded under them
+      const SHOWN = 6;
       body += rep.affected.length
-        ? `<ul>${rep.affected.map((a) => `<li><b style="color:${a.core ? '#ff8a8d' : '#ffd09a'}">${pct(a.share)}</b> of the AOI: ${esc(a.what)} <span style="color:#9aa3ad">(${esc(a.layers.join(', '))})</span></li>`).join('')}</ul>`
+        ? `<ul class="aff">${rep.affected.slice(0, SHOWN).map(affLi).join('')}</ul>` +
+          (rep.affected.length > SHOWN ? det('aff-more', false, `${rep.affected.length - SHOWN} more readings`, `down to ${pct(rep.affected[rep.affected.length - 1].share)}`, `<ul class="aff">${rep.affected.slice(SHOWN).map(affLi).join('')}</ul>`) : '')
         : rep.pending
-          ? '<ul><li>Checking…</li></ul>'
-          : '<ul><li>None: every layer and grid answers over the whole AOI.</li></ul>';
-      const rows = rep.layers
-        .filter((t) => !t.layer.key.startsWith('dist:'))
-        .map((t) => this._layerRow(t))
-        .join('');
-      body += `<h4>Layers</h4><table><tr><th>Layer</th><th>Tiles</th><th>Gap</th><th>Sources</th></tr>${rows}</table>`;
+          ? '<div class="note">Checking…</div>'
+          : '<div class="none">None: every layer and grid answers over the whole AOI.</div>';
+      const base = rep.layers.filter((t) => !t.layer.key.startsWith('dist:'));
       const movers = rep.layers.filter((t) => t.layer.key.startsWith('dist:'));
-      body += `<h4>Movers (profiles)</h4><table><tr><th>Mover</th><th>Tiles</th><th>Gap</th><th>Reads</th></tr>${movers
-        .map((t) => {
-          const g = gapShare(t);
-          return `<tr><td>${esc(t.layer.label.replace('Dist to NO-GO: ', ''))}</td><td>${t.loaded}/${t.total}</td><td class="${t.pending ? '' : g >= 0.005 ? 'warn' : 'ok'}">${t.pending ? '…' : pct(g)}</td><td>${esc(t.layer.uses)}</td></tr>`;
-        })
-        .join('')}</table>`;
-      body += `<h4>Grids and point data</h4><table><tr><th>Data</th><th>Cover</th><th>Reads</th><th>Note</th></tr>${rep.extras
-        .map((e) => `<tr><td>${esc(e.key)}</td><td class="${e.share === null ? '' : e.share >= 0.995 ? 'ok' : 'warn'}">${e.share === null ? '—' : pct(e.share)}</td><td>${esc(e.uses)}</td><td>${esc(e.note)}</td></tr>`)
-        .join('') || '<tr><td colspan="4">Checking…</td></tr>'}</table>`;
-      body += `<details><summary>Sources, dates and licences (${(m.sources ?? []).length})</summary><table><tr><th>Source</th><th>Data</th><th>Licence</th></tr>${((m.sources ?? []) as any[])
-        .map((s) => {
-          const nc = /non-commercial/i.test(String(s.licence ?? ''));
-          return `<tr><td>${esc(sourceName(s.id, s.name))}${s.restricted ? '<span class="tag">restricted</span>' : ''}${nc ? '<span class="tag nc">non-commercial</span>' : ''}</td><td>${esc(s.dataDate ?? '?')}<br><span style="color:#9aa3ad">released ${esc(s.released ?? '?')}</span></td><td>${esc(s.licence ?? '?')}</td></tr>`;
-        })
-        .join('')}</table><p>${m.restricted ? 'This bundle holds restricted data: confirm before passing it on. ' : ''}${esc(m.boundary?.note ?? '')}</p></details>` +
-        `<details data-k="judged"><summary>📖 How it is judged (data and thresholds)</summary><ul>${AOI_JUDGED.map((j) => `<li>${esc(j)}</li>`).join('')}</ul></details>`;
+      const gaps = (ts: LayerTally[]) => ts.filter((t) => !t.pending && gapShare(t) >= 0.005).length;
+      body += det('layers', gaps(base) > 0, 'Layers', `${base.length}${gaps(base) ? `, ${gaps(base)} with gaps` : ''}`, `<table><tr><th>Layer</th><th>Tiles</th><th>Gap</th></tr>${base.map((t) => this._layerRow(t)).join('')}</table>`);
+      const worst = movers.reduce((mx, t) => Math.max(mx, t.pending ? 0 : gapShare(t)), 0);
+      body += det('movers', gaps(movers) > 0, 'Movers (profiles)', `${movers.length}${gaps(movers) ? `, worst gap ${pct(worst)}` : ', no gaps'}`, `<table><tr><th>Mover</th><th>Tiles</th><th>Gap</th></tr>${movers.map((t) => this._layerRow(t, true)).join('')}</table><div class="note">Each mover's distance-to-NO-GO layer: it gives the near / caution verdict and clear ground for that mover.</div>`);
+      const gridGaps = rep.extras.filter((e) => e.share !== null && e.share < 0.995).length;
+      body += det(
+        'grids',
+        gridGaps > 0,
+        'Grids and point data',
+        `${rep.extras.length || '…'}${gridGaps ? `, ${gridGaps} partial` : ''}`,
+        `<table><tr><th>Data</th><th>Cover</th><th>Note</th></tr>${rep.extras.map((e) => `<tr title="${esc(e.uses)}"><td>${esc(e.key)}</td><td class="n ${e.share === null ? '' : e.share >= 0.995 ? 'ok' : 'warn'}">${e.share === null ? '—' : pct(e.share)}</td><td>${esc(e.note)}</td></tr>`).join('') || '<tr><td colspan="3">Checking…</td></tr>'}</table>`,
+      );
+      const srcs = (m.sources ?? []) as any[];
+      body += det(
+        'sources',
+        false,
+        'Sources, dates and licences',
+        String(srcs.length),
+        `<table><tr><th>Source</th><th>Data</th><th>Licence</th></tr>${srcs
+          .map((s) => {
+            const nc = /non-commercial/i.test(String(s.licence ?? ''));
+            return `<tr><td>${esc(sourceName(s.id, s.name))}${s.restricted ? '<span class="tag">restricted</span>' : ''}${nc ? '<span class="tag nc">non-commercial</span>' : ''}</td><td>${esc(s.dataDate ?? '?')}<br><span class="note">released ${esc(s.released ?? '?')}</span></td><td>${esc(s.licence ?? '?')}</td></tr>`;
+          })
+          .join('')}</table><p class="note">${m.restricted ? 'This bundle holds restricted data: confirm before passing it on. ' : ''}${esc(m.boundary?.note ?? '')}</p>`,
+      );
+      body += det('judged', false, '📖 How it is judged', 'data and thresholds', `<ul>${AOI_JUDGED.map((j) => `<li style="margin:3px 0">${esc(j)}</li>`).join('')}</ul>`);
     }
     if (this._lastBody === body) return;
     this._lastBody = body;
-    // folded sections that were open stay open (by position)
-    const open = [...bodyEl.querySelectorAll('details')].map((d) => (d as HTMLDetailsElement).open);
     const scroll = bodyEl.scrollTop;
     bodyEl.innerHTML = body;
-    [...bodyEl.querySelectorAll('details')].forEach((d, i) => {
-      if (open[i]) (d as HTMLDetailsElement).open = true;
-    });
     bodyEl.scrollTop = scroll;
   }
 
   private _lastBody = '';
 
-  private _layerRow(t: LayerTally): string {
+  private _layerRow(t: LayerTally, mover = false): string {
     const g = gapShare(t);
     const m = this._manifest;
-    const src = t.layer.sources
+    // the sources as short names, the full list with dates in the tooltip
+    const full = t.layer.sources
       .map((id) => {
         const s = ((m?.sources ?? []) as any[]).find((x) => x.id === id);
-        // a short date from the source's data date ("2021", "1984-2021", "2026-10-28"); none when it has no year
         const d = /\d{4}-\d{2}-\d{2}|\d{4}\s*-\s*\d{4}|\d{4}/.exec(String(s?.dataDate ?? ''))?.[0] ?? '';
-        return s ? `${sourceName(id, s.name).split(' (')[0]}${d ? ` ${d.replace(/\s+/g, '')}` : ''}` : id;
+        return s ? `${shortSource(sourceName(id, s.name))}${d ? ` (${d.replace(/\s+/g, '')})` : ''}` : id;
       })
       .join('; ');
     const tone = t.pending ? '' : g >= 0.5 && t.layer.core ? 'bad' : g >= 0.005 ? 'warn' : 'ok';
-    return `<tr><td title="${esc(t.layer.uses)}">${esc(t.layer.label)}</td><td>${t.loaded}/${t.total}${t.missing ? ` <span style="color:#ff8a8d">${t.missing} missing</span>` : ''}${t.failed ? ` <span style="color:#ffd09a">${t.failed} failed</span>` : ''}</td><td class="${tone}">${t.pending ? '…' : `<span class="bar" style="width:${Math.max(2, Math.round((1 - g) * 40))}px"></span>${pct(g)}`}</td><td>${esc(src)}</td></tr>`;
+    const label = mover ? t.layer.label.replace('Dist to NO-GO: ', '') : t.layer.label;
+    const tip = `${t.layer.uses}${full ? `\nSources: ${full}` : ''}`;
+    const tiles = `${t.loaded}/${t.total}${t.missing ? ` <span style="color:#ff8a8d">${t.missing} missing</span>` : ''}${t.failed ? ` <span style="color:#ffd09a">${t.failed} failed</span>` : ''}`;
+    const gap = t.pending ? '…' : `<span class="bar ${tone === 'ok' ? '' : tone}" style="width:${Math.max(2, Math.round((1 - g) * 36))}px"></span>${pct(g)}`;
+    return `<tr><td title="${esc(tip)}">${esc(label)}</td><td class="n">${tiles}</td><td class="n ${tone}">${gap}</td></tr>`;
   }
 
   // ── map ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -590,7 +682,7 @@ export default class AoiCheck {
         e.failed = e.failed || q.failed;
         per.set(k, e);
       }
-    const many = per.size > 40;
+    const many = per.size > 12; // a label on every gap tile is clutter: only a few get one
     for (const e of per.values()) {
       const b = tileBox(e.tx, e.ty, this._z);
       spec.polys.push({

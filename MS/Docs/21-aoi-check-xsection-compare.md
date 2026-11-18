@@ -44,13 +44,21 @@ They share the site-finder code in `MS/Engines/SiteScan/` with Gun Deployment an
 - **Grids and point data.**
 - **Sources:** every source with its data date, release and licence. Restricted and non-commercial ones are marked. The 1:50k map is never named "NCGDB".
 
-**Map:** the AOI; gap tiles in red (Gr class or heights) or amber (other layers), labelled with how many layers they miss; the data's frame when the AOI crosses it.
+**Map:** the AOI; gap tiles in red (Gr class or heights) or amber (other layers), labelled with how many layers they miss (only when there are 12 gap tiles or fewer); the data's frame when the AOI crosses it.
+
+**Changed 19 Nov 2026 (UI and bug pass):**
+- **Gap is by area, not by tile count.** Each tile carries its share of the AOI (`tileWeights`); a missing tile adds that share, a loaded tile its share times its no-data pixels. A tile clipping the AOI's corner no longer counts like one holding most of it. A tally without weights still reads by tile count.
+- **"Full cover" waits for the grids.** The verdict stays "Checking the tiles…" until the feature, road and grid checks are done (`buildReport(..., extrasDone)`). It counts the grids it actually read.
+- **A failed tile is tried once more** before it counts as failed (a 404 is "no cover" and is not retried). The z10 feature and road tiles are checked six at a time, not one by one.
+- **Panel:** 440 px wide (was 600), the verdict first with a progress bar while it runs, four facts, the worst six readings in full and the rest folded, then Layers / Movers / Grids / Sources / How it is judged as folded sections that remember being opened or shut. Long source lists are in each row's tooltip; the full list with dates and licences is under Sources. The panel steps aside while **Pick area** is drawing and comes back with the result or on cancel. It stops above a panel docked at the foot (`DOCK_EVENT`, `watchFootDock` in `SitePanel.ts`).
+- **Shared:** the draw tool's double-click now adds the point it lands on (a 3-corner area used to need a 4th click), and the status hint sits below the top bar however many rows it has wrapped to.
+- Tests: `tools.mjs` checks the weights, the weighted gap, the pending verdict and the short source names.
 
 ## X-Section
 
 **Input:** a line drawn after the button (click points, double-click to finish), **Selected line**, or right-click a placed line or area → **X-Section…**. An area is read round its edge. In code: `crossSection.setLine(pts, { lngLat })` or `useGraphic(g)`.
 
-**Reading** (`profileLine`), a sample every 30 m, widened to keep under 1,500 samples:
+**Reading** (`profileLine`), a sample every 30 m, widened past 120 km to keep under 4,000 samples:
 - **Height:** the 30 m elevation. Climb is counted in steps of 3 m, about GLO-30's vertical noise, so flat ground does not add up a false climb.
 - **Going for the mover in the month:** the worst of three things:
   - the class, from the rules.json profile;
@@ -63,16 +71,20 @@ They share the site-finder code in `MS/Engines/SiteScan/` with Gun Deployment an
 - **No-data gaps:** no height, no class, or both.
 - **Seen by threat:** with the Ground Guide threat marker set as a place, the chance its eye (2 m) sees the line at 1.8 m (foot) or 2.5 m (vehicles), from the OCOKA sight engine.
 
-**Panel:**
-- **Facts:** length, height range, up / down, steepest, NO-GO, SLOW-GO, crossings, seen, no data.
-- **Chart:**
-  - height, with steep stretches in red;
-  - a going band, an obstacle row with a letter per event and words where there is room, and a seen band;
-  - distance markers; no-data stretches hatched;
-  - hovering reads a point (km, height, slope, class, going, seen) and moves a marker on the map.
-- **Event list** with chainage; a note on how it was read.
+**Panel** (redone 18 Nov 2026; low at the foot, at most 62 % of the window, so the map stays in view):
+- **Header:** mover, month, seen by threat; Draw line (Cancel drawing while drawing), Selected line, **Zoom to line**, **Clear**, Copy as Text, fold, close. A mover / month / seen choice is kept as the `crossSection.*` setting, so another settings change does not undo it.
+- **Answers strip:** length A to B, the going as a bar (GO / SLOW-GO / NO-GO / not read, with lengths), height, up / down, steepest, crossings (water first, roads last), seen, no data.
+- **Chart** (beside the list; under it on a window under 860 px):
+  - height with round grid values, the highest and lowest point marked, steep stretches in red, NO-GO stretches tinted up through the plot, and "Heights x150" when the heights are stretched (flat ground is shown in a 20 m window, never blown up to hills);
+  - a going band, an obstacle row (a tick each; the letter and word of NO-GO / SLOW-GO, then water, then the rest, roads last, where there is room), a seen band;
+  - distance markers from **A** to **B** with the line's length at B, each label different from the next (metres under 1 km);
+  - no-data stretches hatched; tooltips work on every mark.
+- **List** of what the line meets, from A to B, with filter chips (All / NO-GO / SLOW-GO / Water / Rd / Rly / Other) the chart follows. Hovering the chart or a list line reads the place (km to 10 m, height, slope, class, going, seen) and moves a marker on the map; a click, or Enter on a list line, brings it into view above the panel. The read-out clears when the pointer leaves.
+- **Fold** (▾) leaves the answers only; the panel also folds to its header while a line is drawn, so the map is free. Esc cancels the drawing first, then closes.
+- **How it was read, and what it rests on** (folded; stays open across a re-read); a warning when the line is over 120 km and read wider than 30 m.
+- Chainages read to 10 m (`fmtAt`: "350 m", "12.35 km"), in the list, the read-out and Copy as Text, so 300 m apart at 18 km does not read "18 km" twice.
 
-**Map:** the line with distance markers, NO-GO stretches in red, gaps dashed grey.
+**Map:** the line from A to B with distance markers (the chart's), NO-GO stretches in red, gaps dashed grey. Closing the panel (×, Esc, the top-bar button) takes it off the map and stops any drawing; opening it again brings the same line back. **Clear** drops the line. A newly read line that is off the map or under the panel is brought into view (`crossSection.fit`).
 
 The always-on `RouteProfileEngine` (`symbolEngine.showRouteProfile`) is unchanged. It profiles from the map's own elevation service, without the bundle.
 
@@ -131,6 +143,15 @@ In code: `compare.addAlternative(kind, pts, { lngLat, name })`.
 - Corridors and positions are ranked only among their own kind.
 
 **Map:** each alternative in its colour with its letter; NO-GO stretches on corridors in red.
+
+**Panel (18 Nov 2026):**
+- Each alternative is a card: click its letter to show it on the map, × to remove it. The card lists what to check first (NO-GO with what stops the mover, steep, soft or wet ground, no road, no data, bridges with no class); "No stopper read on this data" when none.
+- Corridors and positions are separate tables, each with only its own columns. A value is short, with its detail on a second line ("300 m" / "3 stretches"). Best and worst carry the words BEST / WORST as well as colour.
+- ⓘ unfolds a row's method and its smallest real difference; "not ranked" is written under rows that are never ranked. "Only rows that differ or need a check" filters the table.
+- With no threat marker, "Seen by threat" says "threat not set" and is not ranked.
+- Differences list each alternative best to worst with the span between the ends.
+- The panel steps aside while an alternative is drawn (click the start, double-click the end), and an alternative off the view is brought into it.
+- Selected lines use their whole curve (CTRL_PTS); a position's road is read from its centroid, not the mean of its corners.
 
 ## Everything backed (17 Nov 2026)
 

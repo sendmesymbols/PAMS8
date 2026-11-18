@@ -944,6 +944,7 @@
     "eyeM": 2,
     "map": true,
     "labels": true,
+    "fit": true,
     "keys": true
   },
   "compare": {

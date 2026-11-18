@@ -42,6 +42,7 @@ export const crossSectionSettingsManifest: SettingDescriptor[] = [
   { path: ['crossSection', 'eyeM'], label: "Threat's eye height (m)", group: 'Reading', type: 'number', min: 0.5, max: 100, step: 0.5, help: 'How high above the ground the threat looks from (2 m: a man on the ground).' },
   { path: ['crossSection', 'map'], label: 'Draw on the map', group: 'Map', type: 'boolean', help: 'The line with distance markers, NO-GO stretches and no-data gaps; a marker follows the chart.' },
   { path: ['crossSection', 'labels'], label: 'Labels on the map', group: 'Map', type: 'boolean', help: 'Distances and NO-GO words.' },
+  { path: ['crossSection', 'fit'], label: 'Bring a new line into view', group: 'Map', type: 'boolean', help: 'When a line is read and part of it is off the map or under the panel, move the map so the whole line shows above the panel.' },
   { path: ['crossSection', 'bundleUrl'], label: 'Terrain bundle URL', group: 'Data', type: 'string', advanced: true, help: 'Where the terrain bundle is served (default /terrain-bundle).' },
   { path: ['crossSection', 'useWorker'], label: 'Read tiles in a worker', group: 'Data', type: 'boolean', advanced: true, help: 'Fetch and decode terrain tiles off the main thread (falls back automatically).' },
 ];

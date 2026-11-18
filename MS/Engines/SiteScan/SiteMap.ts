@@ -8,6 +8,7 @@
  */
 
 import Graphic from '@arcgis/core/Graphic';
+import Extent from '@arcgis/core/geometry/Extent';
 import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
@@ -147,20 +148,100 @@ export class SiteMap {
 
   private _hoverG: Graphic | null = null;
 
-  /** A marker that follows the chart's hover (null takes it off). */
+  /** A marker that follows the chart's hover (null takes it off). The one marker is moved, not made anew each time. */
   hover(p: XY | null): void {
+    if (!p) {
+      if (this._hoverG) this._layer?.remove(this._hoverG);
+      this._hoverG = null;
+      return;
+    }
     const e = this._ensure();
     if (!e) return;
-    if (this._hoverG) e.layer.remove(this._hoverG);
-    this._hoverG = null;
-    if (!p) return;
     const { sr, xy } = this._conv(e.view);
     const [x, y] = xy(p);
+    const at = new Point({ x, y, spatialReference: sr });
+    if (this._hoverG && e.layer.graphics.includes(this._hoverG)) {
+      this._hoverG.geometry = at;
+      return;
+    }
     this._hoverG = new Graphic({
-      geometry: new Point({ x, y, spatialReference: sr }),
+      geometry: at,
       symbol: new PictureMarkerSymbol({ url: svgUrl(16, 16, '<circle cx="8" cy="8" r="6" fill="#ffc800" stroke="#14181d" stroke-width="2"/>'), width: '16px', height: '16px' }) as any,
     });
     e.layer.add(this._hoverG);
+  }
+
+  /**
+   * The part of the view a panel leaves clear, in the view's own pixels: `clear` is the window's free band (client px
+   * from the top: below the host's bar, above a foot-docked panel). The whole view when the band is not usable.
+   */
+  private _window(view: any, clear?: { top: number; bottom: number }): { cx: number; cy: number; w: number; h: number } {
+    const w = Number(view.width) || 0, h = Number(view.height) || 0;
+    const full = { cx: w / 2, cy: h / 2, w, h };
+    const r = (view.container as HTMLElement | null)?.getBoundingClientRect?.();
+    if (!clear || !r || !(h > 0)) return full;
+    const top = Math.max(0, clear.top - r.top), bottom = Math.min(h, clear.bottom - r.top);
+    return bottom - top >= 120 ? { cx: w / 2, cy: (top + bottom) / 2, w, h: bottom - top } : full;
+  }
+
+  /** Is any of these Web Mercator points off the view, or outside the band a panel leaves clear? */
+  outside(pts: XY[], clear?: { top: number; bottom: number }): boolean {
+    const view = this._getView();
+    if (!view?.toScreen || !pts.length) return false;
+    const win = this._window(view, clear);
+    const top = win.cy - win.h / 2, bottom = win.cy + win.h / 2;
+    const { sr, xy } = this._conv(view);
+    for (const p of pts) {
+      const [x, y] = xy(p);
+      let s: any = null;
+      try {
+        s = view.toScreen(new Point({ x, y, spatialReference: sr }));
+      } catch {
+        s = null;
+      }
+      if (!s || !(s.x >= 0 && s.x <= win.w && s.y >= top && s.y <= bottom)) return true;
+    }
+    return false;
+  }
+
+  /** Bring Web Mercator points into view, inside the band a panel leaves clear (see `_window`). */
+  fit(pts: XY[], clear?: { top: number; bottom: number }): void {
+    const view = this._getView();
+    if (!view || pts.length < 1) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) {
+      x0 = Math.min(x0, p[0]);
+      x1 = Math.max(x1, p[0]);
+      y0 = Math.min(y0, p[1]);
+      y1 = Math.max(y1, p[1]);
+    }
+    const win = this._window(view, clear);
+    // map units a pixel so the box fills 80 % of the clear band; then the whole view at that scale, moved so the box
+    // sits in the middle of the band (the band's middle is `dy` px above the view's)
+    const res = Math.max((x1 - x0) / Math.max(1, win.w * 0.8), (y1 - y0) / Math.max(1, win.h * 0.8), 0.5);
+    const dy = (Number(view.height) || 0) / 2 - win.cy;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2 - dy * res;
+    const hw = (res * (Number(view.width) || 1)) / 2, hh = (res * (Number(view.height) || 1)) / 2;
+    const { sr, xy } = this._conv(view);
+    const [ax, ay] = xy([cx - hw, cy - hh]);
+    const [bx, by] = xy([cx + hw, cy + hh]);
+    void view.goTo(new Extent({ xmin: ax, ymin: ay, xmax: bx, ymax: by, spatialReference: sr }), { duration: 400 })?.catch?.(() => undefined);
+  }
+
+  /** Bring one Web Mercator point to the middle of the clear band, at the scale the map is at. */
+  centre(p: XY, clear?: { top: number; bottom: number }): void {
+    const view = this._getView();
+    if (!view) return;
+    const { sr, xy } = this._conv(view);
+    let at = p;
+    const res = Number(view.resolution);
+    // a map (2D) knows its metres a pixel, so the point can be put in the middle of the band, not under the panel
+    if (res > 0 && !!view.spatialReference?.isWebMercator && !(Math.abs(Number(view.rotation) || 0) > 0.5)) {
+      const win = this._window(view, clear);
+      at = [p[0], p[1] - ((Number(view.height) || 0) / 2 - win.cy) * res];
+    }
+    const [x, y] = xy(at);
+    void view.goTo({ target: new Point({ x, y, spatialReference: sr }) }, { duration: 300 })?.catch?.(() => undefined);
   }
 
   draw(spec: MapSpec, labels = true): void {

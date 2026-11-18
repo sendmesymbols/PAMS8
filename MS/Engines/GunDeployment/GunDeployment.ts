@@ -23,7 +23,8 @@ import { MovementGuideDraw } from '../MovementGuide/MovementGuideDraw';
 import { mgrsOf } from '../PlatoonGuide/PlatoonGuideText';
 import { SiteBundle } from '../SiteScan/SiteProbe';
 import { SiteMap, arcPts, type MapSpec } from '../SiteScan/SiteMap';
-import { SitePanel, siteHint, type PanelAction, type PanelControl, type PanelPlace, type PanelReason, type PanelSite, type PanelWhyNot } from '../SiteScan/SitePanel';
+import { SitePanel, siteHint, copyToClipboard, type PanelAction, type PanelControl, type PanelPlace, type PanelReason, type PanelSite, type PanelWhyNot } from '../SiteScan/SitePanel';
+import { setSetting } from '../../Support/SettingsBus';
 import { MONTHS, dataCatalog, groundDist, lngLatToMerc, mercToLngLat, offsetPt, seasonFor, km, type Season, type Tone, type XY } from '../SiteScan/SiteScan';
 import {
   findGunAreas,
@@ -136,6 +137,8 @@ export default class GunDeployment {
   private _pending = false;
   private _season: { season: Season; why: string } | null = null;
   private _sel = 0;
+  /** Which map pick is under way (its panel button is drawn pressed). */
+  private _picking: 'centre' | 'target' | 'whyNot' | null = null;
   private _timer: ReturnType<typeof setTimeout> | null = null;
   private _creator: ((items: any[]) => any[]) | null = null;
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -163,6 +166,10 @@ export default class GunDeployment {
       close: () => this.openPanel(false),
       leftOut: () => (this._res?.rejectedWhy ?? []).map((r): PanelReason => ({ text: r.text, rules: r.rules })),
       whyNot: () => this._whyNotPanel(),
+      summary: () => this._summary(),
+      guide: () => this._guide(),
+      setupDone: () => !!this._centre,
+      clearAct: () => ({ id: 'clearAll', label: 'Clear', title: 'Take the picked places, the result and the drawings off', disabled: !this._centre && !this._target && !this._whyNotAt }),
     });
   }
 
@@ -227,6 +234,12 @@ export default class GunDeployment {
   }
 
   onViewChanged(): void {
+    // a pick under way is dropped with the old view: its hint pill and pressed button go with it
+    if (this._picking) {
+      this._picking = null;
+      siteHint(HINT, ICON, null);
+      this._render();
+    }
     this._draw.cancel(false);
     this._map.destroy();
     if (this._enabled) this._paint();
@@ -237,6 +250,7 @@ export default class GunDeployment {
     if (!open) {
       this._panel.close();
       this._draw.cancel(false);
+      this._picking = null;
       siteHint(HINT, ICON, null);
       return;
     }
@@ -299,6 +313,11 @@ export default class GunDeployment {
     return this._weapons.find((w) => w.id === this._opts.weapon) ?? this._weapons.find((w) => w.type === 'how') ?? this._weapons[0] ?? null;
   }
 
+  /** The search radius as the finder uses it (and as the map draws it). */
+  private _radiusM(): number {
+    return Math.max(500, Math.min(20000, Number(this._opts.radiusKm) * 1000 || 4000));
+  }
+
   private _month(): number {
     const m = Number(this._opts.month);
     return m >= 1 && m <= 12 ? Math.floor(m) : new Date().getMonth() + 1;
@@ -352,11 +371,13 @@ export default class GunDeployment {
     const month = this._month();
     const prec = b.precAt(this._centre[0], this._centre[1]);
     this._season = seasonFor(month, prec, WET_FROM_MM, FALLBACK_WET);
+    // the front is read off the map's graphics: once a run, not once for each use below
+    const front = this._front();
     const task: GunTask = {
       centre: this._centre,
-      radiusM: Math.max(500, Math.min(20000, this._opts.radiusKm * 1000)),
+      radiusM: this._radiusM(),
       target: this._target,
-      front: this._front(),
+      front,
       weapon: W,
       unit: this._opts.unit,
       op: this._opts.op,
@@ -365,7 +386,7 @@ export default class GunDeployment {
       data: dataCatalog(b.manifest),
       inputs: {
         target: this._target ? (this._targetFrom === 'threat' ? "the Ground Guide's threat marker" : this._targetFrom === 'selected' ? 'the selected symbol on the map' : 'picked on the map') : undefined,
-        front: this._front()?.kind === 'line' ? `${this._front()!.label}, drawn on the map (FEBA / FLOT symbols)` : this._front() ? "the Ground Guide's threat marker (no FDL drawn)" : undefined,
+        front: front?.kind === 'line' ? `${front.label}, drawn on the map (FEBA / FLOT symbols)` : front ? "the Ground Guide's threat marker (no FDL drawn)" : undefined,
         centre: 'picked on the map',
       },
       seasonWhy: this._season.why,
@@ -407,7 +428,7 @@ export default class GunDeployment {
 
   /** Click the map for the centre of the search circle. */
   pickCentre(): void {
-    this._pick('Click roughly where the guns should go (the search circle\'s centre). Esc cancels', (p) => {
+    this._pick('centre', 'Click roughly where the guns should go (the search circle\'s centre). Esc cancels', (p) => {
       this._centre = p;
       if (!this._target) this._autoTarget();
     });
@@ -415,7 +436,7 @@ export default class GunDeployment {
 
   /** Click any place: it is read with the same gates and checks, and the panel says why it is not in the list. */
   pickWhyNot(): void {
-    this._pick('Click the place you want explained: the same checks, and the rule that left it out. Esc cancels', (p) => {
+    this._pick('whyNot', 'Click the place you want explained: the same checks, and the rule that left it out. Esc cancels', (p) => {
       this._whyNotAt = p;
     });
   }
@@ -432,7 +453,7 @@ export default class GunDeployment {
 
   /** Click the map for the target. */
   pickTarget(): void {
-    this._pick('Click the target (the centre of the area the fire is wanted on). Esc cancels', (p) => {
+    this._pick('target', 'Click the target (the centre of the area the fire is wanted on). Esc cancels', (p) => {
       this._target = p;
       this._targetFrom = 'pick';
     });
@@ -449,19 +470,27 @@ export default class GunDeployment {
     this._schedule();
   }
 
-  private _pick(prompt: string, done: (p: XY) => void): void {
+  private _pick(what: 'centre' | 'target' | 'whyNot', prompt: string, done: (p: XY) => void): void {
     if (!this._enabled) return;
+    // a pick under way is dropped quietly by `start`, so the new one is the only one pressed
+    this._picking = what;
     this._draw.start({
       kind: 'point',
       prompt,
       onStatus: (t) => siteHint(HINT, ICON, t),
-      onCancel: () => siteHint(HINT, ICON, null),
+      onCancel: () => {
+        this._picking = null;
+        siteHint(HINT, ICON, null);
+        this._render();
+      },
       onDone: (pts) => {
+        this._picking = null;
         siteHint(HINT, ICON, null);
         if (pts[0]) done([pts[0][0], pts[0][1]]);
         this._schedule();
       },
     });
+    this._render();
   }
 
   // ── output ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -498,14 +527,12 @@ export default class GunDeployment {
   async copyText(): Promise<boolean> {
     const t = this.text();
     if (!t) return false;
-    try {
-      await navigator.clipboard.writeText(t);
+    if (await copyToClipboard(t)) {
       siteHint(HINT, ICON, 'Gun areas copied as text', 1800);
       return true;
-    } catch {
-      siteHint(HINT, ICON, 'Copy failed: the browser refused the clipboard', 2200);
-      return false;
     }
+    siteHint(HINT, ICON, 'Copy failed: the browser refused the clipboard', 2200);
+    return false;
   }
 
   private _grid(p: XY): string {
@@ -537,10 +564,11 @@ export default class GunDeployment {
         value: W?.id ?? '',
         options: ws.length ? ws.map((w) => ({ value: w.id, label: `${w.name} (${km(w.maxM, 1)})` })) : [{ value: '', label: this._weaponsState === 'loading' ? 'Loading ORBAT…' : 'ORBAT not read' }],
         title: 'Own artillery from the ORBAT (SO\'s Handbook Sec 2): planning range 90 % of max',
+        wide: true,
       },
-      { key: 'unit', label: 'Area', type: 'select', value: this._opts.unit, options: [{ value: 'bty', label: 'Bty' }, { value: 'regt', label: 'Regt' }] },
-      { key: 'op', label: 'Task', type: 'select', value: this._opts.op, options: [{ value: 'def', label: 'Def' }, { value: 'attk', label: 'Attk' }] },
-      { key: 'radiusKm', label: 'Look', type: 'number', value: this._opts.radiusKm, min: 1, max: 20, step: 0.5, unit: 'km' },
+      { key: 'unit', label: 'Area for', type: 'select', value: this._opts.unit, options: [{ value: 'bty', label: 'Bty' }, { value: 'regt', label: 'Regt' }], title: `The gun area to fit: Bty ${Math.round(this._R.areas.bty.frontM.value)} x ${Math.round(this._R.areas.bty.depthM.value)} m, Regt ${Math.round(this._R.areas.regt.frontM.value)} x ${Math.round(this._R.areas.regt.depthM.value)} m` },
+      { key: 'op', label: 'Task', type: 'select', value: this._opts.op, options: [{ value: 'def', label: 'Def' }, { value: 'attk', label: 'Attk' }], title: 'How far behind the front the guns may stand' },
+      { key: 'radiusKm', label: 'Look within', type: 'number', value: this._opts.radiusKm, min: 1, max: 20, step: 0.5, unit: 'km', title: 'How far round the picked place gun areas are looked for' },
       {
         key: 'month',
         label: 'Month',
@@ -560,40 +588,76 @@ export default class GunDeployment {
     else if (k === 'radiusKm') patch.radiusKm = Math.max(1, Math.min(20, Number(v) || this._opts.radiusKm));
     else if (k === 'month') patch.month = Math.max(0, Math.min(12, Number(v) || 0));
     this.setOptions(patch);
+    // The panel's settings are the same ones Ctrl+K and the gear show. Write them back, or the next change made there
+    // would put the old value back (the host re-applies the whole settings tree on every change).
+    for (const [key, val] of Object.entries(patch)) setSetting(['gunDeployment', key], val);
   }
 
   private _places(): PanelPlace[] {
     const f = this._front();
     const sel = (this._host.selected?.() ?? []).length;
     return [
-      { label: 'Look round', value: this._centre ? `${this._grid(this._centre)} (${this._opts.radiusKm} km)` : 'not picked', buttons: [{ id: 'pickCentre', label: 'Pick', title: 'Click the map where the guns should go roughly' }] },
+      {
+        label: 'Look round',
+        value: this._centre ? `${this._grid(this._centre)} (${km(this._radiusM(), 1)})` : 'not picked',
+        set: !!this._centre,
+        buttons: [{ id: 'pickCentre', label: this._centre ? 'Move' : 'Pick', title: 'Click the map where the guns should go roughly', on: this._picking === 'centre' }],
+      },
       {
         label: 'Target',
         value: this._target ? `${this._grid(this._target)}${this._targetFrom === 'threat' ? ' (threat marker)' : this._targetFrom === 'selected' ? ' (selected symbol)' : ''}` : 'none: range and crest not checked',
+        set: !!this._target,
         buttons: [
-          { id: 'pickTarget', label: 'Pick', title: 'Click the target on the map' },
+          { id: 'pickTarget', label: this._target ? 'Move' : 'Pick', title: 'Click the target on the map', on: this._picking === 'target' },
           ...(this._host.threat?.() ? [{ id: 'threatTarget', label: 'Threat', title: 'The Ground Guide\'s threat marker', on: this._targetFrom === 'threat' }] : []),
           ...(sel ? [{ id: 'selTarget', label: 'Selected', title: 'The selected symbol', on: this._targetFrom === 'selected' }] : []),
           ...(this._target ? [{ id: 'clearTarget', label: '✕', title: 'No target' }] : []),
         ],
       },
-      { label: 'Front', value: f ? f.label : 'none (draw the FDL or mark the threat)', buttons: [] },
+      { label: 'Front', value: f ? f.label : 'none (draw the FDL or mark the threat)', set: !!f, buttons: [] },
     ];
   }
 
   private _actions(): PanelAction[] {
     const has = !!this._res?.sites.length;
     return [
-      { id: 'pickCentre', label: this._centre ? 'Look elsewhere' : 'Pick gun area', primary: !this._centre, title: 'Click the map where the guns should go roughly' },
-      { id: 'whyNot', label: 'Why not here?', disabled: !this._res, title: 'Click any place: it is read with the same checks, and you get the rule (book and page) that left it out or put it lower' },
-      ...(this._whyNotAt ? [{ id: 'clearWhyNot', label: '✕ Why not', title: 'Clear the "Why not here?" place' }] : []),
-      { id: 'create', label: 'Create on Map', disabled: !has, title: 'The selected gun area as a PAA symbol (2525D), one undo step' },
-      { id: 'copy', label: 'Copy as Text', disabled: !has, title: 'The decision record: every site with its checks, why it is where it is, the places left out, and every rule cited with book, page and words' },
+      { id: 'pickCentre', label: this._centre ? 'Look elsewhere' : 'Pick gun area', primary: !this._centre, on: this._picking === 'centre', title: 'Click the map where the guns should go roughly' },
+      { id: 'whyNot', label: 'Why not here?', disabled: !this._res, on: this._picking === 'whyNot', title: 'Click any place: it is read with the same checks, and you get the rule (book and page) that left it out or put it lower' },
+      { id: 'create', label: 'Create on Map', output: true, disabled: !has, title: 'The selected gun area as a PAA symbol (2525D), one undo step' },
+      { id: 'copy', label: 'Copy as Text', output: true, disabled: !has, title: 'The decision record: every site with its checks, why it is where it is, the places left out, and every rule cited with book, page and words' },
+    ];
+  }
+
+  /** The setup in one line, for the folded setup and the folded panel. */
+  private _summary(): string {
+    const W = this._weapon();
+    return [W ? W.name.split(' (')[0] : '', this._opts.unit === 'regt' ? 'Regt' : 'Bty', this._opts.op === 'attk' ? 'Attk' : 'Def', km(this._radiusM(), 1), MONTHS[this._month() - 1]].filter(Boolean).join(' · ');
+  }
+
+  /** What to do, while there is no result to show. */
+  private _guide(): string[] {
+    if (this._bundleState === 'missing') return ['The terrain bundle is not there: Gun Deployment reads the ground from it. Check the Terrain bundle URL in the gear settings.'];
+    return [
+      'Pick the gun (above) and Bty or Regt.',
+      'Pick where to look: click the map roughly where the guns should go.',
+      'Give the target: Pick it, or use the Ground Guide threat marker or the selected symbol. Without one, range and crest are not checked.',
+      'Draw the FDL (FEBA / FLOT line) to have the distance behind the front checked.',
     ];
   }
 
   private _act(id: string): void {
-    if (id === 'pickCentre') this.pickCentre();
+    if (id === 'clearAll') {
+      this._centre = null;
+      this._target = null;
+      this._targetFrom = null;
+      this._whyNotAt = null;
+      this._whyNot = null;
+      this._sel = 0;
+      this._draw.cancel(false);
+      this._picking = null;
+      siteHint(HINT, ICON, null);
+      this._schedule();
+    } else if (id === 'pickCentre') this.pickCentre();
     else if (id === 'pickTarget') this.pickTarget();
     else if (id === 'threatTarget') {
       this._autoTarget();
@@ -658,6 +722,7 @@ export default class GunDeployment {
       gates: w.gates.map((g) => ({ text: g.text, rules: g.rules })),
       vsBest: w.vsBest,
       rows: (w.site?.rows ?? []).map((r) => ({ label: r.label, value: r.value, tone: r.tone, why: r.why, fix: r.fix, rules: r.rules })),
+      clearAct: 'clearWhyNot',
     };
   }
 
@@ -686,7 +751,7 @@ export default class GunDeployment {
     }
     const spec: MapSpec = { circle: null, polys: [], lines: [], marks: [] };
     if (this._centre) {
-      spec.circle = { at: this._centre, radiusM: this._opts.radiusKm * 1000, label: 'Gun area search' };
+      spec.circle = { at: this._centre, radiusM: this._radiusM(), label: 'Gun area search' };
       spec.marks.push({ at: this._centre, kind: 'centre' });
     }
     if (this._target) spec.marks.push({ at: this._target, kind: 'target', label: 'Tgt' });

@@ -16,6 +16,7 @@ const S = await import('../../MS/Engines/SiteScan/SiteScan.ts');
 const LN = await import('../../MS/Engines/SiteScan/SiteLine.ts');
 const C = await import('../../MS/Engines/Compare/CompareRead.ts');
 const AO = await import('../../MS/Engines/AoiCheck/AoiCheckRead.ts');
+const CH = await import('../../MS/Engines/CrossSection/CrossSectionChart.ts');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
@@ -111,6 +112,30 @@ const north = (len) => [at(0, 0), at(0, len)];
   check('without a threat: seen not read (null), no seen stretches', pn.stats.seenShare === null && pn.seenStretches.length === 0);
 }
 
+// ── 1b. X-Section chart words and svg ───────────────────────────────────────────────────────────────────────────────
+{
+  check('fmtCh: 18.31 km and 18.62 km differ (to 10 m); under 1 km in metres', CH.fmtCh(18312) === '18.31 km' && CH.fmtCh(18620) === '18.62 km' && CH.fmtCh(347) === '350 m');
+  const a = CH.axisMarks(328);
+  check('axisMarks: a 328 m line is marked in metres, no label repeated', a.unit === 'm' && new Set(a.marks.map((m) => m.label)).size === a.marks.length, a.marks.map((m) => m.label).join(' '));
+  const b = CH.axisMarks(27000);
+  check('axisMarks: a 27 km line is marked in whole km, no label repeated', b.unit === 'km' && new Set(b.marks.map((m) => m.label)).size === b.marks.length, b.marks.map((m) => m.label).join(' '));
+  const c = CH.axisMarks(1900);
+  check('axisMarks: a 1.9 km line keeps one decimal', c.unit === 'km' && c.marks.some((m) => m.label.includes('.')), c.marks.map((m) => m.label).join(' '));
+  const t = CH.niceTicks(225, 251, 4);
+  check('niceTicks: round heights inside the window', t.length >= 3 && t.every((v) => v % 5 === 0 && v >= 225 && v <= 251), t.join(' '));
+  const flat = LN.profileLine(world({ elev: () => 238 }), north(1000), S.goingRule(RULES, 'wheeled', 'dry'), { stepM: 30 });
+  const fl = CH.layout(flat, 900, false);
+  check('layout: flat ground is shown in at least a 20 m window (a 1 mm step is not drawn as a hill)', fl.eMax - fl.eMin >= 20, `${(fl.eMax - fl.eMin).toFixed(1)} m, x${fl.exaggeration.toFixed(2)}`);
+  const hilly = LN.profileLine(world({ elev: (e, nn) => 200 + nn / 10 }), north(2000), S.goingRule(RULES, 'wheeled', 'dry'), { stepM: 30 });
+  const { svg } = CH.chartSvg(hilly, 900, { withSeen: false });
+  check('chartSvg: ends A and B, the length at B, highest and lowest marked, and no hit rect over the marks', svg.includes('>A</text>') && svg.includes('>B</text>') && svg.includes('2.00 km') && svg.includes('Highest point') && !svg.includes('xs-hit'));
+  const canal = world({ cls: (e, nn) => (nn >= 400 && nn < 440 ? 20 : 0) });
+  const pc = LN.profileLine(canal, north(1000), S.goingRule(RULES, 'wheeled', 'dry'), { stepM: 10 });
+  const pc2 = CH.chartSvg(pc, 900, { withSeen: false, show: () => false }).svg;
+  const pc3 = CH.chartSvg(pc, 900, { withSeen: false }).svg;
+  check('chartSvg: the filter takes events out of the obstacle row', pc3.includes('Canal') && !pc2.includes('>Canal<'));
+}
+
 // ── 2. Compare ──────────────────────────────────────────────────────────────────────────────────────────────────────
 {
   const A = { mover: 'wheeled', moverLabel: 'Wheeled Vehicle', season: 'dry', seasonWhy: 'Nov', threat: null, eyeM: 2, targetM: 2.5, dataLine: '' };
@@ -146,13 +171,30 @@ const north = (len) => [at(0, 0), at(0, len)];
   const withThreat = C.compareAlts(world({ sight: (e) => (e < 400 ? 0.9 : 0.1) }), RULES, lines, { ...A, threat: at(0, -3000) });
   const sr = withThreat.rows.find((x) => x.key === 'seen' && x.kind === 'line');
   check('seen by threat: A (all seen) worst, B (unseen) best', sr.best.join() === 'B' && sr.worst.join() === 'A', `${sr.cells.A.value} / ${sr.cells.B.value}`);
+  // 18 Nov: cells with a second line, flags, no-threat rows not ranked, centroid, differences ordered
+  const nt = C.compareAlts(world({ sight: (e) => 0.9 }), RULES, lines, A);
+  const nsr = nt.rows.find((x) => x.key === 'seen' && x.kind === 'line');
+  check('no threat set: seen says so in the cell and is not ranked', nsr.better === null && nsr.best.length === 0 && nsr.cells.A.value === 'threat not set' && /Shown, not ranked/.test(nsr.how));
+  const wn = r.rows.find((x) => x.key === 'nogo');
+  check('NO-GO cell keeps the value short and the stretches on a second line', /stretch/.test(wn.cells.A.sub ?? '') && C.cellText(wn.cells.A).includes('(1 stretch)'), C.cellText(wn.cells.A));
+  check('a ranked row says how far apart its ends are', typeof row('water').delta === 'string' && row('water').delta.length > 0 && /crossing/.test(row('water').delta), row('water').delta);
+  check('flags: the corridor over the canal says what to check first (NO-GO), the clear one has none', r.flags.A.some((f) => f.key === 'nogo' && f.tone === 'bad') && r.flags.B.length === 0, JSON.stringify(r.flags));
+  check('differences run best to worst and give the span', /^Water crossings: B none best, A .* worst \(/.test(r.diffs.find((d) => d.startsWith('Water crossings')) ?? ''), r.diffs.find((d) => d.startsWith('Water crossings')));
+  const L = [[0, 0], [1000, 0], [1000, 400], [0, 400]].map(([x, y]) => at(x, y));
+  const cen = C.ringCentroid(L);
+  check('ring centroid of a 1000 x 400 m rectangle is its middle (also far from the origin)', near(cen[0], at(500, 200)[0], 1) && near(cen[1], at(500, 200)[1], 1));
+  const lShape = [at(0, 0), at(1000, 0), at(1000, 100), at(100, 100), at(100, 1000), at(0, 1000)];
+  const cl = C.ringCentroid(lShape), mean = lShape.reduce((t, p) => [t[0] + p[0] / 6, t[1] + p[1] / 6], [0, 0]);
+  check('an L-shaped area: the centroid is inside the area, not the mean of its corners', Math.hypot(cl[0] - mean[0], cl[1] - mean[1]) > 20, `${Math.round(Math.hypot(cl[0] - mean[0], cl[1] - mean[1]))} m from the corner mean`);
+  const fnInput = C.compareAlts(world({}), RULES, [lines[0], lines[1]], { ...A, inputText: (k) => `kind ${k} here` });
+  check('inputText may be given per kind', fnInput.rows.every((x) => x.how.includes('kind line here')));
 }
 
 // ── 2b. Compare: every row says when a difference counts, and what data it read ─────────────────────────────────────
 {
   const A2 = { mover: 'wheeled', moverLabel: 'Wheeled Vehicle', season: 'dry', seasonWhy: 'Nov', threat: null, eyeM: 2, targetM: 2.5, dataLine: '', dataText: (k) => `DATA[${k}]`, inputText: 'A, B drawn on the map' };
   const r2 = C.compareAlts(world({}), RULES, [{ id: 'A', kind: 'line', pts: north(1000), name: '' }, { id: 'B', kind: 'line', pts: [at(300, 0), at(300, 1000)], name: '' }], A2);
-  check('Compare: every ranked row states its smallest real difference (proposal); unranked rows say so', r2.rows.every((x) => (x.better ? /Ranked only when the alternatives differ by more than [\d.]+ /.test(x.how) : /Shown, not ranked/.test(x.how))), r2.rows.find((x) => x.key === 'nogo').how.slice(-160));
+  check('Compare: every ranked row states its smallest real difference (proposal); unranked rows say so', r2.rows.every((x) => (x.better ? /Ranked only when the alternatives differ by [\d.]+ [^ ]+( [a-z]+)* or more/.test(x.how) : /Shown, not ranked/.test(x.how))), r2.rows.find((x) => x.key === 'nogo').how.slice(-160));
   check('Compare: rows name the data they read and where the alternatives came from', r2.rows.find((x) => x.key === 'nogo').how.includes('DATA[class]; DATA[rci]; DATA[wet]') && r2.rows.every((x) => /drawn on the map/.test(x.how)));
 }
 
@@ -182,6 +224,27 @@ check('source dates: ranges, full dates and years are read whole', S.shortDate('
   const whole = [[AO.tileBox(t.tx0, t.ty0, 12)[0] - 1, AO.tileBox(t.tx0, t.ty0, 12)[1] - 1], [AO.tileBox(t.tx0, t.ty0, 12)[2] + 1, AO.tileBox(t.tx0, t.ty0, 12)[1] - 1], [AO.tileBox(t.tx0, t.ty0, 12)[2] + 1, AO.tileBox(t.tx0, t.ty0, 12)[3] + 1], [AO.tileBox(t.tx0, t.ty0, 12)[0] - 1, AO.tileBox(t.tx0, t.ty0, 12)[3] + 1]];
   const nd = AO.nodataInTile(data, t.tx0, t.ty0, 12, 256, whole, 255, 4);
   check('a tile with its west half no-data: half the pixels inside the AOI are empty', near(nd.empty / nd.inside, 0.5, 0.02), `${nd.empty}/${nd.inside}`);
+
+  // area weights: a missing tile that only clips the AOI's corner is not weighed like one that holds most of it
+  {
+    const ring2 = [at(-3000, -3000), at(3000, -3000), at(3000, 3000), at(-3000, 3000)];
+    const tr2 = AO.tileRange(AO.boxOf(ring2), 12);
+    const tl = [];
+    for (let tx = tr2.tx0; tx <= tr2.tx1; tx++) for (let ty = tr2.ty0; ty <= tr2.ty1; ty++) tl.push({ tx, ty });
+    const w = AO.tileWeights(ring2, tl, 12);
+    const sum = [...w.values()].reduce((a, c) => a + c, 0);
+    check('tile weights add up to 1', near(sum, 1, 1e-9), sum.toFixed(6));
+    const big = Math.max(...w.values()), small = Math.min(...w.values());
+    check('every tile touching the AOI has a weight above 0 and the big one is not under the small one', small > 0 && big >= small && big <= 1, `${big.toFixed(3)} / ${small.toFixed(3)}`);
+    const ly = { key: 'class', tileLayer: 'class', label: 'Gr class', uses: '', sources: [], nodata: 255, core: true };
+    const heavy = [...w.entries()].sort((a, b) => b[1] - a[1])[0], light = [...w.entries()].sort((a, b) => a[1] - b[1])[0];
+    const tally = (k) => ({ layer: ly, z: 12, total: tl.length, loaded: tl.length - 1, missing: 1, failed: 0, pending: 0, gapTiles: [], inside: 0, empty: 0, wTotal: 1, wMiss: w.get(k), wEmpty: 0 });
+    check('the same one missing tile: a bigger gap when it is the AOI\'s main tile', tl.length < 2 || AO.gapShare(tally(heavy[0])) > AO.gapShare(tally(light[0])) + 0.05, `${AO.gapShare(tally(heavy[0])).toFixed(3)} vs ${AO.gapShare(tally(light[0])).toFixed(3)}`);
+    check('a tally built without weights still reads by tile count', near(AO.gapShare({ layer: ly, z: 12, total: 10, loaded: 8, missing: 2, failed: 0, pending: 0, gapTiles: [], inside: 0, empty: 0 }), 0.2, 1e-9));
+    const early = AO.buildReport(ring2, { bounds: null }, [{ ...tally(heavy[0]), missing: 0, wMiss: 0, loaded: tl.length }], [], false);
+    check('layers read but the grids not yet: still "checking", never "full cover"', early.pending && early.verdict.tone === 'unknown');
+    check('short source names drop the description', AO.shortSource('ESA WorldCover 2021 v200 \u2014 land cover') === 'ESA WorldCover 2021 v200' && AO.shortSource('OpenStreetMap (Pakistan extract)') === 'OpenStreetMap');
+  }
 
   const mpath = resolve(repo, 'MS/Data/terrain-bundle/manifest.json');
   if (existsSync(mpath)) {

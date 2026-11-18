@@ -394,6 +394,15 @@ export function fmtM(m: number): string {
 }
 
 /**
+ * A place along the line (chainage): to 10 m, however long the line. `fmtM` is for lengths and rounds a long one to
+ * the kilometre, which put every obstacle between 12.5 and 13.5 km "at 13 km".
+ */
+export function fmtAt(m: number): string {
+  const r = Math.round(m / 10) * 10;
+  return r >= 1000 ? `${(r / 1000).toFixed(2)} km` : `${r} m`;
+}
+
+/**
  * Steep slope along the line for a mover, percent, from the bundle's own slope classes (rules.json): vehicles from 15°
  * (class 10 "Moderate slope 15-30°: hard going for vehicles", 26.8 %), foot and pack animals from 30° (class 9 "Steep
  * slope >30°: climbable on foot only", 57.7 %).

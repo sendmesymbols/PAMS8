@@ -1233,6 +1233,7 @@ class SymbolEngine implements Evented {
       const xs = new CrossSection(() => this._getView(), {
         threat: () => this._threatLngLat(),
         selected: () => this._selectionEngine?.selectedGraphics ?? [],
+        save: (key, value) => setSetting(['crossSection', key], value),
       });
       this._crossSection = xs;
       xs.setOptions((settingsData as any).crossSection ?? {});

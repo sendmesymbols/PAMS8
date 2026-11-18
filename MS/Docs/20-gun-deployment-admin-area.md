@@ -126,6 +126,30 @@ My decisions (tell the user if asked):
   - Admin Area giving 5 BAA sites clear of the M-46, and Create on Map making a BSA.
 - Not verified: 3D, narrow screens, the settings gears, a drawn FDL on a real map (covered by the Node checks only).
 
+## UI and bug pass (19 Nov 2026)
+
+The user: "Improve UI and fix bugs". Both panels share `SiteScan/SitePanel.ts`, so one change covers both.
+
+**Panel (answer first, as PRODUCT.md asks):**
+- The answer line comes first, with its verdict icon (tick, triangle, crossed octagon, dots). Colour is no longer the only carrier of a verdict, on the answer, the site list and every check row.
+- The setup (places, then the settings as labelled fields) sits under the answer. It folds to a one-line summary ("155 mm How · Bty · Def · 4.0 km · Nov") once the search circle is picked, and opens again on Clear. The user's own fold is kept until that changes.
+- A ▾ button folds the whole panel to its title bar; the answer stays in the bar and the drawings stay on the map.
+- Each site in the list shows its grid, its verdict in words and how many checks pass ("6 of 8 checks pass · 2 need work"). Arrow keys, Home, End and Enter move through the list.
+- Create on Map and Copy as Text sit apart at the right. A map pick under way draws its button pressed. "Clear" takes the places, result and drawings off. "Why not here?" has its own Clear in its heading.
+- With nothing to list, "How to use" gives the steps in order.
+- Nothing is set under 12 px (it was 10 to 11.5 px); the folded rule lists, badges and notes follow.
+- A narrow window: the panel fits the width, the last one used comes to the front, and it keeps clear of the top bar when the window is resized.
+
+**Bugs fixed:**
+- A change made in the panel (gun, Bty / Regt, task, radius, month; admin kind, operation, gun, and so on) was put back by the next change made in Ctrl+K or the gear, because only the finder knew it. The panel now writes it to the settings as well.
+- Admin Area: the enemy gun's reach on the map joined its two ends with a straight line (up to 56 km long) whenever the search circle lay roughly north of the threat. It is now one arc.
+- Picking a place and then changing the view left the "Click..." hint pill on the screen. It now goes, and the button is released.
+- Copy as Text failed on a host served over plain http from a LAN address (no Clipboard API there). It falls back to the selection copy (`copyToClipboard`).
+- The search circle on the map was drawn at the typed radius, but the finder clamps it (Gun: 0.5 to 20 km). Both use one figure now.
+- Gun Deployment read the FDL off the map's graphics three times a run; it is read once.
+
+Not verified: 3D, a drawn FDL on a real map, the gears, Create on Map after this pass (the finders' numbers did not change: `run.mjs` still passes 88 checks).
+
 ## Justifying a choice: rule, book and page (17 Nov 2026)
 
 The user asked for this: "people will not believe me … until we give them rule and book and page #". Every decision both

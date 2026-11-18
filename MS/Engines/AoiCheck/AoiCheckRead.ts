@@ -124,6 +124,33 @@ export function tileBox(tx: number, ty: number, z: number): Box {
   return [-ORIGIN + tx * size, ORIGIN - (ty + 1) * size, -ORIGIN + (tx + 1) * size, ORIGIN - ty * size];
 }
 
+/**
+ * Each tile's share of the AOI (adding up to 1), from a grid of about `n`² points. A tile that only touches the AOI's edge
+ * counts for little, so a missing corner tile is not weighed like one that holds most of the AOI.
+ */
+export function tileWeights(ring: XY[], tiles: Array<{ tx: number; ty: number }>, z: number, n = 48): Map<string, number> {
+  const b = boxOf(ring);
+  const size = (2 * ORIGIN) / 2 ** z;
+  const counts = new Map<string, number>();
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < n; j++) {
+      const p: XY = [b[0] + ((i + 0.5) / n) * (b[2] - b[0]), b[1] + ((j + 0.5) / n) * (b[3] - b[1])];
+      if (!inRing(p, ring)) continue;
+      const k = `${Math.floor((p[0] + ORIGIN) / size)}/${Math.floor((ORIGIN - p[1]) / size)}`;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+  const raw = tiles.map((q) => Math.max(counts.get(`${q.tx}/${q.ty}`) ?? 0, 0.5));
+  const sum = raw.reduce((a, c) => a + c, 0) || 1;
+  const out = new Map<string, number>();
+  tiles.forEach((q, i) => out.set(`${q.tx}/${q.ty}`, raw[i] / sum));
+  return out;
+}
+
+/** A source's name without its description ("ESA WorldCover 2021 v200 — land cover" is "ESA WorldCover 2021 v200"). */
+export function shortSource(name: string): string {
+  return String(name ?? '').split(/\s+[—–]\s+|\s+\(/)[0].trim();
+}
+
 /** The finest zoom (zMin..zMax) at which a box needs at most `maxTiles` tiles per layer. */
 export function pickZoom(b: Box, zMin: number, zMax: number, maxTiles: number): number {
   for (let z = zMax; z > zMin; z--) if (tileRange(b, z).n <= maxTiles) return z;
@@ -199,6 +226,14 @@ export interface LayerTally {
   /** Pixels inside the AOI sampled in loaded tiles, and those with no data. */
   inside: number;
   empty: number;
+  /**
+   * Area weights (they add up to `wTotal`): a tile's share of the AOI. A missing tile counts its weight in `wMiss`, a loaded
+   * tile its weight times the share of its AOI pixels with no data in `wEmpty`. Without them (a tally built by hand) every
+   * tile counts the same.
+   */
+  wTotal?: number;
+  wMiss?: number;
+  wEmpty?: number;
 }
 
 export interface ExtraTally {
@@ -241,15 +276,16 @@ export const AOI_JUDGED: string[] = [
 /** Share of the AOI a layer cannot answer for: missing / failed tiles plus no-data pixels in loaded tiles. */
 export function gapShare(t: LayerTally): number {
   if (!t.total) return 0;
+  if (t.wTotal && t.wTotal > 0) return Math.min(1, ((t.wMiss ?? 0) + (t.wEmpty ?? 0)) / t.wTotal);
   const gapTiles = (t.missing + t.failed) / t.total;
   const inLoaded = t.inside ? t.empty / t.inside : 0;
   return Math.min(1, gapTiles + (t.loaded / t.total) * inLoaded);
 }
 
-export function buildReport(ring: XY[], manifest: any, layers: LayerTally[], extras: ExtraTally[]): AoiReport {
+export function buildReport(ring: XY[], manifest: any, layers: LayerTally[], extras: ExtraTally[], extrasDone = true): AoiReport {
   const areaKm2 = ringKm2(ring);
   const inFrame = shareInside(ring, manifest?.bounds);
-  const pending = layers.some((t) => t.pending > 0);
+  const pending = layers.some((t) => t.pending > 0) || !extrasDone;
   // one line per reading: the movers' distance layers as one, the two height bytes as one
   const groups = new Map<string, { what: string; layers: string[]; share: number; core: boolean; n: number }>();
   for (const t of layers) {
@@ -271,9 +307,13 @@ export function buildReport(ring: XY[], manifest: any, layers: LayerTally[], ext
   const coreGap = Math.max(0, ...layers.filter((t) => t.layer.core).map(gapShare));
   let verdict: AoiReport['verdict'];
   if (pending) verdict = { tone: 'unknown', text: 'Checking the tiles…' };
+  else if (!layers.length) verdict = { tone: 'unknown', text: 'The bundle manifest lists no layers to check' };
   else if (inFrame !== null && inFrame < 0.005) verdict = { tone: 'bad', text: 'The AOI is outside the terrain data' };
   else if (coreGap >= 0.5) verdict = { tone: 'bad', text: `No Gr class or heights over ${Math.round(coreGap * 100)}% of the AOI: readings there are blank` };
   else if (coreGap > 0.005 || affected.length) verdict = { tone: 'warn', text: `Gaps: ${affected.length} reading${affected.length === 1 ? '' : 's'} partly blank (worst ${Math.round((affected[0]?.share ?? 0) * 100)}%)` };
-  else verdict = { tone: 'ok', text: `Full cover: ${complete} of ${layers.length} layers and every grid read over the AOI` };
+  else {
+    const grids = extras.filter((e) => e.share !== null).length;
+    verdict = { tone: 'ok', text: `Full cover: ${complete} of ${layers.length} layers${grids ? ` and ${grids} grid${grids === 1 ? '' : 's'}` : ''} read over the AOI` };
+  }
   return { areaKm2, inFrame, layers, extras, affected, complete, verdict, pending };
 }

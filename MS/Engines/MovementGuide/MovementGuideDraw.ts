@@ -88,6 +88,14 @@ export class MovementGuideDraw {
       }),
       view.on('double-click', (e: any) => {
         e.stopPropagation();
+        // The view holds back the `click` of a double-click, so the place double-clicked is not in the shape yet: it is
+        // the last point (unless a click a few pixels away already put it there).
+        const p = req.kind === 'point' ? null : toMerc(e.mapPoint);
+        if (p) {
+          const last = this._pts[this._pts.length - 1];
+          const tol = Math.max(0.5, Number(view.scale ?? 0) * 0.00026458 * 4);
+          if (!last || Math.hypot(last[0] - p[0], last[1] - p[1]) > tol) this._pts.push(p);
+        }
         this._finishShape();
       }),
       view.on('pointer-move', (e: any) => {
