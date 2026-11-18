@@ -42,6 +42,7 @@ import { checkPlan, checkText, readSymbols, reportWorld, type CheckReport, type 
 import { twoPhaseRecipe } from './PlanPhase';
 import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } from './PlanTanks';
 import { artyOnPlan, artyRows, ownArtyTypes, withArty, type ArtyDoctrine, type ArtyType } from './PlanArty';
+import { bridgeKinds, engrText, ownEngrTypes, type EngrType } from './PlanEngr';
 import { gunRulesFrom } from '../GunDeployment/GunDeploymentFind';
 import gunDoctrine from '../../Data/GunDoctrine.json';
 import { OWN_ORBAT_FILES, brief, doctrineForUnit, enUnitFor, forceFromOrbat, mergeOwn, minefieldRow, ownAtTypes, ownBdeTypes, ownBnTypes, ownDivTypes, ownUnitFor, sizeText, tankSqnOf, tankSqnText, typeFits, unitForPlan, unitLine, withAtGroup, type AtType, type OrbatSet, type OwnType, type TankSqn, type UnitBrief } from './PlanOrbat';
@@ -111,7 +112,7 @@ const footSpeeds = (): PlFootSpeeds => {
   return { ground: f.ground ?? { open: [4, 3] }, road: f.road?.track ?? [4, 3], toblerA: Array.isArray(f.slope?.a) ? f.slope.a[0] : 3.5, toblerB: typeof f.slope?.b === 'number' ? f.slope.b : 0.05 };
 };
 /** A recipe id without the two-phase suffix (PlanPhase.twoPhaseRecipe adds -2ph). */
-const baseId = (id: string) => id.replace(/-gun$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkdd$/, '').replace(/-2ph1?$/, '');
+const baseId = (id: string) => id.replace(/-gun$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkdd$/, '').replace(/-2ph1?$/, '');
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
@@ -330,6 +331,11 @@ export class PlanBuildTab {
   private _divId: string | null = null;
   /** Tank Sqns grouped to a Bn defence (0 to 3 of an Armr Regt's Sqns): their harbours beside the reserve, the C Pen force at the tank rate. */
   private _defTanks = 0;
+  /** The engineers with a defence (the minefield) or a crossing (bridging, the breach): an ORBAT unit; null: the doctrine's (one Fd Coy, Annex Q). */
+  private _engrId: string | null = null;
+  private _engrCache: EngrType[] | null = null;
+  private get _engrTypes(): EngrType[] { return this._orbat ? (this._engrCache ??= ownEngrTypes(this._orbat)) : []; }
+  private get _engr(): EngrType | null { return this._engrId ? this._engrTypes.find((e) => e.id === this._engrId) ?? null : null; }
   /** The artillery with a Bn plan (an ORBAT Regt or Bty: Fd, Med, Med (SP), Mtn, Hy); null: none drawn. */
   private _artyId: string | null = null;
   private _artyCache: ArtyType[] | null = null;
@@ -464,6 +470,7 @@ export class PlanBuildTab {
     this._typesCache = null;
     this._atCache = null;
     this._artyCache = null;
+    this._engrCache = null;
     this._ph2.clear();
     try {
       const get = async (f: string) => { const r = await fetch(`${base}/${f}`); if (!r.ok) throw new Error(`HTTP ${r.status} for ${f}`); return r.json(); };
@@ -554,11 +561,18 @@ export class PlanBuildTab {
     const base = this._recipes.get(baseId(id));
     // a crossing with his minefield assumed (PlanCrossing.withMinefield), cached like the attack's variants
     if (base?.task === 'crossing') {
-      if (!this._mf) return base;
-      const key = `${base.id}:mf`;
-      let m = this._ph2.get(key);
-      if (!m) { m = withMinefield(base, this._doc); this._ph2.set(key, m); }
-      return m;
+      let m: Recipe = base;
+      if (this._mf) {
+        const key = `${base.id}:mf`;
+        m = this._ph2.get(key) ?? withMinefield(base, this._doc);
+        this._ph2.set(key, m);
+      }
+      const e = this._engr;
+      if (!e || !this._orbat) return m;
+      const ek = `${m.id}:en:${e.id}`;
+      let x = this._ph2.get(ek);
+      if (!x) { x = { ...m, id: `${m.id}-en`, name: `${m.name}, ${e.name}`, engr: { ...e, kinds: bridgeKinds(this._orbat.engrData ?? []) } }; this._ph2.set(ek, x); }
+      return x;
     }
     // tank Sqns grouped to a Bn defence (PlanTanks.withDefTanks), cached like the attack's variants
     if (base?.task === 'defence' && (base.echelon === '16' || base.echelon === '15')) {
@@ -714,7 +728,7 @@ export class PlanBuildTab {
   /** The rows the ORBAT adds to a defence: the protective minefield in time (engineer rates). */
   private _orbatRows(res: SolveResult): Check[] {
     if (!this._orbat || res.recipe.task === 'attack') return [];
-    const m = minefieldRow(this._orbat, this._doc, res.frontageM, this._unit(res.recipe));
+    const m = minefieldRow(this._orbat, this._doc, res.frontageM, this._unit(res.recipe), this._engr);
     // tank Sqns and artillery without the ground; a fitted plan has had them from PlanFit already (on the ground)
     if (res.mode === 'terrain') return m ? [m] : [];
     return [...(m ? [m] : []), ...(res.recipe.defTanks ? defTankRows(res.items, res.recipe, null, null, this._doc, null) : []), ...this._artyGeomRows(res)];
@@ -885,6 +899,7 @@ export class PlanBuildTab {
       case 'divType': this._divId = val || null; this._solve(); break;
       case 'atType': this._atId = val || null; this._solve(); break;
       case 'arty': this._artyId = val || null; this._solve(); break;
+      case 'engr': this._engrId = val || null; this._solve(); break;
       case 'defTanks': this._defTanks = Math.max(0, Math.min(3, Number(val) || 0)); this._solve(); break;
       case 'atCoys': this._atCoys = Math.max(1, Math.min(3, Number(val) || 1)); this._solve(); break;
       case 'retry': this._loadState = 'idle'; this.shown(); return;
@@ -1230,6 +1245,7 @@ export class PlanBuildTab {
       defTanks: recipe.defTanks ?? 0,
       defTanksUnit: recipe.defTanksUnit ?? null,
       arty: recipe.arty ?? null,
+      engr: this._engr && (recipe.task === 'defence' || recipe.task === 'crossing') ? this._engr.id : null,
     };
   }
 
@@ -1658,7 +1674,7 @@ export class PlanBuildTab {
     const off = types.filter((t) => !fits(t) && t !== on);
     const chips = types.filter((t) => this._allTypes || !off.includes(t)).map((t) => this._chip(t === on, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `unitType:${t.id}`, why(t), !fits(t))).join('');
     const more = off.length ? `<button type="button" class="pb-more" data-pb="moreTypes" aria-expanded="${this._allTypes}">${this._allTypes ? 'Hide the types not offered' : `+${off.length} not offered`}</button>` : '';
-    return `${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${this._artyRow(recipe)}${facts}`;
+    return `${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${this._artyRow(recipe)}${recipe.task === 'crossing' ? '' : this._engrRow(recipe)}${facts}`;
   }
 
   /**
@@ -1701,6 +1717,18 @@ export class PlanBuildTab {
     const chips = [this._chip(!this._artyId, 'None', 'arty:', 'No artillery drawn')]
       .concat(types.map((t) => this._chip(this._artyId === t.id, t.name, `arty:${t.id}`, `${t.guns} x ${t.weapon.name}, planning range ${(t.weapon.planM / 1000).toFixed(1)} km${t.weapon.sp ? ', SP' : ''} (${t.src})`))).join('');
     return row('Arty', chips);
+  }
+
+  /**
+   * Engineers (ORBAT, Sec 4): on a defence they lay the protective minefield (Mines in time), on a crossing they bridge
+   * and breach (Engr bridging, Mech breach). Doctrine: one Fd Coy for the minefield, Annex Q for the crossing.
+   */
+  private _engrRow(recipe: Recipe): string {
+    const forDef = recipe.task === 'defence' && (recipe.echelon === '16' || recipe.echelon === '15');
+    if (!this._orbat || !(forDef || recipe.task === 'crossing') || !this._engrTypes.length) return '';
+    const chips = [this._chip(!this._engrId, 'Doctrine', 'engr:', forDef ? 'One Engr Fd Coy lays the minefield (the figure before the ORBAT)' : 'The Div\'s M2 bridge and hand breaching (IBB Annex Q)')]
+      .concat(this._engrTypes.map((e) => this._chip(this._engrId === e.id, e.name.replace(/ \((IFCE|IMCE)\)$/, ' ($1)'), `engr:${e.id}`, `${engrText(e)} (${e.src})`))).join('');
+    return row('Engrs', chips);
   }
 
   /** The kind of ground: Auto (read where the plan rests; what it read is ringed) or set. */
@@ -1896,7 +1924,7 @@ export class PlanBuildTab {
       { on: this._alternates === 'hidden', label: 'Created, hidden', data: 'alt:hidden' }, { on: this._alternates === 'visible', label: 'Shown', data: 'alt:visible' }, { on: this._alternates === 'none', label: 'None', data: 'alt:none' }])) : '';
     return `
       <div class="pb-group">${row('Operation', tasks)}${row('Unit', units)}${this._unitTypeRow(res.recipe)}</div>
-      <div class="pb-group">${row('Layout', layout)}${this._isSmall || this._isCrossing ? this._smallRows(res.recipe.task) : this._groundRow()}${attack}${tankFacts}${draw}${alts}</div>
+      <div class="pb-group">${row('Layout', layout)}${this._isSmall || this._isCrossing ? this._smallRows(res.recipe.task) : this._groundRow()}${this._isCrossing ? this._engrRow(res.recipe) : ''}${attack}${tankFacts}${draw}${alts}</div>
       <div class="pb-plan">
         <div class="pb-sum">${esc(this._auto ? `${fam?.name ?? ''}: Auto (best layout where it rests)` : res.recipe.name)} <span class="pb-dim">${fmtM(res.frontageM)} × ${fmtM(res.depthM)} · ${res.items.length} symbols${fam?.unit ? ` · ${esc(fam.name)} (ORBAT)` : ''}</span></div>
         ${this._preview(res)}

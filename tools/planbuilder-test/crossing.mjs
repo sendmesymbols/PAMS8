@@ -185,6 +185,30 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
   check('...the lanes on the timeline, the Night row warns', fl.fit.crossing.times.some((t) => /lanes/.test(t.label)) && row(fl.res.rows, 'Night')?.st === 'warn', row(fl.res.rows, 'Night')?.reason);
 }
 
+// ── engineers with the crossing (ORBAT, SO's Hbk Sec 4): their own bridging, the TAM breach ─────────────────────────────
+{
+  const O = await import('../../MS/Engines/DeploymentBuilder/PlanOrbat.ts');
+  const E = await import('../../MS/Engines/DeploymentBuilder/PlanEngr.ts');
+  const P = 'MS/Data/Orbat/PK/';
+  const orbat = { own: O.mergeOwn(O.OWN_ORBAT_FILES.map((x) => json(`${P}${x}`).units)), en: [], weapons: [], engrData: json(`${P}engr.json`).engrData };
+  const kinds = E.bridgeKinds(orbat.engrData), T = (id) => ({ ...E.ownEngrTypes(orbat).find((t) => t.id === id), kinds });
+  const withE = (r, id) => ({ ...r, id: `${r.id}-en`, engr: T(id) });
+  const flBr = F.fitLayout(inpOf(withE(rec('bn-cross-two-up'), 'engr-bn-br'), H));
+  const eb = row(flBr.res.rows, 'Engr bridging');
+  check('Engineers: the Br Bn over the canal (70 m with the seats): its ribbon bridge, 1 h 30 on a dark night, open H+1 h 30, on the timeline before the M2', eb?.st === 'pass' && /Ribbon bridge \(Cl 60\) across 70 m: 1 h 30 min by dark night/.test(eb.reason) && flBr.fit.crossing.times.some((t) => /Ribbon bridge open \(Br Bn Engrs\)/.test(t.label) && t.atMin === 90) && !!row(flBr.res.rows, 'Bridge'), eb?.reason);
+  const flAs = F.fitLayout(inpOf(withE(rec('bn-cross-two-up'), 'engr-bn-aslt'), H));
+  check('...the Aslt Engr Bn: two AM-50 sets one after the other (2 h 30), its AVLBs too short for 70 m', /AM-50 bridge, 2 sets \(Cl 50\) across 70 m: 2 h 30 min/.test(row(flAs.res.rows, 'Engr bridging')?.reason ?? ''), row(flAs.res.rows, 'Engr bridging')?.reason);
+  const flFd = F.fitLayout(inpOf(withE(rec('bn-cross-two-up'), 'engr-fd-coy'), H));
+  check('...a Fd Coy holds no bridging: no Engr bridging row, the Annex Q rows as before', !row(flFd.res.rows, 'Engr bridging') && !!row(flFd.res.rows, 'Bridge'));
+  // his minefield, with the Aslt Engr Bn's TAMs
+  const mf = withE(C.withMinefield(rec('bn-cross-two-up'), doc), 'engr-bn-aslt');
+  const flM = F.fitLayout(inpOf(mf, at(650, -100)));
+  const mb = row(flM.res.rows, 'Mech breach');
+  check('...his minefield and the Aslt Engr Bn: Mech breach, a TAM to each of the 2 lanes, about 3 h against 6 h by hand (p 451, uncertain reading), on the timeline', mb?.st === 'pass' && /2 lanes/.test(mb.reason) && /6 h by hand/.test(mb.reason) && flM.fit.crossing.times.some((t) => /Lanes by TAM/.test(t.label)), mb?.reason);
+  const mf0 = F.fitLayout(inpOf(C.withMinefield(rec('bn-cross-two-up'), doc), at(650, -100)));
+  check('...without engineers chosen: no Mech breach row, the hand lanes only', !row(mf0.res.rows, 'Mech breach') && !row(mf0.res.rows, 'Engr bridging'));
+}
+
 // ── brigades: the Bridgehead Line reaches out for his observers ────────────────────────────────────────────────────────
 {
   const two = F.fitLayout(inpOf(rec('bde-cross-two-up'), H));

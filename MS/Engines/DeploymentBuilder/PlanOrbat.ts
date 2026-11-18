@@ -15,6 +15,7 @@ import type { DoctrineSet } from './PlanRecipes';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check } from './PlanSolve';
 import type { EnemyType, TerrainKind } from './PlanContext';
+import { minesByEngr, type EngrType } from './PlanEngr';
 
 export interface OrbatSet {
   /** Own units: every arm file as one list (mergeOwn over OWN_ORBAT_FILES); inf.json alone still works. */
@@ -426,19 +427,31 @@ export function atgmPairs(b: UnitBrief | null): number {
  * The protective minefield along the front in time (engr.json p 439: an Engr Pl lays 780 mixed clusters in 24 h, an
  * Inf Pl half; a mixed field 1 ATM and 1 APM a metre of front, E reading) against the time to be ready.
  */
-export function minefieldRow(o: OrbatSet, doc: DoctrineSet, frontageM: number, own: UnitBrief | null): Check | null {
+export function minefieldRow(o: OrbatSet, doc: DoctrineSet, frontageM: number, own: UnitBrief | null, engr: EngrType | null = null): Check | null {
   const t = (o.engrData ?? []).find((x: any) => /Mine Laying - Planning Data: Manual/i.test(String(x?.title)));
   const row = t?.rows?.find((r: any) => r.Condition === 'Engr Pl' && /mixed/i.test(String(r.Cluster)));
   const perPl = Number(row?.['Max in 24 hrs']);
   if (!perPl || !(frontageM > 0)) return null;
   const ready = resolveRange(doc, doctrineAt(doc, 'readyBy.coyPosnH')) ?? [24, 36];
   const clusters = Math.round(frontageM);
-  const coyH = Math.round((clusters / (3 * perPl)) * 24);
   const rifles = own ? Math.max(1, Math.round(own.coys * (own.plsPerCoy ?? 3))) : 0;
   const ownH = rifles ? Math.round((clusters / (rifles * perPl * 0.5)) * 24) : null;
+  const ownPart = ownH !== null ? `; the ${rifles} rifle Pls alone, at half that, about ${ownH} h` : '';
+  const readyPart = `posns ready in ${ready[0]}-${ready[1]} h (IBB)`;
+  const head = `protective minefield along ${(frontageM / 1000).toFixed(1)} km of front, about ${clusters.toLocaleString('en-GB')} mixed clusters`;
+  if (engr) {
+    // the engineers grouped to the plan (ORBAT): their Pls by hand and, with a set of 6 MMLs, the ATMs by machine
+    const m = minesByEngr(engr, clusters, perPl);
+    const best = [m.handH, m.mechH].filter((x): x is number => x !== null).sort((a, b) => a - b)[0] ?? null;
+    const st = best !== null && best <= ready[1] ? 'pass' : 'warn';
+    const hand = m.handH !== null ? `by hand with its ${engr.pls} Pls (${perPl} mixed clusters a Pl in 24 h, SO's Hbk p 439) about ${m.handH} h` : 'no engineer Pls that lay mines';
+    const mech = m.mechH !== null ? `; with its MMLs laying ATMs alongside the Pls (a set of 6: 9000 m in 24 h, p 439, ideal conditions, under trial; ${m.sets} set${m.sets > 1 ? 's' : ''}, the rest in reserve) about ${m.mechH} h (an AT belt by machine, E)` : engr.mml ? `; ${engr.mml} MML, short of a set of 6` : '';
+    return { name: 'Mines in time', st, reason: `${head}: the ${engr.name} ${hand}${mech}${ownPart}; ${readyPart}${st === 'warn' ? ': more engineers, or the Div\'s Engr Bn with its MMLs' : ''}` };
+  }
+  const coyH = Math.round((clusters / (3 * perPl)) * 24);
   const st = coyH <= ready[1] ? 'pass' : 'warn';
   return {
     name: 'Mines in time', st,
-    reason: `protective minefield along ${(frontageM / 1000).toFixed(1)} km of front, about ${clusters.toLocaleString('en-GB')} mixed clusters: one Engr Fd Coy (3 Pls at ${perPl} in 24 h, SO's Hbk p 439) about ${coyH} h${ownH !== null ? `; the ${rifles} rifle Pls alone, at half that, about ${ownH} h` : ''}; posns ready in ${ready[0]}-${ready[1]} h (IBB)${st === 'warn' ? ': ask for more engineers or the MML (a Fd Coy with 6 MMLs lays 9000 m of ATMs in 24 h, p 439)' : ''}`,
+    reason: `${head}: one Engr Fd Coy (3 Pls at ${perPl} in 24 h, SO's Hbk p 439) about ${coyH} h${ownPart}; ${readyPart}${st === 'warn' ? ': ask for more engineers or the MML (a Fd Coy with 6 MMLs lays 9000 m of ATMs in 24 h, p 439)' : ''}`,
   };
 }

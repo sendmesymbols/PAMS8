@@ -21,6 +21,7 @@
  *
  * Erasable TypeScript only: Node 24 runs this file as it is (tools/planbuilder-test/crossing.mjs).
  */
+import { engrBridge, tamBreach } from './PlanEngr';
 import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, PlanItem, SolveResult, XY } from './PlanSolve';
@@ -446,6 +447,12 @@ function readCrossing(c: Ctx): Read {
         detail: { head: `Tanks by raft: a Sqn by ${hRel(all)}`, items: [`${cl50.label}: one tank a trip, ${Math.round(trip)} min round over ${Math.round(wHi)} m`, `${hp.label}: the armoured division holds ${hp.heldM?.armdDiv ?? 84} m, Corps ${hp.heldM?.corps ?? 252} m (Annex Q para 1)`], why: 'The bridgehead holds his counter-attack without tanks until they are across (IC s71 para 17: AT weapons across early, mines laid on arrival).', whyShort: 'no Class 50 bridge held', fix: ['The armoured division\'s or Corps\' hollow plate bridge', 'AT mines and RRs across with the assault (IC s71 para 17 p366)', 'More rafts'] } });
     }
   }
+  // the engineers grouped to the crossing (ORBAT): their own bridging across the gap (SO's Hbk pp 427-432)
+  const eg = recipe.engr;
+  if (eg) {
+    const b = engrBridge(eg, need, li, eg.kinds);
+    if (b) { rows.push(b.row); if (b.openH !== null && b.label) times.push({ label: b.label, atMin: Math.round(b.openH * 60) }); }
+  }
   // the night: bridgehead and induction in one night, break-out at first light (OoW II s14); night assault (IBB S46 para 18)
   // the vehicle lanes through his minefield, begun at H (breachRow: Annex Q para 4), go on the timeline the night is held to
   const mfSlot = recipe.slots.find((s) => s.role === 'enMf');
@@ -453,6 +460,10 @@ function readCrossing(c: Ctx): Read {
     const hrs = (doctrineAt(doc, 'crossing.breach.hours') as any) ?? { none: [4, 5, 6] };
     const n = Math.ceil(Number(mfSlot.shape.rect.hM) / one(doc, 'crossing.breach.laneM', 108));
     times.push({ label: 'Vehicle lanes through his minefield (begun at H)', atMin: hrs.none[li] * 60 + (n - 1) * 100 });
+    // the engineers' TAMs: one a lane, a lane to each assault crossing place (SO's Hbk p 451)
+    const lanes = Math.max(1, items.filter((i) => i.key === '25271300').length);
+    const tb = eg ? tamBreach(eg, lanes, Number(mfSlot.shape.rect.hM), hrs.none[li]) : null;
+    if (tb) { rows.push(tb.row); times.push({ label: `Lanes by TAM (${eg!.name})`, atMin: Math.round(tb.h * 60) }); }
   }
   const nightH = one(doc, 'crossing.nightH', 10);
   const lastMin = Math.max(0, ...times.map((t) => t.atMin));

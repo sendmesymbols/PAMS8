@@ -407,7 +407,9 @@ MS/
   counted in the force ratio; gun ranges are printed for 1 of 13 tanks, so the doctrine's stand) and the IABG / Armd Div are Bde / Div
   types. **Artillery** (`PlanArty.ts`, Arty row on Bn Def / Attk): a Regt or Bty from the ORBAT, its gun area (PAA) laid in GunDoctrine's
   band behind the FDL / FUP (`gunRulesFrom`), Arty reach (DF Tgts, his FUP; Obj and LOE) and Gun area on the bundle's `gun` going;
-  read back by Check my plan (`pbMeta.arty`); `node tools/planbuilder-test/arty.mjs` (27). 3-Coy Bn Def layouts for the Lt Cdo Bn (`bn3-def-two-up`, `bn3-def-three-up`,
+  read back by Check my plan (`pbMeta.arty`); `node tools/planbuilder-test/arty.mjs` (27). **Engineers** (`PlanEngr.ts`, Engrs row on
+  Bn / Coy Def and the crossings): an ORBAT engineer unit's Pls and MMLs in Mines in time (p 439), its bridging (AVLB, AM-50, ribbon,
+  pp 427-432) as Engr bridging and its TAMs as Mech breach (p 451) on a crossing; `node tools/planbuilder-test/engr.mjs` (22). 3-Coy Bn Def layouts for the Lt Cdo Bn (`bn3-def-two-up`, `bn3-def-three-up`,
   recipe `forCoys`; the tab shows the layouts for the type chosen, `_famIds`) and an **AT group** row on a Bn defence: 1-3 ATGM
   Coys of a LAT / HAT Bn grouped to it (`withAtGroup`, `pbMeta.atGroup`, read back by Check my plan). **Phase 6 attack** (`PlanAttack.ts`): Bn Attk
   right / left flank (BOF fixes the front) beside frontal (warned, ranked last unless no flank is feasible: user); finders

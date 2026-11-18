@@ -33,6 +33,7 @@ import { brief, enUnitFor, forceFromOrbat, minefieldRow, tankSqnOf, withAtGroup,
 import { counterAttack } from './PlanAttack';
 import { defTankRows, tankGoingRow } from './PlanTanks';
 import { artyRows } from './PlanArty';
+import { ownEngrTypes } from './PlanEngr';
 import type { ForceSides } from './PlanContext';
 
 // ── reading ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -764,7 +765,9 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   }
   if (opts.orbat && fwd.length) {
     const fm = Math.max(...fwd.map((p) => p.c!.x + p.w! / 2)) - Math.min(...fwd.map((p) => p.c!.x - p.w! / 2));
-    const m = minefieldRow(opts.orbat, doc, fm, unitB ?? (opts.orbat ? brief(opts.orbat, 'inf-bn-std') : null));
+    // the engineers it was built with (pbMeta.engr): their Pls and MMLs; else the doctrine's one Fd Coy
+    const engr = mp.built?.meta?.engr ? ownEngrTypes(opts.orbat).find((e) => e.id === mp.built!.meta.engr) ?? null : null;
+    const m = minefieldRow(opts.orbat, doc, fm, unitB ?? (opts.orbat ? brief(opts.orbat, 'inf-bn-std') : null), engr);
     if (m) rows.push(m);
   }
   for (const s of slots) s.st = worst(s.checks);

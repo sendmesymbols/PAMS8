@@ -751,7 +751,25 @@ Also not done: the Recce Regt / Sqn for screens; tanks as a reserve in an attack
 
 Verified in the app: Bn Def with the Fd Regt (33 symbols; Arty reach pass; Copy as Text), with a tank Sqn and the Med Bty (SP) together (34), Bn Attk with the Med Regt (Arty reach: the Obj and LOE in range, 2.7 km behind the FUP); the Arty row is not on a Coy Def. Not checked in the app: the Gun area row on real terrain (tested in Node on synthetic ground).
 
+Verified on the real terrain east of Lahore (19 Nov 2026, threat marked east): a Bn Def two up with a tank Sqn and the Fd Regt placed: Tank harbour pass (tracks go, hidden), Gun area 92 % usable (pass), Arty reach pass, Tank AT cover 1740 m beyond the FDL, the A Sqn to the C Pen posn in 11 min against his 25 (the reserve Coy on foot 58: too late); Check my plan on the placed plan read every row back the same. It found a bug, fixed: the fitted plan showed Arty reach and Tank Sqns twice.
+
 Not done: siting the gun area with the Gun Deployment tool's own finder from the plan (it is in `GunDeployment.ts`, which another session is changing now); artillery in Check my plan for an attack; the fire plan (the guns' DF Tgts and the fire lifts by the Regt's own guns, as the attack's H-hour sum already lifts by calibre); artillery for Bde and Div plans.
+
+**Engineers (19 Nov 2026, the user: "house keeping and the engineers"):**
+
+| Piece | Where |
+|---|---|
+| **Engrs row** on a Bn or Coy Def and on the crossings: Doctrine (as before: one Fd Coy for the minefield, Annex Q for the crossing), or an ORBAT unit with its laying Pls and equipment: Fd Coy 3 Pls; IFCE 3; IMCE 2, 3 AVLB; Def Div Engr Bn 9 Pls, 9 MML (p 404); Offn Div Engr Bn 9 Pls, 6 MML, 5 TAM, 5 MICLIC, 1 AM-50 (p 402); Mech Engr Bn 4 Pls, 4 MML, 6 AVLB; Aslt Engr Bn 9 Pls, 15 TAM, 9 AVLB, 3 AM-50 (p 408); Br Bn 2 ribbon bridge, 4 AM-50 sets, no laying Pls (p 412) | `PlanEngr.ownEngrTypes`, `PlanBuildTab._engrRow` |
+| **Mines in time** with them: by hand at 780 mixed clusters a Pl in 24 h (p 439), and with a set of 6 MMLs laying ATMs alongside (9000 m in 24 h a set: ideal conditions, figures under trial, p 439; the machine's metres counted as metres of front, E). Def Engr Bn on 3.5 km: 12 h by hand, about 5 h with its MMLs; 12 km: 41 h by hand (over the 36 h), 18 h with them. A unit with no laying Pls (Br Bn) warns; short of a set of 6 MMLs is said. Check my plan reads the unit back (`pbMeta.engr`) | `PlanOrbat.minefieldRow(…, engr)`, `PlanEngr.minesByEngr`, `PlanCheck` |
+| **Engr bridging** on a crossing (on the ground, beside Annex Q's M2 Bridge row): the fastest of what the unit holds that spans the gap and its seats: the AVLB (Pak, T-59, 18 m, 3 min, p 432), AM-50 sets (54 m, 1 h 45 / 1 h / 1 h 15 by light as printed) or ribbon bridge sets (100 m, Cl 60: the US figures 1 h / 1 h 15 / 1 h 30, the chart not saying which make: the slower taken, E), sets end to end built one after the other (E); on the timeline. The test canal (70 m): the Br Bn's ribbon bridge open H+1 h 30 on a dark night against the M2's H+3:45; the Aslt Engr Bn two AM-50 sets H+2 h 30. Longer than it holds: warn | `PlanEngr.engrBridge`, `bridgeKinds`, `PlanCrossing` |
+| **Mech breach** with his minefield (the Mf chip): a TAM to each lane (one lane a crossing place), about depth / 300 m an hour (p 451: a 600 m lane 2 h, 900 m 3 h, 1 Pl, 5 m wide; **the print's columns are uncertain**, read so) against Annex Q's hand breach; short of TAMs warns; its MICLIC named; on the timeline | `PlanEngr.tamBreach`, `PlanCrossing` |
+| Checks | `node tools/planbuilder-test/engr.mjs` (22), `crossing.mjs` (63) |
+
+Verified in the app: the Engrs row on Bn Def (Def Engr Bn: Mines in time 12 h by hand, 5 h with the MMLs), Coy Def, Bn Crossing (one row) and Bde Crossing.
+
+Not done: engineers on an attack (the breach of his minefield in front of a Bn Attk: the attack has no minefield yet); the hand-breaching table of p 450 (by depth in yards, the Pls and times by light: Annex Q's figure is kept); rafts from the engineers' table (p 430-431); obstacles other than mines (the AT ditch, wire, demolitions); the Div's Engr Bn's Coys split between Bns.
+
+**Housekeeping (19 Nov 2026):** the unlocked copy of Sec 1 deleted; `master` fast-forwarded to the work; `tools/orbat-test/run.mjs` reads `MS/Data/Orbat/PK` (it read the parent folder and stopped before checking anything): 434 units, 200 weapons, 7648 checks, 0 failed, 8 warnings.
 
 Verified in the app (dev server): 1, 2 Sqns on the Std Inf Bn's two up (33 and 34 symbols), the Lt Cdo Bn's three up with 2 Sqns (36), the force row naming the Sqns, Copy as Text and the Tank Sqns row; the Tanks row is absent on an attack (it has its own). **Not checked in the app:** placing the plan and the Tank harbour row on the real terrain (the map did not take clicks in that run); both are tested in Node with synthetic ground, and the placed plan's read-back in `check.mjs`.
 
