@@ -1,5 +1,5 @@
-// Checks the ORBAT data in MS/Data/Orbat (SO's Handbook 2019 extraction).
-//   node tools/orbat-test/run.mjs          (add --quiet to print only failures and the summary)
+// Checks the ORBAT data in MS/Data/Orbat/PK (SO's Handbook 2019 extraction).
+//   node tools/orbat-test/run.mjs          (add --quiet to print only failures and the summary; a country code, e.g. PK, for another folder)
 // Fails on: bad JSON, duplicate ids, a child pointing at a unit that does not exist, a bad echelon code,
 // a child of a higher echelon than its parent, a unit or box weapon whose `weapon` id is not in weapons.json,
 // a weapons.json symbol key that is not in Symbols.json, a chartStrength that is not a whole number,
@@ -12,7 +12,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const dir = path.join(root, 'MS/Data/Orbat');
+// the ORBAT lives in a folder per country (MS/Data/Orbat/PK); `node tools/orbat-test/run.mjs XX` checks another
+const country = process.argv.slice(2).find((a) => /^[A-Z]{2}$/.test(a)) ?? 'PK';
+const dir = path.join(root, 'MS/Data/Orbat', country);
 const quiet = process.argv.includes('--quiet');
 const ECH = new Set(['11', '12', '13', '14', '15', '16', '17', '18', '21', '22', '23']);
 let fails = 0, warns = 0, checks = 0;

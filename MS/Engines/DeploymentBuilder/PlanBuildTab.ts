@@ -715,7 +715,8 @@ export class PlanBuildTab {
   private _orbatRows(res: SolveResult): Check[] {
     if (!this._orbat || res.recipe.task === 'attack') return [];
     const m = minefieldRow(this._orbat, this._doc, res.frontageM, this._unit(res.recipe));
-    // tank Sqns grouped to it: the harbours (their ground waits for the terrain fit)
+    // tank Sqns and artillery without the ground; a fitted plan has had them from PlanFit already (on the ground)
+    if (res.mode === 'terrain') return m ? [m] : [];
     return [...(m ? [m] : []), ...(res.recipe.defTanks ? defTankRows(res.items, res.recipe, null, null, this._doc, null) : []), ...this._artyGeomRows(res)];
   }
 
