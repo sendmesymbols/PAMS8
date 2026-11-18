@@ -147,9 +147,9 @@ const fitIn = (unit, more = {}) => ({ recipe: r2, ctx: { doc: O.doctrineForUnit(
 
   const types = O.ownBnTypes(all), T = (id) => types.find((t) => t.id === id);
   check('types offered: the FC and Rangers Wings (4 rifle Coys, 730 all ranks, pp 642-644)', T('inf-wing-fc')?.coys === 4 && T('inf-wing-rangers')?.coys === 4 && B('inf-wing-rangers').strength === 730, types.map((t) => `${t.id}:${t.coys}`).join(' '));
-  check('...no Sp / HQ / Adm Wing, no SSG, no Coast Guards', !types.some((t) => /wing-fc-(sp|hq|adm)|ssg|coast/.test(t.id)) && types.length === 13, `${types.length}`);
+  check('...no Sp / HQ / Adm Wing; the SSG Bn, SSG (Mtn) and Coast Guards Bn offered too (4 Coys each)', !types.some((t) => /wing-fc-(sp|hq|adm)/.test(t.id)) && ['inf-bn-ssg', 'inf-bn-ssg-mtn', 'inf-bn-coast-guards'].every((id) => types.find((t) => t.id === id)?.coys === 4) && types.length === 16, `${types.length}`);
   check('each rifle type names its rifle Coy and Pl (Mtn, MIB, Lt Cdo, Rangers)', T('inf-bn-mtn').coy === 'inf-coy-mtn-rifle' && T('inf-bn-mtn').pl === 'inf-pl-mtn-rifle' && T('inf-bn-mib').coy === 'inf-coy-mib-rifle' && T('inf-bn-mib').pl === 'inf-pl-mib-rifle' && T('inf-bn-lt-cdo').coy === 'inf-coy-lt-cdo' && T('inf-wing-rangers').pl === 'inf-pl-rangers-rifle');
-  check('every type but the AT Bns has both; an AT Bn (LAT, HAT) has neither', types.every((t) => (/lat|hat/.test(t.id) ? !t.coy && !t.pl : !!t.coy && !!t.pl)), types.filter((t) => !t.coy || !t.pl).map((t) => t.id).join(' '));
+  check('every type but the AT Bns and the SSG (Mtn) has both; an AT Bn (LAT, HAT) has neither; the SSG (Mtn)\'s SF / SOC Coys print no rifle Pl', types.every((t) => (/lat|hat|ssg-mtn/.test(t.id) ? !t.pl : !!t.coy && !!t.pl)), types.filter((t) => !t.coy || !t.pl).map((t) => t.id).join(' '));
   check('typeFits: a Lt Cdo Bn (3 Coys) not for a 4-Coy Bn layout, but its Coy (3 Pls) for a Coy plan and its Pl for a Pl plan', !O.typeFits(T('inf-bn-lt-cdo'), '16', 4) && O.typeFits(T('inf-bn-lt-cdo'), '15', 3) && O.typeFits(T('inf-bn-lt-cdo'), '14', 0));
   check('...a LAT Bn for none; a Std Inf Bn for all three', ['16', '15', '14'].every((e) => !O.typeFits(T('inf-bn-lat-apc'), e, e === '16' ? 4 : 3) && O.typeFits(T('inf-bn-std'), e, e === '16' ? 4 : 3)));
   const U = (ech, pick) => O.unitForPlan(all, ech, pick);

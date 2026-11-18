@@ -35,15 +35,19 @@ import ocokaDoctrine from '../../Data/OcokaDoctrine.json';
 import { doctrineAt, validateRecipe, validateFamilies, type Recipe, type DoctrineSet } from './PlanRecipes';
 import { solveRecipe, toPlanDocument, planText, detailLines, type SolveResult, type CheckState, type SlotResult, type Check, type XY } from './PlanSolve';
 import { withMoves, triggerLines, enemyStartWords, type WhatIfResult } from './PlanWhatIf';
-import { fitLayout, nextBestSpot, rankFits, scoreRowState, SCORE_ROWS, toWorld, type FittedLayout, type FitLayoutInput } from './PlanFit';
+import { fitLayout, nextBestSpot, rankFits, scoreRowState, SCORE_ROWS, toLocal, toWorld, type FittedLayout, type FitLayoutInput } from './PlanFit';
 import { PlanGroundProbe } from './PlanGroundProbe';
 import { applyContext, defaultEnemy, echelonLabel, enemyFupM, firstLayout, terrainLabel, ENEMY_TYPES, TERRAIN_KINDS, type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec } from './PlanContext';
 import { checkPlan, checkText, readSymbols, reportWorld, type CheckReport, type PosnKind } from './PlanCheck';
 import { twoPhaseRecipe } from './PlanPhase';
 import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } from './PlanTanks';
-import { artyOnPlan, artyRows, ownArtyTypes, withArty, type ArtyDoctrine, type ArtyType } from './PlanArty';
-import { bridgeKinds, engrText, ownEngrTypes, type EngrType } from './PlanEngr';
-import { gunRulesFrom } from '../GunDeployment/GunDeploymentFind';
+import { artyOnPlan, artyRows, ownArtyTypes, ownDivArties, withArty, type ArtyDoctrine, type ArtyType } from './PlanArty';
+import { adOnPlan, adRows, ownAdTypes, vpsOf, withAd, type AdType } from './PlanAD';
+import { airLiftOf, airLiftRow } from './PlanAvn';
+import { bridgeKinds, engrShare, engrText, inundation, INUND_SOILS, ownEngrTypes, soilWord, withInundation, type EngrType, type InundSoil } from './PlanEngr';
+import { findGunAreas, gunRulesFrom, gunWeapons, type Front, type GunTask, type GunWeapon } from '../GunDeployment/GunDeploymentFind';
+import { SiteBundle } from '../SiteScan/SiteProbe';
+import { dataCatalog, seasonFor, type Tone } from '../SiteScan/SiteScan';
 import gunDoctrine from '../../Data/GunDoctrine.json';
 import { OWN_ORBAT_FILES, brief, doctrineForUnit, enUnitFor, forceFromOrbat, mergeOwn, minefieldRow, ownAtTypes, ownBdeTypes, ownBnTypes, ownDivTypes, ownUnitFor, recceSqnOf, sizeText, tankSqnOf, tankSqnText, typeFits, unitForPlan, unitLine, withAtGroup, type AtType, type OrbatSet, type OwnType, type TankSqn, type UnitBrief } from './PlanOrbat';
 import { atgmExtras } from './PlanFit';
@@ -112,7 +116,7 @@ const footSpeeds = (): PlFootSpeeds => {
   return { ground: f.ground ?? { open: [4, 3] }, road: f.road?.track ?? [4, 3], toblerA: Array.isArray(f.slope?.a) ? f.slope.a[0] : 3.5, toblerB: typeof f.slope?.b === 'number' ? f.slope.b : 0.05 };
 };
 /** A recipe id without the two-phase suffix (PlanPhase.twoPhaseRecipe adds -2ph). */
-const baseId = (id: string) => id.replace(/-gun$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '');
+const baseId = (id: string) => id.replace(/-ad$/, '').replace(/-gun$/, '').replace(/-inu$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '');
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
@@ -335,13 +339,45 @@ export class PlanBuildTab {
   private _engrId: string | null = null;
   private _engrCache: EngrType[] | null = null;
   private get _engrTypes(): EngrType[] { return this._orbat ? (this._engrCache ??= ownEngrTypes(this._orbat)) : []; }
-  private get _engr(): EngrType | null { return this._engrId ? this._engrTypes.find((e) => e.id === this._engrId) ?? null : null; }
+  /** How many of an engineer Bn's Coys go to this plan (0: the whole Bn): the rest go to the other Bns. */
+  private _engrCoys = 0;
+  private get _engr(): EngrType | null {
+    const e = this._engrId ? this._engrTypes.find((x) => x.id === this._engrId) ?? null : null;
+    return e && this._engrCoys ? engrShare(e, this._engrCoys) : e;
+  }
   /** A Coy screen held by a Recce Sqn (its AFV Tps the posts) instead of a rifle Coy. */
   private _recceScreen = false;
   /** The artillery with a Bn plan (an ORBAT Regt or Bty: Fd, Med, Med (SP), Mtn, Hy); null: none drawn. */
   private _artyId: string | null = null;
   private _artyCache: ArtyType[] | null = null;
   private get _artyTypes(): ArtyType[] { return this._orbat ? (this._artyCache ??= ownArtyTypes(this._orbat)) : []; }
+  private _divArtyCache: ArtyType[] | null = null;
+  /** The AD over the plan's vulnerable points (an ORBAT AD Bty, or Regt with a Div plan); null: none drawn. */
+  private _adId: string | null = null;
+  private _adCache: AdType[] | null = null;
+  /**
+   * G while the plan rests: the gun area sited by the Gun Deployment finder (its own bundle reader, as the Gun Deployment
+   * tool opens it); the row it gives, for the recipe it was sited on; a run waiting for tiles.
+   */
+  private _gunBundle: SiteBundle | null = null;
+  private _gunBundleUrl = '';
+  private _gunWeapons: GunWeapon[] | null = null;
+  private _gunSite: { key: string; row: Check } | null = null;
+  private _gunWanted = false;
+  private readonly _gunR = gunRulesFrom(gunDoctrine as any);
+  /** An inundation belt in front of a Bn defence (0: none), the water fed in, the soil (PlanEngr.inundation). */
+  private _inundYds: 0 | 300 | 500 | 1000 = 0;
+  private _cusecs: 50 | 100 | 150 = 100;
+  private _soil: InundSoil = 'loam';
+  /**
+   * The artillery a plan may take: a Regt or Bty with a Bn defence or attack and a Bn or Bde crossing; a Div Arty (its
+   * Regts, one gun area each) with a Div crossing; none with the rest.
+   */
+  private _artyList(r: Recipe): ArtyType[] {
+    if (!this._orbat) return [];
+    if (r.task === 'crossing') return r.echelon === '21' ? (this._divArtyCache ??= ownDivArties(this._orbat, this._artyTypes)) : this._artyTypes;
+    return r.echelon === '16' && (r.task === 'defence' || r.task === 'attack') ? this._artyTypes : [];
+  }
   /** The Gun Deployment doctrine's figures the gun area is laid by (GunDoctrine.json). */
   private _artyDoc: ArtyDoctrine = (() => {
     const R = gunRulesFrom(gunDoctrine as any);
@@ -472,6 +508,8 @@ export class PlanBuildTab {
     this._typesCache = null;
     this._atCache = null;
     this._artyCache = null;
+    this._divArtyCache = null;
+    this._adCache = null;
     this._engrCache = null;
     this._ph2.clear();
     try {
@@ -479,8 +517,8 @@ export class PlanBuildTab {
       const [inf, ...arms] = OWN_ORBAT_FILES;
       const [infDoc, en, weapons, ...armDocs] = await Promise.all([get(inf), get('en.json'), get('weapons.json'), ...arms.map((f) => get(f).catch(() => null))]);
       const missing = arms.filter((_, i) => !armDocs[i]);
-      const engr = armDocs[arms.indexOf('engr.json')];
-      this._orbat = { own: mergeOwn([infDoc?.units, ...armDocs.map((d) => d?.units)]), en: en?.units ?? [], weapons: weapons?.weapons ?? [], engrData: engr?.engrData ?? [] };
+      const engr = armDocs[arms.indexOf('engr.json')], avn = armDocs[arms.indexOf('avn.json')];
+      this._orbat = { own: mergeOwn([infDoc?.units, ...armDocs.map((d) => d?.units)]), en: en?.units ?? [], weapons: weapons?.weapons ?? [], engrData: engr?.engrData ?? [], avnData: avn?.avnData ?? [] };
       this._host.log(`Intelligent Deployment: ORBAT ${this._orbat.own.length} own units of ${OWN_ORBAT_FILES.length - missing.length} arms and ${this._orbat.en.length} enemy units${missing.length ? ` (not found: ${missing.join(', ')})` : ''}`, true);
     } catch (e) {
       this._orbat = null;
@@ -551,12 +589,31 @@ export class PlanBuildTab {
   /** The recipe for an id (with or without the two-phase suffix): the two-phase version when Phases is 2. */
   private _rcp(id: string): Recipe | undefined {
     const t = this._rcpBase(id);
-    const a = this._artyId ? this._artyTypes.find((x) => x.id === this._artyId) : null;
-    if (!t || !a || t.echelon !== '16' || (t.task !== 'defence' && t.task !== 'attack')) return t;
-    const key = `${t.id}:gun:${a.id}`;
-    let g = this._ph2.get(key);
-    if (!g) { g = withArty(t, this._doc, artyOnPlan(a, t.task, this._artyDoc)); this._ph2.set(key, g); }
-    return g;
+    const a = t && this._artyId ? this._artyList(t).find((x) => x.id === this._artyId) : null;
+    let g = t;
+    if (t && a) {
+      const key = `${t.id}:gun:${a.id}`;
+      g = this._ph2.get(key);
+      if (!g) { g = withArty(t, this._doc, artyOnPlan(a, t.task, this._artyDoc)); this._ph2.set(key, g); }
+    }
+    // AD round its vulnerable points, the gun areas among them (PlanAD), last
+    const d = g && this._adId ? this._adList(g).find((x) => x.id === this._adId) : null;
+    if (!g || !d) return g;
+    const dk = `${g.id}:ad:${d.id}`;
+    let x = this._ph2.get(dk);
+    if (!x) { x = withAd(g, this._doc, adOnPlan(d, this._doc)); this._ph2.set(dk, x); }
+    return x;
+  }
+
+  /**
+   * The AD a plan may take: its Btys with a Bn or Bde plan, its Regts with a Div plan; none with a plan that has no
+   * vulnerable point (a bridge, a gun area, an HQ, an Assy area, a reserve) or is not a defence, attack or crossing.
+   */
+  private _adList(r: Recipe): AdType[] {
+    if (!this._orbat || !['defence', 'attack', 'crossing'].includes(r.task) || !['16', '18', '21'].includes(r.echelon)) return [];
+    const all = (this._adCache ??= ownAdTypes(this._orbat, this._doc));
+    if (!vpsOf(r, this._doc).length && !this._artyId) return [];
+    return all.filter((t) => (r.echelon === '21' ? t.unit === 'regt' : t.unit === 'bty'));
   }
 
   /** The recipe with the choices that change its slots, before the artillery: his minefield, tanks, two phases. */
@@ -581,24 +638,31 @@ export class PlanBuildTab {
       }
       const e = this._engr;
       if (!e || !this._orbat) return m;
-      const ek = `${m.id}:en:${e.id}`;
+      const ek = `${m.id}:en:${e.id}:${this._engrCoys}`;
       let x = this._ph2.get(ek);
       if (!x) { x = { ...m, id: `${m.id}-en`, name: `${m.name}, ${e.name}`, engr: { ...e, kinds: bridgeKinds(this._orbat.engrData ?? []) } }; this._ph2.set(ek, x); }
       return x;
     }
     // tank Sqns grouped to a Bn defence (PlanTanks.withDefTanks), cached like the attack's variants
     if (base?.task === 'defence' && (base.echelon === '16' || base.echelon === '15')) {
-      if (!this._defTanks || !this._tankSqn) return base;
-      const key = `${base.id}:dt${this._defTanks}`;
-      let d = this._ph2.get(key);
-      if (!d) { d = withDefTanks(base, this._doc, this._defTanks, this._tankSqn); this._ph2.set(key, d); }
-      return d;
+      let d: Recipe = base;
+      if (this._defTanks && this._tankSqn) {
+        const key = `${base.id}:dt${this._defTanks}`;
+        d = this._ph2.get(key) ?? withDefTanks(base, this._doc, this._defTanks, this._tankSqn);
+        this._ph2.set(key, d);
+      }
+      // an inundation belt in front of a Bn defence (PlanEngr.withInundation)
+      if (!this._inundYds || base.echelon !== '16') return d;
+      const ik = `${d.id}:inu:${this._inundYds}:${this._cusecs}:${this._soil}`;
+      let u = this._ph2.get(ik);
+      if (!u) { u = withInundation(d, this._doc, { beltYds: this._inundYds, cusecs: this._cusecs, soil: this._soil }); this._ph2.set(ik, u); }
+      return u;
     }
     // a 3-Coy attack (Lt Cdo) has no Coy left for a second phase: one phase
     const phases = base?.forCoys === 3 ? 1 : this._phases;
     if (!base || base.task !== 'attack' || (phases !== 2 && this._tanks === 'none' && !this._mf)) return base;
     const e = this._mf ? this._engr : null;
-    const coys = this._coys, key = `${base.id}:${phases}:${coys}:${this._tanks}:${this._mf}:${e?.id ?? ''}`;
+    const coys = this._coys, key = `${base.id}:${phases}:${coys}:${this._tanks}:${this._mf}:${e?.id ?? ''}:${this._engrCoys}`;
     let t = this._ph2.get(key);
     if (!t) {
       t = phases === 2 ? twoPhaseRecipe(base, this._doc, undefined, coys) : base;
@@ -719,7 +783,12 @@ export class PlanBuildTab {
     // ambush, patrol, recce: laid by the solver's shapes; no enemy force, ground kind or ORBAT rows
     if (SMALL_TASKS.includes(r.task)) { this._result = solveSmall(r, this._ctx(r), this._opts(), null); this._lastFit = null; return; }
     // a crossing: laid by its shapes (PlanCrossing re-lays it along the obstacle); no enemy force or ORBAT rows
-    if (r.task === 'crossing') { this._result = solveRecipe(r, this._ctx(r), this._opts()); this._lastFit = null; return; }
+    if (r.task === 'crossing') {
+      const res = solveRecipe(r, this._ctx(r), this._opts());
+      // its artillery's reach without the ground (PlanArty)
+      if (r.arty || r.ad) res.rows = [...res.rows, ...artyRows(res.items, r, null), ...adRows(res.items, r)];
+      this._result = res; this._lastFit = null; return;
+    }
     const unit = this._unit(r), ctx = this._ctx(r);
     const opts = { ...this._opts(), mountedReserve: !!unit?.mounted };
     let res = solveRecipe(r, ctx, opts);
@@ -735,21 +804,32 @@ export class PlanBuildTab {
     return forceFromOrbat(this._unit(recipe), this._enUnit(recipe, kind), recipe.tanks || recipe.defTanks ? this._tankSqn : null, recipe.defTanks ?? 1, recipe.defTanksUnit === 'Tp');
   }
 
-  /** The artillery's rows without the ground: Arty reach (his FUP for his type in defence). */
+  /** The artillery's and the AD's rows without the ground: Arty reach (his FUP for his type in defence), AD cover. */
   private _artyGeomRows(res: SolveResult): Check[] {
-    if (!res.recipe.arty) return [];
+    const ad = res.recipe.ad ? adRows(res.items, res.recipe) : [];
+    if (!res.recipe.arty) return ad;
     const kind = this._ground === 'auto' ? null : this._ground;
     const fup = res.recipe.task === 'attack' ? null : enemyFupM(this._doc, this._enemyFor(res.recipe, kind).type)[0];
-    return artyRows(res.items, res.recipe, fup);
+    return [...artyRows(res.items, res.recipe, fup), ...ad];
+  }
+
+  /** An attack by the Air Aslt Bn: its lift by the Air Aslt Sqn (PlanAvn), waves and build-up on the LZ. */
+  private _liftRows(res: SolveResult): Check[] {
+    if (!this._orbat || res.recipe.task !== 'attack') return [];
+    const l = airLiftOf(this._orbat, this._unit(res.recipe)?.id, this._doc);
+    return l ? [airLiftRow(l)] : [];
   }
 
   /** The rows the ORBAT adds to a defence: the protective minefield in time (engineer rates). */
   private _orbatRows(res: SolveResult): Check[] {
     if (!this._orbat || res.recipe.task === 'attack') return [];
-    const m = minefieldRow(this._orbat, this._doc, res.frontageM, this._unit(res.recipe), this._engr);
+    const m0 = minefieldRow(this._orbat, this._doc, res.frontageM, this._unit(res.recipe), this._engr);
+    // the inundation belt in time (pp 452-453): beside the minefield, on the ground or not
+    const inu = res.recipe.inund ? inundation(this._orbat.engrData ?? [], res.frontageM, this._engr, res.recipe.inund)?.row ?? null : null;
+    const mm = [m0, inu].filter((x): x is Check => !!x);
     // tank Sqns and artillery without the ground; a fitted plan has had them from PlanFit already (on the ground)
-    if (res.mode === 'terrain') return m ? [m] : [];
-    return [...(m ? [m] : []), ...(res.recipe.defTanks ? defTankRows(res.items, res.recipe, null, null, this._doc, null) : []), ...this._artyGeomRows(res)];
+    if (res.mode === 'terrain') return mm;
+    return [...mm,...(res.recipe.defTanks ? defTankRows(res.items, res.recipe, null, null, this._doc, null) : []), ...this._artyGeomRows(res)];
   }
 
   /** The enemy for a recipe: the user's echelon / type over the doctrinal default (PlanContext.defaultEnemy). */
@@ -768,7 +848,7 @@ export class PlanBuildTab {
     const tk = h && r.tanks ? addTankTimes(h, res, null, null, this._doc, this._night, r.tanks, null) : [];
     const p2 = h ? phase2Row(h, this._doc) : null;
     const brR = r.task === 'attack' ? attackBreach(r as any, this._doc, this._night, this._orbat?.engrData)?.row ?? null : null;
-    return { ...res, rows: [...rows, ...this._orbatRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk] };
+    return { ...res, rows: [...rows, ...this._orbatRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...this._liftRows(res),...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk] };
   }
 
   // ── terrain ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -794,6 +874,11 @@ export class PlanBuildTab {
   private _closeProbe(): void {
     this._probe?.destroy();
     this._probe = null;
+    // G's reader goes with it
+    this._gunBundle?.destroy();
+    this._gunBundle = null;
+    this._gunBundleUrl = '';
+    this._gunWanted = false;
     this._probeState = 'off';
     this._probeUrl = '';
   }
@@ -918,8 +1003,13 @@ export class PlanBuildTab {
       case 'divType': this._divId = val || null; this._solve(); break;
       case 'atType': this._atId = val || null; this._solve(); break;
       case 'arty': this._artyId = val || null; this._solve(); break;
+      case 'ad': this._adId = val || null; this._solve(); break;
+      case 'inund': this._inundYds = (Number(val) || 0) as 0 | 300 | 500 | 1000; this._solve(); break;
+      case 'cusecs': this._cusecs = (Number(val) || 100) as 50 | 100 | 150; this._solve(); break;
+      case 'soil': this._soil = (INUND_SOILS.includes(val as InundSoil) ? val : 'loam') as InundSoil; this._solve(); break;
       case 'recceScreen': this._recceScreen = val === 'on'; this._solve(); break;
-      case 'engr': this._engrId = val || null; this._solve(); break;
+      case 'engr': this._engrId = val || null; this._engrCoys = 0; this._solve(); break;
+      case 'engrCoys': this._engrCoys = Math.max(0, Number(val) || 0); this._solve(); break;
       case 'defTanks': this._defTanks = Math.max(0, Math.min(3, Number(val) || 0)); this._solve(); break;
       case 'atCoys': this._atCoys = Math.max(1, Math.min(3, Number(val) || 1)); this._solve(); break;
       case 'retry': this._loadState = 'idle'; this.shown(); return;
@@ -977,8 +1067,8 @@ export class PlanBuildTab {
     // J / Shift+J while placing (capture phase: the placement is modal, so it is ours, not another guide's J)
     if (this._jKey) document.removeEventListener('keydown', this._jKey, true);
     this._jKey = (e: KeyboardEvent) => {
-      const isR = e.key === 'r' || e.key === 'R', isP = e.key === 'p' || e.key === 'P', isT = e.key === 't' || e.key === 'T', isM = e.key === 'm' || e.key === 'M';
-      if (e.key !== 'j' && e.key !== 'J' && !isR && !isP && !isT && !isM) return;
+      const isR = e.key === 'r' || e.key === 'R', isP = e.key === 'p' || e.key === 'P', isT = e.key === 't' || e.key === 'T', isM = e.key === 'm' || e.key === 'M', isG = e.key === 'g' || e.key === 'G';
+      if (e.key !== 'j' && e.key !== 'J' && !isR && !isP && !isT && !isM && !isG) return;
       const tgt = e.target as HTMLElement | null;
       if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
       // M: an ambush's target (wheeled, tanks, on foot): what NO-GO holds it on the road
@@ -1025,6 +1115,14 @@ export class PlanBuildTab {
         e.stopPropagation();
         this._setPhases(this._phases === 2 ? 1 : 2);
         this._render();
+        return;
+      }
+      // G: the gun area sited by the Gun Deployment finder; Shift+G back to the plan's
+      if (isG) {
+        if (e.ctrlKey || e.metaKey || e.altKey || !this._terrain) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void this._siteGuns(e.shiftKey);
         return;
       }
       if (!this._terrain) return;
@@ -1181,8 +1279,107 @@ export class PlanBuildTab {
     if (SMALL_TASKS.includes(recipe.task) || recipe.task === 'crossing') return { ...fl, doc: this._docFor(fl.raw) };
     // the what-if: Sup and C Pen posns, routes and times against the enemy (PlanWhatIf)
     const f = withMoves(fl, inp);
-    f.res = { ...f.res, rows: [...f.res.rows, ...this._orbatRows(f.res)] };
+    // G's site (the Gun Deployment finder) while its move stands
+    const gs = manual.gunArea && this._gunSite?.key === recipe.id ? [this._gunSite.row] : [];
+    f.res = { ...f.res, rows: [...f.res.rows, ...this._orbatRows(f.res), ...this._liftRows(f.res), ...gs] };
     return { ...f, doc: this._docFor(f.raw) };
+  }
+
+  /** The Gun Deployment tool's own bundle reader (SiteBundle: climate, what stands on the ground), opened once. */
+  private async _gunProbe(): Promise<SiteBundle | null> {
+    const url = this._probeUrl;
+    if (!url) return null;
+    if (this._gunBundle && this._gunBundleUrl === url) return this._gunBundle.ready ? this._gunBundle : null;
+    this._gunBundle?.destroy();
+    const b = new SiteBundle(() => { if (this._gunWanted) void this._siteGuns(false); });
+    this._gunBundle = b;
+    this._gunBundleUrl = url;
+    const ok = await b.configure(url, { cacheTiles: Math.max(Number(this._settings.cacheTiles) || 0, 256), useWorker: this._settings.useWorker !== false });
+    return ok && this._gunBundle === b ? b : null;
+  }
+
+  /**
+   * G: the gun area to the best site the Gun Deployment finder reads round it (GunDeploymentFind.findGunAreas: room,
+   * level, firm soil, concealment, access, range to the target, behind the front, crest clearance), within the band's
+   * spread of where the plan put it; the plan refitted there, so Arty reach and Gun area judge it at the new site. Its
+   * target: the Obj in an attack, his FUP on the axis in defence; its front: the FDL, or the SL in an attack. Shift+G
+   * takes it back. A defence or attack of a Bn with artillery; a crossing's gun areas stay where laid.
+   */
+  private async _siteGuns(back: boolean): Promise<void> {
+    const r = this._rest, cur = this._lastFit;
+    const say = (note: string) => { this._jNote = note; this._showCard(r?.screen ?? null, this._cardHtml(this._ranked)); };
+    if (!this._placing || !r || !cur) { say('G works while the plan rests: stop the mouse first.'); return; }
+    const a = cur.recipe.arty;
+    if (!a || (cur.recipe.task !== 'defence' && cur.recipe.task !== 'attack')) { say('G: no gun area on this plan (choose the artillery in the Arty row).'); return; }
+    if (back) {
+      if (!this._manual.gunArea) { say('Shift+G: the gun area is where the plan put it.'); return; }
+      const m = { ...this._manual };
+      delete m.gunArea;
+      this._manual = m;
+      this._gunSite = null;
+      const f = this._fitOne(cur.recipe, r.anchor, r.bearing, this._manual);
+      if (f) { this._jNote = 'G taken back: the gun area where the plan put it.'; this._show([f]); }
+      return;
+    }
+    const b = await this._gunProbe();
+    if (this._rest !== r || this._lastFit !== cur) return;
+    if (!b) { say('G: the terrain bundle did not open for the gun finder.'); return; }
+    const ga = cur.raw.items.find((i) => i.role === 'gunArea' && i.pts.length);
+    if (!ga || !this._orbat) return;
+    this._gunWeapons ??= gunWeapons({ weapons: this._orbat.weapons }, this._gunR.planFrac.value);
+    const W = this._gunWeapons.find((w) => w.id === a.weapon.id);
+    if (!W) { say(`G: the ${a.weapon.name} is not one the gun finder knows.`); return; }
+    const mid = (pts: XY[]): XY => ({ x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length });
+    const C = mid(ga.pts);
+    const w = (p: XY): [number, number] => { const q = toWorld(cur.frame, p); return [q.x, q.y]; };
+    const item = (role: string) => cur.raw.items.find((i) => i.role === role && i.pts.length);
+    const kind = this._ground === 'auto' ? null : this._ground;
+    let target: [number, number] | null = null, front: Front | null = null;
+    if (cur.recipe.task === 'attack') {
+      const obj = item('obj'), sl = item('sl');
+      if (obj) target = w(mid(obj.pts));
+      if (sl) front = { kind: 'line', runs: [sl.pts.map(w)], label: 'the SL' };
+    } else {
+      const fdl = item('fdl');
+      if (fdl) {
+        const fy = Math.max(...fdl.pts.map((p) => p.y)), fx = mid(fdl.pts).x;
+        target = w({ x: fx, y: fy + enemyFupM(this._doc, this._enemyFor(cur.recipe, kind).type)[0] });
+        front = { kind: 'line', runs: [fdl.pts.map(w)], label: 'the FDL' };
+      }
+    }
+    const month = new Date().getMonth() + 1;
+    const Cw = w(C);
+    // as the Gun Deployment tool reads the season: 100 mm a month is wet; Jul-Sep wet without the climate grid
+    const season = seasonFor(month, b.precAt(Cw[0], Cw[1]), 100, [7, 8, 9]);
+    const radiusM = Math.max(1500, Math.round((a.band[1] - a.band[0]) / 2 + a.areaM[1]));
+    const task: GunTask = {
+      centre: Cw, radiusM, target, front, weapon: W, unit: a.unit === 'bty' ? 'bty' : 'regt', op: cur.recipe.task === 'attack' ? 'attk' : 'def',
+      season: season.season, month, data: dataCatalog(b.manifest),
+      inputs: { target: cur.recipe.task === 'attack' ? 'the Obj of the plan' : 'his FUP on the plan\'s axis', front: front?.label, centre: 'the plan\'s gun area' },
+      seasonWhy: season.why, wetFromMm: 100,
+    };
+    b.begin();
+    let res;
+    try { res = findGunAreas(b, b.rules, task, this._gunR, (x, y) => b.standing(x, y, month)); }
+    catch (err) { say(`G: the gun finder failed: ${err instanceof Error ? err.message : String(err)}`); return; }
+    if (b.pending()) { this._gunWanted = true; say('G: the ground for the gun areas is loading: it runs again when it arrives.'); return; }
+    this._gunWanted = false;
+    const s = res.sites[0];
+    if (!s) { say(`G: no gun area within ${fmtM(radiusM)} of the plan's: ${res.notes.join(' ') || 'none passes'}`); return; }
+    const to = toLocal(cur.frame, { x: s.at[0], y: s.at[1] });
+    const prev = this._manual.gunArea ?? { x: 0, y: 0 };
+    const dx = to.x - C.x, dy = to.y - C.y, distM = Math.hypot(dx, dy);
+    this._manual = { ...this._manual, gunArea: { x: prev.x + dx, y: prev.y + dy } };
+    const TONE: Record<Tone, CheckState> = { ok: 'pass', warn: 'warn', bad: 'fail', unknown: 'unchecked' };
+    // the finder scores 0-1
+    const sc = s.score <= 1 ? `${Math.round(s.score * 100)} %` : String(Math.round(s.score));
+    const where = distM < 50 ? 'where the plan put it' : `${fmtM(distM)} ${Math.abs(dy) >= Math.abs(dx) ? (dy > 0 ? 'forward' : 'back') : dx > 0 ? 'right' : 'left'} of where the plan put it`;
+    this._gunSite = {
+      key: cur.recipe.id,
+      row: { name: 'Gun site', st: TONE[s.tone] ?? 'unchecked', reason: `Sited by Gun Deployment (G; Shift+G takes it back): the best of ${res.sites.length} within ${fmtM(radiusM)} (${res.tried} places tried), score ${sc}, ${where}: ${s.verdict}. ${s.rows.map((x) => `${x.label} ${x.value}`).join('; ')}${s.fixes.length ? `. Fix: ${s.fixes.slice(0, 2).join('; ')}` : ''}` },
+    };
+    const f = this._fitOne(cur.recipe, r.anchor, r.bearing, this._manual);
+    if (f) { this._jNote = `G: the gun area ${where} (score ${sc}); Shift+G takes it back`; this._show([f]); }
   }
 
   /**
@@ -1265,7 +1462,10 @@ export class PlanBuildTab {
       defTanks: recipe.defTanks ?? 0,
       defTanksUnit: recipe.defTanksUnit ?? null,
       arty: recipe.arty ?? null,
-      engr: this._engr && (recipe.task === 'defence' || recipe.task === 'crossing' || recipe.enMfAtk) ? this._engr.id : null,
+      ad: recipe.ad ?? null,
+      inund: recipe.inund ?? null,
+      engr: this._engr && (recipe.task === 'defence' || recipe.task === 'crossing' || recipe.enMfAtk) ? this._engrId : null,
+      engrCoys: this._engrCoys || null,
     };
   }
 
@@ -1563,7 +1763,12 @@ export class PlanBuildTab {
     const syms = readSymbols(records).filter((s) => s.pbRole && s.pbRecipe === recipeId);
     const base = this._recipes.get(baseId(recipeId));
     if (!base || !syms.length) { this._msg = 'Nothing of that plan to read.'; this._render(); return; }
-    const recipe = recipeId.endsWith('-mf') ? withMinefield(base, this._doc) : base;
+    const mfd = /-mf(-en)?(-gun)?(-ad)?$/.test(recipeId) ? withMinefield(base, this._doc) : base;
+    // the artillery and AD it was built with (pbMeta.arty, .ad): their gun areas and FUs back on the plan so their
+    // symbols are read
+    const meta = syms.find((s) => s.pbMeta)?.pbMeta;
+    const gun = meta?.arty && mfd.task === 'crossing' ? withArty(mfd, this._doc, meta.arty) : mfd;
+    const recipe = meta?.ad && gun.task === 'crossing' ? withAd(gun, this._doc, meta.ad) : gun;
     if (!this._terrain || !this._probe) { this._check = null; this._msg = `${recipe.name}: reading it as drawn needs terrain data.`; this._render(); return; }
     const drawn: Record<string, { pts: [number, number][]; base?: { start: [number, number]; mid: [number, number]; end: [number, number] } }> = {};
     for (const s of syms) {
@@ -1670,11 +1875,11 @@ export class PlanBuildTab {
     if (ech === '18') {
       const chips = ownBdeTypes(this._orbat).map((t) => this._chip(u?.id === t.id, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `bdeType:${t.id}`,
         `${t.bns} Bn-sized manoeuvre units, ${t.coys} manoeuvre Coys`)).join('');
-      return `${chips ? row('Type', chips) : ''}${facts}`;
+      return `${chips ? row('Type', chips) : ''}${this._artyRow(recipe)}${this._adRow(recipe)}${facts}`;
     }
     if (ech === '21') {
       const chips = ownDivTypes(this._orbat).map((t) => this._chip(u?.id === t.id, t.name, `divType:${t.id}`, `${t.coys} manoeuvre Coys / Sqns`)).join('');
-      return `${chips ? row('Type', chips) : ''}${facts}`;
+      return `${chips ? row('Type', chips) : ''}${this._artyRow(recipe)}${this._adRow(recipe)}${facts}`;
     }
     if (ech !== '16' && ech !== '15' && ech !== '14') return facts;
     const need = this._needOf(recipe), sub = ech === '15' ? 'Coy' : 'Pl';
@@ -1697,7 +1902,19 @@ export class PlanBuildTab {
     const rsq = recipe.layout === 'screen' && this._orbat ? recceSqnOf(this._orbat) : null;
     const rcs = rsq ? row('Screen by', seg([{ on: !this._recceScreen, label: 'Rifle Coy', data: 'recceScreen:off', title: 'The rifle Coy of the type below: its Pls the posts' }, { on: this._recceScreen, label: 'Recce Sqn', data: 'recceScreen:on', title: `${rsq.name}: ${rsq.tanks} tanks, ${rsq.afvTps} AFV Tps the posts (they see from the cupola), ${rsq.rifleTps} Rifle Tps in ${rsq.apcs} APCs (${rsq.src})` }])) : '';
     if (recipe.screenBy) return `${rcs}${facts}<div class="pb-hint">${esc(recipe.screenBy.text)}</div>`;
-    return `${rcs}${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${this._artyRow(recipe)}${recipe.task === 'crossing' ? '' : this._engrRow(recipe)}${facts}`;
+    return `${rcs}${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${this._artyRow(recipe)}${this._adRow(recipe)}${recipe.task === 'crossing' ? '' : this._engrRow(recipe)}${facts}`;
+  }
+
+  /**
+   * AD over the plan's vulnerable points (ORBAT, Sec 3): None, or an AD Bty (a Bn or Bde plan) or Regt (a Div plan),
+   * its fire units sited round the bridges, gun areas, HQ, Assy areas and reserve; AD cover judges it.
+   */
+  private _adRow(recipe: Recipe): string {
+    const types = this._adList(recipe);
+    if (!types.length) return '';
+    const chips = [this._chip(!types.some((t) => t.id === this._adId), 'None', 'ad:', 'No AD drawn')]
+      .concat(types.map((t) => this._chip(this._adId === t.id, t.name, `ad:${t.id}`, `${t.fus.length} fire units: ${t.fus.map((f) => `${f.name} ${(f.effM / 1000).toFixed(1)} km`).join(', ')} (${t.src})`))).join('');
+    return row('AD', chips);
   }
 
   /**
@@ -1736,12 +1953,13 @@ export class PlanBuildTab {
    * the band the Gun Deployment tool holds it to; Arty reach and, on the ground, Gun area judge it.
    */
   private _artyRow(recipe: Recipe): string {
-    if (!this._orbat || recipe.echelon !== '16' || (recipe.task !== 'defence' && recipe.task !== 'attack')) return '';
-    const types = this._artyTypes;
+    const types = this._artyList(recipe);
     if (!types.length) return '';
-    const chips = [this._chip(!this._artyId, 'None', 'arty:', 'No artillery drawn')]
+    const chips = [this._chip(!types.some((t) => t.id === this._artyId), 'None', 'arty:', 'No artillery drawn')]
       .concat(types.map((t) => this._chip(this._artyId === t.id, t.name, `arty:${t.id}`, `${t.guns} x ${t.weapon.name}, planning range ${(t.weapon.planM / 1000).toFixed(1)} km${t.weapon.sp ? ', SP' : ''} (${t.src})`))).join('');
-    return row('Arty', chips);
+    // G while the plan rests: the gun area to the Gun Deployment finder's best site round it
+    const g = types.some((t) => t.id === this._artyId) && recipe.task !== 'crossing' ? `<span title="The Gun Deployment finder sites the gun area round the plan's (room, level, firm soil, access, range, crest); Shift+G takes it back">${keyHint('G')}</span>` : '';
+    return row('Arty', chips + g);
   }
 
   /**
@@ -1754,7 +1972,23 @@ export class PlanBuildTab {
     if (!this._orbat || !(forDef || forAtk || recipe.task === 'crossing') || !this._engrTypes.length) return '';
     const chips = [this._chip(!this._engrId, 'Doctrine', 'engr:', forDef ? 'One Engr Fd Coy lays the minefield (the figure before the ORBAT)' : forAtk ? 'No engineers grouped: the Breach row says how many Pls the lanes need' : 'The Div\'s M2 bridge and hand breaching (IBB Annex Q)')]
       .concat(this._engrTypes.map((e) => this._chip(this._engrId === e.id, e.name.replace(/ \((IFCE|IMCE)\)$/, ' ($1)'), `engr:${e.id}`, `${engrText(e)} (${e.src})`))).join('');
-    return row('Engrs', chips);
+    // an engineer Bn: all of it, or some of its Coys (the rest with the other Bns)
+    const whole = this._engrId ? this._engrTypes.find((x) => x.id === this._engrId) : null;
+    const share = whole && whole.coys > 1 ? seg([{ on: !this._engrCoys, label: 'All', data: 'engrCoys:0', title: `the whole ${whole.name}` }, ...Array.from({ length: whole.coys - 1 }, (_, i) => ({ on: this._engrCoys === i + 1, label: `${i + 1} Coy${i ? 's' : ''}`, data: `engrCoys:${i + 1}`, title: `${i + 1} of its ${whole.coys} Coys, the rest with the other Bns: ${engrText(engrShare(whole, i + 1))}` }))], { sm: true, label: 'Engr Coys' }) : '';
+    return row('Engrs', chips + share) + (recipe.task === 'defence' && recipe.echelon === '16' ? this._inundRow() : '');
+  }
+
+  /**
+   * An inundation belt in front of a Bn defence (SO's Hbk pp 452-453): its depth (the table's belts), and when on, the
+   * water fed in and the soil. Inundation times it.
+   */
+  private _inundRow(): string {
+    const belt = seg([0, 300, 500, 1000].map((y) => ({ on: this._inundYds === y, label: y ? `${y} yd` : 'Off', data: `inund:${y}`, title: y ? `A ${y} yd belt beyond the minefield: compartments of 1000 yd, built, filled and the soil saturated (pp 452-453)` : 'No inundation' })), { sm: true, label: 'Inundation' });
+    if (!this._inundYds) return row('Inundate', belt);
+    const water = seg(([150, 100, 50] as const).map((c) => ({ on: this._cusecs === c, label: `${c} cusecs`, data: `cusecs:${c}`, title: `The water fed in: ${c} cusecs (the table's columns)` })), { sm: true, label: 'Water' });
+    const SHORT: Record<InundSoil, string> = { sand: 'sand', sandyLoam: 'sandy loam', loam: 'loam', clayLoam: 'clay loam', siltyClayLoam: 'silty clay loam', clay: 'clay' };
+    const soil = seg(INUND_SOILS.map((s) => ({ on: this._soil === s, label: SHORT[s], data: `soil:${s}`, title: `${soilWord(s)} (p 453 Saturation of Soils)` })), { sm: true, label: 'Soil' });
+    return row('Inundate', belt) + row('Water', water) + row('Soil', soil);
   }
 
   /** The kind of ground: Auto (read where the plan rests; what it read is ringed) or set. */

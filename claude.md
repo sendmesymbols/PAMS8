@@ -407,11 +407,17 @@ MS/
   counted in the force ratio; gun ranges are printed for 1 of 13 tanks, so the doctrine's stand) and the IABG / Armd Div are Bde / Div
   types. **Artillery** (`PlanArty.ts`, Arty row on Bn Def / Attk): a Regt or Bty from the ORBAT, its gun area (PAA) laid in GunDoctrine's
   band behind the FDL / FUP (`gunRulesFrom`), Arty reach (DF Tgts, his FUP; Obj and LOE) and Gun area on the bundle's `gun` going;
-  read back by Check my plan (`pbMeta.arty`); `node tools/planbuilder-test/arty.mjs` (27). **Engineers** (`PlanEngr.ts`, Engrs row on
+  read back by Check my plan (`pbMeta.arty`); on the crossings too (a Div bridgehead takes a Div Arty, one gun area a Regt,
+  `ownDivArties`, `gunArea2`...); **G** while a Bn plan rests sites the gun area with `GunDeploymentFind.findGunAreas` on its own
+  `SiteBundle` (Gun site row; `GunDeployment.ts` untouched); `node tools/planbuilder-test/arty.mjs` (41). **AD** (`PlanAD.ts`, AD row:
+  an AD Bty / Regt as fire units sited round the VPs: bridges, gun areas, HQ, Assy, reserve; AD cover; `PlanDoctrine.ad` E; `ad.mjs` 21).
+  **Air lift** (`PlanAvn.ts`: the Air Aslt Bn by the Air Aslt Sqn, waves and build-up; `PlanDoctrine.airAslt` E; `avn.mjs` 10).
+  **Inundation** (`PlanEngr.inundation` / `withInundation`, Inundate row on a Bn Def: engr table 20, pp 452-453). Engr Bn Coys
+  shared out between Bns (`engrShare`, Engr Coys chips). **Engineers** (`PlanEngr.ts`, Engrs row on
   Bn / Coy Def and the crossings): an ORBAT engineer unit's Pls and MMLs in Mines in time (p 439), its bridging (AVLB, AM-50, ribbon,
   pp 427-432) as Engr bridging, ribbon rafts (pp 430-431) and its TAMs as Mech breach (p 451) on a crossing; **His Mf** on a Bn Attk
   (`withAttackMinefield`, `attackBreach`: Annex Q, the p 450 table, the engineers' Pls / TAMs, begun before H in the H-hour sum);
-  `node tools/planbuilder-test/engr.mjs` (34). Fire lifts by the plan's own guns (`liftRings`); 3-Coy Bn Attk layouts (`bn3-attk-*`);
+  `node tools/planbuilder-test/engr.mjs` (49). Fire lifts by the plan's own guns (`liftRings`); 3-Coy Bn Attk layouts (`bn3-attk-*`);
   AT groups by Pl on a Coy Def; the tank Sqn the phase 2 reserve; a Coy Screen by a Recce Sqn (`withRecceScreen`). 3-Coy Bn Def layouts for the Lt Cdo Bn (`bn3-def-two-up`, `bn3-def-three-up`,
   recipe `forCoys`; the tab shows the layouts for the type chosen, `_famIds`) and an **AT group** row on a Bn defence: 1-3 ATGM
   Coys of a LAT / HAT Bn grouped to it (`withAtGroup`, `pbMeta.atGroup`, read back by Check my plan). **Phase 6 attack** (`PlanAttack.ts`): Bn Attk

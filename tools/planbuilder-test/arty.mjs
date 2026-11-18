@@ -64,7 +64,7 @@ const two = rec('bn-def-two-up'), front = rec('bn-attk-frontal');
 const d1 = A.withArty(two, doc, aDef), t1 = A.withArty(front, doc, aAtk);
 const bad = (r) => R.validateRecipe(r, ctx).filter((i) => i.level === 'fail').map((i) => i.msg);
 check('Bn Def and Bn Attk with the Fd Regt: the recipes validate, ids -gun, the gun area a PAA (25240501) named for the Regt', !bad(d1).length && !bad(t1).length && d1.id === 'bn-def-two-up-gun' && t1.id === 'bn-attk-frontal-gun' && d1.slots.find((s) => s.role === 'gunArea')?.sym === '25240501' && d1.slots.find((s) => s.role === 'gunArea').label === 'Fd Regt', [...bad(d1), ...bad(t1)].join('; '));
-check('...the ones passed in unchanged; a Coy plan, a crossing and a plan that has its artillery already are left as they are', !two.slots.some((s) => s.role === 'gunArea') && !two.arty && !A.withArty(rec('coy-def-two-up'), doc, aDef).slots.some((s) => s.role === 'gunArea') && A.withArty(d1, doc, aDef) === d1 && A.withArty(rec('bn-cross-two-up'), doc, aDef).id === 'bn-cross-two-up');
+check('...the ones passed in unchanged; a Coy plan and a plan that has its artillery already are left as they are', !two.slots.some((s) => s.role === 'gunArea') && !two.arty && !A.withArty(rec('coy-def-two-up'), doc, aDef).slots.some((s) => s.role === 'gunArea') && A.withArty(d1, doc, aDef) === d1);
 const rect = (r) => r.slots.find((s) => s.role === 'gunArea').shape.rect;
 check('defence: on the axis, its front edge in the middle of the band behind the FDL (FDL front edge -1550 m + 2770 m)', rect(d1).acrossM === 0 && rect(d1).backM === -1550 + 2770 + 500, JSON.stringify(rect(d1)));
 check('attack: 1500 m beside the axis (clear of the Assy Area), its front edge 2270 m behind the FUP', rect(t1).acrossM === 1500 && rect(t1).backM === 0 + 2270 + 500, JSON.stringify(rect(t1)));
@@ -98,7 +98,7 @@ const mech = { echelon: '18', type: 'mech', source: 'user' };
 const inp = (r, g) => ({ recipe: r, ctx, opts: { alternates: 'visible' }, ground: g, anchor: { x: 0, y: 0 }, bearing: 0, threat: { x: 0, y: 8000 }, enemy: mech, terrain: 'plains' });
 const flG = F.fitLayout(inp(d1, defG()));
 const gaRow = row(flG.res.rows, 'Gun area'), arRow = row(flG.res.rows, 'Arty reach');
-check('on the ground: Gun area passes on open ground (100 % a gun position may take), Arty reach is there too', gaRow?.st === 'pass' && /100 % of it/.test(gaRow.reason) && /site it with Gun Deployment/.test(gaRow.reason) && arRow?.st === 'pass', gaRow?.reason);
+check('on the ground: Gun area passes on open ground (100 % a gun position may take), Arty reach is there too', gaRow?.st === 'pass' && /100 % of it/.test(gaRow.reason) && /sites it with the Gun Deployment finder/.test(gaRow.reason) && arRow?.st === 'pass', gaRow?.reason);
 const gunNoGo = [...goingOf('gun').nogo].find((c) => !goingOf('dismounted').nogo.has(c) && !goingOf('tracked').nogo.has(c)) ?? [...goingOf('gun').nogo][0];
 const ga = flG.raw.items.find((i) => i.role === 'gunArea');
 const gc = F.toWorld(flG.frame, { x: ga.pts.reduce((s, p) => s + p.x, 0) / ga.pts.length, y: ga.pts.reduce((s, p) => s + p.y, 0) / ga.pts.length });
@@ -145,6 +145,27 @@ check('the ground reads the Gun Position going (rules.json profiles.gun), not th
   check('Check my plan on a built Bn Attk with the Fd Regt: Arty reach read back from the gun area, FUP, Obj and LOE: 2.3 km behind the FUP, the Obj and LOE in range', r.task === 'attack' && ar?.st === reachT[0].st && /2\.3 km behind the FUP/.test(ar.reason) && /the Obj and the LOE in range/.test(ar.reason), ar?.reason);
   const rn = K.checkPlan(syms.map((s) => ({ ...s, pbMeta: {} })), doc, {});
   check('...without artillery in what it was built for: no Arty reach', !row(rn.rows, 'Arty reach'));
+}
+
+// ── crossings: a Regt behind a Bn or Bde crossing, the Div Arty behind a Div bridgehead ─────────────────────────────────
+{
+  const divs = A.ownDivArties(orbat, types), inf = divs.find((d) => d.id === 'arty-inf-div-arty'), armd = divs.find((d) => d.id === 'arty-armd-div-arty');
+  check('Div Arties: Inf Div Arty 2 Fd + 2 Med Regts (72 guns), Armd Div Arty 3 Med (SP) + 1 Med Regt (Sec 2 pp 202-203)', inf?.unit === 'div' && inf.regts.map((r) => r.id).join() === 'arty-regt-fd,arty-regt-fd,arty-regt-med,arty-regt-med' && inf.guns === 72 && armd?.regts.length === 4 && armd.regts.filter((r) => r.id === 'arty-regt-med-sp').length === 3, divs.map((d) => `${d.id}:${d.regts.map((r) => r.name)}`).join(' | '));
+  check('...the Regts named 1 Fd Regt, 2 Fd Regt ...; the chip shows its longest gun', inf.regts[0].name === '1 Fd Regt' && inf.regts[3].name === '2 Med Regt' && inf.weapon.planM === Math.max(...inf.regts.map((r) => r.weapon.planM)));
+  const cx = A.artyOnPlan(fd, 'crossing', ad), dx = A.artyOnPlan(inf, 'crossing', ad);
+  check('a crossing is an attack: the band from 1.0 km; each Div Regt with its own band and area', cx.band[0] === 1000 && dx.regts.length === 4 && dx.regts.every((r) => r.band[0] === 1000 && r.areaM[0] === 1000) && dx.regts[2].band[1] > dx.regts[0].band[1]);
+  const bde = A.withArty(rec('bde-cross-two-up'), doc, cx), div = A.withArty(rec('div-bridgehead-two-bde'), doc, dx), bn = A.withArty(rec('bn-cross-two-up'), doc, cx);
+  check('Bn, Bde, Div crossings take it: ids -gun, valid recipes; one gun area a Bn or Bde, four a Div (gunArea .. gunArea4)', [bn, bde, div].every((r) => r.id.endsWith('-gun') && !bad(r).length) && bde.slots.filter((s) => /^gunArea/.test(s.role)).length === 1 && div.slots.filter((s) => /^gunArea/.test(s.role)).map((s) => s.role).join() === 'gunArea,gunArea2,gunArea3,gunArea4', [...bad(bn), ...bad(bde), ...bad(div)].join('; '));
+  const box = (s) => { const r = s.shape.rect; return [r.acrossM - r.wM / 2, r.backM - r.hM / 2, r.acrossM + r.wM / 2, r.backM + r.hM / 2]; };
+  const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  const clearOf = (r) => { const g = r.slots.filter((s) => /^gunArea/.test(s.role)).map(box); const other = r.slots.filter((s) => s.shape?.rect && !/^gunArea/.test(s.role)).map(box); return g.every((a, i) => !other.some((b) => overlap(a, b)) && !g.some((b, j) => j !== i && overlap(a, b))); };
+  check('...on the home bank, clear of the Assy areas and of each other', [bn, bde, div].every(clearOf) && [bn, bde, div].every((r) => r.slots.filter((s) => /^gunArea/.test(s.role)).every((s) => s.shape.rect.backM - s.shape.rect.hM / 2 > 300)), div.slots.filter((s) => /^gunArea/.test(s.role)).map((s) => JSON.stringify(s.shape.rect)).join(' '));
+  const sv = (r) => S.solveRecipe(r, ctx, {});
+  const rb = A.artyRows(sv(bde).items, bde, null), rd = A.artyRows(sv(div).items, div, null);
+  check('Bde crossing, Fd Regt: Arty reach passes, the break-in and the BH in range', row(rb, 'Arty reach')?.st === 'pass' && /the break-in in range/.test(row(rb, 'Arty reach').reason), row(rb, 'Arty reach')?.reason);
+  check('Div bridgehead, Inf Div Arty: Arty reach reads all four Regts; the 6 km BH beyond the Fd Regts: warn or pass with the Med Regts on it', /1 Fd Regt.*2 Fd Regt.*1 Med Regt.*2 Med Regt/.test(row(rd, 'Arty reach')?.reason ?? '') && row(rd, 'Arty reach').st !== 'fail', row(rd, 'Arty reach')?.st + ': ' + row(rd, 'Arty reach')?.reason);
+  const hy = A.withArty(rec('div-bridgehead-two-bde'), doc, A.artyOnPlan(T_('arty-regt-mtn'), 'crossing', ad));
+  check('a crossing without arty has no Arty reach row', !A.artyRows(sv(rec('bde-cross-two-up')).items, rec('bde-cross-two-up'), null).length && !!hy.arty);
 }
 
 console.log(`\n${n} checks, ${fails} failed`);

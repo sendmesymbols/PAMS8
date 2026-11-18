@@ -34,6 +34,18 @@ check('Fd Coy 3 Pls; Def Engr Bn 9 Pls and 9 MML (p 404); Offn 9 Pls, 6 MML, 5 T
 check('Aslt Engr Bn 9 Pls (2 Aslt Engr + 1 Aslt Fd a Coy, 3 Coys), 15 TAM, 9 AVLB, 3 AM-50 (p 408); Br Bn no laying Pls, 2 ribbon, 4 AM-50 (p 412); Mech 4 Pls, 4 MML, 6 AVLB', k(T('engr-bn-aslt')) === '9/0/15/0/9/0/3' && k(T('engr-bn-br')) === '0/0/0/0/0/2/4' && k(T('engr-bn-mech')) === '4/4/0/0/6/0/0', `${k(T('engr-bn-aslt'))} ${k(T('engr-bn-br'))} ${k(T('engr-bn-mech'))}`);
 check('the line names Pls and equipment, sets singular and plural', E.engrText(T('engr-bn-offn-inf-div')) === 'Offn Inf Div Engr Bn: 9 engineer Pls, 6 MML, 5 TAM, 5 MICLIC, 1 AM-50 / HMB set' && /2 ribbon bridge sets, 4 AM-50 \/ HMB sets/.test(E.engrText(T('engr-bn-br'))), E.engrText(T('engr-bn-offn-inf-div')));
 
+// ── an engineer Bn's Coys shared between Bns ─────────────────────────────────────────────────────────────────────────
+{
+  check('the Bns\' Coys that work: Def / Offn Div Engr Bn 3 Fd Coys, Aslt Engr Bn 4 (3 Aslt Engr + the Aslt Br Coy), Br Bn 2, Mech 2; a Coy 1', T('engr-bn-def-inf-div-corps').coys === 3 && T('engr-bn-offn-inf-div').coys === 3 && T('engr-bn-aslt').coys === 4 && T('engr-bn-br').coys === 2 && T('engr-bn-mech').coys === 2 && T('engr-fd-coy').coys === 1, ts.map((t) => `${t.id}:${t.coys}`).join(' '));
+  const one = E.engrShare(T('engr-bn-def-inf-div-corps'), 1);
+  check('1 Coy of the Def Engr Bn: 3 Pls, a set of 6 MMLs with it (p 439), a third of its men; named', one.pls === 3 && one.mml === 6 && one.coys === 1 && one.name === '1 Coy of the Def Inf Div/Corps Engr Bn' && one.strength === Math.round(740 / 3), `${one.name} ${one.pls} ${one.mml} ${one.strength}`);
+  const two = E.engrShare(T('engr-bn-aslt'), 2);
+  check('2 of the Aslt Engr Bn\'s 4 Coys: half its Pls, TAMs and AVLBs (E)', two.pls === 5 && two.tam === 7 && two.avlb === 4 && two.am50 === 1, `${two.pls} ${two.tam} ${two.avlb} ${two.am50}`);
+  check('all of its Coys, or a Coy: the unit as it is', E.engrShare(T('engr-bn-br'), 2) === T('engr-bn-br') && E.engrShare(T('engr-fd-coy'), 1) === T('engr-fd-coy'));
+  const m1 = O.minefieldRow(orbat, doc, 3500, O.brief(orbat, 'inf-bn-std'), one);
+  check('Mines in time with 1 Coy of the Def Engr Bn: by hand 36 h, with its MML set about 7 h', /3 Pls .* about 36 h/.test(m1.reason) && /about 7 h/.test(m1.reason), m1.reason);
+}
+
 // ── the minefield ────────────────────────────────────────────────────────────────────────────────────────────────────
 const std = O.brief(orbat, 'inf-bn-std');
 const m0 = O.minefieldRow(orbat, doc, 3500, std), mFd = O.minefieldRow(orbat, doc, 3500, std, T('engr-fd-coy')), mDef = O.minefieldRow(orbat, doc, 3500, std, T('engr-bn-def-inf-div-corps'));
@@ -107,6 +119,39 @@ check('no TAMs: no row', E.tamBreach(T('engr-fd-coy'), 2, 950, 6) === null);
   const h = AT.attackTimes(S.solveRecipe(withE(mf, 'engr-bn-def-inf-div-corps'), ctx, {}), null, null, doc, 'plains', true, null);
   const st = h.steps.find((s) => /Engineers begin the lanes/.test(s.label));
   check('the H-hour sum: the engineers begin the lanes 6 h before H (Def Engr Bn, by hand), the steps in time order', st?.at === -360 && /Def Inf Div\/Corps Engr Bn, by hand/.test(st.label) && h.steps.every((s, i) => !i || s.at >= h.steps[i - 1].at), st ? `${st.label} ${st.at}` : 'none');
+}
+
+// ── inundation (pp 452-453) ─────────────────────────────────────────────────────────────────────────────────────────
+{
+  const def = T('engr-bn-def-inf-div-corps'), fd = T('engr-fd-coy');
+  const spec = { beltYds: 500, cusecs: 100, soil: 'loam' };
+  const a = E.inundation(orbat.engrData, 2500, def, spec);
+  // 2500 m = 2734 yd: 3 compartments; the Def Engr Bn's Pls in teams of 4
+  const teams = Math.max(1, Math.floor(def.pls / 4));
+  const build = Math.max(10, (3 * 10 - 2 * 0.5) / teams);
+  check('a 500 yd belt across 2.5 km: 3 compartments of 1000 yd; built by teams of 4 Pls (10 days each, half a day off a common dyke)', a?.compartments === 3 && a.beltM === 457 && new RegExp(`Build ${build >= 10 ? Math.round(build) : build.toFixed(1)} days`).test(a.row.reason), `${def.pls} Pls, ${teams} teams; ${a?.row.reason}`);
+  check('...filled 3 x 25 h at 100 cusecs (3.1 days); loam saturates 0.5-1.7 days: under 2 days, so unsuitable (warn)', /fill 3\.1 days at 100 cusecs \(25 h/.test(a.row.reason) && /saturate 0\.5-1\.7 days in loam/.test(a.row.reason) && a.row.st === 'warn', a.row.st);
+  const cl = E.inundation(orbat.engrData, 2500, def, { ...spec, soil: 'clayLoam' });
+  check('clay loam saturates in 1.7-5 days: suitable, the time not judged (not checked)', cl.row.st === 'unchecked' && /saturate 1\.7-5\.0 days/.test(cl.row.reason), cl.row.reason.match(/saturate[^;)]*/)?.[0]);
+  const clay = E.inundation(orbat.engrData, 2500, def, { ...spec, soil: 'clay' });
+  check('clay: 25-50 days: unsuitable, fail', clay.row.st === 'fail');
+  const one = E.inundation(orbat.engrData, 2500, fd, { ...spec, soil: 'clayLoam' });
+  check('a Fd Coy (3 Pls): one team, 4/3 times as long; more days than the Bn', one.days > cl.days && /short of 4 Pls/.test(one.row.reason), `${one.days.toFixed(1)} vs ${cl.days.toFixed(1)} days`);
+  const deep = E.inundation(orbat.engrData, 2500, def, { beltYds: 1000, cusecs: 150, soil: 'clayLoam' });
+  check('a 1000 yd belt at 150 cusecs: 14 days a compartment, 34 h filling', /14 days each/.test(deep.row.reason) && /34 h a compartment/.test(deep.row.reason));
+  check('...wire, AT ditches and demolitions said to have no rates', /no rates/.test(a.row.reason));
+  check('no table: null', E.inundation([], 2500, def, spec) === null);
+  const R = await import('../../MS/Engines/DeploymentBuilder/PlanRecipes.ts');
+  const S = await import('../../MS/Engines/DeploymentBuilder/PlanSolve.ts');
+  const rec = json('MS/Data/Deployments/Recipes/bn-def-two-up.json');
+  const ctx = { doc, symbols: json('MS/Data/Symbols.json') };
+  const wi = E.withInundation(rec, doc, spec);
+  const bad = R.validateRecipe(wi, ctx).filter((i) => i.level === 'fail').map((i) => i.msg);
+  const sv = S.solveRecipe(wi, ctx, {});
+  const it = (r) => sv.items.find((i) => i.role === r);
+  const yMax = (i) => Math.max(...i.pts.map((p) => p.y)), yMin = (i) => Math.min(...i.pts.map((p) => p.y));
+  check('Bn defence inundated: id -inu, valid; an Obstacle Zone labelled Inundation, 457 m deep, beyond the minefield', wi.id === 'bn-def-two-up-inu' && !bad.length && it('inund')?.label === 'Inundation' && Math.abs(yMax(it('inund')) - yMin(it('inund')) - 457) < 2 && yMin(it('inund')) > yMax(it('atMines')), `${bad.join('; ')} inund ${it('inund') && `${Math.round(yMin(it('inund')))}..${Math.round(yMax(it('inund')))}`} mines ..${it('atMines') && Math.round(yMax(it('atMines')))}`);
+  check('...an attack or an inundated plan is left as it is', E.withInundation(json('MS/Data/Deployments/Recipes/bn-attk-frontal.json'), doc, spec).id === 'bn-attk-frontal' && E.withInundation(wi, doc, spec) === wi);
 }
 
 console.log(`\n${n} checks, ${fails} failed`);

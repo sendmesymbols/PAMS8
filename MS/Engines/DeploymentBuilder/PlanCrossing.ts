@@ -22,6 +22,8 @@
  * Erasable TypeScript only: Node 24 runs this file as it is (tools/planbuilder-test/crossing.mjs).
  */
 import { engrBridge, engrRafts, tamBreach } from './PlanEngr';
+import { artyRows } from './PlanArty';
+import { adRows } from './PlanAD';
 import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, PlanItem, SolveResult, XY } from './PlanSolve';
@@ -493,6 +495,12 @@ function readCrossing(c: Ctx): Read {
 
   // ── rows: the ground ──
   rows.push(...crossingGeometryRows(items, recipe, doc, range, num, 0, light));
+  // the artillery behind it (PlanArty.withArty): its reach on the plan as laid along the obstacle (or as drawn), its
+  // gun areas' ground where laid
+  const laid = dr ? items : items.map((it) => (geom[it.role] ? { ...it, pts: geom[it.role].pts } : it));
+  if (recipe.arty) rows.push(...artyRows(laid, recipe, null, dr ? null : frame, dr ? null : c.ground));
+  // AD over its bridges, gun areas, HQ and Assy areas (PlanAD)
+  if (recipe.ad) rows.push(...adRows(laid, recipe));
   const bhRow = rows.find((x) => x.name === 'Bridgehead');
   if (bhRow && bhItem && bhDepths.length) {
     const d0 = Math.max(...bhItem.pts.map((p) => p.y)), dMax = Math.max(...bhDepths);

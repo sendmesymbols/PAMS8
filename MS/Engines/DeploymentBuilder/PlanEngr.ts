@@ -6,12 +6,16 @@
  *   AVLBs, ribbon bridge, AM-50 / HMB bridge sets;
  * - the protective minefield in time with them (p 439: an Engr Pl 780 mixed clusters in 24 h; a Fd Coy with a set of 6
  *   MMLs 9000 m of ATMs in 24 h, ideal conditions, figures under trial);
- * - their bridging across a gap (pp 427-432: the ribbon bridge, AM-50, the AVLB) and their mechanical breach (p 451: TAM).
+ * - their bridging across a gap (pp 427-432: the ribbon bridge, AM-50, the AVLB) and their mechanical breach (p 451: TAM);
+ * - an inundation belt in front of a defence in time (pp 452-453: compartments, filling, saturation). Wire, AT ditches
+ *   and demolitions have no rates in the ORBAT and are not timed.
  *
  * No ArcGIS, no DOM. The data is passed in, so Node can test it.
  */
 import type { Check, CheckState } from './PlanSolve';
 import type { OrbatSet } from './PlanOrbat';
+import type { DoctrineSet, Recipe } from './PlanRecipes';
+import { resolveRange } from './PlanRecipes';
 
 /** An engineer unit and what it brings. */
 export interface EngrType {
@@ -23,6 +27,8 @@ export interface EngrType {
   mml: number; tam: number; miclic: number; avlb: number;
   /** Bridge sets: ribbon bridge, AM-50 / HMB. */
   ribbon: number; am50: number;
+  /** Its Coys that work (Fd, Aslt Engr, Mech Fd, bridging Coys): what can be shared out between Bns; 1 for a Coy. */
+  coys: number;
   src: string;
 }
 
@@ -55,10 +61,31 @@ export function ownEngrTypes(o: OrbatSet): EngrType[] {
       id, name: String(u.name), strength: Number(u.strength?.total) || null, pls: plsOf(o.own, u),
       mml: eqCount(u, /^MML$/), tam: eqCount(u, /^TAMs?$/), miclic: eqCount(u, /^MICLIC$/), avlb: eqCount(u, /^AVLB$/),
       ribbon: eqCount(u, /^Ribbon Br$/), am50: eqCount(u, /^AM ?-?50/),
+      coys: u.echelon === '15' ? 1 : (u.children ?? []).filter((c: any) => { const cu = find(o.own, c.unit); return cu && cu.echelon === '15' && /fd coy|aslt engr coy|br coy|mech fd coy/i.test(String(cu.name)); }).reduce((a: number, c: any) => a + (Number(c.count) || 1), 0) || 1,
       src: `SO's Hbk 2019 p ${u.page ?? '?'} (${id})`,
     });
   }
   return out;
+}
+
+/**
+ * `k` of an engineer Bn's Coys grouped to one Bn (the rest go to the other Bns): its Pls shared by the Coys, a set of 6
+ * MMLs with a Fd Coy (p 439: "a Fd Coy with a set of 6 MMLs", the rest in reserve), the other equipment shared by the
+ * Coys (E). A Coy, or `k` at or over its Coys, comes back whole.
+ */
+export function engrShare(e: EngrType, k: number): EngrType {
+  const n = Math.max(1, Math.round(k));
+  if (e.coys <= 1 || n >= e.coys) return e;
+  const part = (x: number) => Math.floor((x * n) / e.coys);
+  return {
+    ...e,
+    name: `${n} Coy${n > 1 ? 's' : ''} of the ${e.name}`,
+    strength: e.strength ? Math.round((e.strength * n) / e.coys) : null,
+    pls: Math.round((e.pls * n) / e.coys),
+    mml: Math.min(e.mml, MML_SET * n), tam: part(e.tam), miclic: part(e.miclic), avlb: part(e.avlb), ribbon: part(e.ribbon), am50: part(e.am50),
+    coys: n,
+    src: `${e.src}; ${n} of its ${e.coys} Coys (E: its Pls and equipment shared by the Coys, a set of MMLs with a Fd Coy, p 439)`,
+  };
 }
 
 /** The unit in a line: Pls and equipment. */
@@ -189,4 +216,80 @@ export function tamBreach(e: EngrType, lanes: number, depthM: number, handH: num
     h,
     row: { name: 'Mech breach', st: enough ? 'pass' : 'warn', reason: `${lanes} lane${lanes > 1 ? 's' : ''} ${Math.round(depthM)} m deep: one TAM a lane, about ${dur(h)} each (SO's Hbk p 451: a 600 m lane in 2 h, 900 m in 3 h, 5 m wide; the print's columns read so, uncertain) against ${handH} h by hand (Annex Q); the ${e.name} hold${/s$/.test(e.name) ? '' : 's'} ${e.tam} TAM${e.tam > 1 ? 's' : ''}${e.miclic ? ` and ${e.miclic} MICLIC` : ''}${enough ? '' : `: short of ${lanes - e.tam}, the rest by hand`}` },
   };
+}
+
+// ── inundation (p 452-453): a belt of water in front of a defence ───────────────────────────────────────────────────
+
+/** The inundation asked for: the belt's depth (the table's 300, 500 or 1000 yd), the water fed in, the soil. */
+export interface InundSpec { beltYds: 300 | 500 | 1000; cusecs: 50 | 100 | 150; soil: InundSoil }
+export type InundSoil = 'sand' | 'sandyLoam' | 'loam' | 'clayLoam' | 'siltyClayLoam' | 'clay';
+const YD = 0.9144;
+/** Permeability, ft a day (p 453 Saturation of Soils), by soil: [low, high]. */
+const PERM: Record<InundSoil, { word: string; ft: [number, number] }> = {
+  sand: { word: 'sand / loamy sand', ft: [10, 20] },
+  sandyLoam: { word: 'sandy loam', ft: [5, 10] },
+  loam: { word: 'loam / silt loam', ft: [1.5, 5] },
+  clayLoam: { word: 'clay loam', ft: [0.5, 1.5] },
+  siltyClayLoam: { word: 'sandy / silty clay loam', ft: [0.1, 0.5] },
+  clay: { word: 'clay', ft: [0.05, 0.1] },
+};
+export const INUND_SOILS = Object.keys(PERM) as InundSoil[];
+export const soilWord = (s: InundSoil) => PERM[s].word;
+
+/**
+ * The time to inundate a defence's front (p 452-453), by compartments of 1000 yd along it: each built by 4 Pls and 4
+ * Size II dozers in 8, 10 or 14 days (a 300, 500 or 1000 yd belt), half a day off for each common dyke; the Pls the
+ * engineers have share the compartments; then filled one after another from one source (34-100 h a 1000 yd belt at
+ * 150-50 cusecs, pro rata), then the soil saturated to 2.5 ft (2-3 ft makes an effective bog). Soils that saturate in
+ * 2-4 days are the ones suitable (p 453). Planning, design and delays are not counted. Null without the table.
+ */
+export function inundation(engrData: any[], frontageM: number, e: EngrType | null, spec: InundSpec): { row: Check; days: number; beltM: number; compartments: number } | null {
+  const t = (engrData ?? []).find((x: any) => /Inundation/i.test(String(x?.title)));
+  if (!t || !(frontageM > 0)) return null;
+  const rowOf = (table: string) => (t.rows ?? []).find((r: any) => r.Table === table && Number(r['Depth of Inundation Belt (Yds)']) === spec.beltYds);
+  const build = Number(rowOf('Const of One Compartment')?.['Time Req (Days)']);
+  const fillH = Number(rowOf('Filling of One Compartment')?.[`Time Req (Hrs) ${spec.cusecs} Cusecs`]);
+  if (!(build > 0) || !(fillH > 0)) return null;
+  const n = Math.max(1, Math.ceil(frontageM / (1000 * YD)));
+  const pls = e?.pls ?? 0;
+  // teams of 4 Pls; with fewer than 4 Pls one team works slower in proportion
+  const teams = Math.max(1, Math.floor(pls / 4));
+  const slow = pls > 0 && pls < 4 ? 4 / pls : 1;
+  const buildDays = Math.max(build, (n * build - (n - 1) * 0.5) / teams) * slow;
+  const fillDays = (fillH * n) / 24;
+  const p = PERM[spec.soil];
+  const sat: [number, number] = [2.5 / p.ft[1], 2.5 / p.ft[0]];
+  const suitable = sat[1] >= 2 - 1e-9 && sat[0] <= 4 + 1e-9 ? 'suitable' : sat[1] < 2 ? 'fast' : 'slow';
+  const days = buildDays + fillDays + (sat[0] + sat[1]) / 2;
+  const d1 = (x: number) => (x >= 10 ? Math.round(x).toString() : x.toFixed(1));
+  const st: CheckState = suitable === 'slow' ? 'fail' : suitable === 'fast' ? 'warn' : 'unchecked';
+  const who = e ? `${e.name} (${pls} Pls: ${teams} team${teams > 1 ? 's' : ''} of 4${slow > 1 ? `, short of 4 Pls: ${d1(slow)} times as long` : ''})` : 'one team of 4 Pls (no engineers chosen)';
+  return {
+    days, beltM: Math.round(spec.beltYds * YD), compartments: n,
+    row: {
+      name: 'Inundation', st,
+      reason: `A ${spec.beltYds} yd (${Math.round(spec.beltYds * YD)} m) belt across ${(frontageM / 1000).toFixed(1)} km: ${n} compartment${n > 1 ? 's' : ''} of 1000 yd. Build ${d1(buildDays)} days by ${who}, 4 Size II dozers a compartment (${build} days each, half a day off a common dyke); fill ${d1(fillDays)} days at ${spec.cusecs} cusecs (${fillH} h a compartment); saturate ${d1(sat[0])}-${d1(sat[1])} days in ${p.word} (${p.ft[0]}-${p.ft[1]} ft a day to 2.5 ft)${suitable === 'suitable' ? ': within the 2-4 days the book calls suitable' : suitable === 'fast' ? ': quicker than the 2-4 days the book calls suitable, more water lost to percolation (p 453 notes 2, 3)' : ': over the 2-4 days the book calls suitable: it will not bog in time'} (SO's Hbk pp 452-453). About ${d1(days)} days in all, before planning, design and delays: begun before the defence is occupied, it is set against the warning time you have. Tilling (1-2 tractor days a compartment) and the distys are extra. Wire, AT ditches and demolitions: the ORBAT prints no rates, not timed`,
+    },
+  };
+}
+
+/**
+ * A defence with an inundation belt (a new recipe `-inu`; the one passed in is not changed): an Obstacle Zone labelled
+ * Inundation across the front of the forward posns, beyond the protective minefield (its stand-off, its depth and 100 m),
+ * as deep as the belt. The map has no flooded-area symbol.
+ */
+export function withInundation(r: Recipe, doc: DoctrineSet, spec: InundSpec): Recipe {
+  if (r.task !== 'defence' || r.inund) return r;
+  const fwd = r.slots.filter((s) => s.kind === 'fwd').map((s) => s.role);
+  if (!fwd.length) return r;
+  const off = resolveRange(doc, { doctrine: 'standoff.obstacleInFrontM' })?.[0] ?? 200;
+  const mf = resolveRange(doc, { doctrine: 'standoff.protectiveMinefieldDepthM' })?.[1] ?? 300;
+  const beltM = Math.round(spec.beltYds * YD);
+  const out: Recipe = JSON.parse(JSON.stringify(r));
+  out.slots.push({ role: 'inund', kind: 'obstacle', sym: '25270200', label: 'Inundation', order: 4, rule: { inFrontOf: fwd, distM: off + mf + 100, depthM: beltM } } as any);
+  out.id = `${r.id}-inu`;
+  out.name = `${r.name}, inundated`;
+  out.inund = spec;
+  out.note = `${r.note ?? ''} An inundation belt ${spec.beltYds} yd (${beltM} m) deep beyond the protective minefield (SO's Hbk pp 452-453; PlanEngr.withInundation).`.trim();
+  return out;
 }

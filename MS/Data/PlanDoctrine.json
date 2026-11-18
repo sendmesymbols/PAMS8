@@ -319,6 +319,20 @@
   "readyBy": {
     "coyPosnH": { "value": [24, 36], "basis": "D", "src": "IBB", "pageToConfirm": true }
   },
+  "airAslt": {
+    "note": "The Air Aslt Bn lifted by the Air Aslt Sqn (PlanAvn). The ORBAT gives the Sqn (p 703: 2 Air Aslt Flts x 6 Air Aslt Hels, a Cargo Sp Flt of 5 Cargo Hels), the types by role (pp 706-708: the Bell 412 the only Air Aslt type; Cargo: Bell 412, Puma, Mi-17, not tied to a Sqn) and their loads and speeds (pp 707-708, 714). The distance, the time on the ground and the build-up allowed are not printed: E until set.",
+    "pzLzKm": { "value": 25, "basis": "E", "note": "Pick-up zone to landing zone, one way. The plan does not draw the PZ: change it here for the mission." },
+    "groundMin": { "value": 10, "basis": "E", "note": "Each hel's time on the ground a round trip: loading at the PZ, landing and off-loading at the LZ." },
+    "buildUpMaxH": { "value": 2, "basis": "E", "note": "The longest the Bn may take to be complete on the LZ after its first wave lands, before he can react in strength." },
+    "cargoHel": { "value": "bell-412", "basis": "E", "note": "The Cargo Sp Flt's type, not fixed by the book: the Bell 412 (9 troops) is taken; a Puma carries 16, an Mi-17 24 (p 707)." }
+  },
+  "ad": {
+    "note": "AD over a plan's vulnerable points (PlanAD). The ORBAT (SO's Hbk 2019 Sec 3 pp 300-321) gives the units, their fire units and the weapons' max eff slant range (p 317); how they are sited round a VP is not printed there, so these figures are E until set.",
+    "releaseM": { "value": 1500, "basis": "E", "note": "How far out from a VP a fire unit must engage for the VP to count as covered by it: an attacking aircraft or helicopter is to be engaged before it releases (bombs, rockets, ATGMs). Covered: slant range minus the distance FU-to-VP at least this." },
+    "minFus": { "value": 2, "basis": "E", "note": "Fire units wanted over each VP of the first priority (bridges, gun areas): two, so that one in action or out of it leaves cover." },
+    "siteM": { "value": [300, 1000], "basis": "E", "note": "How far from the VP's centre a fire unit is sited: a quarter of its slant range, held to this band; toward the threat first (forward left, forward right), then behind and on the flanks." },
+    "samAssumed": { "value": "anza-mk-ii", "basis": "E", "note": "The SAM Launcher of the Lt AD Msl Tps and SAM Btys is not named in the charts (pp 308-309): taken as the Anza Mk II (5 km, p 317), the national MANPADS." }
+  },
   "checkBands": {
     "note": "Bands the Check step uses for a pass. E figures are proposals until the user sets them.",
     "fieldOfFireToObstacleM": {

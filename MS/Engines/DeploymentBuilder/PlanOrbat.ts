@@ -26,6 +26,8 @@ export interface OrbatSet {
   weapons: any[];
   /** engr.json engrData (planning tables). */
   engrData?: any[];
+  /** avn.json avnData (types by role, loads: pp 706-715). */
+  avnData?: any[];
 }
 
 export interface WeaponLine { id: string | null; name: string; count: number; rangeM: number | null }
@@ -221,11 +223,12 @@ export function subUnitsOf(o: OrbatSet, typeId: string | null | undefined): { co
 
 /**
  * Own Bn-sized infantry types for the Task step: the Bns, and the FC and Rangers Wings (4 rifle Coys each, pp 642-644).
- * Each with its manoeuvre Coys, whether it is mounted, and its rifle Coy and Pl. SSG and Coast Guards are left out; so
- * is a wing with no rifle Coys (the FC Corps' Sp, HQ and Adm Wings).
+ * Each with its manoeuvre Coys, whether it is mounted, and its rifle Coy and Pl. The SSG Bns and the Coast Guards are
+ * offered; a wing with no rifle Coys (the FC Corps' Sp, HQ and Adm Wings) is left out.
  */
 export function ownBnTypes(o: OrbatSet): OwnType[] {
-  return o.own.filter((u) => u.arm === 'inf' && (u.type === 'bn' || u.type === 'wing') && !/coast|ssg/i.test(u.id))
+  // every Bn-sized infantry type: the SSG Bns and the Coast Guards too (the user, 19 Nov 2026: "close all open issues")
+  return o.own.filter((u) => u.arm === 'inf' && (u.type === 'bn' || u.type === 'wing'))
     .map((u) => { const b = brief(o, u.id)!, s = subUnitsOf(o, u.id); return { id: u.id, name: b.name, coys: b.coys, mounted: b.mounted, coy: s.coy, pl: s.pl, plsPerCoy: b.plsPerCoy, wing: u.type === 'wing' }; })
     .filter((t) => !t.wing || t.coys > 0)
     .map(({ wing: _wing, ...t }) => t);

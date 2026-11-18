@@ -33,7 +33,12 @@ import { brief, enUnitFor, forceFromOrbat, minefieldRow, tankSqnOf, withAtGroup,
 import { counterAttack } from './PlanAttack';
 import { defTankRows, tankGoingRow } from './PlanTanks';
 import { artyRows } from './PlanArty';
-import { ownEngrTypes } from './PlanEngr';
+import { adRows } from './PlanAD';
+import { airLiftOf, airLiftRow } from './PlanAvn';
+
+/** The roles AD cover reads back: the FUs and the vulnerable points. */
+const AD_ROLES = /^(ad\d+|gunArea\d*|hq|assy\d*|vwa|res|bridge\d*)$/;
+import { engrShare, inundation, ownEngrTypes } from './PlanEngr';
 import type { ForceSides } from './PlanContext';
 
 // ── reading ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -744,6 +749,9 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
       const own = (role: string) => mp.syms.filter((x) => x.side === 'own' && x.pbRole === role && x.pts.length).map((x) => ({ role, pts: x.pts.map((v) => toLocal(frame, v)) }));
       rows.push(...artyRows([...own('gunArea'), ...own('fdl'), ...own('dfTgt')], { ...recipe, task: 'defence', arty: artyMeta }, enemyFupM(doc, enemy.type)[0], frame, opts.ground));
     }
+    // the AD it was built with (pbMeta.ad): its FUs and the VPs read from their symbols, judged as the build did
+    const adMeta = mp.built?.meta?.ad;
+    if (adMeta) rows.push(...adRows(mp.syms.filter((x) => x.side === 'own' && x.pbRole && AD_ROLES.test(x.pbRole) && x.pts.length).map((x) => ({ role: x.pbRole!, label: x.label, pts: x.pts.map((v) => toLocal(frame, v)) })), { ad: adMeta }));
     const alternates = active.filter((p) => p.kind === 'alt' && p.c).map((a) => {
       const letter = a.label.replace(/^alt\s*/i, '').trim().split(/\s+/)[0];
       const of = fwd.find((x) => x.label.split(/\s+/)[0] === letter);
@@ -766,9 +774,13 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   if (opts.orbat && fwd.length) {
     const fm = Math.max(...fwd.map((p) => p.c!.x + p.w! / 2)) - Math.min(...fwd.map((p) => p.c!.x - p.w! / 2));
     // the engineers it was built with (pbMeta.engr): their Pls and MMLs; else the doctrine's one Fd Coy
-    const engr = mp.built?.meta?.engr ? ownEngrTypes(opts.orbat).find((e) => e.id === mp.built!.meta.engr) ?? null : null;
+    const whole = mp.built?.meta?.engr ? ownEngrTypes(opts.orbat).find((e) => e.id === mp.built!.meta.engr) ?? null : null;
+    const engr = whole && mp.built?.meta?.engrCoys ? engrShare(whole, Number(mp.built.meta.engrCoys)) : whole;
     const m = minefieldRow(opts.orbat, doc, fm, unitB ?? (opts.orbat ? brief(opts.orbat, 'inf-bn-std') : null), engr);
     if (m) rows.push(m);
+    // the inundation belt it was built with (pbMeta.inund), timed across the front as drawn
+    const inu = mp.built?.meta?.inund ? inundation(opts.orbat.engrData ?? [], fm, engr, mp.built.meta.inund) : null;
+    if (inu) rows.push(inu.row);
   }
   for (const s of slots) s.st = worst(s.checks);
   for (const p of posns.filter((x) => x.kind === 'fwd' || x.kind === 'res')) confirm.push(`${p.label}: the ground, fields of fire and dead ground in front`);
@@ -826,6 +838,12 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
       rows.push(...artyRows(items, { task: 'attack', arty: artyMeta } as any, null));
     }
   }
+  // the AD it was built with (pbMeta.ad): its FUs and the VPs (the gun area, the HQ, the Assy, the reserve) as drawn
+  const adMeta = mp.built?.meta?.ad;
+  if (adMeta) rows.push(...adRows(own.filter((s) => s.pbRole && AD_ROLES.test(s.pbRole) && s.pts.length).map((s) => ({ role: s.pbRole!, label: s.label, pts: s.pts.map((p) => P(p.x / k, p.y / k)) })), { ad: adMeta }));
+  // built for the Air Aslt Bn: its lift by the Air Aslt Sqn (PlanAvn)
+  const lift = opts.orbat ? airLiftOf(opts.orbat, mp.built?.meta?.unit, doc) : null;
+  if (lift) rows.push(airLiftRow(lift));
   const fupBand = range('attack.fupFromObjM') ?? [1000, 1200], tankBand = range('attack.tankFupFromObjM') ?? [2500, 3000];
   const slBand = range('check.slAxisDeg') ?? [60, 120];
   const bofMin = range('attack.bofFlankMinDeg')?.[0] ?? 30, bofMax = range('attack.bofRangeMaxM')?.[0] ?? 1189;

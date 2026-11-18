@@ -21,6 +21,7 @@ import { attackBreach, attackFactors, attackTimes, counterAttack, findAttackSpot
 import { findPhase2, goingRow, type Phase2Find } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode } from './PlanTanks';
 import { artyRows } from './PlanArty';
+import { adRows } from './PlanAD';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
 import { canalPrep, fitCrossing, type CrossingReading, type Light } from './PlanCrossing';
@@ -954,6 +955,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   if (recipe.defTanks) merged.rows.push(...defTankRows(raw.items, recipe, frame, ground, ctx.doc, fit.from ?? null));
   // the artillery's gun area: its reach (his FUP for his type in defence) and its ground
   if (recipe.arty) merged.rows.push(...artyRows(raw.items, recipe, recipe.task === 'attack' ? null : enemyFupM(ctx.doc, enemy?.type ?? 'mech')[0], frame, ground));
+  // AD over its vulnerable points (PlanAD)
+  if (recipe.ad) merged.rows.push(...adRows(raw.items, recipe));
   if (canal) { merged.rows.push(...canal.rows); fit.crossing = canal.reading ?? undefined; fit.pending = fit.pending || canal.pending; }
   // an attack: the finders' rows, the H-hour sum, his MSR choke, the night march, the factors that score it
   if (find) {

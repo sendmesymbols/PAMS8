@@ -281,6 +281,33 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
   check('...the bridge dragged into the marsh: Approaches and exits warn (a NO-GO strip by the bank)', row(bnC.rows, 'Approaches and exits')?.st === 'warn' && /strip/.test(row(bnC.rows, 'Approaches and exits').reason), row(bnC.rows, 'Approaches and exits')?.reason);
 }
 
+// ── artillery behind a crossing (PlanArty.withArty): laid along the canal, its reach and its ground; read as drawn ──────
+{
+  const A = await import('../../MS/Engines/DeploymentBuilder/PlanArty.ts');
+  const fdA = { id: 'arty-regt-fd', name: 'Fd Regt', unit: 'regt', guns: 18, partner: null, weapon: { id: '122-mm-how', name: '122 mm How', planM: 10620, maxM: 11800, minM: 0, sp: false }, src: 'test',
+    band: [1000, 3540], bandSrc: 'GunDoctrine front', areaM: [1000, 1000], areaSrc: 'GunDoctrine areas', room: [0.9, 0.7] };
+  const r = A.withArty(rec('bde-cross-two-up'), doc, fdA);
+  const fl = F.fitLayout(inpOf(r, H));
+  const ga = it(fl.raw, 'gunArea').pts.map((p) => world(fl, p)).map(nOfW);
+  check('Bde crossing with a Fd Regt, fitted: its gun area on the home (south) bank, 1-4 km back', Math.max(...ga) < -1000 && Math.min(...ga) > -5000, `n ${Math.round(Math.min(...ga))}..${Math.round(Math.max(...ga))}`);
+  check('...Arty reach passes (the break-in and the BH in range); Gun area read on the ground', row(fl.res.rows, 'Arty reach')?.st === 'pass' && ['pass', 'warn', 'fail'].includes(row(fl.res.rows, 'Gun area')?.st), `${row(fl.res.rows, 'Arty reach')?.reason} | ${row(fl.res.rows, 'Gun area')?.st}: ${row(fl.res.rows, 'Gun area')?.reason}`);
+  const d = {};
+  for (const i of fl.raw.items) { if (d[i.role]) continue; const w = (p) => { const q = world(fl, p); return [q.x, q.y]; }; d[i.role] = { pts: i.pts.map(w), ...(i.base ? { base: { start: w(i.base.start), mid: w(i.base.mid), end: w(i.base.end) } } : {}) }; }
+  const c = C.checkCrossing(inpOf(r, H), d);
+  check('...Check my plan reads it back as drawn: the same Arty reach', row(c.rows, 'Arty reach')?.st === 'pass', row(c.rows, 'Arty reach')?.reason);
+  d.gunArea = { pts: d.gunArea.pts.map((q) => { const l = local(q[0], q[1]); return at(l.e, l.n - 9000); }) };
+  const far = C.checkCrossing(inpOf(r, H), d);
+  const AD = await import('../../MS/Engines/DeploymentBuilder/PlanAD.ts');
+  const fu = (name, effM) => ({ name, effM, weapons: [{ id: 'x', name: 'Gun', count: 4, effM, ceilingM: null, kind: 'gun', assumed: false }] });
+  const adA = { id: 'ad-bty-rcg', name: 'RCG AD Bty', unit: 'bty', fus: [fu('RCG Tp 1', 4000), fu('RCG Tp 2', 4000)], src: 't', releaseM: 1500, minFus: 2, siteM: [300, 1000], assumedNote: null };
+  const ra = AD.withAd(r, doc, adA), fa = F.fitLayout(inpOf(ra, H));
+  check('...with an RCG AD Bty: its two Tps laid along the canal by the bridge and the gun area; AD cover on the fitted plan', ['ad1', 'ad2'].every((x) => it(fa.raw, x)?.pts.length) && !!row(fa.res.rows, 'AD cover'), row(fa.res.rows, 'AD cover')?.st + ': ' + row(fa.res.rows, 'AD cover')?.reason);
+  const dA = {};
+  for (const i of fa.raw.items) { if (dA[i.role]) continue; const w = (p) => { const q = world(fa, p); return [q.x, q.y]; }; dA[i.role] = { pts: i.pts.map(w), ...(i.base ? { base: { start: w(i.base.start), mid: w(i.base.mid), end: w(i.base.end) } } : {}) }; }
+  check('...Check my plan reads AD cover back as drawn, the same verdict', row(C.checkCrossing(inpOf(ra, H), dA).rows, 'AD cover')?.st === row(fa.res.rows, 'AD cover')?.st, row(C.checkCrossing(inpOf(ra, H), dA).rows, 'AD cover')?.reason);
+  check('...its gun area dragged 9 km back: the BH out of range, Arty reach no longer passes', row(far.rows, 'Arty reach')?.st !== 'pass' && /out/.test(row(far.rows, 'Arty reach').reason), row(far.rows, 'Arty reach')?.reason);
+}
+
 // ── the mirror: a Bn defence on the canal (IC s85, IBB S57 Fig 34) ──────────────────────────────────────────────────────
 {
   const cr = rec('bn-def-canal');

@@ -108,6 +108,10 @@ export interface Recipe {
   enMfAtk?: { depthM: number; lanes: number };
   /** Artillery with the plan and its gun area (PlanArty.withArty): the unit, its gun, the band behind the front. */
   arty?: import('./PlanArty').ArtyOnPlan;
+  /** AD sited round the plan's vulnerable points (PlanAD.withAd): the unit, its fire units, the figures used. */
+  ad?: import('./PlanAD').AdOnPlan;
+  /** An inundation belt in front of a defence (PlanEngr.withInundation): its depth, the water, the soil. */
+  inund?: import('./PlanEngr').InundSpec;
   /** What defTanks counts: Sqns (a Bn defence) or Tps (a Coy defence). */
   defTanksUnit?: 'Sqn' | 'Tp';
   /** The tank Sqn with the attack, from the ORBAT (PlanOrbat.tankSqnOf): tanks, Tps, tanks a Tp; its source. */
