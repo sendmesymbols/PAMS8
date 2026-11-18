@@ -712,6 +712,7 @@
       "spanShare": { "value": 0.4, "basis": "E", "note": "The posts span at least this share of the front, else bunched." },
       "stepM": { "value": 200, "basis": "E", "note": "The grid the posts are searched on." },
       "postEyeM": { "value": 1, "basis": "E", "note": "A post's eye: lying or kneeling in a trench on 30 m elevation." },
+      "tankEyeM": { "value": 2.5, "basis": "E", "note": "A Recce Sqn's AFV Tp as a post: the commander's eye in the cupola, hull down (no figure in the books read)." },
       "hisEyeM": { "value": 2, "basis": "E", "note": "His observer in the ground in front." },
       "mainTallM": { "value": 2, "basis": "E", "note": "What he looks for in the main posn (trenches, wire, vehicles)." },
       "seenPct": {

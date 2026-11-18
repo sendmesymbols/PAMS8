@@ -123,5 +123,29 @@ check('the ground reads the Gun Position going (rules.json profiles.gun), not th
   check('...built without artillery: no Arty rows', !row(rn.rows, 'Arty reach') && !row(rn.rows, 'Gun area'));
 }
 
+// ── the fire lifts by the plan's own guns (IC s66 p305) ──────────────────────────────────────────────────────────────
+{
+  const AT = await import('../../MS/Engines/DeploymentBuilder/PlanAttack.ts');
+  const ringsOf = (r) => AT.attackTimes(S.solveRecipe(r, ctx, {}), null, null, doc, 'plains', false, null).lifts.map((l) => `${l.label} ${l.rM}`).join(', ');
+  check('no artillery on the plan: the assault timed to every lift (120 mm 450, Med 360, Bn Mor 275, Fd 180)', ringsOf(front) === '120 mm Mor 450, Med 360, Bn Mor 275, Fd 180', ringsOf(front));
+  check('the Fd Regt: its own field lift (180 m) and the Bn\'s mortars (275 m) only', ringsOf(t1) === 'Bn Mor 275, Fd Regt 180', ringsOf(t1));
+  const tMed = A.withArty(front, doc, A.artyOnPlan(T_('arty-regt-med'), 'attack', ad)), tHy = A.withArty(front, doc, A.artyOnPlan(T_('arty-bty-hy-155gun'), 'attack', ad)), tMtn = A.withArty(front, doc, A.artyOnPlan(T_('arty-regt-mtn'), 'attack', ad));
+  check('a Med Regt and a Hy Bty lift at the medium 360 m; a Mtn Regt (105 mm) at the field 180 m', ringsOf(tMed) === 'Bn Mor 275, Med Regt 360' && /360$/.test(ringsOf(tHy)) && /Mtn Regt 180$/.test(ringsOf(tMtn)), `${ringsOf(tMed)} | ${ringsOf(tHy)} | ${ringsOf(tMtn)}`);
+  check('liftRings: the furthest lift sets how far out the SL must be: 450 m without artillery, 275 m with the Fd Regt', Math.max(...AT.liftRings(S.solveRecipe(front, ctx, {}), doc).map((x) => x[1])) === 450 && Math.max(...AT.liftRings(rT, doc).map((x) => x[1])) === 275);
+}
+
+// ── Check my plan on an attack built with artillery ──────────────────────────────────────────────────────────────────
+{
+  const pd = S.toPlanDocument(rT, (pid, ov, id, de) => ({ plnOrdrSymbolPK: { plnOrdrSymbolId: id }, drawEss: JSON.stringify(de) }), (pid, id, name, seq, syms) => ({ plnOrdrSymbolSet: syms }), 1);
+  // placed in Web Mercator near 31.5 N (a plan drawn at the equator would scale differently): metres times the Mercator factor
+  const k = 1 / Math.cos((31.5 * Math.PI) / 180), y0 = 3700000;
+  const syms = K.readSymbols(K.recordsFromPlanDoc(pd.doc)).map((s) => ({ ...s, pts: s.pts.map((p) => ({ x: p.x * k, y: y0 + p.y * k })), pbRole: pd.roles[s.id], pbRecipe: t1.id, pbMeta: { arty: t1.arty } }));
+  const r = K.checkPlan(syms, doc, {});
+  const ar = row(r.rows, 'Arty reach');
+  check('Check my plan on a built Bn Attk with the Fd Regt: Arty reach read back from the gun area, FUP, Obj and LOE: 2.3 km behind the FUP, the Obj and LOE in range', r.task === 'attack' && ar?.st === reachT[0].st && /2\.3 km behind the FUP/.test(ar.reason) && /the Obj and the LOE in range/.test(ar.reason), ar?.reason);
+  const rn = K.checkPlan(syms.map((s) => ({ ...s, pbMeta: {} })), doc, {});
+  check('...without artillery in what it was built for: no Arty reach', !row(rn.rows, 'Arty reach'));
+}
+
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

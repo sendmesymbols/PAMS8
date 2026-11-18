@@ -252,5 +252,22 @@ const fitIn = (unit, more = {}) => ({ recipe: r2, ctx: { doc: O.doctrineForUnit(
   check('the Armd Div reads from the Armr file: 13,128 all ranks (p 101, 103, 120)', B('armr-div-armd').strength === 13128);
 }
 
+// ── AT grouping by Pl on a Coy defence ───────────────────────────────────────────────────────────────────────────────
+{
+  const all = { ...o, own: O.mergeOwn(O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).units)) };
+  const ats = O.ownAtTypes(all), lat = ats.find((t) => t.id === 'inf-bn-lat-apc');
+  check('AT Bns by Pl: 2 ATGM Pls an AT Coy, 6 launchers a Pl (the Coy\'s 12 shared), a Pl 32 all ranks', ats.every((t) => t.plsPerCoy === 2 && t.launchersPerPl === 6) && lat.plStrength === 32, JSON.stringify(ats.map((t) => [t.id, t.plsPerCoy, t.launchersPerPl, t.plStrength])));
+  const coy = O.brief(all, 'inf-coy-std-rifle');
+  const p1 = O.withAtGroup(all, coy, 'inf-bn-lat-apc', 1, true), p2 = O.withAtGroup(all, coy, 'inf-bn-hat', 2, true), p9 = O.withAtGroup(all, coy, 'inf-bn-lat-apc', 9, true);
+  check('a rifle Coy + 1 ATGM Pl: 6 launchers (3 pairs), 141 + 32 all ranks, named', sum(p1.atgm) === 6 && O.atgmPairs(p1) === 3 && p1.strength === 173 && p1.name === 'Rifle Coy (Std Inf Bn) + 1 ATGM Pl (LAT Coy (APC borne))', `${p1.name} ${p1.strength}`);
+  check('...2 HAT Pls 12 launchers; more than a Coy\'s 2 Pls held to 2; the Coy itself unchanged', sum(p2.atgm) === 12 && sum(p9.atgm) === 12 && sum(coy.atgm) === 0 && !/\+/.test(coy.name));
+  check('by Coy (a Bn defence) unchanged: 1 LAT Coy is still 12 more', sum(O.withAtGroup(all, std, 'inf-bn-lat-apc', 1).atgm) === 16);
+  // the pairs sited on the tank approaches of a Coy defence
+  const rc = json('MS/Data/Deployments/Recipes/coy-def-two-up.json');
+  const flC = F.fitLayout({ ...fitIn(p1), recipe: rc, ctx: { doc: O.doctrineForUnit(doc, p1), symbols }, unit: p1 });
+  const pairs = new Set(flC.raw.items.filter((i) => i.role.startsWith('atgmX')).map((i) => i.role)).size;
+  check('a Coy Def with 1 ATGM Pl: its 3 pairs sited (the rifle Coy holds none), AT cover names the group', pairs === 3 && /Rifle Coy \(Std Inf Bn\) \+ 1 ATGM Pl/.test(row(flC.res.rows, 'AT cover')?.reason ?? ''), `${pairs} | ${row(flC.res.rows, 'AT cover')?.reason}`);
+}
+
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

@@ -61,12 +61,53 @@ check('Aslt Engr Bn over a 15 m ditch: the AVLB, 3 min', B('engr-bn-aslt', 15)?.
 check('a Fd Coy holds no bridging: no row', B('engr-fd-coy', 50) === null);
 check('by day the AM-50 is 1 h 45 as printed (slower than by moonlight: so printed)', E.engrBridge(T('engr-bn-aslt'), 50, 0, kinds).openH === 1.75 && E.engrBridge(T('engr-bn-aslt'), 50, 1, kinds).openH === 1);
 
+// ── the ribbon bays as rafts (p 430-431) ─────────────────────────────────────────────────────────────────────────────
+{
+  check('the raft table: Chinese 3-bay ribbon raft Cl 60 built 10 / 15 / 20 min, 5 / 4 / 3 trips an hour over 75 / 150 / 300 m; the US 5-bay one has no class printed', JSON.stringify(kinds.rafts.cn3?.buildMin) === '[10,15,20]' && JSON.stringify(kinds.rafts.cn3?.tripsPerH) === '[5,4,3]' && kinds.rafts.cn3.cls === 60 && kinds.rafts.us5?.cls === null, JSON.stringify(kinds.rafts));
+  const rf = E.engrRafts(T('engr-bn-br'), 60, 2, kinds);
+  check('Br Bn over 60 m on a dark night: built 20 min, 5 trips an hour: the first tank H+26 min, a Sqn of 14 H+3 h 8 min; the US raft named, no class', rf.firstMin === 26 && rf.sqnMin === 188 && /the first tank about H\+26 min, a Sqn of 14 H\+3 h 8 min/.test(rf.row.reason) && /prints no class/.test(rf.row.reason), rf.row.reason);
+  check('wider than 300 m: warn; no ribbon sets (the Aslt Engr Bn): no row', E.engrRafts(T('engr-bn-br'), 400, 2, kinds).row.st === 'warn' && E.engrRafts(T('engr-bn-aslt'), 60, 2, kinds) === null);
+}
+
 // ── the TAM breach ───────────────────────────────────────────────────────────────────────────────────────────────────
 const tb = E.tamBreach(T('engr-bn-aslt'), 2, 950, 6);
 check('Aslt Engr Bn, 2 lanes 950 m deep: one TAM a lane, about 3 h 10 min each (p 451: 600 m 2 h, 900 m 3 h, uncertain reading) against 6 h by hand', tb.row.st === 'pass' && tb.h === 3.2 && /about 3 h 12 min each/.test(tb.row.reason) && /uncertain/.test(tb.row.reason) && /6 h by hand/.test(tb.row.reason), tb.row.reason);
 const tb2 = E.tamBreach(T('engr-bn-offn-inf-div'), 6, 900, 6);
 check('the Offn Engr Bn\'s 5 TAMs for 6 lanes: short of 1, the rest by hand (warn); its MICLIC named', tb2.row.st === 'warn' && /short of 1/.test(tb2.row.reason) && /5 MICLIC/.test(tb2.row.reason), tb2.row.reason);
 check('no TAMs: no row', E.tamBreach(T('engr-fd-coy'), 2, 950, 6) === null);
+
+// ── his minefield in front of the Obj on a Bn Attk, and the breach before H ──────────────────────────────────────────
+{
+  const AT = await import('../../MS/Engines/DeploymentBuilder/PlanAttack.ts');
+  const S = await import('../../MS/Engines/DeploymentBuilder/PlanSolve.ts');
+  const R = await import('../../MS/Engines/DeploymentBuilder/PlanRecipes.ts');
+  const Ph = await import('../../MS/Engines/DeploymentBuilder/PlanPhase.ts');
+  const symbols = json('MS/Data/Symbols.json'), ctx = { doc, symbols };
+  const rec = (id) => json(`MS/Data/Deployments/Recipes/${id}.json`);
+  const front = rec('bn-attk-frontal'), right = rec('bn-attk-right-flank');
+  const mf = AT.withAttackMinefield(front, doc), mfR = AT.withAttackMinefield(right, doc), mf2 = AT.withAttackMinefield(Ph.twoPhaseRecipe(front, doc), doc);
+  const bad = (r) => R.validateRecipe(r, ctx).filter((i) => i.level === 'fail').map((i) => i.msg);
+  check('Bn Attk with his minefield: validates (frontal, right flank, two phases), id -amf, 275 m deep, 2 lanes; the one passed in unchanged', !bad(mf).length && !bad(mfR).length && !bad(mf2).length && mf.id === 'bn-attk-frontal-amf' && mf.enMfAtk.depthM === 275 && mf.enMfAtk.lanes === 2 && !front.enMfAtk && mf.slots.filter((s) => s.sym === '25340200').length === 2 && mf.slots.find((s) => s.role === 'enMfA').hostile, [...bad(mf), ...bad(mfR)].join('; '));
+  const ys = mf.slots.find((s) => s.role === 'enMfA').shape.pts.map((p) => p[1]);
+  check('...about 200 m in front of the Obj\'s near edge (-1150), 275 m deep: from -950 to -675 (IC s111.5, s107)', Math.abs(Math.min(...ys) + 950) <= 2 && Math.abs(Math.max(...ys) + 675) <= 2, ys.join(' '));
+  const xs = mfR.slots.find((s) => s.role === 'enMfA').shape.pts, axR = right.slots.find((s) => s.role === 'axis').shape.pts;
+  const cx = xs.reduce((a, p) => a + p[0], 0) / 4, cy = xs.reduce((a, p) => a + p[1], 0) / 4, last = axR[axR.length - 1], prev = axR[axR.length - 2];
+  const off = Math.abs((cx - prev[0]) * (last[1] - prev[1]) - (cy - prev[1]) * (last[0] - prev[0])) / Math.hypot(last[0] - prev[0], last[1] - prev[1]);
+  check('a flank attack: the minefield lies across the axis where it enters the Obj (its centre on the axis line)', off < 5, `${Math.round(off)} m off the axis`);
+  const B = (r, night) => AT.attackBreach(r, doc, night, orbat.engrData);
+  const b0 = B(mf, false);
+  check('no engineers grouped: Breach warns: 3 Pls a lane, 6 for the 2 lanes, 4 h by day (Annex Q); p 450 for 360 yd: 2 Pls, 4 h 8 min', b0.row.st === 'warn' && /3 engineer Pls a lane, 4 h by day/.test(b0.row.reason) && /6 engineer Pls needed/.test(b0.row.reason) && /p 450 for 360 yd: 2 Pls a lane, 4 h 8 min/.test(b0.row.reason), b0.row.reason);
+  const withE = (r, id) => ({ ...r, engr: { ...T(id), kinds } });
+  const bDef = B(withE(mf, 'engr-bn-def-inf-div-corps'), true), bFd = B(withE(mf, 'engr-fd-coy'), false), bAs = B(withE(mf, 'engr-bn-aslt'), true);
+  check('the Def Engr Bn (9 Pls): the lanes at once, 6 h by dark night: begun 6 h before H (pass)', bDef.row.st === 'pass' && bDef.h === 6 && /9 Pls do the lanes at once: begun 6 h before H/.test(bDef.row.reason), bDef.row.reason);
+  check('a Fd Coy (3 Pls) for 6: two turns, 8 h by day (warn)', bFd.row.st === 'warn' && bFd.h === 8 && /in 2 turns, 8 h/.test(bFd.row.reason), bFd.row.reason);
+  check('the Aslt Engr Bn: its TAMs, under an hour for 275 m (p 451) against 6 h by hand (pass)', bAs.row.st === 'pass' && bAs.h < 1 && /TAMs/.test(bAs.row.reason), bAs.row.reason);
+  check('no minefield: no Breach', B(front, false) === null);
+  // the H-hour sum: the engineers begin before H
+  const h = AT.attackTimes(S.solveRecipe(withE(mf, 'engr-bn-def-inf-div-corps'), ctx, {}), null, null, doc, 'plains', true, null);
+  const st = h.steps.find((s) => /Engineers begin the lanes/.test(s.label));
+  check('the H-hour sum: the engineers begin the lanes 6 h before H (Def Engr Bn, by hand), the steps in time order', st?.at === -360 && /Def Inf Div\/Corps Engr Bn, by hand/.test(st.label) && h.steps.every((s, i) => !i || s.at >= h.steps[i - 1].at), st ? `${st.label} ${st.at}` : 'none');
+}
 
 console.log(`\n${n} checks, ${fails} failed`);
 process.exit(fails ? 1 : 0);

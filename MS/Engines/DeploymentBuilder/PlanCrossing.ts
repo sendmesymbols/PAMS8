@@ -21,7 +21,7 @@
  *
  * Erasable TypeScript only: Node 24 runs this file as it is (tools/planbuilder-test/crossing.mjs).
  */
-import { engrBridge, tamBreach } from './PlanEngr';
+import { engrBridge, engrRafts, tamBreach } from './PlanEngr';
 import type { DoctrineSet, Recipe } from './PlanRecipes';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, PlanItem, SolveResult, XY } from './PlanSolve';
@@ -452,6 +452,9 @@ function readCrossing(c: Ctx): Read {
   if (eg) {
     const b = engrBridge(eg, need, li, eg.kinds);
     if (b) { rows.push(b.row); if (b.openH !== null && b.label) times.push({ label: b.label, atMin: Math.round(b.openH * 60) }); }
+    // its ribbon bays as rafts for the tanks until the bridge is open (p 430-431)
+    const rf = engrRafts(eg, wHi, li, eg.kinds, one(doc, 'crossing.sqnTanks', 14));
+    if (rf) { rows.push(rf.row); if (rf.firstMin !== null) times.push({ label: `First tank across (ribbon raft, ${eg.name})`, atMin: rf.firstMin }); }
   }
   // the night: bridgehead and induction in one night, break-out at first light (OoW II s14); night assault (IBB S46 para 18)
   // the vehicle lanes through his minefield, begun at H (breachRow: Annex Q para 4), go on the timeline the night is held to

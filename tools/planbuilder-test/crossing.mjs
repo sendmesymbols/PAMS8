@@ -196,6 +196,8 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
   const flBr = F.fitLayout(inpOf(withE(rec('bn-cross-two-up'), 'engr-bn-br'), H));
   const eb = row(flBr.res.rows, 'Engr bridging');
   check('Engineers: the Br Bn over the canal (70 m with the seats): its ribbon bridge, 1 h 30 on a dark night, open H+1 h 30, on the timeline before the M2', eb?.st === 'pass' && /Ribbon bridge \(Cl 60\) across 70 m: 1 h 30 min by dark night/.test(eb.reason) && flBr.fit.crossing.times.some((t) => /Ribbon bridge open \(Br Bn Engrs\)/.test(t.label) && t.atMin === 90) && !!row(flBr.res.rows, 'Bridge'), eb?.reason);
+  const er = row(flBr.res.rows, 'Engr rafts');
+  check('...and its ribbon bays as rafts: the first tank across on the timeline well before the bridge (Engr rafts row)', er?.st === 'pass' && flBr.fit.crossing.times.some((t) => /First tank across \(ribbon raft, Br Bn Engrs\)/.test(t.label) && t.atMin < 90), er?.reason);
   const flAs = F.fitLayout(inpOf(withE(rec('bn-cross-two-up'), 'engr-bn-aslt'), H));
   check('...the Aslt Engr Bn: two AM-50 sets one after the other (2 h 30), its AVLBs too short for 70 m', /AM-50 bridge, 2 sets \(Cl 50\) across 70 m: 2 h 30 min/.test(row(flAs.res.rows, 'Engr bridging')?.reason ?? ''), row(flAs.res.rows, 'Engr bridging')?.reason);
   const flFd = F.fitLayout(inpOf(withE(rec('bn-cross-two-up'), 'engr-fd-coy'), H));

@@ -95,7 +95,9 @@ const hm = (s: unknown): number | null => {
 };
 
 /** The bridges the engineer tables give for the ribbon bridge, AM-50 and the Pakistani AVLB (engrData). */
-export function bridgeKinds(engrData: any[]): { ribbon: BridgeKind | null; am50: BridgeKind | null; avlb: BridgeKind | null } {
+export interface RaftKind { label: string; cls: number | null; buildMin: [number, number, number]; tripsPerH: [number, number, number]; page: string }
+
+export function bridgeKinds(engrData: any[]): { ribbon: BridgeKind | null; am50: BridgeKind | null; avlb: BridgeKind | null; rafts: { us5: RaftKind | null; cn3: RaftKind | null } } {
   const brs = engrData.find((t: any) => /Brs in Pakistan Army - Planning Data/i.test(String(t?.title)));
   const layers = engrData.find((t: any) => /Br Layers - Planning Data/i.test(String(t?.title)));
   const row = (re: RegExp, cls: string) => brs?.rows?.find((r: any) => re.test(String(r.Type)) && String(r['Load Cl']) === cls) ?? null;
@@ -111,7 +113,37 @@ export function bridgeKinds(engrData: any[]): { ribbon: BridgeKind | null; am50:
   const am50 = k(row(/^AM-50/, '50'), 'AM-50 bridge', 'times as printed (1-45 by day, 1-0 by moonlight, 1-15 by dark night)');
   const av = layers?.rows?.find((r: any) => /Med span AVLB \(Pak, T-59\)/.test(String(r.Type)));
   const avlb = av ? { label: 'AVLB (Pak, T-59)', cls: Number(av.Cl), spanM: Number(av['Deck Span (M)']), hours: [3 / 60, 3 / 60, 3 / 60] as [number, number, number], page: String(layers.page), note: 'laid in about 3 min' } : null;
-  return { ribbon, am50, avlb };
+  // the ribbon bridge's bays as rafts (p 430-431): built in minutes by light, round trips an hour over 75 / 150 / 300 m
+  const rt = engrData.find((t: any) => /Eqpt Rafts/i.test(String(t?.title)));
+  const raft = (re: RegExp, label: string, cls: number | null): RaftKind | null => {
+    const r = rt?.rows?.find((x: any) => re.test(String(x.Type)));
+    if (!r) return null;
+    const n = (v: unknown) => Number(String(v ?? '').replace(/[^\d.]/g, ''));
+    return { label, cls, buildMin: [n(r.Day), n(r['Moon lt']), n(r['Dark ni'])], tripsPerH: [n(r['75 M']), n(r['150 M']), n(r['300 M'])], page: String(rt.page) };
+  };
+  const rafts = { us5: raft(/^Ribbon Raft \(USA\): 5 Bays/, 'Ribbon raft (US, 5 bays)', null), cn3: raft(/^Ribbon Raft \(Chinese\): 3 Bays/, 'Ribbon raft (Chinese, 3 bays, Cl 60)', 60) };
+  return { ribbon, am50, avlb, rafts };
+}
+
+/**
+ * The ribbon bridge's bays as rafts across a gap `widthM` wide (p 430-431): built in minutes by light, round trips an
+ * hour by the gap (the 75, 150 or 300 m column at or over it), one tank a trip: the first tank and a Sqn of `sqn`. The
+ * chart does not say which make the Br Bn holds: the US raft's class is not printed, the Chinese 3-bay one is Cl 60, so
+ * the tanks are timed on the Chinese one and the row says so. Null without ribbon bridge sets.
+ */
+export function engrRafts(e: EngrType, widthM: number, li: number, kinds: ReturnType<typeof bridgeKinds>, sqn = 14): { row: Check; firstMin: number | null; sqnMin: number | null } | null {
+  if (!e.ribbon) return null;
+  const k = kinds.rafts.cn3 ?? kinds.rafts.us5;
+  if (!k) return null;
+  const col: number = widthM <= 75 ? 0 : widthM <= 150 ? 1 : widthM <= 300 ? 2 : -1;
+  if (col < 0) return { row: { name: 'Engr rafts', st: 'warn', reason: `${Math.round(widthM)} m: wider than the raft table's 300 m (p ${k.page})` }, firstMin: null, sqnMin: null };
+  const per = (k.tripsPerH as number[])[col] ?? 1, build = (k.buildMin as number[])[li] ?? 0;
+  const first = Math.round(build + 60 / per / 2), all = Math.round(build + (sqn * 60) / per);
+  const us = kinds.rafts.us5;
+  return {
+    firstMin: first, sqnMin: all,
+    row: { name: 'Engr rafts', st: 'pass', reason: `the ${poss(e.name)} ribbon bays as rafts (p ${k.page}): the ${k.label} built in ${build} min ${LIGHT[li]}, ${per} round trips an hour over ${Math.round(widthM)} m: the first tank about ${hRel(first / 60)}, a Sqn of ${sqn} ${hRel(all / 60)}, one a trip${us ? `; the US raft (${us.buildMin[li]} min, ${(us.tripsPerH as number[])[col] ?? "?"} trips an hour) prints no class: the make is not on the chart, tanks timed on the Chinese one (E)` : ''}` },
+  };
 }
 
 const LIGHT = ['by day', 'by moonlight', 'by dark night'];

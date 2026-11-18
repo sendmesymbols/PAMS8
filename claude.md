@@ -409,7 +409,10 @@ MS/
   band behind the FDL / FUP (`gunRulesFrom`), Arty reach (DF Tgts, his FUP; Obj and LOE) and Gun area on the bundle's `gun` going;
   read back by Check my plan (`pbMeta.arty`); `node tools/planbuilder-test/arty.mjs` (27). **Engineers** (`PlanEngr.ts`, Engrs row on
   Bn / Coy Def and the crossings): an ORBAT engineer unit's Pls and MMLs in Mines in time (p 439), its bridging (AVLB, AM-50, ribbon,
-  pp 427-432) as Engr bridging and its TAMs as Mech breach (p 451) on a crossing; `node tools/planbuilder-test/engr.mjs` (22). 3-Coy Bn Def layouts for the Lt Cdo Bn (`bn3-def-two-up`, `bn3-def-three-up`,
+  pp 427-432) as Engr bridging, ribbon rafts (pp 430-431) and its TAMs as Mech breach (p 451) on a crossing; **His Mf** on a Bn Attk
+  (`withAttackMinefield`, `attackBreach`: Annex Q, the p 450 table, the engineers' Pls / TAMs, begun before H in the H-hour sum);
+  `node tools/planbuilder-test/engr.mjs` (34). Fire lifts by the plan's own guns (`liftRings`); 3-Coy Bn Attk layouts (`bn3-attk-*`);
+  AT groups by Pl on a Coy Def; the tank Sqn the phase 2 reserve; a Coy Screen by a Recce Sqn (`withRecceScreen`). 3-Coy Bn Def layouts for the Lt Cdo Bn (`bn3-def-two-up`, `bn3-def-three-up`,
   recipe `forCoys`; the tab shows the layouts for the type chosen, `_famIds`) and an **AT group** row on a Bn defence: 1-3 ATGM
   Coys of a LAT / HAT Bn grouped to it (`withAtGroup`, `pbMeta.atGroup`, read back by Check my plan). **Phase 6 attack** (`PlanAttack.ts`): Bn Attk
   right / left flank (BOF fixes the front) beside frontal (warned, ranked last unless no flank is feasible: user); finders

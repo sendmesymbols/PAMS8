@@ -102,6 +102,10 @@ export interface Recipe {
   defTanks?: number;
   /** Engineers with a crossing (PlanBuildTab): the unit, its Pls and equipment, and the bridge tables it builds from. */
   engr?: import('./PlanEngr').EngrType & { kinds: ReturnType<typeof import('./PlanEngr').bridgeKinds> };
+  /** A screen held by a Recce Sqn (PlanSmallOps.withRecceScreen): its AFV Tps the posts, their eye height, the Sqn. */
+  screenBy?: { name: string; posts: string; eyeM: number; text: string };
+  /** His protective minefield in front of the Obj (PlanAttack.withAttackMinefield): its depth and the lanes through it. */
+  enMfAtk?: { depthM: number; lanes: number };
   /** Artillery with the plan and its gun area (PlanArty.withArty): the unit, its gun, the band behind the front. */
   arty?: import('./PlanArty').ArtyOnPlan;
   /** What defTanks counts: Sqns (a Bn defence) or Tps (a Coy defence). */
@@ -228,7 +232,8 @@ export function validateRecipe(r: Recipe, ctx: ValidateCtx): RecipeIssue[] {
   if (r.unit && ctx.units && !ctx.units.has(r.unit)) fail(`unit ${r.unit} is not in the ORBAT`);
   if (r.forCoys != null) {
     const below = String(Number(r.echelon) === 16 ? 15 : 14);
-    const held = Array.isArray(r.slots) ? r.slots.filter((s) => s?.echelon === below && ['fwd', 'depth', 'res', 'round'].includes(s.kind)).length : 0;
+    // a defence's sub-units hold ground (posns); an attack's are unit symbols (the assault Coys, the reserve)
+    const held = Array.isArray(r.slots) ? r.slots.filter((s) => s?.echelon === below && (['fwd', 'depth', 'res', 'round'].includes(s.kind) || (r.task === 'attack' && s.kind === 'point' && /^10/.test(String(s.sym))))).length : 0;
     if (!Number.isInteger(r.forCoys) || r.forCoys < 1) fail(`forCoys ${r.forCoys} is not a whole number from 1`);
     else if (held !== r.forCoys) fail(`forCoys is ${r.forCoys} but the recipe holds ground with ${held} sub-units`);
   }

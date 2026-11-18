@@ -582,7 +582,7 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
   const unitBase = opts.orbat && mp.built?.meta?.unit ? brief(opts.orbat, mp.built.meta.unit) : null;
   // AT Coys grouped to it when it was built (LAT, HAT): their launchers count for the ATGM pairs and AT cover
   const atg = mp.built?.meta?.atGroup;
-  const unitB = opts.orbat && unitBase && atg?.id ? withAtGroup(opts.orbat, unitBase, String(atg.id), Number(atg.coys) || 1) : unitBase;
+  const unitB = opts.orbat && unitBase && atg?.id ? withAtGroup(opts.orbat, unitBase, String(atg.id), Number(atg.coys) || 1, !!atg.byPl) : unitBase;
 
   // tank Sqns grouped to it when it was built (PlanTanks.withDefTanks): counted in the force as in the build
   const defTk = Number(mp.built?.meta?.defTanks) || 0;
@@ -812,6 +812,20 @@ function checkAttack(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Chec
   const terrain: TerrainSpec = opts.terrain && opts.terrain !== 'auto' ? { kind: opts.terrain, source: 'user' } : { kind: 'plains', source: 'assumed', why: 'set the Ground if the attack goes over an obstacle, desert or mountains' };
   rows.push(forceRow(doc, 'attack', ownEch, enemy, strengthOfSide(own, doc) || undefined, ...enemyFromOrbat(mp, doc, opts, enemy, terrain.kind)));
   rows.push(terrainRow(doc, terrain));
+  // the artillery it was built with (pbMeta.arty): its gun area, the FUP, the Obj and the LOE read from their symbols, in
+  // metres from the FUP toward the Obj, judged as the build did (Arty reach)
+  const artyMeta = mp.built?.meta?.arty;
+  if (artyMeta) {
+    const byRole = (r: string) => own.filter((s) => s.pbRole === r && s.pts.length);
+    const fu = byRole('fup')[0], ob = byRole('obj')[0];
+    if (fu && ob) {
+      const F0 = centroid(fu.pts), O0 = centroid(ob.pts), L = Math.hypot(O0.x - F0.x, O0.y - F0.y) || 1;
+      const u = P((O0.x - F0.x) / L, (O0.y - F0.y) / L);
+      const loc = (p: XY) => P(((p.x - F0.x) * u.y - (p.y - F0.y) * u.x) / k, ((p.x - F0.x) * u.x + (p.y - F0.y) * u.y) / k);
+      const items = ['gunArea', 'fup', 'obj', 'obj2', 'loe'].flatMap((r) => byRole(r).map((s) => ({ role: r, pts: s.pts.map(loc) })));
+      rows.push(...artyRows(items, { task: 'attack', arty: artyMeta } as any, null));
+    }
+  }
   const fupBand = range('attack.fupFromObjM') ?? [1000, 1200], tankBand = range('attack.tankFupFromObjM') ?? [2500, 3000];
   const slBand = range('check.slAxisDeg') ?? [60, 120];
   const bofMin = range('attack.bofFlankMinDeg')?.[0] ?? 30, bofMax = range('attack.bofRangeMaxM')?.[0] ?? 1189;

@@ -116,7 +116,10 @@ broken('forCoys not a whole number', (r) => { r.forCoys = 2.5; }, /forCoys 2\.5 
 {
   // a family may hold a layout once for each Coy count, not twice for the same
   const t3 = recipes.find((r) => r.id === 'bn3-def-two-up');
-  check('3-Coy recipes: forCoys 3, the Lt Cdo Bn, two layouts (two up with a reserve, three up with none)', recipes.filter((r) => r.forCoys === 3).map((r) => r.id).sort().join() === 'bn3-def-three-up,bn3-def-two-up' && t3?.unit === 'inf-bn-lt-cdo' && t3.slots.filter((s) => s.kind === 'res').length === 1 && recipes.find((r) => r.id === 'bn3-def-three-up').slots.every((s) => s.kind !== 'res' && s.kind !== 'depth'));
+  check('3-Coy recipes: forCoys 3, the Lt Cdo Bn: Bn Def two up with a reserve, three up with none; Bn Attk right, left, frontal', recipes.filter((r) => r.forCoys === 3).map((r) => r.id).sort().join() === 'bn3-attk-frontal,bn3-attk-left-flank,bn3-attk-right-flank,bn3-def-three-up,bn3-def-two-up' && t3?.unit === 'inf-bn-lt-cdo' && t3.slots.filter((s) => s.kind === 'res').length === 1 && recipes.find((r) => r.id === 'bn3-def-three-up').slots.every((s) => s.kind !== 'res' && s.kind !== 'depth'));
+  const a3 = recipes.find((r) => r.id === 'bn3-attk-right-flank');
+  check('3-Coy Bn Attk: A and B Coys assault, C Coy the reserve; the BOF is the support weapons (no Coy, not counted)', ['asltL', 'asltR', 'res'].every((x) => a3.slots.find((s) => s.role === x)?.echelon === '15') && a3.slots.find((s) => s.role === 'bofCoy')?.label === 'Sp Wpns' && !a3.slots.find((s) => s.role === 'bofCoy').echelon);
+  broken('an attack whose forCoys does not match its Coy symbols (3 for four)', (r) => { Object.assign(r, structuredClone(recipes.find((x) => x.id === 'bn-attk-frontal')), { forCoys: 3, id: 'bn-def-two-up' }); }, /forCoys is 3 but the recipe holds ground with 4/);
   check('families: the same layout once for each Coy count is allowed', !R.validateFamilies(recipes).length);
   const dup = [...recipes, { ...structuredClone(t3), id: 'bn3-def-two-up-b' }];
   check('...but the same layout twice for the same count is caught', R.validateFamilies(dup).some((i) => /same layout twice/.test(i.msg)));

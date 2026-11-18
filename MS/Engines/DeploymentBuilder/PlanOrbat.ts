@@ -241,6 +241,10 @@ export interface AtType {
   /** One AT Coy's name and all ranks. */
   coyName: string;
   coyStrength: number | null;
+  /** The ATGM Pls in one of its Coys (2: LAT and HAT), and one Pl's launchers and all ranks. */
+  plsPerCoy: number;
+  launchersPerPl: number;
+  plStrength: number | null;
 }
 
 /** The AT Bns in the ORBAT: Bn-sized infantry with no rifle Coy and ATGM launchers (LAT APC, LAT Jeep, HAT). */
@@ -254,18 +258,25 @@ export function ownAtTypes(o: OrbatSet): AtType[] {
     const kids = (u.children ?? []).map((c: any) => ({ c, cu: find(o.own, c.unit) })).filter((x: any) => x.cu && x.cu.echelon === '15' && !NOT_MANOEUVRE_HQ.test(String(x.c.role)));
     const n = kids.reduce((a: number, x: any) => a + (Number(x.c.count) || 1), 0);
     if (!n) continue;
-    out.push({ id: u.id, name: b.name, coys: n, launchersPerCoy: Math.round(launchers / n), coyName: String(kids[0].cu.name), coyStrength: Number(kids[0].cu.strength?.total) || null });
+    const coyU = kids[0].cu;
+    const plKids = (coyU.children ?? []).filter((c: any) => /atgm pl|hat pl/i.test(String(c.role)));
+    const plsPerCoy = plKids.reduce((a: number, c: any) => a + (Number(c.count) || 1), 0) || 2;
+    const plU = plKids.length ? find(o.own, plKids[0].unit) : null;
+    const perCoy = Math.round(launchers / n);
+    out.push({ id: u.id, name: b.name, coys: n, launchersPerCoy: perCoy, coyName: String(coyU.name), coyStrength: Number(coyU.strength?.total) || null, plsPerCoy, launchersPerPl: Math.round(perCoy / plsPerCoy), plStrength: Number(plU?.strength?.total) || null });
   }
   return out;
 }
 const NOT_MANOEUVRE_HQ = /\bhq\b|adm|sp coy/i;
 
 /**
- * A unit with ATGM Coys of an AT Bn grouped to it (LAT, HAT): their launchers added to its own, so the ATGM pairs sited
- * on the tank approaches and the AT cover row count them. Its Coys, rifle Coy count and reserve are not changed.
+ * A unit with ATGM Coys of an AT Bn grouped to it (LAT, HAT), or `byPl` its ATGM Pls (a Coy defence: 2 a Coy): their
+ * launchers added to its own, so the ATGM pairs sited on the tank approaches and the AT cover row count them. Its Coys,
+ * rifle Coy count and reserve are not changed.
  */
-export function withAtGroup(o: OrbatSet, unit: UnitBrief | null, atId: string | null | undefined, coys: number): UnitBrief | null {
+export function withAtGroup(o: OrbatSet, unit: UnitBrief | null, atId: string | null | undefined, coys: number, byPl = false): UnitBrief | null {
   const at = atId ? ownAtTypes(o).find((t) => t.id === atId) : null;
+  if (byPl) return withAtPls(o, unit, at, coys);
   const k = Math.max(0, Math.min(at?.coys ?? 0, Math.round(coys)));
   const ab = at ? brief(o, at.id) : null;
   if (!unit || !at || !ab || !k) return unit;
@@ -281,6 +292,24 @@ export function withAtGroup(o: OrbatSet, unit: UnitBrief | null, atId: string | 
     atgm: [...unit.atgm, add],
     src: `${unit.src}; ${ab.src}`,
     notes,
+  };
+}
+
+/** ATGM Pls of an AT Bn's Coy grouped to a unit (a Coy defence): up to the Pls in one Coy, the Pl's launchers each. */
+function withAtPls(o: OrbatSet, unit: UnitBrief | null, at: AtType | null | undefined, n: number): UnitBrief | null {
+  const k = Math.max(0, Math.min(at?.plsPerCoy ?? 0, Math.round(n)));
+  const ab = at ? brief(o, at.id) : null;
+  if (!unit || !at || !ab || !k) return unit;
+  const line = ab.atgm[0];
+  const add: WeaponLine = { id: line?.id ?? null, name: (line?.name ?? 'ATGM').replace(/ Wpn Sys.*| Launcher.*/, ''), count: at.launchersPerPl * k, rangeM: line?.rangeM ?? null };
+  const what = `${k} ATGM Pl${k > 1 ? 's' : ''} (${at.coyName})`;
+  return {
+    ...unit,
+    name: `${unit.name} + ${what}`,
+    strength: unit.strength !== null && at.plStrength ? unit.strength + k * at.plStrength : unit.strength,
+    atgm: [...unit.atgm, add],
+    src: `${unit.src}; ${ab.src}`,
+    notes: [...unit.notes, `${what} grouped to it: ${add.count} ${add.name} (a Coy's ${at.launchersPerCoy} shared over its ${at.plsPerCoy} ATGM Pls)`],
   };
 }
 
@@ -308,6 +337,25 @@ export function tankSqnOf(o: OrbatSet, id = 'armr-sqn-tk'): TankSqn | null {
   if (!tanks) return null;
   const regt = find(o.own, 'armr-regt');
   return { id: u.id, name: String(u.name), tanks, tps: tpKid ? Number(tpKid.count) || 1 : 0, tpTanks: tks(tp), regtTanks: regt ? tks(regt) || null : null, src: `SO's Hbk 2019 p ${u.page ?? '?'} (${u.id})` };
+}
+
+/**
+ * The Recce Sqn of the Recce Regt (armr.json p 109-112): SHQ's tanks and its AFV Tps' (11), its Rifle Tps and their APCs
+ * (4 a Tp, p 112), counted down its children; null when the armour file is not loaded.
+ */
+export function recceSqnOf(o: OrbatSet): { name: string; tanks: number; afvTps: number; rifleTps: number; apcs: number; src: string } | null {
+  const u = find(o.own, 'armr-recce-sqn');
+  if (!u) return null;
+  // gun tanks only ("Tks", "Tks (SHQ)"), not the Adm Tp's "Tk Dozer"
+  const tks = (vs: any[] | undefined) => (vs ?? []).filter((v: any) => /^tks?(\s*\(|$)/i.test(String(v?.name).trim())).reduce((a: number, v: any) => a + (Number(v.count) || 0), 0);
+  let tanks = 0, afvTps = 0, rifleTps = 0, apcs = 0;
+  for (const c of u.children ?? []) {
+    const n = Number(c.count) || 1, cu = find(o.own, c.unit);
+    if (cu && /afv tp/i.test(String(c.role))) { afvTps += n; tanks += n * tks(cu.vehicles); continue; }
+    tanks += n * tks(c.vehicles);
+    if (/rifle tp/i.test(String(c.role))) { rifleTps += n; apcs += n * (c.vehicles ?? []).filter((v: any) => /apc/i.test(String(v?.name))).reduce((a: number, v: any) => a + (Number(v.count) || 0), 0); }
+  }
+  return { name: String(u.name), tanks, afvTps, rifleTps, apcs, src: `SO's Hbk 2019 p ${u.page ?? '?'} (${u.id})` };
 }
 
 /** The Sqn in a line: its tanks and Tps, the Regt it comes from. */

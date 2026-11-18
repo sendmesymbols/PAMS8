@@ -17,7 +17,7 @@ import { doctrineAt, resolveRange, SMALL_TASKS } from './PlanRecipes';
 import type { Check, CheckState, SlotResult, SolveResult, SolveCtx, SolveOptions, XY } from './PlanSolve';
 import { solveRecipe, BP_SHAPE } from './PlanSolve';
 import { atgmPairs, type UnitBrief } from './PlanOrbat';
-import { attackFactors, attackTimes, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
+import { attackBreach, attackFactors, attackTimes, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
 import { findPhase2, goingRow, type Phase2Find } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode } from './PlanTanks';
 import { artyRows } from './PlanArty';
@@ -969,6 +969,9 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     const ax2 = raw.items.find((i) => i.role === 'axis2');
     if (ph2 && ax2) merged.rows.push(goingRow('Ph 2 going', ax2.pts, frame, ground));
     if (h) merged.rows.push(hSumRow(h, ctx.doc));
+    // his minefield in front of the Obj: the breach before H
+    const brR = recipe.enMfAtk ? attackBreach(recipe as any, ctx.doc, !!inp.night)?.row : null;
+    if (brR) merged.rows.push(brR);
     const p2r = h ? phase2Row(h, ctx.doc) : null;
     if (p2r) merged.rows.push(p2r);
     // the reorganisation: his counter-attack ways in onto the last objective, in place of the solver's unread row

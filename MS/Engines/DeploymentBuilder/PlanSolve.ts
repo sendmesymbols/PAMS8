@@ -630,7 +630,12 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     }
     if (!res && fus.length) {
       const bofCoy = at('bofCoy');
-      rows.push({ name: 'Reserve', st: 'warn', reason: `no Bn reserve: the assault Coys on Obj 1, ${fus.map((i) => i.label).join(', ')} on Obj 2${bofCoy ? `, ${bofCoy.label} at the BOF` : ''}: tell Bde (IBB p186 i); Obj 1 holds as the firm base against his counter-attack (p189 para 23)` });
+      // with tanks: the Sqn, its part in phase 1 done, rallies behind Obj 1 as the Bn's reserve for phase 2 and his
+      // counter-attack (IC s105 para 21 b: tanks help break up his counter-attack in the reorganization; E)
+      const tk = recipe.tanks ? (recipe.tankSqn ? `the tank Sqn (${recipe.tankSqn.tanks} tanks)` : 'the tank Sqn') : null;
+      rows.push(tk
+        ? { name: 'Reserve', st: 'pass', reason: `no infantry reserve: the assault Coys on Obj 1, ${fus.map((i) => i.label).join(', ')} on Obj 2${bofCoy ? `, ${bofCoy.label} at the BOF` : ''}; ${tk}, its part in phase 1 done, rallies behind Obj 1 as the Bn's reserve for phase 2 and against his counter-attack (IC s105 para 21 b; E): tell Bde all the same (IBB p186 i)` }
+        : { name: 'Reserve', st: 'warn', reason: `no Bn reserve: the assault Coys on Obj 1, ${fus.map((i) => i.label).join(', ')} on Obj 2${bofCoy ? `, ${bofCoy.label} at the BOF` : ''}: tell Bde (IBB p186 i); Obj 1 holds as the firm base against his counter-attack (p189 para 23)${recipe.task === 'attack' ? '; or take tanks (Tanks row): the Sqn becomes the reserve after phase 1' : ''}` });
     }
     for (const [n, why] of [['FUP unseen', 'the FUP hidden from the enemy'], ['SL a linear feature', 'a linear feature square to the axis, not behind an obstacle'], ['Approach going', 'the going from the SL to the Obj, dry and wet'], ['Approaches covered', 'the enemy\'s counter-attack approaches onto the Obj']] as const) {
       rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });

@@ -41,7 +41,10 @@
       "recipes": [
         "bn-attk-right-flank",
         "bn-attk-left-flank",
-        "bn-attk-frontal"
+        "bn-attk-frontal",
+        "bn3-attk-right-flank",
+        "bn3-attk-left-flank",
+        "bn3-attk-frontal"
       ]
     },
     {

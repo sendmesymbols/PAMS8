@@ -17,7 +17,8 @@
  *
  * No ArcGIS, no DOM: the ground through PlanFit's `PlanGround`. What the ground cannot answer stays "unchecked".
  */
-import type { DoctrineSet } from './PlanRecipes';
+import type { DoctrineSet, Recipe } from './PlanRecipes';
+import { tamBreach, type EngrType } from './PlanEngr';
 import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckState, SolveResult, XY } from './PlanSolve';
 import { toLocal, toWorld, type FitFrame, type PlanGround } from './PlanFit';
@@ -56,6 +57,20 @@ const extentAlong = (b: ReturnType<typeof ext>, u: XY) => Math.min(Math.abs(u.x)
  * The finders. `res` is the recipe solved with the user's own moves only; the frame is the attack's (y toward the
  * objective). Every move is kept small and said; without sight data a place stays where the recipe put it.
  */
+/**
+ * The fire lifts the assault is covered to (IC s66 p305: from the objective, 120 mm mortars 450 m, medium 360, the Bn's
+ * mortars 275, field 180). Without artillery on the plan, every ring (the safe side); with it (PlanArty), the Bn's
+ * mortars and the ring of the plan's own guns: a Fd or Mtn Regt / Bty the field ring, a Med or Hy one the medium ring.
+ */
+export function liftRings(res: { recipe: { arty?: { name: string; weapon: { name: string } } } }, doc: DoctrineSet): [string, number][] {
+  const lift = (doctrineAt(doc, 'fireLiftM') ?? {}) as Record<string, number>;
+  const all: [string, number][] = [['120 mm Mor', lift.mor120 ?? 450], ['Med', lift.medium ?? 360], ['Bn Mor', lift.bnMor ?? 275], ['Fd', lift.field ?? 180]];
+  const a = res.recipe.arty;
+  if (!a) return all;
+  const med = /(med|hy)|155|130|8 in/i.test(`${a.name} ${a.weapon.name}`);
+  return [['Bn Mor', lift.bnMor ?? 275], med ? [a.name, lift.medium ?? 360] : [a.name, lift.field ?? 180]];
+}
+
 export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet): AttackFind {
   const out: AttackFind = { nudges: {}, geom: {}, axis: null, route: null, rows: [] };
   const item = (role: string) => res.items.find((i) => i.role === role);
@@ -127,7 +142,8 @@ export function findAttackSpots(res: SolveResult, f: FitFrame, g: PlanGround, do
   };
   const S0 = sl ? centre(sl.pts) : P(F1.x + u.x * 200, F1.y + u.y * 200);
   // the SL beyond the furthest fire lift (IC s66 p305), with room to spare: the assault crosses it under covering fire
-  const liftMax = Math.max(...Object.values((doctrineAt(doc, 'fireLiftM') ?? {}) as Record<string, unknown>).filter((x): x is number => typeof x === 'number'), 450);
+  // the furthest lift of the fire the plan has (all of them without its own artillery)
+  const liftMax = Math.max(...liftRings(res, doc).map(([, r]) => r));
   const slMinM = liftMax + num(doc, 'attack.slBeyondLiftM', 150);
   let S: XY | null = null, cover = 0, anyKnown = false;
   for (let t = 200; toEdge(P(F1.x + u.x * t, F1.y + u.y * t)) >= slMinM; t += 25) {
@@ -346,8 +362,7 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
     return { share, pace: pace * (1 - share + share * (day.go / day.slow)) };
   };
   const { share: slowShare, pace: paceEff } = paceOn(ax);
-  const lift = (doctrineAt(doc, 'fireLiftM') ?? {}) as Record<string, number>;
-  const rings: [string, number][] = [['120 mm Mor', lift.mor120 ?? 450], ['Med', lift.medium ?? 360], ['Bn Mor', lift.bnMor ?? 275], ['Fd', lift.field ?? 180]];
+  const rings = liftRings(res, doc);
   const atD = (m: number) => Math.round((Math.max(0, m) / 100) * paceEff);
   const steps: HStep[] = [];
   const before = l1min + fupMin + Math.round(l2.min);
@@ -399,11 +414,88 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
       loeAt = atD(D + depth + loeDist);
     }
   }
+  const br = res.recipe.enMfAtk ? attackBreach(res.recipe, doc, night) : null;
+  if (br) steps.unshift({ label: `Engineers begin the lanes through his minefield (${br.by})`, distM: 0, min: Math.round(br.h * 60), at: -Math.round(br.h * 60) });
+  steps.sort((a, b) => a.at - b.at);
   return {
     steps, lifts: rings.map(([label, r]) => ({ label, rM: r, at: atD(D - r) })),
     leaveBeforeH: before, objAt: atD(D), loeAt, night, slowPct: l1?.slowPct ?? null,
     paceMinPer100m: Math.round(paceEff * 10) / 10, assaultSlowPct: Math.round(slowShare * 100), phase2,
   };
+}
+
+// ── his minefield in front of the objective ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The recipe with his protective minefield in front of the Obj (IC s111.5: about 200 m in front of his localities; IC
+ * s107: 250-300 m deep), across the axis where it enters the Obj, 600 m wide, hostile, with a Breach lane through it for
+ * each assault Coy (2, 120 m apart). Its id gains `-amf`; the recipe passed in is not changed.
+ */
+export function withAttackMinefield(r: Recipe, doc: DoctrineSet): Recipe {
+  if (r.task !== 'attack' || r.enMfAtk) return r;
+  const obj = r.slots.find((s) => s.role === 'obj')?.shape?.rect, axis = r.slots.find((s) => s.role === 'axis')?.shape?.pts;
+  if (!obj || !axis || axis.length < 2) return r;
+  const mid = (v: unknown, fb: number) => { const x = resolveRange(doc, v); return x ? (x[0] + x[1]) / 2 : fb; };
+  const off = mid(doctrineAt(doc, 'standoff.obstacleInFrontM'), 200), Dm = Math.round(mid(doctrineAt(doc, 'standoff.protectiveMinefieldDepthM'), 275));
+  const w = mid(obj.wM, 1500), h = mid(obj.hM, 700);
+  const inObj = (p: [number, number]) => Math.abs(p[0] - obj.acrossM) <= w / 2 && Math.abs(p[1] - obj.backM) <= h / 2;
+  const H = axis[axis.length - 1], T = axis[axis.length - 2];
+  const L = Math.hypot(H[0] - T[0], H[1] - T[1]) || 1, u: [number, number] = [(H[0] - T[0]) / L, (H[1] - T[1]) / L], n: [number, number] = [-u[1], u[0]];
+  let E: [number, number] = [H[0], H[1]];
+  for (let t = 0; t <= 4000 && inObj(E); t += 1) E = [H[0] - u[0] * t, H[1] - u[1] * t];
+  const c: [number, number] = [E[0] - u[0] * (off + Dm / 2), E[1] - u[1] * (off + Dm / 2)];
+  const at = (a: number, b: number): [number, number] => [Math.round(c[0] + n[0] * a + u[0] * b), Math.round(c[1] + n[1] * a + u[1] * b)];
+  const W = 600;
+  const out: Recipe = JSON.parse(JSON.stringify(r));
+  out.slots.push({ role: 'enMfA', kind: 'obstacle', sym: '25270706', label: 'En MF', order: 1, hostile: true, shape: { pts: [at(-W / 2, -Dm / 2), at(W / 2, -Dm / 2), at(W / 2, Dm / 2), at(-W / 2, Dm / 2)] } });
+  for (const [k, a] of [['L', -60], ['R', 60]] as const) out.slots.push({ role: `laneAtk${k}`, kind: 'line', sym: '25340200', label: '', order: 2, shape: { base: [at(a - 15, -Dm / 2 - 20), at(a + 15, -Dm / 2 - 20)], ctrl: at(a, Dm / 2 + 20) } });
+  out.id = `${r.id}-amf`;
+  out.name = `${r.name}, his minefield`;
+  out.enMfAtk = { depthM: Dm, lanes: 2 };
+  out.note = `${r.note ?? ''} His protective minefield ${Dm} m deep about ${Math.round(off)} m in front of the Obj (IC s111.5, s107), a lane for each assault Coy (PlanAttack.withAttackMinefield).`.trim();
+  return out;
+}
+
+/** SO's Hbk p 450 (Hand Breaching): the first printed depth (yards) at or over the minefield's, its Pls and hours by light. */
+function handBreachTable(engrData: any[] | undefined, depthM: number): { yds: number; pls: number; h: [number, number, number] } | null {
+  const t = (engrData ?? []).find((x: any) => /M Fd Breaching - Hand Breaching/i.test(String(x?.title)));
+  const yd = depthM / 0.9144;
+  const r = t?.rows?.find((x: any) => Number(x['Depth (Yds)']) >= yd);
+  if (!r) return null;
+  const hm = (hh: unknown, mm: unknown) => Number(hh) + (Number(String(mm).replace(/^9(?=7\.5)/, '0')) || 0) / 60;
+  const frac = String(r['Engrs Pl (s)']).replace(' 1/2', '.5');
+  return { yds: Number(r['Depth (Yds)']), pls: Number(frac) || 1, h: [hm(r['Day Hrs'], r['Day Mins']), hm(r['Moon lt Hrs'], r['Moon lt Mins']), hm(r['Dark ni Hrs'], r['Dark ni Mins'])] };
+}
+
+/**
+ * The breach of his minefield before H: by hand (IBB Annex Q para 4: an engineer Pl a 108 m of lane, 4 / 6 h by day /
+ * dark night; SO's Hbk p 450 by depth) with the engineers grouped (their Pls: lanes at once, or one after the other),
+ * or by TAM (p 451). The quickest way the plan has, its hours and a row; without engineers grouped, the Pls it needs.
+ */
+export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] } }, doc: DoctrineSet, night: boolean, engrData?: any[]): { h: number; by: string; row: Check } | null {
+  const mf = r.enMfAtk;
+  if (!mf) return null;
+  const li = night ? 2 : 0;
+  const laneM = num(doc, 'crossing.breach.laneM', 108);
+  const hrs = (doctrineAt(doc, 'crossing.breach.hours') as any)?.none ?? [4, 5, 6];
+  const plsLane = Math.ceil(mf.depthM / laneM), need = plsLane * mf.lanes;
+  const e = r.engr ?? null;
+  const tbl = handBreachTable(engrData ?? (e as any)?.engrData, mf.depthM);
+  const handOne = hrs[li] as number;
+  const rounds = e && e.pls ? Math.ceil(need / e.pls) : null;
+  const handH = rounds ? handOne * rounds : handOne;
+  const tam = e ? tamBreach(e, mf.lanes, mf.depthM, handOne) : null;
+  const useTam = !!tam && tam.h < handH && e!.tam >= mf.lanes;
+  const h = useTam ? tam!.h : handH;
+  const by = useTam ? 'TAM' : 'by hand';
+  const book = tbl ? `; SO's Hbk p 450 for ${tbl.yds} yd: ${tbl.pls} Pl${tbl.pls > 1 ? 's' : ''} a lane, ${Math.floor(tbl.h[li])} h ${Math.round((tbl.h[li] % 1) * 60)} min` : '';
+  const st: CheckState = !e ? 'warn' : useTam || (e.pls >= need) ? 'pass' : 'warn';
+  const head = `his minefield ${mf.depthM} m deep, ${mf.lanes} lanes (one an assault Coy): ${plsLane} engineer Pls a lane, ${handOne} h ${night ? 'by dark night' : 'by day'} (IBB Annex Q para 4)${book}`;
+  const who = !e ? `: ${need} engineer Pls needed: group engineers (Engrs row)`
+    : useTam ? `; the ${e.name}'s TAMs: about ${Math.round(tam!.h * 60)} min a lane, begun that long before H`
+    : e.pls >= need ? `; the ${e.name}'s ${e.pls} Pls do the lanes at once: begun ${handH} h before H`
+    : e.pls ? `; the ${e.name} has ${e.pls} Pls for ${need}: the lanes in ${rounds} turns, ${handH} h: begun that long before H, or more engineers` : `; the ${e.name} has no engineer Pls that breach: more engineers`;
+  return { h, by: e ? `${e.name}, ${by}` : 'engineers to be grouped', row: { name: 'Breach', st, reason: head + who } };
 }
 
 /** Phase 2's timing as a check row: H2 against the time he has to react after Obj 1 falls (IBB p176 c). */

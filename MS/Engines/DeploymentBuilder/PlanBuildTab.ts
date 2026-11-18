@@ -45,10 +45,10 @@ import { artyOnPlan, artyRows, ownArtyTypes, withArty, type ArtyDoctrine, type A
 import { bridgeKinds, engrText, ownEngrTypes, type EngrType } from './PlanEngr';
 import { gunRulesFrom } from '../GunDeployment/GunDeploymentFind';
 import gunDoctrine from '../../Data/GunDoctrine.json';
-import { OWN_ORBAT_FILES, brief, doctrineForUnit, enUnitFor, forceFromOrbat, mergeOwn, minefieldRow, ownAtTypes, ownBdeTypes, ownBnTypes, ownDivTypes, ownUnitFor, sizeText, tankSqnOf, tankSqnText, typeFits, unitForPlan, unitLine, withAtGroup, type AtType, type OrbatSet, type OwnType, type TankSqn, type UnitBrief } from './PlanOrbat';
+import { OWN_ORBAT_FILES, brief, doctrineForUnit, enUnitFor, forceFromOrbat, mergeOwn, minefieldRow, ownAtTypes, ownBdeTypes, ownBnTypes, ownDivTypes, ownUnitFor, recceSqnOf, sizeText, tankSqnOf, tankSqnText, typeFits, unitForPlan, unitLine, withAtGroup, type AtType, type OrbatSet, type OwnType, type TankSqn, type UnitBrief } from './PlanOrbat';
 import { atgmExtras } from './PlanFit';
-import { attackTimes, hRelText, hSumRow, phase2Row } from './PlanAttack';
-import { checkSmallOp, solveSmall, type Mover } from './PlanSmallOps';
+import { attackBreach, attackTimes, hRelText, hSumRow, phase2Row, withAttackMinefield } from './PlanAttack';
+import { withRecceScreen, checkSmallOp, solveSmall, type Mover } from './PlanSmallOps';
 import { SMALL_TASKS } from './PlanRecipes';
 import { rulesFrom as movRulesFrom } from '../MovementGuide/MovementGuideScan';
 import { plRulesFrom, type PlFootSpeeds } from '../PlatoonGuide/PlatoonGuideRead';
@@ -112,7 +112,7 @@ const footSpeeds = (): PlFootSpeeds => {
   return { ground: f.ground ?? { open: [4, 3] }, road: f.road?.track ?? [4, 3], toblerA: Array.isArray(f.slope?.a) ? f.slope.a[0] : 3.5, toblerB: typeof f.slope?.b === 'number' ? f.slope.b : 0.05 };
 };
 /** A recipe id without the two-phase suffix (PlanPhase.twoPhaseRecipe adds -2ph). */
-const baseId = (id: string) => id.replace(/-gun$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkdd$/, '').replace(/-2ph1?$/, '');
+const baseId = (id: string) => id.replace(/-gun$/, '').replace(/-rcs$/, '').replace(/-en$/, '').replace(/-mf$/, '').replace(/-tk[cf]$/, '').replace(/-tkd\d$/, '').replace(/-amf$/, '').replace(/-2ph1?$/, '');
 const WORD: Record<CheckState, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail', unchecked: 'Not checked' };
 const RGB: Record<CheckState, [number, number, number]> = { pass: [47, 168, 98], warn: [238, 138, 31], fail: [229, 72, 77], unchecked: [127, 136, 147] };
 const esc = (s: unknown) => Utils.escapeHtml(String(s ?? ''));
@@ -336,6 +336,8 @@ export class PlanBuildTab {
   private _engrCache: EngrType[] | null = null;
   private get _engrTypes(): EngrType[] { return this._orbat ? (this._engrCache ??= ownEngrTypes(this._orbat)) : []; }
   private get _engr(): EngrType | null { return this._engrId ? this._engrTypes.find((e) => e.id === this._engrId) ?? null : null; }
+  /** A Coy screen held by a Recce Sqn (its AFV Tps the posts) instead of a rifle Coy. */
+  private _recceScreen = false;
   /** The artillery with a Bn plan (an ORBAT Regt or Bty: Fd, Med, Med (SP), Mtn, Hy); null: none drawn. */
   private _artyId: string | null = null;
   private _artyCache: ArtyType[] | null = null;
@@ -521,16 +523,17 @@ export class PlanBuildTab {
   private _unit(recipe: Recipe | null | undefined): UnitBrief | null {
     if (!recipe || !this._orbat) return null;
     const fam = this._families.find((f) => f.recipes.includes(baseId(recipe.id)));
-    const preferred = recipe.unit ?? fam?.unit;
-    const t = this._unitId ? this._types.find((x) => x.id === this._unitId) : null;
+    const preferred = recipe.screenBy ? 'armr-recce-sqn' : recipe.unit ?? fam?.unit;
+    const t = this._unitId && !recipe.screenBy ? this._types.find((x) => x.id === this._unitId) : null;
     const type = t && typeFits(t, recipe.echelon, this._needOf(recipe)) ? t.id : null;
     const b = brief(this._orbat, unitForPlan(this._orbat, recipe.echelon, { type, bde: this._bdeId, div: this._divId, preferred })) ?? brief(this._orbat, ownUnitFor(recipe.echelon, preferred));
-    return this._atGrouped(recipe) ? withAtGroup(this._orbat, b, this._atId, this._atCoys) : b;
+    // a Bn defence groups AT Coys, a Coy defence ATGM Pls
+    return this._atGrouped(recipe) ? withAtGroup(this._orbat, b, this._atId, this._atCoys, recipe!.echelon === '15') : b;
   }
 
   /** The AT grouping applies to a Bn defence: LAT / HAT Coys grouped to it add their ATGM pairs on the tank approaches. */
   private _atGrouped(recipe: Recipe | null | undefined): boolean {
-    return !!this._atId && !!recipe && recipe.echelon === '16' && recipe.task === 'defence';
+    return !!this._atId && !!recipe && (recipe.echelon === '16' || recipe.echelon === '15') && recipe.task === 'defence';
   }
 
   /** The enemy's unit in the ORBAT for the recipe's enemy (Sec 13). */
@@ -559,6 +562,15 @@ export class PlanBuildTab {
   /** The recipe with the choices that change its slots, before the artillery: his minefield, tanks, two phases. */
   private _rcpBase(id: string): Recipe | undefined {
     const base = this._recipes.get(baseId(id));
+    // a Coy screen by a Recce Sqn (PlanSmallOps.withRecceScreen), cached
+    if (base?.layout === 'screen' && this._recceScreen && this._orbat) {
+      const sq = recceSqnOf(this._orbat);
+      if (!sq) return base;
+      const key = `${base.id}:rcs`;
+      let v = this._ph2.get(key);
+      if (!v) { v = withRecceScreen(base, this._doc, sq); this._ph2.set(key, v); }
+      return v;
+    }
     // a crossing with his minefield assumed (PlanCrossing.withMinefield), cached like the attack's variants
     if (base?.task === 'crossing') {
       let m: Recipe = base;
@@ -582,13 +594,19 @@ export class PlanBuildTab {
       if (!d) { d = withDefTanks(base, this._doc, this._defTanks, this._tankSqn); this._ph2.set(key, d); }
       return d;
     }
-    if (!base || base.task !== 'attack' || (this._phases !== 2 && this._tanks === 'none')) return base;
-    const coys = this._coys, key = `${base.id}:${this._phases}:${coys}:${this._tanks}`;
+    // a 3-Coy attack (Lt Cdo) has no Coy left for a second phase: one phase
+    const phases = base?.forCoys === 3 ? 1 : this._phases;
+    if (!base || base.task !== 'attack' || (phases !== 2 && this._tanks === 'none' && !this._mf)) return base;
+    const e = this._mf ? this._engr : null;
+    const coys = this._coys, key = `${base.id}:${phases}:${coys}:${this._tanks}:${this._mf}:${e?.id ?? ''}`;
     let t = this._ph2.get(key);
     if (!t) {
-      t = this._phases === 2 ? twoPhaseRecipe(base, this._doc, undefined, coys) : base;
-      // tanks with phase 1 (PlanTanks), after the second phase is laid
+      t = phases === 2 ? twoPhaseRecipe(base, this._doc, undefined, coys) : base;
+      // his minefield in front of the Obj, then tanks with phase 1 (PlanTanks), after the second phase is laid
+      if (this._mf) t = withAttackMinefield(t, this._doc);
       t = withTanks(t, this._doc, this._tanks, this._tankSqn);
+      // the engineers who breach it (their Pls, TAMs; the p 450 table)
+      if (e && this._orbat) t = { ...t, id: `${t.id}-en`, engr: { ...e, kinds: bridgeKinds(this._orbat.engrData ?? []), engrData: this._orbat.engrData } as any };
       this._ph2.set(key, t);
     }
     return t;
@@ -749,7 +767,8 @@ export class PlanBuildTab {
     const h = r.task === 'attack' ? attackTimes(res, null, null, this._doc, t.kind, this._night, null) : null;
     const tk = h && r.tanks ? addTankTimes(h, res, null, null, this._doc, this._night, r.tanks, null) : [];
     const p2 = h ? phase2Row(h, this._doc) : null;
-    return { ...res, rows: [...rows, ...this._orbatRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk] };
+    const brR = r.task === 'attack' ? attackBreach(r as any, this._doc, this._night, this._orbat?.engrData)?.row ?? null : null;
+    return { ...res, rows: [...rows, ...this._orbatRows(res), ...(r.task === 'attack' ? this._artyGeomRows(res) : []), ...(brR ? [brR] : []), ...(h ? [hSumRow(h, this._doc)] : []), ...(p2 ? [p2] : []), ...tk] };
   }
 
   // ── terrain ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -879,7 +898,7 @@ export class PlanBuildTab {
       case 'ph2Coys': this._setCoys(val === '1' ? 1 : 2); break;
       case 'tanks': this._setTanks(val === 'close' || val === 'fire' ? val : 'none'); break;
       case 'mover': this._setMover(MOVERS.includes(val as Mover) ? (val as Mover) : 'wheeled'); break;
-      case 'mf': this._mf = val === 'on'; this._swapPlan(this._mf ? 'His minefield assumed: the home side drawn back, a lane to each crossing place' : 'No minefield known'); break;
+      case 'mf': this._mf = val === 'on'; this._swapPlan(this._mf ? (this._isCrossing ? 'His minefield assumed: the home side drawn back, a lane to each crossing place' : 'His minefield assumed in front of the Obj: a lane for each assault Coy, breached before H') : 'No minefield known'); break;
       case 'light': this._light = val === 'day' || val === 'moon' ? val : 'dark'; this._swapPlan(`Light: ${this._light === 'moon' ? 'moonlight' : this._light === 'dark' ? 'dark night' : 'day'}`); break;
       case 'ground': this._ground = (val as any) || 'auto'; this._solve(); if (this._mode === 'check' && this._checkRecs) this._runCheck(); break;
       case 'checkScope': this._checkScope = (val as any) || 'selected'; break;
@@ -899,6 +918,7 @@ export class PlanBuildTab {
       case 'divType': this._divId = val || null; this._solve(); break;
       case 'atType': this._atId = val || null; this._solve(); break;
       case 'arty': this._artyId = val || null; this._solve(); break;
+      case 'recceScreen': this._recceScreen = val === 'on'; this._solve(); break;
       case 'engr': this._engrId = val || null; this._solve(); break;
       case 'defTanks': this._defTanks = Math.max(0, Math.min(3, Number(val) || 0)); this._solve(); break;
       case 'atCoys': this._atCoys = Math.max(1, Math.min(3, Number(val) || 1)); this._solve(); break;
@@ -1241,11 +1261,11 @@ export class PlanBuildTab {
       enemy: enemy ? { echelon: enemy.echelon, type: enemy.type } : null,
       unit, threat: this._threat && recipe.task !== 'attack' ? { ...this._threat } : null,
       // the AT Coys grouped to it (read back by Check my plan for the ATGM pairs and AT cover)
-      atGroup: this._atGrouped(recipe) ? { id: this._atId, coys: this._atCoys } : null,
+      atGroup: this._atGrouped(recipe) ? { id: this._atId, coys: this._atCoys, byPl: recipe.echelon === '15' } : null,
       defTanks: recipe.defTanks ?? 0,
       defTanksUnit: recipe.defTanksUnit ?? null,
       arty: recipe.arty ?? null,
-      engr: this._engr && (recipe.task === 'defence' || recipe.task === 'crossing') ? this._engr.id : null,
+      engr: this._engr && (recipe.task === 'defence' || recipe.task === 'crossing' || recipe.enMfAtk) ? this._engr.id : null,
     };
   }
 
@@ -1674,7 +1694,10 @@ export class PlanBuildTab {
     const off = types.filter((t) => !fits(t) && t !== on);
     const chips = types.filter((t) => this._allTypes || !off.includes(t)).map((t) => this._chip(t === on, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `unitType:${t.id}`, why(t), !fits(t))).join('');
     const more = off.length ? `<button type="button" class="pb-more" data-pb="moreTypes" aria-expanded="${this._allTypes}">${this._allTypes ? 'Hide the types not offered' : `+${off.length} not offered`}</button>` : '';
-    return `${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${this._artyRow(recipe)}${recipe.task === 'crossing' ? '' : this._engrRow(recipe)}${facts}`;
+    const rsq = recipe.layout === 'screen' && this._orbat ? recceSqnOf(this._orbat) : null;
+    const rcs = rsq ? row('Screen by', seg([{ on: !this._recceScreen, label: 'Rifle Coy', data: 'recceScreen:off', title: 'The rifle Coy of the type below: its Pls the posts' }, { on: this._recceScreen, label: 'Recce Sqn', data: 'recceScreen:on', title: `${rsq.name}: ${rsq.tanks} tanks, ${rsq.afvTps} AFV Tps the posts (they see from the cupola), ${rsq.rifleTps} Rifle Tps in ${rsq.apcs} APCs (${rsq.src})` }])) : '';
+    if (recipe.screenBy) return `${rcs}${facts}<div class="pb-hint">${esc(recipe.screenBy.text)}</div>`;
+    return `${rcs}${row(ech === '16' ? 'Type' : `${sub} of`, chips + more)}${this._atRow(recipe)}${this._tankRow(recipe)}${this._artyRow(recipe)}${recipe.task === 'crossing' ? '' : this._engrRow(recipe)}${facts}`;
   }
 
   /**
@@ -1683,12 +1706,14 @@ export class PlanBuildTab {
    * the AT cover row. None, or the AT Bn and how many of its Coys.
    */
   private _atRow(recipe: Recipe): string {
-    if (!this._orbat || recipe.echelon !== '16' || recipe.task !== 'defence' || !this._atTypes.length) return '';
-    const none = this._chip(!this._atId, 'None', 'atType:', 'No AT Coys grouped: the unit\'s own launchers only');
+    if (!this._orbat || (recipe.echelon !== '16' && recipe.echelon !== '15') || recipe.task !== 'defence' || !this._atTypes.length) return '';
+    const byPl = recipe.echelon === '15';
+    const none = this._chip(!this._atId, 'None', 'atType:', `No AT ${byPl ? 'Pls' : 'Coys'} grouped: the unit's own launchers only`);
     const types = this._atTypes.map((t) => this._chip(this._atId === t.id, t.name.replace(/ Bn\b/, ''), `atType:${t.id}`,
       `${t.coys} ATGM Coys, ${t.launchersPerCoy} launchers each (${t.launchersPerCoy / 2} pairs): the ${t.name}'s printed launchers shared over its Coys`));
     const at = this._atTypes.find((t) => t.id === this._atId);
-    const coys = at ? seg(Array.from({ length: at.coys }, (_, i) => ({ on: this._atCoys === i + 1, label: String(i + 1), data: `atCoys:${i + 1}`, title: `${(i + 1) * at.launchersPerCoy} launchers, ${(i + 1) * at.launchersPerCoy / 2} pairs` })), { sm: true, label: 'AT Coys' }) : '';
+    const per = at ? (byPl ? at.launchersPerPl : at.launchersPerCoy) : 0, max = at ? (byPl ? at.plsPerCoy : at.coys) : 0;
+    const coys = at ? seg(Array.from({ length: max }, (_, i) => ({ on: Math.min(this._atCoys, max) === i + 1, label: String(i + 1), data: `atCoys:${i + 1}`, title: `${i + 1} ATGM ${byPl ? 'Pl' : 'Coy'}${i ? 's' : ''}: ${(i + 1) * per} launchers, ${(i + 1) * per / 2} pairs` })), { sm: true, label: byPl ? 'ATGM Pls' : 'AT Coys' }) : '';
     return row('AT group', none + types.join('') + coys);
   }
 
@@ -1725,8 +1750,9 @@ export class PlanBuildTab {
    */
   private _engrRow(recipe: Recipe): string {
     const forDef = recipe.task === 'defence' && (recipe.echelon === '16' || recipe.echelon === '15');
-    if (!this._orbat || !(forDef || recipe.task === 'crossing') || !this._engrTypes.length) return '';
-    const chips = [this._chip(!this._engrId, 'Doctrine', 'engr:', forDef ? 'One Engr Fd Coy lays the minefield (the figure before the ORBAT)' : 'The Div\'s M2 bridge and hand breaching (IBB Annex Q)')]
+    const forAtk = recipe.task === 'attack' && !!recipe.enMfAtk;
+    if (!this._orbat || !(forDef || forAtk || recipe.task === 'crossing') || !this._engrTypes.length) return '';
+    const chips = [this._chip(!this._engrId, 'Doctrine', 'engr:', forDef ? 'One Engr Fd Coy lays the minefield (the figure before the ORBAT)' : forAtk ? 'No engineers grouped: the Breach row says how many Pls the lanes need' : 'The Div\'s M2 bridge and hand breaching (IBB Annex Q)')]
       .concat(this._engrTypes.map((e) => this._chip(this._engrId === e.id, e.name.replace(/ \((IFCE|IMCE)\)$/, ' ($1)'), `engr:${e.id}`, `${engrText(e)} (${e.src})`))).join('');
     return row('Engrs', chips);
   }
@@ -1905,8 +1931,8 @@ export class PlanBuildTab {
         { on: !this._night, label: 'Day', data: 'night:off', title: 'SL crossed between first and last light (OOW2 s6 para 17)' },
         { on: this._night, label: 'Night', data: 'night:on', title: 'Night rates (IBB p 18), the Night March chart from the Assy Area to the FUP, his night and thermal sights' }]))
         + row('Phases', seg([
-          { on: this._phases === 1, label: '1', data: 'phases:1', title: 'One phase: the assault Coys onto the Obj, a reserve kept' },
-          { on: this._phases === 2, label: '2', data: 'phases:2', title: 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else his high ground' }]) + keyHint('P'))
+          { on: this._phases === 1 || !!res.recipe.forCoys, label: '1', data: 'phases:1', title: 'One phase: the assault Coys onto the Obj, a reserve kept' },
+          { on: this._phases === 2 && !res.recipe.forCoys, label: '2', data: 'phases:2', disabled: !!res.recipe.forCoys, title: res.recipe.forCoys ? 'A 3-Coy Bn has no Coy left for a second phase' : 'Obj 1, then the follow-up Coys round it onto Obj 2 behind, from a new direction (IBB p186); Obj 2 on a hostile posn drawn behind Obj 1, else his high ground' }]) + keyHint('P'))
         + (this._phases === 2 ? row('Ph 2 by', seg([
           { on: this._coys === 2, label: 'C, D Coys', data: 'ph2Coys:2', title: 'Both follow-up Coys onto Obj 2; the BOF is the Spt Coy weapons; no Bn reserve is left: tell Bde (IBB p186 i). R flips it while placing.' },
           { on: this._coys === 1, label: 'C Coy, D res', data: 'ph2Coys:1', title: 'C Coy onto Obj 2, D Coy kept as the Bn reserve (IBB p186 h(3): commit only what the task needs); the BOF is the Spt Coy weapons. R flips it while placing.' }]) + keyHint('R')) : '')
@@ -1914,6 +1940,9 @@ export class PlanBuildTab {
           { on: this._tanks === 'none', label: 'None', data: 'tanks:none', title: 'No tanks with the Bn' },
           { on: this._tanks === 'fire', label: 'Fire sp', data: 'tanks:fire', title: 'Infantry heavy: A Sqn from FUP (Tks) 2.5-3 km out to fire posns by the BOF, there as the infantry come as close to the Obj (IBB p214)' },
           { on: this._tanks === 'close', label: 'Close sp', data: 'tanks:close', title: 'Armour heavy: A Sqn less a troop from FUP (Tks) on its own axis converging on the Obj, rushing it from the assault line of the infantry; a troop covering from a flank (IBB pp 186-188)' }]) + keyHint('T'))
+        + row('His Mf', seg([
+          { on: !this._mf, label: 'None', data: 'mf:off', title: 'No minefield known in front of the Obj' },
+          { on: this._mf, label: 'In front', data: 'mf:on', title: 'His protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107): a lane for each assault Coy, breached before H (Breach row; the engineers in the Engrs row)' }]))
       : '';
     const sq = this._tankSqn;
     const tankFacts = res.recipe.task === 'attack' && this._tanks !== 'none' && sq

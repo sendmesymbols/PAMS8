@@ -769,6 +769,31 @@ Verified in the app: the Engrs row on Bn Def (Def Engr Bn: Mines in time 12 h by
 
 Not done: engineers on an attack (the breach of his minefield in front of a Bn Attk: the attack has no minefield yet); the hand-breaching table of p 450 (by depth in yards, the Pls and times by light: Annex Q's figure is kept); rafts from the engineers' table (p 430-431); obstacles other than mines (the AT ditch, wire, demolitions); the Div's Engr Bn's Coys split between Bns.
 
+**The not-done items, done (19 Nov 2026, the user: "complete what is not done"):**
+
+| Item | What was done | Where |
+|---|---|---|
+| Artillery in Check my plan for an attack | The built gun area, FUP, Obj, Obj 2 and LOE read from their symbols (metres from the FUP toward the Obj): Arty reach as the build gave it | `PlanCheck.checkAttack` |
+| The fire plan by the plan's own guns | The assault is timed to the lifts of the fire the plan has (IC s66 p305): without artillery every ring (120 mm 450, Med 360, Bn Mor 275, Fd 180); with it the Bn's mortars and the Regt's own ring (Fd / Mtn 180, Med / Hy 360). The SL finder holds the SL beyond the furthest of those | `PlanAttack.liftRings` |
+| 3-Coy layouts for Bn Attk | `bn3-attk-right-flank`, `-left-flank`, `-frontal` (Lt Cdo): A, B Coys assault, C Coy the reserve, the BOF the support weapons (no Coy); one phase only (the Phases 2 chip off: no Coy left for it). The validator counts an attack's Coy symbols for `forCoys` | `Recipes/bn3-attk-*.json`, `PlanRecipes.validateRecipe`, `PlanBuildTab._rcpBase` |
+| AT groups by Pl | A Coy Def takes 1-2 ATGM Pls of an AT Bn's Coy (6 launchers each, the Coy's 12 over its 2 Pls; 32 all ranks): 3 pairs sited on the tank approaches for one Pl; read back by Check my plan | `PlanOrbat.withAtGroup(…, byPl)`, `ownAtTypes` (`plsPerCoy`, `launchersPerPl`) |
+| Engineers on an attack | **His Mf** row on a Bn Attk: his protective minefield about 200 m in front of the Obj, 250-300 m deep (IC s111.5, s107), across the axis where it enters the Obj (frontal and flank), hostile, a Breach lane for each assault Coy (`-amf`). **Breach** row: Annex Q (3 Pls a lane, 4 / 6 h), the **p 450 hand-breaching table** (by depth in yards: 360 yd, 2 Pls, 4 h 8 min by day), the engineers chosen (Engrs row): their Pls at once or in turns, their TAMs (p 451); the H-hour sum gets "Engineers begin the lanes" that long before H | `PlanAttack.withAttackMinefield`, `attackBreach` |
+| Engineer rafts | The Br Bn's ribbon bays as rafts on a crossing (p 430-431): the Chinese 3-bay Cl 60 raft (the US one prints no class: the make is not on the chart, E), built 10 / 15 / 20 min, 5 / 4 / 3 trips an hour by width: first tank H+26 min, a Sqn H+3 h 8 on the test canal by dark night, on the timeline | `PlanEngr.engrRafts`, `bridgeKinds().rafts` |
+| Tanks as the reserve in phase 2 | Two phases by C, D Coys leave no infantry reserve: with tanks the Sqn, its part in phase 1 done, is the reserve behind Obj 1 (IC s105 para 21 b; E: Reserve row pass, tell Bde all the same); without tanks the row says so | `PlanSolve` (Reserve row) |
+| Recce Sqn for screens | **Screen by**: Rifle Coy or Recce Sqn (p 109-112: 11 tanks, 3 AFV Tps, 2 Rifle Tps in 8 APCs). The posts are its AFV Tps (tank symbols) seeing from the cupola (`smallOps.screen.tankEyeM` 2.5 m, E) | `PlanSmallOps.withRecceScreen`, `PlanOrbat.recceSqnOf` |
+| Fixed on the way | `baseId` had lost the backslash in `-tkd\d` (a defence with tanks could lose its family's unit) | `PlanBuildTab` |
+| Checks | `arty.mjs` 33, `orbat.mjs` 93, `engr.mjs` 34, `crossing.mjs` 64, `tanks.mjs` 91, `recipes.mjs` 121, `solve.mjs` 547 (29 recipes) | |
+
+Verified in the app: Bn Attk with the Lt Cdo Bn (the 3-Coy layouts, Phases 2 off), His Mf with the Aslt Engr Bn (Breach pass by TAM, 17 symbols), Coy Def with a LAT ATGM Pl (6 ATGM, 173 all ranks), Coy Screen by the Recce Sqn.
+
+**Still not done, and why:**
+- **Siting the gun area with the Gun Deployment finder**: `GunDeployment.ts` is being changed by another session now, and its finder reads a different ground reader (the Site Scan probe): left so as not to collide.
+- **Artillery for Bde and Div plans**: the only Bde and Div plans are the crossings, whose times take no unit; a gun area there needs a fire plan for a bridgehead first.
+- **AD and aviation as units in a plan**: new arms with their own doctrine (AD sites over the bridge, gun area, HQ; the Air Aslt Bn's lift), not started.
+- **An Armr Regt or Tk Sqn as the unit of a plan**: needs armour frontages and depths; Sec 1 has none; `Operations of War (Volume-I) Defence.pdf` may, but it is password-protected (the user can unlock it as Sec 1 was).
+- **SSG and Coast Guards in the Type row**: the user's call.
+- **Obstacles other than mines** (AT ditch, wire, demolitions) and **the Div Engr Bn's Coys split between Bns**: not started.
+
 **Housekeeping (19 Nov 2026):** the unlocked copy of Sec 1 deleted; `master` fast-forwarded to the work; `tools/orbat-test/run.mjs` reads `MS/Data/Orbat/PK` (it read the parent folder and stopped before checking anything): 434 units, 200 weapons, 7648 checks, 0 failed, 8 warnings.
 
 Verified in the app (dev server): 1, 2 Sqns on the Std Inf Bn's two up (33 and 34 symbols), the Lt Cdo Bn's three up with 2 Sqns (36), the force row naming the Sqns, Copy as Text and the Tank Sqns row; the Tanks row is absent on an attack (it has its own). **Not checked in the app:** placing the plan and the Tank harbour row on the real terrain (the map did not take clicks in that run); both are tested in Node with synthetic ground, and the placed plan's read-back in `check.mjs`.

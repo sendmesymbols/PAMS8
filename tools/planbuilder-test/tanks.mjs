@@ -261,5 +261,25 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   check('a Bn Def\'s Sqn is still one more unit; a Coy Def\'s Sqn count is not used for it (Sqns only on a Bn)', O.forceFromOrbat(O.brief(orbat, 'inf-bn-std'), null, sqn, 2).ownS === 6);
 }
 
+// ── the tank Sqn as the reserve in phase 2; a screen held by a Recce Sqn ─────────────────────────────────────────────
+{
+  const O = await import('../../MS/Engines/DeploymentBuilder/PlanOrbat.ts');
+  const SO = await import('../../MS/Engines/DeploymentBuilder/PlanSmallOps.ts');
+  const P = 'MS/Data/Orbat/PK/';
+  const orbat = { own: O.mergeOwn(O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).units)), en: [], weapons: json(`${P}weapons.json`).weapons };
+  const sqn = O.tankSqnOf(orbat), sq = { tanks: sqn.tanks, tps: sqn.tps, tpTanks: sqn.tpTanks, regtTanks: sqn.regtTanks, src: sqn.src };
+  const two = Ph.twoPhaseRecipe(front, doc, undefined, 2);
+  const r0 = row(S.solveRecipe(two, ctx, {}).rows, 'Reserve'), r1 = row(S.solveRecipe(T.withTanks(two, doc, 'close', sq), ctx, {}).rows, 'Reserve');
+  check('two phases by C, D Coys, no tanks: no Bn reserve (warn), and it says tanks would be one', r0?.st === 'warn' && /take tanks/.test(r0.reason), r0?.reason);
+  check('...with tanks: the Sqn (14 tanks), its part in phase 1 done, is the reserve behind Obj 1 (pass, E; tell Bde all the same)', r1?.st === 'pass' && /the tank Sqn \(14 tanks\)/.test(r1.reason) && /IC s105 para 21 b; E/.test(r1.reason) && /tell Bde/.test(r1.reason), r1?.reason);
+  // the Recce Sqn
+  const rs = O.recceSqnOf(orbat);
+  check('the Recce Sqn (p 109-112): 11 tanks (SHQ 2 + 3 AFV Tps of 3), 2 Rifle Tps in 8 APCs', rs?.tanks === 11 && rs.afvTps === 3 && rs.rifleTps === 2 && rs.apcs === 8, JSON.stringify(rs));
+  const scr = rec('coy-screen'), v = SO.withRecceScreen(scr, doc, rs);
+  const bad = R.validateRecipe(v, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
+  check('a screen by the Recce Sqn: validates, id -rcs, its posts the AFV Tps (1-3 Tp, tank symbols), the eye 2.5 m from the cupola (E); the one passed in unchanged', !bad.length && v.id === 'coy-screen-rcs' && v.slots.filter((s) => /^op\d$/.test(s.role)).map((s) => `${s.label}/${s.sym}`).join() === '1 Tp/10120500,2 Tp/10120500,3 Tp/10120500' && v.screenBy.eyeM === 2.5 && !scr.screenBy && scr.slots.find((s) => s.role === 'op1').label === '1 Pl', bad.join('; '));
+  check('...its line names the Sqn, the posts and the Rifle Tps; not a screen: left as it is', /11 tanks \(3 AFV Tps the posts, eye 2\.5 m/.test(v.screenBy.text) && /2 Rifle Tps in 8 APCs/.test(v.screenBy.text) && SO.withRecceScreen(front, doc, rs) === front, v.screenBy.text);
+}
+
 console.log(`\n${n - fails} of ${n} checks passed${fails ? `, ${fails} FAILED` : ''}`);
 process.exit(fails ? 1 : 0);

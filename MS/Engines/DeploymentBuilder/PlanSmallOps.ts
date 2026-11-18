@@ -838,7 +838,8 @@ function readScreen(c: Ctx): SmallRead {
   const front = one(doc, 'smallOps.screen.frontM', 3000);
   const fwd = fig(doc, 'smallOps.screen.fwdM', [300, 1500]);
   const apartM = one(doc, 'smallOps.screen.postsApartM', 400), stepM = one(doc, 'smallOps.screen.stepM', 200);
-  const eye = one(doc, 'smallOps.screen.postEyeM', 1), hisEye = one(doc, 'smallOps.screen.hisEyeM', 2), tall = one(doc, 'smallOps.screen.mainTallM', 2);
+  // a Recce Sqn's AFV Tps see from the commander's cupola, not a trench (smallOps.screen.tankEyeM, E)
+  const eye = recipe.screenBy ? recipe.screenBy.eyeM : one(doc, 'smallOps.screen.postEyeM', 1), hisEye = one(doc, 'smallOps.screen.hisEyeM', 2), tall = one(doc, 'smallOps.screen.mainTallM', 2);
   const foot = mov.going('dismounted');
   const coverCls = new Set<number>(R.ambush.coverClasses);
   mov.takePending?.();
@@ -1051,3 +1052,20 @@ export function checkSmallOp(inp: FitLayoutInput, drawn: Drawn): SmallCheck | nu
 /** For the Node checks: the readers on their own. */
 export const _test = { readAmbush, readPatrol, readRecce, aimGeom, sharedShare };
 export type { CheckDetail, Station };
+
+/**
+ * A Coy screen held by a Recce Sqn (armr.json p 109: SHQ, 3 AFV Tps of 3 tanks, 2 Rifle Tps in APCs): the three posts
+ * are its AFV Tps (tank symbols), seeing from the commander's cupola (smallOps.screen.tankEyeM, E), the Rifle Tps the
+ * depth and the covered ways back. New recipe (`-rcs`); the one passed in is not changed.
+ */
+export function withRecceScreen(r: Recipe, doc: DoctrineSet, sqn: { name: string; tanks: number; afvTps: number; rifleTps: number; apcs: number; src: string }): Recipe {
+  if (r.task !== 'recce' || r.layout !== 'screen' || r.screenBy) return r;
+  const out: Recipe = JSON.parse(JSON.stringify(r));
+  let i = 0;
+  for (const sl of out.slots.filter((x) => /^op\d$/.test(x.role))) { i++; sl.label = `${i} Tp`; sl.sym = '10120500'; }
+  const eyeM = one(doc, 'smallOps.screen.tankEyeM', 2.5);
+  out.id = `${r.id}-rcs`;
+  out.name = `${r.name} by a Recce Sqn`;
+  out.screenBy = { name: sqn.name, posts: 'AFV Tps', eyeM, text: `${sqn.name}: ${sqn.tanks} tanks (${sqn.afvTps} AFV Tps the posts, eye ${eyeM} m from the cupola, E), ${sqn.rifleTps} Rifle Tps in ${sqn.apcs} APCs for depth and the ways back (${sqn.src})` };
+  return out;
+}
