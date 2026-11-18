@@ -20,6 +20,7 @@ import { atgmPairs, type UnitBrief } from './PlanOrbat';
 import { attackFactors, attackTimes, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
 import { findPhase2, goingRow, type Phase2Find } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode } from './PlanTanks';
+import { artyRows } from './PlanArty';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
 import { canalPrep, fitCrossing, type CrossingReading, type Light } from './PlanCrossing';
@@ -42,7 +43,7 @@ export interface PlanGround {
   /** Elevation, metres; NaN when not known. */
   elev(x: number, y: number): number;
   /** NO-GO / SLOW-GO classes for a mover (rules.json `profiles`). */
-  going(profile: 'dismounted' | 'tracked'): { nogo: ReadonlySet<number>; caution: ReadonlySet<number> };
+  going(profile: 'dismounted' | 'tracked' | 'gun'): { nogo: ReadonlySet<number>; caution: ReadonlySet<number> };
   label(c: number): string;
   /** Chance (0-1) that an eye `eyeM` above (ox, oy) sees something `targetM` tall at (tx, ty); null when not known. */
   sight?(ox: number, oy: number, eyeM: number, tx: number, ty: number, targetM: number): number | null;
@@ -951,6 +952,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   if (at) merged.rows.push(at);
   // tank Sqns grouped to a defence: their harbours on the ground
   if (recipe.defTanks) merged.rows.push(...defTankRows(raw.items, recipe, frame, ground, ctx.doc, fit.from ?? null));
+  // the artillery's gun area: its reach (his FUP for his type in defence) and its ground
+  if (recipe.arty) merged.rows.push(...artyRows(raw.items, recipe, recipe.task === 'attack' ? null : enemyFupM(ctx.doc, enemy?.type ?? 'mech')[0], frame, ground));
   if (canal) { merged.rows.push(...canal.rows); fit.crossing = canal.reading ?? undefined; fit.pending = fit.pending || canal.pending; }
   // an attack: the finders' rows, the H-hour sum, his MSR choke, the night march, the factors that score it
   if (find) {

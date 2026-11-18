@@ -405,7 +405,9 @@ MS/
   the force, read back by Check my plan (`pbMeta.defTanks`); Tps on a Coy Def; the first unit also to the Sup posns; Tank AT cover row with
   the gun at `atFramework.tankGunEffM` 2500 m (basis E: Sec 1, re-read unlocked on 19 Nov, prints a gun range only for the Al-Zarrar; IC s105 para 21c: tanks in defence counter-attack, AT weight only where inescapable) (`tanks.mjs` 86). The tank Sqn with an attack is the ORBAT's (`tankSqnOf`, 14 tanks, `Recipe.tankSqn`;
   counted in the force ratio; gun ranges are printed for 1 of 13 tanks, so the doctrine's stand) and the IABG / Armd Div are Bde / Div
-  types. 3-Coy Bn Def layouts for the Lt Cdo Bn (`bn3-def-two-up`, `bn3-def-three-up`,
+  types. **Artillery** (`PlanArty.ts`, Arty row on Bn Def / Attk): a Regt or Bty from the ORBAT, its gun area (PAA) laid in GunDoctrine's
+  band behind the FDL / FUP (`gunRulesFrom`), Arty reach (DF Tgts, his FUP; Obj and LOE) and Gun area on the bundle's `gun` going;
+  read back by Check my plan (`pbMeta.arty`); `node tools/planbuilder-test/arty.mjs` (27). 3-Coy Bn Def layouts for the Lt Cdo Bn (`bn3-def-two-up`, `bn3-def-three-up`,
   recipe `forCoys`; the tab shows the layouts for the type chosen, `_famIds`) and an **AT group** row on a Bn defence: 1-3 ATGM
   Coys of a LAT / HAT Bn grouped to it (`withAtGroup`, `pbMeta.atGroup`, read back by Check my plan). **Phase 6 attack** (`PlanAttack.ts`): Bn Attk
   right / left flank (BOF fixes the front) beside frontal (warned, ranked last unless no flank is feasible: user); finders

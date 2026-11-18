@@ -100,6 +100,8 @@ export interface Recipe {
   tanks?: 'fire' | 'close';
   /** Tank Sqns grouped to a Bn defence (PlanTanks.withDefTanks): their harbours beside the reserve, the C Pen force at the tank rate. */
   defTanks?: number;
+  /** Artillery with the plan and its gun area (PlanArty.withArty): the unit, its gun, the band behind the front. */
+  arty?: import('./PlanArty').ArtyOnPlan;
   /** What defTanks counts: Sqns (a Bn defence) or Tps (a Coy defence). */
   defTanksUnit?: 'Sqn' | 'Tp';
   /** The tank Sqn with the attack, from the ORBAT (PlanOrbat.tankSqnOf): tanks, Tps, tanks a Tp; its source. */

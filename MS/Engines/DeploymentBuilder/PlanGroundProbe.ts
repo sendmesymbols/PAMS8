@@ -55,7 +55,7 @@ export class PlanGroundProbe implements PlanGround {
   label(c: number): string { return this._probe.classLabel(c); }
   dataLine(): string { return this._probe.dataLine(); }
 
-  going(profile: 'dismounted' | 'tracked') {
+  going(profile: 'dismounted' | 'tracked' | 'gun') {
     const p = (this._probe.rules as any)?.profiles?.[profile] ?? {};
     return { nogo: new Set<number>(p.nogo ?? []), caution: new Set<number>(p.caution ?? []) };
   }

@@ -736,7 +736,22 @@ Verified in the app (dev server): Bn Attk with Close sp and Fire sp (the line un
 - `IBB.pdf` is scanned (no text); `Operations of War (Volume-I) Defence.pdf` is password-protected too: it may hold armour frontages in defence.
 
 Also not done: the Recce Regt / Sqn for screens; tanks as a reserve in an attack's follow-up phase.
-| Checks | `tanks.mjs` (74), `check.mjs` (106) |
+
+**Artillery with a Bn plan (19 Nov 2026, the user: "Commit, then artillery"):**
+
+| Piece | Where |
+|---|---|
+| **Arty row** on a Bn Def or Bn Attk: None, or a Regt / Bty from the ORBAT with its gun and planning range (90 % of max, Sec 2 p 212): Fd Regt 18 x 122 mm How 10.6 km, Med Regt 18 x 155 mm How 13.1 km, Med Regt (SP) 18 x M109 14.9 km, Hy Regt 12 x 155 mm Gun 21.2 km, Mtn Regt 12 x 105 mm Pack How 9.0 km, and their Btys. Not offered: the rockets (MLRS, 40 km minimum; the MBRL Bty, general support), the 8 in (no weapon linked), the locating units | `PlanArty.ownArtyTypes`, `PlanBuildTab._artyRow` |
+| **Its gun area** (PAA, 2525D `25240501`), sized and placed by the Gun Deployment doctrine (`GunDoctrine.json` through `gunRulesFrom`): a Regt 1000 x 1000 m (R, p 225), a Bty 400 x 200 m (U, FM 6-50); its front edge in the middle of the band behind the front: in defence at least 2 km behind the FDL (E), in an attack 1 km behind the FUP (U), at most a third of the planning range (R, SZ p 24). Defence: on the plan's axis (the Fd Regt's 2.8 km behind the FDL); attack: 1500 m beside the axis, clear of the Assy Area. A new recipe (`-gun`) laid last, on top of tanks, two phases or a 3-Coy layout | `PlanArty.withArty`, `artyOnPlan`, `PlanBuildTab._rcp` / `_rcpBase` |
+| **Arty reach**: how far behind the front it stands (the band: too near, he overruns it early, OoW I p 70; too far, the fire does not reach deep; a gun too short for any band says so), how far its guns reach beyond the FDL, his FUP for his type (2.5 km tanks) and the DF Tgts in range (Fd Regt: 7.3 km beyond, 9 of 9). Attack: the Obj, Obj 2 and the LOE in range, else fail | `PlanArty.artyRows` |
+| **Gun area** on the ground: the share of it a gun position may take, on the bundle's own Gun Position going (`rules.json` profiles.gun: water, marsh, built-up, too steep), against GunDoctrine room (90 % wanted, under 70 % the guns cannot keep 100 m apart: fail). Level, crest, firm soil, access and concealment are left to the Gun Deployment tool, and the row says so. The ground reader now gives the `gun` going too | `artyRows`, `PlanGroundProbe.going`, `PlanFit` |
+| Check my plan reads the artillery back (`pbMeta.arty`): its gun area, the FDL and the DF Tgts from their symbols, the same rows and verdicts as the build (defence) | `PlanCheck` |
+| Copy as Text: an `Arty:` line under the unit | `PlanBuildTab._unitLine` |
+| Checks | `node tools/planbuilder-test/arty.mjs` (27) |
+
+Verified in the app: Bn Def with the Fd Regt (33 symbols; Arty reach pass; Copy as Text), with a tank Sqn and the Med Bty (SP) together (34), Bn Attk with the Med Regt (Arty reach: the Obj and LOE in range, 2.7 km behind the FUP); the Arty row is not on a Coy Def. Not checked in the app: the Gun area row on real terrain (tested in Node on synthetic ground).
+
+Not done: siting the gun area with the Gun Deployment tool's own finder from the plan (it is in `GunDeployment.ts`, which another session is changing now); artillery in Check my plan for an attack; the fire plan (the guns' DF Tgts and the fire lifts by the Regt's own guns, as the attack's H-hour sum already lifts by calibre); artillery for Bde and Div plans.
 
 Verified in the app (dev server): 1, 2 Sqns on the Std Inf Bn's two up (33 and 34 symbols), the Lt Cdo Bn's three up with 2 Sqns (36), the force row naming the Sqns, Copy as Text and the Tank Sqns row; the Tanks row is absent on an attack (it has its own). **Not checked in the app:** placing the plan and the Tank harbour row on the real terrain (the map did not take clicks in that run); both are tested in Node with synthetic ground, and the placed plan's read-back in `check.mjs`.
 

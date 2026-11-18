@@ -26,12 +26,13 @@ import { detailLines } from './PlanSolve';
 import { atCoverRow, detectTerrain, fitPlan, toLocal, toWorld, type FitFrame, type FitResult, type GroundAvenue, type PlanGround } from './PlanFit';
 import { movesRow, reserveMovesCheck, tankCoverRow, triggerLines, whatIf, type WhatIfResult } from './PlanWhatIf';
 import {
-  defaultEnemy, echelonLabel, enemyProfile, footKmh, forceRow, frontageAllowance, levelOf, strengthOf, terrainLabel, terrainRow,
+  defaultEnemy, echelonLabel, enemyFupM, enemyProfile, footKmh, forceRow, frontageAllowance, levelOf, strengthOf, terrainLabel, terrainRow,
   type EnemySpec, type EnemyType, type TerrainKind, type TerrainSpec,
 } from './PlanContext';
 import { brief, enUnitFor, forceFromOrbat, minefieldRow, tankSqnOf, withAtGroup, type OrbatSet } from './PlanOrbat';
 import { counterAttack } from './PlanAttack';
 import { defTankRows, tankGoingRow } from './PlanTanks';
+import { artyRows } from './PlanArty';
 import type { ForceSides } from './PlanContext';
 
 // ── reading ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -736,6 +737,12 @@ function checkDefence(mp: MappedPlan, doc: DoctrineSet, opts: CheckOptions): Che
     const atRow = atCoverRow({ ...res, items } as any, recipe, unitB, fit.approaches, frame, doc, enemy);
     if (atRow) rows.push(atRow);
     if (defTk) rows.push(...defTankRows(items, { ...recipe, defTanks: defTk, defTanksUnit: mp.built?.meta?.defTanksUnit === 'Tp' ? 'Tp' : 'Sqn', tankSqn: tkSqn ?? undefined }, frame, opts.ground, doc, fit.from ?? null));
+    // the artillery it was built with: its gun area, the FDL and the DF Tgts read from their symbols, judged as the build did
+    const artyMeta = mp.built?.meta?.arty;
+    if (artyMeta) {
+      const own = (role: string) => mp.syms.filter((x) => x.side === 'own' && x.pbRole === role && x.pts.length).map((x) => ({ role, pts: x.pts.map((v) => toLocal(frame, v)) }));
+      rows.push(...artyRows([...own('gunArea'), ...own('fdl'), ...own('dfTgt')], { ...recipe, task: 'defence', arty: artyMeta }, enemyFupM(doc, enemy.type)[0], frame, opts.ground));
+    }
     const alternates = active.filter((p) => p.kind === 'alt' && p.c).map((a) => {
       const letter = a.label.replace(/^alt\s*/i, '').trim().split(/\s+/)[0];
       const of = fwd.find((x) => x.label.split(/\s+/)[0] === letter);
