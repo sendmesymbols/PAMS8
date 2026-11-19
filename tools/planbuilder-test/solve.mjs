@@ -60,7 +60,8 @@ const two = S.solveRecipe(get('bn-def-two-up'), ctx, { alternates: 'visible' });
 check('Bn two up: frontage passes the two-up row', row(two, 'Frontage')?.st === 'pass', row(two, 'Frontage')?.reason);
 check('Bn two up: depth inside 3-4 km', row(two, 'Depth')?.st === 'pass', row(two, 'Depth')?.reason);
 check('Bn two up: gap 500 m passes', row(two, 'Gaps')?.st === 'pass', row(two, 'Gaps')?.reason);
-check('Bn two up: reserve reaches in 30 min', row(two, 'Reserve reach')?.st === 'pass', row(two, 'Reserve reach')?.reason);
+// at the book's 4 km/h (IBB p 18) a reserve 3.3 km deep (inside IBB's 3-4 km) needs 36 min, past the 30 min (IBB p 279): it warns
+check('Bn two up: reserve warns at 36 min on foot (IBB 4 km/h against 30 min)', row(two, 'Reserve reach')?.st === 'warn' && /36 min/.test(row(two, 'Reserve reach')?.reason ?? ''), row(two, 'Reserve reach')?.reason);
 const feba = two.items.find((i) => i.role === 'fdl');
 const fwdTops = two.slots.filter((s) => s.kind === 'fwd').map((s) => s.centre.y + s.hM / 2);
 check('Bn two up: FEBA (25140400) along the forward edges', feba?.key === '25140400' && feba.pts.every((p) => fwdTops.some((t) => Math.abs(p.y - t) < 1)));

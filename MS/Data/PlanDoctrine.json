@@ -15,7 +15,7 @@
     "IBB": {
       "title": "Infantry Battalion in Battle, AP 8360 E",
       "file": "Material/IBB.pdf",
-      "cite": "printed page (PDF page = printed + 20). The PDF is a scan with no text layer: figures marked pageToConfirm were taken from OCOKA_Roadmap.md and still need their page."
+      "cite": "printed page (PDF page = printed + 17). The copy is password-locked; read locally from an unlocked copy (19 Nov 2026), which confirmed the pages of the figures once taken from OCOKA_Roadmap.md."
     },
     "OOW1": { "title": "Operations of War Vol I, Defence", "file": "Material/Literature/1. Books/2. Operations of War (Volume-I) Defence.pdf" },
     "Demo2": { "title": "Demo 2 overlays (31 Div obstacle defence on the IB)", "file": "Material/plans/overlays", "cite": "PlanBuilder_Plan.md section 16" },
@@ -109,7 +109,7 @@
         "label": "Obstacle",
         "basis": "D",
         "bnFrontageRow": "Battalion, obstacle-oriented defence",
-        "bdeFrontageM": { "value": [8000,10000], "basis": "D", "src": "GSP 1947 Inf Div in Battle s26 (Defence on Ditch cum Bunds) p 119: 'A brigade may be assigned upto 8000-10000 metres area depending upon terrain and allotment of second line troops.'", "note": "An own Bde on an obstacle (ditch cum bund). Chosen by the user 19 Nov 2026 over the estimate (20-27 km: IC s113's enemy Inf Div on an obstacle 60-80 km over three Bdes up; the Demo 2 plans measured 24-38 km, basis O), so a Bde holding the Demo 2 frontages now fails Frontage." },
+        "bdeFrontageM": { "value": [8000, 10000], "basis": "D", "src": "GSP 1947 Inf Div in Battle s26 (Defence on Ditch cum Bunds) p 119: 'A brigade may be assigned upto 8000-10000 metres area depending upon terrain and allotment of second line troops.'", "note": "An own Bde on an obstacle (ditch cum bund). Chosen by the user 19 Nov 2026 over the estimate (20-27 km: IC s113's enemy Inf Div on an obstacle 60-80 km over three Bdes up; the Demo 2 plans measured 24-38 km, basis O), so a Bde holding the Demo 2 frontages now fails Frontage." },
         "divFrontageM": { "value": [60000, 80000], "basis": "D", "src": "IC s113 (infantry division, on an obstacle)" },
         "tieInM": { "doctrine": "checkBands.fieldOfFireToObstacleM" },
         "firstLayout": "three-up",
@@ -210,19 +210,19 @@
       "note": "Nearest in the books (19 Nov 2026), not applied: IC s88 p 471, in NBC conditions only: Pl frontage 500 m, depth 300 m, gaps 800 m."
     },
     "plPostSpacingM": { "value": 450, "basis": "D", "src": "IBB Annex U p479 (company locality 1370 m, platoon posts 450 m apart)" },
-    "plPostFrontageM": { "value": 300, "basis": "E", "note": "Three up in a 1370 m Coy locality with posts 450 m apart leaves a post about 300 m wide. Nearest in the books (19 Nov 2026), not applied: Amplification of Military Terms p 1.3 'Never stretch the pl frontage i.e. max 500 ms.' (a maximum)." }
+    "plPostFrontageM": { "value": [300, 400], "basis": "D", "src": "IBB p 277 (PDF 294), margin table 'Frontages in def are': 'Pl: 300 - 400 m' (Source: ARIB)", "note": "A Pl's frontage in defence. Also in the books: IBB App 5 p 480 (PDF 497), on extended frontages, Pl 600 m wide; Amplification of Military Terms p 1.3 'Never stretch the pl frontage i.e. max 500 ms.' (Was: 300, E, three up in a 1370 m Coy locality.)" }
   },
   "standoff": {
-    "lpM": { "value": [300, 400], "basis": "D", "src": "IBB", "pageToConfirm": true },
-    "standingPatrolM": { "value": [1000, 1500], "basis": "D", "src": "IBB", "pageToConfirm": true },
-    "wireFromPostsMinM": { "value": 40, "basis": "D", "src": "IBB", "pageToConfirm": true },
+    "lpM": { "value": [300, 400], "basis": "D", "src": "IBB S58 para 22e p 296 (PDF 313): 'Select listening post about 300 metres ahead of the position.'; IC s43 para 6 p 145: 'Their location is usually 350 to 400 metres ahead'" },
+    "standingPatrolM": { "value": [1000, 1500], "basis": "D", "src": "IC s43 para 2 p 144: 'As a guideline they may operate at a distance of 1000-1500 metres from' the main defensive position" },
+    "wireFromPostsMinM": { "value": 40, "basis": "D", "src": "IC s107 (Protection against Hand Grenades) p 583: 'a distance of at least 40 metres between an' obstacle and the nearest occupied post" },
     "obstacleInFrontM": { "value": 200, "basis": "D", "src": "IC s111.5 (protective wire and minefields usually about 200 m in front of the infantry localities)" },
     "protectiveMinefieldDepthM": { "value": [250, 300], "basis": "D", "src": "IC s107 (OcokaDoctrine obstacles rule)" },
     "minefieldInFrontM": { "value": [220, 550], "median": 430, "basis": "O", "src": "Demo2 (PlanBuilder_Plan.md 16.3)" },
     "maskPosnM": { "value": [300, 500], "basis": "D", "src": "IBB p340 (s63.2)", "canalM": {"value": [900, 1500], "basis": "D", "src": "IBB Annex V App 9 p485"} }
   },
   "df": {
-    "perBn": { "value": [8, 12], "basis": "D", "src": "IBB", "pageToConfirm": true },
+    "perBn": { "value": [8, 12], "basis": "D", "src": "IBB p 107 (PDF 124), margin: 'As a guide, 8 - 12x DFs are sel for a bn depl in def.' (again p 298, citing Arty in Battle)" },
     "closeMinFromFdlM": {
       "field": 400,
       "medium": 500,
@@ -252,23 +252,23 @@
     "src": "IC s66 p305 (movement from the SL to the objective covered by fire up to these distances from the objective)"
   },
   "cpen": {
-    "coyMin": { "value": 30, "basis": "D", "src": "IBB (Coy counter-attack in 30 min)", "pageToConfirm": true },
-    "bnMin": { "value": 60, "basis": "D", "src": "IBB (Bn in 1 h)", "pageToConfirm": true },
-    "decisionH": { "value": [1.5, 2], "basis": "D", "src": "IBB (decision 1.5-2 h after the en H hour)", "pageToConfirm": true },
-    "perBn": { "value": [2, 3], "basis": "D", "src": "IBB", "pageToConfirm": true },
+    "coyMin": { "value": 30, "basis": "D", "src": "IBB S58 para 12b p 279 (PDF 296): a local counter-attack (company level) 'mounted immediately, within half an hour.'" },
+    "bnMin": { "value": 60, "basis": "D", "src": "IBB p 279 (PDF 296), margin (Source: ARIB): 'Coy Depth Pl (Local C Attk): 30 mins; Bn Res (Local C Attk): 1 hr;'" },
+    "decisionH": { "value": [1.5, 2], "basis": "D", "src": "IBB S57 para 11a p 310 (PDF 327): 'not later than one and a half to two hours after the H hour' (a Bn; a Bde 3 h)" },
+    "perBn": { "value": [2, 3], "basis": "D", "src": "IBB S57 para 10f p 309 (PDF 326): 'guideline minimum of two to three positions at the battalion and' brigade level" },
     "behindFwdM": {
       "bn": 400,
       "coy": 150,
       "basis": "E",
       "note": "Where a C Pen posn is laid behind each forward posn in geometry mode, until the terrain fit places it astride the en axis."
     },
-    "footKmPerH": { "value": 5, "basis": "E", "note": "Reserve on foot to its C Pen posn: 12 min per km + 5 min to shake out (the mockup's figure). Nearest in the books (19 Nov 2026), not applied: IC p 664, Foxland infantry 4.5 km an hour in the plains by day, half at night; SO's Hbk Sec 6 p 653, a marching column in the mountains 2 mph by day." },
+    "footKmPerH": { "value": 4, "basis": "D", "src": "IBB p 18 (PDF 35), marching speeds: 'Plains 4 kmph' by day, 3 kmph by night", "note": "Reserve on foot to its C Pen posn in the plains; desert and mountains take their own rows of the same table. Shake out time separate. (Was: 5, E, the mockup's 12 min per km.)" },
     "settleMin": { "value": 5, "basis": "E" }
   },
   "alt": {
     "note": "Main to alternate, centre to centre. The alternate keeps the same task and killing ground.",
     "spacingM": {
-      "atgm": { "value": [800, 1000], "basis": "D", "src": "IBB (OCOKA_Roadmap.md)", "pageToConfirm": true },
+      "atgm": { "value": [800, 1000], "basis": "D", "src": "IBB S18 para 8j p 72 (PDF 89): Baktar Shikan alternative positions 'should be at least 800 to 1000 metres apart.'" },
       "secPl": {
         "value": [
           200,
@@ -312,20 +312,13 @@
   },
   "securityZone": {
     "divOnIbM": { "value": [10000, 19000], "basis": "O", "src": "Demo2: IB to FDL; covering troops 1-4 km ahead of the FDL minefields" },
-    "bdeM": {
-      "value": [
-        3000,
-        5000
-      ],
-      "basis": "E",
-      "note": "When the Bde alone gives its own security: about a third of the Div figure; to check against a Bde sample. Nearest in the books (19 Nov 2026), not applied: Amplification of Military Terms p 69, security zone depths by area: 1-3 km (river corridors), 5-6 km, over 10 km (semi desert / desert)."
-    },
+    "bdeM": { "value": [3000, 5000], "basis": "E", "note": "When the Bde alone gives its own security: about a third of the Div figure; to check against a Bde sample. In the books (19 Nov 2026), no Bde figure: Concept and Conduct of Security Zone Battle p 3, 2-5 km in the Punjab, 20-50 km in the desert; Amplification of Military Terms p 3.7, 1-3 / 5-6 / over 10 km by terrain; OOW Vol I p 13, covering troops are the Bde's own when it operates independently (no depth)." },
     "bn": { "standingPatrolM": {"doctrine": "standoff.standingPatrolM"}, "lpM": {"doctrine": "standoff.lpM"} },
     "coy": { "lpM": {"doctrine": "standoff.lpM"} }
   },
   "atFramework": {
-    "atgmDetSpacingM": { "value": [400, 500], "basis": "D", "src": "IBB", "pageToConfirm": true },
-    "shortRangeAtFwdM": { "value": [500, 600], "basis": "D", "src": "IBB", "pageToConfirm": true },
+    "atgmDetSpacingM": { "value": [400, 500], "basis": "D", "src": "IBB S18 para 8f p 72 (PDF 89): between two Baktar Shikan detachments, 'as a guideline it should be minimum 400-500 metres.'" },
+    "shortRangeAtFwdM": { "value": [500, 600], "basis": "D", "src": "IBB S58 para 16b(1) p 293 (PDF 310): short-range AT weapons in temporary positions at a 'distance of 500/600 metres ahead of the main position.'" },
     "tankGunEffM": { "value": 2500, "basis": "U", "src": "ORBAT weapons.json 125-mm-tk-al-zarrar: eff 2500-3000 m (SO's Hbk 2019 pp 124-126), the only tank gun with a printed range", "note": "Confirmed by the user 19 Nov 2026. Applied to the tanks of a Sqn or Tp grouped to a defence, whose type the Armr Regt chart does not fix. Re-read 19 Nov 2026 from the unlocked Sec 1 (pp 121-124, Comparative Data Current MBTs): it prints calibre, ammo, rounds carried, night vision and LRF for the other 12 tanks but no gun range, so the gap is the book's, not the extraction's. Change it here for another tank." },
     "armourInDefence": { "value": ["recce, covering troops, advance posns", "destroy his armour by offensive action, lending weight to the AT layout", "nucleus of the counter-attack force", "part of a strong point", "supplement the AT defence"], "basis": "D", "src": "Operations of War Vol I (Defence) s6 para 1 p 22", "note": "Employed concentrated, the main element of the reserve; within the main defences only in exceptional circumstances (a serious armour threat on an approach with no effective AT obstacle). Vol I (read unlocked 19 Nov 2026) prints no frontage or depth for an armour unit holding ground, so an Armr Regt or Tk Sqn is not offered as the unit of a defence layout: armour joins a Bn defence as its tank Sqns (the C Pen force, AT weight)." },
     "armourInAttack": { "value": { "combatCommand": "Bde group", "combatGroup": "Bn / Regt group", "combatTeam": "Sqn / Coy group" }, "basis": "D", "src": "Operations of War Vol II (Offensive Operations) s7 paras 20-22 pp 28-29; s5 p 53; Fig 2 p 9", "note": "Read unlocked 19 Nov 2026. Groups armour or infantry heavy, or balanced, by terrain, enemy and force; armour heavy attack in semi desert and desert (open spaces), with a favourable air situation; infantry heavy where the ground disallows armour. After a break-out the Armd Div advances on a broad front with two Bdes, each with two Regt groups up or one. No frontage or depth is printed for an armour unit in the attack: frontages 'depend on defender's dispositions and lie of terrain', narrower by night (s9 para 2c p 37), and the attack's distances 'depend upon the terrain and en strength' (Fig 7). Fig 2 (an Armd Bde leading an Armd Div's advance) is a march layout: covering troops 4-8 km ahead, Van Gd about 3500 m, flank guards about 6 km out, the main body about 8 km behind (15-20 km for the Armd Div); the scan is highlighted over in places, so these are read as uncertain." },
@@ -333,7 +326,7 @@
     "backBlast": { "from": "OcokaDoctrine.standoff", "rows": ["Recoilless rifle back blast danger zone", "Baktar Shikan back blast"] }
   },
   "readyBy": {
-    "coyPosnH": { "value": [24, 36], "basis": "D", "src": "IBB", "pageToConfirm": true }
+    "coyPosnH": { "value": [24, 36], "basis": "D", "src": "IC s75 para 1 p 399: a well-trained company can 'complete preparation of the defensive position in 24-36 hours depending on the' ground" }
   },
   "advance": {
     "note": "Advance to contact, an Armd Bde leading an Armd Div's advance (OoW Vol II s4 paras 1-5 pp 9-11, Fig 2 p 9). Echelons: covering troops (mobile troops: a Recce Regt and / or a LAT Bn) 4-8 km ahead; the Advance Guard (an Armr Regt group or an Inf Bn group: Van Gd 3500 m, Main Gd 3000 m); the Main Body straight behind it, 6 km deep; the Armd Div's flank guards 15-20 km out; the follow-up Bde up to 8 km behind the leading Bde. The scan is highlighted over; the figures were read from the page's text layer under the highlights and placed by where they stand on the page (19 Nov 2026).",
@@ -423,12 +416,7 @@
       "src": "IBB p173 (assembly area 1-5 miles from the enemy, free from observation and harassing fire, good entry and exit)"
     },
     "assyAccessM": { "value": 300, "basis": "E", "note": "A road or track within this of the Assy Area gives the vehicles entry and exit." },
-    "assyPreferM": {
-      "value": 4000,
-      "basis": "E",
-      "src": "NightMarchDoctrine sights.thermalM (his thermal sights 3-4 km)",
-      "note": "The Assy Area further back than this where hidden ground allows. Nearest in the books (19 Nov 2026), not applied: IC s114 p 683, the Foxland Assy Area '2 to 3 kilometres from troops in contact'; own: 'beyond the effective range of enemy field artillery' (IC p 307)."
-    },
+    "assyPreferM": { "value": 4000, "basis": "E", "src": "NightMarchDoctrine sights.thermalM (his thermal sights 3-4 km)", "note": "The Assy Area further back than this where hidden ground allows. In the books (19 Nov 2026), not applied: IBB p 180 (PDF 197), the Assy Area 'Normally be located one to five miles from the enemy position' (a band, 1.6-8 km, not a preferred minimum); IC s114 p 683, the Foxland Assy Area '2 to 3 kilometres from troops in contact'; IC p 307 'beyond the effective range of enemy field artillery'." },
     "slBeyondLiftM": {
       "value": 150,
       "basis": "E",
@@ -501,7 +489,7 @@
         "note": "The tank FUP finder tries this far either side of the axis, 2500-3000 m out, for ground hidden from the Obj where tracks go."
       },
       "assaultLineM": { "value": [150, 250], "basis": "D", "src": "IBB p187" },
-      "rushFromM": { "value": 250, "basis": "E", "note": "The leading troops rush the Obj when the infantry reach the farther of the two assault line figures. Nearest in the books (19 Nov 2026), not applied: an unofficial appreciation guide puts the assault line 300 m from the Obj; IC p 298 defines it without a distance." },
+      "rushFromM": { "value": 250, "basis": "D", "src": "IBB p 187 (PDF 204): 'When infantry is close to its assault line (150/250 metres from the objective)'", "note": "The leading troops rush the Obj when the infantry reach the farther of the two assault line figures." },
       "moveKmh": { "day": 16, "night": 8, "basis": "E", "src": "IPB p 18 SLOW-GO vehicle rates (moves.tankKmh): a tactical move bound to bound under fire" },
       "rushKmh": { "value": 15, "basis": "E" },
       "aheadMin": {
@@ -765,7 +753,7 @@
     "screen": {
       "basis": "R",
       "src": "IC s73 pp 378-381, Screens: Coy / Pl / Sec outposts laid laterally with intervals in front or on the exposed flanks of the main posn; only as far forward as is necessary to deny him observation and recce of the main posn and its obstacles; on his likely approaches, on defensible ground with clear observation and covered routes of withdrawal (p 378); strength by the frontage screened, the time, the threat and the ground (p 379); mines in front and on the flanks (p 380); sections not split, alternative fire trenches (p 380); withdrawal along a covered route on the order of the commander who ordered it, or on 50 % casualties / the time up if comms break (p 381). Figures below E unless marked.",
-      "frontM": { "value": 3000, "basis": "E", "note": "The frontage of the defence screened (IC p379 a): a Bn front, laid across the aim. Nearest in the books (19 Nov 2026), not applied: Amplification of Military Terms p 1.3: 'Bn AOR upto 7 kms - 2 Coys Up with 2 Pls Up. (Coy Frontage - 2500 Ms)', 7-10 km and beyond 10 km bands: a Bn's area, not a screen's front." },
+      "frontM": { "value": [3000, 5000], "basis": "D", "src": "IBB p 277 (PDF 294): 'frontage of 3000-5000 metres' (a Bn in defence; margin table, Source: ARIB)", "note": "The frontage of the defence screened (IC p379 a): a Bn front, laid across the aim; the build lays the lower figure. (Was: 3000, E.)" },
       "fwdM": {
         "value": [
           1000,
@@ -928,7 +916,7 @@
       "src": "IBB S47 para 6 p243 (IC s70 para 2a p355: 600-900 m)",
       "note": "Mixed minefields in front of a defended water obstacle."
     },
-    "highFarBankM": { "value": 1.5, "basis": "E", "note": "A far bank this high above the water is scaled with ladders and grapnels (IBB S47; IC s70 para 4f p358)." },
+    "highFarBankM": { "value": 1.5, "basis": "E", "note": "A far bank this high above the water is scaled with ladders and grapnels (IBB S47 para 23a). The book's obstacle, IBB S47 para 5 p 243 (PDF 260): 'The banks are near vertical and rise 4 to 6 feet above the water surface.' (1.2-1.8 m, a bank height, not a threshold; 1.5 lies inside it)." },
     "sqnTanks": { "value": 14, "basis": "D", "note": "As printed. A tank squadron for the Class 50 raft.", "src": "SO's Hbk 2019 Sec 1 p 120: 'Suggested Distr of Coy on a Sqn (14 x Tks)'; Sec 6 p 601: '3x Tk Sqn (14 tks each)'" },
     "nightH": {
       "value": 10,
