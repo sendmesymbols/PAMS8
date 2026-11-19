@@ -1291,3 +1291,12 @@ git-ignored. **Your decision is pending.**
 
 When the files are absent or `planBuilder.orbat` is off, the recipes fall back to the doctrinal defaults with
 "ORBAT not loaded".
+
+
+**Estimates against the books (19 Nov 2026, the user: "replace with authentic sources from books"):** the 142 E figures in PlanDoctrine.json were searched in the books with a text layer (IC, GSP 1947 Inf Div in Battle, The Mechanised Infantry Battalion in Battle, Staff Duties in the Field Vol I-II, OoW Vol III, Amplification of Military Terms, Logistics Support in the Field, SO's Hbk 2019 Secs 1, 2, 4, 6, 9, 11, 13), every quote checked against the page it is cited to. A figure replaced an estimate only when it is own-forces doctrine in an official book and the same quantity; the notional enemy's figures (IC s113-114, Foxland) were not used for own quantities, nor an unofficial appreciation guide, nor NBC-only tables.
+
+Applied (basis D, the quote in `src`): `crossing.coyMen` 130 (SO's Hbk Sec 6 p 606), `crossing.boatsPerBn` 22 (MechInfBn p 270: enough boats for the leading waves; 2 x 130 at 12, IC p 615), `crossing.sqnTanks` 14, `crossing.light` dark (IC p 355), `canal.maskAheadM` 300-500 m (IC p 462), `smallOps.ambush.movers` (IC p 146), `smallOps.patrol.taskMin` 60 (IC p 132), `smallOps.screen.fwdM` 1-1.5 km (Amplification p 1.2; IC's 600 m knoll the exception), `enemy.defaultType` mech (IC p 663), `alt.spacingM.secPl` 200-300 m (IC p 367), `attack.fupMin` and `attack.phase2.fupMin` 5 min (IC p 312), `attack.counter.dfOutM` 550 m (IC p 651), `attack.counter.lastStretchM` 400-1189 m (IC p 651, SO's Hbk Sec 6 p 648), `attack.phase2.fup2FromObj2M` 1000-1200 m (IC p 333). The nearest printed figure, and why it was not used, added to the notes of 14 others.
+
+Held for the user: `terrain.kinds.obstacle.bdeFrontageM`: GSP 1947 s26 gives an own Bde on a ditch cum bund 8-10 km, a third of the Demo 2 plans' 24-38 km (the Bde Def sample's 26.2 km would fail); the estimate kept, the book's figure in its note.
+
+Left: 127 E figures, 50 of them tool settings no book prints (search steps, eye heights, shares in view, score weights); of the 77 doctrinal ones, 14 cite books that are password-locked (IBB above all: Annexes P, Q, U, pp 176-201; IPB; Mountain Warfare; OoW Vol II).

@@ -43,13 +43,18 @@
       "note": "Strength in rifle-Coy equivalents, counted down the ORBAT's children; used for the force ratio when the units themselves are not on the map. The en side counts the same way (E: the en's Bn is held to ours until en.json is used)."
     },
     "corridorM": {
-      "15": { "value": 500, "basis": "E", "note": "The book prints no Pl corridor: the Coy figure, the smallest printed." },
+      "15": {
+        "value": 500,
+        "basis": "E",
+        "note": "The book prints no Pl corridor: the Coy figure, the smallest printed."
+      },
       "16": 500,
       "18": 1500,
       "21": 3000,
       "22": 6000,
       "basis": "D",
-      "src": "IPB pp 7, 12, 16 (IpbDoctrine.corridors.widthM: Coy 500, Bn 1500, Bde 3000, Div 6000 m). An echelon attacks on the mobility corridors of the level below it; a viable avenue holds at least two."
+      "src": "IPB pp 7, 12, 16 (IpbDoctrine.corridors.widthM: Coy 500, Bn 1500, Bde 3000, Div 6000 m). An echelon attacks on the mobility corridors of the level below it; a viable avenue holds at least two.",
+      "note": "Nearest in the books (19 Nov 2026), not applied: IC s114 p 684, his night-attack frontages: Bn 400 m, Coy 200 m ('could be as less as 60 metres'), Pl 75 m: attack frontages, not approach corridors."
     },
     "ratio": { "attackerWants": 3, "basis": "D", "src": "MW p 80 (force ratio more than 3 : 1, applied sequentially); PlanBuilder_Plan.md 17.1" },
     "defaultUp": {
@@ -86,8 +91,9 @@
     },
     "defaultType": {
       "value": "mech",
-      "basis": "E",
-      "note": "Plains, obstacle and desert: an armour-supported attack (the en attacks in the Bn Def and Demo 2 samples have armour). Mountains: inf (MW pp 238-239, armour confined to roads; MW pp 79, 82, most attacks by infantry at night)."
+      "basis": "D",
+      "note": "His attack in the plains with armour in support: mechanised. Plains, obstacle and desert: an armour-supported attack (the en attacks in the Bn Def and Demo 2 samples have armour). Mountains: inf (MW pp 238-239, armour confined to roads; MW pp 79, 82, most attacks by infantry at night).",
+      "src": "IC s114 p 663 (the Foxland Bn): 'Is capable of launching a set piece phased attack from a secured firm base with armour in close support/fire support role'"
     }
   },
   "terrain": {
@@ -103,11 +109,7 @@
         "label": "Obstacle",
         "basis": "D",
         "bnFrontageRow": "Battalion, obstacle-oriented defence",
-        "bdeFrontageM": {
-          "value": [20000, 27000],
-          "basis": "E",
-          "note": "IC s113 Inf Div on an obstacle 60-80 km, over three Bdes up (Demo 2 measured 24-38 km, basis O)."
-        },
+        "bdeFrontageM": { "value": [20000,27000], "basis": "E", "note": "IC s113 Inf Div on an obstacle 60-80 km, over three Bdes up (Demo 2 measured 24-38 km, basis O). The book for an own Bde (19 Nov 2026), held back for the user: GSP 1947 Inf Div in Battle s26 p 119, 'A brigade may be assigned upto 8000-10000 metres area depending upon terrain and allotment of second line troops.' (ditch cum bund, 1947): a third of what the Demo 2 plans hold." },
         "divFrontageM": { "value": [60000, 80000], "basis": "D", "src": "IC s113 (infantry division, on an obstacle)" },
         "tieInM": { "doctrine": "checkBands.fieldOfFireToObstacleM" },
         "firstLayout": "three-up",
@@ -200,10 +202,15 @@
       "flankM": 250,
       "basis": "D",
       "src": "IBB Annex U App 5 p480 (platoon locality)",
-      "depthM": { "value": 250, "basis": "E", "note": "Not printed; a third of the Coy's 600-800 m so three Pls fit two up and one back." }
+      "depthM": {
+        "value": 250,
+        "basis": "E",
+        "note": "Not printed; a third of the Coy's 600-800 m so three Pls fit two up and one back."
+      },
+      "note": "Nearest in the books (19 Nov 2026), not applied: IC s88 p 471, in NBC conditions only: Pl frontage 500 m, depth 300 m, gaps 800 m."
     },
     "plPostSpacingM": { "value": 450, "basis": "D", "src": "IBB Annex U p479 (company locality 1370 m, platoon posts 450 m apart)" },
-    "plPostFrontageM": { "value": 300, "basis": "E", "note": "Three up in a 1370 m Coy locality with posts 450 m apart leaves a post about 300 m wide." }
+    "plPostFrontageM": { "value": 300, "basis": "E", "note": "Three up in a 1370 m Coy locality with posts 450 m apart leaves a post about 300 m wide. Nearest in the books (19 Nov 2026), not applied: Amplification of Military Terms p 1.3 'Never stretch the pl frontage i.e. max 500 ms.' (a maximum)." }
   },
   "standoff": {
     "lpM": { "value": [300, 400], "basis": "D", "src": "IBB", "pageToConfirm": true },
@@ -255,7 +262,7 @@
       "basis": "E",
       "note": "Where a C Pen posn is laid behind each forward posn in geometry mode, until the terrain fit places it astride the en axis."
     },
-    "footKmPerH": { "value": 5, "basis": "E", "note": "Reserve on foot to its C Pen posn: 12 min per km + 5 min to shake out (the mockup's figure)." },
+    "footKmPerH": { "value": 5, "basis": "E", "note": "Reserve on foot to its C Pen posn: 12 min per km + 5 min to shake out (the mockup's figure). Nearest in the books (19 Nov 2026), not applied: IC p 664, Foxland infantry 4.5 km an hour in the plains by day, half at night; SO's Hbk Sec 6 p 653, a marching column in the mountains 2 mph by day." },
     "settleMin": { "value": 5, "basis": "E" }
   },
   "alt": {
@@ -263,9 +270,13 @@
     "spacingM": {
       "atgm": { "value": [800, 1000], "basis": "D", "src": "IBB (OCOKA_Roadmap.md)", "pageToConfirm": true },
       "secPl": {
-        "value": [150, 300],
-        "basis": "E",
-        "note": "Inside the Coy locality, clear of the sheaf of one medium battery on the post (about 200 m wide)."
+        "value": [
+          200,
+          300
+        ],
+        "basis": "D",
+        "note": "A section or weapon team's alternative posn, within the Pl area. (Was: Inside the Coy locality, clear of the sheaf of one medium battery on the post (about 200 m wide).)",
+        "src": "IC p 367: 'It will normally be at-least 200-300 metres away from the original positions so that enemy artillery fire directed on the original positions does not neutralise the alternative positions.'"
       },
       "coy": { "value": [500, 1000], "basis": "E", "note": "Inside the Bn locality; Demo 2 Bn localities are 2.5-4 km deep (basis O)." },
       "mortar": { "value": [300, 500], "basis": "E" },
@@ -302,9 +313,12 @@
   "securityZone": {
     "divOnIbM": { "value": [10000, 19000], "basis": "O", "src": "Demo2: IB to FDL; covering troops 1-4 km ahead of the FDL minefields" },
     "bdeM": {
-      "value": [3000, 5000],
+      "value": [
+        3000,
+        5000
+      ],
       "basis": "E",
-      "note": "When the Bde alone gives its own security: about a third of the Div figure; to check against a Bde sample."
+      "note": "When the Bde alone gives its own security: about a third of the Div figure; to check against a Bde sample. Nearest in the books (19 Nov 2026), not applied: Amplification of Military Terms p 69, security zone depths by area: 1-3 km (river corridors), 5-6 km, over 10 km (semi desert / desert)."
     },
     "bn": { "standingPatrolM": {"doctrine": "standoff.standingPatrolM"}, "lpM": {"doctrine": "standoff.lpM"} },
     "coy": { "lpM": {"doctrine": "standoff.lpM"} }
@@ -390,8 +404,8 @@
       "note": "The BOF fires from a flank: at least 30 degrees off the axis of the assault, so the assault does not mask it."
     },
     "morRangeM": { "value": 3749, "basis": "D", "src": "ORBAT PK weapons.json 81 mm Mor max 3749 m" },
-    "loeBeyondObjM": { "value": 600, "basis": "E", "note": "Limit of exploitation about 600 m beyond the objective's far edge, inside the Bn mortars' cover." },
-    "reserveToObjMin": { "value": 60, "basis": "E", "note": "Reserve Coy to the objective inside an hour on foot." },
+    "loeBeyondObjM": { "value": 600, "basis": "E", "note": "Limit of exploitation about 600 m beyond the objective's far edge, inside the Bn mortars' cover. Nearest in the books (19 Nov 2026), not applied: IC s113 p 664, the Foxland Bn exploits 'up to 500 metres in depth' (his doctrine); own: the LOE is laid down by the Bde Comd (IC p 684-685)." },
+    "reserveToObjMin": { "value": 60, "basis": "E", "note": "Reserve Coy to the objective inside an hour on foot. Nearest in the books (19 Nov 2026), not applied: none in the official books; an unofficial appreciation guide gives 1 hr." },
     "form": {
       "basis": "U",
       "src": "User, 14 Nov 2026; MW p 79 (frontal only if unavoidable, then at night or under smoke); OOW2 s6 paras 12-14 (envelopment: strength against weakness, an auxiliary manoeuvre fixes, the main strength on the flank)",
@@ -401,7 +415,7 @@
     "flankDeg": {
       "value": 60,
       "basis": "E",
-      "note": "A flank attack comes onto the Obj this far off the line he faces (the frontal recipe's assault group turned about the Obj)."
+      "note": "A flank attack comes onto the Obj this far off the line he faces (the frontal recipe's assault group turned about the Obj). Nearest in the books (19 Nov 2026), not applied: IC p 289-290, the Pl flank-attack drill turns 90 degrees onto the objective (a night navigation drill, a Pl)."
     },
     "assyFromObjM": {
       "value": [1600, 8000],
@@ -413,7 +427,7 @@
       "value": 4000,
       "basis": "E",
       "src": "NightMarchDoctrine sights.thermalM (his thermal sights 3-4 km)",
-      "note": "The Assy Area further back than this where hidden ground allows."
+      "note": "The Assy Area further back than this where hidden ground allows. Nearest in the books (19 Nov 2026), not applied: IC s114 p 683, the Foxland Assy Area '2 to 3 kilometres from troops in contact'; own: 'beyond the effective range of enemy field artillery' (IC p 307)."
     },
     "slBeyondLiftM": {
       "value": 150,
@@ -439,10 +453,10 @@
     "assaultMinPer100m": {
       "value": 4,
       "basis": "E",
-      "note": "The assault's pace from the SL behind the fire plan, 100 m in 4 min (OCOKA_Roadmap ch. 8, against prepared defences): to confirm."
+      "note": "The assault's pace from the SL behind the fire plan, 100 m in 4 min (OCOKA_Roadmap ch. 8, against prepared defences): to confirm. Nearest in the books (19 Nov 2026), not applied: IC s114 p 684, his deliberate attack 'may not be faster than 100 metres in 4 minutes' (his doctrine; 2 min against hasty defence)."
     },
     "nightFootKmh": { "plains": 3, "obstacle": 3, "desert": 2.5, "mountain": 1, "basis": "D", "src": "IBB p 18 march table by night (NightMarchDoctrine speed)" },
-    "fupMin": { "value": 30, "basis": "E", "src": "NightMarchDoctrine layout.battalion.fupMin (E)", "note": "Time to form up in the FUP." },
+    "fupMin": { "value": 5, "basis": "D", "src": "IC s66 p 312: 'Normally a company should not stay in FUP for more than five minutes.'", "note": "Time in the FUP. (Was: Time to form up in the FUP.)" },
     "spareFactor": {
       "value": 0.15,
       "basis": "E",
@@ -487,7 +501,7 @@
         "note": "The tank FUP finder tries this far either side of the axis, 2500-3000 m out, for ground hidden from the Obj where tracks go."
       },
       "assaultLineM": { "value": [150, 250], "basis": "D", "src": "IBB p187" },
-      "rushFromM": { "value": 250, "basis": "E", "note": "The leading troops rush the Obj when the infantry reach the farther of the two assault line figures." },
+      "rushFromM": { "value": 250, "basis": "E", "note": "The leading troops rush the Obj when the infantry reach the farther of the two assault line figures. Nearest in the books (19 Nov 2026), not applied: an unofficial appreciation guide puts the assault line 300 m from the Obj; IC p 298 defines it without a distance." },
       "moveKmh": { "day": 16, "night": 8, "basis": "E", "src": "IPB p 18 SLOW-GO vehicle rates (moves.tankKmh): a tactical move bound to bound under fire" },
       "rushKmh": { "value": 15, "basis": "E" },
       "aheadMin": {
@@ -521,9 +535,13 @@
       },
       "widthM": { "value": 500, "basis": "E", "src": "enemy.corridorM 16 (a Coy / Sqn counter-attack)" },
       "lastStretchM": {
-        "value": [400, 1200],
-        "basis": "E",
-        "note": "The stretch the reorganised objective must see: inside the 106 mm RR reach, outside the DF safety distances."
+        "value": [
+          400,
+          1189
+        ],
+        "basis": "D",
+        "note": "The stretch the reorganised objective must see, between the nearest close-DF distance and the RR's effective range. (Was: The stretch the reorganised objective must see: inside the 106 mm RR reach, outside the DF safety distances.)",
+        "src": "From two printed figures: IC p 651, close DFs from 400 m (field); SO's Hbk 2019 Sec 6 p 648, 106 mm RR effective range '1300 (1188.7)' m"
       },
       "deadRunM": {
         "value": 100,
@@ -531,9 +549,10 @@
         "note": "An unseen stretch this long on a way in (400-1200 m out) is dead ground he can close through: an LP and DF there (IBB p189 d, j)."
       },
       "dfOutM": {
-        "value": 600,
-        "basis": "E",
-        "note": "A DF target on each way in this far out (outside the 400-550 m safety distances of field guns and mortars, PlanBuilder_Plan.md 9.1)."
+        "value": 550,
+        "basis": "D",
+        "note": "A DF target on each way in at the furthest of the close-DF distances (mortars and heavy), so every weapon can fire it. (Was: A DF target on each way in this far out (outside the 400-550 m safety distances of field guns and mortars, PlanBuilder_Plan.md 9.1).)",
+        "src": "IC p 651: 'close DFs can be sited at 400 metres for field, 500 metres for medium and 550 metres for mortar and heavy from own FDLs'"
       }
     },
     "phase2": {
@@ -561,9 +580,13 @@
         "note": "Phase 2 comes onto Obj 2 this far off the line he faces (a new direction, onto his flank, IBB p186; the same angle as attack.flankDeg). Tried 15 degrees either way on the ground."
       },
       "fup2FromObj2M": {
-        "value": [600, 1200],
-        "basis": "E",
-        "note": "FUP 2 beyond the last fire lift plus attack.slBeyondLiftM (600 m) and no further out than the FUP itself (IBB p201: 1000-1200 m)."
+        "value": [
+          1000,
+          1200
+        ],
+        "basis": "D",
+        "note": "FUP 2 from Obj 2, as any night FUP in the plains; IC: it may be less in broken ground or built-up areas. (Was: FUP 2 beyond the last fire lift plus attack.slBeyondLiftM (600 m) and no further out than the FUP itself (IBB p201: 1000-1200 m).)",
+        "src": "IC s67 p 333: 'the distance of FUP in plain is to be kept from 1000 to 1200 metres.'"
       },
       "clearObj1M": {
         "value": 300,
@@ -589,9 +612,10 @@
         "note": "The 81 mm mortars' posn for phase 2: 300 m short of Obj 1's near edge, 500 m to the side away from the phase 2 way, so Obj 2 and the LOE beyond it are in reach (81 mm 3749 m)."
       },
       "fupMin": {
-        "value": 15,
-        "basis": "E",
-        "note": "Forming up again at FUP 2; orders and the fire plan switched onto Obj 2 meanwhile (IBB p188 para 19: time for the sub-unit commanders to give orders)."
+        "value": 5,
+        "basis": "D",
+        "note": "Time in FUP 2; orders for Obj 2 are given before it is reached. (Was: Forming up again at FUP 2; orders and the fire plan switched onto Obj 2 meanwhile (IBB p188 para 19: time for the sub-unit commanders to give orders).)",
+        "src": "IC s66 p 312: 'Normally a company should not stay in FUP for more than five minutes.'"
       },
       "maxGapMin": {
         "value": 60,
@@ -687,9 +711,14 @@
       "betterBy": { "value": 10, "basis": "E", "note": "A site along the road scoring this much more is offered as a better one." },
       "shapePenalty": { "value": 10, "basis": "E", "note": "Points off a layout the ground does not suit (Auto ranks the ground's own first)." },
       "movers": {
-        "value": ["wheeled", "tracked", "dismounted"],
-        "basis": "E",
-        "note": "The target: wheeled (the default), tracked, or on foot; its NO-GO decides whether it can leave the road."
+        "value": [
+          "wheeled",
+          "tracked",
+          "dismounted"
+        ],
+        "basis": "D",
+        "note": "As printed (on foot, wheeled, tracked); the book names no default. The target: wheeled (the default), tracked, or on foot; its NO-GO decides whether it can leave the road.",
+        "src": "IC s44 p 146: 'Ambushes may have as their target men, vehicles or tanks.'"
       },
       "outlyingM": {
         "value": [400, 1200],
@@ -708,8 +737,8 @@
       "defaultObjM": { "value": 3000, "basis": "E", "note": "Geometry only, before the objective is aimed at: the Obj this far ahead." },
       "objSizeM": { "value": 300, "basis": "E", "note": "The Obj drawn round the aimed point." },
       "seenPct": { "value": [20, 50], "basis": "E", "note": "Share of the route out the threat may see: over the first warns, over the second fails." },
-      "taskMin": { "value": 60, "basis": "E", "note": "Time at the objective in the round trip." },
-      "nightH": { "value": 10, "basis": "E", "note": "Hours of darkness the round trip is held to (winter longer, summer shorter: set by the user)." },
+      "taskMin": { "value": 60, "basis": "D", "note": "A recce patrol at its objective: an hour or more (and again from a second direction). Time at the objective in the round trip.", "src": "IC p 132: 'It is possible that for this task, they will require an hour or more.'" },
+      "nightH": { "value": 10, "basis": "E", "note": "Hours of darkness the round trip is held to (winter longer, summer shorter: set by the user). Nearest in the books (19 Nov 2026), not applied: Staff Duties in the Field Vol II p 400 (5.511): 'The graph depicts a night of 12 hours.' (an example, to be amended for the season)." },
       "maxCells": {
         "value": 260,
         "basis": "E",
@@ -731,16 +760,20 @@
       "opsApartM": { "value": 300, "basis": "E", "note": "OPs at least this far apart: one shell, one OP." },
       "seenPct": { "value": [40, 70], "basis": "E", "note": "Share of the NAI the OPs see together: under the first fails, under the second warns." },
       "routeSeenPct": { "value": 30, "basis": "E", "note": "Share of a route in the NAI may see before it warns." },
-      "opKinds": { "value": ["peak", "hill", "knoll", "trig_station", "watch_tower", "spot_height", "plateau"], "basis": "E" }
+      "opKinds": { "value": ["peak", "hill", "knoll", "trig_station", "watch_tower", "spot_height", "plateau"], "basis": "E", "note": "Nearest in the books (19 Nov 2026), not applied: IC p 385, Coy defence OPs 'located on vantage points (high ground, houses, tops of trees)'." }
     },
     "screen": {
       "basis": "R",
       "src": "IC s73 pp 378-381, Screens: Coy / Pl / Sec outposts laid laterally with intervals in front or on the exposed flanks of the main posn; only as far forward as is necessary to deny him observation and recce of the main posn and its obstacles; on his likely approaches, on defensible ground with clear observation and covered routes of withdrawal (p 378); strength by the frontage screened, the time, the threat and the ground (p 379); mines in front and on the flanks (p 380); sections not split, alternative fire trenches (p 380); withdrawal along a covered route on the order of the commander who ordered it, or on 50 % casualties / the time up if comms break (p 381). Figures below E unless marked.",
-      "frontM": { "value": 3000, "basis": "E", "note": "The frontage of the defence screened (IC p379 a): a Bn front, laid across the aim." },
+      "frontM": { "value": 3000, "basis": "E", "note": "The frontage of the defence screened (IC p379 a): a Bn front, laid across the aim. Nearest in the books (19 Nov 2026), not applied: Amplification of Military Terms p 1.3: 'Bn AOR upto 7 kms - 2 Coys Up with 2 Pls Up. (Coy Frontage - 2500 Ms)', 7-10 km and beyond 10 km bands: a Bn's area, not a screen's front." },
       "fwdM": {
-        "value": [300, 1500],
-        "basis": "E",
-        "note": "How far forward of the main posn the posts go; IC p378 gives an isolated knoll about 600 m from the FDLs as an example."
+        "value": [
+          1000,
+          1500
+        ],
+        "basis": "D",
+        "note": "IC s84 p 377 gives one example nearer in: 'an isolated knoll about 600 metres away from the forward defended localities' (a warn here, not a fail). (Was: How far forward of the main posn the posts go; IC p378 gives an isolated knoll about 600 m from the FDLs as an example.)",
+        "src": "Amplification of Military Terms p 1.2: 'Put screens 1 - 1.5 kms ahead of FDLs.'"
       },
       "defaultWatchM": { "value": 2000, "basis": "E", "note": "Geometry only, before the aim: the ground in front this far out." },
       "watchDepthM": { "value": 1000, "basis": "E", "note": "The depth of the ground in front read (where he would watch the main posn from)." },
@@ -836,8 +869,8 @@
       "roundTripMinPer30m": 10,
       "perDiv": 48
     },
-    "boatsPerBn": { "value": 16, "basis": "E", "note": "A leading battalion's share of the division's 48 boats (three leading battalions)." },
-    "coyMen": { "value": 96, "basis": "E", "note": "A rifle company in the boats (8 boats of 12)." },
+    "boatsPerBn": { "value": 22, "basis": "D", "src": "The Mechanised Infantry Battalion in Battle PDF p 270: 'Enough assault or storm boats are normally provided to carry the leading waves of the battalion.'", "note": "Derived from printed figures: the two assault Coys (crossing.coyMen 130, SO's Hbk Sec 6 p 606) at 12 a boat (IC p 615): 22 boats, so A and B Coys cross in one wave and C Coy follows at H+20 as IC s71 para 12 has it. (Was: 16, a leading Bn's share of the division's 48 boats, E; the 48 in SO's Hbk Sec 4 p 433 is the truck load of pneumatic boats, not a holding.)" },
+    "coyMen": { "value": 130, "basis": "D", "note": "A rifle Coy in the boats, at 12 men a boat (IC p 615: 'It can carry 12 fully equipped infantrymen in addition to three crewmembers from engineers'). The summary table on the same page totals a rifle Coy at 141. (Was: A rifle company in the boats (8 boats of 12).)", "src": "SO's Hbk 2019 Sec 6 p 606, Std Inf Bn chart: '4x Rifle Coy (130)'" },
     "bnHqMen": { "value": 60, "basis": "E", "note": "Bn HQ and the support weapons' crews that cross by boat." },
     "waveGapMin": { "value": 20, "basis": "D", "src": "IC s71 para 12 p365", "note": "A and B Coys cross at H hour, C Coy at H+20." },
     "rafts": {
@@ -896,13 +929,13 @@
       "note": "Mixed minefields in front of a defended water obstacle."
     },
     "highFarBankM": { "value": 1.5, "basis": "E", "note": "A far bank this high above the water is scaled with ladders and grapnels (IBB S47; IC s70 para 4f p358)." },
-    "sqnTanks": { "value": 14, "basis": "E", "note": "A tank squadron for the Class 50 raft." },
+    "sqnTanks": { "value": 14, "basis": "D", "note": "As printed. A tank squadron for the Class 50 raft.", "src": "SO's Hbk 2019 Sec 1 p 120: 'Suggested Distr of Coy on a Sqn (14 x Tks)'; Sec 6 p 601: '3x Tk Sqn (14 tks each)'" },
     "nightH": {
       "value": 10,
       "basis": "E",
       "note": "Hours of darkness (night assault preferable: IBB S46 para 18 p237; bridgehead and induction ideally in one night, break-out at first light: OoW II s14)."
     },
-    "light": { "value": "dark", "basis": "E", "note": "Annex Q column the times are taken from: day, moon(light) or dark (night)." },
+    "light": { "value": "dark", "basis": "D", "note": "A crossing is made in darkness; the book does not choose between a moonlit and a dark night (the Annex Q column). Annex Q column the times are taken from: day, moon(light) or dark (night).", "src": "IC s70 para 3d p 355: 'As this operation is to be conducted in the hours of darkness'" },
     "bridgeSearchM": { "value": 400, "basis": "E", "note": "How far either side of the planned bridge site the ground is read for a better one." },
     "assy": {
       "basis": "D",
@@ -932,14 +965,18 @@
       "note": "The forward posns' front edge on the home bank, this far from the water's centre line on a canal of 90 m (moved back as its crest lies further out)."
     },
     "maskAheadM": {
-      "value": 400,
-      "basis": "E",
-      "note": "Mask posns for some major weapons ahead of the obstacle (IC s85 para 7 p455), this far beyond the far bank."
+      "value": [
+        300,
+        500
+      ],
+      "basis": "D",
+      "note": "Mask posns 300-500 m ahead of the main posn (FDLs), by day; on a canal the FDL is on the bank, so about the same distance beyond it. (Was: Mask posns for some major weapons ahead of the obstacle (IC s85 para 7 p455), this far beyond the far bank.)",
+      "src": "IC s85 para 28b p 462: 'During day time, weapons are place approximately 300-500 metres ahead in mask position'; Amplification of Military Terms p 88 the same"
     },
     "mfFarDepthM": {
       "value": 200,
       "basis": "E",
-      "note": "The minefield on the far side (IC s85 para 17 a p457: ideally on both sides; on the home side only in the gaps)."
+      "note": "The minefield on the far side (IC s85 para 17 a p457: ideally on both sides; on the home side only in the gaps). Nearest in the books (19 Nov 2026), not applied: IC s70 p 354, the ENEMY's minefield before his water obstacle 'of generally 600 metres to 900 metres depth'; own canal defence (IC s85 p 456-457) gives no depth."
     },
     "homeRaiseM": {
       "value": [1, 2],
