@@ -1944,7 +1944,7 @@ export class PlanBuildTab {
     if (!sq || (recipe.echelon !== '16' && recipe.echelon !== '15') || recipe.task !== 'defence') return '';
     const tp = recipe.echelon === '15', each = tp ? sq.tpTanks : sq.tanks;
     const chips = [0, 1, 2, 3].map((n) => this._chip(this._defTanks === n, n ? `${n} ${tp ? 'Tp' : 'Sqn'}${n > 1 ? 's' : ''}` : 'None', `defTanks:${n}`,
-      n ? `${n * each} tanks: harbours beside the reserve, the C Pen force at the tank rate; their guns count as AT at 2.5 km (E: the range is printed only for the Al-Zarrar)` : `No tanks grouped to the ${tp ? 'Coy' : 'Bn'}`)).join('');
+      n ? `${n * each} tanks: harbours beside the reserve, the C Pen force at the tank rate; their guns count as AT at 2.5 km (E: the range is printed only for the Al-Zarrar). Armour in defence: the reserve and counter-attack nucleus, supplementing the AT layout (OoW I s6 para 1 p 22); it holds no frontage of its own` : `No tanks grouped to the ${tp ? 'Coy' : 'Bn'}`)).join('');
     return row('Tanks', chips);
   }
 

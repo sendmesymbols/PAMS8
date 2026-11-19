@@ -476,7 +476,7 @@ export function tankCoverRow(res: { items: { role: string }[]; slots: { role: st
     parts.push(`${name}: ${reach >= min ? `under their guns ${reach} m beyond the FDL from ${from}` : reach > 0 ? `only ${reach} m beyond the FDL under their guns from ${from}` : `out of their gun range from ${from}`}`);
     if (reach < min) worst = 'warn';
   }
-  return { name: 'Tank AT cover', st: worst, reason: `${parts.join('; ')} (tank gun ${fmtM(gun)} effective, E: SO's Hbk Sec 1 prints a gun range only for the Al-Zarrar; ${fmtM(min)} beyond the FDL wanted). Tanks in defence counter-attack and counter penetration, and lend weight to the AT layout only where it is absolutely inescapable (IC s105 para 21c p 555): this is their reach once there, not a post for them` };
+  return { name: 'Tank AT cover', st: worst, reason: `${parts.join('; ')} (tank gun ${fmtM(gun)} effective, E: SO's Hbk Sec 1 prints a gun range only for the Al-Zarrar; ${fmtM(min)} beyond the FDL wanted). Tanks in defence counter-attack and counter penetration, and lend weight to the AT layout only where it is absolutely inescapable (IC s105 para 21c p 555; kept concentrated, inside the main defences only by exception: OoW I s6 para 1 p 22): this is their reach once there, not a post for them` };
 }
 
 /** The plan row: how many moves are well before the enemy, which ones he wins, why and what fixes it. Null with no triggers. */
