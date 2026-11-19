@@ -34,12 +34,12 @@ const rec = json('MS/Data/Deployments/Recipes/bde-advance-armd.json');
 const bad = R.validateRecipe(rec, ctx).filter((i) => i.level === 'fail').map((i) => i.msg);
 check('the Armd Bde advance validates; task advance, pivot the SP', !bad.length && rec.task === 'advance' && rec.pivot === 'sp', bad.join('; '));
 const F0 = V.advanceFigures(doc);
-check('Fig 2 figures from PlanDoctrine.advance: C Tps 4-8 km, Van Gd 3.5 km, Main Gd 3 km, flank 6 km, Main Body 8 km', JSON.stringify(F0.ctps) === '[4000,8000]' && F0.van === 3500 && F0.main === 3000 && F0.flank === 6000 && F0.body === 8000);
+check('Fig 2 as read from the page text: C Tps 4-8 km, Van Gd 3.5 km, Main Gd 3 km, the Main Body straight behind (6.5 km) and 6 km deep, the Div\'s flank guards 15-20 km', JSON.stringify(F0.ctps) === '[4000,8000]' && F0.van === 3500 && F0.main === 3000 && JSON.stringify(F0.flank) === '[15000,20000]' && F0.body === 6500 && F0.bodyDepth === 6000);
 const g = S.solveRecipe(rec, ctx, {});
 const rows = V.advanceRows(g.items, doc);
 check('geometry: Covering troops, Advance Guard, Main Body and Flank guards all pass as laid', ['Covering troops', 'Advance Guard', 'Main Body', 'Flank guards'].every((x) => row(rows, x)?.st === 'pass'), rows.map((r) => `${r.name} ${r.st}`).join(', '));
-check('...each says the figures are read off a highlighted scan (uncertain)', rows.every((r) => /uncertain/.test(r.reason)));
-check('...C Tps 6.0 km ahead, the Main Body 8.0 km behind the head', /^6\.0 km ahead/.test(row(rows, 'Covering troops').reason) && /^8\.0 km behind/.test(row(rows, 'Main Body').reason));
+check('...each cites the page text under the highlights', rows.every((r) => /read from the page text under the highlights/.test(r.reason)));
+check('...C Tps 6.0 km ahead, the Main Body\'s head 6.5 km behind, the flank guards 17.5 km out (for the Armd Div)', /^6\.0 km ahead/.test(row(rows, 'Covering troops').reason) && /^its head 6\.5 km behind/.test(row(rows, 'Main Body').reason) && /^17\.5 km and 17\.5 km out .*for the Armd Div/.test(row(rows, 'Flank guards').reason), `${row(rows, 'Main Body').reason.slice(0, 60)} | ${row(rows, 'Flank guards').reason.slice(0, 60)}`);
 const moved = g.items.map((i) => (i.role === 'mainBody' ? { ...i, pts: i.pts.map((p) => ({ x: p.x, y: p.y - 6000 })) } : i.role === 'flankL' ? { ...i, pts: i.pts.map((p) => ({ x: p.x + 4000, y: p.y })) } : i));
 const rm = V.advanceRows(moved, doc);
 check('the Main Body dragged 6 km further back, a flank guard in to 2 km: both warn', row(rm, 'Main Body')?.st === 'warn' && row(rm, 'Flank guards')?.st === 'warn', `${row(rm, 'Main Body')?.reason.slice(0, 40)} | ${row(rm, 'Flank guards')?.reason.slice(0, 40)}`);
@@ -83,6 +83,9 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   const two = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) || band(y, 2400) || band(y, 4500) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open))));
   const rls = two.raw.items.filter((i) => /^rl\d$/.test(i.role));
   check('three canals ahead, two of them 340 m apart: two report lines (1 km apart at least), the bounds between them', rls.length === 2 && /RL 1 to RL 2 [123]\.\d km/.test(row(two.res.rows, 'Report lines').reason), row(two.res.rows, 'Report lines')?.reason);
+  const DIST = 21;
+  const dc = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) ? (Math.abs(x - A.x) < 20 ? BR60 : DIST) : band(y, 2400) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open))));
+  check('a distributary then a canal 400 m on: one report line, on the canal (the bigger obstacle wins within the spacing)', dc.raw.items.filter((i) => /^rl\d$/.test(i.role)).length === 1 && /RL 1 \(class 20\)/.test(row(dc.res.rows, 'Report lines').reason), row(dc.res.rows, 'Report lines')?.reason.slice(0, 80));
   check('no water ahead: Report lines not checked, set by eye', row(f1.res.rows, 'Report lines')?.st === 'unchecked');
   check('no route reader: Axis route not checked, the straight line read; none of it on a road', row(f1.res.rows, 'Axis route')?.st === 'unchecked' && /straight line/.test(row(f1.res.rows, 'Axis route').reason));
   // a reader that routes: a dog-leg 1.5 km east between the two ends, a road along part of it
@@ -128,7 +131,7 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   const fm = V.fitAdvance({ ...inp(gnd), recipe: rm });
   const mr = row(fm.res.rows, 'March');
   check('March row: H at first light; each serial\'s column and time past a point; heads at RL 1, RL 2 and the C Tps\' line', !!mr && /first light/.test(mr.reason) && /Adv Gd \(Armr Regt gp\): 116 vehicles/.test(mr.reason) && /at RL 1 H\+0:\d\d, at RL 2 H\+0:\d\d, at the C Tps' line H\+0:\d\d/.test(mr.reason) && /min past a point/.test(mr.reason), mr?.reason.slice(0, 700));
-  check('...the Main Body\'s head at the SP after the Adv Gd\'s (8 km back at 25 km/h: about H+0:19)', /Main Body: 510 vehicles.*its head at SP H\+0:(1[89]|2\d)/.test(mr.reason), mr.reason.match(/Main Body: .{0,400}/)?.[0]);
+  check('...the Main Body\'s head at the SP after the Adv Gd\'s (6.5 km back at 25 km/h: about H+0:16)', /Main Body: 510 vehicles.*its head at SP H\+0:1[5-7]/.test(mr.reason), mr.reason.match(/Main Body: .{0,400}/)?.[0]);
   check('...the Armr Regt as one road column is 10.0 km long by day (116 at 20 a km plus 2 min a 25 vehicles at 25 km/h): longer than the 8 km to the Main Body, warn', mr.st === 'warn' && /Adv Gd .*10\.0 km long by day/.test(mr.reason) && /Main Body closes on it/.test(mr.reason), mr.st);
   const small = { ...m, serials: [{ ...m.serials[0], vehicles: 60 }, m.serials[1]] };
   const sr = row(V.fitAdvance({ ...inp(gnd), recipe: { ...rec, march: small } }).res.rows, 'March');

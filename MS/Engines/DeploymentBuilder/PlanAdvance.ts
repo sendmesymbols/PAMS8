@@ -30,7 +30,7 @@ export type AdvDrawn = Record<string, { pts: MercXY[] }>;
 const kOf = (y: number) => 1 / Math.cos(2 * Math.atan(Math.exp(y / 6378137)) - Math.PI / 2);
 const km = (m: number) => `${(m / 1000).toFixed(1)} km`;
 const fmtM = (m: number) => (Math.abs(m) >= 1000 ? km(m) : `${Math.round(m / 10) * 10} m`);
-const SRC = 'OoW Vol II Fig 2 p 9, read off a highlighted scan: uncertain';
+const SRC = 'OoW Vol II Fig 2 p 9, read from the page text under the highlights';
 
 /** The figures, PlanDoctrine.advance. */
 export function advanceFigures(doc: DoctrineSet) {
@@ -39,8 +39,9 @@ export function advanceFigures(doc: DoctrineSet) {
     ctps: r('ctpsAheadM', [4000, 8000]),
     van: r('vanGdM', [3500, 3500])[0],
     main: r('mainGdM', [3000, 3000])[0],
-    flank: r('flankOutM', [6000, 6000])[0],
-    body: r('mainBodyBackM', [8000, 8000])[0],
+    flank: r('flankOutM', [15000, 20000]),
+    body: r('mainBodyBackM', [6500, 6500])[0],
+    bodyDepth: r('mainBodyDepthM', [6000, 6000])[0],
     nogoWarn: r('axisNogoWarn', [0.1, 0.1])[0],
     run: r('axisNogoRunM', [200, 500]),
     detour: r('axisDetourWarn', [1.5, 1.5])[0],
@@ -76,12 +77,12 @@ export function advanceRows(items: { role: string; pts: XY[] }[], doc: DoctrineS
   const b = at('mainBody');
   if (b) {
     const d = head.y - b.y;
-    rows.push({ name: 'Main Body', st: near(d, F.body) ? 'pass' : 'warn', reason: `${fmtM(d)} behind the head; Fig 2: about ${km(F.body)} (15-20 km for the Armd Div; ${SRC}). Not committed against minor opposition (s4 para 4)` });
+    rows.push({ name: 'Main Body', st: near(d, F.body) ? 'pass' : 'warn', reason: `its head ${fmtM(d)} behind the Van Gd's; Fig 2: straight behind the Advance Guard (${km(F.van)} + ${km(F.main)} = ${km(F.body)}), ${km(F.bodyDepth)} deep (${SRC}). Not committed against minor opposition (s4 para 4)` });
   }
   const fl = ['flankL', 'flankR'].map(at).filter((p): p is XY => !!p);
   if (fl.length) {
     const outs = fl.map((p) => Math.abs(p.x - head.x));
-    rows.push({ name: 'Flank guards', st: fl.length === 2 && outs.every((o) => near(o, F.flank)) ? 'pass' : 'warn', reason: `${outs.map(fmtM).join(' and ')} out from the axis${fl.length < 2 ? ' (one flank only)' : ''}; Fig 2: about ${km(F.flank)} (${SRC})` });
+    rows.push({ name: 'Flank guards', st: fl.length === 2 && outs.every((o) => o >= F.flank[0] - 1 && o <= F.flank[1] + 1) ? 'pass' : 'warn', reason: `${outs.map(fmtM).join(' and ')} out from the axis${fl.length < 2 ? ' (one flank only)' : ''}; Fig 2: ${km(F.flank[0])}-${km(F.flank[1])} for the Armd Div (the Div's flank guards: no Bde figure is printed; ${SRC})` });
   }
   return rows;
 }
@@ -289,14 +290,23 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   if (drawnRls) lines = drawnRls;
   else {
     lines = [];
+    // the features ahead, at least `apart` between them; within that, the bigger obstacle wins (a canal or river over a
+    // stream, a stream over a distributary, water over a bridge alone)
+    const RANK: Record<number, number> = { 4: 4, 20: 4, 46: 3, 21: 2 };
+    const rank = (x: AxisCrossing) => (x.water !== null ? RANK[x.water] ?? 1 : 1);
+    const pick: AxisCrossing[] = [];
     for (const x of R.xs) {
-      if (!(x.water !== null ? RL_WATER.has(x.water) : x.how !== null && x.how >= 39 && x.how <= 43) || x.s <= ax.spAt + 300 || lines.length >= RL_MAX) continue;
-      if (lines.length && x.s - lines[lines.length - 1].s < apart) continue;
-      const i = lines.length + 1, half = 750, n = { x: -x.dir.y, y: x.dir.x };
+      if (!(x.water !== null ? RL_WATER.has(x.water) : x.how !== null && x.how >= 39 && x.how <= 43) || x.s <= ax.spAt + 300) continue;
+      const last = pick[pick.length - 1];
+      if (last && x.s - last.s < apart) { if (rank(x) > rank(last)) pick[pick.length - 1] = x; continue; }
+      if (pick.length < RL_MAX) pick.push(x);
+    }
+    pick.forEach((x, k) => {
+      const i = k + 1, half = 750, n = { x: -x.dir.y, y: x.dir.x };
       const name = x.water !== null ? g.label(x.water).replace(/ \/.*$/, '') : 'bridge';
       rls[`rl${i}`] = { pts: [{ x: x.at.x - n.x * half, y: x.at.y - n.y * half }, { x: x.at.x + n.x * half, y: x.at.y + n.y * half }], label: `RL ${i} ${name}` };
       lines.push({ label: `RL ${i} (${name})`, s: x.s });
-    }
+    });
   }
   if (!lines.length) rows.push({ name: 'Report lines', st: 'unchecked', reason: 'no canal, distributary or stream crosses the axis ahead of the SP: set report lines on roads, railways or villages across the axis by eye (a report line is usually a terrain feature across the zone: OoW Vol II glossary)' });
   else {
@@ -462,7 +472,7 @@ export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
     score: Math.max(0, 100 - 25 * fails - 8 * warns), fails, warns,
     pending: axis.pending || ground.pending(), data: ground.dataLine(), from: null, fromAssumed: true,
   };
-  const res = { ...raw, mode: 'terrain' as const, rows, slots: [], assumptions: [`Fitted to the ground: ${fit.data}.`, axis.routed ? 'The axis is the least-cost way for tracks over the bundle\'s going, not a road route (the Move Planner\'s).' : 'The axis is straight from the SP: no way for tracks was found in the bundle\'s grid.', 'Fig 2\'s figures are read off a highlighted scan (uncertain).'] };
+  const res = { ...raw, mode: 'terrain' as const, rows, slots: [], assumptions: [`Fitted to the ground: ${fit.data}.`, axis.routed ? 'The axis is the least-cost way for tracks over the bundle\'s going, not a road route (the Move Planner\'s).' : 'The axis is straight from the SP: no way for tracks was found in the bundle\'s grid.', 'Fig 2\'s figures are read from the page text under the scan\'s highlights.'] };
   return { recipe, res, raw, fit, frame, anchor: inp.anchor, bearing: inp.bearing, manual: {}, terrain: null, enemy: null, unit: null };
 }
 
