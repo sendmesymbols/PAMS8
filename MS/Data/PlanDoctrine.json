@@ -109,7 +109,7 @@
         "label": "Obstacle",
         "basis": "D",
         "bnFrontageRow": "Battalion, obstacle-oriented defence",
-        "bdeFrontageM": { "value": [20000,27000], "basis": "E", "note": "IC s113 Inf Div on an obstacle 60-80 km, over three Bdes up (Demo 2 measured 24-38 km, basis O). The book for an own Bde (19 Nov 2026), held back for the user: GSP 1947 Inf Div in Battle s26 p 119, 'A brigade may be assigned upto 8000-10000 metres area depending upon terrain and allotment of second line troops.' (ditch cum bund, 1947): a third of what the Demo 2 plans hold." },
+        "bdeFrontageM": { "value": [8000,10000], "basis": "D", "src": "GSP 1947 Inf Div in Battle s26 (Defence on Ditch cum Bunds) p 119: 'A brigade may be assigned upto 8000-10000 metres area depending upon terrain and allotment of second line troops.'", "note": "An own Bde on an obstacle (ditch cum bund). Chosen by the user 19 Nov 2026 over the estimate (20-27 km: IC s113's enemy Inf Div on an obstacle 60-80 km over three Bdes up; the Demo 2 plans measured 24-38 km, basis O), so a Bde holding the Demo 2 frontages now fails Frontage." },
         "divFrontageM": { "value": [60000, 80000], "basis": "D", "src": "IC s113 (infantry division, on an obstacle)" },
         "tieInM": { "doctrine": "checkBands.fieldOfFireToObstacleM" },
         "firstLayout": "three-up",

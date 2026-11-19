@@ -146,7 +146,7 @@ const flatGround = ground({ sight: () => 0.6 });
   check('Bde Def: 25 km on plains is more than a Bde holds (OOW1 10-12 km)', row(r.rows, 'Frontage')?.st === 'fail', row(r.rows, 'Frontage')?.reason);
   const ro = K.checkPlan(sample('Bde Def 12 Bde'), doc, { terrain: 'obstacle' });
   const fr = row(ro.rows, 'Frontage');
-  check('Bde Def with the ground set to Obstacle: frontage against a Bde on an obstacle', fr?.st === 'pass' && /Bde on an obstacle/.test(fr.reason), fr?.reason);
+  check('Bde Def with the ground set to Obstacle: its 26 km judged against a Bde on an obstacle, 8-10 km (GSP 1947 s26, the user\'s choice): fail', fr?.st === 'fail' && /Bde on an obstacle \(GSP 1947 s26 p 119/.test(fr.reason) && /10\.0 km/.test(fr.reason), fr?.reason);
   check('Bde Def: gaps between Bns judged by the minefields drawn across them (OOW1 p82)', /OOW1 p82/.test(row(r.rows, 'Gaps')?.reason ?? ''), row(r.rows, 'Gaps')?.reason);
   check('Bde Def: each Bn locality held to its size', r.slots.every((s) => s.checks.some((c) => c.name === 'Size')));
   check('Bde Def: without the bundle the ground stays grey, never Pass', r.slots.every((s) => s.st !== 'pass'));

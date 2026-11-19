@@ -157,7 +157,7 @@ export function frontageAllowance(doc: DoctrineSet, planEch: string, kind: Terra
       if (typeof t === 'string') return row(t);
       return row(nFwd >= 3 ? 'Battalion, three companies up' : nFwd === 2 ? 'Battalion, two companies up' : 'Battalion, normal terrain');
     }
-    case '18': return kind === 'obstacle' ? lit('terrain.kinds.obstacle.bdeFrontageM', 'Bde on an obstacle (E: IC s113 Div 60-80 km over three Bdes up)') : lit('check.posnFrontageM.18', 'Bde 10-12 km (OOW1 Annexes B-D, a yardstick)');
+    case '18': return kind === 'obstacle' ? lit('terrain.kinds.obstacle.bdeFrontageM', 'Bde on an obstacle (GSP 1947 s26 p 119: 8-10 km on a ditch cum bund)') : lit('check.posnFrontageM.18', 'Bde 10-12 km (OOW1 Annexes B-D, a yardstick)');
     case '21': return kind === 'obstacle' ? lit('terrain.kinds.obstacle.divFrontageM', 'Inf Div on an obstacle (IC s113)') : lit('check.posnFrontageM.21', 'Inf Div (IC s113)');
     default: return null;
   }
