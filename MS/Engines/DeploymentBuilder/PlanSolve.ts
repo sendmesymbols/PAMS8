@@ -95,7 +95,7 @@ export interface SolveOptions {
   /** The reserve's pace on foot for this ground (desert / mountains); else cpen.footKmPerH. */
   reserveKmh?: number;
   /** A shape slot laid afresh by the fit (plan metres): its points and base line (a BOF re-sited round the objective). */
-  geom?: Record<string, { pts: XY[]; base?: { start: XY; mid: XY; end: XY } }>;
+  geom?: Record<string, { pts: XY[]; base?: { start: XY; mid: XY; end: XY }; label?: string }>;
 }
 
 export interface SolveResult {
@@ -220,6 +220,9 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
   for (const s of recipe.slots) {
     if (FOOTPRINT_KINDS.includes(s.kind)) continue;
     if (s.terrainOnly) {
+      // a line only the ground places (an advance's report line at a canal): laid by the fit, with its own label
+      const tg = opts.geom?.[s.role];
+      if (tg?.pts.length) { add(s.role, s.sym, tg.label ?? s.label ?? '', tg.pts.map((p) => ({ ...p })), { drawType: s.drawType ?? 1 }); continue; }
       const at = opts.placed?.[s.role];
       if (at) {
         // placed by the terrain fit (a killing ground on the main approach): 400 x 300 m round that point (E)

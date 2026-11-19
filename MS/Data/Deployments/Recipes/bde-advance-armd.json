@@ -14,7 +14,7 @@
   "needs": {
     "terrain": false
   },
-  "note": "An Armd Bde leading an Armd Div's advance to contact (OoW Vol II s4 paras 1-5 pp 9-11, Fig 2 p 9). Plan metres from the SP (the click: the Van Gd's head crosses it first), y back from the direction of advance (the aim). Covering troops (the Recce Regt / LAT Bn as mobile troops) 4-8 km ahead (6 km), flank guards about 6 km out on each side, the Advance Guard an Armr Regt group: its Van Gd (the leading Sqn group, FOO, Regt Tac) about 3500 m deep, then the Main Gd about 3000 m; the Main Body (the Bde less, Bde Tac, the follow-up Bde behind) about 8 km back (15-20 km for the Armd Div). The Fig 2 figures are read off a highlighted scan: uncertain (PlanDoctrine.advance). With the terrain the axis is read for the going for tracks and the flank guards' ground.",
+  "note": "An Armd Bde leading an Armd Div's advance to contact (OoW Vol II s4 paras 1-5 pp 9-11, Fig 2 p 9). Plan metres from the SP (the click: the Van Gd's head crosses it first), y back from the direction of advance (the aim). Covering troops (the Recce Regt / LAT Bn as mobile troops) 4-8 km ahead (6 km), flank guards about 6 km out on each side, the Advance Guard an Armr Regt group: its Van Gd (the leading Sqn group, FOO, Regt Tac) about 3500 m deep, then the Main Gd about 3000 m; the Main Body (the Bde less, Bde Tac, the follow-up Bde behind) about 8 km back (15-20 km for the Armd Div). The Fig 2 figures are read off a highlighted scan: uncertain (PlanDoctrine.advance). With the terrain the axis is routed for tracks over the bundle's going, its water crossings read with their bridge classes, report lines (RL 1-4, placed only on the ground) set on the water ahead, and the flank guards' ground read.",
   "pivot": "sp",
   "slots": [
     { "role": "sp", "kind": "point", "sym": "25131600", "label": "SP", "order": 1, "shape": { "at": [0, 0] } },
@@ -25,6 +25,10 @@
     { "role": "vanGd", "kind": "point", "sym": "10120500", "label": "Van Gd", "echelon": "15", "order": 2, "shape": { "at": [0, 1750] } },
     { "role": "mainGd", "kind": "point", "sym": "10120500", "label": "Main Gd", "echelon": "16", "order": 2, "shape": { "at": [0, 5000] } },
     { "role": "advGdEnd", "kind": "line", "sym": "25140300", "label": "Adv Gd", "order": 3, "drawType": 1, "shape": { "pts": [[-700, 6500], [700, 6500]] } },
+    { "role": "rl1", "kind": "line", "sym": "25140300", "label": "RL 1", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "rl2", "kind": "line", "sym": "25140300", "label": "RL 2", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "rl3", "kind": "line", "sym": "25140300", "label": "RL 3", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "rl4", "kind": "line", "sym": "25140300", "label": "RL 4", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
     { "role": "mainBody", "kind": "point", "sym": "10120500", "label": "Main Body", "order": 2, "shape": { "at": [0, 8000] } }
   ]
 }

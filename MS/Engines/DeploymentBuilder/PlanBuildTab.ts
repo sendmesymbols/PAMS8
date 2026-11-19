@@ -1678,7 +1678,7 @@ export class PlanBuildTab {
     return `<b>${esc(best.recipe.name)}${this._auto ? ' (Auto)' : ''}</b>${best.fit.pending ? ' <span class="pb-card-dim">ground loading…</span>' : ''}
       ${ranked.length > 1 ? rows : `<div class="pb-card-rk pb-top"><span>Score</span><i style="width:${best.fit.score}%"></i><span>${best.fit.score}</span></div>`}
       ${worst ? cardCheckHtml(worst, WORD[worst.st]) : ''}${slid}
-      ${this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : worst ? '<div class="pb-card-dim">J: the worst posn to better ground nearby</div>' : ''}`;
+      ${this._jNote ? `<div class="pb-card-dim">${esc(this._jNote)}</div>` : best.fit.small ? this._smallCardLine(best) : best.fit.crossing ? this._crossCardLine(best) : worst && best.recipe.task !== 'advance' ? '<div class="pb-card-dim">J: the worst posn to better ground nearby</div>' : ''}`;
   }
 
   /** The card's last line for a crossing: the obstacle, the bridge, the tanks across, his observers. */

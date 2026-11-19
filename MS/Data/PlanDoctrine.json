@@ -329,6 +329,8 @@
     "flankOutM": { "value": 6000, "basis": "D", "src": "OoW Vol II Fig 2 p 9", "uncertain": true },
     "mainBodyBackM": { "value": 8000, "basis": "D", "src": "OoW Vol II Fig 2 p 9 (15-20 km for the Armd Div)", "uncertain": true },
     "axisNogoWarn": { "value": 0.1, "basis": "E", "note": "The share of the axis NO-GO for tracks (the bundle's tracked going, 100 m steps) above which Going on the axis warns." },
+    "axisDetourWarn": { "value": 1.5, "basis": "E", "note": "The routed axis against the straight line from the Main Body to the covering troops: longer than this many times, Axis route warns (the ground forces a long way round)." },
+    "rlApartM": { "value": 1000, "basis": "E", "note": "Report lines are set on the water features across the axis ahead of the SP (canals, distributaries, streams; a report line is usually a terrain feature across the zone: OoW Vol II glossary), at least this far apart, up to four." },
     "axisNogoRunM": { "value": [200, 500], "basis": "E", "note": "The longest NO-GO stretch on the axis: over the first it warns (a bridge or a detour), over the second it fails (the axis is blocked)." }
   },
   "airAslt": {
