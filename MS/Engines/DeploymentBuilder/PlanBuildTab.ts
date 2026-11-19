@@ -44,6 +44,7 @@ import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } fro
 import { artyOnPlan, artyRows, ownArtyTypes, ownDivArties, withArty, type ArtyDoctrine, type ArtyType } from './PlanArty';
 import { adOnPlan, adRows, ownAdTypes, vpsOf, withAd, type AdType } from './PlanAD';
 import { airLiftOf, airLiftRow } from './PlanAvn';
+import { advanceRows, checkAdvance } from './PlanAdvance';
 import { bridgeKinds, engrShare, engrText, inundation, INUND_SOILS, ownEngrTypes, soilWord, withInundation, type EngrType, type InundSoil } from './PlanEngr';
 import { findGunAreas, gunRulesFrom, gunWeapons, type Front, type GunTask, type GunWeapon } from '../GunDeployment/GunDeploymentFind';
 import { SiteBundle } from '../SiteScan/SiteProbe';
@@ -101,12 +102,13 @@ const TASKS: { id: string; label: string; later?: string }[] = [
   { id: 'patrol', label: 'Patrol' },
   { id: 'recce', label: 'Recce' },
   { id: 'crossing', label: 'Crossing' },
+  { id: 'advance', label: 'Advance' },
 ];
 const STEPS = ['Task', 'Enemy', 'Place', 'Check', 'Create'];
 const LAYOUT_LABEL: Record<string, string> = {
   'two-up': 'Two up', 'three-up': 'Three up', 'one-up': 'One up', 'all-round': 'All round', canal: 'Canal', 'rev-slope': 'Rev slope', frontal: 'Frontal',
   'left-flank': 'Lt flank', 'right-flank': 'Rt flank',
-  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen',
+  line: 'Line', l: 'L', v: 'V', patrol: 'Out and back', 'two-ops': 'Two OPs', 'three-ops': 'Three OPs', 'four-bn': 'Four Bns', 'armd-lead': 'Armd Bde leading', 'two-bde': 'Two Bdes', area: 'Area', screen: 'Screen',
 };
 const MOVER_LABEL: Record<Mover, string> = { wheeled: 'Wheeled', tracked: 'Tanks', dismounted: 'On foot' };
 const MOVERS: Mover[] = ['wheeled', 'tracked', 'dismounted'];
@@ -701,6 +703,8 @@ export class PlanBuildTab {
 
   /** A crossing is being built (PlanCrossing). */
   private get _isCrossing(): boolean { return this._recipes.get(baseId(this._recipeId))?.task === 'crossing'; }
+  /** An advance to contact is being built (PlanAdvance): aimed along the axis. */
+  private get _isAdvance(): boolean { return this._recipes.get(baseId(this._recipeId))?.task === 'advance'; }
 
   /** An ambush, patrol or recce is being built (PlanSmallOps; the M key, the aim point). */
   private get _isSmall(): boolean { return SMALL_TASKS.includes(this._recipes.get(baseId(this._recipeId))?.task ?? ''); }
@@ -782,6 +786,12 @@ export class PlanBuildTab {
     if (!r) { this._result = null; this._lastFit = null; return; }
     // ambush, patrol, recce: laid by the solver's shapes; no enemy force, ground kind or ORBAT rows
     if (SMALL_TASKS.includes(r.task)) { this._result = solveSmall(r, this._ctx(r), this._opts(), null); this._lastFit = null; return; }
+    // an advance to contact: laid by its shapes; the echelons' distances against Fig 2 (PlanAdvance)
+    if (r.task === 'advance') {
+      const res = solveRecipe(r, this._ctx(r), this._opts());
+      res.rows = [...res.rows, ...advanceRows(res.items, this._doc)];
+      this._result = res; this._lastFit = null; return;
+    }
     // a crossing: laid by its shapes (PlanCrossing re-lays it along the obstacle); no enemy force or ORBAT rows
     if (r.task === 'crossing') {
       const res = solveRecipe(r, this._ctx(r), this._opts());
@@ -1056,7 +1066,7 @@ export class PlanBuildTab {
       rotate: true,
       // a defence faces the threat marker (one click); an attack is aimed from the objective toward the own side; an
       // ambush is aimed up the road toward him, a patrol at its Obj, a recce at its NAI (the second click)
-      faceAt: this._threat && res.recipe.task !== 'attack' && res.recipe.task !== 'crossing' && !SMALL_TASKS.includes(res.recipe.task) ? { ...this._threat } : undefined,
+      faceAt: this._threat && res.recipe.task !== 'attack' && res.recipe.task !== 'crossing' && res.recipe.task !== 'advance' && !SMALL_TASKS.includes(res.recipe.task) ? { ...this._threat } : undefined,
       // geometry mode: the ground as set (none when Auto: nothing was read), the enemy and unit it was laid for
       meta: this._meta(res.recipe, this._ground === 'auto' ? null : this._ground, null, this._enemyFor(res.recipe, this._ground === 'auto' ? null : this._ground), this._unit(res.recipe)?.id ?? null),
     };
@@ -1089,7 +1099,7 @@ export class PlanBuildTab {
         return;
       }
       // J moves a posn; a patrol, recce or crossing moves with the mouse (its better sites are shown on the map)
-      if (this._isSmall || this._isCrossing) return;
+      if (this._isSmall || this._isCrossing || this._isAdvance) return;
       // R: phase 2 by both follow-up Coys, or C Coy with D Coy the reserve (two-phase attacks only)
       if (isR) {
         if (!this._isPh2 || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1162,7 +1172,7 @@ export class PlanBuildTab {
     if (this._restTimer) clearTimeout(this._restTimer);
     this._restTimer = null;
     this._rest = null;
-    const aimWord = this._isCrossing ? 'Aim across to the far bank, then click' : this._smallTask === 'ambush' ? 'Aim up the Rd toward where he comes from, then click'
+    const aimWord = this._isCrossing ? 'Aim across to the far bank, then click' : this._isAdvance ? 'Aim along the axis of advance, then click' : this._smallTask === 'ambush' ? 'Aim up the Rd toward where he comes from, then click'
       : this._smallTask === 'patrol' ? 'Move to the Obj and click' : this._smallTask === 'recce' ? (this._isScreen ? 'Move out to the ground he would watch you from, then click' : 'Move to the area to watch (NAI) and click') : 'Aim it (move, then click)';
     if (!this._terrain || bearing === null) {
       this._showCard(screen, this._terrain ? `<div class="pb-card-dim">${aimWord} to fit it to the ground</div>` : `<div class="pb-card-dim">Geometry only: ground not checked${aimM !== null ? ` · ${this._smallTask === 'patrol' ? 'Obj' : 'NAI'} ${fmtM(aimM)}` : ''}</div>`);
@@ -1276,7 +1286,7 @@ export class PlanBuildTab {
     const fl = inp ? fitLayout(inp) : null;
     if (!fl || !inp) return null;
     // an ambush, patrol or recce has no posns to move or trigger table: its own reading is the fit
-    if (SMALL_TASKS.includes(recipe.task) || recipe.task === 'crossing') return { ...fl, doc: this._docFor(fl.raw) };
+    if (SMALL_TASKS.includes(recipe.task) || recipe.task === 'crossing' || recipe.task === 'advance') return { ...fl, doc: this._docFor(fl.raw) };
     // the what-if: Sup and C Pen posns, routes and times against the enemy (PlanWhatIf)
     const f = withMoves(fl, inp);
     // G's site (the Gun Deployment finder) while its move stands
@@ -1727,7 +1737,7 @@ export class PlanBuildTab {
     if (!rd.records.length) { this._check = null; this._clearProducts(); this._msg = `Nothing to check: ${rd.note}.`; this._render(); return; }
     // an ambush, patrol, recce or crossing built here: read as drawn with the build's own rows (PlanSmallOps /
     // PlanCrossing check mode), not the defence / attack rules
-    const smallId = readSymbols(rd.records).find((s) => s.pbRecipe && [...SMALL_TASKS, 'crossing'].includes(this._recipes.get(baseId(s.pbRecipe))?.task ?? ''))?.pbRecipe;
+    const smallId = readSymbols(rd.records).find((s) => s.pbRecipe && [...SMALL_TASKS, 'crossing', 'advance'].includes(this._recipes.get(baseId(s.pbRecipe))?.task ?? ''))?.pbRecipe;
     if (smallId) { this._checkBuiltSmall(rd.records, smallId); return; }
     this._runCheck();
     if (this._check) this._host.log(`Intelligent Deployment: checked ${rd.note}: ${this._check.title}`, true);
@@ -1780,7 +1790,7 @@ export class PlanBuildTab {
     const inp = this._fitInput(recipe, { x: anchorPt[0], y: anchorPt[1] }, 0, {});
     if (!inp) return;
     this._probe.begin();
-    const out = recipe.task === 'crossing' ? checkCrossing(inp, drawn) : checkSmallOp(inp, drawn);
+    const out = recipe.task === 'crossing' ? checkCrossing(inp, drawn) : recipe.task === 'advance' ? checkAdvance(inp, drawn) : checkSmallOp(inp, drawn);
     if (!out) { this._check = null; this._msg = `${recipe.name}: not read (no terrain reader).`; this._render(); return; }
     const st = (n: string) => out.rows.filter((r) => r.st === n).length;
     this._check = {
@@ -2023,7 +2033,7 @@ export class PlanBuildTab {
     const head = `
       <p class="pb-p pb-dim">Check a plan on the map: read as drawn, nothing moved; the same rules the build uses.</p>
       ${row('Read', scope)}
-      ${this._check && [...SMALL_TASKS, 'crossing'].includes(this._check.task as string) ? '' : `${this._enemyRows(this._check?.task ?? 'defence', null)}${this._groundRow()}`}
+      ${this._check && [...SMALL_TASKS, 'crossing', 'advance'].includes(this._check.task as string) ? '' : `${this._enemyRows(this._check?.task ?? 'defence', null)}${this._groundRow()}`}
       ${row('Threat', this._threatButtons({ sm: true, mark: 'Mark the threat', title: 'Sets the front; without it the front is read from the enemy symbols, then a DCB or minefield in front' }))}`;
     const r = this._check;
     if (!r) return `${head}<div class="pb-empty">${icon('scan', 'pb-ic-lg')}<p>Select the plan's symbols (or place one from Templates), then <b>Read and check</b>.</p><p>Own and enemy symbols are both read: the enemy's give his force, his axes and his FUP.</p></div>`;
@@ -2315,7 +2325,7 @@ export class PlanBuildTab {
     const attack = list[0].recipe.task === 'attack';
     const fpill = (v: number) => `<span class="pb-pill pb-${v >= 0.75 ? 'pass' : v >= 0.4 ? 'warn' : 'fail'}">${Math.round(v * 100)}</span>`;
     const head = list.map((f, i) => `<th>${i === 0 ? '★ ' : ''}${esc(LAYOUT_LABEL[f.recipe.layout] ?? f.recipe.layout)}</th>`).join('');
-    const small = SMALL_TASKS.includes(list[0].recipe.task) || list[0].recipe.task === 'crossing';
+    const small = SMALL_TASKS.includes(list[0].recipe.task) || list[0].recipe.task === 'crossing' || list[0].recipe.task === 'advance';
     // an ambush, patrol or recce: its own rows side by side (hover a cell for its reason)
     const smallRows = () => [...new Set(list.flatMap((f) => f.res.rows.map((r) => r.name)))].map((name) => `<tr><td>${esc(name)}</td>${list.map((f) => { const r = f.res.rows.find((x) => x.name === name); return r ? `<td title="${esc(r.reason)}">${pill(r.st)}</td>` : '<td>—</td>'; }).join('')}</tr>`).join('');
     const rows = small ? smallRows() : attack

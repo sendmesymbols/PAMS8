@@ -460,6 +460,12 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     // IC s71 para 5 p362 / IBB S46 para 6: what the recce must find
     conf.push('His defences and mines on both sides of the obstacle', 'The obstacle: width, depth, current and bed; banks, their height and slope; islands, fords, weirs and sand banks',
       'Subsidiary obstacles, ditches or fences', 'Approaches to and exits from the water for wheels and tracks', 'Crossing places for boats and rafts; the bridge site', 'Concentration area out of his artillery range (IC s71 para 7 a)');
+  } else if (recipe.task === 'advance') {
+    // an advance to contact: its own rows (PlanAdvance.advanceRows); the ground ones grey until it is fitted
+    const e = ext(allPts.length ? allPts : [P(0, 0)]);
+    frontageM = e.x1 - e.x0; depthM = e.y1 - e.y0;
+    for (const [n, why] of [['Going on the axis', 'the going for tracks along the axis, from the Main Body to the covering troops'], ['Flank guards\' ground', 'the ground the flank guards stand on']] as const) rows.push({ name: n, st: 'unchecked', reason: `${NT}: ${why}` });
+    conf.push('The route on the ground: roads, bridges and their classes (the Move Planner)', 'Bounds, report lines and halting areas along the axis');
   } else if (!isAttack) {
     const fpPts = fp.flatMap((b) => [boxPt(b.c, -b.w / 2, -b.h / 2, b.turn), boxPt(b.c, b.w / 2, b.h / 2, b.turn)]);
     const e = ext(fpPts.length ? fpPts : allPts);
@@ -649,6 +655,9 @@ export function solveRecipe(recipe: Recipe, ctx: SolveCtx, opts: SolveOptions = 
     recipe.task === 'ambush' ? 'The road runs straight along the aim; he comes from where the plan is aimed.'
       : recipe.task === 'patrol' ? 'The Obj is where the plan is aimed (the second click); straight routes out and in.'
         : 'The NAI is where the plan is aimed (the second click); the OPs on the own side of it.',
+  ] : recipe.task === 'advance' ? [
+    'Laid by OoW Vol II Fig 2 spacing (read off a highlighted scan: uncertain) on open, flat ground: the terrain was not read.',
+    'The axis runs straight from the SP (the click) in the direction of advance (the aim).',
   ] : recipe.task === 'crossing' ? [
     'Laid by IBB S46 spacing on open, flat ground: the terrain was not read.',
     'The obstacle runs straight across the click, square to the aim; the far bank is where the plan is aimed.',

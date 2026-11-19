@@ -25,6 +25,7 @@ import { adRows } from './PlanAD';
 import type { ForceSides } from './PlanContext';
 import { fitSmallOp, type Mover, type SmallProbe, type SmallReading } from './PlanSmallOps';
 import { canalPrep, fitCrossing, type CrossingReading, type Light } from './PlanCrossing';
+import { fitAdvance } from './PlanAdvance';
 import type { PlFootSpeeds } from '../PlatoonGuide/PlatoonGuideRead';
 import { footKmh, approachCarries, applyContext, echelonLabel, enemyCorridorM, enemyFupM, enemyProfile, levelOf, type EnemySpec, type TerrainKind, type TerrainSpec } from './PlanContext';
 
@@ -871,6 +872,8 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   if (SMALL_TASKS.includes(inp.recipe.task)) return fitSmallOp(inp);
   // a crossing: re-laid along the obstacle over the Movement Guide's Water engine (PlanCrossing)
   if (inp.recipe.task === 'crossing') return fitCrossing(inp);
+  // an advance to contact: the echelons along the axis, the going for tracks on it (PlanAdvance)
+  if (inp.recipe.task === 'advance') return fitAdvance(inp);
   // a canal defence: laid along the canal first (PlanCrossing.canalPrep: the posns' seeds moved, the shapes re-laid),
   // then fitted and checked as any defence; the canal's own rows join the defence's
   const canal = inp.recipe.layout === 'canal' ? canalPrep(inp) : null;

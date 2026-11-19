@@ -116,6 +116,16 @@
       ]
     },
     {
+      "id": "bde-advance",
+      "name": "Armd Bde Advance",
+      "task": "advance",
+      "echelon": "18",
+      "unit": "armr-iabg",
+      "recipes": [
+        "bde-advance-armd"
+      ]
+    },
+    {
       "id": "div-bridgehead",
       "name": "Div Bridgehead",
       "task": "crossing",
