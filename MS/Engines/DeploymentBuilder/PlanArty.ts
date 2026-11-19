@@ -213,9 +213,9 @@ const fmtM = (m: number) => (m >= 1000 ? km(m) : `${Math.round(m / 10) * 10} m`)
  * ground, Gun area: the share of it where its guns go (towed on wheels, SP on tracks), against GunDoctrine room.
  * Plan metres (y toward the enemy). Empty with no gun area.
  */
-export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, enemyFupM: number | null, f: FitFrame | null = null, g: PlanGround | null = null): Check[] {
+export function artyRows(items: { role: string; pts: XY[] }[], recipe: Recipe, enemyFupM: number | null, f: FitFrame | null = null, g: PlanGround | null = null, backOf: ((p: XY) => number) | null = null): Check[] {
   const a = recipe.arty as ArtyOnPlan | undefined;
-  if (a && recipe.task === 'crossing') return crossArtyRows(items, a, f, g);
+  if (a && recipe.task === 'crossing') return crossArtyRows(items, a, f, g, backOf);
   const ga = items.find((i) => i.role === 'gunArea' && i.pts.length);
   if (!a || !ga) return [];
   const ys = ga.pts.map((p) => p.y);
@@ -279,18 +279,22 @@ function gunGround(pts: XY[], f: FitFrame, g: PlanGround): number | null {
  * (the Objs, PL 1) and the deep line (Obj 3, PL 2, the BH); on the ground, Gun area for each. Every Regt must reach the
  * break-in (IBB S46: the assault is fired in); the deep line wants at least one (the Med Regts' depth fire).
  */
-function crossArtyRows(items: { role: string; pts: XY[] }[], a: ArtyOnPlan, f: FitFrame | null, g: PlanGround | null): Check[] {
+function crossArtyRows(items: { role: string; pts: XY[] }[], a: ArtyOnPlan, f: FitFrame | null, g: PlanGround | null, backOf: ((p: XY) => number) | null = null): Check[] {
+  // how far behind the water a point is: the obstacle's own frame when the crossing is laid along it (a bend, a
+  // diagonal to the aim), else the plan's y
+  const back = backOf ?? ((p: XY) => -p.y);
   const regts = a.regts?.length ? a.regts : [a];
   const areas = regts.map((r, i) => ({ r, it: items.find((x) => x.role === gunRole(i) && x.pts.length) })).filter((x): x is { r: ArtyOnPlan; it: { role: string; pts: XY[] } } => !!x.it);
   if (!areas.length) return [];
   const fups = items.filter((i) => /^fup/.test(i.role) && i.pts.length);
-  const fy = fups.length ? fups.reduce((s, i) => s + centre(i.pts).y, 0) / fups.length : 0;
+  const fb = fups.length ? fups.reduce((s, i) => s + back(centre(i.pts)), 0) / fups.length : 0;
   const near = items.filter((i) => /^(obj[12]?|ph1[ab]?)$/.test(i.role) && i.pts.length);
   const deep = items.filter((i) => /^(obj3|ph2|bh)$/.test(i.role) && i.pts.length);
   const word = (i: { role: string }) => ({ ph1: 'PL 1', ph1a: 'PL 1', ph1b: 'PL 1', ph2: 'PL 2', bh: 'the BH', obj: 'the Obj', obj1: 'Obj 1', obj2: 'Obj 2', obj3: 'Obj 3' } as Record<string, string>)[i.role] ?? i.role;
   let nearAll = 0, deepAny = false, offBand = 0;
   const parts = areas.map(({ r, it }) => {
-    const C = centre(it.pts), d = fy - Math.max(...it.pts.map((p) => p.y));
+    // its front edge (the point nearest the water) behind the FUPs' middle
+    const C = centre(it.pts), d = Math.min(...it.pts.map(back)) - fb;
     const reach = (p: XY) => { const q = Math.hypot(p.x - C.x, p.y - C.y); return q <= r.weapon.planM && q >= r.weapon.minM; };
     const nOut = [...new Set(near.filter((t) => !t.pts.every(reach)).map(word))];
     const dOut = [...new Set(deep.filter((t) => !t.pts.every(reach)).map(word))];

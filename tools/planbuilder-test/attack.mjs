@@ -201,6 +201,25 @@ const O = centre(it(base, 'obj').pts), F0 = centre(it(base, 'fup').pts);
   const Ph = await import('../../MS/Engines/DeploymentBuilder/PlanPhase.ts');
   const two = F.fitLayout(inpOf(Ph.twoPhaseRecipe(front, doc), flatG));
   check('...in two phases his counter-attack is read onto Obj 2', /onto OBJ 2/.test(two.res.rows.find((r) => r.name === 'Approaches covered')?.reason ?? ''), two.res.rows.find((r) => r.name === 'Approaches covered')?.reason);
+
+  // AT on the Obj: the unit's ATGMs (and AT Coys grouped to the attack) onto the last objective
+  const O2 = await import('../../MS/Engines/DeploymentBuilder/PlanOrbat.ts');
+  const P2 = 'MS/Data/Orbat/PK/';
+  const orbat = { own: O2.mergeOwn(O2.OWN_ORBAT_FILES.map((f) => json(`${P2}${f}`).units)), en: [], weapons: json(`${P2}weapons.json`).weapons };
+  const std = O2.brief(orbat, 'inf-bn-std');
+  const lat = O2.ownAtTypes(orbat).find((t) => /lat/i.test(t.id));
+  const fs1 = F.fitLayout(inpOf(front, flatG, { unit: std }));
+  const ar = row(fs1.res.rows, 'AT on the Obj');
+  const nStd = std.atgm.reduce((s, w) => s + w.count, 0), ways = fs1.fit.attack.counter.apchs.filter((a) => a.df).length;
+  check('AT on the Obj, the Std Inf Bn alone: its own launchers in pairs facing his ways in; fewer pairs than ways: warn', !!ar && /onto OBJ/i.test(ar.reason) && (Math.floor(nStd / 2) < ways ? ar.st === 'warn' && /left without a pair/.test(ar.reason) : true), `${nStd} launchers, ${ways} ways: ${ar?.st} ${ar?.reason.slice(0, 160)}`);
+  const pairs = fs1.raw.items.filter((i) => /^atgmObj\d$/.test(i.role));
+  const ob1 = it(fs1.raw, 'obj').pts, inObj = (p) => p.x >= Math.min(...ob1.map((q) => q.x)) - 1 && p.x <= Math.max(...ob1.map((q) => q.x)) + 1 && p.y >= Math.min(...ob1.map((q) => q.y)) - 1 && p.y <= Math.max(...ob1.map((q) => q.y)) + 1;
+  check('...the pairs drawn on the Obj (two launchers a pair, inside its outline)', pairs.length === 2 * Math.min(Math.floor(nStd / 2), ways) && pairs.every((i) => inObj(i.pts[0])), `${pairs.length} launchers drawn`);
+  const grouped = O2.withAtGroup(orbat, std, lat.id, 2);
+  const fg = F.fitLayout(inpOf(front, flatG, { unit: grouped }));
+  const ag = row(fg.res.rows, 'AT on the Obj');
+  check('...with 2 LAT Coys grouped: a pair for every way in, each DF point within reach: pass', ag?.st === 'pass' && !/left without/.test(ag.reason) && fg.raw.items.filter((i) => /^atgmObj\d$/.test(i.role)).length === 2 * ways, ag?.reason.slice(0, 300));
+  check('...no ATGM in the unit (none given): no AT on the Obj row', !row(F.fitLayout(inpOf(front, flatG)).res.rows, 'AT on the Obj'));
 }
 
 console.log(`\n${n} checks, ${fails} failed`);

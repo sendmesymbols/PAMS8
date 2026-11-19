@@ -41,7 +41,7 @@ import { applyContext, defaultEnemy, echelonLabel, enemyFupM, firstLayout, terra
 import { checkPlan, checkText, readSymbols, reportWorld, type CheckReport, type PosnKind } from './PlanCheck';
 import { twoPhaseRecipe } from './PlanPhase';
 import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } from './PlanTanks';
-import { artyOnPlan, artyRows, ownArtyTypes, ownDivArties, withArty, type ArtyDoctrine, type ArtyType } from './PlanArty';
+import { artyOnPlan, artyRows, gunRole, ownArtyTypes, ownDivArties, withArty, type ArtyDoctrine, type ArtyType } from './PlanArty';
 import { adOnPlan, adRows, ownAdTypes, vpsOf, withAd, type AdType } from './PlanAD';
 import { airLiftOf, airLiftRow } from './PlanAvn';
 import { advanceRows, checkAdvance, marchFromOrbat } from './PlanAdvance';
@@ -577,7 +577,7 @@ export class PlanBuildTab {
 
   /** The AT grouping applies to a Bn defence: LAT / HAT Coys grouped to it add their ATGM pairs on the tank approaches. */
   private _atGrouped(recipe: Recipe | null | undefined): boolean {
-    return !!this._atId && !!recipe && (recipe.echelon === '16' || recipe.echelon === '15') && recipe.task === 'defence';
+    return !!this._atId && !!recipe && (((recipe.echelon === '16' || recipe.echelon === '15') && recipe.task === 'defence') || (recipe.echelon === '16' && recipe.task === 'attack'));
   }
 
   /** The enemy's unit in the ORBAT for the recipe's enemy (Sec 13). */
@@ -912,7 +912,9 @@ export class PlanBuildTab {
     // Check my plan: tiles that arrived after the check are read again (once they stop coming)
     if (this._mode === 'check' && this._checkRecs && this._check) {
       if (this._checkTimer) clearTimeout(this._checkTimer);
-      this._checkTimer = setTimeout(() => { this._checkTimer = null; this._runCheck(); }, 300);
+      // an ambush, patrol, recce, crossing or advance is read again as drawn by its own rows, not as a defence / attack
+      const own = [...SMALL_TASKS, 'crossing', 'advance'].includes(String(this._check.task));
+      this._checkTimer = setTimeout(() => { this._checkTimer = null; if (own) this._readAndCheck(); else this._runCheck(); }, 300);
     }
   }
 
@@ -1113,6 +1115,14 @@ export class PlanBuildTab {
         this._jumpAmbush(e.shiftKey);
         return;
       }
+      // G: the gun areas sited by the Gun Deployment finder; Shift+G back to the plan's (defence, attack, crossing)
+      if (isG) {
+        if (e.ctrlKey || e.metaKey || e.altKey || !this._terrain || this._isSmall || this._isAdvance) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void this._siteGuns(e.shiftKey);
+        return;
+      }
       // J moves a posn; a patrol, recce or crossing moves with the mouse (its better sites are shown on the map)
       if (this._isSmall || this._isCrossing || this._isAdvance) return;
       // R: phase 2 by both follow-up Coys, or C Coy with D Coy the reserve (two-phase attacks only)
@@ -1140,14 +1150,6 @@ export class PlanBuildTab {
         e.stopPropagation();
         this._setPhases(this._phases === 2 ? 1 : 2);
         this._render();
-        return;
-      }
-      // G: the gun area sited by the Gun Deployment finder; Shift+G back to the plan's
-      if (isG) {
-        if (e.ctrlKey || e.metaKey || e.altKey || !this._terrain) return;
-        e.preventDefault();
-        e.stopPropagation();
-        void this._siteGuns(e.shiftKey);
         return;
       }
       if (!this._terrain) return;
@@ -1301,11 +1303,12 @@ export class PlanBuildTab {
     const fl = inp ? fitLayout(inp) : null;
     if (!fl || !inp) return null;
     // an ambush, patrol or recce has no posns to move or trigger table: its own reading is the fit
+    // G's site (the Gun Deployment finder) while its moves stand
+    const gs = Object.keys(manual).some((k) => /^gunArea\d*$/.test(k)) && this._gunSite?.key === recipe.id ? [this._gunSite.row] : [];
+    if (recipe.task === 'crossing' && gs.length) return { ...fl, res: { ...fl.res, rows: [...fl.res.rows, ...gs] }, doc: this._docFor(fl.raw) };
     if (SMALL_TASKS.includes(recipe.task) || recipe.task === 'crossing' || recipe.task === 'advance') return { ...fl, doc: this._docFor(fl.raw) };
     // the what-if: Sup and C Pen posns, routes and times against the enemy (PlanWhatIf)
     const f = withMoves(fl, inp);
-    // G's site (the Gun Deployment finder) while its move stands
-    const gs = manual.gunArea && this._gunSite?.key === recipe.id ? [this._gunSite.row] : [];
     f.res = { ...f.res, rows: [...f.res.rows, ...this._orbatRows(f.res), ...this._liftRows(f.res), ...gs] };
     return { ...f, doc: this._docFor(f.raw) };
   }
@@ -1324,87 +1327,104 @@ export class PlanBuildTab {
   }
 
   /**
-   * G: the gun area to the best site the Gun Deployment finder reads round it (GunDeploymentFind.findGunAreas: room,
-   * level, firm soil, concealment, access, range to the target, behind the front, crest clearance), within the band's
-   * spread of where the plan put it; the plan refitted there, so Arty reach and Gun area judge it at the new site. Its
-   * target: the Obj in an attack, his FUP on the axis in defence; its front: the FDL, or the SL in an attack. Shift+G
-   * takes it back. A defence or attack of a Bn with artillery; a crossing's gun areas stay where laid.
+   * G: each gun area on the plan to the best site the Gun Deployment finder reads round it (GunDeploymentFind.findGunAreas:
+   * room, level, firm soil, concealment, access, range to the target, behind the front, crest clearance), within its
+   * band's spread of where the plan put it: a Bn plan's one, a crossing's each Regt's (a Div bridgehead's four) in turn,
+   * each with its own gun. The plan refitted there, so Arty reach and Gun area judge them at their new sites. The target:
+   * the Obj in an attack, his FUP on the axis in defence, the bridgehead line (else PL 1) on a crossing; the front: the
+   * FDL, the SL in an attack, the water line (the SL) on a crossing. Shift+G takes them all back.
    */
   private async _siteGuns(back: boolean): Promise<void> {
     const r = this._rest, cur = this._lastFit;
     const say = (note: string) => { this._jNote = note; this._showCard(r?.screen ?? null, this._cardHtml(this._ranked)); };
     if (!this._placing || !r || !cur) { say('G works while the plan rests: stop the mouse first.'); return; }
-    const a = cur.recipe.arty;
-    if (!a || (cur.recipe.task !== 'defence' && cur.recipe.task !== 'attack')) { say('G: no gun area on this plan (choose the artillery in the Arty row).'); return; }
+    const a = cur.recipe.arty, op = cur.recipe.task;
+    if (!a || !['defence', 'attack', 'crossing'].includes(op)) { say('G: no gun area on this plan (choose the artillery in the Arty row).'); return; }
+    const isGun = (k: string) => /^gunArea\d*$/.test(k);
     if (back) {
-      if (!this._manual.gunArea) { say('Shift+G: the gun area is where the plan put it.'); return; }
-      const m = { ...this._manual };
-      delete m.gunArea;
-      this._manual = m;
+      if (!Object.keys(this._manual).some(isGun)) { say('Shift+G: the gun areas are where the plan put them.'); return; }
+      this._manual = Object.fromEntries(Object.entries(this._manual).filter(([k]) => !isGun(k)));
       this._gunSite = null;
       const f = this._fitOne(cur.recipe, r.anchor, r.bearing, this._manual);
-      if (f) { this._jNote = 'G taken back: the gun area where the plan put it.'; this._show([f]); }
+      if (f) { this._jNote = 'G taken back: the gun areas where the plan put them.'; this._show([f]); }
       return;
     }
     const b = await this._gunProbe();
     if (this._rest !== r || this._lastFit !== cur) return;
     if (!b) { say('G: the terrain bundle did not open for the gun finder.'); return; }
-    const ga = cur.raw.items.find((i) => i.role === 'gunArea' && i.pts.length);
-    if (!ga || !this._orbat) return;
+    if (!this._orbat) return;
     this._gunWeapons ??= gunWeapons({ weapons: this._orbat.weapons }, this._gunR.planFrac.value);
-    const W = this._gunWeapons.find((w) => w.id === a.weapon.id);
-    if (!W) { say(`G: the ${a.weapon.name} is not one the gun finder knows.`); return; }
-    const mid = (pts: XY[]): XY => ({ x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length });
-    const C = mid(ga.pts);
-    const w = (p: XY): [number, number] => { const q = toWorld(cur.frame, p); return [q.x, q.y]; };
+    const mid = (pts: XY[]): XY => ({ x: pts.reduce((s, q) => s + q.x, 0) / pts.length, y: pts.reduce((s, q) => s + q.y, 0) / pts.length });
+    const w = (q: XY): [number, number] => { const z = toWorld(cur.frame, q); return [z.x, z.y]; };
     const item = (role: string) => cur.raw.items.find((i) => i.role === role && i.pts.length);
     const kind = this._ground === 'auto' ? null : this._ground;
-    let target: [number, number] | null = null, front: Front | null = null;
-    if (cur.recipe.task === 'attack') {
+    let target: [number, number] | null = null, front: Front | null = null, tWord = '';
+    if (op === 'attack') {
       const obj = item('obj'), sl = item('sl');
       if (obj) target = w(mid(obj.pts));
       if (sl) front = { kind: 'line', runs: [sl.pts.map(w)], label: 'the SL' };
+      tWord = 'the Obj of the plan';
+    } else if (op === 'crossing') {
+      const deep = item('bh') ?? item('ph2') ?? item('ph1') ?? item('ph1a') ?? item('obj1'), sl = item('sl');
+      if (deep) target = w(mid(deep.pts));
+      if (sl) front = { kind: 'line', runs: [sl.pts.map(w)], label: 'the water line (the SL)' };
+      tWord = 'the bridgehead';
     } else {
       const fdl = item('fdl');
       if (fdl) {
-        const fy = Math.max(...fdl.pts.map((p) => p.y)), fx = mid(fdl.pts).x;
+        const fy = Math.max(...fdl.pts.map((q) => q.y)), fx = mid(fdl.pts).x;
         target = w({ x: fx, y: fy + enemyFupM(this._doc, this._enemyFor(cur.recipe, kind).type)[0] });
         front = { kind: 'line', runs: [fdl.pts.map(w)], label: 'the FDL' };
       }
+      tWord = 'his FUP on the plan\'s axis';
     }
     const month = new Date().getMonth() + 1;
-    const Cw = w(C);
-    // as the Gun Deployment tool reads the season: 100 mm a month is wet; Jul-Sep wet without the climate grid
-    const season = seasonFor(month, b.precAt(Cw[0], Cw[1]), 100, [7, 8, 9]);
-    const radiusM = Math.max(1500, Math.round((a.band[1] - a.band[0]) / 2 + a.areaM[1]));
-    const task: GunTask = {
-      centre: Cw, radiusM, target, front, weapon: W, unit: a.unit === 'bty' ? 'bty' : 'regt', op: cur.recipe.task === 'attack' ? 'attk' : 'def',
-      season: season.season, month, data: dataCatalog(b.manifest),
-      inputs: { target: cur.recipe.task === 'attack' ? 'the Obj of the plan' : 'his FUP on the plan\'s axis', front: front?.label, centre: 'the plan\'s gun area' },
-      seasonWhy: season.why, wetFromMm: 100,
-    };
-    b.begin();
-    let res;
-    try { res = findGunAreas(b, b.rules, task, this._gunR, (x, y) => b.standing(x, y, month)); }
-    catch (err) { say(`G: the gun finder failed: ${err instanceof Error ? err.message : String(err)}`); return; }
-    if (b.pending()) { this._gunWanted = true; say('G: the ground for the gun areas is loading: it runs again when it arrives.'); return; }
-    this._gunWanted = false;
-    const s = res.sites[0];
-    if (!s) { say(`G: no gun area within ${fmtM(radiusM)} of the plan's: ${res.notes.join(' ') || 'none passes'}`); return; }
-    const to = toLocal(cur.frame, { x: s.at[0], y: s.at[1] });
-    const prev = this._manual.gunArea ?? { x: 0, y: 0 };
-    const dx = to.x - C.x, dy = to.y - C.y, distM = Math.hypot(dx, dy);
-    this._manual = { ...this._manual, gunArea: { x: prev.x + dx, y: prev.y + dy } };
+    const regts = a.regts?.length ? a.regts : [a];
     const TONE: Record<Tone, CheckState> = { ok: 'pass', warn: 'warn', bad: 'fail', unknown: 'unchecked' };
-    // the finder scores 0-1
-    const sc = s.score <= 1 ? `${Math.round(s.score * 100)} %` : String(Math.round(s.score));
-    const where = distM < 50 ? 'where the plan put it' : `${fmtM(distM)} ${Math.abs(dy) >= Math.abs(dx) ? (dy > 0 ? 'forward' : 'back') : dx > 0 ? 'right' : 'left'} of where the plan put it`;
-    this._gunSite = {
-      key: cur.recipe.id,
-      row: { name: 'Gun site', st: TONE[s.tone] ?? 'unchecked', reason: `Sited by Gun Deployment (G; Shift+G takes it back): the best of ${res.sites.length} within ${fmtM(radiusM)} (${res.tried} places tried), score ${sc}, ${where}: ${s.verdict}. ${s.rows.map((x) => `${x.label} ${x.value}`).join('; ')}${s.fixes.length ? `. Fix: ${s.fixes.slice(0, 2).join('; ')}` : ''}` },
-    };
+    const ORDER: CheckState[] = ['pass', 'unchecked', 'warn', 'fail'];
+    const worse = (x: CheckState, y: CheckState) => (ORDER.indexOf(y) > ORDER.indexOf(x) ? y : x);
+    const manual = { ...this._manual };
+    const parts: string[] = [];
+    let st: CheckState = 'pass', sited = 0;
+    for (let i = 0; i < regts.length; i++) {
+      const g = regts[i], role = gunRole(i), ga = item(role);
+      if (!ga) continue;
+      const W = this._gunWeapons.find((x) => x.id === g.weapon.id);
+      if (!W) { parts.push(`${g.name}: the ${g.weapon.name} is not one the gun finder knows`); st = worse(st, 'unchecked'); continue; }
+      const C = mid(ga.pts), Cw = w(C);
+      // as the Gun Deployment tool reads the season: 100 mm a month is wet; Jul-Sep wet without the climate grid
+      const season = seasonFor(month, b.precAt(Cw[0], Cw[1]), 100, [7, 8, 9]);
+      const radiusM = Math.max(1500, Math.round((g.band[1] - g.band[0]) / 2 + g.areaM[1]));
+      const task: GunTask = {
+        centre: Cw, radiusM, target, front, weapon: W, unit: g.unit === 'bty' ? 'bty' : 'regt', op: op === 'defence' ? 'def' : 'attk',
+        season: season.season, month, data: dataCatalog(b.manifest),
+        inputs: { target: tWord, front: front?.label, centre: `the plan's gun area (${g.name})` },
+        seasonWhy: season.why, wetFromMm: 100,
+      };
+      b.begin();
+      let res;
+      try { res = findGunAreas(b, b.rules, task, this._gunR, (x, y) => b.standing(x, y, month)); }
+      catch (err) { say(`G: the gun finder failed: ${err instanceof Error ? err.message : String(err)}`); return; }
+      if (b.pending()) { this._gunWanted = true; say('G: the ground for the gun areas is loading: it runs again when it arrives.'); return; }
+      const s = res.sites[0];
+      if (!s) { parts.push(`${g.name}: no gun area within ${fmtM(radiusM)} of the plan's (${res.notes.join(' ') || 'none passes'})`); st = worse(st, 'warn'); continue; }
+      const to = toLocal(cur.frame, { x: s.at[0], y: s.at[1] });
+      const prev = manual[role] ?? { x: 0, y: 0 };
+      const dx = to.x - C.x, dy = to.y - C.y, distM = Math.hypot(dx, dy);
+      manual[role] = { x: prev.x + dx, y: prev.y + dy };
+      sited++;
+      st = worse(st, TONE[s.tone] ?? 'unchecked');
+      // the finder scores 0-1
+      const sc = s.score <= 1 ? `${Math.round(s.score * 100)} %` : String(Math.round(s.score));
+      const where = distM < 50 ? 'where the plan put it' : `${fmtM(distM)} ${Math.abs(dy) >= Math.abs(dx) ? (dy > 0 ? 'forward' : 'back') : dx > 0 ? 'right' : 'left'} of where the plan put it`;
+      parts.push(`${g.name}: the best of ${res.sites.length} within ${fmtM(radiusM)} (${res.tried} places tried), score ${sc}, ${where}: ${s.verdict}. ${s.rows.map((x) => `${x.label} ${x.value}`).join('; ')}${s.fixes.length ? `. Fix: ${s.fixes.slice(0, 2).join('; ')}` : ''}`);
+    }
+    this._gunWanted = false;
+    if (!sited && !parts.length) { say('G: no gun area on the plan to site.'); return; }
+    this._manual = manual;
+    this._gunSite = { key: cur.recipe.id, row: { name: 'Gun site', st, reason: `Sited by Gun Deployment (G; Shift+G takes it back): ${parts.join(' | ')}` } };
     const f = this._fitOne(cur.recipe, r.anchor, r.bearing, this._manual);
-    if (f) { this._jNote = `G: the gun area ${where} (score ${sc}); Shift+G takes it back`; this._show([f]); }
+    if (f) { this._jNote = `G: ${sited} gun area${sited === 1 ? '' : 's'} sited by the Gun Deployment finder; Shift+G takes ${sited === 1 ? 'it' : 'them'} back`; this._show([f]); }
   }
 
   /**
@@ -1948,7 +1968,7 @@ export class PlanBuildTab {
    * the AT cover row. None, or the AT Bn and how many of its Coys.
    */
   private _atRow(recipe: Recipe): string {
-    if (!this._orbat || (recipe.echelon !== '16' && recipe.echelon !== '15') || recipe.task !== 'defence' || !this._atTypes.length) return '';
+    if (!this._orbat || (recipe.echelon !== '16' && recipe.echelon !== '15') || (recipe.task !== 'defence' && !(recipe.task === 'attack' && recipe.echelon === '16')) || !this._atTypes.length) return '';
     const byPl = recipe.echelon === '15';
     const none = this._chip(!this._atId, 'None', 'atType:', `No AT ${byPl ? 'Pls' : 'Coys'} grouped: the unit's own launchers only`);
     const types = this._atTypes.map((t) => this._chip(this._atId === t.id, t.name.replace(/ Bn\b/, ''), `atType:${t.id}`,
@@ -1983,7 +2003,7 @@ export class PlanBuildTab {
     const chips = [this._chip(!types.some((t) => t.id === this._artyId), 'None', 'arty:', 'No artillery drawn')]
       .concat(types.map((t) => this._chip(this._artyId === t.id, t.name, `arty:${t.id}`, `${t.guns} x ${t.weapon.name}, planning range ${(t.weapon.planM / 1000).toFixed(1)} km${t.weapon.sp ? ', SP' : ''} (${t.src})`))).join('');
     // G while the plan rests: the gun area to the Gun Deployment finder's best site round it
-    const g = types.some((t) => t.id === this._artyId) && recipe.task !== 'crossing' ? `<span title="The Gun Deployment finder sites the gun area round the plan's (room, level, firm soil, access, range, crest); Shift+G takes it back">${keyHint('G')}</span>` : '';
+    const g = types.some((t) => t.id === this._artyId) ? `<span title="The Gun Deployment finder sites the gun area round the plan's (room, level, firm soil, access, range, crest); Shift+G takes it back">${keyHint('G')}</span>` : '';
     return row('Arty', chips + g);
   }
 

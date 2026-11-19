@@ -230,6 +230,9 @@ function readCrossing(c: Ctx): Read {
     const side = sideOf(it);
     geom[it.role] = { pts: pts.map((p) => toL(frame, W(p, side))) };
     if (it.base) geom[it.role].base = { start: toL(frame, W(it.base.start, side)), mid: toL(frame, W(it.base.mid, side)), end: toL(frame, W(it.base.end, side)) };
+    // a gun area moved by G (the Gun Deployment finder's site): the move laid over the re-laid area
+    const mv = /^gunArea\d*$/.test(it.role) ? inp.manual?.[it.role] : undefined;
+    if (mv) geom[it.role].pts = geom[it.role].pts.map((q) => ({ x: q.x + mv.x, y: q.y + mv.y }));
   }
 
   // ── the bridge site: the narrowest, lowest-banked place with tracks in and out near the planned one ──
@@ -498,7 +501,9 @@ function readCrossing(c: Ctx): Read {
   // the artillery behind it (PlanArty.withArty): its reach on the plan as laid along the obstacle (or as drawn), its
   // gun areas' ground where laid
   const laid = dr ? items : items.map((it) => (geom[it.role] ? { ...it, pts: geom[it.role].pts } : it));
-  if (recipe.arty) rows.push(...artyRows(laid, recipe, null, dr ? null : frame, dr ? null : c.ground));
+  // distances behind the water in the obstacle's frame (as drawn: already its y from the crest)
+  const backOf = dr ? (p: XY) => -p.y : (p: XY) => -O.local(toW(frame, p)).n;
+  if (recipe.arty) rows.push(...artyRows(laid, recipe, null, dr ? null : frame, dr ? null : c.ground, backOf));
   // AD over its bridges, gun areas, HQ and Assy areas (PlanAD)
   if (recipe.ad) rows.push(...adRows(laid, recipe));
   const bhRow = rows.find((x) => x.name === 'Bridgehead');

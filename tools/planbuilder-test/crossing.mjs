@@ -305,6 +305,16 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
   const dA = {};
   for (const i of fa.raw.items) { if (dA[i.role]) continue; const w = (p) => { const q = world(fa, p); return [q.x, q.y]; }; dA[i.role] = { pts: i.pts.map(w), ...(i.base ? { base: { start: w(i.base.start), mid: w(i.base.mid), end: w(i.base.end) } } : {}) }; }
   check('...Check my plan reads AD cover back as drawn, the same verdict', row(C.checkCrossing(inpOf(ra, H), dA).rows, 'AD cover')?.st === row(fa.res.rows, 'AD cover')?.st, row(C.checkCrossing(inpOf(ra, H), dA).rows, 'AD cover')?.reason);
+  // aimed 40 degrees off square to the canal: the plan is re-laid square to the water, and Arty reach measures behind the
+  // water in the canal's frame, so the gun area stands the same distance behind the FUPs
+  const fd = F.fitLayout(inpOf(r, H, { bearing: (40 * Math.PI) / 180 }));
+  const dOf = (x) => Number(row(x.res.rows, 'Arty reach')?.reason.match(/Fd Regt ([\d.]+) km behind the FUPs/)?.[1]);
+  check('aimed 40 degrees off square: Arty reach reads the gun area the same distance behind the FUPs (within 0.2 km)', Math.abs(dOf(fd) - dOf(fl)) <= 0.2, `${dOf(fl)} km square, ${dOf(fd)} km at 40 degrees`);
+  // G on a crossing: the move (plan metres) laid over the gun area as re-laid along the canal; Arty reach re-judged
+  const fm = F.fitLayout(inpOf(r, H, { manual: { gunArea: { x: 0, y: -2000 } } }));
+  const ga0 = it(fl.raw, 'gunArea').pts.map((p) => world(fl, p)).map(nOfW), ga1 = it(fm.raw, 'gunArea').pts.map((p) => world(fm, p)).map(nOfW);
+  const back = Math.max(...ga0) - Math.max(...ga1);
+  check('G on a crossing: the gun area moved 2 km back along with the re-lay; Arty reach now reads it outside its band', Math.abs(back - 2000) < 150 && /outside its band/.test(row(fm.res.rows, 'Arty reach')?.reason ?? ''), `${Math.round(back)} m back; ${row(fm.res.rows, 'Arty reach')?.reason?.slice(0, 110)}`);
   check('...its gun area dragged 9 km back: the BH out of range, Arty reach no longer passes', row(far.rows, 'Arty reach')?.st !== 'pass' && /out/.test(row(far.rows, 'Arty reach').reason), row(far.rows, 'Arty reach')?.reason);
 }
 
@@ -335,6 +345,14 @@ check('No Movement Guide reader: the geometry stands, the ground rows grey', g0.
   const of = new C.ObstacleFrame(bend, at(0, 0), 90, 1);
   const p = of.world(1000, 0), q = of.world(1000, 500);
   check('ObstacleFrame: x follows the bend (1 km along the NE leg), n goes across toward the far side', Math.abs(M.groundDist(p, at(0, 0)) - 1000) < 30 && M.bearingOf(at(0, 0), p) > 30 && M.bearingOf(at(0, 0), p) < 60 && Math.abs(M.groundDist(p, q) - 500) < 5, `${Math.round(M.bearingOf(at(0, 0), p))} deg`);
+}
+
+// ── the 3-Coy Bn crossing (the Lt Cdo Bn) ─────────────────────────────────────────────────────────────────────────────
+{
+  const r3 = rec('bn3-cross-two-up');
+  check('3-Coy Bn crossing: forCoys 3, the Lt Cdo Bn; A, B assault, C passes through, no D Coy; the note says who stands in as reserve', r3.forCoys === 3 && r3.unit === 'inf-bn-lt-cdo' && ['aCoy', 'bCoy', 'cCoy'].every((x) => r3.slots.some((s) => s.role === x)) && !r3.slots.some((s) => s.role === 'dCoy') && /no Coy left for a reserve/.test(r3.note));
+  const f3 = F.fitLayout(inpOf(r3, H));
+  check('...fitted on the canal like the 4-Coy layout: the same crossing rows (Obstacle, Boats, Bridge)', ['Obstacle', 'Boats', 'Bridge'].every((x) => row(f3.res.rows, x)) && row(f3.res.rows, 'Obstacle')?.st === row(F.fitLayout(inpOf(rec('bn-cross-two-up'), H)).res.rows, 'Obstacle')?.st, f3.res.rows.map((x) => x.name).slice(0, 8).join(', '));
 }
 
 console.log(`\n${n - fails} of ${n} checks passed`);

@@ -241,7 +241,7 @@ export function validateRecipe(r: Recipe, ctx: ValidateCtx): RecipeIssue[] {
   if (r.forCoys != null) {
     const below = String(Number(r.echelon) === 16 ? 15 : 14);
     // a defence's sub-units hold ground (posns); an attack's are unit symbols (the assault Coys, the reserve)
-    const held = Array.isArray(r.slots) ? r.slots.filter((s) => s?.echelon === below && (['fwd', 'depth', 'res', 'round'].includes(s.kind) || (r.task === 'attack' && s.kind === 'point' && /^10/.test(String(s.sym))))).length : 0;
+    const held = Array.isArray(r.slots) ? r.slots.filter((s) => s?.echelon === below && (['fwd', 'depth', 'res', 'round'].includes(s.kind) || ((r.task === 'attack' || r.task === 'crossing') && s.kind === 'point' && /^10/.test(String(s.sym))))).length : 0;
     if (!Number.isInteger(r.forCoys) || r.forCoys < 1) fail(`forCoys ${r.forCoys} is not a whole number from 1`);
     else if (held !== r.forCoys) fail(`forCoys is ${r.forCoys} but the recipe holds ground with ${held} sub-units`);
   }

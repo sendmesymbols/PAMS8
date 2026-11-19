@@ -17,7 +17,7 @@ import { doctrineAt, resolveRange, SMALL_TASKS } from './PlanRecipes';
 import type { Check, CheckState, SlotResult, SolveResult, SolveCtx, SolveOptions, XY } from './PlanSolve';
 import { solveRecipe, BP_SHAPE } from './PlanSolve';
 import { atgmPairs, type UnitBrief } from './PlanOrbat';
-import { attackBreach, attackFactors, attackTimes, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
+import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
 import { findPhase2, goingRow, type Phase2Find } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode } from './PlanTanks';
 import { artyRows } from './PlanArty';
@@ -983,6 +983,12 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     // the reorganisation: his counter-attack ways in onto the last objective, in place of the solver's unread row
     const ca = counterAttack(raw, frame, ground, ctx.doc, enemy?.type ?? null);
     if (ca) { merged.rows = merged.rows.filter((r) => r.name !== 'Approaches covered'); merged.rows.push(ca.row); }
+    // the unit's ATGMs (its own and any AT Coys grouped to it) onto the last objective, a pair facing each way in
+    const ao = ca && unit?.atgm.length ? atOnObj(ca, raw, unit.atgm, ctx.doc, ATGM_KEY) : null;
+    if (ao) {
+      merged.rows.push(ao.row);
+      if (ao.pts.length) { fit.atExtras = ao.pts; raw = solveRecipe(recipe, ctx, { ...solveOpts, extraPoints: ao.pts }); }
+    }
     const obj = raw.items.find((i) => i.role === 'obj');
     const nb = inp.night && inp.nmRules && route && obj ? nightBrief(route, P(obj.pts.reduce((a, p) => a + p.x, 0) / obj.pts.length, obj.pts.reduce((a, p) => a + p.y, 0) / obj.pts.length), frame, terrain.kind, inp.nmRules) : null;
     if (nb) merged.rows.push(nightRow(nb));

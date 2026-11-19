@@ -1,0 +1,398 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn3-cross-two-up",
+  "family": "bn-cross",
+  "layout": "two-up",
+  "echelon": "16",
+  "basis": "D",
+  "task": "crossing",
+  "name": "Bn Assault Crossing: two up (3 Coys)",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "The leading assault battalion across a water obstacle (IBB S47; IC s70-71). Plan metres from H (the click on the water, where the first wave enters at H hour: IBB S46 para 25 p240), y across to the far bank (the aim). A and B Coys cross at H on about 300 m of the bund each (IC s70 para 4c p358; the Bn front 500-800 m, IBB S46 para 22 p239) from FUPs whose start line is the water line (IBB S46 para 8 f p234), C Coy at H+20 (IC s71 para 12 p365) passing through to OBJ 2 600 m deep; a Bn of three Coys (the Lt Cdo Bn, p 623) has no Coy left for a reserve once C Coy is across: the Bde's reserve, or the follow-up Bn, stands in (E); the bridge or raft site between the assault Coys, a vehicle waiting area near the water and a release point on the far bank (IC s71 para 8 p364); the Bn Assy Area not far from the obstacle, a checkpoint (IC s71 para 7 pp 362-363). With the terrain the plan is laid along the obstacle the click is on (MovementGuideWater.readWater): its width, banks and type, the crossing means and times (IBB Annex Q), the ground that observes the crossing places.",
+  "pivot": "xTgt",
+  "unit": "inf-bn-lt-cdo",
+  "slots": [
+    {
+      "role": "xTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "H",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -420,
+            12
+          ],
+          [
+            420,
+            12
+          ]
+        ]
+      }
+    },
+    {
+      "role": "xpA",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            -255,
+            30
+          ],
+          [
+            -225,
+            30
+          ]
+        ],
+        "ctrl": [
+          -240,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "xpB",
+      "kind": "line",
+      "sym": "25271300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            225,
+            30
+          ],
+          [
+            255,
+            30
+          ]
+        ],
+        "ctrl": [
+          240,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "fupA",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -390,
+            130
+          ],
+          [
+            -90,
+            270
+          ]
+        ]
+      }
+    },
+    {
+      "role": "fupB",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            90,
+            130
+          ],
+          [
+            390,
+            270
+          ]
+        ]
+      }
+    },
+    {
+      "role": "aCoy",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 2,
+      "shape": {
+        "at": [
+          -240,
+          200
+        ]
+      }
+    },
+    {
+      "role": "bCoy",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 2,
+      "shape": {
+        "at": [
+          240,
+          200
+        ]
+      }
+    },
+    {
+      "role": "axA",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -240,
+            200
+          ],
+          [
+            -240,
+            -260
+          ]
+        ],
+        "widthM": 280
+      }
+    },
+    {
+      "role": "axB",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            240,
+            200
+          ],
+          [
+            240,
+            -260
+          ]
+        ],
+        "widthM": 280
+      }
+    },
+    {
+      "role": "obj1",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ 1",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -175,
+          "wM": 800,
+          "hM": 350
+        }
+      }
+    },
+    {
+      "role": "cCoy",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "C Coy",
+      "echelon": "15",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          420
+        ]
+      }
+    },
+    {
+      "role": "axC",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -60
+          ],
+          [
+            0,
+            -560
+          ]
+        ],
+        "widthM": 300
+      }
+    },
+    {
+      "role": "obj2",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ 2",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -475,
+          "wM": 900,
+          "hM": 250
+        }
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 2,
+      "shape": {
+        "at": [
+          -380,
+          700
+        ]
+      }
+    },
+    {
+      "role": "bof",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            760,
+            152
+          ],
+          [
+            640,
+            348
+          ]
+        ],
+        "ctrl": [
+          444,
+          94
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "81 mm Mor",
+      "order": 2,
+      "shape": {
+        "at": [
+          320,
+          900
+        ]
+      }
+    },
+    {
+      "role": "bridge",
+      "kind": "line",
+      "sym": "25271400",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "base": [
+          [
+            -12,
+            30
+          ],
+          [
+            12,
+            30
+          ]
+        ],
+        "ctrl": [
+          0,
+          -30
+        ]
+      }
+    },
+    {
+      "role": "vwa",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Veh Wait",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 650,
+          "wM": 160,
+          "hM": 120
+        }
+      }
+    },
+    {
+      "role": "rp",
+      "kind": "point",
+      "sym": "25131500",
+      "label": "RP",
+      "order": 2,
+      "shape": {
+        "at": [
+          130,
+          -200
+        ]
+      }
+    },
+    {
+      "role": "ckp",
+      "kind": "point",
+      "sym": "25130300",
+      "label": "",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          1100
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Bn Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 1500,
+          "wM": 900,
+          "hM": 500
+        }
+      }
+    }
+  ],
+  "forCoys": 3
+}

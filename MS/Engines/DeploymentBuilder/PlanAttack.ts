@@ -643,6 +643,51 @@ export function counterAttack(res: SolveResult, f: FitFrame, g: PlanGround, doc:
   };
 }
 
+/**
+ * AT on the Obj: the unit's ATGM launchers (its own and the AT Coys grouped to the attack) brought onto the last
+ * objective as it is reorganised, one pair sited on the objective's edge facing each of his counter-attack ways in (IBB
+ * p 189 paras 22-23: supporting weapons to pre-designated places; p 191 para 25), the pair `atFramework.atgmDetSpacingM`
+ * apart along the edge, 50 m inside it. Row AT on the Obj: each way in, the pair's reach to its DF point (the ATGM's
+ * range from the ORBAT) and how much of its last stretch the objective sees; warn when the pairs are fewer than the ways
+ * in, a DF point is beyond the range or under half the last stretch is in view; not checked without the ways in.
+ * The pairs are returned as points (plan metres) for the map; `key` is the ATGM symbol.
+ */
+export function atOnObj(ca: CounterRead, res: SolveResult, atgm: { name: string; count: number; rangeM: number | null }[], doc: DoctrineSet, key: string): { row: Check; pts: { role: string; key: string; label: string; at: XY }[] } | null {
+  const obj = res.items.find((i) => i.role === 'obj2') ?? res.items.find((i) => i.role === 'obj');
+  const launchers = atgm.reduce((s, w) => s + (Number(w.count) || 0), 0);
+  if (!obj || !launchers) return null;
+  const pairs = Math.floor(launchers / 2);
+  const range = Math.max(...atgm.map((w) => Number(w.rangeM) || 0), 0) || num(doc, 'atFramework.atgmRangeM', 3000);
+  const sp = resolveRange(doc, doctrineAt(doc, 'atFramework.atgmDetSpacingM')) ?? [400, 500];
+  const half = (sp[0] + sp[1]) / 4;
+  const ob = ext(obj.pts), label = obj.label || 'the Obj';
+  const short = (atgm[0]?.name ?? 'ATGM').replace(/ \(.*$/, '').split(/\s+/).slice(0, 2).join(' ');
+  const ways = ca.apchs.filter((a) => a.df);
+  if (!ways.length) return { row: { name: 'AT on the Obj', st: 'unchecked', reason: `no counter-attack way in onto ${label} read: site the ${pairs} ATGM pair${pairs === 1 ? '' : 's'} by eye on its tank approaches (IBB p 189)` }, pts: [] };
+  const pts: { role: string; key: string; label: string; at: XY }[] = [];
+  const parts: string[] = [];
+  let st: CheckState = 'pass';
+  ways.slice(0, pairs).forEach((a, k) => {
+    const df = a.df!;
+    // the edge point nearest his way in, 50 m inside; the pair along that edge
+    const ex = Math.max(ob.x0 + 50, Math.min(ob.x1 - 50, df.x)), ey = Math.max(ob.y0 + 50, Math.min(ob.y1 - 50, df.y));
+    const onSide = df.x < ob.x0 || df.x > ob.x1;
+    const p1 = onSide ? P(ex, Math.max(ob.y0 + 50, ey - half)) : P(Math.max(ob.x0 + 50, ex - half), ey);
+    const p2 = onSide ? P(ex, Math.min(ob.y1 - 50, ey + half)) : P(Math.min(ob.x1 - 50, ex + half), ey);
+    pts.push({ role: `atgmObj${k + 1}`, key, label: short, at: p1 }, { role: `atgmObj${k + 1}`, key, label: short, at: p2 });
+    const mid = P((p1.x + p2.x) / 2, (p1.y + p2.y) / 2), d = dist(mid, df);
+    const reach = d <= range;
+    const seenLow = a.seenPct !== null && a.seenPct < 50;
+    if (!reach || seenLow) st = 'warn';
+    parts.push(`from the ${a.from}: a pair on the ${label}'s edge, its DF point ${fmtM(d)} out ${reach ? 'within' : 'beyond'} the ${fmtM(range)} reach${a.seenPct !== null ? `, ${a.seenPct} % of the last stretch in view${seenLow ? ' (dead ground: an LP and DF there)' : ''}` : ''}`);
+  });
+  if (ways.length > pairs) { st = 'warn'; parts.push(`${ways.length - pairs} way${ways.length - pairs === 1 ? '' : 's'} in left without a pair (${launchers} launchers: ${pairs} pairs): more AT Coys (the AT row), or the tanks onto it`); }
+  return {
+    pts,
+    row: { name: 'AT on the Obj', st, reason: `${launchers} ATGM launchers (${atgm.map((w) => `${w.count} ${w.name}`).join(', ')}) onto ${label} as it is reorganised, a pair facing each of his ${ways.length} way${ways.length === 1 ? '' : 's'} in (IBB p 189 paras 22-23, p 191): ${parts.join('; ')}` },
+  };
+}
+
 // ── left against right ─────────────────────────────────────────────────────────────────────────────────────────────
 export interface Factor { key: string; label: string; w: number; v: number; reason: string }
 const stV = (st: CheckState | undefined) => (st === 'pass' ? 1 : st === 'warn' ? 0.5 : st === 'fail' ? 0 : 0.5);
