@@ -112,6 +112,10 @@ export interface Recipe {
   ad?: import('./PlanAD').AdOnPlan;
   /** An inundation belt in front of a defence (PlanEngr.withInundation): its depth, the water, the soil. */
   inund?: import('./PlanEngr').InundSpec;
+  /** An advance's march (PlanAdvance.marchFromOrbat): its serials from the ORBAT and the Move Planner's road rules. */
+  march?: import('./PlanAdvance').AdvMarch;
+  /** An advance's settings from the tab: report lines at least this far apart, the march's H at first or last light or now. */
+  advance?: { rlApartM: number; hAt: 'first' | 'last' | 'now' };
   /** What defTanks counts: Sqns (a Bn defence) or Tps (a Coy defence). */
   defTanksUnit?: 'Sqn' | 'Tp';
   /** The tank Sqn with the attack, from the ORBAT (PlanOrbat.tankSqnOf): tanks, Tps, tanks a Tp; its source. */

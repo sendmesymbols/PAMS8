@@ -18,6 +18,11 @@ import { doctrineAt, resolveRange } from './PlanRecipes';
 import type { Check, CheckState, PlanItem, XY } from './PlanSolve';
 import { solveRecipe } from './PlanSolve';
 import { toLocal, toWorld, type FitFrame, type FitLayoutInput, type FitResult, type FittedLayout, type PlanGround } from './PlanFit';
+import type { OrbatSet } from './PlanOrbat';
+import { mkPath, type LngLat } from '../MovePlanner/MoveGeo';
+import { clearAt, densityFor, dueAt, roadRulesFrom, simulate, speedFor, type MvRoadRules, type MvSerialIn } from '../MovePlanner/MoveRoad';
+import { atLocal, clockFrom, LightBook, todayIn } from '../MovePlanner/MoveTime';
+import { mercToLngLat } from '../MovementGuide/MovementGuideScan';
 
 type MercXY = [number, number];
 export type AdvDrawn = Record<string, { pts: MercXY[] }>;
@@ -236,12 +241,12 @@ function readAxis(axis: AdvAxis, f: FitFrame, g: PlanGround) {
  * or none fails), Report lines (on the water features ahead of the SP, at least `rlApartM` apart, up to four; the bounds
  * between them) and the flank guards' ground. Report lines laid are returned for the map.
  */
-export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFrame, g: PlanGround, doc: DoctrineSet, axis: AdvAxis | null = null, drawnRls: { label: string; s: number }[] | null = null): { rows: Check[]; rls: Record<string, { pts: XY[]; label: string }> } {
+export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFrame, g: PlanGround, doc: DoctrineSet, axis: AdvAxis | null = null, drawnRls: { label: string; s: number }[] | null = null, rlApartM: number | null = null): { rows: Check[]; rls: Record<string, { pts: XY[]; label: string }>; lines: { label: string; s: number }[] } {
   const F = advanceFigures(doc);
   const at = (role: string) => { const i = items.find((x) => x.role === role && x.pts.length); return i ? centre(i.pts) : null; };
   const head = at('sp');
   const rls: Record<string, { pts: XY[]; label: string }> = {};
-  if (!head) return { rows: [], rls };
+  if (!head) return { rows: [], rls, lines: [] };
   const ax: AdvAxis = axis ?? (() => {
     const ct = at('ctps') ?? { x: head.x, y: head.y + (F.ctps[0] + F.ctps[1]) / 2 }, mb = at('mainBody') ?? { x: head.x, y: head.y - F.body };
     return { path: [mb, head, ct], spAt: Math.hypot(head.x - mb.x, head.y - mb.y), routed: false, pending: false };
@@ -252,7 +257,7 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   const where = (s: number) => (s >= ax.spAt ? `${fmtM(s - ax.spAt)} ahead of the SP` : `${fmtM(ax.spAt - s)} behind the SP`);
   if (R.n < R.steps / 2) {
     rows.push({ name: 'Going on the axis', st: 'unchecked', reason: 'the ground along the axis is not loaded yet' });
-    return { rows, rls };
+    return { rows, rls, lines: [] };
   }
   // the route
   const straight = Math.hypot(ax.path[ax.path.length - 1].x - ax.path[0].x, ax.path[ax.path.length - 1].y - ax.path[0].y);
@@ -279,14 +284,14 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
     rows.push({ name: 'Crossings on the axis', st, reason: `${R.xs.length} water feature${R.xs.length > 1 ? 's' : ''}: ${parts.join('; ')}. Tanks need Cl 60 (rules.json; Al-Khalid about 48 t); the mobile troops seize the bridges ahead (s4 para 2)` });
   }
   // report lines: laid on the water ahead of the SP (or read as drawn)
-  const RL_MAX = 4;
+  const RL_MAX = 4, apart = rlApartM ?? F.rlApart;
   let lines: { label: string; s: number }[];
   if (drawnRls) lines = drawnRls;
   else {
     lines = [];
     for (const x of R.xs) {
       if (!(x.water !== null ? RL_WATER.has(x.water) : x.how !== null && x.how >= 39 && x.how <= 43) || x.s <= ax.spAt + 300 || lines.length >= RL_MAX) continue;
-      if (lines.length && x.s - lines[lines.length - 1].s < F.rlApart) continue;
+      if (lines.length && x.s - lines[lines.length - 1].s < apart) continue;
       const i = lines.length + 1, half = 750, n = { x: -x.dir.y, y: x.dir.x };
       const name = x.water !== null ? g.label(x.water).replace(/ \/.*$/, '') : 'bridge';
       rls[`rl${i}`] = { pts: [{ x: x.at.x - n.x * half, y: x.at.y - n.y * half }, { x: x.at.x + n.x * half, y: x.at.y + n.y * half }], label: `RL ${i} ${name}` };
@@ -297,7 +302,7 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   else {
     const sorted = [...lines].sort((a, b) => a.s - b.s);
     const bounds = sorted.map((l, i) => `${i ? sorted[i - 1].label.replace(/ \(.*$/, '') : 'SP'} to ${l.label.replace(/ \(.*$/, '')} ${fmtM(l.s - (i ? sorted[i - 1].s : ax.spAt))}`);
-    rows.push({ name: 'Report lines', st: 'pass', reason: `${sorted.map((l) => `${l.label} ${where(l.s)}`).join('; ')} (on the water features across the axis, at least ${km(F.rlApart)} apart, E; a report line is usually a terrain feature across the zone: OoW Vol II glossary). Bounds: ${bounds.join(', ')}` });
+    rows.push({ name: 'Report lines', st: 'pass', reason: `${sorted.map((l) => `${l.label} ${where(l.s)}`).join('; ')} (on the water features across the axis, at least ${km(apart)} apart: ${rlApartM ? 'as set' : 'the default, E'}; a report line is usually a terrain feature across the zone: OoW Vol II glossary). Bounds: ${bounds.join(', ')}` });
   }
   // the flank guards
   const tracked = g.going('tracked');
@@ -308,7 +313,127 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
     rows.push(!known.length ? { name: 'Flank guards\' ground', st: 'unchecked', reason: 'their ground is not loaded yet' }
       : { name: 'Flank guards\' ground', st: known.some((x) => x.no) ? 'warn' : 'pass', reason: known.map((x) => `the ${x.side} flank guard on ${g.label(x.c!)}${x.no ? ' (NO-GO for tracks)' : x.slow ? ' (SLOW-GO for tracks)' : ''}`).join('; ') });
   }
-  return { rows, rls };
+  return { rows, rls, lines };
+}
+
+// ── the march: timings and halting areas (the Move Planner's road engine) ───────────────────────────────────────────
+
+/** A serial of the advance: its name and vehicles, and what was counted. */
+export interface MarchSerial { name: string; vehicles: number; known: string }
+/** What the advance's march is worked from (Recipe.march): the serials from the ORBAT, the Move Planner's road rules. */
+export interface AdvMarch { serials: MarchSerial[]; rules: MvRoadRules; src: string }
+
+/**
+ * The serials from the ORBAT: the Advance Guard an Armr Regt group (the Armr Regt's vehicles, p 115-117), the Main
+ * Body the IABG less that Regt (its units' vehicle totals; those the ORBAT gives none for are named, not counted).
+ * The road rules are MoveDoctrine `road` (speeds with tanks, density, halts). Null without the IABG or the Regt.
+ */
+export function marchFromOrbat(o: OrbatSet, moveDoc: any): AdvMarch | null {
+  const find = (id: string | undefined) => (id ? o.own.find((u) => u.id === id) ?? null : null);
+  const vehs = (u: any) => Number((u?.vehicles ?? []).find((v: any) => /^Total/i.test(String(v.name)))?.count) || 0;
+  const regt = find('armr-regt'), bde = find('armr-iabg');
+  const rv = vehs(regt);
+  if (!regt || !bde || !rv) return null;
+  let body = 0;
+  const known: string[] = [], unknown: string[] = [];
+  for (const c of bde.children ?? []) {
+    const n = (Number(c.count) || 1) - (c.unit === 'armr-regt' ? 1 : 0);
+    if (n <= 0) continue;
+    const v = vehs(find(c.unit));
+    if (v) { body += v * n; known.push(`${n > 1 ? `${n} ` : ''}${c.role} ${v * n}`); } else unknown.push(String(c.role));
+  }
+  return {
+    serials: [
+      { name: 'Adv Gd (Armr Regt gp)', vehicles: rv, known: `the Armr Regt's ${rv} vehicles (p ${regt.page})` },
+      { name: 'Main Body', vehicles: body, known: `${known.join(', ')}; not counted, no vehicle total in the ORBAT: ${unknown.join(', ')}` },
+    ],
+    rules: roadRulesFrom(moveDoc),
+    src: `SO's Hbk 2019 p ${bde.page} (IABG: 3 Armr Regts as printed, two held on the ground), MoveDoctrine road (R)`,
+  };
+}
+
+/** The point and direction at distance `s` along a polyline. */
+function pointAt(path: XY[], s: number): { p: XY; dir: XY } {
+  let s0 = 0;
+  for (let i = 0; i + 1 < path.length; i++) {
+    const a = path[i], b = path[i + 1], L = Math.hypot(b.x - a.x, b.y - a.y);
+    if (!L) continue;
+    if (s <= s0 + L || i === path.length - 2) { const t = Math.max(0, Math.min(1, (s - s0) / L)); return { p: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }, dir: { x: (b.x - a.x) / L, y: (b.y - a.y) / L } }; }
+    s0 += L;
+  }
+  return { p: path[0], dir: { x: 0, y: 1 } };
+}
+
+/** The polyline from distance `s0` to its end. */
+function from(path: XY[], s0: number): XY[] {
+  const out: XY[] = [pointAt(path, s0).p];
+  let s = 0;
+  for (let i = 0; i + 1 < path.length; i++) { s += Math.hypot(path[i + 1].x - path[i].x, path[i + 1].y - path[i].y); if (s > s0 + 1) out.push(path[i + 1]); }
+  return out;
+}
+
+const hPlus = (min: number) => `H${min < 0 ? '-' : '+'}${Math.floor(Math.abs(min) / 60)}:${String(Math.round(Math.abs(min) % 60)).padStart(2, '0')}`;
+
+/**
+ * Halting areas for the Main Body (an area in an advance where a unit can halt till it can move forward: OoW Vol II
+ * glossary): one 1 km short of each report line, beside the axis on its right so the axis stays clear, 600 x 400 m (E).
+ */
+export function haltingAreas(axis: AdvAxis, lines: { label: string; s: number }[]): Record<string, { pts: XY[]; label: string }> {
+  const out: Record<string, { pts: XY[]; label: string }> = {};
+  [...lines].sort((a, b) => a.s - b.s).slice(0, 4).forEach((l, i) => {
+    const { p, dir } = pointAt(axis.path, Math.max(0, l.s - 1000));
+    const n = { x: dir.y, y: -dir.x }, c = { x: p.x + n.x * 500, y: p.y + n.y * 500 };
+    const corner = (u: number, v: number) => ({ x: c.x + dir.x * u + n.x * v, y: c.y + dir.y * u + n.y * v });
+    out[`ha${i + 1}`] = { pts: [corner(-300, -200), corner(300, -200), corner(300, 200), corner(-300, 200)], label: `HA ${i + 1}` };
+  });
+  return out;
+}
+
+/**
+ * The march along the axis by the Move Planner's road engine (MoveRoad.simulate): the Adv Gd's head at the SP at H, the
+ * Main Body's head `mainBodyBackM` behind it, both moving at H (first light today at the SP, civil twilight: an advance
+ * to contact by day, E), at the speeds for columns with tanks on good roads, the road density, the halts of the road
+ * rules. March row: each serial's column length and time past a point, when its head reaches the SP, each report line
+ * and the C Tps' line, its halts; warns when the Adv Gd's column is longer than the gap to the Main Body's head (the
+ * Main Body closes on it) or a serial runs on past last light.
+ */
+export function advanceMarch(axis: AdvAxis, lines: { label: string; s: number }[], f: FitFrame, doc: DoctrineSet, march: AdvMarch, hAt: 'first' | 'last' | 'now' = 'first', nowMs: number = Date.now()): Check {
+  const F = advanceFigures(doc), R = march.rules;
+  const [vd, vn] = speedFor('good', true, R);
+  const dens = densityFor('road', R);
+  const ll = (p: XY): LngLat => { const w = toWorld(f, p); return mercToLngLat(w.x, w.y); };
+  const spLL = ll(pointAt(axis.path, axis.spAt).p);
+  const clock = clockFrom(todayIn());
+  const light = new LightBook(clock, 'civil');
+  // H: first light or last light today at the SP (civil twilight), or now
+  const today = light.day(0, spLL[1], spLL[0]);
+  const lit = hAt === 'last' ? today.last : today.first;
+  const H = hAt === 'now' ? nowMs : Number.isFinite(lit) ? lit : atLocal(clock, 0, hAt === 'last' ? 1110 : 360);
+  const dayAtH = light.isDay(H + 60000, spLL[1], spLL[0]);
+  const total = lenOf(axis.path);
+  let st: CheckState = 'pass';
+  const notes: string[] = [];
+  const parts = march.serials.map((s, i) => {
+    const back = i === 0 ? 0 : F.body;
+    const s0 = Math.max(0, axis.spAt - back);
+    const pts = [...(axis.spAt - s0 > 1 ? [{ name: 'SP', s: axis.spAt - s0 }] : []), ...lines.map((l) => ({ name: l.label.replace(/ \(.*$/, ''), s: l.s - s0 })).filter((q) => q.s > 1)];
+    const ser: MvSerialIn = {
+      id: `adv${i}`, name: s.name, vehicles: s.vehicles, speedDay: vd, speedNi: vn, densDay: dens.day, densNi: dens.night,
+      path: mkPath(from(axis.path, s0).map(ll)), startMs: H, window: { kind: 'both' },
+      halts: { mode: 'running', runMin: R.shortRunMin, haltMin: R.shortHaltMin, longEvery: R.longEvery, longMin: R.longHaltMin, clockFirstAtMin: R.clockFirstAtMin, clockEveryMin: R.clockEveryMin },
+      densityHalt: false, points: pts,
+    };
+    const run = simulate(ser, light, R);
+    const at = (q: number) => hPlus((dueAt(run, q) - H) / 60000);
+    const halts = run.stops.filter((x) => x.kind === 'SH' || x.kind === 'LH');
+    if (run.segs.some((g) => g.mode === 'move' && g.day !== dayAtH)) { st = 'warn'; notes.push(`${s.name} runs on past ${dayAtH ? 'last' : 'first'} light`); }
+    if (i === 0 && run.lenDayM > F.body) { st = 'warn'; notes.push(`the Adv Gd as one road column (${km(run.lenDayM)} at the road density) is longer than the ${km(F.body)} to the Main Body's head: the Main Body closes on it (hold it back, move by bounds, or the Adv Gd deployed off the road, which takes less depth)`); }
+    return `${s.name}: ${s.vehicles} vehicles (${s.known}), ${km(run.lenDayM)} long by day, ${run.tppDay} min past a point; its head ${pts.map((q) => `at ${q.name} ${at(q.s)}`).join(', ')}${pts.length ? ', ' : ''}at the C Tps' line ${at(run.lengthM)}, its tail clear of it ${hPlus((clearAt(run, run.lengthM) - H) / 60000)}${halts.length ? `; ${halts.length} halt${halts.length > 1 ? 's' : ''} (${halts.map((x) => x.kind).join(', ')})` : ''}`;
+  });
+  return {
+    name: 'March', st,
+    reason: `H: the Adv Gd's head at the SP ${hAt === 'now' ? 'now (as set)' : hAt === 'last' ? 'at last light today there (civil twilight, as set: a night advance)' : 'at first light today there (civil twilight: an advance by day, the default)'}; the Main Body's head ${km(F.body)} back, both moving at H; ${vd} km/h by day, ${vn} by night (columns with tanks on good roads), ${dens.day} vehicles a km by day, ${dens.night} by night, halts ${R.shortHaltMin} min after each ${R.shortRunMin} min running (MoveDoctrine road, R); the axis ${km(total)}. ${parts.join('. ')}${notes.length ? `. ${notes.join('; ')}` : ''}. ${march.src}. The road state and a march table to the ground's roads: the Move Planner`,
+  };
 }
 
 /** An advance fitted where it rests (PlanFit.fitLayout hands it over): the click is the SP, the aim the axis. */
@@ -320,13 +445,17 @@ export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
   const frame: FitFrame = { anchor: inp.anchor, bearing: inp.bearing, k: kOf(inp.anchor.y), pivot: pivot.pts[0] };
   inp.begin?.();
   const axis = routeAxis(base.items, frame, ground);
-  const gr = advanceGroundRows(base.items, frame, ground, ctx.doc, axis);
+  const gr = advanceGroundRows(base.items, frame, ground, ctx.doc, axis, null, recipe.advance?.rlApartM ?? null);
   // the axis arrow along the route, a little past the C Tps; the report lines on the water
   const p = axis.path, a = p[p.length - 2], b = p[p.length - 1], L = Math.hypot(b.x - a.x, b.y - a.y) || 1;
   // simplified within 25 m, so the arrow as drawn reads as the route did; its head 300 m past the C Tps
   const arrow = simplify([...p, { x: b.x + ((b.x - a.x) / L) * 300, y: b.y + ((b.y - a.y) / L) * 300 }], 25);
-  const raw = solveRecipe(recipe, ctx, { ...inp.opts, paths: { ...(inp.opts.paths ?? {}), axis: arrow }, geom: { ...(inp.opts.geom ?? {}), ...gr.rls } });
-  const rows = [...advanceRows(raw.items, ctx.doc), ...gr.rows];
+  // the Main Body's halting areas short of the report lines; the march timed along the axis (Recipe.march, the ORBAT's)
+  const has = haltingAreas(axis, gr.lines);
+  const raw = solveRecipe(recipe, ctx, { ...inp.opts, paths: { ...(inp.opts.paths ?? {}), axis: arrow }, geom: { ...(inp.opts.geom ?? {}), ...gr.rls, ...has } });
+  const marchRow = recipe.march && !axis.pending ? advanceMarch(axis, gr.lines, frame, ctx.doc, recipe.march, recipe.advance?.hAt ?? 'first') : null;
+  const haRow: Check[] = Object.keys(has).length ? [{ name: 'Halting areas', st: 'pass', reason: `${Object.keys(has).map((k) => has[k].label).join(', ')}: for the Main Body, 1 km short of each report line, beside the axis on its right (600 x 400 m, E), where it halts till it can move forward (OoW Vol II glossary)` }] : [];
+  const rows = [...advanceRows(raw.items, ctx.doc), ...gr.rows, ...haRow, ...(marchRow ? [marchRow] : [])];
   const fails = rows.filter((r) => r.st === 'fail').length, warns = rows.filter((r) => r.st === 'warn').length;
   const fit: FitResult = {
     nudges: {}, slides: [], killingGr: null, slots: {}, rows, approaches: [],

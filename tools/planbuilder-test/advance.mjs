@@ -113,6 +113,41 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   check('Check my plan: RL 1 read as drawn (about 1.7 km ahead), the crossing on the Cl 60+ bridge', /RL 1 1\.[67] km ahead of the SP/.test(row(cc.rows, 'Report lines')?.reason ?? '') && row(cc.rows, 'Crossings on the axis')?.st === 'pass', `${row(cc.rows, 'Report lines')?.reason?.slice(0, 80)} | ${row(cc.rows, 'Crossings on the axis')?.st}`);
 }
 
+// ── the march (the Move Planner's road engine) and the halting areas ────────────────────────────────────────────────
+{
+  const O = await import('../../MS/Engines/DeploymentBuilder/PlanOrbat.ts');
+  const P = 'MS/Data/Orbat/PK/';
+  const orbat = { own: O.mergeOwn(O.OWN_ORBAT_FILES.map((f) => json(`${P}${f}`).units)), en: [], weapons: json(`${P}weapons.json`).weapons };
+  const m = V.marchFromOrbat(orbat, json('MS/Data/MoveDoctrine.json'));
+  check('serials from the ORBAT: Adv Gd the Armr Regt (116 vehicles), Main Body the IABG less a Regt (HQ 30, 2 Regts 232, MIB 144, Lt AD (SP) Regt 104 = 510), the uncounted named', m?.serials[0].vehicles === 116 && m.serials[1].vehicles === 510 && /not counted.*Med Regt \(SP\)/.test(m.serials[1].known), JSON.stringify(m?.serials.map((s) => [s.name, s.vehicles])));
+  check('...road rules from MoveDoctrine: 20 / 15 km/h? no: columns with tanks on good roads 25 / 20, 20 vehicles a km by day', JSON.stringify(m.rules.speedsAll.good) === '[25,20]' && m.rules.density.road.day === 20);
+  const CANAL = 20, BR60 = 39;
+  const band = (y, y0) => y > A.y + y0 && y < A.y + y0 + 60;
+  const gnd = mk((x, y) => (band(y, 2000) || band(y, 4500) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open));
+  const rm = { ...rec, march: m };
+  const fm = V.fitAdvance({ ...inp(gnd), recipe: rm });
+  const mr = row(fm.res.rows, 'March');
+  check('March row: H at first light; each serial\'s column and time past a point; heads at RL 1, RL 2 and the C Tps\' line', !!mr && /first light/.test(mr.reason) && /Adv Gd \(Armr Regt gp\): 116 vehicles/.test(mr.reason) && /at RL 1 H\+0:\d\d, at RL 2 H\+0:\d\d, at the C Tps' line H\+0:\d\d/.test(mr.reason) && /min past a point/.test(mr.reason), mr?.reason.slice(0, 700));
+  check('...the Main Body\'s head at the SP after the Adv Gd\'s (8 km back at 25 km/h: about H+0:19)', /Main Body: 510 vehicles.*its head at SP H\+0:(1[89]|2\d)/.test(mr.reason), mr.reason.match(/Main Body: .{0,400}/)?.[0]);
+  check('...the Armr Regt as one road column is 10.0 km long by day (116 at 20 a km plus 2 min a 25 vehicles at 25 km/h): longer than the 8 km to the Main Body, warn', mr.st === 'warn' && /Adv Gd .*10\.0 km long by day/.test(mr.reason) && /Main Body closes on it/.test(mr.reason), mr.st);
+  const small = { ...m, serials: [{ ...m.serials[0], vehicles: 60 }, m.serials[1]] };
+  const sr = row(V.fitAdvance({ ...inp(gnd), recipe: { ...rec, march: small } }).res.rows, 'March');
+  check('...an Adv Gd of 60 vehicles (5.5 km): under the 8 km, pass', sr?.st === 'pass', sr?.reason.match(/Adv Gd[^;]*long by day/)?.[0]);
+  const has = fm.raw.items.filter((i) => /^ha\d$/.test(i.role));
+  const rl1 = fm.raw.items.find((i) => i.role === 'rl1');
+  check('halting areas: HA 1, HA 2, one a report line, 1 km short of it, beside the axis on the right', has.length === 2 && has[0].label === 'HA 1' && rl1 && Math.abs((has[0].pts.reduce((s, p) => s + p.y, 0) / 4) - (rl1.pts[0].y + rl1.pts[1].y) / 2 + 1000) < 5 && has[0].pts.every((p) => p.x > 0) && row(fm.res.rows, 'Halting areas')?.st === 'pass', has.map((h) => `${h.label} ${Math.round(h.pts[0].x)},${Math.round(h.pts[0].y)}`).join(' '));
+  const big = { ...m, serials: [{ ...m.serials[0], vehicles: 400 }, m.serials[1]] };
+  check('an Adv Gd of 400 vehicles: its column longer than 8 km, the Main Body closes on it: warn', row(V.fitAdvance({ ...inp(gnd), recipe: { ...rec, march: big } }).res.rows, 'March')?.st === 'warn');
+  // the settings from the tab: report lines 3 km apart, H at last light
+  const gnd3 = mk((x, y) => (band(y, 2000) || band(y, 4500) || band(y, 6000) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open));
+  const r1 = V.fitAdvance({ ...inp(gnd3), recipe: { ...rec, march: m } }), r3 = V.fitAdvance({ ...inp(gnd3), recipe: { ...rec, march: m, advance: { rlApartM: 3000, hAt: 'first' } } });
+  const nRl = (f) => f.raw.items.filter((i) => /^rl\d$/.test(i.role)).length;
+  check('RL apart set to 3 km: fewer report lines than at the 1 km default, the row says "as set"', nRl(r3) < nRl(r1) && /at least 3\.0 km apart: as set/.test(row(r3.res.rows, 'Report lines').reason) && /the default, E/.test(row(r1.res.rows, 'Report lines').reason), `${nRl(r1)} at 1 km, ${nRl(r3)} at 3 km`);
+  const last = V.fitAdvance({ ...inp(gnd), recipe: { ...rec, march: m, advance: { rlApartM: 1000, hAt: 'last' } } });
+  check('H at last light: the March row says a night advance; the Main Body (43 km) runs on into the day: warn, past first light', /at last light today there \(civil twilight, as set: a night advance\)/.test(row(last.res.rows, 'March').reason), row(last.res.rows, 'March')?.reason.slice(0, 160));
+  check('no march on the recipe (no ORBAT): no March row; no report lines, no halting areas', !row(f1.res.rows, 'March') && !f1.raw.items.some((i) => /^ha\d$/.test(i.role)));
+}
+
 // ── Check my plan as drawn ───────────────────────────────────────────────────────────────────────────────────────────
 // drawn turned to bearing 90 (east): the read takes the axis from the SP toward the C Tps
 const turned = { ...f1.frame, bearing: Math.PI / 2 };

@@ -412,7 +412,7 @@ MS/
   `SiteBundle` (Gun site row; `GunDeployment.ts` untouched); `node tools/planbuilder-test/arty.mjs` (41). **AD** (`PlanAD.ts`, AD row:
   an AD Bty / Regt as fire units sited round the VPs: bridges, gun areas, HQ, Assy, reserve; AD cover; `PlanDoctrine.ad` E; `ad.mjs` 21).
   **Air lift** (`PlanAvn.ts`: the Air Aslt Bn by the Air Aslt Sqn, waves and build-up; `PlanDoctrine.airAslt` E; `avn.mjs` 10).
-  **Advance** (`PlanAdvance.ts`, OoW Vol II Fig 2: an Armd Bde advance to contact, echelon rows; on the ground the axis routed for tracks, its crossings and bridge classes, report lines and bounds; `advance.mjs` 30).
+  **Advance** (`PlanAdvance.ts`, OoW Vol II Fig 2: an Armd Bde advance to contact, echelon rows; on the ground the axis routed for tracks, its crossings and bridge classes, report lines and bounds, halting areas, the march timed by the Move Planner's road engine; RL apart and H set in the tab; `advance.mjs` 41).
   **Inundation** (`PlanEngr.inundation` / `withInundation`, Inundate row on a Bn Def: engr table 20, pp 452-453). Engr Bn Coys
   shared out between Bns (`engrShare`, Engr Coys chips). **Engineers** (`PlanEngr.ts`, Engrs row on
   Bn / Coy Def and the crossings): an ORBAT engineer unit's Pls and MMLs in Mines in time (p 439), its bridging (AVLB, AM-50, ribbon,

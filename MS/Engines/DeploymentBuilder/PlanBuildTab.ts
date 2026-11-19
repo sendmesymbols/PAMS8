@@ -44,7 +44,8 @@ import { addTankTimes, defTankRows, withDefTanks, withTanks, type TankMode } fro
 import { artyOnPlan, artyRows, ownArtyTypes, ownDivArties, withArty, type ArtyDoctrine, type ArtyType } from './PlanArty';
 import { adOnPlan, adRows, ownAdTypes, vpsOf, withAd, type AdType } from './PlanAD';
 import { airLiftOf, airLiftRow } from './PlanAvn';
-import { advanceRows, checkAdvance } from './PlanAdvance';
+import { advanceRows, checkAdvance, marchFromOrbat } from './PlanAdvance';
+import moveDoctrine from '../../Data/MoveDoctrine.json';
 import { bridgeKinds, engrShare, engrText, inundation, INUND_SOILS, ownEngrTypes, soilWord, withInundation, type EngrType, type InundSoil } from './PlanEngr';
 import { findGunAreas, gunRulesFrom, gunWeapons, type Front, type GunTask, type GunWeapon } from '../GunDeployment/GunDeploymentFind';
 import { SiteBundle } from '../SiteScan/SiteProbe';
@@ -370,6 +371,9 @@ export class PlanBuildTab {
   /** An inundation belt in front of a Bn defence (0: none), the water fed in, the soil (PlanEngr.inundation). */
   private _inundYds: 0 | 300 | 500 | 1000 = 0;
   private _cusecs: 50 | 100 | 150 = 100;
+  /** An advance: report lines at least this far apart (km), the march's H (the user, 19 Nov 2026: settable, these defaults). */
+  private _rlApartKm: 1 | 2 | 3 = 1;
+  private _hAt: 'first' | 'last' | 'now' = 'first';
   private _soil: InundSoil = 'loam';
   /**
    * The artillery a plan may take: a Regt or Bty with a Bn defence or attack and a Bn or Bde crossing; a Div Arty (its
@@ -628,6 +632,15 @@ export class PlanBuildTab {
       const key = `${base.id}:rcs`;
       let v = this._ph2.get(key);
       if (!v) { v = withRecceScreen(base, this._doc, sq); this._ph2.set(key, v); }
+      return v;
+    }
+    // an advance: its march serials from the ORBAT and the Move Planner's road rules (PlanAdvance.marchFromOrbat), the
+    // report lines' spacing and the march's H as set
+    if (base?.task === 'advance') {
+      if (!this._orbat) return { ...base, advance: { rlApartM: this._rlApartKm * 1000, hAt: this._hAt } };
+      const key = `${base.id}:mv:${this._rlApartKm}:${this._hAt}`;
+      let v = this._ph2.get(key);
+      if (!v) { const m = marchFromOrbat(this._orbat, moveDoctrine); v = { ...base, ...(m ? { march: m } : {}), advance: { rlApartM: this._rlApartKm * 1000, hAt: this._hAt } }; this._ph2.set(key, v); }
       return v;
     }
     // a crossing with his minefield assumed (PlanCrossing.withMinefield), cached like the attack's variants
@@ -1015,6 +1028,8 @@ export class PlanBuildTab {
       case 'arty': this._artyId = val || null; this._solve(); break;
       case 'ad': this._adId = val || null; this._solve(); break;
       case 'inund': this._inundYds = (Number(val) || 0) as 0 | 300 | 500 | 1000; this._solve(); break;
+      case 'rlApart': this._rlApartKm = (Number(val) || 1) as 1 | 2 | 3; this._solve(); break;
+      case 'hAt': this._hAt = val === 'last' || val === 'now' ? val : 'first'; this._solve(); break;
       case 'cusecs': this._cusecs = (Number(val) || 100) as 50 | 100 | 150; this._solve(); break;
       case 'soil': this._soil = (INUND_SOILS.includes(val as InundSoil) ? val : 'loam') as InundSoil; this._solve(); break;
       case 'recceScreen': this._recceScreen = val === 'on'; this._solve(); break;
@@ -1885,7 +1900,7 @@ export class PlanBuildTab {
     if (ech === '18') {
       const chips = ownBdeTypes(this._orbat).map((t) => this._chip(u?.id === t.id, `${t.name}${t.mounted ? ' (mounted)' : ''}`, `bdeType:${t.id}`,
         `${t.bns} Bn-sized manoeuvre units, ${t.coys} manoeuvre Coys`)).join('');
-      return `${chips ? row('Type', chips) : ''}${this._artyRow(recipe)}${this._adRow(recipe)}${facts}`;
+      return `${chips ? row('Type', chips) : ''}${this._artyRow(recipe)}${this._adRow(recipe)}${recipe.task === 'advance' ? this._advRow() : ''}${facts}`;
     }
     if (ech === '21') {
       const chips = ownDivTypes(this._orbat).map((t) => this._chip(u?.id === t.id, t.name, `divType:${t.id}`, `${t.coys} manoeuvre Coys / Sqns`)).join('');
@@ -1986,6 +2001,17 @@ export class PlanBuildTab {
     const whole = this._engrId ? this._engrTypes.find((x) => x.id === this._engrId) : null;
     const share = whole && whole.coys > 1 ? seg([{ on: !this._engrCoys, label: 'All', data: 'engrCoys:0', title: `the whole ${whole.name}` }, ...Array.from({ length: whole.coys - 1 }, (_, i) => ({ on: this._engrCoys === i + 1, label: `${i + 1} Coy${i ? 's' : ''}`, data: `engrCoys:${i + 1}`, title: `${i + 1} of its ${whole.coys} Coys, the rest with the other Bns: ${engrText(engrShare(whole, i + 1))}` }))], { sm: true, label: 'Engr Coys' }) : '';
     return row('Engrs', chips + share) + (recipe.task === 'defence' && recipe.echelon === '16' ? this._inundRow() : '');
+  }
+
+  /** An advance: how far apart its report lines are set, and the march's H (PlanAdvance). */
+  private _advRow(): string {
+    const rl = seg(([1, 2, 3] as const).map((k) => ({ on: this._rlApartKm === k, label: `${k} km`, data: `rlApart:${k}`, title: `Report lines on the water and bridges ahead at least ${k} km apart${k === 1 ? ' (the default)' : ''}` })), { sm: true, label: 'RL apart' });
+    const h = seg([
+      { on: this._hAt === 'first', label: 'First light', data: 'hAt:first', title: "The Adv Gd's head at the SP at first light today (an advance by day; the default)" },
+      { on: this._hAt === 'last', label: 'Last light', data: 'hAt:last', title: 'At last light today: a night advance, night speeds and density' },
+      { on: this._hAt === 'now', label: 'Now', data: 'hAt:now', title: 'From now' },
+    ], { sm: true, label: 'H' });
+    return row('RL apart', rl) + row('H', h);
   }
 
   /**

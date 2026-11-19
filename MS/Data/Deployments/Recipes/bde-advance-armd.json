@@ -29,6 +29,10 @@
     { "role": "rl2", "kind": "line", "sym": "25140300", "label": "RL 2", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
     { "role": "rl3", "kind": "line", "sym": "25140300", "label": "RL 3", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
     { "role": "rl4", "kind": "line", "sym": "25140300", "label": "RL 4", "order": 3, "drawType": 1, "terrainOnly": true, "terrainRule": { "on": "water.acrossAxis" } },
+    { "role": "ha1", "kind": "area", "sym": "25150200", "label": "HA 1", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
+    { "role": "ha2", "kind": "area", "sym": "25150200", "label": "HA 2", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
+    { "role": "ha3", "kind": "area", "sym": "25150200", "label": "HA 3", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
+    { "role": "ha4", "kind": "area", "sym": "25150200", "label": "HA 4", "order": 3, "drawType": 2, "terrainOnly": true, "terrainRule": { "on": "axis.shortOfReportLine" } },
     { "role": "mainBody", "kind": "point", "sym": "10120500", "label": "Main Body", "order": 2, "shape": { "at": [0, 8000] } }
   ]
 }
