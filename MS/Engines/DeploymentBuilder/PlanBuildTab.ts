@@ -374,7 +374,7 @@ export class PlanBuildTab {
   /** An advance: report lines at least this far apart (km), the march's H (the user, 19 Nov 2026: settable, these defaults). */
   private _rlApartKm: 1 | 2 | 3 = 1;
   private _hAt: 'first' | 'last' | 'now' = 'first';
-  private _soil: InundSoil = 'loam';
+  private _soil: InundSoil = ((s: string) => (INUND_SOILS as readonly string[]).includes(s) ? (s as InundSoil) : 'loam')(String((planDoctrine as any).inundation?.soilDefault?.value ?? 'loam'));
   /**
    * The artillery a plan may take: a Regt or Bty with a Bn defence or attack and a Bn or Bde crossing; a Div Arty (its
    * Regts, one gun area each) with a Div crossing; none with the rest.

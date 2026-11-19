@@ -46,6 +46,8 @@ export function advanceFigures(doc: DoctrineSet) {
     run: r('axisNogoRunM', [200, 500]),
     detour: r('axisDetourWarn', [1.5, 1.5])[0],
     rlApart: r('rlApartM', [1000, 1000])[0],
+    haShort: r('haShortOfRlM', [1000, 1000])[0],
+    haSize: r('haSizeM', [600, 400]) as [number, number],
   };
 }
 
@@ -386,15 +388,16 @@ const hPlus = (min: number) => `H${min < 0 ? '-' : '+'}${Math.floor(Math.abs(min
 
 /**
  * Halting areas for the Main Body (an area in an advance where a unit can halt till it can move forward: OoW Vol II
- * glossary): one 1 km short of each report line, beside the axis on its right so the axis stays clear, 600 x 400 m (E).
+ * glossary): one 1 km short of each report line, beside the axis on its right so the axis stays clear (`advance.haShortOfRlM`, `haSizeM`: the user's).
  */
-export function haltingAreas(axis: AdvAxis, lines: { label: string; s: number }[]): Record<string, { pts: XY[]; label: string }> {
+export function haltingAreas(axis: AdvAxis, lines: { label: string; s: number }[], shortM = 1000, size: [number, number] = [600, 400]): Record<string, { pts: XY[]; label: string }> {
   const out: Record<string, { pts: XY[]; label: string }> = {};
   [...lines].sort((a, b) => a.s - b.s).slice(0, 4).forEach((l, i) => {
-    const { p, dir } = pointAt(axis.path, Math.max(0, l.s - 1000));
-    const n = { x: dir.y, y: -dir.x }, c = { x: p.x + n.x * 500, y: p.y + n.y * 500 };
+    const { p, dir } = pointAt(axis.path, Math.max(0, l.s - shortM));
+    const n = { x: dir.y, y: -dir.x }, c = { x: p.x + n.x * (size[1] / 2 + 300), y: p.y + n.y * (size[1] / 2 + 300) };
     const corner = (u: number, v: number) => ({ x: c.x + dir.x * u + n.x * v, y: c.y + dir.y * u + n.y * v });
-    out[`ha${i + 1}`] = { pts: [corner(-300, -200), corner(300, -200), corner(300, 200), corner(-300, 200)], label: `HA ${i + 1}` };
+    const hu = size[0] / 2, hv = size[1] / 2;
+    out[`ha${i + 1}`] = { pts: [corner(-hu, -hv), corner(hu, -hv), corner(hu, hv), corner(-hu, hv)], label: `HA ${i + 1}` };
   });
   return out;
 }
@@ -461,10 +464,11 @@ export function fitAdvance(inp: FitLayoutInput): FittedLayout | null {
   // simplified within 25 m, so the arrow as drawn reads as the route did; its head 300 m past the C Tps
   const arrow = simplify([...p, { x: b.x + ((b.x - a.x) / L) * 300, y: b.y + ((b.y - a.y) / L) * 300 }], 25);
   // the Main Body's halting areas short of the report lines; the march timed along the axis (Recipe.march, the ORBAT's)
-  const has = haltingAreas(axis, gr.lines);
+  const FA = advanceFigures(ctx.doc);
+  const has = haltingAreas(axis, gr.lines, FA.haShort, FA.haSize);
   const raw = solveRecipe(recipe, ctx, { ...inp.opts, paths: { ...(inp.opts.paths ?? {}), axis: arrow }, geom: { ...(inp.opts.geom ?? {}), ...gr.rls, ...has } });
   const marchRow = recipe.march && !axis.pending ? advanceMarch(axis, gr.lines, frame, ctx.doc, recipe.march, recipe.advance?.hAt ?? 'first') : null;
-  const haRow: Check[] = Object.keys(has).length ? [{ name: 'Halting areas', st: 'pass', reason: `${Object.keys(has).map((k) => has[k].label).join(', ')}: for the Main Body, 1 km short of each report line, beside the axis on its right (600 x 400 m, E), where it halts till it can move forward (OoW Vol II glossary)` }] : [];
+  const haRow: Check[] = Object.keys(has).length ? [{ name: 'Halting areas', st: 'pass', reason: `${Object.keys(has).map((k) => has[k].label).join(', ')}: for the Main Body, ${fmtM(FA.haShort)} short of each report line, beside the axis on its right (${FA.haSize[0]} x ${FA.haSize[1]} m, your figures), where it halts till it can move forward (OoW Vol II glossary)` }] : [];
   const rows = [...advanceRows(raw.items, ctx.doc), ...gr.rows, ...haRow, ...(marchRow ? [marchRow] : [])];
   const fails = rows.filter((r) => r.st === 'fail').length, warns = rows.filter((r) => r.st === 'warn').length;
   const fit: FitResult = {

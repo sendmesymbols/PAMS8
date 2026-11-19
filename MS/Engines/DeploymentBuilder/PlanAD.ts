@@ -89,7 +89,7 @@ export function adOnPlan(a: AdType, doc: DoctrineSet): AdOnPlan {
     releaseM: num(doctrineAt(doc, 'ad.releaseM'), 1500),
     minFus: num(doctrineAt(doc, 'ad.minFus'), 2),
     siteM: Array.isArray(site) && site.length === 2 ? [Number(site[0]), Number(site[1])] : [300, 1000],
-    assumedNote: assumed ? `the Tps' SAM Launcher is not named in the chart: taken as the ${a.fus.flatMap((f) => f.weapons).find((w) => w.assumed)!.name} (E)` : null,
+    assumedNote: assumed ? `the Tps' SAM Launcher is not named in the chart: taken as the ${a.fus.flatMap((f) => f.weapons).find((w) => w.assumed)!.name} (as set)` : null,
   };
 }
 
@@ -193,5 +193,5 @@ export function adRows(items: { role: string; pts: XY[] }[], recipe: Pick<Recipe
   }
   const ranges = [...new Set(a.fus.flatMap((f) => f.weapons).map((w) => `${w.name} ${fmtM(w.effM)}`))].join(', ');
   const fix = st === 'pass' ? '' : `; more fire units (${a.unit === 'bty' ? 'a Regt, or a second Bty' : 'a second Regt'}) or a longer reach (RBS-70 Bolide 8 km, 57 mm 6 km: p 317)`;
-  return [{ name: 'AD cover', st, reason: `${a.name} (${a.fus.length} fire units; ${ranges} slant), the FUs that engage ${fmtM(a.releaseM)} out (E): ${parts.join('; ')}; ${a.minFus} wanted over the bridges and gun areas (E)${fix}${a.assumedNote ? `; ${a.assumedNote}` : ''}. Clear arcs, the radar's cover and the early warning: on the ground` }];
+  return [{ name: 'AD cover', st, reason: `${a.name} (${a.fus.length} fire units; ${ranges} slant), the FUs that engage ${fmtM(a.releaseM)} out: ${parts.join('; ')}; ${a.minFus} wanted over the bridges and gun areas${fix}${a.assumedNote ? `; ${a.assumedNote}` : ''}. Clear arcs, the radar's cover and the early warning: on the ground` }];
 }

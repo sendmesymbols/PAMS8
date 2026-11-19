@@ -1,6 +1,6 @@
 /**
  * PlanAvn.ts — PURE. The air lift of the Air Aslt Bn by the Air Aslt Sqn, from the ORBAT (avn.json, inf.json,
- * weapons.json: SO's Hbk 2019 Sec 7 pp 701-715, the Air Aslt Bn pp 621-622) and PlanDoctrine `airAslt` (E).
+ * weapons.json: SO's Hbk 2019 Sec 7 pp 701-715, the Air Aslt Bn pp 621-622) and PlanDoctrine `airAslt` (the user's figures).
  *
  * - the troops lifted: the Bn HQ, the four STCs and the Cbt Sp Coy (the Adm Pl comes by road);
  * - the Sqn's lift a wave: its Air Aslt Hels (the Bell 412, the only type with the Air Aslt role, pp 706-708: 9 troops)
@@ -102,13 +102,13 @@ export function airLiftOf(o: OrbatSet, unitId: string | null | undefined, doc: D
  * beyond it), and the first wave against one STC (warn when it cannot land a whole Coy).
  */
 export function airLiftRow(l: AirLift): Check {
-  const helTxt = l.hels.map((h) => `${h.count} ${h.what}s (${h.type}${h.assumed ? ', taken: E' : ''}: ${h.troops} troops)`).join(' + ');
+  const helTxt = l.hels.map((h) => `${h.count} ${h.what}s (${h.type}${h.assumed ? ', taken' : ''}: ${h.troops} troops)`).join(' + ');
   const short = l.perWave < l.coy;
   const slow = l.buildH > l.maxH + 1e-9;
   const st: CheckState = short || slow ? 'warn' : 'pass';
   return {
     name: 'Air lift',
     st,
-    reason: `${l.sqn}: ${helTxt} = ${l.perWave} a wave. The Bn's ${l.troops} (${l.lifted.map((x) => `${x.name} ${x.n}`).join(', ')}; the Adm Pl by road) in ${l.waves} wave${l.waves > 1 ? 's' : ''}; a round trip ${l.turnMin} min at ${l.pzLzKm} km PZ to LZ and ${l.groundMin} min on the ground (E): the Bn complete ${l.buildH.toFixed(1)} h after the first wave lands (${l.maxH} h allowed, E)${slow ? ': a second Sqn, a nearer PZ, or the Cargo Flt as Mi-17s (24 troops)' : ''}; the first wave ${l.perWave} against an STC of ${l.coy}${short ? ': less than a Coy lands at once' : ''}. ${l.src}`,
+    reason: `${l.sqn}: ${helTxt} = ${l.perWave} a wave. The Bn's ${l.troops} (${l.lifted.map((x) => `${x.name} ${x.n}`).join(', ')}; the Adm Pl by road) in ${l.waves} wave${l.waves > 1 ? 's' : ''}; a round trip ${l.turnMin} min at ${l.pzLzKm} km PZ to LZ and ${l.groundMin} min on the ground: the Bn complete ${l.buildH.toFixed(1)} h after the first wave lands (${l.maxH} h allowed, E)${slow ? ': a second Sqn, a nearer PZ, or the Cargo Flt as Mi-17s (24 troops)' : ''}; the first wave ${l.perWave} against an STC of ${l.coy}${short ? ': less than a Coy lands at once' : ''}. ${l.src}`,
   };
 }
