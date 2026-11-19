@@ -127,6 +127,31 @@ sources:
       lon: [59, 80]
     sha256: 81014da257b6c3975ff87847fbea5d08f247aa863cc91dfba7bbcaf369c8860f
 
+  # Google GEM-15, found 2026-11-19: the first free DEM finer than 30 m over all of Pakistan, GB, AJK and IIOJK. The
+  # cell file names carry a group and cell id read from the STAC index, so scripts/fetch_gem15.py fetches it (DTM by
+  # default; --assets dtm,dsm for the surface model too, ~346 GB more). Not yet built into the bundle (stage
+  # candidate): grid.py still warps glo30 into dem.tif, and the bundle grid (ZMAX 12, ~33 m) is coarser than 15 m.
+  - id: gem15
+    stage: candidate
+    measured: "2026-11-19, 5 km windows against GLO-30 (DTM vs DSM, EGM96 vs EGM2008): no horizontal shift beyond one 15 m pixel; heights higher by Islamabad +2.2 m, Sialkot +4.7 m, Jammu +4.7 m, Muzaffarabad +9.5 m, Srinagar +16.6 m. Google states India's data is offset, tapering over tens of km outside India's border, so it reaches AJK and the border belt."
+    name: "GEM-15: Near-Global Surface and Terrain Elevation Models (15 m), DTM (bare earth) and DSM"
+    version: "gem-15_v1, experimental (under review); STAC collection gem-15; Earth Engine projects/climate-and-sustainability/assets/gem-15_v1"
+    dataDate: "2022-2024 (sub-metre optical stereo, mainly Pleiades Neo 30 cm, acquired through 2024)"
+    released: "2026-09-29 (STAC items created; bucket Last-Modified 2026-09-29)"
+    licence: CC-BY-4.0
+    attribution: "This dataset is produced by Google"
+    citation: "Batchu, Neumann, Li, Allen, Zhang, Van Arsdale (2026). GEM-15: Global surface and terrain elevation models (15 meters) from sub-meter optical stereo imagery. EarthArXiv preprint, doi:10.31223/X55N75"
+    datum: "heights orthometric, EGM96 (EPSG:5773); each cell in its local UTM zone (EPSG:326xx), 15 m; float32, nodata NaN (water + 9 m, snow / ice, salt pans, low texture, > 50 m from GLO-30)"
+    landing: https://developers.google.com/earth-engine/datasets/catalog/projects_climate-and-sustainability_assets_gem-15_v1
+    location: "https://storage.googleapis.com/climate-and-sustainability/gem-15/  (public, no login)"
+    files:
+      - name: items.ndjson
+        url: https://storage.googleapis.com/climate-and-sustainability/gem-15/stac/items.ndjson      # STAC index, 49.4 MB, 13,485 cells (2026-11-19)
+      - name: "{asset}/{cell}.tif"
+        url: "https://storage.googleapis.com/climate-and-sustainability/gem-15/{group}/{cell}/{asset}/zall/mosaic.tif"   # from the index; 339 cells touch clip.geojson: DTM 66.8 GB, DSM 346.3 GB
+    fetched_by: scripts/fetch_gem15.py        # cells touching work/boundary/clip.geojson, to work/raw/gem15/<asset>/, MD5 checked against x-goog-hash
+    sha256: TO_BE_FILLED   # aggregate written to work/raw/checksums.json `gem15` by fetch_gem15.py once every file is in
+
   - id: osm_pakistan
     name: OpenStreetMap — Pakistan extract (Geofabrik)
     version: "pakistan-261028 (Geofabrik daily extract of 2026-10-28)"
