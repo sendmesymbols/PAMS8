@@ -113,7 +113,8 @@ import IPB_DOCTRINE from '../../Data/IpbDoctrine.json';
 import IPB_TEMPLATES from '../../Data/IpbTemplates.json';
 import { GroundGuideOcokaMap } from './GroundGuideOcokaMap';
 import { DEFAULT_FRONTAGE_M, OCOKA_DOCTRINE, OCOKA_EYES, OCOKA_THREATS, OcokaLive, OcokaVisibility, ocokaPlan, ocokaSight, ocokaViewshed, readOcoka, resolveThreat, type OcokaMapArgs } from './GroundGuideOcokaRead';
-import { EXT_TABS, EXT_TAB_KEY, extKey, extScopeText, extendedText, isExtTab } from './GroundGuideExtendedView';
+import { EXT_TABS, EXT_TAB_KEY, MAP_GROUPS, MAP_GROUP_FIELD, MAP_GROUP_LABEL, MAP_GROUP_WHAT, extKey, extScopeText, extendedText, isExtTab } from './GroundGuideExtendedView';
+import type { MapGroup } from './GroundGuideExtendedView';
 import { GroundGuideThreat } from './GroundGuideThreat';
 import { GroundGuideKeyNotice, type KeyNoticeContent, type KeyNoticeKey } from './GroundGuideKeyNotice';
 import { catalogKey } from './GroundGuideSpeed';
@@ -345,6 +346,8 @@ export default class GroundGuide {
     readFor: { get: () => this._opts.extended.ipb.readFor, set: (r) => this.toggleReadFor(r) },
     // Where the approaches end, beside it (Y).
     apchEnd: { get: () => this._opts.extended.ipb.apchEnd, set: (e) => this.cycleApchEnd(e) },
+    // The map groups, beside them (Shift+1-5, ` all, Q labels; user, 2026-11-20).
+    map: { get: () => this.mapGroups(), set: (g) => void this.setMapGroup(g), all: () => void this.showAllMap(), labels: () => void this.toggleMapLabels() },
     opacity: (v) => {
       this.setOptions({ overlay: { ...this._opts.overlay, opacity: v } });
       setSetting(['groundGuide', 'overlay', 'opacity'], v);
@@ -446,6 +449,10 @@ export default class GroundGuide {
   private _extPlanKey = '';
   private _extPlan: OcokaMapPlan | null = null;
   private _extDrawnKey = '';
+  /** ` (backquote) with F on: every map group shown for now, whatever the groups say (not kept). */
+  private _mapAll = false;
+  /** The labels setting Q brings back after turning them off. */
+  private _labelsWas: 'auto' | 'all' = 'auto';
   private _extSightTimer: ReturnType<typeof setTimeout> | null = null;
   private _extPlanTimer: ReturnType<typeof setTimeout> | null = null;
   private _threat = new GroundGuideThreat({
@@ -1028,6 +1035,11 @@ export default class GroundGuide {
       flag('extended.mapSight', oc.mapSight, (b) => (next.extended.mapSight = b));
       flag('extended.mapApproaches', oc.mapApproaches, (b) => (next.extended.mapApproaches = b));
       flag('extended.mapBetter', oc.mapBetter, (b) => (next.extended.mapBetter = b));
+      flag('extended.layerFire', oc.layerFire, (b) => (next.extended.layerFire = b));
+      flag('extended.layerKeyGr', oc.layerKeyGr, (b) => (next.extended.layerKeyGr = b));
+      flag('extended.layerApchs', oc.layerApchs, (b) => (next.extended.layerApchs = b));
+      flag('extended.layerAir', oc.layerAir, (b) => (next.extended.layerAir = b));
+      flag('extended.layerDecision', oc.layerDecision, (b) => (next.extended.layerDecision = b));
       pick('extended.overlay', oc.overlay, ['auto', 'view', 'threat', 'going', 'ipb'] as const, (x) => (next.extended.overlay = x));
       const ip = oc.ipb;
       if (ip && typeof ip === 'object') {
@@ -2333,7 +2345,13 @@ export default class GroundGuide {
     const a = this._apch;
     if (!a || !this._apchOn() || !this._extHere()) return this._apchMap.clear(); // on the map only while placing (or held)
     const ip = this._opts.extended.ipb;
-    this._apchMap.show(a.view, { corridors: ip.mapCorridors, labels: ip.labels, fire: ip.fire && ip.mapFire, decision: ip.decision && ip.mapDecision, air: ip.air && ip.mapAir, template: ip.template !== 'off' && ip.mapTemplate }, `${a.key}|${ip.mapCorridors}|${ip.labels}|${ip.fire && ip.mapFire ? this._fireKey : ''}|${a.view.fire ? 1 : 0}|${ip.decision && ip.mapDecision ? this._fireKey : ''}|${a.view.decision ? 1 : 0}|${ip.air && ip.mapAir ? this._fireKey : ''}|${a.view.air ? 1 : 0}|${ip.template !== 'off' && ip.mapTemplate ? this._fireKey : ''}|${a.view.template ? 1 : 0}`);
+    // The map groups (Shift+1-5): each product only while its group is on; the fire along the approaches needs both 1 and 3.
+    const g = this._mapGroups();
+    const fire = ip.fire && ip.mapFire && g.fire && g.apchs;
+    const decision = ip.decision && ip.mapDecision && g.decision;
+    const air = ip.air && ip.mapAir && g.air;
+    const template = ip.template !== 'off' && ip.mapTemplate && g.decision;
+    this._apchMap.show(a.view, { apchs: g.apchs, corridors: ip.mapCorridors, labels: ip.labels, fire, decision, air, template }, `${a.key}|${g.apchs ? 1 : 0}|${ip.mapCorridors}|${ip.labels}|${fire ? this._fireKey : ''}|${a.view.fire ? 1 : 0}|${decision ? this._fireKey : ''}|${a.view.decision ? 1 : 0}|${air ? this._fireKey : ''}|${a.view.air ? 1 : 0}|${template ? this._fireKey : ''}|${a.view.template ? 1 : 0}`);
   }
 
   private _apchClear(): void {
@@ -4001,6 +4019,7 @@ export default class GroundGuide {
     v.sections = this._sectionsNear(geometry, v);
     v.extended = keys && this._opts.extended.keys ? this._ext : null;
     v.extKept = this._ext && this._keptNow();
+    v.extMap = this._ext ? this._mapGroups().key : undefined;
     // It reads a point symbol (a unit or a weapon where it stands): a line or an area is drawn with it resting.
     v.extRest = this._ext && geometry?.type !== 'point' ? 'Rests on lines and areas' : null;
     v.ext = this._ext && !v.extRest ? this._extNear(geometry, sidc, v) : null;
@@ -6090,6 +6109,7 @@ export default class GroundGuide {
     }
     this._detail.setExtended(on, on && this._keptNow());
     if (!on) {
+      this._mapAll = false; // the backquote's "all for now" goes with the Extended View
       this._extPinRelease();
       this._extMapClear();
       this._apchClear();
@@ -6298,6 +6318,120 @@ export default class GroundGuide {
     return { ...what[ip.apchEnd], keys: [['Y', next[ip.apchEnd]], ['⇧Y', 'back'], ['X', own ? "the en's options" : 'your options'], ['3', 'Apchs'], ['[ ]', 'turn the threat']] };
   }
 
+  // ── The map groups (user, 2026-11-20) ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Which of the Extended View's map groups are shown now (Shift+1-5; ` all for now): 1 Fire, 2 Key Gr, 3 Gr Apchs,
+   * 4 Air, 5 Decision. `all` is the backquote's "show everything for now"; `key` names the set, for a redraw test.
+   */
+  private _mapGroups(): Record<MapGroup, boolean> & { all: boolean; key: string } {
+    const o = this._opts.extended;
+    const a = this._mapAll;
+    const r = { fire: a || o.layerFire, keyGr: a || o.layerKeyGr, apchs: a || o.layerApchs, air: a || o.layerAir, decision: a || o.layerDecision };
+    return { ...r, all: a, key: MAP_GROUPS.map((m) => (r[m] ? 1 : 0)).join('') };
+  }
+
+  /** For hosts and the Detail's key bar: the map groups shown now, `all` while the backquote shows everything, and the labels. */
+  mapGroups(): Record<MapGroup, boolean> & { all: boolean; labels: boolean } {
+    const { key: _k, ...g } = this._mapGroups();
+    return { ...g, labels: this._opts.extended.ipb.labels !== 'off' };
+  }
+
+  /**
+   * Show or hide one map group (Shift + its digit while F is on; the Detail's key bar). `on` omitted turns it over. With
+   * every group shown by the backquote, the others stay shown and this one goes (the set you see, less this one). Kept in
+   * the settings; said in the key notice.
+   */
+  setMapGroup(group: MapGroup, on?: boolean): boolean {
+    if (!MAP_GROUPS.includes(group)) return false;
+    const o = this._opts.extended;
+    const field = MAP_GROUP_FIELD[group];
+    const patch: Partial<Record<(typeof MAP_GROUP_FIELD)[MapGroup], boolean>> = {};
+    if (this._mapAll) {
+      // Everything was shown for now: keep what is seen and take the one asked for away (or leave it, if `on`).
+      this._mapAll = false;
+      for (const m of MAP_GROUPS) patch[MAP_GROUP_FIELD[m]] = true;
+      patch[field] = on ?? false;
+    } else patch[field] = on ?? !o[field];
+    const now = patch[field] === true;
+    const changed = MAP_GROUPS.map((m) => MAP_GROUP_FIELD[m]).filter((f) => patch[f] !== undefined && patch[f] !== o[f]);
+    if (changed.length) {
+      this.setOptions({ extended: { ...o, ...patch } });
+      for (const f of changed) setSetting(['groundGuide', 'extended', f], patch[f]);
+    }
+    this._mapGroupsChanged();
+    this._notice(this._mapNotice(group), `${MAP_GROUP_LABEL[group]} ${now ? 'on' : 'off'} the map.`);
+    return now;
+  }
+
+  /** The backquote while F is on: every group on the map for now, or back to the groups you chose. Not kept. */
+  showAllMap(on?: boolean): boolean {
+    this._mapAll = on ?? !this._mapAll;
+    this._mapGroupsChanged();
+    this._notice(this._mapNotice(null), this._mapAll ? 'Everything on the map. ` again for your groups.' : 'Your map groups again.');
+    return this._mapAll;
+  }
+
+  /** Q while F is on: the labels on the Extended View's map off, or back as they were (`extended.ipb.labels`). Kept in the settings. */
+  toggleMapLabels(on?: boolean): boolean {
+    const ip = this._opts.extended.ipb;
+    const want = on ?? ip.labels === 'off';
+    if (ip.labels !== 'off') this._labelsWas = ip.labels;
+    const labels = want ? (ip.labels !== 'off' ? ip.labels : this._labelsWas) : 'off';
+    if (labels !== ip.labels) {
+      this.setOptions({ extended: { ...this._opts.extended, ipb: { ...ip, labels } } });
+      setSetting(['groundGuide', 'extended', 'ipb', 'labels'], labels);
+    }
+    this._extMap.setOverlayLabels(labels !== 'off');
+    this._extOverSig = ''; // the overlay's own label comes back with it
+    this._extViewKey = '';
+    this._mapGroupsChanged();
+    this._notice(this._mapNotice(null, true), `Map labels ${want ? 'on' : 'off'}. Q to turn them ${want ? 'off' : 'on'}.`);
+    return want;
+  }
+
+  /** The groups or labels changed: draw both Extended View layers again at once, and the key bar and the card say so. */
+  private _mapGroupsChanged(): void {
+    this._extDrawnKey = '';
+    if (this._extCtx && this._ext) this._extDraw(true);
+    this._apchDraw();
+    if (this._extOverlayKind() !== null) this._extOverlaySoon(0);
+    this._detail.refreshKeys();
+    this._refreshLive();
+    this._emit('ground-guide-map-groups', this.mapGroups());
+  }
+
+  /** The keys that work on the map groups, each with what it does now. */
+  private _mapKeys(): KeyNoticeKey[] {
+    const g = this._mapGroups();
+    return [
+      ...MAP_GROUPS.map((m, i): KeyNoticeKey => [`⇧${i + 1}`, `${MAP_GROUP_LABEL[m]} ${g[m] ? 'on' : 'off'}`]),
+      ['`', g.all ? 'your groups' : 'show all'],
+      ['Q', this._opts.extended.ipb.labels === 'off' ? 'labels on' : 'labels off'],
+    ];
+  }
+
+  /** A map group key (`group`), the backquote (null) or Q (`labels`): what the map shows now and every map key. */
+  private _mapNotice(group: MapGroup | null, labels = false): KeyNoticeContent {
+    const g = this._mapGroups();
+    const shown = MAP_GROUPS.filter((m) => g[m]).map((m) => MAP_GROUP_LABEL[m]);
+    const lab = this._opts.extended.ipb.labels !== 'off';
+    const mode = labels
+      ? `Map labels ${lab ? 'on' : 'off'}`
+      : group
+        ? `${MAP_GROUP_LABEL[group]} ${g[group] ? 'on the map' : 'off the map'}`
+        : g.all
+          ? 'Everything on the map'
+          : 'Your map groups';
+    const what = group ? `${MAP_GROUP_WHAT[group]}. ` : '';
+    const note = group === 'apchs' && g.apchs && g.fire ? ' Their fire colours go with 1 Fire.' : group === 'fire' && g.fire && !g.apchs ? ' With 3 on, also the fire along the Apchs.' : '';
+    return {
+      mode,
+      text: `${what}On the map: ${shown.length ? shown.join(', ') : 'nothing from the Ext View'}${g.all ? ' (for now)' : ''}.${note}`,
+      keys: this._mapKeys(),
+    };
+  }
+
   // ── The key notice (card.keyNotice; user, 2026-11-14) ─────────────────────────────────────────────────────────────
 
   /**
@@ -6318,8 +6452,12 @@ export default class GroundGuide {
   /** The Extended View's keys while it is on, and what each does now. */
   private _extKeys(): KeyNoticeKey[] {
     const d = this._opts.extended.ipb.readFor === 'defence';
+    const g = this._mapGroups();
     return [
       ['1–5', 'its tabs'],
+      ['⇧1–5', `on the map (now ${MAP_GROUPS.map((m, i) => (g[m] ? String(i + 1) : '')).filter(Boolean).join(' ') || 'none'})`],
+      ['`', g.all ? 'your groups' : 'show all'],
+      ['Q', this._opts.extended.ipb.labels === 'off' ? 'labels on' : 'labels off'],
       ['X', d ? 'your options' : "the en's options"],
       ['Y', { objective: 'Apchs through the area', through: 'both', both: 'onto the Obj' }[this._opts.extended.ipb.apchEnd]],
       ['[ ]', 'turn the threat'],
@@ -6350,9 +6488,11 @@ export default class GroundGuide {
   private _extNotice(): KeyNoticeContent {
     if (!this._ext) return { mode: 'Ext View off', text: 'GROTBC only; nothing more is worked out.', keys: [['F', 'on for this symbol'], ['⇧F', 'on for every symbol'], ['D', 'Gr Detail'], ['V', 'Gr Scope']] };
     const d = this._opts.extended.ipb.readFor === 'defence';
+    const g = this._mapGroups();
+    const shown = MAP_GROUPS.filter((m) => g[m]).map((m) => MAP_GROUP_LABEL[m]);
     return {
       mode: this._keptNow() ? 'Ext View on · every symbol' : 'Ext View on · this symbol',
-      text: `${d ? "The en's options against you" : 'Your options against the threat'}: fields of fire, Key Gr, Apchs, air, decision.`,
+      text: `${d ? "The en's options against you" : 'Your options against the threat'}. On the map: ${shown.join(', ') || 'nothing'}; Shift + a tab's digit shows the rest.`,
       keys: this._extKeys(),
     };
   }
@@ -6611,11 +6751,21 @@ export default class GroundGuide {
       return;
     }
     const plan = this._extPlanKey === c.key ? this._extPlan : null;
-    const drawn = `${c.key}|${plan ? 1 : 0}|${o.mapFan}${o.mapEnemy}${o.mapSight}${o.mapApproaches}${o.mapBetter}${this._apchOn()}|${this._extMap.overlayKind ?? ''}|${o.ipb.labels}`;
+    const g = this._mapGroups();
+    const drawn = `${c.key}|${plan ? 1 : 0}|${o.mapFan}${o.mapEnemy}${o.mapSight}${o.mapApproaches}${o.mapBetter}${this._apchOn()}|${g.key}|${this._extMap.overlayKind ?? ''}|${o.ipb.labels}`;
     if (drawn !== this._extDrawnKey) {
       this._extDrawnKey = drawn;
-      // The single approach path gives way to the IPB avenues when they are on (tab 3 says which is shown).
-      this._extMap.show(c.at, this._extSight, plan, { fan: o.mapFan, enemy: o.mapEnemy, sight: o.mapSight, avenues: o.mapApproaches && !this._apchOn(), better: o.mapBetter, labels: o.ipb.labels !== 'off' });
+      // The single approach path gives way to the IPB avenues when they are on (tab 3 says which is shown). Each product
+      // only while its map group is on (Shift+1-5): 1 the fan and the threat's view, 2 the lines of sight and the better
+      // Posn, 3 the approach.
+      this._extMap.show(c.at, this._extSight, plan, {
+        fan: o.mapFan && g.fire,
+        enemy: o.mapEnemy && g.fire,
+        sight: o.mapSight && g.keyGr,
+        avenues: o.mapApproaches && !this._apchOn() && g.apchs,
+        better: o.mapBetter && g.keyGr,
+        labels: o.ipb.labels !== 'off',
+      });
     }
     if (refresh) this._refreshLive(); // the cards name what the map now shows
   }
@@ -7789,7 +7939,11 @@ export default class GroundGuide {
     // rule). With it off the digits, brackets and J are left alone for the app.
     const oDigit = /^Digit\d$/.test(e.code) && EXT_TABS.some((t) => EXT_TAB_KEY[t] === e.code.slice(5)) ? Number(e.code.slice(5)) : 0;
     const oTurn = e.code === 'BracketRight' ? 1 : e.code === 'BracketLeft' ? -1 : 0;
-    const oKey = this._opts.extended.keys && (k === 'f' || (this._ext && (k === 'j' || k === 'x' || k === 'y' || oDigit > 0 || oTurn !== 0)));
+    // The map groups (user, 2026-11-20): Shift + a tab's digit shows or hides its things on the map, the backquote shows
+    // everything for now, Q the labels. Only while F is on: otherwise they are the app's.
+    const oAll = e.code === 'Backquote' && !e.shiftKey;
+    const oLabels = k === 'q';
+    const oKey = this._opts.extended.keys && (k === 'f' || (this._ext && (k === 'j' || k === 'x' || k === 'y' || oDigit > 0 || oTurn !== 0 || oAll || oLabels)));
     if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'v' && k !== 'escape' && !tabKey && !oKey) || e.ctrlKey || e.metaKey || e.altKey || (e.repeat && oTurn === 0)) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -7807,8 +7961,8 @@ export default class GroundGuide {
           msg = !on
             ? 'Ext View off.'
             : this._keptNow()
-              ? `Ext View on (kept): ${this._opts.extended.ipb.readFor === 'defence' ? "en's options" : 'your options'}, X the other side. 1 2 3 4 5 tabs, J better Posn. F closes it.`
-              : `Ext View on for this symbol: ${this._opts.extended.ipb.readFor === 'defence' ? "en's options" : 'your options'}, X the other side. 1 2 3 4 5 tabs, J better Posn. Shift+F keeps it.`;
+              ? `Ext View on (kept): ${this._opts.extended.ipb.readFor === 'defence' ? "en's options" : 'your options'}, X the other side. 1-5 tabs, Shift+1-5 on the map, J better Posn. F closes it.`
+              : `Ext View on for this symbol: ${this._opts.extended.ipb.readFor === 'defence' ? "en's options" : 'your options'}, X the other side. 1-5 tabs, Shift+1-5 on the map, J better Posn. Shift+F keeps it.`;
         }
         this._notice(this._extNotice(), msg, 2600);
       } else if (k === 'j') {
@@ -7820,12 +7974,17 @@ export default class GroundGuide {
       } else if (oTurn !== 0) {
         this.turnThreat(oTurn * (e.shiftKey ? 45 : 15));
         this._notice(this._threatNotice(), null);
+      } else if (oAll) {
+        this.showAllMap();
+      } else if (oLabels) {
+        this.toggleMapLabels();
+      } else if (e.shiftKey && oDigit > 0) {
+        this.setMapGroup(MAP_GROUPS[oDigit - 1]);
       } else if (this._opts.card.briefKey) {
+        // The digit again walks the tab's pages (wrapping); Shift + the digit is the map group's key (above).
         const tab = EXT_TABS.find((t) => EXT_TAB_KEY[t] === String(oDigit)) ?? EXT_TABS[0];
-        if (this._briefOpen && this._detail.tab === tab) {
-          if (e.shiftKey) this._detail.prevPage();
-          else this._detail.nextPage();
-        } else this._toggleBrief(true, tab);
+        if (this._briefOpen && this._detail.tab === tab) this._detail.nextPage();
+        else this._toggleBrief(true, tab);
       }
       return;
     }

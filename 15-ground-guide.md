@@ -1145,6 +1145,27 @@ toward it (blue), his fire on them, your air, his defence template. The choice i
 `guide.setReadFor('defence' | 'attack')`, `guide.toggleReadFor(to?)`. (It first sat as a tile at the top of tab 3; the user
 moved it to the key bar to save space, 2026-11-14.)
 
+**Map groups** (2026-11-20, user: "When F is pressed, map gets too messy ... show it to the user on demand when a shortcut
+key is pressed"). Everything F draws belongs to one group, numbered as its Detail tab, so one digit is one topic: the digit
+opens the tab, **Shift + the digit** shows or hides that group on the map.
+- **1 Fire** (on by default): the fire fan with dead (red) and screened (amber) ground, the threat's view and its line to
+  the Posn; with 3 on as well, the fire along the approaches and the other side's ranges.
+- **2 Key Gr** (on by default): lines of sight to the ITG candidates, the better Posn (J).
+- **3 Gr Apchs**: the approaches (or the single approach path with the IPB avenues off) with their corridors, narrows and
+  crossings, crossovers, the Obj, FUPs, the MSR choke and the area read.
+- **4 Air**: air approaches, LZ / DZ, AD sites and reach, OPs over the LZs, masts and towers.
+- **5 Decision**: NAIs, TAIs, decision points and the situation template.
+
+**`** (backquote) shows every group for now (not kept; Shift + a digit then leaves the rest shown and takes that one off);
+**Q** turns the map labels off and back (`extended.ipb.labels`). The groups are kept in the settings
+(`extended.layerFire / layerKeyGr / layerApchs / layerAir / layerDecision`); the `map*` switches still say what may be drawn
+at all. Nothing is worked out less: the tabs read the same, only the map is quieter. Shift + a digit no longer pages back
+in the Ext tabs (the digit again walks forward and wraps). The keys are told where the user looks: the key notice when F
+opens lists them with the groups on now, and each map key's notice says what the map shows; the cursor card's foot shows
+**⇧ 1 2 3 4 5 Map** with the groups on lit; the Ground Detail's key bar has a clickable **⇧ Map** switch (1 Fire ... 5
+Decision, ` All, Q Labels) beside X and Y; the Legend tab lists the keys. API: `guide.mapGroups()`, `setMapGroup(group,
+on?)`, `showAllMap(on?)`, `toggleMapLabels(on?)`; event `ground-guide-map-groups`.
+
 **Where the approaches end** (`extended.ipb.apchEnd`, **Y** with F on, Shift+Y back, or the *Y Onto Obj / Through / Both*
 switch in the Ground Detail's key bar; 2026-11-14, user: "Why its always passing the target it is attacking on?", then
 "make new one as default, keep in mind that it does not need to end up on symbol, every symbol have echelon and each echelon

@@ -33,6 +33,25 @@ export const EXT_TABS: readonly ExtTab[] = ['XF', 'XK', 'XA', 'XH', 'XD'];
 export const EXT_TAB_LABEL: Record<ExtTab, string> = { XF: 'Obsn & Fd of Fire', XK: 'Key Gr', XA: 'Approaches', XH: 'Air', XD: 'Decision' };
 /** Tab 4 is Air (the air avenues, LZ / DZ, AD sites; IPB_Plan.md Phase 6), Decision 5. */
 export const EXT_TAB_KEY: Record<ExtTab, string> = { XF: '1', XK: '2', XA: '3', XH: '4', XD: '5' };
+
+/**
+ * The map groups (user, 2026-11-20: F made the map "too messy"; show the rest "on demand when a shortcut key is
+ * pressed"). Each is numbered as its tab, so one digit is one topic: the digit opens the tab, Shift + the digit shows or
+ * hides its things on the map. 1 and 2 are on by default (what F drew before the approaches came); ` shows all for now,
+ * Q the labels.
+ */
+export type MapGroup = 'fire' | 'keyGr' | 'apchs' | 'air' | 'decision';
+export const MAP_GROUPS: readonly MapGroup[] = ['fire', 'keyGr', 'apchs', 'air', 'decision'];
+export const MAP_GROUP_FIELD = { fire: 'layerFire', keyGr: 'layerKeyGr', apchs: 'layerApchs', air: 'layerAir', decision: 'layerDecision' } as const;
+export const MAP_GROUP_LABEL: Record<MapGroup, string> = { fire: 'Fire', keyGr: 'Key Gr', apchs: 'Gr Apchs', air: 'Air', decision: 'Decision' };
+/** What each group draws, for the key notice and the key bar's tooltips. */
+export const MAP_GROUP_WHAT: Record<MapGroup, string> = {
+  fire: "Fire fan with dead and screened Gr, the threat's view and its line to the Posn",
+  keyGr: 'Lines of sight to the ITG candidates and the better Posn (J)',
+  apchs: 'Ground Apchs with their corridors, narrows and crossings, crossovers, the Obj, FUPs and the MSR choke',
+  air: 'Air Apchs, LZ and DZ, AD sites and reach, OPs over the LZs, masts and towers',
+  decision: 'NAIs, TAIs, decision points and the situation template',
+};
 export function isExtTab(t: string): t is ExtTab {
   return (EXT_TABS as readonly string[]).includes(t);
 }

@@ -15,7 +15,7 @@
  * layout reads and the card can flip to stay on screen.
  */
 
-import { EXT_OFFER, extCardRows, extChip } from './GroundGuideExtendedView';
+import { EXT_OFFER, MAP_GROUPS, MAP_GROUP_LABEL, extCardRows, extChip } from './GroundGuideExtendedView';
 import { monthName } from './GroundGuideBrief';
 import { COVER_FIELD_LABEL, COVER_KIND, COVER_WORD } from './GroundGuideCover';
 import { fmtDistance, titleCase } from './GroundGuideEvaluator';
@@ -154,6 +154,11 @@ ${toneCss}
 .ms-ggb-xf .ms-ggb-kbd{color:#8ec1ea;border-color:#6f8da8}
 .ms-ggb-xf.ms-on{color:#8ec1ea;font-weight:600}
 .ms-ggb-xf.ms-on .ms-ggb-kbd{color:#14181d;background:#8ec1ea;border-color:#8ec1ea}
+/* The map groups on the card's foot: Shift, then 1-5, a group on the map lit, the others dim. */
+.ms-ggb-xm{display:inline-flex;align-items:center;gap:3px;color:#c3d6e8;white-space:nowrap}
+.ms-ggb-xm>.ms-ggb-kbd{min-width:17px;height:18px;padding:0 3px;font-size:11px;color:#7d8794;background:#20262e;border-color:#3c444e}
+.ms-ggb-xm>.ms-ggb-kbd.ms-on{color:#14181d;background:#8ec1ea;border-color:#8ec1ea}
+.ms-ggb-xm>.ms-ggb-kbd.ms-sh{color:#8ec1ea;background:#2b313a;border-color:#6f8da8;margin-right:2px}
 .ms-ggb-pills{display:flex;gap:4px;margin-left:auto}
 .ms-ggb-pills>span{font-size:12px;font-weight:600}
 .ms-ggb-mode+.ms-ggb-row,.ms-ggb-other+.ms-ggb-row{border-top:0}
@@ -1182,6 +1187,23 @@ export class GroundGuideBadge {
         xs.title = side === 'enemy' ? "Showing the en's options against you. X for your options against the threat." : "Showing your options against the threat. X for the en's options against you.";
         xs.append(keycap('X'), side === 'enemy' ? 'Yours' : "En's");
         foot.append(xs);
+      }
+      // The map groups (Shift+1-5): which are on the map now, lit; the title names them and the other map keys.
+      if (v.extended && v.extMap && v.extMap.length === MAP_GROUPS.length) {
+        const xm = el('span', 'ms-ggb-xm');
+        const on = MAP_GROUPS.map((m, i) => `${i + 1} ${MAP_GROUP_LABEL[m]} ${v.extMap![i] === '1' ? 'on' : 'off'}`);
+        xm.title = `On the map, Shift + the digit shows or hides: ${on.join(', ')}. \` shows everything for now, Q the labels.`;
+        xm.setAttribute('aria-label', `Map groups: ${on.join(', ')}`);
+        const sh = keycap('⇧');
+        sh.classList.add('ms-sh');
+        xm.append(sh);
+        MAP_GROUPS.forEach((_m, i) => {
+          const k = keycap(String(i + 1));
+          if (v.extMap![i] === '1') k.classList.add('ms-on');
+          xm.append(k);
+        });
+        xm.append('Map');
+        foot.append(xm);
       }
     }
     return foot;

@@ -792,6 +792,11 @@
       "mapSight": true,
       "mapApproaches": true,
       "mapBetter": true,
+      "layerFire": true,
+      "layerKeyGr": true,
+      "layerApchs": false,
+      "layerAir": false,
+      "layerDecision": false,
       "overlay": "auto",
       "ipb": {
         "readFor": "defence",

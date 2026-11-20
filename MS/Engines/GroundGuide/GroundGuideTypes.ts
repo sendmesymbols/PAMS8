@@ -735,6 +735,22 @@ export interface GroundGuideExtendedOptions {
   mapApproaches: boolean;
   mapBetter: boolean;
   /**
+   * The map groups (user, 2026-11-20: "When F is pressed, map gets too messy ... show it to the user on demand when a
+   * shortcut key is pressed"). Everything the Extended View draws belongs to one group, numbered as its Detail tab, and
+   * Shift + that digit shows or hides it on the map (` shows all for a moment, Q the labels). The `map*` switches above
+   * and in `ipb` still say what may be drawn at all; a group only hides or shows its members. Kept in the settings.
+   * 1 Fire: the fire fan with dead and screened ground, the threat's view and its line to the Posn, and the fire along the
+   *   approaches when 3 is on too. 2 Key Gr: lines of sight to the ITG candidates and the better Posn (J).
+   * 3 Gr Apchs: the approaches with their corridors, narrows and crossings, crossovers, the Obj, FUPs, the MSR choke and
+   *   the area read. 4 Air: air approaches, LZ / DZ, AD sites and reach, OPs, obstructions. 5 Decision: NAIs, TAIs,
+   *   decision points and the situation template. Default: 1 and 2 on (what F drew before the approaches came).
+   */
+  layerFire: boolean;
+  layerKeyGr: boolean;
+  layerApchs: boolean;
+  layerAir: boolean;
+  layerDecision: boolean;
+  /**
    * What the map overlay (`overlay.enabled`) paints while the Extended View is on (2026-11-11). `threat`: all the
    * ground the threat may see from its place, out to `radiusKm` (violet; needs the threat as a place). `view`: all the
    * ground that may be seen from the position being placed (light blue), once the cursor rests. `going`: the GROTBC
@@ -1242,6 +1258,8 @@ export interface GroundGuideVerdict {
   extended?: boolean | null;
   /** The Extended View stays on for every symbol (Shift+F, or `extended.lasts: kept`) rather than closing on a new one. */
   extKept?: boolean;
+  /** The Extended View's map groups shown now, one digit per group 1-5 ('11000': Fire and Key Gr); the card's foot shows them. */
+  extMap?: string;
   /** Why the Extended View reads nothing for this draw although it is on (a line or an area); null when it reads. */
   extRest?: string | null;
   /** Set while drawing with the Extended View on and the bundle's elevation loaded: its reading at the point. */
@@ -1585,7 +1603,7 @@ export const DEFAULT_GROUND_GUIDE_OPTIONS: GroundGuideOptions = {
   sections: { ground: true, roads: true, buildings: true, weather: true, obstacles: true, style: 'compact', radiusKm: 3, roadDensity: true, roadDensityKm: 5, roadDensityStyle: 'rows', roadDensityLead: 'afterRain', detail: true, gStyle: 'auto', rStyle: 'auto', oStyle: 'auto', bStyle: 'auto', wStyle: 'auto' },
   speed: { enabled: true, card: 'line', light: 'day', road: 'convoy', load: 'combat', mover: 'auto', legend: true },
   scope: { enabled: true, side: 'right', tab: true, topPx: 54 },
-  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true }, eye: 'auto', surface: true },
+  extended: { keys: true, lasts: 'symbol', threat: 'front', bearingDeg: 0, sectorDeg: 90, at: null, marker: true, radiusKm: 5, mapFan: true, mapEnemy: true, mapSight: true, mapApproaches: true, mapBetter: true, layerFire: true, layerKeyGr: true, layerApchs: false, layerAir: false, layerDecision: false, overlay: 'auto', ipb: { readFor: 'defence', apchEnd: 'objective', fupM: 1100, turn: true, mover: 'auto', season: 'coding', avlbSpanM: 18, paint: 'hatch', apchs: true, hq: 'auto', mapCorridors: true, labels: 'auto', createAs: 'attack', fire: true, mapFire: true, proforma: true, pfHead1: '', pfHead2: '', decision: true, mapDecision: true, reactionH: 0, hHour: '', air: true, mapAir: true, airBand: 'contour', lzClass: 4, lzPoints: 4, template: 'auto', mapTemplate: true }, eye: 'auto', surface: true },
   aor: { keys: true, scale: 'spot', layout: 'deductions', style: 'trace', orient: 'north', source: 'echelon', box: null, echelon: 'auto', leadKm: 4, corridorM: 0, profile: 'tracked' },
 };
 

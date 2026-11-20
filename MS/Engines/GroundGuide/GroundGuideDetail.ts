@@ -110,7 +110,7 @@ import {
 } from './GroundGuideSpeedView';
 import { blockGauge, blockTiles, blockWayOut, ensureTrafficCss, roadBlock, viewOf } from './GroundGuideTrafficView';
 import type { GroundGuideVerdict } from './GroundGuideTypes';
-import { EXT_OFFER, EXT_TABS, EXT_TAB_KEY, EXT_TAB_LABEL, extAnswer, extFacts, extLetterTiles, extTiles, extendedText, isExtTab, type ExtTab } from './GroundGuideExtendedView';
+import { EXT_OFFER, EXT_TABS, EXT_TAB_KEY, EXT_TAB_LABEL, MAP_GROUPS, MAP_GROUP_LABEL, MAP_GROUP_WHAT, type MapGroup, extAnswer, extFacts, extLetterTiles, extTiles, extendedText, isExtTab, type ExtTab } from './GroundGuideExtendedView';
 
 export type DetailTab = GrotbcLetter | 'L' | ExtTab;
 export const DETAIL_TABS: readonly DetailTab[] = ['G', 'R', 'O', 'T', 'B', 'C', 'L'];
@@ -147,6 +147,13 @@ export interface DetailHandlers {
   readFor?: { get(): 'defence' | 'attack'; set(r: 'defence' | 'attack'): void };
   /** Where the approaches end (Y): onto the objective, through the area, both. */
   apchEnd?: { get(): 'objective' | 'through' | 'both'; set(e: 'objective' | 'through' | 'both'): void };
+  /** The map groups (Shift+1-5): read for the key bar's Map switch, set when one is clicked; ` all for now, Q labels. */
+  map?: {
+    get(): Record<MapGroup, boolean> & { all: boolean; labels: boolean };
+    set(g: MapGroup): void;
+    all(): void;
+    labels(): void;
+  };
 }
 
 const STYLE_ID = 'ms-ground-guide-detail-style';
@@ -681,9 +688,35 @@ export class GroundGuideDetail {
       }
       keys.append(sw);
     }
+    const mp = this._h.map;
+    if (ext && mp) {
+      // The map groups: Shift, then one button a group (lit when on the map), All (`) and Labels (Q); a click does what the key does.
+      const now = mp.get();
+      const sw = el('span', 'ms-ggd-who ms-ggd-map');
+      sw.setAttribute('role', 'group');
+      sw.setAttribute('aria-label', 'On the map (Shift+1-5)');
+      sw.title = "What the Ext View draws on the map. Shift + a tab's digit shows or hides its group; ` shows everything for now; Q the labels. 1 and 2 are on by default.";
+      sw.append(el('span', 'ms-ggd-k', '⇧'));
+      const btn = (text: string, pressed: boolean, title: string, go: () => void): void => {
+        const b = el('button', undefined, text) as HTMLButtonElement;
+        b.type = 'button';
+        b.title = title;
+        b.setAttribute('aria-pressed', String(pressed));
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          go();
+        });
+        sw.append(b);
+      };
+      MAP_GROUPS.forEach((m, i) => btn(`${i + 1} ${MAP_GROUP_LABEL[m]}`, now[m], `Shift+${i + 1}: ${MAP_GROUP_WHAT[m]}`, () => mp.set(m)));
+      btn('` All', now.all, 'Backquote: every group on the map for now; again for your groups', () => mp.all());
+      btn('Q Labels', now.labels, 'Q: the labels on the Ext View map on or off', () => mp.labels());
+      keys.append(sw);
+    }
     const rows: Array<[string, string]> = [
       ['D', 'open / close'],
-      [ext ? `G R O T B C ${EXT_TABS.map((t) => EXT_TAB_KEY[t]).join(' ')}` : 'G R O T B C', 'tabs, again for the next page, with Shift back'],
+      ['G R O T B C', 'tabs, again for the next page, with Shift back'],
+      ...(ext ? ([[EXT_TABS.map((t) => EXT_TAB_KEY[t]).join(' '), 'Ext tabs, again for the next page']] as Array<[string, string]>) : []),
       ['K', 'legend'],
       ['F', !ext ? 'Ext View' : this._kept ? 'close Ext View (kept on)' : 'close Ext View'],
       ...(ext && !this._kept ? ([['⇧F', 'keep it on']] as Array<[string, string]>) : []),
@@ -1657,7 +1690,10 @@ export class GroundGuideDetail {
       legendKeyRow('K', 'Legend', 'This tab (L is Lasso Select)'),
       legendKeyRow('F', 'Ext View', `Adds ${EXT_OFFER}: tabs 1 2 3 4 5 before this one, a tile in O and C, the threat marker and the fire fan, sight lines, approaches and better Posn on the map and in the Gr Scope. It lasts while you place that kind of symbol: a different symbol, Esc or F closes it, and so does turning the guide off. It rests on lines and areas`),
       legendKeyRow('⇧F', 'Keep On', 'Shift+F keeps the Ext View on for every symbol until F'),
-      legendKeyRow('1', 'Ext Tabs', '1 Obsn & Fd of Fire, 2 Key Gr, 3 Approaches (with the Ext View on)'),
+      legendKeyRow('1', 'Ext Tabs', '1 Obsn & Fd of Fire, 2 Key Gr, 3 Approaches, 4 Air, 5 Decision (with the Ext View on); the digit again for the next page'),
+      legendKeyRow('⇧1', 'On the Map', `Shift + a tab's digit shows or hides its group on the map: ${MAP_GROUPS.map((m, i) => `${i + 1} ${MAP_GROUP_LABEL[m]}`).join(', ')}. 1 and 2 are on by default; also the Map switch in the key bar (Ext View)`),
+      legendKeyRow('`', 'Show All', 'Every map group on the map for now; again for your own groups (Ext View)'),
+      legendKeyRow('Q', 'Labels', 'The labels on the Ext View map off, and back on (Ext View)'),
       legendKeyRow('J', 'Better Posn', 'Places the symbol at the better Posn the map shows (Ext View)'),
       legendKeyRow('Y', 'Apchs End', "Onto the Obj (its frontage by echelon: frontal, Lt and Rt flanking from an FUP), through the area (the book's avenues) or both; Shift+Y back; also the switch in the key bar (Ext View)"),
       legendKeyRow('X', 'Whose Options', "The en's options against you (his Apchs, your fire on them, his air, his template), or yours against the threat; also the switch at the left of the key bar at the foot of this card (Ext View)"),

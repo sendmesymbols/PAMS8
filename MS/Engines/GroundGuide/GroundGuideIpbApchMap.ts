@@ -65,6 +65,11 @@ export function pill(text: string, col: RGB, fill: string, small = false): { url
 }
 
 export interface IpbApchMapShow {
+  /**
+   * The ground approaches themselves (map group 3, Shift+3): the area read, the avenues, corridors, crossovers, narrows,
+   * the Obj, FUPs and the MSR choke. False leaves only what the other switches ask for (default true).
+   */
+  apchs?: boolean;
   corridors: boolean;
   labels: 'auto' | 'all' | 'off';
   /** The fire on the avenues (extended.ipb.mapFire): each avenue coloured by fire along it, and the Posns' ranges. */
@@ -205,8 +210,9 @@ export class GroundGuideIpbApchMap {
     /** The top (north) of a circle of radius `r` (Web Mercator metres) round `c`. */
     const top = (c: MercXY, r: number): MercXY => [c[0], c[1] + r];
 
+    const ap = on.apchs !== false;
     // The area read.
-    if (v.frame.length === 4) {
+    if (ap && v.frame.length === 4) {
       line([...v.frame, v.frame[0]], [233, 237, 241], 0.55, 1, 'dash');
       if (labels) {
         const north = v.frame.reduce((a, b) => (b[1] > a[1] ? b : a));
@@ -214,7 +220,7 @@ export class GroundGuideIpbApchMap {
       }
     }
     // Avenues: fill, then the open-back outline (solid main, dashed others), then the inner line of the main attack.
-    for (const a of [...v.aas].reverse()) {
+    for (const a of ap ? [...v.aas].reverse() : []) {
       if (!a.viable) {
         line(a.line, LONE, 0.9, 1.6, 'dash');
         continue;
@@ -225,8 +231,8 @@ export class GroundGuideIpbApchMap {
       line(a.arrow.stroke, col, 1, a.main ? 2.4 : 1.8, a.main ? 'solid' : 'dash');
       if (a.arrow.inner.length) line(a.arrow.inner, col, 1, 1.8);
     }
-    if (on.corridors) for (const m of v.mcs) if (m.aa) line(m.line, MC, 0.75, 1.1, 'short-dash');
-    for (const x of v.crossovers) line([x.from, x.to], CROSS, 0.9, 1.8, 'dash');
+    if (ap && on.corridors) for (const m of v.mcs) if (m.aa) line(m.line, MC, 0.75, 1.1, 'short-dash');
+    if (ap) for (const x of v.crossovers) line([x.from, x.to], CROSS, 0.9, 1.8, 'dash');
     // Fire on the avenues: a band along each avenue's centre in the fire's colours, and each Posn's effective range.
     if (on.fire && v.fire) {
       for (const p of v.fire.posns) {
@@ -389,9 +395,9 @@ export class GroundGuideIpbApchMap {
       }
     }
     const dia = new PictureMarkerSymbol({ url: diamondUrl(), width: 15, height: 15 });
-    for (const a of v.aas) for (const n of a.narrows) marker(n.at, dia);
+    if (ap) for (const a of v.aas) for (const n of a.narrows) marker(n.at, dia);
     // The objective the approaches end on: its frontage x depth box (a line for a Pl or Sec), and each approach's FUP.
-    const ob = v.objective;
+    const ob = ap ? v.objective : null;
     if (ob && ob.ring.length === 4) {
       const flat = ob.depthM < 1;
       const edge = flat ? [ob.ring[0], ob.ring[1]] : [...ob.ring, ob.ring[0]];
@@ -420,7 +426,7 @@ export class GroundGuideIpbApchMap {
       }
     }
     // Labels.
-    if (labels) {
+    if (labels && ap) {
       for (const a of v.aas) {
         if (!a.line.length) continue;
         tag(a.splitAt ? along(a.line.slice(a.splitAt), 0.5) : along(a.line, a.onto ? 0.45 : 0.3), a.viable ? `${sideWord} Apch ${a.id}${a.ontoLabel ? ` · ${a.ontoLabel}` : ''}${a.main ? ' (best)' : ''}` : `Cor ${a.id} (lone)`, a.viable ? col : LONE, a.viable ? dark : '#2a3038', 0, false, a.viable ? 0 : 3);
