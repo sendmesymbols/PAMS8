@@ -129,10 +129,10 @@ sources:
 
   # Google GEM-15, found 2026-11-19: the first free DEM finer than 30 m over all of Pakistan, GB, AJK and IIOJK. The
   # cell file names carry a group and cell id read from the STAC index, so scripts/fetch_gem15.py fetches it (DTM by
-  # default; --assets dtm,dsm for the surface model too, ~346 GB more). Not yet built into the bundle (stage
-  # candidate): grid.py still warps glo30 into dem.tif, and the bundle grid (ZMAX 12, ~33 m) is coarser than 15 m.
+  # default; --assets dtm,dsm for the surface model too, ~346 GB more). Built into the bundle on 2026-11-20 at ZMAX 13
+  # (~16 m): grid.py --gem15 warps one VRT per UTM zone over the glo30 VRT, so GLO-30 fills GEM-15's holes. DSM not used.
   - id: gem15
-    stage: candidate
+    stage: used        # 2026-11-20: built into the bundle at ZMAX 13 (grid.py --gem15, over glo30)
     measured: "2026-11-19, 5 km windows against GLO-30 (DTM vs DSM, EGM96 vs EGM2008): no horizontal shift beyond one 15 m pixel; heights higher by Islamabad +2.2 m, Sialkot +4.7 m, Jammu +4.7 m, Muzaffarabad +9.5 m, Srinagar +16.6 m. Google states India's data is offset, tapering over tens of km outside India's border, so it reaches AJK and the border belt."
     name: "GEM-15: Near-Global Surface and Terrain Elevation Models (15 m), DTM (bare earth) and DSM"
     version: "gem-15_v1, experimental (under review); STAC collection gem-15; Earth Engine projects/climate-and-sustainability/assets/gem-15_v1"
