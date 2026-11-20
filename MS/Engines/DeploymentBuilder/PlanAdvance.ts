@@ -153,7 +153,7 @@ function project(path: XY[], p: XY): { i: number; q: XY; s: number } {
 const lenOf = (path: XY[]) => path.reduce((s, p, i) => (i ? s + Math.hypot(p.x - path[i - 1].x, p.y - path[i - 1].y) : 0), 0);
 
 /** The axis as laid: the Main Body through the SP to the covering troops (plan metres), and how far along it the SP is. */
-export interface AdvAxis { path: XY[]; spAt: number; routed: boolean; pending: boolean }
+export interface AdvAxis { path: XY[]; spAt: number; routed: boolean; pending: boolean; drawn?: boolean }
 
 /**
  * The axis on the ground: the least-cost way for tracks over the bundle's going (PlanGround.avenues: NO-GO avoided,
@@ -267,7 +267,7 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   const onRoad = [...R.roads.values()].reduce((s, v) => s + v, 0);
   const roadTxt = R.roads.size ? `; ${Math.round((onRoad / total) * 100)} % on roads (${[...R.roads.entries()].sort((a, b) => b[1] - a[1]).map(([c, m]) => `${ROAD[c]} ${fmtM(m)}`).join(', ')})` : '; none of it on a road';
   rows.push(ax.routed
-    ? { name: 'Axis route', st: total > straight * F.detour + 1 ? 'warn' : 'pass', reason: `the least-cost way for tracks over the bundle's going (NO-GO avoided, SLOW-GO dear), the Main Body through the SP to the C Tps: ${km(total)} against ${km(straight)} straight (${(total / straight).toFixed(2)} times; warn over ${F.detour}, E)${roadTxt}. Not a road route: the march table and the roads' classes are the Move Planner's` }
+    ? { name: 'Axis route', st: total > straight * F.detour + 1 ? 'warn' : 'pass', reason: `${ax.drawn ? 'the axis as drawn (no way searched: its going and crossings read along it)' : 'the least-cost way for tracks over the bundle\'s going (NO-GO avoided, SLOW-GO dear)'}, the Main Body through the SP to the C Tps: ${km(total)} against ${km(straight)} straight (${(total / straight).toFixed(2)} times; warn over ${F.detour}, E)${roadTxt}. Not a road route: the march table and the roads' classes are the Move Planner's` }
     : { name: 'Axis route', st: 'unchecked', reason: `${ax.pending ? 'the ground for the route is still loading' : 'no way for tracks found in the bundle\'s grid (about 25 km across)'}: the straight line read instead${roadTxt}` });
   // the going
   const share = R.bad / R.n;
@@ -293,14 +293,15 @@ export function advanceGroundRows(items: { role: string; pts: XY[] }[], f: FitFr
   else {
     lines = [];
     // the features ahead, at least `apart` between them; within that, the bigger obstacle wins (a canal or river over a
-    // stream, a stream over a distributary, water over a bridge alone)
+    // stream, a stream over a distributary, water over a bridge alone); of the same kind, the wider on the axis
     const RANK: Record<number, number> = { 4: 4, 20: 4, 46: 3, 21: 2 };
     const rank = (x: AxisCrossing) => (x.water !== null ? RANK[x.water] ?? 1 : 1);
+    const bigger = (x: AxisCrossing, y: AxisCrossing) => rank(x) > rank(y) || (rank(x) === rank(y) && x.lengthM > y.lengthM);
     const pick: AxisCrossing[] = [];
     for (const x of R.xs) {
       if (!(x.water !== null ? RL_WATER.has(x.water) : x.how !== null && x.how >= 39 && x.how <= 43) || x.s <= ax.spAt + 300) continue;
       const last = pick[pick.length - 1];
-      if (last && x.s - last.s < apart) { if (rank(x) > rank(last)) pick[pick.length - 1] = x; continue; }
+      if (last && x.s - last.s < apart) { if (bigger(x, last)) pick[pick.length - 1] = x; continue; }
       if (pick.length < RL_MAX) pick.push(x);
     }
     pick.forEach((x, k) => {
@@ -502,7 +503,7 @@ export function checkAdvance(inp: FitLayoutInput, drawn: AdvDrawn): { rows: Chec
     // read up to the covering troops, not past the arrow's head
     const ctp = items.find((i) => i.role === 'ctps');
     if (ctp) { const q = project(pts, centre(ctp.pts)); pts = [...pts.slice(0, q.i + 1), q.q]; }
-    axis = { path: pts, spAt: project(pts, head).s, routed: true, pending: false };
+    axis = { path: pts, spAt: project(pts, head).s, routed: true, pending: false, drawn: true };
   }
   // each drawn report line where it meets the axis, measured along it
   const rlDrawn = Object.keys(drawn).filter((r) => /^rl\d$/.test(r)).map((r) => { const c = centre(drawn[r].pts.map(loc)); return { label: `RL ${r.slice(2)}`, s: axis ? project(axis.path, c).s : c.y - head.y }; });

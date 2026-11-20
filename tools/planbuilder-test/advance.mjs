@@ -86,6 +86,11 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   const DIST = 21;
   const dc = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) ? (Math.abs(x - A.x) < 20 ? BR60 : DIST) : band(y, 2400) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open))));
   check('a distributary then a canal 400 m on: one report line, on the canal (the bigger obstacle wins within the spacing)', dc.raw.items.filter((i) => /^rl\d$/.test(i.role)).length === 1 && /RL 1 \(class 20\)/.test(row(dc.res.rows, 'Report lines').reason), row(dc.res.rows, 'Report lines')?.reason.slice(0, 80));
+  // the same rank (permanent water, a canal): the wider on the axis wins (seen on the ground west of Lahore: a bridged
+  // pond 700 m short of a wider canal took RL 1)
+  const PERM = 4, wide = (y) => y > A.y + 2400 && y < A.y + 2560;
+  const pw = V.fitAdvance(inp(mk((x, y) => (band(y, 2000) ? (Math.abs(x - A.x) < 20 ? BR60 : PERM) : wide(y) ? (Math.abs(x - A.x) < 20 ? BR60 : CANAL) : open))));
+  check('permanent water 60 m, then a canal 160 m wide 400 m on: one report line, on the wider canal', pw.raw.items.filter((i) => /^rl\d$/.test(i.role)).length === 1 && /RL 1 \(class 20\)/.test(row(pw.res.rows, 'Report lines').reason), row(pw.res.rows, 'Report lines')?.reason.slice(0, 80));
   check('no water ahead: Report lines not checked, set by eye', row(f1.res.rows, 'Report lines')?.st === 'unchecked');
   check('no route reader: Axis route not checked, the straight line read; none of it on a road', row(f1.res.rows, 'Axis route')?.st === 'unchecked' && /straight line/.test(row(f1.res.rows, 'Axis route').reason));
   // a reader that routes: a dog-leg 1.5 km east between the two ends, a road along part of it
@@ -114,6 +119,8 @@ check('PlanFit.fitLayout hands an advance to fitAdvance', !!f5 && !!row(f5.res.r
   for (const i of b60.raw.items) { if (dd[i.role]) continue; dd[i.role] = { pts: i.pts.map((p) => { const w = F.toWorld(b60.frame, p); return [w.x, w.y]; }) }; }
   const cc = V.checkAdvance(inp(mk(bridged(BR60))), dd);
   check('Check my plan: RL 1 read as drawn (about 1.7 km ahead), the crossing on the Cl 60+ bridge', /RL 1 1\.[67] km ahead of the SP/.test(row(cc.rows, 'Report lines')?.reason ?? '') && row(cc.rows, 'Crossings on the axis')?.st === 'pass', `${row(cc.rows, 'Report lines')?.reason?.slice(0, 80)} | ${row(cc.rows, 'Crossings on the axis')?.st}`);
+  // the axis as drawn is not a way searched (seen in the app: the build's straight fallback read back as 'the least-cost way')
+  check('...Axis route says the axis as drawn, never the least-cost way', /^the axis as drawn/.test(row(cc.rows, 'Axis route')?.reason ?? '') && !/least-cost/.test(row(cc.rows, 'Axis route')?.reason ?? ''), row(cc.rows, 'Axis route')?.reason?.slice(0, 80));
 }
 
 // ── the march (the Move Planner's road engine) and the halting areas ────────────────────────────────────────────────

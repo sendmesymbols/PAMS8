@@ -204,7 +204,10 @@ function readCrossing(c: Ctx): Read {
   const homeEdge = Math.max(r.home.crestM ?? 0, wHi / 2), farEdge = Math.max(r.far.crestM ?? 0, wHi / 2);
   // the obstacle along the plan's whole front (and its bridgehead), chained along the sheet line where there is one
   const xs = base.items.flatMap((i) => [...i.pts, ...(i.base ? [i.base.start, i.base.end] : [])].map((p) => p.x));
-  const halfX = dr ? Math.max(...Object.values(dr).flatMap((g) => [...g.pts, ...(g.base ? [g.base.start, g.base.end] : [])]).map((q) => groundDist(click, q))) + 600 : Math.max(Math.abs(Math.min(...xs)), Math.abs(Math.max(...xs))) + 600;
+  // as drawn: how far each symbol lies along the obstacle from H (not its straight distance: a gun area 4 km back would
+  // stretch the reach far past the plan's front), as the build does
+  const alongOf = (q: MercXY) => Math.abs(groundDist(click, q) * Math.cos((bearingOf(click, q) - r.axisDeg) * D2R));
+  const halfX = dr ? Math.max(...Object.values(dr).flatMap((g) => [...g.pts, ...(g.base ? [g.base.start, g.base.end] : [])]).map(alongOf)) + 600 : Math.max(Math.abs(Math.min(...xs)), Math.abs(Math.max(...xs))) + 600;
   const a = offsetPt(r.at[0], r.at[1], r.axisDeg + 180, halfX), b = offsetPt(r.at[0], r.at[1], r.axisDeg, halfX);
   const reach = readReach(mov, WR, a, b, opts);
   const path = reach && reach.path.length >= 2 ? reach.path : r.line && r.line.length >= 2 ? r.line : [a, b];
