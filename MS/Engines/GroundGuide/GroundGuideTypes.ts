@@ -1214,7 +1214,7 @@ export interface GroundGuideVerdict {
   footprint?: GroundGuideFootprintInfo | null;
   /** Set alongside `footprint` when the intergap check ran. Advisory: never changes `verdict`. */
   spacing?: GroundGuideSpacing | null;
-  /** Set while drawing a point the snap key can move to usable ground (the verdict is bad and the quick fix is on). */
+  /** Set while drawing a point the snap key can move: off NO-GO to usable ground, or off SLOW-GO to GO ground (quick fix on). */
   snappable?: boolean;
   /**
    * Set while drawing a point symbol with some of it in NO-GO: the nearest clear ground, where all of it (its footprint)

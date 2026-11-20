@@ -481,6 +481,8 @@ export default class GroundGuide {
   private _activeProfile: GroundGuideProfile | null = null;
   private _lastDetail: { geometry: any; sidc: string | null } | null = null;
   private _lastSnappable = false;
+  /** The point is on SLOW-GO, not NO-GO: S looks for GO ground only, not merely usable (user, 2026-11-20). */
+  private _lastSnapGoOnly = false;
   /** The last real verdict of this draw and where the cursor was, to show while the next tile loads. */
   private _lastGood: GroundGuideVerdict | null = null;
   private _lastGoodGeom: any = null;
@@ -4000,9 +4002,15 @@ export default class GroundGuide {
     if (v.verdict === 'unknown' && v.waiting) return this._staleVerdict(geometry) ?? v;
     // S, P and Shift-click need a keyboard: with a finger on the screen the card does not offer them.
     const keys = !this._touchInput;
-    v.snappable = keys && this._opts.snapKey && geometry?.type === 'point' && this._isBad(v);
+    // S moves a point off NO-GO to usable ground, and off SLOW-GO to GO ground (user, 2026-11-20: on SLOW-GO it did
+    // nothing and the card did not offer it).
+    // Encroaching (part of the frontage in NO-GO) counts too: the chip already pointed to clear ground there.
+    const bad = this._isBad(v) || (v.verdict === 'near' && v.fraction > 0);
+    const goOnly = !bad && this._isSlow(v);
+    v.snappable = keys && this._opts.snapKey && geometry?.type === 'point' && (bad || goOnly);
     this._lastSnappable = v.snappable;
-    v.clear = this._clearFor(geometry, sidc, v);
+    this._lastSnapGoOnly = goOnly;
+    v.clear = this._clearFor(geometry, sidc, v, goOnly);
     v.blocked = this._refuses(v);
     v.overridable = keys && v.blocked && this._opts.allowOverride;
     v.profileKey = keys && this._opts.profileKey && this.profileChoices.length > 1 && v.verdict !== 'exempt';
@@ -4056,6 +4064,11 @@ export default class GroundGuide {
   /** A verdict the user cannot keep: in/partial, or anything `enforce` mode would refuse. */
   private _isBad(v: GroundGuideVerdict): boolean {
     return v.verdict === 'in' || v.verdict === 'partial' || this._refuses(v);
+  }
+
+  /** SLOW-GO under the point (caution): usable, but GO ground nearby is better. */
+  private _isSlow(v: GroundGuideVerdict): boolean {
+    return v.verdict === 'caution' && !v.loading;
   }
 
   /** Draw ended or was cancelled — hide feedback and stop tracking the cursor. */
@@ -4606,14 +4619,15 @@ export default class GroundGuide {
     if (!this.isActive || !d) return none('no-draw', 'Nothing is being drawn');
     if (d.geometry?.type !== 'point') return none('not-point', 'Moving to usable ground works for point symbols only');
     const view: any = this._getView?.();
-    const found = this._findSnap(d.geometry, d.sidc);
+    const goOnly = this._lastSnapGoOnly;
+    const found = this._findSnap(d.geometry, d.sidc, goOnly);
     if (!found.at) {
       return found.loading
         ? none('loading', 'Terrain data is still loading, try again in a moment')
-        : none('no-ground', `No usable Gr within ${fmtDistance(found.searchedM)}`, found.searchedM);
+        : none('no-ground', `No ${goOnly ? 'GO' : 'usable'} Gr within ${fmtDistance(found.searchedM)}`, found.searchedM);
     }
     const target = this._withMerc(d.geometry, found.at);
-    const px = target && this._settleOnScreen(view, target, d.sidc);
+    const px = target && this._settleOnScreen(view, target, d.sidc, goOnly);
     if (!px) return none('no-ground', 'Cannot place the symbol there on this view');
     const compass = COMPASS[Math.round(found.bearingDeg / 45) % 8];
     const result: GroundGuideSnapResult = {
@@ -4623,7 +4637,7 @@ export default class GroundGuide {
       compass,
       verdict: found.verdict,
       searchedM: found.searchedM,
-      message: `Moved ${fmtDistance(found.distanceM)} ${compass} to ${found.verdict === 'ok' ? 'usable Gr' : 'the nearest usable Gr'}`,
+      message: `Moved ${fmtDistance(found.distanceM)} ${compass} to ${goOnly ? 'GO Gr' : found.verdict === 'ok' ? 'usable Gr' : 'the nearest usable Gr'}`,
     };
     this._announceSnap(result);
     // The armed symbol's own click handler finishes the draw at this spot, so every point
@@ -4644,7 +4658,8 @@ export default class GroundGuide {
    * be many metres from the target when zoomed out, so the verdict is re-checked where the click will
    * really land and the neighbouring pixels are tried when it no longer passes.
    */
-  private _settleOnScreen(view: any, target: any, sidc: string | null): { x: number; y: number } | null {
+  private _settleOnScreen(view: any, target: any, sidc: string | null, goOnly = false): { x: number; y: number } | null {
+    const worst = goOnly ? 0 : 1;
     const sp = view?.toScreen?.(target);
     if (!sp || !Number.isFinite(sp.x) || !Number.isFinite(sp.y)) return null;
     const bx = Math.round(sp.x);
@@ -4659,7 +4674,8 @@ export default class GroundGuide {
       } catch {
         /* off the globe */
       }
-      if (mp && this._snapRank(this.evaluateGeometry(mp, sidc, { light: true })) >= 0) return { x: bx + dx, y: by + dy };
+      const rank = mp ? this._snapRank(this.evaluateGeometry(mp, sidc, { light: true })) : -1;
+      if (rank >= 0 && rank <= worst) return { x: bx + dx, y: by + dy };
     }
     return null;
   }
@@ -4684,6 +4700,7 @@ export default class GroundGuide {
   private _findSnap(
     geometry: any,
     sidc: string | null,
+    goOnly = false,
   ):
     | { at: MercXY; distanceM: number; bearingDeg: number; verdict: GroundGuideVerdict['verdict']; searchedM: number }
     | { at: null; searchedM: number; loading: boolean } {
@@ -4710,7 +4727,8 @@ export default class GroundGuide {
         const v = this.evaluateGeometry(g, sidc, { light: true });
         if (v.verdict === 'unknown' || v.loading) loading = true;
         const rank = this._snapRank(v);
-        if (rank >= 0 && (!best || rank < best.rank)) best = { rank, at, dx, dy, verdict: v.verdict };
+        // From SLOW-GO only GO ground is a move worth making: another SLOW-GO spot is no better.
+        if (rank >= 0 && (!goOnly || rank === 0) && (!best || rank < best.rank)) best = { rank, at, dx, dy, verdict: v.verdict };
       }
       if (best) {
         if (best.rank === 0) break;
@@ -4733,13 +4751,13 @@ export default class GroundGuide {
    * the symbol. Throttled (CLEAR_INTERVAL_MS / CLEAR_REUSE_PX). Null for lines and areas, for a verdict with nothing in
    * NO-GO, and while the search is still waiting on tiles; `at: null` when it found none within `searchedM`.
    */
-  private _clearFor(geometry: any, sidc: string | null, v: GroundGuideVerdict): GroundGuideClearGround | null {
+  private _clearFor(geometry: any, sidc: string | null, v: GroundGuideVerdict, goOnly = false): GroundGuideClearGround | null {
     const inNoGo = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
-    if (geometry?.type !== 'point' || !inNoGo || v.loading || !this._manifest) return null;
+    if (geometry?.type !== 'point' || !(inNoGo || goOnly) || v.loading || !this._manifest) return null;
     const origin = toMercatorShape(geometry)?.parts[0]?.[0];
     if (!origin) return null;
     const zoom = this._sampleZoom();
-    const key = `${sidc ?? ''}|${v.profile}|${zoom}`;
+    const key = `${sidc ?? ''}|${v.profile}|${zoom}|${goOnly ? 'go' : 'use'}`;
     const reuseM = CLEAR_REUSE_PX * resolutionAt(zoom, this._manifest.tileSize);
     const now = performance.now();
     let c = this._clear?.key === key ? this._clear : null;
@@ -4751,7 +4769,7 @@ export default class GroundGuide {
     const farM = c ? (c.at ? Math.hypot(c.at[0] - c.origin[0], c.at[1] - c.origin[1]) / 2 : c.searchedM / 4) : 0;
     const stale = c !== null && moved && (now - c.t >= CLEAR_INTERVAL_MS || movedM > farM);
     if (!c || c.verdict === 'unknown' || stale) {
-      const f = this._findSnap(geometry, sidc);
+      const f = this._findSnap(geometry, sidc, goOnly);
       // Nothing found while tiles are still arriving is not "none": say nothing until the search can tell.
       c = this._clear = f.at
         ? { key, origin, at: f.at, verdict: f.verdict, searchedM: f.searchedM, t: now }

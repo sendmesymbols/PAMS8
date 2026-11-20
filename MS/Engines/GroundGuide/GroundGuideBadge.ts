@@ -148,7 +148,7 @@ ${toneCss}
 .ms-ggb-itg+.ms-ggb-itg{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.14)}
 .ms-ggb-itgt{font-size:12px;line-height:1.35;margin-top:2px}
 .ms-ggb-strong{color:#f2b84b;font-weight:600}
-.ms-ground-guide-badge .ms-gv-foot{padding:7px 12px;font-size:12px;color:#c3cbd3;border-top:1px solid rgba(255,255,255,.14)}
+.ms-ground-guide-badge .ms-gv-foot{padding:7px 12px;gap:6px 10px;font-size:12px;color:#c3cbd3;border-top:1px solid rgba(255,255,255,.14)}
 .ms-ggb-qf{display:inline-flex;align-items:center;gap:5px;color:#9fe3bb;font-weight:600}
 .ms-ggb-xf{display:inline-flex;align-items:center;gap:5px;color:#c3d6e8;white-space:nowrap}
 .ms-ggb-xf .ms-ggb-kbd{color:#8ec1ea;border-color:#6f8da8}
@@ -170,6 +170,7 @@ ${toneCss}
 .ms-ggb-hd{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .ms-ggb-hx{padding:1px 7px;border-radius:999px;background:rgba(0,0,0,.28);font-size:12px;font-weight:750}
 .ms-ggb-kbd.ms-ggb-kq{min-width:18px;height:18px;font-size:12px;color:inherit;background:none;border:1px solid currentColor;border-bottom-width:1px}
+.ms-ggb-kbd.ms-ggb-kq.ms-lit{color:#fff;background:#2b6b42;border-color:#5fc183;margin-right:5px}
 `;
 
 const ICONS: Record<string, string[]> = {
@@ -297,7 +298,7 @@ function spokenFor(v: GroundGuideVerdict): string {
   const parts = [titleOf(v)];
   if (v.verdict !== 'unknown' && v.verdict !== 'ok' && v.message) parts.push(v.message);
   if (v.clear?.distanceM != null) parts.push(`Clear ground ${fmtDistance(v.clear.distanceM)} ${v.clear.compass}`);
-  if (v.snappable) parts.push('Press S to move it to the nearest usable ground');
+  if (v.snappable) parts.push(v.verdict === 'caution' ? 'Press S to move it to the nearest GO ground' : 'Press S to move it to the nearest usable ground');
   if (v.blocked) parts.push(v.overridable ? 'A click here is refused. Hold Shift and click to place it anyway' : 'A click here is refused');
   return parts.map((p) => p.replace(/[.\s]+$/, '')).join('. ') + '.';
 }
@@ -327,11 +328,19 @@ function nearTag(v: GroundGuideVerdict): Node | string | null {
 function clearTag(v: GroundGuideVerdict): Node | string | null {
   const c = v.clear;
   if (!c) return null;
-  if (c.distanceM === null || c.compass === null) return `No clear Gr in ${fmtDistance(c.searchedM)}`;
+  // On SLOW-GO the search is for GO ground (user, 2026-11-20), so the chip names it so.
+  const name = v.verdict === 'caution' ? 'GO Gr' : 'Clear Gr';
+  if (c.distanceM === null || c.compass === null) return `No ${v.verdict === 'caution' ? 'GO' : 'clear'} Gr in ${fmtDistance(c.searchedM)}`;
   const f = document.createDocumentFragment();
+  // The lit S says which key takes the symbol there (user, 2026-11-20).
+  if (v.snappable) {
+    const k = keycap('S');
+    k.classList.add('ms-ggb-kq', 'ms-lit');
+    f.append(k);
+  }
   const p = pointerArrow(c.bearingDeg ?? c.compass);
   if (p) f.append(p);
-  f.append(`Clear Gr ${fmtDistance(c.distanceM)} ${c.compass}`);
+  f.append(`${name} ${fmtDistance(c.distanceM)} ${c.compass}`);
   return f;
 }
 
@@ -821,6 +830,7 @@ function hintParts(v: GroundGuideVerdict, tone: Tone): Array<Node | string> {
         break;
       case 'slow':
         word = 'SLOW-GO';
+        way = clearTag(v); // the way to GO ground, where S moves it
         break;
       default:
         word = 'NO-GO';
@@ -1160,6 +1170,9 @@ export class GroundGuideBadge {
       const qf = el('span', 'ms-ggb-qf');
       const k = keycap('S');
       k.classList.add('ms-lit');
+      const c = v.clear;
+      const to = v.verdict === 'caution' ? 'GO Gr' : 'usable Gr';
+      qf.title = c && c.distanceM !== null && c.compass ? `S moves the symbol to ${to} ${fmtDistance(c.distanceM)} ${c.compass}` : `S moves the symbol to the nearest ${to}`;
       qf.append(k, 'Quick Fix');
       foot.append(qf);
     }
