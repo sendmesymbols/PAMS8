@@ -555,7 +555,9 @@ def relief_rasters(grid: dict, dem: Path, slope: Path, cfg: dict, out: Path, blo
     s = cfg["sources"]["slope"]
     gentle, sloping, moderate = float(s.get("gentle_deg", 3)), float(s.get("sloping_deg", 7)), float(s["moderate_deg"])
     prof = dict(GTIFF_U8, width=grid["width"], height=grid["height"], crs=grid["crs"], transform=Affine(*grid["transform"]))
-    halo = 72
+    # the halo must hold half the ~4 km TPI window at the finest ground pixel (north edge): 72 px at z12, ~134 at z13
+    lat_n = float(row_latitudes(grid, 0, 1)[0])
+    halo = max(72, int(math.ceil(4000 / (grid["pixel_size"] * math.cos(math.radians(lat_n))) / 2)) + 2)
     with rasterio.open(dem) as dsrc, rasterio.open(slope) as ssrc, \
             rasterio.open(out / "elev_hi.tif", "w", **dict(prof, nodata=255)) as dhi, \
             rasterio.open(out / "elev_lo.tif", "w", **dict(prof, nodata=None)) as dlo, \

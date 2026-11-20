@@ -412,21 +412,22 @@ def make_hut(grid: dict, classify: Path, gdb: str, out: Path, block: int) -> Non
     from scipy.ndimage import uniform_filter
 
     res = grid["pixel_size"]
+    cpx = HUT_CELL_PX * 2 ** max(0, grid["zmax"] - 12)     # same ground cell (~530 m) at any ZMAX
     x0, y1 = grid["transform"][2], grid["transform"][5]
     W, H = grid["width"], grid["height"]
-    cw, ch = math.ceil(W / HUT_CELL_PX), math.ceil(H / HUT_CELL_PX)
+    cw, ch = math.ceil(W / cpx), math.ceil(H / cpx)
     x, y, temp = hut_points(gdb)
     log.info("huts: %d points (%d temporary)", len(x), int(temp.sum()))
-    cx = np.floor((x - x0) / (HUT_CELL_PX * res)).astype(np.int64)
-    cy = np.floor((y1 - y) / (HUT_CELL_PX * res)).astype(np.int64)
+    cx = np.floor((x - x0) / (cpx * res)).astype(np.int64)
+    cy = np.floor((y1 - y) / (cpx * res)).astype(np.int64)
     ok = (cx >= 0) & (cx < cw) & (cy >= 0) & (cy < ch)
     flat = cy[ok] * cw + cx[ok]
     perm = np.bincount(flat[~temp[ok]], minlength=cw * ch).reshape(ch, cw).astype("float32")
     tmp = np.bincount(flat[temp[ok]], minlength=cw * ch).reshape(ch, cw).astype("float32")
     # ground area of a cell: its side (px * pixel * cos lat), latitude from the cell row's Web Mercator y
-    ymid = y1 - (np.arange(ch) + 0.5) * HUT_CELL_PX * res
+    ymid = y1 - (np.arange(ch) + 0.5) * cpx * res
     lat = np.arctan(np.sinh(ymid / ORIGIN_SHIFT * math.pi))
-    side_km = HUT_CELL_PX * res * np.cos(lat) / 1000.0
+    side_km = cpx * res * np.cos(lat) / 1000.0
     area = (side_km ** 2)[:, None]
     dens = uniform_filter(perm / area, size=3, mode="constant")
     near_t = uniform_filter(tmp, size=3, mode="constant") > 0
@@ -436,8 +437,8 @@ def make_hut(grid: dict, classify: Path, gdb: str, out: Path, block: int) -> Non
     with rasterio.open(classify / "class.tif") as cs, rasterio.open(out / "hut.tif", "w", **prof) as dst:
         for i, b in enumerate(iter_blocks(W, H, block)):
             win = Window(b["col"], b["row"], b["w"], b["h"])
-            rows = (b["row"] + np.arange(b["h"])) // HUT_CELL_PX
-            cols = (b["col"] + np.arange(b["w"])) // HUT_CELL_PX
+            rows = (b["row"] + np.arange(b["h"])) // cpx
+            cols = (b["col"] + np.arange(b["w"])) // cpx
             arr = cell[np.ix_(rows, cols)].copy()
             arr[cs.read(1, window=win) == 255] = 255
             dst.write(arr, 1, window=win)

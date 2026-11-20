@@ -150,7 +150,7 @@ sources:
       - name: "{asset}/{cell}.tif"
         url: "https://storage.googleapis.com/climate-and-sustainability/gem-15/{group}/{cell}/{asset}/zall/mosaic.tif"   # from the index; 339 cells touch clip.geojson: DTM 66.8 GB, DSM 346.3 GB
     fetched_by: scripts/fetch_gem15.py        # cells touching work/boundary/clip.geojson, to work/raw/gem15/<asset>/, MD5 checked against x-goog-hash
-    sha256: TO_BE_FILLED   # aggregate written to work/raw/checksums.json `gem15` by fetch_gem15.py once every file is in
+    sha256: a1b0b8501385b4c26ed7899a05dcc7ecf4dfaac7356696ebb82ec9de74ded2e3   # aggregate of work/raw/checksums.json gem15 (339 DTM cells + items.ndjson), 2026-11-20
 
   - id: osm_pakistan
     name: OpenStreetMap — Pakistan extract (Geofabrik)

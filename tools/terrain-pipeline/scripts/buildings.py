@@ -2,7 +2,7 @@
 
 Inputs : work/raw/openbuildings/<s2token>_buildings.csv.gz (fetch.py, source `openbuildings`), the per-tile confidence
          thresholds (score_thresholds_s2_level_4.csv, fetched by this script if missing), grid.json, class.tif
-Outputs: work/buildings/cells.npz   count + footprint area per ~150 m cell (grid / DECIM), for settlements.py
+Outputs: work/buildings/cells.npz   count + footprint area per ~150 m cell (grid / DECIM at z12, scaled per zoom by _decim), for settlements.py
          work/buildings/bld.tif     uint8 on the full grid: density class | size class << 3 | height class << 6
                                     (BLD_DENSITY, BLD_SIZE, BLD_HEIGHT), 0 = no buildings, 255 nodata
 Height: GHSL GHS-BUILT-H R2023A average net building height (2018, ~90 m) from work/raw/ghsl_height/*.zip, averaged
@@ -29,7 +29,7 @@ from common import GTIFF_U8, iter_blocks, load_json, setup_logging
 
 log = setup_logging("buildings")
 
-DECIM = 4                         # must match settlements.py
+DECIM = 4                         # at ZMAX 12; must match settlements.py (see _decim)
 THRESHOLDS_URL = "https://storage.googleapis.com/open-buildings-data/v3/score_thresholds_s2_level_4.csv"
 BLD_DENSITY = [(3000, 6), (1000, 5), (300, 4), (100, 3), (30, 2), (1, 1)]     # buildings per km2 -> class
 BLD_SIZE = [(1000, 5), (250, 4), (100, 3), (40, 2), (0, 1)]                   # mean footprint m2 -> class
@@ -42,10 +42,15 @@ SIZE_LABEL = {1: "Huts / kacha (under 40 m2)", 2: "Small houses (40-100 m2)", 3:
               4: "Large houses / blocks (250-1,000 m2)", 5: "Industrial / large buildings (1,000+ m2)"}
 
 
+def _decim(grid: dict) -> int:
+    """Cell = DECIM px at ZMAX 12 (~150 m); twice the px per zoom above, so densities per km2 keep their ground cell."""
+    return DECIM * 2 ** max(0, grid["zmax"] - 12)
+
+
 def _tile_job(task) -> tuple[np.ndarray, np.ndarray, int, int]:
     path, thr, grid, chunk = task
-    H, W = grid["height"] // DECIM, grid["width"] // DECIM
-    res = grid["pixel_size"] * DECIM
+    H, W = grid["height"] // _decim(grid), grid["width"] // _decim(grid)
+    res = grid["pixel_size"] * _decim(grid)
     x0, y1 = grid["transform"][2], grid["transform"][5]
     cnt = np.zeros(H * W, dtype=np.uint16)
     area = np.zeros(H * W, dtype=np.float32)
@@ -102,8 +107,8 @@ def height_cells(raw: Path, grid: dict) -> np.ndarray | None:
     zips = sorted((raw / "ghsl_height").glob("*.zip"))
     if not zips:
         return None
-    H, W = grid["height"] // DECIM, grid["width"] // DECIM
-    res = grid["pixel_size"] * DECIM
+    H, W = grid["height"] // _decim(grid), grid["width"] // _decim(grid)
+    res = grid["pixel_size"] * _decim(grid)
     dst_tr = Affine(res, 0, grid["transform"][2], 0, -res, grid["transform"][5])
     out = np.zeros((H, W), dtype=np.float32)
     for z in zips:
@@ -122,7 +127,7 @@ def height_cells(raw: Path, grid: dict) -> np.ndarray | None:
 
 def classify_cells(cnt: np.ndarray, area: np.ndarray, grid: dict, height: np.ndarray | None = None) -> np.ndarray:
     H, W = cnt.shape
-    res = grid["pixel_size"] * DECIM
+    res = grid["pixel_size"] * _decim(grid)
     y1 = grid["transform"][5]
     ymid = y1 - (np.arange(H) + 0.5) * res
     lat = np.arctan(np.sinh(ymid / 6378137.0))
@@ -163,7 +168,7 @@ def main() -> int:
     files = sorted((args.raw / "openbuildings").glob("*_buildings.csv.gz"))
     if not files:
         raise SystemExit("no Open Buildings tiles in work/raw/openbuildings (run fetch.py --only openbuildings)")
-    H, W = grid["height"] // DECIM, grid["width"] // DECIM
+    H, W = grid["height"] // _decim(grid), grid["width"] // _decim(grid)
     cnt = np.zeros(H * W, dtype=np.uint32)
     area = np.zeros(H * W, dtype=np.float64)
     tasks = [(f, thr.get(f.name.split("_")[0], 0.7), grid, 2_000_000) for f in files]
@@ -175,7 +180,7 @@ def main() -> int:
                      thr.get(f.name.split("_")[0], 0.7))
     cnt2, area2 = cnt.reshape(H, W), area.reshape(H, W).astype(np.float32)
     height = height_cells(args.raw, grid)
-    np.savez_compressed(args.out / "cells.npz", count=cnt2, area=area2, decim=DECIM,
+    np.savez_compressed(args.out / "cells.npz", count=cnt2, area=area2, decim=_decim(grid),
                         height=height if height is not None else np.zeros((1, 1), np.float32))
     cell = classify_cells(cnt2, area2, grid, height)
     log.info("buildings: %.1f M kept, %d cells with buildings", cnt.sum() / 1e6, int((cnt > 0).sum()))
@@ -184,8 +189,8 @@ def main() -> int:
     with rasterio.open(args.class_tif) as cs, rasterio.open(args.out / "bld.tif", "w", **prof) as dst:
         for b in iter_blocks(grid["width"], grid["height"], args.block):
             win = Window(b["col"], b["row"], b["w"], b["h"])
-            rows = np.minimum((b["row"] + np.arange(b["h"])) // DECIM, H - 1)
-            cols = np.minimum((b["col"] + np.arange(b["w"])) // DECIM, W - 1)
+            rows = np.minimum((b["row"] + np.arange(b["h"])) // _decim(grid), H - 1)
+            cols = np.minimum((b["col"] + np.arange(b["w"])) // _decim(grid), W - 1)
             arr = cell[np.ix_(rows, cols)].copy()
             arr[cs.read(1, window=win) == 255] = 255
             dst.write(arr, 1, window=win)

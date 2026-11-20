@@ -49,7 +49,9 @@ def extract_boundary(pbf: Path, dest: Path, dry: bool) -> None:
 
 
 def warp(src: list[Path], dest: Path, grid: dict, boundary: Path, resample: str,
-         dtype: str, src_nodata: str | None, dst_nodata: str, dry: bool) -> None:
+         dtype: str, src_nodata: str | None, dst_nodata: str, dry: bool, over: list[Path] | None = None) -> None:
+    """`over`: further inputs warped on top of `src` (later inputs win where they have data), e.g. the GEM-15
+    zone VRTs on top of Copernicus GLO-30."""
     vrt = dest.with_suffix(".vrt")
     run(["gdalbuildvrt", "-overwrite", vrt, *src], log, dry)
     b = grid["bounds_3857"]
@@ -60,7 +62,28 @@ def warp(src: list[Path], dest: Path, grid: dict, boundary: Path, resample: str,
            "-multi", "-wo", "NUM_THREADS=ALL_CPUS", "-wm", "1024", *COG_OPTS]
     if src_nodata is not None:
         cmd += ["-srcnodata", src_nodata]
-    run(cmd + [vrt, dest], log, dry)
+    run(cmd + [vrt, *(over or []), dest], log, dry)
+
+
+def gem15_vrts(gem15: Path, out_dir: Path, dry: bool) -> list[Path]:
+    """One VRT per UTM zone over the downloaded GEM-15 DTM cells (a VRT cannot mix coordinate systems), ordered
+    by zone. Only cells whose file is present and checked (verified.json) are used."""
+    import json
+    from collections import defaultdict
+    cells = json.loads((gem15 / "cells_selected.json").read_text(encoding="utf-8"))
+    verified = json.loads((gem15 / "verified.json").read_text(encoding="utf-8")) if (gem15 / "verified.json").exists() else {}
+    by_epsg: dict[int, list[Path]] = defaultdict(list)
+    for c in cells:
+        f = gem15 / "dtm" / f"{c['cell']}.tif"
+        if f.exists() and f"dtm/{c['cell']}.tif" in verified:
+            by_epsg[int(c["epsg"])].append(f)
+    log.info("GEM-15: %d cells in %d UTM zones", sum(len(v) for v in by_epsg.values()), len(by_epsg))
+    vrts = []
+    for epsg in sorted(by_epsg):
+        v = out_dir / f"gem15_{epsg}.vrt"
+        run(["gdalbuildvrt", "-overwrite", v, *sorted(by_epsg[epsg])], log, dry)
+        vrts.append(v)
+    return vrts
 
 
 DEFAULT_AOI = "60.8,23.6,77.9,37.1"      # Pakistan-administered area only (what the OSM boundary covers)
@@ -109,6 +132,9 @@ def main() -> int:
     ap.add_argument("--boundary", type=Path, help="GeoJSON clip polygon; default: extract from OSM")
     ap.add_argument("--boundary-source", choices=["frame", "official", "custom", "osm"],
                     help="label recorded in grid.json / the manifest (default: custom with --boundary, else osm)")
+    ap.add_argument("--gem15", type=Path,
+                    help="work/raw/gem15: warp the GEM-15 DTM (15 m) over Copernicus GLO-30 (holes and unchecked cells "
+                         "stay GLO-30). Heights are EGM96 (GLO-30: EGM2008) and India's are offset by Google (sources.lock gem15).")
     ap.add_argument("--skip-warp", action="store_true", help="only write grid.json + boundary")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -169,7 +195,8 @@ def main() -> int:
         if not files and not args.dry_run:
             log.error("no rasters in %s", args.raw / sub)
             return 1
-        warp(files, args.out / name, grid, boundary, resample, dtype, snd, dnd, args.dry_run)
+        over = gem15_vrts(args.gem15, args.out, args.dry_run) if (sub == "glo30" and args.gem15) else None
+        warp(files, args.out / name, grid, boundary, resample, dtype, snd, dnd, args.dry_run, over)
     return 0
 
 
