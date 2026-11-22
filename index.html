@@ -1913,9 +1913,12 @@
     </style>
     <link rel="stylesheet" href="/assets/esri/themes/light/main.css" />
     <link rel="stylesheet" href="/MS/Styles/Widgets.css" />
-    <script src="MS/ThirdParty/Fabric/fabric.min.js"></script>
-    <script src="MS/ThirdParty/MilSymbols/milsymbol.js"></script>
-    <script src="MS/ThirdParty/TweenJS/tween.js"></script>
+    <!-- defer: fetched in parallel without stopping the page from being parsed, then run in this order before the
+         module scripts (/src/main.ts), which are the first to use window.fabric / window.MS / window.TweenMax.
+         No inline script in this page touches them while the page is parsed; keep it that way, or drop defer. -->
+    <script defer src="MS/ThirdParty/Fabric/fabric.min.js"></script>
+    <script defer src="MS/ThirdParty/MilSymbols/milsymbol.js"></script>
+    <script defer src="MS/ThirdParty/TweenJS/tween.js"></script>
   </head>
   <body>
     <div id="viewDiv"></div>
@@ -4637,6 +4640,9 @@
       </div>
     </div>
 
+    <!-- mapBoot builds the map and views from @arcgis/core alone, so the globe starts loading while main.ts is still
+         fetching the PAMS8 library (MS/); main.ts runs after it and imports appConfig from it. -->
+    <script type="module" src="/src/mapBoot.ts"></script>
     <script type="module" src="/src/main.ts"></script>
 
     <script>

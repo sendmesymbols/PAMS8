@@ -47,6 +47,27 @@ function terrainBundleDev(): Plugin {
     };
 }
 
+// Dev proxy: give up on a server that does not even accept the connection within `ms`, so a request
+// to an unreachable box (the RoadNetwork server on another machine's LAN) fails in a few seconds
+// instead of the OS connect timeout (~21 s on Windows), which held the 3D view back at startup.
+// Only the connect is timed: a slow answer from a server that is up (a full-country export takes
+// ~30 s) is left alone, and a kept-alive socket that is already connected is never timed.
+function connectTimeout(ms: number) {
+    return (proxy: any) => {
+        proxy.on('proxyReq', (proxyReq: any) => {
+            const arm = (socket: any) => {
+                if (!socket.connecting) return;
+                const timer = setTimeout(() => proxyReq.destroy(new Error(`no connection within ${ms} ms`)), ms);
+                socket.once('connect', () => clearTimeout(timer));
+                socket.once('close', () => clearTimeout(timer));
+            };
+            // http-proxy emits 'proxyReq' from inside the request's own 'socket' event, so the socket is already there.
+            if (proxyReq.socket) arm(proxyReq.socket);
+            else proxyReq.once('socket', arm);
+        });
+    };
+}
+
 // `npm run dev`        → serves the harness against the MS/ TypeScript source.
 // `npm run dev:dist`   → runs with `--mode dist`; the `@lib` alias is repointed at
 //   the built dist/MS/*.min.js so the SAME harness exercises the shipped output
@@ -159,12 +180,14 @@ export default defineConfig(({ mode }) => {
                 target: process.env.GEOCORE_URL || 'http://localhost:8738',
                 changeOrigin: true,
                 rewrite: (p) => p.replace(/^\/geocore/, ''),
+                configure: connectTimeout(4000),
             },
             '/roadnet': {
                 target: 'https://192.168.0.15:6443',
                 changeOrigin: true,
                 secure: false,
                 rewrite: (p) => p.replace(/^\/roadnet/, ''),
+                configure: connectTimeout(4000),
             },
             // Local ArcGIS Server (Pakistan MapServer). It ships no CORS headers
             // and uses a self-signed cert, so the browser cannot fetch it directly.
@@ -175,6 +198,7 @@ export default defineConfig(({ mode }) => {
                 target: 'https://localhost:6443',
                 changeOrigin: true,
                 secure: false,
+                configure: connectTimeout(4000),
             },
         },
     },

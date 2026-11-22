@@ -117,28 +117,30 @@ import TrafficabilityEngine from './Analysis/TrafficabilityEngine';
 import SymbolMetadataService from './SymbolMetadataService';
 import KeyboardShortcutManager from './KeyboardShortcutManager';
 import StylusDrawController from './Stylus/StylusDrawController';
-import GroundGuide from './GroundGuide/GroundGuide';
+// The engines behind the off-by-default features are imported for their types only: their code is fetched when the
+// feature is turned on (LAZY_ENGINES below). Their settings widgets stay static: they are small and self-register.
+import type GroundGuide from './GroundGuide/GroundGuide';
 import { GroundGuideKeyNotice, type KeyNoticeContent, type KeyNoticeKey } from './GroundGuide/GroundGuideKeyNotice';
 import type { GroundGuideItgCandidate } from './GroundGuide/GroundGuideTypes';
-import MovementGuide from './MovementGuide/MovementGuide';
+import type MovementGuide from './MovementGuide/MovementGuide';
 import './MovementGuideSettingsWidget';
-import PlatoonGuide from './PlatoonGuide/PlatoonGuide';
+import type PlatoonGuide from './PlatoonGuide/PlatoonGuide';
 import './PlatoonGuideSettingsWidget';
-import NightMarch from './NightMarch/NightMarch';
+import type NightMarch from './NightMarch/NightMarch';
 import './NightMarchSettingsWidget';
-import MovePlanner from './MovePlanner/MovePlanner';
+import type MovePlanner from './MovePlanner/MovePlanner';
 import './MovePlannerSettingsWidget';
-import GunDeployment from './GunDeployment/GunDeployment';
+import type GunDeployment from './GunDeployment/GunDeployment';
 import './GunDeploymentSettingsWidget';
-import AdminArea from './AdminArea/AdminArea';
+import type AdminArea from './AdminArea/AdminArea';
 import './AdminAreaSettingsWidget';
-import AoiCheck from './AoiCheck/AoiCheck';
+import type AoiCheck from './AoiCheck/AoiCheck';
 import './AoiCheckSettingsWidget';
-import CrossSection from './CrossSection/CrossSection';
+import type CrossSection from './CrossSection/CrossSection';
 import './CrossSectionSettingsWidget';
-import Compare from './Compare/Compare';
+import type Compare from './Compare/Compare';
 import './CompareSettingsWidget';
-import GroundAppreciation from './GroundAppreciation/GroundAppreciation';
+import type GroundAppreciation from './GroundAppreciation/GroundAppreciation';
 import './GroundAppreciationSettingsWidget';
 import './PlanBuilderSettingsWidget';
 import CommandPalette from '../Support/CommandPalette';
@@ -166,6 +168,32 @@ import './ExportToolsSettingsWidget';
 import './Briefing/ChartCommands';
 import './Collab/CollabSettingsWidget';
 import './GroundGuideSettingsWidget';
+
+/**
+ * The engines behind the off-by-default features, fetched only when the feature is turned on (at boot from
+ * Settings.json, or later from its toggle or setting). A host that leaves them off neither downloads nor parses them:
+ * 138 of the 483 modules and 4.6 of the 12.4 MB of source loaded at startup (measured 22 Nov 2026). The keys are the
+ * `features.*` names and the SymbolEngine getters; `whenReady(name)` waits for one after it is turned on.
+ */
+const LAZY_ENGINES = {
+  groundGuide: () => import('./GroundGuide/GroundGuide'),
+  movementGuide: () => import('./MovementGuide/MovementGuide'),
+  platoonGuide: () => import('./PlatoonGuide/PlatoonGuide'),
+  nightMarch: () => import('./NightMarch/NightMarch'),
+  movePlanner: () => import('./MovePlanner/MovePlanner'),
+  gunDeployment: () => import('./GunDeployment/GunDeployment'),
+  adminArea: () => import('./AdminArea/AdminArea'),
+  aoiCheck: () => import('./AoiCheck/AoiCheck'),
+  crossSection: () => import('./CrossSection/CrossSection'),
+  compare: () => import('./Compare/Compare'),
+  groundAppreciation: () => import('./GroundAppreciation/GroundAppreciation'),
+};
+export type LazyEngineName = keyof typeof LAZY_ENGINES;
+type LazyEngineClass<K extends LazyEngineName> = Awaited<ReturnType<(typeof LAZY_ENGINES)[K]>>['default'];
+export type LazyEngine<K extends LazyEngineName> = InstanceType<LazyEngineClass<K>>;
+/** The engine classes fetched so far; a module is fetched once, whatever the number of SymbolEngines. */
+const lazyClasses: { [K in LazyEngineName]?: LazyEngineClass<K> } = {};
+const isLazyEngineName = (name: string): name is LazyEngineName => Object.prototype.hasOwnProperty.call(LAZY_ENGINES, name);
 
 interface Evented {
   on(type: string, listener: Function): { remove(): void };
@@ -235,6 +263,12 @@ class SymbolEngine implements Evented {
   private _groundAppreciation: GroundAppreciation | null = null;
   /** An appreciation that came with a plan file while Aprc was off: handed over when it is turned on, kept on a save. */
   private _aprcPending: unknown = null;
+  /** Lazy engines turned on whose code is still being fetched (init runs once it is here, if still wanted). */
+  private _lazyWanted = new Set<LazyEngineName>();
+  private _lazyLoading = new Set<LazyEngineName>();
+  /** `whenReady()` callers waiting for an engine to be created. */
+  private _lazyWaiters: { [K in LazyEngineName]?: Array<(engine: LazyEngine<K>) => void> } = {};
+  private _destroyed = false;
   private _aprcPlanExtra: (() => void) | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
@@ -769,6 +803,9 @@ class SymbolEngine implements Evented {
    * afterwards — construct a new one.
    */
   public destroy(): void {
+    // A lazy engine whose code arrives after this is not created.
+    this._destroyed = true;
+    this._lazyWanted.clear();
     // In-flight interactive draw holds view listeners — cancel it first.
     this._cancelActiveDraw();
     if (this._continuousTimeoutId !== null) {
@@ -1005,6 +1042,56 @@ class SymbolEngine implements Evented {
   }
 
   /**
+   * The class of an off-by-default engine, or null while its code is being fetched: `init` then runs again once the
+   * code is here, unless the feature was turned off (or this SymbolEngine destroyed) meanwhile.
+   */
+  private _lazyClass<K extends LazyEngineName>(name: K, init: () => void): LazyEngineClass<K> | null {
+    const cls = lazyClasses[name];
+    if (cls) return cls as LazyEngineClass<K>;
+    this._lazyWanted.add(name);
+    if (!this._lazyLoading.has(name)) {
+      this._lazyLoading.add(name);
+      LAZY_ENGINES[name]().then(
+        (mod) => {
+          (lazyClasses as any)[name] = mod.default;
+          this._lazyLoading.delete(name);
+          if (this._lazyWanted.delete(name) && !this._destroyed) init();
+        },
+        (err: unknown) => {
+          this._lazyLoading.delete(name);
+          this._lazyWanted.delete(name);
+          console.error(`[SymbolEngine] Failed to load ${name}:`, err);
+          EngineLogger.error('Symbol Engine', `${name} could not be loaded: ${err instanceof Error ? err.message : String(err)}`);
+        },
+      );
+    }
+    return null;
+  }
+
+  /**
+   * Resolves with the engine behind an off-by-default feature (`groundGuide`, `nightMarch`, ...) once it exists: at
+   * once when it is already created, else when it is. Its code is fetched the first time the feature is turned on, so
+   * a caller that turns one on and uses it straight away waits here:
+   * `se.toggleNightMarch(true); (await se.whenReady('nightMarch')).startDraw();`. It only waits: it turns nothing on.
+   */
+  public whenReady<K extends LazyEngineName>(name: K): Promise<LazyEngine<K>> {
+    const now = (this as any)[name] as LazyEngine<K> | null;
+    if (now) return Promise.resolve(now);
+    return new Promise((resolve) => {
+      ((this._lazyWaiters as any)[name] ??= []).push(resolve);
+    });
+  }
+
+  /** Hand a just-created lazy engine to the `whenReady()` callers waiting for it (from emitEvent's `<name>Ready`). */
+  private _resolveWaiters(name: LazyEngineName): void {
+    const engine = (this as any)[name];
+    const waiting = this._lazyWaiters[name];
+    if (!engine || !waiting?.length) return;
+    delete this._lazyWaiters[name];
+    for (const resolve of waiting) (resolve as (e: unknown) => void)(engine);
+  }
+
+  /**
    * Create the GroundGuide and enable it. Gated by
    * `features.groundGuide` at boot; `force` is used by the runtime
    * Settings toggle. The guide stays dormant until a terrain bundle loads.
@@ -1016,6 +1103,8 @@ class SymbolEngine implements Evented {
       return;
     }
     if (!this._groundGuide) {
+      const GroundGuide = this._lazyClass('groundGuide', () => this._initGroundGuide(true));
+      if (!GroundGuide) return;
       this._groundGuide = new GroundGuide(() => this._getView());
       this._groundGuide.setOptions((settingsData as any).groundGuide ?? {});
       // The Gr Scope rail (V) reads the one selected symbol while nothing is being placed.
@@ -1050,6 +1139,8 @@ class SymbolEngine implements Evented {
       return;
     }
     if (!this._movementGuide) {
+      const MovementGuide = this._lazyClass('movementGuide', () => this._initMovementGuide(true));
+      if (!MovementGuide) return;
       const mg = new MovementGuide(() => this._getView());
       this._movementGuide = mg;
       mg.setOptions((settingsData as any).movementGuide ?? {});
@@ -1081,6 +1172,8 @@ class SymbolEngine implements Evented {
       return;
     }
     if (!this._platoonGuide) {
+      const PlatoonGuide = this._lazyClass('platoonGuide', () => this._initPlatoonGuide(true));
+      if (!PlatoonGuide) return;
       const pg = new PlatoonGuide(() => this._getView());
       this._platoonGuide = pg;
       pg.setOptions((settingsData as any).platoonGuide ?? {});
@@ -1109,6 +1202,8 @@ class SymbolEngine implements Evented {
     const features = (settingsData as any).features ?? {};
     if (!force && features.nightMarch !== true) return;
     if (!this._nightMarch) {
+      const NightMarch = this._lazyClass('nightMarch', () => this._initNightMarch(true));
+      if (!NightMarch) return;
       const nm = new NightMarch(() => this._getView());
       this._nightMarch = nm;
       nm.setOptions((settingsData as any).nightMarch ?? {});
@@ -1132,6 +1227,8 @@ class SymbolEngine implements Evented {
     const features = (settingsData as any).features ?? {};
     if (!force && features.movePlanner !== true) return;
     if (!this._movePlanner) {
+      const MovePlanner = this._lazyClass('movePlanner', () => this._initMovePlanner(true));
+      if (!MovePlanner) return;
       const mp = new MovePlanner(() => this._getView(), {
         roadNetwork: () => this._roadNetworkEngine,
         selected: () => this._selectionEngine?.selectedGraphics ?? [],
@@ -1198,6 +1295,8 @@ class SymbolEngine implements Evented {
     const features = (settingsData as any).features ?? {};
     if (!force && features.gunDeployment !== true) return;
     if (!this._gunDeployment) {
+      const GunDeployment = this._lazyClass('gunDeployment', () => this._initGunDeployment(true));
+      if (!GunDeployment) return;
       const gd = new GunDeployment(() => this._getView(), {
         threat: () => this._threatLngLat(),
         frontLines: () => this._frontLinesMerc(),
@@ -1220,6 +1319,8 @@ class SymbolEngine implements Evented {
     const features = (settingsData as any).features ?? {};
     if (!force && features.adminArea !== true) return;
     if (!this._adminArea) {
+      const AdminArea = this._lazyClass('adminArea', () => this._initAdminArea(true));
+      if (!AdminArea) return;
       const aa = new AdminArea(() => this._getView(), {
         threat: () => this._threatLngLat(),
         frontLines: () => this._frontLinesMerc(),
@@ -1238,6 +1339,8 @@ class SymbolEngine implements Evented {
     const features = (settingsData as any).features ?? {};
     if (!force && features.aoiCheck !== true) return;
     if (!this._aoiCheck) {
+      const AoiCheck = this._lazyClass('aoiCheck', () => this._initAoiCheck(true));
+      if (!AoiCheck) return;
       const ac = new AoiCheck(() => this._getView());
       this._aoiCheck = ac;
       ac.setOptions((settingsData as any).aoiCheck ?? {});
@@ -1257,6 +1360,8 @@ class SymbolEngine implements Evented {
     const features = (settingsData as any).features ?? {};
     if (!force && features.crossSection !== true) return;
     if (!this._crossSection) {
+      const CrossSection = this._lazyClass('crossSection', () => this._initCrossSection(true));
+      if (!CrossSection) return;
       const xs = new CrossSection(() => this._getView(), {
         threat: () => this._threatLngLat(),
         selected: () => this._selectionEngine?.selectedGraphics ?? [],
@@ -1283,6 +1388,8 @@ class SymbolEngine implements Evented {
     const features = (settingsData as any).features ?? {};
     if (!force && features.compare !== true) return;
     if (!this._compare) {
+      const Compare = this._lazyClass('compare', () => this._initCompare(true));
+      if (!Compare) return;
       const cp = new Compare(() => this._getView(), {
         threat: () => this._threatLngLat(),
         selected: () => this._selectionEngine?.selectedGraphics ?? [],
@@ -1303,6 +1410,8 @@ class SymbolEngine implements Evented {
     const features = (settingsData as any).features ?? {};
     if (!force && features.groundAppreciation !== true) return;
     if (!this._groundAppreciation) {
+      const GroundAppreciation = this._lazyClass('groundAppreciation', () => this._initGroundAppreciation(true));
+      if (!GroundAppreciation) return;
       const ga = new GroundAppreciation(() => this._getView(), {
         guide: () => this._groundGuide,
         turnOnGuide: () => void this.toggleGroundGuide(true),
@@ -1850,6 +1959,11 @@ class SymbolEngine implements Evented {
    * Emit events for the main application to handle
    */
   private emitEvent(eventName: string, data: any): void {
+    // `<name>Ready` from a lazy engine's init: hand the engine to whenReady() callers first.
+    if (eventName.endsWith('Ready')) {
+      const name = eventName.slice(0, -'Ready'.length);
+      if (isLazyEngineName(name)) this._resolveWaiters(name);
+    }
     // Create a custom event that bubbles up to the document level
     const customEvent = new CustomEvent(eventName, {
       detail: data,
@@ -2186,11 +2300,16 @@ class SymbolEngine implements Evented {
   /** Alt+P: the Platoon Guide on or off, as its Pl Guide button, with a notice of the new state and the keys now. */
   private _keyTogglePlatoonGuide(): void {
     const on = this.togglePlatoonGuide();
-    const pg = this._platoonGuide;
     if (!on) {
       this._showToggleNotice({ mode: 'Pl Guide off', text: 'Its halo, answer bar and map marks are cleared.', keys: [['Alt P', 'Pl Guide on']] });
       return;
     }
+    // The first time on, its code is still being fetched: the notice reads its options once it is created.
+    if (!this._platoonGuide) void this.whenReady('platoonGuide').then((pg) => this._platoonGuideOnNotice(pg));
+    else this._platoonGuideOnNotice(this._platoonGuide);
+  }
+
+  private _platoonGuideOnNotice(pg: PlatoonGuide): void {
     const hover = !!pg?.options?.hover;
     const keys: KeyNoticeKey[] = [['Alt P', 'Pl Guide off']];
     if (pg?.options?.keys !== false) keys.push(['A', 'pin the reading, open the Pl Detail'], ['⇧A', 'back a tab'], ['Esc', 'fold the Detail']);
@@ -2206,6 +2325,16 @@ class SymbolEngine implements Evented {
   /** Alt+A: the Aprc sheet open or closed, as its Aprc button (Aprc is switched on first), with a notice. */
   private _keyToggleAprcSheet(): void {
     if (!this._groundAppreciation?.isEnabled) this.toggleGroundAppreciation(true);
+    const ga = this._groundAppreciation;
+    // The first time on, its code is still being fetched: the sheet opens once it is created.
+    if (!ga) {
+      void this.whenReady('groundAppreciation').then(() => this._aprcSheetToggled());
+      return;
+    }
+    this._aprcSheetToggled();
+  }
+
+  private _aprcSheetToggled(): void {
     const ga = this._groundAppreciation;
     if (!ga) return;
     const open = ga.togglePanel();
@@ -2619,6 +2748,17 @@ class SymbolEngine implements Evented {
     const next = on ?? !(this._groundGuide?.isEnabled ?? false);
     this.onSettingChanged(['features', 'groundGuide'], next);
     setSetting(['features', 'groundGuide'], next);
+    // The first time on, the guide's code is still being fetched: announce once it is created.
+    if (next && !this._groundGuide) {
+      void this.whenReady('groundGuide').then(() => this._announceGroundGuide(true));
+      return next;
+    }
+    this._announceGroundGuide(next);
+    return next;
+  }
+
+  /** The Ground Guide toggle's toast: the new state and whether the terrain data is ready. */
+  private _announceGroundGuide(next: boolean): void {
     const g = this._groundGuide;
     if (g) {
       let text = 'Ground Guide off.';
@@ -2635,7 +2775,6 @@ class SymbolEngine implements Evented {
       g.announce(text);
       EngineLogger.success('Symbol Engine', text);
     }
-    return next;
   }
 
   /**
@@ -2918,6 +3057,8 @@ class SymbolEngine implements Evented {
 
     if (fullPath.startsWith('features.')) {
       const feature = path[1];
+      // Turned off while its code is still being fetched: it is not created when the code arrives.
+      if (!value && isLazyEngineName(feature)) this._lazyWanted.delete(feature);
       if (feature === 'measurementEngine') {
         if (value) {
           // Lazy-load the engine on first opt-in so flipping the Settings

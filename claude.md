@@ -643,9 +643,12 @@ reactiveUtils.watch(
 
 ## Testing
 
-The harness is `src/main.ts` + `index.html`, which:
+The harness is `src/mapBoot.ts` + `src/main.ts` + `index.html`, which:
 
-- Create 2D/3D views and instantiate `SymbolEngine` (`window.symbolEngine`).
+- Create 2D/3D views (`mapBoot.ts`, run by index.html before `main.ts` so the globe starts loading while MS/ is
+  still fetched; it imports only `@arcgis/core` and JSON, never MS/ code) and instantiate `SymbolEngine`
+  (`main.ts`, `window.symbolEngine`). Map service overlays join the map only once their service answers
+  (`addWhenLoaded`): a layer still loading holds the view back (an unreachable server cost 21 s at startup).
 - Provide the top info bar, **Settings panel**, **API Test panel**, **Analysis Hub**,
   **Engine Log panel**, measurement panel, and declutter perf HUD.
 - Exercise autocomplete/search and the full public API.
@@ -683,3 +686,9 @@ The harness is `src/main.ts` + `index.html`, which:
 9. Never `btoa()` SVG that can carry label text (throws on non-Latin-1, e.g. Urdu) —
    use `Utils.svgToDataUrl()`. User-supplied text interpolated into `innerHTML`
    goes through `Utils.escapeHtml()`.
+10. **Off-by-default engines load lazily** (`LAZY_ENGINES` in `SymbolEngine.ts`: Ground / Movement / Platoon Guide,
+   Night March, Move Planner, Gun Deployment, Admin Area, AOI Check, X-Section, Compare, Aprc): SymbolEngine imports
+   them with `import type` only and fetches the code when the feature is turned on, so a host that leaves them off
+   never loads them. Their getters are null until created; code that turns one on and uses it at once waits:
+   `se.toggleNightMarch(true); (await se.whenReady('nightMarch')).startDraw()`. A new optional engine goes in
+   `LAZY_ENGINES` the same way (its `_initX` takes the class from `_lazyClass`); never import it statically.

@@ -1,20 +1,5 @@
-import esriConfig from '@arcgis/core/config';
-import MapView from '@arcgis/core/views/MapView';
-import SceneView from '@arcgis/core/views/SceneView';
-import Map from '@arcgis/core/map';
-import MapImageLayer from '@arcgis/core/layers/MapImageLayer';
-import TileLayer from '@arcgis/core/layers/TileLayer';
-import type Layer from '@arcgis/core/layers/Layer';
-import Basemap from '@arcgis/core/Basemap';
-import ElevationLayer from '@arcgis/core/layers/ElevationLayer';
+import { appConfig, onActiveViewChange, relocateNavWidgets } from './mapBoot';
 import settingsData from '../MS/Data/Settings.json';
-
-// Serve ArcGIS runtime assets (CSS, i18n bundles, web workers, basemap defs)
-// and fonts locally — no js.arcgis.com / internet dependency. The assets are
-// copied from node_modules/@arcgis/core/assets into public/assets (see the
-// "copy-assets" npm script, run automatically before dev/build).
-esriConfig.assetsPath = '/assets';
-esriConfig.fontsUrl = '/fonts';
 import SymbolEngine from '@lib/Engines/SymbolEngine';
 import SettingsMenu from '@lib/Support/SettingsMenu';
 import VisualizationEngine from '@lib/Engines/Visualization/VisualizationEngine';
@@ -65,189 +50,13 @@ const symbolDetailsContent = document.getElementById(
   'symbolDetailsContent',
 ) as HTMLDivElement;
 
-// Define app config
-let _activeView: MapView | SceneView = null;
-const appConfig = {
-  mapView: null,
-  sceneView: null,
-  get activeView() {
-    return _activeView;
-  },
-  set activeView(view: MapView | SceneView) {
-    const oldView = _activeView;
-    _activeView = view;
-    if (oldView !== view && onActiveViewChanged) {
-      onActiveViewChanged(view, oldView);
-    }
-  },
-  container: 'viewDiv',
-};
-
-let onActiveViewChanged:
-  | ((newView: MapView | SceneView, oldView: MapView | SceneView) => void)
-  | null = null;
-/*
-const appConfig: { mapView: any; sceneView: any; activeView: any; container: any } = {
-  mapView: null,
-  sceneView: null,
-  activeView: null,
-  container: 'viewDiv' // Use same container for both views
-};
-*/
-
-// Initial view parameters for both 2D and 3D
-const initialViewParams: {
-  zoom: number;
-  center: [number, number];
-  container: string | null;
-  map?: any;
-} = {
-  zoom: 7,
-  center: [69.3451, 30.3753],
-  container: appConfig.container,
-};
-
-// Create 3D Map (scene view) and 2D Map — offline vs online layer sourcing.
-//
-// `offline` (MS/Data/Settings.json) selects where the map's imagery/terrain and
-// overlays come from:
-//   • true  → the local ArcGIS Server (https://localhost:6443/arcgis), reached
-//             via the same-origin `/arcgis` Vite dev proxy (see vite.config.ts:
-//             `secure:false` accepts the self-signed cert, no CORS needed).
-//   • false → Esri's online world basemap ('satellite' + 'world-elevation').
-//
-// It is a clean either/or swap: online mode loads ONLY the Esri basemap, offline
-// mode loads ONLY the local services. Both the 2D MapView and 3D SceneView share
-// this one `baseMap`, so the choice applies to 2D and 3D at once.
-const offline = (settingsData as { offline?: boolean }).offline === true;
-
-// The local services are dynamic (non-cached) MapServers — singleFusedMapCache
-// false — so they are consumed as MapImageLayers (not TileLayers). Each layer
-// loads with the existing "add if available" pattern: on load failure it warns
-// and removes itself, so an unreachable service never breaks app startup.
-const softLoad = (map: Map, layer: Layer, label: string): void => {
-  layer.load().catch((error: unknown) => {
-    console.warn(`[PAMS8] ${label} unavailable — removing layer.`, error);
-    map.remove(layer);
-  });
-};
-
-let baseMap: Map;
-if (offline) {
-  // Base imagery (bottom of the stack) → served as the map's basemap.
-  const baseImagery = new MapImageLayer({
-    url: '/arcgis/rest/services/PakImagery/MapServer',
-    title: 'Imagery (Local)',
-    listMode: 'show',
-  });
-  baseMap = new Map({
-    basemap: new Basemap({ baseLayers: [baseImagery], title: 'Imagery (Local)' }),
-  });
-
-  // 3D ground / terrain from the same local service. If it is not an
-  // elevation-capable endpoint (or is unreachable) it is removed → flat ground.
-  const elevation = new ElevationLayer({
-    url: '/arcgis/rest/services/PakImagery/MapServer',
-  });
-  baseMap.ground.layers.add(elevation);
-  elevation.load().catch((error: unknown) => {
-    console.warn('[PAMS8] Local elevation unavailable — using flat ground.', error);
-    baseMap.ground.layers.remove(elevation);
-  });
-
-  // Operational overlays, added bottom→top: general map data (city labels at low
-  // zoom) → road network → Pakistan boundary on top.
-  const mapData = new MapImageLayer({
-    url: '/arcgis/rest/services/Map_Data/MapServer',
-    title: 'Map Data',
-    listMode: 'show',
-  });
-  const roadNetwork = new MapImageLayer({
-    url: '/arcgis/rest/services/Network_Analysis/MapServer',
-    title: 'Road Network',
-    listMode: 'show',
-  });
-  const pakistanLayer = new MapImageLayer({
-    url: '/arcgis/rest/services/pakistan/MapServer',
-    title: 'Pakistan',
-    listMode: 'show',
-  });
-  baseMap.addMany([mapData, roadNetwork, pakistanLayer]);
-  softLoad(baseMap, baseImagery, 'LowResImagery_3d MapServer');
-  softLoad(baseMap, mapData, 'Map_Data MapServer');
-  softLoad(baseMap, roadNetwork, 'Network_Analysis MapServer');
-  softLoad(baseMap, pakistanLayer, 'Pakistan MapServer');
-} else {
-  // Online: Esri world imagery + elevation, no local overlays.
-  baseMap = new Map({
-    basemap: 'satellite',
-    ground: 'world-elevation',
-  });
-}
-
-// Road network (RoadNetwork MapServer) — the same service the routing NAServer
-// is built on, drawn as a half-opacity reference so planners can see the roads a
-// route is actually following.
-//
-// Added in BOTH modes, unlike the overlays above: it lives on a different
-// ArcGIS Server from the basemap services (`/roadnet` → 192.168.0.15:6443,
-// vs `/arcgis` → localhost:6443), so it is not part of the offline/online swap.
-// Same-origin proxy path rather than the raw https URL — the server ships no
-// CORS headers and a self-signed cert, so a direct fetch is blocked.
-//
-// Sublayer 11 (`pkroads`) only: the service also carries the solver's own
-// Stops / Barriers / Routes scratch layers, which must not be drawn.
-// `minScale` exists to dodge one pathological case. The layer is ~2.5M edges
-// with no cached tiles, so every export is rendered from scratch. Measured on an
-// idle server at the resolution the 3D view actually requests (1920²):
-//   40 km wide 0.3s · 80 km 1.6s · 150 km 3.7s · 600 km 4.8s · 1200 km 5.6s
-//   …but the full-country extent (the startup view) jumps to 31s.
-// Since the service runs on a single instance, that one request also queues the
-// routing solver behind it. Hiding the layer above ~1:2 000 000 (roughly a
-// 1000 km wide view) drops only that spike and keeps every practical scale.
-const roadNetworkRef = new MapImageLayer({
-  url: '/roadnet/arcgis/rest/services/RoadNetwork/MapServer',
-  title: 'Road Network',
-  listMode: 'show',
-  opacity: 0.5,
-  minScale: 2000000,
-  sublayers: [{ id: 11, visible: true }],
-});
-baseMap.add(roadNetworkRef);
-softLoad(baseMap, roadNetworkRef, 'RoadNetwork MapServer');
-
-// Place names (countries, provinces, cities, towns) from Esri's online
-// World Boundaries and Places reference service — cached tiles, no API key.
-// Added on top of the road layers and below the symbol layers (those are
-// created later by GraphicsLayerManager). Needs internet: with no connection
-// softLoad removes it and the map simply has no labels.
-const placeLabels = new TileLayer({
-  url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer',
-  title: 'Place Names (Esri)',
-  listMode: 'show',
-});
-baseMap.add(placeLabels);
-softLoad(baseMap, placeLabels, 'Esri World Boundaries and Places');
-
-// Create 3D view first (as we want it active on startup)
-initialViewParams.map = baseMap;
-appConfig.sceneView = <SceneView>createView(initialViewParams, '3d');
 // Render settings (lift, drop lines, scene quality, shadows, atmosphere) are
 // applied through VisualizationEngine. Calling it here — before SymbolEngine
 // is constructed — relies on the engine being a getInstance() singleton; the
 // engine will cache the SceneView and re-apply when setOptions runs later.
+// The views themselves were built by mapBoot.ts before the library loaded; the
+// 3D view is still loading its services when this runs, as it was before.
 VisualizationEngine.getInstance().applyRenderSettings(appConfig.sceneView, settingsData);
-
-// Set the 3D view as the active view on startup
-appConfig.activeView = appConfig.sceneView;
-
-// Set the container for the 3D view
-appConfig.sceneView.container = appConfig.container;
-
-// Now create the 2D view but don't set it active initially
-initialViewParams.container = null;
-initialViewParams.map = baseMap;
-appConfig.mapView = <MapView>createView(initialViewParams, '2d');
 
 const useInteractivePlacement = true;
 const symbolEngine = new SymbolEngine(() => appConfig.activeView);
@@ -338,10 +147,10 @@ document.addEventListener('engine-log', (e: Event) => {
   }
 });
 
-onActiveViewChanged = (newView, oldView) => {
+onActiveViewChange((newView, oldView) => {
   console.log('View changed from', oldView?.type, 'to', newView?.type);
   symbolEngine.onViewChanged(newView); // Add this method in SymbolEngine
-};
+});
 
 if (drawButton) {
   drawButton.addEventListener('click', () => {
@@ -457,81 +266,6 @@ function switchView() {
 // used by PptxExporter's "Switch to 2D & export" prompt.
 (window as any).pams8SwitchView = switchView;
 
-// Stack the bottom-right navigation widgets into a single vertical column
-// (undo on top, then the zoom controls, plus compass/navigation-toggle in 3D)
-// instead of ArcGIS's default horizontal row-reverse layout for that corner.
-// The attribution bar is absolutely positioned, so it is unaffected.
-const navStackStyle = document.createElement('style');
-navStackStyle.textContent = `
-  .esri-ui .esri-ui-bottom-right { flex-flow: column; align-items: flex-end; }
-  .esri-ui .esri-ui-bottom-right .esri-component { margin-left: 0; }
-`;
-document.head.appendChild(navStackStyle);
-
-/**
- * Relocate the default navigation widgets to the bottom-right corner.
- * MapView ships a "zoom" widget; SceneView adds "navigation-toggle" and
- * "compass" (pan/rotate). ui.move() ignores ids that aren't present.
- *
- * Must be re-run whenever a view's container is (re)assigned, not just once
- * at construction: the 2D MapView starts with `container: null` (it isn't
- * attached until the first 2D/3D switch), and ArcGIS re-establishes the
- * default UI — zoom back at its default 'top-left' — once a container is
- * actually attached, undoing an earlier move that ran against no container.
- */
-function relocateNavWidgets(view: MapView | SceneView, type: '2d' | '3d'): void {
-  view.ui.move(type === '3d' ? ['zoom', 'navigation-toggle', 'compass'] : ['zoom'], 'bottom-right');
-}
-
-// Function to create the view based on the type
-function createView(params: any, type: '2d' | '3d'): MapView | SceneView {
-  let view: MapView | SceneView;
-  if (type === '2d') {
-    view = new MapView(params);
-  } else {
-    view = new SceneView(params);
-  }
-
-  // Suppress the SDK's built-in double-click zoom. Multi-point/area symbols use a
-  // double-click to finish drawing (ArcGIS 3.x's disableDoubleClickZoom() no longer
-  // exists in JS 5 — stopPropagation is the supported replacement).
-  view.on('double-click', (event) => {
-    event.stopPropagation();
-  });
-
-  relocateNavWidgets(view, type);
-
-  // Small "Undo" button sitting on top of the zoom controls. Reuses the stock
-  // esri-widget button styling so it matches the zoom +/- buttons in any theme.
-  // index: 0 places it first in the bottom-right stack (topmost).
-  const undoBtn = document.createElement('div');
-  undoBtn.className = 'esri-widget esri-widget--button';
-  undoBtn.setAttribute('role', 'button');
-  undoBtn.setAttribute('tabindex', '0');
-  undoBtn.setAttribute('aria-label', 'Undo');
-  undoBtn.title = 'Undo (Ctrl+Z)';
-  undoBtn.innerHTML = '<span aria-hidden="true" class="esri-icon esri-icon-undo"></span>';
-  const doUndo = () => (window as any).symbolEngine?.undo?.();
-  undoBtn.addEventListener('click', doUndo);
-  undoBtn.addEventListener('keydown', (event: KeyboardEvent) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      doUndo();
-    }
-  });
-  view.ui.add(undoBtn, { position: 'bottom-right', index: 0 });
-
-  view
-    .when(() => {})
-    .catch((error) => {
-      if (error.name.includes('webgl')) {
-        alert(
-          'WebGL Support not found. Please Enable WebGL Support to Continue',
-        );
-      }
-    });
-  return view;
-}
 
 // Compatibility shim — `index.html` calls `window.applyRenderSettings(...)`
 // whenever a render-bound setting changes. Delegate to VisualizationEngine,
@@ -2309,12 +2043,18 @@ function buildDockFreehandStyle(container: HTMLElement): void {
     hover?.setAttribute('aria-pressed', String(h));
   };
   btn.addEventListener('click', () => {
-    (window as any).symbolEngine?.togglePlatoonGuide?.();
-    syncFace();
-  });
-  hover?.addEventListener('click', () => {
     const se = (window as any).symbolEngine;
-    if (!se?.platoonGuide?.isEnabled) se?.togglePlatoonGuide?.(true);
+    se?.togglePlatoonGuide?.();
+    syncFace();
+    // The first time on, its code is fetched first (SymbolEngine lazy engines): the face follows once it is created.
+    void se?.whenReady?.('platoonGuide').then(syncFace);
+  });
+  hover?.addEventListener('click', async () => {
+    const se = (window as any).symbolEngine;
+    if (!se?.platoonGuide?.isEnabled) {
+      se?.togglePlatoonGuide?.(true);
+      await se?.whenReady?.('platoonGuide');
+    }
     const next = !(se?.platoonGuide?.options?.hover ?? false);
     setPlSetting(['platoonGuide', 'hover'], next);
     setTimeout(syncFace, 0);
@@ -2322,6 +2062,7 @@ function buildDockFreehandStyle(container: HTMLElement): void {
   window.addEventListener('settingsChanged', (e: any) => {
     const p = e.detail?.fullPath ?? '';
     if (p === 'features.platoonGuide' || p === 'platoonGuide.hover') setTimeout(syncFace, 0);
+    if (p === 'features.platoonGuide' && e.detail?.value) void (window as any).symbolEngine?.whenReady?.('platoonGuide').then(syncFace);
   });
   setTimeout(syncFace, 500);
   if (gear) {
@@ -2350,9 +2091,12 @@ function buildDockFreehandStyle(container: HTMLElement): void {
     btn.classList.toggle('ms-btn-active', on);
     btn.setAttribute('aria-pressed', String(on));
   };
-  const startRoute = () => {
+  const startRoute = async () => {
     const se = (window as any).symbolEngine;
-    if (!se?.nightMarch?.isEnabled) se?.toggleNightMarch?.(true);
+    if (!se?.nightMarch?.isEnabled) {
+      se?.toggleNightMarch?.(true);
+      await se?.whenReady?.('nightMarch'); // the first time on, its code is fetched first
+    }
     se?.nightMarch?.startDraw?.();
     syncFace();
   };
@@ -2365,7 +2109,9 @@ function buildDockFreehandStyle(container: HTMLElement): void {
   });
   draw?.addEventListener('click', startRoute);
   window.addEventListener('settingsChanged', (e: any) => {
-    if ((e.detail?.fullPath ?? '') === 'features.nightMarch') setTimeout(syncFace, 0);
+    if ((e.detail?.fullPath ?? '') !== 'features.nightMarch') return;
+    setTimeout(syncFace, 0);
+    if (e.detail?.value) void (window as any).symbolEngine?.whenReady?.('nightMarch').then(syncFace);
   });
   setTimeout(syncFace, 500);
   if (gear) {
@@ -2393,14 +2139,19 @@ function buildDockFreehandStyle(container: HTMLElement): void {
     btn.classList.toggle('ms-btn-active', on);
     btn.setAttribute('aria-pressed', String(on));
   };
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const se = (window as any).symbolEngine;
-    if (!se?.movePlanner?.isEnabled) se?.toggleMovePlanner?.(true);
+    if (!se?.movePlanner?.isEnabled) {
+      se?.toggleMovePlanner?.(true);
+      await se?.whenReady?.('movePlanner'); // the first time on, its code is fetched first
+    }
     se?.movePlanner?.togglePanel?.();
     syncFace();
   });
   window.addEventListener('settingsChanged', (e: any) => {
-    if ((e.detail?.fullPath ?? '') === 'features.movePlanner') setTimeout(syncFace, 0);
+    if ((e.detail?.fullPath ?? '') !== 'features.movePlanner') return;
+    setTimeout(syncFace, 0);
+    if (e.detail?.value) void (window as any).symbolEngine?.whenReady?.('movePlanner').then(syncFace);
   });
   setTimeout(syncFace, 500);
   if (gear) {
@@ -2436,13 +2187,19 @@ function initSiteFinderToggle(o: {
     btn.classList.toggle('ms-btn-active', on);
     btn.setAttribute('aria-pressed', String(on));
   };
-  btn.addEventListener('click', () => {
-    if (!o.engine()?.isEnabled) o.turnOn();
+  btn.addEventListener('click', async () => {
+    if (!o.engine()?.isEnabled) {
+      o.turnOn();
+      await (window as any).symbolEngine?.whenReady?.(o.feature); // the first time on, its code is fetched first
+    }
     o.engine()?.togglePanel?.();
     syncFace();
   });
   window.addEventListener('settingsChanged', (e: any) => {
-    if ((e.detail?.fullPath ?? '') === `features.${o.feature}`) setTimeout(syncFace, 0);
+    if ((e.detail?.fullPath ?? '') !== `features.${o.feature}`) return;
+    setTimeout(syncFace, 0);
+    // The first time on, its code is fetched first: the face follows once it is created.
+    if (e.detail?.value) void (window as any).symbolEngine?.whenReady?.(o.feature).then(syncFace);
   });
   setTimeout(syncFace, 500);
   if (gear) {
@@ -2525,11 +2282,15 @@ initSiteFinderToggle({
     btn.setAttribute('aria-pressed', String(on));
   };
   btn.addEventListener('click', () => {
-    (window as any).symbolEngine?.toggleMovementGuide?.();
+    const se = (window as any).symbolEngine;
+    se?.toggleMovementGuide?.();
     syncFace();
+    void se?.whenReady?.('movementGuide').then(syncFace); // the first time on, its code is fetched first
   });
   window.addEventListener('settingsChanged', (e: any) => {
-    if (e.detail?.fullPath === 'features.movementGuide') setTimeout(syncFace, 0);
+    if (e.detail?.fullPath !== 'features.movementGuide') return;
+    setTimeout(syncFace, 0);
+    if (e.detail?.value) void (window as any).symbolEngine?.whenReady?.('movementGuide').then(syncFace);
   });
   setTimeout(syncFace, 500);
   if (gear) {
