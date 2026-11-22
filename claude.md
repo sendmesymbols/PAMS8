@@ -390,8 +390,11 @@ MS/
   refresh). En options from `guide.ipbApproachesAround(..., { extras: true })` (avenues with his times from H at the book's
   rates, TAIs / DPs into the reactions table, Annex A weather, template phase names); a DP 1 tasks table from the lines of
   def (a Coy per BUA astride an apch: a working assumption, said so); tables typed into in the sheet (`cells`, `addRows`).
-  Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (118 checks). Not yet: ORBAT ratios and pls held, time
-  required, coy tasks from the plan, saving inside the plan file.
+  ORBAT (`groundAppreciation.orbatUrl`): relative strength (Coys, all ranks, ATGM, mortars, ratio), own composition, Pls
+  held against DP 1; Time Req (move in as a straight-line floor, posn prep IC s75 p 399, minefield p 439); his phases at
+  each line of def with clock times from H (`groundAppreciation.hHour`, the sheet's H box); Coy grouping and tasks from
+  Check my plan ("from incl X to incl Y"); the appreciation rides in the plan file (`pamsExtras.aprc` via
+  `SerializationEngine.registerPlanExtra`). Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (141 checks).
 - **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
   Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
   J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;

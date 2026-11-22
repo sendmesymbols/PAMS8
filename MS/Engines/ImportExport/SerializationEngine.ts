@@ -64,6 +64,37 @@ class SerializationEngine {
 
   // ── Public API ───────────────────────────────────────────────────────────
 
+  /** What other engines keep inside a plan file (`pamsExtras.<key>`), by key. */
+  private _planExtras = new Map<string, { save: () => unknown; load: (data: unknown) => void }>();
+
+  /**
+   * Let another engine keep its own data inside the plan file: Save Plan writes `save()` under `pamsExtras.<key>`
+   * (left out when it returns null or undefined), Load Plan hands it back to `load()` after the symbols. Returns a
+   * function that takes the registration off. Hosts that read plan files see one more top-level key, as with the
+   * Deployment Mgr's `pamsOrigin`.
+   */
+  public registerPlanExtra(key: string, handlers: { save: () => unknown; load: (data: unknown) => void }): () => void {
+    this._planExtras.set(key, handlers);
+    return () => {
+      if (this._planExtras.get(key) === handlers) this._planExtras.delete(key);
+    };
+  }
+
+  /** Hand each registered engine its part of a loaded plan document. */
+  private _loadPlanExtras(parsed: any): void {
+    const ex = parsed?.pamsExtras;
+    if (!ex || typeof ex !== 'object') return;
+    for (const [key, data] of Object.entries(ex)) {
+      const h = this._planExtras.get(key);
+      if (!h) continue;
+      try {
+        h.load(data);
+      } catch (err) {
+        EngineLogger.error(SerializationEngine.ENGINE_NAME, `Plan extra "${key}" could not be loaded: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
   /** Download all graphics as a Plan JSON file. */
   public savePlanToFile(filename?: string): void {
     if (!this._layerManager) {
@@ -155,7 +186,18 @@ class SerializationEngine {
         );
       }
 
-      return { doc: plan.toJSON(), symbols: totalSymbols, overlays: overlaySeq - 1 };
+      const doc: any = plan.toJSON();
+      const extras: Record<string, unknown> = {};
+      for (const [key, h] of this._planExtras) {
+        try {
+          const v = h.save();
+          if (v !== null && v !== undefined) extras[key] = v;
+        } catch (err) {
+          EngineLogger.error(SerializationEngine.ENGINE_NAME, `Plan extra "${key}" could not be saved: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      if (Object.keys(extras).length) doc.pamsExtras = extras;
+      return { doc, symbols: totalSymbols, overlays: overlaySeq - 1 };
     }
   }
 
@@ -196,6 +238,7 @@ class SerializationEngine {
             SerializationEngine.ENGINE_NAME,
             `Loaded ${loaded} symbols from plan`,
           );
+          this._loadPlanExtras(parsed);
         } catch (err) {
           EngineLogger.error(
             SerializationEngine.ENGINE_NAME,

@@ -89,5 +89,7 @@ export const groundAppreciationSettingsManifest: SettingDescriptor[] = [
     ],
     help: 'The going is read for this mover.',
   },
+  { path: ['groundAppreciation', 'hHour'], label: 'H on D Day (HH:MM)', group: 'Reading', type: 'string', help: "H as a clock time: the en's times in his options and the reactions table get clock times beside H+ (0740 hrs D Day). Empty takes the Ground Guide's IPB H, else H+ only." },
+  { path: ['groundAppreciation', 'orbatUrl'], label: 'ORBAT url', group: 'Data', type: 'string', advanced: true, help: "Where the ORBAT is served: relative strength, the Pls held against the tasks, the engineers' mine laying. Missing: the strength is counted from the symbols." },
   { path: ['groundAppreciation', 'keep'], label: 'Keep in the browser', group: 'Document', type: 'boolean', advanced: true, help: 'Keep the document between sessions so your written paragraphs are not lost on a reload. Pictures are made again on Read.' },
 ];

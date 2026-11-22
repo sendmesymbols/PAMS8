@@ -373,6 +373,11 @@ Added later the same day (user: "continue"): en options with timings from the IP
 `extras`), the reactions table from its TAIs and DPs, the Annex A weather in Met Conditions, a DP 1 tasks table and what
 it needs, typed table cells in the sheet. 118 checks.
 
+Finished the same day (user: "commit and finish Still not built"): relative strength and own composition from the
+ORBAT with the Pls held against DP 1; Time Req (move in, posn preparation, the protective minefield by the engineers);
+his phases at each line of def with clock times from H; Coy grouping and tasks from Check my plan; the appreciation
+saved inside the plan file (`SerializationEngine.registerPlanExtra`, `pamsExtras.aprc`). 141 checks.
+
 Still open from section 9: the Obsn head is read at one point per approach (not sampled along it); lines of def stay
 W to Z; force ratio numbers; "from incl … to incl …". Built: first / last light, the IPB weather values, and the event
 matrix as the reactions table.

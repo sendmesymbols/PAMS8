@@ -231,6 +231,9 @@ class SymbolEngine implements Evented {
   private _compare: Compare | null = null;
   /** Aprc (the appreciation drafted from the map, with Word / PDF / slides); null until `features.groundAppreciation` is on. */
   private _groundAppreciation: GroundAppreciation | null = null;
+  /** An appreciation that came with a plan file while Aprc was off: handed over when it is turned on, kept on a save. */
+  private _aprcPending: unknown = null;
+  private _aprcPlanExtra: (() => void) | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
@@ -488,6 +491,14 @@ class SymbolEngine implements Evented {
     this._initCrossSection();
     this._initCompare();
     this._initGroundAppreciation();
+    // the appreciation rides in the plan file (Save Plan / Load Plan), whether Aprc is on or off
+    this._aprcPlanExtra ??= this.serializationEngine.registerPlanExtra('aprc', {
+      save: () => (this._groundAppreciation?.isEnabled ? this._groundAppreciation.planExtra() : this._aprcPending),
+      load: (data) => {
+        if (this._groundAppreciation?.isEnabled) this._groundAppreciation.loadPlanExtra(data);
+        else this._aprcPending = data;
+      },
+    });
 
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
@@ -775,6 +786,8 @@ class SymbolEngine implements Evented {
     this._crossSection?.destroy();
     this._compare?.destroy();
     this._groundAppreciation?.destroy();
+    this._aprcPlanExtra?.();
+    this._aprcPlanExtra = null;
     this._drawingCueEngine?.disable();
     this._mgrsEngine?.destroy();
     this._editEngine?.deactivate();
@@ -1297,6 +1310,10 @@ class SymbolEngine implements Evented {
       this.emitEvent('groundAppreciationReady', { engine: ga });
     }
     this._groundAppreciation.enable();
+    if (this._aprcPending) {
+      this._groundAppreciation.loadPlanExtra(this._aprcPending);
+      this._aprcPending = null;
+    }
     console.info('[SymbolEngine] GroundAppreciation loaded');
   }
 

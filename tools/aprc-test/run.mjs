@@ -349,5 +349,76 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   check('tasks: no FDLs line, no table', W.writeTasks({ ...reading, lines: [] }).patches.length === 0);
 }
 
+// ── clock times and his phases ───────────────────────────────────────────────────────────────────────────────────
+{
+  check('H: parsed as HH:MM or HHMM', W.parseHHour('06:00') === 360 && W.parseHHour('2130') === 1290 && W.parseHHour('') === null && W.parseHHour('25:00') === null);
+  check('clock: rolls over the day', W.clockAt(360, 1 + 40 / 60) === '0740 hrs D Day' && W.clockAt(1290, 4) === '0130 hrs D+1' && W.clockAt(360, -7) === '2300 hrs D-1');
+  check('when: H+ alone, or with clock times', W.whenText([1.5, 1.5], null) === 'H+1:30' && W.whenText([1, 2], 360) === 'H+1 to H+2 (0700 hrs D Day to 0800 hrs D Day)');
+  const base = {
+    force: null, mover: 'armour', rates: { go: [24, 24], slow: [16, 8] }, fromThreat: true, aaFor: 'Bde', mcWidthM: 1500, objective: 'Qila Mor', tais: [], dps: [], template: null,
+    avenues: [{ id: 'AA 1', rank: 1, viable: true, main: true, lengthM: 14200, goPct: 82, minWidthM: 1800, waterLines: 2, through: [], onto: null, startH: [0.5, 0.6], endH: [1.4, 2.6],
+      lines: [{ id: 'X', role: 'FDLs', h: [0.9, 1.6] }, { id: 'W', role: 'Screen', h: [0.7, 1.1] }, { id: 'Y', role: 'Depth', h: [1.1, 2] }, { id: 'Z', role: 'Str Pt', h: [1.3, 2.5] }] }],
+  };
+  const t1 = W.writeEnemy(base).patches.find((x) => x.id === 'en.opt1.what').draft;
+  check('phases: prelim, break-in, depth, onto the objective, from the lines crossed', /Unopposed, his phases would run: Prelim ph, Line W \(Screen\) at H\+0:42 to H\+1:06; Ph 1 \(break-in\), Line X \(FDLs\) at H\+0:54 to H\+1:36; Ph 2, Line Y \(Depth\) at H\+1:06 to H\+2; Ph 3, onto Qila Mor at H\+1:24 to H\+2:36\. Each fight adds to these times\./.test(t1), t1);
+  const t2 = W.writeEnemy({ ...base, hHour: '06:00' }).patches;
+  const w2 = t2.find((x) => x.id === 'en.opt1.what');
+  check('phases: clock times with H set, and H named in the basis', /Ph 3, onto Qila Mor at H\+1:24 to H\+2:36 \(0724 hrs D Day to 0836 hrs D Day\)/.test(w2.draft) && w2.basis.some((b) => b.kind === 'input' && /H: 06:00 on D Day/.test(b.text)));
+  check('phases: none when no line is crossed', !/phases would run/.test(W.writeEnemy({ ...base, avenues: [{ ...base.avenues[0], lines: [] }] }).patches[0].draft));
+}
+
+// ── relative strength from the ORBAT ─────────────────────────────────────────────────────────────────────────────
+{
+  const bn = { name: 'Inf Bn (Std)', count: 1, coys: 4, strength: 850, atgm: 8, mortars: 6, plsPerCoy: 3, src: "SO's Hbk 2019 p 12 (inf-bn-std)" };
+  const bde = { name: 'RAPID Inf Bde', count: 1, coys: 13, strength: null, atgm: 24, mortars: 18, plsPerCoy: 3, src: "SO's Hbk 2019 Sec 13 p 701 (en-rapid-inf-bde)" };
+  const s = W.writeStrength({ en: [bde], enAssumed: 'one level up', own: [bn], ownAssumed: null, need: 19 });
+  const d = M.newDoc('def');
+  M.applyPatches(d, s.patches);
+  const p = M.find(d, 'own.str');
+  check('strength: table by measure with ratios en to own', JSON.stringify(p.table.rows[0]) === JSON.stringify(['a.', 'Manoeuvre Coys / Sqns', '13', '4', '3.3 : 1']) && p.table.rows[1][2] === '?' && p.table.rows[1][4] === '?' && p.table.rows[2][4] === '3.0 : 1', JSON.stringify(p.table.rows));
+  check('strength: an assumed en makes it a proposal, and says so', p.state === 'judge' && /RAPID Inf Bde \(assumed\)/.test(p.draft) && p.basis.some((b) => /En assumed/.test(b.text)) && s.confirm.length === 1);
+  check('strength: the ORBAT pages are the basis', p.basis.some((b) => b.kind === 'data' && /p 12 \(inf-bn-std\)/.test(b.text) && /p 701/.test(b.text)));
+  check('strength: Pls held against the need, ATGM pairs', /DP 1 needs 19 x pl; 1 x Inf Bn \(Std\) holds 12 x pl: short by 7 x pl/.test(M.find(d, 'own.ded.basic').draft) && /4 ATGM pairs held/.test(M.find(d, 'own.ded.basic').draft));
+  check('strength: composition from the ORBAT', /4 manoeuvre Coys of 3 Pls, 850 all ranks, 8 ATGM launchers, 6 mortars/.test(M.find(d, 'own.comp').draft));
+  const marked = W.writeStrength({ en: [{ ...bde, count: 2 }], enAssumed: null, own: [bn], ownAssumed: null, need: 10 });
+  M.applyPatches(d, marked.patches);
+  check('strength: marked units count, read from the map; spare Pls said', M.find(d, 'own.str').state === 'map' && M.find(d, 'own.str').table.rows[0][2] === '26' && /2 x pl to spare/.test(M.find(d, 'own.ded.basic').draft));
+  check('strength: nothing without both sides', W.writeStrength({ en: [], enAssumed: null, own: [bn], ownAssumed: null, need: 1 }).patches.length === 0);
+}
+
+// ── time required ────────────────────────────────────────────────────────────────────────────────────────────────
+{
+  const tr = W.writeTimeReq({
+    move: { from: '7 Bn at Pasrur', km: 18.4, kmh: 20, src: 'all types, good roads, by night' },
+    prep: { h: [24, 36], src: 'IC s75 para 1 p 399' },
+    mines: { frontM: 6100, engr: 'Engr Fd Coy (taken: one Engr Fd Coy)', handH: 63, mechH: null, perPl: 780, src: "SO's Hbk 2019 p 439" },
+  });
+  const d = M.newDoc('def');
+  M.applyPatches(d, tr.patches);
+  const t = M.find(d, 'ts.req').table;
+  check('time: the move in as a lower bound', t.rows[0][2] === '0.9 +' && /18\.4 km in a straight line at 20 km\/h by night/.test(t.rows[0][3]));
+  check('time: posn preparation and mine laying with their books', t.rows[1][2] === '24-36' && t.rows[3][2] === '63' && M.find(d, 'ts.req').basis.some((b) => /p 399/.test(b.text)) && M.find(d, 'ts.req').basis.some((b) => /p 439/.test(b.text)));
+  check('time: the rows it cannot tell are left blank; total is a floor', t.rows[2][2] === '' && t.rows[4][2] === '' && t.rows[t.rows.length - 1][2] === '88 +' && M.find(d, 'ts.req').state === 'judge');
+  check('time: nothing known, nothing written', W.writeTimeReq({ move: null, prep: null, mines: null }).patches.length === 0);
+}
+
+// ── grouping and tasks ───────────────────────────────────────────────────────────────────────────────────────────
+{
+  const ct = W.writeCoyTasks([
+    { label: 'D Coy', kind: 'depth', span: 'from incl Chak 21 to incl Pindi Dogran', units: ['Mor Pl'], moves: [{ to: 'C pen 1', min: 22, inTime: true }], catk: ['Kot Jaimal', 'Nurpur'] },
+    { label: 'A Coy', kind: 'fwd', span: 'over Kot Jaimal', units: [], moves: [], catk: [] },
+    { label: 'C pen 1', kind: 'cpen', span: null, units: [], moves: [], catk: [] },
+  ]);
+  const d = M.newDoc('def');
+  M.applyPatches(d, ct.patches);
+  const k = M.find(d, 'plan.exec.tasks').children;
+  check('coys: fwd first, posns that are not Coys left out', k.map((c) => c.head).join('|') === 'A Coy|D Coy');
+  check('coys: take up def posn over / from incl to incl, by a ruled time', M.find(d, 'plan.exec.tasks.a-coy.t1').draft === 'Take up def posn over Kot Jaimal by ________.' && M.find(d, 'plan.exec.tasks.d-coy.t1').draft === 'Take up def posn from incl Chak 21 to incl Pindi Dogran by ________.');
+  check('coys: depth gets C attk and its what-if move as proposals', /Be prep to launch C attk on Kot Jaimal or Nurpur on orders\./.test(M.find(d, 'plan.exec.tasks.d-coy.t2').draft) && /Be prep to occupy C pen 1 on orders \(22 min: in time\)\./.test(M.find(d, 'plan.exec.tasks.d-coy.t3').draft) && M.find(d, 'plan.exec.tasks.d-coy.t2').state === 'judge');
+  check('coys: grouping from what is in the posn, else the planner\'s', M.find(d, 'plan.exec.tasks.d-coy.grp').draft === 'In loc: Mor Pl.' && M.find(d, 'plan.exec.tasks.a-coy.grp').draft === null);
+  check('coys: numbered under Exec', /^29b\(1\)$|^\d+b\(1\)$/.test(M.numberOf(d, 'plan.exec.tasks.a-coy')), M.numberOf(d, 'plan.exec.tasks.a-coy'));
+  check('tasks: writeTasks says how many Pls', W.writeTasks(reading).pls === 17 && W.writeTasks({ ...reading, lines: [] }).pls === null);
+}
+
 console.log(`\n${n - fails} of ${n} checks passed`);
 process.exit(fails ? 1 : 0);

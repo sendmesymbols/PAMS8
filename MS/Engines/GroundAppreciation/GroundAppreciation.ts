@@ -25,10 +25,13 @@ import type { AorReading, AorSide, AorXY } from '../GroundGuide/GroundGuideAor';
 import { dockBelowBar } from '../SiteScan/SitePanel';
 import { shortDate, sourceName } from '../SiteScan/SiteScan';
 import {
-  accept, acceptAll, addRow, applyPatches, aprcKinds, carryOver, counts, find, isStale, lines, newDoc, numberOf, setCell, setMine, shown, tableOf, toText,
+  accept, acceptAll, addRow, applyPatches, aprcKinds, carryOver, counts, find, isStale, lines, newDoc, numberOf, setCell, setMine, shown, tableOf, toText, walk,
   type AprcCopy, type AprcDoc, type AprcFigure, type AprcKind, type AprcPara,
 } from './AprcModel';
-import { lightTimes, writeEnemy, writeGround, writePlan, writeSymbols, writeTasks, type AprcAvenueIn, type AprcCheckIn, type AprcEnemyIn, type AprcGroundIn, type AprcObsn, type AprcSymbolIn } from './AprcWrite';
+import {
+  lightTimes, parseHHour, writeCoyTasks, writeEnemy, writeGround, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeReq,
+  type AprcAvenueIn, type AprcCheckIn, type AprcCoyIn, type AprcEnemyIn, type AprcForceUnit, type AprcGroundIn, type AprcObsn, type AprcStrengthIn, type AprcSymbolIn, type AprcTimeIn,
+} from './AprcWrite';
 import { APRC_DOC_CSS, bodyHtml, esc, printHtml } from './AprcHtml';
 import { DOCX_MIME, docxFiles, type DocxImage } from './AprcDocx';
 import { APRC_DECKS, buildDeck, mergeDeck, type AprcDeckKind } from './AprcDeck';
@@ -51,6 +54,10 @@ export interface GroundAppreciationOptions {
   mover: string;
   /** Keep the document in the browser between sessions. */
   keep: boolean;
+  /** H as a clock time on D Day ("HH:MM"): clock times beside H+ in the en's options; empty takes the Ground Guide's IPB H. */
+  hHour: string;
+  /** Where the ORBAT is served (relative strength, Pls held, the engineers' mine laying). */
+  orbatUrl: string;
 }
 
 export const DEFAULT_GROUND_APPRECIATION_OPTIONS: GroundAppreciationOptions = {
@@ -62,6 +69,8 @@ export const DEFAULT_GROUND_APPRECIATION_OPTIONS: GroundAppreciationOptions = {
   echelon: 'auto',
   mover: 'auto',
   keep: true,
+  hHour: '',
+  orbatUrl: '/MS/Data/Orbat/PK',
 };
 
 export interface GroundAppreciationHost {
@@ -102,6 +111,7 @@ const STYLE = `
 #${PANEL_ID} .tool{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 6px;padding:6px 10px;background:var(--gg-strip,#20262e);border-bottom:1px solid var(--gg-hair-soft,rgba(255,255,255,.1))}
 #${PANEL_ID} .tool .k{color:var(--gg-label,#9aa4ae);font-size:12px;margin-left:8px}
 #${PANEL_ID} .tool .k:first-child{margin-left:0}
+#${PANEL_ID} .tool input[type=text]{height:27px;width:64px;font:500 12.5px/1 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;background:#11151a;border:1px solid #3d4650;border-radius:6px;padding:0 7px}
 #${PANEL_ID} .seg{display:inline-flex}
 #${PANEL_ID} .seg button{border-radius:0;border-left-width:0}
 #${PANEL_ID} .seg button:first-child{border-radius:6px 0 0 6px;border-left-width:1px}
@@ -175,6 +185,13 @@ export default class GroundAppreciation {
   private _open = false;
   private _resize: (() => void) | null = null;
   private _readSeq = 0;
+  /** The ORBAT once loaded (null: not found; undefined: not tried yet). */
+  private _orbat: any | null | undefined = undefined;
+  private _orbatBase = '';
+  /** The last en reading, so a new H re-times the options without reading the ground again. */
+  private _lastEnemy: AprcEnemyIn | null = null;
+  /** The symbols on the map as PlanCheck read them at the last Read. */
+  private _drawn: any[] = [];
 
   constructor(getView: () => any, host: GroundAppreciationHost = {}) {
     this._getView = getView;
@@ -203,6 +220,7 @@ export default class GroundAppreciation {
   setOptions(o: Partial<GroundAppreciationOptions>): void {
     this._opts = { ...this._opts, ...Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined && v !== null)) } as GroundAppreciationOptions;
     if (!aprcKinds().find((k) => k.kind === this._opts.kind)?.ready) this._opts.kind = 'def';
+    if (String(this._opts.orbatUrl || '') !== this._orbatBase) this._orbat = undefined;
     if (this._enabled) this._render();
   }
 
@@ -311,13 +329,29 @@ export default class GroundAppreciation {
         applyPatches(doc, w.patches);
         doc.confirm.unshift(...w.confirm);
         doc.frame = w.frame ?? null;
-        applyPatches(doc, writeTasks(aor.reading).patches);
-        const en = ipb ? this._enemyIn(ipb, aor.reading, sym.enForce) : null;
+        const tw = writeTasks(aor.reading);
+        applyPatches(doc, tw.patches);
+        const en = ipb ? this._enemyIn(ipb, aor.reading, sym.enForce, guide) : null;
+        this._lastEnemy = en;
         if (en) {
           const ew = writeEnemy(en);
           applyPatches(doc, ew.patches);
           doc.confirm.push(...ew.confirm);
         } else notes.push('The en options were not read (no avenue from the threat side).');
+        // the ORBAT: relative strength, Pls held against the tasks; time required (mine laying by its engineers)
+        const orbat = await this._loadOrbat();
+        if (seq !== this._readSeq) return null;
+        if (orbat) {
+          const si = await this._strengthIn(orbat, aor.reading, w.frame?.echelon ?? 'Bn', tw.pls);
+          if (si) {
+            const sw = writeStrength(si);
+            applyPatches(doc, sw.patches);
+            doc.confirm.push(...sw.confirm);
+          }
+        } else notes.push(`No ORBAT at ${this._orbatBase || 'the ORBAT url'}: relative strength is counted from the symbols only.`);
+        const tr = writeTimeReq(await this._timeIn(orbat, aor.reading, w.frame?.echelon ?? 'Bn'));
+        applyPatches(doc, tr.patches);
+        doc.confirm.push(...tr.confirm);
         doc.sources = this._sources(guide);
         doc.figures = await this._figures(aor);
       } else if (this._opts.figures !== 'trace') {
@@ -331,6 +365,7 @@ export default class GroundAppreciation {
         const pw = writePlan(chk);
         applyPatches(doc, pw.patches);
         doc.confirm.push(...pw.confirm);
+        if (aor) applyPatches(doc, writeCoyTasks(this._coysIn(this._host.planCheck?.(), aor.reading)).patches);
       }
       if (seq !== this._readSeq) return null;
       this._doc = carryOver(prev, doc);
@@ -373,10 +408,13 @@ export default class GroundAppreciation {
 
   private async _symbols(r: AorReading | null): Promise<AprcSymbolIn[]> {
     const recs = this._host.records?.() ?? [];
+    this._drawn = [];
     if (!recs.length) return [];
     try {
       const { readSymbols } = await import('../DeploymentBuilder/PlanCheck');
-      return readSymbols(recs as any).map((s) => {
+      const raw = readSymbols(recs as any);
+      this._drawn = raw;
+      return raw.map((s) => {
         let where: string | null = null;
         if (r && s.pts.length) {
           const cx = s.pts.reduce((a, p) => a + p.x, 0) / s.pts.length, cy = s.pts.reduce((a, p) => a + p.y, 0) / s.pts.length;
@@ -398,7 +436,61 @@ export default class GroundAppreciation {
     return withTimeout<any>(guide.ipbApproachesAround(ll, { sidc, readFor: 'defence', threatDeg: r.faceDeg, extras: true }), 60000);
   }
 
-  private _enemyIn(v: any, r: AorReading, force: string | null): AprcEnemyIn | null {
+  /** H on D Day: the sheet's, else the Ground Guide's IPB H; null when neither is set. */
+  private _hHour(guide: any): string | null {
+    const own = String(this._opts.hHour ?? '').trim();
+    if (own && parseHHour(own) !== null) return own;
+    const gg = String(guide?.options?.extended?.ipb?.hHour ?? '').trim();
+    return gg && parseHHour(gg) !== null ? gg : null;
+  }
+
+  /**
+   * His hours where an avenue crosses each line of def: the crossing on the avenue's path (the cut lengthened by half at
+   * each end, as the avenues may run wider than the AOR), its distance along the path as the decision support measures
+   * it, and his time there from the profile.
+   */
+  private _lineTimes(aa: any, pr: any, r: AorReading): Array<{ id: string; role: string; h: [number, number] }> {
+    const pts: Array<[number, number, number]> = pr?.pts ?? [];
+    if (pts.length < 2 || !aa?.line?.length || !r.lines.length) return [];
+    const P: AorXY[] = aa.line.map((p: [number, number]) => [(p[0] - r.centre[0]) / r.k, (p[1] - r.centre[1]) / r.k]);
+    const al: number[] = [Number(aa.startM) || 0];
+    for (let i = 1; i < P.length; i++) al.push(al[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+    const s0 = al[0], last = al[al.length - 1];
+    const kk = last > s0 ? (Number(aa.endM) - s0) / (last - s0) : 1;
+    for (let i = 0; i < al.length; i++) al[i] = s0 + (al[i] - s0) * kk;
+    const timeAt = (m: number): [number, number] => {
+      if (m <= pts[0][0]) return [pts[0][1], pts[0][2]];
+      for (let j = 0; j + 1 < pts.length; j++) {
+        const a = pts[j], b = pts[j + 1];
+        if (m <= b[0]) {
+          const t = b[0] > a[0] ? (m - a[0]) / (b[0] - a[0]) : 0;
+          return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+        }
+      }
+      const z = pts[pts.length - 1];
+      return [z[1], z[2]];
+    };
+    const out: Array<{ id: string; role: string; h: [number, number] }> = [];
+    for (const l of r.lines) {
+      const [a0, b0] = l.cut;
+      const dx = b0[0] - a0[0], dy = b0[1] - a0[1];
+      const A: AorXY = [a0[0] - dx * 0.5, a0[1] - dy * 0.5], B: AorXY = [b0[0] + dx * 0.5, b0[1] + dy * 0.5];
+      for (let i = 0; i + 1 < P.length; i++) {
+        const p = P[i], q = P[i + 1];
+        const rx = q[0] - p[0], ry = q[1] - p[1], sx = B[0] - A[0], sy = B[1] - A[1];
+        const den = rx * sy - ry * sx;
+        if (Math.abs(den) < 1e-9) continue;
+        const t = ((A[0] - p[0]) * sy - (A[1] - p[1]) * sx) / den;
+        const u = ((A[0] - p[0]) * ry - (A[1] - p[1]) * rx) / den;
+        if (t < 0 || t > 1 || u < 0 || u > 1) continue;
+        out.push({ id: l.id, role: l.role, h: timeAt(al[i] + (al[i + 1] - al[i]) * t) });
+        break;
+      }
+    }
+    return out.sort((x, y) => x.h[0] - y.h[0]);
+  }
+
+  private _enemyIn(v: any, r: AorReading, force: string | null, guide: any = null): AprcEnemyIn | null {
     const d = v?.decision;
     if (!v?.aas?.length || !d) return null;
     const ground = (p: [number, number]): AorXY => [(p[0] - r.centre[0]) / r.k, (p[1] - r.centre[1]) / r.k];
@@ -432,6 +524,7 @@ export default class GroundAppreciation {
         onto: aa.ontoLabel ?? null,
         startH: pr ? pr.startH : [0, 0],
         endH: pr ? pr.endH : [0, 0],
+        lines: pr ? this._lineTimes(aa, pr, r) : [],
       };
     });
     const named = !!r.mitg.name && r.mitg.name !== 'MITG';
@@ -449,7 +542,197 @@ export default class GroundAppreciation {
       tais: (d.tais ?? []).map((x: any) => ({ id: x.id, aa: x.aa, why: x.why, earliestH: x.earliestH, latestH: x.latestH })),
       dps: (d.dps ?? []).map((x: any) => ({ id: x.id, kind: x.kind, aa: x.aa, tai: x.tai, decision: x.decision, earliestH: x.earliestH, beforeH: !!x.beforeH })),
       template: t ? { label: t.label, src: t.src, confirmed: !!t.confirmed, phases: (t.phases?.rows ?? []).map((x: any) => ({ phase: x.phase, time: x.time })) } : null,
+      hHour: this._hHour(guide),
     };
+  }
+
+  // ── the ORBAT ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+  /** The ORBAT files (as the Intelligent Deployment tab reads them), once; null when they are not served. */
+  private async _loadOrbat(): Promise<any | null> {
+    const base = String(this._opts.orbatUrl || DEFAULT_GROUND_APPRECIATION_OPTIONS.orbatUrl).replace(/\/+$/, '');
+    if (this._orbat !== undefined && this._orbatBase === base) return this._orbat;
+    this._orbatBase = base;
+    try {
+      const { OWN_ORBAT_FILES, mergeOwn } = await import('../DeploymentBuilder/PlanOrbat');
+      const get = async (f: string) => {
+        const res = await fetch(`${base}/${f}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status} for ${f}`);
+        return res.json();
+      };
+      const [inf, ...arms] = OWN_ORBAT_FILES;
+      const [infDoc, en, weapons, ...armDocs] = await Promise.all([get(inf), get('en.json'), get('weapons.json'), ...arms.map((f) => get(f).catch(() => null))]);
+      const engr = armDocs[arms.indexOf('engr.json')];
+      this._orbat = { own: mergeOwn([infDoc?.units, ...armDocs.map((d: any) => d?.units)]), en: en?.units ?? [], weapons: weapons?.weapons ?? [], engrData: engr?.engrData ?? [] };
+    } catch (err) {
+      this._orbat = null;
+      EngineLogger.error(ENGINE, `No ORBAT at ${base} (${err instanceof Error ? err.message : String(err)}): relative strength from the symbols only`);
+    }
+    return this._orbat;
+  }
+
+  /** Own and en units for the relative strength: a built plan's, else the symbols marked, else assumed (and said so). */
+  private async _strengthIn(o: any, r: AorReading, echWord: string, need: number | null): Promise<AprcStrengthIn | null> {
+    const { brief, ownUnitFor, enUnitFor } = await import('../DeploymentBuilder/PlanOrbat');
+    const pd: any = (await import('../../Data/PlanDoctrine.json')).default;
+    const ownEch = ({ Coy: '15', Bn: '16', Bde: '18' } as Record<string, string>)[echWord] ?? '16';
+    const ECHW: Record<string, string> = { '15': 'Coy', '16': 'Bn', '18': 'Bde', '21': 'Div' };
+    const drawn = this._drawn;
+    const isUnit = (s: any) => String(s.key ?? '').startsWith('10') && !!s.ech;
+    const unitOf = (id: string | null, count: number): AprcForceUnit | null => {
+      const b = id ? brief(o, id) : null;
+      if (!b) return null;
+      const n = (l: Array<{ count: number }>) => l.reduce((a, w) => a + (Number(w.count) || 0), 0);
+      return { name: b.name, count, coys: b.coys, strength: b.strength, atgm: n(b.atgm), mortars: n(b.mortars), plsPerCoy: b.plsPerCoy, src: b.src };
+    };
+    const group = (pairs: Array<string | null>): AprcForceUnit[] => {
+      const m = new Map<string, number>();
+      for (const id of pairs) if (id) m.set(id, (m.get(id) ?? 0) + 1);
+      return [...m].map(([id, n]) => unitOf(id, n)).filter((u): u is AprcForceUnit => !!u);
+    };
+    // own: the built plan's unit, else the own symbols of the AOR's echelon (standard type), else the standard type
+    const meta = drawn.find((s) => s.side === 'own' && s.pbMeta?.unit)?.pbMeta ?? null;
+    let own: AprcForceUnit[] = [], ownAssumed: string | null = null;
+    if (meta?.unit) own = group([meta.unit]);
+    if (!own.length) {
+      const mine = drawn.filter((s) => s.side === 'own' && isUnit(s) && s.ech === ownEch);
+      own = group(mine.length ? mine.map(() => ownUnitFor(ownEch)) : [ownUnitFor(ownEch)]);
+      ownAssumed = mine.length ? `the ${ECHW[ownEch]} symbols on the map taken as the standard type (ORBAT)` : `a standard ${ECHW[ownEch]} for the ${ECHW[ownEch]} AOR (no own ${ECHW[ownEch]} symbol marked)`;
+    }
+    // en: his symbols marked, else the built plan's enemy, else one level up (PlanDoctrine)
+    const typeOf = (name: string): 'inf' | 'mech' | 'armd' => (/armou?r|tank/i.test(name) ? 'armd' : /mech/i.test(name) ? 'mech' : 'inf');
+    const enSyms = drawn.filter((s) => s.side === 'enemy' && isUnit(s) && ['15', '16', '18', '21'].includes(s.ech));
+    let en: AprcForceUnit[] = [], enAssumed: string | null = null;
+    if (enSyms.length) en = group(enSyms.map((s) => enUnitFor(s.ech, typeOf(String(s.name ?? '')))));
+    if (!en.length) {
+      const up = Number(pd?.enemy?.defaultUp?.value ?? 1);
+      const order = ['15', '16', '18', '21'];
+      const e = meta?.enemy?.echelon ?? order[Math.min(order.length - 1, Math.max(0, order.indexOf(ownEch) + up))];
+      const type = meta?.enemy?.type ?? (r.country === 'Mountains' ? 'inf' : (pd?.enemy?.defaultType?.value ?? 'mech'));
+      en = group([enUnitFor(e, type, r.country === 'Mountains' ? 'mountain' : null)]);
+      enAssumed = meta?.enemy ? `the built plan's en (${ECHW[e] ?? e}, ${type})` : `one level up, a ${ECHW[e] ?? e} (${pd?.enemy?.defaultUp?.src ?? 'PlanDoctrine'}), ${type} (${type === 'mech' ? pd?.enemy?.defaultType?.src ?? 'PlanDoctrine' : 'mountains: inf'})`;
+    }
+    if (!en.length || !own.length) return null;
+    return { en, enAssumed, own, ownAssumed, need };
+  }
+
+  /** Time Req inputs: the move in (the unit symbol outside the AOR), posn preparation, the protective minefield. */
+  private async _timeIn(o: any | null, r: AorReading, echWord: string): Promise<AprcTimeIn> {
+    const pd: any = (await import('../../Data/PlanDoctrine.json')).default;
+    const md: any = (await import('../../Data/MoveDoctrine.json')).default;
+    const ownEch = ({ Coy: '15', Bn: '16', Bde: '18' } as Record<string, string>)[echWord] ?? '16';
+    const out: AprcTimeIn = { move: null, prep: null, mines: null };
+    // the move in: an own symbol of the AOR's echelon outside the AOR, 2 km or more from the MITG
+    const inside = (p: AorXY): boolean => {
+      let c = false;
+      const R2 = r.outline.map((q) => [(q[0] - r.centre[0]) / r.k, (q[1] - r.centre[1]) / r.k] as AorXY);
+      for (let i = 0, j = R2.length - 1; i < R2.length; j = i++) {
+        const a = R2[i], b = R2[j];
+        if (a[1] > p[1] !== b[1] > p[1] && p[0] < ((b[0] - a[0]) * (p[1] - a[1])) / (b[1] - a[1]) + a[0]) c = !c;
+      }
+      return c;
+    };
+    for (const s of this._drawn) {
+      if (s.side !== 'own' || s.ech !== ownEch || !String(s.key ?? '').startsWith('10') || !s.pts?.length) continue;
+      const cx = s.pts.reduce((a: number, p: any) => a + p.x, 0) / s.pts.length, cy = s.pts.reduce((a: number, p: any) => a + p.y, 0) / s.pts.length;
+      const g: AorXY = [(cx - r.centre[0]) / r.k, (cy - r.centre[1]) / r.k];
+      const d = Math.hypot(g[0] - r.mitg.at[0], g[1] - r.mitg.at[1]);
+      if (inside(g) || d < 2000) continue;
+      const kmh = Number(md?.road?.speeds?.allTypes?.good?.[1]);
+      if (!(kmh > 0)) break;
+      out.move = { from: `${s.label || s.name} ${this._where(r, g)}`, km: d / 1000, kmh, src: `average speed of a column of all types of vehicles on good roads by night, ${kmh} km/h (SO's Hbk 2019 Sec 9 / SD in the Field Vol II: MoveDoctrine road.speeds)` };
+      break;
+    }
+    const ready = pd?.readyBy?.coyPosnH;
+    if (Array.isArray(ready?.value)) out.prep = { h: [Number(ready.value[0]), Number(ready.value[1])], src: String(ready.src ?? 'PlanDoctrine readyBy.coyPosnH') };
+    const fdl = r.lines.find((l) => l.role === 'FDLs');
+    if (o && fdl) {
+      const { ownEngrTypes, minesByEngr, engrShare } = await import('../DeploymentBuilder/PlanEngr');
+      const t = (o.engrData ?? []).find((x: any) => /Mine Laying - Planning Data: Manual/i.test(String(x?.title)));
+      const row = t?.rows?.find((x: any) => x.Condition === 'Engr Pl' && /mixed/i.test(String(x.Cluster)));
+      const perPl = Number(row?.['Max in 24 hrs']);
+      const meta = this._drawn.find((s) => s.side === 'own' && s.pbMeta)?.pbMeta ?? null;
+      const types = ownEngrTypes(o);
+      let e = types.find((x) => x.id === (meta?.engr ?? 'engr-fd-coy')) ?? types.find((x) => x.id === 'engr-fd-coy') ?? null;
+      if (e && meta?.engr && meta?.engrCoys) e = engrShare(e, Number(meta.engrCoys));
+      if (e && perPl > 0) {
+        const m = minesByEngr(e, fdl.frontM, perPl);
+        out.mines = { frontM: fdl.frontM, engr: `${e.name}${meta?.engr ? ' (grouped to the plan)' : ' (taken: one Engr Fd Coy)'}`, handH: m.handH, mechH: m.mechH, perPl, src: `SO's Hbk 2019 p 439 (an Engr Pl lays ${perPl} mixed clusters in 24 h; a set of 6 MMLs 9000 m of ATMs in 24 h), a cluster to a metre of front (E); ${e.src}` };
+      }
+    }
+    return out;
+  }
+
+  /** The Coys of a checked plan, with where each posn runs (named places at its ends), what is in it and its moves. */
+  private _coysIn(c: any, r: AorReading): AprcCoyIn[] {
+    if (!c?.posns?.length) return [];
+    const th = (r.faceDeg * Math.PI) / 180;
+    const R: AorXY = [Math.cos(th), -Math.sin(th)];
+    const home = r.map.places.filter((p) => !p.across);
+    const nearest = (p: AorXY): string | null => {
+      let best: string | null = null, bd = 1500;
+      for (const q of home) {
+        const d = Math.hypot(q.at[0] - p[0], q.at[1] - p[1]);
+        if (d < bd) ((bd = d), (best = q.name));
+      }
+      return best;
+    };
+    const spanOf = (poly: any[]): string | null => {
+      const g: AorXY[] = (poly ?? []).map((p: any) => [((p.x ?? p[0]) - r.centre[0]) / r.k, ((p.y ?? p[1]) - r.centre[1]) / r.k] as AorXY);
+      if (!g.length) return null;
+      let lo = g[0], hi = g[0];
+      for (const p of g) {
+        const v = p[0] * R[0] + p[1] * R[1];
+        if (v < lo[0] * R[0] + lo[1] * R[1]) lo = p;
+        if (v > hi[0] * R[0] + hi[1] * R[1]) hi = p;
+      }
+      const a = nearest(lo), b = nearest(hi);
+      if (a && b) return a === b ? `over ${a}` : `from incl ${a} to incl ${b}`;
+      return a || b ? `at ${a ?? b}` : null;
+    };
+    const fwd = c.posns.filter((p: any) => p.kind === 'fwd');
+    const catk = fwd.map((p: any) => {
+      const sp = spanOf(p.poly);
+      return sp?.replace(/^(over|at) /, '').replace(/^from incl (.*) to incl .*$/, '$1') ?? p.label;
+    });
+    const trig = (c.whatIf?.triggers ?? []) as any[];
+    const same = (a: string, b: string) => !!a && !!b && (a.toLowerCase() === b.toLowerCase() || a.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(a.toLowerCase()));
+    return c.posns
+      .filter((p: any) => ['fwd', 'depth', 'res'].includes(p.kind))
+      .map((p: any) => ({
+        label: String(p.label),
+        kind: String(p.kind),
+        span: spanOf(p.poly),
+        units: (p.units ?? []).filter((u: string) => u && !same(u, p.label)),
+        moves: trig.filter((t) => same(String(t.who ?? ''), String(p.label))).map((t) => ({ to: String(t.to ?? ''), min: Number(t.min) || 0, inTime: t.st === 'pass' })),
+        catk: p.kind === 'fwd' ? [] : catk,
+      }));
+  }
+
+  // ── in the plan file ──────────────────────────────────────────────────────────────────────────────────────────
+
+  /** The appreciation for Save Plan (pictures left out: Read makes them again); null when nothing is read or written. */
+  planExtra(): AprcDoc | null {
+    const d = this._doc;
+    if (!d) return null;
+    const c = counts(d);
+    let typed = false;
+    walk(d, (p) => {
+      if (p.cells || p.accepted) typed = true;
+    });
+    if (!d.frame && !c.written && !typed) return null;
+    return { ...(JSON.parse(JSON.stringify(d)) as AprcDoc), figures: [] };
+  }
+
+  /** Load Plan: the appreciation saved with the plan replaces the one in the sheet. */
+  loadPlanExtra(data: unknown): boolean {
+    const ok = this.fromJSON(data);
+    if (ok) {
+      this._lastEnemy = null;
+      this._msg = 'Opened with the plan: Read again for the pictures';
+      this._render();
+    }
+    return ok;
   }
 
   private async _groundIn(guide: any, aor: { reading: AorReading; frame: AorFrame }, graphic: any, drawnObs: string[]): Promise<AprcGroundIn> {
@@ -925,6 +1208,20 @@ export default class GroundAppreciation {
     }
     const k = t.dataset?.o;
     if (!k) return;
+    if (k === 'hHour') {
+      const v = t.value.trim();
+      if (v && parseHHour(v) === null) {
+        this._msg = 'H: type HH:MM (24 h), or leave it empty';
+        return this._render();
+      }
+      this.setOptions({ hHour: v });
+      if (this._doc && this._lastEnemy) {
+        applyPatches(this._doc, writeEnemy({ ...this._lastEnemy, hHour: v || this._hHour(this._host.guide?.() ?? null) }).patches);
+        this._msg = v ? `H ${v}: the en's times re-timed` : 'H cleared';
+        this._changed();
+      } else this._msg = 'H set: Read again to time the en options';
+      return this._render();
+    }
     if (k === 'deck') this.setOptions({ deck: t.value as AprcDeckKind });
     else if (k === 'kind') {
       this.setOptions({ kind: t.value as AprcKind });
@@ -953,6 +1250,7 @@ export default class GroundAppreciation {
       `<span class="k">Copy</span><span class="seg"><button data-a="copy" data-v="fair" aria-pressed="${copy === 'fair'}" title="What goes up: unwritten paragraphs and proposals not accepted print a ruled line">Fair</button><button data-a="copy" data-v="draft" aria-pressed="${copy === 'draft'}" title="With a mark on each paragraph, proposals shown, and the basis, data and Confirm on Gr annexes">Draft</button></span>` +
       `<button data-a="accept-all" ${c.open ? '' : 'disabled'} title="Take every open proposal as it stands">Accept all (${c.open})</button>` +
       `<span class="k">Kind</span><select data-o="kind" aria-label="Kind of appreciation">${kinds.map((k) => `<option value="${k.kind}" ${k.kind === doc.kind ? 'selected' : ''} ${k.ready ? '' : 'disabled'}>${esc(k.label)}${k.ready ? '' : ' (no outline yet)'}</option>`).join('')}</select>` +
+      `<span class="k">H</span><input type="text" data-o="hHour" value="${esc(this._opts.hHour)}" placeholder="HH:MM" aria-label="H on D Day, HH:MM" title="H as a clock time on D Day: the en's times get clock times beside H+. Empty takes the Ground Guide's IPB H.">` +
       `<span class="k">Export</span><button data-a="word" title="Word document (.docx), the copy chosen">Word</button><button data-a="print" title="Print; choose Save as PDF for a PDF">PDF</button><button data-a="text" title="Copy as text">Text</button><button data-a="json" title="Save the appreciation as a file to open later">Save</button><button data-a="open" title="Open a saved appreciation">Open</button>` +
       `<span class="k">Slides</span><select data-o="deck" aria-label="Deck">${APRC_DECKS.map((d) => `<option value="${d.kind}" ${d.kind === this._opts.deck ? 'selected' : ''} title="${esc(d.note)}">${esc(d.label)}</option>`).join('')}</select><button data-a="slides" title="Make the slides in the Briefing module; slides you edited are kept">Make slides</button>` +
       `<button data-a="clear" style="margin-left:auto" title="Start again with every heading empty">Clear</button>`;

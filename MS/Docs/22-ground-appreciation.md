@@ -17,6 +17,8 @@ Nothing is read until **Read** is pressed.
 | The IPB reading | `GroundGuide.ipbApproachesAround(mitg, { readFor: 'defence', extras: true })`: the en's avenues onto the position with the decision support (his time along each at the book's rates, TAIs, DPs), the Annex A weather and the doctrinal template (F need not be on) | Options Aval to the En (Option 1 and 2 with places, times, template phase names, advs / disadvs; Most Dangerous when the two differ by 15 min or more), En Reactions and Own Ctr Actions (TAIs against DPs), the Annex A values in Met Conditions |
 | Symbols on the map | `SerializationEngine.planRecordsOf()` → `PlanCheck.readSymbols` | En Forces, En Composn and Disposn, Own Forces, Composn, Disposns, the relative strength table (counted by echelon), obstacle symbols in Obs |
 | A checked plan | the Intelligent Deployment tab's last Check my plan (`DeploymentBuilderEngine.planCheck`) | Own Disposns, Course A, advs / disadvs, en reactions against own moves (replacing the IPB table), the general outline |
+| The ORBAT | `groundAppreciation.orbatUrl` (default `/MS/Data/Orbat/PK`, as the Intelligent Deployment tab reads it), `PlanOrbat.brief`, `PlanEngr.ownEngrTypes` / `minesByEngr` | Own Str as Related to that of the En (manoeuvre Coys, all ranks, ATGM, mortars, ratio en to own), Composn of Own Forces, the Pls held against DP 1 and the ATGM pairs, the protective minefield's hours in Time Req |
+| Doctrine files | `PlanDoctrine.json` (`readyBy.coyPosnH`: IC s75 p 399; `enemy.defaultUp` / `defaultType`), `MoveDoctrine.json` (`road.speeds`: SO's Hbk Sec 9 / SD Vol II) | Improvement of def posns, the move in, the en assumed when none is marked |
 
 The MITG is a VG symbol, else the selected symbol, else the map centre. The AOR is the Bdy symbols, a drawn box or the
 echelon frame, as the Gr Scope AOR setting says (`groundGuide.aor.source`).
@@ -44,6 +46,32 @@ button to turn the guide on.
 it as cells: type into any cell, add rows. What you type is yours (`cells`, `addRows`), kept on a new Read and printed in
 every copy; empty a cell, or type the tool's own value, to give it back. A proposed table prints in the fair copy only
 its first column and your cells until you accept it.
+
+**Units for the strength.** Own: a built plan's unit (`pbMeta.unit`), else the own symbols of the AOR's echelon taken as
+the standard type, else a standard unit of that echelon (both said "assumed"). En: his unit symbols marked (by echelon,
+and by name: armour, mech, else inf: `enUnitFor`), else the built plan's en, else one level up (MW p 80), mech (IC s114
+p 663; inf in the mountains): said "assumed", and a proposal.
+
+**Time required.** The move in: an own symbol of the AOR's echelon outside the AOR and 2 km or more from the MITG, a
+straight line at the night speed of a column of all types on good roads (a lower bound; the road is longer). Posn
+preparation 24-36 h. The protective minefield along the FDLs line at the engineer rates (p 439), by the plan's engineers
+(`pbMeta.engr`, shared by `engrCoys`) else one Engr Fd Coy, taken and said. The other rows are left for the planner; the
+total is a floor.
+
+**His phases.** Where each of his avenues crosses a line of def, his time there from the decision support's profile: the
+lines before the FDLs are the prelim ph, the FDLs the break-in (Ph 1), the lines behind it Ph 2, the MITG Ph 3. Unopposed
+times: each fight adds to them, and the text says so. **H** (the box in the sheet's tool bar, `groundAppreciation.hHour`,
+else the Ground Guide's IPB H) adds clock times: "H+1:14 to H+3:03 (0644 hrs D Day to 0833 hrs D Day)"; changing it
+re-times the en paragraphs at once.
+
+**Grouping and Tasks.** From the last Check my plan: a sub-paragraph per fwd, depth and res Coy. "Take up def posn from incl
+X to incl Y by ________" (the named places nearest the ends of its posn, left to right as the defender faces), the units
+inside its posn as In loc, and for depth and res "Be prep to launch C attk on" the fwd localities and the what-if's moves
+("Be prep to occupy C pen 1 on orders (25 min: in time)") as proposals.
+
+**In the plan file.** Save Plan writes the appreciation under `pamsExtras.aprc` (without the pictures) through
+`SerializationEngine.registerPlanExtra`; Load Plan puts it back in the sheet. With Aprc off it is held and handed over
+when Aprc is turned on, and a save while it is off keeps it.
 
 **What is a proposal here.** The en options, the most dangerous option, the reactions table, the tasks table and what
 it needs are proposals (`judge`). The tasks table takes a Coy (3 Pls) to each BUA astride an approach on the FDLs and
@@ -92,6 +120,8 @@ await a.read();                                    // AprcDoc; read({ at: [lng, 
 a.setText('gr.itg.mitg.effs', 'If lost, …');       // the planner's words
 a.accept('gr.ded.pri'); a.acceptAll();
 a.setCell('own.tasks.dp1', 0, 3, '1 x pair');      // a typed table cell (null gives it back)
+a.planExtra(); a.loadPlanExtra(data);              // what Save Plan / Load Plan carry
+symbolEngine.serializationEngine.registerPlanExtra(key, { save, load });   // any engine's data in the plan file
 a.toText('fair'); a.toHtml('draft'); await a.toDocx('fair');   // string, string, Blob
 a.toDeck('decision'); a.makeSlides('full');
 a.toJSON(); a.fromJSON(doc);
@@ -104,24 +134,22 @@ Events on `document`: `aprc-read`, `aprc-changed` (detail `{ doc }`).
 | File | Kind | Job |
 | --- | --- | --- |
 | `AprcModel.ts` | pure | The outline, numbering, states, whose words print in which copy, typed table cells (`tableOf`, `setCell`, `addRow`), carry-over between readings |
-| `AprcWrite.ts` | pure | The words: `writeGround`, `writeSymbols`, `writeEnemy`, `writeTasks`, `writePlan`; first / last light |
+| `AprcWrite.ts` | pure | The words: `writeGround`, `writeSymbols`, `writeEnemy` (with his phases and clock times), `writeTasks`, `writeStrength`, `writeTimeReq`, `writePlan`, `writeCoyTasks`; first / last light, `parseHHour`, `clockAt`, `whenText` |
 | `AprcHtml.ts` | pure | The page and the print document |
 | `AprcDocx.ts` | pure | The Word package |
 | `AprcDeck.ts` | pure | The slides and the refresh merge |
 | `GroundAppreciation.ts` | engine | Collects the readings, the sheet, exports |
 
-`node tools/aprc-test/run.mjs` runs 118 checks on the pure files.
+`node tools/aprc-test/run.mjs` runs 141 checks on the pure files.
 
 ## The attack
 
 `AprcKind` is `def | attk`. Only the defence has an outline. The attack has its place: `registerOutline('attk', label,
 build)` adds its headings and a writer fills them, with no other change. It waits for a specimen.
 
-## Not built yet (Appreciation_Plan.md s9, phases 4 to 6)
+## Not built yet
 
-- Relative strength ratios from the ORBAT (the table counts symbols by echelon and leaves the ratio).
-- Pls held from the ORBAT against the tasks (the allotment says what DP 1 needs and leaves the rest).
-- Time required (move in, mine laying from the engr tables), coy grouping and tasks from the plan.
-- His phases with clock times (the options give times from H; the template gives phase names only).
-- The appreciation saved inside the plan file (it is kept in the browser and as its own file).
+- The attack's outline (waits for its specimen).
 - More than four lines of def (the reading gives W to Z).
+- The move in by road: the straight line is a floor; the Move Planner's road engine is not called.
+- Live-map slides (all slides are screen-only).

@@ -470,6 +470,8 @@ export interface AprcAvenueIn {
   /** Hours from H: reaching the avenue's start, and its end (earliest by day on GO, latest by night). */
   startH: [number, number];
   endH: [number, number];
+  /** Where it crosses each line of def, front first: the line, its role and his hours there. */
+  lines?: Array<{ id: string; role: string; h: [number, number] }>;
 }
 
 export interface AprcEnemyIn {
@@ -486,13 +488,14 @@ export interface AprcEnemyIn {
   tais: Array<{ id: string; aa: string; why: string; earliestH: number; latestH: number }>;
   dps: Array<{ id: string; kind: 'interdict' | 'catk'; aa: string; tai: string | null; decision: string; earliestH: number; beforeH: boolean }>;
   template: { label: string; src: string; confirmed: boolean; phases: Array<{ phase: string; time: string }> } | null;
+  /** H as a clock time on D Day ("HH:MM"), for clock times beside H+; null or empty: H+ only. */
+  hHour?: string | null;
 }
 
 export const hplus = (h: number): string => {
   const m = Math.round(Math.abs(h) * 60);
   return `H${h < 0 ? '-' : '+'}${Math.floor(m / 60)}${m % 60 ? `:${String(m % 60).padStart(2, '0')}` : ''}`;
 };
-const span = (t: [number, number]): string => (Math.abs(t[1] - t[0]) < 0.05 ? hplus(t[0]) : `${hplus(t[0])} to ${hplus(t[1])}`);
 
 /** Differences smaller than these are not a difference: the readings are not that exact (a method setting). */
 export const WEIGH_MIN = { hours: 0.25, goPct: 5 };
@@ -526,10 +529,24 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
   const how = calc(`His time along each avenue: each stretch at the rate for its going; earliest = by day, unassessed ground taken as GO; latest = by night, unassessed as SLOW-GO; from ${e.fromThreat ? 'the Threat marker' : 'the edge of the area read'} at H`);
   const avIn = data(`The IPB reading: avenues for ${e.aaFor}, corridors ${km(e.mcWidthM)} km wide, coded GO / SLOW-GO / NO-GO by the book's criteria`);
   const cmp = calc('The avenues compared on time, going, width and water lines');
+  const hMin = parseHHour(e.hHour);
+  const hIn = hMin !== null ? [input(`H: ${e.hHour} on D Day`)] : [];
   const who = e.force ?? 'The en (strength not marked)';
+  /** His phases by the lines of def he meets: before the FDLs the prelim ph, the FDLs the break-in, then the depth, then the objective. */
+  const phasesText = (a: AprcAvenueIn): string => {
+    const ls = [...(a.lines ?? [])].sort((x, y) => x.h[0] - y.h[0]);
+    if (!ls.length) return '';
+    const fdlH = ls.find((l) => l.role === 'FDLs')?.h[0] ?? null;
+    const name = (l: { role: string; h: [number, number] }): string =>
+      l.role === 'FDLs' ? 'Ph 1 (break-in)' : fdlH !== null && l.h[0] > fdlH ? 'Ph 2' : fdlH === null && l.role === 'Depth' ? 'Ph 2' : 'Prelim ph';
+    const parts = ls.filter((l) => l.role !== 'Str Pt').map((l) => `${name(l)}, Line ${l.id}${l.role ? ` (${l.role})` : ''} at ${whenText(l.h, hMin)}`);
+    parts.push(`Ph 3, onto ${e.objective} at ${whenText(a.endH, hMin)}`);
+    return ` Unopposed, his phases would run: ${parts.join('; ')}. Each fight adds to these times.`;
+  };
   const optText = (a: AprcAvenueIn): string =>
     `${who} along ${a.id}${a.onto ? ` (${a.onto})` : ''}: ${km(a.lengthM)} km, GO on ${pct(a.goPct)}, narrowest ${km(a.minWidthM)} km${a.through.length ? `, through ${list(a.through.slice(0, 6))}` : ''}. ` +
-    `His lead element reaches the avenue at ${span(a.startH)} and ${e.objective} at ${span(a.endH)}.`;
+    `His lead element reaches the avenue at ${whenText(a.startH, hMin)} and ${e.objective} at ${whenText(a.endH, hMin)}.${phasesText(a)}`;
+  const linesCalc = av.some((a) => a.lines?.length) ? [calc('His time at each line of def: where the avenue crosses it, at the same rates')] : [];
   const tpl = e.template;
   // The template's phase names only: their timings are long and belong to the template, not the paragraph.
   const phaseNames = tpl ? [...new Set(tpl.phases.map((p) => p.phase.trim()).filter(Boolean))].slice(0, 6) : [];
@@ -537,16 +554,16 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
 
   const a1 = av[0];
   const w1 = weigh(a1, av.slice(0, 2), e.mcWidthM);
-  patches.push({ id: 'en.opt1.what', draft: `${optText(a1)}${tplLine}`, state: 'judge', basis: [avIn, rateRule, how, ...(tpl ? [data(`Template: ${tpl.src}`)] : [])] });
+  patches.push({ id: 'en.opt1.what', draft: `${optText(a1)}${tplLine}`, state: 'judge', basis: [avIn, rateRule, how, ...linesCalc, ...hIn, ...(tpl ? [data(`Template: ${tpl.src}`)] : [])] });
   if (w1.adv.length) patches.push({ id: 'en.opt1.adv', draft: `${cap1(w1.adv.join('; '))}.`, state: 'judge', basis: [cmp] });
   if (w1.dis.length) patches.push({ id: 'en.opt1.dis', draft: `${cap1(w1.dis.join('; '))}.`, state: 'judge', basis: [cmp] });
   // Options 1 and 2 are the two best-ranked avenues, compared with each other.
   const opts = av.slice(0, 2);
   if (av[1]) {
     const w2 = weigh(av[1], opts, e.mcWidthM);
-    patches.push({ id: 'en.opt2', draft: `${optText(av[1])}${w2.adv.length ? ` Advs: ${w2.adv.join('; ')}.` : ''}${w2.dis.length ? ` Disadvs: ${w2.dis.join('; ')}.` : ''}`, state: 'judge', basis: [avIn, rateRule, how, cmp] });
+    patches.push({ id: 'en.opt2', draft: `${optText(av[1])}${w2.adv.length ? ` Advs: ${w2.adv.join('; ')}.` : ''}${w2.dis.length ? ` Disadvs: ${w2.dis.join('; ')}.` : ''}`, state: 'judge', basis: [avIn, rateRule, how, ...linesCalc, ...hIn, cmp] });
     const fastest = [...opts].sort((a, b) => a.endH[0] - b.endH[0])[0];
-    if (Math.abs(opts[0].endH[0] - opts[1].endH[0]) >= WEIGH_MIN.hours) patches.push({ id: 'en.danger', draft: `Along ${fastest.id}: he is onto ${e.objective} earliest, at ${hplus(fastest.endH[0])}.`, state: 'judge', basis: [how, calc('Most dangerous taken as the earliest onto the objective; a proposal')] });
+    if (Math.abs(opts[0].endH[0] - opts[1].endH[0]) >= WEIGH_MIN.hours) patches.push({ id: 'en.danger', draft: `Along ${fastest.id}: he is onto ${e.objective} earliest, at ${whenText(fastest.endH[0], hMin)}.`, state: 'judge', basis: [how, calc('Most dangerous taken as the earliest onto the objective; a proposal')] });
   }
 
   // His reactions against own counter actions: the TAIs and the decisions before them.
@@ -555,11 +572,11 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
     const dp = e.dps.find((d) => d.tai === t.id);
     rows.push([
       '',
-      `His lead element at ${t.id} on ${t.aa} (${t.why}): ${span([t.earliestH, t.latestH])}.`,
-      dp ? `${dp.id}: ${dp.decision.replace(/[.?]\s*$/, '')}${dp.beforeH ? ' (before H)' : ` by ${hplus(dp.earliestH)}`}.` : 'Engage him there with the fire planned on it.',
+      `His lead element at ${t.id} on ${t.aa} (${t.why}): ${whenText([t.earliestH, t.latestH], hMin)}.`,
+      dp ? `${dp.id}: ${dp.decision.replace(/[.?]\s*$/, '')}${dp.beforeH ? ' (before H)' : ` by ${whenText(dp.earliestH, hMin)}`}.` : 'Engage him there with the fire planned on it.',
     ]);
   }
-  for (const d of e.dps.filter((x) => x.kind === 'catk')) rows.push(['', `He is onto the depth localities on ${d.aa}.`, `${d.id}: ${d.decision} by ${hplus(d.earliestH)}.`]);
+  for (const d of e.dps.filter((x) => x.kind === 'catk')) rows.push(['', `He is onto the depth localities on ${d.aa}.`, `${d.id}: ${d.decision.replace(/[.?]\s*$/, '')} by ${whenText(d.earliestH, hMin)}.`]);
   rows.forEach((r, i) => (r[0] = `${String.fromCharCode(97 + (i % 26))}.`));
   if (rows.length)
     patches.push({
@@ -579,12 +596,12 @@ export function writeEnemy(e: AprcEnemyIn): AprcWritten {
  * The tasks DP 1 gives: a Coy (3 Pls) to each BUA astride an apch on the FDLs and in depth, a Pl for the Str Pt and one
  * for the screen. A working assumption, laid out for the planner to change.
  */
-export function writeTasks(r: AorReading): AprcWritten {
+export function writeTasks(r: AorReading): AprcWritten & { pls: number | null } {
   const patches: AprcPatch[] = [];
   const fdl = r.lines.find((l) => l.role === 'FDLs');
   const depth = r.lines.find((l) => l.role === 'Depth');
   const screen = r.lines.find((l) => l.role === 'Screen');
-  if (!fdl) return { patches, confirm: [] };
+  if (!fdl) return { patches, confirm: [], pls: null };
   const named = !!r.mitg.name && r.mitg.name !== 'MITG';
   const rows: string[][] = [];
   let pls = 0, n = 0;
@@ -614,5 +631,207 @@ export function writeTasks(r: AorReading): AprcWritten {
   const basis = [calc('A Coy (3 Pls) to each BUA astride an apch on the FDLs and in depth, a Pl each for the Str Pt and the screen: a working assumption to change, not a book figure'), data('BUAs astride the apchs on each line: the AOR reading')];
   patches.push({ id: 'own.tasks.dp1', draft: '', state: 'judge', table: { head: ['Ser', 'Locs', 'Inf', 'A tk', 'Engrs'], rows, widths: [0.1, 0.44, 0.16, 0.15, 0.15] }, basis });
   patches.push({ id: 'own.ded.basic', draft: `DP 1 needs ${pls} x pl. Set this against the pls held and say how the difference is met.`, state: 'judge', basis, prompts: ['Almt of tps to tasks'] });
+  return { patches, confirm: [], pls };
+}
+
+// ── clock times ──────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** "HH:MM" or "HHMM" (24 h) to minutes after midnight on D Day; null when it is neither. */
+export function parseHHour(s: string | null | undefined): number | null {
+  const m = /^\s*([01]?\d|2[0-3]):?([0-5]\d)\s*$/.exec(String(s ?? ''));
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+/** A time H + `h` hours as a clock time on its day: "0740 hrs D Day", "0110 hrs D+1". */
+export function clockAt(hMin: number, h: number): string {
+  const t = Math.round(hMin + h * 60);
+  const day = Math.floor(t / 1440);
+  const m = ((t % 1440) + 1440) % 1440;
+  const hhmm = `${String(Math.floor(m / 60)).padStart(2, '0')}${String(m % 60).padStart(2, '0')}`;
+  return `${hhmm} hrs ${day === 0 ? 'D Day' : `D${day > 0 ? '+' : ''}${day}`}`;
+}
+
+/** "H+1:40" or, with H set, "H+1:40 (0740 hrs D Day)"; a span "H+1:40 to H+7:04 (0740 hrs D Day to 1304 hrs D Day)". */
+export function whenText(t: [number, number] | number, hMin: number | null): string {
+  const [a, b] = Array.isArray(t) ? t : [t, t];
+  const one = Math.abs(b - a) < 0.05;
+  const rel = one ? hplus(a) : `${hplus(a)} to ${hplus(b)}`;
+  if (hMin === null) return rel;
+  return `${rel} (${one ? clockAt(hMin, a) : `${clockAt(hMin, a)} to ${clockAt(hMin, b)}`})`;
+}
+
+// ── relative strength (ORBAT) ────────────────────────────────────────────────────────────────────────────────────
+
+/** One unit of a side: its ORBAT figures, and how many of it. */
+export interface AprcForceUnit {
+  name: string;
+  count: number;
+  /** Manoeuvre Coys / Sqns (ORBAT). */
+  coys: number;
+  /** All ranks; null when the ORBAT does not print it. */
+  strength: number | null;
+  atgm: number;
+  mortars: number;
+  plsPerCoy: number | null;
+  src: string;
+}
+
+export interface AprcStrengthIn {
+  en: AprcForceUnit[];
+  /** Why the en is assumed (no en symbol marked), else null. */
+  enAssumed: string | null;
+  own: AprcForceUnit[];
+  ownAssumed: string | null;
+  /** Pls DP 1 needs (the tasks table), or null. */
+  need: number | null;
+}
+
+const ratio = (en: number, own: number): string => (own > 0 ? `${(en / own).toFixed(1)} : 1` : en > 0 ? `${en} : 0` : '–');
+const sumOf = (us: AprcForceUnit[], f: (u: AprcForceUnit) => number | null): number | null => {
+  let s = 0;
+  for (const u of us) {
+    const v = f(u);
+    if (v === null) return null;
+    s += v * u.count;
+  }
+  return s;
+};
+const unitsText = (us: AprcForceUnit[]): string => us.map((u) => `${u.count} x ${u.name}`).join(', ');
+const n1 = (x: number): string => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+
+/** Own Str as Related to that of the En, and how the Pls held meet DP 1's tasks. */
+export function writeStrength(s: AprcStrengthIn): AprcWritten {
+  const patches: AprcPatch[] = [];
+  if (!s.en.length || !s.own.length) return { patches, confirm: [] };
+  const coysEn = sumOf(s.en, (u) => u.coys) ?? 0, coysOwn = sumOf(s.own, (u) => u.coys) ?? 0;
+  const stEn = sumOf(s.en, (u) => u.strength), stOwn = sumOf(s.own, (u) => u.strength);
+  const atEn = sumOf(s.en, (u) => u.atgm) ?? 0, atOwn = sumOf(s.own, (u) => u.atgm) ?? 0;
+  const moEn = sumOf(s.en, (u) => u.mortars) ?? 0, moOwn = sumOf(s.own, (u) => u.mortars) ?? 0;
+  const rows = [
+    ['a.', 'Manoeuvre Coys / Sqns', n1(coysEn), n1(coysOwn), ratio(coysEn, coysOwn)],
+    ['b.', 'All ranks', stEn === null ? '?' : stEn.toLocaleString('en-GB'), stOwn === null ? '?' : stOwn.toLocaleString('en-GB'), stEn !== null && stOwn !== null ? ratio(stEn, stOwn) : '?'],
+    ['c.', 'ATGM launchers', String(atEn), String(atOwn), ratio(atEn, atOwn)],
+    ['d.', 'Mortars', String(moEn), String(moOwn), ratio(moEn, moOwn)],
+  ];
+  const srcs = [...new Set([...s.en, ...s.own].map((u) => u.src))];
+  const basis: AprcBasis[] = [data(`ORBAT: ${srcs.join('; ')}`), calc('Each side summed over its units; ratio = en to own')];
+  if (s.enAssumed) basis.push(input(`En assumed: ${s.enAssumed}`));
+  if (s.ownAssumed) basis.push(input(`Own assumed: ${s.ownAssumed}`));
+  patches.push({
+    id: 'own.str',
+    draft: `En: ${unitsText(s.en)}${s.enAssumed ? ' (assumed)' : ''}. Own: ${unitsText(s.own)}${s.ownAssumed ? ' (assumed)' : ''}.`,
+    state: s.enAssumed || s.ownAssumed ? 'judge' : 'map',
+    table: { head: ['Ser', 'Arms', 'En', 'Own', 'Ratio'], rows, widths: [0.08, 0.36, 0.2, 0.2, 0.16] },
+    basis,
+  });
+  const ownComp = s.own.map((u) => `${u.count} x ${u.name}: ${n1(u.coys)} manoeuvre Coys${u.plsPerCoy ? ` of ${u.plsPerCoy} Pls` : ''}${u.strength ? `, ${u.strength.toLocaleString('en-GB')} all ranks` : ''}${u.atgm ? `, ${u.atgm} ATGM launchers` : ''}${u.mortars ? `, ${u.mortars} mortars` : ''}`).join('; ');
+  patches.push({ id: 'own.comp', draft: `${ownComp}.`, state: s.ownAssumed ? 'judge' : 'map', basis: [data(`ORBAT: ${[...new Set(s.own.map((u) => u.src))].join('; ')}`), ...(s.ownAssumed ? [input(`Own assumed: ${s.ownAssumed}`)] : [])] });
+  const held = sumOf(s.own, (u) => (u.plsPerCoy === null ? null : u.coys * u.plsPerCoy));
+  if (s.need !== null && held !== null) {
+    const pairs = Math.floor(atOwn / 2);
+    const diff = held - s.need;
+    patches.push({
+      id: 'own.ded.basic',
+      draft: `DP 1 needs ${s.need} x pl; ${unitsText(s.own)} holds ${Math.round(held)} x pl: ${diff < 0 ? `short by ${-Math.round(diff)} x pl. Say how the shortfall is met (regrouping, a locality held by less, more tps from higher HQ)` : diff > 0 ? `${Math.round(diff)} x pl to spare for the res or the screen` : 'exactly met, with nothing in res'}. ${pairs} ATGM pairs held for the A tk tasks.`,
+      state: 'judge',
+      basis: [data(`ORBAT: ${[...new Set(s.own.map((u) => u.src))].join('; ')}`), calc('Pls held = manoeuvre Coys x Pls a Coy; ATGM pairs = launchers / 2'), calc('Pls needed: the DP 1 tasks table')],
+    });
+  }
+  return { patches, confirm: s.enAssumed ? [{ text: `En strength is assumed (${s.enAssumed}): mark his units on the map for the real figures.`, paras: ['own.str'] }] : [] };
+}
+
+// ── time required ────────────────────────────────────────────────────────────────────────────────────────────────
+
+export interface AprcTimeIn {
+  /** The move in: from where (words), straight-line km, the speed taken and its source. Null: no move found. */
+  move: { from: string; km: number; kmh: number; src: string } | null;
+  /** Posns prepared in [min, max] hours, and the source. */
+  prep: { h: [number, number]; src: string } | null;
+  /** The protective minefield along the FDLs. */
+  mines: { frontM: number; engr: string; handH: number | null; mechH: number | null; perPl: number; src: string } | null;
+}
+
+/** Time Req: the rows the data gives, the others ruled for the planner. */
+export function writeTimeReq(t: AprcTimeIn): AprcWritten {
+  const patches: AprcPatch[] = [];
+  if (!t.move && !t.prep && !t.mines) return { patches, confirm: [] };
+  const rows: string[][] = [];
+  const basis: AprcBasis[] = [];
+  let low = 0;
+  if (t.move) {
+    const h = t.move.km / t.move.kmh;
+    low += h;
+    rows.push(['a.', 'Mov / occupation of def', `${h.toFixed(1)} +`, `Mov from ${t.move.from}: ${t.move.km.toFixed(1)} km in a straight line at ${t.move.kmh} km/h by night; the road is longer. Occupation: yours`]);
+    basis.push(rule(`March speed: ${t.move.src}`), calc('Straight line from the unit symbol to the MITG: a lower bound'));
+  } else rows.push(['a.', 'Mov / occupation of def', '', 'The unit is in the AOR already, or not marked']);
+  if (t.prep) {
+    low += t.prep.h[0];
+    rows.push(['b.', 'Improvement of def posns', `${t.prep.h[0]}-${t.prep.h[1]}`, 'A Coy prepares its posn in this time']);
+    basis.push(rule(t.prep.src));
+  } else rows.push(['b.', 'Improvement of def posns', '', '']);
+  rows.push(['c.', 'Clearance of F of F / imp of OHP', '', '']);
+  if (t.mines) {
+    const best = [t.mines.handH, t.mines.mechH].filter((x): x is number => x !== null).sort((a, b) => a - b)[0] ?? null;
+    if (best !== null) low += best;
+    rows.push([
+      'd.',
+      'Protective M fd laying',
+      best === null ? '' : String(best),
+      `${km(t.mines.frontM)} km of front by ${t.mines.engr}: by hand ${t.mines.handH ?? '–'} h${t.mines.mechH !== null ? `, with MMLs ${t.mines.mechH} h` : ''} (${t.mines.perPl} mixed clusters a Pl in 24 h)`,
+    ]);
+    basis.push(rule(`Mine laying: ${t.mines.src}`), data('Front: the FDLs line of the AOR reading'));
+  } else rows.push(['d.', 'Protective M fd laying', '', '']);
+  rows.push(['e.', 'Wire obs / denial plan', '', ''], ['f.', 'Cam and clt', '', ''], ['g.', 'Coord / unforeseen', '', '']);
+  rows.push(['', 'Total time', low ? `${Math.round(low)} +` : '', 'At least, from the rows filled; work in parallel shortens it']);
+  patches.push({ id: 'ts.req', draft: '', state: 'judge', table: { head: ['S/No', 'Activity', 'Time (hrs)', 'From'], rows, widths: [0.08, 0.32, 0.14, 0.46] }, basis });
+  return { patches, confirm: t.move ? [{ text: 'The move in is a straight line: take the road distance and the column length from the Move Planner.', paras: ['ts.req'] }] : [] };
+}
+
+// ── grouping and tasks from a plan ───────────────────────────────────────────────────────────────────────────────
+
+export interface AprcCoyIn {
+  label: string;
+  /** fwd, depth, res (PlanCheck's posn kinds). */
+  kind: string;
+  /** "from incl Kot Jaimal to incl Nurpur", "over Kot Jaimal", or null. */
+  span: string | null;
+  /** Other units inside its posn (ATGM, OPs, attached Pls). */
+  units: string[];
+  /** Moves the what-if gives it: where to, minutes, in time or not. */
+  moves: Array<{ to: string; min: number; inTime: boolean }>;
+  /** C attk objs: the fwd posns it is behind, for depth and res. */
+  catk: string[];
+}
+
+const KIND_ORDER: Record<string, number> = { fwd: 0, depth: 1, res: 2 };
+
+/** Exec, Grouping and Tasks: a sub-paragraph per Coy of the plan, as drawn. */
+export function writeCoyTasks(coys: AprcCoyIn[]): AprcWritten {
+  const patches: AprcPatch[] = [];
+  const list2 = coys.filter((c) => c.kind in KIND_ORDER).sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.label.localeCompare(b.label));
+  if (!list2.length) return { patches, confirm: [] };
+  const planIn = input('The plan on the map, as checked (Check my plan)');
+  const kids = list2.map((c) => {
+    const id = `plan.exec.tasks.${slug(c.label)}`;
+    const tasks: string[] = [];
+    if (c.kind === 'res') tasks.push(`Be in res ${c.span ?? 'as shown on the trace'} by ${AprcRuleText}.`);
+    else tasks.push(`Take up def posn ${c.span ?? 'as shown on the trace'} by ${AprcRuleText}.`);
+    if ((c.kind === 'depth' || c.kind === 'res') && c.catk.length) tasks.push(`Be prep to launch C attk on ${list(c.catk, 'or')} on orders.`);
+    for (const m of c.moves) tasks.push(`Be prep to occupy ${m.to} on orders (${Math.round(m.min)} min: ${m.inTime ? 'in time' : 'not in time on the what-if'}).`);
+    return para(id, c.label, {
+      draft: '',
+      state: 'map',
+      children: [
+        para(`${id}.grp`, 'Grouping', c.units.length ? { draft: `In loc: ${list(c.units)}.`, state: 'map', basis: [planIn] } : { prompts: ['Under comd, in sp, in loc'] }),
+        para(`${id}.tasks`, 'Tasks', {
+          draft: '',
+          state: 'map',
+          children: tasks.map((t, i) => para(`${id}.t${i + 1}`, null, { draft: t, state: i === 0 ? 'map' : 'judge', basis: i === 0 ? [planIn, data('Ends of the posn: the nearest named places, the 1:50k map')] : [planIn, calc('Depth and res: C attk onto the fwd posns; moves from the what-if, timed against his lead element')] })),
+        }),
+      ],
+    });
+  });
+  patches.push({ id: 'plan.exec.tasks', draft: '', state: 'map', children: kids, basis: [planIn] });
   return { patches, confirm: [] };
 }
+const AprcRuleText = '________';
