@@ -44,12 +44,16 @@ import { PlatoonGuideMap } from './PlatoonGuideMap';
 import { PlatoonGuideCard } from './PlatoonGuideCard';
 import { PlatoonGuideHalo } from './PlatoonGuideHalo';
 import { PlatoonGuideDetail, type PlTab } from './PlatoonGuideDetail';
-import { patrolCard, plLngLat, plRulesFrom, readPoint, type MercXY, type PatrolCard, type PlEchelon, type PlEye, type PlFootSpeeds, type PlReading, type ScanFn } from './PlatoonGuideRead';
+import { patrolCard, plLngLat, plRulesFrom, readPoint, type MercXY, type PatrolCard, type PlEchelon, type PlEye, type PlFootSpeeds, type PlReading, type Rules, type ScanFn } from './PlatoonGuideRead';
 import { briefLines, ECHELON_WORD, mgrsOf, type PlatoonBrief } from './PlatoonGuideText';
 
 const ENGINE = 'PlatoonGuide';
 const REST_MS = 350;
 const MAX_RERUNS = 12;
+
+/** The search radius: the echelon's bubble as doctrine gives it, or that bubble widened. */
+export type PlSearchRadius = 'echelon' | '1.5' | '2' | '3';
+export const SEARCH_RADIUS_SCALE: Record<PlSearchRadius, number> = { echelon: 1, '1.5': 1.5, '2': 2, '3': 3 };
 
 export interface PlatoonGuideOptions {
   bundleUrl: string;
@@ -72,6 +76,8 @@ export interface PlatoonGuideOptions {
   keys: boolean;
   /** The bubble when no symbol gives one. */
   echelon: Exclude<PlEchelon, 'default'>;
+  /** How far round the point to read: the echelon's bubble, or wider (x1.5, x2, x3; capped at PlatoonDoctrine bubble.maxM). */
+  searchRadius: PlSearchRadius;
   eye: PlEye;
   /** Whose NO-GO decides the vehicle way out and the dangers on roads. */
   mover: 'wheeled' | 'tracked';
@@ -92,6 +98,7 @@ export const DEFAULT_PLATOON_GUIDE_OPTIONS: PlatoonGuideOptions = {
   bar: true,
   keys: true,
   echelon: 'platoon',
+  searchRadius: 'echelon',
   eye: 'standing',
   mover: 'wheeled',
   threat: 'groundGuide',
@@ -125,6 +132,15 @@ function pathOf(geom: any): MercXY[] | null {
   return path.length >= 2 ? path : null;
 }
 
+/** How deep and fast a man with his kit may wade: the Movement Guide's water doctrine holds the figures (water.ford), so
+ *  both guides give the same answer. */
+function withMovementWater(R: Rules, mov: any): Rules {
+  const f = mov?.water?.ford;
+  if (typeof f?.footDepthM === 'number') R.water.wadeDepthM = f.footDepthM;
+  if (typeof f?.footCurrentMs === 'number') R.water.wadeCurrentMs = f.footCurrentMs;
+  return R;
+}
+
 /** Where a reading came from: the cursor (hover), a symbol being placed, a selected or right-clicked symbol, the API. */
 type Origin = 'cursor' | 'draw' | 'select' | 'api';
 
@@ -142,7 +158,7 @@ export default class PlatoonGuide {
   private _enabled = false;
   private _state: 'off' | 'loading' | 'ready' | 'unavailable' = 'off';
   private _error: string | null = null;
-  private _rules = plRulesFrom(DOCTRINE);
+  private _rules = withMovementWater(plRulesFrom(DOCTRINE), MOV_DOCTRINE);
   private _movRules = rulesFrom(MOV_DOCTRINE);
   private _roadScanner = new RouteScanner(this._movRules);
   private _footScanner = new RouteScanner(this._movRules);
@@ -228,6 +244,10 @@ export default class PlatoonGuide {
     if (typeof patch.panel === 'boolean' && typeof patch.card !== 'boolean') next.card = patch.panel; // the docked panel's old switch
     if (typeof patch.bundleUrl === 'string') next.bundleUrl = patch.bundleUrl.trim().replace(/\/+$/, '');
     if (patch.echelon && ['team', 'section', 'platoon', 'company'].includes(patch.echelon)) next.echelon = patch.echelon;
+    // Numbers are taken too (2 -> '2'), so a host can pass the multiple as it thinks of it.
+    const sr = patch.searchRadius === undefined || patch.searchRadius === null ? null : String(patch.searchRadius);
+    if (sr !== null && sr in SEARCH_RADIUS_SCALE) next.searchRadius = sr as PlSearchRadius;
+    else if (sr === '1') next.searchRadius = 'echelon';
     if (patch.eye && ['prone', 'kneeling', 'standing', 'rooftop'].includes(patch.eye)) next.eye = patch.eye;
     if (patch.mover === 'wheeled' || patch.mover === 'tracked') next.mover = patch.mover;
     if (patch.threat === 'groundGuide' || patch.threat === 'none') next.threat = patch.threat;
@@ -246,7 +266,7 @@ export default class PlatoonGuide {
     if (!next.bar) this._detail.showBar(false);
     else if (!prev.bar && !this._barHidden) this._detail.showBar(true);
     if (next.mover !== prev.mover) this._roadScanner.clear();
-    const changed = (['echelon', 'eye', 'mover', 'threat', 'map', 'mapSight', 'card', 'cursor', 'haloRadius'] as const).some((k) => next[k] !== prev[k]);
+    const changed = (['echelon', 'searchRadius', 'eye', 'mover', 'threat', 'map', 'mapSight', 'card', 'cursor', 'haloRadius'] as const).some((k) => next[k] !== prev[k]);
     if (this._shown && changed) {
       const s = this._shown.subject;
       this._run(s.kind === 'point' && s.origin === 'cursor' ? { ...s, echelon: next.echelon, what: this._whatFor(next.echelon, 'cursor') } : s, true);
@@ -305,6 +325,8 @@ export default class PlatoonGuide {
     this._roadScanner.clear();
     this._footScanner.clear();
     const probe = new PlatoonGuideProbe(() => this._onData());
+    // Own side and the lines that part the sides: the same LoC / international lines the dangers read (not provinces).
+    probe.setSideRules(this._rules.side ?? {}, (this._movRules.exposure?.borderKinds ?? null) as string[] | null);
     this._probe = probe;
     this._state = 'loading';
     this._error = null;
@@ -663,6 +685,7 @@ export default class PlatoonGuide {
       reading = readPoint(probe, this._rules, {
         at,
         echelon: s.echelon,
+        radiusScale: SEARCH_RADIUS_SCALE[this._opts.searchRadius] ?? 1,
         eye: this._opts.eye,
         month: now.getMonth() + 1,
         foot: probe.going('dismounted'),

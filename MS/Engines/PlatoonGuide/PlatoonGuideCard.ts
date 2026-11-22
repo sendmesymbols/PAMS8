@@ -22,7 +22,7 @@ import { ensureTokensCss, STEP_COLOR, STEP_TEXT, TONE, toneIcon, type Tone } fro
 import { ensureNorthCss, orientNorth, whereNode } from '../GroundGuide/GroundGuideNorth';
 import type { PlGoing, PlReading, PlSpot } from './PlatoonGuideRead';
 import { glyphIcon, GLYPH_COLOR, plRadar } from './PlatoonGuideRadar';
-import { dist, ECHELON_WORD, EYE_WORD, num, type PlatoonBrief } from './PlatoonGuideText';
+import { dist, ECHELON_WORD, EYE_WORD, leadWater, num, type PlatoonBrief } from './PlatoonGuideText';
 
 const STYLE_ID = 'ms-platoon-guide-card-style';
 const EDGE = 8;
@@ -164,8 +164,7 @@ export class PlatoonGuideCard {
     const rad = el('div', 'ms-plc-radar');
     rad.append(plRadar(r, { px: 150, sight: true, scale: false }));
     const stats = el('div', 'ms-plc-stats');
-    const W = H.water;
-    const wLead = W.perennial && W.nearest && W.perennial.distM < W.nearest.distM * 2 ? W.perennial : W.nearest;
+    const wLead = leadWater(H.water);
     stats.append(stat('water', 'Water', wLead ? [where(wLead)] : ['none in 5 km'], wLead ? `${wLead.label}${wLead.why ? ` · ${wLead.why}` : ''}` : undefined));
     const ways = H.waysOut.dirs.filter((d) => d.foot === 'go').length;
     const wv = el('span', 'ms-plc-ways');

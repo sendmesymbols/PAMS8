@@ -41,7 +41,21 @@ export const platoonGuideSettingsManifest: SettingDescriptor[] = [
       { value: 'platoon', label: 'Platoon (1 km)' },
       { value: 'company', label: 'Company (2 km)' },
     ],
-    help: 'How far round the point the dangers, people, help and where-to-stop are read (MS/Data/PlatoonDoctrine.json bubble.radiusM). A placed symbol uses its own echelon.',
+    help: 'How far round the point the dangers, people, help and where-to-stop are read (MS/Data/PlatoonDoctrine.json bubble.radiusM). A placed symbol uses its own echelon. Search radius below widens it.',
+  },
+  {
+    path: ['platoonGuide', 'searchRadius'],
+    label: 'Search radius',
+    group: 'Reading',
+    type: 'enum',
+    options: [
+      { value: 'echelon', label: 'As the echelon (Pl 1 km)' },
+      { value: '1.5', label: '× 1.5 (Pl 1.5 km, Coy 3 km)' },
+      { value: '2', label: '× 2 (Pl 2 km, Coy 4 km)' },
+      { value: '3', label: '× 3 (Pl 3 km, Coy 5 km)' },
+    ],
+    help: 'Widen the search ring (the dotted ring on the map) for every echelon: Team 300 m, Sec 500 m, Pl 1 km and Coy 2 km times this, never past 5 km (PlatoonDoctrine.json bubble.maxM). The dangers on the Rds, people, sensitive sites and where to stop are read within it. Sight still reaches 1.5 km; water, help and hospitals have their own, longer searches. Wider rings take longer to read when the cursor rests.',
+    keywords: ['radius', 'bubble', 'search', 'ring', 'range', 'wider', 'distance'],
   },
   {
     path: ['platoonGuide', 'eye'],
@@ -83,7 +97,7 @@ export const platoonGuideSettingsManifest: SettingDescriptor[] = [
     label: 'Show on the map',
     group: 'Display',
     type: 'boolean',
-    help: 'The search radius as a dotted ring with its distance, a marker on each answer (the halo\'s icon with a short word under it: Wtr water, Cov better cover, HLS, Hosp / BHU, KM stone, BUA, Pol / Post / BOP / Fort / Cantt help, RL relay, PB patrol base, OP; IED, Amb, VP, RB likely dangers, ringed when strong; HG Gr that looks down on you), and the patrol route card.',
+    help: 'The search radius as a dotted ring with its distance, a marker on each answer (the halo\'s icon with a short word under it: Wtr water, Cov better cover, HLS, Hosp / BHU, KM stone, BUA, Pol / Post / BOP / Fort / Cantt help, RL relay, PB patrol base, OP; IED, Amb, VP, RB likely dangers, ringed when strong; HG Gr that looks down on you; Br / FtBr / Ford / Fy / BtBr crossings when water is near, Tr the nearest foot track, Note the sheet\'s notes on the going, PO / Tel / W/T comms, Rch a river reach with figures), BUA outlines (dashed: the area of a village with no outline), and the patrol route card with the crossing nearest each obstacle.',
   },
   {
     path: ['platoonGuide', 'mapSight'],

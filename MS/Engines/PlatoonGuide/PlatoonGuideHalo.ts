@@ -17,8 +17,8 @@
 
 import { ensureTokensCss, STEP_COLOR, SURFACE, TONE, toneIcon } from '../GroundGuide/GroundGuideTokens';
 import type { PlReading, PlSpot } from './PlatoonGuideRead';
-import { dangerGlyph, glyph, GLYPH_CODE, GLYPH_COLOR, helpCode } from './PlatoonGuideRadar';
-import { dist, ECHELON_WORD, type PlatoonBrief } from './PlatoonGuideText';
+import { crossingCode, dangerGlyph, glyph, GLYPH_CODE, GLYPH_COLOR, helpCode } from './PlatoonGuideRadar';
+import { dist, ECHELON_WORD, leadWater, type PlatoonBrief } from './PlatoonGuideText';
 
 const STYLE_ID = 'ms-platoon-guide-halo-style';
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -69,8 +69,9 @@ export function haloItems(r: PlReading): HaloItem[] {
   const H = r.here;
   const lead = leadOf(r);
   if (lead) add(lead, dangerGlyph(lead.kind) ?? 'mine', true);
-  const W = H.water;
-  add(W.perennial && W.nearest && W.perennial.distM < W.nearest.distM * 2 ? W.perennial : W.nearest, 'water');
+  add(leadWater(H.water), 'water');
+  // Water shuts a way out: the nearest crossing (Br, Ford, Fy...).
+  if (H.waysOut.waterBlocks) add(H.waysOut.crossings[0], 'crossing', false, crossingCode(H.waysOut.crossings[0]?.kind));
   add(H.hls.ground, 'hls');
   add(r.help.friends[0], 'help', false, helpCode(r.help.friends[0]?.kind));
   add(H.medical.hospital, 'hospital');

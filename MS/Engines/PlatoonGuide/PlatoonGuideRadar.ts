@@ -45,6 +45,10 @@ export const GLYPH_COLOR = {
   cover: '#c4a484',
   km: '#f5f5f5',
   relay: '#8c9eff',
+  crossing: '#7fd1c7',
+  track: '#d7b98a',
+  comms: '#9fc5ff',
+  note: '#f0e68c',
 } as const;
 
 export type GlyphKind = keyof typeof GLYPH_COLOR;
@@ -67,6 +71,10 @@ export const GLYPH_CODE: Record<GlyphKind, string> = {
   cover: 'Cov',
   km: 'KM',
   relay: 'RL',
+  crossing: 'Br',
+  track: 'Tr',
+  comms: 'PO',
+  note: 'Note',
 };
 export const GLYPH_WORD: Record<GlyphKind, string> = {
   water: 'water',
@@ -84,7 +92,19 @@ export const GLYPH_WORD: Record<GlyphKind, string> = {
   cover: 'better cover',
   km: 'KM stone',
   relay: 'relay Gr',
+  crossing: 'crossing: bridge, ford, ferry',
+  track: 'footpath / pack / cart track',
+  comms: 'comms: post office, telephone, wireless',
+  note: 'the sheet\'s note on the going',
 };
+/** The short word for a crossing, by its kind (Br bridge, FtBr foot bridge, Ford, Fy ferry, BtBr boat bridge...). */
+export function crossingCode(kind: string | undefined): string {
+  return ({ bridge: 'Br', bridge_iron: 'Br', foot_bridge: 'FtBr', boat_bridge: 'BtBr', viaduct: 'Vdt', ferry: 'Fy', ford: 'Ford', culvert: 'Clvt', aqueduct: 'Aqd', siphon: 'Syp' } as Record<string, string>)[kind ?? ''] ?? 'Br';
+}
+/** The short word for a comms site: PO post office, Tel telephone exchange, W/T wireless station. */
+export function commsCode(kind: string | undefined): string {
+  return ({ post_office: 'PO', telephone_exchange: 'Tel', wireless_station: 'W/T' } as Record<string, string>)[kind ?? ''] ?? 'PO';
+}
 /** The short word for a place of help, by its kind (Pol police station, BOP border post, Cantt cantonment...). */
 export function helpCode(kind: string | undefined): string {
   return ({ police_station: 'Pol', post: 'Post', border_post: 'BOP', fort: 'Fort', cantonment: 'Cantt', watch_tower: 'Twr' } as Record<string, string>)[kind ?? ''] ?? 'Help';
@@ -192,6 +212,25 @@ export function glyph(g: Element, kind: keyof typeof GLYPH_COLOR, x: number, y: 
       add(g, 'path', { d: `M${x} ${y - s * 1.3}L${x + s * 1.1} ${y + s * 0.8}L${x - s * 1.1} ${y + s * 0.8}Z`, fill: 'none', stroke: col, 'stroke-width': 1.8, 'stroke-linejoin': 'round', ...up });
       add(g, 'circle', { cx: x, cy: y + s * 0.1, r: s * 0.32, fill: col, ...up });
       break;
+    case 'crossing':
+      // A bridge: the deck over an arch, water under it.
+      add(g, 'path', { d: `M${x - s * 1.2} ${y - s * 0.35}H${x + s * 1.2}M${x - s * 0.95} ${y + s * 0.8}V${y - s * 0.35}M${x + s * 0.95} ${y + s * 0.8}V${y - s * 0.35}`, stroke: col, 'stroke-width': 1.8, 'stroke-linecap': 'round', fill: 'none', ...up });
+      add(g, 'path', { d: `M${x - s * 0.95} ${y + s * 0.8}Q${x} ${y - s * 0.2} ${x + s * 0.95} ${y + s * 0.8}`, stroke: col, 'stroke-width': 1.4, fill: 'none', ...up });
+      break;
+    case 'track':
+      // A path: two dashed parallel lines running off.
+      add(g, 'path', { d: `M${x - s * 1.1} ${y + s * 1}L${x - s * 0.15} ${y - s * 1}M${x + s * 0.15} ${y + s * 1}L${x + s * 1.1} ${y - s * 1}`, stroke: col, 'stroke-width': 1.7, 'stroke-dasharray': `${(s * 0.55).toFixed(2)} ${(s * 0.35).toFixed(2)}`, 'stroke-linecap': 'round', fill: 'none', ...up });
+      break;
+    case 'comms':
+      // An envelope: a message out when the radio fails.
+      add(g, 'rect', { x: x - s * 1.15, y: y - s * 0.8, width: s * 2.3, height: s * 1.6, rx: 1, fill: col, ...stroke, ...up });
+      add(g, 'path', { d: `M${x - s * 1.15} ${y - s * 0.8}L${x} ${y + s * 0.15}L${x + s * 1.15} ${y - s * 0.8}`, stroke: SURFACE.ring, 'stroke-width': 1.1, fill: 'none', ...up });
+      break;
+    case 'note':
+      // A sheet with lines: what the map itself says.
+      add(g, 'rect', { x: x - s * 0.85, y: y - s * 1.1, width: s * 1.7, height: s * 2.2, rx: 1, fill: col, ...stroke, ...up });
+      add(g, 'path', { d: `M${x - s * 0.5} ${y - s * 0.45}H${x + s * 0.5}M${x - s * 0.5} ${y}H${x + s * 0.5}M${x - s * 0.5} ${y + s * 0.45}H${x + s * 0.2}`, stroke: SURFACE.ring, 'stroke-width': 1, fill: 'none', ...up });
+      break;
   }
 }
 
@@ -227,7 +266,9 @@ export function plRadar(r: PlReading, o: RadarOpts): SVGSVGElement {
   // Sight inside the bubble, to true scale.
   const S = r.see;
   if (S && o.sight !== false) {
-    const k = R_BUB / Math.max(1, Math.min(S.radiusM, r.radiusM));
+    // The bubble's scale, the glyphs' own: a Coy's sight reaches 1.5 km of its 2 km bubble and is drawn that far, not
+    // stretched to the ring.
+    const k = R_BUB / Math.max(1, r.radiusM);
     const half = 180 / S.rays.length + 0.4;
     const fill = ['', '#2fa862', '#ffb300', '#ff4d55'];
     const op = [0, 0.22, 0.42, 0.55];
@@ -272,6 +313,8 @@ export function plRadar(r: PlReading, o: RadarOpts): SVGSVGElement {
   if (H.water.perennial && H.water.perennial !== H.water.nearest) push(H.water.perennial, 'water');
   push(r.stop?.harbour, 'harbour');
   push(r.stop?.op, 'op');
+  // Where to cross when water shuts a way out.
+  if (H.waysOut.waterBlocks) push(H.waysOut.crossings[0], 'crossing');
   for (const ov of S?.overlook ?? []) push(ov, 'overlook');
   for (const sp of r.danger?.spots ?? []) {
     const kind = sp.kind === 'mine' ? 'mine' : sp.kind === 'ambush' ? 'ambush' : sp.kind === 'block' ? 'block' : sp.kind === 'vp' ? 'vp' : null;
@@ -301,7 +344,7 @@ export function plRadar(r: PlReading, o: RadarOpts): SVGSVGElement {
 }
 
 /** The radar's glyphs, in the order of its key (each with its map word, GLYPH_CODE, and meaning, GLYPH_WORD). */
-export const RADAR_KEY: GlyphKind[] = ['water', 'mine', 'ambush', 'vp', 'overlook', 'hls', 'hospital', 'help', 'bua', 'harbour', 'op'];
+export const RADAR_KEY: GlyphKind[] = ['water', 'crossing', 'mine', 'ambush', 'vp', 'overlook', 'hls', 'hospital', 'help', 'bua', 'harbour', 'op'];
 
 /** One small glyph as its own SVG (for keys and stat tiles). */
 export function glyphIcon(kind: keyof typeof GLYPH_COLOR, px = 14): SVGSVGElement {

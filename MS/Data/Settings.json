@@ -857,6 +857,7 @@
     "bar": true,
     "keys": true,
     "echelon": "platoon",
+    "searchRadius": "echelon",
     "eye": "standing",
     "mover": "wheeled",
     "threat": "groundGuide",

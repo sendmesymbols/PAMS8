@@ -6,7 +6,7 @@
  * BUA, Posn, Pl, Coy ...); sentences in full. No DOM, no ArcGIS.
  */
 
-import type { PatrolCard, PlReading, PlSpot } from './PlatoonGuideRead';
+import { plGridDeg, type PatrolCard, type PlReading, type PlSpot } from './PlatoonGuideRead';
 
 export interface PlLight {
   /** Now: day, twilight, moonlight or starlight. */
@@ -50,6 +50,12 @@ export function dist(m: number): string {
 export function brg(deg: number): string {
   return `${String(Math.round(((deg % 360) + 360) % 360) % 360).padStart(3, '0')}°`;
 }
+/** The water to lead with (halo, card, map alike): a source that needs no power or season when it is within twice the
+ *  nearest's distance, else the nearest. */
+export function leadWater(w: PlReading['here']['water']): PlSpot | null {
+  return w.perennial && w.nearest && w.perennial.distM < w.nearest.distM * 2 ? w.perennial : w.nearest;
+}
+
 /** "Tube well 220 m NE" (distance 0: "here"). */
 export function spotWords(s: PlSpot | null | undefined, opts: { name?: boolean; why?: boolean } = {}): string {
   if (!s) return 'none recorded';
@@ -121,11 +127,19 @@ export function readingLines(b: PlatoonBrief): string[] {
   const w = H.water;
   out.push(`  Water: ${list([w.nearest && spotWords(w.nearest, { why: true }), w.perennial && spotWords(w.perennial, { why: true }), w.line && spotWords(w.line)].filter(Boolean) as string[])}`);
   if (w.brackish) out.push(`  Brackish noted on the map ${dist(w.brackish.distM)} ${w.brackish.dir}: test before drinking`);
+  if (w.line && w.lineFigures) out.push(`  ${w.line.label}${w.line.name ? ` ${w.line.name}` : ''}: ${w.lineFigures.why}`);
+  if (w.reach && w.reachFigures) out.push(`  River reach${w.reach.name ? ` ${w.reach.name}` : ''} ${dist(w.reach.distM)} ${w.reach.dir}: ${w.reachFigures.why}`);
+  if (w.lake) out.push(`  Lake: ${spotWords(w.lake, { why: true })}`);
+  if (w.marsh) out.push(`  Marsh: ${spotWords(w.marsh, { why: true })}`);
+  if (w.bank) out.push(`  On a ${w.bank.label.toLowerCase()} (within ${w.bank.withinM} m): cover from direct fire, a line to deploy on`);
   const open = H.waysOut.dirs.filter((d) => d.foot === 'go' || d.foot === 'slow').map((d) => (d.foot === 'slow' ? `${d.dir} (slow)` : d.dir));
-  const shut = H.waysOut.dirs.filter((d) => d.foot === 'nogo').map((d) => d.dir);
+  const shut = H.waysOut.dirs.filter((d) => d.foot === 'nogo').map((d) => (d.blockedBy ? `${d.dir} (${d.blockedBy})` : d.dir));
   const vOpen = H.waysOut.dirs.filter((d) => d.veh === 'go').map((d) => d.dir);
   out.push(`  Way out on foot: ${open.join(' ') || 'none'}${shut.length ? `; blocked ${shut.join(' ')}` : ''}. Veh: ${vOpen.join(' ') || 'none'}`);
+  if (H.waysOut.crossings.length) out.push(`  Crossings: ${H.waysOut.crossings.map((c) => `${spotWords(c)} (${c.why})`).join('; ')}`);
   out.push(`  Nearest Rd / Tr: ${H.waysOut.road ? `${H.waysOut.road.name ?? H.waysOut.road.label} ${dist(H.waysOut.road.distM)} ${H.waysOut.road.dir}` : 'none within 5 km'}`);
+  if (H.waysOut.track) out.push(`  Foot track: ${spotWords(H.waysOut.track, { why: true })}`);
+  for (const nt of H.goingNotes) out.push(`  Sheet note ${dist(nt.distM)} ${nt.dir}: "${nt.why ?? ''}"`);
   const hl = H.hls;
   const wires = hl.wires.map((x) => `${x.label} ${dist(x.distM)} ${x.dir}`);
   out.push(`  Landing site: ${hl.ground ? (hl.ground.distM < 15 ? 'clear Gr here' : `clear Gr ${dist(hl.ground.distM)} ${hl.ground.dir}`) : 'no clear Gr within 2 km'}${wires.length ? `; wires near it: ${wires.join(', ')}` : ''}; recorded: ${spotWords(hl.recorded)}`);
@@ -144,8 +158,9 @@ export function readingLines(b: PlatoonBrief): string[] {
     out.push(`  Overlooked from: ${list(S.overlook.map((o) => `${dist(o.distM)} ${o.dir} (${o.why})`), 'no higher Gr in view within 800 m')}`);
     if (S.rooftops) out.push(`  Rooftops: ${dist(S.rooftops.distM)} ${S.rooftops.dir}: ${S.rooftops.why}`);
     if (S.skyline) out.push('  You are on a crest: you show on the skyline; move below it');
-    out.push(`  Range card: ${list(S.refs.map((x) => `${brg(x.bearingDeg)} ${dist(x.distM)} ${x.name ?? x.label}`), 'no landmark in view')}`);
-    out.push(`  Resection: ${S.resection.length === 3 ? S.resection.map((x) => `${brg(x.bearingDeg)} ${x.name ?? x.label} ${dist(x.distM)}`).join('; ') : 'fewer than three fixed landmarks in view'}`);
+    const gb = (x: PlSpot) => brg(plGridDeg(x.bearingDeg, S.grid.convDeg));
+    out.push(`  Range card (grid bearings, ${S.grid.name}): ${list(S.refs.map((x) => `${gb(x)} ${dist(x.distM)} ${x.name ?? x.label}`), 'no landmark in view')}`);
+    out.push(`  Resection: ${S.resection.length === 3 ? S.resection.map((x) => `${gb(x)} ${x.name ?? x.label} ${dist(x.distM)}`).join('; ') : 'fewer than three fixed landmarks in view'}`);
   }
   if (b.light || b.vis) {
     const v = b.vis;
@@ -155,7 +170,9 @@ export function readingLines(b: PlatoonBrief): string[] {
 
   const D = r.danger;
   if (D) {
-    out.push(`3 DANGER ROUND ME (Rds and Trs scanned: ${D.roadKm.toFixed(1)} km)`);
+    const sightPart = D.sightKm < D.roadKm - 0.05 ? `; overlooked read on the nearest ${D.sightKm.toFixed(1)} km` : '';
+    const leftPart = D.roadLeftKm > 0.05 ? ` (the nearest; ${D.roadLeftKm.toFixed(1)} km more not scanned)` : '';
+    out.push(`3 DANGER ROUND ME (Rds and Trs scanned: ${D.roadKm.toFixed(1)} km${leftPart}${sightPart})`);
     if (!D.spots.length) out.push('  No likely mine / IED or ambush site found on the Rds in the bubble');
     for (const s of D.spots) out.push(`  ${s.label} ${dist(s.distM)} ${s.dir} — ${s.why ?? ''} (${s.score})`);
     if (D.approaches.length) out.push(`  Covered Gr towards you: ${D.approaches.map((a) => `${a.label} ${dist(a.distM)} ${a.dir}`).join('; ')}`);
@@ -169,7 +186,7 @@ export function readingLines(b: PlatoonBrief): string[] {
   const rings = P.rings.map((x) => `${num(x.people)} within ${x.km} km`);
   out.push(`  ${P.perKm2 !== null ? `~${num(P.perKm2)} /km² here; ~${num(P.within500 ?? 0)} within 500 m` : 'People here not known'}${rings.length ? `; ${rings.join('; ')}` : ''}`);
   if (P.ages) out.push(`  Within 2 km: males 15-49 ${num(P.ages.males15_49)}, under 15 ${num(P.ages.under15)}, over 65 ${num(P.ages.over65)}`);
-  out.push(`  Nearest BUA: ${P.bua ? `${P.bua.name} ${dist(P.bua.distM)} ${P.bua.dir}${P.bua.why ? ` (${P.bua.why})` : ''}` : 'none recorded within 10 km'}`);
+  out.push(`  Nearest BUA: ${P.bua ? `${P.bua.name ?? P.bua.label} ${dist(P.bua.distM)} ${P.bua.dir}${P.bua.why ? ` (${P.bua.why})` : ''}` : 'none recorded within 10 km'}`);
   if (P.bld) out.push(`  Bldgs here: ${P.bld.density}, ${P.bld.size}${P.bld.tall ? ', tall' : ''}`);
   if (P.huts) out.push(`  Huts: ~${P.huts.perKm2} permanent /km²${P.huts.temporary ? ', temporary huts nearby (nomads)' : ''}`);
   out.push(`  Sensitive sites within ${dist(r.radiusM)}: ${list(P.sensitive.counts.map((c) => `${c.label} ${c.n}`))}${P.sensitive.nearest[0] ? `; nearest ${spotWords(P.sensitive.nearest[0])}` : ''}`);
@@ -181,6 +198,7 @@ export function readingLines(b: PlatoonBrief): string[] {
   if (HP.relay) out.push(`  Relay / OP Gr: ${dist(HP.relay.distM)} ${HP.relay.dir} (${HP.relay.why})`);
   if (HP.radioShadow) out.push('  Low Gr ringed by higher Gr: radio shadow likely; send from the high Gr');
   if (HP.supply.length) out.push(`  Supply: ${HP.supply.map((x) => spotWords(x)).join('; ')}`);
+  if (HP.comms.length) out.push(`  Comms: ${HP.comms.map((x) => spotWords(x)).join('; ')}`);
 
   const ST = r.stop;
   if (ST) {
@@ -193,10 +211,10 @@ export function readingLines(b: PlatoonBrief): string[] {
 
 export function patrolLines(p: PatrolCard): string[] {
   const out: string[] = [];
-  out.push(`PATROL ROUTE CARD · ${dist(p.lengthM)} · ${p.legs.length} legs · day ${p.minDay} min / night ${p.minNight} min`);
+  out.push(`PATROL ROUTE CARD · ${dist(p.lengthM)} · ${p.legs.length} legs · day ${p.minDay} min / night ${p.minNight} min · grid bearings (${p.grid})`);
   for (const l of p.legs) {
     const end = l.endFeature ? ` → ends at ${l.endFeature.name ?? l.endFeature.label}${l.endFeature.distM > 20 ? ` (${dist(l.endFeature.distM)} ${l.endFeature.dir} of the turn)` : ''}` : ' → no landmark at the turn';
-    out.push(`  Leg ${l.i}: ${brg(l.bearingDeg)} ${dist(l.distM)}, ${num(l.paces)} paces, ${l.minDay} / ${l.minNight} min${l.climbM >= 10 ? `, climb ${l.climbM} m` : ''}${end}`);
+    out.push(`  Leg ${l.i}: ${brg(l.gridDeg)} ${dist(l.distM)}, ${num(l.paces)} paces, ${l.minDay} / ${l.minNight} min${l.climbM >= 10 ? `, climb ${l.climbM} m` : ''}${l.trackPct ? `, on a track ${l.trackPct}%` : ''}${end}`);
   }
   if (p.bounds.length) out.push(`  Bounds at ${p.bounds.map((x) => dist(x.chainM)).join(', ')}`);
   if (p.fmp) out.push(`  Final meeting point at ${dist(p.fmp.chainM)} (${dist(p.lengthM - p.fmp.chainM)} short of the end)`);
@@ -204,7 +222,7 @@ export function patrolLines(p: PatrolCard): string[] {
   if (p.threatKnown) out.push(`  Hidden from the threat: ${list(p.dead.map(range), 'no stretch')}`);
   out.push(`  Exposed: ${list(p.exposed.map((s) => `${range(s)} (${s.why})`), 'no stretch')}`);
   if (p.skyline.length) out.push(`  Skyline: ${p.skyline.map(range).join('; ')}`);
-  if (p.obstacles.length) out.push(`  Obs crossed: ${p.obstacles.map((o) => `${o.label} at ${dist(o.chainM)}`).join('; ')}`);
+  if (p.obstacles.length) out.push(`  Obs crossed: ${p.obstacles.map((o) => `${o.label} at ${dist(o.chainM)}${o.crossing ? ` (${o.crossing.label} ${dist(o.crossing.distM)} ${o.crossing.dir} of it)` : ' (no crossing within 1.5 km)'}`).join('; ')}`);
   if (p.villages.length) out.push(`  Villages passed: ${p.villages.map((v) => `${v.name ?? 'village'} at ${dist(v.chainM)}`).join('; ')}: avoid at night`);
   for (const d of p.dangers.slice(0, 8)) out.push(`  ${d.label} ${range(d)} — ${d.why}`);
   for (const c of p.checks) out.push(`  Check: ${c}`);

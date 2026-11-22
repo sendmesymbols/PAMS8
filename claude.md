@@ -305,9 +305,20 @@ MS/
   onto the bar, holds the reading where the cursor last rested (a pin on the map) so the mouse can leave the map; A again
   walks the tabs, Shift+A back, Esc folds the Detail and lets the pin go, placing the symbol lets it go. Colours and sizes from
   GroundGuideTokens.ts, arrows and roses turn with the map (GroundGuideNorth). Bubble by echelon 300 m / 500 m / 1 km /
-  2 km; quick reads per move, full at rest (350 ms). Map layer `ms-platoon-guide`. Pure engine `PlatoonGuideRead.ts`
-  (`node tools/platoon-test/run.mjs`, 57 checks), bundle reader `PlatoonGuideProbe.ts`, figures
-  `MS/Data/PlatoonDoctrine.json` (R / E basis). The Movement Guide's Patrol card calls `patrolCard`: keep `PlProbe`,
+  2 km, widened by `platoonGuide.searchRadius` (x1.5 / x2 / x3, never past `bubble.maxM` 5 km); quick reads per move, full at rest (350 ms). Map layer `ms-platoon-guide`. Pure engine `PlatoonGuideRead.ts`
+  (`node tools/platoon-test/run.mjs`, 99 checks), bundle reader `PlatoonGuideProbe.ts`, figures
+  `MS/Data/PlatoonDoctrine.json` (R / E basis). **Side of the LoC / border** (`PlatoonGuideSide.ts`, `side.*`; review
+  22 Nov 2026: the bundle holds Indian and IIOJ&K posts, police, cantonments): help, casevac, recorded HLS, supply and relay
+  own side only; water, cover, HLS Gr, nearest Rd, PB and OP on the point's side; from admin.geojson `country` areas, near a
+  line the boundary line itself, within 100 m of it not known (`node tools/platoon-test/side.mjs` on the real bundle).
+  Bearings shown are grid: the sheets' Indian grid (sheets.json `grid`) else UTM (`plGridDeg`, `PlLeg.gridDeg`; spots keep
+  true bearings for drawing). Also read (22 Nov 2026): crossings (`crossing.*`: bridge, ford, ferry, boat bridge, aqueduct,
+  siphon; on the nearest canal / river first; the crossing nearest each patrol obstacle), the nearest foot track (`route`
+  layer types 1 2 3 4 7, `track.*`; legs' `trackPct`) and the sheet's `note_going`; water figures (canal / river width, depth,
+  banks; `river_reach` depth, current, wet span; lake, marsh, the `bank` layer) with a wade verdict from MovementDoctrine
+  `water.ford`; comms (post office, telephone exchange, wireless station); dams / barrages / headworks as VPs; BUA outlines
+  from settlements.geojson (`PlatoonGuideBua.ts`, parsed in `PlatoonGuideBuaWorker.ts`): nearest BUA to its edge, the PB
+  test, outlines on the map (`node tools/platoon-test/bua.mjs`). The Movement Guide's Patrol card calls `patrolCard`: keep `PlProbe`,
   `plRulesFrom`, `PatrolCard`, `PlLeg`, `PlFootSpeeds` and `patrolCard` stable.
 - **NightMarch** (`Engines/NightMarch/`) — optional, off by default (`features.nightMarch`; info bar 🌙 Nt March / ✎ / ⚙).
   The night march chart (OCOKA_Roadmap.md ch. 2): draw SP → turns → double-click FUP → click Obj; legs with grid /

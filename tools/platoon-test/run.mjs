@@ -280,5 +280,181 @@ const flatProbe = { ...probe, elev: () => 500, sight2: (ox, oy, e, tx, ty, t) =>
 const flat = P.readPoint(flatProbe, R, { ...ctx, full: true, scanRoad: undefined });
 check('flat ground: no OP site claimed (needs a tower or a roof)', flat.stop.op === null);
 
+// ── review fixes (2026-11-22) ────────────────────────────────────────────────────────────────────────────────────────
+
+// The LoC / border: a line running north-south 1500 m east of O; west of it own, east of it the other side, within
+// 100 m of it not known (as PlatoonGuideSide says on the line).
+const LOC_E = 1500;
+const sideOf = (x, y) => {
+  const e = local(x, y).e;
+  return e < LOC_E - 100 ? 'own' : e > LOC_E + 100 ? 'other' : null;
+};
+const locLine = { kind: 'Line of Control', xy: [...at(LOC_E, -20000), ...at(LOC_E, 20000)], box: [at(LOC_E, 0)[0], at(0, -20000)[1], at(LOC_E, 0)[0], at(0, 20000)[1]] };
+const sideProbe = { ...probe, side: sideOf, sideState: () => 'ready' };
+const sctx = { ...ctx, borders: [...borders, locLine] };
+const sLive = P.readPoint(sideProbe, R, sctx);
+check('side: police station across the LoC is not help', !sLive.help.friends.some((f) => f.kind === 'police_station'), sLive.help.friends.map((f) => f.kind).join(', '));
+check('side: own-side watch tower still help', sLive.help.friends.some((f) => f.kind === 'watch_tower'));
+check('side: hospital and helipad across the LoC left out', sLive.here.medical.hospital === null && sLive.here.hls.recorded === null);
+check('side: BHU on the line (not known) left out', sLive.here.medical.bhu === null);
+check('side: reading says help across was left out', sLive.side.state === 'ready' && sLive.side.here === 'own' && sLive.side.leftOut && sLive.checks.some((c) => /LoC/.test(c)));
+check('side: water on own side kept', sLive.here.water.nearest?.kind === 'tube_well');
+const across = P.readPoint(sideProbe, R, { ...sctx, at: at(2500, 0) });
+check('side: from across the LoC, help is own side only', across.side.here === 'other' && across.help.friends.every((f) => sideOf(f.x, f.y) === 'own') && across.checks.some((c) => /across the LoC/.test(c)));
+check('side: from across the LoC, own-side water is not "nearby water"', across.here.water.nearest === null, across.here.water.nearest?.label);
+const sFull = P.readPoint(sideProbe, R, { ...sctx, at: at(1200, 0), full: true, scanRoad: undefined });
+const sideIdx = sFull.stop.tests.findIndex((t) => t.key === 'side');
+check('side: patrol base sites across the LoC ruled out first', sideIdx === 0 && sFull.stop.tests[0].out > 0 && sFull.stop.grid.cells.filter((c) => c[2] === -1).every(([dx]) => 1200 + dx < LOC_E - 100));
+check('side: relay not across the LoC', !sFull.help.relay || sideOf(sFull.help.relay.x, sFull.help.relay.y) === 'own');
+const loading = P.readPoint({ ...sideProbe, sideState: () => 'loading' }, R, sctx);
+check('side: while the areas load, help is held back', loading.side.state === 'loading' && loading.help.friends.length === 0 && loading.here.medical.hospital === null);
+check('side: no areas in the bundle: not checked, and said so', live.side.state === 'none' && live.gaps.some((x) => /LoC/.test(x)));
+
+// Hidden from the threat: a stretch is the ground its stations stand for (a lone 50 m station is under the 100 m rule,
+// two make 100 m). Stations every 50 m.
+{
+  const hidden = new Set([4, 10, 11, 20, 21, 22]);
+  const stations = Array.from({ length: 30 }, (_, i) => ({ chainM: i * 50, x: O[0], y: O[1], exposedP: hidden.has(i) ? 0.1 : 0.9, overlook: null, crest: false }));
+  const c5 = P.patrolCard(probe, R, [O, at(0, 1450)], { ...pctx, threat: at(0, 5000), scanRoad: () => ({ stationM: 50, stations, stretches: [], placesPassed: [], pending: false }) });
+  const got = c5.dead.map((d) => `${d.fromM}-${d.toM}`).join(' ');
+  check('hidden stretches: two stations (100 m) kept, a lone one dropped', got === '500-550 1000-1100', got);
+}
+
+// A repeated vertex is no leg: legs carry their own ends, and their lengths add up to the route.
+{
+  const c6 = P.patrolCard(probe, R, [O, at(0, 500), at(0, 500), at(500, 500)], pctx);
+  const sum = c6.legs.reduce((a, l) => a + l.distM, 0);
+  check('repeated vertex: two legs, ends and lengths match the route', c6.legs.length === 2 && Math.abs(sum - c6.lengthM) < 0.01 && M.groundDist(c6.legs[1].from, at(0, 500)) < 0.5);
+}
+
+// Grid bearings: the sheet's grid when the probe knows it, else UTM.
+{
+  const utm = P.plUtmConvergence(M.lngLatToMerc(72.0, 33.6));
+  check('UTM convergence at 72°E 33.6°N (zone 43, 3° W of its meridian) about -1.66°', Math.abs(utm.deg + 1.657) < 0.01 && utm.name === 'UTM zone 43', utm.deg.toFixed(3));
+  const gp = { ...probe, gridConvergence: () => ({ deg: 3.4, name: 'Indian grid zone I' }) };
+  const c7 = P.patrolCard(gp, R, [O, at(800, 0)], pctx);
+  check('leg grid bearing = true minus convergence (090° true, 086.6° grid)', Math.abs(c7.legs[0].gridDeg - 86.6) < 0.1 && c7.grid === 'Indian grid zone I' && c7.checks.some((c) => /Indian grid zone I/.test(c)), c7.legs[0].gridDeg.toFixed(1));
+  const g8 = P.readPoint(gp, R, { ...ctx, full: true, scanRoad: undefined });
+  check('range card carries the grid it is in', g8.see.grid.name === 'Indian grid zone I' && g8.see.grid.convDeg === 3.4);
+}
+
+// People within 500 m never more than within 1 km (the cell's density spread over 500 m).
+{
+  const pp = P.readPoint(probe, R, { ...ctx, people: { perKm2At: 400, rings: [{ km: 1, people: 160 }], ages: null } });
+  check('within 500 m capped by the 1 km ring', pp.people.within500 === 160, String(pp.people.within500));
+}
+
+// Overlooked road stretches: read on the nearest `sightKmMax` of road, and the reading says when more was not read.
+{
+  check('all of a short road net read with sight', Math.abs(D.sightKm - D.roadKm) < 1e-9);
+  const R2 = P.plRulesFrom({ ...JSON.parse(readFileSync(resolve(repo, 'MS/Data/PlatoonDoctrine.json'), 'utf8')), danger: { ...R.danger, sightKmMax: 0.5 } });
+  // A second road 400 m N: the nearer (the N-5, 300 m S) is read with sight, the second is not.
+  const road2 = { kind: 'road', xy: [...at(-3000, 400), ...at(3000, 400)], attrs: { t: 'metalled' } };
+  const twoRoads = { ...probe, lines: (x, y, r, kinds) => [...probe.lines(x, y, r, kinds), ...(kinds.has('road') && lineDist(x, y, road2.xy) <= r + 10 ? [road2] : [])] };
+  const part = P.readPoint(twoRoads, R2, { ...ctx, full: true });
+  check('beyond sightKmMax: sight on the nearest only, said in the gaps', part.danger.sightKm < part.danger.roadKm && part.gaps.some((x) => /overlooked/.test(x)), `${part.danger.sightKm.toFixed(2)} of ${part.danger.roadKm.toFixed(2)} km`);
+}
+
+// Patrol base: the BUA measured to its built-up edge, not its point; tracks on the 1:50k map count as roads.
+{
+  // Concealment everywhere (so the BUA and road tests decide), the village's point moved far off, no road network.
+  const bp = {
+    ...probe,
+    raster: (layer, x, y) => (layer === 'cc' ? (clsL(local(x, y).e, local(x, y).n) === 3 ? (2 << 4) | 2 : (2 << 4) | 1) : probe.raster(layer, x, y)),
+    features: (x, y, r, kinds) => probe.features(x, y, r, kinds).filter((f) => f.kind !== 'village'),
+    roads: () => [],
+  };
+  const bf = P.readPoint(bp, R, { ...ctx, echelon: 'company', full: true, scanRoad: undefined });
+  const passedCells = bf.stop.grid.cells.filter((c) => c[2] === -1);
+  const edge = ([dx, dy]) => Math.hypot(dx - VILL.e, dy - VILL.n) - VILL.r;
+  const nearBuaIdx = bf.stop.tests.findIndex((t) => t.key === 'nearBua');
+  check('PB: no site within 1 km of the built-up edge (village point far off)', passedCells.length > 0 && passedCells.every((c) => edge(c) >= 1000 - bf.stop.grid.stepM), `${passedCells.length} passed, nearest edge ${Math.round(Math.min(...passedCells.map(edge)))} m`);
+  check('PB: the edge test ruled sites out', bf.stop.grid.cells.some((c) => c[2] === nearBuaIdx && edge(c) > 150));
+  check('PB: no site within 300 m of the 1:50k road (no road network)', passedCells.every(([, dy]) => Math.abs(dy + 300) >= 300 - 1), `nearest ${Math.round(Math.min(...passedCells.map(([, dy]) => Math.abs(dy + 300))))} m`);
+}
+
+// Search radius: the echelon's bubble widened by the user's multiple, never past bubble.maxM.
+{
+  const w2 = P.readPoint(probe, R, { ...ctx, radiusScale: 2, full: true, scanRoad: undefined });
+  check('search radius x2: Pl bubble 2 km, the PB grid reads all of it', w2.radiusM === 2000 && w2.stop.checked > STP.checked && Math.max(...w2.stop.grid.cells.map(([dx, dy]) => Math.hypot(dx, dy))) > 1800, `${w2.radiusM} m, ${w2.stop.checked} sites`);
+  const w3 = P.readPoint(probe, R, { ...ctx, echelon: 'company', radiusScale: 3 });
+  check('search radius x3 on a Coy capped at 5 km', w3.radiusM === 5000);
+  const w0 = P.readPoint(probe, R, { ...ctx, radiusScale: 0.5 });
+  check('search radius never below the echelon\'s bubble', w0.radiusM === 1000);
+  const t5 = performance.now();
+  const wide = P.readPoint(probe, R, { ...ctx, echelon: 'company', radiusScale: 3, full: true });
+  check('full read at 5 km in time', wide.radiusM === 5000 && performance.now() - t5 < 4000, `${(performance.now() - t5).toFixed(0)} ms, ${wide.danger.roadKm.toFixed(1)} km of Rds`);
+}
+
+// ── crossings, tracks, water figures, comms, BUA outlines (2026-11-22) ─────────────────────────────────────────────
+{
+  // A footpath 200 m N; the canal's banks; on the canal a foot bridge (400 m N) and a causeway ford (900 m S); a river
+  // reach, a sheet note, comms sites, a dam; the canal with its figures; BUAs: Test Kot's outline (a 300 m square round
+  // the village), a hamlet near the point.
+  const EXTRA = [
+    ['bridge', -250, 400, { bt: 'foot' }],
+    ['ford', -250, -900, { bt: 'causeway' }],
+    ['river_reach', 1200, -1500, { n: 'Test R', dp: 2.5, cu: 1.8, ws: 120, bk: 3 }],
+    ['note_going', 300, 400, { n: 'Jeepable' }],
+    ['post_office', 900, 100, { n: 'Test Post Office' }],
+    ['telephone_exchange', -1500, 1500, {}],
+    ['dam', 700, -700, { n: 'Test Dam' }],
+  ].map(([kind, e, nn, a]) => ({ kind, x: at(e, nn)[0], y: at(e, nn)[1], a }));
+  const RLINES = LINES.map((l) => (l.kind === 'canal' ? { ...l, attrs: { n: 'Test Canal', t: 'Canal', s: 'Perennial', w: 20, dp: 3, b: 2 } } : l));
+  const sq = (e0, n0, e1, n1) => Float64Array.from([...at(e0, n0), ...at(e1, n0), ...at(e1, n1), ...at(e0, n1), ...at(e0, n0)]);
+  const AREAS = [
+    { name: 'Test Kot', label: 'Large village', cls: 'large_village', pop: 5200, x: at(VILL.e, VILL.n)[0], y: at(VILL.e, VILL.n)[1], rings: [sq(VILL.e - 150, VILL.n - 150, VILL.e + 150, VILL.n + 150)], radiusM: 170 },
+    { name: 'Test Dera', label: 'Hamlet', cls: 'hamlet', pop: 40, x: at(-600, -1200)[0], y: at(-600, -1200)[1], rings: null, radiusM: 60 },
+  ];
+  const rich = {
+    ...probe,
+    raster(layer, x, y) {
+      const l = local(x, y);
+      if (layer === 'route') return Math.abs(l.n - 200) <= 10 && Math.abs(l.e) <= 3000 ? 1 : 0;
+      if (layer === 'bank') {
+        const d = Math.abs(l.e + 250);
+        return d <= 10 ? 0 : d <= 30 ? (4 << 2) | 0 : d <= 75 ? (4 << 2) | 1 : 0;
+      }
+      return probe.raster(layer, x, y);
+    },
+    features(x, y, r, kinds) {
+      const out = probe.features(x, y, r, kinds);
+      for (const f of EXTRA) {
+        if (!kinds.has(f.kind)) continue;
+        const d = Math.hypot(f.x - x, f.y - y) * s;
+        if (d <= r) out.push({ kind: f.kind, label: LABEL[f.kind] ?? f.kind.replace(/_/g, ' '), name: typeof f.a.n === 'string' ? f.a.n : null, x: f.x, y: f.y, distM: d, attrs: f.a });
+      }
+      return out.sort((p, q) => p.distM - q.distM);
+    },
+    lines: (x, y, r, kinds) => RLINES.filter((l) => kinds.has(l.kind) && lineDist(x, y, l.xy) <= r + 10),
+    buaAreas: (x, y, r) => AREAS.filter((a) => P.buaEdge([x, y], a).d <= r),
+  };
+  const rctx = { ...ctx, codebooks: { ...codebooks, routeTypes: g.route.types, routeTiers: g.route.tiers, banks: rules.grotbc.banks } };
+  const rl = P.readPoint(rich, R, rctx);
+  const RH = rl.here;
+  const onCanal = (sp) => Math.abs(local(sp.x, sp.y).e + 250) < 1;
+  check('water shuts the way W: the canal named', RH.waysOut.waterBlocks && RH.waysOut.dirs.find((d) => d.dir === 'W').blockedBy === 'Canal');
+  check('crossings on the canal, nearest first: foot bridge, then the causeway ford', RH.waysOut.crossings.length === 2 && RH.waysOut.crossings.every(onCanal) && RH.waysOut.crossings[0].kind === 'bridge' && /foot only/.test(RH.waysOut.crossings[0].why) && /causeway ford/.test(RH.waysOut.crossings[1].why), RH.waysOut.crossings.map((c) => `${c.kind} ${Math.round(c.distM)}`).join(', '));
+  check('nearest foot track: the footpath 200 m N', RH.waysOut.track?.label === 'Footpath' && Math.abs(RH.waysOut.track.distM - 200) <= 30 && RH.waysOut.track.dir === 'N', RH.waysOut.track ? `${RH.waysOut.track.label} ${Math.round(RH.waysOut.track.distM)} ${RH.waysOut.track.dir}` : 'none');
+  check('the sheet\'s going note', RH.goingNotes.length === 1 && RH.goingNotes[0].why === 'Jeepable');
+  check('canal figures: 20 m wide, 3 m deep: not to be waded', RH.water.lineFigures?.wade === 'no' && /20 m wide/.test(RH.water.lineFigures.why) && /3 m deep/.test(RH.water.lineFigures.why), RH.water.lineFigures?.why);
+  check('river reach: 2.5 m deep, 1.8 m/s: not to be waded', RH.water.reach?.name === 'Test R' && RH.water.reachFigures?.wade === 'no' && /current 1.8/.test(RH.water.reachFigures.why));
+  check('wading figures checked on the ground', rl.checks.some((c) => /too deep or fast to wade/.test(c)) && rl.checks.some((c) => /Crossings as recorded/.test(c)));
+  const onBank = P.readPoint(rich, R, { ...rctx, at: at(-280, 0) });
+  check('on the canal bank (within 30 m)', onBank.here.water.bank?.label === 'Canal bank' && onBank.here.water.bank.withinM === 30, JSON.stringify(onBank.here.water.bank));
+  check('comms: post office, then telephone exchange, nearest first', rl.help.comms.map((c) => c.kind).join(',') === 'post_office,telephone_exchange');
+  check('BUA measured to its outline, not its point', rl.people.buaEdge && rl.people.bua?.name === 'Test Kot' && Math.abs(rl.people.bua.distM - Math.hypot(VILL.e - 150, VILL.n - 150)) < 5, rl.people.bua ? `${Math.round(rl.people.bua.distM)} m` : 'none');
+  check('hamlet near the point: drawn, not the nearest BUA', rl.people.buaAreas.some((a) => a.cls === 'hamlet') && rl.people.bua?.name !== 'Test Dera');
+  const rf = P.readPoint(rich, R, { ...rctx, echelon: 'company', full: true, scanRoad: undefined });
+  check('danger: the dam as a vulnerable point', rf.danger.hazards.some((h) => h.kind === 'dam' && /vulnerable point/.test(h.why ?? '')));
+  const edge = ([dx, dy]) => P.buaEdge(at(dx, dy), AREAS[0]).d;
+  const pc = rf.stop.grid.cells.filter((c) => c[2] === -1);
+  check('PB: no site within 1 km of the BUA outline', pc.every((c) => edge(c) >= 1000 - rf.stop.grid.stepM), `${pc.length} passed`);
+  const rp = P.patrolCard(rich, R, [O, at(-600, 0)], pctx);
+  check('patrol: the canal crossed, with the foot bridge 400 m N of it', rp.obstacles.length === 1 && rp.obstacles[0].crossing?.kind === 'bridge' && Math.abs(rp.obstacles[0].crossing.distM - 400) < 20, rp.obstacles.map((o) => `${o.label} ${o.crossing?.kind} ${Math.round(o.crossing?.distM ?? -1)}`).join(' '));
+  const rt = P.patrolCard(rich, R, [at(-100, 200), at(900, 200)], pctx);
+  check('patrol: a leg along the footpath is on a track', rt.legs[0].trackPct === 100 && rp.legs[0].trackPct === 0, `${rt.legs[0].trackPct}% / ${rp.legs[0].trackPct}%`);
+}
+
 console.log(`\n${n - fails} / ${n} checks passed${fails ? `, ${fails} FAILED` : ''}`);
 process.exit(fails ? 1 : 0);

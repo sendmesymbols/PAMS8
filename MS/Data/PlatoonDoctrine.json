@@ -10,6 +10,8 @@
     "basis": "E",
     "note": "How far round the point each echelon looks (dangers, people, help, where to stop).",
     "radiusM": { "team": 300, "section": 500, "platoon": 1000, "company": 2000, "default": 1000 },
+    "maxM": 5000,
+    "maxNote": "The user's Search radius (platoonGuide.searchRadius: x1.5, x2, x3) widens the echelon's bubble up to maxM; beyond it the reading at rest gets slow (the dangers on every road in the bubble, the patrol base grid). Sight stays within sightMaxM.",
     "sightMaxM": 1500,
     "sightStepM": 50,
     "sightBearings": 36,
@@ -35,7 +37,33 @@
     "seasonal": ["tank_seasonal"],
     "lineKinds": ["river", "canal"],
     "brackishKm": 2,
-    "noteKind": "note_water"
+    "noteKind": "note_water",
+    "lakeKinds": ["lake"],
+    "marshKinds": ["marsh"],
+    "marshKm": 2,
+    "reachKinds": ["river_reach"],
+    "reachKm": 5,
+    "wadeNote": "wadeDepthM / wadeCurrentMs come from MovementDoctrine.json water.ford (footDepthM 1, footCurrentMs 1.5; basis E there) so both guides judge wading alike; the values here are only the fallback."
+  },
+  "crossing": {
+    "basis": "E",
+    "note": "Crossings named at the point: on the nearest canal or river when one is within reach (within 80 m of it), else the nearest of any kind; on the point's side of the LoC / border. A patrol route's obstacles each get the crossing nearest the place the route meets them.",
+    "kinds": ["bridge", "bridge_iron", "foot_bridge", "boat_bridge", "viaduct", "ferry", "ford", "culvert", "aqueduct", "siphon"],
+    "searchM": 2000,
+    "max": 3,
+    "waterClasses": [4, 5, 20, 21, 22, 46],
+    "obstacleM": 1500
+  },
+  "track": {
+    "basis": "E",
+    "note": "Foot tracks from the route layer (byte & 31 = type: 1 footpath, 2 pack track, 3 track along a bed, 4 glacier track, 7 cart track; rules.json grotbc.layers.route) and the 1:50k sheet's notes on the going (note_going).",
+    "types": [1, 2, 3, 4, 7],
+    "searchM": 1000,
+    "stepM": 30,
+    "bearings": 16,
+    "noteKind": "note_going",
+    "noteKm": 3,
+    "notesMax": 3
   },
   "hls": {
     "basis": "E",
@@ -86,6 +114,8 @@
     "basis": "R",
     "rule": "Likely mine / IED sites: culverts, bridges, crossroads, turning places, places where vehicles slow. Likely ambush sites: defile or bend, vehicles cannot leave the road, covered fire positions beside it, away from reinforcements. Read on every road and track inside the bubble by the Movement Guide's route scan (MovementDoctrine.json).",
     "roadKmMax": 30,
+    "sightKmMax": 8,
+    "sightNote": "Overlooked by high ground / rooftops is read on the nearest sightKmMax km of roads (sight is the costly part of the scan); the card says when roads beyond it were not read for it.",
     "kinds": ["mine", "ambush", "vp", "block", "overlooked", "rooftops"],
     "minScore": 40,
     "maxPerKind": 6,
@@ -96,6 +126,7 @@
     "hazardKinds": ["firing_range", "air_target", "mine", "mine_shaft", "quarry", "deserted_site", "cave", "oil_gas_well", "oil_tank", "grid_station", "crevasse", "ice_pinnacles", "earth_slide"],
     "lineHazardM": 200,
     "lineHazardKinds": ["power_line", "pipeline"],
+    "vpKinds": ["dam", "barrage", "headworks"],
     "borderKm": 20,
     "borderNearKm": 5,
     "monsoonMonths": [6, 7, 8, 9]
@@ -106,13 +137,18 @@
     "crowdKinds": ["market", "bus_stand", "rail_station", "stadium", "petrol_pump", "mill", "industrial_area"],
     "listMax": 6,
     "buaKm": 10,
-    "buaKinds": ["city", "district_hq", "town", "village_imp", "village"]
+    "buaKinds": ["city", "district_hq", "town", "village_imp", "village"],
+    "buaSkipClasses": ["hamlet"],
+    "buaAreasMax": 80,
+    "buaNote": "The nearest BUA and the patrol base test also read settlements.geojson (each BUA's outline, or the circle of its built-up area) and measure to its edge; hamlets are left to the built-up cells. buaAreasMax: outlines drawn on the map."
   },
   "help": {
     "basis": "E",
     "radiusKm": 30,
     "kinds": ["post", "watch_tower", "fort", "border_post", "cantonment", "police_station"],
     "supplyKinds": ["petrol_pump", "rest_house"],
+    "commsKinds": ["post_office", "telephone_exchange", "wireless_station"],
+    "commsKm": 30,
     "relayKm": 3,
     "valleyRiseM": 100
   },
@@ -129,7 +165,17 @@
     "opCandidates": 12,
     "opRadiusM": 1000,
     "opRiseM": 5,
-    "opNote": "An OP is proposed only on ground at least opRiseM above the bubble's mean height; ranked by the share of the ground within 1 km it sees plus half a point per metre of height."
+    "opNote": "An OP is proposed only on ground at least opRiseM above the bubble's mean height; ranked by the share of the ground within 1 km it sees plus half a point per metre of height.",
+    "buaDensityMin": 4,
+    "buaNote": "The BUA test measures to the nearest built-up ground (the Built-up area class, or buildings at this density class or denser: 4 = 300-1,000 per km2), not only to the place's point; basis E."
+  },
+  "side": {
+    "basis": "E",
+    "note": "Help, casevac, recorded landing sites, supply and relay are offered on the own side of the LoC / international border only; water, better cover, clear ground for a helicopter, the nearest Rd, patrol base and OP on the point's side. Away from a line the bundle's admin.geojson country areas decide; within nearLineM the boundary line itself (its stretch's left and right areas by majority); within onLineM of the line a place is not known and never offered as own. Siachen reads as the official map shows it, not the AGPL.",
+    "ownCountry": "Pakistan",
+    "nearLineM": 1000,
+    "onLineM": 100,
+    "searchKm": 70
   },
   "patrol": {
     "basis": "R",

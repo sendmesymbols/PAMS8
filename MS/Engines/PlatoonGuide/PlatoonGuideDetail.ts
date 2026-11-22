@@ -23,10 +23,10 @@
 import { ensureTokensCss, gauge, LEVEL_COLOR, LEVEL_TEXT, STEP_COLOR, STEP_TEXT, TONE } from '../GroundGuide/GroundGuideTokens';
 import { POPULATION_CLASSES, populationClass } from '../GroundGuide/GroundGuidePopulation';
 import { ensureNorthCss, orientNorth, whereNode } from '../GroundGuide/GroundGuideNorth';
-import type { PlGoing, PlReading, PlSee, PlSpot } from './PlatoonGuideRead';
+import { plGridDeg, type PlGoing, type PlReading, type PlSee, type PlSpot } from './PlatoonGuideRead';
 import { brg, briefLines, dist, ECHELON_WORD, EYE_WORD, num, type PlatoonBrief } from './PlatoonGuideText';
 import { leadDanger } from './PlatoonGuideCard';
-import { dangerGlyph, glyph, GLYPH_CODE, GLYPH_COLOR, GLYPH_WORD, glyphIcon, helpCode, plRadar, RADAR_KEY, type GlyphKind } from './PlatoonGuideRadar';
+import { commsCode, dangerGlyph, glyph, GLYPH_CODE, GLYPH_COLOR, GLYPH_WORD, glyphIcon, helpCode, plRadar, RADAR_KEY, type GlyphKind } from './PlatoonGuideRadar';
 
 /** Danger kinds in the order a patrol cares about them: what can kill it first, then what helps the enemy. */
 const DANGER_RANK: Record<string, number> = { mine: 0, ambush: 0, block: 0, vp: 1, rooftops: 1, overlooked: 2 };
@@ -478,35 +478,40 @@ function peopleMap(r: PlReading): SVGSVGElement {
   const P = r.people;
   const reachKm = 3;
   const { svg, g, at } = heroFrame('Where the people are');
-  const k = HR / reachKm;
+  const G = P.grid;
+  // The grid and the rings are counted from the centre of the point's cell (about 1 km): drawn from there, so the picture
+  // agrees with the counts; the point (the dial's centre), the BUA and the sites stand where they are.
+  const [ox, oy] = G?.offsetKm ?? [0, 0];
+  const k = HR / (reachKm + Math.hypot(ox, oy));
+  const cx0 = HC - ox * k, cy0 = HC + oy * k;
   const clipId = `pld-pm-${Math.round(Math.random() * 1e9)}`;
   const defs = svgEl('defs', {}, svg);
   const cp = svgEl('clipPath', { id: clipId }, defs);
   svgEl('circle', { cx: HC, cy: HC, r: HR }, cp);
   const cells = svgEl('g', { 'clip-path': `url(#${clipId})` }, g);
-  const G = P.grid;
   if (G && G.size > 0) {
     const half = Math.floor(G.size / 2);
-    const s = G.cellKm * k;
+    // Cells at their true size each way (30" cells are taller than wide here).
+    const sx = (G.cellKmX ?? G.cellKm) * k, sy = (G.cellKmY ?? G.cellKm) * k;
     for (let gr = 0; gr < G.size; gr++) {
       for (let gc = 0; gc < G.size; gc++) {
         const v = G.perKm2[gr * G.size + gc];
-        const cx = HC + (gc - half) * s, cy = HC + (gr - half) * s;
-        if (Math.hypot(cx - HC, cy - HC) > HR + s) continue;
-        if (v < 0) svgEl('rect', { x: (cx - s / 2).toFixed(1), y: (cy - s / 2).toFixed(1), width: s.toFixed(1), height: s.toFixed(1), fill: 'none', stroke: 'rgba(255,255,255,.08)' }, cells);
-        else svgEl('rect', { x: (cx - s / 2).toFixed(1), y: (cy - s / 2).toFixed(1), width: (s + 0.4).toFixed(1), height: (s + 0.4).toFixed(1), fill: populationClass(v).color, 'fill-opacity': 0.92, stroke: '#14181d', 'stroke-opacity': 0.35, 'stroke-width': 0.6 }, cells);
+        const cx = cx0 + (gc - half) * sx, cy = cy0 + (gr - half) * sy;
+        if (Math.hypot(cx - HC, cy - HC) > HR + Math.max(sx, sy)) continue;
+        if (v < 0) svgEl('rect', { x: (cx - sx / 2).toFixed(1), y: (cy - sy / 2).toFixed(1), width: sx.toFixed(1), height: sy.toFixed(1), fill: 'none', stroke: 'rgba(255,255,255,.08)' }, cells);
+        else svgEl('rect', { x: (cx - sx / 2).toFixed(1), y: (cy - sy / 2).toFixed(1), width: (sx + 0.4).toFixed(1), height: (sy + 0.4).toFixed(1), fill: populationClass(v).color, 'fill-opacity': 0.92, stroke: '#14181d', 'stroke-opacity': 0.35, 'stroke-width': 0.6 }, cells);
       }
     }
   } else {
     svgEl('text', { x: HC, y: HC + 34, 'text-anchor': 'middle', fill: '#c3cbd3', 'font-size': 11.5, 'font-family': FONT }, svg, 'No population grid in the bundle');
   }
-  // Rings with the people inside them.
+  // Rings with the people inside them, round the centre they were counted from.
   for (const km of [1, 2, 3]) {
     const rr = km * k;
-    svgEl('circle', { cx: HC, cy: HC, r: rr.toFixed(1), fill: 'none', stroke: '#fff', 'stroke-opacity': 0.75, 'stroke-width': 1.1, 'stroke-dasharray': km === 3 ? '' : '4 3' }, g);
+    svgEl('circle', { cx: cx0.toFixed(1), cy: cy0.toFixed(1), r: rr.toFixed(1), fill: 'none', stroke: '#fff', 'stroke-opacity': 0.75, 'stroke-width': 1.1, 'stroke-dasharray': km === 3 ? '' : '4 3' }, g);
     const n = P.rings.find((x) => x.km === km)?.people;
     // Inside the foot of each ring, so the outer one stays on the dial.
-    const lx = HC, ly = HC + rr - 5;
+    const lx = cx0, ly = cy0 + rr - 5;
     svgEl('text', { x: lx, y: ly.toFixed(1), 'text-anchor': 'middle', fill: '#fff', 'font-size': 11, 'font-weight': 750, 'font-family': FONT, 'paint-order': 'stroke', stroke: '#14181d', 'stroke-width': 3.2, 'data-gv-upright': `${lx} ${(ly - 4).toFixed(1)}` }, g, n !== undefined ? `${km} km · ${num(n)}` : `${km} km`);
   }
   if (r.radiusM < reachKm * 1000) svgEl('circle', { cx: HC, cy: HC, r: ((r.radiusM / 1000) * k).toFixed(1), fill: 'none', stroke: '#42a5f5', 'stroke-width': 1.6, 'stroke-dasharray': '5 4' }, g);
@@ -622,6 +627,7 @@ function classKey(): HTMLElement {
 
 /** Why a site was ruled out, by the first test it failed (PlStop.tests keys); passed sites are green. */
 const STOP_COL: Record<string, string> = {
+  side: '#3a2f45',
   nogo: '#8a3036',
   road: '#7b8794',
   bua: '#d2b27a',
@@ -1308,7 +1314,7 @@ export class PlatoonGuideDetail {
       ans('Patrol base / harbour', ST.harbour ? `PB ${dist(ST.harbour.distM)} ${ST.harbour.dir}` : 'None found', ST.harbour ? ST.harbourWhy.slice(0, 3).join(' · ') : ST.harbourWhy[1] ?? '', ST.harbour ? 'go' : 'marg');
       fact('Sites that pass', `${num(ST.passed)} of ${num(ST.checked)}`, 'every test', ST.passed ? 'go' : 'slow');
       fact('OP', ST.op ? where(ST.op) : 'none', ST.op ? ST.opWhy : 'needs a tower, roof or tree', ST.op ? undefined : 'warn');
-      fact('Concealment here', LVL[H.cover.concealment ?? 0] ?? '—', undefined, H.cover.concealment !== null && H.cover.concealment >= 2 ? 'go' : 'slow');
+      fact('Concealment here', H.cover.concealment === null ? 'not known' : LVL[H.cover.concealment] ?? '—', undefined, H.cover.concealment === null ? undefined : H.cover.concealment >= 2 ? 'go' : 'slow');
     }
     return s;
   }
@@ -1394,7 +1400,7 @@ export class PlatoonGuideDetail {
           if (n) counted.push([gk, `${n} ${word}`]);
         }
         if (counted.length) glyphs(counted);
-        line(el('span', 'ms-pld-why', `ringed: score 70+ · blue dashed: the search radius · ${D.roadKm.toFixed(1)} km of Rds read`));
+        line(el('span', 'ms-pld-why', `ringed: score 70+ · blue dashed: the search radius · ${D.roadKm.toFixed(1)}${D.roadLeftKm > 0.05 ? ` of ${(D.roadKm + D.roadLeftKm).toFixed(0)}` : ''} km of Rds read (nearest first)`));
         break;
       }
       case 'help': {
@@ -1485,7 +1491,26 @@ export class PlatoonGuideDetail {
       c.title = `${d.dir}: foot ${GO_WORD[d.foot]}, vehicles ${GO_WORD[d.veh]}`;
       dirs.append(c);
     }
-    out.push(tile('Way out on foot', dirs, pairs([['Vehicles', H.waysOut.dirs.filter((d) => d.veh === 'go').map((d) => d.dir).join(' ') || 'none'], ['Nearest Rd / Tr', H.waysOut.road ? frag(b(H.waysOut.road.name ?? H.waysOut.road.label), ' ', where(H.waysOut.road)) : 'none in 5 km']])));
+    // What shuts each blocked way (Canal W NW, Drain S), the crossings, the nearest foot track.
+    const shut = new Map<string, string[]>();
+    for (const d of H.waysOut.dirs) if (d.blockedBy) shut.set(d.blockedBy, [...(shut.get(d.blockedBy) ?? []), d.dir]);
+    const crossList = H.waysOut.crossings.length ? spotList(H.waysOut.crossings, () => GLYPH_COLOR.crossing, this._go, { why: true }) : null;
+    out.push(
+      tile(
+        'Way out on foot',
+        dirs,
+        pairs([
+          shut.size ? ['Shut by', [...shut.entries()].map(([what, ds]) => `${what} ${ds.join(' ')}`).join('; ')] : null,
+          ['Vehicles', H.waysOut.dirs.filter((d) => d.veh === 'go').map((d) => d.dir).join(' ') || 'none'],
+          ['Nearest Rd / Tr', H.waysOut.road ? frag(b(H.waysOut.road.name ?? H.waysOut.road.label), ' ', where(H.waysOut.road)) : 'none in 5 km'],
+          ['Foot track', H.waysOut.track ? frag(b(H.waysOut.track.label), ' ', where(H.waysOut.track), why(H.waysOut.track.why)) : el('span', 'ms-pld-why', 'none recorded within 1 km')],
+        ]),
+        crossList ? el('div', 'ms-pld-k', H.waysOut.waterBlocks ? 'Crossings (water shuts a way out)' : 'Crossings') : null,
+        crossList,
+      ),
+    );
+    if (H.goingNotes.length)
+      out.push(tile('The sheet on the going', spotList(H.goingNotes, () => GLYPH_COLOR.note, this._go, { label: (s) => `“${s.why ?? ''}”` }), el('div', 'ms-pld-note', 'Notes printed on the 1:50k sheet: old, check on the ground.')));
     const lv = (n: number | null) => {
       const s = el('b', undefined, n === null ? 'not known' : LVL[n] ?? String(n));
       if (n !== null) s.style.color = LEVEL_TEXT[n] ?? '';
@@ -1493,14 +1518,35 @@ export class PlatoonGuideDetail {
     };
     out.push(tile('Cover and concealment', pairs([['Cover here', lv(H.cover.cover)], ['Concealment', lv(H.cover.concealment)], H.betterCover ? ['Better cover', spotV(H.betterCover)] : null, H.betterConcealment ? ['Better concealed', spotV(H.betterConcealment)] : null])));
     const W = H.water;
-    out.push(tile('Water', pairs([['Nearest', spotV(W.nearest, { why: true })], W.perennial ? ['No power needed', spotV(W.perennial)] : null, W.line ? ['Flowing', spotV(W.line, { why: true })] : null, W.brackish ? ['Brackish', frag(b('noted on the map '), where(W.brackish), why('test before drinking'))] : null, ['Recorded', `${W.count} water points within 5 km`]])));
+    const wade = (f: typeof W.lineFigures) => {
+      if (!f) return null;
+      const s = el('span', 'ms-pld-why', ` · ${f.why}`);
+      if (f.wade === 'no') s.style.color = STEP_TEXT.nogo;
+      return s;
+    };
+    out.push(
+      tile(
+        'Water',
+        pairs([
+          ['Nearest', spotV(W.nearest, { why: true })],
+          W.perennial ? ['No power needed', spotV(W.perennial)] : null,
+          W.line ? ['Canal / river', frag(spotV(W.line), wade(W.lineFigures))] : null,
+          W.reach ? ['River reach', frag(spotV(W.reach), wade(W.reachFigures))] : null,
+          W.lake ? ['Lake', spotV(W.lake, { why: true })] : null,
+          W.marsh ? ['Marsh', spotV(W.marsh, { why: true })] : null,
+          W.bank ? ['On a bank', frag(b(W.bank.label), why(`within ${W.bank.withinM} m: cover from direct fire, a line to deploy on`))] : null,
+          W.brackish ? ['Brackish', frag(b('noted on the map '), where(W.brackish), why('test before drinking'))] : null,
+          ['Recorded', `${W.count} water points within 5 km`],
+        ]),
+      ),
+    );
     const M = H.medical;
     const wires = H.hls.wires.map((x) => `${x.label} ${dist(x.distM)} ${x.dir}`).join('; ');
     out.push(tile('Casevac', pairs([['Landing Gr', H.hls.ground ? frag(b(H.hls.ground.distM < 15 ? 'clear Gr here' : 'clear Gr '), H.hls.ground.distM < 15 ? '' : where(H.hls.ground), why(H.hls.ground.why)) : el('span', 'ms-pld-why', 'none within 2 km')], wires ? ['Wires', el('span', 'ms-pld-why', wires)] : null, ['Recorded HLS', spotV(H.hls.recorded)], ['Hospital', spotV(M.hospital)], M.driveMin !== null ? ['Drive', frag(b(`~${M.driveMin} min`), why('straight line × 1.4 at 40 km/h: an estimate'))] : null, ['BHU', spotV(M.bhu)], ['Dispensary', spotV(M.dispensary)]])));
     const wh = H.where;
     out.push(tile('Where am I', pairs([['Grid', b(br.grid)], br.sheet ? ['Sheet', b(br.sheet)] : null, wh.km ? ['KM stone', spotV(wh.km)] : null, ['Place', spotV(wh.place)], wh.district || wh.tehsil ? ['District', [wh.district, wh.tehsil].filter(Boolean).join(' / ')] : null])));
     if (!r.full) out.push(tile('More when the cursor rests', el('div', 'ms-pld-note', 'Sight, the dangers on the Rds round you and where to stop are read once the cursor rests.')));
-    const c = this._checks(r, /Water|Brackish|Landing|Hospital|Going after rain/);
+    const c = this._checks(r, /Water|Brackish|Landing|Hospital|Going after rain|Crossings|Tracks/);
     if (c) out.push(c);
     return out;
   }
@@ -1519,10 +1565,12 @@ export class PlatoonGuideDetail {
       ),
     );
     out.push(tile('Who looks down on you', S.overlook.length || S.rooftops ? spotList([...S.overlook, ...(S.rooftops ? [S.rooftops] : [])], () => '#ba68c8', this._go, { why: true, label: (s) => s.label }) : el('div', 'ms-pld-note', 'No higher Gr in view within 800 m.')));
+    // Bearings in the sheet's grid (spots keep true bearings for drawing).
+    const gb = (x: PlSpot) => brg(plGridDeg(x.bearingDeg, S.grid.convDeg));
     const rc = el('div');
     for (const x of S.refs) {
       const li = el('div', 'ms-pld-li ms-go');
-      li.append(b(brg(x.bearingDeg)), `  ${dist(x.distM)}  ${x.name ?? x.label}`);
+      li.append(b(gb(x)), `  ${dist(x.distM)}  ${x.name ?? x.label}`);
       li.addEventListener('click', () => this._go(x));
       rc.append(li);
     }
@@ -1530,11 +1578,11 @@ export class PlatoonGuideDetail {
     const rs = el('div');
     for (const x of S.resection) {
       const li = el('div', 'ms-pld-li ms-go');
-      li.append(b(brg(x.bearingDeg)), `  ${x.name ?? x.label}  ${dist(x.distM)}`);
+      li.append(b(gb(x)), `  ${x.name ?? x.label}  ${dist(x.distM)}`);
       li.addEventListener('click', () => this._go(x));
       rs.append(li);
     }
-    out.push(tile('Resection', S.resection.length === 3 ? rs : el('div', 'ms-pld-note', 'Fewer than three fixed landmarks in view.'), el('div', 'ms-pld-note', 'Grid bearings: apply the magnetic variation.')));
+    out.push(tile('Resection', S.resection.length === 3 ? rs : el('div', 'ms-pld-note', 'Fewer than three fixed landmarks in view.'), el('div', 'ms-pld-note', `Grid bearings (${S.grid.name}): apply the sheet's grid-magnetic angle.`)));
     const v = br.vis;
     out.push(tile('Light and weather', pairs([br.light ? ['Now', b(br.light.now)] : null, br.light ? ['Tonight', br.light.tonight] : null, v ? ['This month', `fog ${v.fogPct ?? '?'}% of days, haze ${v.hazePct ?? '?'}%`] : null, v && v.meanViewKm !== null ? ['Mean view', `${v.meanViewKm.toFixed(0)} km`] : null])));
     const c = this._checks(r, /Dead and screened/);
@@ -1598,7 +1646,7 @@ export class PlatoonGuideDetail {
       tile(
         'BUA and Bldgs',
         bua ? frag(el('div', 'ms-pld-big', bua.name ?? bua.label), el('div', 'ms-pld-why', `${bua.label}${bua.why ? ` · ${bua.why}` : ''}`)) : null,
-        pairs([bua ? ['Where', where(bua)] : ['Nearest BUA', 'none in 10 km'], P.bld ? ['Bldgs here', `${P.bld.density}, ${P.bld.size}${P.bld.tall ? ', tall' : ''}`] : ['Bldgs here', 'none recorded'], P.huts ? ['Huts', `~${P.huts.perKm2} permanent per km²${P.huts.temporary ? ', temporary huts nearby (nomads)' : ''}`] : null]),
+        pairs([bua ? ['Where', frag(where(bua), P.buaEdge ? why(bua.distM < 15 ? 'you are in it' : 'to its edge') : '')] : ['Nearest BUA', 'none in 10 km'], P.bld ? ['Bldgs here', `${P.bld.density}, ${P.bld.size}${P.bld.tall ? ', tall' : ''}`] : ['Bldgs here', 'none recorded'], P.huts ? ['Huts', `~${P.huts.perKm2} permanent per km²${P.huts.temporary ? ', temporary huts nearby (nomads)' : ''}`] : null]),
       ),
     );
     const chips = el('div', 'ms-pld-chips');
@@ -1619,6 +1667,11 @@ export class PlatoonGuideDetail {
     out.push(tile('Help, nearest first', HP.friends.length ? spotList(HP.friends, () => '#42a5f5', this._go) : el('div', 'ms-pld-note', 'None recorded within 30 km.')));
     out.push(tile('Signals', pairs([['Relay / OP Gr', HP.relay ? spotV(HP.relay, { why: true }) : el('span', 'ms-pld-why', r.full ? 'no higher Gr within 3 km sees you' : 'rest the cursor')], ['Radio', HP.radioShadow ? el('b', undefined, 'Low Gr ringed by higher Gr: radio shadow likely') : 'no shadow found']])));
     if (HP.supply.length) out.push(tile('Supply', spotList(HP.supply, () => '#9aa3ad', this._go)));
+    out.push(tile('Comms (when the radio fails)', HP.comms.length ? spotList(HP.comms, () => GLYPH_COLOR.comms, this._go, { why: true, label: (s) => `${commsCode(s.kind)} ${s.name && s.name !== s.label ? s.name : s.label}` }) : el('div', 'ms-pld-note', 'No post office, telephone exchange or wireless station recorded within 30 km.')));
+    const c = this._checks(r, /LoC/);
+    if (c) out.push(c);
+    if (r.side.state === 'loading') out.push(tile('LoC / border', el('div', 'ms-pld-note', 'Help is held back until the side of the LoC / border is read (a moment).')));
+    else if (r.side.state === 'none') out.push(tile('LoC / border', el('div', 'ms-pld-note', r.gaps.find((g) => /LoC/.test(g)) ?? '')));
     return out;
   }
 
@@ -1716,12 +1769,12 @@ export class PlatoonGuideDetail {
     const legs = el('div');
     for (const l of p.legs) {
       const li = el('div', 'ms-pld-li ms-go');
-      li.append(b(`Leg ${l.i}  ${brg(l.bearingDeg)}`), `  ${dist(l.distM)} · ${num(l.paces)} paces · ${l.minDay} / ${l.minNight} min${l.climbM >= 10 ? ` · climb ${l.climbM} m` : ''}`);
+      li.append(b(`Leg ${l.i}  ${brg(l.gridDeg)}`), `  ${dist(l.distM)} · ${num(l.paces)} paces · ${l.minDay} / ${l.minNight} min${l.climbM >= 10 ? ` · climb ${l.climbM} m` : ''}${l.trackPct ? ` · on a track ${l.trackPct}%` : ''}`);
       li.append(why(l.endFeature ? `ends at ${l.endFeature.name ?? l.endFeature.label}` : 'no landmark at the turn'));
       li.addEventListener('click', () => this._h.goTo(l.to[0], l.to[1]));
       legs.append(li);
     }
-    out.push(tile('Legs (grid bearings, day / night minutes)', legs));
+    out.push(tile(`Legs (grid bearings, ${p.grid}; day / night minutes)`, legs));
     const range = (s: { fromM: number; toM: number }) => (Math.abs(s.toM - s.fromM) < 30 ? `at ${dist(s.fromM)}` : `${dist(s.fromM)}-${dist(s.toM)}`);
     out.push(
       tile(
@@ -1732,7 +1785,7 @@ export class PlatoonGuideDetail {
           p.threatKnown ? ['Hidden from threat', p.dead.map(range).join(', ') || 'no stretch'] : null,
           ['Exposed', p.exposed.map(range).join(', ') || 'no stretch'],
           p.skyline.length ? ['Skyline', p.skyline.map(range).join(', ')] : null,
-          p.obstacles.length ? ['Obs crossed', p.obstacles.map((o) => `${o.label} at ${dist(o.chainM)}`).join('; ')] : null,
+          p.obstacles.length ? ['Obs crossed', p.obstacles.map((o) => `${o.label} at ${dist(o.chainM)}${o.crossing ? ` (${o.crossing.label} ${dist(o.crossing.distM)} ${o.crossing.dir} of it)` : ' (no crossing within 1.5 km)'}`).join('; ')] : null,
           p.villages.length ? ['Villages', `${p.villages.map((v) => `${v.name ?? 'village'} at ${dist(v.chainM)}`).join('; ')}: avoid at night`] : null,
         ]),
       ),

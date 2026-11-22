@@ -22,12 +22,33 @@ import { buildGrid, mPerPx, parseVisibility, sightTables, sightTo, visibilityAt,
 import { OCOKA_DOCTRINE } from '../GroundGuide/GroundGuideOcokaRead';
 import type { TerrainManifest, TerrainRules } from '../GroundGuide/GroundGuideTypes';
 import type { GoingSets, NearFeature, NearLine, NearRoad } from '../MovementGuide/MovementGuideScan';
-import type { MercXY, PlCodebooks, PlLayer, PlPeopleIn, PlProbe } from './PlatoonGuideRead';
-import { plLngLat, plScale } from './PlatoonGuideRead';
+import type { MercXY, PlCodebooks, PlLayer, PlPeopleGrid, PlPeopleIn, PlProbe } from './PlatoonGuideRead';
+import { plLngLat, plScale, type PlBuaArea } from './PlatoonGuideRead';
+import { PlSideMap } from './PlatoonGuideSide';
+import { BuaIndex, buildBuaStore, type BuaStore } from './PlatoonGuideBua';
+import BuaWorker from './PlatoonGuideBuaWorker.ts?worker&inline';
 
 const EARTH_R = 6378137;
 const ORIGIN = Math.PI * EARTH_R;
 const BUCKETS = 32;
+const D2R = Math.PI / 180;
+
+/** The 1:50k sheets' grid (sheets.json `grid`): Lambert zones with their origins, and the line between zone I and IIa. */
+interface SheetGrid {
+  name?: string;
+  zones: Array<{ id: string; lat0: number; lon0: number }>;
+  boundary?: number[][];
+}
+
+/** The latitude of the zone line at a longitude (sheets.json `grid.boundary`, lon / lat pairs), null off its ends. */
+function zoneLineLat(b: number[][] | undefined, lon: number): number | null {
+  for (let i = 0; b && i + 1 < b.length; i++) {
+    const [x0, y0] = b[i];
+    const [x1, y1] = b[i + 1];
+    if ((lon >= x0 && lon <= x1) || (lon >= x1 && lon <= x0)) return x1 === x0 ? y0 : y0 + ((lon - x0) / (x1 - x0)) * (y1 - y0);
+  }
+  return null;
+}
 
 interface IndexedTile {
   size: number;
@@ -59,6 +80,18 @@ export class PlatoonGuideProbe implements PlProbe {
   private _population: GroundGuidePopulation | null = null;
   private _borders: PlBorder[] | null = null;
   private _sheets: Array<[string, number, number, number, number]> | null = null;
+  private _sheetGrid: SheetGrid | null = null;
+  private _sheetsLoading = false;
+  private _side: PlSideMap | null = null;
+  private _sideState: 'none' | 'loading' | 'ready' = 'none';
+  private _sideCache = new Map<string, 'own' | 'other' | null>();
+  private _sideRules: { own: string; kinds: ReadonlySet<string> | null; nearLineM: number; onLineM: number } = { own: 'Pakistan', kinds: null, nearLineM: 1000, onLineM: 100 };
+  /** The feature tiles' zoom (manifest grotbc.features.z). */
+  private _featZ = 10;
+  /** The settlements (BUA outlines and areas), built in a worker. */
+  private _bua: BuaIndex | null = null;
+  private _buaState: 'none' | 'loading' | 'ready' = 'none';
+  private _buaWorker: Worker | null = null;
   private _vis: VisibilityGrid | null = null;
   private _index = new Map<string, IndexedTile>();
   private _grids = new Map<string, { g: OcokaGrid; tick: number }>();
@@ -72,8 +105,21 @@ export class PlatoonGuideProbe implements PlProbe {
   private _layers: Record<string, string | null> = {};
   tick = 0;
   resM = 30;
+  /** Metres per unit of the dist_* layers (manifest distScaleM). */
+  distScaleM = 10;
 
   constructor(private readonly _onChange: () => void) {}
+
+  /** Who is own and which boundary lines part the sides (PlatoonDoctrine.json `side`, MovementDoctrine exposure.borderKinds).
+   *  Set before `configure()`. */
+  setSideRules(r: { ownCountry?: string; nearLineM?: number; onLineM?: number }, kinds: readonly string[] | null): void {
+    this._sideRules = {
+      own: r.ownCountry || 'Pakistan',
+      kinds: kinds && kinds.length ? new Set(kinds) : null,
+      nearLineM: Number(r.nearLineM) || 1000,
+      onLineM: Number(r.onLineM) || 100,
+    };
+  }
 
   get ready(): boolean {
     return this._manifest !== null;
@@ -104,6 +150,7 @@ export class PlatoonGuideProbe implements PlProbe {
     this._rules = rules;
     this._ts = manifest.tileSize ?? 256;
     this._z = (manifest as any).zoom?.max ?? 12;
+    this.distScaleM = Number((manifest as any).distScaleM) || 10;
     const L = manifest.layers as Record<string, string>;
     const profiles: string[] = ((manifest as any).profiles ?? []) as string[];
     const dist = typeof L.dist === 'string' ? L.dist : 'dist_{profile}';
@@ -117,6 +164,8 @@ export class PlatoonGuideProbe implements PlProbe {
       landform: L.landform ?? null,
       hut: L.hut ?? null,
       terrain: L.terrain ?? null,
+      route: L.route ?? null,
+      bank: L.bank ?? null,
       distHls: profiles.includes('hls') ? dist.replace('{profile}', 'hls') : null,
     };
     const version = (manifest as any).built ?? (manifest as any).pipelineVersion ?? '';
@@ -124,6 +173,7 @@ export class PlatoonGuideProbe implements PlProbe {
     this._cache = new TerrainTileCache(this._source, opts.cacheTiles, () => this._changed(true));
     const g = (manifest as any).grotbc ?? {};
     this._features = g.features ? new GroundGuideFeatures(base, g.features, rules, () => this._changed(false)) : null;
+    this._featZ = Number.isInteger(g.features?.z) ? g.features.z : 10;
     if (typeof g.network?.index === 'string') {
       this._roadsOpening = true;
       void GroundGuideRoads.open(base, g.network.index, () => this._changed(false))
@@ -149,8 +199,20 @@ export class PlatoonGuideProbe implements PlProbe {
       });
     }
     const bf = typeof g.boundaries === 'string' ? g.boundaries : typeof g.boundaries?.path === 'string' ? g.boundaries.path : null;
-    if (bf) void this._loadBorders(`${base}/${bf}`, token);
+    const bordersJson = bf ? this._loadBorders(`${base}/${bf}`, token) : Promise.resolve(null);
+    // The country areas (admin.geojson `country`) with the boundary lines say which side of the LoC / border a place is
+    // on: the other side's posts and hospitals are never offered as help. Missing: nothing filtered, the reading says so.
+    const af = typeof g.admin === 'string' ? g.admin : typeof g.admin?.path === 'string' ? g.admin.path : null;
+    if (af) {
+      this._sideState = 'loading';
+      void this._loadSide(`${base}/${af}`, bordersJson, token);
+    }
     if (typeof g.sheets === 'string') void this._loadSheets(`${base}/${g.sheets}`, token);
+    const sf = typeof g.settlements?.geojson === 'string' ? g.settlements.geojson : null;
+    if (sf) {
+      this._buaState = 'loading';
+      this._loadBua(new URL(`${base}/${sf}`, location.href).href, token);
+    }
     if (g.visibility?.index && g.visibility?.data) void this._loadVisibility(`${base}/${g.visibility.index}`, `${base}/${g.visibility.data}`, token);
     return true;
   }
@@ -168,6 +230,15 @@ export class PlatoonGuideProbe implements PlProbe {
     this._population = null;
     this._borders = null;
     this._sheets = null;
+    this._sheetGrid = null;
+    this._sheetsLoading = false;
+    this._buaWorker?.terminate();
+    this._buaWorker = null;
+    this._bua = null;
+    this._buaState = 'none';
+    this._side = null;
+    this._sideState = 'none';
+    this._sideCache.clear();
     this._vis = null;
     this._index.clear();
     this._grids.clear();
@@ -188,8 +259,9 @@ export class PlatoonGuideProbe implements PlProbe {
     return (this._rules as any)?.classes?.[String(c)]?.label ?? `Class ${c}`;
   }
   codebooks(): PlCodebooks {
-    const g = (this._rules as any)?.grotbc?.layers ?? {};
-    return { wet: g.wet, landform: g.landform, bldDensity: g.bld?.density, bldSize: g.bld?.size, ccLevels: g.cc?.levels };
+    const gr = (this._rules as any)?.grotbc ?? {};
+    const g = gr.layers ?? {};
+    return { wet: g.wet, landform: g.landform, bldDensity: g.bld?.density, bldSize: g.bld?.size, ccLevels: g.cc?.levels, routeTypes: g.route?.types, routeTiers: g.route?.tiers, banks: gr.banks };
   }
   /** The bundle's data date for the card ("bundle 2026-11-11, land cover 2022-10 (v200), roads 2026-10-28, people ..."). */
   dataLine(): string {
@@ -288,15 +360,101 @@ export class PlatoonGuideProbe implements PlProbe {
   }
 
   sight2(ox: number, oy: number, eyeM: number, tx: number, ty: number, targetM: number): { p: number; pTerrain: number } | null {
-    const g = this._gridFor(ox, oy);
+    // The grid round the observer's tile reaches one tile past it (about 4 km at z13); a further target (a resection
+    // landmark at 5 km) is read on the grid round the midpoint's tile, which holds both ends up to about 8 km apart.
+    let r = this._sightOn(this._gridFor(ox, oy), ox, oy, eyeM, tx, ty, targetM);
+    if (r === undefined) r = this._sightOn(this._gridFor((ox + tx) / 2, (oy + ty) / 2), ox, oy, eyeM, tx, ty, targetM);
+    return r ?? null;
+  }
+  /** Sight on one grid; undefined when an end lies outside it. */
+  private _sightOn(g: OcokaGrid | null, ox: number, oy: number, eyeM: number, tx: number, ty: number, targetM: number): { p: number; pTerrain: number } | null | undefined {
     if (!g) return null;
     const world = (2 * ORIGIN) / (this._ts * 2 ** this._z);
     const gx = (x: number) => (x + ORIGIN) / world - g.px0;
     const gy = (y: number) => (ORIGIN - y) / world - g.py0;
     const ax = gx(ox), ay = gy(oy), bx = gx(tx), by = gy(ty);
-    if (ax < 1 || ay < 1 || bx < 1 || by < 1 || ax >= g.w - 1 || ay >= g.h - 1 || bx >= g.w - 1 || by >= g.h - 1) return null;
+    if (ax < 1 || ay < 1 || bx < 1 || by < 1 || ax >= g.w - 1 || ay >= g.h - 1 || bx >= g.w - 1 || by >= g.h - 1) return undefined;
     const r = sightTo(g, ax, ay, bx, by, { eyeM, targetM, radiusM: 0, effM: 0, tolM: 1, tables: this._tablesFor(g.res) });
     return r ? { p: r.p, pTerrain: r.pTerrain } : null;
+  }
+
+  // ── built-up areas ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+  /** BUAs (settlements.geojson) whose outline or circle comes within `radiusM`; empty while loading (pending) or without. */
+  buaAreas(x: number, y: number, radiusM: number): PlBuaArea[] {
+    if (this._buaState === 'loading') this._pending = true;
+    return this._bua ? this._bua.near(x, y, radiusM, plScale(y)) : [];
+  }
+
+  /** Fetch and parse settlements.geojson in a worker (42 MB, mostly attributes); on the main thread when workers fail. */
+  private _loadBua(url: string, token: number): void {
+    const done = (store: BuaStore | null) => {
+      if (token !== this._token) return;
+      this._buaWorker?.terminate();
+      this._buaWorker = null;
+      this._bua = store && store.n ? new BuaIndex(store) : null;
+      this._buaState = this._bua ? 'ready' : 'none';
+      this._changed(false);
+    };
+    const onMain = async () => {
+      try {
+        const r = await fetch(url);
+        done(r.ok ? buildBuaStore(await r.json()) : null);
+      } catch {
+        done(null);
+      }
+    };
+    if (typeof Worker === 'undefined') {
+      void onMain();
+      return;
+    }
+    try {
+      const w = new BuaWorker({ name: 'ms-platoon-bua' });
+      this._buaWorker = w;
+      w.onmessage = (e: MessageEvent) => done(e.data?.store ? (e.data.store as BuaStore) : null);
+      w.onerror = () => {
+        w.terminate();
+        if (this._buaWorker !== w) return;
+        this._buaWorker = null;
+        void onMain();
+      };
+      w.postMessage({ url });
+    } catch {
+      void onMain();
+    }
+  }
+
+  // ── side of the LoC / border, grid ─────────────────────────────────────────────────────────────────────────────────
+
+  sideState(): 'none' | 'loading' | 'ready' {
+    return this._sideState;
+  }
+  side(x: number, y: number): 'own' | 'other' | null {
+    if (this._sideState !== 'ready' || !this._side) {
+      if (this._sideState === 'loading') this._pending = true;
+      return null;
+    }
+    const key = `${Math.round(x / 5)}|${Math.round(y / 5)}`;
+    const hit = this._sideCache.get(key);
+    if (hit !== undefined) return hit;
+    const [lng, lat] = plLngLat([x, y]);
+    const s = this._side.side(lng, lat);
+    this._sideCache.set(key, s);
+    if (this._sideCache.size > 20000) this._sideCache.delete(this._sideCache.keys().next().value as string);
+    return s;
+  }
+  /** The 1:50k sheets' grid (the Indian grid, Lambert conformal conic, one parallel): grid north lies sin(lat0) x (lon -
+   *  lon0) east of true north. Only on a sheet; elsewhere null (the engine falls back to UTM). */
+  gridConvergence(x: number, y: number): { deg: number; name: string } | null {
+    if (this._sheetsLoading) this._pending = true;
+    const g = this._sheetGrid;
+    if (!g?.zones?.length || !this.sheetAt([x, y])) return null;
+    const [lng, lat] = plLngLat([x, y]);
+    const bl = zoneLineLat(g.boundary, lng);
+    const id = bl === null ? (lat >= 28.5 ? 'I' : 'IIa') : lat >= bl ? 'I' : 'IIa';
+    const z = g.zones.find((q) => q.id === id) ?? g.zones[0];
+    if (!Number.isFinite(z.lat0) || !Number.isFinite(z.lon0)) return null;
+    return { deg: Math.sin(z.lat0 * D2R) * (lng - z.lon0), name: `Indian grid zone ${z.id}` };
   }
   sight(ox: number, oy: number, eyeM: number, tx: number, ty: number, targetM: number): number | null {
     return this.sight2(ox, oy, eyeM, tx, ty, targetM)?.p ?? null;
@@ -305,7 +463,7 @@ export class PlatoonGuideProbe implements PlProbe {
   // ── points and lines ───────────────────────────────────────────────────────────────────────────────────────────────
 
   private _tileOf(x: number, y: number): { tx: number; ty: number; size: number } {
-    const size = (2 * ORIGIN) / 1024; // z10
+    const size = (2 * ORIGIN) / 2 ** this._featZ; // the feature tiles' own zoom: the index is one feature tile
     return { tx: Math.floor((x + ORIGIN) / size), ty: Math.floor((ORIGIN - y) / size), size };
   }
 
@@ -436,7 +594,18 @@ export class PlatoonGuideProbe implements PlProbe {
     const [lng, lat] = plLngLat(at);
     const r = p.around(lng, lat, 2);
     if (!r) return null;
-    return { perKm2At: this.people(at[0], at[1]), rings: r.rings.filter((x) => x.km <= 3), ages: r.ages, sectors: r.sectors ?? null, grid: r.grid ?? null, bands: r.bands ?? null, pending: false };
+    // The grid and the rings are counted from the centre of the point's cell: say where the point sits in it, and the
+    // cell's true size each way (30" cells are about 0.93 km N-S by 0.77 km E-W at 33.6°N), so the picture draws them right.
+    let grid: PlPeopleGrid | null = r.grid ?? null;
+    const h = p.header;
+    if (grid && h) {
+      const [w, , , n] = h.bounds;
+      const r0 = Math.floor((n - lat) / h.cell), c0 = Math.floor((lng - w) / h.cell);
+      const kx = 111.32 * Math.cos(lat * D2R) * h.cell, ky = 110.574 * h.cell;
+      const offsetKm: [number, number] = [((lng - (w + (c0 + 0.5) * h.cell)) / h.cell) * kx, ((lat - (n - (r0 + 0.5) * h.cell)) / h.cell) * ky];
+      grid = { ...grid, cellKmX: kx, cellKmY: ky, offsetKm };
+    }
+    return { perKm2At: this.people(at[0], at[1]), rings: r.rings.filter((x) => x.km <= 3), ages: r.ages, sectors: r.sectors ?? null, grid, bands: r.bands ?? null, pending: false };
   }
 
   /** The 1:50k sheet the point falls on. */
@@ -454,12 +623,13 @@ export class PlatoonGuideProbe implements PlProbe {
     return visibilityAt(this._vis, lng, lat, month);
   }
 
-  private async _loadBorders(url: string, token: number): Promise<void> {
+  /** Load the boundary lines; resolves the parsed file (the side test reads it too), or null. */
+  private async _loadBorders(url: string, token: number): Promise<any | null> {
     try {
       const r = await fetch(url);
-      if (!r.ok) return;
+      if (!r.ok) return null;
       const gj = await r.json();
-      if (token !== this._token) return;
+      if (token !== this._token) return null;
       const out: PlBorder[] = [];
       for (const f of gj?.features ?? []) {
         const kind = String(f?.properties?.kind ?? '');
@@ -483,21 +653,49 @@ export class PlatoonGuideProbe implements PlProbe {
       }
       this._borders = out;
       this._changed(false);
+      return gj;
     } catch {
       this._borders = [];
+      return null;
     }
   }
 
+  /** The country areas and the side lines, once both are in (the lines may be missing: the areas alone decide then). */
+  private async _loadSide(url: string, borders: Promise<any | null>, token: number): Promise<void> {
+    let map: PlSideMap | null = null;
+    try {
+      const r = await fetch(url);
+      if (r.ok) {
+        const admin = await r.json();
+        const lines = await borders;
+        if (token !== this._token) return;
+        const S = this._sideRules;
+        map = PlSideMap.from(admin, lines, { own: S.own, kinds: S.kinds, nearLineM: S.nearLineM, onLineM: S.onLineM });
+      }
+    } catch {
+      map = null;
+    }
+    if (token !== this._token) return;
+    this._side = map;
+    this._sideState = map ? 'ready' : 'none';
+    this._sideCache.clear();
+    this._changed(false);
+  }
+
   private async _loadSheets(url: string, token: number): Promise<void> {
+    this._sheetsLoading = true;
     try {
       const r = await fetch(url);
       if (!r.ok) return;
       const j = await r.json();
       if (token !== this._token) return;
       this._sheets = Array.isArray(j?.['50k']) ? j['50k'] : null;
+      this._sheetGrid = Array.isArray(j?.grid?.zones) && j.grid.zones.length ? (j.grid as SheetGrid) : null;
       this._changed(false);
     } catch {
       this._sheets = null;
+    } finally {
+      if (token === this._token) this._sheetsLoading = false;
     }
   }
 

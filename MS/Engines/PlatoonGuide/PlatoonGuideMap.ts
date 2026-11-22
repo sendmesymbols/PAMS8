@@ -27,9 +27,9 @@ import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import Utils from '../../Support/utils';
 import { SURFACE } from '../GroundGuide/GroundGuideTokens';
-import { dangerGlyph, glyph, GLYPH_CODE, helpCode, type GlyphKind } from './PlatoonGuideRadar';
+import { commsCode, crossingCode, dangerGlyph, glyph, GLYPH_CODE, helpCode, type GlyphKind } from './PlatoonGuideRadar';
 import { plOffset, type MercXY, type PatrolCard, type PlReading, type PlSpot } from './PlatoonGuideRead';
-import { dist, ECHELON_WORD } from './PlatoonGuideText';
+import { dist, ECHELON_WORD, leadWater } from './PlatoonGuideText';
 
 const LAYER_ID = 'ms-platoon-guide';
 type RGB = [number, number, number];
@@ -43,6 +43,8 @@ const VIOLET: RGB = [171, 71, 188];
 const INDIGO: RGB = [126, 87, 194];
 const WHITE: RGB = [236, 239, 241];
 const DARK: RGB = [20, 24, 29];
+const BUA: RGB = [226, 199, 154];
+const TEAL: RGB = [127, 209, 199];
 
 const rgb = (c: RGB): string => `rgb(${c[0]},${c[1]},${c[2]})`;
 const svg = (body: string, size = 22): string => Utils.svgToDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 22 22">${body}</svg>`);
@@ -239,8 +241,31 @@ export class PlatoonGuideMap {
           }
         }
       }
+      // BUAs round the ring: the outline where the settlements file has one, else the circle of its built-up area (dashed).
+      for (const a of r.people.buaAreas) {
+        if (a.rings) {
+          for (const ring of a.rings) {
+            const pts: MercXY[] = [];
+            for (let i = 0; i + 1 < ring.length; i += 2) pts.push([ring[i], ring[i + 1]]);
+            line(pts, DARK, 0.45, 3.2);
+            line(pts, BUA, 0.95, 1.6);
+          }
+        } else if (a.radiusM >= 40) {
+          const pts: MercXY[] = [];
+          for (let k = 0; k <= 36; k++) pts.push(plOffset([a.x, a.y], k * 10, a.radiusM));
+          line(pts, BUA, 0.85, 1.3, 'dash');
+        }
+      }
       const H = r.here;
       if (H.waysOut.road) mark([H.waysOut.road.x, H.waysOut.road.y], 'dot|road', () => dotUrl([120, 144, 156]), 12, 'Nearest Rd / Tr');
+      // Crossings when water is near or shuts a way out (with a leader when it shuts one); the nearest foot track; the
+      // sheet's notes on the going; the nearest comms; a river reach with figures.
+      if (H.waysOut.waterBlocks || (H.water.line && H.water.line.distM <= 1000))
+        for (const c of [...H.waysOut.crossings].reverse()) spotIcon(o, c, 'crossing', crossingCode(c.kind), H.waysOut.waterBlocks ? TEAL : null);
+      if (H.waysOut.track && H.waysOut.track.distM > 15) spotIcon(o, H.waysOut.track, 'track', GLYPH_CODE.track);
+      for (const nt of H.goingNotes) iconMark([nt.x, nt.y], 'note', GLYPH_CODE.note, `Sheet note: ${nt.why ?? ''}`);
+      if (r.help.comms[0]) spotIcon(o, r.help.comms[0], 'comms', commsCode(r.help.comms[0].kind));
+      spotIcon(o, H.water.reach, 'water', 'Rch');
       if (S) {
         for (const x of S.refs) mark([x.x, x.y], 'ref', () => smallDiamond(WHITE), 14, `${x.label}${x.name ? ` ${x.name}` : ''} (range card)`);
         S.resection.forEach((x, i) => mark([x.x, x.y], `res${i}`, () => letter(`R${i + 1}`, DARK, 'circle'), 20, `Resection ${i + 1}: ${x.label}`));
@@ -270,8 +295,11 @@ export class PlatoonGuideMap {
       spotIcon(o, H.hls.recorded, 'hls', GLYPH_CODE.hls);
       spotIcon(o, H.hls.ground && H.hls.ground.distM > 15 ? H.hls.ground : null, 'hls', GLYPH_CODE.hls, VIOLET);
       spotIcon(o, H.betterCover ?? H.betterConcealment, 'cover', GLYPH_CODE.cover, BROWN);
-      if (H.water.nearest && H.water.perennial && H.water.nearest !== H.water.perennial) spotIcon(o, H.water.nearest, 'water', GLYPH_CODE.water);
-      spotIcon(o, H.water.perennial && H.water.nearest && H.water.perennial.distM < H.water.nearest.distM * 3 ? H.water.perennial : H.water.nearest, 'water', GLYPH_CODE.water, WATER);
+      // The water the halo and the card lead with gets the leader; the other recorded one sits beside it without.
+      const wLead = leadWater(H.water);
+      const wOther = wLead === H.water.perennial ? H.water.nearest : H.water.perennial;
+      if (wOther && wOther !== wLead) spotIcon(o, wOther, 'water', GLYPH_CODE.water);
+      spotIcon(o, wLead, 'water', GLYPH_CODE.water, WATER);
       if (r.stop) {
         spotIcon(o, r.stop.op, 'op', GLYPH_CODE.op, INDIGO);
         spotIcon(o, r.stop.harbour, 'harbour', GLYPH_CODE.harbour, GREEN);
@@ -284,13 +312,15 @@ export class PlatoonGuideMap {
       const card = pc.card;
       line(pc.path, DARK, 0.55, 7);
       line(pc.path, BLUE, 0.95, 3.5);
+      // Along the card's own legs (their ends and lengths are what the chainages count): a repeated vertex in the path is
+      // no leg, so walking the path's segments would put every stretch after it in the wrong place.
       const along = (fromM: number, toM: number): MercXY[] => {
         const pts: MercXY[] = [];
         let chain = 0;
-        for (let i = 0; i + 1 < pc.path.length; i++) {
-          const a = pc.path[i], b = pc.path[i + 1];
-          const L = card.legs[i]?.distM ?? 0;
-          if (L <= 0) continue;
+        for (const leg of card.legs) {
+          const a = leg.from, b = leg.to;
+          const L = leg.distM;
+          if (!(L > 0)) continue;
           const t0 = Math.max(0, (fromM - chain) / L), t1 = Math.min(1, (toM - chain) / L);
           if (t1 >= t0 && t1 >= 0 && t0 <= 1) {
             pts.push([a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0]);
@@ -303,7 +333,11 @@ export class PlatoonGuideMap {
       for (const s of card.exposed) line(along(s.fromM, Math.max(s.toM, s.fromM + 30)), RED, 0.9, 5);
       for (const s of card.dead) line(along(s.fromM, Math.max(s.toM, s.fromM + 30)), GREEN, 0.9, 5);
       for (const s of card.skyline) line(along(s.fromM - 25, s.toM + 25), VIOLET, 1, 3, 'short-dash');
-      for (const ob of card.obstacles) mark([ob.x, ob.y], 'obs', () => crossUrl(RED), 18, `Obs: ${ob.label}`);
+      for (const ob of card.obstacles) {
+        mark([ob.x, ob.y], 'obs', () => crossUrl(RED), 18, `Obs: ${ob.label}`);
+        // The crossing nearest the place the route meets it.
+        if (ob.crossing) spotIcon([ob.x, ob.y], ob.crossing, 'crossing', crossingCode(ob.crossing.kind), TEAL);
+      }
       for (const bd of card.bounds) mark([bd.x, bd.y], 'bound', () => dotUrl(WHITE), 12, `Bound at ${Math.round(bd.chainM)} m`);
       if (card.fmp) mark([card.fmp.x, card.fmp.y], 'fmp', () => letter('F', GREEN, 'circle'), 20, 'Final meeting point');
       card.legs.forEach((l) => mark(l.to, `leg${l.i}`, () => letter(String(l.i), BLUE, 'circle'), 18, `End of leg ${l.i}`));

@@ -140,6 +140,24 @@ function nearestOnLine(p: MercXY, xy: Float64Array): MercXY | null {
   return best;
 }
 
+/**
+ * A feature tile's JSON. The pipeline has written a bare NaN for a missing value in a few tiles (`"n":NaN`; 718/405 and
+ * 723/412 in the 2026-11-11 bundle), which JSON.parse refuses: such values are read as null. A tile that still does not
+ * parse is read as empty rather than thrown, so it is not asked for again on every read (that kept every reading within
+ * reach of it "pending" for good).
+ */
+function parseTile(text: string): any {
+  try {
+    return JSON.parse(text);
+  } catch {
+    try {
+      return JSON.parse(text.replace(/([:,[]\s*)-?(?:NaN|Infinity)\b/g, '$1null'));
+    } catch {
+      return {};
+    }
+  }
+}
+
 export class GroundGuideFeatures {
   private _tiles = new Map<string, FeaturePoint[] | null>();
   /** Road lines per tile (T, the road line on the card); kept in step with `_tiles`. */
@@ -473,7 +491,7 @@ export class GroundGuideFeatures {
       await this._loadIndex();
       const resp = await fetch(url);
       // 404: the pipeline writes no tile where there are no features, so it is an empty tile, not an error.
-      const pts = resp.ok ? this._decode(await resp.json(), x, y) : resp.status === 404 ? [] : undefined;
+      const pts = resp.ok ? this._decode(parseTile(await resp.text()), x, y) : resp.status === 404 ? [] : undefined;
       if (this._destroyed) return;
       if (pts !== undefined) {
         this._tiles.set(key, pts);
