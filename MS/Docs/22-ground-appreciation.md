@@ -55,8 +55,9 @@ Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → sett
   steps); double-click or Enter puts the default back. The outline takes 180 to 460 px, the paragraph panel 260 to 640 px,
   and the page always keeps 360 px. Below 940 px the edge above the paragraph panel sets its height. Kept with the folds.
 - Scrollbars are thin and dark, in the sheet only.
-- **Window**: Minimize, Maximize / Restore down and Close at the right of the header. Maximized, the sheet fills the
-  screen (also a double-click on the title bar), and it is remembered in this browser. Minimized, it folds to a bar at
+- **Window**: Minimize, Maximize / Restore down and Close at the right of the header. The Aprc button launches the
+  sheet **maximized**: the whole page, edge to edge, as the Briefing's edit view (user, 22 Nov 2026). Restore down (or a
+  double-click on the title bar) docks it under the host's bar, and back. Minimized, it folds to a bar at
   the foot of the map with the progress (ready, to do); a click on the bar, its Restore button or the top bar's Aprc
   button brings it back as it was. The bar can be dragged anywhere (a click without moving restores); its place is kept
   in this browser and held inside the window. What was typed is kept, and the keys go back to the map. A read carries on while it is

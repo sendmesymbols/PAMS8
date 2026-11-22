@@ -112,7 +112,8 @@ ${P}{--ap-bg:var(--gg-card,#1b1f25);--ap-pane:var(--gg-strip,#20262e);--ap-head:
  position:fixed;left:50%;transform:translateX(-50%);top:118px;z-index:2147482806;width:min(1280px,calc(100vw - 20px));height:calc(100vh - 140px);display:none;flex-direction:column;
  background:var(--ap-bg);color:var(--ap-tx);border:1px solid var(--ap-hair);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);font:13.5px/1.4 system-ui,"Segoe UI",Arial,sans-serif;outline:none}
 ${P}.ms-open{display:flex}
-${P}.win-max{left:8px;right:8px;width:auto;transform:none}
+${P}.win-max{inset:0;width:auto;height:auto;transform:none;border:0;border-radius:0;box-shadow:none}
+${P}.win-max .ap-head{border-radius:0}
 ${P}.win-min{top:auto;bottom:14px;height:auto;width:min(600px,calc(100vw - 20px))}
 ${P}.win-min>:not(.ap-head):not(.ap-busy):not(.ap-toast){display:none!important}
 ${P}.win-min .ap-head{border-radius:12px;border-bottom:0;cursor:grab;touch-action:none}
@@ -490,7 +491,7 @@ export default class GroundAppreciation {
   /** Sizes the planner dragged (null: the default for the width); kept with the folds in this browser. */
   /** The sheet as a window: docked under the host's bar, filling the screen, or folded to a bar at the foot. */
   private _win: 'normal' | 'max' | 'min' = 'normal';
-  /** Maximized when last opened or restored (kept with the panel sizes in this browser). */
+  /** What a folded sheet goes back to: maximized (as it launches) unless the planner restored it down. */
   private _maxPref = false;
   /** When the window state last changed: a double-click that began as the restoring click is not taken as a second change. */
   private _winAt = 0;
@@ -586,8 +587,12 @@ export default class GroundAppreciation {
     if (!this._enabled) return;
     ensureCss();
     if (!this._el) this._build();
-    // opening (or the top bar's button) brings a folded sheet back as it was before
-    if (this._win === 'min') this._win = this._maxPref ? 'max' : 'normal';
+    // the sheet launches maximized, the whole page as the Briefing's edit view (user, 22 Nov 2026); opening a folded
+    // sheet that is still open brings it back as it was
+    if (!this._open) {
+      this._win = 'max';
+      this._maxPref = true;
+    } else if (this._win === 'min') this._win = this._maxPref ? 'max' : 'normal';
     this._open = true;
     this._dock();
     this._el!.classList.add('ms-open');
@@ -634,8 +639,9 @@ export default class GroundAppreciation {
     el.style.transform = '';
     el.classList.remove('toast-below');
     if (this._win === 'max') {
-      el.style.top = '8px';
-      el.style.height = 'calc(100vh - 16px)';
+      // the whole page, edge to edge (as the Briefing's edit view)
+      el.style.top = '0';
+      el.style.height = '100vh';
       el.style.maxHeight = 'none';
       return;
     }
@@ -1990,9 +1996,7 @@ export default class GroundAppreciation {
       const u = JSON.parse(localStorage.getItem(UI_STORE) ?? 'null');
       this._hideOut = !!u?.out;
       this._hideRt = !!u?.rt;
-      this._maxPref = !!u?.max;
       this._minPos = Number.isFinite(u?.mx) && Number.isFinite(u?.my) ? { x: Number(u.mx), y: Number(u.my) } : null;
-      if (this._win !== 'min') this._win = this._maxPref ? 'max' : 'normal';
       const px = (v: unknown): number | null => (Number(v) > 0 ? Number(v) : null);
       this._wo = px(u?.wo);
       this._wr = px(u?.wr);
@@ -2004,7 +2008,7 @@ export default class GroundAppreciation {
 
   private _saveUi(): void {
     try {
-      localStorage.setItem(UI_STORE, JSON.stringify({ out: this._hideOut, rt: this._hideRt, wo: this._wo, wr: this._wr, hr: this._hr, max: this._maxPref, mx: this._minPos?.x ?? null, my: this._minPos?.y ?? null }));
+      localStorage.setItem(UI_STORE, JSON.stringify({ out: this._hideOut, rt: this._hideRt, wo: this._wo, wr: this._wr, hr: this._hr, mx: this._minPos?.x ?? null, my: this._minPos?.y ?? null }));
     } catch {
       /* storage refused: the panels stay as they are for this session */
     }
@@ -2023,7 +2027,6 @@ export default class GroundAppreciation {
       this._outOpen = false;
     } else {
       this._maxPref = w === 'max';
-      this._saveUi();
     }
     this._win = w;
     this._winAt = performance.now();
