@@ -176,6 +176,12 @@ const O = centre(it(base, 'obj').pts), F0 = centre(it(base, 'fup').pts);
   const nbw = F.fitLayout(inpOf(right, wind, { night: true, nmRules: nm })).fit.attack.night;
   check('...a winding route cut to few legs (within 75 m of the ground route, E)', nbw && nbw.legs.length <= 3, `${nbw?.legs.length} legs`);
   check('by day: no night march', !F.fitLayout(inpOf(right, flatG)).fit.attack.night);
+  // the night legs' bearings are grid: the bundle reader's sheets' grid (ground.mov().gridConvergence), else UTM
+  const gridG = { ...flatG, mov: () => ({ gridConvergence: () => ({ deg: 3.4, name: 'Indian grid zone I' }) }) };
+  const nbg = F.fitLayout(inpOf(right, gridG, { night: true, nmRules: nm })).fit.attack.night;
+  const gOff = (l, c) => Math.abs(((l.gridDeg - (l.bearingDeg - c) + 540) % 360) - 180);
+  check('...night legs in the sheets grid: grid = true - convergence (3.4 E), the grid named', nbg && nbg.grid === 'Indian grid zone I' && nbg.legs.every((l) => gOff(l, 3.4) <= 1), nbg ? nbg.legs.map((l) => `${l.bearingDeg}T ${l.gridDeg}G`).join(', ') : 'none');
+  check('...no sheets grid: UTM named', /^UTM zone \d+$/.test(nb.grid), nb.grid);
 }
 
 // ── his counter-attack onto the objective (reorganisation, IBB p189) ────────────────────────────────────────────────

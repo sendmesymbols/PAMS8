@@ -52,8 +52,12 @@ export interface SmallReading {
   exposed?: MercXY[][];
   dead?: MercXY[][];
   marks?: { x: number; y: number; label: string }[];
-  /** Patrol: the route card, leg by leg (out and back), for the Check step and Copy as Text. */
-  legs?: { way: 'Out' | 'In'; i: number; bearingDeg: number; magDeg: number | null; mils: number; distM: number; paces: number; minDay: number; minNight: number; feature: string | null }[];
+  /** Patrol: the route card, leg by leg (out and back), for the Check step and Copy as Text. `bearingDeg` is true (the
+   *  line drawn); `gridDeg` is the grid bearing in `grid` (the 1:50k sheets' grid, else UTM), and mils and magnetic
+   *  (grid - GMA) are worked from it. */
+  legs?: { way: 'Out' | 'In'; i: number; bearingDeg: number; gridDeg: number; magDeg: number | null; mils: number; distM: number; paces: number; minDay: number; minNight: number; feature: string | null }[];
+  /** The grid the route card's bearings are in ("Indian grid zone I", else "UTM zone 43"). */
+  grid?: string;
   /** Recce: each OP and what it sees of the NAI (`by`: the OPs that see a point), the routes to them. */
   ops?: { x: number; y: number; label: string; seenPct: number; riseM: number; cover: boolean }[];
   naiPts?: { x: number; y: number; by: number[] }[];
@@ -670,7 +674,8 @@ function readPatrol(c: Ctx): SmallRead {
     geom, extra, rows, confirm, pending, score: Math.max(0, 100 - 25 * fails - 6 * warns),
     small: {
       task: 'patrol', out: outP, back: backP, exposed: out ? segs(out.exposed) : [], dead: out ? segs(out.dead) : [], marks,
-      legs: ([['Out', out], ['In', back]] as const).flatMap(([way, cd]) => (cd?.legs ?? []).map((l) => ({ way, i: l.i, bearingDeg: Math.round(l.bearingDeg), magDeg: inp.gmaDeg === null || inp.gmaDeg === undefined || !Number.isFinite(inp.gmaDeg) ? null : Math.round(((l.bearingDeg - inp.gmaDeg) % 360 + 360) % 360), mils: Math.round((l.bearingDeg * 6400) / 360), distM: Math.round(l.distM), paces: l.paces, minDay: Math.round(l.minDay), minNight: Math.round(l.minNight), feature: l.endFeature ? (l.endFeature.name ? `${l.endFeature.label} ${l.endFeature.name}` : l.endFeature.label) : null }))),
+      legs: ([['Out', out], ['In', back]] as const).flatMap(([way, cd]) => (cd?.legs ?? []).map((l) => ({ way, i: l.i, bearingDeg: Math.round(l.bearingDeg) % 360, gridDeg: Math.round(l.gridDeg) % 360, magDeg: inp.gmaDeg === null || inp.gmaDeg === undefined || !Number.isFinite(inp.gmaDeg) ? null : Math.round(((l.gridDeg - inp.gmaDeg) % 360 + 360) % 360) % 360, mils: Math.round((l.gridDeg * 6400) / 360) % 6400, distM: Math.round(l.distM), paces: l.paces, minDay: Math.round(l.minDay), minNight: Math.round(l.minNight), feature: l.endFeature ? (l.endFeature.name ? `${l.endFeature.label} ${l.endFeature.name}` : l.endFeature.label) : null }))),
+      grid: out?.grid ?? back?.grid,
     },
   };
 }

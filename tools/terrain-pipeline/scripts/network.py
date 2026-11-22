@@ -498,7 +498,7 @@ def build(args) -> int:
     glon, glat = np.degrees(coords[inner, 0] / 6378137.0), np.degrees(np.arctan(np.sinh(coords[inner, 1] / 6378137.0)))
     np.column_stack([glon, glat]).astype("<f4").tofile(out / "geom.bin")
     e.tofile(out / "edges.bin")
-    (out / "names.json").write_text(json.dumps(names, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (out / "names.json").write_text(json.dumps(names, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")
 
     write_tiles(out)
     write_gg_roads(out)
@@ -565,7 +565,7 @@ def _write_tiles(out: Path, z: int, max_clazz: int | None = None) -> None:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps({"z": z, "x": x, "y": y, "q": QUANT,
                                  "cols": ["edge", "clazz", "flags", "load", "xing", "name", "rno", "xy"], "l": lines},
-                                separators=(",", ":")), encoding="utf-8")
+                                separators=(",", ":"), allow_nan=False), encoding="utf-8")
         n_t += 1
     log.info("tiles: %d z%d tiles%s", n_t, z, f" (road classes up to {max_clazz})" if max_clazz is not None else "")
 

@@ -1537,10 +1537,10 @@ export default class MovementGuide {
         for (const l of c.legs) {
           if (segD(p, l.from, l.to) > nearM) continue;
           return {
-            title: `Leg ${l.i + 1} (route ${name})`,
+            title: `Leg ${l.i} (route ${name})`,
             colour: name === 'out' ? '#22d3ee' : '#f28c28',
             lines: [
-              { k: 'Bearing', v: `${String(Math.round(l.bearingDeg)).padStart(3, '0')}° grid` },
+              { k: 'Bearing', v: `${String(Math.round(l.gridDeg) % 360).padStart(3, '0')}° grid (${c.grid})` },
               { k: 'Distance', v: `${Math.round(l.distM)} m · ${l.paces.toLocaleString('en')} paces` },
               { k: 'Time', v: `${Math.round(l.minNight)} min night · ${Math.round(l.minDay)} min day` },
               { k: 'Ends at', v: l.endFeature ? `${l.endFeature.label}${l.endFeature.name ? ` (${l.endFeature.name})` : ''}` : 'no landmark: count paces' },
@@ -1660,7 +1660,7 @@ export default class MovementGuide {
           const s = this._patrolIn.start, o = this._patrolIn.obj;
           if (s) marks.push({ at: s, t: 'S', c: MG_GREEN, shape: 'square', title: 'Start' });
           if (o) marks.push({ at: o, t: 'O', c: MG_RED, shape: 'square', title: 'Objective' });
-          r.out?.legs.forEach((l) => marks.push({ at: l.to, t: String(l.i + 1), c: MG_CYAN, title: `End of leg ${l.i + 1}` }));
+          r.out?.legs.forEach((l) => marks.push({ at: l.to, t: String(l.i), c: MG_CYAN, title: `End of leg ${l.i}` }));
           if (r.out?.fmp) marks.push({ at: [r.out.fmp.x, r.out.fmp.y], t: 'FMP', c: MG_VIOLET, shape: 'square', title: 'Final meeting point' });
           break;
         }
@@ -1791,7 +1791,7 @@ export default class MovementGuide {
         if (r.routes.back) out.push(lineSym(K.arrowDotted, r.routes.back, 'Route In'));
         if (this._patrolIn.start) out.push(pointSym(K.startPt, this._patrolIn.start, 'Start'));
         if (r.out?.fmp) out.push(pointSym(K.rallyPt, [r.out.fmp.x, r.out.fmp.y], 'FMP'));
-        r.out?.legs.slice(0, -1).forEach((l) => out.push(pointSym(K.checkPt, l.to, String(l.i + 1))));
+        r.out?.legs.slice(0, -1).forEach((l) => out.push(pointSym(K.checkPt, l.to, String(l.i))));
         break;
       }
       case 'ambush': {

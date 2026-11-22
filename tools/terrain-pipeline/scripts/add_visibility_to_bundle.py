@@ -86,7 +86,7 @@ def main() -> int:
                                "sources": PRODUCT_SOURCES["visibility"]}
     assert "visibility" in g, "grotbc.climate not found: nothing to insert after"
     new["grotbc"] = g
-    out = json.dumps(new, indent=1, ensure_ascii=False).replace("\n", nl)
+    out = json.dumps(new, indent=1, ensure_ascii=False, allow_nan=False).replace("\n", nl)
     mpath.write_bytes(out.encode("utf-8"))
 
     # proof: the new manifest and the old one are equal once the entries this script owns are taken out of both

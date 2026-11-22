@@ -476,7 +476,7 @@ def main() -> int:
             obj["l"] = obj.get("l", []) + tw.lines[key]
         p = feat / str(FEATURE_Z) / str(tx) / f"{ty}.json"
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+        p.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False, allow_nan=False), encoding="utf-8")
         written.append(key)
 
     # index.json: counts (minus what the last run added, plus this run), attrs, sources
@@ -503,7 +503,7 @@ def main() -> int:
         role = "latest" if o is latest else "older: route / fence / wall lines the latest lacks"
         srcs[f"Formation overlay {o['title']} (src = kmz, dt = {o['date']}; {role})"] = ref
     idx["sources"] = srcs
-    (feat / "index.json").write_text(json.dumps(idx, indent=1, ensure_ascii=False), encoding="utf-8")
+    (feat / "index.json").write_text(json.dumps(idx, indent=1, ensure_ascii=False, allow_nan=False), encoding="utf-8")
 
     summary = {"built": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                "overlays": [{k: o[k] for k in ("path", "title", "date", "id")} for o in overlays],
@@ -551,7 +551,7 @@ def publish(args, feat: Path, written: list, overlays: list, lock: dict) -> None
     else:
         log.warning("manifest: no grotbc.features entry found; only sources[] updated")
     m["restricted"] = True
-    mpath.write_text(json.dumps(m, indent=1, ensure_ascii=False), encoding="utf-8")
+    mpath.write_text(json.dumps(m, indent=1, ensure_ascii=False, allow_nan=False), encoding="utf-8")
     changed.append("manifest.json")
 
     lic = b / "LICENSES.txt"

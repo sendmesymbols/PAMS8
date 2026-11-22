@@ -117,6 +117,7 @@ import SymbolMetadataService from './SymbolMetadataService';
 import KeyboardShortcutManager from './KeyboardShortcutManager';
 import StylusDrawController from './Stylus/StylusDrawController';
 import GroundGuide from './GroundGuide/GroundGuide';
+import { GroundGuideKeyNotice, type KeyNoticeContent, type KeyNoticeKey } from './GroundGuide/GroundGuideKeyNotice';
 import type { GroundGuideItgCandidate } from './GroundGuide/GroundGuideTypes';
 import MovementGuide from './MovementGuide/MovementGuide';
 import './MovementGuideSettingsWidget';
@@ -786,6 +787,8 @@ class SymbolEngine implements Evented {
     this._crossSection?.destroy();
     this._compare?.destroy();
     this._groundAppreciation?.destroy();
+    this._toggleNotice?.destroy();
+    this._toggleNotice = null;
     this._aprcPlanExtra?.();
     this._aprcPlanExtra = null;
     this._drawingCueEngine?.disable();
@@ -2159,8 +2162,58 @@ class SymbolEngine implements Evented {
       stylusFinish: () => this._stylusController.finish(),
       stylusCancel: () => this._stylusController.cancel(),
       toggleGroundGuide: () => this.toggleGroundGuide(),
+      togglePlatoonGuide: () => this._keyTogglePlatoonGuide(),
+      toggleAprcSheet: () => this._keyToggleAprcSheet(),
     });
     this._keyboardShortcutManager.attach();
+  }
+
+  /** The notice at the foot of the screen the Alt+P / Alt+A toggles show (the Ground Guide's key notice, 5 s), above
+   *  the panels it may land on (the Aprc sheet stacks at 2147482806). */
+  private _toggleNotice: GroundGuideKeyNotice | null = null;
+  private _showToggleNotice(c: KeyNoticeContent): void {
+    try {
+      (this._toggleNotice ??= new GroundGuideKeyNotice({ zIndex: 2147483000 })).show(c);
+    } catch {
+      // no document (a headless host): the toggle still happened
+    }
+  }
+
+  /** Alt+P: the Platoon Guide on or off, as its Pl Guide button, with a notice of the new state and the keys now. */
+  private _keyTogglePlatoonGuide(): void {
+    const on = this.togglePlatoonGuide();
+    const pg = this._platoonGuide;
+    if (!on) {
+      this._showToggleNotice({ mode: 'Pl Guide off', text: 'Its halo, answer bar and map marks are cleared.', keys: [['Alt P', 'Pl Guide on']] });
+      return;
+    }
+    const hover = !!pg?.options?.hover;
+    const keys: KeyNoticeKey[] = [['Alt P', 'Pl Guide off']];
+    if (pg?.options?.keys !== false) keys.push(['A', 'pin the reading, open the Pl Detail'], ['⇧A', 'back a tab'], ['Esc', 'fold the Detail']);
+    this._showToggleNotice({
+      mode: 'Pl Guide on',
+      text: hover
+        ? 'Hover is on: it reads the Gr under the cursor.'
+        : 'Place or select a Team / Sec / Pl / Coy, or turn on Hover (⌖) to read under the cursor; a selected line gives the patrol route card.',
+      keys,
+    });
+  }
+
+  /** Alt+A: the Aprc sheet open or closed, as its Aprc button (Aprc is switched on first), with a notice. */
+  private _keyToggleAprcSheet(): void {
+    if (!this._groundAppreciation?.isEnabled) this.toggleGroundAppreciation(true);
+    const ga = this._groundAppreciation;
+    if (!ga) return;
+    const open = ga.togglePanel();
+    this._showToggleNotice(
+      open
+        ? {
+            mode: 'Aprc sheet open',
+            text: 'Read drafts it from the Gr, the symbols on the map and Check my plan; what you write stays yours.',
+            keys: [['Alt A', 'close the sheet'], ['↓ ↑', 'next / previous para'], ['N', 'next to do'], ['A', 'accept the proposal'], ['Enter', 'write in the para'], ['Esc', 'close']],
+          }
+        : { mode: 'Aprc sheet closed', text: 'Aprc stays on: what you wrote is kept.', keys: [['Alt A', 'open the sheet']] },
+    );
   }
 
   /**

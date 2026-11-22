@@ -20,6 +20,7 @@ const M = await import('../../MS/Engines/MovementGuide/MovementGuideScan.ts');
 const MP = await import('../../MS/Engines/MovementGuide/MovementGuidePlans.ts');
 const PL = await import('../../MS/Engines/PlatoonGuide/PlatoonGuideRead.ts');
 const W = await import('../movement-test/world.mjs');
+const GR = await import('../../MS/Engines/MovementGuide/MovementGuideGrid.ts');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
@@ -41,8 +42,8 @@ const its = (res, role) => res.items.filter((i) => i.role === role);
 const centre = (pts) => ({ x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length });
 const movRules = M.rulesFrom(json('MS/Data/MovementDoctrine.json'));
 const plRules = PL.plRulesFrom(json('MS/Data/PlatoonDoctrine.json'));
-const ground = (gm = W.probe) => {
-  const mov = { ...gm, raster: () => null, sight2: (...a) => { const s = gm.sight(...a); return { p: s, pTerrain: s }; }, going: (p) => (p === 'dismounted' ? W.foot : W.wheeled), classLabel: (c) => `C${c}`, takePending: () => false };
+const ground = (gm = W.probe, extra = {}) => {
+  const mov = { ...gm, raster: () => null, sight2: (...a) => { const s = gm.sight(...a); return { p: s, pTerrain: s }; }, going: (p) => (p === 'dismounted' ? W.foot : W.wheeled), classLabel: (c) => `C${c}`, takePending: () => false, ...extra };
   return { cls: gm.cls, elev: gm.elev, going: (p) => (p === 'dismounted' ? W.foot : W.wheeled), label: (c) => `C${c}`, sight: gm.sight, pending: () => false, dataLine: () => 'synthetic', mov: () => mov };
 };
 const g = ground();
@@ -175,13 +176,27 @@ const defile = W.at(1300, 0);
   check('...rows: Bounds, Seen, Villages, Skylines, Dangers, Time', ['Bounds', 'Seen', 'Villages', 'Skylines', 'Dangers', 'Time'].every((x) => row(rows, x)), rows.map((x) => `${x.name} ${x.st}`).join(', '));
   check('...Time: out, at the Obj and back by night', /by night: out .* at the Obj, back /.test(row(rows, 'Time')?.reason ?? ''), row(rows, 'Time')?.reason);
   const legsOut = fl.fit.small.legs.filter((l) => l.way === 'Out');
-  check('...the route card: a few legs a patrol can walk by night (the grid steps straightened), each with a bearing and paces', legsOut.length >= 2 && legsOut.length <= 15 && legsOut.every((l) => l.paces > 0 && l.bearingDeg >= 0 && l.bearingDeg < 360), `${legsOut.length} legs out`);
+  check('...the route card: a few legs a patrol can walk by night (the grid steps straightened), each with a bearing and paces', legsOut.length >= 2 && legsOut.length <= 15 && legsOut.every((l) => l.paces > 0 && l.bearingDeg >= 0 && l.bearingDeg < 360 && l.gridDeg >= 0 && l.gridDeg < 360), `${legsOut.length} legs out`);
+  // bearings are grid, not true: no sheets' grid read here, so the UTM grid (zone 43, grid north 1.1 W of true at 73 E)
+  const brgOff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+  const utmC = PL.plUtmConvergence(sp).deg;
+  check('...grid bearings: no sheets grid read, UTM zone 43 named, grid = true - convergence', fl.fit.small.grid === 'UTM zone 43' && legsOut.every((l) => brgOff(l.gridDeg, l.bearingDeg - utmC) <= 1.05), `${fl.fit.small.grid}: ${legsOut.map((l) => `${l.bearingDeg}T/${l.gridDeg}G`).join(' ')}`);
   check('...the town avoided: no village on the way out', !(row(rows, 'Villages')?.reason ?? '').includes('Testabad'), row(rows, 'Villages')?.reason);
   check('...a confirm list for the ground', fl.res.confirm.length >= 3);
-  check('...each leg in mils too (6400 to the circle); no GMA set: no magnetic bearing', legsOut.every((l) => Math.abs(l.mils - (l.bearingDeg * 6400) / 360) <= 9 && l.magDeg === null), legsOut.map((l) => `${l.bearingDeg}/${l.mils}`).join(' '));
+  check('...each leg in mils too (6400 to the circle, from the grid bearing); no GMA set: no magnetic bearing', legsOut.every((l) => Math.abs(l.mils - (l.gridDeg * 6400) / 360) <= 9 && l.magDeg === null), legsOut.map((l) => `${l.gridDeg}/${l.mils}`).join(' '));
   const gm = F.fitLayout(inpOf(ptl, sp, brg, { cursor: XY(obj), night: true, gmaDeg: 2.5 }));
   const gl = gm.fit.small.legs.filter((l) => l.way === 'Out');
-  check('...GMA +2.5 (E): magnetic = grid - GMA on every leg', gl.length && gl.every((l) => Math.abs(((l.bearingDeg - 2.5 - l.magDeg + 540) % 360) - 180) <= 1), gl.map((l) => `${l.bearingDeg}->${l.magDeg}`).join(' '));
+  check('...GMA +2.5 (E): magnetic = grid - GMA on every leg', gl.length && gl.every((l) => Math.abs(((l.gridDeg - 2.5 - l.magDeg + 540) % 360) - 180) <= 1), gl.map((l) => `${l.gridDeg}->${l.magDeg}`).join(' '));
+  // the bundle's sheets.json read (MovementGuideProbe.gridConvergence over MovementGuideGrid): the Indian grid zone I,
+  // grid north sin 32.5 x 5 = 2.69 E of true at 73 E; mils and magnetic follow the grid bearing
+  const sheets = new GR.SheetGridReader();
+  sheets.load({ '50k': [['43G/1', 72.5, 33.5, 73.5, 34]], grid: { zones: [{ id: 'I', lat0: 32.5, lon0: 68 }, { id: 'IIa', lat0: 26, lon0: 74 }], boundary: [[54, 28], [84, 28]] } });
+  const gIn = ground(W.probe, { gridConvergence: (x, y) => sheets.convergence(...M.mercToLngLat(x, y)) });
+  const ig = F.fitLayout(inpOf(ptl, sp, brg, { cursor: XY(obj), night: true, gmaDeg: 2.5, ground: gIn }));
+  const il = ig.fit.small.legs.filter((l) => l.way === 'Out');
+  const iC = Math.sin((32.5 * Math.PI) / 180) * 5;
+  check('...the sheets grid read: Indian grid zone I named, grid = true - 2.7 on every leg', ig.fit.small.grid === 'Indian grid zone I' && il.length >= 2 && il.every((l) => brgOff(l.gridDeg, l.bearingDeg - iC) <= 1.05), `${ig.fit.small.grid}: ${il.map((l) => `${l.bearingDeg}T/${l.gridDeg}G`).join(' ')}`);
+  check('...mils and magnetic from the Indian grid bearing', il.every((l) => Math.abs(l.mils - (l.gridDeg * 6400) / 360) <= 9 && brgOff(l.magDeg, l.gridDeg - 2.5) <= 1), il.map((l) => `${l.gridDeg}G ${l.mils}mil ${l.magDeg}M`).join(' '));
   // leg ends onto features recognisable at night (PlatoonDoctrine legFeatureKinds within legFeatureM)
   const hill = XY(W.hillC ?? W.at(0, 0));
   const kinds = new Set(['hill']);

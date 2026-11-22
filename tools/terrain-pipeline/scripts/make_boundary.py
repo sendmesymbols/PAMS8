@@ -92,7 +92,7 @@ def build(gdb: Path, out: Path) -> dict:
         feats.append({"type": "Feature",
                       "properties": {"kind": "loc" if cat == "LOC" else "border", "name": str(c3["Name"][i]).strip()},
                       "geometry": json.loads(shapely.to_geojson(_round_geom(shapely.simplify(ln, tol))))})
-    (out / "boundary_display.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}),
+    (out / "boundary_display.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, allow_nan=False),
                                                   encoding="utf-8")
     info = {"source": "official", "from": "NCGDB Province_Bdry (COUNTRY = Pakistan) + EX_FATA_Bdry; "
                                           "includes all of Jammu & Kashmir; the Line of Control is a line, not a limit",

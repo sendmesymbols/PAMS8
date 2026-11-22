@@ -301,7 +301,7 @@ def main() -> int:
     rows.sort(key=lambda r: -r["pop"])
     feats.sort(key=lambda f: -f["properties"]["pop"])
     (args.out / "settlements.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats},
-                                                             separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+                                                             separators=(",", ":"), ensure_ascii=False, allow_nan=False), encoding="utf-8")
     meta = {"format": "pams-settlements", "version": 1,
             "method": "built-up class at ~150 m, gaps up to ~300 m closed, connected patches; WorldPop people inside "
                       "(100 m cells; age groups as 1 km shares); named after the highest-ranking place inside",
@@ -313,7 +313,7 @@ def main() -> int:
                            "fields": dict({"pop": "people", "perKm2": "people per km2 of built-up area"},
                                           **{k: v[0] for k, v in AGE_GROUPS.items()})},
             "sizeClasses": [{"minPop": lo, "class": k, "label": l} for lo, k, l in SIZE_CLASSES], "rows": rows}
-    (args.out / "settlements.json").write_text(json.dumps(meta, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+    (args.out / "settlements.json").write_text(json.dumps(meta, separators=(",", ":"), ensure_ascii=False, allow_nan=False), encoding="utf-8")
     by = {}
     for r in rows:
         by[r["label"]] = by.get(r["label"], 0) + 1

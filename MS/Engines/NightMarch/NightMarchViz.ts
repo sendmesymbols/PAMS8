@@ -59,8 +59,11 @@ export interface DialOpts {
   px: number;
   bearing: number | null;
   prev?: number[];
-  /** GMA in degrees, east positive: magnetic north is drawn that far east of grid north. */
+  /** GMA in degrees, east positive: magnetic north lies that far east of grid north. */
   gmaDeg?: number | null;
+  /** How far grid north lies east of true north (the leg's `convDeg`). The rose is drawn true north up and turns with
+   *  the map, the needle on the true bearing over the line drawn, so magnetic north is drawn at convergence + GMA. */
+  convDeg?: number | null;
   objBrg?: number | null;
   color?: string;
   /** Drift each side of the bearing, degrees (the cone). */
@@ -92,7 +95,8 @@ export function compassDial(o: DialOpts): SVGSVGElement {
   }
   // Magnetic north: a small violet-free tick (the warm token is the lamps; MN is white, dashed).
   if (o.gmaDeg !== null && o.gmaDeg !== undefined && Math.abs(o.gmaDeg) >= 0.5) {
-    const [x1, y1] = P(C, C, R + 4, o.gmaDeg), [x2, y2] = P(C, C, R - 12, o.gmaDeg);
+    const mn = o.gmaDeg + (Number.isFinite(o.convDeg) ? (o.convDeg as number) : 0);
+    const [x1, y1] = P(C, C, R + 4, mn), [x2, y2] = P(C, C, R - 12, mn);
     S('line', { x1: f1(x1), y1: f1(y1), x2: f1(x2), y2: f1(y2), stroke: '#ffffff', 'stroke-width': 1.4, 'stroke-dasharray': '2 2' }, g);
   }
   // Legs already laid: faint spokes with their numbers.
@@ -253,7 +257,7 @@ export function stripMap(b: NightMarchBrief, width: number, height: number): SVG
       const g = S('g', {}, svg);
       const cy = lineY - 34;
       S('circle', { cx: f1(mid), cy, r: 13, fill: SURFACE.ring, stroke: TONE_COL[lg.tone], 'stroke-width': 1.6 }, g);
-      const brg = lg.magDeg ?? lg.bearingDeg;
+      const brg = lg.magDeg ?? lg.gridDeg;
       const [tx, ty] = P(mid, cy, 10, brg), [kx, ky] = P(mid, cy, 6, brg + 180), [lx, ly] = P(mid, cy, 4, brg - 90), [rx, ry] = P(mid, cy, 4, brg + 90);
       S('path', { d: `M${f1(tx)} ${f1(ty)}L${f1(rx)} ${f1(ry)}L${f1(kx)} ${f1(ky)}L${f1(lx)} ${f1(ly)}Z`, fill: ACCENT }, g);
       if (room >= 92) {
@@ -342,13 +346,13 @@ export function pocketCard(lg: NmLeg, b: NightMarchBrief, cardH: number): HTMLEl
   card.append(head);
   const top = h('div', 'ms-nm-pc-top');
   const dialPx = Math.max(84, Math.min(118, cardH - 196));
-  top.append(compassDial({ px: dialPx, bearing: lg.bearingDeg, gmaDeg: b.gmaDeg, driftDeg: 3, color: ACCENT, label: `Leg ${lg.i} bearing` }));
+  top.append(compassDial({ px: dialPx, bearing: lg.bearingDeg, gmaDeg: b.gmaDeg, convDeg: lg.convDeg, driftDeg: 3, color: ACCENT, label: `Leg ${lg.i} bearing` }));
   const nums = h('div', 'ms-nm-pc-nums');
-  const main = lg.magDeg ?? lg.bearingDeg;
+  const main = lg.magDeg ?? lg.gridDeg;
   const big = h('div', 'ms-nm-pc-brg', b.units === 'mils' ? `${String(toMils(main)).padStart(4, '0')}` : deg3(main));
   big.append(h('small', undefined, b.units === 'mils' ? ` mils ${lg.magDeg === null ? 'G' : 'M'}` : lg.magDeg === null ? ' G' : ' M'));
   nums.append(big);
-  if (lg.magDeg !== null) nums.append(h('div', 'ms-nm-pc-sub', `grid ${deg3(lg.bearingDeg)}${b.units !== 'deg' ? ` · ${toMils(main)} mils` : ''}`));
+  if (lg.magDeg !== null) nums.append(h('div', 'ms-nm-pc-sub', `grid ${deg3(lg.gridDeg)}${b.units !== 'deg' ? ` · ${toMils(main)} mils` : ''}`));
   else if (b.units === 'both') nums.append(h('div', 'ms-nm-pc-sub', `${toMils(main)} mils G`));
   const pc = h('div', 'ms-nm-pc-paces', num(lg.paces));
   pc.append(h('small', undefined, ' paces'));
@@ -359,7 +363,7 @@ export function pocketCard(lg: NmLeg, b: NightMarchBrief, cardH: number): HTMLEl
   cord.append(paceCord(lg.distM, 190));
   card.append(cord);
   const ends = h('div', 'ms-nm-pc-ends');
-  if (lg.toFup) ends.append(h('b', undefined, 'FUP'), ` · axis ${C.fup.axisMagDeg !== null ? `${deg3(C.fup.axisMagDeg)} M` : `${deg3(C.fup.axisDeg)} G`}`);
+  if (lg.toFup) ends.append(h('b', undefined, 'FUP'), ` · axis ${C.fup.axisMagDeg !== null ? `${deg3(C.fup.axisMagDeg)} M` : `${deg3(C.fup.axisGridDeg)} G`}`);
   else if (lg.landmark) ends.append('Ends on ', h('b', undefined, `${lg.landmark.label}${lg.landmark.name ? ` ${lg.landmark.name}` : ''}`), lg.landmark.distM > 15 ? ` ${dist(lg.landmark.distM)} ${lg.landmark.dir}` : '');
   else ends.append(h('b', undefined, 'No landmark'), ': guide + light');
   card.append(ends);
@@ -419,7 +423,7 @@ export function traceMap(b: NightMarchBrief, width: number, height: number): SVG
     const mx = (X(lg.from) + X(lg.to)) / 2, my = (Y(lg.from) + Y(lg.to)) / 2;
     const segPx = Math.hypot(X(lg.to) - X(lg.from), Y(lg.to) - Y(lg.from));
     if (segPx > 40) {
-      const t = segPx > 90 ? `${deg3(lg.magDeg ?? lg.bearingDeg)} · ${num(lg.paces)} p` : deg3(lg.magDeg ?? lg.bearingDeg);
+      const t = segPx > 90 ? `${deg3(lg.magDeg ?? lg.gridDeg)} · ${num(lg.paces)} p` : deg3(lg.magDeg ?? lg.gridDeg);
       const w = t.length * 6.4 + 10;
       const lab = S('g', { 'data-gv-upright': `${f1(mx)} ${f1(my)}` }, g);
       S('rect', { x: f1(mx - w / 2), y: f1(my - 9), width: f1(w), height: 18, rx: 5, fill: '#14181d', 'fill-opacity': 0.9, stroke: TONE_COL[lg.tone] === STEP_COLOR.go ? ACCENT : TONE_COL[lg.tone], 'stroke-width': 1 }, lab);
@@ -511,7 +515,7 @@ export function fupPlan(b: NightMarchBrief, width: number, height: number): SVGS
   S('line', { x1: f1(X(-F.frontM / 2)), y1: f1(Y(F.depthM / 2)), x2: f1(X(F.frontM / 2)), y2: f1(Y(F.depthM / 2)), stroke: '#ffffff', 'stroke-width': 4.5 }, svg);
   txt(svg, X(F.frontM / 2) + 8, Y(F.depthM / 2) + 4, F.slFeature ? `SL · ${F.slFeature}` : 'SL (taped)', { 'font-size': 12, 'font-weight': 750, fill: '#ffffff' });
   S('line', { x1: f1(X(0)), y1: f1(Y(F.depthM / 2)), x2: f1(X(0)), y2: f1(Y(F.depthM / 2 + C.stores.axisTapeM)), stroke: '#ffffff', 'stroke-width': 1.8, 'stroke-dasharray': '5 4' }, svg);
-  txt(svg, X(0) + 8, Y(F.depthM / 2 + C.stores.axisTapeM * 0.55), `axis ${F.axisMagDeg !== null ? `${deg3(F.axisMagDeg)} M` : `${deg3(F.axisDeg)} G`}`, { 'font-size': 11, fill: '#e4e8ec' });
+  txt(svg, X(0) + 8, Y(F.depthM / 2 + C.stores.axisTapeM * 0.55), `axis ${F.axisMagDeg !== null ? `${deg3(F.axisMagDeg)} M` : `${deg3(F.axisGridDeg)} G`}`, { 'font-size': 11, fill: '#e4e8ec' });
   S('path', { d: `M${f1(X(0))} ${f1(Y(F.depthM / 2 + C.stores.axisTapeM + 22))}l-6 10h12z`, fill: STEP_COLOR.nogo }, svg);
   txt(svg, X(0), 14, C.objective && F.distToObjM !== null ? `Obj ${dist(F.distToObjM)}` : 'Axis', { 'font-size': 12, 'font-weight': 750, fill: '#ffffff', 'text-anchor': 'middle' });
   // Dimensions.

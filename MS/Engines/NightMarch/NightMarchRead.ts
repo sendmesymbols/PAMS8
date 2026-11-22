@@ -15,10 +15,14 @@
  * line laid square to the axis with the places in it, the lights and guides; the stores the marking party carries; the
  * timings back from H; the enemy's night-sight and thermal rings round the objective; and the checks, worst first.
  * Rules and figures: MS/Data/NightMarchDoctrine.json (R = roadmap rule, E = proposal).
+ *
+ * Bearings: worked out true on the map (`bearingDeg`, `axisDeg`: what is drawn); the chart gives them in the grid the
+ * 1:50k sheets carry (`gridDeg` = true - convergence; the Indian grid when the probe or `grid` reads the sheets, else UTM,
+ * `chart.grid` names it), and magnetic = grid - GMA.
  */
 
 import type { GoingSets, NearFeature } from '../MovementGuide/MovementGuideScan';
-import { patrolCard, plBearing, plCompass, plDist, plOffset, type MercXY, type PatrolCard, type PlFootSpeeds, type PlProbe, type PlSpot, type PlStretch, type ScanFn } from '../PlatoonGuide/PlatoonGuideRead';
+import { patrolCard, plBearing, plCompass, plConvergence, plDist, plGridDeg, plOffset, type MercXY, type PatrolCard, type PlFootSpeeds, type PlProbe, type PlSpot, type PlStretch, type ScanFn } from '../PlatoonGuide/PlatoonGuideRead';
 
 export type NmEchelon = 'platoon' | 'company' | 'battalion';
 export type NmTerrain = 'plains' | 'desert' | 'mountain';
@@ -115,7 +119,13 @@ export interface NmLeg {
   i: number;
   from: MercXY;
   to: MercXY;
+  /** True bearing (for drawing). */
   bearingDeg: number;
+  /** Grid bearing (`NightMarchChart.grid` names the grid): what the chart shows and the compass is set from. */
+  gridDeg: number;
+  /** How far grid north lies east of true north at the leg's start (gridDeg = bearingDeg - convDeg). */
+  convDeg: number;
+  /** Magnetic = grid - GMA; null while the GMA is not set. */
   magDeg: number | null;
   distM: number;
   paces: number;
@@ -158,7 +168,10 @@ export interface NmSlot {
 }
 export interface NmFup {
   centre: MercXY;
+  /** True bearing of the axis (for drawing). */
   axisDeg: number;
+  /** Grid bearing of the axis. */
+  axisGridDeg: number;
   axisMagDeg: number | null;
   /** True when the axis points at the objective; false = along the last leg (no objective set). */
   axisToObj: boolean;
@@ -253,6 +266,8 @@ export interface NightMarchChart {
   deadShare: number | null;
   obstacles: PatrolCard['obstacles'];
   villages: PatrolCard['villages'];
+  /** The grid the bearings are in ("Indian grid zone I", else "UTM zone 43") and its convergence at the SP. */
+  grid: { name: string; convDeg: number };
   gmaSet: boolean;
   tanks: boolean;
   checks: NmCheck[];
@@ -278,19 +293,29 @@ export interface NmInput {
   speeds?: PlFootSpeeds | null;
   classLabel?: (c: number) => string;
   scanRoad?: ScanFn;
+  /** Where the 1:50k sheets' grid is read when there is no terrain probe (a probe's own `gridConvergence` comes first);
+   *  neither: the UTM grid. */
+  grid?: Pick<PlProbe, 'gridConvergence'> | null;
+}
+
+/** The grid's convergence at a place: the probe's sheets' grid, else `grid`'s, else UTM (PlatoonGuideRead). */
+function convAt(input: Pick<NmInput, 'probe' | 'grid'>, p: MercXY): { deg: number; name: string } {
+  const src = input.probe?.gridConvergence ? input.probe : input.grid?.gridConvergence ? input.grid : {};
+  return plConvergence(src, p);
 }
 
 const worst = (a: NmTone, b: NmTone): NmTone => (a === 'bad' || b === 'bad' ? 'bad' : a === 'warn' || b === 'warn' ? 'warn' : 'ok');
 
 /** Legs from the geometry alone: open ground at the march table's night speed. */
-function flatLegs(path: MercXY[], R: Rules, kmh: number): PatrolCard['legs'] {
+function flatLegs(path: MercXY[], R: Rules, kmh: number, conv: (p: MercXY) => number): PatrolCard['legs'] {
   const out: PatrolCard['legs'] = [];
   for (let s = 0; s + 1 < path.length; s++) {
     const a = path[s], b = path[s + 1];
     const L = plDist(a, b);
     if (!(L > 0.5)) continue;
     const min = (L / 1000 / Math.max(0.3, kmh)) * 60;
-    out.push({ i: out.length + 1, from: a, to: b, bearingDeg: plBearing(a, b), distM: L, paces: pacesFor(L, R), minDay: Math.round(min * 0.75), minNight: Math.round(min), climbM: 0, endFeature: null });
+    const brg = plBearing(a, b);
+    out.push({ i: out.length + 1, from: a, to: b, bearingDeg: brg, gridDeg: plGridDeg(brg, conv(a)), distM: L, paces: pacesFor(L, R), minDay: Math.round(min * 0.75), minNight: Math.round(min), climbM: 0, endFeature: null });
   }
   return out;
 }
@@ -339,7 +364,8 @@ export function nightMarchChart(input: NmInput, R: Rules): NightMarchChart {
       scanRoad: input.scanRoad,
     });
   }
-  const raw = pc ? pc.legs : flatLegs(path, R, flatKmh);
+  const conv = (p: MercXY) => convAt(input, p);
+  const raw = pc ? pc.legs : flatLegs(path, R, flatKmh, (p) => conv(p).deg);
   const spare = 1 + (R.speed.spareFactor ?? 0);
   const haltEvery: number = R.speed.haltEveryMin ?? 120;
   const haltMin: number = R.speed.haltMin ?? 15;
@@ -391,12 +417,16 @@ export function nightMarchChart(input: NmInput, R: Rules): NightMarchChart {
       notes.push('Inside the enemy\'s night sights: silent, no lights');
       tone = 'warn';
     }
+    const cv = conv(r.from).deg;
+    const gridDeg = plGridDeg(r.bearingDeg, cv);
     legs.push({
       i: legs.length + 1,
       from: r.from,
       to: r.to,
       bearingDeg: r.bearingDeg,
-      magDeg: magOf(r.bearingDeg, gma),
+      gridDeg,
+      convDeg: cv,
+      magDeg: magOf(gridDeg, gma),
       distM: r.distM,
       paces: pacesFor(r.distM, R),
       cumM,
@@ -465,10 +495,12 @@ export function nightMarchChart(input: NmInput, R: Rules): NightMarchChart {
       }
     }
   }
+  const axisGridDeg = plGridDeg(axisDeg, conv(centre).deg);
   const fup: NmFup = {
     centre,
     axisDeg,
-    axisMagDeg: magOf(axisDeg, gma),
+    axisGridDeg,
+    axisMagDeg: magOf(axisGridDeg, gma),
     axisToObj: !!obj,
     ...lay,
     distToObjM,
@@ -561,6 +593,9 @@ export function nightMarchChart(input: NmInput, R: Rules): NightMarchChart {
     deadShare = Math.max(0, Math.min(1, hidden / lengthM));
   }
 
+  // The grid the bearings are in, named at the SP.
+  const gridAtSp = conv(path[0] ?? centre);
+
   // The checks, worst first.
   const checks: NmCheck[] = [];
   const push = (tone: NmTone, text: string, at?: MercXY) => checks.push({ tone, text, at });
@@ -574,7 +609,7 @@ export function nightMarchChart(input: NmInput, R: Rules): NightMarchChart {
   if (fup.obstacleAhead) push('bad', `${fup.obstacleAhead.label} across the axis ${fup.obstacleAhead.distM} m beyond the SL: the SL must never be behind an obstacle`, plOffset(slMid, axisDeg, fup.obstacleAhead.distM));
   if (approachTone === 'bad') push('bad', `The route comes into the FUP from the enemy's side (${Math.round(approachDeg)}° off the axis): come in from the rear`, centre);
   else if (approachTone === 'warn') push('warn', `The route comes into the FUP ${Math.round(approachDeg)}° off the axis: turn the column before the FUP, no change of direction inside it`, centre);
-  if (gma === null) push('warn', 'Set the grid-magnetic angle: bearings are grid only until then');
+  if (gma === null) push('warn', `Set the grid-magnetic angle: bearings are grid (${gridAtSp.name}) only until then`);
   const noMark = legs.filter((l) => !l.toFup && !l.landmark);
   if (noMark.length) push('warn', `${noMark.length === 1 ? 'Leg' : 'Legs'} ${noMark.map((l) => l.i).join(', ')} end${noMark.length === 1 ? 's' : ''} on no feature recognisable at night: move the turn to one, or put a guide and a light there`, noMark[0].to);
   const longs = legs.filter((l) => l.long);
@@ -616,6 +651,7 @@ export function nightMarchChart(input: NmInput, R: Rules): NightMarchChart {
     deadShare,
     obstacles: pc?.obstacles ?? [],
     villages: pc?.villages ?? [],
+    grid: { name: gridAtSp.name, convDeg: gridAtSp.deg },
     gmaSet: gma !== null,
     tanks,
     checks,
@@ -630,9 +666,16 @@ export interface NmLive {
   legNo: number;
   from: MercXY;
   to: MercXY;
+  /** True bearing (the dial's needle, which turns with the map). */
   bearingDeg: number;
+  /** Grid bearing, in `grid`: what the card shows. */
+  gridDeg: number;
+  /** How far grid north lies east of true north at the leg's start. */
+  convDeg: number;
+  grid: string;
+  /** Magnetic = grid - GMA; null while the GMA is not set. */
   magDeg: number | null;
-  /** Bearings of the legs already laid (the dial shows them faint). */
+  /** True bearings of the legs already laid (the dial shows them faint). */
   prevBearings: number[];
   distM: number;
   paces: number;
@@ -650,7 +693,7 @@ export interface NmLive {
   /** Metres climbed on the leg (terrain only). */
   climbM: number;
   distToObjM: number | null;
-  /** Bearing from the cursor to the objective. */
+  /** True bearing from the cursor to the objective (the dial's rim). */
   objBrg: number | null;
   sight: NmSight;
   long: boolean;
@@ -671,6 +714,8 @@ export function liveLeg(input: Omit<NmInput, 'path' | 'echelon' | 'hHourMin' | '
   const gma = input.gmaDeg !== null && Number.isFinite(input.gmaDeg) ? input.gmaDeg : null;
   const L = plDist(from, to);
   const brg = L > 0.5 ? plBearing(from, to) : 0;
+  const cv = convAt(input, from);
+  const gridDeg = plGridDeg(brg, cv.deg);
   const flatKmh: number = R.speed.nightKmh?.[input.terrainKind] ?? 3;
   const spare = 1 + (R.speed.spareFactor ?? 0);
   let cumM = 0, cumMin = 0;
@@ -721,7 +766,10 @@ export function liveLeg(input: Omit<NmInput, 'path' | 'echelon' | 'hHourMin' | '
     from,
     to,
     bearingDeg: brg,
-    magDeg: magOf(brg, gma),
+    gridDeg,
+    convDeg: cv.deg,
+    grid: cv.name,
+    magDeg: magOf(gridDeg, gma),
     prevBearings: prev,
     distM: L,
     paces: pacesFor(L, R),

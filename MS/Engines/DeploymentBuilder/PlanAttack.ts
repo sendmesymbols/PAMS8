@@ -24,6 +24,7 @@ import type { Check, CheckState, SolveResult, XY } from './PlanSolve';
 import { toLocal, toWorld, type FitFrame, type PlanGround } from './PlanFit';
 import { footKmh, type TerrainKind } from './PlanContext';
 import { nightMarchChart, type NightMarchChart, type Rules as NmRules } from '../NightMarch/NightMarchRead';
+import type { PlProbe } from '../PlatoonGuide/PlatoonGuideRead';
 
 const P = (x: number, y: number): XY => ({ x, y });
 const fmtM = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
@@ -745,7 +746,10 @@ export function attackFactors(layout: string, rows: Check[], res: SolveResult, f
 
 // ── by night: the Night March chart from the Assy Area to the FUP ──────────────────────────────────────────────────
 export interface NightBrief {
-  legs: { i: number; bearingDeg: number; distM: number; paces: number; min: number; sight: string }[];
+  /** `bearingDeg` true (the line drawn), `gridDeg` the grid bearing in `grid` (the route card's). */
+  legs: { i: number; bearingDeg: number; gridDeg: number; distM: number; paces: number; min: number; sight: string }[];
+  /** The grid the bearings are in ("Indian grid zone I", else "UTM zone 43"). */
+  grid: string;
   leaveBeforeH: number;
   marchMin: number;
   /** Metres from the Assy Area where the route comes inside his thermal / night sights; null: never. */
@@ -756,14 +760,16 @@ export interface NightBrief {
   paces: number;
 }
 
-export function nightBrief(route: XY[], objective: XY, f: FitFrame, kind: TerrainKind, R: NmRules): NightBrief | null {
+export function nightBrief(route: XY[], objective: XY, f: FitFrame, kind: TerrainKind, R: NmRules, grid: Pick<PlProbe, 'gridConvergence'> | null = null): NightBrief | null {
   if (route.length < 2) return null;
   // the Night March engine's points are [x, y] Web Mercator
   const tw = (p: XY): [number, number] => { const w = toWorld(f, p); return [w.x, w.y]; };
   const path = route.map(tw);
-  const chart: NightMarchChart = nightMarchChart({ path, objective: tw(objective), echelon: 'battalion', gmaDeg: null, hHourMin: null, terrainKind: kind === 'obstacle' ? 'plains' : kind }, R);
+  // grid bearings in the 1:50k sheets' grid when the bundle's reader is given (else UTM)
+  const chart: NightMarchChart = nightMarchChart({ path, objective: tw(objective), echelon: 'battalion', gmaDeg: null, hHourMin: null, terrainKind: kind === 'obstacle' ? 'plains' : kind, grid }, R);
   return {
-    legs: chart.legs.map((l) => ({ i: l.i, bearingDeg: Math.round(l.bearingDeg), distM: Math.round(l.distM), paces: l.paces, min: l.minNight, sight: l.sight })),
+    legs: chart.legs.map((l) => ({ i: l.i, bearingDeg: Math.round(l.bearingDeg) % 360, gridDeg: Math.round(l.gridDeg) % 360, distM: Math.round(l.distM), paces: l.paces, min: l.minNight, sight: l.sight })),
+    grid: chart.grid.name,
     leaveBeforeH: chart.timing.leaveBeforeH, marchMin: chart.timing.marchMin,
     thermalAtM: chart.sights?.thermal.enterAtM ?? null, nightAtM: chart.sights?.night.enterAtM ?? null,
     checks: chart.checks.filter((c) => c.tone !== 'ok').slice(0, 4).map((c) => c.text),

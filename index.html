@@ -2078,7 +2078,7 @@
         </div>
         <!-- Platoon Guide on/off (features.platoonGuide), hover (platoonGuide.hover) and its settings; wired in src/main.ts. -->
         <div class="infobar-split">
-          <button class="ms-btn infobar-btn" id="platoonGuideBtn" aria-pressed="false" title="Platoon Guide — the Ground card at a point for Team to Coy: going, cover, water, way out, landing site and hospital; what you see and what is dead ground; likely mine / IED and ambush sites round you; people and BUA; help; where to stop. Place or select a Team / Sec / Pl / Coy, turn on Hover (⌖) for the halo round the cursor, or select a line for the patrol route card. The answer bar at the foot shows every tab's answer; click a tab to open it. A pins the reading and opens the Pl Detail, A again walks its tabs; Esc folds it."><span class="infobar-icon">🪖</span>Pl Guide</button>
+          <button class="ms-btn infobar-btn" id="platoonGuideBtn" aria-pressed="false" title="Platoon Guide — the Ground card at a point for Team to Coy: going, cover, water, way out, landing site and hospital; what you see and what is dead ground; likely mine / IED and ambush sites round you; people and BUA; help; where to stop. Place or select a Team / Sec / Pl / Coy, turn on Hover (⌖) for the halo round the cursor, or select a line for the patrol route card. The answer bar at the foot shows every tab's answer; click a tab to open it. A pins the reading and opens the Pl Detail, A again walks its tabs; Esc folds it. Alt+P switches it on or off."><span class="infobar-icon">🪖</span>Pl Guide</button>
           <button class="ms-btn infobar-btn infobar-gear" id="platoonGuideHoverBtn" aria-pressed="false" aria-label="Platoon Guide: read where the mouse is" title="Hover: read the point under the cursor without drawing (platoonGuide.hover)."><span class="infobar-icon">⌖</span></button>
           <button class="ms-btn infobar-btn infobar-gear" id="platoonGuideSettingsBtn" aria-label="Platoon Guide settings" aria-expanded="false" title="Platoon Guide settings. Same settings as Ctrl+K → Platoon Guide."><span class="infobar-icon">⚙</span></button>
         </div>
@@ -2120,7 +2120,7 @@
         </div>
         <!-- Aprc on/off (features.groundAppreciation) + its sheet, and its settings; wired in src/main.ts. -->
         <div class="infobar-split">
-          <button class="ms-btn infobar-btn" id="groundAppreciationBtn" aria-pressed="false" title="Aprc: the appreciation of the situation drafted from the map. Gr and Weather (gen description, apchs, ITGs, obs, cover, met, deductions) from the terrain data through the Ground Guide; en and own from the symbols; courses from Check my plan. What you write stays yours; proposals print only once accepted. Exports Word, PDF, text and Briefing slides. Turns it on and opens its sheet."><span class="infobar-icon">📝</span>Aprc</button>
+          <button class="ms-btn infobar-btn" id="groundAppreciationBtn" aria-pressed="false" title="Aprc: the appreciation of the situation drafted from the map. Gr and Weather (gen description, apchs, ITGs, obs, cover, met, deductions) from the terrain data through the Ground Guide; en and own from the symbols; courses from Check my plan. What you write stays yours; proposals print only once accepted. Exports Word, PDF, text and Briefing slides. Turns it on and opens its sheet (Alt+A opens or closes it)."><span class="infobar-icon">📝</span>Aprc</button>
           <button class="ms-btn infobar-btn infobar-gear" id="groundAppreciationSettingsBtn" aria-label="Aprc settings" aria-expanded="false" title="Aprc settings: copy, marking, figures, deck, echelon, mover. Same settings as Ctrl+K → Aprc."><span class="infobar-icon">⚙</span></button>
         </div>
         <!-- Movement Guide on/off (features.movementGuide) and its settings; wired in src/main.ts. -->
@@ -6529,9 +6529,12 @@
               'S - Quick Fix: move the point to clear ground (while drawing)\n' +
               'P - Change the mode the ground is judged for (while drawing)\n' +
               'H - Shrink the cursor card to a chip (while drawing)\n' +
-              '\nPl Guide (while it is on):\n' +
-              'A - Pin the reading at the cursor (a pin marks it) and open the Pl Detail; A again: next tab, Shift+A: back\n' +
-              'Esc - Fold the Pl Detail to its answer bar and let the pin go (placing the symbol lets it go too)',
+              '\nPl Guide:\n' +
+              'Alt+P - Pl Guide on / off (a notice at the foot of the screen says which, and its keys)\n' +
+              'A - Pin the reading at the cursor (a pin marks it) and open the Pl Detail; A again: next tab, Shift+A: back (while it is on)\n' +
+              'Esc - Fold the Pl Detail to its answer bar and let the pin go (placing the symbol lets it go too)\n' +
+              '\nAprc:\n' +
+              'Alt+A - Aprc sheet open / close (switches Aprc on first; a notice says which, and the sheet keys)',
           );
         });
 

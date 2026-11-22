@@ -71,11 +71,11 @@ export function chartLines(b: NightMarchBrief): string[] {
   const L: string[] = [];
   L.push(`NIGHT MARCH CHART — ${ECHELON_WORD[C.echelon]} · ${dist(C.lengthM)} · ${num(C.paces)} paces · ${dur(T.marchMin)} by night`);
   L.push(`SP ${b.grids.sp}   FUP ${b.grids.fup}${b.grids.obj ? `   Obj ${b.grids.obj}` : ''}`);
-  L.push(C.gmaSet ? `Bearings magnetic (GMA ${b.gmaDeg! >= 0 ? `${b.gmaDeg}° E` : `${-b.gmaDeg!}° W`}); grid in brackets.` : 'Bearings GRID: the GMA is not set. Add it before the march.');
+  L.push(C.gmaSet ? `Bearings magnetic (GMA ${b.gmaDeg! >= 0 ? `${b.gmaDeg}° E` : `${-b.gmaDeg!}° W`}); grid (${C.grid.name}) in brackets.` : `Bearings GRID (${C.grid.name}): the GMA is not set. Add it before the march.`);
   L.push('');
   L.push('Leg  Bearing          Dist     Paces   Total   Time    Ends on');
   for (const lg of C.legs) {
-    const brg = lg.magDeg === null ? `${deg3(lg.bearingDeg)} G` : `${deg3(lg.magDeg)} M (${deg3(lg.bearingDeg)} G)`;
+    const brg = lg.magDeg === null ? `${deg3(lg.gridDeg)} G` : `${deg3(lg.magDeg)} M (${deg3(lg.gridDeg)} G)`;
     const when = T.hHourMin !== null ? clock(T.hHourMin - T.leaveBeforeH + lg.startMin) : hRel(-T.leaveBeforeH + lg.startMin);
     const ends = lg.toFup ? 'FUP' : lg.landmark ? `${lg.landmark.label}${lg.landmark.name ? ` ${lg.landmark.name}` : ''}` : '(no landmark: guide + light)';
     L.push(`${String(lg.i).padEnd(4)} ${brg.padEnd(16)} ${dist(lg.distM).padEnd(8)} ${num(lg.paces).padEnd(7)} ${num(lg.cumPaces).padEnd(7)} ${when.padEnd(7)} ${ends}`);
@@ -89,7 +89,7 @@ export function chartLines(b: NightMarchBrief): string[] {
   L.push('');
   const F = C.fup;
   L.push('FUP AND START LINE');
-  L.push(`  FUP ${dist(F.frontM)} x ${dist(F.depthM)}, axis ${F.axisMagDeg !== null ? `${deg3(F.axisMagDeg)} M` : `${deg3(F.axisDeg)} G`}${F.distToObjM !== null ? `, ${dist(F.distToObjM)} from the Obj` : ''}`);
+  L.push(`  FUP ${dist(F.frontM)} x ${dist(F.depthM)}, axis ${F.axisMagDeg !== null ? `${deg3(F.axisMagDeg)} M` : `${deg3(F.axisGridDeg)} G`}${F.distToObjM !== null ? `, ${dist(F.distToObjM)} from the Obj` : ''}`);
   L.push(`  SL ${dist(F.frontM)} square to the axis${F.slFeature ? ` on ${F.slFeature}` : ', taped end to end'}; axis tape ${C.stores.axisTapeM} m beyond it`);
   L.push(`  Places: ${F.slots.map((s) => s.label).join(', ')}`);
   L.push(`  Marking stores: ${num(C.stores.tapeM)} m of tape (${C.stores.rolls} rolls; ${C.stores.rollsWithRoute} to tape the route too), ${C.stores.lights} lights, ${C.stores.guides} guides`);

@@ -11,6 +11,7 @@ import { dirname, resolve } from 'node:path';
 register('../movement-test/hooks.mjs', import.meta.url);
 const N = await import('../../MS/Engines/NightMarch/NightMarchRead.ts');
 const P = await import('../../MS/Engines/PlatoonGuide/PlatoonGuideRead.ts');
+const G = await import('../../MS/Engines/MovementGuide/MovementGuideGrid.ts');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
@@ -48,7 +49,10 @@ const obj = at(0, 1500);
 const flat = N.nightMarchChart({ path: route, objective: obj, echelon: 'company', gmaDeg: 3, hHourMin: N.parseHHMM('03:00'), terrainKind: 'plains' }, R);
 check('three legs', flat.legs.length === 3, `${flat.legs.length}`);
 check('leg 1 due north', near(flat.legs[0].bearingDeg, 0, 0.5) || near(flat.legs[0].bearingDeg, 360, 0.5), flat.legs[0].bearingDeg.toFixed(1));
-check('leg 1 magnetic = 357', Math.round(flat.legs[0].magDeg) === 357, String(flat.legs[0].magDeg));
+// No probe and no sheets' grid: the bearings are UTM grid (zone 43, lon0 75: grid north 1.1° west of true at 73° E).
+const utm0 = P.plUtmConvergence(route[0]).deg;
+check('no sheets grid: UTM zone 43 named, grid = true - convergence', flat.grid.name === 'UTM zone 43' && near(flat.legs[0].gridDeg, N.norm360(flat.legs[0].bearingDeg - utm0), 1e-9) && near(utm0, -1.11, 0.01), `${flat.grid.name} ${flat.legs[0].gridDeg.toFixed(2)}`);
+check('leg 1 magnetic = grid - GMA (001.1 - 3 = 358)', Math.round(flat.legs[0].magDeg) === 358 && near(flat.legs[0].magDeg, N.norm360(flat.legs[0].gridDeg - 3), 1e-9), String(flat.legs[0].magDeg));
 check('leg 1 1500 m = 1800 paces', near(flat.legs[0].distM, 1500, 3) && near(flat.legs[0].paces, 1800, 4), `${flat.legs[0].distM.toFixed(0)} m ${flat.legs[0].paces}`);
 check('running paces add up', flat.legs[2].cumPaces === N.pacesFor(flat.lengthM, R) && flat.paces === flat.legs[2].cumPaces);
 check('long leg gets check points', flat.legs[0].long && flat.legs[0].checkPts.length === 2, `${flat.legs[0].checkPts.map((c) => c.atM)}`);
@@ -87,6 +91,21 @@ check('with tanks 1500 m is too close', tanks.fup.tone === 'bad');
 const noObj = N.nightMarchChart({ path: route, objective: null, echelon: 'company', gmaDeg: 2, hHourMin: null, terrainKind: 'desert' }, R);
 check('no Obj: axis along the last leg, warn', near(noObj.fup.axisDeg, flat.legs[2].bearingDeg, 0.5) && noObj.checks.some((c) => /No Obj set/.test(c.text)) && noObj.sights === null);
 check('desert night speed 2.5', noObj.timing.flatKmh === 2.5);
+
+// The 1:50k sheets' grid (Indian grid zone I: lat0 32.5, lon0 68) given without a terrain probe: at 73° E grid north lies
+// sin 32.5° x 5° = 2.69° east of true, so due north true is 357.3 grid and 354.3 magnetic with a GMA of 3° E.
+const sheets = new G.SheetGridReader();
+sheets.load({ '50k': [['43G/1', 72.5, 33.5, 73.5, 34]], grid: { zones: [{ id: 'I', lat0: 32.5, lon0: 68 }, { id: 'IIa', lat0: 26, lon0: 74 }], boundary: [[54, 28], [84, 28]] } });
+const sheetGrid = { gridConvergence: (x, y) => sheets.convergence(...P.plLngLat([x, y])) };
+const conv0 = Math.sin(32.5 * D2R) * 5;
+const ind = N.nightMarchChart({ path: route, objective: obj, echelon: 'company', gmaDeg: 3, hHourMin: null, terrainKind: 'plains', grid: sheetGrid }, R);
+check('sheets grid: named Indian grid zone I, convergence 2.69° at the SP', ind.grid.name === 'Indian grid zone I' && near(ind.grid.convDeg, sheetGrid.gridConvergence(...route[0]).deg, 1e-9) && near(ind.grid.convDeg, conv0, 0.01), `${ind.grid.name} ${ind.grid.convDeg.toFixed(3)}`);
+check('sheets grid: every leg grid = true - convergence at its start', ind.legs.every((l) => near(l.gridDeg, N.norm360(l.bearingDeg - sheetGrid.gridConvergence(...l.from).deg), 1e-9) && near(l.convDeg, sheetGrid.gridConvergence(...l.from).deg, 1e-9)), ind.legs.map((l) => `${l.bearingDeg.toFixed(1)}T ${l.gridDeg.toFixed(1)}G`).join(', '));
+check('sheets grid: leg 1 due north = 357.3 G, 354.3 M (GMA 3 E)', near(ind.legs[0].gridDeg, 360 - conv0, 0.05) && near(ind.legs[0].magDeg, 360 - conv0 - 3, 0.05), `${ind.legs[0].gridDeg.toFixed(2)} G ${ind.legs[0].magDeg.toFixed(2)} M`);
+check('sheets grid: true bearings kept for drawing (leg 1 still due north)', near(ind.legs[0].bearingDeg % 360, 0, 0.5) && near(ind.fup.axisDeg % 360, 0, 0.5));
+check('sheets grid: the FUP axis in grid and magnetic', near(ind.fup.axisGridDeg, N.norm360(ind.fup.axisDeg - conv0), 0.01) && near(ind.fup.axisMagDeg, N.norm360(ind.fup.axisGridDeg - 3), 1e-9), `${ind.fup.axisGridDeg.toFixed(2)} G ${ind.fup.axisMagDeg.toFixed(2)} M`);
+const indNoGma = N.nightMarchChart({ path: route, objective: obj, echelon: 'company', gmaDeg: null, hHourMin: null, terrainKind: 'plains', grid: sheetGrid }, R);
+check('sheets grid: no GMA: the warning names the grid', indNoGma.checks.some((c) => /bearings are grid \(Indian grid zone I\)/.test(c.text)));
 
 // ── 3. over ground: a canal across leg 2, a road on the SL, a mosque at turn 1, a crest ────────────────────────────
 function clsL(e, nn) {
@@ -145,6 +164,10 @@ check('crossing slows leg 2 vs flat', terr.legs[1].minNight > flat.legs[1].minNi
 check('skyline on the crest of leg 1', terr.skyline.length >= 1 && terr.checks.some((c) => /skyline/.test(c.text)));
 check('SL on the road', /Road Test Rd|Road/.test(terr.fup.slFeature ?? ''), terr.fup.slFeature ?? 'none');
 check('no obstacle beyond the SL', terr.fup.obstacleAhead === null);
+// A terrain probe that reads the sheets' grid (as PlatoonGuideProbe does) is used before the `grid` input.
+const probeG = { ...probe, gridConvergence: sheetGrid.gridConvergence };
+const terrG = N.nightMarchChart({ path: route, objective: obj, echelon: 'company', gmaDeg: 3, hHourMin: 180, terrainKind: 'plains', probe: probeG, patrolRules: PR, foot, speeds: footSpeeds, classLabel, grid: { gridConvergence: () => ({ deg: 10, name: 'wrong grid' }) } }, R);
+check('terrain + sheets grid: the probe grid wins, legs grid = true - convergence', terrG.grid.name === 'Indian grid zone I' && terrG.legs.every((l) => near(l.gridDeg, N.norm360(l.bearingDeg - sheetGrid.gridConvergence(...l.from).deg), 1e-9)), terrG.legs.map((l) => l.gridDeg.toFixed(1)).join(', '));
 // The canal just beyond a FUP's SL.
 const canalFup = N.nightMarchChart({ path: [at(-800, -3000), at(-800, -1400)], objective: at(-800, 600), echelon: 'company', gmaDeg: 3, hHourMin: null, terrainKind: 'plains', probe, patrolRules: PR, foot, speeds: footSpeeds, classLabel }, R);
 check('canal beyond the SL: bad', canalFup.fup.obstacleAhead?.label === 'Canal' && canalFup.checks[0].tone === 'bad', JSON.stringify(canalFup.fup.obstacleAhead));
@@ -155,6 +178,8 @@ check('live leg no 2, bearing ~072', live.legNo === 2 && near(live.bearingDeg, 7
 check('live leg crosses the canal: bad', live.crossing === 'Canal' && live.tone === 'bad');
 check('live leg running paces', near(live.cumPaces, N.pacesFor(1500 + P.plDist(route[1], route[2]), R), 2));
 check('live leg prev bearings', live.prevBearings.length === 1);
+const liveG = N.liveLeg({ laid: route.slice(0, 2), cursor: at(0, -1000), objective: obj, gmaDeg: 3, terrainKind: 'plains', grid: sheetGrid }, R);
+check('live leg: grid = true - convergence, magnetic = grid - GMA, grid named', liveG.grid === 'Indian grid zone I' && near(liveG.gridDeg, N.norm360(liveG.bearingDeg - conv0), 0.01) && near(liveG.magDeg, N.norm360(liveG.gridDeg - 3), 1e-9) && near(liveG.convDeg, sheetGrid.gridConvergence(...route[1]).deg, 1e-9), `${liveG.bearingDeg.toFixed(1)} T ${liveG.gridDeg.toFixed(1)} G ${liveG.magDeg.toFixed(1)} M`);
 const liveFlat = N.liveLeg({ laid: [at(0, -3000)], cursor: at(0, 900), objective: obj, gmaDeg: null, terrainKind: 'plains' }, R);
 check('live leg inside night sights: bad', liveFlat.sight === 'night' && liveFlat.tone === 'bad' && liveFlat.long);
 const on = N.legAt(flat, at(-1500, -2400), 30, R);

@@ -309,7 +309,7 @@ def load_json(path: Path):
 
 def dump_json(path: Path, obj) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text(json.dumps(obj, indent=2) + "\n", encoding="utf-8")
+    Path(path).write_text(json.dumps(obj, indent=2, allow_nan=False) + "\n", encoding="utf-8")   # JSON has no NaN: fail here, not in the browser
 
 
 def class_table(classes_cfg: dict) -> dict[str, int]:

@@ -165,7 +165,7 @@ export function cardLines(_card: CardId, res: CardResult, ctx: CardCtx): string[
         L.push(`  ${pad('Leg', 5)}${pad('Bearing', 9)}${pad('Dist', 8)}${pad('Paces', 7)}${pad('Night', 9)}${pad('Climb', 7)}Ends at`);
         for (const l of c.legs) {
           const f = l.endFeature;
-          L.push(`  ${pad(l.i + 1, 5)}${pad(`${String(Math.round(l.bearingDeg)).padStart(3, '0')}°`, 9)}${pad(`${Math.round(l.distM)} m`, 8)}${pad(num(l.paces), 7)}${pad(dur(l.minNight), 9)}${pad(`${Math.round(l.climbM)} m`, 7)}${f ? `${f.label}${f.name ? ` (${f.name})` : ''}` : 'no landmark: count paces'} · ${pos(l.to[0], l.to[1])}`);
+          L.push(`  ${pad(l.i, 5)}${pad(`${String(Math.round(l.gridDeg) % 360).padStart(3, '0')}°`, 9)}${pad(`${Math.round(l.distM)} m`, 8)}${pad(num(l.paces), 7)}${pad(dur(l.minNight), 9)}${pad(`${Math.round(l.climbM)} m`, 7)}${f ? `${f.label}${f.name ? ` (${f.name})` : ''}` : 'no landmark: count paces'} · ${pos(l.to[0], l.to[1])}`);
         }
         for (const s of c.exposed ?? []) L.push(`  exposed ${kmRange(s.fromM, s.toM)}: ${s.why}`);
         for (const s of c.skyline ?? []) L.push(`  skyline ${kmRange(s.fromM, s.toM)}: ${s.why}`);
@@ -180,7 +180,7 @@ export function cardLines(_card: CardId, res: CardResult, ctx: CardCtx): string[
       L.push('');
       chart('ROUTE IN (a different way)', res.back);
       if (res.back?.sameWayBack || res.out?.sameWayBack) L.push('WARNING: the route in runs along the route out.');
-      L.push('Bearings are grid; add the declination for a magnetic bearing. 120 paces = 100 m.');
+      L.push(`Bearings are grid (${res.out?.grid ?? res.back?.grid ?? 'UTM'}): apply the sheet's grid-magnetic angle (GMA) for a magnetic bearing. 120 paces = 100 m.`);
       break;
     }
     case 'ambush': {

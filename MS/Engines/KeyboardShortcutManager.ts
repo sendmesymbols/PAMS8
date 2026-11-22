@@ -39,6 +39,10 @@ export interface KeyboardShortcutDeps {
   stylusCancel: () => void;
   /** Ctrl+G: switch the Ground Guide on or off (with a toast that says the new state). */
   toggleGroundGuide: () => void;
+  /** Alt+P: switch the Platoon Guide on or off (with the key notice that says the new state and its keys). */
+  togglePlatoonGuide?: () => void;
+  /** Alt+A: open or close the Aprc sheet, switching Aprc on first when it is off (with the key notice). */
+  toggleAprcSheet?: () => void;
 }
 
 /**
@@ -63,6 +67,8 @@ export interface KeyboardShortcutDeps {
  *   Ctrl+Shift+V    Paste with offset dialog
  *   Ctrl+D      Duplicate selection in place
  *   Ctrl+G      Ground Guide on / off, with a toast that says the new state
+ *   Alt+P       Platoon Guide on / off (as its Pl Guide button), with the key notice: the new state and its keys
+ *   Alt+A       Aprc sheet open / close (as its Aprc button: switches Aprc on first), with the key notice
  *
  * Ground Guide keys, handled by GroundGuide itself while the guide is on (not routed here):
  *   V           Gr Scope rail: show / hide the side window with the ground round the symbol (any time)
@@ -81,6 +87,7 @@ export interface KeyboardShortcutDeps {
  */
 export default class KeyboardShortcutManager {
   private _handler: ((e: KeyboardEvent) => void) | null = null;
+  private _toggleHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(private deps: KeyboardShortcutDeps) {}
 
@@ -88,12 +95,34 @@ export default class KeyboardShortcutManager {
     if (this._handler) return; // already attached
     this._handler = (e: KeyboardEvent) => this.onKeyDown(e);
     document.addEventListener('keydown', this._handler);
+    // Alt+P / Alt+A are caught on the way down (capture), so they still work while a panel that keeps its keys to
+    // itself has the focus (the Aprc sheet stops every key it gets from reaching the map).
+    this._toggleHandler = (e: KeyboardEvent) => this.onToggleKey(e);
+    window.addEventListener('keydown', this._toggleHandler, true);
   }
 
   detach(): void {
     if (!this._handler) return;
     document.removeEventListener('keydown', this._handler);
     this._handler = null;
+    if (this._toggleHandler) window.removeEventListener('keydown', this._toggleHandler, true);
+    this._toggleHandler = null;
+  }
+
+  /**
+   * Alt+P: the Platoon Guide on or off; Alt+A: the Aprc sheet open or closed. Matched on the physical key (on a Mac
+   * Option+P types "π", so `e.key` is not "p"); not while typing in a field. The guides' own keys ignore Alt.
+   */
+  private onToggleKey(e: KeyboardEvent): void {
+    if (!e.altKey || e.shiftKey || e.ctrlKey || e.metaKey || (e.code !== 'KeyP' && e.code !== 'KeyA')) return;
+    const el = e.target as HTMLElement | null;
+    const tag = el?.tagName?.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable) return;
+    const run = e.code === 'KeyP' ? this.deps.togglePlatoonGuide : this.deps.toggleAprcSheet;
+    if (!run) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.repeat) run();
   }
 
   /**

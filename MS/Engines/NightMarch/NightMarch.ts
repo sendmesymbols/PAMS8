@@ -367,7 +367,7 @@ export default class NightMarch {
         } else {
           // Objective step: the FUP is laid; the card shows the FUP's distance to the cursor as the objective.
           const fup = q.route[q.route.length - 1];
-          const v = liveLeg({ laid: q.route.slice(0, -1).length ? q.route.slice(0, -1) : [fup], cursor: fup, objective: q.cursor, gmaDeg: this._opts.gmaDeg, terrainKind: this._opts.terrain, tanks: this._opts.tanks }, this._R);
+          const v = liveLeg({ laid: q.route.slice(0, -1).length ? q.route.slice(0, -1) : [fup], cursor: fup, objective: q.cursor, gmaDeg: this._opts.gmaDeg, terrainKind: this._opts.terrain, tanks: this._opts.tanks, grid: probe }, this._R);
           v.legNo = q.route.length - 1;
           const lengths: number[] = [];
           for (let i = 0; i + 2 < q.route.length; i++) lengths.push(plDist(q.route[i], q.route[i + 1]));

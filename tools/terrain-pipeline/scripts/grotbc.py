@@ -692,9 +692,18 @@ def _clean(v):
         return None
     try:
         f = float(s)
-        return int(f) if f.is_integer() else round(f, 1)
     except ValueError:
         return s[:120]
+    # 2026-11-22: text that float() reads as NaN / ±Infinity stays text. Place_Names has two villages named "Nan"
+    # (Swat, Mirpur); float("Nan") made their `n` a NaN, written as a bare NaN the browser's JSON.parse refuses.
+    if not math.isfinite(f):
+        return s[:120]
+    return int(f) if f.is_integer() else round(f, 1)
+
+
+def _finite(v) -> bool:
+    """False for a NaN / ±Infinity number: the feature tiles never carry one (JSON has no NaN; the writers refuse it)."""
+    return not isinstance(v, (float, np.floating)) or math.isfinite(v)
 
 
 class TileWriter:
@@ -724,7 +733,7 @@ class TileWriter:
         tx, ty = self._tile(x, y)
         qx, qy = self._q(tx, ty, x, y)
         k = KIND_CODE[kind]
-        a = {key: val for key, val in attrs.items() if val is not None}
+        a = {key: val for key, val in attrs.items() if val is not None and _finite(val)}
         self.points[(tx, ty)].append([k, qx, qy, a])           # the dict is kept (write() drops it when empty)
         self.counts[k] += 1
         self.xy[kind].append((x, y))
@@ -753,7 +762,7 @@ class TileWriter:
         tx0, ty0 = self._tile(x0, y1)
         tx1, ty1 = self._tile(x1, y0)
         k = KIND_CODE[kind]
-        a = {key: val for key, val in attrs.items() if val not in (None, "", 0)}
+        a = {key: val for key, val in attrs.items() if val not in (None, "", 0) and _finite(val)}
         ax0, ay0, ax1, ay1 = self.trange
         for tx in range(max(tx0, ax0), min(tx1, ax1) + 1):
             for ty in range(max(ty0, ay0), min(ty1, ay1) + 1):
@@ -783,7 +792,7 @@ class TileWriter:
                 obj["l"] = self.lines[(tx, ty)]
             p = out / str(self.z) / str(tx) / f"{ty}.json"
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+            p.write_text(json.dumps(obj, separators=(",", ":"), ensure_ascii=False, allow_nan=False), encoding="utf-8")
             n += 1
         index = {"format": "pams-grotbc-features", "version": 1, "z": self.z, "quant": QUANT,
                  "note": "p = [kind, x, y, attrs?] in tile-local units 0..quant-1 (Web Mercator, y down); "
@@ -826,7 +835,7 @@ class TileWriter:
                  "tiles": len(keys)}
         if getattr(self, "sources", None):
             index["sources"] = self.sources
-        (out / "index.json").write_text(json.dumps(index, indent=1, ensure_ascii=False), encoding="utf-8")
+        (out / "index.json").write_text(json.dumps(index, indent=1, ensure_ascii=False, allow_nan=False), encoding="utf-8")
         return n
 
 
@@ -942,7 +951,7 @@ class RouteIndex:
                        "seasonal closures as recorded; cond = commonest recorded condition; bbox = [w, s, e, n] WGS84. "
                        "Length is the sum of the mapped lines, not a surveyed route length.",
                "roads": roads, "rails": rails}
-        path.write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+        path.write_text(json.dumps(doc, separators=(",", ":"), ensure_ascii=False, allow_nan=False), encoding="utf-8")
         log.info("routes: %d roads (%d MSR), %d railways -> %s", len(roads), sum(r["msr"] for r in roads), len(rails), path)
 
 
@@ -1872,7 +1881,7 @@ def admin_and_sheets(gdb: Path, grid: dict, out: Path) -> None:
             gs[ok] = shapely.clip_by_rect(gs[ok], *bbox)
         feats += _geojson(gs, [mk(d, i) for i in range(len(gs))], 0.0008)
         log.info("admin: %s %d", layer, len(gs))
-    (out / "admin.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+    (out / "admin.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, separators=(",", ":"), ensure_ascii=False, allow_nan=False), encoding="utf-8")
 
     bdry_kinds = {"3": "international (undemarcated)", "4": "Pakistan-Afghanistan", "5": "Pakistan-China", "6": "Pakistan-India",
                   "7": "Pakistan-Iran", "21": "Line of Control", "35": "international (demarcated)", "36": "Pakistan-India (undemarcated)",
@@ -1887,7 +1896,7 @@ def admin_and_sheets(gdb: Path, grid: dict, out: Path) -> None:
         gs2, d2 = read_ll(layer, ["Name"] if layer != "LAC" else ["NAME"])
         nm = d2.get("Name") or d2.get("NAME")
         feats += _geojson(gs2, [{"layer": "boundary", "kind": kind, "name": nm[i], **({"sensitive": True} if sens else {})} for i in range(len(gs2))], 0.0003)
-    (out / "boundaries.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+    (out / "boundaries.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, separators=(",", ":"), ensure_ascii=False, allow_nan=False), encoding="utf-8")
     log.info("boundaries: %d lines", len(feats))
 
     sheets = {}
@@ -1904,7 +1913,7 @@ def admin_and_sheets(gdb: Path, grid: dict, out: Path) -> None:
         log.info("sheets: %s %d", key, len(rows))
     sheets["grid"] = military_grid(g)
     (out / "sheets.json").write_text(json.dumps({"format": "pams-grotbc-sheets", "note": "[sheet number, west, south, east, north] (WGS84)",
-                                                 **sheets}, separators=(",", ":")), encoding="utf-8")
+                                                 **sheets}, separators=(",", ":"), allow_nan=False), encoding="utf-8")
 
 
 # The Indian grid of the 1:50k sheets (Kalianpur 1880 / India zone I and IIa, EPSG 24371 / 24372): Lambert conformal

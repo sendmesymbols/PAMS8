@@ -212,7 +212,7 @@ def grotbc_block(bundle: Path, vector: Path, climate: Path | None = None, networ
                 roads["rails"] = rails
                 roads["note"] = roads.get("note", "") + " Roads come from the canonical road network (network/), " \
                                                         "railways from the NCGDB railway lines."
-                (bundle / "routes.json").write_text(json.dumps(roads, separators=(",", ":"), ensure_ascii=False),
+                (bundle / "routes.json").write_text(json.dumps(roads, separators=(",", ":"), ensure_ascii=False, allow_nan=False),
                                                     encoding="utf-8")
         if settlements is not None and (settlements / "settlements.json").exists():
             for name in ("settlements.json", "settlements.geojson"):

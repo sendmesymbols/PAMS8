@@ -156,14 +156,14 @@ export class NightMarchCard {
     this._tone(root, v.tone);
     const bar = el('div', 'ms-nmc-bar');
     if (ctx.moonIllum !== null) bar.append(moonIcon(ctx.moonIllum));
-    const title = objStep ? `Obj: ${v.distToObjM !== null ? `${dist(v.distToObjM)} from the FUP` : 'click it'}` : v.distM < 1 ? `Leg ${v.legNo}: click the next turn` : `Leg ${v.legNo} · ${v.magDeg === null ? `${deg3(v.bearingDeg)} G` : `${deg3(v.magDeg)} M`}`;
+    const title = objStep ? `Obj: ${v.distToObjM !== null ? `${dist(v.distToObjM)} from the FUP` : 'click it'}` : v.distM < 1 ? `Leg ${v.legNo}: click the next turn` : `Leg ${v.legNo} · ${v.magDeg === null ? `${deg3(v.gridDeg)} G` : `${deg3(v.magDeg)} M`}`;
     bar.append(el('span', 'ms-nmc-title', title), el('span', 'ms-nmc-pill', `${ctx.echelonWord} · ${dist(v.cumM)}`));
     root.append(bar);
 
     const hero = el('div', 'ms-nmc-hero');
-    hero.append(compassDial({ px: 132, bearing: v.distM >= 1 ? v.bearingDeg : null, prev: v.prevBearings, gmaDeg: ctx.gmaDeg, objBrg: v.objBrg, color: TONE_COL[v.tone] === TONE_COL.ok ? '#8ec1ea' : TONE_COL[v.tone], driftDeg: ctx.R.legs?.driftDegPer1000m ?? 3, label: `Leg ${v.legNo} bearing` }));
+    hero.append(compassDial({ px: 132, bearing: v.distM >= 1 ? v.bearingDeg : null, prev: v.prevBearings, gmaDeg: ctx.gmaDeg, convDeg: v.convDeg, objBrg: v.objBrg, color: TONE_COL[v.tone] === TONE_COL.ok ? '#8ec1ea' : TONE_COL[v.tone], driftDeg: ctx.R.legs?.driftDegPer1000m ?? 3, label: `Leg ${v.legNo} bearing` }));
     const tiles = el('div', 'ms-nmc-tiles');
-    tiles.append(brgTile(v.bearingDeg, v.magDeg, ctx.units));
+    tiles.append(brgTile(v.gridDeg, v.magDeg, ctx.units));
     const cord = el('div', 'ms-nmc-cord');
     cord.append(paceCord(v.distM, 190));
     tiles.append(tile('Paces', [num(v.paces)], `${dist(v.distM)} · total ${num(v.cumPaces)} p${v.climbM >= 10 ? ` · ↑${v.climbM} m` : ''}`, cord));
@@ -236,12 +236,12 @@ export class NightMarchCard {
     this._tone(root, lg.tone);
     const bar = el('div', 'ms-nmc-bar');
     if (ctx.moonIllum !== null) bar.append(moonIcon(ctx.moonIllum));
-    bar.append(el('span', 'ms-nmc-title', `Leg ${lg.i} of ${C.legs.length} · ${lg.magDeg === null ? `${deg3(lg.bearingDeg)} G` : `${deg3(lg.magDeg)} M`}`), el('span', 'ms-nmc-pill', lg.toFup ? 'to FUP' : `${ctx.echelonWord}`));
+    bar.append(el('span', 'ms-nmc-title', `Leg ${lg.i} of ${C.legs.length} · ${lg.magDeg === null ? `${deg3(lg.gridDeg)} G` : `${deg3(lg.magDeg)} M`}`), el('span', 'ms-nmc-pill', lg.toFup ? 'to FUP' : `${ctx.echelonWord}`));
     root.append(bar);
     const hero = el('div', 'ms-nmc-hero');
-    hero.append(compassDial({ px: 132, bearing: lg.bearingDeg, prev: C.legs.filter((x) => x.i !== lg.i).map((x) => x.bearingDeg), gmaDeg: ctx.gmaDeg, objBrg: null, color: '#8ec1ea', driftDeg: 3, label: `Leg ${lg.i} bearing` }));
+    hero.append(compassDial({ px: 132, bearing: lg.bearingDeg, prev: C.legs.filter((x) => x.i !== lg.i).map((x) => x.bearingDeg), gmaDeg: ctx.gmaDeg, convDeg: lg.convDeg, objBrg: null, color: '#8ec1ea', driftDeg: 3, label: `Leg ${lg.i} bearing` }));
     const tiles = el('div', 'ms-nmc-tiles');
-    tiles.append(brgTile(lg.bearingDeg, lg.magDeg, ctx.units));
+    tiles.append(brgTile(lg.gridDeg, lg.magDeg, ctx.units));
     const cord = el('div', 'ms-nmc-cord');
     cord.append(paceCord(lg.distM, 190, { doneM: o.alongM }));
     tiles.append(tile('Paces here', [num(o.pacesIn), small(`of ${num(lg.paces)}`)], `${num(o.pacesToGo)} to go · ${num(o.fromSpPaces)} from the SP`, cord));

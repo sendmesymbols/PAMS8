@@ -9,6 +9,8 @@ register('./hooks.mjs', import.meta.url);
 const M = await import('../../MS/Engines/MovementGuide/MovementGuideScan.ts');
 const P = await import('../../MS/Engines/MovementGuide/MovementGuidePlans.ts');
 const W = await import('./world.mjs');
+const G = await import('../../MS/Engines/MovementGuide/MovementGuideGrid.ts');
+const PL = await import('../../MS/Engines/PlatoonGuide/PlatoonGuideRead.ts');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const R = M.rulesFrom(JSON.parse(readFileSync(resolve(here, '../../MS/Data/MovementDoctrine.json'), 'utf8')));
@@ -83,6 +85,42 @@ check('Patrol: keeps out of the town', pr.out && M.densify(pr.out, 20).every((p)
 const mids = (p) => M.densify(p, 50).slice(4, -4);
 const apart = pr.out && pr.back ? mids(pr.back).filter((q) => M.distToLine([q.x, q.y], pr.out.flat()) > 100).length / Math.max(1, mids(pr.back).length) : 0;
 check('Patrol: the route back is a different way', apart >= 0.5, `${Math.round(apart * 100)} % of it 100 m or more from the route out`);
+
+// Grid bearings (MovementGuideGrid: the 1:50k sheets' Indian grid, as MovementGuideProbe.gridConvergence reads it).
+// A sheets.json shaped as the bundle's: zone I lat0 32.5 / lon0 68, IIa lat0 26 / lon0 74, the zone line along 28° N with
+// a step to 29° N between 66° and 71° E; sheets only where listed.
+const SHEETS = {
+  '50k': [['43G/1', 72.5, 33.5, 73.5, 34], ['43K/1', 74, 31.5, 74.5, 32], ['35N/1', 66.5, 24.5, 67.5, 25], ['39F/1', 68, 28, 69, 29]],
+  grid: { name: 'Indian grid', zones: [{ id: 'I', lat0: 32.5, lon0: 68 }, { id: 'IIa', lat0: 26, lon0: 74 }], boundary: [[54, 28], [66, 28], [66, 29], [71, 29], [71, 28], [84, 28]] },
+};
+const sg = new G.SheetGridReader();
+check('Grid: no sheets.json read: no grid (the engines fall back to UTM)', sg.convergence(74.35, 31.55) === null && !sg.ready);
+sg.load(SHEETS);
+const lahore = sg.convergence(74.35, 31.55);
+check('Grid: Lahore in Indian grid zone I, grid north 3.4° east of true (sin 32.5° x 6.35°)', lahore?.name === 'Indian grid zone I' && Math.abs(lahore.deg - Math.sin((32.5 * Math.PI) / 180) * 6.35) < 1e-9 && Math.abs(lahore.deg - 3.41) < 0.01, lahore ? `${lahore.name} ${lahore.deg.toFixed(3)}°` : 'none');
+const karachi = sg.convergence(67.0, 24.86);
+check('Grid: Karachi in zone IIa, grid north 3.07° west of true (sin 26° x -7°)', karachi?.name === 'Indian grid zone IIa' && Math.abs(karachi.deg + Math.sin((26 * Math.PI) / 180) * 7) < 1e-9, karachi ? `${karachi.name} ${karachi.deg.toFixed(3)}°` : 'none');
+const step = sg.convergence(68.5, 28.6);
+check('Grid: the zone line steps to 29° N between 66° and 71° E (28.6° N there is IIa)', step?.name === 'Indian grid zone IIa' && G.zoneLineLat(SHEETS.grid.boundary, 68.5) === 29 && G.zoneLineLat(SHEETS.grid.boundary, 75) === 28, step?.name);
+check('Grid: off the 1:50k sheets: no grid', sg.convergence(80, 20) === null);
+// The world (73.0 E, 33.6 N) lies on 43G/1: zone I, grid north 2.69° east of true.
+const conv = (x, y) => sg.convergence(...M.mercToLngLat(x, y));
+const cW = conv(W.O[0], W.O[1]);
+check('Grid: the test ground in zone I, 2.69° (sin 32.5° x 5°)', cW?.name === 'Indian grid zone I' && Math.abs(cW.deg - Math.sin((32.5 * Math.PI) / 180) * 5) < 1e-6, cW ? cW.deg.toFixed(3) : 'none');
+// The patrol card (PlatoonGuideRead.patrolCard, the card the Movement Guide shows) over a probe that reads the sheets' grid
+// gives each leg's grid bearing = true - convergence at the leg's start, and names the grid; without it, UTM.
+const plR = PL.plRulesFrom(JSON.parse(readFileSync(resolve(here, '../../MS/Data/PlatoonDoctrine.json'), 'utf8')));
+const footSpeeds = { ground: { open: [4, 3] }, road: [4, 3], toblerA: 3.5, toblerB: 0.05 };
+const plProbe = { ...W.probe, raster: () => null, sight2: (...a) => { const v = W.probe.sight(...a); return { p: v, pTerrain: v }; }, takePending: () => false };
+const pcCtx = { foot: W.foot, speeds: footSpeeds, threat: null, classLabel: (c) => `C${c}` };
+const legsPath = [W.at(0, -600), W.at(0, 400), W.at(800, 900), W.at(800, 2000)];
+const card = PL.patrolCard({ ...plProbe, gridConvergence: conv }, plR, legsPath, pcCtx);
+const off = card.legs.map((l) => Math.abs(((l.gridDeg - (l.bearingDeg - conv(l.from[0], l.from[1]).deg) + 540) % 360) - 180));
+check('Patrol card: grid bearing = true - convergence on every leg (Indian grid)', card.legs.length === 3 && off.every((d) => d < 1e-9) && card.grid === 'Indian grid zone I', card.legs.map((l) => `${l.bearingDeg.toFixed(1)}T ${l.gridDeg.toFixed(1)}G`).join(', '));
+check('Patrol card: due north true reads 357.3 grid (2.7° E convergence)', Math.abs(card.legs[0].bearingDeg) < 0.01 || Math.abs(card.legs[0].bearingDeg - 360) < 0.01 ? Math.abs(card.legs[0].gridDeg - (360 - cW.deg)) < 0.01 : false, card.legs[0].gridDeg.toFixed(2));
+check('Patrol card: the check names the grid', card.checks.some((x) => x.includes('Bearings are grid (Indian grid zone I)')));
+const utmCard = PL.patrolCard(plProbe, plR, legsPath, pcCtx);
+check('Patrol card: no sheets grid: UTM zone 43 (lon0 75), grid north 1.1° west of true', utmCard.grid === 'UTM zone 43' && Math.abs(utmCard.legs[0].gridDeg - PL.plGridDeg(utmCard.legs[0].bearingDeg, PL.plUtmConvergence(legsPath[0]).deg)) < 1e-9 && PL.plUtmConvergence(legsPath[0]).deg < -1, `${utmCard.grid} ${utmCard.legs[0].gridDeg.toFixed(2)}`);
 
 // Ambush.
 const amb = P.ambushSites(route, W.probe, R, W.foot);

@@ -648,13 +648,13 @@ export class MovementGuideCards {
         const b = r.back;
         if (!o) return this._sec('No route', '<div class="mgd-in">The objective cannot be reached on foot from the start (water, cliffs or marsh between). Move the start or the objective.</div>');
         const legs = (c: NonNullable<typeof o>) =>
-          `<table class="mgd-t"><tr><th>Leg</th><th>Brg</th><th>Dist</th><th>Paces</th><th>Night</th><th>Ends at</th></tr>${c.legs.map((l) => `<tr ${this._xy(l.to[0], l.to[1])}><td>${l.i + 1}</td><td>${String(Math.round(l.bearingDeg)).padStart(3, '0')}°</td><td>${Math.round(l.distM)} m</td><td>${num(l.paces)}</td><td>${dur(l.minNight)}</td><td>${l.endFeature ? esc(`${l.endFeature.label}${l.endFeature.name ? ` (${l.endFeature.name})` : ''}`) : '<span class="mgd-why">count paces</span>'}</td></tr>`).join('')}</table>`;
+          `<table class="mgd-t"><tr><th>Leg</th><th>Brg</th><th>Dist</th><th>Paces</th><th>Night</th><th>Ends at</th></tr>${c.legs.map((l) => `<tr ${this._xy(l.to[0], l.to[1])}><td>${l.i}</td><td>${String(Math.round(l.gridDeg) % 360).padStart(3, '0')}°</td><td>${Math.round(l.distM)} m</td><td>${num(l.paces)}</td><td>${dur(l.minNight)}</td><td>${l.endFeature ? esc(`${l.endFeature.label}${l.endFeature.name ? ` (${l.endFeature.name})` : ''}`) : '<span class="mgd-why">count paces</span>'}</td></tr>`).join('')}</table>`;
         const notes = [...o.exposed, ...o.skyline].slice(0, 6).map((s) => `${kmRange(s.fromM, s.toM)}: ${esc(s.why)}`);
         return (
           this._sec('Night march chart · route out', legs(o) + (o.fmp ? `<div class="mgd-in" style="margin-top:4px">FMP ${km(o.lengthM - o.fmp.chainM)} short of the objective.</div>` : ''), true) +
           (notes.length || o.obstacles.length ? this._sec('On the way out', `<div class="mgd-in">${notes.join('<br>')}${o.obstacles.length ? `<br>Obstacles: ${o.obstacles.map((x) => `${esc(x.label)} ${kmAt(x.chainM)}`).join(', ')}` : ''}${o.villages.length ? `<br>Villages: ${esc(o.villages.map((v) => v.name ?? 'village').join(', '))}` : ''}</div>`) : '') +
           (b ? this._sec('Route in (a different way)', legs(b) + (b.sameWayBack || o.sameWayBack ? '<div class="mgd-in" style="color:#f5a35a">The route in runs along the route out.</div>' : ''), true) : '') +
-          this._sec('Notes', '<div class="mgd-in">Grid bearings: add the declination for magnetic. 120 paces = 100 m. Night times from the foot tables and Tobler on slopes.</div>')
+          this._sec('Notes', `<div class="mgd-in">Bearings are grid (${esc(o.grid)}): apply the sheet's grid-magnetic angle for magnetic. 120 paces = 100 m. Night times from the foot tables and Tobler on slopes.</div>`)
         );
       }
       case 'ambush': {

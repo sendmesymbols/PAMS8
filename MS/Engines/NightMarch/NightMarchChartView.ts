@@ -320,7 +320,7 @@ export class NightMarchChartView {
     };
     add('For', `${ECHELON_WORD[C.echelon]}${C.tanks ? ' + tanks' : ''}`);
     add('Times', C.terrain ? 'by Gr and slope' : `${T.flatKmh} km/h, ${b.terrainKind} (no terrain)`, !C.terrain);
-    add('Bearings', C.gmaSet ? `magnetic, GMA ${b.gmaDeg! >= 0 ? `${b.gmaDeg}° E` : `${-b.gmaDeg!}° W`}` : 'GRID: set the GMA', !C.gmaSet);
+    add('Bearings', C.gmaSet ? `magnetic, GMA ${b.gmaDeg! >= 0 ? `${b.gmaDeg}° E` : `${-b.gmaDeg!}° W`} from ${C.grid.name}` : `GRID (${C.grid.name}): set the GMA`, !C.gmaSet);
     add('H', T.h ?? 'not set', T.h === null);
     if (b.tonight) add('Tonight', b.tonight.words);
     add('SP', b.grids.sp);
@@ -400,7 +400,7 @@ export class NightMarchChartView {
       case 'cards':
         return { text: `${C.legs.length} cards` };
       case 'trace':
-        return { text: `axis ${C.fup.axisMagDeg !== null ? `${deg3(C.fup.axisMagDeg)} M` : `${deg3(C.fup.axisDeg)} G`}` };
+        return { text: `axis ${C.fup.axisMagDeg !== null ? `${deg3(C.fup.axisMagDeg)} M` : `${deg3(C.fup.axisGridDeg)} G`}` };
       case 'fup':
         return { text: C.fup.distToObjM !== null ? `${dist(C.fup.distToObjM)} to Obj` : 'no Obj', tone: C.fup.tone };
       case 'clock':
@@ -462,10 +462,10 @@ export class NightMarchChartView {
       no.style.background = lg.tone === 'ok' ? '#8ec1ea' : TONE_COL[lg.tone];
       const c0 = el('td');
       c0.append(no);
-      const main = lg.magDeg ?? lg.bearingDeg;
+      const main = lg.magDeg ?? lg.gridDeg;
       const bc = el('td');
       const bs = el('span', 'ms-nmd-brg', b.units === 'mils' ? String(toMils(main)).padStart(4, '0') : deg3(main));
-      bs.append(el('small', undefined, b.units === 'both' ? `${toMils(main)} mils` : lg.magDeg !== null ? `grid ${deg3(lg.bearingDeg)}` : b.units === 'mils' ? 'mils' : ''));
+      bs.append(el('small', undefined, b.units === 'both' ? `${toMils(main)} mils` : lg.magDeg !== null ? `grid ${deg3(lg.gridDeg)}` : b.units === 'mils' ? 'mils' : ''));
       bc.append(bs);
       const td = (t: string, cls = 'ms-num') => el('td', cls, t);
       const when = T.hHourMin !== null ? clock(T.hHourMin - T.leaveBeforeH + lg.startMin) : hRel(-T.leaveBeforeH + lg.startMin);
@@ -511,15 +511,15 @@ export class NightMarchChartView {
     const legs = el('div', 'ms-nmd-legs');
     for (const lg of C.legs) {
       const d = el('div');
-      d.append(dot(lg.tone === 'ok' ? '#8ec1ea' : TONE_COL[lg.tone]), ` ${lg.i}  ${deg3(lg.magDeg ?? lg.bearingDeg)}${lg.magDeg === null ? ' G' : ' M'} · ${num(lg.paces)} p · ${dist(lg.distM)}`);
+      d.append(dot(lg.tone === 'ok' ? '#8ec1ea' : TONE_COL[lg.tone]), ` ${lg.i}  ${deg3(lg.magDeg ?? lg.gridDeg)}${lg.magDeg === null ? ' G' : ' M'} · ${num(lg.paces)} p · ${dist(lg.distM)}`);
       legs.append(d);
     }
     side.append(legs);
     const dl = el('div');
     dl.style.cssText = 'margin-top:8px;display:flex;align-items:center;gap:10px';
-    const dial = compassDial({ px: Math.min(120, Math.max(84, H - 160)), bearing: C.fup.axisDeg, prev: C.legs.map((l) => l.bearingDeg), gmaDeg: b.gmaDeg, objBrg: null, color: '#ff8a8d', driftDeg: 3, label: 'Axis to the Obj' });
+    const dial = compassDial({ px: Math.min(120, Math.max(84, H - 160)), bearing: C.fup.axisDeg, prev: C.legs.map((l) => l.bearingDeg), gmaDeg: b.gmaDeg, convDeg: C.grid.convDeg, objBrg: null, color: '#ff8a8d', driftDeg: 3, label: 'Axis to the Obj' });
     const info = el('div');
-    info.append(el('div', 'ms-nmd-fk', 'Axis to the Obj (red), legs faint'), el('div', 'ms-nmd-fv', C.fup.axisMagDeg !== null ? `${deg3(C.fup.axisMagDeg)} M` : `${deg3(C.fup.axisDeg)} G`));
+    info.append(el('div', 'ms-nmd-fk', 'Axis to the Obj (red), legs faint'), el('div', 'ms-nmd-fv', C.fup.axisMagDeg !== null ? `${deg3(C.fup.axisMagDeg)} M` : `${deg3(C.fup.axisGridDeg)} G`));
     dl.append(dial, info);
     side.append(dl);
   }

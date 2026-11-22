@@ -284,7 +284,7 @@ export function patrolProfile(c: PatrolCard, elevAt: (p: MercXY) => number): str
     m += l.distM;
     const e = elevAt(l.to);
     const yy = e === e ? y(e) : top + ph / 2;
-    body += `<circle cx="${x(m)}" cy="${yy}" r="6.5" fill="#14181d" stroke="${VZ.cyan}" stroke-width="1.5"/>` + t(x(m), yy + 3, String(l.i + 1), { a: 'middle', c: '#fff', sz: 8, w: 700 });
+    body += `<circle cx="${x(m)}" cy="${yy}" r="6.5" fill="#14181d" stroke="${VZ.cyan}" stroke-width="1.5"/>` + t(x(m), yy + 3, String(l.i), { a: 'middle', c: '#fff', sz: 8, w: 700 });
   }
   if (c.fmp) body += `<line x1="${x(c.fmp.chainM)}" y1="${top - 4}" x2="${x(c.fmp.chainM)}" y2="${top + ph}" stroke="${VZ.violet}" stroke-dasharray="3 2"/>` + t(x(c.fmp.chainM), top - 6, 'FMP', { a: 'middle', c: VZ.violet, sz: 9, w: 700 });
   body += t(padL - 3, top + 4, `${Math.round(hi)}`, { a: 'end', sz: 9 }) + t(padL - 3, top + ph, `${Math.round(lo)}`, { a: 'end', sz: 9 });
@@ -307,7 +307,7 @@ export function legRose(c: PatrolCard): string {
     const rr = 10 + ((R - 10) * l.distM) / maxD;
     const ex = cx + rr * Math.cos(rad), ey = cy + rr * Math.sin(rad);
     body += `<line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${VZ.cyan}" stroke-width="3" stroke-linecap="round" opacity=".8"/>`;
-    body += t(ex + 7 * Math.cos(rad), ey + 7 * Math.sin(rad) + 3, String(l.i + 1), { a: 'middle', sz: 8.5, c: '#fff' });
+    body += t(ex + 7 * Math.cos(rad), ey + 7 * Math.sin(rad) + 3, String(l.i), { a: 'middle', sz: 8.5, c: '#fff' });
   }
   body += `<circle cx="${cx}" cy="${cy}" r="3" fill="#fff"/>`;
   return svg(h, body, 'Leg bearings');

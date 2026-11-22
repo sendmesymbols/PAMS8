@@ -67,6 +67,12 @@ export class GroundGuideKeyNotice {
   private _el: HTMLElement | null = null;
   private _timer: ReturnType<typeof setTimeout> | null = null;
   private _hideTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Stacking above the default (the Alt+P / Alt+A toggles show it over panels such as the Aprc sheet). */
+  private readonly _zIndex: number | null;
+
+  constructor(opts: { zIndex?: number } = {}) {
+    this._zIndex = Number.isFinite(opts.zIndex) ? (opts.zIndex as number) : null;
+  }
 
   get isShown(): boolean {
     return !!this._el?.classList.contains('ms-on');
@@ -80,6 +86,7 @@ export class GroundGuideKeyNotice {
       this._el = el('div', 'ms-ggk');
       this._el.setAttribute('role', 'status');
       this._el.setAttribute('aria-live', 'polite');
+      if (this._zIndex !== null) this._el.style.zIndex = String(this._zIndex);
       document.body.appendChild(this._el);
     }
     const root = this._el;

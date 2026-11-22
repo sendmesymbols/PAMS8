@@ -21,6 +21,7 @@ import { OCOKA_DOCTRINE } from '../GroundGuide/GroundGuideOcokaRead';
 import type { TerrainManifest, TerrainRules } from '../GroundGuide/GroundGuideTypes';
 import type { GoingSets, MercXY, MovProbe, NearFeature, NearLine, NearRoad } from './MovementGuideScan';
 import { latOfY, mercToLngLat, scaleAt } from './MovementGuideScan';
+import { SheetGridReader } from './MovementGuideGrid';
 
 const EARTH_R = 6378137;
 const ORIGIN = Math.PI * EARTH_R;
@@ -62,6 +63,9 @@ export class MovementGuideProbe implements MovProbe {
   private _roadsOpening = false;
   private _popState: 'none' | 'loading' | 'ready' | 'failed' = 'none';
   private _bordersLoading = false;
+  /** The 1:50k sheets' grid (sheets.json) for grid bearings; empty until loaded, or when the bundle has none. */
+  private _sheetGrid = new SheetGridReader();
+  private _sheetsLoading = false;
   private _token = 0;
   private _z = 12;
   private _ts = 256;
@@ -143,6 +147,8 @@ export class MovementGuideProbe implements MovProbe {
       this._bordersLoading = true;
       void this._loadBorders(`${base}/${bf}`, token);
     }
+    // The sheets' grid: route cards give grid bearings in the grid the 1:50k sheets carry. Missing: UTM (the engine's).
+    if (typeof g.sheets === 'string') void this._loadSheets(`${base}/${g.sheets}`, token);
     return true;
   }
 
@@ -159,6 +165,8 @@ export class MovementGuideProbe implements MovProbe {
     this._population?.destroy();
     this._population = null;
     this._borders = null;
+    this._sheetGrid.clear();
+    this._sheetsLoading = false;
     this._index.clear();
     this._grids.clear();
     this._manifest = null;
@@ -189,6 +197,16 @@ export class MovementGuideProbe implements MovProbe {
     if (src.get('osm_pakistan')) parts.push(`roads ${src.get('osm_pakistan')}`);
     if (src.get('worldpop')) parts.push(`people ${src.get('worldpop')}`);
     return parts.join(', ');
+  }
+
+  /**
+   * How far grid north lies east of true north at a place in the 1:50k sheets' grid (the Indian grid zone I / IIa), with
+   * the grid's name; null off the sheets or before sheets.json is in (patrolCard then falls back to UTM).
+   */
+  gridConvergence(x: number, y: number): { deg: number; name: string } | null {
+    if (this._sheetsLoading) this._pending = true;
+    const [lng, lat] = mercToLngLat(x, y);
+    return this._sheetGrid.convergence(lng, lat);
   }
 
   /** Point the flood fill's step at a latitude. */
@@ -450,6 +468,24 @@ export class MovementGuideProbe implements MovProbe {
     if (!r?.ages || !(r.people > 0)) return null;
     const k = people / r.people;
     return { males15_49: Math.round(r.ages.males15_49 * k), under15: Math.round(r.ages.under15 * k), over65: Math.round(r.ages.over65 * k) };
+  }
+
+  private async _loadSheets(url: string, token: number): Promise<void> {
+    this._sheetsLoading = true;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return;
+      const j = await r.json();
+      if (token !== this._token) return;
+      this._sheetGrid.load(j);
+    } catch {
+      if (token === this._token) this._sheetGrid.clear();
+    } finally {
+      if (token === this._token) {
+        this._sheetsLoading = false;
+        this._changed(false);
+      }
+    }
   }
 
   private async _loadBorders(url: string, token: number): Promise<void> {

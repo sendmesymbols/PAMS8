@@ -234,7 +234,7 @@ const smallLines = (s: NonNullable<FittedLayout['fit']['small']>, gma: number | 
     ...(s.better ?? []).map((b) => `  Better site ${Math.abs(b.alongM)} m ${b.alongM < 0 ? 'up the Rd toward him' : 'down the Rd'}: scores ${b.score} (${b.shape})`),
     ...(s.outlying ?? []).map((o) => `  ${o.label}: ${Math.abs(o.alongM)} m ${o.alongM < 0 ? 'up the Rd toward him' : 'down the Rd'}, site ${o.score} / 100, sees ${o.seenPct} % of its stretch`),
   ];
-  if (s.task === 'patrol') return (s.legs ?? []).map((l) => `  ${l.way} leg ${l.i}: ${brgText(l.bearingDeg, gma)}, ${l.distM} m, ${l.paces} paces, ${l.minDay} min by day / ${l.minNight} by night${l.feature ? `, ends at ${l.feature}` : ''}`);
+  if (s.task === 'patrol') return [...(s.grid ? [`  Bearings grid (${s.grid})${gma === null ? '' : `, magnetic with GMA ${gma}`}`] : []), ...(s.legs ?? []).map((l) => `  ${l.way} leg ${l.i}: ${brgText(l.gridDeg, gma)}, ${l.distM} m, ${l.paces} paces, ${l.minDay} min by day / ${l.minNight} by night${l.feature ? `, ends at ${l.feature}` : ''}`)];
   return (s.ops ?? []).map((o) => `  ${o.label}: sees ${o.seenPct} % of ${s.screen ? 'the ground he would watch you from' : 'the NAI'}, ${o.riseM === 0 ? 'level with' : o.riseM > 0 ? `${o.riseM} m above` : `${-o.riseM} m below`} it, ${o.cover ? 'in cover' : 'in the open'}`);
 };
 
@@ -1270,10 +1270,11 @@ export class PlanBuildTab {
     return rankFits(out);
   }
 
-  /** What a route card's bearings are: grid and mils, magnetic too when planBuilder.gmaDeg is set. */
-  private _brgNote(): string {
+  /** What a route card's bearings are: grid (in the grid named) and mils, magnetic too when planBuilder.gmaDeg is set. */
+  private _brgNote(grid?: string): string {
     const g = gmaOf(this._settings.gmaDeg);
-    return g === null ? 'grid bearings and mils; set the GMA in Settings for magnetic' : `grid, mils and magnetic (GMA ${g > 0 ? '+' : ''}${g}°)`;
+    const gw = grid ? `grid (${esc(grid)})` : 'grid';
+    return g === null ? `${gw} bearings and mils; set the GMA in Settings for magnetic` : `${gw}, mils and magnetic (GMA ${g > 0 ? '+' : ''}${g}°)`;
   }
 
   /** A bearing cell: grid degrees, mils under it, magnetic beside them when the GMA is set. */
@@ -2433,7 +2434,8 @@ export class PlanBuildTab {
         const p2 = a.hSum.phase2;
         if (p2) L.push(`  Phase 2: Obj 1 taken ${hRelText(p2.obj1At)}, H2 ${hRelText(p2.h2At)} (${p2.gapMin} min after), fire lifts on Obj 2 ${p2.lifts.map((l) => `${l.label} ${l.rM} m ${hRelText(l.at)}`).join(', ')}, on Obj 2 ${hRelText(p2.obj2At)}`);
       }
-      if (a.night) for (const l of a.night.legs) L.push(`  Night leg ${l.i}: ${brgText(l.bearingDeg, gmaOf(this._settings.gmaDeg))}, ${l.distM} m, ${l.paces} paces, ${l.min} min`);
+      if (a.night) L.push(`  Night legs: bearings grid (${a.night.grid})`);
+      if (a.night) for (const l of a.night.legs) L.push(`  Night leg ${l.i}: ${brgText(l.gridDeg, gmaOf(this._settings.gmaDeg))}, ${l.distM} m, ${l.paces} paces, ${l.min} min`);
       if (a.choke) L.push(`  En MSR choke: ${a.choke.kind} (${a.choke.label}) behind the Obj`);
       for (const f of a.factors) L.push(`  ${f.label}: ${Math.round(f.v * 100)} (x${f.w}) ${f.reason}`);
       return L;
@@ -2451,14 +2453,14 @@ export class PlanBuildTab {
     }
     if (f && sm && this._result === f.res) {
       // a patrol's route card, an ambush's site, the recce's OPs
-      if (sm.task === 'patrol' && sm.legs?.length) return `<div class="pb-sum">Route card <span class="pb-dim">(${this._brgNote()}; 120 paces a 100 m; legs end on a feature where one is near)</span></div><table class="pb-t">${sm.legs.map((l) => `<tr><td>${l.way} ${l.i}</td><td>${this._brgCell(l.bearingDeg)}</td><td>${fmtM(l.distM)}</td><td>${l.paces} paces</td><td>${l.minDay} / ${l.minNight} min</td><td class="pb-dim">${esc(l.feature ?? '')}</td></tr>`).join('')}</table><div class="pb-dim">min by day / by night</div>`;
+      if (sm.task === 'patrol' && sm.legs?.length) return `<div class="pb-sum">Route card <span class="pb-dim">(${this._brgNote(sm.grid)}; 120 paces a 100 m; legs end on a feature where one is near)</span></div><table class="pb-t">${sm.legs.map((l) => `<tr><td>${l.way} ${l.i}</td><td>${this._brgCell(l.gridDeg)}</td><td>${fmtM(l.distM)}</td><td>${l.paces} paces</td><td>${l.minDay} / ${l.minNight} min</td><td class="pb-dim">${esc(l.feature ?? '')}</td></tr>`).join('')}</table><div class="pb-dim">min by day / by night</div>`;
       if (sm.task === 'recce' && sm.ops?.length) return `<div class="pb-sum">${sm.screen ? 'Posts' : 'OPs'}</div><table class="pb-t">${sm.ops.map((o) => `<tr><td>${esc(o.label)}</td><td>sees ${o.seenPct} %</td><td>${o.riseM === 0 ? 'level with' : o.riseM > 0 ? `${o.riseM} m above` : `${-o.riseM} m below`} ${sm.screen ? 'the ground in front' : 'the NAI'}</td><td>${o.cover ? 'in cover' : 'in the open'}</td></tr>`).join('')}</table>`;
       return '';
     }
     if (!f || !a || this._result !== f.res) return '';
     const h = a.hSum;
     const steps = h ? `<div class="pb-sum">H-hour sum <span class="pb-dim">(H = crossing the SL${h.night ? '; night rates' : ''})</span></div><table class="pb-t">${h.steps.map((s) => `<tr><td>${esc(hRelText(s.at))}</td><td>${esc(s.label)}</td><td>${s.distM ? fmtM(s.distM) : ''}</td><td>${s.min} min</td></tr>`).join('')}${[...h.lifts.map((l) => ({ ...l, tag: '' })), ...(h.phase2?.lifts ?? []).map((l) => ({ ...l, tag: 'Obj 2: ' }))].sort((x, y) => x.at - y.at).map((l) => `<tr><td>${esc(hRelText(l.at))}</td><td>Fire lifts: ${esc(l.tag + l.label)}</td><td>${l.rM} m</td><td class="pb-dim">IC s66</td></tr>`).join('')}</table>${h.phase2 ? `<div class="pb-dim">Phase 2: H2 ${esc(hRelText(h.phase2.h2At))}, ${h.phase2.gapMin} min after Obj 1 falls (IBB p176 c: at once)</div>` : ''}` : '';
-    const night = a.night ? `<div class="pb-sum">Night march, Assy Area to the FUP <span class="pb-dim">(Night March chart; ${this._brgNote()}, 120 paces a 100 m)</span></div><table class="pb-t">${a.night.legs.map((l) => `<tr><td>Leg ${l.i}</td><td>${this._brgCell(l.bearingDeg)}</td><td>${fmtM(l.distM)}</td><td>${l.paces} paces</td><td>${l.min} min</td><td class="pb-dim">${esc(l.sight === 'none' ? '' : l.sight + ' sights')}</td></tr>`).join('')}</table>` : '';
+    const night = a.night ? `<div class="pb-sum">Night march, Assy Area to the FUP <span class="pb-dim">(Night March chart; ${this._brgNote(a.night.grid)}, 120 paces a 100 m)</span></div><table class="pb-t">${a.night.legs.map((l) => `<tr><td>Leg ${l.i}</td><td>${this._brgCell(l.gridDeg)}</td><td>${fmtM(l.distM)}</td><td>${l.paces} paces</td><td>${l.min} min</td><td class="pb-dim">${esc(l.sight === 'none' ? '' : l.sight + ' sights')}</td></tr>`).join('')}</table>` : '';
     const fac = `<div class="pb-sum">Weighed factors <span class="pb-dim">(score ${f.fit.score}; Compare sets left against right)</span></div><table class="pb-t">${a.factors.map((x) => `<tr><td>${esc(x.label)} <span class="pb-dim">×${x.w}</span></td><td><span class="pb-pill pb-${x.v >= 0.75 ? 'pass' : x.v >= 0.4 ? 'warn' : 'fail'}">${Math.round(x.v * 100)}</span></td><td class="pb-why">${esc(x.reason)}</td></tr>`).join('')}</table>`;
     return steps + night + fac;
   }

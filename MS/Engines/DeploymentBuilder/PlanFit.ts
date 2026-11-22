@@ -990,7 +990,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
       if (ao.pts.length) { fit.atExtras = ao.pts; raw = solveRecipe(recipe, ctx, { ...solveOpts, extraPoints: ao.pts }); }
     }
     const obj = raw.items.find((i) => i.role === 'obj');
-    const nb = inp.night && inp.nmRules && route && obj ? nightBrief(route, P(obj.pts.reduce((a, p) => a + p.x, 0) / obj.pts.length, obj.pts.reduce((a, p) => a + p.y, 0) / obj.pts.length), frame, terrain.kind, inp.nmRules) : null;
+    const nb = inp.night && inp.nmRules && route && obj ? nightBrief(route, P(obj.pts.reduce((a, p) => a + p.x, 0) / obj.pts.length, obj.pts.reduce((a, p) => a + p.y, 0) / obj.pts.length), frame, terrain.kind, inp.nmRules, ground.mov?.() ?? null) : null;
     if (nb) merged.rows.push(nightRow(nb));
     const af = attackFactors(recipe.layout, merged.rows, raw, frame, ground, h, choke, route, ctx.doc);
     fit.attack = { hSum: h, choke, factors: af.factors, night: nb, route, finder: find.rows, phase2: ph2 ? { route: ph2.route, side: ph2.side, offDeg: ph2.offDeg, obj2From: ph2.obj2From } : undefined, counter: ca ? { apchs: ca.apchs, mover: ca.mover } : undefined, tanks: recipe.tanks ? { mode: recipe.tanks, route: tk?.route ?? null, fieldM: tk?.fieldM ?? null } : undefined };

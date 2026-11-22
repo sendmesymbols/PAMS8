@@ -797,7 +797,7 @@ def merge(feat: Path, tiles: dict, pts: list, lines: list, flagged: int) -> dict
         "OSM road graph (kind 166 junctions)": source_ref(lock, "osm_network")})
     idx["itg"] = {"note": "ig / it on a point: ITG candidate (rules.json grotbc.itg). Candidates only; ITG / MITG "
                           "designation belongs to the task and is made in the app.", "flaggedExisting": flagged}
-    (feat / "index.json").write_text(json.dumps(idx, indent=1, ensure_ascii=False), encoding="utf-8")
+    (feat / "index.json").write_text(json.dumps(idx, indent=1, ensure_ascii=False, allow_nan=False), encoding="utf-8")
     return {"tiles": n}
 
 

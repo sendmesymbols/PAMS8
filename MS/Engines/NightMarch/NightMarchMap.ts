@@ -205,7 +205,7 @@ export class NightMarchMap {
     if (p.labels) {
       for (const lg of C.legs) {
         const mid: MercXY = [(lg.from[0] + lg.to[0]) / 2, (lg.from[1] + lg.to[1]) / 2];
-        const t = `${lg.i} · ${brgText(lg.bearingDeg, lg.magDeg, p.units, true)} · ${lg.paces.toLocaleString('en-GB')} p`;
+        const t = `${lg.i} · ${brgText(lg.gridDeg, lg.magDeg, p.units, true)} · ${lg.paces.toLocaleString('en-GB')} p`;
         mark(mid, `leg|${t}|${lg.tone}`, () => plate(t, lg.tone === 'ok' ? ACCENT : lg.tone === 'warn' ? [238, 138, 31] : RED), `Leg ${lg.i}`);
       }
     }
