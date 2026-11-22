@@ -32,7 +32,7 @@ button to turn the guide on.
 Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → settle each paragraph → export.
 
 - **Header**: the kind, what the reading was taken with (echelon, place, mover, month, when), **Read** / **Read again**
-  (a thin bar runs under the header while it reads), **Export** (Word, PDF, Copy as text; Slides in the Briefing, one
+  (a thin bar runs under the header while it reads), **Export** (Word, PDF, Copy as text; Slides in the Briefing - PPTX, one
   item per deck) and **⋯** (Save to a file, Open a file, Clear: asks twice, in the menu, not a dialog).
 - **Outline** (left): how many paragraphs are ready for the fair copy and a bar by state; filters **All / To do /
   Proposals / Gr changed / Written** (To do = yours to write + proposals open + Gr changed); *Accept all n proposals*.
@@ -51,6 +51,15 @@ Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → sett
   page, a click on the rail, or `[` / `]`), so the page can take the whole width; the outline rail keeps the to-do count,
   the paragraph rail the selected number. Writing in a paragraph (Enter, double-click) opens the panel again. Which panels
   are folded is kept in this browser only (`pams8.aprc.ui.v1`).
+- **Resizing**: drag the edge between a side panel and the page (or focus it and use the arrow keys, Shift for bigger
+  steps); double-click or Enter puts the default back. The outline takes 180 to 460 px, the paragraph panel 260 to 640 px,
+  and the page always keeps 360 px. Below 940 px the edge above the paragraph panel sets its height. Kept with the folds.
+- Scrollbars are thin and dark, in the sheet only.
+- **Window**: Minimize, Maximize / Restore down and Close at the right of the header. Maximized, the sheet fills the
+  screen (also a double-click on the title bar), and it is remembered in this browser. Minimized, it folds to a bar at
+  the foot of the map with the progress (ready, to do); a click on the bar, its Restore button or the top bar's Aprc
+  button brings it back as it was. What was typed is kept, and the keys go back to the map. A read carries on while it is
+  minimized. Hosts: `windowState`, `setWindow('normal' | 'max' | 'min')`.
 - Messages come as a toast at the foot of the sheet (read out once; a failure stays longer). Below 940 px the outline is a
   drawer (☰ over the page) and the inspector sits under the page.
 
@@ -124,7 +133,7 @@ Differences under 15 min or 5 % of GO between the avenues are not called better 
 
 ## Slides
 
-The Export menu's *Slides in the Briefing* (one item per deck) writes a deck into the Briefing module (`features.briefing`): screen-only slides with native text and
+The Export menu's *Slides in the Briefing - PPTX* (one item per deck) writes a deck into the Briefing module (`features.briefing`): screen-only slides with native text and
 tables, the trace as a picture, a section per part, the paragraph in full in the speaker notes, and each Confirm on Gr
 item as a Task comment.
 

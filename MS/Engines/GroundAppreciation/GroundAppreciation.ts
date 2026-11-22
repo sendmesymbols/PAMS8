@@ -41,6 +41,10 @@ const PANEL_ID = 'ms-aprc-panel';
 const STORE = 'pams8.aprc.v1';
 /** Which side panels are folded: a viewer's convenience, kept in this browser only. */
 const UI_STORE = 'pams8.aprc.ui.v1';
+/** Panel sizes a drag may give (px): the outline and the paragraph panel across, the paragraph panel down on a narrow sheet; the page keeps PAGE_MIN. */
+const SIZE = { out: [180, 460], rt: [260, 640], rows: [110, 140] } as const;
+const PAGE_MIN = 360;
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 const R = 6378137;
 
 export interface GroundAppreciationOptions {
@@ -108,6 +112,24 @@ ${P}{--ap-bg:var(--gg-card,#1b1f25);--ap-pane:var(--gg-strip,#20262e);--ap-head:
  position:fixed;left:50%;transform:translateX(-50%);top:118px;z-index:2147482806;width:min(1280px,calc(100vw - 20px));height:calc(100vh - 140px);display:none;flex-direction:column;
  background:var(--ap-bg);color:var(--ap-tx);border:1px solid var(--ap-hair);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);font:13.5px/1.4 system-ui,"Segoe UI",Arial,sans-serif;outline:none}
 ${P}.ms-open{display:flex}
+${P}.win-max{left:8px;right:8px;width:auto;transform:none}
+${P}.win-min{top:auto;bottom:14px;height:auto;width:min(600px,calc(100vw - 20px))}
+${P}.win-min>:not(.ap-head):not(.ap-busy):not(.ap-toast){display:none!important}
+${P}.win-min .ap-head{border-radius:12px;border-bottom:0;cursor:pointer}
+${P}.win-min .ap-head :is(.ap-select,[data-a="menu"],[data-a="read"]){display:none}
+${P}.win-min .ap-toast{bottom:calc(100% + 10px)}
+${P} .ap-minprog{display:none;flex:none;color:var(--ap-label);font-size:12.5px;font-variant-numeric:tabular-nums}
+${P} .ap-minprog b{color:var(--ap-strong);font-weight:700}
+${P}.win-min .ap-minprog{display:inline}
+${P} .ap-wsep{flex:none;width:1px;height:18px;margin:0 2px;background:var(--ap-hair)}
+${P}{color-scheme:dark;scrollbar-color:rgba(255,255,255,.2) transparent}
+${P} *{scrollbar-width:thin}
+${P} :is(.ap-list,.ap-page,.ap-rt-body,.ap-tblw,textarea):hover{scrollbar-color:rgba(255,255,255,.36) transparent}
+${P} ::-webkit-scrollbar{width:10px;height:10px}
+${P} ::-webkit-scrollbar-track,${P} ::-webkit-scrollbar-corner{background:transparent}
+${P} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);background-clip:padding-box;border:2px solid transparent;border-radius:8px}
+${P} ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.38);background-clip:padding-box}
+${P} ::-webkit-scrollbar-button{display:none}
 ${P} *{box-sizing:border-box}
 ${P} button,${P} select,${P} input,${P} textarea{font:inherit;color:inherit}
 ${P} [hidden]{display:none!important}
@@ -150,8 +172,16 @@ ${P} .ap-note{flex:none;display:none;align-items:center;gap:10px;margin:10px 12p
 ${P} .ap-note.on{display:flex}
 ${P} .ap-note .ap-note-t{flex:1;min-width:0}
 
-${P} .ap-grid{--ap-wo:256px;--ap-wr:352px;flex:1;min-height:0;position:relative;display:grid;grid-template-columns:var(--ap-wo) minmax(0,1fr) var(--ap-wr)}
+${P} .ap-grid{--ap-wo:var(--ap-wo-user,256px);--ap-wr:var(--ap-wr-user,352px);flex:1;min-height:0;position:relative;display:grid;grid-template-columns:var(--ap-wo) minmax(0,1fr) var(--ap-wr)}
 ${P} .ap-grid.no-out{--ap-wo:40px}${P} .ap-grid.no-rt{--ap-wr:40px}
+${P} .ap-rz{position:absolute;z-index:6;top:0;bottom:0;width:10px;margin-left:-5px;cursor:col-resize;touch-action:none;outline:none}
+${P} .ap-rz::after{content:"";position:absolute;top:0;bottom:0;left:4px;width:2px;border-radius:1px;background:transparent;transition:background-color .15s ease-out .08s}
+${P} .ap-rz:hover::after,${P} .ap-rz.on::after{background:var(--ap-accent)}
+${P} .ap-rz:focus-visible::after{background:var(--ap-accent);box-shadow:0 0 0 2px rgba(142,193,234,.35)}
+${P} .ap-rz-out{left:var(--ap-wo)}${P} .ap-rz-rt{left:calc(100% - var(--ap-wr))}
+${P} .ap-grid.no-out .ap-rz-out,${P} .ap-grid.no-rt .ap-rz-rt{display:none}
+${P} .ap-grid.resizing{cursor:col-resize;user-select:none}${P} .ap-grid.resizing.rows{cursor:row-resize}
+${P} .ap-grid.resizing>:not(.ap-rz){pointer-events:none}
 ${P} .ap-rail{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;height:100%;padding:12px 0;border:0;background:none;color:var(--ap-label);cursor:pointer;font-size:12.5px;font-weight:650;transition:background-color .15s ease-out,color .15s ease-out}
 ${P} .ap-rail:hover{background:rgba(255,255,255,.05);color:var(--ap-strong)}
 ${P} .ap-rail .v{writing-mode:vertical-rl;white-space:nowrap}
@@ -190,14 +220,18 @@ ${P} .ap-ic{display:inline-flex;align-items:center;justify-content:center;width:
 ${P} .st-gr{color:var(--ap-gr)}${P} .st-map{color:var(--ap-map)}${P} .st-open,${P} .st-accepted{color:var(--ap-judge)}
 ${P} .st-yours{color:var(--ap-yours)}${P} .st-written{color:var(--ap-written)}${P} .st-stale{color:var(--ap-stale)}
 
-${P} .ap-mid{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--ap-desk)}
+${P} .ap-mid{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--ap-desk);container:ap-page/inline-size}
 ${P} .ap-ptool{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--ap-hair-soft);background:var(--ap-bg)}
-${P} .ap-seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--ap-field);border:1px solid rgba(255,255,255,.1)}
+${P} .ap-seg{flex:none;display:inline-flex;padding:2px;border-radius:8px;background:var(--ap-field);border:1px solid rgba(255,255,255,.1)}
 ${P} .ap-seg button{height:26px;padding:0 12px;border:0;border-radius:6px;background:none;color:var(--ap-label);font-size:13px;font-weight:600;cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
 ${P} .ap-seg button:hover{color:var(--ap-strong)}
 ${P} .ap-seg button[aria-pressed=true]{background:#3a4553;color:var(--ap-strong);box-shadow:0 1px 2px rgba(0,0,0,.35)}
-${P} .ap-hint-copy{color:var(--ap-soft);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-${P} .ap-hfield{display:inline-flex;align-items:center;gap:8px;color:var(--ap-label);font-size:13px;white-space:nowrap}
+${P} .ap-hint-copy{flex:0 1 auto;color:var(--ap-soft);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+${P} .ap-seg button{white-space:nowrap}
+${P} .ap-ptool .ap-btn{flex:none}
+${P} .ap-ptool .sp{min-width:0}
+@container ap-page (max-width:560px){${P} .ap-hint-copy{display:none}}
+${P} .ap-hfield{flex:none;display:inline-flex;align-items:center;gap:8px;color:var(--ap-label);font-size:13px;white-space:nowrap}
 ${P} .ap-hfield input{width:70px;height:28px;padding:0 8px;border-radius:7px;border:1px solid var(--ap-edge);background:var(--ap-field);color:var(--ap-tx);font-size:13px;font-variant-numeric:tabular-nums}
 ${P} .ap-hfield input:focus{border-color:var(--ap-accent)}
 ${P} .ap-page{flex:1;min-height:0;overflow:auto;padding:20px 18px 48px}
@@ -283,9 +317,12 @@ ${P} .ap-toast svg{color:var(--ap-gr)}
 ${P} .ap-toast.err{background:#3d2427;border-color:rgba(255,120,120,.45)}
 ${P} .ap-toast.err svg{color:var(--ap-stale)}
 
-@media (max-width:1180px){${P} .ap-grid{--ap-wo:224px;--ap-wr:312px}${P} .ap-hint-copy{display:none}}
+@media (max-width:1180px){${P} .ap-grid{--ap-wo:var(--ap-wo-user,224px);--ap-wr:var(--ap-wr-user,312px)}${P} .ap-hint-copy{display:none}}
 @media (max-width:940px){
- ${P} .ap-grid,${P} .ap-grid.no-out{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(140px,1.25fr) minmax(0,1fr)}
+ ${P} .ap-grid,${P} .ap-grid.no-out{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(140px,1fr) var(--ap-hr-user,minmax(0,.8fr))}
+ ${P} .ap-rz-out{display:none}
+ ${P} .ap-rz-rt{left:0;right:0;bottom:auto;width:auto;height:10px;margin:-5px 0 0;cursor:row-resize}
+ ${P} .ap-rz-rt::after{left:0;right:0;top:4px;bottom:auto;width:auto;height:2px}
  ${P} .ap-grid.no-rt{grid-template-rows:minmax(0,1fr) auto}
  ${P} .ap-rt .ap-rail{flex-direction:row;height:40px;padding:0 14px}
  ${P} .ap-rt .ap-rail .v{writing-mode:horizontal-tb}
@@ -369,6 +406,10 @@ const UI = {
   close: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   prev: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 8.8 7 5.3l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   next: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 5.2 7 8.7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  min: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  max: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="3.2" width="9.6" height="9.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  restore: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.8" y="5.6" width="7.6" height="7.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.6 5.4V4.2c0-.8.6-1.4 1.4-1.4h4.8c.8 0 1.4.6 1.4 1.4V9c0 .8-.6 1.4-1.4 1.4h-1.2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  up: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V3.8M4.9 6.8 8 3.7l3.1 3.1M3.2 13.2h9.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   paneL: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="2.5" width="12.4" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 2.8v10.4" stroke="currentColor" stroke-width="1.5"/></svg>',
   paneR: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="2.5" width="12.4" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 2.8v10.4" stroke="currentColor" stroke-width="1.5"/></svg>',
   warn: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.2v3.6M8 11.8v.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
@@ -443,6 +484,16 @@ export default class GroundAppreciation {
   private _hideRt = false;
   private _uiLoaded = false;
   private _resizeRaf = 0;
+  /** Sizes the planner dragged (null: the default for the width); kept with the folds in this browser. */
+  /** The sheet as a window: docked under the host's bar, filling the screen, or folded to a bar at the foot. */
+  private _win: 'normal' | 'max' | 'min' = 'normal';
+  /** Maximized when last opened or restored (kept with the panel sizes in this browser). */
+  private _maxPref = false;
+  /** When the window state last changed: a double-click that began as the restoring click is not taken as a second change. */
+  private _winAt = 0;
+  private _wo: number | null = null;
+  private _wr: number | null = null;
+  private _hr: number | null = null;
   /** Bumped on every change of the document, so the page is drawn again only when it changed. */
   private _docVer = 0;
   private _pageKey = '';
@@ -528,6 +579,8 @@ export default class GroundAppreciation {
     if (!this._enabled) return;
     ensureCss();
     if (!this._el) this._build();
+    // opening (or the top bar's button) brings a folded sheet back as it was before
+    if (this._win === 'min') this._win = this._maxPref ? 'max' : 'normal';
     this._open = true;
     this._dock();
     this._el!.classList.add('ms-open');
@@ -546,12 +599,40 @@ export default class GroundAppreciation {
   }
 
   togglePanel(): boolean {
+    if (this._open && this._win === 'min') {
+      this._setWin(this._maxPref ? 'max' : 'normal');
+      return true;
+    }
     this.openPanel(!this._open);
     return this._open;
   }
 
+  /** The sheet's window: 'normal' (docked under the host's bar), 'max' (the whole screen) or 'min' (a bar at the foot). */
+  get windowState(): 'normal' | 'max' | 'min' {
+    return this._win;
+  }
+  setWindow(state: 'normal' | 'max' | 'min'): void {
+    if (!this._open) this.openPanel(true);
+    this._setWin(state);
+  }
+
   private _dock(): void {
     if (!this._el) return;
+    const el = this._el;
+    el.classList.toggle('win-max', this._win === 'max');
+    el.classList.toggle('win-min', this._win === 'min');
+    if (this._win === 'max') {
+      el.style.top = '8px';
+      el.style.height = 'calc(100vh - 16px)';
+      el.style.maxHeight = 'none';
+      return;
+    }
+    if (this._win === 'min') {
+      el.style.top = '';
+      el.style.height = '';
+      el.style.maxHeight = '';
+      return;
+    }
     dockBelowBar(this._el);
     const top = parseFloat(this._el.style.top) || 118;
     this._el.style.height = `calc(100vh - ${Math.round(top + 12)}px)`;
@@ -1423,6 +1504,10 @@ export default class GroundAppreciation {
 <button class="ap-btn pri" data-a="read" data-p="read" title="Read the ground and the symbols on the map. Your words and acceptances are kept."></button>
 <button class="ap-btn" data-a="menu" data-v="export" aria-haspopup="menu" aria-expanded="false">Export ${UI.caret}</button>
 <button class="ap-btn icon" data-a="menu" data-v="more" aria-haspopup="menu" aria-expanded="false" aria-label="Save, open or clear" title="Save, open or clear">${UI.more}</button>
+<span class="ap-minprog" data-p="minprog"></span>
+<span class="ap-wsep" aria-hidden="true"></span>
+<button class="ap-btn icon ghost" data-a="win" data-v="min" data-p="winmin"></button>
+<button class="ap-btn icon ghost" data-a="win" data-v="max" data-p="winmax"></button>
 <button class="ap-btn icon ghost" data-a="close" aria-label="Close (Esc)" title="Close (Esc)">${UI.close}</button>
 </header>
 <div class="ap-busy" data-p="busy" aria-hidden="true"><i></i></div>
@@ -1441,11 +1526,24 @@ export default class GroundAppreciation {
 <div class="ap-page" data-p="page"></div>
 </section>
 <aside class="ap-rt" id="ap-pane-rt" data-p="rt" aria-label="The selected paragraph"></aside>
+<div class="ap-rz ap-rz-out" data-rz="out" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="ap-pane-out" aria-label="Resize the outline" title="Drag to resize; double-click to reset"></div>
+<div class="ap-rz ap-rz-rt" data-rz="rt" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="ap-pane-rt" aria-label="Resize the paragraph panel" title="Drag to resize; double-click to reset"></div>
 </div>
 <div class="ap-menu" data-p="menu" role="menu" hidden></div>
 <div class="ap-toast" data-p="toast" role="status" aria-live="polite"></div>`;
     el.addEventListener('click', (e) => this._click(e));
+    el.addEventListener('pointerdown', (e) => {
+      const h = (e.target as HTMLElement).closest('[data-rz]') as HTMLElement | null;
+      if (h && e.button === 0) this._startResize(e, h);
+    });
     el.addEventListener('dblclick', (e) => {
+      const rz = (e.target as HTMLElement).closest('[data-rz]') as HTMLElement | null;
+      if (rz) return this._resetSize(rz.dataset.rz as 'out' | 'rt');
+      const tt = e.target as HTMLElement;
+      if (tt.closest('.ap-head') && !tt.closest('button,select,input')) {
+        if (performance.now() - this._winAt > 500) this._setWin(this._win === 'max' ? 'normal' : 'max');
+        return;
+      }
       const p = (e.target as HTMLElement).closest('.ap-page .ap-p[data-id]') as HTMLElement | null;
       if (p) this._select(p.dataset.id!, false, true);
     });
@@ -1469,6 +1567,10 @@ export default class GroundAppreciation {
     if (this._outOpen && !t.closest('.ap-out') && !t.closest('[data-a="pane"][data-v="out"]')) {
       this._outOpen = false;
       this._part('grid').classList.remove('out-open');
+    }
+    if (this._win === 'min' && t.closest('.ap-head') && !t.closest('button,select,input')) {
+      this._setWin(this._maxPref ? 'max' : 'normal');
+      return;
     }
     const b = t.closest('[data-a]') as HTMLButtonElement | null;
     if (b && this._el!.contains(b)) {
@@ -1531,6 +1633,9 @@ export default class GroundAppreciation {
           return this._go(1);
         case 'next-todo':
           return this._nextTodo();
+        case 'win':
+          if (v === 'min') return this._setWin(this._win === 'min' ? (this._maxPref ? 'max' : 'normal') : 'min');
+          return this._setWin(this._win === 'max' ? 'normal' : 'max');
         case 'pane':
           return this._togglePane(v as 'out' | 'rt');
         case 'edit':
@@ -1636,6 +1741,25 @@ export default class GroundAppreciation {
     // keys in the sheet never reach the map
     e.stopPropagation();
     const t = e.target as HTMLElement;
+    const rz = t.closest?.('[data-rz]') as HTMLElement | null;
+    if (rz && !this._menu) {
+      const which = rz.dataset.rz as 'out' | 'rt';
+      const step = e.shiftKey ? 48 : 16;
+      const narrow = this._narrow();
+      let d = 0;
+      if (narrow) d = e.key === 'ArrowUp' ? step : e.key === 'ArrowDown' ? -step : 0;
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') d = (e.key === 'ArrowRight') === (which === 'out') ? step : -step;
+      if (e.key === 'Enter' || e.key === 'Home') {
+        e.preventDefault();
+        return this._resetSize(which);
+      }
+      if (d) {
+        e.preventDefault();
+        this._setSize(which, this._sizeOf(which) + d);
+        this._saveUi();
+        return;
+      }
+    }
     if (this._menu) {
       const items = [...this._part('menu').querySelectorAll<HTMLElement>('.ap-mi')];
       const i = items.indexOf(document.activeElement as HTMLElement);
@@ -1842,6 +1966,12 @@ export default class GroundAppreciation {
       const u = JSON.parse(localStorage.getItem(UI_STORE) ?? 'null');
       this._hideOut = !!u?.out;
       this._hideRt = !!u?.rt;
+      this._maxPref = !!u?.max;
+      if (this._win !== 'min') this._win = this._maxPref ? 'max' : 'normal';
+      const px = (v: unknown): number | null => (Number(v) > 0 ? Number(v) : null);
+      this._wo = px(u?.wo);
+      this._wr = px(u?.wr);
+      this._hr = px(u?.hr);
     } catch {
       /* storage refused: both panels open */
     }
@@ -1849,9 +1979,133 @@ export default class GroundAppreciation {
 
   private _saveUi(): void {
     try {
-      localStorage.setItem(UI_STORE, JSON.stringify({ out: this._hideOut, rt: this._hideRt }));
+      localStorage.setItem(UI_STORE, JSON.stringify({ out: this._hideOut, rt: this._hideRt, wo: this._wo, wr: this._wr, hr: this._hr, max: this._maxPref }));
     } catch {
       /* storage refused: the panels stay as they are for this session */
+    }
+  }
+
+  /**
+   * Maximize, restore or minimize the sheet. Minimizing keeps what was typed and gives the keys back to the map; the
+   * folded bar shows the progress and restores on a click. Maximized is remembered in this browser.
+   */
+  private _setWin(w: 'normal' | 'max' | 'min'): void {
+    if (!this._el || w === this._win) return;
+    const was = this._win;
+    if (w === 'min') {
+      this._commitDirty();
+      this._closeMenu(false);
+      this._outOpen = false;
+    } else {
+      this._maxPref = w === 'max';
+      this._saveUi();
+    }
+    this._win = w;
+    this._winAt = performance.now();
+    this._dock();
+    this._render();
+    if (w === 'min') {
+      if (this._el.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+    } else if (was === 'min') this._el.focus({ preventScroll: true });
+  }
+
+  // ── the sheet: panel sizes ───────────────────────────────────────────────────────────────────────────────────
+
+  /** The panel's size now (px): across, or down for the paragraph panel on a narrow sheet. */
+  private _sizeOf(which: 'out' | 'rt'): number {
+    const pane = this._part(which === 'out' ? 'out' : 'rt');
+    return this._narrow() && which === 'rt' ? pane.offsetHeight : pane.offsetWidth;
+  }
+
+  /** Set a panel to a size, held between its bounds and the room the page needs. */
+  private _setSize(which: 'out' | 'rt', px: number): void {
+    const grid = this._part('grid');
+    px = Math.round(px);
+    if (this._narrow()) this._hr = clamp(px, SIZE.rows[0], Math.max(SIZE.rows[0], grid.clientHeight - SIZE.rows[1]));
+    else if (which === 'out') this._wo = clamp(px, SIZE.out[0], Math.min(SIZE.out[1], grid.clientWidth - this._part('rt').offsetWidth - PAGE_MIN));
+    else this._wr = clamp(px, SIZE.rt[0], Math.min(SIZE.rt[1], grid.clientWidth - this._part('out').offsetWidth - PAGE_MIN));
+    this._applySizes();
+  }
+
+  private _resetSize(which: 'out' | 'rt'): void {
+    if (this._narrow()) this._hr = null;
+    else if (which === 'out') this._wo = null;
+    else this._wr = null;
+    this._applySizes();
+    this._saveUi();
+  }
+
+  /** Drag an edge: the panel follows the pointer; the size is kept when the button comes up. */
+  private _startResize(e: PointerEvent, h: HTMLElement): void {
+    const which = h.dataset.rz as 'out' | 'rt';
+    const grid = this._part('grid');
+    const narrow = this._narrow();
+    e.preventDefault();
+    h.focus({ preventScroll: true });
+    try {
+      h.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture refused: the drag still follows while the pointer stays on the handle */
+    }
+    grid.classList.add('resizing');
+    grid.classList.toggle('rows', narrow);
+    h.classList.add('on');
+    const move = (ev: PointerEvent) => {
+      const r = grid.getBoundingClientRect();
+      this._setSize(which, narrow ? r.bottom - ev.clientY : which === 'out' ? ev.clientX - r.left : r.right - ev.clientX);
+    };
+    const up = () => {
+      h.removeEventListener('pointermove', move);
+      h.removeEventListener('pointerup', up);
+      h.removeEventListener('pointercancel', up);
+      grid.classList.remove('resizing', 'rows');
+      h.classList.remove('on');
+      this._saveUi();
+      if (this._menu) this._renderMenu();
+    };
+    h.addEventListener('pointermove', move);
+    h.addEventListener('pointerup', up);
+    h.addEventListener('pointercancel', up);
+  }
+
+  /**
+   * Put the dragged sizes on the grid. Below 940 px only the paragraph panel's height applies; a window too narrow for
+   * the dragged widths shrinks them for now (not kept), so the page keeps PAGE_MIN.
+   */
+  private _applySizes(): void {
+    if (!this._el) return;
+    const grid = this._part('grid');
+    const set = (k: string, v: number | null) => (v ? grid.style.setProperty(k, `${Math.round(v)}px`) : grid.style.removeProperty(k));
+    const narrow = this._narrow();
+    const hOut = this._el.querySelector('.ap-rz-out') as HTMLElement, hRt = this._el.querySelector('.ap-rz-rt') as HTMLElement;
+    if (narrow) {
+      set('--ap-wo-user', null);
+      set('--ap-wr-user', null);
+      set('--ap-hr-user', this._hr ? Math.min(this._hr, Math.max(SIZE.rows[0], grid.clientHeight - SIZE.rows[1])) : null);
+      hRt.style.top = `${this._part('rt').offsetTop}px`;
+      hRt.setAttribute('aria-orientation', 'horizontal');
+    } else {
+      const mid = typeof matchMedia === 'function' && matchMedia('(max-width: 1180px)').matches;
+      let wo = this._wo, wr = this._wr;
+      const o = this._hideOut ? 40 : wo ?? (mid ? 224 : 256), r = this._hideRt ? 40 : wr ?? (mid ? 312 : 352);
+      const room = grid.clientWidth - PAGE_MIN;
+      if (room > 0 && o + r > room) {
+        const k = room / (o + r);
+        if (wo) wo = Math.max(SIZE.out[0], wo * k);
+        if (wr) wr = Math.max(SIZE.rt[0], wr * k);
+      }
+      set('--ap-wo-user', wo);
+      set('--ap-wr-user', wr);
+      set('--ap-hr-user', null);
+      hRt.style.top = '';
+      hRt.setAttribute('aria-orientation', 'vertical');
+    }
+    for (const [h, which] of [[hOut, 'out'], [hRt, 'rt']] as Array<[HTMLElement, 'out' | 'rt']>) {
+      const b = narrow && which === 'rt' ? SIZE.rows : SIZE[which];
+      h.setAttribute('aria-valuenow', String(this._sizeOf(which)));
+      h.setAttribute('aria-valuemin', String(b[0]));
+      if (b !== SIZE.rows) h.setAttribute('aria-valuemax', String(b[1]));
+      else h.removeAttribute('aria-valuemax');
     }
   }
 
@@ -1903,7 +2157,7 @@ export default class GroundAppreciation {
       h += item('word', 'Word document', '.docx, with the figures');
       h += item('print', 'PDF', 'Opens print: choose Save as PDF');
       h += item('text', 'Copy as text', 'To paste into a signal or a note');
-      h += `<div class="ap-msep" role="separator"></div><div class="ap-ml">Slides in the Briefing</div>`;
+      h += `<div class="ap-msep" role="separator"></div><div class="ap-ml">Slides in the Briefing - PPTX</div>`;
       for (const d of APRC_DECKS) h += item('slides', esc(d.label), esc(d.note[0].toUpperCase() + d.note.slice(1)), { v: d.kind, extra: d.kind === this._opts.deck ? '<span class="ap-last">default</span>' : '' });
     } else {
       h += item('json', 'Save to a file', '.json, to open later or send on');
@@ -1972,6 +2226,15 @@ export default class GroundAppreciation {
     note.classList.toggle('on', !!noteText);
     note.innerHTML = noteText ? `${UI.warn}<span class="ap-note-t">${esc(noteText)}</span>${guideOff && this._host.turnOnGuide ? '<button class="ap-btn sm" data-a="guide">Turn on Ground Guide</button>' : ''}` : '';
 
+    const wMin = this._part('winmin'), wMax = this._part('winmax');
+    const minWord = this._win === 'min' ? 'Restore' : 'Minimize', maxWord = this._win === 'max' ? 'Restore down' : 'Maximize';
+    wMin.innerHTML = this._win === 'min' ? UI.up : UI.min;
+    wMin.setAttribute('aria-label', minWord);
+    wMin.title = minWord;
+    wMax.innerHTML = this._win === 'max' ? UI.restore : UI.max;
+    wMax.setAttribute('aria-label', maxWord);
+    wMax.title = `${maxWord} (or double-click the title bar)`;
+    this._part('minprog').innerHTML = `<b>${t.all - t.yours - t.open}</b> of ${t.all} ready · ${t.todo} to do`;
     const narrow = this._narrow();
     const grid = this._part('grid');
     grid.classList.toggle('out-open', this._outOpen);
@@ -1990,6 +2253,7 @@ export default class GroundAppreciation {
     this._renderOutline(doc, t);
     this._renderPage(doc, copy);
     this._renderRight(doc, t);
+    this._applySizes();
     if (this._menu) this._renderMenu();
     this._toast();
   }
