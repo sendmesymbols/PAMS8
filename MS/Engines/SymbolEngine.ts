@@ -136,6 +136,8 @@ import CrossSection from './CrossSection/CrossSection';
 import './CrossSectionSettingsWidget';
 import Compare from './Compare/Compare';
 import './CompareSettingsWidget';
+import GroundAppreciation from './GroundAppreciation/GroundAppreciation';
+import './GroundAppreciationSettingsWidget';
 import './PlanBuilderSettingsWidget';
 import CommandPalette from '../Support/CommandPalette';
 // Each widget self-registers with the Ctrl+K palette + ⚙ Settings menu when
@@ -227,6 +229,8 @@ class SymbolEngine implements Evented {
   private _crossSection: CrossSection | null = null;
   /** Compare (corridors / positions side by side); null until `features.compare` is on. */
   private _compare: Compare | null = null;
+  /** Aprc (the appreciation drafted from the map, with Word / PDF / slides); null until `features.groundAppreciation` is on. */
+  private _groundAppreciation: GroundAppreciation | null = null;
   private _drawingCueEngine: DrawingCueEngine | null = null;
   private _mgrsEngine: MGRSEngine | null = null;
   private _visualizationEngine: VisualizationEngine | null = null;
@@ -483,6 +487,7 @@ class SymbolEngine implements Evented {
     this._initAoiCheck();
     this._initCrossSection();
     this._initCompare();
+    this._initGroundAppreciation();
 
     // Conditionally load DrawingCueEngine based on Settings.json feature flag
     this._initDrawingCueEngine();
@@ -769,6 +774,7 @@ class SymbolEngine implements Evented {
     this._aoiCheck?.destroy();
     this._crossSection?.destroy();
     this._compare?.destroy();
+    this._groundAppreciation?.destroy();
     this._drawingCueEngine?.disable();
     this._mgrsEngine?.destroy();
     this._editEngine?.deactivate();
@@ -841,6 +847,7 @@ class SymbolEngine implements Evented {
     this._aoiCheck?.onViewChanged();
     this._crossSection?.onViewChanged();
     this._compare?.onViewChanged();
+    this._groundAppreciation?.onViewChanged();
     // Re-attach drawing cue engine to the new view
     this._drawingCueEngine?.onViewChanged(newView);
     // Re-attach MGRS engine to the new view
@@ -1266,6 +1273,31 @@ class SymbolEngine implements Evented {
     }
     this._compare.enable();
     console.info('[SymbolEngine] Compare loaded');
+  }
+
+  /**
+   * Create the Aprc engine and enable it. Gated by `features.groundAppreciation` (off by default). It reads the terrain
+   * bundle only through the Ground Guide, and only when its Read is pressed.
+   */
+  private _initGroundAppreciation(force = false): void {
+    const features = (settingsData as any).features ?? {};
+    if (!force && features.groundAppreciation !== true) return;
+    if (!this._groundAppreciation) {
+      const ga = new GroundAppreciation(() => this._getView(), {
+        guide: () => this._groundGuide,
+        turnOnGuide: () => void this.toggleGroundGuide(true),
+        selected: () => this._selectionEngine?.selectedGraphics ?? [],
+        records: () => this.serializationEngine?.planRecordsOf?.() ?? [],
+        threat: () => this._threatLngLat(),
+        planCheck: () => (this._deploymentBuilderEngine as any)?.planCheck ?? null,
+        briefing: () => this._briefingEngine,
+      });
+      this._groundAppreciation = ga;
+      ga.setOptions((settingsData as any).groundAppreciation ?? {});
+      this.emitEvent('groundAppreciationReady', { engine: ga });
+    }
+    this._groundAppreciation.enable();
+    console.info('[SymbolEngine] GroundAppreciation loaded');
   }
 
   private _platoonGuideMenuRegistered = false;
@@ -2449,6 +2481,20 @@ class SymbolEngine implements Evented {
     return this._compare;
   }
 
+  /** Aprc: the appreciation drafted from the map. Null until `features.groundAppreciation` is on. */
+  public get groundAppreciation(): GroundAppreciation | null {
+    return this._groundAppreciation;
+  }
+
+  /** Switch Aprc on or off (the `features.groundAppreciation` setting). Returns the state it is in now. */
+  public toggleGroundAppreciation(on?: boolean): boolean {
+    const next = on ?? !(this._groundAppreciation?.isEnabled ?? false);
+    this.onSettingChanged(['features', 'groundAppreciation'], next);
+    setSetting(['features', 'groundAppreciation'], next);
+    EngineLogger.success('Symbol Engine', `Aprc ${next ? 'on' : 'off'}.`);
+    return next;
+  }
+
   /** Switch Compare on or off (the `features.compare` setting). Returns the state it is in now. */
   public toggleCompare(on?: boolean): boolean {
     const next = on ?? !(this._compare?.isEnabled ?? false);
@@ -2875,6 +2921,12 @@ class SymbolEngine implements Evented {
         } else {
           this._compare?.disable();
         }
+      } else if (feature === 'groundAppreciation') {
+        if (value) {
+          this._initGroundAppreciation(true);
+        } else {
+          this._groundAppreciation?.disable();
+        }
       } else if (feature === 'platoonGuide') {
         if (value) {
           this._initPlatoonGuide(true);
@@ -2995,6 +3047,10 @@ class SymbolEngine implements Evented {
 
     if (fullPath.startsWith('compare.') && this._compare) {
       this._compare.setOptions((settingsData as any).compare ?? {});
+    }
+
+    if (fullPath.startsWith('groundAppreciation.') && this._groundAppreciation) {
+      this._groundAppreciation.setOptions((settingsData as any).groundAppreciation ?? {});
     }
 
     if (fullPath.startsWith('platoonGuide.') && this._platoonGuide) {

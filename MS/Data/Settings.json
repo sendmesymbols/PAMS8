@@ -432,7 +432,8 @@
     "adminArea": false,
     "aoiCheck": false,
     "crossSection": false,
-    "compare": false
+    "compare": false,
+    "groundAppreciation": false
   },
   "collab": {
     "transport": "sse",
@@ -951,6 +952,16 @@
     "labels": true,
     "fit": true,
     "keys": true
+  },
+  "groundAppreciation": {
+    "kind": "def",
+    "copy": "draft",
+    "figures": "both",
+    "deck": "full",
+    "obsn": true,
+    "echelon": "auto",
+    "mover": "auto",
+    "keep": true
   },
   "compare": {
     "bundleUrl": "/terrain-bundle",

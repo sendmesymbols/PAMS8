@@ -327,6 +327,7 @@ import { openAdminAreaSettings } from '../MS/Engines/AdminAreaSettingsWidget';
 import { openAoiCheckSettings } from '../MS/Engines/AoiCheckSettingsWidget';
 import { openCrossSectionSettings } from '../MS/Engines/CrossSectionSettingsWidget';
 import { openCompareSettings } from '../MS/Engines/CompareSettingsWidget';
+import { openGroundAppreciationSettings } from '../MS/Engines/GroundAppreciationSettingsWidget';
 import { setSetting as setPlSetting } from '../MS/Support/SettingsBus';
 document.addEventListener('engine-log', (e: Event) => {
   const { engine, type, formatted } = (e as CustomEvent<EngineLogEntry>).detail;
@@ -2501,6 +2502,15 @@ initSiteFinderToggle({
   turnOn: () => (window as any).symbolEngine?.toggleCompare?.(true),
   widgetId: 'compare-settings',
   open: openCompareSettings,
+});
+initSiteFinderToggle({
+  btnId: 'groundAppreciationBtn',
+  gearId: 'groundAppreciationSettingsBtn',
+  feature: 'groundAppreciation',
+  engine: () => (window as any).symbolEngine?.groundAppreciation,
+  turnOn: () => (window as any).symbolEngine?.toggleGroundAppreciation?.(true),
+  widgetId: 'ground-appreciation-settings',
+  open: openGroundAppreciationSettings,
 });
 
 // The button flips features.movementGuide through symbolEngine.toggleMovementGuide() (which publishes it on the

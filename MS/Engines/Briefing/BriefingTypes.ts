@@ -548,6 +548,13 @@ export interface Slide {
   /** Engine-generated UUID. */
   id: string;
   title: string;
+  /**
+   * Set on a slide another engine made from its own data (the Aprc engine: `aprc:<paragraph id>`), with `sourceHash`,
+   * the slide's content as made. That engine replaces its slides on a refresh and keeps one whose content no longer
+   * matches the hash (the user edited it). Absent on every slide a user made.
+   */
+  sourceRef?: string;
+  sourceHash?: string;
   /** Speaker notes — reused by the PPTX exporter's addNotes(). */
   notes?: string;
   view: CapturedViewState;

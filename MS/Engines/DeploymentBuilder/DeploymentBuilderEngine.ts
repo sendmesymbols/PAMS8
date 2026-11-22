@@ -141,6 +141,8 @@ export interface PlacementHooks {
 
 /** What the Build tab module offers the manager (PlanBuildTab.ts, loaded only while the tab is on). */
 interface BuildTabLike {
+  /** The last Check my plan report, or null. */
+  readonly lastCheck?: unknown;
   setSettings(settings: Record<string, any>): void;
   shown(): void;
   /** The map switched between 2D and 3D: move its overlay to the new view. */
@@ -287,6 +289,11 @@ class DeploymentBuilderEngine {
   private _activeTab: 'samples' | 'build' = 'samples';
 
   private constructor() {}
+
+  /** The last Check my plan report of the Intelligent Deployment tab (PlanCheck.CheckReport), or null. */
+  public get planCheck(): unknown | null {
+    return this._buildTab?.lastCheck ?? null;
+  }
 
   public static getInstance(): DeploymentBuilderEngine {
     if (!DeploymentBuilderEngine._instance) {

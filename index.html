@@ -351,6 +351,7 @@
       #adminAreaBtn.ms-btn-active,
       #aoiCheckBtn.ms-btn-active,
       #crossSectionBtn.ms-btn-active,
+      #groundAppreciationBtn.ms-btn-active,
       #compareBtn.ms-btn-active {
         border-color: var(--ms-accent) !important;
         color: var(--ms-accent) !important;
@@ -2116,6 +2117,11 @@
         <div class="infobar-split">
           <button class="ms-btn infobar-btn" id="compareBtn" aria-pressed="false" title="Compare: up to four corridors (lines) or positions (areas, points) read side by side with the same mover, month and threat. Length, climb, NO-GO, SLOW-GO, crossings, bridges, BUA, seen by threat; usable Gr, tilt, firm, wet, hidden from air, cover, Rd, people. The best in each row marked, the differences written out, and how each row was worked out. Turns it on and opens its panel."><span class="infobar-icon">⚖</span>Compare</button>
           <button class="ms-btn infobar-btn infobar-gear" id="compareSettingsBtn" aria-label="Compare settings" aria-expanded="false" title="Compare settings: mover, month, threat eye height, point radius, map. Same settings as Ctrl+K → Compare."><span class="infobar-icon">⚙</span></button>
+        </div>
+        <!-- Aprc on/off (features.groundAppreciation) + its sheet, and its settings; wired in src/main.ts. -->
+        <div class="infobar-split">
+          <button class="ms-btn infobar-btn" id="groundAppreciationBtn" aria-pressed="false" title="Aprc: the appreciation of the situation drafted from the map. Gr and Weather (gen description, apchs, ITGs, obs, cover, met, deductions) from the terrain data through the Ground Guide; en and own from the symbols; courses from Check my plan. What you write stays yours; proposals print only once accepted. Exports Word, PDF, text and Briefing slides. Turns it on and opens its sheet."><span class="infobar-icon">📝</span>Aprc</button>
+          <button class="ms-btn infobar-btn infobar-gear" id="groundAppreciationSettingsBtn" aria-label="Aprc settings" aria-expanded="false" title="Aprc settings: copy, marking, figures, deck, echelon, mover. Same settings as Ctrl+K → Aprc."><span class="infobar-icon">⚙</span></button>
         </div>
         <!-- Movement Guide on/off (features.movementGuide) and its settings; wired in src/main.ts. -->
         <div class="infobar-split">

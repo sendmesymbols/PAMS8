@@ -374,6 +374,21 @@ MS/
   one mover, month and threat; rows with their "how", best / worst only past each row's smallest real difference,
   differences in words, "best on" tallies, no overall score (`CompareRead.ts`). Tests `node tools/sitefinder-test/tools.mjs`
   (40). See `MS/Docs/21-aoi-check-xsection-compare.md`.
+- **GroundAppreciation** (`Engines/GroundAppreciation/`) — optional, off by default (`features.groundAppreciation`; top bar
+  📝 Aprc with ⚙; Ctrl+K widget; built 22 Nov 2026; `Appreciation_Plan.md`, `MS/Docs/22-ground-appreciation.md`). The
+  appreciation of the situation as one model (`AprcModel.ts`: parts, groups, numbered paragraphs; outline by kind, `def`
+  built, `attk` has its place: `registerOutline`), drafted on **Read** from the ground (through the Ground Guide only:
+  `guide.aorAround()` = the Gr Scope AOR reading on demand, the rail need not be open; sections, cover and the Extended
+  View's sight at the MITG and on each approach), the symbols on the map (`planRecordsOf` → `readSymbols`) and the last
+  Check my plan (`DeploymentBuilderEngine.planCheck`). A paragraph is GR / MAP / YOU JUDGE (a proposal) / YOURS (a ruled
+  line); what the planner writes is his and is never overwritten (stale-marked when the reading changes); a proposal prints
+  in the fair copy only once accepted; "Ref to whites" is never printed; the address block is titles and ruled lines, and
+  the marking at head and foot of every page is a ruled line too (no marking text is held).
+  Fair and draft copies (draft adds marks, basis, data and Confirm on Gr annexes). Exports: Word (`AprcDocx.ts`, zipped
+  with the PowerPoint bundle's JSZip: no new dependency), PDF by print (`AprcHtml.ts`), text, JSON, and Briefing slides
+  (`AprcDeck.ts`: full / decision / sand model; slides carry `sourceRef` + `sourceHash`, an edited slide is kept on a
+  refresh). Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (86 checks). Not yet: en options with timings,
+  ORBAT ratios, tps to tasks, time required, typing into tables, saving inside the plan file.
 - **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
   Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
   J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;

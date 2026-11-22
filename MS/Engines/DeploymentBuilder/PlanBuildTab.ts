@@ -421,6 +421,11 @@ export class PlanBuildTab {
     this._aside?.addEventListener('click', this._onClick);
   }
 
+  /** The last Check my plan report, or null (read by the Aprc engine for Own Sit, Courses and the Plan). */
+  public get lastCheck(): CheckReport | null {
+    return this._check;
+  }
+
   public setSettings(settings: Record<string, any>): void {
     this._settings = settings ?? {};
     const create = this._settings.alternates?.create;

@@ -122,7 +122,7 @@ export function aorWords(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | '
   if (f.used !== f.source) confirm.push(f.source === 'boundaries' ? 'No Bdy symbols on both sides of the MITG: the AOR is the echelon frame. Draw the bdys or pick another source.' : 'No box drawn: the AOR is the echelon frame. Draw the box from the rail.');
   if (r.country === 'Canal plains' || r.country === 'Plains') confirm.push('DCB and ditches are not in the bundle: draw them as obstacle symbols; a line of def may follow them.');
   if (r.bridges.inAor) confirm.push(`Bridge class: ${r.bridges.inAor - r.bridges.classed} of ${r.bridges.inAor} bridges in the AOR carry no load class.`);
-  if (r.thruRoad) confirm.push(`Rd ${aorName(r.thruRoad.name)} through ${r.mitg.name}: the NCGDB records ${r.thruRoad.cls ?? 'no class'}; confirm it.`);
+  if (r.thruRoad) confirm.push(`Rd ${aorName(r.thruRoad.name)} through ${r.mitg.name}: the 1:50k map records ${r.thruRoad.cls ?? 'no class'}; confirm it.`);
   confirm.push('30 m elevation: BUAs, bunds and kidney bunds a few metres high do not show; check heights and dominance.');
   confirm.push(`Going is the ${f.season === 'wet' ? 'after-rain' : 'dry'} reading (${f.month}); read it again for the ${f.season === 'wet' ? 'dry season' : 'wet'} before relying on it.`);
   if (r.originsAssumed) confirm.push('Threat start points are assumed forward of the AOR; drag the threat marker to set where the threat comes from.');
@@ -145,7 +145,7 @@ export function aorSheetRows(r: AorReading, a: AorApproach): Array<[string, stri
   if (r.apchs.length > 1 && a.pastM === Math.max(...lens)) sig.push('longest past the border');
   if (r.apchs.length > 1 && a.through.length === Math.min(...bs)) sig.push('fewest BUAs on it (least friction)');
   if (r.apchs.length > 1 && a.through.length === Math.max(...bs)) sig.push('most BUAs on it (max friction)');
-  sig.push(a.obstacles.length ? `crosses ${a.obstacles.map((o) => o.name).join(', ')}` : 'no water obstacle across it');
+  sig.push(a.obstacles.length ? `crosses ${[...new Set(a.obstacles.map((o) => o.name))].join(', ')}` : 'no water obstacle across it');
   if (others.length) sig.push(`mutual sp with ${others.map((l) => (l.a === a.side ? l.b : l.a)).join(' and ')}`);
   const c = a.cross;
   const def = [
@@ -176,7 +176,7 @@ export function aorText(r: AorReading, f: Pick<AorFrame, 'season' | 'month' | 'u
   const w = aorWords(r, f);
   const L: string[] = [];
   L.push(`GR AND WEATHER · ${f.echelon} AOR, def ${r.mitg.name} · ${f.profileLabel}, ${f.month}, ${f.season === 'wet' ? 'after rain' : 'dry'} · ${r.country}`);
-  L.push('Data: land cover ESA WorldCover 2021; roads, canals, bridges, places NCGDB (undated); people WorldPop 2026. A plan to check on the ground.');
+  L.push('Data: land cover ESA WorldCover 2021; roads, canals, bridges, places 1:50k map (undated); people WorldPop 2026. A plan to check on the ground.');
   L.push('');
   L.push('6. Apchs.');
   w.ranked.forEach((a, i) => {

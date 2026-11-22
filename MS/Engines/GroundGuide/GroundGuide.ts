@@ -609,6 +609,11 @@ export default class GroundGuide {
     return this._enabled;
   }
 
+  /** The loaded bundle's manifest (layers, sources with their dates), or null: for a host that lists the data it read. */
+  get bundleManifest(): unknown | null {
+    return this._manifest;
+  }
+
   /** True when enabled, not `off`, and a bundle has loaded. */
   get isActive(): boolean {
     return this._enabled && this._opts.mode !== 'off' && this._manifest !== null;
@@ -3576,6 +3581,28 @@ export default class GroundGuide {
     return f?.reading ? aorText(f.reading, f) : null;
   }
 
+  /**
+   * The AOR reading for a host, worked out now (the rail need not be open): the same reading the rail's AOR scale shows,
+   * with the frame it was taken in (source used, echelon, mode, month). `point` is the MITG (lng / lat array or a
+   * geometry); null takes the rail's own choice: a VG symbol, else `graphic`, else the map centre. Waits for the tiles.
+   */
+  async aorAround(point: any | null = null, opts: { graphic?: any; echelon?: 'coy' | 'bn' | 'bde'; profile?: GroundGuideProfile } = {}): Promise<{ reading: AorReading; frame: AorFrame } | null> {
+    if (!this._cache || !this._manifest) return null;
+    const ll = point === null ? null : this._lngLatOf(point);
+    const over = { anchor: ll ? (lngLatToMercator(ll[0], ll[1]) as MercXY) : null, graphic: opts.graphic, echelon: opts.echelon, profile: opts.profile };
+    let p = this._aorPrepare(over);
+    for (let i = 0; p && !p.input && i < 6; i++) {
+      await this._tilesSettled(10000);
+      await new Promise((r) => setTimeout(r, 150));
+      p = this._aorPrepare(over);
+    }
+    if (!p?.input) return null;
+    const reading = readAor(p.input);
+    p.frame.reading = reading;
+    p.frame.loading = false;
+    return { reading, frame: p.frame };
+  }
+
   /** Arm a box for the AOR: the next drag on the map draws it (the map does not pan); Esc cancels. Sets `aor.source: box`. */
   drawAorBox(): void {
     const view: any = this._getView?.();
@@ -3790,36 +3817,51 @@ export default class GroundGuide {
     return { ring: frame(), used: 'echelon', note: null };
   }
 
-  /** Read and draw the rail's AOR scale: the anchor and threat, the outline, the grid and features, then the reading (worked out once per AOR, off the frame). */
-  private _aorRender(): void {
+  /**
+   * The AOR to read: the anchor and threat, the outline, the grid and the features over it. `input` is null while a tile
+   * or the borders are still on their way, and when `cached` says the caller already holds the reading for the key.
+   * `over` is for a caller that is not the rail (`aorAround`): its own MITG, the symbol the echelon is read from, the
+   * echelon and the mode.
+   */
+  private _aorPrepare(
+    over: { anchor?: MercXY | null; graphic?: any; echelon?: 'coy' | 'bn' | 'bde'; profile?: GroundGuideProfile } = {},
+    cached?: (key: string) => boolean,
+  ): { frame: AorFrame; key: string; input: AorInput | null } | null {
     const m = this._manifest, cache = this._cache;
-    if (!m || !cache) return;
+    if (!m || !cache) return null;
     const view: any = this._getView?.();
     const o = this._opts.aor;
     // The MITG: set by the API, else a VG symbol on the map, else the selected or placed symbol, else the map centre.
     const centreShape = view?.center ? toMercatorShape(view.center) : null;
     const vc = centreShape?.parts[0]?.[0] ?? null;
-    let anchor: MercXY | null = this._aorAnchor;
+    let anchor: MercXY | null = over.anchor ?? this._aorAnchor;
     let anchorName: string | null = null;
     let sidc: string | null = null;
-    if (!anchor && vc) {
-      const vg = this._aorVitalGround(vc);
+    const ownG = over.graphic?.geometry ? over.graphic : null;
+    const centreOf = (g: any): MercXY | null => {
+      const pts = toMercatorShape(g.geometry)?.parts.flat() ?? [];
+      return pts.length ? [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length] : null;
+    };
+    const vgNear = (ownG ? centreOf(ownG) : null) ?? vc;
+    if (!anchor && vgNear) {
+      const vg = this._aorVitalGround(vgNear);
       if (vg) ((anchor = vg.at), (anchorName = vg.name));
     }
-    const g0 = !anchor ? (this._scopeSelected?.geometry ? this._scopeSelected : this._scopePlaced?.graphic?.geometry ? this._scopePlaced.graphic : null) : null;
+    const g0 = !anchor ? (ownG ?? (this._scopeSelected?.geometry ? this._scopeSelected : this._scopePlaced?.graphic?.geometry ? this._scopePlaced.graphic : null)) : null;
     if (g0) {
-      const pts = toMercatorShape(g0.geometry)?.parts.flat() ?? [];
-      if (pts.length) anchor = [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+      const c = centreOf(g0);
+      if (c) anchor = c;
       sidc = graphicSidc(g0);
     }
+    if (!sidc && ownG) sidc = graphicSidc(ownG);
     if (!anchor) anchor = vc;
-    if (!anchor) return;
+    if (!anchor) return null;
     // Snap to 250 m so a small pan of the map centre does not read a new AOR.
     const kA = Math.cosh(anchor[1] / 6378137);
     const snap = 250 * kA;
-    if (!this._aorAnchor && !g0) anchor = [Math.round(anchor[0] / snap) * snap, Math.round(anchor[1] / snap) * snap];
+    if (!this._aorAnchor && !over.anchor && !g0) anchor = [Math.round(anchor[0] / snap) * snap, Math.round(anchor[1] / snap) * snap];
     const code = echelonCodeOf(sidc);
-    const ech: 'coy' | 'bn' | 'bde' = o.echelon !== 'auto' ? o.echelon : !code ? 'bn' : Number(code) <= 15 ? 'coy' : Number(code) <= 17 ? 'bn' : 'bde';
+    const ech: 'coy' | 'bn' | 'bde' = over.echelon ?? (o.echelon !== 'auto' ? o.echelon : !code ? 'bn' : Number(code) <= 15 ? 'coy' : Number(code) <= 17 ? 'bn' : 'bde');
     // The threat: a place on the map, else a bearing (set, or the unit's front).
     const oc = this._opts.extended;
     const tAt = this._threatMerc();
@@ -3854,7 +3896,8 @@ export default class GroundGuide {
     }
     const corridorM = o.corridorM || { coy: 1000, bn: 2000, bde: 4000 }[ech];
     const frontLimit = { coy: { m: 2000, label: 'a Coy' }, bn: { m: 6500, label: 'Bn 3 coys up' }, bde: { m: 12000, label: 'a Bde' } }[ech];
-    const profile = (this._rules?.profiles?.[o.profile] ? o.profile : 'tracked') as GroundGuideProfile;
+    const wantProfile = over.profile ?? o.profile;
+    const profile = (this._rules?.profiles?.[wantProfile] ? wantProfile : 'tracked') as GroundGuideProfile;
     const month = resolveMonth(this._opts.going.month);
     const frame: AorFrame = {
       reading: null,
@@ -3876,12 +3919,7 @@ export default class GroundGuide {
     };
     const mitg = { at: anchor, name: anchorName };
     const key = `${aorInputKey({ outline: ring, faceDeg: face, mitg, origins, corridorM, source: used })}|${profile}|${this._opts.bundleUrl}`;
-    const made = this._aorMade;
-    if (made && made.key === key && !made.reading.pending) {
-      frame.reading = made.reading;
-      frame.loading = false;
-      return this._aorShow(frame);
-    }
+    if (cached?.(key)) return { frame, key, input: null };
     // The grid: the bundle's finest class tiles over the AOR and the starts, a cell of 1 to 4 tile pixels (a canal stays a line).
     const going = this._profile(profile);
     const tables = this._aorClassTables(profile, going);
@@ -3913,12 +3951,7 @@ export default class GroundGuide {
     radiusM += 2500;
     const feats = this._features?.sceneNear(cMerc, radiusM) ?? { points: [], lines: [], pending: false };
     const borders = this._aorBorderLines();
-    if (grid.g.pending || feats.pending || borders === null) {
-      // Still on its way: the last reading of this AOR, else "reading".
-      if (made && made.key === key) frame.reading = made.reading;
-      return this._aorShow(frame);
-    }
-    if (this._aorWorkKey === key && this._aorWork !== null) return this._aorShow(frame); // already being worked out
+    if (grid.g.pending || feats.pending || borders === null) return { frame, key, input: null };
     const PLACE = new Set(['city', 'district_hq', 'town', 'village_imp', 'village']);
     const BRIDGE = new Set(['bridge', 'bridge_iron', 'boat_bridge', 'viaduct']);
     const places: AorInput['places'] = [];
@@ -3967,6 +4000,27 @@ export default class GroundGuide {
       bridges,
       itg,
     };
+    return { frame, key, input };
+  }
+
+  /** Read and draw the rail's AOR scale: the reading is worked out once per AOR, off the frame. */
+  private _aorRender(): void {
+    const held = this._aorMade;
+    const p = this._aorPrepare({}, (k) => !!held && held.key === k && !held.reading.pending);
+    if (!p) return;
+    const { frame, key, input } = p;
+    const made = this._aorMade;
+    if (made && made.key === key && !made.reading.pending) {
+      frame.reading = made.reading;
+      frame.loading = false;
+      return this._aorShow(frame);
+    }
+    if (!input) {
+      // Still on its way: the last reading of this AOR, else "reading".
+      if (made && made.key === key) frame.reading = made.reading;
+      return this._aorShow(frame);
+    }
+    if (this._aorWorkKey === key && this._aorWork !== null) return this._aorShow(frame); // already being worked out
     // Worked out off the frame: "reading" shows first, then the answer.
     this._aorWorkKey = key;
     if (this._aorWork !== null) clearTimeout(this._aorWork);

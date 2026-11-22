@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aprc Export</title>
+<!--
+  PAMS8: the Appreciation export, mockup for approval (22 Nov 2026). NOT BUILT. Plan: Appreciation_Plan.md.
+  Format from Material/AprDf.pdf (appreciation of the situation, Bn defence): its headings and numbering, never its text.
+  The ground here is SYNTHETIC (invented names, invented figures). Nothing on this page is a reading of the terrain
+  bundle; the figures only show where a reading would go. One self-contained file: no network, no build.
+-->
+<style>
+:root{--bg:#0f1318;--panel:#171c22;--panel2:#1c2229;--line:#2a323b;--line2:#39434f;--tx:#e8ebee;--soft:#a3acb6;--acc:#8ec1ea;--acc-ink:#0d1620;
+  --gr:#5fd39a;--map:#7fb2ff;--pr:#ffd27a;--you:#aeb7c1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14.5px/1.55 system-ui,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.pg{max-width:1320px;margin:0 auto;padding:0 16px 90px}
+h1{font-size:28px;line-height:1.15;margin:30px 0 8px;letter-spacing:-.01em}
+h2{font-size:21px;margin:52px 0 4px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:15px;margin:0 0 6px}
+p{margin:6px 0 10px;max-width:80ch}
+.lede{font-size:15.5px;color:#c8cfd6}
+.gintro{color:var(--soft);margin:2px 0 16px}
+.bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);font-size:13.5px;color:var(--soft)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;color:var(--tx);background:var(--panel2);border:0;border-left:1px solid var(--line2);padding:6px 11px;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button:hover{background:#252c35}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);font-weight:650}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tally{margin-left:auto;display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.tally b{color:var(--tx);font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.dA{background:var(--gr)}.dP{background:var(--map)}.dS{background:var(--pr)}.dU{background:transparent;box-shadow:inset 0 0 0 1.5px var(--you)}
+.chip{display:inline-flex;align-items:center;font-size:12px;font-weight:650;padding:1px 8px 2px;border-radius:999px;white-space:nowrap}
+.cA{background:rgba(95,211,154,.14);color:var(--gr)}.cP{background:rgba(127,178,255,.16);color:var(--map)}
+.cS{background:rgba(255,210,122,.14);color:var(--pr)}.cU{background:rgba(174,183,193,.10);color:var(--you)}
+.kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:5px;background:#2b313a;border:1px solid #545e6b;border-bottom-width:2px;font:750 12.5px/1 system-ui;color:#e8ebee;vertical-align:1px}
+table.t{border-collapse:collapse;width:100%;font-size:13.5px}
+table.t th,table.t td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.t th{color:var(--soft);font-weight:600;font-size:12.5px}
+table.t tr.part td{padding-top:14px;font-weight:700;color:var(--tx);letter-spacing:.04em;font-size:12.5px;border-bottom-color:var(--line2)}
+table.t td.n{width:1%;white-space:nowrap;color:var(--soft);font-variant-numeric:tabular-nums}
+table.t td.st{width:1%;white-space:nowrap}
+table.t td.src{color:#c3cbd3}
+table.t td.src small{display:block;color:var(--soft);font-size:12.5px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card p{margin:4px 0 0;color:#c3cbd3;font-size:13.5px}
+.card .fmt{margin-top:8px;font-size:12px;color:var(--soft)}
+.ask{counter-reset:q;list-style:none;padding:0;max-width:900px}
+.ask li{counter-increment:q;position:relative;padding:9px 0 9px 34px;border-bottom:1px solid var(--line);color:#c3cbd3}
+.ask li::before{content:counter(q);position:absolute;left:0;top:9px;width:22px;height:22px;border-radius:50%;background:#2b313a;color:var(--tx);display:grid;place-items:center;font:650 12px/1 system-ui}
+.ask b{color:var(--tx)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;align-items:center}
+.tabs button{font:inherit;font-size:13px;color:var(--tx);background:var(--panel2);border:1px solid var(--line2);border-radius:7px;padding:5px 12px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:650}
+.tabs .sp{flex:1}
+.scroll{overflow-x:auto}
+
+/* ============ the Aprc sheet (in-app window) ============ */
+.app{display:grid;grid-template-columns:250px minmax(420px,1fr) 300px;min-width:1010px;height:724px;background:#1b1f25;border:1.5px solid #4f5965;border-radius:12px;overflow:hidden;font-size:13px;box-shadow:0 10px 28px rgba(0,0,0,.45)}
+.app-bar{grid-column:1/-1;display:flex;align-items:center;gap:8px;height:42px;padding:0 10px 0 14px;background:#3b4552;color:#fff;font-weight:750;font-size:15px}
+.app-bar .sub{font-weight:500;font-size:12.5px;color:#d5dbe2;margin-left:6px}
+.app-bar .btn{font:600 12.5px/1 system-ui;color:#fff;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.22);border-radius:6px;padding:7px 10px;white-space:nowrap}
+.app-bar .btn.pri{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.app-out{border-right:1px solid rgba(255,255,255,.12);overflow:hidden;padding:6px 0;background:#20262e}
+.app-out .ph{padding:9px 12px 3px;font-size:11.5px;font-weight:700;letter-spacing:.06em;color:#9aa4ae;white-space:nowrap}
+.app-out .ph .pd{display:block;padding:5px 0 3px 13px;letter-spacing:0}
+.app-out .it{display:flex;align-items:center;gap:0;padding:3px 12px 3px 24px;color:#dfe5ea;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-out .it.sel{background:rgba(142,193,234,.16);box-shadow:inset 3px 0 0 var(--acc)}
+.app-out .it .no{flex:none;display:inline-block;width:30px;color:#9aa4ae;font-variant-numeric:tabular-nums}
+.app-mid{overflow:hidden;padding:14px 18px;background:#14181d}
+.app-page{background:#fbfaf6;color:#161616;border-radius:4px;height:100%;padding:18px 26px;font:12.5px/1.5 Arial,Helvetica,sans-serif;overflow:hidden;position:relative}
+.app-page .sel{background:#fff6d6;box-shadow:0 0 0 2px #e2b23a;border-radius:2px}
+.app-page .tools{position:absolute;right:18px;top:120px;display:flex;gap:4px}
+.app-page .tools span{font:600 11px/1 system-ui;background:#22303d;color:#fff;border-radius:4px;padding:5px 7px}
+.app-rt{border-left:1px solid rgba(255,255,255,.12);padding:10px 12px;overflow:hidden;background:#20262e;color:#dfe5ea}
+.app-rt h4{margin:0 0 4px;font-size:12px;letter-spacing:.06em;color:#9aa4ae;font-weight:700}
+.app-rt .kv{display:grid;grid-template-columns:54px minmax(0,1fr);gap:2px 8px;font-size:12.5px;margin-bottom:10px}
+.app-rt .kv b{color:#9aa4ae;font-weight:600}
+.app-rt .fig{border:1px solid rgba(255,255,255,.14);border-radius:6px;overflow:hidden;line-height:0;margin-bottom:10px}
+.app-rt .conf{font-size:12.5px;color:#ffd27a;border-top:1px solid rgba(255,255,255,.12);padding-top:8px}
+
+/* ============ the paper ============ */
+.desk{background:#2a2f36;border:1px solid var(--line);border-radius:10px;padding:22px 14px;display:flex;justify-content:center;overflow-x:auto}
+.a4{flex:none;width:760px;min-height:1075px;background:#fff;color:#111;padding:44px 62px 46px 74px;font:13.4px/1.5 Arial,Helvetica,sans-serif;position:relative;box-shadow:0 6px 22px rgba(0,0,0,.5)}
+.a4 .cls{text-align:center;font-weight:700;letter-spacing:.02em}
+.a4 .pno{text-align:center;margin-bottom:2px}
+.a4 .foot{position:absolute;left:0;right:0;bottom:24px;text-align:center;font-weight:700}
+.a4 .addr{margin:8px 0 12px auto;width:200px;line-height:1.75}
+.a4 .ttl{text-align:center;font-weight:700;text-decoration:underline;margin:14px 0 8px}
+.a4 .grp{font-weight:700;text-decoration:underline;margin:10px 0 4px}
+.a4 .p{display:grid;grid-template-columns:34px minmax(0,1fr);margin:5px 0}
+.a4 .p.l2{margin-left:34px}.a4 .p.l3{margin-left:68px;grid-template-columns:38px minmax(0,1fr)}.a4 .p.l4{margin-left:106px;grid-template-columns:38px minmax(0,1fr)}
+.a4 .hd{text-decoration:underline}
+.a4 table{border-collapse:collapse;margin:6px 0 8px 34px;font-size:12.6px}
+.a4 th,.a4 td{border:1px solid #222;padding:3px 8px;text-align:left;vertical-align:top}
+.a4 th{font-weight:700;background:#efefef}
+.a4 figure{margin:8px 0 10px 34px}
+.a4 figure .fr{border:1px solid #222;line-height:0}
+.a4 figcaption{font-size:12px;margin-top:3px;text-align:center}
+.a4 .blank{border-bottom:1px solid #777;display:inline-block;min-width:260px;height:1.15em;vertical-align:-2px}
+.a4 .mk{display:none}
+.a4 .fn{display:none}
+/* draft copy: marks and basis */
+.draft .a4 .mk{display:inline-block;font:700 10px/1 system-ui;border-radius:3px;padding:2px 4px;margin-left:6px;vertical-align:1px}
+.draft .a4 .mk.A{background:#d9f3e5;color:#11663b}.draft .a4 .mk.P{background:#dbe8ff;color:#143e94}
+.draft .a4 .mk.S{background:#fff0c7;color:#7a5200}.draft .a4 .mk.U{background:#eceff2;color:#4a535d}
+.draft .a4 .fn{display:block;margin:10px 0 0 34px;padding-top:6px;border-top:1px solid #999;font-size:11.4px;line-height:1.45;color:#333}
+.draft .a4 .yours{background:#f1f3f5}
+.draft .a4 .prompt{background:#fff7dd}
+.a4 .hint{display:none}
+.draft .a4 .hint{display:inline;color:#6a5a2a;font-style:italic}
+sup.c{font-size:9.5px;display:none}.draft sup.c{display:inline}
+
+/* ============ slides ============ */
+.deck{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start}
+.sl{aspect-ratio:16/9;width:100%;max-width:980px;background:#fff;color:#111;position:relative;overflow:hidden;border-radius:4px;box-shadow:0 6px 22px rgba(0,0,0,.5);font-family:Arial,Helvetica,sans-serif;container-type:inline-size}
+.sl .band{position:absolute;left:0;right:0;height:4.4%;background:#3a4450;color:#fff;display:grid;place-items:center;font-weight:700;font-size:1.5cqw;letter-spacing:.08em}
+.sl .band.top{top:0}.sl .band.bot{bottom:0}
+.sl .hdr{position:absolute;left:3.2%;right:3.2%;top:6.2%;height:8.5%;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:.35cqw solid #1f4fb3;padding-bottom:.5cqw}
+.sl .hdr b{font-size:2.9cqw;line-height:1}
+.sl .hdr span{font-size:1.3cqw;color:#555}
+.sl .body{position:absolute;left:3.2%;right:3.2%;top:17%;bottom:8.6%;display:grid;gap:2%}
+.sl .ft{position:absolute;left:3.2%;right:3.2%;bottom:5%;display:flex;justify-content:space-between;font-size:1.15cqw;color:#666}
+.sl .map{border:1px solid #333;line-height:0;align-self:start}
+.sl table{border-collapse:collapse;width:100%;font-size:1.42cqw}
+.sl th,.sl td{border:1px solid #444;padding:.35cqw .6cqw;text-align:left;vertical-align:top}
+.sl th{background:#1f3a5f;color:#fff;font-weight:700}
+.sl ul{margin:0;padding-left:2cqw;font-size:1.6cqw;line-height:1.45}
+.sl .big{font-size:1.75cqw;line-height:1.4}
+.sl .tag{display:inline-block;font-size:1.15cqw;font-weight:700;border-radius:.3cqw;padding:.1cqw .5cqw;background:#fff0c7;color:#7a5200}
+.sl .ttl1{position:absolute;inset:22% 8% auto 8%;text-align:center}
+.sl .ttl1 b{display:block;font-size:4.6cqw;letter-spacing:.02em}
+.sl .ttl1 span{display:block;margin-top:1.6cqw;font-size:1.9cqw;color:#444}
+.sorter{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;max-height:560px;overflow:auto;font-size:12.5px}
+.sorter .sec{padding:8px 6px 3px;font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--soft)}
+.sorter button{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:6px;align-items:center;width:100%;font:inherit;color:var(--tx);background:none;border:0;border-radius:6px;padding:4px 6px;text-align:left;cursor:pointer}
+.sorter button:hover{background:#232a33}
+.sorter button[aria-pressed="true"]{background:rgba(142,193,234,.18)}
+.sorter button[disabled]{cursor:default;color:var(--soft)}
+.sorter button[disabled]:hover{background:none}
+.sorter .k{font-size:11px;color:var(--soft)}
+.sorter i{font-style:normal;color:var(--soft);font-variant-numeric:tabular-nums}
+.nav{display:flex;gap:8px;align-items:center;margin-top:10px;color:var(--soft);font-size:13px}
+.nav button{font:inherit;font-size:13px;color:var(--tx);background:var(--panel2);border:1px solid var(--line2);border-radius:7px;padding:5px 12px;cursor:pointer}
+@media (max-width:980px){.deck{grid-template-columns:minmax(0,1fr)}h1{font-size:23px}.tally{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="pg">
+<h1>Aprc Export</h1>
+<p class="lede">The appreciation of the situation, drafted from the map and written out as a formatted document and as
+slides. The tool writes what the ground and the marked plan can tell; the judgement stays the planner's. Every line is
+marked by where it came from, and every line can be overwritten.</p>
+<p class="gintro">Headings and numbering follow the Bn defence appreciation in <code>Material/AprDf.pdf</code>. The ground on
+this page is synthetic: the names and figures are invented to show the layout, not read from the terrain data.</p>
+
+<div class="bar">
+  <span>On the map</span><div class="seg" id="lvl" role="group" aria-label="What is marked on the map"></div>
+  <div class="tally" id="tally"></div>
+</div>
+
+<h2>1. What it can write</h2>
+<p class="gintro">Change <b>On the map</b> above: the more that is marked, the more is drafted. With one symbol
+<i>Gr and Weather</i> (paras 5 to 11) is already drafted, its deductions laid out for your judgement; the rest waits for
+the enemy, the boundaries and a plan.</p>
+<div class="scroll"><table class="t" id="cov"></table></div>
+
+<h2>2. The Aprc sheet</h2>
+<p class="gintro">The working window in the app. Left: the outline, a dot for each paragraph's state. Centre: the page as it
+will print; click a paragraph and type, and it becomes yours and is never overwritten. Right: what the selected paragraph
+rests on, and what to confirm on the ground.</p>
+<div class="scroll"><div class="app" id="app"></div></div>
+
+<h2>3. The document</h2>
+<p class="gintro">Word (.docx) and PDF, laid out as service writing: marking at head and foot, page number, address block,
+numbered paragraphs with their indents, tables, and the trace as an annex. <b>Fair copy</b> is what goes up; <b>Draft copy</b>
+adds the marks and the basis of every drafted line.</p>
+<div class="tabs" id="doctabs"></div>
+<div id="docwrap"><div class="desk"><div class="a4" id="a4"></div></div></div>
+
+<h2>4. Slides from it</h2>
+<p class="gintro">One command makes a deck in the Briefing module, a section for each part of the appreciation. Tables and
+charts are native, so they stay editable in the slide editor and in PowerPoint. Each slide remembers its paragraph: when
+the appreciation changes, untouched slides are refreshed and edited ones are flagged, not overwritten.</p>
+<div class="tabs" id="decktabs"></div>
+<div class="deck">
+  <div>
+    <div class="sl" id="slide"></div>
+    <div class="nav"><button id="prev">‹ Prev</button><button id="next">Next ›</button><span id="slno"></span></div>
+  </div>
+  <div class="sorter" id="sorter"></div>
+</div>
+
+<h2>5. Other things the same reading can export</h2>
+<p class="gintro">The appreciation is one model; each of these is a different cut of it.</p>
+<div class="cols" id="others"></div>
+
+<h2>6. To decide</h2>
+<ol class="ask" id="ask"></ol>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+/* ---------------- state ---------------- */
+const LEVELS = ["One symbol", "Bdys + threat", "En marked", "Plan built"];
+const ST = { A: ["Drafted from Gr", "cA", "dA"], P: ["From the map", "cP", "dP"], S: ["Facts given, you judge", "cS", "dS"], U: ["Yours to write", "cU", "dU"] };
+let level = 3, docTab = 0, draft = true, deckKind = 0, slideIx = 1;
+
+/* ---------------- the outline (AprDf headings) ---------------- */
+/* [number, heading, states for the four levels, where it comes from, what stays the planner's] */
+const ROWS = [
+  ["REVIEW OF SIT"],
+  ["1", "En Forces", "UUSS", "En symbols on the map, read with the ORBAT (unit, type, where).", "His intention and timings."],
+  ["2", "Own Forces", "UUSP", "Own symbols and Bdys: who is left, right and behind; the unit's own grouping from the ORBAT.", "The higher comd's decision."],
+  ["3", "Air Sit", "UUUU", "", "All of it."],
+  ["AIM"],
+  ["4", "Aim and limitations", "USSS", "\"Within given bdrys\" once Bdy symbols are drawn; the place to defend from the VG symbol.", "The aim."],
+  ["FACTORS: GR AND WEATHER"],
+  ["5", "Gen Description", "AAAA", "Type of country, relief, share of GO / SLOW-GO / NO-GO for the mover, water lines, BUAs, Rd density.", ""],
+  ["6", "Apchs (Lt, Cen, Rt: twelve heads each)", "AAAA", "Gr Scope AOR reading: definition, length, capacity, Tfc, Obs, cover, mutual sp, depl areas, dominating features, dir keeping, significance. Obsn from the Extended View's sight reading.", "Assumed threat start points until the threat is marked."],
+  ["7", "ITGs", "SSSS", "MITG from the VG symbol; candidates ranked (strong, higher, on an approach); significance written.", "Effs if lost: prompts only."],
+  ["8", "Obs", "AAPP", "Canals, nalas and distys with width and banks, NO-GO ground, bridges and their class; drawn obstacle symbols added.", ""],
+  ["9", "Cover", "AAAA", "Cover from fire and from view along each approach, crops for the month.", ""],
+  ["10", "Met Conditions", "AAAA", "The month's temperature, rain, wind and visibility against the IPB weather values; first and last light, moon.", ""],
+  ["11a", "Deductions: pri of apchs, combinations, lines of def", "SSSS", "Ranked with the reason for each rank; lines of def with frontage and the obstacle each follows.", "The priority is confirmed by you."],
+  ["11b", "Deductions: Def Possibilities (DP 1, DP 2)", "SSSP", "FDLs, depth, Str Pt, screens, adv posn, bias, killing areas, OPs. From the built plan when there is one.", "Which DPs stand."],
+  ["11c", "Common Deductions", "UUUU", "A list of heads to consider.", "All of it."],
+  ["FACTORS: EN SIT"],
+  ["12", "En Composn and Disposn", "UUPP", "En symbols with ORBAT strengths; the doctrinal template laid on the ground.", ""],
+  ["13", "En Expectations of Our Action", "UUUU", "", "All of it."],
+  ["14", "Options Aval to the En", "SSSS", "One option per approach combination: phases timed at the IPB rates, crossings, FUP and launch pad candidates; advs / disadvs from the proforma.", "Most dangerous and most probable."],
+  ["15", "Deductions", "UUSS", "His likely FAA / Assy A, heliborne LZs and infiltration lanes as candidates.", "The deductions."],
+  ["FACTORS: OWN SIT"],
+  ["16", "Composn of Own Forces", "UUSP", "The unit type's ORBAT; attachments from the plan.", ""],
+  ["17", "Own Disposns", "UUSP", "Own symbols; the plan's posns by role.", ""],
+  ["18", "Own Str as Related to that of the En", "SSPP", "Table by arm (Inf, Armr, MIB, LAT, Engrs) with ratios; en force assumed one level up until marked.", ""],
+  ["19", "Assessment of Tasks", "USSP", "Tps to tasks table per DP from the localities on each line.", ""],
+  ["20", "Deductions: almt of tps to tasks", "UUSP", "Shortfall against the unit's strength, where the plan regroups.", "How to tailor it."],
+  ["FACTORS: TIME AND SPACE"],
+  ["21", "Time Data", "UUUU", "", "I, M and D Day."],
+  ["22", "Time Req", "USSP", "Moves on the Rd network, mine laying by the engr tables, work rates; total against time aval.", ""],
+  ["23", "Deductions", "UUSS", "Essential timings worked back from \"def to be ready by\".", "Priority of work."],
+  ["COURSES"],
+  ["24", "Course A, Course B", "UUSP", "Each layout compared at the same place, written from the roles.", ""],
+  ["25", "En Reactions and Own Ctr Actions", "UUSP", "The what-if trigger table: his lead element against each own move.", "The counter actions in your words."],
+  ["26", "Analysis: advs, disadvs", "UUSP", "From the plan check: each Pass an adv, each Fail a disadv with its why.", ""],
+  ["27", "Course Adopted", "UUUU", "The two courses side by side.", "The choice and its reasons."],
+  ["PLAN"],
+  ["28", "Msn", "UUUU", "", "All of it."],
+  ["29", "Exec: gen outline, coy grouping and tasks", "UUUP", "Coy by role (Lt fwd, Cen fwd, depth), \"from incl … to incl …\" from each posn's extent, grouping from attachments, be-prepared tasks from the what-if.", ""],
+  ["30", "Adm and Log", "UUUS", "Admin Area finder sites (RAP, Ech) when run.", ""],
+  ["31", "Comd and Sig", "UUUP", "HQ and Tac HQ from the plan.", ""],
+];
+const stOf = (r) => r[2][level];
+
+function tally() {
+  const n = { A: 0, P: 0, S: 0, U: 0 };
+  ROWS.forEach((r) => { if (r.length > 1) n[stOf(r)]++; });
+  $("tally").innerHTML = ["A", "P", "S", "U"].map((k) => `<span><span class="dot ${ST[k][2]}"></span>${ST[k][0]} <b>${n[k]}</b></span>`).join("");
+}
+function coverage() {
+  let h = "<tr><th>Para</th><th>Heading</th><th>State</th><th>What the tool writes</th><th>What stays yours</th></tr>";
+  ROWS.forEach((r) => {
+    if (r.length === 1) { h += `<tr class="part"><td colspan="5">${r[0]}</td></tr>`; return; }
+    const s = stOf(r);
+    h += `<tr><td class="n">${r[0]}</td><td>${esc(r[1])}</td><td class="st"><span class="chip ${ST[s][1]}">${ST[s][0]}</span></td><td class="src">${s === "U" ? "<small>" + (r[3] ? "Later: " + esc(r[3]) : "Nothing.") + "</small>" : esc(r[3])}</td><td class="src"><small>${esc(r[4]) || "Overwrite at will."}</small></td></tr>`;
+  });
+  $("cov").innerHTML = h;
+}
+
+/* ---------------- the sketch (synthetic ground) ---------------- */
+let UID = 0;
+const PAL = {
+  paper: { bg: "#f6f3ea", ink: "#1c1c1c", water: "#2f6fc4", road: "#8a8a8a", msr: "#b4621a", en: "#c8202a", own: "#1f4fb3", itg: "#6a3fb0", bua: "#55504a", halo: "#f6f3ea" },
+  dark: { bg: "#2b302a", ink: "#e8ebee", water: "#5aa3f0", road: "#8d959e", msr: "#e8964a", en: "#ff5a60", own: "#7fb2ff", itg: "#c3a6ff", bua: "#cfd5db", halo: "#2b302a" },
+};
+const APCH = {
+  Lt: "M470,62 C360,120 300,150 300,200 S302,330 315,368 S330,470 380,522 S460,576 486,586",
+  Cen: "M500,64 C505,150 498,250 505,372 S516,500 500,574",
+  Rt: "M530,62 C640,120 715,150 715,200 S700,330 705,368 S690,470 630,526 S540,578 514,587",
+};
+const BUAS = [["Rampura", 500, 40, 34], ["Burj", 300, 182, 20], ["Chak 9", 506, 190, 18], ["Tibbi", 716, 186, 18], ["Kot Jaimal", 312, 384, 26], ["Nurpur", 506, 388, 24],
+  ["Dhok Rai", 706, 384, 22], ["Chak 21", 338, 478, 18], ["Pindi Dogran", 560, 482, 20], ["Jhanda", 700, 474, 16], ["Rasulpur", 296, 584, 20], ["Qila Mor", 500, 600, 34], ["Bhal", 722, 580, 18]];
+function sketch(o) {
+  o = Object.assign({ style: "paper", apch: true, lines: true, plan: false, focus: null, times: false, rank: true, crop: null }, o);
+  const C = PAL[o.style], id = "sk" + (++UID), vb = o.crop || "150 20 700 660";
+  const T = (x, y, s, opt) => `<text x="${x}" y="${y}" font-size="${(opt && opt.z) || 13}" font-weight="${(opt && opt.w) || 400}" fill="${(opt && opt.c) || C.ink}" text-anchor="${(opt && opt.a) || "start"}" paint-order="stroke" stroke="${C.halo}" stroke-width="3.5" stroke-linejoin="round">${s}</text>`;
+  let s = `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" font-family="Arial,Helvetica,sans-serif" role="img" aria-label="Sketch of the AOR">`;
+  s += `<defs><pattern id="${id}x" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0,8 L8,0 M0,0 L8,8" stroke="${C.ink}" stroke-width=".9" opacity=".7"/></pattern>`
+    + `<pattern id="${id}p" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M0,7 L7,0" stroke="${C.ink}" stroke-width=".9" opacity=".6"/></pattern>`
+    + `<marker id="${id}a" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4.2" markerHeight="4.2" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.en}"/></marker></defs>`;
+  s += `<rect x="0" y="0" width="1000" height="700" fill="${C.bg}"/>`;
+  /* going */
+  s += `<ellipse cx="628" cy="292" rx="52" ry="24" fill="url(#${id}x)" stroke="${C.ink}" stroke-width="1"/>` + T(628, 328, "NO-GO (marsh)", { a: "middle", z: 11.5 });
+  s += `<ellipse cx="408" cy="296" rx="46" ry="22" fill="url(#${id}p)" stroke="${C.ink}" stroke-width=".8" stroke-dasharray="4 3"/>` + T(408, 332, "SLOW-GO (orchards)", { a: "middle", z: 11.5 });
+  /* roads */
+  s += `<path d="M500,40 L504,190 L506,388 L530,470 L560,482 L520,560 L500,600" fill="none" stroke="${C.road}" stroke-width="2.6"/>`;
+  s += `<path d="M296,584 L500,600 L722,580 M338,478 L560,482 L700,474 M300,182 L312,384 L338,478 L296,584 M716,186 L706,384 L700,474 L722,580" fill="none" stroke="${C.road}" stroke-width="1.6"/>`;
+  s += `<path d="M500,600 L492,700" fill="none" stroke="${C.msr}" stroke-width="4"/>` + T(506, 668, "MSR", { c: C.msr, w: 700 });
+  /* water */
+  s += `<path d="M150,240 C300,216 380,262 500,238 S700,214 850,246" fill="none" stroke="${C.water}" stroke-width="2.2"/>` + T(204, 226, "Sukh Nala", { c: C.water, z: 12 });
+  s += `<path d="M150,352 C330,340 420,372 520,356 S720,344 850,364" fill="none" stroke="${C.water}" stroke-width="6.5"/><path d="M150,352 C330,340 420,372 520,356 S720,344 850,364" fill="none" stroke="${C.bg}" stroke-width="2.6"/>` + T(204, 340, "Lakhan Disty", { c: C.water, z: 12 });
+  [[314, 351], [505, 359], [705, 350]].forEach((b) => { s += `<path d="M${b[0] - 9},${b[1] - 8} l5,4 v8 l-5,4 M${b[0] + 9},${b[1] - 8} l-5,4 v8 l5,4" fill="none" stroke="${C.ink}" stroke-width="1.6"/>`; });
+  /* border, bdys */
+  s += `<path d="M150,120 C260,96 330,140 430,114 S640,92 760,122 S820,104 850,112" fill="none" stroke="${C.ink}" stroke-width="2" stroke-dasharray="12 4 2 4"/>` + T(160, 108, "Intl Border", { z: 12, w: 700 });
+  s += `<path d="M206,150 L190,330 L200,668 M800,150 L815,330 L806,668" fill="none" stroke="${C.ink}" stroke-width="2.2"/>` + T(168, 652, "Bdy", { z: 11.5 }) + T(812, 652, "Bdy", { z: 11.5 });
+  /* BUAs */
+  BUAS.forEach((b) => {
+    const r = b[3];
+    s += `<rect x="${b[1] - r}" y="${b[2] - r * 0.6}" width="${r * 2}" height="${r * 1.2}" rx="4" fill="url(#${id}p)" stroke="${C.bua}" stroke-width="1.1"/>`;
+  });
+  /* lines of def */
+  if (o.lines) {
+    const L = [["W", 252, "Adv Posn"], ["X", 372, "FDLs"], ["Y", 492, "Depth"], ["Z", 606, "Str Pt"]];
+    L.forEach((l) => {
+      s += `<path d="M192,${l[1]} L812,${l[1]}" fill="none" stroke="${C.own}" stroke-width="1.5" stroke-dasharray="9 6" opacity=".85"/>`
+        + `<circle cx="176" cy="${l[1]}" r="10" fill="${C.bg}" stroke="${C.own}" stroke-width="1.6"/>` + T(176, l[1] + 4.5, l[0], { a: "middle", c: C.own, w: 700, z: 12.5 })
+        + T(826, l[1] + 4, l[2], { c: C.own, z: 11.5, w: 700 });
+    });
+  }
+  /* approaches */
+  if (o.apch) {
+    const rank = { Lt: 1, Cen: 2, Rt: 3 };
+    Object.keys(APCH).forEach((k) => {
+      const dim = o.focus && o.focus !== k;
+      s += `<path d="${APCH[k]}" fill="none" stroke="${C.en}" stroke-width="${dim ? 3 : 6}" opacity="${dim ? 0.22 : 0.8}" stroke-linecap="round" marker-end="url(#${id}a)"/>`;
+    });
+    if (o.rank) [["Lt", 262, 152], ["Cen", 518, 150], ["Rt", 740, 152]].forEach((a) => {
+      if (o.focus && o.focus !== a[0]) return;
+      s += `<rect x="${a[1] - 4}" y="${a[2] - 14}" width="${a[0].length * 8 + 34}" height="19" rx="3" fill="${C.en}"/><text x="${a[1] + 1}" y="${a[2]}" font-size="12.5" font-weight="700" fill="#fff">${a[0]} Apch ${rank[a[0]]}</text>`;
+    });
+  }
+  /* timings along the Lt and Cen approaches */
+  if (o.times) [["H", 470, 104], ["H+2", 296, 236], ["H+6", 326, 310], ["H+8", 350, 356], ["H+22", 372, 512], ["H+24", 462, 566]].forEach((t) => {
+    s += `<circle cx="${t[1]}" cy="${t[2]}" r="4.5" fill="${C.bg}" stroke="${C.en}" stroke-width="2"/>` + T(t[1] - 10, t[2] + 4, t[0], { a: "end", c: C.en, w: 700, z: 12 });
+  });
+  /* the plan */
+  if (o.plan) {
+    const bp = (x, y, rx, ry, n) => `<path d="M${x - rx},${y + ry} L${x - rx},${y - ry * 0.2} Q${x},${y - ry * 1.5} ${x + rx},${y - ry * 0.2} L${x + rx},${y + ry}" fill="none" stroke="${C.own}" stroke-width="2.6"/><path d="M${x},${y + ry - 6} v12" stroke="${C.own}" stroke-width="2.6"/>` + T(x, y + 6, n, { a: "middle", c: C.own, w: 700, z: 12.5 });
+    s += bp(312, 392, 44, 20, "A Coy") + bp(506, 396, 44, 20, "B Coy") + bp(706, 392, 40, 20, "C Coy") + bp(450, 492, 50, 20, "D Coy");
+    s += `<path d="M240,300 L770,300" stroke="${C.own}" stroke-width="2" stroke-dasharray="3 5" fill="none"/>` + T(246, 294, "Screen", { c: C.own, z: 11.5, w: 700 });
+    s += `<rect x="520" y="618" width="26" height="16" fill="${C.bg}" stroke="${C.own}" stroke-width="2"/><path d="M520,634 v14" stroke="${C.own}" stroke-width="2"/>` + T(552, 632, "Bn HQ", { c: C.own, z: 11.5, w: 700 });
+  }
+  /* MITG + names */
+  s += `<path d="M500,574 l13,26 -13,26 -13,-26 z" fill="none" stroke="${C.itg}" stroke-width="2.6"/>`;
+  BUAS.forEach((b) => { s += T(b[1] + b[3] + 4, b[2] + 4, b[0] + (b[0] === "Qila Mor" ? " (MITG)" : ""), { z: b[0] === "Qila Mor" ? 13 : 11.5, w: b[0] === "Qila Mor" ? 700 : 400, c: b[0] === "Qila Mor" ? C.itg : C.ink }); });
+  /* north, scale */
+  s += `<path d="M822,70 v-34 m-7,10 l7,-12 7,12" fill="none" stroke="${C.ink}" stroke-width="2"/>` + T(822, 86, "N", { a: "middle", w: 700 });
+  s += `<path d="M200,662 h200 M200,656 v12 M300,658 v8 M400,656 v12" stroke="${C.ink}" stroke-width="1.6" fill="none"/>` + T(300, 652, "2 km", { a: "middle", z: 11.5 });
+  return s + "</svg>";
+}
+
+/* ---------------- the Aprc sheet ---------------- */
+function app() {
+  /* the outline: the part being worked on is open, the others fold to their name and a dot per paragraph */
+  let out = "", open = false;
+  ROWS.forEach((r, i) => {
+    if (r.length === 1) {
+      open = r[0] === "FACTORS: GR AND WEATHER";
+      let dots = "";
+      if (!open) for (let j = i + 1; j < ROWS.length && ROWS[j].length > 1; j++) dots += `<span class="dot ${ST[stOf(ROWS[j])][2]}" style="margin-right:4px"></span>`;
+      out += `<div class="ph">${open ? "▾" : "▸"} ${r[0].replace("FACTORS: ", "")}<span class="pd">${dots}</span></div>`;
+      return;
+    }
+    if (open) out += `<div class="it${r[0] === "6" ? " sel" : ""}"><span class="dot ${ST[stOf(r)][2]}"></span><span class="no">${r[0]}</span>${esc(r[1].replace(/ \(.*/, "").replace(/^Deductions: /, "").replace(/, combinations.*/, ", lines of def"))}</div>`;
+  });
+  const lvlNote = level === 0 ? "AOR: Bn frame round the symbol · threat starts assumed" : level === 1 ? "AOR: Bdy symbols · threat marker" : level === 2 ? "AOR: Bdy symbols · en symbols" : "AOR: Bdy symbols · plan Bn Def three up";
+  $("app").innerHTML = `
+  <div class="app-bar">Aprc<span class="sub">Bn Def · Qila Mor · Feb, dry · tracked</span><span style="flex:1"></span>
+    <span class="btn">Read again</span><span class="btn">Create on Map</span><span class="btn">Slides</span><span class="btn pri">Export ▾</span></div>
+  <div class="app-out">${out}</div>
+  <div class="app-mid"><div class="app-page">
+    <div style="font-weight:700;text-decoration:underline;margin-bottom:6px">Gr and Weather</div>
+    <div>6.&nbsp;&nbsp;&nbsp;<u>Apchs</u></div>
+    <div style="margin:4px 0 0 30px">a.&nbsp;&nbsp;&nbsp;<u>Lt Apch</u></div>
+    <div style="margin:3px 0 0 60px">(1)&nbsp;&nbsp;<u>Definition</u>. Originates from Rampura across the border, crosses the Intl Border 1.2 km W of Chak 9, passes through Burj, Kot Jaimal and Chak 21 and terminates at Qila Mor.</div>
+    <div style="margin:3px 0 0 60px">(2)&nbsp;&nbsp;<u>Length</u>. 7.4 km; 6.1 km past the Intl Border.</div>
+    <div class="sel" style="margin:3px 0 0 60px;padding:2px 4px">(3)&nbsp;&nbsp;<u>Capacity</u>. Bde (+): no narrower than 2.6 km between NO-GO areas; 2 km taken for a Bde; water crossed at 2 points.</div>
+    <div class="tools"><span>Edit</span><span>Keep mine</span><span>Why</span></div>
+    <div style="margin:3px 0 0 60px">(4)&nbsp;&nbsp;<u>Tfc</u>. GO on 84 % of a 1 km band. Rds along it: Burj – Kot Jaimal metalled (3.1 km).</div>
+    <div style="margin:3px 0 0 60px">(5)&nbsp;&nbsp;<u>Obs</u>. Sukh Nala (nala, 12 m) at 1.3 km; Lakhan Disty (canal, 9 m) at 2.6 km, br 40 m off, class not recorded.</div>
+    <div style="margin:3px 0 0 60px">(6)&nbsp;&nbsp;<u>Obsn</u>. Gr obsn to 900 m over level fields; cut by Kot Jaimal and the orchards N of the Disty. Aerial obsn restricted in BUAs.</div>
+    <div style="margin:3px 0 0 60px">(7)&nbsp;&nbsp;<u>Cover</u>. From view: BUAs 9 %, trees and orchards 14 % of a 1 km band. From fire: BUAs only.</div>
+    <div style="margin:3px 0 0 60px">(8)&nbsp;&nbsp;<u>Mutual Sp</u>. With Cen: 2 metalled laterals.</div>
+    <div style="margin:3px 0 0 60px">(9)&nbsp;&nbsp;<u>Depl Areas</u>. Burj, Kot Jaimal, Chak 21.</div>
+    <div style="margin:3px 0 0 60px">(10)&nbsp;<u>Dominating Features</u>. Kot Jaimal; 2 ITG candidates within 1 km.</div>
+    <div style="margin:3px 0 0 60px">(11)&nbsp;<u>Dir Keeping</u>. Rds along 3.1 km of it; a named BUA every 2.5 km.</div>
+    <div style="margin:3px 0 0 60px">(12)&nbsp;<u>Significance</u>. Shortest past the border; fewest BUAs on it; mutual sp with Cen.</div>
+    <div style="margin:6px 0 0 30px">b.&nbsp;&nbsp;&nbsp;<u>Cen Apch</u>. Frontal; 5.0 km past the border; metalled Rd all along.</div>
+    <div style="margin:3px 0 0 30px;color:#666">c.&nbsp;&nbsp;&nbsp;<u>Rt Apch</u>. Longest, 6.6 km; narrows to 1.1 km at the marsh.</div>
+  </div></div>
+  <div class="app-rt">
+    <h4>6a(3) CAPACITY</h4>
+    <div class="kv"><b>State</b><span><span class="dot dA"></span>Drafted from Gr</span>
+      <b>Data</b><span>Land cover 2021, 30 m; canals and Rds, 1:50k map</span>
+      <b>Rule</b><span>Corridor for a Bde 3 km, a Bn 1.5 km (IPB p 7); 2 km taken, a decision</span>
+      <b>Inputs</b><span>${lvlNote}</span></div>
+    <div class="fig">${sketch({ style: "dark", focus: "Lt", lines: false, crop: "170 60 480 560" })}</div>
+    <div class="conf"><b>Confirm on Gr (7)</b><br>Bridge class on Lakhan Disty: not recorded.<br>Bunds a few metres high do not show at 30 m.</div>
+  </div>`;
+}
+
+/* ---------------- the document ---------------- */
+const DOCS = ["Review, Aim", "Gr and Weather", "Deductions", "Own Sit, Time", "Anx P: trace"];
+const mk = (s) => `<span class="mk ${s}">${{ A: "GR", P: "MAP", S: "YOU JUDGE", U: "YOURS" }[s]}</span>`;
+/* a paragraph that depends on the level: id of the outline row, level class, number, heading, text when written, prompt when not */
+function para(row, cls, no, head, text, prompt) {
+  const r = ROWS.find((x) => x[0] === row), s = r ? stOf(r) : "A";
+  const body = s === "U" ? `<span class="blank"></span><span class="hint"> ${esc(prompt || "")}</span>` : text;
+  return `<div class="p ${cls} ${s === "U" ? "yours" : s === "S" ? "prompt" : ""}"><span>${no}</span><span>${head ? `<span class="hd">${head}</span>. ` : ""}${body}${mk(s)}</span></div>`;
+}
+function page(n, inner, fn) {
+  return `<div class="pno">${n}</div><div class="cls">RESTD</div>${inner}${fn ? `<div class="fn">${fn}</div>` : ""}<div class="foot">RESTD</div>`;
+}
+function doc() {
+  let h = "";
+  if (docTab === 0) {
+    h = page(1, `
+      <div class="addr">Copy no ____ of ____<br>__ Bn<br>Qila Mor<br>Tel Mil: ______<br>G-____<br>__ Feb 27</div>
+      <div class="ttl">APRC OF THE SIT</div>
+      <div>Ref: Anx P (trace).</div>
+      <div class="ttl">REVIEW OF SIT</div>
+      ${para("1", "", "1.", "En Forces", "Marked on the map: 2 x Inf Bde and 1 x Armd Regt in gen area Rampura, 4 km N of the Intl Border. <span class=\"hint\">Add his intention and timings.</span>", "Mark the en on the map and it is listed here.")}
+      ${para("2", "", "2.", "Own Forces", level === 3 ? "Own Bn holds the sector between the Bdys shown at Anx P, three coys up. Left: ___ Bn. Right: ___ Bn. Bde res: as marked, 1.5 km S of Qila Mor." : "Own symbols on the map: Bn at Qila Mor. <span class=\"hint\">Add flanking units and the higher comd's decision.</span>", "The higher formation's task and layout.")}
+      ${para("3", "", "3.", "Air Sit", "", "The air situation.")}
+      <div class="ttl">AIM</div>
+      ${para("4", "", "4.", "", "To def Qila Mor within given bdrys <span class=\"hint\">(place from the VG symbol, bdrys from the Bdy symbols). Add the limitations.</span>", "The aim and its limitations.")}
+      <div class="ttl">FACTORS</div>
+      <div class="grp">Gr and Weather</div>
+      ${para("5", "", "5.", "Gen Description", "Canal plains, level and cultivated; relief 8 m across the AOR. For tracks in Feb (dry): GO on 78 % of the AOR, SLOW-GO 19 % (BUAs, orchards), NO-GO 3 % (marsh SE of Tibbi). Two water lines lie across the front, Sukh Nala and Lakhan Disty. Thirteen BUAs, the largest Qila Mor. Rd density 1.4 km per km², 62 % all-weather.<sup class=\"c\">1</sup>")}
+    `, "1. Land cover 2021 (30 m); elevation 30 m; Rds and canals from the 1:50k map (undated); people 2026. Going by the terrain rules for the tracked profile, dry.");
+  } else if (docTab === 1) {
+    const pa = (no, head, text) => `<div class="p l3"><span>(${no})</span><span><span class="hd">${head}</span>. ${text}</span></div>`;
+    h = page(2, `
+      ${para("6", "", "6.", "Apchs", "Three, ranked. Shown at Fig 1.")}
+      <figure><div class="fr">${sketch({ lines: false, crop: "150 20 700 420" })}</div><figcaption>Fig 1. Apchs to Qila Mor. Not to scale for width.</figcaption></figure>
+      <div class="p l2"><span>a.</span><span><span class="hd">Lt Apch</span>${mk("A")}</span></div>
+      ${pa(1, "Definition", "Originates from Rampura across the border, crosses the Intl Border 1.2 km W of Chak 9, passes through Burj, Kot Jaimal and Chak 21 and terminates at Qila Mor.")}
+      ${pa(2, "Length", "7.4 km; 6.1 km past the Intl Border.")}
+      ${pa(3, "Capacity", "Bde (+): no narrower than 2.6 km between NO-GO areas.<sup class=\"c\">2</sup>")}
+      ${pa(4, "Tfc", "GO on 84 % of a 1 km band. Rd Burj – Kot Jaimal metalled along 3.1 km of it.")}
+      ${pa(5, "Obs", "Sukh Nala (12 m) at 1.3 km; Lakhan Disty (9 m) at 2.6 km, br 40 m off, class not recorded.")}
+      ${pa(6, "Obsn", "Gr obsn to 900 m over level fields; cut by Kot Jaimal and the orchards N of the Disty.")}
+      ${pa(7, "Cover", "From view: BUAs 9 %, trees and orchards 14 % of a 1 km band. From fire: BUAs only.")}
+      ${pa(8, "Mutual Sp", "With Cen: 2 metalled laterals.")}
+      ${pa(9, "Depl Areas", "Burj, Kot Jaimal, Chak 21.")}
+      ${pa(10, "Dominating Features", "Kot Jaimal; 2 ITG candidates within 1 km.")}
+      ${pa(11, "Dir Keeping", "Rds along 3.1 km of it; a named BUA every 2.5 km.")}
+      ${pa(12, "Significance", "Shortest past the border; fewest BUAs on it; mutual sp with Cen.")}
+      <div class="p l2"><span>b.</span><span><span class="hd">Cen Apch</span>. Frontal; 5.0 km past the border; metalled Rd all along; Nurpur and Pindi Dogran on it.${mk("A")}</span></div>
+      <div class="p l2"><span>c.</span><span><span class="hd">Rt Apch</span>. Longest, 6.6 km; narrows to 1.1 km at the marsh; no lateral to Cen N of the Disty.${mk("A")}</span></div>
+      <div class="p"><span>7.</span><span><span class="hd">ITGs</span></span></div>
+      <div class="p l2"><span>a.</span><span><span class="hd">Qila Mor (MITG)</span>${mk("S")}</span></div>
+      <div class="p l3 prompt"><span>(1)</span><span><span class="hd">Effs if lost</span>. <span class="blank"></span><span class="hint"> Facts: all three apchs meet here; the MSR starts here; Line Z cannot be held without it.</span></span></div>
+      <div class="p l3"><span>(2)</span><span><span class="hd">Significance</span>. 3 apchs converge on it; the metalled Rd from Nurpur runs through it; the MSR starts here.</span></div>
+      <div class="p l2"><span>b.</span><span>Kot Jaimal. &nbsp; c. Nurpur. &nbsp; d. Dhok Rai. &nbsp; e. Pindi Dogran.</span></div>
+    `, "2. A Bde's corridor is 3 km and a Bn's 1.5 km (IPB p 7). 2 km is taken for the threat one level up; a decision, not a book figure.");
+  } else if (docTab === 2) {
+    h = page(3, `
+      ${para("8", "", "8.", "Obs", "Natural: Sukh Nala (12 m, banks 1 m), fordable on foot; Lakhan Disty (9 m, banks 2.5 m), an obstacle to wheels and tracks except at Br-1, Br-2 and Br-3. NO-GO: the marsh SE of Tibbi (0.4 km²)." + (level >= 2 ? " Marked on the map: 2 x minefields N of the Disty." : ""))}
+      ${para("9", "", "9.", "Cover", "From dir fire: BUAs only (7 % of the AOR). From gr obsn: BUAs, orchards and standing wheat (knee high in Feb). From aerial obsn: BUAs and orchards.")}
+      ${para("10", "", "10.", "Met Conditions", "Feb: 21 / 7 °C, 28 mm of rain, wind 2 m/s. Morning fog; visibility under 1.5 km on 6 days, marginal for tracks by day and for A tk dir fire.<sup class=\"c\">3</sup> First lt 0612, last lt 1803; moon 62 %, rising 2140.")}
+      ${para("11a", "", "11.", "Deductions", "")}
+      <div class="p l2"><span>a.</span><span><span class="hd">Basic Deductions</span></span></div>
+      <div class="p l3 prompt"><span>(1)</span><span><span class="hd">Pri of Apchs</span>. Lt (shortest, least terrain friction), Cen (frontal, Rd all along), Rt (longest, narrows at the marsh).${mk("S")}</span></div>
+      <div class="p l3 prompt"><span>(2)</span><span><span class="hd">Pri of Comb of Apchs</span>. Lt and Cen (2 laterals); Cen and Rt (1 lateral, S of the Disty only).${mk("S")}</span></div>
+      <div class="p l3"><span>(3)</span><span><span class="hd">Lines of Def</span>. Shown at Fig 2.</span></div>
+      <figure><div class="fr">${sketch({ apch: true, rank: false, crop: "150 200 700 440" })}</div><figcaption>Fig 2. Lines of def W, X, Y and Z.</figcaption></figure>
+      <table><tr><th>Line</th><th>Along</th><th>Frontage</th><th>Follows</th><th>Proposed role</th></tr>
+        <tr><td>W</td><td>Burj – Tibbi</td><td>6.0 km</td><td>Sukh Nala</td><td>Adv Posn</td></tr>
+        <tr><td>X</td><td>Kot Jaimal – Dhok Rai</td><td>6.1 km</td><td>Lakhan Disty</td><td>FDLs</td></tr>
+        <tr><td>Y</td><td>Chak 21 – Jhanda</td><td>6.1 km</td><td>the lateral Rd</td><td>Depth</td></tr>
+        <tr><td>Z</td><td>Rasulpur – Bhal</td><td>6.2 km</td><td>the MITG</td><td>Str Pt</td></tr></table>
+      <div class="p l3 prompt"><span>(4)</span><span><span class="hd">Pri of lines</span>. X, Y, W. Frontage on X 6.1 km: 1.1 km over a Bn's frontage in plains.<sup class="c">4</sup>${mk("S")}</span></div>
+      <div class="p l2"><span>b.</span><span><span class="hd">Def Possibilities</span>${mk(stOf(ROWS.find((x) => x[0] === "11b")))}</span></div>
+      <div class="p l3"><span>(1)</span><span><span class="hd">DP 1</span>. FDLs Line X. Depth Line Y. Str Pt Qila Mor. Screens 1000 m ahead of the FDLs. Adv Posn Line W. Bias of def Lt and Cen. Bias of A tk def Cen (the metalled Rd).${level === 3 ? " As built: A, B and C Coys on X, D Coy at Chak 21 – Pindi Dogran." : ""}</span></div>
+      <div class="p l2 yours"><span>c.</span><span><span class="hd">Common Deductions</span>. <span class="blank"></span><span class="hint"> Bias of A tk def · incl of BUAs · obs plan · surv plan · loc of adv posn.</span>${mk("U")}</span></div>
+    `, "3. Weather values: IPB Annex A; visibility from the monthly grid.<br>4. Bn frontage in plains: the doctrine table used by the plan check, with its book and page.");
+  } else if (docTab === 3) {
+    const r18 = stOf(ROWS.find((x) => x[0] === "18")), r19 = stOf(ROWS.find((x) => x[0] === "19")), r22 = stOf(ROWS.find((x) => x[0] === "22"));
+    h = page(6, `
+      <div class="grp">Own Sit</div>
+      ${para("16", "", "16.", "Composn of Own Forces", "Inf Bn (Std): 4 x rifle coys, sp coy (mor pl, A tk pl, aslt pnr pl). Atts: 1 x fd pl engrs.", "The unit and its attachments.")}
+      ${para("17", "", "17.", "Own Disposns", "As at Anx P: A, B and C Coys fwd on Line X; D Coy in depth; Bn HQ S of Qila Mor.", "Own layout.")}
+      <div class="p ${r18 === "S" ? "prompt" : ""}"><span>18.</span><span><span class="hd">Own Str as Related to that of the En</span>${mk(r18)}</span></div>
+      <table><tr><th>Ser</th><th>Arms</th><th>En</th><th>Own</th><th>Ratio</th></tr>
+        <tr><td>a.</td><td>Inf</td><td>${level >= 2 ? "18 x coy" : "12 x coy (assumed: a Bde)"}</td><td>4 x coy</td><td>${level >= 2 ? "4.5 : 1" : "3 : 1"}</td></tr>
+        <tr><td>b.</td><td>Armr</td><td>${level >= 2 ? "3 x sqn" : "?"}</td><td>0</td><td>${level >= 2 ? "3 : 0" : "?"}</td></tr>
+        <tr><td>c.</td><td>A tk (ATGM)</td><td>?</td><td>4 x pairs</td><td>? : 4</td></tr>
+        <tr><td>d.</td><td>Engrs</td><td>?</td><td>1 x pl</td><td>? : 1</td></tr></table>
+      <div class="p ${r19 === "U" ? "yours" : r19 === "S" ? "prompt" : ""}"><span>19.</span><span><span class="hd">Assessment of Tasks</span>. DP 1.${mk(r19)}</span></div>
+      ${r19 === "U" ? "<div class=\"p l2\"><span></span><span><span class=\"blank\"></span><span class=\"hint\"> Draw the Bdys and the table is laid from the localities on each line.</span></span></div>" : `
+      <table><tr><th>Ser</th><th>Locs</th><th>Inf</th><th>A tk</th><th>Engrs</th></tr>
+        <tr><td>(1)</td><td>FDLs: Kot Jaimal</td><td>3 x pl</td><td>1 x pair</td><td></td></tr>
+        <tr><td></td><td>FDLs: Nurpur</td><td>3 x pl</td><td>2 x pairs</td><td>1 x pl</td></tr>
+        <tr><td></td><td>FDLs: Dhok Rai</td><td>3 x pl</td><td>1 x pair</td><td></td></tr>
+        <tr><td>(2)</td><td>Depth: Chak 21 – Pindi Dogran</td><td>3 x pl</td><td></td><td></td></tr>
+        <tr><td>(3)</td><td>Str Pt: Qila Mor</td><td>1 x pl</td><td></td><td></td></tr>
+        <tr><td>(4)</td><td>Screen</td><td>1 x pl</td><td></td><td></td></tr>
+        <tr><td>(5)</td><td><b>Total</b></td><td><b>14 x pl</b> (held: 12)</td><td>4 x pairs</td><td>1 x pl</td></tr></table>`}
+      ${para("20", "", "20.", "Deductions", "Short by 2 x pl: the screen and the Str Pt pls come from D Coy and rejoin it. <span class=\"hint\">Confirm or regroup.</span>", "How the tps are tailored to the tasks.")}
+      <div class="grp">Time and Space</div>
+      ${para("21", "", "21.", "Time Data", "", "I Day, M Day, D Day, def to be occupied by, def to be ready by.")}
+      <div class="p ${r22 === "U" ? "yours" : r22 === "S" ? "prompt" : ""}"><span>22.</span><span><span class="hd">Time Req</span>${mk(r22)}</span></div>
+      ${r22 === "U" ? "<div class=\"p l2\"><span></span><span><span class=\"blank\"></span></span></div>" : `
+      <table><tr><th>S/No</th><th>Activity</th><th>Time (hrs)</th><th>From</th></tr>
+        <tr><td>a.</td><td>Mov / occupation of def</td><td>3</td><td>Rd move, 11 km by night</td></tr>
+        <tr><td>b.</td><td>Protective M fd laying (1,800 m)</td><td>9</td><td>engr table, 1 x pl<sup class="c">5</sup></td></tr>
+        <tr><td>c.</td><td>Improvement of def posns</td><td>____</td><td>yours</td></tr>
+        <tr><td>d.</td><td>Wire obs / denial plan, cam, coord</td><td>____</td><td>yours</td></tr></table>`}
+    `, "5. Mine laying rate: the engr table used by the plan (book and page printed here).");
+  } else {
+    h = page("P-1", `
+      <div style="text-align:right;margin:6px 0 2px">Anx P to<br>Aprc of the Sit<br>dated __ Feb 27</div>
+      <div class="ttl">TRACE: ${level === 3 ? "DP 1 AS BUILT" : "GR, APCHS AND LINES OF DEF"}</div>
+      <figure style="margin-left:0"><div class="fr">${sketch({ plan: level === 3 })}</div>
+      <figcaption>Vector trace from the reading: prints sharp at any size, no basemap needed. A screenshot of the live map with the symbols can be used instead.</figcaption></figure>
+      <table style="margin-left:0;width:100%"><tr><th>Mark</th><th>Meaning</th><th>Mark</th><th>Meaning</th></tr>
+        <tr><td>Red arrows</td><td>Apchs, ranked</td><td>Crosshatch</td><td>NO-GO</td></tr>
+        <tr><td>Blue dashed</td><td>Lines of def W to Z</td><td>Parallel lines</td><td>SLOW-GO, BUAs</td></tr>
+        <tr><td>Diamond</td><td>MITG</td><td>Brown</td><td>MSR</td></tr></table>
+      <div class="fn" style="margin-left:0">Anx Q (in the draft copy only): data and dates behind every drafted line, and the Confirm on Gr list.</div>
+    `);
+  }
+  $("a4").innerHTML = h;
+  $("docwrap").className = draft ? "draft" : "";
+}
+
+/* ---------------- slides ---------------- */
+const DECKS = [
+  { name: "Full brief", note: "a slide or more for each paragraph that has content" },
+  { name: "Decision brief", note: "ten slides for the comd: what the ground gives, his options, the courses, the choice" },
+  { name: "Sand model", note: "orientation order of the CO's model: gen description, apchs, ITGs, lines of def" },
+];
+/* [section, title, kind, viewer index or -1, in decision brief, in sand model] */
+const SLIDES = [
+  ["", "Aprc of the Sit", "title", 0, 1, 1],
+  ["REVIEW", "Review of Sit: en, own, air", "map + text", -1, 1, 0], ["REVIEW", "Aim", "text", -1, 1, 0],
+  ["GR AND WEATHER", "Gen Description", "live map", -1, 0, 1], ["GR AND WEATHER", "Apchs", "map + table", 1, 1, 1], ["GR AND WEATHER", "Lt Apch", "map + table", 2, 0, 1],
+  ["GR AND WEATHER", "Cen Apch", "map + table", -1, 0, 1], ["GR AND WEATHER", "Rt Apch", "map + table", -1, 0, 1], ["GR AND WEATHER", "ITGs", "live map", -1, 0, 1],
+  ["GR AND WEATHER", "Obs and Cover", "map", -1, 0, 1], ["GR AND WEATHER", "Met Conditions", "chart", -1, 0, 0], ["GR AND WEATHER", "Lines of Def and DPs", "map + table", -1, 1, 1],
+  ["EN SIT", "En Composn and Disposn", "live map", -1, 0, 0], ["EN SIT", "En Option 1", "map, builds", 3, 1, 0], ["EN SIT", "En Option 2", "map, builds", -1, 0, 0],
+  ["OWN SIT", "Relative Str", "table + chart", 4, 1, 0], ["OWN SIT", "Tps to Tasks", "table", -1, 0, 0],
+  ["TIME AND SPACE", "Time Aval against Time Req", "chart", -1, 0, 0],
+  ["COURSES", "Courses A and B", "two maps", 5, 1, 0], ["COURSES", "En Reactions and Own Ctr Actions", "table", -1, 0, 0], ["COURSES", "Course Adopted", "text", -1, 1, 0],
+  ["PLAN", "Gen Outline", "live map", -1, 1, 0], ["PLAN", "Coy Grouping and Tasks", "table", -1, 0, 0],
+  ["CLOSE", "Confirm on Gr", "list", 6, 1, 1],
+];
+const VIEW = [0, 4, 5, 13, 15, 18, 23];
+function slideHtml(ix) {
+  const no = ix + 1, tot = SLIDES.length, t = SLIDES[ix][1];
+  const wrap = (body, sub) => `<div class="band top">RESTD</div><div class="hdr"><b>${t}</b><span>${sub || ""}</span></div><div class="body" ${body[0]}>${body[1]}</div><div class="ft"><span>Aprc of the Sit · Bn Def, Qila Mor</span><span>${no} of ${tot}</span></div><div class="band bot">RESTD</div>`;
+  const v = SLIDES[ix][3];
+  if (v === 0) return `<div class="band top">RESTD</div><div class="ttl1"><b>APRC OF THE SIT</b><span>Bn Def · Qila Mor</span><span style="font-size:1.5cqw;color:#666">__ Feb 27 · Ref Anx P</span></div><div class="band bot">RESTD</div>`;
+  if (v === 1) return wrap(['style="grid-template-columns:46% 52%"', `<div class="map">${sketch({ lines: false, crop: "150 20 700 640" })}</div><div>
+    <table><tr><th>Pri</th><th>Apch</th><th>Length</th><th>Capacity</th><th>Obs</th><th>Why this rank</th></tr>
+    <tr><td>1</td><td>Lt</td><td>6.1 km</td><td>Bde (+)</td><td>Nala, Disty</td><td>Shortest; least friction; laterals to Cen</td></tr>
+    <tr><td>2</td><td>Cen</td><td>5.0 km</td><td>Bde</td><td>Nala, Disty</td><td>Frontal; Rd all along; 2 BUAs on it</td></tr>
+    <tr><td>3</td><td>Rt</td><td>6.6 km</td><td>Narrows 1.1 km</td><td>Nala, Disty, marsh</td><td>Longest; no lateral N of the Disty</td></tr></table>
+    <ul style="margin-top:1.4cqw"><li>All three meet at Qila Mor.</li><li>Comb: Lt and Cen (2 laterals), then Cen and Rt.</li></ul>
+    <div style="margin-top:1.2cqw"><span class="tag">Speaker notes carry paras 6 and 11a(1) in full</span></div></div>`], "Para 6 · three apchs, ranked");
+  if (v === 2) return wrap(['style="grid-template-columns:38% 60%"', `<div class="map">${sketch({ focus: "Lt", lines: false, crop: "170 40 440 600" })}</div><div>
+    <table><tr><th style="width:24%">Head</th><th>Lt Apch</th></tr>
+    <tr><td>Definition</td><td>Rampura, Burj, Kot Jaimal, Chak 21, Qila Mor</td></tr>
+    <tr><td>Length</td><td>7.4 km; 6.1 km past the Intl Border</td></tr>
+    <tr><td>Capacity</td><td>Bde (+): 2.6 km between NO-GO areas</td></tr>
+    <tr><td>Tfc</td><td>GO on 84 %; metalled Rd along 3.1 km</td></tr>
+    <tr><td>Obs</td><td>Sukh Nala 12 m; Lakhan Disty 9 m, br class not recorded</td></tr>
+    <tr><td>Obsn</td><td>To 900 m; cut by Kot Jaimal and orchards</td></tr>
+    <tr><td>Cover</td><td>View: BUAs 9 %, trees 14 %. Fire: BUAs only</td></tr>
+    <tr><td>Mutual Sp</td><td>With Cen: 2 laterals</td></tr>
+    <tr><td>Depl Areas</td><td>Burj, Kot Jaimal, Chak 21</td></tr>
+    <tr><td>Significance</td><td>Shortest; fewest BUAs; mutual sp with Cen</td></tr></table></div>`], "Para 6a");
+  if (v === 3) return wrap(['style="grid-template-columns:44% 54%"', `<div class="map">${sketch({ focus: "Lt", times: true, lines: true, rank: false, crop: "150 20 700 660" })}</div><div>
+    <div class="big"><b>Lt and Cen apchs; Bde (+) sp by armr.</b> Times from H at the border, at the IPB rates.</div>
+    <svg viewBox="0 0 550 190" style="width:100%;margin-top:1cqw" font-family="Arial" font-size="13">
+      ${[["Prelim: to Sukh Nala", 0, 2, "#e9a3a7"], ["Adv posn cleared", 2, 6, "#de7d83"], ["Screen pushed back, at Disty", 6, 8, "#d4575f"], ["Ph 1: xing, foothold", 8, 12, "#c8202a"], ["Ph 2: Br H, induct armr", 12, 22, "#a81a22"], ["Ph 3: break out to Qila Mor", 22, 24, "#7d1319"]]
+        .map((p, i) => `<rect x="${200 + p[1] * 12.5}" y="${8 + i * 27}" width="${(p[2] - p[1]) * 12.5}" height="18" fill="${p[3]}"/><text x="194" y="${22 + i * 27}" text-anchor="end">${p[0]}</text><text x="${205 + p[2] * 12.5}" y="${22 + i * 27}" fill="#555">H+${p[2]}</text>`).join("")}
+      <path d="M200,172 h300" stroke="#333"/>${[0, 6, 12, 18, 24].map((x) => `<path d="M${200 + x * 12.5},172 v5" stroke="#333"/><text x="${200 + x * 12.5}" y="188" text-anchor="middle" fill="#333">H+${x}</text>`).join("")}
+    </svg>
+    <ul><li>Adv: shortest; MSR to hand.</li><li>Disadv: Qila Mor falls only in the third ph.</li></ul>
+    <div style="margin-top:.8cqw"><span class="tag">Builds: one click per phase</span></div></div>`], "Para 14a");
+  if (v === 4) return wrap(['style="grid-template-columns:52% 46%"', `<div><table><tr><th>Ser</th><th>Arms</th><th>En</th><th>Own</th><th>Ratio</th></tr>
+    <tr><td>a.</td><td>Inf</td><td>18 x coy</td><td>4 x coy</td><td>4.5 : 1</td></tr><tr><td>b.</td><td>Armr</td><td>3 x sqn</td><td>0</td><td>3 : 0</td></tr>
+    <tr><td>c.</td><td>A tk (ATGM)</td><td>?</td><td>4 x pairs</td><td>? : 4</td></tr><tr><td>d.</td><td>Engrs</td><td>?</td><td>1 x pl</td><td>? : 1</td></tr></table>
+    <ul style="margin-top:1.4cqw"><li>On the Lt and Cen apchs he can bring 12 x coy against 2 x coy: 6 : 1.</li><li>No own armr: A tk def rests on ATGMs, mines and the Disty.</li></ul></div>
+    <svg viewBox="0 0 400 250" font-family="Arial" font-size="14">
+      <path d="M60,20 v190 h320" fill="none" stroke="#333"/>
+      ${[["Inf (coys)", 18, 4], ["Armr (sqns)", 3, 0]].map((g, i) => `<rect x="${95 + i * 150}" y="${210 - g[1] * 10}" width="42" height="${g[1] * 10}" fill="#c8202a"/><rect x="${141 + i * 150}" y="${210 - g[2] * 10}" width="42" height="${Math.max(g[2] * 10, 1)}" fill="#1f4fb3"/><text x="${139 + i * 150}" y="230" text-anchor="middle">${g[0]}</text><text x="${116 + i * 150}" y="${204 - g[1] * 10}" text-anchor="middle">${g[1]}</text><text x="${162 + i * 150}" y="${204 - g[2] * 10}" text-anchor="middle">${g[2]}</text>`).join("")}
+      <rect x="250" y="20" width="12" height="12" fill="#c8202a"/><text x="268" y="31">En</text><rect x="310" y="20" width="12" height="12" fill="#1f4fb3"/><text x="328" y="31">Own</text>
+    </svg>`], "Para 18 · native table and chart");
+  if (v === 5) return wrap(['style="grid-template-columns:1fr 1fr"', `<div><div class="big"><b>Course A</b>: three coys up on Line X</div><div class="map" style="margin:.6cqw 0">${sketch({ plan: true, apch: false, crop: "150 220 700 440" })}</div>
+      <ul><li>Adv: compact; uses the Disty; BUAs in the def.</li><li>Disadv: frontage 1.1 km over; no Bn res.</li></ul></div>
+    <div><div class="big"><b>Course B</b>: two coys up, two in depth</div><div class="map" style="margin:.6cqw 0">${sketch({ plan: false, apch: false, crop: "150 220 700 440" })}</div>
+      <ul><li>Adv: depth on both likely apchs; a coy to counter-attack.</li><li>Disadv: Dhok Rai held by a pl only.</li></ul></div>`], "Paras 24 to 26 · from the layouts compared");
+  if (v === 6) return wrap(['style="grid-template-columns:1fr"', `<ul class="big" style="font-size:1.75cqw">
+      <li>Bridge class on Lakhan Disty: 3 of 3 bridges carry no load class.</li>
+      <li>Banks of the Disty: 2.5 m recorded; confirm where tracks can climb out.</li>
+      <li>Bunds and kidney bunds a few metres high do not show at 30 m: check dominance at Kot Jaimal.</li>
+      <li>Standing crop height for the month, N of Sukh Nala.</li>
+      <li>The marsh SE of Tibbi after rain: its edge on the Rt apch.</li>
+      <li>Threat start points were assumed until the en is marked.</li></ul>
+      <div><span class="tag">Each item is also a Task comment on the slide it belongs to</span></div>`], "What the reading could not tell");
+  return "";
+}
+function deck() {
+  const list = SLIDES.map((s, i) => ({ s, i })).filter((x) => deckKind === 0 || (deckKind === 1 ? x.s[4] : x.s[5]));
+  if (!list.some((x) => x.i === VIEW[slideIx])) slideIx = Math.max(0, VIEW.findIndex((v) => list.some((x) => x.i === v && v !== 0)));
+  let h = "", sec = null, n = 0;
+  list.forEach((x) => {
+    n++;
+    if (x.s[0] !== sec) { sec = x.s[0]; if (sec) h += `<div class="sec">${sec}</div>`; }
+    const v = VIEW.indexOf(x.i);
+    h += `<button ${v < 0 ? "disabled" : `data-v="${v}" aria-pressed="${v === slideIx}"`}><i>${n}</i><span>${esc(x.s[1])}</span><span class="k">${x.s[2]}</span></button>`;
+  });
+  $("sorter").innerHTML = h;
+  $("slide").innerHTML = slideHtml(VIEW[slideIx]);
+  $("slno").textContent = `${list.length} slides in the ${DECKS[deckKind].name.toLowerCase()}: ${DECKS[deckKind].note}. The lit titles in the list are drawn here.`;
+  $("sorter").querySelectorAll("button[data-v]").forEach((b) => (b.onclick = () => { slideIx = +b.dataset.v; deck(); }));
+}
+function step(d) {
+  const list = SLIDES.map((s, i) => i).filter((i) => deckKind === 0 || (deckKind === 1 ? SLIDES[i][4] : SLIDES[i][5]));
+  const ok = VIEW.map((v, k) => (list.includes(v) ? k : -1)).filter((k) => k >= 0);
+  const at = ok.indexOf(slideIx);
+  slideIx = ok[(at + d + ok.length) % ok.length];
+  deck();
+}
+
+/* ---------------- the rest ---------------- */
+const OTHERS = [
+  ["Gr and Weather only", "Paras 5 to 11 with the trace: the part that is ready from one symbol. For a recce report or to paste into a longer paper.", "Word · PDF · text"],
+  ["Apch sheets", "One page per approach: strip map, the twelve heads, a cross-section along it and the crossings with their class.", "Word · PDF · slides"],
+  ["Trace (Anx P)", "The sketch alone, to scale, with a legend; and Create on Map for the lines of def, approaches and DP as ordinary symbols.", "PDF · PNG · symbols"],
+  ["Confirm on Gr list", "What the reading could not tell, sorted by place: the recce party's task list.", "Word · text · slide"],
+  ["En options matrix", "His options with phase timings, and the event matrix beside them.", "Word · slides"],
+  ["Relative str and tps to tasks", "The two tables, with a chart on the slide.", "Word · slides · CSV"],
+  ["Time and space chart", "Time available against time required as bars, essential timings worked back from the ready time.", "Word · slides"],
+  ["Courses compared", "Courses side by side with advs and disadvs from the plan check, and his reactions against own counter actions.", "Word · slides"],
+  ["Plan extract", "Para 29 on its own: gen outline, each coy's grouping and tasks. The skeleton of the op order.", "Word · text"],
+  ["Basis annex", "Data and dates behind every drafted line, and each rule with its book and page. Goes with the draft copy.", "Word · PDF"],
+  ["The appreciation itself", "Saved with the plan and as its own file: reopened later, your paragraphs are as you left them.", "JSON"],
+];
+const ASK = [
+  "<b>Whose document is it?</b> Proposed: the tool drafts, a paragraph you touch becomes yours and is never overwritten; a small mark tells you when the ground reading under it has changed since.",
+  "<b>Deductions.</b> Proposed: never written as fact. The tool gives the ranked facts and a proposed line marked for your judgement; the fair copy prints only what you accepted.",
+  "<b>Blanks in the fair copy.</b> Print a ruled line to fill by hand (as drawn), or leave the paragraph out?",
+  "<b>Figures.</b> The vector trace (prints sharp, no basemap), a screenshot of the live map, or both?",
+  "<b>Word first, or PDF first?</b> Proposed: Word, since the document is yours to finish; PDF through the browser's print.",
+  "<b>Marking.</b> The marking, copy number and address block are typed once in the sheet and used by the document and the deck. Any fixed house wording?",
+  "<b>Which deck is the default:</b> full brief, decision brief or sand model?",
+  "<b>Attack.</b> This follows the defence appreciation. Is there a specimen for the attack (FUP, SL, H-hr, forms of manoeuvre) to follow the same way?",
+];
+
+function seg(el, names, get, set) {
+  el.innerHTML = names.map((n, i) => `<button aria-pressed="${get() === i}">${n}</button>`).join("");
+  [...el.children].forEach((b, i) => (b.onclick = () => { set(i); render(); }));
+}
+function render() {
+  seg($("lvl"), LEVELS, () => level, (i) => (level = i));
+  tally(); coverage(); app();
+  $("doctabs").innerHTML = DOCS.map((n, i) => `<button aria-pressed="${docTab === i}" data-d="${i}">${n}</button>`).join("") + `<span class="sp"></span><button aria-pressed="${!draft}" data-f="0">Fair copy</button><button aria-pressed="${draft}" data-f="1">Draft copy</button>`;
+  $("doctabs").querySelectorAll("button").forEach((b) => (b.onclick = () => { if (b.dataset.d) docTab = +b.dataset.d; else draft = b.dataset.f === "1"; render(); }));
+  doc();
+  $("decktabs").innerHTML = DECKS.map((d, i) => `<button aria-pressed="${deckKind === i}" data-k="${i}">${d.name}</button>`).join("");
+  $("decktabs").querySelectorAll("button").forEach((b) => (b.onclick = () => { deckKind = +b.dataset.k; render(); }));
+  deck();
+}
+$("others").innerHTML = OTHERS.map((o) => `<div class="card"><h3>${o[0]}</h3><p>${o[1]}</p><div class="fmt">${o[2]}</div></div>`).join("");
+$("ask").innerHTML = ASK.map((a) => `<li>${a}</li>`).join("");
+$("prev").onclick = () => step(-1);
+$("next").onclick = () => step(1);
+render();
+</script>
+</body>
+</html>
