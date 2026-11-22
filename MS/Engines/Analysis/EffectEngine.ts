@@ -19,7 +19,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Mesh from '@arcgis/core/geometry/Mesh';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
 import { bindDisclosures } from '../../Support/Disclosure';
 
 // ─── Constants & Physics Models ───────────────────────────────────────────────
@@ -975,7 +975,7 @@ export class EffectEngine {
 
     const buffered = rings.map((ring: any) => ({
       ...ring,
-      geometry: geometryEngine.geodesicBuffer(impactPoint, ring.radiusM, 'meters'),
+      geometry: geometryOps.geodesicBuffer(impactPoint, ring.radiusM, 'meters'),
     }));
 
     buffered.forEach((ring: any, i: number) => {
@@ -985,7 +985,7 @@ export class EffectEngine {
       const [or, og, ob, oa] = c.outline;
 
       const geom = asDonut && buffered[i + 1]?.geometry
-        ? geometryEngine.difference(ring.geometry, buffered[i + 1].geometry)
+        ? geometryOps.difference(ring.geometry, buffered[i + 1].geometry)
         : ring.geometry;
 
       if (!geom) return;
@@ -1166,11 +1166,11 @@ export class EffectEngine {
   private _buildUnionFootprint(impactPoints: Point[], results: any[]): Graphic | null {
     const lethalGeoms = impactPoints.map((pt, i) => {
       const lethalR = results[i].rings.find((r: any) => r.id === 'lethal_composite')?.radiusM ?? 0;
-      return lethalR > 0 ? geometryEngine.geodesicBuffer(pt, lethalR, 'meters') as Polygon : null;
+      return lethalR > 0 ? geometryOps.geodesicBuffer(pt, lethalR, 'meters') as Polygon : null;
     }).filter(Boolean) as Polygon[];
 
     if (lethalGeoms.length === 0) return null;
-    const merged = lethalGeoms.length === 1 ? lethalGeoms[0] : geometryEngine.union(lethalGeoms) as Polygon;
+    const merged = lethalGeoms.length === 1 ? lethalGeoms[0] : geometryOps.union(lethalGeoms) as Polygon;
 
     return new Graphic({
       geometry: merged,

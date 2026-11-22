@@ -22,7 +22,7 @@
  *
  * See the design notes in the plan; key reuse: the EditEngine drag-capture
  * idiom (view.on('drag', e => e.stopPropagation()) to suppress map pan), the
- * SKETCH GraphicsLayer for preview, and ArcGIS geometryEngine.generalize for
+ * SKETCH GraphicsLayer for preview, and the ArcGIS generalize operator (GeometryOps) for
  * Douglas-Peucker stroke simplification.
  */
 
@@ -33,7 +33,7 @@ import Graphic from '@arcgis/core/Graphic';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
 import type MapView from '@arcgis/core/views/MapView';
 import type SceneView from '@arcgis/core/views/SceneView';
 import type GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
@@ -1445,7 +1445,7 @@ export default class StylusDrawController {
         paths: [pts.map((p) => [p.x, p.y])],
         spatialReference: view.spatialReference,
       });
-      const gen = geometryEngine.generalize(line, maxDeviation, true) as Polyline;
+      const gen = geometryOps.generalize(line, maxDeviation, true) as Polyline;
       const path = gen?.paths?.[0];
       if (path && path.length >= 2) {
         return path.map((c) => new Point({ x: c[0], y: c[1], spatialReference: view.spatialReference }));

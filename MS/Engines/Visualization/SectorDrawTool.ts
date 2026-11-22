@@ -3,7 +3,7 @@ import Polyline from "@arcgis/core/geometry/Polyline";
 import Graphic from "@arcgis/core/Graphic";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
-import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
+import * as geometryOps from "../../Support/GeometryOps";
 import { GeoTools } from "../../Support/GeoTools.ts";
 import type VisualizationEngine from "./VisualizationEngine";
 
@@ -79,7 +79,7 @@ export default class SectorDrawTool {
                [pt.longitude as number, pt.latitude as number]]],
       spatialReference: { wkid: 4326 },
     });
-    return geometryEngine.geodesicLength(line, "kilometers");
+    return geometryOps.geodesicLength(line, "kilometers");
   }
 
   private _onMove(e: any): void {

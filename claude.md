@@ -675,6 +675,11 @@ The harness is `src/main.ts` + `index.html`, which:
    must go through `GeoTools.metersToMapUnits()` (cos-latitude corrected), and
    metric shapes (range rings/fans) through `geodesicCircle()`/`geodesicSector()`
    so they agree with the (geodesic) MeasurementEngine.
-8. Never `btoa()` SVG that can carry label text (throws on non-Latin-1, e.g. Urdu) —
+8. **Geometry operations go through `MS/Support/GeometryOps.ts`** (buffer, union, intersect, geodesic
+   length / area / densify, nearest coordinate, ...): it wraps the ArcGIS `geometry/operators/*` modules
+   with the old `geometryEngine` call shapes, loads the geodetic operators (SymbolEngine starts it) and
+   answers from a Vincenty / cos-latitude fallback until they are ready. Never import the deprecated
+   `geometry/geometryEngine` or `geometry/support/geodesicUtils`.
+9. Never `btoa()` SVG that can carry label text (throws on non-Latin-1, e.g. Urdu) —
    use `Utils.svgToDataUrl()`. User-supplied text interpolated into `innerHTML`
    goes through `Utils.escapeHtml()`.

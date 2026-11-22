@@ -16,7 +16,7 @@ import Polyline from '@arcgis/core/geometry/Polyline';
 import Extent from '@arcgis/core/geometry/Extent';
 import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 import ElevationProfile from '@arcgis/core/widgets/ElevationProfile';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../../Support/GeometryOps';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../../../Support/EngineLogger';
 import { bindDisclosures } from '../../../Support/Disclosure';
@@ -532,7 +532,7 @@ export class LocalPeaksEngine {
       // Top-3 halo ring for visual emphasis
       if (peak.rank <= 3 && !selected) {
         const haloR = Math.max(values.searchRadiusM * 0.28, 35) * (4 - peak.rank);
-        const haloRaw = geometryEngine.geodesicBuffer(point, haloR, 'meters');
+        const haloRaw = geometryOps.geodesicBuffer(point, haloR, 'meters');
         const haloGeom = (Array.isArray(haloRaw) ? haloRaw[0] : haloRaw) as Polygon | null;
         if (haloGeom) {
           this._peakLayer.add(new Graphic({
@@ -718,14 +718,14 @@ export class LocalPeaksEngine {
   private _bufferGeometry(): Polygon | null {
     if (!this._bufferCenter) return null;
     const radiusM = Math.max(25, this._num('peaks-buffer-radius', 2000));
-    const raw = geometryEngine.geodesicBuffer(this._bufferCenter, radiusM, 'meters');
+    const raw = geometryOps.geodesicBuffer(this._bufferCenter, radiusM, 'meters');
     return (Array.isArray(raw) ? raw[0] : raw) as Polygon | null;
   }
 
   private _pointInAoi(point: Point, geometry: Polygon | Extent): boolean {
     if (geometry.type === 'extent') return (geometry as Extent).contains(point);
     try {
-      return geometryEngine.contains(geometry as Polygon, point) || geometryEngine.intersects(geometry as Polygon, point);
+      return geometryOps.contains(geometry as Polygon, point) || geometryOps.intersects(geometry as Polygon, point);
     } catch {
       return true;
     }

@@ -13,7 +13,7 @@ import FillSymbol3DLayer from "@arcgis/core/symbols/FillSymbol3DLayer";
 import ExtrudeSymbol3DLayer from "@arcgis/core/symbols/ExtrudeSymbol3DLayer";
 import TextSymbol from "@arcgis/core/symbols/TextSymbol";
 import Color from "@arcgis/core/Color";
-import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
+import * as geometryOps from "../../Support/GeometryOps";
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 import { buildSectorRing } from "./sectorGeometry";
 import { latLonToUTM, utmToLatLon } from "../MGRSEngine.ts";
@@ -611,7 +611,7 @@ export class VisualizationEngine {
       graphics.forEach(g => {
         const pt = g.geometry as Point;
         if (!pt || pt.type !== "point") return;
-        const buf = geometryEngine.geodesicBuffer(pt, opt.radiusKm, "kilometers") as any;
+        const buf = geometryOps.geodesicBuffer(pt, opt.radiusKm, "kilometers") as any;
         if (!buf) return;
         bufs.push(buf);
         this._vizLayer!.add(new Graphic({
@@ -635,10 +635,10 @@ export class VisualizationEngine {
     if (!opt.showOverlap || friendlyBufs.length === 0 || enemyBufs.length === 0) return;
 
     try {
-      const uF = geometryEngine.union(friendlyBufs) as any;
-      const uE = geometryEngine.union(enemyBufs)   as any;
+      const uF = geometryOps.union(friendlyBufs) as any;
+      const uE = geometryOps.union(enemyBufs)   as any;
       if (!uF || !uE) return;
-      const overlap = geometryEngine.intersect(uF, uE) as any;
+      const overlap = geometryOps.intersect(uF, uE) as any;
       if (!overlap) return;
       const oc = opt.overlapColor;
       this._vizLayer.add(new Graphic({
@@ -794,7 +794,7 @@ export class VisualizationEngine {
           points: pts.map(p => [p.x, p.y]),
           spatialReference: pts[0].spatialReference,
         });
-        const hull = geometryEngine.convexHull(multipt) as any;
+        const hull = geometryOps.convexHull(multipt) as any;
         if (!hull || Array.isArray(hull) || hull.type !== "polygon") return;
 
         this._vizLayer!.add(new Graphic({
@@ -937,7 +937,7 @@ export class VisualizationEngine {
         } else {
           // Buffer the polyline into a corridor polygon, then extrude as walls + cap
           try {
-            const corridor = geometryEngine.geodesicBuffer(geom, T / 2, "meters") as any;
+            const corridor = geometryOps.geodesicBuffer(geom, T / 2, "meters") as any;
             const corridors: any[] = Array.isArray(corridor) ? corridor : [corridor];
             corridors.forEach((poly) => {
               if (!poly?.rings) return;
@@ -1003,7 +1003,7 @@ export class VisualizationEngine {
       .forEach(({ h, i }) => {
         const radiusKm = speedKmh * h;
         if (radiusKm <= 0) return;
-        const buf = geometryEngine.geodesicBuffer(pt, radiusKm, "kilometers") as any;
+        const buf = geometryOps.geodesicBuffer(pt, radiusKm, "kilometers") as any;
         if (!buf) return;
         const [r, g, b, a] = palette[Math.min(i, palette.length - 1)];
         this._vizLayer!.add(new Graphic({

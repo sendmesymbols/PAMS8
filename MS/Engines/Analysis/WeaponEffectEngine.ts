@@ -19,7 +19,9 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
+import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
+import { GeoTools } from '../../Support/GeoTools';
 import Mesh from '@arcgis/core/geometry/Mesh';
 import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
 import EngineLogger from '../../Support/EngineLogger';
@@ -332,15 +334,22 @@ export class WeaponEffectEngine {
       ring.push([pt.longitude, pt.latitude]);
     }
     ring.push([oLon, oLat]);
-    return new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
+    const wedge = new Polygon({ rings: [ring], spatialReference: { wkid: 4326 } });
+    // Return it in the origin's spatial reference: _computeWEZ intersects it with a
+    // geodesic ring built from the origin, and the operators need one SR on both
+    // sides (a WGS84 wedge against a Web Mercator ring intersects to nothing, which
+    // made every Web Mercator WEZ a full ring instead of its arc).
+    return GeoTools.isWebMercatorSR(origin.spatialReference)
+      ? (webMercatorUtils.geographicToWebMercator(wedge) as Polygon)
+      : wedge;
   }
 
   private _computeWEZ(params: WEZParams): WEZResult {
     const { observerPoint, minRangeM, maxRangeM, azimuthCenterDeg, azimuthSpreadDeg, elevMaxDeg } = params;
     const preset = this._currentPreset();
 
-    const minRingRaw = geometryEngine.geodesicBuffer(observerPoint, minRangeM, 'meters');
-    const maxRingRaw = geometryEngine.geodesicBuffer(observerPoint, maxRangeM, 'meters');
+    const minRingRaw = geometryOps.geodesicBuffer(observerPoint, minRangeM, 'meters');
+    const maxRingRaw = geometryOps.geodesicBuffer(observerPoint, maxRangeM, 'meters');
 
     const minRing = Array.isArray(minRingRaw) ? minRingRaw[0] as Polygon : minRingRaw as Polygon;
     const maxRing = Array.isArray(maxRingRaw) ? maxRingRaw[0] as Polygon : maxRingRaw as Polygon;
@@ -350,10 +359,10 @@ export class WeaponEffectEngine {
     const wedge = this._buildAzimuthWedge(observerPoint, azimuthCenterDeg, azimuthSpreadDeg, maxRangeM * 1.02);
     const clipped = azimuthSpreadDeg >= 360
       ? maxRing
-      : (geometryEngine.intersect(maxRing, wedge) as Polygon | null) ?? maxRing;
+      : (geometryOps.intersect(maxRing, wedge) as Polygon | null) ?? maxRing;
 
     const zone = (minRangeM > 0 && minRing)
-      ? (geometryEngine.difference(clipped, minRing) as Polygon | null)
+      ? (geometryOps.difference(clipped, minRing) as Polygon | null)
       : clipped;
 
     // Clamp non-negative: depressed-elevation weapons (negative elevMax) would
@@ -784,7 +793,7 @@ export class WeaponEffectEngine {
 
       ringDefs.forEach(({ r, opacity, label }) => {
         if (r <= 0) return;
-        const ringRaw = geometryEngine.geodesicBuffer(this._observerPoint!, r, 'meters');
+        const ringRaw = geometryOps.geodesicBuffer(this._observerPoint!, r, 'meters');
         const ring = Array.isArray(ringRaw) ? ringRaw[0] : ringRaw;
         if (!ring) return;
 
@@ -863,7 +872,7 @@ export class WeaponEffectEngine {
 
     try {
       const maxR = Math.max(1, Number(this._inp('wez-maxrange')?.value ?? 5000));
-      const extentGeom = geometryEngine.geodesicBuffer(this._observerPoint, maxR, 'meters');
+      const extentGeom = geometryOps.geodesicBuffer(this._observerPoint, maxR, 'meters');
       const extent = Array.isArray(extentGeom) ? extentGeom[0]?.extent : (extentGeom as Polygon | null)?.extent;
       if (!extent) return;
 

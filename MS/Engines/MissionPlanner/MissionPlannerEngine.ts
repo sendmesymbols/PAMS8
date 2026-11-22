@@ -24,7 +24,7 @@ import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
 import LocalPeaksEngine, { LocalPeakResult } from '../Analysis/Peaks/LocalPeaksEngine';
 import KeyTerrainIdentificationEngine, { KeyTerrainFeature } from '../Analysis/KeyTerrain/KeyTerrainIdentificationEngine';
 import DeadGroundMapper from '../Analysis/DeadGroundMapper';
@@ -759,7 +759,7 @@ export class MissionPlannerEngine {
 
   private _bufferGeometry(radiusM: number): Polygon | null {
     if (!this._bufferCenter) return null;
-    const raw = geometryEngine.geodesicBuffer(this._bufferCenter, radiusM, 'meters');
+    const raw = geometryOps.geodesicBuffer(this._bufferCenter, radiusM, 'meters');
     return (Array.isArray(raw) ? raw[0] : raw) as Polygon | null;
   }
 
@@ -1765,7 +1765,7 @@ export class MissionPlannerEngine {
         // Per-candidate exposure is decided by real line-of-sight in _exposureToEnemy,
         // not by this ring — this is a situational-awareness overlay only.
         const visibleFraction = clamp(1 - (summary.deadGroundPct / 100), 0, 1);
-        const buf = geometryEngine.geodesicBuffer(enemy.point, analyzedRadiusM, 'meters');
+        const buf = geometryOps.geodesicBuffer(enemy.point, analyzedRadiusM, 'meters');
         const polygon = (Array.isArray(buf) ? buf[0] : buf) as Polygon | null;
         if (polygon) {
           this._hostileObsLayer.add(new Graphic({
@@ -2299,7 +2299,7 @@ export class MissionPlannerEngine {
       const geom = g.geometry as any;
       const pt = geom?.type === 'point' ? geom : geom?.centroid ?? geom?.extent?.center;
       if (!pt) return;
-      if (aoi) { try { if (!geometryEngine.contains(aoi, pt) && !geometryEngine.intersects(aoi, pt)) return; } catch { /* fall through */ } }
+      if (aoi) { try { if (!geometryOps.contains(aoi, pt) && !geometryOps.intersects(aoi, pt)) return; } catch { /* fall through */ } }
       const sidc = String(g.attributes?.SIDC ?? g.attributes?.sidc ?? '');
       // Canonical affiliation + echelon, matching the on-map symbol. The previous
       // sidc.charAt(3)/charAt(4) heuristics read the wrong digits: hostile units were

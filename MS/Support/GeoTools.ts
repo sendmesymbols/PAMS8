@@ -14,8 +14,7 @@ import Color from "@arcgis/core/Color";
 import Graphic from "@arcgis/core/Graphic";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
-import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
-import * as geodesicUtils from "@arcgis/core/geometry/support/geodesicUtils";
+import * as geometryOps from "./GeometryOps";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 
@@ -939,7 +938,7 @@ export class GeoTools {
     // (geodesic) MeasurementEngine, in 2D and 3D alike.
 
     /**
-     * True when the geometryEngine geodesic operators support this spatial
+     * True when the geodesic operators (GeometryOps) support this spatial
      * reference: WGS84 (4326) or any Web Mercator wkid (3857, 102100, 102113,
      * 3785). NOTE: live views usually report wkid 102100 with latestWkid 3857 —
      * checking `wkid === 3857` alone silently falls back to planar math.
@@ -1009,7 +1008,7 @@ export class GeoTools {
      * weapon arcs, minefield extents.
      */
     static geodesicCircle(center: Point, radiusM: number): Polygon | null {
-        const buf = geometryEngine.geodesicBuffer(center, radiusM, "meters");
+        const buf = geometryOps.geodesicBuffer(center, radiusM, "meters");
         return (Array.isArray(buf) ? buf[0] : buf) as Polygon | null;
     }
 
@@ -1040,10 +1039,9 @@ export class GeoTools {
         const origin = new Point({ x: c84.x, y: c84.y, spatialReference: SpatialReference.WGS84 });
         for (let i = 0; i <= steps; i++) {
             const az = startAzDeg + (sweep * i) / steps;
-            // Ellipsoidal direct problem. geodesicUtils is deprecated in favor of
-            // geodeticUtilsOperator (4.33+), but that one needs an async load();
-            // this stays synchronous and is still shipped in SDK 5.x.
-            const p = geodesicUtils.pointFromDistance(origin, radiusM, az);
+            // Ellipsoidal direct problem: geodeticUtilsOperator once loaded,
+            // a synchronous Vincenty fallback before (see GeometryOps).
+            const p = geometryOps.pointFromDistance(origin, radiusM, az);
             ring.push([p.x, p.y]);
         }
         ring.push([...ring[0]]);

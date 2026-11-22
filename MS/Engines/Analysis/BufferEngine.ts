@@ -14,7 +14,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../../Support/EngineLogger';
 import { bindDisclosures } from '../../Support/Disclosure';
@@ -249,7 +249,7 @@ export class BufferEngine {
   ): ComputedRing[] {
     const sorted = [...ringDefs].sort((a, b) => b.radiusM - a.radiusM);
     const buffers = sorted.map((def) => {
-      const raw = geometryEngine.geodesicBuffer(sourcePoint, def.radiusM, 'meters');
+      const raw = geometryOps.geodesicBuffer(sourcePoint, def.radiusM, 'meters');
       const geometry = Array.isArray(raw) ? ((raw[0] as Polygon | undefined) ?? null) : (raw as Polygon | null);
       return { ...def, geometry };
     });
@@ -261,7 +261,7 @@ export class BufferEngine {
       if (!inner?.geometry) return ring;
       return {
         ...ring,
-        geometry: (geometryEngine.difference(ring.geometry, inner.geometry) as Polygon | null) ?? ring.geometry,
+        geometry: (geometryOps.difference(ring.geometry, inner.geometry) as Polygon | null) ?? ring.geometry,
       };
     });
   }
@@ -281,7 +281,7 @@ export class BufferEngine {
     return Object.entries(allByRadius)
       .map(([radiusM, geoms]) => {
         const def = ringDefs.find((d) => d.radiusM === Number(radiusM));
-        const merged = geoms.length === 1 ? geoms[0] : ((geometryEngine.union(geoms) as Polygon | null) ?? null);
+        const merged = geoms.length === 1 ? geoms[0] : ((geometryOps.union(geoms) as Polygon | null) ?? null);
         return {
           radiusM: Number(radiusM),
           label: def?.label ?? '',
@@ -296,10 +296,10 @@ export class BufferEngine {
     const geomsA = a.map((r) => r.geometry).filter((g): g is Polygon => !!g);
     const geomsB = b.map((r) => r.geometry).filter((g): g is Polygon => !!g);
     if (!geomsA.length || !geomsB.length) return null;
-    const unionA = geomsA.length === 1 ? geomsA[0] : ((geometryEngine.union(geomsA) as Polygon | null) ?? null);
-    const unionB = geomsB.length === 1 ? geomsB[0] : ((geometryEngine.union(geomsB) as Polygon | null) ?? null);
+    const unionA = geomsA.length === 1 ? geomsA[0] : ((geometryOps.union(geomsA) as Polygon | null) ?? null);
+    const unionB = geomsB.length === 1 ? geomsB[0] : ((geometryOps.union(geomsB) as Polygon | null) ?? null);
     if (!unionA || !unionB) return null;
-    return (geometryEngine.intersect(unionA, unionB) as Polygon | null) ?? null;
+    return (geometryOps.intersect(unionA, unionB) as Polygon | null) ?? null;
   }
 
   private _computeMultiSourceContestedZone(sourcePoints: Point[], ringDefs: ThreatRingDef[]): Polygon | null {
@@ -314,7 +314,7 @@ export class BufferEngine {
     if (!contested.length) return null;
     return contested.length === 1
       ? contested[0]
-      : ((geometryEngine.union(contested) as Polygon | null) ?? null);
+      : ((geometryOps.union(contested) as Polygon | null) ?? null);
   }
 
   private _computeCorridorBuffer(
@@ -324,13 +324,13 @@ export class BufferEngine {
   ): { corridor: Polygon | null; standoff: Polygon | null } {
     let densified: Polyline = polyline;
     try {
-      densified = (geometryEngine.geodesicDensify(polyline, 50, 'meters') as Polyline) ?? polyline;
+      densified = (geometryOps.geodesicDensify(polyline, 50, 'meters') as Polyline) ?? polyline;
     } catch {
       densified = polyline;
     }
-    const corridorRaw = geometryEngine.geodesicBuffer(densified, widthM, 'meters');
+    const corridorRaw = geometryOps.geodesicBuffer(densified, widthM, 'meters');
     const standoffRaw = standoffM > 0
-      ? geometryEngine.geodesicBuffer(densified, widthM + standoffM, 'meters')
+      ? geometryOps.geodesicBuffer(densified, widthM + standoffM, 'meters')
       : null;
     const corridor = Array.isArray(corridorRaw) ? ((corridorRaw[0] as Polygon | undefined) ?? null) : (corridorRaw as Polygon | null);
     const standoff = standoffRaw == null
@@ -607,7 +607,7 @@ export class BufferEngine {
               if (!ring.geometry || !next?.geometry) return ring;
               return {
                 ...ring,
-                geometry: (geometryEngine.difference(ring.geometry, next.geometry) as Polygon | null) ?? ring.geometry,
+                geometry: (geometryOps.difference(ring.geometry, next.geometry) as Polygon | null) ?? ring.geometry,
               };
             });
           }

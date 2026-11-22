@@ -6,7 +6,7 @@ import Extent from "@arcgis/core/geometry/Extent";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
-import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
+import * as geometryOps from "../Support/GeometryOps";
 import { ElevationUtils } from "../Support/Elevation/ElevationUtils";
 import EngineLogger from "../Support/EngineLogger";
 
@@ -74,7 +74,7 @@ export default class RouteProfileEngine {
       return;
     }
 
-    const lengthM = geometryEngine.geodesicLength(geom, "meters");
+    const lengthM = geometryOps.geodesicLength(geom, "meters");
     if (!(lengthM > 0)) {
       EngineLogger.nextStep("Route Profile", "Route has zero length — nothing to profile.");
       return;
@@ -117,7 +117,7 @@ export default class RouteProfileEngine {
     lengthM: number,
   ): Promise<ProfileResult> {
     const step = Math.max(lengthM / RouteProfileEngine.MAX_SAMPLES, RouteProfileEngine.MIN_STEP_M);
-    const dense = (geometryEngine.geodesicDensify(line, step, "meters") as Polyline) ?? line;
+    const dense = (geometryOps.geodesicDensify(line, step, "meters") as Polyline) ?? line;
 
     // Flatten path vertices into an ordered Point list (drop duplicate path joins).
     const pts: Point[] = [];
@@ -151,7 +151,7 @@ export default class RouteProfileEngine {
           [prev.longitude as number, prev.latitude as number],
           [pt.longitude as number, pt.latitude as number],
         ]];
-        const segM = geometryEngine.geodesicLength(this._scratch, "meters");
+        const segM = geometryOps.geodesicLength(this._scratch, "meters");
         cumDist += segM;
         const dz = z - prevZ;
         if (dz > 0) gain += dz; else loss += -dz;

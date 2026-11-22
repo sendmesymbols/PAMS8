@@ -18,6 +18,7 @@ import Polygon from '@arcgis/core/geometry/Polygon';
 import SpatialReference from '@arcgis/core/geometry/SpatialReference';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import * as projectOperator from '@arcgis/core/geometry/operators/projectOperator';
+import { loadGeometryOps } from '../Support/GeometryOps';
 
 //import  from "esri/core/reactiveUtils";
 
@@ -332,6 +333,9 @@ class SymbolEngine implements Evented {
     projectOperator.load().catch(() => {
       /* readiness is checked via projectOperator.isLoaded() in reProject */
     });
+    // Same for the geodetic operators behind GeometryOps (buffers, lengths,
+    // areas); until they are ready GeometryOps answers from its fallback.
+    loadGeometryOps().catch(() => { /* GeometryOps retries on next use */ });
     this._layerManager = GraphicsLayerManager.getInstance(this.view);
     this._layerManager.initializeLayers();
     this._editEngine = new EditEngine(viewProvider, this._layerManager);

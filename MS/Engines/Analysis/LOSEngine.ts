@@ -22,7 +22,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 import { ElevationUtils } from '../../Support/Elevation/ElevationUtils';
 import EngineLogger from '../../Support/EngineLogger';
@@ -766,7 +766,7 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
       }
       const sampleExtent = Math.max(maxR, maxTargetDist * 1.1);
 
-      const extentGeom = geometryEngine.geodesicBuffer(observerPoint, sampleExtent, 'meters');
+      const extentGeom = geometryOps.geodesicBuffer(observerPoint, sampleExtent, 'meters');
       const extent = Array.isArray(extentGeom)
         ? extentGeom[0]?.extent
         : (extentGeom as Polygon | null)?.extent;
@@ -920,7 +920,7 @@ private async _runTerrain(skipLines: boolean = false, skipDome: boolean = false)
         // Range rings for context
         [0.33, 0.66, 1].forEach(frac => {
           const r = maxR * frac;
-          const ringRaw = geometryEngine.geodesicBuffer(observerPoint, r, 'meters');
+          const ringRaw = geometryOps.geodesicBuffer(observerPoint, r, 'meters');
           const ring = Array.isArray(ringRaw) ? ringRaw[0] : ringRaw;
           if (ring) {
             this._analysisLayer.add(new Graphic({

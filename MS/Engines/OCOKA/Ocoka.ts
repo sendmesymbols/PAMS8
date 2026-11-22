@@ -11,7 +11,7 @@ import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Extent from '@arcgis/core/geometry/Extent';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
 import EngineLogger from '../../Support/EngineLogger';
 import { bindDisclosures } from '../../Support/Disclosure';
 import RoadNetworkEngine, { type TrafficabilitySummary } from '../Analysis/RoadNetworkEngine';
@@ -669,7 +669,7 @@ export class OcokaEngine {
       this._setStatus('done', 'Done');
       this._setProgress(1, `Done - ${scored.length} avenues, best score ${best}`);
       EngineLogger.success(ENGINE_NAME, `OCOKA analysis complete: ${scored.length} avenues, best score ${best}.`);
-      const target = geometryEngine.geodesicBuffer(
+      const target = geometryOps.geodesicBuffer(
         new Point({ longitude: options.center.longitude, latitude: options.center.latitude, spatialReference: WGS84 }),
         options.radiusM,
         'meters',
@@ -1050,7 +1050,7 @@ export class OcokaEngine {
   private _setAnalysisArea(latitude: number, longitude: number, radiusM: number): void {
     this._aoLayer.removeAll();
     const center = new Point({ longitude, latitude, spatialReference: WGS84 });
-    const raw = geometryEngine.geodesicBuffer(center, radiusM, 'meters');
+    const raw = geometryOps.geodesicBuffer(center, radiusM, 'meters');
     const circle = Array.isArray(raw) ? raw[0] : raw;
     if (circle) {
       this._aoLayer.add(new Graphic({

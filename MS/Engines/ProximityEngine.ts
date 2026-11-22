@@ -34,7 +34,7 @@ import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import Font from '@arcgis/core/symbols/Font';
 import Color from '@arcgis/core/Color';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../Support/GeometryOps';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import EngineLogger from '../Support/EngineLogger';
@@ -514,7 +514,7 @@ class ProximityEngine {
       // when the user explicitly wants vertex-only snapping.
       if (this._nearestCoordinate) {
         try {
-          const r = geometryEngine.nearestCoordinate(g.geometry, mapPt);
+          const r = geometryOps.nearestCoordinate(g.geometry, mapPt);
           if (r?.coordinate && !r.isEmpty) {
             const d = this._mapDist(mapPt, r.coordinate);
             if (d < bestDist) { bestDist = d; bestCoord = r.coordinate; }
@@ -522,7 +522,7 @@ class ProximityEngine {
         } catch { /* unsupported geometry type */ }
       } else if (this._nearestVertex) {
         try {
-          const r = geometryEngine.nearestVertex(g.geometry, mapPt);
+          const r = geometryOps.nearestVertex(g.geometry, mapPt);
           if (r?.coordinate && !r.isEmpty) {
             const d = this._mapDist(mapPt, r.coordinate);
             if (d < bestDist) { bestDist = d; bestCoord = r.coordinate; }
@@ -696,7 +696,7 @@ class ProximityEngine {
         [a.x, a.y],
         [b.x, b.y],
       ]);
-      const raw = geometryEngine.planarLength(pl, this._distUnit as any);
+      const raw = geometryOps.planarLength(pl, this._distUnit as any);
       return this._formatDistance(Math.abs(raw));
     } catch {
       return '—';
@@ -749,7 +749,7 @@ class ProximityEngine {
   private _calcBearing(a: Point, b: Point): number {
     try {
       if (this._isGeodesic) {
-        // Inline lon/lat — no geometryEngine.project() round-trip per frame.
+        // Inline lon/lat — no projection round-trip per frame.
         const [lon1, lat1] = this._toLonLat(a);
         const [lon2, lat2] = this._toLonLat(b);
         const dLon = (lon2 - lon1) * (Math.PI / 180);

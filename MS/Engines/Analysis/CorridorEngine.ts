@@ -15,7 +15,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
 import EngineLogger from '../../Support/EngineLogger';
 import { bindDisclosures } from '../../Support/Disclosure';
 import RoadNetworkEngine, { type TrafficabilitySummary } from './RoadNetworkEngine';
@@ -629,7 +629,7 @@ export class CorridorEngine {
       } else {
         const overlay = this._currentThreatOverlay();
         const radiusM = this._numInput('corr-threat-radius', overlay.radiusM, 100);
-        const threatGeom = this._firstPolygon(geometryEngine.geodesicBuffer(pt, radiusM, 'meters'));
+        const threatGeom = this._firstPolygon(geometryOps.geodesicBuffer(pt, radiusM, 'meters'));
         if (threatGeom) {
           const item: ThreatItem = {
             id: Date.now() + Math.floor(Math.random() * 1000),
@@ -903,7 +903,7 @@ export class CorridorEngine {
 
     let densified = route;
     try {
-      densified = (geometryEngine.geodesicDensify(route, 50, 'meters') as Polyline) ?? route;
+      densified = (geometryOps.geodesicDensify(route, 50, 'meters') as Polyline) ?? route;
     } catch {
       densified = route;
     }
@@ -913,21 +913,21 @@ export class CorridorEngine {
     let exclusionRing: Polygon | null = null;
 
     try {
-      corridor = this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM, 'meters'));
+      corridor = this._firstPolygon(geometryOps.geodesicBuffer(densified, corridorM, 'meters'));
       const standoff = standoffM > 0
-        ? this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM + standoffM, 'meters'))
+        ? this._firstPolygon(geometryOps.geodesicBuffer(densified, corridorM + standoffM, 'meters'))
         : null;
       const exclusion = exclusionM > 0
-        ? this._firstPolygon(geometryEngine.geodesicBuffer(densified, corridorM + standoffM + exclusionM, 'meters'))
+        ? this._firstPolygon(geometryOps.geodesicBuffer(densified, corridorM + standoffM + exclusionM, 'meters'))
         : null;
 
       standoffRing = standoff && corridor
-        ? this._polygonResult(geometryEngine.difference(standoff, corridor) as Polygon | Polygon[] | null) ?? standoff
+        ? this._polygonResult(geometryOps.difference(standoff, corridor) as Polygon | Polygon[] | null) ?? standoff
         : standoff;
       exclusionRing = exclusion && standoff
-        ? this._polygonResult(geometryEngine.difference(exclusion, standoff) as Polygon | Polygon[] | null) ?? exclusion
+        ? this._polygonResult(geometryOps.difference(exclusion, standoff) as Polygon | Polygon[] | null) ?? exclusion
         : exclusion && corridor
-          ? this._polygonResult(geometryEngine.difference(exclusion, corridor) as Polygon | Polygon[] | null) ?? exclusion
+          ? this._polygonResult(geometryOps.difference(exclusion, corridor) as Polygon | Polygon[] | null) ?? exclusion
           : exclusion;
     } catch {
       this._setStatus('error');
@@ -1030,7 +1030,7 @@ export class CorridorEngine {
           corridorM,
           this._threats.map((t) => t.geometry),
           segmentLenM,
-          { geometryEngine, Polyline, Point },
+          { geometryEngine: geometryOps as any, Polyline, Point },
         ) as Array<{ buffer: Polygon | null; score: number; distFromStartM: number }>;
       } catch {
         scored = [];
@@ -1099,7 +1099,7 @@ export class CorridorEngine {
     }
 
     if (showChoke && corridor) {
-      const chokepoints = detectChokepoints(this._waypoints, corridor, corridorM, { geometryEngine, Point }) as Array<{
+      const chokepoints = detectChokepoints(this._waypoints, corridor, corridorM, { geometryEngine: geometryOps as any, Point }) as Array<{
         point: Waypoint;
         index: number;
       }>;
@@ -1362,7 +1362,7 @@ export class CorridorEngine {
     for (let i = 0; i < this._waypoints.length - 1; i++) {
       const a = this._waypoints[i];
       const b = this._waypoints[i + 1];
-      total += (geometryEngine.geodesicLength(
+      total += (geometryOps.geodesicLength(
         new Polyline({
           paths: [[[a.longitude, a.latitude], [b.longitude, b.latitude]]],
           spatialReference: { wkid: 4326 },

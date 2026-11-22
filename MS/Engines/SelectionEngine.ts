@@ -9,7 +9,7 @@ import Point from "@arcgis/core/geometry/Point";
 import Polyline from "@arcgis/core/geometry/Polyline";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
-import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
+import * as geometryOps from "../Support/GeometryOps";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import { ContextMenuItem } from "../Managers/ContextMenuManager";
 import * as promiseUtils from "@arcgis/core/core/promiseUtils";
@@ -593,7 +593,7 @@ class SelectionEngine {
                     if (!layer) return;
                     (layer.graphics as any).forEach((g: Graphic) => {
                         if (!g.geometry) return;
-                        const inside = geometryEngine.intersects(poly, g.geometry);
+                        const inside = geometryOps.intersects(poly, g.geometry);
                         if (inside) hit.push(g);
                     });
                 });
@@ -787,10 +787,10 @@ class SelectionEngine {
     selectWithinRadius(center: Graphic, meters: number, mode: SelectMode = 'replace'): void {
         const pt = this._centerPointOf(center);
         if (!pt || !(meters > 0)) return;
-        const buffer = geometryEngine.geodesicBuffer(pt, meters, 'meters') as Polygon | Polygon[] | null;
+        const buffer = geometryOps.geodesicBuffer(pt, meters, 'meters') as Polygon | Polygon[] | null;
         const poly = Array.isArray(buffer) ? buffer[0] : buffer;
         if (!poly) return;
-        this._selectAllMatching(g => geometryEngine.intersects(poly, g.geometry as any), mode);
+        this._selectAllMatching(g => geometryOps.intersects(poly, g.geometry as any), mode);
     }
 
     // ── Discovery helpers (for menu `visible` guards + action-panel dropdowns) ─
@@ -897,7 +897,7 @@ class SelectionEngine {
                 if (!g.geometry) return;
                 if (!includeSelf && g === graphic) return;
 
-                const inside = geometryEngine.intersects(poly, g.geometry);
+                const inside = geometryOps.intersects(poly, g.geometry);
                     
                 if (inside) {
                     hit.push(g);

@@ -22,7 +22,7 @@ import TextSymbol from "@arcgis/core/symbols/TextSymbol";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import Color from "@arcgis/core/Color";
 import Font from "@arcgis/core/symbols/Font";
-import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
+import * as geometryOps from "../Support/GeometryOps";
 import GeoTools from "../Support/GeoTools.ts";
 import MapView from "@arcgis/core/views/MapView";
 import SceneView from "@arcgis/core/views/SceneView";
@@ -835,8 +835,8 @@ class MeasurementEngine {
         this._scratchLine.spatialReference = pt1.spatialReference;
         this._scratchLine.paths = [[[pt1.x, pt1.y], [pt2.x, pt2.y]]];
         let m = Math.abs(this._isGeodesic
-            ? geometryEngine.geodesicLength(this._scratchLine, "meters")
-            : geometryEngine.planarLength(this._scratchLine, "meters"));
+            ? geometryOps.geodesicLength(this._scratchLine, "meters")
+            : geometryOps.planarLength(this._scratchLine, "meters"));
 
         if (this._slantRange && (pt1.z !== undefined || pt2.z !== undefined)) {
             const z1 = pt1.z !== undefined ? pt1.z : 0;   // treat missing z as 0
@@ -854,8 +854,8 @@ class MeasurementEngine {
     private _polyMeters(pl: Polyline): number {
         if (!this._slantRange || !pl.hasZ) {
             return Math.abs(this._isGeodesic
-                ? geometryEngine.geodesicLength(pl, "meters")
-                : geometryEngine.planarLength(pl, "meters"));
+                ? geometryOps.geodesicLength(pl, "meters")
+                : geometryOps.planarLength(pl, "meters"));
         }
 
         // Slant range: sum per-segment slant length across every path.
@@ -886,8 +886,8 @@ class MeasurementEngine {
 
     private _area(poly: Polygon): string {
         const raw = Math.abs(this._isGeodesic
-            ? geometryEngine.geodesicArea(poly, this._areaUnit as any)
-            : geometryEngine.planarArea(poly, this._areaUnit as any));
+            ? geometryOps.geodesicArea(poly, this._areaUnit as any)
+            : geometryOps.planarArea(poly, this._areaUnit as any));
         const str = this._areaUnit === "square-meters" || this._areaUnit === "square-feet"
             ? raw.toFixed(0)
             : raw < 10 ? raw.toFixed(2) : raw.toFixed(1);

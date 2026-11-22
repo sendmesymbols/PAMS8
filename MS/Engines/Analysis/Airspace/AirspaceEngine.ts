@@ -4,7 +4,7 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polygon from '@arcgis/core/geometry/Polygon';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../../Support/GeometryOps';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 import EngineLogger from '../../../Support/EngineLogger';
@@ -425,7 +425,7 @@ export class AirspaceEngine {
         const bandOverlap = aF <= cC && cF <= aC;
         if (!bandOverlap) continue;
         let inter: any = null;
-        try { inter = geometryEngine.intersect(a.polygon, c.polygon); } catch { inter = null; }
+        try { inter = geometryOps.intersect(a.polygon, c.polygon); } catch { inter = null; }
         if (inter && !Array.isArray(inter)) {
           this._addConflictGraphic(inter, `${a.type} ${a.name} ∩ ${c.type} ${c.name}`);
           conflicts++;
@@ -438,7 +438,7 @@ export class AirspaceEngine {
     for (const vol of this._volumes) {
       for (const route of routes) {
         let inter: any = null;
-        try { inter = geometryEngine.intersect(vol.polygon, route.geometry); } catch { inter = null; }
+        try { inter = geometryOps.intersect(vol.polygon, route.geometry); } catch { inter = null; }
         if (!inter) continue;
         // If the route carries an altitude, require band overlap; else flag as potential.
         if (route.altitudeM != null) {

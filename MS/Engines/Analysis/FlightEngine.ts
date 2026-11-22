@@ -20,7 +20,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import Polygon from '@arcgis/core/geometry/Polygon';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../Support/GeometryOps';
 import EngineLogger from '../../Support/EngineLogger';
 import { bindDisclosures } from '../../Support/Disclosure';
 
@@ -611,8 +611,8 @@ export class FlightEngine {
     const radiusM = (values.speedKmh * 1000 * values.enduranceMin) / 60;
     const returnRadiusM = radiusM / 2;
     const start = makeSurfacePoint(this._waypoints[0]);
-    const maxRaw = geometryEngine.geodesicBuffer(start, radiusM, 'meters');
-    const returnRaw = geometryEngine.geodesicBuffer(start, returnRadiusM, 'meters');
+    const maxRaw = geometryOps.geodesicBuffer(start, radiusM, 'meters');
+    const returnRaw = geometryOps.geodesicBuffer(start, returnRadiusM, 'meters');
     const max = Array.isArray(maxRaw) ? maxRaw[0] : maxRaw;
     const ret = Array.isArray(returnRaw) ? returnRaw[0] : returnRaw;
 
@@ -651,7 +651,7 @@ export class FlightEngine {
       const t = (metrics.durationMin * i) / samples;
       const pos = this._positionAt(t, metrics);
       if (!pos) continue;
-      const raw = geometryEngine.geodesicBuffer(makeSurfacePoint(pos.point), values.sensorRangeM, 'meters');
+      const raw = geometryOps.geodesicBuffer(makeSurfacePoint(pos.point), values.sensorRangeM, 'meters');
       const geom = Array.isArray(raw) ? raw[0] : raw;
       if (!geom) continue;
       this._coverageLayer.add(new Graphic({
@@ -883,7 +883,7 @@ export class FlightEngine {
   }
 
   private _circle(point: FlightPoint, radiusM: number): Polygon | null {
-    const raw = geometryEngine.geodesicBuffer(makeSurfacePoint(point), radiusM, 'meters');
+    const raw = geometryOps.geodesicBuffer(makeSurfacePoint(point), radiusM, 'meters');
     return (Array.isArray(raw) ? raw[0] : raw) as Polygon | null;
   }
 

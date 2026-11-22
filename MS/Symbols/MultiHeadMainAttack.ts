@@ -6,7 +6,7 @@ import SceneView from "@arcgis/core/views/SceneView";
 import SimpleLineSymbol from "@arcgis/core/symbols/SimpleLineSymbol";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import * as geometryEngine from "@arcgis/core/geometry/geometryEngine";
+import * as geometryOps from "../Support/GeometryOps";
 import GraphicsLayerManager, { LAYER_NAMES } from "../Managers/GraphicsLayerManager";
 import DrawEssentials from "../Support/DrawEssentials";
 import Amplifier from "../Support/Amplifier";
@@ -300,7 +300,7 @@ export class MultiHeadMainAttack {
         if (polys.length === 0) return null;
         if (polys.length === 1) return polys[0];
         try {
-            return geometryEngine.union(polys) as Polygon;
+            return geometryOps.union(polys) as Polygon;
         } catch {
             return polys[polys.length - 1];
         }

@@ -8,7 +8,7 @@ import Graphic from '@arcgis/core/Graphic';
 import Point from '@arcgis/core/geometry/Point';
 import Extent from '@arcgis/core/geometry/Extent';
 import Polygon from '@arcgis/core/geometry/Polygon';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../../../Support/GeometryOps';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../../../Support/EngineLogger';
 import { bindDisclosures } from '../../../Support/Disclosure';
@@ -570,7 +570,7 @@ export class LandingZoneEngine {
       }));
     } else {
       const radius = this._num('lz-inp-radius', 600);
-      const circle = geometryEngine.geodesicBuffer(result.center, radius, 'meters') as any;
+      const circle = geometryOps.geodesicBuffer(result.center, radius, 'meters') as any;
       if (circle) {
         this._zoneLayer.add(new Graphic({
           geometry: circle,
@@ -590,7 +590,7 @@ export class LandingZoneEngine {
     const clearance = AIRCRAFT[acType]?.clearanceM ?? 50;
     result.touchdowns.forEach((t, i) => {
       const pt = new Point({ longitude: t.longitude, latitude: t.latitude, spatialReference: WGS84 });
-      const ring = geometryEngine.geodesicBuffer(pt, clearance / 2, 'meters') as any;
+      const ring = geometryOps.geodesicBuffer(pt, clearance / 2, 'meters') as any;
       if (ring) {
         this._markerLayer.add(new Graphic({
           geometry: ring,

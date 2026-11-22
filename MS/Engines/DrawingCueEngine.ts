@@ -23,7 +23,7 @@ import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol';
 import Font from '@arcgis/core/symbols/Font';
 import Color from '@arcgis/core/Color';
-import * as geometryEngine from '@arcgis/core/geometry/geometryEngine';
+import * as geometryOps from '../Support/GeometryOps';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import EngineLogger from '../Support/EngineLogger';
 import GeoTools from '../Support/GeoTools.ts';
@@ -314,8 +314,8 @@ class DrawingCueEngine {
       for (const info of this._candidateInfo) {
         try {
           const rawRing = this._isGeodesic
-            ? geometryEngine.geodesicBuffer(info.centroid, this._hlRingRadiusKm, 'kilometers')
-            : geometryEngine.buffer(info.centroid, this._hlRingRadiusKm, 'kilometers');
+            ? geometryOps.geodesicBuffer(info.centroid, this._hlRingRadiusKm, 'kilometers')
+            : geometryOps.buffer(info.centroid, this._hlRingRadiusKm, 'kilometers');
           const ringGeom = Array.isArray(rawRing) ? rawRing[0] : rawRing;
           if (!ringGeom) continue;
           const sym = new SimpleFillSymbol({
@@ -888,8 +888,8 @@ class DrawingCueEngine {
       const distKm = i * intervalKm;
       try {
         const rawRing = this._isGeodesic
-          ? geometryEngine.geodesicBuffer(center, distKm, 'kilometers')
-          : geometryEngine.buffer(center, distKm, 'kilometers');
+          ? geometryOps.geodesicBuffer(center, distKm, 'kilometers')
+          : geometryOps.buffer(center, distKm, 'kilometers');
         const ring = Array.isArray(rawRing) ? rawRing[0] : rawRing;
         if (!ring) continue;
 
@@ -1233,8 +1233,8 @@ class DrawingCueEngine {
       const pl = new Polyline({ spatialReference: a.spatialReference });
       pl.addPath([[a.x, a.y], [b.x, b.y]]);
       const raw = this._isGeodesic
-        ? geometryEngine.geodesicLength(pl, 'kilometers' as any)
-        : geometryEngine.planarLength(pl, 'kilometers' as any);
+        ? geometryOps.geodesicLength(pl, 'kilometers' as any)
+        : geometryOps.planarLength(pl, 'kilometers' as any);
       return Math.abs(raw);
     } catch {
       const mapDist = Math.hypot(b.x - a.x, b.y - a.y);
@@ -1275,8 +1275,8 @@ class DrawingCueEngine {
       const pl = new Polyline({ spatialReference: pt1.spatialReference });
       pl.addPath([[pt1.x, pt1.y], [pt2.x, pt2.y]]);
       const raw = this._isGeodesic
-        ? geometryEngine.geodesicLength(pl, 'kilometers' as any)
-        : geometryEngine.planarLength(pl, 'kilometers' as any);
+        ? geometryOps.geodesicLength(pl, 'kilometers' as any)
+        : geometryOps.planarLength(pl, 'kilometers' as any);
       const km = Math.abs(raw);
       return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(2)} km`;
     } catch { return '—'; }
