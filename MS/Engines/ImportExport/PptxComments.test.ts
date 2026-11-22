@@ -13,6 +13,8 @@ import {
   EIGHTH_POINTS_PER_INCH,
   REL_TYPE_COMMENT_AUTHORS,
   REL_TYPE_COMMENTS,
+  TYPED_SIDECAR_PART,
+  TYPED_SIDECAR_TARGET,
   type PptxCommentRecord,
 } from './PptxComments.ts';
 
@@ -171,6 +173,21 @@ check(
   commentAnchorEighths({ x: 0, y: 0, w: 1, h: 1 }, undefined, { x: 2, y: 3 }, 0),
   { x: 1152, y: 1728 },
 );
+
+// THE SIDECAR LINK: presentation.xml's relationship target resolves against
+// `ppt/`, so it must land on the part the injector writes. It used to read
+// `../customXml/…` (the package root, where nothing is written): PowerPoint
+// then refused any deck holding a typed comment (task, risk ...) as corrupted.
+const resolveFromPpt = (target: string): string => {
+  const out: string[] = [];
+  for (const part of `ppt/${target}`.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') out.pop();
+    else out.push(part);
+  }
+  return out.join('/');
+};
+check('typed sidecar: the relationship reaches the part written', resolveFromPpt(TYPED_SIDECAR_TARGET), TYPED_SIDECAR_PART);
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

@@ -191,6 +191,14 @@ export const PPTX_MIME =
 export const TYPED_COMMENTS_NS = 'https://ms-briefing.internal/typed-comments/v1';
 /** Content-type override for a customXml part — the PPTX-standard value. */
 export const CT_CUSTOM_XML = 'application/xml';
+/**
+ * Where the typed sidecar is written, and the relationship target that reaches it from presentation.xml (targets
+ * resolve against `ppt/`). They must agree: a relationship to a part that is not there makes PowerPoint refuse the
+ * whole deck as "corrupted", and our own importer then silently loses the typed fields. (The target used to be
+ * `../customXml/…`, which resolves to the package root, where nothing was written.)
+ */
+export const TYPED_SIDECAR_PART = 'ppt/customXml/msBriefingComments.xml';
+export const TYPED_SIDECAR_TARGET = 'customXml/msBriefingComments.xml';
 /** Relationship type for the presentation's link to the customXml part. */
 export const REL_TYPE_CUSTOM_XML =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml';
@@ -323,13 +331,9 @@ export async function injectPptxComments(
     // Land in ppt/customXml/msBriefingComments.xml so the name is obviously
     // ours; a fresh export from pptxgenjs never already has a file at that
     // path, so we can pick a fixed name without collision-checking.
-    const sidecarPart = 'ppt/customXml/msBriefingComments.xml';
+    const sidecarPart = TYPED_SIDECAR_PART;
     zip.file(sidecarPart, sidecarXml);
-    presRelsNext = addRelationship(
-      presRelsNext,
-      REL_TYPE_CUSTOM_XML,
-      '../customXml/msBriefingComments.xml',
-    );
+    presRelsNext = addRelationship(presRelsNext, REL_TYPE_CUSTOM_XML, TYPED_SIDECAR_TARGET);
     ctOverrides.push({ partName: `/${sidecarPart}`, contentType: CT_CUSTOM_XML });
   }
   zip.file(presRelsPath, presRelsNext);

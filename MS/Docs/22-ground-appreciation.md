@@ -169,6 +169,11 @@ or more paragraphs.
 - **Maps**: drawn again for the slides from the last reading in the Gr Scope's dark style (JPEG; the attack's Lt / Rt
   mirrored to own side, `deckSideOfReading`); after a reload or an opened file the slides take the document's trace.
   **Previews**: each slide's thumbnail is drawn from its own content with the Briefing's `composeOverlayThumbnail`.
+- **PowerPoint** (checked in PowerPoint itself, 22 Nov 2026, the Sialkot deck of 23 slides): native text boxes, tables and
+  pictures, Segoe UI, speaker notes, and the Confirm on Gr items as PowerPoint comments. Two exporter faults found and fixed
+  on the way: a typed comment (task, risk ...) linked its sidecar to a part that was not there, so PowerPoint refused the
+  whole deck as corrupted (`PptxComments.ts` `TYPED_SIDECAR_TARGET`); and the exporter drew the slide title again over a
+  slide that already shows it (`PptxExporter.ts` `titleShownBy`: such a title now goes just above the slide, for the outline).
 
 ## API
 

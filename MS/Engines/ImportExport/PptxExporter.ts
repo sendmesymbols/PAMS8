@@ -180,6 +180,20 @@ const PPTX_ARROW_TYPES: Record<ArrowHead, string> = {
 let pptxGenJSLoadPromise: Promise<any> | null = null;
 
 /**
+ * True when one of a slide's own text boxes already reads as its title (the same words, or the words a build-step
+ * suffix is added to): the slide was designed with its title on it, so the export must not draw a second one.
+ */
+export function titleShownBy(title: string, overlays: readonly SlideOverlay[] | undefined): boolean {
+  const t = title.trim();
+  if (!t) return false;
+  return (overlays ?? []).some((o) => {
+    if (o.kind !== 'text') return false;
+    const s = (o.text ?? '').trim();
+    return !!s && (s === t || t.startsWith(`${s} `));
+  });
+}
+
+/**
  * Injects the PptxGenJS `<script>` tag on first use and resolves
  * `window.PptxGenJS`. Exported: the bundle's first UMD segment also assigns
  * `window.JSZip`, which PptxImporter reuses to unzip .pptx files.
@@ -1265,12 +1279,21 @@ class PptxExporter {
         // exactly as they looked in the editor, overflow included.
         fit: 'shrink' as const,
       };
-      slide.addText(
-        meta.title,
-        this._masterName
-          ? { placeholder: 'title', ...titleStyle }
-          : { x: 0.3, y: 0.2, w: this._slideW - 0.6, h: 0.6, ...titleStyle },
-      );
+      // A slide that already shows its title as one of its own text boxes (a
+      // designed slide, such as the Aprc decks) must not get a second one drawn
+      // over it. The title still goes in: just above the slide, where it keeps
+      // the outline view, the navigation pane and the accessibility checker but
+      // is never seen; with a master its placeholder is left out instead.
+      if (titleShownBy(meta.title, meta.overlays)) {
+        if (!this._masterName) slide.addText(meta.title, { x: 0.3, y: -0.9, w: this._slideW - 0.6, h: 0.6, fontSize: 24, bold: true, color: this._chromeColor('text') });
+      } else {
+        slide.addText(
+          meta.title,
+          this._masterName
+            ? { placeholder: 'title', ...titleStyle }
+            : { x: 0.3, y: 0.2, w: this._slideW - 0.6, h: 0.6, ...titleStyle },
+        );
+      }
     }
     // Last, so the strip text sits over the master's rects and over any content
     // that happens to reach the slide's edges.
