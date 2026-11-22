@@ -478,6 +478,12 @@ export default class GroundGuide {
   private _noticedKey = '';
 
   private _activeSidc: string | null = null;
+  /**
+   * The symbol the host has armed (`prepareFor`), kept while the guide cannot judge it (bundle loading, mode off,
+   * disabled), so the draw is judged as that symbol once the guide is ready (`_resumeArmed`), not as `generic`.
+   * `undefined` = nothing armed; cleared when the draw ends or is cancelled (`deactivate`).
+   */
+  private _armedSidc: string | null | undefined = undefined;
   private _activeProfile: GroundGuideProfile | null = null;
   private _lastDetail: { geometry: any; sidc: string | null } | null = null;
   private _lastSnappable = false;
@@ -744,6 +750,7 @@ export default class GroundGuide {
       }
       this._prefetch();
       this._syncOverlay();
+      this._resumeArmed(); // a symbol armed while the bundle was loading is judged as itself from now on
       return true;
     } catch (err) {
       if (token !== this._configToken) return false;
@@ -1123,7 +1130,8 @@ export default class GroundGuide {
     if (next.cacheTiles !== prev.cacheTiles) this._cache?.setCapacity(next.cacheTiles);
     if (next.useWorker !== prev.useWorker) this._swapSource();
     this._syncOverlay(next.overlay.profile !== prev.overlay.profile || next.nearThresholdM !== prev.nearThresholdM);
-    if (next.mode === 'off') this.deactivate();
+    if (next.mode === 'off') this._pauseDraw();
+    else if (prev.mode === 'off') this._resumeArmed();
     if (!next.showBadge) this._badge.hide();
     if (!next.indicators.enabled) this._indicators.hide();
     if (!next.footprint.outline || !next.footprint.enabled) this._indicators.hideFootprint();
@@ -1215,6 +1223,7 @@ export default class GroundGuide {
       this._bindView();
       this._loadPopulation();
       this._syncPopulationLayer();
+      this._resumeArmed();
     } else if (this._opts.bundleUrl) void this.configure();
     else this._emitState('no-bundle');
   }
@@ -1228,7 +1237,7 @@ export default class GroundGuide {
     document.removeEventListener('ms-gg-ipb-pf', this._pfClickH);
     this._setExt(false, false, false, 'guide'); // leaving the Ground Guide closes the Extended View (user, 2026-11-12)
     this._syncThreat();
-    this.deactivate();
+    this._pauseDraw();
     this._detachKeys();
     if (this._briefOpen) {
       this._briefOpen = false;
@@ -1249,6 +1258,7 @@ export default class GroundGuide {
 
   /** A draw was armed for this SIDC: resolve its profile and warm the tiles. */
   prepareFor(sidc: string | null | undefined): void {
+    this._armedSidc = sidc ?? null;
     if (!this.isActive) {
       this._noticeUnavailable();
       return;
@@ -1278,6 +1288,22 @@ export default class GroundGuide {
       this._lastBadgeKey = '';
       this._apply(this._judgeLive(live.geometry, this._activeSidc));
     }
+  }
+
+  /**
+   * The guide has just become able to judge (bundle ready, enabled again, mode back on) while a symbol is still armed:
+   * arm it now, so the draw in progress is judged as that symbol (profile, echelon frontage, enforce), not as `generic`.
+   */
+  private _resumeArmed(): void {
+    if (this._armedSidc === undefined || this._activeSidc !== null || !this.isActive) return;
+    this.prepareFor(this._armedSidc);
+  }
+
+  /** `deactivate()` for a pause (disable, mode off): the armed symbol is kept for `_resumeArmed`. */
+  private _pauseDraw(): void {
+    const armed = this._armedSidc;
+    this.deactivate();
+    this._armedSidc = armed;
   }
 
   /** Hot path. Called for every onDrawProgress of the engine's own view. */
@@ -2434,7 +2460,10 @@ export default class GroundGuide {
    * The IPB corridors and avenues for a host at any point (works with F off too): the HQ's area facing the threat,
    * coded by the book, with its avenues, corridors, narrows and crossovers in Web Mercator. Waits for the tiles.
    */
-  async ipbApproachesAround(point: any, opts: { sidc?: string | null; hq?: 'bde' | 'div'; readFor?: 'defence' | 'attack'; threatDeg?: number; mover?: IpbMover; month?: number } = {}): Promise<IpbApchView | null> {
+  async ipbApproachesAround(
+    point: any,
+    opts: { sidc?: string | null; hq?: 'bde' | 'div'; readFor?: 'defence' | 'attack'; threatDeg?: number; mover?: IpbMover; month?: number; extras?: boolean } = {},
+  ): Promise<IpbApchView | null> {
     const ll = this._lngLatOf(point);
     if (!ll || !this._cache || !this._manifest) return null;
     const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
@@ -2444,7 +2473,29 @@ export default class GroundGuide {
       await this._tilesSettled(10000);
       r = this._apchCompute(at, opts.sidc ?? null, over);
     }
-    return r && r !== 'pending' ? r.view : null;
+    if (!r || r === 'pending') return null;
+    if (!opts.extras || !r.view.aas.length) return r.view;
+    // `extras` (the Aprc engine): the decision support (his time along each avenue at the book's rates), the Annex A
+    // weather and the situation template on a copy of the view, as the live reading adds them; fire and the proforma
+    // need the Posns on the map and stay with the live reading.
+    const view: IpbApchView = { ...r.view };
+    const a = { ...r, view };
+    try {
+      view.decision = this._ipbDecisionFor(a);
+    } catch (err) {
+      console.warn('[Ground Guide] ipb decision for a host', err);
+    }
+    try {
+      view.wx = this._ipbWxFor(view);
+    } catch (err) {
+      console.warn('[Ground Guide] ipb weather for a host', err);
+    }
+    try {
+      view.template = this._ipbTemplateFor(a);
+    } catch (err) {
+      console.warn('[Ground Guide] ipb template for a host', err);
+    }
+    return view;
   }
 
   /** How Create on Map makes symbols (SymbolEngine passes loadSymbolFromJSON, run with the removal as one undo step). */
@@ -4152,6 +4203,7 @@ export default class GroundGuide {
     this._lastBadgeKey = '';
     this._lastWarmKey = '';
     this._activeSidc = null;
+    this._armedSidc = undefined; // the draw ended or was cancelled (a pause keeps it: _pauseDraw)
     this._activeProfile = null;
     this._legend.setKeys(false, false);
     this._detail.setKeys(false, false);

@@ -14,7 +14,7 @@
  */
 
 import type { Slide, SlideComment, SlideOverlay } from '../Briefing/BriefingTypes';
-import { hash, lines, numberOf, shown, type AprcCopy, type AprcDoc, type AprcFigure, type AprcGroup, type AprcPara, type AprcPart } from './AprcModel';
+import { hash, lines, numberOf, shown, tableOf, type AprcCopy, type AprcDoc, type AprcFigure, type AprcGroup, type AprcPara, type AprcPart } from './AprcModel';
 
 export type AprcDeckKind = 'full' | 'decision' | 'sand';
 export const APRC_DECKS: Array<{ kind: AprcDeckKind; label: string; note: string }> = [
@@ -57,7 +57,8 @@ export function slideHash(s: Pick<Slide, 'title' | 'notes' | 'overlays'>): strin
 function hasWords(p: AprcPara, copy: AprcCopy): boolean {
   const s = shown(p, copy);
   if (s.text) return true;
-  if (p.table && p.table.rows.some((r) => r.slice(1).some((c) => c.trim()))) return true;
+  const tb = tableOf(p, copy);
+  if (tb && tb.rows.some((r) => r.slice(1).some((c) => c.trim()))) return true;
   return p.children.some((c) => hasWords(c, copy));
 }
 
@@ -195,8 +196,9 @@ export function buildDeck(doc: AprcDoc, o: DeckOptions): Slide[] {
       continue;
     }
 
-    if (p.table && p.table.rows.some((r) => r.slice(1).some((c) => c.trim()))) {
-      const t = p.table;
+    const tbl = tableOf(p, copy);
+    if (tbl && tbl.rows.some((r) => r.slice(1).some((c) => c.trim()))) {
+      const t = tbl;
       const chunk = 9;
       for (let i = 0; i < t.rows.length; i += chunk) {
         const part2 = t.rows.slice(i, i + chunk);

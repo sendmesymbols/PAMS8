@@ -11,7 +11,7 @@
  * proposals, and annexes: Confirm on Gr, the basis of each drafted paragraph, the data.
  */
 
-import { lines, numberOf, shown, type AprcCopy, type AprcDoc, type AprcFigure, type AprcPara, type AprcTable } from './AprcModel';
+import { lines, numberOf, shown, tableOf, type AprcCopy, type AprcDoc, type AprcFigure, type AprcPara, type AprcTable } from './AprcModel';
 
 export const esc = (s: unknown): string => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 
@@ -75,7 +75,8 @@ function paraHtml(p: AprcPara, depth: number, lab: string, copy: AprcCopy, figs:
   }
   let html = `<div class="ap-p d${Math.min(depth, 4)}${s.proposal ? ' ap-prop' : ''}" data-id="${esc(p.id)}"><span class="ap-n">${esc(lab)}</span><span class="ap-b">${head}${body}${extra}</span></div>`;
   const pad = `margin-left:${((Math.min(depth, 4) + 1) * 2.6).toFixed(1)}em`;
-  if (p.table) html += `<div style="${pad}">${tableHtml(p.table)}</div>`;
+  const tb = tableOf(p, copy);
+  if (tb) html += `<div style="${pad}">${tableHtml(tb)}</div>`;
   const fig = p.figure ? figs.get(p.figure) : null;
   if (fig) html += `<div style="${pad}">${figureHtml(fig.f, fig.n)}</div>`;
   return html;

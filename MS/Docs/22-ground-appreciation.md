@@ -13,9 +13,10 @@ Nothing is read until **Read** is pressed.
 
 | From | Through | Gives |
 | --- | --- | --- |
-| The ground | `GroundGuide.aorAround()` (the Gr Scope AOR reading, the rail need not be open), `sectionsAround`, `coverAround`, `extendedAround` at the MITG and at one point on each approach | Gr and Weather: Gen Description, Apchs (twelve heads each), ITGs, Obs, Cover, Met Conditions, Deductions |
+| The ground | `GroundGuide.aorAround()` (the Gr Scope AOR reading, the rail need not be open), `sectionsAround`, `coverAround`, `extendedAround` at the MITG and at one point on each approach | Gr and Weather: Gen Description, Apchs (twelve heads each), ITGs, Obs, Cover, Met Conditions, Deductions; the DP 1 tasks table and what it needs (Assessment of Tasks, Basic Deductions) |
+| The IPB reading | `GroundGuide.ipbApproachesAround(mitg, { readFor: 'defence', extras: true })`: the en's avenues onto the position with the decision support (his time along each at the book's rates, TAIs, DPs), the Annex A weather and the doctrinal template (F need not be on) | Options Aval to the En (Option 1 and 2 with places, times, template phase names, advs / disadvs; Most Dangerous when the two differ by 15 min or more), En Reactions and Own Ctr Actions (TAIs against DPs), the Annex A values in Met Conditions |
 | Symbols on the map | `SerializationEngine.planRecordsOf()` → `PlanCheck.readSymbols` | En Forces, En Composn and Disposn, Own Forces, Composn, Disposns, the relative strength table (counted by echelon), obstacle symbols in Obs |
-| A checked plan | the Intelligent Deployment tab's last Check my plan (`DeploymentBuilderEngine.planCheck`) | Own Disposns, Course A, advs / disadvs, en reactions against own moves, the general outline |
+| A checked plan | the Intelligent Deployment tab's last Check my plan (`DeploymentBuilderEngine.planCheck`) | Own Disposns, Course A, advs / disadvs, en reactions against own moves (replacing the IPB table), the general outline |
 
 The MITG is a VG symbol, else the selected symbol, else the map centre. The AOR is the Bdy symbols, a drawn box or the
 echelon frame, as the Gr Scope AOR setting says (`groundGuide.aor.source`).
@@ -38,6 +39,16 @@ button to turn the guide on.
 6. **The address block is titles and ruled lines** (copy no, unit, place, Tel Mil, G-, date), filled by hand. **The
    marking is a ruled line too**, at head and foot of every page, to fill or stamp by hand: the engine holds no marking
    text (user, 22 Nov 2026). The slides keep whatever banner the Briefing deck has.
+
+**Tables.** Click a paragraph with a table (relative strength, tasks, time required, reactions) and the right pane shows
+it as cells: type into any cell, add rows. What you type is yours (`cells`, `addRows`), kept on a new Read and printed in
+every copy; empty a cell, or type the tool's own value, to give it back. A proposed table prints in the fair copy only
+its first column and your cells until you accept it.
+
+**What is a proposal here.** The en options, the most dangerous option, the reactions table, the tasks table and what
+it needs are proposals (`judge`). The tasks table takes a Coy (3 Pls) to each BUA astride an approach on the FDLs and
+in depth, and a Pl each for the Str Pt and the screen: a working assumption to change, not a book figure, and it says so.
+Differences under 15 min or 5 % of GO between the avenues are not called better or worse (`WEIGH_MIN`, a method setting).
 
 ## Copies and exports
 
@@ -80,6 +91,7 @@ symbolEngine.toggleGroundAppreciation(true);
 await a.read();                                    // AprcDoc; read({ at: [lng, lat] }) sets the MITG
 a.setText('gr.itg.mitg.effs', 'If lost, …');       // the planner's words
 a.accept('gr.ded.pri'); a.acceptAll();
+a.setCell('own.tasks.dp1', 0, 3, '1 x pair');      // a typed table cell (null gives it back)
 a.toText('fair'); a.toHtml('draft'); await a.toDocx('fair');   // string, string, Blob
 a.toDeck('decision'); a.makeSlides('full');
 a.toJSON(); a.fromJSON(doc);
@@ -91,14 +103,14 @@ Events on `document`: `aprc-read`, `aprc-changed` (detail `{ doc }`).
 
 | File | Kind | Job |
 | --- | --- | --- |
-| `AprcModel.ts` | pure | The outline, numbering, states, whose words print in which copy, carry-over between readings |
-| `AprcWrite.ts` | pure | The words: `writeGround`, `writeSymbols`, `writePlan`; first / last light |
+| `AprcModel.ts` | pure | The outline, numbering, states, whose words print in which copy, typed table cells (`tableOf`, `setCell`, `addRow`), carry-over between readings |
+| `AprcWrite.ts` | pure | The words: `writeGround`, `writeSymbols`, `writeEnemy`, `writeTasks`, `writePlan`; first / last light |
 | `AprcHtml.ts` | pure | The page and the print document |
 | `AprcDocx.ts` | pure | The Word package |
 | `AprcDeck.ts` | pure | The slides and the refresh merge |
 | `GroundAppreciation.ts` | engine | Collects the readings, the sheet, exports |
 
-`node tools/aprc-test/run.mjs` runs 86 checks on the pure files.
+`node tools/aprc-test/run.mjs` runs 118 checks on the pure files.
 
 ## The attack
 
@@ -107,9 +119,9 @@ build)` adds its headings and a writer fills them, with no other change. It wait
 
 ## Not built yet (Appreciation_Plan.md s9, phases 4 to 6)
 
-- En options with phase timings from the IPB decision view; the IPB weather values in Met Conditions.
 - Relative strength ratios from the ORBAT (the table counts symbols by echelon and leaves the ratio).
-- Tps to tasks, time required, coy grouping and tasks from the plan.
-- Typing into tables in the sheet (fill them in Word).
+- Pls held from the ORBAT against the tasks (the allotment says what DP 1 needs and leaves the rest).
+- Time required (move in, mine laying from the engr tables), coy grouping and tasks from the plan.
+- His phases with clock times (the options give times from H; the template gives phase names only).
 - The appreciation saved inside the plan file (it is kept in the browser and as its own file).
 - More than four lines of def (the reading gives W to Z).

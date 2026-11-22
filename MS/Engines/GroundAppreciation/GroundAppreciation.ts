@@ -25,10 +25,10 @@ import type { AorReading, AorSide, AorXY } from '../GroundGuide/GroundGuideAor';
 import { dockBelowBar } from '../SiteScan/SitePanel';
 import { shortDate, sourceName } from '../SiteScan/SiteScan';
 import {
-  accept, acceptAll, applyPatches, aprcKinds, carryOver, counts, find, isStale, lines, newDoc, numberOf, setMine, shown, toText,
+  accept, acceptAll, addRow, applyPatches, aprcKinds, carryOver, counts, find, isStale, lines, newDoc, numberOf, setCell, setMine, shown, tableOf, toText,
   type AprcCopy, type AprcDoc, type AprcFigure, type AprcKind, type AprcPara,
 } from './AprcModel';
-import { lightTimes, writeGround, writePlan, writeSymbols, type AprcCheckIn, type AprcGroundIn, type AprcObsn, type AprcSymbolIn } from './AprcWrite';
+import { lightTimes, writeEnemy, writeGround, writePlan, writeSymbols, writeTasks, type AprcAvenueIn, type AprcCheckIn, type AprcEnemyIn, type AprcGroundIn, type AprcObsn, type AprcSymbolIn } from './AprcWrite';
 import { APRC_DOC_CSS, bodyHtml, esc, printHtml } from './AprcHtml';
 import { DOCX_MIME, docxFiles, type DocxImage } from './AprcDocx';
 import { APRC_DECKS, buildDeck, mergeDeck, type AprcDeckKind } from './AprcDeck';
@@ -134,6 +134,11 @@ const STYLE = `
 #${PANEL_ID} .rt .st{display:flex;align-items:center;margin-bottom:8px}
 #${PANEL_ID} .rt .stale{margin-top:8px;padding:6px 8px;border-radius:6px;background:rgba(229,72,77,.16);color:#ffc9cb}
 #${PANEL_ID} .rt .mut{color:var(--gg-label,#9aa4ae)}
+#${PANEL_ID} .rt .tbl{width:100%;border-collapse:collapse;margin-top:6px;table-layout:fixed}
+#${PANEL_ID} .rt .tbl th{font-size:11px;color:var(--gg-label,#9aa4ae);font-weight:650;text-align:left;padding:2px 3px}
+#${PANEL_ID} .rt .tbl td{padding:1px 2px}
+#${PANEL_ID} .rt .tbl input{width:100%;height:24px;font:12px/1.2 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;background:#11151a;border:1px solid #3d4650;border-radius:4px;padding:0 4px}
+#${PANEL_ID} .rt .tbl input.mine{border-color:#b79cf0}
 #${PANEL_ID} .foot{flex:none;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;padding:5px 10px;border-top:1px solid var(--gg-hair-soft,rgba(255,255,255,.1));font-size:12px;color:var(--gg-label,#9aa4ae)}
 #${PANEL_ID} .foot b{color:#f1f3f6;font-variant-numeric:tabular-nums}
 #${PANEL_ID} .foot .msg{margin-left:auto;color:#8ec1ea}
@@ -297,12 +302,22 @@ export default class GroundAppreciation {
       doc.confirm.push(...sym.confirm);
 
       if (aor) {
+        const ipb = await this._ipb(guide, aor.reading, graphic);
+        if (seq !== this._readSeq) return null;
         const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs);
         if (seq !== this._readSeq) return null;
+        if (ipb?.wx) gin.wx = { marginal: ipb.wx.rows.filter((x: any) => x.status === 'marg').map((x: any) => `${x.mission} (${x.element})`), unfavourable: ipb.wx.rows.filter((x: any) => x.status === 'unfav').map((x: any) => `${x.mission} (${x.element})`) };
         const w = writeGround(gin);
         applyPatches(doc, w.patches);
         doc.confirm.unshift(...w.confirm);
         doc.frame = w.frame ?? null;
+        applyPatches(doc, writeTasks(aor.reading).patches);
+        const en = ipb ? this._enemyIn(ipb, aor.reading, sym.enForce) : null;
+        if (en) {
+          const ew = writeEnemy(en);
+          applyPatches(doc, ew.patches);
+          doc.confirm.push(...ew.confirm);
+        } else notes.push('The en options were not read (no avenue from the threat side).');
         doc.sources = this._sources(guide);
         doc.figures = await this._figures(aor);
       } else if (this._opts.figures !== 'trace') {
@@ -373,6 +388,68 @@ export default class GroundAppreciation {
       console.warn('[Aprc] symbols', err);
       return [];
     }
+  }
+
+  /** The IPB reading of the en's avenues onto the position, with his times, the Annex A weather and the template. */
+  private async _ipb(guide: any, r: AorReading, graphic: any): Promise<any | null> {
+    if (!guide?.ipbApproachesAround) return null;
+    const ll = mercToLngLat(...this._toMerc(r, r.mitg.at));
+    const sidc: string | null = graphic?.attributes?.drawEssentials?.AMPLIFIER?.SIDC ?? null;
+    return withTimeout<any>(guide.ipbApproachesAround(ll, { sidc, readFor: 'defence', threatDeg: r.faceDeg, extras: true }), 60000);
+  }
+
+  private _enemyIn(v: any, r: AorReading, force: string | null): AprcEnemyIn | null {
+    const d = v?.decision;
+    if (!v?.aas?.length || !d) return null;
+    const ground = (p: [number, number]): AorXY => [(p[0] - r.centre[0]) / r.k, (p[1] - r.centre[1]) / r.k];
+    const avenues: AprcAvenueIn[] = v.aas.map((aa: any) => {
+      const pts: AorXY[] = (aa.line ?? []).map(ground);
+      const seen: Array<{ name: string; at: number }> = [];
+      for (const q of r.map.places) {
+        if (q.across) continue;
+        let best = Infinity, at = 0, acc = 0;
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const a = pts[i], b = pts[i + 1];
+          const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+          const t = Math.max(0, Math.min(1, ((q.at[0] - a[0]) * dx + (q.at[1] - a[1]) * dy) / (L * L)));
+          const dd = Math.hypot(a[0] + t * dx - q.at[0], a[1] + t * dy - q.at[1]);
+          if (dd < best) ((best = dd), (at = acc + t * L));
+          acc += L;
+        }
+        if (best <= 800) seen.push({ name: q.name, at });
+      }
+      const pr = d.profiles.find((x: any) => x.aa === aa.id);
+      return {
+        id: String(aa.id),
+        rank: Number(aa.rank) || 99,
+        viable: !!aa.viable,
+        main: !!aa.main,
+        lengthM: Number(aa.lengthM) || 0,
+        goPct: Number(aa.goPct) || 0,
+        minWidthM: Number(aa.minWidthM) || 0,
+        waterLines: Number(aa.waterLines) || 0,
+        through: seen.sort((a, b) => a.at - b.at).map((x) => x.name).filter((nm, i, all) => all.indexOf(nm) === i),
+        onto: aa.ontoLabel ?? null,
+        startH: pr ? pr.startH : [0, 0],
+        endH: pr ? pr.endH : [0, 0],
+      };
+    });
+    const named = !!r.mitg.name && r.mitg.name !== 'MITG';
+    const MOVER: Record<string, string> = { armour: 'armour', mech: 'mech inf', dismounted: 'dismounted inf' };
+    const t = v.template;
+    return {
+      force,
+      mover: MOVER[d.rates.mover] ?? d.rates.mover,
+      rates: { go: d.rates.go, slow: d.rates.slow },
+      fromThreat: !!d.fromThreat,
+      aaFor: String(v.aaFor ?? ''),
+      mcWidthM: Number(v.mcWidthM) || 0,
+      objective: named ? r.mitg.name : 'the MITG',
+      avenues,
+      tais: (d.tais ?? []).map((x: any) => ({ id: x.id, aa: x.aa, why: x.why, earliestH: x.earliestH, latestH: x.latestH })),
+      dps: (d.dps ?? []).map((x: any) => ({ id: x.id, kind: x.kind, aa: x.aa, tai: x.tai, decision: x.decision, earliestH: x.earliestH, beforeH: !!x.beforeH })),
+      template: t ? { label: t.label, src: t.src, confirmed: !!t.confirmed, phases: (t.phases?.rows ?? []).map((x: any) => ({ phase: x.phase, time: x.time })) } : null,
+    };
   }
 
   private async _groundIn(guide: any, aor: { reading: AorReading; frame: AorFrame }, graphic: any, drawnObs: string[]): Promise<AprcGroundIn> {
@@ -529,6 +606,17 @@ export default class GroundAppreciation {
     this._changed();
     return true;
   }
+  /** Type into a cell of a paragraph's table; empty text (or the tool's own value) gives the cell back to the tool. */
+  setCell(id: string, r: number, c: number, text: string | null): boolean {
+    const p = this._doc ? find(this._doc, id) : null;
+    if (!this._doc || !p?.table) return false;
+    const t = (text ?? '').trim();
+    const drafted = p.table.rows[r]?.[c] ?? '';
+    if (!setCell(this._doc, id, r, c, !t || t === drafted ? null : t)) return false;
+    this._changed();
+    return true;
+  }
+
   /** Take a proposal as it stands, or take the acceptance back. */
   accept(id: string, on = true): boolean {
     if (!this._doc || !accept(this._doc, id, on)) return false;
@@ -817,6 +905,10 @@ export default class GroundAppreciation {
       }
       if (a === 'give') return void (this._sel && this.setText(this._sel, null));
       if (a === 'acc') return void (this._sel && this.accept(this._sel, v !== 'off'));
+      if (a === 'addrow' || a === 'delrow') {
+        if (this._doc && this._sel && addRow(this._doc, this._sel, a === 'addrow' ? 1 : -1)) this._changed();
+        return;
+      }
       return;
     }
     const p = t.closest('.ap-p[data-id]') as HTMLElement | null;
@@ -825,6 +917,12 @@ export default class GroundAppreciation {
 
   private _changeEv(e: Event): void {
     const t = e.target as HTMLInputElement | HTMLSelectElement;
+    const cell = t.dataset?.cell;
+    if (cell && this._doc && this._sel) {
+      const [r, c] = cell.split(',').map(Number);
+      this.setCell(this._sel, r, c, t.value);
+      return;
+    }
     const k = t.dataset?.o;
     if (!k) return;
     if (k === 'deck') this.setOptions({ deck: t.value as AprcDeckKind });
@@ -911,9 +1009,18 @@ export default class GroundAppreciation {
     const mark = p.mine ? 'WRITTEN' : s.mark;
     const cur = p.mine?.text ?? (p.draft || '');
     let h = `<h4>${esc(numberOf(doc, p.id))} ${esc(p.head ?? '')}</h4><div class="st"><span class="dot ${DOT[mark]}"></span>${esc(STATE_WORD[mark])}${p.state === 'judge' && !p.mine ? (p.accepted ? ' · accepted' : ' · not accepted') : ''}</div>`;
-    h += `<textarea aria-label="The paragraph in your words" placeholder="${esc(p.prompts.length ? p.prompts.join(' · ') : 'Write this paragraph')}">${esc(cur)}</textarea><div class="row"><button class="pri" data-a="save">Save as mine</button>${p.mine ? '<button data-a="give" title="Drop your words and take the tool\'s draft again">Give back</button>' : ''}${p.state === 'judge' && !p.mine && p.draft ? (p.accepted ? '<button data-a="acc" data-v="off">Take back</button>' : '<button data-a="acc">Accept</button>') : ''}</div>`;
+    h += `<textarea aria-label="The paragraph in your words" placeholder="${esc(p.prompts.length ? p.prompts.join(' · ') : p.table && !p.draft ? 'Words before the table (optional)' : 'Write this paragraph')}">${esc(cur)}</textarea><div class="row"><button class="pri" data-a="save">Save as mine</button>${p.mine ? '<button data-a="give" title="Drop your words and take the tool\'s draft again">Give back</button>' : ''}${p.state === 'judge' && !p.mine && (p.draft || p.table) ? (p.accepted ? '<button data-a="acc" data-v="off">Take back</button>' : '<button data-a="acc">Accept</button>') : ''}</div>`;
     if (isStale(p)) h += `<div class="stale">The reading has changed since you wrote this. It now says: ${esc(p.draft ?? '')}</div>`;
-    if (p.table) h += `<p class="mut">The table is filled by the tool where it can; fill the rest in Word.</p>`;
+    const tb = tableOf(p, 'draft');
+    if (tb && p.table) {
+      const added = p.addRows ?? 0;
+      h += `<h5>THE TABLE</h5><p class="mut">Type into any cell: what you type is yours and is never overwritten. Empty a cell to take the tool's value back.</p>`;
+      h += `<table class="tbl"><colgroup>${tb.head.map((_, c) => `<col style="width:${(((tb.widths ?? [])[c] ?? 1 / tb.head.length) * 100).toFixed(0)}%">`).join('')}</colgroup><tr>${tb.head.map((x) => `<th>${esc(x)}</th>`).join('')}</tr>`;
+      tb.rows.forEach((row, r) => {
+        h += `<tr>${row.map((v, c) => `<td><input data-cell="${r},${c}" value="${esc(v)}" aria-label="${esc(tb.head[c])}, row ${r + 1}"${p.cells?.[`${r},${c}`] !== undefined ? ' class="mine"' : ''}></td>`).join('')}</tr>`;
+      });
+      h += `</table><div class="row"><button data-a="addrow">Add row</button>${added ? '<button data-a="delrow">Remove last added row</button>' : ''}</div>`;
+    }
     if (p.prompts.length) h += `<h5>TO CONSIDER</h5><ul>${p.prompts.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
     if (p.basis.length) h += `<h5>RESTS ON</h5><ul>${p.basis.map((b) => `<li><span class="mut">${esc(b.kind[0].toUpperCase() + b.kind.slice(1))}:</span> ${esc(b.text)}</li>`).join('')}</ul>`;
     const conf = doc.confirm.filter((x) => x.paras.some((id) => p.id === id || p.id.startsWith(`${id}.`)));

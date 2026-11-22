@@ -56,6 +56,10 @@ export interface AprcPara {
   /** Heads or facts to consider when the paragraph is the planner's. */
   prompts: string[];
   table?: AprcTable;
+  /** Cells the planner typed into the table ("row,col" → text, row 0 is the first row under the head): his, never overwritten. */
+  cells?: Record<string, string>;
+  /** Rows the planner added under the drafted ones. */
+  addRows?: number;
   /** Id of a figure printed under the paragraph. */
   figure?: string;
   children: AprcPara[];
@@ -307,14 +311,16 @@ export function applyPatches(doc: AprcDoc, patches: AprcPatch[]): number {
 /** Bring the planner's words and acceptances from an earlier document into a newly read one (by paragraph id). */
 export function carryOver(prev: AprcDoc | null, next: AprcDoc): AprcDoc {
   if (!prev) return next;
-  const keep = new Map<string, { mine?: AprcMine; accepted?: boolean; table?: AprcTable }>();
+  const keep = new Map<string, { mine?: AprcMine; accepted?: boolean; cells?: Record<string, string>; addRows?: number }>();
   walk(prev, (p) => {
-    if (p.mine || p.accepted) keep.set(p.id, { mine: p.mine, accepted: p.accepted });
+    if (p.mine || p.accepted || p.cells || p.addRows) keep.set(p.id, { mine: p.mine, accepted: p.accepted, cells: p.cells, addRows: p.addRows });
   });
   walk(next, (p) => {
     const k = keep.get(p.id);
     if (!k) return;
     if (k.mine) p.mine = k.mine;
+    if (p.table && k.cells) p.cells = k.cells;
+    if (p.table && k.addRows) p.addRows = k.addRows;
     // An acceptance holds only while the proposal is the one that was accepted.
     if (k.accepted && p.state === 'judge') p.accepted = true;
   });
@@ -343,12 +349,58 @@ export function accept(doc: AprcDoc, id: string, on = true): boolean {
 export function acceptAll(doc: AprcDoc): number {
   let n = 0;
   walk(doc, (p) => {
-    if (p.state === 'judge' && !p.accepted && !p.mine && p.draft) {
+    if (p.state === 'judge' && !p.accepted && !p.mine && (p.draft || p.table)) {
       p.accepted = true;
       n++;
     }
   });
   return n;
+}
+
+/**
+ * The table as it prints: the planner's cells over the drafted ones, his added rows below. In the fair copy a drafted
+ * table that is a proposal not yet accepted keeps only its head, its first column and his cells (the rest ruled).
+ */
+export function tableOf(p: AprcPara, copy: AprcCopy): AprcTable | null {
+  const t = p.table;
+  if (!t) return null;
+  const hide = copy === 'fair' && p.state === 'judge' && !p.accepted;
+  const n = t.rows.length + (p.addRows ?? 0);
+  const rows: string[][] = [];
+  for (let r = 0; r < n; r++) {
+    const base = t.rows[r] ?? t.head.map(() => '');
+    rows.push(t.head.map((_, c) => {
+      const mine = p.cells?.[`${r},${c}`];
+      if (mine !== undefined) return mine;
+      const d = base[c] ?? '';
+      return hide && c > 0 ? '' : d;
+    }));
+  }
+  return { head: t.head, rows, widths: t.widths };
+}
+
+/** The planner types into a cell (null gives it back to the tool). */
+export function setCell(doc: AprcDoc, id: string, r: number, c: number, text: string | null): boolean {
+  const p = find(doc, id);
+  if (!p?.table || c < 0 || c >= p.table.head.length || r < 0 || r >= p.table.rows.length + (p.addRows ?? 0)) return false;
+  const cells = { ...(p.cells ?? {}) };
+  if (text === null) delete cells[`${r},${c}`];
+  else cells[`${r},${c}`] = text.trim();
+  p.cells = Object.keys(cells).length ? cells : undefined;
+  return true;
+}
+
+/** Add an empty row under the table (or take the last added one away). */
+export function addRow(doc: AprcDoc, id: string, n = 1): boolean {
+  const p = find(doc, id);
+  if (!p?.table) return false;
+  const next = Math.max(0, (p.addRows ?? 0) + n);
+  if (n < 0 && p.cells) {
+    const last = p.table.rows.length + next;
+    for (const k of Object.keys(p.cells)) if (Number(k.split(',')[0]) >= last) delete p.cells[k];
+  }
+  p.addRows = next || undefined;
+  return true;
 }
 
 /** The draft under the planner's words has changed since he wrote them. */
@@ -448,7 +500,7 @@ export function counts(doc: AprcDoc): AprcCounts {
     if (p.draft === null) c.yours++;
     else if (p.state === 'yours') c.yours++;
     else c[p.state]++;
-    if (p.state === 'judge' && p.draft && !p.accepted) c.open++;
+    if (p.state === 'judge' && (p.draft || p.table) && !p.accepted && !p.mine) c.open++;
   });
   return c;
 }
@@ -471,9 +523,10 @@ export function toText(doc: AprcDoc, copy: AprcCopy = 'draft'): string {
       const mark = copy === 'draft' && (s.text !== '' || l.p.table) ? ` [${s.proposal ? 'PROPOSAL' : s.mark}${s.stale ? ', Gr changed since' : ''}]` : '';
       L.push(`${pad}${l.label} ${[head, body].filter(Boolean).join(' ')}${mark}`.trimEnd());
       if (copy === 'draft' && s.text === null && l.p.prompts.length) L.push(`${pad}   (${l.p.prompts.join('; ')})`);
-      if (l.p.table) {
-        L.push(`${pad}   ${l.p.table.head.join(' | ')}`);
-        for (const r of l.p.table.rows) L.push(`${pad}   ${r.map((c) => c || '____').join(' | ')}`);
+      const tb = tableOf(l.p, copy);
+      if (tb) {
+        L.push(`${pad}   ${tb.head.join(' | ')}`);
+        for (const r of tb.rows) L.push(`${pad}   ${r.map((c) => c || '____').join(' | ')}`);
       }
     }
   }

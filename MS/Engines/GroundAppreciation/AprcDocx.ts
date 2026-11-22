@@ -9,7 +9,7 @@
  * planner reads them when he edits), ruled tables, pictures inline. Fair and draft copies as in AprcHtml.
  */
 
-import { lines, numberOf, shown, type AprcCopy, type AprcDoc, type AprcTable } from './AprcModel';
+import { lines, numberOf, shown, tableOf, type AprcCopy, type AprcDoc, type AprcTable } from './AprcModel';
 
 export interface DocxImage {
   /** PNG bytes. */
@@ -111,7 +111,8 @@ export function docxFiles(doc: AprcDoc, copy: AprcCopy, images: Record<string, D
     }
     B.push(p(inner, { left, hanging: STEP, keep: !!l.p.table || !!l.p.figure }));
     if (copy === 'draft' && s.text === null && l.p.prompts.length) B.push(p(run(l.p.prompts.join(' · '), { i: true, size: 20, color: '6A5A2A' }), { left }));
-    if (l.p.table) B.push(table(l.p.table, left));
+    const tb = tableOf(l.p, copy);
+    if (tb) B.push(table(tb, left));
     if (l.p.figure) {
       used.add(l.p.figure);
       addFig(l.p.figure, left);

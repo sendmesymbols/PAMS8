@@ -25,6 +25,7 @@ const list = (a: string[], and = 'and'): string => (a.length <= 1 ? a.join('') :
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 const cap1 = (t: string): string => (t ? t[0].toUpperCase() + t.slice(1) : t);
 const data = (text: string): AprcBasis => ({ kind: 'data', text });
+const rule = (text: string): AprcBasis => ({ kind: 'rule', text });
 const input = (text: string): AprcBasis => ({ kind: 'input', text });
 const calc = (text: string): AprcBasis => ({ kind: 'calc', text });
 
@@ -260,6 +261,7 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
     if (wx) basis.push(data(`Climate: ${wx.source}${wx.dataDate ? ` (${wx.dataDate})` : ''}, the mean for the month, not a forecast`));
     if (v) basis.push(data('Visibility: the monthly station grid'));
     if (lt) basis.push(calc('First and last light: the sun 6 degrees below the horizon, worked out from date and place'));
+    if (g.wx && (g.wx.marginal.length || g.wx.unfavourable.length)) basis.push(rule('Weather critical values: IPB book Annex A pp 19-20'));
     patches.push({ id: 'gr.met', draft: s.length > 1 ? s.join(' ') : null, state: s.length > 1 ? 'gr' : 'yours', basis, prompts: s.length > 1 ? [] : ['Temperature, rain, visibility, first and last light, moon'] });
     confirm.push({ text: 'Met conditions are the mean of the month: take the forecast before H.', paras: ['gr.met'] });
   }
@@ -377,7 +379,7 @@ export function forceLine(units: AprcSymbolIn[]): string {
 const where = (units: AprcSymbolIn[], max = 6): string =>
   units.slice(0, max).map((u) => `${u.label || u.name}${u.ech && ECH[u.ech] ? ` (${ECH[u.ech]})` : ''}${u.where ? ` ${u.where}` : ''}`).join('; ') + (units.length > max ? `; and ${units.length - max} more` : '');
 
-export function writeSymbols(symbols: AprcSymbolIn[]): AprcWritten & { drawnObs: string[] } {
+export function writeSymbols(symbols: AprcSymbolIn[]): AprcWritten & { drawnObs: string[]; enForce: string | null } {
   const patches: AprcPatch[] = [];
   const en = symbols.filter((s) => s.side === 'enemy' && isUnit(s));
   const own = symbols.filter((s) => s.side === 'own' && isUnit(s));
@@ -400,7 +402,7 @@ export function writeSymbols(symbols: AprcSymbolIn[]): AprcWritten & { drawnObs:
     patches.push({ id: 'own.str', draft: '', state: 'map', table, basis: [mapIn, calc('Counted as marked, by echelon. The ratio is left to the planner: it needs each unit at its real strength')] });
   }
   const drawnObs = symbols.filter(isObstacle).map((s) => `${s.label || s.name}${s.where ? ` ${s.where}` : ''}`);
-  return { patches, confirm: en.length ? [] : [{ text: 'No en symbols on the map: his strength and start points are not known to the reading.', paras: ['rev.en', 'en.comp', 'own.str'] }], drawnObs };
+  return { patches, confirm: en.length ? [] : [{ text: 'No en symbols on the map: his strength and start points are not known to the reading.', paras: ['rev.en', 'en.comp', 'own.str'] }], drawnObs, enForce: en.length ? forceLine(en) : null };
 }
 
 // ── a checked plan ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -447,4 +449,170 @@ export function writePlan(c: AprcCheckIn): AprcWritten {
     });
   }
   return { patches, confirm: [...(c.confirm ?? []), ...(c.assumptions ?? []).map((a) => `Assumed: ${a}`)].map((text) => ({ text, paras: ['crs.a'] })) };
+}
+
+// ── the enemy's options (the IPB reading) ────────────────────────────────────────────────────────────────────────
+
+/** One avenue of the IPB reading toward the position, with the places it passes and its times from H. */
+export interface AprcAvenueIn {
+  id: string;
+  rank: number;
+  viable: boolean;
+  main: boolean;
+  lengthM: number;
+  goPct: number;
+  minWidthM: number;
+  waterLines: number;
+  /** Named places it passes, in order, nearest within 800 m. */
+  through: string[];
+  /** "Lt flanking", "frontal", "turning": how it comes onto the objective, when it does. */
+  onto: string | null;
+  /** Hours from H: reaching the avenue's start, and its end (earliest by day on GO, latest by night). */
+  startH: [number, number];
+  endH: [number, number];
+}
+
+export interface AprcEnemyIn {
+  /** The en force as marked ("2 x Infantry Bde, 1 x Armour Regt"), or null when none is marked. */
+  force: string | null;
+  mover: string;
+  rates: { go: [number, number]; slow: [number, number] };
+  fromThreat: boolean;
+  aaFor: string;
+  mcWidthM: number;
+  /** Where the avenues end: the objective in words ("Qila Mor", "the MITG"). */
+  objective: string;
+  avenues: AprcAvenueIn[];
+  tais: Array<{ id: string; aa: string; why: string; earliestH: number; latestH: number }>;
+  dps: Array<{ id: string; kind: 'interdict' | 'catk'; aa: string; tai: string | null; decision: string; earliestH: number; beforeH: boolean }>;
+  template: { label: string; src: string; confirmed: boolean; phases: Array<{ phase: string; time: string }> } | null;
+}
+
+export const hplus = (h: number): string => {
+  const m = Math.round(Math.abs(h) * 60);
+  return `H${h < 0 ? '-' : '+'}${Math.floor(m / 60)}${m % 60 ? `:${String(m % 60).padStart(2, '0')}` : ''}`;
+};
+const span = (t: [number, number]): string => (Math.abs(t[1] - t[0]) < 0.05 ? hplus(t[0]) : `${hplus(t[0])} to ${hplus(t[1])}`);
+
+/** Differences smaller than these are not a difference: the readings are not that exact (a method setting). */
+export const WEIGH_MIN = { hours: 0.25, goPct: 5 };
+
+/** Advs and disadvs of each avenue against the others (facts compared; the weighing stays the planner's). */
+function weigh(a: AprcAvenueIn, all: AprcAvenueIn[], mcWidthM: number): { adv: string[]; dis: string[] } {
+  const adv: string[] = [], dis: string[] = [];
+  const many = all.length > 1;
+  const min = (f: (x: AprcAvenueIn) => number) => Math.min(...all.map(f));
+  const max = (f: (x: AprcAvenueIn) => number) => Math.max(...all.map(f));
+  const tSpread = many && max((x) => x.endH[0]) - min((x) => x.endH[0]) >= WEIGH_MIN.hours;
+  const gSpread = many && max((x) => x.goPct) - min((x) => x.goPct) >= WEIGH_MIN.goPct;
+  if (tSpread && a.endH[0] === min((x) => x.endH[0])) adv.push(`earliest onto the objective (${hplus(a.endH[0])})`);
+  if (tSpread && a.endH[0] === max((x) => x.endH[0])) dis.push(`latest onto the objective (${hplus(a.endH[0])})`);
+  if (gSpread && a.goPct === max((x) => x.goPct)) adv.push(`best going (GO on ${pct(a.goPct)})`);
+  if (gSpread && a.goPct === min((x) => x.goPct)) dis.push(`worst going (GO on ${pct(a.goPct)})`);
+  if (a.minWidthM >= mcWidthM) adv.push(`room all along (no narrower than ${km(a.minWidthM)} km)`);
+  else dis.push(`narrows to ${km(a.minWidthM)} km, less than the ${km(mcWidthM)} km corridor`);
+  if (a.waterLines === 0) adv.push('no water line to cross');
+  else dis.push(`${plural(a.waterLines, 'water line')} to cross`);
+  if (a.onto === 'turning') adv.push('turns the position and reaches the MSR behind it');
+  return { adv, dis };
+}
+
+export function writeEnemy(e: AprcEnemyIn): AprcWritten {
+  const patches: AprcPatch[] = [];
+  const confirm: AprcConfirm[] = [];
+  const av = [...e.avenues].filter((a) => a.viable).sort((a, b) => a.rank - b.rank);
+  if (!av.length) return { patches, confirm };
+  const rateRule = rule(`Unopposed rates (IPB book p 18): ${e.mover} ${e.rates.go[0]} km/h by day, ${e.rates.go[1]} by night on GO; ${e.rates.slow[0]} / ${e.rates.slow[1]} on SLOW-GO`);
+  const how = calc(`His time along each avenue: each stretch at the rate for its going; earliest = by day, unassessed ground taken as GO; latest = by night, unassessed as SLOW-GO; from ${e.fromThreat ? 'the Threat marker' : 'the edge of the area read'} at H`);
+  const avIn = data(`The IPB reading: avenues for ${e.aaFor}, corridors ${km(e.mcWidthM)} km wide, coded GO / SLOW-GO / NO-GO by the book's criteria`);
+  const cmp = calc('The avenues compared on time, going, width and water lines');
+  const who = e.force ?? 'The en (strength not marked)';
+  const optText = (a: AprcAvenueIn): string =>
+    `${who} along ${a.id}${a.onto ? ` (${a.onto})` : ''}: ${km(a.lengthM)} km, GO on ${pct(a.goPct)}, narrowest ${km(a.minWidthM)} km${a.through.length ? `, through ${list(a.through.slice(0, 6))}` : ''}. ` +
+    `His lead element reaches the avenue at ${span(a.startH)} and ${e.objective} at ${span(a.endH)}.`;
+  const tpl = e.template;
+  // The template's phase names only: their timings are long and belong to the template, not the paragraph.
+  const phaseNames = tpl ? [...new Set(tpl.phases.map((p) => p.phase.trim()).filter(Boolean))].slice(0, 6) : [];
+  const tplLine = tpl && phaseNames.length ? ` Doctrinal template "${tpl.label}"${tpl.confirmed ? '' : ' (a reading still to confirm)'}: phases ${list(phaseNames)}.` : '';
+
+  const a1 = av[0];
+  const w1 = weigh(a1, av.slice(0, 2), e.mcWidthM);
+  patches.push({ id: 'en.opt1.what', draft: `${optText(a1)}${tplLine}`, state: 'judge', basis: [avIn, rateRule, how, ...(tpl ? [data(`Template: ${tpl.src}`)] : [])] });
+  if (w1.adv.length) patches.push({ id: 'en.opt1.adv', draft: `${cap1(w1.adv.join('; '))}.`, state: 'judge', basis: [cmp] });
+  if (w1.dis.length) patches.push({ id: 'en.opt1.dis', draft: `${cap1(w1.dis.join('; '))}.`, state: 'judge', basis: [cmp] });
+  // Options 1 and 2 are the two best-ranked avenues, compared with each other.
+  const opts = av.slice(0, 2);
+  if (av[1]) {
+    const w2 = weigh(av[1], opts, e.mcWidthM);
+    patches.push({ id: 'en.opt2', draft: `${optText(av[1])}${w2.adv.length ? ` Advs: ${w2.adv.join('; ')}.` : ''}${w2.dis.length ? ` Disadvs: ${w2.dis.join('; ')}.` : ''}`, state: 'judge', basis: [avIn, rateRule, how, cmp] });
+    const fastest = [...opts].sort((a, b) => a.endH[0] - b.endH[0])[0];
+    if (Math.abs(opts[0].endH[0] - opts[1].endH[0]) >= WEIGH_MIN.hours) patches.push({ id: 'en.danger', draft: `Along ${fastest.id}: he is onto ${e.objective} earliest, at ${hplus(fastest.endH[0])}.`, state: 'judge', basis: [how, calc('Most dangerous taken as the earliest onto the objective; a proposal')] });
+  }
+
+  // His reactions against own counter actions: the TAIs and the decisions before them.
+  const rows: string[][] = [];
+  for (const t of [...e.tais].sort((a, b) => a.earliestH - b.earliestH)) {
+    const dp = e.dps.find((d) => d.tai === t.id);
+    rows.push([
+      '',
+      `His lead element at ${t.id} on ${t.aa} (${t.why}): ${span([t.earliestH, t.latestH])}.`,
+      dp ? `${dp.id}: ${dp.decision.replace(/[.?]\s*$/, '')}${dp.beforeH ? ' (before H)' : ` by ${hplus(dp.earliestH)}`}.` : 'Engage him there with the fire planned on it.',
+    ]);
+  }
+  for (const d of e.dps.filter((x) => x.kind === 'catk')) rows.push(['', `He is onto the depth localities on ${d.aa}.`, `${d.id}: ${d.decision} by ${hplus(d.earliestH)}.`]);
+  rows.forEach((r, i) => (r[0] = `${String.fromCharCode(97 + (i % 26))}.`));
+  if (rows.length)
+    patches.push({
+      id: 'crs.react',
+      draft: '',
+      state: 'judge',
+      table: { head: ['Ser', 'En Reactions', 'Own Ctr Actions'], rows: rows.slice(0, 26), widths: [0.08, 0.46, 0.46] },
+      basis: [avIn, how, rule('A decision is taken while he is at least 2 hrs from the TAI (IPB book p 30)')],
+    });
+  confirm.push({ text: `His times are the book's unopposed rates on the ground read, ${e.fromThreat ? 'from the Threat marker' : 'from the edge of the area read (no Threat marker)'}: set H and check them against his doctrine.`, paras: ['en.opts', 'crs.react'] });
+  return { patches, confirm };
+}
+
+// ── tasks for DP 1 (the lines of def) ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The tasks DP 1 gives: a Coy (3 Pls) to each BUA astride an apch on the FDLs and in depth, a Pl for the Str Pt and one
+ * for the screen. A working assumption, laid out for the planner to change.
+ */
+export function writeTasks(r: AorReading): AprcWritten {
+  const patches: AprcPatch[] = [];
+  const fdl = r.lines.find((l) => l.role === 'FDLs');
+  const depth = r.lines.find((l) => l.role === 'Depth');
+  const screen = r.lines.find((l) => l.role === 'Screen');
+  if (!fdl) return { patches, confirm: [] };
+  const named = !!r.mitg.name && r.mitg.name !== 'MITG';
+  const rows: string[][] = [];
+  let pls = 0, n = 0;
+  const lab = () => `(${++n})`;
+  const locs = (l: AorDefLine, what: string): void => {
+    const b = [...new Set(l.buas.filter((x): x is string => !!x))];
+    if (!b.length) {
+      rows.push([lab(), `${what}: Line ${l.id}`, '3 x pl', '', '']);
+      pls += 3;
+      return;
+    }
+    const first = lab();
+    b.forEach((x, i) => {
+      rows.push([i === 0 ? first : '', `${what}: ${x}`, '3 x pl', '', '']);
+      pls += 3;
+    });
+  };
+  locs(fdl, 'FDLs');
+  if (depth) locs(depth, 'Depth');
+  rows.push([lab(), `Str Pt: ${named ? r.mitg.name : 'the MITG'}`, '1 x pl', '', '']);
+  pls++;
+  if (screen) {
+    rows.push([lab(), `Screen: ahead of Line ${fdl.id}`, '1 x pl', '', '']);
+    pls++;
+  }
+  rows.push([lab(), 'Total', `${pls} x pl`, '', '']);
+  const basis = [calc('A Coy (3 Pls) to each BUA astride an apch on the FDLs and in depth, a Pl each for the Str Pt and the screen: a working assumption to change, not a book figure'), data('BUAs astride the apchs on each line: the AOR reading')];
+  patches.push({ id: 'own.tasks.dp1', draft: '', state: 'judge', table: { head: ['Ser', 'Locs', 'Inf', 'A tk', 'Engrs'], rows, widths: [0.1, 0.44, 0.16, 0.15, 0.15] }, basis });
+  patches.push({ id: 'own.ded.basic', draft: `DP 1 needs ${pls} x pl. Set this against the pls held and say how the difference is met.`, state: 'judge', basis, prompts: ['Almt of tps to tasks'] });
+  return { patches, confirm: [] };
 }

@@ -369,6 +369,10 @@ Differences from the plan:
   split into `_aorPrepare` + render, behaviour unchanged.
 - The document is kept in the browser and as its own file, not yet inside the plan file.
 
+Added later the same day (user: "continue"): en options with timings from the IPB reading (`ipbApproachesAround` got
+`extras`), the reactions table from its TAIs and DPs, the Annex A weather in Met Conditions, a DP 1 tasks table and what
+it needs, typed table cells in the sheet. 118 checks.
+
 Still open from section 9: the Obsn head is read at one point per approach (not sampled along it); lines of def stay
-W to Z; force ratio numbers; the event matrix; "from incl … to incl …"; first / last light is built, the IPB weather
-values are not wired.
+W to Z; force ratio numbers; "from incl … to incl …". Built: first / last light, the IPB weather values, and the event
+matrix as the reactions table.

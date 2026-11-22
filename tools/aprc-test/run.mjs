@@ -264,5 +264,90 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   check('refresh: an edited slide survives a smaller deck', m2.slides.some((s) => s.id === edited.id) && m2.slides.length === sand.length + 1);
 }
 
+// ── typed table cells ────────────────────────────────────────────────────────────────────────────────────────────
+{
+  const d = M.newDoc('def');
+  M.applyPatches(d, [{ id: 'own.tasks.dp1', draft: '', state: 'judge', table: { head: ['Ser', 'Locs', 'Inf'], rows: [['(1)', 'FDLs: A', '3 x pl'], ['(2)', 'Total', '3 x pl']] } }]);
+  const p = M.find(d, 'own.tasks.dp1');
+  check('cells: a proposal table keeps only its first column in the fair copy', JSON.stringify(M.tableOf(p, 'fair').rows) === JSON.stringify([['(1)', '', ''], ['(2)', '', '']]));
+  check('cells: the draft copy shows the proposal', M.tableOf(p, 'draft').rows[0][2] === '3 x pl');
+  check('cells: typed cells win in both copies', M.setCell(d, 'own.tasks.dp1', 0, 2, ' 2 x pl ') && M.tableOf(p, 'fair').rows[0][2] === '2 x pl' && M.tableOf(p, 'draft').rows[0][2] === '2 x pl');
+  check('cells: out of range is refused', M.setCell(d, 'own.tasks.dp1', 5, 0, 'x') === false && M.setCell(d, 'own.tasks.dp1', 0, 9, 'x') === false);
+  check('cells: an added row takes typing', M.addRow(d, 'own.tasks.dp1') && M.setCell(d, 'own.tasks.dp1', 2, 1, 'Screen') && M.tableOf(p, 'fair').rows.length === 3 && M.tableOf(p, 'fair').rows[2][1] === 'Screen');
+  const next = M.newDoc('def');
+  M.applyPatches(next, [{ id: 'own.tasks.dp1', draft: '', state: 'judge', table: { head: ['Ser', 'Locs', 'Inf'], rows: [['(1)', 'FDLs: B', '3 x pl']] } }]);
+  M.carryOver(d, next);
+  const q = M.find(next, 'own.tasks.dp1');
+  check('cells: a new reading keeps typed cells and added rows', q.cells['0,2'] === '2 x pl' && q.addRows === 1 && M.tableOf(q, 'draft').rows[0][1] === 'FDLs: B');
+  M.addRow(d, 'own.tasks.dp1', -1);
+  check('cells: removing the added row drops its cells', !p.addRows && p.cells['2,1'] === undefined && p.cells['0,2'] === '2 x pl');
+  M.setCell(d, 'own.tasks.dp1', 0, 2, null);
+  check('cells: null gives a cell back to the tool', !p.cells);
+  M.accept(d, 'own.tasks.dp1');
+  check('cells: accepted, the table prints in the fair copy', M.tableOf(p, 'fair').rows[0][2] === '3 x pl');
+  check('cells: Word and the page print the typed table', (() => { M.setCell(d, 'own.tasks.dp1', 1, 1, 'Grand <total>'); return D.docxFiles(d, 'fair')['word/document.xml'].includes('Grand &lt;total&gt;') && H.bodyHtml(d, 'fair').includes('Grand &lt;total&gt;'); })());
+}
+
+// ── the en options from the IPB reading ──────────────────────────────────────────────────────────────────────────
+{
+  const e = {
+    force: '2 x Infantry Bde, 1 x Armour Regt', mover: 'armour', rates: { go: [24, 24], slow: [16, 8] }, fromThreat: true, aaFor: 'Bde: Bn avenues', mcWidthM: 1500, objective: 'Qila Mor',
+    avenues: [
+      { id: 'AA 1', rank: 1, viable: true, main: true, lengthM: 14200, goPct: 82, minWidthM: 1800, waterLines: 2, through: ['Burj', 'Kot Jaimal'], onto: 'Lt flanking', startH: [0.5, 0.6], endH: [1.4, 2.6] },
+      { id: 'AA 2', rank: 2, viable: true, main: false, lengthM: 12100, goPct: 70, minWidthM: 900, waterLines: 1, through: ['Nurpur'], onto: 'frontal', startH: [0.4, 0.5], endH: [1.1, 2.9] },
+      { id: 'MC 5', rank: 3, viable: false, main: false, lengthM: 9000, goPct: 60, minWidthM: 500, waterLines: 0, through: [], onto: null, startH: [0, 0], endH: [1, 1] },
+    ],
+    tais: [{ id: 'TAI 1', aa: 'AA 1', why: 'the crossing (9 m): denied, he needs bridging', earliestH: 0.9, latestH: 1.7 }],
+    dps: [{ id: 'DP 1', kind: 'interdict', aa: 'AA 1', tai: 'TAI 1', decision: 'interdict at TAI 1', earliestH: -1.1, beforeH: true }, { id: 'DP 2', kind: 'catk', aa: 'AA 2', tai: null, decision: 'launch the C attk', earliestH: 0.7, beforeH: false }],
+    template: { label: 'Inf Bde attack', src: 'KYE-2019 p 40', confirmed: false, phases: [{ phase: 'Ph 1', time: 'H to H+2' }] },
+  };
+  check('hplus', W.hplus(1.5) === 'H+1:30' && W.hplus(2) === 'H+2' && W.hplus(-1.1) === 'H-1:06');
+  const ew = W.writeEnemy(e);
+  const d = M.newDoc('def');
+  M.applyPatches(d, ew.patches);
+  const o1 = M.find(d, 'en.opt1.what').draft;
+  check('en: option 1 is the first avenue, with the force, places and times', /^2 x Infantry Bde, 1 x Armour Regt along AA 1 \(Lt flanking\): 14\.2 km, GO on 82 %, narrowest 1\.8 km, through Burj and Kot Jaimal\. His lead element reaches the avenue at H\+0:30 to H\+0:36 and Qila Mor at H\+1:24 to H\+2:36\./.test(o1), o1);
+  check('en: the template phase names follow, flagged unconfirmed', /Doctrinal template "Inf Bde attack" \(a reading still to confirm\): phases Ph 1\./.test(o1), o1);
+  check('en: options are proposals with the book rates as basis', M.find(d, 'en.opt1.what').state === 'judge' && M.find(d, 'en.opt1.what').basis.some((b) => b.kind === 'rule' && /IPB book p 18/.test(b.text)));
+  check('en: option 1 advs and disadvs compared', /room all along/.test(M.find(d, 'en.opt1.adv').draft) && /^Best going \(GO on 82 %\)/.test(M.find(d, 'en.opt1.adv').draft) && /^Latest onto the objective/.test(M.find(d, 'en.opt1.dis').draft) && /2 water lines to cross/.test(M.find(d, 'en.opt1.dis').draft));
+  {
+    const close = W.writeEnemy({ ...e, avenues: [{ ...e.avenues[0], goPct: 72, endH: [1.2, 2] }, { ...e.avenues[1], goPct: 70, endH: [1.1, 2] }] }).patches;
+    const dd = M.newDoc('def');
+    M.applyPatches(dd, close);
+    check('en: differences under 0.25 h or 5 % of GO are not called better or worse, nor most dangerous', !/earliest onto|latest onto|best going|worst going/.test(JSON.stringify(close)) && M.find(dd, 'en.danger').draft === null);
+  }
+  check('en: most dangerous is one of the two options', (() => { const p3 = W.writeEnemy({ ...e, avenues: [...e.avenues.slice(0, 2), { ...e.avenues[0], id: 'AA 3', rank: 3, endH: [0.5, 1] }] }).patches; return /Along AA 2/.test(p3.find((x) => x.id === 'en.danger').draft); })());
+  check('en: option 2 is the second avenue; a lone corridor is not an option', /along AA 2 \(frontal\)/.test(M.find(d, 'en.opt2').draft) && /narrows to 0\.9 km/.test(M.find(d, 'en.opt2').draft) && !/MC 5/.test(JSON.stringify(ew.patches)));
+  check('en: most dangerous = earliest onto the objective, a proposal', M.find(d, 'en.danger').draft === 'Along AA 2: he is onto Qila Mor earliest, at H+1:06.' && M.find(d, 'en.danger').state === 'judge');
+  check('en: most probable stays the planner\'s', M.find(d, 'en.probable').draft === null);
+  const rt = M.find(d, 'crs.react').table;
+  check('en: reactions table from the TAIs and DPs', rt.rows.length === 2 && /TAI 1 on AA 1 \(the crossing/.test(rt.rows[0][1]) && /DP 1: interdict at TAI 1 \(before H\)/.test(rt.rows[0][2]) && /DP 2: launch the C attk by H\+0:42/.test(rt.rows[1][2]) && rt.rows[1][0] === 'b.');
+  check('en: the 2 hr rule is cited', M.find(d, 'crs.react').basis.some((b) => /IPB book p 30/.test(b.text)));
+  check('en: no avenue, no option', W.writeEnemy({ ...e, avenues: [e.avenues[2]] }).patches.length === 0);
+  const one = W.writeEnemy({ ...e, avenues: [e.avenues[0]] });
+  check('en: one avenue gives option 1 only, no comparison words', one.patches.some((x) => x.id === 'en.opt1.what') && !one.patches.some((x) => x.id === 'en.opt2' || x.id === 'en.danger') && !/best going|earliest onto/.test(JSON.stringify(one.patches)));
+  const unmarked = W.writeEnemy({ ...e, force: null }).patches.find((x) => x.id === 'en.opt1.what').draft;
+  check('en: unmarked force is said so', unmarked.startsWith('The en (strength not marked) along AA 1'));
+  const plan = W.writePlan({ title: 'P', posns: [], rows: [], triggers: [{ trigger: 'x', who: 'D Coy', from: 'a', to: 'b', min: 10, enemyMin: 20, st: 'pass', reason: '' }] });
+  M.applyPatches(d, plan.patches);
+  check('en: a checked plan replaces the reactions table', M.find(d, 'crs.react').table.rows.length === 1 && /D Coy/.test(M.find(d, 'crs.react').table.rows[0][2]));
+  const gw2 = W.writeGround({ ...gin, wx: { marginal: ['Tr veh day (vis)'], unfavourable: ['CAS (ceiling)'] } });
+  const met = gw2.patches.find((x) => x.id === 'gr.met');
+  check('weather: Annex A values in Met Conditions with the book cited', /unfavourable for CAS \(ceiling\); marginal for Tr veh day \(vis\)/.test(met.draft) && met.basis.some((b) => /Annex A pp 19-20/.test(b.text)));
+}
+
+// ── tasks for DP 1 ───────────────────────────────────────────────────────────────────────────────────────────────
+{
+  const tw = W.writeTasks(reading);
+  const d = M.newDoc('def');
+  M.applyPatches(d, tw.patches);
+  const t = M.find(d, 'own.tasks.dp1').table;
+  check('tasks: a Coy per BUA on the FDLs and in depth', t.rows.filter((r) => /^FDLs: /.test(r[1])).map((r) => r[1]).join('|') === 'FDLs: Kot Jaimal|FDLs: Nurpur|FDLs: Dhok Rai' && t.rows.filter((r) => /^Depth: /.test(r[1])).length === 2, JSON.stringify(t.rows.map((r) => r[1])));
+  check('tasks: Str Pt and screen a Pl each, total 17 x pl', t.rows.some((r) => r[1] === 'Str Pt: Qila Mor' && r[2] === '1 x pl') && t.rows.some((r) => /^Screen/.test(r[1])) && t.rows[t.rows.length - 1][2] === '17 x pl');
+  check('tasks: serials only on the first locality of a line', t.rows[0][0] === '(1)' && t.rows[1][0] === '' && t.rows[3][0] === '(2)');
+  check('tasks: a proposal, and the allotment says what it needs', M.find(d, 'own.tasks.dp1').state === 'judge' && /DP 1 needs 17 x pl/.test(M.find(d, 'own.ded.basic').draft));
+  check('tasks: no FDLs line, no table', W.writeTasks({ ...reading, lines: [] }).patches.length === 0);
+}
+
 console.log(`\n${n - fails} of ${n} checks passed`);
 process.exit(fails ? 1 : 0);
