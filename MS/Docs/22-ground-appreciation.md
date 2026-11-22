@@ -149,6 +149,27 @@ Each slide carries `sourceRef` (`aprc:<paragraph id>`) and `sourceHash`. On a re
 appreciation's stay; an appreciation slide the user edited is kept; the rest are replaced (`mergeDeck`). The deck uses
 the copy chosen: the fair copy leaves proposals out.
 
+**Look** (user, 22 Nov 2026: style B "Ops room" of `ground-appreciation-slides-options.html`; `DECK_THEME`): dark
+slides (Segoe UI, the export keeps native text) with one frame on every slide: section and para at the head, the title,
+Draft (draft copy), the deck, "Para in full in the notes" and the slide number at the foot. The full brief opens with a
+cover (kind, place, mover, month, AOR, threat, when read, the trace) and puts a section slide before each group of two
+or more paragraphs.
+- **Points, not paragraphs**: the tool's draft a sentence a point (a long one of clauses split at its semicolons, a
+  few-word sentence joined to the next); the planner's own words split by sentence only, never shortened; at most what
+  fits at 3.1 % of the height, then "(cont)"; the paragraph in full in the speaker notes. Proposals follow the facts under
+  their own tag (draft copy), or the slide carries the tag when it is all proposal.
+- **Pictures**: Gen Description's going as a GO / SLOW-GO / NO-GO bar with its words; Apchs as the trace beside a table
+  that compares them (past the front, narrowest, first obstacle) and the width a formation needs; each apch with that
+  apch alone on the trace, its route on the title line, short facts and its significance (Definition, Depl Areas,
+  Dominating Features, Dir Keeping in the notes); ground Deductions as the apchs ranked and the lines of def as a depth
+  ladder with FDLs / Depth; Own Str as the table with paired en / own bars; Confirm on Gr as a checklist.
+- **Tables** dark with hairline rules, sized to their words; rows that say nothing past their first cell are left out; a
+  table under a paragraph (Assessment of Tasks: DP 1) gets a slide of its own; a heading two paragraphs share is told apart
+  by its group ("Deductions: Gr and Weather"); Confirm on Gr lists each item once.
+- **Maps**: drawn again for the slides from the last reading in the Gr Scope's dark style (JPEG; the attack's Lt / Rt
+  mirrored to own side, `deckSideOfReading`); after a reload or an opened file the slides take the document's trace.
+  **Previews**: each slide's thumbnail is drawn from its own content with the Briefing's `composeOverlayThumbnail`.
+
 ## API
 
 ```ts
@@ -171,23 +192,59 @@ Events on `document`: `aprc-read`, `aprc-changed` (detail `{ doc }`).
 
 | File | Kind | Job |
 | --- | --- | --- |
-| `AprcModel.ts` | pure | The outline, numbering, states, whose words print in which copy, typed table cells (`tableOf`, `setCell`, `addRow`), carry-over between readings |
-| `AprcWrite.ts` | pure | The words: `writeGround`, `writeSymbols`, `writeEnemy` (with his phases and clock times), `writeTasks`, `writeStrength`, `writeTimeReq`, `writePlan`, `writeCoyTasks`; first / last light, `parseHHour`, `clockAt`, `whenText` |
+| `AprcModel.ts` | pure | The outlines (defence; attack from Mechs of Aprc (Attk), `MA` cites its sheet), numbering, states, whose words print in which copy, typed table cells (`tableOf`, `setCell`, `addRow`), carry-over between readings |
+| `AprcWrite.ts` | pure | The words: `writeGround` (its attack branch from own side), `writeAttkDir`, `writeAttkPlan`, `writeSymbols`, `writeEnemy` (with his phases and clock times), `writeTasks`, `writeStrength`, `writeTimeReq`, `writePlan`, `writeCoyTasks`; first / last light, `parseHHour`, `clockAt`, `whenText` |
 | `AprcHtml.ts` | pure | The page and the print document |
 | `AprcDocx.ts` | pure | The Word package |
-| `AprcDeck.ts` | pure | The slides and the refresh merge |
+| `AprcDeck.ts` | pure | The slides (`DECK_IDS` by kind) and the refresh merge |
 | `GroundAppreciation.ts` | engine | Collects the readings, the sheet, exports |
 
-`node tools/aprc-test/run.mjs` runs 141 checks on the pure files.
+`node tools/aprc-test/run.mjs` runs 192 checks on the pure files (the attack's outline, numbering, copies, drafting, slides among them).
 
 ## The attack
 
-`AprcKind` is `def | attk`. Only the defence has an outline. The attack has its place: `registerOutline('attk', label,
-build)` adds its headings and a writer fills them, with no other change. It waits for a specimen.
+Built 22 Nov 2026 from **"Mechs of Aprc (Attk)"** (`Material/Literature/1. Books/MECHS OF APRC - ATTK.pdf`, a Coy Comd's
+attack appreciation, 21 scanned sheets; the sample IE `IE apprc.pdf` checked against it). The sheet's **Kind** select offers
+*Attack*; changing kind starts the document again (it asks first when something is written).
+
+**The outline** (`registerOutline('attk', 'Attack', outlineAttk)` in `AprcModel.ts`) keeps the book's paras 1 to 24 in its
+order and numbering: REVIEW OF THE SIT (1 En, 2 Own, 3 Air), AIM (4, with its three limitations), FACTORS with Gr and Weather
+(5 Gen Description, 6 Imp Tac Grs, 7 Apchs, 8 Obs, 9 Cover, 10 Met, 11 Deductions: Pri of Objs / ITG, Pri of Apchs / Dir of
+Attk, Pri of Comb of Apchs, Attk Possibilities AP-1 / AP-2, Common Deductions), then 12 En Sit, 13 Own Sit, 14 Almt of Tps to
+Task and 15 Time and Space as numbered paras of their own, COURSES (16 Course A, 17 En Reactions and Own Ctr Actions by
+stage, 18 Analysis, 19 Course B, 20 Course Adopted with Reasons) and PLAN (21 Msn, 22 Exec, 23 Adm and Log, 24 Comd and
+Sig). The book prints no page numbers: **"p N" is its N-th sheet**, and every ruled paragraph's prompts end with the cite
+(`Mechs of Aprc (Attk) p 5`). The FACTORS heading the book leaves out is the IE's. The book's "l. Effect if captured" and
+"m. Effs if Captured" are one head (m carries the six effects). Tables as the book draws them: Assessment of Tasks and Almt
+of Tps to Task (Ser, Task / Loc, Inf (Sec), Armr (Tp), Aslt Pnr, Arty, BS / W pn Sec; rows Phase 1, Phase 2, BOF, Misc) and
+the Backward Calc of Timings (its 18 events; the book's times are a specimen, so the times are the planner's). The book's
+specimen wording is only ever a prompt. For a Bn the Exec and Comd heads follow the echelon (`attkHeads`: A / B / C Coy, Mor
+Pl, Aslt Pnr Pl, Loc of Bn HQ).
+
+**What it reads for the attack.** The MITG is the objective (a VG symbol, the selected symbol, the map centre or `at`).
+
+| From | Through | Gives |
+| --- | --- | --- |
+| The ground, from own side | `GroundGuide.aorAround(obj, { from })` with the own start, else `{ away: true }` (read from the side away from the threat); the reading's sides are his, so they are mirrored to the attacker's Lt / Rt | 5, 8, 9, 10 as the defence; 7 Apchs onto the obj with the book's twelve heads in its order (Capacity by the book's 4 km for a Bde, p 2, and the IPB corridor widths below it, IPB book p 7; Depl Areas left to the planner); 6 Imp Tac Grs: the obj with the book's heads (Loc, Cover, Obsn toward own side, Domination from the ground; Effs if Captured a proposal) and his localities astride the apchs on the lines a defender of the MITG would hold; 4 Aim, 11a, 11c and Phases of Attk as proposals |
+| The IPB reading onto the obj | `GroundGuide.ipbApproachesAround(start, { readFor: 'attack', objective, extras: true })` from the own start (else a point 3 / 5 / 10 km back on own side for a Coy / Bn / Bde, said so) | 11b Pri of Apchs / Dir of Attk: turning and flanks before frontal (the user's rule; the book pp 3-4), Lt against Rt weighed head by head (length, going, water lines, NO-GO on the assault; only past each head's smallest real difference, `LT_RT_MIN`), the turning apch onto the choke on his MSR (OoW Vol II s6; IBB S35 p 140); AP-1 from the flank the weighing favours with its FUP (IBB p 201) and the blocking posn at the choke; AP-2; the Best Dir of Attk on the MITG; the Annex A weather in Met |
+| Symbols on the map | `writeSymbols` | 1 En, 2 Own, his disposns under Option 1, the strength counted |
+| The ORBAT | as the defence, with the ratio **own to en** against the 3 : 1 an attacker wants (MW p 80); the en, when none is marked, one level down in def, inf (as Check my plan takes him) | 13b Own Str, 13a Composn and Disposn (with the disposns marked) |
+| A checked attack | the Intelligent Deployment tab's Check my plan on an attack (`task: 'attack'`): each axis with its obj, FUP, SL and BOF, the phase, the recipe (Lt / Rt flank, frontal) | 16 Course A and 22a Gen Outline, AP-1 phases, FUP and BOF as drawn, Loc of Base of Fire, 22h(2) Loc, the tasks tables by phase (figures blank), 18 Advs / Disadvs from the check rows; its FUP is the own start the readings take |
+
+A defence check is not read into an attack, nor an attack check into a defence. Nothing of the en's options, his caps,
+the reactions, the timings or the plan's tasks is guessed: they stay ruled with the book's heads.
+
+**Slides.** The decision and sand decks take their paragraphs by kind (`DECK_IDS`); the attack's decision deck reaches into
+En Sit and Own Sit (Options Aval to En, Deductions, Own Str, Assessment of Tasks, Time Calc). A table that is only the book's
+skeleton (its row names, nothing drafted or typed) makes no slide.
+
+**Host API.** `read({ at, from })`: `at` the objective, `from` the own start ([lng, lat]).
 
 ## Not built yet
 
-- The attack's outline (waits for its specimen).
+- The attack: the en's option against AP-1 (his sec disposns, killing areas, C attk objs) is not read from the ground; the
+  Backward Calc of Timings is not filled (the H-hour sum of a built attack is not in Check my plan's report); the
+  reactions by stage are the planner's.
 - More than four lines of def (the reading gives W to Z).
 - The move in by road: the straight line is a floor; the Move Planner's road engine is not called.
 - Live-map slides (all slides are screen-only).

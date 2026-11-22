@@ -25,16 +25,16 @@ import type { AorReading, AorSide, AorXY } from '../GroundGuide/GroundGuideAor';
 import { dockBelowBar } from '../SiteScan/SitePanel';
 import { shortDate, sourceName } from '../SiteScan/SiteScan';
 import {
-  accept, acceptAll, addRow, applyPatches, aprcKinds, carryOver, counts, find, isStale, lines, newDoc, numberOf, setCell, setMine, shown, tableOf, toText, walk,
+  accept, acceptAll, addRow, applyPatches, aprcKinds, attkHeads, carryOver, counts, find, isStale, lines, newDoc, numberOf, setCell, setMine, shown, tableOf, toText, walk,
   type AprcCopy, type AprcDoc, type AprcFigure, type AprcKind, type AprcPara,
 } from './AprcModel';
 import {
-  lightTimes, parseHHour, writeCoyTasks, writeEnemy, writeGround, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeReq,
-  type AprcAvenueIn, type AprcCheckIn, type AprcCoyIn, type AprcEnemyIn, type AprcForceUnit, type AprcGroundIn, type AprcObsn, type AprcStrengthIn, type AprcSymbolIn, type AprcTimeIn,
+  lightTimes, parseHHour, writeAttkDir, writeAttkPlan, writeCoyTasks, writeEnemy, writeGround, writePlan, writeStrength, writeSymbols, writeTasks, writeTimeReq,
+  type AprcAttkIn, type AprcAttkPlanIn, type AprcAvenueIn, type AprcCheckIn, type AprcCoyIn, type AprcEnemyIn, type AprcForceUnit, type AprcGroundIn, type AprcObsn, type AprcStrengthIn, type AprcSymbolIn, type AprcTimeIn,
 } from './AprcWrite';
 import { APRC_DOC_CSS, bodyHtml, esc, printHtml } from './AprcHtml';
 import { DOCX_MIME, docxFiles, type DocxImage } from './AprcDocx';
-import { APRC_DECKS, buildDeck, mergeDeck, type AprcDeckKind } from './AprcDeck';
+import { APRC_DECKS, DECK_THEME, buildDeck, deckSideOfReading, mergeDeck, type AprcDeckKind, type DeckMap, type DeckOptions } from './AprcDeck';
 
 const ENGINE = 'Aprc';
 const PANEL_ID = 'ms-aprc-panel';
@@ -95,6 +95,7 @@ export interface GroundAppreciationHost {
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const compass = (dx: number, dy: number): string => COMPASS[Math.round((((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360) / 45) % 8];
 const mercToLngLat = (x: number, y: number): [number, number] => [(x / R) * (180 / Math.PI), (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * (180 / Math.PI)];
+const lngLatToMerc = (lng: number, lat: number): [number, number] => [(lng * Math.PI * R) / 180, R * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360))];
 const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> => Promise.race([p.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), ms))]);
 
 // ── the sheet's look ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -516,6 +517,9 @@ export default class GroundAppreciation {
   private _lastEnemy: AprcEnemyIn | null = null;
   /** The symbols on the map as PlanCheck read them at the last Read. */
   private _drawn: any[] = [];
+  /** The last ground reading (its AOR trace is drawn again, dark, for the slides). */
+  private _aor: { reading: AorReading; frame: AorFrame } | null = null;
+  private _slideMaps: DeckOptions['maps'] | null = null;
 
   constructor(getView: () => any, host: GroundAppreciationHost = {}) {
     this._getView = getView;
@@ -672,7 +676,7 @@ export default class GroundAppreciation {
    * or null when the engine is off or another Read overtook this one. `at` ([lng, lat]) sets the MITG for a host; without
    * it the MITG is a VG symbol, else the selected symbol, else the map centre.
    */
-  async read(o: { at?: [number, number] | null } = {}): Promise<AprcDoc | null> {
+  async read(o: { at?: [number, number] | null; from?: [number, number] | null } = {}): Promise<AprcDoc | null> {
     if (!this._enabled) return null;
     // words typed in the paragraph box are the planner's before the new reading comes in
     this._commitDirty();
@@ -683,17 +687,20 @@ export default class GroundAppreciation {
     this._render();
     const prev = this._doc;
     const doc = newDoc(this._opts.kind);
+    const attk = doc.kind === 'attk';
     const notes: string[] = [];
     try {
-      // 1. the ground, through the Ground Guide
+      // 1. the ground, through the Ground Guide (the attack: round the obj, from own side)
       const guide = this._host.guide?.() ?? null;
       const graphic = this._host.selected?.()[0] ?? null;
+      const start = attk ? this._attkStart(o.from ?? null) : null;
       let aor: { reading: AorReading; frame: AorFrame } | null = null;
       if (!guide?.isEnabled) notes.push('Ground Guide is off: the Gr paragraphs are not read.');
       else {
         for (let i = 0; i < 12 && guide.status?.state === 'loading'; i++) await new Promise((r) => setTimeout(r, 500));
         const so = this._opts;
-        aor = await withTimeout<{ reading: AorReading; frame: AorFrame } | null>(guide.aorAround(Array.isArray(o.at) ? o.at : null, { graphic, echelon: so.echelon === 'auto' ? undefined : so.echelon, profile: so.mover === 'auto' ? undefined : so.mover }), 60000);
+        const side = attk ? (start ? { from: start.ll } : { away: true }) : {};
+        aor = await withTimeout<{ reading: AorReading; frame: AorFrame } | null>(guide.aorAround(Array.isArray(o.at) ? o.at : null, { graphic, echelon: so.echelon === 'auto' ? undefined : so.echelon, profile: so.mover === 'auto' ? undefined : so.mover, ...side }), 60000);
         if (!aor) notes.push(guide.status?.state === 'ready' ? 'The ground could not be read here: outside the terrain data, or it did not load in time.' : 'No terrain data: the Gr paragraphs are not read.');
       }
       if (seq !== this._readSeq) return null;
@@ -704,7 +711,41 @@ export default class GroundAppreciation {
       applyPatches(doc, sym.patches);
       doc.confirm.push(...sym.confirm);
 
-      if (aor) {
+      if (aor && attk) {
+        const r = aor.reading;
+        const ech = aor.frame.echelon;
+        const ipb = await this._ipbAttk(guide, r, start, ech);
+        if (seq !== this._readSeq) return null;
+        const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs);
+        if (seq !== this._readSeq) return null;
+        gin.attack = true;
+        gin.threatMarked = !!start;
+        gin.startWords = start ? `${start.label ? `${start.label} ` : ''}${this._where(r, this._ground(r, start.merc))}` : null;
+        if (ipb?.view?.wx) gin.wx = { marginal: ipb.view.wx.rows.filter((x: any) => x.status === 'marg').map((x: any) => `${x.mission} (${x.element})`), unfavourable: ipb.view.wx.rows.filter((x: any) => x.status === 'unfav').map((x: any) => `${x.mission} (${x.element})`) };
+        const w = writeGround(gin);
+        applyPatches(doc, w.patches);
+        doc.confirm.unshift(...w.confirm);
+        doc.frame = w.frame ?? null;
+        if (ipb?.in) {
+          const dw = writeAttkDir(ipb.in);
+          applyPatches(doc, dw.patches);
+          doc.confirm.push(...dw.confirm);
+        } else notes.push('The dir of attk was not read (no apch onto the obj from own side).');
+        this._lastEnemy = null;
+        const orbat = await this._loadOrbat();
+        if (seq !== this._readSeq) return null;
+        if (orbat) {
+          const si = await this._strengthIn(orbat, r, ech, null, true);
+          if (si) {
+            const sw = writeStrength(si, { attack: true, disposns: sym.ownWhere });
+            applyPatches(doc, sw.patches);
+            doc.confirm.push(...sw.confirm);
+          }
+        } else notes.push(`No ORBAT at ${this._orbatBase || 'the ORBAT url'}: relative strength is counted from the symbols only.`);
+        applyPatches(doc, attkHeads(ech));
+        doc.sources = this._sources(guide);
+        doc.figures = await this._figures(aor);
+      } else if (aor) {
         const ipb = await this._ipb(guide, aor.reading, graphic);
         if (seq !== this._readSeq) return null;
         const gin = await this._groundIn(guide, aor, graphic, sym.drawnObs);
@@ -743,16 +784,32 @@ export default class GroundAppreciation {
         const shot = await this._mapShot();
         if (shot) doc.figures = [shot];
       }
+      // the reading kept for the slides' own (dark) maps, drawn when slides are made
+      this._aor = aor;
+      this._slideMaps = null;
 
-      // 3. a checked plan
-      const chk = this._checkIn();
-      if (chk) {
-        const pw = writePlan(chk);
-        applyPatches(doc, pw.patches);
-        doc.confirm.push(...pw.confirm);
-        if (aor) applyPatches(doc, writeCoyTasks(this._coysIn(this._host.planCheck?.(), aor.reading)).patches);
+      // 3. a checked plan: a defence for the defence, an attack for the attack
+      const rep: any = this._host.planCheck?.() ?? null;
+      if (attk) {
+        const ac = rep?.task === 'attack' ? this._attkCheckIn(rep, aor?.reading ?? null) : null;
+        if (ac) {
+          const pw = writeAttkPlan(ac);
+          applyPatches(doc, pw.patches);
+          doc.confirm.push(...pw.confirm);
+        }
+      } else {
+        const chk = rep?.task === 'attack' ? null : this._checkIn();
+        if (chk) {
+          const pw = writePlan(chk);
+          applyPatches(doc, pw.patches);
+          doc.confirm.push(...pw.confirm);
+          if (aor) applyPatches(doc, writeCoyTasks(this._coysIn(this._host.planCheck?.(), aor.reading)).patches);
+        }
       }
+      if (attk && !aor) applyPatches(doc, attkHeads(this._opts.echelon === 'bn' ? 'Bn' : this._opts.echelon === 'bde' ? 'Bde' : 'Coy'));
       if (seq !== this._readSeq) return null;
+      // the same item from two readings is listed once
+      doc.confirm = doc.confirm.filter((c, i, all) => all.findIndex((x) => x.text === c.text) === i);
       this._doc = carryOver(prev, doc);
       this._docVer++;
       this._note = notes.join(' ');
@@ -932,6 +989,115 @@ export default class GroundAppreciation {
     };
   }
 
+  // ── the attack ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  private _ground(r: AorReading, merc: [number, number]): AorXY {
+    return [(merc[0] - r.centre[0]) / r.k, (merc[1] - r.centre[1]) / r.k];
+  }
+
+  /**
+   * Where own tps start an attack: a host's `from`, else the checked attack plan's FUP of its first phase (else the
+   * tail of its axis). Null: none on the map, and the reading takes own side opposite the threat.
+   */
+  private _attkStart(from: [number, number] | null): { ll: [number, number]; merc: [number, number]; label: string } | null {
+    if (Array.isArray(from) && from.length === 2 && from.every((v) => Number.isFinite(v))) return { ll: [from[0], from[1]], merc: lngLatToMerc(from[0], from[1]), label: '' };
+    const c: any = this._host.planCheck?.() ?? null;
+    if (c?.task !== 'attack' || !c.groups?.length) return null;
+    const g = c.groups.find((x: any) => (x.phase ?? 1) === 1) ?? c.groups[0];
+    const cen = (pts: any[]): [number, number] => [pts.reduce((a, p) => a + p.x, 0) / pts.length, pts.reduce((a, p) => a + p.y, 0) / pts.length];
+    if (g.fup?.pts?.length) {
+      const m = cen(g.fup.pts);
+      return { ll: mercToLngLat(...m), merc: m, label: g.fup.label ? `FUP ${g.fup.label}` : 'FUP' };
+    }
+    const ax: any[] = g.axis?.pts ?? [];
+    if (!ax.length) return null;
+    const o = g.obj?.pts?.length ? cen(g.obj.pts) : null;
+    const a = ax[0], b = ax[ax.length - 1];
+    const tail = o && Math.hypot(a.x - o[0], a.y - o[1]) < Math.hypot(b.x - o[0], b.y - o[1]) ? b : a;
+    return { ll: mercToLngLat(tail.x, tail.y), merc: [tail.x, tail.y], label: `the start of ${g.label || 'the axis'}` };
+  }
+
+  /**
+   * The IPB reading for the attack: from own start (else a point taken back from the obj on own side) onto the MITG,
+   * with the flanking, frontal and turning apchs, their FUPs and the choke on his MSR; null when the guide cannot.
+   */
+  private async _ipbAttk(guide: any, r: AorReading, start: { ll: [number, number]; merc: [number, number] } | null, ech: string): Promise<{ in: AprcAttkIn | null; view: any } | null> {
+    if (!guide?.ipbApproachesAround) return null;
+    const named = !!r.mitg.name && r.mitg.name !== 'MITG';
+    const obj = mercToLngLat(...this._toMerc(r, r.mitg.at));
+    // no start on the map: taken back from the obj on own side, by echelon (a method setting, said so)
+    const backM = ({ Coy: 3000, Bn: 5000, Bde: 10000 } as Record<string, number>)[ech] ?? 5000;
+    const th = (r.faceDeg * Math.PI) / 180;
+    const S = start?.ll ?? mercToLngLat(...this._toMerc(r, [r.mitg.at[0] + Math.sin(th) * backM, r.mitg.at[1] + Math.cos(th) * backM]));
+    const v: any = await withTimeout<any>(guide.ipbApproachesAround(S, { readFor: 'attack', threatDeg: (r.faceDeg + 180) % 360, hq: ech === 'Bde' ? 'div' : 'bde', extras: true, objective: obj, objectiveLabel: named ? r.mitg.name : 'the Obj' }), 60000);
+    if (!v) return null;
+    const gr = (p: [number, number]): AorXY => this._ground(r, p);
+    const MOVER: Record<string, string> = { armour: 'armour', mech: 'mech inf', dismounted: 'dismounted inf' };
+    const ob = v.objective ?? null;
+    const avenues = (v.aas ?? []).filter((aa: any) => aa.viable !== false || aa.onto).map((aa: any) => ({
+      id: String(aa.id),
+      rank: Number(aa.rank) || 99,
+      onto: (['frontal', 'left', 'right', 'turn'] as const).find((k) => k === aa.onto) ?? null,
+      label: String(aa.ontoLabel ?? aa.id),
+      lengthM: Number(aa.lengthM) || 0,
+      goPct: Number(aa.goPct) || 0,
+      minWidthM: Number(aa.minWidthM) || 0,
+      waterLines: Number(aa.waterLines) || 0,
+      assaultM: Number.isFinite(aa.assaultM) ? Number(aa.assaultM) : null,
+      assaultNogoPct: Number.isFinite(aa.assaultNogoPct) ? Number(aa.assaultNogoPct) : null,
+      fupWhere: aa.fupAt ? this._where(r, gr(aa.fupAt)) : null,
+    }));
+    const t = ob?.turn ?? null;
+    const input: AprcAttkIn | null = ob
+      ? {
+          objective: named ? r.mitg.name : 'the obj',
+          mover: MOVER[v.mover] ?? String(v.mover ?? ''),
+          aaFor: String(v.aaFor ?? ''),
+          mcWidthM: Number(v.mcWidthM) || 0,
+          fupM: Number(ob.fupM) || 1100,
+          avenues,
+          turn: t ? { label: String(t.label ?? 'the MSR'), kind: String(t.kind ?? 'road'), behindM: Number(t.behindM) || 0, msr: !!t.msr, where: t.at ? this._where(r, gr(t.at)) : null } : null,
+          start: start ? 'own start' : `a point ${(backM / 1000).toFixed(0)} km back from the obj on own side`,
+          startAssumed: !start,
+        }
+      : null;
+    return { in: input, view: v };
+  }
+
+  /** A checked attack plan (Check my plan, attack) for the appreciation: each axis with its obj, FUP, SL and BOF in words. */
+  private _attkCheckIn(c: any, r: AorReading | null): AprcAttkPlanIn | null {
+    if (!c?.groups?.length) return null;
+    const whereOf = (s: any): string | null => {
+      if (!r || !s?.pts?.length) return null;
+      const m: [number, number] = [s.pts.reduce((a: number, p: any) => a + p.x, 0) / s.pts.length, s.pts.reduce((a: number, p: any) => a + p.y, 0) / s.pts.length];
+      return this._where(r, this._ground(r, m));
+    };
+    const nm = (s: any, fallback: string): string | null => (s ? String(s.label || s.name || fallback) : null);
+    const rows = (l: any[]): Array<{ name: string; st: string; reason: string }> => (l ?? []).map((x: any) => ({ name: String(x.name ?? ''), st: String(x.st ?? ''), reason: String(x.reason ?? '') }));
+    return {
+      title: String(c.title ?? 'Attack'),
+      recipe: c.mapped?.built?.recipe ?? null,
+      axes: c.groups.map((g: any) => {
+        const fw = whereOf(g.fup), bw = whereOf(g.bof);
+        return {
+          label: String(g.label ?? 'Axis'),
+          phase: Number(g.phase) || 1,
+          obj: nm(g.obj, 'Obj'),
+          objWhere: whereOf(g.obj),
+          fup: nm(g.fup, 'FUP'),
+          fupWhere: fw,
+          sl: nm(g.sl, 'SL'),
+          bof: nm(g.bof, 'BOF'),
+          bofWhere: bw,
+          rows: rows(g.rows),
+        };
+      }),
+      rows: rows(c.rows),
+      confirm: c.confirm ?? [],
+      assumptions: c.assumptions ?? [],
+    };
+  }
+
   // ── the ORBAT ─────────────────────────────────────────────────────────────────────────────────────────────────
 
   /** The ORBAT files (as the Intelligent Deployment tab reads them), once; null when they are not served. */
@@ -958,7 +1124,7 @@ export default class GroundAppreciation {
   }
 
   /** Own and en units for the relative strength: a built plan's, else the symbols marked, else assumed (and said so). */
-  private async _strengthIn(o: any, r: AorReading, echWord: string, need: number | null): Promise<AprcStrengthIn | null> {
+  private async _strengthIn(o: any, r: AorReading, echWord: string, need: number | null, attack = false): Promise<AprcStrengthIn | null> {
     const { brief, ownUnitFor, enUnitFor } = await import('../DeploymentBuilder/PlanOrbat');
     const pd: any = (await import('../../Data/PlanDoctrine.json')).default;
     const ownEch = ({ Coy: '15', Bn: '16', Bde: '18' } as Record<string, string>)[echWord] ?? '16';
@@ -993,10 +1159,15 @@ export default class GroundAppreciation {
     if (!en.length) {
       const up = Number(pd?.enemy?.defaultUp?.value ?? 1);
       const order = ['15', '16', '18', '21'];
-      const e = meta?.enemy?.echelon ?? order[Math.min(order.length - 1, Math.max(0, order.indexOf(ownEch) + up))];
-      const type = meta?.enemy?.type ?? (r.country === 'Mountains' ? 'inf' : (pd?.enemy?.defaultType?.value ?? 'mech'));
+      // the attack: he defends one level down, inf (as Check my plan takes him: PlanContext.defaultEnemy)
+      const e = meta?.enemy?.echelon ?? order[Math.min(order.length - 1, Math.max(0, order.indexOf(ownEch) + (attack ? -up : up)))];
+      const type = meta?.enemy?.type ?? (attack || r.country === 'Mountains' ? 'inf' : (pd?.enemy?.defaultType?.value ?? 'mech'));
       en = group([enUnitFor(e, type, r.country === 'Mountains' ? 'mountain' : null)]);
-      enAssumed = meta?.enemy ? `the built plan's en (${ECHW[e] ?? e}, ${type})` : `one level up, a ${ECHW[e] ?? e} (${pd?.enemy?.defaultUp?.src ?? 'PlanDoctrine'}), ${type} (${type === 'mech' ? pd?.enemy?.defaultType?.src ?? 'PlanDoctrine' : 'mountains: inf'})`;
+      enAssumed = meta?.enemy
+        ? `the built plan's en (${ECHW[e] ?? e}, ${type})`
+        : attack
+          ? `one level down, a ${ECHW[e] ?? e} in def, inf: an attacker wants more than 3 : 1 (${String(pd?.enemy?.defaultUp?.src ?? 'MW p 80').replace(/\s*\(.*\)\s*$/, '')})`
+          : `one level up, a ${ECHW[e] ?? e} (${pd?.enemy?.defaultUp?.src ?? 'PlanDoctrine'}), ${type} (${type === 'mech' ? pd?.enemy?.defaultType?.src ?? 'PlanDoctrine' : 'mountains: inf'})`;
     }
     if (!en.length || !own.length) return null;
     return { en, enAssumed, own, ownAssumed, need };
@@ -1170,6 +1341,8 @@ export default class GroundAppreciation {
       cover: lv ? { direct: lv.direct, indirect: lv.indirect, ground: lv.ground, aerial: lv.aerial } : null,
       crop: ext?.crop ?? null,
       obsn,
+      // the view from the MITG toward the reading's threat side (the attack: toward own side, his view from the obj)
+      mitgObsn: ext?.obs ? { near: null, radiusM: ext.radiusM ?? 2000, seenPct: ext.obs.seenPct, clearMedianM: ext.obs.clearMedianM, country: ext.obs.country, overlook: ext.obs.overlook ? { riseM: ext.obs.overlook.riseM, distM: ext.obs.overlook.distM, compass: COMPASS[Math.round((((ext.obs.overlook.bearingDeg % 360) + 360) % 360) / 45) % 8] } : null } : null,
       light: lightTimes(new Date(), ll[1], ll[0], -new Date().getTimezoneOffset()),
       drawnObs,
       threatMarked: !r.originsAssumed,
@@ -1225,7 +1398,7 @@ export default class GroundAppreciation {
     return out;
   }
 
-  private _rasterise(svg: string, w: number, h: number, scale: number): Promise<string | null> {
+  private _rasterise(svg: string, w: number, h: number, scale: number, mime: 'image/png' | 'image/jpeg' = 'image/png'): Promise<string | null> {
     return new Promise((resolve) => {
       try {
         const img = new Image();
@@ -1242,7 +1415,7 @@ export default class GroundAppreciation {
             g.fillStyle = '#ffffff';
             g.fillRect(0, 0, c.width, c.height);
             g.drawImage(img, 0, 0, c.width, c.height);
-            done(c.toDataURL('image/png'));
+            done(mime === 'image/jpeg' ? c.toDataURL(mime, 0.86) : c.toDataURL(mime));
           } catch {
             done(null);
           }
@@ -1361,37 +1534,87 @@ export default class GroundAppreciation {
     return (await zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME, compression: 'DEFLATE' })) as Blob;
   }
 
-  /** The slides of a deck kind (not yet in the briefing). */
+  /** The slides of a deck kind (not yet in the briefing); the dark maps once `makeSlides` has drawn them, else the document's trace. */
   toDeck(kind: AprcDeckKind = this._opts.deck, copy: AprcCopy = this._opts.copy): any[] {
     if (!this._doc) return [];
-    const bg = this._blank(1280, 720), th = this._blank(240, 135);
-    return buildDeck(this._doc, { kind, copy, blankBg: bg, thumb: th });
+    const bg = this._blank(1280, 720, DECK_THEME.bg), th = this._blank(320, 180, DECK_THEME.bg);
+    return buildDeck(this._doc, { kind, copy, blankBg: bg, thumb: th, maps: this._slideMaps ?? undefined });
   }
 
-  private _blank(w: number, h: number): string {
+  private _blank(w: number, h: number, colour = '#ffffff'): string {
     const c = document.createElement('canvas');
     c.width = w;
     c.height = h;
     const g = c.getContext('2d');
     if (g) {
-      g.fillStyle = '#ffffff';
+      g.fillStyle = colour;
       g.fillRect(0, 0, w, h);
     }
     return c.toDataURL('image/png');
   }
 
   /**
-   * Make the slides in the Briefing module. Slides that are not the appreciation's stay; an appreciation slide edited
-   * since it was made is kept; the rest are replaced. Returns what happened, or null when Briefing is off.
+   * The trace drawn for the slides: dark (the Gr Scope's dark style, to sit on the Ops room slides), the whole AOR and
+   * one per apch showing that apch alone, keyed by its paragraph's side (the attack's Lt / Rt mirrored to own side, its
+   * labels too). Drawn from the last reading; null after a reload or an opened file (the slides then take the document's
+   * trace). JPEG, to keep the deck and the PowerPoint small.
    */
-  makeSlides(kind: AprcDeckKind = this._opts.deck): { added: number; kept: number; replaced: number } | null {
+  private async _makeSlideMaps(): Promise<DeckOptions['maps'] | null> {
+    if (this._slideMaps) return this._slideMaps;
+    if (!this._aor || !this._doc) return null;
+    const { reading, frame } = this._aor;
+    const kind = this._doc.kind;
+    const W = 900, H = 800;
+    const base: AorFrame = { ...frame, reading, style: 'dark', orient: 'north', northDeg: 0, layers: { going: true, apch: true, line: true, itg: true, dml: true, msr: true }, loading: false };
+    const r0: AorReading = kind === 'attk' ? { ...reading, apchs: reading.apchs.map((a) => ({ ...a, side: deckSideOfReading(kind, a.side) as AorSide })) } : reading;
+    const draw = async (r: AorReading): Promise<DeckMap | null> => {
+      try {
+        const png = await this._rasterise(aorMapSvg(r, { ...base, reading: r }, W, H, 'full'), W, H, 1.4, 'image/jpeg');
+        return png ? { png, w: W, h: H } : null;
+      } catch (err) {
+        console.warn('[Aprc] slide map', err);
+        return null;
+      }
+    };
+    const apch: Record<string, DeckMap> = {};
+    for (const a of r0.apchs) {
+      const m = await draw({ ...r0, apchs: [a] });
+      if (m) apch[a.side] = m;
+    }
+    this._slideMaps = { all: await draw(r0), apch };
+    return this._slideMaps;
+  }
+
+  /** Each slide's preview drawn from its own content (the Briefing's own compositor); the blank page where it cannot. */
+  private async _slideThumbs(slides: any[]): Promise<void> {
+    try {
+      const { composeOverlayThumbnail } = await import('../Briefing/OverlayFabric');
+      const base = this._blank(320, 180, DECK_THEME.bg);
+      for (const s of slides) {
+        const t = await composeOverlayThumbnail(base, s.overlays, 0.8);
+        if (t) s.thumbnailDataUrl = t;
+      }
+    } catch (err) {
+      console.warn('[Aprc] slide previews', err);
+    }
+  }
+
+  /**
+   * Make the slides in the Briefing module. Slides that are not the appreciation's stay; an appreciation slide edited
+   * since it was made is kept; the rest are replaced. Resolves with what happened, or null when Briefing is off.
+   */
+  async makeSlides(kind: AprcDeckKind = this._opts.deck): Promise<{ added: number; kept: number; replaced: number } | null> {
     const be: any = this._host.briefing?.() ?? null;
     if (!this._doc || !be?.importBriefing || !be.getSlides) {
       this._msg = 'Slides need the Briefing module on (features.briefing)';
       this._render();
       return null;
     }
+    this._msg = 'Making the slides…';
+    this._render();
+    await this._makeSlideMaps();
     const fresh = this.toDeck(kind);
+    await this._slideThumbs(fresh);
     const m = mergeDeck(be.getSlides(), fresh);
     // The deck's own chrome (its classification banner, set in the Briefing module) is kept as it is.
     const cur = be.exportBriefing?.() ?? { version: 12 };

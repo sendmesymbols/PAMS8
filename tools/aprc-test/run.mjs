@@ -80,8 +80,8 @@ const gin = {
   check('numbering: Gen Description is para 5, Apchs 6', M.numberOf(d, 'gr.gen') === '5' && M.numberOf(d, 'gr.apchs') === '6');
   check('numbering: a sub-paragraph', M.numberOf(d, 'gr.ded.dp1.fdls') === '11b(1)(a)', M.numberOf(d, 'gr.ded.dp1.fdls'));
   const kinds = M.aprcKinds();
-  check('kinds: defence ready, attack has its place', kinds.find((k) => k.kind === 'def').ready && kinds.find((k) => k.kind === 'attk').ready === false);
-  check('kinds: attack falls back to the defence outline until registered', M.newDoc('attk').kind === 'def');
+  check('kinds: defence and attack both ready', kinds.find((k) => k.kind === 'def').ready && kinds.find((k) => k.kind === 'attk').ready === true);
+  check('kinds: the attack has its own outline', M.newDoc('attk').kind === 'attk' && M.newDoc('attk').parts[0].title === 'REVIEW OF THE SIT');
   const t = M.toText(d, 'fair');
   check('text: an empty document prints ruled lines', t.includes('5. Gen Description. ________________'));
   check('text: never "whites" or the 1:50k layer name', !/whites/i.test(t) && !/NCGDB/.test(JSON.stringify(d)));
@@ -242,14 +242,24 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   const dec = K.buildDeck(doc, { ...o, kind: 'decision' });
   const sand = K.buildDeck(doc, { ...o, kind: 'sand' });
   const titles = full.map((s) => s.title);
-  check('slides: full brief has the title, the apchs one by one and Confirm on Gr', titles[0] === 'APRC OF THE SIT' && ['Apchs', 'Lt Apch', 'Cen Apch', 'Rt Apch', 'Gen Description', 'ITGs', 'Deductions', 'Confirm on Gr'].every((t) => titles.includes(t)), titles.join(' | '));
+  check('slides: full brief has the title, the apchs one by one and Confirm on Gr', titles[0] === 'APRC OF THE SIT' && ['Apchs', 'Lt Apch', 'Cen Apch', 'Rt Apch', 'Gen Description', 'ITGs', 'Confirm on Gr'].every((t) => titles.includes(t)), titles.join(' | '));
+  check('slides: a heading two paragraphs share is told apart by its group', titles.includes('Deductions: Gr and Weather') && !titles.includes('Deductions'), titles.join(' | '));
+  check('slides: a section slide stands before a group of two or more', titles.indexOf('Gr and Weather') === titles.indexOf('Gen Description') - 1 && full.find((s) => s.title === 'Gr and Weather').sourceRef === 'aprc:section:gr');
+  check('slides: every slide carries its number out of the deck', full.every((s, i) => s.overlays.some((v) => v.text === `${i + 1} / ${full.length}`)));
   check('slides: unwritten paragraphs make no slide', !titles.includes('Air Sit') && !titles.includes('Msn'));
   check('slides: decision brief is shorter, sand model is the ground only', dec.length < full.length && sand.length < full.length && !sand.some((s) => s.title === 'Aim') && dec.some((s) => s.title === 'AIM' || s.title === 'Aim'), `${full.length}/${dec.length}/${sand.length}`);
   check('slides: every slide is screen-only with a source and a section', full.every((s) => s.backgroundDataUrl && s.sourceRef?.startsWith('aprc:') && s.sourceHash && s.view.capturedIn === '2d') && full.find((s) => s.title === 'Apchs').section === 'Factors: Gr and Weather');
   const lt = full.find((s) => s.title === 'Lt Apch');
-  check('slides: an apch is a table of its heads beside the trace', lt.overlays.some((v) => v.kind === 'table' && v.rows.length === 12 && v.rows[0][0] === 'Definition') && lt.overlays.some((v) => v.kind === 'image' && v.src.startsWith('data:image/png')));
+  check('slides: an apch is its route, short facts and its significance beside the trace', lt.overlays.some((v) => v.kind === 'table' && v.rows.some((r) => r[0] === 'Length') && v.rows.some((r) => r[0] === 'Capacity') && !v.rows.some((r) => r[0] === 'Definition')) && lt.overlays.some((v) => v.kind === 'image' && v.src.startsWith('data:image/png')) && lt.overlays.some((v) => v.text === 'Significance') && lt.overlays.some((v) => /→/.test(v.text ?? '')));
+  check('slides: what the apch slide leaves out is in its notes', /Definition/.test(lt.notes ?? '') && /Dir Keeping|Depl Areas/.test(lt.notes ?? ''));
+  const gen = full.find((s) => s.title === 'Gen Description');
+  check('slides: the going is a bar with its words, the rest short points', gen.overlays.filter((v) => v.kind === 'rect').length >= 3 && gen.overlays.some((v) => /^GO \d+ %$/.test(v.text ?? '')) && gen.overlays.some((v) => v.listStyle === 'bullet'));
+  const ded = full.find((s) => s.title === 'Deductions: Gr and Weather');
+  check('slides: ground deductions rank the apchs and lay the lines of def by depth', ded.overlays.filter((v) => v.kind === 'ellipse').length >= 2 && ded.overlays.filter((v) => v.kind === 'line' && v.strokeDash === 'dashed').length >= 3 && ded.overlays.some((v) => v.text === 'FDLs'));
+  check('slides: Confirm on Gr is a checklist, each item once', (() => { const c = full.find((s) => s.title === 'Confirm on Gr'); const t = c.comments.map((x) => x.text); const boxes = c.overlays.filter((v) => v.kind === 'rect' && v.w < 0.02).length; return t.length && new Set(t).size === t.length && boxes === t.length; })());
   const fairDeck = K.buildDeck(doc, { ...o, copy: 'fair', kind: 'full' });
   check('slides: the fair copy leaves proposals out', !JSON.stringify(fairDeck).includes('(proposal)') && JSON.stringify(full).includes('(proposal)'));
+  check('slides: the draft tags proposals, the fair copy does not', full.some((s) => s.overlays.some((v) => v.text === 'Proposal' || v.text === 'Proposals')) && !fairDeck.some((s) => s.overlays.some((v) => v.text === 'Proposal' || v.text === 'Proposals' || v.text === 'Draft')));
   const conf = full.find((s) => s.title === 'Confirm on Gr');
   check('slides: confirm items are task comments', conf.comments.length >= 5 && conf.comments.every((c) => c.kind === 'task'));
   check('slides: notes carry the paragraph in full', /Lt Apch/.test(full.find((s) => s.title === 'Apchs').notes));
@@ -418,6 +428,130 @@ M.setMine(doc, 'aim', 'To def <Qila Mor> & hold it.');
   check('coys: grouping from what is in the posn, else the planner\'s', M.find(d, 'plan.exec.tasks.d-coy.grp').draft === 'In loc: Mor Pl.' && M.find(d, 'plan.exec.tasks.a-coy.grp').draft === null);
   check('coys: numbered under Exec', /^29b\(1\)$|^\d+b\(1\)$/.test(M.numberOf(d, 'plan.exec.tasks.a-coy')), M.numberOf(d, 'plan.exec.tasks.a-coy'));
   check('tasks: writeTasks says how many Pls', W.writeTasks(reading).pls === 17 && W.writeTasks({ ...reading, lines: [] }).pls === null);
+}
+
+// ── the attack (Mechs of Aprc (Attk)) ────────────────────────────────────────────────────────────────────────────
+{
+  const d = M.newDoc('attk');
+  const ids = [];
+  M.walk(d, (p) => ids.push(p.id));
+  check('attk outline: ids are unique', new Set(ids).size === ids.length, `${ids.length}`);
+  check('attk outline: parts in the book\'s order', d.parts.map((p) => p.title).join('|') === 'REVIEW OF THE SIT|AIM|FACTORS|COURSES|PLAN');
+  const top = M.lines(d).filter((l) => l.type === 'para' && l.depth === 0);
+  check('attk numbering: 24 paras as the book', top.length === 24 && top.every((l, i) => l.label === `${i + 1}.`), `${top.length}`);
+  const at = (id) => M.numberOf(d, id);
+  check('attk numbering: Gen Description 5, Imp Tac Grs 6, Apchs 7, Deductions 11', at('gr.gen') === '5' && at('gr.itg') === '6' && at('gr.apchs') === '7' && at('gr.ded') === '11');
+  check('attk numbering: En Sit 12, Own Sit 13, Almt 14, Time and Space 15', at('en') === '12' && at('own') === '13' && at('almt') === '14' && at('ts') === '15');
+  check('attk numbering: Course A 16, En Reactions 17, Analysis 18, Course Adopted 20', at('crs.a') === '16' && at('crs.react') === '17' && at('crs.an') === '18' && at('crs.adopted') === '20');
+  check('attk numbering: Msn 21, Exec 22, Adm and Log 23, Comd and Sig 24', at('plan.msn') === '21' && at('plan.exec') === '22' && at('plan.adm') === '23' && at('plan.comd') === '24');
+  check('attk numbering: sub-paragraphs as the book', at('gr.ded.aps') === '11d' && at('plan.exec.coord.loc') === '22h(2)' && at('crs.react.ph2.depth') === '17e(3)' && at('en.ded.basic') === '12c(1)', `${at('gr.ded.aps')} ${at('plan.exec.coord.loc')} ${at('crs.react.ph2.depth')} ${at('en.ded.basic')}`);
+  let unref = 0;
+  M.walk(d, (p) => { if (p.draft === null && !p.prompts.some((x) => /^Mechs of Aprc \(Attk\) pp? [\d-]+$/.test(x))) unref++; });
+  check('attk prompts: every ruled paragraph cites the book and its page', unref === 0, `${unref} without`);
+  check('attk tables: Assessment of Tasks and Almt with the book\'s heads, Backward Calc with its 18 events', M.find(d, 'own.tasks').table.head.join('|') === 'Ser|Task / Loc|Inf (Sec)|Armr (Tp)|Aslt Pnr|Arty|BS / W pn Sec' && M.find(d, 'almt').table.rows.some((r) => r[1] === '- FUP protection') && M.find(d, 'ts.calc').table.rows.length === 18 && M.find(d, 'ts.calc').table.rows[12][1] === 'H hr');
+  const t = M.toText(d, 'fair');
+  check('attk text: an empty attack prints ruled lines, never "whites"', t.includes('5. Gen Description. ________________') && t.includes('24. Comd and Sig.') && !/whites/i.test(t));
+  const dt = M.toText(d, 'draft');
+  check('attk text: the draft copy shows the book\'s heads under a ruled line', /\(Discuss two up; Hostilities between __ and __;.*Mechs of Aprc \(Attk\) p 1\)/.test(dt));
+  M.applyPatches(d, M.attkHeads('Bn'));
+  check('attk heads: a Bn attack names Coys, the Mor Pl and the Bn HQ', M.find(d, 'plan.exec.pl1').head === 'A Coy' && M.find(d, 'plan.exec.mor').head === 'Mor Pl' && M.find(d, 'plan.comd.hq').head === 'Loc of Bn HQ' && M.attkHeads('Coy').length === 0);
+}
+// the synthetic reading, taken round the objective from own side (its sides are his: own Lt = his Rt)
+const ad = M.newDoc('attk');
+{
+  const sym = W.writeSymbols([
+    { id: 'e1', key: '10110100', name: 'Infantry', side: 'enemy', ech: '15', label: '2 Coy', where: 'at Qila Mor' },
+    { id: 'o1', key: '10110100', name: 'Infantry', side: 'own', ech: '16', label: '1 Bn', where: '6.0 km SW of Qila Mor' },
+  ]);
+  M.applyPatches(ad, sym.patches);
+  const gw = W.writeGround({ ...gin, attack: true, threatMarked: true, startWords: 'FUP 1 2.1 km S of Kot Jaimal', mitgObsn: { near: null, radiusM: 2000, seenPct: 58, clearMedianM: 1300, country: 'open', overlook: null } });
+  M.applyPatches(ad, gw.patches);
+  ad.confirm = gw.confirm;
+  ad.frame = gw.frame;
+  const P = (id) => M.find(ad, id);
+  check('attk Gr: Gen Description, Obs, Cover and Met as for the defence', /Canal plains\./.test(P('gr.gen').draft) && /February: max 21 °C/.test(P('gr.met').draft) && P('gr.obs').state === 'gr');
+  check('attk Gr: the sides are mirrored to the attacker (his Lt is own Rt)', /across the Rt, Cen and Lt apchs/.test(P('gr.obs').draft) && /Rt BUAs 9 %/.test(P('gr.cover').draft), P('gr.obs').draft);
+  const ap = P('gr.apchs');
+  check('attk Apchs: own Lt first, from own side onto the obj', ap.children.map((c) => c.head).join('|') === 'Lt Apch|Cen Apch|Rt Apch' && /from own side onto Qila Mor/.test(ap.draft) && ap.figure === 'trace', ap.children.map((c) => c.head).join('|'));
+  check('attk Apchs: the book\'s twelve heads in its order', ap.children.every((c) => c.children.map((x) => x.head).join('|') === 'Definition|Length|Capacity|Cover|Mutual Sp|Depl Areas|Obs|Dominating Features|Obsn and F of F|Tfc|Dir Keeping|Significance'));
+  check('attk Apchs: own Lt is the reading\'s Rt (it narrows to 1.1 km)', /^No narrower than 1\.1 km between NO-GO areas: room for a Coy size force/.test(P('gr.apch.lt.capacity').draft) && /room for a Bn size force/.test(P('gr.apch.rt.capacity').draft), `${P('gr.apch.lt.capacity').draft} / ${P('gr.apch.rt.capacity').draft}`);
+  check('attk Apchs: capacity rests on the book\'s 4 km Bde and the IPB widths', P('gr.apch.lt.capacity').basis.some((b) => b.kind === 'rule' && /Mechs of Aprc \(Attk\) p 2/.test(b.text) && /IPB book p 7/.test(b.text)));
+  check('attk Apchs: Depl Areas left to the planner with the book\'s heads', P('gr.apch.lt.depl-areas').draft === null && P('gr.apch.lt.depl-areas').prompts.some((x) => /FAA, FUP or BOF/.test(x)) && P('gr.apch.lt.depl-areas').prompts.includes('Mechs of Aprc (Attk) p 2'));
+  check('attk Apchs: Obsn and F of F where read (the reading\'s Lt is own Rt)', /about 41 % of the ground/.test(P('gr.apch.rt.obsn-and-f-of-f').draft) && P('gr.apch.lt.obsn-and-f-of-f').draft === null);
+  const m = P('gr.itg.mitg');
+  check('attk ITGs: the obj first with the book\'s heads', m.head === 'Qila Mor (MITG)' && m.children.map((c) => c.head).join('|') === 'Loc|Size / Type / Configuration|Tps Needed to Def|Tps Req to Capture|Depth|Mutual Sp|Cover|Obsn|Domination|Best Dir of Attk|Effs if Captured');
+  check('attk ITGs: Loc, Cover, Obsn, Domination from the ground', /^Qila Mor, on Rd /.test(P('gr.itg.mitg.loc').draft) && /concealment from gr obsn fair/.test(P('gr.itg.mitg.cover').draft) && /From it about 58 % of the ground within 2\.0 km is in view toward own side/.test(P('gr.itg.mitg.obsn').draft) && /^247 m, plain/.test(P('gr.itg.mitg.domination').draft), P('gr.itg.mitg.loc').draft);
+  check('attk ITGs: Effs if Captured a proposal from the Rds; Tps to capture the planner\'s', P('gr.itg.mitg.effs').state === 'judge' && /opens Rd/i.test(P('gr.itg.mitg.effs').draft) && P('gr.itg.mitg.capture').draft === null);
+  check('attk ITGs: his localities on the lines facing the attk, sides mirrored', /Astride the Rt apch on Line X, his likely FDLs/.test(P('gr.itg.kot-jaimal')?.draft ?? '') && P('gr.itg.kot-jaimal').state === 'judge' && /his likely depth/.test(P('gr.itg.chak-21')?.draft ?? ''));
+  check('attk Aim: to capture the obj, a proposal', P('aim').draft === 'To capture area Qila Mor with fol limitations:-' && P('aim').state === 'judge' && M.shown(P('aim'), 'fair').text === null);
+  check('attk Deductions: pri of objs, MITG first with its reasons', /^Qila Mor emerges as the MITG: all 3 apchs terminate on it/.test(P('gr.ded.obj').draft) && /\(1\) Kot Jaimal/.test(P('gr.ded.obj').draft), P('gr.ded.obj').draft);
+  check('attk Deductions: comb of apchs mirrored, phases from his lines', /Rt and Cen \(2 metalled laterals\)/.test(P('gr.ded.comb').draft) && /^Phase 1: his FDLs on Line X/.test(P('gr.ded.c.phases').draft), `${P('gr.ded.comb').draft} / ${P('gr.ded.c.phases').draft}`);
+  check('attk Gr: the frame says where own tps start', /own start FUP 1/.test(ad.frame.threat));
+  check('attk Gr: never the 1:50k layer name', !/NCGDB/.test(JSON.stringify(ad)));
+  check('attk symbols: his disposns under Option 1', /Marked on the map: 1 x Infantry Coy/.test(P('en.opt1.disp').draft) && P('en.opt1.disp').state === 'map' && /1 x Infantry Coy/.test(P('rev.en').draft));
+}
+{
+  // the IPB reading onto the obj: Lt / Rt flank, frontal, turning
+  const av = (o) => ({ id: 'A', rank: 1, onto: 'left', label: 'Lt flanking', lengthM: 6200, goPct: 80, minWidthM: 1400, waterLines: 1, assaultM: 1100, assaultNogoPct: 0, fupWhere: '1.1 km W of Qila Mor', ...o });
+  const e = { objective: 'Qila Mor', mover: 'dismounted inf', aaFor: 'Bn', mcWidthM: 500, fupM: 1100, start: 'own start', startAssumed: false,
+    avenues: [av({ id: 'F', rank: 1, onto: 'frontal', label: 'Frontal', lengthM: 5000 }), av({ id: 'L', rank: 2 }), av({ id: 'R', rank: 3, onto: 'right', label: 'Rt flanking', lengthM: 7100, goPct: 90, waterLines: 0, fupWhere: '1.1 km E of Qila Mor' })],
+    turn: { label: 'Br on Lakhan Disty', kind: 'bridge', behindM: 2600, msr: true, where: '2.6 km N of Qila Mor' } };
+  const dw = W.writeAttkDir(e);
+  const d = M.newDoc('attk');
+  M.applyPatches(d, dw.patches);
+  const P = (id) => M.find(d, id);
+  check('attk dir: flanks before frontal, frontal last', /^Dir of attk in pri: \(1\) Lt flank.*\(2\) Rt flank.*\(3\) frontal/.test(P('gr.ded.apch').draft), P('gr.ded.apch').draft);
+  check('attk dir: Lt against Rt weighed head by head', /Lt against Rt: Lt shorter \(6\.2 against 7\.1 km\); Rt better going \(GO on 90 % against 80 %\); Rt fewer water lines \(0 against 1\)\. Better on 2 of 3 heads: the Rt\./.test(P('gr.ded.apch').draft), P('gr.ded.apch').draft);
+  check('attk dir: the turning apch onto his MSR choke', /blocks his MSR at Br on Lakhan Disty \(bridge\), 2\.6 km behind Qila Mor/.test(P('gr.ded.apch').draft) && /^At Br on Lakhan Disty \(2\.6 km N of Qila Mor\): a bridge on his MSR/.test(P('gr.ded.ap1.block').draft));
+  check('attk dir: AP-1 from the flank the weighing favours, FUP from IBB p 201', /^To attk from the Rt flank onto Qila Mor, with a blocking posn on his MSR behind it\.$/.test(P('gr.ded.ap1').draft) && /^1\.1 km E of Qila Mor, 1\.1 km short of Qila Mor/.test(P('gr.ded.ap1.fup').draft) && P('gr.ded.ap1.fup').basis.some((b) => /IBB p 201/.test(b.text)), `${P('gr.ded.ap1').draft} / ${P('gr.ded.ap1.fup').draft}`);
+  check('attk dir: Best Dir of Attk on the MITG and AP-2 the other flank', P('gr.itg.mitg.dir').draft === 'Rt flank onto Qila Mor.' && /^From the Lt flank: changes the dir of attk/.test(P('gr.ded.ap2').draft));
+  check('attk dir: all proposals, cited (flanking: the book pp 3-4; turning: IBB S35 p 140)', ['gr.ded.apch', 'gr.ded.ap1', 'gr.ded.ap1.block'].every((id) => P(id).state === 'judge') && P('gr.ded.apch').basis.some((b) => /pp 3-4/.test(b.text)) && P('gr.ded.ap1.block').basis.some((b) => /IBB S35 p 140/.test(b.text)));
+  check('attk dir: no apch onto the obj, nothing written', W.writeAttkDir({ ...e, avenues: e.avenues.map((a) => ({ ...a, onto: null })) }).patches.length === 0);
+}
+{
+  // a checked attack plan
+  const c = { title: 'Bn attack: 2 axes onto 2 enemy posns', recipe: 'bn-attk-right-flank',
+    axes: [
+      { label: 'Main Attk', phase: 1, obj: 'Obj 1', objWhere: 'at Kot Jaimal', fup: 'FUP', fupWhere: '1.1 km E of Kot Jaimal', sl: 'SL', bof: 'BOF', bofWhere: '0.9 km N of Kot Jaimal', rows: [{ name: 'FUP from the Obj', st: 'pass', reason: '1,100 m to the Obj\'s near edge' }, { name: 'BOF range', st: 'warn', reason: '1,300 m; 106 mm RR reaches 1,189 m' }] },
+      { label: 'Ph 2', phase: 2, obj: 'Obj 2', objWhere: 'at Qila Mor', fup: 'FUP 2', fupWhere: null, sl: null, bof: null, bofWhere: null, rows: [] },
+    ],
+    rows: [{ name: 'Force ratio', st: 'pass', reason: '4 : 1' }], confirm: ['Main Attk: FUP and SL by recce'], assumptions: ['Read as drawn'] };
+  const pw = W.writeAttkPlan(c);
+  const d = M.newDoc('attk');
+  M.applyPatches(d, pw.patches);
+  const P = (id) => M.find(d, id);
+  check('attk plan: Course A and the Gen Outline from the plan, flank and phases', /^Bn attack: 2 axes onto 2 enemy posns\. Attk from the Rt flank in 2 phases: Phase 1: Main Attk onto Obj 1 \(at Kot Jaimal\), FUP 1\.1 km E of Kot Jaimal, SL, BOF 0\.9 km N of Kot Jaimal\. Phase 2: Ph 2 onto Obj 2 \(at Qila Mor\), FUP 2\./.test(P('crs.a').draft) && P('plan.exec.outline').state === 'map', P('crs.a').draft);
+  check('attk plan: AP-1 phases, FUP, BOF and Loc as drawn', P('gr.ded.ap1.ph1').draft === 'Capturing Obj 1.' && P('gr.ded.ap1.ph2').draft === 'Capturing Obj 2.' && /as drawn/.test(P('gr.ded.ap1.fup').draft) && /^FUP 1\.1 km E of Kot Jaimal; BOF 0\.9 km N of Kot Jaimal; SL\.$/.test(P('plan.exec.coord.loc').draft));
+  check('attk plan: the tasks tables name the objs by phase, the figures left blank', P('own.tasks').table.rows.some((r) => r[1] === '- Obj 1') && P('almt').table.rows.some((r) => r[1] === '- Obj 2') && P('own.tasks').table.rows.every((r) => r.slice(2).every((x) => x === '')));
+  check('attk plan: advs and disadvs from the check rows, proposals', /Force ratio: 4 : 1/.test(P('crs.an.adv').draft) && /Main Attk: BOF range/.test(P('crs.an.dis').draft) && P('crs.an.dis').state === 'judge' && pw.confirm.length === 2);
+}
+{
+  // relative strength for the attack: own to en, 3 : 1
+  const bn = { name: 'Inf Bn (Std)', count: 1, coys: 4, strength: 850, atgm: 8, mortars: 6, plsPerCoy: 3, src: "SO's Hbk 2019 p 12 (inf-bn-std)" };
+  const coy = { name: 'En Inf Coy', count: 1, coys: 1, strength: 120, atgm: 2, mortars: 2, plsPerCoy: 3, src: "SO's Hbk 2019 Sec 13 (en-inf-coy)" };
+  const s = W.writeStrength({ en: [coy], enAssumed: 'one level down', own: [bn], ownAssumed: null, need: null }, { attack: true, disposns: '1 Bn (Bn) 6.0 km SW of Qila Mor' });
+  const d = M.newDoc('attk');
+  M.applyPatches(d, s.patches);
+  const p = M.find(d, 'own.str');
+  check('attk strength: ratio own to en, against the 3 : 1 an attacker wants (MW p 80)', p.table.rows[0][4] === '4.0 : 1' && /more than the 3 : 1 an attacker wants/.test(p.draft) && p.basis.some((b) => /MW p 80/.test(b.text)), JSON.stringify(p.table.rows[0]));
+  check('attk strength: composition and disposns in one paragraph', /4 manoeuvre Coys of 3 Pls/.test(M.find(d, 'own.comp').draft) && /Disposns: 1 Bn \(Bn\) 6\.0 km SW of Qila Mor\./.test(M.find(d, 'own.comp').draft));
+}
+{
+  // copies, Word and slides walk the attack outline
+  const o = { copy: 'draft', blankBg: 'data:image/png;base64,BBBB' };
+  const fair = H.bodyHtml(ad, 'fair'), draft = H.bodyHtml(ad, 'draft');
+  check('attk page: the fair copy prints facts, not open proposals', !fair.includes('Qila Mor emerges') && draft.includes('Qila Mor emerges') && fair.includes('Canal plains'));
+  const x = D.docxFiles(ad, 'fair')['word/document.xml'];
+  check('attk Word: the document carries the attack headings', x.includes('Imp Tac Grs') && x.includes('Almt of Tps to Task') && x.includes('Comd and Sig') && !/whites/i.test(x));
+  const full = K.buildDeck(ad, { ...o, kind: 'full' });
+  const dec = K.buildDeck(ad, { ...o, kind: 'decision' });
+  const sand = K.buildDeck(ad, { ...o, kind: 'sand' });
+  const tt = full.map((s) => s.title);
+  check('attk slides: the full brief has the apchs one by one', ['Apchs', 'Lt Apch', 'Cen Apch', 'Rt Apch', 'Gen Description', 'Imp Tac Grs'].every((t) => tt.includes(t)), tt.join(' | '));
+  check('attk slides: decision brief reaches into En Sit and Own Sit', dec.some((s) => s.sourceRef === 'aprc:en.opts') && dec.length < full.length, dec.map((s) => s.sourceRef).join(' '));
+  check('attk slides: sand model is the ground only', sand.length > 1 && sand.every((s) => !/^aprc:(aim|en|own|crs|plan)/.test(s.sourceRef ?? '')));
+  check('attk slides: the book\'s blank tables make no slide until drafted or typed', !full.some((s) => s.sourceRef === 'aprc:ts.calc' || s.sourceRef === 'aprc:own.tasks'));
+  check('attk kinds: a defence deck is unchanged by the attack lists', K.DECK_IDS.def.decision.includes('en.opts') && !K.DECK_IDS.def.decision.includes('own.tasks'));
 }
 
 console.log(`\n${n - fails} of ${n} checks passed`);

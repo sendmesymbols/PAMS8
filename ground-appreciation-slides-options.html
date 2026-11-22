@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aprc Slides</title>
+<!--
+  PAMS8: the Aprc slides (MS/Engines/GroundAppreciation/AprcDeck.ts) redesigned, mockup for approval (22 Nov 2026).
+  NOT BUILT. Before = what AprcDeck makes today, drawn at its own sizes; After = the proposal, in three styles.
+  The ground here is SYNTHETIC (invented names, figures shaped like a real reading). One self-contained file: no
+  network, no build. Slides scale with their frame (container units), as a slide does on any screen.
+-->
+<style>
+:root{--bg:#0f1318;--panel:#171c22;--panel2:#1c2229;--line:#2a323b;--line2:#39434f;--tx:#e8ebee;--soft:#a3acb6;--acc:#8ec1ea;--acc-ink:#0d1620}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 14.5px/1.55 system-ui,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.pg{max-width:1320px;margin:0 auto;padding:0 16px 90px}
+h1{font-size:28px;line-height:1.15;margin:30px 0 8px;letter-spacing:-.01em}
+h2{font-size:21px;margin:48px 0 6px;padding-top:16px;border-top:1px solid var(--line)}
+p{margin:6px 0 10px;max-width:80ch}
+.lede{font-size:15.5px;color:#c8cfd6}
+.bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 0;background:var(--bg);border-bottom:1px solid var(--line);font-size:13.5px;color:var(--soft)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;color:var(--tx);background:var(--panel2);border:0;border-left:1px solid var(--line2);padding:6px 11px;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button:hover{background:#252c35}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);font-weight:650}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.faults{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px 22px;margin:14px 0 6px;padding:0;list-style:none;max-width:1100px}
+.faults li{position:relative;padding-left:26px;color:#c3cbd3}
+.faults li b{color:var(--tx)}
+.faults li::before{content:"";position:absolute;left:4px;top:7px;width:10px;height:10px;border-radius:2px;background:#e5484d;transform:rotate(45deg)}
+.faults.fix li::before{background:#5fd39a;border-radius:50%;transform:none}
+.rail{display:flex;gap:10px;overflow-x:auto;padding:6px 2px 12px}
+.rail .th{flex:none;width:168px}
+.rail .th>small{display:block;margin-top:4px;color:var(--soft);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blank{position:relative;aspect-ratio:16/9;background:#fff;border-radius:3px}
+.blank b{position:absolute;left:6px;top:6px;min-width:18px;height:18px;border-radius:4px;background:#3a4350;color:#fff;font-size:11px;line-height:18px;text-align:center}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start;margin:26px 0 0}
+.row.both{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 250px}
+.row>h3{grid-column:1/-1;margin:0 0 -10px;font-size:15px;color:var(--tx)}
+.row>h3 small{color:var(--soft);font-weight:400;margin-left:8px}
+.cap{margin-top:6px;font-size:12px;color:var(--soft)}
+.side{font-size:13.5px;color:#c3cbd3}
+.side ul{margin:4px 0 8px;padding-left:18px}
+.side li{margin:4px 0}
+.side h4{margin:0 0 4px;font-size:13px;color:var(--tx)}
+details{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+details summary{cursor:pointer;padding:7px 10px;font-size:13px;color:var(--tx)}
+details div{padding:0 10px 10px;font-size:13px;color:#c3cbd3}
+.ask{counter-reset:q;list-style:none;padding:0;max-width:900px}
+.ask li{counter-increment:q;position:relative;padding:9px 0 9px 34px;border-bottom:1px solid var(--line);color:#c3cbd3}
+.ask li::before{content:counter(q);position:absolute;left:0;top:9px;width:22px;height:22px;border-radius:50%;background:#2b313a;color:var(--tx);display:grid;place-items:center;font:650 12px/1 system-ui}
+.ask b{color:var(--tx)}
+@media (max-width:980px){.row,.row.both{grid-template-columns:minmax(0,1fr)}}
+
+/* ── the slides (after): every size in container units, so a slide scales as one ───────────────────────────────── */
+.sl{container-type:inline-size;position:relative;aspect-ratio:16/9;overflow:hidden;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);background:var(--s-bg);color:var(--s-ink);font-family:var(--s-font)}
+.sA{--s-bg:#fdfdfb;--s-ink:#1a1f26;--s-dim:#5d6772;--s-line:#d8dde3;--s-strong:#9aa3ad;--s-zebra:#f4f6f8;--s-acc:#1f4fb3;--s-warn:#b4232a;--s-prop:#8a5a00;--s-prop-bg:#fff0c7;--s-font:Arial,Helvetica,sans-serif;--s-en:#c4433b;--s-own:#2a62b8;--s-mapline:#c9ced4}
+.sB{--s-bg:#121820;--s-ink:#eef2f6;--s-dim:#9ba7b3;--s-line:#2b3540;--s-strong:#4b5866;--s-zebra:#17202a;--s-acc:#8ec1ea;--s-warn:#ff8a8d;--s-prop:#ffd27a;--s-prop-bg:rgba(255,210,122,.14);--s-font:"Segoe UI",Arial,sans-serif;--s-en:#ff7b72;--s-own:#79b8ff;--s-mapline:#3a4552}
+.sC{--s-bg:#f6f3ea;--s-ink:#23261e;--s-dim:#666452;--s-line:#d9d3c2;--s-strong:#a39d86;--s-zebra:#efebdf;--s-acc:#4d5b2e;--s-band:#4d5b2e;--s-band-ink:#f6f3ea;--s-warn:#a3241f;--s-prop:#7a5200;--s-prop-bg:#f7e3b0;--s-font:Arial,Helvetica,sans-serif;--s-en:#b8423a;--s-own:#2f5f9e;--s-mapline:#cfc8b4}
+.sl .in{position:absolute;inset:0;display:flex;flex-direction:column;padding:3.4cqw 5cqw 2.4cqw}
+.s-head{flex:none}
+.s-top{display:flex;justify-content:space-between;align-items:baseline;gap:2cqw;font-size:1.3cqw;color:var(--s-dim)}
+.s-para{font-weight:700;color:var(--s-acc);font-variant-numeric:tabular-nums}
+.s-ttl{margin:.4cqw 0 0;font-size:3.3cqw;line-height:1.1;font-weight:700;letter-spacing:-.01em}
+.s-sub{margin:.5cqw 0 0;font-size:1.7cqw;color:var(--s-dim)}
+.s-rule{width:5cqw;height:.32cqw;background:var(--s-acc);margin:1.1cqw 0 1.7cqw;border-radius:1px}
+.sC .s-head{background:var(--s-band);color:var(--s-band-ink);margin:-3.4cqw -5cqw 1.9cqw;padding:2.8cqw 5cqw 1.9cqw}
+.sC .s-top,.sC .s-para,.sC .s-sub{color:var(--s-band-ink)}.sC .s-sub{opacity:.85}.sC .s-rule{display:none}
+.s-body{flex:1;min-height:0;display:flex;gap:3cqw;font-size:1.85cqw;line-height:1.38}
+.s-body>.col{flex:1;min-width:0}
+.sl p{max-width:none;margin-bottom:0}
+.s-foot{flex:none;display:flex;align-items:center;gap:1.2cqw;font-size:1.15cqw;color:var(--s-dim);padding-top:.9cqw}
+.s-foot .no{margin-left:auto;font-variant-numeric:tabular-nums}
+.s-draft{padding:.1cqw .7cqw;border:.12cqw solid currentColor;border-radius:.4cqw;font-weight:700}
+.s-notes{display:inline-flex;align-items:center;gap:.5cqw}
+.s-notes::before{content:"";width:.9cqw;height:1.1cqw;border:.12cqw solid currentColor;border-radius:.15cqw}
+.tag-p{display:inline-block;margin-left:.6cqw;padding:.05cqw .6cqw;border-radius:.5cqw;background:var(--s-prop-bg);color:var(--s-prop);font-size:1.1cqw;font-weight:700;vertical-align:.25cqw;white-space:nowrap}
+body.fair .tag-p,body.fair .s-draft{display:none}
+.pts{margin:0;padding:0;list-style:none}
+.pts li{position:relative;padding-left:2.1cqw;margin:0 0 1.1cqw}
+.pts li::before{content:"";position:absolute;left:.3cqw;top:.78cqw;width:.62cqw;height:.62cqw;border-radius:50%;background:var(--s-acc)}
+.pts b{font-weight:700}
+.map{flex:none;width:46%;border:.12cqw solid var(--s-mapline);border-radius:.4cqw;overflow:hidden;background:#f3f0e6}
+.map svg{display:block;width:100%;height:100%}
+.st{width:100%;border-collapse:collapse;font-size:1.55cqw;line-height:1.3}
+.st th{text-align:left;font-weight:700;color:var(--s-dim);font-size:1.2cqw;padding:.5cqw .9cqw;border-bottom:.16cqw solid var(--s-strong);vertical-align:bottom}
+.st td{padding:.7cqw .9cqw;border-bottom:.1cqw solid var(--s-line);vertical-align:top}
+.st tr:nth-child(even) td{background:var(--s-zebra)}
+.st .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.st .ser{color:var(--s-dim);width:1%}
+.st .key{font-weight:700;white-space:nowrap}
+.swatch{display:inline-block;width:2cqw;height:.45cqw;border-radius:.2cqw;margin-right:.7cqw;vertical-align:.3cqw;background:#d33}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.75cqw 1.6cqw;margin:0;font-size:1.5cqw;line-height:1.32}
+.facts dt{color:var(--s-dim);font-weight:700}
+.facts dd{margin:0}
+.flag{color:var(--s-warn);font-weight:700}
+.flag::before{content:"!";display:inline-grid;place-items:center;width:1.5cqw;height:1.5cqw;margin-right:.5cqw;border-radius:50%;background:var(--s-warn);color:var(--s-bg);font-size:1.05cqw;vertical-align:.1cqw}
+.call{margin-top:1.4cqw;padding:1cqw 1.3cqw;border-radius:.5cqw;border:.12cqw solid var(--s-line);background:var(--s-zebra);font-size:1.5cqw}
+.call b{display:block;font-size:1.15cqw;color:var(--s-dim);margin-bottom:.3cqw}
+.go{margin:0 0 2.2cqw}
+.go-l{font-size:1.3cqw;color:var(--s-dim);font-weight:700;margin-bottom:.6cqw}
+.go-bar{display:flex;height:3.2cqw;border-radius:.4cqw;overflow:hidden;gap:.15cqw}
+.go-bar i{display:flex;align-items:center;padding-left:1cqw;font-style:normal;font-size:1.3cqw;font-weight:700;white-space:nowrap;overflow:hidden}
+.go-bar .g{background:#2f9e5f;color:#fff}
+.go-bar .s{background:repeating-linear-gradient(135deg,#e8862a 0 .6cqw,#f0a24f .6cqw 1.2cqw);color:#2a1a05}
+.go-bar .n{background:repeating-linear-gradient(45deg,#d8434a 0 .35cqw,#f1a3a6 .35cqw .7cqw)}
+.go-n{text-align:right;font-size:1.2cqw;color:var(--s-dim);margin-top:.5cqw}
+.rank{margin:0;padding:0;list-style:none;counter-reset:r}
+.rank li{counter-increment:r;position:relative;padding:0 0 1.1cqw 3.4cqw;font-size:1.55cqw;line-height:1.35}
+.rank li::before{content:counter(r);position:absolute;left:0;top:-.1cqw;width:2.3cqw;height:2.3cqw;border-radius:50%;background:var(--s-acc);color:var(--s-bg);font-weight:700;font-size:1.3cqw;display:grid;place-items:center}
+.rank b{font-size:1.75cqw}
+.rank small{display:block;color:var(--s-dim);font-size:1.25cqw}
+.h5{font-size:1.3cqw;font-weight:700;color:var(--s-dim);margin:0 0 1cqw}
+.ladder{position:relative;height:30cqw;margin-top:.6cqw}
+.ladder .front,.ladder .end{position:absolute;left:0;right:0;font-size:1.15cqw;color:var(--s-dim)}
+.ladder .front{top:0}.ladder .end{bottom:0;text-align:center;font-weight:700;color:var(--s-ink)}
+.ladder .ln{position:absolute;left:0;right:0;border-top:.22cqw dashed var(--s-acc);font-size:1.3cqw}
+.ladder .ln>span{position:absolute;left:0;top:.3cqw;white-space:nowrap}
+.ladder .ln>span>b{margin-right:.8cqw}
+.ladder .ln em{position:absolute;right:0;top:.3cqw;font-style:normal;color:var(--s-dim);font-variant-numeric:tabular-nums}
+.ladder .ln .role{display:inline-block;margin-left:.6cqw;padding:0 .6cqw;border-radius:.4cqw;background:var(--s-acc);color:var(--s-bg);font-size:1.05cqw;font-weight:700}
+.ladder .axis{position:absolute;left:50%;top:2.2cqw;bottom:2.4cqw;border-left:.12cqw solid var(--s-line)}
+.rb{display:block;height:.9cqw;border-radius:.2cqw;margin:.15cqw 0}
+.rb.en{background:var(--s-en)}.rb.own{background:var(--s-own)}
+.key2{display:flex;gap:2cqw;font-size:1.15cqw;color:var(--s-dim);margin-top:1cqw}
+.key2 i{display:inline-block;width:1.6cqw;height:.8cqw;border-radius:.2cqw;margin-right:.5cqw;vertical-align:.05cqw}
+.note{font-size:1.25cqw;color:var(--s-dim);margin-top:1.2cqw}
+.time{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chk{margin:0;padding:0;list-style:none;columns:2;column-gap:3.5cqw}
+.chk li{break-inside:avoid;position:relative;padding:0 0 1.15cqw 3cqw;font-size:1.5cqw;line-height:1.35}
+.chk li::before{content:"";position:absolute;left:0;top:.2cqw;width:1.6cqw;height:1.6cqw;border:.16cqw solid var(--s-ink);border-radius:.25cqw}
+.chk li span{color:var(--s-dim);font-variant-numeric:tabular-nums;margin-right:.6cqw}
+.cover .in{justify-content:space-between}
+.cv{display:flex;gap:4cqw;align-items:center;flex:1}
+.cv .l{flex:1}
+.cv .kind{font-size:1.5cqw;font-weight:700;color:var(--s-acc)}
+.cv h2{all:unset;display:block;font-size:5.6cqw;font-weight:800;line-height:1.02;letter-spacing:-.02em;margin:.8cqw 0 1.2cqw}
+.cv .where{font-size:2.2cqw;color:var(--s-dim)}
+.cv dl{display:grid;grid-template-columns:auto 1fr;gap:.5cqw 1.6cqw;margin:2.6cqw 0 0;font-size:1.4cqw}
+.cv dt{color:var(--s-dim);font-weight:700}.cv dd{margin:0}
+.cv .map{width:34%;aspect-ratio:400/360;height:auto}
+.sC.cover .cv .kind{color:var(--s-acc)}
+.div .in{justify-content:center}
+.dv .k{font-size:1.6cqw;font-weight:700;color:var(--s-acc)}
+.dv h2{all:unset;display:block;font-size:5cqw;font-weight:800;letter-spacing:-.02em;margin:.6cqw 0 3cqw}
+.dv ol{margin:0;padding:0;list-style:none;columns:2;column-gap:5cqw;font-size:2cqw}
+.dv li{margin:0 0 1.1cqw;break-inside:avoid}
+.dv li b{display:inline-block;min-width:3.6cqw;color:var(--s-acc);font-variant-numeric:tabular-nums}
+.sC.div{--s-bg:#4d5b2e;--s-ink:#f6f3ea;--s-dim:#d9d6c4;--s-acc:#f6f3ea}
+
+/* ── the slides as AprcDeck makes them today: positions and sizes from the code (fontSize x 56.25cqw) ────────────── */
+.bf{container-type:inline-size;position:relative;aspect-ratio:16/9;overflow:hidden;border-radius:4px;background:#fff;color:#1b2733;font-family:Arial,Helvetica,sans-serif;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.bf .t{position:absolute;left:6cqw;top:4.2cqw;width:62cqw;font-size:2.59cqw;font-weight:700}
+.bf .p{position:absolute;right:6cqw;top:6.5cqw;font-size:1.07cqw;color:#55606c}
+.bf .b{position:absolute;left:6cqw;right:6cqw;top:9.67cqw;height:.2cqw;background:#1f4fb3}
+.bf .x{position:absolute;font-size:1.43cqw;line-height:1.25;white-space:pre-wrap}
+.bf table{position:absolute;border-collapse:collapse;color:#fff;table-layout:fixed}
+.bf th{background:#2563eb;font-weight:700;text-align:left;padding:.3cqw .4cqw;border:.08cqw solid #6b7280}
+.bf td{background:#454b52;padding:.3cqw .4cqw;border:.08cqw solid #6b7280;vertical-align:top}
+.bf .m{position:absolute;overflow:hidden}
+.bf .m svg{display:block;width:100%;height:100%}
+.none{display:grid;place-items:center;aspect-ratio:16/9;border:1px dashed var(--line2);border-radius:4px;color:var(--soft);font-size:13px}
+</style>
+</head>
+<body>
+<div class="pg">
+<h1>Aprc slides</h1>
+<p class="lede">The deck the Aprc makes in the Briefing (<code>AprcDeck.ts</code>), today and as proposed, on a synthetic Bn defence. The switches change the style of every slide; Before shows the same slides as they are made now, at their own sizes.</p>
+
+<div class="bar" role="toolbar" aria-label="Mockup switches">
+  <span>Style</span>
+  <span class="seg" data-k="style"><button data-v="A" aria-pressed="true" title="White paper, ink, a blue accent: closest to the written appreciation">A Paper</button><button data-v="B" aria-pressed="false" title="Dark slides for a dim command post or a projector">B Ops room</button><button data-v="C" aria-pressed="false" title="Cream paper with an olive title band">C Khaki</button></span>
+  <span>Copy</span>
+  <span class="seg" data-k="copy"><button data-v="draft" aria-pressed="true">Draft</button><button data-v="fair" aria-pressed="false">Fair</button></span>
+  <span>Show</span>
+  <span class="seg" data-k="show"><button data-v="after" aria-pressed="true">After</button><button data-v="before" aria-pressed="false">Before</button><button data-v="both" aria-pressed="false">Side by side</button></span>
+</div>
+
+<h2>What is wrong today</h2>
+<ul class="faults">
+  <li><b>Blank thumbnails.</b> Each slide's preview is the empty white page, so the Briefing's slide list is a column of white boxes.</li>
+  <li><b>Walls of text.</b> A paragraph goes in as one block at 1.43 % of the width: five dense lines in the top third, empty below, then "(cont)" slides.</li>
+  <li><b>Dark, cramped tables.</b> The Briefing's default table: white on dark grey, 1.07 % type; "20.4 km; 15.7 km past the front of the AOR" wraps to four lines.</li>
+  <li><b>No frame.</b> No slide number, no section, the para number floating at the right; the cover is a heading and one line.</li>
+  <li><b>Proposals as text.</b> "(proposal)" is typed after the words instead of being marked.</li>
+  <li><b>Content faults.</b> Confirm on Gr lists the bridge class twice; ITGs jumps to "(2)" when (1) is a ruled line; "Assessment of Tasks" is a slide holding "a. DP 1"; two slides are both "Deductions".</li>
+</ul>
+
+<h2>The slide list in the Briefing</h2>
+<p data-show="before">Today: every preview is the blank page.</p>
+<p data-show="after">After: each preview is the slide itself, drawn from its own content when the deck is made.</p>
+<div class="rail" id="rail"></div>
+
+<h2>The slides</h2>
+<div id="slides"></div>
+
+<h2>What changes, in short</h2>
+<ul class="faults fix">
+  <li><b>One frame</b> on every slide: section and para number at the head, the title, Draft, the deck, a notes mark and the slide number at the foot. The Briefing's own banner (classification) stays as it is.</li>
+  <li><b>Points, not paragraphs.</b> At most six points at 1.85 % of the width (about 27 pt on a 1080p projector); the whole paragraph goes into the speaker notes.</li>
+  <li><b>Light tables</b> sized to their content: hairline rules, a ruled head, banded rows, figures right-aligned.</li>
+  <li><b>Pictures where they say more</b>: the going as a bar, lines of def as a depth ladder, strength as paired bars, the trace large on the apch slides.</li>
+  <li><b>Proposals tagged</b> in the draft copy, left out of the fair copy until accepted.</li>
+  <li><b>Content faults fixed</b>: Confirm on Gr de-duplicated, numbering kept when a para is ruled, near-empty slides folded into the next, repeated titles told apart ("Deductions: Gr and Weather").</li>
+</ul>
+
+<h2>For you to decide</h2>
+<ol class="ask">
+  <li><b>Style</b>: A Paper, B Ops room or C Khaki. Or one for print and one for the screen, chosen on the Export menu.</li>
+  <li><b>Section slides</b> before Gr and Weather, En Sit, Own Sit, Time and Space, Courses and Plan: yes or no.</li>
+  <li><b>Points on the slide, the paragraph in the notes</b>: points are cut from the drafted text by rule (a sentence or a clause a point, figures kept). What you wrote yourself is split by sentence only, never shortened. Agree?</li>
+  <li><b>Font in PowerPoint</b>: Arial (on every PC; A and C use it) or Segoe UI (B). The export keeps native text, so the font must be on the PC that opens it.</li>
+  <li><b>The trace</b> on each apch slide with that apch drawn bold and the others faint, as on the Lt Apch slide: yes or no.</li>
+</ol>
+</div>
+
+<script>
+(() => {
+  // ── synthetic content, shaped like a real reading ─────────────────────────────────────────────────────────────────
+  const F = { ech: 'Bn', place: 'Kot Jaimal', mover: 'Tracked', month: 'Nov', season: 'dry', read: '22 Nov 2026 16:00', aor: 'Bn frame round the MITG', threat: 'assumed forward of the AOR' };
+  const TOTAL = 9;
+  const GEN = 'Canal plains. At Kot Jaimal: 254 m, flat / plain, slope level, smooth. For tracked in Nov (dry): GO on 81 % of the AOR, SLOW-GO 17 %, NO-GO 2 % in 1 patch. BUAs cover 15 %. 4 water lines lie across the apchs: Sukh Nala (Nala), Baghal Drain (Minor), Lakhan Disty (Disty) and Nur Wah (Canal). 696 named BUAs in and round the AOR, the largest Pasrur Cantt (about 65000 people). Rd density 1.2 km per km² within 5.0 km of Kot Jaimal, 100 % all-weather; ways out N, NE, E, SE, S, SW, W, NW. MSR: Pasrur – Daska 60A1, 0.2 km from Kot Jaimal.';
+  const APCH = [
+    ['Lt Apch', '20.4 km; 15.7 km past the front of the AOR', 'Narrows to 0.2 km between NO-GO areas', 'Sukh Nala (Nala) at 2.3 km'],
+    ['Cen Apch', '20.4 km; 16.0 km past the front of the AOR', 'Narrows to 0.3 km between NO-GO areas', 'Baghal Drain (Minor, 4.9 m) at 1.2 km'],
+    ['Rt Apch', '24.7 km; 16.6 km past the front of the AOR', 'Narrows to 0.1 km between NO-GO areas', 'Lakhan Disty (Disty, 75 m) at 11.0 km'],
+  ];
+  const LT = [
+    ['Definition', 'Originates from Rampura, passes through Rampura, Ura Chak, Saidpur, Gopalpur, Raipur, Burj, Kes, Sandrana, Naiabadi, Gunna Kalan, Chak 9, Sahu Chak and terminates at Kot Jaimal.'],
+    ['Length', '20.4 km; 15.7 km past the front of the AOR.'],
+    ['Capacity', 'Narrows to 0.2 km between NO-GO areas: less than the 2.0 km a Bde needs.'],
+    ['Tfc', 'GO on 80 % of a 1 km band. Rds along it: Kotli – Wario 30A1 (0.9 km).'],
+    ['Obs', 'Sukh Nala (Nala) at 2.3 km; br 130 m off, class not recorded; Baghal Drain (Minor, 4.9 m) at 2.3 km; br 130 m off, class not recorded; Lakhan Disty (Disty, 75 m) at 19.2 km; no br within 1 km.'],
+    ['Obsn', 'Gr obsn: about 20 % of the ground within 2.0 km is in view from a point on it near Chak 9; clear to 480 m before the first dead or screened ground (median of all dirs); open country. A chance, not a fact.'],
+    ['Cover', 'From view: BUAs 16 %, trees and orchards 4 % of a 1 km band. From fire: BUAs only.'],
+    ['Mutual Sp', 'With Cen: 8 metalled laterals; with Rt: 4 metalled laterals.'],
+    ['Depl Areas', 'Ura Chak (6.5k), Saidpur (4.3k), Rampura (3.4k).'],
+    ['Dominating Features', '2 ITG candidates within 1 km of it.'],
+    ['Dir Keeping', 'Rds along 0.9 km of it; a named BUA every 1.6 km.'],
+    ['Significance', 'Shortest past the border; most BUAs on it (max friction); crosses Sukh Nala, Baghal Drain, Lakhan Disty; mutual sp with Cen and Rt.'],
+  ];
+  const DED = 'a. Basic Deductions\n    (1) Pri of Apchs. Rt (16.6 km past the front, 11 BUAs, 2 water obs, narrows to 0.1 km), Cen (16.0 km past the front, 10 BUAs, 3 water obs, narrows to 0.3 km) then Lt (15.7 km past the front, 13 BUAs, 3 water obs, narrows to 0.2 km).  (proposal)\n    (2) Pri of Comb of Apchs. Lt and Cen (8 metalled laterals); Lt and Rt (4 metalled laterals); Cen and Rt (4 metalled laterals).  (proposal)\n    (3) Lines of Def\n        (a) Possible lines of def, from the front:\n            i. Line W. Burj – Belola, 7.0 km between bdys, 1.3 km behind the front of the AOR.\n            ii. Line X. Chak 9 – Dhoda, 7.0 km between bdys, 7.3 km behind the front of the AOR.\n            iii. Line Y. Naiabadi – Sahu Chak, 7.0 km between bdys, a lateral Rd behind it, 12.8 km behind the front of the AOR.\n            iv. Line Z. Kot Jaimal – Sangatpur, 7.0 km between bdys.\n        (b) Pri of lines of def: Line W (FDLs), Line X (Depth). Frame 7.0 km wide: set Bdys or a Box to test the frontage.  (proposal)';
+  const STR = [['a.', 'Manoeuvre Coys / Sqns', 12, 4, '3.0 : 1'], ['b.', 'All ranks', 2574, 809, '3.2 : 1'], ['c.', 'ATGM launchers', 24, 4, '6.0 : 1'], ['d.', 'Mortars', 18, 6, '3.0 : 1']];
+  const REACT = [
+    ['a.', 'TAI 1', 'A', '291 m', 'H+0:14', 'DP 1'],
+    ['b.', 'TAI 2', 'B', '291 m', 'H+0:14', 'DP 2'],
+    ['c.', 'TAI 3', 'C', '291 m', 'H+0:14', 'DP 3'],
+    ['d.', 'TAI 4', 'C', '16 m', 'H+0:52', 'DP 4'],
+  ];
+  const CONFIRM = [
+    'DCB and ditches are not in the data: draw them as obstacle symbols; a line of def may follow them.',
+    'Bridge class: 60 of 60 bridges in the AOR carry no load class.',
+    '30 m elevation: BUAs, bunds and kidney bunds a few metres high do not show; check heights and dominance.',
+    'Going is the dry reading (Nov); read it again for the wet before relying on it.',
+    'Threat start points are assumed forward of the AOR; drag the threat marker to set them.',
+    'Standing crop height in Nov: the calendar gives the season, not the field.',
+    'Met conditions are the mean of the month: take the forecast before H.',
+    'No en symbols on the map: his strength and start points are not known to the reading.',
+  ];
+
+  // ── a schematic trace (the real one is the Gr Scope AOR trace) ──────────────────────────────────────────────────
+  const AP = {
+    Lt: 'M118 18 C 108 88, 150 150, 165 212 S 190 300, 200 322',
+    Cen: 'M205 18 C 198 100, 216 168, 206 240 S 200 300, 200 322',
+    Rt: 'M302 18 C 292 90, 272 160, 250 222 S 214 300, 200 322',
+  };
+  function trace(hl) {
+    const lineDef = (y, n) => `<line x1="56" x2="344" y1="${y}" y2="${y}" stroke="#1f3f8f" stroke-width="2" stroke-dasharray="7 5"/><rect x="40" y="${y - 9}" width="18" height="18" rx="3" fill="#1f3f8f"/><text x="49" y="${y + 4.5}" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">${n}</text>`;
+    const bua = [[160, 128, 6], [232, 112, 5], [150, 200, 7], [262, 196, 5], [118, 168, 4], [286, 140, 4], [184, 262, 5], [238, 268, 4], [96, 96, 4], [312, 92, 5], [200, 322, 9]];
+    const lab = [[160, 128, 'Burj'], [232, 112, 'Chak 9'], [150, 200, 'Dhoda'], [262, 196, 'Talwandi'], [184, 262, 'Naiabadi']];
+    const ap = (k) => {
+      const on = !hl || hl === k;
+      return `<path d="${AP[k]}" fill="none" stroke="#d33a2c" stroke-width="${hl === k ? 26 : 16}" stroke-opacity="${on ? 0.22 : 0.08}" stroke-linecap="round"/><path d="${AP[k]}" fill="none" stroke="#c62a1f" stroke-width="${hl === k ? 3.4 : 2}" stroke-opacity="${on ? 1 : 0.3}"/>`;
+    };
+    return `<svg viewBox="0 0 400 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Trace: three apchs onto Kot Jaimal, lines of def W to Z">
+<rect width="400" height="360" fill="#f3f0e6"/>
+<g stroke="#e4dfcf" stroke-width="1">${Array.from({ length: 9 }, (_, i) => `<line x1="0" x2="400" y1="${i * 45}" y2="${i * 45}"/><line y1="0" y2="360" x1="${i * 50}" x2="${i * 50}"/>`).join('')}</g>
+<rect x="56" y="40" width="288" height="300" fill="none" stroke="#7d8790" stroke-width="1.4" stroke-dasharray="4 4"/>
+<path d="M0 78 C 80 66, 160 94, 262 76 S 362 68, 400 84" fill="none" stroke="#3b82c4" stroke-width="3"/>
+<path d="M0 150 C 90 160, 190 138, 282 154 S 362 160, 400 150" fill="none" stroke="#3b82c4" stroke-width="2"/>
+<path d="M0 232 C 70 226, 130 244, 220 230 S 340 222, 400 236" fill="none" stroke="#3b82c4" stroke-width="2.4"/>
+<path d="M300 228 l26 -8 l14 18 l-10 20 l-26 2 z" fill="url(#hx)" stroke="#c0392b" stroke-width="1.2"/>
+<defs><pattern id="hx" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#f6d8d5"/><line x1="0" y1="0" x2="0" y2="6" stroke="#c0392b" stroke-width="1.6"/></pattern></defs>
+<path d="M200 322 L 300 336 L 398 352" fill="none" stroke="#e39b2d" stroke-width="4"/>
+<text x="350" y="340" font-size="11" fill="#8a5a00" font-weight="700">MSR</text>
+${bua.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#9aa0a6" fill-opacity=".75"/>`).join('')}
+${ap('Lt')}${ap('Cen')}${ap('Rt')}
+${lineDef(110, 'W')}${lineDef(190, 'X')}${lineDef(262, 'Y')}
+${lab.map(([x, y, t]) => `<text x="${x + 9}" y="${y - 7}" font-size="11" fill="#33393f" paint-order="stroke" stroke="#f3f0e6" stroke-width="3">${t}</text>`).join('')}
+<path d="M200 306 l5 10 l11 1.5 l-8 7.6 l2 11 l-10 -5.3 l-10 5.3 l2 -11 l-8 -7.6 l11 -1.5 z" fill="#1f3f8f" stroke="#fff" stroke-width="1.2"/>
+<text x="222" y="318" font-size="12" font-weight="700" fill="#1f3f8f" paint-order="stroke" stroke="#f3f0e6" stroke-width="3">Kot Jaimal (MITG)</text>
+<text x="118" y="32" font-size="11" font-weight="700" fill="#c62a1f" text-anchor="middle" paint-order="stroke" stroke="#f3f0e6" stroke-width="3">Lt</text>
+<text x="205" y="32" font-size="11" font-weight="700" fill="#c62a1f" text-anchor="middle" paint-order="stroke" stroke="#f3f0e6" stroke-width="3">Cen</text>
+<text x="302" y="32" font-size="11" font-weight="700" fill="#c62a1f" text-anchor="middle" paint-order="stroke" stroke="#f3f0e6" stroke-width="3">Rt</text>
+<text x="390" y="20" font-size="12" font-weight="700" fill="#33393f" text-anchor="end">N ↑</text>
+</svg>`;
+  }
+
+  // ── the frame every slide shares (after) ──────────────────────────────────────────────────────────────────────
+  const P = '<span class="tag-p">Proposal</span>';
+  const head = (sec, para, ttl, sub = '') => `<div class="s-head"><div class="s-top"><span>${sec}</span>${para ? `<span class="s-para">Para ${para}</span>` : ''}</div><h3 class="s-ttl">${ttl}</h3>${sub ? `<p class="s-sub">${sub}</p>` : ''}</div><div class="s-rule"></div>`;
+  const foot = (n, notes) => `<div class="s-foot"><span class="s-draft">Draft</span><span>Aprc · ${F.ech} · ${F.place}</span>${notes ? '<span class="s-notes">Para in full in the notes</span>' : ''}<span class="no">${n} / ${TOTAL}</span></div>`;
+  const slide = (style, cls, inner) => `<div class="sl s${style} ${cls}"><div class="in">${inner}</div></div>`;
+
+  const SLIDES = [
+    {
+      t: 'Cover', n: 1,
+      after: (s) => slide(s, 'cover', `<div class="cv"><div class="l"><div class="kind">Bn Def</div><h2>APRC OF THE SIT</h2><div class="where">${F.place} · ${F.mover} · ${F.month}, ${F.season}</div><dl><dt>AOR</dt><dd>${F.aor}</dd><dt>Threat</dt><dd>${F.threat}</dd><dt>Read</dt><dd>${F.read}</dd></dl></div><div class="map">${trace()}</div></div>${foot(1)}`),
+      before: () => `<div class="bf"><div style="position:absolute;left:10cqw;top:22.5cqw;width:5cqw;height:.5cqw;background:#1f4fb3"></div><div class="x" style="left:10cqw;top:24.2cqw;font-size:4.39cqw;font-weight:700">APRC OF THE SIT</div><div class="x" style="left:10cqw;top:33.75cqw;font-size:1.69cqw;color:#55606c">${F.ech} · ${F.place} · ${F.month}, ${F.season}</div></div>`,
+      changed: ['A real cover: the kind of appreciation, where, the mover and month, the AOR, the threat and when it was read.', 'The trace beside it, so the room sees the ground from the first slide.'],
+    },
+    {
+      t: 'Section: Gr and Weather', n: 2,
+      after: (s) => slide(s, 'div', `<div class="dv"><div class="k">Factors</div><h2>Gr and Weather</h2><ol><li><b>5</b>Gen Description</li><li><b>6</b>Apchs</li><li><b>7</b>ITGs</li><li><b>8</b>Obs</li><li><b>9</b>Cover</li><li><b>10</b>Met Conditions</li><li><b>11</b>Deductions</li></ol></div>${foot(2)}`),
+      before: () => '<div class="none">No section slides today</div>',
+      changed: ['A section slide before each group (your choice, question 2): the paragraphs that follow, with their numbers.'],
+    },
+    {
+      t: 'Gen Description', n: 3, notes: GEN,
+      after: (s) => slide(s, '', `${head('Factors · Gr and Weather', 5, 'Gen Description')}<div class="s-body"><div class="col"><div class="go"><div class="go-l">Going for tracked · Nov, dry</div><div class="go-bar"><i class="g" style="flex:81">GO 81 %</i><i class="s" style="flex:17">SLOW-GO 17 %</i><i class="n" style="flex:2"></i></div><div class="go-n">NO-GO 2 % (1 patch)</div></div><ul class="pts"><li><b>Canal plains.</b> Kot Jaimal 254 m: flat, smooth.</li><li><b>4 water lines</b> across the apchs: Sukh Nala, Baghal Drain, Lakhan Disty, Nur Wah.</li><li><b>BUAs cover 15 %:</b> 696 named; the largest Pasrur Cantt (about 65,000).</li><li><b>Rds 1.2 km per km²</b> within 5 km, all-weather; ways out all round.</li><li><b>MSR</b> Pasrur – Daska 60A1, 0.2 km from Kot Jaimal.</li></ul></div></div>${foot(3, true)}`),
+      before: () => `<div class="bf"><div class="t">Gen Description</div><div class="p">Para 5</div><div class="b"></div><div class="x" style="left:6cqw;top:11.5cqw;width:88cqw">${GEN}</div></div>`,
+      changed: ['The going as a bar with its words: GO, SLOW-GO, NO-GO by share, not by colour alone.', 'Five points at a size the back of the room can read; the figures kept.', 'The paragraph in full goes to the speaker notes.'],
+    },
+    {
+      t: 'Apchs', n: 4,
+      after: (s) => slide(s, '', `${head('Factors · Gr and Weather', 6, 'Apchs', '3 apchs onto Kot Jaimal from the threat side (start points assumed)')}<div class="s-body"><div class="map">${trace()}</div><div class="col"><table class="st"><tr><th>Apch</th><th class="num">Past the front</th><th class="num">Narrowest</th><th>First obstacle</th></tr>${APCH.map((r) => `<tr><td class="key"><span class="swatch"></span>${r[0].replace(' Apch', '')}</td><td class="num">${r[1].split('; ')[1].replace(' past the front of the AOR', '')}</td><td class="num">${r[2].match(/[\d.]+ km/)[0]}</td><td>${r[3].replace(/ \((?:Nala|Minor, [\d.]+ m|Disty, \d+ m)\)/, '')}</td></tr>`).join('')}</table><p class="note">Narrowest: between NO-GO areas. A Bde needs 2.0 km; every apch is narrower, so each takes a smaller force.</p></div></div>${foot(4)}`),
+      before: () => `<div class="bf"><div class="t">Apchs</div><div class="p">Para 6</div><div class="b"></div><div class="m" style="left:6cqw;top:11.5cqw;width:24.6cqw;height:22.2cqw">${trace()}</div><div class="x" style="left:49cqw;top:11.5cqw;width:45cqw">3 apchs to Kot Jaimal from the threat side (start points assumed).</div><table style="left:49cqw;top:16.3cqw;width:45cqw;font-size:1.07cqw"><colgroup><col style="width:14%"><col style="width:20%"><col style="width:26%"><col style="width:40%"></colgroup><tr><th>Apch</th><th>Length</th><th>Capacity</th><th>Obs</th></tr>${APCH.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</table></div>`,
+      changed: ['The trace large, the table beside it reduced to what compares: past the front, narrowest, first obstacle.', 'Figures right-aligned, so the eye runs down a column.', 'What the figures mean said once, under the table.'],
+    },
+    {
+      t: 'Lt Apch', n: 5, notes: LT.map((r) => `${r[0]}. ${r[1]}`).join(' '),
+      after: (s) => slide(s, '', `${head('Factors · Gr and Weather', '6a', 'Lt Apch', 'Rampura → Burj → Chak 9 → Kot Jaimal · 14 BUAs on it')}<div class="s-body"><div class="map" style="width:38%">${trace('Lt')}</div><div class="col"><dl class="facts"><dt>Length</dt><dd>20.4 km, 15.7 past the front</dd><dt>Capacity</dt><dd><span class="flag">0.2 km at the narrows</span>, under the 2.0 km a Bde needs</dd><dt>Going</dt><dd>GO on 80 % of a 1 km band</dd><dt>Obs</dt><dd>Sukh Nala, Baghal Drain at 2.3 km (br 130 m off); Lakhan Disty at 19.2 km (no br within 1 km)</dd><dt>Obsn</dt><dd>About 20 % in view within 2 km; clear to 480 m. A chance, not a fact.</dd><dt>Cover</dt><dd>BUAs 16 %, trees 4 %</dd><dt>Mutual sp</dt><dd>Cen: 8 laterals · Rt: 4</dd></dl><div class="call"><b>Significance</b>Shortest past the border; most BUAs on it (max friction); crosses all three water lines.</div></div></div>${foot(5, true)}`),
+      before: () => {
+        const w = LT.map((r) => Math.max(1, Math.ceil(r[1].length / 62)));
+        const sum = w.reduce((a, b) => a + b, 0);
+        return `<div class="bf"><div class="t">Lt Apch</div><div class="p">Para 6a</div><div class="b"></div><div class="m" style="left:6cqw;top:11.5cqw;width:30cqw;height:27cqw">${trace()}</div><table style="left:38cqw;top:11.5cqw;width:56cqw;height:39.4cqw;font-size:.87cqw"><colgroup><col style="width:22%"><col style="width:78%"></colgroup>${LT.map((r, i) => `<tr style="height:${((w[i] / sum) * 100).toFixed(1)}%"><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table></div>`;
+      },
+      changed: ['The trace with this apch bold and the others faint (question 5).', 'Its route in one line under the title.', 'Seven facts in short form; the flag on what fails the rule (capacity), in a word and a mark, not colour alone.', 'Significance last, as the take-away. Depl areas, dominating features and dir keeping go to the notes.'],
+    },
+    {
+      t: 'Deductions: Gr and Weather', n: 6,
+      after: (s) => slide(s, '', `${head('Factors · Gr and Weather', 11, 'Deductions: Gr and Weather')}<div class="s-body"><div class="col"><div class="h5">Pri of apchs ${P}</div><ol class="rank"><li><b>Rt</b><small>16.6 km past the front · narrows to 0.1 km · 2 water obs</small></li><li><b>Cen</b><small>16.0 km · narrows to 0.3 km · 3 water obs</small></li><li><b>Lt</b><small>15.7 km · narrows to 0.2 km · 3 water obs</small></li></ol><div class="h5" style="margin-top:1.2cqw">Pri of comb of apchs ${P}</div><ul class="pts"><li>Lt and Cen: 8 metalled laterals</li><li>Lt and Rt, Cen and Rt: 4 each</li></ul></div><div class="col"><div class="h5">Lines of def, from the front ${P}</div><div class="ladder"><div class="front">Front of the AOR ↓</div><div class="ln" style="top:9%"><span><b>Line W</b>Burj – Belola<span class="role">FDLs</span></span><em>1.3 km</em></div><div class="ln" style="top:36%"><span><b>Line X</b>Chak 9 – Dhoda<span class="role">Depth</span></span><em>7.3 km</em></div><div class="ln" style="top:63%"><span><b>Line Y</b>Naiabadi – Sahu Chak</span><em>12.8 km</em></div><div class="ln" style="top:84%"><span><b>Line Z</b>Kot Jaimal – Sangatpur</span><em>MITG</em></div></div></div></div>${foot(6, true)}`),
+      before: () => `<div class="bf"><div class="t">Deductions</div><div class="p">Para 11</div><div class="b"></div><div class="x" style="left:6cqw;top:11.5cqw;width:88cqw">${DED}</div></div>`,
+      changed: ['The title says which deductions (two slides were both "Deductions").', 'Pri of apchs as a ranked list with the reason under each.', 'Lines of def as a depth ladder: how far behind the front, which is FDLs and which depth.', 'Proposals tagged once per block, not "(proposal)" after each line; the fair copy drops the tag.'],
+    },
+    {
+      t: 'Own Str as Related to that of the En', n: 7,
+      after: (s) => slide(s, '', `${head('Factors · Own Sit', 18, 'Own Str as Related to that of the En', 'He is 3 : 1 in manoeuvre Coys and 6 : 1 in ATGM')}<div class="s-body"><div class="col"><table class="st"><tr><th class="ser">Ser</th><th>Arms</th><th class="num">En</th><th class="num">Own</th><th class="num">Ratio</th><th style="width:30%"></th></tr>${STR.map((r) => `<tr><td class="ser">${r[0]}</td><td>${r[1]}</td><td class="num">${r[2].toLocaleString('en-GB')}</td><td class="num">${r[3].toLocaleString('en-GB')}</td><td class="num"><b>${r[4]}</b></td><td><span class="rb en" style="width:100%"></span><span class="rb own" style="width:${((r[3] / r[2]) * 100).toFixed(0)}%"></span></td></tr>`).join('')}</table><div class="key2"><span><i style="background:var(--s-en)"></i>En</span><span><i style="background:var(--s-own)"></i>Own</span></div><p class="note">En assumed one level up (a Bde, mech): no en symbols marked. Own: 1 x Std Inf Bn (ORBAT).</p></div></div>${foot(7)}`),
+      before: () => `<div class="bf"><div class="t">Own Str as Related to that of the En</div><div class="p">Para 18</div><div class="b"></div><table style="left:6cqw;top:11.8cqw;width:88cqw;height:24cqw;font-size:1.07cqw"><tr><th>Ser</th><th>Arms</th><th>En</th><th>Own</th><th>Ratio</th></tr>${STR.map((r) => `<tr>${r.map((c) => `<td>${typeof c === 'number' ? c.toLocaleString('en-GB') : c}</td>`).join('')}</tr>`).join('')}</table></div>`,
+      changed: ['The finding as the subtitle: what the table means.', 'Paired bars, en and own, in the 2525 colours, with words in the key.', 'The assumption said on the slide (en one level up, nothing marked).'],
+    },
+    {
+      t: 'En Reactions and Own Ctr Actions', n: 8,
+      after: (s) => slide(s, '', `${head('Courses', 25, 'En Reactions and Own Ctr Actions')}<div class="s-body"><div class="col"><table class="st"><tr><th class="ser">Ser</th><th>En reaction</th><th class="num">At</th><th>Own ctr action</th></tr>${REACT.map((r) => `<tr><td class="ser">${r[0]}</td><td>Lead element at <b>${r[1]}</b> on ${r[2]}: narrows of ${r[3]} block him deployed</td><td class="num time">${r[4]}</td><td><b>${r[5]}</b>: interdict at ${r[1]} by fire, obstacle or a blocking force, in place before H ${P}</td></tr>`).join('')}</table><p class="note">Times from H at the book's rates, unopposed: each fight adds to them.</p></div></div>${foot(8, true)}`),
+      before: () => `<div class="bf"><div class="t">En Reactions and Own Ctr Actions</div><div class="p">Para 25</div><div class="b"></div><table style="left:6cqw;top:11.8cqw;width:88cqw;height:36cqw;font-size:1.07cqw"><colgroup><col style="width:8%"><col style="width:46%"><col style="width:46%"></colgroup><tr><th>Ser</th><th>En Reactions</th><th>Own Ctr Actions</th></tr>${REACT.map((r) => `<tr><td>${r[0]}</td><td>His lead element at ${r[1]} on ${r[2]} (narrows ${r[3]}, under a corridor's width: blocked, he cannot pass deployed): ${r[4]}.</td><td>${r[5]}: Interdict at ${r[1]} (narrows ${r[3]}, under a corridor's width)? Fire, obstacle or a force to block it: ordered here to be in place in time (before H).</td></tr>`).join('')}</table></div>`,
+      changed: ['His time in its own column, so the four can be compared at a glance.', 'The same words a row once, the rule said once under the table.'],
+    },
+    {
+      t: 'Confirm on Gr', n: 9,
+      after: (s) => slide(s, '', `${head('Close', '', 'Confirm on Gr', 'What the reading could not tell')}<div class="s-body"><div class="col"><ol class="chk">${CONFIRM.map((c, i) => `<li><span>${i + 1}.</span>${c}</li>`).join('')}</ol></div></div>${foot(TOTAL)}`),
+      before: () => `<div class="bf"><div class="t">Confirm on Gr</div><div class="p">What the reading could not tell</div><div class="b"></div><div class="x" style="left:6cqw;top:11.5cqw;width:88cqw;font-size:1.38cqw;line-height:1.3">${[...CONFIRM.slice(0, 5), CONFIRM[1], ...CONFIRM.slice(5)].map((c, i) => `${i + 1}. ${c}`).join('\n')}</div></div>`,
+      changed: ['A checklist to tick on the ground, in two columns.', 'Each item once: today the bridge class is listed twice.', 'Each item still rides as a Task comment on the slide, as now.'],
+    },
+  ];
+
+  // ── drawing the page ──────────────────────────────────────────────────────────────────────────────────────────
+  const state = { style: 'A', copy: 'draft', show: 'after' };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  function render() {
+    document.body.classList.toggle('fair', state.copy === 'fair');
+    const rail = document.getElementById('rail');
+    rail.innerHTML = SLIDES.map((s) => `<div class="th">${state.show === 'before' ? `<div class="blank"><b>${s.n}</b></div>` : s.after(state.style)}<small>${s.n}. ${s.t}</small></div>`).join('');
+    for (const el of document.querySelectorAll('[data-show]')) el.hidden = el.dataset.show !== (state.show === 'before' ? 'before' : 'after');
+    document.getElementById('slides').innerHTML = SLIDES.map((s) => {
+      const after = `<div>${s.after(state.style)}<div class="cap">After · style ${state.style}</div></div>`;
+      const before = `<div>${s.before()}<div class="cap">Before · as made today</div></div>`;
+      const frames = state.show === 'after' ? after : state.show === 'before' ? before : before + after;
+      const side = `<div class="side"><h4>What changes</h4><ul>${s.changed.map((c) => `<li>${c}</li>`).join('')}</ul>${s.notes ? `<details><summary>Speaker notes</summary><div>${esc(s.notes)}</div></details>` : ''}</div>`;
+      return `<section class="row${state.show === 'both' ? ' both' : ''}"><h3>${s.n}. ${s.t}</h3>${frames}${side}</section>`;
+    }).join('');
+  }
+  for (const seg of document.querySelectorAll('.seg')) {
+    seg.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      state[seg.dataset.k] = b.dataset.v;
+      for (const x of seg.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b));
+      render();
+    });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

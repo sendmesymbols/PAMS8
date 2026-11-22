@@ -387,8 +387,9 @@ MS/
   (40). See `MS/Docs/21-aoi-check-xsection-compare.md`.
 - **GroundAppreciation** (`Engines/GroundAppreciation/`) — optional, off by default (`features.groundAppreciation`; top bar
   📝 Aprc with ⚙; Ctrl+K widget; built 22 Nov 2026; `Appreciation_Plan.md`, `MS/Docs/22-ground-appreciation.md`). The
-  appreciation of the situation as one model (`AprcModel.ts`: parts, groups, numbered paragraphs; outline by kind, `def`
-  built, `attk` has its place: `registerOutline`), drafted on **Read** from the ground (through the Ground Guide only:
+  appreciation of the situation as one model (`AprcModel.ts`: parts, groups, numbered paragraphs; outline by kind via
+  `registerOutline`: `def` from the AprDf specimen, `attk` from "Mechs of Aprc (Attk)", its paras 1-24, every ruled
+  paragraph's prompts citing the book's sheet), drafted on **Read** from the ground (through the Ground Guide only:
   `guide.aorAround()` = the Gr Scope AOR reading on demand, the rail need not be open; sections, cover and the Extended
   View's sight at the MITG and on each approach), the symbols on the map (`planRecordsOf` → `readSymbols`) and the last
   Check my plan (`DeploymentBuilderEngine.planCheck`). A paragraph is GR / MAP / YOU JUDGE (a proposal) / YOURS (a ruled
@@ -397,15 +398,22 @@ MS/
   the marking at head and foot of every page is a ruled line too (no marking text is held).
   Fair and draft copies (draft adds marks, basis, data and Confirm on Gr annexes). Exports: Word (`AprcDocx.ts`, zipped
   with the PowerPoint bundle's JSZip: no new dependency), PDF by print (`AprcHtml.ts`), text, JSON, and Briefing slides
-  (`AprcDeck.ts`: full / decision / sand model; slides carry `sourceRef` + `sourceHash`, an edited slide is kept on a
-  refresh). En options from `guide.ipbApproachesAround(..., { extras: true })` (avenues with his times from H at the book's
+  (`AprcDeck.ts`: full / decision / sand model, Ops room style `DECK_THEME` (user's pick of
+  `ground-appreciation-slides-options.html`): dark slides with one frame, points with the para in the notes, the going bar,
+  apch alone on its dark trace, lines of def ladder, strength bars, real previews; slides carry `sourceRef` + `sourceHash`,
+  an edited slide is kept on a refresh). En options from `guide.ipbApproachesAround(..., { extras: true })` (avenues with his times from H at the book's
   rates, TAIs / DPs into the reactions table, Annex A weather, template phase names); a DP 1 tasks table from the lines of
   def (a Coy per BUA astride an apch: a working assumption, said so); tables typed into in the sheet (`cells`, `addRows`).
   ORBAT (`groundAppreciation.orbatUrl`): relative strength (Coys, all ranks, ATGM, mortars, ratio), own composition, Pls
   held against DP 1; Time Req (move in as a straight-line floor, posn prep IC s75 p 399, minefield p 439); his phases at
   each line of def with clock times from H (`groundAppreciation.hHour`, the sheet's H box); Coy grouping and tasks from
   Check my plan ("from incl X to incl Y"); the appreciation rides in the plan file (`pamsExtras.aprc` via
-  `SerializationEngine.registerPlanExtra`). Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (141 checks).
+  `SerializationEngine.registerPlanExtra`). **Attack** (Kind select; `read({ at: obj, from: own start })`): the AOR read
+  round the obj from own side (`aorAround` `from` / `away`; its sides mirrored to the attacker's Lt / Rt): apchs onto the obj
+  with the book's heads, the obj's ITG heads, his localities on the lines facing the attk; the dir of attk from
+  `ipbApproachesAround(start, { readFor: 'attack', objective })` (turning and flanks before frontal, Lt vs Rt weighed, FUP,
+  blocking posn at his MSR choke); ratio own to en (3 : 1); Course A, AP-1 and the tasks tables from an attack Check my
+  plan; decks by kind (`DECK_IDS`). Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (200 checks).
 - **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
   Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
   J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;

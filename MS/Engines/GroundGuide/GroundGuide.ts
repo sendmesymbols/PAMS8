@@ -1952,7 +1952,7 @@ export default class GroundGuide {
    * The area read for a spot: the HQ's frame facing the threat, its anchor snapped to a quarter of its frontage (so a
    * new area is read only when the spot moves that far), and the key of everything the reading depends on.
    */
-  private _apchFrame(at: MercXY, sidc: string | null, over: { hq?: 'bde' | 'div'; readFor?: 'defence' | 'attack'; threatDeg?: number; mover?: IpbMover; month?: number } = {}) {
+  private _apchFrame(at: MercXY, sidc: string | null, over: { hq?: 'bde' | 'div'; readFor?: 'defence' | 'attack'; threatDeg?: number; mover?: IpbMover; month?: number; objectiveAt?: MercXY | null; objectiveLabel?: string } = {}) {
     const o = this._opts.extended;
     const ip = o.ipb;
     const D: any = IPB_DOCTRINE;
@@ -1983,7 +1983,7 @@ export default class GroundGuide {
       return [dx * A[0] + dy * A[1], dx * Rr[0] + dy * Rr[1]];
     };
     const fromFrame = (aM: number, qM: number): MercXY => pt(aM, qM);
-    const obj = ip.apchEnd === 'through' || thr.allRound ? null : this._apchObjective(at, sidc, side, toFrame, lengthM, F.w, mcWidthM, k);
+    const obj = ip.apchEnd === 'through' || thr.allRound ? null : this._apchObjective(at, sidc, side, toFrame, lengthM, F.w, mcWidthM, k, over.objectiveAt ?? null, over.objectiveLabel);
     // The turning approach needs the ground behind the objective (its MSR, up to 8 km): the area read runs that far,
     // grown in steps of a quarter of its width so the coding is not worked out again for every small move.
     if (obj && ip.turn) {
@@ -2147,6 +2147,8 @@ export default class GroundGuide {
     widthM: number,
     mcWidthM: number,
     _k: number, // kept for the callers: the snap lattice now takes its own factor (snapStep)
+    objectiveAt: MercXY | null = null,
+    objectiveLabel?: string,
   ): { at: MercXY; frontageM: number; depthM: number; label: string; source: 'posn' | 'threat' | 'symbol'; assumed: boolean; from: { at: MercXY; halfWidthM: number } | null } | null {
     const own = this._echDims(sidc, mcWidthM);
     const snapTo = (p: MercXY, m: number): MercXY => {
@@ -2170,6 +2172,8 @@ export default class GroundGuide {
       };
     }
     const from = { at: snapTo(at, own.frontageM / 4), halfWidthM: Math.max(mcWidthM, own.frontageM) / 2 };
+    // An objective a host names (the Aprc engine's attack: its MITG) comes before the Threat marker; its frontage is taken as yours.
+    if (objectiveAt && inArea(objectiveAt)) return { at: snapTo(objectiveAt, 50), frontageM: own.frontageM, depthM: own.depthM, label: objectiveLabel || 'the Obj', source: 'threat', assumed: true, from };
     if (tAt && inArea(tAt)) return { at: snapTo(tAt, 50), frontageM: own.frontageM, depthM: own.depthM, label: 'the Threat marker', source: 'threat', assumed: true, from };
     // The nearest en symbol ahead of the spot in the area read.
     const spotAl = toFrame(at)[0];
@@ -2551,12 +2555,14 @@ export default class GroundGuide {
    */
   async ipbApproachesAround(
     point: any,
-    opts: { sidc?: string | null; hq?: 'bde' | 'div'; readFor?: 'defence' | 'attack'; threatDeg?: number; mover?: IpbMover; month?: number; extras?: boolean } = {},
+    opts: { sidc?: string | null; hq?: 'bde' | 'div'; readFor?: 'defence' | 'attack'; threatDeg?: number; mover?: IpbMover; month?: number; extras?: boolean; objective?: any | null; objectiveLabel?: string } = {},
   ): Promise<IpbApchView | null> {
     const ll = this._lngLatOf(point);
     if (!ll || !this._cache || !this._manifest) return null;
     const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
-    const over = { hq: opts.hq, readFor: opts.readFor, threatDeg: opts.threatDeg, mover: opts.mover, month: opts.month };
+    // `objective` (lng / lat, attack): the approaches end on it, before the Threat marker or an en symbol ahead
+    const ol = opts.objective ? this._lngLatOf(opts.objective) : null;
+    const over = { hq: opts.hq, readFor: opts.readFor, threatDeg: opts.threatDeg, mover: opts.mover, month: opts.month, objectiveAt: ol ? (lngLatToMercator(ol[0], ol[1]) as MercXY) : null, objectiveLabel: opts.objectiveLabel };
     let r = this._apchCompute(at, opts.sidc ?? null, over);
     const token = this._configToken;
     for (let i = 0; r === 'pending' && i < 3; i++) {
@@ -3777,11 +3783,14 @@ export default class GroundGuide {
    * The AOR reading for a host, worked out now (the rail need not be open): the same reading the rail's AOR scale shows,
    * with the frame it was taken in (source used, echelon, mode, month). `point` is the MITG (lng / lat array or a
    * geometry); null takes the rail's own choice: a VG symbol, else `graphic`, else the map centre. Waits for the tiles.
+   * An attack read from the attacker's side (the Aprc engine's attack): `from` (lng / lat) is where he starts, taken as
+   * the threat's place for this reading only; `away` without it reads from the side away from the threat.
    */
-  async aorAround(point: any | null = null, opts: { graphic?: any; echelon?: 'coy' | 'bn' | 'bde'; profile?: GroundGuideProfile } = {}): Promise<{ reading: AorReading; frame: AorFrame } | null> {
+  async aorAround(point: any | null = null, opts: { graphic?: any; echelon?: 'coy' | 'bn' | 'bde'; profile?: GroundGuideProfile; from?: any | null; away?: boolean } = {}): Promise<{ reading: AorReading; frame: AorFrame } | null> {
     if (!this._cache || !this._manifest) return null;
     const ll = point === null ? null : this._lngLatOf(point);
-    const over = { anchor: ll ? (lngLatToMercator(ll[0], ll[1]) as MercXY) : null, graphic: opts.graphic, echelon: opts.echelon, profile: opts.profile };
+    const fl = opts.from ? this._lngLatOf(opts.from) : null;
+    const over = { anchor: ll ? (lngLatToMercator(ll[0], ll[1]) as MercXY) : null, graphic: opts.graphic, echelon: opts.echelon, profile: opts.profile, fromAt: fl ? (lngLatToMercator(fl[0], fl[1]) as MercXY) : null, away: !!opts.away };
     let p = this._aorPrepare(over);
     const token = this._configToken;
     for (let i = 0; p && !p.input && i < 6; i++) {
@@ -4021,7 +4030,7 @@ export default class GroundGuide {
    * echelon and the mode.
    */
   private _aorPrepare(
-    over: { anchor?: MercXY | null; graphic?: any; echelon?: 'coy' | 'bn' | 'bde'; profile?: GroundGuideProfile } = {},
+    over: { anchor?: MercXY | null; graphic?: any; echelon?: 'coy' | 'bn' | 'bde'; profile?: GroundGuideProfile; fromAt?: MercXY | null; away?: boolean } = {},
     cached?: (key: string) => boolean,
   ): { frame: AorFrame; key: string; input: AorInput | null } | null {
     const m = this._manifest, cache = this._cache;
@@ -4061,11 +4070,20 @@ export default class GroundGuide {
     const kA = Math.cosh(anchor[1] / 6378137); // Mercator metres per ground metre at the anchor
     const code = echelonCodeOf(sidc);
     const ech: 'coy' | 'bn' | 'bde' = over.echelon ?? (o.echelon !== 'auto' ? o.echelon : !code ? 'bn' : Number(code) <= 15 ? 'coy' : Number(code) <= 17 ? 'bn' : 'bde');
-    // The threat: a place on the map, else a bearing (set, or the unit's front).
+    // The threat: a place on the map, else a bearing (set, or the unit's front). A host reading an attack (the Aprc
+    // engine) reads from the attacker's side instead: from its start (`fromAt`, taken as the threat's place), else
+    // (`away`) from the side away from the threat, the approaches then coming from that side onto the MITG.
     const oc = this._opts.extended;
-    const tAt = this._threatMerc();
+    const tMark = this._threatMerc();
+    const tAt = over.fromAt ?? (over.away ? null : tMark);
+    const bearingTo = (p: MercXY): number => ((Math.atan2(p[0] - anchor![0], p[1] - anchor![1]) * 180) / Math.PI + 360) % 360;
     let face = oc.threat === 'bearing' ? oc.bearingDeg : this._opts.footprint.bearingDeg;
-    if (tAt) face = ((Math.atan2(tAt[0] - anchor[0], tAt[1] - anchor[1]) * 180) / Math.PI + 360) % 360;
+    if (tAt) face = bearingTo(tAt);
+    else if (over.away) {
+      // a threat marker on the MITG itself gives no bearing: the set bearing (or the unit's front) is taken then
+      if (tMark && Math.hypot(tMark[0] - anchor[0], tMark[1] - anchor[1]) / kA > 500) face = bearingTo(tMark);
+      face = (face + 180) % 360;
+    }
     const { ring, used, note } = this._aorOutline(anchor, face, ech);
     // Where the approaches start: forward of the AOR's front, across its width (or round the threat's place).
     const th = (face * Math.PI) / 180;

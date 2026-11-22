@@ -17,7 +17,7 @@
 import type { AorApproach, AorDefLine, AorReading, AorSide } from '../GroundGuide/GroundGuideAor';
 import { aorName, aorSheetRows, aorWords, type AorFrame } from '../GroundGuide/GroundGuideScopeAor';
 import { moonState, sunAltitude } from '../GroundGuide/GroundGuideOcoka';
-import { DP_HEADS, para, slug, type AprcBasis, type AprcConfirm, type AprcFrame, type AprcPara, type AprcPatch, type AprcTable } from './AprcModel';
+import { APCH_HEADS_ATTK, DP_HEADS, ITG_HEADS_ATTK, MA, TASK_HEAD_ATTK, para, slug, taskRowsAttk, type AprcBasis, type AprcConfirm, type AprcFrame, type AprcPara, type AprcPatch, type AprcTable } from './AprcModel';
 
 const km = (m: number): string => (m / 1000).toFixed(1);
 const pct = (x: number): string => `${Math.round(x)} %`;
@@ -96,9 +96,19 @@ export interface AprcGroundIn {
   light?: AprcLight | null;
   /** Obstacle symbols drawn on the map, in words ("Minefield 1.2 km N of X"). */
   drawnObs?: string[];
-  /** True when the threat is a place the user marked. */
+  /** True when the threat is a place the user marked (the attack: the own start is known). */
   threatMarked: boolean;
   readAt: string;
+  /**
+   * An attack (`attk`): the reading was taken round the objective (the MITG) from the attacker's side, so its apchs
+   * come from own side onto the objective and its sides are the en's (mirrored here to the attacker's Lt / Rt), its
+   * lines of def his likely lines facing the attack.
+   */
+  attack?: boolean;
+  /** The attack: the view from the objective toward own side (the Extended View at the MITG). */
+  mitgObsn?: AprcObsn | null;
+  /** The attack: where own tps start, in words ("FUP 1.2 km SW of Burj"), or null when taken opposite the threat. */
+  startWords?: string | null;
 }
 
 export interface AprcWritten {
@@ -116,6 +126,7 @@ function rankReason(a: AorApproach, border: string | null): string {
 }
 
 export function writeGround(g: AprcGroundIn): AprcWritten {
+  if (g.attack) return writeGroundAttk(g);
   const r = g.reading, f = g.frame;
   const w = aorWords(r, f);
   // An unnamed MITG (no place near it) is 'the MITG' in a sentence.
@@ -342,6 +353,321 @@ export function writeGround(g: AprcGroundIn): AprcWritten {
   };
 }
 
+// ── the attack: Gr and Weather ───────────────────────────────────────────────────────────────────────────────────
+
+/** The reading's sides are the en's (as he faces the attack): the attacker's Lt is his Rt. */
+const MIRROR: Record<AorSide, AorSide> = { Lt: 'Rt', Cen: 'Cen', Rt: 'Lt' };
+const mirrorText = (s: string | null | undefined): string | null => (s === null || s === undefined ? null : s.replace(/\b(Lt|Rt)\b/g, (m) => (m === 'Lt' ? 'Rt' : 'Lt')));
+const OBS_WORD = (ob: AprcObsn, toward: string): string =>
+  `about ${pct(ob.seenPct)} of the ground within ${km(ob.radiusM)} km is in view${toward}; clear to ${Math.round(ob.clearMedianM / 10) * 10} m before the first dead or screened ground (median of all dirs); ${COUNTRY_WORD[ob.country] ?? ob.country}.`;
+
+/** Capacity of an apch for the attacker: the book's Bde figure, the IPB corridor widths below it. */
+function capacityAttk(a: AorApproach): { text: string; basis: AprcBasis[] } {
+  const w = a.minWidthM;
+  const wide = w >= 20000 ? 'No NO-GO area narrows it' : `No narrower than ${km(w)} km between NO-GO areas`;
+  const who = w >= 4000 ? 'a Bde size force' : w >= 1500 ? 'a Bn size force' : w >= 500 ? 'a Coy size force' : null;
+  return {
+    text: `${wide}: ${who ? `room for ${who}` : 'less than the 500 m a Coy moves on'}${a.obstacles.length ? `; water crossed at ${plural(a.obstacles.length, 'point')}` : ''}.`,
+    basis: [rule('A Bde size force takes approx 4 km (Mechs of Aprc (Attk) p 2); a Bn moves on 1.5 km, a Coy on 500 m (IPB book p 7, mobility corridor widths)'), calc('The narrowest ground between NO-GO areas along the apch; canals and streams are crossings, not narrowings')],
+  };
+}
+
+function writeGroundAttk(g: AprcGroundIn): AprcWritten {
+  // Gen Description, Obs, Cover and Met read as for the defence; the rest is the attacker's
+  const base = writeGround({ ...g, attack: false });
+  const r = g.reading;
+  const named = !!r.mitg.name && r.mitg.name !== 'MITG';
+  const mitg = named ? r.mitg.name : 'the MITG';
+  const keep = new Set(['gr.gen', 'gr.obs', 'gr.cover', 'gr.met']);
+  const patches: AprcPatch[] = base.patches.filter((p) => keep.has(p.id)).map((p) => {
+    const q: AprcPatch = { ...p, draft: p.id === 'gr.obs' || p.id === 'gr.cover' ? mirrorText(p.draft) : p.draft };
+    delete q.prompts; // the book's heads and page stay with the paragraph
+    return q;
+  });
+  const confirm: AprcConfirm[] = base.confirm.map((c) => ({ ...c, text: mirrorText(c.text) ?? c.text }));
+  const goingData = data(`Going: the terrain classes at 30 m (land cover with the 1:50k map's canals, rivers, BUAs) read for ${g.frame.profileLabel.toLowerCase()}, ${g.frame.season === 'wet' ? 'after rain' : 'dry'}`);
+  const featData = data('Rds, canals, rivers, bridges and places: the 1:50k map');
+  const frameIn = input(`Obj (MITG) ${mitg}; own start ${g.threatMarked && g.startWords ? g.startWords : 'taken opposite the threat (assumed)'}`);
+  const sideOf = (s: AorSide): AorSide => MIRROR[s];
+
+  // 7. Apchs: from own side onto the objective, the attacker's Lt first
+  const ours = (['Rt', 'Cen', 'Lt'] as AorSide[]).map((s) => r.apchs.find((a) => a.side === s)).filter((a): a is AorApproach => !!a);
+  {
+    const kids = ours.map((a) => {
+      const side = sideOf(a.side);
+      const id = `gr.apch.${side.toLowerCase()}`;
+      const rows = new Map(aorSheetRows(r, a));
+      const ob = g.obsn?.[a.side] ?? null;
+      const cap = capacityAttk(a);
+      const textOf = (h: string): string | null => {
+        if (h === 'Capacity') return cap.text;
+        if (h === 'Depl Areas') return null;
+        if (h === 'Obsn and F of F') return ob ? `Gr obsn: ${OBS_WORD(ob, ` from a point on it${ob.near ? ` near ${ob.near}` : ''}`)}${ob.overlook ? ` Overlooked from ground ${Math.round(ob.overlook.riseM)} m higher, ${km(ob.overlook.distM)} km ${ob.overlook.compass}.` : ''} A chance, not a fact.` : null;
+        const t = rows.get(h);
+        return t === undefined || t === null ? null : t;
+      };
+      return para(id, `${side} Apch`, {
+        draft: '',
+        state: 'gr',
+        children: APCH_HEADS_ATTK.map(([h, pr]) => {
+          const raw = textOf(h);
+          const text = raw === null ? null : mirrorText(cap1(raw));
+          const basis: AprcBasis[] =
+            h === 'Capacity' ? [goingData, ...cap.basis]
+            : h === 'Obsn and F of F' ? [data('Sight: the 30 m elevation with building density, crops by month, trees and bunds (the Extended View)'), calc('Read at one point on the apch; the share seen is a chance')]
+            : h === 'Tfc' || h === 'Cover' ? [goingData, calc('A band 1 km wide along the apch')]
+            : [featData];
+          const page = ['Dir Keeping', 'Significance'].includes(h) ? 3 : 2;
+          return para(`${id}.${slug(h)}`, h, { draft: text, state: text === null ? 'yours' : 'gr', basis: text === null ? [] : basis, prompts: text === null ? [...pr, MA(page)] : [] });
+        }),
+      });
+    });
+    patches.push({
+      id: 'gr.apchs',
+      draft: ours.length ? `${cap1(plural(ours.length, 'apch', 'apchs'))} from own side onto ${mitg}${g.threatMarked ? '' : ' (start points assumed)'}, named as own tps face the obj.` : null,
+      state: ours.length ? 'gr' : 'yours',
+      basis: ours.length ? [calc('Least-cost ways on the going grid from three start points on own side to the MITG'), frameIn] : [],
+      prompts: ours.length ? [] : ['No apch was found from own side: mark the own start (an attack plan, or the threat on the far side), or write them', MA(2)],
+      figure: ours.length ? 'trace' : null,
+      children: kids,
+    });
+  }
+
+  // 6. Imp Tac Grs: the objective first, with the book's heads
+  const others: Array<{ name: string; line: AorDefLine; side: AorSide | null }> = [];
+  {
+    const cov = g.cover, gd = g.ground, mo = g.mitgObsn ?? null;
+    const facts: string[] = [];
+    if (r.thruRoad) facts.push(`opens Rd ${aorName(r.thruRoad.name)}${r.thruRoad.cls ? ` ${r.thruRoad.cls}` : ''}, which runs through it`);
+    if (r.msr) facts.push(`brings the MSR ${aorName(r.msr.name)} (${km(r.msr.distM)} km away) under obsn and fire`);
+    if (ours.length) facts.push(`${plural(ours.length, 'apch', 'apchs')} ${ours.length === 1 ? 'ends' : 'end'} on it: further op from it is open`);
+    const draft: Record<string, { t: string | null; st: 'gr' | 'judge'; b: AprcBasis[] }> = {
+      loc: { t: `${named ? r.mitg.name : 'The MITG (no named place)'}${r.thruRoad ? `, on Rd ${aorName(r.thruRoad.name)}` : ''}${r.msr ? `; the MSR ${aorName(r.msr.name)} ${km(r.msr.distM)} km away` : ''}.`, st: 'gr', b: [featData, frameIn] },
+      cover: { t: cov ? `Cover from dir fire ${COVER_WORD[cov.direct] ?? '?'}, from indir fire ${COVER_WORD[cov.indirect] ?? '?'}; concealment from gr obsn ${COVER_WORD[cov.ground] ?? '?'}, from air ${COVER_WORD[cov.aerial] ?? '?'}.` : null, st: 'gr', b: [goingData, calc('Cover is graded by ground class, never raised above what the class gives')] },
+      obsn: { t: mo ? `From it ${OBS_WORD(mo, ' toward own side')} A chance, not a fact.` : null, st: 'gr', b: [data('Sight: the 30 m elevation with building density, crops by month, trees and bunds (the Extended View)')] },
+      domination: { t: gd && (gd.elevationM !== null || gd.landform) ? `${[gd.elevationM !== null ? `${Math.round(gd.elevationM)} m` : '', gd.landform ? gd.landform.toLowerCase() : '', gd.slopeBand ? `slope ${gd.slopeBand.toLowerCase()}` : ''].filter(Boolean).join(', ')}${mo?.overlook ? `; overlooked from ground ${Math.round(mo.overlook.riseM)} m higher, ${km(mo.overlook.distM)} km ${mo.overlook.compass}` : '; nothing higher overlooks it within the reading'}.` : null, st: 'gr', b: [data('Heights: the 30 m elevation')] },
+      effs: { t: facts.length ? `It ${list(facts)}.` : null, st: 'judge', b: [featData, calc('From the Rds and apchs at the MITG; what its capture unhinges is the planner\'s')] },
+    };
+    const kids: AprcPara[] = [
+      para('gr.itg.mitg', `${named ? r.mitg.name : 'Obj'} (MITG)`, {
+        draft: '',
+        state: 'gr',
+        children: ITG_HEADS_ATTK.map(([k, h, pr]) => {
+          const d = draft[k];
+          return d?.t ? para(`gr.itg.mitg.${k}`, h, { draft: cap1(d.t), state: d.st, basis: d.b }) : para(`gr.itg.mitg.${k}`, h, { prompts: [...pr, MA(k === 'effs' || k === 'domination' || k === 'dir' ? 2 : 1)] });
+        }),
+      }),
+    ];
+    // his localities: the BUAs astride the apchs on the lines facing the attack (his likely FDLs, then depth)
+    const seen = new Set<string>([r.mitg.name]);
+    for (const role of ['FDLs', 'Depth'] as const) {
+      const l = r.lines.find((x) => x.role === role);
+      if (!l) continue;
+      l.buas.forEach((b, i) => {
+        if (!b || seen.has(b)) return;
+        seen.add(b);
+        const side = l.buas.length === 3 ? sideOf(SIDES[i]) : null;
+        others.push({ name: b, line: l, side });
+        kids.push(para(`gr.itg.${slug(b)}`, b, { draft: `Astride the ${side ? `${side} ` : ''}apch on Line ${l.id}, his likely ${role === 'FDLs' ? 'FDLs' : 'depth'} facing the attk.`, state: 'judge', basis: [featData, calc('A BUA within 800 m of an apch where a line across the apchs cuts it; the lines are the ones a defender of the MITG would hold')] }));
+      });
+    }
+    if (r.map.itg.length) kids.push(para('gr.itg.more', null, { draft: `${cap1(plural(r.map.itg.length, 'more candidate'))} in the area from the data (high ground, crossings, junctions): shown on the trace.`, state: 'judge', basis: [data('ITG candidates: the bundle features flagged as important ground')] }));
+    patches.push({ id: 'gr.itg', draft: '', state: 'gr', children: kids });
+    confirm.push({ text: `His localities and the ITGs are read from the ground: confirm them against his disposns (recce, int) before the APs are settled.`, paras: ['gr.itg', 'gr.ded.obj'] });
+  }
+
+  // 4. Aim and 11. Deductions the ground can propose
+  patches.push({ id: 'aim', draft: `To capture ${named ? `area ${r.mitg.name}` : 'the obj (MITG)'} with fol limitations:-`, state: 'judge', basis: [frameIn] });
+  {
+    const reasons: string[] = [];
+    if (ours.length) reasons.push(`all ${plural(ours.length, 'apch', 'apchs')} terminate on it`);
+    if (r.thruRoad) reasons.push(`Rd ${aorName(r.thruRoad.name)} runs through it`);
+    if (r.msr) reasons.push(`the MSR is ${km(r.msr.distM)} km away`);
+    if (g.mitgObsn) reasons.push(`it sees ${pct(g.mitgObsn.seenPct)} of the ground round it`);
+    const rest = others.map((o) => o.name);
+    patches.push({
+      id: 'gr.ded.obj',
+      draft: `${cap1(mitg)} emerges as the MITG${reasons.length ? `: ${list(reasons)}` : ''}.${rest.length ? ` Other imp tac gr in order of pri: ${rest.map((x, i) => `(${i + 1}) ${x}`).join(', ')}.` : ''}`,
+      state: 'judge',
+      basis: [featData, calc('The MITG first, then his localities on the line nearest the attk, then in depth; a proposal'), frameIn],
+    });
+    const ranked = [...r.apchs].sort((a, b) => a.rank - b.rank);
+    const border = ranked[0]?.cross?.border ?? null;
+    if (ranked.length) patches.push({
+      id: 'gr.ded.apch',
+      draft: `${list(ranked.map((a) => mirrorText(rankReason(a, border)) ?? ''), 'then')}.`,
+      state: 'judge',
+      basis: [calc('Ranked lowest first on: km past the border + 0.3 per BUA on it + 2 per water obstacle + 10 x the share of a 1 km band that is not GO. A method, not a book rule'), goingData],
+    });
+    const lats = [...r.laterals].filter((l) => l.n > 0).sort((a, b) => b.n - a.n);
+    if (ranked.length >= 2) patches.push({
+      id: 'gr.ded.comb',
+      draft: lats.length ? `${lats.map((l) => `${sideOf(l.a)} and ${sideOf(l.b)} (${plural(l.n, 'metalled lateral')})`).join('; ')}: mutual sp between them.` : 'No metalled lateral joins the apchs: no comb is served by a Rd.',
+      state: 'judge',
+      basis: [featData, calc('Metalled Rds joining two apchs inside the area read')],
+    });
+    // his lines between own start and the objective: the phases they suggest
+    const order = 'WXYZ';
+    const front = [...r.lines].filter((l) => l.role === 'FDLs' || l.role === 'Depth').sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    if (front.length) patches.push({
+      id: 'gr.ded.c.phases',
+      draft: `${front.map((l, i) => `Phase ${i + 1}: his ${l.role === 'FDLs' ? 'FDLs' : 'depth'} on Line ${l.id} (${[...new Set(l.buas.filter((x): x is string => !!x))].join(', ') || l.name})`).join('; ')}; then ${mitg}. Lines ${front.map((l) => l.id).join(' and ')} lie ${front.map((l) => (l.depthM !== null ? `${km(l.depthM)} km` : '?')).join(' and ')} past ${border ? `the ${border}` : 'the front of the area read'}.`,
+      state: 'judge',
+      basis: [featData, calc('The lines across the apchs that a defender of the MITG would hold: each a phase if held; a proposal, his disposns decide')],
+    });
+  }
+
+  return { patches, confirm, frame: base.frame ? { ...base.frame, threat: g.threatMarked && g.startWords ? `own start ${g.startWords}` : 'own start taken opposite the threat (assumed)' } : undefined };
+}
+
+// ── the attack: direction of attack (the IPB reading onto the objective) ─────────────────────────────────────────
+
+/** One approach of the IPB reading onto the objective, as the attacker sees it. */
+export interface AprcAttkAvenue {
+  id: string;
+  rank: number;
+  /** How it comes onto the objective (the reading's words): frontal, left, right, turn; null for an avenue through the area. */
+  onto: 'frontal' | 'left' | 'right' | 'turn' | null;
+  label: string;
+  lengthM: number;
+  goPct: number;
+  minWidthM: number;
+  waterLines: number;
+  /** The assault from the FUP, metres, and its NO-GO share. */
+  assaultM: number | null;
+  assaultNogoPct: number | null;
+  /** Its FUP in words. */
+  fupWhere: string | null;
+}
+
+export interface AprcAttkIn {
+  objective: string;
+  mover: string;
+  aaFor: string;
+  mcWidthM: number;
+  fupM: number;
+  avenues: AprcAttkAvenue[];
+  /** The choke on his MSR behind the objective a turning apch blocks. */
+  turn: { label: string; kind: string; behindM: number; msr: boolean; where: string | null } | null;
+  /** Where the approaches start, in words, and whether it was taken (no start on the map). */
+  start: string;
+  startAssumed: boolean;
+}
+
+/** Differences smaller than these are not called better or worse between Lt and Rt (a method setting, as WEIGH_MIN). */
+export const LT_RT_MIN = { lengthPct: 10, goPct: 5, nogoPct: 5 };
+
+const ONTO_WORD: Record<string, string> = { left: 'Lt flank', right: 'Rt flank', frontal: 'frontal', turn: 'turning' };
+
+/** Lt against Rt flank on the facts the reading has: which is better on each, only past each head's smallest real difference. */
+function lrWeigh(l: AprcAttkAvenue, rt: AprcAttkAvenue): { text: string; lt: number; rt: number } {
+  const heads: string[] = [];
+  let a = 0, b = 0;
+  const say = (better: 'Lt' | 'Rt', what: string): void => {
+    heads.push(`${better} ${what}`);
+    if (better === 'Lt') a++;
+    else b++;
+  };
+  const len = (Math.abs(l.lengthM - rt.lengthM) / Math.max(1, Math.min(l.lengthM, rt.lengthM))) * 100;
+  if (len >= LT_RT_MIN.lengthPct) say(l.lengthM < rt.lengthM ? 'Lt' : 'Rt', `shorter (${km(Math.min(l.lengthM, rt.lengthM))} against ${km(Math.max(l.lengthM, rt.lengthM))} km)`);
+  if (Math.abs(l.goPct - rt.goPct) >= LT_RT_MIN.goPct) say(l.goPct > rt.goPct ? 'Lt' : 'Rt', `better going (GO on ${pct(Math.max(l.goPct, rt.goPct))} against ${pct(Math.min(l.goPct, rt.goPct))})`);
+  if (l.waterLines !== rt.waterLines) say(l.waterLines < rt.waterLines ? 'Lt' : 'Rt', `fewer water lines (${Math.min(l.waterLines, rt.waterLines)} against ${Math.max(l.waterLines, rt.waterLines)})`);
+  if (l.assaultNogoPct !== null && rt.assaultNogoPct !== null && Math.abs(l.assaultNogoPct - rt.assaultNogoPct) >= LT_RT_MIN.nogoPct) say(l.assaultNogoPct < rt.assaultNogoPct ? 'Lt' : 'Rt', `less NO-GO on the assault (${pct(Math.min(l.assaultNogoPct, rt.assaultNogoPct))} against ${pct(Math.max(l.assaultNogoPct, rt.assaultNogoPct))})`);
+  return { text: heads.length ? `${heads.join('; ')}.` : 'No real difference on the heads the data gives.', lt: a, rt: b };
+}
+
+/** Pri of Apchs / Dir of Attk, the Best Dir of Attk on the MITG, AP-1 and AP-2, the FUP and the blocking posn. */
+export function writeAttkDir(e: AprcAttkIn): AprcWritten {
+  const patches: AprcPatch[] = [];
+  const confirm: AprcConfirm[] = [];
+  const onto = e.avenues.filter((a) => a.onto);
+  if (!onto.length) return { patches, confirm };
+  // the user's rule (22 Nov 2026 memory: frontal attk dangerous): the turning and flanking apchs first, frontal last
+  const order = [...onto].sort((a, b) => (a.onto === 'frontal' ? 1 : 0) - (b.onto === 'frontal' ? 1 : 0) || a.rank - b.rank);
+  const avIn = data(`The IPB reading: apchs for ${e.aaFor} onto ${e.objective} from ${e.start}${e.startAssumed ? ' (taken)' : ''}, corridors ${km(e.mcWidthM)} km wide, coded GO / SLOW-GO / NO-GO by the book's criteria (${e.mover})`);
+  const flankRule = rule('Flanking before frontal: a frontal attk has a small chance (user\'s rule); "being flanking in nature" (Mechs of Aprc (Attk) pp 3-4)');
+  const turnRule = rule('A turning apch round the obj onto a choke on his MSR blocks his wdr and rft (OoW Vol II s6; IBB S35 p 140); Aim limitation b (Mechs of Aprc (Attk) p 1)');
+  const fupRule = rule(`FUP ${km(e.fupM)} km short of the obj: 1000-1200 m, out of his NVD and SA reach (IBB p 201)`);
+  const one = (a: AprcAttkAvenue): string =>
+    `${ONTO_WORD[a.onto ?? ''] ?? a.label}: ${km(a.lengthM)} km, GO on ${pct(a.goPct)}, narrowest ${km(a.minWidthM)} km, ${a.waterLines ? plural(a.waterLines, 'water line') : 'no water line'}${a.assaultM !== null ? `; the assault ${km(a.assaultM)} km from the FUP${a.assaultNogoPct ? ` (${pct(a.assaultNogoPct)} NO-GO)` : ''}` : ''}`;
+  const lt = onto.find((a) => a.onto === 'left'), rt = onto.find((a) => a.onto === 'right');
+  const w = lt && rt ? lrWeigh(lt, rt) : null;
+  const turnText = e.turn ? ` The turning apch blocks ${e.turn.msr ? 'his MSR' : 'the main Rd behind him'} at ${e.turn.label} (${e.turn.kind}), ${km(e.turn.behindM)} km behind ${e.objective}.` : '';
+  patches.push({
+    id: 'gr.ded.apch',
+    draft: `Dir of attk in pri: ${order.map((a, i) => `(${i + 1}) ${one(a)}`).join('; ')}.${w ? ` Lt against Rt: ${w.text}${w.lt !== w.rt ? ` Better on ${Math.max(w.lt, w.rt)} of ${w.lt + w.rt} heads: the ${w.lt > w.rt ? 'Lt' : 'Rt'}.` : ''}` : ''}${turnText}`,
+    state: 'judge',
+    basis: [avIn, flankRule, ...(e.turn ? [turnRule] : []), calc(`Lt against Rt: a head counts only past its smallest real difference (length ${LT_RT_MIN.lengthPct} %, GO ${LT_RT_MIN.goPct} %, NO-GO on the assault ${LT_RT_MIN.nogoPct} %; a method setting); the weighing is the planner's`)],
+  });
+  const best = order[0];
+  // the flank the weighing favours, when the turning apch is not the first
+  const firstFlank = best.onto === 'turn' || best.onto === 'frontal' ? best : w && w.lt !== w.rt ? (w.lt > w.rt ? lt! : rt!) : best;
+  patches.push({ id: 'gr.itg.mitg.dir', draft: `${cap1(ONTO_WORD[firstFlank.onto ?? ''] ?? firstFlank.label)}${firstFlank.onto === 'turn' ? '' : ` onto ${e.objective}`}.`, state: 'judge', basis: [avIn, flankRule] });
+  patches.push({ id: 'gr.ded.ap1', draft: `To attk ${firstFlank.onto === 'turn' ? 'by the turning apch' : `from the ${ONTO_WORD[firstFlank.onto ?? ''] ?? firstFlank.label}`} onto ${e.objective}${e.turn && firstFlank.onto !== 'turn' ? `, with a blocking posn on his ${e.turn.msr ? 'MSR' : 'Rd'} behind it` : ''}.`, state: 'judge', basis: [avIn, flankRule] });
+  if (firstFlank.fupWhere) patches.push({ id: 'gr.ded.ap1.fup', draft: `${firstFlank.fupWhere}, ${km(e.fupM)} km short of ${e.objective} on the ${ONTO_WORD[firstFlank.onto ?? ''] ?? firstFlank.label} apch.`, state: 'judge', basis: [avIn, fupRule] });
+  if (e.turn) patches.push({ id: 'gr.ded.ap1.block', draft: `At ${e.turn.label}${e.turn.where ? ` (${e.turn.where})` : ''}: a ${e.turn.kind} on ${e.turn.msr ? 'his MSR' : 'the main Rd'}, ${km(e.turn.behindM)} km behind ${e.objective}; it blocks his wdr and rft.`, state: 'judge', basis: [avIn, turnRule] });
+  const second = order.find((a) => a !== firstFlank && a.onto !== 'frontal') ?? order.find((a) => a !== firstFlank);
+  if (second) patches.push({ id: 'gr.ded.ap2', draft: `From the ${ONTO_WORD[second.onto ?? ''] ?? second.label}: changes the dir of attk${second.fupWhere ? `; FUP ${second.fupWhere}` : ''}.`, state: 'judge', basis: [avIn] });
+  confirm.push({ text: `The dir of attk rests on the ground read${e.startAssumed ? ' from a start taken opposite the threat' : ''}: walk the FUP and the assault ground, and confirm his posns on the obj.`, paras: ['gr.ded.apch', 'gr.ded.ap1'] });
+  return { patches, confirm };
+}
+
+// ── the attack: a checked attack plan ────────────────────────────────────────────────────────────────────────────
+
+/** An attack as Check my plan reads it (PlanCheck.checkAttack): its axes with their objs, FUPs, SLs and BOFs. */
+export interface AprcAttkPlanIn {
+  title: string;
+  /** The recipe it was built from, if built ('bn-attk-left-flank' ...). */
+  recipe: string | null;
+  /** Each axis: its labels as drawn, and where its obj, FUP and BOF are in words ("0.6 km SW of X"). */
+  axes: Array<{ label: string; phase: number; obj: string | null; objWhere: string | null; fup: string | null; fupWhere: string | null; sl: string | null; bof: string | null; bofWhere: string | null; rows: Array<{ name: string; st: string; reason: string }> }>;
+  rows: Array<{ name: string; st: string; reason: string }>;
+  confirm: string[];
+  assumptions: string[];
+}
+
+export function writeAttkPlan(c: AprcAttkPlanIn): AprcWritten {
+  const patches: AprcPatch[] = [];
+  if (!c.axes.length) return { patches, confirm: [] };
+  const planIn = input(`The attk on the map, as checked (${c.title})`);
+  const form = c.recipe ? (/left-flank/.test(c.recipe) ? 'from the Lt flank' : /right-flank/.test(c.recipe) ? 'from the Rt flank' : /frontal/.test(c.recipe) ? 'frontally' : null) : null;
+  const phases = [...new Set(c.axes.map((a) => a.phase))].sort((a, b) => a - b);
+  const byPhase = (n: number) => c.axes.filter((a) => a.phase === n);
+  /** "FUP 2 0.6 km SW of X": its label when it has one of its own, then where it is. */
+  const named = (kind: string, label: string | null, at: string | null): string =>
+    [label && new RegExp(`^${kind}(\\b|\\d)`, 'i').test(label) ? label : [kind, label ?? ''].filter(Boolean).join(' '), at ?? ''].filter(Boolean).join(' ');
+  type Axis = AprcAttkPlanIn['axes'][number];
+  const fupOf = (a: Axis): string => named('FUP', a.fup, a.fupWhere);
+  const bofOf = (a: Axis): string => named('BOF', a.bof, a.bofWhere);
+  const axisText = (a: Axis): string =>
+    `${a.label} onto ${a.obj ?? 'an obj not drawn'}${a.objWhere ? ` (${a.objWhere})` : ''}${a.fup ? `, ${fupOf(a)}` : ''}${a.sl ? `, ${named('SL', a.sl, null)}` : ''}${a.bof ? `, ${bofOf(a)}` : ''}`;
+  const outline = `Attk${form ? ` ${form}` : ''} in ${plural(phases.length, 'phase')}: ${phases.map((n) => `Phase ${n}: ${byPhase(n).map(axisText).join('; ')}`).join('. ')}.`;
+  patches.push({ id: 'crs.a', draft: `${c.title}. ${outline}`, state: 'map', basis: [planIn] });
+  patches.push({ id: 'plan.exec.outline', draft: outline, state: 'map', basis: [planIn] });
+  const objs = (n: number) => [...new Set(byPhase(n).map((a) => a.obj).filter((x): x is string => !!x))];
+  if (objs(1).length) patches.push({ id: 'gr.ded.ap1.ph1', draft: `Capturing ${list(objs(1))}.`, state: 'map', basis: [planIn] });
+  if (objs(2).length) patches.push({ id: 'gr.ded.ap1.ph2', draft: `Capturing ${list(objs(2))}.`, state: 'map', basis: [planIn] });
+  const a1 = byPhase(phases[0])[0];
+  if (a1?.fup) patches.push({ id: 'gr.ded.ap1.fup', draft: `${fupOf(a1)} (as drawn).`, state: 'map', basis: [planIn] });
+  if (a1?.bof) {
+    patches.push({ id: 'gr.ded.ap1.bof', draft: `${bofOf(a1)} (as drawn).`, state: 'map', basis: [planIn] });
+    patches.push({ id: 'gr.ded.c.bof', draft: `${bofOf(a1)}, as drawn: it engages the obj irrespective of the AP.`, state: 'map', basis: [planIn] });
+  }
+  const locs = [a1?.fup ? fupOf(a1) : '', a1?.bof ? bofOf(a1) : '', a1?.sl ? named('SL', a1.sl, null) : ''].filter(Boolean);
+  if (locs.length) patches.push({ id: 'plan.exec.coord.loc', draft: `${locs.join('; ')}.`, state: 'map', basis: [planIn] });
+  // the tasks the plan sets (the figures are the planner's)
+  const rows = taskRowsAttk(objs(1), objs(2), a1?.bof ? bofOf(a1).replace(/^BOF /, '') : null);
+  for (const id of ['own.tasks', 'almt']) patches.push({ id, draft: '', state: 'map', table: { head: TASK_HEAD_ATTK, rows, widths: [0.07, 0.33, 0.12, 0.12, 0.12, 0.12, 0.12] }, basis: [planIn, calc('Tasks and objs by phase as drawn; the tps for each are the planner\'s')] });
+  // advs and disadvs: the check's rows
+  const all = [...c.rows, ...c.axes.flatMap((a) => a.rows.map((r) => ({ ...r, name: `${a.label}: ${r.name}` })))];
+  const adv = all.filter((r) => r.st === 'pass'), dis = all.filter((r) => r.st === 'fail' || r.st === 'warn');
+  const checkCalc = calc('From Check my plan: a row that passes is an adv, a row that fails or warns a disadv, each with its reason');
+  const say = (rs: typeof all): string => `${rs.map((r) => `${r.name}: ${r.reason}`.replace(/\.$/, '')).join('. ')}.`;
+  if (adv.length) patches.push({ id: 'crs.an.adv', draft: say(adv), state: 'judge', basis: [planIn, checkCalc] });
+  if (dis.length) patches.push({ id: 'crs.an.dis', draft: say(dis), state: 'judge', basis: [planIn, checkCalc] });
+  return { patches, confirm: [...c.confirm, ...c.assumptions.map((a) => `Assumed: ${a}`)].map((text) => ({ text, paras: ['crs.a'] })) };
+}
+
 // ── symbols on the map ───────────────────────────────────────────────────────────────────────────────────────────
 
 export interface AprcSymbolIn {
@@ -379,7 +705,7 @@ export function forceLine(units: AprcSymbolIn[]): string {
 const where = (units: AprcSymbolIn[], max = 6): string =>
   units.slice(0, max).map((u) => `${u.label || u.name}${u.ech && ECH[u.ech] ? ` (${ECH[u.ech]})` : ''}${u.where ? ` ${u.where}` : ''}`).join('; ') + (units.length > max ? `; and ${units.length - max} more` : '');
 
-export function writeSymbols(symbols: AprcSymbolIn[]): AprcWritten & { drawnObs: string[]; enForce: string | null } {
+export function writeSymbols(symbols: AprcSymbolIn[]): AprcWritten & { drawnObs: string[]; enForce: string | null; ownWhere: string | null } {
   const patches: AprcPatch[] = [];
   const en = symbols.filter((s) => s.side === 'enemy' && isUnit(s));
   const own = symbols.filter((s) => s.side === 'own' && isUnit(s));
@@ -387,6 +713,8 @@ export function writeSymbols(symbols: AprcSymbolIn[]): AprcWritten & { drawnObs:
   if (en.length) {
     patches.push({ id: 'rev.en', draft: `Marked on the map: ${forceLine(en)}.`, state: 'map', basis: [mapIn], prompts: ['Add his likely aim and timings'] });
     patches.push({ id: 'en.comp', draft: `${forceLine(en)}. ${where(en)}.`, state: 'map', basis: [mapIn] });
+    // the attack: his disposns as marked, under his option against AP-1
+    patches.push({ id: 'en.opt1.disp', draft: `Marked on the map: ${forceLine(en)}. ${where(en)}.`, state: 'map', basis: [mapIn] });
   }
   if (own.length) {
     patches.push({ id: 'rev.own', draft: `Marked on the map: ${forceLine(own)}.`, state: 'map', basis: [mapIn], prompts: ['Add the higher formation and its task'] });
@@ -402,7 +730,7 @@ export function writeSymbols(symbols: AprcSymbolIn[]): AprcWritten & { drawnObs:
     patches.push({ id: 'own.str', draft: '', state: 'map', table, basis: [mapIn, calc('Counted as marked, by echelon. The ratio is left to the planner: it needs each unit at its real strength')] });
   }
   const drawnObs = symbols.filter(isObstacle).map((s) => `${s.label || s.name}${s.where ? ` ${s.where}` : ''}`);
-  return { patches, confirm: en.length ? [] : [{ text: 'No en symbols on the map: his strength and start points are not known to the reading.', paras: ['rev.en', 'en.comp', 'own.str'] }], drawnObs, enForce: en.length ? forceLine(en) : null };
+  return { patches, confirm: en.length ? [] : [{ text: 'No en symbols on the map: his strength and start points are not known to the reading.', paras: ['rev.en', 'en.comp', 'own.str'] }], drawnObs, enForce: en.length ? forceLine(en) : null, ownWhere: own.length ? where(own, 10) : null };
 }
 
 // ── a checked plan ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -699,14 +1027,41 @@ const sumOf = (us: AprcForceUnit[], f: (u: AprcForceUnit) => number | null): num
 const unitsText = (us: AprcForceUnit[]): string => us.map((u) => `${u.count} x ${u.name}`).join(', ');
 const n1 = (x: number): string => (Number.isInteger(x) ? String(x) : x.toFixed(1));
 
-/** Own Str as Related to that of the En, and how the Pls held meet DP 1's tasks. */
-export function writeStrength(s: AprcStrengthIn): AprcWritten {
+/**
+ * Own Str as Related to that of the En, and how the Pls held meet DP 1's tasks. The attack (`o.attack`) gives the ratio
+ * own to en (an attacker wants more than 3 : 1) and the composition with the disposns marked (`o.disposns`).
+ */
+export function writeStrength(s: AprcStrengthIn, o: { attack?: boolean; disposns?: string | null } = {}): AprcWritten {
   const patches: AprcPatch[] = [];
   if (!s.en.length || !s.own.length) return { patches, confirm: [] };
   const coysEn = sumOf(s.en, (u) => u.coys) ?? 0, coysOwn = sumOf(s.own, (u) => u.coys) ?? 0;
   const stEn = sumOf(s.en, (u) => u.strength), stOwn = sumOf(s.own, (u) => u.strength);
   const atEn = sumOf(s.en, (u) => u.atgm) ?? 0, atOwn = sumOf(s.own, (u) => u.atgm) ?? 0;
   const moEn = sumOf(s.en, (u) => u.mortars) ?? 0, moOwn = sumOf(s.own, (u) => u.mortars) ?? 0;
+  if (o.attack) {
+    const r2 = (own: number, en: number): string => (en > 0 ? `${(own / en).toFixed(1)} : 1` : own > 0 ? `${own} : 0` : '–');
+    const rows = [
+      ['a.', 'Manoeuvre Coys / Sqns', n1(coysEn), n1(coysOwn), r2(coysOwn, coysEn)],
+      ['b.', 'All ranks', stEn === null ? '?' : stEn.toLocaleString('en-GB'), stOwn === null ? '?' : stOwn.toLocaleString('en-GB'), stEn !== null && stOwn !== null ? r2(stOwn, stEn) : '?'],
+      ['c.', 'ATGM launchers', String(atEn), String(atOwn), r2(atOwn, atEn)],
+      ['d.', 'Mortars', String(moEn), String(moOwn), r2(moOwn, moEn)],
+    ];
+    const srcs = [...new Set([...s.en, ...s.own].map((u) => u.src))];
+    const basis: AprcBasis[] = [data(`ORBAT: ${srcs.join('; ')}`), calc('Each side summed over its units; ratio = own to en'), rule('An attacker wants more than 3 : 1, applied sequentially (MW p 80)')];
+    if (s.enAssumed) basis.push(input(`En assumed: ${s.enAssumed}`));
+    if (s.ownAssumed) basis.push(input(`Own assumed: ${s.ownAssumed}`));
+    const ratio = coysEn > 0 ? coysOwn / coysEn : null;
+    patches.push({
+      id: 'own.str',
+      draft: `Own: ${unitsText(s.own)}${s.ownAssumed ? ' (assumed)' : ''}. En: ${unitsText(s.en)}${s.enAssumed ? ' (assumed)' : ''}.${ratio !== null ? ` Manoeuvre Coys ${ratio.toFixed(1)} : 1 own to en: ${ratio > 3 ? 'more than the 3 : 1 an attacker wants' : 'short of the 3 : 1 an attacker wants; phase the attk or ask for more tps'}.` : ''}`,
+      state: s.enAssumed || s.ownAssumed ? 'judge' : 'map',
+      table: { head: ['Ser', 'Arms', 'En', 'Own', 'Ratio'], rows, widths: [0.08, 0.36, 0.2, 0.2, 0.16] },
+      basis,
+    });
+    const ownComp = s.own.map((u) => `${u.count} x ${u.name}: ${n1(u.coys)} manoeuvre Coys${u.plsPerCoy ? ` of ${u.plsPerCoy} Pls` : ''}${u.strength ? `, ${u.strength.toLocaleString('en-GB')} all ranks` : ''}${u.atgm ? `, ${u.atgm} ATGM launchers` : ''}${u.mortars ? `, ${u.mortars} mortars` : ''}`).join('; ');
+    patches.push({ id: 'own.comp', draft: `${ownComp}.${o.disposns ? ` Disposns: ${o.disposns}.` : ''}`, state: s.ownAssumed ? 'judge' : 'map', basis: [data(`ORBAT: ${[...new Set(s.own.map((u) => u.src))].join('; ')}`), ...(o.disposns ? [input('Symbols on the map, as drawn')] : []), ...(s.ownAssumed ? [input(`Own assumed: ${s.ownAssumed}`)] : [])] });
+    return { patches, confirm: s.enAssumed ? [{ text: `En strength is assumed (${s.enAssumed}): mark his posns on the map for the real figures.`, paras: ['own.str'] }] : [] };
+  }
   const rows = [
     ['a.', 'Manoeuvre Coys / Sqns', n1(coysEn), n1(coysOwn), ratio(coysEn, coysOwn)],
     ['b.', 'All ranks', stEn === null ? '?' : stEn.toLocaleString('en-GB'), stOwn === null ? '?' : stOwn.toLocaleString('en-GB'), stEn !== null && stOwn !== null ? ratio(stEn, stOwn) : '?'],
