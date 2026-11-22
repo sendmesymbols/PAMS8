@@ -39,6 +39,8 @@ import { APRC_DECKS, buildDeck, mergeDeck, type AprcDeckKind } from './AprcDeck'
 const ENGINE = 'Aprc';
 const PANEL_ID = 'ms-aprc-panel';
 const STORE = 'pams8.aprc.v1';
+/** Which side panels are folded: a viewer's convenience, kept in this browser only. */
+const UI_STORE = 'pams8.aprc.ui.v1';
 const R = 6378137;
 
 export interface GroundAppreciationOptions {
@@ -91,70 +93,211 @@ const compass = (dx: number, dy: number): string => COMPASS[Math.round((((Math.a
 const mercToLngLat = (x: number, y: number): [number, number] => [(x / R) * (180 / Math.PI), (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * (180 / Math.PI)];
 const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> => Promise.race([p.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), ms))]);
 
+// ── the sheet's look ─────────────────────────────────────────────────────────────────────────────────────────────
+// Dark chrome from the Ground Guide tokens round a paper page (the page is what prints). Every paragraph state carries a
+// shape and a word besides its colour. Redesigned 22 Nov 2026: header with Read / Export / More, the copy and H over
+// the page, progress and filters over the outline, the paragraph's actions in the inspector, messages as a toast.
+
+const P = `#${PANEL_ID}`;
 const STYLE = `
-#${PANEL_ID}{position:fixed;left:50%;transform:translateX(-50%);top:118px;z-index:2147482806;width:min(1240px,calc(100vw - 20px));height:calc(100vh - 140px);display:none;flex-direction:column;
- background:var(--gg-card,#1b1f25);color:#f1f3f6;border:1px solid var(--gg-hair,#4f5965);border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.5);font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif}
-#${PANEL_ID}.ms-open{display:flex}
-#${PANEL_ID} *{box-sizing:border-box}
-#${PANEL_ID} .h{flex:none;display:flex;align-items:center;gap:8px;padding:7px 10px;background:linear-gradient(90deg,#1d2635,var(--gg-head,#3b4552) 45%);border-radius:11px 11px 0 0}
-#${PANEL_ID} .t{font-weight:750;font-size:14px;color:#fff}
-#${PANEL_ID} .sub{flex:1;min-width:0;color:#d5dbe2;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#${PANEL_ID} button,#${PANEL_ID} select{font:500 12.5px/1 system-ui,Segoe UI,Arial,sans-serif;color:#e1e6eb;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:6px;cursor:pointer;height:27px;padding:0 9px;white-space:nowrap}
-#${PANEL_ID} select{background:#11151a}
-#${PANEL_ID} button:hover{background:rgba(255,255,255,.14);color:#fff}
-#${PANEL_ID} button:focus-visible,#${PANEL_ID} select:focus-visible,#${PANEL_ID} textarea:focus-visible,#${PANEL_ID} input:focus-visible,#${PANEL_ID} [tabindex]:focus-visible{outline:2px solid var(--gg-accent,#8ec1ea);outline-offset:1px}
-#${PANEL_ID} button.x{width:27px;padding:0;font-size:17px}
-#${PANEL_ID} button.pri{background:#2b5d86;border-color:#4f8ab8;color:#fff}
-#${PANEL_ID} button.pri:hover{background:#34709f}
-#${PANEL_ID} button[disabled]{opacity:.45;cursor:default}
-#${PANEL_ID} button[aria-pressed=true]{background:#8ec1ea;color:#0d1620;border-color:#8ec1ea;font-weight:650}
-#${PANEL_ID} .tool{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 6px;padding:6px 10px;background:var(--gg-strip,#20262e);border-bottom:1px solid var(--gg-hair-soft,rgba(255,255,255,.1))}
-#${PANEL_ID} .tool .k{color:var(--gg-label,#9aa4ae);font-size:12px;margin-left:8px}
-#${PANEL_ID} .tool .k:first-child{margin-left:0}
-#${PANEL_ID} .tool input[type=text]{height:27px;width:64px;font:500 12.5px/1 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;background:#11151a;border:1px solid #3d4650;border-radius:6px;padding:0 7px}
-#${PANEL_ID} .seg{display:inline-flex}
-#${PANEL_ID} .seg button{border-radius:0;border-left-width:0}
-#${PANEL_ID} .seg button:first-child{border-radius:6px 0 0 6px;border-left-width:1px}
-#${PANEL_ID} .seg button:last-child{border-radius:0 6px 6px 0}
-#${PANEL_ID} .note{flex:none;display:none;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,210,122,.12);color:#ffd27a;border-bottom:1px solid var(--gg-hair-soft,rgba(255,255,255,.1));font-size:12.5px}
-#${PANEL_ID} .note.on{display:flex}
-#${PANEL_ID} .grid{flex:1;min-height:0;display:grid;grid-template-columns:232px minmax(0,1fr) 300px}
-#${PANEL_ID} .out{overflow:auto;padding:4px 0 10px;border-right:1px solid var(--gg-hair-soft,rgba(255,255,255,.1));background:var(--gg-strip,#20262e)}
-#${PANEL_ID} .out .ph{padding:9px 12px 3px;font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--gg-label,#9aa4ae)}
-#${PANEL_ID} .out .it{display:flex;align-items:center;width:100%;height:auto;border:0;border-radius:0;background:none;padding:3px 10px 3px 12px;text-align:left;color:#dfe5ea;white-space:nowrap;overflow:hidden}
-#${PANEL_ID} .out .it span.nm{overflow:hidden;text-overflow:ellipsis}
-#${PANEL_ID} .out .it:hover{background:rgba(255,255,255,.06)}
-#${PANEL_ID} .out .it.sel{background:rgba(142,193,234,.16);box-shadow:inset 3px 0 0 #8ec1ea}
-#${PANEL_ID} .out .no{flex:none;width:28px;color:var(--gg-label,#9aa4ae);font-variant-numeric:tabular-nums}
-#${PANEL_ID} .dot{flex:none;display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
-#${PANEL_ID} .dot.gr{background:#5fd39a}#${PANEL_ID} .dot.map{background:#7fb2ff}#${PANEL_ID} .dot.judge{background:#ffd27a}
-#${PANEL_ID} .dot.yours{box-shadow:inset 0 0 0 1.5px #aeb7c1}#${PANEL_ID} .dot.written{background:#b79cf0}
-#${PANEL_ID} .mid{overflow:auto;padding:14px;background:#14181d}
-#${PANEL_ID} .mid .aprc-doc{max-width:800px;margin:0 auto;padding:34px 46px 36px 56px;border-radius:3px;box-shadow:0 2px 12px rgba(0,0,0,.5);font-size:10.5pt}
-#${PANEL_ID} .mid .ap-p{cursor:pointer;border-radius:2px}
-#${PANEL_ID} .mid .ap-p:hover{background:#f2f6fb}
-#${PANEL_ID} .mid .ap-p.sel{background:#fff6d6;box-shadow:0 0 0 2px #e2b23a}
-#${PANEL_ID} .rt{overflow:auto;padding:10px 12px;border-left:1px solid var(--gg-hair-soft,rgba(255,255,255,.1));background:var(--gg-strip,#20262e);color:#dfe5ea;font-size:12.5px}
-#${PANEL_ID} .rt h4{margin:0 0 6px;font-size:12.5px;color:#fff}
-#${PANEL_ID} .rt h5{margin:12px 0 4px;font-size:11.5px;letter-spacing:.05em;color:var(--gg-label,#9aa4ae);font-weight:700}
-#${PANEL_ID} .rt textarea{width:100%;min-height:110px;resize:vertical;font:12.5px/1.45 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;background:#11151a;border:1px solid #3d4650;border-radius:6px;padding:6px 8px}
-#${PANEL_ID} .rt .row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-#${PANEL_ID} .rt ul{margin:0;padding-left:16px}
-#${PANEL_ID} .rt li{margin:3px 0}
-#${PANEL_ID} .rt .st{display:flex;align-items:center;margin-bottom:8px}
-#${PANEL_ID} .rt .stale{margin-top:8px;padding:6px 8px;border-radius:6px;background:rgba(229,72,77,.16);color:#ffc9cb}
-#${PANEL_ID} .rt .mut{color:var(--gg-label,#9aa4ae)}
-#${PANEL_ID} .rt .tbl{width:100%;border-collapse:collapse;margin-top:6px;table-layout:fixed}
-#${PANEL_ID} .rt .tbl th{font-size:11px;color:var(--gg-label,#9aa4ae);font-weight:650;text-align:left;padding:2px 3px}
-#${PANEL_ID} .rt .tbl td{padding:1px 2px}
-#${PANEL_ID} .rt .tbl input{width:100%;height:24px;font:12px/1.2 system-ui,Segoe UI,Arial,sans-serif;color:#f1f3f6;background:#11151a;border:1px solid #3d4650;border-radius:4px;padding:0 4px}
-#${PANEL_ID} .rt .tbl input.mine{border-color:#b79cf0}
-#${PANEL_ID} .foot{flex:none;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;padding:5px 10px;border-top:1px solid var(--gg-hair-soft,rgba(255,255,255,.1));font-size:12px;color:var(--gg-label,#9aa4ae)}
-#${PANEL_ID} .foot b{color:#f1f3f6;font-variant-numeric:tabular-nums}
-#${PANEL_ID} .foot .msg{margin-left:auto;color:#8ec1ea}
-@media (max-width:980px){#${PANEL_ID} .grid{grid-template-columns:minmax(0,1fr)}#${PANEL_ID} .out{display:none}#${PANEL_ID} .rt{border-left:0;border-top:1px solid rgba(255,255,255,.1);max-height:38vh}}
+${P}{--ap-bg:var(--gg-card,#1b1f25);--ap-pane:var(--gg-strip,#20262e);--ap-head:var(--gg-head,#262d36);--ap-desk:#12161a;--ap-field:#12161b;--ap-pop:#262e38;
+ --ap-tx:var(--gg-text,#f1f3f6);--ap-strong:var(--gg-strong,#fff);--ap-label:var(--gg-label,#c3cbd3);--ap-soft:#9ba6b1;
+ --ap-hair:var(--gg-hair,rgba(255,255,255,.14));--ap-hair-soft:var(--gg-hair-soft,rgba(255,255,255,.1));--ap-edge:#3d4650;
+ --ap-accent:var(--gg-accent,#8ec1ea);--ap-accent-bg:rgba(142,193,234,.15);--ap-on-accent:#0d1620;
+ --ap-gr:oklch(.8 .14 158);--ap-map:oklch(.78 .11 252);--ap-judge:oklch(.86 .13 85);--ap-written:oklch(.78 .12 300);--ap-yours:oklch(.76 .012 250);--ap-stale:oklch(.72 .17 25);
+ position:fixed;left:50%;transform:translateX(-50%);top:118px;z-index:2147482806;width:min(1280px,calc(100vw - 20px));height:calc(100vh - 140px);display:none;flex-direction:column;
+ background:var(--ap-bg);color:var(--ap-tx);border:1px solid var(--ap-hair);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);font:13.5px/1.4 system-ui,"Segoe UI",Arial,sans-serif;outline:none}
+${P}.ms-open{display:flex}
+${P} *{box-sizing:border-box}
+${P} button,${P} select,${P} input,${P} textarea{font:inherit;color:inherit}
+${P} [hidden]{display:none!important}
+${P} .sp{flex:1}
+${P} .ap-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+${P} svg{flex:none}
+${P} kbd{display:inline-block;min-width:18px;padding:1px 5px;border:1px solid var(--ap-hair);border-bottom-width:2px;border-radius:4px;background:rgba(255,255,255,.05);font:600 11.5px/1.3 ui-monospace,Consolas,monospace;color:var(--ap-label);text-align:center}
+
+${P} .ap-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:30px;padding:0 12px;border-radius:7px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:var(--ap-tx);font-weight:600;font-size:13px;line-height:1;cursor:pointer;white-space:nowrap;transition:background-color .15s ease-out,border-color .15s ease-out,color .15s ease-out}
+${P} .ap-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.24);color:var(--ap-strong)}
+${P} .ap-btn:active{background:rgba(255,255,255,.17)}
+${P} .ap-btn.pri{background:var(--ap-accent);border-color:var(--ap-accent);color:var(--ap-on-accent)}
+${P} .ap-btn.pri:hover{background:#a9d1f0;border-color:#a9d1f0;color:var(--ap-on-accent)}
+${P} .ap-btn.ghost{background:none;border-color:transparent}
+${P} .ap-btn.ghost:hover{background:rgba(255,255,255,.08)}
+${P} .ap-btn.icon{width:30px;padding:0}
+${P} .ap-btn.sm{height:26px;padding:0 9px;font-size:12.5px}
+${P} .ap-btn.icon.sm{width:26px;padding:0}
+${P} .ap-btn[disabled]{opacity:.42;cursor:default;pointer-events:none}
+${P} .ap-btn kbd{border-color:currentColor;color:inherit;background:none;opacity:.7;font-size:11px;padding:0 4px}
+${P} .ap-btn[aria-expanded=true]{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.26)}
+${P} :is(button,select,input,textarea,[tabindex]):focus-visible{outline:2px solid var(--ap-accent);outline-offset:2px}
+${P} .ap-select{height:28px;padding:0 26px 0 9px;border-radius:7px;border:1px solid rgba(255,255,255,.16);background:var(--ap-field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23c3cbd3' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;appearance:none;font-size:13px;font-weight:600;cursor:pointer}
+
+${P} .ap-head{flex:none;position:relative;display:flex;align-items:center;gap:8px;padding:8px 10px 8px 16px;background:var(--ap-head);border-bottom:1px solid var(--ap-hair-soft);border-radius:12px 12px 0 0}
+${P} .ap-ttl{font-size:16px;font-weight:750;color:var(--ap-strong);letter-spacing:.01em}
+${P} .ap-frame{flex:1;min-width:0;margin-left:6px;color:var(--ap-label);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+${P} .ap-frame>span+span::before{content:"·";margin:0 7px;color:var(--ap-soft)}
+${P} .ap-frame .ap-fr-at{color:var(--ap-soft)}
+${P} .ap-frame .ap-fr-none{color:var(--ap-soft)}
+${P} .ap-head .ap-btn{flex:none}
+${P} .ap-spin{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:ap-rot .8s linear infinite}
+@keyframes ap-rot{to{transform:rotate(360deg)}}
+${P} .ap-busy{flex:none;height:2px;position:relative;overflow:hidden;background:transparent}
+${P} .ap-busy.on{background:rgba(142,193,234,.18)}
+${P} .ap-busy.on i{position:absolute;inset:0 auto 0 0;width:30%;background:var(--ap-accent);animation:ap-slide 1.3s cubic-bezier(.25,1,.5,1) infinite}
+@keyframes ap-slide{from{transform:translateX(-100%)}to{transform:translateX(340%)}}
+
+${P} .ap-note{flex:none;display:none;align-items:center;gap:10px;margin:10px 12px 0;padding:8px 10px 8px 12px;border-radius:8px;border:1px solid rgba(255,210,122,.35);background:rgba(255,210,122,.09);color:#ffe2a6;font-size:13px}
+${P} .ap-note.on{display:flex}
+${P} .ap-note .ap-note-t{flex:1;min-width:0}
+
+${P} .ap-grid{--ap-wo:256px;--ap-wr:352px;flex:1;min-height:0;position:relative;display:grid;grid-template-columns:var(--ap-wo) minmax(0,1fr) var(--ap-wr)}
+${P} .ap-grid.no-out{--ap-wo:40px}${P} .ap-grid.no-rt{--ap-wr:40px}
+${P} .ap-rail{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;height:100%;padding:12px 0;border:0;background:none;color:var(--ap-label);cursor:pointer;font-size:12.5px;font-weight:650;transition:background-color .15s ease-out,color .15s ease-out}
+${P} .ap-rail:hover{background:rgba(255,255,255,.05);color:var(--ap-strong)}
+${P} .ap-rail .v{writing-mode:vertical-rl;white-space:nowrap}
+${P} .ap-rail b{min-width:22px;height:20px;padding:0 6px;border-radius:10px;background:var(--ap-accent-bg);color:var(--ap-accent);font-size:11.5px;line-height:20px;text-align:center;font-variant-numeric:tabular-nums}
+${P} .ap-pane-btn.folded{color:var(--ap-accent)}
+
+${P} .ap-out{display:flex;flex-direction:column;min-height:0;background:var(--ap-pane);border-right:1px solid var(--ap-hair-soft)}
+${P} .ap-prog{flex:none;padding:14px 14px 12px;border-bottom:1px solid var(--ap-hair-soft)}
+${P} .ap-prog-h{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+${P} .ap-prog-h b{font-size:20px;font-weight:750;color:var(--ap-strong);font-variant-numeric:tabular-nums}
+${P} .ap-prog-h span{color:var(--ap-label);font-size:13px}
+${P} .ap-bar{display:flex;gap:1px;height:8px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.07)}
+${P} .ap-bar i{display:block;min-width:2px}
+${P} .ap-bar .b-written{background:var(--ap-written)}${P} .ap-bar .b-stale{background:var(--ap-stale)}${P} .ap-bar .b-accepted{background:var(--ap-judge)}
+${P} .ap-bar .b-gr{background:var(--ap-gr)}${P} .ap-bar .b-map{background:var(--ap-map)}
+${P} .ap-bar .b-open{background:repeating-linear-gradient(135deg,var(--ap-judge) 0 3px,transparent 3px 6px)}
+${P} .ap-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+${P} .ap-chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;border:1px solid var(--ap-hair);background:none;color:var(--ap-label);font-size:12.5px;font-weight:600;cursor:pointer;transition:background-color .15s ease-out,border-color .15s ease-out}
+${P} .ap-chip:hover{background:rgba(255,255,255,.07);color:var(--ap-strong)}
+${P} .ap-chip b{font-weight:650;color:var(--ap-soft);font-variant-numeric:tabular-nums}
+${P} .ap-chip[aria-pressed=true]{background:var(--ap-accent-bg);border-color:var(--ap-accent);color:var(--ap-strong)}
+${P} .ap-chip[aria-pressed=true] b{color:var(--ap-accent)}
+${P} .ap-prog .ap-btn{margin-top:10px;width:100%}
+${P} .ap-list{flex:1;min-height:0;overflow:auto;padding:4px 8px 16px}
+${P} .ap-ph{padding:14px 8px 4px;font-size:13px;font-weight:700;color:var(--ap-strong)}
+${P} .ap-gh{padding:8px 8px 2px;font-size:12.5px;font-weight:600;color:var(--ap-soft)}
+${P} .ap-it{display:grid;grid-template-columns:16px 28px minmax(0,1fr) auto;align-items:center;gap:6px;width:100%;min-height:30px;padding:4px 8px;border:0;border-radius:6px;background:none;color:var(--ap-tx);text-align:left;cursor:pointer;font-size:13.5px;transition:background-color .12s ease-out}
+${P} .ap-it:hover{background:rgba(255,255,255,.06)}
+${P} .ap-it.sel{background:var(--ap-accent-bg);color:var(--ap-strong)}
+${P} .ap-it.sel .ap-no{color:var(--ap-accent)}
+${P} .ap-it .ap-no{color:var(--ap-soft);font-variant-numeric:tabular-nums;font-size:13px}
+${P} .ap-it .ap-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+${P} .ap-it .ap-ct{min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:rgba(255,255,255,.09);color:var(--ap-label);font-size:11.5px;font-weight:650;line-height:18px;text-align:center;font-variant-numeric:tabular-nums}
+${P} .ap-empty{padding:18px 10px;color:var(--ap-soft);font-size:13px;line-height:1.5}
+${P} .ap-ic{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px}
+${P} .st-gr{color:var(--ap-gr)}${P} .st-map{color:var(--ap-map)}${P} .st-open,${P} .st-accepted{color:var(--ap-judge)}
+${P} .st-yours{color:var(--ap-yours)}${P} .st-written{color:var(--ap-written)}${P} .st-stale{color:var(--ap-stale)}
+
+${P} .ap-mid{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--ap-desk)}
+${P} .ap-ptool{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--ap-hair-soft);background:var(--ap-bg)}
+${P} .ap-seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--ap-field);border:1px solid rgba(255,255,255,.1)}
+${P} .ap-seg button{height:26px;padding:0 12px;border:0;border-radius:6px;background:none;color:var(--ap-label);font-size:13px;font-weight:600;cursor:pointer;transition:background-color .15s ease-out,color .15s ease-out}
+${P} .ap-seg button:hover{color:var(--ap-strong)}
+${P} .ap-seg button[aria-pressed=true]{background:#3a4553;color:var(--ap-strong);box-shadow:0 1px 2px rgba(0,0,0,.35)}
+${P} .ap-hint-copy{color:var(--ap-soft);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+${P} .ap-hfield{display:inline-flex;align-items:center;gap:8px;color:var(--ap-label);font-size:13px;white-space:nowrap}
+${P} .ap-hfield input{width:70px;height:28px;padding:0 8px;border-radius:7px;border:1px solid var(--ap-edge);background:var(--ap-field);color:var(--ap-tx);font-size:13px;font-variant-numeric:tabular-nums}
+${P} .ap-hfield input:focus{border-color:var(--ap-accent)}
+${P} .ap-page{flex:1;min-height:0;overflow:auto;padding:20px 18px 48px}
+${P} .ap-page .aprc-doc{max-width:800px;margin:0 auto;padding:clamp(22px,6%,40px) clamp(18px,6%,46px) 40px clamp(22px,7%,56px);border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35);font-size:10.5pt}
+${P} .ap-page .ap-rule.long{min-width:min(22em,100%)}
+${P} .ap-page .ap-addr{max-width:100%}
+${P} .ap-page .ap-p{cursor:pointer;border-radius:2px;transition:background-color .12s ease-out}
+${P} .ap-page .ap-p:hover{background:#eef4fb;box-shadow:0 0 0 4px #eef4fb}
+${P} .ap-page .ap-p.sel{background:#fff1bf;box-shadow:0 0 0 4px #fff1bf,0 0 0 5.5px #d39e12}
+
+${P} .ap-rt{display:flex;flex-direction:column;min-height:0;background:var(--ap-pane);border-left:1px solid var(--ap-hair-soft)}
+${P} .ap-rt-nav{flex:none;display:flex;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--ap-hair-soft)}
+${P} .ap-rt-no{margin:0 6px;font-weight:650;color:var(--ap-label);font-variant-numeric:tabular-nums}
+${P} .ap-rt-nav .ap-btn b{font-variant-numeric:tabular-nums;color:var(--ap-accent)}
+${P} .ap-rt-body{flex:1;min-height:0;overflow:auto;padding:16px 16px 24px}
+${P} .ap-rt-h{margin:0 0 10px;font-size:16px;line-height:1.3;font-weight:700;color:var(--ap-strong)}
+${P} .ap-rt-h .ap-rt-n{color:var(--ap-soft);font-weight:650;margin-right:6px;font-variant-numeric:tabular-nums}
+${P} .ap-badge{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px 0 8px;border-radius:13px;font-size:12.5px;font-weight:650;background:rgba(255,255,255,.07);background:color-mix(in oklch,currentColor 15%,transparent)}
+${P} .ap-badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+${P} .ap-lead{margin:0 0 12px;color:var(--ap-label);font-size:13px;line-height:1.5}
+${P} .ap-call{margin:0 0 14px;padding:11px 12px;border-radius:8px;border:1px solid;font-size:13px;line-height:1.5}
+${P} .ap-call p{margin:4px 0 0;color:var(--ap-label)}
+${P} .ap-call-t{display:flex;align-items:center;gap:7px;font-weight:700;color:var(--ap-strong)}
+${P} .ap-call.judge{border-color:rgba(255,210,122,.4);background:rgba(255,210,122,.08)}
+${P} .ap-call.judge .ap-call-t svg{color:var(--ap-judge)}
+${P} .ap-call.stale{border-color:rgba(255,120,120,.45);background:rgba(229,72,77,.1)}
+${P} .ap-call.stale .ap-call-t svg{color:var(--ap-stale)}
+${P} .ap-call.done{display:flex;align-items:center;gap:8px;border-color:var(--ap-hair);background:rgba(255,255,255,.04);color:var(--ap-label)}
+${P} .ap-call.done svg{color:var(--ap-judge)}
+${P} .ap-quote{margin-top:8px;padding:8px 10px;border-radius:6px;background:rgba(0,0,0,.25);color:var(--ap-tx);white-space:pre-wrap}
+${P} .ap-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+${P} .ap-ed-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+${P} .ap-ed-h label{font-size:13px;font-weight:650;color:var(--ap-label)}
+${P} .ap-dirty{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#ffd27a}
+${P} .ap-dirty::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+${P} .ap-ed textarea{display:block;width:100%;min-height:150px;max-height:52vh;resize:vertical;padding:9px 11px;border-radius:8px;border:1px solid var(--ap-edge);background:var(--ap-field);color:var(--ap-tx);font-size:13.5px;line-height:1.5}
+${P} .ap-ed.small textarea{min-height:72px}
+${P} .ap-ed textarea:focus{border-color:var(--ap-accent);outline:none;box-shadow:0 0 0 3px rgba(142,193,234,.18)}
+${P} .ap-ed textarea::placeholder{color:#7f8a95}
+${P} .ap-kh{color:var(--ap-soft);font-size:12px}
+${P} .ap-sec{margin-top:20px}
+${P} .ap-sec h5{margin:0 0 6px;font-size:13px;font-weight:700;color:var(--ap-strong)}
+${P} .ap-sec .ap-mut{margin:0 0 8px;color:var(--ap-soft);font-size:12.5px;line-height:1.45}
+${P} .ap-sec ul{margin:0;padding-left:18px}
+${P} .ap-sec li{margin:5px 0;line-height:1.45}
+${P} .ap-sec li::marker{color:var(--ap-soft)}
+${P} .ap-tag{display:inline-block;margin-right:6px;padding:0 6px;border-radius:4px;background:rgba(255,255,255,.08);color:var(--ap-label);font-size:11.5px;font-weight:650;line-height:18px}
+${P} .ap-kids .ap-it{grid-template-columns:16px 40px minmax(0,1fr)}
+${P} .ap-tblw{overflow-x:auto;margin:0 -2px}
+${P} .ap-tbl{width:100%;border-collapse:separate;border-spacing:2px;table-layout:fixed}
+${P} .ap-tbl th{padding:2px 4px;text-align:left;color:var(--ap-soft);font-size:12px;font-weight:650;vertical-align:bottom}
+${P} .ap-tbl input{width:100%;height:28px;padding:0 6px;border-radius:5px;border:1px solid var(--ap-edge);background:var(--ap-field);color:var(--ap-tx);font-size:12.5px}
+${P} .ap-tbl input:focus{border-color:var(--ap-accent);outline:none}
+${P} .ap-tbl input.mine{border-color:var(--ap-written);background:rgba(183,156,240,.08)}
+${P} .ap-steps{margin:0 0 4px;padding:0;list-style:none;counter-reset:s}
+${P} .ap-steps li{position:relative;margin:0 0 14px;padding-left:34px;line-height:1.5;color:var(--ap-label);counter-increment:s}
+${P} .ap-steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--ap-hair);color:var(--ap-strong);font-weight:700;font-size:12.5px;line-height:21px;text-align:center}
+${P} .ap-steps li.done::before{content:"✓";background:var(--ap-accent);border-color:var(--ap-accent);color:var(--ap-on-accent)}
+${P} .ap-steps li b{color:var(--ap-strong)}
+${P} .ap-steps .ap-btn{margin-top:8px}
+${P} .ap-legend{list-style:none;padding:0!important;margin:0}
+${P} .ap-legend li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:4px;align-items:start;margin:6px 0!important}
+${P} .ap-legend li .ap-ic{margin-top:2px}
+${P} .ap-legend b{color:var(--ap-tx);font-weight:650}
+${P} .ap-legend span.d{color:var(--ap-soft)}
+${P} .ap-keys{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;margin:0;align-items:center;font-size:13px}
+${P} .ap-keys dt{white-space:nowrap}
+${P} .ap-keys dd{margin:0;color:var(--ap-label)}
+
+${P} .ap-menu{position:absolute;z-index:30;min-width:270px;max-width:340px;padding:6px;border-radius:10px;border:1px solid var(--ap-hair);background:var(--ap-pop);box-shadow:0 14px 34px rgba(0,0,0,.55)}
+${P} .ap-ml{padding:8px 10px 4px;color:var(--ap-soft);font-size:12px;font-weight:650}
+${P} .ap-mi{display:block;width:100%;padding:7px 10px;border:0;border-radius:6px;background:none;color:var(--ap-tx);text-align:left;cursor:pointer;font-size:13.5px;font-weight:600;line-height:1.3}
+${P} .ap-mi small{display:block;margin-top:2px;color:var(--ap-soft);font-size:12px;font-weight:400}
+${P} .ap-mi:hover,${P} .ap-mi:focus-visible{background:rgba(255,255,255,.09);outline:none}
+${P} .ap-mi .ap-last{margin-left:6px;padding:0 6px;border-radius:4px;background:var(--ap-accent-bg);color:var(--ap-accent);font-size:11px;font-weight:650}
+${P} .ap-mi.danger{color:#ff9a9c}
+${P} .ap-mi.danger.armed{background:rgba(229,72,77,.22);color:#ffd2d3}
+${P} .ap-msep{height:1px;margin:6px 4px;background:var(--ap-hair-soft)}
+
+${P} .ap-toast{position:absolute;left:50%;bottom:18px;z-index:40;display:flex;align-items:center;gap:9px;max-width:min(580px,calc(100% - 32px));padding:10px 14px;border-radius:9px;border:1px solid var(--ap-hair);background:#2c3540;color:var(--ap-strong);font-size:13.5px;box-shadow:0 10px 28px rgba(0,0,0,.5);opacity:0;transform:translate(-50%,8px);pointer-events:none;transition:opacity .2s cubic-bezier(.25,1,.5,1),transform .2s cubic-bezier(.25,1,.5,1)}
+${P} .ap-toast.on{opacity:1;transform:translate(-50%,0)}
+${P} .ap-toast svg{color:var(--ap-gr)}
+${P} .ap-toast.err{background:#3d2427;border-color:rgba(255,120,120,.45)}
+${P} .ap-toast.err svg{color:var(--ap-stale)}
+
+@media (max-width:1180px){${P} .ap-grid{--ap-wo:224px;--ap-wr:312px}${P} .ap-hint-copy{display:none}}
+@media (max-width:940px){
+ ${P} .ap-grid,${P} .ap-grid.no-out{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(140px,1.25fr) minmax(0,1fr)}
+ ${P} .ap-grid.no-rt{grid-template-rows:minmax(0,1fr) auto}
+ ${P} .ap-rt .ap-rail{flex-direction:row;height:40px;padding:0 14px}
+ ${P} .ap-rt .ap-rail .v{writing-mode:horizontal-tb}
+ ${P} .ap-out{display:none;position:absolute;z-index:20;left:0;top:0;bottom:0;width:min(300px,86%);box-shadow:12px 0 30px rgba(0,0,0,.45)}
+ ${P} .ap-grid.out-open .ap-out{display:flex}
+ ${P} .ap-rt{border-left:0;border-top:1px solid var(--ap-hair)}
+ ${P} .ap-ed textarea{min-height:96px}
+}
+@media (max-width:720px){${P} .ap-frame{display:none}${P} .ap-head .ap-select{margin-right:auto}}
+@media (prefers-reduced-motion:reduce){${P} *,${P} *::before,${P} *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}${P} .ap-busy.on i{width:100%;transform:none}}
 ${APRC_DOC_CSS}
-#${PANEL_ID} .mid .aprc-doc{font-size:10.5pt}
+${P} .ap-page .aprc-doc{font-size:10.5pt}
 `;
 
 let cssDone = false;
@@ -168,8 +311,100 @@ function ensureCss(): void {
   document.head.appendChild(st);
 }
 
-const STATE_WORD: Record<string, string> = { GR: 'Drafted from Gr', MAP: 'From the map', 'YOU JUDGE': 'Proposal: you judge', YOURS: 'Yours to write', WRITTEN: 'Written by you' };
-const DOT: Record<string, string> = { GR: 'gr', MAP: 'map', 'YOU JUDGE': 'judge', YOURS: 'yours', WRITTEN: 'written' };
+/**
+ * Where a paragraph stands for the planner. `head`: a heading whose sub-paragraphs carry the words (not counted);
+ * the three to do: `stale` (his words, the Gr changed under them), `yours` (prints a ruled line), `open` (a proposal
+ * not yet taken); the rest print as they are.
+ */
+type ParaStatus = 'head' | 'stale' | 'yours' | 'open' | 'accepted' | 'written' | 'gr' | 'map';
+const TODO: ReadonlySet<ParaStatus> = new Set(['stale', 'yours', 'open']);
+/** Worst first: the outline shows the worst state under a paragraph. */
+const WORST: ParaStatus[] = ['stale', 'yours', 'open', 'map', 'gr', 'accepted', 'written', 'head'];
+
+function statusOf(p: AprcPara): ParaStatus {
+  if (p.mine) return isStale(p) ? 'stale' : 'written';
+  if (p.draft === '' && !p.table) return 'head';
+  if (p.draft === null && !p.table) return 'yours';
+  if (p.state === 'judge') return p.accepted ? 'accepted' : 'open';
+  if (p.state === 'yours') return p.cells ? 'written' : 'yours';
+  return p.state;
+}
+
+const WORD: Record<ParaStatus, string> = {
+  head: 'Heading',
+  stale: 'Gr changed since you wrote it',
+  yours: 'Yours to write',
+  open: 'Proposal: you judge',
+  accepted: 'Proposal accepted',
+  written: 'Written by you',
+  gr: 'Drafted from Gr',
+  map: 'From the map',
+};
+const MEANS: Array<[ParaStatus, string]> = [
+  ['written', 'Read never changes it.'],
+  ['gr', 'Prints as it stands; edit it to make it yours.'],
+  ['map', 'Read from the symbols and Check my plan.'],
+  ['open', 'Prints in the fair copy once you accept it.'],
+  ['accepted', 'Prints as it stands.'],
+  ['yours', 'Prints a ruled line until you write it.'],
+  ['stale', 'Look again: keep yours or take the new reading.'],
+];
+
+const svg = (body: string, size = 14): string => `<svg width="${size}" height="${size}" viewBox="0 0 14 14" aria-hidden="true">${body}</svg>`;
+const ICON: Record<ParaStatus, string> = {
+  head: '',
+  gr: svg('<circle cx="7" cy="7" r="5" fill="currentColor"/>'),
+  map: svg('<rect x="2.3" y="2.3" width="9.4" height="9.4" rx="2" fill="currentColor"/>'),
+  open: svg('<path d="M7 1.7 12.3 7 7 12.3 1.7 7Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'),
+  accepted: svg('<path d="M7 1.4 12.6 7 7 12.6 1.4 7Z" fill="currentColor"/>'),
+  yours: svg('<circle cx="7" cy="7" r="4.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.4 1.9"/>'),
+  written: svg('<path d="M2.4 7.4 5.6 10.4 11.6 3.7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>'),
+  stale: svg('<circle cx="7" cy="7" r="6.2" fill="currentColor"/><path d="M7 3.5v4.3M7 10.2v.2" stroke="#1b1f25" stroke-width="1.9" stroke-linecap="round"/>'),
+};
+const ico = (s: ParaStatus): string => `<span class="ap-ic st-${s}">${ICON[s]}</span>`;
+const UI = {
+  read: '<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8A5.5 5.5 0 1 1 11.9 4.1M13.6 1.8v3.1h-3.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  caret: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  more: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.5" fill="currentColor"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="12.5" cy="8" r="1.5" fill="currentColor"/></svg>',
+  close: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  prev: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 8.8 7 5.3l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  next: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 5.2 7 8.7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  paneL: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="2.5" width="12.4" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 2.8v10.4" stroke="currentColor" stroke-width="1.5"/></svg>',
+  paneR: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="2.5" width="12.4" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 2.8v10.4" stroke="currentColor" stroke-width="1.5"/></svg>',
+  warn: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.2v3.6M8 11.8v.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  ok: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor" opacity=".2"/><path d="M4.6 8.3 7 10.6l4.4-4.9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  err: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor" opacity=".22"/><path d="M8 4.4v4.4M8 11.2v.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
+};
+
+/** Part titles are held in capitals for the page; the outline shows them as words. */
+const SMALL_WORDS = new Set(['of', 'and', 'the', 'to', 'in', 'on']);
+const asWords = (s: string): string =>
+  s === s.toUpperCase()
+    ? s.toLowerCase().split(' ').map((w, i) => (i > 0 && SMALL_WORDS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(' ')
+    : s;
+
+interface Tally {
+  all: number;
+  todo: number;
+  stale: number;
+  yours: number;
+  open: number;
+  accepted: number;
+  written: number;
+  gr: number;
+  map: number;
+}
+
+type AprcFilter = 'all' | 'todo' | 'open' | 'stale' | 'written';
+const FILTERS: Array<{ f: AprcFilter; label: string }> = [
+  { f: 'all', label: 'All' },
+  { f: 'todo', label: 'To do' },
+  { f: 'open', label: 'Proposals' },
+  { f: 'stale', label: 'Gr changed' },
+  { f: 'written', label: 'Written' },
+];
+const inFilter = (s: ParaStatus, f: AprcFilter): boolean =>
+  s !== 'head' && (f === 'all' ? true : f === 'todo' ? TODO.has(s) : f === 'open' ? s === 'open' : f === 'stale' ? s === 'stale' : s === 'written' || s === 'stale');
 
 export default class GroundAppreciation {
   private _opts: GroundAppreciationOptions = { ...DEFAULT_GROUND_APPRECIATION_OPTIONS };
@@ -178,9 +413,39 @@ export default class GroundAppreciation {
   private _host: GroundAppreciationHost;
   private _doc: AprcDoc | null = null;
   private _busy = false;
-  private _msg = '';
+  private _msgText = '';
+  /** Counts messages, so the same words twice still show the toast twice. */
+  private _msgSeq = 0;
+  private _toastSeq = 0;
+  private _toastTimer: ReturnType<typeof setTimeout> | null = null;
+  private get _msg(): string {
+    return this._msgText;
+  }
+  private set _msg(v: string) {
+    this._msgText = v;
+    this._msgSeq++;
+  }
   private _note = '';
   private _sel: string | null = null;
+  /** The outline's filter. */
+  private _filter: AprcFilter = 'all';
+  /** The menu open under the header, if any. */
+  private _menu: 'export' | 'more' | null = null;
+  /** Clear asks twice: the first click arms it. */
+  private _clearArmed = false;
+  private _outside: ((e: Event) => void) | null = null;
+  /** Words typed in the paragraph box and not yet saved. */
+  private _dirty: { id: string; text: string } | null = null;
+  /** The outline as a drawer on a narrow sheet. */
+  private _outOpen = false;
+  /** The outline and the paragraph panel folded to a rail (kept in this browser: a viewer's convenience). */
+  private _hideOut = false;
+  private _hideRt = false;
+  private _uiLoaded = false;
+  private _resizeRaf = 0;
+  /** Bumped on every change of the document, so the page is drawn again only when it changed. */
+  private _docVer = 0;
+  private _pageKey = '';
   private _el: HTMLElement | null = null;
   private _open = false;
   private _resize: (() => void) | null = null;
@@ -251,6 +516,9 @@ export default class GroundAppreciation {
 
   openPanel(open = true): void {
     if (!open) {
+      // what was typed in the paragraph box is kept as the planner's
+      if (this._open) this._commitDirty();
+      this._closeMenu(false);
       this._open = false;
       this._el?.classList.remove('ms-open');
       if (this._resize) window.removeEventListener('resize', this._resize);
@@ -264,10 +532,17 @@ export default class GroundAppreciation {
     this._dock();
     this._el!.classList.add('ms-open');
     if (!this._resize) {
-      this._resize = () => this._dock();
+      this._resize = () => {
+        this._dock();
+        if (this._menu) this._renderMenu();
+        cancelAnimationFrame(this._resizeRaf);
+        this._resizeRaf = requestAnimationFrame(() => this._render());
+      };
       window.addEventListener('resize', this._resize);
     }
     this._render();
+    // keys work in the sheet at once (arrows, N, A, Esc)
+    if (!this._el!.contains(document.activeElement)) this._el!.focus({ preventScroll: true });
   }
 
   togglePanel(): boolean {
@@ -291,6 +566,8 @@ export default class GroundAppreciation {
    */
   async read(o: { at?: [number, number] | null } = {}): Promise<AprcDoc | null> {
     if (!this._enabled) return null;
+    // words typed in the paragraph box are the planner's before the new reading comes in
+    this._commitDirty();
     const seq = ++this._readSeq;
     this._busy = true;
     this._msg = 'Reading…';
@@ -369,6 +646,7 @@ export default class GroundAppreciation {
       }
       if (seq !== this._readSeq) return null;
       this._doc = carryOver(prev, doc);
+      this._docVer++;
       this._note = notes.join(' ');
       const c = counts(this._doc);
       this._msg = `Read: ${c.gr} from Gr, ${c.map} from the map, ${c.judge} proposals, ${c.yours} yours`;
@@ -916,11 +1194,13 @@ export default class GroundAppreciation {
   clear(): void {
     this._doc = newDoc(this._opts.kind);
     this._sel = null;
-    this._msg = 'Cleared';
+    this._dirty = null;
+    this._msg = 'Cleared: every heading empty';
     this._changed();
   }
 
   private _changed(): void {
+    this._docVer++;
     this._save();
     this._render();
     this._emit('aprc-changed', { doc: this._doc });
@@ -943,6 +1223,7 @@ export default class GroundAppreciation {
     if (!doc || doc.version !== 1 || !Array.isArray(doc.parts)) return false;
     this._doc = doc as AprcDoc;
     this._sel = null;
+    this._dirty = null;
     this._msg = 'Opened';
     this._changed();
     return true;
@@ -1131,71 +1412,168 @@ export default class GroundAppreciation {
   private _build(): void {
     const el = document.createElement('div');
     el.id = PANEL_ID;
+    el.tabIndex = -1;
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', 'Appreciation of the situation');
-    el.innerHTML = `<div class="h"><span class="t">Aprc</span><span class="sub" data-p="sub"></span><button class="pri" data-a="read">Read</button><button class="x" data-a="close" aria-label="Close">×</button></div>
-<div class="tool" data-p="tool"></div><div class="note" data-p="note"></div>
-<div class="grid"><div class="out" data-p="out"></div><div class="mid" data-p="mid"></div><div class="rt" data-p="rt"></div></div>
-<div class="foot" data-p="foot"></div>`;
+    const kinds = aprcKinds();
+    el.innerHTML = `<header class="ap-head">
+<span class="ap-ttl">Aprc</span>
+<select class="ap-select" data-o="kind" aria-label="Kind of appreciation">${kinds.map((k) => `<option value="${k.kind}" ${k.ready ? '' : 'disabled'}>${esc(k.label)}${k.ready ? '' : ' (no outline yet)'}</option>`).join('')}</select>
+<div class="ap-frame" data-p="frame"></div>
+<button class="ap-btn pri" data-a="read" data-p="read" title="Read the ground and the symbols on the map. Your words and acceptances are kept."></button>
+<button class="ap-btn" data-a="menu" data-v="export" aria-haspopup="menu" aria-expanded="false">Export ${UI.caret}</button>
+<button class="ap-btn icon" data-a="menu" data-v="more" aria-haspopup="menu" aria-expanded="false" aria-label="Save, open or clear" title="Save, open or clear">${UI.more}</button>
+<button class="ap-btn icon ghost" data-a="close" aria-label="Close (Esc)" title="Close (Esc)">${UI.close}</button>
+</header>
+<div class="ap-busy" data-p="busy" aria-hidden="true"><i></i></div>
+<div class="ap-note" data-p="note" role="note"></div>
+<div class="ap-grid" data-p="grid">
+<nav class="ap-out" id="ap-pane-out" data-p="out" aria-label="Outline"></nav>
+<section class="ap-mid" aria-label="The page">
+<div class="ap-ptool">
+<button class="ap-btn icon sm ghost ap-pane-btn" data-a="pane" data-v="out" data-p="paneout" aria-controls="ap-pane-out" aria-keyshortcuts="[">${UI.paneL}</button>
+<div class="ap-seg" role="group" aria-label="Copy"><button data-a="copy" data-v="fair" title="What goes up: a paragraph not written, and a proposal not accepted, print a ruled line">Fair copy</button><button data-a="copy" data-v="draft" title="With a mark on each paragraph, the proposals shown, and the Confirm on Gr, basis and data annexes">Draft copy</button></div>
+<span class="ap-hint-copy" data-p="copyhint"></span>
+<span class="sp"></span>
+<label class="ap-hfield" title="H as a clock time on D Day: the en's times get clock times beside H+. Empty takes the Ground Guide's IPB H.">H on D Day<input type="text" data-o="hHour" inputmode="numeric" maxlength="5" placeholder="HH:MM" autocomplete="off"></label>
+<button class="ap-btn icon sm ghost ap-pane-btn" data-a="pane" data-v="rt" data-p="panert" aria-controls="ap-pane-rt" aria-keyshortcuts="]">${UI.paneR}</button>
+</div>
+<div class="ap-page" data-p="page"></div>
+</section>
+<aside class="ap-rt" id="ap-pane-rt" data-p="rt" aria-label="The selected paragraph"></aside>
+</div>
+<div class="ap-menu" data-p="menu" role="menu" hidden></div>
+<div class="ap-toast" data-p="toast" role="status" aria-live="polite"></div>`;
     el.addEventListener('click', (e) => this._click(e));
-    el.addEventListener('change', (e) => this._changeEv(e));
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !(e.target as HTMLElement)?.matches?.('textarea,input')) this.openPanel(false);
-      e.stopPropagation();
+    el.addEventListener('dblclick', (e) => {
+      const p = (e.target as HTMLElement).closest('.ap-page .ap-p[data-id]') as HTMLElement | null;
+      if (p) this._select(p.dataset.id!, false, true);
     });
+    el.addEventListener('change', (e) => this._changeEv(e));
+    el.addEventListener('input', (e) => this._input(e));
+    el.addEventListener('keydown', (e) => this._key(e));
     document.body.appendChild(el);
     this._el = el;
+    this._loadUi();
   }
 
   private _part(k: string): HTMLElement {
     return this._el!.querySelector(`[data-p="${k}"]`) as HTMLElement;
   }
 
+  // ── the sheet: what the planner does ─────────────────────────────────────────────────────────────────────────
+
   private _click(e: Event): void {
     const t = e.target as HTMLElement;
-    const b = t.closest('[data-a]') as HTMLElement | null;
-    if (b) {
+    // the outline drawer of a narrow sheet folds away on a click beside it
+    if (this._outOpen && !t.closest('.ap-out') && !t.closest('[data-a="pane"][data-v="out"]')) {
+      this._outOpen = false;
+      this._part('grid').classList.remove('out-open');
+    }
+    const b = t.closest('[data-a]') as HTMLButtonElement | null;
+    if (b && this._el!.contains(b)) {
+      if (b.disabled) return;
       const a = b.dataset.a!, v = b.dataset.v ?? '';
-      if (a === 'close') return this.openPanel(false);
-      if (a === 'read') return void this.read();
-      if (a === 'accept-all') {
-        const n = this.acceptAll();
-        this._msg = n ? `${n} proposals accepted` : 'No open proposal';
-        return this._render();
-      }
-      if (a === 'copy') return this.setOptions({ copy: v as AprcCopy });
-      if (a === 'word') return void this.exportWord();
-      if (a === 'print') return this.exportPrint();
-      if (a === 'text') return void this.copyText();
-      if (a === 'json') return this.exportJson();
-      if (a === 'open') return this._openJson();
-      if (a === 'slides') return void this.makeSlides();
-      if (a === 'guide') {
-        this._host.turnOnGuide?.();
-        this._msg = 'Ground Guide on: press Read when the terrain data has loaded';
-        this._note = '';
-        return this._render();
-      }
-      if (a === 'clear') {
-        if (window.confirm('Clear the appreciation? Your written paragraphs go too.')) this.clear();
-        return;
-      }
-      if (a === 'sel') return this._select(v, true);
-      if (a === 'save') {
-        const ta = this._el!.querySelector('.rt textarea') as HTMLTextAreaElement | null;
-        if (ta && this._sel) this.setText(this._sel, ta.value);
-        return;
-      }
-      if (a === 'give') return void (this._sel && this.setText(this._sel, null));
-      if (a === 'acc') return void (this._sel && this.accept(this._sel, v !== 'off'));
-      if (a === 'addrow' || a === 'delrow') {
-        if (this._doc && this._sel && addRow(this._doc, this._sel, a === 'addrow' ? 1 : -1)) this._changed();
-        return;
+      if (a === 'menu') return this._toggleMenu(v as 'export' | 'more');
+      if (a !== 'clear') this._closeMenu(false);
+      if (a === 'give') this._dirty = null;
+      else if (a !== 'save' && a !== 'sel' && a !== 'prev' && a !== 'next' && a !== 'next-todo') this._commitDirty();
+      switch (a) {
+        case 'close':
+          return this.openPanel(false);
+        case 'read':
+          return void this.read();
+        case 'accept-all': {
+          const n = this.acceptAll();
+          this._msg = n ? `${n} proposal${n === 1 ? '' : 's'} accepted: they print in the fair copy` : 'No open proposal';
+          return this._render();
+        }
+        case 'filter':
+          this._filter = v as AprcFilter;
+          return this._render();
+        case 'copy':
+          return this.setOptions({ copy: v as AprcCopy });
+        case 'word':
+          return void this.exportWord();
+        case 'print':
+          return this.exportPrint();
+        case 'text':
+          return void this.copyText();
+        case 'json':
+          this.exportJson();
+          this._msg = 'Saved to a file';
+          return this._render();
+        case 'open':
+          return this._openJson();
+        case 'slides':
+          if (v) this.setOptions({ deck: v as AprcDeckKind });
+          return void this.makeSlides(v ? (v as AprcDeckKind) : this._opts.deck);
+        case 'guide':
+          this._host.turnOnGuide?.();
+          this._msg = 'Ground Guide on: press Read when the terrain data has loaded';
+          this._note = '';
+          return this._render();
+        case 'clear':
+          if (!this._clearArmed) {
+            this._clearArmed = true;
+            this._renderMenu();
+            (this._part('menu').querySelector('[data-a="clear"]') as HTMLElement | null)?.focus();
+            return;
+          }
+          this._closeMenu(true);
+          this.clear();
+          return;
+        case 'sel':
+          return this._select(v, true);
+        case 'prev':
+          return this._go(-1);
+        case 'next':
+          return this._go(1);
+        case 'next-todo':
+          return this._nextTodo();
+        case 'pane':
+          return this._togglePane(v as 'out' | 'rt');
+        case 'edit':
+          return this._focusEditor();
+        case 'save': {
+          const ta = this._el!.querySelector('.ap-rt textarea') as HTMLTextAreaElement | null;
+          if (!ta || !this._sel) return;
+          this._dirty = { id: this._sel, text: ta.value };
+          if (!this._commitDirty(true)) {
+            this._msg = 'Nothing to save';
+            this._render();
+          }
+          return;
+        }
+        case 'give':
+          if (this._sel && this.setText(this._sel, null)) {
+            this._msg = `${this._num(this._sel)} given back: the tool's draft prints`;
+            this._render();
+          }
+          return;
+        case 'keep': {
+          const p = this._doc && this._sel ? find(this._doc, this._sel) : null;
+          if (p?.mine && this.setText(p.id, p.mine.text)) {
+            this._msg = `${this._num(p.id)}: yours kept`;
+            this._render();
+          }
+          return;
+        }
+        case 'acc':
+          if (this._sel && this.accept(this._sel, v !== 'off')) {
+            this._msg = v === 'off' ? `${this._num(this._sel)}: acceptance taken back` : `${this._num(this._sel)} accepted: it prints in the fair copy`;
+            this._render();
+          }
+          return;
+        case 'addrow':
+        case 'delrow':
+          if (this._doc && this._sel && addRow(this._doc, this._sel, a === 'addrow' ? 1 : -1)) this._changed();
+          return;
       }
       return;
     }
-    const p = t.closest('.ap-p[data-id]') as HTMLElement | null;
-    if (p && this._el!.contains(p)) this._select(p.dataset.id!, false);
+    const p = t.closest('.ap-page .ap-p[data-id]') as HTMLElement | null;
+    if (p) this._select(p.dataset.id!, false);
   }
 
   private _changeEv(e: Event): void {
@@ -1222,107 +1600,610 @@ export default class GroundAppreciation {
       } else this._msg = 'H set: Read again to time the en options';
       return this._render();
     }
-    if (k === 'deck') this.setOptions({ deck: t.value as AprcDeckKind });
-    else if (k === 'kind') {
-      this.setOptions({ kind: t.value as AprcKind });
+    if (k === 'kind') {
+      const next = t.value as AprcKind;
+      if (this._doc && this._doc.kind !== next) {
+        let mine = false;
+        walk(this._doc, (p) => {
+          if (p.mine || p.accepted || p.cells) mine = true;
+        });
+        if (mine && !window.confirm('Change the kind of appreciation? It starts again with every heading empty, and your written paragraphs go.')) {
+          t.value = this._doc.kind;
+          return;
+        }
+      }
+      this.setOptions({ kind: next });
       if (this._doc && this._doc.kind !== this._opts.kind) this.clear();
     }
   }
 
-  private _select(id: string, scroll: boolean): void {
-    this._sel = id;
+  /** Typing in the paragraph box: held as the planner's until saved (Save, Ctrl+Enter, or moving to another paragraph). */
+  private _input(e: Event): void {
+    const ta = e.target as HTMLTextAreaElement;
+    if (!ta.matches?.('.ap-ed textarea') || !this._sel) return;
+    this._dirty = { id: this._sel, text: ta.value };
+    const changed = this._isChanged();
+    const ind = this._el!.querySelector('.ap-dirty') as HTMLElement | null;
+    if (ind) ind.hidden = !changed;
+    const save = this._el!.querySelector('[data-a="save"]') as HTMLButtonElement | null;
+    if (save) {
+      save.classList.toggle('pri', changed);
+      save.disabled = !changed && !this._canKeep();
+    }
+  }
+
+  private _key(e: KeyboardEvent): void {
+    // keys in the sheet never reach the map
+    e.stopPropagation();
+    const t = e.target as HTMLElement;
+    if (this._menu) {
+      const items = [...this._part('menu').querySelectorAll<HTMLElement>('.ap-mi')];
+      const i = items.indexOf(document.activeElement as HTMLElement);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this._closeMenu(true);
+        return;
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
+        return;
+      }
+      if (e.key === 'Tab') this._closeMenu(false);
+      return;
+    }
+    if (t.matches?.('textarea,input,select')) {
+      if (t.matches('.ap-ed textarea') && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        this._commitDirty(true);
+        this._el!.focus({ preventScroll: true });
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        t.blur();
+        this._el!.focus({ preventScroll: true });
+      }
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    switch (e.key) {
+      case 'Escape':
+        if (this._outOpen) {
+          this._outOpen = false;
+          this._render();
+        } else this.openPanel(false);
+        break;
+      case 'ArrowDown':
+      case 'j':
+        this._go(1);
+        break;
+      case 'ArrowUp':
+      case 'k':
+        this._go(-1);
+        break;
+      case '[':
+        this._togglePane('out');
+        break;
+      case ']':
+        this._togglePane('rt');
+        break;
+      case 'n':
+      case 'N':
+        this._nextTodo();
+        break;
+      case 'a':
+      case 'A': {
+        const p = this._doc && this._sel ? find(this._doc, this._sel) : null;
+        if (!p || statusOf(p) !== 'open') return;
+        this.accept(p.id, true);
+        this._msg = `${this._num(p.id)} accepted: it prints in the fair copy`;
+        this._render();
+        break;
+      }
+      case 'Enter':
+      case 'e':
+        if (t.matches?.('button')) return;
+        if (!this._sel) return void this._nextTodo();
+        this._focusEditor();
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+  }
+
+  // ── the sheet: moving through the paragraphs ─────────────────────────────────────────────────────────────────
+
+  private _num(id: string): string {
+    return this._doc ? numberOf(this._doc, id) || id : id;
+  }
+
+  /** Every paragraph in printing order (headings only kept, so a selected heading has a place). */
+  private _order(): Array<{ id: string; s: ParaStatus }> {
+    const out: Array<{ id: string; s: ParaStatus }> = [];
+    if (!this._doc) return out;
+    for (const l of lines(this._doc)) if (l.type === 'para') out.push({ id: l.p.id, s: statusOf(l.p) });
+    return out;
+  }
+
+  private _go(step: number): void {
+    const L = this._order();
+    if (!L.length) return;
+    let i = L.findIndex((x) => x.id === this._sel);
+    if (i < 0) i = step > 0 ? -1 : L.length;
+    for (let j = i + step; j >= 0 && j < L.length; j += step) {
+      if (L[j].s !== 'head') return this._select(L[j].id, true);
+    }
+  }
+
+  private _nextTodo(): void {
+    this._commitDirty();
+    const L = this._order();
+    const i = L.findIndex((x) => x.id === this._sel);
+    for (let k = 1; k <= L.length; k++) {
+      const x = L[(i + k + L.length) % L.length];
+      if (TODO.has(x.s)) return this._select(x.id, true);
+    }
+    this._msg = 'Nothing left to do: every paragraph prints';
     this._render();
-    if (scroll) this._el?.querySelector(`.mid .ap-p[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'center' });
+  }
+
+  private _select(id: string | null, scroll: boolean, edit = false): void {
+    if (id !== this._sel) this._commitDirty();
+    this._sel = id;
+    this._outOpen = false;
+    this._render();
+    if (id && scroll) this._reveal(id);
+    if (edit) this._focusEditor();
+  }
+
+  /** Bring the paragraph into view on the page and in the outline, only when it is out of sight. */
+  private _reveal(id: string): void {
+    const page = this._part('page');
+    const el = page.querySelector(`.ap-p[data-id="${CSS.escape(id)}"]`) as HTMLElement | null;
+    if (el) {
+      const pr = page.getBoundingClientRect(), r = el.getBoundingClientRect();
+      if (r.top < pr.top + 12 || r.bottom > pr.bottom - 12) {
+        const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollIntoView({ block: 'center', behavior: still ? 'auto' : 'smooth' });
+      }
+    }
+    (this._part('out').querySelector('.ap-it.sel') as HTMLElement | null)?.scrollIntoView({ block: 'nearest' });
+  }
+
+  private _focusEditor(): void {
+    if (this._hideRt) {
+      this._hideRt = false;
+      this._saveUi();
+      this._render();
+    }
+    const ta = this._el?.querySelector('.ap-ed textarea') as HTMLTextAreaElement | null;
+    if (!ta) return;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }
+
+  /** The words in the box differ from what the paragraph holds. */
+  private _isChanged(): boolean {
+    const d = this._dirty;
+    const p = d && this._doc ? find(this._doc, d.id) : null;
+    if (!d || !p) return false;
+    return d.text.trim() !== (p.mine?.text ?? p.draft ?? '').trim();
+  }
+
+  /** A drafted paragraph can be kept as the planner's as it stands (Read then leaves it alone). */
+  private _canKeep(): boolean {
+    const p = this._doc && this._sel ? find(this._doc, this._sel) : null;
+    return !!p && !p.mine && !!(this._dirty?.id === p.id ? this._dirty.text : p.draft ?? '').trim();
+  }
+
+  /**
+   * Save the box as the planner's. `force` saves a drafted paragraph unchanged too (Save as mine). Moving away saves
+   * what was typed, so nothing typed is lost. Returns true when something was saved.
+   */
+  private _commitDirty(force = false): boolean {
+    const d = this._dirty;
+    if (!d || !this._doc) return false;
+    const p = find(this._doc, d.id);
+    if (!p) {
+      this._dirty = null;
+      return false;
+    }
+    const changed = this._isChanged();
+    this._dirty = null;
+    if (!changed && !(force && !p.mine && d.text.trim())) return false;
+    if (!this.setText(d.id, d.text)) return false;
+    this._msg = d.text.trim() ? `${this._num(d.id)} saved as yours: Read never changes it` : `${this._num(d.id)} given back to the tool`;
+    this._render();
+    return true;
+  }
+
+  /** Below 940 px the outline is a drawer and the paragraph panel sits under the page. */
+  private _narrow(): boolean {
+    return typeof matchMedia === 'function' && matchMedia('(max-width: 940px)').matches;
+  }
+
+  /** Fold or open a side panel; on a narrow sheet the outline opens as a drawer instead. */
+  private _togglePane(which: 'out' | 'rt'): void {
+    if (which === 'out' && this._narrow()) this._outOpen = !this._outOpen;
+    else if (which === 'out') this._hideOut = !this._hideOut;
+    else {
+      this._commitDirty();
+      this._hideRt = !this._hideRt;
+    }
+    this._saveUi();
+    this._render();
+    if (which === 'out' && !this._hideOut && this._sel) this._reveal(this._sel);
+  }
+
+  private _loadUi(): void {
+    if (this._uiLoaded) return;
+    this._uiLoaded = true;
+    try {
+      const u = JSON.parse(localStorage.getItem(UI_STORE) ?? 'null');
+      this._hideOut = !!u?.out;
+      this._hideRt = !!u?.rt;
+    } catch {
+      /* storage refused: both panels open */
+    }
+  }
+
+  private _saveUi(): void {
+    try {
+      localStorage.setItem(UI_STORE, JSON.stringify({ out: this._hideOut, rt: this._hideRt }));
+    } catch {
+      /* storage refused: the panels stay as they are for this session */
+    }
+  }
+
+  // ── the sheet: menus ─────────────────────────────────────────────────────────────────────────────────────────
+
+  private _toggleMenu(which: 'export' | 'more'): void {
+    if (this._menu === which) return this._closeMenu(true);
+    this._commitDirty();
+    this._menu = which;
+    this._clearArmed = false;
+    this._renderMenu();
+    (this._part('menu').querySelector('.ap-mi') as HTMLElement | null)?.focus();
+    if (!this._outside) {
+      this._outside = (ev: Event) => {
+        const n = ev.target as Node;
+        if (this._part('menu').contains(n) || (n as HTMLElement).closest?.('[data-a="menu"]')) return;
+        this._closeMenu(false);
+      };
+      document.addEventListener('pointerdown', this._outside, true);
+    }
+  }
+
+  private _closeMenu(refocus: boolean): void {
+    if (!this._menu) return;
+    const was = this._menu;
+    this._menu = null;
+    this._clearArmed = false;
+    if (this._outside) document.removeEventListener('pointerdown', this._outside, true);
+    this._outside = null;
+    this._renderMenu();
+    if (refocus) (this._el?.querySelector(`[data-a="menu"][data-v="${was}"]`) as HTMLElement | null)?.focus();
+  }
+
+  private _renderMenu(): void {
+    if (!this._el) return;
+    const m = this._part('menu');
+    for (const b of this._el.querySelectorAll<HTMLElement>('[data-a="menu"]')) b.setAttribute('aria-expanded', String(b.dataset.v === this._menu));
+    if (!this._menu) {
+      m.hidden = true;
+      m.innerHTML = '';
+      return;
+    }
+    const item = (a: string, label: string, note: string, o: { v?: string; cls?: string; extra?: string } = {}) =>
+      `<button class="ap-mi${o.cls ? ` ${o.cls}` : ''}" role="menuitem" data-a="${a}"${o.v ? ` data-v="${esc(o.v)}"` : ''}>${label}${o.extra ?? ''}<small>${note}</small></button>`;
+    let h = '';
+    if (this._menu === 'export') {
+      const copy = this._opts.copy === 'fair' ? 'Fair copy' : 'Draft copy';
+      h += `<div class="ap-ml">${copy} (switch above the page)</div>`;
+      h += item('word', 'Word document', '.docx, with the figures');
+      h += item('print', 'PDF', 'Opens print: choose Save as PDF');
+      h += item('text', 'Copy as text', 'To paste into a signal or a note');
+      h += `<div class="ap-msep" role="separator"></div><div class="ap-ml">Slides in the Briefing</div>`;
+      for (const d of APRC_DECKS) h += item('slides', esc(d.label), esc(d.note[0].toUpperCase() + d.note.slice(1)), { v: d.kind, extra: d.kind === this._opts.deck ? '<span class="ap-last">default</span>' : '' });
+    } else {
+      h += item('json', 'Save to a file', '.json, to open later or send on');
+      h += item('open', 'Open a file…', 'An appreciation saved before');
+      h += `<div class="ap-msep" role="separator"></div>`;
+      h += this._clearArmed
+        ? item('clear', 'Click again to clear', 'Every heading empty: your words go too', { cls: 'danger armed' })
+        : item('clear', 'Clear the appreciation…', 'Start again with every heading empty', { cls: 'danger' });
+    }
+    m.innerHTML = h;
+    m.hidden = false;
+    const anchor = this._el.querySelector(`[data-a="menu"][data-v="${this._menu}"]`) as HTMLElement | null;
+    if (anchor) {
+      const pr = this._el.getBoundingClientRect(), ar = anchor.getBoundingClientRect();
+      m.style.top = `${Math.round(ar.bottom - pr.top + 6)}px`;
+      m.style.right = `${Math.max(8, Math.round(pr.right - ar.right))}px`;
+      m.style.left = 'auto';
+    }
+  }
+
+  // ── the sheet: drawing it ────────────────────────────────────────────────────────────────────────────────────
+
+  private _tally(doc: AprcDoc): Tally {
+    const t: Tally = { all: 0, todo: 0, stale: 0, yours: 0, open: 0, accepted: 0, written: 0, gr: 0, map: 0 };
+    walk(doc, (p) => {
+      const s = statusOf(p);
+      if (s === 'head') return;
+      t.all++;
+      t[s]++;
+      if (TODO.has(s)) t.todo++;
+    });
+    return t;
   }
 
   private _render(): void {
     if (!this._el || !this._open) return;
     const doc = this._doc ?? newDoc(this._opts.kind);
     const copy = this._opts.copy;
-    const c = counts(doc);
+    const t = this._tally(doc);
     const fr = doc.frame;
-    this._part('sub').textContent = this._busy ? 'Reading the ground and the map…' : fr ? `${fr.echelon} · ${fr.place} · ${fr.mover} · ${fr.month}, ${fr.season === 'wet' ? 'after rain' : 'dry'} · read ${fr.readAt}` : 'Not read yet: press Read';
-    (this._el.querySelector('[data-a="read"]') as HTMLButtonElement).disabled = this._busy;
-    (this._el.querySelector('[data-a="read"]') as HTMLButtonElement).textContent = fr ? 'Read again' : 'Read';
 
-    const kinds = aprcKinds();
-    this._part('tool').innerHTML =
-      `<span class="k">Copy</span><span class="seg"><button data-a="copy" data-v="fair" aria-pressed="${copy === 'fair'}" title="What goes up: unwritten paragraphs and proposals not accepted print a ruled line">Fair</button><button data-a="copy" data-v="draft" aria-pressed="${copy === 'draft'}" title="With a mark on each paragraph, proposals shown, and the basis, data and Confirm on Gr annexes">Draft</button></span>` +
-      `<button data-a="accept-all" ${c.open ? '' : 'disabled'} title="Take every open proposal as it stands">Accept all (${c.open})</button>` +
-      `<span class="k">Kind</span><select data-o="kind" aria-label="Kind of appreciation">${kinds.map((k) => `<option value="${k.kind}" ${k.kind === doc.kind ? 'selected' : ''} ${k.ready ? '' : 'disabled'}>${esc(k.label)}${k.ready ? '' : ' (no outline yet)'}</option>`).join('')}</select>` +
-      `<span class="k">H</span><input type="text" data-o="hHour" value="${esc(this._opts.hHour)}" placeholder="HH:MM" aria-label="H on D Day, HH:MM" title="H as a clock time on D Day: the en's times get clock times beside H+. Empty takes the Ground Guide's IPB H.">` +
-      `<span class="k">Export</span><button data-a="word" title="Word document (.docx), the copy chosen">Word</button><button data-a="print" title="Print; choose Save as PDF for a PDF">PDF</button><button data-a="text" title="Copy as text">Text</button><button data-a="json" title="Save the appreciation as a file to open later">Save</button><button data-a="open" title="Open a saved appreciation">Open</button>` +
-      `<span class="k">Slides</span><select data-o="deck" aria-label="Deck">${APRC_DECKS.map((d) => `<option value="${d.kind}" ${d.kind === this._opts.deck ? 'selected' : ''} title="${esc(d.note)}">${esc(d.label)}</option>`).join('')}</select><button data-a="slides" title="Make the slides in the Briefing module; slides you edited are kept">Make slides</button>` +
-      `<button data-a="clear" style="margin-left:auto" title="Start again with every heading empty">Clear</button>`;
+    // header
+    const frame = this._part('frame');
+    frame.innerHTML = this._busy
+      ? '<span>Reading the ground and the map…</span>'
+      : fr
+        ? [fr.echelon, fr.place, fr.mover, `${fr.month}, ${fr.season === 'wet' ? 'after rain' : 'dry'}`].map((x) => `<span>${esc(x)}</span>`).join('') + `<span class="ap-fr-at">read ${esc(fr.readAt)}</span>`
+        : '<span class="ap-fr-none">Not read yet</span>';
+    frame.title = fr && !this._busy ? `AOR from ${fr.aor}; threat ${fr.threat}` : '';
+    const rb = this._part('read') as HTMLButtonElement;
+    rb.disabled = this._busy;
+    rb.innerHTML = this._busy ? '<span class="ap-spin" aria-hidden="true"></span>Reading…' : `${UI.read}${fr ? 'Read again' : 'Read'}`;
+    (this._el.querySelector('[data-o="kind"]') as HTMLSelectElement).value = doc.kind;
+    this._part('busy').classList.toggle('on', this._busy);
 
-    const guideOff = !(this._host.guide?.()?.isEnabled);
+    // over the page
+    for (const b of this._el.querySelectorAll<HTMLElement>('.ap-seg [data-a="copy"]')) b.setAttribute('aria-pressed', String(b.dataset.v === copy));
+    this._part('copyhint').textContent = copy === 'fair' ? 'As it goes up: blanks print a ruled line' : 'With the marks, the proposals and the annexes';
+    const hin = this._el.querySelector('[data-o="hHour"]') as HTMLInputElement;
+    if (document.activeElement !== hin) hin.value = this._opts.hHour ?? '';
+
+    // the note under the header
+    const guideOff = !this._host.guide?.()?.isEnabled;
     const note = this._part('note');
     const noteText = this._note || (guideOff && !fr ? 'Ground Guide is off: the Gr paragraphs are read through it.' : '');
     note.classList.toggle('on', !!noteText);
-    note.innerHTML = noteText ? `<span>${esc(noteText)}</span>${guideOff && this._host.turnOnGuide ? '<button data-a="guide">Turn on Ground Guide</button>' : ''}` : '';
+    note.innerHTML = noteText ? `${UI.warn}<span class="ap-note-t">${esc(noteText)}</span>${guideOff && this._host.turnOnGuide ? '<button class="ap-btn sm" data-a="guide">Turn on Ground Guide</button>' : ''}` : '';
 
-    // outline: top-level paragraphs
-    let out = '';
-    for (const l of lines(doc)) {
-      if (l.type === 'part') out += `<div class="ph">${esc(l.title)}</div>`;
-      else if (l.type === 'group') out += `<div class="ph" style="padding-left:18px;letter-spacing:0">${esc(l.title)}</div>`;
-      else if (l.depth === 0) {
-        const m = this._markOf(l.p);
-        out += `<button class="it${this._sel === l.p.id || this._sel?.startsWith(`${l.p.id}.`) ? ' sel' : ''}" data-a="sel" data-v="${esc(l.p.id)}" title="${esc(STATE_WORD[m])}"><span class="dot ${DOT[m]}"></span><span class="no">${esc(l.label.replace('.', ''))}</span><span class="nm">${esc(l.p.head ?? l.part.title)}</span></button>`;
-      }
-    }
-    this._part('out').innerHTML = out;
-
-    const mid = this._part('mid');
-    const top = mid.scrollTop;
-    mid.innerHTML = `<div class="aprc-doc">${bodyHtml(doc, copy)}</div>`;
-    mid.scrollTop = top;
-    if (this._sel) mid.querySelector(`.ap-p[data-id="${CSS.escape(this._sel)}"]`)?.classList.add('sel');
-
-    this._renderRight(doc);
-    this._part('foot').innerHTML = `<span><span class="dot gr"></span>From Gr <b>${c.gr}</b></span><span><span class="dot map"></span>From the map <b>${c.map}</b></span><span><span class="dot judge"></span>Proposals <b>${c.judge}</b> (${c.open} open)</span><span><span class="dot yours"></span>Yours <b>${c.yours}</b></span><span><span class="dot written"></span>Written <b>${c.written}</b>${c.stale ? ` (${c.stale} to look at: Gr changed)` : ''}</span><span class="msg">${esc(this._msg)}</span>`;
+    const narrow = this._narrow();
+    const grid = this._part('grid');
+    grid.classList.toggle('out-open', this._outOpen);
+    grid.classList.toggle('no-out', this._hideOut && !narrow);
+    grid.classList.toggle('no-rt', this._hideRt);
+    const po = this._part('paneout'), pr = this._part('panert');
+    const outShown = narrow ? this._outOpen : !this._hideOut;
+    po.setAttribute('aria-expanded', String(outShown));
+    po.setAttribute('aria-label', `${outShown ? 'Hide' : 'Show'} the outline ([)`);
+    po.title = `${outShown ? 'Hide' : 'Show'} the outline ([)`;
+    po.classList.toggle('folded', this._hideOut && !narrow);
+    pr.classList.toggle('folded', this._hideRt);
+    pr.setAttribute('aria-expanded', String(!this._hideRt));
+    pr.setAttribute('aria-label', `${this._hideRt ? 'Show' : 'Hide'} the paragraph panel (])`);
+    pr.title = `${this._hideRt ? 'Show' : 'Hide'} the paragraph panel (])`;
+    this._renderOutline(doc, t);
+    this._renderPage(doc, copy);
+    this._renderRight(doc, t);
+    if (this._menu) this._renderMenu();
+    this._toast();
   }
 
-  /** The worst state under a paragraph, for its dot in the outline. */
-  private _markOf(p: AprcPara): string {
-    const marks = new Set<string>();
+  /** Progress, filters and the top-level paragraphs, each with the worst state under it. */
+  private _renderOutline(doc: AprcDoc, t: Tally): void {
+    const box = this._part('out');
+    if (this._hideOut && !this._narrow()) {
+      box.innerHTML = `<button class="ap-rail" data-a="pane" data-v="out" aria-expanded="false" aria-label="Show the outline ([)" title="Show the outline ([)">${UI.paneL}<span class="v">Outline</span>${t.todo ? `<b title="${t.todo} to do">${t.todo}</b>` : ''}</button>`;
+      return;
+    }
+    const listTop = box.querySelector('.ap-list')?.scrollTop ?? 0;
+    const focused = box.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset : null;
+    const ready = t.all - t.yours - t.open;
+    const seg = (n: number, cls: string, word: string) => (n ? `<i class="${cls}" style="flex:${n}" title="${word}: ${n}"></i>` : '');
+    let h = `<div class="ap-prog"><div class="ap-prog-h"><b>${ready}</b><span>of ${t.all} ready for the fair copy</span></div>`;
+    h += `<div class="ap-bar" role="img" aria-label="${ready} of ${t.all} paragraphs print; ${t.todo} to do">${seg(t.written, 'b-written', WORD.written)}${seg(t.stale, 'b-stale', WORD.stale)}${seg(t.accepted, 'b-accepted', WORD.accepted)}${seg(t.gr, 'b-gr', WORD.gr)}${seg(t.map, 'b-map', WORD.map)}${seg(t.open, 'b-open', WORD.open)}</div>`;
+    const n: Record<AprcFilter, number> = { all: t.all, todo: t.todo, open: t.open, stale: t.stale, written: t.written + t.stale };
+    h += `<div class="ap-chips" role="group" aria-label="Show">${FILTERS.filter((x) => x.f !== 'stale' || t.stale || this._filter === 'stale')
+      .map((x) => `<button class="ap-chip" data-a="filter" data-v="${x.f}" aria-pressed="${this._filter === x.f}">${x.label} <b>${n[x.f]}</b></button>`)
+      .join('')}</div>`;
+    if (t.open) h += `<button class="ap-btn sm" data-a="accept-all" title="Take every open proposal as it stands; you can take any back">Accept all ${t.open} proposal${t.open === 1 ? '' : 's'}</button>`;
+    h += '</div><div class="ap-list">';
+
+    let rows = '', pending = '', any = false;
+    for (const l of lines(doc)) {
+      if (l.type === 'part') pending = `<div class="ap-ph">${esc(asWords(l.title))}</div>`;
+      else if (l.type === 'group') pending += `<div class="ap-gh">${esc(l.title)}</div>`;
+      else if (l.depth === 0) {
+        const r = this._rollup(l.p);
+        if (!r.match) continue;
+        any = true;
+        const sel = this._sel === l.p.id || !!this._sel?.startsWith(`${l.p.id}.`);
+        const ct = r.match >= 2 ? `<span class="ap-ct" title="${r.match} ${this._filter === 'all' ? 'paragraphs' : 'shown'} under it">${r.match}</span>` : '<span></span>';
+        rows += pending;
+        pending = '';
+        rows += `<button class="ap-it${sel ? ' sel' : ''}" data-a="sel" data-v="${esc(r.first)}"${sel ? ' aria-current="true"' : ''} title="${esc(`${l.p.head ?? asWords(l.part.title)}: ${WORD[r.worst].toLowerCase()}`)}">${ico(r.worst)}<span class="ap-no">${esc(l.label.replace('.', ''))}</span><span class="ap-nm">${esc(l.p.head ?? asWords(l.part.title))}<span class="ap-sr">, ${esc(WORD[r.worst])}</span></span>${ct}</button>`;
+      }
+    }
+    if (!any) {
+      const EMPTY: Record<AprcFilter, string> = {
+        all: 'No paragraphs.',
+        todo: 'Nothing left to do: every paragraph prints in the fair copy.',
+        open: 'No open proposal.',
+        stale: 'None: the ground under your words has not changed.',
+        written: 'Nothing written yet. Select a paragraph and write in the box on the right.',
+      };
+      rows = `<div class="ap-empty">${EMPTY[this._filter]}</div>`;
+    }
+    box.innerHTML = `${h}${rows}</div>`;
+    const list = box.querySelector('.ap-list') as HTMLElement;
+    list.scrollTop = listTop;
+    if (focused?.a) (box.querySelector(`[data-a="${focused.a}"]${focused.v ? `[data-v="${CSS.escape(focused.v)}"]` : ''}`) as HTMLElement | null)?.focus({ preventScroll: true });
+  }
+
+  /**
+   * The worst state under a top-level paragraph (under a filter: the worst of those the filter shows), how many under it
+   * the filter shows (all: how many to do), and the first of them (a click on the row goes there).
+   */
+  private _rollup(p: AprcPara): { worst: ParaStatus; match: number; first: string } {
+    const f = this._filter;
+    let worst: ParaStatus = 'head', match = 0, todo = 0, seen = 0, first = '';
     const go = (q: AprcPara) => {
-      const s = shown(q, 'draft');
-      if (s.text !== '' || q.table) marks.add(q.mine ? 'WRITTEN' : s.mark);
+      const s = statusOf(q);
+      const hit = f !== 'all' && inFilter(s, f);
+      if ((f === 'all' || hit) && WORST.indexOf(s) < WORST.indexOf(worst)) worst = s;
+      if (s !== 'head') seen++;
+      if (TODO.has(s)) todo++;
+      if (hit) {
+        match++;
+        if (!first) first = q.id;
+      }
       q.children.forEach(go);
     };
     go(p);
-    for (const m of ['YOURS', 'YOU JUDGE', 'MAP', 'GR', 'WRITTEN']) if (marks.has(m)) return m;
-    return 'YOURS';
+    if (f === 'all') match = seen ? Math.max(1, todo) : 1;
+    return { worst, match, first: first || p.id };
   }
 
-  private _renderRight(doc: AprcDoc): void {
+  private _renderPage(doc: AprcDoc, copy: AprcCopy): void {
+    const page = this._part('page');
+    const key = `${this._docVer}|${copy}|${doc === this._doc}`;
+    if (this._pageKey !== key) {
+      const top = page.scrollTop;
+      page.innerHTML = `<div class="aprc-doc">${bodyHtml(doc, copy)}</div>`;
+      page.scrollTop = top;
+      this._pageKey = key;
+    }
+    for (const x of page.querySelectorAll('.ap-p.sel')) x.classList.remove('sel');
+    if (this._sel) page.querySelector(`.ap-p[data-id="${CSS.escape(this._sel)}"]`)?.classList.add('sel');
+  }
+
+  private _renderRight(doc: AprcDoc, t: Tally): void {
     const rt = this._part('rt');
-    const p = this._sel ? find(doc, this._sel) : null;
-    if (!p) {
-      rt.innerHTML = `<h4>How it works</h4><ul><li><b>Read</b> drafts what the ground and the map can tell.</li><li>Click a paragraph to see what it rests on, and to write it yourself. What you write is yours: Read never overwrites it.</li><li>A <b>proposal</b> prints in the fair copy only once you accept it or rewrite it.</li><li>What the data cannot tell prints a ruled line.</li></ul>${doc.confirm.length ? `<h5>CONFIRM ON GR (${doc.confirm.length})</h5><ul>${doc.confirm.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>` : ''}`;
+    if (this._hideRt) {
+      const no = this._sel ? numberOf(doc, this._sel) : '';
+      rt.innerHTML = `<button class="ap-rail" data-a="pane" data-v="rt" aria-expanded="false" aria-label="Show the paragraph panel (])" title="Show the paragraph panel (])">${UI.paneR}<span class="v">Paragraph${no ? ` ${esc(no)}` : ''}</span></button>`;
+      rt.dataset.sel = '';
       return;
     }
-    const s = shown(p, 'draft');
-    const mark = p.mine ? 'WRITTEN' : s.mark;
-    const cur = p.mine?.text ?? (p.draft || '');
-    let h = `<h4>${esc(numberOf(doc, p.id))} ${esc(p.head ?? '')}</h4><div class="st"><span class="dot ${DOT[mark]}"></span>${esc(STATE_WORD[mark])}${p.state === 'judge' && !p.mine ? (p.accepted ? ' · accepted' : ' · not accepted') : ''}</div>`;
-    h += `<textarea aria-label="The paragraph in your words" placeholder="${esc(p.prompts.length ? p.prompts.join(' · ') : p.table && !p.draft ? 'Words before the table (optional)' : 'Write this paragraph')}">${esc(cur)}</textarea><div class="row"><button class="pri" data-a="save">Save as mine</button>${p.mine ? '<button data-a="give" title="Drop your words and take the tool\'s draft again">Give back</button>' : ''}${p.state === 'judge' && !p.mine && (p.draft || p.table) ? (p.accepted ? '<button data-a="acc" data-v="off">Take back</button>' : '<button data-a="acc">Accept</button>') : ''}</div>`;
-    if (isStale(p)) h += `<div class="stale">The reading has changed since you wrote this. It now says: ${esc(p.draft ?? '')}</div>`;
+    const same = rt.dataset.sel === (this._sel ?? '');
+    const ta0 = rt.querySelector('.ap-ed textarea') as HTMLTextAreaElement | null;
+    const hadFocus = !!ta0 && document.activeElement === ta0;
+    const caret = hadFocus && ta0 ? [ta0.selectionStart, ta0.selectionEnd] : null;
+    const bodyTop = rt.querySelector('.ap-rt-body')?.scrollTop ?? 0;
+    const p = this._sel ? find(doc, this._sel) : null;
+
+    const nav = `<div class="ap-rt-nav"><button class="ap-btn icon sm ghost" data-a="prev" aria-label="Previous paragraph (Up)" title="Previous paragraph (↑)">${UI.prev}</button><button class="ap-btn icon sm ghost" data-a="next" aria-label="Next paragraph (Down)" title="Next paragraph (↓)">${UI.next}</button><span class="ap-rt-no">${p ? esc(numberOf(doc, p.id)) : ''}</span><span class="sp"></span><button class="ap-btn sm" data-a="next-todo" ${t.todo ? '' : 'disabled'} title="The next paragraph to write or judge (N)">Next to do <b>${t.todo}</b></button></div>`;
+    rt.innerHTML = `${nav}<div class="ap-rt-body">${p ? this._paraHtml(doc, p) : this._introHtml(doc, t)}</div>`;
+    rt.dataset.sel = this._sel ?? '';
+
+    const body = rt.querySelector('.ap-rt-body') as HTMLElement;
+    if (same) body.scrollTop = bodyTop;
+    if (same && hadFocus && caret) {
+      const ta = rt.querySelector('.ap-ed textarea') as HTMLTextAreaElement | null;
+      if (ta) {
+        ta.focus({ preventScroll: true });
+        ta.setSelectionRange(caret[0] ?? ta.value.length, caret[1] ?? ta.value.length);
+      }
+    }
+  }
+
+  /** Nothing selected: how the sheet is worked, what the marks mean, the keys. */
+  private _introHtml(doc: AprcDoc, t: Tally): string {
+    const read = !!doc.frame;
+    let h = `<h3 class="ap-rt-h">Work through the appreciation</h3><ol class="ap-steps">`;
+    h += `<li class="${read ? 'done' : ''}"><b>Read the map.</b> It drafts what the ground and the symbols can tell. Your words are kept on every Read.${read || this._busy ? '' : `<br><button class="ap-btn pri sm" data-a="read">${UI.read}Read</button>`}</li>`;
+    h += `<li class="${read && !t.todo ? 'done' : ''}"><b>Settle each paragraph.</b> Accept a proposal, write what is yours, look again where the Gr changed.${t.todo ? `<br><button class="ap-btn sm" data-a="next-todo">Start with the first to do (${t.todo})</button>` : ''}</li>`;
+    h += `<li><b>Export</b> the fair copy to Word or PDF, or make the Briefing slides.</li></ol>`;
+    h += `<div class="ap-sec"><h5>What the marks mean</h5><ul class="ap-legend">${MEANS.map(([s, d]) => `<li>${ico(s)}<span><b>${esc(WORD[s])}.</b> <span class="d">${esc(d)}</span></span></li>`).join('')}</ul></div>`;
+    h += `<div class="ap-sec"><h5>Keys</h5><dl class="ap-keys"><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Previous, next paragraph</dd><dt><kbd>N</kbd></dt><dd>Next to do</dd><dt><kbd>A</kbd></dt><dd>Accept the proposal</dd><dt><kbd>Enter</kbd></dt><dd>Write in the paragraph (or double-click it)</dd><dt><kbd>Ctrl</kbd> + <kbd>Enter</kbd></dt><dd>Save as yours</dd><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Fold the outline, the paragraph panel</dd><dt><kbd>Esc</kbd></dt><dd>Leave the box; again to close</dd></dl></div>`;
+    if (doc.confirm.length) h += `<div class="ap-sec"><h5>Confirm on Gr (${doc.confirm.length})</h5><ul>${doc.confirm.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul></div>`;
+    return h;
+  }
+
+  /** The selected paragraph: its state, what to do about it, the box, its table, what it rests on. */
+  private _paraHtml(doc: AprcDoc, p: AprcPara): string {
+    const s = statusOf(p);
+    const num = numberOf(doc, p.id);
+    const part = lines(doc).find((l) => l.type === 'para' && l.p.id === p.id);
+    const head = p.head ?? (part && part.type === 'para' ? asWords(part.part.title) : '');
+    let h = `<h3 class="ap-rt-h"><span class="ap-rt-n">${esc(num)}</span>${esc(head)}</h3>`;
+    if (s !== 'head') h += `<div class="ap-badges"><span class="ap-badge st-${s}">${ICON[s]}${esc(WORD[s])}</span></div>`;
+
+    if (s === 'stale') {
+      h += `<div class="ap-call stale"><div class="ap-call-t">${ICON.stale}The Gr reading changed after you wrote this</div><p>It now reads:</p><div class="ap-quote">${esc(p.draft ?? '')}</div><div class="ap-acts"><button class="ap-btn" data-a="keep">Keep mine</button><button class="ap-btn" data-a="give">Use the new reading</button></div></div>`;
+    } else if (s === 'open') {
+      h += `<div class="ap-call judge"><div class="ap-call-t">${ICON.open}A proposal for you to judge</div><p>It prints in the fair copy only once you accept it, or write your own in the box.</p><div class="ap-acts"><button class="ap-btn pri" data-a="acc">Accept <kbd>A</kbd></button></div></div>`;
+    } else if (s === 'accepted') {
+      h += `<div class="ap-call done">${ICON.accepted}<span class="sp">Accepted: it prints as it stands.</span><button class="ap-btn sm ghost" data-a="acc" data-v="off">Take back</button></div>`;
+    } else if (s === 'gr' || s === 'map') {
+      h += `<p class="ap-lead">${s === 'gr' ? 'Drafted from the ground reading.' : 'Read from the symbols on the map and the last Check my plan.'} It prints as it stands. Edit it, or save it as yours, and Read will not change it.</p>`;
+    } else if (s === 'yours') {
+      h += `<p class="ap-lead">The map cannot tell this. Write it, or it prints a ruled line.</p>`;
+    } else if (s === 'head') {
+      h += `<p class="ap-lead">A heading: its sub-paragraphs carry the words. You may add words under the heading.</p>`;
+    }
+
+    // the box
+    const dirty = this._dirty?.id === p.id ? this._dirty.text : null;
+    const cur = dirty ?? p.mine?.text ?? (p.draft || '');
+    const changed = dirty !== null && this._isChanged();
+    const canSave = changed || (!p.mine && !!cur.trim());
+    const ph = p.prompts.length ? p.prompts.join(' · ') : p.table && !p.draft ? 'Words before the table (optional)' : s === 'head' ? 'Words under the heading (optional)' : 'Write this paragraph';
+    const lab = p.mine ? 'Your words' : s === 'gr' || s === 'map' || s === 'open' || s === 'accepted' ? 'The draft: edit to make it yours' : 'Your words';
+    h += `<div class="ap-ed${s === 'head' ? ' small' : ''}"><div class="ap-ed-h"><label for="ap-ed-ta">${lab}</label><span class="ap-dirty"${changed ? '' : ' hidden'}>Not saved</span></div>`;
+    h += `<textarea id="ap-ed-ta" placeholder="${esc(ph)}">${esc(cur)}</textarea>`;
+    h += `<div class="ap-acts"><button class="ap-btn${changed ? ' pri' : ''}" data-a="save" ${canSave ? '' : 'disabled'} title="Make it yours: Read never overwrites it">Save as mine</button><span class="ap-kh"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span><span class="sp"></span>${p.mine && s !== 'stale' ? `<button class="ap-btn sm ghost" data-a="give" title="Drop your words and take the tool's draft again">Give back to the tool</button>` : ''}</div></div>`;
+
+    // the table
     const tb = tableOf(p, 'draft');
     if (tb && p.table) {
       const added = p.addRows ?? 0;
-      h += `<h5>THE TABLE</h5><p class="mut">Type into any cell: what you type is yours and is never overwritten. Empty a cell to take the tool's value back.</p>`;
-      h += `<table class="tbl"><colgroup>${tb.head.map((_, c) => `<col style="width:${(((tb.widths ?? [])[c] ?? 1 / tb.head.length) * 100).toFixed(0)}%">`).join('')}</colgroup><tr>${tb.head.map((x) => `<th>${esc(x)}</th>`).join('')}</tr>`;
+      h += `<div class="ap-sec"><h5>Table</h5><p class="ap-mut">Type into any cell: what you type is yours and is never overwritten. Empty a cell to take the tool's value back.</p><div class="ap-tblw"><table class="ap-tbl" style="min-width:${Math.max(100, tb.head.length * 84)}px"><colgroup>${tb.head.map((_, c) => `<col style="width:${(((tb.widths ?? [])[c] ?? 1 / tb.head.length) * 100).toFixed(0)}%">`).join('')}</colgroup><tr>${tb.head.map((x) => `<th>${esc(x)}</th>`).join('')}</tr>`;
       tb.rows.forEach((row, r) => {
         h += `<tr>${row.map((v, c) => `<td><input data-cell="${r},${c}" value="${esc(v)}" aria-label="${esc(tb.head[c])}, row ${r + 1}"${p.cells?.[`${r},${c}`] !== undefined ? ' class="mine"' : ''}></td>`).join('')}</tr>`;
       });
-      h += `</table><div class="row"><button data-a="addrow">Add row</button>${added ? '<button data-a="delrow">Remove last added row</button>' : ''}</div>`;
+      h += `</table></div><div class="ap-acts"><button class="ap-btn sm" data-a="addrow">Add a row</button>${added ? '<button class="ap-btn sm ghost" data-a="delrow">Remove the last added row</button>' : ''}</div></div>`;
     }
-    if (p.prompts.length) h += `<h5>TO CONSIDER</h5><ul>${p.prompts.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
-    if (p.basis.length) h += `<h5>RESTS ON</h5><ul>${p.basis.map((b) => `<li><span class="mut">${esc(b.kind[0].toUpperCase() + b.kind.slice(1))}:</span> ${esc(b.text)}</li>`).join('')}</ul>`;
+
+    // sub-paragraphs
+    if (p.children.length) {
+      const kids: string[] = [];
+      const go = (q: AprcPara) => {
+        const qs = statusOf(q);
+        if (qs !== 'head') kids.push(`<button class="ap-it" data-a="sel" data-v="${esc(q.id)}" title="${esc(WORD[qs])}">${ico(qs)}<span class="ap-no">${esc(numberOf(doc, q.id))}</span><span class="ap-nm">${esc(q.head ?? (shown(q, 'draft').text ?? '').slice(0, 60))}<span class="ap-sr">, ${esc(WORD[qs])}</span></span></button>`);
+        q.children.forEach(go);
+      };
+      p.children.forEach(go);
+      if (kids.length) h += `<div class="ap-sec"><h5>Under it</h5><div class="ap-kids">${kids.join('')}</div></div>`;
+    }
+
+    if (p.prompts.length) h += `<div class="ap-sec"><h5>To consider</h5><ul>${p.prompts.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    if (p.basis.length) {
+      const KIND: Record<string, string> = { data: 'Data', rule: 'Rule', input: 'Input', calc: 'Worked out' };
+      h += `<div class="ap-sec"><h5>Rests on</h5><ul>${p.basis.map((b) => `<li><span class="ap-tag">${esc(KIND[b.kind] ?? b.kind)}</span>${esc(b.text)}</li>`).join('')}</ul></div>`;
+    }
     const conf = doc.confirm.filter((x) => x.paras.some((id) => p.id === id || p.id.startsWith(`${id}.`)));
-    if (conf.length) h += `<h5>CONFIRM ON GR</h5><ul>${conf.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>`;
-    rt.innerHTML = h;
+    if (conf.length) h += `<div class="ap-sec"><h5>Confirm on Gr</h5><ul>${conf.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul></div>`;
+    return h;
+  }
+
+  /** The last message as a toast: it stays a few seconds (longer for a failure) and is read out once. */
+  private _toast(): void {
+    if (!this._el || this._toastSeq === this._msgSeq) return;
+    this._toastSeq = this._msgSeq;
+    const el = this._part('toast');
+    const msg = this._msg;
+    if (!msg || this._busy) return;
+    const err = /fail|refused|need|cannot|not available|type HH:MM|no open/i.test(msg);
+    el.innerHTML = `${err ? UI.err : UI.ok}<span>${esc(msg)}</span>`;
+    el.classList.toggle('err', err);
+    el.classList.add('on');
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => el.classList.remove('on'), err ? 9000 : 4500);
   }
 }

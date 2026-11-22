@@ -27,6 +27,33 @@ echelon frame, as the Gr Scope AOR setting says (`groundGuide.aor.source`).
 sheet still opens, takes the planner's words and exports; the Gr paragraphs stay ruled and the sheet says why, with a
 button to turn the guide on.
 
+## The sheet
+
+Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → settle each paragraph → export.
+
+- **Header**: the kind, what the reading was taken with (echelon, place, mover, month, when), **Read** / **Read again**
+  (a thin bar runs under the header while it reads), **Export** (Word, PDF, Copy as text; Slides in the Briefing, one
+  item per deck) and **⋯** (Save to a file, Open a file, Clear: asks twice, in the menu, not a dialog).
+- **Outline** (left): how many paragraphs are ready for the fair copy and a bar by state; filters **All / To do /
+  Proposals / Gr changed / Written** (To do = yours to write + proposals open + Gr changed); *Accept all n proposals*.
+  Each top-level paragraph carries the worst state under it as a shape and a word, never colour alone: ✓ written by you,
+  ● drafted from Gr, ■ from the map, ◇ proposal open, ◆ proposal accepted, dashed ○ yours to write, red ! Gr changed. Under a
+  filter a row goes to the first paragraph it shows.
+- **Page** (centre): the page as it prints; *Fair copy* / *Draft copy* and *H on D Day* above it. Click a paragraph to
+  select it, double-click to write in it.
+- **Inspector** (right): ↑ ↓ and *Next to do*; the paragraph's state with what to do about it (Accept / Take back; Keep
+  mine / Use the new reading), the box (*Save as mine*, Ctrl+Enter; what is typed is saved when the planner moves to another
+  paragraph, reads, exports or closes, so nothing typed is lost), the table, the sub-paragraphs, To consider, Rests on,
+  Confirm on Gr. With nothing selected: the three steps, what the marks mean, the keys.
+- **Keys** (in the sheet, never reaching the map): ↑ ↓ (or J K) paragraph, N next to do, A accept, Enter write, Ctrl+Enter
+  save, [ ] fold the outline / the paragraph panel, Esc leaves a box, then closes.
+- **Folding**: the outline and the paragraph panel each fold to a slim rail (the buttons at the ends of the bar over the
+  page, a click on the rail, or `[` / `]`), so the page can take the whole width; the outline rail keeps the to-do count,
+  the paragraph rail the selected number. Writing in a paragraph (Enter, double-click) opens the panel again. Which panels
+  are folded is kept in this browser only (`pams8.aprc.ui.v1`).
+- Messages come as a toast at the foot of the sheet (read out once; a failure stays longer). Below 940 px the outline is a
+  drawer (☰ over the page) and the inspector sits under the page.
+
 ## The rules of the document
 
 1. **Four states.** A paragraph is drafted from the ground (GR), read from the map (MAP), proposed for judgement
@@ -60,7 +87,7 @@ total is a floor.
 
 **His phases.** Where each of his avenues crosses a line of def, his time there from the decision support's profile: the
 lines before the FDLs are the prelim ph, the FDLs the break-in (Ph 1), the lines behind it Ph 2, the MITG Ph 3. Unopposed
-times: each fight adds to them, and the text says so. **H** (the box in the sheet's tool bar, `groundAppreciation.hHour`,
+times: each fight adds to them, and the text says so. **H** (the *H on D Day* box over the page, `groundAppreciation.hHour`,
 else the Ground Guide's IPB H) adds clock times: "H+1:14 to H+3:03 (0644 hrs D Day to 0833 hrs D Day)"; changing it
 re-times the en paragraphs at once.
 
@@ -91,13 +118,13 @@ Differences under 15 min or 5 % of GO between the avenues are not called better 
   PowerPoint bundle already carries. **No new dependency.** A4, Arial 12, the page number and the marking's ruled line
   in the header, the ruled line again in the footer, numbered paragraphs with hanging indents, ruled tables, pictures inline.
 - **PDF** (`exportPrint`): the same page through the browser's print (Save as PDF).
-- **Text** (`toText`, `copyText`), **file** (`toJSON` / `fromJSON`, Save / Open in the sheet).
+- **Text** (`toText`, `copyText`), **file** (`toJSON` / `fromJSON`, Save to a file / Open a file in the sheet's ⋯ menu).
 - **Figures** (`groundAppreciation.figures`: `both` / `trace` / `map`): the trace is `aorMapSvg` (vector in the page
   and PDF, a PNG in Word and the slides); the map shot is the view as on screen when read.
 
 ## Slides
 
-*Make slides* writes a deck into the Briefing module (`features.briefing`): screen-only slides with native text and
+The Export menu's *Slides in the Briefing* (one item per deck) writes a deck into the Briefing module (`features.briefing`): screen-only slides with native text and
 tables, the trace as a picture, a section per part, the paragraph in full in the speaker notes, and each Confirm on Gr
 item as a Task comment.
 
