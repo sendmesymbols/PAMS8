@@ -387,8 +387,11 @@ MS/
   Fair and draft copies (draft adds marks, basis, data and Confirm on Gr annexes). Exports: Word (`AprcDocx.ts`, zipped
   with the PowerPoint bundle's JSZip: no new dependency), PDF by print (`AprcHtml.ts`), text, JSON, and Briefing slides
   (`AprcDeck.ts`: full / decision / sand model; slides carry `sourceRef` + `sourceHash`, an edited slide is kept on a
-  refresh). Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (86 checks). Not yet: en options with timings,
-  ORBAT ratios, tps to tasks, time required, typing into tables, saving inside the plan file.
+  refresh). En options from `guide.ipbApproachesAround(..., { extras: true })` (avenues with his times from H at the book's
+  rates, TAIs / DPs into the reactions table, Annex A weather, template phase names); a DP 1 tasks table from the lines of
+  def (a Coy per BUA astride an apch: a working assumption, said so); tables typed into in the sheet (`cells`, `addRows`).
+  Pure writers `AprcWrite.ts`; `node tools/aprc-test/run.mjs` (118 checks). Not yet: ORBAT ratios and pls held, time
+  required, coy tasks from the plan, saving inside the plan file.
 - **Deployment Mgr Intelligent Deployment tab** (was "Build"; `PlanBuilder_Plan.md`; Phases 0–8 built 15 Nov 2026: geometry, terrain fit, Auto /
   Compare / J) — on by default (`features.planBuilder`; it loads nothing until the tab is opened), `planBuilder.*`.
   J while the plan rests moves the worst posn to better ground (never leaving the plan worse), Shift+J takes it back;
