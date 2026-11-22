@@ -538,6 +538,52 @@ function compassOf(deg: number): string {
   return COMPASS8[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 }
 
+/** How far round the point the nearest-feature scans read every pixel (beyond it, a coarser grid). */
+const FINE_SCAN_M = 1000;
+
+/**
+ * Visit samples round the point nearest first: square rings one pixel apart out to `FINE_SCAN_M` (so a feature one pixel
+ * wide, a distributary or a drain, is never stepped over near the point), then, unless `done` says the finds can no
+ * longer change, the rest of the disc to `R` on the coarse grid (at most 61 x 61 samples) as before. `visit(i, j, d, step)`
+ * gets the offset in steps (east, north), the ground distance and the step in ground metres; `done(ringM)` is asked
+ * before each ring with the nearest distance any sample in it or beyond can have. (Before, the whole disc was read on
+ * the coarse grid only: at zoom 13, one pixel in 16 for 2 km, and a distributary 95 m away read 1,442 m.)
+ */
+function scanNear(R: number, pxM: number, visit: (i: number, j: number, d: number, step: number) => void, done: (ringM: number) => boolean, fineM = FINE_SCAN_M): void {
+  const Rf = Math.min(R, fineM);
+  const K = Math.max(1, Math.ceil(Rf / Math.max(1, pxM)));
+  const s = Rf / K; // about one pixel
+  for (let k = 0; k <= K; k++) {
+    if (k > 0 && done(k * s)) return;
+    if (k === 0) {
+      visit(0, 0, 0, s);
+      continue;
+    }
+    for (let i = -k; i <= k; i++) {
+      for (const j of [-k, k]) {
+        const d = Math.hypot(i, j) * s;
+        if (d <= Rf) visit(i, j, d, s);
+      }
+    }
+    for (let j = -k + 1; j <= k - 1; j++) {
+      for (const i of [-k, k]) {
+        const d = Math.hypot(i, j) * s;
+        if (d <= Rf) visit(i, j, d, s);
+      }
+    }
+  }
+  if (R <= Rf || done(Rf)) return;
+  const n = Math.min(30, Math.max(3, Math.ceil(R / Math.max(1, pxM))));
+  const step = R / n;
+  for (let j = -n; j <= n; j++) {
+    for (let i = -n; i <= n; i++) {
+      const d = Math.hypot(i, j) * step;
+      if (d <= Rf || d > R) continue;
+      visit(i, j, d, step);
+    }
+  }
+}
+
 function place(h: FeatureHit, label?: string): SectionPlace {
   const t = typeof h.attrs.t === 'string' && h.attrs.t.trim() ? h.attrs.t.trim() : null;
   return { label: label ?? (t ? t.charAt(0).toUpperCase() + t.slice(1) : h.kindLabel), name: h.name, distanceM: h.distanceM, compass: h.compass };
@@ -875,20 +921,20 @@ function readGround(a: SectionArgs): GroundReading {
   const wet0 = a.wetLayer ? read(a.wetLayer, at[0], at[1]) : null;
   // 1-4 only: 5 (permanent water) is the Land and Lake rows, not wet ground.
   const wetHere = typeof wet0 === 'number' && wet0 > 0 && wet0 < 5 ? label(books.wet, wet0, 'Wet') : null;
-  let trees: SectionPlace | null = null;
-  let lakeC: SectionPlace | null = null;
-  let riverbed: SectionPlace | null = null;
-  let snow: SectionPlace | null = null;
-  let wetNear: SectionPlace | null = null;
+  let trees = null as SectionPlace | null; // set in scanNear's callback: typed so, not narrowed to null
+  let lakeC = null as SectionPlace | null;
+  let riverbed = null as SectionPlace | null;
+  let snow = null as SectionPlace | null;
+  let wetNear = null as SectionPlace | null;
   {
     const R = Math.min(a.radiusM, 3000);
-    const n = Math.min(30, Math.max(3, Math.ceil(R / Math.max(1, a.pxM))));
-    const step = R / n;
     const here = info0?.name ?? '';
-    for (let j = -n; j <= n; j++) {
-      for (let i = -n; i <= n; i++) {
-        const d = Math.hypot(i, j) * step;
-        if (d === 0 || d > R) continue;
+    const found = (p: SectionPlace | null, r: number): boolean => !!p && p.distanceM <= r;
+    scanNear(
+      R,
+      a.pxM,
+      (i, j, d, step) => {
+        if (d === 0) return;
         const mx = at[0] + (i * step) / cosLat;
         const my = at[1] + (j * step) / cosLat;
         const brg = (Math.atan2(i, j) * 180) / Math.PI;
@@ -909,8 +955,10 @@ function readGround(a: SectionArgs): GroundReading {
           // 5 is permanent water: that is the lake row, not wet ground.
           if (typeof w === 'number' && w > 0 && w < 5) wetNear = { label: label(books.wet, w, 'Wet'), name: null, distanceM: d, compass: compassOf(brg) };
         }
-      }
-    }
+      },
+      (r) => found(trees, r) && found(lakeC, r) && found(riverbed, r) && found(snow, r) && (!!wetHere || !a.wetLayer || found(wetNear, r)),
+      a.fineScanM,
+    );
   }
   // A named lake or reservoir (features) wins over unnamed water when it is not much further.
   let lake: SectionPlace | null = lakeC;
@@ -1098,18 +1146,20 @@ function readRoads(a: SectionArgs): RoadsReading {
     else {
       // The nearest route within 500 m, one pixel at a time.
       const R = 500;
-      const n = Math.min(15, Math.max(2, Math.ceil(R / Math.max(1, a.pxM))));
-      const step = R / n;
-      let best: { v: number; d: number; b: number } | null = null;
-      for (let j = -n; j <= n; j++) {
-        for (let i = -n; i <= n; i++) {
-          const d = Math.hypot(i, j) * step;
-          if (d === 0 || d > R || (best && d >= best.d)) continue;
-          const v = read(L.route, at[0] + (i * step) / cosLat, at[1] + (j * step) / cosLat);
-          if (typeof v !== 'number' || v === 0 || v === 255) continue;
+      let best = null as { v: number; d: number; b: number } | null;
+      const routeLayer = L.route;
+      scanNear(
+        R,
+        a.pxM,
+        (i, j, d, step) => {
+          if (d === 0 || (best && d >= best.d)) return;
+          const v = read(routeLayer, at[0] + (i * step) / cosLat, at[1] + (j * step) / cosLat);
+          if (typeof v !== 'number' || v === 0 || v === 255) return;
           best = { v, d, b: (Math.atan2(i, j) * 180) / Math.PI };
-        }
-      }
+        },
+        (r) => !!best && best.d <= r,
+        a.fineScanM,
+      );
       if (best) route = decode(best.v, best.d, best.b);
     }
   }
@@ -1199,27 +1249,27 @@ function readRoads(a: SectionArgs): RoadsReading {
 function readObstacles(a: SectionArgs): ObstaclesReading {
   const { read, at, cosLat } = a;
   // The nearest natural and man-made obstacle class (the class's GROTBC letters carry O) within the radius.
-  let natural: ObstacleHit | null = null;
-  let manMade: ObstacleHit | null = null;
+  let natural = null as ObstacleHit | null; // set in scanNear's callback
+  let manMade = null as ObstacleHit | null;
   const R = Math.min(a.radiusM, 2000);
-  const n = Math.min(30, Math.max(3, Math.ceil(R / Math.max(1, a.pxM))));
-  const step = R / n;
-  for (let j = -n; j <= n; j++) {
-    for (let i = -n; i <= n; i++) {
-      const d = Math.hypot(i, j) * step;
-      if (d > R) continue;
+  scanNear(
+    R,
+    a.pxM,
+    (i, j, d, step) => {
       const c = read(a.clsLayer, at[0] + (i * step) / cosLat, at[1] + (j * step) / cosLat);
-      if (typeof c !== 'number' || c === 255) continue;
+      if (typeof c !== 'number' || c === 255) return;
       const info = a.classInfo(c);
       // Crossings (bridges, fords) carry O too, but they are the way over an obstacle, not one.
-      if (!info || !info.letters.includes('O') || info.kind === 'crossing') continue;
+      if (!info || !info.letters.includes('O') || info.kind === 'crossing') return;
       const slot = info.origin === 'natural' ? natural : manMade;
-      if (slot && slot.distanceM <= d) continue;
+      if (slot && slot.distanceM <= d) return;
       const hit: ObstacleHit = { label: info.label, origin: info.origin, effect: a.effect(c), distanceM: d, compass: compassOf((Math.atan2(i, j) * 180) / Math.PI) };
       if (info.origin === 'natural') natural = hit;
       else manMade = hit;
-    }
-  }
+    },
+    (r) => !!natural && !!manMade && natural.distanceM <= r && manMade.distanceM <= r,
+    a.fineScanM,
+  );
   const wv = a.wetLayer ? read(a.wetLayer, at[0], at[1]) : null;
   const wet = typeof wv === 'number' && wv > 0 && wv !== 255 ? label(a.books.wet, wv, 'Wet') : null;
 
@@ -1444,6 +1494,8 @@ export interface SectionArgs {
   cosLat: number;
   /** Ground size of one pixel at the reading zoom, metres. */
   pxM: number;
+  /** How far the nearest-feature scans read every pixel (default FINE_SCAN_M); the cursor card's per-move read uses less. */
+  fineScanM?: number;
   zoom: number;
   maxZoom: number;
   radiusM: number;

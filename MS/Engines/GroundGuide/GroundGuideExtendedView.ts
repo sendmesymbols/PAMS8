@@ -463,7 +463,7 @@ export function extFacts(tab: ExtTab, v: GroundGuideVerdict | null): Fact[] {
       const out: Fact[] = [...fireFacts(o)];
       if (f) {
         out.push({ k: `Seen in ${fmtDistance(o.obstacle.rangeM)}`, v: pc(f.seenPct), sub: `${pc(f.deadPct)} dead Gr · ${pc(f.screenedPct)} screened` });
-        out.push({ k: 'Primary Task (200 m)', v: f.primaryOk ? 'Met' : 'Not met', tone: f.primaryOk ? 'go' : 'slow', sub: `${pc(f.ge270Pct)} of the arc has 270 m or more` });
+        out.push({ k: `Primary Task (${f.primaryM ?? 200} m)`, v: f.primaryOk ? 'Met' : 'Not met', tone: f.primaryOk ? 'go' : 'slow', sub: `${pc(f.ge270Pct)} of the arc has ${f.ge270M ?? 270} m or more` });
       }
       const en = o.sight?.enemy;
       if (en) out.push({ k: 'Threat Sees Posn', v: en.seesP >= 0.5 ? 'Yes' : en.seesP >= 0.2 ? 'May' : 'Unlikely', tone: en.seesP >= 0.5 ? 'nogo' : en.seesP >= 0.2 ? 'slow' : 'go', sub: `chance ${pc(en.seesP * 100)}` });
@@ -804,7 +804,7 @@ export function extTiles(tab: ExtTab, v: GroundGuideVerdict): HTMLElement[] {
         out.push(tile(`What May Be Seen · ${fmtDistance(o.radiusM)}`, box, roseKey([[SEEN, 'may be seen'], [DEAD, 'dead Gr'], [SCREENED, 'screened'], [THREAT, 'threat arc']]), note(`Ring: ${o.weapon.label} ${fmtDistance(o.obstacle.rangeM)}. Red and amber only inside it, toward the threat.`)));
       }
       const fb = fireBars(o);
-      if (fb && o.fire) out.push(tile(`Fd of Fire by Range · ${o.threat.allRound ? 'All Round' : o.threat.compass}`, fb, note(`Clear to the first dead or screened Gr: ${fmtDistance(o.fire.clearMedianM)} (worst fifth ${fmtDistance(o.fire.clearP20M)}). Minimum for a primary task 200 m; 270 to 500 m desirable.`)));
+      if (fb && o.fire) out.push(tile(`Fd of Fire by Range · ${o.threat.allRound ? 'All Round' : o.threat.compass}`, fb, note(`Clear to the first dead or screened Gr: ${fmtDistance(o.fire.clearMedianM)} (worst fifth ${fmtDistance(o.fire.clearP20M)}). Minimum for a primary task ${o.fire.primaryM ?? 200} m; ${o.fire.ge270M ?? 270} to 500 m desirable${(o.fire.primaryM ?? 200) < 200 ? " (lowered to the weapon's range)" : ''}.`)));
       const en = o.sight?.enemy;
       if (en) {
         out.push(
@@ -1005,11 +1005,11 @@ export function extendedText(v: GroundGuideVerdict): string[] {
     ob.ownScreenPct >= 5 ? `What stands on the Posn's own Gr screens its view with a chance of ${pc(ob.ownScreenPct)}.` : null,
     !o.surface ? 'Read on the Gr alone: buildings, crops and trees are NOT counted.' : null,
     f ? `Fd of Fire ${GRADE[f.grade]} for ${w.label}, ${o.threat.allRound ? 'all round' : `toward ${o.threat.compass}`}.${f.limitedBy === 'clear' ? ' Held down by the clear distance.' : f.limitedBy === 'coverage' ? ' Held down by how much of the range is seen.' : ''}` : 'Indirect / air defence weapon: it needs an observer, not a field of fire of its own.',
-    f ? `Clear ${fmtDistance(f.clearMedianM)} to the first dead or screened Gr (worst fifth of the arc ${fmtDistance(f.clearP20M)}, best ${fmtDistance(f.clearMaxM)}); 200 m or more on ${pc(f.ge200Pct)} of the arc, 270 m or more on ${pc(f.ge270Pct)}.` : null,
+    f ? `Clear ${fmtDistance(f.clearMedianM)} to the first dead or screened Gr (worst fifth of the arc ${fmtDistance(f.clearP20M)}, best ${fmtDistance(f.clearMaxM)}); ${f.ge200M ?? 200} m or more on ${pc(f.ge200Pct)} of the arc, ${f.ge270M ?? 270} m or more on ${pc(f.ge270Pct)}${(f.ge270M ?? 270) < 270 ? " (lowered to the weapon's range)" : ''}.` : null,
     f ? `Inside ${fmtDistance(o.obstacle.rangeM)}: ${pc(f.seenPct)} may be seen, ${pc(f.deadPct)} dead Gr (the terrain hides it), ${pc(f.screenedPct)} screened (crops, buildings, trees).` : null,
     bands.length ? `Seen by range: ${bands.join(' · ')}.` : null,
     f && rule?.good && rule?.marginal
-      ? `Judged on two tests, the lower stands: Good ${rule.good.clearM} m clear and ${rule.good.seenPct}% seen, Marginal ${rule.marginal.clearM} m and ${rule.marginal.seenPct}%. Minimum for a primary task (${rule.primaryTaskM ?? 200} m clear): ${f.primaryOk ? 'met' : 'NOT met'}.`
+      ? `Judged on two tests, the lower stands: Good ${rule.good.clearM} m clear and ${rule.good.seenPct}% seen, Marginal ${rule.marginal.clearM} m and ${rule.marginal.seenPct}%. Minimum for a primary task (${f.primaryM ?? rule.primaryTaskM ?? 200} m clear${(f.primaryM ?? 200) < (rule.primaryTaskM ?? 200) ? ", lowered to the weapon's range" : ''}): ${f.primaryOk ? 'met' : 'NOT met'}.`
       : null,
     o.light.night ? `Night: ${o.light.level}${o.light.moonIllum !== null ? `, moon ${pc(o.light.moonIllum * 100)} lit` : ''}.` : null,
     ns ? `Night sight${ns.thermal ? ' (thermal)' : ''} ${fmtDistance(ns.deviceM)}: ${fmtDistance(ns.ordinaryM)} on an ordinary ${mon} day, ${fmtDistance(ns.hazeDayM)} on a haze day, ${fmtDistance(ns.fogDayM)} on a fog day.` : null,

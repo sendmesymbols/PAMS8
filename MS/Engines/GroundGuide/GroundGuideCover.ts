@@ -126,6 +126,8 @@ export interface CoverSector {
   level: CoverLevel;
   /** Distance to the nearest Fair or better in this direction; null when there is none. */
   nearM: number | null;
+  /** Distance to the nearest ground of `level` (the best) in this direction; null when the level is 0 (None). */
+  levelM?: number | null;
 }
 
 /** Classes that are cleared lines through other ground: railway (28) and roads (34-38). */
@@ -282,7 +284,7 @@ export function readCover(args: {
   const roseIdx = COVER_FIELDS.indexOf(roseField);
 
   const nearest = rec<CoverNearest | null>(() => null);
-  const sectors: CoverSector[] = COMPASS8.map((compass, i) => ({ bearingDeg: i * 45, compass, level: 0 as CoverLevel, nearM: null }));
+  const sectors: CoverSector[] = COMPASS8.map((compass, i) => ({ bearingDeg: i * 45, compass, level: 0 as CoverLevel, nearM: null, levelM: null }));
   if (args.scan) {
     // One pass over a square of samples out to the radius: about one sample per pixel, never more than 61 x 61.
     const R = Math.max(50, opts.radiusM);
@@ -303,7 +305,10 @@ export function readCover(args: {
         const brg = ((Math.atan2(gx, gy) * 180) / Math.PI + 360) % 360;
         const sec = sectors[Math.round(brg / 45) % 8];
         const lv = s.levels[roseIdx];
-        if (lv > sec.level) sec.level = lv;
+        // The best level and how far its nearest ground is (a better level found further out moves `levelM` with it), kept
+        // apart from `nearM` (the nearest Fair or better), so "Good 80 m" is never printed for a Fair bund at 80 m.
+        if (lv > sec.level) ((sec.level = lv), (sec.levelM = d));
+        else if (lv === sec.level && lv > 0 && (sec.levelM == null || d < sec.levelM)) sec.levelM = d;
         if (lv >= 2 && (sec.nearM === null || d < sec.nearM)) sec.nearM = d;
         for (let k = 0; k < 4; k++) {
           const f = COVER_FIELDS[k];

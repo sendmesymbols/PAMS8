@@ -41,7 +41,7 @@ export interface DecArgs {
   aas: DecAaIn[];
   crossovers: Array<{ id: string; a: string; b: string; alongM: number }>;
   rates: DecRates;
-  /** From the enemy's start to each avenue's start, metres (0: he starts at the area's edge). */
+  /** From the enemy's start to each avenue's start, metres (0: he starts at the area's edge; negative: he starts that far inside it). */
   leadM: Record<string, number>;
   /** The book's lead for a DP (2 h) and the own action's time on top, hours. */
   leadH: number;
@@ -138,10 +138,11 @@ export function decide(a: DecArgs): DecResult {
   const timeAt = new Map<string, (alongM: number, late: boolean) => number>();
   for (const aa of a.aas) {
     const lead = a.leadM[aa.id] ?? 0;
-    const lead0 = (lead / 1000) / a.rates.go[0], lead1 = (lead / 1000) / a.rates.go[1];
+    const pos = Math.max(0, lead);
+    const lead0 = (pos / 1000) / a.rates.go[0], lead1 = (pos / 1000) / a.rates.go[1];
     // Cumulative times at each stretch's start.
     const segs = aa.going.filter((g) => g.toM > g.fromM).sort((p, q) => p.fromM - q.fromM);
-    const fn = (alongM: number, late: boolean): number => {
+    const raw = (alongM: number, late: boolean): number => {
       let t = late ? lead1 : lead0;
       if (alongM <= aa.startM) {
         // Before the avenue: on the way in from the enemy's start, at GO.
@@ -154,6 +155,11 @@ export function decide(a: DecArgs): DecResult {
       }
       return t;
     };
+    // A negative lead: he starts inside the avenue, `-lead` past its start (the threat marker there). His clock is 0
+    // at that place, at his own going on the way there, not at the edge.
+    const off0 = lead < 0 ? raw(aa.startM - lead, false) : 0;
+    const off1 = lead < 0 ? raw(aa.startM - lead, true) : 0;
+    const fn = (alongM: number, late: boolean): number => raw(alongM, late) - (late ? off1 : off0);
     timeAt.set(aa.id, fn);
     const pts: Array<[number, number, number]> = [];
     const from = aa.startM - lead;

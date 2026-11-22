@@ -54,6 +54,22 @@ export const POPULATION_FLAGS: Partial<Record<GroundGuideProfile, { km: number; 
 const RINGS_KM = [1, 2, 3, 5, 10] as const;
 const BANDS_KM: ReadonlyArray<[number, number]> = [[0, 1], [1, 2], [2, 3], [3, 5], [5, 7], [7, 10]];
 const MAX_KM = 10;
+
+/**
+ * The share (0-1) of a grid cell inside a circle of radius `k` km round the reading's centre: the cell's centre is `dx`,
+ * `dy` km off (east, north), its half sizes `hx`, `hy` km. 1 or 0 when wholly in or out; on the edge, 6 x 6 sub-samples.
+ */
+function cellShare(dx: number, dy: number, hx: number, hy: number, k: number): number {
+  if (k <= 0) return 0;
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if (Math.hypot(ax + hx, ay + hy) <= k) return 1;
+  if (Math.hypot(Math.max(0, ax - hx), Math.max(0, ay - hy)) >= k) return 0;
+  const N = 6;
+  let inside = 0;
+  for (let a = 0; a < N; a++)
+    for (let b = 0; b < N; b++) if (Math.hypot(dx - hx + ((a + 0.5) * 2 * hx) / N, dy - hy + ((b + 0.5) * 2 * hy) / N) <= k) inside++;
+  return inside / (N * N);
+}
 const GRID_SIZE = 11;
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const EARTH_R = 6378137;
@@ -156,6 +172,10 @@ export class GroundGuidePopulation {
     if (lng < w || lng > e || lat < s || lat > n) return null;
     const r0 = Math.floor((n - lat) / h.cell);
     const c0 = Math.floor((lng - w) / h.cell);
+    // The grid covers one country inside its rectangle: a no-data cell under the point is outside the data (unknown),
+    // never "nobody lives here".
+    const own = this._layers.get('pop');
+    if (!own || r0 < 0 || c0 < 0 || r0 >= h.rows || c0 >= h.cols || own[r0 * h.cols + c0] === h.nodata) return null;
     const key = `${r0}|${c0}|${radiusKm}`;
     if (key !== this._cacheKey || !this._cached) {
       this._cached = this._compute(r0, c0, lat, radiusKm);
@@ -204,6 +224,14 @@ export class GroundGuidePopulation {
     const dc = Math.ceil(reach / Math.max(kx, 0.05)) + 1;
     const ringPeople = RINGS_KM.map(() => 0);
     const bandPeople = BANDS_KM.map(() => 0);
+    // Cells in each ring / band / the radius, and how many of them have no data (outside the country or the grid), so
+    // a circle half across the border is not read as half empty.
+    const ringAll = RINGS_KM.map(() => 0);
+    const ringGap = RINGS_KM.map(() => 0);
+    const bandAll = BANDS_KM.map(() => 0);
+    const bandGap = BANDS_KM.map(() => 0);
+    let withinAll = 0;
+    let withinGap = 0;
     const sectors = [0, 0, 0, 0, 0, 0, 0, 0];
     const ages = { males15_49: 0, under15: 0, over65: 0 };
     const hasAges = this._layers.has('males15_49') && this._layers.has('under15') && this._layers.has('over65');
@@ -212,49 +240,76 @@ export class GroundGuidePopulation {
     const grid: number[] = new Array(GRID_SIZE * GRID_SIZE).fill(-1);
     const area = this._cellAreaKm2(lat);
     for (let r = r0 - dr; r <= r0 + dr; r++) {
-      if (r < 0 || r >= h.rows) continue;
       for (let c = c0 - dc; c <= c0 + dc; c++) {
-        if (c < 0 || c >= h.cols) continue;
-        const i = r * h.cols + c;
-        const raw = this._layers.get('pop')![i];
-        const gr = r - r0 + half;
-        const gc = c - c0 + half;
-        if (gr >= 0 && gr < GRID_SIZE && gc >= 0 && gc < GRID_SIZE) grid[gr * GRID_SIZE + gc] = raw === h.nodata ? -1 : this._val('pop', i) / area;
-        if (raw === h.nodata || raw === 0) continue;
-        const p = this._val('pop', i);
         // From the centre of the point's cell (readings are cached per cell, so they must not depend on where in it).
         const dx = (c - c0) * kx; // km east
         const dy = (r0 - r) * ky; // km north
         const d = Math.hypot(dx, dy);
-        RINGS_KM.forEach((k, j) => {
-          if (d <= k) ringPeople[j] += p;
+        const inGrid = r >= 0 && r < h.rows && c >= 0 && c < h.cols;
+        const i = r * h.cols + c;
+        const raw = inGrid ? this._layers.get('pop')![i] : h.nodata;
+        const gap = raw === h.nodata;
+        // The share of this cell inside each circle (cells are about 0.8 x 0.9 km: counted whole, the 1 km ring was always
+        // five cells, 3.5 to 3.9 km² against 3.14, and read 11 to 23 % high). Exact 0 / 1 away from the edge.
+        const fr = (k: number): number => cellShare(dx, dy, kx / 2, ky / 2, k);
+        const fRing = RINGS_KM.map((k) => fr(k));
+        const fBand = BANDS_KM.map(([a, b]) => Math.max(0, fr(b) - fr(a)));
+        const fIn = fr(radiusKm);
+        const g = gap ? 1 : 0;
+        RINGS_KM.forEach((_k, j) => {
+          ringAll[j] += fRing[j];
+          ringGap[j] += g * fRing[j];
         });
-        BANDS_KM.forEach(([a, b], j) => {
-          if (d >= a && d < b) bandPeople[j] += p;
+        BANDS_KM.forEach((_ab, j) => {
+          bandAll[j] += fBand[j];
+          bandGap[j] += g * fBand[j];
         });
-        if (d <= radiusKm) {
-          within += p;
-          if (d > 0.01) sectors[Math.round((((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360) / 45) % 8] += p;
-          else for (let k = 0; k < 8; k++) sectors[k] += p / 8;
+        withinAll += fIn;
+        withinGap += g * fIn;
+        if (!inGrid) continue;
+        const gr = r - r0 + half;
+        const gc = c - c0 + half;
+        if (gr >= 0 && gr < GRID_SIZE && gc >= 0 && gc < GRID_SIZE) grid[gr * GRID_SIZE + gc] = gap ? -1 : this._val('pop', i) / area;
+        if (gap || raw === 0) continue;
+        const p = this._val('pop', i);
+        RINGS_KM.forEach((_k, j) => {
+          ringPeople[j] += p * fRing[j];
+        });
+        BANDS_KM.forEach((_ab, j) => {
+          bandPeople[j] += p * fBand[j];
+        });
+        if (fIn > 0) {
+          within += p * fIn;
+          if (d > 0.01) sectors[Math.round((((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360) / 45) % 8] += p * fIn;
+          else for (let k = 0; k < 8; k++) sectors[k] += (p * fIn) / 8;
           if (hasAges) {
-            ages.males15_49 += this._val('males15_49', i);
-            ages.under15 += this._val('under15', i);
-            ages.over65 += this._val('over65', i);
+            ages.males15_49 += this._val('males15_49', i) * fIn;
+            ages.under15 += this._val('under15', i) * fIn;
+            ages.over65 += this._val('over65', i) * fIn;
           }
         }
       }
     }
-    const perKm2 = within / (Math.PI * radiusKm * radiusKm);
+    // Densities over the part with data only (the same figure as before when nothing is missing); counts stay what the
+    // data holds, and `noDataPct` says how much of the ring they leave out (a count there is a lower bound).
+    const dataShare = (all: number, gapN: number): number => (all > 0 ? Math.max(0, all - gapN) / all : 1);
+    const pct = (all: number, gapN: number): number => (all > 0 ? Math.round((100 * gapN) / all) : 0);
+    const withinShare = dataShare(withinAll, withinGap);
+    const perKm2 = withinShare > 0 ? within / (Math.PI * radiusKm * radiusKm * withinShare) : 0;
     const d20 = this._layers.has('density_2020') ? this._val('density_2020', r0 * h.cols + c0) : null;
     const popLayer = h.layers.find((l) => l.id === 'pop');
     return {
       radiusKm,
-      rings: RINGS_KM.map((km, j) => ({ km, people: ringPeople[j] })),
+      rings: RINGS_KM.map((km, j) => ({ km, people: ringPeople[j], noDataPct: pct(ringAll[j], ringGap[j]) })),
       people: within,
       perKm2,
+      noDataPct: pct(withinAll, withinGap),
       cls: populationClass(perKm2),
       ages: hasAges ? ages : null,
-      bands: BANDS_KM.map(([a, b], j) => ({ fromKm: a, toKm: b, perKm2: bandPeople[j] / (Math.PI * (b * b - a * a)) })),
+      bands: BANDS_KM.map(([a, b], j) => {
+        const share = dataShare(bandAll[j], bandGap[j]);
+        return { fromKm: a, toKm: b, perKm2: share > 0 ? bandPeople[j] / (Math.PI * (b * b - a * a) * share) : 0 };
+      }),
       sectors,
       grid: { size: GRID_SIZE, cellKm: (kx + ky) / 2, perKm2: grid },
       density2020: d20,

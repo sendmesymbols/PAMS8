@@ -474,7 +474,7 @@ function modeLine(v: GroundGuideVerdict): HTMLElement {
   if (flag) {
     const civ = el('span', 'ms-ggb-civ');
     civ.title = flag.message;
-    civ.append(peopleIcon(), `${fmtPeople(flag.people)} people within ${flag.km} km`);
+    civ.append(peopleIcon(), `${flag.noDataPct ? 'At least ' : ''}${fmtPeople(flag.people)} people within ${flag.km} km`);
     line.append(civ);
   }
   return line;

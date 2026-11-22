@@ -446,6 +446,9 @@ export interface IpbDecisionView {
   /** `alongM` from the avenue's frame (below its start: on the way in from the enemy). */
   dps: Array<{ id: string; n: number; kind: 'interdict' | 'catk'; aa: string; tai: string | null; at: MercXY; alongM: number; inArea: boolean; beyondM: number; beforeH: boolean; earliestH: number; decision: string }>;
   catk: { label: string; min: number } | null;
+  /** How far before each TAI a DP falls: the book's lead (2 h, p 30) and the own action's time on top, hours. */
+  leadH?: number;
+  reactionH?: number;
   notes: string[];
 }
 
@@ -870,6 +873,11 @@ export interface GroundGuideMovementSector {
   reachM: number;
   /** What stopped the ray, when something did. */
   blockedBy: string | null;
+  /**
+   * The way ran off the terrain data at `reachM` (outside the bundle, nodata, or a tile still loading): nothing is known
+   * beyond it, so it is neither open nor blocked there. With `reachM` 0 the direction is not known at all.
+   */
+  noData?: boolean;
 }
 
 export interface GroundGuideMovement {
@@ -889,6 +897,8 @@ export interface GroundGuideGoingInfo {
   month: number | null;
   /** The mode's vehicle thresholds on this soil (fine or sand); null when the mode is not judged on soil. */
   vehicle: { label: string; vci: [number, number] } | null;
+  /** How the soil changes the going (`traffic.rain`): `words` describes the soil without judging it. */
+  soilRule?: 'cone' | 'bearing' | 'words';
   soil: GroundGuideSoil | null;
   /** Going at the point for the mode, both seasons, and what limits it. */
   point: { dry: GoingStep; wet: GoingStep; limitDry: string | null; limitWet: string | null } | null;
@@ -1056,10 +1066,16 @@ export interface GroundGuidePopulationReading {
   lngLat: [number, number];
   /** `population.radiusKm`: the count, class and age split are for this radius. */
   radiusKm: number;
-  /** People within 1, 2, 3, 5 and 10 km. */
-  rings: Array<{ km: number; people: number }>;
+  /**
+   * People within 1, 2, 3, 5 and 10 km. `noDataPct`: share of the ring with no population data (across the border, off
+   * the grid); the count leaves those people out, so it is a lower bound when above 0.
+   */
+  rings: Array<{ km: number; people: number; noDataPct?: number }>;
   people: number;
+  /** People per km² over the part of the radius that has data. */
   perKm2: number;
+  /** Share of the radius (%) with no population data; `people` leaves it out. */
+  noDataPct?: number;
   cls: GroundGuidePopulationClass;
   /** Within `radiusKm`; null when the grid has no age layers. */
   ages: { males15_49: number; under15: number; over65: number } | null;
@@ -1086,7 +1102,7 @@ export interface GroundGuidePopulation {
   reading: GroundGuidePopulationReading;
   style: GroundGuidePopulationCardStyle;
   /** Set when the unit type's threshold is met (and `flag` is on): people within `km`, and why it matters. */
-  flag: { km: number; people: number; message: string } | null;
+  flag: { km: number; people: number; message: string; noDataPct?: number } | null;
 }
 
 /** One terrain reading. `null` = no tile loaded / no coverage. */
@@ -1210,6 +1226,12 @@ export interface GroundGuideVerdict {
   noneWithinM?: number;
   /** Set while tiles the shape needs are still arriving, so the verdict is provisional. */
   loading?: boolean;
+  /**
+   * Set when some samples fell in tiles that are not here (on their way, or failed and waiting to retry), or the going
+   * for the season could not be read yet: the verdict stands on part of the shape only and may get worse. The audit
+   * waits for those tiles; enforce mode does not pass such a verdict as clear.
+   */
+  incomplete?: boolean;
   /** Set when an echelon symbol was judged on its footprint rather than its point. */
   footprint?: GroundGuideFootprintInfo | null;
   /** Set alongside `footprint` when the intergap check ran. Advisory: never changes `verdict`. */
@@ -1513,6 +1535,8 @@ export interface GroundGuideStamp {
   reason?: string;
   /** `profile` was chosen by hand for this draw (P key / `setProfileOverride()`), not derived from the SIDC. */
   profileOverride?: true;
+  /** The verdict was given on part of the shape only (tiles not loaded at the time); a Gr Check judges it again. */
+  incomplete?: true;
   /** The way out by road to the nearest MSR, asked of the road server just after placing (`traffic.access`). */
   access?: GroundGuideAccess;
 }

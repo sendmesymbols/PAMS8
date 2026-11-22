@@ -358,21 +358,26 @@ export function analyseSight(g: OcokaGrid, ox: number, oy: number, bearings: Flo
   const eyeAbs = h0 + o.eyeM;
   // The point's own cell: standing in woods, a town or a tall crop, the view is screened before it starts.
   let s0 = 1;
+  let hOwn = 0; // top of the own cell's cover above the ground, when it screens (m)
   const oi = Math.floor(oy) * w + Math.floor(ox);
   if (T && h0 === h0 && oi >= 0 && oi < cls.length) {
     const c0 = cls[oi];
-    if (T.h[c0] >= o.eyeM * 0.9 && !(bld && T.noBld[c0])) s0 *= 1 - T.own[c0];
+    if (T.h[c0] >= o.eyeM * 0.9 && !(bld && T.noBld[c0])) ((s0 *= 1 - T.own[c0]), (hOwn = Math.max(hOwn, T.h[c0])));
     const v0 = bld ? bld[oi] : 0;
-    if (v0 && T.bldH[v0 >> 6] >= o.eyeM * 0.9) s0 *= 1 - T.bldOwn[v0 & 63];
+    if (v0 && T.bldH[v0 >> 6] >= o.eyeM * 0.9) ((s0 *= 1 - T.bldOwn[v0 & 63]), (hOwn = Math.max(hOwn, T.bldH[v0 >> 6])));
   }
   R.ownScreen = 1 - s0;
+  // The own cover stands round the eye, about half a step out: its top is the first blocker horizon, so the screen it
+  // gives (`S = s0`) applies to every line that does not clear it (before, `hB` started at -Infinity and the own screen
+  // was dropped on any ray until a later blocker raised `hB`: one tree pixel read "screened 90 %" beside a full view).
+  const hB0 = s0 < 1 ? (hOwn - o.eyeM) / Math.max(1e-6, step / 2) : -Infinity;
   let samples = 0;
   for (let r = 0; r < n; r++) {
     const b = bearings[r] * D2R;
     const dx = Math.sin(b) * stepPx;
     const dy = -Math.cos(b) * stepPx;
     let hT = -Infinity; // terrain horizon (slope)
-    let hB = -Infinity; // highest blocker top so far (slope)
+    let hB = hB0; // highest blocker top so far (slope); the own cover's top to begin with
     let S = s0; // chance that no blocker so far stands in the line
     let clear = -1, lastGood = 0, low = 0, reach = 0, dEnd = 0;
     let wAll = 0, wSeen = 0, wTerr = 0, wSure = 0, eAll = 0, eDead = 0, eScr = 0;
@@ -616,6 +621,13 @@ export interface OcokaFire {
   ge270Pct: number;
   /** The median clear distance meets the minimum for a subunit's primary task (200 m). */
   primaryOk: boolean;
+  /**
+   * The distances those tests used, metres: 200 / 270 m and the primary task's, each lowered to 0.9 of a shorter
+   * weapon's effective range (an Energa's 120 m cannot have 200 m of clear ground). The cards print these, not 200 / 270.
+   */
+  ge200M?: number;
+  ge270M?: number;
+  primaryM?: number;
   /** Of the ground inside the weapon's effective range: expected seen, dead (terrain) and screened (crops, buildings, trees), %. */
   seenPct: number;
   deadPct: number;
@@ -659,6 +671,9 @@ export function fireOf(r: SightRays, effM: number, bands: SightBands | null, rul
     ge200Pct: clears.length ? (100 * clears.filter((c) => c >= Math.min(200, effM * 0.9)).length) / clears.length : 0,
     ge270Pct: clears.length ? (100 * clears.filter((c) => c >= Math.min(270, effM * 0.9)).length) / clears.length : 0,
     primaryOk: med >= need(rule.primaryTaskM),
+    ge200M: Math.round(Math.min(200, effM * 0.9)),
+    ge270M: Math.round(Math.min(270, effM * 0.9)),
+    primaryM: Math.round(need(rule.primaryTaskM)),
     seenPct,
     deadPct,
     screenedPct,
@@ -1018,37 +1033,43 @@ export function findAvenue(g: OcokaGrid, sx: number, sy: number, tx: number, ty:
   const prev = new Int32Array(N).fill(-1);
   const closed = new Uint8Array(N);
   const gx = goal % bw, gy = Math.floor(goal / bw);
-  // Binary heap of cell indices keyed by f = g + straight-line distance to the goal.
+  // Binary heap of cell indices keyed by f = g + straight-line distance to the goal. The key is kept with each entry, not
+  // per cell: a cell pushed again at a lower f rewrote the key of its older entry still in the heap, which broke the heap
+  // order and could close a cell at a cost not its best (a route up to 1.5 % dearer than the least-cost way).
   const heap: number[] = [];
-  const fKey = new Float32Array(N);
+  const heapF: number[] = [];
   const push = (i: number, f: number): void => {
-    fKey[i] = f;
     let k = heap.length;
     heap.push(i);
+    heapF.push(f);
     while (k > 0) {
       const p = (k - 1) >> 1;
-      if (fKey[heap[p]] <= f) break;
+      if (heapF[p] <= f) break;
       heap[k] = heap[p];
+      heapF[k] = heapF[p];
       k = p;
     }
     heap[k] = i;
+    heapF[k] = f;
   };
   const pop = (): number => {
     const top = heap[0];
     const lastI = heap.pop()!;
+    const f = heapF.pop()!;
     if (heap.length) {
-      const f = fKey[lastI];
       let k = 0;
       const n = heap.length;
       for (;;) {
         let c = 2 * k + 1;
         if (c >= n) break;
-        if (c + 1 < n && fKey[heap[c + 1]] < fKey[heap[c]]) c++;
-        if (fKey[heap[c]] >= f) break;
+        if (c + 1 < n && heapF[c + 1] < heapF[c]) c++;
+        if (heapF[c] >= f) break;
         heap[k] = heap[c];
+        heapF[k] = heapF[c];
         k = c;
       }
       heap[k] = lastI;
+      heapF[k] = f;
     }
     return top;
   };
@@ -1114,8 +1135,35 @@ export function findAvenue(g: OcokaGrid, sx: number, sy: number, tx: number, ty:
     chokes.push({ x: x + 0.5, y: y + 0.5, widthM: run.w, cellClass: cls[y * w + x], nogoClass: src[i] >= 0 ? cls[src[i]] : 0, atM: atM[run.k] });
     run = null;
   };
+  // The free width at path cell k, edge to edge: the narrowest of four straight runs through it (E-W, N-S and both
+  // diagonals) between the first NO-GO cells either side. Twice the distance to the nearest NO-GO cell's centre read a gap
+  // an odd number of cells across one cell too wide (a 30 m gap as 60 m, so a 59 m frontage "fitted"); the lower of the
+  // two is kept, so it never reads wider than before. (Runs in fixed directions, not square to the way: a way that
+  // crosses a thin wall at a slant would measure along the open ground beyond it.)
+  const maxT = Math.ceil(1000 / res) + 1;
+  const RUNS: Array<[number, number, number]> = [[1, 0, 1], [0, 1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2]];
+  const across = (k: number): number => {
+    const i = cells[k];
+    const x = i % bw, y = Math.floor(i / bw);
+    const walk = (dx: number, dy: number): number => {
+      for (let t = 1; t <= maxT; t++) {
+        const xx = x + dx * t, yy = y + dy * t;
+        if (xx < 0 || yy < 0 || xx >= bw || yy >= bh) return maxT; // the search box's edge is not an obstacle
+        if (dt[yy * bw + xx] === 0) return t;
+      }
+      return maxT;
+    };
+    let best = Infinity;
+    for (const [dx, dy, st] of RUNS) {
+      const a = walk(dx, dy), b = walk(-dx, -dy);
+      if (a < maxT && b < maxT) best = Math.min(best, (a + b - 1) * st * res);
+    }
+    return best;
+  };
   for (let k = edge; k < cells.length - edge; k++) {
-    const wd = 2 * clearM(cells[k]);
+    const c2 = 2 * clearM(cells[k]);
+    const wd = c2 < o.frontageM + 2 * res ? Math.min(c2, across(k)) : c2;
+    if (wd < minW) minW = wd;
     if (wd < o.frontageM) {
       if (!run || wd < run.w) run = { k, w: wd };
     } else flush();

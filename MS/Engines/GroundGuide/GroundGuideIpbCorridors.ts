@@ -732,16 +732,24 @@ export function findCorridors(a: IpbCorridorArgs): IpbCorridors {
       const fj0 = colOf(o.from.acrossM - o.from.halfWidthM), fj1 = colOf(o.from.acrossM + o.from.halfWidthM);
       for (let i = fi - 1; i <= fi + 1; i++) for (let j = Math.min(fj0, fj1); j <= Math.max(fj0, fj1); j++) if (inGrid(i, j) && cost2[i * NC + j] !== Infinity) src.push(i * NC + j);
     }
-    if (!src.length) for (let j = 0; j < NC; j++) if (cost2[j] !== Infinity) src.push(j);
+    if (!src.length) {
+      if (o.from) ontoNotes.push('The start lies in the ground kept clear round the Obj: approaches read from the far edge of the area');
+      for (let j = 0; j < NC; j++) if (cost2[j] !== Infinity) src.push(j);
+    }
+    // The last row the mover starts on: a flank's own-side band never begins at or before it (else a start within the
+    // band in line with the Obj has every source cell blocked and the flank is reported impossible on open ground).
+    let srcLastRow = -1;
+    for (const q of src) srcLastRow = Math.max(srcLastRow, Math.floor(q / NC));
     const word: Record<IpbOntoKind, string> = { frontal: 'Frontal', left: 'Left flank', right: 'Right flank', turn: 'Turning' };
     // A flank approach keeps to its own side for the last stretch before the objective (at least 3 km, twice the FUP
     // distance): out of the objective's front, the way an envelopment goes round (OoW Vol II s6). Before that it may
-    // share the best ground with the others.
+    // share the best ground with the others. A mover starting nearer than that keeps to its side from the row after its
+    // start (it moves out to its side on its start row).
     const sideM = Math.min(mcW / 2, fupM / 2);
     const bandM = Math.max(3000, 2 * fupM);
     const sided = (kind: 'left' | 'right'): Float32Array => {
       const c3 = cost2.slice();
-      const i0 = Math.max(0, rowOf(o.alongM - D2 - bandM)), i1 = Math.min(NR - 1, rowOf(o.alongM + D2 + keepM));
+      const i0 = Math.max(0, rowOf(o.alongM - D2 - bandM), srcLastRow + 1), i1 = Math.min(NR - 1, rowOf(o.alongM + D2 + keepM));
       const jEdge = kind === 'left' ? colOf(o.acrossM - W2 - sideM) : colOf(o.acrossM + W2 + sideM);
       for (let i = i0; i <= i1; i++)
         for (let j = 0; j < NC; j++) if (kind === 'left' ? j > jEdge : j < jEdge) c3[i * NC + j] = Infinity;

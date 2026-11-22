@@ -14,7 +14,7 @@
  *   gauge     one GO to NO-GO bar with a sun (dry) and a drop (after rain) marker;
  *   calendar  twelve months coloured by the going they leave, rain bars above, this month outlined;
  *   tiles     foot / wheels / tracks (and the mode being placed), each with a dry and an after-rain bar;
- *   wayout    a line to the road coloured by the going crossed, ending in the road's shield and class;
+ *   wayout    a straight line to the road (the ground between is not checked), ending in the road's shield and class;
  *   rose      the movement rose with the road marked on its rim;
  *   ticker    one slim strip under the header;
  *   tabs      Now / Rain / Road / Months, one at a time; T cycles them while drawing.
@@ -250,6 +250,9 @@ export function whyText(v: GroundGuideVerdict): string {
     return `${name ?? 'The Gr'}, ${(pt.limitWet ?? 'soft after rain').toLowerCase()}${ci}`;
   }
   if (pt && pt.dry !== 'go') return `${name ? `${name}: ` : ''}${pt.limitDry ?? 'limited by the Gr'}`;
+  // "Firm enough" only when the soil was judged for this mode: a mode with no vehicle cone index (signals, roadbound)
+  // or the `words` rain rule describes the soil without testing it, so nothing is claimed about its strength.
+  if (name && (!g?.vehicle || g.soilRule === 'words')) return `${name}: not judged on soil for this mode`;
   return name ? `${name}: firm enough dry and after rain` : v.reason ?? 'No soil data here';
 }
 
@@ -313,7 +316,9 @@ export function roadBlock(t: TView, compact = false): HTMLElement | null {
 
 /** The cross-country directions open to the mode, in the one form the Guide uses (item 10): "Open Dirs 6 of 8". */
 function openDirs(m: NonNullable<NonNullable<GroundGuideVerdict['going']>['movement']>): string {
-  return `Open Dirs ${m.open} of ${m.sectors.length} to ${fmtDistance(m.rangeM)}`;
+  // `open` counts the directions open to half the range (GroundGuideGoing.rateMovement), so that is the distance named.
+  const nd = m.sectors.filter((x) => x.noData).length;
+  return `Open Dirs ${m.open} of ${m.sectors.length} to ${fmtDistance(m.rangeM / 2)}${nd ? ` · ${nd} without terrain data` : ''}`;
 }
 
 export function moveText(v: GroundGuideVerdict): string | null {
@@ -429,7 +434,7 @@ export function blockTiles(v: GroundGuideVerdict, t: TView): HTMLElement {
 }
 
 /**
- * The way out: the one road this mode can use to leave, the line to it coloured by the going crossed. Captioned
+ * The way out: the one road this mode can use to leave, a straight line to it (the ground between is not checked). Captioned
  * "Way Out to Rd" so it is not read as R's "Rds out" (roads crossing the circle) or the "Open Dirs" (item 10).
  */
 export function blockWayOut(_v: GroundGuideVerdict, t: TView): HTMLElement {
@@ -438,8 +443,11 @@ export function blockWayOut(_v: GroundGuideVerdict, t: TView): HTMLElement {
   if (!m) return band('T', caption, trafficHeadline(t), roadBlock(t), el('div', 'ms-ggb-soft', t.why));
   const way = el('div', 'ms-ggb-tway');
   const leg = el('span', 'ms-leg');
-  leg.style.background = COLOR[t.now];
-  leg.append(el('span', undefined, `${fmtDistance(m.distanceM)} ${m.compass} · ${WORD[t.now]}`));
+  // The road line holds only the going at the point, not the ground crossed to the road (a canal may lie between), so
+  // the leg is drawn neutral, dashed, and names no going; the going here is in the headline above.
+  leg.style.background = `repeating-linear-gradient(90deg, ${TEXT.soft} 0 6px, transparent 6px 10px)`;
+  leg.title = 'Straight line to the road: the ground between is not checked';
+  leg.append(el('span', undefined, `${fmtDistance(m.distanceM)} ${m.compass} · Gr between not checked`));
   const end = el('span', 'ms-end');
   const kind = roadKind(m);
   end.append(shield(m));

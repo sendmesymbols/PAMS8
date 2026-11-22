@@ -64,6 +64,7 @@ import {
   ageBar,
   densityScale,
   ensurePopulationCss,
+  fmtDensity,
   fmtPeople,
   nearestLine,
   populationChip,
@@ -772,6 +773,8 @@ export class GroundGuideDetail {
   open(): void {
     const root = this._ensure();
     if (root.classList.contains('ms-open')) return;
+    // No draw in progress: the verdict of a symbol placed earlier is not this card's to show (its tiles read `_v`).
+    this._v = null;
     root.classList.add('ms-open');
     this._rect = null;
     this._renderMeta(null);
@@ -857,6 +860,16 @@ export class GroundGuideDetail {
     e.style.left = side === 'left' && px > 0 ? `${px}px` : '';
     this._rect = null;
     if (this.isShown) this._h.resized?.();
+  }
+
+  /** Forget the verdict (the symbol now armed gets no terrain advice): the tabs say what they wait for, not the last one's. */
+  clearVerdict(): void {
+    if (!this._v) return;
+    this._v = null;
+    if (this.isShown) {
+      this._renderMeta(null);
+      this._renderTab(true);
+    }
   }
 
   hide(): void {
@@ -1185,6 +1198,10 @@ export class GroundGuideDetail {
       this._showPage(false);
       return;
     }
+    // The IPB pictures (drawn 380-420 px) scale to the column (CSS max-width) and to the band's height here, so a
+    // picture is never taller than the band (it cannot be split) nor wider than its column.
+    // Room left for the caption and the tile's padding (about 60 px): a picture and its caption then fit the band.
+    for (const t of tiles) for (const pic of t.querySelectorAll<SVGSVGElement>('.ms-gia-pic, .ms-gia-fit')) pic.style.maxHeight = `${Math.max(120, H - 60)}px`;
     const per = Math.max(1, Math.floor((W + COL_GAP) / (COL_MIN + COL_GAP)));
     let cols = this._spread(tiles, W, H, per);
     let pages = 1;
@@ -1194,10 +1211,14 @@ export class GroundGuideDetail {
         t.style.width = `${colW}px`;
         t.style.left = t.style.top = '0px';
       }
-      // Split the lists that run past the band's height, in place (the continuation follows its list).
+      // Split every tile that runs past the band's height, in place (the continuation follows it): by its list, its
+      // table rows or its blocks. Only `ms-ggd-brk` tiles with a list were split before, so a tall table (the template
+      // check, the event matrix, the weather) was clipped: the card never scrolls, and its lower rows could not be seen.
       const items: Array<{ t: HTMLElement; after: HTMLElement | null }> = [];
       for (const t of tiles) {
-        const parts = t.classList.contains('ms-ggd-brk') && t.offsetHeight > H ? this._splitList(t, H) : [t];
+        const first = t.offsetHeight > H ? this._splitList(t, H) : [t];
+        // A piece still taller than the band (one long card in a list) is split once more, inside that card.
+        const parts = first.flatMap((q) => (q.offsetHeight > H ? this._splitList(q, H) : [q]));
         parts.forEach((p, i) => items.push({ t: p, after: i ? parts[i - 1] : null }));
       }
       const fit = this._firstFit(items, per, colW, W, H);
@@ -1337,9 +1358,37 @@ export class GroundGuideDetail {
    * "continued". The pieces are left in the flow in order, the line after the list at the end of the last.
    */
   private _splitList(t: HTMLElement, h: number): HTMLElement[] {
-    const list = t.querySelector<HTMLElement>(':scope > .ms-gs-kv, :scope > .ms-ggd-split');
-    const cap = t.querySelector<HTMLElement>(':scope > .ms-ggb-cap');
-    if (!list || !cap || list.childElementCount < 2) return [t];
+    const cap = t.querySelector<HTMLElement>(':scope > .ms-ggb-cap, :scope > .ms-ggd-cap');
+    if (!cap) return [t];
+    let list = t.querySelector<HTMLElement>(':scope > .ms-gs-kv, :scope > .ms-ggd-split');
+    // The wrappers between the tile and its list (none for a list straight under the caption), cloned into each piece.
+    let chain: HTMLElement[] = [];
+    if (!list || list.childElementCount < 2) {
+      const tbl = t.querySelector<HTMLTableElement>(':scope > table');
+      if (tbl) return this._splitTable(t, cap, tbl, h);
+      // A lone wrapper holding the rows or cards (the IPB cards, the weather rows, a list of lines): look inside it, up to
+      // three levels, for the element with two or more children, and split that.
+      const blocks = [...t.children].filter((c) => c !== cap) as HTMLElement[];
+      list = null;
+      if (blocks.length === 1) {
+        let at: HTMLElement = blocks[0];
+        const path: HTMLElement[] = [];
+        for (let d = 0; d < 3 && at; d++) {
+          // A table found down the wrappers is split by its rows; a picture or a canvas is one block: never split inside.
+          if (at.tagName === 'TABLE') return this._splitTable(t, cap, at as HTMLTableElement, h, path);
+          if (at instanceof SVGElement || /^(CANVAS|IMG)$/.test(at.tagName)) break;
+          if (at.childElementCount >= 2) {
+            list = at;
+            chain = path;
+            break;
+          }
+          if (at.childElementCount !== 1) break;
+          path.push(at);
+          at = at.firstElementChild as HTMLElement;
+        }
+      }
+      if (!list) return this._splitBlocks(t, cap, h);
+    }
     const after: Element[] = [];
     for (let n = list.nextElementSibling; n; n = n.nextElementSibling) after.push(n);
     for (const a of after) a.remove();
@@ -1349,9 +1398,16 @@ export class GroundGuideDetail {
     while (cur.offsetHeight > h && curList.childElementCount > 1) {
       const next = t.cloneNode(false) as HTMLElement;
       const c2 = cap.cloneNode(true) as HTMLElement;
-      c2.append(el('span', 'ms-ggd-cont', ' continued'));
+      if (!c2.querySelector('.ms-ggd-cont')) c2.append(el('span', 'ms-ggd-cont', ' continued'));
+      next.append(c2);
+      let host: HTMLElement = next;
+      for (const w of chain) {
+        const wc = w.cloneNode(false) as HTMLElement;
+        host.append(wc);
+        host = wc;
+      }
       const nl = curList.cloneNode(false) as HTMLElement;
-      next.append(c2, nl);
+      host.append(nl);
       cur.after(next);
       while (cur.offsetHeight > h && curList.childElementCount > 1) nl.prepend(curList.lastElementChild!);
       out.push(next);
@@ -1359,6 +1415,67 @@ export class GroundGuideDetail {
       curList = nl;
     }
     cur.append(...after);
+    return out;
+  }
+
+  /** `_splitList` for a tile holding a table: its rows over pieces, each with the caption ("continued") and the head row. */
+  private _splitTable(t: HTMLElement, cap: HTMLElement, tbl: HTMLTableElement, h: number, chain: HTMLElement[] = []): HTMLElement[] {
+    const rowsOf = (x: HTMLTableElement): HTMLTableRowElement[] => [...x.querySelectorAll<HTMLTableRowElement>(':scope > tr, :scope > tbody > tr')];
+    const all = rowsOf(tbl);
+    const head = all[0]?.querySelector('th') ? all[0] : null;
+    const body = (x: HTMLTableElement): HTMLTableRowElement[] => rowsOf(x).filter((r) => !r.querySelector('th'));
+    if (body(tbl).length < 2) return [t];
+    const after: Element[] = [];
+    for (let n = tbl.nextElementSibling; n; n = n.nextElementSibling) after.push(n);
+    for (const a of after) a.remove();
+    const out: HTMLElement[] = [t];
+    let cur = t;
+    let curTbl = tbl;
+    while (cur.offsetHeight > h && body(curTbl).length > 1) {
+      const next = t.cloneNode(false) as HTMLElement;
+      const c2 = cap.cloneNode(true) as HTMLElement;
+      if (!c2.querySelector('.ms-ggd-cont')) c2.append(el('span', 'ms-ggd-cont', ' continued'));
+      const nt = curTbl.cloneNode(false) as HTMLTableElement;
+      if (head) nt.append(head.cloneNode(true));
+      next.append(c2);
+      let host: HTMLElement = next; // the wrappers the table sits in, cloned
+      for (const w of chain) {
+        const wc = w.cloneNode(false) as HTMLElement;
+        host.append(wc);
+        host = wc;
+      }
+      host.append(nt);
+      cur.after(next);
+      while (cur.offsetHeight > h && body(curTbl).length > 1) {
+        const rows = body(curTbl);
+        const last = rows[rows.length - 1];
+        const firstBody = body(nt)[0] ?? null;
+        nt.insertBefore(last, firstBody);
+      }
+      out.push(next);
+      cur = next;
+      curTbl = nt;
+    }
+    cur.append(...after);
+    return out;
+  }
+
+  /** `_splitList` for any other tile: its blocks (pictures, lines, notes) after the caption over pieces, in order. */
+  private _splitBlocks(t: HTMLElement, cap: HTMLElement, h: number): HTMLElement[] {
+    const blocks = (x: HTMLElement): number => x.childElementCount - 1; // all but the caption
+    if (blocks(t) < 2) return [t];
+    const out: HTMLElement[] = [t];
+    let cur = t;
+    while (cur.offsetHeight > h && blocks(cur) > 1) {
+      const next = t.cloneNode(false) as HTMLElement;
+      const c2 = cap.cloneNode(true) as HTMLElement;
+      if (!c2.querySelector('.ms-ggd-cont')) c2.append(el('span', 'ms-ggd-cont', ' continued'));
+      next.append(c2);
+      cur.after(next);
+      while (cur.offsetHeight > h && blocks(cur) > 1) next.insertBefore(cur.lastElementChild!, c2.nextSibling);
+      out.push(next);
+      cur = next;
+    }
     return out;
   }
 
@@ -1555,7 +1672,7 @@ export class GroundGuideDetail {
     if (r) {
       const two = el('div', 'ms-ggp-two');
       two.append(roseFigure(radar(r, 104), radarKey()), ringList(r, [1, 2, 3, 5, 10]));
-      out.push(tile('B', `People · ${r.radiusKm} km`, two, densityScale(r.cls), populationLine('Density', populationChip(r.cls), ` ${fmtPeople(r.perKm2)} per km² within ${r.radiusKm} km`)));
+      out.push(tile('B', `People · ${r.radiusKm} km`, two, densityScale(r.cls), populationLine('Density', populationChip(r.cls), ` ${fmtDensity(r.perKm2)} per km² within ${r.radiusKm} km`)));
       out.push(tile('B', 'People by Dir', populationRose(r)));
       out.push(tile('B', 'People Map · 1 km Cells', populationMinimap(r)));
       out.push(tile('B', 'Out from Here', ...populationProfile(r)));

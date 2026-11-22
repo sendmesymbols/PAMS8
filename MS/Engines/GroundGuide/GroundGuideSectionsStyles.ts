@@ -596,7 +596,12 @@ export function obstaclesGap(o: ObstaclesReading): HTMLElement {
   }
   if (gap.d) svg.append(svText(x1 - 4, top + bank + dPx - 2, `${gap.d} m deep`, { fill: TEXT.strong, 'text-anchor': 'end' }));
   if (gap.b) svg.append(svText(4, top + bank - 4, `banks ${gap.b} m`, { fill: TEXT.main }));
-  const hit = o.manMade?.label?.toLowerCase().includes('canal') ? o.manMade : o.natural;
+  // The effect printed beside the gap is that of the same kind of obstacle only: the nearest canal class for a canal
+  // gap, the nearest river / water class for a river reach. (The nearest natural obstacle of any kind, a seasonal stream
+  // say, printed "SLOW-GO for the mode" beside a canal that is NO-GO for it.)
+  const isCanal = !!(c && (c.widthM || c.depthM)); // the gap drawn is the canal (else the river reach)
+  const lbl = (h: typeof o.natural) => h?.label?.toLowerCase() ?? '';
+  const hit = isCanal ? (lbl(o.manMade).includes('canal') ? o.manMade : lbl(o.natural).includes('canal') ? o.natural : null) : /river|water/.test(lbl(o.natural)) ? o.natural : null;
   return section('O', 'Obs · Gap', svg, soft(el('b', undefined, gap.name), ` · ${gap.at}`, hit?.effect ? ` · ${hit.effect} for the mode` : '', r && gap.w === null && r.currentMs ? ` · ${r.currentMs} m/s` : ''));
 }
 

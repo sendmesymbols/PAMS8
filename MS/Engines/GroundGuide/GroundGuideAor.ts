@@ -661,9 +661,23 @@ export function readAor(inp: AorInput): AorReading {
   const latN = new Map<string, number>();
   for (const r of roads) {
     if (!METALLED.test(String(r.a.t ?? '')) || roadClass(r.a.c) < 30) continue;
-    const step = Math.max(1, Math.floor(r.p.length / 10));
-    const sample = r.p.filter((_, i) => i % step === 0).concat([r.p[r.p.length - 1]]);
-    const hit = apchs.filter((a) => overlaps(r.box, boxOf(a.path, 250)) && sample.some((p) => nearOn(p, a.path).d < 250)).map((a) => a.side);
+    // Points every 200 m along the road (vertices and the stretches between them), so a long straight road that crosses
+    // an approach between two vertices is still seen to touch it (with about ten vertices tested, an 18 km road across
+    // all three approaches touched none: "No metalled lateral"). Only the points near the approach are measured.
+    const sample: AorXY[] = [];
+    for (let i = 1; i < r.p.length; i++) {
+      const a0 = r.p[i - 1], b0 = r.p[i];
+      const n = Math.max(1, Math.ceil(Math.hypot(b0[0] - a0[0], b0[1] - a0[1]) / 200));
+      for (let k = 0; k < n; k++) sample.push([a0[0] + ((b0[0] - a0[0]) * k) / n, a0[1] + ((b0[1] - a0[1]) * k) / n]);
+    }
+    sample.push(r.p[r.p.length - 1]);
+    const hit = apchs
+      .filter((a) => {
+        const bx = boxOf(a.path, 250);
+        if (!overlaps(r.box, bx)) return false;
+        return sample.some((p) => p[0] >= bx[0] && p[0] <= bx[2] && p[1] >= bx[1] && p[1] <= bx[3] && nearOn(p, a.path).d < 250);
+      })
+      .map((a) => a.side);
     for (let i = 0; i < hit.length; i++)
       for (let j = i + 1; j < hit.length; j++) {
         const key = [hit[i], hit[j]].sort((x, y) => SIDES.indexOf(x) - SIDES.indexOf(y)).join('-');
@@ -695,8 +709,22 @@ export function readAor(inp: AorInput): AorReading {
       const pts = ordered.map((a, i) => pointAt(a.path, entry[i] + d));
       const buas = pts.map((p) => {
         const n = nearestPlace(p, home, 300, 800);
-        return n ? { name: n.place.name, d: n.d, people: n.place.people } : null;
+        return n ? { name: n.place.name, d: n.d, people: n.place.people, ref: n.place } : null;
       });
+      // Near the MITG the approaches run close together, so one place can be the nearest for two or three of them: it
+      // stands astride one approach only (the nearest), never "a BUA on every approach" or a line "X – X".
+      for (let i = 0; i < buas.length; i++) {
+        const bi = buas[i];
+        if (!bi) continue;
+        for (let j = 0; j < buas.length; j++) {
+          const bj = buas[j];
+          if (j === i || !bj || bj.ref !== bi.ref) continue;
+          if (bj.d < bi.d || (bj.d === bi.d && j < i)) {
+            buas[i] = null;
+            break;
+          }
+        }
+      }
       if (buas.filter(Boolean).length < 2) continue;
       let bscore = 0;
       for (const b of buas) if (b) bscore += (b.d <= 400 ? 1 : 0.5) * (b.people >= 1000 ? 1 : 0.6);

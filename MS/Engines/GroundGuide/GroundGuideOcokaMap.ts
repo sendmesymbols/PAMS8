@@ -212,7 +212,7 @@ export class GroundGuideOcokaMap {
       if (d) L.push({ at: ringMid(d), text: 'Dead Gr', col: DEAD, yoffset: 0, prio: 3 });
       const sc = largest(fan?.screened);
       if (sc) L.push({ at: ringMid(sc), text: 'Screened', col: SCREENED, yoffset: 0, prio: 3 });
-      if (wedge && wedge.outline.length > 2) L.push({ at: wedge.outline[Math.floor(wedge.outline.length / 2)], text: `Threat's view · ${Math.round(wedge.coveredPct)} % seen`, col: ENEMY, yoffset: 10, prio: 2 });
+      if (wedge && wedge.outline.length > 2) L.push({ at: wedge.outline[Math.floor(wedge.outline.length / 2)], text: `Threat's view · ${Math.round(wedge.coveredPct)} % out of view`, col: ENEMY, yoffset: 10, prio: 2 }); // coveredPct is the share hidden from it (as the cards say)
       if (on.sight) {
         (sight?.lines ?? []).forEach((l, i) => {
           const word = l.p >= 0.5 ? 'in view' : l.p >= 0.2 ? 'may be seen' : 'no LOS';

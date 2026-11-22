@@ -39,6 +39,8 @@ export const WHY = {
   NOTE_SEASON: 4096,
   CROSSING: 8192,
   SEASONAL_WATER: 16384,
+  /** No elevation at the cell: slope and relief not tested, so the cell is not assessed (never GO for want of data). */
+  NA_SLOPE: 32768,
 } as const;
 
 /** A grid of the bundle's finest tiles (an OcokaGrid fits). */
@@ -348,20 +350,34 @@ export function codeIpb(a: IpbArgs): IpbCoding {
         // The bypass rows: 7 samples along the movement, 250 m beyond each flank.
         const cx = sx / cells.length;
         const cy = sy / cells.length;
-        const half = (maxP - minP + 1) / 2 + R.buaBypassM / 2 / res;
-        const uLo = dir === null ? -((maxY - minY) / 2) : minU - (cx * ux + cy * uy);
-        const uHi = dir === null ? (maxY - minY) / 2 : maxU - (cx * ux + cy * uy);
-        const side = (sgn: number): boolean => {
-          let blocked = 0;
-          for (let k = 0; k < 7; k++) {
-            const t = uLo + ((uHi - uLo) * k) / 6;
-            const xx = Math.round(cx + px * sgn * half + ux * t);
-            const yy = Math.round(cy + py * sgn * half + uy * t);
-            if (blocking(xx, yy)) blocked++;
-          }
-          return blocked >= 5;
+        // `p*` points across the movement (to the flanks), `a*` along it; `half` reaches 250 m beyond the flank.
+        const noBypassFor = (pxx: number, pyy: number, axx: number, ayy: number, half: number, uLo: number, uHi: number): boolean => {
+          const side = (sgn: number): boolean => {
+            let blocked = 0;
+            for (let k = 0; k < 7; k++) {
+              const t = uLo + ((uHi - uLo) * k) / 6;
+              const xx = Math.round(cx + pxx * sgn * half + axx * t);
+              const yy = Math.round(cy + pyy * sgn * half + ayy * t);
+              if (blocking(xx, yy)) blocked++;
+            }
+            return blocked >= 5;
+          };
+          return side(1) && side(-1);
         };
-        noBypass = side(1) && side(-1);
+        const by = R.buaBypassM / 2 / res;
+        if (dir === null) {
+          // All round: the worst of a move N-S (flanks E and W) and a move E-W (flanks N and S), as the slope takes the
+          // steepest. (With no direction the along-axis was zero, so all 7 samples fell on one cell per flank.)
+          const halfX = (maxX - minX + 1) / 2 + by;
+          const halfY = (maxY - minY + 1) / 2 + by;
+          noBypass =
+            noBypassFor(1, 0, 0, 1, halfX, -(maxY - minY) / 2, (maxY - minY) / 2) ||
+            noBypassFor(0, 1, 1, 0, halfY, -(maxX - minX) / 2, (maxX - minX) / 2);
+        } else {
+          const half = (maxP - minP + 1) / 2 + by;
+          const uc = cx * ux + cy * uy;
+          noBypass = noBypassFor(px, py, ux, uy, half, minU - uc, maxU - uc);
+        }
         nogo = noBypass;
       }
       const wv = Math.min(65535, Math.round(widthM));
@@ -451,8 +467,12 @@ export function codeIpb(a: IpbArgs): IpbCoding {
   // Water: the narrowest run through the cell over four directions (cap 40 cells).
   const DIRS: Array<[number, number, number]> = [[1, 0, 1], [0, 1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2]];
   const isWet = (c: number) => R.water[c] === 1 || R.seasonal[c] === 1;
+  // Also the fewest cells in any one direction (`runCells`): a canal or stream burnt as a 4-connected staircase is one
+  // cell across on the anti-diagonal, which weighs 1.414 and must still count as a line feature, not water 23 m wide.
+  let runCells = Infinity;
   const waterRun = (gx: number, gy: number): number => {
     let best = Infinity;
+    runCells = Infinity;
     for (const [dx, dy, step] of DIRS) {
       let k = 1;
       for (let s = 1; s < 40; s++) {
@@ -466,6 +486,7 @@ export function codeIpb(a: IpbArgs): IpbCoding {
         k++;
       }
       best = Math.min(best, k * step);
+      runCells = Math.min(runCells, k);
     }
     return best; // in cells (diagonals weighted)
   };
@@ -506,6 +527,7 @@ export function codeIpb(a: IpbArgs): IpbCoding {
         } else if (r === worst && r > 0) mask |= bit;
       };
       const e = E[gi];
+      if (e !== e) flags |= WHY.NA_SLOPE; // a void in the elevation: slope and relief unknown here
       // 1 Slope
       if (e === e) {
         let s: number;
@@ -550,7 +572,7 @@ export function codeIpb(a: IpbArgs): IpbCoding {
         const run = waterRun(gx, gy);
         const widthM = run * res;
         waterW[i] = Math.min(65535, Math.round(widthM));
-        if (run <= 1.01) flags |= WHY.NA_WATER; // a line feature: no measurable width
+        if (runCells <= 1) flags |= WHY.NA_WATER; // a line feature (one cell across, straight or staircase): no measurable width
         else if (widthM > a.avlbSpanM) hit(2, WHY.WATER);
         else {
           hit(1, WHY.WATER); // spannable by AVLB; bank height not recorded
@@ -560,8 +582,10 @@ export function codeIpb(a: IpbArgs): IpbCoding {
       // 5, 6 Vegetation (armour, mechanized) and roads (armour, close country)
       if (vegApplies && roadsPerKm && (R.veg[c] === 1 || (armour && R.close[c] === 1))) {
         const [ph, pt] = roadsPerKm(gx, gy);
-        roadH[i] = Math.min(255, Math.round(ph * 10));
-        roadT[i] = Math.min(255, Math.round(pt * 10));
+        // Kept in tenths rounded down, so the reason's figure is never on the other side of a threshold from the coding
+        // (1.96 rounded to 2.0 read "GO" beside a SLOW-GO cell).
+        roadH[i] = Math.min(255, Math.floor(ph * 10 + 1e-9));
+        roadT[i] = Math.min(255, Math.floor(pt * 10 + 1e-9));
         const roadsSlowOrBetter = ph >= 1 || pt >= 2;
         if (R.veg[c] === 1 && !roadsSlowOrBetter) flags |= WHY.NA_VEG; // tree thickness and spacing not recorded
         if (armour && R.close[c] === 1) {
@@ -588,7 +612,7 @@ export function codeIpb(a: IpbArgs): IpbCoding {
         }
       }
       let out: number = worst;
-      if (worst === 0 && flags & (WHY.NA_WATER | WHY.NA_VEG)) out = IPB.NA;
+      if (worst === 0 && flags & (WHY.NA_WATER | WHY.NA_VEG | WHY.NA_SLOPE)) out = IPB.NA;
       else if (worst === 0 && flags & (WHY.NC_SLOPE | WHY.NC_RELIEF)) out = IPB.NC;
       code[i] = out;
       why[i] = mask | flags;
@@ -643,7 +667,8 @@ export function ipbReasonsAt(c: IpbCoding, rules: IpbRules, bx: number, by: numb
   const s = c.slope[i];
   const sDeg = Math.atan(Math.abs(s) / 100) / D2R;
   const along = c.moveDeg === null ? 'steepest slope' : s >= 0 ? 'uphill' : 'downhill';
-  if (s >= rules.nogoUphillPct) out.push({ crit: 'slope', cls: 'nogo', text: `Slope ${r0(s)} % ${along}: NO-GO (${rules.nogoUphillPct} % or more, IPB p 10)` });
+  if (y & WHY.NA_SLOPE) out.push({ crit: 'slope', cls: 'na', text: 'Slope and relief: no elevation here, not assessed' });
+  else if (s >= rules.nogoUphillPct) out.push({ crit: 'slope', cls: 'nogo', text: `Slope ${r0(s)} % ${along}: NO-GO (${rules.nogoUphillPct} % or more, IPB p 10)` });
   else if (s >= rules.slowUphillPct) out.push({ crit: 'slope', cls: 'slow', text: `Slope ${r0(s)} % ${along}: SLOW-GO (${rules.slowUphillPct}-${rules.nogoUphillPct} %, IPB p 10)` });
   else if (y & WHY.NC_SLOPE) out.push({ crit: 'slope', cls: 'nc', text: `Slope ${r0(sDeg)}° downhill: not classed by the book (GO is under ${rules.goDeg}°, p 11)` });
   else out.push({ crit: 'slope', cls: 'go', text: `Slope ${r0(Math.abs(s))} % ${along}: GO (under ${rules.goDeg}°, IPB p 11)` });
@@ -660,7 +685,9 @@ export function ipbReasonsAt(c: IpbCoding, rules: IpbRules, bx: number, by: numb
     else out.push({ crit: 'water', cls: 'na', text: 'Water too narrow to measure (a line feature): width not recorded, not assessed' });
   }
   if (y & WHY.NA_VEG) out.push({ crit: 'veg', cls: 'na', text: `Trees: thickness and spacing not recorded, not assessed (${c.mover === 'armour' ? 'NO-GO for armour at 6-8 in, < 20 ft' : 'SLOW-GO for mechanized at "2 -" in, < 20 ft'}, IPB p 10)` });
-  if (c.roadH[i] || c.roadT[i] || y & WHY.ROADS) {
+  // Roads in close country is an armour criterion (pp 10-12): the densities are also kept for mech in trees (the
+  // vegetation test reads them), but no roads line is given for another mover.
+  if (c.mover === 'armour' && (c.roadH[i] || c.roadT[i] || y & WHY.ROADS)) {
     const ph = c.roadH[i] / 10, pt = c.roadT[i] / 10;
     const cls: IpbClass = ph >= 2 ? 'go' : ph >= 1 || pt >= 2 ? 'slow' : 'nogo';
     out.push({ crit: 'roads', cls, text: `Close country, ${ph.toFixed(1)} hard Rds and ${pt.toFixed(1)} Trs per km: ${cls === 'go' ? 'GO' : cls === 'slow' ? 'SLOW-GO' : 'NO-GO'} for armour (IPB pp 10-12)` });

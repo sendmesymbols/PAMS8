@@ -331,13 +331,18 @@ export function dayGround(terrainCode: number | null, ground: string | null, slo
 export interface SpeedDirection {
   bearingDeg: number;
   compass: string;
-  /** Minutes to cover the range this way; null when the way is blocked first. */
+  /** Minutes to cover the range this way; null when the way is blocked first or runs off the terrain data. */
   minutes: number | null;
   /** Ground distance covered before the first NO-GO (the range when open). */
   reachM: number;
   /** Average km/h over the distance covered (0 when blocked at once). */
   kmh: number;
+  /** What stopped the way: the NO-GO ground, or the slope the mover cannot climb. */
   blockedBy: string | null;
+  /** The way ran off the terrain data at `reachM` (0: not known at all): not blocked, not timed. */
+  noData?: boolean;
+  /** The going met on the way: NO-GO when stopped, SLOW-GO when over 0.4 of the steps timed were SLOW-GO. */
+  step?: GoingStep;
 }
 
 export interface GroundGuideSpeed {
@@ -535,8 +540,12 @@ export function readSpeed(a: SpeedArgs): GroundGuideSpeed | null {
       let minutes = 0;
       let reach = a.rangeM;
       let blockedBy: string | null = null;
+      let stopped = false;
+      let noData = false;
+      let gapFrom = 0; // first step of the current run without data (0 = none)
       let prevE = elevM;
       let counted = 0;
+      let slowN = 0;
       for (let k = 1; k <= n; k++) {
         const x = at[0] + dx * (k - 0.5) * dM;
         const y = at[1] + dy * (k - 0.5) * dM;
@@ -548,21 +557,41 @@ export function readSpeed(a: SpeedArgs): GroundGuideSpeed | null {
         const eNow = typeof e1 === 'number' ? e1 : null;
         const gr = prevE !== null && eNow !== null ? (eNow - prevE) / dG : 0;
         prevE = eNow ?? prevE;
-        if (!gs) continue; // no data here (or still loading): skip the step
+        if (!gs) {
+          // No data here (or still loading). One stray step is filled at the mean of the rest; a run of two ends what is
+          // known of the way, so ground beyond the data is never timed as if it were the same as the ground before it.
+          if (!gapFrom) gapFrom = k;
+          if (k - gapFrom >= 1) {
+            reach = (gapFrom - 1) * dG;
+            noData = true;
+            break;
+          }
+          continue;
+        }
+        gapFrom = 0;
         const v = spotKmh(t, m, { ground: groundOf(t, c), step: gs.step, season: a.season, light: o.light, grade: tobler ? gr : Math.abs(gr), elevM: eNow });
         if (v === null) continue;
         if (v <= 0) {
+          // Stopped: by NO-GO ground (its reason), or on GO ground by a slope the mover cannot climb (the table's factor 0).
           reach = (k - 1) * dG;
-          blockedBy = gs.why;
+          stopped = true;
+          blockedBy = gs.why ?? (gr !== 0 ? `Slope ${Math.round((Math.atan(Math.abs(gr)) * 180) / Math.PI)}°: too steep` : 'No way for the mover');
           break;
         }
         minutes += (dG / 1000 / v) * 60;
         counted++;
+        if (gs.step === 'slow') slowN++;
       }
+      if (!noData && gapFrom === n) ((reach = (n - 1) * dG), (noData = true));
       // Steps with no data count at the mean of the rest, so a gap does not look fast.
       const covered = counted ? (minutes / counted) * Math.round(reach / dG) : 0;
       const kmh = covered > 0 ? reach / 1000 / (covered / 60) : 0;
-      rays.push({ bearingDeg: i * 45, compass: COMPASS8[i], minutes: blockedBy ? null : Math.round(covered), reachM: reach, kmh: round1(kmh) ?? 0, blockedBy });
+      // The time to cover the range only when the whole range was read and walked: a stopped way, one that ran off the
+      // data, or one with nothing timed has no time (it is never offered as the fastest).
+      const minutesOut = stopped || noData || counted === 0 ? null : Math.round(covered);
+      // The going met on the way (as the movement rays judge it): NO-GO when stopped, SLOW-GO when over 0.4 of it is.
+      const step: GoingStep = stopped ? 'nogo' : counted && slowN / counted > 0.4 ? 'slow' : 'go';
+      rays.push({ bearingDeg: i * 45, compass: COMPASS8[i], minutes: minutesOut, reachM: reach, kmh: round1(kmh) ?? 0, blockedBy, step, ...((noData || counted === 0) && !stopped && { noData: true }) });
     }
   }
 
@@ -651,8 +680,10 @@ export function speedText(s: GroundGuideSpeed): string[] {
   if (s.rays) {
     const open = s.rays.filter((r) => r.minutes !== null).sort((p, q) => p.minutes! - q.minutes!);
     if (open.length) out.push(`  To ${Math.round(s.rangeM / 100) / 10} km: fastest ${open[0].compass} ${fmtMinutes(open[0].minutes!)}, slowest ${open[open.length - 1].compass} ${fmtMinutes(open[open.length - 1].minutes!)}`);
-    const shut = s.rays.filter((r) => r.minutes === null).map((r) => r.compass);
+    const shut = s.rays.filter((r) => r.minutes === null && !r.noData).map((r) => r.compass);
     if (shut.length) out.push(`  Blocked: ${shut.join(', ')}`);
+    const nd = s.rays.filter((r) => r.noData).map((r) => r.compass);
+    if (nd.length) out.push(`  No terrain data: ${nd.join(', ')}`);
   }
   if (s.dayKm) out.push(`  A day's march (${s.dayKm.ground}, ${s.dayKm.load === 'none' ? 'without' : 'with'} combat load): ${s.dayKm.lo}-${s.dayKm.hi} km in 24 h`);
   out.push(`  ${s.basis}`);

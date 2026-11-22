@@ -369,6 +369,17 @@ function styleNearest(_v: GroundGuideVerdict, c: GroundGuideCover): HTMLElement 
  * The group turns with the map (`data-gv-rose`). Drawn at ROSE_PX on screen: `size` is kept for the callers but no
  * longer used.
  */
+/**
+ * One sector in words: the best level at its own distance, and the nearest Fair or better first when that is nearer and
+ * lower ("Fair 80 m, Good 450 m"), never the best level at the nearest Fair's distance.
+ */
+function sectorCoverText(x: GroundGuideCover['sectors'][number]): string {
+  const bestM = x.levelM ?? x.nearM;
+  if (x.nearM === null || bestM === null) return COVER_WORD[x.level];
+  if (x.level > 2 && x.nearM < bestM) return `Fair ${fmtDistance(x.nearM)}, ${COVER_WORD[x.level]} ${fmtDistance(bestM)}`;
+  return `${COVER_WORD[x.level]} ${fmtDistance(bestM)}`;
+}
+
 export function coverRose(c: GroundGuideCover, size: number, northDeg: number): SVGElement {
   void size;
   const r0 = 10;
@@ -380,7 +391,7 @@ export function coverRose(c: GroundGuideCover, size: number, northDeg: number): 
     const r = r0 + (R - r0) * reach;
     const w = f.add('path', { d: wedgePath(r0, r, x.bearingDeg - 20.5, x.bearingDeg + 20.5), fill: LEVEL_COLOR[x.level], stroke: SURFACE.ring, 'stroke-width': 0.8 });
     const tip = svg('title', {});
-    tip.textContent = x.nearM === null ? `${x.compass}: none Fair or better within ${fmtDistance(c.radiusM)}` : `${x.compass}: ${COVER_WORD[x.level]} ${fmtDistance(x.nearM)}`;
+    tip.textContent = x.nearM === null ? `${x.compass}: none Fair or better within ${fmtDistance(c.radiusM)}` : `${x.compass}: ${sectorCoverText(x)}`;
     w.append(tip);
   }
   // The hub: the level at the spot itself.
@@ -412,10 +423,12 @@ export function roseText(c: GroundGuideCover): HTMLElement {
   const here = el('div');
   here.append('Here ', levelWord(c.levels[f]));
   t.append(here);
-  const best = [...c.sectors].filter((s) => s.nearM !== null).sort((a, b) => b.level - a.level || a.nearM! - b.nearM!)[0];
+  const at = (s: (typeof c.sectors)[number]): number => s.levelM ?? s.nearM!;
+  const best = [...c.sectors].filter((s) => s.nearM !== null).sort((a, b) => b.level - a.level || at(a) - at(b))[0];
   if (best) {
     const b = el('div');
-    b.append('Best ', levelWord(best.level), ` ${fmtDistance(best.nearM!)} ${best.compass}`);
+    // The best level at the distance of its own ground (`levelM`), not at the nearest Fair or better (`nearM`).
+    b.append('Best ', levelWord(best.level), ` ${fmtDistance(at(best))} ${best.compass}`);
     t.append(b);
   } else t.append(el('div', 'ms-gc-soft', 'None Fair or better round it'));
   // Sectors with nothing Fair or better (not "open": Open Dirs is the cross-country count on O and T).

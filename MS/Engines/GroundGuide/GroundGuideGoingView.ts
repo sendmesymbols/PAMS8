@@ -250,16 +250,33 @@ export function roseLegend(withReach: boolean, rangeM?: number | null): HTMLElem
   return roseKey(rangeM ? `Length to ${fmtDistance(rangeM)} · colour = going` : 'Length = reach · colour = going');
 }
 
+/** Colour of a way that ran off the terrain data (not known: neither GO nor blocked). */
+export const NO_DATA_COLOR = TONE.chk.dot;
+
+/** A sector's word for its tooltip: its going, or that it is not known (beyond what was read). */
+function sectorWord(x: { step: GoingStep; reachM: number; noData?: boolean }): string {
+  return x.noData ? (x.reachM > 0 ? `${GOING_WORD[x.step]}, then no terrain data` : 'No terrain data') : GOING_WORD[x.step];
+}
+
+/** "No data N, NE (beyond 300 m)": the directions that ran off the terrain data; '' when none did. */
+function noDataText(m: NonNullable<GroundGuideGoingInfo['movement']>): string {
+  const nd = m.sectors.filter((x) => x.noData);
+  if (!nd.length) return '';
+  const near = Math.min(...nd.map((x) => x.reachM));
+  return `No terrain data ${nd.map((x) => x.compass).join(', ')}${near > 0 ? ` (from ${fmtDistance(near)})` : ''}`;
+}
+
 export function blockedText(g: GroundGuideGoingInfo, max = 3, sep = ' · '): string {
   const m = g.movement;
   if (!m) return '';
   const items: string[] = [];
   for (const x of m.sectors) {
     if (x.blockedBy && x.reachM < m.rangeM) items.push(`${x.compass} ${x.blockedBy} ${fmtDistance(x.reachM)}`);
-    else if (x.step === 'nogo') items.push(`${x.compass} NO-GO Gr`);
+    else if (x.step === 'nogo' && !x.noData) items.push(`${x.compass} NO-GO Gr`);
   }
-  if (!items.length) return `Nothing blocks the way within ${fmtDistance(m.rangeM)}`;
-  return 'Blocked: ' + items.slice(0, max).join(sep) + (items.length > max ? `${sep}+${items.length - max} more` : '');
+  const nd = noDataText(m);
+  if (!items.length) return nd ? `Nothing blocks the way where the data reaches${sep}${nd}` : `Nothing blocks the way within ${fmtDistance(m.rangeM)}`;
+  return 'Blocked: ' + items.slice(0, max).join(sep) + (items.length > max ? `${sep}+${items.length - max} more` : '') + (nd ? `${sep}${nd}` : '');
 }
 
 /** `blockedText` as nodes: each blocked direction carries its arrow, which turns with the map. */
@@ -270,14 +287,16 @@ export function blockedNode(g: GroundGuideGoingInfo, max = 3, sep = ' · '): Doc
   const items: DocumentFragment[] = [];
   for (const x of m.sectors) {
     if (x.blockedBy && x.reachM < m.rangeM) items.push(joinNodes([compassNode(x.compass, x.bearingDeg), ` ${x.blockedBy} ${fmtDistance(x.reachM)}`], ''));
-    else if (x.step === 'nogo') items.push(joinNodes([compassNode(x.compass, x.bearingDeg), ' NO-GO Gr'], ''));
+    else if (x.step === 'nogo' && !x.noData) items.push(joinNodes([compassNode(x.compass, x.bearingDeg), ' NO-GO Gr'], ''));
   }
+  const nd = noDataText(m);
   if (!items.length) {
-    f.append(`Nothing blocks the way within ${fmtDistance(m.rangeM)}`);
+    f.append(nd ? `Nothing blocks the way where the data reaches${sep}${nd}` : `Nothing blocks the way within ${fmtDistance(m.rangeM)}`);
     return f;
   }
   f.append('Blocked: ', joinNodes(items.slice(0, max), sep));
   if (items.length > max) f.append(`${sep}+${items.length - max} more`);
+  if (nd) f.append(`${sep}${nd}`);
   return f;
 }
 
@@ -305,9 +324,14 @@ export function roseSvg(g: GroundGuideGoingInfo, size: number, rings: boolean, n
     const a0 = x.bearingDeg - 20.5;
     const a1 = x.bearingDeg + 20.5;
     const r = Math.max(r0 + 3, ringR(Math.min(1, x.reachM / m.rangeM)));
-    const w = f.add('path', { d: wedgePath(r0, r, a0, a1), fill: STEP_COLOR[x.step], stroke: SURFACE.ring, 'stroke-width': 0.8 });
+    const fill = x.noData && x.reachM <= 0 ? NO_DATA_COLOR : STEP_COLOR[x.step];
+    const w = f.add('path', { d: wedgePath(r0, r, a0, a1), fill, stroke: SURFACE.ring, 'stroke-width': 0.8 });
+    if (x.noData && r < R) {
+      // The rest of the way to the range: not known (no terrain data), drawn as a dashed grey outline.
+      f.add('path', { d: wedgePath(r, R, a0, a1), fill: 'none', stroke: NO_DATA_COLOR, 'stroke-width': 1, 'stroke-dasharray': '2 2' });
+    }
     const tip = s('title', {});
-    tip.textContent = `${x.compass}: ${GOING_WORD[x.step]}, ${fmtDistance(x.reachM)}${x.blockedBy && x.reachM < m.rangeM ? ` (${x.blockedBy})` : ''}`;
+    tip.textContent = `${x.compass}: ${sectorWord(x)}, ${fmtDistance(x.reachM)}${x.blockedBy && x.reachM < m.rangeM ? ` (${x.blockedBy})` : ''}`;
     w.append(tip);
     if (x.blockedBy && x.reachM < m.rangeM) {
       f.add('path', { d: `M${P(a0, r)} A${r} ${r} 0 0 1 ${P(a1, r)}`, fill: 'none', stroke: TEXT.strong, 'stroke-width': 2.5, 'stroke-linecap': 'round' });
@@ -666,12 +690,12 @@ export function exitCompass(g: GroundGuideGoingInfo, size = 104): SVGElement | n
       y1: iy.toFixed(2),
       x2: ex.toFixed(2),
       y2: ey.toFixed(2),
-      stroke: STEP_COLOR[x.step],
+      stroke: x.noData && x.reachM <= 0 ? NO_DATA_COLOR : STEP_COLOR[x.step],
       'stroke-width': cardinal ? 5.5 : 4.5,
       'stroke-linecap': 'round',
     });
     const tip = s('title', {});
-    tip.textContent = `${x.compass}: ${GOING_WORD[x.step]}, ${fmtDistance(x.reachM)}${x.blockedBy ? ` (${x.blockedBy})` : ''}`;
+    tip.textContent = `${x.compass}: ${sectorWord(x)}, ${fmtDistance(x.reachM)}${x.blockedBy ? ` (${x.blockedBy})` : ''}`;
     spoke.append(tip);
     if (x.blockedBy && x.reachM < m.rangeM) {
       // A white bar across the spoke's end: something stops the way there.

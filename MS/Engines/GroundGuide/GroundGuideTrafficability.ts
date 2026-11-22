@@ -42,7 +42,7 @@ export interface GroundGuideTrafficOptions {
    * T as ONE block in place of the separate pieces (the Cross-Country and Movement sections, the Road band and the
    * pill stay as set when `off`): `band` going now + why / road / movement rows, `gauge` a GO to NO-GO bar with dry
    * and after-rain markers, `calendar` twelve months coloured by going, `tiles` foot / wheels / tracks (/ air) with dry
-   * and after-rain bars, `wayout` a line to the road coloured by the going crossed, `rose` the movement rose with the
+   * and after-rain bars, `wayout` a straight line to the road (the ground between not checked), `rose` the movement rose with the
    * road's shield on its rim, `ticker` one slim strip under the header, `tabs` Now / Rain / Road / Months (T cycles).
    */
   block: TrafficBlockStyle;

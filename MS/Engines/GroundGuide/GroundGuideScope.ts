@@ -1556,7 +1556,8 @@ function footprintSvg(
   blocks.forEach((b, i) => {
     const t0 = i / n;
     const t1 = Math.min(1, (i + 1) / n + 0.002);
-    const col = b.nogo >= 0.5 ? M.frontNogo : b.nogo > 0 ? M.frontPart : b.rest === 'slow' ? TONE.slow.text : '#ffffff';
+    // A block with no known sample (`rest: null`, outside the data) is grey, as on the card, never white like GO ground.
+    const col = b.nogo >= 0.5 ? M.frontNogo : b.nogo > 0 ? M.frontPart : b.rest === 'slow' ? TONE.slow.text : b.rest === null ? TONE.chk.dot : '#ffffff';
     s += `<line x1="${(lx + (qx - lx) * t0).toFixed(1)}" y1="${(ly + (qy - ly) * t0).toFixed(1)}" x2="${(lx + (qx - lx) * t1).toFixed(1)}" y2="${(ly + (qy - ly) * t1).toFixed(1)}" stroke="${col}" stroke-width="${w}"/>`;
   });
   boxes.push([Math.min(lx, qx) - 4, Math.min(ly, qy) - 6, Math.max(lx, qx) + 4, Math.max(ly, qy) + 6]);

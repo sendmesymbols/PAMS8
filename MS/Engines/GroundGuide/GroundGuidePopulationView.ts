@@ -155,12 +155,26 @@ function rounded(n: number): number {
   return n < 1000 ? Math.round(n / 10) * 10 : n < 100000 ? Math.round(n / 100) * 100 : Math.round(n / 1000) * 1000;
 }
 
+/** A count of people, rounded; a few (under 5) read "under 10", never "0", which means nobody. */
 export function fmtPeople(n: number): string {
+  const r = rounded(n);
+  return r === 0 && n > 0 ? 'under 10' : r.toLocaleString('en-US');
+}
+
+/**
+ * People per km²: an estimate too, but small densities keep their size (3 per km² in the desert is not 0): under 1 reads
+ * "under 1", to 10 a whole number, then rounded as counts are.
+ */
+export function fmtDensity(n: number): string {
+  if (!(n > 0)) return '0';
+  if (n < 1) return 'under 1';
+  if (n < 10) return String(Math.round(n));
   return rounded(n).toLocaleString('en-US');
 }
 
 function shortPeople(n: number): string {
   const r = rounded(n);
+  if (r === 0 && n > 0) return '<10';
   if (r >= 1e6) return `${(r / 1e6).toFixed(r >= 1e7 ? 0 : 1)} M`;
   if (r >= 10000) return `${Math.round(r / 1000)}k`;
   if (r >= 1000) return `${(r / 1000).toFixed(1)}k`;
@@ -327,7 +341,7 @@ function body(r: GroundGuidePopulationReading, style: GroundGuidePopulationCardS
       return [countLine(r), nearestLine(r)];
     case 'scale': {
       const head = el('div');
-      head.append(el('span', 'ms-ggb-b', r.cls.label), ` · ${fmtPeople(r.people)} within ${km(r.radiusKm)} · ${fmtPeople(r.perKm2)} per km²`);
+      head.append(el('span', 'ms-ggb-b', r.cls.label), ` · ${fmtPeople(r.people)} within ${km(r.radiusKm)} · ${fmtDensity(r.perKm2)} per km²`);
       return [head, densityScale(r.cls), nearestLine(r)];
     }
     case 'rings': {
@@ -453,7 +467,7 @@ export function populationMinimap(r: GroundGuidePopulationReading): HTMLElement 
   const list = el('div', 'ms-ggp-list');
   list.append(el('span', undefined, `Within ${km(r.radiusKm)}`), el('b', undefined, fmtPeople(r.people)));
   const here = r.grid.perKm2[Math.floor((n * n) / 2)];
-  list.append(el('span', undefined, 'This Cell'), el('b', undefined, here >= 0 ? `${fmtPeople(here)} / km²` : 'None Mapped'));
+  list.append(el('span', undefined, 'This Cell'), el('b', undefined, here >= 0 ? `${fmtDensity(here)} / km²` : 'None Mapped'));
   list.append(el('span', undefined, 'Density'), populationChip(r.cls));
   two.append(root, list);
   return two;
@@ -468,14 +482,16 @@ export function populationProfile(r: GroundGuidePopulationReading): HTMLElement[
     const i = el('i');
     i.style.height = `${Math.max(4, Math.round(100 * logShare(b.perKm2, max)))}%`;
     i.style.background = populationClass(b.perKm2).color;
-    i.title = `${b.fromKm} to ${b.toKm} km: ${fmtPeople(b.perKm2)} per km²`;
+    i.title = `${b.fromKm} to ${b.toKm} km: ${fmtDensity(b.perKm2)} per km²`;
     bars.appendChild(i);
     labels.appendChild(el('span', undefined, `${b.fromKm}–${b.toKm}`));
   }
   const busiest = r.bands.reduce((a, b) => (b.perKm2 > a.perKm2 ? b : a), r.bands[0]);
   const head = el('div');
   head.append(el('span', 'ms-ggb-b', r.cls.label), ` · ${fmtPeople(r.people)} within ${km(r.radiusKm)}`);
-  const note = el('div', 'ms-ggb-soft', busiest.perKm2 >= 1 ? `Busiest ${busiest.fromKm} to ${busiest.toKm} km out (${fmtPeople(busiest.perKm2)} per km²) · km from here` : 'Nobody mapped within 10 km');
+  // "Nobody" only when nobody is mapped: under 1 per km² over 160 km² can still be a few hundred people.
+  const ten = r.rings.find((x) => x.km === 10)?.people ?? 0;
+  const note = el('div', 'ms-ggb-soft', busiest.perKm2 > 0 ? `Busiest ${busiest.fromKm} to ${busiest.toKm} km out (${fmtDensity(busiest.perKm2)} per km²) · km from here` : ten > 0 ? `${fmtPeople(ten)} within 10 km, thinly spread` : 'Nobody mapped within 10 km');
   return [head, bars, labels, note];
 }
 
@@ -486,7 +502,7 @@ export function populationIcons(r: GroundGuidePopulationReading): HTMLElement[] 
   for (let i = 0; i < 10; i++) row.appendChild(personIcon(i < lit ? r.cls.color : 'rgba(255,255,255,.12)'));
   const head = el('div');
   head.append(el('span', 'ms-ggb-b', `${fmtPeople(r.people)} People`), ` within ${km(r.radiusKm)} · `, populationChip(r.cls));
-  return [head, row, el('div', 'ms-ggb-soft', `${fmtPeople(r.perKm2)} per km² · each figure is a step of about 2.5 times`)];
+  return [head, row, el('div', 'ms-ggb-soft', `${fmtDensity(r.perKm2)} per km² · each figure is a step of about 2.5 times`)];
 }
 
 /** This area against the province's average and the density its typical resident lives at. */
@@ -502,7 +518,7 @@ export function populationCompare(r: GroundGuidePopulationReading): HTMLElement[
     i.style.background = populationClass(v).color;
     const w = el('span');
     w.appendChild(i);
-    g.append(el('span', undefined, name), w, el('b', undefined, fmtPeople(v)));
+    g.append(el('span', undefined, name), w, el('b', undefined, fmtDensity(v))); // people per km²
   }
   const ratio = p.perKm2 > 0 ? r.perKm2 / p.perKm2 : 0;
   const say = ratio >= 1.5 ? `${ratio.toFixed(ratio >= 10 ? 0 : 1)} times the ${p.name} average` : ratio > 0.67 ? `About the ${p.name} average` : `Quieter than the ${p.name} average`;
@@ -528,7 +544,7 @@ export function populationBlockRows(r: GroundGuidePopulationReading, maxPlaces: 
   const two = el('div', 'ms-ggp-two');
   two.append(figure(radar(r, 0), radarKey()), ringList(r, [1, 2, 3, 5, 10]));
   out.push(two);
-  const d = populationLine('Density', populationChip(r.cls), ` ${fmtPeople(r.perKm2)} per km² within ${km(r.radiusKm)}`);
+  const d = populationLine('Density', populationChip(r.cls), ` ${fmtDensity(r.perKm2)} per km² within ${km(r.radiusKm)}`);
   out.push(d);
   if (r.ages && r.people > 0) {
     const a = el('div');
@@ -563,7 +579,8 @@ export function populationSection(p: GroundGuidePopulation | null | undefined): 
 export function populationFlagPill(p: GroundGuidePopulation | null | undefined): HTMLElement | null {
   if (!p?.flag) return null;
   const f = el('span', 'ms-ggp-flag');
-  f.append(usersIcon(13), `${shortPeople(p.flag.people)} ≤ ${km(p.flag.km)}`);
+  // `+`: part of the ring has no data (across the border), so the count is a lower bound.
+  f.append(usersIcon(13), `${shortPeople(p.flag.people)}${p.flag.noDataPct ? '+' : ''} ≤ ${km(p.flag.km)}`);
   return f;
 }
 
@@ -577,7 +594,7 @@ export function populationFlagStrip(p: GroundGuidePopulation | null | undefined)
 
 /** For a screen reader: the flag, when it is up. */
 export function populationSpoken(p: GroundGuidePopulation | null | undefined): string {
-  return p?.flag ? `${fmtPeople(p.flag.people)} people within ${km(p.flag.km)}` : '';
+  return p?.flag ? `${p.flag.noDataPct ? 'At least ' : ''}${fmtPeople(p.flag.people)} people within ${km(p.flag.km)}` : '';
 }
 
 /** B · Built-Up Areas · Civil Considerations, for the Ground Brief: every figure, eight named places, sources. */
@@ -592,7 +609,7 @@ export function populationBriefText(r: GroundGuidePopulationReading): string[] {
   const out = [
     `B  BUAs · CIVIL CONSIDERATIONS (${r.source.label})`,
     `   People:     ${r.rings.filter((x) => x.km !== 2).map((x) => `${fmtPeople(x.people)} within ${km(x.km)}`).join(' · ')}`,
-    `   Density:    ${r.cls.label}, ${fmtPeople(r.perKm2)} per km² within ${km(r.radiusKm)}`,
+    `   Density:    ${r.cls.label}, ${fmtDensity(r.perKm2)} per km² within ${km(r.radiusKm)}`,
   ];
   if (r.ages && r.people > 0) {
     const t = r.people;
@@ -603,7 +620,7 @@ export function populationBriefText(r: GroundGuidePopulationReading): string[] {
   out.push(
     `   Places:     ${r.places.length ? r.places.slice(0, 5).map((p) => `${p.name} (${placeKind(p)}${p.people ? `, ${fmtPeople(p.people)}` : ''}) ${fmtDistance(p.distanceM)} ${p.compass}`).join('; ') : 'None named within 10 km'}`,
   );
-  if (r.province) out.push(`   Province:   ${r.province.name} average ${fmtPeople(r.province.perKm2)} per km²; typical resident ${fmtPeople(r.province.typicalPerKm2)} per km² (2020)`);
+  if (r.province) out.push(`   Province:   ${r.province.name} average ${fmtDensity(r.province.perKm2)} per km²; typical resident ${fmtDensity(r.province.typicalPerKm2)} per km² (2020)`);
   out.push(`   Source:     ${populationSourceLine(r)}`);
   return out;
 }

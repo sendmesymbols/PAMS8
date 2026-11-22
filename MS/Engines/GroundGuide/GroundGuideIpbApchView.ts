@@ -30,6 +30,10 @@ const SVGNS = 'http://www.w3.org/2000/svg';
 const STYLE_ID = 'ms-ground-guide-ipb-apch-style';
 const CSS = `
 .ms-gia-pic{display:block;border-radius:8px;background:#11161b}
+/* The pictures are drawn at 380-420 px; a Detail column can be 260-300 px and the band 260 px high: they scale down to
+   fit both (viewBox keeps the shape; the Detail sets max-height), instead of being cut off by the tile. */
+.ms-ggd .ms-gia-pic,.ms-ggd .ms-gia-fit{max-width:100%;height:auto}
+.ms-ggd .ms-gia-fit{display:block}
 .ms-gia-cards{display:grid;gap:7px}
 .ms-gia-card{padding:8px 10px 9px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}
 .ms-gia-card.ms-main{background:rgba(255,90,96,.08);border-color:rgba(255,90,96,.5)}
@@ -110,6 +114,26 @@ const loneOf = (v: IpbApchView): IpbApchAa[] => v.aas.filter((a) => !a.viable);
 const sideWord = (v: IpbApchView): string => (v.side === 'enemy' ? 'En' : 'Own');
 const colourOf = (v: IpbApchView, a: IpbApchAa): string => (!a.viable ? LONE : (v.side === 'enemy' ? SHADES_EN : SHADES_OWN)[Math.max(0, a.rank - 1) % 6]);
 const narrowsWord = (n: IpbApchAa['narrows'][number]): string => (n.kind === 'crossing' ? `Br / ford ${fmtDistance(n.widthM)}` : n.kind === 'slow' ? `SLOW-GO ${fmtDistance(n.widthM)}` : `Gap ${fmtDistance(n.widthM)}`);
+/**
+ * How many corridors of the avenue's width it holds side by side, as the card's own line says it: an approach onto the
+ * Obj is kept even when narrower than one (the engine forces it viable), so `viable` alone does not mean two.
+ */
+/** The lead a DP falls before its TAI, as the engine placed it: "2 h (book p 30)", or "5 h (2 h book p 30 + 3 h own reaction)". */
+function dpLead(dv: { leadH?: number; reactionH?: number }): string {
+  const L = dv.leadH ?? 2, r = dv.reactionH ?? 0;
+  return r > 0 ? `${L + r} h (${L} h, book p 30, + ${r} h own reaction)` : `${L} h (book p 30)`;
+}
+
+function corridorsIn(a: IpbApchAa): number {
+  if (!a.viable) return a.onePct >= 60 ? 1 : 0;
+  if (a.onto && a.twoPct < 60) return a.onePct >= 60 ? 1 : 0;
+  return a.open ? 3 : 2;
+}
+const corridorsWord = (a: IpbApchAa): string => {
+  const n = corridorsIn(a);
+  return n >= 3 ? '3+ corridors' : n === 2 ? '2 corridors' : n === 1 ? '1 corridor' : 'under 1 corridor';
+};
+
 /** What an avenue is, in a line. */
 function aaLine(v: IpbApchView, a: IpbApchAa): string {
   if (a.onto) {
@@ -154,7 +178,7 @@ export function apchAnswer(o: GroundGuideOcoka): LetterAnswer {
   }
   const best = vi[0];
   const parts = [{ text: `${vi.length} Apch${vi.length > 1 ? 's' : ''}`, tone: 'warn' as const }, { text: `${best.id} best going`, small: true }];
-  const sub = vi.map((a) => `${a.id}: ${a.open ? '3+' : '2'} corridors, ${pc(a.goPct)} GO${a.narrows.length ? `, narrows ${fmtDistance(a.narrows[0].widthM)}` : ''}`).join('. ') + (loneOf(v).length ? `. ${loneOf(v).map((a) => `${a.id}1`).join(', ')} lone.` : '.');
+  const sub = vi.map((a) => `${a.id}: ${corridorsWord(a)}, ${pc(a.goPct)} GO${a.narrows.length ? `, narrows ${fmtDistance(a.narrows[0].widthM)}` : ''}`).join('. ') + (loneOf(v).length ? `. ${loneOf(v).map((a) => `${a.id}1`).join(', ')} lone.` : '.');
   return { label, parts, sub, tone: 'warn', tab: `${vi.length} Apch${vi.length > 1 ? 's' : ''}` };
 }
 
@@ -169,7 +193,7 @@ export function apchFacts(o: GroundGuideOcoka): Fact[] {
   const cross = all.filter((x) => x.n.kind === 'crossing').length;
   if (v.aas.length) out.push({ k: 'Crossings', v: String(cross), sub: cross ? 'bridges / fords on the Apchs' : 'none on the Apchs' });
   const vi = viableOf(v);
-  if (vi.length) out.push({ k: 'Corridors', v: `${vi.reduce((t, a) => t + (a.open ? 3 : 2), 0)}${vi.some((a) => a.open) ? '+' : ''}`, sub: `${v.mcFor}, ${fmtDistance(v.mcWidthM)} each` });
+  if (vi.length) out.push({ k: 'Corridors', v: `${vi.reduce((t, a) => t + corridorsIn(a), 0)}${vi.some((a) => corridorsIn(a) >= 3) ? '+' : ''}`, sub: `${v.mcFor}, ${fmtDistance(v.mcWidthM)} each` });
   out.push({ k: 'Area Read', v: `${v.frameKm[0]} x ${v.frameKm[1]} km`, sub: `${v.hqLabel}${v.forEch ? ` for your ${v.forEch}` : ''} · facing ${v.side === 'enemy' ? 'the threat' : 'toward it'}` });
   const lines = Math.max(0, ...v.aas.map((a) => a.waterLines));
   if (lines) out.push({ k: 'Water Lines', v: String(lines), sub: 'crossed; width not recorded' });
@@ -254,7 +278,7 @@ function widthChart(v: IpbApchView, wpx = 380): SVGSVGElement {
   const top = Math.min(Math.max(3 * v.mcWidthM, ...aas.map((a) => Math.min(a.medianWidthM * 1.3, 4 * v.mcWidthM))), 5 * v.mcWidthM);
   const X = (m: number): number => l + (m / maxAlong) * (wpx - l - r);
   const Y = (w: number): number => t + (1 - Math.min(w, top) / top) * (H - t - b);
-  const svg = svgEl('svg', { width: wpx, height: H, viewBox: `0 0 ${wpx} ${H}` }) as SVGSVGElement;
+  const svg = svgEl('svg', { width: wpx, height: H, viewBox: `0 0 ${wpx} ${H}`, class: 'ms-gia-fit' }) as SVGSVGElement;
   svgEl('rect', { x: l, y: t, width: wpx - l - r, height: H - t - b, fill: '#171b20', rx: 4 }, svg);
   svgEl('rect', { x: l, y: Y(v.mcWidthM), width: wpx - l - r, height: Y(0) - Y(v.mcWidthM), fill: 'rgba(229,72,77,.08)' }, svg);
   for (const w of [0, v.mcWidthM, 2 * v.mcWidthM, top]) {
@@ -345,7 +369,11 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
     if (pf) out.push(pf);
     else if (v.proforma === null) out.push(tile('Proforma · Relative Merits of Apchs', note('Being worked out.')));
     out.push(createTile(v));
-  } else out.push(tile('Apchs (IPB)', note(v.notes.join(' ') || 'No corridor through the area.')));
+  } else {
+    out.push(tile('Apchs (IPB)', note(v.notes.join(' ') || 'No corridor through the area.')));
+    // No way through still has its NO-GO / SLOW-GO areas to put on the map (where they matter most).
+    out.push(createTile(v, true));
+  }
   const wxm = wxTile(v, 'mnvr');
   if (wxm) out.push(wxm);
   const rows: Array<[string, string]> = [
@@ -368,7 +396,7 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
  * Create on Map (IPB_Plan.md §6.8): the coding, the corridors and the avenues as ordinary symbols. Each button sends a
  * `ms-gg-ipb-create` event up through the card; the Ground Guide that owns the card makes the symbols.
  */
-function createTile(v: IpbApchView): HTMLElement {
+function createTile(v: IpbApchView, cooOnly = false): HTMLElement {
   const acts = el('div', 'ms-gia-acts');
   const btn = (kind: 'coo' | 'corridors' | 'apchs' | 'all', text: string, title: string): void => {
     const b = el('button', kind === 'all' ? 'ms-gia-btn ms-all' : 'ms-gia-btn', text) as HTMLButtonElement;
@@ -382,6 +410,7 @@ function createTile(v: IpbApchView): HTMLElement {
   };
   const side = v.side === 'enemy' ? 'En' : 'Own';
   btn('coo', 'COO', 'NO-GO and SLOW-GO areas of the area read (No Go Area, Slow Go Area)');
+  if (cooOnly) return tile('Create on Map', acts, note('No avenue to write: the NO-GO and SLOW-GO areas only. Ordinary symbols; Ctrl+Z undoes them in one step.'));
   btn('corridors', 'Mob Corridors', `The ${v.mcFor} corridors (Mob Corridors, ${v.mcFor} echelon)`);
   btn('apchs', `${side} Apchs`, `The avenues as attack arrows (Main Attk for the best going, Sp Attk for the others)`);
   btn('all', 'All three', 'COO, corridors and avenues together');
@@ -402,13 +431,17 @@ export function fireFacts(o: GroundGuideOcoka): Fact[] {
   if (!f.posns.length) return [{ k: 'Apchs Under Fire', v: 'No Posns', sub: `no ${posnWord(v)} Posns in the area read` }];
   const vi = f.lines.filter((l) => v.aas.find((a) => a.id === l.id)?.viable);
   if (!vi.length) return [];
-  const worst = [...vi].sort((p, q) => p.coveredPct - q.coveredPct)[0];
+  // Whose fire: in the en's options (side enemy) your Posns cover his avenues, so more under fire is better for you; in
+  // yours (side own) his Posns cover your avenues, so more under fire is worse. The worst avenue and the tone follow.
+  const own = v.side === 'own';
+  const worst = [...vi].sort((p, q) => (own ? q.coveredPct - p.coveredPct : p.coveredPct - q.coveredPct))[0];
+  const free = own ? 100 - worst.coveredPct : worst.coveredPct; // the share that is good for you
   // Every avenue wholly out of range: say how near the nearest Posn comes and how far it reaches.
   const allOut = vi.every((l) => l.outPct >= 99.5);
   const near = allOut ? [...vi].filter((l) => l.nearestM != null).sort((p, q) => p.nearestM! - q.nearestM!)[0] : null;
   const np = near && near.nearestPosn != null ? f.posns[near.nearestPosn] : null;
   const sub = near && np ? `out of reach: ${np.label} ${fmtDistance(np.effM)}, nearest Apch ${near.id} ${fmtDistance(near.nearestM!)} away` : `from ${f.posns.length} ${posnWord(v)} Posn${f.posns.length > 1 ? 's' : ''}`;
-  return [{ k: 'Apchs Under Fire', v: vi.map((l) => `${l.id} ${Math.round(l.coveredPct)}%`).join(' · '), tone: worst.coveredPct < 30 ? 'nogo' : worst.coveredPct < 60 ? 'slow' : 'go', sub }];
+  return [{ k: 'Apchs Under Fire', v: vi.map((l) => `${l.id} ${Math.round(l.coveredPct)}%`).join(' · '), tone: free < 30 ? 'nogo' : free < 60 ? 'slow' : 'go', sub }];
 }
 
 /**
@@ -429,7 +462,7 @@ function fireRibbons(v: IpbApchView, wpx = 360): SVGSVGElement {
   const maxAlong = Math.max(1, ...lines.map((x) => x.endM));
   const X = (m: number): number => l + (m / maxAlong) * (wpx - l - r);
   const H = lines.length * row + 30;
-  const svg = svgEl('svg', { width: wpx, height: H, viewBox: `0 0 ${wpx} ${H}` }) as SVGSVGElement;
+  const svg = svgEl('svg', { width: wpx, height: H, viewBox: `0 0 ${wpx} ${H}`, class: 'ms-gia-fit' }) as SVGSVGElement;
   lines.forEach((L, i) => {
     const y = 8 + i * row;
     const aa = v.aas.find((a) => a.id === L.id);
@@ -605,7 +638,7 @@ function proformaTile(v: IpbApchView): HTMLElement | null {
   tot.append(el('td', 'ms-f', 'Total'));
   p.totals.forEach((ts) => ts.forEach((x) => tot.append(el('td', undefined, x > 0 ? `+${x}` : String(x)))));
   t.append(tot);
-  const lead = p.groups.map((g, i) => (p.lead[i] ? `${g.head}: ${p.lead[i]!.id} (+${p.lead[i]!.total})` : null)).filter(Boolean).join(' · ');
+  const lead = p.groups.map((g, i) => (p.lead[i] ? `${g.head}: ${p.lead[i]!.id} (${p.lead[i]!.total > 0 ? '+' : ''}${p.lead[i]!.total})` : null)).filter(Boolean).join(' · ');
   const box = el('div');
   box.append(t);
   // The key goes on the caption's hover: the table must fit the band with its totals.
@@ -707,11 +740,12 @@ function timeLadder(v: IpbApchView, dv: IpbDecisionView, wpx = 420): SVGSVGEleme
   const H = 250, l = 46, r = 14, t = 14, b = 34;
   const tMin = Math.min(0, ...dv.dps.map((d) => d.earliestH));
   const tMax = Math.max(0.5, ...dv.profiles.map((p) => p.endH[1]));
-  const aMin = Math.min(...dv.profiles.map((p) => p.pts[0]?.[0] ?? 0), ...dv.dps.map((d) => d.alongM));
-  const aMax = Math.max(...dv.profiles.map((p) => p.pts[p.pts.length - 1]?.[0] ?? 1));
+  // No avenue (no way through for the mover): an empty frame rather than NaN from spreading empty lists.
+  const aMin = dv.profiles.length || dv.dps.length ? Math.min(...dv.profiles.map((p) => p.pts[0]?.[0] ?? 0), ...dv.dps.map((d) => d.alongM)) : 0;
+  const aMax = dv.profiles.length ? Math.max(...dv.profiles.map((p) => p.pts[p.pts.length - 1]?.[0] ?? 1)) : aMin + 1000;
   const X = (h: number): number => l + ((h - tMin) / Math.max(0.1, tMax - tMin)) * (wpx - l - r);
   const Y = (m: number): number => t + ((m - aMin) / Math.max(1, aMax - aMin)) * (H - t - b);
-  const svg = svgEl('svg', { width: wpx, height: H, viewBox: `0 0 ${wpx} ${H}` }) as SVGSVGElement;
+  const svg = svgEl('svg', { width: wpx, height: H, viewBox: `0 0 ${wpx} ${H}`, class: 'ms-gia-fit' }) as SVGSVGElement;
   svgEl('rect', { x: l, y: t, width: wpx - l - r, height: H - t - b, fill: '#171b20', rx: 4 }, svg);
   // Night columns when H hour is set (sun 6° or more below the horizon at the area's middle, today).
   if (dv.hHour && v.frame.length) {
@@ -727,7 +761,7 @@ function timeLadder(v: IpbApchView, dv: IpbDecisionView, wpx = 420): SVGSVGEleme
     }
   }
   // The area read: where the avenues lie (below their starts).
-  const a0 = Math.min(...v.aas.map((a) => a.startM)), a1 = Math.max(...v.aas.map((a) => a.endM));
+  const a0 = v.aas.length ? Math.min(...v.aas.map((a) => a.startM)) : aMin, a1 = v.aas.length ? Math.max(...v.aas.map((a) => a.endM)) : aMax;
   svgEl('rect', { x: l, y: Y(a0).toFixed(1), width: wpx - l - r, height: Math.max(1, Y(a1) - Y(a0)).toFixed(1), fill: 'rgba(142,193,234,.05)' }, svg);
   svgEl('text', { x: wpx - r - 4, y: (Y(a0) + 12).toFixed(1), 'font-size': 10.5, fill: '#9fc3e0', 'text-anchor': 'end', 'font-family': FONT }, svg, 'area read');
   for (let h = Math.ceil(tMin); h <= tMax; h++) {
@@ -793,7 +827,7 @@ function decisionPicture(o: GroundGuideOcoka, v: IpbApchView, dv: IpbDecisionVie
     const x = X(dp.at), y = Y(dp.at);
     const col = dp.kind === 'catk' ? '#8ec1ea' : '#ffd27a';
     svgEl('path', { d: `M${x.toFixed(1)} ${(y - 8).toFixed(1)}l2.4 5.4h5.9l-4.7 3.6 1.8 5.8-5.4-3.4-5.4 3.4 1.8-5.8-4.7-3.6h5.9z`, fill: '#14181d', stroke: col, 'stroke-width': 1.5 }, svg);
-    svgEl('text', { x: (x + 9).toFixed(1), y: (y + 4).toFixed(1), 'font-size': 10.5, 'font-weight': 700, fill: col, stroke: '#0b0d10', 'stroke-width': 2.4, 'paint-order': 'stroke', 'font-family': FONT }, svg, `${dp.id}${dp.inArea ? '' : dp.beforeH ? ' before H' : ` ${Math.round(dp.beyondM / 1000)} km out`}`);
+    svgEl('text', { x: (x + 9).toFixed(1), y: (y + 4).toFixed(1), 'font-size': 10.5, 'font-weight': 700, fill: col, stroke: '#0b0d10', 'stroke-width': 2.4, 'paint-order': 'stroke', 'font-family': FONT }, svg, `${dp.id}${dp.inArea ? '' : dp.beforeH ? ' before H' : ` ${fmtDistance(dp.beyondM)} out`}`);
   }
   const sx = X(o.at), sy = Y(o.at);
   svgEl('rect', { x: (sx - 5).toFixed(1), y: (sy - 4).toFixed(1), width: 10, height: 8, rx: 1.5, fill: '#1d3f66', stroke: '#8ec1ea', 'stroke-width': 1.5 }, svg);
@@ -827,7 +861,7 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
     out.push(tile('Decision Support · In the Area', decisionPicture(o, v, dv), note('A star beyond the area is placed on the way in from the Threat marker (or at the edge) with its distance.')));
     const dec = table(['DP', 'When · where', 'Decision (yours)'], dv.dps.map((d) => [d.id, `${clock(dv, d.earliestH)} · ${whereDp(d)}`, d.decision]));
     if (!dv.dps.length) dec.append(el('tr'));
-    const dt = tile('Decisions', dv.dps.length ? dec : note(dv.notes[0] ?? 'No decision point.'), note(`A DP is where and when a decision falls due: ${2 + (dv.dps[0] ? 0 : 0)} h before a TAI (book p 30)${dv.catk ? `, and the counter-attack ${dv.catk.min} min before the depth localities (OoW Vol I p 54)` : ''}. The decision is the commander's.`));
+    const dt = tile('Decisions', dv.dps.length ? dec : note(dv.notes[0] ?? 'No decision point.'), note(`A DP is where and when a decision falls due: ${dpLead(dv)} before a TAI${dv.catk ? `, and the counter-attack ${dv.catk.min} min before the depth localities (OoW Vol I p 54)` : ''}. The decision is the commander's.`));
     dt.classList.add('ms-ggd-brk');
     out.push(dt);
     const em = tile('Event Matrix', table(['NAI', 'Apch · what shows', 'Earliest', 'Latest'], dv.nais.map((n) => [`${n.n}${n.tai ? ` · ${n.tai}` : ''}`, `${n.aa}: ${n.shows}${n.widthM ? ` (${Math.round(n.widthM)} m)` : ''}`, hPlus(n.earliestH), hPlus(n.latestH)])), note('NAIs sit where the enemy will show himself (book pp 23-28).'));
@@ -838,7 +872,7 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
   const rows: Array<[string, string]> = [
     ['Rates', `${dv.rates.mover === 'dismounted' ? 'Foot' : 'Vehicles'}: GO ${dv.rates.go[0]} / ${dv.rates.go[1]}, SLOW-GO ${dv.rates.slow[0]} / ${dv.rates.slow[1]}, NO-GO ${dv.rates.nogo[0]} / ${dv.rates.nogo[1]} km/h, day / night (book p 18)`],
     ['From', dv.fromThreat ? 'The Threat marker\'s place: the way in at GO' : "The area's edge (the threat is only a direction): drag the Threat marker to the en's assembly area for times from his start"],
-    ['DP lead', `2 h (book p 30)${o.ipbApch ? '' : ''}`],
+    ['DP lead', dpLead(dv)],
   ];
   for (const n of dv.notes) rows.push(['Note', n]);
   for (const [a, b] of rows) rt.append(el('div', undefined, a), el('div', undefined, b));

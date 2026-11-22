@@ -13,7 +13,7 @@
 
 import { registerBriefSection } from './GroundGuideBrief';
 import { fmtDistance } from './GroundGuideEvaluator';
-import { band, ensureGoingCss, roseFigure, seasonIcon, turnRose } from './GroundGuideGoingView';
+import { band, ensureGoingCss, NO_DATA_COLOR, roseFigure, seasonIcon, turnRose } from './GroundGuideGoingView';
 import { compassNode, joinNodes } from './GroundGuideNorth';
 import { fmtKmh, fmtMinutes, speedText, type GroundGuideSpeed, type SpeedDirection } from './GroundGuideSpeed';
 import {
@@ -201,12 +201,14 @@ function styleGrid(s: GroundGuideSpeed): HTMLElement {
 }
 
 /**
- * A way's colour on the going steps (item 12: colours only from the ladder). A ray carries its speed, not its going:
- * blocked is NO-GO, at least half the mover's best speed reads as GO, slower as SLOW-GO (slow ground or a slope).
+ * A way's colour on the going steps (item 12: colours only from the ladder): the going met on the way (`step`, as the
+ * movement rays judge it), never the speed against the fastest way, which made a rose that is SLOW-GO all round read
+ * green. A way with no terrain data is grey. (A reading from before `step` existed falls back to blocked = NO-GO.)
  */
-function rayColor(x: SpeedDirection, top: number): string {
-  if (x.minutes === null || x.kmh <= 0) return STEP_COLOR.nogo;
-  return top > 0 && x.kmh >= top * 0.5 ? STEP_COLOR.go : STEP_COLOR.slow;
+function rayColor(x: SpeedDirection): string {
+  if (x.noData && x.reachM <= 0) return NO_DATA_COLOR;
+  if (x.step) return STEP_COLOR[x.step];
+  return x.minutes === null && !x.noData ? STEP_COLOR.nogo : STEP_COLOR.go;
 }
 
 /**
@@ -225,10 +227,12 @@ export function speedRoseSvg(rays: SpeedDirection[], rangeM: number, size: numbe
     // Open: length by speed. Blocked: a red wedge as long as the way goes before it is stopped.
     const k = x.minutes === null ? Math.max(0.1, x.reachM / Math.max(1, rangeM)) : x.kmh / top;
     const r = Math.max(r0 + 3, r0 + (R - r0) * Math.min(1, k));
-    const w = f.add('path', { d: wedgePath(r0, r, x.bearingDeg - 20.5, x.bearingDeg + 20.5), fill: rayColor(x, top), stroke: SURFACE.ring, 'stroke-width': 0.8 });
+    const w = f.add('path', { d: wedgePath(r0, r, x.bearingDeg - 20.5, x.bearingDeg + 20.5), fill: rayColor(x), stroke: SURFACE.ring, 'stroke-width': 0.8 });
+    if (x.noData && r < R) f.add('path', { d: wedgePath(r, R, x.bearingDeg - 20.5, x.bearingDeg + 20.5), fill: 'none', stroke: NO_DATA_COLOR, 'stroke-width': 1, 'stroke-dasharray': '2 2' });
     const tip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    tip.textContent =
-      x.minutes === null
+    tip.textContent = x.noData
+      ? `${x.compass}: no terrain data${x.reachM > 0 ? ` beyond ${fmtDistance(x.reachM)}` : ''}`
+      : x.minutes === null
         ? `${x.compass}: blocked${x.blockedBy ? ` by ${x.blockedBy.toLowerCase()}` : ''} at ${fmtDistance(x.reachM)}`
         : `${x.compass}: ${fmtMinutes(x.minutes)} at ${x.kmh} km/h`;
     w.append(tip);
@@ -258,13 +262,19 @@ export function speedRoseLines(s: GroundGuideSpeed): HTMLElement {
     const line = el('div', 'ms-ggb-soft', `fastest to ${to}; slowest `);
     line.append(compassNode(slow.compass, slow.bearingDeg), ` ${fmtMinutes(slow.minutes!)}`);
     box.append(line);
-  } else box.append(el('div', 'ms-ggs-big', 'Blocked'));
-  const shut = rays.filter((r) => r.minutes === null);
+  } else box.append(el('div', 'ms-ggs-big', rays.some((r) => r.minutes === null && !r.noData) ? 'Blocked' : 'Not known'));
+  const shut = rays.filter((r) => r.minutes === null && !r.noData);
   if (shut.length) {
     const first = [...shut].sort((p, q) => p.reachM - q.reachM)[0];
     const line = el('div', 'ms-ggb-soft', 'Blocked ');
     line.append(joinNodes(shut.map((r) => compassNode(r.compass, r.bearingDeg)), ', '));
     if (first.blockedBy) line.append(` (${first.blockedBy.toLowerCase()} at ${fmtDistance(first.reachM)})`);
+    box.append(line);
+  }
+  const nd = rays.filter((r) => r.noData);
+  if (nd.length) {
+    const line = el('div', 'ms-ggb-soft', 'No terrain data ');
+    line.append(joinNodes(nd.map((r) => compassNode(r.compass, r.bearingDeg)), ', '));
     box.append(line);
   }
   box.append(el('div', 'ms-ggb-soft', `${when(s)}${s.road ? ` · ${s.road.shield} ${fmtDistance(s.road.distanceM)} ${s.road.compass}` : ''}`));

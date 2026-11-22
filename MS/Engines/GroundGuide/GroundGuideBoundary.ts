@@ -47,18 +47,25 @@ export class GroundGuideBoundary {
   private _map: any = null;
   private _loadedUrl: string | null = null;
   private _loading: Promise<boolean> | null = null;
+  /** The URL being loaded, and a generation `reset()` moves on, so a load from before a bundle change is dropped. */
+  private _loadingUrl: string | null = null;
+  private _gen = 0;
 
   constructor(private readonly _getView: () => any) {}
 
   /** Fetch + build the graphics once per URL. Resolves false when the file cannot be read. */
   async load(url: string): Promise<boolean> {
     if (this._loadedUrl === url) return true;
-    if (this._loading) return this._loading;
-    this._loading = (async () => {
+    if (this._loading && this._loadingUrl === url) return this._loading;
+    const gen = this._gen;
+    this._loadingUrl = url;
+    let p: Promise<boolean> | null = null;
+    p = (async () => {
       try {
         const resp = await fetch(url, { cache: 'no-cache' });
-        if (!resp.ok) return false;
+        if (!resp.ok || gen !== this._gen) return false;
         const fc = await resp.json();
+        if (gen !== this._gen) return false; // the bundle changed while it loaded: not this bundle's boundary
         const graphics: Graphic[] = [];
         for (const f of fc.features ?? []) {
           const st = STYLES[f.properties?.kind];
@@ -86,10 +93,11 @@ export class GroundGuideBoundary {
       } catch {
         return false;
       } finally {
-        this._loading = null;
+        if (this._loading === p) ((this._loading = null), (this._loadingUrl = null));
       }
     })();
-    return this._loading;
+    this._loading = p;
+    return p;
   }
 
   /** Put the layer on the current view's map (call after load()). */
@@ -115,6 +123,9 @@ export class GroundGuideBoundary {
 
   /** Forget the loaded file (the bundle changed) and remove the layer. */
   reset(): void {
+    this._gen++;
+    this._loading = null;
+    this._loadingUrl = null;
     this._detach();
     this._layer?.destroy();
     this._layer = null;

@@ -232,7 +232,9 @@ export class GroundGuideRoads {
         const clazz = t.clazz[i], load = t.load[i], f = t.flags[i];
         const name = names[t.name[i]] ?? '';
         const rno = names[t.rno[i]] ?? '';
-        const id = `${rno}|${name}|${clazz}|${load}`;
+        // The flags the picks read (MSR, fair-weather, tankable) are part of the key: merged on name and class alone, an
+        // MSR or all-weather stretch a little further was dropped for the nearer plain one before the pick looked for it.
+        const id = `${rno}|${name}|${clazz}|${load}|${f}`;
         const prev = best.get(id);
         if (prev && prev.distanceM <= distanceM) continue;
         const bearingDeg = ((Math.atan2(bx - at[0], by - at[1]) * 180) / Math.PI + 360) % 360;

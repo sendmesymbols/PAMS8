@@ -171,7 +171,7 @@ function airPicture(o: GroundGuideOcoka, v: IpbApchView, av: IpbAirView, wpx = 3
 function flightProfile(av: IpbAirView, r: IpbAirView['routes'][number], wpx = 420): SVGSVGElement {
   const H = 190, l = 44, rt = 10, t = 12, b = 28;
   const P = r.profile.filter((p) => p.groundM === p.groundM);
-  const svg = svgEl('svg', { width: wpx, height: H, viewBox: `0 0 ${wpx} ${H}` }) as SVGSVGElement;
+  const svg = svgEl('svg', { width: wpx, height: H, viewBox: `0 0 ${wpx} ${H}`, class: 'ms-gia-fit' }) as SVGSVGElement;
   if (P.length < 2) {
     svgEl('text', { x: wpx / 2, y: H / 2, 'text-anchor': 'middle', 'font-size': 12, fill: '#c3cbd3', 'font-family': FONT }, svg, 'No elevation along the way');
     return svg;
@@ -344,7 +344,7 @@ export function airText(o: GroundGuideOcoka): string[] {
   if (!av) return [];
   const L = [`Air (book pp 5-6): ${av.side === 'enemy' ? 'enemy air avenues into own depth' : 'own air avenues to the objective'}, ${av.bandLabel} ${av.bandM[0]}-${av.bandM[1]} m above obstacles (FM 3-04.203, T).`];
   for (const r of av.routes) L.push(`  Air ${r.id} to ${r.to}: ${r.why}.`);
-  for (const z of [...av.lzs, ...av.dzs]) L.push(`  ${z.id}: ${z.why}${z.caution.length ? `; ${z.caution.join('; ')}` : ''}${z.op ? `; OP ${km(z.op.distM)} off, ${z.op.riseM} m higher` : ''}.`);
+  for (const z of [...av.lzs, ...av.dzs]) L.push(`  ${z.id}: ${z.why}${z.caution.length ? `; ${z.caution.join('; ')}` : ''}${z.op ? `; OP ${km(z.op.distM)} off, ${z.op.riseM >= 0 ? `${z.op.riseM} m higher` : `${-z.op.riseM} m lower`}` : ''}.`);
   for (const a of av.ad) L.push(`  ${a.id}: ${a.why}.`);
   for (const n of av.notes) L.push(`  ${n}`);
   L.push('  Flight heights, LZ sizes and AD reach are public US figures: confirm with Army Aviation and AD.');

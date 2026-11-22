@@ -26,8 +26,8 @@
   "roads": {
     "motorway": { "label": "Motorway", "match": "motorway", "ref": "^M-?[0-9]" },
     "highway": { "label": "Highway / Main Road", "match": "trunk|primary|highway|national", "ref": "^N-?[0-9]" },
-    "main": { "label": "Secondary Road", "match": "secondary|metalled" },
-    "track": { "label": "Track / Unmetalled", "match": "track|cart|unmetal|shingl|earth|kacha|katcha" },
+    "main": { "label": "Secondary Road", "match": "secondary|(?<!un-?)metalled" },
+    "track": { "label": "Track / Unmetalled", "match": "track|cart|un-?metal|shingl|earth|kacha|katcha" },
     "path": { "label": "Path", "match": "path|foot|bridle" },
     "minor": { "label": "Minor Road", "match": "tertiary|residential|road|unclassified|service|street" }
   },

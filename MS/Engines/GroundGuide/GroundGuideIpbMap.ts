@@ -104,7 +104,7 @@ export class GroundGuideIpbMap {
     layer.width = cw;
     layer.height = ch;
     const lctx = layer.getContext('2d') as CanvasRenderingContext2D;
-    const NA_FLAGS = WHY.NA_WATER | WHY.NA_VEG;
+    const NA_FLAGS = WHY.NA_WATER | WHY.NA_VEG | WHY.NA_SLOPE;
     const passes: Array<[keyof typeof st, (i: number) => boolean]> = [
       ['nogo', (i) => c.code[i] === IPB.NOGO],
       ['slow', (i) => c.code[i] === IPB.SLOW],

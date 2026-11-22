@@ -269,6 +269,43 @@ interface ReadContext {
   waiting: boolean;
 }
 
+/**
+ * The distance along a line (`alongM` at each vertex) of the point on it nearest (x, y). An avenue's narrows and
+ * crossovers carry their distance in rows of the area read (along its axis), but a winding line is 1.0 to 1.1 times
+ * longer than its rows: placing them by that figure along the line put a crossing site up to 1.5 km off. Their own
+ * position, projected onto the line, is used instead.
+ */
+function alongOnLine(pts: ReadonlyArray<readonly [number, number]>, alongM: ReadonlyArray<number>, x: number, y: number): number {
+  let best = alongM[0] ?? 0, bd = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const L2 = dx * dx + dy * dy;
+    const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L2)) : 0;
+    const d = Math.hypot(a[0] + dx * t - x, a[1] + dy * t - y);
+    if (d < bd) ((bd = d), (best = alongM[i - 1] + (alongM[i] - alongM[i - 1]) * t));
+  }
+  return best;
+}
+
+/**
+ * A snap lattice step for `groundM` ground metres near Mercator y `my`, in Mercator metres. The cos-latitude factor is
+ * taken at a fixed 50 km band, not at the point itself: with the point's own factor the lattice stretched as the cursor
+ * moved north or south, so a 10 m move shifted the anchor about 8 m and the area was read again after every rest.
+ */
+function snapStep(groundM: number, my: number): number {
+  const band = 50000;
+  return groundM * Math.cosh((Math.round(my / band) * band) / 6378137);
+}
+
+/**
+ * Guides on the page with their keys on, and the one whose map the pointer last entered. The key handler sits on
+ * `window` (keys work before a draw, with the pointer anywhere); with two map views on a page, each with a guide, only
+ * the owner acts on a key, so F, V or D do not toggle both.
+ */
+const KEY_GUIDES = new Set<object>();
+let keyOwner: object | null = null;
+
 /** Orders verdicts for worst-of-N facings: higher is worse. Ties go to the larger share in no-go, then the smaller gap to it. */
 function severity(v: GroundGuideVerdict): number {
   const rank =
@@ -391,6 +428,10 @@ export default class GroundGuide {
   private _lastExt: GroundGuideOcoka | null = null;
   private _visibility: OcokaVisibility | null = null;
   private _rangeLookup: (key: string) => { rng: unknown; name?: string | null } | null | undefined = DEFAULT_RANGE_LOOKUP;
+  /** Bumped by setRangeLookup(): part of the Extended View's reading key, so new ranges are read, not recalled. */
+  private _rangeTick = 0;
+  /** This view's container and the listener that makes this guide the keys' owner (see KEY_GUIDES). */
+  private _ownerBox: { el: HTMLElement; fn: () => void } | null = null;
   private _threatHandle: { remove(): void } | null = null;
   /** The Extended View on the map: the layer, what the last live reading ran on, and the products worked out for it. */
   private _extMap = new GroundGuideOcokaMap(() => this._getView?.());
@@ -550,7 +591,9 @@ export default class GroundGuide {
       this._detail.setInset(ins.side, ins.px);
       this._badge.reflow();
       this._scopeUiPad();
-      if (this._aorSheet.isOpen && this._aorLast?.reading) this._aorSheet.update(this._aorLast.reading, this._aorLast, this._scope.rect, this._opts.scope.side);
+      // The rail gone (guide off, rail off): the sheet goes with it, never re-opened against a rail that is not there.
+      if (this._aorSheet.isOpen && !this._scope.rect) this._aorSheet.close();
+      else if (this._aorSheet.isOpen && this._aorLast?.reading) this._aorSheet.update(this._aorLast.reading, this._aorLast, this._scope.rect, this._opts.scope.side);
     },
     aor: (act) => this._aorAction(act),
   });
@@ -688,6 +731,7 @@ export default class GroundGuide {
     this._source = null;
     this._removeOverlay();
     this._boundary.reset(); // a different bundle may carry a different (or no) boundary file
+    this._placeData = null; // admin areas, borders, sheets and named routes are read from the bundle's own files
 
     if (!base) {
       this._emitState('no-bundle');
@@ -1161,7 +1205,19 @@ export default class GroundGuide {
       this._refreshLive();
     }
     if (JSON.stringify(next.scope) !== JSON.stringify(prev.scope)) this._syncScope();
-    else if (next.units !== prev.units || next.nearThresholdM !== prev.nearThresholdM) this._scopeSoon(0, true);
+    else if (
+      next.units !== prev.units ||
+      next.nearThresholdM !== prev.nearThresholdM ||
+      // What the rail shows for a selected or placed symbol (or the map centre) also follows these; the rail's frame key
+      // holds none of them, so without this it kept the old frontage, season or mode until the selection changed.
+      JSON.stringify(next.going) !== JSON.stringify(prev.going) ||
+      JSON.stringify(next.footprint) !== JSON.stringify(prev.footprint) ||
+      JSON.stringify(next.speed) !== JSON.stringify(prev.speed) ||
+      JSON.stringify(next.traffic) !== JSON.stringify(prev.traffic) ||
+      next.overlay.profile !== prev.overlay.profile ||
+      next.partialFraction !== prev.partialFraction
+    )
+      this._scopeSoon(0, true);
     if (JSON.stringify(next.aor) !== JSON.stringify(prev.aor)) {
       if (next.aor.scale !== prev.aor.scale) {
         this._syncThreat(); // the threat marker shows in the AOR scale too
@@ -1223,6 +1279,7 @@ export default class GroundGuide {
       this._bindView();
       this._loadPopulation();
       this._syncPopulationLayer();
+      this._syncOverlay(); // disable() took the overlay, its legend and the boundary outline off: put them back now
       this._resumeArmed();
     } else if (this._opts.bundleUrl) void this.configure();
     else this._emitState('no-bundle');
@@ -1286,6 +1343,9 @@ export default class GroundGuide {
       this._lastDetail = { geometry: live.geometry, sidc: this._activeSidc };
       this._lastKey = '';
       this._lastBadgeKey = '';
+      // The last good verdict was the old symbol's (its mode, echelon, frontage): never shown as this one's "updating".
+      this._lastGood = null;
+      this._lastGoodGeom = null;
       this._apply(this._judgeLive(live.geometry, this._activeSidc));
     }
   }
@@ -1375,6 +1435,27 @@ export default class GroundGuide {
   }
 
   /** Dock the rail to the view and show it when it may (guide on, bundle ready, `scope.enabled`); the Detail leaves it room. */
+  /**
+   * The symbol just placed, while it is still on the map: undone or deleted, a graphic keeps its geometry but leaves its
+   * layer, and the rail (and the AOR's MITG) must not go on reading it. Forgotten once it is gone.
+   */
+  private _placedAlive(): boolean {
+    const g = this._scopePlaced?.graphic;
+    if (!g?.geometry) return false;
+    if (g.layer === null || g.destroyed) {
+      this._scopePlaced = null;
+      return false;
+    }
+    return true;
+  }
+
+  /** The armed symbol's mode for a host reading's default: never `exempt` (an air symbol armed has no ground mode; the
+   * readings fall back to the last terrain-bound one, else dismounted).
+   */
+  private _liveProfile(): GroundGuideProfile | null {
+    return this._activeProfile !== 'exempt' ? this._activeProfile : null;
+  }
+
   private _syncScope(): void {
     const on = this._enabled && this._opts.scope.enabled && this._manifest !== null;
     this._scope.setOptions({ side: this._opts.scope.side, tab: this._opts.scope.tab, topPx: this._opts.scope.topPx });
@@ -1382,6 +1463,12 @@ export default class GroundGuide {
     this._scope.attach(on ? (view?.container ?? null) : null, view?.padding ?? null);
     this._scope.setEnabled(on);
     if (on && this._scope.wanted) this._scopeSoon(0, true);
+    if (!on || !this._scope.wanted) {
+      // No rail: its D sheet and an armed AOR box go too (the box's drag handler would eat the next map drag and its
+      // capturing Esc handler the host's next Esc).
+      this._aorSheet.close();
+      this._aorBoxCancel();
+    }
   }
 
   /**
@@ -1457,9 +1544,9 @@ export default class GroundGuide {
     } else if (this._scopeSelected?.geometry) {
       source = 'selected';
       graphic = this._scopeSelected;
-    } else if (this._scopePlaced?.graphic?.geometry) {
+    } else if (this._placedAlive()) {
       source = 'placed';
-      graphic = this._scopePlaced.graphic;
+      graphic = this._scopePlaced!.graphic;
     } else {
       source = 'centre';
       geometry = view?.center;
@@ -1522,7 +1609,7 @@ export default class GroundGuide {
       v = this.evaluateGeometry(geometry, sidc, { profile, self: graphic });
       const inNoGo = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
       if (isPoint && inNoGo && !v.loading) {
-        const f = this._findSnap(geometry, sidc);
+        const f = this._findSnap(geometry, sidc, false, profile);
         if (f.at) {
           const dx = f.at[0] - first[0];
           const dy = f.at[1] - first[1];
@@ -1733,13 +1820,12 @@ export default class GroundGuide {
       return;
     }
     const spot = this._extCtx?.at ?? null;
-    const vc = view?.center && Number.isFinite(view.center.x) ? ([view.center.x, view.center.y] as MercXY) : null;
+    const vc = (view?.center ? toMercatorShape(view.center)?.parts[0]?.[0] : null) ?? null; // Mercator whatever the view's SR
     const at0 = spot ?? vc;
     if (!at0) return this._ipbMap.clear();
     const o = this._opts.extended;
-    const lat0 = mercatorToLngLat(at0[0], at0[1])[1];
     const radiusM = o.radiusKm * 1000;
-    const snap = radiusM / 3 / Math.cos((lat0 * Math.PI) / 180); // Mercator metres
+    const snap = snapStep(radiusM / 3, at0[1]); // Mercator metres, on a lattice that does not stretch with the cursor
     const centre: MercXY = [Math.round(at0[0] / snap) * snap, Math.round(at0[1] / snap) * snap];
     const r = this._ipbCode(centre, {});
     if (!r) return this._ipbMap.clear();
@@ -1783,7 +1869,7 @@ export default class GroundGuide {
     const thr = over.threatDeg !== undefined ? { allRound: false, bearingDeg: over.threatDeg } : resolveThreat(o, this._opts.footprint.bearingDeg, centre, this._threatMerc());
     const readFor = over.readFor ?? ip.readFor;
     const moveDeg = thr.allRound ? null : readFor === 'defence' ? (thr.bearingDeg + 180) % 360 : thr.bearingDeg;
-    const mover: IpbMover = over.mover ?? (ip.mover !== 'auto' ? ip.mover : readFor === 'defence' ? 'armour' : ipbMoverOf(this._activeProfile ?? this._lastArmedProfile ?? 'dismounted', this._ipbRules));
+    const mover: IpbMover = over.mover ?? (ip.mover !== 'auto' ? ip.mover : readFor === 'defence' ? 'armour' : ipbMoverOf(this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted', this._ipbRules));
     const month = over.month ?? resolveMonth(this._opts.going.month);
     const season = over.season ?? ip.season;
     const avlbSpanM = over.avlbSpanM ?? ip.avlbSpanM;
@@ -1816,7 +1902,9 @@ export default class GroundGuide {
     if (!ll || !this._cache || !this._manifest) return null;
     const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
     this._ipbCode(at, opts); // asks for the tiles
+    const token = this._configToken;
     await this._tilesSettled(10000);
+    if (token !== this._configToken || !this._cache || !this._manifest) return null; // reconfigured or destroyed while it waited
     this._extTick++;
     const r = this._ipbCode(at, opts);
     if (!r) return null;
@@ -1876,10 +1964,10 @@ export default class GroundGuide {
     const thr = over.threatDeg !== undefined ? { allRound: false, bearingDeg: over.threatDeg } : resolveThreat(o, this._opts.footprint.bearingDeg, at, this._threatMerc());
     const readFor = over.readFor ?? ip.readFor;
     const side: 'enemy' | 'own' = readFor === 'defence' ? 'enemy' : 'own';
-    const mover: IpbMover = over.mover ?? (ip.mover !== 'auto' ? ip.mover : readFor === 'defence' ? 'armour' : ipbMoverOf(this._activeProfile ?? this._lastArmedProfile ?? 'dismounted', this._ipbRules));
+    const mover: IpbMover = over.mover ?? (ip.mover !== 'auto' ? ip.mover : readFor === 'defence' ? 'armour' : ipbMoverOf(this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted', this._ipbRules));
     const month = over.month ?? resolveMonth(this._opts.going.month);
     const k = Math.cosh(at[1] / 6378137); // Web Mercator metres per ground metre here
-    const snap = (F.w / 4) * k;
+    const snap = snapStep(F.w / 4, at[1]);
     const anchor: MercXY = [Math.round(at[0] / snap) * snap, Math.round(at[1] / snap) * snap];
     const tb = (thr.bearingDeg * Math.PI) / 180;
     const T: MercXY = [Math.sin(tb), Math.cos(tb)];
@@ -2058,11 +2146,11 @@ export default class GroundGuide {
     lengthM: number,
     widthM: number,
     mcWidthM: number,
-    k: number,
+    _k: number, // kept for the callers: the snap lattice now takes its own factor (snapStep)
   ): { at: MercXY; frontageM: number; depthM: number; label: string; source: 'posn' | 'threat' | 'symbol'; assumed: boolean; from: { at: MercXY; halfWidthM: number } | null } | null {
     const own = this._echDims(sidc, mcWidthM);
     const snapTo = (p: MercXY, m: number): MercXY => {
-      const sn = Math.max(50, m) * k;
+      const sn = snapStep(Math.max(50, m), p[1]);
       return [Math.round(p[0] / sn) * sn, Math.round(p[1] / sn) * sn];
     };
     const inArea = (p: MercXY, pad = 0): boolean => {
@@ -2341,7 +2429,8 @@ export default class GroundGuide {
   private _apchRead(): void {
     if (!this._apchOn()) return this._apchClear();
     const view: any = this._getView?.();
-    const want = this._apchWant ?? (view?.center && Number.isFinite(view.center.x) ? { at: [view.center.x, view.center.y] as MercXY, sidc: null } : null);
+    const vcM = view?.center ? toMercatorShape(view.center)?.parts[0]?.[0] : null; // Mercator whatever the view's SR
+    const want = this._apchWant ?? (vcM ? { at: vcM as MercXY, sidc: null } : null);
     if (!want) return;
     const key = this._apchFrame(want.at, want.sidc).key;
     if (this._apch && this._apch.key === key) {
@@ -2469,8 +2558,10 @@ export default class GroundGuide {
     const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
     const over = { hq: opts.hq, readFor: opts.readFor, threatDeg: opts.threatDeg, mover: opts.mover, month: opts.month };
     let r = this._apchCompute(at, opts.sidc ?? null, over);
+    const token = this._configToken;
     for (let i = 0; r === 'pending' && i < 3; i++) {
       await this._tilesSettled(10000);
+      if (token !== this._configToken || !this._cache || !this._manifest) return null; // reconfigured or destroyed while it waited
       r = this._apchCompute(at, opts.sidc ?? null, over);
     }
     if (!r || r === 'pending') return null;
@@ -2512,7 +2603,9 @@ export default class GroundGuide {
    */
   ipbSymbols(kind: 'coo' | 'corridors' | 'apchs' | 'event' | 'dst' | 'air' | 'template'): any[] {
     const a = this._apch;
-    if (!a || !a.view.aas.length) return [];
+    // No avenue through the area (close country, mountains) still has its NO-GO / SLOW-GO areas, template and air
+    // products to write: only the approach products need avenues, and their loops find none.
+    if (!a) return [];
     const v = a.view;
     const ip = this._opts.extended.ipb;
     const mp = (p: MercXY) => ({ x: p[0], y: p[1], spatialReference: { wkid: 102100 } });
@@ -2827,7 +2920,7 @@ export default class GroundGuide {
       const pts = aa.line.map(toPx);
       const alongM = [aa.startM];
       for (let i = 1; i < pts.length; i++) alongM.push(alongM[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) * g.res);
-      return { id: aa.id, pts, alongM, narrows: aa.narrows.map((n) => ({ ...(() => { const [x, y] = toPx(n.at); return { x, y }; })(), alongM: n.alongM, widthM: n.widthM, kind: n.kind })) };
+      return { id: aa.id, pts, alongM, narrows: aa.narrows.map((n) => { const [x, y] = toPx(n.at); return { x, y, alongM: alongOnLine(pts, alongM, x, y), widthM: n.widthM, kind: n.kind }; }) };
     });
     const month = resolveMonth(this._opts.going.month);
     const r = fireCoverage({ grid: g, posns: posns.map((p) => ({ ...(() => { const [x, y] = toPx(p.at); return { x, y }; })(), eyeM: p.eyeM, effM: p.effM, obsM: p.obsM, label: p.label })), lines, tables: sightTables(OCOKA_DOCTRINE, month, g.res), targetM: v.mover === 'dismounted' ? 1.7 : 2.4 });
@@ -2847,7 +2940,11 @@ export default class GroundGuide {
           }
         }
         const aa = v.aas.find((x) => x.id === c.id);
-        return { id: c.id, coveredPct: c.coveredPct, screenedPct: c.screenedPct, deadPct: c.deadPct, outPct: c.outPct, seenPct: c.seenPct, gaps: c.gaps, segs, startM: aa?.startM ?? 0, endM: aa?.endM ?? 0, nearestM: c.nearestM, nearestPosn: c.nearestPosn };
+        // The gaps and stretches are measured along the line: its end is the line's own length past the start, not the
+        // avenue's end in rows (which a winding line overruns by up to a tenth).
+        const ln = lines.find((x) => x.id === c.id);
+        const endM = ln?.alongM[ln.alongM.length - 1] ?? aa?.endM ?? 0;
+        return { id: c.id, coveredPct: c.coveredPct, screenedPct: c.screenedPct, deadPct: c.deadPct, outPct: c.outPct, seenPct: c.seenPct, gaps: c.gaps, segs, startM: aa?.startM ?? 0, endM, nearestM: c.nearestM, nearestPosn: c.nearestPosn };
       }),
       killing: r.killing.map((k2) => ({ on: k2.on, at: toM(k2.x, k2.y), alongM: k2.alongM, kind: k2.kind, widthM: k2.widthM, lengthM: k2.lengthM, text: k2.text })),
       posnSide,
@@ -3050,8 +3147,14 @@ export default class GroundGuide {
 
   // ── IPB rates, event template, decision support, Annex A (extended.ipb.decision; IPB_Plan.md §6.6, §6.7) ─────────────
 
-  /** An avenue's centre line with the distance along it, and the book's going under it every 100 m (from the coding). */
-  private _aaAlong(a: { coding: IpbCoding | null; grid: OcokaGrid | null }, aa: IpbApchAa): { pts: Array<{ at: MercXY; alongM: number }>; going: DecAaIn['going'] } {
+  /**
+   * An avenue's centre line with the distance along it (ground metres along the line, from the avenue's start), its end
+   * that way, and the book's going under it every 100 m (from the coding).
+   */
+  private _aaAlong(
+    a: { coding: IpbCoding | null; grid: OcokaGrid | null; view?: IpbApchView },
+    aa: IpbApchAa,
+  ): { pts: Array<{ at: MercXY; alongM: number }>; endM: number; going: DecAaIn['going'] } {
     const pts: Array<{ at: MercXY; alongM: number }> = [];
     let along = aa.startM;
     aa.line.forEach((p, i) => {
@@ -3061,25 +3164,40 @@ export default class GroundGuide {
       }
       pts.push({ at: p, alongM: along });
     });
-    // The line's length may differ a little from the avenue's own figures: scale to its end.
-    const last = pts[pts.length - 1]?.alongM ?? aa.endM;
-    const k = last > aa.startM ? (aa.endM - aa.startM) / (last - aa.startM) : 1;
-    for (const p of pts) p.alongM = aa.startM + (p.alongM - aa.startM) * k;
+    // Timed over the line's own length (not scaled down to the avenue's rows: that made him 1 to 10 % quicker).
+    const endM = Math.max(aa.startM, pts[pts.length - 1]?.alongM ?? aa.endM);
     const going: DecAaIn['going'] = [];
     const c = a.coding, g = a.grid, m = this._manifest;
-    if (!c || !g || !m) return { pts, going: [{ fromM: aa.startM, toM: aa.endM, cls: 'na' }] };
+    if (!c || !g || !m) return { pts, endM, going: [{ fromM: aa.startM, toM: endM, cls: 'na' }] };
     const z = m.zoom.max, ts = m.tileSize;
-    for (let s = aa.startM; s < aa.endM; s += 100) {
+    // The drawn line is smoothed and simplified, so it can clip NO-GO beside the least-cost way, which never enters it.
+    // A NO-GO sample takes the best going within half a corridor of the line (the way passes there); NO-GO only when
+    // all of it is. (Read under the line alone, each clip cost him 6 min at his earliest and an hour at his latest.)
+    const rank = (code: number): number => (code === IPB.GO ? 0 : code === IPB.NA ? 1 : code === IPB.SLOW || code === IPB.NC ? 2 : code === IPB.NOGO ? 3 : 4);
+    const halfMc = Math.min(250, (a.view?.mcWidthM ?? 500) / 2);
+    const rr = Math.max(1, Math.round(halfMc / Math.max(1, c.res)));
+    const codeAt = (x: number, y: number): number => (x >= 0 && y >= 0 && x < c.w && y < c.h ? c.code[y * c.w + x] : IPB.NODATA);
+    for (let s = aa.startM; s < endM; s += 100) {
       const at = this._alongAt(pts, s + 50);
       const [px, py] = mercToPx(at[0], at[1], z, ts);
       const x = Math.floor(px - g.px0 - c.x0), y = Math.floor(py - g.py0 - c.y0);
-      const code = x >= 0 && y >= 0 && x < c.w && y < c.h ? c.code[y * c.w + x] : IPB.NODATA;
+      let code = codeAt(x, y);
+      if (code === IPB.NOGO) {
+        let best: number = code;
+        for (let dy = -rr; dy <= rr && rank(best) > 0; dy++)
+          for (let dx = -rr; dx <= rr; dx++) {
+            if (dx * dx + dy * dy > rr * rr) continue;
+            const q = codeAt(x + dx, y + dy);
+            if (rank(q) < rank(best)) best = q;
+          }
+        code = best;
+      }
       const cls: DecCls = code === IPB.GO ? 'go' : code === IPB.SLOW || code === IPB.NC ? 'slow' : code === IPB.NOGO ? 'nogo' : 'na';
       const prev = going[going.length - 1];
-      if (prev && prev.cls === cls) prev.toM = Math.min(aa.endM, s + 100);
-      else going.push({ fromM: s, toM: Math.min(aa.endM, s + 100), cls });
+      if (prev && prev.cls === cls) prev.toM = Math.min(endM, s + 100);
+      else going.push({ fromM: s, toM: Math.min(endM, s + 100), cls });
     }
-    return { pts, going };
+    return { pts, endM, going };
   }
 
   /** The point at a distance along a line (clamped to its ends). */
@@ -3120,15 +3238,36 @@ export default class GroundGuide {
       }
       return best;
     };
+    // From his start to each avenue's start, ground metres: only on his own avenues (yours start at your edge, and the
+    // marker is then the Obj), and only when the marker lies short of the avenue's start. A marker beside or inside the
+    // avenue puts his start there: a negative lead (decide() starts his clock at that place).
     const leadM: Record<string, number> = {};
     for (const aa of v.aas) {
-      const p0 = aa.line[0];
-      leadM[aa.id] = tAt && p0 ? Math.hypot(p0[0] - tAt[0], p0[1] - tAt[1]) / Math.cosh(p0[1] / 6378137) : 0;
+      const p0 = aa.line[0], p1 = aa.line[1];
+      leadM[aa.id] = 0;
+      if (!tAt || !p0 || v.side !== 'enemy') continue;
+      const k = Math.cosh(p0[1] / 6378137);
+      const ux = p1 ? p1[0] - p0[0] : 0, uy = p1 ? p1[1] - p0[1] : 0;
+      const ahead = (tAt[0] - p0[0]) * ux + (tAt[1] - p0[1]) * uy > 0; // the marker lies past the start, along the way
+      if (!ahead) leadM[aa.id] = Math.hypot(p0[0] - tAt[0], p0[1] - tAt[1]) / k;
+      else {
+        const L = along.get(aa.id)!;
+        const s = alongOnLine(L.pts.map((q) => q.at), L.pts.map((q) => q.alongM), tAt[0], tAt[1]);
+        leadM[aa.id] = -Math.max(0, Math.min(L.endM, s) - aa.startM);
+      }
     }
     const catk = v.side !== 'enemy' ? null : v.hqNote ? { label: 'Coy', min: Number(D.decisionPoints?.counterAttack?.coyMin?.value ?? 30) } : v.hq === 'bde' ? { label: 'Bn', min: Number(D.decisionPoints?.counterAttack?.bnMin?.value ?? 60) } : null;
     const r = decide({
-      aas: v.aas.map((aa) => ({ id: aa.id, viable: aa.viable, main: aa.main, startM: aa.startM, endM: aa.endM, going: along.get(aa.id)!.going, narrows: aa.narrows.map((n) => ({ alongM: n.alongM, widthM: n.widthM, kind: n.kind })), depthM: depthOf(aa.id) })),
-      crossovers: v.crossovers.map((x) => ({ id: x.id, a: x.a, b: x.b, alongM: x.alongM })),
+      aas: v.aas.map((aa) => {
+        const L = along.get(aa.id)!;
+        const onLine = (p: MercXY): number => alongOnLine(L.pts.map((q) => q.at), L.pts.map((q) => q.alongM), p[0], p[1]);
+        return { id: aa.id, viable: aa.viable, main: aa.main, startM: aa.startM, endM: L.endM, going: L.going, narrows: aa.narrows.map((n) => ({ alongM: onLine(n.at), widthM: n.widthM, kind: n.kind })), depthM: depthOf(aa.id) };
+      }),
+      crossovers: v.crossovers.map((x) => {
+        const L = along.get(x.a);
+        const mid: MercXY = [(x.from[0] + x.to[0]) / 2, (x.from[1] + x.to[1]) / 2];
+        return { id: x.id, a: x.a, b: x.b, alongM: L ? alongOnLine(L.pts.map((q) => q.at), L.pts.map((q) => q.alongM), mid[0], mid[1]) : x.alongM };
+      }),
       rates,
       leadM,
       leadH: Number(D.decisionPoints?.interdict?.leadH ?? 2),
@@ -3149,7 +3288,7 @@ export default class GroundGuide {
       const p0 = pts[0].at;
       if (!tAt) return { at: p0, inArea: false };
       const k = Math.cosh(p0[1] / 6378137);
-      const d = Math.min(aa.startM - alongM, leadM[aaId]) * k;
+      const d = Math.max(0, Math.min(aa.startM - alongM, leadM[aaId])) * k;
       const len = Math.hypot(tAt[0] - p0[0], tAt[1] - p0[1]) || 1;
       return { at: [p0[0] + ((tAt[0] - p0[0]) / len) * d, p0[1] + ((tAt[1] - p0[1]) / len) * d], inArea: false };
     };
@@ -3166,6 +3305,8 @@ export default class GroundGuide {
       tais: enemy ? r.tais.map((t) => ({ ...t, at: this._alongAt(along.get(t.aa)!.pts, t.alongM), dirDeg: dirAt(along.get(t.aa)!.pts, t.alongM) })) : [],
       dps: enemy ? r.dps.map((d) => ({ ...d, ...dpAt(d.aa, d.alongM) })) : [],
       catk,
+      leadH: Number(D.decisionPoints?.interdict?.leadH ?? 2),
+      reactionH: ip.reactionH,
       notes: enemy ? r.notes : ['Decision support reads the enemy\'s avenues: set Read for to Defence. The times over own avenues are shown.'],
     };
   }
@@ -3249,7 +3390,7 @@ export default class GroundGuide {
       const pts = aa.line.map(toPx);
       const alongM = [aa.startM];
       for (let i = 1; i < pts.length; i++) alongM.push(alongM[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) * g.res);
-      return { id: aa.id, rank: aa.rank, viable: aa.viable, pts, alongM, narrows: aa.narrows.map((n) => { const [x, y] = toPx(n.at); return { x, y, alongM: n.alongM, kind: n.kind }; }) };
+      return { id: aa.id, rank: aa.rank, viable: aa.viable, pts, alongM, narrows: aa.narrows.map((n) => { const [x, y] = toPx(n.at); return { x, y, alongM: alongOnLine(pts, alongM, x, y), kind: n.kind }; }) };
     });
     const c2 = v.frame[2], c3 = v.frame[3];
     const endMid: MercXY = [(c2[0] + c3[0]) / 2, (c2[1] + c3[1]) / 2];
@@ -3642,9 +3783,11 @@ export default class GroundGuide {
     const ll = point === null ? null : this._lngLatOf(point);
     const over = { anchor: ll ? (lngLatToMercator(ll[0], ll[1]) as MercXY) : null, graphic: opts.graphic, echelon: opts.echelon, profile: opts.profile };
     let p = this._aorPrepare(over);
+    const token = this._configToken;
     for (let i = 0; p && !p.input && i < 6; i++) {
       await this._tilesSettled(10000);
       await new Promise((r) => setTimeout(r, 150));
+      if (token !== this._configToken || !this._cache || !this._manifest) return null; // reconfigured or destroyed while it waited
       p = this._aorPrepare(over);
     }
     if (!p?.input) return null;
@@ -3678,11 +3821,14 @@ export default class GroundGuide {
       div.style.width = `${Math.abs(e.x - st.start.x)}px`;
       div.style.height = `${Math.abs(e.y - st.start.y)}px`;
       if (e.action !== 'end') return;
-      const a = view.toMap?.({ x: st.start.x, y: st.start.y });
-      const b = view.toMap?.({ x: e.x, y: e.y });
+      // All four corners of the rectangle drawn on the screen: on a rotated (or tilted) map two opposite corners can lie
+      // due north-south of each other and give a box of no width. The AOR is the lng / lat box that holds all four.
+      const sx = [st.start.x, e.x], sy = [st.start.y, e.y];
+      const corners = [view.toMap?.({ x: sx[0], y: sy[0] }), view.toMap?.({ x: sx[1], y: sy[0] }), view.toMap?.({ x: sx[1], y: sy[1] }), view.toMap?.({ x: sx[0], y: sy[1] })];
       this._aorBoxCancel();
-      if (!a || !b || typeof a.longitude !== 'number' || typeof b.longitude !== 'number') return;
-      const box: [number, number, number, number] = [Math.min(a.longitude, b.longitude), Math.min(a.latitude, b.latitude), Math.max(a.longitude, b.longitude), Math.max(a.latitude, b.latitude)];
+      if (corners.some((c: any) => !c || typeof c.longitude !== 'number' || typeof c.latitude !== 'number')) return;
+      const lons = corners.map((c: any) => c.longitude as number), lats = corners.map((c: any) => c.latitude as number);
+      const box: [number, number, number, number] = [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
       if (box[2] - box[0] < 0.005 || box[3] - box[1] < 0.005) return this._badge.flash('Box too small for an AOR: drag again (Draw in the rail).', 2400);
       this.setAor({ source: 'box', box });
     });
@@ -3898,19 +4044,21 @@ export default class GroundGuide {
       const vg = this._aorVitalGround(vgNear);
       if (vg) ((anchor = vg.at), (anchorName = vg.name));
     }
-    const g0 = !anchor ? (ownG ?? (this._scopeSelected?.geometry ? this._scopeSelected : this._scopePlaced?.graphic?.geometry ? this._scopePlaced.graphic : null)) : null;
+    const g0 = !anchor ? (ownG ?? (this._scopeSelected?.geometry ? this._scopeSelected : this._placedAlive() ? this._scopePlaced!.graphic : null)) : null;
     if (g0) {
       const c = centreOf(g0);
       if (c) anchor = c;
       sidc = graphicSidc(g0);
     }
     if (!sidc && ownG) sidc = graphicSidc(ownG);
-    if (!anchor) anchor = vc;
+    let fromCentre = false;
+    if (!anchor && vc) ((anchor = vc), (fromCentre = true));
     if (!anchor) return null;
-    // Snap to 250 m so a small pan of the map centre does not read a new AOR.
-    const kA = Math.cosh(anchor[1] / 6378137);
-    const snap = 250 * kA;
-    if (!this._aorAnchor && !over.anchor && !g0) anchor = [Math.round(anchor[0] / snap) * snap, Math.round(anchor[1] / snap) * snap];
+    // Snap the map centre (only) to 250 m so a small pan does not read a new AOR. A VG symbol, a selected or placed symbol
+    // and a set anchor stay where they are: the MITG, line Z and the distances are measured from the symbol itself.
+    const snap = snapStep(250, anchor[1]);
+    if (fromCentre) anchor = [Math.round(anchor[0] / snap) * snap, Math.round(anchor[1] / snap) * snap];
+    const kA = Math.cosh(anchor[1] / 6378137); // Mercator metres per ground metre at the anchor
     const code = echelonCodeOf(sidc);
     const ech: 'coy' | 'bn' | 'bde' = over.echelon ?? (o.echelon !== 'auto' ? o.echelon : !code ? 'bn' : Number(code) <= 15 ? 'coy' : Number(code) <= 17 ? 'bn' : 'bde');
     // The threat: a place on the map, else a bearing (set, or the unit's front).
@@ -3969,7 +4117,9 @@ export default class GroundGuide {
       keys: { detail: o.keys && !this._touchInput },
     };
     const mitg = { at: anchor, name: anchorName };
-    const key = `${aorInputKey({ outline: ring, faceDeg: face, mitg, origins, corridorM, source: used })}|${profile}|${this._opts.bundleUrl}`;
+    // The MITG's name and the frontage limit go into the reading too (its title and the frontage test), so a renamed VG
+    // or another echelon is read again, not shown from the last reading.
+    const key = `${aorInputKey({ outline: ring, faceDeg: face, mitg, origins, corridorM, source: used })}|${profile}|${this._opts.bundleUrl}|${anchorName ?? ''}|${frontLimit.m}`;
     if (cached?.(key)) return { frame, key, input: null };
     // The grid: the bundle's finest class tiles over the AOR and the starts, a cell of 1 to 4 tile pixels (a canal stays a line).
     const going = this._profile(profile);
@@ -4238,7 +4388,14 @@ export default class GroundGuide {
     const verdict = this.evaluateGeometry(geometry, sidc);
     const stamp = this._stampOf(verdict);
     if (stamp && this._profileOverride !== null && verdict.profile === this._profileOverride) stamp.profileOverride = true;
-    const refused = this._refuses(verdict);
+    // Enforce mode never passes a shape judged on part of its ground only: the tiles still to come may hold NO-GO.
+    const partial = this._opts.mode === 'enforce' && !!verdict.incomplete && !this._refuses(verdict);
+    if (partial) {
+      verdict.message = 'Terrain still loading for part of this shape';
+      verdict.detail = 'Judged on the part already loaded only; try again in a moment';
+      verdict.reason = null; // the reason of the part that is known would read as a clear verdict
+    }
+    const refused = partial || this._refuses(verdict);
     // Shift held at the click places it anyway, and the stamp says so for whoever reviews the plan.
     const override = refused && this._opts.allowOverride && this._shift;
     const block = refused && !override;
@@ -4251,7 +4408,7 @@ export default class GroundGuide {
       this._emit('ground-guide-blocked', { verdict, drawEssentials });
       this._badge.toast(
         {
-          verdict: verdict.verdict,
+          verdict: partial ? 'unknown' : verdict.verdict,
           title: 'Not placed',
           lines: [verdict.message, verdict.reason ?? '', verdict.detail ?? ''].filter(Boolean),
           hint: this._opts.allowOverride
@@ -4275,6 +4432,7 @@ export default class GroundGuide {
       classCode: verdict.classCode,
       distanceM: verdict.distanceM,
       fraction: verdict.fraction,
+      ...(verdict.incomplete && { incomplete: true as const }),
       ...(verdict.footprint && {
         echelon: verdict.footprint.echelon,
         frontageM: verdict.footprint.frontageM,
@@ -4346,7 +4504,12 @@ export default class GroundGuide {
     const router = this._router;
     if (!at || !src || !router) return;
     const radiusM = this._opts.traffic.accessRadiusKm * 1000;
+    // The answer comes back later: shown only if the guide is still on, with the same bundle (never a toast, a drawn
+    // route or a recreated card after disable() or destroy()).
+    const token = this._configToken;
+    const alive = (): boolean => this._enabled && token === this._configToken && !!this._manifest;
     await src.whenReady(at, radiusM);
+    if (!alive()) return;
     const near = src.roadsNear(at, radiusM).list;
     const tracked = mode === 'Tracked Vehicle';
     // The nearest MSR; else the nearest road the vehicle can use (tankable for tracks, all-weather for wheels).
@@ -4372,6 +4535,7 @@ export default class GroundGuide {
       const from = mercatorToLngLat(at[0], at[1]) as [number, number];
       const to = mercatorToLngLat(target.at[0], target.at[1]) as [number, number];
       const r = await router.route(from, to, mode);
+      if (!alive()) return;
       const name = `${roadLabel(target)}${target.attrs.m ? ' (MSR)' : ''}`;
       if (r.ok && r.km !== undefined) {
         // The server starts the route on the nearest road the vehicle may use, which can be the MSR itself: the
@@ -4476,7 +4640,8 @@ export default class GroundGuide {
       return this._auditGraphics([]);
     }
     this._auditPanel.showProgress(0, this._placedGraphics().length);
-    const audit = await this.auditPlacements({ onProgress: (d, t) => this._auditPanel.showProgress(d, t) });
+    const audit = await this.auditPlacements({ onProgress: (d, t) => this._enabled && this._auditPanel.showProgress(d, t) });
+    if (!this._enabled) return audit; // turned off (or destroyed) meanwhile: no panel built again on the page
     this._auditPanel.show(audit, this._panelHandlers(() => void this.openAudit()));
     this._emit('ground-guide-audit', audit);
     return audit;
@@ -4489,6 +4654,7 @@ export default class GroundGuide {
       return null;
     }
     const audit = await this._auditGraphics([graphic], { refreshStamps: true });
+    if (!this._enabled) return null; // turned off (or destroyed) meanwhile
     const entry = audit.entries[0] ?? null;
     if (!entry) {
       const why = audit.exempt
@@ -4640,7 +4806,8 @@ export default class GroundGuide {
         for (const it of pending) {
           const v = this.evaluateGeometry(it.g.geometry, it.sidc, { light: true, zoom: it.zoom, profile: it.profile });
           verdicts.set(it, v);
-          if (v.waiting) missing.push(it);
+          // Waiting: nothing known yet. Incomplete: judged on part of the shape only (the rest may be NO-GO).
+          if (v.waiting || v.incomplete) missing.push(it);
         }
         if (missing.length === 0) break;
         await this._tilesSettled(AUDIT_TILE_WAIT_MS);
@@ -4649,7 +4816,10 @@ export default class GroundGuide {
 
       for (const it of batch) {
         let v = verdicts.get(it)!;
-        if (v.waiting) {
+        const problem = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
+        // A verdict on part of the shape is never passed as clear (nor stamped): unchecked until its tiles arrive. One
+        // already in NO-GO on the part that is known is listed: the rest can only add to it.
+        if (v.waiting || (v.incomplete && !problem)) {
           audit.unchecked++;
           continue;
         }
@@ -4657,7 +4827,6 @@ export default class GroundGuide {
           audit.outside++;
           continue;
         }
-        const problem = v.verdict === 'in' || v.verdict === 'partial' || (v.verdict === 'near' && v.fraction > 0);
         // The cheap pass has no wording; spend the full one only on what will be listed.
         if (problem || this._opts.footprint.spacing) v = this.evaluateGeometry(it.g.geometry, it.sidc, { zoom: it.zoom, profile: it.profile, self: it.g });
         audit.entries.push(this._auditEntry(it.g, it.sidc, v, problem, opts.refreshStamps !== false));
@@ -4807,10 +4976,12 @@ export default class GroundGuide {
     geometry: any,
     sidc: string | null,
     goOnly = false,
+    /** The mode the verdict was given for (a placed symbol's hand-picked mode); default: the SIDC's, with the draw's override. */
+    forProfile?: GroundGuideProfile,
   ):
     | { at: MercXY; distanceM: number; bearingDeg: number; verdict: GroundGuideVerdict['verdict']; searchedM: number }
     | { at: null; searchedM: number; loading: boolean } {
-    const profile = this._profileFor(sidc);
+    const profile = forProfile ?? this._profileFor(sidc);
     const origin = toMercatorShape(geometry)?.parts[0]?.[0];
     if (!origin || profile === 'exempt') return { at: null, searchedM: 0, loading: false };
     const res = resolutionAt(this._sampleZoom(), this._manifest!.tileSize);
@@ -4830,8 +5001,11 @@ export default class GroundGuide {
         const at: MercXY = [origin[0] + dx, origin[1] + dy];
         const g = this._withMerc(geometry, at);
         if (!g) continue;
-        const v = this.evaluateGeometry(g, sidc, { light: true });
-        if (v.verdict === 'unknown' || v.loading) loading = true;
+        // Judged for the same mode as the verdict it is to clear (not the SIDC's when a mode was picked by hand).
+        const v = this.evaluateGeometry(g, sidc, { light: true, profile });
+        // Only tiles on their way make the search "still loading": a probe outside the data (unknown, not waiting) is
+        // final, else S near the border said "loading" for ever and the chip searched again on every move.
+        if (v.waiting || v.loading || v.incomplete) loading = true;
         const rank = this._snapRank(v);
         // From SLOW-GO only GO ground is a move worth making: another SLOW-GO spot is no better.
         if (rank >= 0 && (!goOnly || rank === 0) && (!best || rank < best.rank)) best = { rank, at, dx, dy, verdict: v.verdict };
@@ -4930,6 +5104,7 @@ export default class GroundGuide {
   }
 
   onViewChanged(): void {
+    this._aorBoxCancel(); // its drag handler and dashed box belong to the old view
     this._detachPointer();
     this._unbindView();
     if (this._enabled && this._manifest) this._bindView();
@@ -5149,6 +5324,9 @@ export default class GroundGuide {
         v.detail = v.detail ? `${v.detail} · still loading terrain data` : 'Still loading terrain data';
         v.loading = true;
       }
+      // Samples in tiles not here yet (still on their way, or failed and waiting to retry): the verdict stands on part of
+      // the shape only and may get worse. The audit waits for them; enforce mode does not pass it as clear.
+      if (v.unknown > 0 && ctx.waiting) v.incomplete = true;
     }
     if (plan && cand) {
       this._applyFootprint(v, plan, cand, effSidc, !opts?.light, opts?.self);
@@ -5156,7 +5334,7 @@ export default class GroundGuide {
       if (strip && v.footprint) ((v.footprint.front = strip.blocks), (v.footprint.frontEnds = strip.ends));
     }
     v.reason = this._reasonFor(v);
-    if (this._opts.traffic.header === 'season' && geometry?.type === 'point') this._seasonHeader(v, shape.parts[0]?.[0]);
+    if (this._opts.traffic.header === 'season' && geometry?.type === 'point') this._seasonHeader(v, shape.parts[0]?.[0], ctx.z);
     return v;
   }
 
@@ -5165,11 +5343,12 @@ export default class GroundGuide {
    * ground included, so the header, the Why scale and Enforce Mode follow it. It only ever makes the verdict worse,
    * and only for what the class verdict does not already say (soft soil, sand, wet ground).
    */
-  private _seasonHeader(v: GroundGuideVerdict, at: MercXY | undefined): void {
+  private _seasonHeader(v: GroundGuideVerdict, at: MercXY | undefined, z: number): void {
     if (!at || v.verdict === 'unknown' || v.verdict === 'off' || v.verdict === 'exempt' || v.verdict === 'in') return;
     const L = this._goingLayers();
     if (!L || !this._cache) return;
-    const { read } = this._pixelReader(this._sampleZoom());
+    // The zoom the verdict was judged at (an audit judges at its own zoom, not the view's).
+    const { read, state } = this._pixelReader(z);
     const [lon, lat] = mercatorToLngLat(at[0], at[1]);
     const { season } = resolveSeason(this._opts.going, this._climate?.precAt(lon, lat) ?? null);
     const rule = this._goingRule();
@@ -5186,6 +5365,8 @@ export default class GroundGuide {
       season,
       rule,
     );
+    // A soil or wet tile still on its way: the going for the season is not known yet, so the verdict may get worse.
+    if (state.pending && g?.step !== 'nogo') v.incomplete = true;
     if (!g || g.step === 'go' || g.cause === 'class') return; // the class is already in the verdict
     const when = season === 'wet' ? 'After Rain' : 'in the Dry Season';
     const why = this._causeText(g.cause, null, decodeRci(rci)?.coarse ?? false, season);
@@ -5367,12 +5548,12 @@ export default class GroundGuide {
     const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
     const rangeKm = Math.min(5, Math.max(0.5, opts.rangeKm ?? this._opts.going.rangeKm));
     const t = this._speedTablesNow();
-    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : this._activeProfile ?? this._lastArmedProfile ?? 'dismounted');
+    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted');
     const mover = opts.mover && t.movers[opts.mover]
       ? { key: opts.mover, from: 'setting' as MoverSource }
       : resolveMover(t, opts.sidc ?? null, profile, { setting: this._opts.speed.mover, catalog: this._moverLookup });
     if (!mover) return null;
-    const reach = 600 / Math.cos((ll[1] * Math.PI) / 180) + rangeKm * 1000;
+    const reach = (600 + rangeKm * 1000) / Math.cos((ll[1] * Math.PI) / 180); // the rays run range / cos(lat) Mercator metres
     const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, m.tileSize);
     const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, m.tileSize);
     const L = this._sectionLayers();
@@ -5383,9 +5564,12 @@ export default class GroundGuide {
         for (const layer of layers) if (layer) this._cache.request(layer, z, tx, ty);
       }
     }
+    const token = this._configToken;
     await Promise.all([this._tilesSettled(10000), this._roadSource()?.whenReady(at, this._opts.traffic.roadRadiusKm * 1000)]);
+    if (token !== this._configToken || !this._cache || !this._manifest) return null; // reconfigured or destroyed while it waited
     this._climate?.precAt(ll[0], ll[1]); // starts the climate grid if it is not in memory
     for (let i = 0; i < 20 && this._climate && this._climate.state === 'loading'; i++) await new Promise((r) => setTimeout(r, 150));
+    if (token !== this._configToken || !this._cache || !this._manifest) return null; // reconfigured or destroyed while it waited
     return this._readSpeed(at, profile, mover, z, { rays: true, season: opts.season, light: opts.light, rangeKm });
   }
 
@@ -5967,7 +6151,7 @@ export default class GroundGuide {
     if (!L || !ll || !this._cache || !this._manifest) return null;
     const m = this._manifest;
     const z = m.zoom.max;
-    const profile = opts.profile ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    const profile = opts.profile ?? this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted';
     const cls = this._layerNames(profile).cls;
     const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
     const cosLat = Math.cos((ll[1] * Math.PI) / 180);
@@ -5980,7 +6164,9 @@ export default class GroundGuide {
         for (const layer of [cls, L.cc, L.bank, this._sectionLayers().landform, this._sectionLayers().bld]) if (layer) this._cache.request(layer, z, tx, ty);
       }
     }
+    const token = this._configToken;
     await Promise.all([this._tilesSettled(8000), this._features?.whenReady(at, SHELTER_RADIUS_M)]);
+    if (token !== this._configToken || !this._cache || !this._manifest) return null; // reconfigured or destroyed while it waited
     const { read, state } = this._pixelReader(z);
     return readCover({
       rules: this._rules?.grotbc ?? null,
@@ -6041,8 +6227,16 @@ export default class GroundGuide {
     const reading = grid.around(lng, lat, o.radiusKm, this._placesSource());
     if (!reading) return null;
     const rule = o.flag ? POPULATION_FLAGS[v.profile] : undefined;
-    const people = rule ? (reading.rings.find((r) => r.km === rule.km)?.people ?? 0) : 0;
-    return { reading, style: o.card, flag: rule && people >= rule.min ? { km: rule.km, people, message: rule.message } : null };
+    const ring = rule ? reading.rings.find((r) => r.km === rule.km) : undefined;
+    const people = ring?.people ?? 0;
+    const gapPct = ring?.noDataPct ?? 0;
+    let flag: GroundGuidePopulation['flag'] = null;
+    if (rule && people >= rule.min) flag = { km: rule.km, people, message: rule.message, ...(gapPct > 0 && { noDataPct: gapPct }) };
+    // Under the threshold only on the part with data: the rest (across the border) is not known, so the flag is not
+    // dropped silently (never read missing data as nobody there).
+    else if (rule && gapPct > 0)
+      flag = { km: rule.km, people, noDataPct: gapPct, message: `${gapPct} % of the ground within ${rule.km} km has no population data: people there are not counted. ${rule.message}` };
+    return { reading, style: o.card, flag };
   }
 
   /** Fetch the population grid in the background when something needs it. */
@@ -6657,6 +6851,7 @@ export default class GroundGuide {
   /** Where a symbol's weapon ranges come from (default: the `Rng` field of MS/Data/Symbols.json); a host with its own catalogue sets its own. */
   setRangeLookup(fn: ((catalogKey: string) => { rng: unknown; name?: string | null } | null | undefined) | null): void {
     this._rangeLookup = fn ?? DEFAULT_RANGE_LOOKUP;
+    this._rangeTick++;
     this._refreshLive();
   }
 
@@ -6679,7 +6874,7 @@ export default class GroundGuide {
     const z = m.zoom.max;
     const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
     const sidc = opts.sidc ?? this._activeSidc;
-    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : null) ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : null) ?? this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted';
     const radiusKm = Math.min(10, Math.max(1, opts.radiusKm ?? this._opts.extended.radiusKm));
     const reach = (radiusKm * 1000 + 600) / Math.cos((ll[1] * Math.PI) / 180);
     const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, m.tileSize);
@@ -6713,7 +6908,7 @@ export default class GroundGuide {
   async extendedText(point: any, opts: { sidc?: string | null; profile?: GroundGuideProfile; radiusKm?: number; threatDeg?: number; frontageM?: number } = {}): Promise<string[] | null> {
     const o = await this.extendedAround(point, { ...opts, map: true });
     if (!o) return null;
-    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : null) ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    const profile = opts.profile ?? (opts.sidc ? this.resolveProfile(opts.sidc) : null) ?? this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted';
     return extendedText({ ...this._blank('ok', profile, ''), ext: o, extended: true });
   }
 
@@ -6765,7 +6960,9 @@ export default class GroundGuide {
     const month = resolveMonth(this._opts.going.month);
     const night = this._opts.speed.light === 'night';
     const front = this._opts.footprint.bearingDeg;
-    const key = [Math.floor(cx), Math.floor(cy), profile, catKey ?? '', o.threat, o.bearingDeg, o.sectorDeg, o.at ? o.at.join(',') : '', front, o.radiusKm, o.eye, o.surface, month, night, picture, this._visibility?.state ?? ''].join('|');
+    // Everything the reading depends on: the weapon comes from the range lookup (its tick) and the ITG candidates from
+    // the itg options, so a host's new ranges or the ITG switch are read again, not recalled for the same cell.
+    const key = [Math.floor(cx), Math.floor(cy), profile, catKey ?? '', o.threat, o.bearingDeg, o.sectorDeg, o.at ? o.at.join(',') : '', front, o.radiusKm, o.eye, o.surface, month, night, picture, this._visibility?.state ?? '', this._rangeTick, this._opts.itg.enabled ? 1 : 0, this._opts.itg.radiusKm].join('|');
     this._extRead = { key, grid, ox: cx - grid.px0, oy: cy - grid.py0 };
     const hit = this._extLive.recall(key);
     if (hit) return hit;
@@ -7223,6 +7420,9 @@ export default class GroundGuide {
       at,
       cosLat,
       pxM: resolutionAt(z, m.tileSize) * cosLat,
+      // The cursor card's per-move read (pixels only) reads every pixel to 500 m (about 1 ms where nothing is near);
+      // the Detail, the Brief and sectionsAround to 1 km.
+      fineScanM: pixelsOnly ? 500 : undefined,
       zoom: z,
       maxZoom: m.zoom.max,
       radiusM: radiusKm * 1000,
@@ -7294,11 +7494,11 @@ export default class GroundGuide {
     const z = m.zoom.max;
     const at = lngLatToMercator(ll[0], ll[1]) as MercXY;
     const radiusKm = Math.min(10, Math.max(0.5, opts.radiusKm ?? this._opts.sections.radiusKm));
-    const reach = 600 / Math.cos((ll[1] * Math.PI) / 180) + radiusKm * 1000; // terrain rays go out to the radius
+    const reach = (600 + radiusKm * 1000) / Math.cos((ll[1] * Math.PI) / 180); // terrain rays go out to the radius (ground metres, so / cos(lat))
     const a = mercatorToTilePixel(at[0] - reach, at[1] + reach, z, m.tileSize);
     const b = mercatorToTilePixel(at[0] + reach, at[1] - reach, z, m.tileSize);
     const L = this._sectionLayers();
-    const profile0 = opts.profile ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    const profile0 = opts.profile ?? this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted';
     const more = [this._layerNames(profile0).cls, this._manifest.layers?.wet ?? null];
     for (let ty = a.ty; ty <= b.ty; ty++) {
       for (let tx = a.tx; tx <= b.tx; tx++) {
@@ -7307,6 +7507,7 @@ export default class GroundGuide {
     }
     // Admin, borders, sheets and routes: start them and wait (once) until they are in memory.
     const places = this._places(true);
+    const token = this._configToken;
     for (let i = 0; i < 100 && places && !places.ensure({ admin: true, borders: true, sheets: true, routes: true }); i++) await new Promise((r) => setTimeout(r, 100));
     await Promise.all([
       this._tilesSettled(10000),
@@ -7315,7 +7516,8 @@ export default class GroundGuide {
     ]);
     this._climate?.normalsAt(ll[0], ll[1]); // starts the climate grid if it is not in memory
     for (let i = 0; i < 20 && this._climate && this._climate.state === 'loading'; i++) await new Promise((r) => setTimeout(r, 150));
-    const profile = opts.profile ?? this._activeProfile ?? this._lastArmedProfile ?? 'dismounted';
+    if (token !== this._configToken || !this._cache || !this._manifest) return null; // reconfigured or destroyed while it waited
+    const profile = opts.profile ?? this._liveProfile() ?? this._lastArmedProfile ?? 'dismounted';
     return this._readSections(at, profile, z, true, radiusKm);
   }
 
@@ -7360,15 +7562,28 @@ export default class GroundGuide {
     const b = this._boundsMerc;
     const memo = new Map<string, Uint8Array | null | undefined>();
     const state = { pending: false };
+    // The last tile per reader: the scans read pixel after pixel of the same tile, so most reads skip the key and the Map.
+    let lastLayer = '';
+    let lastTx = -1;
+    let lastTy = -1;
+    let lastT: Uint8Array | null | undefined;
     const read = (layer: string, mx: number, my: number): number | null | undefined => {
       if (mx < b[0] || mx > b[2] || my < b[1] || my > b[3]) return null;
       const tp = mercatorToTilePixel(mx, my, z, ts);
       if (tp.tx < 0 || tp.ty < 0 || tp.tx >= n || tp.ty >= n) return null;
-      const key = `${layer}/${tp.tx}/${tp.ty}`;
-      let t = memo.get(key);
-      if (!memo.has(key)) {
-        t = cache.peek(layer, z, tp.tx, tp.ty);
-        memo.set(key, t);
+      let t: Uint8Array | null | undefined;
+      if (layer === lastLayer && tp.tx === lastTx && tp.ty === lastTy) t = lastT;
+      else {
+        const key = `${layer}/${tp.tx}/${tp.ty}`;
+        t = memo.get(key);
+        if (!memo.has(key)) {
+          t = cache.peek(layer, z, tp.tx, tp.ty);
+          memo.set(key, t);
+        }
+        lastLayer = layer;
+        lastTx = tp.tx;
+        lastTy = tp.ty;
+        lastT = t;
       }
       if (t === undefined) {
         state.pending = true;
@@ -7478,6 +7693,7 @@ export default class GroundGuide {
       season,
       month,
       vehicle: veh ? { label: veh.label, vci: coarse ? veh.coarse : veh.fine } : null,
+      soilRule: rule.kind,
       soil,
       point:
         gDry && gWet
@@ -7520,11 +7736,24 @@ export default class GroundGuide {
       let slow = 0;
       let walked = 0;
       let blockedBy: string | null = null;
+      let noData = false;
+      let gapFrom = 0; // first sample of the current run without data (0 = none)
       for (let k = 1; k <= n; k++) {
         const x = at[0] + dx * k * stepM;
         const y = at[1] + dy * k * stepM;
         const g = sample(x, y);
-        if (!g) continue; // no data (or still loading) here: skip the sample
+        if (!g) {
+          // No data (outside the bundle, a nodata pixel, or a tile still loading). One stray sample is stepped over; a
+          // run of two ends what is known of this way: nothing beyond it is read as GO (never overstate the going).
+          if (!gapFrom) gapFrom = k;
+          if (k - gapFrom >= 1) {
+            reach = (gapFrom - 1) * stepG;
+            noData = true;
+            break;
+          }
+          continue;
+        }
+        gapFrom = 0;
         walked++;
         if (g.step === 'nogo') {
           reach = (k - 0.5) * stepG;
@@ -7533,8 +7762,11 @@ export default class GroundGuide {
         }
         if (g.step === 'slow') slow++;
       }
-      const step: GoingStep = reach < Math.min(250, rangeM / 4) ? 'nogo' : walked && slow / walked > 0.4 ? 'slow' : 'go';
-      sectors.push({ bearingDeg: i * 45, compass: COMPASS8[i], step, reachM: reach, blockedBy });
+      // A last sample with no data at the very end of the ray: the range is not wholly known either.
+      if (!noData && gapFrom === n) ((reach = (n - 1) * stepG), (noData = true));
+      // A way known only for a short stretch is not called NO-GO for want of data: its going is that of what was walked.
+      const step: GoingStep = !noData && reach < Math.min(250, rangeM / 4) ? 'nogo' : walked && slow / walked > 0.4 ? 'slow' : 'go';
+      sectors.push({ bearingDeg: i * 45, compass: COMPASS8[i], step, reachM: reach, blockedBy, ...(noData && { noData: true }) });
     }
     return rateMovement(sectors, rangeM);
   }
@@ -7771,7 +8003,7 @@ export default class GroundGuide {
     if (this._briefOpen && v.verdict !== 'off' && v.verdict !== 'exempt') {
       this._detail.show(v);
       this._badge.reflow(); // the Detail may have just opened under the card: step aside (item 7)
-    }
+    } else if (this._briefOpen) this._detail.clearVerdict(); // an exempt symbol: not the last one's reading
   }
 
   private _publish(v: GroundGuideVerdict): void {
@@ -7958,7 +8190,8 @@ export default class GroundGuide {
           this._checkOverlaySeason();
           if (this._extOverlayKind() === 'ipb') this._extOverlaySoon(250); // a new area once the map rests
           // Nothing placed and no rail reading a spot: the avenues read round the map centre once it rests.
-          if (this._apchOn() && !this._extCtx && !this._scope.wanted && view.center) this._apchAsk([view.center.x, view.center.y], null);
+          const vcM = view.center ? toMercatorShape(view.center)?.parts[0]?.[0] : null; // Mercator whatever the view's SR
+          if (this._apchOn() && !this._extCtx && !this._scope.wanted && vcM) this._apchAsk(vcM, null);
           if (this._apch && this._apchOn()) this._apchDraw(); // the labels are decluttered for the new zoom
           this._scopeAfterPan(view);
         }
@@ -7984,6 +8217,16 @@ export default class GroundGuide {
     );
     this._syncThreat();
     this._syncScope();
+    // The pointer over this view's map makes this guide the one the keys go to (when the page has several).
+    const box: HTMLElement | null = view.container ?? null;
+    if (box) {
+      const own = (): void => {
+        keyOwner = this;
+      };
+      box.addEventListener('pointerenter', own);
+      box.addEventListener('pointerdown', own, true);
+      this._ownerBox = { el: box, fn: own };
+    }
   }
 
   /**
@@ -8002,6 +8245,11 @@ export default class GroundGuide {
   }
 
   private _unbindView(): void {
+    if (this._ownerBox) {
+      this._ownerBox.el.removeEventListener('pointerenter', this._ownerBox.fn);
+      this._ownerBox.el.removeEventListener('pointerdown', this._ownerBox.fn, true);
+      this._ownerBox = null;
+    }
     this._stationaryHandle?.remove();
     this._stationaryHandle = null;
     this._northHandle?.remove();
@@ -8016,12 +8264,15 @@ export default class GroundGuide {
     if (this._keyHandler) return;
     this._keyHandler = (e: KeyboardEvent) => this._onKey(e);
     this._blurHandler = () => (this._shift = false); // keyup lands elsewhere on Alt-Tab
+    KEY_GUIDES.add(this);
     window.addEventListener('keydown', this._keyHandler, true);
     window.addEventListener('keyup', this._keyHandler, true);
     window.addEventListener('blur', this._blurHandler);
   }
 
   private _detachKeys(): void {
+    KEY_GUIDES.delete(this);
+    if (keyOwner === this) keyOwner = null;
     if (this._keyHandler) {
       window.removeEventListener('keydown', this._keyHandler, true);
       window.removeEventListener('keyup', this._keyHandler, true);
@@ -8069,8 +8320,12 @@ export default class GroundGuide {
     const oLabels = k === 'q';
     const oKey = this._opts.extended.keys && (k === 'f' || (this._ext && (k === 'j' || k === 'x' || k === 'y' || oDigit > 0 || oTurn !== 0 || oAll || oLabels)));
     if ((k !== 's' && k !== 'p' && k !== 'd' && k !== 'h' && k !== 'v' && k !== 'escape' && !tabKey && !oKey) || e.ctrlKey || e.metaKey || e.altKey || (e.repeat && oTurn === 0)) return;
-    const t = e.target as HTMLElement | null;
-    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    // Several guides on the page (two map views): only the one whose map the pointer last entered acts.
+    if (KEY_GUIDES.size > 1 && keyOwner !== null && keyOwner !== this) return;
+    // The real target: inside a web component (calcite-input, arcgis-search) `e.target` is the shadow host, so typing in
+    // its field passed the check and its letters were taken. The first node of the composed path is the field itself.
+    const t = ((e.composedPath?.()[0] as HTMLElement | undefined) ?? (e.target as HTMLElement | null)) || null;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName ?? ''))) return;
     if (oKey) {
       if (!this.isActive || (k !== 'f' && this._activeProfile === 'exempt')) return;
       e.preventDefault();

@@ -144,12 +144,17 @@ export function pixelGoing(
 export function rateMovement(sectors: GroundGuideMovementSector[], rangeM: number): GroundGuideMovement {
   let score = 0;
   let open = 0;
+  let known = 0;
   for (const s of sectors) {
+    // A direction with no terrain data at all says nothing either way: left out of the rating (a way known only part of
+    // the way counts for the part that is known, never more).
+    if (s.noData && s.reachM <= 0) continue;
+    known++;
     const w = s.step === 'go' ? 1 : s.step === 'slow' ? 0.5 : 0;
     score += w * Math.min(1, s.reachM / rangeM);
     if (s.step !== 'nogo' && s.reachM >= rangeM / 2) open++;
   }
-  score = sectors.length ? score / sectors.length : 0;
+  score = known ? score / known : 0;
   const rating = score >= 0.7 ? 'unrestricted' : score >= 0.4 ? 'restricted' : 'severe';
   return { rangeM, sectors, open, score, rating };
 }

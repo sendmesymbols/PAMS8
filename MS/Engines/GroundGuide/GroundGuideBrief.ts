@@ -13,7 +13,7 @@
 
 import { fmtDistance } from './GroundGuideEvaluator';
 import { compassNode } from './GroundGuideNorth';
-import { RATING_COLOR, RATING_LABEL } from './GroundGuideGoing';
+import { GOING_WORD, RATING_COLOR, RATING_LABEL } from './GroundGuideGoing';
 import {
   ensureGoingCss,
   goingCanvas,
@@ -183,6 +183,7 @@ export function movementDetail(g: GroundGuideGoingInfo, size = 136): HTMLElement
     // Each blocked direction with its arrow, which turns with the map.
     const li = h('li');
     if (x.blockedBy && x.reachM < m.rangeM) li.append(compassNode(x.compass, x.bearingDeg), `: ${x.blockedBy}, ${fmtDistance(x.reachM)}`);
+    else if (x.noData) li.append(compassNode(x.compass, x.bearingDeg), x.reachM > 0 ? `: no terrain data beyond ${fmtDistance(x.reachM)}` : ': no terrain data');
     else if (x.step === 'nogo') li.append(compassNode(x.compass, x.bearingDeg), ': NO-GO Gr');
     if (li.childNodes.length) ul.append(li);
   }
@@ -233,7 +234,7 @@ registerBriefSection({
     if (!g?.point) return [];
     return [
       `${v.profileLabel}: ${g.point.dry.toUpperCase()} dry, ${g.point.wet.toUpperCase()} after rain`.replace(/SLOW/g, 'SLOW-GO').replace(/NOGO/g, 'NO-GO'),
-      ...g.modes.map((m) => `${m.label}: ${m.dry} / ${m.wet}`),
+      ...g.modes.map((m) => `${m.label}: ${GOING_WORD[m.dry]} dry, ${GOING_WORD[m.wet]} after rain`),
     ];
   },
 });
@@ -264,6 +265,7 @@ registerBriefSection({
     return [
       `${RATING_LABEL[m.rating]}: ${m.open} of 8 Dirs open to ${fmtDistance(m.rangeM / 2)}`,
       ...m.sectors.filter((x) => x.blockedBy && x.reachM < m.rangeM).map((x) => `${x.compass}: ${x.blockedBy}, ${fmtDistance(x.reachM)}`),
+      ...m.sectors.filter((x) => x.noData).map((x) => `${x.compass}: no terrain data${x.reachM > 0 ? ` beyond ${fmtDistance(x.reachM)}` : ''}`),
     ];
   },
 });

@@ -50,6 +50,21 @@ export function simplifyRing(ring: Array<[number, number]>, tol: number): Array<
   return [...a, ...b.slice(1, -1)];
 }
 
+/** True when two edges of a closed ring cross (edges that share a corner do not count). */
+export function ringSelfCrosses(r: ReadonlyArray<readonly [number, number]>): boolean {
+  const n = r.length;
+  const cross = (a: readonly [number, number], b: readonly [number, number], c: readonly [number, number], d: readonly [number, number]): boolean => {
+    const o = (p: readonly [number, number], q: readonly [number, number], t: readonly [number, number]) => Math.sign((q[0] - p[0]) * (t[1] - p[1]) - (q[1] - p[1]) * (t[0] - p[0]));
+    return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+  };
+  for (let i = 0; i < n; i++)
+    for (let j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue; // neighbours across the ring's closing corner
+      if (cross(r[i], r[(i + 1) % n], r[j], r[(j + 1) % n])) return true;
+    }
+  return false;
+}
+
 /** The NO-GO (or SLOW-GO) patches of a coding as outlines. */
 export function ipbAreas(c: IpbCoding, o: IpbAreaOpts): IpbArea[] {
   const { w, h, res } = c;
@@ -197,6 +212,12 @@ export function ipbAreas(c: IpbCoding, o: IpbAreaOpts): IpbArea[] {
     while (simp.length > maxVerts && tol < 50) {
       tol *= 1.5;
       simp = simplifyRing(best, tol);
+    }
+    // Douglas-Peucker does not keep a ring simple: step the tolerance back down until the outline no longer crosses
+    // itself (an area symbol that crosses itself is drawn wrongly); the traced ring itself never crosses.
+    while (ringSelfCrosses(simp) && tol > tol0 * 0.25) {
+      tol /= 1.5;
+      simp = tol < tol0 * 0.3 ? best.slice() : simplifyRing(best, tol);
     }
     if (simp.length < 3) continue;
     out.push({ ring: simp, areaM2: p.cells.length * res * res, why: p.why });
