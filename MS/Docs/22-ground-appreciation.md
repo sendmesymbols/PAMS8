@@ -58,7 +58,8 @@ Redesigned 22 Nov 2026 (the impeccable design pass): one workflow, Read → sett
 - **Window**: Minimize, Maximize / Restore down and Close at the right of the header. Maximized, the sheet fills the
   screen (also a double-click on the title bar), and it is remembered in this browser. Minimized, it folds to a bar at
   the foot of the map with the progress (ready, to do); a click on the bar, its Restore button or the top bar's Aprc
-  button brings it back as it was. What was typed is kept, and the keys go back to the map. A read carries on while it is
+  button brings it back as it was. The bar can be dragged anywhere (a click without moving restores); its place is kept
+  in this browser and held inside the window. What was typed is kept, and the keys go back to the map. A read carries on while it is
   minimized. Hosts: `windowState`, `setWindow('normal' | 'max' | 'min')`.
 - Messages come as a toast at the foot of the sheet (read out once; a failure stays longer). Below 940 px the outline is a
   drawer (☰ over the page) and the inspector sits under the page.

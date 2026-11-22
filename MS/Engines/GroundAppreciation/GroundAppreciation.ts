@@ -115,9 +115,12 @@ ${P}.ms-open{display:flex}
 ${P}.win-max{left:8px;right:8px;width:auto;transform:none}
 ${P}.win-min{top:auto;bottom:14px;height:auto;width:min(600px,calc(100vw - 20px))}
 ${P}.win-min>:not(.ap-head):not(.ap-busy):not(.ap-toast){display:none!important}
-${P}.win-min .ap-head{border-radius:12px;border-bottom:0;cursor:pointer}
+${P}.win-min .ap-head{border-radius:12px;border-bottom:0;cursor:grab;touch-action:none}
+${P}.win-min.dragging{user-select:none;box-shadow:0 18px 44px rgba(0,0,0,.6)}
+${P}.win-min.dragging .ap-head{cursor:grabbing}
 ${P}.win-min .ap-head :is(.ap-select,[data-a="menu"],[data-a="read"]){display:none}
 ${P}.win-min .ap-toast{bottom:calc(100% + 10px)}
+${P}.win-min.toast-below .ap-toast{bottom:auto;top:calc(100% + 10px)}
 ${P} .ap-minprog{display:none;flex:none;color:var(--ap-label);font-size:12.5px;font-variant-numeric:tabular-nums}
 ${P} .ap-minprog b{color:var(--ap-strong);font-weight:700}
 ${P}.win-min .ap-minprog{display:inline}
@@ -491,6 +494,10 @@ export default class GroundAppreciation {
   private _maxPref = false;
   /** When the window state last changed: a double-click that began as the restoring click is not taken as a second change. */
   private _winAt = 0;
+  /** Where the minimized bar was dragged to (its top-left, px), or null: centred at the foot. Kept in this browser. */
+  private _minPos: { x: number; y: number } | null = null;
+  /** When a drag of the bar ended: the click that ends a drag does not restore the sheet. */
+  private _movedAt = 0;
   private _wo: number | null = null;
   private _wr: number | null = null;
   private _hr: number | null = null;
@@ -621,6 +628,11 @@ export default class GroundAppreciation {
     const el = this._el;
     el.classList.toggle('win-max', this._win === 'max');
     el.classList.toggle('win-min', this._win === 'min');
+    // the bar's own place applies only while minimized
+    el.style.left = '';
+    el.style.bottom = '';
+    el.style.transform = '';
+    el.classList.remove('toast-below');
     if (this._win === 'max') {
       el.style.top = '8px';
       el.style.height = 'calc(100vh - 16px)';
@@ -631,6 +643,15 @@ export default class GroundAppreciation {
       el.style.top = '';
       el.style.height = '';
       el.style.maxHeight = '';
+      if (this._minPos) {
+        const r = el.getBoundingClientRect();
+        const p = this._clampPos(this._minPos.x, this._minPos.y, r.width, r.height);
+        el.style.left = `${p.x}px`;
+        el.style.top = `${p.y}px`;
+        el.style.bottom = 'auto';
+        el.style.transform = 'none';
+        el.classList.toggle('toast-below', p.y < 90);
+      }
       return;
     }
     dockBelowBar(this._el);
@@ -1533,8 +1554,10 @@ export default class GroundAppreciation {
 <div class="ap-toast" data-p="toast" role="status" aria-live="polite"></div>`;
     el.addEventListener('click', (e) => this._click(e));
     el.addEventListener('pointerdown', (e) => {
-      const h = (e.target as HTMLElement).closest('[data-rz]') as HTMLElement | null;
+      const tt = e.target as HTMLElement;
+      const h = tt.closest('[data-rz]') as HTMLElement | null;
       if (h && e.button === 0) this._startResize(e, h);
+      else if (this._win === 'min' && e.button === 0 && tt.closest('.ap-head') && !tt.closest('button,select,input')) this._startMove(e);
     });
     el.addEventListener('dblclick', (e) => {
       const rz = (e.target as HTMLElement).closest('[data-rz]') as HTMLElement | null;
@@ -1569,6 +1592,7 @@ export default class GroundAppreciation {
       this._part('grid').classList.remove('out-open');
     }
     if (this._win === 'min' && t.closest('.ap-head') && !t.closest('button,select,input')) {
+      if (performance.now() - this._movedAt < 350) return;
       this._setWin(this._maxPref ? 'max' : 'normal');
       return;
     }
@@ -1967,6 +1991,7 @@ export default class GroundAppreciation {
       this._hideOut = !!u?.out;
       this._hideRt = !!u?.rt;
       this._maxPref = !!u?.max;
+      this._minPos = Number.isFinite(u?.mx) && Number.isFinite(u?.my) ? { x: Number(u.mx), y: Number(u.my) } : null;
       if (this._win !== 'min') this._win = this._maxPref ? 'max' : 'normal';
       const px = (v: unknown): number | null => (Number(v) > 0 ? Number(v) : null);
       this._wo = px(u?.wo);
@@ -1979,7 +2004,7 @@ export default class GroundAppreciation {
 
   private _saveUi(): void {
     try {
-      localStorage.setItem(UI_STORE, JSON.stringify({ out: this._hideOut, rt: this._hideRt, wo: this._wo, wr: this._wr, hr: this._hr, max: this._maxPref }));
+      localStorage.setItem(UI_STORE, JSON.stringify({ out: this._hideOut, rt: this._hideRt, wo: this._wo, wr: this._wr, hr: this._hr, max: this._maxPref, mx: this._minPos?.x ?? null, my: this._minPos?.y ?? null }));
     } catch {
       /* storage refused: the panels stay as they are for this session */
     }
@@ -2007,6 +2032,50 @@ export default class GroundAppreciation {
     if (w === 'min') {
       if (this._el.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
     } else if (was === 'min') this._el.focus({ preventScroll: true });
+  }
+
+  /** Keep the bar inside the window (4 px clear of each edge). */
+  private _clampPos(x: number, y: number, w: number, h: number): { x: number; y: number } {
+    return { x: Math.round(clamp(x, 4, Math.max(4, innerWidth - w - 4))), y: Math.round(clamp(y, 4, Math.max(4, innerHeight - h - 4))) };
+  }
+
+  /**
+   * Drag the minimized bar. It moves once the pointer has gone 4 px (less is a click, which restores the sheet); the
+   * place is kept in this browser, and the bar stays inside the window when the window changes size.
+   */
+  private _startMove(e: PointerEvent): void {
+    const el = this._el!;
+    const head = el.querySelector('.ap-head') as HTMLElement;
+    const r = el.getBoundingClientRect();
+    const dx = e.clientX - r.left, dy = e.clientY - r.top, sx = e.clientX, sy = e.clientY;
+    let moved = false;
+    try {
+      head.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture refused: the bar still follows while the pointer stays on it */
+    }
+    const move = (ev: PointerEvent) => {
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+      if (!moved) {
+        moved = true;
+        el.classList.add('dragging');
+      }
+      this._minPos = this._clampPos(ev.clientX - dx, ev.clientY - dy, r.width, r.height);
+      this._dock();
+    };
+    const up = () => {
+      head.removeEventListener('pointermove', move);
+      head.removeEventListener('pointerup', up);
+      head.removeEventListener('pointercancel', up);
+      el.classList.remove('dragging');
+      if (moved) {
+        this._movedAt = performance.now();
+        this._saveUi();
+      }
+    };
+    head.addEventListener('pointermove', move);
+    head.addEventListener('pointerup', up);
+    head.addEventListener('pointercancel', up);
   }
 
   // ── the sheet: panel sizes ───────────────────────────────────────────────────────────────────────────────────
@@ -2234,6 +2303,7 @@ export default class GroundAppreciation {
     wMax.innerHTML = this._win === 'max' ? UI.restore : UI.max;
     wMax.setAttribute('aria-label', maxWord);
     wMax.title = `${maxWord} (or double-click the title bar)`;
+    (this._el.querySelector('.ap-head') as HTMLElement).title = this._win === 'min' ? 'Drag to move; click to restore' : '';
     this._part('minprog').innerHTML = `<b>${t.all - t.yours - t.open}</b> of ${t.all} ready · ${t.todo} to do`;
     const narrow = this._narrow();
     const grid = this._part('grid');
