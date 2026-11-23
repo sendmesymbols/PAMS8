@@ -103,5 +103,19 @@ check('hPlus: H+1:25, H-0:40', hPlus(1 + 25 / 60) === 'H+1:25' && hPlus(-40 / 60
   check('no data: every row says so, none coded', none.every((r) => r.status === 'na' || r.status === 'met'));
 }
 
+{
+  // COAs (ATP 2-01.3): most likely = the template's avenue (else the best going); most dangerous = onto your MSR / least under your fire / fastest.
+  const A = aa('A', [[0, 20000, 'go']]), B = aa('B', [[0, 20000, 'go'], [20000, 24000, 'slow']], [], { main: false }), C = aa('C', [[0, 30000, 'go']], [], { main: false });
+  const r = decide(args([A, B, C], { coa: { fire: { A: 60, B: 20, C: 50 }, turnAa: null, templateAa: null } }));
+  check('COA 1 is the best going (A) when no template avenue is given', r.coas && r.coas[0].aa === 'A' && r.coas[0].kind === 'likely');
+  check('COA 2 is the avenue least under your fire (B)', r.coas && r.coas[1].aa === 'B' && r.coas[1].why.some((w) => /less of it under your fire/.test(w)));
+  const t = decide(args([A, B, C], { coa: { fire: { A: 60, B: 20, C: 50 }, turnAa: 'C', templateAa: 'B' } }));
+  check("the template's avenue is COA 1; the turning approach onto your MSR is COA 2 over the less-fired one", t.coas[0].aa === 'B' && t.coas[1].aa === 'C' && t.coas[1].why.some((w) => /onto your MSR/.test(w)));
+  check('every NAI names the COA it confirms; each COA has an indicator NAI', t.nais.every((n) => Array.isArray(n.coas)) && t.coas.every((c) => c.indicatorNai && t.nais.find((n) => n.id === c.indicatorNai).aa === c.aa));
+  const one = decide(args([A], { coa: { fire: { A: 60 } } }));
+  check('one avenue: COA 1 only, a note', one.coas.length === 1 && one.notes.some((n) => /One avenue only/.test(n)));
+  const none = decide(args([A, B]));
+  check('without the coa argument: no COAs', none.coas === null);
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

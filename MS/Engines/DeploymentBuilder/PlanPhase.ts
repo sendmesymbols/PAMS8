@@ -203,9 +203,10 @@ export interface Phase2Find {
  * on the map (plan metres); `choke` his MSR behind the objectives. Both sides round Obj 1 are tried (and 15° either way):
  * FUP 2 hidden from Obj 2 first, then the shorter way from the FUP, no NO-GO on the axis, the LOE nearer his MSR.
  */
-export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet, enemyAt: XY[] | null, choke: MsrChoke | null, marked: XY | null = null): Phase2Find | null {
+export function findPhaseN(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet, enemyAt: XY[] | null, choke: MsrChoke | null, marked: XY | null = null, n: 2 | 3 = 2): Phase2Find | null {
+  const R = n === 2 ? { prev: 'obj', cur: 'obj2', fupPrev: 'fup', fup: 'fup2', sl: 'sl2', axis: 'axis2', mor: 'mor2' } : { prev: 'obj2', cur: 'obj3', fupPrev: 'fup2', fup: 'fup3', sl: 'sl3', axis: 'axis3', mor: 'mor3' };
   const item = (role: string) => res.items.find((i) => i.role === role);
-  const obj = item('obj'), obj2 = item('obj2'), fup = item('fup');
+  const obj = item(R.prev), obj2 = item(R.cur), fup = item(R.fupPrev);
   if (!obj || !obj2 || !fup) return null;
   const o1 = boxOf(obj.pts);
   let o2 = boxOf(obj2.pts);
@@ -228,10 +229,10 @@ export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: Do
   if (marked && clearOf1(marked)) {
     // the user marked Obj 2 on the map: it stands, whatever is drawn or lies higher
     O2 = marked; out.obj2From = 'marked';
-    obj2Why = `where you marked it, ${fmtM(dist(marked, o1.c))} behind Obj 1`;
+    obj2Why = `where you marked it, ${fmtM(dist(marked, o1.c))} behind Obj ${n - 1}`;
   } else if (known.length) {
     O2 = known[0].p; out.obj2From = 'enemy';
-    obj2Why = `on the enemy posn drawn ${fmtM(known[0].d)} behind Obj 1`;
+    obj2Why = `on the enemy posn drawn ${fmtM(known[0].d)} behind Obj ${n - 1}`;
   } else {
     const meanE = (c: XY) => {
       const es = [c, P(c.x - o2.w / 3, c.y), P(c.x + o2.w / 3, c.y), P(c.x, c.y - o2.h / 3), P(c.x, c.y + o2.h / 3)].map((p) => { const w = W(p); return g.elev(w.x, w.y); }).filter(Number.isFinite);
@@ -247,11 +248,11 @@ export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: Do
     }
     if (best && Number.isFinite(e0) && best.e - e0 >= gain) {
       O2 = best.c; out.obj2From = 'highGround';
-      obj2Why = `on ground ${Math.round(best.e - e0)} m higher, ${fmtM(dist(best.c, o1.c))} behind Obj 1 (his depth likely on the high ground, E): confirm by recce`;
-    } else obj2Why = `assumed ${fmtM(dist(o1.c, o2.c))} straight behind Obj 1 (his depth Coy, attack.phase2.obj2BeyondM, E): draw his depth posn on the map (a hostile symbol) and Obj 2 is laid on it`;
+      obj2Why = `on ground ${Math.round(best.e - e0)} m higher, ${fmtM(dist(best.c, o1.c))} behind Obj ${n - 1} (his depth likely on the high ground, E): confirm by recce`;
+    } else obj2Why = `assumed ${fmtM(dist(o1.c, o2.c))} straight behind Obj ${n - 1} (his depth Coy, attack.phase2.obj2BeyondM, E): draw his depth posn on the map (a hostile symbol) and Obj 2 is laid on it`;
   }
-  if (dist(O2, o2.c) > 1) { out.nudges.obj2 = P(O2.x - o2.c.x, O2.y - o2.c.y); o2 = { ...o2, c: O2 }; }
-  out.rows.push({ name: 'Obj 2', st: out.obj2From === 'assumed' ? 'warn' : 'pass', reason: obj2Why });
+  if (dist(O2, o2.c) > 1) { out.nudges[R.cur] = P(O2.x - o2.c.x, O2.y - o2.c.y); o2 = { ...o2, c: O2 }; }
+  out.rows.push({ name: `Obj ${n}`, st: out.obj2From === 'assumed' ? 'warn' : 'pass', reason: obj2Why });
 
   // ── the side round Obj 1 ──────────────────────────────────────────────────────────────────────────────────────────
   const sight = (to: XY[]) => {
@@ -282,11 +283,11 @@ export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: Do
   const best = cands[0] ?? { lay: layPhase2(o1, o2, F0, out.side, off, doc), cost: 0, seen: null, wayM: 0, axisBad: 0, chokeD: null };
   const lay = best.lay;
   out.side = lay.side; out.offDeg = lay.offDeg;
-  out.geom = { fup2: { pts: lay.fupPts }, sl2: { pts: lay.slPts }, loe: { pts: lay.loePts } };
-  out.paths = { axis2: lay.axis };
+  out.geom = { [R.fup]: { pts: lay.fupPts }, [R.sl]: { pts: lay.slPts }, loe: { pts: lay.loePts } };
+  out.paths = { [R.axis]: lay.axis };
   // the mortars' step-up posn to the side away from the way chosen
-  const m2 = item('mor2');
-  if (m2) { const want = morStepUp(o1, lay.side, doc); if (dist(want, m2.pts[0]) > 1) out.nudges.mor2 = P(want.x - m2.pts[0].x, want.y - m2.pts[0].y); }
+  const m2 = item(R.mor);
+  if (m2) { const want = morStepUp(o1, lay.side, doc); if (dist(want, m2.pts[0]) > 1) out.nudges[R.mor] = P(want.x - m2.pts[0].x, want.y - m2.pts[0].y); }
   // the follow-up Coys' way on foot, each straight leg laid round NO-GO (it may not come nearer Obj 1 than the leg did)
   const legs: XY[] = [lay.via[0]];
   for (let i = 1; i < lay.via.length; i++) {
@@ -297,15 +298,60 @@ export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: Do
   }
   out.route = simplify(legs, num(doc, 'attack.routeToleranceM', 75));
   const other = cands.find((c) => c.lay.side !== lay.side);
-  const otherWhy = other ? `; the ${sideWord(other.lay.side)} way ${other.seen !== null && best.seen !== null && other.seen > best.seen + 0.05 ? `has FUP 2 more in view of Obj 2 (${Math.round(other.seen * 100)} %)` : other.wayM > best.wayM + 200 ? `is longer (${fmtM(other.wayM)})` : other.axisBad > best.axisBad ? 'crosses NO-GO' : other.chokeD !== null && best.chokeD !== null && other.chokeD > best.chokeD + 200 ? 'ends further from his MSR' : 'scores lower'}` : '; the other way is NO-GO at FUP 2';
-  out.rows.push({ name: 'Ph 2 direction', st: 'pass', reason: `round Obj 1's ${sideWord(lay.side)} flank, keeping ${num(doc, 'attack.phase2.clearObj1M', 300)} m off it, onto Obj 2 ${lay.offDeg}° off his front; ${fmtM(lenOf(out.route))} from the FUP to FUP 2 (IBB p186: a new direction, not through the Coys on Obj 1)${otherWhy}` });
+  const otherWhy = other ? `; the ${sideWord(other.lay.side)} way ${other.seen !== null && best.seen !== null && other.seen > best.seen + 0.05 ? `has FUP ${n} more in view of Obj ${n} (${Math.round(other.seen * 100)} %)` : other.wayM > best.wayM + 200 ? `is longer (${fmtM(other.wayM)})` : other.axisBad > best.axisBad ? 'crosses NO-GO' : other.chokeD !== null && best.chokeD !== null && other.chokeD > best.chokeD + 200 ? 'ends further from his MSR' : 'scores lower'}` : '; the other way is NO-GO at FUP 2';
+  out.rows.push({ name: `Ph ${n} direction`, st: 'pass', reason: `round Obj ${n - 1}'s ${sideWord(lay.side)} flank, keeping ${num(doc, 'attack.phase2.clearObj1M', 300)} m off it, onto Obj ${n} ${lay.offDeg}° off the En front; ${fmtM(lenOf(out.route))} from ${n === 2 ? 'the FUP' : 'FUP 2'} to FUP ${n} (IBB p186: a new direction, not through the Coys on Obj ${n - 1})${otherWhy}` });
   out.rows.push(best.seen === null
-    ? { name: 'FUP 2 unseen', st: 'unchecked', reason: g.sight ? 'the ground round FUP 2 is not loaded' : 'no sight data' }
-    : { name: 'FUP 2 unseen', st: best.seen < 0.5 ? 'pass' : 'warn', reason: best.seen < 0.5 ? `likely hidden from Obj 2 (${Math.round(best.seen * 100)} % of it seen)` : `${Math.round(best.seen * 100)} % of FUP 2 likely seen from Obj 2: form up by night or under smoke, or neutralise Obj 2 while they form up` });
+    ? { name: `FUP ${n} unseen`, st: 'unchecked', reason: g.sight ? `the ground round FUP ${n} is not loaded` : 'no sight data' }
+    : { name: `FUP ${n} unseen`, st: best.seen < 0.5 ? 'pass' : 'warn', reason: best.seen < 0.5 ? `likely hidden from Obj ${n} (${Math.round(best.seen * 100)} % of it seen)` : `${Math.round(best.seen * 100)} % of FUP ${n} likely seen from Obj ${n}: form up by night or under smoke, or neutralise Obj ${n} while they form up` });
   return out;
 }
 
 /** The going along a phase 2 axis on foot and for tanks, as a check row (`Ph 2 going`). */
+
+/** Phase 2 on the ground: Obj 2, the side round Obj 1, FUP 2 and SL 2, the follow-up Coys' way (findPhaseN with n = 2). */
+export function findPhase2(res: SolveResult, f: FitFrame, g: PlanGround, doc: DoctrineSet, enemyAt: XY[] | null, choke: MsrChoke | null, marked: XY | null = null): Phase2Find | null {
+  return findPhaseN(res, f, g, doc, enemyAt, choke, marked, 2);
+}
+
+/**
+ * A third phase on a two-phase recipe: Obj 3 behind Obj 2 (attack.phase2.obj2BeyondM), FUP 3, SL 3 and the phase 3 axis
+ * laid round Obj 2's other flank (PlanPhase.layPhase2 with the side turned), the follow-up: D Coy when C Coy alone took
+ * Obj 2 (the reserve commits: tell Bde), else A and B Coys from Obj 1, reorganised there (IBB p 189 para 23: each Obj a
+ * firm base for the next). The mortars step up again. The recipe passed in is not changed.
+ */
+export function threePhaseRecipe(r: Recipe, doc: DoctrineSet): Recipe {
+  if (r.task !== 'attack' || r.phases !== 2) return r;
+  const out: Recipe = JSON.parse(JSON.stringify(r));
+  const S = (role: string) => out.slots.find((s) => s.role === role);
+  const obj2 = S('obj2'), fup2 = S('fup2'), axis2 = S('axis2');
+  const rect = obj2?.shape?.rect;
+  if (!obj2 || !rect || !fup2?.shape?.pts?.length) return r;
+  const midOf = (v: unknown, fb: number) => { const x = resolveRange(doc, v); return x ? (x[0] + x[1]) / 2 : fb; };
+  const w = midOf(rect.wM, 1500), h = midOf(rect.hM, 700);
+  const o2: Box = { c: fromRecipe([rect.acrossM, rect.backM]), w, h };
+  const o3: Box = { c: P(o2.c.x, o2.c.y + num(doc, 'attack.phase2.obj2BeyondM', 1500)), w, h };
+  const f2 = centre(fup2.shape.pts.map(fromRecipe));
+  const sd = (-(r.phase2Side ?? 1)) as 1 | -1;
+  const lay = layPhase2(o2, o3, f2, sd, num(doc, 'attack.phase2.offDeg', 60), doc);
+  const res = S('res');
+  const who = res ? 'D Coy' : 'A, B Coys (from Obj 1)';
+  if (res) out.slots = out.slots.filter((s) => s.role !== 'res');
+  const add = (s: RecipeSlot) => out.slots.push(s);
+  add({ role: 'obj3', kind: 'area', sym: '25151700', label: 'OBJ 3', order: 1, shape: { rect: { acrossM: Math.round(o3.c.x), backM: Math.round(-o3.c.y), wM: rect.wM, hM: rect.hM } } });
+  add({ role: 'fup3', kind: 'area', sym: '25140302', label: 'FUP 3', order: 2, shape: { pts: lay.fupPts.map(toRecipe) }, terrainRule: { unseenFrom: 'threat', notIn: ['noGo', 'water'] } });
+  add({ role: 'sl3', kind: 'line', sym: '25140303', label: 'SL 3', order: 2, shape: { pts: lay.slPts.map(toRecipe) } });
+  add({ role: 'axis3', kind: 'area', sym: '25151403', label: 'Ph 3', order: 3, shape: { pts: lay.axis.map(toRecipe), widthM: axis2?.shape?.widthM ?? 400 } });
+  add({ role: 'fu3', kind: 'point', sym: '10121100', label: who, echelon: '15', order: 3, shape: { at: toRecipe(P(f2.x + 200, f2.y - 250)) } });
+  add({ role: 'mor3', kind: 'point', sym: '15111402', label: '81 mm Mor (Ph 3)', order: 4, planned: true, shape: { at: toRecipe(morStepUp(o2, sd, doc)) } });
+  const loe = S('loe');
+  if (loe?.shape) loe.shape.pts = lay.loePts.map(toRecipe);
+  out.id = `${r.id}-3ph`;
+  out.name = `${r.name.replace(', two phases', ', three phases')}`;
+  out.phases = 3;
+  out.note = `${r.note ?? ''} Phase 3 (PlanPhase): Obj 3 ${fmtM(o3.c.y - o2.c.y)} behind Obj 2 (E), taken by ${who} round Obj 2's ${sideWord(sd)} flank from FUP 3, Obj 2 the firm base (IBB p 189 para 23)${res ? '; no Bn reserve is left: tell Bde (IBB p 186 i)' : ''}; the mortars step up again; the LOE beyond Obj 3.`.trim();
+  return out;
+}
+
 export function goingRow(name: string, pts: XY[], f: FitFrame, g: PlanGround): Check {
   const foot = g.going('dismounted'), tank = g.going('tracked');
   let n = 0, no = 0, slow = 0, tankNo = 0;

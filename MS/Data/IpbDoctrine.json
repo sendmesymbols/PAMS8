@@ -245,6 +245,12 @@
     "interdict": { "basis": "D", "src": "IPB p 30", "rule": "The decision must be made while the enemy is at least 2 hours from the TAI.", "leadH": 2 },
     "counterAttack": { "basis": "D", "src": "OOW1 p 54", "rule": "The counter-attack must go in while the depth localities are still intact; its timing depends on the counter-attack force's mobility.", "coyMin": { "value": 30, "basis": "D", "src": "IBB (counter-penetration: company counter-attack in 30 min, battalion in 1 h; OCOKA_Roadmap.md)" }, "bnMin": { "value": 60, "basis": "D", "src": "IBB" } },
     "reserves": { "basis": "D", "src": "DW p 27", "text": "Reserves committed within 2-6 hours." },
+    "coa": {
+      "basis": "E", "src": "ATP 2-01.3 paras 6-7 to 6-13 (situation templates: COAs ranked most likely to least likely, and the most dangerous), 6-20 (NAIs where activity shows which COA; an NAI may be a point, a line or an area)",
+      "refs": [{ "book": "ATP", "page": "6-7", "quote": "most likely", "role": "rule" }, { "book": "ATP", "page": "6-20", "quote": "named area of interest", "role": "rule" }],
+      "decided": "COA 1 most likely = the avenue his doctrinal template is laid along, else the best going; COA 2 most dangerous = of the others, the one onto your MSR (his turning approach, +3), less under your fire than COA 1 (+2), the fastest through the area (+1). The indicator NAI of a COA is the first NAI on its avenue. An entry NAI is drawn as a line across the avenue as wide as it is there (at most 1.5 spacings); crossings and narrows stay point NAIs.",
+      "searched": "C&SC IPB book pp 23-30 (event template, DPs; no most-dangerous rule), ATP 2-01.3 ch 6, OoW Vol I s2 (guard every approach in strength by its capacity): no book scores 'most dangerous'."
+    },
     "areaOfInterest": { "basis": "D", "src": "OOW2 pp 5-6", "tactical": { "influenceKm": 30, "interestDays": 2, "interestKm": 100 }, "operational": { "influenceKm": [30, 80], "interestDays": 3, "interestKm": [100, 250] } }
   },
 
@@ -273,7 +279,21 @@
     "verticalEnvelopment": "By air into the rear and flanks.",
     "turningMovement": "Threat to a significant objective deep in the defender's rear; needs relative mobility on an assailable flank; preceded by a fixing manoeuvre.",
     "penetration": "Wedge through the front; the most commonly applied form where there are no assailable flanks; must lead to break-out; enabled by an auxiliary manoeuvre.",
-    "mountains": "Envelopment with frontal fixation preferred; frontal only if unavoidable, at night or in poor visibility (MW p 79)."
+    "mountains": "Envelopment with frontal fixation preferred; frontal only if unavoidable, at night or in poor visibility (MW p 79).",
+    "refs": [
+      { "book": "OOW2", "page": "19", "quote": "assailable flank", "role": "rule" },
+      { "book": "OOW2", "page": "21", "quote": "most commonly applied form", "role": "rule" },
+      { "book": "MW", "page": "79", "quote": "frontal", "role": "rule" }
+    ],
+    "reading": {
+      "basis": "E",
+      "decided": "The Extended View's assailable flank test (GroundGuideIpbForms.ts): a band `bandM` wide beside each flank of the objective, one FUP distance deep each way along the axis, read off the IPB coding; the flank is assailable when its NO-GO share is at most flankNogoMaxPct, no man-made obstacle lies in the band, no other locality of his (template elements, en symbols) lies within flankEnemyMinM of it, and an approach onto that flank exists. Infiltration: an approach he may watch no more than unwatchedMaxPct of, on foot. Double envelopment: both flanks and own echelon not below his. Ranking: turning when it reaches the MSR choke (user), double, envelopment, vertical (LZs behind him, tab 4), infiltration, penetration, frontal.",
+      "searched": "OoW Vol II s6 pp 19-21 (the forms and the assailable flank, no measure of it), MW p 79, DW pp 39-42, ATP 2-01.3 4-10 (key terrain), IBB S35; no book measures an assailable flank.",
+      "bandM": { "value": 1500, "basis": "E", "note": "A Coy frontage beside the flank: the ground an enveloping Coy needs." },
+      "flankNogoMaxPct": { "value": 30, "basis": "E" },
+      "flankEnemyMinM": { "value": 1000, "basis": "E", "note": "A Coy locality's own frontage: closer, the flank is tied to it." },
+      "unwatchedMaxPct": { "value": 30, "basis": "E" }
+    }
   },
 
   "proforma": {

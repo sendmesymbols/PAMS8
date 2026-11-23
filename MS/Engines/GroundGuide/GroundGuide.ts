@@ -106,6 +106,7 @@ import { arrowHeadFrac, arrowTail, attackArrow, findCorridors, simplifyLine, typ
 import { ipbAreas } from './GroundGuideIpbShapes';
 import { fireCoverage } from './GroundGuideIpbFire';
 import { compareLeftRight } from './GroundGuideIpbCompare';
+import { formsOfManoeuvre } from './GroundGuideIpbForms';
 import { pfKey, proforma, type PfGroupIn, type PfMeasures, type PfSign } from './GroundGuideIpbProforma';
 import { GroundGuideIpbApchMap } from './GroundGuideIpbApchMap';
 import { airIpb, airRulesFrom, type AirExisting, type AirLine, type AirLz, type AirObstruction } from './GroundGuideIpbAir';
@@ -2822,7 +2823,13 @@ export default class GroundGuide {
         const r = Math.max(300, v.mcWidthM / 2) * k0;
         for (const n of dv.nais) {
           const ring: MercXY[] = [];
-          for (let i = 0; i < 8; i++) ring.push([n.at[0] + Math.sin((i * Math.PI) / 4) * r, n.at[1] + Math.cos((i * Math.PI) / 4) * r]);
+          if (n.line) {
+            // A line NAI across the avenue: a thin box along it (the NAI symbol is an area).
+            const [p0, p1] = n.line;
+            const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L2 = Math.hypot(dx, dy) || 1;
+            const nx = (-dy / L2) * 150 * k0, ny = (dx / L2) * 150 * k0;
+            ring.push([p0[0] + nx, p0[1] + ny], [p1[0] + nx, p1[1] + ny], [p1[0] - nx, p1[1] - ny], [p0[0] - nx, p0[1] - ny]);
+          } else for (let i = 0; i < 8; i++) ring.push([n.at[0] + Math.sin((i * Math.PI) / 4) * r, n.at[1] + Math.cos((i * Math.PI) / 4) * r]);
           const s = sidc('25120200', '3');
           items.push({ sidc: s, amplifier: { SIDC: s, UNIQUE_DESIG: String(n.n) }, drawEssentials: { SYM_GEO_TYPE: 'Area', DRAW_TYPE: 1, CTRL_PTS: ring.map(mp) } });
         }
@@ -3183,6 +3190,7 @@ export default class GroundGuide {
     v.air = ip.air ? this._ipbAirFor(a) : undefined;
     v.template = ip.template !== 'off' ? this._ipbTemplateFor(a) : undefined;
     v.compare = this._ipbCompareFor(v, fire);
+    v.forms = this._ipbFormsFor(a, v, fire);
     if (ip.proforma) {
       this._pfInputs = [{ head: '', side: v.side, aas: this._pfMeasuresFor({ view: v, grid: a.grid }, fire) }];
       this._pfPending = true;
@@ -3264,6 +3272,81 @@ export default class GroundGuide {
       };
     });
     return compareLeftRight({ apchs, factors, weights: this._opts.extended.ipb.lrWeights, chokeSideM, fupM: ob.fupM });
+  }
+
+  /**
+   * Own attack: the forms of manoeuvre (OoW Vol II s6; `GroundGuideIpbForms`). Each of his flanks is read off the coding
+   * in a band beside the objective (one FUP distance deep each way along the axis, `formsOfManoeuvre.reading.bandM`
+   * across): its NO-GO share, a man-made obstacle, the nearest other locality of his (template elements, en symbols).
+   */
+  private _ipbFormsFor(a: { coding: IpbCoding | null; grid: OcokaGrid | null }, v: IpbApchView, fire: IpbFireView | null): IpbApchView['forms'] {
+    if (v.side !== 'own' || !v.objective || v.apchEnd === 'through' || !a.coding || !a.grid || !this._manifest) return undefined;
+    const onto = v.aas.filter((x) => x.onto);
+    if (!onto.length) return undefined;
+    const D: any = IPB_DOCTRINE;
+    const Rd = D.formsOfManoeuvre?.reading ?? {};
+    const bandM = Number(Rd.bandM?.value ?? 1500);
+    const ob = v.objective;
+    const c = a.coding, g = a.grid, z = this._manifest.zoom.max, ts = this._manifest.tileSize;
+    const k = Math.cosh(ob.at[1] / 6378137);
+    const ab = (v.axisDeg * Math.PI) / 180;
+    const A: MercXY = [Math.sin(ab), Math.cos(ab)], Rr: MercXY = [Math.cos(ab), -Math.sin(ab)];
+    const pt = (aM: number, qM: number): MercXY => [ob.at[0] + (A[0] * aM + Rr[0] * qM) * k, ob.at[1] + (A[1] * aM + Rr[1] * qM) * k];
+    const cellAt = (p: MercXY): number => {
+      const [px, py] = mercToPx(p[0], p[1], z, ts);
+      const x = Math.floor(px - g.px0 - c.x0), y = Math.floor(py - g.py0 - c.y0);
+      return x >= 0 && y >= 0 && x < c.w && y < c.h ? y * c.w + x : -1;
+    };
+    // His other localities: the template's elements laid, and his symbols in the area read.
+    const others: MercXY[] = [...(v.template?.elements ?? []).filter((e) => e.status !== 'none' && e.status !== 'nowhere' && e.status !== 'outside').map((e) => e.at), ...this._ipbPosns(v, 'enemy').map((p) => p.at)];
+    const flank = (sign: 1 | -1) => {
+      const W2 = ob.frontageM / 2, D2 = ob.depthM / 2;
+      let n = 0, nogo = 0, obstacle = false;
+      const step = Math.max(30, c.res);
+      for (let aM = -D2 - ob.fupM; aM <= D2 + ob.fupM; aM += step)
+        for (let qM = W2 + 100; qM <= W2 + 100 + bandM; qM += step) {
+          const q = cellAt(pt(aM, sign * qM));
+          if (q < 0 || c.code[q] === IPB.NODATA) continue;
+          n++;
+          if (c.code[q] === IPB.NOGO) nogo++;
+          if (c.why[q] & WHY.MANMADE) obstacle = true;
+        }
+      const mid = pt(0, sign * (W2 + 100 + bandM / 2));
+      let near: number | null = null;
+      for (const o of others) {
+        const d = Math.hypot(o[0] - mid[0], o[1] - mid[1]) / k;
+        if (Math.hypot(o[0] - ob.at[0], o[1] - ob.at[1]) / k < W2 + 50) continue; // the objective itself
+        if (near === null || d < near) near = d;
+      }
+      return { nogoPct: n ? (100 * nogo) / n : 0, obstacle, enemyWithinM: near !== null && near <= bandM + W2 ? near : null };
+    };
+    // Mountains: the ground within 5 km of the objective rises 400 m or more (the template's own test).
+    let lo = Infinity, hi = -Infinity;
+    for (let aM = -5000; aM <= 5000; aM += 500)
+      for (let qM = -5000; qM <= 5000; qM += 500) {
+        const q = cellAt(pt(aM, qM));
+        if (q < 0) continue;
+        const [px, py] = mercToPx(pt(aM, qM)[0], pt(aM, qM)[1], z, ts);
+        const e = g.elev[Math.floor(py - g.py0) * g.w + Math.floor(px - g.px0)];
+        if (Number.isFinite(e)) ((lo = Math.min(lo, e)), (hi = Math.max(hi, e)));
+      }
+    const objAlong = ((ob.at[0] - v.anchor[0]) * A[0] + (ob.at[1] - v.anchor[1]) * A[1]) / k;
+    const lzBehind = (v.air?.lzs ?? []).filter((zn) => ((zn.at[0] - v.anchor[0]) * A[0] + (zn.at[1] - v.anchor[1]) * A[1]) / k > objAlong + ob.depthM / 2).length;
+    const ownSidc = this._apchWant?.sidc ?? this._activeSidc;
+    return formsOfManoeuvre({
+      apchs: onto.map((x) => {
+        const fl = fire?.lines.find((l) => l.id === x.id);
+        return { id: x.id, onto: x.onto as 'left' | 'right' | 'frontal' | 'turn', goPct: x.goPct, assaultNogoPct: x.assaultNogoPct ?? 0, lengthM: x.lengthM, fire: fl ? { coveredPct: fl.coveredPct, seenPct: fl.seenPct } : null };
+      }),
+      flanks: { left: flank(-1), right: flank(1) },
+      ownEch: echelonCodeOf(ownSidc),
+      objEch: ob.source === 'symbol' ? null : echelonCodeOf(ownSidc), // the Threat marker is sized as your echelon; an en symbol's echelon is not carried here
+      mover: v.mover,
+      lzBehind,
+      turnLabel: ob.turn?.label ?? null,
+      mountain: Number.isFinite(lo) && hi - lo >= 400,
+      rules: { flankNogoMaxPct: Number(Rd.flankNogoMaxPct?.value ?? 30), flankEnemyMinM: Number(Rd.flankEnemyMinM?.value ?? 1000), unwatchedMaxPct: Number(Rd.unwatchedMaxPct?.value ?? 30) },
+    });
   }
 
   /** A weight chip in the Left or Right tile was clicked: the factor's weight 0-3, kept in the settings; the compare again. */
@@ -3438,6 +3521,13 @@ export default class GroundGuide {
       mcWidthM: v.mcWidthM,
       catkMin: catk?.min ?? null,
       catkLabel: catk?.label ?? '',
+      coa: v.side === 'enemy'
+        ? {
+            fire: v.fire ? Object.fromEntries(v.fire.lines.map((l) => [l.id, l.coveredPct])) : undefined,
+            turnAa: v.aas.find((x) => x.onto === 'turn')?.id ?? null,
+            templateAa: (v.template as any)?.alongAa ?? null,
+          }
+        : undefined,
     });
     const enemy = v.side === 'enemy';
     const dirAt = (pts: Array<{ at: MercXY; alongM: number }>, m: number): number => {
@@ -3464,10 +3554,30 @@ export default class GroundGuide {
         const aa = v.aas.find((x) => x.id === p.aa)!;
         return { aa: p.aa, viable: aa.viable, main: aa.main, pts: p.pts, startAlongM: aa.startM - (leadM[p.aa] ?? 0), startH: p.startH, endH: p.endH };
       }),
-      nais: enemy ? r.nais.map((n) => ({ ...n, at: this._alongAt(along.get(n.aa)!.pts, n.alongM) })) : [],
+      // An entry NAI is a line across the avenue (ATP 2-01.3 6-20: an NAI may be a point, a line or an area), as wide as
+      // the avenue there; the others stay points.
+      nais: enemy
+        ? r.nais.map((n) => {
+            const L = along.get(n.aa)!;
+            const at = this._alongAt(L.pts, n.alongM);
+            if (n.kind !== 'entry') return { ...n, at };
+            const aa = v.aas.find((x) => x.id === n.aa)!;
+            let wM = v.mcWidthM * (aa.open ? 3 : 2.2);
+            if (aa.widthM?.length && aa.alongM?.length) {
+              let bi = 0;
+              for (let i = 1; i < aa.alongM.length; i++) if (Math.abs(aa.alongM[i] - n.alongM) < Math.abs(aa.alongM[bi] - n.alongM)) bi = i;
+              wM = Math.min(Math.max(wM, aa.widthM[bi]), v.spacingM * 1.5);
+            }
+            const b = (dirAt(L.pts, n.alongM) * Math.PI) / 180;
+            const kk = Math.cosh(at[1] / 6378137);
+            const q: MercXY = [Math.cos(b) * (wM / 2) * kk, -Math.sin(b) * (wM / 2) * kk];
+            return { ...n, at, widthM: Math.round(wM), line: [[at[0] - q[0], at[1] - q[1]], [at[0] + q[0], at[1] + q[1]]] as [MercXY, MercXY] };
+          })
+        : [],
       tais: enemy ? r.tais.map((t) => ({ ...t, at: this._alongAt(along.get(t.aa)!.pts, t.alongM), dirDeg: dirAt(along.get(t.aa)!.pts, t.alongM) })) : [],
       dps: enemy ? r.dps.map((d) => ({ ...d, ...dpAt(d.aa, d.alongM) })) : [],
       catk,
+      coas: enemy ? r.coas : null,
       leadH: Number(D.decisionPoints?.interdict?.leadH ?? 2),
       reactionH: ip.reactionH,
       notes: enemy ? r.notes : ['Decision support reads the enemy\'s avenues: set Read for to Defence. The times over own avenues are shown.'],

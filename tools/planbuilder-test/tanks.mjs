@@ -281,5 +281,24 @@ for (const r of [front, right, left]) for (const mode of ['close', 'fire']) {
   check('...its line names the Sqn, the posts and the Rifle Tps; not a screen: left as it is', /11 tanks \(3 AFV Tps the posts, eye 2\.5 m/.test(v.screenBy.text) && /2 Rifle Tps in 8 APCs/.test(v.screenBy.text) && SO.withRecceScreen(front, doc, rs) === front, v.screenBy.text);
 }
 
+
+// ── the Sqn harbour and its move up; FUP (Tks) against the En ATGMs ──────────────────────────────────────────────────
+{
+  const t = T.withTanks(front, doc, 'close');
+  check('Sqn harbour: a slot behind FUP (Tks) in the tank recipe', t.slots.some((s) => s.role === 'tkHarbour'));
+  const fl = F.fitLayout(inpOf(t, flatG));
+  const h = fl.fit.attack.hSum;
+  const hb = h.steps.find((s) => /leaves its harbour/.test(s.label)), lv = h.steps.find((s) => /Tanks leave FUP/.test(s.label));
+  check('...the move from the harbour to FUP (Tks) in the H-hour sum, before the FUP is left, about 2 km at the tank rate', hb && lv && hb.at < lv.at && hb.distM >= 1800 && hb.distM <= 2400 && hb.min > 0, hb ? `${hb.at} -> ${lv?.at}, ${hb.distM} m ${hb.min} min` : 'no harbour step');
+  const flf = F.fitLayout(inpOf(T.withTanks(front, doc, 'fire'), flatG));
+  check('...fire sp too: the harbour step before the Sqn moves to its fire posns', flf.fit.attack.hSum.steps.some((s) => /leaves its harbour/.test(s.label)));
+  check('...no En ATGM range given: no FUP (Tks) vs En ATGM row (the IBB p 214 band stands in the Tank FUP row)', !row(fl.res.rows, 'FUP (Tks) vs En ATGM') && row(fl.res.rows, 'Tank FUP'));
+  const kon = F.fitLayout(inpOf(t, flatG, { enAtgmM: 4000, enAtgmSrc: 'the En Mech Inf Bn\'s Konkurs ATGM, 4.0 km (ORBAT)' }));
+  const rK = row(kon.res.rows, 'FUP (Tks) vs En ATGM');
+  check('...the En Konkurs reaches 4 km: FUP (Tks) 2.5-3 km out is inside it, fail with the fix (move it back to 4.3 km)', rK?.st === 'fail' && /Konkurs/.test(rK.reason) && rK.detail?.fix?.some((x) => /4\.3 km/.test(x)), rK?.reason);
+  const mil = F.fitLayout(inpOf(t, flatG, { enAtgmM: 2000, enAtgmSrc: 'the En Inf Bn\'s Milan ATGM, 2.0 km (ORBAT)' }));
+  check('...the En Milan reaches 2 km: FUP (Tks) beyond it, pass', row(mil.res.rows, 'FUP (Tks) vs En ATGM')?.st === 'pass', row(mil.res.rows, 'FUP (Tks) vs En ATGM')?.reason);
+}
+
 console.log(`\n${n - fails} of ${n} checks passed${fails ? `, ${fails} FAILED` : ''}`);
 process.exit(fails ? 1 : 0);

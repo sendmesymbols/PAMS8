@@ -17,8 +17,8 @@ import { doctrineAt, resolveRange, SMALL_TASKS } from './PlanRecipes';
 import type { Check, CheckState, SlotResult, SolveResult, SolveCtx, SolveOptions, XY } from './PlanSolve';
 import { solveRecipe, BP_SHAPE } from './PlanSolve';
 import { atgmPairs, type UnitBrief } from './PlanOrbat';
-import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
-import { findPhase2, goingRow, type Phase2Find } from './PlanPhase';
+import { attackBreach, attackFactors, attackTimes, atOnObj, counterAttack, findAttackSpots, findMsrChoke, hSumRow, nightBrief, nightRow, phase2Row, phase3Row, type AttackFind, type CounterApch, type Factor, type HSum, type MsrChoke, type NightBrief } from './PlanAttack';
+import { findPhase2, goingRow, type Phase2Find, findPhaseN } from './PlanPhase';
 import { addTankTimes, defTankRows, findTankSpots, type TankFind, type TankMode, tankFupVsEnAtgm } from './PlanTanks';
 import { artyRows } from './PlanArty';
 import { adRows } from './PlanAD';
@@ -103,6 +103,8 @@ export interface FitResult {
   attack?: { hSum: HSum | null; choke: MsrChoke | null; factors: Factor[]; night: NightBrief | null; route: XY[] | null; finder: Check[];
     /** A two-phase attack: the follow-up Coys' way to FUP 2, the side round Obj 1, where Obj 2 came from. */
     phase2?: { route: XY[]; side: 1 | -1; offDeg: number; obj2From: Phase2Find['obj2From'] };
+    /** A three-phase attack: the phase 3 Coys' way round Obj 2 to FUP 3. */
+    phase3?: { route: XY[]; side: 1 | -1; offDeg: number };
     /** His counter-attack ways in onto the last objective, for the reorganisation (PlanAttack.counterAttack). */
     counter?: { apchs: CounterApch[]; mover: 'tracked' | 'dismounted' };
     /** Tanks with the attack (PlanTanks): the Sqn's way to its fire posns (fire sp) and his fields of fire. */
@@ -938,6 +940,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   let paths: Record<string, XY[]> | undefined;
   let fitBase = base;
   let ph2: Phase2Find | null = null;
+  let ph3: Phase2Find | null = null;
   let tk: TankFind | null = null;
   if (find) {
     const o2 = { ...inp.opts, nudges: addNudges(manual, find.nudges), geom: find.geom, paths: find.axis ? { axis: find.axis } : undefined };
@@ -945,9 +948,10 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     paths = axisOnGround(b2, frame, ground) ?? o2.paths;
     fitBase = solveRecipe(recipe, ctx, { ...o2, paths });
     // a second phase (PlanPhase): Obj 2, the side round Obj 1, FUP 2, SL 2, the phase 2 axis, the follow-up Coys' way
-    if (recipe.phases === 2) {
+    if ((recipe.phases ?? 1) >= 2) {
       const enemyAt = (inp.enemyAt ?? []).map((w) => toLocal(frame, w));
-      ph2 = findPhase2(fitBase, frame, ground, ctx.doc, enemyAt, findMsrChoke(fitBase, frame, ground, ctx.doc), inp.obj2At ? toLocal(frame, inp.obj2At) : null);
+      const chokeP = findMsrChoke(fitBase, frame, ground, ctx.doc);
+      ph2 = findPhase2(fitBase, frame, ground, ctx.doc, enemyAt, chokeP, inp.obj2At ? toLocal(frame, inp.obj2At) : null);
       if (ph2) {
         find.nudges = addNudges(find.nudges, ph2.nudges);
         find.geom = { ...find.geom, ...ph2.geom };
@@ -956,6 +960,19 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
         const b3 = solveRecipe(recipe, ctx, o3);
         paths = { ...o3.paths, ...(axisOnGround(b3, frame, ground, 'axis2') ?? {}) };
         fitBase = solveRecipe(recipe, ctx, { ...o3, paths });
+        // a third phase (PlanPhase.findPhaseN): Obj 3, FUP 3 round Obj 2's other flank, the phase 3 axis
+        if (recipe.phases === 3) {
+          ph3 = findPhaseN(fitBase, frame, ground, ctx.doc, enemyAt, chokeP, null, 3);
+          if (ph3) {
+            find.nudges = addNudges(find.nudges, ph3.nudges);
+            find.geom = { ...find.geom, ...ph3.geom };
+            find.rows.push(...ph3.rows);
+            const o3b = { ...o3, nudges: addNudges(manual, find.nudges), geom: find.geom, paths: { ...paths, ...ph3.paths } };
+            const b3b = solveRecipe(recipe, ctx, o3b);
+            paths = { ...o3b.paths, ...(axisOnGround(b3b, frame, ground, 'axis3') ?? {}) };
+            fitBase = solveRecipe(recipe, ctx, { ...o3b, paths });
+          }
+        }
       }
     }
     // tanks (PlanTanks): FUP (Tks) on the ground, the fire posns following the BOF, the tanks' axis round NO-GO on tracks
@@ -1013,7 +1030,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
   // an attack: the finders' rows, the H-hour sum, his MSR choke, the night march, the factors that score it
   if (find) {
     const route = find.route;
-    const h = attackTimes(raw, frame, ground, ctx.doc, terrain.kind, !!inp.night, route, ph2?.route ?? null);
+    const h = attackTimes(raw, frame, ground, ctx.doc, terrain.kind, !!inp.night, route, ph2?.route ?? null, ph3?.route ?? null);
     const choke = findMsrChoke(raw, frame, ground, ctx.doc);
     // tanks in the H-hour sum (before its row is written) and their rows, in place of the solver's unread ones
     const tkRows = h && recipe.tanks ? addTankTimes(h, raw, frame, ground, ctx.doc, !!inp.night, recipe.tanks, tk?.route ?? null) : [];
@@ -1023,12 +1040,16 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     merged.rows.push(...find.rows, ...tkRows);
     const ax2 = raw.items.find((i) => i.role === 'axis2');
     if (ph2 && ax2) merged.rows.push(goingRow('Ph 2 going', ax2.pts, frame, ground));
+    const ax3 = raw.items.find((i) => i.role === 'axis3');
+    if (ph3 && ax3) merged.rows.push(goingRow('Ph 3 going', ax3.pts, frame, ground));
     if (h) merged.rows.push(hSumRow(h, ctx.doc));
     // his minefield in front of the Obj: the breach before H
     const brR = recipe.enMfAtk ? attackBreach(recipe as any, ctx.doc, !!inp.night)?.row : null;
     if (brR) merged.rows.push(brR);
     const p2r = h ? phase2Row(h, ctx.doc) : null;
     if (p2r) merged.rows.push(p2r);
+    const p3r = h ? phase3Row(h, ctx.doc) : null;
+    if (p3r) merged.rows.push(p3r);
     // the reorganisation: his counter-attack ways in onto the last objective, in place of the solver's unread row
     const ca = counterAttack(raw, frame, ground, ctx.doc, enemy?.type ?? null);
     if (ca) { merged.rows = merged.rows.filter((r) => r.name !== 'Approaches covered'); merged.rows.push(ca.row); }
@@ -1042,7 +1063,7 @@ export function fitLayout(inp: FitLayoutInput): FittedLayout | null {
     const nb = inp.night && inp.nmRules && route && obj ? nightBrief(route, P(obj.pts.reduce((a, p) => a + p.x, 0) / obj.pts.length, obj.pts.reduce((a, p) => a + p.y, 0) / obj.pts.length), frame, terrain.kind, inp.nmRules, ground.mov?.() ?? null) : null;
     if (nb) merged.rows.push(nightRow(nb));
     const af = attackFactors(recipe.layout, merged.rows, raw, frame, ground, h, choke, route, ctx.doc);
-    fit.attack = { hSum: h, choke, factors: af.factors, night: nb, route, finder: find.rows, phase2: ph2 ? { route: ph2.route, side: ph2.side, offDeg: ph2.offDeg, obj2From: ph2.obj2From } : undefined, counter: ca ? { apchs: ca.apchs, mover: ca.mover } : undefined, tanks: recipe.tanks ? { mode: recipe.tanks, route: tk?.route ?? null, fieldM: tk?.fieldM ?? null } : undefined };
+    fit.attack = { hSum: h, choke, factors: af.factors, night: nb, route, finder: find.rows, phase2: ph2 ? { route: ph2.route, side: ph2.side, offDeg: ph2.offDeg, obj2From: ph2.obj2From } : undefined, phase3: ph3 ? { route: ph3.route, side: ph3.side, offDeg: ph3.offDeg } : undefined, counter: ca ? { apchs: ca.apchs, mover: ca.mover } : undefined, tanks: recipe.tanks ? { mode: recipe.tanks, route: tk?.route ?? null, fieldM: tk?.fieldM ?? null } : undefined };
     fit.score = af.score;
   }
   // Auto ranks on every check the plan shows, the geometry ones (frontage, depth, gaps) as well as the ground's

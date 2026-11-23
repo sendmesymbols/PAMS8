@@ -272,6 +272,8 @@ export interface HSum {
   assaultSlowPct: number;
   /** A two-phase attack: Obj 1 taken, the follow-up Coys' move to FUP 2, H2 (crossing SL 2), Obj 2. */
   phase2?: Phase2Times;
+  /** A third phase: obj1At = Obj 2 taken, h2At = H3, obj2At = on Obj 3. */
+  phase3?: Phase2Times;
   /** Tanks with the attack (PlanTanks.addTankTimes): minutes from H they leave FUP (Tks), reach the assault line or fire posns, and are on the Obj (close sp). */
   tanks?: { mode: string; leaveAt: number; atAt: number; onObjAt: number | null; lengthM: number };
 }
@@ -340,7 +342,7 @@ const dirOf = (ax: XY[]) => { const e = ax[ax.length - 1], s = ax[Math.max(0, ax
  * p 18, + the spare), form up, FUP to the SL (H = crossing the SL), the assault at its pace, the fire lifting at each
  * ring, the objective, the LOE.
  */
-export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround | null, doc: DoctrineSet, kind: TerrainKind, night: boolean, route: XY[] | null, route2: XY[] | null = null): HSum | null {
+export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround | null, doc: DoctrineSet, kind: TerrainKind, night: boolean, route: XY[] | null, route2: XY[] | null = null, route3: XY[] | null = null): HSum | null {
   const item = (role: string) => res.items.find((i) => i.role === role);
   const obj = item('obj'), fup = item('fup'), sl = item('sl'), axis = item('axis'), loe = item('loe'), assy = item('assy');
   if (!obj || !fup || !axis) return null;
@@ -385,6 +387,7 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
   steps.push({ label: two ? 'Assault: SL to Obj 1' : 'Assault: SL to the Obj', distM: Math.round(D), min: atD(D), at: 0 });
   steps.push({ label: two ? 'Through Obj 1' : 'Through the Obj', distM: Math.round(depth), min: atD(depth), at: atD(D) });
   let phase2: Phase2Times | undefined;
+  let phase3: Phase2Times | undefined;
   let loeAt: number | null = null;
   if (obj2 && axis2 && fup2) {
     // the follow-up Coys stay in the FUP until Obj 1 is taken (IBB p204 (7)), then go round it to FUP 2
@@ -411,12 +414,37 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
     steps.push({ label: 'FUP 2 to SL 2', distM: Math.round(l4.m), min: Math.round(l4.min), at: go2 + m2 + fm2 });
     steps.push({ label: 'Assault: SL 2 to Obj 2 (H2)', distM: Math.round(D2), min: at2(D2) - h2, at: h2 });
     steps.push({ label: 'Through Obj 2', distM: Math.round(depth2), min: at2(D2 + depth2) - at2(D2), at: at2(D2) });
-    const loeDist2 = loe ? Math.max(0, dist(centre(obj2.pts), centre(loe.pts)) - depth2 / 2) : null;
+    const obj3 = item('obj3'), axis3 = item('axis3'), fup3 = item('fup3'), sl3 = item('sl3');
+    const loeDist2 = loe && !(obj3 && axis3 && fup3) ? Math.max(0, dist(centre(obj2.pts), centre(loe.pts)) - depth2 / 2) : null;
     if (loeDist2 !== null) {
       steps.push({ label: 'On to the LOE', distM: Math.round(loeDist2), min: at2(D2 + depth2 + loeDist2) - at2(D2 + depth2), at: at2(D2 + depth2) });
       loeAt = at2(D2 + depth2 + loeDist2);
     }
     phase2 = { obj1At: t1, h2At: h2, obj2At: at2(D2), gapMin: h2 - t1, marchM: Math.round(l3.m), marchMin: m2, lifts: rings.map(([label, r]) => ({ label, rM: r, at: at2(D2 - r) })), paceMinPer100m: Math.round(p2 * 10) / 10 };
+    // a third phase: from Obj 2 taken, the follow-up round it to FUP 3, H3, the assault onto Obj 3, the LOE beyond
+    if (obj3 && axis3 && fup3) {
+      const t2 = at2(D2 + depth2);
+      const F3 = centre(fup3.pts), S3 = sl3 ? centre(sl3.pts) : axis3.pts[0];
+      const way3 = route3 && route3.length >= 2 ? route3 : [F2, F3];
+      const l5 = leg(way3);
+      const m3 = Math.round(l5.min * (1 + spare));
+      const l6 = leg([F3, S3]);
+      const h3 = t2 + m3 + fm2 + Math.round(l6.min);
+      const ob3 = ext(obj3.pts), D3 = assaultDist(axis3.pts, ob3), depth3 = 2 * extentAlong(ob3, dirOf(axis3.pts));
+      const p3 = paceOn(axis3.pts).pace;
+      const at3 = (m: number) => h3 + Math.round((Math.max(0, m) / 100) * p3);
+      steps.push({ label: `Phase 3 Coys: Obj 2 to FUP 3${night ? ' (night)' : ''}`, distM: Math.round(l5.m), min: m3, at: t2 });
+      steps.push({ label: 'Form up at FUP 3', distM: 0, min: fm2, at: t2 + m3 });
+      steps.push({ label: 'FUP 3 to SL 3', distM: Math.round(l6.m), min: Math.round(l6.min), at: t2 + m3 + fm2 });
+      steps.push({ label: 'Assault: SL 3 to Obj 3 (H3)', distM: Math.round(D3), min: at3(D3) - h3, at: h3 });
+      steps.push({ label: 'Through Obj 3', distM: Math.round(depth3), min: at3(D3 + depth3) - at3(D3), at: at3(D3) });
+      const loeDist3 = loe ? Math.max(0, dist(centre(obj3.pts), centre(loe.pts)) - depth3 / 2) : null;
+      if (loeDist3 !== null) {
+        steps.push({ label: 'On to the LOE', distM: Math.round(loeDist3), min: at3(D3 + depth3 + loeDist3) - at3(D3 + depth3), at: at3(D3 + depth3) });
+        loeAt = at3(D3 + depth3 + loeDist3);
+      }
+      phase3 = { obj1At: t2, h2At: h3, obj2At: at3(D3), gapMin: h3 - t2, marchM: Math.round(l5.m), marchMin: m3, lifts: rings.map(([label, r]) => ({ label, rM: r, at: at3(D3 - r) })), paceMinPer100m: Math.round(p3 * 10) / 10 };
+    }
   } else {
     const loeDist = loe ? Math.max(0, dist(O, centre(loe.pts)) - depth / 2) : null;
     if (loeDist !== null) {
@@ -430,7 +458,7 @@ export function attackTimes(res: SolveResult, f: FitFrame | null, g: PlanGround 
   return {
     steps, lifts: rings.map(([label, r]) => ({ label, rM: r, at: atD(D - r) })),
     leaveBeforeH: before, objAt: atD(D), loeAt, night, slowPct: l1?.slowPct ?? null,
-    paceMinPer100m: Math.round(paceEff * 10) / 10, assaultSlowPct: Math.round(slowShare * 100), phase2,
+    paceMinPer100m: Math.round(paceEff * 10) / 10, assaultSlowPct: Math.round(slowShare * 100), phase2, phase3,
   };
 }
 
@@ -514,6 +542,17 @@ export function attackBreach(r: Recipe & { engr?: EngrType & { engrData?: any[] 
 }
 
 /** Phase 2's timing as a check row: H2 against the time he has to react after Obj 1 falls (IBB p176 c). */
+/** The third phase's timing against the same limit (attack.phase2.maxGapMin). */
+export function phase3Row(h: HSum, doc: DoctrineSet): Check | null {
+  const p = h.phase3;
+  if (!p) return null;
+  const max = num(doc, 'attack.phase2.maxGapMin', 60);
+  return {
+    name: 'Ph 3 timing', st: p.gapMin <= max ? 'pass' : 'warn',
+    reason: `Obj 2 taken ${hRelText(p.obj1At)}; the phase 3 Coys' move to FUP 3 ${fmtM(p.marchM)} in ${p.marchMin} min, form up, H3 ${hRelText(p.h2At)}: ${p.gapMin} min after Obj 2 falls (wants ${max} min or less, E)${p.gapMin > max ? ': the En has time to counter-attack or man the depth (IBB p176 c)' : ''}; on Obj 3 ${hRelText(p.obj2At)}`,
+  };
+}
+
 export function phase2Row(h: HSum, doc: DoctrineSet): Check | null {
   const p = h.phase2;
   if (!p) return null;

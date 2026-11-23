@@ -446,11 +446,13 @@ export interface IpbDecisionView {
   fromThreat: boolean;
   hHour: string | null;
   profiles: Array<{ aa: string; viable: boolean; main: boolean; pts: Array<[number, number, number]>; startAlongM: number; startH: [number, number]; endH: [number, number] }>;
-  nais: Array<{ id: string; n: number; aa: string; at: MercXY; alongM: number; kind: 'entry' | 'crossing' | 'narrows' | 'slow' | 'crossover'; shows: string; earliestH: number; latestH: number; tai: string | null; widthM: number | null }>;
+  nais: Array<{ id: string; n: number; aa: string; at: MercXY; alongM: number; kind: 'entry' | 'crossing' | 'narrows' | 'slow' | 'crossover'; shows: string; earliestH: number; latestH: number; tai: string | null; widthM: number | null; coas?: string[]; line?: [MercXY, MercXY] }>;
   tais: Array<{ id: string; n: number; aa: string; at: MercXY; dirDeg: number; alongM: number; why: string; earliestH: number; latestH: number; nai: string }>;
   /** `alongM` from the avenue's frame (below its start: on the way in from the enemy). */
   dps: Array<{ id: string; n: number; kind: 'interdict' | 'catk'; aa: string; tai: string | null; at: MercXY; alongM: number; inArea: boolean; beyondM: number; beforeH: boolean; earliestH: number; decision: string }>;
   catk: { label: string; min: number } | null;
+  /** COA 1 most likely, COA 2 most dangerous (ATP 2-01.3; the en's options only). */
+  coas?: Array<{ id: 'COA 1' | 'COA 2'; kind: 'likely' | 'dangerous'; aa: string; why: string[]; indicatorNai: string | null; endH: [number, number] }> | null;
   /** How far before each TAI a DP falls: the book's lead (2 h, p 30) and the own action's time on top, hours. */
   leadH?: number;
   reactionH?: number;
@@ -691,6 +693,8 @@ export interface IpbApchView {
   ms: { coding: number; corridors: number };
   /** Own attack: the left approach against the right, factor by factor (GroundGuideIpbCompare); undefined when not an own attack onto an objective. */
   compare?: import('./GroundGuideIpbCompare').CmpResult;
+  /** Own attack: the forms of manoeuvre the ground offers (GroundGuideIpbForms); undefined when not an own attack onto an objective. */
+  forms?: import('./GroundGuideIpbForms').FormsResult;
   /** The obstacle symbols read into the coding (IPB p 10), who each stops, and own fire's cover of own ones. */
   obstacles?: Array<{ name: string; kind: 'area' | 'line'; own: boolean; stops: Array<'armour' | 'mech' | 'dismounted'>; stopsThis: boolean; covered: boolean | null; at: MercXY; text: string }>;
   /** Where the approaches end (extended.ipb.apchEnd), and the objective they end on (null: the book's avenues only). */

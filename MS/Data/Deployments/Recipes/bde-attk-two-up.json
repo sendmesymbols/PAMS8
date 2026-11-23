@@ -1,0 +1,280 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bde-attk-two-up",
+  "family": "bde-attk",
+  "layout": "frontal",
+  "echelon": "18",
+  "unit": "inf-bde",
+  "basis": "D",
+  "task": "attack",
+  "name": "Bde Attk: two Bns up, brigaded FUP",
+  "frontageRow": "Brigade, night attack in plains, two battalions up",
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "A Bde attacking at night in the plains with two Bns up from a brigaded FUP on 1100-1500 m (GSP 1947 Inf Div in Battle s19 para 12 d p 86), the third Bn in reserve; the FUP 1000-1200 m from the objective (IBB p 201, IC p 333); the Obj the En forward Coys of a Bn locality (1500 x 1000 m, E); the base of fire the Bde support weapons and the DS artillery; LOE 1000 m beyond (E). The Bns' own attacks are built as Bn plans.",
+  "slots": [
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1700,
+          "wM": 1500,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "objTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1700
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": 4500,
+          "wM": 2000,
+          "hM": 1500
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fup",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -700,
+            200
+          ],
+          [
+            700,
+            -200
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -750,
+            -250
+          ],
+          [
+            750,
+            -250
+          ]
+        ]
+      },
+      "terrainRule": {
+        "onGround": "linearFeature"
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -250
+          ],
+          [
+            0,
+            -1300
+          ]
+        ],
+        "widthM": 1300
+      }
+    },
+    {
+      "role": "asltL",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Left Bn",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          -350,
+          0
+        ]
+      }
+    },
+    {
+      "role": "asltR",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Right Bn",
+      "echelon": "16",
+      "order": 3,
+      "shape": {
+        "at": [
+          350,
+          0
+        ]
+      }
+    },
+    {
+      "role": "bof",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            1500,
+            -700
+          ],
+          [
+            1900,
+            -1100
+          ]
+        ],
+        "ctrl": [
+          1300,
+          -1100
+        ]
+      },
+      "terrainRule": {
+        "sees": "obj",
+        "prefer": [
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "bofCoy",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Sp Gp",
+      "order": 4,
+      "shape": {
+        "at": [
+          1700,
+          -900
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Res Bn",
+      "echelon": "16",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          1200
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          -900,
+          1000
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111402",
+      "label": "Mor (Bns)",
+      "order": 4,
+      "shape": {
+        "at": [
+          -500,
+          900
+        ]
+      }
+    },
+    {
+      "role": "loe",
+      "kind": "line",
+      "sym": "25140900",
+      "label": "LOE",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -1500,
+            -3200
+          ],
+          [
+            1500,
+            -3200
+          ]
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "fupDistance",
+    "assaultFrontage",
+    "bofFlank",
+    "bofRange",
+    "morReach",
+    "fireLift",
+    "reserveReach",
+    "approaches"
+  ]
+}

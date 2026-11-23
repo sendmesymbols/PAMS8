@@ -378,6 +378,7 @@ export function apchTiles(o: GroundGuideOcoka): HTMLElement[] {
     const pf = proformaTile(v);
     if (pf) out.push(pf);
     else if (v.proforma === null) out.push(tile('Proforma · Relative Merits of Apchs', note('Being worked out.')));
+    if (v.forms) out.push(formsTile(v));
     if (v.compare) out.push(compareTile(v));
     out.push(createTile(v));
   } else {
@@ -427,6 +428,33 @@ function createTile(v: IpbApchView, cooOnly = false): HTMLElement {
   btn('apchs', `${side} Apchs`, `The avenues as attack arrows (Main Attk for the best going, Sp Attk for the others)`);
   btn('all', 'All three', 'COO, corridors and avenues together');
   return tile('Create on Map', acts, note('Ordinary symbols: saved with the plan, exported, edited like any other. Making one again replaces it; Ctrl+Z undoes it in one step.'));
+}
+
+// ── own attack: forms of manoeuvre (tab 3) ──────────────────────────────────────────────────────────────────────────
+
+/** The forms of manoeuvre the ground offers, ranked, each with its main and fixing approach and why (OoW Vol II s6). */
+function formsTile(v: IpbApchView): HTMLElement {
+  const f = v.forms!;
+  const list = el('div', 'ms-gx-list');
+  for (const o of f.options) {
+    const name = el('div', undefined, `${o.rank} · ${o.label}${o.id === f.lead ? ' · lead' : ''}`);
+    if (!o.feasible) name.style.opacity = '0.55';
+    const body = el('div');
+    body.append(el('b', undefined, o.feasible ? `${o.main ? `main ${o.main}` : 'main not read'}${o.aux ? `, ${o.aux} fixes` : ''}` : 'not here'), ' · ', o.why.join('; '));
+    list.append(name, body);
+  }
+  const fl = el('div', 'ms-gx-note', `${f.flanks.left.why}. ${f.flanks.right.why}.`);
+  return tile(`Forms of Manoeuvre · ${f.lead ? f.options.find((o) => o.id === f.lead)!.label : 'none read'}`, fl, list, note(`${f.notes.join(' ')} The assailable flank test: usable ground beside it, no obstacle, no other locality of his, a way onto it off his front (OoW Vol II s6; the thresholds a proposal). The ranking is a decision: turning first when it reaches his MSR (your rule), then envelopment, vertical, infiltration, penetration; frontal for reference.`));
+}
+
+/** Copy as Text: the forms of manoeuvre. */
+function formsText(v: IpbApchView): string[] {
+  const f = v.forms;
+  if (!f) return [];
+  const L: string[] = [`Forms of manoeuvre (OoW Vol II s6): ${f.lead ? `the ground favours ${f.options.find((o) => o.id === f.lead)!.label.toLowerCase()}` : 'none read'}. ${f.flanks.left.why}; ${f.flanks.right.why}.`];
+  for (const o of f.options) L.push(`  ${o.rank}. ${o.label}${o.feasible ? '' : ' (not here)'}: ${o.main ? `main ${o.main}` : ''}${o.aux ? `, ${o.aux} fixes` : ''}; ${o.why.join('; ')}.`);
+  for (const n of f.notes) L.push(`  ${n}`);
+  return L;
 }
 
 // ── own attack: left against right (tab 3) ──────────────────────────────────────────────────────────────────────────
@@ -930,13 +958,20 @@ export function decisionTiles(o: GroundGuideOcoka): HTMLElement[] {
   const out: HTMLElement[] = [];
   out.push(tile(`Time Ladder · ${v.side === 'enemy' ? 'En' : 'Own'} Along Each Apch`, timeLadder(v, dv), note(`Solid: earliest (day rates, unassessed Gr as GO). Dashed: latest (night rates, unassessed Gr as SLOW-GO). ${dv.hHour ? 'Shaded: night. ' : ''}Stars: decision points; squares: TAIs; rings: NAIs.`)));
   if (v.side === 'enemy') {
+    if (dv.coas?.length) {
+      const list = el('div', 'ms-gx-list');
+      for (const c of dv.coas) {
+        list.append(el('div', undefined, `${c.id} · ${c.kind === 'likely' ? 'most likely' : 'most dangerous'}`), el('div', undefined, `Apch ${c.aa}, through the area ${hPlus(c.endH[0])} (latest ${hPlus(c.endH[1])}): ${c.why.join('; ')}.${c.indicatorNai ? ` ${c.indicatorNai} confirms it.` : ''}`));
+      }
+      out.push(tile(`Courses of Action · ${dv.coas.map((c) => `${c.id} ${c.aa}`).join(', ')}`, list, note('The most likely COA is his template along the best going; the most dangerous the one that hurts you most: onto your MSR, least under your fire, fastest through (ATP 2-01.3 6-7..6-13; the choice a proposal). The NAIs say which he has chosen (6-20). Plan against the most likely, guard against the most dangerous.')));
+    }
     out.push(tile('Decision Support · In the Area', decisionPicture(o, v, dv), note('A star beyond the area is placed on the way in from the Threat marker (or at the edge) with its distance.')));
     const dec = table(['DP', 'When · where', 'Decision (yours)'], dv.dps.map((d) => [d.id, `${clock(dv, d.earliestH)} · ${whereDp(d)}`, d.decision]));
     if (!dv.dps.length) dec.append(el('tr'));
     const dt = tile('Decisions', dv.dps.length ? dec : note(dv.notes[0] ?? 'No decision point.'), note(`A DP is where and when a decision falls due: ${dpLead(dv)} before a TAI${dv.catk ? `, and the counter-attack ${dv.catk.min} min before the depth localities (OoW Vol I p 54)` : ''}. The decision is the commander's.`));
     dt.classList.add('ms-ggd-brk');
     out.push(dt);
-    const em = tile('Event Matrix', table(['NAI', 'Apch · what shows', 'Earliest', 'Latest'], dv.nais.map((n) => [`${n.n}${n.tai ? ` · ${n.tai}` : ''}`, `${n.aa}: ${n.shows}${n.widthM ? ` (${Math.round(n.widthM)} m)` : ''}`, hPlus(n.earliestH), hPlus(n.latestH)])), note('NAIs sit where the enemy will show himself (book pp 23-28).'));
+    const em = tile('Event Matrix', table(['NAI', 'Apch · what shows', 'Confirms', 'Earliest', 'Latest'], dv.nais.map((n) => [`${n.n}${n.tai ? ` · ${n.tai}` : ''}${n.line ? ' (line)' : ''}`, `${n.aa}: ${n.shows}${n.widthM ? ` (${Math.round(n.widthM)} m)` : ''}`, n.coas?.length ? n.coas.join(', ') : '—', hPlus(n.earliestH), hPlus(n.latestH)])), note('NAIs sit where the enemy will show himself (book pp 23-28); an entry NAI is a line across the avenue (ATP 2-01.3 6-20). Confirms: the COA activity there points to.'));
     em.classList.add('ms-ggd-brk');
     out.push(em);
   }
@@ -995,7 +1030,8 @@ export function decisionText(o: GroundGuideOcoka): string[] {
   const L = [`Times at the book's rates (p 18; ${dv.rates.mover}: GO ${dv.rates.go.join('/')}, SLOW-GO ${dv.rates.slow.join('/')} km/h day/night), from ${dv.fromThreat ? 'the Threat marker' : "the area's edge"}${dv.hHour ? `, H ${dv.hHour}` : ''}; earliest = day, unassessed as GO; latest = night, unassessed as SLOW-GO.`];
   for (const p of dv.profiles) L.push(`  ${p.aa}: enters ${hPlus(p.startH[0])} (latest ${hPlus(p.startH[1])}), through the area ${hPlus(p.endH[0])} (latest ${hPlus(p.endH[1])}).`);
   if (v.side === 'enemy') {
-    for (const n of dv.nais) L.push(`  NAI ${n.n}${n.tai ? ` (${n.tai})` : ''} on ${n.aa}: ${n.shows}; ${hPlus(n.earliestH)} to ${hPlus(n.latestH)}.`);
+    for (const c of dv.coas ?? []) L.push(`  ${c.id} (${c.kind === 'likely' ? 'most likely' : 'most dangerous'}): Apch ${c.aa}, ${c.why.join('; ')}${c.indicatorNai ? `; ${c.indicatorNai} confirms it` : ''}.`);
+    for (const n of dv.nais) L.push(`  NAI ${n.n}${n.tai ? ` (${n.tai})` : ''}${n.line ? ' (a line across the avenue)' : ''} on ${n.aa}: ${n.shows}${n.coas?.length ? `; confirms ${n.coas.join(', ')}` : ''}; ${hPlus(n.earliestH)} to ${hPlus(n.latestH)}.`);
     for (const t of dv.tais) L.push(`  ${t.id} on ${t.aa}: ${t.why}; ${hPlus(t.earliestH)} at the earliest.`);
     for (const d of dv.dps) L.push(`  ${d.id} ${clock(dv, d.earliestH)}, ${whereDp(d)}: ${d.decision}.`);
   }
@@ -1033,6 +1069,7 @@ export function apchText(o: GroundGuideOcoka): string[] {
   for (const x of v.crossovers) L.push(`Crossover ${x.id}: ${x.a} to ${x.b}, ${km(x.alongM)} in.`);
   for (const n of v.notes) L.push(n);
   L.push('Ranked on the going (a proposal). NO-GO does not mean impassable. Check on the ground.');
+  L.push(...formsText(v));
   L.push(...compareText(v));
   L.push(...proformaText(o));
   return L;

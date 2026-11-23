@@ -342,5 +342,20 @@ const defile = W.at(1300, 0);
   check('No Movement Guide reader: the geometry stands, every ground row grey (never pass)', fl.res.mode === 'geometry' && ['Target held', 'KZ in view', 'Withdrawal'].every((x) => row(fl.res.rows, x)?.st === 'unchecked'));
 }
 
+
+// ── the patrol's Night March chart (NightMarchRead on the route out) ────────────────────────────────────────────────
+{
+  const NM = await import('../../MS/Engines/NightMarch/NightMarchRead.ts');
+  const nmRules = NM.nmRulesFrom(json('MS/Data/NightMarchDoctrine.json'));
+  const sp = W.at(-800, -1600), obj = W.at(2600, 1400);
+  const fl = F.fitLayout(inpOf(ptl, sp, M.bearingOf(sp, obj), { cursor: XY(obj), night: true, nmRules }));
+  const nt = fl.fit.small?.night;
+  check('Night March chart on the way out: legs with grid bearings and paces, the march time, the grid named', !!nt && nt.legs.length >= 2 && nt.legs.every((l) => l.paces > 0 && l.gridDeg >= 0) && nt.marchMin > 0 && nt.grid.length > 0, nt ? `${nt.legs.length} legs, ${nt.marchMin} min, ${nt.grid}` : 'none');
+  const outM = fl.fit.small.legs.filter((l) => l.way === 'Out').reduce((a, l) => a + l.distM, 0);
+  check('...its length agrees with the route card\'s legs out within 10 %', !!nt && Math.abs(nt.lengthM - outM) < 0.1 * Math.max(1, nt.lengthM), nt ? `${nt.lengthM} vs ${outM}` : 'none');
+  const noNm = F.fitLayout(inpOf(ptl, sp, M.bearingOf(sp, obj), { cursor: XY(obj), night: true }));
+  check('...without the Night March rules no chart (the route card stands)', !noNm.fit.small?.night);
+}
+
 console.log(`\n${n - fails} of ${n} checks passed`);
 process.exit(fails ? 1 : 0);

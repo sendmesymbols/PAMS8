@@ -1,0 +1,316 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": true
+  },
+  "id": "coy-def-rev-slope",
+  "family": "coy-def",
+  "layout": "rev-slope",
+  "echelon": "15",
+  "unit": "inf-coy-std-rifle",
+  "basis": "D",
+  "name": "Coy Def: reverse slope (two up behind the crest)",
+  "frontageRow": "Company, battalion two up",
+  "subRow": "Platoon locality",
+  "note": "Coy Def two up laid on a reverse slope (IC s78 pp 430-432, IBB s69 pp 358-360): the forward posns on the part of the feature masked by the crest, within effective small arms range of it (MG1A3 457 m, ORBAT; IC p 431 b); OPs (two men to a section, from the depth Pl, with the FOO) on the topographical crest, held in strength by night (p 431 a; IBB p 359); the depth posn on the crest of the next high ground to the rear within supporting range, the anti-tank weapons there (pp 431-432); the FPF along the crest, nearer the FDLs when these are as much as 500 m behind it (p 432 d). Geometry only lays the two up layout with a crest line 300 m ahead; the terrain fit (PlanRevSlope) reads the real crest from the 30 m elevation and moves the plan behind it, or fails when there is none.",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "1 Pl",
+      "echelon": "14",
+      "order": 1,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": -450,
+        "backM": -200
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround",
+          "behindObstacle"
+        ],
+        "fieldOfFireM": {
+          "doctrine": "checkBands.fieldOfFireToObstacleM"
+        },
+        "notIn": [
+          "noGo",
+          "water",
+          "bua"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "2 Pl",
+      "echelon": "14",
+      "order": 1,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": 450,
+        "backM": -200
+      },
+      "rule": {
+        "side": "R",
+        "gapTo": {
+          "slot": "fwdL",
+          "row": "Platoon locality"
+        },
+        "mutualSupport": "fwdL"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround",
+          "behindObstacle"
+        ],
+        "fieldOfFireM": {
+          "doctrine": "checkBands.fieldOfFireToObstacleM"
+        },
+        "notIn": [
+          "noGo",
+          "water",
+          "bua"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "3 Pl",
+      "echelon": "14",
+      "order": 2,
+      "size": {
+        "doctrine": "size.pl"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 230
+      },
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ],
+        "coversGap": [
+          "fwdL",
+          "fwdR"
+        ],
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ],
+          "withinMin": {
+            "doctrine": "cpen.coyMin"
+          }
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "prefer": [
+          "reverseSlope"
+        ],
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "wire",
+      "kind": "obstacle",
+      "sym": "25290303",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "standoff.wireFromPostsMinM"
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "lp",
+      "kind": "point",
+      "sym": "25160204",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "perSlot": [
+          "fwdL",
+          "fwdR"
+        ],
+        "ahead": {
+          "doctrine": "standoff.lpM"
+        }
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111401",
+      "label": "60 mm Mor",
+      "order": 6,
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ]
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.mortar"
+        },
+        "of": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "crest",
+      "kind": "line",
+      "sym": "25140300",
+      "label": "Crest",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            -750,
+            -625
+          ],
+          [
+            750,
+            -625
+          ]
+        ]
+      }
+    },
+    {
+      "role": "crestOp1",
+      "kind": "point",
+      "sym": "25160100",
+      "label": "OP",
+      "order": 5,
+      "shape": {
+        "at": [
+          -450,
+          -605
+        ]
+      }
+    },
+    {
+      "role": "fpf1",
+      "kind": "point",
+      "sym": "25240703",
+      "label": "FPF",
+      "order": 7,
+      "shape": {
+        "at": [
+          -450,
+          -625
+        ]
+      }
+    },
+    {
+      "role": "crestOp2",
+      "kind": "point",
+      "sym": "25160100",
+      "label": "OP",
+      "order": 5,
+      "shape": {
+        "at": [
+          450,
+          -605
+        ]
+      }
+    },
+    {
+      "role": "fpf2",
+      "kind": "point",
+      "sym": "25240703",
+      "label": "FPF",
+      "order": 7,
+      "shape": {
+        "at": [
+          450,
+          -625
+        ]
+      }
+    }
+  ],
+  "alternates": [
+    {
+      "of": "fwdL",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.secPl"
+      }
+    },
+    {
+      "of": "fwdR",
+      "kind": "alt",
+      "spacing": {
+        "doctrine": "alt.spacingM.secPl"
+      }
+    }
+  ],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "alternates",
+    "reserveReach",
+    "mutualSupport",
+    "fieldOfFire",
+    "dfMinRange"
+  ]
+}

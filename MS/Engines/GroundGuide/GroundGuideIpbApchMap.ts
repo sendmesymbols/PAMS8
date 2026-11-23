@@ -277,6 +277,16 @@ export class GroundGuideIpbApchMap {
       const k0 = Math.cosh(v.anchor[1] / 6378137);
       const r = Math.max(300, v.mcWidthM / 2) * k0;
       for (const n of dv.nais) {
+        if (n.line) {
+          // A line NAI across the avenue, with a tick at each end.
+          const [p0, p1] = n.line;
+          const dx = p1[0] - p0[0], dy = p1[1] - p0[1], L2 = Math.hypot(dx, dy) || 1;
+          const tx = (-dy / L2) * 120 * k0, ty = (dx / L2) * 120 * k0;
+          line([p0, p1], [232, 235, 238], 0.9, 1.8, 'dash');
+          line([[p0[0] - tx, p0[1] - ty], [p0[0] + tx, p0[1] + ty]], [232, 235, 238], 0.9, 1.8);
+          line([[p1[0] - tx, p1[1] - ty], [p1[0] + tx, p1[1] + ty]], [232, 235, 238], 0.9, 1.8);
+          continue;
+        }
         const ring: MercXY[] = [];
         for (let i = 0; i <= 40; i++) ring.push([n.at[0] + Math.sin((i * Math.PI) / 20) * r, n.at[1] + Math.cos((i * Math.PI) / 20) * r]);
         line(ring, [232, 235, 238], n.tai ? 0.5 : 0.85, 1.4, 'dash');
@@ -300,7 +310,13 @@ export class GroundGuideIpbApchMap {
         for (const t of dv.tais) tag(t.at, `TAI ${t.n}${all ? ` · ${h(t.earliestH)}-${h(t.latestH)}` : ''}`, [255, 210, 122], '#2a2410', 14, true, 2);
         for (const n of dv.nais) {
           if (n.tai) continue;
-          tag(top(n.at, r), `NAI ${n.n}${all ? ` · ${h(n.earliestH)}-${h(n.latestH)}` : ''}`, [232, 235, 238], '#2a3038', 8, true, 2);
+          const coa = n.coas?.length ? ` · ${n.coas.join(' / ')}` : '';
+          tag(n.line ? n.line[1] : top(n.at, r), `NAI ${n.n}${coa}${all ? ` · ${h(n.earliestH)}-${h(n.latestH)}` : ''}`, [232, 235, 238], '#2a3038', 8, true, 2);
+        }
+        // Each avenue's COA, at its head.
+        for (const c of dv.coas ?? []) {
+          const aa = v.aas.find((x) => x.id === c.aa);
+          if (aa?.line.length) tag(along(aa.line, 0.12), `${c.id} ${c.kind === 'likely' ? 'most likely' : 'most dangerous'}`, c.kind === 'likely' ? [232, 235, 238] : [255, 138, 141], c.kind === 'likely' ? '#2a3038' : '#3a1215', 0, false, 1);
         }
       }
     }

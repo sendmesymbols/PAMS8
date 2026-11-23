@@ -381,14 +381,16 @@ export function addTankTimes(h: HSum, res: SolveResult, f: FitFrame | null, g: P
 /**
  * FUP (Tks) against the En anti-tank guided missiles: the tanks form up out of their reach (IBB S44 para 16 a p 213:
  * the En ATGMs reach 1500-3500 m, so the tank FUP is 2500-3000 m out). `enAtgmM` is the longest ATGM range of the En
- * unit's weapons (ORBAT), `src` names it; null: the doctrine's band stands (atFramework.atgmRangeM).
+ * unit's weapons (ORBAT), `src` names it; null: no row (the Tank FUP row's IBB p 214 band stands).
  */
 export function tankFupVsEnAtgm(res: SolveResult, doc: DoctrineSet, enAtgmM: number | null, src: string | null): Check | null {
   const obj = res.items.find((i) => i.role === 'obj'), fup = res.items.find((i) => i.role === 'tkFup');
   if (!obj || !fup) return null;
+  // no En ATGM range from the ORBAT: the Tank FUP row's band (IBB p 214: 2500-3000 m, the En ATGMs reach 1500-3500 m) stands alone
+  if (enAtgmM === null || !Number.isFinite(enAtgmM)) return null;
   const gap = boxGap(boxOf(obj.pts), centre(fup.pts));
-  const reach = enAtgmM ?? num(doc, 'atFramework.atgmRangeM', 3000);
-  const what = enAtgmM ? (src ?? 'the En ATGMs (ORBAT)') : 'the Baktar Shikan class of ATGM, 3 km (Amplification p 1.2; no En ATGM range in the ORBAT for this unit)';
+  const reach = enAtgmM;
+  const what = src ?? 'the En ATGMs (ORBAT)';
   const margin = num(doc, 'attack.tanks.atgmMarginM', 300);
   return gap >= reach + margin
     ? { name: 'FUP (Tks) vs En ATGM', st: 'pass', reason: `${fmtM(gap)} from the Obj: beyond ${what} (${fmtM(reach)}) by ${fmtM(gap - reach)} (IBB S44 para 16 a p 213: the tanks form up out of the En ATGMs' reach)` }

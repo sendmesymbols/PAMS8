@@ -1,0 +1,285 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "coy-attk-left-flank",
+  "family": "coy-attk",
+  "layout": "left-flank",
+  "echelon": "15",
+  "unit": "inf-coy-std-rifle",
+  "basis": "D",
+  "task": "attack",
+  "name": "Coy Attk: left flank (BOF fixes the front)",
+  "frontageRow": "Company, night attack in plains (half a battalion two up)",
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "note": "A rifle Coy attacking with two Pls up, the third Pl the reserve, the MG section and 60 mm mortars the base of fire (IC s66 pp 304-314: the stages of the attack; IC s67 p 333: the FUP 1000-1200 m from the objective in plains). The Obj a Pl locality (IBB Annex U App 5 p 480). The assault frontage a quarter of the brigade two Bns up (GSP p 86: 1100-1500 m), 275-375 m (calc). The flank laid as the Bn layout (attack.flankDeg). Fire lifts as IC s66 p 305.",
+  "slots": [
+    {
+      "role": "obj",
+      "kind": "area",
+      "sym": "25151700",
+      "label": "OBJ",
+      "order": 1,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -1500,
+          "wM": {
+            "doctrine": "size.pl.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.pl.depthM"
+          }
+        }
+      }
+    },
+    {
+      "role": "objTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          -1500
+        ]
+      }
+    },
+    {
+      "role": "assy",
+      "kind": "area",
+      "sym": "25150200",
+      "label": "Assy",
+      "order": 2,
+      "shape": {
+        "rect": {
+          "acrossM": -4270,
+          "backM": 965,
+          "wM": 500,
+          "hM": 400
+        }
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ],
+        "prefer": [
+          "roadAccess"
+        ]
+      }
+    },
+    {
+      "role": "fup",
+      "kind": "area",
+      "sym": "25140302",
+      "label": "FUP",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -1914,
+            -655
+          ],
+          [
+            -1429,
+            -415
+          ]
+        ]
+      },
+      "terrainRule": {
+        "unseenFrom": "threat",
+        "notIn": [
+          "noGo",
+          "water"
+        ]
+      }
+    },
+    {
+      "role": "sl",
+      "kind": "line",
+      "sym": "25140303",
+      "label": "SL",
+      "order": 2,
+      "shape": {
+        "pts": [
+          [
+            -1648,
+            -895
+          ],
+          [
+            -1348,
+            -375
+          ]
+        ]
+      },
+      "terrainRule": {
+        "onGround": "linearFeature"
+      }
+    },
+    {
+      "role": "axis",
+      "kind": "area",
+      "sym": "25151403",
+      "label": "",
+      "order": 3,
+      "shape": {
+        "pts": [
+          [
+            -1498,
+            -635
+          ],
+          [
+            -520,
+            -1200
+          ]
+        ],
+        "widthM": 250
+      }
+    },
+    {
+      "role": "asltL",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "1 Pl",
+      "echelon": "14",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1731,
+          -639
+        ]
+      }
+    },
+    {
+      "role": "asltR",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "2 Pl",
+      "echelon": "14",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1611,
+          -431
+        ]
+      }
+    },
+    {
+      "role": "bof",
+      "kind": "area",
+      "sym": "25152100",
+      "label": "BOF",
+      "order": 3,
+      "shape": {
+        "base": [
+          [
+            -200,
+            -550
+          ],
+          [
+            200,
+            -550
+          ]
+        ],
+        "ctrl": [
+          0,
+          -850
+        ]
+      },
+      "terrainRule": {
+        "sees": "obj",
+        "prefer": [
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "bofCoy",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "MG Sec",
+      "echelon": "13",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          -550
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "3 Pl (res)",
+      "echelon": "14",
+      "order": 4,
+      "shape": {
+        "at": [
+          -2278,
+          -185
+        ]
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Coy HQ",
+      "order": 4,
+      "shape": {
+        "at": [
+          -2441,
+          -668
+        ]
+      }
+    },
+    {
+      "role": "mor",
+      "kind": "point",
+      "sym": "15111401",
+      "label": "60 mm Mor",
+      "order": 4,
+      "shape": {
+        "at": [
+          0,
+          300
+        ]
+      }
+    },
+    {
+      "role": "loe",
+      "kind": "line",
+      "sym": "25140900",
+      "label": "LOE",
+      "order": 5,
+      "shape": {
+        "pts": [
+          [
+            751,
+            -2800
+          ],
+          [
+            1501,
+            -1500
+          ]
+        ]
+      }
+    }
+  ],
+  "checks": [
+    "fupDistance",
+    "assaultFrontage",
+    "bofFlank",
+    "bofRange",
+    "morReach",
+    "fireLift",
+    "reserveReach",
+    "approaches"
+  ]
+}

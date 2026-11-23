@@ -244,5 +244,32 @@ const O1 = Ph.boxOf(it(b0, 'obj').pts), O2 = Ph.boxOf(it(b0, 'obj2').pts);
   check('...a one-phase attack reads it onto its Obj, from beyond it (his side)', caRow(wg1.groups[0])?.st === 'pass' && /3 ways in/.test(caRow(wg1.groups[0]).reason), caRow(wg1.groups[0])?.reason);
 }
 
+
+// ── three phases, and Obj 2 marked by the user ─────────────────────────────────────────────────────────────────────
+{
+  const t3 = Ph.threePhaseRecipe(two(front), doc);
+  const fl3 = R.validateRecipe(t3, { doc, symbols }).filter((i) => i.level === 'fail').map((i) => i.msg);
+  check('three phases: the recipe validates, phases 3, its own id', !fl3.length && t3.phases === 3 && t3.id === `${front.id}-2ph-3ph`, fl3.join('; '));
+  const roles = new Set(t3.slots.map((s) => s.role));
+  check('...Obj 3, FUP 3, SL 3, the phase 3 axis, the phase 3 Coys (A, B from Obj 1: no reserve was left) and the mortars\' second step-up', ['obj3', 'fup3', 'sl3', 'axis3', 'fu3', 'mor3'].every((x) => roles.has(x)) && t3.slots.find((s) => s.role === 'fu3').label.startsWith('A, B Coys'), [...roles].join(','));
+  const t3d = Ph.threePhaseRecipe(Ph.twoPhaseRecipe(front, doc, undefined, 1), doc);
+  check('...with C Coy alone in phase 2, D Coy (the reserve) takes Obj 3 and the reserve slot goes', t3d.slots.find((s) => s.role === 'fu3')?.label === 'D Coy' && !t3d.slots.some((s) => s.role === 'res'));
+  const res = S.solveRecipe(t3, ctx, {});
+  const o2 = Ph.boxOf(it(res, 'obj2').pts), o3 = Ph.boxOf(it(res, 'obj3').pts), F2 = centre(it(res, 'fup2').pts), F3 = centre(it(res, 'fup3').pts);
+  check('...Obj 3 1.5 km behind Obj 2; FUP 3 round the other flank from FUP 2', Math.abs(o3.c.y - o2.c.y - 1500) < 1 && Math.sign(F3.x - o2.c.x) === -Math.sign(F2.x - o2.c.x), `${Math.round(F2.x)} / ${Math.round(F3.x)}`);
+  const fl = F.fitLayout(inpOf(t3, flatG));
+  const h = fl.fit.attack.hSum;
+  check('...fitted: Obj 3, Ph 3 direction, Ph 3 timing rows; H3 after Obj 2 is taken, on Obj 3 after H3', ['Obj 3', 'Ph 3 direction', 'Ph 3 timing'].every((x) => row(fl.res.rows, x)) && h.phase3 && h.phase3.h2At > h.phase2.obj2At && h.phase3.obj2At > h.phase3.h2At, fl.res.rows.map((r) => r.name).join(', '));
+  check('...the H-hour sum carries the phase 3 steps and the LOE after Obj 3 only', h.steps.some((s) => /SL 3 to Obj 3/.test(s.label)) && h.steps.filter((s) => /On to the LOE/.test(s.label)).length === 1 && h.loeAt > h.phase3.obj2At, h.steps.map((s) => s.label).join(' | '));
+  // Obj 2 marked by the user: 800 m aside of where the finder put it, it stands
+  const t2 = two(front);
+  const fl2 = F.fitLayout(inpOf(t2, flatG));
+  const o2b = Ph.boxOf(it(fl2.raw, 'obj2').pts);
+  const mark = F.toWorld(fl2.frame, { x: o2b.c.x + 800, y: o2b.c.y });
+  const flm = F.fitLayout(inpOf(t2, flatG, { obj2At: mark }));
+  const o2m = Ph.boxOf(it(flm.raw, 'obj2').pts);
+  check('Obj 2 marked on the map: Obj 2 laid where it was marked (800 m aside), the row says so', flm.fit.attack.phase2.obj2From === 'marked' && Math.abs(o2m.c.x - (o2b.c.x + 800)) < 30 && /where you marked it/.test(row(flm.res.rows, 'Obj 2')?.reason), `${Math.round(o2m.c.x - o2b.c.x)} m: ${row(flm.res.rows, 'Obj 2')?.reason}`);
+}
+
 console.log(`\n${n - fails} of ${n} checks passed${fails ? `, ${fails} FAILED` : ''}`);
 process.exit(fails ? 1 : 0);

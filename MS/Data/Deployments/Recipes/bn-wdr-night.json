@@ -1,0 +1,415 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "id": "bn-wdr-night",
+  "family": "bn-wdr",
+  "layout": "night",
+  "echelon": "16",
+  "unit": "inf-bn-std",
+  "basis": "D",
+  "task": "withdrawal",
+  "name": "Bn Withdrawal: by night, Coy embussing points",
+  "frontageRow": null,
+  "subRow": null,
+  "needs": {
+    "terrain": false
+  },
+  "pivot": "hq",
+  "note": "A Bn two up withdrawing by night (IC s91-93 pp 481-491; IBB s72-76 pp 366-386). The click is the Bn HQ of the old posn; the aim is the direction of withdrawal, the second click the new main posn (planned). Rear parties (a Pl of each forward Coy with part of the weapon section, IC p 488) hold to the time of abandonment; Coy RVs where the Pls gather, the Bn checkpoint and Bn RV on the routes back (IC s92 paras 7-8 pp 486-487); Coy embussing points 1500-2000 m behind the old posn on the Coy routes (IBB s75 para 19 p 383), the Bn EP behind the Bn RV with a covering Pl of the depth Coys (IBB p 379); the intermediate posn, a Coy group (IBB p 379), far enough back that he must move his field artillery first (IBB s74 para 4 e p 373: his 105 mm IFG 17.2 km, ORBAT) and behind an obstacle if there is one (IC p 482); part of the artillery repositioned 5000-6000 m back from the old gun area, taken at the Bn rear (IBB s76 para 5 p 385). The programme from last light follows IBB s75 para 11 pp 379-380. Battle Posns are drawn turned to face the enemy behind the plan.",
+  "checks": [],
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "A Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": -1000,
+        "backM": 1200
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "B Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 1000,
+        "backM": 1200
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "depth",
+      "kind": "depth",
+      "sym": "25151200",
+      "label": "C Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -250
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "D Coy",
+      "echelon": "15",
+      "order": 1,
+      "size": {
+        "doctrine": "size.coy"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": -1350
+      },
+      "turnDeg": 180,
+      "rule": {}
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bn HQ",
+      "order": 1,
+      "shape": {
+        "at": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "role": "rpA",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Rear Party A",
+      "order": 2,
+      "shape": {
+        "at": [
+          -1000,
+          1200
+        ]
+      },
+      "echelon": "14"
+    },
+    {
+      "role": "rpB",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Rear Party B",
+      "order": 2,
+      "shape": {
+        "at": [
+          1000,
+          1200
+        ]
+      },
+      "echelon": "14"
+    },
+    {
+      "role": "rvA",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "A Coy RV",
+      "order": 2,
+      "shape": {
+        "at": [
+          -1000,
+          650
+        ]
+      }
+    },
+    {
+      "role": "rvB",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "B Coy RV",
+      "order": 2,
+      "shape": {
+        "at": [
+          1000,
+          650
+        ]
+      }
+    },
+    {
+      "role": "rvC",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "C Coy RV",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          -700
+        ]
+      }
+    },
+    {
+      "role": "rvD",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "D Coy RV",
+      "order": 2,
+      "shape": {
+        "at": [
+          0,
+          -1800
+        ]
+      }
+    },
+    {
+      "role": "cp",
+      "kind": "point",
+      "sym": "25130300",
+      "label": "Bn CP",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          -1300
+        ]
+      }
+    },
+    {
+      "role": "bnRv",
+      "kind": "point",
+      "sym": "25131400",
+      "label": "Bn RV",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          -2400
+        ]
+      }
+    },
+    {
+      "role": "epA",
+      "kind": "point",
+      "sym": "25131700",
+      "label": "EP A",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1000,
+          -550
+        ]
+      }
+    },
+    {
+      "role": "epB",
+      "kind": "point",
+      "sym": "25131700",
+      "label": "EP B",
+      "order": 3,
+      "shape": {
+        "at": [
+          1000,
+          -550
+        ]
+      }
+    },
+    {
+      "role": "epBn",
+      "kind": "point",
+      "sym": "25131700",
+      "label": "Bn EP",
+      "order": 3,
+      "shape": {
+        "at": [
+          0,
+          -2700
+        ]
+      }
+    },
+    {
+      "role": "covPl",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Cov Pl (C Coy)",
+      "order": 3,
+      "shape": {
+        "at": [
+          250,
+          -2650
+        ]
+      },
+      "echelon": "14"
+    },
+    {
+      "role": "rtA",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            -1000,
+            1100
+          ],
+          [
+            -1000,
+            650
+          ],
+          [
+            -1000,
+            -500
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtB",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            1000,
+            1100
+          ],
+          [
+            1000,
+            650
+          ],
+          [
+            1000,
+            -500
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtC",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -350
+          ],
+          [
+            0,
+            -700
+          ],
+          [
+            0,
+            -1300
+          ],
+          [
+            0,
+            -2400
+          ]
+        ]
+      }
+    },
+    {
+      "role": "rtD",
+      "kind": "line",
+      "sym": "00000007",
+      "label": "",
+      "order": 4,
+      "shape": {
+        "pts": [
+          [
+            0,
+            -1450
+          ],
+          [
+            0,
+            -1800
+          ],
+          [
+            0,
+            -2400
+          ]
+        ]
+      }
+    },
+    {
+      "role": "artyNew",
+      "kind": "area",
+      "sym": "25240501",
+      "label": "Arty (repositioned)",
+      "order": 5,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": 1500,
+          "backM": -6850,
+          "wM": 1000,
+          "hM": 1000
+        }
+      }
+    },
+    {
+      "role": "intPosn",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "Int Posn (Coy Gp)",
+      "echelon": "15",
+      "order": 5,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -17200,
+          "wM": {
+            "doctrine": "size.coy.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.coy.depthM"
+          }
+        }
+      }
+    },
+    {
+      "role": "newMain",
+      "kind": "area",
+      "sym": "25151200",
+      "label": "New Main Posn (Bn)",
+      "order": 5,
+      "planned": true,
+      "shape": {
+        "rect": {
+          "acrossM": 0,
+          "backM": -25000,
+          "wM": {
+            "doctrine": "size.bn.frontageM"
+          },
+          "hM": {
+            "doctrine": "size.bn.depthM"
+          }
+        }
+      }
+    }
+  ]
+}

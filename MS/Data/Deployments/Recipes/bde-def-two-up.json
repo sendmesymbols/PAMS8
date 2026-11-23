@@ -1,0 +1,202 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "bde-def-two-up",
+  "family": "bde-def",
+  "layout": "two-up",
+  "echelon": "18",
+  "unit": "inf-bde",
+  "basis": "D",
+  "name": "Bde Def: two Bns up, one in depth",
+  "frontageRow": "Brigade, two battalions up",
+  "subRow": null,
+  "note": "A Bde with two Bns forward and the third in depth as the Bde reserve, 10-12 km wide and 4-6 km deep (OoW Vol I Annexes B-D pp 103-105, a yardstick); each Bn 4500 m wide (IBB Annex U App 6 p 481) and 3000 m deep (IBB p 277: a Bn normally has a depth of upto 2000-3000 m), the depth Bn close behind so the Bde stays inside 6 km; the gap between the forward Bns 1500 m, covered by fire, mines and patrols (E: no Bn gap printed); the Bde reserve 2-3 h to its counter penetration posns (IBB p 279). The Bns' own layouts are built as Bn plans.",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": -3000,
+        "backM": -2000
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bn",
+      "echelon": "16",
+      "order": 1,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 3000,
+        "backM": -2000
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "across": "approach.secondary",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Depth Bn (Res)",
+      "echelon": "16",
+      "order": 2,
+      "size": {
+        "wM": 4500,
+        "hM": 3000
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 1000
+      },
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ],
+        "coversGap": [
+          "fwdL",
+          "fwdR"
+        ],
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ]
+        }
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Bde HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          -1200,
+          3200
+        ]
+      }
+    },
+    {
+      "role": "killingGr",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "K1",
+      "order": 3,
+      "terrainOnly": true,
+      "rule": {
+        "inRangeOf": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "atMines",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "count": {
+        "doctrine": "df.perBn"
+      },
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.medium"
+        },
+        "of": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main"
+      }
+    }
+  ],
+  "alternates": [],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "killingGr",
+    "reserveReach",
+    "dfMinRange"
+  ]
+}

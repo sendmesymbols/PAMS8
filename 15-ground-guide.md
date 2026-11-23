@@ -1254,6 +1254,35 @@ frame is centred on the area read and sized to hold all of it (the approaches, t
 keeps the ground round the symbol as without F. Verified in the app: a 7 x 24.5 km Bn area, radius 20 km, the symbol 3.6 km
 south of the frame's centre, approaches A and B, the bridge, DZ / LZ, AD sites and the 9 km rings all on the rail.
 
+**Courses of action and line NAIs** (tab 5, the en's options; 2026-11-23; ATP 2-01.3 paras 6-7 to 6-13, 6-20). **COA 1
+most likely** is the avenue his template is laid along, else the best going; **COA 2 most dangerous** is, of the others,
+the one that hurts you most: his turning approach onto your MSR (+3), less under your fire than COA 1 (+2), the fastest
+through the area (+1) (`decisionPoints.coa`, E decided and searched: no book scores "most dangerous"). Each COA names the
+NAI that confirms it (the first on its avenue); every NAI carries the COA its avenue belongs to (the event matrix's
+*Confirms* column; the map labels *NAI n · COA 2*, and *COA 1 most likely* / *COA 2 most dangerous* at the avenues' heads).
+An **entry NAI is a line** across the avenue as wide as it is there (at most 1.5 spacings; ATP 6-20: an NAI may be a point,
+a line or an area), drawn with ticks at its ends and written by Create on Map as a thin NAI area; crossings and narrows stay
+point NAIs. The *Courses of Action* tile sits after the time ladder in tab 5; Copy as Text carries it. Checks: `node
+tools/ipb-test/decision.mjs` (31). Verified in the app (Sialkot, Pl, threat N): COA 1 A (best going, H+0:53), COA 2 D
+(2 % under your fire, fastest, H+0:37), entry NAIs 3,000 m lines, NAI 4 confirms COA 2. The template's own avenue is not yet
+carried to the COA (COA 1 is the best going, which is where the template lead is laid anyway).
+
+**Forms of Manoeuvre** (tab 3, your options onto an objective; 2026-11-23; OoW Vol II s6 pp 19-21, MW p 79). The forms
+the ground offers against the objective, ranked, each with the approach the main strength takes and the one that fixes
+his front, and why (`GroundGuideIpbForms.ts`). The test is the book's **assailable flank**, read off the IPB coding in a
+band beside each flank of the objective (`formsOfManoeuvre.reading`, E: 1.5 km across, one FUP distance deep each way;
+open when at most 30 % NO-GO, no man-made obstacle, no other locality of his — the template's elements, his symbols —
+within 1 km, and a flank approach onto it). Then: **turning movement** when the turning approach reaches the MSR choke
+(leads: your rule); **double envelopment** when both flanks are open and own echelon is not below his; **envelopment** onto
+the better open flank (less of his fire), the frontal approach as the auxiliary manoeuvre that fixes him; **vertical
+envelopment** when tab 4 finds LZs behind him; **infiltration** on foot by a way he may watch no more than 30 % of (OoW Vol
+II s11); **penetration** when no flank is open (the book: the most commonly applied form; needs preponderance, break-out
+to the inner flanks); **frontal attack** last, for reference (dangerous, a small chance of success; MW p 79: only if
+unavoidable). Forms not possible here are listed greyed with why. The tile *Forms of Manoeuvre · Turning movement* sits
+before *Left or Right* in tab 3; Copy as Text carries it. Checks: `node tools/ipb-test/forms.mjs` (9). Verified in the app
+(Sialkot plain, your options, the Threat marker on the en): both flanks open, turning (A) leads, double envelopment C + B,
+envelopment by C with D fixing, vertical (LZs behind), infiltration by C, penetration, frontal.
+
 **Left or Right** (tab 3, your options onto an objective; 2026-11-23; user, 14 Nov: "can go right/left approach by weighing
 different factors"). The left flanking approach against the right, factor by factor: the IPB book's own-attack factors
 (`IpbDoctrine ownAttack.factors`, IC s15.12 b: choke the en MSR (your rule, weight 3), FUP cover, obstacles FUP to the

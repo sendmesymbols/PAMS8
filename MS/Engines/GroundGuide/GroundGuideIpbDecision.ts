@@ -56,6 +56,21 @@ export interface DecArgs {
   /** The counter-attack's time, minutes (null: no counter-attack DP). */
   catkMin: number | null;
   catkLabel: string;
+  /**
+   * The enemy's courses of action (ATP 2-01.3 6-7..6-13: COAs ranked most likely to least, and the most dangerous;
+   * 2026-11-23): own fire on each avenue (% under fire, from the fire corridors), the avenue of his turning approach onto
+   * own MSR, and the avenue his doctrinal template is laid along; left out: no COAs.
+   */
+  coa?: { fire?: Record<string, number>; turnAa?: string | null; templateAa?: string | null };
+}
+export interface DecCoa {
+  id: 'COA 1' | 'COA 2';
+  kind: 'likely' | 'dangerous';
+  aa: string;
+  why: string[];
+  /** The NAI whose activity confirms this COA against the other (null: none tells them apart). */
+  indicatorNai: string | null;
+  endH: [number, number];
 }
 
 export interface DecNai {
@@ -69,6 +84,8 @@ export interface DecNai {
   latestH: number;
   tai: string | null;
   widthM: number | null;
+  /** The COAs activity here points to (the avenue's); every NAI carries its own avenue's COA. */
+  coas?: string[];
 }
 export interface DecTai {
   id: string;
@@ -107,6 +124,8 @@ export interface DecResult {
   nais: DecNai[];
   tais: DecTai[];
   dps: DecDp[];
+  /** COA 1 most likely, COA 2 most dangerous (ATP 2-01.3); null when not asked or one avenue only. */
+  coas: DecCoa[] | null;
   notes: string[];
 }
 
@@ -256,7 +275,43 @@ export function decide(a: DecArgs): DecResult {
   const far = dps.filter((d) => d.beyondM > 0 && !d.beforeH);
   if (far.length) notes.push(`${far.map((d) => d.id).join(', ')} beyond the area read, toward the enemy: watch it with the higher HQ's NAIs`);
   if (dps.some((d) => d.beforeH)) notes.push('A decision falls due before the enemy starts (H): decide it on the plan, not on events');
-  return { profiles, nais, tais, dps, notes };
+  // COAs: most likely (his template's avenue, else the best going), most dangerous (the one that hurts you most: onto
+  // your MSR, least under your fire, fastest through), and the NAI that tells them apart (ATP 2-01.3 6-7..6-13, 6-20).
+  let coas: DecCoa[] | null = null;
+  if (a.coa) {
+    const viable = a.aas.filter((x) => x.viable);
+    const prof = (id: string) => profiles.find((p) => p.aa === id);
+    const likely = (a.coa.templateAa && viable.find((x) => x.id === a.coa!.templateAa)) ?? viable.find((x) => x.main) ?? viable[0];
+    if (likely) {
+      const fire = a.coa.fire ?? {};
+      const whyL = [a.coa.templateAa === likely.id ? 'his doctrinal template is laid along it' : 'the best going of the avenues read', `${likely.id} through the area ${hPlus(prof(likely.id)?.endH[0] ?? 0)} at the earliest`];
+      if (fire[likely.id] !== undefined) whyL.push(`${Math.round(fire[likely.id])} % of it under your fire`);
+      const rest = viable.filter((x) => x.id !== likely.id);
+      const fastest = rest.length ? Math.min(...rest.map((x) => prof(x.id)?.endH[0] ?? Infinity)) : Infinity;
+      const scored = rest.map((x) => {
+        let s = 0;
+        const why: string[] = [];
+        if (a.coa!.turnAa === x.id) ((s += 3), why.push('his turning approach: onto your MSR, round your front'));
+        const f = fire[x.id];
+        if (f !== undefined) {
+          if (f < (fire[likely.id] ?? 100)) ((s += 2), why.push(`less of it under your fire than COA 1 (${Math.round(f)} % against ${Math.round(fire[likely.id] ?? 100)} %)`));
+          else why.push(`${Math.round(f)} % under your fire`);
+        }
+        const e = prof(x.id)?.endH[0] ?? Infinity;
+        if (e <= fastest + 1e-6 && rest.length > 1) ((s += 1), why.push(`the fastest through the area of the others (${hPlus(e)})`));
+        else why.push(`through the area ${hPlus(e)} at the earliest`);
+        return { x, s, why };
+      });
+      scored.sort((p, q) => q.s - p.s);
+      const dangerous = scored[0];
+      const firstNai = (aa: string): DecNai | undefined => nais.filter((n) => n.aa === aa).sort((p, q) => p.alongM - q.alongM)[0];
+      coas = [{ id: 'COA 1', kind: 'likely', aa: likely.id, why: whyL, indicatorNai: firstNai(likely.id)?.id ?? null, endH: prof(likely.id)?.endH ?? [0, 0] }];
+      if (dangerous) coas.push({ id: 'COA 2', kind: 'dangerous', aa: dangerous.x.id, why: dangerous.why, indicatorNai: firstNai(dangerous.x.id)?.id ?? null, endH: prof(dangerous.x.id)?.endH ?? [0, 0] });
+      else notes.push('One avenue only: no second course of action to set against the first.');
+      for (const n of nais) n.coas = coas.filter((c) => c.aa === n.aa).map((c) => c.id);
+    }
+  }
+  return { profiles, nais, tais, dps, coas, notes };
 }
 
 /** "H+1:25" for hours from the enemy's start (negative: "H-0:40"). */

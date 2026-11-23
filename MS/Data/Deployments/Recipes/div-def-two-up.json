@@ -1,0 +1,199 @@
+{
+  "format": "pams8-plan-recipe",
+  "version": 1,
+  "task": "defence",
+  "needs": {
+    "terrain": false
+  },
+  "id": "div-def-two-up",
+  "family": "div-def",
+  "layout": "two-up",
+  "echelon": "21",
+  "unit": "inf-div",
+  "basis": "D",
+  "name": "Div Def: two Bdes up, one in depth",
+  "frontageRow": "Infantry division, two to three axes",
+  "subRow": null,
+  "note": "An Inf Div with two Bdes forward on two axes and the third Bde in depth as the Div reserve (OoW Vol I Annex C p 104: a Bde of 10-12 km on each independent axis, about 16 km between, 4-8 km deep; Annex D p 105: three axes on an extended frontage); each Bde 10-12 x 4-6 km (Annexes B-D); the Div reserve 4-6 h to its counter penetration posns (IBB p 279). Armour concentrated as the main element of the reserve (OoW I s6 para 1 p 21). The Bdes' own layouts are built as Bde plans.",
+  "slots": [
+    {
+      "role": "fwdL",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Left Bde",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": -8000,
+        "backM": -3000
+      },
+      "rule": {
+        "side": "L"
+      },
+      "terrainRule": {
+        "across": "approach.main",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "fwdR",
+      "kind": "fwd",
+      "sym": "25151200",
+      "label": "Right Bde",
+      "echelon": "18",
+      "order": 1,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": 8000,
+        "backM": -3000
+      },
+      "rule": {
+        "side": "R"
+      },
+      "terrainRule": {
+        "across": "approach.secondary",
+        "prefer": [
+          "itg",
+          "highGround"
+        ]
+      }
+    },
+    {
+      "role": "res",
+      "kind": "res",
+      "sym": "25151200",
+      "label": "Depth Bde (Res)",
+      "echelon": "18",
+      "order": 2,
+      "size": {
+        "doctrine": "size.bde"
+      },
+      "seed": {
+        "acrossM": 0,
+        "backM": 2500
+      },
+      "rule": {
+        "behind": [
+          "fwdL",
+          "fwdR"
+        ],
+        "coversGap": [
+          "fwdL",
+          "fwdR"
+        ],
+        "reach": {
+          "slots": [
+            "fwdL",
+            "fwdR"
+          ]
+        }
+      }
+    },
+    {
+      "role": "hq",
+      "kind": "point",
+      "sym": "10121100",
+      "label": "Div HQ",
+      "order": 3,
+      "shape": {
+        "at": [
+          -3000,
+          7500
+        ]
+      }
+    },
+    {
+      "role": "killingGr",
+      "kind": "area",
+      "sym": "25242300",
+      "label": "K1",
+      "order": 3,
+      "terrainOnly": true,
+      "rule": {
+        "inRangeOf": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main.chokepoint"
+      }
+    },
+    {
+      "role": "atMines",
+      "kind": "obstacle",
+      "sym": "25270703",
+      "label": "",
+      "order": 4,
+      "rule": {
+        "inFrontOf": [
+          "fwdL",
+          "fwdR"
+        ],
+        "distM": {
+          "doctrine": "standoff.obstacleInFrontM"
+        },
+        "depthM": {
+          "doctrine": "standoff.protectiveMinefieldDepthM"
+        }
+      }
+    },
+    {
+      "role": "fdl",
+      "kind": "line",
+      "sym": "25140400",
+      "label": "",
+      "order": 5,
+      "rule": {
+        "joins": [
+          "fwdL",
+          "fwdR"
+        ],
+        "edge": "front"
+      }
+    },
+    {
+      "role": "dfTgt",
+      "kind": "point",
+      "sym": "25160303",
+      "label": "DF Tgt",
+      "count": {
+        "doctrine": "df.perBn"
+      },
+      "order": 7,
+      "rule": {
+        "ahead": {
+          "doctrine": "df.closeMinFromFdlM.medium"
+        },
+        "of": [
+          "fwdL",
+          "fwdR"
+        ]
+      },
+      "terrainRule": {
+        "on": "approach.main"
+      }
+    }
+  ],
+  "alternates": [],
+  "supplementary": "perSecondaryApproach",
+  "checks": [
+    "approaches",
+    "facingThreat",
+    "gaps",
+    "depth",
+    "flanks",
+    "exposure",
+    "killingGr",
+    "reserveReach",
+    "dfMinRange"
+  ]
+}
