@@ -249,7 +249,10 @@ MS/
   range rings (`ipb.mapFire`), rail line 1. **Proforma** (`ipb.proforma`, `GroundGuideIpbProforma.ts`, book p 21): rows a-l,
   this side's avenues and the other side's over the same area, suggested signs (median), user signs by click; tab 3.
   `node tools/ipb-test/fire.mjs` (21 checks).
-  Tab 3's **Left or Right** (your options onto an Obj; `GroundGuideIpbCompare.ts`, `node tools/ipb-test/compare.mjs` 8
+  Tab 3's **Forms of Manoeuvre** (your options onto an Obj; `GroundGuideIpbForms.ts`, `node tools/ipb-test/forms.mjs` 9
+  checks): the assailable-flank test off the coding beside each flank (`formsOfManoeuvre.reading`, E), then turning /
+  double envelopment / envelopment / vertical / infiltration / penetration / frontal ranked with main and fixing approaches
+  (OoW Vol II s6, MW p 79; frontal last, the user's rule). Tab 3's **Left or Right** (your options onto an Obj; `GroundGuideIpbCompare.ts`, `node tools/ipb-test/compare.mjs` 8
   checks): the left flanking approach against the right by the IC s15.12 b factors (`ownAttack.factors`, weights 0-3 the
   user sets, `ipb.lrWeights`), cells 0-100 with reasons, frontal for reference; unread factors score 0.5 and never decide.
   Phase 5: **decision support** (`ipb.decision`, `GroundGuideIpbDecision.ts`): the enemy's time along each avenue at the
