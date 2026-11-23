@@ -2201,8 +2201,24 @@ export class PlanBuildTab {
       : this._result
         ? `<div class="pb-foot">${this._statusHtml()}${next}${btn('Place on Map', 'place', { kind: 'primary', icon: 'pin' })}</div>`
         : '';
+    // The body is rebuilt on every click: keep its scroll (and the focused button) while the page stays the same,
+    // start at the top when the step or mode changes.
+    const page = `${this._mode}:${this._step}`;
+    const oldBody = this._box.querySelector<HTMLElement>('.pb-body');
+    const keep = !!oldBody && this._renderedPage === page;
+    const scrollTop = keep ? oldBody!.scrollTop : 0;
+    const active = document.activeElement as HTMLElement | null;
+    const focusKey = keep && active && this._box.contains(active) ? active.getAttribute('data-pb') : null;
     this._box.innerHTML = `${head}<div class="pb-body">${msg}${body}</div>${foot}`;
+    this._renderedPage = page;
+    const newBody = this._box.querySelector<HTMLElement>('.pb-body');
+    if (newBody && scrollTop) newBody.scrollTop = scrollTop;
+    if (focusKey) {
+      const el = Array.from(this._box.querySelectorAll<HTMLElement>('[data-pb]')).find((e) => e.getAttribute('data-pb') === focusKey);
+      el?.focus({ preventScroll: true });
+    }
   }
+  private _renderedPage = '';
 
   private _chip(on: boolean, label: string, data: string, title = '', disabled = false): string {
     return `<button type="button" class="pb-chip${disabled ? ' pb-later' : ''}" data-pb="${esc(data)}" aria-pressed="${on}"${disabled ? ' aria-disabled="true"' : ''}${title ? ` title="${esc(title)}"` : ''}>${esc(label)}</button>`;
